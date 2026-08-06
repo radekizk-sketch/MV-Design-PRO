@@ -198,7 +198,15 @@ describe('SldCanvasV3 — klik w symbol', () => {
     const expectedTestId = firstSymbolGroup!.getAttribute('data-testid');
     expect(expectedTestId).toBe(scene.symbols[0].meta?.testId ?? 'sld-v3-symbol-0');
 
-    fireEvent.click(firstSymbolGroup!);
+    // Karta S9-4: celem kliku jest UCHWYT obiektu (warstwa `sld-v3-trafienia`),
+    // bo cały rysunek jest bierny (`pointer-events="none"`). Klikamy dokładnie
+    // ten węzeł, który w przeglądarce byłby celem zdarzenia — intencja testu
+    // („klik w pierwszy symbol woła onElementClick z jego testId") bez zmian.
+    const firstSymbolHit = container.querySelector(
+      `[data-hit-for="${expectedTestId}"][data-hit-role="obrys"]`,
+    );
+    expect(firstSymbolHit, 'pierwszy symbol ma uchwyt trafienia').toBeTruthy();
+    fireEvent.click(firstSymbolHit!);
     expect(onElementClick).toHaveBeenCalledTimes(1);
     expect(onElementClick).toHaveBeenCalledWith(expectedTestId, {
       ownerRef: scene.symbols[0].meta?.ownerRef,
@@ -214,8 +222,9 @@ describe('SldCanvasV3 — klik w symbol', () => {
     const { container } = render(
       <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={0} onElementClick={onElementClick} />,
     );
-    const stationGroup = container.querySelector('[data-testid="sld-v3-symbols"]')?.children[stationIndex];
-    fireEvent.click(stationGroup!);
+    // Karta S9-4: klik idzie w uchwyt obiektu (patrz komentarz wyżej).
+    const stationTestId = scene.symbols[stationIndex].meta?.testId ?? `sld-v3-symbol-${stationIndex}`;
+    fireEvent.click(container.querySelector(`[data-hit-for="${stationTestId}"][data-hit-role="obrys"]`)!);
     expect(onElementClick).toHaveBeenCalledWith(expect.any(String), {
       ownerRef: scene.symbols[stationIndex].meta?.ownerRef,
       elementKind: 'station',
@@ -224,8 +233,9 @@ describe('SldCanvasV3 — klik w symbol', () => {
 
   it('bez onElementClick klik nie rzuca (brak handlera to no-op bezpieczny)', () => {
     const { container } = render(<SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={0} />);
-    const firstSymbolGroup = container.querySelector('[data-testid="sld-v3-symbols"]')?.firstElementChild;
-    expect(() => fireEvent.click(firstSymbolGroup!)).not.toThrow();
+    const firstHit = container.querySelector('[data-hit-role="obrys"]');
+    expect(firstHit).toBeTruthy();
+    expect(() => fireEvent.click(firstHit!)).not.toThrow();
   });
 });
 
@@ -250,9 +260,10 @@ describe('SldCanvasV3 — nakładka energizacji (spec §6: KOLOR, nie geometria)
     // A kolor FAKTYCZNIE się różni na oznaczonym symbolu (nakładka działa).
     const targetWithout = without.querySelector(`[data-testid="${testId}"]`)!;
     const targetWith = withOverlay.querySelector(`[data-testid="${testId}"]`)!;
-    // `children[0]` = hit-rect (transparentny, bez stroke); `children[1]` =
-    // `<g>` glifu — pierwszy descendant ze `stroke` tam to rysunek glifu.
-    const glyphStrokeOf = (el: Element) => el.children[1]?.querySelector('[stroke]')?.getAttribute('stroke');
+    // Karta S9-4: grupa symbolu jest czystym rysunkiem (uchwyt kliku przeniesiony
+    // do warstwy `sld-v3-trafienia`), więc pierwszy descendant ze `stroke` to
+    // wprost rysunek glifu — dawniej trzeba było przeskoczyć transparentny hit-rect.
+    const glyphStrokeOf = (el: Element) => el.querySelector('[stroke]')?.getAttribute('stroke');
     expect(glyphStrokeOf(targetWith)).not.toBe(glyphStrokeOf(targetWithout));
   });
 
@@ -1128,7 +1139,9 @@ describe('SldCanvasV3 — SCHEMAT-10 S3 (V12K-135, D7): kolor NOP (wyróżniony 
         <SldCanvasV3 snapshot={enmWithNop} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={lod} />,
       );
       const nopGroup = container.querySelector('[data-testid="sld-v3-symbols"]')?.children[nopIndex];
-      const strokedDescendant = nopGroup?.children[1]?.querySelector('[stroke]');
+      // Karta S9-4: patrz wyżej — grupa symbolu nie niesie już transparentnego
+      // hit-rectu, więc pierwszy descendant ze `stroke` to rysunek glifu.
+      const strokedDescendant = nopGroup?.querySelector('[stroke]');
       expect(strokedDescendant?.getAttribute('stroke')).toBe(STATE_COLOR.nop);
     }
   });
@@ -1545,16 +1558,21 @@ describe('SldCanvasV3 — R2 staleness + agregacja warstwy wynikowej', () => {
     );
     const toggle = container.querySelector('[data-testid="sld-v3-result-aggregate-toggle-0"]');
     expect(toggle).toBeTruthy();
+    // Karta S9-4: marker skupiska jest rysunkiem, a jego uchwyt (rozwijanie
+    // popovera) siedzi w warstwie trafień pod tym samym `testId` — klikamy
+    // węzeł, który w przeglądarce faktycznie łapie zdarzenie.
+    const toggleHit = container.querySelector('[data-hit-for="sld-v3-result-aggregate-0"][data-hit-role="obrys"]');
+    expect(toggleHit, 'marker skupiska ma uchwyt trafienia').toBeTruthy();
     expect(container.querySelector('[data-testid="sld-v3-result-aggregate-0"]')!.textContent).toContain('wyniki');
     // Popover domyślnie zwinięty.
     expect(container.querySelector('[data-testid="sld-v3-result-aggregate-popover-0"]')).toBeNull();
     // Klik → rozwinięty, lista członków obecna.
-    fireEvent.click(toggle!);
+    fireEvent.click(toggleHit!);
     const popover = container.querySelector('[data-testid="sld-v3-result-aggregate-popover-0"]');
     expect(popover).toBeTruthy();
     expect(container.querySelectorAll('[data-testid^="sld-v3-result-aggregate-member-0-"]').length).toBe(layout.aggregates[0].count);
     // Ponowny klik → zwinięty.
-    fireEvent.click(toggle!);
+    fireEvent.click(toggleHit!);
     expect(container.querySelector('[data-testid="sld-v3-result-aggregate-popover-0"]')).toBeNull();
   });
 
