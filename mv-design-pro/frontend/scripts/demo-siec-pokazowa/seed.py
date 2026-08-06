@@ -19,10 +19,11 @@ CO BUDUJE (kontrakt `docs/domain/POMIAR_ROZLICZENIOWY_SN_V1.md`):
 TRYBY (`--tryb`):
 - `po`    (domyślny) — realna droga produkcyjna: `POST /api/station-templates/
   {id}/apply`. Szablon z polem pomiarowym sam trafia na drogę odgałęzienia.
-- `przed` — ODTWORZENIE STANU SPRZED KARTY POMIAR-ODGAŁĘZIENIE: klienci wcięci
-  przelotowo w magistralę operacją `insert_station_on_segment_sn` (dokładnie to
-  robiła aplikacja szablonu przed naprawą). Służy WYŁĄCZNIE do zrzutów
-  porównawczych „przed/po" — nie jest ścieżką produkcyjną.
+- `przed` — SONDA na żywym backendzie: próbuje zbudować układ sprzed karty
+  (klient wcięty przelotowo w magistralę) i WYMAGA odmowy bramy kontraktu
+  `station.insert.pomiar_w_torze_tranzytu`. Nie buduje już sieci — stary kształt
+  jest po karcie nieosiągalny; zrzuty porównawcze „przed" zostały wykonane przed
+  założeniem bramy i leżą w `docs/sld/audyt-2026-08/`.
 
 UŻYCIE (backend musi działać):
     python scripts/demo-siec-pokazowa/seed.py --wynik /tmp/po.json
@@ -117,11 +118,17 @@ def zastosuj_szablon(sesja: Sesja, template_id: str, segment_ref: str) -> dict[s
     )
 
 
-def wetnij_przelotowo(sesja: Sesja, template_id: str, segment_ref: str) -> dict[str, Any]:
-    """Stan SPRZED karty: klient wcięty w magistralę (tranzyt przez jego rozdzielnicę).
+def sprawdz_odmowe_wciecia(sesja: Sesja, template_id: str, segment_ref: str) -> dict[str, Any]:
+    """SONDA: czy układ sprzed karty da się jeszcze zbudować? (musi ODMÓWIĆ).
 
-    Buduje payload dokładnie tak, jak robiła to aplikacja szablonu przed naprawą:
-    te same pola SN z biblioteki szablonów, ta sama operacja domenowa.
+    Do karty POMIAR-ODGAŁĘZIENIE ten sam payload budował klienta WCIĘTEGO w
+    magistralę — tranzyt OSD szedł przez rozdzielnicę abonenta. Po karcie brama
+    domenowa odmawia takiego układu, więc tryb „przed" nie jest już budowaniem
+    sieci, tylko DOWODEM na żywym backendzie, że stary kształt jest nieosiągalny.
+
+    Zrzuty stanu „przed" (`docs/sld/audyt-2026-08/pomiar-odg-przed-*.png`) powstały
+    przed założeniem bramy i zostają dokumentem porównawczym — tym skryptem nie da
+    się ich odtworzyć i to jest stan PROJEKTOWANY, nie brak.
     """
     szablon = zadanie("GET", f"/api/station-templates/{template_id}")
     podglad = zadanie(
@@ -130,25 +137,42 @@ def wetnij_przelotowo(sesja: Sesja, template_id: str, segment_ref: str) -> dict[
         {"params_override": {}, "catalog_profile": None},
     )
     konfiguracja = podglad["effective_config"]
-    return sesja.operacja(
-        "insert_station_on_segment_sn",
+    wynik = zadanie(
+        "POST",
+        f"/api/cases/{sesja.case_id}/enm/domain-ops",
         {
-            "segment_id": segment_ref,
-            "insert_at": {"mode": "RATIO", "value": 0.5},
-            "station": {
-                "name_pl": szablon["name_pl"],
-                "station_type": podglad["station_type"],
-                "sn_voltage_kv": 15,
-                "nn_voltage_kv": 0.4,
-            },
-            "transformer": {"transformer_catalog_ref": konfiguracja["transformer_ref"]},
-            "sn_fields": konfiguracja["sn_fields"],
-            "nn_block": {
-                "outgoing_feeders_nn_count": konfiguracja["nn_feeders_count"],
-                "outgoing_feeders_nn": [],
+            "project_id": "",
+            "snapshot_base_hash": "",
+            "operation": {
+                "name": "insert_station_on_segment_sn",
+                "idempotency_key": f"{sesja.etykieta}-sonda-{template_id}",
+                "payload": {
+                    "segment_id": segment_ref,
+                    "insert_at": {"mode": "RATIO", "value": 0.5},
+                    "station": {
+                        "name_pl": szablon["name_pl"],
+                        "station_type": podglad["station_type"],
+                        "sn_voltage_kv": 15,
+                        "nn_voltage_kv": 0.4,
+                    },
+                    "transformer": {"transformer_catalog_ref": konfiguracja["transformer_ref"]},
+                    "sn_fields": konfiguracja["sn_fields"],
+                    "nn_block": {
+                        "outgoing_feeders_nn_count": konfiguracja["nn_feeders_count"],
+                        "outgoing_feeders_nn": [],
+                    },
+                },
             },
         },
     )
+    kod = wynik.get("error_code")
+    if kod != "station.insert.pomiar_w_torze_tranzytu":
+        raise SystemExit(
+            "SONDA NIEUDANA: wcięcie stacji abonenckiej w magistralę NIE zostało "
+            f"odrzucone (kod: {kod!r}). Brama kontraktu pomiaru rozliczeniowego "
+            "nie działa na żywym backendzie."
+        )
+    return {"template_id": template_id, "odmowa": kod}
 
 
 def zbuduj(tryb: str) -> dict[str, Any]:
@@ -216,10 +240,10 @@ def zbuduj(tryb: str) -> dict[str, Any]:
     cele = [odcinki_magistrali[1], odcinki_magistrali[-1]]
 
     klienci = []
+    odmowy = []
     for template_id, cel in zip(KLIENCI, cele):
         if tryb == "przed":
-            wynik = wetnij_przelotowo(sesja, template_id, cel)
-            klienci.append((wynik.get("selection_hint") or {}).get("element_id"))
+            odmowy.append(sprawdz_odmowe_wciecia(sesja, template_id, cel))
         else:
             wynik = zastosuj_szablon(sesja, template_id, cel)
             klienci.append(wynik.get("station_ref"))
@@ -236,6 +260,7 @@ def zbuduj(tryb: str) -> dict[str, Any]:
         "case_name": przypadek["name"],
         "stacje_osd": stacje_osd,
         "stacje_klientow": klienci,
+        "odmowy_wciecia": odmowy,
         "ready": gotowosc.get("ready"),
         "sc_run": zwarcie.get("run_id"),
         "sc_rows": len(zwarcie.get("results", [])),

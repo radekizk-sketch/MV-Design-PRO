@@ -376,21 +376,21 @@ def _zastosuj_szablon_pod_blokada(
 
 
 def _klasa_przylaczenia(bay_roles: list[str]) -> str:
-    """Klasa przyłączenia stacji z ról pól — kontrakt POMIAR_ROZLICZENIOWY_SN_V1 §3.
+    """Klasa przyłączenia (A/B/C) dla ról pól WYNIKAJĄCYCH z szablonu.
 
-    JEDNO źródło prawdy: zestaw ról pól SN, który zostanie ZBUDOWANY (a nie nazwa
-    szablonu ani jego kategoria — nazwa kłamie, kategoria jest metadaną biblioteki).
+    Klasę liczy operacja domenowa (`enm.domain_operations.klasa_przylaczenia_sn`)
+    — TA SAMA funkcja bramkuje wcięcie w odcinek. Warstwa aplikacyjna nie ma
+    własnej kopii reguły: dwa niezależne warunki, które „dziś się zgadzają", są
+    defektem czekającym na dane brzegowe (np. stację abonencką z polem
+    REZERWOWYM za pomiarem — zbiorowy test obecności roli odpływowej uznałby ją
+    za pętlę OSD).
 
-    - ``A`` — stacja dystrybucyjna OSD: brak pola pomiarowego, wcięcie przelotowe;
-    - ``B`` — stacja abonencka: przed pomiarem WYŁĄCZNIE pole dopływowe
-      (zero pary tranzytowej) ⇒ przyłączenie ODGAŁĘZIENIEM;
-    - ``C`` — złącze kablowe ZK-SN: przed pomiarem pętla OSD (IN + OUT), pomiar
-      jest polem odpływowym gałęzi klienta ⇒ wcięcie w magistralę (pętla).
+    Klasa wynika z zestawu ról, który zostanie ZBUDOWANY — nie z nazwy szablonu
+    ani jego kategorii (nazwa kłamie, kategoria jest metadaną biblioteki).
     """
-    if "MEASUREMENT" not in bay_roles:
-        return "A"
-    przed_pomiarem = bay_roles[: bay_roles.index("MEASUREMENT")]
-    return "C" if "OUT" in przed_pomiarem else "B"
+    from enm.domain_operations import klasa_przylaczenia_sn
+
+    return klasa_przylaczenia_sn(bay_roles)
 
 
 def _ref_wyboru(wynik_operacji: dict[str, Any]) -> str | None:

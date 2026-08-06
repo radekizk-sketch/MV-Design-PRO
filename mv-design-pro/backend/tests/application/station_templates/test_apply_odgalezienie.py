@@ -538,11 +538,15 @@ def test_wciecie_w_odcinek_odmawia_ukladu_klasy_b_niezaleznie_od_drogi_wejscia()
                 "nn_voltage_kv": 0.4,
             },
             "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
-            # Kształt klasy B: pomiar bez pary tranzytowej.
+            # Kształt klasy B DOKŁADNIE TAKI, JAKI DAJE SZABLON — z polem
+            # REZERWOWYM (rola odpływowa) ZA pomiarem. Wariant bez rezerwy
+            # przechodziłby także przy zbiorowym teście obecności ról, więc
+            # sam w sobie NIE dowodziłby, że brama liczy klasę pozycyjnie.
             "sn_fields": [
                 {"field_role": "LINIA_IN"},
                 {"field_role": "POMIAROWE"},
                 {"field_role": "TRANSFORMATOROWE"},
+                {"field_role": "LINIA_OUT"},
             ],
             "transformer": {"transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11"},
             "nn_block": {"outgoing_feeders_nn_count": 1},
@@ -617,3 +621,65 @@ def test_brama_rozpoznaje_role_pomiarowa_takze_z_aliasu_skrotowego() -> None:
             },
         )
         assert wynik.get("error_code") == "station.insert.pomiar_w_torze_tranzytu", alias
+
+
+def test_klasa_liczona_jest_pozycyjnie_takze_dla_pola_rezerwowego_za_pomiarem() -> None:
+    """Pułapka, w którą wpadła pierwsza wersja bramy (KLASA §3, predykaty parami).
+
+    Stacja abonencka ma pole REZERWOWE o roli odpływowej ZA pomiarem
+    ([dopływ, POMIAR, TR, rezerwa]) — dokładnie tak wygląda `tpl_sn_nn_1000kva`.
+    Zbiorowy test „czy w rolach jest para dopływ+odpływ" uznaje taki układ za
+    pętlę OSD (klasa C) i przepuszcza rozdzielnicę klienta do toru tranzytu.
+    Rozstrzyga KOLEJNOŚĆ: liczy się, czy pole odpływowe leży PRZED pomiarem.
+    """
+    from enm.domain_operations import klasa_przylaczenia_sn
+
+    # Realny układ szablonu abonenckiego — rezerwa ZA pomiarem ⇒ klasa B.
+    assert klasa_przylaczenia_sn(["LINIA_IN", "POMIAROWE", "TRANSFORMATOROWE", "LINIA_OUT"]) == "B"
+    # Pętla OSD — odpływ PRZED pomiarem ⇒ klasa C.
+    assert klasa_przylaczenia_sn(["LINIA_IN", "LINIA_OUT", "POMIAROWE", "TRANSFORMATOROWE"]) == "C"
+    # Ta sama funkcja przyjmuje skróty `bay_role`, którymi wołają szablony.
+    assert klasa_przylaczenia_sn(["IN", "MEASUREMENT", "TR", "OUT"]) == "B"
+    assert klasa_przylaczenia_sn(["IN", "OUT", "MEASUREMENT", "TR"]) == "C"
+    assert klasa_przylaczenia_sn(["IN", "OUT", "TR"]) == "A"
+
+    # I ta sama funkcja, którą wywołuje warstwa aplikacyjna (jedno źródło prawdy).
+    assert _klasa_przylaczenia(["IN", "MEASUREMENT", "TR", "OUT"]) == "B"
+
+
+def test_realny_zestaw_pol_szablonu_abonenckiego_jest_odrzucany_przez_wciecie() -> None:
+    """Iniekcja na DANYCH PRODUKCYJNYCH, nie na payloadzie z testu: bierzemy
+    zestaw pól WPROST z biblioteki szablonów i podajemy go operacji wcięcia."""
+    template = get_template(SZABLON_KLASY_B)
+    assert template is not None
+    role = _resolve_sn_bay_roles(template, template.schema.sn_bays_count.default)
+    specyfikacje = _resolve_sn_field_specs(
+        template, bay_roles=role, overrides={}, catalog_profile=None
+    )
+    assert [spec["field_role"] for spec in specyfikacje] == [
+        "LINIA_IN",
+        "POMIAROWE",
+        "TRANSFORMATOROWE",
+        "LINIA_OUT",
+    ], "Zmienił się kształt szablonu — zaktualizuj pin razem z kontraktem"
+
+    enm, odcinki = _magistrala(3)
+    wynik = execute_domain_operation(
+        enm_dict=enm,
+        op_name="insert_station_on_segment_sn",
+        payload={
+            "segment_id": odcinki[1],
+            "insert_at": {"mode": "RATIO", "value": 0.5},
+            "station": {
+                "station_type": "inline",
+                "station_name": template.name_pl,
+                "sn_voltage_kv": 15.0,
+                "nn_voltage_kv": 0.4,
+            },
+            "sn_fields": specyfikacje,
+            "transformer": {"transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11"},
+            "nn_block": {"outgoing_feeders_nn_count": 1},
+        },
+    )
+    assert wynik.get("error_code") == "station.insert.pomiar_w_torze_tranzytu"
+    assert wynik.get("snapshot") is None

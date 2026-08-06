@@ -15,6 +15,7 @@ import hashlib
 import json
 import math
 import re
+from collections.abc import Iterable
 from typing import TYPE_CHECKING, Any
 
 from network_model.catalog.audit2_catalogs import (
@@ -5005,6 +5006,35 @@ def _canonical_sn_field_role(raw: object) -> str:
     return _SN_FIELD_ROLE_ALIASES.get(normalized, normalized)
 
 
+def klasa_przylaczenia_sn(role_pol: Iterable[object]) -> str:
+    """Klasa przyłączenia stacji SN z KOLEJNOŚCI ról pól — JEDNA prawda.
+
+    Kontrakt `docs/domain/POMIAR_ROZLICZENIOWY_SN_V1.md` §3:
+
+    - ``A`` — brak pola pomiarowego (stacja dystrybucyjna OSD, wcięcie przelotowe);
+    - ``B`` — pole pomiarowe, a PRZED nim (od strony zasilania) NIE MA pola
+      odpływowego: cała rozdzielnica leży za układem pomiarowym ⇒ stacja
+      abonencka, przyłączana ODGAŁĘZIENIEM;
+    - ``C`` — pole pomiarowe, a przed nim pętla OSD (pole dopływowe + odpływowe)
+      ⇒ złącze kablowe ZK-SN, wcinane w magistralę; pomiar jest polem gałęzi
+      klienta, tranzyt pętli przez niego nie przechodzi.
+
+    PREDYKAT JEST POZYCYJNY, nie zbiorowy. Stacja abonencka miewa pola REZERWOWE
+    o roli odpływowej ZA pomiarem (np. „dopływ, POMIAR, TR, rezerwa") — test
+    obecności roli odpływowej w zbiorze uznałby ją za pętlę OSD i przepuścił
+    rozdzielnicę klienta do toru tranzytu. Kolejność ról to fizyczny układ pola
+    od strony zasilania (V12K-330), więc to ona niesie tę różnicę.
+
+    Wołający podaje role w dowolnym przyjmowanym aliasie (`bay_role` albo
+    `field_role`) — normalizuje `_canonical_sn_field_role`.
+    """
+    kanoniczne = [_canonical_sn_field_role(rola) for rola in role_pol]
+    if "POMIAROWE" not in kanoniczne:
+        return "A"
+    przed_pomiarem = kanoniczne[: kanoniczne.index("POMIAROWE")]
+    return "C" if "LINIA_OUT" in przed_pomiarem else "B"
+
+
 def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     """Wstaw stację SN/nN w odcinek — operacja krytyczna.
 
@@ -5117,14 +5147,13 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
     # WYŁĄCZNIE dla klasy C kontraktu (złącze ZK-SN: pętla OSD IN+OUT, a pomiar jako
     # pole odpływowe gałęzi klienta).
     #
-    # PREDYKATY PARAMI: ten sam warunek (pomiar bez pary tranzytowej = klasa B)
-    # kieruje aplikację szablonu na drogę odgałęzienia
-    # (`application/station_templates/apply._klasa_przylaczenia`). Bez bramy tutaj
-    # reguła żyłaby wyłącznie w warstwie szablonów, a każda inna droga wejścia
-    # (surowe API operacji, kreator stacji, seedy e2e) mogłaby zbudować układ
-    # zakazany kontraktem.
-    role_pol = {str(field_spec.get("field_role", "")) for field_spec in sn_fields}
-    if "POMIAROWE" in role_pol and not {"LINIA_IN", "LINIA_OUT"} <= role_pol:
+    # PREDYKATY PARAMI: klasę liczy DOKŁADNIE TA SAMA funkcja
+    # (`klasa_przylaczenia_sn`), która kieruje aplikację szablonu na drogę
+    # odgałęzienia — jedno źródło prawdy, nie dwa „dziś zgodne" warunki. Bez bramy
+    # tutaj reguła żyłaby wyłącznie w warstwie szablonów, a każda inna droga
+    # wejścia (surowe API operacji, kreator stacji, seedy e2e) mogłaby zbudować
+    # układ zakazany kontraktem.
+    if klasa_przylaczenia_sn(field_spec.get("field_role") for field_spec in sn_fields) == "B":
         return _error_response(
             "Rozdzielnica z polem pomiarowo-rozliczeniowym nie może prowadzić tranzytu "
             "magistrali — układ pomiarowy mierzy cały i wyłącznie pobór odbiorcy. "
