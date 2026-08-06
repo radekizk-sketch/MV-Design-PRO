@@ -158,6 +158,30 @@ Renderowane PRODUKCYJNĄ kanwą v3 (`scripts/render_s9_1_lamanie.tsx` +
 Stopka każdego zrzutu niesie zmierzone liczby (liczba wierszy, bbox, proporcja,
 gęstość tuszu) — zrzut jest dowodem, nie ilustracją.
 
+## 6a. Inwentarz KLASY „geometria zakłada jeden wiersz o rosnącym X"
+
+Reguła KLASA, NIE INSTANCJA (CLAUDE.md) wymaga wypisania WSZYSTKICH miejsc
+dzielących naprawiany mechanizm, nie tylko tego z audytu. Założenie „ciąg
+główny leży w jednym wierszu, więc porządek topologiczny == porządek X" żyło
+w SIEDMIU miejscach; wszystkie przejrzane, stan po karcie:
+
+| # | Miejsce | Stan |
+|---|---------|------|
+| 1 | `topBandFieldClearances` (światło pasa górnego) | **NAPRAWIONE** — mierzy wewnątrz wiersza (przed: światło −888 px między polami z różnych wierszy) |
+| 2 | `topBandFieldExtents` (ekstenty pól, dowód „rozstaw = footprint + światło") | **NAPRAWIONE** — grupuje po wierszach, ta sama reguła przynależności co #1 |
+| 3 | `computeLateralChannelXById` (kanały zejść odgałęzień) | **NAPRAWIONE** — liczone z kolumn WIERSZA, którego dotyczą (wcześniej z jednej globalnej listy) |
+| 4 | `insertColumnChannels` — rezerwacja kanałów dla „późniejszych" odgałęzień | **NAPRAWIONE** — ograniczone do odgałęzień TEGO pasma (przeplot §4 sprawia, że pozostałe nigdy przez nie nie przechodzą) |
+| 5 | wyrocznia kolejności stacji (`checkContinuity`, skrypt odbioru) | **NAPRAWIONE** — kanon „wiersz arkusza, potem rosnące X" |
+| 6 | test anty-dryfu etykiet przęseł (`buildScene.w3Labels`) | **NAPRAWIONE** — porównanie w obrębie wiersza |
+| 7 | test lokalności zmiany (`buildScene.schemat10s7p3` §9) | **NAPRAWIONE** — kanon „skutek idzie wyłącznie w dół, wiersz jako całość" |
+
+Świadomie POZA naprawą (z podaniem powodu, nie „poza zakresem karty"):
+`ui/sld/v3/canvas/overlay.ts` i warstwa `sldDeltaOverlay` — czytają geometrię
+gotowej sceny (punkty tras, kotwice symboli), NIE zakładają porządku X ciągu;
+złamanie arkusza jest dla nich przezroczyste. Sprawdzone grepem po
+`mainTrunkStationIds` (5 konsumentów produkcyjnych, żaden nie sortuje po X)
+oraz po sortowaniu `a.x - b.x` w `ui/sld/v3/**` (2 wystąpienia, oba w #1/#2).
+
 ## 7. Determinizm i stabilność
 
 - `planSheetRows` jest czystą arytmetyką na tablicy szerokości kolumn i
@@ -188,6 +212,20 @@ miarami przed zmianą (drzewo `d6cbe83d`) i po niej. Kanwa odniesienia
 | L0 | **10,30 → 1,33** | 0,77 % → 2,03 % | 33,5 % → 55,0 % | **27/109 → 0/109** |
 | L1 | **10,07 → 1,32** | 1,36 % → 3,18 % | 34,2 % → 54,4 % | **319/1286 → 0/1286** |
 | L2 | **10,07 → 1,33** | 1,39 % → 3,20 % | 34,2 % → 54,9 % | **314/1286 → 0/1286** |
+
+**E-5 (eksport niedrukowalny) zamknięty tą samą zmianą.** Kadr eksportu SVG
+pochodzi z bboxa sceny (`export/exportFrame.ts` `computeContentFitFrame` —
+ta sama funkcja rozmiaru co ramka arkusza), więc proporcja eksportu jest
+proporcją arkusza:
+
+| Sieć | kadr eksportu przed → po | arkuszy A3 poziomych obok siebie |
+|------|--------------------------|----------------------------------|
+| referencyjna | 14 416 × 3 601 (4,00 : 1) → 8 336 × 5 609 (**1,49 : 1**) | 2,8 → **1,1** |
+| długi ciąg | 35 680 × 3 601 (9,91 : 1) → 9 182 × 6 913 (**1,33 : 1**) | 7,0 → **0,9** |
+
+Rysunek przestał wymagać sklejania arkuszy w poziomie — mieści się w jednym
+A3 poziomym. Pozostałe braki eksportu (tytułówka, martwe PDF/PNG, pusty DXF)
+to karta **S9-6**, która dopiero teraz ma na czym pracować.
 
 **C-2 wyjaśnione u źródła.** Auto-fit gubił symbole nie dlatego, że źle liczył
 kadr, tylko dlatego, że `fitToView` (`v2/viewport/ViewportController.ts`) ma
