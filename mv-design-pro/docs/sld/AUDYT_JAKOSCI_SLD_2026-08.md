@@ -70,7 +70,7 @@ Kanwa: **1322 × 696 px**. Pomiar przez `getBoundingClientRect` elementów rende
 | C-9 | **Napięcie znamionowe kabla podane obok napięcia pracy bez rozróżnienia.** Opis odcinka brzmi „S08 ↔ S09 · YAKXS 3×120/16 · **20 kV** · l = 50 m", a sekcja obok „Sekcja 1 · **15 kV**". Czytelnik nie wie, czy to niezgodność modelu, czy dane katalogowe kabla. | `czytelnosc-srednia-L2-ciemny.png` | ZW, PSN | 2 | Napięcie znamionowe izolacji kabla oznaczyć jednoznacznie (np. `U₀/U 12/20 kV`) albo usunąć z opisu przebiegu. |
 | C-10 | **Zgodność symboli z IEC 60617 na poziomie L2 jest dobra** (obserwacja pozytywna): transformator dwuuzwojeniowy jako dwa okręgi, odłącznik `Q1`, uziemnik `QE1`, ogranicznik przepięć jako trójkąt, generator jako okrąg `G`, szyna jako gruba kreska; role pól opisane po polsku („pole transformatorowe", „pole pomiarowe", „pole liniowe"). **(opinia)** rysunek na L2 wygląda jak rysunek wykonawczy. | `czytelnosc-srednia-L2-ciemny.png` | CAD | — | — |
 | C-11 | **Declutter działa poprawnie** (obserwacja pozytywna): liczba nachodzących na siebie prostokątów etykiet wynosi **0** na wszystkich sześciu kombinacjach sieć × poziom; system uczciwie melduje „Ukryto N opisów — przybliż, aby zobaczyć". | pomiar `kolizjeEtykiet` = 0 (6/6) | CAD | — | — |
-| C-12 | **Motyw jasny na kanwie jest poprawny** (obserwacja pozytywna): tło `rgb(255,255,255)`, rysunek ciemnozielony — czytelny jak wydruk CAD; motyw ciemny `rgb(11,15,20)`. Oba motywy potwierdzone pomiarem `background-color` kanwy po realnym przełączeniu. | `czytelnosc-srednia-L2-jasny.png` vs `-ciemny.png` | CAD | — | — |
+| C-12 | **Motyw jasny na kanwie jest poprawny** (obserwacja pozytywna): tło `rgb(255,255,255)`, rysunek ciemnozielony — czytelny jak wydruk CAD; motyw ciemny `rgb(11,15,20)`. Oba motywy potwierdzone pomiarem `background-color` kanwy po realnym przełączeniu. | `czytelnosc-srednia-L2-jasny.png` vs `czytelnosc-srednia-L2-ciemny.png` | CAD | — | — |
 | C-13 | **Hierarchia grubości linii jest zbyt płaska.** Szyna stacji ma obrys 4 px, wszystkie tory pól i aparaty 1,6 px; magistrala SN i odgałęzienie nie różnią się grubością. Na rysunku sieciowym nie da się odróżnić magistrali od odgałęzienia bez czytania opisu. | pomiar `strokeWidth` (spec `22-klik2`): `station#sn-bus` = 4 px, `sn_field/*` = 1,6 px | CAD, PSN | 2 | Wprowadzić stopniowanie grubości wg rangi toru (magistrala > odgałęzienie > pole > nN). |
 
 ---
@@ -93,7 +93,7 @@ Przejścia poziomu przy zoomie: `L0→L1` na kroku 14 (**303 ms**), `L1→L2` na
 | # | Opis | Dowód | Soczewka | Waga | Naprawa (jednym zdaniem) |
 |---|------|-------|----------|------|--------------------------|
 | P-1 | **Klik w element schematu w większości przypadków nic nie zaznacza.** Sonda siatkowa: 96 natywnych klików pokrywających widoczny odcinek szyny SN stacji i jej pola; kursor był nad elementem rysunku w 12 punktach, a zaznaczenie nastąpiło tylko w **3 z tych 12 (25 %)**. Ten sam prostokąt pola `sn_field/002` raz się zaznacza (`y=698`, `y=717`), raz nie (`y=623`, `y=642`, `y=679`). | pomiar `praca-sonda-siatkowa` | UX, PSN | **3** | Ujednolicić trafienie: jeden przezroczysty obszar trafienia na obiekt (min. 24 px), zamiast polegania na geometrii kreski. |
-| P-2 | **Inspektor nie rozróżnia klikanych obiektów.** We wszystkich udanych zaznaczeniach (sonda siatkowa oraz 8 klików w różne pola trzech różnych stacji) inspektor pokazał **jeden i ten sam** opis „Transformator SN/nN" — także po kliknięciu w identyfikator uziemnika (`apparatus-id-earthSwitch-lateral-1`) i w pole pomiarowe. Liczba różnych treści inspektora: **1** na 8 klików w różne obiekty. | pomiary `praca-ziarnistosc-zaznaczenia`, `praca-inspektor-rozroznialnosc`, `praca-sonda-siatkowa`; `praca-inspektor.png` | ZW, PSN | **3** | Zaznaczenie musi nieść `owner-ref` klikniętego aparatu, a inspektor renderować obiekt wskazany tym `ref`. |
+| P-2 | **Inspektor nie rozróżnia klikanych obiektów.** We wszystkich udanych zaznaczeniach (sonda siatkowa oraz 8 klików w różne pola trzech różnych stacji) inspektor pokazał **jeden i ten sam** opis „Transformator SN/nN" — także po kliknięciu w identyfikator uziemnika (`apparatus-id-earthSwitch-lateral-1`) i w pole pomiarowe. Liczba różnych treści inspektora: **1** na 8 klików w różne obiekty. | pomiary `praca-ziarnistosc-zaznaczenia`, `praca-inspektor-rozroznialnosc`, `praca-sonda-siatkowa`; `praca-zaznaczenie-inspektor.png` | ZW, PSN | **3** | Zaznaczenie musi nieść `owner-ref` klikniętego aparatu, a inspektor renderować obiekt wskazany tym `ref`. |
 | P-3 | **Aparaty rysowane kreską są niekilkalne.** Cztery kliki wykonane DOKŁADNIE na geometrii ścieżki (punkt liczony przez `getPointAtLength` + `getScreenCTM`) — uziemnik, przekładnik napięciowy, zejście pola — nie dały zaznaczenia; obrys tych elementów ma 1,6 px. | pomiar `praca-klik-na-kresce` | UX, ZW | **3** | Dodać niewidoczny obrys trafienia (`stroke-width` trafienia ≫ obrys rysunku) dla elementów liniowych. |
 | P-4 | **Zoom szarpie, przejścia poziomu zamrażają obraz.** 23 % klatek przy zoomie przekracza 33 ms, 8 klatek przekracza 100 ms, a same przejścia `L0→L1` i `L1→L2` trwają **303 ms** i **371 ms** — przy 51 stacjach to widoczne zacięcie przy każdym przekroczeniu progu. | pomiar `praca-zoom-duza` | UX | 2 | Przeliczać scenę poziomu poza ścieżką gestu (praca w tle / pamięć podręczna sceny), zamiast w klatce zoomu. |
 | P-5 | **Przeciąganie (pan) jest płynne** (obserwacja pozytywna): mediana 15,9 ms, **zero** klatek powyżej 33 ms na sieci 51 stacji. | pomiar `praca-pan-duza` | UX | — | — |
@@ -112,3 +112,161 @@ menu kontekstowego; są w drzewie także wtedy, gdy sieć ma 16 stacji.
 | P-8 | **Akcje stanu pustego są w drzewie mimo niepustego modelu.** `sld-empty-state`, `sld-empty-state-insert-gpz`, `sld-empty-state-open-catalogs` obecne przy 16 i 51 stacjach. | wypis `data-testid` po otwarciu przypadku (spec `00-rekonesans`) | UX | 1 | Montować stan pusty warunkowo, żeby nie zaśmiecał drzewa i wyszukiwania. |
 
 ---
+
+## 4. E-BUDOWA SIECI
+
+### 4.1 Wejście w budowę (pusty przypadek)
+
+Stan pusty kanwy jest **prowadzący i poprawny**: tytuł „Schemat jednokreskowy", zdanie celu
+(„Wybierz wariant GPZ i rozpocznij ciąg SN"), opis następnych kroków oraz dwa wyjścia —
+*Wstaw Główny Punkt Zasilający* i *Przeglądaj katalogi techniczne*.
+
+**Jeden klik** w „Wstaw Główny Punkt Zasilający" otwiera kreator GPZ o siedmiu krokach:
+`1 Identyfikacja` · `2 Źródło i strona WN` · `3 Transformatory` · `4 Rozdzielnia SN` ·
+`5 Sekcje i pola` · `6 Parametry normowe` · `7 Podsumowanie i zapis`, z jawnymi
+`← Wstecz` / `Dalej →` / `Anuluj` / `Zapisz GPZ`. Pasek kontekstu natychmiast przechodzi na
+`Faza projektu: GPZ · Układ: GPZ · Następny krok: wybór GPZ`.
+
+### 4.2 Stabilność inkrementalna layoutu
+
+Metoda: sieć 9 stacji / 16 odcinków; położenia **w układzie świata** (nie ekranu — kamera
+między otwarciami może stanąć inaczej) zapisane per `data-owner-ref` przed wstawieniem
+stacji na **środkowym** odcinku magistrali i po nim; porównanie elementów wspólnych.
+
+| Miara | Wartość |
+|-------|---------|
+| elementów przed / po | 39 / 42 |
+| wspólnych | 38 |
+| nieruchomych (< 0,5 j.św.) | 17 |
+| przesuniętych ≥ 1 j.św. | 21 |
+| przesuniętych ≥ 50 j.św. | 16 |
+| mediana przesunięcia | 2,4 j.św. |
+| maksimum przesunięcia | **752 j.św.** (`dx = +752`, `dy = 0` — identycznie dla wszystkich 16) |
+
+### 4.3 Znaleziska
+
+| # | Opis | Dowód | Soczewka | Waga | Naprawa (jednym zdaniem) |
+|---|------|-------|----------|------|--------------------------|
+| B-1 | **Wstawienie stacji NIE rozsypuje układu** (obserwacja pozytywna): cały ogon magistrali przesuwa się o **dokładnie tę samą** wartość `+752` w osi X przy `dy = 0`; brak przetasowań, brak ruchu w pionie, brak zmiany kolejności. Zachowanie deterministyczne i przewidywalne. | pomiar `budowa-stabilnosc-layoutu`; `budowa-stabilnosc-przed.png` / `budowa-stabilnosc-po.png` | PSN, CAD | — | — |
+| B-2 | **Ogon przesuwa się o pełną szerokość stacji, więc obraz skacze.** Przesunięcie 752 j.św. przy jednokreskowym pasie (C-1) oznacza, że po wstawieniu stacji cała prawa część rysunku wyjeżdża z kadru; przy sieci 51 stacji rysunek ma już 66 tys. px, więc kamera nie nadąża za miejscem edycji. | pomiar jw. + tabela 2.1 | PSN, UX | 2 | Po wstawieniu utrzymać kamerę na obiekcie wstawionym (zakotwiczenie widoku na zmianie). |
+| B-3 | **Stan pusty i kreator GPZ są dobrze poprowadzone** (obserwacja pozytywna): 1 klik do kreatora, 7 nazwanych kroków, jawne „następny krok" w pasku kontekstu. | `budowa-stan-pusty.png`, `budowa-po-kliku-wstaw-gpz.png` | UX, PSN | — | — |
+| B-4 | **Dalsza budowa nie ma ścieżki na kanwie.** Po wstawieniu GPZ na kanwie są tylko trzy przyciski układów DER (`+ PV`, `+ BESS`, `+ FW`). Operacji, które faktycznie budują sieć SN — *wstaw stację na odcinku*, *przedłuż magistralę*, *rozpocznij odgałęzienie* — nie ma ani na pasie narzędzi, ani w menu kontekstowym (P-7); wykonalne są wyłącznie przez API/kreatory poza schematem. | wypis afordancji `budowa-afordancje-pusty`; pomiary menu kontekstowego (P-7) | PSN | **3** | Dodać na kanwie operacje ciągu SN (odcinek / stacja na odcinku / odgałęzienie) obok palety DER. |
+| B-5 | **Koszt operacji rośnie liniowo z rozmiarem sieci.** Czas `POST /station-templates/{id}/apply` rośnie z **21 ms** (1. stacja) do **550 ms** (50. stacja), mediana 257 ms, maksimum 698 ms; `continue_trunk_segment_sn` analogicznie 9 → 593 ms. Budowa 50 stacji ma przez to koszt kwadratowy. | pomiar budowy sieci (`build-networks`) | PSN, UX | 2 | Operacja domenowa nie powinna przeliczać całego modelu — koszt ma zależeć od zasięgu zmiany. |
+
+---
+
+## 5. E-WYNIKI NA SCHEMACIE
+
+### 5.1 Przebieg badania
+
+Bieg uruchamiany **realnym przyciskiem „Oblicz"** w powłoce. Backend policzył poprawnie:
+`POST /api/cases/{case}/runs/short-circuit` zwraca **32 wiersze** z kompletem wielkości
+IEC 60909 (`ikss_a`, `ip_a`, `ith_a`, `ib_a`, `sk_mva`, `kappa`, `zkk_ohm`, `c_factor`,
+`contributions`), a `results/index` odpowiada `200`.
+
+### 5.2 Znaleziska
+
+| # | Opis | Dowód | Soczewka | Waga | Naprawa (jednym zdaniem) |
+|---|------|-------|----------|------|--------------------------|
+| W-1 | **Wyniki NIE pojawiają się na schemacie.** W stanie poprawnym (`#sld?run=…`, kanwa stabilna, pochodzenie nakładki związane z biegiem) zmierzono: **0 etykiet wynikowych, 0 strzałek rozpływu, 0 strzałek zwarciowych, brak znacznika punktu zwarcia** — zarówno na L0, jak i na L2. Rysunek po biegu jest identyczny jak przed biegiem. | pomiar `wyniki-nakladka-poprawny-stan`; `wyniki-nakladka-L0.png`, `wyniki-nakladka-L2.png` (porównaj z `czytelnosc-srednia-L2-ciemny.png`) | ZW, PSN | **3** | Podłączyć warstwę `sld-v3-result-labels` do wyniku wskazanego przez `run` — dane są w backendzie, a wiązanie już istnieje. |
+| W-2 | **Pasek pochodzenia nakładki działa** (obserwacja pozytywna): po biegu pokazuje „Moduł: zwarcie trójfazowe · Przebieg: `61603f65…` · Czas ukończenia: 6.08.2026, 07:07:18" — czyli wiązanie wynik↔rysunek istnieje, brakuje samego rysowania wartości. | pomiar jw. | ZW | — | — |
+| W-3 | **Pułapka nawigacji: pierwszy powrót na schemat jest cofany.** Po biegu klik „Schemat (SLD)" przechodzi na `#sld` i kanwa montuje się (96 elementów `sld-v3-*` w 303 ms), a po **~2,3 s** aplikacja SAMA wraca na `#analysis?run=…` i odmontowuje kanwę; stan utrzymuje się przez kolejne 35 s. **Dopiero drugi klik** zostaje (`#sld?run=…`). | pomiary `wyniki-pulapka-nawigacji` (ślad co 1 s) i `wyniki-domontowanie-po-powrocie`; `wyniki-pulapka-nawigacji.png` | UX | **3** | Usunąć odroczone przekierowanie na widok analizy po zakończeniu biegu (albo wykonać je raz, przed interakcją użytkownika). |
+| W-4 | **„Oblicz" wyprowadza projektanta ze schematu.** Klik natychmiast przenosi na `#analysis?run=…`; kanwa jest odmontowywana. Pętla „policz i zobacz na rysunku" nie domyka się w jednym miejscu pracy. | pomiar `wyniki-nakladka` (adres po kliku); `wyniki-po-kliku-oblicz.png` | UX, PSN | 2 | Bieg ma zostawiać projektanta tam, gdzie był, i sygnalizować gotowość wyniku bez wymuszonej nawigacji. |
+| W-5 | **Sprzeczne wskaźniki stanu wyników.** Pasek zakresu mówi „Wyniki: **nieustalone**", widok wyników oznacza zestaw jako „● **aktualne**", a pasek stanu podaje konkretny przebieg z datą. Trzy miejsca, trzy odpowiedzi. | `wyniki-pulapka-nawigacji.png` (oba wskaźniki w jednym kadrze) | ZW, UX | 2 | Jedno źródło prawdy o stanie wyników; pozostałe miejsca mają je czytać, nie liczyć samodzielnie. |
+| W-6 | **Nieaktualna podpowiedź „następny krok" po biegu.** Pas „NASTĘPNY KROK" nadal głosi „Model zawiera elementy — bramka gotowości wskaże, czy układ jest kompletny do obliczeń", mimo że obliczenia właśnie się wykonały. | `wyniki-nakladka-L2.png` | UX | 1 | Podpowiedź ma reagować na stan biegu (po wyniku: „obejrzyj wyniki na schemacie / w dowodach"). |
+| W-7 | **Tabela wyników zwarciowych jest bardzo dobra** (obserwacja pozytywna): kolumny `Punkt zwarcia`, `Rodzaj zwarcia`, `Prąd zwarciowy początkowy Ik″ [kA]`, `Prąd udarowy ip [kA]`, `Prąd cieplny Ith [kA]`, `Moc zwarciowa Sk`, sekcja „Założenia" z `Metoda obliczeń IEC 60909`, `Współczynnik napięciowy c = 1,10`, `Czas cieplny 1,00 s`; nazwy punktów czytelne („Turbina wiatrowa 1 MW (Vestas V90)", „Stacja przemysłowa 1 MVA, 4 odpływy nN"). | `wyniki-pulapka-nawigacji.png` | ZW | — | — |
+| W-8 | **Nakładka delta / porównanie A/B — stan faktyczny: nieosiągalna z kanwy.** Elementy `sld-v3-result-comparison` i `sld-v3-result-comparison-blocked` nie pojawiają się po biegu (obie treści puste), podobnie `sld-v3-result-filter-panel` (`false`) i `sld-v3-result-stale-badge` (pusty). Nie oceniam ich działania — odnotowuję, że po pojedynczym biegu nie da się ich wywołać z kanwy. | pomiar `wyniki-nakladka-poprawny-stan` | ZW | 2 | Osobna karta — wymaga dwóch biegów i jawnego wejścia w porównanie z poziomu schematu. |
+
+---
+
+## 6. E-EKSPORT ARKUSZA
+
+### 6.1 Oferta i wynik
+
+Menu „Eksportuj schemat ▾" oferuje **sześć formatów**:
+`SVG (light_technical).svg` · `PDF (tytułowy blok).pdf` · `PNG (raster).png` ·
+`DXF (CAD).dxf` · `SCD (IEC 61850).scd.xml` · `CIM (IEC 61970/61968).cim.xml`.
+
+| Format | Pobranie | Wynik pomiaru |
+|--------|----------|---------------|
+| SVG | tak | `schemat_sld.svg`, 59 459 B, 51 `<text>`, 97 `<path>`, `viewBox="0 0 11784 808"`, ramka arkusza obecna, **tytułówki brak** |
+| SVG + „Dołącz legendę" | tak | 64 439 B, 58 `<text>`, **legenda obecna**, tytułówki nadal brak |
+| SVG (sieć duża) | tak | 185 965 B, `viewBox="0 0 43288 808"` → proporcja **53,6 : 1** |
+| PDF | **nie** | brak pobrania w 45 s, **brak błędu konsoli, brak komunikatu UI, brak nowej karty** |
+| PNG | **nie** | brak pobrania w 45 s, jw. |
+| DXF | tak | `projekt_wariant.dxf`, **176 B** — sekcja `ENTITIES` **pusta** (`SECTION/ENTITIES/ENDSEC`) |
+
+### 6.2 Znaleziska
+
+| # | Opis | Dowód | Soczewka | Waga | Naprawa (jednym zdaniem) |
+|---|------|-------|----------|------|--------------------------|
+| E-1 | **Eksport PDF i PNG to martwe kliknięcia.** Pozycje menu istnieją i są opisane („PDF (tytułowy blok)"), ale klik nie pobiera pliku, nie otwiera karty, nie zgłasza błędu w konsoli i nie wyświetla komunikatu. Zmierzone dwukrotnie, okno 45 s. | pomiary `eksport-format-pdf`, `eksport-format-png`, `eksport-sprawdzenie-pdf`; `eksport-formaty-menu.png` | CAD, UX | **3** | Zaimplementować oba tory albo usunąć pozycje z menu — martwa pozycja jest gorsza niż jej brak. |
+| E-2 | **DXF eksportuje PUSTY rysunek.** Plik jest formalnie poprawnym DXF (`AC1024`, tablica warstw), ale sekcja `ENTITIES` nie zawiera **ani jednej encji** — 176 bajtów przy 97 ścieżkach na ekranie. Wynik wygląda na udany, a w programie CAD otwiera się pusty arkusz. | pomiar `eksport-format-dxf` (pełna treść pliku) | CAD | **3** | Wypełnić `ENTITIES` geometrią sceny; dodać bramkę: eksport bez encji ma być błędem, nie plikiem. |
+| E-3 | **Eksport SVG nie ma tytułówki.** Brak bloku tytułowego (projekt, przypadek, skala, data, rewizja, wersja modelu) — a wszystkie te dane są w powłoce (pasek stanu podaje `Model: rew. 33`, `Wersja modelu: acf9…edc9`). Rysunek bez tytułówki nie jest dokumentem projektowym. | pomiary `eksport-svg`, `eksport-z-legenda` (`maTytulowke: false`) | CAD | **3** | Dołożyć blok tytułowy do eksportu SVG (dane z powłoki, bez nowego źródła prawdy). |
+| E-4 | **Legenda domyślnie wyłączona.** Pole „Dołącz legendę" startuje jako **niezaznaczone**, więc domyślny eksport arkusza nie ma legendy symboli; po zaznaczeniu legenda pojawia się poprawnie. | pomiar `eksport-z-legenda` (`domyslnieZaznaczone: false`) | CAD | 2 | Odwrócić wartość domyślną — rysunek techniczny domyślnie z legendą. |
+| E-5 | **Wyeksportowany arkusz jest niedrukowalny.** Sieć duża daje `viewBox 43288 × 808`, czyli proporcję **53,6 : 1**; przy zachowaniu wysokości to **38 arkuszy A3 poziomych** obok siebie. Sieć średnia — 14,6 : 1. | pomiar `eksport-duza` | CAD, PSN | **3** | Konsekwencja C-1: bez łamania rysunku na strony eksport nie ma formatu docelowego. |
+| E-6 | **Niespójne nazewnictwo plików.** SVG zapisuje się jako `schemat_sld.svg`, DXF jako `projekt_wariant.dxf` — dwie konwencje, żadna nie niesie nazwy projektu ani przypadku. | pomiary `eksport-svg`, `eksport-format-dxf` | CAD | 1 | Jedna konwencja nazw z nazwą projektu, przypadku i rewizją modelu. |
+| E-7 | **Zestaw formatów jest ambitny i właściwy** (obserwacja pozytywna): obok rysunkowych (SVG/PDF/PNG/DXF) są formaty wymiany modelu — SCD (IEC 61850) i CIM (IEC 61970/61968). | `eksport-formaty-menu.png` | CAD, ZW | — | — |
+
+---
+
+## 7. RANKING TOP-10 wg wpływu na codzienną pracę projektanta
+
+| # | Znalezisko | Dlaczego tak wysoko |
+|---|------------|---------------------|
+| 1 | **C-1 · Cała sieć jako jeden pas 53 : 1** | Źródło większości pozostałych problemów: niedrukowalny eksport (E-5), nieprzeglądalny poziom detalu (C-5), skoki przy edycji (B-2), pusty przegląd (C-3). Bez tego nic dalej nie będzie „jakością oczekiwaną". |
+| 2 | **W-1 · Wyniki nie pojawiają się na schemacie** | Cel łańcucha „od budowy do prezentacji wyników" nie jest osiągany: solver liczy 32 punkty, rysunek pokazuje zero. |
+| 3 | **P-1 + P-3 · Klik w element w większości nie zaznacza** | Podstawowa czynność (wskaż aparat) zawodzi w 3 na 4 próby, a elementy rysowane kreską są niekilkalne w ogóle. |
+| 4 | **P-2 · Inspektor nie rozróżnia obiektów** | Nawet udane zaznaczenie prowadzi do tego samego opisu — schemat nie jest interfejsem do danych. |
+| 5 | **W-3 · Pierwszy powrót na schemat jest cofany** | Po każdym biegu projektant musi kliknąć dwa razy, a między klikami widzi znikający rysunek. |
+| 6 | **C-2 · Auto-fit nie mieści rysunku (47 % poza kanwą)** | Pierwsze wrażenie z projektu to rysunek ucięty z obu stron. |
+| 7 | **E-1 + E-2 · PDF/PNG martwe, DXF pusty** | Trzy z sześciu ścieżek wydania dokumentacji nie działają, przy czym DXF **udaje** sukces. |
+| 8 | **C-4 · Napisy arkusza 2 px** | Na przeglądzie sieci nie da się przeczytać ani jednego opisu, łącznie z opisem GPZ. |
+| 9 | **B-4 + P-7 · Brak operacji budowy i menu kontekstowego na kanwie** | Schemat jest powierzchnią do oglądania, nie do budowania — sieć powstaje poza nim. |
+| 10 | **E-3 · Eksport bez tytułówki** | Rysunek bez bloku tytułowego nie jest dokumentem, którym można posłużyć się w projekcie. |
+
+**Podsumowanie liczbowe** (policzone z tabel, nie oszacowane): waga 3 — **16** znalezisk;
+waga 2 — **13**; waga 1 — **3**; obserwacje pozytywne (bez wagi) — **9**. Razem **41** pozycji.
+
+## 8. Propozycja programu kart S9
+
+Kolejność wymuszona zależnościami: bez S9-1 karty rysunkowe i eksportowe nie mają na czym
+pracować, bez S9-3 nie da się sensownie odebrać S9-2.
+
+| Karta | Cel | Rozmiar | Zależy od |
+|-------|-----|---------|-----------|
+| **S9-1 · Łamanie arkusza** | Layout łamie magistralę na wiersze/strony arkusza o normowej proporcji (docelowo A3, 1,41 : 1) zamiast rozwijać ją w prawo; poziom przeglądu pokazuje bloki stacji. Odbiór: proporcja arkusza ≤ 2 : 1 dla 51 stacji, gęstość tuszu na przeglądzie > 5 %. | **L** | — |
+| **S9-2 · Wyniki na rysunku** | Warstwa wynikowa rysuje wartości biegu wskazanego przez `run` (Ik″, ip, Ith przy punktach; kierunki i wartości rozpływu na gałęziach), z filtrem przekroczeń i znacznikiem punktu zwarcia. Odbiór: liczba etykiet wynikowych > 0 i zgodna z liczbą punktów wyniku. | **M** | S9-3 |
+| **S9-3 · Domknięcie pętli obliczeń** | Usunięcie odroczonego przekierowania po biegu, jedno źródło prawdy o stanie wyników, aktualizacja podpowiedzi „następny krok". Odbiór: po biegu jeden klik wraca na schemat i tam zostaje. | **S** | — |
+| **S9-4 · Trafienie i tożsamość zaznaczenia** | Jednolity obszar trafienia (min. 24 px) na obiekt, obrys trafienia dla elementów kreskowych, `owner-ref` klikniętego aparatu niesiony do inspektora. Odbiór: sonda siatkowa — ≥ 95 % klików nad elementem zaznacza TEN element. | **M** | — |
+| **S9-5 · Menu kontekstowe i operacje budowy na kanwie** | Menu kontekstowe zależne od trafionego obiektu + operacje ciągu SN (odcinek, stacja na odcinku, odgałęzienie) dostępne z rysunku. Odbiór: budowa sieci 15 stacji wykonalna wyłącznie z kanwy. | **M** | S9-4 |
+| **S9-6 · Eksport jako dokument** | Tytułówka w SVG/PDF, legenda domyślnie włączona, implementacja PDF i PNG albo usunięcie pozycji, wypełnienie `ENTITIES` w DXF + bramka „eksport bez encji = błąd", jedna konwencja nazw. Odbiór: każdy oferowany format zwraca plik z geometrią. | **M** | S9-1 |
+| **S9-7 · Typografia i ramka arkusza** | Rozmiary napisów w pikselach ekranu (stała czytelność niezależna od skali), znaczniki stref zgodne z formatem arkusza, skracanie zachowujące człon rozróżniający. Odbiór: zero napisów < 8 px na każdym poziomie. | **S** | S9-1 |
+| **S9-8 · Hierarchia i higiena rysunku** | Stopniowanie grubości linii wg rangi toru, obszar bezpieczny pod doki, identyfikator stacji w opisie sekcji, jednoznaczne oznaczenie napięcia znamionowego kabla. | **S** | S9-1 |
+| **S9-9 · Koszt operacji i płynność zoomu** | Operacja domenowa o koszcie zależnym od zasięgu zmiany (dziś 21 → 550 ms); przeliczanie sceny poziomu poza ścieżką gestu. Odbiór: `apply` niezależne od liczby stacji, zero klatek > 100 ms przy zoomie. | **M** | — |
+
+## 9. Odtworzenie pomiarów
+
+Sieci budowane operacjami domenowymi API (rozdział 1). Zrzuty i pomiary z żywej aplikacji
+przy `viewport 1600×1000`, `deviceScaleFactor 2`, oba motywy przełączane przyciskiem powłoki.
+Nazwy pomiarów cytowane w kolumnach „Dowód" odpowiadają wpisom dziennika pomiarowego
+wypisywanego przez specyfikacje audytowe (uruchamiane spoza repozytorium — audyt nie
+zmienia kodu produktu).
+
+### Spis zrzutów (`audyt-2026-08/`, 25 plików)
+
+**Czytelność arkusza** — komplet L0/L1/L2 × dwie sieci × dwa motywy (12 plików):
+`czytelnosc-duza-L{0,1,2}-{ciemny,jasny}.png`,
+`czytelnosc-srednia-L{0,1,2}-{ciemny,jasny}.png`;
+dodatkowo `czytelnosc-duza-L0-pasek-kadr.png` — kadr pasa rysunku sieci dużej
+(dowód do C-1 i C-3).
+
+**Budowa:** `budowa-stan-pusty.png`, `budowa-po-kliku-wstaw-gpz.png`,
+`budowa-stabilnosc-przed.png`, `budowa-stabilnosc-po.png`, `budowa-menu-kontekstowe.png`.
+
+**Praca na schemacie:** `praca-zaznaczenie-inspektor.png`.
+
+**Wyniki:** `wyniki-po-kliku-oblicz.png`, `wyniki-pulapka-nawigacji.png`,
+`wyniki-nakladka-L0.png`, `wyniki-nakladka-L2.png`.
+
+**Eksport:** `eksport-menu-narzedzia.png`, `eksport-formaty-menu.png`.
