@@ -229,6 +229,10 @@ describe('S9-5 — iloczyn cech {klasa} × {kotwica}: tabela ZAMKNIĘTA', () => 
     szyna: ['szyna', 'stacja'],
     tor: ['galaz', 'pole'],
     'lacznik-wiersza': ['galaz'],
+    // ODG-RYSUNEK × S9-5: punkt odgałęźny ŚWIADOMIE bez kotwic (zero menu) —
+    // żadna operacja domenowa punktu nie jest zweryfikowana; pozycja bez
+    // pokrycia byłaby fantomem. Kandydat na kartę menu punktu odgałęźnego.
+    'punkt-odgalezny': [],
     etykieta: ['stacja', 'szyna', 'galaz', 'pole', 'zrodlo', 'generator', 'transformator'],
     'znacznik-wyniku': ['stacja', 'szyna', 'galaz', 'pole', 'zrodlo', 'generator', 'transformator'],
   };

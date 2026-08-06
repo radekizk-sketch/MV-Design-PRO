@@ -231,6 +231,12 @@ const KOTWICE_DOZWOLONE_DLA_KLASY = {
   szyna: ['szyna', 'stacja'],
   tor: ['galaz', 'pole'],
   'lacznik-wiersza': ['galaz'],
+  // ODG-RYSUNEK × S9-5: punkt odgałęźny (ZKSN/słup) jest obiektem MODELU
+  // (`BranchPointSN`), ale ŚWIADOMIE bez menu w tej fazie — żadna operacja
+  // domenowa punktu nie została tu zweryfikowana, a pozycja bez pokrycia
+  // byłaby fantomem (zakaz). Kandydat na kartę: menu punktu odgałęźnego
+  // (poprowadź gałąź z punktu / usuń punkt) po zweryfikowaniu operacji.
+  'punkt-odgalezny': [],
   etykieta: ['stacja', 'szyna', 'galaz', 'pole', 'zrodlo', 'generator', 'transformator'],
   'znacznik-wyniku': ['stacja', 'szyna', 'galaz', 'pole', 'zrodlo', 'generator', 'transformator'],
 } satisfies Record<HitObjectClass, readonly MenuAnchorKind[]>;
