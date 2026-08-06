@@ -139,10 +139,17 @@ describe('F13.2 D — junction_dot_probe (§22.1, V12K-039: kropka ⇔ realny w�
     // Golden przepisany do kanonu S7-P2 (intencja zachowana: obustronna
     // spójność kropka⇔węzeł). Do V12K-039 zejścia PRZECINAŁY przęsła (0 węzłów
     // T, 0 kropek); S7-P2 rozcina kabel poziomy w punkcie styku ⇒ każde dawne
-    // przecięcie (24 na L2) staje się realnym węzłem T tras zewnętrznych
+    // przecięcie staje się realnym węzłem T tras zewnętrznych
     // (`externalBranchNodes`) i dostaje kropkę `junction`.
+    //
+    // S9-1 (ŁAMANIE ARKUSZA): liczba OBNIŻONA 24 → 21. Przyczyna zmierzona:
+    // odgałęzienia leżą teraz w PAŚMIE swojego wiersza arkusza (przeplot,
+    // decyzja §4), więc pion zejścia przecina mniej przęseł magistrali niż
+    // wtedy, gdy schodził pod CAŁY rysunek. Spadek liczby węzłów T = spadek
+    // liczby przecięć = poprawa czytelności; niezmiennik obustronnej spójności
+    // (`junctionDotGaps` = 0, asercja niżej) BEZ zmian.
     const teeNodes = externalBranchNodes(scene.segments);
-    expect(teeNodes).toHaveLength(24);
+    expect(teeNodes).toHaveLength(21);
     // V12K-150 (KROPKA-WEZLOWA): odczepy lateralne pól (ES/VT/SA) też są węzłami
     // z DANYCH odgałęzienia (`#lateral-…`, `points[0]` = oś toru) i dostają
     // kropkę w scenie produkcyjnej — dług W1b zamknięty.
@@ -154,8 +161,8 @@ describe('F13.2 D — junction_dot_probe (§22.1, V12K-039: kropka ⇔ realny w�
     // Kropki dzielą się DOKŁADNIE na (a) węzły T tras i (b) odczepy lateralne —
     // suma pokrywa wszystkie kropki (kropka wyłącznie na realnym węźle).
     const dotsAtTee = dots.filter((s) => teeKeys.has(`${s.x + jdef.width / 2},${s.y + jdef.height / 2}`));
-    expect(dotsAtTee).toHaveLength(24);
-    expect(dots).toHaveLength(24 + lateralNodes.length);
+    expect(dotsAtTee).toHaveLength(21);
+    expect(dots).toHaveLength(21 + lateralNodes.length);
     // Obustronnie: każdy węzeł ma kropkę i żadna kropka nie wisi bez węzła.
     expect(junctionDotGaps(scene, SYMBOL_DEFS)).toEqual([]);
   });

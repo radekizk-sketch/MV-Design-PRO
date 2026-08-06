@@ -12,7 +12,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { buildSceneV3 } from '../buildScene';
+import { buildSceneV3, sheetRowStationIds } from '../buildScene';
 import type { EnergyNetworkModel } from '../../../../../types/enm';
 import type { SceneV3 } from '../buildScene';
 
@@ -48,12 +48,20 @@ function stationCenterX(scene: SceneV3, stationId: string): number | null {
 describe('W3 §17 — kotwiczenie etykiet przęseł do właściciela (anty-dryf)', () => {
   it('każda etykieta segment-span leży bliżej stacji-właściciela niż każdej innej stacji ciągu (L2)', () => {
     const scene = buildSceneV3(enm, 2);
-    const stationIds = scene.meta.mainTrunkStationIds;
-    // Środki kolumn wszystkich stacji ciągu głównego.
-    const centers = stationIds
-      .map((id) => ({ id, x: stationCenterX(scene, id) }))
-      .filter((c): c is { id: string; x: number } => c.x != null);
-    expect(centers.length).toBeGreaterThan(1);
+    // S9-1 (ŁAMANIE ARKUSZA): intencja BEZ ZMIAN — etykieta przęsła nie może
+    // dryfować od swojej stacji. Zmienia się ZBIÓR ODNIESIENIA: po złamaniu
+    // arkusza każdy wiersz zaczyna się od lewego marginesu, więc stacje z
+    // RÓŻNYCH wierszy mają nakładające się zakresy X i porównanie „w poprzek
+    // całego ciągu" mierzyłoby odległość do stacji leżącej pół arkusza wyżej.
+    // Sąsiedztwo, o które chodzi wyroczni, jest sąsiedztwem W WIERSZU.
+    const rowOfStation = new Map<string, number>();
+    sheetRowStationIds(scene).forEach((row, rowIndex) => {
+      for (const id of row) rowOfStation.set(id, rowIndex);
+    });
+    const allCenters = scene.meta.mainTrunkStationIds
+      .map((id) => ({ id, x: stationCenterX(scene, id), row: rowOfStation.get(id) ?? 0 }))
+      .filter((c): c is { id: string; x: number; row: number } => c.x != null);
+    expect(allCenters.length).toBeGreaterThan(1);
 
     const spanLabels = scene.labels.filter(
       (l) => l.ownerKind === 'segment-span' && l.ownerRef.endsWith('#segment-label'),
@@ -63,12 +71,12 @@ describe('W3 §17 — kotwiczenie etykiet przęseł do właściciela (anty-dryf)
     let checked = 0;
     for (const label of spanLabels) {
       const ownerId = label.ownerRef.replace(/#segment-label$/, '');
-      const owner = centers.find((c) => c.id === ownerId);
+      const owner = allCenters.find((c) => c.id === ownerId);
       if (!owner) continue; // GPZ→S0 właściciel to stacja0 — obecny w centers; inne pomijamy uczciwie
       const labelCenterX = label.rect.x + label.rect.width / 2;
       const distToOwner = Math.abs(labelCenterX - owner.x);
-      for (const other of centers) {
-        if (other.id === ownerId) continue;
+      for (const other of allCenters) {
+        if (other.id === ownerId || other.row !== owner.row) continue;
         const distToOther = Math.abs(labelCenterX - other.x);
         expect(distToOwner).toBeLessThanOrEqual(distToOther);
       }

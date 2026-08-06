@@ -77,6 +77,10 @@ import {
   totalHorizontalSegmentLength,
   orthogonalBendCount,
   sheetFillRatio,
+  sheetAspectRatio,
+  sheetRowStationIds,
+  sheetContinuationGaps,
+  allSheetContinuationsMarked,
   trunkThicknessGaps,
   allTopBandFieldsClearance,
   topBandClearanceViolations,
@@ -95,6 +99,7 @@ import {
   plannedLabelCollisions,
   plannedLabelObstacleCollisions,
 } from '../src/ui/sld/v3/canvas/labelLegibility.ts';
+import { SHEET_MAX_ASPECT, SHEET_TARGET_ASPECT } from '../src/ui/sld/v3/layout/sheetRows.ts';
 import {
   BUSBAR_LABEL_PATH_CLEARANCE,
   MIN_PARALLEL_CABLE_CLEARANCE,
@@ -330,7 +335,11 @@ const EXPECTED_STATION_COUNT = 53;
   // minimalizacją pionów. Dowód braku regresji układu: `accept:sld-v3` ALL PASS
   // (w tym nowa sonda `busbar_label_clearance_probe` — 55 etykiet szyn,
   // 0 naruszeń) oraz zero nowych kolizji etykieta↔etykieta/symbol/przewód.
-const VERTICAL_LENGTH_BASELINE = { 0: 23232, 1: 40224, 2: 40224 };
+// S9-1 (ŁAMANIE ARKUSZA, `docs/sld/DECYZJA_LAMANIE_ARKUSZA.md`) — baseline
+// OBNIŻONY 23232/40224/40224 → 22232/39240/39240: odgałęzienia leżą w PAŚMIE
+// swojego wiersza arkusza (przeplot §4), więc piony zejść nie muszą już
+// przebiegać pod całym rysunkiem. Reguła „nie-rosnąca" spełniona.
+const VERTICAL_LENGTH_BASELINE = { 0: 22232, 1: 39240, 2: 39240 };
 
 /**
  * SCHEMAT-10 S6 (V12K-137) — funkcja kosztu layoutu (recenzja ekspercka pkt 3):
@@ -366,8 +375,16 @@ const VERTICAL_LENGTH_BASELINE = { 0: 23232, 1: 40224, 2: 40224 };
 // 48208/68384/71976 (+960/LOD, jednolicie) — ta sama przyczyna co
 // `VERTICAL_LENGTH_BASELINE` wyżej (szersze kolumny pełnej etykiety L2 wydłużają
 // pododcinki poziome przęseł/slotów o stałą na LOD). Załamania (bends) BEZ zmian.
-const HORIZONTAL_LENGTH_BASELINE = { 0: 48224, 1: 68400, 2: 71992 };
-const BEND_COUNT_BASELINE = { 0: 40, 1: 168, 2: 168 };
+// S9-1 (ŁAMANIE ARKUSZA) — baseline PODNIESIONY, świadome odstępstwo od reguły
+// „nie-rosnąca" (spec §15.1: redukcja kosztu jest ograniczeniem MIĘKKIM,
+// czytelność ma pierwszeństwo). Przyczyna zmierzona, nie oszacowana: każde
+// złamanie arkusza dokłada ŁĄCZNIK CIĄGU DALSZEGO (kanał powrotny w prawo,
+// bieg nad wierszem następnym, rynna podjęcia) — to +2 biegi poziome i +4 rogi
+// na złamanie. Ceną 9120/9440/9424 px poziomów i 3/4/4 rogów kupujemy zejście
+// proporcji arkusza z 4,06 : 1 do 1,49 : 1 (znalezisko C-1 wagi 3), a PIONY w
+// tym samym bilansie SPADAJĄ (patrz `VERTICAL_LENGTH_BASELINE` wyżej).
+const HORIZONTAL_LENGTH_BASELINE = { 0: 57344, 1: 77840, 2: 81416 };
+const BEND_COUNT_BASELINE = { 0: 43, 1: 172, 2: 172 };
 
 /**
  * S6 pkt 10 (eliminacja pustych przestrzeni) — PODŁOGA wykorzystania arkusza
@@ -496,11 +513,22 @@ function checkContinuity(scene) {
   );
   if (!allResolved) return null;
 
-  let orderOk = true;
+  // S9-1 (ŁAMANIE ARKUSZA): kolejność topologiczna czytana jest teraz
+  // leksykograficznie (wiersz arkusza, potem X) — każdy wiersz zaczyna się od
+  // lewego marginesu, więc „rosnące X w poprzek całego ciągu" przestało być
+  // kanonem. Intencja bez zmian: ciąg czyta się od zasilania w głąb sieci.
+  const rows = sheetRowStationIds(scene);
+  const rowOf = new Map();
+  rows.forEach((row, i) => row.forEach((id) => rowOf.set(id, i)));
+  let orderOk = rows.flat().join('|') === ids.join('|');
   for (let i = 1; i < ranges.length; i++) {
+    if (rowOf.get(ids[i - 1]) !== rowOf.get(ids[i])) continue; // granica wiersza
     if (!(ranges[i - 1].max < ranges[i].min)) orderOk = false;
   }
-  check('§16/§15.2: stacje ciągu głównego narysowane w kolejności topologyRuns[].stationRefs (rosnące X)', orderOk);
+  check(
+    `§16/§15.2: stacje ciągu głównego narysowane w kolejności topologyRuns[].stationRefs (wiersz arkusza, potem rosnące X; wierszy=${rows.length})`,
+    orderOk,
+  );
 
   let bridgingOk = true;
   for (let i = 1; i < ranges.length; i++) {
@@ -1485,6 +1513,25 @@ for (const lod of LODS) {
       lod0ReadabilityGaps(sabotaged).some((g) => g.element === 'sylwetka stacji') && !allLod0ElementsReadable(sabotaged),
     );
   }
+
+  // -- S9-1 (ŁAMANIE ARKUSZA, audyt C-1 wagi 3) — PROPORCJA ARKUSZA ----------
+  // Kryterium odbioru karty: bbox arkusza NIE MOŻE przekroczyć 2 : 1 na ŻADNYM
+  // poziomie szczegółu (sieć referencyjna miała 4,06 : 1, a sieć 51 stacji z
+  // audytu — 53 : 1). Docelowo 1,41 : 1 (A3 poziomo).
+  const aspect = sheetAspectRatio(scene);
+  check(
+    `sheet_aspect_probe (S9-1, C-1): proporcja arkusza ≤ ${SHEET_MAX_ASPECT} : 1 (docelowo ${SHEET_TARGET_ASPECT.toFixed(2)} : 1)`,
+    aspect > 0 && aspect <= SHEET_MAX_ASPECT && 1 / aspect <= SHEET_MAX_ASPECT,
+    `proporcja=${aspect.toFixed(3)} bbox=${scene.bbox.width}×${scene.bbox.height} wierszy arkusza=${sheetRowStationIds(scene).length}`,
+  );
+  const contGaps = sheetContinuationGaps(scene);
+  check(
+    'sheet_continuation_probe (S9-1 §5): każde złamanie arkusza ma znak ciągu dalszego (kreski + odsyłacze na L2)',
+    allSheetContinuationsMarked(scene),
+    contGaps.length === 0
+      ? `złamań=${Math.max(0, sheetRowStationIds(scene).length - 1)}`
+      : `luki=${contGaps.length}: ${contGaps.slice(0, 3).map((g) => `${g.ownerRef}: ${g.powod}`).join(' | ')}`,
+  );
 
   // -- S6 (V12K-137) funkcja kosztu layoutu: poziomy + załamania (pkt 3) ------
   const horizontalLength = totalHorizontalSegmentLength(scene);
