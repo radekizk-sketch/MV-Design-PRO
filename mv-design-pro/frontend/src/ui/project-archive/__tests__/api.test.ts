@@ -80,7 +80,7 @@ describe('exportProject', () => {
 
     await exportProject('proj-123');
 
-    expect(mockFetch).toHaveBeenCalledWith('/projects/proj-123/export', {
+    expect(mockFetch).toHaveBeenCalledWith('/api/projects/proj-123/export', {
       method: 'POST',
     });
   });
@@ -219,7 +219,7 @@ describe('importProject', () => {
 
     expect(mockFetch).toHaveBeenCalledTimes(1);
     const [url, options] = mockFetch.mock.calls[0];
-    expect(url).toBe('/projects/import');
+    expect(url).toBe('/api/projects/import');
     expect(options.method).toBe('POST');
     expect(options.body).toBeInstanceOf(FormData);
   });
@@ -293,7 +293,7 @@ describe('previewArchive', () => {
 
     expect(mockFetch).toHaveBeenCalledTimes(1);
     const [url, options] = mockFetch.mock.calls[0];
-    expect(url).toBe('/projects/import/preview');
+    expect(url).toBe('/api/projects/import/preview');
     expect(options.method).toBe('POST');
     expect(options.body).toBeInstanceOf(FormData);
   });

@@ -607,7 +607,7 @@ def test_power_flow_read_and_export_endpoints_use_canonical_run(client: TestClie
     run_payload = run_response.json()
     run_id = run_payload["run_id"]
 
-    header_response = client.get(f"/power-flow-runs/{run_id}")
+    header_response = client.get(f"/api/power-flow-runs/{run_id}")
     assert header_response.status_code == 200
     header_payload = header_response.json()
     assert header_payload["id"] == run_id
@@ -631,14 +631,14 @@ def test_power_flow_read_and_export_endpoints_use_canonical_run(client: TestClie
     assert header_payload["export_policy"]["carries_analysis_case_context"] is True
     assert header_payload["export_policy"]["carries_proof_pack_ref"] is True
 
-    result_response = client.get(f"/power-flow-runs/{run_id}/results")
+    result_response = client.get(f"/api/power-flow-runs/{run_id}/results")
     assert result_response.status_code == 200
     result_payload = result_response.json()
     assert result_payload["converged"] is True
     assert result_payload["bus_results"]
     assert result_payload["branch_results"]
 
-    trace_response = client.get(f"/power-flow-runs/{run_id}/trace")
+    trace_response = client.get(f"/api/power-flow-runs/{run_id}/trace")
     assert trace_response.status_code == 200
     trace_payload = trace_response.json()
     assert trace_payload["iterations"]
@@ -661,7 +661,7 @@ def test_power_flow_read_and_export_endpoints_use_canonical_run(client: TestClie
     assert branch_results_payload["analysis_case_context"]["rodzaj_przypadku"] == "ROZPLYW_MAX_OBC"
     assert "branch-load" in {row["element_id"] for row in branch_results_payload["rows"]}
 
-    export_response = client.get(f"/power-flow-runs/{run_id}/export/json")
+    export_response = client.get(f"/api/power-flow-runs/{run_id}/export/json")
     assert export_response.status_code == 200
     export_payload = export_response.json()
     assert export_payload["analysis_case_context"]["case_ref"] == case_id
@@ -688,7 +688,7 @@ def test_power_flow_read_and_export_endpoints_use_canonical_run(client: TestClie
     assert "branch-load" in {row["element_id"] for row in export_payload["branch_results"]["rows"]}
     assert export_payload["white_box_trace"]
 
-    xlsx_response = client.get(f"/power-flow-runs/{run_id}/export/xlsx")
+    xlsx_response = client.get(f"/api/power-flow-runs/{run_id}/export/xlsx")
     assert xlsx_response.status_code == 200
     assert (
         xlsx_response.headers["content-type"]

@@ -301,8 +301,14 @@ def unresolved_router_problems() -> list[str]:
     return problems
 
 
-def discover_active_api_routes_with_problems() -> tuple[list[RouteContract], list[str]]:
-    """Trasy `/api` realnie wpiete do aplikacji + routery nierozwiazane."""
+def discover_all_routes_with_problems() -> tuple[list[RouteContract], list[str]]:
+    """KAZDA trasa wpieta przez `app.include_router`, BEZ filtra prefiksu.
+
+    Ta funkcja jest wspolnym zrodlem prawdy o trasach dla `api_lifecycle_guard`
+    (ktory patrzy tylko na `/api`, bo macierz kompatybilnosci obejmuje `/api`)
+    oraz dla `route_prefix_guard` (ktory pilnuje KANONU prefiksu, wiec MUSI
+    widziec rowniez trasy stojace poza `/api` — to wlasnie one byly niewidoczne).
+    """
     routes: list[RouteContract] = []
     seen: set[str] = set()
     problems: list[str] = []
@@ -320,8 +326,6 @@ def discover_active_api_routes_with_problems() -> tuple[list[RouteContract], lis
             if (router_path, method) in source.excluded:
                 continue
             full_path = _join_paths(include_prefix, source.prefix, route_path)
-            if full_path in IGNORED_PATHS or not full_path.startswith("/api/"):
-                continue
             key = f"{method} {full_path}"
             if key in seen:
                 continue
@@ -334,6 +338,17 @@ def discover_active_api_routes_with_problems() -> tuple[list[RouteContract], lis
                 )
             )
     return sorted(routes, key=lambda item: item.key), problems
+
+
+def discover_active_api_routes_with_problems() -> tuple[list[RouteContract], list[str]]:
+    """Trasy `/api` realnie wpiete do aplikacji + routery nierozwiazane."""
+    all_routes, problems = discover_all_routes_with_problems()
+    routes = [
+        route
+        for route in all_routes
+        if route.path not in IGNORED_PATHS and route.path.startswith("/api/")
+    ]
+    return routes, problems
 
 
 def markdown_table_rows(text: str) -> list[dict[str, str]]:

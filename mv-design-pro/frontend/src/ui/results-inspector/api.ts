@@ -163,12 +163,20 @@ export async function fetchSldOverlay(
   };
 }
 
+/**
+ * Eksport raportu uruchomienia w domyslnej kompozycji backendu.
+ *
+ * ADRES (karta PREFIKSY): `/api/analysis-runs/{run_id}/export/report/{format}`.
+ * Wczesniej klient wolal `/api/projects/{project_id}/analysis-runs/{run_id}/export/{format}`
+ * — trase, ktorej ZADEN router nie serwowal. Przycisk eksportu w przegladarce
+ * wynikow konczyl sie 404 przy kazdym uzyciu. Eksport jest zakresu URUCHOMIENIA,
+ * nie projektu, wiec `project_id` nie wchodzi juz do adresu.
+ */
 export async function downloadAnalysisRunExport(
-  projectId: string,
   runId: string,
   format: AnalysisRunExportFormat,
 ): Promise<void> {
-  const response = await fetch(`${API_BASE}/projects/${projectId}/analysis-runs/${runId}/export/${format}`);
+  const response = await fetch(`${API_BASE}/analysis-runs/${runId}/export/report/${format}`);
   if (!response.ok) {
     throw new Error(
       await readError(
@@ -185,8 +193,22 @@ export async function downloadAnalysisRunExport(
   );
 }
 
+/**
+ * Eksport raportu uruchomienia w JAWNEJ kompozycji (profil, poziom szczegolu,
+ * zakres, sekcje, tabela wiodaca).
+ *
+ * ADRES (karta PREFIKSY): ta sama koncowka co eksport domyslny —
+ * `/api/analysis-runs/{run_id}/export/report/{format}` — rozniaca sie wylacznie
+ * parametrami zapytania, ktore backend przyjmuje 1:1 (`profile`, `detail_level`,
+ * `scope`, `sections`, `focus_table`). Wczesniej klient wolal nieistniejace
+ * `/api/projects/{project_id}/analysis-runs/{run_id}/report/{format}`, wiec
+ * kompozycja raportu nie docierala do backendu w ogole (404).
+ *
+ * `sections` idzie jako POWTORZONY parametr, bo backend deklaruje go jako
+ * `list[str] = Query(...)` — sklejenie przecinkiem dawaloby jedna sekcje
+ * o nazwie „summary,results,...".
+ */
 export async function downloadAnalysisRunReport(
-  projectId: string,
   runId: string,
   format: AnalysisRunExportFormat,
   options: AnalysisRunReportOptions,
@@ -195,15 +217,17 @@ export async function downloadAnalysisRunReport(
     profile: options.profile,
     detail_level: options.detailLevel,
     scope: options.scope,
-    sections: options.sections.join(','),
   });
+  for (const section of options.sections) {
+    params.append('sections', section);
+  }
 
   if (options.focusTable) {
     params.set('focus_table', options.focusTable);
   }
 
   const response = await fetch(
-    `${API_BASE}/projects/${projectId}/analysis-runs/${runId}/report/${format}?${params.toString()}`,
+    `${API_BASE}/analysis-runs/${runId}/export/report/${format}?${params.toString()}`,
   );
   if (!response.ok) {
     throw new Error(

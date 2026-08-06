@@ -88,7 +88,7 @@ describe('EkranArchiwum — spakowanie projektu', () => {
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
     const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
-    expect(url).toBe('/projects/proj-1/export?zapisz_do_magazynu=true');
+    expect(url).toBe('/api/projects/proj-1/export?zapisz_do_magazynu=true');
     expect(init.method).toBe('POST');
     expect(URL.createObjectURL).toHaveBeenCalledWith(blob);
     expect(pobranie.nazwa()).toMatch(/^archiwum-siec-wschod-\d{4}-\d{2}-\d{2}\.mvdp\.zip$/);
@@ -165,7 +165,7 @@ describe('EkranArchiwum — odtworzenie projektu z paczki', () => {
     await user.click(screen.getByTestId('mvd-arch-podglad-akcja'));
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-    expect((fetchMock.mock.calls[0] as unknown as [string])[0]).toBe('/projects/import/preview');
+    expect((fetchMock.mock.calls[0] as unknown as [string])[0]).toBe('/api/projects/import/preview');
     const podglad = await screen.findByTestId('mvd-arch-podglad');
     expect(within(podglad).getByText('Sieć Zachód')).toBeTruthy();
     expect(within(podglad).getByText('2026-07-30 08:15')).toBeTruthy();
@@ -201,7 +201,7 @@ describe('EkranArchiwum — odtworzenie projektu z paczki', () => {
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
     const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
-    expect(url).toBe('/projects/import');
+    expect(url).toBe('/api/projects/import');
     expect(init.method).toBe('POST');
     const dane = init.body as FormData;
     expect((dane.get('file') as File).name).toBe('projekt.mvdp.zip');
