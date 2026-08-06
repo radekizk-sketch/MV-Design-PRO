@@ -39,9 +39,12 @@ import { formatMagnitudeKa } from '../../../sld-overlay/FaultContributionArrow';
 export type ResultLabelKind = 'bus' | 'transformer' | 'source' | 'branch';
 
 /** Rodzina analizy (klucz rejestru). R1 wypełnia `load_flow`; `short_circuit`
- *  zachowuje odczyt węzła z W4. Kolejne rodziny (termika/ΔU) dochodzą
- *  addytywnie, bez zmiany kształtu. */
-export type ResultLabelAnalysis = 'load_flow' | 'short_circuit';
+ *  zachowuje odczyt węzła z W4; `short_circuit_delta` to NAKŁADKA RÓŻNIC A/B
+ *  (backend `application/result_mapping/zwarcia_delta_overlay_v1.py`) — osobna
+ *  rodzina, bo jej wartości są RÓŻNICAMI, a nie wielkościami, i muszą nieść
+ *  własne podpisy „Δ …" (inaczej różnica udawałaby wartość bezwzględną).
+ *  Kolejne rodziny (termika/ΔU) dochodzą addytywnie, bez zmiany kształtu. */
+export type ResultLabelAnalysis = 'load_flow' | 'short_circuit' | 'short_circuit_delta';
 
 /** Poziom szczegółu (histereza S8, `SceneLod`): L0 bez etykiet, L1 jedna
  *  najważniejsza wartość, L2 2–3 wartości. */
@@ -234,6 +237,22 @@ const SC_BUS: readonly ResultLabelLineSpec[] = [
   { code: 'SK_MVA', prefix: 'Sk', format: formatScalar },
 ];
 
+/** NAKŁADKA RÓŻNIC A/B — szyna (punkt zwarcia). Kolejność = priorytet: różnica
+ *  prądu początkowego Ik″ (L1, wielkość dobierająca aparaturę), zaraz po niej ta
+ *  sama różnica WZGLĘDNA (bez odniesienia „+0,4 kA" nic nie mówi), dalej ip/Ith/Sk.
+ *  Kody `DELTA_*` są WŁASNE dla różnic — nie mogą kolidować z kodami wielkości
+ *  (`IK_3F_A` itd.), a podpisy niosą „Δ", więc różnicy nie da się wziąć za wartość.
+ *  Formatowanie ZE ZNAKIEM (`formatSignedScalar`): znak jest tu nośnikiem
+ *  informacji (wzrost/spadek), nie ozdobą. Wartości i jednostki 1:1 z backendu —
+ *  ZERO arytmetyki w tej warstwie. */
+const SC_DELTA_BUS: readonly ResultLabelLineSpec[] = [
+  { code: 'DELTA_IK_3F_KA', prefix: 'Δ Ik″', format: formatSignedScalar },
+  { code: 'DELTA_IK_3F_PCT', prefix: 'Δ Ik″ %', format: formatSignedScalar },
+  { code: 'DELTA_IP_KA', prefix: 'Δ ip', format: formatSignedScalar },
+  { code: 'DELTA_ITH_KA', prefix: 'Δ Ith', format: formatSignedScalar },
+  { code: 'DELTA_SK_MVA', prefix: 'Δ Sk', format: formatSignedScalar },
+];
+
 /** Rejestr szablonów: `analysis → kind → specyfikacje`. Brak wpisu (analiza lub
  *  klasa nieobsłużona) ⇒ pusta lista ⇒ brak etykiety (zero atrap). */
 export const RESULT_LABEL_TEMPLATES: Readonly<
@@ -248,6 +267,9 @@ export const RESULT_LABEL_TEMPLATES: Readonly<
   short_circuit: {
     bus: SC_BUS,
   },
+  short_circuit_delta: {
+    bus: SC_DELTA_BUS,
+  },
 };
 
 /** Maksymalna liczba linii per poziom LOD (wym. 5). L0 = 0 (bez etykiet),
@@ -261,11 +283,16 @@ export const RESULT_LABEL_MAX_LINES_BY_LOD: Readonly<Record<ResultLabelLod, numb
 /**
  * Normalizuje `payload.analysis_type` (dowolna wielkość liter, aliasy) do
  * rodziny rejestru. Rozpoznane rozpływowe: load_flow/loadflow/lf/pf/
- * power_flow; zwarciowe: sc_3f/sc_1f/sc/short_circuit/shortcircuit. Nieznane ⇒
+ * power_flow; zwarciowe: sc_3f/sc_1f/sc/short_circuit/shortcircuit; różnicowe:
+ * dowolny typ z prefiksem `delta_` (kontrakt nakładki różnic). Nieznane ⇒
  * `null` (brak szablonu ⇒ brak etykiet, zero fabrykacji). */
 export function normalizeResultLabelAnalysis(analysisType: string | undefined): ResultLabelAnalysis | null {
   if (!analysisType) return null;
   const a = analysisType.toLowerCase();
+  // Różnice ROZPOZNAWANE PIERWSZE: „DELTA_SC" niesie w nazwie także człon
+  // zwarciowy, więc kolejność decyduje. Pomyłka rodziny znaczyłaby podpisy
+  // wartości bezwzględnych („Ik″") pod liczbami, które są RÓŻNICAMI.
+  if (a.startsWith('delta_')) return 'short_circuit_delta';
   if (a.includes('load_flow') || a === 'loadflow' || a === 'lf' || a === 'pf' || a.includes('power_flow')) {
     return 'load_flow';
   }

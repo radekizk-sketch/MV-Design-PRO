@@ -92,6 +92,14 @@ import {
 // `loadFaultFlow` PO `loadOverlay`), czyszczony automatycznie przy podmianie
 // overlay (loadOverlay zeruje faultFlow — invariant store'a).
 import { useOverlayStore } from '../../../sld-overlay/overlayStore';
+// NAKŁADKA RÓŻNIC A/B — równoległy kanał warstwy wynikowej, zasilany przez
+// ekran porównań (tryb zwarciowy → „Pokaż różnice na schemacie"). Ma
+// PIERWSZEŃSTWO w warstwie etykiet, dopóki trwa; wyjście z trybu różnic
+// przywraca wynik pojedynczego przebiegu bez ponownego pobierania.
+import {
+  payloadEtykietRoznic,
+  useSldDeltaOverlayStore,
+} from '../../../sld-overlay/sldDeltaOverlayStore';
 import type { ShortCircuitFlowOverlayInput } from '../../../sld-overlay/ShortCircuitFlowOverlayAdapter';
 import { buildSldDataFromSnapshot, type SldDataPayload } from '../../v2/canvas/enmToSldAdapter';
 import { SldDetailDrawer, type SldDetailDrawerAction, type SldDetailDrawerData, type SldDetailDrawerSavePayload } from '../../v2/canvas/SldDetailDrawer';
@@ -1044,6 +1052,22 @@ const RESULT_COMPARISON_MODE_LABELS_PL: Readonly<Record<'off' | ResultLabelCompa
 };
 const RESULT_COMPARISON_MODE_IDS: readonly ('off' | ResultLabelComparisonMode)[] = ['off', 'delta', 'previous'];
 
+/**
+ * Podsumowanie trwającej NAKŁADKI RÓŻNIC A/B pokazywane w panelu filtrów:
+ * para przebiegów + rozkład punktów (ile zmienionych, ile identycznych, ile bez
+ * odpowiednika, ile bez porównywalnych danych) + legenda z backendu. Liczby
+ * pochodzą WPROST z odpowiedzi — panel niczego nie zlicza.
+ */
+interface SldV3RoznicePodsumowanie {
+  readonly runIdA: string;
+  readonly runIdB: string;
+  readonly zmienione: number;
+  readonly bezZmian: number;
+  readonly bezOdpowiednika: number;
+  readonly bezDanych: number;
+  readonly legenda: readonly { readonly label: string; readonly description: string }[];
+}
+
 function SldV3ResultFilterPanel(props: {
   readonly filter: ResultLabelFilter;
   readonly hasExceedances: boolean;
@@ -1055,6 +1079,9 @@ function SldV3ResultFilterPanel(props: {
   readonly comparisonAvailable: boolean;
   readonly comparisonBlockedReason: string | null;
   readonly onSetComparisonMode: (mode: 'off' | ResultLabelComparisonMode) => void;
+  /** Podsumowanie trwającej nakładki różnic A/B (`null` = tryb wyłączony). */
+  readonly roznice: SldV3RoznicePodsumowanie | null;
+  readonly onWylaczRoznice: () => void;
   readonly className?: string;
 }): JSX.Element {
   const {
@@ -1068,6 +1095,8 @@ function SldV3ResultFilterPanel(props: {
     comparisonAvailable,
     comparisonBlockedReason,
     onSetComparisonMode,
+    roznice,
+    onWylaczRoznice,
     className,
   } = props;
   return (
@@ -1188,6 +1217,44 @@ function SldV3ResultFilterPanel(props: {
           </span>
         )}
       </div>
+      {/* NAKŁADKA RÓŻNIC A/B — sekcja obecna WYŁĄCZNIE, gdy tryb różnic trwa
+        * (zero martwej kontrolki, gdy nie ma czego wyłączać). Włącza się go
+        * z ekranu porównań, bo tam wybiera się parę przebiegów; tutaj jest
+        * jego stan, rozkład punktów i wyjście. */}
+      {roznice && (
+        <div
+          className="mt-1 flex flex-col gap-0.5 border-t border-scada-border pt-1"
+          data-testid="sld-v3-result-roznice"
+        >
+          <span className="font-semibold uppercase tracking-wider text-scada-muted">Różnice A/B</span>
+          <span data-testid="sld-v3-result-roznice-para">
+            {`A: ${roznice.runIdA} → B: ${roznice.runIdB}`}
+          </span>
+          <span data-testid="sld-v3-result-roznice-liczby">
+            {`Zmienione: ${roznice.zmienione} · bez zmian: ${roznice.bezZmian}`}
+          </span>
+          {(roznice.bezOdpowiednika > 0 || roznice.bezDanych > 0) && (
+            <span className="text-scada-muted" data-testid="sld-v3-result-roznice-braki">
+              {`Bez odpowiednika: ${roznice.bezOdpowiednika} · bez porównywalnych danych: ${roznice.bezDanych}`}
+            </span>
+          )}
+          <ul className="flex flex-col gap-0.5">
+            {roznice.legenda.map((wpis) => (
+              <li key={wpis.label} className="text-scada-muted">
+                {wpis.description ? `${wpis.label} — ${wpis.description}` : wpis.label}
+              </li>
+            ))}
+          </ul>
+          <button
+            type="button"
+            onClick={onWylaczRoznice}
+            data-testid="sld-v3-result-roznice-wylacz"
+            className="mt-0.5 self-start text-scada-muted hover:text-scada-text"
+          >
+            Wyłącz różnice
+          </button>
+        </div>
+      )}
     </section>
   );
 }
@@ -1240,6 +1307,34 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   // (patrz `overlay.ts`/`buildFlowOverlayForSnapshot` nagłówki dla pełnego
   // uzasadnienia i udokumentowanej luki backendu).
   const rawOverlayPayload = useRawResultOverlayStore((state) => state.payload);
+  // NAKŁADKA RÓŻNIC A/B (ekran porównań → „Pokaż różnice na schemacie").
+  // Wchodzi TYM SAMYM kontraktem co wynik pojedynczego przebiegu, więc warstwa
+  // etykiet rysuje różnice bez drugiego kanału renderu — inna jest wyłącznie
+  // rodzina szablonów (`DELTA_…` ⇒ podpisy „Δ Ik″"), rozpoznawana z
+  // `analysis_type` payloadu.
+  const nakladkaRoznic = useSldDeltaOverlayStore((state) => state.nakladka);
+  const wyczyscRoznice = useSldDeltaOverlayStore((state) => state.wyczyscRoznice);
+  const roznicePayload = useMemo(() => payloadEtykietRoznic(nakladkaRoznic), [nakladkaRoznic]);
+  // Podsumowanie trybu różnic dla panelu filtrów — liczby i legenda WPROST
+  // z odpowiedzi backendu (panel niczego nie zlicza i nie tłumaczy).
+  const roznicePodsumowanie = useMemo<SldV3RoznicePodsumowanie | null>(
+    () =>
+      nakladkaRoznic
+        ? {
+            runIdA: nakladkaRoznic.run_id_a,
+            runIdB: nakladkaRoznic.run_id_b,
+            zmienione: nakladkaRoznic.liczba_punktow_zmienionych,
+            bezZmian: nakladkaRoznic.liczba_punktow_bez_zmian,
+            bezOdpowiednika: nakladkaRoznic.liczba_punktow_bez_odpowiednika,
+            bezDanych: nakladkaRoznic.liczba_punktow_bez_danych,
+            legenda: nakladkaRoznic.legend.entries.map((wpis) => ({
+              label: wpis.label,
+              description: wpis.description,
+            })),
+          }
+        : null,
+    [nakladkaRoznic],
+  );
   // R4 (wym. 10/15): bufor POPRZEDNIEGO payloadu per analiza (store,
   // frontend-only) — źródło Δ/trendu trybu porównawczego.
   const previousByAnalysisType = useRawResultOverlayStore((state) => state.previousByAnalysisType);
@@ -1261,7 +1356,13 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   // SLD — czytamy gotowy status. Flaga aktywna WYŁĄCZNIE gdy overlay niesie
   // wynik (payload) I status to OUTDATED — stary wynik nie może udawać aktualnego.
   // Liczona PRZED warstwą etykiet, bo bramkuje tryb porównawczy (wym. 10).
-  const resultsStale = rawOverlayPayload != null && activeCaseResultStatus === 'OUTDATED';
+  // NAKŁADKA RÓŻNIC podlega TEJ SAMEJ regule świeżości co wynik pojedynczego
+  // przebiegu: różnica policzona na modelu sprzed edycji jest tak samo
+  // nieaktualna jak wielkości, z których powstała. Jeden status, jedno źródło
+  // prawdy — bez równoległego trackera dla różnic.
+  const resultsStale =
+    (rawOverlayPayload != null || roznicePayload != null)
+    && activeCaseResultStatus === 'OUTDATED';
   // R4 (wym. 10/15): TRYB PORÓWNAWCZY — stan LOKALNY renderu (domyślnie „off",
   // zgodność z akceptacją R2: sonda metryk przy domyślnych ustawieniach).
   const [comparisonMode, setComparisonMode] = useState<'off' | ResultLabelComparisonMode>('off');
@@ -1273,14 +1374,18 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   // R4 (§0.4): porównanie DOSTĘPNE tylko, gdy istnieje poprzedni bieg TEJ analizy
   // ORAZ wyniki NIE są nieaktualne (OUTDATED ⇒ tryb zablokowany — zero mylących
   // delt ze starego modelu). Inaczej brak obiektu porównania ⇒ warstwa bazowa.
-  const comparisonAvailable = previousPayload != null && !resultsStale;
+  // Tryb różnic A/B WYKLUCZA tryb porównawczy kolejnych biegów: etykieta niesie
+  // wtedy już różnicę, a Δ z Δ nie ma sensu inżynierskiego.
+  const comparisonAvailable = previousPayload != null && !resultsStale && roznicePayload == null;
   // R4 (§0.4): powód niedostępności trybu porównawczego — jawny komunikat
   // (OUTDATED ma pierwszeństwo nad brakiem poprzednika). `null` = dostępny.
   const comparisonBlockedReason = resultsStale
     ? 'Wyniki nieaktualne — porównanie zablokowane'
-    : previousPayload == null
-      ? 'Brak poprzedniego biegu do porównania'
-      : null;
+    : roznicePayload != null
+      ? 'Trwa tryb różnic A/B — etykiety pokazują już różnicę'
+      : previousPayload == null
+        ? 'Brak poprzedniego biegu do porównania'
+        : null;
   const comparison = useMemo<ResultLabelComparison | undefined>(
     () =>
       comparisonMode !== 'off' && comparisonAvailable && previousPayload
@@ -1291,7 +1396,11 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   // W4 (§8): kanał liczbowych etykiet wynikowych — TEN SAM `rawOverlayPayload`
   // co flow/OLTC (jeden wynik aktywnego przebiegu), bramkowany w kanwie
   // ODRĘBNYM layerem `resultLabels`. R4: `comparison` wzbogaca linie o Δ/trend.
-  const resultLabelsByOwnerRef = useResultLabelsOverlay(snapshot, rawOverlayPayload, comparison);
+  // TRYB RÓŻNIC A/B: gdy nakładka różnic jest wczytana, warstwa etykiet czyta
+  // JĄ zamiast wyniku pojedynczego przebiegu (pozostałe kanały — rozpływ, OLTC,
+  // strzałki zwarciowe — bez zmian, bo nakładka różnic ich nie dotyczy).
+  const labelsPayload = roznicePayload ?? rawOverlayPayload;
+  const resultLabelsByOwnerRef = useResultLabelsOverlay(snapshot, labelsPayload, comparison);
   // R3 (wym. 17): FILTRY widoczności warstwy wynikowej — stan LOKALNY renderu.
   // Domyślnie WSZYSTKO widoczne (zgodność z akceptacją R2 i inwariantem
   // geometrii: filtr działa WYŁĄCZNIE na warstwie etykiet — mapa `ownerRef→
@@ -1315,18 +1424,29 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   // (`formatDateTime`, pl-PL). Domyka dług R3 (kanon V12K-159 wym. 6-7: pochodzenie
   // musi nieść timestamp). Brak `run_finished_at` ⇒ brak wiersza czasu (uczciwy
   // brak, zero fabrykacji). Brak payloadu = brak deklaracji.
+  // TRYB RÓŻNIC A/B: pochodzenie musi wskazać OBA przebiegi — inaczej operator
+  // nie wie, wobec czego liczona jest różnica. Etykieta modułu jest tu STAŁA
+  // (nie ze słownika typów analiz), bo „DELTA_SC" nie jest rodzajem analizy,
+  // tylko postacią jej wyniku. Czasu ukończenia nie deklarujemy: różnica nie ma
+  // jednego biegu, a doklejenie czasu jednego z nich byłoby fabrykacją.
   const provenance = useMemo(
     () =>
-      rawOverlayPayload
+      nakladkaRoznic
         ? {
-            analysisTypeLabel: formatContractValue(rawOverlayPayload.analysis_type),
-            runId: rawOverlayPayload.run_id,
-            completedAtLabel: rawOverlayPayload.run_finished_at
-              ? formatDateTime(rawOverlayPayload.run_finished_at)
-              : undefined,
+            analysisTypeLabel: 'Różnice A/B (zwarcia)',
+            runId: `${nakladkaRoznic.run_id_a} → ${nakladkaRoznic.run_id_b}`,
+            completedAtLabel: undefined,
           }
-        : undefined,
-    [rawOverlayPayload],
+        : rawOverlayPayload
+          ? {
+              analysisTypeLabel: formatContractValue(rawOverlayPayload.analysis_type),
+              runId: rawOverlayPayload.run_id,
+              completedAtLabel: rawOverlayPayload.run_finished_at
+                ? formatDateTime(rawOverlayPayload.run_finished_at)
+                : undefined,
+            }
+          : undefined,
+    [nakladkaRoznic, rawOverlayPayload],
   );
   const overlay = useMemo<SldV3Overlay>(
     () => ({ ...energizationOverlay, flowByOwnerRef, oltcByOwnerRef, faultFlowByOwnerRef, faultPointMarkerRef, resultLabelsByOwnerRef: filteredResultLabels, resultsStale, provenance }),
@@ -2413,6 +2533,8 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
               comparisonAvailable={comparisonAvailable}
               comparisonBlockedReason={comparisonBlockedReason}
               onSetComparisonMode={handleSetComparisonMode}
+              roznice={roznicePodsumowanie}
+              onWylaczRoznice={wyczyscRoznice}
               className="w-[240px]"
             />
             <SldV3LayerTogglePanel

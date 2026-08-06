@@ -272,7 +272,25 @@ const PREFIX_TO_QUANTITY: Readonly<Record<string, ResultLabelQuantity>> = {
   Ith: 'I',
   U: 'U',
   δ: 'U',
+  // ΔU = spadek napięcia linii/kabla [%] — wielkość NAPIĘCIOWA (LF-KONTRAKT
+  // V12K-161 dołożył ją do szablonu gałęzi, ale tabela nie została uzupełniona:
+  // linia przechodziła przez filtry niefiltrowalna. Deklaracja „tabela
+  // ZAMKNIĘTA" nie miała testu — teraz ma).
+  'ΔU': 'U',
+  // cosφ = |P|/|S| — mówi, jaka CZĘŚĆ mocy pozornej jest mocą czynną, więc
+  // znika razem z grupą mocy czynnej (ta sama zasada „najbliższa semantyka"
+  // co przy Sk→S). Dotąd bez wpisu, z tego samego powodu co ΔU.
+  'cosφ': 'P',
   'obc.': 'loading',
+  // NAKŁADKA RÓŻNIC A/B — prefiksy rodziny `short_circuit_delta`. Różnica
+  // wielkości filtruje się jak sama wielkość (Δ Ik″/ip/Ith → prądy, Δ Sk → moc
+  // pozorna), inaczej włączenie filtra prądów zostawiłoby różnice prądów na
+  // ekranie: tabela jest ZAMKNIĘTA, każdy prefiks szablonu musi tu być.
+  'Δ Ik″': 'I',
+  'Δ Ik″ %': 'I',
+  'Δ ip': 'I',
+  'Δ Ith': 'I',
+  'Δ Sk': 'S',
 };
 
 /** Wielkość linii wg prefiksu (`null` = prefiks spoza tabeli — linia traktowana

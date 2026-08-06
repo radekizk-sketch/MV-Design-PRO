@@ -154,6 +154,20 @@
   font-size: 13px;
 }
 
+/* ---- różnice na schemacie (akcja po wykonanym porównaniu) ---- */
+.mvd-por-schemat {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 4px 4px;
+  border-top: 1px solid var(--mvd-line);
+}
+.mvd-por-schemat-opis {
+  margin: 0;
+  color: var(--mvd-muted);
+  font-size: 12px;
+}
+
 /* ---- przełącznik trybu (Rozpływ / Zwarcia) ---- */
 .mvd-por-tryb-host {
   display: flex;
