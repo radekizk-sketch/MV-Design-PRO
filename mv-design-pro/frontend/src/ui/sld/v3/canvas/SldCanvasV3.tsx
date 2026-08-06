@@ -90,7 +90,7 @@ import {
 // KD-8 poz. 1: kanwa NIE zna już jednej palety — czyta paletę MOTYWU przez
 // kontekst (dostawca niżej w `SldCanvasV3`), a węzły sceny biorą ją hakiem.
 import { SldPaletteContext, sldPaletteForTheme, useSldPalette } from '../theme/palette';
-import { useThemeModeStore } from '../../../../ui2/theme/themeMode';
+import { useThemeModeStore, type ThemeMode } from '../../../../ui2/theme/themeMode';
 
 /** SCHEMAT-10 S3 (V12K-135): wartości TERAZ z `theme/colorTokens.ts` — JEDNO
  *  źródło prawdy (D8: te literały istniały zdublowane też w
@@ -201,6 +201,22 @@ export interface SldCanvasV3Props {
    * karty (kadr do pełnego prostokąta kanwy).
    */
   readonly safeInsets?: SafeInsets;
+  /**
+   * S9-7 (znalezisko UBOCZNE, Zero-Debt) — MOTYW RYSUNKU podany WPROST przez
+   * wołającego. Brak = motyw z powłoki (`useThemeModeStore`), czyli zachowanie
+   * ekranowe bez zmian.
+   *
+   * DLACZEGO ISTNIEJE. Kanwa czyta motyw ze sklepu przez `useSyncExternalStore`,
+   * a ten w renderze STATYCZNYM (`renderToStaticMarkup` — zrzuty odbiorcze)
+   * czyta stan POCZĄTKOWY sklepu, nie bieżący (zustand 4.5:
+   * `api.getServerState || api.getInitialState`). Skutek ZMIERZONY na zrzutach
+   * tego programu: pliki „jasny" były rysowane TUSZEM PALETY CIEMNEJ na białym
+   * arkuszu (68 wystąpień `#E8EEF4`, zero `#0B0F14` w treści rysunku) —
+   * dotyczyło to także zrzutów karty S9-1, więc dowód „oba motywy" był pozorny.
+   * Aplikacja nie ma hydratacji (SPA na Vite), więc rozbieżność nie miała
+   * żadnego zastosowania poza byciem pułapką dla renderów statycznych.
+   */
+  readonly paletteMode?: ThemeMode;
   /** Nakładka wyników solvera (energizacja) — patrz `canvas/overlay.ts`.
    *  Brak = rysunek bazowy mono, bez nakładki koloru. */
   readonly overlay?: SldV3Overlay;
@@ -2224,7 +2240,9 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
   // paleta NIE wchodzi do `buildSceneV3`, dlatego hash geometrii jest
   // niezależny od motywu (dowód: `theme/__tests__/palette.test.ts`).
   const themeMode = useThemeModeStore((state) => state.mode);
-  const palette = useMemo(() => sldPaletteForTheme(themeMode), [themeMode]);
+  // S9-7: motyw z propa (render statyczny) ma pierwszeństwo przed sklepem.
+  const effectiveThemeMode = props.paletteMode ?? themeMode;
+  const palette = useMemo(() => sldPaletteForTheme(effectiveThemeMode), [effectiveThemeMode]);
 
   // F8a — ROZSTRZYGNIĘCIE k4/k3 (REBUILD_PLAN_V3 §F8, SLD_V3_ACCEPTANCE.md §3):
   // scena liczona dla WSZYSTKICH trzech LOD naraz (nie tylko `effectiveLod`) —

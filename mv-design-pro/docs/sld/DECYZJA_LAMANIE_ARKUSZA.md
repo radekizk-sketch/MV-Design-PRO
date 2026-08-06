@@ -261,3 +261,17 @@ przypadkiem.
   (b) skrócenie rezerwacji etykiet przęseł / rozmiary napisów w pikselach
   EKRANU (karta **S9-7**, znaleziska C-4 i C-6).
   Dług zapisany świadomie, z pomiarem i planem — nie zamaskowany progiem.
+
+  **SPROSTOWANIE POMIAREM (2026-08-06, karta S9-7/8 — rejestr `S9-7-8`).**
+  Powyższe zdanie „szerokość kolumny stacji jest w znacznej części rezerwacją
+  na etykietę przęsła" było SZACUNKIEM, nie pomiarem, i jest NIEPRAWDZIWE.
+  Zmierzone na długim ciągu (L2, 96 kolumn): suma szerokości kolumn 61 792 px,
+  suma ekstentów bloków stacji 44 472 px ⇒ rezerwacja opisowa to **28,0 %**,
+  a nie ~95 %. Najszersza etykieta przęsła ma 378 px przy medianie kolumny
+  600 px — dla większości stacji o szerokości decyduje BLOK PÓL pełnego
+  szczegółu (12 symboli aparatury, 624 px), rezerwowany także na przeglądzie,
+  gdzie stacja jest glifem 48 × 48 px. Wniosek: droga (b) daje najwyżej
+  ~2,8 % gęstości i została w karcie S9-7/8 wyczerpana (rozmiary napisów są
+  już w pikselach ekranu, a oznacznik napięcia dobrano tak, by NIE poszerzać
+  rezerwacji — „Un=" zamiast „Un = ", pomiar w `layout/lineLabel.ts`).
+  **Jedyną drogą do progu 5 % pozostaje (a) — decyzja produktowa.**
