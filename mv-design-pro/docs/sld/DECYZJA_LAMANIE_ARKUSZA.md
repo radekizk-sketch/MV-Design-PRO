@@ -113,29 +113,50 @@ sam podział na L0/L1/L2** (wymaganie ciągłości LOD).
 Predykat doboru (jedno źródło prawdy, `layout/sheetRows.ts`):
 
 ```
-R = najmniejsze R ∈ 1..N, dla którego  szerokość_dokładna(R) / wysokość_dolna(R) ≤ 1,41
+R = najmniejsze R ∈ 1..N, dla którego  szerokość(R) / wysokość(R) ≤ 1,41
 ```
 
 gdzie
 
-- `szerokość_dokładna(R)` = max po pasmach z (szerokość wiersza magistrali,
-  zasięg w prawo najdalszego odgałęzienia tego pasma) — wielkość **dokładna**,
-  liczona z tych samych szerokości kolumn, których użyje układ;
-- `wysokość_dolna(R)` = Σ po pasmach z (wysokość pasm wiersza + światło +
-  wysokość NAJWYŻSZEGO odgałęzienia pasma) — **dolne** ograniczenie wysokości
-  (odgałęzienia rozłączne w X dzielą półkę, więc realna wysokość jest ≥ tej
-  wartości).
+- `szerokość(R)` = max po pasmach z (szerokość wiersza magistrali, zasięg w
+  prawo najdalszego odgałęzienia tego pasma) — liczona z **tych samych
+  szerokości kolumn**, których użyje `computeColumns`;
+- `wysokość(R)` = Σ po pasmach z (wysokość pasm wiersza + światło + SUMA
+  wysokości odgałęzień pasma). **Suma, nie maksimum**: przeplot (§4) zostawia
+  w jednym pasmie odgałęzienia garstki sąsiednich stacji, a te są zwykle
+  współrzędne w X, więc packer rzadko dzieli między nie półkę (pomiar na sieci
+  referencyjnej: 12 odgałęzień → 12 półek po złamaniu, wobec 6 przed nim, gdy
+  cały ciąg był jednym pasmem pełnej szerokości).
+- wysokość pasm wiersza pochodzi z **funkcji, która ten wiersz zbuduje**
+  (`buildRowLayout` → `computeBands`, przekazana do planera jako callback) —
+  warunek planu i geometria wiersza mają JEDNO źródło prawdy (reguła KLASA §3).
 
-Ponieważ licznik jest dokładny, a mianownik jest ograniczeniem DOLNYM, warunek
-`≤ 1,41` daje **gwarancję**, a nie oszacowanie: realna proporcja arkusza jest
-zawsze **nie większa** od 1,41 : 1, czyli z zapasem mieści się w progu odbioru
-**2 : 1**. Cena tej gwarancji: sieci z wieloma odgałęzieniami wychodzą arkuszem
-WĘŻSZYM niż A3 (proporcja < 1,41) — nigdy szerszym. To jest świadomy wybór:
-błąd w stronę „za wysoki" jest odwracalny przewijaniem, błąd w stronę „za
-szeroki" odtwarza C-1.
+**Kwant formatu.** Budżet szerokości wiersza i obie miary planu są kwantowane
+do wielokrotności `SHEET_WIDTH_QUANTUM` (1024 px świata) — to odpowiednik
+stałego formatu arkusza. Bez kwantowania każda edycja sieci zmieniałaby budżet,
+a że podział jest zachłanny od lewej, zmiana budżetu przelewa WSZYSTKIE wiersze:
+wstawienie jednej stacji teleportowałoby cały rysunek. Z kwantowaniem drobna
+edycja mieści się w tym samym formacie (§7), a przelanie następuje dopiero przy
+świadomej zmianie rzędu wielkości i jest wtedy uczciwe.
 
 Docelowa proporcja **1,41 : 1** = A3 poziomo (420/297), próg odbioru **2 : 1**
-pochodzi z karty S9-1.
+pochodzi z karty S9-1; celowanie w 1,41 zostawia ~40 % zapasu na składniki,
+których planer nie modeluje co do piksela (pas zejść, otwarte ogony, nawis
+strefy GPZ). Zapas jest pilnowany POMIAREM, nie założeniem — wyrocznia
+`sheetAspectRatio` + bramka `sheet_aspect_probe` sprawdzają REALNY bbox sceny
+na każdym poziomie szczegółu.
+
+### Zrzuty dowodowe (`audyt-2026-08/`, 24 pliki)
+
+Renderowane PRODUKCYJNĄ kanwą v3 (`scripts/render_s9_1_lamanie.tsx` +
+`scripts/rasterize.mjs`), obie sieci × L0/L1/L2 × oba motywy:
+
+- `s9-1-przed-{referencyjna,dlugi-ciag}-L{0,1,2}-{ciemny,jasny}.png` — stan
+  sprzed łamania (drzewo `d6cbe83d`);
+- `s9-1-{referencyjna,dlugi-ciag}-L{0,1,2}-{ciemny,jasny}.png` — po łamaniu.
+
+Stopka każdego zrzutu niesie zmierzone liczby (liczba wierszy, bbox, proporcja,
+gęstość tuszu) — zrzut jest dowodem, nie ilustracją.
 
 ## 7. Determinizm i stabilność
 
@@ -146,7 +167,38 @@ pochodzi z karty S9-1.
   geometrii wierszy `< k` — o ile nie zmienia liczby wierszy. Test
   `stabilność wierszy` pilnuje tego wprost.
 
-## 8. Co ta karta ŚWIADOMIE zostawia
+## 8. Pomiar przed / po (wykonany, nie oszacowany)
+
+Obie sieci budowane deterministycznie w kodzie testów; pomiar tymi samymi
+miarami przed zmianą (drzewo `d6cbe83d`) i po niej. Kanwa odniesienia
+1322 × 696 px (ta sama, na której mierzył audyt).
+
+**Sieć referencyjna** — `sldSubstrate52s`, 53 stacje, magistrala 12 stacji + 12 odgałęzień:
+
+| Poziom | proporcja przed → po | gęstość tuszu | pokrycie kanwy | symboli poza kanwą |
+|--------|----------------------|---------------|----------------|--------------------|
+| L0 | **4,15 → 1,51** | 1,38 % → 1,67 % | 40,4 % → 62,4 % | 0/69 → 0/66 |
+| L1 | **4,06 → 1,49** | 2,22 % → 2,61 % | 41,3 % → 61,5 % | 0/765 → 0/762 |
+| L2 | **4,06 → 1,49** | 2,28 % → 2,67 % | 41,3 % → 61,5 % | 0/765 → 0/762 |
+
+**Długi ciąg** — kształt z audytu (magistrala wydłużona do 52 stacji, 93 stacje łącznie):
+
+| Poziom | proporcja przed → po | gęstość tuszu | pokrycie kanwy | symboli poza kanwą |
+|--------|----------------------|---------------|----------------|--------------------|
+| L0 | **10,30 → 1,33** | 0,77 % → 2,03 % | 33,5 % → 55,0 % | **27/109 → 0/109** |
+| L1 | **10,07 → 1,32** | 1,36 % → 3,18 % | 34,2 % → 54,4 % | **319/1286 → 0/1286** |
+| L2 | **10,07 → 1,33** | 1,39 % → 3,20 % | 34,2 % → 54,9 % | **314/1286 → 0/1286** |
+
+**C-2 wyjaśnione u źródła.** Auto-fit gubił symbole nie dlatego, że źle liczył
+kadr, tylko dlatego, że `fitToView` (`v2/viewport/ViewportController.ts`) ma
+DOLNE ograniczenie skali `MIN_SCALE = 0,05`. Rysunek o proporcji 10 : 1 (a tym
+bardziej 53 : 1 z audytu) wymagał skali poniżej tego progu, więc kamera stawała
+na 0,05 i część arkusza zostawała poza kanwą (pomiar wyżej: skala przed = 0,0500
+dokładnie na ograniczeniu). Po złamaniu potrzebna skala to 0,09 — powyżej progu,
+więc kadr mieści 100 % symboli. Naprawa C-1 była WARUNKIEM naprawy C-2, nie
+przypadkiem.
+
+## 9. Co ta karta ŚWIADOMIE zostawia
 
 - **Odgałęzienia nie są łamane.** Pasmo odgałęzienia jest zwykle o rząd krótsze
   od magistrali (pomiar na sieci referencyjnej: najdłuższe pasmo lateralne
@@ -154,3 +206,20 @@ pochodzi z karty S9-1.
   wykaże pasmo lateralne dominujące szerokość arkusza, ta sama maszyneria
   (`planSheetRows`) da się do niego przyłożyć bez zmiany reguły.
 - **Ramka arkusza i typografia** (C-4, C-7, znaczniki stref) — karta S9-7.
+- **Gęstość tuszu na przeglądzie < 5 %** — kryterium odbioru karty S9-1 NIE
+  zostało osiągnięte i nie da się go osiągnąć samym łamaniem. Pomiar: 0,77 % →
+  2,03 % na L0 długiego ciągu (wzrost 2,6×) przy proporcji już naprawionej.
+  Przyczyna zmierzona, nie zgadnięta: **arkusz jest wymiarowany geometrią
+  pełnego szczegółu na KAŻDYM poziomie** (SCHEMAT-10 S1 „jedna kotwica" —
+  `buildRowLayout` liczy kolumny zawsze przy L2, żeby zoom nie przemeblowywał
+  rysunku), a szerokość kolumny stacji jest w znacznej części rezerwacją na
+  etykietę przęsła („S08 ↔ S09 · YAKXS 3×120/16 · 20 kV · l = 50 m", §19.2).
+  Na przeglądzie stacja jest glifem 48 × 48 px w kolumnie ~1 000 px, więc
+  ~95 % arkusza to z definicji rezerwacja opisowa, której na L0 nikt nie rysuje.
+  Podniesienie gęstości powyżej 5 % wymaga JEDNEJ z dwóch zmian, obie poza
+  zakresem tej karty i obie dotykające cudzych osiągnięć:
+  (a) osobna, zwarta geometria poziomu przeglądu (cofnięcie „jednej kotwicy"
+  S1 — wymaga rozstrzygnięcia, czy zoom może przemeblowywać rysunek);
+  (b) skrócenie rezerwacji etykiet przęseł / rozmiary napisów w pikselach
+  EKRANU (karta **S9-7**, znaleziska C-4 i C-6).
+  Dług zapisany świadomie, z pomiarem i planem — nie zamaskowany progiem.
