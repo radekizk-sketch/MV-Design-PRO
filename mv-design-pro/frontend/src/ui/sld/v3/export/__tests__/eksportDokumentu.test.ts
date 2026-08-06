@@ -300,7 +300,7 @@ describe('S9-6 · tabliczka rysunkowa: dane realne albo uczciwie puste pole', ()
     const byLabel = new Map(rows.map((r) => [r.labelPl, r.value]));
 
     expect(byLabel.get('Projekt')).toBe('Sieć Wschód');
-    expect(byLabel.get('Przypadek')).toBe('Zwarcie maksymalne');
+    expect(byLabel.get('Zakres obliczeń')).toBe('Zwarcie maksymalne');
     expect(byLabel.get('Sieć (model)')).toBe('GPZ Poznań — ciąg 1');
     expect(byLabel.get('Data modelu')).toBe('2026-08-04');
     expect(byLabel.get('Wersja modelu')).toBe('rew. 12 · acf9d1b2');

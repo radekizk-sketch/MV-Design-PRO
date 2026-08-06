@@ -96,7 +96,10 @@ export function buildSheetTitleBlockData(input: SheetTitleBlockInput): SheetTitl
     rows: [
       { labelPl: 'Projekt', value: input.projectName?.trim() ? input.projectName.trim() : null },
       { labelPl: 'Sieć (model)', value: input.networkName?.trim() ? input.networkName.trim() : null },
-      { labelPl: 'Przypadek', value: input.caseName?.trim() ? input.caseName.trim() : null },
+      // Etykieta wg kanonu terminologii `ui/**` („Zakres obliczeń" — `scripts/
+      // ui_terminology_guard.py`; słowo „przypadek" jest kanoniczne wyłącznie w
+      // nowej powłoce `ui2/**`). Wartość to nazwa aktywnego zakresu z powłoki.
+      { labelPl: 'Zakres obliczeń', value: input.caseName?.trim() ? input.caseName.trim() : null },
       { labelPl: 'Data modelu', value: dataMetrykiPl(input.modelUpdatedAtIso) },
       { labelPl: 'Wersja modelu', value: wersjaModeluPl(input.modelRevision, input.modelHash) },
       {
