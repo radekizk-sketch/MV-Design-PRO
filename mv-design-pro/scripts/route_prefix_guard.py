@@ -87,46 +87,84 @@ FRONTEND_PATH_EXCEPTIONS: dict[str, str] = {}
 # Moduly klienckie wolajace trasy, ktorych backend NIE MA W OGOLE — nie chodzi
 # o zly prefiks, tylko o brak dostawcy. Naprawa wymaga decyzji produktowej
 # (zbudowac backend albo usunac martwy modul), wiec nie miesci sie w karcie
-# PREFIKSY. Dlug jest tu ZAREJESTROWANY, a nie ukryty: guard wypisuje go przy
-# kazdym uruchomieniu i pilnuje, zeby lista tylko MALALA — modul, ktory nie ma
-# juz martwych sciezek, MUSI z niej zniknac (inaczej guard czerwony). Dzieki
-# temu wpis nie zamienia sie w ciche wykluczenie.
+# PREFIKSY. Dlug jest tu ZAREJESTROWANY, a nie ukryty.
 #
-# POMIAR (2026-08-05): 6 modulow, 23 martwe sciezki.
+# WPIS PINUJE KONKRETNE SCIEZKI, NIE CALY MODUL. To nie jest szczegol: przy
+# rejestrze trzymanym na poziomie modulu kazdy plik z lity stawal sie SLEPA
+# PLAMKA — dowolna NOWA martwa sciezka dopisana do takiego pliku byla cicho
+# wchlaniana przez wpis dlugu. Sprawdzone iniekcja: dopisanie wolania
+# `/api/analysis-runs/{id}/nie-ma-takiej-koncowki` do `ui/comparison/api.ts`
+# NIE zapalalo guardu. Przy rejestrze sciezkowym zapala.
+#
+# Guard pilnuje obu kierunkow: sciezka spoza listy => naruszenie; sciezka
+# z listy, ktorej juz nie ma => naruszenie (wpis musi zniknac). Rejestr moze
+# tylko MALEC.
+#
+# POMIAR (2026-08-05): 6 modulow, 22 UNIKALNE martwe sciezki (23 miejsca wolania —
+# `/api/execution/study-cases/{id}/comparisons` wystepuje w dwoch funkcjach).
 # --------------------------------------------------------------------------
-FRONTEND_DEAD_CLIENT_DEBT: dict[str, str] = {
+FRONTEND_DEAD_CLIENT_DEBT: dict[str, tuple[tuple[str, ...], str]] = {
     "frontend/src/ui/protection-coordination/api.ts": (
-        "10 sciezek /api/protection-coordination/** — backend NIGDY nie mial tego routera. "
-        "Modul nie ma ANI JEDNEGO importera; zywy ekran koordynacji (E-28) to "
-        "ui2/wyniki/koordynacja, ktory czyta /api/protection/overcurrent-settings. "
-        "Do decyzji: usunac martwy modul albo zbudowac dostawce koordynacji."
+        (
+            "/api/protection-coordination",
+            "/api/protection-coordination/projects/{p}/run",
+            "/api/protection-coordination/{p}",
+            "/api/protection-coordination/{p}/tcc",
+            "/api/protection-coordination/{p}/trace",
+            "/api/protection-coordination/{p}/checks/sensitivity",
+            "/api/protection-coordination/{p}/checks/selectivity",
+            "/api/protection-coordination/{p}/checks/overload",
+            "/api/protection-coordination/{p}/export/pdf",
+            "/api/protection-coordination/{p}/export/docx",
+        ),
+        "backend NIGDY nie mial routera /api/protection-coordination. Modul nie ma ANI "
+        "JEDNEGO importera; zywy ekran koordynacji (E-28) to ui2/wyniki/koordynacja, ktory "
+        "czyta /api/protection/overcurrent-settings. Do decyzji: usunac martwy modul albo "
+        "zbudowac dostawce koordynacji.",
     ),
     "frontend/src/ui/sld-overlay/variantStore.ts": (
-        "3 sciezki /api/variants/** i /api/projects/{id}/variants — warianty projektu nie maja "
-        "dostawcy w backendzie. Store uzywany wylacznie przez wlasny test. "
-        "Do decyzji: usunac albo zbudowac warianty end-to-end."
+        (
+            "/api/projects/{p}/variants",
+            "/api/variants/{p}/compare/{p}",
+            "/api/variants/{p}/duplicate",
+        ),
+        "warianty projektu nie maja dostawcy w backendzie. Store uzywany wylacznie przez "
+        "wlasny test. Do decyzji: usunac albo zbudowac warianty end-to-end.",
     ),
     "frontend/src/ui/comparison/sldDeltaOverlay.api.ts": (
-        "4 sciezki /api/execution/comparisons/** i /api/execution/study-cases/{id}/comparisons — "
-        "backend nie wystawia porownan zwarciowych pod tym prefiksem. UWAGA: modul JEST "
-        "importowany przez sldDeltaOverlayStore (nakladka delta na SLD), wiec funkcja jest "
-        "widoczna w interfejsie i konczy sie bledem. Najwyzszy priorytet z tej listy."
+        (
+            "/api/execution/study-cases/{p}/comparisons",
+            "/api/execution/comparisons/{p}",
+            "/api/execution/comparisons/{p}/sld-delta-overlay",
+        ),
+        "backend nie wystawia porownan zwarciowych pod prefiksem /api/execution/comparisons. "
+        "UWAGA: modul JEST importowany przez sldDeltaOverlayStore (nakladka delta na SLD), "
+        "wiec funkcja jest widoczna w interfejsie i konczy sie bledem. Najwyzszy priorytet.",
     ),
     "frontend/src/ui/comparison/api.ts": (
-        "2 sciezki: /api/projects/{id}/runs i /api/study-cases/{id}/runs (historia biegow). "
-        "Backend wystawia historie jako /api/projects/{id}/analysis-runs. Modul nie ma "
-        "importerow; trzecia funkcja (compareRuns -> /api/comparison/runs) jest poprawna."
+        (
+            "/api/projects/{p}/runs",
+            "/api/study-cases/{p}/runs",
+        ),
+        "historia biegow: backend wystawia ja jako /api/projects/{id}/analysis-runs. Modul nie "
+        "ma importerow; trzecia funkcja (compareRuns -> /api/comparison/runs) jest poprawna.",
     ),
     "frontend/src/ui/proof/traceExportApi.ts": (
-        "2 sciezki /api/analysis-runs/{id}/trace/export/{fmt} — backend wystawia slad jako "
-        "/api/analysis-runs/{id}/trace oraz /trace/summary, bez eksportu do pliku. "
-        "Modul nie ma importerow."
+        (
+            "/api/projects/{p}/analysis-runs/{p}/trace/export/{p}",
+            "/api/analysis-runs/{p}/trace/export/{p}",
+        ),
+        "backend wystawia slad jako /api/analysis-runs/{id}/trace oraz /trace/summary, bez "
+        "eksportu do pliku. Modul nie ma importerow.",
     ),
     "frontend/src/ui/topology/api.ts": (
-        "2 sciezki /api/cases/{id}/enm/ops i /ops/batch. Tu dostawca zostal SWIADOMIE "
-        "wycofany: `_PRODUCTION_DISABLED_ROUTE_KEYS` w backend/src/api/enm.py wylacza te "
-        "trasy w aplikacji produkcyjnej. Modul nie ma importerow — klient jest pozostaloscia "
-        "po wylaczonym cyklu zapisu."
+        (
+            "/api/cases/{p}/enm/ops",
+            "/api/cases/{p}/enm/ops/batch",
+        ),
+        "dostawca zostal SWIADOMIE wycofany: `_PRODUCTION_DISABLED_ROUTE_KEYS` w "
+        "backend/src/api/enm.py wylacza te trasy w aplikacji produkcyjnej. Modul nie ma "
+        "importerow — klient jest pozostaloscia po wylaczonym cyklu zapisu.",
     ),
 }
 
@@ -371,11 +409,18 @@ def check_route_prefixes() -> list[str]:
     proxy_prefixes = parse_vite_proxy_prefixes()
 
     # --- REGULY 2 i 3: klient frontu kontra realna tablica tras -------------
-    debt_hits: dict[str, int] = dict.fromkeys(FRONTEND_DEAD_CLIENT_DEBT, 0)
+    # Trafienia liczymy PER SCIEZKA, nie per modul — wpis dlugu zwalnia dokladnie
+    # te sciezke, ktora zostala zarejestrowana, i ani jednej wiecej.
+    debt_hits: dict[tuple[str, str], int] = {
+        (source, path): 0
+        for source, (paths, _) in FRONTEND_DEAD_CLIENT_DEBT.items()
+        for path in paths
+    }
     for front in collect_frontend_paths(backend_first_segments):
         if not _front_matches_served(front.path, served_paths):
-            if front.source in FRONTEND_DEAD_CLIENT_DEBT:
-                debt_hits[front.source] += 1
+            key = (front.source, front.path)
+            if key in debt_hits:
+                debt_hits[key] += 1
                 continue
             violations.append(
                 f"[route-prefix-martwa] {front.source}:{front.line} wola {front.path!r}, "
@@ -389,13 +434,14 @@ def check_route_prefixes() -> list[str]:
                 f"(reguly: {proxy_prefixes})"
             )
 
-    # Rejestr dlugu ma tylko MALEC. Modul bez martwych sciezek to wpis nieaktualny —
-    # zostawiony, zamienilby sie w ciche wykluczenie dla przyszlej regresji.
-    for source, hits in sorted(debt_hits.items()):
+    # Rejestr dlugu ma tylko MALEC. Zarejestrowana sciezka, ktorej juz nie ma
+    # (naprawiona albo usunieta), MUSI zniknac z listy — zostawiona zamienia sie
+    # w ciche wykluczenie czekajace na przyszla regresje pod tym samym adresem.
+    for (source, path), hits in sorted(debt_hits.items()):
         if hits == 0:
             violations.append(
-                f"[route-prefix-nieaktualny-dlug] {source} nie ma juz martwych sciezek "
-                "— usun wpis z FRONTEND_DEAD_CLIENT_DEBT"
+                f"[route-prefix-nieaktualny-dlug] {source}: sciezka {path!r} nie jest juz "
+                "martwa — usun ja z FRONTEND_DEAD_CLIENT_DEBT"
             )
 
     # --- REGULA 4: kazda regula proxy ma pokrycie w trasach -----------------
@@ -417,9 +463,13 @@ def main() -> int:
     violations = check_route_prefixes()
     # Dlug wypisujemy ZAWSZE — zarejestrowany nie znaczy niewidoczny.
     if FRONTEND_DEAD_CLIENT_DEBT:
-        print("route-prefix-guard: zarejestrowany dlug 'klient bez dostawcy' (inna klasa):")
-        for source, reason in sorted(FRONTEND_DEAD_CLIENT_DEBT.items()):
-            print(f" * {source}: {reason}")
+        laczna = sum(len(paths) for paths, _ in FRONTEND_DEAD_CLIENT_DEBT.values())
+        print(
+            f"route-prefix-guard: zarejestrowany dlug 'klient bez dostawcy' "
+            f"({len(FRONTEND_DEAD_CLIENT_DEBT)} modulow, {laczna} sciezek) — INNA KLASA:"
+        )
+        for source, (paths, reason) in sorted(FRONTEND_DEAD_CLIENT_DEBT.items()):
+            print(f" * {source} ({len(paths)}): {reason}")
         print()
     if violations:
         print("route-prefix-guard: FAILED")

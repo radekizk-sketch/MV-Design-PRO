@@ -275,10 +275,44 @@ def test_zarejestrowany_dlug_nie_wywraca_guardu(monkeypatch, tmp_path) -> None:
     )
     _stub_vite(monkeypatch, tmp_path)
     monkeypatch.setattr(
-        guard, "FRONTEND_DEAD_CLIENT_DEBT", {"frontend/src/ui/d/api.ts": "dlug testowy"}
+        guard,
+        "FRONTEND_DEAD_CLIENT_DEBT",
+        {"frontend/src/ui/d/api.ts": (("/api/nie-ma-takiej",), "dlug testowy")},
     )
 
     assert guard.check_route_prefixes() == []
+
+
+def test_nowa_martwa_sciezka_w_module_z_dlugiem_jest_naruszeniem(monkeypatch, tmp_path) -> None:
+    """Wpis dlugu zwalnia SCIEZKE, nie caly plik.
+
+    Rejestr trzymany na poziomie MODULU robil z kazdego wpisanego pliku slepa
+    plamke: dowolna NOWA martwa sciezka dopisana do takiego pliku byla cicho
+    wchlaniana. Wykryte iniekcja — guard nie zapalal sie na dopisanym wolaniu
+    nieistniejacej koncowki w `ui/comparison/api.ts`. Ten test przypina napraw.
+    """
+    _stub_backend(monkeypatch, [_route("GET", "/api/health")])
+    _stub_frontend(
+        monkeypatch,
+        tmp_path,
+        {
+            "ui/d/api.ts": (
+                "const a = await fetch('/api/znany-dlug');\n"
+                "const b = await fetch('/api/nowy-defekt');"
+            )
+        },
+    )
+    _stub_vite(monkeypatch, tmp_path)
+    monkeypatch.setattr(
+        guard,
+        "FRONTEND_DEAD_CLIENT_DEBT",
+        {"frontend/src/ui/d/api.ts": (("/api/znany-dlug",), "dlug testowy")},
+    )
+
+    violations = guard.check_route_prefixes()
+
+    assert any("[route-prefix-martwa]" in v and "/api/nowy-defekt" in v for v in violations)
+    assert not any("/api/znany-dlug" in v for v in violations)
 
 
 def test_nieaktualny_wpis_dlugu_jest_naruszeniem(monkeypatch, tmp_path) -> None:
@@ -287,7 +321,9 @@ def test_nieaktualny_wpis_dlugu_jest_naruszeniem(monkeypatch, tmp_path) -> None:
     _stub_frontend(monkeypatch, tmp_path, {"ui/d/api.ts": "const r = await fetch('/api/health');"})
     _stub_vite(monkeypatch, tmp_path)
     monkeypatch.setattr(
-        guard, "FRONTEND_DEAD_CLIENT_DEBT", {"frontend/src/ui/d/api.ts": "dlug testowy"}
+        guard,
+        "FRONTEND_DEAD_CLIENT_DEBT",
+        {"frontend/src/ui/d/api.ts": (("/api/juz-naprawiona",), "dlug testowy")},
     )
 
     violations = guard.check_route_prefixes()
