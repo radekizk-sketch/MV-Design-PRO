@@ -146,17 +146,17 @@ function bezpiecznaSkala(scale: number): number {
 }
 
 /** Minimalny wymiar obszaru trafienia wyrażony w jednostkach ŚWIATA arkusza. */
-export function minHitWorldSize(scale: number): number {
+function minHitWorldSize(scale: number): number {
   return MIN_HIT_SCREEN_PX / bezpiecznaSkala(scale);
 }
 
 /** Połowa minimalnego wymiaru — promień „prawie trafiłem" wokół kreski. */
-export function hitPadWorld(scale: number): number {
+function hitPadWorld(scale: number): number {
   return minHitWorldSize(scale) / 2;
 }
 
 /** Prostokąt rozszerzony symetrycznie do minimum ekranowego (środek bez zmian). */
-export function expandRectToMinHit(rect: V3Rect, scale: number): HitRectShape {
+function expandRectToMinHit(rect: V3Rect, scale: number): HitRectShape {
   const min = minHitWorldSize(scale);
   const width = Math.max(rect.width, min);
   const height = Math.max(rect.height, min);
@@ -170,25 +170,20 @@ export function expandRectToMinHit(rect: V3Rect, scale: number): HitRectShape {
 }
 
 /** Gabaryt symbolu = jego OBRYS trafienia (glif IEC mieści się w tym prostokącie). */
-export function symbolInkRect(symbol: PreviewSymbol): V3Rect {
+function symbolInkRect(symbol: PreviewSymbol): V3Rect {
   const def = SYMBOL_DEFS[symbol.symbolId];
   return { x: symbol.x, y: symbol.y, width: def.width, height: def.height };
 }
 
 /** Połowa grubości WIDOCZNEJ kreski odcinka (obrys trafienia toru). */
-export function segmentInkHalfWidth(segment: PreviewSegment): number {
+function segmentInkHalfWidth(segment: PreviewSegment): number {
   return SEGMENT_STROKE_WIDTH[segment.meta?.kind ?? 'sn'] / 2;
 }
 
 /** Połowa grubości kreski trafienia odcinka — nigdy cieńsza niż obrys rysunku
  *  i nigdy cieńsza niż połowa minimum ekranowego. */
-export function segmentHitHalfWidth(segment: PreviewSegment, scale: number): number {
+function segmentHitHalfWidth(segment: PreviewSegment, scale: number): number {
   return Math.max(segmentInkHalfWidth(segment), hitPadWorld(scale));
-}
-
-/** Grubość kreski trafienia odcinka podawana wprost do `stroke-width`. */
-export function segmentHitStrokeWidth(segment: PreviewSegment, scale: number): number {
-  return 2 * segmentHitHalfWidth(segment, scale);
 }
 
 // ---------------------------------------------------------------------------
@@ -482,7 +477,7 @@ export interface HitDomNode {
 /** Efektywna wartość `pointer-events` — najbliższy przodek (lub sam węzeł) z
  *  jawnym atrybutem wygrywa (własność DZIEDZICZONA, dokładnie jak w CSS/SVG).
  *  Brak deklaracji w całej gałęzi = domyślne `visiblePainted` (węzeł ŁAPIE). */
-export function effectivePointerEvents(node: HitDomNode): string {
+function effectivePointerEvents(node: HitDomNode): string {
   let current: HitDomNode | null = node;
   while (current) {
     const value = current.getAttribute?.('pointer-events');
