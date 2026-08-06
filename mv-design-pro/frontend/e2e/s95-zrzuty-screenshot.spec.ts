@@ -118,7 +118,7 @@ async function otworzAplikacje(page: Page, seed: { projectId: string; projectNam
 }
 
 /** Motyw przełączany REALNYM przyciskiem powłoki, z asercją na `data-theme`. */
-async function ustawMotyw(page: Page, docelowy: 'dark' | 'light'): Promise<void> {
+async function ustawMotyw(page: Page, docelowy: 'dark_scada' | 'light_technical'): Promise<void> {
   for (let i = 0; i < 3; i += 1) {
     const biezacy = await page.evaluate(() => document.documentElement.getAttribute('data-theme'));
     if (biezacy === docelowy) return;
@@ -146,8 +146,8 @@ test('S9-5 — zrzuty menu kontekstowego na klasach obiektów kanwy (oba motywy)
   await otworzAplikacje(page, seed);
 
   for (const motyw of [
-    { klucz: 'ciemny', theme: 'dark' as const },
-    { klucz: 'jasny', theme: 'light' as const },
+    { klucz: 'ciemny', theme: 'dark_scada' as const },
+    { klucz: 'jasny', theme: 'light_technical' as const },
   ]) {
     await ustawMotyw(page, motyw.theme);
 
@@ -163,7 +163,12 @@ test('S9-5 — zrzuty menu kontekstowego na klasach obiektów kanwy (oba motywy)
         // Uczciwie: klasa nieobecna na tej scenie nie dostaje zrzutu-atrapy.
         continue;
       }
-      await uchwyt.click({ button: 'right' });
+      // Klik NATYWNY myszą w rzeczywisty punkt uchwytu: `locator.click` odrzuca
+      // cienkie kreski SVG jako „niewidoczne" (heurystyka aktorowalności), a to
+      // jest dokładnie ten kształt, który karta S9-4 uczyniła klikalnym.
+      const box = await uchwyt.boundingBox();
+      if (!box) continue;
+      await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2, { button: 'right' });
       const menu = page.getByRole('menu');
       if (!(await menu.isVisible({ timeout: 5000 }).catch(() => false))) {
         // Obiekt świadomie bez menu (rysunek bez odpowiednika w modelu) —
