@@ -164,3 +164,46 @@ def test_protection_options_use_e2tango_or_known_vendors() -> None:
     for t in list_templates():
         for prot in t.schema.sn_bay_protection_options:
             assert prot.vendor in valid_vendors, f"{t.id}: unknown vendor '{prot.vendor}'"
+
+
+def test_nazwa_obiecujaca_pomiar_deklaruje_role_measurement() -> None:
+    """Szablon-fantom (V12K-329, dyrektywa zero-fabrykacji, 2026-08-06).
+
+    KLASA, nie instancja: KAŻDY szablon, którego nazwa lub opis obiecuje pole
+    pomiarowe („pomiar…"/„VT"), musi deklarować rolę MEASUREMENT w obrębie
+    domyślnej liczby pól — inaczej materializacja dopełnia OUT i stacja
+    powstaje BEZ pola pomiarowego, choć nazwa je obiecuje (wykryte na
+    `tpl_sn_nn_1000kva` „RMU 4-pole + pomiary" przy audycie sieci pokazowej;
+    ta sama wada była w `tpl_sn_nn_1600kva` „z VT").
+    """
+    from application.station_templates.apply import _resolve_sn_bay_roles
+
+    zbadane = 0
+    for template in list_templates():
+        tekst = f"{template.name_pl} {template.description_pl}".lower()
+        obiecuje_pomiar = "pomiar" in tekst or " vt" in tekst or "vt," in tekst
+        if not obiecuje_pomiar:
+            continue
+        schema = template.schema
+        if schema.sn_bays_count is None:
+            continue
+        zbadane += 1
+        role = _resolve_sn_bay_roles(template, schema.sn_bays_count.default)
+        assert "MEASUREMENT" in role, (
+            f"Szablon '{template.id}' ({template.name_pl!r}) obiecuje pomiar/VT, "
+            f"a domyślne role pól to {role} — brak MEASUREMENT (szablon-fantom)."
+        )
+    assert zbadane >= 2, f"Test ma objąć co najmniej 1000kVA i 1600kVA (objęte: {zbadane})"
+
+
+def test_pomiar_degraduje_przed_polem_tr_przy_obnizonej_liczbie_pol() -> None:
+    """Predykaty parami (V12K-329): kolejność deklaracji ról gwarantuje, że
+    obniżenie liczby pól przez użytkownika degraduje NAJPIERW pole pomiarowe,
+    NIGDY pole transformatorowe (stacja z TR bez pola TR = model sprzeczny)."""
+    from application.station_templates.apply import _resolve_sn_bay_roles
+
+    template = get_template("tpl_sn_nn_1000kva")
+    assert template is not None
+    for count in (3, 4):
+        role = _resolve_sn_bay_roles(template, count)
+        assert "TR" in role, f"count={count}: pole TR wypadło przed pomiarowym ({role})"

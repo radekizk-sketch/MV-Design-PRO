@@ -44,6 +44,7 @@ def _typowa(
     max_feeders: int = 8,
     icon: str = "station-distribution",
     use_case: str = "Standardowa dystrybucyjna terenowa.",
+    bay_roles: tuple[BayRoleSpec, ...] | None = None,
 ) -> StationTemplate:
     return StationTemplate(
         id=tpl_id,
@@ -62,7 +63,7 @@ def _typowa(
             sn_bays_count=TemplateParamInt(
                 default=default_bays, min_value=1, max_value=8, label_pl="Liczba pól SN"
             ),
-            sn_bay_roles=_base_bay_roles(),
+            sn_bay_roles=bay_roles if bay_roles is not None else _base_bay_roles(),
             sn_bay_protection_options=PROT_FEEDER_OPTIONS,
             sn_bay_apparatus_options=SN_APPARATUS_OPTIONS,
             nn_feeders_count=TemplateParamInt(
@@ -127,6 +128,18 @@ TYPOWE_SN_NN_TEMPLATES = (
         tr_options=TR_OPTIONS_MEDIUM,
         default_feeders=4,
         default_bays=4,
+        # Nazwa obiecuje POMIARY — rola MEASUREMENT zadeklarowana JAWNIE
+        # (dawniej _base_bay_roles [IN,OUT,TR] + dopełnienie OUT dawało
+        # czwarte pole LINIOWE zamiast pomiarowego: szablon-fantom,
+        # dyrektywa zero-fabrykacji; wykryte przy audycie sieci pokazowej,
+        # rejestr V12K-329). TR przed MEASUREMENT: obniżenie liczby pól
+        # degraduje NAJPIERW pomiar, nigdy pole transformatorowe.
+        bay_roles=(
+            BayRoleSpec(role="IN", label_pl="Pole liniowe IN"),
+            BayRoleSpec(role="OUT", label_pl="Pole liniowe OUT"),
+            BayRoleSpec(role="TR", label_pl="Pole transformatorowe"),
+            BayRoleSpec(role="MEASUREMENT", label_pl="Pole pomiarowe (VT)"),
+        ),
     ),
     _typowa(
         "tpl_sn_nn_1250kva",
@@ -143,6 +156,14 @@ TYPOWE_SN_NN_TEMPLATES = (
         tr_options=TR_OPTIONS_MEDIUM,
         default_feeders=6,
         default_bays=5,
+        # Jak wyżej (V12K-329): nazwa obiecuje VT — MEASUREMENT jawnie.
+        bay_roles=(
+            BayRoleSpec(role="IN", label_pl="Pole liniowe IN"),
+            BayRoleSpec(role="OUT", label_pl="Pole liniowe OUT"),
+            BayRoleSpec(role="TR", label_pl="Pole transformatorowe"),
+            BayRoleSpec(role="MEASUREMENT", label_pl="Pole pomiarowe (VT)"),
+            BayRoleSpec(role="OUT", label_pl="Pole liniowe rezerwowe"),
+        ),
     ),
     _typowa(
         "tpl_sn_nn_2000kva",

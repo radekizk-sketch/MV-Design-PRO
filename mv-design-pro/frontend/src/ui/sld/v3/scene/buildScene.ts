@@ -4749,11 +4749,14 @@ export function allSwitchSymbolsUnambiguous(scene: SceneV3): boolean {
 // (+ opcjonalny sufiks kolizji „·k").
 // ---------------------------------------------------------------------------
 
-/** Symbole, które spec §19.1 wymienia WPROST jako nośniki identyfikatora
- *  per-aparat (wyłącznik/rozłącznik/odłącznik → Q, uziemnik → QE,
- *  transformator → T) — TA SAMA lista co `apparatusSequence.ts`
- *  `Q_IDENTIFIER_SYMBOLS`+`earthSwitch`+`transformer2W`, powtórzona tu (bez
- *  importu prywatnej stałej) do niezależnej weryfikacji sceny. */
+/** Symbole — nośniki identyfikatora per-aparat (wyłącznik/rozłącznik/
+ *  odłącznik → Q, uziemnik → QE, transformator → T wg spec §19.1; przekładnik
+ *  napięciowy → TV wg klasy przekładników PN-EN 81346-2, dyrektywa
+ *  właściciela 2026-08-06 — anonimowy VT pola pomiarowego czytał się jak
+ *  transformator mocy) — TA SAMA lista co `apparatusSequence.ts`
+ *  `Q_IDENTIFIER_SYMBOLS`+`earthSwitch`+`transformer2W`+`voltageTransformer`,
+ *  powtórzona tu (bez importu prywatnej stałej) do niezależnej weryfikacji
+ *  sceny. */
 const IDENTIFIER_ELIGIBLE_SYMBOLS: ReadonlySet<SymbolId> = new Set<SymbolId>([
   'breaker',
   'disconnector',
@@ -4761,15 +4764,18 @@ const IDENTIFIER_ELIGIBLE_SYMBOLS: ReadonlySet<SymbolId> = new Set<SymbolId>([
   'fuseSwitch',
   'earthSwitch',
   'transformer2W',
+  'voltageTransformer',
 ]);
 
 const RAW_FIELD_LABEL_PATTERN = /^Q\d+$|^T\d+$/;
-// Z3 (spec §19.1/§0.3): wzorzec identyfikatora KONWENCJI Q\d+/QE\d+/T\d+ z
-// opcjonalnym deterministycznym sufiksem kolizji „·k" (`apparatusSequence.ts`
-// `apparatusIdentifiers`, disambiguacja powtórzonej DANEJ w polu). DANE
+// Z3 (spec §19.1/§0.3): wzorzec identyfikatora KONWENCJI Q\d+/QE\d+/T\d+/TV\d+
+// z opcjonalnym deterministycznym sufiksem kolizji „·k" (`apparatusSequence.ts`
+// `apparatusIdentifiers`, disambiguacja powtórzonej DANEJ w polu; TV —
+// przekładnik napięciowy, dyrektywa właściciela 2026-08-06). DANE
 // producenckie/kreatora (np. „F1"/„TR") NIE muszą pasować do tego wzorca —
 // rozpoznaje je `designationSource==='dane'` niżej (prymat danych §12.1).
-const APPARATUS_IDENTIFIER_PATTERN = /^(Q\d+|QE\d+|T\d+)(·\d+)?$/;
+// Kolejność alternatywy: TV przed T, żeby „TV1" nie dopasowało się połowicznie.
+const APPARATUS_IDENTIFIER_PATTERN = /^(QE\d+|Q\d+|TV\d+|T\d+)(·\d+)?$/;
 
 export interface ApparatusIdentifierGap {
   readonly ownerRef: string | undefined;

@@ -281,10 +281,15 @@ const Q_IDENTIFIER_SYMBOLS: ReadonlySet<SymbolId> = new Set<SymbolId>([
  * szynowy, „QE1" uziemnik, „T1" transformator) — WYŁĄCZNIE dla aparatów
  * wymienionych WPROST w spec §19.1: łączniki toru (breaker/disconnector/
  * fuseSwitch → „Q"), uziemnik (earthSwitch → „QE"), transformator
- * (transformer2W → „T"). CT/VT/SA/cableHead/protectionRelay/meter NIE
- * dostają identyfikatora w tej fazie — CT ma WŁASNĄ adnotację
- * (identyfikator+przekładnia, §18.3, F10.4, POZA torem mocy), VT/SA nie mają
- * zdefiniowanej konwencji numeracji w spec §19.1 (zero zgadywania).
+ * (transformer2W → „T") — oraz przekładnik napięciowy (voltageTransformer →
+ * „TV", klasa przekładników wg PN-EN 81346-2: TA=prądowy, TV=napięciowy;
+ * dyrektywa właściciela 2026-08-06 po audycie sieci pokazowej: przekładnik
+ * pola pomiarowego rysowany bez oznacznika był nieodróżnialny od
+ * transformatora mocy — „mały TR" na prawym skraju stacji). CT/SA/cableHead/
+ * protectionRelay/meter NIE dostają identyfikatora w tej fazie — CT ma WŁASNĄ
+ * adnotację (identyfikator+przekładnia, §18.3, F10.4, POZA torem mocy), SA nie
+ * ma rozstrzygniętej konwencji numeracji (zero zgadywania; dług nazwany w
+ * rejestrze przy wpisie o TV).
  *
  * PRYMAT DANYCH NAD KONWENCJĄ (spec §12.1, Z3 audytu powykonawczego SLD
  * `docs/sld/AUDYT_POWYKONAWCZY_SLD_2026-07.md` §Z3 + dług W1c). Priorytet
@@ -325,7 +330,7 @@ const Q_IDENTIFIER_SYMBOLS: ReadonlySet<SymbolId> = new Set<SymbolId>([
  * priorytetu (2) nie może poszerzać etykiety, patrz wyżej). Źródło
  * `'dane'`/`'konwencja'` per pozycja — `apparatusIdentifierSources` niżej.
  *
- * Numeracja: JEDEN licznik na kategorię (Q/QE/T) per POLE, rosnąco wg
+ * Numeracja: JEDEN licznik na kategorię (Q/QE/T/TV) per POLE, rosnąco wg
  * pozycji w PEŁNEJ sekwencji aparatów pola (tor główny + laterale w
  * kolejności `placement`/konwencji, V12K-040) — deterministyczne, licznik
  * resetuje się na każdym polu. Zwraca tablicę index-aligned do `symbolIds`
@@ -338,6 +343,7 @@ export function apparatusIdentifiers(
   let q = 0;
   let qe = 0;
   let t = 0;
+  let tv = 0;
   // Z3 §0.3: mapa zajętych oznaczeń pola (dzielona dane↔konwencja — celem jest
   // unikalność RENDEROWANEGO tekstu w polu). Konwencja nigdy nie koliduje;
   // sufiks fire'uje wyłącznie przy powtórzonej DANEJ.
@@ -366,6 +372,10 @@ export function apparatusIdentifiers(
       t += 1;
       return disambiguate(dataDesignation ?? `T${t}`);
     }
+    if (symbolId === 'voltageTransformer') {
+      tv += 1;
+      return disambiguate(dataDesignation ?? `TV${tv}`);
+    }
     return null;
   });
 }
@@ -385,7 +395,10 @@ export function apparatusIdentifierSources(
 ): readonly ('dane' | 'konwencja' | null)[] {
   return symbolIds.map((symbolId, index) => {
     const isIdentifiable =
-      Q_IDENTIFIER_SYMBOLS.has(symbolId) || symbolId === 'earthSwitch' || symbolId === 'transformer2W';
+      Q_IDENTIFIER_SYMBOLS.has(symbolId)
+      || symbolId === 'earthSwitch'
+      || symbolId === 'transformer2W'
+      || symbolId === 'voltageTransformer';
     if (!isIdentifiable) return null;
     const dataDesignation = designations?.[index]?.trim();
     return dataDesignation ? 'dane' : 'konwencja';
