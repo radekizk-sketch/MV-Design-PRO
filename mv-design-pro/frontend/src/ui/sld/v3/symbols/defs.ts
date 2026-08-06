@@ -23,6 +23,8 @@ export type SymbolId =
   | 'noPoint'          // punkt podziału NO (łącznik otwarty na torze)
   | 'junction'         // węzeł T (jawna kropka)
   | 'branchJunction'   // węzeł rozgałęzienia lateralu — akcent (spec §14.4)
+  | 'branchCabinet'    // złącze kablowe SN (ZKSN) — punkt odgałęźny na odcinku kablowym
+  | 'branchPole'       // słup rozgałęźny — punkt odgałęźny na odcinku napowietrznym
   | 'currentTransformer' // przekładnik prądowy CT
   | 'voltageTransformer' // przekładnik napięciowy VT
   | 'surgeArrester'    // ogranicznik przepięć SA
@@ -123,6 +125,34 @@ export const SYMBOL_DEFS: Readonly<Record<SymbolId, SymbolDef>> = {
     { name: 'e', x: 32, y: 16, dir: 'E' },
     { name: 'w', x: 0, y: 16, dir: 'W' },
   ], 'Węzeł rozgałęzienia'),
+  // ODG-RYSUNEK (etap 3 kontraktu `docs/domain/POMIAR_ROZLICZENIOWY_SN_V1.md`):
+  // PUNKT ODGAŁĘŹNY na odcinku magistrali — obiekt ENM (`branch_points`), nie
+  // marker trasy. Dwa rodzaje z modelu (`BranchPointSN.branch_point_type`) mają
+  // WŁASNE glify, bo są to różne obiekty terenowe i projektant musi je odróżnić
+  // na rysunku bez czytania etykiety:
+  //  · `branchCabinet` — złącze kablowe SN (ZKSN): obudowa (prostokąt, obwiednia
+  //    aparatu IEC 60617) z węzłem toru w środku;
+  //  · `branchPole` — słup rozgałęźny linii napowietrznej: węzeł toru z sylwetką
+  //    słupa (trzon + poprzeczka), bez obudowy.
+  // Gabaryt 16×16 (2×GRID) — TEN SAM co `junction`/`jointSleeve`, bo punkt leży
+  // W SZCZELINIE między kolumnami stacji (`COLUMN_GAP`) na sub-poziomie korytarza
+  // międzystacyjnego (`trunkCorridorYOf`): większy gabaryt wchodziłby w blok
+  // stacji-poprzednika (kolizja `symbolWireCollisions`). Rozróżnienie od zwykłego
+  // węzła niesie GLIF (obudowa/słup vs sama kropka), nie rozmiar.
+  // Porty W/E = tor magistrali (wejście/wyjście ciągu), S = odgałęzienie,
+  // N wolny — wszystkie na siatce (16/2 = 8 = GRID, `grid_probe`/`port_probe`).
+  branchCabinet: def('branchCabinet', 16, 16, [
+    { name: 'n', x: 8, y: 0, dir: 'N' },
+    { name: 's', x: 8, y: 16, dir: 'S' },
+    { name: 'e', x: 16, y: 8, dir: 'E' },
+    { name: 'w', x: 0, y: 8, dir: 'W' },
+  ], 'Złącze kablowe SN (punkt odgałęźny)'),
+  branchPole: def('branchPole', 16, 16, [
+    { name: 'n', x: 8, y: 0, dir: 'N' },
+    { name: 's', x: 8, y: 16, dir: 'S' },
+    { name: 'e', x: 16, y: 8, dir: 'E' },
+    { name: 'w', x: 0, y: 8, dir: 'W' },
+  ], 'Słup rozgałęźny (punkt odgałęźny)'),
   currentTransformer: def('currentTransformer', 16, 24, [
     { name: 'top', x: 8, y: 0, dir: 'N' },
     { name: 'bottom', x: 8, y: 24, dir: 'S' },

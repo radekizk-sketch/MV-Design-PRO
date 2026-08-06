@@ -45,6 +45,7 @@ export const LABEL_PRIORITY: Readonly<Record<OwnerKind, number>> = {
   'station-name': 100, // tożsamość: S-id (L0) / nazwa stacji (L1+)
   'busbar-voltage': 95, // tożsamość szyny (napięcie/sekcja)
   'no-point': 90, // marker stanu łączeniowego (NOP) — operacyjny
+  'branch-point': 88, // ODG-RYSUNEK: nazwa punktu odgałęźnego — tożsamość obiektu ENM na torze
   protection: 85, // numer urządzenia zabezpieczeniowego (ANSI 52)
   der: 70, // MOC źródła (audyt §3 „moc")
   apparatus: 60, // identyfikator aparatu (Q/QE/T)

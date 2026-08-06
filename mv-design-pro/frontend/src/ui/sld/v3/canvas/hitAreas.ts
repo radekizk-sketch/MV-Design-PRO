@@ -75,6 +75,7 @@ export const MIN_HIT_SCREEN_PX = 24;
 export type HitObjectClass =
   | 'stacja'
   | 'aparat'
+  | 'punkt-odgalezny'
   | 'transformator'
   | 'zrodlo'
   | 'uklad-der'
@@ -90,6 +91,7 @@ export type HitObjectClass =
 export const HIT_OBJECT_CLASSES: readonly HitObjectClass[] = [
   'stacja',
   'aparat',
+  'punkt-odgalezny',
   'transformator',
   'zrodlo',
   'uklad-der',
@@ -202,6 +204,10 @@ function klasaSymbolu(elementKind: PreviewElementKind | undefined): HitObjectCla
       return 'uklad-der';
     case 'protectionAnnotation':
       return 'adnotacja';
+    // ODG-RYSUNEK: punkt odgałęźny (ZKSN / słup rozgałęźny) — obiekt ENM na torze
+    // magistrali, klikalny jak stacja, ale osobnego rodzaju (inwentarz sondy).
+    case 'branchPoint':
+      return 'punkt-odgalezny';
     default:
       // `apparatus` oraz symbole rysunkowe bez kategorii (węzeł trasy, kropka T)
       // — jeden bucket „aparat", zgodnie z `classifySymbolElementKind`.
@@ -234,6 +240,7 @@ export const LABEL_OWNER_ELEMENT_KIND = {
   der: 'der',
   'busbar-voltage': 'bus',
   'no-point': 'apparatus',
+  'branch-point': 'branchPoint',
   protection: 'protectionAnnotation',
   'lv-load': 'bus',
 } satisfies Record<OwnerKind, PreviewElementKind>;
