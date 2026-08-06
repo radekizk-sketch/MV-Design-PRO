@@ -164,7 +164,18 @@ import {
   hitLayerOrderingInDom,
   pointerBlockersInDom,
   sondaSiatkowaTrafien,
+  HIT_OBJECT_CLASSES,
 } from '../src/ui/sld/v3/canvas/hitAreas.ts';
+// Karta S9-5 (menu kontekstowe i operacje budowy na kanwie): temat menu ma
+// KOTWICĘ zweryfikowaną w modelu — patrz nagłówek `canvas/canvasMenuSubject.ts`.
+import {
+  buildCanvasModelIndex,
+  resolveCanvasMenuSubject,
+} from '../src/ui/sld/v3/canvas/canvasMenuSubject.ts';
+import {
+  SLD_MENU_REGISTRY,
+  getMenuActions,
+} from '../src/ui/sld/v2/command/SldCommandService.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -2307,6 +2318,198 @@ line('=== hit_grid_probe (S9-4): trafienie i tożsamość zaznaczenia ===');
         );
       }
     }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// KARTA S9-5 — MENU KONTEKSTOWE I OPERACJE BUDOWY NA KANWIE (audyt §3.3 P-7
+// „brak menu kontekstowego kanwy", §5 B-4 „dalsza budowa nie ma ścieżki na
+// kanwie"). KRYTERIUM ODBIORU KARTY: budowa sieci 15 stacji wykonalna
+// WYŁĄCZNIE z kanwy.
+// ---------------------------------------------------------------------------
+//
+// CO MIERZY (i czego NIE mierzy — uczciwość pomiarowa): sonda liczy POKRYCIE
+// ŁAŃCUCHA BUDOWY na scenie, czyli ile obiektów kanwy udostępnia z rysunku
+// wejście do każdej operacji domenowej ciągu SN, i czy ref jadący do tej
+// operacji ISTNIEJE w modelu. Sonda NIE wykonuje operacji (to robi spec e2e na
+// żywym backendzie) — mierzy DOSTĘPNOŚĆ, bo to ona była zerowa przed kartą.
+//
+// ILOCZYN CECH (reguła KLASA, NIE INSTANCJA pkt 2): {klasa obiektu kanwy} ×
+// {LOD 0/1/2} × {rodzina gałęzi: kabel / linia napowietrzna}.
+line('');
+line('=== menu_subject_probe (S9-5): menu zależne od trafionego obiektu ===');
+{
+  /** Minimalna liczba stacji ciągu z wejściem budowy — kryterium karty. */
+  const PROG_STACJI = 15;
+  const indexModelu = buildCanvasModelIndex(enm);
+  /** Refy modelu — druga, NIEZALEŻNA strona kontraktu „ref istnieje". */
+  const refyModelu = new Set();
+  for (const kolekcja of [enm.substations, enm.buses, enm.branches, enm.generators, enm.sources, enm.transformers]) {
+    for (const el of kolekcja ?? []) {
+      if (el.ref_id) refyModelu.add(el.ref_id);
+      if (el.id) refyModelu.add(el.id);
+    }
+  }
+  for (const stacja of enm.substations ?? []) {
+    for (const spec of stacja.meta?.field_specs ?? []) {
+      if (spec?.field_ref) refyModelu.add(spec.field_ref);
+    }
+  }
+
+  /** Ogniwa łańcucha budowy: kategoria menu → wymagana pozycja. */
+  const OGNIWA = [
+    { krok: 'ciąg z GPZ', menuKind: 'gpz', action: 'continue-trunk' },
+    { krok: 'odgałęzienie z GPZ', menuKind: 'gpz', action: 'start-branch' },
+    { krok: 'ciąg z szyny sekcji', menuKind: 'section', action: 'continue-trunk' },
+    { krok: 'stacja na odcinku (kabel)', menuKind: 'cable_segment_sn', action: 'insert-station' },
+    { krok: 'stacja na odcinku (napowietrzna)', menuKind: 'overhead_line_sn', action: 'insert-station' },
+    { krok: 'dociągnięcie odcinka', menuKind: 'cable_segment_sn', action: 'continue-trunk-from-endpoint' },
+    { krok: 'ciąg ze stacji', menuKind: 'station', action: 'continue-trunk' },
+    { krok: 'odgałęzienie ze stacji', menuKind: 'station', action: 'start-branch' },
+  ];
+
+  // (a) Każde ogniwo ma pozycję w rejestrze menu i jest AKTYWNE bez kontekstu
+  //     blokującego — pozycja permanentnie zablokowana nie jest wejściem.
+  for (const ogniwo of OGNIWA) {
+    const akcje = getMenuActions(ogniwo.menuKind, {});
+    const pozycja = akcje.find((a) => a.id === ogniwo.action);
+    check(
+      `menu_chain_probe (S9-5, kryterium odbioru) ogniwo „${ogniwo.krok}": menu ${ogniwo.menuKind} ma AKTYWNĄ pozycję ${ogniwo.action}`,
+      pozycja != null && pozycja.disabled !== true,
+      pozycja == null ? 'BRAK pozycji w SLD_MENU_REGISTRY' : pozycja.disabled ? `zablokowana: ${pozycja.disabledReasonPl}` : 'aktywna',
+    );
+  }
+
+  /** Kanoniczny `Bus.ref_id` szyn GPZ — TEN SAM kanał, którym karmi rozstrzyganie
+   *  tematu żywy `SldCanvasV3` (`klikMeta.busRef = resultRefForSegment(meta)`).
+   *  Bez niego sonda mierzyłaby INNE wejście niż aplikacja. */
+  const busRefSceny = (scene) => {
+    const mapa = new Map();
+    scene.segments.forEach((segment, index) => {
+      mapa.set(segment.meta?.testId ?? `sld-v3-segment-${index}`, resultRefForSegment(segment.meta));
+    });
+    return mapa;
+  };
+
+  for (const lod of LODS) {
+    const scene = buildSceneV3(enm, lod);
+    const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), 1);
+    const busRefy = busRefSceny(scene);
+    const obszary = buildCanvasHitAreas({
+      symbols: scene.symbols,
+      segments: scene.segments,
+      labels: plan.drawn,
+      resultMarkers: [],
+      scale: 1,
+    });
+    const wgKlasy = new Map(HIT_OBJECT_CLASSES.map((k) => [k, { obiektow: 0, tematow: 0, kategorie: new Map() }]));
+    let refySpozaModelu = 0;
+    let pierwszyZlyRef = null;
+    for (const area of obszary) {
+      const wpis = wgKlasy.get(area.klasa);
+      if (!wpis) continue;
+      wpis.obiektow += 1;
+      const wynik = resolveCanvasMenuSubject(
+        { klasa: area.klasa, ownerRef: area.ownerRef, elementKind: area.elementKind, busRef: busRefy.get(area.testId) },
+        indexModelu,
+      );
+      if (wynik.stan !== 'temat') continue;
+      wpis.tematow += 1;
+      wpis.kategorie.set(wynik.temat.menuKind, (wpis.kategorie.get(wynik.temat.menuKind) ?? 0) + 1);
+      if (!refyModelu.has(wynik.temat.modelRef)) {
+        refySpozaModelu += 1;
+        pierwszyZlyRef ??= `${area.testId} → ${wynik.temat.modelRef}`;
+      }
+    }
+
+    // (b) ZERO FABRYKACJI: żaden otwarty temat menu nie wskazuje refu spoza modelu.
+    check(
+      `menu_ref_probe (S9-5, B-4) LOD ${lod}: 0 tematów menu z refem spoza modelu`,
+      refySpozaModelu === 0,
+      refySpozaModelu === 0 ? `tematów=${[...wgKlasy.values()].reduce((s, w) => s + w.tematow, 0)}` : `złych=${refySpozaModelu}, np. ${pierwszyZlyRef}`,
+    );
+
+    // (c) Pokrycie łańcucha: stacje i odcinki z realnym wejściem budowy.
+    const stacjeZWejsciem = obszary.filter((a) => {
+      if (a.klasa !== 'stacja') return false;
+      const w = resolveCanvasMenuSubject({ klasa: a.klasa, ownerRef: a.ownerRef, elementKind: a.elementKind, busRef: busRefy.get(a.testId) }, indexModelu);
+      return w.stan === 'temat' && w.temat.menuKind === 'station';
+    }).length;
+    const odcinkiZWejsciem = obszary.filter((a) => {
+      if (a.klasa !== 'tor' && a.klasa !== 'lacznik-wiersza') return false;
+      const w = resolveCanvasMenuSubject({ klasa: a.klasa, ownerRef: a.ownerRef, elementKind: a.elementKind, busRef: busRefy.get(a.testId) }, indexModelu);
+      return w.stan === 'temat' && w.temat.kotwica === 'galaz';
+    }).length;
+    if (lod === 0) {
+      check(
+        `menu_chain_probe (S9-5, kryterium odbioru) LOD 0: ≥ ${PROG_STACJI} stacji z wejściem „kontynuuj ciąg / odgałęzienie" na rysunku`,
+        stacjeZWejsciem >= PROG_STACJI,
+        `stacji=${stacjeZWejsciem}`,
+      );
+    }
+    check(
+      `menu_chain_probe (S9-5) LOD ${lod}: ≥ ${PROG_STACJI} odcinków z wejściem „zakończ odcinek stacją"`,
+      odcinkiZWejsciem >= PROG_STACJI,
+      `odcinków=${odcinkiZWejsciem}`,
+    );
+
+    line(
+      `  menu_subject (LOD ${lod}) wg klasy: `
+      + HIT_OBJECT_CLASSES.filter((k) => (wgKlasy.get(k)?.obiektow ?? 0) > 0)
+        .map((k) => {
+          const w = wgKlasy.get(k);
+          const kat = [...w.kategorie.entries()].sort(([a], [b]) => (a < b ? -1 : 1)).map(([n, c]) => `${n}:${c}`).join('|');
+          return `${k}=${w.tematow}/${w.obiektow}${kat ? `(${kat})` : ''}`;
+        })
+        .join(' '),
+    );
+  }
+
+  // (d) Rodzina gałęzi rozstrzyga kategorię — obie rodziny obecne i ROZŁĄCZNE.
+  {
+    const sceneL2 = buildSceneV3(enm, 2);
+    const obszaryL2 = buildCanvasHitAreas({
+      symbols: sceneL2.symbols, segments: sceneL2.segments, labels: [], resultMarkers: [], scale: 1,
+    });
+    const rodziny = new Map();
+    for (const area of obszaryL2) {
+      if (area.klasa !== 'tor') continue;
+      const w = resolveCanvasMenuSubject({ klasa: area.klasa, ownerRef: area.ownerRef, elementKind: area.elementKind }, indexModelu);
+      if (w.stan !== 'temat' || w.temat.kotwica !== 'galaz') continue;
+      rodziny.set(w.temat.menuKind, (rodziny.get(w.temat.menuKind) ?? 0) + 1);
+    }
+    check(
+      'menu_family_probe (S9-5): kategoria menu odcinka idzie za rodziną gałęzi (kabel i linia napowietrzna są ROZRÓŻNIANE)',
+      (rodziny.get('cable_segment_sn') ?? 0) > 0 && (rodziny.get('overhead_line_sn') ?? 0) > 0,
+      `kabel=${rodziny.get('cable_segment_sn') ?? 0} napowietrzna=${rodziny.get('overhead_line_sn') ?? 0}`,
+    );
+    check(
+      'menu_family_probe (S9-5): menu kabla i menu linii napowietrznej mają ROZŁĄCZNE pozycje zakończenia odcinka',
+      SLD_MENU_REGISTRY.cable_segment_sn.some((a) => a.id === 'insert-zksn')
+      && !SLD_MENU_REGISTRY.cable_segment_sn.some((a) => a.id === 'insert-pole')
+      && SLD_MENU_REGISTRY.overhead_line_sn.some((a) => a.id === 'insert-pole')
+      && !SLD_MENU_REGISTRY.overhead_line_sn.some((a) => a.id === 'insert-zksn'),
+      'kabel→ZK SN, napowietrzna→słup rozgałęźny',
+    );
+  }
+
+  // (e) TEST NEGATYWNY (dowód, że wyrocznia gryzie): rozstrzyganie tematu bez
+  //     weryfikacji w modelu (indeks PUSTY) MUSI zbić pokrycie do zera —
+  //     inaczej sonda mierzyłaby samą deklarację, nie zachowanie.
+  {
+    const pustyIndex = buildCanvasModelIndex(null);
+    const sceneL2 = buildSceneV3(enm, 2);
+    const obszaryL2 = buildCanvasHitAreas({
+      symbols: sceneL2.symbols, segments: sceneL2.segments, labels: [], resultMarkers: [], scale: 1,
+    });
+    const tematy = obszaryL2.filter(
+      (a) => resolveCanvasMenuSubject({ klasa: a.klasa, ownerRef: a.ownerRef, elementKind: a.elementKind }, pustyIndex).stan === 'temat',
+    ).length;
+    check(
+      'menu_subject_probe (test negatywny — dowód, że wyrocznia gryzie): model pusty MUSI dać 0 tematów menu',
+      tematy === 0,
+      `tematów=${tematy}`,
+    );
   }
 }
 

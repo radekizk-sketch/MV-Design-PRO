@@ -128,7 +128,8 @@ export const ACTION_ROADMAP_HINT_PL: Readonly<Record<string, string>> = {
   'insert-station': 'Wstawianie stacji transformatorowej: Etap 4 roadmapy.',
   'insert-zksn': 'Wstawianie złącza kablowego SN: Etap 4 roadmapy.',
   'insert-sectional': 'Wstawianie łącznika sekcyjnego: Etap 4 roadmapy.',
-  'insert-joint': 'Wstawianie mufy kablowej: Etap 4 roadmapy.',
+  // Karta S9-5: wpis 'insert-joint' USUNIĘTY razem z pozycją menu (mufa
+  // kablowa nie ma operacji domenowej ani edytora — patrz `SLD_MENU_REGISTRY`).
   'insert-pole': 'Wstawianie słupa rozgałęźnego: Etap 4 roadmapy.',
   'add-source': 'Wybór PV, BESS albo farmy wiatrowej odbywa się w karcie "Układy PV/BESS/FW" konfiguratora stacji.',
   'add-load': 'Dodawanie obciążenia nN: Etap 4 roadmapy.',

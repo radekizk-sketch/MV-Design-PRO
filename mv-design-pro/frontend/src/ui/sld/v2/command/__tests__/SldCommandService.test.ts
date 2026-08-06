@@ -66,7 +66,13 @@ describe('SldCommandService — SLD_MENU_REGISTRY', () => {
     expect(actions.some((a) => a.id === 'insert-zksn')).toBe(true);
     expect(actions.some((a) => a.id === 'insert-pole')).toBe(false);
     expect(actions.some((a) => a.id === 'change-family-to-overhead')).toBe(true);
-    expect(actions.some((a) => a.id === 'insert-joint' && a.labelPl === 'Wstaw mufę kablową')).toBe(true);
+    // Karta S9-5 — INTENCJA ZACHOWANA, KANON ZMIENIONY: pozycja „Wstaw mufę
+    // kablową" była obietnicą bez dostawcy (brak operacji w `CANONICAL_OPS`,
+    // brak edytora `Branch.cable_joints` na jakimkolwiek ekranie), więc klik
+    // kończył się wyłącznie komunikatem „Etap 4 roadmapy". Test pilnuje TERAZ,
+    // że pozycja NIE WRACA do menu bez realnej operacji domenowej — to ta sama
+    // intencja („menu kabla przewiduje dalszy projekt"), tylko bez fikcji.
+    expect(actions.some((a) => a.id === 'insert-joint')).toBe(false);
   });
 
   it('menu linii napowietrznej ma "Wstaw słup rozgałęźny" (specyficzne dla napowietrznej)', () => {
