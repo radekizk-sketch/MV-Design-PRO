@@ -34,8 +34,8 @@ describe('W3 §7 — formatLineLengthPl (format „l = …")', () => {
 
 describe('W3 §7 — formatRatedVoltageKv', () => {
   it('całkowite bez miejsc, ułamkowe z przecinkiem', () => {
-    expect(formatRatedVoltageKv(20)).toBe('20 kV');
-    expect(formatRatedVoltageKv(10.5)).toBe('10,5 kV');
+    expect(formatRatedVoltageKv(20)).toBe('Un=20 kV');
+    expect(formatRatedVoltageKv(10.5)).toBe('Un=10,5 kV');
   });
   it('brak/≤0 ⇒ null (katalog nie niesie ⇒ pominięte)', () => {
     expect(formatRatedVoltageKv(null)).toBeNull();
@@ -53,7 +53,7 @@ describe('W3 §7/§6 — formatLineTechnicalLabel (człon techniczny bez relacji
         lengthKm: 0.68,
         overhead: false,
       }),
-    ).toBe('YAKXS 3×1×240 mm² · 20 kV · l = 680 m');
+    ).toBe('YAKXS 3×1×240 mm² · Un=20 kV · l = 680 m');
   });
 
   it('brak napięcia (katalog nie niesie) ⇒ człon pominięty, zero fabrykacji', () => {
@@ -76,7 +76,7 @@ describe('W3 §7/§6 — formatLineTechnicalLabel (człon techniczny bez relacji
         overhead: false,
         hasJoint: true,
       }),
-    ).toBe('Kabel SN XLPE Al 3×120 mm² · 20 kV · l = 1,24 km · mufa');
+    ).toBe('Kabel SN XLPE Al 3×120 mm² · Un=20 kV · l = 1,24 km · mufa');
   });
 
   it('§6: linia napowietrzna — typ katalogowy niesie rozróżnienie zakończenia (przyłącze napowietrzne)', () => {

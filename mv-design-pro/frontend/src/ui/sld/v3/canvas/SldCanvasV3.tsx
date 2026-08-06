@@ -2484,17 +2484,24 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
   // Ile opisów wypadło przez próg czytelności (V12K-218) — potrzebne, żeby
   // ukrycie było JAWNE dla projektanta, a nie cichym zniknięciem danych.
   //
-  // S9-7 (audyt C-4): licznik obejmuje TAKŻE tożsamości PORZUCONE przez plan
-  // (`droppedIdentity`). Do tej karty plan miał stopień awaryjny „rysuj pismem
+  const hiddenUnreadableLabels = labelPlan.hiddenDetail.length;
+  // S9-7 (audyt C-4): KOMUNIKAT na ekranie liczy TAKŻE tożsamości PORZUCONE
+  // przez plan. Do tej karty plan miał stopień awaryjny „rysuj pismem
   // naturalnym", więc tożsamość nigdy formalnie nie wypadała — ale przy dolnym
   // krańcu zoomu (skala 0,05) lądowała na ekranie jako 1,4-pikselowy pyłek,
   // czyli znikała FAKTYCZNIE, nie będąc nigdzie policzoną. Po usunięciu tego
   // stopnia (patrz `canvas/labelLegibility.ts`) napis albo jest czytelny, albo
-  // go nie ma — a skoro go nie ma, MUSI być policzony tutaj, inaczej wskaźnik
-  // kłamałby o stanie rysunku. Pomiar na sieci fixturowej: 7 (referencyjna) /
-  // 36 (długi ciąg) tożsamości przy skali 0,05; zero przy skalach, w których
-  // kamera realnie utrzymuje dany poziom szczegółu.
-  const hiddenUnreadableLabels = labelPlan.hiddenDetail.length + labelPlan.droppedIdentity.length;
+  // go nie ma — a skoro go nie ma, użytkownik MUSI się o tym dowiedzieć.
+  // Pomiar na sieci fixturowej: 7 (referencyjna) / 36 (długi ciąg) tożsamości
+  // przy skali 0,05; zero przy skalach, w których kamera realnie utrzymuje dany
+  // poziom szczegółu.
+  //
+  // Kanały AUDYTU w DOM zostają ROZDZIELONE (`data-hidden-unreadable` =
+  // wyłącznie dane szczegółowe, `data-dropped-identity` = tożsamości), żeby
+  // bilans „narysowane + ukryte + porzucone == etykiety sceny" dało się
+  // sprawdzić bez podwójnego liczenia — komunikat jest SUMĄ tych dwóch, a nie
+  // trzecią, niezależną liczbą.
+  const niewidoczneOpisy = hiddenUnreadableLabels + labelPlan.droppedIdentity.length;
 
   // K12 (KARTA_K12, dyrektywa właściciela 2026-07-30): legenda symboli NIE
   // jest już domyślną treścią kanwy — zabierała miejsce, była cięższa
@@ -2962,10 +2969,10 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
        * przycisk h-7 ⇒ pas 40 px) — na zrzucie odbiorczym K11-B połowa zdania
        * była zasłonięta. Komunikat o UKRYTEJ treści, który sam jest zasłonięty,
        * nie informuje o niczym. */}
-      {hiddenUnreadableLabels > 0 && Number.isFinite(camera.transform.scale) && camera.transform.scale > 0 && (
+      {niewidoczneOpisy > 0 && Number.isFinite(camera.transform.scale) && camera.transform.scale > 0 && (
         <text
           data-testid="sld-v3-hidden-labels-hint"
-          data-hidden-count={hiddenUnreadableLabels}
+          data-hidden-count={niewidoczneOpisy}
           x={screenToWorld({ x: width - 12, y: height - HIDDEN_LABELS_HINT_BOTTOM_PX }, camera.transform).x}
           y={screenToWorld({ x: width - 12, y: height - HIDDEN_LABELS_HINT_BOTTOM_PX }, camera.transform).y}
           textAnchor="end"
@@ -2975,7 +2982,7 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
           fill={palette.baseStroke}
           opacity={0.75}
         >
-          {`Ukryto ${hiddenUnreadableLabels} ${hiddenUnreadableLabels === 1 ? 'opis' : 'opisów'} — przybliż, aby zobaczyć`}
+          {`Ukryto ${niewidoczneOpisy} ${niewidoczneOpisy === 1 ? 'opis' : 'opisów'} — przybliż, aby zobaczyć`}
         </text>
       )}
     </svg>

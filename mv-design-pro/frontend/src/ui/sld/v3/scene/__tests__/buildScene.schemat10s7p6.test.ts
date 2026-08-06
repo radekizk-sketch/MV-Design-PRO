@@ -114,9 +114,21 @@ describe('SCHEMAT-10 S7.6 — kontraktowe minimum światła pasm (Z1 KOMPRESJA)'
     // zjadają NOWE piony łączników ciągu dalszego (kanał powrotny + rynna
     // podjęcia na każdym złamaniu), więc bilans netto jest UJEMNY — reguła
     // „nie-rosnąca" (spec §15.1) spełniona.
-    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 0))).toBe(22232);
-    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 1))).toBe(39240);
-    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 2))).toBe(39240);
+    // S9-7/8 (TYPOGRAFIA I HIERARCHIA RYSUNKU): PODNIESIONY 22232/39240/39240 →
+    // 22440/39448/39448 (+208 px jednolicie). Przyczyna ZMIERZONA: oznacznik
+    // jednoznaczności napięcia znamionowego kabla („Un=", `layout/lineLabel.ts`,
+    // S9-8) wydłuża etykietę przęsła o 3 glify, a ta jest REZERWACJĄ szerokości
+    // kolumny stacji (`requiredSegmentLabelWidth`), więc `colorSegmentLabelRows`
+    // inaczej dzieli sloty na wiersze pasma B1; „jedna kotwica" S1 propaguje
+    // deltę jednolicie na L0/L1/L2. Świadome odstępstwo od „nie-rosnącej"
+    // (§15.1 „redukcja jest ograniczeniem MIĘKKIM"): sam napis „20 kV" w
+    // łańcuchu członów nie mówi, czy to napięcie izolacji kabla, czy pracy
+    // sieci — a te bywają różne na tym samym rysunku. Wariant „Un = " ze
+    // spacjami kosztowałby +2536 px i obniżał gęstość tuszu 2,03 %→1,94 %,
+    // dlatego wybrano formę zwartą (pomiar w `formatRatedVoltageKv`).
+    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 0))).toBe(22440);
+    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 1))).toBe(39448);
+    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 2))).toBe(39448);
   });
 
   it('determinizm: rekordy pasm identyczne w dwóch biegach (fixtura referencyjna, L2)', () => {

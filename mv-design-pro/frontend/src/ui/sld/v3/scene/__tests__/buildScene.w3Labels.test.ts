@@ -96,7 +96,9 @@ describe('W3 §7 — etykieta techniczna L2 z realnych danych katalogu/ENM', () 
     expect(spanTexts.length).toBeGreaterThan(0);
     // Relacja z parą końców (§17) + długość w formacie §7.
     expect(spanTexts.some((t) => / ↔ /.test(t) && /· l = \d/.test(t))).toBe(true);
-    // Napięcie znamionowe z katalogu (fixtura: voltage_rating_kv=20) przed długością.
-    expect(spanTexts.some((t) => /· \d+(?:,\d+)? kV · l = /.test(t))).toBe(true);
+    // Napięcie znamionowe z katalogu (fixtura: voltage_rating_kv=20) przed
+    // długością. S9-8: człon jest OZNACZONY („Un="), żeby nie dało się go
+    // pomylić z napięciem pracy sieci — intencja asercji bez zmian.
+    expect(spanTexts.some((t) => /· Un=\d+(?:,\d+)? kV · l = /.test(t))).toBe(true);
   });
 });

@@ -47,6 +47,7 @@ import { buildSceneV3 } from '../../scene/buildScene';
 import { SYMBOL_DEFS } from '../../symbols/defs';
 import { FRAME_MARGIN } from '../../sheet/Frame';
 import { SldCanvasV3, scenePointToCameraWorld } from '../SldCanvasV3';
+import { SLD_CANVAS_DOCK_INSETS } from '../toolbarLayout';
 
 afterEach(() => cleanup());
 
@@ -131,18 +132,37 @@ describe('SldCanvasV3 — kontrakt kadru (KD-7): podpisy są treścią rysunku',
   for (const lod of [0, 1, 2] as const) {
     it(`LOD ${lod}: cała rysowana treść (z etykietami) mieści się w kadrze z pełnym marginesem fitu`, () => {
       const m = marginesyKadru(lod);
+      // S9-8 („obszar bezpieczny pod dokami UI"): margines wymagany to padding
+      // fitu PLUS pas zasłonięty dokiem po danej stronie. Do tej karty kadr
+      // liczył się do PEŁNEGO prostokąta kanwy, więc treść wpasowana „na styk"
+      // wchodziła pod pas narzędzi u góry i pas kontrolek u dołu (mechanizm
+      // `SafeInsets` kamery istniał od v2 i nie był zasilany — zdolność bez
+      // dostawcy). Liczby biorą się ze STAŁYCH DOKÓW, nie z dopasowania „aż
+      // zzielenieje".
+      const wymagany = {
+        lewo: FIT_PADDING_PX + SLD_CANVAS_DOCK_INSETS.left,
+        prawo: FIT_PADDING_PX + SLD_CANVAS_DOCK_INSETS.right,
+        gora: FIT_PADDING_PX + SLD_CANVAS_DOCK_INSETS.top,
+        dol: FIT_PADDING_PX + SLD_CANVAS_DOCK_INSETS.bottom,
+      };
       // Wszystkie cztery strony: NIC nie wystaje i nikt nie zjada paddingu.
       // Epsilon 1e-6 to arytmetyka zmiennoprzecinkowa, nie tolerancja
       // inżynierska (dopuszczenie choćby jednego piksela luzu przepuściłoby
       // dryf o `FRAME_MARGIN` mierzony w dziesiątkach pikseli).
-      expect(m.lewo).toBeGreaterThanOrEqual(FIT_PADDING_PX - 1e-6);
-      expect(m.prawo).toBeGreaterThanOrEqual(FIT_PADDING_PX - 1e-6);
-      expect(m.gora).toBeGreaterThanOrEqual(FIT_PADDING_PX - 1e-6);
-      expect(m.dol).toBeGreaterThanOrEqual(FIT_PADDING_PX - 1e-6);
-      // Oś ograniczająca styka się z paddingiem DOKŁADNIE — kadr jest ciasny
-      // wokół treści, nie „gdzieś w środku kanwy" (bez tego orzeczenia kadr
-      // mógłby oddalić się dowolnie i nadal spełniać nierówność wyżej).
-      expect(Math.min(m.lewo, m.prawo, m.gora, m.dol)).toBeCloseTo(FIT_PADDING_PX, 6);
+      expect(m.lewo).toBeGreaterThanOrEqual(wymagany.lewo - 1e-6);
+      expect(m.prawo).toBeGreaterThanOrEqual(wymagany.prawo - 1e-6);
+      expect(m.gora).toBeGreaterThanOrEqual(wymagany.gora - 1e-6);
+      expect(m.dol).toBeGreaterThanOrEqual(wymagany.dol - 1e-6);
+      // Oś ograniczająca styka się z wymaganym marginesem DOKŁADNIE — kadr jest
+      // ciasny wokół treści, nie „gdzieś w środku kanwy" (bez tego orzeczenia
+      // kadr mógłby oddalić się dowolnie i nadal spełniać nierówność wyżej).
+      const luzy = [
+        m.lewo - wymagany.lewo,
+        m.prawo - wymagany.prawo,
+        m.gora - wymagany.gora,
+        m.dol - wymagany.dol,
+      ];
+      expect(Math.min(...luzy)).toBeCloseTo(0, 6);
     });
   }
 
