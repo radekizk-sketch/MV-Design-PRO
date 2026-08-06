@@ -160,6 +160,24 @@ describe('SldCanvasV3Workspace — okablowanie danych (F8a)', () => {
       expect(elementTypeForKind(undefined)).toBeUndefined();
     });
 
+    it('S9-4 (audyt P-6): klik w TŁO arkusza CZYŚCI zaznaczenie — pusty arkusz nie jest obiektem', () => {
+      useSnapshotStore.setState({ snapshot: enm });
+      const scene = buildSceneV3(enm, 0);
+      const stationIndex = scene.symbols.findIndex((s) => s.symbolId === 'stationCollapsed');
+      const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
+      // Najpierw REALNE zaznaczenie (żeby było co czyścić — inaczej test
+      // przechodziłby na pustym stanie i niczego nie dowodził).
+      fireEvent.click(uchwytSymbolu(container, scene, stationIndex)!);
+      expect(useSelectionStore.getState().selectedElement).not.toBeNull();
+
+      // Klik w korzeń kanwy = tło: cały rysunek jest bierny, więc w
+      // przeglądarce każdy punkt bez uchwytu daje DOKŁADNIE ten cel zdarzenia.
+      fireEvent.click(container.querySelector('[data-testid="sld-canvas-v3"]')!);
+
+      expect(useSelectionStore.getState().selectedElement).toBeNull();
+      expect(useSelectionStore.getState().selectedElements).toEqual([]);
+    });
+
     it('F9.4 (runda korekcyjna, F-3): klik w symbol gridSource (sieć zewnętrzna, GPZ) → SelectedElement.type = "Source", id = source ref — PRZED poprawką brakowało gałęzi "source" w elementTypeForKind (spadało na "DescriptiveElement")', () => {
       useSnapshotStore.setState({ snapshot: enm });
       // Zero-Debt (dyrektywa 2026-07-17 pkt 5): test brał INDEKS ze sceny L1, a
