@@ -123,8 +123,26 @@ export { formatTransformerRatedPower } from '../../v2/renderer/StationOnRunRende
  * rezerwacja szerokości (`requiredStationWidth` niżej) i realny tekst nie
  * mogą się rozjechać (wzór F6b-1).
  */
-export function stationBusbarLabelText(busVoltageKv: number | null | undefined): string {
-  return busVoltageKv != null ? `Sekcja 1 · ${liczbaRysunkuPl(busVoltageKv)} kV` : 'Sekcja 1';
+export function stationBusbarLabelText(
+  busVoltageKv: number | null | undefined,
+  /**
+   * S9-8 (audyt, „identyfikator stacji w opisie sekcji"): KOD STACJI z danych
+   * (`StationOnRunRendererProps.stationCode`). Bez niego 55 sekcji na sieci
+   * referencyjnej nosi ten sam napis „Sekcja 1 · 15 kV" — po skopiowaniu
+   * fragmentu rysunku albo po odesłaniu do strefy arkusza nie da się
+   * powiedzieć, KTÓREJ stacji sekcja to jest. Kod jest daną realną, więc
+   * dopisujemy go jako PIERWSZY człon (człon rozróżniający — patrz
+   * `shortenPreservingIdentity`, `core/text.ts`: przy skracaniu odpadają
+   * człony od końca, więc identyfikator stacji przeżywa najdłużej).
+   *
+   * Brak kodu ⇒ napis DOKŁADNIE jak przed kartą (degradacja, zero fabrykacji
+   * — nie wymyślamy identyfikatora ze `station.id`, który jest hashem).
+   */
+  stationCode?: string | null,
+): string {
+  const sekcja = busVoltageKv != null ? `Sekcja 1 · ${liczbaRysunkuPl(busVoltageKv)} kV` : 'Sekcja 1';
+  const kod = stationCode?.trim();
+  return kod ? `${kod} · ${sekcja}` : sekcja;
 }
 
 /** F10.3 (spec §18.4): odstęp między wierszem etykiety szyny SN (nowy, ten
@@ -165,9 +183,15 @@ export function stationBusbarLabelHeight(station: Pick<StationMeasureInput, 'snB
  *  poza kolumnę (zero kolizji z sąsiadem, `overlap_probe`). Zero, gdy stacja
  *  bez pól SN (zgodnie z `stationBusbarLabelHeight` wyżej).
  */
-function stationBusbarLabelWidth(station: Pick<StationMeasureInput, 'snBays' | 'busVoltageKv'>): number {
+function stationBusbarLabelWidth(
+  station: Pick<StationMeasureInput, 'snBays' | 'busVoltageKv' | 'stationCode'>,
+): number {
   if (station.snBays.length === 0) return 0;
-  return measureLabelWidth(stationBusbarLabelText(station.busVoltageKv), 't2');
+  // S9-8: rezerwacja liczona z TEGO SAMEGO tekstu, który rysuje
+  // `compose/station.ts` — łącznie z identyfikatorem stacji (jedna prawda
+  // measure↔compose, wzór F6b-1; rozjazd oznaczałby etykietę wystającą poza
+  // własną kolumnę).
+  return measureLabelWidth(stationBusbarLabelText(station.busVoltageKv, station.stationCode), 't2');
 }
 
 // ---------------------------------------------------------------------------

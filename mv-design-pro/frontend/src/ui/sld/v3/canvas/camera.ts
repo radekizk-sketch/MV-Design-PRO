@@ -58,6 +58,7 @@ import {
   IDENTITY_TRANSFORM,
   type ViewportTransform,
   type BoundingBox,
+  type SafeInsets,
 } from '../../v2/viewport/ViewportController';
 import type { V3Rect } from '../core/grid';
 import type { SceneLod } from '../scene/buildScene';
@@ -318,6 +319,10 @@ export type CameraAction =
       /** F12-C (E15): środek bloku GPZ dla trybu „focus" kamery mobilnej —
        *  patrz `computeInitialCameraState`; brak/`null` = ścieżka „fit". */
       readonly focusPoint?: { readonly x: number; readonly y: number } | null;
+      /** S9-8: pasy kanwy zasłonięte dokami UI — kadr liczony w prostokącie
+       *  BEZPIECZNYM (patrz `SLD_CANVAS_DOCK_INSETS`, `canvas/toolbarLayout.ts`).
+       *  Brak ⇒ `ZERO_INSETS`, czyli zachowanie sprzed karty. */
+      readonly safeInsets?: SafeInsets;
     };
 
 /**
@@ -421,6 +426,7 @@ export function cameraReducer(state: CameraState, action: CameraAction): CameraS
       viewportSize: action.viewportSize,
       focusPoint: action.focusPoint ?? null,
       readableMinScale: MOBILE_PORTRAIT_READABLE_MIN_SCALE,
+      insets: action.safeInsets,
     }).transform;
     return {
       transform,
@@ -482,12 +488,16 @@ export function computeInitialCameraState(
   viewportSize: { readonly width: number; readonly height: number },
   lodBboxes?: Readonly<Record<SceneLod, BoundingBox>>,
   focusPoint?: { readonly x: number; readonly y: number } | null,
+  /** S9-8: pasy zasłonięte dokami UI — patrz `CameraAction` `'refit'`.
+   *  Brak ⇒ `ZERO_INSETS` (zachowanie sprzed karty, testy kamery bez zmian). */
+  safeInsets?: SafeInsets,
 ): CameraState {
   const transform = initialCameraForNetwork({
     bbox,
     viewportSize,
     focusPoint: focusPoint ?? null,
     readableMinScale: MOBILE_PORTRAIT_READABLE_MIN_SCALE,
+    insets: safeInsets,
   }).transform;
   return {
     transform,

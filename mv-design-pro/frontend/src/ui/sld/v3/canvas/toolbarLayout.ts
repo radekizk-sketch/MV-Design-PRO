@@ -61,6 +61,51 @@ export const TOOLBAR_EDGE_PX = 12;
 /** Szerokość przycisku „Narzędzia ▾" [px] (pojawia się TYLKO przy zwinięciu). */
 export const TOOLBAR_MENU_WIDTH_PX = 116;
 
+/** Wysokość rzędu kontrolek doku [px] — `h-7` Tailwinda. */
+export const TOOLBAR_ROW_HEIGHT_PX = 28;
+
+/**
+ * S9-8 (audyt, „obszar bezpieczny pod dokami UI") — PASY ZASŁONIĘTE kanwy.
+ *
+ * PROBLEM. Kamera v3 dopasowywała rysunek do CAŁEGO prostokąta kanwy z
+ * jednolitym marginesem 40 px, a nad kanwą pływają doki: pas narzędzi u góry
+ * (`left-3 right-3 top-3`, rząd 28 px) oraz pas kontrolek u dołu (`bottom-3`,
+ * rząd 28 px — po obu stronach i pośrodku). Treść wpasowana „na styk" wchodziła
+ * pod nie: dokładnie ten sam mechanizm, przez który komunikat „Ukryto N opisów"
+ * musiał już wcześniej dostać własne odsunięcie (`HIDDEN_LABELS_HINT_BOTTOM_PX`,
+ * `canvas/SldCanvasV3.tsx`) — łatka na jeden napis zamiast reguły na całą kanwę.
+ *
+ * ROZSTRZYGNIĘCIE: kadr liczony w PROSTOKĄCIE BEZPIECZNYM, wprost przez
+ * `SafeInsets` kamery v2 (`v2/viewport/ViewportController.ts` — mechanizm
+ * ISTNIAŁ i był udokumentowany słowami „treść nie chowa się pod nakładkami
+ * toolbaru/paneli", ale v3 nigdy go nie zasilała: zdolność bez dostawcy).
+ * Insety liczone są ze STAŁYCH DOKÓW z tego modułu, nie wpisane ręcznie —
+ * zmiana marginesu doku przesuwa kadr sama.
+ *
+ * Pasy LEWY/PRAWY zostają zerowe: doki narożne (`bottom-3 left-3`, `bottom-3
+ * right-3`) leżą W PASIE DOLNYM, więc są już pokryte; odjęcie ich szerokości
+ * na pełnej wysokości kanwy zabrałoby rysunkowi miejsce bez powodu. Panel
+ * boczny (widok wnętrza stacji) jest zasłoną STANOWĄ — podaje ją wołający
+ * przez `SldCanvasV3.safeInsets`, bo tylko on wie, czy panel jest otwarty.
+ */
+export const SLD_CANVAS_DOCK_INSETS: {
+  readonly top: number;
+  readonly right: number;
+  readonly bottom: number;
+  readonly left: number;
+} = {
+  top: TOOLBAR_EDGE_PX + TOOLBAR_ROW_HEIGHT_PX,
+  right: 0,
+  bottom: TOOLBAR_EDGE_PX + TOOLBAR_ROW_HEIGHT_PX,
+  left: 0,
+};
+
+/** S9-8: maksymalna szerokość panelu bocznego „wnętrze stacji" [px] — TA SAMA
+ *  liczba, którą niesie klasa panelu (`max-w-[min(760px,calc(100%-1.5rem))]`,
+ *  `canvas/SldCanvasV3Workspace.tsx`). Stała mieszka tu, obok pozostałej
+ *  geometrii doków, żeby kadr i panel czytały jedną wartość. */
+export const STATION_INTERNAL_PANEL_MAX_WIDTH_PX = 760;
+
 /**
  * Szerokość, przy której WSZYSTKIE grupy mieszczą się rozwinięte. Liczona z
  * kontraktu (suma minimów + odstępy + marginesy), nie wpisana ręcznie —

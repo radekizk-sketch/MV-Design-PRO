@@ -80,6 +80,59 @@ export const LABEL_TYPOGRAPHY: Readonly<Record<LabelClass, LabelTypography>> = {
  */
 export const MIN_READABLE_LABEL_SCREEN_PX = 9;
 
+/**
+ * S9-7 (audyt `docs/sld/AUDYT_JAKOSCI_SLD_2026-08.md` C-4) — TWARDA PODŁOGA
+ * ODBIORU: żaden napis NARYSOWANY na rysunku nie może mieć na ekranie mniej niż
+ * tyle pikseli. Wartość jest PROGIEM WYROCZNI (`sld_v3_acceptance.mjs`
+ * `screen_text_floor_probe`), a nie parametrem układu — układ celuje w
+ * `MIN_READABLE_LABEL_SCREEN_PX` (9), więc podłoga ma 1 px zapasu i pęka
+ * dopiero wtedy, gdy któryś mechanizm PRZESTANIE utrzymywać próg czytelności
+ * (a nie wtedy, gdy ktoś przesunie próg o pół piksela).
+ *
+ * DLACZEGO ODRĘBNA STAŁA. Audyt zmierzył na L0 sieci dużej 114 ze 165 napisów o
+ * wysokości 2 px — a mechanizm KD-11 (`canvas/labelLegibility.ts`) DEKLAROWAŁ,
+ * że tożsamość nigdy nie spada poniżej progu. Deklaracja bez PRZYPIĘTEJ
+ * wyroczni jest fałszywą pewnością (reguła KLASA §4), więc podłoga dostaje
+ * własną, mierzalną stałą i własną sondę — osobno dla napisów sceny i dla
+ * napisów ramki arkusza (`sheet/Frame.tsx`).
+ */
+export const MIN_TEXT_SCREEN_PX = 8;
+
+/**
+ * S9-7 — rozmiar pisma [px ŚWIATA], przy którym napis ma na ekranie DOKŁADNIE
+ * `screenPx` niezależnie od skali kamery. Używane przez napisy APARATU
+ * ARKUSZA (ramka, znaczniki stref, podziałka, poziom szczegółu, legenda) —
+ * te NIE są treścią rysunku, tylko jego oprawą: mają być tej samej wielkości
+ * na ekranie przy każdym zoomie (jak pasek stanu), a nie rosnąć razem z
+ * geometrią.
+ *
+ * ROZRÓŻNIENIE (rozstrzygnięcie karty S9-7, zapisane tutaj, bo tu stoją obie
+ * reguły):
+ *  - APARAT ARKUSZA → rozmiar STAŁY na ekranie (`screenFixedFontSize`);
+ *  - TREŚĆ RYSUNKU (etykiety sceny) → rozmiar naturalny z PODŁOGĄ na ekranie
+ *    (`minReadableFontSize`) — rysunek jest artefaktem skalowanym, a podpis
+ *    ma nie spaść poniżej czytelności; podnoszenie go PONAD rozmiar naturalny
+ *    przy zoomie do środka rozsypywałoby proporcje rysunku technicznego.
+ *
+ * Skala niewiarygodna (≤0/NaN — viewport 0×0 przed pierwszym pomiarem układu)
+ * ⇒ `screenPx` bez kompensacji (parytet z `isLabelReadableAtScale`: brak
+ * pomiaru nie jest dowodem niczego).
+ */
+export function screenFixedFontSize(cls: LabelClass, scale: number): number {
+  const naturalny = LABEL_TYPOGRAPHY[cls].fontSize;
+  if (!Number.isFinite(scale) || scale <= 0) return naturalny;
+  return naturalny / scale;
+}
+
+/** S9-7 — długość [px ŚWIATA] dająca na ekranie dokładnie `screenPx`. Ta sama
+ *  kompensacja co `screenFixedFontSize`, dla ODSTĘPÓW aparatu arkusza
+ *  (odsunięcie znacznika strefy od ramki, długość kreski podziału): gdyby
+ *  rosło samo pismo, a odstępy zostały w świecie, napis wchodziłby na ramkę. */
+export function screenFixedLength(worldPx: number, scale: number): number {
+  if (!Number.isFinite(scale) || scale <= 0) return worldPx;
+  return worldPx / scale;
+}
+
 /** Czy etykieta danej klasy jest czytelna przy tej skali kamery [px ekranu na
  *  jednostkę świata]. Skala niewiarygodna (≤0, NaN — np. viewport 0×0 przed
  *  pierwszym pomiarem układu) NIE ukrywa niczego: brak pomiaru nie jest
@@ -119,29 +172,119 @@ export function minReadableFontSize(cls: LabelClass, scale: number): number {
 }
 
 /**
- * Skraca tekst z WIELOKROPKIEM do zadanej szerokości [px świata] przy zadanym
- * rozmiarze pisma. REGUŁA REUŻYTA z v2 (`v2/renderer/GpzSwitchgearLayout.ts`
- * `fitTextToWidth`, audyt anty-kolizji D1/D2: „silent slice" jest
- * anty-wzorcem — ucinamy do liczby GLIFÓW mieszczących się w szerokości i
- * zostawiamy miejsce na „…"). Skopiowana jest REGUŁA, nie kod: v2 mierzy
- * własnym `labelCharWidthFactor`, a tu obowiązuje JEDNA prawda pomiaru v3
- * (`measureLabelWidth`/`AVG_GLYPH_WIDTH_FACTOR`), więc niezmiennik
- * `measureLabelWidth(fitLabelToWidth(t, f, w), …) ≤ w` trzyma dokładnie.
- *
- * `maxWidth` ≤ szerokość jednego glifu ⇒ pusty tekst (nie ma miejsca nawet na
- * wielokropek — uczciwy brak zamiast wylania się poza slot).
+ * S9-7 (audyt C-6 „Skracanie etykiet do nieczytelności") — SEPARATOR CZŁONÓW
+ * etykiety rysunku. Cała gramatyka opisów v3 składa etykietę z CZŁONÓW
+ * rozdzielonych tą sekwencją („S07 ↔ S08 · Linia napowietrzna Al 120 mm² ·
+ * l = 150 m", „Sekcja 1 · 15 kV", „GPZ Referencyjny 15 kV · 110/15 kV"), a
+ * pierwszy człon jest w KAŻDYM przypadku członem ROZRÓŻNIAJĄCYM: relacją
+ * przęsła, oznaczeniem sekcji, nazwą stacji/GPZ.
  */
-export function fitLabelToWidth(text: string, fontSize: number, maxWidth: number): string {
-  const szerokoscGlifu = fontSize * AVG_GLYPH_WIDTH_FACTOR;
-  if (!Number.isFinite(maxWidth) || szerokoscGlifu <= 0) return text;
-  // `measureTextWidth` zaokrągla W GÓRĘ, więc dopuszczalna liczba glifów liczy
-  // się od szerokości ZAOKRĄGLONEJ W DÓŁ — inaczej niezmiennik „zmierzona
-  // szerokość ≤ maxWidth" pękałby o ≤1 px dla niecałkowitych slotów.
-  const mieszczaceSie = Math.floor(Math.floor(maxWidth) / szerokoscGlifu);
-  if (mieszczaceSie >= text.length) return text;
-  if (mieszczaceSie < 2) return '';
-  return `${text.slice(0, mieszczaceSie - 1)}…`;
+const CZLON_SEPARATOR = ' · ';
+
+/**
+ * S9-7 (audyt C-6) — SKRACANIE ZACHOWUJĄCE CZŁON ROZRÓŻNIAJĄCY.
+ *
+ * DLACZEGO NIE UCINANIE OD PRAWEJ (reguła sprzed tej karty, `fitLabelToWidth`,
+ * USUNIĘTA razem z jedynym wołającym). Ucinanie od prawej po glifach robi z
+ * „GPZ Referencyjny 15 kV · 110/15 kV" napis „GPZ R…", a z kodu stacji „S…" —
+ * audyt zmierzył formy „S1…", „S2…", „S400", „S630", z których dwie ostatnie
+ * czyta się jak MOC transformatora, nie jak nazwę stacji. Etykieta skrócona
+ * tak, że nie da się z niej wskazać ELEMENTU, jest gorsza niż jej brak: nie
+ * informuje, a zajmuje miejsce i udaje daną.
+ *
+ * REGUŁA (deterministyczna, bez zgadywania treści, NIGDY nie tnie w środku
+ * wyrazu — cięcie śródwyrazowe jest źródłem form typu „S400"/„S630"):
+ *  1. mieści się w całości ⇒ tekst pełny;
+ *  2. inaczej odrzucamy CAŁE człony od KOŃCA, zostawiając zawsze co najmniej
+ *     pierwszy — „S07 ↔ S08 · Linia … · l = 150 m" schodzi do „S07 ↔ S08 …",
+ *     czyli do relacji, po której element się rozpoznaje;
+ *  3. gdy nie mieści się nawet sam pierwszy człon, skracamy go W ŚRODKU z
+ *     zachowaniem OGONA ROZRÓŻNIAJĄCEGO („Stacja SN-01" → „S…SN-01"): to jest
+ *     przypadek nazwany wprost w karcie — dwadzieścia stacji „Stacja SN-…"
+ *     wygląda identycznie, dopiero końcówka je rozróżnia. Ogon = ostatni
+ *     wyraz, a gdy ostatnim wyrazem jest JEDNOSTKA MIARY — para „wartość +
+ *     jednostka" („15 kV"), bo sama jednostka nie rozróżnia niczego;
+ *  4. `…ogon` bez głowy, ale TYLKO gdy ogon nie jest samą parą wartość+
+ *     jednostka: „…15 kV" udaje etykietę napięcia, a nie nazwę elementu —
+ *     to dokładnie ta klasa pomyłki, którą audyt zmierzył na „S400"/„S630";
+ *  5. `wyrazy początkowe …` — CAŁE wiodące wyrazy z wielokropkiem („GPZ …").
+ *     Mniej informacji niż ogon, ale nadal prawdziwe słowa nazwy;
+ *  6. gdy nie mieści się nawet pierwszy wyraz ⇒ PUSTY tekst. Wołający (plan
+ *     renderu) traktuje pusty wynik jak brak miejsca i etykiety NIE rysuje —
+ *     uczciwy brak, policzony we wskaźniku „Ukryto N opisów".
+ *
+ * OGRANICZENIE NAZWANE: gdy element rozróżnia wyraz ze ŚRODKA nazwy („GPZ
+ * *Referencyjny* 15 kV" vs „GPZ *Wschodni* 15 kV"), żadna forma mieszcząca
+ * się w kilku glifach go nie przeniesie — wynikiem jest „GPZ …" plus wskaźnik
+ * ukrycia. Rozróżnianie po ŚRODKU wymagałoby porównania z resztą zbioru
+ * etykiet (wspólny przedrostek), czego ta funkcja świadomie nie robi: byłaby
+ * wtedy zależna od sąsiadów, a więc niedeterministyczna względem pojedynczej
+ * etykiety.
+ *
+ * Niezmiennik (przypięty testem): `measureTextWidth(wynik, fontSize) ≤
+ * maxWidth`, wynik nigdy nie zawiera fragmentu wyrazu wejściowego innego niż
+ * pełny wyraz (poza głową skrótu środkowego, zawsze zakończoną „…").
+ */
+export function shortenPreservingIdentity(text: string, fontSize: number, maxWidth: number): string {
+  if (!Number.isFinite(maxWidth) || maxWidth <= 0 || fontSize <= 0) return text;
+  const miesciSie = (kandydat: string): boolean => measureTextWidth(kandydat, fontSize) <= maxWidth;
+  if (miesciSie(text)) return text;
+
+  const czlony = text.split(CZLON_SEPARATOR);
+  // (2) odrzucanie całych członów od końca — zawsze zostaje co najmniej pierwszy.
+  for (let n = czlony.length - 1; n >= 1; n--) {
+    const kandydat = `${czlony.slice(0, n).join(CZLON_SEPARATOR)} …`;
+    if (miesciSie(kandydat)) return kandydat;
+  }
+
+  const pierwszy = czlony[0];
+  if (miesciSie(pierwszy)) return pierwszy;
+  const wyrazy = pierwszy.split(' ').filter((w) => w.length > 0);
+  if (wyrazy.length === 0) return '';
+
+  // Ogon rozróżniający: ostatni wyraz, a przy jednostce miary — para
+  // „wartość + jednostka" (sama „kV" nie rozróżnia niczego).
+  const ostatni = wyrazy[wyrazy.length - 1];
+  const ogonJestJednostka = JEDNOSTKI_RYSUNKU.has(ostatni);
+  const ogon =
+    ogonJestJednostka && wyrazy.length >= 3 ? `${wyrazy[wyrazy.length - 2]} ${ostatni}` : ostatni;
+  const ogonBezTresci = ogonJestJednostka || WARTOSC_Z_JEDNOSTKA.test(ogon);
+
+  if (wyrazy.length > 1) {
+    // (3) głowa skracana od najdłuższej do najkrótszej — pierwsza mieszcząca
+    // się wygrywa. Zakres = długość pierwszego wyrazu (kilkanaście znaków),
+    // więc pętla liniowa jest tańsza i czytelniejsza niż połówkowa.
+    const glowa = wyrazy[0];
+    for (let g = glowa.length; g >= 1; g--) {
+      const kandydat = `${glowa.slice(0, g)}…${ogon}`;
+      if (miesciSie(kandydat)) return kandydat;
+    }
+    // (4) sam ogon — tylko gdy niesie treść inną niż wartość z jednostką.
+    if (!ogonBezTresci && miesciSie(`…${ogon}`)) return `…${ogon}`;
+  }
+
+  // (5) całe wyrazy wiodące z wielokropkiem — nigdy fragment wyrazu.
+  for (let w = wyrazy.length - 1; w >= 1; w--) {
+    const kandydat = `${wyrazy.slice(0, w).join(' ')} …`;
+    if (miesciSie(kandydat)) return kandydat;
+  }
+
+  // (6) nie mieści się nawet pierwszy wyraz — uczciwy brak zamiast ogryzka.
+  return '';
 }
+
+/** S9-7 — ZAMKNIĘTA lista jednostek zapisu rysunku (człon, który sam z siebie
+ *  NIE rozróżnia elementu). Używana wyłącznie przez `shortenPreservingIdentity`
+ *  do wyznaczenia ogona rozróżniającego; każda pozycja występuje w realnych
+ *  etykietach v3 (`layout/lineLabel.ts`, `layout/measure.ts`, `compose/*`). */
+const JEDNOSTKI_RYSUNKU: ReadonlySet<string> = new Set([
+  'V', 'kV', 'kVA', 'MVA', 'kW', 'MW', 'kvar', 'Mvar', 'A', 'kA', 'm', 'km', 'mm²', 'Ω', '%', 'Hz',
+]);
+
+/** S9-7 — „liczba + jednostka" jako CAŁY ogon (np. „15 kV", „630 kVA"): forma,
+ *  której nie wolno pokazać samej, bo czyta się ją jak daną techniczną, a nie
+ *  jak nazwę elementu (audyt C-6: „S400"/„S630" wyglądają jak moce). */
+const WARTOSC_Z_JEDNOSTKA = /^\d+(?:[.,]\d+)?(?:\/\d+(?:[.,]\d+)?)? [^\s]+$/u;
 
 /**
  * Liczba w POLSKIM zapisie rysunku: całkowita bez miejsc dziesiętnych („20"),

@@ -31,16 +31,38 @@
  *   (b) PASMO ETYKIET — wiersze pasma nazw (`ownerKind:'station-name'`) są
  *       przestawiane od góry pasma z powiększonymi wysokościami, więc nie
  *       nachodzą na siebie nawzajem (wiersze ukryte nie zajmują miejsca);
- *   (c) SKRACANIE Z WIELOKROPKIEM (`fitLabelToWidth`) — gdy powiększona
- *       etykieta koliduje, jest skracana do NAJDŁUŻSZEJ postaci, która
- *       kolizji nie ma (wyszukiwanie połówkowe po liczbie glifów);
- *   (d) PIERWSZEŃSTWO — rozstrzyganie w porządku `labelResolutionOrder`
+ *   (c) SKRACANIE ZACHOWUJĄCE CZŁON ROZRÓŻNIAJĄCY (`shortenPreservingIdentity`,
+ *       `core/text.ts`, S9-7/audyt C-6) — gdy powiększona etykieta koliduje,
+ *       jest skracana do NAJDŁUŻSZEJ postaci, która kolizji nie ma
+ *       (wyszukiwanie połówkowe po DOSTĘPNEJ SZEROKOŚCI, nie po liczbie
+ *       glifów: całe człony odpadają od końca, a ostatnią formą jest skrót
+ *       środkowy z zachowanym członem rozróżniającym);
+ *   (d) ZMIANA STRONY KOTWICY (S9-7) — gdy powiększony prostokąt nie mieści
+ *       się po stronie zadeklarowanej przez scenę, plan próbuje strony
+ *       PRZECIWNEJ (napis znad szyny idzie pod szynę). Prześwit od kotwicy
+ *       zostaje ten sam, bo prostokąt nadal rośnie OD niej — zmienia się
+ *       tylko zwrot. To stopień swobody TAŃSZY niż utrata tożsamości;
+ *   (e) PIERWSZEŃSTWO — rozstrzyganie w porządku `labelResolutionOrder`
  *       (`layout/declutter.ts`, ta sama reguła co declutter sceny): symbol
  *       zawsze wygrywa z etykietą, etykieta o wyższym priorytecie wygrywa z
- *       niższą. Etykieta, dla której nawet najkrótsza postać koliduje, NIE
- *       jest rysowana — plan zwraca ją jawnie (`droppedIdentity`), żeby
- *       wyrocznia odbioru mogła pilnować, że na sieciach kanonicznych ten
- *       zbiór jest PUSTY (a nie żeby cicho zgubić tożsamość).
+ *       niższą. Etykieta, dla której nawet najkrótsza postać koliduje po
+ *       OBU stronach, NIE jest rysowana — plan zwraca ją jawnie
+ *       (`droppedIdentity`), żeby wyrocznia odbioru mogła pilnować, że na
+ *       skalach produkcyjnych ten zbiór jest PUSTY (a nie żeby cicho zgubić
+ *       tożsamość).
+ *
+ * S9-7 (audyt C-4, TWARDA PODŁOGA EKRANOWA). Do wersji sprzed tej karty plan
+ * miał czwarty stopień ustępstwa: „powrót do rozmiaru NATURALNEGO w oryginalnym
+ * slocie sceny" — etykieta, której powiększona postać nigdzie nie pasowała,
+ * była rysowana pismem naturalnym. Zmierzone skutki na sieci fixturowej:
+ * 35 nazw stacji o wysokości 1,4 px ekranu przy dolnym krańcu zoomu (L0 @0,05)
+ * i 1 podpis szyny 5,6 px na L1 @0,51. Rysowanie napisu, którego z definicji
+ * nie da się przeczytać, jest gorsze niż jego brak: zajmuje miejsce, blokuje
+ * sąsiadów w declutterze i FAŁSZUJE deklarację „tożsamość jest czytelna
+ * wszędzie". Ten stopień został USUNIĘTY — plan albo rysuje napis nie mniejszy
+ * niż `MIN_READABLE_LABEL_SCREEN_PX` na ekranie, albo go nie rysuje i mówi o
+ * tym wprost (`droppedIdentity` + wskaźnik „Ukryto N opisów"). Własność ma
+ * PRZYPIĘTĄ wyrocznię: `plannedLabelsBelowScreenFloor` niżej.
  *
  * Czysta funkcja: brak DOM/Date/losowości (P7) — ten sam wynik w renderze,
  * teście i runnerze odbioru.
@@ -48,15 +70,16 @@
 
 import { rectsOverlap, type V3Rect } from '../core/grid';
 import {
-  fitLabelToWidth,
   isLabelHiddenAtScale,
   isLabelReadableAtScale,
   LABEL_TYPOGRAPHY,
   measureTextWidth,
   minReadableFontSize,
+  MIN_READABLE_LABEL_SCREEN_PX,
+  shortenPreservingIdentity,
 } from '../core/text';
 import { labelPriority, labelResolutionOrder } from '../layout/declutter';
-import type { OwnedLabel } from '../layout/labels';
+import type { OwnedLabel, SimpleAnchorPlacement } from '../layout/labels';
 
 /** Etykieta zaplanowana do narysowania — geometria EFEKTYWNA (po ewentualnym
  *  powiększeniu pisma i skróceniu tekstu), nie surowa z sceny. */
@@ -87,10 +110,6 @@ export interface LabelRenderPlan {
    *  (wyrocznia `accept:sld-v3`). Ostatnia deska ratunku przed kolizją. */
   readonly droppedIdentity: readonly OwnedLabel[];
 }
-
-/** Minimalna liczba glifów, poniżej której skracanie traci sens (jeden znak +
- *  wielokropek). Poniżej tego `fitLabelToWidth` zwraca pusty tekst. */
-const MIN_GLYPHS = 2;
 
 /** Prostokąt etykiety o zadanej szerokości/wysokości, zakotwiczony jak slot
  *  oryginalny: rośnie OD kotwicy (`placement`), a w osi prostopadłej pozostaje
@@ -174,23 +193,54 @@ interface Dopasowanie {
 }
 
 /**
+ * S9-7 (d): STRONY KOTWICY w kolejności ustępstw — zadeklarowana przez scenę,
+ * potem przeciwna (napis znad szyny idzie pod szynę), na końcu dwie
+ * prostopadłe. Prostokąt zawsze rośnie OD kotwicy, więc prześwit od toru/
+ * symbolu jest zachowany na każdej z nich; zmienia się wyłącznie ZWROT.
+ *
+ * DLACZEGO CZTERY, A NIE DWIE. Pomiar na fixturze referencyjnej (L1 @0,51):
+ * podpisy DER („PV 500 kW", 4 sztuki) nie mieszczą się ani pod symbolem, ani
+ * nad nim — kolizja jest PIONOWA (powiększony wiersz jest wyższy od
+ * rezerwacji pasma), więc żadne skracanie tekstu jej nie usuwa, a obie strony
+ * pionowe są zajęte. Bez stron prostopadłych jedynym wyjściem byłoby albo
+ * rysowanie pisma nieczytelnego (5,6 px ekranu — stan sprzed tej karty), albo
+ * utrata tożsamości źródła na rysunku. Obie są gorsze niż podpis obok symbolu.
+ *
+ * `undefined` dla etykiet bez zadeklarowanej strony (klasa `'dane'`, która
+ * nigdy nie rośnie, więc alternatywy nie potrzebuje) ⇒ pusta lista.
+ */
+function stronyWKolejnosci(placement: OwnedLabel['placement']): readonly SimpleAnchorPlacement[] {
+  switch (placement) {
+    case 'above':
+      return ['above', 'below', 'right', 'left'];
+    case 'below':
+      return ['below', 'above', 'right', 'left'];
+    case 'left':
+      return ['left', 'right', 'above', 'below'];
+    case 'right':
+      return ['right', 'left', 'above', 'below'];
+    default:
+      return [];
+  }
+}
+
+/**
  * Postać etykiety, która NIE koliduje ani z rysunkiem, ani z etykietą już
  * zachowaną — szukana w kolejności ustępstw od najlepszej do najgorszej:
  *
- *  1. pełny tekst pismem powiększonym do minimum czytelnego;
- *  2. tekst SKRÓCONY z wielokropkiem, pismem powiększonym — najdłuższa postać,
- *     która się mieści (wyszukiwanie POŁÓWKOWE po liczbie glifów; poprawne, bo
- *     prostokąt jest zakotwiczony, więc krótszy tekst daje prostokąt ZAWARTY w
- *     dłuższym, a kolizyjność jest monotoniczna względem długości);
- *  3. pismo NATURALNE w oryginalnym slocie sceny — czyli DOKŁADNIE to, co
- *     rysunek pokazywał przed KD-11. Ten stopień gwarantuje, że etykieta
- *     tożsamości nigdy nie wypada przez SAMO powiększenie: w najgorszym razie
- *     wraca do rozmiaru sprzed karty (slot sceny jest rozłączny z konstrukcji,
- *     bo declutter sceny już go rozstrzygnął), zamiast zniknąć.
+ *  1. pełny tekst pismem powiększonym do minimum czytelnego, po stronie
+ *     zadeklarowanej przez scenę;
+ *  2. tekst SKRÓCONY z zachowaniem członu rozróżniającego, pismem
+ *     powiększonym — najdłuższa postać, która się mieści (wyszukiwanie
+ *     POŁÓWKOWE po DOSTĘPNEJ SZEROKOŚCI; poprawne, bo prostokąt jest
+ *     zakotwiczony, więc węższy daje prostokąt ZAWARTY w szerszym, a
+ *     `shortenPreservingIdentity` jest nierosnąca względem szerokości);
+ *  3. te same dwa kroki po kolejnych stronach kotwicy (`stronyWKolejnosci`).
  *
- * `null` = nawet slot naturalny jest zajęty (etykieta o wyższym priorytecie
- * zajęła go po powiększeniu) — wtedy wołający ją porzuca, bo alternatywą jest
- * kolizja, a ta jest zakazana.
+ * `null` = nie ma miejsca po ŻADNEJ stronie nawet dla najkrótszej formy
+ * niosącej człon rozróżniający. Wołający wtedy etykiety NIE rysuje i mówi o
+ * tym wprost — pisma NIE zmniejszamy poniżej progu czytelności (patrz
+ * „TWARDA PODŁOGA EKRANOWA" w nagłówku pliku).
  */
 function najlepszeDopasowanie(
   kandydat: Kandydat,
@@ -199,45 +249,54 @@ function najlepszeDopasowanie(
 ): Dopasowanie | null {
   const { label, fontSize, slot, tekstBazowy } = kandydat;
   const height = kandydat.enlarged ? wysokoscWiersza(fontSize) : slot.height;
-  const prostokatDla = (text: string): V3Rect =>
-    kandydat.enlarged
-      ? anchoredRect(slot, measureTextWidth(text, fontSize), height, label.placement)
-      : slot;
   const wolne = (rect: V3Rect): boolean =>
     !obstacles.some((r) => rectsOverlap(rect, r)) && !zajete.some((r) => rectsOverlap(rect, r));
 
-  const pelny = prostokatDla(tekstBazowy);
-  if (tekstBazowy.length > 0 && wolne(pelny)) {
-    return { text: tekstBazowy, rect: pelny, fontSize, enlarged: kandydat.enlarged };
+  if (!kandydat.enlarged) {
+    // Etykiety NIEpowiększone nie mają czego skracać ani gdzie przestawiać —
+    // ich prostokąt jest REZERWACJĄ sceny (rozstrzygniętą już declutterem przy
+    // budowie), a nie funkcją tekstu.
+    return tekstBazowy.length > 0 && wolne(slot)
+      ? { text: tekstBazowy, rect: slot, fontSize, enlarged: false }
+      : null;
   }
-  // Etykiety NIEpowiększone nie mają czego skracać ani do czego wracać — ich
-  // prostokąt jest rezerwacją sceny, a nie funkcją tekstu.
-  if (!kandydat.enlarged) return null;
 
-  let lo = MIN_GLYPHS;
-  let hi = tekstBazowy.length - 1; // krótsze niż pełny (pełny już sprawdzony)
-  let najlepszy: Dopasowanie | null = null;
-  while (lo <= hi) {
-    const mid = Math.floor((lo + hi) / 2);
-    const text = `${tekstBazowy.slice(0, mid - 1)}…`;
-    const rect = prostokatDla(text);
-    if (wolne(rect)) {
-      najlepszy = { text, rect, fontSize, enlarged: true };
-      lo = mid + 1;
-    } else {
-      hi = mid - 1;
+  const proboj = (placement: OwnedLabel['placement']): Dopasowanie | null => {
+    const prostokatDla = (text: string): V3Rect =>
+      anchoredRect(slot, measureTextWidth(text, fontSize), height, placement);
+
+    const pelny = prostokatDla(tekstBazowy);
+    if (tekstBazowy.length > 0 && wolne(pelny)) {
+      return { text: tekstBazowy, rect: pelny, fontSize, enlarged: true };
     }
-  }
-  if (najlepszy) return najlepszy;
 
-  // (3) POWRÓT DO ROZMIARU NATURALNEGO — ustępstwo zamiast zniknięcia.
-  if (wolne(label.rect)) {
-    return {
-      text: label.text,
-      rect: label.rect,
-      fontSize: LABEL_TYPOGRAPHY[label.labelClass].fontSize,
-      enlarged: false,
-    };
+    // (2) wyszukiwanie połówkowe po DOSTĘPNEJ SZEROKOŚCI [px świata].
+    let lo = 1;
+    let hi = Math.max(1, Math.ceil(measureTextWidth(tekstBazowy, fontSize)) - 1);
+    let najlepszy: Dopasowanie | null = null;
+    while (lo <= hi) {
+      const mid = Math.floor((lo + hi) / 2);
+      const text = shortenPreservingIdentity(tekstBazowy, fontSize, mid);
+      if (text.length === 0) {
+        lo = mid + 1; // za wąsko na jakąkolwiek formę — szukamy szerzej
+        continue;
+      }
+      const rect = prostokatDla(text);
+      if (wolne(rect)) {
+        najlepszy = { text, rect, fontSize, enlarged: true };
+        lo = mid + 1;
+      } else {
+        hi = mid - 1;
+      }
+    }
+    return najlepszy;
+  };
+
+  const strony = stronyWKolejnosci(label.placement);
+  if (strony.length === 0) return proboj(label.placement);
+  for (const strona of strony) {
+    const dopasowanie = proboj(strona);
+    if (dopasowanie) return dopasowanie;
   }
   return null;
 }
@@ -293,7 +352,7 @@ export function planSceneLabels(
     // rozstrzyganie kolizji niżej.
     const tekstBazowy =
       !czytelna && label.ownerKind === 'station-name'
-        ? fitLabelToWidth(label.text, fontSize, label.rect.width)
+        ? shortenPreservingIdentity(label.text, fontSize, label.rect.width)
         : label.text;
     kandydaci.push({ label, index, fontSize, enlarged: !czytelna, slot: label.rect, tekstBazowy });
   });
@@ -377,6 +436,37 @@ export function plannedLabelCollisions(
   }
   return kolizje;
 }
+
+/**
+ * S9-7 (audyt C-4) — WYROCZNIA TWARDEJ PODŁOGI EKRANOWEJ: etykiety
+ * NARYSOWANE, których pismo ma na ekranie mniej niż `floorScreenPx`.
+ *
+ * Na poprawnym planie ZAWSZE pusta — plan albo utrzymuje próg czytelności
+ * (`MIN_READABLE_LABEL_SCREEN_PX`), albo etykiety nie rysuje. Wyrocznia
+ * istnieje po to, żeby ta własność była MIERZONA na każdym poziomie
+ * szczegółu i przy każdej skali kamery, a nie deklarowana w komentarzu
+ * (reguła KLASA §4: „deklaracja bez testu = fałszywa pewność" — poprzednia
+ * wersja planu deklarowała dokładnie to i nie utrzymywała tego w 36
+ * przypadkach na fixturze referencyjnej).
+ *
+ * Skala niewiarygodna (≤0/NaN) ⇒ zbiór pusty: brak pomiaru nie jest dowodem
+ * nieczytelności (parytet z `isLabelReadableAtScale`, `core/text.ts`).
+ */
+export function plannedLabelsBelowScreenFloor(
+  plan: LabelRenderPlan,
+  scale: number,
+  floorScreenPx: number,
+): readonly { readonly ownerRef: string; readonly screenPx: number }[] {
+  if (!Number.isFinite(scale) || scale <= 0) return [];
+  return plan.drawn
+    .map((p) => ({ ownerRef: p.label.ownerRef, screenPx: p.fontSize * scale }))
+    .filter((p) => p.screenPx < floorScreenPx - 1e-9);
+}
+
+/** S9-7 — próg, którego plan pilnuje od środka (`minReadableFontSize`).
+ *  Re-eksport, żeby wołający wyroczni nie musiał sięgać po dwie stałe z
+ *  dwóch modułów i nie powstała druga, rozjeżdżająca się prawda. */
+export { MIN_READABLE_LABEL_SCREEN_PX };
 
 /** Etykiety NARYSOWANE, które nachodzą na jakikolwiek prostokąt rysunku
  *  (symbol albo odcinek toru). Na poprawnym planie puste — patrz `plannedLabelCollisions`. */
