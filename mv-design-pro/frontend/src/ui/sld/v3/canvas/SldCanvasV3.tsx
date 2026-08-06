@@ -37,6 +37,12 @@ import { LABEL_TYPOGRAPHY, labelLineHeight, measureLabelWidth } from '../core/te
 import { GRID } from '../core/grid';
 import { planSceneLabels, type PlannedLabel } from './labelLegibility';
 import {
+  LABEL_OWNER_ELEMENT_KIND,
+  buildCanvasHitAreas,
+  type CanvasHitArea,
+  type ResultMarkerHitInput,
+} from './hitAreas';
+import {
   SEGMENT_STROKE_WIDTH,
   pointsToPath,
   type PreviewElementKind,
@@ -106,13 +112,11 @@ const SLD_V3_CANVAS_LEGEND: readonly SheetLegendEntry[] = [];
  *  grot nie dominował nad symbolami toru (spec §6 hierarchia graficzna). */
 const FLOW_ARROW_LENGTH = 12;
 const FLOW_ARROW_HALF_WIDTH = 5;
-/** Zero-Debt pkt 5: szerokość NIEWIDZIALNEGO hitboxa odcinka [px świata] —
- *  widoczna kreska toru (1.6–2.4) jest za wąska na realny klik użytkownika
- *  (pomiar 2026-07-17: klik natywny w tor nie trafiał; syntetyczny
- *  `dispatchEvent` w testach maskował defekt). 12 px świata ≈ czytelny cel
- *  przy typowym zoomie, wciąż węższy niż odstęp korytarzy (GRID=8 ⇒ tory
- *  sąsiednie ≥ 2×GRID od siebie — hitboxy się nie nakładają). */
-const SEGMENT_HIT_STROKE_WIDTH = 12;
+/** Karta S9-4: obszary trafienia NIE są już stałą świata (dawne
+ *  `SEGMENT_HIT_STROKE_WIDTH = 12`, które dawało 7 px ekranu przy skali 0,6 i
+ *  36 px przy skali 3) — liczy je `canvas/hitAreas.ts` z minimum EKRANOWEGO
+ *  `MIN_HIT_SCREEN_PX`, a rysuje jedna warstwa `sld-v3-trafienia` (patrz
+ *  nagłówek tamtego modułu: dwa przebiegi obrys → obszar). */
 /** Offset etykiety wartości od osi przewodu [px świata] — PO PRZECIWNEJ
  *  stronie niż etykiety przęseł pasma B1 (te są NAD osią magistrali,
  *  `layout/bands.ts` B1 u góry; przepływ idzie POD przewód dla biegów
@@ -286,6 +290,12 @@ export interface SldCanvasV3Props {
    *  renderowane jest opacity bazowe 1, więc `false` służy WYŁĄCZNIE jawnemu
    *  usunięciu węzła animacji z markupu eksportu. */
   readonly animateLodTransitions?: boolean;
+  /** Karta S9-4 (audyt §3.2, P-6 „klik w tło zaznacza obiekt"): klik w PUSTY
+   *  arkusz — poza obszarem trafienia jakiegokolwiek obiektu. Kanwa nie zna
+   *  selekcji (to stan wołającego), więc tylko melduje zdarzenie; wołający
+   *  (`SldCanvasV3Workspace`) czyści zaznaczenie. Brak propa = zachowanie jak
+   *  dotychczas (klik w tło bez skutku). */
+  readonly onBackgroundClick?: () => void;
 }
 
 function strokeForEnergization(energized: boolean | undefined, palette: SldPalette): string | undefined {
@@ -315,15 +325,9 @@ function SceneSymbolNode(props: {
   readonly symbol: PreviewSymbol;
   readonly index: number;
   readonly overlay: SldV3Overlay | undefined;
-  readonly onElementClick: ((testId: string, meta?: SldElementClickMeta) => void) | undefined;
-  readonly onElementDoubleClick: ((testId: string, meta?: SldElementClickMeta) => void) | undefined;
-  readonly onElementContextMenu:
-    | ((testId: string, meta: SldElementClickMeta | undefined, clientX: number, clientY: number) => void)
-    | undefined;
 }): JSX.Element {
-  const { symbol, index, overlay, onElementClick, onElementDoubleClick, onElementContextMenu } = props;
+  const { symbol, index, overlay } = props;
   const palette = useSldPalette();
-  const def = SYMBOL_DEFS[symbol.symbolId];
   const Glyph = SYMBOL_GLYPHS[symbol.symbolId];
   const testId = symbolTestId(symbol, index);
   // F8b-1 FIX (recenzja): preferuj tożsamość LOD-niezależną (ownerRef) —
@@ -346,7 +350,6 @@ function SceneSymbolNode(props: {
   const stroke = sourceState
     ? sourceStateOverlayColor(sourceState, palette)
     : strokeForEnergization(energizedSym, palette) ?? baseSymbolStrokeColor(symbol.symbolId, symbol.meta, palette);
-  const clickMeta: SldElementClickMeta = { ownerRef: symbol.meta?.ownerRef, elementKind: symbol.meta?.elementKind, derKind: symbol.meta?.derKind };
   return (
     <g
       data-testid={testId}
@@ -358,25 +361,13 @@ function SceneSymbolNode(props: {
       data-owner-ref={symbol.meta?.ownerRef}
       data-element-kind={symbol.meta?.elementKind}
       data-der-kind={symbol.meta?.derKind}
-      onClick={onElementClick ? () => onElementClick(testId, clickMeta) : undefined}
-      onDoubleClick={onElementDoubleClick ? () => onElementDoubleClick(testId, clickMeta) : undefined}
-      onContextMenu={
-        onElementContextMenu
-          ? (event) => {
-              // F8c pkt 3: `stopPropagation` — bez tego klik prawym w symbol
-              // bąbelkowałby do handlera tła na `<svg>` (patrz niżej), co
-              // otwierałoby DWA menu (element + tło) naraz.
-              event.preventDefault();
-              event.stopPropagation();
-              onElementContextMenu(testId, clickMeta, event.clientX, event.clientY);
-            }
-          : undefined
-      }
-      style={onElementClick || onElementDoubleClick || onElementContextMenu ? { cursor: 'pointer' } : undefined}
     >
-      {/* Cel kliku powiększony do bboxa symbolu (ergonomia — glify IEC bywają
-       *  wąskie, np. odłącznik 16×24 rysowany kreską). Zero widocznego stylu. */}
-      <rect x={symbol.x} y={symbol.y} width={def.width} height={def.height} fill="transparent" />
+      {/* Karta S9-4: węzeł symbolu jest CZYSTYM RYSUNKIEM — uchwyt kliku
+       *  (prostokąt gabarytowy + jego rozszerzenie do 24 px ekranu) mieszka w
+       *  warstwie `sld-v3-trafienia`, jedno miejsce dla wszystkich rodzajów
+       *  obiektów kanwy. Dawny transparentny `<rect>` w tej grupie był drugim,
+       *  niezależnym źródłem prawdy o celu kliku (i miał gabaryt ŚWIATA, więc
+       *  przy oddaleniu kurczył się do kilku pikseli ekranu). */}
       <Glyph
         x={symbol.x}
         y={symbol.y}
@@ -396,6 +387,81 @@ function SceneSymbolNode(props: {
   );
 }
 
+/**
+ * Karta S9-4 — POJEDYNCZY UCHWYT obiektu kanwy (przezroczysty kształt łapiący
+ * zdarzenia). Dwie role: `obrys` (ślad rysunku) i `obszar` (ten sam kształt
+ * rozszerzony do `MIN_HIT_SCREEN_PX` na ekranie). Geometria pochodzi WYŁĄCZNIE
+ * z `canvas/hitAreas.ts` — węzeł niczego nie dolicza, żeby sonda odbioru
+ * mierzyła to samo, co widzi użytkownik.
+ *
+ * Atrybuty `data-hit-*` są kanałem audytu (jak `data-owner-ref` na rysunku):
+ * to po nich sonda odbioru odczytuje uchwyty z WYRENDEROWANEGO drzewa.
+ */
+function HitShapeNode(props: {
+  readonly area: CanvasHitArea;
+  readonly rola: 'obrys' | 'obszar';
+  readonly interaktywna: boolean;
+  readonly onKlik: (testId: string) => void;
+  readonly onDwuklik: ((testId: string) => void) | undefined;
+  readonly onMenu: ((testId: string, clientX: number, clientY: number) => void) | undefined;
+}): JSX.Element {
+  const { area, rola, interaktywna, onKlik, onDwuklik, onMenu } = props;
+  const shape = rola === 'obrys' ? area.obrys : area.obszar;
+  const klik = (event: { stopPropagation: () => void }): void => {
+    // `stopPropagation` — klik w obiekt NIE jest klikiem w tło (patrz handler
+    // `onClick` na `<svg>`: tłem jest wyłącznie brak uchwytu pod kursorem).
+    event.stopPropagation();
+    onKlik(area.testId);
+  };
+  const wspolne = {
+    'data-hit-for': area.testId,
+    'data-hit-role': rola,
+    'data-hit-klasa': area.klasa,
+    'data-hit-owner-ref': area.ownerRef,
+    onClick: klik,
+    onDoubleClick: onDwuklik
+      ? (event: React.MouseEvent) => {
+          event.stopPropagation();
+          onDwuklik(area.testId);
+        }
+      : undefined,
+    onContextMenu: onMenu
+      ? (event: React.MouseEvent) => {
+          event.preventDefault();
+          event.stopPropagation();
+          onMenu(area.testId, event.clientX, event.clientY);
+        }
+      : undefined,
+    style: interaktywna ? ({ cursor: 'pointer' } as const) : undefined,
+  };
+  if (shape.ksztalt === 'prostokat') {
+    return (
+      <rect
+        {...wspolne}
+        x={shape.x}
+        y={shape.y}
+        width={shape.width}
+        height={shape.height}
+        fill="transparent"
+        pointerEvents="all"
+      />
+    );
+  }
+  return (
+    <path
+      {...wspolne}
+      // Kreska trafienia idzie ŁAMANĄ sceny (bez mostków `crossings.ts`):
+      // mostek jest zabiegiem czytelności rysunku, a nie kształtem toru — cel
+      // kliku ma odpowiadać torowi, nie jego ozdobie.
+      d={pointsToPath(shape.points)}
+      fill="none"
+      stroke="transparent"
+      strokeWidth={2 * shape.halfWidth}
+      pointerEvents="stroke"
+    />
+  );
+}
+
 function SceneSegmentNode(props: {
   readonly segment: PreviewSegment;
   readonly index: number;
@@ -406,12 +472,8 @@ function SceneSegmentNode(props: {
    *  identyczna jak dotąd (`polylinePathWithBridges` bez mostków ==
    *  `pointsToPath`, dowód w teście). */
   readonly sceneCrossings: readonly PowerPathCrossing[] | undefined;
-  readonly onElementClick: ((testId: string, meta?: SldElementClickMeta) => void) | undefined;
-  readonly onElementContextMenu:
-    | ((testId: string, meta: SldElementClickMeta | undefined, clientX: number, clientY: number) => void)
-    | undefined;
 }): JSX.Element | null {
-  const { segment, index, overlay, sceneCrossings, onElementClick, onElementContextMenu } = props;
+  const { segment, index, overlay, sceneCrossings } = props;
   // Hak PRZED wyjściem warunkowym (reguła haków Reacta) — paleta motywu.
   const palette = useSldPalette();
   if (segment.points.length < 2) return null;
@@ -450,13 +512,6 @@ function SceneSegmentNode(props: {
   const flowSeg = segResultRef != null
     ? overlay?.flowByOwnerRef?.[segResultRef]
     : undefined;
-  const segmentClickMeta: SldElementClickMeta = {
-    ownerRef: segment.meta?.ownerRef,
-    elementKind: segment.meta?.elementKind,
-    // K5-A: kanoniczny Bus ref szyny (GPZ `busResultRef`) — patrz docstring
-    // `SldElementClickMeta.busRef`; `undefined` dla segmentów nie-szynowych.
-    busRef: segment.meta?.busResultRef,
-  };
   // F13.2 (spec §22.1): mostki liczone deterministycznie z przecięć sceny —
   // geometria sceny (punkty/porty/bbox/baseline'y §15.1) NIETKNIĘTA, mostek
   // to wyłącznie kształt ścieżki SVG w miejscu przelotu bez połączenia.
@@ -466,8 +521,12 @@ function SceneSegmentNode(props: {
   const pathD = bridges && bridges.size > 0
     ? polylinePathWithBridges(segment.points, bridges)
     : pointsToPath(segment.points);
-  const interactive = Boolean(onElementClick || onElementContextMenu);
-  const visiblePath = (
+  // Karta S9-4: odcinek jest CZYSTYM RYSUNKIEM — uchwyt kliku (kreska o
+  // grubości widocznej + jej rozszerzenie do 24 px ekranu) mieszka w warstwie
+  // `sld-v3-trafienia`. Dawny drugi `path` o stałej szerokości 12 j.św. był
+  // hitboxem ŚWIATA: przy skali 0,6 dawał 7 px ekranu (za wąsko na klik), a
+  // przy skali 3 — 36 px (zjadał sąsiednie tory).
+  return (
     <path
       data-testid={testId}
       // Tożsamość elementu w DOM (diagnostyka/E2E): ownerRef segmentu — ten
@@ -487,47 +546,6 @@ function SceneSegmentNode(props: {
       strokeWidth={strokeWidth}
       strokeDasharray={strokeDasharray}
     />
-  );
-  if (!interactive) return visiblePath;
-  // Parytet klikalności odcinka (F8c pkt 3, wymagalne po ślepej uliczce e2e
-  // sld-editor-real-backend-flex 2026-07-17): klik lewym = selekcja odcinka,
-  // ta sama trasa co symbole (`onElementClick` → workspace: drawer → E-12).
-  //
-  // HITBOX (Zero-Debt pkt 5, pomiar klika NATYWNEGO 2026-07-17): widoczna
-  // kreska toru ma 1.6–2.4 px świata — realny klik użytkownika w tor nie
-  // trafiał (celu nie dało się kliknąć; testy maskowały to syntetycznym
-  // `dispatchEvent`). Drugi, PRZEZROCZYSTY path o tej samej geometrii i
-  // szerokim stroke = poszerzony cel (ten sam kanon co hitboxy segmentów v2
-  // i hit-rect symboli w `SceneSymbolNode`). Zero zmiany rysunku: hitbox
-  // renderowany WYŁĄCZNIE na kanwie interaktywnej (harness renderów
-  // bazowych nie podaje handlerów), bez atrybutów tożsamości (adresowalny
-  // path z `data-owner-ref` pozostaje DOKŁADNIE jeden).
-  return (
-    <g
-      // F8c pkt 3: `stopPropagation` — menu kontekstowe/klik elementu nie
-      // bąbelkuje do handlera tła na `<svg>`.
-      onClick={
-        onElementClick
-          ? (event) => {
-              event.stopPropagation();
-              onElementClick(testId, segmentClickMeta);
-            }
-          : undefined
-      }
-      style={onElementClick ? { cursor: 'pointer' } : undefined}
-      onContextMenu={
-        onElementContextMenu
-          ? (event) => {
-              event.preventDefault();
-              event.stopPropagation();
-              onElementContextMenu(testId, segmentClickMeta, event.clientX, event.clientY);
-            }
-          : undefined
-      }
-    >
-      {visiblePath}
-      <path d={pathD} fill="none" stroke="transparent" strokeWidth={SEGMENT_HIT_STROKE_WIDTH} pointerEvents="stroke" />
-    </g>
   );
 }
 
@@ -1714,9 +1732,8 @@ function SceneResultLabelNode(props: {
   readonly placement: ResultLabelPlacement;
   readonly index: number;
   readonly stale: boolean;
-  readonly onActivate: ((ownerRef: string, kind: ResultLabelKind) => void) | undefined;
 }): JSX.Element {
-  const { placement, index, stale, onActivate } = props;
+  const { placement, index, stale } = props;
   const palette = useSldPalette();
   const typo = LABEL_TYPOGRAPHY.t4;
   const lineH = labelLineHeight('t4');
@@ -1727,8 +1744,6 @@ function SceneResultLabelNode(props: {
   const severityColor = stale ? null : resultSeverityColor(placement.severity, palette);
   const color = stale ? palette.highlight.resultStale : severityColor ?? palette.highlight.resultLabel;
   const exceeded = !stale && severityColor != null;
-  const interactive = Boolean(onActivate);
-  const activate = onActivate ? () => onActivate(placement.ownerRef, placement.kind) : undefined;
   return (
     <g
       data-testid={`sld-v3-result-label-${index}`}
@@ -1739,28 +1754,6 @@ function SceneResultLabelNode(props: {
       data-result-severity={placement.severity}
       data-result-exceeded={exceeded ? 'true' : 'false'}
       opacity={stale ? 0.5 : 1}
-      role={interactive ? 'button' : undefined}
-      tabIndex={interactive ? 0 : undefined}
-      style={interactive ? { cursor: 'pointer' } : undefined}
-      onClick={
-        activate
-          ? (event) => {
-              event.stopPropagation();
-              activate();
-            }
-          : undefined
-      }
-      onKeyDown={
-        activate
-          ? (event) => {
-              if (event.key === 'Enter' || event.key === ' ') {
-                event.preventDefault();
-                event.stopPropagation();
-                activate();
-              }
-            }
-          : undefined
-      }
     >
       <rect
         x={placement.x}
@@ -1821,7 +1814,6 @@ function SceneResultAggregateNode(props: {
   readonly index: number;
   readonly stale: boolean;
   readonly expanded: boolean;
-  readonly onToggle: (anchorRef: string) => void;
   /** R3 (wym. 6): aktywacja członka skupiska — klik wiersza otwiera panel
    *  wyników elementu (ta sama ścieżka co klik etykiety pojedynczej). */
   readonly onActivate: ((ownerRef: string, kind: ResultLabelKind) => void) | undefined;
@@ -1829,7 +1821,7 @@ function SceneResultAggregateNode(props: {
    *  z payloadu; `undefined` = brak deklaracji). */
   readonly provenanceText: string | undefined;
 }): JSX.Element {
-  const { aggregate, index, stale, expanded, onToggle, onActivate, provenanceText } = props;
+  const { aggregate, index, stale, expanded, onActivate, provenanceText } = props;
   const palette = useSldPalette();
   const typo = LABEL_TYPOGRAPHY.t4;
   const lineH = labelLineHeight('t4');
@@ -1860,23 +1852,9 @@ function SceneResultAggregateNode(props: {
       data-result-exceeded={aggExceeded ? 'true' : 'false'}
       opacity={stale ? 0.5 : 1}
     >
-      <g
-        role="button"
-        tabIndex={0}
-        data-testid={`sld-v3-result-aggregate-toggle-${index}`}
-        style={{ cursor: 'pointer' }}
-        onClick={(event) => {
-          event.stopPropagation();
-          onToggle(aggregate.anchorRef);
-        }}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter' || event.key === ' ') {
-            event.preventDefault();
-            event.stopPropagation();
-            onToggle(aggregate.anchorRef);
-          }
-        }}
-      >
+      {/* Karta S9-4: sam marker jest RYSUNKIEM — uchwyt (i rozwijanie popovera)
+       *  siedzi w warstwie `sld-v3-trafienia` pod tym samym `testId`. */}
+      <g data-testid={`sld-v3-result-aggregate-toggle-${index}`}>
         <rect
           x={aggregate.x}
           y={aggregate.y}
@@ -1966,8 +1944,24 @@ function SceneResultAggregateNode(props: {
                     : undefined
                 }
               >
-                {/* Przezroczysty prostokąt = realny cel klika na całą szerokość wiersza. */}
-                <rect x={aggregate.x} y={rowY} width={popoverW} height={popoverRowH} fill="transparent" />
+                {/* Przezroczysty prostokąt = realny cel klika na całą szerokość
+                  * wiersza. Karta S9-4: rysunek kanwy jest bierny, więc uchwyt
+                  * wiersza MUSI jawnie włączyć łapanie zdarzeń; rozwinięty
+                  * popover celowo przykrywa rysunek (to panel nad arkuszem, nie
+                  * element schematu), dlatego zostaje przy swoim węźle zamiast
+                  * wchodzić do warstwy trafień obiektów kanwy. */}
+                <rect
+                  data-hit-for={`sld-v3-result-aggregate-member-${index}-${i}`}
+                  data-hit-role="obrys"
+                  data-hit-klasa="znacznik-wyniku"
+                  data-hit-owner-ref={m.ownerRef}
+                  x={aggregate.x}
+                  y={rowY}
+                  width={popoverW}
+                  height={popoverRowH}
+                  fill="transparent"
+                  pointerEvents="all"
+                />
                 <text
                   x={aggregate.x + GRID / 2}
                   y={rowY + popoverRowH * 0.5}
@@ -2190,7 +2184,7 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
   const {
     snapshot, width, height, overlay, onElementClick, onElementDoubleClick, onElementContextMenu, lodOverride,
     layerVisibility, onResultLabelActivate, onCameraChange, animateLodTransitions = true, fitSignal,
-    fitTarget = 'tresc', centerRequest,
+    fitTarget = 'tresc', centerRequest, onBackgroundClick,
   } = props;
 
   // KD-8 poz. 1: JEDEN sterownik motywu (`useThemeModeStore`) wybiera paletę
@@ -2466,6 +2460,131 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
   // `SldCanvasV3Workspace.tsx` — w tym opis punktu neutralnego (V12K-223),
   // dawniej doklejany tu bezwarunkowo, dziś częścią tej samej funkcji.
 
+  // -------------------------------------------------------------------------
+  // Karta S9-4 — WARSTWA TRAFIEŃ (`canvas/hitAreas.ts`)
+  // -------------------------------------------------------------------------
+  // Jedno miejsce, w którym kanwa łapie kliki: cały rysunek jest bierny
+  // (`pointer-events="none"` na korzeniu arkusza), a uchwyty rysuje ta warstwa.
+  // Dzięki temu (a) każdy rodzaj obiektu ma uchwyt o tym samym minimum
+  // ekranowym, (b) żaden napis ani nakładka nie „połyka" kliku bez obsługi
+  // (audyt P-1/P-3/P-6), (c) geometria uchwytów i sonda odbioru czytają TĘ SAMĄ
+  // funkcję.
+  //
+  // Obiekt ukryty filtrem warstw nie ma węzła w DOM, więc nie ma też uchwytu —
+  // ten sam predykat (`isLayerVisible(layerIdForElementMeta(...))`) po obu
+  // stronach (reguła KLASA, NIE INSTANCJA pkt 3: warunek WEJŚCIA i WYJŚCIA z
+  // jednego źródła).
+  const ukryteTestId = useMemo(() => {
+    const ukryte = new Set<string>();
+    scene.segments.forEach((segment, index) => {
+      if (!isLayerVisible(layerIdForElementMeta(segment.meta), layerVisibility)) {
+        ukryte.add(segmentTestId(segment, index));
+      }
+    });
+    scene.symbols.forEach((symbol, index) => {
+      if (!isLayerVisible(layerIdForElementMeta(symbol.meta), layerVisibility)) {
+        ukryte.add(symbolTestId(symbol, index));
+      }
+    });
+    return ukryte;
+  }, [scene, layerVisibility]);
+
+  /** Znaczniki warstwy wynikowej (S9-2) jako obiekty trafienia — etykieta
+   *  liczbowa i marker skupiska „+N wyniki" są obiektami kanwy tak samo jak
+   *  symbol czy tor (klik je aktywuje), więc podlegają temu samemu minimum. */
+  const resultMarkerHits = useMemo<readonly ResultMarkerHitInput[]>(
+    () => [
+      ...resultLabelLayout.placements.map((p, index) => ({
+        testId: `sld-v3-result-label-${index}`,
+        ownerRef: p.ownerRef,
+        x: p.x,
+        y: p.y,
+        width: p.width,
+        height: p.height,
+      })),
+      ...resultLabelLayout.aggregates.map((a, index) => ({
+        testId: `sld-v3-result-aggregate-${index}`,
+        ownerRef: a.anchorRef,
+        x: a.x,
+        y: a.y,
+        width: a.width,
+        height: a.height,
+      })),
+    ],
+    [resultLabelLayout],
+  );
+
+  const hitAreas = useMemo<readonly CanvasHitArea[]>(
+    () =>
+      buildCanvasHitAreas({
+        symbols: scene.symbols,
+        segments: scene.segments,
+        labels: labelPlan.drawn,
+        resultMarkers: resultMarkerHits,
+        scale: camera.transform.scale,
+        ukryteTestId,
+      }),
+    [scene, labelPlan, resultMarkerHits, camera.transform.scale, ukryteTestId],
+  );
+
+  /** Symbole, których klik NIESIE też nawigację (KD-5: rozwinięcie zwiniętego
+   *  bloku GPZ na L0) — po `testId`, żeby warstwa trafień nie musiała znać
+   *  indeksów sceny. */
+  const rozwijalneSymbole = useMemo(() => {
+    const mapa = new Map<string, PreviewSymbol>();
+    scene.symbols.forEach((symbol, index) => {
+      if (symbol.symbolId === 'gpzCollapsed') mapa.set(symbolTestId(symbol, index), symbol);
+    });
+    return mapa;
+  }, [scene]);
+
+  /** Meta kliku per obiekt sceny — TA SAMA treść, którą przed kartą S9-4
+   *  budowały węzły `SceneSymbolNode`/`SceneSegmentNode` (tożsamość zaznaczenia:
+   *  `ownerRef` klikniętego obiektu, nie jego kontenera). */
+  const klikMeta = useMemo(() => {
+    const mapa = new Map<string, SldElementClickMeta>();
+    scene.segments.forEach((segment, index) => {
+      mapa.set(segmentTestId(segment, index), {
+        ownerRef: segment.meta?.ownerRef,
+        elementKind: segment.meta?.elementKind,
+        // K5-A: kanoniczny Bus ref szyny (GPZ `busResultRef`).
+        busRef: segment.meta?.busResultRef,
+      });
+    });
+    scene.symbols.forEach((symbol, index) => {
+      mapa.set(symbolTestId(symbol, index), {
+        ownerRef: symbol.meta?.ownerRef,
+        elementKind: symbol.meta?.elementKind,
+        derKind: symbol.meta?.derKind,
+      });
+    });
+    // Etykieta jest UCHWYTEM swojego właściciela (audyt P-2) — klik w napis
+    // „Q1"/„S08 · 15 kV"/nazwę stacji zaznacza TEN element, nie tło.
+    labelPlan.drawn.forEach((planned) => {
+      mapa.set(`sld-v3-label-${planned.index}`, {
+        ownerRef: planned.label.ownerRef,
+        elementKind: LABEL_OWNER_ELEMENT_KIND[planned.label.ownerKind],
+      });
+    });
+    return mapa;
+  }, [scene, labelPlan]);
+
+  /** Aktywacja znacznika wynikowego po `testId` (etykieta → `onResultLabelActivate`,
+   *  marker skupiska → rozwinięcie popovera) — te same wywołania co węzły
+   *  warstwy wynikowej, żeby uchwyt i widok nie rozjechały się semantycznie. */
+  const aktywacjaZnacznika = useMemo(() => {
+    const mapa = new Map<string, () => void>();
+    resultLabelLayout.placements.forEach((p, index) => {
+      if (onResultLabelActivate) {
+        mapa.set(`sld-v3-result-label-${index}`, () => onResultLabelActivate(p.ownerRef, p.kind));
+      }
+    });
+    resultLabelLayout.aggregates.forEach((a, index) => {
+      mapa.set(`sld-v3-result-aggregate-${index}`, () => toggleAggregate(a.anchorRef));
+    });
+    return mapa;
+  }, [resultLabelLayout, onResultLabelActivate, toggleAggregate]);
+
   const viewBox = cameraViewBox(camera.transform, viewportSize);
 
   // F12-B pkt 5 (spec §10.1 ARCH-4, „LassoSelector"): informuje wołającego o
@@ -2590,6 +2709,45 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
     [camera, viewportSize],
   );
 
+  /** Karta S9-4: JEDYNY uchwyt lewego kliku na kanwie. Rozstrzyga po `testId`
+   *  obiektu, więc semantyka („znacznik wyniku aktywuje panel", „zwinięty blok
+   *  GPZ dodatkowo rozwija kadr", „reszta zaznacza") jest w jednym miejscu, a
+   *  nie rozsypana po węzłach rysunku. */
+  const handleHitClick = useCallback(
+    (testId: string) => {
+      const aktywacja = aktywacjaZnacznika.get(testId);
+      if (aktywacja) {
+        aktywacja();
+        return;
+      }
+      const rozwijalny = rozwijalneSymbole.get(testId);
+      if (rozwijalny) expandCollapsedBlock(rozwijalny);
+      onElementClick?.(testId, klikMeta.get(testId));
+    },
+    [aktywacjaZnacznika, rozwijalneSymbole, expandCollapsedBlock, onElementClick, klikMeta],
+  );
+
+  const handleHitContextMenu = useCallback(
+    (testId: string, clientX: number, clientY: number) => {
+      onElementContextMenu?.(testId, klikMeta.get(testId), clientX, clientY);
+    },
+    [onElementContextMenu, klikMeta],
+  );
+
+  const handleHitDoubleClick = useCallback(
+    (testId: string) => {
+      onElementDoubleClick?.(testId, klikMeta.get(testId));
+    },
+    [onElementDoubleClick, klikMeta],
+  );
+
+  /** Czy kanwa ma wołającego, który cokolwiek zrobi z klikiem — steruje
+   *  WYŁĄCZNIE kursorem (kształt uchwytu jest niezmienny, bo kamera KD-5
+   *  reaguje na klik w blok GPZ także w kanwie bez handlerów wołającego). */
+  const kanwaInteraktywna = Boolean(
+    onElementClick || onElementDoubleClick || onElementContextMenu || onResultLabelActivate,
+  );
+
   return (
     <SldPaletteContext.Provider value={palette}>
     <svg
@@ -2624,7 +2782,27 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
             }
           : undefined
       }
+      // Karta S9-4 (audyt P-6 „klik w tło zaznacza obiekt"): rysunek jest
+      // bierny, więc klik, który NIE trafił w żaden obszar trafienia, dociera
+      // tutaj — i tylko tutaj. To jednoznaczna definicja „tła": nie heurystyka
+      // po współrzędnych, tylko brak uchwytu pod kursorem.
+      onClick={
+        onBackgroundClick
+          ? (event) => {
+              if (event.target === event.currentTarget) onBackgroundClick();
+            }
+          : undefined
+      }
     >
+      {/* Karta S9-4 — RYSUNEK JEST BIERNY. `pointer-events="none"` na korzeniu
+       *  arkusza wyłącza łapanie zdarzeń przez CAŁĄ treść (glify, napisy,
+       *  nakładki wyników, ramka arkusza, tabliczka). Kliki łapią WYŁĄCZNIE
+       *  węzły, które jawnie włączają je z powrotem — czyli warstwa
+       *  `sld-v3-trafienia` niżej i uchwyty znaczników wynikowych. Bez tego
+       *  napis bez obsługi połykał klik i zdarzenie nie docierało do obiektu
+       *  pod spodem („klik znika", audyt P-1/P-3). Własność jest DZIEDZICZONA,
+       *  więc jeden atrybut zamyka klasę, a nie listę znanych dekoracji. */}
+      <g data-testid="sld-v3-rysunek" pointerEvents="none">
       <SheetFrame
         width={sheetSize.width}
         height={sheetSize.height}
@@ -2632,6 +2810,41 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
         scaleLabel="wg kamery"
         lodLabel={SCENE_LOD_LABELS_PL[effectiveLod]}
       >
+        {/* Karta S9-4: WARSTWA TRAFIEŃ — dwa piętra, oba przezroczyste.
+         *  Najpierw obszary rozszerzone do minimum ekranowego (dolne piętro),
+         *  potem obrysy rysunku (górne). Kolejność jest kontraktem: obrys
+         *  wygrywa z rozszerzeniem sąsiada, więc poszerzony cel symbolu nie
+         *  zjada kliku w szynę biegnącą pod nim. Warstwa leży POD rysunkiem —
+         *  jest przezroczysta, więc niczego nie zasłania, a rysunek i tak jest
+         *  bierny. */}
+        <g data-testid="sld-v3-trafienia">
+          <g data-testid="sld-v3-trafienia-obszar">
+            {hitAreas.map((area) => (
+              <HitShapeNode
+                key={`hit-obszar-${area.testId}`}
+                area={area}
+                rola="obszar"
+                interaktywna={kanwaInteraktywna}
+                onKlik={handleHitClick}
+                onDwuklik={onElementDoubleClick ? handleHitDoubleClick : undefined}
+                onMenu={onElementContextMenu ? handleHitContextMenu : undefined}
+              />
+            ))}
+          </g>
+          <g data-testid="sld-v3-trafienia-obrys">
+            {hitAreas.map((area) => (
+              <HitShapeNode
+                key={`hit-obrys-${area.testId}`}
+                area={area}
+                rola="obrys"
+                interaktywna={kanwaInteraktywna}
+                onKlik={handleHitClick}
+                onDwuklik={onElementDoubleClick ? handleHitDoubleClick : undefined}
+                onMenu={onElementContextMenu ? handleHitContextMenu : undefined}
+              />
+            ))}
+          </g>
+        </g>
         {/* F13.1 (spec §21.2, D3-2/D3-12): rama strefy GPZ — DEKORACJA z meta
          *  sceny (nie segment toru mocy — zero udziału w wyroczniach §11/
          *  §15.1/§16), rysowana POD warstwami treści; styl: cienka linia
@@ -2694,8 +2907,6 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
                 index={index}
                 overlay={effectiveOverlay}
                 sceneCrossings={sceneCrossings}
-                onElementClick={onElementClick}
-            onElementContextMenu={onElementContextMenu}
               />
             );
           })}
@@ -2704,24 +2915,15 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
           {scene.symbols.map((symbol, index) => {
             if (!isLayerVisible(layerIdForElementMeta(symbol.meta), layerVisibility)) return null;
             // KD-5: blok GPZ zwinięty jest jedynym symbolem, w którym klik
-            // NIESIE też nawigację (rozwinięcie = zbliżenie do progu LOD) —
-            // obok zwykłej selekcji, która działa jak dla każdego elementu.
-            const rozwijalny = symbol.symbolId === 'gpzCollapsed';
-            const klik = rozwijalny
-              ? (testId: string, meta?: SldElementClickMeta) => {
-                  expandCollapsedBlock(symbol);
-                  onElementClick?.(testId, meta);
-                }
-              : onElementClick;
+            // NIESIE też nawigację (rozwinięcie = zbliżenie do progu LOD).
+            // Karta S9-4: ta reguła żyje teraz w `handleHitClick` (jedno miejsce
+            // rozstrzygania kliku), a węzeł symbolu jest czystym rysunkiem.
             return (
               <SceneSymbolNode
                 key={`symbol-${index}`}
                 symbol={symbol}
                 index={index}
                 overlay={effectiveOverlay}
-                onElementClick={klik}
-                onElementDoubleClick={onElementDoubleClick}
-                onElementContextMenu={onElementContextMenu}
               />
             );
           })}
@@ -2806,7 +3008,6 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
               placement={placement}
               index={index}
               stale={resultsStale}
-              onActivate={onResultLabelActivate}
             />
           ))}
           {/* R2 (wym. 14): markery agregatów „+N wyniki" (klik → popover listy). */}
@@ -2817,7 +3018,6 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
               index={index}
               stale={resultsStale}
               expanded={expandedAggregateRef === aggregate.anchorRef}
-              onToggle={toggleAggregate}
               onActivate={onResultLabelActivate}
               provenanceText={resultProvenanceText}
             />
@@ -2926,6 +3126,7 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
           {`Ukryto ${hiddenUnreadableLabels} ${hiddenUnreadableLabels === 1 ? 'opis' : 'opisów'} — przybliż, aby zobaczyć`}
         </text>
       )}
+      </g>
     </svg>
     </SldPaletteContext.Provider>
   );

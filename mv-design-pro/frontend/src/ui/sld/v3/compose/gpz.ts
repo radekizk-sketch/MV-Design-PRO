@@ -484,6 +484,24 @@ function buildFieldStack(
   // rejestru z konstrukcji, uczciwie: nie ma `CanonicalGpzBay` źródłowego).
   deviceItems: readonly BayPrimaryDeviceView[] | null = null,
 ): FieldStack {
+  // Karta S9-4 (tożsamość zaznaczenia) — UNIKALNOŚĆ testId W STOSIE POLA.
+  // `testIdFor` dostaje `(index, symbolId)`, ale wszystkie wywołania budują
+  // identyfikator WYŁĄCZNIE z `symbolId` (np. `gpz-canonical-bay-⟨bay⟩-⟨id⟩`),
+  // więc pole z DWOMA aparatami tego samego rodzaju — a to norma: odłącznik
+  // szynowy + odłącznik liniowy w polu liniowym — dawało DWA obiekty o TEJ
+  // SAMEJ tożsamości. Skutki zmierzone sondą S9-4 na sieci referencyjnej:
+  // `querySelector` po testId trafiał zawsze w pierwszy z nich, a klik w drugi
+  // był nieodróżnialny od kliku w pierwszy. Powtórzenie dostaje przyrostek
+  // porządkowy (`-2`, `-3`, …); PIERWSZE wystąpienie zachowuje identyfikator
+  // bez zmian, więc istniejące odwołania (testy, e2e, nakładki) zostają ważne.
+  const uzyteTestId = new Map<string, number>();
+  const unikalnyTestId = (index: number, symbolId: SymbolId): string | undefined => {
+    const bazowy = testIdFor(index, symbolId);
+    if (bazowy == null) return undefined;
+    const wystapienie = (uzyteTestId.get(bazowy) ?? 0) + 1;
+    uzyteTestId.set(bazowy, wystapienie);
+    return wystapienie === 1 ? bazowy : `${bazowy}-${wystapienie}`;
+  };
   // F10.1 (spec §18.1/§18.2, V12K-033): podział na TOR GŁÓWNY (oś) i APARATY
   // BOCZNE (ES/VT/SA — odgałęzienie poziome od portu S poprzedzającego
   // aparatu szeregowego). TA SAMA reguła co `compose/station.ts::buildBayStack`
@@ -529,7 +547,7 @@ function buildFieldStack(
       deviceRef: deviceItem?.deviceRef,
       linkedRef: deviceItem?.linkedRef,
       ports,
-      meta: { parityKeys: spec.parityKeys, testId: testIdFor(index, spec.symbolId), ...metaExtra },
+      meta: { parityKeys: spec.parityKeys, testId: unikalnyTestId(index, spec.symbolId), ...metaExtra },
     };
     instances.push(instance);
     mainInstances.push(instance);
@@ -585,7 +603,7 @@ function buildFieldStack(
         deviceRef: deviceItem?.deviceRef,
         linkedRef: deviceItem?.linkedRef,
         ports,
-        meta: { parityKeys: spec.parityKeys, testId: testIdFor(index, spec.symbolId), ...metaExtra },
+        meta: { parityKeys: spec.parityKeys, testId: unikalnyTestId(index, spec.symbolId), ...metaExtra },
       });
       const north = def.ports.find((p) => p.dir === 'N') ?? def.ports[0];
       branchSegments.push({

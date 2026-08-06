@@ -136,8 +136,22 @@ import {
   isFlowOverlayEmpty,
   orientedSegmentRefs,
 } from '../src/ui/sld/v3/canvas/overlay.ts';
-import { computeFlowOverlayPlacements, layoutResultLabels } from '../src/ui/sld/v3/canvas/SldCanvasV3.tsx';
+import { computeFlowOverlayPlacements, layoutResultLabels, SldCanvasV3 } from '../src/ui/sld/v3/canvas/SldCanvasV3.tsx';
 import { buildResultLabelsFromScene } from '../src/ui/sld/v3/canvas/resultLabels.ts';
+// Karta S9-4 (trafienie i tożsamość zaznaczenia): sonda siatkowa odczytuje
+// uchwyty z FAKTYCZNIE wyrenderowanego drzewa kanwy, a oczekiwanie liczy ze
+// sceny — patrz nagłówek `canvas/hitAreas.ts` (dwa niezależne źródła).
+import React from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { JSDOM } from 'jsdom';
+import {
+  MIN_HIT_SCREEN_PX,
+  buildCanvasHitAreas,
+  hitAreasFromDom,
+  hitLayerOrderingInDom,
+  pointerBlockersInDom,
+  sondaSiatkowaTrafien,
+} from '../src/ui/sld/v3/canvas/hitAreas.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -1849,6 +1863,159 @@ line('=== identity_label_probe (KD-11: tożsamość na rysunku, bez kolizji) ===
     'identity_label_probe (test negatywny — dowód, że wyrocznia gryzie): dwie etykiety w TYM SAMYM prostokącie MUSZĄ dać FAIL',
     plannedLabelCollisions(sabotaz).length > 0,
   );
+}
+
+// ---------------------------------------------------------------------------
+// KARTA S9-4 — SONDA SIATKOWA TRAFIEŃ (audyt §3.2: P-1 „klik w element w
+// większości nic nie zaznacza", P-2 „inspektor nie rozróżnia obiektów",
+// P-3 „aparaty rysowane kreską są niekilkalne", P-6 „klik w tło zaznacza").
+// ---------------------------------------------------------------------------
+//
+// METODA (dwa niezależne źródła — inaczej sonda pytałaby modelu o model):
+//  - OCZEKIWANIE ze SCENY (`buildCanvasHitAreas`): siatka punktów o kroku
+//    1 j.św. po OBRYSIE każdego obiektu; obiektem oczekiwanym jest ten, którego
+//    obrys zawiera punkt (przy nałożeniu — malowany najwyżej);
+//  - WYNIK z DRZEWA RENDERU: `SldCanvasV3` przepuszczony przez
+//    `renderToStaticMarkup`, sparsowany jsdom-em i odczytany przez
+//    `hitAreasFromDom`. Obiekt, któremu render nie dał uchwytu, NIE ISTNIEJE w
+//    tym zbiorze, więc każdy klik nad nim jest chybieniem (dokładnie stan
+//    etykiet przed tą kartą: 0 uchwytów na 1137 etykiet L2).
+//
+// ILOCZYN CECH (reguła KLASA, NIE INSTANCJA pkt 2): {rodzaj obiektu: symbol
+// stacji · aparat pola · transformator · źródło · układ DER · szyna · tor ·
+// łącznik wiersza arkusza (S9-1) · etykieta · znacznik wyniku (S9-2)} ×
+// {LOD 0/1/2} × {zoom mały/duży}. Zoom sterowany rozmiarem widoku (skala
+// kamery = szerokość widoku / szerokość `viewBox`), więc obie skrajności są
+// mierzone na TEJ SAMEJ scenie.
+line('');
+line('=== hit_grid_probe (S9-4): trafienie i tożsamość zaznaczenia ===');
+{
+  const WIDOKI = [
+    { nazwa: 'mały', width: 1322, height: 696 },
+    { nazwa: 'duży', width: 13220, height: 6960 },
+  ];
+  /** Próg odbioru karty S9-4: ≥ 95 % klików nad elementem zaznacza TEN element. */
+  const PROG_SKUTECZNOSCI = 0.95;
+  const orientedRefs = orientedSegmentRefs(enm);
+
+  for (const lod of LODS) {
+    const scene = buildSceneV3(enm, lod);
+    // Warstwa wynikowa WŁĄCZONA — znaczniki S9-2 są obiektami kanwy tak samo
+    // jak symbol czy tor, więc podlegają temu samemu minimum i tej samej
+    // tożsamości (bez payloadu ta klasa nie byłaby w ogóle zmierzona).
+    const rlByRef = buildResultLabelsFromScene(
+      scene,
+      buildFullResultPayload(scene, orientedRefs),
+      new Set(orientedRefs.keys()),
+    );
+    const overlay = { energizedByTestId: {}, resultLabelsByOwnerRef: rlByRef };
+
+    // Tożsamość: każdy obiekt kanwy MUSI mieć własny, niepowtarzalny `testId` —
+    // bez tego „TEN element" nie ma sensu, bo dwa obiekty są nieodróżnialne.
+    const wszystkieTestId = [
+      ...scene.segments.map((s, i) => s.meta?.testId ?? `sld-v3-segment-${i}`),
+      ...scene.symbols.map((s, i) => s.meta?.testId ?? `sld-v3-symbol-${i}`),
+    ];
+    const powtorzone = wszystkieTestId.filter((t, i) => wszystkieTestId.indexOf(t) !== i);
+    check(
+      `hit_identity_probe (S9-4, P-2) LOD ${lod}: każdy obiekt kanwy ma NIEPOWTARZALNĄ tożsamość (testId)`,
+      powtorzone.length === 0,
+      powtorzone.length === 0 ? `obiektów=${wszystkieTestId.length}` : `powtórzone=${[...new Set(powtorzone)].join(', ')}`,
+    );
+
+    for (const widok of WIDOKI) {
+      const markup = renderToStaticMarkup(
+        React.createElement(SldCanvasV3, {
+          snapshot: enm,
+          width: widok.width,
+          height: widok.height,
+          lodOverride: lod,
+          overlay,
+          onElementClick: () => {},
+          onElementContextMenu: () => {},
+          onResultLabelActivate: () => {},
+          animateLodTransitions: false,
+        }),
+      );
+      const svg = new JSDOM(`<body>${markup}</body>`).window.document.querySelector('[data-testid="sld-canvas-v3"]');
+      const viewBox = (svg.getAttribute('viewBox') ?? '0 0 1 1').split(' ').map(Number);
+      const scale = widok.width / viewBox[2];
+      const labelPlan = planSceneLabels(scene.labels, sceneObstacleRects(scene), scale);
+      const layoutWynikow = layoutResultLabels(scene, rlByRef, [], lod);
+      const oczekiwane = buildCanvasHitAreas({
+        symbols: scene.symbols,
+        segments: scene.segments,
+        labels: labelPlan.drawn,
+        resultMarkers: [
+          ...layoutWynikow.placements.map((p, i) => ({
+            testId: `sld-v3-result-label-${i}`, ownerRef: p.ownerRef, x: p.x, y: p.y, width: p.width, height: p.height,
+          })),
+          ...layoutWynikow.aggregates.map((a, i) => ({
+            testId: `sld-v3-result-aggregate-${i}`, ownerRef: a.anchorRef, x: a.x, y: a.y, width: a.width, height: a.height,
+          })),
+        ],
+        scale,
+      });
+      const zDrzewa = hitAreasFromDom(svg);
+      const wynik = sondaSiatkowaTrafien(oczekiwane, { scale, trafiane: zDrzewa });
+      const etykieta = `LOD ${lod} · zoom ${widok.nazwa} (skala ${scale.toFixed(4)})`;
+
+      // (a) Kolejność warstw uchwytów — bez niej rozszerzenie kradnie klik obrysowi.
+      const porzadek = hitLayerOrderingInDom(svg);
+      check(
+        `hit_layer_order_probe (S9-4) ${etykieta}: wszystkie obszary rozszerzone LEŻĄ POD obrysami rysunku`,
+        porzadek !== null && porzadek.poprawna,
+        porzadek === null ? 'brak warstwy trafień' : `maks(obszar)=${porzadek.maksZObszaru} < min(obrys)=${porzadek.minZObrysu}`,
+      );
+
+      // (b) Nic poza uchwytami nie łapie kliku — napis bez obsługi nie połyka zdarzenia.
+      const blokery = pointerBlockersInDom(svg);
+      check(
+        `hit_blocker_probe (S9-4, P-1/P-3) ${etykieta}: 0 węzłów rysunku łapiących klik poza warstwą trafień`,
+        blokery.length === 0,
+        blokery.length === 0 ? 'rysunek bierny' : `blokery=${blokery.length}: ${blokery.slice(0, 5).join(', ')}`,
+      );
+
+      // (c) Minimum ekranowe na KAŻDYM obiekcie.
+      check(
+        `hit_size_probe (S9-4) ${etykieta}: każdy obiekt ma obszar trafienia ≥ ${MIN_HIT_SCREEN_PX} px ekranu`,
+        wynik.ponizejMinimum.length === 0,
+        wynik.ponizejMinimum.length === 0
+          ? `obiektów=${oczekiwane.length}`
+          : `poniżej=${wynik.ponizejMinimum.length}, np. ${wynik.ponizejMinimum.slice(0, 3).map((o) => `${o.testId}=${o.ekranPx.toFixed(1)}px`).join(', ')}`,
+      );
+
+      // (d) KRYTERIUM ODBIORU: ≥ 95 % klików nad elementem zaznacza TEN element.
+      check(
+        `hit_grid_probe (S9-4, kryterium odbioru) ${etykieta}: ≥ ${(100 * PROG_SKUTECZNOSCI).toFixed(0)} % klików nad elementem zaznacza TEN element`,
+        wynik.skutecznosc >= PROG_SKUTECZNOSCI,
+        `${(100 * wynik.skutecznosc).toFixed(2)} % (${wynik.trafionych}/${wynik.probek})`
+        + (wynik.chybienia.length > 0
+          ? ` · pierwsze chybienie: ${wynik.chybienia[0].oczekiwanyTestId} → ${wynik.chybienia[0].otrzymanyTestId ?? 'tło'}`
+          : ''),
+      );
+      line(
+        `  hit_grid (${etykieta}) wg rodzaju: `
+        + wynik.wgKlas
+          .filter((k) => k.obiektow > 0)
+          .map((k) => `${k.klasa}=${k.probek > 0 ? ((100 * k.trafionych) / k.probek).toFixed(1) : '—'}%/${k.obiektow}ob.`)
+          .join(' '),
+      );
+
+      // (e) TEST NEGATYWNY (dowód, że wyrocznia gryzie): usunięcie uchwytów
+      //     etykiet z drzewa MUSI zbić skuteczność poniżej progu — to dokładnie
+      //     stan sprzed karty S9-4 (napis rysowany, ale nieklikalny).
+      if (widok.nazwa === 'mały') {
+        const bezEtykiet = zDrzewa.filter((a) => a.klasa !== 'etykieta');
+        const wynikBez = sondaSiatkowaTrafien(oczekiwane, { scale, trafiane: bezEtykiet });
+        check(
+          `hit_grid_probe (test negatywny — dowód, że wyrocznia gryzie) LOD ${lod}: uchwyty etykiet usunięte z drzewa MUSZĄ zbić skuteczność poniżej progu`,
+          wynikBez.skutecznosc < PROG_SKUTECZNOSCI,
+          `${(100 * wynikBez.skutecznosc).toFixed(2)} % (bez ${zDrzewa.length - bezEtykiet.length} uchwytów etykiet)`,
+        );
+      }
+    }
+  }
 }
 
 // -- §15.2 lod_path_probe: „pokrywa TE SAME połączenia topologiczne" -------
