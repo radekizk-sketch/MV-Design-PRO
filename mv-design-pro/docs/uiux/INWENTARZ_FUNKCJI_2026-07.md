@@ -4,6 +4,7 @@
 **Data inwentaryzacji:** 2026-07-15 (żywy klon, gałąź `claude/power-network-design-ui-ir91mv`, HEAD `95d0576`)
 **Rewizja:** 2026-07-20 (Audyt F) — synchronizacja z rzeczywistą powierzchnią kodu na HEAD `b30249d`; delty w §8.
 **Rewizja:** 2026-07-25 (audyt FLOW, karty F-K1…F-K3) — powierzchnia kryteriów projektowych (solver cieplny, dwie analizy kryterialne, agregat werdyktu, 3 końcówki, 1 nowy moduł UI); delty w §9.
+**Rewizja macierzy pokrycia (§6):** 2026-08-06 (karta G-09 audytu bramek U2–U5) — rewizja WSZYSTKICH 45 wierszy przeciw kodowi na szczycie `f6be9185`, w ramach domykania bramki U4; bilans i wzorzec luk na końcu §6.
 **Metoda:** listing katalogów + grep w żywym repo (bez zgadywania). Każdy wpis ma źródło w postaci ścieżki.
 **Cel:** gwarancja „ŻADNA funkcja obliczeniowa nie zostaje pominięta" w przebudowie UI/UX.
 **Reguła nadrzędna:** każda pozycja z §1–§3 MUSI mieć przypisaną powierzchnię UI w §6 (macierz pokrycia).
@@ -146,70 +147,78 @@ harnessy renderu (`screenshot-harness-main.tsx` i pokrewne).
 
 ## 6. MACIERZ POKRYCIA: funkcja obliczeniowa → API → UI
 
-Status: ✅ pełne pokrycie UI · ◐ częściowe (wymaga przeprojektowania/dokończenia) · ❌ BRAK powierzchni UI (luka).
-Dowód dla ❌/◐: `grep -ril <termin> frontend/src` z 2026-07-15.
+Status: ✅ pełne pokrycie UI (powierzchnia + test) · ◐ częściowe (jedno zdanie: czego konkretnie brakuje) · ❌ BRAK powierzchni UI (luka).
+Metoda dowodu (rewizja 2026-08-06): dla KAŻDEGO wiersza — listing końcówek backendu (`grep '@router'`)
+przeciw ich konsumpcji we froncie (`grep` po ścieżce URL i po nazwie funkcji klienta), montaż komponentu
+(import w rodzicu, nie samo istnienie pliku) oraz plik testu. Zdanie „brak konsumenta" oznacza ZERO
+wystąpień poza definicją i testem. Kod wygrywa z dokumentem.
 
 | Funkcja | Solver/Analiza | API | UI (stan zastany) | Status |
 |---|---|---|---|---|
-| Zwarcia IEC 60909 | S1 | fault_scenarios, execution_runs, unified_runs | results, results-inspector, sld-overlay, proof | ✅ |
-| Zwarcia maszyn | S2 + A7 | ✅ analysis_run/service.py + proof engine (zweryfikowane U0.3) | rozbicie maszynowe (μ/q/i_b) w pakiecie dowodowym SC3F (G-SCM F2, `backend/src/api/proof_pack.py`) renderowanym przez proof-inspector; brak DEDYKOWANEGO modułu `machine_sc` | ◐ (widoczne przez ProofPack SC3F; dedykowany ekran = opcjonalny) |
-| Rozpływ NR/GS/FD | S3–S5 | power_flow_runs, power_flow_comparisons | power-flow-results, power-flow-comparison, power-distribution | ✅ |
-| Rozpływ niesymetryczny | S6 | ◐ solver poza rejestrem zdolności (PF = tylko NR/GS/FD); wzmianka w reference_networks | częściowe (`unbalanced`: 6 plików) | ◐ |
-| Falowniki OZE w LF | S7 | generators, grid_source_preview | designer/wizard, ncrfg-tests | ◐ |
-| Obciążenia ZIP | S8 | solver_input | property-grid (parametry) | ◐ |
-| Pętla zwarciowa nn IEC 60364 | S9 | fault_loop | szczątkowe (`faultLoop`: 2 pliki) | ◐ |
-| Zabezpieczenia IEC 60255 | S10 + A10, A11 | protection_* (5 routerów) | protection, protection-coordination, protection-curves, protection-comparison | ✅ |
-| NC RfG / PTPiREE | S11 | ncrfg_ptpiree_tests | ncrfg-tests | ✅ |
-| FRT / HVRT | S12 | ncrfg_ptpiree_tests | pokryte (`frt`: 62, `hvrt`: 52 pliki) | ✅ |
-| Stabilność RMS | S13 | ✅ v126 (dynamic_stability, voltage_stability) + solver_capabilities | częściowe (`stability`: 20 plików, gł. FRT/NC RfG) | ◐ |
-| Estymacja stanu WLS | S14 | ✅ `POST /api/quality/state-estimation` (+ `/requirements`) — quality_analysis_runs.py | ✅ `ui2/wyniki/estymacja` (EkranEstymacji: wejście pomiarów → \|V\|/kąt/rezydua/χ²/LNR + WHITE BOX), zakładka „Estymacja stanu" w WynikiWarsztat | ✅ (backend + UI, 2026-07-21) |
-| Stan fazowy SN | S15 | ✅ analysis_runs + execution_runs | częściowe (`phase_state`: 9 plików) | ◐ |
-| Podgląd źródła sieciowego | S16 | grid_source_preview | wizard (GridSourceEditor) | ✅ |
-| Pakiet akademicki V12.6 | S17 | v126_academic | ekrany E-40..E-50 (workspace) | ✅ |
-| Arc flash | A1 | ✅ `/api/quality/arc-flash` (+ `/report.pdf/.docx`) — quality_analysis_runs.py | ui2/wyniki/jakosc (`arcFlash`: 5 plików w ui2) | ◐ (wpięte 2026-07, do potwierdzenia jakościowego) |
-| Siła sieci (SCR) | A5 | ✅ `/api/oze-analysis/grid-strength` — oze_analysis_runs.py | ui2/oze/pulpit/SekcjaSilySieci.tsx | ◐ (wpięte 2026-07) |
-| Adekwatność mocy biernej | A12 | ✅ `/api/oze-analysis/reactive-adequacy` — oze_analysis_runs.py | ui2/oze/pulpit/SekcjaAdekwatnosciQ.tsx | ◐ (wpięte 2026-07) |
-| Stabilność SSCI | A18 | ✅ `GET /api/analysis-runs/{run_id}/results/v126/ssci_impedance/stability` — v126_academic.py (werdykt Nyquista z `analysis/ssci_stability` na bazie przebiegu v126 ssci_impedance) | brak (`ssci`: 0 plików w ui/) | ◐ (backend wpięty 2026-07-21; UI = następna faza) |
-| Sanity bounds | A15 | ✅ `/api/quality/sanity-bounds` — quality_analysis_runs.py (+ pośrednio SC→ResultSet v1) | ui2/wyniki/jakosc (`sanity`: 4 pliki w ui2) | ◐ (wpięte 2026-07) |
-| Walidacja energetyczna | A4 | ✅ `/api/quality/energy-validation` — quality_analysis_runs.py | ui2/wyniki/jakosc (`energy-validation` w ui2) | ◐ (wpięte 2026-07) |
-| Profil napięciowy | A19 | analysis_runs | voltage-profile | ✅ |
-| Wrażliwość (LF + ogólna) | A6, A17 | analysis_runs | dedykowany `ui/sensitivity` USUNIĘTY 2026-07; ekspozycja przez ui/workspace/screenCanonRegistry | ◐ (do przeniesienia w ui2/) |
-| Zgodność normatywna | A8 | analysis_runs | engineering-readiness, issue-panel | ◐ |
-| Porównania scenariuszy | A16 | comparison, *_comparisons | comparison, power-flow-comparison, protection-comparison | ◐ (duplikacja do konsolidacji) |
-| Rekomendacje | A13 | analysis_runs | results (rozproszone) | ◐ |
-| Pokrycie analizami | A3 | analysis_runs | analysis-eligibility | ◐ |
-| Granice (boundary) | A2 | ✅ application/analyses/boundary.py | brak dedykowanego widoku | ◐ |
-| Raporty PDF/DOCX | A14 | analysis_run_exports, proof_pack | reports, proof | ◐ |
-| Dowody WHITE BOX (wszystkie pakiety §3) | Proof Engine | proof_pack, equipment_proof_pack, result_contract_v1 | proof, results-inspector | ✅ |
-| Migotanie (flicker) | `application/analyses/migotanie.py` | ✅ `/api/quality/flicker` | ui2/oze (`migotanie`: 9 plików) | ◐ (nowe 2026-07) |
-| Zdolność przyłączeniowa (hosting capacity) | `application/analyses/hosting_capacity.py` | ✅ `/api/oze-analysis/hosting-capacity` | ui2/oze/zdolnosc | ◐ (nowe 2026-07) |
-| Obszar/pokrycie P-Q | `application/analyses/pq_area.py`, `pq_coverage.py` | ✅ `/api/oze-analysis/pq-area`, `/pq-coverage` | ui2/oze/obszar, ui2/oze/macierz | ◐ (nowe 2026-07) |
-| Dobór kompensacji mocy biernej | `application/analyses/dobor_kompensacji.py` | ✅ `/api/oze-analysis/compensation-sizing` | ui2/oze/kompensacja, ui2/kreatory/kompensator | ◐ (nowe 2026-07) |
-| Ochrona przed utratą sieci (LoM) | `application/analyses/ochrona_lom.py` | ✅ `/api/oze-analysis/lom-protection` | ui2/oze/lom | ◐ (nowe 2026-07) |
-| Dokumenty przyłączeniowe OSD | `application/analyses/{wniosek_osd,odpowiedz_osd,dokument_studium,certyfikat_zgodnosci,zgodnosc_powykonawcza}.py` | ✅ `/api/oze-analysis/{osd-application,osd-response,connection-study,compliance-certificate}`, `/api/quality/as-built-compliance` (warianty .docx/.pdf) | ui2/oze/{osd,wniosek,studium} | ◐ (nowe 2026-07) |
-| Regulacja OLTC w rozpływie | S19 | ✅ pośrednio (enm/canonical_analysis + analysis/reporting/oltc_report) | ui2/wyniki/oltc | ◐ (nowe 2026-07) |
-| Preview kabla/transformatora/kompensatora | S20–S22 | ✅ `/api/solver/{cable-voltage-drop,cable-rated-current,transformer-rated-currents,shunt-compensator}-preview` | ui2/kreatory (transformator, kompensator, magistrala) | ◐ (nowe 2026-07) |
-| Reference Engine (paczki referencyjne) | — | ✅ reference_engine: `/api/reference/packs`, `/api/cases/{id}/reference/compliance` | ui2/referencje, ui/reference-networks, ui/reference-patterns | ◐ (nowe 2026-07) |
-| Import XLSX | — | ✅ xlsx_import (wpięty w main.py) | częściowe (`xlsx`: 11 plików) | ◐ |
+| Zwarcia IEC 60909 | S1 | fault_scenarios, execution_runs, unified_runs | `ui2/wyniki/zwarcia` (EkranZwarc, wykres Ik″, rozpływ zwarciowy, weryfikacja aparatury), zakładka „Zwarcia" warsztatu wyników; 7 testów | ✅ |
+| Zwarcia maszyn | S2 + A7 | ✅ `POST /api/proof/sc3f/contributions` | `ui2/wyniki/zwarcia/WkladyZwarciowe.tsx` — rozwijany szczegół wkładu z parametrami maszyny IEC 60909 (Ir, μ, q, Ib) i śladem wywodu, zamontowany w `EkranZwarc.tsx:25`; test `wkladyZwarciowe.test.tsx` | ✅ (2026-08-06: powstała DEDYKOWANA sekcja ekranu — poprzednie ◐ „tylko przez ProofPack" nieaktualne) |
+| Rozpływ NR/GS/FD | S3–S5 | power_flow_runs, power_flow_comparisons | `ui2/wyniki/rozplyw` (szyny, gałęzie, profil napięć), `ui2/wyniki/zbieznosc` (ślad iteracji, zaczepy); 8 testów | ✅ |
+| Rozpływ niesymetryczny | S6 | ❌ brak końcówki — solver osiągalny wyłącznie z `application/reference_networks/computation.py::_power_flow_unbalanced_bfs` | brak: `runReferenceNetwork` (`ui/reference-networks/api.ts:38`) — jedyna droga do biegu BFS — NIE MA konsumenta, a `is_unbalanced` w `ReferenceNetworkList.tsx:90` to wyłącznie odznaka na liście sieci referencyjnych | ❌ (2026-08-06: poprzednie ◐ „6 plików" liczyło pola metadanych, nie powierzchnię) |
+| Falowniki OZE w LF | S7 | generators, grid_source_preview, operacje ENM | `ui2/kreatory/zrodlo-oze` — pełna regulacja falownika (`control_mode` STALY_COS_PHI / Q_OD_U ze spadkiem i strefą nieczułości, q_min/max, magazyn); 6 testów | ◐ (kontrakt `PowerFlowResult`/`PowerFlowTrace` nie niesie wyniku regulacji falownika — w wynikach nie widać, który tryb zadziałał ani czy limit Q został osiągnięty) |
+| Obciążenia ZIP | S8 | solver_input (materializacja katalogowa) | `ui2/kreatory/odbior` i karta katalogowa pokazują wyłącznie P/Q/cos φ | ◐ (współczynniki `a_p…c_q`, `k_pf`, `k_qf` są w `solver_fields` kontraktu OBCIAZENIE — `catalog/types.py:3253-3268` — ale poza `ui_fields` i poza jakimkolwiek polem UI: projektant nie ustawi ani nie zobaczy modelu ZIP, którego użyje solver) |
+| Pętla zwarciowa nn IEC 60364 | S9 | fault_loop (`POST /api/fault-loop/compute`), `GET /api/cases/{id}/enm/station-fault-loop` | `ui2/inspector/SekcjaPetlaZwarcia` (Z_loop, Ik min/max, składniki pętli) zamontowana w `InspectorPanel.tsx:321`; test | ◐ (pełna końcówka `/api/fault-loop/compute` — warunek samoczynnego wyłączenia i dobór zabezpieczenia — ma jedynego konsumenta w `ui/sld/v2/fault-loop/FaultLoopResultPanel.tsx`, renderowanym WYŁĄCZNIE we własnym teście) |
+| Zabezpieczenia IEC 60255 | S10 + A10, A11 | protection_* (5 routerów) | `ui2/wyniki/koordynacja` (EkranKoordynacji + SekcjaNastaw, 2 testy), `ui2/model/zabezpieczenia-automatyka` (E-27, test) | ✅ |
+| NC RfG / PTPiREE | S11 | ncrfg_ptpiree_tests: `/catalog`, `/run`, `/cases/{case_id}/compliance` | `ui2/oze/macierz` (MacierzNcRfg, panel modułu, szczegół werdyktu — 4 testy), bieg przez `ncRfgStore` | ◐ (2026-08-06: przekrojowa zgodność liczona Z MODELU — `GET /api/ncrfg-tests/cases/{case_id}/compliance`, raport per DER dla wskazanego operatora — nie ma we froncie ANI JEDNEGO konsumenta) |
+| FRT / HVRT | S12 | ncrfg_ptpiree_tests, `/api/oze-analysis/frt-trajectories`, `/frt-sequence` | `ui2/oze/frt` (EkranFrt + wykres trajektorii + model sekwencji); 4 testy | ✅ |
+| Stabilność RMS | S13 | ✅ execution_runs (DYNAMIC_STABILITY) → `application/stability/dynamic_stability.py` | `ui2/wyniki/stabilnosc` (EkranStabilnosci: scenariusz, werdykt, kryteria, ślad automatyki); 3 testy | ◐ (2026-08-06: ekran żywi się przebiegami DYNAMIC_STABILITY, natomiast SILNIK wskazany w §1 — `solvers/stability_rms/engine.py` — nie ma w backendzie ANI JEDNEGO wywołania poza własnym pakietem: nie istnieje ścieżka S13 → API → UI) |
+| Estymacja stanu WLS | S14 | ✅ `POST /api/quality/state-estimation` (+ `/requirements`) — quality_analysis_runs.py | `ui2/wyniki/estymacja/EkranEstymacji` (wejście pomiarów → \|V\|/kąt/rezydua/χ²/LNR + WHITE BOX), zakładka „Estymacja stanu"; 2 testy | ✅ |
+| Stan fazowy SN | S15 | ✅ analysis_runs + execution_runs | `ui2/wyniki/stan-fazowy/EkranStanuFazowego` (E-31: napięcia/prądy/straty per faza, wskaźniki asymetrii z flag solvera, stan obwodu, ograniczenia raportowe), zakładka „Stan fazowy"; test | ✅ (2026-08-06: poprzednie ◐ „9 plików" pochodziło sprzed powstania ekranu) |
+| Podgląd źródła sieciowego | S16 | grid_source_preview | `ui2/kreatory/zrodlo/KreatorZrodloZasilania` (Sk″/Ik″/κ/ip/Ith/Z1/Z0 liczone przez backend); 3 testy | ✅ |
+| Pakiet akademicki V12.6 | S17 | v126_academic (12 rodzajów analiz, E-40…E-50) | JEDNA generyczna powierzchnia zastana `ui/workspace/surfaces/V126AcademicSurface.tsx` (334 w.) osiągalna przez most „Pozostałe analizy" | ◐ (2026-08-06: korekta fałszywego ✅ — brak okna w `ui2/` i ANI JEDNEGO testu tej powierzchni; ślad ucięty do 8 kroków, raport do 3 sekcji, kolory poza tokenami `--mvd-*`) |
+| Arc flash | A1 | ✅ `/api/quality/arc-flash` + `/report(.pdf/.docx)` | `ui2/wyniki/jakosc` sekcja 4 (energia incydentu, granica łuku, nagłówek najgorszego przypadku, eksport raportu PDF/DOCX); test `arcFlash.test.tsx` | ✅ (2026-08-06: potwierdzone jakościowo) |
+| Siła sieci (SCR) | A5 | ✅ `/api/oze-analysis/grid-strength` | `ui2/oze/pulpit/SekcjaSilySieci` zamontowana w `KartaModulu.tsx:99` (pulpit OZE, zakładka warsztatu); test `SekcjaSilySieci.test.tsx` | ✅ |
+| Adekwatność mocy biernej | A12 | ✅ `/api/oze-analysis/reactive-adequacy` | `ui2/oze/pulpit/SekcjaAdekwatnosciQ` zamontowana w `KartaModulu.tsx:102`; test `SekcjaAdekwatnosciQ.test.tsx` | ✅ |
+| Stabilność SSCI | A18 | ✅ `POST /api/cases/{id}/runs/v126/ssci_impedance` + `GET /api/analysis-runs/{run_id}/results/v126/ssci_impedance/stability` | `ui2/wyniki/ssci/EkranSsci` (werdykt Nyquista z istotnością, uzasadnienie, metryki, proweniencja, ślad), zakładka „SSCI"; 2 testy | ✅ (2026-08-06: UI domknięte, poprzednie ◐ „0 plików" nieaktualne) |
+| Sanity bounds | A15 | ✅ `/api/quality/sanity-bounds` | `ui2/wyniki/jakosc` sekcja 1 „Wiarygodność zwarciowa" + uczciwy stan zerowy prowadzący do brakującego biegu; testy `sekcje`/`ekranJakosci` | ✅ |
+| Walidacja energetyczna | A4 | ✅ `/api/quality/energy-validation` | `ui2/wyniki/jakosc` sekcja 2 + kolumna „Obciążenie" tabeli gałęzi rozpływu (werdykt BRANCH/TRANSFORMER_LOADING); testy `sekcje`/`jakoscModel` | ✅ |
+| Profil napięciowy | A19 | analysis_runs | `ui2/wyniki/rozplyw/ProfilNapiecChart` + oznaczanie wartości poza przedziałem EN 50160; test `profilNapiecChart.test.tsx` | ✅ |
+| Wrażliwość (LF + ogólna) | A6, A17 | ❌ brak końcówki — `analysis_runs` nie wystawia widoków wrażliwości | brak: jedynym konsumentem `analysis/lf_sensitivity` i `analysis/sensitivity` jest `analysis/reporting/pdf/p24_plus_report.py`, sam nieosiągalny z żadnego routera; ekran E-50 „Niepewność i wrażliwość" to INNA zdolność (v126 `uncertainty_sensitivity`) | ❌ (2026-08-06: dedykowany `ui/sensitivity` usunięto 2026-07, zastępstwo nie powstało) |
+| Zgodność normatywna | A8 | ✅ `/api/quality/design-verdict` (agregat `application/analyses/werdykt_projektowy.py`) | `ui2/wyniki/werdykt/EkranWerdyktu` (2 testy) + `ui2/spaces/gotowosc/PanelGotowosci` (9 testów); wskazywane dotąd `ui/engineering-readiness` i `ui/issue-panel` NIE MAJĄ konsumentów produkcyjnych | ◐ (moduł A8 `analysis/normative/evaluator.py` nie ma poza własnym pakietem ANI JEDNEGO importera — do łańcucha trafia wyłącznie `NormativeConfig` jako progi profilu napięć) |
+| Porównania scenariuszy | A16 | comparison (`/api/comparison/runs`), power_flow_comparisons, protection_comparisons, `/api/short-circuit-comparisons` | `ui2/wyniki/porownanie` — A/B rozpływu (szyny/gałęzie/ranking) + tryb zwarciowy, z deep-linkiem do dowodu przebiegu A i B; 5 testów | ◐ (z trzech równoległych torów porównań osiągalny jest jeden: `ui/protection-comparison` i generyczne `/api/comparison/runs` nie mają ŻADNEGO konsumenta produkcyjnego) |
+| Rekomendacje | A13 | ❌ brak końcówki dla `analysis/recommendations` | `ui2/wyniki/co-wymaga-uwagi` — skonsolidowany rejestr przekroczeń z akcją „Popraw w modelu" (źródła: werdykt projektowy + rozpływ); 2 testy | ◐ (zdolność obsłużona zastępczo z innych źródeł; moduł A13 `analysis/recommendations` nie ma w backendzie ANI JEDNEGO importera) |
+| Pokrycie analizami | A3 | ❌ brak końcówki | brak: `analysis/coverage_score` konsumuje wyłącznie nieosiągalny `p24_plus_report.py`, a wskazywany dotąd `ui/analysis-eligibility/AnalysisEligibilityPanel` nie ma konsumenta produkcyjnego | ❌ (2026-08-06) |
+| Granice (boundary) | A2 | ❌ brak końcówki | brak: `application/analyses/boundary.py` to fasada zgodności z ZEREM importerów, a `analysis/boundary` nie ma konsumenta produkcyjnego | ❌ (2026-08-06: „brak dedykowanego widoku" był w istocie brakiem całego łańcucha) |
+| Raporty PDF/DOCX | A14 | ✅ `analysis-runs/{id}/export/report/{json,docx,pdf}` + `.../export/proof/{json,latex,pdf}` (komplet 6 końcówek) | `ui2/spaces/dokumentacja/generator/GeneratorRaportu` — KAŻDA kontrolka składu (zakres, poziom, profil, sekcje) jest parametrem realnego wywołania eksportu; zamontowany w `MostDokumentacji.tsx:53`; test | ✅ (2026-08-06: most E-37 z kontrolkami-atrapami zastąpiony) |
+| Dowody WHITE BOX (wszystkie pakiety §3) | Proof Engine | proof_pack (`/pack`, `/sc3f/pack`, `/sc-asymmetrical/pack`, `/sc3f/contributions`), equipment_proof_pack, result_contract_v1 | `ui2/wyniki/dowod` (PrzegladDowodu w kanonie pięciu pól, spis kroków, źródło LaTeX; 4 testy) na ŚLADZIE przebiegu + eksport `export/proof/*` | ◐ (2026-08-06: korekta fałszywego ✅ — dedykowane pakiety `/api/proof/{project}/{case}/{run}/pack`, `/sc3f/pack`, `/sc-asymmetrical/pack` oraz `/api/equipment-proof/pack` nie mają we froncie ANI JEDNEGO konsumenta; skonsumowane jest wyłącznie `/sc3f/contributions`) |
+| Migotanie (flicker) | `application/analyses/migotanie.py` | ✅ `/api/quality/flicker` | `ui2/wyniki/jakosc` sekcja 3 „Migotanie i szybkie zmiany napięcia" (Pst/Plt per moduł); test `migotanie.test.tsx` | ✅ |
+| Zdolność przyłączeniowa (hosting capacity) | `application/analyses/hosting_capacity.py` | ✅ `/api/oze-analysis/hosting-capacity` | `ui2/oze/zdolnosc` (EkranZdolnosci + wykres), zakładka „Zdolność przyłączeniowa"; 3 testy | ✅ |
+| Obszar/pokrycie P-Q | `application/analyses/pq_area.py`, `pq_coverage.py` | ✅ `/api/oze-analysis/pq-area`, `/pq-coverage` | `ui2/oze/obszar` (3 testy), `ui2/oze/krzywe` (3 testy), `ui2/oze/macierz` | ✅ |
+| Dobór kompensacji mocy biernej | `application/analyses/dobor_kompensacji.py` | ✅ `/api/oze-analysis/compensation-sizing`, `/api/solver/shunt-compensator-preview` | `ui2/oze/kompensacja` (test) + `ui2/kreatory/kompensator` (3 testy, wykres Q(U)) | ✅ |
+| Ochrona przed utratą sieci (LoM) | `application/analyses/ochrona_lom.py` | ✅ `/api/oze-analysis/lom-protection` | `ui2/oze/lom` (EkranLom + model doboru), zakładka „Ochrona LoM"; 2 testy | ✅ |
+| Dokumenty przyłączeniowe OSD | `application/analyses/{wniosek_osd,odpowiedz_osd,dokument_studium,certyfikat_zgodnosci,zgodnosc_powykonawcza}.py` | ✅ `/api/oze-analysis/{osd-application,osd-response,connection-study,compliance-certificate}` (warianty .docx/.pdf), `/api/quality/as-built-compliance` | `ui2/oze/{osd,wniosek,studium}` — 7 testów, dowody dokumentów w osobnym teście API | ◐ (wniosek OSD i certyfikat zgodności eksportują WYŁĄCZNIE DOCX — końcówki `/osd-application.pdf` i `/compliance-certificate.pdf` bez konsumenta, choć studium przyłączeniowe ma komplet DOCX+PDF) |
+| Regulacja OLTC w rozpływie | S19 | ✅ `solver_input:{oltc_study}` → `global_results.oltc_*` (`enm/canonical_analysis.py:1274`) | `ui2/wyniki/oltc/EkranBadanOltc` — wszystkie trzy rodzaje badania (przemiatanie zaczepów, profil roczny, optymalizacja) z wykresami; 2 testy; zaczepy również w `ui2/wyniki/zbieznosc` | ✅ |
+| Preview kabla/transformatora/kompensatora | S20–S22 | ✅ `/api/solver/{cable-voltage-drop,cable-rated-current,transformer-rated-currents,shunt-compensator}-preview` + `/cable-laying-conditions` | `ui2/kreatory/magistrala` (ΔU), `ui2/kreatory/odbior` (prąd znamionowy), `ui2/kreatory/transformator`, `ui2/kreatory/kompensator`, `ui2/kreatory/zrodlo-oze/DoborToruSn`; 12 testów | ✅ |
+| Reference Engine (paczki referencyjne) | — | ✅ `/api/reference/packs`, `/packs/{pack_id}`, `/api/cases/{id}/reference/compliance` | `ui2/spaces/gotowosc/SekcjaZgodnosciReferencyjnej` + `ui2/spaces/model/ZgodnoscReferencyjna` (2 testy) | ◐ (brak wyboru pakietu: `fetchReferencePacks` — lista `/api/reference/packs` — ma konsumenta WYŁĄCZNIE w teście, a ekran zgodności ma pakiet zaszyty na stałe `PAKIET_OSD = 'osd_enea'`, `ZgodnoscReferencyjna.tsx:30`) |
+| Import XLSX | — | ✅ xlsx_import (`POST /api/import/xlsx`, wpięty w `main.py`) | brak: w całym froncie ZERO odwołań do `/api/import` — dawne „11 plików" to pozycje enuma eksportu (`xlsx` jako format WYJŚCIA) i komentarze o źródłowym arkuszu | ❌ (2026-08-06: korekta zawyżonego ◐) |
 | Archiwum projektu (ZIP) | — | ✅ project_archive: `POST /projects/{id}/export` (parametr `zapisz_do_magazynu` → magazyn dokumentów, typ ARCHIWUM), `POST /projects/import`, `POST /projects/import/preview`; archive_diff, incremental_archive bez wejścia w UI | ui2/spaces/projekt/archiwum (okno „Archiwum projektu (ZIP)": kafel pulpitu + karta huba dokumentacji); `ui/project-archive` = warstwa zastana BEZ konsumenta produkcyjnego (kasacja: G-07) | ◐ (naprawa fałszywego ✅ — G-01 audytu bramek U2–U5: do 2026-08 karta huba prowadziła do przestrzeni bez akcji, a dialog warstwy zastanej miał zero konsumentów; wpięte eksport/import/podgląd, poza UI zostają różnicowanie i archiwum przyrostowe) |
-| Katalog typów | — | catalog, audit2_catalogs | catalog, tech-card, property-grid | ✅ |
-| Kreator sieci/stacji | — | station_templates, switchgear_config, design_synth, reference_patterns | designer, network-build, reference-patterns | ◐ |
-| Przypadki obliczeniowe | — | study_cases, case_runs, batch_execution | study-cases (dawny `ui/active-case-bar` USUNIĘTY 2026-07) | ◐ |
-| SLD + nakładki wyników | — | sld, sld_overrides | sld, sld-editor, sld-overlay | ◐ (OSOBNY WĄTEK — patrz Program §2.3) |
+| Katalog typów | — | catalog (44 końcówki), audit2_catalogs | `ui2/spaces/model/katalog` (KatalogPanel, KartaTechniczna, GdzieUzyty, ParametrRow); 7 testów | ✅ |
+| Kreator sieci/stacji | — | station_templates, switchgear_config, reference_patterns; design_synth NIEWPIĘTY | `ui2/kreatory` — 18 kreatorów, KAŻDY z testem (48 plików testowych) + `ui2/spaces/model/szablony` (przeglądarka i porównanie szablonów stacji) | ◐ (`/api/reference-patterns` ma jedynego konsumenta w `ui/reference-patterns`, bez montażu produkcyjnego, a router `design_synth` nadal nie ma `include_router` w `main.py`) |
+| Przypadki obliczeniowe | — | study_cases, unified_runs; batch_execution i case_runs NIEWPIĘTE | `ui2/spaces/obliczenia` (MenedzerPrzypadkow, NowyPrzypadek, UruchomObliczenie, PorownanieKonfiguracji, panel przebiegów, panel scenariuszy); 7 testów | ◐ (wykonanie wsadowe — `api/batch_execution.py`, 8 końcówek — oraz `api/case_runs.py` nadal bez `include_router` w `main.py`: brak powierzchni serii przebiegów) |
+| SLD + nakładki wyników | — | sld, sld_overrides | `ui2/spaces/schemat` (przełącznik podglądu + następny krok, 2 testy) osadzający zastane `ui/sld`, `ui/sld-editor`, `ui/sld-overlay` | ◐ (OSOBNY WĄTEK — patrz Program §2.3) |
 
-**Bilans (rewizja 2026-07-21c):** 0 funkcji ❌ zero-UI. Ostatnia luka — **Stabilność SSCI**
-(`analysis/ssci_stability`) — domknięta backendowo (`GET /api/analysis-runs/{run_id}/results/v126/ssci_impedance/stability`
-wystawia werdykt Nyquista z gotowego przebiegu v126 ssci_impedance); UI = następna faza (◐).
-Estymacja stanu WLS (S14) wyszła z ❌ dzięki wpięciu backendu
-(`POST /api/quality/state-estimation` + `/requirements`); UI = następna faza (◐). Zwarcia maszyn
-(S2+A7) skorygowane ❌→◐: rozbicie maszynowe (μ/q/i_b) widoczne przez pakiet dowodowy SC3F
-(G-SCM F2, `proof_pack.py`) w proof-inspectorze — dedykowany ekran opcjonalny, nie zero-UI.
-Względem 2026-07-15 pięć zdolności (Arc flash, Siła sieci,
-Adekwatność mocy biernej, Sanity bounds, Walidacja energetyczna) wyszło z ❌ dzięki wpięciu
-routerów `oze_analysis_runs` i `quality_analysis_runs` oraz powierzchni `ui2/`. Dodano też do
-macierzy zdolności wcześniej pominięte (migotanie, hosting capacity, P-Q, dobór kompensacji,
-LoM, dokumenty OSD, OLTC, preview kabla/transformatora/kompensatora, Reference Engine).
-Wszystkie ❌ i ◐ mają obowiązkowe karty zadań w Programie UI/UX.
+**Bilans rewizji 2026-08-06 (karta G-09 audytu bramek U2–U5 — domknięcie bramki U4).**
+Przed rewizją: **11 ✅ / 34 ◐ / 0 ❌**. Po rewizji wobec kodu: **24 ✅ / 16 ◐ / 5 ❌**.
+Werdykt zmieniło 24 z 45 wierszy: 16 wyszło z ◐ na ✅ (powierzchnia `ui2/` powstała po
+2026-07-25 i nie była odnotowana — zwarcia maszyn, stan fazowy, SSCI, arc flash, siła sieci,
+adekwatność Q, sanity bounds, walidacja energetyczna, migotanie, hosting capacity, P-Q,
+kompensacja, LoM, OLTC, preview S20–S22, raporty), 3 zeszły z ✅ na ◐ (NC RfG, pakiet
+akademicki V12.6, dowody WHITE BOX — pokrycie było liczone zdolnością, nie konsumpcją
+końcówek), a 5 zeszło z ◐ na ❌ (rozpływ niesymetryczny, wrażliwość, pokrycie analizami,
+granice, import XLSX — dotychczasowe ◐ opierało się na liczbie plików z trafieniem grepa,
+a nie na istnieniu ścieżki solver → API → UI). Teza „0 funkcji ❌ zero-UI" z bilansu
+2026-07-21c była zatem NIEPRAWDZIWA już w chwili zapisu dla trzech z tych pięciu zdolności.
+
+**Wzorzec luk (do kart Programu UI/UX).** Cztery z pięciu ❌ mają tę samą przyczynę: moduł
+analizy istnieje, ale nie prowadzi z niego ŻADEN router — brak nie jest brakiem ekranu, tylko
+brakiem całego ogniwa łańcucha (dyrektywa właściciela §1). Osobna klasa to końcówki wpięte
+w `main.py`, których front nie woła (import XLSX, przekrojowa zgodność NC RfG, pakiety
+dowodowe, lista pakietów referencyjnych, warianty PDF dokumentów OSD) — tu backend jest
+gotowy, brakuje wyłącznie konsumenta. Wszystkie ❌ i ◐ mają obowiązkowe karty zadań.
 
 **Korekta punktowa 2026-08-05 (G-01 audytu bramek U2–U5).** Wiersz **Archiwum
 projektu (ZIP)** zmieniony ✅ → ◐: poprzedni status był FAŁSZYWY — karta huba
@@ -218,8 +227,8 @@ archiwum, a `ui/project-archive` (dialog warstwy zastanej) nie miał ani jednego
 konsumenta produkcyjnego. Po naprawie: okno `ui2/spaces/projekt/archiwum`
 (eksport z zapisem do magazynu dokumentów, import, podgląd zawartości), wejście
 z kafla pulpitu i z karty huba. ◐, bo `archive_diff` i `incremental_archive`
-nadal nie mają powierzchni. Pozostałe wiersze macierzy NIE były rewidowane przy
-tej korekcie — pełna rewizja wobec szczytu to osobna karta (G-09 audytu).
+nadal nie mają powierzchni. Pełna rewizja pozostałych wierszy — wykonana
+2026-08-06 kartą G-09 (bilans powyżej).
 
 ---
 
