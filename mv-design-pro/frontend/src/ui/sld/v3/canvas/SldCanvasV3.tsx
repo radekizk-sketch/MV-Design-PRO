@@ -2877,8 +2877,10 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
       {/* Karta S9-4 — RYSUNEK JEST BIERNY. `pointer-events="none"` na korzeniu
        *  arkusza wyłącza łapanie zdarzeń przez CAŁĄ treść (glify, napisy,
        *  nakładki wyników, ramka arkusza, tabliczka). Kliki łapią WYŁĄCZNIE
-       *  węzły, które jawnie włączają je z powrotem — czyli warstwa
-       *  `sld-v3-trafienia` niżej i uchwyty znaczników wynikowych. Bez tego
+       *  węzły, które jawnie włączają je z powrotem: warstwa `sld-v3-trafienia`
+       *  niżej (wszystkie obiekty kanwy, w tym znaczniki wynikowe) oraz wiersze
+       *  ROZWINIĘTEGO popovera skupiska wyników — panel nad arkuszem, który
+       *  celowo przykrywa rysunek, więc zostaje przy swoim węźle. Bez tego
        *  napis bez obsługi połykał klik i zdarzenie nie docierało do obiektu
        *  pod spodem („klik znika", audyt P-1/P-3). Własność jest DZIEDZICZONA,
        *  więc jeden atrybut zamyka klasę, a nie listę znanych dekoracji. */}
