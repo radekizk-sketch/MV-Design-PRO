@@ -167,14 +167,20 @@ import {
 } from './minimap';
 import { SldMinimapPanel } from './SldMinimapPanel';
 import type { V3Rect } from '../core/grid';
-import { buildSceneV3, type SceneLod, type SceneV3 } from '../scene/buildScene';
+import { buildSceneV3, SCENE_LOD_LABELS_PL, type SceneLod, type SceneV3 } from '../scene/buildScene';
 import type { PreviewElementKind } from '../compose/preview';
 import type { DerSourceKind } from '../compose/sourceKind';
 import { SldCanvasV3, type SldElementClickMeta } from './SldCanvasV3';
 // SCHEMAT-10 S4 (V12K-135/136): paleta jasna + kadr fit-do-treści WYŁĄCZNIE
 // dla toru eksportu — patrz nagłówki `export/exportPalette.ts`/`exportFrame.ts`.
-import { applyContentFitFrame } from '../export/exportFrame';
+import { applyContentFitFrame, computeContentFitFrame } from '../export/exportFrame';
 import { toLightTechnicalExportSvg } from '../export/exportPalette';
+// S9-6 (audyt E-1…E-6): warstwa eksportu dokumentowego — tabliczka rysunkowa,
+// jedna konwencja nazw i JEDNA mapa formatów (`formats.ts`) wspólna dla menu
+// i dla implementacji.
+import { buildSheetTitleBlockData, SheetTitleBlock } from '../export/sheetTitleBlock';
+import { buildSldExportFile } from '../export/sldExport';
+import type { SldExportFormat } from '../export/formats';
 // KD-8 poz. 1: eksport przepisuje kolory z palety EKRANU (motyw projektanta)
 // na paletę DOKUMENTOWĄ — arkusz do dokumentacji nie zależy od motywu.
 import { SldPaletteContext, sldPaletteForTheme } from '../theme/palette';
@@ -235,6 +241,21 @@ const MIN_CANVAS_HEIGHT_PX = 240;
 // F8c pkt 7: `useMeasuredSize` wyciągnięty do `../../shared/useMeasuredSize.ts`
 // (była tu funkcja modułowa duplikująca v2, patrz docstring modułu
 // współdzielonego dla pełnego porównania linia-po-linii).
+
+/**
+ * S9-6: dokłada gotowy markup SVG (legenda, tabliczka rysunkowa) do obszaru
+ * rysunku KLONU arkusza. Jedna funkcja dla obu dokładanych bloków — dwa
+ * niezależne kopiuj-wklej tego samego kroku były drogą do rozjazdu (jeden
+ * zaczepiony w innym węźle niż drugi).
+ */
+function appendToDrawingArea(clone: SVGSVGElement, markup: string): void {
+  const parsed = new DOMParser().parseFromString(`<svg xmlns="http://www.w3.org/2000/svg">${markup}</svg>`, 'image/svg+xml');
+  const node = parsed.documentElement.firstElementChild;
+  const drawingArea = clone.querySelector('[data-testid="sld-sheet-drawing-area"]');
+  if (node && drawingArea && clone.ownerDocument) {
+    drawingArea.appendChild(clone.ownerDocument.importNode(node, true));
+  }
+}
 
 export interface SldCanvasV3WorkspaceProps {
   /** Tryb tylko-do-odczytu — v3 nie ma jeszcze CAD-edycji (spec §10, poza
@@ -967,7 +988,11 @@ function LegendPanelGlyph(props: { readonly id: SymbolId }): JSX.Element {
       className="shrink-0 text-scada-text"
       aria-hidden="true"
     >
-      <Glyph x={0} y={0} />
+      {/* S9-6 (ta sama klasa co glif legendy arkusza, `sheet/Frame.tsx`):
+          `text-scada-text` deklaruje, że miniatura ma iść kolorem tekstu
+          panelu — ale bez jawnego `stroke` glif spadał na stałą palety
+          CIEMNEJ i w jasnym motywie powłoki był ledwie widoczny. */}
+      <Glyph x={0} y={0} stroke="currentColor" />
     </svg>
   );
 }
@@ -1586,6 +1611,10 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   }, [detailDrawerData]);
   const activeProjectId = useAppStateStore((state) => state.activeProjectId);
   const activeCaseId = useAppStateStore((state) => state.activeCaseId);
+  // S9-6: nazwa projektu i przypadku do tabliczki rysunkowej oraz do nazwy
+  // pliku — REALNE dane powłoki (`app-state`), nie parametry wołającego.
+  const activeProjectName = useAppStateStore((state) => state.activeProjectName);
+  const activeCaseName = useAppStateStore((state) => state.activeCaseName);
   const setSnapshot = useSnapshotStore((state) => state.setSnapshot);
 
   // Parytet K30-87/F12-C (luka wykryta adaptacją e2e critical-der-config,
@@ -1924,9 +1953,12 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
     },
     [minimapProjection, activeLodCameraBbox],
   );
-  // Domyślnie WYŁĄCZONA (karta §0.4) — eksport bez legendy jest zachowaniem
-  // dotychczasowym (zero zmiany domyślnej dla wołających istniejących).
-  const [includeLegendInExport, setIncludeLegendInExport] = useState(false);
+  // S9-6 (audyt E-4 „Legenda domyślnie wyłączona"): domyślnie WŁĄCZONA.
+  // Rysunek techniczny bez klucza symboli nie jest dokumentem — projektant,
+  // który jej NIE chce (np. wklejka do prezentacji), odznacza pole jednym
+  // klikiem. Dotąd wartość startowa była odwrotna (K12 §0.4), co dawało
+  // domyślny eksport bez legendy.
+  const [includeLegendInExport, setIncludeLegendInExport] = useState(true);
 
   // F12-B pkt 1 (spec §10.1 ARCH-4, „SldExportFormatMenu — eksport SVG/PNG"):
   // TEN SAM wzorzec co v2 `handleExportSvg` (`SldWorkspaceContainer.tsx`),
@@ -1947,7 +1979,13 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   // `null`, gdy nie ma czego eksportować — ten sam kontrakt zwrotny co
   // `SldExportFormatMenu.onExportSvgOverride`, więc JEDNA implementacja
   // zasila OBA punkty wejścia (button + dropdown) bez duplikacji.
-  const handleExportSvg = useCallback((): string | null => {
+  //
+  // S9-6 (audyt E-1/E-2/E-3/E-6): funkcja rozdzielona na DWA kroki. Tu (niżej,
+  // `buildExportSheetMarkup`) powstaje MARKUP ARKUSZA — jedno źródło rysunku
+  // dla WSZYSTKICH formatów (SVG zapisuje go wprost, PDF i DXF tłumaczą przez
+  // `export/svgPrimitives.ts`). Zapis pliku i wybór formatu robi
+  // `handleExport` (`export/sldExport.ts`).
+  const buildExportSheetMarkup = useCallback((): string | null => {
     const svgEl = containerRef.current?.querySelector<SVGSVGElement>('svg[data-testid="sld-canvas-v3"]');
     // K11-B: TA SAMA scena aktywnego LOD co legenda (`activeLodScene` wyżej) —
     // dawniej ta funkcja budowała ją drugi raz TĄ SAMĄ formułą; scalone w jedno
@@ -1956,6 +1994,24 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
     if (!svgEl || !scene) return null;
     const clone = svgEl.cloneNode(true) as SVGSVGElement;
     applyContentFitFrame(clone, scene);
+    // S9-6: dokument nie animuje — węzły SMIL (`<animate>` crossfade LOD,
+    // karta S8) są cechą KANWY, na arkuszu dawałyby plik, który po otwarciu
+    // najpierw jest przezroczysty. Usuwane z KLONU (ekran nietknięty).
+    for (const node of Array.from(clone.querySelectorAll('animate'))) node.remove();
+    // S9-6: `data-theme-mode` opisuje motyw EKRANU projektanta. Arkusz wychodzi
+    // zawsze w palecie dokumentowej, więc niesienie tego znacznika w pliku było
+    // informacją NIEPRAWDZIWĄ (i jedyną różnicą bajtów między eksportem z
+    // motywu ciemnego i jasnego — patrz test parytetu motywów).
+    clone.removeAttribute('data-theme-mode');
+    // S9-6: tło kanwy siedzi w `style` (CSS), więc podmiana palety go NIE
+    // dotyczy (patrz nagłówek `export/exportPalette.ts` — CSSOM normalizuje
+    // hex do `rgb()`), a eksport i tak wstrzykuje jawny biały prostokąt tła.
+    // Zostawione tło EKRANU było więc martwą deklaracją, która w motywie
+    // ciemnym mogła zaświecić czernią poza wstrzykniętym prostokątem — i była
+    // ostatnią różnicą bajtów między eksportem z motywu jasnego i ciemnego.
+    for (const svgNode of [clone, ...Array.from(clone.querySelectorAll('svg'))]) {
+      (svgNode as SVGSVGElement).style.removeProperty('background');
+    }
     // K12 (KARTA_K12 §0.4): opcja „Dołącz legendę" — kanwa ekranowa NIGDY nie
     // rysuje legendy (`SldCanvasV3` → `legend={[]}`), więc klon jest z
     // definicji BEZ niej; gdy zaznaczone, dorysowujemy ją WYŁĄCZNIE na
@@ -1968,38 +2024,79 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
     if (includeLegendInExport) {
       const entries = computeProjectLegendEntries(scene);
       if (entries.length > 0) {
-        const sheetHeight = sheetSizeFor(scene).height;
         // KD-8 poz. 1: legenda dorysowana do KLONU musi powstać w palecie
         // EKRANU (tej samej, co reszta klonu) — dopiero pełny markup jest
         // przepisywany na paletę dokumentową jednym przebiegiem niżej.
-        const legendMarkup = renderToStaticMarkup(
-          <SldPaletteContext.Provider value={screenPalette}>
-            <SheetLegend entries={entries} sheetHeight={sheetHeight} />
-          </SldPaletteContext.Provider>,
+        appendToDrawingArea(
+          clone,
+          renderToStaticMarkup(
+            <SldPaletteContext.Provider value={screenPalette}>
+              <SheetLegend entries={entries} sheetHeight={sheetSizeFor(scene).height} />
+            </SldPaletteContext.Provider>,
+          ),
         );
-        const parsedLegend = new DOMParser().parseFromString(
-          `<svg xmlns="http://www.w3.org/2000/svg">${legendMarkup}</svg>`,
-          'image/svg+xml',
-        );
-        const legendNode = parsedLegend.documentElement.firstElementChild;
-        const drawingArea = clone.querySelector('[data-testid="sld-sheet-drawing-area"]');
-        if (legendNode && drawingArea && clone.ownerDocument) {
-          drawingArea.appendChild(clone.ownerDocument.importNode(legendNode, true));
-        }
       }
     }
+    // S9-6 (audyt E-3 „Eksport SVG nie ma tytułówki"): tabliczka rysunkowa —
+    // TĄ SAMĄ metodą co legenda (render na KLONIE, paleta ekranu, podmiana na
+    // dokumentową jednym przebiegiem niżej), więc trafia do KAŻDEGO formatu,
+    // który czyta ten markup (SVG, PDF, DXF) — jedna implementacja metryki.
+    // Dane WYŁĄCZNIE realne: nazwy z powłoki, nagłówek migawki ENM, licznik
+    // stacji ze sceny. Brak danej ⇒ puste pole z etykietą (`BRAK_DANEJ`).
+    const contentFrame = computeContentFitFrame(scene);
+    const titleBlockData = buildSheetTitleBlockData({
+      projectName: activeProjectName,
+      caseName: activeCaseName,
+      networkName: snapshot?.header.name ?? null,
+      modelUpdatedAtIso: snapshot?.header.updated_at ?? null,
+      modelRevision: snapshot?.header.revision ?? null,
+      modelHash: snapshot?.header.hash_sha256 ?? null,
+      stationCount: scene.meta.stationCount,
+      sheetAspect: contentFrame.height > 0 ? contentFrame.width / contentFrame.height : 0,
+      lodLabelPl: SCENE_LOD_LABELS_PL[scene.meta.lod],
+    });
+    const sheetSize = sheetSizeFor(scene);
+    appendToDrawingArea(
+      clone,
+      renderToStaticMarkup(
+        <SldPaletteContext.Provider value={screenPalette}>
+          <SheetTitleBlock data={titleBlockData} sheetWidth={sheetSize.width} sheetHeight={sheetSize.height} />
+        </SldPaletteContext.Provider>,
+      ),
+    );
     const serializer = new XMLSerializer();
-    const svgStr = toLightTechnicalExportSvg(serializer.serializeToString(clone), screenPalette);
-    const blob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const filename = 'schemat_sld.svg';
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename;
-    link.click();
-    URL.revokeObjectURL(url);
-    return filename;
-  }, [activeLodScene, includeLegendInExport, screenPalette]);
+    return toLightTechnicalExportSvg(serializer.serializeToString(clone), screenPalette);
+  }, [activeCaseName, activeLodScene, activeProjectName, includeLegendInExport, screenPalette, snapshot]);
+
+  /**
+   * S9-6: jedno wyjście dla KAŻDEGO formatu z menu (`SLD_EXPORT_FORMATS`).
+   * Zwraca nazwę zapisanego pliku albo `null`, gdy nie ma czego eksportować;
+   * błąd budowy (np. bramka „rysunek bez geometrii") leci wyjątkiem do
+   * wołającego, który pokazuje komunikat — nigdy pusty plik „na sukces".
+   */
+  const handleExport = useCallback(
+    (format: SldExportFormat): string | null => {
+      const svgMarkup = buildExportSheetMarkup();
+      if (svgMarkup === null) return null;
+      const file = buildSldExportFile(format, {
+        svgMarkup,
+        snapshot,
+        projectName: activeProjectName,
+        caseName: activeCaseName,
+      });
+      const blob = new Blob([file.content], { type: `${file.mime};charset=utf-8` });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = file.filename;
+      link.click();
+      URL.revokeObjectURL(url);
+      return file.filename;
+    },
+    [activeCaseName, activeProjectName, buildExportSheetMarkup, snapshot],
+  );
+
+  const handleExportSvg = useCallback((): string | null => handleExport('svg'), [handleExport]);
 
   // F12-B pkt 5: lasso — nakładka screen-space AKTYWNA (pointer-events: auto)
   // WYŁĄCZNIE gdy Shift wciśnięty (albo trwa przeciągnięcie rozpoczęte pod
@@ -2327,11 +2424,13 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
         >
           ↓ SVG
         </button>
+        {/* S9-6: KAŻDA pozycja menu (SVG/PDF/DXF/SCD/CIM) idzie tą samą drogą
+            — `handleExport` → `export/sldExport.ts`. Błąd budowy pliku (np.
+            bramka „rysunek bez geometrii") pokazujemy jako powiadomienie,
+            zamiast milczeć albo zapisać pusty plik. */}
         <SldExportFormatMenu
-          svgSelector='svg[data-testid="sld-canvas-v3"]'
-          projectName={undefined}
-          caseLabel={undefined}
-          onExportSvgOverride={handleExportSvg}
+          onExport={handleExport}
+          onError={(message) => notify(`Eksport schematu: ${message}`, 'error')}
         />
         {/* K12 (KARTA_K12 §0.4): opcja „Dołącz legendę" — domyślnie WYŁĄCZONA.
             Steruje WYŁĄCZNIE `handleExportSvg` (jedyny dziś funkcjonalny kanał
