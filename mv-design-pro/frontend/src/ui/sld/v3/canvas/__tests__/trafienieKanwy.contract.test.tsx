@@ -359,14 +359,17 @@ describe('S9-4 — klik w tło (audyt P-6)', () => {
 });
 
 describe('S9-4 — tryb motywu podany wprost (dowód dla harnessu zrzutowego)', () => {
-  it('prop `themeMode` wygrywa ze sterownikiem powłoki — bez niego render poza przeglądarką zawsze dawał paletę dyspozytorską', () => {
+  // V12K-332: jeden prop motywu renderu statycznego — kanonem `paletteMode`
+  // (S9-7/8 i S9-4 naprawiły ten sam błąd SSR dwiema nazwami; intencja testu
+  // bez zmian: prop wygrywa ze sklepem powłoki).
+  it('prop `paletteMode` wygrywa ze sterownikiem powłoki — bez niego render poza przeglądarką zawsze dawał paletę dyspozytorską', () => {
     const { container: jasny } = render(
       <SldCanvasV3
         snapshot={enm}
         width={CANVAS_WIDTH}
         height={CANVAS_HEIGHT}
         lodOverride={0}
-        themeMode="light_technical"
+        paletteMode="light_technical"
       />,
     );
     expect(svgOf(jasny).getAttribute('data-theme-mode')).toBe('light_technical');

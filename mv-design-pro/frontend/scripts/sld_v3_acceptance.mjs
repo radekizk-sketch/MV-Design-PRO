@@ -2006,6 +2006,8 @@ line('=== sheet_grid_probe (S9-7 strefy z formatu arkusza) + stroke_rank_probe (
     SEGMENT_STROKE_WIDTH.snTrunk * 0.13 < MIN_TRUNK_STROKE_SCREEN_PX,
     `bez wzmocnienia=${(SEGMENT_STROKE_WIDTH.snTrunk * 0.13).toFixed(2)}px`,
   );
+}
+
 // ---------------------------------------------------------------------------
 // KARTA S9-4 — SONDA SIATKOWA TRAFIEŃ (audyt §3.2: P-1 „klik w element w
 // większości nic nie zaznacza", P-2 „inspektor nie rozróżnia obiektów",

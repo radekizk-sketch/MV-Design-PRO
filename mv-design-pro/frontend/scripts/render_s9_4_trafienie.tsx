@@ -175,7 +175,7 @@ for (const przypadek of PRZYPADKI) {
         width={KAMERA.width}
         height={KAMERA.height}
         lodOverride={przypadek.lod}
-        themeMode={motyw.mode}
+        paletteMode={motyw.mode}
         overlay={overlay}
         onElementClick={() => {}}
         onResultLabelActivate={() => {}}

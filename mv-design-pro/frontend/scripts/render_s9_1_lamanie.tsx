@@ -81,7 +81,7 @@ for (const siec of SIECI) {
       useThemeModeStore.setState({ mode: motyw.mode });
       const paleta = sldPaletteForTheme(motyw.mode);
       const inner = renderToStaticMarkup(
-        <SldCanvasV3 snapshot={siec.enm} width={WIDTH} height={HEIGHT} lodOverride={lod} themeMode={motyw.mode} />,
+        <SldCanvasV3 snapshot={siec.enm} width={WIDTH} height={HEIGHT} lodOverride={lod} paletteMode={motyw.mode} />,
       );
       const withNs = inner.replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" ');
       const svg =

@@ -44,7 +44,6 @@ import {
   type ResultMarkerHitInput,
 } from './hitAreas';
 import {
-  SEGMENT_STROKE_WIDTH,
   segmentStrokeWidthForScale,
   strokeScaleFactor,
   pointsToPath,
@@ -333,7 +332,6 @@ export interface SldCanvasV3Props {
    *  samego motywu (defekt wykryty przy karcie S9-4, pomiar: `data-theme-mode`
    *  = `dark_scada` w renderze zleconym jako jasny). Brak propa = tryb z
    *  powłoki, czyli zachowanie aplikacji bez zmian. */
-  readonly themeMode?: ThemeMode;
   /** Karta S9-4 (audyt §3.2, P-6 „klik w tło zaznacza obiekt"): klik w PUSTY
    *  arkusz — poza obszarem trafienia jakiegokolwiek obiektu. Kanwa nie zna
    *  selekcji (to stan wołającego), więc tylko melduje zdarzenie; wołający
@@ -2234,7 +2232,7 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
   const {
     snapshot, width, height, overlay, onElementClick, onElementDoubleClick, onElementContextMenu, lodOverride,
     layerVisibility, onResultLabelActivate, onCameraChange, animateLodTransitions = true, fitSignal,
-    fitTarget = 'tresc', centerRequest, onBackgroundClick, themeMode: themeModeOverride,
+    fitTarget = 'tresc', centerRequest, onBackgroundClick,
   } = props;
   // S9-8: obszar bezpieczny kadru — doki własne kanwy plus (opcjonalnie)
   // zasłona wołającego. Referencja stabilna, żeby `useEffect` refitu nie
@@ -2834,7 +2832,7 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
       ref={svgRef}
       data-testid="sld-canvas-v3"
       data-scene-lod={effectiveLod}
-      data-theme-mode={themeMode}
+      data-theme-mode={effectiveThemeMode}
       width={width}
       height={height}
       viewBox={viewBox}
