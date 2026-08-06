@@ -42,9 +42,25 @@ export const SLD_MENU_REGISTRY: Readonly<Record<SldElementKindForMenu, readonly 
     { id: 'open-source', labelPl: 'Edytuj główny punkt zasilania', group: 'edycja' },
     { id: 'show-sc-source', labelPl: 'Pokaż dane zwarciowe źródła', group: 'widok' },
     { id: 'add-section', labelPl: 'Dodaj sekcję rozdzielni SN', group: 'budowa' },
+    /* Karta S9-5 (audyt B-4 „dalsza budowa nie ma ścieżki na kanwie"): PIERWSZE
+     * ogniwo budowy ciągu SN. Źródło GPZ jest jedynym obiektem sieci pustej —
+     * bez tych dwóch pozycji projektant nie mógł ruszyć magistrali z rysunku
+     * (pomiar: menu GPZ miało wyłącznie akcje widoku/edycji). Kontekst operacji
+     * jest REALNY i zmierzony: `resolveContinueTrunkOperationContext` dla
+     * `elementType==='Source'` zwraca szynę SN GPZ jako `from_bus_ref` i
+     * `is_first_trunk_segment=true`; `resolveBranchStartOperationContext` — tę
+     * samą szynę jako `from_bus_ref` odgałęzienia. */
+    { id: 'continue-trunk', labelPl: 'Wyprowadź ciąg główny SN', group: 'budowa' },
+    { id: 'start-branch', labelPl: 'Rozpocznij odgałęzienie', group: 'budowa' },
   ],
   section: [
     { id: 'add-bay', labelPl: 'Dodaj pole SN', group: 'budowa' },
+    /* Karta S9-5: szyna sekcji jest punktem, z którego ciąg i odgałęzienie
+     * wychodzą fizycznie — `elementType==='Bus'` jest obsługiwany przez oba
+     * resolvery kontekstu (`continue_trunk_segment_sn`,
+     * `start_branch_segment_sn`), więc pozycje mają realne pokrycie. */
+    { id: 'continue-trunk', labelPl: 'Wyprowadź ciąg główny SN', group: 'budowa' },
+    { id: 'start-branch', labelPl: 'Rozpocznij odgałęzienie', group: 'budowa' },
     /* K5-A (H-4): wejście do kreatora baterii kondensatorów SN — realna
      * operacja add_shunt_compensator_sn (bus_ref = kliknięta szyna). */
     { id: 'add-compensator', labelPl: 'Dodaj kompensator mocy biernej', group: 'budowa' },
@@ -87,7 +103,14 @@ export const SLD_MENU_REGISTRY: Readonly<Record<SldElementKindForMenu, readonly 
     /* Phase 0C (operator-grade SLD plan v2): świadomy split z preview */
     { id: 'conscious-split-on-segment', labelPl: 'Podziel odcinek (świadomy)', group: 'budowa' },
     { id: 'insert-sectional', labelPl: 'Wstaw łącznik sekcyjny', group: 'budowa' },
-    { id: 'insert-joint', labelPl: 'Wstaw mufę kablową', group: 'budowa' },
+    /* Karta S9-5: pozycja „Wstaw mufę kablową" USUNIĘTA — obietnica bez
+     * dostawcy. `CANONICAL_OPS` backendu nie ma operacji wstawienia mufy, a
+     * `Branch.cable_joints` nie ma edytora na żadnym ekranie (sprawdzone
+     * grepem po całym froncie: pole jest tylko CZYTANE — etykieta „mufa" na
+     * rysunku i symbol `jointSleeve`). Klik dawał wyłącznie komunikat „Etap 4
+     * roadmapy", czyli dokładnie martwą pozycję, którą audyt nazywa gorszą od
+     * jej braku (znalezisko E-1, ta sama klasa). Zdolność wraca do menu
+     * RAZEM z operacją domenową, nie wcześniej. */
     { id: 'change-catalog', labelPl: 'Zmień katalog kabla', group: 'edycja' },
     { id: 'edit-laying', labelPl: 'Edytuj parametry ułożenia', group: 'edycja' },
     { id: 'show-thermal', labelPl: 'Pokaż obciążalność cieplną', group: 'widok' },

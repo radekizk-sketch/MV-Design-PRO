@@ -41,6 +41,7 @@ import {
   LABEL_OWNER_ELEMENT_KIND,
   buildCanvasHitAreas,
   type CanvasHitArea,
+  type HitObjectClass,
   type ResultMarkerHitInput,
 } from './hitAreas';
 import {
@@ -186,6 +187,14 @@ export interface SldElementClickMeta {
    *  menu podtypu). `undefined` dla nie-DER oraz DER `generator`/`unknown`
    *  (menu generyczne — zero zgadywania). */
   readonly derKind?: DerSourceKind;
+  /** Karta S9-5: KLASA trafionego obiektu kanwy — z warstwy trafień S9-4
+   *  (`CanvasHitArea.klasa`), czyli z TEJ SAMEJ geometrii, którą wskazał
+   *  kursor. Wołający (`SldCanvasV3Workspace`) rozstrzyga po niej temat menu
+   *  (`canvasMenuSubject.ts`): dzięki temu znacznik wyniku i łącznik wiersza —
+   *  obiekty BEZ wpisu w mapie meta sceny — też niosą tożsamość, a szyna
+   *  narysowana jako kompozyt stacji da się sprowadzić do kanonicznej szyny SN.
+   *  `undefined` = tło arkusza. */
+  readonly klasa?: HitObjectClass;
 }
 
 export interface SldCanvasV3Props {
@@ -2815,11 +2824,27 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
     [aktywacjaZnacznika, rozwijalneSymbole, expandCollapsedBlock, onElementClick, klikMeta],
   );
 
+  /** Karta S9-5: obszary trafienia po `testId` — meta prawego kliku bierze
+   *  KLASĘ i (dla obiektów spoza mapy `klikMeta`, np. znacznika wyniku) także
+   *  `ownerRef` z warstwy trafień, czyli z tego samego źródła, które
+   *  rozstrzygnęło trafienie. Bez tego prawy klik w znacznik wyniku i w
+   *  łącznik wiersza arkusza nie niósł żadnej tożsamości. */
+  const obszarPoTestId = useMemo(() => {
+    const mapa = new Map<string, CanvasHitArea>();
+    for (const area of hitAreas) mapa.set(area.testId, area);
+    return mapa;
+  }, [hitAreas]);
+
   const handleHitContextMenu = useCallback(
     (testId: string, clientX: number, clientY: number) => {
-      onElementContextMenu?.(testId, klikMeta.get(testId), clientX, clientY);
+      const meta = klikMeta.get(testId);
+      const area = obszarPoTestId.get(testId);
+      const metaMenu: SldElementClickMeta | undefined = area
+        ? { ...meta, klasa: area.klasa, ownerRef: meta?.ownerRef ?? area.ownerRef }
+        : meta;
+      onElementContextMenu?.(testId, metaMenu, clientX, clientY);
     },
-    [onElementContextMenu, klikMeta],
+    [onElementContextMenu, klikMeta, obszarPoTestId],
   );
 
   const handleHitDoubleClick = useCallback(

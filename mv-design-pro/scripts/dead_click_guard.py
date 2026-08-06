@@ -61,6 +61,38 @@ def extract_sld_registry_ids() -> set[str]:
     return set(re.findall(r"""\bid:\s*['"]([a-z][a-z0-9_-]+)['"]""", registry))
 
 
+def extract_sld_build_action_ids() -> set[str]:
+    """Action ids declared with group: 'budowa' (network-building operations).
+
+    Karta S9-5: a build action promises a change of the network model. Its only
+    honest providers are a canonical domain operation (opByAction) or a real
+    screen that performs the change (ACTION_TO_SCREEN / dedicated branch). A
+    roadmap toast is NOT a provider - the click leaves the model untouched,
+    which is exactly the dead position the SLD audit measured (P-7 / B-4).
+    """
+    content = read(SLD_V2_DIR / "command" / "SldCommandService.ts")
+    registry_start = content.find("SLD_MENU_REGISTRY")
+    registry_end = content.find("};", registry_start)
+    if registry_start < 0 or registry_end < 0:
+        raise RuntimeError("SLD_MENU_REGISTRY not found")
+    registry = content[registry_start:registry_end]
+    pattern = re.compile(
+        r"""\{\s*id:\s*['"]([a-z][a-z0-9_-]+)['"][^}]*?group:\s*['"]budowa['"]""",
+        re.DOTALL,
+    )
+    return set(pattern.findall(registry))
+
+
+def extract_dedicated_branch_ids(content: str) -> set[str]:
+    """Action ids handled by a dedicated `actionId === '<id>'` branch.
+
+    Karta S9-5: replaces the hardcoded allowlist that used to enumerate the
+    special branches by hand. A hardcoded list is a place where a dead position
+    can hide - the guard now reads the executor itself.
+    """
+    return set(re.findall(r"""actionId\s*===\s*['"]([a-z][a-z0-9_-]+)['"]""", content))
+
+
 def check_sld_menu_path() -> list[str]:
     errors: list[str] = []
     registry_ids = extract_sld_registry_ids()
@@ -110,13 +142,10 @@ def check_sld_menu_path() -> list[str]:
     screen_ids = extract_string_set(executor_content, "const ACTION_TO_SCREEN")
     hint_ids = extract_string_set(executor_content, "const ACTION_ROADMAP_HINT_PL")
     delete_ids = extract_string_set(executor_content, "const DELETE_ACTION_OBJECT_LABEL_PL")
-    # Dedykowane galezie wykonawcy poza tabelami routingu:
-    #  - 'add-source': skrot do E-13 karty DER (Faza G),
-    #  - 'show-ncrfg': deep-link do macierzy wymogow NC RfG ui2 (zakladka
-    #    'ncrfg' warsztatu Wynikow, karta P-1 — luka F-E7 zamknieta).
-    #  - 'show-results': deep-link do zakladki 'rozplyw' warsztatu Wynikow ui2
-    #    (karta D-2, decyzja wlasciciela — koniec celowania w legacy E-24).
-    special_ids = {"add-source", "show-ncrfg", "show-results"}
+    # Dedykowane galezie wykonawcy poza tabelami routingu (np. 'add-source',
+    # 'show-ncrfg', 'show-results', 'insert-gpz') — czytane Z KODU wykonawcy,
+    # nie z recznej listy w guardzie (karta S9-5).
+    special_ids = extract_dedicated_branch_ids(executor_content)
     covered = op_ids | screen_ids | hint_ids | delete_ids | special_ids
 
     # SLD actions that are rendered but have neither navigation, operation,
@@ -127,8 +156,21 @@ def check_sld_menu_path() -> list[str]:
             "SLD_MENU_REGISTRY action(s) without route/operation/hint: " + ", ".join(uncovered[:60])
         )
 
+    # Karta S9-5 — pozycje BUDOWY musza miec realnego dostawce zmiany modelu.
+    # Sam wpis w ACTION_ROADMAP_HINT_PL nie jest pokryciem: klik konczy sie
+    # komunikatem, a model zostaje bez zmian (martwa pozycja menu).
+    build_ids = extract_sld_build_action_ids()
+    real_providers = op_ids | screen_ids | delete_ids | special_ids
+    hint_only = sorted(build_ids - real_providers)
+    if hint_only:
+        errors.append(
+            "SLD_MENU_REGISTRY build action(s) covered ONLY by a roadmap toast "
+            "(no domain operation, no screen, no dedicated branch): " + ", ".join(hint_only[:60])
+        )
+
     print(f"  SLD registry action ids: {len(registry_ids)}")
     print(f"  SLD route-covered ids: {len(covered & registry_ids)}")
+    print(f"  SLD build action ids: {len(build_ids)} (all with a real provider: {not hint_only})")
     return errors
 
 

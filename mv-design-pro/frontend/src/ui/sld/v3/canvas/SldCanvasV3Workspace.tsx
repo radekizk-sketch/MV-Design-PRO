@@ -113,6 +113,11 @@ import {
   type SldMenuContext,
 } from '../../../context-menu/SldContextMenuController';
 import { getMenuActions, type SldElementKindForMenu } from '../../v2/command/SldCommandService';
+import {
+  buildCanvasModelIndex,
+  resolveCanvasMenuSubject,
+  type CanvasMenuSubject,
+} from './canvasMenuSubject';
 import { selectStationDistributionTransformers } from '../../../network-build/stationTransformerSelection';
 import { useMeasuredSize } from '../../shared/useMeasuredSize';
 import {
@@ -169,7 +174,6 @@ import { SldMinimapPanel } from './SldMinimapPanel';
 import type { V3Rect } from '../core/grid';
 import { buildSceneV3, SCENE_LOD_LABELS_PL, type SceneLod, type SceneV3 } from '../scene/buildScene';
 import type { PreviewElementKind } from '../compose/preview';
-import type { DerSourceKind } from '../compose/sourceKind';
 import { SldCanvasV3, type SldElementClickMeta } from './SldCanvasV3';
 // SCHEMAT-10 S4 (V12K-135/136): paleta jasna + kadr fit-do-treści WYŁĄCZNIE
 // dla toru eksportu — patrz nagłówki `export/exportPalette.ts`/`exportFrame.ts`.
@@ -331,95 +335,25 @@ export function elementTypeForKind(kind: PreviewElementKind | undefined): Elemen
 }
 
 /**
- * F8c pkt 3 (checklista bramkująca §F8c, „Context-menu"): `PreviewElementKind`
- * v3 → `SldElementKindForMenu` (`SldCommandService`/`SLD_MENU_REGISTRY`,
- * WSPÓŁDZIELONY moduł `context-menu/`) — TA SAMA metoda co
- * `elementTypeForKind` wyżej (jawna, zamknięta tabela, `undefined` = brak
- * menu, NIE zgadywanie). Zweryfikowane względem `v2/canvas/
- * SldWorkspaceContainer.tsx::mapKindToMenuKind` (vocabulary v2 jest
- * SZERSZY — v2 rozróżnia więcej `kind` niż v3 `elementKind` — więc to NIE
- * jest reużycie tamtej funkcji, tylko ANALOGICZNA, mniejsza tabela dla
- * mniejszej unii v3):
- *  - 'station' → 'station' (dopasowanie wprost);
- *  - 'transformer' → 'apparatus' (jak w v2: kind='transformer' →
- *    menuKind='apparatus' — transformator nie ma własnej kategorii menu);
- *  - 'apparatus' → 'apparatus' (dopasowanie wprost);
- *  - 'source' → 'gpz' (sieć zewnętrzna/GPZ, jak w v2 kind='gpz' →
- *    menuKind='gpz' — v3 `elementKind='source'` to TA SAMA kategoria
- *    domenowa, inna nazwa w unii v3, patrz nagłówek pliku F9.4);
- *  - 'bus' → 'section' (szyna/sekcja rozdzielni SN — najbliższy odpowiednik
- *    v2 'section'; v3 nie rozróżnia dziś szyny GPZ od sekcji, jak
- *    `elementTypeForKind('bus') → 'Bus'` niżej nie rozróżnia ich też);
- *  - 'segment' → 'cable_segment_sn' (DOMYŚLNIE — v3 `PreviewSegment.meta.kind`
- *    niesie tylko poziom napięcia (bus/sn/lv/leader/protectionTrip/
- *    measurementLink), NIE rozróżnia kabel-vs-napowietrzna; v2 ma tę samą
- *    niepewność domyślnie na 'cable_segment_sn' gdy kind nie precyzuje
- *    'overhead_line_sn' — UDOKUMENTOWANA LUKA, nie regresja);
- *  - 'der' → kategoria PODTYPU wg `meta.derKind` (DER-MENU-V3, Karta SLD-P,
- *    GAP P-1 — LUKA ZAMKNIĘTA): scena v3 niesie TERAZ `derKind` (REALNA
- *    wartość `SldSourceView.kind` z łańcucha adaptera, `compose/station.ts` →
- *    `scene/buildScene.ts` `meta.derKind`), więc mapowanie na OSOBNE kategorie
- *    v2 działa BEZ zgadywania: `pv → 'der_pv'`, `bess → 'der_bess'`,
- *    `wind → 'der_fw'` (pełne menu podtypu: `open-*-config`/`show-frt-hvrt`/
- *    `delete-*`, `SldCommandService.ts`). `generator`/`unknown` oraz BRAK
- *    `derKind` → 'der' GENERYCZNE (uczciwa degradacja — `domain_no_guessing_
- *    guard`: v2 nie ma osobnej kategorii dla `generator`, a `unknown` to
- *    honest-unknown; menu niesie tylko akcje bez zależności od podtypu
- *    `show-ncrfg`/`show-results`). Testy (a)/(b) w
- *    `__tests__/contextMenu.test.tsx` pokrywają oba tory (derPv → menu podtypu;
- *    derGenerator → menu generyczne);
- *  - 'protectionAnnotation' → `undefined` (adnotacja graficzna, nie obiekt
- *    domenowy — brak odpowiednika w v2/SLD_MENU_REGISTRY).
+ * KARTA S9-5 — KATEGORIA MENU WYNIKA Z OBIEKTU MODELU, NIE Z KRESKI.
+ *
+ * Dawna tabela `elementKindForMenu` (`PreviewElementKind` → kategoria menu)
+ * została ZASTĄPIONA rozstrzyganiem tematu w `canvas/canvasMenuSubject.ts`.
+ * Powód jest pomiarowy, nie estetyczny (sieć referencyjna 52 stacji, LOD 0/1/2):
+ *
+ *  - 350 z 468 odcinków rysowanych jako „tor SN" NIE MA gałęzi w modelu
+ *    (zejścia pól, wyprowadzenia boczne) — dawna tabela dawała im PEŁNE menu
+ *    odcinka, a `element_ref` operacji (`…/bay/001/001#lateral-0`) nie
+ *    istniał w modelu;
+ *  - `'segment' → 'cable_segment_sn'` było DOMYŚLNE, więc wszystkie 8 linii
+ *    napowietrznych sieci referencyjnej dostawało menu KABLA (UDOKUMENTOWANA
+ *    LUKA w dawnym komentarzu — dziś zamknięta realnym `Branch.type`);
+ *  - etykieta transformatora (`ownerKind: 'station-name'`) trafiała do
+ *    kategorii `station`, czyli menu STACJI nad transformatorem.
+ *
+ * Tabela `derSubtypeMenuKind` (podtyp DER → kategoria) przeniesiona 1:1 do
+ * `canvasMenuSubject.menuKindDer` — jedno miejsce rozstrzygania kategorii.
  */
-function elementKindForMenu(
-  kind: PreviewElementKind | undefined,
-  derKind: DerSourceKind | undefined,
-): SldElementKindForMenu | undefined {
-  switch (kind) {
-    case 'station':
-      return 'station';
-    case 'transformer':
-      return 'apparatus';
-    case 'apparatus':
-      return 'apparatus';
-    case 'source':
-      return 'gpz';
-    case 'bus':
-      return 'section';
-    case 'segment':
-      return 'cable_segment_sn';
-    case 'der':
-      // DER-MENU-V3: podtyp z REALNEGO `derKind` — TYLKO trzy rozpoznane
-      // rodzaje mapują na osobne kategorie v2; `generator`/`unknown`/brak
-      // danych → 'der' generyczne (zero fabrykacji podtypu).
-      return derSubtypeMenuKind(derKind);
-    default:
-      return undefined;
-  }
-}
-
-/**
- * DER-MENU-V3 (Karta SLD-P): `DerSourceKind` (REALNA wartość łańcucha) →
- * kategoria menu v2. JAWNA, zamknięta tabela — WYŁĄCZNIE `pv`/`bess`/`wind`
- * mają osobne kategorie (`der_pv`/`der_bess`/`der_fw`, `SLD_MENU_REGISTRY`);
- * `generator` (brak kategorii v2), `unknown` (honest-unknown) i `undefined`
- * (brak danych) degradują do 'der' generycznego — NIGDY domysł podtypu
- * (`domain_no_guessing_guard`).
- */
-function derSubtypeMenuKind(derKind: DerSourceKind | undefined): SldElementKindForMenu {
-  switch (derKind) {
-    case 'pv':
-      return 'der_pv';
-    case 'bess':
-      return 'der_bess';
-    case 'wind':
-      return 'der_fw';
-    case 'generator':
-    case 'unknown':
-    case undefined:
-      return 'der';
-  }
-}
 
 /**
  * F11.4-B / ARCH-4 (spec §10.1 „pełna migracja budowniczych danych drawera"):
@@ -1706,45 +1640,64 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   }, [detailDrawerData, openRouteSurface]);
   const canOpenDetailConfiguration = detailDrawerData?.kind === 'cable_run' || detailDrawerData?.kind === 'node';
 
-  // F8c pkt 3: menu kontekstowe — stan LOKALNY, most do WSPÓŁDZIELONEGO
-  // `SldContextMenuController` (`context-menu/`, patrz mapowanie
-  // `elementKindForMenu` wyżej).
+  // F8c pkt 3 / KARTA S9-5: menu kontekstowe — stan LOKALNY trzyma ŻĄDANIE i
+  // TEMAT (`CanvasMenuSubject`) razem, bo to JEDEN predykat o obiekcie:
+  // kategoria menu, ref operacji i kontekst dostępności akcji muszą pochodzić
+  // z tego samego rozstrzygnięcia. Przed tą kartą kategoria szła z kreski, a
+  // dostępność z osobnego skanu snapshotu po `elementId` — symbol stacji i jej
+  // etykieta dawały RÓŻNE menu tego samego obiektu (reguła KLASA pkt 3).
   const [contextRequest, setContextRequest] = useState<SldContextMenuRequest | null>(null);
-  const closeContextMenu = useCallback(() => setContextRequest(null), []);
+  const [contextSubject, setContextSubject] = useState<CanvasMenuSubject | null>(null);
+  const closeContextMenu = useCallback(() => {
+    setContextRequest(null);
+    setContextSubject(null);
+  }, []);
+  /** Indeks refów modelu — jedno przejście po snapshocie, nie skan na klik. */
+  const modelIndex = useMemo(() => buildCanvasModelIndex(snapshot), [snapshot]);
   const handleElementContextMenu = useCallback(
     (testId: string, meta: SldElementClickMeta | undefined, clientX: number, clientY: number) => {
       // Tło (`sld-v3-background`, `SldCanvasV3` nagłówek onContextMenu) → menu
-      // tła; realny element → tabela `elementKindForMenu` (brak dopasowania,
-      // np. `elementKind='protectionAnnotation'` — UDOKUMENTOWANA LUKA — NIE
-      // otwiera menu, bez crasha, bez zgadywania kategorii). DER-MENU-V3:
-      // `elementKind='der'` wybiera kategorię PODTYPU wg `meta.derKind`
-      // (der_pv/der_bess/der_fw dla pv/bess/wind; generyczne `der` dla
-      // generator/unknown/braku danych), patrz `elementKindForMenu` nagłówek.
+      // tła (jedyna kategoria BEZ obiektu modelu — jej akcje dotyczą arkusza,
+      // nie elementu).
       if (testId === 'sld-v3-background') {
         setContextRequest({ kind: 'background', elementId: null, clientX, clientY });
+        setContextSubject(null);
         return;
       }
-      const menuKind = elementKindForMenu(meta?.elementKind, meta?.derKind);
-      if (!menuKind) return;
-      // K5-A: szyna GPZ niesie KANONICZNY Bus ref w `meta.busRef`
-      // (ADAPTER-BUSREF) — preferowany nad kompozytem sceny
-      // (`${sectionId}#bus-primary`), żeby operacje domenowe menu sekcji
-      // (add_sn_bay / add_shunt_compensator_sn / add_surge_arrester_sn)
-      // dostały realny ref ENM. Pozostałe elementy: bez zmiany.
-      const id = meta?.busRef ?? meta?.ownerRef ?? elementIdFromTestId(testId);
-      setContextRequest({ kind: menuKind, elementId: id, clientX, clientY });
+      // Realny obiekt → TEMAT z `canvasMenuSubject.ts`: kotwica ZWERYFIKOWANA
+      // w modelu + kategoria menu z tej kotwicy. `stan: 'brak'` (adnotacja
+      // zabezpieczeń, znacznik pomocniczy bez refu, fragment rysunku bez
+      // odpowiednika w modelu) NIE otwiera menu — uczciwa odmowa zamiast
+      // operacji na refie rysunkowym.
+      const wynik = resolveCanvasMenuSubject(
+        {
+          klasa: meta?.klasa,
+          ownerRef: meta?.ownerRef,
+          elementKind: meta?.elementKind,
+          derKind: meta?.derKind,
+          busRef: meta?.busRef,
+        },
+        modelIndex,
+      );
+      if (wynik.stan === 'brak') return;
+      setContextRequest({
+        kind: wynik.temat.menuKind,
+        elementId: wynik.temat.modelRef,
+        clientX,
+        clientY,
+      });
+      setContextSubject(wynik.temat);
     },
-    [],
+    [modelIndex],
   );
-  // K5-A: kontekst dostępności akcji menu — dla stacji sprawdzamy realne FK
-  // `substation.bus_refs` → szyna nN (0 < U < 1 kV); bez stacji/żądania =
-  // `undefined` (brak danych, zero zgadywania — akcje bez blokady).
+  // K5-A + S9-5: kontekst dostępności akcji menu liczony z TEMATU (jedno
+  // źródło prawdy o obiekcie), nie z ponownego dopasowania `elementId`.
+  // Dla stacji sprawdzamy realne FK `substation.bus_refs` → szyna nN
+  // (0 < U < 1 kV); bez stacji = `undefined` (brak danych, zero zgadywania).
   const contextMenuAvailability = useMemo<SldMenuContext | undefined>(() => {
-    if (!contextRequest || contextRequest.kind !== 'station' || !contextRequest.elementId) {
-      return undefined;
-    }
+    if (!contextSubject || contextSubject.kotwica !== 'stacja') return undefined;
     const station = (snapshot?.substations ?? []).find(
-      (candidate) => candidate.ref_id === contextRequest.elementId || candidate.id === contextRequest.elementId,
+      (candidate) => candidate.ref_id === contextSubject.modelRef || candidate.id === contextSubject.modelRef,
     );
     if (!station) return undefined;
     const hasNnBus = (station.bus_refs ?? []).some((busRef) => {
@@ -1754,7 +1707,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
       return bus != null && bus.voltage_kv > 0 && bus.voltage_kv < 1;
     });
     return { stationHasNnBus: hasNnBus };
-  }, [contextRequest, snapshot]);
+  }, [contextSubject, snapshot]);
   // F11.4-B / ARCH-3 (spec §10.1: „wykonawca akcji domenowych na v3: BRAMKA
   // REALNA, wdrażana"): `onAction` woła TEN SAM wykonawca co v2
   // (`useSldActionExecutor`, `shared/sldActionExecutor.ts`) — nawigacja
