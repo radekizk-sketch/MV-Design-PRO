@@ -131,6 +131,8 @@ import {
 import {
   DRAWER_ACTION_LABEL_PL,
   parseGpzApparatusSelectionId,
+  resolveGpzTrunkStartFieldRef,
+  stationRefOfBusOrSource,
   useSldActionExecutor,
 } from '../../shared/sldActionExecutor';
 // F12-B (spec §10.1 ARCH-4, plan §F12): sześć ostatnich osiągalnych funkcji
@@ -1695,6 +1697,15 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   // Dla stacji sprawdzamy realne FK `substation.bus_refs` → szyna nN
   // (0 < U < 1 kV); bez stacji = `undefined` (brak danych, zero zgadywania).
   const contextMenuAvailability = useMemo<SldMenuContext | undefined>(() => {
+    // Karta S9-5: wejścia budowy ciągu (GPZ / szyna sekcji) są dostępne tylko
+    // wtedy, gdy rozdzielnia ma WOLNE POLE LINIOWE — inaczej kreator otwarłby
+    // się bez punktu startu i zapis byłby w nim trwale zablokowany.
+    if (contextSubject && (contextSubject.kotwica === 'zrodlo' || contextSubject.kotwica === 'szyna')) {
+      const stationRef = stationRefOfBusOrSource(snapshot, contextSubject.modelRef);
+      return {
+        trunkStartFieldAvailable: resolveGpzTrunkStartFieldRef(snapshot, stationRef) !== null,
+      };
+    }
     if (!contextSubject || contextSubject.kotwica !== 'stacja') return undefined;
     const station = (snapshot?.substations ?? []).find(
       (candidate) => candidate.ref_id === contextSubject.modelRef || candidate.id === contextSubject.modelRef,

@@ -310,6 +310,95 @@ function operationOpenMessage(op: NetworkBuildOperationName, actionId: string): 
   }
 }
 
+/**
+ * KARTA S9-5 — PUNKT STARTU CIĄGU SN Z GPZ.
+ *
+ * Kreator magistrali (`ui2/kreatory/magistrala`) wymaga PUNKTU STARTU:
+ * `maStartCiagu` przepuszcza wyłącznie kontekst z `from_terminal_id` albo
+ * `field_ref`. Pozycja menu, która otwiera kreator bez punktu startu, jest
+ * obietnicą bez pokrycia — zapis jest w niej trwale zablokowany.
+ *
+ * Wspólny resolver `resolveContinueTrunkOperationContext` NIE zwraca pola
+ * liniowego dla `Source`/`Bus` i tak ma zostać: jego niezmienniki („ciąg nie
+ * wychodzi wprost z obiektu źródła", „pole zajęte ⇒ brak punktu startu",
+ * „niejednoznaczny terminal ⇒ brak punktu startu") są przypięte testami
+ * `network-build/__tests__/operationContext.test.ts` i chronią przed
+ * fabrykowaniem startu. Dlatego rozstrzygnięcie dla MENU KANWY mieszka tutaj i
+ * jest ZAWĘŻONE do pól liniowych GPZ, rozpoznawanych po REALNYCH danych
+ * operacji `add_grid_source_sn` (znacznik `gpz_line_field` w `tags` albo
+ * `meta.gpz_line_field_index`) — nie po kształcie referencji.
+ *
+ * Zajętość liczymy PER POLE (`Branch.meta.origin_bay_ref`, ustawiane przez
+ * `continue_trunk_segment_sn`), a nie per szyna: na jednej szynie sekcyjnej GPZ
+ * stoi wiele pól liniowych i pierwszy ciąg nie może blokować pozostałych.
+ *
+ * `null` = brak wolnego pola liniowego ⇒ menu BLOKUJE pozycję z uczciwym
+ * powodem, zamiast otwierać kreator, którego nie da się zapisać.
+ */
+/**
+ * Karta S9-5: stacja-właścicielka szyny SN albo źródła — po REALNYCH FK
+ * (`substation.bus_refs`, `source.bus_ref`). Potrzebna, żeby menu GPZ/sekcji
+ * mogło znaleźć wolne pole liniowe tej rozdzielni.
+ */
+export function stationRefOfBusOrSource(
+  snapshot: EnergyNetworkModel | null,
+  elementId: string,
+): string | null {
+  if (!snapshot || !elementId) return null;
+  const source = (snapshot.sources ?? []).find(
+    (candidate) => candidate.ref_id === elementId || candidate.id === elementId,
+  );
+  const busRef = source?.bus_ref ?? elementId;
+  const station = (snapshot.substations ?? []).find((candidate) =>
+    (candidate.bus_refs ?? []).includes(busRef),
+  );
+  return station?.ref_id ?? station?.id ?? null;
+}
+
+export function resolveGpzTrunkStartFieldRef(
+  snapshot: EnergyNetworkModel | null,
+  stationRef: string | null,
+): string | null {
+  if (!snapshot || !stationRef) return null;
+  const station = (snapshot.substations ?? []).find(
+    (candidate) => candidate.ref_id === stationRef || candidate.id === stationRef,
+  );
+  const meta = station?.meta && typeof station.meta === 'object'
+    ? (station.meta as Record<string, unknown>)
+    : null;
+  const specs = Array.isArray(meta?.field_specs) ? (meta!.field_specs as unknown[]) : [];
+  const zajete = new Set(
+    (snapshot.branches ?? [])
+      .filter((branch) => branch.type === 'cable' || branch.type === 'line_overhead')
+      .map((branch) => {
+        const branchMeta = (branch as { meta?: unknown }).meta;
+        const origin = branchMeta && typeof branchMeta === 'object'
+          ? (branchMeta as Record<string, unknown>).origin_bay_ref
+          : undefined;
+        return typeof origin === 'string' ? origin.trim() : '';
+      })
+      .filter(Boolean),
+  );
+  const wolne: string[] = [];
+  for (const raw of specs) {
+    if (!raw || typeof raw !== 'object') continue;
+    const spec = raw as Record<string, unknown>;
+    const tags = Array.isArray(spec.tags) ? spec.tags : [];
+    const specMeta = spec.meta && typeof spec.meta === 'object' ? (spec.meta as Record<string, unknown>) : null;
+    const jestPolemGpz =
+      tags.some((tag) => typeof tag === 'string' && tag.trim() === 'gpz_line_field')
+      || typeof specMeta?.gpz_line_field_index === 'number';
+    if (!jestPolemGpz) continue;
+    if (!['OUT', 'FEEDER'].includes(String(spec.bay_role ?? '').toUpperCase())) continue;
+    const ref = typeof spec.field_ref === 'string' ? spec.field_ref.trim() : '';
+    if (!ref || zajete.has(ref)) continue;
+    wolne.push(ref);
+  }
+  // Wybór deterministyczny: pierwsze wolne pole w porządku leksykalnym
+  // (identyfikatory pól GPZ są numerowane, więc to porządek rozdzielni).
+  return wolne.sort((left, right) => left.localeCompare(right))[0] ?? null;
+}
+
 export function buildSldOperationContext(
   actionId: string,
   kind: SldElementKindForMenu,
@@ -393,6 +482,19 @@ export function buildSldOperationContext(
   if (actionId === 'conscious-split-on-segment') {
     extraContext.split_mode = 'explicit_preview_required';
     extraContext.split_label = 'Świadomy podział odcinka';
+  }
+  // Karta S9-5: ciąg z GPZ / z szyny sekcji wychodzi przez WOLNE POLE LINIOWE
+  // rozdzielni — patrz `resolveGpzTrunkStartFieldRef`. Bez `field_ref` kreator
+  // magistrali nie ma punktu startu i zapis jest w nim trwale zablokowany.
+  if (actionId === 'continue-trunk' && (kind === 'gpz' || kind === 'section')) {
+    const fieldRef = resolveGpzTrunkStartFieldRef(
+      snapshot,
+      stationRefOfBusOrSource(snapshot, operationElementId),
+    );
+    // Brak wolnego pola liniowego = brak operacji (menu blokuje pozycję z
+    // uczciwym powodem, patrz `getMenuActions`), nigdy kreator bez startu.
+    if (!fieldRef) return null;
+    extraContext.field_ref = fieldRef;
   }
 
   return {

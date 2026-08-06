@@ -42,6 +42,8 @@ export interface SldMenuContext {
   readonly apparatusKind?: string;
   /** K5-A: czy stacja ma szynę nN (warunek agregatu/UPS w menu stacji). */
   readonly stationHasNnBus?: boolean;
+  /** Karta S9-5: czy rozdzielnia ma wolne pole liniowe (punkt startu ciągu). */
+  readonly trunkStartFieldAvailable?: boolean;
 }
 
 export interface SldContextMenuControllerProps {

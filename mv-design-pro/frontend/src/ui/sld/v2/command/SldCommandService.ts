@@ -216,6 +216,11 @@ export function getMenuActions(
     /** K5-A: czy stacja ma szynę nN (realne FK substation.bus_refs → bus nN);
      *  `false` blokuje agregat/UPS z uczciwym powodem, `undefined` = brak danych. */
     readonly stationHasNnBus?: boolean;
+    /** Karta S9-5: czy rozdzielnia (GPZ / sekcja) ma WOLNE POLE LINIOWE — czyli
+     *  punkt startu ciągu SN (`resolveGpzTrunkStartFieldRef`). `false` blokuje
+     *  „Wyprowadź ciąg główny SN" z uczciwym powodem zamiast otwierać kreator,
+     *  którego nie da się zapisać; `undefined` = brak danych (bez blokady). */
+    readonly trunkStartFieldAvailable?: boolean;
   },
 ): SldMenuAction[] {
   const baseActions = SLD_MENU_REGISTRY[kind];
@@ -253,6 +258,22 @@ export function getMenuActions(
         ...a,
         disabled: true,
         disabledReasonPl: 'Stacja nie ma szyny nN. Najpierw dodaj transformator SN/nN z rozdzielnicą nN.',
+      };
+    }
+    /* Karta S9-5: pozycja budowy MUSI mieć punkt startu. Rozdzielnia bez
+     * wolnego pola liniowego dostaje uczciwą blokadę — kreator magistrali
+     * odmówiłby zapisu (`maStartCiagu`), więc otwarcie go byłoby martwym
+     * klikiem opakowanym w okno. */
+    if (
+      a.id === 'continue-trunk'
+      && (kind === 'gpz' || kind === 'section')
+      && ctx.trunkStartFieldAvailable === false
+    ) {
+      return {
+        ...a,
+        disabled: true,
+        disabledReasonPl:
+          'Brak wolnego pola liniowego SN w tej rozdzielni. Dodaj pole odpływowe albo kontynuuj ciąg z istniejącego odcinka.',
       };
     }
     if (a.id === 'start-branch' && kind === 'station' && ctx.stationHasFreeBay === false) {

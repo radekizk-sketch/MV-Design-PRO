@@ -2368,15 +2368,30 @@ line('=== menu_subject_probe (S9-5): menu zależne od trafionego obiektu ===');
     { krok: 'odgałęzienie ze stacji', menuKind: 'station', action: 'start-branch' },
   ];
 
-  // (a) Każde ogniwo ma pozycję w rejestrze menu i jest AKTYWNE bez kontekstu
-  //     blokującego — pozycja permanentnie zablokowana nie jest wejściem.
+  // (a) Każde ogniwo ma pozycję w rejestrze menu i jest AKTYWNE, gdy warunek
+  //     jego wykonania jest spełniony — pozycja permanentnie zablokowana nie
+  //     jest wejściem. Kontekst `trunkStartFieldAvailable: true` odwzorowuje
+  //     rozdzielnię z WOLNYM polem liniowym (stan świeżo wstawionego GPZ).
   for (const ogniwo of OGNIWA) {
-    const akcje = getMenuActions(ogniwo.menuKind, {});
+    const akcje = getMenuActions(ogniwo.menuKind, { trunkStartFieldAvailable: true });
     const pozycja = akcje.find((a) => a.id === ogniwo.action);
     check(
       `menu_chain_probe (S9-5, kryterium odbioru) ogniwo „${ogniwo.krok}": menu ${ogniwo.menuKind} ma AKTYWNĄ pozycję ${ogniwo.action}`,
       pozycja != null && pozycja.disabled !== true,
       pozycja == null ? 'BRAK pozycji w SLD_MENU_REGISTRY' : pozycja.disabled ? `zablokowana: ${pozycja.disabledReasonPl}` : 'aktywna',
+    );
+  }
+
+  // (a2) UCZCIWA ODMOWA: rozdzielnia BEZ wolnego pola liniowego blokuje
+  //      wyprowadzenie ciągu z POWODEM — kreator magistrali odmówiłby zapisu
+  //      (`maStartCiagu`), więc otwarcie go byłoby martwym klikiem w oknie.
+  for (const menuKind of ['gpz', 'section']) {
+    const pozycja = getMenuActions(menuKind, { trunkStartFieldAvailable: false })
+      .find((a) => a.id === 'continue-trunk');
+    check(
+      `menu_chain_probe (S9-5, zero fabrykacji) menu ${menuKind} BEZ wolnego pola liniowego: „continue-trunk" zablokowany z powodem`,
+      pozycja != null && pozycja.disabled === true && (pozycja.disabledReasonPl ?? '').includes('wolnego pola liniowego'),
+      pozycja == null ? 'BRAK pozycji' : `disabled=${pozycja.disabled} powod=${pozycja.disabledReasonPl ?? '—'}`,
     );
   }
 
