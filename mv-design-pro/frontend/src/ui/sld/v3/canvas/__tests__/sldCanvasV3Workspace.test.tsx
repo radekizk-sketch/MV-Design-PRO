@@ -27,6 +27,7 @@ import {
   flowOverlayValuesTraceToPayload,
   orientedSegmentRefs,
 } from '../overlay';
+import { resultRefForSegment } from '../resultLabels';
 import { useRawResultOverlayStore, type RawOverlayElement, type RawOverlayPayload } from '../../../../sld-overlay/rawResultOverlayStore';
 import { useOverlayStore } from '../../../../sld-overlay/overlayStore';
 import type {
@@ -241,9 +242,42 @@ describe('SldCanvasV3Workspace — F8b-1 C: nakładka energizacji z realnych wyn
         if (!meta?.ownerRef || !meta.elementKind) continue;
         if (!['station', 'bus', 'segment'].includes(meta.elementKind)) continue;
         const base = meta.ownerRef.includes('#') ? meta.ownerRef.slice(0, meta.ownerRef.indexOf('#')) : meta.ownerRef;
-        expect(overlay.energizedByOwnerRef?.[meta.ownerRef]).toBe(isElementEnergized(highlight, base));
+        // WN-WYNIK: intencja bez zmian („stan wpisu = stan JEGO WŁASNEGO
+        // elementu"), zmienił się sposób wskazania tego elementu. Dla szyn GPZ
+        // element modelu niesie kanoniczny `busResultRef`; `baseRefOf` dawał tam
+        // identyfikator SEKCJI, którego `SupplyPathHighlight` nie zna — a
+        // `isElementEnergized` nie ma „nie wiem" i zwracał `false`, czyli szyna
+        // pod napięciem dostawała zdanie „beznapięciowa".
+        const elementModelu = resultRefForSegment(meta) ?? base;
+        expect(overlay.energizedByOwnerRef?.[meta.ownerRef]).toBe(isElementEnergized(highlight, elementModelu));
       }
     }
+  });
+
+  /* KARTA WN-WYNIK — PREDYKATY PARAMI: słownik energizacji jest BUDOWANY po
+     `meta.ownerRef`, a kanwa CZYTAŁA go po kanonicznym `busResultRef`. Rozjazd
+     nie dawał złego koloru, tylko cichy BRAK: szyny GPZ (jedyne niosące
+     `busResultRef`) pytały o klucz, którego w mapie nie ma. Pomiar przed
+     naprawą na tej fixturze: 4 chybienia na 110 odcinków szynowych — 100 %
+     szyn GPZ. Test idzie REALNĄ ścieżką (render kanwy), nie porównaniem
+     słowników: sprawdza kolor narysowanej szyny WN. */
+  it('WN-WYNIK: szyna WN GPZ dostaje stan energizacji na kanwie (klucz odczytu == klucz budowy słownika)', () => {
+    useSnapshotStore.setState({ snapshot: enm });
+    const { container } = render(<SldCanvasV3Workspace width={1200} height={900} lodOverride={2} />);
+    const hvBus = container.querySelector('[data-testid="gpz-canonical-hv-bus"]');
+    expect(hvBus).toBeTruthy();
+    // Nakładka wpisała stan (pod napięciem / beznapięciowo) — kolor BAZOWY
+    // poziomu napięcia oznaczałby „brak danych", czyli dokładnie stan sprzed
+    // naprawy. Sekcja SN GPZ tą samą regułą.
+    // GPZ fixtury jest zasilany ze źródła systemowego, więc obie szyny są POD
+    // NAPIĘCIEM — kolor bazowy poziomu napięcia oznaczałby „brak danych" (stan
+    // sprzed naprawy odczytu), a kolor wygaszenia byłby zdaniem NIEPRAWDZIWYM
+    // (stan pośredni: wartość liczona z identyfikatora sekcji, którego
+    // `SupplyPathHighlight` nie zna).
+    expect(hvBus!.getAttribute('stroke')).toBe('#2ECC71');
+    const snBus = container.querySelector('[data-testid^="gpz-canonical-section-"]');
+    expect(snBus).toBeTruthy();
+    expect(snBus!.getAttribute('stroke')).toBe('#2ECC71');
   });
 });
 

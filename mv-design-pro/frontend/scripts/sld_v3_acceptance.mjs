@@ -149,7 +149,8 @@ import {
   orientedSegmentRefs,
 } from '../src/ui/sld/v3/canvas/overlay.ts';
 import { computeFlowOverlayPlacements, layoutResultLabels, SldCanvasV3 } from '../src/ui/sld/v3/canvas/SldCanvasV3.tsx';
-import { buildResultLabelsFromScene } from '../src/ui/sld/v3/canvas/resultLabels.ts';
+import { buildResultLabelsFromScene, resultRefForSegment } from '../src/ui/sld/v3/canvas/resultLabels.ts';
+import { buildResultRefBridge } from '../src/ui/sld/v3/canvas/resultRefBridge.ts';
 // Karta S9-4 (trafienie i tożsamość zaznaczenia): sonda siatkowa odczytuje
 // uchwyty z FAKTYCZNIE wyrenderowanego drzewa kanwy, a oczekiwanie liczy ze
 // sceny — patrz nagłówek `canvas/hitAreas.ts` (dwa niezależne źródła).
@@ -175,13 +176,36 @@ const here = dirname(fileURLToPath(import.meta.url));
  * zapasem chroni przed regresją „chowamy za dużo"; spadek dozwolony). */
 const RESULT_LABEL_HIDDEN_BUDGET = { 0: 0, 1: 5, 2: 25 };
 
-/** Buduje PEŁNY, syntetyczny payload rozpływu na REALNYCH refach sceny (źródła/
- *  TR/szyny/odcinki z udowodnioną orientacją) — kształt identyczny z
- *  `RawOverlayPayload`, wartości 1:1 z kontraktu (zero fizyki w skrypcie).
- *  Odwzorowuje bieg z wynikami na całej sieci — maksymalne obciążenie
- *  deklutteru/agregacji. */
-function buildFullResultPayload(scene, oriented) {
-  const metricsForKind = (kind) => {
+/** Napięcie znamionowe szyn modelu — `Bus.ref_id → voltage_kv`. Jedyne źródło
+ *  wartości U w syntetycznym payloadzie niżej i miara `bus_result_voltage_level_probe`. */
+function busVoltageIndex(model) {
+  return new Map((model.buses ?? []).map((b) => [b.ref_id, b.voltage_kv]));
+}
+
+/**
+ * Buduje PEŁNY, syntetyczny payload rozpływu na REALNYCH refach sceny (źródła/
+ * TR/szyny/odcinki z udowodnioną orientacją) — kształt identyczny z
+ * `RawOverlayPayload`, wartości 1:1 z kontraktu (zero fizyki w skrypcie).
+ * Odwzorowuje bieg z wynikami na całej sieci — maksymalne obciążenie
+ * deklutteru/agregacji.
+ *
+ * PRZESTRZEŃ KLUCZY = przestrzeń BACKENDU (karta WN-WYNIK). Klucz szyny bierzemy
+ * dokładnie tak, jak robi to produkcja: najpierw MOST REFÓW (`resultRefBridge`,
+ * szyny stacji i blok stacji na L0), potem `resultRefForSegment` (kanoniczny
+ * `busResultRef` szyn GPZ). Wcześniej sonda dla szyn stacji fabrykowała klucz
+ * RYSUNKOWY (`stn/…/station#sn-bus`) — kształt, którego backend NIGDY nie emituje
+ * — więc mierzyła mapowanie nieistniejące w produkcji (Zero-Debt pkt 5: test
+ * omijający realną ścieżkę maskuje defekt produktu).
+ *
+ * NAPIĘCIE SZYNY = `Bus.voltage_kv` TEJ szyny (z lekkim, deterministycznym
+ * odchyłem +0,13 %, żeby wartość wyglądała jak odczyt rozpływu, a nie jak
+ * przepisana tabliczka). Wcześniej KAŻDA szyna dostawała jedną stałą 15,02 kV —
+ * także szyna 110 kV GPZ i szyna 0,4 kV stacji. Sonda akceptacyjna renderowała
+ * więc „U 15,02 kV" NA SZYNIE WN i wszystkie bramki świeciły na zielono: to
+ * dokładnie ta fabrykacja, którą zgłosił właściciel.
+ */
+function buildFullResultPayload(scene, oriented, busVoltageByRef, bridge) {
+  const metricsForKind = (kind, ref) => {
     if (kind === 'branch') {
       return {
         LOADING_PCT: { code: 'LOADING_PCT', value: 72.5, unit: '%', format_hint: 'fixed1' },
@@ -191,36 +215,87 @@ function buildFullResultPayload(scene, oriented) {
     }
     if (kind === 'source') return { P_MW: { code: 'P_MW', value: 6.546769, unit: 'MW', format_hint: 'fixed4' } };
     if (kind === 'transformer') return { S_MVA: { code: 'S_MVA', value: 0.63, unit: 'MVA', format_hint: 'fixed2' } };
-    return { U_kV: { code: 'U_kV', value: 15.02, unit: 'kV', format_hint: 'fixed2' } };
+    const un = busVoltageByRef.get(ref);
+    if (un == null) return {};
+    return { U_kV: { code: 'U_kV', value: un * 1.0013, unit: 'kV', format_hint: 'fixed2' } };
   };
   const elements = {};
+  const dodaj = (ref, kind) => {
+    if (!ref || elements[ref]) return;
+    const metrics = metricsForKind(kind, ref);
+    if (Object.keys(metrics).length === 0) return;
+    elements[ref] = { ref_id: ref, kind, badges: [], severity: 'INFO', metrics };
+  };
   for (const s of scene.symbols) {
     const k = s.meta?.elementKind;
     const ref = s.meta?.ownerRef;
-    if ((k === 'source' || k === 'transformer') && ref && !elements[ref]) {
-      elements[ref] = { ref_id: ref, kind: k, badges: [], severity: 'INFO', metrics: metricsForKind(k) };
-    }
+    if (!ref) continue;
+    if (k === 'source' || k === 'transformer') dodaj(ref, k);
+    // Blok stacji na L0 i symbol TR stacji zakotwiczony na polu — punkt wyniku
+    // zna WYŁĄCZNIE most refów (ta sama droga co produkcja).
+    const binding = bridge?.get(ref);
+    if (binding) dodaj(binding.resultRef, binding.kind === 'bus' ? 'bus' : binding.kind);
   }
   for (const s of scene.segments) {
     const k = s.meta?.elementKind;
     const ref = s.meta?.ownerRef;
-    if (k === 'bus') {
-      // ADAPTER-BUSREF: payload backendu jest kluczowany KANONICZNYM `Bus.ref_id`
-      // — dla szyn GPZ kompozytowych używamy `busResultRef` (jak realny backend),
-      // dla szyn stacji `ownerRef` (który JUŻ jest realnym refem). Tożsame z
-      // `resultRefForSegment` w warstwie wynikowej — sonda ćwiczy realną ścieżkę
-      // mapowania, nie fabrykuje klucza kompozytowego.
-      const busRef = s.meta?.busResultRef ?? ref;
-      if (busRef && !elements[busRef]) {
-        elements[busRef] = { ref_id: busRef, kind: 'bus', badges: [], severity: 'INFO', metrics: metricsForKind('bus') };
-      }
+    // Kolejność 1:1 z `buildResultLabelsFromScene`: MOST ma pierwszeństwo przed
+    // klasą odcinka — szyna nN stacji (`…#lv-bus`) jest w scenie zwykłym
+    // odcinkiem toru, a punktem wyniku jest szyna nN (0,4 kV). Bez tej gałęzi
+    // sonda w ogóle nie widziała poziomu nN.
+    const binding = ref ? bridge?.get(ref) : undefined;
+    if (binding) {
+      dodaj(binding.resultRef, binding.kind === 'bus' ? 'bus' : binding.kind);
       continue;
     }
-    if (k === 'segment' && ref && !ref.includes('#') && oriented.has(ref) && !elements[ref]) {
-      elements[ref] = { ref_id: ref, kind: 'branch', badges: [], severity: 'INFO', metrics: metricsForKind('branch') };
+    if (k === 'bus') {
+      dodaj(resultRefForSegment(s.meta), 'bus');
+      continue;
     }
+    if (k === 'segment' && ref && !ref.includes('#') && oriented.has(ref)) dodaj(ref, 'branch');
   }
   return { run_id: 'accept-sld-v3-result-labels', analysis_type: 'LOAD_FLOW', elements };
+}
+
+/** Liczba z linii etykiety wynikowej („15,02 kV" → 15.02; zapis POLSKI, tak jak
+ *  renderuje warstwa). `null` = linia nie niesie liczby (nie zgadujemy). */
+function liczbaZLiniiEtykiety(text) {
+  const m = /^(-?\d+(?:,\d+)?)\s/.exec(text);
+  return m ? Number(m[1].replace(',', '.')) : null;
+}
+
+/**
+ * `bus_result_voltage_level_probe` (karta WN-WYNIK) — SONDA POZIOMU NAPIĘCIA.
+ *
+ * Każda etykieta wynikowa klasy `bus` niesie U TEJ szyny, do której jest
+ * przypięta: punkt wyniku MUSI być szyną modelu, a odczyt MUSI zgadzać się z jej
+ * `Bus.voltage_kv` CO DO RZĘDU (|U/Un − 1| < 0,5 — zapas obejmuje realne odchyłki
+ * rozpływu i regulację zaczepów, ale 15 kV na szynie 110 kV to 0,86, a 110 kV na
+ * szynie 15 kV to 6,3). Zamyka klasę „wynik jednego poziomu napięcia na szynie
+ * innego poziomu": każde przyszłe pomylenie refów (most, adapter, kompozycja)
+ * przewraca tę bramkę, niezależnie od tego, kto je popełni.
+ *
+ * Zwraca listę naruszeń (pusta = stan docelowy).
+ */
+function naruszeniaPoziomuNapiecia(entries, busVoltageByRef) {
+  const naruszenia = [];
+  for (const ownerRef of Object.keys(entries).sort()) {
+    const entry = entries[ownerRef];
+    if (entry.kind !== 'bus') continue;
+    const linia = entry.lines.find((l) => l.prefix === 'U');
+    if (!linia) continue;
+    const u = liczbaZLiniiEtykiety(linia.text);
+    if (u == null) continue;
+    const un = busVoltageByRef.get(entry.resultRef);
+    if (un == null) {
+      naruszenia.push(`${ownerRef}: punkt wyniku „${entry.resultRef}" NIE jest szyną modelu`);
+      continue;
+    }
+    if (!(Math.abs(u / un - 1) < 0.5)) {
+      naruszenia.push(`${ownerRef}: U=${u} kV na szynie ${entry.resultRef} o Un=${un} kV`);
+    }
+  }
+  return naruszenia;
 }
 const fixturePath = resolve(
   here,
@@ -235,6 +310,12 @@ const fixturePath = resolve(
   'sldSubstrate52s.enm.json',
 );
 const enm = JSON.parse(readFileSync(fixturePath, 'utf8')).enm;
+
+/** Karta WN-WYNIK: most refów i napięcia szyn liczone RAZ na całą sonde —
+ *  ta sama para, którą produkcja karmi warstwę wynikową
+ *  (`SldCanvasV3Workspace.buildResultLabelsForSnapshot`). */
+const RESULT_REF_BRIDGE = buildResultRefBridge(enm);
+const BUS_VOLTAGE_BY_REF = busVoltageIndex(enm);
 
 const LODS = [0, 1, 2];
 const EXPECTED_STATION_COUNT = 53;
@@ -1423,8 +1504,8 @@ for (const lod of LODS) {
   // ukryte ≤ budżet per LOD. Czas mierzony poza kontraktem determinizmu (nie
   // wchodzi do porównania JSON) — sam raportowany.
   {
-    const rlPayload = buildFullResultPayload(scene, oriented);
-    const rlByRef = buildResultLabelsFromScene(scene, rlPayload, new Set(oriented.keys()));
+    const rlPayload = buildFullResultPayload(scene, oriented, BUS_VOLTAGE_BY_REF, RESULT_REF_BRIDGE);
+    const rlByRef = buildResultLabelsFromScene(scene, rlPayload, new Set(oriented.keys()), undefined, RESULT_REF_BRIDGE);
     const t0 = performance.now();
     const layout = layoutResultLabels(scene, rlByRef, [], lod);
     const layoutMs = performance.now() - t0;
@@ -1455,6 +1536,61 @@ for (const lod of LODS) {
       `result_label_metrics_probe (§wym.19): determinizm rozmieszczania (placements+agregaty+ukryte+metryki identyczne) na LOD ${lod}`,
       JSON.stringify(layout) === JSON.stringify(layoutAgain),
     );
+    // -- WN-WYNIK: bus_result_voltage_level_probe ---------------------------
+    // (a) każda etykieta szyny zgodna CO DO RZĘDU z `Bus.voltage_kv` tej szyny.
+    {
+      const naruszenia = naruszeniaPoziomuNapiecia(rlByRef, BUS_VOLTAGE_BY_REF);
+      check(
+        `bus_result_voltage_level_probe (WN-WYNIK a): U etykiety == poziom napięcia szyny (|U/Un−1| < 0,5) dla WSZYSTKICH szyn na LOD ${lod}`,
+        naruszenia.length === 0,
+        naruszenia.length === 0 ? undefined : `naruszenia=${naruszenia.length}, np. ${naruszenia.slice(0, 3).join(' | ')}`,
+      );
+      // (b) dowód POZYTYWNY, że sonda ma co mierzyć: warstwa niesie etykiety
+      // szyn z CO NAJMNIEJ DWÓCH poziomów napięcia (WN/SN/nN). Bez tego bramka
+      // (a) mogłaby być prawdziwa „przez pustkę" — sieć referencyjna ma szynę
+      // 110 kV GPZ, szyny 15 kV i szyny 0,4 kV stacji.
+      const poziomy = new Set();
+      for (const ownerRef of Object.keys(rlByRef)) {
+        const e = rlByRef[ownerRef];
+        if (e.kind !== 'bus') continue;
+        const un = BUS_VOLTAGE_BY_REF.get(e.resultRef);
+        if (un != null) poziomy.add(un);
+      }
+      if (lod !== 0) {
+        check(
+          `bus_result_voltage_level_probe (WN-WYNIK b, dowód pozytywny): etykiety szyn obejmują ≥ 2 poziomy napięcia na LOD ${lod}`,
+          poziomy.size >= 2,
+          `poziomy=${[...poziomy].sort((x, y) => x - y).join('/')} kV`,
+        );
+      }
+      // (c) test NEGATYWNY — dowód, że wyrocznia gryzie: podmieniamy odczyt
+      // szyny WN na wartość szyny SN (dokładnie defekt zgłoszony przez
+      // właściciela: „U 15,02 kV" na szynie 110 kV). Sonda MUSI zgłosić.
+      if (lod !== 0) {
+        const wnRef = [...BUS_VOLTAGE_BY_REF.entries()].filter(([, u]) => u > 60).map(([r]) => r).sort()[0];
+        const wpisWn = wnRef ? Object.keys(rlByRef).find((o) => rlByRef[o].resultRef === wnRef) : undefined;
+        if (wpisWn) {
+          const podmieniony = {
+            ...rlByRef,
+            [wpisWn]: {
+              ...rlByRef[wpisWn],
+              lines: rlByRef[wpisWn].lines.map((l) => (l.prefix === 'U' ? { ...l, text: '15,02 kV' } : l)),
+            },
+          };
+          check(
+            `bus_result_voltage_level_probe (WN-WYNIK c, test negatywny): odczyt SN wstrzyknięty na szynę WN MUSI dać naruszenie (LOD ${lod})`,
+            naruszeniaPoziomuNapiecia(podmieniony, BUS_VOLTAGE_BY_REF).length > 0,
+          );
+        } else {
+          check(
+            `bus_result_voltage_level_probe (WN-WYNIK c, test negatywny): szyna WN obecna w warstwie wynikowej (LOD ${lod})`,
+            false,
+            `brak wpisu dla szyny WN „${wnRef ?? '(brak szyny WN w modelu)'}"`,
+          );
+        }
+      }
+    }
+
     // Priorytet (wym. 12): źródła/transformatory NIGDY ukryte, gdy niżej-
     // priorytetowe klasy obecne — dowód, że wyrocznia mierzy realny priorytet.
     if (lod !== 0) {
@@ -2059,8 +2195,10 @@ line('=== hit_grid_probe (S9-4): trafienie i tożsamość zaznaczenia ===');
     // tożsamości (bez payloadu ta klasa nie byłaby w ogóle zmierzona).
     const rlByRef = buildResultLabelsFromScene(
       scene,
-      buildFullResultPayload(scene, orientedRefs),
+      buildFullResultPayload(scene, orientedRefs, BUS_VOLTAGE_BY_REF, RESULT_REF_BRIDGE),
       new Set(orientedRefs.keys()),
+      undefined,
+      RESULT_REF_BRIDGE,
     );
     const overlay = { energizedByTestId: {}, resultLabelsByOwnerRef: rlByRef };
 

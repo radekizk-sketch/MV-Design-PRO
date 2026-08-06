@@ -542,12 +542,19 @@ function SceneSegmentNode(props: {
             ? '3 2'
             : undefined;
   // F8b-1 FIX (recenzja): jak w SceneSymbolNode — ownerRef przed testId.
-  // ADAPTER-BUSREF: dla szyn GPZ kompozytowych dopasowanie idzie po KANONICZNYM
-  // `busResultRef` (jedno źródło prawdy z warstwą wynikową — `resultRefForSegment`);
-  // dla pozostałych segmentów to nadal `ownerRef` (bez zmiany zachowania).
-  const segResultRef = resultRefForSegment(segment.meta);
-  const energizedSeg = segResultRef != null
-    ? overlay?.energizedByOwnerRef?.[segResultRef] ?? overlay?.energizedByTestId[testId]
+  // PREDYKATY PARAMI (karta WN-WYNIK): klucz ODCZYTU musi być tym samym, którym
+  // słownik jest BUDOWANY. `energizedByOwnerRef` (`SldCanvasV3Workspace.
+  // buildEnergizationOverlay`) i `flowByOwnerRef` (`overlay.ts
+  // buildFlowOverlayFromScene`) są kluczowane `meta.ownerRef` elementu SCENY —
+  // czytanie ich po KANONICZNYM `busResultRef` było rozjazdem: szyny GPZ (jedyne
+  // niosące `busResultRef`) pytały o klucz, którego w mapie nie ma. Pomiar przed
+  // naprawą (sieć referencyjna 52 stacji): 4 chybienia na 110 odcinków szynowych
+  // — 100 % szyn GPZ bez stanu energizacji, mimo poprawnego wpisu pod refem
+  // rysunkowym. Kanoniczny `busResultRef` pozostaje kluczem WARSTWY WYNIKOWEJ
+  // (`resultLabels`) i szuflady szczegółów — tam mapy są kluczowane refem MODELU.
+  const segOwnerRef = segment.meta?.ownerRef;
+  const energizedSeg = segOwnerRef != null
+    ? overlay?.energizedByOwnerRef?.[segOwnerRef] ?? overlay?.energizedByTestId[testId]
     : overlay?.energizedByTestId[testId];
   // SCHEMAT-10 S3 (V12K-135, D8): brak nakładki ⇒ kolor BAZOWY z tabeli §3
   // (napięcie: 110 biały/SN zielony/nN niebieski — `baseSegmentStrokeColor`),
@@ -557,8 +564,8 @@ function SceneSegmentNode(props: {
   // nakładki (zero fizyki w kanwie), kanał diagnostyczny/E2E jak
   // `data-owner-ref`. Brak wpisu nakładki = brak atrybutu (uczciwe „nie
   // wiem", nie fabrykowany stan).
-  const flowSeg = segResultRef != null
-    ? overlay?.flowByOwnerRef?.[segResultRef]
+  const flowSeg = segOwnerRef != null
+    ? overlay?.flowByOwnerRef?.[segOwnerRef]
     : undefined;
   // F13.2 (spec §22.1): mostki liczone deterministycznie z przecięć sceny —
   // geometria sceny (punkty/porty/bbox/baseline'y §15.1) NIETKNIĘTA, mostek
@@ -2625,8 +2632,11 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
       mapa.set(segmentTestId(segment, index), {
         ownerRef: segment.meta?.ownerRef,
         elementKind: segment.meta?.elementKind,
-        // K5-A: kanoniczny Bus ref szyny (GPZ `busResultRef`).
-        busRef: segment.meta?.busResultRef,
+        // K5-A: kanoniczny Bus ref szyny (GPZ `busResultRef`). WN-WYNIK: przez
+        // `resultRefForSegment` — JEDNO źródło prawdy o „refie MODELU tego
+        // odcinka" z warstwą wynikową (odcinek bez udowodnionego refu modelu
+        // oddaje `undefined`, a nie swój ref rysunkowy).
+        busRef: resultRefForSegment(segment.meta),
       });
     });
     scene.symbols.forEach((symbol, index) => {

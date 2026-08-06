@@ -177,14 +177,48 @@ export function buildCanonicalGpzProps(
       (substation.gpz_hv_sections ?? []).length === 0
         ? deriveHvSystemSource(substation, enm.buses ?? [], allTransformers, enm.sources ?? [])
         : null,
-    // ADAPTER-BUSREF: kanoniczny Bus ref szyny WN GPZ = jedyna szyna
-    // `voltage_kv > 60` w `Substation.bus_refs` (TA SAMA derywacja co
-    // `deriveHvSystemSource` pkt 2). `null` gdy brak szyny WN (uczciwy brak).
-    hvBusRef:
-      (enm.buses ?? []).find(
-        (b) => substation.bus_refs?.includes(b.ref_id) && b.voltage_kv > 60,
-      )?.ref_id ?? null,
+    // ADAPTER-BUSREF: kanoniczny Bus ref szyny WN GPZ — patrz `gpzHvBusResultRef`
+    // (odmowa przy niejednoznaczności, karta WN-WYNIK).
+    hvBusRef: gpzHvBusResultRef(substation, enm.buses ?? []),
   };
+}
+
+/**
+ * Szyny WN (`voltage_kv > 60`) należące do stacji — JEDNO ŹRÓDŁO PRAWDY dla obu
+ * pytań o stronę WN GPZ: `hvBusRef` (który WĘZEŁ niesie wynik) i
+ * `deriveHvSystemSource` (jaki POZIOM napięcia opisuje szynę). Kolejność wprost
+ * z `Substation.bus_refs` — dana modelu, nie kolejność listy `buses`, więc
+ * derywacja jest niezależna od układu migawki.
+ */
+function gpzHvBuses(substation: Substation, buses: readonly Bus[]): readonly Bus[] {
+  const byRef = new Map(buses.map((b) => [b.ref_id, b]));
+  const out: Bus[] = [];
+  for (const ref of substation.bus_refs ?? []) {
+    const bus = byRef.get(ref);
+    if (bus && bus.voltage_kv > 60) out.push(bus);
+  }
+  return out;
+}
+
+/**
+ * ODMOWA ZAMIAST PODSTAWIENIA (karta WN-WYNIK): punkt wyniku RYSOWANEJ szyny WN.
+ *
+ * Kompozycja rysuje DOKŁADNIE JEDEN odcinek szyny WN (`compose/gpz.ts` krok 7 —
+ * span po wszystkich zaczepach WN), więc przypisanie mu punktu wyniku ma sens
+ * tylko wtedy, gdy stacja ma w modelu DOKŁADNIE JEDNĄ szynę WN. GPZ o dwóch
+ * transformatorach ma DWIE odrębne szyny 110 kV (`transformer/001/bus_110`,
+ * `transformer/002/bus_110`) bez gałęzi między nimi — dotychczasowe `find(...)`
+ * cicho brało PIERWSZĄ, więc jeden narysowany odcinek pokazywał wielkość
+ * JEDNEGO z dwóch węzłów, milcząc o drugim. To ta sama klasa i ta sama reguła,
+ * co odmowy `stationFieldBusRef`/`pickStationBus` w `resultRefBridge.ts` (stacja
+ * dwusekcyjna nie dostaje etykiety, bo rysunek ma jeden odcinek szyny).
+ *
+ * `null` = uczciwy brak (szyna WN bez etykiety wynikowej), nigdy wielkość
+ * pierwszego z kilku węzłów.
+ */
+function gpzHvBusResultRef(substation: Substation, buses: readonly Bus[]): string | null {
+  const hv = gpzHvBuses(substation, buses);
+  return hv.length === 1 ? hv[0].ref_id : null;
 }
 
 /**
@@ -194,8 +228,12 @@ export function buildCanonicalGpzProps(
  * (uczciwy brak, `compose/gpz.ts` NIE dopisuje etykiety/tabliczki danych).
  *   1. TR WN/SN = `Substation.transformer_refs` → `snapshot.transformers`
  *      z `uhv_kv > 60`.
- *   2. szyna WN = wpis `Substation.bus_refs` → `snapshot.buses` z
- *      `voltage_kv > 60`.
+ *   2. szyna WN = `gpzHvBuses` (wpisy `Substation.bus_refs` o `voltage_kv > 60`)
+ *      — JEDNO źródło prawdy z `hvBusRef`. Etykieta szyny WN opisuje POZIOM
+ *      napięcia, więc kilka szyn WN o TYM SAMYM poziomie (GPZ 2×TR: dwie szyny
+ *      110 kV) jest tu jednoznaczne; szyny o RÓŻNYCH poziomach ⇒ `null` (karta
+ *      WN-WYNIK: rysunek ma jedną szynę WN, a „110 kV" i „220 kV" nie są tym
+ *      samym zdaniem — uczciwy brak zamiast pierwszej z brzegu).
  *   3. źródło systemowe = `snapshot.sources` z `bus_ref` ∈ `Substation.bus_refs`
  *      (SN lub WN — obie należą do GPZ), nazwa z `meta.source_id` (fallback
  *      `Source.name`).
@@ -209,8 +247,10 @@ function deriveHvSystemSource(
   const hvTransformer = gpzTransformers.find((tr) => tr.uhv_kv > 60);
   if (!hvTransformer) return null;
 
-  const hvBus = buses.find((b) => gpz.bus_refs?.includes(b.ref_id) && b.voltage_kv > 60);
+  const hvBuses = gpzHvBuses(gpz, buses);
+  const hvBus = hvBuses[0];
   if (!hvBus) return null;
+  if (hvBuses.some((b) => b.voltage_kv !== hvBus.voltage_kv)) return null;
 
   const gpzBusRefs = new Set(gpz.bus_refs ?? []);
   const source = sources.find((s) => s.bus_ref != null && gpzBusRefs.has(s.bus_ref));
@@ -229,7 +269,10 @@ function deriveHvSystemSource(
     sk3Mva: source.sk3_mva ?? null,
     ik3Ka: source.ik3_ka ?? null,
     voltageKv: sourceBus?.voltage_kv ?? null,
-    sourceOnHvBus: source.bus_ref === hvBus.ref_id,
+    // WN-WYNIK (uczciwość w obrębie pliku): „czy źródło stoi po stronie WN" to
+    // pytanie o ZBIÓR szyn WN stacji, nie o pierwszą z nich — GPZ 2×TR ma dwie
+    // szyny 110 kV i źródło na drugiej też jest źródłem po stronie WN.
+    sourceOnHvBus: hvBuses.some((b) => b.ref_id === source.bus_ref),
     hvBusVoltageKv: hvBus.voltage_kv ?? null,
   };
 }

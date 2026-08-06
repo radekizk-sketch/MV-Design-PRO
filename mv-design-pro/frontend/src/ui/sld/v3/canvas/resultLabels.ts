@@ -182,17 +182,36 @@ const LABELLED_SYMBOL_KINDS: ReadonlySet<string> = new Set([
 ]);
 
 /**
- * ADAPTER-BUSREF (dług W4/R2/V12K-163): ref używany do DOPASOWANIA payloadu/
- * energizacji dla segmentu — kanoniczny `Bus.ref_id` (`meta.busResultRef`,
- * niesiony ze snapshotu przez adapter dla szyn GPZ o refie kompozytowym), a w
- * jego braku `meta.ownerRef` (segmenty, których `ownerRef` JEST już realnym
- * refem ENM). JEDNO ŹRÓDŁO PRAWDY dla warstwy wynikowej (`resultLabels`) i
- * energizacji/flow (`SldCanvasV3`) — zero rozjazdu mapowań. `undefined` gdy
- * segment nie ma ŻADNEGO refu. */
+ * ADAPTER-BUSREF (dług W4/R2/V12K-163): ref używany do DOPASOWANIA payloadu
+ * dla segmentu — kanoniczny `Bus.ref_id` (`meta.busResultRef`, niesiony ze
+ * snapshotu przez adapter dla szyn GPZ o refie kompozytowym), a w jego braku
+ * `meta.ownerRef` — ale WYŁĄCZNIE gdy `ownerRef` jest refem MODELU, nie refem
+ * RYSUNKU.
+ *
+ * ODMOWA ZAMIAST PODSTAWIENIA (karta WN-WYNIK, klasa „wynik jednego elementu na
+ * innym elemencie"): ref RYSUNKOWY poznajemy po sufiksie kompozytowym
+ * (`${cośRealnego}#sn-bus`, `#bus-primary`, `#hv-bus` — konwencja
+ * `compose/station.ts`/`compose/gpz.ts`). Taki ref NIE ISTNIEJE w przestrzeni
+ * `payload.elements` (klucze backendu to `Bus.ref_id`), więc schodzenie do niego
+ * może wyłącznie (a) chybić albo (b) trafić CUDZY klucz, gdyby kiedykolwiek
+ * skolidował — czyli przypiąć szynie wartość innego obiektu. INWENTARZ (pomiar
+ * kart WN-WYNIK na sieci referencyjnej 52 stacji i na 6 kształtach GPZ z żywego
+ * backendu): ZERO odcinków szynowych sceny ma `ownerRef` równy
+ * `Bus.ref_id` — fallback nie obsługiwał ŻADNEJ realnej szyny, obsługiwał
+ * wyłącznie ryzyko. Odcinki toru (`elementKind==='segment'`) mają `ownerRef`
+ * BEZ sufiksu (realny `branch_id`) i przechodzą jak dotąd.
+ *
+ * `undefined` = uczciwy brak dopasowania (wołający NIE rysuje etykiety), nigdy
+ * wartość sąsiada. TA SAMA dyscyplina, co bramka przęseł w
+ * `buildResultLabelsFromScene` (`ownerRef.includes('#') ⇒ pomiń`) — jedna
+ * reguła dla całej warstwy wynikowej. */
 export function resultRefForSegment(
   meta: { readonly ownerRef?: string; readonly busResultRef?: string } | undefined,
 ): string | undefined {
-  return meta?.busResultRef ?? meta?.ownerRef;
+  if (meta?.busResultRef) return meta.busResultRef;
+  const ownerRef = meta?.ownerRef;
+  if (!ownerRef || ownerRef.includes('#')) return undefined;
+  return ownerRef;
 }
 
 /**
@@ -261,7 +280,12 @@ export function buildResultLabelsFromScene(
       continue;
     }
     if (elementKind === 'bus') {
-      emit(ownerRef, resultRefForSegment(segment.meta) ?? ownerRef, 'bus');
+      // ODMOWA ZAMIAST PODSTAWIENIA (WN-WYNIK): brak udowodnionego punktu
+      // wyniku ⇒ BRAK etykiety. Dawne `?? ownerRef` sprowadzało odcinek szyny
+      // do jego refu RYSUNKOWEGO (`…#hv-bus`) — klucza, którego backend nie
+      // emituje, a który mógł skolidować z refem innego obiektu.
+      const busResultRef = resultRefForSegment(segment.meta);
+      if (busResultRef) emit(ownerRef, busResultRef, 'bus');
     } else if (elementKind === 'segment') {
       if (ownerRef.includes('#') || !trustedBranchRefs.has(ownerRef)) continue;
       emit(ownerRef, ownerRef, 'branch');

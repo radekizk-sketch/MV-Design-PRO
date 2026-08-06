@@ -209,6 +209,7 @@ import {
   buildResultLabelsFromScene,
   DEFAULT_RESULT_LABEL_FILTER,
   resultLabelsHaveExceedances,
+  resultRefForSegment,
   summarizeResultPointCoverage,
   type ResultLabelComparison,
   type ResultLabelComparisonMode,
@@ -643,7 +644,17 @@ export function buildEnergizationOverlay(snapshot: EnergyNetworkModel): SldV3Ove
     scene.segments.forEach((segment) => {
       const meta = segment.meta;
       if (!meta?.ownerRef || !meta.elementKind || !OVERLAY_ELIGIBLE_KINDS.has(meta.elementKind)) return;
-      energizedByOwnerRef[meta.ownerRef] = isElementEnergized(highlight, baseRefOf(meta.ownerRef));
+      // KARTA WN-WYNIK — KLUCZ z rysunku, WARTOŚĆ z modelu. Klucz musi być tym,
+      // czym kanwa pyta (`meta.ownerRef`), a wartość musi opisywać element
+      // MODELU, który ten rysunek przedstawia. Dla szyn GPZ te dwa refy są
+      // różne: `baseRefOf('gpz/…/section/001#bus-primary')` daje IDENTYFIKATOR
+      // SEKCJI, którego `SupplyPathHighlight` w ogóle nie zna, a
+      // `isElementEnergized` nie ma stanu „nie wiem" — zwracał `false`, czyli
+      // szyna pod napięciem dostawała zdanie „beznapięciowa". Kanoniczny
+      // `busResultRef` (gdy adapter go niesie) jest tu jedynym uczciwym
+      // źródłem stanu; pozostałe odcinki jak dotąd (`baseRefOf`).
+      const elementModelu = resultRefForSegment(meta) ?? baseRefOf(meta.ownerRef);
+      energizedByOwnerRef[meta.ownerRef] = isElementEnergized(highlight, elementModelu);
     });
   }
   return { energizedByTestId: {}, energizedByOwnerRef };
