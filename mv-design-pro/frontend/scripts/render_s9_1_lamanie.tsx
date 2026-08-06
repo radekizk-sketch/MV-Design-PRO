@@ -74,10 +74,14 @@ for (const siec of SIECI) {
       `bbox=${scene.bbox.width}x${scene.bbox.height} · proporcja=${sheetAspectRatio(scene).toFixed(2)} : 1 · ` +
       `gestosc tuszu=${(sheetFillRatio(scene) * 100).toFixed(2)}%`;
     for (const motyw of MOTYWY) {
+      // Tryb podawany WPROST propem (naprawa u źródła, karta S9-4):
+      // `renderToStaticMarkup` czyta ze store'a Zustand STAN POCZĄTKOWY
+      // (kontrakt SSR `useSyncExternalStore`), więc samo `setState` nie
+      // docierało do kanwy i zrzuty „jasny" wychodziły w palecie ciemnej.
       useThemeModeStore.setState({ mode: motyw.mode });
       const paleta = sldPaletteForTheme(motyw.mode);
       const inner = renderToStaticMarkup(
-        <SldCanvasV3 snapshot={siec.enm} width={WIDTH} height={HEIGHT} lodOverride={lod} />,
+        <SldCanvasV3 snapshot={siec.enm} width={WIDTH} height={HEIGHT} lodOverride={lod} themeMode={motyw.mode} />,
       );
       const withNs = inner.replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" ');
       const svg =

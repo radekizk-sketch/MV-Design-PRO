@@ -92,7 +92,7 @@ import {
 // KD-8 poz. 1: kanwa NIE zna już jednej palety — czyta paletę MOTYWU przez
 // kontekst (dostawca niżej w `SldCanvasV3`), a węzły sceny biorą ją hakiem.
 import { SldPaletteContext, sldPaletteForTheme, useSldPalette } from '../theme/palette';
-import { useThemeModeStore } from '../../../../ui2/theme/themeMode';
+import { useThemeModeStore, type ThemeMode } from '../../../../ui2/theme/themeMode';
 
 /** SCHEMAT-10 S3 (V12K-135): wartości TERAZ z `theme/colorTokens.ts` — JEDNO
  *  źródło prawdy (D8: te literały istniały zdublowane też w
@@ -290,6 +290,16 @@ export interface SldCanvasV3Props {
    *  renderowane jest opacity bazowe 1, więc `false` służy WYŁĄCZNIE jawnemu
    *  usunięciu węzła animacji z markupu eksportu. */
   readonly animateLodTransitions?: boolean;
+  /** Tryb motywu PODANY WPROST — omija sterownik powłoki (`useThemeModeStore`).
+   *  Potrzebny wszędzie tam, gdzie kanwa renderuje się POZA przeglądarką:
+   *  `renderToStaticMarkup` czyta ze store'a Zustand STAN POCZĄTKOWY
+   *  (`getInitialState`, kontrakt SSR `useSyncExternalStore`), więc harness
+   *  zrzutowy mógł ustawiać tryb do woli, a rysunek i tak wychodził w palecie
+   *  dyspozytorskiej — „oba motywy" na zrzutach były wtedy dwoma zrzutami tego
+   *  samego motywu (defekt wykryty przy karcie S9-4, pomiar: `data-theme-mode`
+   *  = `dark_scada` w renderze zleconym jako jasny). Brak propa = tryb z
+   *  powłoki, czyli zachowanie aplikacji bez zmian. */
+  readonly themeMode?: ThemeMode;
   /** Karta S9-4 (audyt §3.2, P-6 „klik w tło zaznacza obiekt"): klik w PUSTY
    *  arkusz — poza obszarem trafienia jakiegokolwiek obiektu. Kanwa nie zna
    *  selekcji (to stan wołającego), więc tylko melduje zdarzenie; wołający
@@ -2184,7 +2194,7 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
   const {
     snapshot, width, height, overlay, onElementClick, onElementDoubleClick, onElementContextMenu, lodOverride,
     layerVisibility, onResultLabelActivate, onCameraChange, animateLodTransitions = true, fitSignal,
-    fitTarget = 'tresc', centerRequest, onBackgroundClick,
+    fitTarget = 'tresc', centerRequest, onBackgroundClick, themeMode: themeModeOverride,
   } = props;
 
   // KD-8 poz. 1: JEDEN sterownik motywu (`useThemeModeStore`) wybiera paletę
@@ -2192,7 +2202,8 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
   // nie jest już stałą modułu. Scena (geometria) pozostaje nietknięta —
   // paleta NIE wchodzi do `buildSceneV3`, dlatego hash geometrii jest
   // niezależny od motywu (dowód: `theme/__tests__/palette.test.ts`).
-  const themeMode = useThemeModeStore((state) => state.mode);
+  const themeModeZPowloki = useThemeModeStore((state) => state.mode);
+  const themeMode = themeModeOverride ?? themeModeZPowloki;
   const palette = useMemo(() => sldPaletteForTheme(themeMode), [themeMode]);
 
   // F8a — ROZSTRZYGNIĘCIE k4/k3 (REBUILD_PLAN_V3 §F8, SLD_V3_ACCEPTANCE.md §3):
