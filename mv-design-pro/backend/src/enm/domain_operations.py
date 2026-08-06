@@ -28,6 +28,7 @@ if TYPE_CHECKING:
     from network_model.catalog.repository import CatalogRepository
 from network_model.catalog.types import CatalogBinding
 
+from .load_zip_model import KOD_BLEDU_ZIP, zip_odbioru_z_parametrow_materializacji
 from .models import GEN_TYPES_PRZEKSZTALTNIKOWE, EnergyNetworkModel
 from .topology_ops import (
     create_branch,
@@ -7405,6 +7406,14 @@ def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> d
                 f"Niedozwolone pola aktualizacji dla '{coll}': {', '.join(illegal_keys)}.",
                 "params.key_not_allowed",
             )
+
+    # Korekta ekspercka tabliczki odbioru przechodzi przez ten sam kontrakt modelu
+    # ZIP co kreator odbioru: wielomian, którego rozpływ nie policzy, nie ma prawa
+    # wejść do modelu żadną z dróg zapisu.
+    if coll == "loads" and "materialized_params" in parameters:
+        blad_zip = zip_odbioru_z_parametrow_materializacji(parameters["materialized_params"])
+        if blad_zip is not None:
+            return _error_response(blad_zip, KOD_BLEDU_ZIP)
 
     new_enm = copy.deepcopy(enm)
     for key, value in parameters.items():

@@ -3266,10 +3266,25 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
             "k_qf",
             "f0_hz",
         ),
+        # Model ZIP JEST WIDOCZNY dla projektanta. Współczynniki wielomianu i
+        # wrażliwość częstotliwościowa są CZYTANE przez rozpływ mocy
+        # (`zip_coeffs_from_materialized_params`), więc muszą mieć powierzchnię —
+        # inaczej solver liczy modelem, którego projektant ani nie zobaczy, ani
+        # nie ustawi (brak ogniwa łańcucha, rewizja inwentarza funkcji 2026-08).
+        # `v0_pu`/`f0_hz` zostają poza tą listą świadomie: to WIELKOŚCI ODNIESIENIA
+        # układu (1,0 pu i 50 Hz), a nie udziały modelu odbioru dobierane per odbiór.
         ui_fields=(
             ("p_kw", "P [kW]", "kW"),
             ("q_kvar", "Q [kvar]", "kvar"),
             ("cos_phi", "cos φ", ""),
+            ("a_p", "Udział stałoimpedancyjny P (a_P)", ""),
+            ("b_p", "Udział stałoprądowy P (b_P)", ""),
+            ("c_p", "Udział stałomocowy P (c_P)", ""),
+            ("a_q", "Udział stałoimpedancyjny Q (a_Q)", ""),
+            ("b_q", "Udział stałoprądowy Q (b_Q)", ""),
+            ("c_q", "Udział stałomocowy Q (c_Q)", ""),
+            ("k_pf", "Wrażliwość częstotliwościowa P (k_pf)", ""),
+            ("k_qf", "Wrażliwość częstotliwościowa Q (k_qf)", ""),
         ),
     ),
     CatalogNamespace.KOMPENSATOR_SN.value: MaterializationContract(
