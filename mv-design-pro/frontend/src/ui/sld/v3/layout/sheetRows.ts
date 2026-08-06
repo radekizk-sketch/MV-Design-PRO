@@ -219,7 +219,8 @@ function measurePlan(input: PlanSheetRowsInput, rows: readonly SheetRowRange[]):
   // arkusz — czyli zmiana lokalna dawałaby skutek globalny. Kwantowanie robi
   // z progu wielkość gruboziarnistą: przelanie następuje dopiero przy zmianie
   // rzędu formatu, nie przy zmianie etykiety.
-  const quant = (v: number): number => SHEET_WIDTH_QUANTUM * Math.ceil(v / SHEET_WIDTH_QUANTUM);
+  const quant = (v: number): number =>
+    SHEET_WIDTH_QUANTUM * Math.max(1, Math.round(v / SHEET_WIDTH_QUANTUM));
   return { width: quant(snapUp(width)), height: quant(snapUp(height)) };
 }
 
