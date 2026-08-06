@@ -27,6 +27,11 @@ import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import type { EnergyNetworkModel } from '../../../../../types/enm';
+import {
+  buildSldOperationContext,
+  resolveGpzTrunkStartFieldRef,
+} from '../../../shared/sldActionExecutor';
+import { getMenuActions } from '../../../v2/command/SldCommandService';
 import { buildSceneV3, sceneObstacleRects, type SceneLod } from '../../scene/buildScene';
 import { resultRefForSegment } from '../resultLabels';
 import type { DerSourceKind } from '../../compose/sourceKind';
@@ -321,9 +326,7 @@ describe('S9-5 B — operacje budowy ciągu SN dostępne z rysunku', () => {
     readonly action: string;
     readonly op: string;
   }[] = [
-    { krok: 'wyprowadzenie ciągu z GPZ', klasa: 'zrodlo', kotwica: 'zrodlo', lod: 2, action: 'continue-trunk', op: 'continue_trunk_segment_sn' },
     { krok: 'odgałęzienie z GPZ', klasa: 'zrodlo', kotwica: 'zrodlo', lod: 2, action: 'start-branch', op: 'start_branch_segment_sn' },
-    { krok: 'wyprowadzenie ciągu z szyny sekcji', klasa: 'szyna', kotwica: 'szyna', lod: 1, action: 'continue-trunk', op: 'continue_trunk_segment_sn' },
     { krok: 'odgałęzienie z szyny sekcji', klasa: 'szyna', kotwica: 'szyna', lod: 1, action: 'start-branch', op: 'start_branch_segment_sn' },
     { krok: 'stacja na odcinku kablowym', klasa: 'tor', kotwica: 'galaz', rodzina: 'cable', lod: 2, action: 'insert-station', op: 'insert_station_on_segment_sn' },
     { krok: 'stacja na odcinku napowietrznym', klasa: 'tor', kotwica: 'galaz', rodzina: 'line_overhead', lod: 2, action: 'insert-station', op: 'insert_station_on_segment_sn' },
@@ -358,21 +361,29 @@ describe('S9-5 B — operacje budowy ciągu SN dostępne z rysunku', () => {
     120000,
   );
 
-  it('ciąg z GPZ dostaje szynę SN jako punkt wyjścia i znacznik PIERWSZEGO odcinka', async () => {
-    const openOperationForm = vi.fn();
-    useNetworkBuildStore.setState({ openOperationForm } as never);
-    const kanwa = renderKanwe(2);
-    const zrodlo = pierwszyZKotwica(kanwa, 'zrodlo', 'zrodlo')!;
-    const menu = await prawyKlik(kanwa, zrodlo.testId);
-    await userEvent.click(within(menu!).getByTestId('sld-menu-continue-trunk'));
-
-    const [, kontekst] = openOperationForm.mock.calls[0] as [string, Record<string, unknown>];
-    // `from_bus_ref` to REALNA szyna SN GPZ (kanał: resolveContinueTrunk…
-    // dla `elementType==='Source'`), a nie ref rysunkowy źródła.
-    const busRef = String(kontekst.from_bus_ref ?? '');
-    expect((enm.buses ?? []).some((b) => b.ref_id === busRef || b.id === busRef)).toBe(true);
-    expect(kontekst.is_first_trunk_segment).toBe(true);
-  }, 120000);
+  /**
+   * Sieć referencyjna ma WSZYSTKIE pola liniowe GPZ zajęte (z każdego wyszedł
+   * już ciąg). Pozycja „Wyprowadź ciąg główny SN" musi być wtedy ZABLOKOWANA
+   * z powodem, a nie otwierać kreator, którego nie da się zapisać
+   * (`maStartCiagu` wymaga punktu startu). Uczciwa odmowa jest tu ZACHOWANIEM
+   * DOCELOWYM — stan „wolne pole istnieje" pokrywa sekcja D.
+   */
+  it.each([
+    ['symbol GPZ', 'zrodlo' as HitObjectClass, 'zrodlo' as MenuAnchorKind, 2 as SceneLod],
+    ['szyna sekcji', 'szyna' as HitObjectClass, 'szyna' as MenuAnchorKind, 1 as SceneLod],
+  ])(
+    '%s na sieci z ZAJĘTYMI polami liniowymi: „Wyprowadź ciąg główny SN" jest zablokowany z powodem (nie martwy klik)',
+    async (_nazwa, klasa, kotwica, lod) => {
+      const kanwa = renderKanwe(lod);
+      const area = pierwszyZKotwica(kanwa, klasa, kotwica)!;
+      const menu = await prawyKlik(kanwa, area.testId);
+      expect(menu).toBeTruthy();
+      const pozycja = within(menu!).getByTestId('sld-menu-continue-trunk') as HTMLButtonElement;
+      expect(pozycja.disabled, 'pozycja bez punktu startu MUSI być zablokowana').toBe(true);
+      expect(pozycja.title ?? '').toContain('wolnego pola liniowego');
+    },
+    180000,
+  );
 
   it('stacja na kanwie prowadzi ciąg dalej i rozpoczyna odgałęzienie (ogniwo powtarzalne 15×)', async () => {
     const openOperationForm = vi.fn();
@@ -482,4 +493,100 @@ describe('S9-5 C — menu nie obiecuje operacji na obiektach spoza modelu', () =
     // Sonda musi mieć co mierzyć — pusty przebieg przechodziłby trywialnie.
     expect(tematow).toBeGreaterThan(1000);
   }, 120000);
+});
+
+// ---------------------------------------------------------------------------
+// D. SIEC PUSTA: pierwsze ogniwo budowy (audyt B-4 „dalsza budowa nie ma
+//    sciezki na kanwie") — mierzone na modelu ze ŚWIEŻO wstawionego GPZ,
+//    czyli w stanie, w ktorym projektant naprawde zaczyna.
+// ---------------------------------------------------------------------------
+
+describe('S9-5 D — pierwsze ogniwo budowy na świeżo wstawionym GPZ', () => {
+  /** Model z REALNEGO backendu: `add_grid_source_sn` i nic wiecej. */
+  const gpzSwiezy = (
+    JSON.parse(
+      readFileSync(resolve(here, 'fixtures', 's95GpzSwiezy.enm.json'), 'utf8'),
+    ) as EnergyNetworkModel
+  );
+
+  /**
+   * Kreator magistrali wymaga PUNKTU STARTU (`maStartCiagu`: `from_terminal_id`
+   * albo `field_ref`). Pozycja menu, ktora otwiera kreator BEZ punktu startu,
+   * jest obietnica bez pokrycia — zapis jest w niej trwale zablokowany.
+   * Ten test pilnuje, ze oba wejscia z kanwy (symbol GPZ i szyna sekcji)
+   * wskazuja REALNE, wolne pole liniowe rozdzielni.
+   */
+  it.each([
+    ['symbol GPZ', 'gpz' as const],
+    ['szyna sekcji', 'section' as const],
+  ])('%s → „Wyprowadź ciąg główny SN" niesie WOLNE POLE LINIOWE jako punkt startu', (_nazwa, kind) => {
+    const zrodloRef = (gpzSwiezy.sources ?? [])[0]?.ref_id;
+    const szynaSn = (gpzSwiezy.buses ?? []).find((b) => b.voltage_kv > 1 && b.voltage_kv < 110);
+    expect(zrodloRef, 'fixtura ma źródło GPZ').toBeTruthy();
+    expect(szynaSn, 'fixtura ma szynę SN').toBeTruthy();
+
+    const elementId = kind === 'gpz' ? zrodloRef! : szynaSn!.ref_id;
+    const operacja = buildSldOperationContext('continue-trunk', kind, elementId, gpzSwiezy, null);
+    expect(operacja?.op).toBe('continue_trunk_segment_sn');
+    expect(resolveGpzTrunkStartFieldRef(gpzSwiezy, (gpzSwiezy.substations ?? [])[0].ref_id)).toBeTruthy();
+
+    // Punkt startu = `field_ref` istniejącego pola liniowego (rola OUT/FEEDER).
+    const fieldRef = String(operacja!.context.field_ref ?? '');
+    const polaSpec = ((gpzSwiezy.substations ?? [])[0]?.meta as
+      { field_specs?: Array<{ field_ref?: string; bay_role?: string }> } | undefined)?.field_specs ?? [];
+    const pole = polaSpec.find((spec) => spec.field_ref === fieldRef);
+    expect(pole, `pole ${fieldRef} istnieje w modelu`).toBeTruthy();
+    expect(['OUT', 'FEEDER']).toContain(String(pole!.bay_role).toUpperCase());
+    // Kreator sprawdza dokładnie ten warunek — trzymamy go w teście JAWNIE,
+    // żeby regresja resolvera nie przeszła jako „kontekst jakiś jest".
+    const maStart = Boolean(
+      String(operacja!.context.from_terminal_id ?? '').trim()
+      || String(operacja!.context.field_ref ?? '').trim(),
+    );
+    expect(maStart, 'kreator magistrali ma punkt startu').toBe(true);
+
+    // Predykaty PARAMI (reguła KLASA pkt 3): warunek WEJŚCIA (menu odblokowuje
+    // pozycję) i warunek WYJŚCIA (operacja dostaje punkt startu) pochodzą z
+    // JEDNEGO źródła — `resolveGpzTrunkStartFieldRef`. Tu sprawdzamy, że oba
+    // mówią to samo na tym samym modelu.
+    const pozycja = getMenuActions(kind, { trunkStartFieldAvailable: true })
+      .find((akcja) => akcja.id === 'continue-trunk');
+    expect(pozycja?.disabled ?? false).toBe(false);
+  });
+
+  it('pole liniowe ZAJĘTE przez istniejący ciąg nie jest punktem startu (zajętość liczona PER POLE)', () => {
+    const stationRef = (gpzSwiezy.substations ?? [])[0].ref_id;
+    const wolne = resolveGpzTrunkStartFieldRef(gpzSwiezy, stationRef);
+    expect(wolne).toBeTruthy();
+
+    // Ten sam model + odcinek terenowy wyprowadzony z TEGO pola.
+    const zZajetymPolem = {
+      ...gpzSwiezy,
+      branches: [
+        ...(gpzSwiezy.branches ?? []),
+        {
+          ref_id: 'seg/test/segment',
+          id: 'seg/test/segment',
+          type: 'cable',
+          meta: { origin_bay_ref: wolne },
+        },
+      ],
+    } as unknown as EnergyNetworkModel;
+    expect(resolveGpzTrunkStartFieldRef(zZajetymPolem, stationRef)).toBeNull();
+
+    // ...a odcinek wyprowadzony z INNEGO pola nie blokuje tego (per POLE, nie per szyna).
+    const zInnymPolem = {
+      ...gpzSwiezy,
+      branches: [
+        ...(gpzSwiezy.branches ?? []),
+        {
+          ref_id: 'seg/test/inne',
+          id: 'seg/test/inne',
+          type: 'cable',
+          meta: { origin_bay_ref: `${wolne}-inne` },
+        },
+      ],
+    } as unknown as EnergyNetworkModel;
+    expect(resolveGpzTrunkStartFieldRef(zInnymPolem, stationRef)).toBe(wolne);
+  });
 });
