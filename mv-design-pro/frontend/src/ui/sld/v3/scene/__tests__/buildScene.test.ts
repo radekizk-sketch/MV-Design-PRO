@@ -68,7 +68,7 @@ import {
   type SceneV3,
 } from '../buildScene';
 import { overlapProbe } from '../../layout/labels';
-import { trunkThicknessGaps } from '../buildScene';
+import { sheetRowStationIds, trunkThicknessGaps } from '../buildScene';
 import { SEGMENT_STROKE_WIDTH } from '../../compose/preview';
 import { buildSldDataFromSnapshot } from '../../../v2/canvas/enmToSldAdapter';
 import { SYMBOL_DEFS } from '../../symbols/defs';
@@ -465,10 +465,34 @@ describe('buildSceneV3 — ciągłość elektryczna ciągu głównego (spec §16
     return { min: Math.min(...xs), max: Math.max(...xs) };
   }
 
-  it('stacje ciągu głównego są narysowane w TEJ SAMEJ kolejności co topologyRuns[].stationRefs (rosnące X)', () => {
-    const ranges = ids.map(stationXRange);
-    for (let i = 1; i < ranges.length; i++) {
-      expect(ranges[i - 1].max).toBeLessThan(ranges[i].min);
+  /** S9-1: zakres Y symboli stacji — do sprawdzenia porządku WIERSZY arkusza. */
+  function stationYRange(stationId: string): { readonly min: number; readonly max: number } {
+    const hash = stationHash(stationId);
+    const ys = scene.symbols.filter((s) => s.meta?.testId?.includes(hash)).map((s) => s.y);
+    expect(ys.length).toBeGreaterThan(0);
+    return { min: Math.min(...ys), max: Math.max(...ys) };
+  }
+
+  // S9-1 (ŁAMANIE ARKUSZA, `docs/sld/DECYZJA_LAMANIE_ARKUSZA.md`): intencja
+  // testu BEZ ZMIAN — stacje ciągu są rysowane w kolejności topologicznej, od
+  // strony zasilania w prawo. Zmienia się KANON odniesienia: po złamaniu
+  // arkusza kolejność jest leksykograficzna (wiersz arkusza, potem X), bo każdy
+  // wiersz zaczyna się od lewego marginesu. Test sprawdza więc OBA warunki:
+  // (a) w obrębie wiersza X rośnie, (b) wiersze idą w dół (żaden wiersz nie
+  // zaczyna się wyżej od poprzedniego) — łącznie to ta sama gwarancja czytania
+  // ciągu „od zasilania w głąb sieci", której pilnowała stara asercja.
+  it('stacje ciągu głównego są narysowane w kolejności topologicznej (wiersz arkusza, potem rosnące X)', () => {
+    const rows = sheetRowStationIds(scene);
+    expect(rows.flat()).toEqual([...ids]);
+    let previousRowBottom = -Infinity;
+    for (const row of rows) {
+      const ranges = row.map(stationXRange);
+      for (let i = 1; i < ranges.length; i++) {
+        expect(ranges[i - 1].max).toBeLessThan(ranges[i].min);
+      }
+      const rowTop = Math.min(...row.map((id) => stationYRange(id).min));
+      expect(rowTop).toBeGreaterThan(previousRowBottom);
+      previousRowBottom = Math.max(...row.map((id) => stationYRange(id).max));
     }
   });
 
@@ -658,7 +682,10 @@ describe('buildSceneV3 — F8b-1 meta (ownerRef/elementKind, fundament selekcji 
       // §16-v3: słupek terminalny — MARKER końca biegu (nie element
       // selekcji); ownerRef z sufiksem `#open-terminal` dla tożsamości,
       // elementKind celowo nieustawiony (klik nie otwiera inspektora).
-      else if (s.meta?.kind === 'openTerminal') expect(s.meta?.elementKind).toBeUndefined();
+      // S9-1: kreski znaku ciągu dalszego (złamanie arkusza) — TA SAMA klasa co
+      // słupek terminalny: marker czytelności, nie element selekcji.
+      else if (s.meta?.kind === 'openTerminal' || s.meta?.kind === 'sheetContinuation')
+        expect(s.meta?.elementKind).toBeUndefined();
       else expect(s.meta?.elementKind).toBe('segment');
     }
     // Przynajmniej jeden segment SN-bus (stacja) z ownerRef kończącym się na
@@ -1022,9 +1049,18 @@ describe('buildSceneV3 — F9.7: totalVerticalSegmentLength (spec §15.1 vertica
     // minimalizacją pionów. Dowód braku regresji układu: `accept:sld-v3` ALL PASS
     // (w tym nowa sonda `busbar_label_clearance_probe` — 55 etykiet szyn,
     // 0 naruszeń) oraz zero nowych kolizji etykieta↔etykieta/symbol/przewód.
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 0))).toBe(23232);
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(40224);
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(40224);
+    // S9-1 (ŁAMANIE ARKUSZA, `docs/sld/DECYZJA_LAMANIE_ARKUSZA.md`) — baseline
+    // OBNIŻONY: 23232/40224/40224 → 22232/39240/39240 (−1000 / −984 / −984).
+    // Przyczyna zmierzona, nie oszacowana: po złamaniu ciągu na wiersze arkusza
+    // odgałęzienia leżą w PAŚMIE swojego wiersza (przeplot, decyzja §4), a nie
+    // pod całym rysunkiem — piony zejść lateralnych są krótsze o dystans, który
+    // wcześniej pokonywały przez wszystkie wiersze niżej. Nadwyżkę częściowo
+    // zjadają NOWE piony łączników ciągu dalszego (kanał powrotny + rynna
+    // podjęcia na każdym złamaniu), więc bilans netto jest UJEMNY — reguła
+    // „nie-rosnąca" (spec §15.1) spełniona.
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 0))).toBe(22232);
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(39240);
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(39240);
   });
 });
 

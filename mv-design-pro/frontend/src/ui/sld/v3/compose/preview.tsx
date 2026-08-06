@@ -55,7 +55,7 @@ import { BASE_STROKE, CANVAS_BACKGROUND } from '../theme/colorTokens';
  *  SN GPZ, grubsza niż szyna stacji (`'bus'`, 4) — dominanta kompozycyjna GPZ
  *  jako WN/SN. Szyna WN (`#hv-bus`) i szyny stacji ZOSTAJĄ `'bus'` (spec
  *  §21.2 różnicuje WYŁĄCZNIE szynę sekcji SN GPZ, nie szynę WN ani stacje). */
-export type PreviewSegmentKind = 'bus' | 'busGpz' | 'sn' | 'snTrunk' | 'lv' | 'leader' | 'protectionTrip' | 'measurementLink' | 'openTerminal';
+export type PreviewSegmentKind = 'bus' | 'busGpz' | 'sn' | 'snTrunk' | 'lv' | 'leader' | 'protectionTrip' | 'measurementLink' | 'openTerminal' | 'sheetContinuation';
 
 /** Eksportowane (F6b): `SldCanvasV3` reużywa TĘ SAMĄ hierarchię grubości
  *  (spec §6), zero duplikacji stałych między harnessem debug i kanwą docelową. */
@@ -83,6 +83,11 @@ export const SEGMENT_STROKE_WIDTH: Readonly<Record<PreviewSegmentKind, number>> 
   // OTWARTEGO końca ciągu (kreska prostopadła do ostatniego biegu) — grubość
   // toru odgałęźnego (to marker KOŃCA toru SN, nie adnotacja ≤0.8).
   openTerminal: 1.6,
+  // S9-1 (`docs/sld/DECYZJA_LAMANIE_ARKUSZA.md` §5): GROT KONTYNUACJI na
+  // złamaniu arkusza — marker czytelności przy realnym torze magistrali
+  // (sam tor zachowuje klasę `snTrunk`, ciągłość elektryczna NIETKNIĘTA).
+  // Grubość jak marker końca otwartego: to znak na torze mocy, nie adnotacja.
+  sheetContinuation: 1.6,
 };
 
 /**

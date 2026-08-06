@@ -105,9 +105,18 @@ describe('SCHEMAT-10 S7.6 — kontraktowe minimum światła pasm (Z1 KOMPRESJA)'
     // minimalizacją pionów. Dowód braku regresji układu: `accept:sld-v3` ALL PASS
     // (w tym nowa sonda `busbar_label_clearance_probe` — 55 etykiet szyn,
     // 0 naruszeń) oraz zero nowych kolizji etykieta↔etykieta/symbol/przewód.
-    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 0))).toBe(23232);
-    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 1))).toBe(40224);
-    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 2))).toBe(40224);
+    // S9-1 (ŁAMANIE ARKUSZA, `docs/sld/DECYZJA_LAMANIE_ARKUSZA.md`) — baseline
+    // OBNIŻONY: 23232/40224/40224 → 22232/39240/39240 (−1000 / −984 / −984).
+    // Przyczyna zmierzona, nie oszacowana: po złamaniu ciągu na wiersze arkusza
+    // odgałęzienia leżą w PAŚMIE swojego wiersza (przeplot, decyzja §4), a nie
+    // pod całym rysunkiem — piony zejść lateralnych są krótsze o dystans, który
+    // wcześniej pokonywały przez wszystkie wiersze niżej. Nadwyżkę częściowo
+    // zjadają NOWE piony łączników ciągu dalszego (kanał powrotny + rynna
+    // podjęcia na każdym złamaniu), więc bilans netto jest UJEMNY — reguła
+    // „nie-rosnąca" (spec §15.1) spełniona.
+    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 0))).toBe(22232);
+    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 1))).toBe(39240);
+    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 2))).toBe(39240);
   });
 
   it('determinizm: rekordy pasm identyczne w dwóch biegach (fixtura referencyjna, L2)', () => {
