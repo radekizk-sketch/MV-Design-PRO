@@ -27,12 +27,20 @@
  *     wymiar na EKRANIE wynosił co najmniej `MIN_HIT_SCREEN_PX`. Rozstrzyga
  *     DOPIERO, gdy klik nie trafił w żaden obrys — czyli „prawie trafiłem".
  *
- * Kolejność ma znaczenie i jest odwzorowana W DOM: warstwa obszarów rozszerzonych
- * (`sld-v3-hit-obszar`) leży POD całą treścią rysunku, a obrysy są częścią samych
- * węzłów treści. Dzięki temu przeglądarka rozstrzyga trafienie dokładnie tak, jak
- * `pickCanvasHitArea` niżej — rozszerzenie NIGDY nie kradnie kliku obiektowi,
- * nad którego tuszem stoi kursor (to była pułapka „jednego grubego hitboxa":
- * poszerzony cel symbolu zjadał kliki w szynę przechodzącą pod nim).
+ * Kolejność ma znaczenie i jest odwzorowana W DOM: warstwa trafień
+ * (`sld-v3-trafienia`) ma DWA piętra — najpierw `sld-v3-trafienia-obszar`
+ * (rozszerzenia), nad nim `sld-v3-trafienia-obrys` (ślady rysunku). Przeglądarka
+ * wybiera węzeł malowany najwyżej, więc rozstrzyga dokładnie tak, jak
+ * `pickCanvasHitArea` niżej: rozszerzenie NIGDY nie kradnie kliku obiektowi, nad
+ * którego tuszem stoi kursor (to była pułapka „jednego grubego hitboxa":
+ * poszerzony cel symbolu zjadał kliki w szynę przechodzącą pod nim). Niezmiennik
+ * kolejności pięter pilnuje `hitLayerOrderingInDom` — bramka odbioru, nie
+ * obietnica w komentarzu.
+ *
+ * Cały RYSUNEK kanwy jest przy tym BIERNY (`pointer-events="none"` na korzeniu
+ * arkusza): łapią wyłącznie te dwa piętra. Jeden atrybut zamyka klasę „napis bez
+ * obsługi połyka klik", bo własność jest dziedziczona — każda przyszła nakładka
+ * jest bierna z konstrukcji, a nie dlatego, że ktoś pamiętał ją wypisać.
  *
  * Predykaty parami (reguła KLASA, NIE INSTANCJA pkt 3): geometria WEJŚCIA
  * (co rysuje `SldCanvasV3`) i geometria WYJŚCIA (co rozstrzyga sonda odbioru

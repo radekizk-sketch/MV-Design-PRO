@@ -55,6 +55,31 @@ function withGenType(genIndex: number, genType: unknown): { snapshot: EnergyNetw
   return { snapshot, genRef: gen!.ref_id };
 }
 
+/** Karta S9-4: uchwyt trafienia symbolu o zadanym indeksie sceny — węzeł warstwy
+ *  `sld-v3-trafienia`, w który w przeglądarce faktycznie trafia (także prawy)
+ *  przycisk myszy; rysunek kanwy jest bierny (`pointer-events="none"`). */
+function uchwytSymbolu(
+  container: HTMLElement,
+  scene: { readonly symbols: readonly { readonly meta?: { readonly testId?: string } }[] },
+  index: number,
+): Element | null {
+  const testId = scene.symbols[index]?.meta?.testId ?? `sld-v3-symbol-${index}`;
+  return container.querySelector(`[data-hit-for="${testId}"][data-hit-role="obrys"]`);
+}
+
+/** Węzeł RYSUNKU tego samego symbolu — nosi diagnostyczne `data-*` sceny
+ *  (`data-der-kind`, `data-element-kind`, `data-owner-ref`). Karta S9-4
+ *  rozdzieliła kanały: rysunek niesie tożsamość i diagnostykę, warstwa trafień
+ *  niesie geometrię celu (`data-hit-*`). */
+function wezelRysunku(
+  container: HTMLElement,
+  scene: { readonly symbols: readonly { readonly meta?: { readonly testId?: string } }[] },
+  index: number,
+): Element | null {
+  const testId = scene.symbols[index]?.meta?.testId ?? `sld-v3-symbol-${index}`;
+  return container.querySelector(`[data-testid="${testId}"]`);
+}
+
 describe('SldCanvasV3Workspace — F8c pkt 3: menu kontekstowe', () => {
   it('(a) prawy klik w symbol stacji otwiera menu z akcjami dla stacji (SLD_MENU_REGISTRY.station)', () => {
     const scene = buildSceneV3(enm, 0);
@@ -62,7 +87,7 @@ describe('SldCanvasV3Workspace — F8c pkt 3: menu kontekstowe', () => {
     expect(stationIndex).toBeGreaterThanOrEqual(0);
 
     const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
-    const stationGroup = container.querySelector('[data-testid="sld-v3-symbols"]')?.children[stationIndex];
+    const stationGroup = uchwytSymbolu(container, scene, stationIndex);
     expect(stationGroup).toBeTruthy();
 
     fireEvent.contextMenu(stationGroup!, { clientX: 120, clientY: 80 });
@@ -94,10 +119,11 @@ describe('SldCanvasV3Workspace — F8c pkt 3: menu kontekstowe', () => {
     expect(pvIndex).toBeGreaterThanOrEqual(0);
 
     const { container } = render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
-    const pvGroup = container.querySelector('[data-testid="sld-v3-symbols"]')?.children[pvIndex];
+    const pvGroup = uchwytSymbolu(container, scene, pvIndex);
     expect(pvGroup).toBeTruthy();
-    // Sanity: atrybut DOM diagnostyczny niesie realny rodzaj (nie zgadywany).
-    expect(pvGroup!.getAttribute('data-der-kind')).toBe('pv');
+    // Sanity: atrybut DOM diagnostyczny niesie realny rodzaj (nie zgadywany) —
+    // po karcie S9-4 mieszka na węźle RYSUNKU, uchwyt niesie geometrię celu.
+    expect(wezelRysunku(container, scene, pvIndex)!.getAttribute('data-der-kind')).toBe('pv');
 
     fireEvent.contextMenu(pvGroup!, { clientX: 50, clientY: 50 });
 
@@ -123,9 +149,9 @@ describe('SldCanvasV3Workspace — F8c pkt 3: menu kontekstowe', () => {
     expect(scene.symbols[genIndex].meta?.derKind).toBe('generator');
 
     const { container } = render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
-    const genGroup = container.querySelector('[data-testid="sld-v3-symbols"]')?.children[genIndex];
+    const genGroup = uchwytSymbolu(container, scene, genIndex);
     expect(genGroup).toBeTruthy();
-    expect(genGroup!.getAttribute('data-der-kind')).toBe('generator');
+    expect(wezelRysunku(container, scene, genIndex)!.getAttribute('data-der-kind')).toBe('generator');
 
     fireEvent.contextMenu(genGroup!, { clientX: 50, clientY: 50 });
 
@@ -151,7 +177,7 @@ describe('SldCanvasV3Workspace — F8c pkt 3: menu kontekstowe', () => {
     const pvRef = scene.symbols[pvIndex].meta!.ownerRef!;
 
     const { container } = render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
-    const pvGroup = container.querySelector('[data-testid="sld-v3-symbols"]')?.children[pvIndex];
+    const pvGroup = uchwytSymbolu(container, scene, pvIndex);
     fireEvent.contextMenu(pvGroup!, { clientX: 50, clientY: 50 });
     expect(screen.getByRole('menu')).toBeTruthy();
 
