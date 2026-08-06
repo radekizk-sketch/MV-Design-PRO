@@ -102,6 +102,20 @@ FRONTEND_PATH_EXCEPTIONS: dict[str, str] = {}
 #
 # POMIAR (2026-08-05): 6 modulow, 22 UNIKALNE martwe sciezki (23 miejsca wolania —
 # `/api/execution/study-cases/{id}/comparisons` wystepuje w dwoch funkcjach).
+#
+# SPLACONE (2026-08-06, karta nakladki roznic na schemacie): modul
+# `ui/comparison/sldDeltaOverlay.api.ts` (3 sciezki pod
+# `/api/execution/comparisons`) — JEDYNY wpis rejestru importowany przez zywy
+# store, wiec jedyny, ktorego skutek widzial uzytkownik. Rozstrzygniecie:
+# rejestr porownan spod `/api/execution` byl DUPLIKATEM zywej, bezstanowej
+# koncowki `/api/short-circuit-comparisons` (jego dostawca nie byl wpiety w
+# `main.py`, a stojaca za nim usluga trzymala przebiegi we wlasnej pamieci, do
+# ktorej produkcyjna sciezka biegow nic nie zapisuje — samo wpiecie routera
+# daloby trase odpowiadajaca „nie znaleziono przebiegu" na kazdy realny
+# identyfikator). Zdolnosc „roznice na schemacie" dostala dostawce w zywej
+# sciezce (`POST /api/short-circuit-comparisons/sld-overlay`), a duplikat
+# (klient, store porownan, panel) zostal usuniety.
+# STAN PO SPLACIE: 5 modulow, 19 martwych sciezek.
 # --------------------------------------------------------------------------
 FRONTEND_DEAD_CLIENT_DEBT: dict[str, tuple[tuple[str, ...], str]] = {
     "frontend/src/ui/protection-coordination/api.ts": (
@@ -130,16 +144,6 @@ FRONTEND_DEAD_CLIENT_DEBT: dict[str, tuple[tuple[str, ...], str]] = {
         ),
         "warianty projektu nie maja dostawcy w backendzie. Store uzywany wylacznie przez "
         "wlasny test. Do decyzji: usunac albo zbudowac warianty end-to-end.",
-    ),
-    "frontend/src/ui/comparison/sldDeltaOverlay.api.ts": (
-        (
-            "/api/execution/study-cases/{p}/comparisons",
-            "/api/execution/comparisons/{p}",
-            "/api/execution/comparisons/{p}/sld-delta-overlay",
-        ),
-        "backend nie wystawia porownan zwarciowych pod prefiksem /api/execution/comparisons. "
-        "UWAGA: modul JEST importowany przez sldDeltaOverlayStore (nakladka delta na SLD), "
-        "wiec funkcja jest widoczna w interfejsie i konczy sie bledem. Najwyzszy priorytet.",
     ),
     "frontend/src/ui/comparison/api.ts": (
         (

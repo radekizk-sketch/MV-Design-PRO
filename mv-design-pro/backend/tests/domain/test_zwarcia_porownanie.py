@@ -131,6 +131,55 @@ def test_brak_pola_w_wyniku_nie_daje_delty() -> None:
     assert punkt.sk_mva_a is None
 
 
+def test_ref_schematu_przenoszony_z_wiersza() -> None:
+    """`element_id` (ref elementu modelu) przechodzi do punktu porownania.
+
+    Punkt zwarcia jest adresowany dwoma refami: wezlem grafu przebiegu
+    (`target_id`) i elementem modelu (`element_id`). Nakladka roznic na
+    schemacie adresuje elementy SCHEMATU, wiec potrzebuje tego drugiego —
+    bez niego trafialaby w nieistniejace refy i byla pusta.
+    """
+    wynik = zbuduj_porownanie_zwarc(
+        run_id_a="a",
+        run_id_b="b",
+        wiersze_a=[
+            {"target_id": "node-7", "element_id": "bus-SN-1", "target_name": "P", "ikss_ka": 8.0}
+        ],
+        wiersze_b=[
+            {"target_id": "node-7", "element_id": "bus-SN-1", "target_name": "P", "ikss_ka": 10.0}
+        ],
+    )
+    punkt = wynik.punkty[0]
+    assert punkt.element_id == "bus-SN-1"
+    assert punkt.to_dict()["element_id"] == "bus-SN-1"
+
+
+def test_ref_schematu_punktu_obecnego_tylko_w_b() -> None:
+    """Punkt bez odpowiednika w A bierze ref z wiersza B (jedyne zrodlo)."""
+    wynik = zbuduj_porownanie_zwarc(
+        run_id_a="a",
+        run_id_b="b",
+        wiersze_a=[],
+        wiersze_b=[
+            {"target_id": "node-9", "element_id": "bus-SN-9", "target_name": "P", "ikss_ka": 10.0}
+        ],
+    )
+    assert wynik.punkty[0].element_id == "bus-SN-9"
+
+
+def test_brak_ref_schematu_jest_pomijany_w_serializacji() -> None:
+    """Starszy wynik bez `element_id` ⇒ pole NIE ISTNIEJE, nie jest pustym tekstem."""
+    wynik = zbuduj_porownanie_zwarc(
+        run_id_a="a",
+        run_id_b="b",
+        wiersze_a=[{"target_id": "node-7", "target_name": "P", "ikss_ka": 8.0}],
+        wiersze_b=[{"target_id": "node-7", "target_name": "P", "ikss_ka": 10.0}],
+    )
+    punkt = wynik.punkty[0]
+    assert punkt.element_id is None
+    assert "element_id" not in punkt.to_dict()
+
+
 @pytest.mark.parametrize(
     ("a", "b", "oczekiwany"),
     [

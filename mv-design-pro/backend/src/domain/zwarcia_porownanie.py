@@ -82,6 +82,14 @@ class PunktZwarciowyDiff:
     target_id: str
     target_name: str
     obecny_w: str
+    #: Ref elementu SIECI odpowiadajacy punktowi zwarcia (`element_id` wiersza
+    #: kanonicznego) — TOZSAMOSC UZYWANA NA SCHEMACIE. Punkt zwarcia jest
+    #: adresowany dwoma refami: `target_id` (wezel grafu przebiegu) oraz
+    #: `element_id` (element modelu). Nakladka roznic na schemacie musi trafic
+    #: w ten drugi — dokladnie ta sama regula, ktorej uzywa akcja „Pokaz na
+    #: schemacie" ekranu zwarc (`element_id ?? target_id`). Pole ADDYTYWNE:
+    #: starszy wynik bez `element_id` ⇒ ``None`` ⇒ pominiete w serializacji.
+    element_id: str | None = None
     ikss_ka_a: float | None = None
     ikss_ka_b: float | None = None
     delta_ikss_ka: float | None = None
@@ -128,6 +136,8 @@ class PunktZwarciowyDiff:
             "target_name": self.target_name,
             "obecny_w": self.obecny_w,
         }
+        if self.element_id is not None:
+            dane["element_id"] = self.element_id
         for klucz, wartosc in (
             ("ikss_ka_a", self.ikss_ka_a),
             ("ikss_ka_b", self.ikss_ka_b),
@@ -226,7 +236,12 @@ def zbuduj_porownanie_zwarc(
             obecny = OBECNY_TYLKO_B
             tylko_b += 1
 
-        nazwa = str((a or b or {}).get("target_name") or klucz)
+        zrodlo = a or b or {}
+        nazwa = str(zrodlo.get("target_name") or klucz)
+        # Ref schematu: `element_id` wiersza; brak pola (starszy wynik) ⇒ None,
+        # a konsument nakladki schodzi wtedy na `target_id` — JEDNA regula,
+        # ta sama co w akcji „Pokaz na schemacie" ekranu zwarc.
+        element_id = zrodlo.get("element_id")
         wartosci: dict[str, tuple[float | None, float | None]] = {
             pole: (
                 _liczba(a, pole) if a is not None else None,
@@ -250,6 +265,7 @@ def zbuduj_porownanie_zwarc(
                 target_id=klucz,
                 target_name=nazwa,
                 obecny_w=obecny,
+                element_id=str(element_id) if element_id is not None else None,
                 ikss_ka_a=wartosci["ikss_ka"][0],
                 ikss_ka_b=wartosci["ikss_ka"][1],
                 delta_ikss_ka=_delta(*wartosci["ikss_ka"]),

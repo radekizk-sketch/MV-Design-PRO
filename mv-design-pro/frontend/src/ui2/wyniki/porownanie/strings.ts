@@ -310,6 +310,18 @@ export const ZWARCIA_POROWNANIE_STRINGS = {
   // Stan pusty tabeli
   brakPunktow: 'Brak punktów zwarcia w wybranych przebiegach.',
 
+  // Nakładka różnic na schemacie (różnice liczy backend, schemat je rysuje)
+  pokazNaSchemacie: 'Pokaż różnice na schemacie',
+  pokazNaSchemacieWTrakcie: 'Przygotowywanie różnic…',
+  pokazNaSchemacieOpis:
+    'Nanosi różnice Δ (Ik", ip, Ith, Sk) na punkty zwarcia schematu — te same wartości co w tabeli.',
+  // Uczciwy stan zerowy: bez punktów wspólnych nie ma czego nanosić.
+  // Komunikat błędu pobrania NIE stoi tutaj — niesie go store nakładki wprost
+  // z odpowiedzi (status HTTP), a drugi, ogólniejszy tekst obok zabrałby
+  // operatorowi jedyną konkretną informację o przyczynie.
+  brakPunktowWspolnych:
+    'Brak punktów obecnych w obu przebiegach — nie ma różnic do pokazania na schemacie.',
+
   // Oznaczenie punktu bez odpowiednika w drugim przebiegu (uczciwie)
   tylkoA: ' (tylko A)',
   tylkoB: ' (tylko B)',

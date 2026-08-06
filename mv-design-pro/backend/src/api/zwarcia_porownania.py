@@ -8,6 +8,13 @@ deterministyczny.
 DLACZEGO ISTNIEJE. Tryb zwarciowy ekranu porownan liczyl roznice w warstwie
 prezentacji (dlug V12K-290) — dokladnie ta klasa, ktora dla porownan rozplywu
 zamknela luka L-13. Teraz UI odczytuje gotowe pola.
+
+DRUGA POSTAC TEGO SAMEGO WYNIKU (karta nakladki roznic, dlug „klient bez
+dostawcy" V12K-326): `POST /api/short-circuit-comparisons/sld-overlay` oddaje TO
+SAMO porownanie w kontrakcie overlay v1 — jako elementy schematu zamiast wierszy
+tabeli. Dzieki temu „pokaz roznice na schemacie" ma realnego dostawce w tej samej
+sciezce, ktora zasila tabele (wczesniej klient wolal `/api/execution/comparisons/
+{id}/sld-delta-overlay` — trase, ktorej zaden router nie serwuje).
 """
 
 from __future__ import annotations
@@ -16,6 +23,11 @@ from typing import Any
 from uuid import UUID
 
 from api.canonical_run_views import build_short_circuit_results_response
+from application.result_mapping.zwarcia_delta_overlay_v1 import (
+    RODZAJ_ANALIZY,
+    zbuduj_nakladke_roznic,
+)
+from domain.result_contract_v1 import OverlayElementV1, OverlayLegendV1
 from domain.zwarcia_porownanie import zbuduj_porownanie_zwarc
 from enm.canonical_analysis import get_run as get_canonical_run
 from fastapi import APIRouter, HTTPException, status
@@ -23,11 +35,12 @@ from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/api/short-circuit-comparisons", tags=["short-circuit-comparison"])
 
-#: Wersja kontraktu eksportu porownania zwarciowego. Podbicie MINOR wzgledem
-#: 1.0.0 (pierwsza postac bez pol procentowych): payload dostal ADDYTYWNE pola
-#: `delta_*_percent` liczone w backendzie. Konsument starszej wersji nie widzi
-#: zadnej zmiany — pola nieistniejace sa pomijane (`exclude_none`).
-WERSJA_RAPORTU = "1.1.0"
+#: Wersja kontraktu eksportu porownania zwarciowego. Podbicia MINOR: 1.1.0 —
+#: ADDYTYWNE pola `delta_*_percent` liczone w backendzie; 1.2.0 — ADDYTYWNE pole
+#: `element_id` (ref punktu na schemacie, potrzebny nakladce roznic). Konsument
+#: starszej wersji nie widzi zadnej zmiany — pola nieistniejace sa pomijane
+#: (`exclude_none`).
+WERSJA_RAPORTU = "1.2.0"
 
 
 class PunktZwarciowyDiffResponse(BaseModel):
@@ -42,6 +55,10 @@ class PunktZwarciowyDiffResponse(BaseModel):
     target_name: str
     #: „AB" = punkt w obu przebiegach, „A"/„B" = wylacznie w jednym.
     obecny_w: str
+    #: Ref elementu SIECI punktu zwarcia — tozsamosc uzywana na schemacie
+    #: (`element_id`, przy braku konsument schodzi na `target_id`). Pole
+    #: ADDYTYWNE, pomijane gdy nieznane (starszy wynik).
+    element_id: str | None = None
     ikss_ka_a: float | None = None
     ikss_ka_b: float | None = None
     delta_ikss_ka: float | None = None
@@ -139,4 +156,68 @@ def utworz_porownanie_zwarc(
         liczba_punktow_wspolnych=dane["liczba_punktow_wspolnych"],
         liczba_punktow_tylko_a=dane["liczba_punktow_tylko_a"],
         liczba_punktow_tylko_b=dane["liczba_punktow_tylko_b"],
+    )
+
+
+class NakladkaRoznicResponse(BaseModel):
+    """Nakladka roznic A/B gotowa do naniesienia na schemat.
+
+    Ksztalt `elements`/`legend` to KONTRAKT OVERLAY V1 (`result_contract_v1`) —
+    ten sam, ktorym warstwa wynikowa schematu karmi sie dla pojedynczego
+    przebiegu. Dzieki temu roznice rysuje ta sama warstwa etykiet, bez drugiego
+    kanalu renderu.
+
+    Liczniki dziela WSZYSTKIE punkty porownania na cztery rozlaczne grupy;
+    punkty bez odpowiednika i bez porownywalnych danych nie sa elementami
+    nakladki (roznica dla nich nie istnieje), ale ich liczba jest jawna.
+    """
+
+    run_id_a: str
+    run_id_b: str
+    #: Rodzaj analizy nakladki — prefiks „DELTA_" mowi konsumentowi, ze wartosci
+    #: sa ROZNICAMI, nie wielkosciami bezwzglednymi.
+    analysis_type: str
+    report_version: str = Field(default=WERSJA_RAPORTU)
+    elements: dict[str, OverlayElementV1]
+    legend: OverlayLegendV1
+    #: Odcisk tresci nakladki — ten sam wynik porownania daje ten sam odcisk.
+    content_hash: str
+    liczba_punktow_zmienionych: int
+    liczba_punktow_bez_zmian: int
+    liczba_punktow_bez_odpowiednika: int
+    liczba_punktow_bez_danych: int
+
+
+@router.post(
+    "/sld-overlay",
+    response_model=NakladkaRoznicResponse,
+)
+def nakladka_roznic_na_schemacie(
+    request: CreateZwarciaPorownanieRequest,
+) -> NakladkaRoznicResponse:
+    """Roznice Ik''/ip/Ith/Sk pary przebiegow w postaci nakladki na schemat.
+
+    TA SAMA para przebiegow i TEN SAM wynik domeny co tabela porownania
+    (`POST /api/short-circuit-comparisons`) — koncowka rozni sie wylacznie
+    POSTACIA odpowiedzi (elementy schematu zamiast wierszy tabeli). Zero fizyki,
+    zero mutacji, wynik deterministyczny.
+    """
+    porownanie = zbuduj_porownanie_zwarc(
+        run_id_a=request.run_id_a,
+        run_id_b=request.run_id_b,
+        wiersze_a=_wiersze_zwarciowe(request.run_id_a),
+        wiersze_b=_wiersze_zwarciowe(request.run_id_b),
+    )
+    nakladka = zbuduj_nakladke_roznic(porownanie)
+    return NakladkaRoznicResponse(
+        run_id_a=porownanie.run_id_a,
+        run_id_b=porownanie.run_id_b,
+        analysis_type=RODZAJ_ANALIZY,
+        elements=nakladka.payload.elements,
+        legend=nakladka.payload.legend,
+        content_hash=nakladka.content_hash(),
+        liczba_punktow_zmienionych=nakladka.liczba_punktow_zmienionych,
+        liczba_punktow_bez_zmian=nakladka.liczba_punktow_bez_zmian,
+        liczba_punktow_bez_odpowiednika=nakladka.liczba_punktow_bez_odpowiednika,
+        liczba_punktow_bez_danych=nakladka.liczba_punktow_bez_danych,
     )
