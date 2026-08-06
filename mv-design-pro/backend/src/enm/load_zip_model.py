@@ -49,6 +49,12 @@ KLUCZE_ZIP_ODBIORU: tuple[str, ...] = (
     "k_qf",
 )
 
+#: Wielkości ODNIESIENIA wielomianu. Nie są dobierane per odbiór, więc nie mają
+#: pola w kreatorze — ale rozpływ je CZYTA, więc gdy tabliczka je niesie (np. z
+#: migracji albo z korekty eksperckiej), muszą przejść tę samą kontrolę co
+#: udziały. Klucz czytany, a niewalidowany, to ten sam defekt, tylko cichszy.
+KLUCZE_ODNIESIENIA_ZIP: tuple[str, ...] = ("v0_pu", "f0_hz")
+
 #: Domyślne = stała moc, bez wrażliwości częstotliwościowej. Te same liczby, które
 #: przyjmuje ``zip_coeffs_from_materialized_params`` przy braku klucza — dlatego
 #: uzupełnienie braków tutaj NIE zmienia wyniku rozpływu.
@@ -62,6 +68,10 @@ DOMYSLNE_ZIP_ODBIORU: dict[str, float] = {
     "k_pf": 0.0,
     "k_qf": 0.0,
 }
+
+#: Odniesienia solvera (``ZipCoeffs``) — powtórzone tu wyłącznie jako wartości
+#: startowe uzupełniania braków; regułę ich poprawności trzyma ``validate_zip_coeffs``.
+DOMYSLNE_ODNIESIENIA_ZIP: dict[str, float] = {"v0_pu": 1.0, "f0_hz": 50.0}
 
 KOD_BLEDU_ZIP = "load.zip_invalid"
 
@@ -101,17 +111,23 @@ def zip_odbioru_z_payloadu(
 
     ``(None, None)``  — payload nie deklaruje modelu ZIP albo deklaruje stałą moc:
                         do modelu nie trafia nic (ścieżka historyczna, bajt w bajt).
-    ``(dict, None)``  — poprawny wielomian nietrywialny; komplet ośmiu kluczy
-                        (braki uzupełnione domyślnymi), gotowy do zapisu w
-                        ``Load.materialized_params``.
+    ``(dict, None)``  — poprawny wielomian nietrywialny; komplet ośmiu udziałów
+                        (braki uzupełnione domyślnymi) plus te wielkości
+                        odniesienia, które payload FAKTYCZNIE niósł, gotowy do
+                        zapisu w ``Load.materialized_params``.
     ``(None, tekst)`` — wielomian odrzucony; ``tekst`` to komunikat dla projektanta.
+
+    Walidowany jest KOMPLET tego, co czyta solver — także ``v0_pu``/``f0_hz``,
+    mimo że kreator ich nie ustawia. Klucz czytany przez rozpływ, a przepuszczany
+    tu bez kontroli, byłby tym samym defektem, który ta ścieżka zamyka.
     """
-    podane = {klucz: payload[klucz] for klucz in KLUCZE_ZIP_ODBIORU if klucz in payload}
+    czytane = (*KLUCZE_ZIP_ODBIORU, *KLUCZE_ODNIESIENIA_ZIP)
+    podane = {klucz: payload[klucz] for klucz in czytane if klucz in payload}
     podane = {klucz: wartosc for klucz, wartosc in podane.items() if wartosc is not None}
     if not podane:
         return None, None
 
-    wspolczynniki = dict(DOMYSLNE_ZIP_ODBIORU)
+    wspolczynniki = {**DOMYSLNE_ZIP_ODBIORU, **DOMYSLNE_ODNIESIENIA_ZIP}
     for klucz, surowa in podane.items():
         liczba = _liczba(surowa)
         if liczba is None:
@@ -134,7 +150,14 @@ def zip_odbioru_z_payloadu(
     if coeffs.is_constant_power() and not coeffs.has_frequency_dependence():
         return None, None
 
-    return wspolczynniki, None
+    # Odniesienia zapisujemy TYLKO gdy payload je niósł: odbiór z kreatora dostaje
+    # dokładnie osiem kluczy, więc tabliczka nie puchnie o wartości, których nikt
+    # nie deklarował (a solver i tak przyjmuje te same przy ich braku).
+    return {
+        klucz: wartosc
+        for klucz, wartosc in wspolczynniki.items()
+        if klucz in KLUCZE_ZIP_ODBIORU or klucz in podane
+    }, None
 
 
 def zip_odbioru_z_parametrow_materializacji(

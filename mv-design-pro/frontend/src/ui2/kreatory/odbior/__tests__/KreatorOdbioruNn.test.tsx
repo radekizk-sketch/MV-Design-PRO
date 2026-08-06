@@ -42,6 +42,20 @@ vi.mock('../../../../ui/catalog/api', () => ({
   fetchLoadTypes: () =>
     Promise.resolve([
       { id: 'L1', name: 'Odbiór biurowy', model: 'pq', p_kw: 80, q_kvar: 30, cos_phi: 0.94, cos_phi_mode: 'fixed' },
+      {
+        id: 'L2',
+        name: 'Odbiór impedancyjny',
+        model: 'zip',
+        p_kw: 40,
+        cos_phi: 0.9,
+        cos_phi_mode: 'fixed',
+        a_p: 1,
+        b_p: 0,
+        c_p: 0,
+        a_q: 1,
+        b_q: 0,
+        c_q: 0,
+      },
     ]),
 }));
 
@@ -142,6 +156,73 @@ describe('KreatorOdbioruNn — realna ścieżka', () => {
     expect(screen.getByTestId('mvd-kreator-odbior-brak')).toBeInTheDocument();
     expect(screen.getByTestId('mvd-kreator-odbior-zapisz')).toBeDisabled();
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
+  });
+
+  it('pokazuje sekcję modelu obciążenia (ZIP) ze stałą mocą jako domyślną', async () => {
+    render(<KreatorOdbioruNn />);
+    await fill();
+    expect(screen.getByTestId('mvd-kreator-odbior-zip')).toBeInTheDocument();
+    expect(screen.getByTestId('mvd-kreator-odbior-zip-cp')).toHaveValue(1);
+    expect(screen.getByTestId('mvd-kreator-odbior-zip-ap')).toHaveValue(0);
+    expect(screen.getByTestId('mvd-kreator-odbior-zip-kpf')).toHaveValue(0);
+    expect(screen.getByText('Stała moc (c = 1)')).toBeInTheDocument();
+  });
+
+  it('model ZIP ustawiony przez projektanta jedzie w payloadzie operacji', async () => {
+    executeDomainOperationMock.mockResolvedValue({ error: null });
+    render(<KreatorOdbioruNn />);
+    await fill();
+
+    // Odbiór stałoimpedancyjny: a = 1, c = 0 dla P i dla Q.
+    await userEvent.clear(screen.getByTestId('mvd-kreator-odbior-zip-cp'));
+    await userEvent.type(screen.getByTestId('mvd-kreator-odbior-zip-cp'), '0');
+    await userEvent.clear(screen.getByTestId('mvd-kreator-odbior-zip-ap'));
+    await userEvent.type(screen.getByTestId('mvd-kreator-odbior-zip-ap'), '1');
+    await userEvent.clear(screen.getByTestId('mvd-kreator-odbior-zip-cq'));
+    await userEvent.type(screen.getByTestId('mvd-kreator-odbior-zip-cq'), '0');
+    await userEvent.clear(screen.getByTestId('mvd-kreator-odbior-zip-aq'));
+    await userEvent.type(screen.getByTestId('mvd-kreator-odbior-zip-aq'), '1');
+
+    await userEvent.click(screen.getByTestId('mvd-kreator-odbior-zapisz'));
+
+    await waitFor(() => {
+      expect(executeDomainOperationMock).toHaveBeenCalledWith(
+        'case-1',
+        'add_nn_load',
+        expect.objectContaining({ a_p: 1, c_p: 0, a_q: 1, c_q: 0, k_pf: 0, k_qf: 0 }),
+      );
+    });
+    expect(closeFormMock).toHaveBeenCalled();
+  });
+
+  it('rozjechana suma udziałów blokuje zapis i mówi po polsku, ile wynosi', async () => {
+    render(<KreatorOdbioruNn />);
+    await fill();
+
+    // Sam udział stałoimpedancyjny podniesiony do 1 przy c = 1 ⇒ suma 2.
+    await userEvent.clear(screen.getByTestId('mvd-kreator-odbior-zip-ap'));
+    await userEvent.type(screen.getByTestId('mvd-kreator-odbior-zip-ap'), '1');
+
+    await userEvent.click(screen.getByTestId('mvd-kreator-odbior-zapisz'));
+
+    const komunikat = await screen.findByText(/Suma udziałów a\+b\+c dla mocy czynnej P/);
+    expect(komunikat).toHaveTextContent('2.000');
+    expect(komunikat).toHaveTextContent('musi wynosić 1');
+    expect(executeDomainOperationMock).not.toHaveBeenCalled();
+  });
+
+  it('wybór typu z katalogu wypełnia model ZIP pozycji', async () => {
+    render(<KreatorOdbioruNn />);
+    await fill();
+    await userEvent.selectOptions(
+      screen.getByTestId('mvd-kreator-odbior-katalog'),
+      'L2',
+    );
+    await waitFor(() => {
+      expect(screen.getByTestId('mvd-kreator-odbior-zip-ap')).toHaveValue(1);
+    });
+    expect(screen.getByTestId('mvd-kreator-odbior-zip-cp')).toHaveValue(0);
+    expect(screen.getByText('Własny model ZIP')).toBeInTheDocument();
   });
 
   it('blokuje zapis bez aktywnego zakresu obliczeń', async () => {
