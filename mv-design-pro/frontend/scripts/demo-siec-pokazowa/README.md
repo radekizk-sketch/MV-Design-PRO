@@ -1,9 +1,13 @@
 # Sieć pokazowa — pomiar rozliczeniowy w odgałęzieniu
 
 Zestaw skryptów wielokrotnego użytku do scenariusza z kontraktu domenowego
-`mv-design-pro/docs/domain/POMIAR_ROZLICZENIOWY_SN_V1.md`: magistrala OSD ze
-stacjami dystrybucyjnymi wciętymi przelotowo + dwóch klientów SN (przemysłowy i
-typowy 1000 kVA „+ pomiary") przyłączonych ODGAŁĘZIENIAMI od punktów ZKSN.
+`mv-design-pro/docs/domain/POMIAR_ROZLICZENIOWY_SN_V1.md`: magistrala OSD z
+TRZEMA stacjami dystrybucyjnymi wciętymi przelotowo (630 / 400 / 1250 kVA —
+każda z polem odpływowym, więc ciąg biegnie przez nie dalej) + dwóch klientów SN
+(przemysłowy i typowy 1000 kVA „+ pomiary") przyłączonych ODGAŁĘZIENIAMI.
+Ostatnie przęsło magistrali jest NAPOWIETRZNE, więc sieć niesie OBA rodzaje
+punktu odgałęźnego: ZKSN (odcinek kablowy) i słup rozgałęźny (odcinek
+napowietrzny).
 
 | Plik | Do czego służy | Wymaga |
 |---|---|---|
@@ -41,10 +45,15 @@ inny wariant.
 
 Zrzuty odbioru karty leżą w `mv-design-pro/docs/sld/audyt-2026-08/pomiar-odg-*.png`.
 
-## Uwaga o rysunku (etap 3 kontraktu)
+## Rysunek (etap 3 kontraktu — WDROŻONY)
 
-Scena SLD v3 nie zna jeszcze punktów odgałęzienia jako początku lateralu, więc
-w wariancie `po` stacje klientów nie są rysowane (scena zgłasza to w
-`stopNotes`, a `render.tsx` wypisuje tę lukę pod rysunkiem). Luka jest przypięta
-testem `src/ui/sld/v3/scene/__tests__/buildScene.pomiarOdgalezienie.test.ts`
-i opisana w §4 kontraktu oraz w rejestrze konfliktów (wiersz `POMIAR-ODG`).
+Scena SLD v3 rysuje punkty odgałęźne i całe ciągi za nimi (karta ODG-RYSUNEK):
+`render.tsx` wypisuje pod rysunkiem POMIAR pokrycia wprost ze sceny — ile punktów
+odgałęźnych narysowano z ilu w modelu, ile odgałęzień i ile ciągów pominięto.
+Zrzuty odbioru etapu 3: `mv-design-pro/docs/sld/audyt-2026-08/odg-rysunek-po-*.png`
+(L0 przegląd + L2 stacje i aparatura, oba motywy). Zrzuty etapu 2 (porównanie
+„przed/po" dla drogi zabudowy): `docs/sld/audyt-2026-08/pomiar-odg-*.png`.
+
+Kontrakt rysunku sprawdza test `src/ui/sld/v3/scene/__tests__/buildScene.pomiarOdgalezienie.test.ts`
+(iloczyn cech: {ZKSN, słup rozgałęźny} × {przęsło w ciągu, ogon otwarty} ×
+{L0, L1, L2}) oraz wyrocznia `branchPointCoverageGaps` w `scene/buildScene.ts`.
