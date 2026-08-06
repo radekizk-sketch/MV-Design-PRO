@@ -482,17 +482,31 @@ def test_odczyt_nie_czeka_na_bieg_analizy(client: TestClient, rodzaj: str, sciez
             assert przyszly_odczyt.result() == 200
         return znaczniki["bieg"], znaczniki["odczyt"]
 
-    for zwloka in (0.01, 0.005, 0.002, 0.001, 0.0, 0.0, 0.0):
-        (_, koniec_biegu), (poczatek_odczytu, koniec_odczytu) = probka(zwloka)
-        if poczatek_odczytu <= koniec_biegu:
-            # Okna sie nalozyly — proba rozstrzygajaca.
-            assert koniec_odczytu < koniec_biegu, (
-                f"Odczyt /api/health zakonczyl sie dopiero PO biegu '{rodzaj}' — "
-                "ten bieg blokowal petle zdarzen."
-            )
-            break
-    else:  # pragma: no cover - fizycznie nieosiagalne (bieg >> start watku)
-        pytest.fail(
-            f"Bieg '{rodzaj}' konczy sie szybciej, niz startuje rownolegly odczyt, "
-            "nawet bez zwloki — brak mozliwosci pomiaru nakladania okien."
-        )
+    # PONOWIENIA (lekcja z trzech niezaleznych zapalen pod PODWOJNYM
+    # obciazeniem — rownolegly pelny vitest na tych samych rdzeniach):
+    # ZABLOKOWANA petla pada DETERMINISTYCZNIE (odczyt czeka na koniec biegu
+    # w KAZDEJ probie), wiec trzy rundy nie oslabiaja detekcji. Glod CPU jest
+    # stochastyczny — pojedyncza nieudana runda przy wolnej petli to watek
+    # odczytu wywlaszczony na czas dluzszy niz reszta biegu, nie blokada.
+    ostatni_blad: str | None = None
+    for _runda in range(3):
+        wynik_rundy: str | None = "brak nalozenia"
+        for zwloka in (0.01, 0.005, 0.002, 0.001, 0.0, 0.0, 0.0):
+            (_, koniec_biegu), (poczatek_odczytu, koniec_odczytu) = probka(zwloka)
+            if poczatek_odczytu <= koniec_biegu:
+                # Okna sie nalozyly — proba rozstrzygajaca dla tej rundy.
+                if koniec_odczytu < koniec_biegu:
+                    wynik_rundy = None
+                else:
+                    wynik_rundy = (
+                        f"Odczyt /api/health zakonczyl sie dopiero PO biegu "
+                        f"'{rodzaj}' — ten bieg blokowal petle zdarzen."
+                    )
+                break
+        if wynik_rundy is None:
+            return
+        ostatni_blad = wynik_rundy
+    pytest.fail(
+        f"{ostatni_blad} (3 rundy z rzedu — dla glodu CPU wynik bylby "
+        "stochastyczny, wiec to realna blokada albo brak nakladania okien)"
+    )
