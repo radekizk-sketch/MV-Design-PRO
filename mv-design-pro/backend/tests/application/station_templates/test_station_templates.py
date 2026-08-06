@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 
+import pytest
 from application.station_templates import (
     TemplateCategory,
     get_template,
@@ -231,16 +232,35 @@ def test_pole_pomiarowe_przed_polem_tr_w_kazdym_szablonie() -> None:
 
 
 def test_keep_tr_obniniejsza_liczba_pol_nie_wycina_pola_tr() -> None:
-    """Para do reguły keep-TR w `_resolve_sn_bay_roles` (V12K-330/333): skoro
-    pomiar stoi PRZED TR, obcięcie liczby pól nie może wyciąć pola
-    transformatorowego — wypada ostatnia rola nie-TR."""
-    from application.station_templates.apply import _resolve_sn_bay_roles
+    """Para do reguł keep-TR i keep-POMIAR w `_resolve_sn_bay_roles`
+    (V12K-330/333, karta POMIAR-ODGAŁĘZIENIE).
+
+    INTENCJA (bez zmian): obcięcie liczby pól nie może wyciąć pola
+    transformatorowego — stacja z transformatorem bez pola TR to model sprzeczny.
+
+    KANON ZMIENIONY (POMIAR-ODGAŁĘZIENIE): pole POMIAROWE jest tak samo
+    nieusuwalne jak TR, bo to ono decyduje o KLASIE przyłączenia (kontrakt
+    `docs/domain/POMIAR_ROZLICZENIOWY_SN_V1.md`). Dawny wynik `count=2 →
+    ["IN", "TR"]` po cichu robił ze stacji abonenckiej stację dystrybucyjną,
+    którą aplikacja wcięłaby w tranzyt magistrali — dokładnie ten defekt, przed
+    którym broni kontrakt. Zamiast cichego obcięcia: JAWNY błąd z minimum.
+    """
+    from application.station_templates.apply import TemplateApplyError, _resolve_sn_bay_roles
 
     template = get_template("tpl_sn_nn_1000kva")
     assert template is not None
     assert _resolve_sn_bay_roles(template, 4) == ["IN", "MEASUREMENT", "TR", "OUT"]
     assert _resolve_sn_bay_roles(template, 3) == ["IN", "MEASUREMENT", "TR"]
-    assert _resolve_sn_bay_roles(template, 2) == ["IN", "TR"]
+    with pytest.raises(TemplateApplyError) as wyjatek:
+        _resolve_sn_bay_roles(template, 2)
+    assert wyjatek.value.code == "template.sn_bays_count_below_minimum"
+
+    # Szablon BEZ pomiaru zachowuje dotychczasowe zachowanie keep-TR co do joty.
+    dystrybucyjna = get_template("tpl_sn_nn_630kva")
+    assert dystrybucyjna is not None
+    assert _resolve_sn_bay_roles(dystrybucyjna, 3) == ["IN", "OUT", "TR"]
+    assert _resolve_sn_bay_roles(dystrybucyjna, 2) == ["IN", "TR"]
+    assert _resolve_sn_bay_roles(dystrybucyjna, 1) == ["TR"]
 
 
 def test_pomiar_rozliczeniowy_nie_lezy_w_torze_tranzytu() -> None:

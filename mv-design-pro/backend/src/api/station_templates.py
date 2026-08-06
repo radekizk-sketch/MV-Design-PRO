@@ -169,9 +169,13 @@ def preview_station_template(
             }
         )
 
-    bay_roles = _resolve_sn_bay_roles(template, sn_bays_count)
     # B-12: podgląd pokazuje JAWNIE dobrany aparat per pole (albo błąd szablonu).
+    # Rozstrzygnięcie liczby pól jest W TYM SAMYM bloku: od karty
+    # POMIAR-ODGAŁĘZIENIE `_resolve_sn_bay_roles` odmawia (zamiast po cichu ciąć
+    # pole pomiarowe), więc poza `try` dawałoby projektantowi błąd 500 zamiast
+    # komunikatu z minimalną liczbą pól.
     try:
+        bay_roles = _resolve_sn_bay_roles(template, sn_bays_count)
         sn_field_specs = _resolve_sn_field_specs(
             template,
             bay_roles=bay_roles,

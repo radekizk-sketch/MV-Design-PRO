@@ -1389,54 +1389,81 @@ class TestDeterministicIds100x:
 
 
 class TestPermutationInvarianceSNFields:
-    def test_permutation_invariance_sn_fields(self):
-        """Create payload with 3 sn_fields in different orders.
-        Run operation with each permutation (at least 6 permutations).
-        Assert: all results produce identical snapshot hash (after sorting).
-        Do this 50 times.
+    def test_kolejnosc_pol_sn_jest_danymi_projektu_a_bieg_jest_deterministyczny(self):
+        """Kolejność `sn_fields` = UKŁAD ROZDZIELNICY, a nie przypadkowa kolejność wpisów.
+
+        INTENCJA BEZ ZMIAN (DET-9): ten sam payload MUSI dawać ten sam hash migawki,
+        powtarzalnie, bez względu na liczbę powtórzeń.
+
+        KANON ZMIENIONY (V12K-330 + karta POMIAR-ODGAŁĘZIENIE): dawna asercja
+        żądała, by WSZYSTKIE permutacje `sn_fields` dały JEDEN hash — realizował
+        to `sorted(sn_fields, key=field_role)` w operacji, czyli alfabetyczna
+        normalizacja układu pól. To normalizowanie było defektem, nie własnością:
+        [IN, TR, OUT] i [IN, OUT, TR] to DWIE RÓŻNE rozdzielnice, a rysunek
+        (`buildStationMiniBaysFromFieldSpecs`) od V12K-330 czyta kolejność pól
+        Z DANYCH. Producent danych normalizował, konsument ufał kolejności —
+        dwie sprzeczne prawdy o tym samym. Skutkiem dla stacji abonenckiej
+        [dopływ, POMIAR, TR, rezerwa] alfabet stawiał rezerwę PRZED układem
+        pomiarowym (naruszenie `docs/domain/POMIAR_ROZLICZENIOWY_SN_V1.md`).
+
+        Test pilnuje więc obu zdań naraz: (1) hash jest funkcją payloadu
+        (determinizm per permutacja), (2) kolejność pól w modelu jest DOKŁADNIE
+        kolejnością z payloadu, a różne układy dają różne modele.
         """
         fields = ["IN", "OUT", "TR"]
         perms = list(itertools.permutations(fields))
         assert len(perms) >= 6  # 3! = 6
 
-        # INTENCJA (DET-9): powtarzane 50x jest POROWNANIE PERMUTACJI, nie budowa
-        # sieci wejsciowej. `_build_gpz_plus_segments(2)` jest deterministyczne (pin:
-        # TestDeterministicIds100x), wiec 50 wywolan dawalo 50 identycznych snapshotow
-        # — ta sama siec liczona od nowa. Budujemy ja RAZ; kazda permutacja i tak
-        # dostaje wlasna gleboka kopie, wiec izolacja biegow jest bez zmian.
+        # Sieć wejściowa budowana RAZ (deterministyczna — pin: TestDeterministicIds100x);
+        # każda permutacja dostaje własną głęboką kopię, więc izolacja biegów bez zmian.
         _, snapshot = _build_gpz_plus_segments(2)
         first_seg = _get_first_segment_ref(snapshot)
 
-        for _ in range(50):
-            perm_hashes: list[str] = []
-            for perm in perms:
-                snap_copy = copy.deepcopy(snapshot)
-                result = execute_domain_operation(
-                    enm_dict=snap_copy,
-                    op_name="insert_station_on_segment_sn",
-                    payload={
-                        "segment_ref": first_seg,
-                        # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
-                        "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
-                        "station_type": "B",
-                        "insert_at": {"value": 0.5},
-                        "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
-                        "sn_fields": list(perm),
-                        "transformer": {
-                            "create": True,
-                            "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
-                        },
+        def _wykonaj(perm: tuple[str, ...]) -> dict:
+            result = execute_domain_operation(
+                enm_dict=copy.deepcopy(snapshot),
+                op_name="insert_station_on_segment_sn",
+                payload={
+                    "segment_ref": first_seg,
+                    # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+                    "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+                    "station_type": "B",
+                    "insert_at": {"value": 0.5},
+                    "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
+                    "sn_fields": list(perm),
+                    "transformer": {
+                        "create": True,
+                        "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
                     },
-                )
-                assert result.get("snapshot") is not None, f"Error: {result.get('error')}"
-                perm_hashes.append(_snapshot_hash(result["snapshot"]))
+                },
+            )
+            assert result.get("snapshot") is not None, f"Error: {result.get('error')}"
+            return result
 
-            # All permutations should produce the same hash
-            first_h = perm_hashes[0]
-            for i, h in enumerate(perm_hashes[1:], start=1):
-                assert (
-                    h == first_h
-                ), f"Permutation {perms[i]} produced different hash: {h} != {first_h}"
+        # (1) DETERMINIZM: 50 powtórzeń KAŻDEJ permutacji → jeden hash na permutację.
+        hash_permutacji: dict[tuple[str, ...], str] = {}
+        for perm in perms:
+            hashe = {_snapshot_hash(_wykonaj(perm)["snapshot"]) for _ in range(50)}
+            assert len(hashe) == 1, f"Permutacja {perm} nie jest deterministyczna: {hashe}"
+            hash_permutacji[perm] = hashe.pop()
+
+        # (2) KOLEJNOŚĆ Z DANYCH: role pól w modelu w kolejności payloadu.
+        role_z_payloadu = {"IN": "IN", "OUT": "OUT", "TR": "TR"}
+        for perm in perms:
+            wynik = _wykonaj(perm)
+            stacja_ref = wynik["selection_hint"]["element_id"]
+            stacja = next(s for s in wynik["snapshot"]["substations"] if s["ref_id"] == stacja_ref)
+            role_w_modelu = [spec.get("bay_role") for spec in stacja["meta"]["field_specs"]]
+            assert role_w_modelu == [role_z_payloadu[r] for r in perm], (
+                f"Permutacja {perm}: model niesie układ {role_w_modelu} — kolejność "
+                "pól musi pochodzić Z DANYCH (V12K-330), nie z normalizacji."
+            )
+
+        # (3) RÓŻNE UKŁADY = RÓŻNE MODELE (brak cichego scalania projektów).
+        assert len(set(hash_permutacji.values())) == len(perms), (
+            "Różne układy pól dały ten sam hash — operacja znów normalizuje "
+            "kolejność pól i gubi projekt rozdzielnicy."
+        )
 
 
 # ===========================================================================

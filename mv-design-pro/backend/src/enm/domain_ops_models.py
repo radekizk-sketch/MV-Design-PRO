@@ -350,8 +350,14 @@ class SNFieldSpec(_FrozenBase):
         "LINIA_ODG",
         "TRANSFORMATOROWE",
         "SPRZEGLO",
+        "POMIAROWE",
     ]
-    """Rola pola SN w rozdzielnicy."""
+    """Rola pola SN w rozdzielnicy.
+
+    `POMIAROWE` (pole układu pomiarowo-rozliczeniowego) było w kontrakcie
+    pominięte, choć `Bay.bay_role` i read-model pola znały je od dawna —
+    dokumentowany kontrakt zaprzeczał modelowi.
+    """
 
     catalog_bindings: CatalogBindings | None = None
     """Opcjonalne powiązania katalogowe aparatury."""

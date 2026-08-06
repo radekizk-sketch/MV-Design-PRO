@@ -82,15 +82,15 @@ export const SLD_NETWORK_53: SldNetworkModel = {
     {
       "from": "S12",
       "open": false,
-      "to": "S15"
+      "to": "S14"
     },
     {
       "from": "S13",
       "open": false,
-      "to": "S14"
+      "to": "S15"
     },
     {
-      "from": "S15",
+      "from": "S14",
       "open": false,
       "to": "S16"
     },
@@ -132,7 +132,7 @@ export const SLD_NETWORK_53: SldNetworkModel = {
     {
       "from": "S23",
       "open": false,
-      "to": "S25"
+      "to": "S26"
     },
     {
       "from": "S23",
@@ -142,7 +142,7 @@ export const SLD_NETWORK_53: SldNetworkModel = {
     {
       "from": "S24",
       "open": false,
-      "to": "S26"
+      "to": "S25"
     },
     {
       "from": "S25",
@@ -155,7 +155,7 @@ export const SLD_NETWORK_53: SldNetworkModel = {
       "to": "S28"
     },
     {
-      "from": "S27",
+      "from": "S28",
       "open": false,
       "to": "S29"
     },
@@ -232,7 +232,7 @@ export const SLD_NETWORK_53: SldNetworkModel = {
     {
       "from": "S41",
       "open": false,
-      "to": "S44"
+      "to": "S46"
     },
     {
       "from": "S42",
@@ -242,17 +242,17 @@ export const SLD_NETWORK_53: SldNetworkModel = {
     {
       "from": "S43",
       "open": true,
-      "to": "S46"
+      "to": "S44"
+    },
+    {
+      "from": "S44",
+      "open": false,
+      "to": "S49"
     },
     {
       "from": "S45",
       "open": false,
       "to": "S47"
-    },
-    {
-      "from": "S46",
-      "open": false,
-      "to": "S49"
     },
     {
       "from": "S48",
@@ -302,9 +302,9 @@ export const SLD_NETWORK_53: SldNetworkModel = {
       }
     ]
   },
-  "nop_station": "S46",
+  "nop_station": "S44",
   "schema": "sld_network_model_v1",
-  "source_hash": "b0e7518ed3736ea476a702eb79804f94460b8488b3de7b1ea3e8e5938410007c",
+  "source_hash": "d48fd0e9d272e1373d264f3800f0b985a74730ab9a6801ba0ca6d61cbca8aec7",
   "stations": [
     {
       "depth": 2,
@@ -475,10 +475,10 @@ export const SLD_NETWORK_53: SldNetworkModel = {
       "der": [],
       "id": "S14",
       "kind": "lateral",
-      "name": "Stacja L11-3",
+      "name": "Stacja L2-2",
       "nn_kv": 0.4,
       "nop_downstream": false,
-      "parent": "S13",
+      "parent": "S12",
       "sn_kv": 15.0,
       "trafo_mva": 0.63
     },
@@ -487,10 +487,10 @@ export const SLD_NETWORK_53: SldNetworkModel = {
       "der": [],
       "id": "S15",
       "kind": "lateral",
-      "name": "Stacja L2-2",
+      "name": "Stacja L11-3",
       "nn_kv": 0.4,
       "nop_downstream": false,
-      "parent": "S12",
+      "parent": "S13",
       "sn_kv": 15.0,
       "trafo_mva": 0.63
     },
@@ -502,7 +502,7 @@ export const SLD_NETWORK_53: SldNetworkModel = {
       "name": "Stacja L2-3",
       "nn_kv": 0.4,
       "nop_downstream": false,
-      "parent": "S15",
+      "parent": "S14",
       "sn_kv": 15.0,
       "trafo_mva": 0.63
     },
@@ -613,18 +613,6 @@ export const SLD_NETWORK_53: SldNetworkModel = {
       "der": [],
       "id": "S25",
       "kind": "lateral",
-      "name": "Stacja L4-1",
-      "nn_kv": 0.4,
-      "nop_downstream": false,
-      "parent": "S23",
-      "sn_kv": 15.0,
-      "trafo_mva": 0.63
-    },
-    {
-      "depth": 19,
-      "der": [],
-      "id": "S26",
-      "kind": "lateral",
       "name": "Stacja L9-2",
       "nn_kv": 0.4,
       "nop_downstream": false,
@@ -633,11 +621,23 @@ export const SLD_NETWORK_53: SldNetworkModel = {
       "trafo_mva": 0.63
     },
     {
+      "depth": 19,
+      "der": [],
+      "id": "S26",
+      "kind": "lateral",
+      "name": "Stacja L4-1",
+      "nn_kv": 0.4,
+      "nop_downstream": false,
+      "parent": "S23",
+      "sn_kv": 15.0,
+      "trafo_mva": 0.63
+    },
+    {
       "depth": 20,
       "der": [],
       "id": "S27",
       "kind": "lateral",
-      "name": "Stacja L4-2",
+      "name": "Stacja L9-3",
       "nn_kv": 0.4,
       "nop_downstream": false,
       "parent": "S25",
@@ -649,7 +649,7 @@ export const SLD_NETWORK_53: SldNetworkModel = {
       "der": [],
       "id": "S28",
       "kind": "lateral",
-      "name": "Stacja L9-3",
+      "name": "Stacja L4-2",
       "nn_kv": 0.4,
       "nop_downstream": false,
       "parent": "S26",
@@ -664,7 +664,7 @@ export const SLD_NETWORK_53: SldNetworkModel = {
       "name": "Stacja L4-3",
       "nn_kv": 0.4,
       "nop_downstream": false,
-      "parent": "S27",
+      "parent": "S28",
       "sn_kv": 15.0,
       "trafo_mva": 0.63
     },
@@ -855,10 +855,10 @@ export const SLD_NETWORK_53: SldNetworkModel = {
       "der": [],
       "id": "S44",
       "kind": "lateral",
-      "name": "Stacja L10-4",
+      "name": "Stacja L6-2",
       "nn_kv": 0.4,
-      "nop_downstream": false,
-      "parent": "S41",
+      "nop_downstream": true,
+      "parent": "S43",
       "sn_kv": 15.0,
       "trafo_mva": 0.63
     },
@@ -882,10 +882,10 @@ export const SLD_NETWORK_53: SldNetworkModel = {
       "der": [],
       "id": "S46",
       "kind": "lateral",
-      "name": "Stacja L6-2",
+      "name": "Stacja L10-4",
       "nn_kv": 0.4,
-      "nop_downstream": true,
-      "parent": "S43",
+      "nop_downstream": false,
+      "parent": "S41",
       "sn_kv": 15.0,
       "trafo_mva": 0.63
     },
@@ -926,7 +926,7 @@ export const SLD_NETWORK_53: SldNetworkModel = {
       "name": "Stacja L6-3",
       "nn_kv": 0.4,
       "nop_downstream": false,
-      "parent": "S46",
+      "parent": "S44",
       "sn_kv": 15.0,
       "trafo_mva": 0.63
     },

@@ -58,13 +58,43 @@ Reguły twarde:
 - Etap 1 (ten dokument + V12K-333): szablony klienckie doprowadzone do
   klas B/C; testy klasy przypięte (patrz
   `tests/application/station_templates/test_station_templates.py`).
-- Etap 2 (karta POMIAR-ODGAŁĘZIENIE, do zlecenia): tryb aplikacji szablonu
-  klasy B jako odgałęzienie (`start_branch_segment_sn` + stacja końcowa)
-  zamiast wcięcia przelotowego; kompozycja rysunku gałęzi klienta za polem
-  pomiarowym (klasa C); scenariusz sieci pokazowej bez stacji klienckich
-  wciętych w tranzyt.
+- Etap 2 (karta POMIAR-ODGAŁĘZIENIE, WDROŻONY): aplikacja szablonu klasy B
+  buduje ODGAŁĘZIENIE zamiast wcięcia przelotowego. Droga zabudowy wybierana
+  z KLASY, a klasa — z zestawu ról pól, który zostanie zbudowany
+  (`_klasa_przylaczenia`, `application/station_templates/apply.py`), nigdy
+  z nazwy ani kategorii szablonu:
+
+  | Klasa | Droga zabudowy |
+  |---|---|
+  | A | `insert_station_on_segment_sn` (wcięcie przelotowe) |
+  | B | punkt odgałęzienia na odcinku (ZKSN dla kabla / słup rozgałęźny dla linii) → `start_branch_segment_sn` → `append_station_on_endpoint` (stacja KOŃCOWA) |
+  | C | `insert_station_on_segment_sn` (wcięcie — pętla OSD, pkt 3 wyżej) |
+
+  Parametry gałęzi są JAWNE: `branch_length_m` (domyślnie 1000 m — wzorzec
+  kreatora odgałęzienia `DANE_DOMYSLNE.dlugosc_km = 1`),
+  `branch_segment_catalog_ref` (domyślnie pozycja katalogowa odcinka
+  MACIERZYSTEGO — wzorzec `KontekstOdgalezienia.initial_catalog_ref`),
+  `branch_point_catalog_ref` (domyślnie referencyjna pozycja katalogu dla
+  ośrodka odcinka). Brak pozycji katalogowej odcinka macierzystego BEZ
+  wskazania projektanta = błąd, nigdy podstawiony typ kabla.
+
+  Zakres rozstrzygnięty przy karcie: karta mówiła „klasa B/C ⇒ odgałęzienie",
+  ale §3 tego kontraktu (dokument wyższy w hierarchii) przypisuje klasie C
+  WCIĘCIE (pętla OSD) — wygrywa kontrakt, klasa C zostaje przy wcięciu.
+
+- Etap 3 (DO ZLECENIA — luka zmierzona przy etapie 2): scena SLD v3
+  (`frontend/src/ui/sld/v3/scene/buildScene.ts`) NIE czyta `branch_points`,
+  a `resolveBranchOrigin` przyjmuje jako początek odgałęzienia wyłącznie
+  STACJĘ ciągu głównego z polem odgałęźnym. Odgałęzienie wychodzące z punktu
+  ZKSN/słupa jest więc pomijane (scena zgłasza to w `stopNotes`) i stacja
+  klienta nie trafia na rysunek. Dług SPRZED tej karty (dotyczy każdej sieci
+  z punktem odgałęzienia), ujawniony przez nią. Pin luki:
+  `frontend/src/ui/sld/v3/scene/__tests__/buildScene.pomiarOdgalezienie.test.ts`.
 
 ## 5. Rejestr zmian
 
 - 2026-08-06: V1 — utworzony po korekcie właściciela (dwukrotnej) do
   V12K-329/330; źródło: [E-UP].
+- 2026-08-06: etap 2 (POMIAR-ODGAŁĘZIENIE) — droga odgałęzienia dla klasy B,
+  jeden słownik ról pól SN w operacjach domenowych, kolejność pól z danych;
+  nazwany etap 3 (rysunek odgałęzień z punktów ZKSN/słupa).

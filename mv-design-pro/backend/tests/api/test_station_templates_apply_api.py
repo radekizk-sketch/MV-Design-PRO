@@ -194,3 +194,81 @@ def test_apply_station_template_reuses_existing_case_enm_snapshot(
         ]
         assert len(station_generators) >= expected_der_count
         assert all(generator.get("catalog_ref") for generator in station_generators)
+
+
+def test_szablon_z_pomiarem_przylaczany_odgalezieniem_przez_koncowke_api(app_client) -> None:
+    """Karta POMIAR-ODGAŁĘZIENIE — REALNA ścieżka produkcyjna (`/apply`).
+
+    Kontrakt `docs/domain/POMIAR_ROZLICZENIOWY_SN_V1.md` §1/§3: stacja abonencka
+    z układem pomiarowo-rozliczeniowym (klasa B) wisi w ODGAŁĘZIENIU, więc
+    tranzyt magistrali nie przechodzi przez jej rozdzielnicę. Test sprawdza to
+    na końcówce HTTP, a nie tylko na funkcjach warstwy aplikacyjnej — inaczej
+    pin nie obejmowałby drogi, którą naprawdę idzie kreator.
+    """
+    _, case_id = _create_project_and_case(app_client)
+    _execute_domain_op(
+        app_client,
+        case_id,
+        "add_grid_source_sn",
+        {
+            "voltage_kv": 15.0,
+            "sk3_mva": 250.0,
+            "rx_ratio": 0.1,
+            "catalog_binding": _binding("ZRODLO_SN", SOURCE_ID),
+        },
+    )
+    segmenty: list[str] = []
+    for i in range(2):
+        wynik = _execute_domain_op(
+            app_client,
+            case_id,
+            "continue_trunk_segment_sn",
+            {
+                "segment": {
+                    "rodzaj": "KABEL",
+                    "dlugosc_m": 300 + 50 * i,
+                    "name": f"Odcinek {i + 1}",
+                    "catalog_binding": _binding("KABEL_SN", CABLE_ID),
+                },
+            },
+        )
+        segmenty.append(wynik["snapshot"]["corridors"][0]["ordered_segment_refs"][-1])
+
+    response = app_client.post(
+        "/api/station-templates/tpl_sn_nn_1000kva/apply",
+        json={
+            "case_id": case_id,
+            "target_segment_id": segmenty[0],
+            "insert_at_ratio": 0.5,
+            "params_override": {},
+            "catalog_profile": None,
+        },
+    )
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    operacje = [op["op"] for op in payload["operations_log"]]
+    assert "insert_zksn_on_segment_sn" in operacje
+    assert "start_branch_segment_sn" in operacje
+    assert "append_station_on_endpoint" in operacje
+    assert "insert_station_on_segment_sn" not in operacje
+
+    snapshot = app_client.get(f"/api/cases/{case_id}/enm").json()
+    stacja = next(s for s in snapshot["substations"] if s["ref_id"] == payload["station_ref"])
+    assert stacja["station_type"] == "mv_lv", "Stacja klienta musi być KOŃCOWA"
+    role = [spec["bay_role"] for spec in stacja["meta"]["field_specs"]]
+    assert role == ["IN", "MEASUREMENT", "TR", "OUT"], role
+    assert len(snapshot["branch_points"]) == 1
+
+
+def test_podglad_szablonu_z_pomiarem_ponizej_minimum_pol_zwraca_422(app_client) -> None:
+    """Odmowa liczby pól poniżej zestawu nieusuwalnego ma dojść do projektanta
+    jako komunikat (422), a nie jako błąd serwera — końcówka podglądu liczy
+    role w tym samym miejscu co aplikacja."""
+    response = app_client.post(
+        "/api/station-templates/tpl_sn_nn_1000kva/preview",
+        json={"params_override": {"sn_bays_count": 2}, "catalog_profile": None},
+    )
+    assert response.status_code == 422, response.text
+    detail = response.json()["detail"]
+    assert detail["code"] == "template.sn_bays_count_below_minimum"
+    assert "pól SN" in detail["message_pl"]

@@ -4953,6 +4953,58 @@ def _materialize_nn_source(
     return generator_ref, event_type
 
 
+#: JEDNA prawda słownika ról pól SN dla operacji budujących stację
+#: (`insert_station_on_segment_sn`, `append_station_on_endpoint`).
+#:
+#: Do 2026-08-06 każda z tych operacji miała WŁASNY słownik i żaden nie znał roli
+#: POMIAROWEJ: wstawienie w odcinek zapisywało pole pomiarowe jako `bay_role`
+#: FEEDER (pomiar rozliczeniowy nie do odróżnienia od odgałęzienia w read-modelu),
+#: a stacja na końcu ciągu MILCZĄCO POMIJAŁA takie pole (`if not bay_role:
+#: continue`) — szablon deklarował pomiar, model go nie miał. Dwa słowniki, dwa
+#: różne skutki dla tej samej roli; stąd jeden słownik dla obu dróg.
+#:
+#: Aliasy: kanoniczna rola pola to `field_role` z read-modelu
+#: (`application/field_read_model.CANONICAL_BAY_ROLE_MAP`); przyjmujemy też skróty
+#: `bay_role` (IN/OUT/TR/…) — tak wołają kreatory i szablony.
+_SN_FIELD_ROLE_ALIASES: dict[str, str] = {
+    "IN": "LINIA_IN",
+    "OUT": "LINIA_OUT",
+    "FEEDER": "LINIA_ODG",
+    "TR": "TRANSFORMATOROWE",
+    "COUPLER": "SPRZEGLO",
+    "MEASUREMENT": "POMIAROWE",
+    "LINIA_IN": "LINIA_IN",
+    "LINIA_OUT": "LINIA_OUT",
+    "LINIA_ODG": "LINIA_ODG",
+    "TRANSFORMATOROWE": "TRANSFORMATOROWE",
+    "SPRZEGLO": "SPRZEGLO",
+    "POMIAROWE": "POMIAROWE",
+}
+
+#: Kanoniczna rola pola (`field_role`) → rola pola w modelu (`Bay.bay_role`).
+#: Lustro `application.field_read_model.CANONICAL_BAY_ROLE_MAP`.
+_SN_FIELD_ROLE_TO_BAY_ROLE: dict[str, str] = {
+    "LINIA_IN": "IN",
+    "LINIA_OUT": "OUT",
+    "LINIA_ODG": "FEEDER",
+    "TRANSFORMATOROWE": "TR",
+    "SPRZEGLO": "COUPLER",
+    "POMIAROWE": "MEASUREMENT",
+}
+
+
+def _canonical_sn_field_role(raw: object) -> str:
+    """Kanoniczna rola pola SN z dowolnego przyjmowanego aliasu.
+
+    Rola nierozpoznana przechodzi bez zmiany (wołający decyduje, co z nią zrobić)
+    — funkcja NIE zgaduje roli i nie podstawia domyślnej.
+    """
+    if not isinstance(raw, str):
+        return ""
+    normalized = raw.strip().upper()
+    return _SN_FIELD_ROLE_ALIASES.get(normalized, normalized)
+
+
 def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     """Wstaw stację SN/nN w odcinek — operacja krytyczna.
 
@@ -4982,18 +5034,19 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
         # Wykonaj na deep-copy, NIE mutując oryginalnego ENM (`copy` zaimportowane na poziomie modułu).
         enm = copy.deepcopy(enm)
 
-    # Normalize sn_fields: accept list of strings or list of dicts
-    _role_str_map = {
-        "IN": "LINIA_IN",
-        "OUT": "LINIA_OUT",
-        "FEEDER": "LINIA_ODG",
-        "TR": "TRANSFORMATOROWE",
-        "COUPLER": "SPRZEGLO",
-    }
+    # Normalize sn_fields: accept list of strings or list of dicts.
+    # Rola pola przechodzi przez WSPÓLNY słownik `_SN_FIELD_ROLE_ALIASES` —
+    # także dla wpisów słownikowych: szablon klasy pomiarowej wysyła
+    # `field_role="MEASUREMENT"`, a bez normalizacji ta rola nie trafiała do
+    # mapy ról i pole lądowało w modelu jako odgałęzienie (FEEDER).
     sn_fields: list[dict[str, Any]] = []
     for item in sn_fields_raw:
         if isinstance(item, str):
-            sn_fields.append({"field_role": _role_str_map.get(item, item)})
+            sn_fields.append({"field_role": _canonical_sn_field_role(item)})
+        elif isinstance(item, dict):
+            sn_fields.append(
+                {**item, "field_role": _canonical_sn_field_role(item.get("field_role"))}
+            )
         else:
             sn_fields.append(item)
 
@@ -5343,13 +5396,6 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
     ev_seq += 1
     events.append({"event_seq": ev_seq, "event_type": "STATION_CREATED", "element_id": stn_id})
 
-    role_map = {
-        "LINIA_IN": "IN",
-        "LINIA_OUT": "OUT",
-        "LINIA_ODG": "FEEDER",
-        "TRANSFORMATOROWE": "TR",
-        "SPRZEGLO": "COUPLER",
-    }
     field_specs: list[dict[str, Any]] = []
     # B-3: wyposażenie pomiarowo-zabezpieczeniowe wskazane per pole w payloadzie —
     # zakładane W TEJ SAMEJ migawce, po utworzeniu wszystkich pól stacji.
@@ -5359,11 +5405,16 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
     from enm.domain_operations_v2 import _resolve_bay_template_protection_codes
 
     station_switchgear = station.get("switchgear") or {}
-    sn_field_specs_sorted = sorted(sn_fields, key=lambda f: f.get("field_role", ""))
-    for idx, field_spec in enumerate(sn_field_specs_sorted):
+    # KOLEJNOŚĆ PÓL POCHODZI Z DANYCH (V12K-330). Do 2026-08-06 pola szły przez
+    # `sorted(..., key=field_role)` — alfabet, nie projekt. Dla stacji abonenckiej
+    # [dopływ, POMIAR, TR, rezerwa] alfabet stawiał REZERWĘ przed układem
+    # pomiarowym, więc rysunek kłamał o miejscu pomiaru (kontrakt
+    # `docs/domain/POMIAR_ROZLICZENIOWY_SN_V1.md`). Rysunek już czytał kolejność
+    # z danych — reorder w producencie danych był drugą, przeciwną prawdą.
+    for idx, field_spec in enumerate(sn_fields):
         field_role = str(field_spec.get("field_role", ""))
         field_ref = _make_id("stn", station_seed, f"sn_field/{idx:03d}")
-        bay_role = role_map.get(field_role, "FEEDER")
+        bay_role = _SN_FIELD_ROLE_TO_BAY_ROLE.get(field_role, "FEEDER")
         # Refy producenta z pola (fallback na wybór rozdzielnicy stacji).
         field_manufacturer_ref = field_spec.get("manufacturer_ref") or station_switchgear.get(
             "manufacturer_ref"
@@ -6357,23 +6408,6 @@ def start_branch_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dic
             break
     if not from_bus:
         return _error_response(f"Szyna '{from_bus_ref}' nie istnieje.", "branch.from_bus_not_found")
-
-    rodzaj = segment.get("rodzaj", "KABEL")
-    dlugosc_m = segment.get("dlugosc_m") or payload.get("dlugosc_m") or 0
-    if dlugosc_m <= 0:
-        return _error_response(
-            "Brak długości odcinka odgałęzienia (dlugosc_m). Podaj jawną wartość > 0.",
-            "branch.dlugosc_missing",
-        )
-
-    branch_catalog_binding = segment.get("catalog_binding") or payload.get("catalog_binding")
-    branch_catalog_ref = _require_catalog_ref(
-        payload_ref=segment.get("catalog_ref"),
-        payload_binding=branch_catalog_binding,
-        context_code="start_branch_segment_sn",
-    )
-    if isinstance(branch_catalog_ref, dict):
-        return branch_catalog_ref
 
     seed = _compute_seed(
         {
@@ -8137,13 +8171,6 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
     sn_fields_payload = payload.get("sn_fields")
     raw_sn_fields = sn_fields_payload if isinstance(sn_fields_payload, list) else []
     sn_fields: list[dict[str, Any]] = [field for field in raw_sn_fields if isinstance(field, dict)]
-    sn_field_role_to_bay_role = {
-        "LINIA_IN": "IN",
-        "LINIA_OUT": "OUT",
-        "LINIA_ODG": "FEEDER",
-        "TRANSFORMATOROWE": "TR",
-        "SPRZEGLO": "COUPLER",
-    }
     # PS-4: wspólny resolver kodów zabezpieczeń pól (parytet z insert/add_sn_bay).
     from enm.domain_operations_v2 import _resolve_bay_template_protection_codes
 
@@ -8152,8 +8179,12 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
     # B-3: wyposażenie pól z payloadu — zakładane w TEJ SAMEJ migawce co stacja.
     wyposazenie_pol: list[tuple[str, str, dict[str, Any]]] = []
     for index, field in enumerate(sn_fields, start=1):
-        field_role = str(field.get("field_role") or "").strip()
-        bay_role = sn_field_role_to_bay_role.get(field_role)
+        # Rola pola przez WSPÓLNY słownik (`_SN_FIELD_ROLE_ALIASES`) — własny,
+        # niepełny słownik tej operacji MILCZĄCO POMIJAŁ pole POMIAROWE
+        # (`continue` niżej), więc stacja abonencka na końcu gałęzi powstawała
+        # bez układu pomiarowego, choć szablon go deklarował.
+        field_role = _canonical_sn_field_role(field.get("field_role"))
+        bay_role = _SN_FIELD_ROLE_TO_BAY_ROLE.get(field_role)
         if not bay_role:
             continue
         field_role_counts[field_role] = field_role_counts.get(field_role, 0) + 1

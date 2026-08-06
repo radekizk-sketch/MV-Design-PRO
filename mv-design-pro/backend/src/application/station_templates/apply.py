@@ -131,53 +131,75 @@ def _zastosuj_szablon_pod_blokada(
         for _ in range(max(0, nn_feeders_requested))
     ]
 
-    station_payload = {
-        "segment_id": target_segment_id,
-        "insert_at": {"mode": "RATIO", "value": insert_at_ratio},
-        "station": {
-            "name_pl": template.name_pl,
-            "station_type": _resolve_station_type(template),
-            "sn_voltage_kv": 15,
-            # Strona nN PODĄŻA za katalogową stroną dolną WYBRANEGO
-            # transformatora (nie stała 0.4): blok falownikowy turbiny pracuje
-            # na napięciu generatora (np. 0.69 kV) — sztywne 0.4 wywalało
-            # `station.insert.transformer_voltage_mismatch` dla poprawnie
-            # dobranego TR 3.15 MVA (tpl_wiatr_3mw).
-            "nn_voltage_kv": _transformer_lv_voltage_kv(transformer_ref) or 0.4,
-        },
-        "transformer": {
-            "transformer_catalog_ref": transformer_ref,
-        },
-        "sn_fields": sn_field_specs,
-        "nn_block": {
-            "outgoing_feeders_nn_count": max(0, nn_feeders_requested),
-            "outgoing_feeders_nn": nn_feeder_specs,
-        },
+    nn_voltage_kv = _transformer_lv_voltage_kv(transformer_ref) or 0.4
+    station_spec = {
+        "name_pl": template.name_pl,
+        "sn_voltage_kv": 15,
+        # Strona nN PODĄŻA za katalogową stroną dolną WYBRANEGO
+        # transformatora (nie stała 0.4): blok falownikowy turbiny pracuje
+        # na napięciu generatora (np. 0.69 kV) — sztywne 0.4 wywalało
+        # `station.insert.transformer_voltage_mismatch` dla poprawnie
+        # dobranego TR 3.15 MVA (tpl_wiatr_3mw).
+        "nn_voltage_kv": nn_voltage_kv,
+    }
+    transformer_spec = {"transformer_catalog_ref": transformer_ref}
+    nn_block_spec = {
+        "outgoing_feeders_nn_count": max(0, nn_feeders_requested),
+        "outgoing_feeders_nn": nn_feeder_specs,
     }
 
-    insert_result = execute_domain_operation(
-        enm_dict=enm_dict,
-        op_name="insert_station_on_segment_sn",
-        payload=station_payload,
-    )
+    # KLASA PRZYŁĄCZENIA decyduje o DRODZE zabudowy (kontrakt
+    # `docs/domain/POMIAR_ROZLICZENIOWY_SN_V1.md` §3): stacja abonencka z układem
+    # pomiarowo-rozliczeniowym (klasa B) wisi w ODGAŁĘZIENIU, bo pomiar mierzy
+    # CAŁY i TYLKO pobór klienta — tranzyt magistrali nie może iść przez jego
+    # rozdzielnicę. Stacja dystrybucyjna (A) i złącze z pętlą OSD (C) zostają
+    # przy wcięciu w odcinek.
+    klasa = _klasa_przylaczenia(sn_bay_roles)
+    if klasa == "B":
+        enm_dict, station_ref, nn_bus_ref, new_ids = _zabuduj_stacje_w_odgalezieniu(
+            enm_dict=enm_dict,
+            template=template,
+            target_segment_id=target_segment_id,
+            insert_at_ratio=insert_at_ratio,
+            overrides=overrides,
+            station_spec=station_spec,
+            transformer_spec=transformer_spec,
+            sn_field_specs=sn_field_specs,
+            nn_block_spec=nn_block_spec,
+            operations_log=operations_log,
+        )
+    else:
+        station_payload = {
+            "segment_id": target_segment_id,
+            "insert_at": {"mode": "RATIO", "value": insert_at_ratio},
+            "station": {**station_spec, "station_type": _resolve_station_type(template)},
+            "transformer": transformer_spec,
+            "sn_fields": sn_field_specs,
+            "nn_block": nn_block_spec,
+        }
 
-    if insert_result.get("error"):
-        raise TemplateApplyError(
-            code=insert_result.get("error_code", "template.insert_failed"),
-            message_pl=insert_result.get("error") or "Wstawienie stacji nie powiodło się.",
+        insert_result = execute_domain_operation(
+            enm_dict=enm_dict,
+            op_name="insert_station_on_segment_sn",
+            payload=station_payload,
         )
 
-    enm_dict = insert_result.get("snapshot") or enm_dict
-    changes = insert_result.get("changes") or {}
-    new_ids = changes.get("created_element_ids") or []
-    created_refs.extend(new_ids)
-    operations_log.append(
-        {"op": "insert_station_on_segment_sn", "status": "OK", "created": new_ids}
-    )
+        if insert_result.get("error"):
+            raise TemplateApplyError(
+                code=insert_result.get("error_code", "template.insert_failed"),
+                message_pl=insert_result.get("error") or "Wstawienie stacji nie powiodło się.",
+            )
 
-    # Find newly created station ref + nN bus ref for chained ops
-    station_ref = next((r for r in new_ids if "/station" in str(r)), None)
-    nn_bus_ref = next((r for r in new_ids if "/nn_bus" in str(r)), None)
+        enm_dict = insert_result.get("snapshot") or enm_dict
+        changes = insert_result.get("changes") or {}
+        new_ids = changes.get("created_element_ids") or []
+        operations_log.append(
+            {"op": "insert_station_on_segment_sn", "status": "OK", "created": new_ids}
+        )
+        station_ref = _ref_wyboru(insert_result)
+        nn_bus_ref = _szyna_nn_stacji(enm_dict, station_ref, nn_voltage_kv)
+
+    created_refs.extend(new_ids)
 
     # Step 2: chain additional nN feeders if the domain insert did not materialize all of them.
     nn_feeder_refs = _station_nn_feeder_refs(enm_dict, station_ref, nn_bus_ref)
@@ -351,6 +373,318 @@ def _zastosuj_szablon_pod_blokada(
 
 
 # Helpers
+
+
+def _klasa_przylaczenia(bay_roles: list[str]) -> str:
+    """Klasa przyłączenia stacji z ról pól — kontrakt POMIAR_ROZLICZENIOWY_SN_V1 §3.
+
+    JEDNO źródło prawdy: zestaw ról pól SN, który zostanie ZBUDOWANY (a nie nazwa
+    szablonu ani jego kategoria — nazwa kłamie, kategoria jest metadaną biblioteki).
+
+    - ``A`` — stacja dystrybucyjna OSD: brak pola pomiarowego, wcięcie przelotowe;
+    - ``B`` — stacja abonencka: przed pomiarem WYŁĄCZNIE pole dopływowe
+      (zero pary tranzytowej) ⇒ przyłączenie ODGAŁĘZIENIEM;
+    - ``C`` — złącze kablowe ZK-SN: przed pomiarem pętla OSD (IN + OUT), pomiar
+      jest polem odpływowym gałęzi klienta ⇒ wcięcie w magistralę (pętla).
+    """
+    if "MEASUREMENT" not in bay_roles:
+        return "A"
+    przed_pomiarem = bay_roles[: bay_roles.index("MEASUREMENT")]
+    return "C" if "OUT" in przed_pomiarem else "B"
+
+
+def _ref_wyboru(wynik_operacji: dict[str, Any]) -> str | None:
+    """Ref elementu wskazanego przez operację domenową (`selection_hint`).
+
+    JEDNO źródło ref stacji dla OBU dróg zabudowy — dawne dopasowanie po fragmencie
+    identyfikatora (`"/station" in ref`) działa wyłącznie dla wcięcia w odcinek:
+    stacja na końcu ciągu ma ref `sub/…/substation`.
+    """
+    hint = wynik_operacji.get("selection_hint")
+    if isinstance(hint, dict):
+        element_id = hint.get("element_id")
+        if isinstance(element_id, str) and element_id.strip():
+            return element_id
+    return None
+
+
+def _szyna_nn_stacji(
+    enm_dict: dict[str, Any],
+    station_ref: str | None,
+    nn_voltage_kv: float,
+) -> str | None:
+    """Szyna nN stacji — szyna stacji o napięciu strony dolnej transformatora.
+
+    Wyprowadzona z MODELU (napięcie szyny), nie z fragmentu identyfikatora: obie
+    operacje zabudowy wpisują szynę nN do `substation.bus_refs`, ale nadają jej
+    różne identyfikatory (`stn/…/nn_bus` vs `bus/…/nn`).
+    """
+    if not station_ref:
+        return None
+    substation = next(
+        (
+            s
+            for s in enm_dict.get("substations", [])
+            if isinstance(s, dict) and s.get("ref_id") == station_ref
+        ),
+        None,
+    )
+    if substation is None:
+        return None
+    bus_refs = [ref for ref in substation.get("bus_refs") or [] if isinstance(ref, str)]
+    for bus in enm_dict.get("buses", []):
+        if not isinstance(bus, dict) or bus.get("ref_id") not in bus_refs:
+            continue
+        try:
+            napiecie = float(bus.get("voltage_kv"))
+        except (TypeError, ValueError):
+            continue
+        if abs(napiecie - nn_voltage_kv) < 1e-9:
+            return str(bus.get("ref_id"))
+    return None
+
+
+#: Domyślna długość odcinka odgałęzienia [m]. Wzorzec UDOKUMENTOWANY w kreatorze
+#: odgałęzienia (`frontend/src/ui2/kreatory/odgalezienie/odgaleznieModel.ts`,
+#: `DANE_DOMYSLNE.dlugosc_km = 1`) — ta sama wartość, jedno źródło zwyczaju.
+#: Projektant nadpisuje ją parametrem `branch_length_m`.
+_DOMYSLNA_DLUGOSC_ODGALEZIENIA_M = 1000
+
+
+def _zabuduj_stacje_w_odgalezieniu(
+    *,
+    enm_dict: dict[str, Any],
+    template: StationTemplate,
+    target_segment_id: str,
+    insert_at_ratio: float,
+    overrides: dict[str, Any],
+    station_spec: dict[str, Any],
+    transformer_spec: dict[str, Any],
+    sn_field_specs: list[dict[str, Any]],
+    nn_block_spec: dict[str, Any],
+    operations_log: list[dict[str, Any]],
+) -> tuple[dict[str, Any], str | None, str | None, list[str]]:
+    """Stacja abonencka (klasa B) jako ODGAŁĘZIENIE od wskazanego odcinka.
+
+    Trzy istniejące operacje domenowe, zero nowej fizyki i zero nowej topologii:
+
+    1. punkt odgałęzienia na odcinku — ZKSN dla kabla, słup rozgałęźny dla linii
+       napowietrznej (operacja domenowa sama pilnuje tej pary: „ZKSN wyłącznie na
+       odcinku kablowym", „słup rozgałęźny wyłącznie na linii napowietrznej");
+    2. `start_branch_segment_sn` z portu BRANCH tego punktu — pierwszy odcinek
+       gałęzi klienta;
+    3. `append_station_on_endpoint` na końcu gałęzi — stacja KOŃCOWA (zacisk
+       końcowy staje się szyną SN stacji, tranzyt nie ma dokąd iść dalej).
+
+    Skutek kontraktowy: magistrala OSD biegnie przez punkt odgałęzienia, a NIE
+    przez rozdzielnicę klienta — pomiar rozliczeniowy leży w szeregu z gałęzią
+    klienta i mierzy wyłącznie jego pobór.
+    """
+    segment = next(
+        (
+            b
+            for b in enm_dict.get("branches", [])
+            if isinstance(b, dict) and b.get("ref_id") == target_segment_id
+        ),
+        None,
+    )
+    if segment is None:
+        raise TemplateApplyError(
+            code="template.branch_segment_missing",
+            message_pl=(
+                f"Odcinek '{target_segment_id}' nie istnieje w modelu — "
+                "nie ma od czego poprowadzić odgałęzienia do stacji klienta."
+            ),
+        )
+    seg_type = str(segment.get("type") or "")
+    if seg_type not in ("cable", "line_overhead"):
+        raise TemplateApplyError(
+            code="template.branch_segment_not_sn",
+            message_pl=(
+                f"Odcinek '{target_segment_id}' nie jest odcinkiem SN "
+                f"(typ: '{seg_type}'), więc nie można z niego wyprowadzić "
+                "odgałęzienia do stacji abonenckiej."
+            ),
+        )
+
+    kablowy = seg_type == "cable"
+    op_punktu = "insert_zksn_on_segment_sn" if kablowy else "insert_branch_pole_on_segment_sn"
+    punkt_catalog_ref = overrides.get("branch_point_catalog_ref") or _domyslny_punkt_odgalezienia(
+        kablowy=kablowy
+    )
+    if not punkt_catalog_ref:
+        raise TemplateApplyError(
+            code="template.branch_point_catalog_missing",
+            message_pl=(
+                "Katalog punktów rozgałęzienia nie ma pozycji dla tego rodzaju "
+                "odcinka. Wskaż pozycję parametrem 'branch_point_catalog_ref'."
+            ),
+        )
+
+    created: list[str] = []
+    wynik_punktu = _wykonaj_operacje(
+        enm_dict,
+        op_punktu,
+        {
+            "segment_id": target_segment_id,
+            "insert_at": {"mode": "RATIO", "value": insert_at_ratio},
+            "catalog_ref": punkt_catalog_ref,
+        },
+        kod_bledu="template.branch_point_failed",
+        komunikat="Utworzenie punktu odgałęzienia na magistrali nie powiodło się.",
+    )
+    enm_dict = wynik_punktu.get("snapshot") or enm_dict
+    ids_punktu = (wynik_punktu.get("changes") or {}).get("created_element_ids") or []
+    created.extend(ids_punktu)
+    operations_log.append({"op": op_punktu, "status": "OK", "created": ids_punktu})
+
+    punkt_ref = _ref_wyboru(wynik_punktu)
+    if not punkt_ref:
+        raise TemplateApplyError(
+            code="template.branch_point_failed",
+            message_pl="Operacja punktu odgałęzienia nie wskazała utworzonego elementu.",
+        )
+    port_id = "BRANCH_1" if kablowy else "BRANCH"
+
+    dlugosc_m = int(overrides.get("branch_length_m", _DOMYSLNA_DLUGOSC_ODGALEZIENIA_M))
+    if dlugosc_m <= 0:
+        raise TemplateApplyError(
+            code="template.branch_length_invalid",
+            message_pl=(
+                "Długość odgałęzienia do stacji klienta musi być większa od zera "
+                "(parametr 'branch_length_m')."
+            ),
+        )
+    # Typ kabla/linii gałęzi: wskazanie projektanta, inaczej TEN SAM typ, co odcinek
+    # macierzysty — wzorzec kreatora odgałęzienia (`initial_catalog_ref` z
+    # `segment.catalog_binding` źródła). Zero zgadywania: gdy odcinek macierzysty
+    # nie ma pozycji katalogowej, operacja kończy się błędem z prośbą o wskazanie.
+    odcinek_catalog_ref = overrides.get("branch_segment_catalog_ref") or segment.get("catalog_ref")
+    if not odcinek_catalog_ref:
+        raise TemplateApplyError(
+            code="template.branch_segment_catalog_missing",
+            message_pl=(
+                "Brak pozycji katalogowej odcinka odgałęzienia. Odcinek magistrali "
+                "nie ma wiązania katalogowego, więc wskaż typ kabla/linii gałęzi "
+                "parametrem 'branch_segment_catalog_ref'."
+            ),
+        )
+
+    wynik_galezi = _wykonaj_operacje(
+        enm_dict,
+        "start_branch_segment_sn",
+        {
+            "from_ref": f"{punkt_ref}.{port_id}",
+            "segment": {
+                "rodzaj": "KABEL" if kablowy else "LINIA",
+                "dlugosc_m": dlugosc_m,
+                "catalog_binding": _catalog_binding(
+                    "KABEL_SN" if kablowy else "LINIA_SN", str(odcinek_catalog_ref)
+                ),
+            },
+        },
+        kod_bledu="template.branch_segment_failed",
+        komunikat="Utworzenie odcinka odgałęzienia do stacji klienta nie powiodło się.",
+    )
+    enm_dict = wynik_galezi.get("snapshot") or enm_dict
+    ids_galezi = (wynik_galezi.get("changes") or {}).get("created_element_ids") or []
+    created.extend(ids_galezi)
+    operations_log.append({"op": "start_branch_segment_sn", "status": "OK", "created": ids_galezi})
+
+    odcinek_ref = _ref_wyboru(wynik_galezi)
+    koniec_galezi = next(
+        (
+            b.get("to_bus_ref")
+            for b in enm_dict.get("branches", [])
+            if isinstance(b, dict) and b.get("ref_id") == odcinek_ref
+        ),
+        None,
+    )
+    if not koniec_galezi:
+        raise TemplateApplyError(
+            code="template.branch_segment_failed",
+            message_pl="Odcinek odgałęzienia powstał bez zacisku końcowego dla stacji.",
+        )
+
+    wynik_stacji = _wykonaj_operacje(
+        enm_dict,
+        "append_station_on_endpoint",
+        {
+            "endpoint_bus_ref": koniec_galezi,
+            # Stacja KOŃCOWA — wynika z topologii (koniec gałęzi), nie z kategorii
+            # szablonu: za rozdzielnicą klienta nie ma dokąd prowadzić tranzytu.
+            "station": {**station_spec, "name": template.name_pl, "station_type": "terminal"},
+            "transformer": transformer_spec,
+            "sn_fields": sn_field_specs,
+            "nn_block": nn_block_spec,
+        },
+        kod_bledu="template.branch_station_failed",
+        komunikat="Utworzenie stacji abonenckiej na końcu odgałęzienia nie powiodło się.",
+    )
+    enm_dict = wynik_stacji.get("snapshot") or enm_dict
+    ids_stacji = (wynik_stacji.get("changes") or {}).get("created_element_ids") or []
+    created.extend(ids_stacji)
+    operations_log.append(
+        {"op": "append_station_on_endpoint", "status": "OK", "created": ids_stacji}
+    )
+
+    station_ref = _ref_wyboru(wynik_stacji)
+    nn_bus_ref = _szyna_nn_stacji(
+        enm_dict, station_ref, float(station_spec.get("nn_voltage_kv") or 0.4)
+    )
+    return enm_dict, station_ref, nn_bus_ref, created
+
+
+def _wykonaj_operacje(
+    enm_dict: dict[str, Any],
+    op_name: str,
+    payload: dict[str, Any],
+    *,
+    kod_bledu: str,
+    komunikat: str,
+) -> dict[str, Any]:
+    """Wykonaj operację domenową; błąd operacji = błąd zastosowania szablonu.
+
+    Komunikat operacji domenowej ma PIERWSZEŃSTWO — mówi projektantowi, co
+    konkretnie odrzuciła domena (np. zajęty port odgałęzienia).
+    """
+    wynik = execute_domain_operation(enm_dict=enm_dict, op_name=op_name, payload=payload)
+    if wynik.get("error"):
+        raise TemplateApplyError(
+            code=wynik.get("error_code", kod_bledu),
+            message_pl=wynik.get("error") or komunikat,
+        )
+    return wynik
+
+
+def _domyslny_punkt_odgalezienia(*, kablowy: bool) -> str | None:
+    """Deterministyczny wybór pozycji katalogu punktów rozgałęzienia.
+
+    Reguła: spośród pozycji o ZGODNYM ośrodku (kabel / linia napowietrzna) —
+    najmniejsza liczba portów odgałęźnych, przy remisie pierwsza wg identyfikatora.
+    Obie wskazane w ten sposób pozycje są w katalogu opisane jako REFERENCYJNE dla
+    swojego ośrodka. To wybór POZYCJI, nie parametrów: fizykę i tak materializuje
+    katalog.
+    """
+    from network_model.catalog.mv_branch_point_catalog import get_all_branch_point_types
+
+    osrodek = "CABLE" if kablowy else "LINE_OVERHEAD"
+    kandydaci = [
+        record
+        for record in get_all_branch_point_types()
+        if (record.get("params") or {}).get("medium") == osrodek
+    ]
+    if not kandydaci:
+        return None
+    najlepszy = min(
+        kandydaci,
+        key=lambda record: (
+            int((record.get("params") or {}).get("branch_ports_count") or 1),
+            str(record.get("id") or ""),
+        ),
+    )
+    identyfikator = najlepszy.get("id")
+    return str(identyfikator) if identyfikator else None
 
 
 def _catalog_binding(namespace: str, item_id: str | None) -> dict[str, Any] | None:
@@ -614,8 +948,8 @@ def _converter_apparent_power_mva(catalog_ref: object) -> float | None:
     return parsed if parsed > 0 else None
 
 
-#: Kody ról pól SN szablonu → role kontraktu operacji `insert_station_on_segment_sn`
-#: (te same pary co `_role_str_map` w `enm.domain_operations`; role spoza mapy
+#: Kody ról pól SN szablonu → kanoniczne role pola operacji domenowych
+#: (`_SN_FIELD_ROLE_ALIASES` w `enm.domain_operations`; role spoza mapy
 #: przechodzą bez zmiany — operacja traktuje je jak pole odpływowe).
 _TEMPLATE_ROLE_TO_FIELD_ROLE = {
     "IN": "LINIA_IN",
@@ -623,6 +957,7 @@ _TEMPLATE_ROLE_TO_FIELD_ROLE = {
     "FEEDER": "LINIA_ODG",
     "TR": "TRANSFORMATOROWE",
     "COUPLER": "SPRZEGLO",
+    "MEASUREMENT": "POMIAROWE",
 }
 
 
@@ -683,19 +1018,54 @@ def _resolve_sn_bay_roles(template: StationTemplate, count: int) -> list[str]:
     sprzeczny). Gdy szablon deklaruje TR, a obcięta sekwencja go nie ma —
     OSTATNIA pozycja staje się TR (deterministycznie: wypada ostatnia rola
     nie-TR, nigdy pole transformatorowe).
+
+    Reguła keep-POMIAR (POMIAR-ODGAŁĘZIENIE, kontrakt
+    `docs/domain/POMIAR_ROZLICZENIOWY_SN_V1.md`): pole POMIAROWE jest dla stacji
+    abonenckiej równie nieusuwalne jak pole TR — to ono decyduje o KLASIE
+    przyłączenia (odgałęzienie zamiast wcięcia w tranzyt). Obcięcie liczby pól
+    NIE MOŻE go wyciąć: szablon „1000 kVA + pomiary" zredukowany do 2 pól dawał
+    [IN, TR] — stację bez układu pomiarowego, którą aplikacja klasyfikowałaby
+    jako zwykłą dystrybucyjną i wcięła w magistralę. Gdy `count` nie mieści
+    zestawu nieusuwalnego, operacja KOŃCZY SIĘ BŁĘDEM z podaniem minimum —
+    nigdy cichym obcięciem.
     """
     declared = [r.role for r in template.schema.sn_bay_roles]
-    if declared:
-        # Use template-declared sequence, pad with OUT if more requested
-        result = list(declared[:count])
-        while len(result) < count:
-            result.append("OUT")
-        if "TR" in declared and "TR" not in result and result:
-            result[-1] = "TR"
-        return result
-    # Fallback: IN, OUT, TR default
-    fallback = ["IN", "OUT", "TR"]
-    return (fallback + ["OUT"] * count)[:count]
+    if not declared:
+        # Fallback: IN, OUT, TR default
+        fallback = ["IN", "OUT", "TR"]
+        return (fallback + ["OUT"] * count)[:count]
+
+    # Role nieusuwalne — po JEDNYM polu każdej z nich (indeks PIERWSZEGO wystąpienia
+    # w deklaracji szablonu). Pomiar chroniony wyłącznie tam, gdzie szablon go ma.
+    kody_nieusuwalne = ("IN", "MEASUREMENT", "TR") if "MEASUREMENT" in declared else ("TR",)
+    wymagane = [declared.index(kod) for kod in kody_nieusuwalne if kod in declared]
+    if "MEASUREMENT" in declared and count < len(wymagane):
+        raise TemplateApplyError(
+            code="template.sn_bays_count_below_minimum",
+            message_pl=(
+                f"Szablon '{template.id}' opisuje przyłącze klienta z układem "
+                f"pomiarowo-rozliczeniowym, więc wymaga co najmniej {len(wymagane)} "
+                f"pól SN ({', '.join(declared[i] for i in sorted(wymagane))}). "
+                f"Żądano {count}. Zwiększ liczbę pól albo wybierz szablon stacji "
+                "dystrybucyjnej (bez pomiaru rozliczeniowego)."
+            ),
+        )
+
+    # Wybór pól = pierwsze `count` pozycji deklaracji; brakujące role nieusuwalne
+    # wypierają OSTATNIE pozycje usuwalne. Wynik idzie w kolejności DEKLARACJI —
+    # ta sama kolejność ląduje na rysunku (V12K-330).
+    wybrane = list(range(min(count, len(declared))))
+    for idx in wymagane:
+        if idx in wybrane:
+            continue
+        usuwalne = [i for i in wybrane if i not in wymagane]
+        if not usuwalne:
+            break
+        wybrane[wybrane.index(usuwalne[-1])] = idx
+    result = [declared[i] for i in sorted(wybrane)]
+    while len(result) < count:
+        result.append("OUT")
+    return result
 
 
 def _resolve_station_type(template: StationTemplate) -> str:
