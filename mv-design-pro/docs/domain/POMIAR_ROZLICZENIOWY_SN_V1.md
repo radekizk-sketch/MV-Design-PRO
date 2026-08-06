@@ -82,6 +82,15 @@ Reguły twarde:
   ale §3 tego kontraktu (dokument wyższy w hierarchii) przypisuje klasie C
   WCIĘCIE (pętla OSD) — wygrywa kontrakt, klasa C zostaje przy wcięciu.
 
+  BRAMA DOMENOWA (ta sama reguła na każdej drodze wejścia): operacja
+  `insert_station_on_segment_sn` ROZCINA odcinek, więc z definicji prowadzi
+  tranzyt przez szynę tworzonej stacji — odmawia zestawu pól z polem
+  POMIAROWYM bez pary tranzytowej (`station.insert.pomiar_w_torze_tranzytu`).
+  Dzięki temu reguła nie żyje wyłącznie w warstwie szablonów: surowe API
+  operacji, kreator stacji i seedy przechodzą przez tę samą bramę.
+  Stacja KOŃCOWA (`append_station_on_endpoint`) bramy nie potrzebuje — nie ma
+  czego tranzytować za rozdzielnicą klienta.
+
 - Etap 3 (DO ZLECENIA — luka zmierzona przy etapie 2): scena SLD v3
   (`frontend/src/ui/sld/v3/scene/buildScene.ts`) NIE czyta `branch_points`,
   a `resolveBranchOrigin` przyjmuje jako początek odgałęzienia wyłącznie

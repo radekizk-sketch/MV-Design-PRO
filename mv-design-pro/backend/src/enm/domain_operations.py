@@ -5109,6 +5109,32 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
                 ["LINIA_IN", "TRANSFORMATOROWE"],
             )
         ]
+    # BRAMA KONTRAKTU POMIARU ROZLICZENIOWEGO
+    # (`docs/domain/POMIAR_ROZLICZENIOWY_SN_V1.md` §1): układ pomiarowo-rozliczeniowy
+    # mierzy CAŁY i TYLKO pobór odbiorcy, więc rozdzielnica z polem POMIAROWYM nie
+    # może prowadzić tranzytu magistrali OSD. Ta operacja ROZCINA odcinek, czyli z
+    # definicji wprowadza tranzyt przez szynę tworzonej stacji — dopuszczalne
+    # WYŁĄCZNIE dla klasy C kontraktu (złącze ZK-SN: pętla OSD IN+OUT, a pomiar jako
+    # pole odpływowe gałęzi klienta).
+    #
+    # PREDYKATY PARAMI: ten sam warunek (pomiar bez pary tranzytowej = klasa B)
+    # kieruje aplikację szablonu na drogę odgałęzienia
+    # (`application/station_templates/apply._klasa_przylaczenia`). Bez bramy tutaj
+    # reguła żyłaby wyłącznie w warstwie szablonów, a każda inna droga wejścia
+    # (surowe API operacji, kreator stacji, seedy e2e) mogłaby zbudować układ
+    # zakazany kontraktem.
+    role_pol = {str(field_spec.get("field_role", "")) for field_spec in sn_fields}
+    if "POMIAROWE" in role_pol and not {"LINIA_IN", "LINIA_OUT"} <= role_pol:
+        return _error_response(
+            "Rozdzielnica z polem pomiarowo-rozliczeniowym nie może prowadzić tranzytu "
+            "magistrali — układ pomiarowy mierzy cały i wyłącznie pobór odbiorcy. "
+            "Stację abonencką przyłącz ODGAŁĘZIENIEM (punkt odgałęzienia na odcinku → "
+            "odcinek gałęzi → stacja końcowa). Jeśli budujesz złącze kablowe z pętlą "
+            "OSD, dodaj parę pól liniowych (dopływowe i odpływowe) — wtedy pomiar jest "
+            "polem odpływowym gałęzi klienta, a nie polem w torze tranzytu.",
+            "station.insert.pomiar_w_torze_tranzytu",
+        )
+
     # B-4/B-5: oznaczenie i typ konstrukcji stacji (addytywne pola tożsamości).
     station_identity, identity_error = _station_identity_fields(station, payload)
     if identity_error is not None:

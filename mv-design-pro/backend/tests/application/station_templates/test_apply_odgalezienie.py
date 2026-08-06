@@ -509,3 +509,111 @@ def test_dwa_takie_same_zastosowania_daja_identyczny_model() -> None:
         EnergyNetworkModel.model_validate(drugi["enm"])
     )
     assert json.dumps(pierwszy["enm"], sort_keys=True) == json.dumps(drugi["enm"], sort_keys=True)
+
+
+# ---------------------------------------------------------------------------
+# BRAMA DOMENOWA — reguła obowiązuje KAŻDĄ drogę wejścia, nie tylko szablony
+# ---------------------------------------------------------------------------
+
+
+def test_wciecie_w_odcinek_odmawia_ukladu_klasy_b_niezaleznie_od_drogi_wejscia() -> None:
+    """PREDYKATY PARAMI (reguła KLASA §3): ten sam warunek, który kieruje szablon
+    klasy B na drogę odgałęzienia, BRAMKUJE surową operację wcięcia.
+
+    Bez tej bramy reguła kontraktu żyłaby wyłącznie w warstwie szablonów, a każda
+    inna droga wejścia (surowe API operacji domenowej, kreator stacji, seedy e2e)
+    mogłaby zbudować rozdzielnicę klienta w torze tranzytu magistrali.
+    """
+    enm, odcinki = _magistrala(3)
+    wynik = execute_domain_operation(
+        enm_dict=enm,
+        op_name="insert_station_on_segment_sn",
+        payload={
+            "segment_id": odcinki[1],
+            "insert_at": {"mode": "RATIO", "value": 0.5},
+            "station": {
+                "station_type": "inline",
+                "station_name": "Klient w torze tranzytu",
+                "sn_voltage_kv": 15.0,
+                "nn_voltage_kv": 0.4,
+            },
+            "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+            # Kształt klasy B: pomiar bez pary tranzytowej.
+            "sn_fields": [
+                {"field_role": "LINIA_IN"},
+                {"field_role": "POMIAROWE"},
+                {"field_role": "TRANSFORMATOROWE"},
+            ],
+            "transformer": {"transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11"},
+            "nn_block": {"outgoing_feeders_nn_count": 1},
+        },
+    )
+    assert wynik.get("error_code") == "station.insert.pomiar_w_torze_tranzytu"
+    # Operacja meldująca błąd nie zostawia skutku w modelu.
+    assert wynik.get("snapshot") is None
+
+
+def test_wciecie_w_odcinek_przyjmuje_zlacze_z_petla_osd_i_pomiarem() -> None:
+    """Druga strona pary: klasa C (pętla OSD IN+OUT + pomiar jako pole odpływowe
+    gałęzi klienta) jest kontraktowo DOZWOLONA we wcięciu — brama nie może jej
+    zablokować „przy okazji"."""
+    enm, odcinki = _magistrala(3)
+    wynik = execute_domain_operation(
+        enm_dict=enm,
+        op_name="insert_station_on_segment_sn",
+        payload={
+            "segment_id": odcinki[1],
+            "insert_at": {"mode": "RATIO", "value": 0.5},
+            "station": {
+                "station_type": "inline",
+                "station_name": "Złącze kablowe z pomiarem",
+                "sn_voltage_kv": 15.0,
+                "nn_voltage_kv": 0.4,
+            },
+            "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+            "sn_fields": [
+                {"field_role": "LINIA_IN"},
+                {"field_role": "LINIA_OUT"},
+                {"field_role": "POMIAROWE"},
+                {"field_role": "TRANSFORMATOROWE"},
+            ],
+            "transformer": {"transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11"},
+            "nn_block": {"outgoing_feeders_nn_count": 1},
+        },
+    )
+    assert not wynik.get("error"), wynik.get("error")
+    stacja_ref = _ref_wyboru(wynik)
+    assert stacja_ref is not None
+    assert _role_pol_stacji(wynik["snapshot"], stacja_ref) == [
+        "IN",
+        "OUT",
+        "MEASUREMENT",
+        "TR",
+    ]
+
+
+def test_brama_rozpoznaje_role_pomiarowa_takze_z_aliasu_skrotowego() -> None:
+    """Słownik aliasów jest JEDEN, więc brama widzi pomiar niezależnie od tego,
+    czy wołający użył `POMIAROWE` (rola kanoniczna) czy `MEASUREMENT` (skrót
+    `bay_role`, którym wołają szablony)."""
+    enm, odcinki = _magistrala(3)
+    for alias in ("POMIAROWE", "MEASUREMENT"):
+        wynik = execute_domain_operation(
+            enm_dict=enm,
+            op_name="insert_station_on_segment_sn",
+            payload={
+                "segment_id": odcinki[1],
+                "insert_at": {"mode": "RATIO", "value": 0.5},
+                "station": {
+                    "station_type": "inline",
+                    "station_name": f"Klient ({alias})",
+                    "sn_voltage_kv": 15.0,
+                    "nn_voltage_kv": 0.4,
+                },
+                "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+                "sn_fields": [{"field_role": "LINIA_IN"}, {"field_role": alias}],
+                "transformer": {"transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11"},
+                "nn_block": {"outgoing_feeders_nn_count": 1},
+            },
+        )
+        assert wynik.get("error_code") == "station.insert.pomiar_w_torze_tranzytu", alias
