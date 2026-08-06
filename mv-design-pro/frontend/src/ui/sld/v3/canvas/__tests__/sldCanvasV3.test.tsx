@@ -39,7 +39,7 @@ import {
 import { buildResultLabelsFromScene, resultRefForSegment } from '../resultLabels';
 import type { RawOverlayElement, RawOverlayPayload } from '../../../../sld-overlay/rawResultOverlayStore';
 import {
-  singleHopSegmentRefs,
+  orientedSegmentRefs,
   type SegmentFaultFlowOverlay,
   type SegmentFlowOverlay,
   type SldV3Overlay,
@@ -425,15 +425,18 @@ describe('SldCanvasV3 — F9.5: nakładka przepływu mocy (spec §14.2, warstwa 
   for (const [lod, detail] of [[1, 'p-only'], [2, 'full']] as const) {
     it(`czytelność (LOD ${lod}, detail=${detail}): KAŻDA etykieta przepływu ma bbox rozłączny z każdą etykietą sceny, każdym symbolem i innymi etykietami przepływu`, () => {
       const scene = buildSceneV3(enm, lod);
-      const singleHop = singleHopSegmentRefs(enm);
+      const singleHop = new Set(orientedSegmentRefs(enm).keys());
       const entries: Record<string, SegmentFlowOverlay> = {};
       for (const s of scene.segments) {
         const ref = s.meta?.ownerRef;
         if (ref && s.meta?.elementKind === 'segment' && singleHop.has(ref)) entries[ref] = FULL_FLOW(ref);
       }
-      expect(Object.keys(entries).length).toBe(45);
+      // S9-2: bramka orientacji obejmuje KAZDY narysowany kawalek galeziowy
+      // fixtury (88); dawna bramka F-1 obejmowala 45 — rozlacznosc etykiet jest
+      // teraz sprawdzana na PELNYM zbiorze przeslow, nie na polowie.
+      expect(Object.keys(entries).length).toBe(88);
       const placements = computeFlowOverlayPlacements(scene, entries, detail);
-      expect(placements.length).toBe(45);
+      expect(placements.length).toBe(88);
       // Wyrocznia wewnętrzna algorytmu: każdy kandydat znaleziony (zero
       // fallbacków na tej fixturze) …
       expect(placements.filter((p) => p.label && !p.labelPlaced)).toEqual([]);
@@ -1238,7 +1241,7 @@ describe('SldCanvasV3 — S8: crossfade detalu i ciągłość przejść LOD', ()
 // ---------------------------------------------------------------------------
 describe('SldCanvasV3 — W4 warstwa liczbowych etykiet wynikowych (§8/§9/§16)', () => {
   const sceneL2 = buildSceneV3(enm, 2);
-  const singleHop = singleHopSegmentRefs(enm);
+  const singleHop = new Set(orientedSegmentRefs(enm).keys());
 
   function el(refId: string, kind: string, metrics: RawOverlayElement['metrics']): RawOverlayElement {
     return { ref_id: refId, kind, badges: [], metrics, severity: 'INFO' };
@@ -1305,8 +1308,10 @@ describe('SldCanvasV3 — W4 warstwa liczbowych etykiet wynikowych (§8/§9/§16
     }
   });
 
-  it('R1 §wym.5 zwijanie LOD: L0 bez etykiet; L1 jedna linia; L2 do trzech (źródło P/Q)', () => {
-    // Źródło niesie 2 linie (P, Q). L0 ⇒ 0 etykiet; L1 ⇒ 1 linia (P); L2 ⇒ 2 (P, Q).
+  it('S9-2 zwijanie LOD: L0 JEDNA linia (wartosc zbiorcza); L1 jedna; L2 do trzech (zrodlo P/Q)', () => {
+    // Zrodlo niesie 2 linie (P, Q). L0 ⇒ 1 linia (P — wartosc zbiorcza; dotad 0,
+    // przez co rysunek po biegu nie roznil sie od rysunku przed biegiem, audyt
+    // 2026-08 W-1); L1 ⇒ 1 linia (P); L2 ⇒ 2 (P, Q).
     const linesAtLod = (lod: 0 | 1 | 2): readonly string[] => {
       const { container } = render(
         <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={lod} overlay={overlayWithLabels} />,
@@ -1315,7 +1320,7 @@ describe('SldCanvasV3 — W4 warstwa liczbowych etykiet wynikowych (§8/§9/§16
       if (!group) return [];
       return Array.from(group.querySelectorAll('text')).map((t) => t.textContent ?? '');
     };
-    expect(linesAtLod(0)).toEqual([]);
+    expect(linesAtLod(0)).toEqual(['P +6,5468 MW']);
     expect(linesAtLod(1)).toEqual(['P +6,5468 MW']);
     expect(linesAtLod(2)).toEqual(['P +6,5468 MW', 'Q -0,3000 Mvar']);
   });
@@ -1398,7 +1403,7 @@ describe('SldCanvasV3 — W4 warstwa liczbowych etykiet wynikowych (§8/§9/§16
 // ---------------------------------------------------------------------------
 describe('SldCanvasV3 — R2 staleness + agregacja warstwy wynikowej', () => {
   const sceneL2 = buildSceneV3(enm, 2);
-  const singleHop = singleHopSegmentRefs(enm);
+  const singleHop = new Set(orientedSegmentRefs(enm).keys());
 
   function el(refId: string, kind: string, metrics: RawOverlayElement['metrics']): RawOverlayElement {
     return { ref_id: refId, kind, badges: [], metrics, severity: 'INFO' };

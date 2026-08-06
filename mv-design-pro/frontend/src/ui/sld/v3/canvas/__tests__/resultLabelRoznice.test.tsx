@@ -28,7 +28,7 @@ import { useSnapshotStore } from '../../../../topology/snapshotStore';
 import { useSelectionStore } from '../../../../selection';
 import { useAppStateStore } from '../../../../app-state';
 import { SldCanvasV3Workspace } from '../SldCanvasV3Workspace';
-import { buildResultLabelsFromScene, resultLabelLineQuantity, singleHopSegmentRefs } from '../resultLabels';
+import { buildResultLabelsFromScene, resultLabelLineQuantity, orientedSegmentRefs } from '../resultLabels';
 import {
   RESULT_LABEL_TEMPLATES,
   normalizeResultLabelAnalysis,
@@ -51,7 +51,7 @@ const enm = (JSON.parse(readFileSync(fixturePath, 'utf8')) as { readonly enm: En
 const CANVAS_W = 1024;
 const CANVAS_H = 640;
 const sceneL2 = buildSceneV3(enm, 2);
-const singleHop = singleHopSegmentRefs(enm);
+const singleHop = new Set(orientedSegmentRefs(enm).keys());
 
 /** Szyna ze sceny — kotwica etykiety i kanoniczny ref wyniku (zero fabrykacji). */
 const busSeg = sceneL2.segments.find((s) => s.meta?.elementKind === 'bus' && s.meta?.ownerRef)!;

@@ -103,7 +103,7 @@ async function loadPowerFlowCompanion(mode: OverlayMode): Promise<PowerFlowCompa
 // Karta Z-3 (dowody wizualne pkt 7 karty właściciela): nakładka strzałek
 // rozpływu prądu zwarciowego + znacznik pulse punktu zwarcia, na fixturze
 // `gpzFeeder.enm.json` (GPZ z DWOMA jednokawałkowymi odpływami do Stacji S01/
-// S02 — `singleHopSegmentRefs` niesie OBIE gałęzie, zweryfikowane sondą na
+// S02 — `orientedSegmentRefs` niesie OBIE gałęzie, zweryfikowane sondą na
 // realnej scenie: zero fabrykacji topologii). Punkt zwarcia: Stacja S01
 // (`ownerRef` symbolu stacji na LOD0 = `Substation.ref_id`). Tor Thevenina
 // (sieć nadrzędna) płynie GPZ→S01 (odpływ zasilający punkt zwarcia wprost);

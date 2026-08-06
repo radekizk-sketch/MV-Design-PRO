@@ -24,7 +24,7 @@ import { SldCanvasV3, layoutResultLabels } from '../SldCanvasV3';
 import { SldCanvasV3Workspace } from '../SldCanvasV3Workspace';
 import {
   buildResultLabelsFromScene,
-  singleHopSegmentRefs,
+  orientedSegmentRefs,
   type ResultLabelComparison,
 } from '../resultLabels';
 import {
@@ -42,7 +42,7 @@ const enm = (JSON.parse(readFileSync(fixturePath, 'utf8')) as { readonly enm: En
 const CANVAS_W = 1024;
 const CANVAS_H = 640;
 const sceneL2 = buildSceneV3(enm, 2);
-const singleHop = singleHopSegmentRefs(enm);
+const singleHop = new Set(orientedSegmentRefs(enm).keys());
 
 const branchRef = sceneL2.segments.find(
   (s) => s.meta?.elementKind === 'segment' && s.meta.ownerRef && !s.meta.ownerRef.includes('#') && singleHop.has(s.meta.ownerRef),

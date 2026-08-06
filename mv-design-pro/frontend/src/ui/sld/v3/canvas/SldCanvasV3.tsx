@@ -989,6 +989,21 @@ export interface FaultPointMarkerPlacement {
  * kolejności sceny wygrywa (deterministyczne). Brak dopasowania (ref spoza
  * sceny/LOD) ⇒ `null` — znacznik wyłączony, zero fabrykacji pozycji.
  */
+export function computeFaultPointMarkerPlacements(
+  scene: SceneV3,
+  faultPointMarkerRefs: ReadonlySet<string> | undefined,
+): readonly FaultPointMarkerPlacement[] {
+  if (!faultPointMarkerRefs || faultPointMarkerRefs.size === 0) return [];
+  const out: FaultPointMarkerPlacement[] = [];
+  // Determinizm: iteracja po refach POSORTOWANYCH, nie po kolejności wstawień
+  // do zbioru (kolejność węzłów DOM = kolejność refów).
+  for (const ref of [...faultPointMarkerRefs].sort()) {
+    const placement = computeFaultPointMarkerPlacement(scene, ref);
+    if (placement) out.push(placement);
+  }
+  return out;
+}
+
 export function computeFaultPointMarkerPlacement(
   scene: SceneV3,
   faultPointMarkerRef: string | undefined,
@@ -1326,35 +1341,55 @@ function resultLabelCandidates(
 ): readonly { readonly x: number; readonly y: number }[] {
   const { cx, cy, halfW, halfH } = anchor;
   const out: { x: number; y: number }[] = [];
-  const belowY = cy + halfH + RESULT_LABEL_GAP;
-  const aboveY = cy - halfH - RESULT_LABEL_GAP - block.height;
-  const rightX = cx + halfW + RESULT_LABEL_GAP;
-  const leftX = cx - halfW - RESULT_LABEL_GAP - block.width;
   const centeredX = cx - block.width / 2;
   const centeredY = cy - block.height / 2;
-  if (anchor.symbol || anchor.horizontal) {
-    // Preferuj pion (pod/nad), potem bok.
-    for (const dx of [0, GRID, -GRID]) {
-      out.push({ x: centeredX + dx, y: belowY });
+  // S9-2: PIERŚCIENIE ODDALENIA. Dotąd kandydatów było osiem, wszystkie tuż
+  // przy kotwicy — w gęstym rejonie (pola stacji na L2) każdy z nich kolidował
+  // i etykieta była UKRYWANA. Pomiar diagnostyczny karty: na scenie L2 jedyna
+  // policzona etykieta wynikowa nie miała ANI JEDNEJ wolnej pozycji
+  // (`placements=0`, `hidden=1`) — czyli rysunek pokazywał zero wyników, mimo
+  // że warstwa je policzyła. Kandydaci są więc generowani w pierścieniach o
+  // rosnącym odsunięciu; wynik dalszego pierścienia jest wyprowadzany na
+  // odnośniku (`calloutIndex > 0`), więc związek z obiektem pozostaje jawny.
+  // Zero kolizji jest ZACHOWANE (kandydat musi być wolny), rośnie tylko szansa
+  // znalezienia wolnego miejsca.
+  for (const ring of RESULT_LABEL_OFFSET_RINGS) {
+    const belowY = cy + halfH + RESULT_LABEL_GAP + ring;
+    const aboveY = cy - halfH - RESULT_LABEL_GAP - ring - block.height;
+    const rightX = cx + halfW + RESULT_LABEL_GAP + ring;
+    const leftX = cx - halfW - RESULT_LABEL_GAP - ring - block.width;
+    if (anchor.symbol || anchor.horizontal) {
+      // Preferuj pion (pod/nad), potem bok.
+      for (const dx of [0, GRID, -GRID]) {
+        out.push({ x: centeredX + dx, y: belowY });
+      }
+      for (const dx of [0, GRID, -GRID]) {
+        out.push({ x: centeredX + dx, y: aboveY });
+      }
+      out.push({ x: rightX, y: centeredY });
+      out.push({ x: leftX, y: centeredY });
+    } else {
+      // Bieg pionowy odcinka — preferuj bok (prawo/lewo), potem pion.
+      for (const dy of [0, GRID, -GRID]) {
+        out.push({ x: rightX, y: centeredY + dy });
+      }
+      for (const dy of [0, GRID, -GRID]) {
+        out.push({ x: leftX, y: centeredY + dy });
+      }
+      out.push({ x: centeredX, y: belowY });
+      out.push({ x: centeredX, y: aboveY });
     }
-    for (const dx of [0, GRID, -GRID]) {
-      out.push({ x: centeredX + dx, y: aboveY });
-    }
-    out.push({ x: rightX, y: centeredY });
-    out.push({ x: leftX, y: centeredY });
-  } else {
-    // Bieg pionowy odcinka — preferuj bok (prawo/lewo), potem pion.
-    for (const dy of [0, GRID, -GRID]) {
-      out.push({ x: rightX, y: centeredY + dy });
-    }
-    for (const dy of [0, GRID, -GRID]) {
-      out.push({ x: leftX, y: centeredY + dy });
-    }
-    out.push({ x: centeredX, y: belowY });
-    out.push({ x: centeredX, y: aboveY });
   }
   return out;
 }
+
+/** Odsunięcia kolejnych pierścieni kandydatów [px świata]. Pierwszy (0) to
+ *  pozycja PIERWOTNA — kolejność i treść pierwszych ośmiu kandydatów jest
+ *  identyczna jak przed S9-2 (zgodność metryk `primaryCollided`/`calloutIndex`
+ *  i istniejących testów rozmieszczania). Dalsze pierścienie są krotnościami
+ *  siatki, więc etykieta zostaje NA SIATCE. Lista zamknięta: skończona liczba
+ *  prób, brak pętli nieograniczonej. */
+const RESULT_LABEL_OFFSET_RINGS: readonly number[] = [0, 2 * GRID, 5 * GRID, 9 * GRID];
 
 /** Kotwica jednego wpisu w układzie świata (środek + półwymiary + orientacja). */
 interface ResultLabelAnchor {
@@ -1486,13 +1521,38 @@ export function layoutResultLabels(
     const entry = resultLabelsByOwnerRef[ref];
     const lines = resultLabelLinesForLod(entry.lines, lod);
     if (lines.length === 0) continue;
+    // S9-2: kotwica dobierana PREFERENCJĄ klasy, ale z zejściem do drugiego
+    // rejestru. Powód: ta sama tożsamość wynikowa bywa narysowana raz odcinkiem,
+    // raz symbolem — szyna SN stacji to odcinek na L1/L2, a na poziomie
+    // przeglądu (L0) TEN SAM punkt niesie zwinięty blok stacji (symbol).
+    // Bez zejścia wpis nie miałby kotwicy na L0 i wartość stacyjna nigdy by się
+    // nie pokazała.
+    const preferSymbol = entry.kind === 'transformer' || entry.kind === 'source';
+    const symbolCandidate = symbolAnchor.get(ref);
+    const segmentCandidate = segmentAnchor.get(ref);
     let anchor: ResultLabelAnchor | null = null;
-    if (entry.kind === 'transformer' || entry.kind === 'source') {
-      const a = symbolAnchor.get(ref);
-      if (a) anchor = { ...a, horizontal: true, symbol: true };
-    } else {
-      const a = segmentAnchor.get(ref);
-      if (a) anchor = { cx: a.cx, cy: a.cy, halfW: 0, halfH: 0, horizontal: a.horizontal, symbol: false };
+    if (preferSymbol && symbolCandidate) {
+      anchor = { ...symbolCandidate, horizontal: true, symbol: true };
+    } else if (!preferSymbol && segmentCandidate) {
+      anchor = {
+        cx: segmentCandidate.cx,
+        cy: segmentCandidate.cy,
+        halfW: 0,
+        halfH: 0,
+        horizontal: segmentCandidate.horizontal,
+        symbol: false,
+      };
+    } else if (symbolCandidate) {
+      anchor = { ...symbolCandidate, horizontal: true, symbol: true };
+    } else if (segmentCandidate) {
+      anchor = {
+        cx: segmentCandidate.cx,
+        cy: segmentCandidate.cy,
+        halfW: 0,
+        halfH: 0,
+        horizontal: segmentCandidate.horizontal,
+        symbol: false,
+      };
     }
     if (!anchor) continue;
     units.push({ ownerRef: ref, kind: entry.kind, lines, anchor, rank: RESULT_LABEL_PRIORITY[entry.kind], severity: entry.severity });
@@ -2310,8 +2370,18 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
   );
   // Karta SLD-P (GAP V12K-120/121): znacznik pulse punktu zwarcia — ta sama
   // warstwa „nakładki wyników" (filtr `effectiveOverlay`).
-  const faultPointMarkerPlacement = useMemo(
-    () => computeFaultPointMarkerPlacement(scene, effectiveOverlay?.faultPointMarkerRef),
+  // S9-2: znaczniki WSZYSTKICH punktów zwarcia bieżącego przebiegu (zbiór) —
+  // ref wskazany ręcznie z ekranu zwarć jest jednym z nich (workspace sumuje
+  // oba kanały). Brak zbioru ⇒ zachowanie sprzed karty (pojedynczy ref).
+  const faultPointMarkerPlacements = useMemo(
+    () =>
+      computeFaultPointMarkerPlacements(
+        scene,
+        effectiveOverlay?.faultPointMarkerRefs
+          ?? (effectiveOverlay?.faultPointMarkerRef
+            ? new Set([effectiveOverlay.faultPointMarkerRef])
+            : undefined),
+      ),
     [scene, effectiveOverlay],
   );
   // W4 (§8): warstwa LICZBOWYCH etykiet wynikowych — bramkowana ODRĘBNYM
@@ -2709,9 +2779,9 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
           {/* Karta SLD-P (GAP V12K-120/121): znacznik pulse punktu zwarcia —
            * ta sama warstwa co strzałki (jeden overlay „prąd zwarciowy"),
            * zero wpisu = zero węzła (§14.2 „overlay wyłączony bez wyniku"). */}
-          {faultPointMarkerPlacement ? (
-            <SceneFaultPointMarkerNode placement={faultPointMarkerPlacement} />
-          ) : null}
+          {faultPointMarkerPlacements.map((placement) => (
+            <SceneFaultPointMarkerNode key={`fault-point-${placement.ownerRef}`} placement={placement} />
+          ))}
         </g>
         {/* F4/SLD (V12K-092, karta SLD-02 §3.5): badge wynikowy OLTC NAD
          * warstwami bazowymi — pozycja końcowa zaczepu + liczba przełączeń

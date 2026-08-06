@@ -272,10 +272,18 @@ export const RESULT_LABEL_TEMPLATES: Readonly<
   },
 };
 
-/** Maksymalna liczba linii per poziom LOD (wym. 5). L0 = 0 (bez etykiet),
- *  L1 = 1 (najważniejsza wartość), L2 = 3 (2–3 wartości). */
+/** Maksymalna liczba linii per poziom LOD (wym. 5). L1 = 1 (najważniejsza
+ *  wartość), L2 = 3 (2–3 wartości).
+ *
+ *  S9-2 (AUDYT_JAKOSCI_SLD_2026-08 W-1, wymóg „na L0 wartości zbiorcze/
+ *  stacyjne"): L0 = 1. Dotąd poziom przeglądu nie pokazywał ŻADNEJ liczby, więc
+ *  po biegu rysunek całej sieci wyglądał identycznie jak przed biegiem — dokładnie
+ *  to zmierzył audyt. Na L0 stacja jest zwiniętym blokiem, a most refów
+ *  (`resultRefBridge.ts`) wiąże ten blok z punktem wyniku szyny SN stacji, więc
+ *  jedna linia = wartość STACYJNA (Ik″ punktu stacji / napięcie szyny), nie
+ *  szczegół pola. */
 export const RESULT_LABEL_MAX_LINES_BY_LOD: Readonly<Record<ResultLabelLod, number>> = {
-  0: 0,
+  0: 1,
   1: 1,
   2: 3,
 };

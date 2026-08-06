@@ -657,7 +657,7 @@ function resolveTeeJunctions(segments: readonly PreviewSegment[]): TeeJunctionRe
       if (pi === 0) {
         // PIERWSZY kawałek zachowuje realny `ownerRef` przęsła — `points[0]`
         // pozostaje stroną `fromTerminal` (kontrakt kierunku nakładki F-1,
-        // `overlay.ts`), a bramka `singleHopSegmentRefs`/licznik przęseł
+        // `overlay.ts`), a bramka `orientedSegmentRefs`/licznik przęseł
         // (`overlay.ts`, kawałki `seg/` bez `#`) widzą DOKŁADNIE jeden odcinek
         // na realny ref. `openTerminal` (jeśli był) należy do OSTATNIEGO
         // kawałka, więc przy podziale (>1 kawałek) zdejmujemy go z pierwszego.
@@ -5188,7 +5188,7 @@ function isBusbarLikeSegment(seg: PreviewSegment): boolean {
  * (dowolnego, nie tylko szynowego) sprowadziło resztę do 0 — WSZYSTKIE
  * pozostałe klasy (`#der-row-bus`/`#der-row-trunk`/`#grid-source-drop`) to
  * legalne zakotwiczenia (te same refy kompozytowe, które `overlay.ts`
- * `singleHopSegmentRefs` już dokumentuje jako „nie gałęzie solvera, ale
+ * `orientedSegmentRefs` już dokumentuje jako „nie gałęzie solvera, ale
  * realne odcinki rysunkowe"), a `isBusbarLikeSegment` domknęła OSTATNIE
  * dwa przypadki busopodobne z niehistorycznym `kind`. Zero fałszywych
  * alarmów po korekcie (zweryfikowane na fixturze).

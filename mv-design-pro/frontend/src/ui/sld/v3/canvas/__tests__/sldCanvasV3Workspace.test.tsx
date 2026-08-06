@@ -25,7 +25,7 @@ import {
   faultFlowOverlayTracesToInput,
   isFlowOverlayEmpty,
   flowOverlayValuesTraceToPayload,
-  singleHopSegmentRefs,
+  orientedSegmentRefs,
 } from '../overlay';
 import { useRawResultOverlayStore, type RawOverlayElement, type RawOverlayPayload } from '../../../../sld-overlay/rawResultOverlayStore';
 import { useOverlayStore } from '../../../../sld-overlay/overlayStore';
@@ -216,7 +216,7 @@ describe('SldCanvasV3Workspace — F8b-1 C: nakładka energizacji z realnych wyn
 describe('SldCanvasV3Workspace — F9.5: nakładka przepływu mocy (spec §14.2, ZERO fizyki)', () => {
   // F-1 (recenzja Opusa): ref MUSI być z bramki jednokawałkowej — tylko takie
   // przechodzą przez `buildFlowOverlayForSnapshot` (kierunek udowodniony).
-  const singleHop = singleHopSegmentRefs(enm);
+  const singleHop = new Set(orientedSegmentRefs(enm).keys());
   const realSegmentOwnerRef = buildSceneV3(enm, 2).segments.find(
     (s) =>
       s.meta?.elementKind === 'segment' &&
@@ -280,9 +280,10 @@ describe('SldCanvasV3Workspace — F9.5: nakładka przepływu mocy (spec §14.2,
 });
 
 describe('SldCanvasV3Workspace — karta S-B: strzałki rozpływu prądu zwarciowego (kanał useOverlayStore.faultFlow)', () => {
-  // F-1: ref z bramki jednokawałkowej (kierunek geometrycznie udowodniony) —
-  // ten sam dobór celu co blok F9.5 wyżej.
-  const singleHop = singleHopSegmentRefs(enm);
+  // S9-2: ref z mapy ORIENTACJI (zwrot udowodniony refami wezlow galezi) —
+  // ten sam dobor celu co blok F9.5 wyzej.
+  const orientation = orientedSegmentRefs(enm);
+  const singleHop = new Set(orientation.keys());
   const realSegmentOwnerRef = buildSceneV3(enm, 2).segments.find(
     (s) =>
       s.meta?.elementKind === 'segment' &&
@@ -326,7 +327,7 @@ describe('SldCanvasV3Workspace — karta S-B: strzałki rozpływu prądu zwarcio
   it('buildFaultFlowOverlayForSnapshot niesie wpis identyczny z buildFaultFlowOverlayFromScene wołanym wprost (zero rozjazdu wołający↔budowniczy) + wyrocznia PASS', () => {
     const input = faultInput('to_from');
     const merged = buildFaultFlowOverlayForSnapshot(enm, input);
-    const direct = buildFaultFlowOverlayFromScene(buildSceneV3(enm, 2), input, singleHop);
+    const direct = buildFaultFlowOverlayFromScene(buildSceneV3(enm, 2), input, orientation);
     expect(merged[realSegmentOwnerRef]).toEqual(direct[realSegmentOwnerRef]);
     expect(merged[realSegmentOwnerRef]?.forward).toBe(false);
     expect(faultFlowOverlayTracesToInput(merged, input)).toBe(true);
