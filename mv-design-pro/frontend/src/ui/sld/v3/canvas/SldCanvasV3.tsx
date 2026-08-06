@@ -324,6 +324,16 @@ export interface SldCanvasV3Props {
    *  renderowane jest opacity bazowe 1, więc `false` służy WYŁĄCZNIE jawnemu
    *  usunięciu węzła animacji z markupu eksportu. */
   readonly animateLodTransitions?: boolean;
+  /** Tryb motywu PODANY WPROST — omija sterownik powłoki (`useThemeModeStore`).
+   *  Potrzebny wszędzie tam, gdzie kanwa renderuje się POZA przeglądarką:
+   *  `renderToStaticMarkup` czyta ze store'a Zustand STAN POCZĄTKOWY
+   *  (`getInitialState`, kontrakt SSR `useSyncExternalStore`), więc harness
+   *  zrzutowy mógł ustawiać tryb do woli, a rysunek i tak wychodził w palecie
+   *  dyspozytorskiej — „oba motywy" na zrzutach były wtedy dwoma zrzutami tego
+   *  samego motywu (defekt wykryty przy karcie S9-4, pomiar: `data-theme-mode`
+   *  = `dark_scada` w renderze zleconym jako jasny). Brak propa = tryb z
+   *  powłoki, czyli zachowanie aplikacji bez zmian. */
+  readonly themeMode?: ThemeMode;
   /** Karta S9-4 (audyt §3.2, P-6 „klik w tło zaznacza obiekt"): klik w PUSTY
    *  arkusz — poza obszarem trafienia jakiegokolwiek obiektu. Kanwa nie zna
    *  selekcji (to stan wołającego), więc tylko melduje zdarzenie; wołający
@@ -2224,7 +2234,7 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
   const {
     snapshot, width, height, overlay, onElementClick, onElementDoubleClick, onElementContextMenu, lodOverride,
     layerVisibility, onResultLabelActivate, onCameraChange, animateLodTransitions = true, fitSignal,
-    fitTarget = 'tresc', centerRequest, onBackgroundClick,
+    fitTarget = 'tresc', centerRequest, onBackgroundClick, themeMode: themeModeOverride,
   } = props;
   // S9-8: obszar bezpieczny kadru — doki własne kanwy plus (opcjonalnie)
   // zasłona wołającego. Referencja stabilna, żeby `useEffect` refitu nie

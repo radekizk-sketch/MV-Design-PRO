@@ -163,6 +163,10 @@ for (const przypadek of PRZYPADKI) {
   const overlay = { energizedByTestId: {}, resultLabelsByOwnerRef: rlByRef };
 
   for (const motyw of MOTYWY) {
+    // Tryb podawany WPROST propem: `renderToStaticMarkup` czyta ze store'a
+    // Zustand STAN POCZĄTKOWY (kontrakt SSR `useSyncExternalStore`), więc samo
+    // `setState` dawało dwa zrzuty tego samego motywu. `setState` zostaje dla
+    // spójności ewentualnych konsumentów store'a poza kanwą.
     useThemeModeStore.setState({ mode: motyw.mode });
     const paleta = sldPaletteForTheme(motyw.mode);
     const inner = renderToStaticMarkup(
@@ -171,6 +175,7 @@ for (const przypadek of PRZYPADKI) {
         width={KAMERA.width}
         height={KAMERA.height}
         lodOverride={przypadek.lod}
+        themeMode={motyw.mode}
         overlay={overlay}
         onElementClick={() => {}}
         onResultLabelActivate={() => {}}

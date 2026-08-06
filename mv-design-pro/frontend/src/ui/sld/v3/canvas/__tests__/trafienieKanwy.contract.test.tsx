@@ -357,3 +357,26 @@ describe('S9-4 — klik w tło (audyt P-6)', () => {
     expect(onBackgroundClick).not.toHaveBeenCalled();
   });
 });
+
+describe('S9-4 — tryb motywu podany wprost (dowód dla harnessu zrzutowego)', () => {
+  it('prop `themeMode` wygrywa ze sterownikiem powłoki — bez niego render poza przeglądarką zawsze dawał paletę dyspozytorską', () => {
+    const { container: jasny } = render(
+      <SldCanvasV3
+        snapshot={enm}
+        width={CANVAS_WIDTH}
+        height={CANVAS_HEIGHT}
+        lodOverride={0}
+        themeMode="light_technical"
+      />,
+    );
+    expect(svgOf(jasny).getAttribute('data-theme-mode')).toBe('light_technical');
+    // Kolor faktycznie się zmienia (nie sam atrybut): tło kanwy jasnego motywu
+    // jest białe, dyspozytorskiego — ciemne.
+    expect(svgOf(jasny).getAttribute('style')).toContain('rgb(255, 255, 255)');
+
+    const { container: bezPropa } = render(
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={0} />,
+    );
+    expect(svgOf(bezPropa).getAttribute('data-theme-mode')).toBe('dark_scada');
+  });
+});
