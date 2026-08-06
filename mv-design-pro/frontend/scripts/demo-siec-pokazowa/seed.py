@@ -3,15 +3,16 @@
 
 CO BUDUJE (kontrakt `docs/domain/POMIAR_ROZLICZENIOWY_SN_V1.md`):
 
-    GPZ ──odc.1── [S1 dystrybucyjna] ──odc.2── [S2 dystrybucyjna] ──odc.3──▶
-                        │                            │
-                    (ZKSN odg.)                  (ZKSN odg.)
-                        │                            │
-                 [K1 przemysłowa]             [K2 typowa 1000 kVA
-                  1 MVA + pomiar]              „+ pomiary" + pomiar]
+    GPZ ─odc.1─ [S1] ─odc.2─ [S2] ─odc.3─ [S3] ─odc.4 (napowietrzny)─▶
+                   │                                    │
+               (ZKSN odg.)                      (słup rozgałęźny odg.)
+                   │                                    │
+            [K1 przemysłowa]                    [K2 typowa 1000 kVA
+             1 MVA + pomiar]                     „+ pomiary" + pomiar]
 
-- magistrala OSD: 3 odcinki kablowe ze stacjami DYSTRYBUCYJNYMI wciętymi
-  przelotowo (szablon BEZ pomiaru rozliczeniowego — klasa A kontraktu);
+- magistrala OSD: 3 odcinki kablowe + odcinek NAPOWIETRZNY, z trzema stacjami
+  DYSTRYBUCYJNYMI wciętymi przelotowo (szablon BEZ pomiaru rozliczeniowego —
+  klasa A kontraktu);
 - 2 klientów SN (przemysłowy i typowy 1000 kVA) przyłączonych ODGAŁĘZIENIAMI
   od magistrali — stacje KOŃCOWE, pomiar w szeregu z gałęzią klienta;
 - biegi zwarciowy i rozpływowy na zbudowanym modelu.
@@ -46,10 +47,23 @@ from typing import Any
 BACKEND = os.environ.get("BACKEND_URL", "http://127.0.0.1:8000")
 WERSJA_KATALOGU = "2024.1"
 
-#: Szablony sieci pokazowej. `klient=True` ⇒ szablon deklaruje pole pomiarowe,
-#: więc kontrakt wymaga przyłączenia odgałęzieniem.
-STACJE_MAGISTRALI = ("tpl_sn_nn_630kva", "tpl_sn_nn_400kva")
+#: Szablony sieci pokazowej. Klient (szablon z polem POMIAROWYM) idzie zawsze
+#: drogą odgałęzienia — kontrakt klasy B.
+#: Trzy stacje dystrybucyjne OSD wcięte przelotowo (klasa A).
+# Wszystkie trzy MUSZĄ mieć pole liniowe ODPŁYWOWE (OUT): magistrala biegnie
+# przez nie dalej. Szablon 2-polowy (np. 250 kVA = IN + TR) jest stacją KOŃCOWĄ
+# i w środku ciągu kłamałby o topologii.
+STACJE_MAGISTRALI = ("tpl_sn_nn_630kva", "tpl_sn_nn_400kva", "tpl_sn_nn_1250kva")
+#: Dwaj klienci SN: pierwszy za ZKSN na odcinku KABLOWYM, drugi za SŁUPEM
+#: ROZGAŁĘŹNYM na odcinku napowietrznym — sieć ćwiczy oba rodzaje punktu.
 KLIENCI = ("tpl_przemyslowa_1mva_4odplywy", "tpl_sn_nn_1000kva")
+#: Magistrala: trzy przęsła kablowe + ostatnie napowietrzne.
+ODCINKI_MAGISTRALI = (
+    ("KABEL", "KABEL_SN", "cable-tfk-yakxs-3x120", 600),
+    ("KABEL", "KABEL_SN", "cable-tfk-yakxs-3x120", 720),
+    ("KABEL", "KABEL_SN", "cable-tfk-yakxs-3x120", 840),
+    ("LINIA_NAPOWIETRZNA", "LINIA_SN", "line-base-afl2-70", 960),
+)
 
 
 def zadanie(metoda: str, sciezka: str, dane: Any = None, timeout: int = 600) -> Any:
@@ -211,18 +225,18 @@ def zbuduj(tryb: str) -> dict[str, Any]:
         },
     )
 
-    # Magistrala: 3 odcinki. Po każdym z dwóch pierwszych — stacja DYSTRYBUCYJNA
-    # wcięta przelotowo (klasa A: bez pomiaru rozliczeniowego).
+    # Magistrala: 4 odcinki (3 kablowe + napowietrzny). Na trzech pierwszych —
+    # stacje DYSTRYBUCYJNE wcięte przelotowo (klasa A: bez pomiaru rozliczeniowego).
     odcinki: list[str] = []
-    for i in range(3):
+    for i, (rodzaj, przestrzen, pozycja, dlugosc) in enumerate(ODCINKI_MAGISTRALI):
         wynik = sesja.operacja(
             "continue_trunk_segment_sn",
             {
                 "segment": {
-                    "rodzaj": "KABEL",
-                    "dlugosc_m": 600 + 120 * i,
+                    "rodzaj": rodzaj,
+                    "dlugosc_m": dlugosc,
                     "name": f"Magistrala SN — odcinek {i + 1}",
-                    "catalog_binding": wiazanie("KABEL_SN", "cable-tfk-yakxs-3x120"),
+                    "catalog_binding": wiazanie(przestrzen, pozycja),
                 }
             },
         )

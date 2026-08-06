@@ -163,7 +163,11 @@ export function segmentStrokeWidthForScale(kind: PreviewSegmentKind, cameraScale
  *  WYŁĄCZNIE `'apparatus'|'transformer'`), więc obecność tego elementu na
  *  scenie NIGDY nie wpływa na wyrocznie ciągłości toru mocy. */
 export type PreviewElementKind =
-  | 'station' | 'transformer' | 'der' | 'source' | 'apparatus' | 'bus' | 'segment' | 'protectionAnnotation';
+  | 'station' | 'transformer' | 'der' | 'source' | 'apparatus' | 'bus' | 'segment' | 'protectionAnnotation'
+  // ODG-RYSUNEK: PUNKT ODGAŁĘŹNY na odcinku magistrali (ENM `branch_points`) —
+  // ani aparat pola, ani stacja: własny obiekt sieci z własnym rodzajem trafienia
+  // (`canvas/hitAreas.ts` `punkt-odgalezny`) i własnym wpisem inwentarza.
+  | 'branchPoint';
 
 /** Metadane wspólne symbolu/segmentu, potrzebne WYŁĄCZNIE do debug-atrybutów
  *  (spec zadania F5b: „data-symbol-canon/data-parity-key przepisywane z

@@ -7,9 +7,10 @@ znormalizowany, deterministyczny JSON zapisany jako fixtura testów rysunku:
 
     frontend/src/ui/sld/v3/scene/__tests__/fixtures/pomiarOdgalezienie.enm.json
 
-Sieć jest tą samą, którą buduje `seed.py --tryb po` (magistrala OSD ze stacjami
-przelotowymi + 2 klientów SN w odgałęzieniach) — jedna prawda kształtu, zero
-syntetycznego zgadywania w testach rysunku.
+Sieć jest tą samą, którą buduje `seed.py --tryb po` (magistrala OSD z TRZEMA
+stacjami przelotowymi + 2 klientów SN w odgałęzieniach, jeden za ZKSN na odcinku
+kablowym, drugi za słupem rozgałęźnym na odcinku napowietrznym) — jedna prawda
+kształtu, zero syntetycznego zgadywania w testach rysunku.
 
 Determinizm: `created_at`/`updated_at` przypięte do stałej, `header.name`
 i identyfikatory projektu/przypadku poza migawką, więc plik jest bajtowo stabilny
@@ -39,8 +40,22 @@ from fastapi.testclient import TestClient  # noqa: E402
 _STALY_CZAS = "2026-08-06T00:00:00Z"
 _WERSJA_KATALOGU = "2024.1"
 
-STACJE_MAGISTRALI = ("tpl_sn_nn_630kva", "tpl_sn_nn_400kva")
+#: Trzy stacje dystrybucyjne OSD wcięte przelotowo (klasa A kontraktu).
+# Wszystkie trzy MUSZĄ mieć pole liniowe ODPŁYWOWE (OUT): magistrala biegnie
+# przez nie dalej. Szablon 2-polowy (np. 250 kVA = IN + TR) jest stacją KOŃCOWĄ
+# i w środku ciągu kłamałby o topologii.
+STACJE_MAGISTRALI = ("tpl_sn_nn_630kva", "tpl_sn_nn_400kva", "tpl_sn_nn_1250kva")
+#: Dwaj klienci SN w odgałęzieniach (klasa B). Pierwszy siada na odcinku KABLOWYM
+#: (punkt odgałęźny = ZKSN), drugi na NAPOWIETRZNYM (punkt = słup rozgałęźny) —
+#: sieć pokazowa ćwiczy OBA rodzaje punktu odgałęźnego, nie jeden.
 KLIENCI = ("tpl_przemyslowa_1mva_4odplywy", "tpl_sn_nn_1000kva")
+#: Magistrala: trzy przęsła kablowe + ostatnie napowietrzne.
+ODCINKI_MAGISTRALI = (
+    ("KABEL", "KABEL_SN", "cable-tfk-yakxs-3x120", 600),
+    ("KABEL", "KABEL_SN", "cable-tfk-yakxs-3x120", 720),
+    ("KABEL", "KABEL_SN", "cable-tfk-yakxs-3x120", 840),
+    ("LINIA_NAPOWIETRZNA", "LINIA_SN", "line-base-afl2-70", 960),
+)
 
 _WYJSCIE = (
     _FRONTEND
@@ -130,15 +145,15 @@ def _zbuduj(klient: TestClient) -> dict[str, Any]:
         },
     )
     odcinki: list[str] = []
-    for i in range(3):
+    for i, (rodzaj, przestrzen, pozycja, dlugosc) in enumerate(ODCINKI_MAGISTRALI):
         wynik = operacja(
             "continue_trunk_segment_sn",
             {
                 "segment": {
-                    "rodzaj": "KABEL",
-                    "dlugosc_m": 600 + 120 * i,
+                    "rodzaj": rodzaj,
+                    "dlugosc_m": dlugosc,
                     "name": f"Magistrala SN — odcinek {i + 1}",
-                    "catalog_binding": _wiazanie("KABEL_SN", "cable-tfk-yakxs-3x120"),
+                    "catalog_binding": _wiazanie(przestrzen, pozycja),
                 }
             },
         )
@@ -147,6 +162,8 @@ def _zbuduj(klient: TestClient) -> dict[str, Any]:
     for indeks, template_id in enumerate(STACJE_MAGISTRALI):
         zastosuj(template_id, odcinki[indeks])
 
+    # Klienci: pierwszy na odcinku KABLOWYM w środku ciągu (ZKSN), drugi na
+    # OSTATNIM odcinku — napowietrznym, za ostatnią stacją (słup rozgałęźny).
     migawka = klient.get(f"/api/cases/{case_id}/enm").json()
     odcinki_magistrali = migawka["corridors"][0]["ordered_segment_refs"]
     for template_id, cel in zip(KLIENCI, [odcinki_magistrali[1], odcinki_magistrali[-1]]):

@@ -338,6 +338,37 @@ export function BranchJunctionGlyph(props: GlyphProps): JSX.Element {
   );
 }
 
+/**
+ * ODG-RYSUNEK: ZŁĄCZE KABLOWE SN (ZKSN) jako punkt odgałęźny na odcinku
+ * magistrali. Obudowa aparatu (prostokąt IEC 60617) z węzłem toru w środku:
+ * tor magistrali wchodzi z lewej (port `w`), wychodzi w prawo (port `e`),
+ * odgałęzienie schodzi w dół (port `s`). Odróżnialny od zwykłego węzła trasy
+ * (`junction` — sama kropka) OBUDOWĄ, nie rozmiarem (patrz `symbols/defs.ts`).
+ */
+export function BranchCabinetGlyph(props: GlyphProps): JSX.Element {
+  return (
+    <g {...glyphGroupProps('branchCabinet', props)}>
+      <rect x={3} y={3} width={10} height={10} fill="none" stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
+      <circle cx={8} cy={8} r={2.5} fill={stroke(props)} />
+    </g>
+  );
+}
+
+/**
+ * ODG-RYSUNEK: SŁUP ROZGAŁĘŹNY linii napowietrznej SN jako punkt odgałęźny.
+ * Węzeł toru (kropka) z sylwetką słupa (trzon w górę + poprzeczka) — ten sam
+ * układ portów co `branchCabinet`, inny obiekt terenowy, więc inny glif.
+ */
+export function BranchPoleGlyph(props: GlyphProps): JSX.Element {
+  return (
+    <g {...glyphGroupProps('branchPole', props)}>
+      <line x1={8} y1={2} x2={8} y2={8} stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
+      <line x1={3} y1={2} x2={13} y2={2} stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
+      <circle cx={8} cy={8} r={2.5} fill={stroke(props)} />
+    </g>
+  );
+}
+
 export function CurrentTransformerGlyph(props: GlyphProps): JSX.Element {
   return (
     <g {...glyphGroupProps('currentTransformer', props)}>
@@ -753,6 +784,8 @@ export const SYMBOL_GLYPHS: Readonly<Record<SymbolId, (props: GlyphProps) => JSX
   noPoint: NoPointGlyph,
   junction: JunctionGlyph,
   branchJunction: BranchJunctionGlyph,
+  branchCabinet: BranchCabinetGlyph,
+  branchPole: BranchPoleGlyph,
   currentTransformer: CurrentTransformerGlyph,
   voltageTransformer: VoltageTransformerGlyph,
   surgeArrester: SurgeArresterGlyph,

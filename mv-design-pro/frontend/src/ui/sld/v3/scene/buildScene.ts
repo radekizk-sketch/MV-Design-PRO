@@ -262,6 +262,15 @@ export interface SceneV3Meta {
    */
   readonly sheetRowBands: readonly SheetRowBand[];
   readonly lateralRunIds: readonly string[];
+  /** ODG-RYSUNEK: identyfikatory stacji FAKTYCZNIE narysowanych (magistrala,
+   *  laterale, feedery GPZ) — posortowane. Dotąd scena wystawiała wyłącznie
+   *  LICZNIK (`stationCount`), więc wyrocznia pokrycia mogła powiedzieć „ile", a
+   *  nie „które". Wejście `branchPointDrawGaps` („stacja za punktem odgałęźnym
+   *  narysowana"). */
+  readonly drawnStationIds: readonly string[];
+  /** ODG-RYSUNEK: refy PUNKTÓW ODGAŁĘŹNYCH narysowanych na torze magistrali
+   *  (symbol + rozcięcie toru) — posortowane; puste dla sieci bez punktów. */
+  readonly drawnBranchPointRefs: readonly string[];
   /** Decyzje zakresu / luki danych napotkane przy budowie TEJ sceny —
    *  widoczne w testach/CI (nie ukryty dług w komentarzu). */
   readonly stopNotes: readonly string[];
@@ -640,6 +649,110 @@ function splitPolylineAtPoints(
   return pieces;
 }
 
+/**
+ * ODG-RYSUNEK: cięcie ŁAŃCUCHA przęsła w PUNKTACH ODGAŁĘŹNYCH leżących na tym
+ * przęśle. Bez tego kroku punkt stałby W ŚRODKU kawałka jednego członu, choć w
+ * modelu KOŃCZY jeden człon i ZACZYNA następny — rysunek kłamałby o tożsamości
+ * odcinków (klik/inspektor/nakładka wynikowa czytają `ownerRef` kawałka).
+ *
+ * Reguła: polilinia dzieli się NAJPIERW punktami odgałęźnymi (twarde granice z
+ * modelu), a każdy powstały pod-bieg dopiero potem na równe kawałki swojego
+ * pod-łańcucha (dotychczasowa `splitPolylineIntoPieces`). Zwraca `null`, gdy
+ * podziału nie da się wykonać dokładnie (punkt poza biegiem poziomym, degeneracja
+ * długości) — wołający wraca wtedy do zachowania sprzed karty i ZGŁASZA to,
+ * zamiast rysować cięcie w nieprawdziwym miejscu.
+ */
+interface BranchPointChainCut {
+  /** Liczba członów łańcucha PRZED punktem (1 … chain.length−1). */
+  readonly chainIndex: number;
+  readonly point: RouteVertex;
+}
+
+/** ODG-RYSUNEK: kotwica punktu odgałęźnego na torze wraz z jego tożsamością. */
+interface RowBranchAnchor {
+  readonly refId: string;
+  readonly point: RouteVertex;
+}
+
+/** ODG-RYSUNEK: kontekst cięcia torów magistrali JEDNEGO wiersza arkusza —
+ *  kotwice punktów odgałęźnych tego wiersza + piony, na których nie wolno ciąć
+ *  równych udziałów. Przekazywany też DO PRZODU (`previousSheetRow`), bo łącznik
+ *  ciągu dalszego wychodzi z wiersza `k`, a rysowany jest przy wierszu `k+1`. */
+interface TrunkChainContext {
+  readonly anchorBySegmentRef: ReadonlyMap<string, RowBranchAnchor>;
+  readonly forbiddenCutX: ReadonlySet<number>;
+}
+
+/**
+ * ODG-RYSUNEK: kawałki łańcucha JEDNEGO toru magistrali — z twardymi cięciami w
+ * punktach odgałęźnych leżących na tym torze, a w pozostałych miejscach
+ * dotychczasowym podziałem na równe udziały długości. Jedno wejście dla
+ * WSZYSTKICH torów ciągu (GPZ→S0, przęsło międzystacyjne, łącznik wierszy, ogon
+ * otwarty), żeby nie powstały cztery reguły cięcia zamiast jednej.
+ *
+ * `consumed` zbiera refy punktów, których cięcie FAKTYCZNIE wykonano — to jedyny
+ * warunek narysowania symbolu punktu (predykaty parami, reguła KLASA §3: symbol
+ * punktu istnieje wtedy i tylko wtedy, gdy tor jest w nim rozcięty; punkt bez
+ * cięcia zgłasza się jako luka pokrycia, nie wisi obok toru).
+ */
+function trunkChainPieces(
+  points: readonly RouteVertex[],
+  chain: readonly string[],
+  ctx: TrunkChainContext,
+  consumed: Set<string>,
+  stopNotes: string[],
+): readonly (readonly RouteVertex[])[] {
+  const cuts: BranchPointChainCut[] = [];
+  const refs: string[] = [];
+  chain.forEach((ref, i) => {
+    const anchor = ctx.anchorBySegmentRef.get(ref);
+    if (anchor && i + 1 <= chain.length - 1) {
+      cuts.push({ chainIndex: i + 1, point: anchor.point });
+      refs.push(anchor.refId);
+    }
+  });
+  const exact = splitChainAtBranchPoints(points, chain, cuts, ctx.forbiddenCutX);
+  if (exact) {
+    refs.forEach((r) => consumed.add(r));
+    return exact;
+  }
+  if (cuts.length > 0) {
+    stopNotes.push(
+      `Punkt odgałęźny na przęśle „${chain[0]}…${chain[chain.length - 1]}": rozcięcie toru w punkcie niewykonalne (kotwica poza biegiem poziomym albo degeneracja długości) — przęsło podzielone równymi udziałami, punkt bez symbolu.`,
+    );
+  }
+  return chain.length > 1 ? splitPolylineIntoPieces(points, chain.length, ctx.forbiddenCutX) : [points];
+}
+
+function splitChainAtBranchPoints(
+  points: readonly RouteVertex[],
+  chain: readonly string[],
+  cuts: readonly BranchPointChainCut[],
+  forbiddenCutX: ReadonlySet<number>,
+): readonly (readonly RouteVertex[])[] | null {
+  if (cuts.length === 0) return null;
+  const ordered = [...cuts].sort((a, b) => a.chainIndex - b.chainIndex);
+  for (let i = 0; i < ordered.length; i++) {
+    if (ordered[i].chainIndex < 1 || ordered[i].chainIndex > chain.length - 1) return null;
+    if (i > 0 && ordered[i].chainIndex <= ordered[i - 1].chainIndex) return null;
+  }
+  const subs = splitPolylineAtPoints(points, ordered.map((c) => c.point));
+  if (subs.length !== ordered.length + 1) return null;
+
+  const out: (readonly RouteVertex[])[] = [];
+  let from = 0;
+  for (let s = 0; s < subs.length; s++) {
+    const to = s < ordered.length ? ordered[s].chainIndex : chain.length;
+    const count = to - from;
+    if (count < 1) return null;
+    const pieces = count > 1 ? splitPolylineIntoPieces(subs[s], count, forbiddenCutX) : [subs[s]];
+    if (pieces.length !== count) return null;
+    out.push(...pieces);
+    from = to;
+  }
+  return out.length === chain.length ? out : null;
+}
+
 interface TeeJunctionResult {
   readonly segments: readonly PreviewSegment[];
   readonly dots: readonly RouteVertex[];
@@ -716,6 +829,9 @@ function resolveTeeJunctions(segments: readonly PreviewSegment[]): TeeJunctionRe
  */
 function classifySymbolElementKind(symbolId: SymbolId): PreviewElementKind {
   if (symbolId === 'transformer2W') return 'transformer';
+  // ODG-RYSUNEK: punkt odgałęźny (ZKSN / słup rozgałęźny) — własna kategoria
+  // (obiekt sieci na torze), nie aparat pola.
+  if (symbolId === 'branchCabinet' || symbolId === 'branchPole') return 'branchPoint';
   // F9.4: `gridSource` (sieć zewnętrzna) sprawdzone PRZED `startsWith('der')`
   // — nie jest DER, ma własny elementKind `'source'` (spec §13.1/§13.2).
   if (symbolId === 'gridSource') return 'source';
@@ -1581,11 +1697,109 @@ function interStationCorridorY(layout: RowLayout, lod: SceneLod): number {
 // prepassu i origin głównej pętli są zawsze zgodne (zero cienia stanu).
 // ---------------------------------------------------------------------------
 
+/**
+ * ODG-RYSUNEK (etap 3 kontraktu `docs/domain/POMIAR_ROZLICZENIOWY_SN_V1.md`):
+ * PUNKT ODGAŁĘŹNY ciągu głównego — obiekt ENM (`branch_points`: ZKSN dla odcinka
+ * kablowego, słup rozgałęźny dla napowietrznego) leżący MIĘDZY dwoma członami
+ * magistrali. Nowa KLASA WĘZŁA wiersza obok stacji: nie ma pól ani bloku, ale ma
+ * tożsamość (ref/nazwa z danych), symbol, etykietę, obszar trafienia i — przede
+ * wszystkim — jest PEŁNOPRAWNYM POCZĄTKIEM ODGAŁĘZIENIA.
+ *
+ * Wiązanie z rysunkiem jest wyprowadzone z DANYCH, bez zgadywania po nazwach:
+ *  · `upstreamSegmentRef` — człon magistrali, którego `toTerminal.busRef` RÓWNA
+ *    SIĘ `BranchPointSN.bus_ref`; to on kończy się w tym punkcie, więc cięcie
+ *    łańcucha przęsła wypada dokładnie tu (`splitChainAtBranchPoints`);
+ *  · `upstreamNodeRef` — najbliższy WCZEŚNIEJSZY węzeł ciągu z właścicielem
+ *    (stacja albo GPZ); w JEGO szczelinie kolumnowej punkt dostaje kanał zejścia,
+ *    tą samą formułą co lateral wychodzący z pola odgałęźnego stacji
+ *    (`computeLateralChannelX`) — jeden allocator, jedno źródło prawdy.
+ */
+interface TrunkBranchPoint {
+  readonly refId: string;
+  readonly name: string;
+  readonly kind: 'zksn' | 'branch_pole';
+  readonly upstreamSegmentRef: string;
+  readonly upstreamNodeRef: string;
+  /** Pozycja w `segmentPaths` ciągu głównego — porządek rysowania (od zasilania). */
+  readonly trunkIndex: number;
+}
+
+/** ODG-RYSUNEK: symbol punktu odgałęźnego wg RODZAJU Z MODELU (zero domysłu po
+ *  nazwie/katalogu — `BranchPointSN.branch_point_type` jest jedynym pisarzem). */
+function branchPointSymbolId(kind: TrunkBranchPoint['kind']): SymbolId {
+  return kind === 'zksn' ? 'branchCabinet' : 'branchPole';
+}
+
+/**
+ * ODG-RYSUNEK: punkty odgałęźne LEŻĄCE NA CIĄGU GŁÓWNYM, w kolejności od
+ * zasilania. Punkt, którego szyny nie ma w `segmentPaths` magistrali (odgałęzienie
+ * zagnieżdżone, feeder GPZ — poza zakresem F6a jak same laterale zagnieżdżone),
+ * NIE jest tu zwracany: wołający zgłasza go `stopNote`, zamiast cicho gubić.
+ */
+function collectTrunkBranchPoints(
+  snapshot: EnergyNetworkModel,
+  mainCableRun: SldCableRun | undefined,
+  stopNotes: string[],
+): readonly TrunkBranchPoint[] {
+  const points = snapshot.branch_points ?? [];
+  if (points.length === 0) return [];
+  const paths = mainCableRun?.segmentPaths ?? [];
+  const out: TrunkBranchPoint[] = [];
+  for (const bp of points) {
+    const trunkIndex = paths.findIndex((p) => p.toTerminal?.busRef === bp.bus_ref);
+    if (trunkIndex < 0) {
+      stopNotes.push(
+        `Punkt odgałęźny „${bp.name}" (${bp.ref_id}) nie leży na ciągu głównym (szyna ${bp.bus_ref} poza „segmentPaths" magistrali) — punkt i jego odgałęzienia poza rysunkiem (odgałęzienie zagnieżdżone, POZA zakresem F6a).`,
+      );
+      continue;
+    }
+    let upstreamNodeRef: string | null = null;
+    for (let i = trunkIndex; i >= 0; i--) {
+      const owner = paths[i].fromTerminal?.ownerRef ?? null;
+      if (owner != null) {
+        upstreamNodeRef = owner;
+        break;
+      }
+    }
+    if (upstreamNodeRef == null) {
+      stopNotes.push(
+        `Punkt odgałęźny „${bp.name}" (${bp.ref_id}) nie ma na ciągu żadnego węzła POPRZEDZAJĄCEGO (stacji ani GPZ) — brak szczeliny kolumnowej dla kanału zejścia, punkt poza rysunkiem.`,
+      );
+      continue;
+    }
+    out.push({
+      refId: bp.ref_id,
+      name: bp.name,
+      kind: bp.branch_point_type,
+      upstreamSegmentRef: paths[trunkIndex].segmentRef,
+      upstreamNodeRef,
+      trunkIndex,
+    });
+  }
+  return out.sort((a, b) => a.trunkIndex - b.trunkIndex);
+}
+
+/** ODG-RYSUNEK: rodzaj początku odgałęzienia. `station-bay` = pole odgałęźne
+ *  stacji ciągu (dotychczasowy, jedyny obsługiwany przypadek); `branch-point` =
+ *  punkt odgałęźny na ODCINKU (ZKSN / słup rozgałęźny). */
+type BranchOriginKind = 'station-bay' | 'branch-point';
+
 interface ResolvedBranchOrigin {
+  readonly kind: BranchOriginKind;
+  /** Węzeł, od którego liczy się etykieta przęsła zejścia i łańcuch segmentów —
+   *  stacja (pole odgałęźne) albo punkt odgałęźny. */
   readonly originOwnerRef: string;
+  /** Stacja ciągu głównego, w której SZCZELINIE kolumnowej leży kanał zejścia.
+   *  Dla `station-bay` == `originOwnerRef`; dla `branch-point` — stacja
+   *  POPRZEDZAJĄCA punkt na ciągu (`TrunkBranchPoint.upstreamNodeRef`). */
+  readonly channelOwnerRef: string;
   readonly originRow: RowStation;
   readonly branchPos: number;
-  readonly originPort: { readonly x: number; readonly y: number };
+  /** Port odgałęźny pola stacji. `null` dla punktu odgałęźnego — jego port leży
+   *  NA TORZE magistrali (kanał × korytarz międzystacyjny), więc jest znany
+   *  dopiero przy budowie wiersza (patrz `branchPointAnchorY`). */
+  readonly originPort: { readonly x: number; readonly y: number } | null;
+  readonly branchPoint: TrunkBranchPoint | null;
 }
 
 function resolveBranchOrigin(
@@ -1593,15 +1807,48 @@ function resolveBranchOrigin(
   cableRunById: ReadonlyMap<string, SldCableRun>,
   mainRowById: ReadonlyMap<string, RowStation>,
   branchOriginUsage: Map<string, number>,
+  // ODG-RYSUNEK: pozycje kanałów punktów odgałęźnych są PRZYDZIELONE osobno
+  // (`computeRowChannelPlan`, po lateralach pól tej samej stacji), więc tu
+  // punkt NIE pobiera kolejnego `branchPos` — dostaje swoją, już ustaloną.
+  branchPointByRef: ReadonlyMap<string, TrunkBranchPoint>,
+  branchPointPos: ReadonlyMap<string, number>,
 ): ResolvedBranchOrigin | null {
   const originOwnerRef = cableRunById.get(run.id)?.segmentPaths?.[0]?.fromTerminal?.ownerRef ?? null;
-  const originRow = originOwnerRef ? mainRowById.get(originOwnerRef) : undefined;
-  if (!originOwnerRef || !originRow) return null;
-  const branchPos = branchOriginUsage.get(originOwnerRef) ?? 0;
-  branchOriginUsage.set(originOwnerRef, branchPos + 1);
-  const originPort = originRow.composed.branchPort(branchPos);
-  if (!originPort) return null;
-  return { originOwnerRef, originRow, branchPos, originPort };
+  if (originOwnerRef != null) {
+    const originRow = mainRowById.get(originOwnerRef);
+    if (!originRow) return null;
+    const branchPos = branchOriginUsage.get(originOwnerRef) ?? 0;
+    branchOriginUsage.set(originOwnerRef, branchPos + 1);
+    const originPort = originRow.composed.branchPort(branchPos);
+    if (!originPort) return null;
+    return {
+      kind: 'station-bay',
+      originOwnerRef,
+      channelOwnerRef: originOwnerRef,
+      originRow,
+      branchPos,
+      originPort,
+      branchPoint: null,
+    };
+  }
+  // ODG-RYSUNEK: odgałęzienie startujące w PUNKCIE ODGAŁĘŹNYM — adapter niesie
+  // jego ref w `branchOriginStationRef` (`enmToSldAdapter.ts`), a `fromTerminal.
+  // ownerRef` jest tam z definicji pusty (szyna punktu nie należy do stacji).
+  const bpRef = run.branchOriginStationRef ?? null;
+  const bp = bpRef != null ? branchPointByRef.get(bpRef) : undefined;
+  if (!bp) return null;
+  const originRow = mainRowById.get(bp.upstreamNodeRef);
+  const branchPos = branchPointPos.get(bp.refId);
+  if (!originRow || branchPos == null) return null;
+  return {
+    kind: 'branch-point',
+    originOwnerRef: bp.refId,
+    channelOwnerRef: bp.upstreamNodeRef,
+    originRow,
+    branchPos,
+    originPort: null,
+    branchPoint: bp,
+  };
 }
 
 /**
@@ -1635,22 +1882,87 @@ function computeLateralChannelX(
  * WSZYSTKICH zejść PÓŹNIEJSZYCH w kolejności komponowania, żeby zarezerwować
  * dla nich kanały w KAŻDYM wcześniejszym wierszu, który będą przecinać.
  */
-function computeLateralChannelXById(
+/**
+ * ODG-RYSUNEK: PLAN KANAŁÓW jednego wiersza arkusza — X-y pionów zejścia dla
+ * WSZYSTKICH początków odgałęzień tego wiersza, w JEDNYM przebiegu i z JEDNEGO
+ * allocatora (`usage` per stacja-właściciel szczeliny).
+ *
+ * Kolejność przydziału jest częścią kontraktu (reguła KLASA §3 „predykaty
+ * parami"): NAJPIERW laterale wychodzące z PÓL stacji tego wiersza (kolejność
+ * `branchRuns` adaptera), DOPIERO POTEM punkty odgałęźne (kolejność ciągu). Dzięki
+ * temu sieci BEZ punktów odgałęźnych dostają dokładnie te same kanały co przed tą
+ * kartą (zero ruchu goldenów), a punkt odgałęźny nigdy nie zajmuje szczeliny
+ * lateralowi pola.
+ *
+ * Odgałęzienie startujące W PUNKCIE odgałęźnym NIE bierze własnego kanału —
+ * dziedziczy kanał SWOJEGO punktu (pion schodzi z toru magistrali dokładnie tam,
+ * gdzie stoi symbol punktu). Drugie i kolejne odgałęzienie z tego samego punktu
+ * (katalogowe `branch_ports_count > 1`) dostaje WŁASNY kanał i dojeżdża do niego
+ * sub-poziomem pod korytarzem (patrz trasa w sekcji 6).
+ */
+interface RowChannelPlan {
+  /** Kanał zejścia per `topologyRun.id` (laterale pól i odgałęzienia punktów). */
+  readonly byRunId: ReadonlyMap<string, number>;
+  /** Kanał (== X symbolu) per `TrunkBranchPoint.refId`. */
+  readonly byBranchPointRef: ReadonlyMap<string, number>;
+  /** Pozycja w szczelinie per punkt — wejście `resolveBranchOrigin`. */
+  readonly branchPosByBranchPointRef: ReadonlyMap<string, number>;
+}
+
+function computeRowChannelPlan(
   branchRuns: readonly SldTopologyRun[],
+  rowBranchPoints: readonly TrunkBranchPoint[],
   cableRunById: ReadonlyMap<string, SldCableRun>,
   mainRowById: ReadonlyMap<string, RowStation>,
+  branchPointByRef: ReadonlyMap<string, TrunkBranchPoint>,
   mainColumns: readonly ColumnResult[],
-): ReadonlyMap<string, number> {
-  const out = new Map<string, number>();
+): RowChannelPlan {
+  const byRunId = new Map<string, number>();
+  const byBranchPointRef = new Map<string, number>();
+  const branchPosByBranchPointRef = new Map<string, number>();
   const usage = new Map<string, number>();
+
+  // (1) Laterale z PÓL stacji — zachowanie sprzed karty, bit w bit.
   for (const run of branchRuns) {
-    const origin = resolveBranchOrigin(run, cableRunById, mainRowById, usage);
-    if (!origin) continue;
-    const channelX = computeLateralChannelX(mainColumns, origin.originOwnerRef, origin.branchPos);
+    const origin = resolveBranchOrigin(run, cableRunById, mainRowById, usage, branchPointByRef, new Map());
+    if (!origin || origin.kind !== 'station-bay') continue;
+    const channelX = computeLateralChannelX(mainColumns, origin.channelOwnerRef, origin.branchPos);
     if (channelX == null) continue;
-    out.set(run.id, channelX);
+    byRunId.set(run.id, channelX);
   }
-  return out;
+
+  // (2) Punkty odgałęźne tego wiersza — w kolejności ciągu, w szczelinie stacji
+  //     POPRZEDZAJĄCEJ; kolejne punkty tej samej szczeliny idą krokiem w głąb.
+  for (const bp of rowBranchPoints) {
+    const branchPos = usage.get(bp.upstreamNodeRef) ?? 0;
+    usage.set(bp.upstreamNodeRef, branchPos + 1);
+    const channelX = computeLateralChannelX(mainColumns, bp.upstreamNodeRef, branchPos);
+    if (channelX == null) continue;
+    byBranchPointRef.set(bp.refId, channelX);
+    branchPosByBranchPointRef.set(bp.refId, branchPos);
+  }
+
+  // (3) Odgałęzienia startujące w punktach — pierwsze dziedziczy kanał punktu,
+  //     kolejne z tego samego punktu dostają własny (krok w tej samej szczelinie).
+  const usedByPoint = new Map<string, number>();
+  for (const run of branchRuns) {
+    const bpRef = run.branchOriginStationRef ?? null;
+    const bp = bpRef != null ? branchPointByRef.get(bpRef) : undefined;
+    if (!bp || !byBranchPointRef.has(bp.refId)) continue;
+    if ((cableRunById.get(run.id)?.segmentPaths?.[0]?.fromTerminal?.ownerRef ?? null) != null) continue;
+    const nth = usedByPoint.get(bp.refId) ?? 0;
+    usedByPoint.set(bp.refId, nth + 1);
+    if (nth === 0) {
+      byRunId.set(run.id, byBranchPointRef.get(bp.refId)!);
+      continue;
+    }
+    const branchPos = usage.get(bp.upstreamNodeRef) ?? 0;
+    usage.set(bp.upstreamNodeRef, branchPos + 1);
+    const channelX = computeLateralChannelX(mainColumns, bp.upstreamNodeRef, branchPos);
+    if (channelX != null) byRunId.set(run.id, channelX);
+  }
+
+  return { byRunId, byBranchPointRef, branchPosByBranchPointRef };
 }
 
 /**
@@ -1844,6 +2156,12 @@ function connectRowStations(
   // Recenzja NO-GO 2026-07-17 pkt 13: kody końców przęsła do etykiety
   // „A ↔ B — typ · dł." (`segmentSpanTextWithEndpoints`).
   codeOf?: (id: string) => string | null,
+  // ODG-RYSUNEK: kotwice punktów odgałęźnych leżących na przęsłach TEGO wiersza
+  // (ciąg główny). Puste dla lateralu/feederu — punkty odgałęźne na odgałęzieniu
+  // to zagnieżdżenie POZA zakresem F6a (zgłaszane osobno przy zbieraniu punktów).
+  branchChain?: TrunkChainContext,
+  consumedBranchAnchors?: Set<string>,
+  stopNotes?: string[],
 ): RowConnectResult {
   const connectors: PreviewSegment[] = [];
   const routeGeoms: RouteGeometry[] = [];
@@ -1872,7 +2190,11 @@ function connectRowStations(
     // `ownerRef` (dotąd: ref wyłącznie ostatniego członu, poprzedniki
     // niewidoczne w DOM). Łańcuch 1-członowy → zachowanie identyczne.
     const chain = chainSegmentRefs(cableRun, prev.id, cur.id);
-    const pieces = chain.length > 1 ? splitPolylineIntoPieces(route.points, chain.length, forbiddenCutX) : [route.points];
+    const pieces = branchChain
+      ? trunkChainPieces(route.points, chain, branchChain, consumedBranchAnchors ?? new Set(), stopNotes ?? [])
+      : chain.length > 1
+        ? splitPolylineIntoPieces(route.points, chain.length, forbiddenCutX)
+        : [route.points];
     if (chain.length > 0 && pieces.length === chain.length) {
       pieces.forEach((piecePoints, pi) => {
         connectors.push({
@@ -2300,7 +2622,15 @@ function symbolRect(sym: PreviewSymbol): V3Rect {
  *  gabaryty NIE-węzłowe. Odczyt dla par APARAT↔APARAT jest NIEZMIENIONY
  *  (kropka nie przesuwa niczego). */
 function isNodeMarkerSymbol(sym: PreviewSymbol): boolean {
-  return sym.symbolId === 'junction' || sym.symbolId === 'branchJunction';
+  // ODG-RYSUNEK: punkt odgałęźny należy do TEJ SAMEJ rodziny co kropka węzłowa —
+  // z definicji siedzi NA torze magistrali (jest jego rozcięciem), więc metryki
+  // gabarytowe symbol↔symbol, broniące czytelności APARATÓW, go nie dotyczą.
+  return (
+    sym.symbolId === 'junction' ||
+    sym.symbolId === 'branchJunction' ||
+    sym.symbolId === 'branchCabinet' ||
+    sym.symbolId === 'branchPole'
+  );
 }
 
 /** Gabaryty symboli NIE-węzłowych (aparaty/DER/etykiety-symbole) — wspólna baza
@@ -2867,6 +3197,24 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
   const branchRuns = sldData.topologyRuns.filter((r) => r.kind === 'branch');
   const lateralRunIds: string[] = [];
   const branchOriginUsage = new Map<string, number>();
+  // ODG-RYSUNEK (etap 3 kontraktu pomiaru rozliczeniowego): PUNKTY ODGAŁĘŹNE
+  // ciągu głównego — jedyne miejsce, w którym scena czyta `snapshot.branch_points`.
+  const trunkBranchPoints = collectTrunkBranchPoints(snapshot, mainCableRun, stopNotes);
+  const branchPointByRef = new Map<string, TrunkBranchPoint>(trunkBranchPoints.map((bp) => [bp.refId, bp]));
+  /** ODG-RYSUNEK: kod końca przęsła dla etykiety „A ↔ B · …" — stacja ma
+   *  `stationCode`, punkt odgałęźny NAZWĘ Z DANYCH (`BranchPointSN.name`). Zero
+   *  fabrykacji: gdy węzeł nie jest ani stacją, ani punktem — `null`, a formatter
+   *  degraduje do samego członu technicznego. */
+  const trunkNodeCodeOfId = (id: string): string | null =>
+    stationCodeOfId(id) ?? branchPointByRef.get(id)?.name ?? null;
+  /** ODG-RYSUNEK: refy punktów odgałęźnych FAKTYCZNIE narysowanych (symbol na
+   *  scenie) — wejście wyroczni pokrycia `branchPointDrawGaps`. */
+  const drawnBranchPointRefs = new Set<string>();
+  /** ODG-RYSUNEK: punkty, w których tor magistrali ZOSTAŁ rozcięty. Symbol punktu
+   *  rysuje się WYŁĄCZNIE dla nich (predykaty parami — patrz `trunkChainPieces`). */
+  const consumedBranchAnchors = new Set<string>();
+  /** ODG-RYSUNEK: punkty czekające na decyzję o symbolu — patrz sekcja 6b. */
+  const pendingBranchPointGlyphs: { readonly bp: TrunkBranchPoint; readonly anchor: RouteVertex }[] = [];
   // Feedery z pól GPZ (2026-07-17, po odbiorze „100% klasy przemysłowej"):
   // licznik przydziału KOLEJNYCH pól liniowych GPZ (pierwsze = magistrala).
   let gpzFeederCount = 0;
@@ -2880,17 +3228,44 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
    *  wyznaczony przez stację-origin (feeder z pola GPZ nie ma stacji-origin na
    *  ciągu, więc trafia do pasma wiersza 0, tuż pod GPZ). */
   const sheetRowOfBranchRun = new Map<string, number>();
+  /** ODG-RYSUNEK: stacja ciągu, w której SZCZELINIE leży kanał zejścia tego
+   *  odgałęzienia — JEDNO źródło prawdy dla przydziału wiersza arkusza (tu) i dla
+   *  przydziału kanału (`computeRowChannelPlan`). Dla odgałęzienia z pola stacji
+   *  to ta stacja; dla odgałęzienia z PUNKTU ODGAŁĘŹNEGO — stacja poprzedzająca
+   *  punkt na ciągu. Bez tego wspólnego predykatu odgałęzienie punktu trafiłoby do
+   *  pasma wiersza 0 (fallback feederowy), a jego kanał — do szczeliny wiersza k
+   *  (reguła KLASA §3: warunek wejścia i wyjścia z jednego miejsca). */
+  const branchRunChannelOwnerRef = (run: SldTopologyRun): string | null => {
+    const direct = cableRunById.get(run.id)?.segmentPaths?.[0]?.fromTerminal?.ownerRef ?? null;
+    if (direct != null) return direct;
+    const bpRef = run.branchOriginStationRef ?? null;
+    return (bpRef != null ? branchPointByRef.get(bpRef)?.upstreamNodeRef : null) ?? null;
+  };
   for (const run of branchRuns) {
-    const originRef = cableRunById.get(run.id)?.segmentPaths?.[0]?.fromTerminal?.ownerRef ?? null;
+    const originRef = branchRunChannelOwnerRef(run);
     const originIndex = originRef != null ? trunkIndexById.get(originRef) : undefined;
     sheetRowOfBranchRun.set(run.id, originIndex != null && sheetPlan ? sheetPlan.rowOfStation[originIndex] : 0);
+  }
+  /** ODG-RYSUNEK: wiersz arkusza punktu odgałęźnego — z TEGO SAMEGO predykatu
+   *  (stacja poprzedzająca), więc punkt i jego odgałęzienie zawsze lądują w tym
+   *  samym paśmie. */
+  const sheetRowOfBranchPoint = new Map<string, number>();
+  for (const bp of trunkBranchPoints) {
+    const idx = trunkIndexById.get(bp.upstreamNodeRef);
+    sheetRowOfBranchPoint.set(bp.refId, idx != null && sheetPlan ? sheetPlan.rowOfStation[idx] : 0);
   }
   /** Strop kolejnego wiersza arkusza (pasma stackują się w dół). */
   let sheetCursorTopY = mainRowDy;
   /** Ostatnia stacja i prawa krawędź PASMA poprzedniego wiersza — wejście
    *  łącznika ciągu dalszego (decyzja §5). */
-  let previousSheetRow: { readonly layout: RowLayout; readonly last: RowStation; readonly bandRightX: number } | null =
-    null;
+  let previousSheetRow: {
+    readonly layout: RowLayout;
+    readonly last: RowStation;
+    readonly bandRightX: number;
+    /** ODG-RYSUNEK: kontekst cięcia toru wiersza `k` — łącznik ciągu dalszego
+     *  wychodzi z tego wiersza, a rysowany jest dopiero przy wierszu `k+1`. */
+    readonly trunkChain: TrunkChainContext;
+  } | null = null;
 
   for (let sheetRowIndex = 0; sheetRowIndex < sheetRowLayouts.length; sheetRowIndex++) {
     // Wiersz 0 jest już wyrównany do GPZ (sekcja 3); dalsze wiersze siadają
@@ -2958,14 +3333,48 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
     // odgałęzień TEGO wiersza (tylko one przecinają jego przęsła — przeplot
     // pasm, decyzja §4); funkcja czysta, więc wynik jest ten sam, co w sekcji 6.
     const rowBranchRuns = branchRuns.filter((run) => sheetRowOfBranchRun.get(run.id) === sheetRowIndex);
-    const trunkForbiddenCutXs = new Set(
-      computeLateralChannelXById(
-        rowBranchRuns,
-        cableRunById,
-        mainRowById,
-        rowLayout.columnsResult.columns,
-      ).values(),
+    // ODG-RYSUNEK: punkty odgałęźne TEGO wiersza + JEDEN plan kanałów wiersza
+    // (laterale pól i punkty), liczony RAZ i używany zarówno tu (zakazane cięcia
+    // przęseł), jak i w sekcji 6 (budowa zejść) — dawniej te same wartości liczyły
+    // się dwa razy w dwóch miejscach.
+    const rowBranchPoints = trunkBranchPoints.filter(
+      (bp) => sheetRowOfBranchPoint.get(bp.refId) === sheetRowIndex,
     );
+    const channelPlan = computeRowChannelPlan(
+      rowBranchRuns,
+      rowBranchPoints,
+      cableRunById,
+      mainRowById,
+      branchPointByRef,
+      rowLayout.columnsResult.columns,
+    );
+    const lateralChannelXById = channelPlan.byRunId;
+    const trunkForbiddenCutXs = new Set<number>([
+      ...channelPlan.byRunId.values(),
+      ...channelPlan.byBranchPointRef.values(),
+    ]);
+    /** ODG-RYSUNEK: KOTWICE punktów odgałęźnych TEGO wiersza — kanał × korytarz
+     *  międzystacyjny wiersza. Kluczem jest ref członu, który w punkcie się
+     *  KOŃCZY (`upstreamSegmentRef`), bo dokładnie tam tnie się łańcuch przęsła. */
+    const branchPointCorridorY = interStationCorridorY(rowLayout, lod);
+    const rowAnchorBySegmentRef = new Map<string, RowBranchAnchor>();
+    const rowAnchorByRef = new Map<string, RouteVertex>();
+    for (const bp of rowBranchPoints) {
+      const x = channelPlan.byBranchPointRef.get(bp.refId);
+      if (x == null) {
+        stopNotes.push(
+          `Punkt odgałęźny „${bp.name}" (${bp.refId}): węzeł poprzedzający „${bp.upstreamNodeRef}" nie ma kolumny w tym wierszu — kanał zejścia niewyliczalny, punkt poza rysunkiem.`,
+        );
+        continue;
+      }
+      const point: RouteVertex = { x, y: branchPointCorridorY };
+      rowAnchorBySegmentRef.set(bp.upstreamSegmentRef, { refId: bp.refId, point });
+      rowAnchorByRef.set(bp.refId, point);
+    }
+    const rowTrunkChainContext: TrunkChainContext = {
+      anchorBySegmentRef: rowAnchorBySegmentRef,
+      forbiddenCutX: trunkForbiddenCutXs,
+    };
 
     if (sheetRowIndex === 0 && rowStations.length > 0) {
       const first = rowStations[0];
@@ -3053,10 +3462,9 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
         // (`continue_trunk` ×k, stacja dopiero na k-tym segmencie) — kawałek
         // per człon z WŁASNYM `ownerRef` (jak w `connectRowStations`).
         const gpzChain = chainSegmentRefs(mainCableRun, gpzData!.id, first.id);
-        const gpzPieces =
-          gpzChain.length > 1
-            ? splitPolylineIntoPieces(route.points, gpzChain.length, trunkForbiddenCutXs)
-            : [route.points];
+        const gpzPieces = trunkChainPieces(
+          route.points, gpzChain, rowTrunkChainContext, consumedBranchAnchors, stopNotes,
+        );
         if (gpzChain.length > 0 && gpzPieces.length === gpzChain.length) {
           gpzPieces.forEach((piecePoints, pi) => {
             allSegments.push({
@@ -3144,10 +3552,11 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
         (p, i) => i === 0 || p.x !== rawLink[i - 1].x || p.y !== rawLink[i - 1].y,
       );
       const linkChain = chainSegmentRefs(mainCableRun, prev.last.id, first.id);
-      const linkPieces =
-        linkChain.length > 1
-          ? splitPolylineIntoPieces(linkPoints, linkChain.length, trunkForbiddenCutXs)
-          : [linkPoints];
+      // ODG-RYSUNEK: łącznik wychodzi z wiersza `k−1`, więc punkty odgałęźne
+      // (i ich kanały) pochodzą z KONTEKSTU TAMTEGO wiersza — nie bieżącego.
+      const linkPieces = trunkChainPieces(
+        linkPoints, linkChain, prev.trunkChain, consumedBranchAnchors, stopNotes,
+      );
       if (linkChain.length > 0 && linkPieces.length === linkChain.length) {
         linkPieces.forEach((piecePoints, pi) => {
           allSegments.push({
@@ -3241,7 +3650,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       }
     }
 
-    const internal = connectRowStations(rowStations, rowLayout, mainCableRun, lod, [], 'snTrunk', trunkForbiddenCutXs, stationCodeOfId);
+    const internal = connectRowStations(rowStations, rowLayout, mainCableRun, lod, [], 'snTrunk', trunkForbiddenCutXs, stationCodeOfId, rowTrunkChainContext, consumedBranchAnchors, stopNotes);
     allSegments.push(...internal.connectors);
     allRouteGeoms.push(...internal.routeGeoms);
     segmentSpans.push(...internal.spanLabels);
@@ -3256,7 +3665,16 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       if (tail.length > 0) {
         const exit = lastStation.composed.exitPort;
         const tailCorridorY = interStationCorridorY(rowLayout, lod);
-        const xEnd = snapUp(exit.x) + tail.length * OPEN_RUN_PIECE_SPAN;
+        // ODG-RYSUNEK: ogon musi sięgać ZA ostatni punkt odgałęźny, który na nim
+        // leży — inaczej kotwica punktu wypadłaby poza biegiem i tor nie dałby
+        // się w niej rozciąć (a punkt zostałby bez symbolu).
+        const tailBranchX = tail
+          .map((ref) => rowAnchorBySegmentRef.get(ref)?.point.x)
+          .filter((x): x is number => x != null);
+        const xEnd = Math.max(
+          snapUp(exit.x) + tail.length * OPEN_RUN_PIECE_SPAN,
+          ...tailBranchX.map((x) => snapUp(x) + OPEN_RUN_PIECE_SPAN),
+        );
         const rawTail: RouteVertex[] = [
           { x: exit.x, y: exit.y },
           { x: exit.x, y: tailCorridorY },
@@ -3265,7 +3683,9 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
         const tailPoints = rawTail.filter(
           (p, pi) => pi === 0 || p.x !== rawTail[pi - 1].x || p.y !== rawTail[pi - 1].y,
         );
-        const tailPieces = tail.length > 1 ? splitPolylineIntoPieces(tailPoints, tail.length) : [tailPoints];
+        const tailPieces = trunkChainPieces(
+          tailPoints, tail, rowTrunkChainContext, consumedBranchAnchors, stopNotes,
+        );
         if (tailPieces.length === tail.length) {
           tailPieces.forEach((piecePoints, pi) => {
             allSegments.push({
@@ -3289,19 +3709,33 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       }
     }
 
+    // -- 5b. PUNKTY ODGAŁĘŹNE tego wiersza (ODG-RYSUNEK, etap 3 kontraktu
+    // `docs/domain/POMIAR_ROZLICZENIOWY_SN_V1.md`). Symbol siada NA TORZE
+    // magistrali, w kotwicy, w której tor został właśnie rozcięty — dzięki temu
+    // punkt jest STYKIEM KOŃCÓW dwóch członów, a nie obcym glifem leżącym na
+    // przewodzie (zero fałszywych węzłów §22.1). Etykieta nazwy idzie POD symbol,
+    // w pustą strefę rozdzielającą B4/B5 (`DESCENT_STRIP_HEIGHT`) — nad pasmem
+    // nazw stacji, w szczelinie kolumnowej, więc nie koliduje ani z blokiem, ani
+    // z nazwą stacji. Trafialność (S9-4) wynika z samego symbolu i etykiety:
+    // `canvas/hitAreas.ts` buduje obszary z `scene.symbols`/`scene.labels`, a
+    // `elementKind:'branchPoint'` daje im własny rodzaj („punkt-odgalezny").
+    // Emisja jest ODROCZONA za pętlę wierszy: rozcięcie toru w punkcie leżącym na
+    // ŁĄCZNIKU ciągu dalszego wykonuje się dopiero przy wierszu NASTĘPNYM, więc
+    // decyzja „rysować symbol?" nie może zapaść tutaj (znalezisko pomiaru: punkt
+    // między wierszami 0 i 1 raportował się jako nierozcięty, choć tor był cięty
+    // chwilę później).
+    for (const bp of rowBranchPoints) {
+      const anchor = rowAnchorByRef.get(bp.refId);
+      if (anchor) pendingBranchPointGlyphs.push({ bp, anchor });
+    }
+
     // -- 6. Odgałęzienia zaczepione w stacjach TEGO wiersza (przeplot pasm,
     // decyzja §4) — pakowane półkami POD wierszem, NAD wierszem następnym.
-    // F6d prepass (przypadek a, patrz nagłówek `computeLateralChannelXById`):
-    // X kanału KAŻDEGO odgałęzienia tego pasma, znane PRZED zbudowaniem
-    // geometrii jakiegokolwiek wiersza lateralnego — wiersz `li` rezerwuje
-    // kanały dla zejść `li+1..` (głębszych w grzebieniu, przecinających TEN
-    // wiersz w drodze do swojego).
-    const lateralChannelXById = computeLateralChannelXById(
-      rowBranchRuns,
-      cableRunById,
-      mainRowById,
-      rowLayout.columnsResult.columns,
-    );
+    // F6d prepass (przypadek a, patrz nagłówek `computeRowChannelPlan`): X kanału
+    // KAŻDEGO odgałęzienia tego pasma jest znany PRZED zbudowaniem geometrii
+    // jakiegokolwiek wiersza lateralnego — wiersz `li` rezerwuje kanały dla zejść
+    // `li+1..` (głębszych w grzebieniu, przecinających TEN wiersz w drodze do
+    // swojego). ODG-RYSUNEK: plan policzony RAZ, wyżej (`channelPlan`).
     // Dół wiersza W ŚWIECIE = strop wiersza + wysokość pasm.
     const mainRowBottom = rowTopYOf(rowLayout) + rowLayout.bandsResult.totalHeight;
 
@@ -3313,7 +3747,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
   // MIN_SUBTREE_CLEARANCE (realny footprint), a piony zejść skracają się WYNIKOWO.
   // `dropBandHeight` = NAJWYŻSZY korytarz etykiety zejścia (reguła OGÓLNA z realnego
   // bbox tekstu po pomiarze fontu, WYTYCZNE §2; 0 gdy brak lateralów z etykietą).
-  // Prepass deterministyczny (osobna mapa `usage`, jak `computeLateralChannelXById`
+  // Prepass deterministyczny (osobna mapa `usage`, jak `computeRowChannelPlan`
   // — ta sama kolejność `branchRuns` i warunki ⇒ identyczny origin/branchPos).
     const dropBandHeight = ((): number => {
     const usage = new Map<string, number>();
@@ -3325,14 +3759,16 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
         gpzData != null &&
         (cr?.segmentPaths?.[0]?.fromTerminal?.ownerRef ?? null) === gpzData.id;
       if (isFeeder) continue; // feeder ma etykietę POZIOMĄ (segmentSpans), nie zejściową
-      const origin = resolveBranchOrigin(run, cableRunById, mainRowById, usage);
+      const origin = resolveBranchOrigin(
+        run, cableRunById, mainRowById, usage, branchPointByRef, channelPlan.branchPosByBranchPointRef,
+      );
       if (!origin) continue;
       if (lateralChannelXById.get(run.id) == null) continue;
       const station0Id = run.stationRefs.find((id) => stationById.has(id));
       if (station0Id == null) continue; // bieg otwarty (bez stacji) — nie woła place()
       const incomingText = segmentSpanTextWithEndpoints(
         incomingLabelText(cr, station0Id),
-        stationCodeOfId(origin.originOwnerRef),
+        trunkNodeCodeOfId(origin.originOwnerRef),
         stationCodeOfId(station0Id),
       );
       if (incomingText == null) continue;
@@ -3570,21 +4006,63 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       continue;
     }
 
-    const origin = resolveBranchOrigin(run, cableRunById, mainRowById, branchOriginUsage);
+    const origin = resolveBranchOrigin(
+      run, cableRunById, mainRowById, branchOriginUsage, branchPointByRef, channelPlan.branchPosByBranchPointRef,
+    );
     if (!origin) {
       stopNotes.push(
-        `Lateral „${run.id}": stacja-origin nie leży na magistrali głównej (odgałęzienie zagnieżdżone, POZA zakresem F6a) lub nie ma pola odgałęźnego dla tego branchPos — ciąg pominięty.`,
+        `Lateral „${run.id}": początek odgałęzienia nie leży na magistrali głównej (odgałęzienie zagnieżdżone, POZA zakresem F6a), nie ma pola odgałęźnego dla tego branchPos, albo punkt odgałęźny nie trafił na rysunek — ciąg pominięty.`,
       );
       continue;
     }
-    const { originOwnerRef, originPort } = origin;
+    const { originOwnerRef } = origin;
     const channelX = lateralChannelXById.get(run.id);
     if (channelX == null) {
       stopNotes.push(
-        `Lateral „${run.id}": nie znaleziono kolumny stacji-origin „${originOwnerRef}" na magistrali głównej — kanał zejścia (F6d) nie mógł być wyliczony, ciąg pominięty.`,
+        `Lateral „${run.id}": nie znaleziono kolumny węzła-origin „${origin.channelOwnerRef}" na magistrali głównej — kanał zejścia (F6d) nie mógł być wyliczony, ciąg pominięty.`,
       );
       continue;
     }
+    // ODG-RYSUNEK: początkiem odgałęzienia jest ALBO port pola odgałęźnego stacji
+    // (dotychczas), ALBO PUNKT ODGAŁĘŹNY na torze — wtedy „port" leży dokładnie w
+    // kotwicy punktu (kanał × korytarz międzystacyjny), czyli tam, gdzie stoi jego
+    // symbol i gdzie tor jest rozcięty. Jedno źródło prawdy: kotwica z sekcji 5b.
+    const branchPointAnchor = origin.branchPoint ? rowAnchorByRef.get(origin.branchPoint.refId) : undefined;
+    if (origin.kind === 'branch-point' && !branchPointAnchor) {
+      stopNotes.push(
+        `Lateral „${run.id}": punkt odgałęźny „${origin.originOwnerRef}" nie ma kotwicy na torze tego wiersza — ciąg pominięty.`,
+      );
+      continue;
+    }
+    const originPort = origin.originPort ?? branchPointAnchor!;
+    /**
+     * ODG-RYSUNEK: GŁOWICA ZEJŚCIA — pierwsze wierzchołki trasy odgałęzienia,
+     * od jego początku do pionu kanału. Dwa przypadki, jedna reguła:
+     *  · POLE ODGAŁĘŹNE STACJI — port leży WEWNĄTRZ bloku, więc trasa schodzi do
+     *    stropu strefy rozdzielającej B4/B5 (`stripTopY`) i dopiero tam jedzie do
+     *    kanału (dotychczasowe zachowanie, bit w bit);
+     *  · PUNKT ODGAŁĘŹNY — początek leży JUŻ NA TORZE, w kanale, więc trasa
+     *    startuje wprost w kotwicy punktu (zero jogu; jog w górę do `stripTopY`
+     *    byłby zawróceniem po własnym śladzie). Drugie i kolejne odgałęzienie z
+     *    TEGO SAMEGO punktu ma własny kanał — dojeżdża do niego sub-poziomem
+     *    `GRID` PONIŻEJ korytarza (kolejny wolny poziom strefy B4/B5, ta sama
+     *    zasada rozdzielania sub-poziomów co `trunkCorridorYOf`).
+     */
+    const descentHead = (stripTopY: number): readonly RouteVertex[] => {
+      if (origin.kind !== 'branch-point') {
+        return [
+          { x: originPort.x, y: originPort.y },
+          { x: originPort.x, y: stripTopY },
+          { x: channelX, y: stripTopY },
+        ];
+      }
+      if (originPort.x === channelX) return [{ x: channelX, y: originPort.y }];
+      return [
+        { x: originPort.x, y: originPort.y },
+        { x: originPort.x, y: originPort.y + GRID },
+        { x: channelX, y: originPort.y + GRID },
+      ];
+    };
 
     let layout = buildRowLayout(run.stationRefs, stationById, lineRuns, GPZ_NODE_CODE, cableRun, lod, stopNotes, derSourcesByStationId, true);
     if (layout.measureInputs.length === 0) {
@@ -3607,9 +4085,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
           const raw: RouteVertex[] =
             i === 0
               ? [
-                  { x: originPort.x, y: originPort.y },
-                  { x: originPort.x, y: stripTopY },
-                  { x: channelX, y: stripTopY },
+                  ...descentHead(stripTopY),
                   { x: channelX, y: to },
                 ]
               : [
@@ -3669,7 +4145,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
     // pasa na L0/L1 jest nieszkodliwa i utrzymuje wspólną kotwicę.
     const incomingText = segmentSpanTextWithEndpoints(
       incomingLabelText(cableRun, layout.measureInputs[0].id),
-      stationCodeOfId(originOwnerRef ?? ''),
+      trunkNodeCodeOfId(originOwnerRef ?? ''),
       stationCodeOfId(layout.measureInputs[0].id),
     );
     const requiredCorridorHeight = incomingText != null ? measureLabelWidth(incomingText, 't2') + 2 * GRID : 0;
@@ -3843,9 +4319,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       const rawJogPoints: RouteVertex[] = (() => {
         if (lod === 0) {
           return [
-            { x: originPort.x, y: originPort.y },
-            { x: originPort.x, y: stripTopY },
-            { x: channelX, y: stripTopY },
+            ...descentHead(stripTopY),
             { x: channelX, y: entry.y },
             { x: entry.x, y: entry.y },
           ];
@@ -3854,9 +4328,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
         const gutterX = snapToGrid(col0.x - 2 * GRID);
         const underY = trunkCorridorYOf(layout) + GRID;
         return [
-          { x: originPort.x, y: originPort.y },
-          { x: originPort.x, y: stripTopY },
-          { x: channelX, y: stripTopY },
+          ...descentHead(stripTopY),
           { x: channelX, y: dy },
           { x: gutterX, y: dy },
           { x: gutterX, y: underY },
@@ -3869,7 +4341,12 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       );
       // §16-v3 (tożsamość łańcucha): zejście origin→stacja0 lateralu bywa
       // wieloczłonowe — kawałek per człon (jak GPZ→S0 / `connectRowStations`).
-      const lateralChain = chainSegmentRefs(cableRun, originOwnerRef, first.id);
+      // ODG-RYSUNEK: odgałęzienie z PUNKTU zaczyna się na pierwszym członie
+      // `segmentPaths` (szyna punktu nie ma właściciela-stacji, więc dopasowanie
+      // po `fromTerminal.ownerRef` nie istnieje) — `null` znaczy „od początku ciągu".
+      const lateralChain = chainSegmentRefs(
+        cableRun, origin.kind === 'branch-point' ? null : originOwnerRef, first.id,
+      );
       const lateralPieces =
         lateralChain.length > 1 ? splitPolylineIntoPieces(jogPoints, lateralChain.length) : [jogPoints];
       if (lateralChain.length > 0 && lateralPieces.length === lateralChain.length) {
@@ -3890,7 +4367,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
         // pkt 13 (recenzja NO-GO 2026-07-17): para końców origin↔stacja0.
         const text = segmentSpanTextWithEndpoints(
           incomingLabelText(cableRun, first.id),
-          stationCodeOfId(originOwnerRef ?? '') ?? null,
+          trunkNodeCodeOfId(originOwnerRef ?? '') ?? null,
           stationCodeOfId(first.id),
         );
         if (text) {
@@ -3972,9 +4449,53 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
         layout: rowLayout,
         last: rowStations[rowStations.length - 1],
         bandRightX: Math.max(bandRightX, lateralBandRightX),
+        trunkChain: rowTrunkChainContext,
       };
     }
   } // koniec pętli wierszy arkusza
+
+  // -- 6b. SYMBOLE PUNKTÓW ODGAŁĘŹNYCH (ODG-RYSUNEK). Rysowane PO wszystkich
+  // wierszach, bo dopiero wtedy wiadomo, w których punktach tor magistrali
+  // faktycznie został rozcięty (`consumedBranchAnchors`) — łącznik ciągu dalszego
+  // wiersza `k` powstaje w iteracji wiersza `k+1`.
+  for (const { bp, anchor } of pendingBranchPointGlyphs) {
+    if (!consumedBranchAnchors.has(bp.refId)) {
+      stopNotes.push(
+        `Punkt odgałęźny „${bp.name}" (${bp.refId}): tor magistrali nie został w nim rozcięty (kotwica poza narysowanym biegiem członu „${bp.upstreamSegmentRef}") — punkt bez symbolu na rysunku.`,
+      );
+      continue;
+    }
+    const symbolId = branchPointSymbolId(bp.kind);
+    const def = SYMBOL_DEFS[symbolId];
+    allSymbols.push({
+      symbolId,
+      x: snapToGrid(anchor.x - def.width / 2),
+      y: snapToGrid(anchor.y - def.height / 2),
+      meta: {
+        testId: `sld-v3-punkt-odgalezny-${bp.refId}`,
+        ownerRef: bp.refId,
+        elementKind: 'branchPoint',
+      },
+    });
+    drawnBranchPointRefs.add(bp.refId);
+    if (lod !== 0) {
+      // Etykieta OBOK pionu zejścia, nie pod nim: wprost pod symbolem biegnie
+      // kabel odgałęzienia (pomiar: 2 kolizje etykieta↔przewód), a nad nim tor
+      // magistrali. Wolne miejsce to prawa strona kanału, w strefie rozdzielającej
+      // B4/B5 poniżej obu sub-poziomów jogu (`trunkCorridorYOf` i `+GRID`), nad
+      // pasmem nazw stacji (`B5.y == stripTopY + DESCENT_STRIP_HEIGHT`).
+      const nameWidth = measureLabelWidth(bp.name, 't3');
+      simpleAnchored.push({
+        ownerRef: `${bp.refId}#name`,
+        ownerKind: 'branch-point',
+        text: bp.name,
+        labelClass: 't3',
+        anchor: { x: snapToGrid(anchor.x + GRID + nameWidth / 2), y: anchor.y },
+        placement: 'below',
+        clearance: 2 * GRID,
+      });
+    }
+  }
 
   // F9.4 (runda korekcyjna, F-1.3, spec §13.1): DER/źródło, którego
   // `connectionRef` NIE rozwiązuje się do ŻADNEJ FAKTYCZNIE narysowanej
@@ -4242,6 +4763,8 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
         : [],
       sheetRowBands,
       lateralRunIds,
+      drawnStationIds: [...drawnStationIds].sort(),
+      drawnBranchPointRefs: [...drawnBranchPointRefs].sort(),
       stopNotes,
       sources: allSources,
       gpzZone: gpzGeometry?.zone ?? null,
@@ -6577,6 +7100,66 @@ export function sourceCoverageGaps(scene: SceneV3): readonly SourceCoverageGap[]
 
 export function allSourcesVisible(scene: SceneV3): boolean {
   return sourceCoverageGaps(scene).length === 0;
+}
+
+// ---------------------------------------------------------------------------
+// ODG-RYSUNEK — branch_point_coverage_probe (etap 3 kontraktu
+// `docs/domain/POMIAR_ROZLICZENIOWY_SN_V1.md` §4).
+// ---------------------------------------------------------------------------
+
+export interface BranchPointCoverageGap {
+  readonly branchPointRef: string;
+  readonly reason: 'punkt-nienarysowany' | 'stacja-za-punktem-nienarysowana';
+  /** Ref stacji, gdy luką jest brak stacji ZA punktem. */
+  readonly stationRef?: string;
+}
+
+/**
+ * WYROCZNIA POKRYCIA PUNKTÓW ODGAŁĘŹNYCH: dla KAŻDEGO `branch_point` w modelu
+ * (a) punkt ma symbol na scenie i (b) KAŻDA stacja stojąca za tym punktem
+ * (na odgałęzieniu z niego wychodzącym) jest FAKTYCZNIE narysowana.
+ *
+ * DLACZEGO OSOBNO OD `stationCount`. Licznik stacji mówi „ile", a nie „które":
+ * scena z pominiętym odgałęzieniem klienta miała licznik zgodny z liczbą stacji
+ * ciągu i wyglądała na kompletną (dokładnie tak wyglądał dług etapu 3 — stacja
+ * klienta była w modelu i NIE była na rysunku). Ta wyrocznia porównuje model z
+ * rysunkiem po TOŻSAMOŚCI.
+ *
+ * Odgałęzienia rozpoznaje adapter (`branchOriginStationRef` == ref punktu) —
+ * przeliczany tu NIEZALEŻNIE od przebiegu, który zbudował scenę, żeby test nie
+ * był samopoświadczeniem sceny.
+ */
+export function branchPointCoverageGaps(
+  scene: SceneV3,
+  snapshot: EnergyNetworkModel,
+): readonly BranchPointCoverageGap[] {
+  const points = snapshot.branch_points ?? [];
+  if (points.length === 0) return [];
+  const drawnPoints = new Set(scene.meta.drawnBranchPointRefs);
+  const drawnStations = new Set(scene.meta.drawnStationIds);
+  const sldData = buildSldDataFromSnapshot(snapshot, snapshot.logical_views ?? null, null);
+  const gaps: BranchPointCoverageGap[] = [];
+  for (const bp of points) {
+    if (!drawnPoints.has(bp.ref_id)) {
+      gaps.push({ branchPointRef: bp.ref_id, reason: 'punkt-nienarysowany' });
+    }
+    for (const run of sldData.topologyRuns) {
+      if (run.branchOriginStationRef !== bp.ref_id) continue;
+      for (const stationRef of run.stationRefs) {
+        if (drawnStations.has(stationRef)) continue;
+        gaps.push({
+          branchPointRef: bp.ref_id,
+          reason: 'stacja-za-punktem-nienarysowana',
+          stationRef,
+        });
+      }
+    }
+  }
+  return gaps;
+}
+
+export function allBranchPointsDrawn(scene: SceneV3, snapshot: EnergyNetworkModel): boolean {
+  return branchPointCoverageGaps(scene, snapshot).length === 0;
 }
 
 // ---------------------------------------------------------------------------
