@@ -375,7 +375,9 @@ def _route_matches(
 
 
 def _proxied(path: str, proxy_prefixes: list[str]) -> bool:
-    return any(path == prefix or path.startswith(prefix.rstrip("/") + "/") for prefix in proxy_prefixes)
+    return any(
+        path == prefix or path.startswith(prefix.rstrip("/") + "/") for prefix in proxy_prefixes
+    )
 
 
 def check_route_prefixes() -> list[str]:
