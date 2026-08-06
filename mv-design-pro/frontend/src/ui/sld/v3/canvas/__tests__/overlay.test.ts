@@ -26,7 +26,7 @@ import {
   isOltcOverlayEmpty,
   multiHopFaultFlowSegmentRefs,
   oltcOverlayTracesToPayload,
-  singleHopSegmentRefs,
+  orientedSegmentRefs,
 } from '../overlay';
 import type {
   ShortCircuitBranchFlowV1,
@@ -49,20 +49,24 @@ const enm = (JSON.parse(readFileSync(fixturePath, 'utf8')) as { readonly enm: En
 
 const scene = buildSceneV3(enm, 2);
 
-/** F-1 (recenzja Opusa): zbiór refów jednokawałkowych — jedyne z udowodnionym
- *  kierunkiem, jedyne dopuszczone przez budowniczego do wpisu strzałki. */
-const singleHop = singleHopSegmentRefs(enm);
+/** S9-2: mapa ORIENTACJI odcinkow (`segmentRef → points[0] po stronie „from"`)
+ *  — jedyne refy z udowodnionym zwrotem, jedyne dopuszczone przez budowniczego
+ *  do wpisu strzałki. Zastąpiła bramkę F-1 (`singleHopSegmentRefs`), która
+ *  wymagała, by OBA końce odcinka były stacjami — na realnej sieci SN (ciąg z
+ *  mufami) była przez to pusta, więc rozpływ nie miał ani jednej strzałki
+ *  (audyt 2026-08, W-1). */
+const oriented = orientedSegmentRefs(enm);
 
 /** Realne `ownerRef` odcinków klasy `elementKind==='segment'` z PRAWDZIWYM
- *  `segmentRef` (bez kompozytu `#...`), OGRANICZONE do jednokawałkowych —
- *  tylko te przechodzą przez bramkę F-1 budowniczego. */
+ *  `segmentRef` (bez kompozytu `#...`), OGRANICZONE do tych z udowodnioną
+ *  orientacją — tylko te przechodzą przez bramkę budowniczego. */
 const realSegmentOwnerRefs = scene.segments
   .filter(
     (s) =>
       s.meta?.elementKind === 'segment' &&
       s.meta.ownerRef &&
       !s.meta.ownerRef.includes('#') &&
-      singleHop.has(s.meta.ownerRef),
+      oriented.has(s.meta.ownerRef),
   )
   .map((s) => s.meta!.ownerRef!);
 
@@ -81,13 +85,25 @@ const realTransformerOwnerRefs = Array.from(
   ),
 );
 
+/** S9-2 — mapa orientacji uzywana przez KANAL ZWARCIOWY: dokladnie to, co sklada
+ *  produkcja (`SldCanvasV3Workspace.buildFaultFlowOverlayForSnapshot`) —
+ *  `orientedSegmentRefs` (dowod per czlon) uzupelnione o przedstawicieli
+ *  lancuchow (dowod per lancuch, V12K-121) tam, gdzie pierwszy dowod nie siega. */
+function orientationForFaultFlow(sceneForChain: SceneV3, model: EnergyNetworkModel): Map<string, boolean> {
+  const map = new Map(orientedSegmentRefs(model));
+  for (const ref of multiHopFaultFlowSegmentRefs(sceneForChain, model)) {
+    if (!map.has(ref)) map.set(ref, true);
+  }
+  return map;
+}
+
 function payloadOf(elements: Record<string, RawOverlayElement>, analysisType = 'load_flow'): RawOverlayPayload {
   return { run_id: 'run-test', analysis_type: analysisType, elements };
 }
 
 describe('overlay.ts — buildFlowOverlayFromScene (F9.5, spec §14.2)', () => {
   it('§14.2 „overlay wyłączony bez wyniku": payload=null ⇒ nakładka pusta (zero atrap)', () => {
-    const overlay = buildFlowOverlayFromScene(scene, null, singleHop);
+    const overlay = buildFlowOverlayFromScene(scene, null, oriented);
     expect(isFlowOverlayEmpty(overlay)).toBe(true);
   });
 
@@ -102,7 +118,7 @@ describe('overlay.ts — buildFlowOverlayFromScene (F9.5, spec §14.2)', () => {
         I_A: { code: 'I_A', value: 50, unit: 'A' },
       }),
     });
-    const overlay = buildFlowOverlayFromScene(scene, payload, singleHop);
+    const overlay = buildFlowOverlayFromScene(scene, payload, oriented);
     expect(isFlowOverlayEmpty(overlay)).toBe(true);
   });
 
@@ -115,7 +131,7 @@ describe('overlay.ts — buildFlowOverlayFromScene (F9.5, spec §14.2)', () => {
         I_A: { code: 'I_A', value: 120, unit: 'A' },
       }),
     });
-    const overlay = buildFlowOverlayFromScene(scene, payload, singleHop);
+    const overlay = buildFlowOverlayFromScene(scene, payload, oriented);
     expect(overlay[ref]).toEqual({
       ownerRef: ref,
       forward: true,
@@ -131,7 +147,7 @@ describe('overlay.ts — buildFlowOverlayFromScene (F9.5, spec §14.2)', () => {
     const payload = payloadOf({
       [ref]: elementWithMetrics(ref, { P_MW: { code: 'P_MW', value: -1.1, unit: 'MW' } }),
     });
-    const overlay = buildFlowOverlayFromScene(scene, payload, singleHop);
+    const overlay = buildFlowOverlayFromScene(scene, payload, oriented);
     expect(overlay[ref].forward).toBe(false);
     expect(overlay[ref].p).toEqual({ value: -1.1, unit: 'MW' });
     // Q/I nieobecne w wyniku ⇒ nieobecne w nakładce (nie fabrykowane jako 0).
@@ -145,7 +161,7 @@ describe('overlay.ts — buildFlowOverlayFromScene (F9.5, spec §14.2)', () => {
       { [ref]: elementWithMetrics(ref, { P_MW: { code: 'P_MW', value: 3, unit: 'MW' } }) },
       'short_circuit_sn',
     );
-    const overlay = buildFlowOverlayFromScene(scene, payload, singleHop);
+    const overlay = buildFlowOverlayFromScene(scene, payload, oriented);
     expect(isFlowOverlayEmpty(overlay)).toBe(true);
   });
 
@@ -155,7 +171,7 @@ describe('overlay.ts — buildFlowOverlayFromScene (F9.5, spec §14.2)', () => {
         P_MW: { code: 'P_MW', value: 9, unit: 'MW' },
       }),
     });
-    const overlay = buildFlowOverlayFromScene(scene, payload, singleHop);
+    const overlay = buildFlowOverlayFromScene(scene, payload, oriented);
     expect(isFlowOverlayEmpty(overlay)).toBe(true);
   });
 
@@ -167,8 +183,8 @@ describe('overlay.ts — buildFlowOverlayFromScene (F9.5, spec §14.2)', () => {
         Q_Mvar: { code: 'Q_Mvar', value: -0.1, unit: 'Mvar' },
       }),
     });
-    const first = buildFlowOverlayFromScene(scene, payload, singleHop);
-    const second = buildFlowOverlayFromScene(scene, payload, singleHop);
+    const first = buildFlowOverlayFromScene(scene, payload, oriented);
+    const second = buildFlowOverlayFromScene(scene, payload, oriented);
     expect(JSON.stringify(first)).toBe(JSON.stringify(second));
   });
 });
@@ -186,7 +202,7 @@ describe('overlay.ts — flowOverlayValuesTraceToPayload (wyrocznia flow_overlay
         I_A: { code: 'I_A', value: 88, unit: 'A' },
       }),
     });
-    const overlay = buildFlowOverlayFromScene(scene, payload, singleHop);
+    const overlay = buildFlowOverlayFromScene(scene, payload, oriented);
     expect(flowOverlayValuesTraceToPayload(overlay, payload)).toBe(true);
   });
 
@@ -315,7 +331,7 @@ describe('overlay.ts — F-3 (recenzja Opusa): allowlista analysis_type', () => 
         { [ref]: elementWithMetrics(ref, { P_MW: { code: 'P_MW', value: 3, unit: 'MW' } }) },
         unknownType,
       );
-      expect(isFlowOverlayEmpty(buildFlowOverlayFromScene(scene, payload, singleHop))).toBe(true);
+      expect(isFlowOverlayEmpty(buildFlowOverlayFromScene(scene, payload, oriented))).toBe(true);
     }
   });
 
@@ -325,13 +341,13 @@ describe('overlay.ts — F-3 (recenzja Opusa): allowlista analysis_type', () => 
       { [ref]: elementWithMetrics(ref, { P_MW: { code: 'P_MW', value: 3, unit: 'MW' } }) },
       'LOAD_FLOW',
     );
-    expect(isFlowOverlayEmpty(buildFlowOverlayFromScene(scene, payload, singleHop))).toBe(false);
+    expect(isFlowOverlayEmpty(buildFlowOverlayFromScene(scene, payload, oriented))).toBe(false);
   });
 });
 
 describe('overlay.ts — F-1 (recenzja Opusa): kontrakt kierunku forward ↔ geometria', () => {
-  it('KONTRAKT (przypadek jednokawałkowy, realna scena): dla KAŻDEGO konektora z bramki singleHop strona points[0] geometrii == strona fromTerminal gałęzi (znak p_from_mw mapuje się na zwrot wprost)', () => {
-    // Adapter — TA SAMA ścieżka danych co buildSceneV3/singleHopSegmentRefs.
+  it('KONTRAKT (realna scena): dla KAŻDEGO konektora o terminalach rozwiązanych do stacji strona points[0] geometrii == strona fromTerminal gałęzi (znak p_from_mw mapuje się na zwrot wprost)', () => {
+    // Adapter — TA SAMA ścieżka danych co buildSceneV3/orientedSegmentRefs.
     const sldData = buildSldDataFromSnapshot(enm, enm.logical_views ?? null, null);
     const terminalsByRef = new Map<string, { readonly fromRef: string; readonly toRef: string }>();
     for (const run of sldData.cableRuns ?? []) {
@@ -380,34 +396,36 @@ describe('overlay.ts — F-1 (recenzja Opusa): kontrakt kierunku forward ↔ geo
     expect(checked).toBeGreaterThan(30);
   });
 
-  it('fixtura ZAWIERA przęsła wielokawałkowe (43/88) — bramka F-1 ma realny skutek, nie jest martwa', () => {
-    // §16-v3 (2026-07-17): scena niesie TERAZ tożsamość ŁAŃCUCHA (kawałek
-    // per człon ENM) + 13 otwartych ogonów (pomiar: 53→88 kawałków `seg/`).
-    // Kawałki-poprzedniki i ogony mają terminal bez właściciela ⇒ POZA
-    // bramką singleHop (bez strzałki — uczciwe „nie wiem", pomiar: 8→43).
-    // Bramka F-1 dalej NIE jest martwa: wyklucza niezerowy podzbiór.
+  it('S9-2: WSZYSTKIE 88 kawalkow galeziowych fixtury ma udowodniona orientacje (dawna bramka F-1 obejmowala 45) — a bramka dalej gryzie: odcinki RYSUNKOWE (ref kompozytowy) sa poza nia', () => {
+    // POMIAR (audyt 2026-08 W-1): bramka F-1 wymagala terminali rozwiazanych do
+    // STACJI, wiec kawalki-poprzedniki lancuchow i otwarte ogony (43 z 88) nie
+    // dostawaly ani strzalki, ani etykiety — a na sieci budowanej operacjami
+    // domenowymi (kazdy odcinek konczy sie mufa) bramka bywala PUSTA. Orientacja
+    // dowodzona refem WEZLA galezi obejmuje wszystkie 88 kawalkow.
     const scene2Bare = scene.segments.filter(
       (s) => s.meta?.elementKind === 'segment' && s.meta.ownerRef && !s.meta.ownerRef.includes('#'),
     );
-    const excluded = scene2Bare.filter((s) => !singleHop.has(s.meta!.ownerRef!));
     expect(scene2Bare.length).toBe(88);
-    expect(excluded.length).toBe(43);
+    expect(scene2Bare.filter((s) => !oriented.has(s.meta!.ownerRef!)).length).toBe(0);
+    // Bramka NIE jest martwa: odcinki rysunkowe (zejscia, piony nN, wiersze DER)
+    // nie sa galeziami solvera i nadal nie dostaja wpisu.
+    const rysunkowe = scene.segments.filter(
+      (s) => s.meta?.elementKind === 'segment' && s.meta.ownerRef && s.meta.ownerRef.includes('#'),
+    );
+    expect(rysunkowe.length).toBeGreaterThan(0);
+    expect(rysunkowe.every((s) => !oriented.has(s.meta!.ownerRef!))).toBe(true);
   });
 
-  it('TEST NEGATYWNY (bramka gryzie): ref POZA zbiorem singleHop z poprawnym P_MW w payload ⇒ ZERO wpisu (uczciwe „nie wiem" zamiast potencjalnie błędnej strzałki)', () => {
-    const multiHopRef = scene.segments.find(
-      (s) =>
-        s.meta?.elementKind === 'segment' &&
-        s.meta.ownerRef &&
-        !s.meta.ownerRef.includes('#') &&
-        !singleHop.has(s.meta.ownerRef),
+  it('TEST NEGATYWNY (bramka gryzie): ref POZA mapa orientacji z poprawnym P_MW w payload ⇒ ZERO wpisu (uczciwe „nie wiem" zamiast potencjalnie blednej strzalki)', () => {
+    const rysunkowyRef = scene.segments.find(
+      (s) => s.meta?.elementKind === 'segment' && s.meta.ownerRef && !oriented.has(s.meta.ownerRef),
     )?.meta?.ownerRef;
-    expect(multiHopRef).toBeTruthy();
+    expect(rysunkowyRef).toBeTruthy();
     const payload = payloadOf({
-      [multiHopRef!]: elementWithMetrics(multiHopRef!, { P_MW: { code: 'P_MW', value: 7, unit: 'MW' } }),
+      [rysunkowyRef!]: elementWithMetrics(rysunkowyRef!, { P_MW: { code: 'P_MW', value: 7, unit: 'MW' } }),
     });
-    const overlay = buildFlowOverlayFromScene(scene, payload, singleHop);
-    expect(overlay[multiHopRef!]).toBeUndefined();
+    const overlay = buildFlowOverlayFromScene(scene, payload, oriented);
+    expect(overlay[rysunkowyRef!]).toBeUndefined();
     expect(isFlowOverlayEmpty(overlay)).toBe(true);
   });
 });
@@ -419,7 +437,7 @@ describe('overlay.ts — F-1 (recenzja Opusa): kontrakt kierunku forward ↔ geo
 
 /** Unikalne refy jednokawałkowe (deduplikacja — ten sam ownerRef może nieść
  *  wiele odcinków sceny; budowniczy i tak emituje jeden wpis per ref). */
-const uniqueSingleHopRefs = Array.from(new Set(realSegmentOwnerRefs));
+const uniqueOrientedRefs = Array.from(new Set(realSegmentOwnerRefs));
 
 function faultEntry(
   over: Partial<ShortCircuitBranchFlowV1> & { branch_id: string },
@@ -448,22 +466,22 @@ function deepClone<T>(value: T): T {
 
 describe('overlay.ts — buildFaultFlowOverlayFromScene (karta S-B, strzałki rozpływu zwarciowego)', () => {
   it('input=null ⇒ nakładka pusta (strzałki wyłączone bez kanału kierunku, zero atrap)', () => {
-    const overlay = buildFaultFlowOverlayFromScene(scene, null, singleHop);
+    const overlay = buildFaultFlowOverlayFromScene(scene, null, oriented);
     expect(isFaultFlowOverlayEmpty(overlay)).toBe(true);
   });
 
   it('pusta lista wpisów (policzono, brak wkładów falownikowych) ⇒ nakładka pusta', () => {
-    const overlay = buildFaultFlowOverlayFromScene(scene, faultInputOf([]), singleHop);
+    const overlay = buildFaultFlowOverlayFromScene(scene, faultInputOf([]), oriented);
     expect(isFaultFlowOverlayEmpty(overlay)).toBe(true);
   });
 
   it('direction="from_to" ⇒ forward=true; iKa = największy wkład gałęzi; jedna gałąź ⇒ waga 1 ⇒ token critical', () => {
-    const ref = uniqueSingleHopRefs[0];
+    const ref = uniqueOrientedRefs[0];
     const input = faultInputOf([
       faultEntry({ branch_id: ref, source_id: 'ZR-1', i_ka: 0.1, direction: 'from_to' }),
       faultEntry({ branch_id: ref, source_id: 'ZR-2', i_ka: 0.245, direction: 'from_to' }),
     ]);
-    const overlay = buildFaultFlowOverlayFromScene(scene, input, singleHop);
+    const overlay = buildFaultFlowOverlayFromScene(scene, input, oriented);
     expect(overlay[ref]).toEqual({
       ownerRef: ref,
       forward: true,
@@ -475,51 +493,51 @@ describe('overlay.ts — buildFaultFlowOverlayFromScene (karta S-B, strzałki ro
   });
 
   it('direction="to_from" ⇒ forward=false — zwrot WPROST z tokenu solvera, nie z heurystyki', () => {
-    const ref = uniqueSingleHopRefs[0];
+    const ref = uniqueOrientedRefs[0];
     const input = faultInputOf([faultEntry({ branch_id: ref, direction: 'to_from' })]);
-    const overlay = buildFaultFlowOverlayFromScene(scene, input, singleHop);
+    const overlay = buildFaultFlowOverlayFromScene(scene, input, oriented);
     expect(overlay[ref]?.forward).toBe(false);
     expect(faultFlowOverlayTracesToInput(overlay, input)).toBe(true);
   });
 
   it('MIESZANE kierunki na tej samej gałęzi ⇒ brak wpisu (uczciwe „nie wiem" zamiast fabrykacji wypadkowej)', () => {
-    const ref = uniqueSingleHopRefs[0];
+    const ref = uniqueOrientedRefs[0];
     const input = faultInputOf([
       faultEntry({ branch_id: ref, source_id: 'ZR-1', direction: 'from_to' }),
       faultEntry({ branch_id: ref, source_id: 'ZR-2', direction: 'to_from' }),
     ]);
-    const overlay = buildFaultFlowOverlayFromScene(scene, input, singleHop);
+    const overlay = buildFaultFlowOverlayFromScene(scene, input, oriented);
     expect(overlay[ref]).toBeUndefined();
     expect(isFaultFlowOverlayEmpty(overlay)).toBe(true);
   });
 
   it('wpisy bez podstawy strzałki (i_ka null/0, nieznany token kierunku) ⇒ brak wpisu', () => {
-    const ref = uniqueSingleHopRefs[0];
+    const ref = uniqueOrientedRefs[0];
     const input = faultInputOf([
       faultEntry({ branch_id: ref, i_ka: null }),
       faultEntry({ branch_id: ref, i_ka: 0 }),
       faultEntry({ branch_id: ref, direction: 'nieznany' }),
     ]);
-    const overlay = buildFaultFlowOverlayFromScene(scene, input, singleHop);
+    const overlay = buildFaultFlowOverlayFromScene(scene, input, oriented);
     expect(isFaultFlowOverlayEmpty(overlay)).toBe(true);
   });
 
-  it('bramka F-1: ref POZA zbiorem singleHop ⇒ ZERO wpisu (kierunek geometrycznie nieudowodniony)', () => {
-    const ref = uniqueSingleHopRefs[0];
+  it('bramka orientacji: ref POZA mapa ⇒ ZERO wpisu (zwrot nieudowodniony)', () => {
+    const ref = uniqueOrientedRefs[0];
     const input = faultInputOf([faultEntry({ branch_id: ref })]);
-    const overlay = buildFaultFlowOverlayFromScene(scene, input, new Set<string>());
+    const overlay = buildFaultFlowOverlayFromScene(scene, input, new Map<string, boolean>());
     expect(isFaultFlowOverlayEmpty(overlay)).toBe(true);
   });
 
   it('tercyle skali względnej SPÓJNE z adapterem W-C: waga 1 ⇒ critical, 0,4 ⇒ warning, 0,1 ⇒ ok', () => {
-    expect(uniqueSingleHopRefs.length).toBeGreaterThanOrEqual(3);
-    const [refA, refB, refC] = uniqueSingleHopRefs;
+    expect(uniqueOrientedRefs.length).toBeGreaterThanOrEqual(3);
+    const [refA, refB, refC] = uniqueOrientedRefs;
     const input = faultInputOf([
       faultEntry({ branch_id: refA, i_ka: 3.0 }),
       faultEntry({ branch_id: refB, i_ka: 1.2 }),
       faultEntry({ branch_id: refC, i_ka: 0.3 }),
     ]);
-    const overlay = buildFaultFlowOverlayFromScene(scene, input, singleHop);
+    const overlay = buildFaultFlowOverlayFromScene(scene, input, oriented);
     expect(overlay[refA]?.colorToken).toBe('critical');
     expect(overlay[refB]?.colorToken).toBe('warning');
     expect(overlay[refC]?.colorToken).toBe('ok');
@@ -529,11 +547,11 @@ describe('overlay.ts — buildFaultFlowOverlayFromScene (karta S-B, strzałki ro
 
   it('determinizm: to samo wejście dwukrotnie ⇒ identyczny JSON.stringify (zero Date/losowości)', () => {
     const input = faultInputOf([
-      faultEntry({ branch_id: uniqueSingleHopRefs[0], i_ka: 1.5 }),
-      faultEntry({ branch_id: uniqueSingleHopRefs[1], i_ka: 0.5, direction: 'to_from' }),
+      faultEntry({ branch_id: uniqueOrientedRefs[0], i_ka: 1.5 }),
+      faultEntry({ branch_id: uniqueOrientedRefs[1], i_ka: 0.5, direction: 'to_from' }),
     ]);
-    const a = buildFaultFlowOverlayFromScene(scene, input, singleHop);
-    const b = buildFaultFlowOverlayFromScene(scene, input, singleHop);
+    const a = buildFaultFlowOverlayFromScene(scene, input, oriented);
+    const b = buildFaultFlowOverlayFromScene(scene, input, oriented);
     expect(JSON.stringify(a)).toBe(JSON.stringify(b));
   });
 });
@@ -544,25 +562,25 @@ describe('overlay.ts — faultFlowOverlayTracesToInput (wyrocznia, karta S-B)', 
   });
 
   it('TEST NEGATYWNY (wyrocznia gryzie): iKa niezgodne z największym wkładem gałęzi ⇒ FAIL', () => {
-    const ref = uniqueSingleHopRefs[0];
+    const ref = uniqueOrientedRefs[0];
     const input = faultInputOf([faultEntry({ branch_id: ref, i_ka: 0.245 })]);
-    const overlay = buildFaultFlowOverlayFromScene(scene, input, singleHop);
+    const overlay = buildFaultFlowOverlayFromScene(scene, input, oriented);
     const sfalszowana = { [ref]: { ...overlay[ref], iKa: 9.99 } };
     expect(faultFlowOverlayTracesToInput(sfalszowana, input)).toBe(false);
   });
 
   it('TEST NEGATYWNY: forward przeciwny do tokenu kierunku wejścia ⇒ FAIL', () => {
-    const ref = uniqueSingleHopRefs[0];
+    const ref = uniqueOrientedRefs[0];
     const input = faultInputOf([faultEntry({ branch_id: ref, direction: 'from_to' })]);
-    const overlay = buildFaultFlowOverlayFromScene(scene, input, singleHop);
+    const overlay = buildFaultFlowOverlayFromScene(scene, input, oriented);
     const odwrocona = { [ref]: { ...overlay[ref], forward: false } };
     expect(faultFlowOverlayTracesToInput(odwrocona, input)).toBe(false);
   });
 
   it('TEST NEGATYWNY: wpis nakładki bez ODPOWIADAJĄCYCH mierzalnych wpisów wejścia ⇒ FAIL (nakładka nieaktualna)', () => {
-    const ref = uniqueSingleHopRefs[0];
+    const ref = uniqueOrientedRefs[0];
     const input = faultInputOf([faultEntry({ branch_id: ref })]);
-    const overlay = buildFaultFlowOverlayFromScene(scene, input, singleHop);
+    const overlay = buildFaultFlowOverlayFromScene(scene, input, oriented);
     expect(faultFlowOverlayTracesToInput(overlay, faultInputOf([]))).toBe(false);
   });
 });
@@ -589,8 +607,18 @@ describe('overlay.ts — multiHopFaultFlowSegmentRefs (GAP V12K-121, karta SLD-W
   const SPLICE_BUS = 'bus/2eb903289ceccfe33d015b843cc0a839/downstream';
   const LODS = [0, 1, 2] as const;
 
-  it('kontrola wejścia: przęsło GPZ→S0 tej fixtury jest wielokawałkowe (poza singleHop)', () => {
-    expect(singleHopSegmentRefs(chainEnm).size).toBe(0);
+  it('kontrola wejscia: przeslo GPZ→S0 tej fixtury jest WIELOKAWALKOWE (zaden kawalek nie ma OBU terminali rozwiazanych do stacji)', () => {
+    // Dawniej mierzone przez `singleHopSegmentRefs(chainEnm).size === 0`.
+    // Funkcja zostala usunieta razem z bramka F-1 (S9-2), wiec ta sama cecha
+    // fixtury jest mierzona WPROST na adapterze — bez posrednika.
+    const sldData = buildSldDataFromSnapshot(chainEnm, chainEnm.logical_views ?? null, null);
+    const obustronneStacje = (sldData.cableRuns ?? []).flatMap((run) =>
+      (run.segmentPaths ?? []).filter((sp) => sp.fromTerminal?.ownerRef && sp.toTerminal?.ownerRef),
+    );
+    expect(obustronneStacje.length).toBe(0);
+    // ...a mimo to KAZDY czlon ma udowodniona orientacje (S9-2) — to jest sedno
+    // naprawy W-1: brak wlasciciela-stacji nie oznacza braku dowodu kierunku.
+    expect(orientedSegmentRefs(chainEnm).size).toBeGreaterThan(0);
   });
 
   it('łańcuch prosty 2 kawałki: przedstawicielem zostaje JEDEN człon (F2) — nie CAŁA grupa (jedna strzałka, nie jedna na kawałek)', () => {
@@ -604,7 +632,7 @@ describe('overlay.ts — multiHopFaultFlowSegmentRefs (GAP V12K-121, karta SLD-W
 
   it('przedstawiciel dostaje strzałkę: direction="from_to" ⇒ forward=true, wartości WPROST z wejścia', () => {
     const chainScene = buildSceneV3(chainEnm, 2);
-    const trusted = new Set([...singleHopSegmentRefs(chainEnm), ...multiHopFaultFlowSegmentRefs(chainScene, chainEnm)]);
+    const trusted = orientationForFaultFlow(chainScene, chainEnm);
     const input = faultInputOf([faultEntry({ branch_id: F2, direction: 'from_to', i_ka: 1.2 })]);
     const overlay = buildFaultFlowOverlayFromScene(chainScene, input, trusted);
     expect(overlay[F2]).toEqual({ ownerRef: F2, forward: true, iKa: 1.2, payloadMaxKa: 1.2, colorToken: 'critical' });
@@ -613,23 +641,32 @@ describe('overlay.ts — multiHopFaultFlowSegmentRefs (GAP V12K-121, karta SLD-W
 
   it('orientacja odwrotna: direction="to_from" ⇒ forward=false (oba kierunki poprawne, zwrot WPROST z tokenu solvera)', () => {
     const chainScene = buildSceneV3(chainEnm, 2);
-    const trusted = new Set([...singleHopSegmentRefs(chainEnm), ...multiHopFaultFlowSegmentRefs(chainScene, chainEnm)]);
+    const trusted = orientationForFaultFlow(chainScene, chainEnm);
     const input = faultInputOf([faultEntry({ branch_id: F2, direction: 'to_from', i_ka: 0.8 })]);
     const overlay = buildFaultFlowOverlayFromScene(chainScene, input, trusted);
     expect(overlay[F2]?.forward).toBe(false);
     expect(faultFlowOverlayTracesToInput(overlay, input)).toBe(true);
   });
 
-  it('człon NIEWYBRANY łańcucha (segment_L) NIE dostaje własnego wpisu, mimo mierzalnych danych pod jego branch_id — jedna strzałka na przęsło, nie jedna na każdy realny człon', () => {
+  it('S9-2: KAZDY czlon narysowany jako WLASNY odcinek dostaje wlasna strzalke — bo jego orientacja jest udowodniona per czlon (dawniej: jedna strzalka na przeslo, bo kierunku czlonu nie umiano dowiesc)', () => {
+    // ZMIANA KANONU (intencja zachowana): regula „jedna strzalka na przeslo"
+    // istniala dlatego, ze kierunek POJEDYNCZEGO czlonu lancucha byl
+    // nieudowodniony — przedstawiciel byl obejsciem. Orientacja z refow wezlow
+    // dowodzi kierunku KAZDEGO czlonu, a scena rysuje kazdy czlon jako osobny
+    // odcinek, wiec strzalka trafia na wlasny odcinek czlonu. Zaden odcinek nie
+    // dostaje dwoch strzalek (slownik kluczowany `ownerRef`) — inwariant, ktory
+    // dawna regula chronila, jest utrzymany.
     const chainScene = buildSceneV3(chainEnm, 2);
-    const trusted = new Set([...singleHopSegmentRefs(chainEnm), ...multiHopFaultFlowSegmentRefs(chainScene, chainEnm)]);
+    const orientacja = orientationForFaultFlow(chainScene, chainEnm);
     const input = faultInputOf([
       faultEntry({ branch_id: F2, direction: 'from_to', i_ka: 1.2 }),
       faultEntry({ branch_id: SEGMENT_L, direction: 'from_to', i_ka: 1.2 }),
     ]);
-    const overlay = buildFaultFlowOverlayFromScene(chainScene, input, trusted);
+    const overlay = buildFaultFlowOverlayFromScene(chainScene, input, orientacja);
     expect(overlay[F2]).toBeDefined();
-    expect(overlay[SEGMENT_L]).toBeUndefined();
+    expect(overlay[SEGMENT_L]).toBeDefined();
+    const odcinkiZeStrzalka = chainScene.segments.filter((s) => s.meta?.ownerRef && overlay[s.meta.ownerRef]);
+    expect(new Set(odcinkiZeStrzalka.map((s) => s.meta!.ownerRef!)).size).toBe(odcinkiZeStrzalka.length);
   });
 
   it('NEGATYW — łańcuch ROZGAŁĘZIONY (T-węzeł): trzeci odcinek (segment_R) dołączony do TEJ SAMEJ mufy ⇒ grupa odrzucona całkowicie (zero przedstawiciela, uczciwe „nie wiem")', () => {
@@ -678,8 +715,17 @@ describe('overlay.ts — łańcuch 4-członowy na realnej fixturze substrate (GA
     'seg/2ef31c8e5a13ad9a42afd95f4ec41763/segment_L_L',
   ] as const;
 
-  it('kontrola wejścia: WSZYSTKIE 4 człony grupy są poza singleHop (prawdziwe wielokawałkowe)', () => {
-    for (const ref of GROUP) expect(singleHop.has(ref)).toBe(false);
+  it('kontrola wejscia: WSZYSTKIE 4 czlony grupy sa mufa-mufa (zaden nie ma OBU terminali stacyjnych), a mimo to KAZDY ma udowodniona orientacje (S9-2)', () => {
+    const sldData = buildSldDataFromSnapshot(enm, enm.logical_views ?? null, null);
+    const obustronne = new Set(
+      (sldData.cableRuns ?? []).flatMap((run) =>
+        (run.segmentPaths ?? [])
+          .filter((sp) => sp.fromTerminal?.ownerRef && sp.toTerminal?.ownerRef)
+          .map((sp) => sp.segmentRef),
+      ),
+    );
+    for (const ref of GROUP) expect(obustronne.has(ref)).toBe(false);
+    for (const ref of GROUP) expect(oriented.has(ref)).toBe(true);
   });
 
   it('DOKŁADNIE jeden przedstawiciel z tej grupy 4-członowej trafia do zbioru, na każdym LOD', () => {
@@ -690,40 +736,38 @@ describe('overlay.ts — łańcuch 4-członowy na realnej fixturze substrate (GA
     }
   });
 
-  it('przedstawiciel grupy 4-członowej dostaje strzałkę spójną z direction="from_to"; pozostałe 3 człony — zero wpisu', () => {
+  it('S9-2: KAZDY z 4 czlonow dostaje strzalke spojna z direction="from_to" — orientacja udowodniona per czlon, a odcinek rysunku nie dostaje dwoch strzalek', () => {
     const sceneLod2 = buildSceneV3(enm, 2);
-    const refs = multiHopFaultFlowSegmentRefs(sceneLod2, enm);
-    const chosen = GROUP.find((ref) => refs.has(ref));
-    expect(chosen).toBeDefined();
-    const trusted = new Set([...singleHop, ...refs]);
+    const orientacja = orientationForFaultFlow(sceneLod2, enm);
     const input = faultInputOf(GROUP.map((ref) => faultEntry({ branch_id: ref, direction: 'from_to', i_ka: 0.9 })));
-    const overlay = buildFaultFlowOverlayFromScene(sceneLod2, input, trusted);
-    expect(overlay[chosen!]).toBeDefined();
-    expect(overlay[chosen!]?.forward).toBe(true);
+    const overlay = buildFaultFlowOverlayFromScene(sceneLod2, input, orientacja);
     for (const ref of GROUP) {
-      if (ref !== chosen) expect(overlay[ref]).toBeUndefined();
+      expect(overlay[ref]).toBeDefined();
+      expect(overlay[ref]?.forward).toBe(orientacja.get(ref));
     }
+    const odcinkiZeStrzalka = sceneLod2.segments.filter((s) => s.meta?.ownerRef && overlay[s.meta.ownerRef]);
+    expect(new Set(odcinkiZeStrzalka.map((s) => s.meta!.ownerRef!)).size).toBe(odcinkiZeStrzalka.length);
   });
 });
 
 describe('overlay.ts — GAP V12K-121 nie zmienia bramkę F-1 jednoprzeskokową (regresja)', () => {
-  it('singleHopSegmentRefs(52s) niezmienione: 45 (ta sama liczba co przed rozszerzeniem)', () => {
-    expect(singleHop.size).toBe(45);
+  it('orientedSegmentRefs(52s) = 88: mapa orientacji obejmuje KAZDY narysowany kawalek galeziowy (dawna bramka F-1: 45 — pomiar zmiany S9-2)', () => {
+    expect(oriented.size).toBe(88);
   });
 
-  it('buildFlowOverlayFromScene (przepływ MOCY) niezmieniony: dalej działa WYŁĄCZNIE z bramką singleHop, GAP V12K-121 dotyczy tylko strzałek zwarciowych (buildFaultFlowOverlayForSnapshot, funkcja ta nie jest przez ten GAP wołana z inną bramką)', () => {
-    const ref = uniqueSingleHopRefs[0];
+  it('buildFlowOverlayFromScene (przeplyw MOCY) czyta TE SAMA mape orientacji co strzalki zwarciowe — jedno zrodlo prawdy o zwrocie (S9-2)', () => {
+    const ref = uniqueOrientedRefs[0];
     const payload = payloadOf({
       [ref]: elementWithMetrics(ref, { P_MW: { code: 'P_MW', value: 3, unit: 'MW' } }),
     });
-    const overlay = buildFlowOverlayFromScene(scene, payload, singleHop);
+    const overlay = buildFlowOverlayFromScene(scene, payload, oriented);
     expect(overlay[ref]).toEqual({ ownerRef: ref, forward: true, p: { value: 3, unit: 'MW' } });
   });
 
   it('strzałka zwarciowa na przęśle jednokawałkowym: zachowanie identyczne jak przed GAP V12K-121 (regresja)', () => {
-    const ref = uniqueSingleHopRefs[0];
+    const ref = uniqueOrientedRefs[0];
     const input = faultInputOf([faultEntry({ branch_id: ref, direction: 'from_to', i_ka: 0.5 })]);
-    const overlay = buildFaultFlowOverlayFromScene(scene, input, singleHop);
+    const overlay = buildFaultFlowOverlayFromScene(scene, input, oriented);
     expect(overlay[ref]).toEqual({ ownerRef: ref, forward: true, iKa: 0.5, payloadMaxKa: 0.5, colorToken: 'critical' });
   });
 });

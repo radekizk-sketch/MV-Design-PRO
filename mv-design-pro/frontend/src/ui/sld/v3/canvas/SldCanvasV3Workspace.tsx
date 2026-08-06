@@ -190,7 +190,7 @@ import {
   buildFlowOverlayFromScene,
   buildOltcOverlayFromScene,
   multiHopFaultFlowSegmentRefs,
-  singleHopSegmentRefs,
+  orientedSegmentRefs,
   type SegmentFaultFlowOverlay,
   type SegmentFlowOverlay,
   type SldV3Overlay,
@@ -201,6 +201,7 @@ import {
   buildResultLabelsFromScene,
   DEFAULT_RESULT_LABEL_FILTER,
   resultLabelsHaveExceedances,
+  summarizeResultPointCoverage,
   type ResultLabelComparison,
   type ResultLabelComparisonMode,
   type ResultLabelEntry,
@@ -208,6 +209,12 @@ import {
   type ResultLabelKind,
   type ResultLabelQuantity,
 } from './resultLabels';
+import {
+  buildResultRefBridge,
+  resultPointsHiddenByModel,
+  type ResultPointCoverage,
+} from './resultRefBridge';
+import { normalizeResultLabelAnalysis } from './resultLabelTemplates';
 import { formatContractValue } from '../../../workspace/analysisRunContract';
 import { formatDateTime } from '../../../workspace/routerDisplayHelpers';
 // K12 (KARTA_K12, dyrektywa właściciela 2026-07-30): legenda „na żądanie" —
@@ -646,14 +653,13 @@ export function buildFlowOverlayForSnapshot(
   payload: RawOverlayPayload | null,
 ): Readonly<Record<string, SegmentFlowOverlay>> {
   if (!payload) return {};
-  // F-1 (recenzja Opusa): zbiór refów jednokawałkowych liczony RAZ per
-  // wywołanie (ten sam adapter co buildSceneV3) — kierunek emitowany
-  // wyłącznie dla przęseł o udowodnionej orientacji, patrz
-  // `overlay.ts::singleHopSegmentRefs`.
-  const trustedRefs = singleHopSegmentRefs(snapshot);
+  // S9-2: mapa ORIENTACJI liczona RAZ per wywołanie (ten sam adapter co
+  // buildSceneV3) — kierunek emitowany wyłącznie dla przęseł o udowodnionej
+  // tożsamości gałęzi, patrz `overlay.ts::orientedSegmentRefs`.
+  const orientation = orientedSegmentRefs(snapshot);
   const merged: Record<string, SegmentFlowOverlay> = {};
   for (const lod of ALL_SCENE_LODS) {
-    Object.assign(merged, buildFlowOverlayFromScene(buildSceneV3(snapshot, lod), payload, trustedRefs));
+    Object.assign(merged, buildFlowOverlayFromScene(buildSceneV3(snapshot, lod), payload, orientation));
   }
   return merged;
 }
@@ -704,7 +710,7 @@ function useOltcOverlay(
  * W4 (RECENZJA_L2_POLA_WYPOSAZENIE_2026-07 §8): LICZBOWE etykiety wynikowe ze
  * WSZYSTKICH trzech LOD — TEN SAM wzorzec co `buildFlowOverlayForSnapshot`
  * (ownerRef = tożsamość LOD-niezależna, scalanie neutralne). Bramka przęseł =
- * `singleHopSegmentRefs` (jednoznaczna tożsamość gałęzi, jak flow). Źródło
+ * klucze `orientedSegmentRefs` (udowodniona tożsamość gałęzi, jak flow). Źródło
  * `payload`: `useRawResultOverlayStore` (produkcyjnie z `App.tsx`). Brak
  * wyniku/metryk ⇒ `{}` (warstwa wyłączona, §8 „gdy wyniki są").
  */
@@ -714,10 +720,17 @@ export function buildResultLabelsForSnapshot(
   comparison?: ResultLabelComparison,
 ): Readonly<Record<string, ResultLabelEntry>> {
   if (!payload) return {};
-  const trustedRefs = singleHopSegmentRefs(snapshot);
+  // S9-2: TA SAMA bramka przęseł co nakładka przepływu (klucze mapy orientacji)
+  // + MOST REFÓW (szyny stacji, blok stacji L0, transformator stacji) — patrz
+  // `resultRefBridge.ts`. Obie struktury liczone RAZ per wywołanie.
+  const trustedRefs = new Set(orientedSegmentRefs(snapshot).keys());
+  const bridge = buildResultRefBridge(snapshot);
   const merged: Record<string, ResultLabelEntry> = {};
   for (const lod of ALL_SCENE_LODS) {
-    Object.assign(merged, buildResultLabelsFromScene(buildSceneV3(snapshot, lod), payload, trustedRefs, comparison));
+    Object.assign(
+      merged,
+      buildResultLabelsFromScene(buildSceneV3(snapshot, lod), payload, trustedRefs, comparison, bridge),
+    );
   }
   return merged;
 }
@@ -736,9 +749,9 @@ function useResultLabelsOverlay(
 /**
  * Karta S-B (ZWARCIA-PRO pkt 7): strzałki kierunku rozpływu prądu zwarciowego
  * ze WSZYSTKICH trzech LOD — TEN SAM wzorzec co `buildFlowOverlayForSnapshot`
- * (ownerRef = tożsamość LOD-niezależna; bramka F-1 `singleHopSegmentRefs` —
+ * (ownerRef = tożsamość LOD-niezależna; bramka `orientedSegmentRefs` —
  * kierunek emitowany wyłącznie dla przęseł o udowodnionej orientacji
- * geometrycznej). Źródło `input`: kanał `useOverlayStore.faultFlow`
+ * względem gałęzi modelu). Źródło `input`: kanał `useOverlayStore.faultFlow`
  * (wiersz kanoniczny `branch_contributions`, ekran zwarć „Pokaż na
  * schemacie"). Brak kanału ⇒ `{}` (strzałki wyłączone, §14.2).
  *
@@ -761,13 +774,20 @@ export function buildFaultFlowOverlayForSnapshot(
   input: ShortCircuitFlowOverlayInput | null,
 ): Readonly<Record<string, SegmentFaultFlowOverlay>> {
   if (!input) return {};
-  const trustedRefs = singleHopSegmentRefs(snapshot);
+  // S9-2: bramka i orientacja z JEDNEGO źródła (`orientedSegmentRefs`) — ta
+  // sama mapa, którą czyta przepływ mocy i warstwa etykiet. Przedstawiciele
+  // przęseł wielokawałkowych (V12K-121) dochodzą tak jak dotąd; gdy mapa nie
+  // zna ich orientacji, obowiązuje reguła sprzed karty (`points[0]` po stronie
+  // „from"), więc zachowanie tej gałęzi jest niezmienione.
+  const orientation = new Map(orientedSegmentRefs(snapshot));
   const richestLod = ALL_SCENE_LODS[ALL_SCENE_LODS.length - 1];
   const chainRefs = multiHopFaultFlowSegmentRefs(buildSceneV3(snapshot, richestLod), snapshot);
-  const trusted = chainRefs.size === 0 ? trustedRefs : new Set([...trustedRefs, ...chainRefs]);
+  for (const ref of chainRefs) {
+    if (!orientation.has(ref)) orientation.set(ref, true);
+  }
   const merged: Record<string, SegmentFaultFlowOverlay> = {};
   for (const lod of ALL_SCENE_LODS) {
-    Object.assign(merged, buildFaultFlowOverlayFromScene(buildSceneV3(snapshot, lod), input, trusted));
+    Object.assign(merged, buildFaultFlowOverlayFromScene(buildSceneV3(snapshot, lod), input, orientation));
   }
   return merged;
 }
@@ -1068,7 +1088,51 @@ interface SldV3RoznicePodsumowanie {
   readonly legenda: readonly { readonly label: string; readonly description: string }[];
 }
 
+/**
+ * S9-2 — zdanie o POKRYCIU warstwy wynikowej: ile punktów biegu ma etykietę i
+ * co się stało z resztą. Bez tego zdania operator nie odróżnia „schemat pokazuje
+ * komplet wyniku" od „część wyniku gdzieś przepadła" — a to właśnie zgubiła
+ * poprzednia wersja warstwy (audyt W-1). Liczby WPROST z rachunku
+ * (`summarizeResultPointCoverage`), panel niczego nie zlicza.
+ */
+function SldV3ResultCoverageLine(props: {
+  readonly coverage: ResultPointCoverage;
+  /** `true` = wynik biegu jest wczytany (choćby pusty). Bez tego stan „bieg bez
+   *  punktów" byłby nieodróżnialny od „nie było biegu" — a to dwa różne
+   *  komunikaty (uczciwy stan zerowy). */
+  readonly hasRun: boolean;
+}): JSX.Element | null {
+  const { coverage, hasRun } = props;
+  if (!hasRun) return null;
+  if (coverage.total === 0) {
+    return (
+      <div className="flex flex-col gap-0.5 border-t border-scada-border pt-1" data-testid="sld-v3-result-coverage">
+        <span className="text-scada-muted" data-testid="sld-v3-result-coverage-pusty">
+          Bieg nie zwrócił punktów wyniku — na schemacie nie ma czego pokazać.
+        </span>
+      </div>
+    );
+  }
+  const niewidoczne = coverage.hiddenByModel + coverage.withoutTemplate + coverage.withoutAnchor;
+  return (
+    <div className="flex flex-col gap-0.5 border-t border-scada-border pt-1" data-testid="sld-v3-result-coverage">
+      <span data-testid="sld-v3-result-coverage-liczby">
+        {`Etykiety: ${coverage.labelled} z ${coverage.total} punktów wyniku`}
+      </span>
+      {niewidoczne > 0 && (
+        <span className="text-scada-muted" data-testid="sld-v3-result-coverage-braki">
+          {`Bez etykiety: ${coverage.hiddenByModel} nierysowanych w modelu · `
+            + `${coverage.withoutTemplate} bez wielkości dla tej analizy · `
+            + `${coverage.withoutAnchor} bez elementu na schemacie`}
+        </span>
+      )}
+    </div>
+  );
+}
+
 function SldV3ResultFilterPanel(props: {
+  readonly coverage: ResultPointCoverage;
+  readonly hasRun: boolean;
   readonly filter: ResultLabelFilter;
   readonly hasExceedances: boolean;
   readonly onToggleQuantity: (quantity: ResultLabelQuantity) => void;
@@ -1085,6 +1149,8 @@ function SldV3ResultFilterPanel(props: {
   readonly className?: string;
 }): JSX.Element {
   const {
+    coverage,
+    hasRun,
     filter,
     hasExceedances,
     onToggleQuantity,
@@ -1121,6 +1187,7 @@ function SldV3ResultFilterPanel(props: {
           Reset
         </button>
       </header>
+      <SldV3ResultCoverageLine coverage={coverage} hasRun={hasRun} />
       <span className="mt-1 font-semibold uppercase tracking-wider text-scada-muted">Wielkości</span>
       <ul className="flex flex-col gap-0.5">
         {RESULT_FILTER_QUANTITY_IDS.map((quantity) => (
@@ -1417,6 +1484,37 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
     () => applyResultLabelFilter(resultLabelsByOwnerRef, resultFilter),
     [resultLabelsByOwnerRef, resultFilter],
   );
+  // S9-2 (W-1): UCZCIWY RACHUNEK POKRYCIA — ile punktów wyniku backendu ma
+  // etykietę, a ile nie i DLACZEGO (cztery rozłączne kategorie, suma = liczba
+  // punktów). Liczony z etykiet NIEFILTROWANYCH: filtr to wybór operatora, a
+  // rachunek odpowiada na pytanie „czy schemat pokazuje wynik biegu".
+  const resultCoverage = useMemo<ResultPointCoverage>(
+    () =>
+      summarizeResultPointCoverage(
+        labelsPayload,
+        resultLabelsByOwnerRef,
+        resultPointsHiddenByModel(snapshot),
+      ),
+    [labelsPayload, resultLabelsByOwnerRef, snapshot],
+  );
+  // S9-2: ZNACZNIKI PUNKTÓW ZWARCIA biegu — każdy element payloadu zwarciowego
+  // JEST punktem zwarcia (`build_execution_result_set` emituje jeden wiersz na
+  // policzony punkt), więc znacznik należy się każdemu z nich. Kanał
+  // `faultFlow.fault_element_ref` (akcja „Pokaż na schemacie" z ekranu zwarć)
+  // pozostaje — sumujemy oba, bo wskazują to samo pojęcie. Rodzinę rozpoznaje
+  // TA SAMA normalizacja, co warstwa etykiet (jedno źródło prawdy o tym, czy
+  // wynik jest zwarciowy).
+  const faultPointMarkerRefs = useMemo<ReadonlySet<string>>(() => {
+    const refs = new Set<string>();
+    if (faultPointMarkerRef) refs.add(faultPointMarkerRef);
+    if (normalizeResultLabelAnalysis(rawOverlayPayload?.analysis_type) === 'short_circuit') {
+      for (const ref of Object.keys(resultLabelsByOwnerRef)) {
+        const entry = resultLabelsByOwnerRef[ref];
+        if (entry.kind === 'bus') refs.add(entry.ownerRef);
+      }
+    }
+    return refs;
+  }, [faultPointMarkerRef, rawOverlayPayload?.analysis_type, resultLabelsByOwnerRef]);
   // R3 (wym. 7) + OVERLAY-TIMESTAMP: POCHODZENIE wyniku — moduł (etykieta PL z
   // `analysis_type` przez ISTNIEJĄCY słownik `formatContractValue`) + identyfikator
   // przebiegu (`run_id`) + CZAS UKOŃCZENIA BIEGU (`run_finished_at`, realny
@@ -1449,8 +1547,8 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
     [nakladkaRoznic, rawOverlayPayload],
   );
   const overlay = useMemo<SldV3Overlay>(
-    () => ({ ...energizationOverlay, flowByOwnerRef, oltcByOwnerRef, faultFlowByOwnerRef, faultPointMarkerRef, resultLabelsByOwnerRef: filteredResultLabels, resultsStale, provenance }),
-    [energizationOverlay, flowByOwnerRef, oltcByOwnerRef, faultFlowByOwnerRef, faultPointMarkerRef, filteredResultLabels, resultsStale, provenance],
+    () => ({ ...energizationOverlay, flowByOwnerRef, oltcByOwnerRef, faultFlowByOwnerRef, faultPointMarkerRef, faultPointMarkerRefs, resultLabelsByOwnerRef: filteredResultLabels, resultsStale, provenance }),
+    [energizationOverlay, flowByOwnerRef, oltcByOwnerRef, faultFlowByOwnerRef, faultPointMarkerRef, faultPointMarkerRefs, filteredResultLabels, resultsStale, provenance],
   );
 
   // F8c pkt 2: `SldDataPayload` — TEN SAM adapter co v2 (`enmToSldAdapter.ts`,
@@ -2523,6 +2621,8 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
             {/* R3 (wym. 17): panel filtrów warstwy wynikowej — TEN SAM dok co
               * przełącznik warstw (rozszerzenie, nie osobne miejsce). */}
             <SldV3ResultFilterPanel
+              coverage={resultCoverage}
+              hasRun={labelsPayload != null}
               filter={resultFilter}
               hasExceedances={hasExceedances}
               onToggleQuantity={handleToggleQuantity}

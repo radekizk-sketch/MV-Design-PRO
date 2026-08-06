@@ -24,7 +24,7 @@ import {
   isExceedanceSeverity,
   resultLabelLineQuantity,
   resultLabelsHaveExceedances,
-  singleHopSegmentRefs,
+  orientedSegmentRefs,
   type ResultLabelEntry,
   type ResultLabelFilter,
 } from '../resultLabels';
@@ -39,7 +39,7 @@ const CANVAS_WIDTH = 1024;
 const CANVAS_HEIGHT = 640;
 
 const sceneL2 = buildSceneV3(enm, 2);
-const singleHop = singleHopSegmentRefs(enm);
+const singleHop = new Set(orientedSegmentRefs(enm).keys());
 
 const trRef = sceneL2.symbols.find((s) => s.meta?.elementKind === 'transformer' && s.meta?.ownerRef)!.meta!.ownerRef!;
 const sourceRef = sceneL2.symbols.find((s) => s.meta?.elementKind === 'source' && s.meta?.ownerRef)!.meta!.ownerRef!;

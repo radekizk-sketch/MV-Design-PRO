@@ -204,6 +204,17 @@ export interface SldV3Overlay {
    */
   readonly faultPointMarkerRef?: string;
   /**
+   * S9-2 (AUDYT_JAKOSCI_SLD_2026-08 W-1 „brak znacznika punktu zwarcia"):
+   * WSZYSTKIE punkty zwarcia BIEŻĄCEGO przebiegu — nie tylko ten wskazany
+   * ręcznie z ekranu zwarć. Bieg zwarciowy liczy komplet punktów
+   * (`build_execution_result_set` emituje jeden wiersz na punkt), więc po
+   * biegu schemat ma pokazać, GDZIE liczono zwarcia, bez dodatkowego kliknięcia.
+   * Refy w przestrzeni RYSUNKU (`meta.ownerRef`, jak `faultPointMarkerRef`).
+   * Zbiór pusty / pole nieobecne ⇒ zachowanie sprzed karty (sam
+   * `faultPointMarkerRef`).
+   */
+  readonly faultPointMarkerRefs?: ReadonlySet<string>;
+  /**
    * F4/SLD (V12K-092, karta SLD-02 §3.5 „badge wynikowy OLTC"): pozycja
    * końcowa zaczepu + liczba przełączeń per TRANSFORMATOR (`meta.ownerRef`
    * symbolu `transformer2W` sceny = `transformerRef` = ENM `ref_id`, TA SAMA
@@ -230,7 +241,7 @@ export interface SldV3Overlay {
    * metryk dla elementu (zero placeholderów). Typ zaimportowany lokalnie w
    * rendererze/workspace (`ResultLabelEntry`) — tu `unknown`-neutralny alias,
    * by uniknąć cyklu import (resultLabels.ts importuje `SceneV3`, nie ten plik
-   * poza `singleHopSegmentRefs`).
+   * poza `orientedSegmentRefs`).
    */
   readonly resultLabelsByOwnerRef?: Readonly<Record<string, import('./resultLabels').ResultLabelEntry>>;
   /**
@@ -351,52 +362,55 @@ function isLoadFlowPayload(payload: RawOverlayPayload): boolean {
 }
 
 /**
- * F-1 (recenzja Opusa, kryt. 9): zbiór `segmentRef` odcinków JEDNOKAWAŁKOWYCH
- * — jedynych, dla których kierunek strzałki jest UDOWODNIONY geometrycznie.
+ * S9-2 (AUDYT_JAKOSCI_SLD_2026-08 W-1 „0 strzałek rozpływu") — ORIENTACJA
+ * odcinka względem gałęzi modelu: `segmentRef → forward`, gdzie `forward`
+ * mówi, czy `points[0]` narysowanego odcinka leży po stronie `from_bus_ref`
+ * gałęzi. Zbiór kluczy zastępuje bramkę `singleHopSegmentRefs` w kanałach
+ * wynikowych (przepływ mocy, etykiety przęseł).
  *
- * Problem: `PreviewSegment.meta.ownerRef` konektora = `incomingSegmentRef`
- * (`buildScene.ts`) = segmentRef OSTATNIEGO kawałka przęsła (ten, którego
- * `toTerminal.ownerRef === stacja docelowa`). Geometrycznie `points[0]` leży
- * ZAWSZE po stronie stacji poprzedniej. Dla przęsła JEDNOKAWAŁKOWEGO
- * `fromTerminal.ownerRef` tego samego kawałka == stacja poprzednia — strona
- * `points[0]` jest stroną „from" gałęzi, więc znak `p_from_mw` mapuje się na
- * zwrot geometrii wprost (kontrakt testowany w `overlay.test.ts` na realnej
- * scenie). Dla przęsła WIELOKAWAŁKOWEGO „from" gałęzi to węzeł POŚREDNI
- * (mufa) — adapter NIE rozwiązuje tam `ownerRef` (kontrakt adaptera:
- * „ownerRef rozwiązuje się do stacji WYŁĄCZNIE na granicy", nagłówek
- * `buildScene.ts`), orientacja gałęzi w modelu względem przebiegu trasy jest
- * NIEUDOWODNIONA — strzałka mogłaby wskazać źle bez ostrzeżenia. DECYZJA
- * (opcja „uczciwe nie wiem" z recenzji): budowniczy emituje wpis kierunku
- * WYŁĄCZNIE dla refów z tego zbioru; przęsła wielokawałkowe NIE dostają
- * strzałki, dopóki F9.6 nie dostarczy udowodnionej tożsamości per-kawałek.
+ * DLACZEGO ZMIANA (pomiar na żywej sieci, nie teoria): kryterium F-1 wymagało,
+ * by OBA terminale odcinka rozwiązywały się do STACJI (`ownerRef`). Ciąg SN
+ * budowany operacjami domenowymi kończy KAŻDY odcinek magistrali węzłem
+ * `bus/…/downstream` (mufa, `visual_role: INLINE_TERMINAL`) — węzeł bez
+ * właściciela-stacji. Na zmierzonej sieci (GPZ + stacja z szablonu) zbiór F-1
+ * był PUSTY dla wszystkich trzech odcinków, więc rozpływ nie miał ANI JEDNEJ
+ * strzałki i ANI JEDNEJ etykiety gałęziowej — na każdej realnej sieci, nie w
+ * przypadku brzegowym.
  *
- * Kryterium członkostwa: kawałek ma OBA terminale rozwiązane
- * (`fromTerminal.ownerRef` i `toTerminal.ownerRef` niepuste) — z kontraktu
- * adaptera wynika, że to zachodzi WYŁĄCZNIE dla kawałka będącego CAŁYM
- * przęsłem granica→granica. Ten sam adapter i to samo wywołanie co
- * `buildSceneV3` (`snapshot.logical_views ?? null`) — zero cienia elektryki.
+ * DOWÓD ORIENTACJI (dana, nie domysł): terminale odcinka niosą `busRef`
+ * (rozwiązywalny także dla mufy — to węzeł modelu, tylko nierysowany), a gałąź
+ * ENM niesie `from_bus_ref`/`to_bus_ref`. Orientacja jest UDOWODNIONA, gdy para
+ * `(fromTerminal.busRef, toTerminal.busRef)` jest równa parze gałęzi
+ * (`forward = true`) albo jej dokładnym odwróceniem (`forward = false`).
+ * Jakikolwiek inny układ (brak busRef, para wskazująca inne węzły) ⇒ BRAK
+ * wpisu: uczciwe „nie wiem" zamiast strzałki w losową stronę.
  *
- * Skutek uboczny (zamierzony, domyka V-2 z recenzji wizualnej): odcinki
- * RYSUNKOWE o refach kompozytowych (`…#der-row-trunk`, `…#lv-drop-…`) nigdy
- * nie są w tym zbiorze — nie są gałęziami solvera, więc nie dostają strzałek
- * ani etykiet (koniec podwójnych etykiet na wierszu DER).
- *
- * GAP V12K-121 (karta SLD-W, „strzałki kierunku zwarcia na przęsłach
- * wielokawałkowych"): ten zbiór (jednokawałkowe) POZOSTAJE bez zmian — nadal
- * jedyna bramka używana przez przepływ MOCY (`buildFlowOverlayForSnapshot`).
- * Dla strzałek ZWARCIOWYCH wołający dodatkowo łączy ten zbiór z
- * `multiHopFaultFlowSegmentRefs` (niżej) — rozszerzenie bramki F-1 o przęsła
- * wielokawałkowe z UDOWODNIONYM łańcuchem, zero zmiany tej funkcji.
+ * Konwencja `points[0]`: kolejność `segmentPaths` = kolejność geometryczna
+ * trasy (`buildCorridorRunGeometry`), a `points[0]` odcinka sceny leży po
+ * stronie POCZĄTKU trasy — ta sama konwencja, na której opierała się bramka
+ * F-1 (patrz jej nagłówek), tu jedynie udowodniona refem węzła zamiast
+ * właścicielem stacji.
  */
-export function singleHopSegmentRefs(snapshot: EnergyNetworkModel): ReadonlySet<string> {
+export function orientedSegmentRefs(snapshot: EnergyNetworkModel): ReadonlyMap<string, boolean> {
   const sldData = buildSldDataFromSnapshot(snapshot, snapshot.logical_views ?? null, null);
-  const refs = new Set<string>();
-  for (const run of sldData.cableRuns ?? []) {
-    for (const sp of run.segmentPaths ?? []) {
-      if (sp.fromTerminal?.ownerRef && sp.toTerminal?.ownerRef) refs.add(sp.segmentRef);
+  const branchEnds = new Map<string, { readonly from: string; readonly to: string }>();
+  for (const branch of snapshot.branches ?? []) {
+    if (branch.from_bus_ref && branch.to_bus_ref) {
+      branchEnds.set(branch.ref_id, { from: branch.from_bus_ref, to: branch.to_bus_ref });
     }
   }
-  return refs;
+  const oriented = new Map<string, boolean>();
+  for (const run of sldData.cableRuns ?? []) {
+    for (const sp of run.segmentPaths ?? []) {
+      const ends = branchEnds.get(sp.segmentRef);
+      const fromBus = sp.fromTerminal?.busRef;
+      const toBus = sp.toTerminal?.busRef;
+      if (!ends || !fromBus || !toBus) continue;
+      if (fromBus === ends.from && toBus === ends.to) oriented.set(sp.segmentRef, true);
+      else if (fromBus === ends.to && toBus === ends.from) oriented.set(sp.segmentRef, false);
+    }
+  }
+  return oriented;
 }
 
 /**
@@ -405,8 +419,10 @@ export function singleHopSegmentRefs(snapshot: EnergyNetworkModel): ReadonlySet<
  * STRZAŁEK ZWARCIOWYCH WYŁĄCZNIE (`buildFaultFlowOverlayForSnapshot`, nie
  * `buildFlowOverlayForSnapshot`/przepływ mocy — zakres karty). Zwraca zbiór
  * `segmentRef` — po JEDNYM na przęsło wielokawałkowe (przedstawiciel do
- * jednej strzałki, patrz niżej), do UNII z `singleHopSegmentRefs` w
- * wywołaniu bramki.
+ * jednej strzałki, patrz niżej), do UNII z `orientedSegmentRefs` w
+ * wywołaniu bramki (S9-2: dowód per-CZŁON; ta funkcja dowodzi per-ŁAŃCUCH —
+ * oba dowody wywodzą orientację z refów węzłów, więc unia jest unią przypadków
+ * UDOWODNIONYCH, nie sumą dowodu i założenia).
  *
  * DOWÓD (nie zgadywanie — kryteria odmowy zwracają po prostu mniej/nic):
  * 1. Łańcuch = maksymalny ciąg KOLEJNYCH wpisów `cableRun.segmentPaths`
@@ -425,13 +441,13 @@ export function singleHopSegmentRefs(snapshot: EnergyNetworkModel): ReadonlySet<
  *    które ramię jest „dalej").
  * 3. Węzeł łączący MUSI być bez właściciela stacji (`ownerRef` null) — jeśli
  *    pośredni wpis jest jednak realną stacją, to DWA osobne przęsła
- *    jednokawałkowe (już obsłużone przez `singleHopSegmentRefs`), nie jedno
+ *    jednokawałkowe (już obsłużone przez `orientedSegmentRefs`), nie jedno
  *    wielokawałkowe — pomijamy scalanie.
  * 4. Granice łańcucha (pierwszy `fromTerminal`, ostatni `toTerminal`) MUSZĄ
  *    rozwiązywać się do realnej stacji — dowiedziona granica przęsła
- *    (identycznie jak `singleHopSegmentRefs`).
+ *    (dowód granicy przęsła).
  * Łańcuch krótszy niż 2 gałęzie (pojedynczy człon) pomijamy — to już
- * `singleHopSegmentRefs`, nie duplikujemy.
+ * `orientedSegmentRefs`, nie duplikujemy.
  *
  * PRZEDSTAWICIEL (jedna strzałka na przęsło, nie jedna na człon): spośród
  * członów łańcucha WIDOCZNYCH jako własny odcinek sceny w TEJ scenie/LOD
@@ -559,22 +575,27 @@ function readMetricReading(
  * na każdym LOD, patrz nagłówek pliku). `payload==null` (brak przebiegu w
  * `useRawResultOverlayStore`) lub przebieg NIE-rozpływowy (allowlista
  * `isLoadFlowPayload`, F-3) ⇒ `{}` (nakładka WYŁĄCZONA, spec §14.2 „overlay
- * wyłączony bez wyniku" — zero atrap). `trustedSingleHopRefs` (F-1, wymagany
- * — patrz `singleHopSegmentRefs` wyżej): wpis kierunku powstaje WYŁĄCZNIE
- * dla odcinka, którego ref jest w zbiorze — kierunek nieudowodniony
- * (przęsło wielokawałkowe / ref rysunkowy) ⇒ brak wpisu, nie błędna strzałka.
+ * wyłączony bez wyniku" — zero atrap). `orientationByRef` (S9-2, wymagany —
+ * patrz `orientedSegmentRefs` wyżej): wpis kierunku powstaje WYŁĄCZNIE dla
+ * odcinka, którego ref jest w mapie — orientacja nieudowodniona (ref rysunkowy,
+ * niezgodność węzłów) ⇒ brak wpisu, nie błędna strzałka.
  */
 export function buildFlowOverlayFromScene(
   scene: SceneV3,
   payload: RawOverlayPayload | null,
-  trustedSingleHopRefs: ReadonlySet<string>,
+  orientationByRef: ReadonlyMap<string, boolean>,
 ): Readonly<Record<string, SegmentFlowOverlay>> {
   if (!payload || !isLoadFlowPayload(payload)) return {};
   const out: Record<string, SegmentFlowOverlay> = {};
   for (const segment of scene.segments) {
     const ownerRef = segment.meta?.ownerRef;
     if (!ownerRef || segment.meta?.elementKind !== 'segment') continue;
-    if (!trustedSingleHopRefs.has(ownerRef)) continue;
+    // S9-2: bramka i ZWROT z JEDNEGO źródła (`orientedSegmentRefs`) — odcinek
+    // bez udowodnionej orientacji nie dostaje strzałki, a odcinek z orientacją
+    // dostaje ją zgodnie z zadeklarowanym kierunkiem gałęzi, nie z założeniem
+    // „points[0] to zawsze strona from".
+    const orientedForward = orientationByRef.get(ownerRef);
+    if (orientedForward === undefined) continue;
     const p = readMetricReading(payload, ownerRef, FLOW_METRIC_CODE_P);
     // §14.2 (dosłownie): „kierunek/wartość pochodzi z wyniku power-flow" —
     // tu zrealizowane jako odczyt znaku P_MW WPROST z wyniku (r2, F9.7:
@@ -585,7 +606,12 @@ export function buildFlowOverlayFromScene(
     if (!p) continue;
     out[ownerRef] = {
       ownerRef,
-      forward: p.value >= 0,
+      // Zwrot strzałki = znak wyniku ZŁOŻONY z orientacją odcinka: `P_MW` to
+      // `p_from_mw` (konwencja gałęzi from→to), więc moc dodatnia płynie wzdłuż
+      // `points[0]→points[last]` TYLKO wtedy, gdy `points[0]` jest stroną
+      // „from". ZERO fizyki: obie składowe to dane (znak z solvera, orientacja
+      // z refów węzłów gałęzi).
+      forward: (p.value >= 0) === orientedForward,
       p,
       q: readMetricReading(payload, ownerRef, FLOW_METRIC_CODE_Q),
       i: readMetricReading(payload, ownerRef, FLOW_METRIC_CODE_I),
@@ -644,22 +670,22 @@ interface MeasurableFaultEntry {
  * `input==null` (brak kanału kierunku w `useOverlayStore.faultFlow`) ⇒ `{}`
  * (strzałki WYŁĄCZONE — §14.2 „overlay wyłączony bez wyniku", zero atrap).
  * Bramki uczciwości (każda = brak wpisu, nigdy błędna strzałka):
- *  - ref poza `trustedSingleHopRefs` (F-1: kierunek geometrycznie
- *    nieudowodniony dla przęseł wielokawałkowych/refów rysunkowych);
+ *  - ref poza `orientationByRef` (S9-2: orientacja odcinka względem gałęzi
+ *    nieudowodniona — ref rysunkowy albo niezgodność węzłów);
  *  - wpisy gałęzi o MIESZANYCH kierunkach (różne źródła pchają w przeciwne
  *    strony — jedna strzałka byłaby fabrykacją wypadkowej bez fazy);
  *  - brak wpisu z mierzalnym `i_ka` (kierunek bez wartości nie ma skali).
  *
- * GAP V12K-121 (karta SLD-W): `trustedSingleHopRefs` może nieść UNIĘ
- * `singleHopSegmentRefs(snapshot)` ∪ `multiHopFaultFlowSegmentRefs(scene,
- * snapshot)` — wołający (`buildFaultFlowOverlayForSnapshot`) dokłada
- * przedstawicieli przęseł wielokawałkowych do tego samego zbioru; ta funkcja
- * nie rozróżnia pochodzenia refu, bramka i logika niżej są NIETKNIĘTE.
+ * GAP V12K-121 (karta SLD-W): `orientationByRef` może nieść UNIĘ
+ * `orientedSegmentRefs(snapshot)` ∪ przedstawicieli
+ * `multiHopFaultFlowSegmentRefs(scene, snapshot)` — wołający
+ * (`buildFaultFlowOverlayForSnapshot`) dokłada tych ostatnich do tej samej
+ * mapy; ta funkcja nie rozróżnia pochodzenia refu.
  */
 export function buildFaultFlowOverlayFromScene(
   scene: SceneV3,
   input: ShortCircuitFlowOverlayInput | null,
-  trustedSingleHopRefs: ReadonlySet<string>,
+  orientationByRef: ReadonlyMap<string, boolean>,
 ): Readonly<Record<string, SegmentFaultFlowOverlay>> {
   if (!input) return {};
   const byBranch = new Map<string, MeasurableFaultEntry[]>();
@@ -682,7 +708,8 @@ export function buildFaultFlowOverlayFromScene(
     const ownerRef = segment.meta?.ownerRef;
     if (!ownerRef || segment.meta?.elementKind !== 'segment') continue;
     if (ownerRef in out) continue; // deterministyczny: pierwszy odcinek wygrywa (ten sam ownerRef ⇒ ten sam wpis)
-    if (!trustedSingleHopRefs.has(ownerRef)) continue;
+    const orientedForward = orientationByRef.get(ownerRef);
+    if (orientedForward === undefined) continue;
     const entries = byBranch.get(ownerRef);
     if (!entries) continue;
     const direction = entries[0].direction;
@@ -693,7 +720,10 @@ export function buildFaultFlowOverlayFromScene(
     }
     out[ownerRef] = {
       ownerRef,
-      forward: direction === FAULT_DIRECTION_FROM_TO,
+      // S9-2: zwrot składa kierunek SOLVERA (token gałęzi from→to) z ORIENTACJĄ
+      // odcinka na rysunku — ta sama reguła co przepływ mocy wyżej, jedno
+      // źródło orientacji dla obu kanałów.
+      forward: (direction === FAULT_DIRECTION_FROM_TO) === orientedForward,
       iKa,
       payloadMaxKa,
       colorToken: faultFlowColorTokenForWeight(relativeFlowWeight(iKa, payloadMaxKa)),
@@ -719,6 +749,11 @@ export function isFaultFlowOverlayEmpty(
 export function faultFlowOverlayTracesToInput(
   faultFlowByOwnerRef: Readonly<Record<string, SegmentFaultFlowOverlay>> | undefined,
   input: ShortCircuitFlowOverlayInput | null,
+  /** S9-2: orientacja odcinków użyta przy budowie (ta sama mapa, co w
+   *  builderze). Domyślnie pusta ⇒ orientacja `true` (points[0] po stronie
+   *  „from"), czyli reguła sprzed karty — wyrocznia pozostaje zgodna dla
+   *  wołających, którzy jej nie podają. */
+  orientationByRef: ReadonlyMap<string, boolean> = new Map(),
 ): boolean {
   if (!faultFlowByOwnerRef) return true;
   for (const [ownerRef, entry] of Object.entries(faultFlowByOwnerRef)) {
@@ -731,7 +766,9 @@ export function faultFlowOverlayTracesToInput(
         flow.i_ka > 0,
     );
     if (measurable.length === 0) return false;
-    const expectedDirection = entry.forward ? FAULT_DIRECTION_FROM_TO : FAULT_DIRECTION_TO_FROM;
+    const oriented = orientationByRef.get(ownerRef) ?? true;
+    const expectedDirection =
+      entry.forward === oriented ? FAULT_DIRECTION_FROM_TO : FAULT_DIRECTION_TO_FROM;
     if (measurable.some((flow) => flow.direction !== expectedDirection)) return false;
     let maxKa = 0;
     for (const flow of measurable) {

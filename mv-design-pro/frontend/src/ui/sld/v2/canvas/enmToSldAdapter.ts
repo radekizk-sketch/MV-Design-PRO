@@ -41,6 +41,7 @@ import type {
   Measurement,
 } from '../../../../types/enm';
 import { buildOltcAnnotation } from './oltcGlyph';
+import { pickStationBus, STATION_LV_VOLTAGE_LIMIT_KV } from '../../shared/stationBusResolution';
 import type { GpzRendererProps } from '../renderer/GpzRenderer';
 import type { SectionRendererProps } from '../renderer/SectionRenderer';
 import {
@@ -3570,26 +3571,25 @@ function buildStationMiniBlockDetails(
   // `Bus.ref_id` (ten sam wzorzec co `stationBusRefMap` wyżej, linia ~1969).
   const stationBusRefs = new Set<string>();
   const busByRef = new Map((snapshot.buses ?? []).map((bus) => [bus.ref_id, bus]));
-  // K30-37: znajdź główną szynę SN stacji (najwyższe voltage_kv > 0.5 kV).
-  // 0.4 kV LV-side wykluczamy z "main" — main = SN bus.
-  let mainBusVoltageKv: number | null = null;
-  // Recenzja NO-GO 2026-07-17 pkt 6 (spec §12.5): szyna nN stacji — napięcie
-  // z REKORDU szyny (voltage_kv <= 0.5 ⇒ strona nN) + zbiór refów szyn nN
-  // do agregacji odbiorów niżej.
-  let nnVoltageKv: number | null = null;
+  // K30-37: główna szyna SN stacji (najwyższe voltage_kv powyżej granicy stron)
+  // i szyna nN — WYBÓR wg JEDNEJ reguły `shared/stationBusResolution.ts`
+  // (S9-2). Reguła była tu zapisana wprost, a warstwa wynikowa potrzebuje TEJ
+  // SAMEJ decyzji, żeby dopasować punkt wyniku do narysowanej szyny; dwie kopie
+  // rozjechałyby się na stacji z dwiema szynami tego samego napięcia.
+  const mainBusVoltageKv = pickStationBus(station, busByRef, 'sn').voltageKv;
+  const nnVoltageKv = pickStationBus(station, busByRef, 'nn').voltageKv;
+  // Zbiory refów: WSZYSTKIE szyny stacji (odbiory całej stacji) i WSZYSTKIE
+  // szyny nN (agregat odbioru nN). To INNY predykat niż wybór jednej szyny
+  // wyżej — pytanie brzmi „które szyny należą do stacji/strony nN", nie „która
+  // jest szyną główną" — dlatego liczony osobno, świadomie.
   const nnBusRefs = new Set<string>();
   for (const busRef of station.bus_refs ?? []) {
     const bus = busByRef.get(busRef);
     if (!bus) continue;
     stationBusRefs.add(bus.ref_id);
     const v = bus.voltage_kv;
-    if (typeof v === 'number' && Number.isFinite(v) && v > 0.5) {
-      if (mainBusVoltageKv == null || v > mainBusVoltageKv) {
-        mainBusVoltageKv = v;
-      }
-    } else if (typeof v === 'number' && Number.isFinite(v) && v > 0) {
+    if (typeof v === 'number' && Number.isFinite(v) && v > 0 && v <= STATION_LV_VOLTAGE_LIMIT_KV) {
       nnBusRefs.add(bus.ref_id);
-      if (nnVoltageKv == null || v > nnVoltageKv) nnVoltageKv = v;
     }
   }
   const totalLoadKw = Math.round(

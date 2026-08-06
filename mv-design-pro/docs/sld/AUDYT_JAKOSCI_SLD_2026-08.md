@@ -168,7 +168,7 @@ IEC 60909 (`ikss_a`, `ip_a`, `ith_a`, `ib_a`, `sk_mva`, `kappa`, `zkk_ohm`, `c_f
 
 | # | Opis | Dowód | Soczewka | Waga | Naprawa (jednym zdaniem) |
 |---|------|-------|----------|------|--------------------------|
-| W-1 | **Wyniki NIE pojawiają się na schemacie.** W stanie poprawnym (`#sld?run=…`, kanwa stabilna, pochodzenie nakładki związane z biegiem) zmierzono: **0 etykiet wynikowych, 0 strzałek rozpływu, 0 strzałek zwarciowych, brak znacznika punktu zwarcia** — zarówno na L0, jak i na L2. Rysunek po biegu jest identyczny jak przed biegiem. | pomiar `wyniki-nakladka-poprawny-stan`; `wyniki-nakladka-L0.png`, `wyniki-nakladka-L2.png` (porównaj z `czytelnosc-srednia-L2-ciemny.png`) | ZW, PSN | **3** | Podłączyć warstwę `sld-v3-result-labels` do wyniku wskazanego przez `run` — dane są w backendzie, a wiązanie już istnieje. |
+| W-1 | **Wyniki NIE pojawiają się na schemacie.** W stanie poprawnym (`#sld?run=…`, kanwa stabilna, pochodzenie nakładki związane z biegiem) zmierzono: **0 etykiet wynikowych, 0 strzałek rozpływu, 0 strzałek zwarciowych, brak znacznika punktu zwarcia** — zarówno na L0, jak i na L2. Rysunek po biegu jest identyczny jak przed biegiem. **ZAMKNIĘTE kartą S9-2 (2026-08-06)** — patrz §5.3. | pomiar `wyniki-nakladka-poprawny-stan`; `wyniki-nakladka-L0.png`, `wyniki-nakladka-L2.png` (porównaj z `czytelnosc-srednia-L2-ciemny.png`) | ZW, PSN | **3** | Podłączyć warstwę `sld-v3-result-labels` do wyniku wskazanego przez `run` — dane są w backendzie, a wiązanie już istnieje. |
 | W-2 | **Pasek pochodzenia nakładki działa** (obserwacja pozytywna): po biegu pokazuje „Moduł: zwarcie trójfazowe · Przebieg: `61603f65…` · Czas ukończenia: 6.08.2026, 07:07:18" — czyli wiązanie wynik↔rysunek istnieje, brakuje samego rysowania wartości. | pomiar jw. | ZW | — | — |
 | W-3 | **Pułapka nawigacji: pierwszy powrót na schemat jest cofany.** Po biegu klik „Schemat (SLD)" przechodzi na `#sld` i kanwa montuje się (96 elementów `sld-v3-*` w 303 ms), a po **~2,3 s** aplikacja SAMA wraca na `#analysis?run=…` i odmontowuje kanwę; stan utrzymuje się przez kolejne 35 s. **Dopiero drugi klik** zostaje (`#sld?run=…`). | pomiary `wyniki-pulapka-nawigacji` (ślad co 1 s) i `wyniki-domontowanie-po-powrocie`; `wyniki-pulapka-nawigacji.png` | UX | **3** | Usunąć odroczone przekierowanie na widok analizy po zakończeniu biegu (albo wykonać je raz, przed interakcją użytkownika). |
 | W-4 | **„Oblicz" wyprowadza projektanta ze schematu.** Klik natychmiast przenosi na `#analysis?run=…`; kanwa jest odmontowywana. Pętla „policz i zobacz na rysunku" nie domyka się w jednym miejscu pracy. | pomiar `wyniki-nakladka` (adres po kliku); `wyniki-po-kliku-oblicz.png` | UX, PSN | 2 | Bieg ma zostawiać projektanta tam, gdzie był, i sygnalizować gotowość wyniku bez wymuszonej nawigacji. |
@@ -176,6 +176,35 @@ IEC 60909 (`ikss_a`, `ip_a`, `ith_a`, `ib_a`, `sk_mva`, `kappa`, `zkk_ohm`, `c_f
 | W-6 | **Nieaktualna podpowiedź „następny krok" po biegu.** Pas „NASTĘPNY KROK" nadal głosi „Model zawiera elementy — bramka gotowości wskaże, czy układ jest kompletny do obliczeń", mimo że obliczenia właśnie się wykonały. | `wyniki-nakladka-L2.png` | UX | 1 | Podpowiedź ma reagować na stan biegu (po wyniku: „obejrzyj wyniki na schemacie / w dowodach"). |
 | W-7 | **Tabela wyników zwarciowych jest bardzo dobra** (obserwacja pozytywna): kolumny `Punkt zwarcia`, `Rodzaj zwarcia`, `Prąd zwarciowy początkowy Ik″ [kA]`, `Prąd udarowy ip [kA]`, `Prąd cieplny Ith [kA]`, `Moc zwarciowa Sk`, sekcja „Założenia" z `Metoda obliczeń IEC 60909`, `Współczynnik napięciowy c = 1,10`, `Czas cieplny 1,00 s`; nazwy punktów czytelne („Turbina wiatrowa 1 MW (Vestas V90)", „Stacja przemysłowa 1 MVA, 4 odpływy nN"). | `wyniki-pulapka-nawigacji.png` | ZW | — | — |
 | W-8 | **Nakładka delta / porównanie A/B — stan faktyczny: nieosiągalna z kanwy.** Elementy `sld-v3-result-comparison` i `sld-v3-result-comparison-blocked` nie pojawiają się po biegu (obie treści puste), podobnie `sld-v3-result-filter-panel` (`false`) i `sld-v3-result-stale-badge` (pusty). Nie oceniam ich działania — odnotowuję, że po pojedynczym biegu nie da się ich wywołać z kanwy. | pomiar `wyniki-nakladka-poprawny-stan` | ZW | 2 | Osobna karta — wymaga dwóch biegów i jawnego wejścia w porównanie z poziomu schematu. |
+
+### 5.3 Domknięcie W-1 (karta S9-2, 2026-08-06)
+
+**Gdzie ginęła treść** (diagnoza pomiarem na żywym backendzie, nie z lektury kodu):
+
+| # | Ogniwo | Co było | Skutek |
+|---|--------|---------|--------|
+| 1 | most refów rysunek ↔ wynik | `meta.busResultRef` istniał WYŁĄCZNIE dla szyn GPZ (ADAPTER-BUSREF, V12K-163). Szyny stacji noszą na rysunku ref kompozytowy (`${stationRef}#sn-bus`, `#lv-bus`), a symbol transformatora stacji — ref POLA. | dopasowanie 1 punktu z 3 (zwarcia) i 4 z 16 (rozpływ) |
+| 2 | bramka przęseł `singleHopSegmentRefs` (F-1) | wymagała, by OBA końce odcinka rozwiązywały się do STACJI; ciąg SN kończy KAŻDY odcinek mufą (`INLINE_TERMINAL`) | zbiór PUSTY ⇒ zero strzałek rozpływu i zero etykiet gałęziowych na każdej realnej sieci |
+| 3 | poziom przeglądu | `RESULT_LABEL_MAX_LINES_BY_LOD[0] = 0` | L0 nie pokazywał ŻADNEJ liczby |
+| 4 | rozmieszczanie (declutter) | 8 kandydatów pozycji, wszystkie tuż przy kotwicy | jedyna policzona etykieta była na L2 UKRYWANA (`placements=0`, `hidden=1`) |
+
+**Odbiór (żywa aplikacja, sieć GPZ + 3 stacje z szablonów, oba motywy):**
+
+| Bieg | Poziom | Etykiety przed → po | Strzałki rozpływu przed → po | Znaczniki zwarcia przed → po |
+|------|--------|---------------------|------------------------------|------------------------------|
+| zwarciowy | L0 | 0 → **6** | — | 0 → **7** |
+| zwarciowy | L2 | 0 → **6** | — | 0 → **7** |
+| rozpływowy | L0 | 0 → **9** (+2 bloki zbiorcze) | 1 → **6** | — |
+| rozpływowy | L2 | 2 → **17** (+2 bloki zbiorcze) | 1 → **6** | — |
+
+Zrzuty: `audyt-2026-08/s9-2-{przed,po}-{zwarcia,rozplyw}-L{0,2}-{ciemny,jasny}.png` (16 plików).
+
+**Równość „etykiety = punkty wyniku"** jest egzekwowana testem integracyjnym na fixturach z ŻYWEGO biegu:
+bieg zwarciowy **3 punkty = 3 etykiety** (równość dosłowna), bieg rozpływowy **16 punktów = 10 etykiet
++ 6 punktów, których MODEL sam nie rysuje** (`Bus.meta.render_on_sld === false`: mufy ciągu, zaciski pól),
+przy `withoutAnchor = 0`. Rachunek jest widoczny dla operatora w panelu filtrów warstwy wynikowej
+(„Etykiety: X z Y punktów wyniku" + jawny powód braku pozostałych), więc brak etykiety ma NAZWANY powód,
+a nie „po prostu nie widać".
 
 ---
 
@@ -236,7 +265,7 @@ pracować, bez S9-3 nie da się sensownie odebrać S9-2.
 | Karta | Cel | Rozmiar | Zależy od |
 |-------|-----|---------|-----------|
 | **S9-1 · Łamanie arkusza** | Layout łamie magistralę na wiersze/strony arkusza o normowej proporcji (docelowo A3, 1,41 : 1) zamiast rozwijać ją w prawo; poziom przeglądu pokazuje bloki stacji. Odbiór: proporcja arkusza ≤ 2 : 1 dla 51 stacji, gęstość tuszu na przeglądzie > 5 %. | **L** | — |
-| **S9-2 · Wyniki na rysunku** | Warstwa wynikowa rysuje wartości biegu wskazanego przez `run` (Ik″, ip, Ith przy punktach; kierunki i wartości rozpływu na gałęziach), z filtrem przekroczeń i znacznikiem punktu zwarcia. Odbiór: liczba etykiet wynikowych > 0 i zgodna z liczbą punktów wyniku. | **M** | S9-3 |
+| **S9-2 · Wyniki na rysunku** ✔ **WYKONANA (2026-08-06)** | Warstwa wynikowa rysuje wartości biegu wskazanego przez `run` (Ik″, ip, Ith przy punktach; kierunki i wartości rozpływu na gałęziach), z filtrem przekroczeń i znacznikiem punktu zwarcia. Odbiór: liczba etykiet wynikowych > 0 i zgodna z liczbą punktów wyniku — patrz §5.3. | **M** | S9-3 |
 | **S9-3 · Domknięcie pętli obliczeń** | Usunięcie odroczonego przekierowania po biegu, jedno źródło prawdy o stanie wyników, aktualizacja podpowiedzi „następny krok". Odbiór: po biegu jeden klik wraca na schemat i tam zostaje. | **S** | — |
 | **S9-4 · Trafienie i tożsamość zaznaczenia** | Jednolity obszar trafienia (min. 24 px) na obiekt, obrys trafienia dla elementów kreskowych, `owner-ref` klikniętego aparatu niesiony do inspektora. Odbiór: sonda siatkowa — ≥ 95 % klików nad elementem zaznacza TEN element. | **M** | — |
 | **S9-5 · Menu kontekstowe i operacje budowy na kanwie** | Menu kontekstowe zależne od trafionego obiektu + operacje ciągu SN (odcinek, stacja na odcinku, odgałęzienie) dostępne z rysunku. Odbiór: budowa sieci 15 stacji wykonalna wyłącznie z kanwy. | **M** | S9-4 |
