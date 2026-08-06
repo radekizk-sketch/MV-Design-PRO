@@ -92,12 +92,12 @@ Przejścia poziomu przy zoomie: `L0→L1` na kroku 14 (**303 ms**), `L1→L2` na
 
 | # | Opis | Dowód | Soczewka | Waga | Naprawa (jednym zdaniem) |
 |---|------|-------|----------|------|--------------------------|
-| P-1 | **Klik w element schematu w większości przypadków nic nie zaznacza.** Sonda siatkowa: 96 natywnych klików pokrywających widoczny odcinek szyny SN stacji i jej pola; kursor był nad elementem rysunku w 12 punktach, a zaznaczenie nastąpiło tylko w **3 z tych 12 (25 %)**. Ten sam prostokąt pola `sn_field/002` raz się zaznacza (`y=698`, `y=717`), raz nie (`y=623`, `y=642`, `y=679`). | pomiar `praca-sonda-siatkowa` | UX, PSN | **3** | Ujednolicić trafienie: jeden przezroczysty obszar trafienia na obiekt (min. 24 px), zamiast polegania na geometrii kreski. |
-| P-2 | **Inspektor nie rozróżnia klikanych obiektów.** We wszystkich udanych zaznaczeniach (sonda siatkowa oraz 8 klików w różne pola trzech różnych stacji) inspektor pokazał **jeden i ten sam** opis „Transformator SN/nN" — także po kliknięciu w identyfikator uziemnika (`apparatus-id-earthSwitch-lateral-1`) i w pole pomiarowe. Liczba różnych treści inspektora: **1** na 8 klików w różne obiekty. | pomiary `praca-ziarnistosc-zaznaczenia`, `praca-inspektor-rozroznialnosc`, `praca-sonda-siatkowa`; `praca-zaznaczenie-inspektor.png` | ZW, PSN | **3** | Zaznaczenie musi nieść `owner-ref` klikniętego aparatu, a inspektor renderować obiekt wskazany tym `ref`. |
-| P-3 | **Aparaty rysowane kreską są niekilkalne.** Cztery kliki wykonane DOKŁADNIE na geometrii ścieżki (punkt liczony przez `getPointAtLength` + `getScreenCTM`) — uziemnik, przekładnik napięciowy, zejście pola — nie dały zaznaczenia; obrys tych elementów ma 1,6 px. | pomiar `praca-klik-na-kresce` | UX, ZW | **3** | Dodać niewidoczny obrys trafienia (`stroke-width` trafienia ≫ obrys rysunku) dla elementów liniowych. |
+| P-1 | **[ZAMKNIĘTE 2026-08-06, karta S9-4]** **Klik w element schematu w większości przypadków nic nie zaznacza.** Sonda siatkowa: 96 natywnych klików pokrywających widoczny odcinek szyny SN stacji i jej pola; kursor był nad elementem rysunku w 12 punktach, a zaznaczenie nastąpiło tylko w **3 z tych 12 (25 %)**. Ten sam prostokąt pola `sn_field/002` raz się zaznacza (`y=698`, `y=717`), raz nie (`y=623`, `y=642`, `y=679`). | pomiar `praca-sonda-siatkowa` | UX, PSN | **3** | Ujednolicić trafienie: jeden przezroczysty obszar trafienia na obiekt (min. 24 px), zamiast polegania na geometrii kreski. |
+| P-2 | **[CZĘŚCIOWO 2026-08-06, karta S9-4: klik niesie `ownerRef` KLIKNIĘTEGO obiektu, a każdy obiekt kanwy ma niepowtarzalną tożsamość (naprawa u źródła w `compose/gpz.ts`: dwa aparaty tego samego rodzaju w jednym polu miały wspólny `testId`). NIEDOMKNIĘTE: dwa aparaty JEDNEGO pola nadal dzielą `ownerRef` = ref pola (473 z 474 aparatów w 173 polach), bo scena nie przenosi `deviceRef` — dług `S9-4-DLUG-INSPEKTOR` w rejestrze]** **Inspektor nie rozróżnia klikanych obiektów.** We wszystkich udanych zaznaczeniach (sonda siatkowa oraz 8 klików w różne pola trzech różnych stacji) inspektor pokazał **jeden i ten sam** opis „Transformator SN/nN" — także po kliknięciu w identyfikator uziemnika (`apparatus-id-earthSwitch-lateral-1`) i w pole pomiarowe. Liczba różnych treści inspektora: **1** na 8 klików w różne obiekty. | pomiary `praca-ziarnistosc-zaznaczenia`, `praca-inspektor-rozroznialnosc`, `praca-sonda-siatkowa`; `praca-zaznaczenie-inspektor.png` | ZW, PSN | **3** | Zaznaczenie musi nieść `owner-ref` klikniętego aparatu, a inspektor renderować obiekt wskazany tym `ref`. |
+| P-3 | **[ZAMKNIĘTE 2026-08-06, karta S9-4]** **Aparaty rysowane kreską są niekilkalne.** Cztery kliki wykonane DOKŁADNIE na geometrii ścieżki (punkt liczony przez `getPointAtLength` + `getScreenCTM`) — uziemnik, przekładnik napięciowy, zejście pola — nie dały zaznaczenia; obrys tych elementów ma 1,6 px. | pomiar `praca-klik-na-kresce` | UX, ZW | **3** | Dodać niewidoczny obrys trafienia (`stroke-width` trafienia ≫ obrys rysunku) dla elementów liniowych. |
 | P-4 | **Zoom szarpie, przejścia poziomu zamrażają obraz.** 23 % klatek przy zoomie przekracza 33 ms, 8 klatek przekracza 100 ms, a same przejścia `L0→L1` i `L1→L2` trwają **303 ms** i **371 ms** — przy 51 stacjach to widoczne zacięcie przy każdym przekroczeniu progu. | pomiar `praca-zoom-duza` | UX | 2 | Przeliczać scenę poziomu poza ścieżką gestu (praca w tle / pamięć podręczna sceny), zamiast w klatce zoomu. |
 | P-5 | **Przeciąganie (pan) jest płynne** (obserwacja pozytywna): mediana 15,9 ms, **zero** klatek powyżej 33 ms na sieci 51 stacji. | pomiar `praca-pan-duza` | UX | — | — |
-| P-6 | **Klik w tło zaznacza obiekt.** W sondzie siatkowej zaznaczenie nastąpiło w 22 punktach, podczas gdy tylko 12 punktów leżało nad elementem rysunku — co najmniej 10 zaznaczeń pochodzi z kliku w pustą przestrzeń arkusza. | pomiar `praca-sonda-siatkowa` (`klikowZakonczonychZaznaczeniem`=22 vs `punktowNadElementemRysunku`=12) | UX | 2 | Klik w tło ma czyścić zaznaczenie, nie ustawiać go. |
+| P-6 | **[ZAMKNIĘTE 2026-08-06, karta S9-4: „tło" = brak uchwytu pod kursorem, klik w tło CZYŚCI zaznaczenie]** **Klik w tło zaznacza obiekt.** W sondzie siatkowej zaznaczenie nastąpiło w 22 punktach, podczas gdy tylko 12 punktów leżało nad elementem rysunku — co najmniej 10 zaznaczeń pochodzi z kliku w pustą przestrzeń arkusza. | pomiar `praca-sonda-siatkowa` (`klikowZakonczonychZaznaczeniem`=22 vs `punktowNadElementemRysunku`=12) | UX | 2 | Klik w tło ma czyścić zaznaczenie, nie ustawiać go. |
 
 ### 3.3 Menu kontekstowe kanwy
 
@@ -110,6 +110,38 @@ menu kontekstowego; są w drzewie także wtedy, gdy sieć ma 16 stacji.
 |---|------|-------|----------|------|--------------------------|
 | P-7 | **Brak menu kontekstowego kanwy.** Prawy klik w element i w tło nie ujawnia żadnego menu operacji schematu (wstaw stację na odcinku, rozpocznij odgałęzienie, dodaj OZE, właściwości). Jedyne pozycje `sld-menu-*` w DOM to akcje stanu pustego. | pomiary `budowa-menu-kontekstowe-element`, `budowa-menu-kontekstowe-tlo`; `budowa-menu-kontekstowe.png` | PSN, UX | **3** | Dodać menu kontekstowe kanwy z operacjami zależnymi od trafionego obiektu (odcinek / pole / stacja / tło). |
 | P-8 | **Akcje stanu pustego są w drzewie mimo niepustego modelu.** `sld-empty-state`, `sld-empty-state-insert-gpz`, `sld-empty-state-open-catalogs` obecne przy 16 i 51 stacjach. | wypis `data-testid` po otwarciu przypadku (spec `00-rekonesans`) | UX | 1 | Montować stan pusty warunkowo, żeby nie zaśmiecał drzewa i wyszukiwania. |
+
+---
+
+### 3.4 Domknięcie P-1 / P-3 / P-6 (karta S9-4, 2026-08-06)
+
+**Jedna przyczyna dla całej klasy** (diagnoza sondą siatkową na fixturze goldenowej
+53 stacji, nie z lektury kodu): obszar trafienia nie był własnością obiektu, tylko
+przypadkową konsekwencją grubości kreski i kolejności malowania.
+
+| # | Ogniwo | Co było | Skutek |
+|---|--------|---------|--------|
+| 1 | rozmiar celu | hitboxy w jednostkach ŚWIATA (stała 12 j.św. na torze, gabaryt symbolu) | 7,2 px ekranu przy skali 0,6 i 36 px przy 3,0; najmniejszy aparat 1,8 px przy skali dopasowania |
+| 2 | etykiety i nakładki | brak uchwytu, ale PEŁNE malowanie | napis łapał zdarzenie i nie robił z nim nic — klik „znikał" zamiast trafić w obiekt pod spodem (do 1137 napisów na L2) |
+| 3 | rozstrzyganie | jeden przebieg (kolejność malowania) | poszerzony cel symbolu zjadał kliki w szynę biegnącą pod nim |
+| 4 | tło | brak definicji (żadnego handlera na korzeniu) | klik w pusty arkusz nie czyścił zaznaczenia |
+
+**Odbiór — sonda siatkowa** (oczekiwanie ze SCENY, rozstrzygnięcie z wyrenderowanego
+DRZEWA; iloczyn cech {10 rodzajów obiektu} × {LOD 0/1/2} × {zoom mały/duży}):
+
+| Poziom · zoom | Skuteczność przed → po | Obiekty poniżej 24 px przed → po |
+|---------------|------------------------|----------------------------------|
+| L0 · mały | 77,2 % → **100,0 %** | 237 → **0** |
+| L0 · duży | 76,9 % → **100,0 %** | 184 → **0** |
+| L1 · mały | 79,3 % → **100,0 %** | 1827 → **0** |
+| L1 · duży | 71,4 % → **100,0 %** | 1952 → **0** |
+| L2 · mały | 67,4 % → **100,0 %** | 2146 → **0** |
+| L2 · duży | **55,7 %** → **100,0 %** | 2516 → **0** |
+
+Klasa „etykieta": **0,0 % → 100,0 %** na każdym poziomie (przed kartą 0 uchwytów).
+
+Zrzuty: `audyt-2026-08/s9-4-{stacja,aparat,transformator,szyna,tor,lacznik-wiersza,etykieta,znacznik-wyniku}-{ciemny,jasny}.png`
+(16 plików — punkt kliku, obszar trafienia i wskazany `ownerRef` dla każdego rodzaju obiektu, oba motywy).
 
 ---
 
@@ -267,7 +299,7 @@ pracować, bez S9-3 nie da się sensownie odebrać S9-2.
 | **S9-1 · Łamanie arkusza** | Layout łamie magistralę na wiersze/strony arkusza o normowej proporcji (docelowo A3, 1,41 : 1) zamiast rozwijać ją w prawo; poziom przeglądu pokazuje bloki stacji. Odbiór: proporcja arkusza ≤ 2 : 1 dla 51 stacji, gęstość tuszu na przeglądzie > 5 %. | **L** | — |
 | **S9-2 · Wyniki na rysunku** ✔ **WYKONANA (2026-08-06)** | Warstwa wynikowa rysuje wartości biegu wskazanego przez `run` (Ik″, ip, Ith przy punktach; kierunki i wartości rozpływu na gałęziach), z filtrem przekroczeń i znacznikiem punktu zwarcia. Odbiór: liczba etykiet wynikowych > 0 i zgodna z liczbą punktów wyniku — patrz §5.3. | **M** | S9-3 |
 | **S9-3 · Domknięcie pętli obliczeń** | Usunięcie odroczonego przekierowania po biegu, jedno źródło prawdy o stanie wyników, aktualizacja podpowiedzi „następny krok". Odbiór: po biegu jeden klik wraca na schemat i tam zostaje. | **S** | — |
-| **S9-4 · Trafienie i tożsamość zaznaczenia** | Jednolity obszar trafienia (min. 24 px) na obiekt, obrys trafienia dla elementów kreskowych, `owner-ref` klikniętego aparatu niesiony do inspektora. Odbiór: sonda siatkowa — ≥ 95 % klików nad elementem zaznacza TEN element. | **M** | — |
+| **S9-4 · Trafienie i tożsamość zaznaczenia** ✔ **WYKONANA (2026-08-06)** | Jednolity obszar trafienia (min. 24 px) na obiekt, obrys trafienia dla elementów kreskowych, `owner-ref` klikniętego aparatu niesiony do inspektora. Odbiór: sonda siatkowa — ≥ 95 % klików nad elementem zaznacza TEN element. | **M** | — |
 | **S9-5 · Menu kontekstowe i operacje budowy na kanwie** | Menu kontekstowe zależne od trafionego obiektu + operacje ciągu SN (odcinek, stacja na odcinku, odgałęzienie) dostępne z rysunku. Odbiór: budowa sieci 15 stacji wykonalna wyłącznie z kanwy. | **M** | S9-4 |
 | **S9-6 · Eksport jako dokument** | Tytułówka w SVG/PDF, legenda domyślnie włączona, implementacja PDF i PNG albo usunięcie pozycji, wypełnienie `ENTITIES` w DXF + bramka „eksport bez encji = błąd", jedna konwencja nazw. Odbiór: każdy oferowany format zwraca plik z geometrią. | **M** | S9-1 |
 | **S9-7 · Typografia i ramka arkusza** | Rozmiary napisów w pikselach ekranu (stała czytelność niezależna od skali), znaczniki stref zgodne z formatem arkusza, skracanie zachowujące człon rozróżniający. Odbiór: zero napisów < 8 px na każdym poziomie. | **S** | S9-1 |
@@ -293,7 +325,8 @@ dodatkowo `czytelnosc-duza-L0-pasek-kadr.png` — kadr pasa rysunku sieci dużej
 **Budowa:** `budowa-stan-pusty.png`, `budowa-po-kliku-wstaw-gpz.png`,
 `budowa-stabilnosc-przed.png`, `budowa-stabilnosc-po.png`, `budowa-menu-kontekstowe.png`.
 
-**Praca na schemacie:** `praca-zaznaczenie-inspektor.png`.
+**Praca na schemacie:** `praca-zaznaczenie-inspektor.png`;
+S9-4 (trafienie i tożsamość): `s9-4-{stacja,aparat,transformator,szyna,tor,lacznik-wiersza,etykieta,znacznik-wyniku}-{ciemny,jasny}.png` (16 plików).
 
 **Wyniki:** `wyniki-po-kliku-oblicz.png`, `wyniki-pulapka-nawigacji.png`,
 `wyniki-nakladka-L0.png`, `wyniki-nakladka-L2.png`.
