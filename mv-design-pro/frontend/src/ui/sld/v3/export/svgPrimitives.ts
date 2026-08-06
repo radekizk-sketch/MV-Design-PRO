@@ -91,6 +91,13 @@ const SVG_DEFAULT_FILL = '#000000';
 interface InheritedState {
   readonly tx: number;
   readonly ty: number;
+  /** Rozmiar bieżącego viewportu — baza dla wartości PROCENTOWYCH. Tor
+   *  eksportu spotyka je realnie: `injectExportBackground` (`exportPalette.ts`)
+   *  wstrzykuje tło jako `<rect width="100%" height="100%">`. Bez rozwiązania
+   *  procentu ten prostokąt miałby 100×100 jednostek i zamalowałby róg
+   *  rysunku (defekt wykryty pomiarem PDF przed odbiorem karty). */
+  readonly viewportWidth: number;
+  readonly viewportHeight: number;
   readonly fill: string | null;
   readonly stroke: string | null;
   readonly strokeWidth: number;
@@ -104,6 +111,8 @@ interface InheritedState {
 const ROOT_STATE: InheritedState = {
   tx: 0,
   ty: 0,
+  viewportWidth: 0,
+  viewportHeight: 0,
   fill: null,
   stroke: null,
   strokeWidth: 1,
@@ -131,6 +140,22 @@ function num(value: string | null, fallback: number): number {
   if (value === null || value.trim() === '') return fallback;
   const parsed = Number.parseFloat(value);
   return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+/** Długość SVG z obsługą PROCENTU względem viewportu (patrz `InheritedState`).
+ *  Jednostka inna niż liczba i procent (px/mm/em) nie występuje w scenie v3 i
+ *  RZUCA wyjątek — cicha reinterpretacja przesunęłaby geometrię. */
+function length(value: string | null, fallback: number, viewport: number): number {
+  if (value === null || value.trim() === '') return fallback;
+  const trimmed = value.trim();
+  if (trimmed.endsWith('%')) {
+    const percent = Number.parseFloat(trimmed.slice(0, -1));
+    return Number.isFinite(percent) ? (percent / 100) * viewport : fallback;
+  }
+  if (!/^-?[\d.]+$/.test(trimmed)) {
+    throw new Error(`Eksport schematu: nieobsługiwana jednostka długości „${trimmed}" w markupie rysunku.`);
+  }
+  return num(trimmed, fallback);
 }
 
 function parseTranslate(transform: string | null): { readonly tx: number; readonly ty: number } {
@@ -326,6 +351,10 @@ function childState(el: Element, parent: InheritedState): InheritedState {
   return {
     tx: parent.tx + tx,
     ty: parent.ty + ty,
+    // Viewport dziedziczy się nienaruszony — zmienia go WYŁĄCZNIE wejście w
+    // element `<svg>` (gałąź `case 'svg'`).
+    viewportWidth: parent.viewportWidth,
+    viewportHeight: parent.viewportHeight,
     fill: fillRaw ?? parent.fill,
     stroke: strokeRaw ?? parent.stroke,
     strokeWidth: num(el.getAttribute('stroke-width'), parent.strokeWidth),
@@ -364,15 +393,16 @@ function collect(el: Element, parent: InheritedState, out: ExportPrimitive[]): v
       // tak WYŁĄCZNIE przy odwzorowaniu tożsamościowym; skalujący `viewBox`
       // zmieniłby układ współrzędnych dzieci i po cichu rozjechał geometrię.
       const vb = (el.getAttribute('viewBox') ?? '').trim();
-      const w = num(el.getAttribute('width'), 0);
-      const h = num(el.getAttribute('height'), 0);
+      const w = num(el.getAttribute('width'), state.viewportWidth);
+      const h = num(el.getAttribute('height'), state.viewportHeight);
       if (vb !== '' && vb.replace(/[\s,]+/g, ' ') !== `0 0 ${w} ${h}`) {
         throw new Error(
           `Eksport schematu: zagnieżdżony <svg> ma skalujący viewBox „${vb}" przy rozmiarze ${w}×${h} — ` +
             'tor DXF/PDF nie odwzorowuje skalowania układu współrzędnych.',
         );
       }
-      for (const child of Array.from(el.children)) collect(child, state, out);
+      const viewportState: InheritedState = { ...state, viewportWidth: w, viewportHeight: h };
+      for (const child of Array.from(el.children)) collect(child, viewportState, out);
       return;
     }
     case 'g':
@@ -393,10 +423,10 @@ function collect(el: Element, parent: InheritedState, out: ExportPrimitive[]): v
       return;
     }
     case 'rect': {
-      const x = num(el.getAttribute('x'), 0);
-      const y = num(el.getAttribute('y'), 0);
-      const w = num(el.getAttribute('width'), 0);
-      const h = num(el.getAttribute('height'), 0);
+      const x = length(el.getAttribute('x'), 0, state.viewportWidth);
+      const y = length(el.getAttribute('y'), 0, state.viewportHeight);
+      const w = length(el.getAttribute('width'), 0, state.viewportWidth);
+      const h = length(el.getAttribute('height'), 0, state.viewportHeight);
       if (w <= 0 || h <= 0) return;
       out.push({
         kind: 'polyline',
