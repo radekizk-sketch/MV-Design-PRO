@@ -134,7 +134,7 @@ import {
   buildFlowOverlayFromScene,
   flowOverlayValuesTraceToPayload,
   isFlowOverlayEmpty,
-  singleHopSegmentRefs,
+  orientedSegmentRefs,
 } from '../src/ui/sld/v3/canvas/overlay.ts';
 import { computeFlowOverlayPlacements, layoutResultLabels } from '../src/ui/sld/v3/canvas/SldCanvasV3.tsx';
 import { buildResultLabelsFromScene } from '../src/ui/sld/v3/canvas/resultLabels.ts';
@@ -150,10 +150,11 @@ const here = dirname(fileURLToPath(import.meta.url));
 const RESULT_LABEL_HIDDEN_BUDGET = { 0: 0, 1: 5, 2: 25 };
 
 /** Buduje PEŁNY, syntetyczny payload rozpływu na REALNYCH refach sceny (źródła/
- *  TR/szyny/przęsła jednokawałkowe) — kształt identyczny z `RawOverlayPayload`,
- *  wartości 1:1 z kontraktu (zero fizyki w skrypcie). Odwzorowuje bieg z
- *  wynikami na całej sieci — maksymalne obciążenie deklutteru/agregacji. */
-function buildFullResultPayload(scene, singleHop) {
+ *  TR/szyny/odcinki z udowodnioną orientacją) — kształt identyczny z
+ *  `RawOverlayPayload`, wartości 1:1 z kontraktu (zero fizyki w skrypcie).
+ *  Odwzorowuje bieg z wynikami na całej sieci — maksymalne obciążenie
+ *  deklutteru/agregacji. */
+function buildFullResultPayload(scene, oriented) {
   const metricsForKind = (kind) => {
     if (kind === 'branch') {
       return {
@@ -189,7 +190,7 @@ function buildFullResultPayload(scene, singleHop) {
       }
       continue;
     }
-    if (k === 'segment' && ref && !ref.includes('#') && singleHop.has(ref) && !elements[ref]) {
+    if (k === 'segment' && ref && !ref.includes('#') && oriented.has(ref) && !elements[ref]) {
       elements[ref] = { ref_id: ref, kind: 'branch', badges: [], severity: 'INFO', metrics: metricsForKind('branch') };
     }
   }
@@ -1242,16 +1243,17 @@ for (const lod of LODS) {
   // Store`, zasilany przez `App.tsx`) i UDOKUMENTOWANA luka backendu, przez
   // którą jest on dziś pusty dla gałęzi na KAŻDYM realnym przebiegu
   // LOAD_FLOW, opisane w `canvas/overlay.ts` nagłówek F9.5. Bramka F-1
-  // (recenzja Opusa): kierunek emitowany WYŁĄCZNIE dla przęseł
-  // jednokawałkowych (`singleHopSegmentRefs`) — na tej fixturze 45/53.
-  const singleHop = singleHopSegmentRefs(enm);
-  const emptyFlow = buildFlowOverlayFromScene(scene, null, singleHop);
+  // w kanonie S9-2: kierunek emitowany WYŁĄCZNIE dla odcinków z orientacją
+  // DOWODZONĄ refami węzłów gałęzi (`orientedSegmentRefs`) — poprzednik
+  // (`singleHopSegmentRefs`, przęsła jednokawałkowe) był jej podzbiorem.
+  const oriented = orientedSegmentRefs(enm);
+  const emptyFlow = buildFlowOverlayFromScene(scene, null, oriented);
   check('flow_overlay_probe (§14.2, a): overlay wyłączony bez wyniku (payload=null ⇒ pusta nakładka, zero atrap)', isFlowOverlayEmpty(emptyFlow));
 
   const flowCandidateRef = scene.segments.find(
-    (s) => s.meta?.elementKind === 'segment' && s.meta.ownerRef && !s.meta.ownerRef.includes('#') && singleHop.has(s.meta.ownerRef),
+    (s) => s.meta?.elementKind === 'segment' && s.meta.ownerRef && !s.meta.ownerRef.includes('#') && oriented.has(s.meta.ownerRef),
   )?.meta?.ownerRef;
-  if (check('flow_overlay_probe: scena LOD ' + lod + ' zawiera odcinek z realnym segmentRef jednokawałkowym (kandydat do sondy b/c/negatyw)', flowCandidateRef != null)) {
+  if (check('flow_overlay_probe: scena LOD ' + lod + ' zawiera odcinek z realnym segmentRef o udowodnionej orientacji (kandydat do sondy b/c/negatyw)', flowCandidateRef != null)) {
     const syntheticMetricsOf = (ref) => ({
       ref_id: ref,
       kind: 'branch',
@@ -1268,12 +1270,12 @@ for (const lod of LODS) {
       analysis_type: 'LOAD_FLOW',
       elements: { [flowCandidateRef]: syntheticMetricsOf(flowCandidateRef) },
     };
-    const flow = buildFlowOverlayFromScene(scene, syntheticPayload, singleHop);
+    const flow = buildFlowOverlayFromScene(scene, syntheticPayload, oriented);
     check(
       'flow_overlay_probe (§14.2, b): każda wartość nakładki wywiedziona z wyniku (brak wartości wpisanych w UI)',
       !isFlowOverlayEmpty(flow) && flowOverlayValuesTraceToPayload(flow, syntheticPayload),
     );
-    const flowAgain = buildFlowOverlayFromScene(scene, syntheticPayload, singleHop);
+    const flowAgain = buildFlowOverlayFromScene(scene, syntheticPayload, oriented);
     check(
       'flow_overlay_probe (§14.2, c): determinizm nakładki (dwukrotne wywołanie tego samego wejścia ⇒ identyczny JSON)',
       JSON.stringify(flow) === JSON.stringify(flowAgain),
@@ -1286,30 +1288,28 @@ for (const lod of LODS) {
       flowOverlayValuesTraceToPayload(fabricated, syntheticPayload) === false,
     );
 
-    // -- F-1 (recenzja Opusa): bramka kierunku gryzie ------------------------
-    const multiHopRef = scene.segments.find(
-      (s) => s.meta?.elementKind === 'segment' && s.meta.ownerRef && !s.meta.ownerRef.includes('#') && !singleHop.has(s.meta.ownerRef),
-    )?.meta?.ownerRef;
-    if (lod === 2) {
-      check(
-        'flow_overlay_probe (F-1): fixtura zawiera przęsła wielokawałkowe — bramka jednokawałkowa ma realny skutek',
-        multiHopRef != null,
-      );
-    }
-    if (multiHopRef != null) {
-      const multiHopPayload = {
+    // -- F-1 (recenzja Opusa, kanon S9-2): bramka orientacji gryzie ----------
+    // Odcinek BEZ udowodnionej orientacji nie dostaje strzałki. Dowód przez
+    // WYCOFANIE dowodu: kandydatowi zabieramy wpis z mapy orientacji (kopia,
+    // nie mutacja) i podajemy wynik z P_MW — nakładka MUSI zostać pusta.
+    // Ten sam wzorzec co vitest `overlay.test.ts` (kopia mapy orientacji);
+    // działa niezależnie od tego, ile odcinków fixtury ma dowód orientacji.
+    {
+      const withoutProof = new Map(oriented);
+      withoutProof.delete(flowCandidateRef);
+      const unprovenPayload = {
         run_id: 'accept-sld-v3-synthetic',
         analysis_type: 'LOAD_FLOW',
-        elements: { [multiHopRef]: syntheticMetricsOf(multiHopRef) },
+        elements: { [flowCandidateRef]: syntheticMetricsOf(flowCandidateRef) },
       };
       check(
-        'flow_overlay_probe (F-1, negatyw): przęsło wielokawałkowe z P_MW w wyniku ⇒ ZERO wpisu kierunku (uczciwe „nie wiem", nie błędna strzałka)',
-        isFlowOverlayEmpty(buildFlowOverlayFromScene(scene, multiHopPayload, singleHop)),
+        'flow_overlay_probe (F-1, negatyw): odcinek bez udowodnionej orientacji z P_MW w wyniku ⇒ ZERO wpisu kierunku (uczciwe „nie wiem", nie błędna strzałka)',
+        isFlowOverlayEmpty(buildFlowOverlayFromScene(scene, unprovenPayload, withoutProof)),
       );
     }
 
     // -- V-1/V-2 (recenzja wizualna): rozmieszczenie etykiet przepływu -------
-    // Payload na WSZYSTKICH odcinkach jednokawałkowych naraz (jak harness
+    // Payload na WSZYSTKICH odcinkach z udowodnioną orientacją naraz (jak harness
     // renderowy nadzorcy) — każda etykieta musi znaleźć pozycję rozłączną
     // z etykietami sceny (w tym tytułami stacji — V-1), symbolami (ikony
     // DER — V-2) i innymi etykietami przepływu. L0 bez etykiet (spec §15.2).
@@ -1326,10 +1326,10 @@ for (const lod of LODS) {
       const fullElements = {};
       for (const s of scene.segments) {
         const ref = s.meta?.ownerRef;
-        if (ref && s.meta?.elementKind === 'segment' && singleHop.has(ref)) fullElements[ref] = syntheticMetricsOf(ref);
+        if (ref && s.meta?.elementKind === 'segment' && oriented.has(ref)) fullElements[ref] = syntheticMetricsOf(ref);
       }
       const fullPayload = { run_id: 'accept-sld-v3-synthetic', analysis_type: 'LOAD_FLOW', elements: fullElements };
-      const fullFlow = buildFlowOverlayFromScene(scene, fullPayload, singleHop);
+      const fullFlow = buildFlowOverlayFromScene(scene, fullPayload, oriented);
       const placements = computeFlowOverlayPlacements(scene, fullFlow, lod === 1 ? 'p-only' : 'full');
 
       // Flaga wewnętrzna algorytmu (informacyjna — NIE jedyna podstawa PASS).
@@ -1374,8 +1374,8 @@ for (const lod of LODS) {
   // ukryte ≤ budżet per LOD. Czas mierzony poza kontraktem determinizmu (nie
   // wchodzi do porównania JSON) — sam raportowany.
   {
-    const rlPayload = buildFullResultPayload(scene, singleHop);
-    const rlByRef = buildResultLabelsFromScene(scene, rlPayload, singleHop);
+    const rlPayload = buildFullResultPayload(scene, oriented);
+    const rlByRef = buildResultLabelsFromScene(scene, rlPayload, new Set(oriented.keys()));
     const t0 = performance.now();
     const layout = layoutResultLabels(scene, rlByRef, [], lod);
     const layoutMs = performance.now() - t0;
