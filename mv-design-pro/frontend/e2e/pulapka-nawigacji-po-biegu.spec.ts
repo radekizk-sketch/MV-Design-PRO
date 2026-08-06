@@ -305,11 +305,12 @@ test.describe('W-3 · pierwszy powrót na schemat po biegu', () => {
 
     // Kontrola dodatnia: bieg NAPRAWDĘ się zakończył w oknie obserwacji —
     // spec nie może „zzielenieć" dlatego, że solver jeszcze nie odpowiedział.
-    const przebiegi = await request.get(`${BACKEND_BASE}/api/study-cases/${caseId}/runs`);
+    // Rejestr przebiegów zakresu: ta sama końcówka, z której czyta powłoka
+    // (`ui/study-cases/api.listRuns` → GET /api/execution/study-cases/{id}/runs).
+    const przebiegi = await request.get(`${BACKEND_BASE}/api/execution/study-cases/${caseId}/runs`);
     expect(przebiegi.ok()).toBeTruthy();
-    const lista = (await przebiegi.json()) as Array<{ status?: string }> | { items?: Array<{ status?: string }> };
-    const wiersze = Array.isArray(lista) ? lista : (lista.items ?? []);
-    expect(wiersze.some((r) => (r.status ?? '').toUpperCase() === 'DONE')).toBe(true);
+    const lista = (await przebiegi.json()) as { runs?: Array<{ status?: string }> };
+    expect((lista.runs ?? []).some((r) => (r.status ?? '').toUpperCase() === 'DONE')).toBe(true);
   });
 
   test('po wylądowaniu na wynikach pierwszy klik „Schemat (SLD)" zostaje (bramka S9-3)', async ({ page, request }) => {

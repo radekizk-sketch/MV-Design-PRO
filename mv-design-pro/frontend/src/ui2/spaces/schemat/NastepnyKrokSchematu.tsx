@@ -13,21 +13,42 @@
  *
  * Wzorzec wizualny: sekcja „Następny krok" F-E3 (`PanelGotowosci`) i F-E4
  * (`SzczegolyPrzebiegu`) — te same tokeny --mvd-*, ta sama gramatyka języka.
+ *
+ * S9-3 / W-6 (audyt `docs/sld/AUDYT_JAKOSCI_SLD_2026-08.md`): podpowiedź MUSI
+ * reagować na stan biegu. Do tej karty pas głosił „bramka gotowości wskaże, czy
+ * układ jest kompletny do obliczeń" także WTEDY, gdy obliczenia właśnie się
+ * wykonały — projektant dostawał wskazanie kroku, który ma za sobą. Po
+ * zakończonym biegu pas prowadzi do wyników i dowodu.
+ *
+ * JEDNO ŹRÓDŁO (bez czwartego wskaźnika stanu wyników — W-5): fakt „istnieje
+ * zakończony bieg aktywnego zakresu" czytamy z REJESTRU PRZEBIEGÓW tą samą
+ * funkcją, którą liczy go chrom powłoki (`ostatniZakonczonyPrzebiegPrzypadku`,
+ * shell/shellStatus.ts). Pas NIE orzeka o świeżości wyniku — to należy do chipu
+ * paska przypadku (`znacznikSwiezosci`).
  */
 
 import { useMemo } from 'react';
 import './schemat.css';
 
+import { useAppStateStore } from '../../../ui/app-state';
+import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import { przejdzDoPrzestrzeni } from '../../shell/przejsciaPrzestrzeni';
+import { ostatniZakonczonyPrzebiegPrzypadku } from '../../shell/shellStatus';
 import { mapujModel } from '../projekt/pulpitAdapter';
 import { SCHEMAT_STRINGS } from './strings';
 
 export function NastepnyKrokSchematu() {
   const snapshot = useSnapshotStore((s) => s.snapshot);
+  const activeCaseId = useAppStateStore((s) => s.activeCaseId);
+  const runs = useExecutionRunsStore((s) => s.runs);
   const modelNiepusty = useMemo(
     () => (snapshot ? mapujModel(snapshot).elementow > 0 : false),
     [snapshot],
+  );
+  const poBiegu = useMemo(
+    () => ostatniZakonczonyPrzebiegPrzypadku(runs, activeCaseId) != null,
+    [runs, activeCaseId],
   );
 
   if (!modelNiepusty) {
@@ -36,23 +57,29 @@ export function NastepnyKrokSchematu() {
     return null;
   }
 
+  const opis = poBiegu ? SCHEMAT_STRINGS.nastepnyKrokPoBieguOpis : SCHEMAT_STRINGS.nastepnyKrokOpis;
+  const etykietaAkcji = poBiegu
+    ? SCHEMAT_STRINGS.nastepnyKrokPoBieguAkcja
+    : SCHEMAT_STRINGS.nastepnyKrokAkcja;
+
   return (
     <section
       className="mvd-schemat-nastepny"
       aria-label={SCHEMAT_STRINGS.nastepnyKrokTytul}
       data-testid="mvd-schemat-nastepny"
+      data-stan={poBiegu ? 'po-biegu' : 'przed-biegiem'}
     >
       <div className="mvd-schemat-nastepny-tresc">
         <span className="mvd-schemat-nastepny-lbl">{SCHEMAT_STRINGS.nastepnyKrokTytul}</span>
-        <p className="mvd-schemat-nastepny-opis">{SCHEMAT_STRINGS.nastepnyKrokOpis}</p>
+        <p className="mvd-schemat-nastepny-opis">{opis}</p>
       </div>
       <button
         type="button"
         className="mvd-schemat-nastepny-akcja"
-        onClick={() => przejdzDoPrzestrzeni('gotowosc')}
+        onClick={() => przejdzDoPrzestrzeni(poBiegu ? 'wyniki' : 'gotowosc')}
         data-testid="mvd-schemat-nastepny-akcja"
       >
-        {SCHEMAT_STRINGS.nastepnyKrokAkcja}
+        {etykietaAkcji}
       </button>
     </section>
   );
