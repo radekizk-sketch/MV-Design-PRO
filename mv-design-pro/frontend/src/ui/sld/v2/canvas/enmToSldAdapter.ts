@@ -3833,8 +3833,18 @@ function buildStationMiniBaysFromFieldSpecs(
   station: Substation,
   branchByRef: Map<string, Branch>,
 ): MiniBlockBayDescriptor[] {
+  // V12K-330 (dyrektywa właściciela 2026-08-06 — „pole pomiarowe musi być
+  // pierwsze patrząc od kierunku zasilania"): kolejność pól na rysunku =
+  // kolejność `field_specs` Z DANYCH (fizyczny układ rozdzielnicy
+  // zadeklarowany przez szablon/operację domenową), NIE ranking ról. Dawny
+  // `sort(compareStationFieldSpecs)` (liniowe→TR→sprzęgło→POMIAROWE→DER)
+  // spychał pole pomiarowe ZA pole transformatorowe wbrew danym — stacja
+  // przemysłowa deklarująca [IN, POMIAR, TR, OUT] rysowała pomiar na końcu
+  // szyny, czyli rysunek KŁAMAŁ o miejscu układu pomiarowego (naruszenie
+  // standardów układów pomiarowych OSD). `field_specs` to uporządkowana
+  // tablica JSON — determinizm bez sortowania; ranking zostaje wyłącznie
+  // w `compareBaysForSld` dla ścieżki legacy `bays[]` bez field_specs.
   return readStationFieldSpecs(station)
-    .sort(compareStationFieldSpecs)
     .map((spec, index) => {
       const fieldRole = stationFieldRoleFromSpec(spec);
       const states = deriveSwitchStatesFromEquipmentRefs(spec.equipment_refs, branchByRef);
@@ -3953,40 +3963,6 @@ function parseStationFieldPrimaryDevices(value: unknown): readonly BayPrimaryDev
     devices.push(device);
   }
   return devices.length > 0 ? devices : undefined;
-}
-
-function compareStationFieldSpecs(a: StationFieldSpec, b: StationFieldSpec): number {
-  const rankDiff = stationFieldRoleRank(a) - stationFieldRoleRank(b);
-  if (rankDiff !== 0) return rankDiff;
-  return stationFieldStableKey(a).localeCompare(stationFieldStableKey(b), 'pl');
-}
-
-function stationFieldRoleRank(spec: StationFieldSpec): number {
-  const role = stationFieldRoleFromSpec(spec);
-  switch (role) {
-    case FIELD_ROLE.LINE_IN:
-      return 0;
-    case FIELD_ROLE.LINE_OUT:
-      return 1;
-    case FIELD_ROLE.LINE_BRANCH:
-      return 2;
-    case FIELD_ROLE.TRANSFORMER:
-      return 3;
-    case FIELD_ROLE.COUPLER:
-      return 4;
-    case FIELD_ROLE.MEASUREMENT:
-      return 5;
-    case FIELD_ROLE.DER_PV:
-    case FIELD_ROLE.DER_BESS:
-    case FIELD_ROLE.DER_FW:
-      return 6;
-    default:
-      return 99;
-  }
-}
-
-function stationFieldStableKey(spec: StationFieldSpec): string {
-  return [spec.field_ref, spec.name, spec.bus_ref].filter(Boolean).join('|');
 }
 
 function stationFieldRoleFromSpec(spec: StationFieldSpec): MiniBlockBayDescriptor['fieldRole'] {

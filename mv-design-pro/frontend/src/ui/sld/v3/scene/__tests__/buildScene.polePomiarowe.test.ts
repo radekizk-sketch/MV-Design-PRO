@@ -65,4 +65,22 @@ describe('pole pomiarowe — przekładnik napięciowy z oznacznikiem TV (V12K-32
     const b = JSON.stringify(buildSceneV3(enm, 2));
     expect(a).toBe(b);
   });
+
+  // V12K-330 (dyrektywa właściciela 2026-08-06 — „pole pomiarowe musi być
+  // pierwsze patrząc od kierunku zasilania"): kolejność pól NA RYSUNKU podąża
+  // za kolejnością `field_specs` Z DANYCH. Fixtura deklaruje
+  // [LINIA_IN, LINIA_OUT, MEASUREMENT, TRANSFORMATOROWE] — przekładnik pola
+  // pomiarowego MUSI leżeć na lewo (bliżej zasilania) od pola TR. Dawny
+  // ranking ról (liniowe→TR→…→POMIAROWE) spychał pomiar na koniec szyny —
+  // rysunek kłamał o miejscu układu pomiarowego.
+  it('L2: pole pomiarowe leży PRZED polem transformatorowym (kolejność z danych, nie z rankingu ról)', () => {
+    const scene = buildSceneV3(enm, 2);
+    const vt = scene.symbols.find((s) => s.symbolId === 'voltageTransformer');
+    const trStacji = scene.symbols.find(
+      (s) => s.symbolId === 'transformer2W' && (s.meta?.ownerRef ?? '').startsWith('stn/'),
+    );
+    expect(vt).toBeDefined();
+    expect(trStacji).toBeDefined();
+    expect((vt?.x ?? Number.NaN) < (trStacji?.x ?? Number.NaN)).toBe(true);
+  });
 });

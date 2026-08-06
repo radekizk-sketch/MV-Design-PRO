@@ -674,13 +674,24 @@ def _resolve_sn_field_specs(
 
 
 def _resolve_sn_bay_roles(template: StationTemplate, count: int) -> list[str]:
-    """Map sn_bays_count → list of bay role codes (IN/OUT/TR/MEASUREMENT/...)."""
+    """Map sn_bays_count → list of bay role codes (IN/OUT/TR/MEASUREMENT/...).
+
+    Reguła keep-TR (V12K-330): szablony deklarują pole pomiarowe PRZED polem
+    TR (standard układów pomiarowych OSD — pomiar pierwszy od kierunku
+    zasilania), więc obcięcie sekwencji do `count` mogłoby wyciąć pole TR,
+    zostawiając stację z transformatorem bez pola transformatorowego (model
+    sprzeczny). Gdy szablon deklaruje TR, a obcięta sekwencja go nie ma —
+    OSTATNIA pozycja staje się TR (deterministycznie: wypada ostatnia rola
+    nie-TR, nigdy pole transformatorowe).
+    """
     declared = [r.role for r in template.schema.sn_bay_roles]
     if declared:
         # Use template-declared sequence, pad with OUT if more requested
         result = list(declared[:count])
         while len(result) < count:
             result.append("OUT")
+        if "TR" in declared and "TR" not in result and result:
+            result[-1] = "TR"
         return result
     # Fallback: IN, OUT, TR default
     fallback = ["IN", "OUT", "TR"]

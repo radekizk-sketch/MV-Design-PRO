@@ -131,14 +131,16 @@ TYPOWE_SN_NN_TEMPLATES = (
         # Nazwa obiecuje POMIARY — rola MEASUREMENT zadeklarowana JAWNIE
         # (dawniej _base_bay_roles [IN,OUT,TR] + dopełnienie OUT dawało
         # czwarte pole LINIOWE zamiast pomiarowego: szablon-fantom,
-        # dyrektywa zero-fabrykacji; wykryte przy audycie sieci pokazowej,
-        # rejestr V12K-329). TR przed MEASUREMENT: obniżenie liczby pól
-        # degraduje NAJPIERW pomiar, nigdy pole transformatorowe.
+        # rejestr V12K-329). KOLEJNOŚĆ = standard układów pomiarowych OSD
+        # (dyrektywa właściciela 2026-08-06, V12K-330): pole pomiarowe
+        # PIERWSZE od kierunku zasilania — za polami liniowymi tranzytu,
+        # PRZED polem transformatorowym. Pole TR chroni przed wypadnięciem
+        # reguła keep-TR w `_resolve_sn_bay_roles`.
         bay_roles=(
             BayRoleSpec(role="IN", label_pl="Pole liniowe IN"),
             BayRoleSpec(role="OUT", label_pl="Pole liniowe OUT"),
-            BayRoleSpec(role="TR", label_pl="Pole transformatorowe"),
             BayRoleSpec(role="MEASUREMENT", label_pl="Pole pomiarowe (VT)"),
+            BayRoleSpec(role="TR", label_pl="Pole transformatorowe"),
         ),
     ),
     _typowa(
@@ -156,12 +158,13 @@ TYPOWE_SN_NN_TEMPLATES = (
         tr_options=TR_OPTIONS_MEDIUM,
         default_feeders=6,
         default_bays=5,
-        # Jak wyżej (V12K-329): nazwa obiecuje VT — MEASUREMENT jawnie.
+        # Jak wyżej (V12K-329 + V12K-330): nazwa obiecuje VT — MEASUREMENT
+        # jawnie, pomiar PRZED polem TR (standard układów pomiarowych OSD).
         bay_roles=(
             BayRoleSpec(role="IN", label_pl="Pole liniowe IN"),
             BayRoleSpec(role="OUT", label_pl="Pole liniowe OUT"),
-            BayRoleSpec(role="TR", label_pl="Pole transformatorowe"),
             BayRoleSpec(role="MEASUREMENT", label_pl="Pole pomiarowe (VT)"),
+            BayRoleSpec(role="TR", label_pl="Pole transformatorowe"),
             BayRoleSpec(role="OUT", label_pl="Pole liniowe rezerwowe"),
         ),
     ),

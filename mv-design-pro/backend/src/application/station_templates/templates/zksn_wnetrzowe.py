@@ -38,10 +38,14 @@ def _zksn(
         BayRoleSpec(role="IN", label_pl="Pole liniowe IN"),
         BayRoleSpec(role="OUT", label_pl="Pole liniowe OUT"),
     ]
+    # Standard ukladow pomiarowych OSD (dyrektywa wlasciciela 2026-08-06,
+    # V12K-330): pole pomiarowe PIERWSZE od kierunku zasilania — za polami
+    # liniowymi (tranzyt), PRZED czescia transformatorowa. Dawniej pomiar
+    # byl doklejany ZA polami TR (rysunek klamal o miejscu pomiaru).
+    if bays > len(bay_roles) + tr_count:
+        bay_roles.append(BayRoleSpec(role="MEASUREMENT", label_pl="Pole pomiarowe"))
     for i in range(tr_count):
         bay_roles.append(BayRoleSpec(role="TR", label_pl=f"Pole TR {i+1}"))
-    if bays > len(bay_roles):
-        bay_roles.append(BayRoleSpec(role="MEASUREMENT", label_pl="Pole pomiarowe"))
     return StationTemplate(
         id=tpl_id,
         name_pl=name_pl,

@@ -207,3 +207,37 @@ def test_pomiar_degraduje_przed_polem_tr_przy_obnizonej_liczbie_pol() -> None:
     for count in (3, 4):
         role = _resolve_sn_bay_roles(template, count)
         assert "TR" in role, f"count={count}: pole TR wypadło przed pomiarowym ({role})"
+
+
+def test_pole_pomiarowe_przed_polem_tr_w_kazdym_szablonie() -> None:
+    """Standard układów pomiarowych OSD (dyrektywa właściciela 2026-08-06,
+    V12K-330): pole pomiarowe leży PIERWSZE od kierunku zasilania — przed
+    częścią transformatorową. KLASA, nie instancja: sprawdzamy KAŻDY szablon
+    deklarujący jednocześnie MEASUREMENT i TR (wykryte naruszenia: typowe
+    1000/1600 kVA po V12K-329 oraz zastane zksn_wnetrzowe, gdzie pomiar był
+    doklejany ZA polami TR)."""
+    zbadane = 0
+    for template in list_templates():
+        role = [r.role for r in template.schema.sn_bay_roles]
+        if "MEASUREMENT" not in role or "TR" not in role:
+            continue
+        zbadane += 1
+        assert role.index("MEASUREMENT") < role.index("TR"), (
+            f"Szablon '{template.id}': pole pomiarowe (poz. {role.index('MEASUREMENT')}) "
+            f"leży ZA polem TR (poz. {role.index('TR')}) — narusza standard układów "
+            f"pomiarowych (pomiar pierwszy od kierunku zasilania): {role}"
+        )
+    assert zbadane >= 4, f"Test ma objąć typowe+przemysłowe+zksn (objęte: {zbadane})"
+
+
+def test_keep_tr_obniniejsza_liczba_pol_nie_wycina_pola_tr() -> None:
+    """Para do reguły keep-TR w `_resolve_sn_bay_roles` (V12K-330): skoro pomiar
+    stoi PRZED TR, obcięcie liczby pól nie może wyciąć pola transformatorowego —
+    wypada ostatnia rola nie-TR."""
+    from application.station_templates.apply import _resolve_sn_bay_roles
+
+    template = get_template("tpl_sn_nn_1000kva")
+    assert template is not None
+    assert _resolve_sn_bay_roles(template, 4) == ["IN", "OUT", "MEASUREMENT", "TR"]
+    assert _resolve_sn_bay_roles(template, 3) == ["IN", "OUT", "TR"]
+    assert _resolve_sn_bay_roles(template, 2) == ["IN", "TR"]
