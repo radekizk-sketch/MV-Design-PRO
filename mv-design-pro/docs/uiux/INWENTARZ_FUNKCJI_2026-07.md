@@ -194,7 +194,7 @@ wystąpień poza definicją i testem. Kod wygrywa z dokumentem.
 | Regulacja OLTC w rozpływie | S19 | ✅ `solver_input:{oltc_study}` → `global_results.oltc_*` (`enm/canonical_analysis.py:1274`) | `ui2/wyniki/oltc/EkranBadanOltc` — wszystkie trzy rodzaje badania (przemiatanie zaczepów, profil roczny, optymalizacja) z wykresami; 2 testy; zaczepy również w `ui2/wyniki/zbieznosc` | ✅ |
 | Preview kabla/transformatora/kompensatora | S20–S22 | ✅ `/api/solver/{cable-voltage-drop,cable-rated-current,transformer-rated-currents,shunt-compensator}-preview` + `/cable-laying-conditions` | `ui2/kreatory/magistrala` (ΔU), `ui2/kreatory/odbior` (prąd znamionowy), `ui2/kreatory/transformator`, `ui2/kreatory/kompensator`, `ui2/kreatory/zrodlo-oze/DoborToruSn`; 12 testów | ✅ |
 | Reference Engine (paczki referencyjne) | — | ✅ `/api/reference/packs`, `/packs/{pack_id}`, `/api/cases/{id}/reference/compliance` | `ui2/spaces/gotowosc/SekcjaZgodnosciReferencyjnej` + `ui2/spaces/model/ZgodnoscReferencyjna` (2 testy) | ◐ (brak wyboru pakietu: `fetchReferencePacks` — lista `/api/reference/packs` — ma konsumenta WYŁĄCZNIE w teście, a ekran zgodności ma pakiet zaszyty na stałe `PAKIET_OSD = 'osd_enea'`, `ZgodnoscReferencyjna.tsx:30`) |
-| Import XLSX | — | ✅ xlsx_import (`POST /api/import/xlsx`, wpięty w `main.py`) | brak: w całym froncie ZERO odwołań do `/api/import` — dawne „11 plików" to pozycje enuma eksportu (`xlsx` jako format WYJŚCIA) i komentarze o źródłowym arkuszu | ❌ (2026-08-06: korekta zawyżonego ◐) |
+| Import XLSX | — | ✅ xlsx_import: `POST /api/import/xlsx/preview` (podgląd bez zapisu) + `POST /api/import/xlsx` (nowy projekt: węzły/gałęzie/źródła/odbiory + migawka aktywna, transakcyjnie) | `ui2/spaces/projekt/arkusz` — okno „Import sieci z arkusza (XLSX)": kafel pulpitu, podgląd „co wejdzie do modelu" z backendu, raport zastrzeżeń per wiersz (arkusz·wiersz·kolumna), bramka katalogowa, jawny następny krok; 13 testów natywną ścieżką | ✅ (karta XLSX-IMPORT 2026-08-07: teza „końcówka działa, brak konsumenta" OBALONA pomiarem — końcówka zwracała 422 „Brak biblioteki openpyxl" dla KAŻDEGO wejścia (biblioteki nie było w zależnościach), a wstrzykiwany `uow_factory` nie był używany: import niczego nie zapisywał, tylko meldował sukces. Naprawa u źródła: zależność, zapis do kanonicznego magazynu modelu, zero fizyki w warstwie aplikacji (dane źródła jako wejście), zero wartości fikcyjnych (`rated_current_a=1.0` usunięte), bramka katalogowa wspólna z importem ZIP) |
 | Archiwum projektu (ZIP) | — | ✅ project_archive: `POST /projects/{id}/export` (parametr `zapisz_do_magazynu` → magazyn dokumentów, typ ARCHIWUM), `POST /projects/import`, `POST /projects/import/preview`; archive_diff, incremental_archive bez wejścia w UI | ui2/spaces/projekt/archiwum (okno „Archiwum projektu (ZIP)": kafel pulpitu + karta huba dokumentacji); `ui/project-archive` = warstwa zastana BEZ konsumenta produkcyjnego (kasacja: G-07) | ◐ (naprawa fałszywego ✅ — G-01 audytu bramek U2–U5: do 2026-08 karta huba prowadziła do przestrzeni bez akcji, a dialog warstwy zastanej miał zero konsumentów; wpięte eksport/import/podgląd, poza UI zostają różnicowanie i archiwum przyrostowe) |
 | Katalog typów | — | catalog (44 końcówki), audit2_catalogs | `ui2/spaces/model/katalog` (KatalogPanel, KartaTechniczna, GdzieUzyty, ParametrRow); 7 testów | ✅ |
 | Kreator sieci/stacji | — | station_templates, switchgear_config, reference_patterns; design_synth NIEWPIĘTY | `ui2/kreatory` — 18 kreatorów, KAŻDY z testem (48 plików testowych) + `ui2/spaces/model/szablony` (przeglądarka i porównanie szablonów stacji) | ◐ (`/api/reference-patterns` ma jedynego konsumenta w `ui/reference-patterns`, bez montażu produkcyjnego, a router `design_synth` nadal nie ma `include_router` w `main.py`) |
@@ -240,6 +240,13 @@ i **Rozpływ niesymetryczny** ❌→◐ (konsument `runReferenceNetwork` + karta
 E-39 w hubie; bieg na modelu projektu nadal nie istnieje). Bilans po karcie:
 **26 ✅ / 18 ◐ / 1 ❌** (ostatni ❌: import XLSX). Szczegóły i pomiary:
 `docs/v12xx/REJESTR_KONFLIKTOW.md` wiersz ROUTERY-4A.
+
+**Aktualizacja 2026-08-07 (karta XLSX-IMPORT — ostatni ❌ macierzy).** Import XLSX ❌→✅.
+Bilans po karcie: **27 ✅ / 18 ◐ / 0 ❌ — kolumna ❌ macierzy jest PUSTA.**
+Uwaga do odczytu bilansu: zero ❌ znaczy „każda zdolność ma powierzchnię i test",
+nie „nie ma już długu" — 18 wierszy ◐ nadal niesie nazwany brak w jednym zdaniu
+i ma kartę w kolejce. Pomiar stanu przed i dowody: `docs/v12xx/REJESTR_KONFLIKTOW.md`
+wiersz XLSX-IMPORT.
 
 ---
 

@@ -155,7 +155,8 @@ Data wylaczenia dla deprecated: koniec M2, o ile wiersz nie wskazuje inaczej.
 | `POST /api/execution/study-cases/{case_id}/batches` | v12xx | aktywny | 2026-08-07 | - | Utworzenie serii przebiegow (PENDING) nad scenariuszami zwarciowymi przypadku; wszystkie scenariusze jednego typu analizy; odciski tresci przypinane przy tworzeniu (predykaty parami z wykonaniem). | test_batch_execution.py | Architekt ruchowy |
 | `POST /api/execution/study-cases/{case_id}/fault-scenarios` | v12xx.m1 | adapter | 2026-04-24 | koniec M3 | Utworzenie scenariusza zakloceniowego. | fault scenario tests | Architekt ruchowy |
 | `POST /api/execution/study-cases/{case_id}/runs` | v12xx.m1 | adapter | 2026-04-24 | koniec M3 | Utworzenie runu execution. | execution tests | Architekt ruchowy |
-| `POST /api/import/xlsx` | v12xx | aktywny | 2026-04-24 | - | Import XLSX do modelu. | xlsx import tests | Architekt migracji |
+| `POST /api/import/xlsx` | v12xx | aktywny | 2026-04-24 | - | Import arkusza XLSX do NOWEGO projektu: wezly/galezie/zrodla/odbiory + migawka aktywna, transakcyjnie; odpowiedz niesie bramke katalogowa. | tests/test_xlsx_import.py, tests/api/test_xlsx_import_api.py | Architekt migracji |
+| `POST /api/import/xlsx/preview` | v12xx | aktywny | 2026-08-07 | - | Podglad zawartosci arkusza XLSX BEZ zapisu (liczby per rodzaj + zastrzezenia per wiersz). | tests/api/test_xlsx_import_api.py | Architekt migracji |
 | `POST /api/projects` | v12xx | aktywny | 2026-04-24 | - | Utworzenie projektu. | project API tests | Architekt API |
 | `POST /api/proof/sc-asymmetrical/pack` | v12xx | aktywny | 2026-04-24 | - | Proof-pack dla zwarc asymetrycznych. | asym proof tests | Architekt proof |
 | `POST /api/proof/sc3f/contributions` | v12xx | aktywny | 2026-07-22 | - | Rozbicie maszynowe wkladow zwarciowych per zrodlo (mu/q/i_b, IEC 60909 par. 6.6) dla sekcji Wklady ekranu zwarc (R3-B / V12K-109). | tests/api/test_proof_pack_api.py | Architekt proof |

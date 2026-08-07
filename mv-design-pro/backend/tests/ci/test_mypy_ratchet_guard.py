@@ -44,12 +44,16 @@ def test_guard_istnieje_i_ma_zmierzony_prog() -> None:
     # POMIAR-ODG — naprawiona CAŁA klasa wzorca `float(Any | None)` maskowanego
     # przez `try/except TypeError` w `station_templates/apply.py` (trzy wystąpienia)
     # ⇒ pomiar 21/14 → 18/13.
+    # XLSX-IMPORT (2026-08-07): przepisany importer XLSX usunął dynamiczny atrybut
+    # `node.source_impedance` z `# type: ignore[attr-defined]` — dług typów zmalał
+    # razem z defektem (fizyka w warstwie aplikacji zapisywana poza kontraktem `Node`)
+    # ⇒ pomiar 18/13 → 17/12.
     #
     # To JEDYNE miejsce, w którym zmierzona liczba jest powtórzona poza samym guardem.
     # Test „odcina w obie strony" poniżej wyprowadza ją z modułu, więc obniżenie progu
     # wymaga świadomej zmiany dokładnie tutaj (i nigdzie indziej).
-    assert modul.BASELINE_ERRORS == 18
-    assert modul.BASELINE_FILES == 13
+    assert modul.BASELINE_ERRORS == 17
+    assert modul.BASELINE_FILES == 12
 
 
 def test_guard_jest_wpiety_do_workflow_ci() -> None:
