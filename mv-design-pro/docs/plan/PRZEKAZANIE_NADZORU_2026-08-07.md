@@ -53,6 +53,52 @@ stan sprzed przejęcia i zostaje jako zapis historyczny):
   `PAKIET_OSD = 'osd_enea'`, `ZgodnoscReferencyjna.tsx:30`); S9-12-DLUG-LATERAL-ETYKIETA;
   reszta klasy KLIENT-BEZ-DOSTAWCY; B-5 (kontrakt kopii, V12K-325).
 
+## 2B. AKTUALIZACJA — FALA 3 W BIEGU (2026-08-07 ~17:20 UTC, Opus)
+
+**SZCZYT: `0e519969`** (origin == HEAD po pushu odbioru PROPORCJE).
+
+Odebrane i scalone od §2A (każde z własną iniekcją nadzorcy i pełnymi bramkami):
+S9-13, BATCH-ROUTER, XLSX-IMPORT, PACK-DOWODY, B-2, REF-PAKIET, V126-OKNA, **PROPORCJE**.
+Kolumna ❌ macierzy §6 jest PUSTA (27 ✅ / 18 ◐ / 0 ❌).
+
+**PROPORCJE — odbiór zamknięty, wnioski trwałe:**
+- Zgłoszenie właściciela „brak proporcji, grubości" było REALNE w produkcie (napis:symbol
+  2,78 przy skali dopasowania, szyna:aparat 15,70), a dodatkowo zwielokrotnione przez
+  sondę, która renderowała kanwę własną kamerą i podmieniała `viewBox` po fakcie.
+  **Wniosek dla każdej przyszłej sondy: kadr PODAJEMY kanwie (`cameraOverride`), nigdy
+  nie nakładamy na jej wynik.**
+- Iniekcja nadzorcy ZNALAZŁA LUKĘ tej samej klasy co przy B-2: docstring `grubosc`
+  w `symbols/glyphs.tsx` deklarował „JEDYNE wejście po `strokeWidth` w tym pliku",
+  a przestawienie jednej kreski na gołą stałą przechodziło **28/28 na zielono**.
+  Domknięte pinem czytającym ŹRÓDŁO pliku (`PROPORCJE §3`).
+  **To już trzecia deklaracja obejmująca cały plik/moduł bez strażnika (kotwica LOD,
+  wykluczenie z odcisku ENM, lejek kreski). Iniekcja nadzorcy CELUJE w mocne zdania
+  nagłówków — to najskuteczniejszy dotąd wzorzec odbioru.**
+
+**W BIEGU — dwie karty (strefy rozłączne):**
+- `kopia/V126-JEZYK` — przepisanie ekranu ocenionego przez właściciela na **0/10**
+  („zbędne kody produkcyjne nie mają prawa pojawić się w interfejsie"; ekran nie wnosił
+  nic do flow projektanta). 3 commity. Odbiór wymaga iniekcji **oraz obejrzenia ekranu
+  oczami inżyniera** — poprzedni odbiór V126-OKNA sprawdził strukturę i guardy, ale
+  NIE zapytał, co ekran mówi projektantowi; stąd 0/10. Guard `ui_production_codes_guard`
+  skanuje LITERAŁY ŹRÓDŁA, a tamte etykiety powstawały w RUNTIME ze ścieżek kluczy
+  backendu — dlatego nie mógł ich złapać.
+- `kopia/BLOK-PUSTY` — **punkt 6 zgłoszenia właściciela, jedyny niezamknięty przez
+  PROPORCJE** („wnętrze ramy stacji w większości puste"). Sprawdzone grepem: w wierszu
+  `| PROPORCJE |` występuje wyłącznie w opisie stanu przed — bez pomiaru, naprawy
+  i werdyktu. §0 karty przesądza kierunek: **rama idzie za treścią, ZAKAZ dokładania
+  tuszu dla zapełnienia** (fabrykacja treści = powtórka oceny 0/10).
+
+**Kolejka po tych dwóch:** S9-12-DLUG-LATERAL-ETYKIETA · reszta klasy
+KLIENT-BEZ-DOSTAWCY · B-5 (kontrakt kopii, V12K-325) · PACK-DOWODY-DLUG-APARATURA
+(katalog bez `U_m`/`I_cu`) · PACK-DOWODY-DLUG-ROZPLYW (generator bez końcówki) ·
+reguły zgodności specyficzne dla OSD (REF-PAKIET) · `api/snapshots.py` bez
+`include_router` (wpinać WYŁĄCZNIE z konsumentem, inaczej fantom).
+
+**Decyzje produktowe czekające na właściciela** (nie rozstrzygać samodzielnie):
+podziałka pól L1/L2 (S9-10 pkt C) · edycja ról pól mogąca rozbroić pętlę OSD złączy
+klasy C · lista rodzajów analiz V12.6 bez wartości inżynierskiej do wycofania.
+
 ## 2. W BIEGU — DWIE KARTY DO ODEBRANIA (stan sprzed przejęcia — historyczny)
 
 | Karta | Kopia | Zakres | Odbiór — na co zwrócić uwagę |
