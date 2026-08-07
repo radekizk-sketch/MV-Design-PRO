@@ -105,6 +105,95 @@ export function fieldFunctionalDesignation(role: FieldRole): string {
 }
 
 /**
+ * PROPORCJE (zgłoszenie właściciela 2026-08-07, pkt 4: „CZTERY identyczne «Q1»
+ * w jednej rozdzielni bez rozróżnienia pola") — OZNACZNIK POLA na rysunku.
+ *
+ * CO BYŁO ZŁE (pomiar `scripts/pomiar_proporcje.tsx`, fixtura 53 stacji, L2):
+ * **53 z 54 rozdzielni** miały powtórzony oznacznik aparatu (rekord: cztery
+ * „Q1" w jednym bloku), a **53 z 53** bloków miały opisy pól NIEROZRÓŻNIALNE
+ * między sobą („pole liniowe" ×3 + „pole transformatorowe"). Recenzja NO-GO
+ * 2026-07-17 pkt 9 rozstrzygnęła, że rysunek zostaje przy KRÓTKICH Q/QE/T
+ * „w obrębie OPISANEGO pola", a identyfikator globalny (`S01.F01.Q2`) żyje w
+ * inspektorze (`ui/sld/shared/detailDrawerData.ts`). Zrealizowana była tylko
+ * PIERWSZA połowa tej pary: oznaczniki skrócono, a pole nigdy nie dostało
+ * OPISU, po którym dałoby się je wskazać — sama ROLA („pole liniowe") powtarza
+ * się w rozdzielni tyle razy, ile jest pól tej roli. Reguła KLASA §3
+ * (predykaty parami): warunek, na którym stoi krótki oznacznik, musi być
+ * SPEŁNIONY, a nie założony.
+ *
+ * PRYMAT DANYCH (§12.1) I ZAKAZ FABRYKACJI. Numer pola z danych
+ * (`Bay.bay_number`, „10"/„23/1") jest oznacznikiem PIERWSZEGO wyboru i tak
+ * właśnie działa ścieżka GPZ (`compose/gpz.ts`). Dla pól SN STACJI danej nie
+ * ma: read-model `StationFieldSpec` (`v2/canvas/enmToSldAdapter.ts`) nie niesie
+ * `bay_number` ani `feeder_short_name` — nazwane wprost jako dług, nie obejście.
+ * Zostaje wtedy OSTATNI fallback: deterministyczny licznik pozycyjny w
+ * kolejności kompozycji rozdzielnicy — dokładnie ta sama konwencja, którą
+ * repo stosuje już w DWÓCH miejscach (pola GPZ oraz identyfikator globalny
+ * inspektora). To nie jest wymyślanie danej: to nazwanie POZYCJI, która i tak
+ * jest narysowana, tą samą literą, którą projektant zobaczy w inspektorze.
+ *
+ * KONWENCJA (jedna dla całego rysunku): `F01`, `F02`… pola liniowe · `FT1`…
+ * transformatorowe · `FS1`… sprzęgłowe · `FP1`… pomiarowe · `FG1`…
+ * generatorowe (DER). Liczniki są ODRĘBNE per klasa roli, więc dodanie pola
+ * jednej klasy nie przenumerowuje pozostałych.
+ */
+export function fieldOrdinalDesignation(role: FieldRole, counters: Map<string, number>): string {
+  const cls =
+    role === FIELD_ROLE.TRANSFORMER || role === FIELD_ROLE.RMU_TRANSFORMER
+      ? 'FT'
+      : role === FIELD_ROLE.COUPLER
+        ? 'FS'
+        : role === FIELD_ROLE.MEASUREMENT
+          ? 'FP'
+          : role === FIELD_ROLE.DER_PV || role === FIELD_ROLE.DER_BESS || role === FIELD_ROLE.DER_FW
+            ? 'FG'
+            : 'F';
+  const next = (counters.get(cls) ?? 0) + 1;
+  counters.set(cls, next);
+  return cls === 'F' ? `F${String(next).padStart(2, '0')}` : `${cls}${next}`;
+}
+
+/**
+ * PROPORCJE — PODPIS POLA rysowany na schemacie: „⟨oznacznik⟩ · ⟨rola⟩"
+ * (np. „F01 · pole liniowe"). Oznacznik z `fieldOrdinalDesignation` liczony na
+ * TEJ SAMEJ tablicy pól i w TEJ SAMEJ kolejności, w której rozdzielnica jest
+ * komponowana — funkcja jest CZYSTA względem `(snBays, index)`, więc
+ * `layout/measure.ts` (REZERWACJA szerokości sidecara) i `compose/station.ts`
+ * (REALNY tekst etykiety) dostają bit-identyczny wynik. Dwie kopie tej
+ * arytmetyki byłyby rozjazdem measure↔compose, czyli kolizją etykiety z
+ * sąsiednią kolumną (wzór F6b-1, ta sama zasada co `fieldFunctionalDesignation`).
+ *
+ * Oznacznik stoi PRZED rolą, bo to on jest członem ROZRÓŻNIAJĄCYM: przy
+ * skracaniu etykiety (`core/text.ts` `shortenPreservingIdentity`) człony
+ * odpadają od końca, więc z „F01 · liniowe" zostaje „F01 …", a nie
+ * „… pole liniowe" powtórzone trzy razy w jednym bloku.
+ *
+ * DLACZEGO BEZ SŁOWA „pole" (rozstrzygnięcie POMIAREM, nie gustem). Pełna
+ * forma „F01 · pole liniowe" jest o 34 j.św. szersza od samej roli, a sidecar
+ * wchodzi do rezerwacji KAŻDEJ kolumny pola. Zmierzone na fixturze 53 stacji:
+ * arkusz przechodzi z 2 na 3 WIERSZE (bbox 8280×5259 → 7808×6851), a skala
+ * dopasowania spada 0,168 → 0,131 (−22%) — czyli cena za powtórzony rzeczownik
+ * to CAŁY dodatkowy wiersz arkusza i utrata czytelności przeglądu. Forma
+ * „F01 · liniowe" kosztuje 64 j.św. na cały arkusz (8280 → 8344, +0,8%) i
+ * NIE zmienia liczby wierszy. Słownik kategorii §19.1 (liniowe /
+ * transformatorowe / sprzęgłowe / pomiarowe / generatorowe) zostaje CO DO
+ * SŁOWA; odpada wyłącznie rzeczownik „pole", który niesie już sama litera
+ * oznacznika (F = pole) i pozycja etykiety przy kolumnie pola.
+ */
+export function fieldCaptionAt(
+  snBays: readonly MiniBlockBayDescriptor[],
+  index: number,
+): string {
+  const counters = new Map<string, number>();
+  let oznacznik = '';
+  for (let i = 0; i <= index && i < snBays.length; i += 1) {
+    oznacznik = fieldOrdinalDesignation(snBays[i].fieldRole, counters);
+  }
+  const rola = fieldFunctionalDesignation(snBays[index].fieldRole);
+  return oznacznik ? `${oznacznik} · ${rola.replace(/^pole /, '')}` : rola;
+}
+
+/**
  * F10.2 (spec §19.3, V12K-034): rodzaj stacji WYPROWADZONY z topologii —
  * zastępuje dawne 1:1 mapowanie ręcznej danej `Substation.station_type`
  * (`classifyTopologicalType`, `v2/canvas/enmToSldAdapter.ts`, NIEZMIENIONE —

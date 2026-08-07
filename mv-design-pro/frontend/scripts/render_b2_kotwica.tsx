@@ -140,16 +140,30 @@ for (const kadr of KADRY) {
         width={KADR.width}
         height={KADR.height}
         lodOverride={kadr.stan.lod}
+        // PROPORCJE (2026-08-07): kamera podana KANWIE, nie nałożona na jej
+        // wynik. Do tej karty skrypt renderował kanwę z jej WŁASNĄ kamerą
+        // (dopasowanie całej sieci, skala 0,133) i dopiero POTEM podmieniał
+        // `viewBox` na kadr kotwicy (1,380) — plan etykiet i wagi kresek
+        // zależą od skali kamery, więc rysunek był PLANOWANY dla jednej skali,
+        // a POKAZYWANY w innej: napisy wychodziły ~7,4× za duże wobec tego, co
+        // widzi projektant, a stopka podawała skalę, której obraz nad nią nie
+        // dotyczył. Z takiego zrzutu wyszło zgłoszenie „brak proporcji".
+        cameraOverride={kadr.stan}
         paletteMode={motyw.mode}
         animateLodTransitions={false}
       />,
     );
     const dom = new JSDOM(`<body>${inner}</body>`);
     const svgEl = dom.window.document.querySelector('[data-testid="sld-canvas-v3"]')!;
-    // Kadr WPROST z transformu kamery zbudowanego wyżej (ta sama funkcja, którą
-    // kanwa rysuje siebie) — zrzut pokazuje dokładnie to, co zobaczyłby
-    // projektant, nie osobne kadrowanie „na ładnie".
-    svgEl.setAttribute('viewBox', cameraViewBox(kadr.stan.transform, KADR));
+    // Kadr NIE jest już nadpisywany — kanwa sama ustawia `viewBox` z kamery,
+    // którą dostała. Zostaje wyłącznie asercja, że to TA SAMA wartość: gdyby
+    // kanwa kiedyś przestała honorować kadr, zrzut ma paść, a nie kłamać.
+    const oczekiwanyViewBox = cameraViewBox(kadr.stan.transform, KADR);
+    if (svgEl.getAttribute('viewBox') !== oczekiwanyViewBox) {
+      throw new Error(
+        `Kanwa narysowała inny kadr niż zadany: "${svgEl.getAttribute('viewBox')}" != "${oczekiwanyViewBox}"`,
+      );
+    }
     svgEl.setAttribute('width', String(KADR.width));
     svgEl.setAttribute('height', String(KADR.height));
 

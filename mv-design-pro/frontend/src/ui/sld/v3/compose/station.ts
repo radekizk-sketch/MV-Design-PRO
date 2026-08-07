@@ -73,6 +73,7 @@ import {
   LV_MODEL_BOUNDARY_TEXT,
   PORT_CAPTION_BUS_CLEARANCE,
   stationBusbarLabelText,
+  stationSectionLabelCarriesCode,
   stationLvBusbarLabelText,
   stationLvLoadLabelText,
   stationPortCaptionHeight,
@@ -96,7 +97,7 @@ import type {
 } from '../layout/labels';
 import { ALL_FIELD_ROLES, FIELD_ROLE, type FieldRole } from '../../v2/domain/apparatusContracts';
 import type { MiniBlockBayDescriptor } from '../../v2/renderer/MiniBlockRmuRenderer';
-import { fieldFunctionalDesignation, isLineLikeRole } from './directions';
+import { fieldCaptionAt, isLineLikeRole } from './directions';
 import { APPARATUS_STACK_VERTICAL_GAP } from '../layout/apparatusStack';
 import {
   apparatusIdentifiers,
@@ -1289,7 +1290,10 @@ export function composeStation(input: ComposeStationInput): StationComposition {
     apparatusLabels.push({
       ownerRef: `${bay.bayRef}#field-role`,
       ownerKind: 'field-role',
-      text: fieldFunctionalDesignation(bay.fieldRole),
+      // PROPORCJE (pkt 4 zgłoszenia): podpis pola niesie OZNACZNIK, nie samą
+      // rolę — cztery „Q1" w jednej rozdzielni są rozróżnialne dopiero przez
+      // pole, w którym stoją (`fieldCaptionAt`, `compose/directions.ts`).
+      text: fieldCaptionAt(station.snBays, index),
       labelClass: 't3',
       // F10.1/F10.2: prawa krawędź PEŁNEGO gabarytu planu (tor główny +
       // rozszerzenie boczne ES/VT/SA), przesunięta o `leftReserve` — sidecar
@@ -1419,6 +1423,14 @@ export function composeStation(input: ComposeStationInput): StationComposition {
     // stationPortCaptionHeight(station)`, 0 gdy żadne pole nie ma podpisu) —
     // JEDNA prawda z rezerwacją wysokości B2 (`stationBusbarLabelHeight`,
     // wołana przez `scene/buildScene.ts` przy budowie `StationBandHeights`).
+    // PROPORCJE (pkt 3 zgłoszenia: „tożsamość stacji powtórzona TRZYKROTNIE
+    // w jednym bloku"): TO JEST miejsce, w którym blok niesie KOD STACJI —
+    // opis sekcji stoi nad szyną, czyli przy elemencie, którego dotyczy, i
+    // MUSI być rozróżnialny między 53 stacjami w jednym kadrze (rozstrzygnięcie
+    // S9-8/S9-12, przypięte wyrocznią `busbar_label_probe`). Skoro kod jest
+    // TUTAJ, pasmo nazw NIE powtarza go osobnym wierszem — patrz `blokNiesieKod`
+    // przy budowie `rows` niżej (JEDEN predykat, dwa końce: kto pisze i kto
+    // milczy — inaczej „raz w bloku" byłoby deklaracją, nie własnością).
     busbarLabels.push({
       ownerRef: `${station.id}#busbar-voltage`,
       ownerKind: 'busbar-voltage',
@@ -1640,7 +1652,39 @@ export function composeStation(input: ComposeStationInput): StationComposition {
   // szczegółowe) — nazwa i kod stacji oraz podpis szyny nN mówią, CO jest
   // narysowane; moc znamionowa, typ stacji i odbiór zagregowany to parametry.
   const rows: StationNameBandRow[] = [{ text: station.name, labelClass: 't1', role: 'tozsamosc' }];
-  if (station.stationCode) rows.push({ text: station.stationCode, labelClass: 't1', role: 'tozsamosc' });
+  // PROPORCJE (pkt 3 zgłoszenia) — KOD STACJI RAZ W BLOKU. Zmierzone przed
+  // naprawą (fixtura 53 stacji, `scripts/pomiar_proporcje.tsx`): kod padał
+  // DWUKROTNIE jako tożsamość stacji — osobnym wierszem pasma nazw („S01")
+  // i w opisie sekcji („S01 · Sekcja 1 · 15 kV") — plus trzeci raz w etykiecie
+  // przęsła („GPZ ↔ S01 · …"), która jednak nazywa PRZĘSŁO (relację), nie
+  // stację, więc jej kod jest daną własną i zostaje.
+  //
+  // KTÓRE MIEJSCE JEST WŁAŚCIWE. Opis sekcji — bo stoi przy elemencie, o
+  // którym mówi (szyna), i musi rozróżniać 53 sekcje w jednym kadrze
+  // (rozstrzygnięcie S9-8, przypięte wyrocznią S9-12: usunięcie kodu STAMTĄD
+  // byłoby cichym cofnięciem tamtej karty). Pasmo nazw ma wtedy nieść NAZWĘ
+  // stacji, a nie powtarzać kod.
+  //
+  // PREDYKAT JEDEN, KOŃCE DWA (reguła KLASA §3): warunek milczenia pasma jest
+  // TYM SAMYM warunkiem, pod którym wyżej powstaje opis sekcji z kodem —
+  // `busbarLabels` z `#busbar-voltage`. Dwa niezależne warunki, które „dziś
+  // się zgadzają", byłyby defektem czekającym na dane brzegowe (blok bez
+  // szyny SN: pasmo MUSI wtedy kod pokazać, bo nie ma go gdzie indziej).
+  // Predykat WSPÓLNY z rezerwacją wysokości pasma (`layout/measure.ts`
+  // `stationSectionLabelCarriesCode`) — jedno zdanie dla obu końców. Drugi
+  // człon (`busbarLabels.some(...)`) jest ZAWĘŻENIEM do stanu FAKTYCZNEGO:
+  // pasmo milczy dopiero, gdy opis sekcji z kodem NAPRAWDĘ powstał, więc
+  // nawet gdyby kompozycja kiedyś przestała go emitować mimo niepustych pól,
+  // kod nie zniknąłby z rysunku (rezerwacja byłaby wtedy o wiersz większa —
+  // stan bezpieczny, nie utrata tożsamości).
+  const blokNiesieKod =
+    stationSectionLabelCarriesCode(station)
+    && busbarLabels.some(
+      (l) => l.ownerRef === `${station.id}#busbar-voltage` && l.text.includes(station.stationCode!.trim()),
+    );
+  if (station.stationCode && !blokNiesieKod) {
+    rows.push({ text: station.stationCode, labelClass: 't1', role: 'tozsamosc' });
+  }
   if (station.transformerRatedKva != null) {
     rows.push({
       text: formatTransformerRatedPower(station.transformerRatedKva),

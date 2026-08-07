@@ -42,14 +42,55 @@ export type LabelRole = 'tozsamosc' | 'dane';
 export interface LabelTypography {
   readonly fontSize: number;
   readonly fontWeight: number;
+  /**
+   * PROPORCJE (zgłoszenie właściciela 2026-08-07 „brak proporcji, grubości") —
+   * SUFIT POWIĘKSZENIA AWARYJNEGO: ile razy pismo tej klasy wolno powiększyć
+   * ponad rozmiar naturalny, gdy kamera zeszła poniżej progu czytelności
+   * (`minReadableFontSize`). Patrz `enlargedFontSizeWithinProportion`.
+   *
+   * DLACZEGO SUFIT MUSI ISTNIEĆ (pomiar, nie przypuszczenie). Powiększenie
+   * awaryjne jest KOMPENSACJĄ: przypina napis do `MIN_READABLE_LABEL_SCREEN_PX`
+   * na ekranie, podczas gdy RYSUNEK kurczy się razem z kamerą. Stosunek
+   * napis:symbol rośnie więc jak 1/skala i nie ma żadnego ograniczenia. Pomiar
+   * na fixturze 53 stacji (`scripts/pomiar_proporcje.tsx`, stan PRZED):
+   * oznacznik aparatu (t4, 8 j.św.) obok symbolu 24 j.św. daje stosunek 0,33
+   * przy pracy z bliska, ale **2,82** przy skali dopasowania i **7,50** przy
+   * dolnym krańcu zoomu; nazwa stacji (t1, 13 j.św.) obok zwiniętego bloku
+   * 48 j.św. — 1,39 przy dopasowaniu i **3,75** przy `MIN_SCALE`. Właściciel
+   * zmierzył okiem „napis 3–4× wyższy od symbolu, który opisuje" — to jest ta
+   * sama liczba.
+   *
+   * SKĄD KONKRETNE KROTNOŚCI. Typografia (13/11/9/8) i gabaryty glifów
+   * (48/32/24/16) były dobierane RAZEM — naturalny stosunek napis:obiekt każdej
+   * klasy leży w paśmie 0,27…0,38, czyli około 1:3. Sufit stawiamy tam, gdzie
+   * napis przestaje być „mniejszy albo porównywalny" z tym, co opisuje
+   * (kanon rysunku wykonawczego, IEC 60617 / rysunek jednokreskowy SN):
+   * **stosunek napis:najmniejszy opisywany obiekt ≤ 1,5**. Stąd, per klasa:
+   *
+   *   t1 → 5,5× (13 → 71,5 j.św.; wobec zwiniętego bloku stacji 48 → **1,49**)
+   *   t2 → 4,0× (11 → 44 j.św.;   wobec symbolu DER 32 → **1,38**)
+   *   t3 → 3,5× ( 9 → 31,5 j.św.; wobec symbolu aparatu 24 → **1,31**)
+   *   t4 → 3,0× ( 8 → 24 j.św.;   wobec symbolu aparatu 24 → **1,00**)
+   *
+   * Sufit NIE dotyczy pracy z bliska: powyżej progu czytelności pismo ma
+   * rozmiar NATURALNY i rośnie razem z rysunkiem, więc stosunek napis:symbol
+   * jest tam stały (zmierzone 0,33–0,38 od skali 1,0 do `MAX_SCALE` — hipoteza
+   * „im głębszy zoom, tym bardziej litery przygniatają rysunek" jest POMIAREM
+   * OBALONA; proporcje pękają w drugą stronę, przy oddalaniu).
+   */
+  readonly maxEnlargement: number;
 }
 
 /** Jedyne dozwolone klasy typograficzne rysunku (spec §2). */
 export const LABEL_TYPOGRAPHY: Readonly<Record<LabelClass, LabelTypography>> = {
-  t1: { fontSize: 13, fontWeight: 700 }, // nazwy stacji / GPZ
-  t2: { fontSize: 11, fontWeight: 600 }, // parametry: kVA, typ·przekrój·długość, kV
-  t3: { fontSize: 9, fontWeight: 700 },  // podpisy portów (kier./odg.), oznaczniki Q/T
-  t4: { fontSize: 8, fontWeight: 600 },  // adnotacje
+  // nazwy stacji / GPZ — opisują BLOK (zwinięty glif stacji 48 j.św. na L0)
+  t1: { fontSize: 13, fontWeight: 700, maxEnlargement: 5.5 },
+  // parametry: kVA, typ·przekrój·długość, kV — najmniejszy opisywany: DER 32 j.św.
+  t2: { fontSize: 11, fontWeight: 600, maxEnlargement: 4 },
+  // podpisy portów (kier./odg.), oznaczenie pola — najmniejszy opisywany: aparat 24 j.św.
+  t3: { fontSize: 9, fontWeight: 700, maxEnlargement: 3.5 },
+  // adnotacje i oznaczniki aparatu (Q/QE/T/F) — opisują symbol aparatu 24 j.św.
+  t4: { fontSize: 8, fontWeight: 600, maxEnlargement: 3 },
 };
 
 /**
@@ -169,6 +210,58 @@ export function minReadableFontSize(cls: LabelClass, scale: number): number {
   const naturalny = LABEL_TYPOGRAPHY[cls].fontSize;
   if (!Number.isFinite(scale) || scale <= 0) return naturalny;
   return Math.max(naturalny, MIN_READABLE_LABEL_SCREEN_PX / scale);
+}
+
+/**
+ * PROPORCJE — JEDYNE wejście planu renderu po rozmiar pisma etykiety
+ * TOŻSAMOŚCI: rozmiar [px ŚWIATA] spełniający OBIE granice naraz albo `null`,
+ * gdy spełnić obu się nie da.
+ *
+ * DWIE GRANICE, JEDNO ŹRÓDŁO (reguła KLASA §3 „predykaty parami"). Do tej
+ * karty istniała wyłącznie granica DOLNA (S9-7/8: „napis nie mniejszy niż
+ * `MIN_READABLE_LABEL_SCREEN_PX` na ekranie, albo go nie ma"), a górnej nie
+ * pilnował nikt — powiększenie awaryjne mogło urosnąć bez końca i przy
+ * oddaleniu napis przygniatał aparat, który opisuje (pomiar: 2,82× przy
+ * dopasowaniu, 7,50× przy `MIN_SCALE` — patrz `LabelTypography.maxEnlargement`).
+ * Dwie granice pochodzące z dwóch miejsc rozjeżdżają się przy pierwszej
+ * zmianie progu, więc obie mieszkają TUTAJ i wychodzą jedną wartością:
+ *
+ *   · pismo czytelne w rozmiarze naturalnym            ⇒ rozmiar naturalny;
+ *   · nieczytelne, ale kompensacja mieści się w sufic­ie ⇒ rozmiar powiększony
+ *     (dokładnie `MIN_READABLE_LABEL_SCREEN_PX` na ekranie);
+ *   · nieczytelne i kompensacja przekroczyłaby sufit    ⇒ `null` — etykiety
+ *     NIE rysujemy i mówimy o tym wprost (`droppedIdentity` + wskaźnik
+ *     „Ukryto N opisów"). Napis czytelny, ale wielkości trzech aparatów obok
+ *     siebie, nie jest rysunkiem technicznym — jest szyldem na rysunku.
+ *
+ * Skala niewiarygodna (≤0/NaN — viewport 0×0 przed pierwszym pomiarem układu)
+ * ⇒ rozmiar naturalny (parytet z `isLabelReadableAtScale`: brak pomiaru nie
+ * jest dowodem niczego, więc nie odbiera etykiety).
+ */
+export function enlargedFontSizeWithinProportion(cls: LabelClass, scale: number): number | null {
+  const { fontSize: naturalny, maxEnlargement } = LABEL_TYPOGRAPHY[cls];
+  if (!Number.isFinite(scale) || scale <= 0) return naturalny;
+  const potrzebny = MIN_READABLE_LABEL_SCREEN_PX / scale;
+  if (potrzebny <= naturalny) return naturalny;
+  // Tolerancja 1e-9: sufit ma być osiągalny DOKŁADNIE na skali granicznej
+  // (`MIN_READABLE_LABEL_SCREEN_PX / (naturalny · sufit)`), a nie o epsilon
+  // arytmetyki zmiennoprzecinkowej za nią — inaczej granica pary byłaby
+  // niedeterministyczna względem drogi dojścia do tej samej skali.
+  return potrzebny <= naturalny * maxEnlargement + 1e-9 ? potrzebny : null;
+}
+
+/**
+ * PROPORCJE — SKALA GRANICZNA klasy [px ekranu na j.św.]: poniżej niej pisma
+ * tej klasy nie da się już narysować proporcjonalnie i etykieta tożsamości
+ * wypada z rysunku (`enlargedFontSizeWithinProportion` zwraca `null`).
+ *
+ * Eksportowana, żeby wyrocznie i testy nie musiały odtwarzać tej arytmetyki u
+ * siebie (dwie kopie formuły to gotowy rozjazd — ta sama zasada, dla której
+ * `labelLegibility.ts` re-eksportuje `MIN_READABLE_LABEL_SCREEN_PX`).
+ */
+export function proportionCutoffScale(cls: LabelClass): number {
+  const { fontSize, maxEnlargement } = LABEL_TYPOGRAPHY[cls];
+  return MIN_READABLE_LABEL_SCREEN_PX / (fontSize * maxEnlargement);
 }
 
 /**

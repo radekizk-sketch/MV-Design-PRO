@@ -29,7 +29,7 @@ import {
   formatTransformerRatedPower,
   type StationOnRunRendererProps,
 } from '../../v2/renderer/StationOnRunRenderer';
-import { fieldFunctionalDesignation } from '../compose/directions';
+import { fieldCaptionAt } from '../compose/directions';
 import {
   apparatusIdentifiers,
   bayApparatusPlanFootprint,
@@ -143,6 +143,28 @@ export function stationBusbarLabelText(
   const sekcja = busVoltageKv != null ? `Sekcja 1 · ${liczbaRysunkuPl(busVoltageKv)} kV` : 'Sekcja 1';
   const kod = stationCode?.trim();
   return kod ? `${kod} · ${sekcja}` : sekcja;
+}
+
+/**
+ * PROPORCJE (zgłoszenie właściciela 2026-08-07 pkt 3) — CZY OPIS SEKCJI NIESIE
+ * KOD STACJI, a więc czy pasmo nazw ma o nim MILCZEĆ.
+ *
+ * JEDEN PREDYKAT, DWA KOŃCE (reguła KLASA §3). Kod stacji ma paść w bloku
+ * dokładnie RAZ. Rozstrzygnięcie: niesie go OPIS SEKCJI (`stationBusbarLabelText`
+ * wyżej), bo stoi przy elemencie, o którym mówi, i musi rozróżniać dziesiątki
+ * sekcji w jednym kadrze (S9-8, wyrocznia S9-12). Pasmo nazw pokazuje wtedy
+ * NAZWĘ stacji. Blok BEZ szyny SN (zero pól) opisu sekcji nie ma — wtedy kod
+ * MUSI zostać w paśmie, inaczej zniknąłby z rysunku zupełnie.
+ *
+ * Funkcja jest CZYSTA względem wejścia pomiarowego, więc REZERWACJA wysokości
+ * pasma (`stationNameBandHeight`) i REALNA lista wierszy (`compose/station.ts`)
+ * pochodzą z tego samego zdania — dwa niezależne warunki, które „dziś się
+ * zgadzają", są defektem czekającym na dane brzegowe.
+ */
+export function stationSectionLabelCarriesCode(
+  station: Pick<StationMeasureInput, 'stationCode' | 'snBays'>,
+): boolean {
+  return !!station.stationCode?.trim() && station.snBays.length > 0;
 }
 
 /** F10.3 (spec §18.4): odstęp między wierszem etykiety szyny SN (nowy, ten
@@ -369,7 +391,10 @@ export function bayColumnRequiredWidth(
 ): number {
   const bay = snBays[index];
   const footprint = bayColumnFootprint(bay);
-  const fieldRoleLabel = fieldFunctionalDesignation(bay.fieldRole);
+  // PROPORCJE: rezerwacja liczona z REALNEGO podpisu pola („F01 · pole
+  // liniowe") — jedno źródło z `compose/station.ts` (`fieldCaptionAt`),
+  // inaczej sidecar wchodziłby w kolumnę sąsiada o różnicę oznacznika.
+  const fieldRoleLabel = fieldCaptionAt(snBays, index);
   // Zmierzone OD LEWEJ KRAWĘDZI STOSU (nie kolumny) — `leftReserve` doliczany
   // OSOBNO poniżej, jedna prawda z `compose/station.ts` (`stackLeftX = bx +
   // leftReserve`).
@@ -636,7 +661,12 @@ export function stationNameBandHeight(station: StationMeasureInput): number {
   // wysokości wierszy zamiast mnożyć przez jedną klasę, żeby pasmo miało
   // dokładnie tyle miejsca ile potrzebują wszystkie obecne wiersze.
   let height = LABEL_LINE_HEIGHT_T1; // nazwa (zawsze obecna)
-  if (station.stationCode) height += LABEL_LINE_HEIGHT_T1;
+  // PROPORCJE: wiersz z GOŁYM kodem stacji istnieje TYLKO wtedy, gdy kodu nie
+  // niesie opis sekcji (`stationSectionLabelCarriesCode` — jedna prawda z
+  // `compose/station.ts`). Rezerwowanie wiersza, którego kompozycja nie
+  // rysuje, zostawiałoby w paśmie pustą linię — a pusty tusz w bloku to
+  // pkt 6 tego samego zgłoszenia właściciela.
+  if (station.stationCode && !stationSectionLabelCarriesCode(station)) height += LABEL_LINE_HEIGHT_T1;
   if (station.transformerRatedKva != null) height += LABEL_LINE_HEIGHT_T2;
   if (station.stationTypeLabel) height += LABEL_LINE_HEIGHT_T4;
   // pkt 6 (recenzja NO-GO 2026-07-17): dwa wiersze strony nN (szyna nN +

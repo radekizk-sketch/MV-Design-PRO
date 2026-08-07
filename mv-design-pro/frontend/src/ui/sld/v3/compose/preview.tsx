@@ -27,7 +27,7 @@
  * kompozycji to tory SN/WN klasy „normalny przewód", nie szyna.
  */
 import type { SymbolId } from '../symbols/defs';
-import { SYMBOL_GLYPHS, type StationDerGlyphKind, type SwitchState } from '../symbols/glyphs';
+import { SYMBOL_GLYPHS, V3_STROKE_APPARATUS, type StationDerGlyphKind, type SwitchState } from '../symbols/glyphs';
 import type { MiniRmuLineTopology } from '../symbols/miniRmuGrammar';
 import { SOURCE_STATE_OVERLAY_COLOR, type DerSourceKind, type SourceOperationalState } from './sourceKind';
 import { LABEL_TYPOGRAPHY } from '../core/text';
@@ -91,6 +91,23 @@ export const SEGMENT_STROKE_WIDTH: Readonly<Record<PreviewSegmentKind, number>> 
 };
 
 /**
+ * PROPORCJE — WAGA KRESKI APARATU [px ŚWIATA] jako RANGA HIERARCHII RYSUNKU.
+ *
+ * Wartość jest tą samą liczbą, którą glify rysują od początku
+ * (`symbols/glyphs.tsx` `V3_STROKE_APPARATUS` = 1,2) — źródło prawdy zostaje
+ * tam, gdzie stoi rysunek glifu, a tutaj wchodzi do TABELI RANG, żeby
+ * hierarchia §6/§22.4 była w JEDNYM miejscu kompletna, a nie „tory tu, aparat
+ * gdzie indziej". To ostatnie było przyczyną defektu zgłoszonego przez
+ * właściciela: S9-8 wzmocniła wszystko, co widziała w tabeli, a aparatu w niej
+ * nie było (patrz `apparatusStrokeWidthForScale`).
+ *
+ * PEŁNA HIERARCHIA ŚWIATA (malejąco): busGpz 6 · bus 4 · snTrunk 2,4 · sn 1,6
+ * · **aparat 1,2** = lv 1,2 · openTerminal/sheetContinuation 1,6 (markery toru)
+ * · leader/protectionTrip 0,8 · measurementLink 0,6.
+ */
+export const APPARATUS_STROKE_WIDTH = V3_STROKE_APPARATUS;
+
+/**
  * S9-8 (audyt `docs/sld/AUDYT_JAKOSCI_SLD_2026-08.md`) — PODŁOGA EKRANOWA
  * WAGI TORU GŁÓWNEGO [px ekranu].
  *
@@ -134,6 +151,45 @@ export function strokeScaleFactor(cameraScale: number): number {
  *  niezależne formuły tej samej wagi to gotowy rozjazd (reguła KLASA §3). */
 export function segmentStrokeWidthForScale(kind: PreviewSegmentKind, cameraScale: number): number {
   return SEGMENT_STROKE_WIDTH[kind] * strokeScaleFactor(cameraScale);
+}
+
+/**
+ * PROPORCJE (zgłoszenie właściciela 2026-08-07 „brak proporcji, grubości",
+ * pkt 2: „tor prądowy grubszy od kreski aparatu ok. 8–10× — odwrócona
+ * hierarchia, aparat rysowany włosowo") — WAGA KRESKI APARATU [px ŚWIATA]
+ * przy zadanej skali kamery.
+ *
+ * CO BYŁO ZŁE. S9-8 dała PODŁOGĘ EKRANOWĄ całej hierarchii TORÓW, ale
+ * APARATURA z tej hierarchii wypadła: `symbols/glyphs.tsx` rysował glify stałą
+ * ŚWIATA `V3_STROKE_APPARATUS` bez żadnej kompensacji. Skutek zmierzony na
+ * fixturze 53 stacji (`scripts/pomiar_proporcje.tsx`, stan PRZED) — stosunek
+ * szyna:aparat NA EKRANIE:
+ *
+ *   skala 1,380 (praca z bliska)  →  3,33×    ← proporcja projektowa
+ *   skala 0,133 (dopasuj widok)   → 15,70×    ← tor gruby, aparat 0,16 px
+ *   skala 0,050 (dolny kraniec)   → 41,67×    ← aparat znika, tory zostają
+ *
+ * a magistrala:aparat odpowiednio 2,00× / 9,42× / 25,00× — właściciel zmierzył
+ * okiem „8–10×" i to jest ta sama liczba (kadr „Dopasuj widok").
+ *
+ * ROZSTRZYGNIĘCIE: aparat wchodzi do TEJ SAMEJ, jednorodnej kompensacji
+ * (`strokeScaleFactor`), która obejmuje tory. Wagi ŚWIATA zostają NIETKNIĘTE
+ * (busGpz 6 > bus 4 > snTrunk 2,4 > sn 1,6 > **aparat 1,2** = lv 1,2 >
+ * adnotacje ≤0,8 — kanon §6/§22.4 bez zmian, zero regresji S9-8), więc
+ * proporcje stają się NIEZALEŻNE OD SKALI: szyna:aparat 3,33× i
+ * magistrala:aparat 2,00× na KAŻDEJ skali, a nie „3,33× z bliska i 41,67× z
+ * daleka". To jest dokładnie ta hierarchia, którą właściciel opisał („rośnie od
+ * aparatu przez odgałęzienie i magistralę do szyny"), tylko utrzymana także
+ * tam, gdzie dotąd pękała.
+ *
+ * DLACZEGO TU, A NIE W `glyphs.tsx`. Kompensacja jest JEDNA dla całego
+ * rysunku i mieszka razem z tabelą rang — glif dostaje gotową liczbę
+ * (`GlyphProps.strokeScale`), tak jak odcinek dostaje `strokeWidth`. Dwie
+ * kopie formuły (jedna dla torów, druga dla glifów) rozjechałyby się przy
+ * pierwszej zmianie progu (reguła KLASA §3).
+ */
+export function apparatusStrokeWidthForScale(cameraScale: number): number {
+  return APPARATUS_STROKE_WIDTH * strokeScaleFactor(cameraScale);
 }
 
 /**
