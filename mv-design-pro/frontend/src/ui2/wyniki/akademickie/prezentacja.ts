@@ -312,10 +312,23 @@ export const PREZENTACJA: Record<RodzajPrezentowany, PrezentacjaRodzaju> = {
      * albo liczyć realną krzywą P–U rozpływem, albo zdjąć pola z kontraktu przy
      * zmianie wersji głównej — `docs/v12xx/REJESTR_KONFLIKTOW.md`, V126-WYGASZENIE.
      */
+    /*
+     * RODOWÓD WIELKOŚCI GŁÓWNEJ (poprawione przy odbiorze karty, 2026-08-07).
+     * Pole kontraktu nazywa się `smallest_eigenvalue`, a ekran obiecywał
+     * „najmniejszą wartość własną macierzy wrażliwości". Solver NIE liczy żadnej
+     * macierzy wrażliwości ani jej widma — `_voltage_stability` wyznacza
+     * `max(0,001; (1 − L) · U_pu)` i bierze minimum po węzłach. Etykieta mówiła
+     * więc, SKĄD liczba pochodzi, a nie było to prawdą — ta sama klasa co
+     * „krzywa P–U z rozpływu", którą karta właśnie zdjęła (zero fabrykacji).
+     * Nazwa mówi teraz, czym liczba JEST; nazwa POLA kontraktu zostaje (FROZEN).
+     * DŁUG NAZWANY: albo policzyć realną analizę modalną macierzy wrażliwości
+     * Q–U, albo przemianować pole przy zmianie wersji głównej — rejestr,
+     * wiersz V126-WYGASZENIE.
+     */
     wielkosciGlowne: [
       {
         sciezka: 'modal_analysis.smallest_eigenvalue',
-        etykieta: 'Najmniejsza wartość własna macierzy wrażliwości (zapas do załamania)',
+        etykieta: 'Najmniejszy w sieci zapas do załamania (1 − L, ważony napięciem węzła)',
       },
     ],
     tabele: [

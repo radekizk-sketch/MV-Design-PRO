@@ -323,6 +323,23 @@ describe('ekran stabilności napięciowej po wycofaniu marginesu P–U', () => {
    * żadne „P–U" nie ma prawa paść na ekranie stabilności napięciowej.
    * (Q–U to inna wielkość — inna litera, więc ten pin jej nie dotyczy.)
    */
+  /*
+   * TEN SAM RODZAJ FAŁSZU, INNE ZDANIE (znalezione przy odbiorze karty).
+   * Ekran obiecywał „najmniejszą wartość własną macierzy wrażliwości", a solver
+   * żadnej macierzy wrażliwości nie liczy: `_voltage_stability` wyznacza
+   * `max(0,001; (1 − L) · U_pu)` i bierze minimum po węzłach. To ta sama klasa
+   * co „krzywa P–U z rozpływu" — etykieta mówiąca, SKĄD liczba pochodzi, choć
+   * nie stamtąd pochodzi. Pin trzyma OBA końce: nazwa metody, której nie ma,
+   * nie wraca na ekran, a nazwa mówiąca, czym liczba jest, na nim stoi.
+   */
+  it('wielkość główna nie obiecuje analizy modalnej, której solver nie liczy', async () => {
+    const ekran = await uruchomStabilnosc();
+    const tekst = tekstDlaProjektanta(ekran);
+    expect(tekst).not.toContain('wartość własna');
+    expect(tekst).not.toContain('macierzy wrażliwości');
+    expect(tekst).toContain('zapas do załamania');
+  });
+
   it('ekran nie obiecuje krzywej P–U w ŻADNYM miejscu widocznym dla projektanta', async () => {
     const ekran = await uruchomStabilnosc();
     const tekst = tekstDlaProjektanta(ekran);

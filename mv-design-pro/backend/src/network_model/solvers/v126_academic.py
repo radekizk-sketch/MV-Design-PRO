@@ -837,7 +837,9 @@ class V126AcademicSolver:
             "biernej z krzywej Q–U oraz wskaźnik bliskości załamania napięcia L.",
             {"smallest_eigenvalue": _round(smallest, 6)},
             "Wskaźnik L jest bezwymiarowy; margines obciążalności w %.",
-            result_pl=(f"Najmniejsza wartość własna macierzy wrażliwości: {_round(smallest, 6)}"),
+            result_pl=(
+                f"Najmniejszy w sieci zapas do załamania (1 − L, ważony napięciem): {_round(smallest, 6)}"
+            ),
         )
         margin_min = _round(min((row["margin_percent"] for row in pv_curves), default=0.0), 3)
         l_values = [float(row["l_index"]) for row in l_indices]
@@ -855,7 +857,7 @@ class V126AcademicSolver:
                 (
                     "eigenvalue_positive",
                     _finite(smallest) and smallest > 0.0,
-                    "Najmniejsza wartość własna <= 0 (kolaps napięciowy)",
+                    "Zapas do załamania <= 0 (kolaps napięciowy)",
                 ),
             ],
             has_inputs=len(model.buses) > 0,
