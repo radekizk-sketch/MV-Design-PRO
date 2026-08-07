@@ -30,7 +30,7 @@ const ODCISK = /^[0-9a-f]{8,}$/i;
  * kod produkcyjny `gpz/8600…/section/001/bus_sn` (defekt oceniony na 0/10).
  * Segment nieznany zostaje bez zmian — lepiej pokazać go wprost niż zmyślić.
  */
-const NAZWY_SEGMENTOW: Readonly<Record<string, string>> = {
+export const NAZWY_SEGMENTOW: Readonly<Record<string, string>> = {
   gpz: 'GPZ',
   station: 'stacja',
   substation: 'stacja',
@@ -48,13 +48,51 @@ const NAZWY_SEGMENTOW: Readonly<Record<string, string>> = {
   junction: 'złącze',
   branch_point: 'punkt odgałęźny',
   nop: 'punkt podziału',
+  // Dopisane przy odbiorze karty (2026-08-07) na podstawie POMIARU referencji
+  // realnej sieci 53 stacji — nie z domysłu. Bez nich etykieta zapasowa pokazywała
+  // projektantowi `branch` (12 wystąpień), `source`, `main`, `bus_110`, `wn_sn`,
+  // czyli dokładnie te kody produkcyjne, których zakazuje ocena 0/10.
+  branch: 'odgałęzienie',
+  source: 'źródło',
+  main: 'główne',
+  bus_110: 'szyna 110 kV',
+  wn_sn: 'WN/SN',
 };
+
+/**
+ * Segment w postaci `<rodzaj>_<numer>` (`corridor_01`, `station_03`).
+ *
+ * Osobna REGUŁA zamiast kolejnych wpisów w słowniku, bo instancji jest tyle, ile
+ * obiektów w sieci — dopisywanie `corridor_01`, `corridor_02`, … zamykałoby
+ * INSTANCJE, a nie KLASĘ, i pierwszy nowy numer wróciłby na ekran po angielsku.
+ */
+const RODZAJ_Z_NUMEREM = /^([a-z_]+?)_(\d+)$/;
 
 /**
  * Zapasowa etykieta referencji, gdy migawka modelu nie zna obiektu: rodzaje
  * obiektów po polsku, odcisk pominięty. Czysta funkcja (bez zależności od
  * store'u), więc testowalna wprost.
  */
+/**
+ * Polska nazwa rodzaju obiektu dla JEDNEGO segmentu referencji.
+ *
+ * Najpierw słownik (wpis jawny wygrywa — `bus_110` to „szyna 110 kV", a nie
+ * „szyna 110"), potem reguła `<rodzaj>_<numer>`. Segment, którego nie tłumaczy ani
+ * jedno, ani drugie, zostaje BEZ ZMIAN — świadomie: lepiej pokazać go wprost niż
+ * zmyślić nazwę. Strażnik `__tests__/slownikSegmentow.test.ts` pilnuje, żeby taki
+ * segment nie mógł pochodzić z realnego modelu.
+ */
+export function tlumaczSegment(segment: string): string {
+  const jawny = NAZWY_SEGMENTOW[segment];
+  if (jawny !== undefined) return jawny;
+  const zNumerem = RODZAJ_Z_NUMEREM.exec(segment);
+  if (zNumerem) {
+    const rodzaj = NAZWY_SEGMENTOW[zNumerem[1]];
+    if (rodzaj !== undefined) return `${rodzaj} ${zNumerem[2]}`;
+  }
+  return segment;
+}
+
 export function etykietaZapasowaRefu(ref: string): string {
   if (ref === '') return '—';
   const segmenty = ref.split('/').filter((segment) => segment !== '');
@@ -68,7 +106,7 @@ export function etykietaZapasowaRefu(ref: string): string {
         czlony[czlony.length - 1] = `${czlony[czlony.length - 1]} ${segment}`;
         return;
       }
-      czlony.push(NAZWY_SEGMENTOW[segment] ?? segment);
+      czlony.push(tlumaczSegment(segment));
     });
   if (czlony.length === 0) return 'obiekt modelu bez nazwy';
   return czlony.join(' · ');
