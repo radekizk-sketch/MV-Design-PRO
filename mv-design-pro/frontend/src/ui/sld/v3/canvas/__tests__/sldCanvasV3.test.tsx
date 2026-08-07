@@ -722,7 +722,38 @@ describe('SldCanvasV3 — F8a k3: refit PEŁNY na zmianę snapshot; resize (widt
   // pokrycia — pointer/pinch nie miały testu DOM ani przed tą dostawą).
   const WHEEL_DELTA_Y = -50; // mały zoom-in, NIE przekracza progu LOD0 (0.4×1.15)
 
-  it('zmiana referencji `snapshot` (nowa sieć) odrzuca zoom użytkownika i wraca do fitu — pełny refit', () => {
+  /**
+   * INTENCJA (bez zmian od F8a): zmiana świata BEZ wskazania obiektu odrzuca
+   * pan/zoom użytkownika i wraca do fitu.
+   *
+   * KANON ZAKTUALIZOWANY kartą B-2 (2026-08-07): warunkiem refitu jest ZMIANA
+   * MODELU, nie sama zmiana referencji obiektu migawki. Nowy obiekt o TYM
+   * SAMYM haszu (odświeżenie `refresh_snapshot`, hydratacja po reconnect —
+   * pomiar: hasz identyczny) nie jest powodem, żeby wyrzucić projektanta z
+   * jego widoku; osobny kontrakt tego pilnuje
+   * (`kotwicaWidoku.contract.test.tsx`). Test przeszedł więc z pary
+   * „ta sama treść, inny obiekt" na parę REALNIE RÓŻNYCH sieci — dokładnie
+   * ten scenariusz, który intencja opisuje.
+   */
+  it('zmiana snapshotu na INNĄ sieć (bez wskazania obiektu) odrzuca zoom użytkownika i wraca do fitu — pełny refit', () => {
+    const innaSiec = (
+      JSON.parse(
+        readFileSync(resolve(here, 'fixtures', 'b2MalaPo.enm.json'), 'utf8'),
+      ) as { readonly enm: EnergyNetworkModel }
+    ).enm;
+    const viewportSize = { width: CANVAS_WIDTH, height: CANVAS_HEIGHT };
+    const scenaInnej = buildSceneV3(innaSiec, 2);
+    const oczekiwanyFitInnej = cameraViewBox(
+      computeInitialCameraState(
+        sceneBoxToCameraWorld(contentBoundingBoxOf(scenaInnej) ?? boundingBoxOfRect(scenaInnej.bbox)),
+        viewportSize,
+        undefined,
+        null,
+        SLD_CANVAS_DOCK_INSETS,
+      ).transform,
+      viewportSize,
+    );
+
     const { container, rerender } = render(
       <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} />,
     );
@@ -731,13 +762,11 @@ describe('SldCanvasV3 — F8a k3: refit PEŁNY na zmianę snapshot; resize (widt
 
     // Zoom (scale + translate) — kamera oddala się od fitu startowego.
     fireEvent.wheel(svg, { clientX: 200, clientY: 150, deltaY: WHEEL_DELTA_Y });
-    const zoomedViewBox = viewBoxOf(container);
-    expect(zoomedViewBox).not.toBe(initialViewBox);
+    expect(viewBoxOf(container)).not.toBe(initialViewBox);
 
-    // Nowa referencja snapshot (ta sama treść, ale NOWY obiekt — jak przy
-    // odświeżeniu ze store'a po EDYCJI modelu) ⇒ pełny refit, zoom odrzucony.
-    rerender(<SldCanvasV3 snapshot={{ ...enm }} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} />);
-    expect(viewBoxOf(container)).toBe(initialViewBox);
+    // Inna sieć BEZ wskazania obiektu ⇒ pełny refit, zoom odrzucony.
+    rerender(<SldCanvasV3 snapshot={innaSiec} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} viewAnchor={null} />);
+    expect(viewBoxOf(container)).toBe(oczekiwanyFitInnej);
   });
 
   it('zmiana width/height (bez zmiany snapshot) ZACHOWUJE skalę i zoom użytkownika — tylko viewport się dostosowuje', () => {
