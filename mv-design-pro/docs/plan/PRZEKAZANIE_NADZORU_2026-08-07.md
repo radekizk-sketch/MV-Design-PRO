@@ -23,7 +23,37 @@ i w audycie (`docs/sld/AUDYT_JAKOSCI_SLD_2026-08.md`); w razie konfliktu rejestr
   KAŻDĄ przyszłą decyzję kompozycji rozdzielnic/pomiarów weryfikuj ze standardem OSD
   (wyciąg: scratchpad `enea_pomiarowe.txt`; źródło [E-UP] 05.2022-2), nigdy z pamięci.
 
-## 2. W BIEGU — DWIE KARTY DO ODEBRANIA
+## 2A. AKTUALIZACJA — PRZEJĘCIE DOWODZENIA (2026-08-07, Opus)
+
+Dowodzenie przejął Opus na dyrektywę właściciela. Zmiany wobec §2 niżej (który opisuje
+stan sprzed przejęcia i zostaje jako zapis historyczny):
+
+- **S9-13 i BATCH-ROUTER ODEBRANE I SCALONE** (odbiory z własnymi iniekcjami nadzorcy):
+  S9-13 zamknęła W-8 i klasę KLIENT-BEZ-DOSTAWCY dla `sldDeltaOverlay`; BATCH-ROUTER
+  obalił tezę inwentarza — niewpięte routery **fabrykowały wyniki** (bieg kończony
+  wartościami z żądania klienta, sztuczny ślad = naruszenie WHITE BOX), więc fantomy
+  usunięto u źródła, a seria przebiegów liczy się teraz biegami kanonicznymi.
+- Szczyt: **`3f056860`**, CI **8/8 zielone**.
+- **FALA 2 W BIEGU** (strefy rozłączne, protokoły §3–§4 bez zmian):
+  `kopia/B-2` (kotwiczenie kamery na zmianie — wiersz B-2 audytu),
+  `kopia/PACK-DOWODY` (cztery końcówki pakietów dowodowych bez konsumenta — §6 macierzy),
+  `kopia/XLSX-IMPORT` (ostatni ❌ macierzy; domknięcie zeruje kolumnę ❌).
+- Zmiana protokołu bramek: przy TRZECH równoległych wykonawcach pełny vitest dzielimy
+  na **4 shardy** (`--shard=k/4`) — przy dwóch wystarczały 2, przy trzech rywalizacja
+  o CPU wywracała bieg na limicie 10 min (RC=143 = SIGTERM limitu, nie defekt).
+- **POTWIERDZONY TRYB AWARII (2026-08-07, drugie wystąpienie)**: restart kontenera
+  potrafi cofnąć LOKALNE repo do starszej migawki dysku (zmierzone: HEAD wrócił z
+  `3f056860` na `101378c2`, czyli sprzed całej fali, przy CZYSTYM drzewie roboczym —
+  więc bez `git status` wygląda to na stan poprawny). Origin był nietknięty. Procedura:
+  `git fetch` → porównaj `origin/<gałąź>` z HEAD → `git checkout <gałąź> && git reset
+  --hard origin/<gałąź>`. Worktree wykonawców zakładane z `origin/...` po restarcie są
+  poprawne. **Każda runda nadzoru zaczyna się od tego porównania.**
+- **FALA 3 (po odbiorach fali 2)**: V126-OKNA; Reference Engine — wybór pakietu
+  (`fetchReferencePacks` ma konsumenta wyłącznie w teście, ekran zgodności ma zaszyte
+  `PAKIET_OSD = 'osd_enea'`, `ZgodnoscReferencyjna.tsx:30`); S9-12-DLUG-LATERAL-ETYKIETA;
+  reszta klasy KLIENT-BEZ-DOSTAWCY; B-5 (kontrakt kopii, V12K-325).
+
+## 2. W BIEGU — DWIE KARTY DO ODEBRANIA (stan sprzed przejęcia — historyczny)
 
 | Karta | Kopia | Zakres | Odbiór — na co zwrócić uwagę |
 |---|---|---|---|
