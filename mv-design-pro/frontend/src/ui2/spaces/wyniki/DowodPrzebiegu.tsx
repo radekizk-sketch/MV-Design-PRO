@@ -23,7 +23,7 @@
 import { useEffect, useMemo } from 'react';
 
 import type { AdvancementMode } from '../../shell/modeModel';
-import { PrzegladDowodu, ZrodloLatex } from '../../wyniki/dowod';
+import { PakietDowodowy, PrzegladDowodu, ZrodloLatex } from '../../wyniki/dowod';
 import { useAkcjaUruchomObliczenie } from '../../wyniki/wzorzec';
 import { useAppStateStore } from '../../../ui/app-state';
 import { resolveTraceStepsForElement } from '../../../ui/proof/ElementCalculationProofPanel';
@@ -119,6 +119,11 @@ export function DowodPrzebiegu({
       {/* L-10: źródło `.tex` wywodu — dostawca ten sam co w moście. Bez kroków
           śladu nie ma czego pobierać (okno pokazuje wtedy stan zerowy wywodu). */}
       {kroki.length > 0 && <ZrodloLatex runId={runId} />}
+      {/* PACK-DOWODY: zamknięty pakiet dowodowy przebiegu. Sekcja pyta SERWER,
+          czy pakiet się należy (rodzaj wynika z danych biegu) — dlatego stoi tu
+          niezależnie od tego, czy ślad ma kroki: bieg bez śladu może mieć pakiet,
+          a bieg ze śladem może pakietu nie mieć (wtedy sekcja poda powód). */}
+      <PakietDowodowy runId={runId} akcjaBrak={akcjaPusty} />
     </>
   );
 }

@@ -41,6 +41,21 @@ export const DOWOD_STRINGS = {
   latexPobierz: 'Pobierz',
   latexBlad: 'Nie udało się pobrać źródła LaTeX.',
 
+  // Pakiet dowodowy przebiegu (karta PACK-DOWODY) — zamknięty artefakt do
+  // opracowania i archiwum: dowód + źródło + wykaz plików + odcisk integralności.
+  pakietEyebrow: 'PAKIET DOWODOWY',
+  pakietOpis:
+    'Zamknięty pakiet obliczenia do opracowania i archiwum — z sumami kontrolnymi plików i odciskiem integralności.',
+  pakietPunkt: 'Punkt zwarcia',
+  pakietPobierz: 'Pobierz pakiet',
+  pakietPobieranie: 'Składanie pakietu…',
+  pakietPobrano: 'Pobrano plik:',
+  pakietLadowanie: 'Sprawdzanie dostępności pakietu dowodowego…',
+  pakietBlad: 'Nie udało się pobrać pakietu dowodowego.',
+  pakietBrakOgolny: 'Ten przebieg nie ma dedykowanego pakietu dowodowego.',
+  pakietNieaktualne:
+    'Wyniki są nieaktualne względem modelu — pakiet udokumentuje stan sprzed zmiany',
+
   // Nagłówek — odcisk danych wejściowych (tryb ekspercki)
   odciskWejscia: 'Odcisk danych wejściowych',
 
