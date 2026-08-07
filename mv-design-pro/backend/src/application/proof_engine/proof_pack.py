@@ -5,9 +5,10 @@ import io
 import json
 import sys
 import zipfile
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from pathlib import Path
+from uuid import UUID, uuid5
 
 from application.proof_engine.proof_inspector.exporters import (
     export_to_json,
@@ -188,6 +189,63 @@ class ProofPackBuilder:
         return buffer.getvalue()
 
 
+#: Przestrzeń nazw identyfikatorów artefaktów pakietu dowodowego (stała).
+_NAMESPACE_ARTEFAKTU_PAKIETU = UUID("4b1f6a2e-9c53-4a1d-8f7b-2d0c5a6e91d4")
+
+
+def deterministic_artifact_id(context: ProofPackContext) -> UUID:
+    """Identyfikator artefaktu WYPROWADZONY z tożsamości pakietu (nie losowy).
+
+    DEFEKT, KTÓRY TO ZAMYKA (karta PACK-DOWODY). ``manifest.json`` każdego pakietu
+    deklaruje wprost: „Pakiet jest deterministyczny dla identycznych wejść i
+    toolchain" — a generatory pakietów, wołane bez jawnego ``artifact_id``,
+    podstawiały ``uuid4()``. Ten sam przebieg pobrany dwa razy dawał więc RÓŻNE
+    bajty (``proof.json`` → inny ``proof_fingerprint`` → inny ``pack_fingerprint``),
+    czyli odcisk integralności nie nadawał się do porównania dwóch pobrań.
+    Deklaracja bez strażnika: pin w ``tests/api/test_pakiet_dowodowy_biegu.py``
+    (dwa pobrania bajt-w-bajt) i ``tests/api/test_proof_pack_api.py``.
+
+    Tożsamość pakietu = projekt + przypadek + przebieg + wersja modelu. Ta sama
+    czwórka ⇒ ten sam identyfikator; inny przebieg albo inna wersja modelu ⇒ inny.
+    """
+    seed = "|".join(
+        (
+            context.project_id,
+            context.case_id,
+            context.run_id,
+            context.snapshot_id,
+        )
+    )
+    return uuid5(_NAMESPACE_ARTEFAKTU_PAKIETU, seed)
+
+
+def dokument_deterministyczny(
+    proof_doc: ProofDocument,
+    context: ProofPackContext,
+    znacznik_czasu: datetime,
+) -> ProofDocument:
+    """Dokument dowodowy o TOŻSAMOŚCI wyprowadzonej z pakietu, nie z zegara i losu.
+
+    Ta sama klasa defektu co ``deterministic_artifact_id``, drugi jego koniec:
+    ``ProofDocument`` generatorów niesie ``document_id = uuid4()`` i
+    ``created_at = datetime.now()``. Oba pola trafiają do ``proof.json``, więc
+    ``proof_fingerprint`` i ``pack_fingerprint`` w manifeście zmieniały się przy
+    KAŻDYM pobraniu — odcisk integralności nie dawał się porównać między dwoma
+    pobraniami tego samego przebiegu, choć manifest to deklaruje.
+
+    ``znacznik_czasu`` = czas PRZEBIEGU (nie „teraz"): dowód dokumentuje obliczenie,
+    które już się odbyło. Pin: pakiet pobrany dwa razy jest bajt-w-bajt identyczny.
+    """
+    seed = "|".join(
+        (context.project_id, context.case_id, context.run_id, context.snapshot_id, "document")
+    )
+    return replace(
+        proof_doc,
+        document_id=uuid5(_NAMESPACE_ARTEFAKTU_PAKIETU, seed),
+        created_at=znacznik_czasu,
+    )
+
+
 def resolve_mv_design_pro_version() -> str | None:
     try:
         import tomllib
@@ -216,7 +274,10 @@ def proof_pack_proof_type(proof_type: ProofType) -> str:
     if proof_type == ProofType.Q_U_REGULATION:
         return "QU_REGULATION"
     if proof_type == ProofType.EQUIPMENT_PROOF:
-        return "P12"
+        # Rodzaj dowodu trafia do `manifest.json` pobieranego pakietu, czyli do
+        # artefaktu eksportu — obowiązuje go zakaz nazw roboczych projektu
+        # (CLAUDE.md reguła 8). Wcześniej stało tu oznaczenie robocze karty.
+        return ProofType.EQUIPMENT_PROOF.value
     if proof_type in {
         ProofType.SC1F_IEC60909,
         ProofType.SC2F_IEC60909,

@@ -27,17 +27,27 @@ INVARIANTS:
 
 from __future__ import annotations
 
+import io
+import zipfile
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 from uuid import UUID, uuid4
 
 from application.proof_engine.proof_generator import ProofGenerator, SC1Input
-from application.proof_engine.proof_pack import ProofPackBuilder, ProofPackContext
+from application.proof_engine.proof_pack import (
+    ProofPackBuilder,
+    ProofPackContext,
+    deterministic_artifact_id,
+    dokument_deterministyczny,
+)
 from application.proof_engine.types import ProofDocument
 from network_model.solvers.short_circuit_asymmetrical_quantities import (
     compute_sc1_asymmetrical_quantities,
 )
+
+#: Stały znacznik czasu wpisów ZIP (determinizm pakietu — ten sam wynik → ten sam plik).
+_FIXED_ZIP_TIMESTAMP = (1980, 1, 1, 0, 0, 0)
 
 
 @dataclass
@@ -184,17 +194,123 @@ class SCAsymmetricalProofPack:
         """
         Generuje ZIP-y z dowodami dla każdego typu zwarcia.
 
+        Identyfikator artefaktu wyprowadzany z tożsamości pakietu — inaczej dwa
+        pobrania tego samego przebiegu różniłyby się bajtami, wbrew deklaracji
+        determinizmu w ``manifest.json``.
+
         Returns:
             dict mapping fault_type → ZIP bytes
         """
-        result = cls.generate(data)
+        result = cls.generate(data, deterministic_artifact_id(context))
         builder = ProofPackBuilder(context)
 
+        def _zbuduj(dokument: ProofDocument) -> bytes:
+            return builder.build(
+                dokument_deterministyczny(dokument, context, data.run_timestamp)
+            )
+
         return {
-            "SC1FZ": builder.build(result.proof_1fz),
-            "SC2F": builder.build(result.proof_2f),
-            "SC2FZ": builder.build(result.proof_2fz),
+            "SC1FZ": _zbuduj(result.proof_1fz),
+            "SC2F": _zbuduj(result.proof_2f),
+            "SC2FZ": _zbuduj(result.proof_2fz),
         }
+
+    @classmethod
+    def wejscie_ze_snapshotu(
+        cls,
+        *,
+        snapshot: dict[str, Any],
+        fault_node_id: str,
+        project_name: str,
+        case_name: str,
+        run_timestamp: datetime,
+        solver_version: str,
+        c_factor: float = 1.10,
+        tk_s: float = 1.0,
+    ) -> SCAsymmetricalPackInput:
+        """Zbuduj wejście pakietu z KANONICZNEGO SNAPSHOTU ENM (ZERO fizyki u klienta).
+
+        DEFEKT, KTÓRY TO ZAMYKA (karta PACK-DOWODY). Dotąd jedyną drogą do tego
+        pakietu był kontrakt wymagający od WYWOŁUJĄCEGO impedancji składowych
+        Z1/Z2/Z0, napięcia ``U_f`` i operatora Fortescue ``a`` — czyli wielkości
+        fizycznych. Interfejs, który ich nie liczy (i liczyć nie wolno mu), nie mógł
+        po ten pakiet sięgnąć; końcówka stała bez konsumenta.
+
+        Tu jest ta sama droga co w pakiecie SC3F (``sc_symmetrical.py``): snapshot →
+        graf → solver → wejście dowodu. Impedancje składowe pochodzą z FROZEN wyniku
+        solvera zwarcia jednofazowego (jedyny wariant liczący sieć zerową ``Z0``,
+        potrzebną dla 1F-Z i 2F-Z), ``U_f`` i ``a`` — ze stałych warstwy solverów.
+        """
+        from enm.mapping import build_zero_sequence_zbus, map_enm_to_network_graph
+        from enm.models import EnergyNetworkModel
+        from network_model.solvers.short_circuit_asymmetrical_quantities import (
+            OPERATOR_FORTESCUE_A,
+            napiecie_fazowe_przedzwarciowe_kv,
+        )
+        from network_model.solvers.short_circuit_iec60909 import ShortCircuitIEC60909Solver
+
+        enm = EnergyNetworkModel.model_validate(snapshot)
+        graph = map_enm_to_network_graph(enm)
+        result = ShortCircuitIEC60909Solver.compute_1ph_short_circuit(
+            graph=graph,
+            fault_node_id=fault_node_id,
+            c_factor=c_factor,
+            tk_s=tk_s,
+            z0_bus=build_zero_sequence_zbus(enm, graph),
+        )
+        if result.z1_ohm is None or result.z2_ohm is None or result.z0_ohm is None:
+            raise ValueError(
+                "Wynik zwarcia nie niesie impedancji składowych Z1/Z2/Z0 — "
+                "pakietu zwarć niesymetrycznych nie da się złożyć dla tego punktu"
+            )
+        u_n_kv = result.un_v / 1000.0
+        return SCAsymmetricalPackInput(
+            project_name=project_name,
+            case_name=case_name,
+            fault_node_id=result.fault_node_id,
+            run_timestamp=run_timestamp,
+            solver_version=solver_version,
+            u_n_kv=u_n_kv,
+            c_factor=result.c_factor,
+            u_prefault_kv=napiecie_fazowe_przedzwarciowe_kv(
+                u_n_kv=u_n_kv, c_factor=result.c_factor
+            ),
+            z1_ohm=result.z1_ohm,
+            z2_ohm=result.z2_ohm,
+            z0_ohm=result.z0_ohm,
+            a_operator=OPERATOR_FORTESCUE_A,
+            tk_s=result.tk_s,
+            # Audyt fizyki: m/n FAKTYCZNIE użyte przez solver do I_th (IEC 60909-0
+            # §4.7/§12) — niesione z wyniku, żeby dowód podstawiał liczby spójne
+            # z wynikiem biegu. Uczciwy zapas (1,0; 0,0) tylko dla starszych
+            # wyników solvera sprzed delty (m_factor=None) — bez zmyślania.
+            m_factor=result.m_factor if result.m_factor is not None else 1.0,
+            n_factor=result.n_factor if result.n_factor is not None else 0.0,
+        )
+
+    @classmethod
+    def zbuduj_zip_zbiorczy(cls, packs: dict[str, bytes]) -> bytes:
+        """Jeden ZIP zbiorczy z trzech pakietów (1F-Z / 2F / 2F-Z), deterministyczny.
+
+        Kolejność wpisów i znacznik czasu stałe — ten sam pakiet daje bajt-w-bajt
+        ten sam plik. Miejsce tej funkcji jest TU (warstwa pakietów), a nie w routerze
+        HTTP: sięga po nią i router, i brama pakietu przebiegu (``pakiet_biegu.py``),
+        a warstwie aplikacji nie wolno importować z warstwy API.
+        """
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(
+            buffer,
+            mode="w",
+            compression=zipfile.ZIP_DEFLATED,
+            compresslevel=9,
+        ) as bundle:
+            for fault_type in sorted(packs.keys()):
+                path = f"pakiet_dowodowy/{fault_type}.zip"
+                info = zipfile.ZipInfo(path, date_time=_FIXED_ZIP_TIMESTAMP)
+                info.create_system = 0
+                info.external_attr = 0o100644 << 16
+                bundle.writestr(info, packs[fault_type])
+        return buffer.getvalue()
 
     @classmethod
     def validate_completeness(cls, result: SCAsymmetricalPackResult) -> list[str]:

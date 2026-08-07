@@ -33,6 +33,11 @@ from api.canonical_run_views import (
 from api.dependencies import get_uow_factory
 from api.document_store import store_generated_document_from_response
 from application.analysis_run.read_model import build_trace_summary, canonicalize_json
+from application.proof_engine.pakiet_biegu import (
+    PakietBieguError,
+    dostepnosc_pakietu,
+    zbuduj_pakiet_biegu,
+)
 from enm.canonical_analysis import (
     CanonicalRun,
 )
@@ -515,6 +520,38 @@ def export_analysis_run_proof_pdf(
             run_ref=str(run.id),
         )
     return response
+
+
+@router.get("/analysis-runs/{run_id}/pakiet-dowodowy/dostepnosc")
+def get_pakiet_dowodowy_dostepnosc(run_id: UUID) -> dict[str, Any]:
+    """Czy TEN przebieg ma dedykowany pakiet dowodowy — i dla jakich punktów.
+
+    Rodzaj pakietu wynika z DANYCH biegu (rodzaj analizy + opcje), nigdy z ekranu,
+    który pyta. Brak pakietu nie jest błędem: odpowiedź niesie powód po polsku,
+    żeby okno dowodu powiedziało wprost, dlaczego przycisku nie ma.
+    """
+    return canonicalize_json(dostepnosc_pakietu(_require_canonical_run(run_id)))
+
+
+@router.get("/analysis-runs/{run_id}/pakiet-dowodowy")
+def get_pakiet_dowodowy(run_id: UUID, punkt: str | None = Query(default=None)) -> Response:
+    """Pakiet dowodowy przebiegu (ZIP: dowód, źródło LaTeX, wykaz plików, odcisk).
+
+    Cała fizyka po stronie serwera — klient podaje wyłącznie przebieg i punkt
+    zwarcia. ``punkt`` pominięty ⇒ pierwszy punkt biegu (deterministycznie).
+    """
+    run = _require_canonical_run(run_id)
+    try:
+        filename, content = zbuduj_pakiet_biegu(run, punkt=punkt)
+    except PakietBieguError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
+        ) from exc
+    return Response(
+        content=content,
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.get("/analysis-runs/{run_id}/results/index")

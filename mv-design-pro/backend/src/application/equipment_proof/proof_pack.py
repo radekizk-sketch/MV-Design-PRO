@@ -29,8 +29,14 @@ def _snapshot_id_from_connection_node(connection_node_id: str) -> str:
 
 
 def _proof_pack_filename(proof_input: EquipmentProofInput) -> str:
+    """Nazwa pobieranego pliku — bez oznaczeń roboczych projektu.
+
+    Nazwa pliku JEST widoczna dla użytkownika (trafia do jego katalogu pobrań),
+    więc obowiązuje ją zakaz nazw roboczych z CLAUDE.md tak samo jak łańcuchy
+    ekranu. Wcześniejsza nazwa niosła oznaczenie robocze karty.
+    """
     return (
-        "mv-design-pro__proofpack__P12__"
+        "pakiet_dowodowy_dobor_aparatury__"
         f"{proof_input.project_id}__{proof_input.case_id}__"
         f"{proof_input.run_id}__{proof_input.device.device_id}.zip"
     )

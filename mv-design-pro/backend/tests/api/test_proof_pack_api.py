@@ -530,3 +530,138 @@ def test_sc3f_contributions_bez_maszyn_sekcje_i_walidacja_uczciwe(tmp_path):
     walidacja = dane["walidacja_iec"]
     assert walidacja[3]["wartosc_pl"] == "nieobecne w modelu"
     assert walidacja[4]["wartosc_pl"] == "SPELNIONA — silniki pomijalne w Ib"
+
+
+def _payload_sc3f_pack(data, snapshot: dict) -> dict:
+    """Zadanie pakietu SC3F o USTALONEJ tozsamosci (te same wejscia = ten sam plik)."""
+    return {
+        "project_id": str(data["project_id"]),
+        "case_id": str(data["case_id"]),
+        "run_id": str(data["run_id"]),
+        "snapshot_id": "snapshot-123",
+        "project_name": "Projekt testowy",
+        "case_name": "Przypadek SC3F",
+        "fault_node_id": snapshot["fault_node_id"],
+        "run_timestamp": "2026-02-06T10:00:00",
+        "solver_version": "1.0.0-test",
+        "snapshot": snapshot["snapshot"],
+        "c_factor": 1.1,
+        "tk_s": 1.0,
+    }
+
+
+def _snapshot_sc3f() -> dict:
+    from enm.mapping import map_enm_to_network_graph
+
+    enm = _enm_z_maszyna()
+    graph = map_enm_to_network_graph(enm)
+    fault_node_id = next(n.id for n in graph.nodes.values() if n.name == "Szyna OZE")
+    return {"snapshot": enm.model_dump(mode="json"), "fault_node_id": fault_node_id}
+
+
+def test_sc3f_pack_jest_deterministyczny_bajt_w_bajt(tmp_path):
+    """Manifest deklaruje determinizm — a deklaracja musi miec straznika.
+
+    DEFEKT ZAMKNIETY (karta PACK-DOWODY): generatory pakietow wolane bez jawnego
+    `artifact_id` podstawialy `uuid4()`, a `ProofDocument` niosl `datetime.now()`.
+    Ten sam pakiet pobrany dwa razy miał wiec ROZNY `proof_fingerprint` —
+    odcisk integralnosci nie nadawal sie do porownania dwoch pobran, wbrew
+    zdaniu z `manifest.json`: „Pakiet jest deterministyczny dla identycznych
+    wejsc i toolchain".
+    """
+    client, data = _prepare_api_client(tmp_path)
+    payload = _payload_sc3f_pack(data, _snapshot_sc3f())
+
+    pierwszy = client.post("/api/proof/sc3f/pack", json=payload)
+    drugi = client.post("/api/proof/sc3f/pack", json=payload)
+
+    assert pierwszy.status_code == drugi.status_code == 200
+    assert pierwszy.content == drugi.content
+
+
+def test_sc_asymmetrical_pack_jest_deterministyczny_bajt_w_bajt(tmp_path):
+    """Ten sam pin dla pakietu niesymetrycznego (drugi koniec tej samej klasy)."""
+    client, data = _prepare_api_client(tmp_path)
+    payload = {
+        "project_id": str(data["project_id"]),
+        "case_id": str(data["case_id"]),
+        "run_id": str(data["run_id"]),
+        "snapshot_id": "snapshot-123",
+        "project_name": "Projekt testowy",
+        "case_name": "Przypadek SC asymetryczny",
+        "fault_node_id": "B1",
+        "run_timestamp": "2026-02-06T10:00:00",
+        "solver_version": "1.0.0-test",
+        "u_n_kv": 15.0,
+        "c_factor": 1.1,
+        "u_prefault_kv": 9.526279,
+        "z1_re_ohm": 0.5,
+        "z1_im_ohm": 1.2,
+        "z2_re_ohm": 0.6,
+        "z2_im_ohm": 1.1,
+        "z0_re_ohm": 0.8,
+        "z0_im_ohm": 2.4,
+        "a_re": -0.5,
+        "a_im": 0.8660254038,
+        "tk_s": 1.0,
+        "m_factor": 1.0,
+        "n_factor": 0.0,
+    }
+
+    pierwszy = client.post("/api/proof/sc-asymmetrical/pack", json=payload)
+    drugi = client.post("/api/proof/sc-asymmetrical/pack", json=payload)
+
+    assert pierwszy.status_code == drugi.status_code == 200
+    assert pierwszy.content == drugi.content
+
+
+def test_pakiet_dowodowy_aparatury_bez_oznaczen_roboczych(tmp_path):
+    """Nazwa pobieranego pliku i rodzaj dowodu w manifescie bez nazw roboczych.
+
+    Nazwa pliku trafia do katalogu pobran uzytkownika, a `manifest.json` do
+    archiwum projektu — oba sa EKSPORTEM, wiec obowiazuje je zakaz nazw
+    roboczych projektu (CLAUDE.md regula 8). Guard kodenamow skanuje wylacznie
+    `frontend/src`, wiec bez tego pinu naruszenie backendu bylo niewidoczne.
+    """
+    import re
+
+    client, data = _prepare_api_client(tmp_path)
+    payload = {
+        "project_id": str(data["project_id"]),
+        "case_id": str(data["case_id"]),
+        "run_id": str(data["run_id"]),
+        "connection_node_id": "bus-main",
+        "device": {
+            "device_id": "wyl-01",
+            "name_pl": "Wylacznik pola liniowego",
+            "u_m_kv": 17.5,
+            "i_cu_ka": 20.0,
+            "i_dyn_ka": 50.0,
+            "i_th_ka": 20.0,
+            "t_th_s": 1.0,
+        },
+        "required_fault_results": {
+            "u_kv": 15.0,
+            "ikss_ka": 8.0,
+            "ip_ka": 20.0,
+            "ith_ka": 8.0,
+            "tk_s": 1.0,
+        },
+    }
+
+    response = client.post("/api/equipment-proof/pack", json=payload)
+
+    assert response.status_code == 200
+    wzorzec = re.compile(r"\b[pP](?!0\b)\d+\b")
+    assert not wzorzec.search(response.headers["content-disposition"])
+    with zipfile.ZipFile(io.BytesIO(response.content)) as archiwum:
+        manifest = archiwum.read("proof_pack/manifest.json").decode("utf-8")
+        dowod = archiwum.read("proof_pack/proof.json").decode("utf-8")
+    assert not wzorzec.search(manifest)
+    # W dowodzie identyfikatory rownan rejestru (EQ_...) zostaja — to klucze
+    # techniczne, nie jezyk ekranu; sprawdzamy TYTUL i komunikaty.
+    import json as _json
+
+    dokument = _json.loads(dowod)
+    assert not wzorzec.search(dokument["title_pl"])
+    assert not wzorzec.search(dokument["header"]["solver_version"])
