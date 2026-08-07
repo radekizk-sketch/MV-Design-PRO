@@ -198,7 +198,9 @@ class TestSkanBackendu:
     """
 
     def _skan(self, tresc: str) -> list:
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False, encoding="utf-8") as f:
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".py", delete=False, encoding="utf-8"
+        ) as f:
             f.write(tresc)
             f.flush()
             sciezka = Path(f.name)
