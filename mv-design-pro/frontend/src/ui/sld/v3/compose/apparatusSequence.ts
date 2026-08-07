@@ -285,11 +285,15 @@ const Q_IDENTIFIER_SYMBOLS: ReadonlySet<SymbolId> = new Set<SymbolId>([
  * „TV", klasa przekładników wg PN-EN 81346-2: TA=prądowy, TV=napięciowy;
  * dyrektywa właściciela 2026-08-06 po audycie sieci pokazowej: przekładnik
  * pola pomiarowego rysowany bez oznacznika był nieodróżnialny od
- * transformatora mocy — „mały TR" na prawym skraju stacji). CT/SA/cableHead/
- * protectionRelay/meter NIE dostają identyfikatora w tej fazie — CT ma WŁASNĄ
- * adnotację (identyfikator+przekładnia, §18.3, F10.4, POZA torem mocy), SA nie
- * ma rozstrzygniętej konwencji numeracji (zero zgadywania; dług nazwany w
- * rejestrze przy wpisie o TV).
+ * transformatora mocy — „mały TR" na prawym skraju stacji) — oraz ogranicznik
+ * przepięć (surgeArrester → „F", klasa ochronników wg PN-EN 81346-2; decyzja
+ * właściciela 2026-08-07, rejestr V12K-335 pkt 3 — dług „SA bez konwencji"
+ * nazwany przy TV w V12K-329 ROZSTRZYGNIĘTY: rodzina F, spójnie z TV; kolizja
+ * wizualna z producenckimi „F1" bezpieczników jest rozmyślnie zaakceptowana —
+ * oba są klasą F wg 81346-2, a dana producencka i tak wygrywa nad konwencją).
+ * CT/cableHead/protectionRelay/meter NIE dostają identyfikatora w tej fazie —
+ * CT ma WŁASNĄ adnotację (identyfikator+przekładnia, §18.3, F10.4, POZA torem
+ * mocy).
  *
  * PRYMAT DANYCH NAD KONWENCJĄ (spec §12.1, Z3 audytu powykonawczego SLD
  * `docs/sld/AUDYT_POWYKONAWCZY_SLD_2026-07.md` §Z3 + dług W1c). Priorytet
@@ -330,7 +334,7 @@ const Q_IDENTIFIER_SYMBOLS: ReadonlySet<SymbolId> = new Set<SymbolId>([
  * priorytetu (2) nie może poszerzać etykiety, patrz wyżej). Źródło
  * `'dane'`/`'konwencja'` per pozycja — `apparatusIdentifierSources` niżej.
  *
- * Numeracja: JEDEN licznik na kategorię (Q/QE/T/TV) per POLE, rosnąco wg
+ * Numeracja: JEDEN licznik na kategorię (Q/QE/T/TV/F) per POLE, rosnąco wg
  * pozycji w PEŁNEJ sekwencji aparatów pola (tor główny + laterale w
  * kolejności `placement`/konwencji, V12K-040) — deterministyczne, licznik
  * resetuje się na każdym polu. Zwraca tablicę index-aligned do `symbolIds`
@@ -344,6 +348,7 @@ export function apparatusIdentifiers(
   let qe = 0;
   let t = 0;
   let tv = 0;
+  let f = 0;
   // Z3 §0.3: mapa zajętych oznaczeń pola (dzielona dane↔konwencja — celem jest
   // unikalność RENDEROWANEGO tekstu w polu). Konwencja nigdy nie koliduje;
   // sufiks fire'uje wyłącznie przy powtórzonej DANEJ.
@@ -376,6 +381,12 @@ export function apparatusIdentifiers(
       tv += 1;
       return disambiguate(dataDesignation ?? `TV${tv}`);
     }
+    if (symbolId === 'surgeArrester') {
+      // V12K-335 pkt 3 (decyzja właściciela 2026-08-07): ogranicznik przepięć
+      // → rodzina F wg PN-EN 81346-2 (F1, F2… per pole, jak Q/QE/T/TV).
+      f += 1;
+      return disambiguate(dataDesignation ?? `F${f}`);
+    }
     return null;
   });
 }
@@ -398,7 +409,8 @@ export function apparatusIdentifierSources(
       Q_IDENTIFIER_SYMBOLS.has(symbolId)
       || symbolId === 'earthSwitch'
       || symbolId === 'transformer2W'
-      || symbolId === 'voltageTransformer';
+      || symbolId === 'voltageTransformer'
+      || symbolId === 'surgeArrester';
     if (!isIdentifiable) return null;
     const dataDesignation = designations?.[index]?.trim();
     return dataDesignation ? 'dane' : 'konwencja';

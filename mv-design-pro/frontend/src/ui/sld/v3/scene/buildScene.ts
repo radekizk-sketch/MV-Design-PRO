@@ -5338,23 +5338,25 @@ export function allSwitchSymbolsUnambiguous(scene: SceneV3): boolean {
 // F10.2 (spec §19.1, V12K-035) — apparatus_identifier_probe: „«Q» identyfikuje
 // APARAT, nie pole" — (a) oznaczenie pola (`ownerKind:'field-role'`) NIGDY
 // nie jest surowym „Q\d+"/„T\d+"; (b) każdy aparat toru z identyfikatorem
-// (breaker/disconnector/fuseSwitch/earthSwitch/transformer2W) niesie
-// znacznik `designationSource` i ma dokładnie JEDNĄ etykietę
-// `ownerKind:'apparatus'` odpowiadającą; (c) aparaty z konwencji mają
-// znacznik źródła; (d) tekst identyfikatora: DANE (`designationSource==='dane'`)
-// — dowolny NIEPUSTY tekst identyfikowalny aparatu (prymat danych §12.1, Z3:
-// producenckie „F1"/„TR" są pełnoprawne); KONWENCJA — wzorzec Q\d+/QE\d+/T\d+
-// (+ opcjonalny sufiks kolizji „·k").
+// (breaker/disconnector/fuseSwitch/earthSwitch/transformer2W/
+// voltageTransformer/surgeArrester) niesie znacznik `designationSource` i ma
+// dokładnie JEDNĄ etykietę `ownerKind:'apparatus'` odpowiadającą; (c) aparaty
+// z konwencji mają znacznik źródła; (d) tekst identyfikatora: DANE
+// (`designationSource==='dane'`) — dowolny NIEPUSTY tekst identyfikowalny
+// aparatu (prymat danych §12.1, Z3: producenckie „Z1"/„TR" są pełnoprawne);
+// KONWENCJA — wzorzec Q\d+/QE\d+/T\d+/TV\d+/F\d+ (+ opcjonalny sufiks
+// kolizji „·k").
 // ---------------------------------------------------------------------------
 
 /** Symbole — nośniki identyfikatora per-aparat (wyłącznik/rozłącznik/
  *  odłącznik → Q, uziemnik → QE, transformator → T wg spec §19.1; przekładnik
  *  napięciowy → TV wg klasy przekładników PN-EN 81346-2, dyrektywa
  *  właściciela 2026-08-06 — anonimowy VT pola pomiarowego czytał się jak
- *  transformator mocy) — TA SAMA lista co `apparatusSequence.ts`
- *  `Q_IDENTIFIER_SYMBOLS`+`earthSwitch`+`transformer2W`+`voltageTransformer`,
- *  powtórzona tu (bez importu prywatnej stałej) do niezależnej weryfikacji
- *  sceny. */
+ *  transformator mocy; ogranicznik przepięć → F wg klasy ochronników
+ *  PN-EN 81346-2, decyzja właściciela 2026-08-07, V12K-335 pkt 3) — TA SAMA
+ *  lista co `apparatusSequence.ts` `Q_IDENTIFIER_SYMBOLS`+`earthSwitch`+
+ *  `transformer2W`+`voltageTransformer`+`surgeArrester`, powtórzona tu (bez
+ *  importu prywatnej stałej) do niezależnej weryfikacji sceny. */
 const IDENTIFIER_ELIGIBLE_SYMBOLS: ReadonlySet<SymbolId> = new Set<SymbolId>([
   'breaker',
   'disconnector',
@@ -5363,17 +5365,20 @@ const IDENTIFIER_ELIGIBLE_SYMBOLS: ReadonlySet<SymbolId> = new Set<SymbolId>([
   'earthSwitch',
   'transformer2W',
   'voltageTransformer',
+  'surgeArrester',
 ]);
 
 const RAW_FIELD_LABEL_PATTERN = /^Q\d+$|^T\d+$/;
-// Z3 (spec §19.1/§0.3): wzorzec identyfikatora KONWENCJI Q\d+/QE\d+/T\d+/TV\d+
-// z opcjonalnym deterministycznym sufiksem kolizji „·k" (`apparatusSequence.ts`
-// `apparatusIdentifiers`, disambiguacja powtórzonej DANEJ w polu; TV —
-// przekładnik napięciowy, dyrektywa właściciela 2026-08-06). DANE
-// producenckie/kreatora (np. „F1"/„TR") NIE muszą pasować do tego wzorca —
-// rozpoznaje je `designationSource==='dane'` niżej (prymat danych §12.1).
+// Z3 (spec §19.1/§0.3): wzorzec identyfikatora KONWENCJI Q\d+/QE\d+/T\d+/
+// TV\d+/F\d+ z opcjonalnym deterministycznym sufiksem kolizji „·k"
+// (`apparatusSequence.ts` `apparatusIdentifiers`, disambiguacja powtórzonej
+// DANEJ w polu; TV — przekładnik napięciowy, dyrektywa właściciela
+// 2026-08-06; F — ogranicznik przepięć wg PN-EN 81346-2, decyzja właściciela
+// 2026-08-07, V12K-335 pkt 3). DANE producenckie/kreatora (np. „Z1"/„TR") NIE
+// muszą pasować do tego wzorca — rozpoznaje je `designationSource==='dane'`
+// niżej (prymat danych §12.1).
 // Kolejność alternatywy: TV przed T, żeby „TV1" nie dopasowało się połowicznie.
-const APPARATUS_IDENTIFIER_PATTERN = /^(QE\d+|Q\d+|TV\d+|T\d+)(·\d+)?$/;
+const APPARATUS_IDENTIFIER_PATTERN = /^(QE\d+|Q\d+|TV\d+|T\d+|F\d+)(·\d+)?$/;
 
 export interface ApparatusIdentifierGap {
   readonly ownerRef: string | undefined;
@@ -5462,7 +5467,7 @@ export function apparatusIdentifierGaps(scene: SceneV3): readonly ApparatusIdent
       gaps.push({
         ownerRef: l.ownerRef,
         symbolId: 'apparatus-label',
-        reason: `tekst identyfikatora „${l.text}" (fallback konwencji) niezgodny z Q\\d+/QE\\d+/T\\d+`,
+        reason: `tekst identyfikatora „${l.text}" (fallback konwencji) niezgodny z Q\\d+/QE\\d+/T\\d+/TV\\d+/F\\d+`,
       });
     }
   }
