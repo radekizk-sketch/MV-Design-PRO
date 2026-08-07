@@ -70,7 +70,7 @@ import {
 } from './surfaces/InfrastructureSurfaces';
 import { PvSourceSurface, BessSurface, FwSurface } from './surfaces/DerSurfaces';
 import { ReferenceNetworkSurface } from './surfaces/ReferenceNetworkSurface';
-import { V126AcademicSurface } from './surfaces/V126AcademicSurface';
+import { EkranAnalizAkademickich, type RodzajAnalizy } from '../../ui2/wyniki/akademickie';
 import { NcRfgTestsTab } from './surfaces/NcRfgTestsTab';
 import {
   AnalysisSurfaceComparisonWizard,
@@ -2839,6 +2839,28 @@ const delegatedSurfaceBodies: Record<string, (surface: WorkspaceSurfaceDescripto
   operation_form: (surface) => <OperationFormSurface surface={surface} />,
 };
 
+/**
+ * V126-OKNA: ekran trasowy → rodzaj analizy akademickiej (kontrakt
+ * `V126AnalysisType`). Mapa przeniesiona z wygaszonej powierzchni
+ * `V126AcademicSurface`, ale BEZ jej wartości domyślnej `?? 'earth_fault_detection'`:
+ * ta wartość udawała, że każdy nieznany kod ekranu to detekcja doziemień, więc
+ * jeden rodzaj analizy był osiągalny WYŁĄCZNIE przez pomyłkę. Kod spoza mapy
+ * pozostawia wybór rodzaju użytkownikowi (lista z katalogu backendu).
+ */
+const RODZAJ_EKRANU_V126: Partial<Record<string, RodzajAnalizy>> = {
+  'E-40': 'power_quality_harmonics',
+  'E-41': 'voltage_stability',
+  'E-42': 'reliability_contingency',
+  'E-43': 'earthing_safety',
+  'E-44': 'insulation_coordination',
+  'E-45': 'transient_trv',
+  'E-46': 'motor_starting',
+  'E-47': 'hosting_capacity',
+  'E-48': 'opf_loss_lcc',
+  'E-49': 'benchmark_validation',
+  'E-50': 'uncertainty_sensitivity',
+};
+
 function renderSurfaceBody(surface: WorkspaceSurfaceDescriptor) {
   const delegate = surface.routeState.payload?.delegate;
   const delegateBodies = delegatedSurfaceBodies;
@@ -2958,7 +2980,17 @@ function renderSurfaceBody(surface: WorkspaceSurfaceDescriptor) {
     case 'E-48':
     case 'E-49':
     case 'E-50':
-      return <V126AcademicSurface surface={surface} />;
+      // V126-OKNA: powierzchnia zastana `V126AcademicSurface` WYGASZONA (334 w.,
+      // zero testów, trzy zaszyte limity gubiące pola wyniku, dane wejściowe
+      // fabrykowane w UI). Ekrany trasowe prowadzą do okna ui2, z rodzajem analizy
+      // wybranym z góry wg kodu ekranu — JEDNO wejście do zdolności, jedno źródło
+      // prawdy o kontrakcie V12.6.
+      return (
+        <EkranAnalizAkademickich
+          trybZaawansowania="expert"
+          rodzajPoczatkowy={RODZAJ_EKRANU_V126[surface.screenCode]}
+        />
+      );
     default:
       break;
   }

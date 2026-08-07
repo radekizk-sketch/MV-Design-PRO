@@ -1,0 +1,246 @@
+/*
+ * Style okna „Analizy akademickie" (ui2/wyniki/akademickie). Kolory WYŁĄCZNIE przez
+ * tokeny --mvd-* — zero literałów hex i zero nazw kolorów (zgodność z trybem jasnym
+ * i ciemnym). Powierzchnia zastana `V126AcademicSurface` używała klas narzędziowych
+ * z paletą wprost (slate/cyan/amber/red), przez co nie reagowała na motyw.
+ * Warstwa prezentacji — bez wpływu na dane.
+ */
+
+.mvd-akad {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  color: var(--mvd-ink);
+}
+
+.mvd-akad-naglowek {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.mvd-akad-tytul {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+.mvd-akad-opis {
+  margin: 0 0 8px;
+  color: var(--mvd-muted);
+  font-size: 13px;
+}
+.mvd-akad-swiezosc {
+  margin: 0;
+  font-size: 12px;
+  color: var(--mvd-muted);
+}
+
+/* ---- sekcje ---- */
+.mvd-akad-sekcja {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-panel);
+  padding: 12px;
+}
+.mvd-akad-sekcja-naglowek {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.mvd-akad-sekcja-tytul {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--mvd-ink);
+}
+.mvd-akad-licznik {
+  font-size: 12px;
+  color: var(--mvd-muted);
+}
+
+/* ---- panele stanu ---- */
+.mvd-akad-stan {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 20px 16px;
+  border: 1px dashed var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-panel);
+  color: var(--mvd-muted);
+}
+.mvd-akad-stan--blad {
+  border-style: solid;
+  border-color: var(--mvd-err);
+  color: var(--mvd-err);
+}
+.mvd-akad-stan-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+.mvd-akad-stan-desc {
+  margin: 0;
+  font-size: 13px;
+}
+
+/* ---- przyciski ---- */
+.mvd-akad-btn {
+  align-self: flex-start;
+  padding: 8px 14px;
+  border: 1px solid var(--mvd-accent);
+  border-radius: 4px;
+  background: var(--mvd-accent);
+  color: var(--mvd-accent-ink);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.mvd-akad-btn:disabled {
+  opacity: 0.55;
+  cursor: progress;
+}
+.mvd-akad-btn-wtorny {
+  padding: 4px 10px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 4px;
+  background: var(--mvd-panel);
+  color: var(--mvd-ink);
+  font-size: 12px;
+  cursor: pointer;
+}
+.mvd-akad-btn-wtorny:hover {
+  border-color: var(--mvd-accent);
+}
+
+/* ---- pola formularza ---- */
+.mvd-akad-pola-siatka {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.mvd-akad-pole {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.mvd-akad-pole-etyk {
+  font-size: 12px;
+  color: var(--mvd-muted);
+}
+.mvd-akad-pole-kontrolka {
+  padding: 5px 8px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 4px;
+  background: var(--mvd-bg);
+  color: var(--mvd-ink);
+  font-size: 13px;
+}
+.mvd-akad-pole-opis {
+  font-size: 11px;
+  color: var(--mvd-muted);
+}
+
+.mvd-akad-parametry {
+  display: flex;
+  flex-direction: column;
+}
+.mvd-akad-metody {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 4px;
+  padding: 8px 10px;
+  margin: 0 0 10px;
+}
+.mvd-akad-metoda {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+.mvd-akad-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.mvd-akad-lista-wiersz {
+  border: 1px solid var(--mvd-line);
+  border-radius: 4px;
+  padding: 8px;
+}
+
+/* ---- wiersze wyniku ---- */
+.mvd-akad-grupa {
+  margin-top: 10px;
+}
+.mvd-akad-grupa-tytul {
+  margin: 0 0 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--mvd-ink);
+}
+.mvd-akad-wiersze {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 6px;
+}
+.mvd-akad-wiersz {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 4px;
+  padding: 6px 8px;
+  background: var(--mvd-bg);
+}
+.mvd-akad-wiersz-etyk {
+  font-size: 11px;
+  color: var(--mvd-muted);
+  word-break: break-all;
+}
+.mvd-akad-wiersz-wartosc {
+  font-size: 13px;
+  color: var(--mvd-ink);
+  word-break: break-word;
+}
+
+/* ---- tabele śladu i dowodu ---- */
+.mvd-akad-tabela-otoczka {
+  overflow-x: auto;
+}
+.mvd-akad-tabela {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.mvd-akad-tabela th,
+.mvd-akad-tabela td {
+  border: 1px solid var(--mvd-line);
+  padding: 5px 7px;
+  text-align: left;
+  vertical-align: top;
+}
+.mvd-akad-tabela th {
+  color: var(--mvd-muted);
+  font-weight: 600;
+}
+
+/* ---- odesłanie do okna SSCI ---- */
+.mvd-akad-odeslanie {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  border: 1px dashed var(--mvd-line);
+  border-radius: 4px;
+  padding: 8px 10px;
+  margin-top: 6px;
+}
