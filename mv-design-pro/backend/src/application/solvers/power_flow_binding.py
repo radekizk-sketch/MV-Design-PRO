@@ -224,36 +224,28 @@ def _max_mismatch_ze_sladu(white_box_trace: list[dict[str, Any]] | None) -> floa
 def _lista(zrodlo: dict[str, Any], klucz: str) -> list[Any]:
     wartosc = zrodlo.get(klucz)
     if not isinstance(wartosc, list):
-        raise BrakDanychRozplywuError(
-            f"Artefakt wyniku rozpływu nie zawiera pozycji: {klucz}."
-        )
+        raise BrakDanychRozplywuError(f"Artefakt wyniku rozpływu nie zawiera pozycji: {klucz}.")
     return wartosc
 
 
 def _tekst(zrodlo: dict[str, Any], klucz: str) -> str:
     wartosc = zrodlo.get(klucz)
     if not isinstance(wartosc, str) or not wartosc:
-        raise BrakDanychRozplywuError(
-            f"Artefakt wyniku rozpływu nie zawiera pozycji: {klucz}."
-        )
+        raise BrakDanychRozplywuError(f"Artefakt wyniku rozpływu nie zawiera pozycji: {klucz}.")
     return wartosc
 
 
 def _logiczna(zrodlo: dict[str, Any], klucz: str) -> bool:
     wartosc = zrodlo.get(klucz)
     if not isinstance(wartosc, bool):
-        raise BrakDanychRozplywuError(
-            f"Artefakt wyniku rozpływu nie zawiera pozycji: {klucz}."
-        )
+        raise BrakDanychRozplywuError(f"Artefakt wyniku rozpływu nie zawiera pozycji: {klucz}.")
     return wartosc
 
 
 def _calkowita(zrodlo: dict[str, Any], klucz: str) -> int:
     wartosc = zrodlo.get(klucz)
     if isinstance(wartosc, bool) or not isinstance(wartosc, int):
-        raise BrakDanychRozplywuError(
-            f"Artefakt wyniku rozpływu nie zawiera pozycji: {klucz}."
-        )
+        raise BrakDanychRozplywuError(f"Artefakt wyniku rozpływu nie zawiera pozycji: {klucz}.")
     return wartosc
 
 
