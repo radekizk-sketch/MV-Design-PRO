@@ -3,7 +3,7 @@
  * B1 audytu: analiza SSCI (kryterium impedancyjne Nyquista, Sun 2011 / Wen 2016)
  * miała backend bez UI. Ekran dobiera przebieg SSCI przez utworzenie przebiegu
  * `ssci_impedance` na committed ENM aktywnego przypadku (wzór doboru z
- * `V126AcademicSurface`), a następnie pobiera werdykt:
+ * `ui2/wyniki/akademickie`), a następnie pobiera werdykt:
  *   `POST /api/cases/{case_id}/runs/v126/ssci_impedance` → `run_id`
  *   `GET  /api/analysis-runs/{run_id}/results/v126/ssci_impedance/stability`
  * i prezentuje:

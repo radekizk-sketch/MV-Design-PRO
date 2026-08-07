@@ -49,6 +49,7 @@ import { EkranKoordynacji } from '../../wyniki/koordynacja';
 import { EkranEstymacji } from '../../wyniki/estymacja';
 import { EkranSkladowych } from '../../wyniki/skladowe';
 import { EkranSsci } from '../../wyniki/ssci';
+import { EkranAnalizAkademickich } from '../../wyniki/akademickie';
 import { EkranStabilnosci } from '../../wyniki/stabilnosc';
 import { EkranStanuFazowego } from '../../wyniki/stan-fazowy';
 import { EkranOdbioru } from '../../wyniki/odbior';
@@ -76,6 +77,7 @@ const ZAKLADKI = [
   { id: 'estymacja', etykieta: T.zakladkaEstymacja },
   { id: 'stan-fazowy', etykieta: T.zakladkaStanFazowy },
   { id: 'ssci', etykieta: T.zakladkaSsci },
+  { id: 'akademickie', etykieta: T.zakladkaAkademickie },
   { id: 'stabilnosc', etykieta: T.zakladkaStabilnosc },
   { id: 'ncrfg', etykieta: T.zakladkaNcRfg },
   { id: 'pulpit-oze', etykieta: T.zakladkaPulpitOze },
@@ -115,6 +117,7 @@ const GRUPY_ZAKLADEK: readonly { etykieta: string; zakladki: readonly ZakladkaId
       'stan-fazowy',
       'ssci',
       'stabilnosc',
+      'akademickie',
       'pozostale',
     ],
   },
@@ -359,6 +362,12 @@ export function WynikiWarsztat({
           <EkranEstymacji trybZaawansowania={trybZaawansowania} onOtworzDowod={otworzDowod} />
         )}
         {zakladka === 'ssci' && <EkranSsci trybZaawansowania={trybZaawansowania} />}
+        {/* V126-OKNA: pakiet analiz akademickich V12.6 — okno parametryzowane
+            rodzajem (14 rodzajów kontraktu `V126AnalysisType`), lądowisko wyników
+            po wygaszeniu powierzchni zastanej `V126AcademicSurface`. */}
+        {zakladka === 'akademickie' && (
+          <EkranAnalizAkademickich trybZaawansowania={trybZaawansowania} />
+        )}
         {zakladka === 'ncrfg' && (
           <MacierzNcRfg
             trybZaawansowania={trybZaawansowania}
