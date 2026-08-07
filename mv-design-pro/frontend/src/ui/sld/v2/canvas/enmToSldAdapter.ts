@@ -2912,11 +2912,37 @@ function addReturnConductorSection(raw: string, materialized?: Record<string, un
   );
 }
 
+/**
+ * S9-9 (koszt operacji): formatery liczb TRZYMANE JAKO STAŁE MODUŁU — wzorzec
+ * już obecny w repo (`sld/shared/stationInternalViewData.ts`,
+ * `v2/canvas/StationInternalView.tsx`), tu tylko domknięty na klasę.
+ *
+ * `Number.prototype.toLocaleString(locale, opts)` buduje `Intl.NumberFormat`
+ * PRZY KAŻDYM WYWOŁANIU. Pomiar S9-9: 5000 wywołań = 140 ms bez stałej wobec
+ * 3,4 ms ze stałą (40×). Adapter woła to raz na przęsło/kabel, a scena liczy
+ * adapter trzykrotnie (po razie na LOD), więc na sieci 107 stacji samo
+ * formatowanie kosztowało ~29 ms na budowę × 3. Wynik tekstowy jest IDENTYCZNY
+ * — ta sama lokalizacja i te same opcje, zmienia się wyłącznie moment budowy
+ * formatera (pin: `__tests__/enmToSldAdapter.formatowanie.test.ts`).
+ */
+/** Przekrój żyły powrotnej — bez części ułamkowej (`readReturnConductorSection`). */
+const FORMAT_PRZEKROJU_PL = new Intl.NumberFormat('pl-PL', { maximumFractionDigits: 0 });
+/** Długość [km] całkowita — `minimumFractionDigits: 0` (`formatPolishNumber`). */
+const FORMAT_DLUGOSCI_CALKOWITEJ_PL = new Intl.NumberFormat('pl-PL', {
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 2,
+});
+/** Długość [km] ułamkowa — `minimumFractionDigits: 1` (`formatPolishNumber`). */
+const FORMAT_DLUGOSCI_ULAMKOWEJ_PL = new Intl.NumberFormat('pl-PL', {
+  minimumFractionDigits: 1,
+  maximumFractionDigits: 2,
+});
+
 function readReturnConductorSection(materialized?: Record<string, unknown> | null): string | null {
   const raw = materialized?.return_conductor_cross_section_mm2;
   const value = typeof raw === 'number' ? raw : typeof raw === 'string' ? Number(raw) : NaN;
   if (!Number.isFinite(value) || value <= 0) return null;
-  return value.toLocaleString('pl-PL', { maximumFractionDigits: 0 });
+  return FORMAT_PRZEKROJU_PL.format(value);
 }
 
 function normalizeCableMultiplicationSigns(raw: string): string {
@@ -5707,10 +5733,12 @@ function formatCableRunLength(segments: readonly Branch[]): string {
 
 function formatPolishNumber(value: number): string {
   const rounded = Math.round(value * 100) / 100;
-  return rounded.toLocaleString('pl-PL', {
-    minimumFractionDigits: Number.isInteger(rounded) ? 0 : 1,
-    maximumFractionDigits: 2,
-  });
+  // S9-9: te same dwie konfiguracje co dotąd — `minimumFractionDigits` zależy
+  // od tego, czy liczba jest całkowita — wybrane ze STAŁYCH modułu zamiast
+  // budowane na każde wywołanie (uzasadnienie i pomiar przy stałych wyżej).
+  return (
+    Number.isInteger(rounded) ? FORMAT_DLUGOSCI_CALKOWITEJ_PL : FORMAT_DLUGOSCI_ULAMKOWEJ_PL
+  ).format(rounded);
 }
 
 function readBranchLengthKm(segment: Branch): number {

@@ -7,7 +7,7 @@ from typing import Any
 
 from enm.models import BranchRating, Cable, EnergyNetworkModel, Load, OverheadLine
 from network_model.catalog.materialization import materialize_catalog_binding
-from network_model.catalog.repository import get_default_mv_catalog
+from network_model.catalog.repository import CatalogRepository, get_default_mv_catalog
 from network_model.catalog.types import CatalogBinding, LoadType
 
 DEFAULT_LOAD_CATALOG_REF = "load_uslugi_30kw"
@@ -246,6 +246,46 @@ def complete_branch_point_catalog_materialization(
     return completed, changed
 
 
+def _odcinki_do_materializacji(enm: EnergyNetworkModel, catalog: CatalogRepository) -> bool:
+    """Czy KTÓRYKOLWIEK odcinek wymaga uzupełnienia danych katalogowych.
+
+    Przebieg CZYSTO ODCZYTOWY, powtarzający DOKŁADNIE warunki pominięcia z pętli
+    mutującej `complete_branch_catalog_materialization` (brak `catalog_ref`,
+    nieudana materializacja, komplet wartości już obecny) — jedno źródło prawdy
+    o tym, „czy jest co zmieniać". Rozjazd tych dwóch warunków byłby defektem
+    czekającym na dane brzegowe (reguła KLASA §3), dlatego trzyma je ten sam
+    zestaw wyrażeń.
+    """
+    for branch in enm.branches:
+        if not isinstance(branch, Cable | OverheadLine) or not branch.catalog_ref:
+            continue
+        namespace = branch.catalog_namespace or (
+            "KABEL_SN" if isinstance(branch, Cable) else "LINIA_SN"
+        )
+        binding = CatalogBinding(
+            catalog_namespace=namespace,
+            catalog_item_id=branch.catalog_ref,
+            catalog_item_version=_catalog_version(branch),
+            materialize=True,
+        )
+        result = materialize_catalog_binding(binding, catalog)
+        if not result.success:
+            continue
+        existing = (
+            branch.materialized_params if isinstance(branch.materialized_params, dict) else {}
+        )
+        materialized = {
+            **existing,
+            **result.solver_fields,
+            "catalog_item_id": branch.catalog_ref,
+            "catalog_item_version": binding.catalog_item_version,
+            "catalog_namespace": namespace,
+        }
+        if not _branch_has_materialized_values(branch, materialized):
+            return True
+    return False
+
+
 def complete_branch_catalog_materialization(
     enm: EnergyNetworkModel,
 ) -> tuple[EnergyNetworkModel, bool]:
@@ -255,16 +295,24 @@ def complete_branch_catalog_materialization(
     `materialized_params`. Na granicy ENM odtwarzamy deterministycznie dane z
     katalogu, tak żeby SLD i obliczenia dostały ten sam wariant kabla/linii.
     """
-    candidates = [
-        branch
-        for branch in enm.branches
-        if isinstance(branch, Cable | OverheadLine) and branch.catalog_ref
-    ]
-    if not candidates:
+    catalog = get_default_mv_catalog()
+
+    # PREDYKATY PARAMI (karta S9-9, znalezisko B-5 audytu SLD 2026-08).
+    # Warunek WEJŚCIA musi być tym samym warunkiem, którym pętla niżej decyduje
+    # o zmianie. Wcześniej wejście brzmiało „odcinek ma `catalog_ref`" — a to jest
+    # prawdą dla KAŻDEGO odcinka sieci zbudowanej z katalogu — więc funkcja
+    # kopiowała GŁĘBOKO cały model przy każdym wywołaniu i porzucała kopię
+    # (`return enm, False`), gdy okazywało się, że nic się nie zmienia. Na modelu
+    # 100 stacji było to ~62 ms wyrzucone przy KAŻDYM zapisie modelu, w stanie
+    # ustalonym (materializacja już kompletna) czyli praktycznie zawsze.
+    # Teraz decyzja zapada na modelu WEJŚCIOWYM (przebieg czysto odczytowy), a
+    # kopia powstaje dopiero, gdy jest co zmieniać. Sam przebieg mutujący został
+    # BEZ ZMIANY — liczy `materialized` na odcinkach KOPII, więc do zwracanego
+    # modelu nie trafia żadna struktura współdzielona z wejściem.
+    if not _odcinki_do_materializacji(enm, catalog):
         return enm, False
 
     completed = enm.model_copy(deep=True)
-    catalog = get_default_mv_catalog()
     changed = False
 
     for branch in completed.branches:

@@ -183,7 +183,7 @@ stacji na **środkowym** odcinku magistrali i po nim; porównanie elementów wsp
 | B-2 | **Ogon przesuwa się o pełną szerokość stacji, więc obraz skacze.** Przesunięcie 752 j.św. przy jednokreskowym pasie (C-1) oznacza, że po wstawieniu stacji cała prawa część rysunku wyjeżdża z kadru; przy sieci 51 stacji rysunek ma już 66 tys. px, więc kamera nie nadąża za miejscem edycji. | pomiar jw. + tabela 2.1 | PSN, UX | 2 | Po wstawieniu utrzymać kamerę na obiekcie wstawionym (zakotwiczenie widoku na zmianie). |
 | B-3 | **Stan pusty i kreator GPZ są dobrze poprowadzone** (obserwacja pozytywna): 1 klik do kreatora, 7 nazwanych kroków, jawne „następny krok" w pasku kontekstu. | `budowa-stan-pusty.png`, `budowa-po-kliku-wstaw-gpz.png` | UX, PSN | — | — |
 | B-4 | **[ZAMKNIETE 2026-08-06, karta S9-5: ciag SN buduje sie z rysunku — „Wyprowadz ciag glowny SN” i „Rozpocznij odgalezienie” na zrodle GPZ i na szynie sekcji, „Zakoncz odcinek stacja SN/nN” na odcinku, „Kontynuuj ciag” / „Rozpocznij odgalezienie” na stacji; e2e: 15 stacji zbudowanych wylacznie prawym klikiem]** **Dalsza budowa nie ma ścieżki na kanwie.** Po wstawieniu GPZ na kanwie są tylko trzy przyciski układów DER (`+ PV`, `+ BESS`, `+ FW`). Operacji, które faktycznie budują sieć SN — *wstaw stację na odcinku*, *przedłuż magistralę*, *rozpocznij odgałęzienie* — nie ma ani na pasie narzędzi, ani w menu kontekstowym (P-7); wykonalne są wyłącznie przez API/kreatory poza schematem. | wypis afordancji `budowa-afordancje-pusty`; pomiary menu kontekstowego (P-7) | PSN | **3** | Dodać na kanwie operacje ciągu SN (odcinek / stacja na odcinku / odgałęzienie) obok palety DER. |
-| B-5 | **Koszt operacji rośnie liniowo z rozmiarem sieci.** Czas `POST /station-templates/{id}/apply` rośnie z **21 ms** (1. stacja) do **550 ms** (50. stacja), mediana 257 ms, maksimum 698 ms; `continue_trunk_segment_sn` analogicznie 9 → 593 ms. Budowa 50 stacji ma przez to koszt kwadratowy. | pomiar budowy sieci (`build-networks`) | PSN, UX | 2 | Operacja domenowa nie powinna przeliczać całego modelu — koszt ma zależeć od zasięgu zmiany. |
+| B-5 | **[CZĘŚCIOWO ZAMKNIĘTE 2026-08-07, karta S9-9: koszt `apply` niższy o 35–47 %, ale nadal LINIOWY — pełne uniezależnienie od rozmiaru sieci wymaga decyzji kontraktowej, patrz §5A]** **Koszt operacji rośnie liniowo z rozmiarem sieci.** Czas `POST /station-templates/{id}/apply` rośnie z **21 ms** (1. stacja) do **550 ms** (50. stacja), mediana 257 ms, maksimum 698 ms; `continue_trunk_segment_sn` analogicznie 9 → 593 ms. Budowa 50 stacji ma przez to koszt kwadratowy. | pomiar budowy sieci (`build-networks`) | PSN, UX | 2 | Operacja domenowa nie powinna przeliczać całego modelu — koszt ma zależeć od zasięgu zmiany. |
 
 ---
 
@@ -237,6 +237,88 @@ bieg zwarciowy **3 punkty = 3 etykiety** (równość dosłowna), bieg rozpływow
 przy `withoutAnchor = 0`. Rachunek jest widoczny dla operatora w panelu filtrów warstwy wynikowej
 („Etykiety: X z Y punktów wyniku" + jawny powód braku pozostałych), więc brak etykiety ma NAZWANY powód,
 a nie „po prostu nie widać".
+
+---
+
+## 5A. KOSZT OPERACJI I PŁYNNOŚĆ ZOOMU — pomiary karty S9-9 (2026-08-07)
+
+Sieci: fixtura referencyjna `sldSubstrate52s` (54 stacje) oraz jej deterministyczne
+zwielokrotnienia rodziną H (`synthLargeTrunk` — 107 i 160 stacji). Krzywa `apply` mierzona
+na żywej końcówce `POST /api/station-templates/{id}/apply` przy budowie 105 stacji na
+magistrali; mediany w przedziałach, żeby pojedyncze próbki nie decydowały o wyniku.
+
+### 5A.1 Co pomiar OBALIŁ (hipoteza karty vs stan faktyczny)
+
+Karta zakładała, że w geście zoomu przeliczana jest **scena poziomu szczegółu**. Pomiar
+tego NIE potwierdził: wszystkie trzy sceny (L0/L1/L2) są liczone raz na migawkę
+(`SldCanvasV3`, `useMemo` po `snapshot`), a przejście LOD jest wyłącznie odczytem z mapy.
+Kosztem gestu okazał się **plan etykiet** (`canvas/labelLegibility.ts`), zależny od SKALI
+kamery, więc przeliczany przy każdym kliknięciu kółka — i rozstrzygający kolizje przeglądem
+liniowym całego zbioru przeszkód, czyli kwadratowo względem liczby etykiet.
+
+### 5A.2 Ścieżka gestu — czas planu etykiet [ms, mediana z 3, L2, najgorsza skala]
+
+| Sieć | etykiet | PRZED | PO | zysk |
+|------|---------|-------|-----|------|
+| referencyjna (54 stacje) | 1 137 | 128,5 | 10,5 | **12×** |
+| podwojona (107 stacji) | 2 261 | 451,3 | 21,9 | **21×** |
+| potrojona (160 stacji) | 3 385 | 1 026,8 | 33,8 | **30×** |
+
+Kryterium odbioru „zero klatek > 100 ms przy zoomie" **SPEŁNIONE** — z zapasem także na
+sieci 3× większej od referencyjnej. Uczciwie: pomiar jest wykonany w środowisku testowym
+(jsdom/Node), więc mierzy **czas przeliczeń synchronicznych wykonywanych przez wątek główny
+między zdarzeniem gestu a renderem**, a nie pełną klatkę przeglądarki (bez układu,
+rasteryzacji i rywalizacji o wątek). Budżet i test nieliniowości przypięte:
+`ui/sld/v3/scene/__tests__/kosztSceny.test.ts`.
+
+### 5A.3 Budowa sceny po operacji domenowej — 3 LOD razem [ms]
+
+| Sieć | PRZED | PO | zysk |
+|------|-------|-----|------|
+| 54 stacje | 334 | 213 | 36 % |
+| 107 stacji | 612 | 403 | 34 % |
+| 160 stacji | 1 347 | 753 | 44 % |
+
+Składowe: silnik etykiet (`declutterLabels`) na tym samym indeksie przestrzennym co plan;
+formatery liczb (`Intl.NumberFormat`) jako stałe modułu zamiast budowanych na każde
+wywołanie (5 000 wywołań: 140 ms → 3,4 ms).
+
+### 5A.4 `apply` z kanwy — krzywa vs liczba stacji [ms, mediana przedziału]
+
+| stacje | PRZED | PO | zysk |
+|--------|-------|-----|------|
+| 1–10 | 179 | 107 | 41 % |
+| 11–30 | 363 | 190 | 48 % |
+| 31–60 | 702 | 443 | 37 % |
+| 61–90 | 1 046 | 598 | 43 % |
+| 91–105 | 1 352 | 873 | 35 % |
+| **suma budowy 105 stacji** | **82,1 s** | **49,9 s** | **39 %** |
+
+### 5A.5 Kryterium NIESPEŁNIONE — nazwane wprost
+
+„`apply` niezależne od liczby stacji" **nie zostało osiągnięte i nie jest osiągalne bez
+decyzji kontraktowej.** Nachylenie krzywej (mediana 91–105 / mediana 1–10) wynosi 7,5×
+przed i 8,2× po — koszt pozostaje LINIOWY. Powód jest strukturalny, nie implementacyjny:
+
+1. **Kontrakt kopii granicznej** (TOPO-COPY, V12K-323/325): operacja domenowa robi prywatną
+   kopię CAŁEGO modelu. Karta uczyniła tę kopię 2,6× tańszą (39,2 → 14,6 ms na 100 stacjach,
+   `enm/kopia_graniczna.py`), ale kopia wartościowa jest z definicji O(n). Uniezależnienie
+   wymagałoby współdzielenia strukturalnego — to zmiana kontraktu mutacji, zarezerwowana
+   już w rejestrze V12K-325 jako „osobna decyzja kontraktowa".
+2. **Kontrakt odpowiedzi operacji** (`_response`): każda operacja zwraca gotowość, widoki
+   logiczne, parametry zmaterializowane i hasz układu — cztery przebiegi po CAŁYM modelu.
+   Karta usunęła z tego przebiegu jedyny fragment KWADRATOWY (skanowanie odwołań do szyn
+   dla każdej szyny pomocniczej z osobna → jeden przebieg, `_referenced_bus_refs`), ale
+   same przebiegi liniowe są treścią kontraktu odpowiedzi.
+3. **Materiał do wycofania w magazynie** (`enm/store.py`): kopia głęboka poprzedniego modelu
+   jest mechanizmem poprawności („operacja meldująca błąd nie zostawia skutku", znalezisko
+   P4 przeglądu 2026-08-01) i karta jej ŚWIADOMIE nie ruszyła — 62 ms na 100 stacjach.
+   Usunięta została natomiast druga kopia z tej samej funkcji, służąca wyłącznie porównaniu
+   hasza (60,9 → 0,02 ms, kopiowany sam nagłówek).
+
+**Dług do rozstrzygnięcia produktowego:** pełne uniezależnienie `apply` od rozmiaru sieci =
+współdzielenie strukturalne modelu + przyrostowe liczenie gotowości/widoków logicznych.
+Oba wymagają zmiany kontraktów, nie optymalizacji.
 
 ---
 
@@ -304,7 +386,7 @@ pracować, bez S9-3 nie da się sensownie odebrać S9-2.
 | **S9-6 · Eksport jako dokument** ✔ **WYKONANA (2026-08-06)** | Tytułówka w SVG/PDF, legenda domyślnie włączona, implementacja PDF i PNG albo usunięcie pozycji, wypełnienie `ENTITIES` w DXF + bramka „eksport bez encji = błąd", jedna konwencja nazw. Odbiór: każdy oferowany format zwraca plik z geometrią. | **M** | S9-1 |
 | **S9-7 · Typografia i ramka arkusza** | Rozmiary napisów w pikselach ekranu (stała czytelność niezależna od skali), znaczniki stref zgodne z formatem arkusza, skracanie zachowujące człon rozróżniający. Odbiór: zero napisów < 8 px na każdym poziomie. | **S** | S9-1 |
 | **S9-8 · Hierarchia i higiena rysunku** | Stopniowanie grubości linii wg rangi toru, obszar bezpieczny pod doki, identyfikator stacji w opisie sekcji, jednoznaczne oznaczenie napięcia znamionowego kabla. | **S** | S9-1 |
-| **S9-9 · Koszt operacji i płynność zoomu** | Operacja domenowa o koszcie zależnym od zasięgu zmiany (dziś 21 → 550 ms); przeliczanie sceny poziomu poza ścieżką gestu. Odbiór: `apply` niezależne od liczby stacji, zero klatek > 100 ms przy zoomie. | **M** | — |
+| **S9-9 · Koszt operacji i płynność zoomu** ✔ **WYKONANA (2026-08-07)** | Operacja domenowa o koszcie zależnym od zasięgu zmiany (dziś 21 → 550 ms); przeliczanie sceny poziomu poza ścieżką gestu. Odbiór: `apply` niezależne od liczby stacji, zero klatek > 100 ms przy zoomie. **Wynik: kryterium zoomu SPEŁNIONE (plan etykiet 1027 → 34 ms na 160 stacjach, 30×); kryterium „`apply` niezależne od liczby stacji" NIESPEŁNIONE i uczciwie nazwane — `apply` staniało o 35–47 % (1614 → 1167 ms na 100. stacji), ale pozostaje LINIOWE. Patrz §5A.** | **M** | — |
 
 ## 9. Odtworzenie pomiarów
 

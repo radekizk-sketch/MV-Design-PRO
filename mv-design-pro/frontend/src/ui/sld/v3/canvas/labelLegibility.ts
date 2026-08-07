@@ -69,6 +69,7 @@
  */
 
 import { rectsOverlap, type V3Rect } from '../core/grid';
+import { buildRectIndex, createRectIndex, type RectIndex } from '../core/rectIndex';
 import {
   isLabelHiddenAtScale,
   isLabelReadableAtScale,
@@ -244,13 +245,17 @@ function stronyWKolejnosci(placement: OwnedLabel['placement']): readonly SimpleA
  */
 function najlepszeDopasowanie(
   kandydat: Kandydat,
-  zajete: readonly V3Rect[],
-  obstacles: readonly V3Rect[],
+  zajete: RectIndex,
+  obstacles: RectIndex,
 ): Dopasowanie | null {
   const { label, fontSize, slot, tekstBazowy } = kandydat;
   const height = kandydat.enlarged ? wysokoscWiersza(fontSize) : slot.height;
+  // S9-9: ten sam predykat co dotąd (`rectsOverlap` na obu zbiorach), tylko
+  // liczony indeksem przestrzennym zamiast przeglądem liniowym — patrz
+  // `core/rectIndex.ts`. Wynik bajtowo identyczny; koszt planu na sieci 160
+  // stacji spada z ~0,94 s na ~0,02 s, czyli schodzi z budżetu klatki gestu.
   const wolne = (rect: V3Rect): boolean =>
-    !obstacles.some((r) => rectsOverlap(rect, r)) && !zajete.some((r) => rectsOverlap(rect, r));
+    !obstacles.anyOverlap(rect) && !zajete.anyOverlap(rect);
 
   if (!kandydat.enlarged) {
     // Etykiety NIEpowiększone nie mają czego skracać ani gdzie przestawiać —
@@ -260,6 +265,23 @@ function najlepszeDopasowanie(
       ? { text: tekstBazowy, rect: slot, fontSize, enlarged: false }
       : null;
   }
+
+  // S9-9: `shortenPreservingIdentity` jest CZYSTĄ funkcją `(tekst, pismo,
+  // szerokość)`, a `tekst`/`pismo` są w tym wywołaniu stałe — zmienia się sama
+  // szerokość. Wyszukiwanie połówkowe niżej powtarza się dla KAŻDEJ ze stron
+  // (`stronyWKolejnosci`, do czterech), startując z tego samego przedziału
+  // `[1, hi]`, więc te same szerokości próbne liczone są po kilka razy.
+  // Spamiętanie w obrębie JEDNEGO dopasowania (bez stanu modułu — czystość i
+  // determinizm nietknięte) zdejmuje te powtórzenia. Pomiar S9-9: skracanie
+  // było 47% kosztu planu po założeniu indeksu przestrzennego.
+  const skroconeDo = new Map<number, string>();
+  const skroc = (maxWidth: number): string => {
+    const zapamietane = skroconeDo.get(maxWidth);
+    if (zapamietane !== undefined) return zapamietane;
+    const wynik = shortenPreservingIdentity(tekstBazowy, fontSize, maxWidth);
+    skroconeDo.set(maxWidth, wynik);
+    return wynik;
+  };
 
   const proboj = (placement: OwnedLabel['placement']): Dopasowanie | null => {
     const prostokatDla = (text: string): V3Rect =>
@@ -276,7 +298,7 @@ function najlepszeDopasowanie(
     let najlepszy: Dopasowanie | null = null;
     while (lo <= hi) {
       const mid = Math.floor((lo + hi) / 2);
-      const text = shortenPreservingIdentity(tekstBazowy, fontSize, mid);
+      const text = skroc(mid);
       if (text.length === 0) {
         lo = mid + 1; // za wąsko na jakąkolwiek formę — szukamy szerzej
         continue;
@@ -390,17 +412,20 @@ export function planSceneLabels(
     ),
   );
 
-  const zajete: V3Rect[] = [];
+  // S9-9: przeszkody sceny indeksowane RAZ na plan (zbiór stały), „zajęte"
+  // przyrostowo — jak w `declutterLabels`, jedna maszyneria dla obu.
+  const obstacleIndex = buildRectIndex(obstacles);
+  const zajete = createRectIndex();
   const zaplanowane = new Map<number, PlannedLabel>();
   const droppedIdentity: OwnedLabel[] = [];
   for (const kandydat of kolejnosc) {
-    const dopasowanie = najlepszeDopasowanie(kandydat, zajete, obstacles);
+    const dopasowanie = najlepszeDopasowanie(kandydat, zajete, obstacleIndex);
     if (!dopasowanie || dopasowanie.text.length === 0) {
       if (kandydat.label.labelRole === 'tozsamosc') droppedIdentity.push(kandydat.label);
       else hiddenDetail.push(kandydat.label);
       continue;
     }
-    zajete.push(dopasowanie.rect);
+    zajete.add(dopasowanie.rect);
     zaplanowane.set(kandydat.index, {
       label: kandydat.label,
       index: kandydat.index,
