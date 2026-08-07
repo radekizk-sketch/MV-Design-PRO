@@ -40,11 +40,13 @@ import {
 import {
   APARAT_OPCJE,
   DANE_DOMYSLNE,
+  RODZAJ_POMIARU_OPCJE,
   ROLE_OPCJE,
   aparatLabel,
   bayKindZRoli,
   maSzablonProducenta,
   maSzyne,
+  rodzajPomiaruLabel,
   rolaLabel,
   walidujFormularz,
   zbudujPayload,
@@ -52,6 +54,7 @@ import {
   type KontekstPola,
   type PolaSnFormData,
   type RodzajAparatu,
+  type RodzajPomiaru,
   type RolaPola,
 } from './polaSnModel';
 import { POLE_STRINGS as T } from './strings';
@@ -65,6 +68,7 @@ const KROKI: readonly KrokKreatora[] = [
 // (kody roli/aparatu) mieszka w modelu; UI pokazuje wyłącznie polskie etykiety.
 const OPCJE_ROL = ROLE_OPCJE.map((o) => ({ id: o.value, etykieta: o.label }));
 const OPCJE_APARAT = APARAT_OPCJE.map((o) => ({ id: o.value, etykieta: o.label }));
+const OPCJE_RODZAJU_POMIARU = RODZAJ_POMIARU_OPCJE.map((o) => ({ id: o.value, etykieta: o.label }));
 
 function trimmed(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
@@ -311,6 +315,18 @@ export function KreatorPolaSn() {
                 testid="mvd-kreator-pole-nazwa"
               />
             </KreatorSiatka>
+            {dane.bay_role === 'MEASUREMENT' ? (
+              <>
+                <KreatorInfo>{T.rodzajPomiaruPomoc}</KreatorInfo>
+                <PoleWyboru
+                  etykieta={T.rodzajPomiaru}
+                  wartosc={dane.rodzaj_pomiaru}
+                  onZmiana={(v) => zmien('rodzaj_pomiaru', v as RodzajPomiaru)}
+                  opcje={OPCJE_RODZAJU_POMIARU}
+                  testid="mvd-kreator-pole-rodzaj-pomiaru"
+                />
+              </>
+            ) : null}
             <KreatorInfo>{T.szablonPomoc}</KreatorInfo>
             <KreatorSiatka kolumny={2}>
               <PoleWyboru
@@ -371,6 +387,12 @@ export function KreatorPolaSn() {
           <KreatorSiatka kolumny={2}>
             <RzadWartosci etykieta={T.wierszSzyna} wartosc={kontekst.station_label || '—'} />
             <RzadWartosci etykieta={T.wierszRola} wartosc={rolaLabel(dane.bay_role)} />
+            {dane.bay_role === 'MEASUREMENT' ? (
+              <RzadWartosci
+                etykieta={T.wierszRodzajPomiaru}
+                wartosc={rodzajPomiaruLabel(dane.rodzaj_pomiaru)}
+              />
+            ) : null}
             <RzadWartosci etykieta={T.aparat} wartosc={aparatLabel(dane.apparatus_kind)} />
             <RzadWartosci etykieta={T.nazwa} wartosc={dane.field_name.trim() || '—'} />
           </KreatorSiatka>

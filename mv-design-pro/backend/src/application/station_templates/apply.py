@@ -1006,12 +1006,18 @@ def _resolve_sn_field_specs(
                     "'sn_bay_apparatus_ref' w parametrach."
                 ),
             )
-        specs.append(
-            {
-                "field_role": _TEMPLATE_ROLE_TO_FIELD_ROLE.get(role, role),
-                "apparatus_catalog_ref": apparatus_ref,
-            }
-        )
+        spec: dict[str, Any] = {
+            "field_role": _TEMPLATE_ROLE_TO_FIELD_ROLE.get(role, role),
+            "apparatus_catalog_ref": apparatus_ref,
+        }
+        # Rodzaj pomiaru JAWNIE (kontrakt POMIAR_ROZLICZENIOWY_SN_V1 §5,
+        # V12K-335 pkt 2): szablon deklarujący pole POMIAROWE opisuje przyłącze
+        # KLIENTA (§3 reguła 1), więc jego pomiar jest ROZLICZENIOWY — deklaracja
+        # w JEDNYM miejscu obejmuje KAŻDY szablon biblioteki (klasa, nie
+        # instancja), a domyślna reguła operacji przestaje być tu potrzebna.
+        if spec["field_role"] == "POMIAROWE":
+            spec["rodzaj_pomiaru"] = "ROZLICZENIOWY"
+        specs.append(spec)
     return specs
 
 

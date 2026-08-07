@@ -875,6 +875,7 @@ def _build_field_spec(
     primary_devices: list[dict[str, Any]] | None = None,
     tags: list[str] | None = None,
     meta: dict[str, Any] | None = None,
+    rodzaj_pomiaru: str | None = None,
 ) -> dict[str, Any]:
     spec: dict[str, Any] = {
         "field_ref": field_ref,
@@ -888,6 +889,12 @@ def _build_field_spec(
     }
     if gpz_section_id:
         spec["gpz_section_id"] = gpz_section_id
+    # Rodzaj pomiaru pola POMIAROWEGO (kontrakt POMIAR_ROZLICZENIOWY_SN_V1 §5):
+    # klucz WYŁĄCZNIE dla pola pomiarowego (addytywnie, exclude gdy None) —
+    # pola innych ról nie niosą atrybutu, więc istniejące migawki są bajtowo
+    # niezmienione.
+    if rodzaj_pomiaru:
+        spec["rodzaj_pomiaru"] = rodzaj_pomiaru
     # Wymagane funkcje zabezpieczeniowe pola (ANSI/IEC, np. 50/51/67, 87T) — projekcja
     # na Bay.protection_codes (read-model + glify SLD). Wyprowadzane z szablonu pola
     # producenta (protection_requirements) albo z roli pola. exclude puste.
@@ -5043,6 +5050,11 @@ def klasa_przylaczenia_sn(role_pol: Iterable[object]) -> str:
     rozdzielnicę klienta do toru tranzytu. Kolejność ról to fizyczny układ pola
     od strony zasilania (V12K-330), więc to ona niesie tę różnicę.
 
+    Klasa dotyczy pomiaru ROZLICZENIOWEGO (kontrakt §3 reguła 1: deklaracja
+    stacji z polem POMIAROWYM opisuje przyłącze klienta) — funkcja jest wołana
+    wyłącznie na drogach BUDOWY STACJI, gdzie niezadeklarowany rodzaj pomiaru
+    rozstrzyga się na ROZLICZENIOWY (`RODZAJ_POMIARU_DOMYSLNY_BUDOWY_STACJI`).
+
     Wołający podaje role w dowolnym przyjmowanym aliasie (`bay_role` albo
     `field_role`) — normalizuje `_canonical_sn_field_role`.
     """
@@ -5051,6 +5063,210 @@ def klasa_przylaczenia_sn(role_pol: Iterable[object]) -> str:
         return "A"
     przed_pomiarem = kanoniczne[: kanoniczne.index("POMIAROWE")]
     return "C" if "LINIA_OUT" in przed_pomiarem else "B"
+
+
+# ---------------------------------------------------------------------------
+# Rodzaj pomiaru pola POMIAROWEGO (V12K-335 pkt 2, kontrakt
+# `docs/domain/POMIAR_ROZLICZENIOWY_SN_V1.md` §5)
+# ---------------------------------------------------------------------------
+
+#: Kanoniczne rodzaje pomiaru pola POMIAROWEGO. Klucz atrybutu: `rodzaj_pomiaru`
+#: (wartości po polsku jak kanoniczna rola `POMIAROWE`; wzorzec klucza `rodzaj`
+#: jest już w modelu — odcinki niosą `rodzaj: KABEL/LINIA`).
+#: - `ROZLICZENIOWY` — układ pomiarowo-rozliczeniowy odbiorcy (granica stron,
+#:   [E-UP] §7/§10.1); podlega bramie pomiaru w torze tranzytu.
+#: - `KONTROLNY` — pomiar kontrolny/ruchowy OSD (bilans, telemetria); wolny na
+#:   każdej drodze wejścia i w każdej topologii.
+RODZAJE_POMIARU_SN: frozenset[str] = frozenset({"ROZLICZENIOWY", "KONTROLNY"})
+
+#: Domyślny rodzaj pomiaru na drogach BUDOWY STACJI (`insert_station_on_segment_sn`,
+#: `append_station_on_endpoint`, aplikacja szablonu): deklaracja stacji z polem
+#: POMIAROWYM opisuje przyłącze KLIENTA (kontrakt §3 reguła 1), więc kontekst
+#: rozstrzyga rodzaj na ROZLICZENIOWY. Dzięki temu surowy payload sprzed
+#: wprowadzenia atrybutu zachowuje dotychczasową semantykę bramy (zero cichego
+#: poluzowania: układ klasy B bez deklaracji nadal jest odrzucany).
+RODZAJ_POMIARU_DOMYSLNY_BUDOWY_STACJI = "ROZLICZENIOWY"
+
+#: Domyślny rodzaj pomiaru na drodze DOKŁADANIA pojedynczego pola do istniejącej
+#: rozdzielnicy (`add_sn_bay`): ta operacja NIE deklaruje przyłącza klienta —
+#: pole pomiarowe na istniejącej szynie (GPZ, stacja OSD) bywa i pomiarem
+#: kontrolnym/ruchowym OSD, i rozliczeniowym przyłączem z rozdzielni OSD
+#: (kontrakt §2), więc kontekst NIE rozstrzyga. Status ROZLICZENIOWY ma skutki
+#: kontraktowe (granica stron, brama tranzytu) i NIGDY nie powstaje z domysłu —
+#: wymaga JAWNEJ deklaracji; bez niej pole jest pomiarem KONTROLNYM.
+RODZAJ_POMIARU_DOMYSLNY_POLA_DOKLADANEGO = "KONTROLNY"
+
+#: Kody błędów wspólne dla wszystkich operacji przyjmujących rodzaj pomiaru.
+KOD_RODZAJU_POMIARU_NIEZNANY = "sn.rodzaj_pomiaru_nieznany"
+KOD_RODZAJU_POMIARU_POZA_POLEM = "sn.rodzaj_pomiaru_poza_polem_pomiarowym"
+
+
+def rodzaj_pomiaru_sn(raw: object) -> str | None:
+    """Kanoniczny rodzaj pomiaru z deklaracji; None gdy NIE zadeklarowano.
+
+    Wartość zadeklarowana, ale spoza słownika `RODZAJE_POMIARU_SN`, również
+    zwraca None — wołający MUSI odróżnić brak deklaracji od wartości błędnej
+    (`rozstrzygnij_rodzaj_pomiaru`), nigdy nie zgadywać.
+    """
+    if not isinstance(raw, str):
+        return None
+    normalized = raw.strip().upper()
+    return normalized if normalized in RODZAJE_POMIARU_SN else None
+
+
+def rozstrzygnij_rodzaj_pomiaru(
+    raw: object,
+    *,
+    rola_kanoniczna: str,
+    domyslny: str,
+) -> tuple[str | None, dict[str, Any] | None]:
+    """JEDNO źródło rozstrzygnięcia rodzaju pomiaru dla KAŻDEJ drogi wejścia.
+
+    Zwraca parę (rodzaj, błąd):
+
+    - pole POMIAROWE bez deklaracji ⇒ rodzaj domyślny DROGI wejścia (stałe
+      `RODZAJ_POMIARU_DOMYSLNY_*` — dokumentują, KTÓRY kontekst rozstrzyga);
+    - pole POMIAROWE z deklaracją spoza słownika ⇒ błąd
+      `sn.rodzaj_pomiaru_nieznany` (literówka nie może zmienić semantyki bramy);
+    - pole NIE-pomiarowe z deklaracją ⇒ błąd
+      `sn.rodzaj_pomiaru_poza_polem_pomiarowym` (atrybut nie może kłamać o roli);
+    - pole NIE-pomiarowe bez deklaracji ⇒ (None, None).
+    """
+    zadeklarowano = isinstance(raw, str) and bool(raw.strip())
+    if rola_kanoniczna != "POMIAROWE":
+        if zadeklarowano:
+            return None, _error_response(
+                "Rodzaj pomiaru można zadeklarować wyłącznie na polu pomiarowym "
+                f"(rola pola: '{rola_kanoniczna or 'nieznana'}').",
+                KOD_RODZAJU_POMIARU_POZA_POLEM,
+            )
+        return None, None
+    if not zadeklarowano:
+        return domyslny, None
+    kanoniczny = rodzaj_pomiaru_sn(raw)
+    if kanoniczny is None:
+        dozwolone = ", ".join(sorted(RODZAJE_POMIARU_SN))
+        return None, _error_response(
+            f"Nieznany rodzaj pomiaru '{raw}'. Dozwolone wartości: {dozwolone}.",
+            KOD_RODZAJU_POMIARU_NIEZNANY,
+        )
+    return kanoniczny, None
+
+
+def rozstrzygnij_rodzaje_pomiaru_pol(
+    sn_fields: list[dict[str, Any]],
+    *,
+    domyslny: str,
+) -> dict[str, Any] | None:
+    """Rozstrzygnij rodzaj pomiaru KAŻDEGO wpisu pola listy `sn_fields` in-place.
+
+    Wspólny krok dróg budowy stacji (wcięcie w odcinek, stacja na końcu ciągu,
+    aplikacja szablonu przez te operacje). Zwraca błąd operacji albo None.
+    """
+    for field_spec in sn_fields:
+        if not isinstance(field_spec, dict):
+            continue
+        rola = _canonical_sn_field_role(field_spec.get("field_role"))
+        rodzaj, blad = rozstrzygnij_rodzaj_pomiaru(
+            field_spec.get("rodzaj_pomiaru"),
+            rola_kanoniczna=rola,
+            domyslny=domyslny,
+        )
+        if blad is not None:
+            return blad
+        if rodzaj is not None:
+            field_spec["rodzaj_pomiaru"] = rodzaj
+    return None
+
+
+def szyna_prowadzi_tranzyt_sn(role_pol: Iterable[object]) -> bool:
+    """Czy rozdzielnica o podanych rolach pól prowadzi tranzyt magistrali.
+
+    JEDNO źródło prawdy o tranzycie dla dróg działających na ISTNIEJĄCEJ szynie
+    (`add_sn_bay`): rozdzielnica prowadzi tranzyt, gdy jej pola zawierają parę
+    tranzytową — pole dopływowe (LINIA_IN) ORAZ pole odpływowe (LINIA_OUT).
+
+    Operacje, których semantyka rozstrzyga tranzyt bez patrzenia na role, NIE
+    wołają tej funkcji, tylko przekazują wynik wprost (dokumentowany kontrakt
+    pary predykatów):
+    - `insert_station_on_segment_sn` ROZCINA odcinek ⇒ tranzyt ZAWSZE (True),
+      niezależnie od zadeklarowanych ról — obie połówki odcinka i tak wchodzą
+      na szynę stacji;
+    - `append_station_on_endpoint` buduje stację KOŃCOWĄ (wolny terminal,
+      ≤1 odcinek) ⇒ tranzytu NIE MA (operacja bramy nie woła).
+
+    GPZ nie ma pola dopływowego SN (zasila go transformator 110/SN), więc
+    rozdzielnia GPZ NIE jest torem tranzytu — zgodnie z kontraktem §2 pole SN
+    stacji 110 kV/SN jest legalnym miejscem układu rozliczeniowego (przyłącze
+    z rozdzielni OSD). Pole rezerwowe o roli odpływowej liczy się jak odpływ:
+    role pól są jedyną deklaracją projektową, jaką ta droga ma do dyspozycji.
+    """
+    kanoniczne = {_canonical_sn_field_role(rola) for rola in role_pol}
+    return "LINIA_IN" in kanoniczne and "LINIA_OUT" in kanoniczne
+
+
+def blad_pomiaru_w_torze_tranzytu(
+    pola: Iterable[tuple[object, object]],
+    *,
+    szyna_prowadzi_tranzyt: bool,
+    kod_bledu: str,
+) -> dict[str, Any] | None:
+    """BRAMA pomiaru rozliczeniowego w torze tranzytu — JEDNA funkcja źródłowa.
+
+    Kontrakt `docs/domain/POMIAR_ROZLICZENIOWY_SN_V1.md` §1–§3 i §5 (decyzja
+    właściciela V12K-335 pkt 2): układ pomiarowo-rozliczeniowy mierzy CAŁY
+    i WYŁĄCZNIE pobór odbiorcy, więc pomiar ROZLICZENIOWY nie może leżeć
+    w torze tranzytu magistrali OSD. Pomiar KONTROLNY (ruchowy OSD) bramie
+    nie podlega — jest wolny na każdej drodze wejścia.
+
+    Wejście: sekwencja par (rola pola, rodzaj pomiaru) w kolejności OD STRONY
+    ZASILANIA (kolejność pól z danych, V12K-330). Rodzaj None = wpis nieoceniany
+    (pole niepomiarowe albo wpis historyczny, którego legalność oceniła operacja
+    tworząca — prefiksy pól są niezmienne, bo dokładanie pola na końcu sekwencji
+    nie zmienia prefiksu żadnego istniejącego pomiaru).
+
+    REGUŁA POZYCYJNA (reguły twarde §3 pkt 2–3): pomiar ROZLICZENIOWY na szynie
+    prowadzącej tranzyt jest legalny WYŁĄCZNIE, gdy przed nim (od strony
+    zasilania) stoi czysta pętla OSD — prefiks zawiera pole odpływowe LINIA_OUT
+    i NIC spoza pary liniowej {LINIA_IN, LINIA_OUT} (klasa C). Prefiks bez
+    odpływu = klasa B (rozdzielnica klienta w torze tranzytu — odmowa, jak
+    dotychczas); prefiks z polem spoza pętli (TR, odgałęzienie, inny pomiar)
+    = pomiar nie mierzy całego poboru za sobą — odmowa. Szyna bez tranzytu
+    (stacja końcowa, GPZ) — brama nie ogranicza.
+
+    TA SAMA funkcja bramkuje KAŻDĄ drogę wejścia (wcięcie w odcinek,
+    `add_sn_bay`; szablony i kreatory wchodzą przez te operacje) — kod błędu
+    jest parametrem adresu operacji, reguła jest jedna.
+    """
+    if not szyna_prowadzi_tranzyt:
+        return None
+    kanoniczne: list[tuple[str, str | None]] = [
+        (_canonical_sn_field_role(rola), rodzaj_pomiaru_sn(rodzaj)) for rola, rodzaj in pola
+    ]
+    petla_osd = {"LINIA_IN", "LINIA_OUT"}
+    for indeks, (rola, rodzaj) in enumerate(kanoniczne):
+        if rola != "POMIAROWE" or rodzaj != "ROZLICZENIOWY":
+            continue
+        prefiks = [rola_przed for rola_przed, _ in kanoniczne[:indeks]]
+        czysta_petla = "LINIA_OUT" in prefiks and all(
+            rola_przed in petla_osd for rola_przed in prefiks
+        )
+        if not czysta_petla:
+            return _error_response(
+                "Pole pomiarowo-rozliczeniowe nie może leżeć w torze tranzytu "
+                "magistrali — układ pomiarowy mierzy cały i wyłącznie pobór "
+                "odbiorcy. Stację abonencką przyłącz ODGAŁĘZIENIEM (punkt "
+                "odgałęzienia na odcinku → odcinek gałęzi → stacja końcowa). "
+                "Jeśli budujesz złącze kablowe z pętlą OSD, para pól liniowych "
+                "(dopływowe i odpływowe) musi stać PRZED pomiarem i przed nim "
+                "nie może stać żadne inne pole — wtedy pomiar jest polem "
+                "odpływowym gałęzi klienta, a nie polem w torze tranzytu. "
+                "Pomiar kontrolny/ruchowy OSD nie podlega tej bramie — "
+                "zadeklaruj rodzaj pomiaru KONTROLNY, jeśli pole nie jest "
+                "układem rozliczeniowym.",
+                kod_bledu,
+            )
+    return None
 
 
 def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
@@ -5157,30 +5373,42 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
                 ["LINIA_IN", "TRANSFORMATOROWE"],
             )
         ]
+    # RODZAJ POMIARU (kontrakt §5): droga budowy stacji deklaruje przyłącze,
+    # więc pole POMIAROWE bez deklaracji jest ROZLICZENIOWE (jedno źródło
+    # rozstrzygnięcia — `rozstrzygnij_rodzaj_pomiaru`); wartość błędna albo
+    # rodzaj na polu niepomiarowym kończy operację jawnym błędem.
+    blad_rodzaju = rozstrzygnij_rodzaje_pomiaru_pol(
+        sn_fields, domyslny=RODZAJ_POMIARU_DOMYSLNY_BUDOWY_STACJI
+    )
+    if blad_rodzaju is not None:
+        return blad_rodzaju
+
     # BRAMA KONTRAKTU POMIARU ROZLICZENIOWEGO
-    # (`docs/domain/POMIAR_ROZLICZENIOWY_SN_V1.md` §1): układ pomiarowo-rozliczeniowy
-    # mierzy CAŁY i TYLKO pobór odbiorcy, więc rozdzielnica z polem POMIAROWYM nie
-    # może prowadzić tranzytu magistrali OSD. Ta operacja ROZCINA odcinek, czyli z
-    # definicji wprowadza tranzyt przez szynę tworzonej stacji — dopuszczalne
-    # WYŁĄCZNIE dla klasy C kontraktu (złącze ZK-SN: pętla OSD IN+OUT, a pomiar jako
-    # pole odpływowe gałęzi klienta).
+    # (`docs/domain/POMIAR_ROZLICZENIOWY_SN_V1.md` §1 i §5): układ
+    # pomiarowo-rozliczeniowy mierzy CAŁY i TYLKO pobór odbiorcy, więc pomiar
+    # ROZLICZENIOWY nie może leżeć w torze tranzytu magistrali OSD. Ta operacja
+    # ROZCINA odcinek, czyli z definicji wprowadza tranzyt przez szynę tworzonej
+    # stacji (`szyna_prowadzi_tranzyt=True` — patrz kontrakt pary predykatów
+    # w `szyna_prowadzi_tranzyt_sn`) — dopuszczalne WYŁĄCZNIE dla klasy C
+    # kontraktu (czysta pętla OSD IN+OUT przed pomiarem). Pomiar KONTROLNY
+    # (ruchowy OSD) bramie nie podlega (V12K-335 pkt 2).
     #
-    # PREDYKATY PARAMI: klasę liczy DOKŁADNIE TA SAMA funkcja
-    # (`klasa_przylaczenia_sn`), która kieruje aplikację szablonu na drogę
-    # odgałęzienia — jedno źródło prawdy, nie dwa „dziś zgodne" warunki. Bez bramy
-    # tutaj reguła żyłaby wyłącznie w warstwie szablonów, a każda inna droga
-    # wejścia (surowe API operacji, kreator stacji, seedy e2e) mogłaby zbudować
-    # układ zakazany kontraktem.
-    if klasa_przylaczenia_sn(field_spec.get("field_role") for field_spec in sn_fields) == "B":
-        return _error_response(
-            "Rozdzielnica z polem pomiarowo-rozliczeniowym nie może prowadzić tranzytu "
-            "magistrali — układ pomiarowy mierzy cały i wyłącznie pobór odbiorcy. "
-            "Stację abonencką przyłącz ODGAŁĘZIENIEM (punkt odgałęzienia na odcinku → "
-            "odcinek gałęzi → stacja końcowa). Jeśli budujesz złącze kablowe z pętlą "
-            "OSD, dodaj parę pól liniowych (dopływowe i odpływowe) — wtedy pomiar jest "
-            "polem odpływowym gałęzi klienta, a nie polem w torze tranzytu.",
-            "station.insert.pomiar_w_torze_tranzytu",
-        )
+    # PREDYKATY PARAMI: odmawia DOKŁADNIE TA SAMA funkcja źródłowa
+    # (`blad_pomiaru_w_torze_tranzytu`), która bramkuje `add_sn_bay` — jedno
+    # źródło prawdy, nie dwa „dziś zgodne" warunki. Bez bramy tutaj reguła
+    # żyłaby wyłącznie w warstwie szablonów, a każda inna droga wejścia (surowe
+    # API operacji, kreator stacji, seedy e2e) mogłaby zbudować układ zakazany
+    # kontraktem.
+    blad_bramy = blad_pomiaru_w_torze_tranzytu(
+        [
+            (field_spec.get("field_role"), field_spec.get("rodzaj_pomiaru"))
+            for field_spec in sn_fields
+        ],
+        szyna_prowadzi_tranzyt=True,
+        kod_bledu="station.insert.pomiar_w_torze_tranzytu",
+    )
+    if blad_bramy is not None:
+        return blad_bramy
 
     # B-4/B-5: oznaczenie i typ konstrukcji stacji (addytywne pola tożsamości).
     station_identity, identity_error = _station_identity_fields(station, payload)
@@ -5609,6 +5837,9 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
                     "default_device_ref": breaker_ref,
                     "requires_catalog_binding": True,
                 },
+                # Rozstrzygnięty rodzaj pomiaru (kontrakt §5) — obecny wyłącznie
+                # na polu POMIAROWYM po `rozstrzygnij_rodzaje_pomiaru_pol`.
+                rodzaj_pomiaru=field_spec.get("rodzaj_pomiaru"),
             )
         )
 
@@ -8243,7 +8474,19 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
     transformer_ref = f"tr/{seed}/transformer"
     sn_fields_payload = payload.get("sn_fields")
     raw_sn_fields = sn_fields_payload if isinstance(sn_fields_payload, list) else []
-    sn_fields: list[dict[str, Any]] = [field for field in raw_sn_fields if isinstance(field, dict)]
+    sn_fields: list[dict[str, Any]] = [
+        dict(field) for field in raw_sn_fields if isinstance(field, dict)
+    ]
+    # RODZAJ POMIARU (kontrakt §5): stacja końcowa to droga BUDOWY STACJI —
+    # pole POMIAROWE bez deklaracji jest ROZLICZENIOWE (to samo źródło
+    # rozstrzygnięcia, co wcięcie w odcinek). Stacja końcowa nie prowadzi
+    # tranzytu, więc brama pomiaru w torze tranzytu nie ma tu czego bramkować
+    # (kontrakt pary predykatów w `szyna_prowadzi_tranzyt_sn`).
+    blad_rodzaju = rozstrzygnij_rodzaje_pomiaru_pol(
+        sn_fields, domyslny=RODZAJ_POMIARU_DOMYSLNY_BUDOWY_STACJI
+    )
+    if blad_rodzaju is not None:
+        return blad_rodzaju
     # PS-4: wspólny resolver kodów zabezpieczeń pól (parytet z insert/add_sn_bay).
     from enm.domain_operations_v2 import _resolve_bay_template_protection_codes
 
@@ -8299,6 +8542,11 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
                 "terminal_bus_ref": endpoint_bus_ref,
             },
         }
+        # Rodzaj pomiaru pola POMIAROWEGO (kontrakt §5) — klucz wyłącznie dla
+        # pola pomiarowego (rozstrzygnięty wyżej), addytywnie: pola innych ról
+        # nie niosą atrybutu, więc istniejące migawki są bajtowo niezmienione.
+        if field_role == "POMIAROWE":
+            field_spec_entry["rodzaj_pomiaru"] = field.get("rodzaj_pomiaru")
         # B-12/defekt F: aparat WSKAZANY NA POLU. Bez tego klucza specyfikacja
         # gubiła wybór projektanta, a `_materialize_sn_field_apparatus` widziało
         # wyłącznie wspólny `field_apparatus_catalog_ref` payloadu — kreator stacji

@@ -359,6 +359,18 @@ class SNFieldSpec(_FrozenBase):
     dokumentowany kontrakt zaprzeczał modelowi.
     """
 
+    rodzaj_pomiaru: Literal["ROZLICZENIOWY", "KONTROLNY"] | None = None
+    """Rodzaj pomiaru pola POMIAROWEGO (kontrakt POMIAR_ROZLICZENIOWY_SN_V1 §5,
+    V12K-335 pkt 2) — addytywnie, wyłącznie dla `field_role='POMIAROWE'`:
+
+    - `ROZLICZENIOWY` — układ pomiarowo-rozliczeniowy odbiorcy (granica stron);
+      podlega bramie pomiaru w torze tranzytu,
+    - `KONTROLNY` — pomiar kontrolny/ruchowy OSD; wolny na każdej drodze.
+
+    Brak deklaracji na drodze budowy stacji ⇒ ROZLICZENIOWY (deklaracja stacji
+    z polem POMIAROWYM opisuje przyłącze klienta, §3 reguła 1). Deklaracja na
+    polu innej roli ⇒ błąd `sn.rodzaj_pomiaru_poza_polem_pomiarowym`."""
+
     catalog_bindings: CatalogBindings | None = None
     """Opcjonalne powiązania katalogowe aparatury."""
 
@@ -975,6 +987,14 @@ class AddSnBayPayload(_FrozenBase):
 
     bay_role: Literal["IN", "OUT", "FEEDER", "TR", "COUPLER", "MEASUREMENT", "OZE"] = "FEEDER"
     """Rola pola w kontrakcie ENM."""
+
+    rodzaj_pomiaru: Literal["ROZLICZENIOWY", "KONTROLNY"] | None = None
+    """Rodzaj pomiaru — wyłącznie dla `bay_role='MEASUREMENT'` (kontrakt
+    POMIAR_ROZLICZENIOWY_SN_V1 §5). Dokładanie pojedynczego pola nie deklaruje
+    przyłącza klienta, więc brak deklaracji ⇒ KONTROLNY (ruchowy OSD); status
+    ROZLICZENIOWY wymaga deklaracji JAWNEJ i podlega bramie
+    `sn.pomiar_w_torze_tranzytu`. Deklaracja na polu innej roli ⇒ błąd
+    `sn.rodzaj_pomiaru_poza_polem_pomiarowym`."""
 
     field_name: str | None = None
     """Opcjonalna nazwa pola."""

@@ -683,3 +683,50 @@ def test_realny_zestaw_pol_szablonu_abonenckiego_jest_odrzucany_przez_wciecie() 
     )
     assert wynik.get("error_code") == "station.insert.pomiar_w_torze_tranzytu"
     assert wynik.get("snapshot") is None
+
+
+# ---------------------------------------------------------------------------
+# Rodzaj pomiaru (karta POMIAR-RODZAJ, V12K-335 pkt 2, kontrakt §5)
+# ---------------------------------------------------------------------------
+
+
+def test_kazdy_szablon_z_pomiarem_deklaruje_rodzaj_rozliczeniowy_jawnie() -> None:
+    """KLASA, nie instancja: KAŻDY szablon biblioteki z polem pomiarowym
+    deklaruje `rodzaj_pomiaru=ROZLICZENIOWY` JAWNIE (kontrakt §3 reguła 1:
+    szablon z polem POMIAROWYM opisuje przyłącze klienta) — semantyka szablonu
+    nie może zależeć od reguły domyślnej operacji."""
+    zbadane = 0
+    for template in list_templates():
+        role = _resolve_sn_bay_roles(template, template.schema.sn_bays_count.default)
+        specyfikacje = _resolve_sn_field_specs(
+            template, bay_roles=role, overrides={}, catalog_profile=None
+        )
+        for spec in specyfikacje:
+            if spec["field_role"] == "POMIAROWE":
+                zbadane += 1
+                assert spec.get("rodzaj_pomiaru") == "ROZLICZENIOWY", template.id
+            else:
+                assert "rodzaj_pomiaru" not in spec, template.id
+    assert zbadane >= 7, f"Pin ma objąć wszystkie rodziny z pomiarem (objęte: {zbadane})"
+
+
+@pytest.mark.parametrize(
+    "template_id",
+    [SZABLON_KLASY_B, SZABLON_KLASY_C],
+    ids=["klasa_B_odgalezienie", "klasa_C_wciecie"],
+)
+def test_rodzaj_rozliczeniowy_utrwalony_na_obu_drogach_zabudowy(template_id: str) -> None:
+    """Deklaracja szablonu dociera do modelu na OBU drogach zabudowy: stacja
+    klasy B (odgałęzienie, `append_station_on_endpoint`) i złącze klasy C
+    (wcięcie, `insert_station_on_segment_sn`) niosą w specyfikacji pola
+    pomiarowego `rodzaj_pomiaru=ROZLICZENIOWY`."""
+    enm, odcinki = _magistrala(3)
+    wynik = _zastosuj_szablon(enm, template_id, odcinki[1])
+    substation = next(s for s in wynik["enm"]["substations"] if s["ref_id"] == wynik["station_ref"])
+    specyfikacje = (substation.get("meta") or {})["field_specs"]
+    pomiary = [spec for spec in specyfikacje if spec.get("bay_role") == "MEASUREMENT"]
+    assert len(pomiary) == 1, specyfikacje
+    assert pomiary[0].get("rodzaj_pomiaru") == "ROZLICZENIOWY"
+    for spec in specyfikacje:
+        if spec.get("bay_role") != "MEASUREMENT":
+            assert "rodzaj_pomiaru" not in spec
