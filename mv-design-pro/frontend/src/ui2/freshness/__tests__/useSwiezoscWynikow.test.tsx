@@ -60,7 +60,7 @@ describe("useSwiezoscWynikow — stan początkowy ze store'ów (§3.1)", () => {
   });
 
   it("activeCaseResultStatus='FRESH' -> stan 'aktualne', rewizjaDanej = rewizjaModelu", () => {
-    useSnapshotStore.setState({ snapshot: snapshotZRewizja(5) });
+    useSnapshotStore.setState({ snapshot: snapshotZRewizja(5), rewizjaBiezacegoModelu: 5 });
     useAppStateStore.setState({ activeCaseResultStatus: 'FRESH' });
 
     const { result } = renderHook(() => useSwiezoscWynikow());
@@ -68,7 +68,7 @@ describe("useSwiezoscWynikow — stan początkowy ze store'ów (§3.1)", () => {
   });
 
   it("activeCaseResultStatus='OUTDATED' -> stan 'nieaktualne', rewizjaDanej nieznana (brak zgadywania)", () => {
-    useSnapshotStore.setState({ snapshot: snapshotZRewizja(9) });
+    useSnapshotStore.setState({ snapshot: snapshotZRewizja(9), rewizjaBiezacegoModelu: 9 });
     useAppStateStore.setState({ activeCaseResultStatus: 'OUTDATED' });
 
     const { result } = renderHook(() => useSwiezoscWynikow());
@@ -83,7 +83,7 @@ describe("useSwiezoscWynikow — stan początkowy ze store'ów (§3.1)", () => {
 
 describe("useSwiezoscWynikow — reakcja na 'model-zmieniony' (§3.1)", () => {
   it("od 'aktualne' -> 'nieaktualne' z parą rewizji (a = poprzednia aktualna, b = rev ze zdarzenia)", () => {
-    useSnapshotStore.setState({ snapshot: snapshotZRewizja(5) });
+    useSnapshotStore.setState({ snapshot: snapshotZRewizja(5), rewizjaBiezacegoModelu: 5 });
     useAppStateStore.setState({ activeCaseResultStatus: 'FRESH' });
     const { result } = renderHook(() => useSwiezoscWynikow());
     expect(result.current.stan).toBe('aktualne');
@@ -99,7 +99,7 @@ describe("useSwiezoscWynikow — reakcja na 'model-zmieniony' (§3.1)", () => {
   });
 
   it("kolejna zmiana modelu bez przeliczenia -> rewizjaDanej pozostaje przypięta do ostatniej aktualnej rewizji, rewizjaModelu się przesuwa", () => {
-    useSnapshotStore.setState({ snapshot: snapshotZRewizja(5) });
+    useSnapshotStore.setState({ snapshot: snapshotZRewizja(5), rewizjaBiezacegoModelu: 5 });
     useAppStateStore.setState({ activeCaseResultStatus: 'FRESH' });
     const { result } = renderHook(() => useSwiezoscWynikow());
 
@@ -126,7 +126,7 @@ describe("useSwiezoscWynikow — reakcja na 'model-zmieniony' (§3.1)", () => {
 
 describe("useSwiezoscWynikow — reakcja na 'wyniki-niewazne' (§3.1)", () => {
   it("od 'aktualne' -> 'nieaktualne' z tą samą semantyką co 'model-zmieniony'", () => {
-    useSnapshotStore.setState({ snapshot: snapshotZRewizja(10) });
+    useSnapshotStore.setState({ snapshot: snapshotZRewizja(10), rewizjaBiezacegoModelu: 10 });
     useAppStateStore.setState({ activeCaseResultStatus: 'FRESH' });
     const { result } = renderHook(() => useSwiezoscWynikow());
 
@@ -143,7 +143,7 @@ describe("useSwiezoscWynikow — reakcja na 'wyniki-niewazne' (§3.1)", () => {
 
 describe("useSwiezoscWynikow — reakcja na 'wyniki-gotowe' (§3.1)", () => {
   it("od 'nieaktualne' -> 'aktualne', rewizjaDanej = bieżąca rewizjaModelu", () => {
-    useSnapshotStore.setState({ snapshot: snapshotZRewizja(20) });
+    useSnapshotStore.setState({ snapshot: snapshotZRewizja(20), rewizjaBiezacegoModelu: 20 });
     useAppStateStore.setState({ activeCaseResultStatus: 'OUTDATED' });
     const { result } = renderHook(() => useSwiezoscWynikow());
     expect(result.current.stan).toBe('nieaktualne');
@@ -154,7 +154,7 @@ describe("useSwiezoscWynikow — reakcja na 'wyniki-gotowe' (§3.1)", () => {
   });
 
   it("cykl pełny: aktualne -> model-zmieniony -> nieaktualne -> wyniki-gotowe -> aktualne z nową rewizją", () => {
-    useSnapshotStore.setState({ snapshot: snapshotZRewizja(1) });
+    useSnapshotStore.setState({ snapshot: snapshotZRewizja(1), rewizjaBiezacegoModelu: 1 });
     useAppStateStore.setState({ activeCaseResultStatus: 'FRESH' });
     const { result } = renderHook(() => useSwiezoscWynikow());
 
@@ -193,7 +193,7 @@ describe('useSwiezoscWynikow — unmount bez wycieku (§3.1)', () => {
   });
 
   it('emisja zdarzenia po odmontowaniu nie zmienia już niczego (brak wycieku stanu)', () => {
-    useSnapshotStore.setState({ snapshot: snapshotZRewizja(1) });
+    useSnapshotStore.setState({ snapshot: snapshotZRewizja(1), rewizjaBiezacegoModelu: 1 });
     useAppStateStore.setState({ activeCaseResultStatus: 'FRESH' });
     const { result, unmount } = renderHook(() => useSwiezoscWynikow());
     const stanPrzedOdmontowaniem = result.current;
@@ -211,7 +211,7 @@ describe('useSwiezoscWynikow — unmount bez wycieku (§3.1)', () => {
 
 describe('useSwiezoscWynikow — determinizm (§3.1)', () => {
   it('dwie niezależne instancje hooka osiągają identyczny stan końcowy po tej samej sekwencji zdarzeń', () => {
-    useSnapshotStore.setState({ snapshot: snapshotZRewizja(1) });
+    useSnapshotStore.setState({ snapshot: snapshotZRewizja(1), rewizjaBiezacegoModelu: 1 });
     useAppStateStore.setState({ activeCaseResultStatus: 'FRESH' });
 
     const pierwsza = renderHook(() => useSwiezoscWynikow());

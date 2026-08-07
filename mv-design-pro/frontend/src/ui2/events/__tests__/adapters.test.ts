@@ -91,7 +91,7 @@ describe('snapshotAdapter — topology/snapshotStore.ts -> magistrala (§7.2)', 
     const modelZmieniony = zbierzZdarzenia('model-zmieniony');
     try {
       useSnapshotStore.setState({
-        snapshot: snapshotZRewizja(5),
+        snapshot: snapshotZRewizja(5), rewizjaBiezacegoModelu: 5,
         lastChanges: {
           created_element_ids: ['bus-2'],
           updated_element_ids: ['bus-1'],
@@ -110,7 +110,7 @@ describe('snapshotAdapter — topology/snapshotStore.ts -> magistrala (§7.2)', 
   it('zmiana modelu emituje rowniez wyniki-niewazne z ta sama rewizja (Case Immutability Rule)', () => {
     const wynikiNiewazne = zbierzZdarzenia('wyniki-niewazne');
     try {
-      useSnapshotStore.setState({ snapshot: snapshotZRewizja(7), lastChanges: null });
+      useSnapshotStore.setState({ snapshot: snapshotZRewizja(7), rewizjaBiezacegoModelu: 7, lastChanges: null });
 
       expect(wynikiNiewazne.odebrane).toEqual([
         { typ: 'wyniki-niewazne', przyczyna: 'model-zmieniony', rev: 7 },
@@ -121,10 +121,10 @@ describe('snapshotAdapter — topology/snapshotStore.ts -> magistrala (§7.2)', 
   });
 
   it('brak emisji bez zmiany — ta sama rewizja ustawiona ponownie nie generuje kolejnego zdarzenia', () => {
-    useSnapshotStore.setState({ snapshot: snapshotZRewizja(3), lastChanges: null });
+    useSnapshotStore.setState({ snapshot: snapshotZRewizja(3), rewizjaBiezacegoModelu: 3, lastChanges: null });
     const modelZmieniony = zbierzZdarzenia('model-zmieniony');
     try {
-      useSnapshotStore.setState({ snapshot: snapshotZRewizja(3), lastChanges: null });
+      useSnapshotStore.setState({ snapshot: snapshotZRewizja(3), rewizjaBiezacegoModelu: 3, lastChanges: null });
       expect(modelZmieniony.odebrane).toEqual([]);
     } finally {
       modelZmieniony.odsubskrybuj();
@@ -134,7 +134,7 @@ describe('snapshotAdapter — topology/snapshotStore.ts -> magistrala (§7.2)', 
   it('zmiana gotowosci (blockers/warnings) -> gotowosc-zmieniona z liczbami zgodnymi ze store readiness', () => {
     // Baza: snapshot z zerowa gotowoscia (jak w realnej odpowiedzi domain-op —
     // readiness zawsze towarzyszy snapshotowi w tym samym DomainOpResponseV1).
-    useSnapshotStore.setState({ snapshot: snapshotZRewizja(1), readiness: readinessZLiczba(0, 0) });
+    useSnapshotStore.setState({ snapshot: snapshotZRewizja(1), rewizjaBiezacegoModelu: 1, readiness: readinessZLiczba(0, 0) });
     const gotowosc = zbierzZdarzenia('gotowosc-zmieniona');
     try {
       // Ta sama rewizja — zmienia sie wylacznie gotowosc.
@@ -145,14 +145,32 @@ describe('snapshotAdapter — topology/snapshotStore.ts -> magistrala (§7.2)', 
     }
   });
 
-  it('brak projektu (snapshot=null) — adapter nie emituje model-zmieniony', () => {
-    useSnapshotStore.setState({ snapshot: snapshotZRewizja(1), lastChanges: null });
+  it('brak projektu (rewizja biezacego modelu nieznana) — adapter nie emituje model-zmieniony', () => {
+    useSnapshotStore.setState({ snapshot: snapshotZRewizja(1), rewizjaBiezacegoModelu: 1, lastChanges: null });
     const modelZmieniony = zbierzZdarzenia('model-zmieniony');
     try {
-      useSnapshotStore.setState({ snapshot: null });
+      useSnapshotStore.setState({ snapshot: null, rewizjaBiezacegoModelu: null });
       expect(modelZmieniony.odebrane).toEqual([]);
     } finally {
       modelZmieniony.odsubskrybuj();
+    }
+  });
+
+  it('PODGLAD PRZEBIEGU w store (setAnalysisRunSnapshot) nie jest zmiana modelu — zero uniewaznien (S9-11 / W-5)', () => {
+    // Model biezacy: rew. 3. Wejscie na link przebiegu wgrywa PODGLAD migawki
+    // sprzed biegu (inna rewizja naglowka) — akcja PRODUKCYJNA. Dotad adapter
+    // czytal rewizje wyswietlanej migawki i emitowal falszywe
+    // model-zmieniony/wyniki-niewazne przy kazdym wejsciu na podglad.
+    useSnapshotStore.setState({ snapshot: snapshotZRewizja(3), rewizjaBiezacegoModelu: 3, lastChanges: null });
+    const modelZmieniony = zbierzZdarzenia('model-zmieniony');
+    const wynikiNiewazne = zbierzZdarzenia('wyniki-niewazne');
+    try {
+      useSnapshotStore.getState().setAnalysisRunSnapshot(snapshotZRewizja(2), 'snap-podglad');
+      expect(modelZmieniony.odebrane).toEqual([]);
+      expect(wynikiNiewazne.odebrane).toEqual([]);
+    } finally {
+      modelZmieniony.odsubskrybuj();
+      wynikiNiewazne.odsubskrybuj();
     }
   });
 
@@ -160,7 +178,7 @@ describe('snapshotAdapter — topology/snapshotStore.ts -> magistrala (§7.2)', 
     zatrzymaj();
     const modelZmieniony = zbierzZdarzenia('model-zmieniony');
     try {
-      useSnapshotStore.setState({ snapshot: snapshotZRewizja(9), lastChanges: null });
+      useSnapshotStore.setState({ snapshot: snapshotZRewizja(9), rewizjaBiezacegoModelu: 9, lastChanges: null });
       expect(modelZmieniony.odebrane).toEqual([]);
     } finally {
       modelZmieniony.odsubskrybuj();

@@ -92,7 +92,12 @@ export function useObiektInspektora(id: string | null): ObiektInspektora | null 
   return useMemo(() => mapowanieObiektuInspektora(snapshot, id), [snapshot, id]);
 }
 
-/** Hook: bieżąca rewizja modelu (0, gdy brak projektu). */
+/**
+ * Hook: bieżąca rewizja modelu (0, gdy brak projektu). S9-11 / W-5: czyta
+ * JEDNO źródło `rewizjaBiezacegoModelu` — rewizja wyświetlanej migawki bywa
+ * rewizją PODGLĄDU PRZEBIEGU i nie opisuje bieżącego modelu (pasek stanu
+ * „Model: rew. n" i znaczniki świeżości inspektora mówiłyby co innego niż chip).
+ */
 export function useRewizjaModelu(): number {
-  return useSnapshotStore((s) => s.snapshot?.header.revision ?? 0);
+  return useSnapshotStore((s) => s.rewizjaBiezacegoModelu ?? 0);
 }

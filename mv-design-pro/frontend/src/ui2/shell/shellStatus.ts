@@ -128,19 +128,6 @@ export function ostatniZakonczonyPrzebiegPrzypadku(
 }
 
 /**
- * Znacznik migawki będącej PODGLĄDEM PRZEBIEGU, a nie bieżącym modelem —
- * wartość `layout.layout_version` wpisywana przez
- * `snapshotStore.setAnalysisRunSnapshot` przy wejściu na link przebiegu.
- *
- * Stała nie jest eksportowana ze store'u (plik innego toru), więc literał jest
- * tu powtórzony. Sprzężenie NIE opiera się na tym powtórzeniu: pilnuje go test
- * ścieżki produkcyjnej `swiezoscCaseBar.test.tsx` („podgląd przebiegu w
- * store'ie → chip nie ogłasza aktualności"), który wywołuje PRODUKCYJNĄ akcję
- * `setAnalysisRunSnapshot`. Zmiana znacznika w store'ie zapali ten test.
- */
-const LAYOUT_PODGLADU_PRZEBIEGU = 'analysis-run-snapshot';
-
-/**
  * Para rewizji „wynik ↔ model" dla chipu świeżości.
  *
  * WYJĄTEK od reguły „powłoka nie woła API" — ten sam, który
@@ -152,25 +139,22 @@ const LAYOUT_PODGLADU_PRZEBIEGU = 'analysis-run-snapshot';
  * podręczną per przebieg; powłoka nie ma własnego `fetch` ani własnej kopii.
  * Alternatywą byłoby zgadywanie rewizji wyniku — a zgadywanie jest zakazane.
  *
- * BRAK KONTRAKTU (dług nazwany karty U5). Gdy w `useSnapshotStore` leży PODGLĄD
- * PRZEBIEGU, `snapshot.header.revision` opisuje model SPRZED biegu, a nie model
- * bieżący — porównanie takiej rewizji z rewizją wyniku zawsze wychodziłoby
- * „równe", czyli „aktualne", niezależnie od tego, jak daleko pojechał żywy model
- * (dokładnie pomiar audytu). Chrom nie ma w tym stanie ŻADNEGO źródła bieżącej
- * rewizji: `useRewizjaModelu` (`ui2/adapters/inspectorAdapter`) czyta tę samą
- * migawkę, a odczytu z backendu — analogicznego do `refreshReadinessFromBackend`
- * z naprawy D5 — dla rewizji nikt nie zbudował. Zamiast zgadywać, zwracamy
- * `null`: znacznik przechodzi w stan nieustalony, nigdy w „aktualne".
+ * S9-11 / W-5 (spłata długu S9-3-DLUG-W5): rewizja bieżącego modelu pochodzi z
+ * JEDNEGO źródła — `useSnapshotStore.rewizjaBiezacegoModelu` — które przeżywa
+ * wgranie PODGLĄDU PRZEBIEGU (`setAnalysisRunSnapshot` go nie dotyka) i jest
+ * zasilane każdą odpowiedzią opisującą bieżący model (operacje domenowe,
+ * refresh, odczyt gotowości przy zimnym wejściu na link przebiegu). To samo
+ * pole czyta znacznik nagłówka ekranów wyników (`useSwiezoscNaglowka`) — dwa
+ * wskaźniki nie mogą już mówić sprzecznie (predykaty parami; przypięte testem
+ * `freshness/__tests__/jednaPrawdaStanuWynikow.test.tsx`). `null` = rewizja
+ * nieznana → chip uczciwie „nieustalone", nigdy „aktualne".
  */
 function useRewizjeSwiezosci(caseId: string | null): {
   rewizjaWyniku: number | null;
   rewizjaModelu: number | null;
 } {
   const runs = useExecutionRunsStore((state) => state.runs);
-  const rewizjaMigawki = useSnapshotStore((state) => state.snapshot?.header?.revision ?? null);
-  const podgladPrzebiegu = useSnapshotStore(
-    (state) => state.layout?.layout_version === LAYOUT_PODGLADU_PRZEBIEGU,
-  );
+  const rewizjaModelu = useSnapshotStore((state) => state.rewizjaBiezacegoModelu);
   const przebieg = useMemo(
     () => ostatniZakonczonyPrzebiegPrzypadku(runs, caseId),
     [runs, caseId],
@@ -179,8 +163,7 @@ function useRewizjeSwiezosci(caseId: string | null): {
 
   return {
     rewizjaWyniku: data?.analysisCaseContext?.rewizjaModelu ?? null,
-    rewizjaModelu:
-      podgladPrzebiegu || typeof rewizjaMigawki !== 'number' ? null : rewizjaMigawki,
+    rewizjaModelu,
   };
 }
 

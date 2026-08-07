@@ -46,6 +46,21 @@ export interface SnapshotState {
   caseId: string | null;
   /** ENM snapshot — single source of truth. */
   snapshot: EnergyNetworkModel | null;
+  /**
+   * JEDNO źródło prawdy o rewizji BIEŻĄCEGO modelu (karta S9-11, W-5 audytu
+   * `docs/sld/AUDYT_JAKOSCI_SLD_2026-08.md`). `snapshot.header.revision` opisuje
+   * migawkę WYŚWIETLANĄ — a ta bywa PODGLĄDEM PRZEBIEGU (`setAnalysisRunSnapshot`),
+   * czyli modelem SPRZED biegu. Konsumenci liczący świeżość wyników z rewizji
+   * wyświetlanej migawki dawali sprzeczne werdykty (chip „nieustalone" vs
+   * nagłówek wyników „aktualne" — trzy prawdy stanu z pomiaru audytu).
+   *
+   * Pole aktualizuje KAŻDA ścieżka, która poznaje bieżący model (operacja
+   * domenowa, refresh, odczyt gotowości przy podglądzie przebiegu) — i ŻADNA,
+   * która wgrywa podgląd. `null` = rewizja nieznana (uczciwe „nieustalone",
+   * nigdy wartość zmyślona). PREDYKATY PARAMI: wszystkie werdykty świeżości
+   * czytają TO pole, nie liczą własnej rewizji.
+   */
+  rewizjaBiezacegoModelu: number | null;
   /** Deterministic logical views (trunks, branches, terminals). */
   logicalViews: LogicalViewsV1 | null;
   /** Analysis readiness (blockers + warnings). */
@@ -219,6 +234,16 @@ function createHistoryEntry(
 
 const ANALYSIS_RUN_LAYOUT_VERSION = 'analysis-run-snapshot';
 
+/**
+ * Rewizja bieżącego modelu z odpowiedzi operacji domenowej / odświeżenia.
+ * Jedyny dozwolony dostawca pola `rewizjaBiezacegoModelu` (odpowiedź backendu
+ * ZAWSZE opisuje bieżący model — nigdy podgląd przebiegu).
+ */
+function rewizjaZOdpowiedzi(response: DomainOpResponseV1 | null | undefined): number | null {
+  const revision = response?.snapshot?.header?.revision;
+  return typeof revision === 'number' ? revision : null;
+}
+
 function snapshotResponseState(response: DomainOpResponseV1) {
   return {
     snapshot: response.snapshot,
@@ -227,6 +252,7 @@ function snapshotResponseState(response: DomainOpResponseV1) {
     fixActions: response.fix_actions,
     materializedParams: response.materialized_params,
     layout: response.layout,
+    rewizjaBiezacegoModelu: rewizjaZOdpowiedzi(response),
   };
 }
 
@@ -263,6 +289,7 @@ function isSnapshotVersionConflict(err: unknown): boolean {
 export const useSnapshotStore = create<SnapshotState>((set, get) => ({
   caseId: null,
   snapshot: null,
+  rewizjaBiezacegoModelu: null,
   logicalViews: null,
   readiness: null,
   fixActions: [],
@@ -482,9 +509,17 @@ export const useSnapshotStore = create<SnapshotState>((set, get) => ({
       if (get().caseId !== null && get().caseId !== caseId) {
         return response;
       }
-      // Podmieniamy WYŁĄCZNIE gotowość i akcje naprawcze — widoczna migawka
-      // (podgląd przebiegu) zostaje nietknięta.
-      set({ readiness: response.readiness, fixActions: response.fix_actions });
+      // Podmieniamy WYŁĄCZNIE gotowość, akcje naprawcze i rewizję bieżącego
+      // modelu — widoczna migawka (podgląd przebiegu) zostaje nietknięta.
+      // Rewizja pochodzi z tej samej odpowiedzi `refresh_snapshot`, która
+      // opisuje BIEŻĄCY model: to domyka lukę W-5 przy zimnym wejściu na
+      // głęboki link przebiegu (dotąd chrom nie miał ŻADNEGO źródła bieżącej
+      // rewizji i chip trwał na „nieustalone" — dług S9-3-DLUG-W5).
+      set({
+        readiness: response.readiness,
+        fixActions: response.fix_actions,
+        rewizjaBiezacegoModelu: rewizjaZOdpowiedzi(response) ?? get().rewizjaBiezacegoModelu,
+      });
       return response;
     } catch {
       // Gotowości nie udało się ustalić — zostaje stan nieustalony (`null`),
@@ -497,6 +532,7 @@ export const useSnapshotStore = create<SnapshotState>((set, get) => ({
     set({
       caseId: get().caseId,
       snapshot: response.snapshot,
+      rewizjaBiezacegoModelu: rewizjaZOdpowiedzi(response),
       logicalViews: response.logical_views,
       readiness: response.readiness,
       fixActions: response.fix_actions,
@@ -513,6 +549,9 @@ export const useSnapshotStore = create<SnapshotState>((set, get) => ({
     // Końcówka `/api/analysis-runs/{run}/snapshot` niesie wyłącznie `snapshot`
     // — bez widoków logicznych, zmian i sparametryzowanych kopii katalogu.
     // Nie zgadujemy ich: puste struktury zamiast wartości zmyślonych.
+    // `rewizjaBiezacegoModelu` CELOWO nietknięta (W-5): migawka przebiegu to
+    // PODGLĄD modelu, na którym policzono wynik — jej rewizja nie opisuje
+    // bieżącego modelu i nie wolno jej za niego podstawić.
     set({
       caseId: get().caseId,
       snapshot,
@@ -540,6 +579,7 @@ export const useSnapshotStore = create<SnapshotState>((set, get) => ({
     set({
       caseId: null,
       snapshot: null,
+      rewizjaBiezacegoModelu: null,
       logicalViews: null,
       readiness: null,
       fixActions: [],

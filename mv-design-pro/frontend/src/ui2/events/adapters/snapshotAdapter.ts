@@ -4,8 +4,10 @@
  *
  * Zrodlo store'u (WYLACZNIE odczyt/subscribe — zero zapisu, zero wolan API):
  * frontend/src/ui/topology/snapshotStore.ts — useSnapshotStore
- *   - snapshot.header.revision                          -> rev
- *     ('model-zmieniony', 'wyniki-niewazne')
+ *   - rewizjaBiezacegoModelu                             -> rev
+ *     ('model-zmieniony', 'wyniki-niewazne'; S9-11 / W-5: rewizja WYSWIETLANEJ
+ *     migawki bywa rewizja PODGLADU PRZEBIEGU — wgranie podgladu nie jest
+ *     zmiana modelu i nie moze uniewazniac wynikow)
  *   - lastChanges.{created,updated,deleted}_element_ids  -> zakres
  *     ('model-zmieniony' — identyfikatory elementow objetych zmiana)
  *   - readiness.blockers.length / readiness.warnings.length
@@ -64,19 +66,20 @@ export function startSnapshotAdapter(): () => void {
     return () => {};
   }
 
-  let ostatniaRewizja: number | null = stanPoczatkowy.snapshot?.header.revision ?? null;
+  let ostatniaRewizja: number | null = stanPoczatkowy.rewizjaBiezacegoModelu;
   let ostatnieBlokady = stanPoczatkowy.readiness?.blockers.length ?? 0;
   let ostatnieOstrzezenia = stanPoczatkowy.readiness?.warnings.length ?? 0;
 
   try {
     return useSnapshotStore.subscribe((stan) => {
-      // Brak snapshotu (np. brak aktywnego projektu) -> adapter nie emituje
-      // (przypadek brzegowy §4 karty).
-      if (!stan.snapshot) {
+      // Rewizja biezacego modelu nieznana (np. brak aktywnego projektu albo
+      // wylacznie podglad przebiegu bez odczytu gotowosci) -> adapter nie
+      // emituje (przypadek brzegowy §4 karty; brak danej nie jest zdarzeniem).
+      const rev = stan.rewizjaBiezacegoModelu;
+      if (rev == null) {
         return;
       }
 
-      const rev = stan.snapshot.header.revision;
       if (rev !== ostatniaRewizja) {
         ostatniaRewizja = rev;
         emituj({ typ: 'model-zmieniony', rev, zakres: zakresZmian(stan.lastChanges) });

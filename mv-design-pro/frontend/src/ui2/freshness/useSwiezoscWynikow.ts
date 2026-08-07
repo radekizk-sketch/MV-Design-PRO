@@ -7,9 +7,10 @@
  * docs/uiux/SPEC_POWIAZANIA_WARSTW_2026-07.md §3.
  *
  * Stan początkowy WYŁĄCZNIE ze store'ów istniejących (odczyt — zero zapisu, zero API):
- * - frontend/src/ui/topology/snapshotStore.ts — useSnapshotStore.snapshot.header.revision
- *   -> rewizjaModelu (fallback 0 gdy brak projektu — konwencja jak
- *   ui2/adapters/inspectorAdapter.ts `useRewizjaModelu`).
+ * - frontend/src/ui/topology/snapshotStore.ts — useSnapshotStore.rewizjaBiezacegoModelu
+ *   (S9-11 / W-5: JEDNO źródło rewizji bieżącego modelu, odporne na podgląd
+ *   przebiegu w store) -> rewizjaModelu (fallback 0 gdy brak projektu —
+ *   konwencja jak ui2/adapters/inspectorAdapter.ts `useRewizjaModelu`).
  * - frontend/src/ui/app-state/store.ts — useAppStateStore.activeCaseResultStatus
  *   ('NONE'|'FRESH'|'OUTDATED'): NONE -> 'brak', FRESH -> 'aktualne' (rewizjaDanej =
  *   bieżąca rewizjaModelu — status FRESH z definicji oznacza zgodność z modelem),
@@ -48,7 +49,7 @@ import { subskrybuj } from '../events';
 import type { OpisSwiezosci } from './freshnessModel';
 
 function rewizjaModeluZeStore(): number {
-  return useSnapshotStore.getState().snapshot?.header.revision ?? 0;
+  return useSnapshotStore.getState().rewizjaBiezacegoModelu ?? 0;
 }
 
 function stanPoczatkowy(): OpisSwiezosci {
