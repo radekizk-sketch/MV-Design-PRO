@@ -21,12 +21,20 @@
  * jako wartość odniesienia obok wielkości — także wprost z odpowiedzi.
  *
  * ROZSTRZYGNIĘCIE O UCZCIWOŚCI: rodzaje, dla których solver NIE wystawia progu
- * normatywnego (straty/LCC, niepewność, niezawodność, margines napięciowy),
- * mają `kryterium` mówiące to WPROST — „wielkość projektowa, solver nie wystawia
- * progu normatywnego". Fabrykowanie progu w UI byłoby fizyką w prezentacji.
+ * normatywnego (straty/LCC, niepewność, niezawodność), mają `kryterium` mówiące
+ * to WPROST — „wielkość projektowa, solver nie wystawia progu normatywnego".
+ * Fabrykowanie progu w UI byłoby fizyką w prezentacji.
+ *
+ * V126-WYGASZENIE (decyzja właściciela 2026-08-07): zbiór rodzajów tego pliku to
+ * rodzaje PREZENTOWANE, a nie komplet kontraktu backendu. Rodzaj wycofany z toru
+ * projektanta ma wpis z powodem w `nieprezentowane.ts`; parytet
+ * „prezentowane + nieprezentowane = komplet" pilnuje strażnik CI backendu.
+ * Wycofano też margines obciążalności P–U ze stabilności napięciowej — wielkość
+ * bez progu to jeszcze nie powód do wycofania, ale wielkość z przybliżenia
+ * o zaszytych stałych, podana jako wynik obliczeń, już tak.
  */
 
-import type { RodzajAnalizy } from './api';
+import type { RodzajPrezentowany } from './nieprezentowane';
 import type { IstotnoscStanu } from './strings';
 
 // ---------------------------------------------------------------------------
@@ -184,16 +192,23 @@ export const MAPA_WIARYGODNOSCI: MapaWerdyktu = {
 };
 
 // ---------------------------------------------------------------------------
-// PROJEKT — 14 rodzajów kontraktu `V126AnalysisType`
+// PROJEKT — rodzaje kontraktu `V126AnalysisType` PREZENTOWANE projektantowi
 // ---------------------------------------------------------------------------
 
 /**
- * Zbiór ZAMKNIĘTY typem `Record<RodzajAnalizy, …>`: rodzaj dodany w kontrakcie
- * bez projektu ekranu nie skompiluje się, a strażnik prezentacji
- * (`__tests__/prezentacja.straznik.test.tsx`) sprawdza drugi koniec pary —
- * że każdy rodzaj renderuje się BEZ kodów produkcyjnych na ekranie.
+ * Zbiór ZAMKNIĘTY typem `Record<RodzajPrezentowany, …>`: rodzaj dodany w
+ * kontrakcie backendu bez projektu ekranu NIE SKOMPILUJE SIĘ — trafi do
+ * `RodzajPrezentowany` (dopełnienie rejestru wycofań) i zabraknie go tutaj.
+ * Jedyna droga ominięcia to świadomy wpis z powodem w `nieprezentowane.ts`,
+ * a nie ciche pominięcie.
+ *
+ * Strażnik prezentacji (`__tests__/prezentacja.straznik.test.tsx`) sprawdza drugi
+ * koniec pary — że każdy prezentowany rodzaj renderuje się BEZ kodów
+ * produkcyjnych na ekranie; parytet z kontraktem backendu
+ * (`prezentowane + nieprezentowane = komplet`) pilnuje
+ * `backend/tests/ci/test_v126_rodzaje_parytet.py`.
  */
-export const PREZENTACJA: Record<RodzajAnalizy, PrezentacjaRodzaju> = {
+export const PREZENTACJA: Record<RodzajPrezentowany, PrezentacjaRodzaju> = {
   // -------------------------------------------------------------------------
   power_quality_harmonics: {
     pytanie:
@@ -265,9 +280,8 @@ export const PREZENTACJA: Record<RodzajAnalizy, PrezentacjaRodzaju> = {
       + 'można w nich obciążyć?',
     kryterium:
       'Wskaźnik bliskości załamania napięcia L < 0,5 dla każdego węzła (powyżej tej '
-      + 'wartości solver podnosi alarm). Margines obciążalności P–U jest wielkością '
-      + 'projektową — solver nie wystawia dla niej progu normatywnego.',
-    norma: 'wskaźnik L (Kessel–Glavitsch); krzywe P–U i Q–U',
+      + 'wartości solver podnosi alarm).',
+    norma: 'wskaźnik L (Kessel–Glavitsch); krzywa Q–U zapasu mocy biernej',
     werdykt: {
       rodzaj: 'zbiorczy',
       sciezkaTablicy: 'l_index_per_bus',
@@ -279,12 +293,26 @@ export const PREZENTACJA: Record<RodzajAnalizy, PrezentacjaRodzaju> = {
       wartoscSpelniona: 'false',
       obiektyDopelniacz: 'węzłów',
     },
+    /*
+     * V126-WYGASZENIE (decyzja właściciela 2026-08-07): margines obciążalności
+     * P–U ZDJĘTY z ekranu. Nie powstaje z krzywej P–U liczonej rozpływem, tylko
+     * z przybliżenia ze sztywności węzła o zaszytych stałych
+     * (`lambda_max = 1 + min(2,5; S_sc/P/20)`, solver `_voltage_stability`), więc
+     * nie niesie wartości inżynierskiej. Wartość ma tam wskaźnik L — ma jawne
+     * kryterium — i ten ZOSTAJE wraz z progiem.
+     *
+     * KLASA, NIE INSTANCJA: z ekranu znika CAŁA rodzina wielkości pochodzących
+     * z tego samego wzoru — `voltage_stability_margin_percent` (minimum sieci)
+     * oraz tabela `pv_curves` (`lambda_max`, `u_at_max`, `margin_percent`).
+     * `margin_percent = (lambda_max − 1) · 100 %`, więc zdjęcie samego marginesu
+     * z pozostawieniem `lambda_max` byłoby zdjęciem tej samej liczby w jednej
+     * skali i zostawieniem jej w drugiej.
+     *
+     * Pola POZOSTAJĄ w odpowiedzi backendu (kontrakty FROZEN). DŁUG NAZWANY:
+     * albo liczyć realną krzywą P–U rozpływem, albo zdjąć pola z kontraktu przy
+     * zmianie wersji głównej — `docs/v12xx/REJESTR_KONFLIKTOW.md`, V126-WYGASZENIE.
+     */
     wielkosciGlowne: [
-      {
-        sciezka: 'voltage_stability_margin_percent',
-        etykieta: 'Najmniejszy margines obciążalności P–U w sieci',
-        jednostka: '%',
-      },
       {
         sciezka: 'modal_analysis.smallest_eigenvalue',
         etykieta: 'Najmniejsza wartość własna macierzy wrażliwości (zapas do załamania)',
@@ -306,17 +334,6 @@ export const PREZENTACJA: Record<RodzajAnalizy, PrezentacjaRodzaju> = {
               true: { tekst: 'niespełnione', istotnosc: 'err' },
             },
           },
-        ],
-      },
-      {
-        sciezka: 'pv_curves',
-        tytul: 'Obciążalność węzłów (krzywa P–U)',
-        kluczRef: 'bus_ref',
-        etykietaRef: 'Szyna',
-        kolumny: [
-          { klucz: 'lambda_max', etykieta: 'Krotność obciążenia w punkcie załamania' },
-          { klucz: 'u_at_max', etykieta: 'Napięcie w punkcie załamania', jednostka: 'j.w.' },
-          { klucz: 'margin_percent', etykieta: 'Margines obciążalności', jednostka: '%' },
         ],
       },
       {
@@ -716,50 +733,15 @@ export const PREZENTACJA: Record<RodzajAnalizy, PrezentacjaRodzaju> = {
       + 'punktu podziału sieci — i porównaj warianty w oknie porównania A/B.',
   },
 
-  // -------------------------------------------------------------------------
-  benchmark_validation: {
-    pytanie:
-      'Czy solver odtwarza wyniki uznanych sieci odniesienia w zadanej tolerancji '
-      + '(kontrola poprawności narzędzia, nie projektu)?',
-    kryterium:
-      'Odchyłka wyniku od wartości referencyjnej ≤ tolerancja zadana dla każdej '
-      + 'pozycji porównania.',
-    norma: 'sieci odniesienia IEEE 9/14/39-bus · CIGRE MV',
-    werdykt: {
-      rodzaj: 'pojedynczy',
-      sciezki: ['status'],
-      mapa: {
-        PASS: { tekst: 'wszystkie porównania w tolerancji', istotnosc: 'ok' },
-        FAIL: { tekst: 'porównanie poza tolerancją', istotnosc: 'err' },
-        'dane niekompletne': { tekst: 'brak referencji — werdykt niewystawiony', istotnosc: 'warn' },
-      },
-    },
-    wielkosciGlowne: [],
-    tabele: [
-      {
-        sciezka: 'validation_report',
-        tytul: 'Porównanie z sieciami odniesienia',
-        kluczRef: 'network',
-        etykietaRef: 'Sieć odniesienia',
-        kolumny: [
-          { klucz: 'test', etykieta: 'Badana wielkość' },
-          { klucz: 'delta_percent', etykieta: 'Odchyłka od referencji', jednostka: '%' },
-          { klucz: 'tolerance_percent', etykieta: 'Tolerancja', jednostka: '%' },
-          {
-            klucz: 'status',
-            etykieta: 'Wynik porównania',
-            mapaStatusu: {
-              PASS: { tekst: 'w tolerancji', istotnosc: 'ok' },
-              FAIL: { tekst: 'poza tolerancją', istotnosc: 'err' },
-            },
-          },
-        ],
-      },
-    ],
-    nastepnyKrok:
-      'To badanie sprawdza narzędzie, nie projekt — wynik poza tolerancją zgłoś '
-      + 'jako defekt solvera, nie zmieniaj z jego powodu modelu sieci.',
-  },
+  /*
+   * V126-WYGASZENIE (decyzja właściciela 2026-08-07): `benchmark_validation` NIE
+   * MA tu projektu ekranu, bo został wycofany z toru projektanta — bada, czy
+   * solver odtwarza sieci odniesienia, czyli sprawdza NARZĘDZIE, nie projekt
+   * użytkownika. Zdolność żyje dalej w backendzie i w kontroli jakości
+   * (`backend/tests/application/reference_networks/test_ieee_benchmark_wiring.py`).
+   * Powód wycofania: `nieprezentowane.ts`; rozstrzygnięcie:
+   * `docs/v12xx/REJESTR_KONFLIKTOW.md`, wiersz V126-WYGASZENIE.
+   */
 
   // -------------------------------------------------------------------------
   uncertainty_sensitivity: {

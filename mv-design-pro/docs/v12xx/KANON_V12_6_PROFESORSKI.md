@@ -37,6 +37,27 @@ Dodatkowym torem wykonawczym V12.6 jest zakładka `E-35 / ncrfg-tests`, która r
 | E-49 | Walidacja benchmarkowa profesorska | `benchmark_validation` |
 | E-50 | Niepewność i wrażliwość | `uncertainty_sensitivity` |
 
+> **Nota wykonawcza (2026-08-07, karta V126-WYGASZENIE — decyzja właściciela „wycofać
+> OBA z ekranu”).** Zdolności powyżej pozostają w kanonie i w backendzie bez zmian;
+> zmienia się wyłącznie ich obecność w torze projektanta:
+>
+> - **E-49 / `benchmark_validation`** — zdjęty z listy wyboru okna „Analizy akademickie"
+>   i z nawigacji (`visibleInNavigation: false`), bo bada NARZĘDZIE, a nie projekt
+>   użytkownika. Zdolność jest wykonywana w kontroli jakości
+>   (`backend/tests/application/reference_networks/test_ieee_benchmark_wiring.py`:
+>   IEEE 9/14/39 wobec referencji pandapower, solver produkcyjny). Kontrakt
+>   `V126AnalysisType`, końcówki API i katalog `analysis-types` — nietknięte.
+> - **E-41 / `voltage_stability`** — z prezentacji zdjęto margines obciążalności P–U
+>   wraz z całą rodziną wielkości z tego samego przybliżenia ze sztywności węzła
+>   (`voltage_stability_margin_percent`, tabela `pv_curves`). Na ekranie zostaje
+>   wskaźnik L z kryterium `L < 0,5` oraz zapas mocy biernej (Q–U). Pola pozostają
+>   w odpowiedzi solvera — kontrakty FROZEN; dług nazwany w rejestrze konfliktów.
+>
+> Rejestr rodzajów nieprezentowanych (z powodem na każdy wpis):
+> `frontend/src/ui2/wyniki/akademickie/nieprezentowane.ts`. Parytet
+> „prezentowane + nieprezentowane = komplet kontraktu" pilnuje
+> `backend/tests/ci/test_v126_rodzaje_parytet.py`.
+
 ## 4. API
 
 Aktywny tor V12.6:
