@@ -396,3 +396,70 @@ describe('BLOK-PUSTY §5 — rama bloku obejmuje TREŚĆ, nie rezerwację kolumn
     });
   }
 });
+
+/*
+ * ===========================================================================
+ * §6 — GAŁĘZIE MARTWE NA FIKSTURZE (dopisane przy odbiorze karty, 2026-08-07)
+ * ===========================================================================
+ *
+ * DLACZEGO OSOBNO. Wyrocznie §1 chodzą po CAŁEJ SCENIE zbudowanej z realnej
+ * sieci — i to jest ich siła, ale i granica: widzą wyłącznie te rodzaje
+ * etykiet, które ta sieć produkuje. Wykonawca karty uczciwie zgłosił, że slot 2
+ * podpisu portu jest na fiksturze MARTWY (0 z 37 przęseł tam trafia), więc
+ * naprawił go „w ciemno". Nadzorca to sprawdził iniekcją: przywrócenie w tej
+ * gałęzi wpisywania CUDZEGO SLOTU do `rect` przeszło 29/29 NA ZIELONO.
+ *
+ * Fix był dobry, brakowało STRAŻNIKA. Deklaracja „prostokąt KAŻDEJ etykiety
+ * niesie tusz" obejmuje cztery resolvery, a pinowała trzy (reguła KLASA §4:
+ * deklaracja bez testu = fałszywa pewność). Poniższe przypadki wołają
+ * resolvery WPROST, z właścicielem spreparowanym tak, żeby wejść w gałąź,
+ * której realna sieć dziś nie wywołuje — więc pokrycie przestaje zależeć od
+ * tego, co akurat jest w fiksturze.
+ */
+describe('BLOK-PUSTY §6 — tusz w gałęziach, których realna sieć nie wywołuje', () => {
+  it('podpis portu w slocie 2 (za szeroki na slot 1) niesie TUSZ, nie cudzy slot', () => {
+    const text = 'Odpływ do stacji odbiorczej nr 12';
+    const szerokoscTuszu = measureLabelWidth(text, 't3');
+    // Slot 1 celowo za wąski -> resolver schodzi do slotu 2 (gałąź martwa na fiksturze).
+    const etykiety = resolveLabels({
+      portCaptions: [
+        {
+          ownerRef: 'stacja/x/port/1',
+          text,
+          anchorX: 100,
+          primaryRect: { x: 80, y: 0, width: 8, height: 12 },
+          fallbackRect: { x: 0, y: 40, width: szerokoscTuszu + 600, height: 12 },
+        },
+      ],
+    });
+    expect(etykiety).toHaveLength(1);
+    const etykieta = etykiety[0];
+    expect(etykieta.slotIndex, 'przypadek ma ćwiczyć slot 2, inaczej nie testuje niczego').toBe(2);
+    // Sedno: prostokąt to TUSZ, nie szerokość slotu (600 j.św. nadmiaru).
+    expect(etykieta.rect.width).toBeLessThan(szerokoscTuszu + 1);
+    expect(labelRectsWiderThanInk([etykieta])).toEqual([]);
+    // A rezerwacja NIE znikła — układ nadal wie, ile miejsca zajmuje slot.
+    expect(labelReservationRect(etykieta).width).toBe(szerokoscTuszu + 600);
+  });
+
+  it('środek napisu w slocie 2 nie drgnął wobec środka slotu', () => {
+    const text = 'Odpływ do stacji odbiorczej nr 12';
+    const slot = { x: 0, y: 40, width: measureLabelWidth(text, 't3') + 600, height: 12 };
+    const [etykieta] = resolveLabels({
+      portCaptions: [
+        {
+          ownerRef: 'stacja/x/port/1',
+          text,
+          anchorX: 100,
+          primaryRect: { x: 80, y: 0, width: 8, height: 12 },
+          fallbackRect: slot,
+        },
+      ],
+    });
+    const srodekSlotu = slot.x + slot.width / 2;
+    const srodekTuszu = etykieta.rect.x + etykieta.rect.width / 2;
+    // Zwężenie do tuszu ma być SYMETRYCZNE — inaczej napis przeskakuje w bok
+    // wobec swojego leadera, a to defekt widoczny gołym okiem.
+    expect(Math.abs(srodekTuszu - srodekSlotu)).toBeLessThanOrEqual(GRID);
+  });
+});
