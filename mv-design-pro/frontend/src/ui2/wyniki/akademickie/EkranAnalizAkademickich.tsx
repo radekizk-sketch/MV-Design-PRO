@@ -28,7 +28,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import './akademickie.css';
-import type { AdvancementMode } from '../../shell/modeModel';
+import { isModeAtLeast, type AdvancementMode } from '../../shell/modeModel';
 import { useAppStateStore } from '../../../ui/app-state';
 import { useShellStore } from '../../shell/useShellStore';
 import { opisSwiezosci, useSwiezoscWynikow } from '../../freshness';
@@ -450,7 +450,7 @@ export function EkranAnalizAkademickich({
   const activeCaseId = useAppStateStore((s) => s.activeCaseId);
   const setWynikiTab = useShellStore((s) => s.setWynikiTab);
   const akcjaPrzypadki = useAkcjaPrzejdzDoPrzypadkow();
-  const trybEkspercki = trybZaawansowania === 'expert';
+  const trybEkspercki = isModeAtLeast(trybZaawansowania, 'expert');
   const swiezosc = useSwiezoscWynikow();
 
   const [rodzaje, setRodzaje] = useState<StanRodzajow>({ rodzaj: 'ladowanie' });
@@ -483,10 +483,12 @@ export function EkranAnalizAkademickich({
 
   // Bez aktywnego przypadku okno nie ma czego uruchomić, więc NIE pyta backendu
   // o katalog rodzajów — stan zerowy jest w pełni lokalny (wzór `EkranSsci`).
+  // V126-JEZYK: za bramą opracowania okno też milczy — brama zamyka również
+  // ruch sieciowy, nie tylko rysunek (inaczej „ukryte" okno dalej pyta backend).
   useEffect(() => {
-    if (activeCaseId === null) return;
+    if (activeCaseId === null || !trybEkspercki) return;
     wczytajRodzaje();
-  }, [activeCaseId, wczytajRodzaje]);
+  }, [activeCaseId, trybEkspercki, wczytajRodzaje]);
 
   // Zmiana rodzaju zeruje wynik i formularz — parametry jednego rodzaju nie mogą
   // wyciec do żądania innego (klucze są rozłączne wg kontraktu solvera).
@@ -518,6 +520,27 @@ export function EkranAnalizAkademickich({
         setStan({ rodzaj: 'blad', komunikat: err instanceof Error ? err.message : S.blad });
       });
   };
+
+  // V126-JEZYK: brama opracowania. Poza trybem eksperckim okno NIE renderuje
+  // treści analizy — projektant na torze podstawowym nie ogląda pakietu, którego
+  // część rodzajów nie ma jeszcze werdyktu z kryterium. Brama jest w oknie
+  // (a nie tylko w pasku zakładek), bo wejść do zdolności są DWA: zakładka
+  // warsztatu Wyników i powierzchnia trasowa E-40…E-50.
+  if (!trybEkspercki) {
+    return (
+      <div className="mvd-akad" data-testid="mvd-akad-ekran">
+        <header className="mvd-akad-naglowek">
+          <h2 className="mvd-akad-tytul">{S.tytul}</h2>
+        </header>
+        <StanPanel
+          komunikat={S.bramaTytul}
+          opis={`${S.bramaOpis} ${S.bramaJakWejsc}`}
+          wariant="info"
+          testid="mvd-akad-brama-opracowania"
+        />
+      </div>
+    );
+  }
 
   // Bez aktywnego przypadku — uczciwa instrukcja z akcją (bez wołań API).
   if (activeCaseId === null) {
@@ -683,30 +706,29 @@ export function EkranAnalizAkademickich({
                   {stan.dane.przebieg.deterministic_hash}
                 </span>
               </div>
-              {trybEkspercki && (
-                <>
-                  <div className="mvd-akad-wiersz">
-                    <span className="mvd-akad-wiersz-etyk">{S.runId}</span>
-                    <span className="mvd-akad-wiersz-wartosc mvd-num">{stan.dane.przebieg.run_id}</span>
-                  </div>
-                  <div className="mvd-akad-wiersz">
-                    <span className="mvd-akad-wiersz-etyk">{S.wersjaSolwera}</span>
-                    <span className="mvd-akad-wiersz-wartosc mvd-num">
-                      {stan.dane.wynik.result.solver_version}
-                    </span>
-                  </div>
-                  <div className="mvd-akad-wiersz">
-                    <span className="mvd-akad-wiersz-etyk">{S.odciskWejscia}</span>
-                    <span className="mvd-akad-wiersz-wartosc mvd-num">
-                      {stan.dane.wynik.result.input_hash}
-                    </span>
-                  </div>
-                  <div className="mvd-akad-wiersz">
-                    <span className="mvd-akad-wiersz-etyk">{S.utworzono}</span>
-                    <span className="mvd-akad-wiersz-wartosc mvd-num">{stan.dane.wynik.created_at}</span>
-                  </div>
-                </>
-              )}
+              {/* V126-JEZYK: po bramie opracowania całe okno jest ekspercke,
+                  więc drugi warunek `trybEkspercki` tutaj byłby MARTWY (zawsze
+                  prawdziwy) — identyfikatory techniczne renderują się wprost. */}
+              <div className="mvd-akad-wiersz">
+                <span className="mvd-akad-wiersz-etyk">{S.runId}</span>
+                <span className="mvd-akad-wiersz-wartosc mvd-num">{stan.dane.przebieg.run_id}</span>
+              </div>
+              <div className="mvd-akad-wiersz">
+                <span className="mvd-akad-wiersz-etyk">{S.wersjaSolwera}</span>
+                <span className="mvd-akad-wiersz-wartosc mvd-num">
+                  {stan.dane.wynik.result.solver_version}
+                </span>
+              </div>
+              <div className="mvd-akad-wiersz">
+                <span className="mvd-akad-wiersz-etyk">{S.odciskWejscia}</span>
+                <span className="mvd-akad-wiersz-wartosc mvd-num">
+                  {stan.dane.wynik.result.input_hash}
+                </span>
+              </div>
+              <div className="mvd-akad-wiersz">
+                <span className="mvd-akad-wiersz-etyk">{S.utworzono}</span>
+                <span className="mvd-akad-wiersz-wartosc mvd-num">{stan.dane.wynik.created_at}</span>
+              </div>
             </div>
           </section>
 

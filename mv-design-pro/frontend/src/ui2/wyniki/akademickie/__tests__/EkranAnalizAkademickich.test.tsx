@@ -212,7 +212,7 @@ describe('EkranAnalizAkademickich — stany wejściowe', () => {
     useAppStateStore.setState({ activeCaseId: null });
     const fetchSpy = vi.fn();
     vi.stubGlobal('fetch', fetchSpy);
-    render(<EkranAnalizAkademickich trybZaawansowania="basic" />);
+    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
     expect(screen.getByTestId('mvd-akad-brak-przypadku')).toBeInTheDocument();
     expect(screen.queryByTestId('mvd-akad-uruchom')).not.toBeInTheDocument();
     expect(fetchSpy).not.toHaveBeenCalled();
@@ -220,14 +220,14 @@ describe('EkranAnalizAkademickich — stany wejściowe', () => {
 
   it('lista rodzajów pochodzi z katalogu backendu — komplet czternastu pozycji', async () => {
     ustawFetch();
-    render(<EkranAnalizAkademickich trybZaawansowania="basic" />);
+    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
     const selektor = (await screen.findByTestId('mvd-akad-rodzaj')) as HTMLSelectElement;
     expect(Array.from(selektor.options).map((o) => o.value)).toEqual(RODZAJE);
   });
 
   it('rodzaj bez ekranu trasowego jest osiągalny (dobór uziemienia punktu neutralnego)', async () => {
     ustawFetch();
-    render(<EkranAnalizAkademickich trybZaawansowania="basic" />);
+    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
     const selektor = (await screen.findByTestId('mvd-akad-rodzaj')) as HTMLSelectElement;
     expect(Array.from(selektor.options).map((o) => o.value)).toContain('neutral_earthing_design');
     expect(Array.from(selektor.options).map((o) => o.value)).toContain('earth_fault_detection');
@@ -235,7 +235,7 @@ describe('EkranAnalizAkademickich — stany wejściowe', () => {
 
   it('katalog niedostępny → uczciwy błąd z ponowieniem, ZERO zaszytej listy zastępczej', async () => {
     ustawFetch({ rodzaje: 'blad' });
-    render(<EkranAnalizAkademickich trybZaawansowania="basic" />);
+    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
     expect(await screen.findByTestId('mvd-akad-rodzaje-blad')).toBeInTheDocument();
     expect(screen.queryByTestId('mvd-akad-rodzaj')).not.toBeInTheDocument();
     expect(screen.queryByTestId('mvd-akad-uruchom')).not.toBeInTheDocument();
@@ -243,7 +243,7 @@ describe('EkranAnalizAkademickich — stany wejściowe', () => {
 
   it('katalog pusty → uczciwy stan zerowy, bez możliwości uruchomienia', async () => {
     ustawFetch({ rodzaje: [] });
-    render(<EkranAnalizAkademickich trybZaawansowania="basic" />);
+    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
     expect(await screen.findByTestId('mvd-akad-rodzaje-brak')).toBeInTheDocument();
     expect(screen.queryByTestId('mvd-akad-uruchom')).not.toBeInTheDocument();
   });
@@ -252,7 +252,7 @@ describe('EkranAnalizAkademickich — stany wejściowe', () => {
 describe('EkranAnalizAkademickich — ścieżka natywna biegu', () => {
   it('klik „Uruchom" → wynik, ślad, dowód i raport z czterech końcówek', async () => {
     const mock = ustawFetch({ krokowSladu: 4, sekcjiRaportu: 3 });
-    render(<EkranAnalizAkademickich trybZaawansowania="basic" />);
+    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
     await wybierzRodzaj('voltage_stability');
 
     fireEvent.click(screen.getByTestId('mvd-akad-uruchom'));
@@ -273,7 +273,7 @@ describe('EkranAnalizAkademickich — ścieżka natywna biegu', () => {
 
   it('rodzaj bez parametrów wysyła PUSTY ładunek — zero fabrykacji danych wejściowych', async () => {
     const mock = ustawFetch();
-    render(<EkranAnalizAkademickich trybZaawansowania="basic" />);
+    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
     await wybierzRodzaj('motor_starting');
     fireEvent.click(screen.getByTestId('mvd-akad-uruchom'));
     await screen.findByTestId('mvd-akad-wyniki');
@@ -285,7 +285,7 @@ describe('EkranAnalizAkademickich — ścieżka natywna biegu', () => {
 
   it('błąd biegu → uczciwy komunikat backendu (pole detail), bez wyniku', async () => {
     ustawFetch({ bladBiegu: 'Przypadek nie ma committed ENM z węzłami.' });
-    render(<EkranAnalizAkademickich trybZaawansowania="basic" />);
+    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
     await wybierzRodzaj('voltage_stability');
     fireEvent.click(screen.getByTestId('mvd-akad-uruchom'));
 
@@ -298,7 +298,7 @@ describe('EkranAnalizAkademickich — ścieżka natywna biegu', () => {
 describe('EkranAnalizAkademickich — komplet artefaktów bez zaszytych limitów', () => {
   it('ślad dłuższy niż 8 kroków renderuje się w CAŁOŚCI (limit powierzchni zastanej)', async () => {
     ustawFetch({ krokowSladu: 25 });
-    render(<EkranAnalizAkademickich trybZaawansowania="basic" />);
+    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
     await wybierzRodzaj('voltage_stability');
     fireEvent.click(screen.getByTestId('mvd-akad-uruchom'));
     await screen.findByTestId('mvd-akad-wyniki');
@@ -311,7 +311,7 @@ describe('EkranAnalizAkademickich — komplet artefaktów bez zaszytych limitów
 
   it('dowód dłuższy niż 8 kroków renderuje się w CAŁOŚCI', async () => {
     ustawFetch({ krokowSladu: 17 });
-    render(<EkranAnalizAkademickich trybZaawansowania="basic" />);
+    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
     await wybierzRodzaj('voltage_stability');
     fireEvent.click(screen.getByTestId('mvd-akad-uruchom'));
     await screen.findByTestId('mvd-akad-wyniki');
@@ -322,7 +322,7 @@ describe('EkranAnalizAkademickich — komplet artefaktów bez zaszytych limitów
 
   it('raport z więcej niż 3 sekcjami renderuje się w CAŁOŚCI (limit zastanej)', async () => {
     ustawFetch({ sekcjiRaportu: 7 });
-    render(<EkranAnalizAkademickich trybZaawansowania="basic" />);
+    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
     await wybierzRodzaj('voltage_stability');
     fireEvent.click(screen.getByTestId('mvd-akad-uruchom'));
     await screen.findByTestId('mvd-akad-wyniki');
@@ -335,7 +335,7 @@ describe('EkranAnalizAkademickich — komplet artefaktów bez zaszytych limitów
     const wynik: Record<string, unknown> = {};
     for (let i = 0; i < 30; i += 1) wynik[`pole_${i}`] = i;
     ustawFetch({ wynik });
-    render(<EkranAnalizAkademickich trybZaawansowania="basic" />);
+    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
     await wybierzRodzaj('voltage_stability');
     fireEvent.click(screen.getByTestId('mvd-akad-uruchom'));
     await screen.findByTestId('mvd-akad-wyniki');
@@ -348,7 +348,7 @@ describe('EkranAnalizAkademickich — komplet artefaktów bez zaszytych limitów
 describe('EkranAnalizAkademickich — parametry projektowe', () => {
   it('wypełnione pole trafia do żądania; pola puste NIE tworzą kluczy', async () => {
     const mock = ustawFetch();
-    render(<EkranAnalizAkademickich trybZaawansowania="basic" />);
+    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
     await wybierzRodzaj('opf_loss_lcc');
 
     fireEvent.click(screen.getByTestId('mvd-akad-parametry-przelacz'));
@@ -365,7 +365,7 @@ describe('EkranAnalizAkademickich — parametry projektowe', () => {
 
   it('lista silników: dodanie wiersza i wypełnienie trafia do ładunku', async () => {
     const mock = ustawFetch();
-    render(<EkranAnalizAkademickich trybZaawansowania="basic" />);
+    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
     await wybierzRodzaj('motor_starting');
 
     fireEvent.click(screen.getByTestId('mvd-akad-parametry-przelacz'));
@@ -382,7 +382,7 @@ describe('EkranAnalizAkademickich — parametry projektowe', () => {
 
   it('zmiana rodzaju czyści parametry — wpisy nie wyciekają do innego rodzaju', async () => {
     const mock = ustawFetch();
-    render(<EkranAnalizAkademickich trybZaawansowania="basic" />);
+    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
     await wybierzRodzaj('hosting_capacity');
     fireEvent.click(screen.getByTestId('mvd-akad-parametry-przelacz'));
     fireEvent.change(screen.getByTestId('mvd-akad-pole-hosting_monte_carlo_n'), {
@@ -398,7 +398,7 @@ describe('EkranAnalizAkademickich — parametry projektowe', () => {
 
   it('rodzaj liczący wprost z modelu informuje o braku parametrów', async () => {
     ustawFetch();
-    render(<EkranAnalizAkademickich trybZaawansowania="basic" />);
+    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
     await wybierzRodzaj('power_quality_harmonics');
     expect(screen.queryByTestId('mvd-akad-parametry-przelacz')).not.toBeInTheDocument();
   });
@@ -407,7 +407,7 @@ describe('EkranAnalizAkademickich — parametry projektowe', () => {
 describe('EkranAnalizAkademickich — dane odniesienia i odesłanie do SSCI', () => {
   it('rodzaj z katalogiem odniesienia pobiera go dopiero po rozwinięciu', async () => {
     const mock = ustawFetch();
-    render(<EkranAnalizAkademickich trybZaawansowania="basic" />);
+    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
     await wybierzRodzaj('power_quality_harmonics');
 
     const przedRozwinieciem = mock.mock.calls.filter((w) =>
@@ -425,14 +425,14 @@ describe('EkranAnalizAkademickich — dane odniesienia i odesłanie do SSCI', ()
 
   it('rodzaj bez katalogu odniesienia nie pokazuje sekcji', async () => {
     ustawFetch();
-    render(<EkranAnalizAkademickich trybZaawansowania="basic" />);
+    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
     await wybierzRodzaj('motor_starting');
     expect(screen.queryByTestId('mvd-akad-katalog')).not.toBeInTheDocument();
   });
 
   it('rodzaj SSCI kieruje do okna werdyktu zamiast duplikować werdykt', async () => {
     ustawFetch();
-    render(<EkranAnalizAkademickich trybZaawansowania="basic" />);
+    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
     await wybierzRodzaj('ssci_impedance');
 
     fireEvent.click(screen.getByTestId('mvd-akad-przejdz-ssci'));
@@ -443,19 +443,17 @@ describe('EkranAnalizAkademickich — dane odniesienia i odesłanie do SSCI', ()
 describe('EkranAnalizAkademickich — świeżość i tryb ekspercki', () => {
   it('świeżość pochodzi ze wspólnego kontraktu — bez wyników stan „brak wyników"', async () => {
     ustawFetch();
-    render(<EkranAnalizAkademickich trybZaawansowania="basic" />);
+    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
     expect(screen.getByTestId('mvd-akad-swiezosc')).toHaveTextContent('brak wyników');
   });
 
-  it('identyfikatory techniczne wyłącznie w trybie eksperckim', async () => {
+  // INTENCJA (zachowana po V126-JEZYK): identyfikatory techniczne przebiegu są
+  // treścią ekspercką. Po wprowadzeniu bramy opracowania CAŁE okno jest ekspercke
+  // (tryb podstawowy pokazuje bramę), więc rozgałęzienie „ekspercki vs nie"
+  // WEWNĄTRZ okna byłoby martwym warunkiem — testujemy więc parę: okno widoczne
+  // ⇒ identyfikatory są; tryb podstawowy ⇒ okna nie ma wcale (test bramy niżej).
+  it('identyfikatory techniczne przebiegu są w oknie eksperckim', async () => {
     ustawFetch();
-    const { unmount } = render(<EkranAnalizAkademickich trybZaawansowania="basic" />);
-    await wybierzRodzaj('voltage_stability');
-    fireEvent.click(screen.getByTestId('mvd-akad-uruchom'));
-    await screen.findByTestId('mvd-akad-wyniki');
-    expect(screen.queryByText(RUN_ID)).not.toBeInTheDocument();
-    unmount();
-
     render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
     await wybierzRodzaj('voltage_stability');
     fireEvent.click(screen.getByTestId('mvd-akad-uruchom'));
@@ -471,5 +469,36 @@ describe('EkranAnalizAkademickich — świeżość i tryb ekspercki', () => {
     const selektor = (await screen.findByTestId('mvd-akad-rodzaj')) as HTMLSelectElement;
     expect(selektor.value).toBe('earthing_safety');
     expect(screen.getByTestId('mvd-akad-parametry-przelacz')).toBeInTheDocument();
+  });
+});
+
+/**
+ * V126-JEZYK: brama opracowania. Okno ma DWA wejścia (zakładka warsztatu
+ * Wyników + powierzchnia trasowa E-40…E-50), więc brama siedzi w oknie, nie
+ * tylko w pasku. Brama zamyka RÓWNIEŻ ruch sieciowy — „ukryte" okno, które
+ * dalej pyta backend o katalog rodzajów, nie jest ukryte.
+ */
+describe('EkranAnalizAkademickich — brama opracowania (V126-JEZYK)', () => {
+  it('tor podstawowy: brama zamiast treści, ZERO wołań do backendu', () => {
+    const fetchMock = ustawFetch();
+    render(<EkranAnalizAkademickich trybZaawansowania="basic" />);
+    expect(screen.getByTestId('mvd-akad-brama-opracowania')).toBeInTheDocument();
+    expect(screen.queryByTestId('mvd-akad-wybor')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('mvd-akad-uruchom')).not.toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('tor rozszerzony: brama nadal zamknięta', () => {
+    ustawFetch();
+    render(<EkranAnalizAkademickich trybZaawansowania="extended" />);
+    expect(screen.getByTestId('mvd-akad-brama-opracowania')).toBeInTheDocument();
+  });
+
+  it('tryb ekspercki: brama otwarta, okno pyta katalog rodzajów (kontrola dodatnia)', async () => {
+    const fetchMock = ustawFetch();
+    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
+    await screen.findByTestId('mvd-akad-rodzaj');
+    expect(screen.queryByTestId('mvd-akad-brama-opracowania')).not.toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalled();
   });
 });

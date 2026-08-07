@@ -204,6 +204,14 @@ export const AKADEMICKIE_STRINGS = {
     'Werdykt stabilności podsynchronicznej (kryterium Nyquista) prezentuje osobne okno '
     + '„Stabilność SSCI" — ma własny kontrakt odpowiedzi i własny model prezentacji.',
 
+  // Brama opracowania (V126-JEZYK — ocena właściciela 0/10 z 2026-08-07)
+  bramaTytul: 'Pakiet analiz specjalistycznych — w opracowaniu',
+  bramaOpis:
+    'Część rodzajów tego pakietu nie ma jeszcze werdyktu z jawnym kryterium normatywnym, '
+    + 'więc pakiet nie wchodzi na podstawowy tor pracy projektanta. Dostęp pozostaje '
+    + 'w trybie eksperckim — do przeglądu wielkości i śladu obliczeń.',
+  bramaJakWejsc: 'Przełącz tryb pracy na ekspercki (przełącznik trybu w pasku powłoki).',
+
   // Wspólne
   kreska: '—',
   tak: 'tak',
