@@ -62,6 +62,15 @@ const REGULY: readonly Regula[] = [
   { nazwa: 'surowy zapis JSON', wzorzec: /[{}]/ },
   // identyfikator maszynowy z podkreśleniem: `smallest_eigenvalue`, `checks_passed`
   { nazwa: 'identyfikator z podkreśleniem', wzorzec: /\b[a-z]{2,}_[a-z][a-z0-9_]*\b/ },
+  // Anglicyzmy w interfejsie (zakaz K10, dyrektywa właściciela 2026-07-29).
+  // Lista wyprowadzona POMIAREM z renderu okna i z odpowiedzi backendu — każdy
+  // wyraz był realnie widoczny na ekranie przed tą kartą („committed modelu
+  // sieci", „ślad WHITE BOX", „sanity", „alert", „hosting capacity").
+  {
+    nazwa: 'anglicyzm w interfejsie',
+    wzorzec:
+      /\b(committed|white\s?box|sanity|alert|checks?|hash|run|trace|proof|report|status|hosting|capacity|margin|verdict|settings|threshold|warning|error|loading|summary)\b/i,
+  },
 ];
 
 /**
@@ -245,6 +254,8 @@ async function uruchomRodzaj(rodzaj: string): Promise<HTMLElement> {
 describe('strażnik prezentacji — kontrola dodatnia reguł', () => {
   it('rozpoznaje dokładnie te napisy, które właściciel ocenił na 0/10', () => {
     const zrzuty = [
+      'Pakiet analiz liczonych na committed modelu sieci',
+      'Ślad WHITE BOX przebiegu',
       'modal_analysis.critical_mode.participating_buses[0]',
       'l_index_per_bus[3].alert',
       'sanity.checks_total',

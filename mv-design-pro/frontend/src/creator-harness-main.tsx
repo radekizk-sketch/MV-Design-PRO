@@ -51,6 +51,15 @@ import {
 import { EkranOdbioru } from './ui2/wyniki/odbior';
 import { EkranEstymacji } from './ui2/wyniki/estymacja';
 import { EkranSsci } from './ui2/wyniki/ssci';
+import { EkranAnalizAkademickich } from './ui2/wyniki/akademickie';
+// V126-JEZYK: scena "wyniki-warsztat" sluzy POMIAROWI UKLADU paska zakladek
+// (defekt ze zrzutu 3/3 wlasciciela: pasek wyjezdzal poza kadr) przy realnych
+// szerokosciach 1280/1440/1920 px - jsdom ukladu nie prowadzi.
+import { WynikiWarsztat } from './ui2/spaces/wyniki/WynikiWarsztat';
+// V126-JEZYK: scena "akademickie" karmiona REALNYMI odpowiedziami solvera
+// (ta sama fixtura, na ktorej stoi straznik prezentacji) - zrzut pokazuje
+// dokladnie to, co zobaczy projektant, a nie wyidealizowana atrape.
+import odpowiedziV126 from './ui2/wyniki/akademickie/__tests__/odpowiedziSolvera.json';
 import { SekcjaSilySieci } from './ui2/oze/pulpit';
 import { EkranRozplywu } from './ui2/wyniki/rozplyw';
 import { EkranZwarc } from './ui2/wyniki/zwarcia';
@@ -801,6 +810,51 @@ const RUN_KONTRAKT_SCENY: Record<string, string> = {
 };
 
 const originalFetch = window.fetch.bind(window);
+/**
+ * Slad WHITE BOX sceny "akademickie" (V126-JEZYK) - ksztalt 1:1 z krokiem
+ * `TraceBuilder.add` po naprawie u zrodla: kolumna "Wynik" niesie POLSKA
+ * postac liczby z jednostka (`result_pl`), nie zrzut slownika.
+ */
+function sladDemoV126(rodzaj: string): Record<string, unknown>[] {
+  const kroki: Record<string, Record<string, unknown>[]> = {
+    earthing_safety: [
+      {
+        step: 1,
+        key: 'ieee80_sverak',
+        formula: 'Rg = rho * [1/Lc + 1/sqrt(20A)*(1 + 1/(1+h*sqrt(20/A)))]',
+        data: { area_m2: 2400, lc_m: 1180, rho_ohm_m: 100 },
+        substitution: 'R_g = 100 \u03a9\u00b7m \u00b7 (1/1180 m + cz\u0142on powierzchniowy siatki)',
+        result: { r_g_ohm: 0.371939, gpr_kv: 1.784 },
+        result_pl: 'Rezystancja uziomu: 0,371939 \u03a9; wzrost potencja\u0142u: 1,784 kV',
+        unit_check:
+          'Rezystywno\u015b\u0107 [\u03a9\u00b7m] razy odwrotno\u015b\u0107 d\u0142ugo\u015bci [1/m] daje rezystancj\u0119 [\u03a9]; '
+          + 'pr\u0105d [kA] razy rezystancja [\u03a9] daje napi\u0119cie [kV].',
+        proof_ref: 'proof:v126:earthing_safety:ieee80_sverak',
+        proof_status: 'complete',
+        reporting_status: 'reportable',
+      },
+    ],
+    voltage_stability: [
+      {
+        step: 1,
+        key: 'voltage_stability_indices',
+        formula: 'L_j ~= P_load / S_sc * 4; PM = (lambda_max - 1) * 100%',
+        data: { buses: 2 },
+        substitution:
+          'Dla ka\u017cdego w\u0119z\u0142a wyznaczono margines obci\u0105\u017calno\u015bci z krzywej P\u2013U, zapas mocy '
+          + 'biernej z krzywej Q\u2013U oraz wska\u017anik blisko\u015bci za\u0142amania napi\u0119cia L.',
+        result: { smallest_eigenvalue: 0.998667 },
+        result_pl: 'Najmniejsza warto\u015b\u0107 w\u0142asna macierzy wra\u017cliwo\u015bci: 0,998667',
+        unit_check: 'Wska\u017anik L jest bezwymiarowy; margines obci\u0105\u017calno\u015bci w %.',
+        proof_ref: 'proof:v126:voltage_stability:voltage_stability_indices',
+        proof_status: 'complete',
+        reporting_status: 'reportable',
+      },
+    ],
+  };
+  return kroki[rodzaj] ?? kroki.voltage_stability;
+}
+
 window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
   const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
 
@@ -1699,6 +1753,75 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
           { iteration: 1, objective_j: 27.9, max_abs_residual: 0.021, step_norm: 0.0009, h_jacobian: [[1, 0]], gain_matrix_g: [[2, 0]], residual_r: [0.021, 0.002], delta_x: [0.0009, 0.0], state_x: [1.029, -0.026] },
           { iteration: 2, objective_j: 27.8, max_abs_residual: 0.021, step_norm: 0.00001, h_jacobian: [[1, 0]], gain_matrix_g: [[2, 0]], residual_r: [0.021, 0.002], delta_x: [0.0, 0.0], state_x: [1.029, -0.0262] },
         ],
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
+  // ---- Scena "akademickie" (V126-JEZYK): pakiet analiz specjalistycznych V12.6.
+  // Wszystkie rodzaje karmione REALNYMI odpowiedziami solvera z fixtury CI.
+  if (url.includes('/api/catalog/v126/analysis-types')) {
+    return new Response(
+      JSON.stringify({ namespace: 'analysis-types', items: Object.keys(odpowiedziV126) }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
+  if (url.includes('/v126/') && !url.includes('ssci_impedance')) {
+    const rodzaj = Object.keys(odpowiedziV126).find((kod) => url.includes(kod)) ?? 'voltage_stability';
+    const kroki = sladDemoV126(rodzaj);
+    if (url.includes('/trace')) {
+      return new Response(
+        JSON.stringify({
+          run_id: 'run-akad-1', analysis_type: rodzaj,
+          trace_version: 'AcademicWhiteBoxTraceV1', deterministic_hash: 'akad-hash-demo',
+          steps: kroki,
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      );
+    }
+    if (url.includes('/proof')) {
+      return new Response(
+        JSON.stringify({
+          contract: 'AcademicProofPackV1', proof_id: 'proof:v126:demo', run_id: 'run-akad-1',
+          case_id: 'case-demo', analysis_type: rodzaj, source_result_hash: 'akad-hash-demo',
+          trace_step_count: kroki.length,
+          steps: kroki.map((krok, i) => ({ ...krok, ordinal: i + 1 })),
+          proof_hash: 'akad-dowod-demo',
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      );
+    }
+    if (url.includes('/report')) {
+      return new Response(
+        JSON.stringify({
+          contract: 'AcademicReportV1', report_id: 'report:v126:demo', run_id: 'run-akad-1',
+          case_id: 'case-demo', analysis_type: rodzaj, source_result_hash: 'akad-hash-demo',
+          source_proof_hash: 'akad-dowod-demo', export_policy: 'frozen_result_and_proof_only',
+          sections: [], report_hash: 'akad-raport-demo',
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      );
+    }
+    if (url.includes('/results/v126/')) {
+      return new Response(
+        JSON.stringify({
+          run_id: 'run-akad-1', case_id: 'case-demo', analysis_type: rodzaj, status: 'FINISHED',
+          created_at: '2026-08-07T10:00:00+00:00',
+          result: {
+            contract: 'AcademicAnalysisResultV1', analysis_type: rodzaj,
+            solver_version: 'v126-academic-whitebox-1.1', input_hash: 'akad-wejscie-demo',
+            result: (odpowiedziV126 as Record<string, unknown>)[rodzaj],
+            white_box_trace: kroki, deterministic_hash: 'akad-hash-demo',
+          },
+          proof_ref: 'proof:v126:demo', report_ref: 'report:v126:demo',
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      );
+    }
+    return new Response(
+      JSON.stringify({
+        run_id: 'run-akad-1', case_id: 'case-demo', analysis_type: rodzaj, status: 'FINISHED',
+        result_url: '', trace_url: '', proof_url: '', report_url: '',
+        deterministic_hash: 'akad-hash-demo',
       }),
       { status: 200, headers: { 'Content-Type': 'application/json' } },
     );
@@ -3889,6 +4012,23 @@ function Harness() {
   else if (creator === 'estymacja')
     node = <EkranEstymacji trybZaawansowania="expert" onOtworzDowod={() => undefined} />;
   else if (creator === 'ssci') node = <EkranSsci trybZaawansowania="expert" />;
+  else if (creator === 'wyniki-warsztat')
+    node = (
+      <WynikiWarsztat
+        trybZaawansowania="expert"
+        pozostale={<div />}
+        onOtworzDokumentacje={() => undefined}
+      />
+    );
+  else if (creator === 'akademickie')
+    node = (
+      <EkranAnalizAkademickich
+        trybZaawansowania="expert"
+        rodzajPoczatkowy={
+          (new URLSearchParams(location.search).get('rodzaj') ?? 'earthing_safety') as never
+        }
+      />
+    );
   else if (creator === 'migotanie')
     node = (
       <SekcjaMigotania
@@ -3943,7 +4083,7 @@ function Harness() {
         // informacyjne + werdykt) — szerszy kadr eliminuje przycięcie z prawej.
         width: [
           'kompensacja-wynik', 'sila-sieci', 'odbior-zgodnosc', 'estymacja', 'ssci', 'migotanie', 'cieplna',
-          'wyniki-skladowe', 'wyniki-zbieznosc', 'wyniki-stan-fazowy', 'wyniki-stabilnosc',
+          'wyniki-skladowe', 'wyniki-zbieznosc', 'wyniki-stan-fazowy', 'wyniki-stabilnosc', 'akademickie',
         ].includes(creator)
           ? 1400
           : 1180,
