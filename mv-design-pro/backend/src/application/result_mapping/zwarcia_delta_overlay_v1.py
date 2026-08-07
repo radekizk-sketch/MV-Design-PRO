@@ -14,14 +14,17 @@ jednostki i podpowiedzi formatu — czyli PREZENTACJE gotowych liczb.
 
 DLACZEGO POWSTALA (dlug „klient bez dostawcy", V12K-326). Klient nakladki delta
 wolal `/api/execution/comparisons/{id}/sld-delta-overlay` — trase, ktorej ZADEN
-router nie serwuje: modul `api/batch_execution.py` nie jest wpiety w `main.py`,
-a stojaca za nim usluga (`ScComparisonService` nad `ExecutionEngineService`)
-trzyma przebiegi we WLASNEJ pamieci, do ktorej produkcyjna sciezka
-(`enm/canonical_analysis.py`) niczego nie zapisuje. Samo wpiecie routera dalo by
-wiec koncowke odpowiadajaca „nie znaleziono przebiegu" na KAZDY realny
-identyfikator — trase zywa formalnie, martwa faktycznie. Dostawca stoi wiec tam,
-gdzie stoi ZYWE porownanie zwarciowe ekranu porownan
+router nie serwowal: owczesny modul `api/batch_execution.py` nie byl wpiety w
+`main.py`, a stojaca za nim usluga (`ScComparisonService` nad
+`ExecutionEngineService`) trzymala przebiegi we WLASNEJ pamieci, do ktorej
+produkcyjna sciezka (`enm/canonical_analysis.py`) niczego nie zapisuje. Samo
+wpiecie routera daloby wiec koncowke odpowiadajaca „nie znaleziono przebiegu"
+na KAZDY realny identyfikator — trase zywa formalnie, martwa faktycznie.
+Dostawca stoi wiec tam, gdzie stoi ZYWE porownanie zwarciowe ekranu porownan
 (`/api/short-circuit-comparisons`), i korzysta z tego samego wyniku domeny.
+(Karta BATCH-ROUTER 2026-08-07 domknela te decyzje: duplikaty porownan i
+`ScComparisonService` zostaly USUNIETE, a `api/batch_execution.py` zostal
+przepisany na serie biegow kanonicznych i wpiety do `main.py`.)
 
 REF NA SCHEMACIE. Punkt zwarcia ma dwa identyfikatory: `target_id` (wezel grafu
 przebiegu) i `element_id` (element modelu). Nakladka adresuje elementy schematu,

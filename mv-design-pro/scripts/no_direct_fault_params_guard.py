@@ -153,7 +153,9 @@ WHITELISTED_PATHS = {
 #: ich do budżetu nie poszerza wyjątku, tylko po raz pierwszy go WIĄŻE: wcześniej
 #: liczba wywołań pozycyjnych mogła rosnąć w KAŻDYM pliku repozytorium.
 LEGACY_DIRECT_SOLVER_CALLERS: dict[str, dict[str, int]] = {
-    "api/case_runs.py": {},
+    # `api/case_runs.py` usunięty kartą BATCH-ROUTER (2026-08-07) — fantomowy,
+    # nigdy niewpięty magazyn biegów; wpis zapadki zdjęty razem z plikiem
+    # (rejestr może tylko MALEĆ).
     "api/fault_loop.py": {},
     "api/proof_pack.py": {
         "C:compute_machine_contributions": 1,
