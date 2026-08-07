@@ -247,7 +247,18 @@ def _set_enm_pod_blokada(
     enm, _ = complete_catalog_defaults(enm)
     existing = _enm_store.get(case_id)
     if existing is not None:
-        same_revision_candidate = enm.model_copy(deep=True)
+        # KOPIA TYLKO NAGŁÓWKA (karta S9-9). Kandydat służy WYŁĄCZNIE do policzenia
+        # hasza „przy rewizji poprzednika" i jest porzucany w tej samej linijce.
+        # Jedyna mutacja to `header.revision`, a `compute_enm_hash` czyta model
+        # przez `model_dump` (nie mutuje), więc kopiować trzeba SAM nagłówek —
+        # reszta pól może zostać współdzielona, bo nikt jej tu nie rusza.
+        # Hasz jest funkcją WARTOSCI pól, więc wynik jest identyczny co do bajtu
+        # jak przy kopii głębokiej, a wołający nie widzi śladu (przypięte:
+        # `tests/enm/test_kopia_graniczna.py::TestKandydatRewizji`).
+        # POMIAR (S9-9, model 100 stacji): 60,9 ms → 0,02 ms.
+        same_revision_candidate = enm.model_copy(
+            update={"header": enm.header.model_copy(deep=True)}
+        )
         same_revision_candidate.header.revision = existing.header.revision
         if compute_enm_hash(same_revision_candidate) == existing.header.hash_sha256:
             _persist_enm(case_id, existing)

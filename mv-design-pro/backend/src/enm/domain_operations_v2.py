@@ -47,6 +47,7 @@ from .domain_operations import (
     _response,
     _station_has_transformer,
 )
+from .kopia_graniczna import kopia_graniczna_enm
 from .load_zip_model import KOD_BLEDU_ZIP, zip_odbioru_z_payloadu
 from .topology_ops import attach_protection, create_branch, create_measurement, create_node
 
@@ -563,7 +564,7 @@ def add_ct(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     # albo nic) zostawiałby CT dopisane przed błędem kolejnego kroku serii, a
     # `execute_domain_operation` liczyłby `semantic_issues` z modelu PO zmianie —
     # inaczej niż wszystkie pozostałe operacje domenowe.
-    roboczy = copy.deepcopy(enm)
+    roboczy = kopia_graniczna_enm(enm)
     result = create_measurement(
         roboczy,
         {
@@ -709,7 +710,7 @@ def add_vt(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
         "measurement",
     )
     # KOPIA GRANICZNA OPERACJI — uzasadnienie jak w `add_ct` (TOPO-COPY, V12K-323).
-    roboczy = copy.deepcopy(enm)
+    roboczy = kopia_graniczna_enm(enm)
     result = create_measurement(
         roboczy,
         {
@@ -846,7 +847,7 @@ def add_relay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
         "assignment",
     )
     # KOPIA GRANICZNA OPERACJI — uzasadnienie jak w `add_ct` (TOPO-COPY, V12K-323).
-    roboczy = copy.deepcopy(enm)
+    roboczy = kopia_graniczna_enm(enm)
     result = attach_protection(
         roboczy,
         {
@@ -1003,7 +1004,7 @@ def validate_selectivity(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
     relays = enm.get("protection_assignments", [])
     if len(relays) < 2:
         return _response(
-            copy.deepcopy(enm),
+            kopia_graniczna_enm(enm),
             events=[{"event_seq": 1, "event_type": "SELECTIVITY_VALIDATED", "element_id": "all"}],
         )
 
@@ -1045,7 +1046,7 @@ def validate_selectivity(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
                 }
             )
 
-    new_enm = copy.deepcopy(enm)
+    new_enm = kopia_graniczna_enm(enm)
     new_enm.setdefault("meta", {})["selectivity_results"] = selectivity_results
 
     all_passed = all(r["passed"] for r in selectivity_results) if selectivity_results else True
@@ -1077,7 +1078,7 @@ def create_study_case(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str,
     seed = _compute_seed({"op": "study_case", "label": label_pl, "idx": len(cases)})
     case_id = f"CASE_{seed[:8].upper()}"
 
-    new_enm = copy.deepcopy(enm)
+    new_enm = kopia_graniczna_enm(enm)
     new_enm.setdefault("study_cases", []).append(
         {
             "case_id": case_id,
@@ -1115,7 +1116,7 @@ def set_case_switch_state(enm: dict[str, Any], payload: dict[str, Any]) -> dict[
     if not case_id or not switch_id:
         return _error_response("Brak case_id lub switch_element_id.", "case.params_missing")
 
-    new_enm = copy.deepcopy(enm)
+    new_enm = kopia_graniczna_enm(enm)
     for case in new_enm.get("study_cases", []):
         if case.get("case_id") == case_id:
             case["switch_states"][switch_id] = state
@@ -1140,7 +1141,7 @@ def set_case_normal_state(enm: dict[str, Any], payload: dict[str, Any]) -> dict[
     if not case_id or not switch_id:
         return _error_response("Brak case_id lub switch_element_id.", "case.params_missing")
 
-    new_enm = copy.deepcopy(enm)
+    new_enm = kopia_graniczna_enm(enm)
     for case in new_enm.get("study_cases", []):
         if case.get("case_id") == case_id:
             case["normal_states"][switch_id] = state
@@ -1164,7 +1165,7 @@ def set_case_source_mode(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
     if not case_id or not source_id:
         return _error_response("Brak case_id lub source_element_id.", "case.params_missing")
 
-    new_enm = copy.deepcopy(enm)
+    new_enm = kopia_graniczna_enm(enm)
     for case in new_enm.get("study_cases", []):
         if case.get("case_id") == case_id:
             case["source_modes"][source_id] = mode
@@ -1188,7 +1189,7 @@ def set_case_time_profile(enm: dict[str, Any], payload: dict[str, Any]) -> dict[
     if not case_id:
         return _error_response("Brak case_id.", "case.id_missing")
 
-    new_enm = copy.deepcopy(enm)
+    new_enm = kopia_graniczna_enm(enm)
     for case in new_enm.get("study_cases", []):
         if case.get("case_id") == case_id:
             case["time_profile_ref"] = profile_ref
@@ -1211,7 +1212,7 @@ def run_short_circuit(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str,
     location = fault.get("location_element_id")
     rf_ohm = fault.get("transition_resistance_ohm", 0.0)
 
-    new_enm = copy.deepcopy(enm)
+    new_enm = kopia_graniczna_enm(enm)
     events = []
     ev_seq = 0
 
@@ -1251,7 +1252,7 @@ def run_power_flow(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, An
     """Uruchom analizę przepływu mocy. Deleguje do solvera Newton-Raphson."""
     case_id = payload.get("case_id")
 
-    new_enm = copy.deepcopy(enm)
+    new_enm = kopia_graniczna_enm(enm)
     events = [
         {"event_seq": 1, "event_type": "ANALYSIS_RUN_STARTED", "element_id": case_id},
         {"event_seq": 2, "event_type": "ANALYSIS_RUN_COMPLETED", "element_id": case_id},
@@ -1270,7 +1271,7 @@ def run_power_flow(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, An
 def run_time_series_power_flow(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     """Uruchom serię czasową przepływu mocy."""
     case_id = payload.get("case_id")
-    new_enm = copy.deepcopy(enm)
+    new_enm = kopia_graniczna_enm(enm)
 
     return _response(
         new_enm,
@@ -1290,7 +1291,7 @@ def compare_study_cases(enm: dict[str, Any], payload: dict[str, Any]) -> dict[st
     if not case_a_id or not case_b_id:
         return _error_response("Brak case_a lub case_b.", "compare.params_missing")
 
-    new_enm = copy.deepcopy(enm)
+    new_enm = kopia_graniczna_enm(enm)
     new_enm.setdefault("meta", {})["comparison"] = {
         "case_a": case_a_id,
         "case_b": case_b_id,
@@ -1938,7 +1939,7 @@ def add_sn_bay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     if primary_devices_spec:
         producer_refs["primary_devices"] = primary_devices_spec
 
-    new_enm = copy.deepcopy(enm)
+    new_enm = kopia_graniczna_enm(enm)
     existing_equipment_refs = (
         _field_equipment_refs(new_enm, field_ref) if existing_field_ref else []
     )
@@ -2206,7 +2207,7 @@ def _add_nn_outgoing_field_internal(enm: dict[str, Any], payload: dict[str, Any]
         meta={"feeder_role": payload.get("feeder_role", "ODPLYW_NN")},
     )
 
-    new_enm = copy.deepcopy(enm)
+    new_enm = kopia_graniczna_enm(enm)
     if not _append_substation_field_spec(
         new_enm,
         station_ref=station["ref_id"],
@@ -2265,7 +2266,7 @@ def _append_nn_source_meta_field(enm: dict[str, Any], payload: dict[str, Any]) -
         meta={"source_field_kind": kind},
     )
 
-    new_enm = copy.deepcopy(enm)
+    new_enm = kopia_graniczna_enm(enm)
     if not _append_substation_field_spec(
         new_enm,
         station_ref=station["ref_id"],
@@ -2386,7 +2387,7 @@ def add_nn_load(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     if zip_odbioru is not None:
         nowy_odbior["materialized_params"] = zip_odbioru
 
-    new_enm = copy.deepcopy(enm)
+    new_enm = kopia_graniczna_enm(enm)
     new_enm.setdefault("loads", []).append(nowy_odbior)
 
     return _response(
@@ -3305,7 +3306,7 @@ def _add_converter_source_der_sn(
     lv_variant = der_topology.get("lv_switchgear_variant") or "none"
     has_lv_switchgear = bool(der_topology.get("has_manufacturer_lv_switchgear"))
 
-    new_enm = copy.deepcopy(enm)
+    new_enm = kopia_graniczna_enm(enm)
     created: list[str] = []
     events: list[dict[str, Any]] = []
     ev_seq = 0
@@ -3903,7 +3904,7 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
     if blad_aparatu is not None:
         return blad_aparatu
 
-    new_enm = copy.deepcopy(enm)
+    new_enm = kopia_graniczna_enm(enm)
     field_ref, created_field_ids, field_events = _append_converter_field_if_needed(
         new_enm,
         station_ref=station_ref,
@@ -4032,7 +4033,7 @@ def add_genset_nn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any
     if un_kv:
         genset_meta["un_kv"] = float(un_kv)
 
-    new_enm = copy.deepcopy(enm)
+    new_enm = kopia_graniczna_enm(enm)
     new_enm.setdefault("generators", []).append(
         {
             "ref_id": gen_ref,
@@ -4080,7 +4081,7 @@ def add_ups_nn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     if un_kv:
         ups_meta["un_kv"] = float(un_kv)
 
-    new_enm = copy.deepcopy(enm)
+    new_enm = kopia_graniczna_enm(enm)
     new_enm.setdefault("generators", []).append(
         {
             "ref_id": ups_ref,
@@ -4172,7 +4173,7 @@ def add_shunt_compensator_sn(enm: dict[str, Any], payload: dict[str, Any]) -> di
     seed = _compute_seed({"op": "shunt_compensator_sn", "bus": bus_ref, "cat": catalog_ref})
     shunt_ref = _make_id("shunt", seed, "cap")
 
-    new_enm = copy.deepcopy(enm)
+    new_enm = kopia_graniczna_enm(enm)
     new_enm.setdefault("shunt_capacitors", []).append(
         {
             "ref_id": shunt_ref,
@@ -4290,7 +4291,7 @@ def add_surge_arrester_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[
     )
     device_ref = _make_id("spd", seed, "arrester")
 
-    new_enm = copy.deepcopy(enm)
+    new_enm = kopia_graniczna_enm(enm)
     new_station = _resolve_station_for_field_write(
         new_enm, station_ref=station.get("ref_id"), bus_ref=bus_ref
     )
@@ -4324,7 +4325,7 @@ def set_source_operating_mode(enm: dict[str, Any], payload: dict[str, Any]) -> d
     if not source_ref:
         return _error_response("Brak identyfikatora źródła.", "source.ref_missing")
 
-    new_enm = copy.deepcopy(enm)
+    new_enm = kopia_graniczna_enm(enm)
     for gen in new_enm.get("generators", []):
         if gen.get("ref_id") == source_ref:
             gen.setdefault("meta", {})["operating_mode"] = mode
@@ -4347,7 +4348,7 @@ def set_dynamic_profile(enm: dict[str, Any], payload: dict[str, Any]) -> dict[st
     if not element_ref:
         return _error_response("Brak identyfikatora elementu.", "profile.element_missing")
 
-    new_enm = copy.deepcopy(enm)
+    new_enm = kopia_graniczna_enm(enm)
     new_enm.setdefault("dynamic_profiles", []).append(
         {
             "profile_id": _compute_seed({"op": "profile", "elem": element_ref}),
@@ -4474,7 +4475,7 @@ def set_der_catalog_bindings(enm: dict[str, Any], payload: dict[str, Any]) -> di
             "der_bindings.catalog_ref_unknown",
         )
 
-    new_enm = copy.deepcopy(enm)
+    new_enm = kopia_graniczna_enm(enm)
     generator = next(
         (
             g
@@ -4575,7 +4576,7 @@ def set_connection_conditions(enm: dict[str, Any], payload: dict[str, Any]) -> d
             "connection_conditions.tryb_invalid",
         )
 
-    new_enm = copy.deepcopy(enm)
+    new_enm = kopia_graniczna_enm(enm)
     header = new_enm.setdefault("header", {})
     blok = dict(header.get("connection_conditions") or {})
     for klucz, wartosc in podane.items():
@@ -4609,7 +4610,7 @@ def rename_element(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, An
     if not loc:
         return _error_response(f"Element '{element_ref}' nie znaleziony.", "rename.not_found")
 
-    new_enm = copy.deepcopy(enm)
+    new_enm = kopia_graniczna_enm(enm)
     coll, idx = loc
     new_enm[coll][idx]["name"] = new_name
 
@@ -4635,7 +4636,7 @@ def set_label(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     if not loc:
         return _error_response(f"Element '{element_ref}' nie znaleziony.", "label.not_found")
 
-    new_enm = copy.deepcopy(enm)
+    new_enm = kopia_graniczna_enm(enm)
     coll, idx = loc
     new_enm[coll][idx]["label"] = label
 

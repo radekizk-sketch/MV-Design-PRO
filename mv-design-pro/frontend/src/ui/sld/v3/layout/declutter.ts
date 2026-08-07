@@ -27,7 +27,8 @@
  * FAKTYCZNIE wystąpi (regresja rezerwacji albo gęstsza sieć).
  */
 
-import { rectsOverlap, type V3Rect } from '../core/grid';
+import { type V3Rect } from '../core/grid';
+import { buildRectIndex, createRectIndex } from '../core/rectIndex';
 import type { OwnedLabel, OwnerKind } from './labels';
 
 /**
@@ -111,18 +112,24 @@ export function declutterLabels(
   symbolRects: readonly V3Rect[],
 ): DeclutterResult {
   const ordered = [...labels].sort(resolutionOrder);
-  const keptRects: V3Rect[] = [];
+  // S9-9: predykat „zachodzi na cokolwiek" liczony indeksem przestrzennym
+  // (`core/rectIndex.ts`) zamiast przeglądem liniowym — WYNIK identyczny
+  // (indeks jest filtrem kandydatów, rozstrzyga ten sam `rectsOverlap`),
+  // koszt z O(n²) na O(n). Kolejność rozstrzygania (`resolutionOrder`) i tym
+  // samym zbiór ocalałych — bez zmian.
+  const symbolIndex = buildRectIndex(symbolRects);
+  const keptIndex = createRectIndex();
   const keptSet = new Set<OwnedLabel>();
   const dropped: OwnedLabel[] = [];
 
   for (const label of ordered) {
-    const hitsSymbol = symbolRects.some((r) => rectsOverlap(label.rect, r));
-    const hitsKept = keptRects.some((r) => rectsOverlap(label.rect, r));
+    const hitsSymbol = symbolIndex.anyOverlap(label.rect);
+    const hitsKept = keptIndex.anyOverlap(label.rect);
     if (hitsSymbol || hitsKept) {
       dropped.push(label);
       continue;
     }
-    keptRects.push(label.rect);
+    keptIndex.add(label.rect);
     keptSet.add(label);
   }
 

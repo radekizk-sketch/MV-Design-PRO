@@ -29,6 +29,7 @@ if TYPE_CHECKING:
     from network_model.catalog.repository import CatalogRepository
 from network_model.catalog.types import CatalogBinding
 
+from .kopia_graniczna import kopia_graniczna_enm
 from .load_zip_model import KOD_BLEDU_ZIP, zip_odbioru_z_parametrow_materializacji
 from .models import GEN_TYPES_PRZEKSZTALTNIKOWE, EnergyNetworkModel
 from .topology_ops import (
@@ -263,56 +264,73 @@ def _is_helper_topology_bus(bus: dict[str, Any]) -> bool:
     return isinstance(tags, list) and "helper_bus" in tags and "topology_terminal" in tags
 
 
-def _bus_reference_count(enm: dict[str, Any], bus_ref: str) -> int:
-    refs = 0
+def _referenced_bus_refs(enm: dict[str, Any]) -> set[str]:
+    """Wszystkie odwołania do szyn w modelu — JEDEN przebieg po modelu.
+
+    KOSZT ZALEŻNY OD ZASIĘGU ZMIANY (karta S9-9, znalezisko B-5 audytu
+    `docs/sld/AUDYT_JAKOSCI_SLD_2026-08.md`). Wcześniej odpowiednik tej funkcji
+    (`_bus_reference_count`) liczył odwołania DO JEDNEJ szyny, przeglądając w tym
+    celu CAŁY model — a jedyny wołający (`_remove_unreferenced_helper_topology_buses`)
+    robił to dla KAŻDEJ szyny pomocniczej. Koszt rósł więc kwadratowo z rozmiarem
+    sieci; na modelu 100 stacji (607 szyn) był to najdroższy przebieg w budowie
+    odpowiedzi operacji domenowej (pomiar: 525 wywołań na jedno `apply`).
+
+    ŹRÓDŁA ODWOŁAŃ SĄ TE SAME, CO DOTĄD, w tej samej kolejności: końce gałęzi,
+    strony transformatora, `bus_ref` źródeł/odbiorów/wytwórców, `bus_ref` oraz
+    `bus_refs` stacji, `bus_ref` i porty punktów odgałęźnych.
+
+    Jedyny predykat, którego potrzebuje wołający, to „zero odwołań", więc ZBIÓR
+    jest równoważny liczbie: `count == 0` ⟺ `ref not in _referenced_bus_refs(enm)`.
+    Krotność odwołań nie była nigdzie czytana (jedyny wołający porównywał z zerem).
+    """
+    referenced: set[str] = set()
+
+    def dodaj(wartosc: Any) -> None:
+        if isinstance(wartosc, str):
+            referenced.add(wartosc)
+
     for branch in enm.get("branches", []):
-        if branch.get("from_bus_ref") == bus_ref:
-            refs += 1
-        if branch.get("to_bus_ref") == bus_ref:
-            refs += 1
+        dodaj(branch.get("from_bus_ref"))
+        dodaj(branch.get("to_bus_ref"))
     for transformer in enm.get("transformers", []):
-        if transformer.get("hv_bus_ref") == bus_ref:
-            refs += 1
-        if transformer.get("lv_bus_ref") == bus_ref:
-            refs += 1
+        dodaj(transformer.get("hv_bus_ref"))
+        dodaj(transformer.get("lv_bus_ref"))
     for collection in ("sources", "loads", "generators"):
         for item in enm.get(collection, []):
-            if item.get("bus_ref") == bus_ref:
-                refs += 1
+            dodaj(item.get("bus_ref"))
     for substation in enm.get("substations", []):
-        if substation.get("bus_ref") == bus_ref:
-            refs += 1
+        dodaj(substation.get("bus_ref"))
         for ref in substation.get("bus_refs") or []:
-            if ref == bus_ref:
-                refs += 1
+            dodaj(ref)
     for branch_point in enm.get("branch_points", []):
-        if branch_point.get("bus_ref") == bus_ref:
-            refs += 1
+        dodaj(branch_point.get("bus_ref"))
         ports = branch_point.get("ports")
         if isinstance(ports, dict):
             for value in ports.values():
-                if value == bus_ref:
-                    refs += 1
-                elif isinstance(value, list):
-                    refs += sum(1 for ref in value if ref == bus_ref)
-    return refs
+                if isinstance(value, list):
+                    for ref in value:
+                        dodaj(ref)
+                else:
+                    dodaj(value)
+    return referenced
 
 
 def _remove_unreferenced_helper_topology_buses(enm: dict[str, Any]) -> dict[str, Any]:
     buses = enm.get("buses")
     if not isinstance(buses, list):
         return enm
+    referenced = _referenced_bus_refs(enm)
     orphan_refs = {
         bus.get("ref_id")
         for bus in buses
         if isinstance(bus, dict)
         and isinstance(bus.get("ref_id"), str)
         and _is_helper_topology_bus(bus)
-        and _bus_reference_count(enm, bus["ref_id"]) == 0
+        and bus["ref_id"] not in referenced
     }
     if not orphan_refs:
         return enm
-    cleaned = copy.deepcopy(enm)
+    cleaned = kopia_graniczna_enm(enm)
     cleaned["buses"] = [
         bus
         for bus in cleaned.get("buses", [])
@@ -337,7 +355,7 @@ def _complete_catalog_branch_point_defaults(enm: dict[str, Any]) -> dict[str, An
         if not bp.get("catalog_ref") or bp.get("switch_state"):
             continue
         if not changed:
-            completed = copy.deepcopy(enm)
+            completed = kopia_graniczna_enm(enm)
             changed = True
         completed_branch_points = completed.get("branch_points", [])
         completed_bp = completed_branch_points[idx]
@@ -3363,7 +3381,7 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
         gpz_section_bus_refs.append(section_bus_ref)
         gpz_section_bus_names.append(section_bus_name)
 
-    new_enm = copy.deepcopy(enm)
+    new_enm = kopia_graniczna_enm(enm)
     created = []
     events = []
     audit = []
@@ -3989,7 +4007,7 @@ def continue_trunk_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> d
     new_bus_ref = f"bus/{seed}/downstream"
     branch_ref = f"seg/{seed}/segment"
 
-    new_enm = copy.deepcopy(enm)
+    new_enm = kopia_graniczna_enm(enm)
     created = []
     events = []
     audit = []
@@ -5062,7 +5080,7 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
 
     if dry_run:
         # Wykonaj na deep-copy, NIE mutując oryginalnego ENM (`copy` zaimportowane na poziomie modułu).
-        enm = copy.deepcopy(enm)
+        enm = kopia_graniczna_enm(enm)
 
     # Normalize sn_fields: accept list of strings or list of dicts.
     # Rola pola przechodzi przez WSPÓLNY słownik `_SN_FIELD_ROLE_ALIASES` —
@@ -5275,7 +5293,7 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
     # Szyna, z której wychodzi prawy odcinek (WY): sekcja B dla sekcyjnej, inaczej A.
     right_from_bus_id = sn_bus_b_id if is_sectional else sn_bus_id
 
-    new_enm = copy.deepcopy(enm)
+    new_enm = kopia_graniczna_enm(enm)
     created = []
     deleted = []
     events = []
@@ -6149,7 +6167,7 @@ def _insert_branch_point_on_segment_sn(
         else "Odcinek SN"
     )
 
-    new_enm = copy.deepcopy(enm)
+    new_enm = kopia_graniczna_enm(enm)
     created: list[str] = []
     deleted: list[str] = []
 
@@ -6475,7 +6493,7 @@ def start_branch_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dic
     new_bus_ref = f"bus/{seed}/branch_end"
     branch_ref = f"seg/{seed}/branch_segment"
 
-    new_enm = copy.deepcopy(enm)
+    new_enm = kopia_graniczna_enm(enm)
     created = []
     events = []
     ev_seq = 0
@@ -6707,7 +6725,7 @@ def insert_section_switch_sn(enm: dict[str, Any], payload: dict[str, Any]) -> di
     seg_left_id = f"{segment_id}_SL"
     seg_right_id = f"{segment_id}_SR"
 
-    new_enm = copy.deepcopy(enm)
+    new_enm = kopia_graniczna_enm(enm)
     created = []
     deleted = []
     events = []
@@ -6904,7 +6922,7 @@ def connect_secondary_ring_sn(enm: dict[str, Any], payload: dict[str, Any]) -> d
     )
     ring_ref = f"seg/{seed}/ring_closure"
 
-    new_enm = copy.deepcopy(enm)
+    new_enm = kopia_graniczna_enm(enm)
     created = []
     events = []
     ev_seq = 0
@@ -6985,7 +7003,7 @@ def set_normal_open_point(enm: dict[str, Any], payload: dict[str, Any]) -> dict[
     if not switch_ref:
         return _error_response("Brak identyfikatora łącznika.", "nop.switch_missing")
 
-    new_enm = copy.deepcopy(enm)
+    new_enm = kopia_graniczna_enm(enm)
     updated = []
     events = []
     ev_seq = 0
@@ -7047,7 +7065,7 @@ def add_transformer_sn_nn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[
     seed = _compute_seed({"op": "add_transformer_sn_nn", "hv": hv_bus_ref, "lv": lv_bus_ref})
     tr_ref = f"tr/{seed}/transformer"
 
-    new_enm = copy.deepcopy(enm)
+    new_enm = kopia_graniczna_enm(enm)
     created = []
     events = []
     ev_seq = 0
@@ -7213,7 +7231,7 @@ def assign_catalog_to_element(enm: dict[str, Any], payload: dict[str, Any]) -> d
             f"Element '{element_ref}' nie znaleziony.", "catalog.element_not_found"
         )
 
-    new_enm = copy.deepcopy(enm)
+    new_enm = kopia_graniczna_enm(enm)
     coll, idx = loc
     target_element = new_enm[coll][idx]
 
@@ -7504,7 +7522,7 @@ def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> d
         if blad_zip is not None:
             return _error_response(blad_zip, KOD_BLEDU_ZIP)
 
-    new_enm = copy.deepcopy(enm)
+    new_enm = kopia_graniczna_enm(enm)
     for key, value in parameters.items():
         if key not in ("ref_id", "id", "type"):
             new_enm[coll][idx][key] = value
@@ -7537,7 +7555,7 @@ def delete_element(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, An
             f"Element '{element_ref}' nie znaleziony.", "delete.element_not_found"
         )
 
-    new_enm = copy.deepcopy(enm)
+    new_enm = kopia_graniczna_enm(enm)
     coll, idx = loc
     deleted_ids: list[str] = [element_ref]
     events: list[dict[str, Any]] = []
@@ -7852,7 +7870,7 @@ def add_gpz_section(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, A
     if payload.get("line_field_name"):
         new_section["line_field_name"] = payload["line_field_name"]
 
-    new_enm = copy.deepcopy(enm)
+    new_enm = kopia_graniczna_enm(enm)
     new_sub = _find_substation(new_enm, substation_ref)
     assert new_sub is not None  # already checked
     new_sections = list(new_sub.get(sections_field) or [])
@@ -7940,7 +7958,7 @@ def update_gpz_section(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
                 "gpz_section.update.bus_ref_missing",
             )
 
-    new_enm = copy.deepcopy(enm)
+    new_enm = kopia_graniczna_enm(enm)
     new_sub = _find_substation(new_enm, substation_ref)
     assert new_sub is not None
     new_sections = list(new_sub.get(sections_field) or [])
@@ -8026,7 +8044,7 @@ def delete_gpz_section(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
             "gpz_section.delete.in_use",
         )
 
-    new_enm = copy.deepcopy(enm)
+    new_enm = kopia_graniczna_enm(enm)
     new_sub = _find_substation(new_enm, substation_ref)
     assert new_sub is not None
     new_sections = [
@@ -8484,7 +8502,7 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
         return apparatus_result, [apparatus_ref]
 
     # Dry-run: deepcopy, zwracamy preview metadata
-    new_enm = copy.deepcopy(enm)
+    new_enm = kopia_graniczna_enm(enm)
     created: list[str] = []
     events: list[dict[str, Any]] = []
     audit: list[dict[str, Any]] = []
