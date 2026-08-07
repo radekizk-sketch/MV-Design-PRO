@@ -1,11 +1,16 @@
 /* Warsztat wyników (scalenie U3 #1) — wyłącznie tokeny --mvd-*. */
 .mvd-wyniki-warsztat { display: flex; flex-direction: column; height: 100%; min-height: 0; }
-.mvd-wyniki-zakladki { display: flex; gap: 2px; border-bottom: 1px solid var(--mvd-line); padding: 0 8px; background: var(--mvd-panel-2); }
-.mvd-wyniki-zakladka { border: 0; background: none; color: var(--mvd-muted); padding: 8px 14px; cursor: pointer; font: inherit; border-bottom: 2px solid transparent; }
+/* V126-JEZYK (defekt układu ze zrzutu 3/3): przy trzydziestu zakładkach jeden
+   rząd flex bez zawijania wypychał pasek poza kadr — ostatnie zakładki były
+   nieosiągalne, a kolumna treści ściskana do zera. Pasek ZAWIJA się do kolejnych
+   rzędów (`flex-wrap`) i nie ściska zakładek (`flex-shrink: 0` niżej), więc
+   etykiety nie łamią się w połowie wyrazu. Zmierzone przy 1280/1440/1920 px. */
+.mvd-wyniki-zakladki { display: flex; flex-wrap: wrap; gap: 2px 0; border-bottom: 1px solid var(--mvd-line); padding: 0 8px; background: var(--mvd-panel-2); flex: 0 0 auto; }
+.mvd-wyniki-zakladka { border: 0; background: none; color: var(--mvd-muted); padding: 8px 14px; cursor: pointer; font: inherit; border-bottom: 2px solid transparent; white-space: nowrap; flex: 0 0 auto; }
 .mvd-wyniki-zakladka:hover { color: var(--mvd-ink); }
 .mvd-wyniki-zakladka.mvd-on { color: var(--mvd-accent); border-bottom-color: var(--mvd-accent); font-weight: 600; }
-.mvd-wyniki-tresc { flex: 1; min-height: 0; overflow: auto; }
+.mvd-wyniki-tresc { flex: 1 1 auto; min-height: 0; min-width: 0; overflow: auto; }
 .mvd-wyniki-pusty { color: var(--mvd-muted); padding: 24px; text-align: center; }
-.mvd-wyniki-grupa { display: flex; align-items: center; gap: 2px; }
+.mvd-wyniki-grupa { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; min-width: 0; }
 .mvd-wyniki-grupa + .mvd-wyniki-grupa { border-left: 1px solid var(--mvd-line); margin-left: 8px; padding-left: 10px; }
 .mvd-wyniki-grupa-etykieta { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--mvd-muted); margin-right: 4px; white-space: nowrap; }

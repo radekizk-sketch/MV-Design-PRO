@@ -341,6 +341,10 @@ describe('EkranAnalizAkademickich — komplet artefaktów bez zaszytych limitów
     await screen.findByTestId('mvd-akad-wyniki');
 
     expect(screen.getByTestId('mvd-akad-wynik-licznik')).toHaveTextContent('30');
+    // V126-JEZYK: pełne spłaszczenie ZOSTAJE (intencja bez zmian — limit ma
+    // wynikać z danych), ale przeniosło się do ZWINIĘTEGO zapisu technicznego,
+    // bo nazwy pól kontraktu obliczeniowego nie są etykietami ekranu projektanta.
+    fireEvent.click(screen.getByTestId('mvd-akad-wynik-przelacz'));
     expect(screen.getByTestId('mvd-akad-grupa-pole_29')).toBeInTheDocument();
   });
 });

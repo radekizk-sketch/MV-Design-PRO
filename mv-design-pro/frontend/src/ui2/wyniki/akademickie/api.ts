@@ -101,6 +101,15 @@ export interface KrokSladu {
   readonly data: Record<string, unknown>;
   readonly substitution: string;
   readonly result: Record<string, unknown>;
+  /**
+   * Wynik kroku jako liczba Z JEDNOSTKĄ, po polsku (V126-JEZYK). Pole dodane
+   * w solverze obok maszynowego `result`, bo ekran pokazywał w kolumnie „Wynik"
+   * surowy zapis `{"smallest_eigenvalue":0.998667}` (ocena właściciela 0/10).
+   * Opcjonalne w typie, bo przebiegi policzone przed wersją solvera
+   * `v126-academic-whitebox-1.1` go nie mają — okno pokazuje wtedy kreskę,
+   * a nie zrzut słownika.
+   */
+  readonly result_pl?: string | null;
   readonly unit_check: string;
   readonly proof_ref: string;
   readonly proof_status: string;
@@ -124,6 +133,8 @@ export interface KrokDowodu {
   readonly data: Record<string, unknown>;
   readonly substitution: string | null;
   readonly result: Record<string, unknown>;
+  /** Polska postać wyniku kroku — patrz `KrokSladu.result_pl`. */
+  readonly result_pl?: string | null;
   readonly unit_check: string | null;
   readonly proof_status: string;
 }

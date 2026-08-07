@@ -58,9 +58,27 @@ import {
   sekcjeRaportuDoWidoku,
   splaszczWynik,
 } from './model';
+import {
+  MAPA_WIARYGODNOSCI,
+  NAZWY_BRAKUJACYCH_POL,
+  NAZWY_PARAMETROW,
+  NAZWY_WARTOSCI,
+  PREZENTACJA,
+  SCIEZKA_BRAKOW,
+  SCIEZKA_WIARYGODNOSCI,
+  odczytaj,
+  type TabelaObiektow,
+} from './prezentacja';
 import { maParametry, zbudujParametry, type StanPol, type WierszListy } from './parametry';
 import { FormularzParametrow } from './FormularzParametrow';
-import { AKADEMICKIE_STRINGS as S, etykietaRodzaju, fmtWartosc, opisRodzaju } from './strings';
+import { useNazwaObiektu } from './useNazwaObiektu';
+import {
+  AKADEMICKIE_STRINGS as S,
+  etykietaRodzaju,
+  fmtWartosc,
+  opisRodzaju,
+  type IstotnoscStanu,
+} from './strings';
 
 // ---------------------------------------------------------------------------
 // Panele stanu
@@ -135,45 +153,344 @@ function Zwijana({
 }
 
 // ---------------------------------------------------------------------------
-// Wynik — PEŁNE spłaszczenie
+// EKRAN INŻYNIERSKI — werdykt · wielkości · obiekty · wiarygodność
 // ---------------------------------------------------------------------------
 
-function PanelWyniku({ wynik }: { wynik: OdpowiedzWyniku }) {
-  const wiersze = useMemo(() => splaszczWynik(wynik.result.result), [wynik]);
-  const grupy = useMemo(() => pogrupujWynik(wiersze), [wiersze]);
+/** Chip werdyktu (istotność steruje wyłącznie kolorem tokenowym). */
+function Chip({ tekst, istotnosc, testid }: { tekst: string; istotnosc: IstotnoscStanu; testid?: string }) {
+  return (
+    <span className={`mvd-akad-chip mvd-akad-chip--${istotnosc}`} data-testid={testid}>
+      {tekst}
+    </span>
+  );
+}
 
-  if (wiersze.length === 0) {
-    return (
-      <section className="mvd-akad-sekcja" data-testid="mvd-akad-wynik">
-        <h3 className="mvd-akad-sekcja-tytul">{S.wynikTytul}</h3>
-        <p className="mvd-akad-opis">{S.wynikPusty}</p>
-      </section>
+/**
+ * Werdykt analizy — CYTAT pola statusu z odpowiedzi solvera. Zero ocen w UI:
+ * dla werdyktu zbiorczego okno zlicza wystąpienia wartości statusu (jak licznik
+ * wierszy tabeli), a nie porównuje liczb z progiem.
+ */
+function PanelWerdyktu({ rodzaj, payload }: { rodzaj: string; payload: unknown }) {
+  const projekt = PREZENTACJA[rodzaj as RodzajAnalizy];
+  if (!projekt) return null;
+  const w = projekt.werdykt;
+
+  let tresc: React.ReactNode;
+  if (w.rodzaj === 'pojedynczy') {
+    // Pierwsza OBECNA ścieżka wygrywa (dobór uziemienia melduje werdykt pod
+    // innym kluczem, gdy danych wejściowych brakuje) — zero podstawiania.
+    const surowa = w.sciezki
+      .map((sciezka) => odczytaj(payload, sciezka))
+      .find((wartosc) => typeof wartosc === 'string');
+    const wpis = typeof surowa === 'string' ? w.mapa[surowa] : undefined;
+    tresc = wpis ? (
+      <Chip tekst={wpis.tekst} istotnosc={wpis.istotnosc} testid="mvd-akad-werdykt-chip" />
+    ) : (
+      <Chip tekst={S.werdyktBrak} istotnosc="neutral" testid="mvd-akad-werdykt-chip" />
     );
+  } else if (w.rodzaj === 'zbiorczy') {
+    const tablica = odczytaj(payload, w.sciezkaTablicy);
+    const elementy = Array.isArray(tablica) ? tablica : [];
+    const spelnione = elementy.filter(
+      (element) => String(odczytaj(element, w.kluczStatusu)) === w.wartoscSpelniona,
+    ).length;
+    const wszystkieSpelnione = elementy.length > 0 && spelnione === elementy.length;
+    tresc =
+      elementy.length === 0 ? (
+        <Chip tekst={S.werdyktBrak} istotnosc="neutral" testid="mvd-akad-werdykt-chip" />
+      ) : (
+        <Chip
+          tekst={S.werdyktZbiorczy(spelnione, elementy.length, w.obiektyDopelniacz)}
+          istotnosc={wszystkieSpelnione ? 'ok' : 'err'}
+          testid="mvd-akad-werdykt-chip"
+        />
+      );
+  } else {
+    const wartosc = odczytaj(payload, w.sciezka);
+    tresc =
+      wartosc === undefined || wartosc === null ? (
+        <Chip tekst={S.werdyktBrak} istotnosc="neutral" testid="mvd-akad-werdykt-chip" />
+      ) : (
+        <Chip
+          tekst={`${fmtWartosc(wartosc)} ${w.jednostka} — ${S.werdyktWartosc}`}
+          istotnosc="neutral"
+          testid="mvd-akad-werdykt-chip"
+        />
+      );
   }
 
   return (
-    <section className="mvd-akad-sekcja" data-testid="mvd-akad-wynik">
+    <section className="mvd-akad-sekcja mvd-akad-werdykt" data-testid="mvd-akad-werdykt">
       <div className="mvd-akad-sekcja-naglowek">
-        <h3 className="mvd-akad-sekcja-tytul">{S.wynikTytul}</h3>
-        <span className="mvd-akad-licznik mvd-num" data-testid="mvd-akad-wynik-licznik">
-          {S.wynikLiczbaPol(wiersze.length)}
-        </span>
+        <h3 className="mvd-akad-sekcja-tytul">{S.werdyktTytul}</h3>
+        {tresc}
       </div>
-      <p className="mvd-akad-opis">{S.wynikOpis}</p>
-      {grupy.map((grupa) => (
-        <div className="mvd-akad-grupa" key={grupa.klucz} data-testid={`mvd-akad-grupa-${grupa.klucz}`}>
-          <h4 className="mvd-akad-grupa-tytul">{grupa.klucz}</h4>
-          <div className="mvd-akad-wiersze">
-            {grupa.wiersze.map((wiersz) => (
-              <div className="mvd-akad-wiersz" key={wiersz.sciezka}>
-                <span className="mvd-akad-wiersz-etyk">{wiersz.sciezka}</span>
-                <span className="mvd-akad-wiersz-wartosc mvd-num">{fmtWartosc(wiersz.wartosc)}</span>
-              </div>
-            ))}
-          </div>
+      <div className="mvd-akad-wiersze">
+        <div className="mvd-akad-wiersz">
+          <span className="mvd-akad-wiersz-etyk">{S.kryteriumEtykieta}</span>
+          <span className="mvd-akad-wiersz-wartosc">{projekt.kryterium}</span>
         </div>
-      ))}
+        {projekt.norma !== undefined && (
+          <div className="mvd-akad-wiersz">
+            <span className="mvd-akad-wiersz-etyk">{S.normaEtykieta}</span>
+            <span className="mvd-akad-wiersz-wartosc">{projekt.norma}</span>
+          </div>
+        )}
+      </div>
     </section>
+  );
+}
+
+/** Wielkości główne — liczba + jednostka + (gdy solver ją zwraca) odniesienie. */
+function PanelWielkosci({ rodzaj, payload }: { rodzaj: string; payload: unknown }) {
+  const projekt = PREZENTACJA[rodzaj as RodzajAnalizy];
+  if (!projekt) return null;
+  const obecne = projekt.wielkosciGlowne.filter((pole) => {
+    const wartosc = odczytaj(payload, pole.sciezka);
+    return wartosc !== undefined && wartosc !== null;
+  });
+  if (obecne.length === 0) return null;
+
+  return (
+    <section className="mvd-akad-sekcja" data-testid="mvd-akad-wielkosci">
+      <h3 className="mvd-akad-sekcja-tytul">{S.wielkosciTytul}</h3>
+      <p className="mvd-akad-opis">{S.wielkosciOpis}</p>
+      <div className="mvd-akad-wiersze">
+        {obecne.map((pole) => {
+          const wartosc = odczytaj(payload, pole.sciezka);
+          const odniesienie =
+            pole.odniesienieSciezka === undefined
+              ? undefined
+              : odczytaj(payload, pole.odniesienieSciezka);
+          return (
+            <div className="mvd-akad-wiersz" key={pole.sciezka}>
+              <span className="mvd-akad-wiersz-etyk">{pole.etykieta}</span>
+              <span className="mvd-akad-wiersz-wartosc mvd-num">
+                {fmtPole(wartosc)}
+                {pole.jednostka !== undefined && ` ${pole.jednostka}`}
+                {odniesienie !== undefined && odniesienie !== null && (
+                  <span className="mvd-akad-odniesienie">
+                    {` (${pole.odniesienieEtykieta ?? S.odniesienieDomyslne}: ${fmtWartosc(odniesienie)}`}
+                    {pole.jednostka !== undefined && ` ${pole.jednostka}`}
+                    {')'}
+                  </span>
+                )}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+/**
+ * Formatuje wartość do postaci widocznej dla projektanta: wartości słownikowe
+ * solvera (kody metod, sposobów uziemienia, celów optymalizacji) przechodzą
+ * przez słownik polski; reszta — przez wspólny formater liczb.
+ */
+function fmtPole(wartosc: unknown): string {
+  if (typeof wartosc === 'string' && NAZWY_WARTOSCI[wartosc] !== undefined) {
+    return NAZWY_WARTOSCI[wartosc];
+  }
+  return fmtWartosc(wartosc);
+}
+
+/** Tabela obiektów analizy — obiekty nazwane tak, jak nazywa je schemat. */
+function PanelObiektow({
+  tabela,
+  payload,
+  nazwaObiektu,
+}: {
+  tabela: TabelaObiektow;
+  payload: unknown;
+  nazwaObiektu: (ref: string) => string;
+}) {
+  /**
+   * Etykieta obiektu wiersza. Dla rankingu niepewności referencja niesie
+   * DODATKOWO klucz parametru (`<ref>.<parametr>`) — rozbijamy ją, żeby wiersz
+   * mówił „transformator TR1 · napięcie zwarcia", a nie pokazywał ścieżki klucza.
+   */
+  const etykietaWiersza = (surowa: string): string => {
+    if (!tabela.refZParametrem) return nazwaObiektu(surowa);
+    const granica = surowa.lastIndexOf('.');
+    if (granica < 0) return nazwaObiektu(surowa);
+    const ref = surowa.slice(0, granica);
+    const parametr = surowa.slice(granica + 1);
+    return `${nazwaObiektu(ref)} · ${NAZWY_PARAMETROW[parametr] ?? parametr}`;
+  };
+  const surowa = odczytaj(payload, tabela.sciezka);
+  const wiersze = Array.isArray(surowa) ? surowa : [];
+  return (
+    <section className="mvd-akad-sekcja" data-testid={`mvd-akad-obiekty-${tabela.sciezka}`}>
+      <div className="mvd-akad-sekcja-naglowek">
+        <h3 className="mvd-akad-sekcja-tytul">{tabela.tytul}</h3>
+        <span className="mvd-akad-licznik mvd-num">{S.wynikPozycji(wiersze.length)}</span>
+      </div>
+      {wiersze.length === 0 ? (
+        <p className="mvd-akad-opis">{S.obiektyBrak}</p>
+      ) : (
+        <div className="mvd-akad-tabela-otoczka">
+          <table className="mvd-akad-tabela">
+            <thead>
+              <tr>
+                <th>{tabela.etykietaRef}</th>
+                {tabela.kolumny.map((kolumna) => (
+                  <th key={kolumna.klucz}>
+                    {kolumna.etykieta}
+                    {kolumna.jednostka !== undefined && ` [${kolumna.jednostka}]`}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {wiersze.map((wiersz, indeks) => {
+                const ref = String(odczytaj(wiersz, tabela.kluczRef) ?? '');
+                return (
+                  <tr key={`${ref}:${indeks}`}>
+                    <td>{etykietaWiersza(ref)}</td>
+                    {tabela.kolumny.map((kolumna) => {
+                      const wartosc = odczytaj(wiersz, kolumna.klucz);
+                      if (kolumna.mapaStatusu !== undefined) {
+                        const wpis = kolumna.mapaStatusu[String(wartosc)];
+                        return (
+                          <td key={kolumna.klucz}>
+                            {wpis ? (
+                              <Chip tekst={wpis.tekst} istotnosc={wpis.istotnosc} />
+                            ) : (
+                              S.kreska
+                            )}
+                          </td>
+                        );
+                      }
+                      // Kolumna referencyjna (np. szyna przyłączenia silnika) też
+                      // dostaje nazwę ze schematu — inaczej surowy ref wracałby
+                      // bokiem, w innej kolumnie tej samej tabeli.
+                      const czyRef = kolumna.klucz.endsWith('_ref');
+                      return (
+                        <td key={kolumna.klucz} className={czyRef ? undefined : 'mvd-num'}>
+                          {czyRef ? nazwaObiektu(String(wartosc ?? '')) : fmtPole(wartosc)}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
+
+/**
+ * Uczciwy stan niekompletny — solver melduje brak danych zamiast fabrykować
+ * werdykt. Panel pokazuje JEGO komunikat (już po polsku) i listę brakujących
+ * danych nazwanych po ludzku, a nie kluczami kontraktu.
+ */
+function PanelBrakow({ payload }: { payload: unknown }) {
+  const komunikat = odczytaj(payload, SCIEZKA_BRAKOW.komunikat);
+  const braki = odczytaj(payload, SCIEZKA_BRAKOW.brakujacePola);
+  const listaBrakow = Array.isArray(braki) ? braki.map(String) : [];
+  if (typeof komunikat !== 'string' && listaBrakow.length === 0) return null;
+  return (
+    <section className="mvd-akad-sekcja" data-testid="mvd-akad-braki">
+      <h3 className="mvd-akad-sekcja-tytul">{S.brakiTytul}</h3>
+      {typeof komunikat === 'string' && <p className="mvd-akad-opis">{komunikat}</p>}
+      {listaBrakow.length > 0 && (
+        <>
+          <p className="mvd-akad-opis">{S.brakiLista}</p>
+          <ul className="mvd-akad-naruszenia" data-testid="mvd-akad-braki-lista">
+            {listaBrakow.map((pole) => (
+              <li key={pole}>{NAZWY_BRAKUJACYCH_POL[pole] ?? pole}</li>
+            ))}
+          </ul>
+        </>
+      )}
+    </section>
+  );
+}
+
+/** Wiarygodność wyniku — blok `sanity` solvera (kontrola granic fizycznych). */
+function PanelWiarygodnosci({ payload }: { payload: unknown }) {
+  const status = odczytaj(payload, SCIEZKA_WIARYGODNOSCI.status);
+  if (typeof status !== 'string') return null;
+  const wpis = MAPA_WIARYGODNOSCI[status];
+  const lacznie = odczytaj(payload, SCIEZKA_WIARYGODNOSCI.sprawdzenLacznie);
+  const zdane = odczytaj(payload, SCIEZKA_WIARYGODNOSCI.sprawdzenZdanych);
+  const naruszeniaSurowe = odczytaj(payload, SCIEZKA_WIARYGODNOSCI.naruszenia);
+  const naruszenia = Array.isArray(naruszeniaSurowe) ? naruszeniaSurowe : [];
+  return (
+    <section className="mvd-akad-sekcja" data-testid="mvd-akad-wiarygodnosc">
+      <div className="mvd-akad-sekcja-naglowek">
+        <h3 className="mvd-akad-sekcja-tytul">{S.wiarygodnoscTytul}</h3>
+        <Chip
+          tekst={wpis?.tekst ?? status}
+          istotnosc={wpis?.istotnosc ?? 'neutral'}
+          testid="mvd-akad-wiarygodnosc-chip"
+        />
+        {typeof lacznie === 'number' && typeof zdane === 'number' && (
+          <span className="mvd-akad-licznik mvd-num">{S.wiarygodnoscSprawdzen(zdane, lacznie)}</span>
+        )}
+      </div>
+      <p className="mvd-akad-opis">{S.wiarygodnoscOpis}</p>
+      {naruszenia.length > 0 && (
+        <ul className="mvd-akad-naruszenia" data-testid="mvd-akad-wiarygodnosc-naruszenia">
+          {naruszenia.map((naruszenie, indeks) => (
+            <li key={indeks}>{String(odczytaj(naruszenie, 'detail_pl') ?? S.kreska)}</li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+/**
+ * Zapis techniczny odpowiedzi solvera — ZWINIĘTY, jawnie opisany jako materiał
+ * audytowy. Pełne spłaszczenie zostaje (karta V126-OKNA: limit ma wynikać
+ * z danych), ale przestaje udawać ekran projektanta: nazwy pól są tu nazwami
+ * kontraktu obliczeniowego i tak są podpisane.
+ */
+function PanelZapisuTechnicznego({ wynik }: { wynik: OdpowiedzWyniku }) {
+  const wiersze = useMemo(() => splaszczWynik(wynik.result.result), [wynik]);
+  const grupy = useMemo(() => pogrupujWynik(wiersze), [wiersze]);
+
+  return (
+    <Zwijana
+      tytul={S.surowyTytul}
+      opis={S.surowyOpis}
+      licznik={S.wynikLiczbaPol(wiersze.length)}
+      testid="mvd-akad-wynik"
+      pokaz={S.surowyPokaz}
+      ukryj={S.surowyUkryj}
+    >
+      {wiersze.length === 0 ? (
+        <p className="mvd-akad-opis">{S.wynikPusty}</p>
+      ) : (
+        <div data-mvd-zapis-techniczny="1">
+          {grupy.map((grupa) => (
+            <div
+              className="mvd-akad-grupa"
+              key={grupa.klucz}
+              data-testid={`mvd-akad-grupa-${grupa.klucz}`}
+            >
+              <h4 className="mvd-akad-grupa-tytul">{grupa.klucz}</h4>
+              <div className="mvd-akad-wiersze">
+                {grupa.wiersze.map((wiersz) => (
+                  <div className="mvd-akad-wiersz" key={wiersz.sciezka}>
+                    <span className="mvd-akad-wiersz-etyk">{wiersz.sciezka}</span>
+                    <span className="mvd-akad-wiersz-wartosc mvd-num">
+                      {fmtWartosc(wiersz.wartosc)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </Zwijana>
   );
 }
 
@@ -212,7 +529,7 @@ function PanelSladu({ slad }: { slad: OdpowiedzSladu }) {
                   <td className="mvd-num">{krok.step}</td>
                   <td className="mvd-num">{krok.formula}</td>
                   <td>{krok.substitution}</td>
-                  <td className="mvd-num">{fmtWartosc(krok.result)}</td>
+                  <td className="mvd-num">{krok.result_pl ?? S.kreska}</td>
                   <td>{krok.unit_check}</td>
                 </tr>
               ))}
@@ -273,7 +590,7 @@ function PanelDowodu({ dowod }: { dowod: PakietDowodu }) {
                   <td className="mvd-num">{krok.ordinal}</td>
                   <td className="mvd-num">{krok.formula ?? S.kreska}</td>
                   <td>{krok.substitution ?? S.kreska}</td>
-                  <td className="mvd-num">{fmtWartosc(krok.result)}</td>
+                  <td className="mvd-num">{krok.result_pl ?? S.kreska}</td>
                   <td>{krok.unit_check ?? S.kreska}</td>
                 </tr>
               ))}
@@ -452,6 +769,8 @@ export function EkranAnalizAkademickich({
   const akcjaPrzypadki = useAkcjaPrzejdzDoPrzypadkow();
   const trybEkspercki = isModeAtLeast(trybZaawansowania, 'expert');
   const swiezosc = useSwiezoscWynikow();
+  // Most ref → nazwa obiektu ze schematu (jedno źródło nazw z migawką ENM).
+  const nazwaObiektu = useNazwaObiektu();
 
   const [rodzaje, setRodzaje] = useState<StanRodzajow>({ rodzaj: 'ladowanie' });
   const [wybrany, setWybrany] = useState<string>(rodzajPoczatkowy ?? '');
@@ -614,6 +933,12 @@ export function EkranAnalizAkademickich({
             </select>
           </label>
         )}
+        {wybrany !== '' && PREZENTACJA[wybrany as RodzajAnalizy] !== undefined && (
+          <div className="mvd-akad-cel" data-testid="mvd-akad-cel">
+            <span className="mvd-akad-wiersz-etyk">{S.celTytul}</span>
+            <p className="mvd-akad-cel-tresc">{PREZENTACJA[wybrany as RodzajAnalizy].pytanie}</p>
+          </div>
+        )}
         {wybrany !== '' && <p className="mvd-akad-opis">{opisRodzaju(wybrany)}</p>}
         {wybrany === 'ssci_impedance' && (
           <div className="mvd-akad-odeslanie" data-testid="mvd-akad-odeslanie-ssci">
@@ -732,10 +1057,33 @@ export function EkranAnalizAkademickich({
             </div>
           </section>
 
-          <PanelWyniku wynik={stan.dane.wynik} />
+          {/* EKRAN INŻYNIERSKI (V126-JEZYK): werdykt z kryterium → wielkości
+              z jednostkami → obiekty nazwane jak na schemacie → wiarygodność
+              → następny krok. Zapis techniczny i ślad zostają, ale ZWINIĘTE. */}
+          <PanelWerdyktu rodzaj={wybrany} payload={stan.dane.wynik.result.result} />
+          <PanelWielkosci rodzaj={wybrany} payload={stan.dane.wynik.result.result} />
+          {(PREZENTACJA[wybrany as RodzajAnalizy]?.tabele ?? []).map((tabela) => (
+            <PanelObiektow
+              key={tabela.sciezka}
+              tabela={tabela}
+              payload={stan.dane.wynik.result.result}
+              nazwaObiektu={nazwaObiektu}
+            />
+          ))}
+          <PanelBrakow payload={stan.dane.wynik.result.result} />
+          <PanelWiarygodnosci payload={stan.dane.wynik.result.result} />
+          {PREZENTACJA[wybrany as RodzajAnalizy] !== undefined && (
+            <section className="mvd-akad-sekcja" data-testid="mvd-akad-nastepny-krok">
+              <h3 className="mvd-akad-sekcja-tytul">{S.nastepnyKrokTytul}</h3>
+              <p className="mvd-akad-opis">
+                {PREZENTACJA[wybrany as RodzajAnalizy].nastepnyKrok}
+              </p>
+            </section>
+          )}
           <PanelSladu slad={stan.dane.slad} />
           <PanelDowodu dowod={stan.dane.dowod} />
           <PanelRaportu raport={stan.dane.raport} />
+          <PanelZapisuTechnicznego wynik={stan.dane.wynik} />
         </div>
       )}
 
