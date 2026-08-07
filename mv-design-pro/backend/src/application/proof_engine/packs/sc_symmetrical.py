@@ -29,7 +29,12 @@ from typing import Any
 from uuid import UUID, uuid4
 
 from application.proof_engine.proof_generator import ProofGenerator, SC3FInput
-from application.proof_engine.proof_pack import ProofPackBuilder, ProofPackContext
+from application.proof_engine.proof_pack import (
+    ProofPackBuilder,
+    ProofPackContext,
+    deterministic_artifact_id,
+    dokument_deterministyczny,
+)
 from application.proof_engine.types import ProofDocument
 from enm.mapping import map_enm_to_network_graph
 from enm.models import EnergyNetworkModel
@@ -150,9 +155,16 @@ class SC3FProofPack:
         context: ProofPackContext,
         artifact_id: UUID | None = None,
     ) -> bytes:
-        """Zbuduj ZIP pakietu dowodowego SC3F."""
-        result = cls.generate(data, artifact_id)
-        return ProofPackBuilder(context).build(result.proof_sc3f)
+        """Zbuduj ZIP pakietu dowodowego SC3F.
+
+        Bez jawnego ``artifact_id`` identyfikator artefaktu wyprowadzamy z tożsamości
+        pakietu (``deterministic_artifact_id``) — inaczej dwa pobrania tego samego
+        przebiegu różniłyby się bajtami, wbrew deklaracji ``manifest.json``.
+        """
+        result = cls.generate(data, artifact_id or deterministic_artifact_id(context))
+        return ProofPackBuilder(context).build(
+            dokument_deterministyczny(result.proof_sc3f, context, data.run_timestamp)
+        )
 
     @classmethod
     def validate_completeness(cls, result: SC3FPackResult) -> list[str]:

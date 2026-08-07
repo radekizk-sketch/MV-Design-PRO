@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 import hashlib
-import io
 import json
-import zipfile
 from collections.abc import Callable
 from datetime import datetime
 from typing import Any
@@ -19,8 +17,6 @@ from application.proof_engine.proof_pack import ProofPackContext, resolve_mv_des
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from infrastructure.persistence.unit_of_work import UnitOfWork
 from pydantic import BaseModel
-
-_FIXED_ZIP_TIMESTAMP = (1980, 1, 1, 0, 0, 0)
 
 router = APIRouter(prefix="/api/proof", tags=["proof-pack"])
 
@@ -105,7 +101,7 @@ def download_sc_asymmetrical_pack(payload: SCAsymmetricalPackRequest) -> Respons
         n_factor=payload.n_factor,
     )
     packs = SCAsymmetricalProofPack.generate_zip(pack_input, context)
-    content = _build_sc_asymmetrical_bundle_zip(packs)
+    content = SCAsymmetricalProofPack.zbuduj_zip_zbiorczy(packs)
     headers = {
         "Content-Disposition": (
             f'attachment; filename="pakiet_dowodowy_sc_asymetryczne__{payload.run_id}.zip"'
@@ -422,18 +418,3 @@ def download_sc3f_pack(payload: SC3FPackRequest) -> Response:
     return Response(content=content, media_type="application/zip", headers=headers)
 
 
-def _build_sc_asymmetrical_bundle_zip(packs: dict[str, bytes]) -> bytes:
-    buffer = io.BytesIO()
-    with zipfile.ZipFile(
-        buffer,
-        mode="w",
-        compression=zipfile.ZIP_DEFLATED,
-        compresslevel=9,
-    ) as bundle:
-        for fault_type in sorted(packs.keys()):
-            path = f"pakiet_dowodowy/{fault_type}.zip"
-            info = zipfile.ZipInfo(path, date_time=_FIXED_ZIP_TIMESTAMP)
-            info.create_system = 0
-            info.external_attr = 0o100644 << 16
-            bundle.writestr(info, packs[fault_type])
-    return buffer.getvalue()

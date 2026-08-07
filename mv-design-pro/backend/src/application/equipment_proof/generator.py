@@ -71,7 +71,7 @@ class EquipmentProofGenerator:
                 device_value=device_val,
                 required_source_key="u_kv",
                 device_source_key="device.u_m_kv",
-                message_pl="P12 MVP: brak wartości u_m_kv lub u_kv.",
+                message_pl="Brak podstawy: nie podano U_m aparatu albo U wymaganego.",
             )
         status = STATUS_PASS if device_val >= required_val else STATUS_FAIL
         return EquipmentProofCheckResult(
@@ -98,7 +98,7 @@ class EquipmentProofGenerator:
                 device_value=device_val,
                 required_source_key="ikss_ka",
                 device_source_key="device.i_cu_ka",
-                message_pl="P12 MVP: brak wartości i_cu_ka lub ikss_ka.",
+                message_pl="Brak podstawy: nie podano I_cu aparatu albo I″k wymaganego.",
             )
         status = STATUS_PASS if device_val >= required_val else STATUS_FAIL
         return EquipmentProofCheckResult(
@@ -133,7 +133,7 @@ class EquipmentProofGenerator:
                 device_value=device_val,
                 required_source_key=required_key,
                 device_source_key="device.i_dyn_ka",
-                message_pl="P12 MVP: brak wartości i_dyn_ka lub idyn_ka/ip_ka.",
+                message_pl="Brak podstawy: nie podano I_dyn aparatu albo I_dyn/i_p wymaganego.",
                 notes=notes,
             )
         status = STATUS_PASS if device_val >= required_val else STATUS_FAIL
@@ -169,7 +169,7 @@ class EquipmentProofGenerator:
                 device_value=device_val,
                 required_source_key="ith_ka",
                 device_source_key="device.i_th_ka",
-                message_pl="P12 MVP: brak wartości i_th_ka/t_th_s lub ith_ka/tk_s.",
+                message_pl="Brak podstawy: nie podano I_th/t_th aparatu albo I_th/t_k wymaganego.",
             )
         if device_time != required_time:
             # Karta S-C (2026-07-22, zgoda właściciela): przy różnych czasach
@@ -186,7 +186,7 @@ class EquipmentProofGenerator:
                 device_value=device_val,
                 required_source_key="ith_ka",
                 device_source_key="device.i_th_ka",
-                message_pl=(f"P12: I²t {required_i2t:.4f} <= {device_i2t:.4f} kA²s → {status}."),
+                message_pl=(f"Energia cieplna I²t {required_i2t:.4f} <= {device_i2t:.4f} kA²s → {status}."),
                 notes=(
                     f"t_th_s={device_time} s, tk_s={required_time} s",
                     f"I²t wymagane = Ith_req²·tk = {required_i2t:.4f} kA²s",
@@ -244,7 +244,7 @@ class EquipmentProofGenerator:
             project_name=proof_input.project_id,
             case_name=proof_input.case_id,
             run_timestamp=_P12_TIMESTAMP,
-            solver_version="P12-MVP",
+            solver_version="dobor-aparatury-1.0",
         )
         steps = [
             cls._step_device_data(proof_input.device),
@@ -281,7 +281,7 @@ class EquipmentProofGenerator:
             ),
             created_at=_P12_TIMESTAMP,
             proof_type=ProofType.EQUIPMENT_PROOF,
-            title_pl="P12 — Dowód doboru aparatury",
+            title_pl="Dowód doboru aparatury",
             header=header,
             steps=tuple(steps),
             summary=summary,
@@ -293,7 +293,7 @@ class EquipmentProofGenerator:
             "EQ_P12_001",
             r"D_{dev} = \{U_m, I_{cu}, I_{dyn}, I_{th}, t_{th}\}",
             "Dane urządzenia (nameplate)",
-            "PN-EN 60909 (P12)",
+            "PN-EN 60909",
             (
                 _symbol("D_{dev}", "—", "Zestaw danych urządzenia", "device"),
                 _symbol("U_m", "kV", "Napięcie znamionowe urządzenia", "device.u_m_kv"),
@@ -329,7 +329,7 @@ class EquipmentProofGenerator:
             "EQ_P12_002",
             r"D_{req} = \{U_{req}, I_k'', i_p, I_{dyn}, I_{th}, t_k\}",
             "Dane wymagane z P11 (key_results)",
-            "PN-EN 60909 (P12)",
+            "PN-EN 60909",
             (
                 _symbol("D_{req}", "—", "Zestaw danych wymaganych", "required"),
                 _symbol("U_{req}", "kV", "Napięcie w punkcie BoundaryNode", "u_kv"),
@@ -367,7 +367,7 @@ class EquipmentProofGenerator:
             "EQ_P12_003",
             r"U_m \ge U_{req}",
             "Sprawdzenie napięcia znamionowego",
-            "PN-EN 60909 (P12)",
+            "PN-EN 60909",
             (
                 _symbol("U_m", "kV", "Napięcie znamionowe urządzenia", "device.u_m_kv"),
                 _symbol("U_{req}", "kV", "Napięcie wymagane", "u_kv"),
@@ -397,7 +397,7 @@ class EquipmentProofGenerator:
             "EQ_P12_004",
             r"I_{cu} \ge I_k''",
             "Sprawdzenie zdolności wyłączalnej",
-            "PN-EN 60909 (P12)",
+            "PN-EN 60909",
             (
                 _symbol("I_{cu}", "kA", "Zdolność wyłączalna", "device.i_cu_ka"),
                 _symbol("I_k''", "kA", "Prąd zwarciowy początkowy", "ikss_ka"),
@@ -425,7 +425,7 @@ class EquipmentProofGenerator:
             "EQ_P12_005",
             r"I_{dyn} \ge I_{dyn,req}",
             "Sprawdzenie wytrzymałości dynamicznej",
-            "PN-EN 60909 (P12)",
+            "PN-EN 60909",
             (
                 _symbol("I_{dyn}", "kA", "Wytrzymałość dynamiczna", "device.i_dyn_ka"),
                 _symbol(
@@ -485,7 +485,7 @@ class EquipmentProofGenerator:
                 "EQ_P12_006b",
                 r"I_{th,req}^2 \cdot t_k \le I_{th}^2 \cdot t_{th}",
                 "Sprawdzenie wytrzymałości cieplnej (porównanie energii I²t)",
-                "PN-EN 60909 (P12)",
+                "PN-EN 60909",
                 (
                     _symbol("I_{th}", "kA", "Wytrzymałość cieplna", "device.i_th_ka"),
                     _symbol("t_{th}", "s", "Czas odniesienia urządzenia", "device.t_th_s"),
@@ -506,7 +506,7 @@ class EquipmentProofGenerator:
                 "EQ_P12_006",
                 r"I_{th}(t_{th}) \ge I_{th,req}(t_k)",
                 "Sprawdzenie wytrzymałości cieplnej",
-                "PN-EN 60909 (P12)",
+                "PN-EN 60909",
                 (
                     _symbol("I_{th}", "kA", "Wytrzymałość cieplna", "device.i_th_ka"),
                     _symbol("t_{th}", "s", "Czas odniesienia urządzenia", "device.t_th_s"),
@@ -543,7 +543,7 @@ def _status_from_checks(checks: tuple[EquipmentProofCheckResult, ...], name: str
 
 
 def _compare_message(check_name: str, device_val: float, required_val: float, status: str) -> str:
-    return f"P12 MVP: {check_name} {device_val:.4f} >= {required_val:.4f} → {status}."
+    return f"{check_name}: {device_val:.4f} >= {required_val:.4f} → {status}."
 
 
 def _deterministic_uuid(proof_input: EquipmentProofInput, suffix: str) -> UUID:
