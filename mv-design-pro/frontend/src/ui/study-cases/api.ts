@@ -13,6 +13,8 @@ import type {
   ExecutionRun,
   ExecutionResultSet,
   CreateRunRequest,
+  BatchJob,
+  CreateBatchRequest,
 } from './types';
 
 const API_BASE = '/api/study-cases';
@@ -290,4 +292,43 @@ export async function getRun(runId: string): Promise<ExecutionRun> {
 export async function getRunResults(runId: string): Promise<ExecutionResultSet> {
   const response = await fetch(`${EXECUTION_BASE}/runs/${runId}/results`);
   return handleResponse<ExecutionResultSet>(response);
+}
+
+// =============================================================================
+// Serie przebiegów (wsad) — karta BATCH-ROUTER
+// =============================================================================
+
+/**
+ * Utwórz serię przebiegów nad scenariuszami zwarciowymi przypadku.
+ */
+export async function createBatch(
+  caseId: string,
+  request: CreateBatchRequest
+): Promise<BatchJob> {
+  const response = await fetch(`${EXECUTION_BASE}/study-cases/${caseId}/batches`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+  });
+  return handleResponse<BatchJob>(response);
+}
+
+/**
+ * Wykonaj serię przebiegów (sekwencyjnie, torem kanonicznym).
+ */
+export async function executeBatch(batchId: string): Promise<BatchJob> {
+  const response = await fetch(`${EXECUTION_BASE}/batches/${batchId}/execute`, {
+    method: 'POST',
+  });
+  return handleResponse<BatchJob>(response);
+}
+
+/**
+ * Lista serii przebiegów przypadku (najnowsze pierwsze).
+ */
+export async function listBatches(
+  caseId: string
+): Promise<{ batches: BatchJob[]; count: number }> {
+  const response = await fetch(`${EXECUTION_BASE}/study-cases/${caseId}/batches`);
+  return handleResponse<{ batches: BatchJob[]; count: number }>(response);
 }
