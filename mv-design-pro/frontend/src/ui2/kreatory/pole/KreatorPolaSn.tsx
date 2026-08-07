@@ -40,22 +40,22 @@ import {
 import {
   APARAT_OPCJE,
   DANE_DOMYSLNE,
-  RODZAJ_POMIARU_OPCJE,
   ROLE_OPCJE,
+  WYBOR_POMIARU_OPCJE,
   aparatLabel,
   bayKindZRoli,
   maSzablonProducenta,
   maSzyne,
-  rodzajPomiaruLabel,
   rolaLabel,
   walidujFormularz,
+  wyborPomiaruLabel,
   zbudujPayload,
   type BladPola,
   type KontekstPola,
   type PolaSnFormData,
   type RodzajAparatu,
-  type RodzajPomiaru,
   type RolaPola,
+  type WyborPomiaru,
 } from './polaSnModel';
 import { POLE_STRINGS as T } from './strings';
 
@@ -68,7 +68,7 @@ const KROKI: readonly KrokKreatora[] = [
 // (kody roli/aparatu) mieszka w modelu; UI pokazuje wyłącznie polskie etykiety.
 const OPCJE_ROL = ROLE_OPCJE.map((o) => ({ id: o.value, etykieta: o.label }));
 const OPCJE_APARAT = APARAT_OPCJE.map((o) => ({ id: o.value, etykieta: o.label }));
-const OPCJE_RODZAJU_POMIARU = RODZAJ_POMIARU_OPCJE.map((o) => ({ id: o.value, etykieta: o.label }));
+const OPCJE_POMIARU = WYBOR_POMIARU_OPCJE.map((o) => ({ id: o.value, etykieta: o.label }));
 
 function trimmed(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
@@ -320,9 +320,9 @@ export function KreatorPolaSn() {
                 <KreatorInfo>{T.rodzajPomiaruPomoc}</KreatorInfo>
                 <PoleWyboru
                   etykieta={T.rodzajPomiaru}
-                  wartosc={dane.rodzaj_pomiaru}
-                  onZmiana={(v) => zmien('rodzaj_pomiaru', v as RodzajPomiaru)}
-                  opcje={OPCJE_RODZAJU_POMIARU}
+                  wartosc={dane.wybor_pomiaru}
+                  onZmiana={(v) => zmien('wybor_pomiaru', v as WyborPomiaru)}
+                  opcje={OPCJE_POMIARU}
                   testid="mvd-kreator-pole-rodzaj-pomiaru"
                 />
               </>
@@ -390,7 +390,7 @@ export function KreatorPolaSn() {
             {dane.bay_role === 'MEASUREMENT' ? (
               <RzadWartosci
                 etykieta={T.wierszRodzajPomiaru}
-                wartosc={rodzajPomiaruLabel(dane.rodzaj_pomiaru)}
+                wartosc={wyborPomiaruLabel(dane.wybor_pomiaru)}
               />
             ) : null}
             <RzadWartosci etykieta={T.aparat} wartosc={aparatLabel(dane.apparatus_kind)} />

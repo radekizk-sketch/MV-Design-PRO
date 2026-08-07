@@ -122,55 +122,91 @@ Reguły twarde:
   kablowy) i za słupem rozgałęźnym (odcinek napowietrzny). Zrzuty odbioru:
   `docs/sld/audyt-2026-08/odg-rysunek-po-{l0,l2}-{ciemny,jasny}.png`.
 
-## 5. Rodzaj pomiaru pola POMIAROWEGO (V12K-335 pkt 2, karta POMIAR-RODZAJ)
+## 5. Pomiar pola POMIAROWEGO: funkcja pola i rodzaj układu pomiarowego energii (V12K-335 pkt 2, korekta właściciela V12K-336, karta POMIAR-RODZAJ)
 
-Pole pomiarowe niesie atrybut **`rodzaj_pomiaru`** (klucz w specyfikacji pola
-`field_specs`, addytywny — wyłącznie dla pola o roli POMIAROWE; wartości po
-polsku, jak kanoniczna rola `POMIAROWE` i klucz `rodzaj` odcinków):
+### 5.1 Funkcja pola pomiarowego — rozróżnienie klasowe (V12K-336 pkt 4)
 
-| Wartość | Znaczenie | Brama tranzytu |
+Pole o roli POMIAROWE pełni jedną z DWÓCH funkcji (klucz **`funkcja_pomiaru`**
+w specyfikacji pola `field_specs`, addytywny — wyłącznie dla pola POMIAROWE):
+
+| Funkcja | Znaczenie | Brama tranzytu |
 |---|---|---|
-| `ROZLICZENIOWY` | układ pomiarowo-rozliczeniowy odbiorcy ([E-UP] §7/§10.1, granica stron) | PODLEGA — §1 tego kontraktu |
-| `KONTROLNY` | pomiar kontrolny / ruchowy OSD (bilans, telemetria) | NIE podlega — wolny na każdej drodze i w każdej topologii |
+| `UKLAD_ENERGII` | układ pomiarowy energii elektrycznej ([E-UP] pkt 3) — towarzyszy granicy stron w gałęzi klienta; niesie rodzaj układu (`rodzaj_pomiaru`) | PODLEGA — §1 tego kontraktu |
+| `NAPIECIA_SZYN` | pole pomiaru napięcia szyn rozdzielni (przekładniki napięciowe sekcji — np. pole pomiarowe GPZ); NIE jest układem pomiarowym energii i nie niesie rodzaju rozliczenia | NIE podlega — wolne na każdej drodze i w każdej topologii |
 
-### 5.1 Rozstrzygnięcie rodzaju (jedno źródło: `rozstrzygnij_rodzaj_pomiaru`)
+To rozróżnienie zastępuje dawny „wyjątek GPZ": pole pomiarowe na szynie
+rozdzielni GPZ jest legalne, bo jest pomiarem NAPIĘCIA szyn, a nie układem
+pomiarowym energii (pin `test_add_sn_bay_pin_gpz_pomiar_napiecia_szyn_wolny`).
 
-Rodzaj wynika z deklaracji; bez deklaracji rozstrzyga go KONTRAKT drogi
-wejścia — jedno pytanie: **czy operacja deklaruje przyłącze klienta?**
+### 5.2 Rodzaj układu pomiarowego energii — lista ZAMKNIĘTA ze standardu
+
+Rodzaje układów pomiarowych energii elektrycznej wprost z **[E-UP] pkt 3**
+(definicja „Układy pomiarowe energii elektrycznej", zgodna z IRiESD) — klucz
+**`rodzaj_pomiaru`**, wyłącznie dla `funkcja_pomiaru='UKLAD_ENERGII'`:
+
+| Wartość | Układ ze standardu |
+|---|---|
+| `PODSTAWOWY` | układ pomiarowo-rozliczeniowy podstawowy (obowiązkowy układ punktu rozliczeniowego) |
+| `REZERWOWY` | układ pomiarowo-rozliczeniowy rezerwowy |
+| `ROWNOWAZNY` | układ pomiarowo-rozliczeniowy równoważny |
+| `KONTROLNY` | układ pomiarowo-kontrolny |
+
+Żadnych innych wartości (V12K-336 pkt 1). **Układ pomiarowo-kontrolny stosuje
+się dla obiektów o mocy przyłączeniowej POWYŻEJ 5 MW** (dyrektywa właściciela
+w zw. z IRiESD) — to WALIDACJA NORMATYWNA w warstwie zgodności (reguła
+`osd_enea.metering.control_metering_above_5mw` pakietu OSD Enea; moc z
+`header.connection_conditions`, bramki danych w opisie reguły), NIE twarda
+brama domenowa.
+
+### 5.3 Rozstrzygnięcie pomiaru (jedno źródło: `rozstrzygnij_pomiar_pola`)
+
+Funkcja i rodzaj wynikają z deklaracji; bez deklaracji rozstrzyga KONTRAKT
+drogi wejścia — jedno pytanie: **czy operacja deklaruje przyłącze klienta?**
 
 - **Drogi budowy stacji** (`insert_station_on_segment_sn`,
   `append_station_on_endpoint`, aplikacja szablonu) — deklaracja stacji z polem
   POMIAROWYM opisuje przyłącze KLIENTA (§3 reguła 1), więc pole bez deklaracji
-  jest **ROZLICZENIOWE** (`RODZAJ_POMIARU_DOMYSLNY_BUDOWY_STACJI`). Skutek:
-  surowe payloady sprzed atrybutu zachowują dotychczasową semantykę bramy —
-  zero cichego poluzowania. Szablony biblioteki NIE korzystają z tej reguły:
-  każdy szablon z pomiarem deklaruje `ROZLICZENIOWY` JAWNIE
-  (`_resolve_sn_field_specs`, pin
-  `test_kazdy_szablon_z_pomiarem_deklaruje_rodzaj_rozliczeniowy_jawnie`).
+  jest **układem pomiarowym ENERGII** (`FUNKCJA_POMIARU_DOMYSLNA_BUDOWY_STACJI`).
+  Skutek: surowe payloady sprzed atrybutów zachowują dotychczasową semantykę
+  bramy — zero cichego poluzowania. Szablony biblioteki NIE korzystają z tej
+  reguły: każdy szablon z pomiarem deklaruje JAWNIE `UKLAD_ENERGII` +
+  `PODSTAWOWY` (`_resolve_sn_field_specs`, pin
+  `test_kazdy_szablon_z_pomiarem_deklaruje_uklad_podstawowy_jawnie`).
 - **Droga dokładania pojedynczego pola** (`add_sn_bay`, w tym rekonfiguracja
-  `existing_field_ref`) — operacja NIE deklaruje przyłącza: pomiar na
-  istniejącej szynie bywa i pomiarem kontrolnym OSD, i rozliczeniowym
-  przyłączem z rozdzielni OSD (§2), więc kontekst nie rozstrzyga. Status
-  ROZLICZENIOWY ma skutki kontraktowe (granica stron, brama tranzytu) i
-  **nigdy nie powstaje z domysłu** — wymaga JAWNEJ deklaracji; bez niej pole
-  jest **KONTROLNE** (`RODZAJ_POMIARU_DOMYSLNY_POLA_DOKLADANEGO`).
+  `existing_field_ref`) — operacja NIE deklaruje przyłącza: pole pomiarowe
+  dokładane do istniejącej rozdzielni (GPZ, stacja OSD) to konstrukcyjnie pole
+  pomiaru NAPIĘCIA SZYN (`FUNKCJA_POMIARU_DOMYSLNA_POLA_DOKLADANEGO`). Status
+  układu pomiarowego ENERGII ma skutki kontraktowe (granica stron, brama
+  tranzytu) i **nigdy nie powstaje z domysłu** — wymaga JAWNEJ deklaracji
+  (funkcji `UKLAD_ENERGII` albo rodzaju układu).
+- **Rodzaj układu**: deklaracja rodzaju implikuje funkcję `UKLAD_ENERGII`;
+  funkcja `UKLAD_ENERGII` bez rodzaju ⇒ **`PODSTAWOWY`**
+  (`RODZAJ_UKLADU_DOMYSLNY`) — to reguła standardu, nie domysł: układ
+  podstawowy jest obowiązkowym układem każdego punktu rozliczeniowego
+  ([E-UP] pkt 3; pozostałe są układami DODATKOWYMI). Jedna reguła wszystkich
+  dróg wejścia.
 
-Wartość spoza słownika ⇒ błąd `sn.rodzaj_pomiaru_nieznany`; deklaracja na polu
-innej roli ⇒ błąd `sn.rodzaj_pomiaru_poza_polem_pomiarowym` (te same kody na
-każdej operacji). Pole rekonfigurowane na rolę niepomiarową TRACI atrybut.
+Kody błędów (te same na każdej operacji): `sn.funkcja_pomiaru_nieznana`,
+`sn.rodzaj_pomiaru_nieznany` (wartości spoza słowników — także dawne pojęcie
+„ROZLICZENIOWY" sprzed korekty V12K-336), `sn.rodzaj_pomiaru_poza_ukladem_energii`
+(rodzaj przy pomiarze napięcia szyn), `sn.pomiar_poza_polem_pomiarowym`
+(deklaracja na polu innej roli). Pole rekonfigurowane na rolę niepomiarową
+TRACI oba atrybuty.
 
-### 5.2 Brama — jedna reguła, wszystkie drogi
+### 5.4 Brama — jedna reguła, wszystkie drogi
 
-Brama odmawia **wyłącznie pomiaru ROZLICZENIOWEGO** i mieszka w JEDNEJ funkcji
-źródłowej `enm.domain_operations.blad_pomiaru_w_torze_tranzytu` (reguła KLASA
-§3 — predykaty parami z jednego źródła). Reguła pozycyjna (uściślenie reguł
-twardych §3 pkt 2–3): pomiar rozliczeniowy na szynie prowadzącej tranzyt jest
-legalny WYŁĄCZNIE, gdy przed nim (od strony zasilania) stoi **czysta pętla
-OSD** — prefiks sekwencji pól zawiera pole odpływowe i nic spoza pary
-{dopływ, odpływ} (klasa C). Prefiks bez odpływu = klasa B (odmowa jak dotąd);
-prefiks z polem spoza pętli (TR, odgałęzienie, inny pomiar) = pomiar nie
-mierzy całego poboru za sobą (odmowa — dawna brama „klasa == B" ten układ
-przepuszczała).
+Brama odmawia **KAŻDEGO układu pomiarowego energii** (wszystkich czterech
+rodzajów — kontrolny też, bo towarzyszy rozliczeniowemu w gałęzi klienta przy
+granicy stron; V12K-336 pkt 3) i mieszka w JEDNEJ funkcji źródłowej
+`enm.domain_operations.blad_pomiaru_w_torze_tranzytu` (reguła KLASA §3 —
+predykaty parami z jednego źródła). Pomiar napięcia szyn bramie nie podlega.
+Reguła pozycyjna (uściślenie reguł twardych §3 pkt 2–3): układ pomiarowy
+energii na szynie prowadzącej tranzyt jest legalny WYŁĄCZNIE, gdy przed nim
+(od strony zasilania) stoi **czysta pętla OSD** — prefiks sekwencji pól
+zawiera pole odpływowe i nic spoza pary {dopływ, odpływ} (klasa C). Prefiks
+bez odpływu = klasa B (odmowa jak dotąd); prefiks z polem spoza pętli (TR,
+odgałęzienie, inny pomiar) = pomiar nie mierzy całego poboru za sobą (odmowa
+— dawna brama „klasa == B" ten układ przepuszczała).
 
 Prawda o tranzycie (druga połowa pary predykatów, udokumentowana w
 `szyna_prowadzi_tranzyt_sn`):
@@ -182,23 +218,25 @@ Prawda o tranzycie (druga połowa pary predykatów, udokumentowana w
 | `add_sn_bay` (nowe pole i rekonfiguracja; kreator „Dodaj pole SN") | z pary tranzytowej ról pól PO operacji (dopływ+odpływ) | `sn.pomiar_w_torze_tranzytu` |
 
 Rozdzielnia GPZ nie ma pola dopływowego SN (zasila ją transformator 110/SN),
-więc nie jest torem tranzytu — pomiar na szynie GPZ (kontrolny i rozliczeniowy
-wg §2) pozostaje wolny. Sekwencję `add_sn_bay` ocenia się PO operacji: pole
-rekonfigurowane na swojej pozycji, pole nowe na końcu; dokładanie pola na
-końcu nie zmienia prefiksu żadnego istniejącego pomiaru (pin
+więc nie jest torem tranzytu — na szynie GPZ wolny jest i pomiar napięcia
+szyn, i układ pomiarowy energii przyłącza z rozdzielni OSD (§2). Sekwencję
+`add_sn_bay` ocenia się PO operacji: pole rekonfigurowane na swojej pozycji,
+pole nowe na końcu; dokładanie pola na końcu nie zmienia prefiksu żadnego
+istniejącego pomiaru (pin
 `test_add_sn_bay_pole_za_pomiarem_nie_rusza_istniejacego_pomiaru`). Wpisy
-historyczne bez rodzaju ocenia operacja, która je stworzyła.
+historyczne bez funkcji ocenia operacja, która je stworzyła.
 
 Granica mechanizmu (nazwana, nie przemilczana): brama ocenia operację
-WPROWADZAJĄCĄ pomiar rozliczeniowy; edycja ról ISTNIEJĄCYCH pól, która
+WPROWADZAJĄCĄ układ pomiarowy energii; edycja ról ISTNIEJĄCYCH pól, która
 mogłaby unieważnić legalny pomiar (np. rozbrojenie pętli OSD złącza klasy C),
 to zakres walidacji modelu — rejestr `docs/v12xx/REJESTR_KONFLIKTOW.md`,
 wiersz POMIAR-RODZAJ.
 
 Deklaracja w UI: kreator „Dodaj pole SN" (`ui2/kreatory/pole`) ma wybór
-„Rodzaj pomiaru" (Rozliczeniowy — przyłącze klienta / Kontrolny — ruchowy
-OSD), widoczny wyłącznie dla pola pomiarowego i mapowany 1:1 na
-`rodzaj_pomiaru` payloadu `add_sn_bay` (zero fantomów).
+„Rodzaj pomiaru" (pomiar napięcia szyn / układ pomiarowy energii —
+podstawowy, rezerwowy, równoważny, pomiarowo-kontrolny), widoczny wyłącznie
+dla pola pomiarowego i mapowany 1:1 na `funkcja_pomiaru` + `rodzaj_pomiaru`
+payloadu `add_sn_bay` (zero fantomów).
 
 ## 6. Rejestr zmian
 
@@ -211,12 +249,22 @@ OSD), widoczny wyłącznie dla pola pomiarowego i mapowany 1:1 na
   ciągi za nimi; punkt odgałęźny jest pełnoprawnym węzłem wiersza (symbol z
   rodzaju modelu, etykieta z danych, obszar trafienia, tor rozcinany w punkcie),
   wyrocznia pokrycia porównuje model z rysunkiem po TOŻSAMOŚCI, nie po liczniku.
-- 2026-08-07: §5 (karta POMIAR-RODZAJ, decyzja właściciela V12K-335 pkt 2) —
-  atrybut `rodzaj_pomiaru` (ROZLICZENIOWY/KONTROLNY) na polu pomiarowym; brama
-  pomiaru w torze tranzytu odmawia WYŁĄCZNIE rozliczeniowego i obejmuje
-  WSZYSTKIE drogi wejścia jedną funkcją źródłową
-  (`blad_pomiaru_w_torze_tranzytu`; reguła pozycyjna „czysta pętla OSD przed
-  pomiarem" — uściślenie reguł twardych §3, dawna brama „klasa == B"
-  przepuszczała prefiks z TR przed pomiarem); szablony klienckie deklarują
-  ROZLICZENIOWY jawnie; kreator „Dodaj pole SN" deklaruje rodzaj z polską
-  etykietą; pomiar OSD na szynie GPZ pozostaje wolny (§2).
+- 2026-08-07: §5 (karta POMIAR-RODZAJ, decyzja właściciela V12K-335 pkt 2 +
+  KOREKTA WŁAŚCICIELA nr 4, V12K-336) — taksonomia pomiaru ZE STANDARDU:
+  funkcja pola (`funkcja_pomiaru`: układ pomiarowy energii vs pomiar napięcia
+  szyn — rozróżnienie klasowe zamiast „wyjątku GPZ") oraz rodzaj układu
+  pomiarowego energii (`rodzaj_pomiaru`: PODSTAWOWY/REZERWOWY/ROWNOWAZNY/
+  KONTROLNY — lista zamknięta z [E-UP] pkt 3, IRiESD; pierwotne pojęcie
+  „rozliczeniowy vs kontrolny/ruchowy OSD" z V12K-335 było błędną interpretacją
+  i zostało wycofane). Brama tranzytu odmawia KAŻDEGO układu pomiarowego
+  energii jedną funkcją źródłową (`blad_pomiaru_w_torze_tranzytu`; reguła
+  pozycyjna „czysta pętla OSD przed pomiarem" — uściślenie reguł twardych §3,
+  dawna brama „klasa == B" przepuszczała prefiks z TR przed pomiarem); pomiar
+  napięcia szyn wolny wszędzie; szablony klienckie deklarują jawnie
+  UKLAD_ENERGII+PODSTAWOWY; kreator „Dodaj pole SN" deklaruje wybór z polską
+  etykietą; walidacja normatywna „obiekt > 5 MW wymaga układu
+  pomiarowo-kontrolnego" w warstwie zgodności
+  (`osd_enea.metering.control_metering_above_5mw`). Przy okazji naprawiony
+  defekt utrwalania `header.connection_conditions` (pole niezadeklarowane
+  w `ENMHeader` gubione przy każdej walidacji modelu; teraz zadeklarowane
+  i wykluczone z odcisków ENM jak pozostałe pola zmienne nagłówka).

@@ -359,17 +359,26 @@ class SNFieldSpec(_FrozenBase):
     dokumentowany kontrakt zaprzeczał modelowi.
     """
 
-    rodzaj_pomiaru: Literal["ROZLICZENIOWY", "KONTROLNY"] | None = None
-    """Rodzaj pomiaru pola POMIAROWEGO (kontrakt POMIAR_ROZLICZENIOWY_SN_V1 §5,
-    V12K-335 pkt 2) — addytywnie, wyłącznie dla `field_role='POMIAROWE'`:
+    funkcja_pomiaru: Literal["UKLAD_ENERGII", "NAPIECIA_SZYN"] | None = None
+    """Funkcja pola pomiarowego (kontrakt POMIAR_ROZLICZENIOWY_SN_V1 §5,
+    V12K-336 pkt 4) — addytywnie, wyłącznie dla `field_role='POMIAROWE'`:
 
-    - `ROZLICZENIOWY` — układ pomiarowo-rozliczeniowy odbiorcy (granica stron);
-      podlega bramie pomiaru w torze tranzytu,
-    - `KONTROLNY` — pomiar kontrolny/ruchowy OSD; wolny na każdej drodze.
+    - `UKLAD_ENERGII` — układ pomiarowy energii elektrycznej ([E-UP] pkt 3;
+      granica stron); podlega bramie pomiaru w torze tranzytu i niesie
+      `rodzaj_pomiaru`,
+    - `NAPIECIA_SZYN` — pole pomiaru napięcia szyn rozdzielni (przekładniki
+      napięciowe sekcji); wolne na każdej drodze, bez rodzaju rozliczenia.
 
-    Brak deklaracji na drodze budowy stacji ⇒ ROZLICZENIOWY (deklaracja stacji
-    z polem POMIAROWYM opisuje przyłącze klienta, §3 reguła 1). Deklaracja na
-    polu innej roli ⇒ błąd `sn.rodzaj_pomiaru_poza_polem_pomiarowym`."""
+    Brak deklaracji na drodze budowy stacji ⇒ UKLAD_ENERGII (deklaracja stacji
+    z polem POMIAROWYM opisuje przyłącze klienta, §3 reguła 1)."""
+
+    rodzaj_pomiaru: Literal["PODSTAWOWY", "REZERWOWY", "ROWNOWAZNY", "KONTROLNY"] | None = None
+    """Rodzaj układu pomiarowego energii — lista ZAMKNIĘTA ze standardu [E-UP]
+    pkt 3 (zgodna z IRiESD): układ pomiarowo-rozliczeniowy podstawowy,
+    rezerwowy, równoważny lub układ pomiarowo-kontrolny. Wyłącznie dla
+    `funkcja_pomiaru='UKLAD_ENERGII'`; brak deklaracji przy funkcji układu ⇒
+    PODSTAWOWY (obowiązkowy układ punktu rozliczeniowego). Deklaracja na polu
+    innej roli ⇒ błąd `sn.pomiar_poza_polem_pomiarowym`."""
 
     catalog_bindings: CatalogBindings | None = None
     """Opcjonalne powiązania katalogowe aparatury."""
@@ -988,13 +997,20 @@ class AddSnBayPayload(_FrozenBase):
     bay_role: Literal["IN", "OUT", "FEEDER", "TR", "COUPLER", "MEASUREMENT", "OZE"] = "FEEDER"
     """Rola pola w kontrakcie ENM."""
 
-    rodzaj_pomiaru: Literal["ROZLICZENIOWY", "KONTROLNY"] | None = None
-    """Rodzaj pomiaru — wyłącznie dla `bay_role='MEASUREMENT'` (kontrakt
-    POMIAR_ROZLICZENIOWY_SN_V1 §5). Dokładanie pojedynczego pola nie deklaruje
-    przyłącza klienta, więc brak deklaracji ⇒ KONTROLNY (ruchowy OSD); status
-    ROZLICZENIOWY wymaga deklaracji JAWNEJ i podlega bramie
-    `sn.pomiar_w_torze_tranzytu`. Deklaracja na polu innej roli ⇒ błąd
-    `sn.rodzaj_pomiaru_poza_polem_pomiarowym`."""
+    funkcja_pomiaru: Literal["UKLAD_ENERGII", "NAPIECIA_SZYN"] | None = None
+    """Funkcja pola pomiarowego — wyłącznie dla `bay_role='MEASUREMENT'`
+    (kontrakt POMIAR_ROZLICZENIOWY_SN_V1 §5, V12K-336 pkt 4). Dokładanie
+    pojedynczego pola nie deklaruje przyłącza klienta, więc brak deklaracji ⇒
+    NAPIECIA_SZYN (pole pomiaru napięcia szyn rozdzielni); układ pomiarowy
+    ENERGII wymaga deklaracji JAWNEJ (funkcji albo rodzaju układu) i podlega
+    bramie `sn.pomiar_w_torze_tranzytu`."""
+
+    rodzaj_pomiaru: Literal["PODSTAWOWY", "REZERWOWY", "ROWNOWAZNY", "KONTROLNY"] | None = None
+    """Rodzaj układu pomiarowego energii ([E-UP] pkt 3, lista zamknięta,
+    IRiESD) — wyłącznie dla układu pomiarowego energii; deklaracja rodzaju
+    implikuje `funkcja_pomiaru='UKLAD_ENERGII'`. Deklaracja na polu innej
+    roli ⇒ błąd `sn.pomiar_poza_polem_pomiarowym`; rodzaj przy funkcji
+    NAPIECIA_SZYN ⇒ błąd `sn.rodzaj_pomiaru_poza_ukladem_energii`."""
 
     field_name: str | None = None
     """Opcjonalna nazwa pola."""

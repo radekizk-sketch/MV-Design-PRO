@@ -690,11 +690,13 @@ def test_realny_zestaw_pol_szablonu_abonenckiego_jest_odrzucany_przez_wciecie() 
 # ---------------------------------------------------------------------------
 
 
-def test_kazdy_szablon_z_pomiarem_deklaruje_rodzaj_rozliczeniowy_jawnie() -> None:
+def test_kazdy_szablon_z_pomiarem_deklaruje_uklad_podstawowy_jawnie() -> None:
     """KLASA, nie instancja: KAŻDY szablon biblioteki z polem pomiarowym
-    deklaruje `rodzaj_pomiaru=ROZLICZENIOWY` JAWNIE (kontrakt §3 reguła 1:
-    szablon z polem POMIAROWYM opisuje przyłącze klienta) — semantyka szablonu
-    nie może zależeć od reguły domyślnej operacji."""
+    deklaruje JAWNIE układ pomiarowy energii o rodzaju PODSTAWOWYM
+    (kontrakt §3 reguła 1: szablon z polem POMIAROWYM opisuje przyłącze
+    klienta; [E-UP] pkt 3: układ podstawowy jest obowiązkowym układem punktu
+    rozliczeniowego) — semantyka szablonu nie może zależeć od reguły domyślnej
+    operacji."""
     zbadane = 0
     for template in list_templates():
         role = _resolve_sn_bay_roles(template, template.schema.sn_bays_count.default)
@@ -704,8 +706,10 @@ def test_kazdy_szablon_z_pomiarem_deklaruje_rodzaj_rozliczeniowy_jawnie() -> Non
         for spec in specyfikacje:
             if spec["field_role"] == "POMIAROWE":
                 zbadane += 1
-                assert spec.get("rodzaj_pomiaru") == "ROZLICZENIOWY", template.id
+                assert spec.get("funkcja_pomiaru") == "UKLAD_ENERGII", template.id
+                assert spec.get("rodzaj_pomiaru") == "PODSTAWOWY", template.id
             else:
+                assert "funkcja_pomiaru" not in spec, template.id
                 assert "rodzaj_pomiaru" not in spec, template.id
     assert zbadane >= 7, f"Pin ma objąć wszystkie rodziny z pomiarem (objęte: {zbadane})"
 
@@ -715,18 +719,20 @@ def test_kazdy_szablon_z_pomiarem_deklaruje_rodzaj_rozliczeniowy_jawnie() -> Non
     [SZABLON_KLASY_B, SZABLON_KLASY_C],
     ids=["klasa_B_odgalezienie", "klasa_C_wciecie"],
 )
-def test_rodzaj_rozliczeniowy_utrwalony_na_obu_drogach_zabudowy(template_id: str) -> None:
+def test_uklad_podstawowy_utrwalony_na_obu_drogach_zabudowy(template_id: str) -> None:
     """Deklaracja szablonu dociera do modelu na OBU drogach zabudowy: stacja
     klasy B (odgałęzienie, `append_station_on_endpoint`) i złącze klasy C
     (wcięcie, `insert_station_on_segment_sn`) niosą w specyfikacji pola
-    pomiarowego `rodzaj_pomiaru=ROZLICZENIOWY`."""
+    pomiarowego `funkcja_pomiaru=UKLAD_ENERGII` i `rodzaj_pomiaru=PODSTAWOWY`."""
     enm, odcinki = _magistrala(3)
     wynik = _zastosuj_szablon(enm, template_id, odcinki[1])
     substation = next(s for s in wynik["enm"]["substations"] if s["ref_id"] == wynik["station_ref"])
     specyfikacje = (substation.get("meta") or {})["field_specs"]
     pomiary = [spec for spec in specyfikacje if spec.get("bay_role") == "MEASUREMENT"]
     assert len(pomiary) == 1, specyfikacje
-    assert pomiary[0].get("rodzaj_pomiaru") == "ROZLICZENIOWY"
+    assert pomiary[0].get("funkcja_pomiaru") == "UKLAD_ENERGII"
+    assert pomiary[0].get("rodzaj_pomiaru") == "PODSTAWOWY"
     for spec in specyfikacje:
         if spec.get("bay_role") != "MEASUREMENT":
+            assert "funkcja_pomiaru" not in spec
             assert "rodzaj_pomiaru" not in spec

@@ -32,7 +32,7 @@ from network_model.solvers import cable_ampacity_derating as cable_derating
 
 from . import der_sn_validation as der_val
 from .domain_operations import (
-    RODZAJ_POMIARU_DOMYSLNY_POLA_DOKLADANEGO,
+    FUNKCJA_POMIARU_DOMYSLNA_POLA_DOKLADANEGO,
     _apply_catalog_metadata,
     _apply_materialized_branch_fields,
     _apply_materialized_transformer_fields,
@@ -49,7 +49,7 @@ from .domain_operations import (
     _response,
     _station_has_transformer,
     blad_pomiaru_w_torze_tranzytu,
-    rozstrzygnij_rodzaj_pomiaru,
+    rozstrzygnij_pomiar_pola,
     szyna_prowadzi_tranzyt_sn,
 )
 from .kopia_graniczna import kopia_graniczna_enm
@@ -1834,36 +1834,41 @@ def add_sn_bay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
             "sn.field_bus_mismatch",
         )
 
-    # RODZAJ POMIARU (kontrakt POMIAR_ROZLICZENIOWY_SN_V1 §5): dokładanie
-    # pojedynczego pola NIE deklaruje przyłącza klienta, więc pole POMIAROWE
-    # bez jawnej deklaracji jest pomiarem KONTROLNYM (ruchowym OSD) — status
-    # ROZLICZENIOWY nigdy nie powstaje tu z domysłu. To samo źródło
-    # rozstrzygnięcia (`rozstrzygnij_rodzaj_pomiaru`), co drogi budowy stacji.
-    rodzaj_pomiaru, blad_rodzaju = rozstrzygnij_rodzaj_pomiaru(
+    # POMIAR POLA (kontrakt POMIAR_ROZLICZENIOWY_SN_V1 §5, korekta V12K-336):
+    # dokładanie pojedynczego pola NIE deklaruje przyłącza klienta — pole
+    # POMIAROWE bez jawnej deklaracji jest polem pomiaru NAPIĘCIA SZYN
+    # (przekładniki napięciowe sekcji rozdzielni; tak wygląda pole pomiarowe
+    # dokładane do rozdzielni GPZ/stacji OSD). Układ pomiarowy ENERGII na tej
+    # drodze wymaga deklaracji JAWNEJ (funkcji albo rodzaju układu) — status
+    # układu energii nigdy nie powstaje z domysłu. To samo źródło
+    # rozstrzygnięcia (`rozstrzygnij_pomiar_pola`), co drogi budowy stacji.
+    funkcja_pomiaru, rodzaj_pomiaru, blad_pomiaru = rozstrzygnij_pomiar_pola(
+        payload.get("funkcja_pomiaru"),
         payload.get("rodzaj_pomiaru"),
         rola_kanoniczna=_canonical_sn_field_role(bay_role),
-        domyslny=RODZAJ_POMIARU_DOMYSLNY_POLA_DOKLADANEGO,
+        domyslna_funkcja=FUNKCJA_POMIARU_DOMYSLNA_POLA_DOKLADANEGO,
     )
-    if blad_rodzaju is not None:
-        return blad_rodzaju
+    if blad_pomiaru is not None:
+        return blad_pomiaru
 
-    # BRAMA POMIARU W TORZE TRANZYTU — TA SAMA funkcja źródłowa, którą wcięcie
-    # w odcinek odmawia układu klasy B (`blad_pomiaru_w_torze_tranzytu`), nie
-    # kopia warunku (V12K-335 pkt 2, reguła KLASA §3). Sekwencja pól PO operacji:
-    # pola szyny w kolejności z danych (V12K-330); pole rekonfigurowane ocenia
-    # się na SWOJEJ pozycji, pole nowe — na końcu sekwencji. Tranzyt rozdzielnicy
+    # BRAMA UKŁADU POMIAROWEGO ENERGII W TORZE TRANZYTU — TA SAMA funkcja
+    # źródłowa, którą wcięcie w odcinek odmawia układu klasy B
+    # (`blad_pomiaru_w_torze_tranzytu`), nie kopia warunku (V12K-335 pkt 2,
+    # V12K-336 pkt 3, reguła KLASA §3). Sekwencja pól PO operacji: pola szyny
+    # w kolejności z danych (V12K-330); pole rekonfigurowane ocenia się na
+    # SWOJEJ pozycji, pole nowe — na końcu sekwencji. Tranzyt rozdzielnicy
     # z JEDNEGO źródła prawdy (`szyna_prowadzi_tranzyt_sn`): para tranzytowa
     # dopływ+odpływ w rolach pól po operacji.
     specs_szyny = [spec for spec in raw_specs if spec.get("bus_ref") == bus_ref]
     sekwencja_po_operacji: list[tuple[object, object]] = []
-    nowy_wpis = (bay_role, rodzaj_pomiaru)
+    nowy_wpis = (bay_role, funkcja_pomiaru)
     wpis_zastapiony = False
     for spec in specs_szyny:
         if existing_field_ref and spec.get("field_ref") == existing_field_ref:
             sekwencja_po_operacji.append(nowy_wpis)
             wpis_zastapiony = True
         else:
-            sekwencja_po_operacji.append((spec.get("bay_role"), spec.get("rodzaj_pomiaru")))
+            sekwencja_po_operacji.append((spec.get("bay_role"), spec.get("funkcja_pomiaru")))
     if not wpis_zastapiony:
         sekwencja_po_operacji.append(nowy_wpis)
     blad_bramy = blad_pomiaru_w_torze_tranzytu(
@@ -1874,18 +1879,24 @@ def add_sn_bay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     if blad_bramy is not None:
         return blad_bramy
 
-    def _utrwal_rodzaj_pomiaru(model: dict[str, Any]) -> None:
-        """Rodzaj pomiaru w specyfikacji pola po rekonfiguracji.
+    def _utrwal_pomiar_pola(model: dict[str, Any]) -> None:
+        """Funkcja i rodzaj pomiaru w specyfikacji pola po rekonfiguracji.
 
-        Pole pomiarowe niesie rozstrzygnięty rodzaj; pole rekonfigurowane na
-        inną rolę TRACI atrybut — klucz nie może kłamać o roli pola.
+        Pole pomiarowe niesie rozstrzygniętą funkcję (i rodzaj układu, gdy jest
+        układem pomiarowym energii); pole rekonfigurowane na inną rolę TRACI
+        oba atrybuty — klucze nie mogą kłamać o roli pola.
         """
         rekord = _field_record(model, field_ref)
         if not isinstance(rekord, dict):
             return
         if bay_role == "MEASUREMENT":
-            rekord["rodzaj_pomiaru"] = rodzaj_pomiaru
+            rekord["funkcja_pomiaru"] = funkcja_pomiaru
+            if rodzaj_pomiaru is not None:
+                rekord["rodzaj_pomiaru"] = rodzaj_pomiaru
+            else:
+                rekord.pop("rodzaj_pomiaru", None)
         else:
+            rekord.pop("funkcja_pomiaru", None)
             rekord.pop("rodzaj_pomiaru", None)
 
     role_index = len(
@@ -2073,7 +2084,7 @@ def add_sn_bay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
                     },
                 },
             )
-            _utrwal_rodzaj_pomiaru(new_enm)
+            _utrwal_pomiar_pola(new_enm)
             return _response(
                 new_enm,
                 created=[],
@@ -2180,7 +2191,7 @@ def add_sn_bay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
                 },
             },
         )
-        _utrwal_rodzaj_pomiaru(new_enm)
+        _utrwal_pomiar_pola(new_enm)
     else:
         field_spec = _build_field_spec(
             field_ref=field_ref,
@@ -2196,6 +2207,7 @@ def add_sn_bay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
             manufacturer_ref=manufacturer_ref,
             primary_devices=primary_devices_spec or None,
             tags=list(payload.get("tags") or []),
+            funkcja_pomiaru=funkcja_pomiaru if bay_role == "MEASUREMENT" else None,
             rodzaj_pomiaru=rodzaj_pomiaru if bay_role == "MEASUREMENT" else None,
             meta={
                 "apparatus_kind": apparatus_kind if isinstance(apparatus_kind, str) else None,

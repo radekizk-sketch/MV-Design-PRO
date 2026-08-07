@@ -159,6 +159,17 @@ class ENMHeader(BaseModel):
     switching_snapshot_hash: str | None = None
     """Hash TYLKO stanow lacznikow."""
 
+    connection_conditions: ConnectionConditions | None = None
+    """Warunki przyłączenia OSD (karta K2 FLOW EKSPERT+; dane WEJŚCIOWE
+    projektu). NAPRAWA DEFEKTU UTRWALANIA (karta POMIAR-RODZAJ, przy okazji
+    walidacji 5 MW z V12K-336): operacja `set_connection_conditions` zapisywała
+    blok do surowego słownika nagłówka, ale pole NIE było zadeklarowane w tym
+    modelu — każda walidacja (`EnergyNetworkModel.model_validate`) po drodze
+    persystencji CICHO go gubiła. Pole jest wykluczone z odcisków ENM (jak
+    pozostałe pola zmienne nagłówka) — dane wejściowe dokumentu OSD czytane są
+    w warstwie interpretacji, nie przez solver, więc istniejące odciski
+    pozostają bajtowo niezmienione."""
+
 
 # ---------------------------------------------------------------------------
 # Bus (node)
