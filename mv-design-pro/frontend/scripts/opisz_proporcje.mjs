@@ -29,10 +29,9 @@ for (const nazwa of readdirSync(dir).filter((n) => n.endsWith('.svg'))) {
   const m = /<svg[^>]*height="(\d+)"/.exec(svg);
   if (!m) { console.error('pominięto (brak wysokości):', nazwa); continue; }
   const h = Number(m[1]);
-  const kolor = /fill="(#[0-9A-Fa-f]{6})"><\/rect>|fill="(#[0-9A-Fa-f]{6})"\/>/.exec(svg);
   const wiersz =
     `<text x="16" y="${h - 4}" font-family="system-ui,sans-serif" font-size="14" `
     + `fill="${nazwa.includes('jasny') ? '#1F2933' : '#9AA7B4'}">${esc(tekst)}</text>`;
   writeFileSync(sciezka, svg.replace(/<\/svg>$/, `${wiersz}</svg>`), 'utf8');
-  console.log('opisano', nazwa, kolor ? '' : '');
+  console.log('opisano', nazwa);
 }

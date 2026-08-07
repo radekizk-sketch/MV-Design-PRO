@@ -115,12 +115,6 @@ console.log('');
 // --------------------------------------------------------------------------
 // (a)(b)(c) TYPOGRAFIA vs SYMBOL — z PLANU produkcyjnego.
 // --------------------------------------------------------------------------
-interface WierszPomiaru {
-  readonly lod: SceneLod;
-  readonly skala: string;
-  readonly v: number;
-}
-
 /** Wysokość symbolu APARATU [j.św.] — mediana po symbolach aparatury sceny. */
 const APARATURA_SYMBOLE = new Set([
   'breaker', 'disconnector', 'earthSwitch', 'fuseSwitch', 'loadBreakSwitch',
