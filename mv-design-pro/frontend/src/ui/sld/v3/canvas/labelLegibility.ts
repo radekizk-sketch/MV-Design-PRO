@@ -64,6 +64,18 @@
  * tym wprost (`droppedIdentity` + wskaźnik „Ukryto N opisów"). Własność ma
  * PRZYPIĘTĄ wyrocznię: `plannedLabelsBelowScreenFloor` niżej.
  *
+ * PROPORCJE (zgłoszenie właściciela 2026-08-07 „brak proporcji, grubości") —
+ * DRUGA GRANICA TEJ SAMEJ PARY. S9-7 zamknęła granicę DOLNĄ i zostawiła górną
+ * otwartą: powiększenie awaryjne przypina napis do 9 px ekranu, podczas gdy
+ * rysunek kurczy się razem z kamerą, więc stosunek napis:symbol rósł jak
+ * 1/skala (pomiar na fixturze 53 stacji: oznacznik aparatu **2,82×** wysokości
+ * symbolu przy skali dopasowania, **7,50×** przy `MIN_SCALE`; nazwa stacji
+ * **3,75×** zwiniętego bloku przy `MIN_SCALE`). Od tej karty rozmiar pisma
+ * wychodzi z JEDNEJ funkcji spełniającej OBIE granice naraz
+ * (`core/text.ts` `enlargedFontSizeWithinProportion`), a etykieta, dla której
+ * spełnić obu się nie da, trafia do `droppedIdentity` — tak samo jak ta, dla
+ * której zabrakło miejsca. Wyrocznia: `plannedLabelsAboveProportionCeiling`.
+ *
  * Czysta funkcja: brak DOM/Date/losowości (P7) — ten sam wynik w renderze,
  * teście i runnerze odbioru.
  */
@@ -71,11 +83,11 @@
 import { rectsOverlap, type V3Rect } from '../core/grid';
 import { buildRectIndex, createRectIndex, type RectIndex } from '../core/rectIndex';
 import {
+  enlargedFontSizeWithinProportion,
   isLabelHiddenAtScale,
   isLabelReadableAtScale,
   LABEL_TYPOGRAPHY,
   measureTextWidth,
-  minReadableFontSize,
   MIN_READABLE_LABEL_SCREEN_PX,
   shortenPreservingIdentity,
 } from '../core/text';
@@ -355,6 +367,7 @@ export function planSceneLabels(
   }
 
   const hiddenDetail: OwnedLabel[] = [];
+  const droppedIdentity: OwnedLabel[] = [];
   const kandydaci: Kandydat[] = [];
   labels.forEach((label, index) => {
     const czytelna = isLabelReadableAtScale(label.labelClass, scale);
@@ -362,9 +375,22 @@ export function planSceneLabels(
       hiddenDetail.push(label);
       return;
     }
+    // PROPORCJE: rozmiar pisma z JEDNEGO źródła obu granic (`core/text.ts`
+    // `enlargedFontSizeWithinProportion`) — `null` znaczy „czytelnie już się
+    // nie da, a nieproporcjonalnie nie wolno". Do tej karty ten sam plan pytał
+    // wyłącznie o granicę DOLNĄ (`minReadableFontSize`), więc powiększenie
+    // rosło bez sufitu i przy oddaleniu napis przygniatał symbol (pomiar
+    // 2,82× / 7,50×, patrz `LabelTypography.maxEnlargement`).
     const fontSize = czytelna
       ? LABEL_TYPOGRAPHY[label.labelClass].fontSize
-      : minReadableFontSize(label.labelClass, scale);
+      : enlargedFontSizeWithinProportion(label.labelClass, scale);
+    if (fontSize === null) {
+      // Tożsamość, której nie da się narysować proporcjonalnie — uczciwy brak,
+      // policzony we wskaźniku „Ukryto N opisów" (`SldCanvasV3`), a nie napis
+      // wielkości trzech aparatów obok siebie.
+      droppedIdentity.push(label);
+      return;
+    }
     // (c) skracanie w PIERWSZEJ kolejności do REZERWACJI właściciela: wiersz
     // pasma nazw ma slot szerokości kolumny stacji, więc powiększone pismo
     // musi zmieścić się w tej kolumnie (inaczej wchodzi w kolumnę sąsiada).
@@ -396,7 +422,11 @@ export function planSceneLabels(
         enlarged: false,
       })),
       hiddenDetail,
-      droppedIdentity: [],
+      // NIE `[]`: tożsamości odrzucone przez SUFIT PROPORCJI odpadają jeszcze
+      // przed rozstrzyganiem kolizji, więc ścieżka szybka musi je przenieść
+      // (inaczej wskaźnik „Ukryto N opisów" milczałby dokładnie tam, gdzie
+      // napisy znikają z powodu proporcji).
+      droppedIdentity,
     };
   }
 
@@ -417,7 +447,6 @@ export function planSceneLabels(
   const obstacleIndex = buildRectIndex(obstacles);
   const zajete = createRectIndex();
   const zaplanowane = new Map<number, PlannedLabel>();
-  const droppedIdentity: OwnedLabel[] = [];
   for (const kandydat of kolejnosc) {
     const dopasowanie = najlepszeDopasowanie(kandydat, zajete, obstacleIndex);
     if (!dopasowanie || dopasowanie.text.length === 0) {
@@ -492,6 +521,36 @@ export function plannedLabelsBelowScreenFloor(
  *  Re-eksport, żeby wołający wyroczni nie musiał sięgać po dwie stałe z
  *  dwóch modułów i nie powstała druga, rozjeżdżająca się prawda. */
 export { MIN_READABLE_LABEL_SCREEN_PX };
+
+/**
+ * PROPORCJE — WYROCZNIA SUFITU: etykiety NARYSOWANE, których pismo przekracza
+ * sufit powiększenia swojej klasy (`LABEL_TYPOGRAPHY[cls].maxEnlargement`).
+ *
+ * Na poprawnym planie ZAWSZE pusta — plan albo mieści się w obu granicach,
+ * albo etykiety nie rysuje. Drugi koniec pary do `plannedLabelsBelowScreenFloor`
+ * (tamta pilnuje podłogi, ta sufitu); istnieje dlatego, że deklaracja „napis
+ * nigdy nie przygniata rysunku" bez PRZYPIĘTEGO strażnika jest fałszywą
+ * pewnością — dokładnie ten błąd audyt zmierzył przy poprzedniej wersji planu
+ * (reguła KLASA §4).
+ *
+ * Zwraca zmierzoną KROTNOŚĆ względem rozmiaru naturalnego, żeby raport odbioru
+ * mówił „ile razy", a nie tylko „gdzieś pękło". Skala niewiarygodna (≤0/NaN)
+ * ⇒ zbiór pusty (parytet z `plannedLabelsBelowScreenFloor`).
+ */
+export function plannedLabelsAboveProportionCeiling(
+  plan: LabelRenderPlan,
+  scale: number,
+): readonly { readonly ownerRef: string; readonly enlargement: number }[] {
+  if (!Number.isFinite(scale) || scale <= 0) return [];
+  return plan.drawn
+    .map((p) => ({
+      ownerRef: p.label.ownerRef,
+      enlargement: p.fontSize / LABEL_TYPOGRAPHY[p.label.labelClass].fontSize,
+      sufit: LABEL_TYPOGRAPHY[p.label.labelClass].maxEnlargement,
+    }))
+    .filter((p) => p.enlargement > p.sufit + 1e-9)
+    .map(({ ownerRef, enlargement }) => ({ ownerRef, enlargement }));
+}
 
 /** Etykiety NARYSOWANE, które nachodzą na jakikolwiek prostokąt rysunku
  *  (symbol albo odcinek toru). Na poprawnym planie puste — patrz `plannedLabelCollisions`. */

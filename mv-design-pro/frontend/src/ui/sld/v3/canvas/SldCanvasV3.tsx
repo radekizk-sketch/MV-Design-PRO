@@ -62,6 +62,7 @@ import {
   cameraReducer,
   cameraViewBox,
   computeInitialCameraState,
+  type CameraState,
   pointerDistance,
   pointerMidpoint,
   refScaleFor,
@@ -280,6 +281,27 @@ export interface SldCanvasV3Props {
    *  §3, znane ograniczenie k4 — ROZWIĄZANE). Zmiana propa PO mouncie
    *  wywołuje pełny refit (nowy cel fitu = nowy świat kamery, k3). */
   readonly lodOverride?: SceneLod;
+  /**
+   * PROPORCJE (karta PROPORCJE, 2026-08-07) — KAMERA NARZUCONA PRZY MONTAŻU
+   * (escape hatch tej samej klasy co `lodOverride`: zrzuty dokumentacyjne i
+   * eksport, ZERO ścieżki użytkownika).
+   *
+   * DLACZEGO ISTNIEJE. Skrypt zrzutów `scripts/render_b2_kotwica.tsx` renderował
+   * kanwę z jej WŁASNĄ kamerą (dopasowanie całej sieci, skala 0,133), a POTEM
+   * podmieniał atrybut `viewBox` na kadr kotwicy (skala 1,380). Rysunek był
+   * więc PLANOWANY dla jednej skali, a POKAZYWANY w innej: plan etykiet i wagi
+   * kresek zależą od skali kamery, więc napisy wychodziły ~7,4× za duże wobec
+   * tego, co widzi projektant, a stopnia zrzutu podawała skalę, której rysunek
+   * nad nią nie dotyczył. Właściciel zgłosił z takiego zrzutu defekt proporcji
+   * — realny w produkcie, ale na zrzucie ZWIELOKROTNIONY przez sondę. Sonda,
+   * która zniekształca mierzony obiekt, jest defektem tej samej wagi co defekt
+   * produktu (Zero-Debt): kadr musi wychodzić z kanwy, nie być na nią nakładany.
+   *
+   * KONTRAKT: wartość jest stanem POCZĄTKOWYM kamery (jak `computeInitialCamera
+   * State`); dalsze gesty użytkownika działają od niej normalnie. Brak propa =
+   * zachowanie produkcyjne (dopasowanie do zawartości).
+   */
+  readonly cameraOverride?: CameraState;
   /** F12-B pkt 4 (spec §10.1 ARCH-4, „LayerTogglePanel jako realny filtr"):
    *  mapa warstwa→widoczność (`v3/canvas/layers.ts`) — filtruje WYŁĄCZNIE
    *  RENDER (mapowanie symbols/segments/labels na węzły SVG), scena
@@ -411,8 +433,14 @@ function SceneSymbolNode(props: {
   readonly symbol: PreviewSymbol;
   readonly index: number;
   readonly overlay: SldV3Overlay | undefined;
+  /** PROPORCJE: skala kamery — kreska APARATU dostaje tę samą kompensację
+   *  ekranową, co tory (S9-8). Bez niej hierarchia grubości odwracała się przy
+   *  oddaleniu: przy kadrze „Dopasuj widok" szyna miała 2,50 px ekranu, a
+   *  kreska aparatu 0,16 px (15,70× zamiast projektowych 3,33×) — zgłoszenie
+   *  właściciela „tor prądowy grubszy od kreski aparatu ok. 8–10×". */
+  readonly cameraScale: number;
 }): JSX.Element {
-  const { symbol, index, overlay } = props;
+  const { symbol, index, overlay, cameraScale } = props;
   const palette = useSldPalette();
   const Glyph = SYMBOL_GLYPHS[symbol.symbolId];
   const testId = symbolTestId(symbol, index);
@@ -460,6 +488,7 @@ function SceneSymbolNode(props: {
         y={symbol.y}
         state={symbol.state}
         stroke={stroke}
+        strokeScale={strokeScaleFactor(cameraScale)}
         labelLines={symbol.meta?.protectionCodes}
         hasTopologyWarning={(symbol.meta?.topologyGaps?.length ?? 0) > 0}
         meterQuantity={symbol.meta?.meterQuantity}
@@ -2286,6 +2315,7 @@ function toLocalPoint(svg: SVGSVGElement | null, clientX: number, clientY: numbe
 export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
   const {
     snapshot, width, height, overlay, onElementClick, onElementDoubleClick, onElementContextMenu, lodOverride,
+    cameraOverride,
     layerVisibility, onResultLabelActivate, onCameraChange, animateLodTransitions = true, fitSignal,
     fitTarget = 'tresc', centerRequest, onBackgroundClick,
   } = props;
@@ -2378,9 +2408,12 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
 
   const [camera, dispatch] = useReducer(
     cameraReducer,
-    { bbox: fitBbox, viewportSize, lodBboxes, focusPoint: gpzFocusPoint },
+    { bbox: fitBbox, viewportSize, lodBboxes, focusPoint: gpzFocusPoint, cameraOverride },
     (arg) =>
-      computeInitialCameraState(arg.bbox, arg.viewportSize, arg.lodBboxes, arg.focusPoint, effectiveSafeInsets),
+      // PROPORCJE: kadr narzucony (zrzuty/eksport) jest stanem POCZĄTKOWYM —
+      // rysunek jest wtedy PLANOWANY dla tej samej skali, którą pokazuje.
+      arg.cameraOverride
+      ?? computeInitialCameraState(arg.bbox, arg.viewportSize, arg.lodBboxes, arg.focusPoint, effectiveSafeInsets),
   );
 
   // (k3) 'refit' PEŁNY gdy zmienia się `lodOverride` (zmienia się CEL fitu,
@@ -3183,6 +3216,7 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
                 symbol={symbol}
                 index={index}
                 overlay={effectiveOverlay}
+                cameraScale={camera.transform.scale}
               />
             );
           })}
