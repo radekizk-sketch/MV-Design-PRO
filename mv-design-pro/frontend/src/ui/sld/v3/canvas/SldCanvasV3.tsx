@@ -346,6 +346,15 @@ export interface SldCanvasV3Props {
     readonly kandydaci: readonly string[];
     readonly przenosKadr: boolean;
   } | null;
+  /** B-2 (klasa poboczna wykryta pomiarem): ŻĄDANIE „pokaż ten element na
+   *  schemacie" — ref elementu modelu wskazany przez inną powierzchnię
+   *  (wyniki, bramka gotowości, drzewo danych, panel kontekstu). Kanwa
+   *  KOTWICZY na nim kamerę tą samą maszynerią co po operacji domenowej
+   *  (przybliżenie projektanta zostaje, obiekt ląduje w kadrze). `seq`
+   *  (monotoniczny licznik wołającego) odróżnia kolejne żądania — wzorzec
+   *  identyczny z `fitSignal`/`centerRequest`. Ref nierozwiązywalny na
+   *  rysunku ⇒ kamera NIETKNIĘTA (uczciwie: nie ma czego pokazać). */
+  readonly pokazElement?: { readonly ref: string; readonly seq: number } | null;
   /** Karta S8 (płynność przejść LOD, P2): włącza krótki crossfade warstwy
    *  detalu przy ZMIANIE LOD (wejście nowego szczegółu z opacity 0→1, natywne
    *  SVG `<animate>`, SMIL — wzorzec repo, patrz znacznik pulse niżej; zero
@@ -2464,6 +2473,29 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
     dispatch({ type: 'refit', bbox: fitBbox, lodBboxes, viewportSize, focusPoint: gpzFocusPoint, safeInsets: effectiveSafeInsets });
     // Wyłącznie sygnał steruje tym efektem — refit czyta AKTUALNE bboxy/viewport.
   }, [fitSignal]);
+
+  // B-2 (klasa poboczna): „pokaż ten element na schemacie" z innej powierzchni.
+  // Pomiar 2026-08-07: 18 miejsc produkcyjnych wołało `centerSldOnElement`, a
+  // jedynym czytelnikiem był hook `useSelectionSync`, którego NIC nie montuje —
+  // wskazanie ginęło (DOSTAWCA BEZ KLIENTA). Kamera używa tu DOKŁADNIE tej samej
+  // maszynerii co po operacji domenowej, więc „pokaż na schemacie" i „zapisano
+  // element" zachowują się tak samo (jedna klasa, jedno zachowanie).
+  useEffect(() => {
+    const ref = props.pokazElement?.ref;
+    if (!ref) return;
+    const kotwica = kotwicaWidoku(sceneByLod, [ref], sceneBoxToCameraWorld);
+    if (!kotwica) return;
+    dispatch({
+      type: 'kotwicz',
+      anchorByLod: kotwica.boxByLod,
+      lodBboxes,
+      viewportSize,
+      safeInsets: effectiveSafeInsets,
+      wymuszonyLod: lodOverride,
+    });
+    // Zależność wyłącznie od `seq` — ref czytany w chwili wywołania (ta sama
+    // dyscyplina co `fitSignal`/`centerRequest`).
+  }, [props.pokazElement?.seq]);
 
   // K11-B: przeniesienie kadru z minimapy — CZYSTA translacja kamery (skala i
   // LOD nietknięte). Efekt reaguje WYŁĄCZNIE na `seq` (wzorzec `fitSignal`),

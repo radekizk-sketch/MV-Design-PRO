@@ -2160,6 +2160,21 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
     if (!wskazanie) return null;
     return { kandydaci: wskazanie.kandydaci, przenosKadr: wskazanie.przenosKadr };
   }, [selectionHint, lastChanges]);
+  // B-2 (klasa poboczna „pokaż to na schemacie"): `sldCenterOnElement` ze
+  // sklepu selekcji — kanał, którym 18 powierzchni (wyniki, bramka gotowości,
+  // drzewo danych, panel kontekstu, kreatory) wskazuje element do pokazania.
+  // Do tej karty NIKT go nie czytał (jedyny czytelnik `useSelectionSync` nie
+  // jest nigdzie montowany), więc wskazania ginęły. `seq` liczy ZMIANY
+  // wskazania; ograniczenie zastane, nazwane wprost: powtórne wskazanie TEGO
+  // SAMEGO refu nie zmienia wartości w sklepie, więc nie wywołuje ponownego
+  // kadrowania (kontrakt sklepu selekcji, nietykany tą kartą).
+  const sldCenterOnElement = useSelectionStore((state) => state.sldCenterOnElement);
+  const licznikPokazania = useRef(0);
+  const pokazElement = useMemo(() => {
+    if (!sldCenterOnElement) return null;
+    licznikPokazania.current += 1;
+    return { ref: sldCenterOnElement, seq: licznikPokazania.current };
+  }, [sldCenterOnElement]);
   const [centerRequest, setCenterRequest] = useState<{ readonly x: number; readonly y: number; readonly seq: number } | null>(null);
   // Scena nawigatora liczona TYLKO gdy panel jest rozwinięty — zwinięty
   // nawigator nie kosztuje ani jednego przebiegu buildera (memo przeliczane
@@ -2802,6 +2817,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
           fitTarget={fitTarget}
           centerRequest={centerRequest}
           viewAnchor={viewAnchor}
+          pokazElement={pokazElement}
           safeInsets={effectiveCanvasInsets}
         />
       ) : null}

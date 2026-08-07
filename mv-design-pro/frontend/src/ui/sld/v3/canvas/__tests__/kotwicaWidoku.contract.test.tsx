@@ -36,14 +36,17 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
-import { afterEach, describe, expect, it } from 'vitest';
-import { cleanup, fireEvent, render } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { act, cleanup, fireEvent, render } from '@testing-library/react';
 
 import type { EnergyNetworkModel, SelectionHint } from '../../../../../types/enm';
 import { buildSceneV3, type SceneLod } from '../../scene/buildScene';
 import { SldCanvasV3, sceneBoxToCameraWorld } from '../SldCanvasV3';
+import { SldCanvasV3Workspace } from '../SldCanvasV3Workspace';
 import { kotwicaWidoku, prostokatElementuWScenie } from '../viewAnchor';
 import { wskazanieOperacji } from '../../../../topology/wskazanieOperacji';
+import { useSnapshotStore } from '../../../../topology/snapshotStore';
+import { useSelectionStore } from '../../../../selection';
 
 afterEach(() => cleanup());
 
@@ -281,6 +284,71 @@ describe('SldCanvasV3 — kotwiczenie kamery na zmianie (B-2)', () => {
     expect(kotwica).not.toBeNull();
     expect(kotwica!.ref).not.toBe(droga.wskazanie);
     expect(droga.utworzone).toContain(kotwica!.ref);
+  });
+});
+
+/**
+ * B-2, KLASA POBOCZNA: „pokaż ten element na schemacie".
+ *
+ * Pomiar 2026-08-07 (grep produkcyjny, nie lektura): 18 miejsc wołało
+ * `useSelectionStore.centerSldOnElement` — wyniki zwarciowe („Pokaż na
+ * schemacie"), przejście do stacji, akcje naprawcze bramki gotowości, drzewo
+ * danych, panel kontekstu schematu, inspektor wyników, kreatory — a JEDYNYM
+ * czytelnikiem pola był hook `useSelectionSync`, którego NIC nie montuje.
+ * Wskazanie ginęło; kamera nie reagowała. Test idzie REALNĄ ścieżką tych 18
+ * powierzchni: woła akcję sklepu i mierzy `viewBox` zamontowanego warsztatu.
+ */
+describe('SldCanvasV3Workspace — „pokaż na schemacie" kadruje wskazany element (B-2, klasa poboczna)', () => {
+  const enmDuza = SIECI[1].po;
+
+  beforeEach(() => {
+    useSnapshotStore.setState({ snapshot: enmDuza, selectionHint: null, lastChanges: null });
+    useSelectionStore.getState().clearSelection();
+  });
+  afterEach(() => {
+    useSnapshotStore.getState().reset();
+    useSelectionStore.getState().clearSelection();
+  });
+
+  it('wskazanie stacji ze sklepu selekcji przenosi kadr na tę stację', () => {
+    const { container } = render(<SldCanvasV3Workspace />);
+    const kadrPrzed = kadrZDom(container);
+
+    // Stacja wybrana deterministycznie: OSTATNIA w porządku refów. Symbole
+    // stacji jako całości żyją na poziomie przeglądu (L1/L2 rozkładają stację
+    // na pola), więc ref bierzemy stamtąd — kotwica i tak działa na wszystkich
+    // trzech poziomach (wymóg `kotwicaWidoku`).
+    const scene = buildSceneV3(enmDuza, 0);
+    const refStacji = [...scene.symbols]
+      .filter((s) => s.meta?.elementKind === 'station' && s.meta?.ownerRef)
+      .map((s) => s.meta!.ownerRef!)
+      .sort()
+      .at(-1)!;
+    expect(refStacji, 'fixtura ma symbole stacji na poziomie przeglądu').toBeTruthy();
+
+    act(() => {
+      useSelectionStore.getState().centerSldOnElement(refStacji);
+    });
+
+    const kadrPo = kadrZDom(container);
+    expect(kadrPo).not.toEqual(kadrPrzed);
+    const poziom = Number(
+      container.querySelector('[data-testid="sld-canvas-v3"]')!.getAttribute('data-scene-lod'),
+    ) as SceneLod;
+    const box = prostokatWskazanego(enmDuza, refStacji, poziom)!;
+    // Wskazany element jest w kadrze i wyśrodkowany w poziomie.
+    expect(box.minX).toBeGreaterThanOrEqual(kadrPo.x);
+    expect(box.maxX).toBeLessThanOrEqual(kadrPo.x + kadrPo.width);
+    expect((box.minX + box.maxX) / 2).toBeCloseTo(kadrPo.x + kadrPo.width / 2, 3);
+  });
+
+  it('wskazanie refu, którego rysunek NIE nosi, nie rusza kamery (zero fabrykacji punktu)', () => {
+    const { container } = render(<SldCanvasV3Workspace />);
+    const kadrPrzed = kadrZDom(container);
+    act(() => {
+      useSelectionStore.getState().centerSldOnElement('stn/nie-ma-takiego/station');
+    });
+    expect(kadrZDom(container)).toEqual(kadrPrzed);
   });
 });
 
