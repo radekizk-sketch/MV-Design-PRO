@@ -239,19 +239,30 @@ describe('SldCanvasV3 — kotwiczenie kamery na zmianie (B-2)', () => {
     expect(kadrZDom(container)).toEqual(kadrPrzed);
   });
 
-  it('migawka o TYM SAMYM haszu (odświeżenie bez zmiany modelu) nie rusza kamery', () => {
+  it('migawka o TYM SAMYM haszu (odświeżenie bez zmiany modelu) nie rusza kamery — także po zoomie projektanta', () => {
     const siec = SIECI[1];
     // Ta sama treść, INNA referencja obiektu — dokładnie to, co robi
-    // `refresh_snapshot`: nowa odpowiedź, ten sam model.
+    // `refresh_snapshot` (pomiar 2026-08-07: hasz odpowiedzi identyczny z
+    // haszem sprzed odświeżenia).
     const odswiezona = JSON.parse(JSON.stringify(siec.przed)) as EnergyNetworkModel;
     const { container, rerender } = render(
-      <SldCanvasV3 snapshot={siec.przed} width={KANWA.width} height={KANWA.height} lodOverride={2} viewAnchor={null} />,
+      <SldCanvasV3 snapshot={siec.przed} width={KANWA.width} height={KANWA.height} viewAnchor={null} />,
     );
-    const kadrPrzed = kadrZDom(container);
+    const svg = container.querySelector('[data-testid="sld-canvas-v3"]')!;
+    // KLUCZOWE: kamera musi być PRZESUNIĘTA względem fitu, inaczej refit jest
+    // nieodróżnialny od bezruchu i test nie strzeże niczego (iniekcja B,
+    // 2026-08-07: pierwsza wersja tego testu przechodziła także z wyłączonym
+    // predykatem haszu — obietnica bez strażnika).
+    for (let i = 0; i < 8; i += 1) {
+      fireEvent.wheel(svg, { clientX: KANWA.width / 2, clientY: KANWA.height / 2, deltaY: -140 });
+    }
+    const kadrPoZoomie = kadrZDom(container);
+    expect(kadrPoZoomie.width).toBeLessThan(kadrZDom(container).width * 1.0001);
+
     rerender(
-      <SldCanvasV3 snapshot={odswiezona} width={KANWA.width} height={KANWA.height} lodOverride={2} viewAnchor={null} />,
+      <SldCanvasV3 snapshot={odswiezona} width={KANWA.width} height={KANWA.height} viewAnchor={null} />,
     );
-    expect(kadrZDom(container)).toEqual(kadrPrzed);
+    expect(kadrZDom(container)).toEqual(kadrPoZoomie);
   });
 
   it('kandydat nierozwiązywalny na rysunku jest pomijany na rzecz następnego (droga „przedłuż magistralę")', () => {
