@@ -2847,6 +2847,17 @@ const delegatedSurfaceBodies: Record<string, (surface: WorkspaceSurfaceDescripto
  * jeden rodzaj analizy był osiągalny WYŁĄCZNIE przez pomyłkę. Kod spoza mapy
  * pozostawia wybór rodzaju użytkownikowi (lista z katalogu backendu).
  */
+/**
+ * V126-JEZYK: powierzchnia trasowa analiz akademickich czyta REALNY tryb
+ * zaawansowania powłoki. Do tej karty przekazywała zaszyte `"expert"`, więc
+ * wejście trasowe E-40…E-50 obchodziło bramę trybu (klasa: brama bramkująca
+ * jedno z dwóch wejść nie jest bramą). Wzorzec z `ComplianceSurface`.
+ */
+function PowierzchniaAnalizAkademickich({ rodzaj }: { rodzaj?: RodzajAnalizy }) {
+  const trybZaawansowania = useShellStore((state) => state.advancementMode);
+  return <EkranAnalizAkademickich trybZaawansowania={trybZaawansowania} rodzajPoczatkowy={rodzaj} />;
+}
+
 const RODZAJ_EKRANU_V126: Partial<Record<string, RodzajAnalizy>> = {
   'E-40': 'power_quality_harmonics',
   'E-41': 'voltage_stability',
@@ -2985,12 +2996,7 @@ function renderSurfaceBody(surface: WorkspaceSurfaceDescriptor) {
       // fabrykowane w UI). Ekrany trasowe prowadzą do okna ui2, z rodzajem analizy
       // wybranym z góry wg kodu ekranu — JEDNO wejście do zdolności, jedno źródło
       // prawdy o kontrakcie V12.6.
-      return (
-        <EkranAnalizAkademickich
-          trybZaawansowania="expert"
-          rodzajPoczatkowy={RODZAJ_EKRANU_V126[surface.screenCode]}
-        />
-      );
+      return <PowierzchniaAnalizAkademickich rodzaj={RODZAJ_EKRANU_V126[surface.screenCode]} />;
     default:
       break;
   }

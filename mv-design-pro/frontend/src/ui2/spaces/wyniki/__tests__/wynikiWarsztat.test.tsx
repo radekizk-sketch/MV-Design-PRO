@@ -455,6 +455,64 @@ describe('WynikiWarsztat — zakładki', () => {
   });
 });
 
+/**
+ * V126-JEZYK (ocena właściciela 0/10 z 2026-08-07): pakiet analiz akademickich
+ * zjeżdża z toru podstawowego projektanta do trybu eksperckiego. Brama to PARA
+ * predykatów z JEDNEGO źródła (`zakladkaDostepna`): pasek zakładek i render
+ * treści — plus trzeci koniec: deep-link `setWynikiTab`, który do tej karty
+ * potrafił wejść na zakładkę z pominięciem paska.
+ */
+describe('WynikiWarsztat — brama trybu dla pakietu akademickiego (V126-JEZYK)', () => {
+  it('tor podstawowy: zakładki „Analizy akademickie" NIE ma', () => {
+    render(<WynikiWarsztat {...props({ trybZaawansowania: 'basic' })} />);
+    expect(screen.queryByTestId('mvd-wyniki-zakladka-akademickie')).toBeNull();
+  });
+
+  it('tor rozszerzony: zakładki „Analizy akademickie" NIE ma', () => {
+    render(<WynikiWarsztat {...props({ trybZaawansowania: 'extended' })} />);
+    expect(screen.queryByTestId('mvd-wyniki-zakladka-akademickie')).toBeNull();
+  });
+
+  it('tryb ekspercki: zakładka jest i prowadzi do okna (kontrola dodatnia bramy)', () => {
+    render(<WynikiWarsztat {...props({ trybZaawansowania: 'expert' })} />);
+    const zakladka = screen.getByTestId('mvd-wyniki-zakladka-akademickie');
+    expect(zakladka).toHaveTextContent(T.zakladkaAkademickie);
+    fireEvent.click(zakladka);
+    expect(screen.getByTestId('mvd-akad-ekran')).toBeTruthy();
+  });
+
+  it('deep-link nie obchodzi bramy: żądanie „akademickie" w trybie podstawowym nie przełącza zakładki', async () => {
+    render(<WynikiWarsztat {...props({ trybZaawansowania: 'basic' })} />);
+    act(() => {
+      useShellStore.getState().setWynikiTab('akademickie');
+    });
+    await waitFor(() => expect(useShellStore.getState().wynikiTab).toBeNull());
+    expect(screen.queryByTestId('mvd-akad-ekran')).toBeNull();
+    // Kontrola dodatnia tej samej ścieżki: deep-link na zakładkę BEZ bramy działa.
+    act(() => {
+      useShellStore.getState().setWynikiTab('jakosc');
+    });
+    await waitFor(() =>
+      expect(screen.getByTestId('mvd-wyniki-zakladka-jakosc')).toHaveAttribute(
+        'aria-selected',
+        'true',
+      ),
+    );
+  });
+
+  it('obniżenie trybu przy otwartej zakładce zamyka ją (nie zostaje sierota)', () => {
+    const { rerender } = render(<WynikiWarsztat {...props({ trybZaawansowania: 'expert' })} />);
+    fireEvent.click(screen.getByTestId('mvd-wyniki-zakladka-akademickie'));
+    expect(screen.getByTestId('mvd-akad-ekran')).toBeTruthy();
+    rerender(<WynikiWarsztat {...props({ trybZaawansowania: 'basic' })} />);
+    expect(screen.queryByTestId('mvd-akad-ekran')).toBeNull();
+    expect(screen.getByTestId('mvd-wyniki-zakladka-werdykt')).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+  });
+});
+
 describe('WynikiWarsztat — kontekst przebiegu zakładki „Dowód obliczeń" (R3-C)', () => {
   it('deep-link „dowod" z kontekstem: zakładka otwarta, ślad WSKAZANEGO przebiegu, OBA pola wyczyszczone', async () => {
     useExecutionRunsStore.setState({ runs: [przebiegFixture({ id: 'run-lf-1' })] });

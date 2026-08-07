@@ -19,7 +19,7 @@
  */
 import { useEffect, useState, type ReactNode } from 'react';
 
-import type { AdvancementMode } from '../../shell/modeModel';
+import { isModeAtLeast, type AdvancementMode } from '../../shell/modeModel';
 import { useShellStore } from '../../shell/useShellStore';
 import { EkranBadanOltc } from '../../wyniki/oltc';
 import { EkranCoWymagaUwagi } from '../../wyniki/co-wymaga-uwagi';
@@ -93,6 +93,25 @@ const ZAKLADKI = [
   { id: 'lom', etykieta: T.zakladkaLom },
   { id: 'pozostale', etykieta: T.zakladkaPozostale },
 ] as const;
+
+/**
+ * Zakładki bramkowane trybem zaawansowania (V126-JEZYK, ocena właściciela 0/10):
+ * „Analizy akademickie" zjeżdżają z toru podstawowego projektanta do trybu
+ * eksperckiego — pakiet V12.6 jest w opracowaniu (część rodzajów nie ma jeszcze
+ * werdyktu z kryterium), a projektant na torze podstawowym nie ma oglądać
+ * powierzchni bez wartości inżynierskiej. Brama jest PARĄ z bramą w samym oknie
+ * (`EkranAnalizAkademickich` → `BramaOpracowania`), żeby wejście trasowe
+ * E-40…E-50 podlegało tej samej regule (KLASA, nie instancja).
+ */
+const MIN_TRYB_ZAKLADKI: Partial<Record<ZakladkaId, AdvancementMode>> = {
+  akademickie: 'expert',
+};
+
+/** Czy zakładka jest dostępna w danym trybie zaawansowania. */
+function zakladkaDostepna(id: ZakladkaId, tryb: AdvancementMode): boolean {
+  const min = MIN_TRYB_ZAKLADKI[id];
+  return min === undefined || isModeAtLeast(tryb, min);
+}
 
 /** Grupowanie zakładek (przegląd IA po komplecie fali OZE) — czysta prezentacja:
  * jeden tablist, dwa nazwane klastry; testidy i klawiatura bez zmian. */
@@ -220,7 +239,13 @@ export function WynikiWarsztat({
   const [elementRozplywu, setElementRozplywu] = useState<string | null>(null);
   useEffect(() => {
     if (!wynikiTab) return;
-    if (ZAKLADKI.some((z) => z.id === wynikiTab)) {
+    // V126-JEZYK: deep-link nie może obejść bramy trybu — żądanie zakładki
+    // niedostępnej w bieżącym trybie jest konsumowane bez przełączenia
+    // (inaczej brama byłaby dekoracją, a nie regułą).
+    if (
+      ZAKLADKI.some((z) => z.id === wynikiTab)
+      && zakladkaDostepna(wynikiTab as ZakladkaId, trybZaawansowania)
+    ) {
       setZakladka(wynikiTab as ZakladkaId);
       // K3-A4: deep-link = jawny wybór celu — hydratacja K2 nie może go nadpisać.
       setZakladkaWybranaRecznie(true);
@@ -246,7 +271,13 @@ export function WynikiWarsztat({
       }
     }
     setWynikiTab(null); // czyści OBA pola żądania (tab + element)
-  }, [wynikiTab, wynikiTabElement, setWynikiTab]);
+  }, [wynikiTab, wynikiTabElement, setWynikiTab, trybZaawansowania]);
+
+  // V126-JEZYK: obniżenie trybu w trakcie pracy nie może zostawić otwartej
+  // zakładki spoza toru — wracamy na werdykt (pierwsza zakładka warsztatu).
+  useEffect(() => {
+    if (!zakladkaDostepna(zakladka, trybZaawansowania)) setZakladka('werdykt');
+  }, [zakladka, trybZaawansowania]);
   const zalozeniaZwarciowe = useZalozeniaZwarcioweAktywnegoPrzypadku();
 
   // Nawigacja ręczna (klik/klawiatura/2×klik w ekranach jednego przebiegu):
@@ -281,7 +312,9 @@ export function WynikiWarsztat({
             <span className="mvd-wyniki-grupa-etykieta" aria-hidden="true">
               {grupa.etykieta}
             </span>
-            {grupa.zakladki.map((id) => {
+            {grupa.zakladki
+              .filter((id) => zakladkaDostepna(id, trybZaawansowania))
+              .map((id) => {
               const z = ZAKLADKI.find((x) => x.id === id)!;
               return (
                 <button
@@ -296,8 +329,11 @@ export function WynikiWarsztat({
                   onKeyDown={(e) => {
                     if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
                       e.preventDefault();
-                      // Kolejność klawiatury = kolejność wizualna (spłaszczone grupy).
-                      const kolejnosc = GRUPY_ZAKLADEK.flatMap((g) => g.zakladki);
+                      // Kolejność klawiatury = kolejność wizualna (spłaszczone grupy,
+                      // z pominięciem zakładek zamkniętych bramą trybu).
+                      const kolejnosc = GRUPY_ZAKLADEK.flatMap((g) => g.zakladki).filter((x) =>
+                        zakladkaDostepna(x, trybZaawansowania),
+                      );
                       const idx = kolejnosc.indexOf(zakladka);
                       const krok = e.key === 'ArrowRight' ? 1 : kolejnosc.length - 1;
                       przejdzDoZakladki(kolejnosc[(idx + krok) % kolejnosc.length]);
@@ -307,7 +343,7 @@ export function WynikiWarsztat({
                   {z.etykieta}
                 </button>
               );
-            })}
+              })}
           </div>
         ))}
       </div>
@@ -364,8 +400,10 @@ export function WynikiWarsztat({
         {zakladka === 'ssci' && <EkranSsci trybZaawansowania={trybZaawansowania} />}
         {/* V126-OKNA: pakiet analiz akademickich V12.6 — okno parametryzowane
             rodzajem (14 rodzajów kontraktu `V126AnalysisType`), lądowisko wyników
-            po wygaszeniu powierzchni zastanej `V126AcademicSurface`. */}
-        {zakladka === 'akademickie' && (
+            po wygaszeniu powierzchni zastanej `V126AcademicSurface`.
+            V126-JEZYK: treść renderuje się WYŁĄCZNIE za bramą trybu — ten sam
+            predykat co pasek zakładek (jedno źródło prawdy, zero rozjazdu). */}
+        {zakladka === 'akademickie' && zakladkaDostepna('akademickie', trybZaawansowania) && (
           <EkranAnalizAkademickich trybZaawansowania={trybZaawansowania} />
         )}
         {zakladka === 'ncrfg' && (
