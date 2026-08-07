@@ -233,5 +233,50 @@ class TestSkanBackendu:
         assert self._skan('    # historia: message_pl="P12 MVP"\n') == []
 
 
+class TestKodenameObokPodkreslenia:
+    """Dziura `\\b` zamknięta 2026-08-07 (odbiór karty PACK-ROZPLYW).
+
+    Pierwotny wzorzec `\\b[pP](?!0\\b)\\d+\\b` PRZEPUSZCZAŁ kodename sąsiadujący
+    z podkreśleniem, bo `_` jest znakiem słowa — między `P14` a `_` nie ma granicy
+    słowa. Zmierzone na żywym guardzie: „P14" łapane, „P14_STEP_001" i całe zdanie
+    „Dowód P11_wynik" przechodziły na zielono. Znalazł to wykonawca karty
+    PACK-ROZPLYW, gdy jego WŁASNY pin — pisany tym samym wzorcem — okazał się
+    zielony przy naruszeniu (reguła KLASA §4: deklaracja bez testu = fałszywa
+    pewność, a tu fałszywa była sama metoda sprawdzania).
+
+    Iloczyn cech: {kodename goły · z podkreśleniem · w środku identyfikatora}
+    × {token dozwolony · parametr techniczny · nazwa handlowa aparatury}.
+    Druga oś jest tu istotna: zbyt luźny wzorzec zacząłby flagować przekaźnik
+    `SCHNEIDER_P3M30`, czyli zamieniłby dziurę na hałas.
+    """
+
+    @staticmethod
+    def _trafienia(tekst: str) -> list[str]:
+        return find_codenames_in_strings(f"const x = {tekst!r};".replace("'", '"'))
+
+    def test_kodename_z_podkresleniem_jest_lapany(self):
+        assert self._trafienia("P14_STEP_001")
+        assert self._trafienia("Dowod P11_wynik")
+        assert self._trafienia("krok_P17_opis")
+
+    def test_kodename_goly_nadal_lapany(self):
+        assert self._trafienia("P14")
+        assert self._trafienia("P14 rozplyw")
+
+    def test_parametr_techniczny_strat_jalowych_nadal_przepuszczany(self):
+        assert self._trafienia("p0_kw") == []
+        assert self._trafienia("Straty jalowe P0") == []
+
+    def test_tokeny_statystyczne_nadal_przepuszczane(self):
+        assert self._trafienia("p95_ms") == []
+        assert self._trafienia("P50") == []
+
+    def test_nazwa_handlowa_aparatury_nie_jest_kodename(self):
+        """Przekaźnik `SCHNEIDER_P3M30` — po `P3` stoi litera, więc odsiewa go
+        KONSTRUKCJA wzorca, a nie biała lista, której trzeba by pilnować."""
+        assert self._trafienia("SCHNEIDER_P3M30") == []
+        assert self._trafienia("SCHNEIDER_P3F30") == []
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

@@ -7,7 +7,7 @@ describe('TracePanel', () => {
   it('does not expose raw step identifiers in the header', () => {
     const traceSteps: TraceStep[] = [
       {
-        step: 'P11_1c_QU_VDROP',
+        step: 'P11_1c_QU_VDROP',  // no-codenames-ignore — surowy identyfikator kroku jest WEJSCIEM testu
         description_pl: 'Wywód napięcia',
         inputs: {},
         outputs: {},
@@ -18,6 +18,6 @@ describe('TracePanel', () => {
 
     expect(screen.getByText('Krok 1')).toBeInTheDocument();
     expect(screen.getByText('Wywód napięcia')).toBeInTheDocument();
-    expect(screen.queryByText('P11_1c_QU_VDROP')).not.toBeInTheDocument();
+    expect(screen.queryByText('P11_1c_QU_VDROP')).not.toBeInTheDocument();  // no-codenames-ignore — asercja, ze panel go NIE pokazuje
   });
 });

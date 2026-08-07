@@ -66,7 +66,27 @@ EXCLUDED_RELATIVE_FILES = {
 
 # Regex for codenames: P1, P7, P11, P20, p14, etc.
 # Excludes P0 (technical parameter for transformer no-load losses)
-CODENAME_PATTERN = re.compile(r"\b[pP](?!0\b)\d+\b")
+#
+# DLACZEGO NIE `\b` (poprawione 2026-08-07, odbiór karty PACK-ROZPLYW).
+# Pierwotny wzorzec `\b[pP](?!0\b)\d+\b` PRZEPUSZCZAŁ kodename sąsiadujący
+# z podkreśleniem, bo `_` jest znakiem słowa, więc między `P14` a `_` NIE MA
+# granicy słowa. Zmierzone na żywym guardzie: „P14" i „P14 rozpływ" łapane,
+# ale „P14_STEP_001" i całe zdanie „Dowód P11_wynik" przechodziły na zielono.
+# Znalazł to wykonawca karty PACK-ROZPLYW, gdy jego WŁASNY pin — pisany tym
+# samym wzorcem — okazał się zielony przy naruszeniu.
+#
+# Granice liczone są teraz po ZNAKACH ALFANUMERYCZNYCH, więc `_` jest
+# separatorem, a nie częścią słowa. Warunek po prawej stronie zostaje ostry
+# (`(?![A-Za-z0-9])`), bo bez niego wzorzec zacząłby łapać nazwy handlowe
+# aparatury: `SCHNEIDER_P3M30` (przekaźnik) ma po `P3` literę `M`, więc jest
+# odsiewany Z KONSTRUKCJI, a nie białą listą.
+#
+# POMIAR PRZY ZAMKNIĘCIU DZIURY: w kodzie produkcyjnym `frontend/src` +
+# `backend/src` ZERO żywych naruszeń tej postaci — wszystkie 121 trafień
+# wstępnego skanu to `p0_kw` (straty jałowe transformatora, wykluczone niżej)
+# oraz `p95_ms` (token techniczny). Dziura była LATENTNA: nic przez nią dziś
+# nie przeszło, ale nic jej też nie pilnowało.
+CODENAME_PATTERN = re.compile(r"(?<![A-Za-z0-9])[pP](?!0(?![A-Za-z0-9]))\d+(?![A-Za-z0-9])")
 ALLOWED_TECHNICAL_TOKENS = {"p50", "p75", "p90", "p95", "p99"}
 
 # Regex for string literals (single, double, or template)
