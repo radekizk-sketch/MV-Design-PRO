@@ -1176,6 +1176,14 @@ describe('buildSceneV3 — F10.3: busbar_label_probe (spec §18.4) na fixturze R
       const zStacji = busbarLabels.filter((l) => l.ownerRef.startsWith('stn/'));
       expect(zStacji.length).toBeGreaterThan(0);
       expect(zStacji.every((l) => /^S\d+ · Sekcja \d+/.test(l.text))).toBe(true);
+      // S9-12 (audyt C-8 — „dwa różne obiekty z identycznym opisem w jednym
+      // kadrze"): sam FORMAT z członem `S\d+` nie dowodzi rozróżnialności —
+      // dwie stacje mogłyby dostać ten sam kod (np. regres źródła kodu na
+      // stałą). Asercja wprost: przy WIELU stacjach w kadrze (fixtura: 53)
+      // każda etykieta sekcji jest INNA (człon stacji z danych czyni opis
+      // unikalnym per stacja).
+      expect(zStacji.length).toBeGreaterThan(1);
+      expect(new Set(zStacji.map((l) => l.text)).size).toBe(zStacji.length);
       expect(busbarLabels.some((l) => /^Szyna WN( · \d+(?:,\d+)? kV)?$/.test(l.text))).toBe(true);
     }
   });
