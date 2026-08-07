@@ -61,7 +61,7 @@ beforeEach(() => {
     Promise.resolve({
       run_id_a: runIdA,
       run_id_b: runIdB,
-      report_version: '1.1.0',
+      report_version: '1.3.0',
       punkty: [
         punktPorownania({
           target_id: 'B1',

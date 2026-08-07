@@ -233,6 +233,25 @@ import {
   type ResultPointCoverage,
 } from './resultRefBridge';
 import { normalizeResultLabelAnalysis } from './resultLabelTemplates';
+// S9-13 (audyt W-8): PORÓWNANIE A/B Z KANWY — jawne wejście w tryb różnic
+// z panelu filtrów warstwy wynikowej (wybór drugiego UKOŃCZONEGO przebiegu
+// tego samego rodzaju i przypadku; stan i powody blokady z JEDNEGO rachunku).
+import {
+  stanPorownaniaZKanwy,
+  dataPrzebiegu,
+  POWOD_WYNIKI_NIEAKTUALNE,
+  type AkcjaPorownaniaZKanwy,
+  type StanPorownaniaZKanwy,
+} from './porownanieZKanwy';
+import { useExecutionRunsStore } from '../../../study-cases/runStore';
+import { ANALYSIS_TYPE_LABELS } from '../../../study-cases/types';
+import { navigateToCaseConfig } from '../../../navigation/routes';
+// Akcja „Otwórz ekran porównań" stanu zablokowanego — TA SAMA para wywołań,
+// którą wykonuje jawny wybór przestrzeni w powłoce (przejdzDoPrzestrzeni)
+// + zakładka „Porównanie" warsztatu wyników. Kierunek importu ui→ui2 ma
+// precedens w tym pliku (`useThemeModeStore`).
+import { przejdzDoPrzestrzeni } from '../../../../ui2/shell/przejsciaPrzestrzeni';
+import { useShellStore } from '../../../../ui2/shell/useShellStore';
 import { formatContractValue } from '../../../workspace/analysisRunContract';
 import { formatDateTime } from '../../../workspace/routerDisplayHelpers';
 // K12 (KARTA_K12, dyrektywa właściciela 2026-07-30): legenda „na żądanie" —
@@ -1090,6 +1109,100 @@ interface SldV3RoznicePodsumowanie {
   readonly legenda: readonly { readonly label: string; readonly description: string }[];
 }
 
+/** S9-13 — kandydat na przebieg odniesienia (A) w selektorze sekcji
+ *  „Porównanie A/B": identyfikator + polska etykieta zbudowana w workspace
+ *  (rodzaj analizy słownikiem `ANALYSIS_TYPE_LABELS` + data istniejącym
+ *  formatterem repo). Panel niczego nie tłumaczy ani nie sortuje. */
+interface SldV3KandydatPorownania {
+  readonly id: string;
+  readonly etykieta: string;
+}
+
+/**
+ * S9-13 — sekcja „Porównanie A/B" panelu filtrów: jawne wejście w tryb różnic
+ * z poziomu SCHEMATU (audyt W-8: dotąd jedyne wejście prowadziło przez ekran
+ * porównań). Trzy stany z JEDNEGO rachunku (`stanPorownaniaZKanwy`):
+ * `nieaktywne` (trwa tryb różnic — sekcję zastępuje podsumowanie „Różnice
+ * A/B"), `zablokowane` (uczciwy powód + realna akcja naprawcza) i `gotowe`
+ * (selektor kandydatów + przycisk). Zero martwych kontrolek: selektor istnieje
+ * WYŁĄCZNIE, gdy jest z czego wybierać.
+ */
+function SldV3PorownanieABSekcja(props: {
+  readonly stan: StanPorownaniaZKanwy;
+  readonly kandydaci: readonly SldV3KandydatPorownania[];
+  readonly wybranyRunA: string;
+  readonly onWybierzRunA: (runId: string) => void;
+  readonly onPorownaj: () => void;
+  readonly onAkcja: (akcja: AkcjaPorownaniaZKanwy) => void;
+  readonly wTrakcie: boolean;
+  readonly blad: string | null;
+}): JSX.Element | null {
+  const { stan, kandydaci, wybranyRunA, onWybierzRunA, onPorownaj, onAkcja, wTrakcie, blad } = props;
+  if (stan.rodzaj === 'nieaktywne') return null;
+  return (
+    <div
+      className="mt-1 flex flex-col gap-0.5 border-t border-scada-border pt-1"
+      data-testid="sld-v3-result-ab"
+      data-ab-stan={stan.rodzaj}
+    >
+      <span className="font-semibold uppercase tracking-wider text-scada-muted">Porównanie A/B</span>
+      {stan.rodzaj === 'zablokowane' ? (
+        <>
+          <span className="text-scada-muted" data-testid="sld-v3-result-ab-blocked">
+            {stan.powod}
+          </span>
+          {stan.akcja && stan.etykietaAkcji && (
+            <button
+              type="button"
+              onClick={() => onAkcja(stan.akcja as AkcjaPorownaniaZKanwy)}
+              data-testid="sld-v3-result-ab-akcja"
+              className="self-start text-scada-muted underline hover:text-scada-text"
+            >
+              {stan.etykietaAkcji}
+            </button>
+          )}
+        </>
+      ) : (
+        <>
+          <label className="flex flex-col gap-0.5">
+            <span>Porównaj z innym przebiegiem (A — odniesienie)</span>
+            <select
+              value={wybranyRunA}
+              onChange={(event) => onWybierzRunA(event.target.value)}
+              data-testid="sld-v3-result-ab-select"
+              className="rounded border border-scada-border bg-scada-panel px-1 py-0.5 text-scada-text"
+            >
+              <option value="">— wybierz przebieg —</option>
+              {kandydaci.map((kandydat) => (
+                <option key={kandydat.id} value={kandydat.id}>
+                  {kandydat.etykieta}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button
+            type="button"
+            onClick={onPorownaj}
+            disabled={!wybranyRunA || wTrakcie}
+            data-testid="sld-v3-result-ab-pokaz"
+            className="self-start rounded border border-scada-border px-2 py-0.5 text-scada-text enabled:hover:bg-scada-hover-nav disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {wTrakcie ? 'Pobieranie różnic…' : 'Pokaż różnice'}
+          </button>
+          <span className="text-scada-muted">
+            Schemat pokaże zmiany bieżącego biegu (B) względem wybranego (A).
+          </span>
+        </>
+      )}
+      {blad && (
+        <span className="text-scada-muted" data-testid="sld-v3-result-ab-blad">
+          {blad}
+        </span>
+      )}
+    </div>
+  );
+}
+
 /**
  * S9-2 — zdanie o POKRYCIU warstwy wynikowej: ile punktów biegu ma etykietę i
  * co się stało z resztą. Bez tego zdania operator nie odróżnia „schemat pokazuje
@@ -1148,6 +1261,15 @@ function SldV3ResultFilterPanel(props: {
   /** Podsumowanie trwającej nakładki różnic A/B (`null` = tryb wyłączony). */
   readonly roznice: SldV3RoznicePodsumowanie | null;
   readonly onWylaczRoznice: () => void;
+  /** S9-13 — stan sekcji „Porównanie A/B" (wejście w tryb różnic z kanwy). */
+  readonly porownanieAB: StanPorownaniaZKanwy;
+  readonly kandydaciAB: readonly SldV3KandydatPorownania[];
+  readonly wybranyRunA: string;
+  readonly onWybierzRunA: (runId: string) => void;
+  readonly onPorownajAB: () => void;
+  readonly onAkcjaAB: (akcja: AkcjaPorownaniaZKanwy) => void;
+  readonly abWTrakcie: boolean;
+  readonly abBlad: string | null;
   readonly className?: string;
 }): JSX.Element {
   const {
@@ -1165,6 +1287,14 @@ function SldV3ResultFilterPanel(props: {
     onSetComparisonMode,
     roznice,
     onWylaczRoznice,
+    porownanieAB,
+    kandydaciAB,
+    wybranyRunA,
+    onWybierzRunA,
+    onPorownajAB,
+    onAkcjaAB,
+    abWTrakcie,
+    abBlad,
     className,
   } = props;
   return (
@@ -1286,10 +1416,24 @@ function SldV3ResultFilterPanel(props: {
           </span>
         )}
       </div>
+      {/* S9-13 — PORÓWNANIE A/B Z KANWY: jawne wejście w tryb różnic z poziomu
+        * schematu (wybór drugiego ukończonego przebiegu tego samego rodzaju
+        * i przypadku) albo uczciwy stan zablokowany z akcją naprawczą. Gdy tryb
+        * różnic trwa, sekcję zastępuje podsumowanie „Różnice A/B" niżej. */}
+      <SldV3PorownanieABSekcja
+        stan={porownanieAB}
+        kandydaci={kandydaciAB}
+        wybranyRunA={wybranyRunA}
+        onWybierzRunA={onWybierzRunA}
+        onPorownaj={onPorownajAB}
+        onAkcja={onAkcjaAB}
+        wTrakcie={abWTrakcie}
+        blad={abBlad}
+      />
       {/* NAKŁADKA RÓŻNIC A/B — sekcja obecna WYŁĄCZNIE, gdy tryb różnic trwa
         * (zero martwej kontrolki, gdy nie ma czego wyłączać). Włącza się go
-        * z ekranu porównań, bo tam wybiera się parę przebiegów; tutaj jest
-        * jego stan, rozkład punktów i wyjście. */}
+        * z ekranu porównań ALBO z sekcji „Porównanie A/B" wyżej (S9-13);
+        * tutaj jest jego stan, rozkład punktów i wyjście. */}
       {roznice && (
         <div
           className="mt-1 flex flex-col gap-0.5 border-t border-scada-border pt-1"
@@ -1448,8 +1592,10 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   const comparisonAvailable = previousPayload != null && !resultsStale && roznicePayload == null;
   // R4 (§0.4): powód niedostępności trybu porównawczego — jawny komunikat
   // (OUTDATED ma pierwszeństwo nad brakiem poprzednika). `null` = dostępny.
+  // Treść powodu OUTDATED = WSPÓLNA STAŁA z sekcją „Porównanie A/B" (S9-13):
+  // oba tryby blokuje ten sam fakt, więc i komunikat jest jeden.
   const comparisonBlockedReason = resultsStale
-    ? 'Wyniki nieaktualne — porównanie zablokowane'
+    ? POWOD_WYNIKI_NIEAKTUALNE
     : roznicePayload != null
       ? 'Trwa tryb różnic A/B — etykiety pokazują już różnicę'
       : previousPayload == null
@@ -1593,6 +1739,76 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   const activeProjectName = useAppStateStore((state) => state.activeProjectName);
   const activeCaseName = useAppStateStore((state) => state.activeCaseName);
   const setSnapshot = useSnapshotStore((state) => state.setSnapshot);
+
+  // -------------------------------------------------------------------------
+  // S9-13 (audyt W-8): PORÓWNANIE A/B Z KANWY. Lista przebiegów z ISTNIEJĄCEGO
+  // runStore (hydratacja powłoki woła `loadRuns` dla aktywnego przypadku —
+  // zero własnego ładowania tutaj); stan sekcji i powody blokady z JEDNEGO
+  // rachunku `stanPorownaniaZKanwy` (kandydaci i blokada nie mogą się rozjechać).
+  // Świeżość: TEN SAM predykat `resultsStale`, którym kanwa bramkuje wynik
+  // pojedynczego przebiegu i tryb porównawczy (jedno źródło rewizji S9-11).
+  // -------------------------------------------------------------------------
+  const runsAktywnegoPrzypadku = useExecutionRunsStore((state) => state.runs);
+  const wczytajRoznice = useSldDeltaOverlayStore((state) => state.wczytajRoznice);
+  const nakladkaWTrakcie = useSldDeltaOverlayStore((state) => state.wTrakcie);
+  const bladNakladki = useSldDeltaOverlayStore((state) => state.blad);
+  const porownanieAB = useMemo<StanPorownaniaZKanwy>(
+    () =>
+      stanPorownaniaZKanwy({
+        payload: rawOverlayPayload,
+        nakladkaAktywna: nakladkaRoznic != null,
+        wynikiNieaktualne: resultsStale,
+        runs: runsAktywnegoPrzypadku,
+        activeCaseId,
+      }),
+    [rawOverlayPayload, nakladkaRoznic, resultsStale, runsAktywnegoPrzypadku, activeCaseId],
+  );
+  // Etykiety kandydatów: rodzaj analizy ISTNIEJĄCYM słownikiem + data biegu
+  // ISTNIEJĄCYM formatterem (pl-PL) + skrót id dla rozróżnienia biegów z tą
+  // samą datą. Sortowanie przyszło z rachunku stanu (deterministyczne).
+  const kandydaciAB = useMemo<readonly { id: string; etykieta: string }[]>(
+    () =>
+      porownanieAB.rodzaj === 'gotowe'
+        ? porownanieAB.kandydaci.map((run) => {
+            const data = dataPrzebiegu(run);
+            const czlony = [
+              ANALYSIS_TYPE_LABELS[run.analysis_type],
+              data ? formatDateTime(data) : null,
+              run.id.slice(0, 8),
+            ].filter((czlon): czlon is string => czlon != null);
+            return { id: run.id, etykieta: czlony.join(' · ') };
+          })
+        : [],
+    [porownanieAB],
+  );
+  // Wybór przebiegu odniesienia (A) — stan LOKALNY prezentacji; zerowany przy
+  // zmianie biegu na schemacie (inny bieg B = inny zbiór sensownych odniesień).
+  const [wybranyRunA, setWybranyRunA] = useState('');
+  const biezacyRunId = rawOverlayPayload?.run_id ?? null;
+  useEffect(() => {
+    setWybranyRunA('');
+  }, [biezacyRunId]);
+  const handlePorownajAB = useCallback(() => {
+    // Kierunek pary (kontrakt store'a nakładki): A = wybrane ODNIESIENIE,
+    // B = bieg pokazywany na schemacie (stan oceniany względem A).
+    if (!biezacyRunId || !wybranyRunA) return;
+    void wczytajRoznice(wybranyRunA, biezacyRunId);
+  }, [biezacyRunId, wybranyRunA, wczytajRoznice]);
+  const handleAkcjaAB = useCallback(
+    (akcja: AkcjaPorownaniaZKanwy) => {
+      if (akcja === 'obliczenia') {
+        // Przestrzeń obliczeń — tu uruchamia się bieg (`#case-config`,
+        // orkiestrator mapuje trasę na przestrzeń 'obliczenia').
+        navigateToCaseConfig({ caseId: activeCaseId });
+        return;
+      }
+      // Ekran porównań (tabela, m.in. rozpływ) — ta sama para wywołań co jawny
+      // wybór przestrzeni w powłoce + zakładka „Porównanie" warsztatu wyników.
+      przejdzDoPrzestrzeni('wyniki');
+      useShellStore.getState().setWynikiTab('porownanie');
+    },
+    [activeCaseId],
+  );
 
   // Parytet K30-87/F12-C (luka wykryta adaptacją e2e critical-der-config,
   // 2026-07-17): v3 montował drawer BEZ handlera zapisu — CTA „Zapisz" w
@@ -2830,6 +3046,14 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
               onSetComparisonMode={handleSetComparisonMode}
               roznice={roznicePodsumowanie}
               onWylaczRoznice={wyczyscRoznice}
+              porownanieAB={porownanieAB}
+              kandydaciAB={kandydaciAB}
+              wybranyRunA={wybranyRunA}
+              onWybierzRunA={setWybranyRunA}
+              onPorownajAB={handlePorownajAB}
+              onAkcjaAB={handleAkcjaAB}
+              abWTrakcie={nakladkaWTrakcie}
+              abBlad={bladNakladki}
               className="w-[240px]"
             />
             <SldV3LayerTogglePanel

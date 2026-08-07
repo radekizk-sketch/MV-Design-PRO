@@ -72,7 +72,7 @@ function nakladkaFixture(over: Partial<NakladkaRoznic> = {}): NakladkaRoznic {
     run_id_a: 'sc-run-a',
     run_id_b: 'sc-run-b',
     analysis_type: 'DELTA_SC',
-    report_version: '1.2.0',
+    report_version: '1.3.0',
     elements: {
       [busRef]: elementRoznic('WARNING', {
         DELTA_IK_3F_KA: metryka('DELTA_IK_3F_KA', 2, 'kA', 'fixed2'),
@@ -180,11 +180,24 @@ describe('Rejestr szablonów — rodzina różnic', () => {
     expect(normalizeResultLabelAnalysis('load_flow')).toBe('load_flow');
   });
 
-  it('podpisy różnic niosą „Δ" i nie powtarzają podpisów wielkości', () => {
-    const roznice = RESULT_LABEL_TEMPLATES.short_circuit_delta.bus!.map((s) => s.prefix);
+  it('podpisy różnic niosą „Δ", wartości B „(B)" — i nie powtarzają podpisów wielkości', () => {
+    // INTENCJA (zachowana z wersji sprzed S9-13): żadnej linii rodziny różnic
+    // nie da się wziąć za wynik pojedynczego przebiegu. Po S9-13 rodzina niesie
+    // DWA rodzaje linii: różnice (kody DELTA_*, podpis z „Δ") oraz wartości
+    // bezwzględne przebiegu B (kody B_*, podpis z „(B)" i BEZ „Δ" — to nie jest
+    // różnica). Każdy podpis pozostaje rozłączny z podpisami rodziny zwarciowej.
+    const specy = RESULT_LABEL_TEMPLATES.short_circuit_delta.bus!;
     const zwarcia = RESULT_LABEL_TEMPLATES.short_circuit.bus!.map((s) => s.prefix);
-    expect(roznice.every((p) => p.includes('Δ'))).toBe(true);
-    expect(roznice.some((p) => zwarcia.includes(p))).toBe(false);
+    for (const spec of specy) {
+      if (spec.code.startsWith('DELTA_')) {
+        expect(spec.prefix, `różnica bez „Δ": ${spec.code}`).toContain('Δ');
+      } else {
+        expect(spec.code.startsWith('B_'), `kod spoza rodzin DELTA_/B_: ${spec.code}`).toBe(true);
+        expect(spec.prefix, `wartość B bez „(B)": ${spec.code}`).toContain('(B)');
+        expect(spec.prefix, `wartość B z „Δ" udaje różnicę: ${spec.code}`).not.toContain('Δ');
+      }
+      expect(zwarcia.includes(spec.prefix), `podpis wspólny ze zwarciami: ${spec.prefix}`).toBe(false);
+    }
   });
 
   it('tabela wielkości filtra jest ZAMKNIĘTA — każdy podpis rejestru ma wielkość', () => {
@@ -215,6 +228,31 @@ describe('Etykiety różnic — treść z backendu', () => {
     expect(wpisy[busOwnerRef].lines[0]).toEqual({ prefix: 'Δ Ik″', text: '+2,00 kA' });
     expect(wpisy[busOwnerRef].lines[1]).toEqual({ prefix: 'Δ Ik″ %', text: '+25,0 %' });
     expect(wpisy[busOwnerRef].severity).toBe('WARNING');
+  });
+
+  it('S9-13: etykieta niesie wartość B obok różnicy (Δ przed B, potem Δ %)', () => {
+    // Payload z metryką `B_IK_3F_KA` (kontrakt 1.3.0) — kolejność linii to
+    // priorytet szablonu: różnica (najważniejsza), wartość, której dotyczy,
+    // różnica względna. Wartość B BEZ znaku (wielkość bezwzględna, nie zmiana).
+    const zWartosciaB = nakladkaFixture({
+      elements: {
+        [busRef]: elementRoznic('WARNING', {
+          DELTA_IK_3F_KA: metryka('DELTA_IK_3F_KA', 2, 'kA', 'fixed2'),
+          B_IK_3F_KA: metryka('B_IK_3F_KA', 10, 'kA', 'fixed2'),
+          DELTA_IK_3F_PCT: metryka('DELTA_IK_3F_PCT', 25, '%', 'fixed1'),
+        }),
+      },
+    });
+    const wpisy = buildResultLabelsFromScene(
+      sceneL2,
+      { run_id: 'sc-run-b', analysis_type: 'DELTA_SC', elements: zWartosciaB.elements },
+      singleHop,
+    );
+    expect(wpisy[busOwnerRef].lines[0]).toEqual({ prefix: 'Δ Ik″', text: '+2,00 kA' });
+    // `formatCurrent` (ten sam formatter co Ik″ pojedynczego przebiegu):
+    // 1 miejsce po przecinku dla kA.
+    expect(wpisy[busOwnerRef].lines[1]).toEqual({ prefix: 'Ik″ (B)', text: '10,0 kA' });
+    expect(wpisy[busOwnerRef].lines[2]).toEqual({ prefix: 'Δ Ik″ %', text: '+25,0 %' });
   });
 
   it('spadek zachowuje znak ujemny (kierunek zmiany jest informacją)', () => {

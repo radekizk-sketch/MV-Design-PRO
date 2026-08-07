@@ -37,10 +37,12 @@ router = APIRouter(prefix="/api/short-circuit-comparisons", tags=["short-circuit
 
 #: Wersja kontraktu eksportu porownania zwarciowego. Podbicia MINOR: 1.1.0 —
 #: ADDYTYWNE pola `delta_*_percent` liczone w backendzie; 1.2.0 — ADDYTYWNE pole
-#: `element_id` (ref punktu na schemacie, potrzebny nakladce roznic). Konsument
-#: starszej wersji nie widzi zadnej zmiany — pola nieistniejace sa pomijane
-#: (`exclude_none`).
-WERSJA_RAPORTU = "1.2.0"
+#: `element_id` (ref punktu na schemacie, potrzebny nakladce roznic); 1.3.0 —
+#: ADDYTYWNE metryki `B_*` w nakladce roznic (wartosci bezwzgledne przebiegu B
+#: obok delt — karta S9-13, etykieta na schemacie niesie „wartosc B i roznice").
+#: Konsument starszej wersji nie widzi zadnej zmiany — pola nieistniejace sa
+#: pomijane (`exclude_none`), a nieznane kody metryk ignorowane.
+WERSJA_RAPORTU = "1.3.0"
 
 
 class PunktZwarciowyDiffResponse(BaseModel):
