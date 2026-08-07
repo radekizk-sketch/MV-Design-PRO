@@ -100,12 +100,14 @@ Data wylaczenia dla deprecated: koniec M2, o ile wiersz nie wskazuje inaczej.
 | `GET /api/catalog/v126/{namespace}` | v12.6 | aktywny | 2026-05-24 | - | Katalogi pomocnicze analiz akademickich V12.6. | v126 academic API tests | Administrator katalogow |
 | `GET /api/ncrfg-tests/catalog` | v12.6 | aktywny | 2026-05-24 | - | Katalog testow procedury PTPiREE NC RfG oraz profile operatorow dla zakladki E-35/ncrfg-tests. | ncrfg ptpiree API tests | Architekt OZE |
 | `GET /api/ncrfg-tests/cases/{case_id}/compliance` | v12.6 | aktywny | 2026-07-21 | - | Zgodnosc NC RfG liczona z MODELU (most build_der_compliance_list_from_enm -> NcRfgComplianceChecker) per zrodlo DER dla wskazanego operatora; uczciwy stan zerowy bez DER (V12K-087). | ncrfg model bridge tests | Architekt OZE |
+| `GET /api/execution/batches/{batch_id}` | v12xx | aktywny | 2026-08-07 | - | Szczegoly serii przebiegow (wsadu) nad scenariuszami zwarciowymi: status, odcisk serii, identyfikatory biegow kanonicznych. | test_batch_execution.py | Architekt ruchowy |
 | `GET /api/execution/fault-scenarios/{scenario_id}` | v12xx.m1 | adapter | 2026-04-24 | koniec M3 | Odczyt scenariusza zakloceniowego. | execution tests | Architekt ruchowy |
 | `GET /api/execution/fault-scenarios/{scenario_id}/eligibility` | v12xx.m1 | adapter | 2026-04-24 | koniec M3 | Zdolnosc uruchomienia scenariusza zakloceniowego. | execution eligibility tests | Architekt ruchowy |
 | `GET /api/execution/fault-scenarios/{scenario_id}/sld-overlay` | v12xx.m1 | adapter | 2026-04-24 | koniec M3 | Nakladka SLD scenariusza zakloceniowego. | execution overlay tests | Architekt SLD |
 | `GET /api/execution/runs/{run_id}` | v12xx.m1 | adapter | 2026-04-24 | koniec M3 | Odczyt uruchomienia execution. | execution run tests | Architekt wynikow |
 | `GET /api/execution/runs/{run_id}/results` | v12xx.m1 | adapter | 2026-04-24 | koniec M3 | Wyniki execution. | execution result tests | Architekt wynikow |
 | `GET /api/execution/runs/{run_id}/results/v1` | legacy | deprecated | 2026-04-24 | koniec M2 | Stary kontrakt wyniku execution. | legacy result tests | Architekt migracji |
+| `GET /api/execution/study-cases/{case_id}/batches` | v12xx | aktywny | 2026-08-07 | - | Lista serii przebiegow przypadku, najnowsze pierwsze; pusta lista = uczciwe zero. | test_batch_execution.py | Architekt ruchowy |
 | `GET /api/execution/study-cases/{case_id}/fault-scenarios` | v12xx.m1 | adapter | 2026-04-24 | koniec M3 | Scenariusze zakloceniowe przypadku. | fault scenario tests | Architekt ruchowy |
 | `GET /api/execution/study-cases/{case_id}/runs` | v12xx.m1 | adapter | 2026-04-24 | koniec M3 | Uruchomienia execution dla przypadku. | execution run tests | Architekt wynikow |
 | `GET /api/health` | v12xx | aktywny | 2026-04-24 | - | Healthcheck API. | health tests | Architekt API |
@@ -147,8 +149,10 @@ Data wylaczenia dla deprecated: koniec M2, o ile wiersz nie wskazuje inaczej.
 | `POST /api/comparison/runs` | v12xx | aktywny | 2026-04-24 | - | Porownanie uruchomien. | comparison tests | Architekt wynikow |
 | `POST /api/equipment-proof/pack` | v12xx | aktywny | 2026-04-24 | - | Pakiet uzasadnienia dla aparatury. | equipment proof tests | Architekt proof |
 | `POST /api/ncrfg-tests/run` | v12.6 | aktywny | 2026-05-24 | - | Deterministyczne uruchomienie pakietu symulacji zgodnosci PTPiREE NC RfG dla DER z trace, proof i raportem PL. | ncrfg ptpiree solver/API tests | Architekt solverow |
+| `POST /api/execution/batches/{batch_id}/execute` | v12xx | aktywny | 2026-08-07 | - | Sekwencyjne wykonanie serii torem kanonicznym (realny solver, zero fabrykacji); pierwsza awaria = FAILED, biegi wczesniejsze pozostaja; odcisk tresci scenariusza weryfikowany wzgledem przypietego przy tworzeniu serii. | test_batch_execution.py | Architekt ruchowy |
 | `POST /api/execution/fault-scenarios/{scenario_id}/runs` | v12xx.m1 | adapter | 2026-04-24 | koniec M3 | Uruchomienie scenariusza zakloceniowego. | execution tests | Architekt ruchowy |
 | `POST /api/execution/runs/{run_id}/execute` | v12xx.m1 | adapter | 2026-04-24 | koniec M3 | Wykonanie runu execution. | execution tests | Architekt ruchowy |
+| `POST /api/execution/study-cases/{case_id}/batches` | v12xx | aktywny | 2026-08-07 | - | Utworzenie serii przebiegow (PENDING) nad scenariuszami zwarciowymi przypadku; wszystkie scenariusze jednego typu analizy; odciski tresci przypinane przy tworzeniu (predykaty parami z wykonaniem). | test_batch_execution.py | Architekt ruchowy |
 | `POST /api/execution/study-cases/{case_id}/fault-scenarios` | v12xx.m1 | adapter | 2026-04-24 | koniec M3 | Utworzenie scenariusza zakloceniowego. | fault scenario tests | Architekt ruchowy |
 | `POST /api/execution/study-cases/{case_id}/runs` | v12xx.m1 | adapter | 2026-04-24 | koniec M3 | Utworzenie runu execution. | execution tests | Architekt ruchowy |
 | `POST /api/import/xlsx` | v12xx | aktywny | 2026-04-24 | - | Import XLSX do modelu. | xlsx import tests | Architekt migracji |

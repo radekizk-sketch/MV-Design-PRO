@@ -527,15 +527,21 @@ def test_zapadka_zada_obnizenia_budzetu_gdy_dlug_zmalal(tmp_path, monkeypatch, c
 
 
 def test_zapadka_z_pustym_budzetem_lapie_pierwsze_wywolanie(tmp_path, monkeypatch, capsys) -> None:
-    """Plik z listy o budzecie {} nie ma dzis ani jednego wejscia — kazde jest nowe."""
-    root = _drzewo(tmp_path, {"api/case_runs.py": INIEKCJA_DO_SOLVERA})
+    """Plik z listy o budzecie {} nie ma dzis ani jednego wejscia — kazde jest nowe.
+
+    INTENCJA (zachowana przy karcie BATCH-ROUTER, ktora usunela `api/case_runs.py`
+    razem z jego wpisem zapadki): pusty budzet NIE jest bialolistowaniem — pierwsze
+    bezposrednie wejscie w solver w takim pliku musi zapalic guard. Nosnikiem
+    testu jest inny realny wpis o pustym budzecie (`api/fault_loop.py`).
+    """
+    root = _drzewo(tmp_path, {"api/fault_loop.py": INIEKCJA_DO_SOLVERA})
     monkeypatch.setattr(guard, "BACKEND_SRC", root)
 
     rc = guard.main()
 
     out = capsys.readouterr().out
     assert rc == 1
-    assert "case_runs.py" in out
+    assert "fault_loop.py" in out
     assert "budzet 0, znaleziono 1" in out
 
 

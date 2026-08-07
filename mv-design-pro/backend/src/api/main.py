@@ -9,6 +9,7 @@ from api.analysis_insights import router as analysis_insights_router
 from api.analysis_runs import router as analysis_runs_router
 from api.audit2_catalogs import router as audit2_catalogs_router
 from api.audit2_station_config import router as audit2_station_config_router
+from api.batch_execution import router as batch_execution_router
 from api.catalog import production_router as catalog_router
 from api.comparison import router as comparison_router
 from api.der_sn_documents import router as der_sn_documents_router
@@ -160,6 +161,9 @@ app.include_router(study_cases_router)
 app.include_router(xlsx_import_router)
 app.include_router(enm_router)
 app.include_router(execution_runs_router)
+# Karta BATCH-ROUTER: serie przebiegów nad scenariuszami zwarciowymi
+# (tor kanoniczny — te same biegi, co pojedyncze uruchomienie scenariusza).
+app.include_router(batch_execution_router)
 app.include_router(unified_runs_router, prefix="/api")
 app.include_router(v126_academic_router)
 app.include_router(result_contract_v1_router)

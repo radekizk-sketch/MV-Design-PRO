@@ -27,6 +27,7 @@ from application.fault_scenario_service import (
     FaultScenarioHasRunsError,
     FaultScenarioNotFoundError,
     FaultScenarioService,
+    solver_input_for_scenario,
 )
 from domain.fault_scenario import (
     FaultMode,
@@ -517,12 +518,9 @@ def create_run_from_scenario(
             ),
         )
 
-    solver_input: dict[str, Any] = {
-        "scenario_id": str(scenario.scenario_id),
-        "fault_type": scenario.fault_type.value,
-        "location": scenario.location.to_dict(),
-        "config": scenario.config.to_dict(),
-    }
+    # JEDNO źródło budowy wejścia solvera ze scenariusza — wspólne ze ścieżką
+    # serii przebiegów (karta BATCH-ROUTER, reguła KLASA, NIE INSTANCJA).
+    solver_input: dict[str, Any] = solver_input_for_scenario(scenario)
     if request and request.solver_input:
         solver_input.update(request.solver_input)
 
