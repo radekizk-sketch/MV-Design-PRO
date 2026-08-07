@@ -260,9 +260,12 @@ liniowym całego zbioru przeszkód, czyli kwadratowo względem liczby etykiet.
 
 | Sieć | etykiet | PRZED | PO | zysk |
 |------|---------|-------|-----|------|
-| referencyjna (54 stacje) | 1 137 | 128,5 | 10,5 | **12×** |
-| podwojona (107 stacji) | 2 261 | 451,3 | 21,9 | **21×** |
-| potrojona (160 stacji) | 3 385 | 1 026,8 | 33,8 | **30×** |
+| referencyjna (54 stacje) | 1 137 | 128,5 | 14,5 | **8,9×** |
+| podwojona (107 stacji) | 2 261 | 451,3 | 27,1 | **16,7×** |
+| potrojona (160 stacji) | 3 385 | 1 026,8 | 40,7 | **25×** |
+
+Obie kolumny to NAJGORSZA skala drabiny (najwięcej etykiet powiększonych), nie
+skala najkorzystniejsza — porównanie jest w najtrudniejszym punkcie gestu.
 
 Kryterium odbioru „zero klatek > 100 ms przy zoomie" **SPEŁNIONE** — z zapasem także na
 sieci 3× większej od referencyjnej. Uczciwie: pomiar jest wykonany w środowisku testowym
