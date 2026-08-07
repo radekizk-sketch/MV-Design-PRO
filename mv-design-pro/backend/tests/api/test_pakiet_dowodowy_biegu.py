@@ -606,8 +606,7 @@ def _seed_enm_rozplyw(
                         "catalog_namespace": "LINIA_SN",
                     }
                 ],
-                "transformers": [transformator]
-                + ([transformator_blokowy] if falowniki else []),
+                "transformers": [transformator] + ([transformator_blokowy] if falowniki else []),
                 "sources": [
                     {
                         "id": "00000000-0000-0000-0000-000000000604",
