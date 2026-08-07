@@ -20,6 +20,7 @@ from __future__ import annotations
 import pytest
 from application.result_mapping.zwarcia_delta_overlay_v1 import (
     METRYKI_ROZNICOWE,
+    METRYKI_WARTOSCI_B,
     RODZAJ_ANALIZY,
     zbuduj_nakladke_roznic,
 )
@@ -112,10 +113,20 @@ def test_metryki_niosa_roznice_z_domeny_a_nie_wartosci_bezwzgledne() -> None:
 
 
 def test_kody_metryk_roznicowych_nie_koliduja_z_kodami_wartosci() -> None:
-    """Kod roznicy nie moze byc kodem wielkosci — inaczej Δ udalaby wartosc."""
+    """Kod roznicy nie moze byc kodem wielkosci — inaczej Δ udalaby wartosc.
+
+    S9-13: kody wartosci B (`B_*`) tez sa WLASNE — rozlaczne i z kodami roznic,
+    i z kodami pojedynczego przebiegu (`IK_3F_A` itd.), zeby zadna warstwa nie
+    pomylila wartosci przebiegu B z wartoscia biezacego wyniku ani z delta.
+    """
     kody = {kod for kod, *_ in METRYKI_ROZNICOWE}
-    assert kody.isdisjoint({"IK_3F_A", "IP_A", "ITH_A", "SK_MVA"})
+    kody_b = {kod for kod, *_ in METRYKI_WARTOSCI_B}
+    kody_pojedynczego = {"IK_3F_A", "IP_A", "ITH_A", "SK_MVA"}
+    assert kody.isdisjoint(kody_pojedynczego)
     assert all(kod.startswith("DELTA_") for kod in kody)
+    assert kody_b.isdisjoint(kody_pojedynczego)
+    assert kody_b.isdisjoint(kody)
+    assert all(kod.startswith("B_") for kod in kody_b)
 
 
 def test_punkt_ze_zmiana_ma_wage_ostrzezenia_a_bez_zmiany_informacyjna() -> None:
@@ -130,22 +141,95 @@ def test_punkt_ze_zmiana_ma_wage_ostrzezenia_a_bez_zmiany_informacyjna() -> None
 
 
 def test_waga_ostrzezenia_wymaga_widocznej_roznicy() -> None:
-    """Predykat wagi i zbior pokazanych roznic to JEDNO zrodlo prawdy.
+    """Predykat wagi i zbior pokazanych ROZNIC to JEDNO zrodlo prawdy.
 
     Element oznaczony jako zmieniony MUSI niesc co najmniej jedna niezerowa
-    metryke; element informacyjny — same zera. Rozjazd tych dwoch znaczylby
-    kolor bez pokrycia w liczbach (albo liczby bez koloru).
+    metryke ROZNICOWA; element informacyjny — same zerowe roznice. Rozjazd tych
+    dwoch znaczylby kolor bez pokrycia w liczbach (albo liczby bez koloru).
+
+    INTENCJA PO S9-13: nakladka niesie tez wartosci bezwzgledne przebiegu B
+    (kody `B_*`) — te sa WYLACZNIE trescia do wyswietlenia i predykat wagi ich
+    nie widzi (wartosc bezwzgledna jest niezerowa niemal zawsze, wiec kazdy
+    punkt „bez zmian" stalby sie „zmieniony"). Dlatego rachunek ponizej filtruje
+    metryki po prefiksie `DELTA_` — dokladnie tak, jak robi to kod.
     """
     nakladka = _nakladka(
         [_wiersz("bus-1", 8.0, 20.0, 8.4, 200.0), _wiersz("bus-2", 5.0, 12.0, 5.2, 100.0)],
         [_wiersz("bus-1", 10.0, 25.0, 10.5, 250.0), _wiersz("bus-2", 5.0, 12.0, 5.2, 100.0)],
     )
     for element in nakladka.payload.elements.values():
-        niezerowe = [m for m in element.metrics.values() if float(m.value) != 0.0]
+        niezerowe_roznice = [
+            m
+            for kod, m in element.metrics.items()
+            if kod.startswith("DELTA_") and float(m.value) != 0.0
+        ]
         if element.severity == OverlaySeverity.WARNING:
-            assert niezerowe, f"{element.ref_id}: zmiana bez ani jednej niezerowej roznicy"
+            assert niezerowe_roznice, f"{element.ref_id}: zmiana bez ani jednej niezerowej roznicy"
         else:
-            assert not niezerowe, f"{element.ref_id}: brak zmiany mimo niezerowej roznicy"
+            assert not niezerowe_roznice, f"{element.ref_id}: brak zmiany mimo niezerowej roznicy"
+
+
+def test_wartosci_b_nie_wplywaja_na_wage_ani_liczniki() -> None:
+    """S9-13, predykaty parami: wartosc B to TRESC, nie predykat.
+
+    Punkt „bez zmian" (identyczne wielkosci w A i B) ma NIEZEROWE wartosci
+    bezwzgledne B — mimo to jego waga zostaje INFO, a licznik „bez zmian"
+    go obejmuje. Gdyby predykat wagi widzial metryki `B_*`, kazdy punkt bez
+    zmian zostalby falszywie pokolorowany jako zmieniony.
+    """
+    nakladka = _nakladka(
+        [_wiersz("bus-1", 5.0, 12.0, 5.2, 100.0)],
+        [_wiersz("bus-1", 5.0, 12.0, 5.2, 100.0)],
+    )
+    element = nakladka.payload.elements["bus-1"]
+    assert element.metrics["B_IK_3F_KA"].value == pytest.approx(5.0, abs=1e-12)
+    assert element.severity == OverlaySeverity.INFO
+    assert nakladka.liczba_punktow_bez_zmian == 1
+    assert nakladka.liczba_punktow_zmienionych == 0
+
+
+def test_metryki_wartosci_b_niosa_wartosci_przebiegu_b() -> None:
+    """S9-13: etykieta roznicy niesie tez wartosc, ktorej roznica dotyczy.
+
+    Wartosci `B_*` sa PRZEPISANE z wyniku przebiegu B (nie liczone): Ik'' = 10,0
+    kA, ip = 25,0 kA, Ith = 10,5 kA, Sk = 250,0 MVA.
+    """
+    nakladka = _nakladka(
+        [_wiersz("bus-1", 8.0, 20.0, 8.4, 200.0)],
+        [_wiersz("bus-1", 10.0, 25.0, 10.5, 250.0)],
+    )
+    metryki = nakladka.payload.elements["bus-1"].metrics
+    assert metryki["B_IK_3F_KA"].value == pytest.approx(10.0, abs=1e-12)
+    assert metryki["B_IK_3F_KA"].unit == "kA"
+    assert metryki["B_IP_KA"].value == pytest.approx(25.0, abs=1e-12)
+    assert metryki["B_ITH_KA"].value == pytest.approx(10.5, abs=1e-12)
+    assert metryki["B_SK_MVA"].value == pytest.approx(250.0, abs=1e-12)
+    assert metryki["B_SK_MVA"].unit == "MVA"
+
+
+def test_wielkosc_b_nieobecna_nie_daje_metryki_b() -> None:
+    """Starszy wynik B bez pola ⇒ brak metryki `B_*`, nigdy zero zastepcze."""
+    a = _wiersz("bus-1", 8.0, 20.0, 8.4, 200.0)
+    b = _wiersz("bus-1", 10.0, 25.0, 10.5, 250.0)
+    del b["sk_mva"]
+    nakladka = _nakladka([a], [b])
+    metryki = nakladka.payload.elements["bus-1"].metrics
+    assert "B_SK_MVA" not in metryki
+    assert "B_IK_3F_KA" in metryki
+
+
+def test_punkt_bez_roznic_nie_wchodzi_do_nakladki_mimo_wartosci_b() -> None:
+    """Bramka wejscia do nakladki pochodzi z metryk ROZNICOWYCH (jedno zrodlo).
+
+    Punkt wspolny bez ani jednej porownywalnej roznicy zostaje w grupie „bez
+    danych", nawet jesli przebieg B ma wartosci — element z sama wartoscia B
+    sugerowalby „bez zmian" tam, gdzie prawda jest „brak danych".
+    """
+    a = {"target_id": "bus-1", "target_name": "Punkt"}
+    b = _wiersz("bus-1", 10.0, 25.0, 10.5, 250.0)
+    nakladka = _nakladka([a], [b])
+    assert nakladka.payload.elements == {}
+    assert nakladka.liczba_punktow_bez_danych == 1
 
 
 def test_odniesienie_zerowe_pomija_procent_a_nie_zeruje_go() -> None:

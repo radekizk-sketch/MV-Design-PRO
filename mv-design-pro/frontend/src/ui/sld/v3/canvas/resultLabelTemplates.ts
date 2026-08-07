@@ -238,19 +238,29 @@ const SC_BUS: readonly ResultLabelLineSpec[] = [
 ];
 
 /** NAKŁADKA RÓŻNIC A/B — szyna (punkt zwarcia). Kolejność = priorytet: różnica
- *  prądu początkowego Ik″ (L1, wielkość dobierająca aparaturę), zaraz po niej ta
- *  sama różnica WZGLĘDNA (bez odniesienia „+0,4 kA" nic nie mówi), dalej ip/Ith/Sk.
- *  Kody `DELTA_*` są WŁASNE dla różnic — nie mogą kolidować z kodami wielkości
- *  (`IK_3F_A` itd.), a podpisy niosą „Δ", więc różnicy nie da się wziąć za wartość.
- *  Formatowanie ZE ZNAKIEM (`formatSignedScalar`): znak jest tu nośnikiem
- *  informacji (wzrost/spadek), nie ozdobą. Wartości i jednostki 1:1 z backendu —
- *  ZERO arytmetyki w tej warstwie. */
+ *  prądu początkowego Ik″ (L1, wielkość dobierająca aparaturę), zaraz po niej
+ *  WARTOŚĆ przebiegu B (S9-13: różnica bez wartości, której dotyczy, zmusza do
+ *  rachunku w głowie — „+0,4 kA względem czego?"), potem ta sama różnica
+ *  WZGLĘDNA (bez odniesienia „+0,4 kA" nic nie mówi), dalej ip/Ith/Sk w tym
+ *  samym rytmie (Δ, wartość B). Na L2 (limit 3 linii) etykieta niesie więc
+ *  Δ Ik″ · Ik″ (B) · Δ Ik″ % — wartość B i różnicę, jak żąda karta.
+ *  Kody `DELTA_*`/`B_*` są WŁASNE — nie kolidują z kodami wielkości
+ *  pojedynczego przebiegu (`IK_3F_A` itd.); podpisy różnic niosą „Δ", a podpis
+ *  wartości bezwzględnej „(B)", więc różnicy nie da się wziąć za wartość ani
+ *  wartości przebiegu B za wynik bieżącego biegu. Formatowanie różnic ZE
+ *  ZNAKIEM (`formatSignedScalar`): znak jest nośnikiem informacji (wzrost/
+ *  spadek); wartości B bez znaku (wielkości bezwzględne). Wartości i jednostki
+ *  1:1 z backendu — ZERO arytmetyki w tej warstwie. */
 const SC_DELTA_BUS: readonly ResultLabelLineSpec[] = [
   { code: 'DELTA_IK_3F_KA', prefix: 'Δ Ik″', format: formatSignedScalar },
+  { code: 'B_IK_3F_KA', prefix: 'Ik″ (B)', format: formatCurrent },
   { code: 'DELTA_IK_3F_PCT', prefix: 'Δ Ik″ %', format: formatSignedScalar },
   { code: 'DELTA_IP_KA', prefix: 'Δ ip', format: formatSignedScalar },
+  { code: 'B_IP_KA', prefix: 'ip (B)', format: formatCurrent },
   { code: 'DELTA_ITH_KA', prefix: 'Δ Ith', format: formatSignedScalar },
+  { code: 'B_ITH_KA', prefix: 'Ith (B)', format: formatCurrent },
   { code: 'DELTA_SK_MVA', prefix: 'Δ Sk', format: formatSignedScalar },
+  { code: 'B_SK_MVA', prefix: 'Sk (B)', format: formatScalar },
 ];
 
 /** Rejestr szablonów: `analysis → kind → specyfikacje`. Brak wpisu (analiza lub

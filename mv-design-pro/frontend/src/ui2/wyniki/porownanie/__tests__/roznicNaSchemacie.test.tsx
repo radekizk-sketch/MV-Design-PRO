@@ -47,7 +47,7 @@ const NAKLADKA = {
   run_id_a: 'sc-run-a',
   run_id_b: 'sc-run-b',
   analysis_type: 'DELTA_SC',
-  report_version: '1.2.0',
+  report_version: '1.3.0',
   elements: {
     'bus-1': {
       ref_id: 'bus-1',
@@ -99,7 +99,7 @@ function porownanieZPunktem(runIdA: string, runIdB: string) {
   return Promise.resolve({
     run_id_a: runIdA,
     run_id_b: runIdB,
-    report_version: '1.2.0',
+    report_version: '1.3.0',
     punkty: [
       punktPorownania({
         target_id: 'B1',
@@ -171,7 +171,7 @@ describe('Różnice na schemacie — dostępność akcji', () => {
       Promise.resolve({
         run_id_a: a,
         run_id_b: b,
-        report_version: '1.2.0',
+        report_version: '1.3.0',
         punkty: [punktPorownania({ target_id: 'B2', target_name: 'Szyna 2', obecny_w: 'B' })],
         liczba_punktow_wspolnych: 0,
         liczba_punktow_tylko_a: 0,

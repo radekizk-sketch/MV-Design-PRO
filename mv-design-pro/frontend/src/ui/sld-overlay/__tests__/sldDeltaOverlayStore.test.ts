@@ -22,7 +22,7 @@ const NAKLADKA: NakladkaRoznic = {
   run_id_a: 'run-a',
   run_id_b: 'run-b',
   analysis_type: 'DELTA_SC',
-  report_version: '1.2.0',
+  report_version: '1.3.0',
   elements: {
     'bus-1': {
       ref_id: 'bus-1',

@@ -501,7 +501,7 @@ describe('WynikiWarsztat — kontekst przebiegu zakładki „Dowód obliczeń" (
     vi.mocked(pobierzPorownanieZwarciowe).mockImplementation(async (a: string, b: string) => ({
       run_id_a: a,
       run_id_b: b,
-      report_version: '1.1.0',
+      report_version: '1.3.0',
       punkty: [
         {
           target_id: 'bus-1',

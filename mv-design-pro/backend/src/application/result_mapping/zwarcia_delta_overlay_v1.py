@@ -71,6 +71,24 @@ METRYKI_ROZNICOWE: tuple[tuple[str, str, str, str], ...] = (
     ("DELTA_SK_MVA", "delta_sk_mva", "MVA", "fixed1"),
 )
 
+#: Wartosci BEZWZGLEDNE przebiegu B (stanu, ktory schemat pokazuje) — karta
+#: S9-13: etykieta roznicy bez wartosci, ktorej dotyczy, zmusza projektanta do
+#: rachunku w glowie („+0,4 kA wzgledem czego?"). Kody `B_*` sa WLASNE (nie
+#: koliduja ani z `DELTA_*`, ani z kodami pojedynczego przebiegu `IK_3F_A`
+#: itd.), a podpis po stronie prezentacji niesie „(B)".
+#:
+#: PREDYKATY PARAMI (regula KLASA-NIE-INSTANCJA pkt 3): wartosci B sa WYLACZNIE
+#: WYSWIETLANE — o wadze punktu („czy sie zmienil") i o licznikach czterech grup
+#: decyduja METRYKI ROZNICOWE. Punkt bez ani jednej roznicy NIE wchodzi do
+#: nakladki, nawet gdy ma wartosci B (element z sama wartoscia B sugerowalby
+#: „bez zmian" tam, gdzie prawda jest „brak danych").
+METRYKI_WARTOSCI_B: tuple[tuple[str, str, str, str], ...] = (
+    ("B_IK_3F_KA", "ikss_ka_b", "kA", "fixed2"),
+    ("B_IP_KA", "ip_ka_b", "kA", "fixed2"),
+    ("B_ITH_KA", "ith_ka_b", "kA", "fixed2"),
+    ("B_SK_MVA", "sk_mva_b", "MVA", "fixed1"),
+)
+
 #: Legenda nakladki (polska, autorytatywna po stronie backendu — warstwa
 #: prezentacji legendy NIE wymysla). Dwa wpisy, bo dwa stany maja punkty
 #: WSPOLNE; punkty bez odpowiednika nie trafiaja do nakladki w ogole (nie
@@ -131,15 +149,18 @@ def ref_punktu_na_schemacie(punkt: PunktZwarciowyDiff) -> str:
     return punkt.element_id or punkt.target_id
 
 
-def _metryki_punktu(punkt: PunktZwarciowyDiff) -> dict[str, OverlayMetricV1]:
-    """Metryki roznicowe punktu; wielkosc bez roznicy NIE dostaje metryki.
+def _metryki_wg_tabeli(
+    punkt: PunktZwarciowyDiff,
+    tabela: tuple[tuple[str, str, str, str], ...],
+) -> dict[str, OverlayMetricV1]:
+    """Metryki punktu wg tabeli (kod, atrybut, jednostka, format).
 
-    Roznica nie istnieje, gdy brakuje jej po ktorejkolwiek stronie (punkt bez
-    odpowiednika, starszy wynik bez pola, A = 0 przy procencie). Wtedy metryki
-    NIE MA — konsument pokaze brak, nigdy zera zastepczego.
+    Wielkosc nieobecna w punkcie NIE dostaje metryki (punkt bez odpowiednika,
+    starszy wynik bez pola, A = 0 przy procencie). Wtedy metryki NIE MA —
+    konsument pokaze brak, nigdy zera zastepczego.
     """
     metryki: dict[str, OverlayMetricV1] = {}
-    for kod, atrybut, jednostka, format_hint in METRYKI_ROZNICOWE:
+    for kod, atrybut, jednostka, format_hint in tabela:
         wartosc = getattr(punkt, atrybut)
         if wartosc is None:
             continue
@@ -151,6 +172,22 @@ def _metryki_punktu(punkt: PunktZwarciowyDiff) -> dict[str, OverlayMetricV1]:
             source=OverlayMetricSource.SOLVER,
         )
     return metryki
+
+
+def _metryki_punktu(punkt: PunktZwarciowyDiff) -> dict[str, OverlayMetricV1]:
+    """Metryki ROZNICOWE punktu — jedyne zrodlo wagi i licznikow grup."""
+    return _metryki_wg_tabeli(punkt, METRYKI_ROZNICOWE)
+
+
+def _metryki_wartosci_b(punkt: PunktZwarciowyDiff) -> dict[str, OverlayMetricV1]:
+    """Wartosci bezwzgledne przebiegu B — WYLACZNIE do wyswietlenia (S9-13).
+
+    NIE wolno ich mieszac do predykatu wagi ani licznikow: wartosc bezwzgledna
+    jest niezerowa niemal zawsze, wiec kazdy punkt „bez zmian" staly by sie
+    „zmieniony". Para (predykat, zbior pokazany) ma jedno zrodlo — METRYKI
+    ROZNICOWE.
+    """
+    return _metryki_wg_tabeli(punkt, METRYKI_WARTOSCI_B)
 
 
 def _severity_punktu(metryki: dict[str, OverlayMetricV1]) -> OverlaySeverity:
@@ -193,11 +230,14 @@ def zbuduj_nakladke_roznic(porownanie: ZwarciaPorownanie) -> NakladkaRoznic:
         if not metryki:
             bez_danych += 1
             continue
+        # Waga i liczniki WYLACZNIE z metryk roznicowych (predykaty parami) —
+        # wartosci B doklejane PO rozstrzygnieciu, jako tresc do wyswietlenia.
         severity = _severity_punktu(metryki)
         if severity == OverlaySeverity.WARNING:
             zmienione += 1
         else:
             bez_zmian += 1
+        metryki.update(_metryki_wartosci_b(punkt))
         ref = ref_punktu_na_schemacie(punkt)
         elementy[ref] = OverlayElementV1(
             ref_id=ref,

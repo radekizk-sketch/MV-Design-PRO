@@ -438,6 +438,13 @@ const PREFIX_TO_QUANTITY: Readonly<Record<string, ResultLabelQuantity>> = {
   'Δ ip': 'I',
   'Δ Ith': 'I',
   'Δ Sk': 'S',
+  // S9-13 — wartości bezwzględne przebiegu B w nakładce różnic (`B_*`): ta sama
+  // wielkość co ich odpowiedniki bez „(B)" (prądy/moc pozorna), więc filtrują
+  // się razem z nimi.
+  'Ik″ (B)': 'I',
+  'ip (B)': 'I',
+  'Ith (B)': 'I',
+  'Sk (B)': 'S',
 };
 
 /** Wielkość linii wg prefiksu (`null` = prefiks spoza tabeli — linia traktowana
