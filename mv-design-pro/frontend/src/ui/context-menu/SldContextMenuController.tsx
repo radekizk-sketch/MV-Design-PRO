@@ -37,7 +37,15 @@ export interface SldContextMenuRequest {
 /** Kontekst dostępności akcji. */
 export interface SldMenuContext {
   readonly bayHasOutgoingRun?: boolean;
-  readonly stationHasFreeBay?: boolean;
+  /** S9-10 (predykaty parami, klasa S9-5): czy kreator odgałęzienia będzie
+   *  miał PUNKT STARTU dla tego obiektu — liczone TYM SAMYM resolverem, który
+   *  zasila formularz (`resolveBranchStartAvailability`,
+   *  `shared/sldActionExecutor.ts`). `false` = pozycja „Rozpocznij
+   *  odgałęzienie" ZABLOKOWANA z powodem (kreator bez punktu startu ma trwale
+   *  zablokowany zapis); `undefined` = brak pomiaru (bez zmiany zachowania).
+   *  Zastępuje martwe `stationHasFreeBay` z S9-5 (bramka istniała, żaden
+   *  wołający jej nie zasilał). */
+  readonly branchStartAvailable?: boolean;
   readonly hasResults?: boolean;
   readonly apparatusKind?: string;
   /** K5-A: czy stacja ma szynę nN (warunek agregatu/UPS w menu stacji). */

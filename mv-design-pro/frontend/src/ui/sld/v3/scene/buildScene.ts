@@ -118,6 +118,7 @@ import {
   type RouteVertex,
 } from '../layout/route';
 import { LATERAL_APPARATUS_SYMBOLS, symbolIdForPrimaryDeviceKind } from '../compose/apparatusSequence';
+import { createUnikalnyTestId } from '../compose/unikalnyTestId';
 import {
   bayMainPathHeight,
   stationBlockHeight,
@@ -1477,6 +1478,12 @@ function composeRowStation(
   const entryPort = portOfBay(previousIndex) ?? { x: column.tapX, y: busAxisY };
   const exitPort = portOfBay(nextIndex) ?? { x: column.tapX, y: busAxisY };
 
+  // S9-10 (karta następcza S9-4, klasa „tożsamość obiektu z samego symbolId"):
+  // pole z DWOMA aparatami tego samego rodzaju (norma: odłącznik szynowy +
+  // liniowy) dawało DWA obiekty o JEDNEJ tożsamości `⟨bayRef⟩#⟨symbolId⟩` —
+  // wspólna fabryka (`compose/unikalnyTestId.ts`, TA SAMA reguła co GPZ po
+  // S9-4) obejmuje aparaty ORAZ adnotacje zabezpieczeń tej stacji.
+  const unikalnyTestId = createUnikalnyTestId();
   const symbols: PreviewSymbol[] = composition.symbols.map((s) => ({
     symbolId: s.symbolId,
     x: s.x,
@@ -1485,16 +1492,21 @@ function composeRowStation(
     meta: {
       // F9.4: DER nie mają `bayRef` (nie należą do żadnego pola) — `testId`/
       // `ownerRef` spadają na `sourceRef` (`SldSourceView.id`, WHITE BOX).
-      testId: s.bayRef ? `${s.bayRef}#${s.symbolId}` : s.sourceRef ? `${s.sourceRef}#${s.symbolId}` : undefined,
+      testId: unikalnyTestId(
+        s.bayRef ? `${s.bayRef}#${s.symbolId}` : s.sourceRef ? `${s.sourceRef}#${s.symbolId}` : undefined,
+      ),
       ownerRef: s.bayRef ?? s.sourceRef,
       elementKind: classifySymbolElementKind(s.symbolId),
       // F9.3 (spec §12.1): przepisane 1:1 z kompozycji — audytor DOM
       // (`data-apparatus-source`) i testy czytają WYŁĄCZNIE stąd, zero
       // re-derywacji. `ownerRef` NIEZMIENIONE (nadal `bayRef`, spec §16/
-      // nakładka energizacji kluczuje po refie POLA, nie per-aparat) —
-      // `deviceRef` (WHITE BOX §12.1) mieszka na `StationComposition`
-      // (`compose/station.ts`), poza zakresem propagacji do sceny w F9.3.
+      // nakładka energizacji kluczuje po refie POLA, nie per-aparat).
       apparatusSource: s.apparatusSource,
+      // S9-10 (dług `S9-4-DLUG-INSPEKTOR`): `deviceRef` (WHITE BOX §12.1)
+      // przepisany 1:1 z kompozycji — realny `BayPrimaryDevice.device_ref`
+      // WYŁĄCZNIE dla ścieżki danych; `undefined` dla konwencji (zero
+      // fabrykacji). Konsument: klik → inspektor (`SldElementClickMeta`).
+      deviceRef: s.deviceRef,
       // W1c (uwaga 10): identyfikator KONFIGURACJI pola przepisany 1:1 z
       // kompozycji — audytor DOM (`data-config-id`) i generator macierzy W1c
       // czytają WYŁĄCZNIE stąd. Render nie zgaduje wyposażenia z typu pola.
@@ -1540,7 +1552,8 @@ function composeRowStation(
     x: s.x,
     y: s.y,
     meta: {
-      testId: `${s.bayRef}#${s.symbolId}`,
+      // S9-10: TA SAMA fabryka unikalności co aparaty tej stacji wyżej.
+      testId: unikalnyTestId(`${s.bayRef}#${s.symbolId}`),
       ownerRef: s.bayRef,
       elementKind: 'protectionAnnotation',
       protectionCodes: s.protectionCodes,
@@ -2575,6 +2588,10 @@ function gpzSymbolToPreview(sym: ComposedGpzSymbolInstance): PreviewSymbol {
       // bayRef (aparat pola) preferowany, potem transformerRef/sectionId dla
       // symboli bez przypisanego pola. Zero re-derywacji z geometrii.
       ownerRef: sym.meta.sourceRef ?? sym.meta.bayRef ?? sym.meta.transformerRef ?? sym.meta.sectionId,
+      // S9-10 (dług `S9-4-DLUG-INSPEKTOR`): realny `BayPrimaryDevice.
+      // device_ref` z kompozycji GPZ (`ComposedGpzSymbolInstance.deviceRef`,
+      // WYŁĄCZNIE ścieżka danych) — ta sama reguła co aparaty stacji.
+      deviceRef: sym.deviceRef,
       elementKind: classifySymbolElementKind(sym.symbolId),
       // V12K-217: jawna klasa napięcia z kompozycji MUSI przejść do sceny.
       // Ta funkcja przepisuje meta przez listę pól, więc każde nowe pole trzeba
@@ -3159,13 +3176,18 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
     // TERAZ możliwy (patrz `protectionSegments`/`measurementSegments` niżej) —
     // wyjątek „zawsze bez toru" ZNIESIONY, patrz docstring
     // `ComposedGpzProtectionSymbol`, `compose/gpz.ts`.
+    // S9-10 (klasa „tożsamość obiektu z samego symbolId"): dwa okręgi
+    // przekaźników jednego pola GPZ dzieliłyby testId — ta sama fabryka
+    // unikalności co aparaty stacji (aparaty GPZ dedupuje już kompozycja,
+    // `compose/gpz.ts::buildFieldStack` po S9-4).
+    const unikalnyTestIdGpzAdnotacji = createUnikalnyTestId();
     allSymbols.push(
       ...gpzComposition.protectionSymbols.map((s): PreviewSymbol => ({
         symbolId: s.symbolId,
         x: s.x,
         y: s.y,
         meta: {
-          testId: `${s.bayRef}#${s.symbolId}`,
+          testId: unikalnyTestIdGpzAdnotacji(`${s.bayRef}#${s.symbolId}`),
           ownerRef: s.bayRef,
           elementKind: 'protectionAnnotation',
           protectionCodes: s.protectionCodes,

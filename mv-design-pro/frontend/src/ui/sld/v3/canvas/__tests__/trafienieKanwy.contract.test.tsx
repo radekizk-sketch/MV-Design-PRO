@@ -74,6 +74,8 @@ describe('S9-4 — nazwy atrybutów kanału trafień', () => {
       role: 'data-hit-role',
       klasa: 'data-hit-klasa',
       ownerRef: 'data-hit-owner-ref',
+      // S9-10 (dług `S9-4-DLUG-INSPEKTOR`): ref pojedynczego aparatu.
+      deviceRef: 'data-hit-device-ref',
     });
     const { container } = render(
       <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={0} onElementClick={() => {}} />,
@@ -236,6 +238,10 @@ describe('S9-4 — tożsamość zaznaczenia niesiona klikiem NATYWNYM', () => {
       ownerRef: aparat.meta!.ownerRef,
       elementKind: 'apparatus',
       derKind: undefined,
+      // S9-10: lewy klik niesie teraz też KLASĘ trafienia (to samo
+      // wzbogacenie co prawy klik od S9-5) — wołający rozwiązuje po niej
+      // kompozytowe refy etykiet tym samym tematem co menu.
+      klasa: 'aparat',
     });
   });
 
@@ -273,6 +279,8 @@ describe('S9-4 — tożsamość zaznaczenia niesiona klikiem NATYWNYM', () => {
       ownerRef: szyna.meta!.ownerRef,
       elementKind: 'bus',
       busRef: szyna.meta!.busResultRef,
+      // S9-10: klasa trafienia w lewym kliku — patrz test aparatu wyżej.
+      klasa: 'szyna',
     });
   });
 

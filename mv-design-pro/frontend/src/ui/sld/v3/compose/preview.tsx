@@ -206,6 +206,18 @@ export interface PreviewElementMeta {
   readonly busResultRef?: string;
   /** F8b-1: kategoria elementu — patrz `PreviewElementKind`. */
   readonly elementKind?: PreviewElementKind;
+  /** S9-10 (dług `S9-4-DLUG-INSPEKTOR`): REALNY ref ENM POJEDYNCZEGO aparatu
+   *  (`BayPrimaryDevice.device_ref`) — WYŁĄCZNIE dla symboli aparatów ze
+   *  ścieżki danych (`apparatusSource==='dane'`; kompozycja:
+   *  `ComposedSymbolInstance.deviceRef` / `ComposedGpzSymbolInstance.
+   *  deviceRef`). Rozróżnia DWA aparaty JEDNEGO pola, które dzielą
+   *  `ownerRef` (= ref pola): klik niesie go do inspektora
+   *  (`SldElementClickMeta.deviceRef`), a budowniczy szuflady rozwiązuje
+   *  PO NIM stan aparatu/identyfikator globalny. `undefined` dla stosu
+   *  konwencji (§12.4 — brak `device_ref`, zero fabrykacji refu) i dla
+   *  elementów nie-aparatowych. `ownerRef` NIETKNIĘTY (nadal ref pola —
+   *  nakładka energizacji i temat menu kluczują po polu). */
+  readonly deviceRef?: string;
   /** Jawna klasa napięcia elementu (V12K-217) — nadawana przez kompozycję tam,
    *  gdzie referencja domenowa strony napięciowej NIE zdradza (aparaty pola WN
    *  transformatora GPZ: `transformerRef`/`bayRef` są opaque). Czytana przez

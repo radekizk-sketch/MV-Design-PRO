@@ -128,6 +128,12 @@ export interface CanvasHitArea {
    *  rysunkowy bez odpowiednika w modelu (węzeł trasy, kropka T) — wtedy
    *  tożsamością jest `testId`, NIGDY zgadywany ref. */
   readonly ownerRef: string | undefined;
+  /** S9-10 (dług `S9-4-DLUG-INSPEKTOR`): ref POJEDYNCZEGO aparatu
+   *  (`PreviewElementMeta.deviceRef`, WYŁĄCZNIE ścieżka danych) — warstwa
+   *  trafień przenosi go 1:1 ze sceny, żeby sonda/testy mogły zweryfikować
+   *  w WYRENDEROWANYM drzewie, że klik w aparat niesie jego własny ref.
+   *  `undefined` = symbol bez refu urządzenia (konwencja / nie-aparat). */
+  readonly deviceRef?: string | undefined;
   readonly elementKind: PreviewElementKind | undefined;
   readonly klasa: HitObjectClass;
   /** Kolejność malowania w DOM (rośnie = wyżej). Rozstrzyga nakładanie. */
@@ -318,6 +324,8 @@ export function buildCanvasHitAreas(input: CanvasHitAreaInput): readonly CanvasH
     areas.push({
       testId,
       ownerRef: symbol.meta?.ownerRef,
+      // S9-10: ref pojedynczego aparatu przenoszony 1:1 ze sceny.
+      deviceRef: symbol.meta?.deviceRef,
       elementKind: symbol.meta?.elementKind,
       klasa: klasaSymbolu(symbol.meta?.elementKind),
       z: z++,
@@ -470,6 +478,8 @@ export const HIT_ATTR = {
   role: 'data-hit-role',
   klasa: 'data-hit-klasa',
   ownerRef: 'data-hit-owner-ref',
+  /** S9-10: ref pojedynczego aparatu (patrz `CanvasHitArea.deviceRef`). */
+  deviceRef: 'data-hit-device-ref',
 } as const;
 
 /** Minimalny kontrakt węzła drzewa, którego potrzebuje odczyt — pozwala czytać
@@ -531,7 +541,7 @@ function shapeFromNode(node: HitDomNode): HitShape | null {
  * NIE udaje poprawnego, tylko wychodzi w pomiarze rozmiaru (`ponizejMinimum`).
  */
 export function hitAreasFromDom(root: HitDomNode): readonly CanvasHitArea[] {
-  const wgTestId = new Map<string, { obrys?: HitShape; obszar?: HitShape; ownerRef?: string; klasa?: string; z: number }>();
+  const wgTestId = new Map<string, { obrys?: HitShape; obszar?: HitShape; ownerRef?: string; deviceRef?: string; klasa?: string; z: number }>();
   const wezly = root.querySelectorAll(`[${HIT_ATTR.for}]`);
   for (let i = 0; i < wezly.length; i += 1) {
     const node = wezly[i];
@@ -545,6 +555,7 @@ export function hitAreasFromDom(root: HitDomNode): readonly CanvasHitArea[] {
     wpis[rola] = shape;
     wpis.z = i;
     wpis.ownerRef = node.getAttribute(HIT_ATTR.ownerRef) ?? wpis.ownerRef;
+    wpis.deviceRef = node.getAttribute(HIT_ATTR.deviceRef) ?? wpis.deviceRef;
     wpis.klasa = node.getAttribute(HIT_ATTR.klasa) ?? wpis.klasa;
     wgTestId.set(testId, wpis);
   }
@@ -556,6 +567,7 @@ export function hitAreasFromDom(root: HitDomNode): readonly CanvasHitArea[] {
     areas.push({
       testId,
       ownerRef: wpis.ownerRef ?? undefined,
+      deviceRef: wpis.deviceRef ?? undefined,
       elementKind: undefined,
       klasa: (HIT_OBJECT_CLASSES.includes(wpis.klasa as HitObjectClass) ? wpis.klasa : 'aparat') as HitObjectClass,
       z: wpis.z,

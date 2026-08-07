@@ -175,6 +175,13 @@ const LOD_CROSSFADE_DURATION = '0.18s';
 export interface SldElementClickMeta {
   readonly ownerRef?: string;
   readonly elementKind?: PreviewElementKind;
+  /** S9-10 (dług `S9-4-DLUG-INSPEKTOR`): REALNY ref ENM POJEDYNCZEGO aparatu
+   *  (`PreviewElementMeta.deviceRef` — `BayPrimaryDevice.device_ref`,
+   *  WYŁĄCZNIE ścieżka danych). Rozróżnia aparaty JEDNEGO pola dzielące
+   *  `ownerRef`; konsument: `SldCanvasV3Workspace` → budowniczy szuflady
+   *  (`buildDetailDrawerDataForKind('apparatus', deviceRef, …)`).
+   *  `undefined` dla stosu konwencji i elementów nie-aparatowych. */
+  readonly deviceRef?: string;
   /** K5-A: KANONICZNY Bus ref szyny (segmenty `elementKind==='bus'` GPZ —
    *  `meta.busResultRef`, ADAPTER-BUSREF). `ownerRef` szyn to kompozyt sceny
    *  (`${sectionId}#bus-primary` itd.) — operacje domenowe (np.
@@ -410,6 +417,7 @@ function SceneSymbolNode(props: {
       data-source-state={sourceState}
       data-energized={energizedSym === undefined ? undefined : String(energizedSym)}
       data-owner-ref={symbol.meta?.ownerRef}
+      data-device-ref={symbol.meta?.deviceRef}
       data-element-kind={symbol.meta?.elementKind}
       data-der-kind={symbol.meta?.derKind}
     >
@@ -469,6 +477,9 @@ function HitShapeNode(props: {
     'data-hit-role': rola,
     'data-hit-klasa': area.klasa,
     'data-hit-owner-ref': area.ownerRef,
+    // S9-10 (dług `S9-4-DLUG-INSPEKTOR`): ref pojedynczego aparatu — kanał
+    // audytu warstwy trafień (weryfikacja w wyrenderowanym drzewie).
+    'data-hit-device-ref': area.deviceRef,
     onClick: klik,
     onDoubleClick: onDwuklik
       ? (event: React.MouseEvent) => {
@@ -2653,6 +2664,9 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
         ownerRef: symbol.meta?.ownerRef,
         elementKind: symbol.meta?.elementKind,
         derKind: symbol.meta?.derKind,
+        // S9-10 (dług `S9-4-DLUG-INSPEKTOR`): ref pojedynczego aparatu ze
+        // sceny (ścieżka danych) — inspektor rozróżnia aparaty jednego pola.
+        deviceRef: symbol.meta?.deviceRef,
       });
     });
     // Etykieta jest UCHWYTEM swojego właściciela (audyt P-2) — klik w napis
@@ -2810,22 +2824,8 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
    *  obiektu, więc semantyka („znacznik wyniku aktywuje panel", „zwinięty blok
    *  GPZ dodatkowo rozwija kadr", „reszta zaznacza") jest w jednym miejscu, a
    *  nie rozsypana po węzłach rysunku. */
-  const handleHitClick = useCallback(
-    (testId: string) => {
-      const aktywacja = aktywacjaZnacznika.get(testId);
-      if (aktywacja) {
-        aktywacja();
-        return;
-      }
-      const rozwijalny = rozwijalneSymbole.get(testId);
-      if (rozwijalny) expandCollapsedBlock(rozwijalny);
-      onElementClick?.(testId, klikMeta.get(testId));
-    },
-    [aktywacjaZnacznika, rozwijalneSymbole, expandCollapsedBlock, onElementClick, klikMeta],
-  );
-
-  /** Karta S9-5: obszary trafienia po `testId` — meta prawego kliku bierze
-   *  KLASĘ i (dla obiektów spoza mapy `klikMeta`, np. znacznika wyniku) także
+  /** Karta S9-5: obszary trafienia po `testId` — meta kliku bierze KLASĘ i
+   *  (dla obiektów spoza mapy `klikMeta`, np. znacznika wyniku) także
    *  `ownerRef` z warstwy trafień, czyli z tego samego źródła, które
    *  rozstrzygnęło trafienie. Bez tego prawy klik w znacznik wyniku i w
    *  łącznik wiersza arkusza nie niósł żadnej tożsamości. */
@@ -2835,23 +2835,46 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
     return mapa;
   }, [hitAreas]);
 
-  const handleHitContextMenu = useCallback(
-    (testId: string, clientX: number, clientY: number) => {
+  /** S9-10: JEDNO wzbogacenie meta o klasę/ownerRef z warstwy trafień dla
+   *  lewego kliku, dwukliku i menu — wcześniej klasę niósł WYŁĄCZNIE prawy
+   *  klik, więc wołający nie mógł rozwiązać kompozytowego refu etykiety tym
+   *  samym tematem, którym rozwiązuje go menu (dług `S9-4-DLUG-INSPEKTOR`,
+   *  ogniwo etykiet: panel szczegółów się nie otwierał). */
+  const metaZTrafienia = useCallback(
+    (testId: string): SldElementClickMeta | undefined => {
       const meta = klikMeta.get(testId);
       const area = obszarPoTestId.get(testId);
-      const metaMenu: SldElementClickMeta | undefined = area
-        ? { ...meta, klasa: area.klasa, ownerRef: meta?.ownerRef ?? area.ownerRef }
-        : meta;
-      onElementContextMenu?.(testId, metaMenu, clientX, clientY);
+      return area ? { ...meta, klasa: area.klasa, ownerRef: meta?.ownerRef ?? area.ownerRef } : meta;
     },
-    [onElementContextMenu, klikMeta, obszarPoTestId],
+    [klikMeta, obszarPoTestId],
+  );
+
+  const handleHitClick = useCallback(
+    (testId: string) => {
+      const aktywacja = aktywacjaZnacznika.get(testId);
+      if (aktywacja) {
+        aktywacja();
+        return;
+      }
+      const rozwijalny = rozwijalneSymbole.get(testId);
+      if (rozwijalny) expandCollapsedBlock(rozwijalny);
+      onElementClick?.(testId, metaZTrafienia(testId));
+    },
+    [aktywacjaZnacznika, rozwijalneSymbole, expandCollapsedBlock, onElementClick, metaZTrafienia],
+  );
+
+  const handleHitContextMenu = useCallback(
+    (testId: string, clientX: number, clientY: number) => {
+      onElementContextMenu?.(testId, metaZTrafienia(testId), clientX, clientY);
+    },
+    [onElementContextMenu, metaZTrafienia],
   );
 
   const handleHitDoubleClick = useCallback(
     (testId: string) => {
-      onElementDoubleClick?.(testId, klikMeta.get(testId));
+      onElementDoubleClick?.(testId, metaZTrafienia(testId));
     },
-    [onElementDoubleClick, klikMeta],
+    [onElementDoubleClick, metaZTrafienia],
   );
 
   /** Czy kanwa ma wołającego, który cokolwiek zrobi z klikiem — steruje

@@ -60,6 +60,7 @@ import type {
   StationNameBandRow,
 } from '../layout/labels';
 import { stackFootprint } from './station';
+import { createUnikalnyTestId } from './unikalnyTestId';
 import {
   LATERAL_APPARATUS_SYMBOLS,
   LATERAL_BRANCH_GAP,
@@ -494,14 +495,12 @@ function buildFieldStack(
   // był nieodróżnialny od kliku w pierwszy. Powtórzenie dostaje przyrostek
   // porządkowy (`-2`, `-3`, …); PIERWSZE wystąpienie zachowuje identyfikator
   // bez zmian, więc istniejące odwołania (testy, e2e, nakładki) zostają ważne.
-  const uzyteTestId = new Map<string, number>();
-  const unikalnyTestId = (index: number, symbolId: SymbolId): string | undefined => {
-    const bazowy = testIdFor(index, symbolId);
-    if (bazowy == null) return undefined;
-    const wystapienie = (uzyteTestId.get(bazowy) ?? 0) + 1;
-    uzyteTestId.set(bazowy, wystapienie);
-    return wystapienie === 1 ? bazowy : `${bazowy}-${wystapienie}`;
-  };
+  // S9-10 (karta następcza S9-4): mechanizm przeniesiony do WSPÓLNEGO
+  // pomocnika `./unikalnyTestId` — ta sama reguła obowiązuje teraz także
+  // aparaty STACJI (`scene/buildScene.ts`), zero drugiej implementacji.
+  const unikalny = createUnikalnyTestId();
+  const unikalnyTestId = (index: number, symbolId: SymbolId): string | undefined =>
+    unikalny(testIdFor(index, symbolId));
   // F10.1 (spec §18.1/§18.2, V12K-033): podział na TOR GŁÓWNY (oś) i APARATY
   // BOCZNE (ES/VT/SA — odgałęzienie poziome od portu S poprzedzającego
   // aparatu szeregowego). TA SAMA reguła co `compose/station.ts::buildBayStack`
