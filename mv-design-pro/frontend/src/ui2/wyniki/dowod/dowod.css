@@ -331,3 +331,35 @@
   white-space: pre-wrap;
   word-break: break-word;
 }
+
+/* ---- pakiet dowodowy przebiegu (karta PACK-DOWODY) ---- */
+/* Kompozycja i tokeny jak w sekcji źródła LaTeX — ta sama rodzina „wyjść z okna
+   dowodu do dokumentu", więc bez własnego języka wizualnego. */
+.mvd-dowod-pakiet {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 8px;
+}
+.mvd-dowod-pakiet-punkt {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.mvd-dowod-pakiet-wybor {
+  padding: 3px 6px;
+  font-size: 11.5px;
+  color: var(--mvd-ink);
+  background: var(--mvd-bg);
+  border: 1px solid var(--mvd-line);
+  border-radius: 4px;
+}
+.mvd-dowod-pakiet-zawartosc {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--mvd-muted);
+}
