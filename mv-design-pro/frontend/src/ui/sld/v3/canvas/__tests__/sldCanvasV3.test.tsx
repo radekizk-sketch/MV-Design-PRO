@@ -69,6 +69,10 @@ const enm = (JSON.parse(readFileSync(fixturePath, 'utf8')) as { readonly enm: En
 
 const CANVAS_WIDTH = 1200;
 const CANVAS_HEIGHT = 800;
+/** BLOK-PUSTY: długość grota nakładki przepływu [j.św.] — LUSTRO stałej
+ *  `FLOW_ARROW_LENGTH` z `SldCanvasV3.tsx` (tam prywatna). Przęsło krótsze od
+ *  grota nie może go ponieść (`flowOverlayGeometry` zwraca `null`). */
+const FLOW_ARROW_LENGTH_JSW = 12;
 
 /** Strip stroke/fill VALUES only (not the attribute presence) so we can
  *  diff markup for pure-color changes without a full attribute-by-attribute
@@ -460,7 +464,39 @@ describe('SldCanvasV3 — F9.5: nakładka przepływu mocy (spec §14.2, warstwa 
       // teraz sprawdzana na PELNYM zbiorze przeslow, nie na polowie.
       expect(Object.keys(entries).length).toBe(88);
       const placements = computeFlowOverlayPlacements(scene, entries, detail);
-      expect(placements.length).toBe(88);
+      // BLOK-PUSTY: liczba placementów liczona z GEOMETRII, nie wpisana z
+      // fixtury. Grot ma stałą długość (`FLOW_ARROW_LENGTH` = 12 j.św.), więc
+      // przęsło KRÓTSZE od grota nie może go ponieść — `flowOverlayGeometry`
+      // zwraca dla niego `null` i placement nie powstaje. Do tej karty stała
+      // `88` maskowała ten warunek: liczba zgadzała się przypadkiem, bo żadne
+      // przęsło fixtury nie było krótsze od grota. Po skróceniu bloku stacji
+      // (rezerwacja strony nN liczona `max` zamiast sumą) packer lateralny
+      // przestawił jeden kanał zejścia na KONTRAKTOWE minimum
+      // (`MIN_ROUTE_CLEARANCE` = 8 j.św.) od krawędzi kolumny, więc kawałek
+      // magistrali między zaczepem stacji a trójnikiem ma dokładnie 8 j.św.
+      // Rysunek jest zgodny z kontraktem — to GROT jest dłuższy niż
+      // najkrótszy legalny kawałek. Asercja mówi teraz DLACZEGO placement nie
+      // powstał, zamiast pilnować liczby z fixtury.
+      const zaKrotkieNaGrot = scene.segments.filter((s) => {
+        const ref = s.meta?.ownerRef;
+        if (!ref || s.meta?.elementKind !== 'segment' || !singleHop.has(ref)) return false;
+        let best = 0;
+        for (let i = 1; i < s.points.length; i += 1) {
+          best = Math.max(
+            best,
+            Math.abs(s.points[i].x - s.points[i - 1].x) + Math.abs(s.points[i].y - s.points[i - 1].y),
+          );
+        }
+        return best < FLOW_ARROW_LENGTH_JSW;
+      });
+      expect(placements.length).toBe(88 - zaKrotkieNaGrot.length);
+      // Zapadka: brak grota wolno tłumaczyć WYŁĄCZNIE długością przęsła —
+      // gdyby placement zniknął z innego powodu, ta równość pęknie.
+      expect(placements.map((p) => p.ownerRef).sort()).toEqual(
+        Object.keys(entries)
+          .filter((ref) => !zaKrotkieNaGrot.some((s) => s.meta?.ownerRef === ref))
+          .sort(),
+      );
       // Wyrocznia wewnętrzna algorytmu: każdy kandydat znaleziony (zero
       // fallbacków na tej fixturze) …
       expect(placements.filter((p) => p.label && !p.labelPlaced)).toEqual([]);

@@ -55,7 +55,16 @@ describe('W2 (GS-4b/Z2) — pole źródłowe SN vs rząd nN na scenie referencyj
       for (const label of scene.labels) {
         if (label.ownerKind === 'station-name' && label.ownerRef.endsWith('#name-row-0')) {
           const stationRef = label.ownerRef.slice(0, -'#name-row-0'.length);
-          m.set(stationRef, `${label.rect.x},${label.rect.y},${label.rect.width}`);
+          // BLOK-PUSTY: kotwica = PUNKT ZACZEPU wiersza (środek slotu w poziomie,
+          // strop w pionie) + SZEROKOŚĆ REZERWACJI. Do tej karty porównywano
+          // `rect.x`/`rect.width`, bo prostokąt wiersza BYŁ slotem kolumny;
+          // teraz prostokąt niesie sam tusz, a tusz z definicji zależy od
+          // TREŚCI poziomu (L0 rysuje kod stacji, L1/L2 nazwę). Intencja bez
+          // zmian i MOCNIEJSZA: sprawdzamy obie wielkości TEKSTOWO NIEZALEŻNE
+          // — środek zaczepu i rezerwację kolumny — więc dryf geometrii nadal
+          // pada, a różnica długości napisu już nie.
+          const srodek = label.rect.x + label.rect.width / 2;
+          m.set(stationRef, `${srodek},${label.rect.y},${label.rezerwacjaSzerokosci}`);
         }
       }
       return m;

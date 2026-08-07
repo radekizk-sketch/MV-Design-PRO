@@ -329,18 +329,29 @@ describe('buildSceneV3 — kontrakt LOD (spec §7)', () => {
     // wszystkich LOD, więc etykieta nazwy każdej stacji ma IDENTYCZNE (x,y) na
     // L0/L1/L2. Przed S1 (D1 „trzy światy") kolumny L0/L1/L2 różniły się
     // szerokością → nazwa dryfowała między poziomami.
-    // Kotwica = PIERWSZY wiersz pasma nazw (`#name-row-0`) — jego `rect` bierze
-    // się WPROST z `nameSlot` kolumny (`layout/labels.ts` `resolveStationNameBand`:
-    // `x = nameSlot.x`, `y = nameSlot.y`, niezależnie od TREŚCI wiersza), więc
-    // jest tekstowo-niezależną kotwicą stacji. Na L0 pasmo ma 1 wiersz (S-id),
-    // na L1/L2 więcej (nazwa/kVA/typ/nN) — porównujemy wspólny wiersz 0.
+    // Kotwica = PIERWSZY wiersz pasma nazw (`#name-row-0`). BLOK-PUSTY: jego
+    // `rect` niesie od tej karty sam TUSZ (`layout/labels.ts`
+    // `resolveStationNameBand` → `tuszWSlocie`), więc tekstowo-niezależne są
+    // dwie inne wielkości i to je porównujemy: ŚRODEK prostokąta (== środek
+    // `nameSlot` kolumny, bo zwężenie jest symetryczne) oraz
+    // `rezerwacjaSzerokosci` (== `nameSlot.width`). Na L0 pasmo ma 1 wiersz
+    // (S-id), na L1/L2 więcej (nazwa/kVA/typ/nN) — porównujemy wspólny wiersz 0.
     const nameAnchors = (lod: 0 | 1 | 2): Map<string, string> => {
       const scene = buildSceneV3(enm, lod);
       const m = new Map<string, string>();
       for (const label of scene.labels) {
         if (label.ownerKind === 'station-name' && label.ownerRef.endsWith('#name-row-0')) {
           const stationRef = label.ownerRef.slice(0, -'#name-row-0'.length);
-          m.set(stationRef, `${label.rect.x},${label.rect.y},${label.rect.width}`);
+          // BLOK-PUSTY: kotwica = PUNKT ZACZEPU wiersza (środek slotu w poziomie,
+          // strop w pionie) + SZEROKOŚĆ REZERWACJI. Do tej karty porównywano
+          // `rect.x`/`rect.width`, bo prostokąt wiersza BYŁ slotem kolumny;
+          // teraz prostokąt niesie sam tusz, a tusz z definicji zależy od
+          // TREŚCI poziomu (L0 rysuje kod stacji, L1/L2 nazwę). Intencja bez
+          // zmian i MOCNIEJSZA: sprawdzamy obie wielkości TEKSTOWO NIEZALEŻNE
+          // — środek zaczepu i rezerwację kolumny — więc dryf geometrii nadal
+          // pada, a różnica długości napisu już nie.
+          const srodek = label.rect.x + label.rect.width / 2;
+          m.set(stationRef, `${srodek},${label.rect.y},${label.rezerwacjaSzerokosci}`);
         }
       }
       return m;
@@ -1076,9 +1087,17 @@ describe('buildSceneV3 — F9.7: totalVerticalSegmentLength (spec §15.1 vertica
     // więc pasmo nazw straciło wiersz z gołym kodem; wysokość pasma wchodzi w
     // wysokość bloku stacji, a „jedna kotwica" S1 propaguje deltę jednolicie na
     // L0/L1/L2. SPADEK ⇒ reguła „nie-rosnąca" (§15.1) spełniona z zapasem.
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 0))).toBe(21480);
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(38488);
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(38488);
+    // BLOK-PUSTY (2026-08-07): OBNIŻONY 21480/38488/38488 → 21064/37272/37272
+    // (−416 na L0, −1216 na L1/L2). Przyczyna ZMIERZONA: rezerwacja strony nN
+    // bloku stacji liczyła SUMĘ dwóch zwisów (rząd DER + strzałka odbioru),
+    // choć kompozycja wiesza OBA na tej samej szynie nN i rozsuwa je w
+    // POZIOMIE (`layout/measure.ts` `nnSideBelowBusHeight`) — blok każdej
+    // stacji z odbiorem nN i DER na nN skrócił się o 32 j.św., co przez pasma
+    // i przecięcia wierszy oddaje powyższą deltę. SPADEK ⇒ reguła
+    // „nie-rosnąca" (§15.1) spełniona.
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 0))).toBe(21064);
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(37272);
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(37272);
   });
 });
 

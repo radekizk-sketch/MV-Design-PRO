@@ -135,9 +135,17 @@ describe('SCHEMAT-10 S7.6 — kontraktowe minimum światła pasm (Z1 KOMPRESJA)'
     // SPADEK, więc reguła „nie-rosnąca" (§15.1) spełniona z zapasem. Skutek
     // uboczny zamierzony: skala dopasowania sieci referencyjnej rośnie
     // 0,1346 → 0,1407, czyli przegląd jest o 4,5% bliżej.
-    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 0))).toBe(21480);
-    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 1))).toBe(38488);
-    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 2))).toBe(38488);
+    // BLOK-PUSTY (2026-08-07): OBNIŻONY 21480/38488/38488 → 21064/37272/37272
+    // (−416 na L0, −1216 na L1/L2). Przyczyna ZMIERZONA: rezerwacja strony nN
+    // bloku stacji liczyła SUMĘ dwóch zwisów (rząd DER + strzałka odbioru),
+    // choć kompozycja wiesza OBA na tej samej szynie nN i rozsuwa je w
+    // POZIOMIE (`layout/measure.ts` `nnSideBelowBusHeight`) — blok każdej
+    // stacji z odbiorem nN i DER na nN skrócił się o 32 j.św., co przez pasma
+    // i przecięcia wierszy oddaje powyższą deltę. SPADEK ⇒ reguła
+    // „nie-rosnąca" (§15.1) spełniona.
+    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 0))).toBe(21064);
+    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 1))).toBe(37272);
+    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 2))).toBe(37272);
   });
 
   it('determinizm: rekordy pasm identyczne w dwóch biegach (fixtura referencyjna, L2)', () => {

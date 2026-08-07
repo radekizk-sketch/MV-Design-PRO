@@ -398,9 +398,16 @@ export function planSceneLabels(
     // rezerwacji z zapasem NIE mają — ich slot to sama szerokość tekstu w
     // rozmiarze naturalnym — więc ograniczeniem jest dla nich dopiero
     // rozstrzyganie kolizji niżej.
+    // BLOK-PUSTY: rezerwacja jest teraz WŁASNYM polem etykiety
+    // (`rezerwacjaSzerokosci`), a `rect` niesie sam TUSZ — do tej karty jedno
+    // pole grało obie role, więc rama bloku stacji płaciła pełną szerokość
+    // kolumny (716 j.św.) za napis szerokości 95 j.św. Sufit powiększania
+    // ZOSTAJE dokładnie ten sam: dla wiersza pasma nazw to nadal szerokość
+    // kolumny stacji. Brak rezerwacji ⇒ granicą jest sam tusz (etykieta
+    // kotwiczona punktowo nie ma zapasu z definicji).
     const tekstBazowy =
       !czytelna && label.ownerKind === 'station-name'
-        ? shortenPreservingIdentity(label.text, fontSize, label.rect.width)
+        ? shortenPreservingIdentity(label.text, fontSize, label.rezerwacjaSzerokosci ?? label.rect.width)
         : label.text;
     kandydaci.push({ label, index, fontSize, enlarged: !czytelna, slot: label.rect, tekstBazowy });
   });
