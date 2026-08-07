@@ -9,9 +9,17 @@
  * pkt 2.3: dla WYBRANEGO elementu (pole LUB stacja — `element_ref` z selekcji)
  *   lista per pakiet: sprawdzenia ✓/✗ przefiltrowane po `element_ref`; przy ✗
  *   ZAWSZE `message_pl` (powód). Pakiety bez sprawdzeń dla elementu — pomijane.
- * pkt 2.7: dla STACJI dodatkowo reguły OSD `implemented=false`
- *   (`fetchReferencePack('osd_enea').station_rules`) prezentowane INFORMACYJNIE
- *   („poza zakresem walidacji — powód"), NIE jako błąd/✗.
+ * pkt 2.7: dla STACJI dodatkowo reguły OSD `implemented=false` prezentowane
+ *   INFORMACYJNIE („poza zakresem walidacji — powód"), NIE jako błąd/✗.
+ *
+ * ZAKRES OCENY (karta REF-PAKIET): do 2026-08-07 pakiet OSD był tu ZASZYTY
+ * stałą (`PAKIET_OSD = 'osd_enea'`), więc dołożenie drugiego standardu OSD do
+ * rejestru nie miałoby żadnego wpływu na ten ekran. Teraz pakiety OSD wynikają
+ * z DANYCH — rodzaj `kind === 'osd'` z `GET /api/reference/packs` — a projektant
+ * zawęża zakres wspólną kontrolką `WyborPakietuReferencyjnego` (ten sam wybór
+ * co w przestrzeni „Gotowość" i w diagnostyce ENM). Bez zawężenia backend
+ * ocenia wszystkie pakiety rejestru (jego wartość domyślna), a noty stacyjne
+ * pochodzą ze wszystkich pakietów OSD.
  *
  * `score_percent = null` ⇒ „nie dotyczy" (HANDOFF §3.3) — tu nie liczymy score,
  * pokazujemy wyłącznie sprawdzenia; brak sprawdzeń dla elementu = uczciwa nota.
@@ -21,13 +29,18 @@ import { useEffect, useState } from 'react';
 import {
   fetchReferenceCompliance,
   fetchReferencePack,
+  fetchReferencePacks,
   REFERENCE_PACK_KIND_LABELS_PL,
   type ReferenceComplianceReport,
   type ReferenceStationRule,
 } from '../../referencje/api';
+import { WyborPakietuReferencyjnego } from '../../referencje/WyborPakietuReferencyjnego';
+import { useWyborPakietu, zawezenieDlaWyboru } from '../../referencje/wyborPakietu';
 
-/** Identyfikator pakietu OSD (kind=osd) — reguły stacyjne (HANDOFF §2.7). */
-const PAKIET_OSD = 'osd_enea';
+/** Nota stacyjna OSD z jawnym źródłem — nazwa pakietu pochodzi z rejestru. */
+interface NotaOsd extends ReferenceStationRule {
+  readonly pakietNazwa: string;
+}
 
 export interface ZgodnoscReferencyjnaProps {
   /** `element_ref` wybranego elementu (pole lub stacja). */
@@ -51,21 +64,31 @@ const T = {
   osdPrefiks: 'poza zakresem walidacji — ',
 } as const;
 
+/** Noty „poza zakresem walidacji" ze wskazanych pakietów OSD (deterministycznie). */
+function notyZPakietow(
+  pakiety: readonly { readonly nazwa: string; readonly reguly: readonly ReferenceStationRule[] }[],
+): NotaOsd[] {
+  return pakiety.flatMap(({ nazwa, reguly }) =>
+    reguly.filter((r) => !r.implemented).map((r) => ({ ...r, pakietNazwa: nazwa })),
+  );
+}
+
 export function ZgodnoscReferencyjna({
   elementRef,
   caseId,
   czyStacja,
   multiSelekcja,
 }: ZgodnoscReferencyjnaProps): JSX.Element {
+  const pakietId = useWyborPakietu((s) => s.pakietId);
   const [raport, setRaport] = useState<ReferenceComplianceReport | null>(null);
-  const [regulyOsd, setRegulyOsd] = useState<ReferenceStationRule[]>([]);
+  const [notyOsd, setNotyOsd] = useState<NotaOsd[]>([]);
   const [ladowanie, setLadowanie] = useState(false);
   const [blad, setBlad] = useState(false);
 
   useEffect(() => {
     if (!caseId) {
       setRaport(null);
-      setRegulyOsd([]);
+      setNotyOsd([]);
       setBlad(false);
       setLadowanie(false);
       return;
@@ -74,18 +97,33 @@ export function ZgodnoscReferencyjna({
     setLadowanie(true);
     setBlad(false);
     const zadania: Promise<void>[] = [
-      fetchReferenceCompliance(caseId).then((r) => {
+      fetchReferenceCompliance(caseId, zawezenieDlaWyboru(pakietId)).then((r) => {
         if (!anulowano) setRaport(r);
       }),
     ];
     if (czyStacja) {
+      // Pakiety OSD z DANYCH (rodzaj), zawężone wyborem projektanta — nigdy
+      // z zaszytego identyfikatora. Pusty zbiór ⇒ brak not (bez zmyślania).
       zadania.push(
-        fetchReferencePack(PAKIET_OSD).then((pack) => {
-          if (!anulowano) setRegulyOsd(pack.station_rules ?? []);
-        }),
+        fetchReferencePacks('osd')
+          .then((lista) => {
+            const wZakresie =
+              pakietId === null ? lista : lista.filter((p) => p.pack_id === pakietId);
+            return Promise.all(
+              wZakresie.map((p) =>
+                fetchReferencePack(p.pack_id).then((pelny) => ({
+                  nazwa: p.name_pl,
+                  reguly: pelny.station_rules ?? [],
+                })),
+              ),
+            );
+          })
+          .then((pakiety) => {
+            if (!anulowano) setNotyOsd(notyZPakietow(pakiety));
+          }),
       );
     } else {
-      setRegulyOsd([]);
+      setNotyOsd([]);
     }
     void Promise.all(zadania)
       .catch(() => {
@@ -97,7 +135,7 @@ export function ZgodnoscReferencyjna({
     return () => {
       anulowano = true;
     };
-  }, [caseId, czyStacja, elementRef]);
+  }, [caseId, czyStacja, elementRef, pakietId]);
 
   // Pakiety niosące co najmniej jedno sprawdzenie dla wybranego elementu.
   const pakietyElementu = (raport?.packs ?? [])
@@ -106,9 +144,6 @@ export function ZgodnoscReferencyjna({
       checks: pack.checks.filter((c) => c.element_ref === elementRef),
     }))
     .filter((p) => p.checks.length > 0);
-
-  // Reguły OSD spoza zakresu walidacji (implemented=false) — nota informacyjna.
-  const notyOsd = czyStacja ? regulyOsd.filter((r) => !r.implemented) : [];
 
   return (
     <section className="mvd-zgodnosc-referencyjna" data-testid="mvd-zgodnosc-referencyjna">
@@ -120,6 +155,8 @@ export function ZgodnoscReferencyjna({
           </span>
         )}
       </div>
+
+      <WyborPakietuReferencyjnego idKontrolki="mvd-ref-wybor-model" />
 
       {!caseId ? (
         <p className="mvd-zgodnosc-nota" data-testid="mvd-zgodnosc-pusto">
@@ -194,6 +231,7 @@ export function ZgodnoscReferencyjna({
                     <span className="mvd-zgodnosc-tresc">
                       {T.osdPrefiks}
                       {regula.description_pl}
+                      <span className="mvd-zgodnosc-zrodlo"> ({regula.pakietNazwa})</span>
                     </span>
                   </li>
                 ))}

@@ -1,0 +1,55 @@
+/* Kontrolka wyboru pakietu referencyjnego (karta REF-PAKIET).
+   Wyłącznie tokeny --mvd-* (oba motywy z jednego zestawu zmiennych). */
+
+.mvd-refwybor {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.mvd-refwybor-etykieta {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--mvd-muted);
+}
+
+.mvd-refwybor-select {
+  flex: 1 1 220px;
+  min-width: 180px;
+  max-width: 420px;
+  padding: 3px 6px;
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--mvd-ink);
+  background: var(--mvd-panel);
+  border: 1px solid var(--mvd-line);
+  border-radius: 4px;
+}
+
+.mvd-refwybor-stan {
+  margin: 0;
+  font-size: 12px;
+  color: var(--mvd-muted);
+}
+
+.mvd-refwybor-stan-blad {
+  color: var(--mvd-err);
+}
+
+.mvd-refwybor-akcja {
+  padding: 2px 8px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--mvd-ink);
+  background: var(--mvd-panel-2);
+  border: 1px solid var(--mvd-line);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.mvd-refwybor-akcja:hover {
+  background: var(--mvd-panel);
+}
