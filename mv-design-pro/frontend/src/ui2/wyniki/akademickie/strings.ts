@@ -82,15 +82,16 @@ export const AKADEMICKIE_STRINGS = {
   // Nagłówek
   tytul: 'Analizy akademickie',
   opisWstep:
-    'Pakiet analiz specjalistycznych liczonych przez solver na committed modelu sieci (ENM) '
-    + 'aktywnego przypadku. Każdy przebieg niesie wynik, pełny ślad WHITE BOX, pakiet dowodowy '
-    + 'i raport z odciskiem deterministycznym — okno wyłącznie je prezentuje (zero fizyki w UI).',
+    'Pakiet analiz specjalistycznych liczonych przez solver na zatwierdzonym modelu sieci '
+    + 'aktywnego przypadku obliczeniowego. Każdy przebieg niesie wynik, pełny zapis toku '
+    + 'obliczeń, pakiet dowodowy i raport z odciskiem powtarzalności — okno wyłącznie je '
+    + 'przedstawia, niczego nie licząc.',
   runId: 'Identyfikator przebiegu',
   odcisk: 'Odcisk deterministyczny',
   wersjaSolwera: 'Wersja solvera',
   odciskWejscia: 'Odcisk danych wejściowych',
   utworzono: 'Utworzono',
-  statusPrzebiegu: 'Status przebiegu',
+  statusPrzebiegu: 'Stan przebiegu',
 
   // Wybór rodzaju
   wyborTytul: 'Rodzaj analizy',
@@ -109,14 +110,14 @@ export const AKADEMICKIE_STRINGS = {
   // Stan bez aktywnego przypadku
   brakPrzypadku: 'Brak aktywnego przypadku obliczeniowego',
   brakPrzypadkuOpis:
-    'Aktywuj przypadek obliczeniowy z committed modelem sieci (ENM). Analizy akademickie '
+    'Aktywuj przypadek obliczeniowy z zatwierdzonym modelem sieci. Analizy specjalistyczne '
     + 'powstają z tego modelu — bez niego solver nie ma czego liczyć.',
 
   // Akcja uruchomienia
   uruchom: 'Uruchom analizę',
   uruchomPonownie: 'Uruchom ponownie',
   uruchomOpis:
-    'Przebieg powstaje z committed ENM aktywnego przypadku. Parametry projektowe pozostawione '
+    'Przebieg powstaje z zatwierdzonego modelu sieci aktywnego przypadku. Parametry projektowe pozostawione '
     + 'puste oznaczają udokumentowaną wartość domyślną solvera — okno niczego nie podstawia.',
   ladowanie: 'Trwa obliczanie analizy…',
   blad: 'Nie udało się wykonać analizy',
@@ -198,9 +199,10 @@ export const AKADEMICKIE_STRINGS = {
   surowyPokaz: 'Pokaż zapis techniczny',
   surowyUkryj: 'Ukryj zapis techniczny',
 
-  // Ślad WHITE BOX
+  // Ślad obliczeń (pełna jawność toku obliczeń)
   sladTytul: 'Pełna jawność obliczeń',
-  sladOpis: 'Ślad WHITE BOX przebiegu: wzór → dane → podstawienie → wynik → sprawdzenie jednostek.',
+  sladOpis: 'Tok obliczeń przebiegu krok po kroku: wzór → dane → podstawienie → wynik → '
+    + 'sprawdzenie jednostek.',
   sladPokaz: 'Pokaż ślad obliczeń',
   sladUkryj: 'Ukryj ślad obliczeń',
   sladKrokow: (n: number): string => `kroków śladu: ${n}`,
@@ -230,6 +232,8 @@ export const AKADEMICKIE_STRINGS = {
   raportSekcji: (n: number): string => `sekcji raportu: ${n}`,
   raportMetryk: (n: number): string => `metryk: ${n}`,
   raportPusty: 'Raport nie zawiera sekcji',
+  raportPokaz: 'Pokaż sekcje raportu',
+  raportUkryj: 'Ukryj sekcje raportu',
 
   // Dane odniesienia (katalog)
   katalogTytul: 'Dane odniesienia',
@@ -258,6 +262,27 @@ export const AKADEMICKIE_STRINGS = {
   tak: 'tak',
   nie: 'nie',
 } as const;
+
+/**
+ * Stany przebiegu z kontraktu backendu → polska nazwa. Strażnik prezentacji
+ * wyłapał wartość `FINISHED` widoczną wprost na ekranie projektanta —
+ * to anglicyzm w interfejsie (zakaz K10), a nie identyfikator techniczny.
+ */
+export const STANY_PRZEBIEGU: Readonly<Record<string, string>> = {
+  FINISHED: 'zakończony',
+  DONE: 'zakończony',
+  RUNNING: 'w toku',
+  PENDING: 'oczekuje na wykonanie',
+  QUEUED: 'w kolejce',
+  FAILED: 'zakończony błędem',
+  ERROR: 'zakończony błędem',
+  CANCELLED: 'przerwany',
+};
+
+/** Polska nazwa stanu przebiegu; wartość spoza kontraktu zostaje bez zmian. */
+export function etykietaStanuPrzebiegu(kod: string): string {
+  return STANY_PRZEBIEGU[kod] ?? kod;
+}
 
 /** Etykieta rodzaju: z mapy kontraktu albo uczciwie surowy kod (bez fabrykacji nazwy). */
 export function etykietaRodzaju(kod: string): string {

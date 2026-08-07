@@ -75,6 +75,7 @@ import { useNazwaObiektu } from './useNazwaObiektu';
 import {
   AKADEMICKIE_STRINGS as S,
   etykietaRodzaju,
+  etykietaStanuPrzebiegu,
   fmtWartosc,
   opisRodzaju,
   type IstotnoscStanu,
@@ -614,8 +615,8 @@ function PanelRaportu({ raport }: { raport: RaportAnalizy }) {
       opis={S.raportOpis}
       licznik={`${S.raportSekcji(sekcje.length)} · ${S.raportMetryk(licznikMetrykRaportu(raport))}`}
       testid="mvd-akad-raport"
-      pokaz={S.dowodPokaz}
-      ukryj={S.dowodUkryj}
+      pokaz={S.raportPokaz}
+      ukryj={S.raportUkryj}
     >
       <div className="mvd-akad-wiersze">
         <div className="mvd-akad-wiersz">
@@ -1023,7 +1024,9 @@ export function EkranAnalizAkademickich({
             <div className="mvd-akad-wiersze">
               <div className="mvd-akad-wiersz">
                 <span className="mvd-akad-wiersz-etyk">{S.statusPrzebiegu}</span>
-                <span className="mvd-akad-wiersz-wartosc">{stan.dane.przebieg.status}</span>
+                <span className="mvd-akad-wiersz-wartosc">
+                  {etykietaStanuPrzebiegu(stan.dane.przebieg.status)}
+                </span>
               </div>
               <div className="mvd-akad-wiersz">
                 <span className="mvd-akad-wiersz-etyk">{S.odcisk}</span>
