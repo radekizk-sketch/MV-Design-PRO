@@ -43,6 +43,8 @@ import {
   useStanGotowosci,
 } from './adapters/gotowoscAdapter';
 import { SekcjaCelu } from './SekcjaCelu';
+import { SekcjaGranicySieci } from './SekcjaGranicySieci';
+import { SekcjaPokryciaAnaliz } from './SekcjaPokryciaAnaliz';
 import { SekcjaZgodnosciReferencyjnej } from './SekcjaZgodnosciReferencyjnej';
 import { GOTOWOSC_STRINGS } from './strings';
 import { ETYKIETA_CELU } from './grupowanieCelow';
@@ -217,6 +219,10 @@ export function PanelGotowosci({
       )}
 
       <SekcjaZgodnosciReferencyjnej />
+      {/* ROUTERY-4A: zdolności A3 (pokrycie analizami) i A2 (granica sieci) —
+          sekcje samodzielne (własne pobrania), wzorzec sekcji referencyjnej. */}
+      <SekcjaPokryciaAnaliz />
+      <SekcjaGranicySieci />
     </div>
   );
 }

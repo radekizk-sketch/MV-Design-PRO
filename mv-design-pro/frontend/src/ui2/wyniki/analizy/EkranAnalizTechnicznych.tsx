@@ -152,6 +152,10 @@ export function EkranAnalizTechnicznych() {
         ? { etykieta: T.daneDostepne, ok: true }
         : { etykieta: T.wymagaModelu, ok: false };
     }
+    if (karta.wymaga === 'wbudowane') {
+      // Sieci referencyjne są wbudowane w system — dostępne bez projektu i biegów.
+      return { etykieta: T.daneWbudowane, ok: true };
+    }
     if (maZakonczonyPrzebieg(przebiegi, karta.wymaga)) {
       return { etykieta: T.daneDostepne, ok: true };
     }

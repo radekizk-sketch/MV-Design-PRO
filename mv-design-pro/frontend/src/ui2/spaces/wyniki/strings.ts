@@ -18,6 +18,7 @@ export const WYNIKI_WARSZTAT_STRINGS = {
   zakladkaNcRfg: 'Zgodność NC RfG',
   zakladkaPulpitOze: 'Pulpit OZE',
   zakladkaJakosc: 'Jakość wyników',
+  zakladkaWrazliwosc: 'Wrażliwość',
   zakladkaZdolnosc: 'Zdolność przyłączeniowa',
   zakladkaRanking: 'Ranking przyłączeń',
   zakladkaKrzywe: 'Krzywe P–Q',

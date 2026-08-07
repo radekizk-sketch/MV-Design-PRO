@@ -44,6 +44,7 @@ import {
   PulpitOze,
 } from '../../oze';
 import { EkranJakosci } from '../../wyniki/jakosc';
+import { EkranWrazliwosci } from '../../wyniki/wrazliwosc';
 import { EkranKoordynacji } from '../../wyniki/koordynacja';
 import { EkranEstymacji } from '../../wyniki/estymacja';
 import { EkranSkladowych } from '../../wyniki/skladowe';
@@ -69,6 +70,7 @@ const ZAKLADKI = [
   { id: 'skladowe', etykieta: T.zakladkaSkladowe },
   { id: 'dowod', etykieta: T.zakladkaDowod },
   { id: 'jakosc', etykieta: T.zakladkaJakosc },
+  { id: 'wrazliwosc', etykieta: T.zakladkaWrazliwosc },
   { id: 'porownanie', etykieta: T.zakladkaPorownanie },
   { id: 'odbior', etykieta: T.zakladkaOdbior },
   { id: 'estymacja', etykieta: T.zakladkaEstymacja },
@@ -106,6 +108,7 @@ const GRUPY_ZAKLADEK: readonly { etykieta: string; zakladki: readonly ZakladkaId
       'skladowe',
       'dowod',
       'jakosc',
+      'wrazliwosc',
       'porownanie',
       'odbior',
       'estymacja',
@@ -345,6 +348,9 @@ export function WynikiWarsztat({
         {zakladka === 'jakosc' && (
           <EkranJakosci trybZaawansowania={trybZaawansowania} onOtworzDowod={otworzDowod} />
         )}
+        {/* ROUTERY-4A: dostawca zdolności A6/A17 (wrażliwość LF + ogólna) —
+            ekran ui2 czyta rejestr przebiegów sam (uczciwy stan zerowy z akcją). */}
+        {zakladka === 'wrazliwosc' && <EkranWrazliwosci trybZaawansowania={trybZaawansowania} />}
         {zakladka === 'porownanie' && <PorownanieAktywnegoProjektu trybZaawansowania={trybZaawansowania} />}
         {zakladka === 'odbior' && (
           <EkranOdbioru trybZaawansowania={trybZaawansowania} onOtworzDowod={otworzDowod} />

@@ -59,11 +59,32 @@ export interface ValidationResponse {
   report: ValidationReport;
 }
 
+/** Wynik biegu solvera per węzeł (klucz mapy `buses` w `RunResult`). */
+export interface RunBusResult {
+  v_pu: number;
+  angle_deg: number;
+}
+
+/**
+ * Kształt `result` końcówki `POST /{id}/run` (backend:
+ * `api/reference_networks.py:_run_solver_for_network` → `{'buses','branches',
+ * 'short_circuit','trace'}` + `converged`/`iterations` z
+ * `application/reference_networks/computation.py:solve_reference_network`).
+ */
+export interface RunResult {
+  buses: Record<string, RunBusResult>;
+  branches: Record<string, unknown>;
+  short_circuit: Record<string, unknown>;
+  trace: unknown[];
+  converged?: boolean;
+  iterations?: number;
+}
+
 export interface RunResponse {
   network_id: string;
   solver_kind: string;
   success: boolean;
-  result: Record<string, unknown>;
+  result: RunResult | Record<string, unknown>;
   error: string | null;
 }
 

@@ -3,6 +3,7 @@
  */
 
 export { ReferenceNetworkList } from './ReferenceNetworkList';
+export { ReferenceNetworkRunPanel } from './ReferenceNetworkRunPanel';
 export { ReferenceNetworkRunner } from './ReferenceNetworkRunner';
 export { ValidationReportPanel } from './ValidationReportPanel';
 export { ValidationDeltaTable } from './ValidationDeltaTable';
@@ -16,6 +17,7 @@ export {
   similarityMatch,
   useReferenceNetworks,
   useReferenceNetworkDetail,
+  useRunReferenceNetwork,
   useValidateReferenceNetwork,
   useNcRfgCompliance,
 } from './api';
