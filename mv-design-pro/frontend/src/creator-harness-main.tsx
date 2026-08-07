@@ -3533,6 +3533,35 @@ if (creator === 'arcflash') {
     id: 'run-lf-6', analysis_type: 'LOAD_FLOW', status: 'DONE',
   } as unknown as ExecutionRun;
   useExecutionRunsStore.setState({ runs: [runLf6], activeRunId: 'run-lf-6' } as never);
+} else if (creator === 'akademickie') {
+  // V126-JEZYK: migawka modelu z NAZWAMI obiektow pod referencjami produkcyjnymi
+  // (te same, ktore niesie fixtura odpowiedzi solvera) — scena pokazuje most
+  // referencja→nazwa w dzialaniu, a nie etykiete zapasowa.
+  useSnapshotStore.setState({
+    rewizjaBiezacegoModelu: 4,
+    snapshot: {
+      header: { name: 'Przylaczenie farmy PV 8 MW', revision: 4 },
+      buses: [
+        {
+          id: 'gpz/860003b4514aa388b39561d5005ce584/section/001/bus_sn',
+          ref_id: 'gpz/860003b4514aa388b39561d5005ce584/section/001/bus_sn',
+          name: 'GPZ Zachod — szyny SN, sekcja I',
+        },
+        {
+          id: 'station/1f4c9a02b7d84e6690ab5cc31d772e18/bus_sn',
+          ref_id: 'station/1f4c9a02b7d84e6690ab5cc31d772e18/bus_sn',
+          name: 'Stacja SN/nN Ogrodowa',
+        },
+      ],
+      branches: [
+        {
+          id: 'corridor/6d2b81f0c4e34a1b9f5d70ae2c8b4913/segment/001',
+          ref_id: 'corridor/6d2b81f0c4e34a1b9f5d70ae2c8b4913/segment/001',
+          name: 'Kabel SN GPZ — Ogrodowa',
+        },
+      ],
+    },
+  } as never);
 } else if (creator === 'ssci' || creator === 'migotanie') {
   // Runda dowodowa V-B: ssci — aktywny przypadek 'case-demo' zasiany globalnie;
   // migotanie — przebieg zwarciowy podawany propem sekcji. Pusta galaz chroni

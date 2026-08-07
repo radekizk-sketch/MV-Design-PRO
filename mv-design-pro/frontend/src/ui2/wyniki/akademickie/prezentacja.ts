@@ -923,6 +923,9 @@ export const NAZWY_WARTOSCI: Readonly<Record<string, string>> = {
   // Cel i strategia doboru wariantu (optymalizacja strat)
   min_delta_p_losses: 'minimalizacja strat mocy',
   minimize_losses_with_voltage_limits: 'minimalizacja strat przy granicach napięcia',
+  // Polityka eksportu raportu (kontrakt `AcademicReportV1`)
+  frozen_result_and_proof_only:
+    'wyłącznie zamrożony wynik i pakiet dowodowy (bez przeliczania przy eksporcie)',
   // Ograniczenie rozstrzygające o zdolności przyłączeniowej
   U_max: 'granica napięcia',
   I_galaz: 'obciążalność gałęzi',

@@ -31,7 +31,8 @@ import './akademickie.css';
 import { isModeAtLeast, type AdvancementMode } from '../../shell/modeModel';
 import { useAppStateStore } from '../../../ui/app-state';
 import { useShellStore } from '../../shell/useShellStore';
-import { opisSwiezosci, useSwiezoscWynikow } from '../../freshness';
+import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
+import { opisSwiezosci } from '../../freshness';
 import { PrzyciskAkcjiStanu, useAkcjaPrzejdzDoPrzypadkow } from '../wzorzec';
 import type { AkcjaStanuZerowego } from '../wzorzec';
 import {
@@ -53,6 +54,7 @@ import { katalogRodzaju } from './katalog';
 import {
   krokiDowoduDoWidoku,
   krokiSladuDoWidoku,
+  swiezoscWyniku,
   licznikMetrykRaportu,
   pogrupujWynik,
   sekcjeRaportuDoWidoku,
@@ -110,6 +112,13 @@ function StanPanel({
   );
 }
 
+/**
+ * Sekcja zwijana z UCZCIWYM STANEM ZEROWYM (nadzór 2026-08-07, KLASA nie
+ * instancja): sekcja bez zawartości NIE dostaje przycisku „Pokaż…" — przycisk,
+ * który nie ma czego pokazać, to martwy klik. Zamiast niego sekcja mówi wprost,
+ * że dla tego przebiegu artefakt nie powstał. Warunek pustki i warunek przycisku
+ * pochodzą z JEDNEGO pola (`pozycji`), więc nie mogą się rozjechać.
+ */
 function Zwijana({
   tytul,
   licznik,
@@ -117,6 +126,8 @@ function Zwijana({
   testid,
   pokaz,
   ukryj,
+  pozycji,
+  pustyKomunikat,
   domyslnieOtwarte,
   children,
 }: {
@@ -126,29 +137,46 @@ function Zwijana({
   testid: string;
   pokaz: string;
   ukryj: string;
+  /** Liczba pozycji w sekcji — 0 oznacza uczciwy stan zerowy (bez przycisku). */
+  pozycji: number;
+  /** Zdanie stanu zerowego: czego nie ma i dlaczego. */
+  pustyKomunikat: string;
   domyslnieOtwarte?: boolean;
   children: React.ReactNode;
 }) {
   const [otwarte, setOtwarte] = useState(domyslnieOtwarte === true);
+  const pusta = pozycji === 0;
   return (
     <section className="mvd-akad-sekcja" data-testid={testid}>
       <div className="mvd-akad-sekcja-naglowek">
         <h3 className="mvd-akad-sekcja-tytul">{tytul}</h3>
-        <span className="mvd-akad-licznik mvd-num" data-testid={`${testid}-licznik`}>
-          {licznik}
-        </span>
-        <button
-          type="button"
-          className="mvd-akad-btn-wtorny"
-          aria-expanded={otwarte}
-          data-testid={`${testid}-przelacz`}
-          onClick={() => setOtwarte((stan) => !stan)}
-        >
-          {otwarte ? ukryj : pokaz}
-        </button>
+        {!pusta && (
+          <span className="mvd-akad-licznik mvd-num" data-testid={`${testid}-licznik`}>
+            {licznik}
+          </span>
+        )}
+        {!pusta && (
+          <button
+            type="button"
+            className="mvd-akad-btn-wtorny"
+            aria-expanded={otwarte}
+            data-testid={`${testid}-przelacz`}
+            onClick={() => setOtwarte((stan) => !stan)}
+          >
+            {otwarte ? ukryj : pokaz}
+          </button>
+        )}
       </div>
-      {opis && <p className="mvd-akad-opis">{opis}</p>}
-      {otwarte && children}
+      {pusta ? (
+        <p className="mvd-akad-opis" data-testid={`${testid}-pusty`}>
+          {pustyKomunikat}
+        </p>
+      ) : (
+        <>
+          {opis && <p className="mvd-akad-opis">{opis}</p>}
+          {otwarte && children}
+        </>
+      )}
     </section>
   );
 }
@@ -465,10 +493,10 @@ function PanelZapisuTechnicznego({ wynik }: { wynik: OdpowiedzWyniku }) {
       testid="mvd-akad-wynik"
       pokaz={S.surowyPokaz}
       ukryj={S.surowyUkryj}
+      pozycji={wiersze.length}
+      pustyKomunikat={S.wynikPusty}
     >
-      {wiersze.length === 0 ? (
-        <p className="mvd-akad-opis">{S.wynikPusty}</p>
-      ) : (
+      {(
         <div data-mvd-zapis-techniczny="1">
           {grupy.map((grupa) => (
             <div
@@ -509,10 +537,10 @@ function PanelSladu({ slad }: { slad: OdpowiedzSladu }) {
       testid="mvd-akad-slad"
       pokaz={S.sladPokaz}
       ukryj={S.sladUkryj}
+      pozycji={kroki.length}
+      pustyKomunikat={S.sladPusty}
     >
-      {kroki.length === 0 ? (
-        <p className="mvd-akad-opis">{S.sladPusty}</p>
-      ) : (
+      {(
         <div className="mvd-akad-tabela-otoczka">
           <table className="mvd-akad-tabela">
             <thead>
@@ -556,6 +584,8 @@ function PanelDowodu({ dowod }: { dowod: PakietDowodu }) {
       testid="mvd-akad-dowod"
       pokaz={S.dowodPokaz}
       ukryj={S.dowodUkryj}
+      pozycji={kroki.length}
+      pustyKomunikat={S.dowodPusty}
     >
       <div className="mvd-akad-wiersze">
         <div className="mvd-akad-wiersz">
@@ -571,9 +601,7 @@ function PanelDowodu({ dowod }: { dowod: PakietDowodu }) {
           <span className="mvd-akad-wiersz-wartosc mvd-num">{dowod.trace_step_count}</span>
         </div>
       </div>
-      {kroki.length === 0 ? (
-        <p className="mvd-akad-opis">{S.dowodPusty}</p>
-      ) : (
+      {(
         <div className="mvd-akad-tabela-otoczka">
           <table className="mvd-akad-tabela">
             <thead>
@@ -617,6 +645,8 @@ function PanelRaportu({ raport }: { raport: RaportAnalizy }) {
       testid="mvd-akad-raport"
       pokaz={S.raportPokaz}
       ukryj={S.raportUkryj}
+      pozycji={sekcje.length}
+      pustyKomunikat={S.raportPusty}
     >
       <div className="mvd-akad-wiersze">
         <div className="mvd-akad-wiersz">
@@ -629,12 +659,10 @@ function PanelRaportu({ raport }: { raport: RaportAnalizy }) {
         </div>
         <div className="mvd-akad-wiersz">
           <span className="mvd-akad-wiersz-etyk">{S.raportPolityka}</span>
-          <span className="mvd-akad-wiersz-wartosc">{raport.export_policy}</span>
+          <span className="mvd-akad-wiersz-wartosc">{fmtPole(raport.export_policy)}</span>
         </div>
       </div>
-      {sekcje.length === 0 ? (
-        <p className="mvd-akad-opis">{S.raportPusty}</p>
-      ) : (
+      {(
         sekcje.map((sekcja) => (
           <div className="mvd-akad-grupa" key={sekcja.section_id} data-testid={`mvd-akad-raport-sekcja-${sekcja.section_id}`}>
             <h4 className="mvd-akad-grupa-tytul">{sekcja.title}</h4>
@@ -733,6 +761,12 @@ function PanelKatalogu({ namespace }: { namespace: string }) {
 // ---------------------------------------------------------------------------
 
 interface KompletArtefaktow {
+  /**
+   * Rewizja modelu w chwili wykonania przebiegu — DRUGI koniec pary predykatu
+   * świeżości (`swiezoscWyniku`). Bez niej nagłówek meldowałby „brak wyników"
+   * przy zakończonym przebiegu (defekt naprawiony u źródła, V126-JEZYK).
+   */
+  readonly rewizjaPrzyBiegu: number;
   readonly przebieg: PrzebiegAkademicki;
   readonly wynik: OdpowiedzWyniku;
   readonly slad: OdpowiedzSladu;
@@ -769,7 +803,9 @@ export function EkranAnalizAkademickich({
   const setWynikiTab = useShellStore((s) => s.setWynikiTab);
   const akcjaPrzypadki = useAkcjaPrzejdzDoPrzypadkow();
   const trybEkspercki = isModeAtLeast(trybZaawansowania, 'expert');
-  const swiezosc = useSwiezoscWynikow();
+  // Rewizja bieżącego modelu — JEDNO źródło (S9-11 / W-5), to samo, z którego
+  // korzysta wspólny kontrakt świeżości E15.2.
+  const rewizjaModelu = useSnapshotStore((s) => s.rewizjaBiezacegoModelu ?? 0);
   // Most ref → nazwa obiektu ze schematu (jedno źródło nazw z migawką ENM).
   const nazwaObiektu = useNazwaObiektu();
 
@@ -834,7 +870,10 @@ export function EkranAnalizAkademickich({
           pobierzDowod(przebieg.run_id, rodzajBiegu),
           pobierzRaport(przebieg.run_id, rodzajBiegu),
         ]);
-        setStan({ rodzaj: 'gotowe', dane: { przebieg, wynik, slad, dowod, raport } });
+        setStan({
+          rodzaj: 'gotowe',
+          dane: { rewizjaPrzyBiegu: rewizjaModelu, przebieg, wynik, slad, dowod, raport },
+        });
       })
       .catch((err: unknown) => {
         setStan({ rodzaj: 'blad', komunikat: err instanceof Error ? err.message : S.blad });
@@ -890,7 +929,15 @@ export function EkranAnalizAkademickich({
         <h2 className="mvd-akad-tytul">{S.tytul}</h2>
         <p className="mvd-akad-opis">{S.opisWstep}</p>
         <p className="mvd-akad-swiezosc" data-testid="mvd-akad-swiezosc">
-          {S.swiezoscEtykieta}: <span className="mvd-num">{opisSwiezosci(swiezosc)}</span>
+          {S.swiezoscEtykieta}:{' '}
+          <span className="mvd-num">
+            {opisSwiezosci(
+              swiezoscWyniku(
+                stan.rodzaj === 'gotowe' ? stan.dane.rewizjaPrzyBiegu : null,
+                rewizjaModelu,
+              ),
+            )}
+          </span>
         </p>
       </header>
 

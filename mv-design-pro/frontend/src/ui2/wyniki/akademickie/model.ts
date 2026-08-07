@@ -13,6 +13,7 @@
  * punkty TRV) tysiące pól nie miały jak się pokazać. Limit MA WYNIKAĆ Z DANYCH.
  */
 
+import type { OpisSwiezosci } from '../../freshness/freshnessModel';
 import type { KrokDowodu, KrokSladu, RaportAnalizy, SekcjaRaportu } from './api';
 
 // ---------------------------------------------------------------------------
@@ -122,4 +123,46 @@ export function sekcjeRaportuDoWidoku(raport: RaportAnalizy): readonly SekcjaRap
 /** Suma metryk wszystkich sekcji raportu (jawna liczba dla nagłówka). */
 export function licznikMetrykRaportu(raport: RaportAnalizy): number {
   return raport.sections.reduce((suma, sekcja) => suma + sekcja.metrics.length, 0);
+}
+
+// ---------------------------------------------------------------------------
+// Świeżość wyniku TEGO okna (V126-JEZYK)
+// ---------------------------------------------------------------------------
+
+/**
+ * Świeżość wyniku analizy specjalistycznej.
+ *
+ * DEFEKT NAPRAWIANY U ŹRÓDŁA (nadzór, 2026-08-07): nagłówek okna meldował
+ * „brak wyników", gdy niżej stał zakończony przebieg z kompletem wielkości
+ * i werdyktem. Przyczyna: okno pokazywało WSPÓLNY wskaźnik świeżości przypadku
+ * (`useSwiezoscWynikow`), sterowany zdarzeniem magistrali `wyniki-gotowe`,
+ * które emituje adapter rejestru przebiegów KANONICZNYCH
+ * (`ui2/events/adapters/caseAdapter.ts` ← `useExecutionRunsStore`). Przebieg
+ * V12.6 powstaje własną końcówką (`POST …/runs/v126/{rodzaj}`) i do tego
+ * rejestru nie trafia, więc zdarzenie nie mogło paść NIGDY — wskaźnik z
+ * definicji nie opisywał tego, co widać na ekranie.
+ *
+ * Naprawa NIE polega na emitowaniu `wyniki-gotowe` dla przebiegu spoza rejestru
+ * (inni subskrybenci ładują wtedy wynik po nieznanym identyfikatorze — to samo
+ * kłamstwo, tylko głośniejsze). Naprawa: świeżość okna wynika z JEDNEGO
+ * predykatu — pary rewizji modelu — i jest liczona TĄ funkcją, wspólną dla
+ * nagłówka i dla stanu przebiegu. Typ i formater pozostają wspólne z kontraktem
+ * E15.2 (`OpisSwiezosci`, `opisSwiezosci`), więc słownictwo się nie rozjeżdża.
+ *
+ * Zero fizyki: porównanie dwóch numerów rewizji to prezentacja, nie obliczenie.
+ */
+export function swiezoscWyniku(
+  rewizjaPrzyBiegu: number | null,
+  rewizjaModelu: number,
+): OpisSwiezosci {
+  if (rewizjaPrzyBiegu === null) return { stan: 'brak', rewizjaModelu };
+  if (rewizjaPrzyBiegu === rewizjaModelu) {
+    return { stan: 'aktualne', rewizjaDanej: rewizjaPrzyBiegu, rewizjaModelu };
+  }
+  return {
+    stan: 'nieaktualne',
+    rewizjaDanej: rewizjaPrzyBiegu,
+    rewizjaModelu,
+    przyczyna: 'model-zmieniony',
+  };
 }

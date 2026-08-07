@@ -91,7 +91,6 @@ const DOZWOLONE: readonly RegExp[] = [
   /^proof:v126:/,
   /^report:v126:/,
   /^v126-/,
-  /^frozen_result_and_proof_only$/,
 ];
 
 /** Czy napis wygląda na kod produkcyjny (po odjęciu dozwolonych wyjątków). */
@@ -359,6 +358,59 @@ describe('strażnik prezentacji — 14 rodzajów kontraktu na realnych odpowiedz
     expect(tabela).toHaveTextContent('GPZ Zachód');
     expect(tabela).toHaveTextContent('Stacja SN/nN Ogrodowa');
     expect(tabela.textContent ?? '').not.toContain('860003b4514aa388b39561d5005ce584');
+  });
+
+  it('sekcja bez treści NIE ma przycisku „Pokaż…” (zero martwych klików)', async () => {
+    // Korekta nadzoru 2026-08-07 pkt 2: „Raport — sekcji: 0 · metryk: 0" z aktywnym
+    // przyciskiem to martwy klik. KLASA: reguła obowiązuje wszystkie sekcje zwijane.
+    await uruchomRodzaj('voltage_stability');
+    for (const sekcja of ['mvd-akad-slad', 'mvd-akad-dowod', 'mvd-akad-raport', 'mvd-akad-wynik']) {
+      const pusty = screen.queryByTestId(`${sekcja}-pusty`);
+      const przelacz = screen.queryByTestId(`${sekcja}-przelacz`);
+      // Dokładnie jedno z dwojga: albo treść z przyciskiem, albo zdanie stanu zerowego.
+      expect(
+        (pusty === null) !== (przelacz === null),
+        `sekcja ${sekcja}: stan zerowy i przycisk nie mogą współistnieć ani znikać razem`,
+      ).toBe(true);
+    }
+    // Kontrola dodatnia: w tej atrapie ślad, dowód i raport są PUSTE, więc muszą
+    // pokazywać zdanie stanu zerowego, a zapis techniczny — mieć przycisk.
+    expect(screen.getByTestId('mvd-akad-raport-pusty')).toBeInTheDocument();
+    expect(screen.queryByTestId('mvd-akad-raport-przelacz')).toBeNull();
+    expect(screen.getByTestId('mvd-akad-wynik-przelacz')).toBeInTheDocument();
+  });
+
+  it('świeżość NIE mówi „brak wyników” przy zakończonym przebiegu (para predykatów)', async () => {
+    // Korekta nadzoru 2026-08-07 pkt 1: nagłówek meldował „brak wyników" nad
+    // zakończonym przebiegiem z werdyktem. Oba końce z jednego źródła.
+    const ekran = await uruchomRodzaj('earthing_safety');
+    const swiezosc = screen.getByTestId('mvd-akad-swiezosc');
+    const stanPrzebiegu = screen.getByTestId('mvd-akad-przebieg');
+    expect(stanPrzebiegu).toHaveTextContent('zakończony');
+    expect(swiezosc.textContent ?? '').not.toContain('brak wyników');
+    expect(ekran).toBeInTheDocument();
+  });
+
+  it('świeżość mówi „brak wyników” DOPÓKI przebiegu nie ma (kontrola dodatnia pary)', async () => {
+    ustawFetch('earthing_safety');
+    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
+    await screen.findByTestId('mvd-akad-rodzaj');
+    expect(screen.getByTestId('mvd-akad-swiezosc')).toHaveTextContent('brak wyników');
+  });
+
+  it('zapis techniczny NIE jest pierwszą sekcją ekranu i startuje zwinięty', async () => {
+    // Korekta nadzoru 2026-08-07 pkt 4: sekcja audytowa przechodzi wyłącznie jako
+    // świadomie schowane narzędzie — nigdy jako pierwsze, co widzi projektant.
+    const ekran = await uruchomRodzaj('voltage_stability');
+    const sekcje = Array.from(ekran.querySelectorAll('[data-testid^="mvd-akad-"]'))
+      .map((element) => element.getAttribute('data-testid'))
+      .filter((id): id is string => id !== null);
+    const pozycjaZapisu = sekcje.indexOf('mvd-akad-wynik');
+    const pozycjaWerdyktu = sekcje.indexOf('mvd-akad-werdykt');
+    expect(pozycjaWerdyktu).toBeGreaterThanOrEqual(0);
+    expect(pozycjaZapisu).toBeGreaterThan(pozycjaWerdyktu);
+    // Zwinięty: treść bloku audytowego nie istnieje w drzewie przed kliknięciem.
+    expect(ekran.querySelector('[data-mvd-zapis-techniczny]')).toBeNull();
   });
 
   it('obiekt spoza migawki dostaje uczciwą etykietę zapasową, nie zmyśloną nazwę', async () => {
