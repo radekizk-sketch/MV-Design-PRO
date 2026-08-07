@@ -1,0 +1,28 @@
+{
+  "selection_hint": {
+    "element_id": "stn/e5b01de8a5d272ab25f1f21afdae221c/station",
+    "element_type": "substation",
+    "zoom_to": true
+  },
+  "changes": {
+    "created_element_ids": [
+      "stn/e5b01de8a5d272ab25f1f21afdae221c/sn_bus",
+      "seg/de53be076b3a436789a7d6a7cebc132c/segment_R_L",
+      "seg/de53be076b3a436789a7d6a7cebc132c/segment_R_R",
+      "stn/e5b01de8a5d272ab25f1f21afdae221c/sn_field_terminal/000",
+      "stn/e5b01de8a5d272ab25f1f21afdae221c/sn_field_breaker/000",
+      "stn/e5b01de8a5d272ab25f1f21afdae221c/sn_field_terminal/001",
+      "stn/e5b01de8a5d272ab25f1f21afdae221c/sn_field_breaker/001",
+      "stn/e5b01de8a5d272ab25f1f21afdae221c/sn_field_terminal/002",
+      "stn/e5b01de8a5d272ab25f1f21afdae221c/sn_field_breaker/002",
+      "stn/e5b01de8a5d272ab25f1f21afdae221c/station",
+      "stn/e5b01de8a5d272ab25f1f21afdae221c/nn_bus",
+      "stn/e5b01de8a5d272ab25f1f21afdae221c/transformer"
+    ],
+    "updated_element_ids": [],
+    "deleted_element_ids": [
+      "seg/de53be076b3a436789a7d6a7cebc132c/segment_R"
+    ]
+  },
+  "segment_srodkowy": "seg/de53be076b3a436789a7d6a7cebc132c/segment_R"
+}

@@ -49,6 +49,8 @@
  *      i skala ZACHOWANE, dostosowywany jest tylko punkt centrowania).
  */
 import {
+  centerOnPoint,
+  fitToView,
   initialCameraForNetwork,
   pan as panTransform,
   screenToWorld,
@@ -323,6 +325,22 @@ export type CameraAction =
        *  BEZPIECZNYM (patrz `SLD_CANVAS_DOCK_INSETS`, `canvas/toolbarLayout.ts`).
        *  Brak ⇒ `ZERO_INSETS`, czyli zachowanie sprzed karty. */
       readonly safeInsets?: SafeInsets;
+    }
+  /** B-2 (audyt §4.3): KOTWICZENIE WIDOKU NA ZMIANIE — model urósł, a kamera
+   *  ma zostać przy miejscu edycji zamiast wracać do widoku całej sieci.
+   *  `anchorByLod` to prostokąt obiektu WSKAZANEGO przez operację, osobno na
+   *  każdym poziomie szczegółu (`canvas/viewAnchor.ts`). Patrz `applyAnchor`. */
+  | {
+      readonly type: 'kotwicz';
+      readonly anchorByLod: Readonly<Record<SceneLod, BoundingBox>>;
+      readonly lodBboxes: Readonly<Record<SceneLod, BoundingBox>>;
+      readonly viewportSize: { readonly width: number; readonly height: number };
+      readonly safeInsets?: SafeInsets;
+      /** k4.1 dla kotwicy: gdy wołający WYMUSZA poziom szczegółu
+       *  (`lodOverride` — render nie pyta kamery o `lod`), kotwica musi celować
+       *  w geometrię TEGO świata i nie wolno jej przełączać poziomu. Brak =
+       *  poziom wynika z kamery (ścieżka produkcyjna bez wymuszenia). */
+      readonly wymuszonyLod?: SceneLod;
     };
 
 /**
@@ -409,12 +427,100 @@ function applyCenter(state: CameraState, worldPoint: { readonly x: number; reado
   };
 }
 
+/**
+ * B-2 — 'kotwicz': kamera ZOSTAJE przy obiekcie wskazanym przez operację
+ * zamiast wracać do widoku całej sieci (pełny opis defektu i pomiar:
+ * `canvas/viewAnchor.ts`).
+ *
+ * ZASADA (trzy niezmienniki, każdy przypięty testem
+ * `__tests__/kotwicaWidoku.contract.test.tsx`):
+ *  1. **Przybliżenie projektanta zostaje.** Skala NIGDY nie rośnie; maleje
+ *     wyłącznie o tyle, ile trzeba, żeby wskazany obiekt zmieścił się w kadrze
+ *     (`fitToView` na prostokącie KOTWICY, nie całej sieci) — czyli w
+ *     najgorszym razie kamera schodzi do widoku tego obiektu, nigdy do widoku
+ *     całości. Kotwica NIE może rozjechać auto-fitu: `fitToView` clampuje do
+ *     `MIN_SCALE`/`MAX_SCALE` dokładnie tak samo jak refit, a ponieważ kotwica
+ *     jest PODZBIOREM treści, jej skala dopasowania jest z konstrukcji nie
+ *     mniejsza niż skala fitu całej sieci.
+ *  2. **Obiekt ląduje w prostokącie BEZPIECZNYM**, nie pod dokami UI —
+ *     `centerOnPoint` z tymi samymi `safeInsets`, których używa refit (S9-8).
+ *  3. **Poziom szczegółu podąża za skalą przez tę samą histerezę**, co zoom
+ *     (`lodFromScaleWithHysteresis` na `refScale`) — kotwiczenie nie tworzy
+ *     drugiej polityki LOD. Gdy przejście LOD zajdzie, skala jest przeliczana
+ *     do świata nowego poziomu tą samą proporcją szerokości co
+ *     `applyLodScaleMapping`, a prostokąt kotwicy brany z TEGO poziomu (stąd
+ *     `anchorByLod`, nie jeden prostokąt) — inaczej kadr celowałby w geometrię
+ *     z innego świata. Pętla ma twardy limit 3 obrotów (0↔1↔2 to najwyżej dwa
+ *     przejścia) i jest czysto arytmetyczna — determinizm P7.
+ */
+function applyAnchor(
+  state: CameraState,
+  action: Extract<CameraAction, { type: 'kotwicz' }>,
+): CameraState {
+  const { viewportSize, lodBboxes, anchorByLod, safeInsets } = action;
+  let lod: SceneLod = action.wymuszonyLod ?? state.lod;
+  let scale = state.transform.scale;
+  if (!Number.isFinite(scale) || scale <= 0) return state;
+
+  // Poziom WYMUSZONY przez wołającego (k4.1): kotwica celuje w świat, który jest
+  // renderowany, i nie przełącza poziomu — decyzja o poziomie należy wtedy do
+  // wołającego, nie do histerezy kamery.
+  if (action.wymuszonyLod !== undefined) {
+    const box = anchorByLod[lod];
+    const skalaMieszczaca = fitToView(box, viewportSize, undefined, safeInsets).scale;
+    const skalaKoncowa = Math.min(MAX_SCALE, Math.max(MIN_SCALE, Math.min(scale, skalaMieszczaca)));
+    return {
+      transform: centerOnPoint(
+        { x: (box.minX + box.maxX) / 2, y: (box.minY + box.maxY) / 2 },
+        viewportSize,
+        skalaKoncowa,
+        safeInsets,
+      ),
+      lod: state.lod,
+      viewportSize,
+      lodBboxes,
+    };
+  }
+
+  for (let obrot = 0; obrot < 3; obrot += 1) {
+    // Skala, przy której CAŁY wskazany obiekt mieści się w prostokącie
+    // bezpiecznym (z tym samym paddingiem fitu co refit).
+    const skalaMieszczaca = fitToView(anchorByLod[lod], viewportSize, undefined, safeInsets).scale;
+    const skalaCelu = Math.min(scale, skalaMieszczaca);
+    const nastepnyLod = lodFromScaleWithHysteresis(
+      refScaleFor(skalaCelu, lod, lodBboxes),
+      lod,
+    );
+    if (nastepnyLod === lod) {
+      scale = skalaCelu;
+      break;
+    }
+    const szerokoscZ = lodBboxes[lod].maxX - lodBboxes[lod].minX;
+    const szerokoscDo = lodBboxes[nastepnyLod].maxX - lodBboxes[nastepnyLod].minX;
+    scale = szerokoscZ > 0 && szerokoscDo > 0 ? skalaCelu * (szerokoscZ / szerokoscDo) : skalaCelu;
+    lod = nastepnyLod;
+  }
+
+  const box = anchorByLod[lod];
+  const srodek = { x: (box.minX + box.maxX) / 2, y: (box.minY + box.maxY) / 2 };
+  const skalaKoncowa = Math.min(MAX_SCALE, Math.max(MIN_SCALE, scale));
+  return {
+    transform: centerOnPoint(srodek, viewportSize, skalaKoncowa, safeInsets),
+    lod,
+    viewportSize,
+    lodBboxes,
+  };
+}
+
 export function cameraReducer(state: CameraState, action: CameraAction): CameraState {
   if (action.type === 'resize') {
     return applyResize(state, action.viewportSize);
   }
   if (action.type === 'center') {
     return applyCenter(state, action.worldPoint);
+  }
+  if (action.type === 'kotwicz') {
+    return applyAnchor(state, action);
   }
   if (action.type === 'refit') {
     // F12-C (E15): refit honoruje `focusPoint` tak samo jak stan początkowy
