@@ -23,6 +23,29 @@ import { SnSegmentSurface } from '../workspace/surfaces/SnSegmentSurface';
 import { ZksnSurface, BranchPoleSurface, NopSurface } from '../workspace/surfaces/InfrastructureSurfaces';
 import { PvSourceSurface, BessSurface, FwSurface } from '../workspace/surfaces/DerSurfaces';
 
+/**
+ * Migawka PUSTEGO modelu (S9-11 / P-8): stan pusty kanwy montuje się wyłącznie
+ * przy werdykcie 'pusty' (`ui/topology/pustoscModelu`) — brak migawki to
+ * pustość NIEUSTALONA i stan pusty NIE ma prawa wisieć w drzewie (pomiar
+ * audytu: akcje `sld-empty-state*` przy sieci 16/51 stacji).
+ */
+function pustaMigawka() {
+  return {
+    header: {
+      enm_version: '1.0',
+      name: 'test',
+      revision: 0,
+      hash_sha256: 'h0',
+      defaults: { frequency_hz: 50, unit_system: 'SI' },
+    },
+    sources: [], buses: [], branches: [], transformers: [], loads: [],
+    generators: [], shunt_capacitors: [], substations: [], bays: [],
+    junctions: [], branch_points: [], corridors: [], line_runs: [],
+    connection_nodes: [], measurements: [], protection_assignments: [],
+    logical_views: { trunks: [], branches: [], secondary_connectors: [], terminals: [] },
+  } as never;
+}
+
 const sampleSurface = {
   surfaceId: 'acc-surface',
   screenCode: 'E-01' as const,
@@ -48,7 +71,8 @@ describe('Etap 10 — Testy akceptacyjne workflow inżyniera E2E', () => {
   });
 
   // === Test A: Środowisko SLD (E-01) ===
-  it('A. SLD canvas renderuje się z polskim empty state', () => {
+  it('A. SLD canvas renderuje się z polskim empty state przy PUSTYM modelu', () => {
+    useSnapshotStore.setState({ snapshot: pustaMigawka() });
     render(<SldCanvasV3Workspace width={800} height={600} />);
     expect(screen.getByTestId('sld-canvas-v3-workspace')).toBeInTheDocument();
     expect(screen.getByTestId('sld-empty-state')).toBeInTheDocument();
@@ -119,6 +143,7 @@ describe('Etap 10 — Testy akceptacyjne workflow inżyniera E2E', () => {
 
   // === Test J: Brak placeholderów / TODO produkcyjnych ===
   it('J. Brak fałszywych zer "0,00" w empty stanach', () => {
+    useSnapshotStore.setState({ snapshot: pustaMigawka() });
     render(<SldCanvasV3Workspace width={400} height={300} />);
     const empty = screen.getByTestId('sld-empty-state');
     expect(empty.textContent).not.toContain('0.00');

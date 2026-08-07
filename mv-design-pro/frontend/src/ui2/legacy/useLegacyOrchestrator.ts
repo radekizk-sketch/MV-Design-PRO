@@ -25,6 +25,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useAppStateStore } from '../../ui/app-state';
+import { modelNiepusty } from '../../ui/topology/pustoscModelu';
 import { useSnapshotStore } from '../../ui/topology/snapshotStore';
 import { useExecutionRunsStore } from '../../ui/study-cases/runStore';
 import { getStudyCase } from '../../ui/study-cases/api';
@@ -243,24 +244,12 @@ function isEnergyNetworkModel(value: unknown): value is EnergyNetworkModel {
   );
 }
 
+// S9-11 / P-8: pustość modelu z JEDNEGO źródła (`ui/topology/pustoscModelu`) —
+// lokalna lista rodzin (bez `measurements`/`protection_assignments`/
+// `shunt_capacitors`/`connection_nodes`) była trzecim, rozbieżnym werdyktem
+// tej samej klasy.
 function hasTopologicalContent(snapshot: EnergyNetworkModel | null | undefined): boolean {
-  if (!snapshot) {
-    return false;
-  }
-  return [
-    snapshot.sources,
-    snapshot.buses,
-    snapshot.branches,
-    snapshot.transformers,
-    snapshot.loads,
-    snapshot.generators,
-    snapshot.substations,
-    snapshot.bays,
-    snapshot.junctions,
-    snapshot.branch_points,
-    snapshot.corridors,
-    snapshot.line_runs,
-  ].some((items) => Array.isArray(items) && items.length > 0);
+  return modelNiepusty(snapshot);
 }
 
 interface DerSurfaceRouteTarget {
