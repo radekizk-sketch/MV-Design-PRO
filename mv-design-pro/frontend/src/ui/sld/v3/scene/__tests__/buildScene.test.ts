@@ -1070,9 +1070,15 @@ describe('buildSceneV3 — F9.7: totalVerticalSegmentLength (spec §15.1 vertica
     // sieci — a te bywają różne na tym samym rysunku. Wariant „Un = " ze
     // spacjami kosztowałby +2536 px i obniżał gęstość tuszu 2,03 %→1,94 %,
     // dlatego wybrano formę zwartą (pomiar w `formatRatedVoltageKv`).
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 0))).toBe(22440);
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(39448);
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(39448);
+    // PROPORCJE (karta PROPORCJE, 2026-08-07): OBNIŻONY 22440/39448/39448 →
+    // 21480/38488/38488 (−960 px jednolicie). Przyczyna ZMIERZONA: kod stacji
+    // pada w bloku RAZ (niesie go opis sekcji — rozstrzygnięcie S9-8/S9-12),
+    // więc pasmo nazw straciło wiersz z gołym kodem; wysokość pasma wchodzi w
+    // wysokość bloku stacji, a „jedna kotwica" S1 propaguje deltę jednolicie na
+    // L0/L1/L2. SPADEK ⇒ reguła „nie-rosnąca" (§15.1) spełniona z zapasem.
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 0))).toBe(21480);
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(38488);
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(38488);
   });
 });
 

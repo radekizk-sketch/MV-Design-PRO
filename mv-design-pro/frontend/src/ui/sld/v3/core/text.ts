@@ -67,10 +67,42 @@ export interface LabelTypography {
    * (kanon rysunku wykonawczego, IEC 60617 / rysunek jednokreskowy SN):
    * **stosunek napis:najmniejszy opisywany obiekt ≤ 1,5**. Stąd, per klasa:
    *
-   *   t1 → 5,5× (13 → 71,5 j.św.; wobec zwiniętego bloku stacji 48 → **1,49**)
    *   t2 → 4,0× (11 → 44 j.św.;   wobec symbolu DER 32 → **1,38**)
    *   t3 → 3,5× ( 9 → 31,5 j.św.; wobec symbolu aparatu 24 → **1,31**)
    *   t4 → 3,0× ( 8 → 24 j.św.;   wobec symbolu aparatu 24 → **1,00**)
+   *
+   * DWA PROGI, NIE JEDEN — I DLACZEGO (poprawka po pomiarze; reguła KLASA §1:
+   * kalibracja na JEDNYM przedstawicielu klasy jest naprawą instancji).
+   *
+   * t2/t3/t4 opisują APARAT, źródło albo parametr przęsła — obiekty o własnym
+   * kształcie, stojące OBOK napisu. Tu obowiązuje próg rysunku wykonawczego
+   * „mniejszy albo porównywalny" = **1,5** i to jest DOKŁADNIE klasa, w której
+   * siedzi zgłoszenie właściciela („napis Q1 3–4× wyższy od odłącznika").
+   *
+   * t1 opisuje BLOK — stację/GPZ jako całość. Trzy różnice rozstrzygają o
+   * innym progu:
+   *   (a) blok nie jest symbolem: jego ślad na arkuszu to kolumna kilkuset
+   *       jednostek szerokości (512×80 na L2), a glif zwinięty 48×48 jest tylko
+   *       jego NAJMNIEJSZĄ reprezentacją (L0);
+   *   (b) nazwa bloku jest JEDYNYM napisem, który KD-11 każe utrzymać na
+   *       przeglądzie — to była cała treść tamtej karty („rysunek bez
+   *       tożsamości nie mówi, CO przedstawia");
+   *   (c) POMIAR: skala dopasowania sieci 53 stacji na realnych kanwach wynosi
+   *       **0,101** (kanwa 1322×696, poziom L2) … **0,141** (1400×900, L0).
+   *       Próg 1,5 dawał granicę 0,126, a 2,0 — 0,0989: OBIE leżą W ŚRODKU tego
+   *       pasma, więc obecność nazw stacji zależałaby od rozmiaru okna i od
+   *       jednego pola dołożonego do jednej rozdzielnicy. Zachowanie rysunku nie
+   *       może zależeć od okna.
+   * Stąd:
+   *
+   *   t1 → 9,0× (13 → 117 j.św.; wobec glifu zwiniętego 48 → **2,44**;
+   *              skala graniczna **0,0769** — całe pasmo dopasowania leży
+   *              powyżej, z zapasem ~25%)
+   *
+   * 2,44 jest wciąż wyraźnie poniżej „3–4×" ze zgłoszenia, a przy dolnym krańcu
+   * zoomu (`MIN_SCALE` = 0,05, gdzie stan sprzed karty dawał **3,75**) nazwa i
+   * tak nie powstaje: potrzebne 180 j.św. przekracza sufit, glif ma 2,4 px i
+   * nie ma już czego podpisywać.
    *
    * Sufit NIE dotyczy pracy z bliska: powyżej progu czytelności pismo ma
    * rozmiar NATURALNY i rośnie razem z rysunkiem, więc stosunek napis:symbol
@@ -84,7 +116,7 @@ export interface LabelTypography {
 /** Jedyne dozwolone klasy typograficzne rysunku (spec §2). */
 export const LABEL_TYPOGRAPHY: Readonly<Record<LabelClass, LabelTypography>> = {
   // nazwy stacji / GPZ — opisują BLOK (zwinięty glif stacji 48 j.św. na L0)
-  t1: { fontSize: 13, fontWeight: 700, maxEnlargement: 5.5 },
+  t1: { fontSize: 13, fontWeight: 700, maxEnlargement: 9 },
   // parametry: kVA, typ·przekrój·długość, kV — najmniejszy opisywany: DER 32 j.św.
   t2: { fontSize: 11, fontWeight: 600, maxEnlargement: 4 },
   // podpisy portów (kier./odg.), oznaczenie pola — najmniejszy opisywany: aparat 24 j.św.

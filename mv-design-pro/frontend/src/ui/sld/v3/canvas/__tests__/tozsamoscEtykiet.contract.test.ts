@@ -134,7 +134,11 @@ describe('KD-11 §1 — klasyfikacja etykiet pochodzi z DANYCH SCENY', () => {
 
   it('tożsamość obejmuje nazwę stacji/GPZ, oznaczenie transformatora, napięcie szyny, oznaczenie pola i nazwę źródła', () => {
     const role = new Map(sceny[1].labels.map((l) => [l.text, l.labelRole] as const));
-    const oczekiwane = ['GPZ 15 kV · 110/15 kV', 'TR1', 'S01', 'Sekcja 1 · 15 kV', 'Szyna WN · 110 kV'];
+    // PROPORCJE (2026-08-07): kod stacji pada w bloku RAZ — niesie go OPIS
+    // SEKCJI („S01 · Sekcja 1 · 15 kV"), a pasmo nazw pokazuje NAZWĘ stacji.
+    // Intencja testu bez zmian: sprawdzamy, że KAŻDY nośnik tożsamości bloku
+    // jest sklasyfikowany jako tożsamość — pod nowym adresem kodu stacji.
+    const oczekiwane = ['GPZ 15 kV · 110/15 kV', 'TR1', 'Sekcja 1 · 15 kV', 'Szyna WN · 110 kV'];
     for (const tekst of oczekiwane) {
       expect(role.get(tekst), `„${tekst}" powinno być tożsamością`).toBe('tozsamosc');
     }

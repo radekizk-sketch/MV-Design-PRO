@@ -77,89 +77,111 @@ interface OdciskiLod {
 }
 
 /**
- * ODCISKI Z DRZEWA SPRZED OPTYMALIZACJI (1dd788f4) — patrz nagłówek pliku.
+ * ODCISKI RYSUNKU — pin tożsamości bajtowej sceny, declutteru i planu etykiet.
+ *
+ * POCHODZENIE (S9-9): policzone na drzewie SPRZED optymalizacji indeksu
+ * przestrzennego (1dd788f4) i wpisane ręcznie jako DOWÓD, że optymalizacja
+ * zmieniła wyłącznie czas.
+ *
+ * AKTUALIZACJA ŚWIADOMA (karta PROPORCJE, 2026-08-07) — WSZYSTKIE odciski
+ * przeliczone, bo karta ZMIENIA RYSUNEK w trzech miejscach naraz i każda z
+ * tych zmian jest zamierzona:
+ *   (1) sufit powiększenia pisma (`core/text.ts` `maxEnlargement`) — plan
+ *       etykiet przy skalach 0,05/0,1/0,2 nie rysuje już napisów, których nie
+ *       da się narysować proporcjonalnie (zamiast rysować je 2,8–7,5× większe
+ *       od symbolu, który opisują) ⇒ zmienia się `plany` na małych skalach;
+ *   (2) podpis pola niesie OZNACZNIK („F01 · liniowe" zamiast „pole liniowe")
+ *       ⇒ zmienia się TREŚĆ etykiet i szerokość rezerwacji kolumn, więc także
+ *       geometria sceny i wynik declutteru;
+ *   (3) kod stacji pada w bloku RAZ (opis sekcji), więc pasmo nazw traci
+ *       wiersz z gołym kodem ⇒ krótsze pasmo, inna wysokość bloku stacji.
+ * Odciski są tu po to, żeby rysunek nie zmienił się PRZYPADKIEM — nie po to,
+ * żeby go zamrozić. Zmiana wchodzi w TYM SAMYM commicie co zmiana kodu, z
+ * uzasadnieniem wyżej; gdyby którykolwiek z tych trzech mechanizmów wrócił do
+ * stanu sprzed karty, test zapali się natychmiast.
+ *
  * Kolejność `plany` odpowiada `SKALE`.
  */
 const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly OdciskiLod[]>> = {
   referencyjna: [
     {
-      scena: 'def9a97355eba8762a75023abec12328',
-      declutter: '88b3e222d779c0f0b34672aac1c2fe16',
+      scena: '3b8146a2511065b360990f83b65531b7',
+      declutter: 'c5d80dae0b18e54c8234fa131df9fa9b',
       plany: [
-        'c2a8ee4c7f952ac580153c55a031c962',
-        '4bee56f66aae90249fdb67b836b92e4b',
-        '71ee7b3137572078f287cb69100333c8',
-        'eb1257eba93c96d9ea4e92671d058641',
-        '062ccfaf3321178165252feb0b25f31c',
-        'b43e53f3ed9194fff1fc66a1a880ac76',
-        'b43e53f3ed9194fff1fc66a1a880ac76',
+        '92078ab272e7c7ca0ccc1b51ac403996',
+        '5e6b5aeae5880d6556ec65b5edf30cf4',
+        '2953761450935d7e7aef43d62db5c1b7',
+        '07a9358d5fb7b2c1af66b97d249f89fc',
+        '17518dfdfa5c1c8f62449d036d3f95e7',
+        '2cc85bd3ac36d5130eaef3d4d96fe344',
+        '2cc85bd3ac36d5130eaef3d4d96fe344',
       ],
     },
     {
-      scena: '98021e8b6689553ce650a902dc8ab739',
-      declutter: 'e4b3cf3e73944d9702bd82ef3807eed1',
+      scena: 'd8ff210594365c67d691d9c9ae6dff3f',
+      declutter: '0082823ee9b92577e0296576b267d87d',
       plany: [
-        'd52148afca6f0509c2d63d0f4250b591',
-        '44fe1e37a6f4007e9e58efa9c7243903',
-        'f2629e12ef9e1c3e7d5be9c8b8a0af11',
-        'b7819e4a8f53497f10da7c47542aa2d2',
-        '30d5a0b7509498686e519b4dc84fec37',
-        '5df2a11612b4c787e1b45c06d4df08ff',
-        '5df2a11612b4c787e1b45c06d4df08ff',
+        '078c313f8eaa1c3c643a56adbb30721a',
+        'dd17b0d2b6b48f46abbe3839e2e538fe',
+        'a68f30ed382c4c3fe9559f6efa2c99ae',
+        'c836780bbce645a6a65a032339ea34c0',
+        'ae49d243aed0fac2f22b05697e62d8c2',
+        'f4f60df664dba8dbfbc9c8e3c8e98f30',
+        'f4f60df664dba8dbfbc9c8e3c8e98f30',
       ],
     },
     {
-      scena: '26a2a847b0c37ec9afdd39d1b447d60a',
-      declutter: 'c1fc62a45fdabf5f9bdf35b980ec9111',
+      scena: 'a4f08a2fe0a8ebfc75753afa14920e18',
+      declutter: 'df9c403af3fa63915f418478beb1c6e5',
       plany: [
-        'b8f0460e238318e60a2ad2d2678afda9',
-        'f1b6405f6c1317b8ff60dd05b9c297b7',
-        '73d6f1ba82145b03b98c272d7bac66d1',
-        '86fa96625f3a33bde686e10b6eba6c7a',
-        '342f82d90d67b42eec5281e1750968ce',
-        '38dad5d05b0287127116be0169eaa45f',
-        '38dad5d05b0287127116be0169eaa45f',
+        '3f9606a7d7da60fe08fe2cb41346a123',
+        '0b19d1ff785a15b69f3590c0523e0df7',
+        'eec376ad254389622400e7ab73fef179',
+        '7205d166c6283b2e365b3d33c494659c',
+        'd20c09defed942b2e44961ada826fb12',
+        '9bd6f99fc2ad6d848d1e4548e9708d4a',
+        '9bd6f99fc2ad6d848d1e4548e9708d4a',
       ],
     },
   ],
   podwojona: [
     {
-      scena: '7ddd709589c9b5303c3d6e2c5baf8e2d',
-      declutter: '90eb06c3184d8535d1b95fc5f57cc693',
+      scena: '30d5e0a91782f5276fd66a66f506f3c9',
+      declutter: 'aa37705358f048fff40125daf28a3eb9',
       plany: [
-        '4e78aa1c6e1780904529a0e3f38d35c4',
-        '82ece76ea4019cb307485d58e2c26c1e',
-        '789576a1b5620a7ddac3546b65a3ffee',
-        'ea91f859702f92c565fe33e30a525728',
-        '6edbd79bddc248b9ca7100e490dcd1c4',
-        '4db3455c9329730248fe408622e82c0d',
-        '4db3455c9329730248fe408622e82c0d',
+        '9f71403c4f75f99124aa81a22d2b0356',
+        '07f199b096af46ab807963913d8437d2',
+        '515bd2888106975154a2531be5ec510a',
+        '494fcf6d7fb3c359af6ff9e795039509',
+        '57aa8f74d1e889f70a5fc492d02a8614',
+        '1c3875640d5a1cc3b45b74d86ec49cf2',
+        '1c3875640d5a1cc3b45b74d86ec49cf2',
       ],
     },
     {
-      scena: '4eb024e55968024c02b899e614b92c46',
-      declutter: '1e35a0a0e9982cc9a8663d03d1f20abf',
+      scena: '852b319b42a150f5ebc6000b3bf99e94',
+      declutter: 'e3e624fbc868f76b4cfd1feae2330ff7',
       plany: [
-        '582c2a30b639b8153e8bb7e47551b5ce',
-        '8eae2e182247a36136b90768cfb522a7',
-        'e401415b0bf5deea3e9d6aa046e7ed48',
-        'bd34161efe0b0fc7f23d333e0271b966',
-        '6e8bbd21e278ab9cbabac8a72dad34d1',
-        '4572e0172d4ac2fbe31a024744672e5c',
-        '4572e0172d4ac2fbe31a024744672e5c',
+        '76d68c91a0cd06e4b608725930a1e2eb',
+        '7b50bb1f270dc6c00674ab5a9354d7a9',
+        '864ce7dd445e155bb0b5f54ade921252',
+        '1440d88cf9451e423f748cc3f43d0082',
+        '31d1626ace08c534d2dbc7385d580e9d',
+        'd252ce367f9abbd9d30a10968d907a79',
+        'd252ce367f9abbd9d30a10968d907a79',
       ],
     },
     {
-      scena: 'e610c3e813a74aa31c6a34688aef2d8d',
-      declutter: '1d6d62eee440ea6894d242743665d020',
+      scena: '6be1e3c5e3adf89be06d66f89057ca1c',
+      declutter: '0561a6773e612f58286c7583ff9f05e9',
       plany: [
-        '425f6a0ec8094dd2f93f06aa7d19c76a',
-        'd281eefd9c23401e64a87e4329fc062f',
-        '61b2c05161657ed694d425e0ac1be680',
-        'c06ebe7aa5dc1cf34c8ea571b2735361',
-        'cbc72658df48f7e25ea6328ec91f8836',
-        '427ef3d7cbd92feed97a2c6dd17421a0',
-        '427ef3d7cbd92feed97a2c6dd17421a0',
+        '224fa5b9e1f242729893fd2132743c80',
+        '250ea46485eb925191b89ecb86fbcace',
+        '6230b063e9a2e1295aa3674dd167f560',
+        'fe69fcad226f8da7cf31acd90f7353e0',
+        '49161b949b1cb12a36fb1e62c7162cb6',
+        '84e0c97fa1c5882d3d923a094d72abdf',
+        '84e0c97fa1c5882d3d923a094d72abdf',
       ],
     },
   ],
