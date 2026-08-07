@@ -271,6 +271,33 @@ export function lvSideExtraHeight(
   return LV_LABEL_GAP + LV_LOAD_ARROW_HEIGHT + LV_LABEL_GAP;
 }
 
+/**
+ * BLOK-PUSTY (zgłoszenie właściciela 2026-08-07 pkt 6): CAŁA głębokość, na jaką
+ * treść strony nN zwisa POD szyną nN — jedno zdanie dla obu zwisów.
+ *
+ * DEFEKT NAPRAWIONY TĄ FUNKCJĄ. `stationBlockHeight` sumowało dotąd
+ * `derExtra + lvExtra`, jakby rząd DER stał POD strzałką odbioru. Kompozycja
+ * (`compose/station.ts`) wiesza OBA na TEJ SAMEJ szynie nN i rozsuwa je w
+ * POZIOMIE: strzałka odbioru na LEWYM końcu szyny (`arrowY = busY + GRID`,
+ * `#lv-load-drop`), rząd DER ze ŚRODKA szyny (`derRowY = attach.y +
+ * DER_ROW_TOP_CLEARANCE`, `#der-row-trunk`) — szyna jest właśnie po to
+ * przedłużana w lewo o `3×GRID`, żeby oba zwisy się nie zetknęły. Rezerwacja
+ * SZEREGOWA przy rysunku RÓWNOLEGŁYM zostawiała pod blokiem pusty pas.
+ * Zmierzone na fixturze 53 stacji: **32 j.św.** martwej rezerwacji w każdym
+ * bloku, który ma jednocześnie odbiór nN i DER na nN.
+ *
+ * PREDYKAT JEDEN, KOŃCE DWA (reguła KLASA §3): obie składowe są liczone od
+ * TEGO SAMEGO punktu odniesienia (szyna nN), więc łączy je `max`, nie suma —
+ * i to samo zdanie egzekwuje test spójności measure↔compose
+ * (`compose/__tests__/station.test.ts`), który mierzy REALNY zwis kompozycji
+ * pod szyną nN i porównuje z tą liczbą.
+ */
+export function nnSideBelowBusHeight(
+  station: Pick<StationMeasureInput, 'snBays' | 'aggregatedLvLoad' | 'derSources'>,
+): number {
+  return Math.max(lvSideExtraHeight(station), derRowExtraHeight(nnSideSources(station.derSources ?? [])));
+}
+
 /** Szerokości tekstów strony nN — kandydaci pasma nazw B5 (do
  *  `requiredStationWidth`, ta sama pula co nazwa/kod/kVA/typ). */
 function lvSideNameRowWidths(
@@ -612,17 +639,17 @@ export function stationBlockWidth(
  *  (0, gdy stacja bez DER — zero zmian geometrii). */
 export function stationBlockHeight(station: StationMeasureInput): number {
   const allDer = station.derSources ?? [];
-  // W2 (GS-4b): rząd nN rezerwuje wysokość TYLKO dla źródeł strony nN —
-  // źródła SN mają własne pole źródłowe (pas kolumn, `snSourceFieldHeight`).
-  const derExtra = derRowExtraHeight(nnSideSources(allDer));
-  // Recenzja NO-GO 2026-07-17 pkt 6: strona nN (etykieta szyny + odbiór/
-  // granica modelu) rezerwuje własną wysokość POD szyną nN.
-  const lvExtra = lvSideExtraHeight(station);
+  // BLOK-PUSTY: JEDNA głębokość zwisu strony nN — rząd DER (W2/GS-4b: tylko
+  // źródła strony nN; źródła SN mają własne pole źródłowe, `snSourceFieldHeight`)
+  // i strzałka odbioru (recenzja NO-GO 2026-07-17 pkt 6) wiszą RÓWNOLEGLE na
+  // tej samej szynie nN, więc łączy je `max`, nie suma (patrz
+  // `nnSideBelowBusHeight` — tam wyprowadzenie i pomiar).
+  const nnExtra = nnSideBelowBusHeight(station);
   // W2: pole źródłowe SN zajmuje pas pionowy kolumn (od `blockTopY` w dół) —
   // kandydat do `max()` z najwyższą kolumną pola (0, gdy zero źródeł SN).
   const snFieldHeight = snSourceFieldHeight(allDer);
   if (station.snBays.length === 0) {
-    return snFieldHeight + STATION_BLOCK_BUS_CLEARANCE + derExtra + lvExtra;
+    return snFieldHeight + STATION_BLOCK_BUS_CLEARANCE + nnExtra;
   }
   // W2c (POLECENIE_DER_SN_TOPOLOGIA_2026-07): tor DER-SN zwisa POD DOLNYM
   // portem głowicy pola źródłowego (bay_role `OZE`) — wydłuża KOLUMNĘ tego
@@ -646,7 +673,7 @@ export function stationBlockHeight(station: StationMeasureInput): number {
     return Math.max(base, bayMainPathHeight(bay) + chainExtra2);
   });
   const tallest = Math.max(...columnHeights, snFieldHeight);
-  return tallest + STATION_BLOCK_BUS_CLEARANCE + derExtra + lvExtra;
+  return tallest + STATION_BLOCK_BUS_CLEARANCE + nnExtra;
 }
 
 /**

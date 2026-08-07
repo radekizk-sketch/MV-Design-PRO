@@ -84,7 +84,11 @@ function nameAnchors(enm: EnergyNetworkModel, lod: SceneLod): Map<string, string
   for (const label of scene.labels) {
     if (label.ownerKind === 'station-name' && label.ownerRef.endsWith('#name-row-0')) {
       const ref = label.ownerRef.slice(0, -'#name-row-0'.length);
-      m.set(ref, `${label.rect.x},${label.rect.y},${label.rect.width}`);
+      // BLOK-PUSTY (jak w `buildScene.test.ts`): kotwica to punkt zaczepu +
+      // rezerwacja kolumny — wielkości niezależne od TREŚCI poziomu; prostokąt
+      // wiersza niesie od tej karty sam tusz napisu.
+      const srodek = label.rect.x + label.rect.width / 2;
+      m.set(ref, `${srodek},${label.rect.y},${label.rezerwacjaSzerokosci}`);
     }
   }
   return m;

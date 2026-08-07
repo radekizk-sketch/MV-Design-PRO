@@ -20,6 +20,8 @@ import { BUS_AXIS_BAND_HEIGHT, computeBands, type StationBandHeights } from '../
 import { computeColumns, type ComputeColumnsInput } from '../columns';
 import { colorSegmentLabelRows, computeSegmentLabelSlotX } from '../segments';
 import {
+  labelGrowthReservationGaps,
+  labelRectsWiderThanInk,
   leaderInvariantHolds,
   overlapProbe,
   resolveLabels,
@@ -436,10 +438,27 @@ describe('V3 labels — pasmo nazw stacji (spec §4: kolejność pionowa stała)
     const lastRow = labels[labels.length - 1];
     expect(labels[0].rect.y).toBe(nameSlot.y);
     expect(lastRow.rect.y + lastRow.rect.height).toBeLessThanOrEqual(nameSlot.y + nameSlot.height);
+    // BLOK-PUSTY: intencja bez zmian („wiersz stoi WEWNĄTRZ nameSlot"), ale
+    // egzekwowana na dwóch rozdzielonych wielkościach zamiast na jednej.
+    // Do tej karty `rect` BYŁ slotem (`x === nameSlot.x`, `width ===
+    // nameSlot.width`) — i to właśnie kosztowało ramę bloku stacji 7,57×
+    // szerokości napisu. Teraz:
+    //  - `rect` niesie TUSZ (dokładnie szerokość tekstu),
+    //  - wiersz jest WYŚRODKOWANY w slocie (środki się pokrywają, więc napis
+    //    stoi tam gdzie stał — `textAnchor=middle` w środku prostokąta),
+    //  - `rezerwacjaSzerokosci` niesie slot, a tusz się w nim MIEŚCI.
+    const srodekSlotu = nameSlot.x + nameSlot.width / 2;
     for (const label of labels) {
-      expect(label.rect.x).toBe(nameSlot.x);
-      expect(label.rect.width).toBe(nameSlot.width);
+      expect(label.rect.width).toBe(measureLabelWidth(label.text, label.labelClass));
+      expect(label.rect.x + label.rect.width / 2).toBe(srodekSlotu);
+      expect(label.rezerwacjaSzerokosci).toBe(nameSlot.width);
+      expect(label.rect.x).toBeGreaterThanOrEqual(nameSlot.x);
+      expect(label.rect.x + label.rect.width).toBeLessThanOrEqual(nameSlot.x + nameSlot.width);
     }
+    // BLOK-PUSTY: wyrocznie KLASY na tym samym zestawie — prostokąt nigdy
+    // szerszy od tuszu, rezerwacja nigdy węższa od tuszu (dwa końce pary).
+    expect(labelRectsWiderThanInk(labels)).toEqual([]);
+    expect(labelGrowthReservationGaps(labels)).toEqual([]);
     // Zero nachodzenia par (oracle ogólna).
     expect(overlapProbe(labels).overlapCount).toBe(0);
   });

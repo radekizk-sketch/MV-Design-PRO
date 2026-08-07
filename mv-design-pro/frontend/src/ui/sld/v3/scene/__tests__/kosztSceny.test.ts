@@ -95,93 +95,102 @@ interface OdciskiLod {
  *       geometria sceny i wynik declutteru;
  *   (3) kod stacji pada w bloku RAZ (opis sekcji), więc pasmo nazw traci
  *       wiersz z gołym kodem ⇒ krótsze pasmo, inna wysokość bloku stacji.
+ * AKTUALIZACJA ŚWIADOMA (karta BLOK-PUSTY, 2026-08-07) — WSZYSTKIE odciski
+ * przeliczone ponownie, bo karta zmienia rysunek w dwóch miejscach:
+ *   (4) prostokąt etykiety niesie TUSZ, nie rezerwację slotu (`layout/labels.ts`
+ *       `tuszWSlocie`) ⇒ zmieniają się prostokąty wierszy pasma nazw, a przez
+ *       nie wynik declutteru i planu (mniej fałszywych kolizji: wiersz zajmował
+ *       dotąd CAŁĄ szerokość kolumny, choć rysował napis 7,57× węższy);
+ *   (5) rezerwacja strony nN bloku stacji liczona `max`, nie sumą
+ *       (`layout/measure.ts` `nnSideBelowBusHeight`) ⇒ blok stacji z odbiorem
+ *       nN i DER na nN krótszy o 32 j.św., więc inna geometria sceny.
  * Odciski są tu po to, żeby rysunek nie zmienił się PRZYPADKIEM — nie po to,
  * żeby go zamrozić. Zmiana wchodzi w TYM SAMYM commicie co zmiana kodu, z
- * uzasadnieniem wyżej; gdyby którykolwiek z tych trzech mechanizmów wrócił do
- * stanu sprzed karty, test zapali się natychmiast.
+ * uzasadnieniem wyżej; gdyby którykolwiek z tych mechanizmów wrócił do stanu
+ * sprzed karty, test zapali się natychmiast.
  *
  * Kolejność `plany` odpowiada `SKALE`.
  */
 const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly OdciskiLod[]>> = {
   referencyjna: [
     {
-      scena: '3b8146a2511065b360990f83b65531b7',
-      declutter: 'c5d80dae0b18e54c8234fa131df9fa9b',
+      scena: '2e8a6e22fffa2f87078eaabae0249f52',
+      declutter: '5808602b7a97b060d16d27edeea008fc',
       plany: [
-        '92078ab272e7c7ca0ccc1b51ac403996',
-        '5e6b5aeae5880d6556ec65b5edf30cf4',
-        '2953761450935d7e7aef43d62db5c1b7',
-        '07a9358d5fb7b2c1af66b97d249f89fc',
-        '17518dfdfa5c1c8f62449d036d3f95e7',
-        '2cc85bd3ac36d5130eaef3d4d96fe344',
-        '2cc85bd3ac36d5130eaef3d4d96fe344',
+        '6f33392b020c9028266f9ee4722709d2',
+        '1fe9c18397525c81d19de126c266ba7c',
+        '658a25dcda075709843224acbd1a46e1',
+        '7230e9f225b6206d85da4a1bfa7542af',
+        '5f81cfa88f201375244670bf9ee6be12',
+        '2a0743eaa23b14ee099623809b4ebbaa',
+        '2a0743eaa23b14ee099623809b4ebbaa',
       ],
     },
     {
-      scena: 'd8ff210594365c67d691d9c9ae6dff3f',
-      declutter: '0082823ee9b92577e0296576b267d87d',
+      scena: '756459ac883e2099f7b39e5b98746515',
+      declutter: 'e8eb6e02cfe030163c868dc48fa3f044',
       plany: [
-        '078c313f8eaa1c3c643a56adbb30721a',
-        'dd17b0d2b6b48f46abbe3839e2e538fe',
-        'a68f30ed382c4c3fe9559f6efa2c99ae',
-        'c836780bbce645a6a65a032339ea34c0',
-        'ae49d243aed0fac2f22b05697e62d8c2',
-        'f4f60df664dba8dbfbc9c8e3c8e98f30',
-        'f4f60df664dba8dbfbc9c8e3c8e98f30',
+        'ef56cce4125679c62a21cf1d9c6a509a',
+        'f4e07bc2ef06af34d9c44f67aa9b06bb',
+        '3a3292455f87d77691c6d123c5f4e0c7',
+        '283a4e2a5f25d2208c0aac3a162b5dc9',
+        'b3beb01daafd6d16830fad09ece82329',
+        '5b2b06e295d7c6b33b627ee5e31efe5b',
+        '5b2b06e295d7c6b33b627ee5e31efe5b',
       ],
     },
     {
-      scena: 'a4f08a2fe0a8ebfc75753afa14920e18',
-      declutter: 'df9c403af3fa63915f418478beb1c6e5',
+      scena: 'bda03f4635e203ff883e1680f13e8963',
+      declutter: 'db4aca1587e4b48df38610b93e17dbd6',
       plany: [
-        '3f9606a7d7da60fe08fe2cb41346a123',
-        '0b19d1ff785a15b69f3590c0523e0df7',
-        'eec376ad254389622400e7ab73fef179',
-        '7205d166c6283b2e365b3d33c494659c',
-        'd20c09defed942b2e44961ada826fb12',
-        '9bd6f99fc2ad6d848d1e4548e9708d4a',
-        '9bd6f99fc2ad6d848d1e4548e9708d4a',
+        '730c2b574b9ed4fb81188097d480466d',
+        '36bdd12a7ad4d72034f30929ad3890e2',
+        'd265aef7da6bac03392578e3fdf47516',
+        '9a28af5b0f93aa0e23462d3c80d6cff0',
+        '21a5ee33004c24282c4e74e6d4cae832',
+        'aa3331a2769b966c4bac76699b546f9f',
+        'aa3331a2769b966c4bac76699b546f9f',
       ],
     },
   ],
   podwojona: [
     {
-      scena: '30d5e0a91782f5276fd66a66f506f3c9',
-      declutter: 'aa37705358f048fff40125daf28a3eb9',
+      scena: '27e2ff4f6ac9fa5a8f48b02b1a14dfca',
+      declutter: 'c6e4fd694b64432dc34f82e102559b7f',
       plany: [
-        '9f71403c4f75f99124aa81a22d2b0356',
-        '07f199b096af46ab807963913d8437d2',
-        '515bd2888106975154a2531be5ec510a',
-        '494fcf6d7fb3c359af6ff9e795039509',
-        '57aa8f74d1e889f70a5fc492d02a8614',
-        '1c3875640d5a1cc3b45b74d86ec49cf2',
-        '1c3875640d5a1cc3b45b74d86ec49cf2',
+        '50cc15c7bbc7766675e3067a331153ae',
+        'ce200fc332f2a95eeb0dace2cb043e31',
+        'f2c2db8bfd965d6c36e88fbd778dbf91',
+        '999d9ea78977efbf3ba6fa2b3c5a691b',
+        '2b82c447b6ee78646b68ad1d2955f0ca',
+        '21fe0ca5f2623af01d391301351b04e1',
+        '21fe0ca5f2623af01d391301351b04e1',
       ],
     },
     {
-      scena: '852b319b42a150f5ebc6000b3bf99e94',
-      declutter: 'e3e624fbc868f76b4cfd1feae2330ff7',
+      scena: '1628d311bd8e1796b7c6fe7a2b0b0eef',
+      declutter: '4d047bb2997f9ba17b578a3a9944a990',
       plany: [
-        '76d68c91a0cd06e4b608725930a1e2eb',
-        '7b50bb1f270dc6c00674ab5a9354d7a9',
-        '864ce7dd445e155bb0b5f54ade921252',
-        '1440d88cf9451e423f748cc3f43d0082',
-        '31d1626ace08c534d2dbc7385d580e9d',
-        'd252ce367f9abbd9d30a10968d907a79',
-        'd252ce367f9abbd9d30a10968d907a79',
+        '8a3c980f6ac0e4f84f9eea4ef6f0a687',
+        'bf57f9f3b41c3909d4de0c1d9b9c13e9',
+        '270960aef5365963c0286f57a9f29301',
+        '0cd2856c2c5752b3c30e1d80b7d24d47',
+        'c9149428ea1e18df805b0ebfe8675c2e',
+        '95061ffb3fe844517c61f6b295c26f73',
+        '95061ffb3fe844517c61f6b295c26f73',
       ],
     },
     {
-      scena: '6be1e3c5e3adf89be06d66f89057ca1c',
-      declutter: '0561a6773e612f58286c7583ff9f05e9',
+      scena: 'cdadfff1cda4b2115610c4de7d741a5d',
+      declutter: 'f7e1fe7fd5aeff81a7ffa99e633320a9',
       plany: [
-        '224fa5b9e1f242729893fd2132743c80',
-        '250ea46485eb925191b89ecb86fbcace',
-        '6230b063e9a2e1295aa3674dd167f560',
-        'fe69fcad226f8da7cf31acd90f7353e0',
-        '49161b949b1cb12a36fb1e62c7162cb6',
-        '84e0c97fa1c5882d3d923a094d72abdf',
-        '84e0c97fa1c5882d3d923a094d72abdf',
+        'c3567aab447a8e1ae6abeacda3888cf5',
+        '33f0670851434f8ac50f11f53902f9fe',
+        'fb38183006c5e7b308f87aa7cf4735bc',
+        'e7ba4351d8c62caa51cce85c39e075b8',
+        'f8bba4c77e467e000e2c7e8cf658bd85',
+        '66a8417d522aa78a1eee52feee74071d',
+        '66a8417d522aa78a1eee52feee74071d',
       ],
     },
   ],

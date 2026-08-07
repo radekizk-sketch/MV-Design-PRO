@@ -57,6 +57,7 @@ import { FRAME_MARGIN, SheetFrame, type SheetLegendEntry } from '../sheet/Frame'
 import { SLD_CANVAS_DOCK_INSETS } from './toolbarLayout';
 import type { SafeInsets } from '../../v2/viewport/ViewportController';
 import type { RouteVertex } from '../layout/route';
+import { labelReservationRect } from '../layout/labels';
 import {
   boundingBoxOfRect,
   cameraReducer,
@@ -2245,10 +2246,15 @@ export function contentBoundingBoxOf(scene: SceneV3): BoundingBox | null {
     }
   }
   for (const label of scene.labels) {
-    minX = Math.min(minX, label.rect.x);
-    minY = Math.min(minY, label.rect.y);
-    maxX = Math.max(maxX, label.rect.x + label.rect.width);
-    maxY = Math.max(maxY, label.rect.y + label.rect.height);
+    // BLOK-PUSTY: cel dopasowania widoku obejmuje REZERWACJĘ etykiety, nie sam
+    // tusz — inaczej skala „Dopasuj widok" zależałaby od tego, jak długie
+    // nazwy niesie akurat rysowany poziom szczegółu, i kamera skakałaby przy
+    // przejściu LOD (KD-5/S1). Patrz `layout/labels.ts` `labelReservationRect`.
+    const rect = labelReservationRect(label);
+    minX = Math.min(minX, rect.x);
+    minY = Math.min(minY, rect.y);
+    maxX = Math.max(maxX, rect.x + rect.width);
+    maxY = Math.max(maxY, rect.y + rect.height);
   }
   if (!Number.isFinite(minX) || maxX - minX <= 0 || maxY - minY <= 0) return null;
   return { minX, minY, maxX, maxY };

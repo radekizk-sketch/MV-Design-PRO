@@ -140,6 +140,7 @@ import {
 } from '../layout/sheetRows';
 import {
   resolveLabels,
+  labelReservationRect,
   LABEL_ROLE_BY_OWNER_KIND,
   type OwnedLabel,
   type SegmentSpanOwnerInput,
@@ -2522,19 +2523,30 @@ function composeCollapsedGpz(
   // tytułu „GPZ ⟨nazwa⟩ · UHV/ULV kV", D3-12) + wiersz stanu z REALNYCH liczb
   // tego, co zostało zwinięte (zero fabrykacji — liczby z kompozycji).
   const base = gpz.labels.stationName;
+  const wierszStanu = {
+    text: `Widok zbiorczy · sekcje SN: ${gpz.sections.length} · transformatory: ${gpz.transformers.length} · pola odejściowe: ${lineBayRefs.length}`,
+    labelClass: 't3' as const,
+    // KD-11: wiersz LICZBOWY stanu zwinięcia — dane szczegółowe (tożsamość
+    // bloku niesie wiersz tytułowy wyżej, reużyty z kompozycji pełnej).
+    role: 'dane' as const,
+  };
+  // BLOK-PUSTY (znalezisko wyroczni `labelGrowthReservationGaps`): ten wiersz
+  // jest DOPISYWANY do pasma, więc slot odziedziczony po kompozycji pełnej
+  // (zmierzony WYŁĄCZNIE dla wiersza tytułowego, `compose/gpz.ts` `headerSlot`)
+  // go nie obejmował — zmierzone na fixturze referencyjnej: tekst 391 j.św. w
+  // slocie 296 j.św., czyli napis wystawał poza własną rezerwację o 95 j.św.
+  // (declutter i wyrocznia kolizji widziały prostokąt WĘŻSZY niż rysunek).
+  // Reguła F6b-1: rezerwacja bez rysunku ORAZ rysunek bez rezerwacji to oba
+  // błędy — slot liczymy z TYCH SAMYCH tekstów, które pasmo naprawdę rysuje,
+  // tą samą formułą co `compose/gpz.ts` (`measureLabelWidth + 2×GRID`, snapUp).
+  const wymaganaSzerokosc = Math.max(
+    base.nameSlot.width,
+    ...[...base.rows, wierszStanu].map((r) => snapUp(measureLabelWidth(r.text, r.labelClass) + 2 * GRID)),
+  );
   const nameBand: StationNameBandOwnerInput = {
     ownerRef: base.ownerRef,
-    nameSlot: base.nameSlot,
-    rows: [
-      ...base.rows,
-      {
-        text: `Widok zbiorczy · sekcje SN: ${gpz.sections.length} · transformatory: ${gpz.transformers.length} · pola odejściowe: ${lineBayRefs.length}`,
-        labelClass: 't3',
-        // KD-11: wiersz LICZBOWY stanu zwinięcia — dane szczegółowe (tożsamość
-        // bloku niesie wiersz tytułowy wyżej, reużyty z kompozycji pełnej).
-        role: 'dane',
-      },
-    ],
+    nameSlot: { ...base.nameSlot, width: wymaganaSzerokosc },
+    rows: [...base.rows, wierszStanu],
   };
 
   return { symbols, segments, nameBand };
@@ -4736,7 +4748,12 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
   const bbox = unionRects([
     ...allSymbols.map(symbolRect),
     ...allSegments.map(segmentRect),
-    ...labels.map((l) => l.rect),
+    // BLOK-PUSTY: arkusz obejmuje REZERWACJĘ etykiety, nie sam jej tusz —
+    // rezerwacja pochodzi z geometrii pełnego szczegółu (S1 „jedna kotwica"),
+    // więc rozmiar arkusza NIE zależy od tego, jaki tekst niesie dany poziom
+    // (na L0 wiersz pasma nazw ma kod stacji, na L2 nazwę). Patrz
+    // `layout/labels.ts` `labelReservationRect` — tam wyprowadzenie i pomiar.
+    ...labels.map(labelReservationRect),
     // F13.1: rama strefy GPZ to dekoracja (nie symbol/segment/etykieta) — bbox
     // sceny musi ją objąć jawnie, inaczej kamera/arkusz przycinają jej krawędzie.
     // KD-5: rama strefy jest własnością ŚWIATA (nie renderu) — czytana z
@@ -6477,7 +6494,12 @@ function topBandFieldRect(scene: SceneV3, stationBase: string): V3Rect | null {
   for (const l of scene.labels) {
     if (!owns(l.ownerRef)) continue;
     if (l.ownerKind === 'segment-span' || l.ownerKind === 'segment-lateral') continue;
-    rects.push(l.rect);
+    // BLOK-PUSTY: obrys POLA to obrys UKŁADU (kolumna), nie sam tusz napisu —
+    // światło bbox-do-bbox mierzy rozstaw kolumn (S7-P4 §9 P0 pkt 1), a ten
+    // jest z definicji niezależny od długości nazwy stacji. Mierzenie tuszem
+    // dawałoby „światło" 827,5 j.św. tam, gdzie kolumny stykają się na
+    // kontraktowych 32 j.św. — miara przestałaby cokolwiek egzekwować.
+    rects.push(labelReservationRect(l));
   }
   if (rects.length === 0) return null;
   return unionRects(rects);
