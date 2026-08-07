@@ -71,8 +71,12 @@ BACKEND = ROOT / "backend"
 # (trzy wystapienia: szyna nN po napieciu, napiecie dolne transformatora z katalogu,
 # moc przeksztaltnika z katalogu): zwezenie `None` PRZED `float`, zachowanie bez zmian
 # (jawny `continue`/`return None` zamiast lapania TypeError). Pomiar wlasny: 21/14 -> 18/13.
-BASELINE_ERRORS = 18
-BASELINE_FILES = 13
+# XLSX-IMPORT (2026-08-07): przepisany importer XLSX pozbyl sie dynamicznego atrybutu
+# `node.source_impedance` z `# type: ignore[attr-defined]` (fizyka liczona w warstwie
+# aplikacji i zapisywana poza kontraktem `Node`) — dlug zmalal razem z defektem.
+# Pomiar wlasny: 18/13 -> 17/12.
+BASELINE_ERRORS = 17
+BASELINE_FILES = 12
 
 WZORZEC_PODSUMOWANIA = re.compile(r"Found (\d+) errors? in (\d+) files?")
 WZORZEC_SUKCESU = re.compile(r"Success: no issues found")
