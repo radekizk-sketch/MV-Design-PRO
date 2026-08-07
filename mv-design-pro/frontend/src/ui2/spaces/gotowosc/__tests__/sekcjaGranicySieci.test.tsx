@@ -78,7 +78,9 @@ describe('SekcjaGranicySieci — wynik', () => {
       'źródło zasilania z sieci zewnętrznej',
     );
     expect(screen.getByTestId('mvd-granica-ufnosc')).toHaveTextContent('95%');
-    expect(String(spy.mock.calls[0][0])).toContain('case_id=C1');
+    // PEŁNY adres końcówki przypięty (klasa z iniekcji sekcji pokrycia: sam
+    // `case_id=` przepuszcza zepsutą ścieżkę klienta).
+    expect(String(spy.mock.calls[0][0])).toBe('/api/insights/network-boundary?case_id=C1');
   });
 
   it('granica nieznaleziona: uczciwy komunikat + diagnostyka PL z backendu', async () => {

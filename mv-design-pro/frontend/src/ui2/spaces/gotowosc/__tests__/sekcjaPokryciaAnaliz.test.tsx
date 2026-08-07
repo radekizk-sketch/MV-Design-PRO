@@ -79,8 +79,9 @@ describe('SekcjaPokryciaAnaliz — treść', () => {
       'Brak dowodu: zwarcie trójfazowe SC3F (IEC 60909).',
     );
     expect(screen.getByTestId('mvd-pokrycie-luki')).toHaveTextContent('LUKA-UZIEMIENIE');
-    // Końcówka wołana identyfikatorem aktywnego przypadku.
-    expect(String(spy.mock.calls[0][0])).toContain('case_id=C1');
+    // PEŁNY adres końcówki przypięty (iniekcja wykazała: sam `case_id=C1`
+    // przepuszczał zepsutą ścieżkę klienta — test maskował defekt produktu).
+    expect(String(spy.mock.calls[0][0])).toBe('/api/insights/analysis-coverage?case_id=C1');
   });
 
   it('przypadek bez biegu rozpływu: jawna informacja PL (run_id=null)', async () => {
