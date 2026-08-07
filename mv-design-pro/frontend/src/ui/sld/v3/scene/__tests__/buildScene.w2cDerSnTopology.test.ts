@@ -16,6 +16,7 @@ import {
   allSourcesConnected,
   allSourcesVisible,
   allSceneSegmentEndpointsAnchored,
+  busbarLabelGaps,
   noSceneSymbolOverlaps,
   noSymbolWireCollisions,
   noLabelCollisions,
@@ -328,4 +329,56 @@ describe('W2c — determinizm toru DER-SN na wszystkich LOD', () => {
       expect(JSON.stringify(buildSceneV3(enm, lod))).toBe(JSON.stringify(buildSceneV3(enm, lod)));
     });
   }
+});
+
+// ---------------------------------------------------------------------------
+// S9-12 (klasa C-8 audytu 2026-08) — etykieta szyny nN PRODUCENTA: gramatyka
+// nN zamiast pożyczonej gramatyki SEKCJI stacji + parowanie w wyroczni.
+// ---------------------------------------------------------------------------
+
+describe('S9-12 — etykieta szyny nN producenta DER (klasa C-8: opis nie udaje sekcji stacji)', () => {
+  // Iloczyn cech: {DWA tory DER w jednym kadrze} × {gramatyka nN} ×
+  // {wyrocznia busbar: parowanie + tekst}. Przed kartą oba tory nosiły
+  // IDENTYCZNY, semantycznie fałszywy opis „Sekcja 1 · 0,4 kV" (szyna
+  // producenta nie jest sekcją niczego w modelu), a wyrocznia
+  // `busbarLabelGaps` fałszywie flagowała każdą taką etykietę jako
+  // `label-without-bus` (etykieta spoza słownika parowania).
+  const { enm } = buildDerSnFixture([
+    { technology: 'PV', suffix: 'a' },
+    { technology: 'BESS', suffix: 'b' },
+  ]);
+
+  it('L2: obie szyny producentów opisane zamkniętą gramatyką nN („Szyna nN · V kV"), zero „Sekcja” poza stacjami', () => {
+    const scene = buildSceneV3(enm, 2);
+    const producerLabels = scene.labels.filter((l) => l.ownerRef.endsWith('#producer-bus-voltage'));
+    expect(producerLabels).toHaveLength(2);
+    expect(producerLabels.every((l) => /^Szyna nN(?: · \d+(?:,\d+)? kV)?$/.test(l.text))).toBe(true);
+    expect(producerLabels.every((l) => !l.text.includes('Sekcja'))).toBe(true);
+  });
+
+  it('L2: wyrocznia busbarLabelGaps bez luk — etykieta producenta sparowana ze SWOIM odcinkiem #lv-bus', () => {
+    const scene = buildSceneV3(enm, 2);
+    expect(busbarLabelGaps(scene)).toEqual([]);
+  });
+
+  it('(test negatywny a): etykieta producenta bez odcinka szyny ⇒ label-without-bus zgłoszony', () => {
+    const scene = buildSceneV3(enm, 2);
+    const producerLabel = scene.labels.find((l) => l.ownerRef.endsWith('#producer-bus-voltage'))!;
+    const busRef = producerLabel.ownerRef.replace(/#producer-bus-voltage$/, '#lv-bus');
+    const sabotaged = {
+      ...scene,
+      segments: scene.segments.filter((s) => s.meta?.ownerRef !== busRef),
+    };
+    expect(busbarLabelGaps(sabotaged).some((g) => g.reason === 'label-without-bus')).toBe(true);
+  });
+
+  it('(test negatywny b): powrót tekstu „Sekcja 1 · 0,4 kV" na szynie producenta ⇒ malformed-text zgłoszony', () => {
+    const scene = buildSceneV3(enm, 2);
+    const producerLabel = scene.labels.find((l) => l.ownerRef.endsWith('#producer-bus-voltage'))!;
+    const sabotaged = {
+      ...scene,
+      labels: scene.labels.map((l) => (l === producerLabel ? { ...l, text: 'Sekcja 1 · 0,4 kV' } : l)),
+    };
+    expect(busbarLabelGaps(sabotaged).some((g) => g.reason === 'malformed-text')).toBe(true);
+  });
 });

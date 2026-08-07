@@ -753,11 +753,20 @@ function composeDerSnChain(
     });
     // Etykieta napięcia szyny producenta „0,4 kV" — WYŁĄCZNIE z danych
     // (`Bus.voltage_kv`); brak danych ⇒ brak etykiety (zero zgadywania).
+    // S9-12 (klasa C-8 audytu — „dwa różne obiekty z identycznym opisem"):
+    // szyna nN PRODUCENTA przestała pożyczać gramatykę SEKCJI stacji
+    // (`stationBusbarLabelText` dawało „Sekcja 1 · 0,4 kV" — semantycznie
+    // fałszywe: rozdzielnia nN producenta nie jest sekcją niczego w modelu,
+    // a dwa tory DER w kadrze nosiły identyczny opis „sekcji"). Teraz JEDNA
+    // prawda z wierszem nN stacji: `stationLvBusbarLabelText` („Szyna nN ·
+    // 0,4 kV") — opis kontekstowy toru, ta sama zamknięta gramatyka nN;
+    // parowanie etykieta↔szyna pilnowane w `busbarLabelGaps`
+    // (`scene/buildScene.ts`, predykaty parami).
     if (chain.producerLvBus.voltageKv != null) {
       sink.busbarLabels.push({
         ownerRef: `${chain.producerLvBus.ref}#producer-bus-voltage`,
         ownerKind: 'busbar-voltage',
-        text: stationBusbarLabelText(chain.producerLvBus.voltageKv),
+        text: stationLvBusbarLabelText(chain.producerLvBus.voltageKv),
         labelClass: 't2',
         anchor: { x: centerX - GRID, y: lvY },
         placement: 'left',

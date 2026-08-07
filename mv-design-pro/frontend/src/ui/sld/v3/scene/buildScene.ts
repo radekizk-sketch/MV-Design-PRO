@@ -5077,6 +5077,14 @@ export function noBranchWithoutAccent(scene: SceneV3): boolean {
 const BUSBAR_LABEL_TEXT_PATTERN =
   /^(?:[^\s·]{1,16} · )?(?:Sekcja \d+|Szyna WN)(?: · \d+(?:,\d+)? kV)?$/;
 
+// S9-12 (klasa C-8): zamknięta gramatyka etykiety szyny nN PRODUCENTA DER
+// (`compose/station.ts` `composeDerSnChain` → `stationLvBusbarLabelText`,
+// `layout/measure.ts` — TA SAMA formuła co wiersz nN pasma nazw stacji).
+// Osobny wzorzec, bo szyna producenta NIE jest sekcją stacji — dawny tekst
+// „Sekcja 1 · 0,4 kV" był semantycznie fałszywy i nierozróżnialny między
+// dwoma torami DER w jednym kadrze.
+const PRODUCER_BUS_LABEL_TEXT_PATTERN = /^Szyna nN(?: · \d+(?:,\d+)? kV)?$/;
+
 export interface BusbarLabelGap {
   readonly reason: 'bus-without-label' | 'label-without-bus' | 'malformed-text';
   readonly ownerRef?: string;
@@ -5125,10 +5133,28 @@ export function busbarLabelGaps(scene: SceneV3): readonly BusbarLabelGap[] {
     }
   }
 
-  for (const [ownerRef] of busbarLabelsByOwnerRef) {
-    if (!matchedLabelRefs.has(ownerRef)) {
-      gaps.push({ reason: 'label-without-bus', ownerRef, detail: 'etykieta busbar-voltage bez odpowiadającego odcinka szyny na scenie' });
+  // S9-12 (klasa C-8, predykaty parami): szyna nN PRODUCENTA DER — etykieta
+  // `#producer-bus-voltage` (`compose/station.ts` `composeDerSnChain`) paruje
+  // się z odcinkiem `#lv-bus` TEGO SAMEGO ref-u szyny producenta (wariant
+  // `integrated-skid` nie rysuje ani kreski, ani etykiety — parowanie
+  // spójne). Przed tą kartą wyrocznia fałszywie flagowała każdą taką
+  // etykietę jako `label-without-bus` — producent emitował etykietę spoza
+  // słownika wyroczni (dwa niezależne predykaty tej samej pary).
+  const segmentRefs = new Set(
+    scene.segments.map((s) => s.meta?.ownerRef).filter((r): r is string => r != null),
+  );
+  for (const [ownerRef, label] of busbarLabelsByOwnerRef) {
+    if (matchedLabelRefs.has(ownerRef)) continue;
+    if (ownerRef.endsWith('#producer-bus-voltage')) {
+      const busRef = ownerRef.replace(/#producer-bus-voltage$/, '#lv-bus');
+      if (!segmentRefs.has(busRef)) {
+        gaps.push({ reason: 'label-without-bus', ownerRef, detail: `oczekiwany odcinek szyny producenta „${busRef}" nieobecny` });
+      } else if (!PRODUCER_BUS_LABEL_TEXT_PATTERN.test(label.text)) {
+        gaps.push({ reason: 'malformed-text', ownerRef, detail: `tekst „${label.text}" niezgodny z „Szyna nN"/„Szyna nN · V kV" (szyna producenta nie jest sekcją stacji)` });
+      }
+      continue;
     }
+    gaps.push({ reason: 'label-without-bus', ownerRef, detail: 'etykieta busbar-voltage bez odpowiadającego odcinka szyny na scenie' });
   }
 
   return gaps;
