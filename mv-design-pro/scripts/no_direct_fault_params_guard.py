@@ -169,8 +169,14 @@ LEGACY_DIRECT_SOLVER_CALLERS: dict[str, dict[str, int]] = {
         "C:compute_machine_contributions": 1,
     },
     "application/network_wizard/service.py": {},
+    # Wejscie `A:compute_3ph_short_circuit` ZDJETE 2026-08-07 (dlug
+    # PACK-SC3F-WIAZANIE): mapowanie snapshotu i wywolanie solvera przeniesione do
+    # warstwy wiazania (`zwarcie_3f_ze_snapshotu`), wiec pakiet dowodowy przestal
+    # produkowac fizyke. Budzet OBNIZONY, nie poszerzony — zapadka dziala w obie
+    # strony i sama by tego zazadala (sprawdzone iniekcja: przywrocenie wpisu przy
+    # usunietym wywolaniu daje RC=1 z zadaniem obnizenia). Zostaje `C:` — rozbicie
+    # per-maszyna nadal wola solver z tego samego pliku (osobny, nazwany dlug).
     "application/proof_engine/packs/sc_symmetrical.py": {
-        "A:compute_3ph_short_circuit": 1,
         "C:compute_machine_contributions": 1,
     },
     "application/reference_networks/computation.py": {

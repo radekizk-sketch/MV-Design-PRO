@@ -200,3 +200,50 @@ def wynik_zwarcia_1f_ze_snapshotu(
         tk_s=tk_s,
         z0_bus=build_zero_sequence_zbus(enm, graph),
     )
+
+
+@dataclass(frozen=True)
+class ZwarcieZeSnapshotu:
+    """FROZEN wynik zwarcia razem z grafem, na którym powstał.
+
+    Graf wraca do wołającego CELOWO: rozbicie per-maszyna (`compute_machine_contributions`)
+    musi liczyć się na TYM SAMYM grafie co zwarcie. Zbudowanie drugiego z tego samego
+    snapshotu dałoby dziś ten sam obiekt, ale byłyby to DWA źródła prawdy, które
+    rozjadą się przy pierwszej zmianie mapowania (reguła KLASA §3 — predykaty parami
+    z jednego źródła).
+    """
+
+    wynik: ShortCircuitResult
+    graf: NetworkGraph
+
+
+def zwarcie_3f_ze_snapshotu(
+    *,
+    snapshot: dict[str, Any],
+    fault_node_id: str,
+    c_factor: float,
+    tk_s: float,
+) -> ZwarcieZeSnapshotu:
+    """FROZEN wynik zwarcia 3F ze snapshotu ENM — dla pakietu dowodowego SC3F.
+
+    Bliźniak `wynik_zwarcia_1f_ze_snapshotu`, domykający KLASĘ (dług
+    PACK-SC3F-WIAZANIE, nazwany przy naprawie pakietu niesymetrycznego 2026-08-07).
+    Powód ten sam: pakiet dowodowy ma OPISYWAĆ wynik, nie produkować go — mapowanie
+    snapshotu i wejście w solver należą do warstwy wiązania.
+
+    DETERMINIZM: `tb_s` zostaje domyślne solvera, dokładnie jak w wywołaniu, które ta
+    funkcja zastąpiła — ani jedna cyfra dowodu SC3F się nie zmienia.
+    """
+    from enm.mapping import map_enm_to_network_graph
+    from enm.models import EnergyNetworkModel
+
+    graph = map_enm_to_network_graph(EnergyNetworkModel.model_validate(snapshot))
+    return ZwarcieZeSnapshotu(
+        wynik=ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
+            graph=graph,
+            fault_node_id=fault_node_id,
+            c_factor=c_factor,
+            tk_s=tk_s,
+        ),
+        graf=graph,
+    )
