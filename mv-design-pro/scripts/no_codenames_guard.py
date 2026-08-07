@@ -35,6 +35,27 @@ SCAN_DIRS = [
 
 # File extensions to check
 FILE_EXTENSIONS = {".ts", ".tsx", ".css", ".html"}
+
+#: Backend też produkuje treść WIDOCZNĄ DLA UŻYTKOWNIKA — polskie komunikaty pól
+#: `*_pl` (`message_pl`, `name_pl`, …) trafiają wprost do interfejsu, dowodów i
+#: pobieranych pakietów. Do 2026-08-07 guard skanował WYŁĄCZNIE `frontend/`, więc
+#: kodenamy w tych polach były niewidzialne: karta PACK-DOWODY zastała w
+#: `application/equipment_proof/generator.py` sześć komunikatów „P12 MVP: …"
+#: pokazywanych projektantowi w dowodzie doboru aparatury. Sama zamiana tekstu
+#: naprawiłaby INSTANCJĘ; ten skan zamyka KLASĘ (reguła KLASA-NIE-INSTANCJA).
+#:
+#: Zakres celowo WĄSKI i uzasadniony konwencją repozytorium: tylko przypisania do
+#: pól kończących się na `_pl` (jedyna konwencja tekstu użytkownika w backendzie).
+#: Kod techniczny, nazwy klas generatorów (`P14PowerFlowProof`), komentarze i
+#: dokumentacja zostają nietknięte — guard ma pilnować treści, którą CZYTA
+#: projektant, a nie słownictwa inżynierów.
+BACKEND_SCAN_DIRS = ["backend/src"]
+BACKEND_FILE_EXTENSIONS = {".py"}
+#: Marker pola tekstu użytkownika: `message_pl=`, `"name_pl":`, `opis_pl =` itd.
+#: Cudzysłów przed dwukropkiem jest opcjonalny — pola `_pl` jadą do klienta zarówno
+#: jako argumenty nazwane, jak i jako klucze słownika odpowiedzi (`{"message_pl": …}`),
+#: a klasa bez tej drugiej postaci miałaby dziurę wielkości całej warstwy API.
+BACKEND_USER_TEXT_MARKER = re.compile(r"\b\w*_pl\b[\"']?\s*[=:]")
 EXCLUDED_FILE_SUFFIXES = (
     ".generated.ts",
     ".generated.tsx",
@@ -152,6 +173,49 @@ def scan_file(file_path: Path) -> list[Violation]:
     return violations
 
 
+def scan_backend_file(file_path: Path) -> list[Violation]:
+    """Skanuj plik backendu — WYŁĄCZNIE przypisania do pól tekstu użytkownika (`*_pl`).
+
+    Komentarz `#` i wiersz bez markera pola są pomijane: guard pilnuje treści
+    czytanej przez projektanta, nie słownictwa technicznego (patrz komentarz przy
+    `BACKEND_SCAN_DIRS`).
+    """
+    violations: list[Violation] = []
+    try:
+        content = file_path.read_text(encoding="utf-8")
+    except (UnicodeDecodeError, OSError):
+        return violations
+
+    for line_num, line in enumerate(content.split("\n"), start=1):
+        trimmed = line.strip()
+        if trimmed.startswith("#"):
+            continue
+        if not BACKEND_USER_TEXT_MARKER.search(line):
+            continue
+        for codename in find_codenames_in_strings(line):
+            violations.append(
+                Violation(
+                    file_path=format_violation_path(file_path),
+                    line_number=line_num,
+                    line_content=trimmed,
+                    match=codename,
+                )
+            )
+    return violations
+
+
+def iter_backend_files(root: Path) -> list[Path]:
+    """Pliki backendu do skanu tekstu użytkownika."""
+    files: list[Path] = []
+    for scan_dir in BACKEND_SCAN_DIRS:
+        dir_path = root / scan_dir
+        if not dir_path.exists():
+            continue
+        for ext in BACKEND_FILE_EXTENSIONS:
+            files.extend(dir_path.rglob(f"*{ext}"))
+    return sorted(set(files))
+
+
 def iter_files(root: Path) -> list[Path]:
     """Iterate over files to scan."""
     files = []
@@ -177,6 +241,9 @@ def main() -> int:
     for file_path in iter_files(REPO_ROOT):
         file_violations = scan_file(file_path)
         violations.extend(file_violations)
+
+    for file_path in iter_backend_files(REPO_ROOT):
+        violations.extend(scan_backend_file(file_path))
 
     if violations:
         print("=" * 70, file=sys.stderr)

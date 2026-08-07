@@ -518,7 +518,7 @@ class ProofGenerator:
         return ProofDocument.create(
             artifact_id=artifact_id,
             proof_type=ProofType.LOAD_FLOW_VOLTAGE,
-            title_pl="Dowód: Load Flow i spadki napięć (P32)",
+            title_pl="Dowód: rozpływ mocy i spadki napięć",
             header=header,
             steps=steps,
             summary=summary,
@@ -3113,7 +3113,7 @@ class ProofGenerator:
         return ProofDocument.create(
             artifact_id=artifact_id,
             proof_type=ProofType.PROTECTION_OVERCURRENT,
-            title_pl="Dowód: Zabezpieczenia nadprądowe i selektywność (P18)",
+            title_pl="Dowód: zabezpieczenia nadprądowe i selektywność",
             header=header,
             steps=steps,
             summary=summary,
@@ -3236,7 +3236,7 @@ class ProofGenerator:
         return ProofDocument.create(
             artifact_id=artifact_id,
             proof_type=ProofType.EARTHING_GROUND_FAULT_SN,
-            title_pl="Dowód: Doziemienia / uziemienia SN (P19)",
+            title_pl="Dowód: doziemienia i uziemienia SN",
             header=header,
             steps=steps,
             summary=summary,
@@ -3977,7 +3977,7 @@ class ProofGenerator:
         return ProofDocument.create(
             artifact_id=artifact_id,
             proof_type=ProofType.LOAD_CURRENTS_OVERLOAD,
-            title_pl="Dowód porównawczy (counterfactual) P15: A vs B",
+            title_pl="Dowód porównawczy: wariant A wobec wariantu B",
             header=header,
             steps=steps,
             summary=summary,

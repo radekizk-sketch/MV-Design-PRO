@@ -20,6 +20,7 @@ from no_codenames_guard import (
     CODENAME_PATTERN,
     find_codenames_in_strings,
     is_comment_line,
+    scan_backend_file,
     scan_file,
 )
 
@@ -184,6 +185,50 @@ const losses = "Straty jałowe P0";
         path.unlink()
 
         assert len(violations) == 0
+
+
+class TestSkanBackendu:
+    """Skan backendowych pól tekstu użytkownika (`*_pl`) — zamknięcie KLASY.
+
+    Kontekst: do 2026-08-07 guard skanował wyłącznie `frontend/`, więc kodenamy
+    w polskich komunikatach i tytułach dowodów produkowanych przez backend były
+    NIEWIDZIALNE. Odbiór karty PACK-DOWODY zastał pięć takich tytułów czytanych
+    przez projektanta (np. „Dowód: Load Flow i spadki napięć (P32)"). Te testy
+    pilnują, żeby skan nie zniknął ani nie rozlał się na kod techniczny.
+    """
+
+    def _skan(self, tresc: str) -> list:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False, encoding="utf-8") as f:
+            f.write(tresc)
+            f.flush()
+            sciezka = Path(f.name)
+        try:
+            return scan_backend_file(sciezka)
+        finally:
+            sciezka.unlink()
+
+    def test_kodename_w_komunikacie_uzytkownika_jest_naruszeniem(self):
+        naruszenia = self._skan('    message_pl="P12 MVP: brak podstawy."\n')
+        assert len(naruszenia) == 1
+        assert naruszenia[0].match == "P12"
+
+    def test_kodename_w_tytule_dowodu_jest_naruszeniem(self):
+        naruszenia = self._skan('    title_pl="Dowód: rozpływ mocy (P32)"\n')
+        assert len(naruszenia) == 1
+
+    def test_kodename_w_slowniku_z_kluczem_pl_jest_naruszeniem(self):
+        naruszenia = self._skan('    dane = {"opis_pl": "wariant P15"}\n')
+        assert len(naruszenia) == 1
+
+    def test_nazwa_klasy_technicznej_nie_jest_naruszeniem(self):
+        """Kod techniczny zostaje nietknięty — guard pilnuje treści, nie słownictwa."""
+        assert self._skan("class P14PowerFlowProof:\n    pass\n") == []
+
+    def test_string_bez_pola_uzytkownika_nie_jest_naruszeniem(self):
+        assert self._skan('    solver_id = "P18"\n') == []
+
+    def test_komentarz_nie_jest_naruszeniem(self):
+        assert self._skan('    # historia: message_pl="P12 MVP"\n') == []
 
 
 if __name__ == "__main__":

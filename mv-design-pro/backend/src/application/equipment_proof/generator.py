@@ -354,7 +354,7 @@ class EquipmentProofGenerator:
         return ProofStep(
             step_id=ProofStep.generate_step_id(ProofType.EQUIPMENT_PROOF.value, 2),
             step_number=2,
-            title_pl="Dane wymagane z P11 (key_results)",
+            title_pl="Dane wymagane z wyników zwarciowych",
             equation=equation,
             input_values=input_values,
             substitution_latex=substitution,
