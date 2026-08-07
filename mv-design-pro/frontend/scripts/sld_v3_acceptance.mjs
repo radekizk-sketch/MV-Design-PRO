@@ -525,7 +525,20 @@ const VERTICAL_LENGTH_BASELINE = { 0: 22440, 1: 39448, 2: 39448 };
 // S9-7/8: PODNIESIONY 57344/77840/81416 → 57392/77888/81464 (+48 px poziomów
 // jednolicie) — ta sama przyczyna i to samo uzasadnienie co przy
 // `VERTICAL_LENGTH_BASELINE` wyżej (oznacznik „Un=" w etykiecie przęsła).
-const HORIZONTAL_LENGTH_BASELINE = { 0: 57392, 1: 77888, 2: 81464 };
+// PROPORCJE (karta PROPORCJE, 2026-08-07): PODNIESIONY 57392/77888/81464 ->
+// 57848/78568/82096 (+456/+680/+632). Przyczyna ZMIERZONA: podpis pola niesie
+// OZNACZNIK przed rola („F01 · liniowe” zamiast „pole liniowe”, +6 j.św. na
+// sidecar), bo bez niego trzy pola liniowe jednej rozdzielnicy maja identyczny
+// opis, a cztery „Q1” nie maja po czym byc rozroznione (zgloszenie wlasciciela
+// 2026-08-07 pkt 4; audyt C-17). Sidecar wchodzi do rezerwacji KAZDEJ kolumny
+// pola, wiec koszt jest rozlozony na caly arkusz: +0,8% szerokosci bboxa
+// (8280 -> 8344 j.św.) BEZ zmiany liczby wierszy arkusza. Swiadome odstepstwo
+// od reguly „nie-rosnaca” (spec §15.1 „redukcja jest ograniczeniem MIEKKIM”),
+// tej samej klasy co S9-1 i S9-7/8. Wariant pelny („F01 · pole liniowe”)
+// ODRZUCONY POMIAREM: kosztuje CALY dodatkowy wiersz arkusza (bbox
+// 8280x5259 -> 7808x6851) i obniza skale dopasowania 0,168 -> 0,131.
+// PIONY w tym samym bilansie SPADAJA o 960/LOD (`VERTICAL_LENGTH_BASELINE`).
+const HORIZONTAL_LENGTH_BASELINE = { 0: 57848, 1: 78568, 2: 82096 };
 const BEND_COUNT_BASELINE = { 0: 43, 1: 172, 2: 172 };
 
 /**
@@ -2308,7 +2321,15 @@ line('=== hit_grid_probe (S9-4): trafienie i tożsamość zaznaczenia ===');
       // (e) TEST NEGATYWNY (dowód, że wyrocznia gryzie): usunięcie uchwytów
       //     etykiet z drzewa MUSI zbić skuteczność poniżej progu — to dokładnie
       //     stan sprzed karty S9-4 (napis rysowany, ale nieklikalny).
-      if (widok.nazwa === 'mały') {
+      // PROPORCJE (2026-08-07): test negatywny biegnie na widoku, w ktorym
+      // etykiety FAKTYCZNIE sa rysowane. Po wprowadzeniu sufitu proporcji
+      // (napis nie moze byc wiekszy od tego, co opisuje) kadr „mały” 1322x696
+      // pokazuje siec 53 stacji przy skali 0,101 i niesie juz tylko 54 podpisy
+      // stacji — usuniecie ich z drzewa zbija skutecznosc do 96,9 %, czyli
+      // POWYZEJ progu, wiec test przestal czegokolwiek dowodzic. Wlasnosc, ktorej
+      // pilnuje („napis rysowany MUSI byc klikalny”), jest ta sama; mierzy sie ja
+      // tam, gdzie napisow jest komplet.
+      if (widok.nazwa === 'duży') {
         const bezEtykiet = zDrzewa.filter((a) => a.klasa !== 'etykieta');
         const wynikBez = sondaSiatkowaTrafien(oczekiwane, { scale, trafiane: bezEtykiet, minEkranPx: PROG_MIN_PX_EKRANU });
         check(
