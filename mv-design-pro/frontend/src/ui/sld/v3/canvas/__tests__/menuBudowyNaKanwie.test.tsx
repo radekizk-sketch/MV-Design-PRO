@@ -29,6 +29,7 @@ import userEvent from '@testing-library/user-event';
 import type { EnergyNetworkModel } from '../../../../../types/enm';
 import {
   buildSldOperationContext,
+  resolveBranchStartAvailability,
   resolveGpzTrunkStartFieldRef,
 } from '../../../shared/sldActionExecutor';
 import { getMenuActions } from '../../../v2/command/SldCommandService';
@@ -326,8 +327,13 @@ describe('S9-5 B — operacje budowy ciągu SN dostępne z rysunku', () => {
     readonly action: string;
     readonly op: string;
   }[] = [
-    { krok: 'odgałęzienie z GPZ', klasa: 'zrodlo', kotwica: 'zrodlo', lod: 2, action: 'start-branch', op: 'start_branch_segment_sn' },
-    { krok: 'odgałęzienie z szyny sekcji', klasa: 'szyna', kotwica: 'szyna', lod: 1, action: 'start-branch', op: 'start_branch_segment_sn' },
+    // S9-10: kroki „odgałęzienie z GPZ / z szyny sekcji" USUNIĘTE z tej listy
+    // — na sieci referencyjnej NIE MA wolnego pola odgałęźnego (FEEDER z
+    // wolnym zaciskiem), więc kreator otwierał się BEZ punktu startu z trwale
+    // zablokowanym zapisem (zmierzone: `resolveBranchStartOperationContext.
+    // fromRef` pusty dla KAŻDEJ kotwicy fixtur). Pozycja jest teraz uczciwie
+    // ZABLOKOWANA (test niżej i describe S9-10), a wariant Z wolnym polem
+    // pokrywa test pozytywny S9-10 (wstrzyknięte pole FEEDER).
     { krok: 'stacja na odcinku kablowym', klasa: 'tor', kotwica: 'galaz', rodzina: 'cable', lod: 2, action: 'insert-station', op: 'insert_station_on_segment_sn' },
     { krok: 'stacja na odcinku napowietrznym', klasa: 'tor', kotwica: 'galaz', rodzina: 'line_overhead', lod: 2, action: 'insert-station', op: 'insert_station_on_segment_sn' },
     { krok: 'słup rozgałęźny na odcinku napowietrznym', klasa: 'tor', kotwica: 'galaz', rodzina: 'line_overhead', lod: 2, action: 'insert-pole', op: 'insert_branch_pole_on_segment_sn' },
@@ -381,6 +387,13 @@ describe('S9-5 B — operacje budowy ciągu SN dostępne z rysunku', () => {
       const pozycja = within(menu!).getByTestId('sld-menu-continue-trunk') as HTMLButtonElement;
       expect(pozycja.disabled, 'pozycja bez punktu startu MUSI być zablokowana').toBe(true);
       expect(pozycja.title ?? '').toContain('wolnego pola liniowego');
+      // S9-10 (ta sama klasa, druga pozycja budowy): „Rozpocznij odgałęzienie"
+      // też nie ma tu punktu startu (brak pola FEEDER z wolnym zaciskiem) —
+      // MUSI być zablokowane, nie otwierać martwego kreatora.
+      const odgalezienie = within(menu!).getByTestId('sld-menu-start-branch') as HTMLButtonElement;
+      expect(odgalezienie.disabled, 'odgałęzienie bez punktu startu MUSI być zablokowane').toBe(true);
+      expect(odgalezienie.title ?? '').toContain('pola odgałęźnego');
+      await zamknijMenu();
     },
     180000,
   );
@@ -393,7 +406,14 @@ describe('S9-5 B — operacje budowy ciągu SN dostępne z rysunku', () => {
 
     const menu = await prawyKlik(kanwa, stacja.testId);
     expect(pozycjaAktywna(menu!, 'continue-trunk')).toBe(true);
-    expect(pozycjaAktywna(menu!, 'start-branch')).toBe(true);
+    // S9-10: aktywność „Rozpocznij odgałęzienie" jest SPAROWANA z resolverem
+    // kreatora (jedno źródło prawdy) — na tej sieci stacja nie ma wolnego
+    // pola FEEDER, więc pozycja jest OBECNA, ale uczciwie zablokowana
+    // (kreator nie miałby punktu startu; przed S9-10 otwierał się martwy).
+    expect(within(menu!).queryByTestId('sld-menu-start-branch')).toBeTruthy();
+    expect(pozycjaAktywna(menu!, 'start-branch')).toBe(
+      resolveBranchStartAvailability(enm, 'station', stacja.ownerRef ?? null),
+    );
     await userEvent.click(within(menu!).getByTestId('sld-menu-continue-trunk'));
     expect(openOperationForm.mock.calls[0][0]).toBe('continue_trunk_segment_sn');
     expect(openOperationForm.mock.calls[0][1]).toMatchObject({ station_ref: stacja.ownerRef });
@@ -427,7 +447,14 @@ describe('S9-5 B — operacje budowy ciągu SN dostępne z rysunku', () => {
       const menu = await prawyKlik(kanwa, stacja.testId);
       expect(menu, `stacja ${stacja.ownerRef} otwiera menu`).toBeTruthy();
       expect(pozycjaAktywna(menu!, 'continue-trunk')).toBe(true);
-      expect(pozycjaAktywna(menu!, 'start-branch')).toBe(true);
+      // S9-10: „Rozpocznij odgałęzienie" jest OBECNE, a jego aktywność
+      // SPAROWANA z resolverem kreatora (jedno źródło prawdy; na tej sieci
+      // żadna stacja nie ma wolnego pola FEEDER, więc pozycja jest uczciwie
+      // zablokowana — martwy kreator to nie jest „wejście budowy").
+      expect(within(menu!).queryByTestId('sld-menu-start-branch')).toBeTruthy();
+      expect(pozycjaAktywna(menu!, 'start-branch')).toBe(
+        resolveBranchStartAvailability(enm, 'station', stacja.ownerRef ?? null),
+      );
       await zamknijMenu();
     }
   }, 300000);
@@ -588,5 +615,102 @@ describe('S9-5 D — pierwsze ogniwo budowy na świeżo wstawionym GPZ', () => {
       ],
     } as unknown as EnergyNetworkModel;
     expect(resolveGpzTrunkStartFieldRef(zInnymPolem, stationRef)).toBe(wolne);
+  });
+});
+
+describe('S9-10 — „Rozpocznij odgałęzienie": predykat menu SPAROWANY z resolverem kreatora', () => {
+  /**
+   * ZNALEZISKO UBOCZNE S9-10 (pomiar na żywej aplikacji + fixturach): pozycja
+   * `start-branch` była AKTYWNA na każdej stacji, źródle GPZ i szynie sekcji,
+   * a kreator odgałęzienia otwierał się z „Brak wskazania źródła" i trwale
+   * zablokowanym zapisem — bo bramka S9-5 (`stationHasFreeBay`) nie miała
+   * ŻADNEGO pisarza (warunek martwy), a dostępność i punkt startu liczyły
+   * dwa różne predykaty. Po S9-10 OBA pochodzą z JEDNEGO resolvera
+   * (`resolveBranchStartAvailability` → `resolveBranchStartOperationContext`).
+   *
+   * Iloczyn cech: {kotwica: stacja, źródło GPZ, szyna sekcji} × {dostępność:
+   * brak pola (zmierzone na fixturach) / wolne pole FEEDER (wstrzyknięte)}.
+   */
+  const gpzSwiezy = (
+    JSON.parse(
+      readFileSync(resolve(here, 'fixtures', 's95GpzSwiezy.enm.json'), 'utf8'),
+    ) as EnergyNetworkModel
+  );
+
+  it('parowanie na DANYCH: stacje sieci referencyjnej i świeży GPZ nie mają punktu startu → dostępność false', () => {
+    for (const stacja of (enm.substations ?? []).filter((s) => String(s.station_type).toLowerCase() !== 'gpz')) {
+      expect(
+        resolveBranchStartAvailability(enm, 'station', stacja.ref_id),
+        `stacja ${stacja.ref_id}`,
+      ).toBe(false);
+    }
+    const zrodloRef = (gpzSwiezy.sources ?? [])[0]?.ref_id;
+    const szynaSn = (gpzSwiezy.buses ?? []).find((b) => b.voltage_kv > 1 && b.voltage_kv < 110);
+    expect(resolveBranchStartAvailability(gpzSwiezy, 'gpz', zrodloRef ?? null)).toBe(false);
+    expect(resolveBranchStartAvailability(gpzSwiezy, 'section', szynaSn?.ref_id ?? null)).toBe(false);
+  });
+
+  /** Stacja referencyjna + WSTRZYKNIĘTE wolne pole odgałęźne (rola FEEDER,
+   *  wolny zacisk) — dokładnie warunki, których wymaga resolver kreatora. */
+  function zWolnymPolemOdgaleznym(): { enm: EnergyNetworkModel; stationRef: string; fieldRef: string } {
+    const kopia = JSON.parse(JSON.stringify(enm)) as EnergyNetworkModel;
+    const stacja = (kopia.substations ?? []).find(
+      (s) => String(s.station_type).toLowerCase() !== 'gpz' && Array.isArray((s.meta as { field_specs?: unknown[] } | undefined)?.field_specs),
+    )!;
+    const fieldRef = `${stacja.ref_id}/sn_field/odgalezne-test`;
+    const snBusRef = (stacja.bus_refs ?? []).find((busRef) => {
+      const bus = (kopia.buses ?? []).find((b) => b.ref_id === busRef);
+      return bus != null && bus.voltage_kv > 1;
+    })!;
+    ((stacja.meta as { field_specs: unknown[] }).field_specs).push({
+      field_ref: fieldRef,
+      bay_role: 'FEEDER',
+      bus_ref: snBusRef,
+      field_terminal_bus_ref: `${stacja.ref_id}/bus/odgalezne-test-zacisk`,
+      name: 'Pole odgałęźne SN (test S9-10)',
+    });
+    return { enm: kopia, stationRef: stacja.ref_id, fieldRef };
+  }
+
+  it('parowanie POZYTYWNE: wolne pole FEEDER ⇒ dostępność true ORAZ kreator dostaje from_ref TEGO pola', () => {
+    const { enm: zPolem, stationRef, fieldRef } = zWolnymPolemOdgaleznym();
+    expect(resolveBranchStartAvailability(zPolem, 'station', stationRef)).toBe(true);
+    // Predykaty PARAMI na JEDNYM modelu: to samo rozstrzygnięcie zasila
+    // formularz — `from_ref` operacji wskazuje wstrzyknięte pole.
+    const operacja = buildSldOperationContext('start-branch', 'station', stationRef, zPolem, null);
+    expect(operacja?.op).toBe('start_branch_segment_sn');
+    expect(String(operacja?.context.from_ref ?? '')).toBe(`${fieldRef}.BRANCH`); // ui-terminology-ignore
+  });
+
+  it('NATYWNY prawy klik w etykietę stacji BEZ wolnego pola: pozycja ZABLOKOWANA z powodem', async () => {
+    const kanwa = renderKanwe(2);
+    const etykietaStacji = kanwa.container.querySelector(
+      `[${HIT_ATTR.role}="obrys"][${HIT_ATTR.ownerRef}*="#name-row"][${HIT_ATTR.klasa}="etykieta"]`,
+    );
+    expect(etykietaStacji, 'kanwa ma etykietę nazwy stacji').toBeTruthy();
+    await userEvent.pointer({ keys: '[MouseRight]', target: etykietaStacji! });
+    const menu = screen.queryByRole('menu');
+    expect(menu, 'menu stacji otwarte').toBeTruthy();
+    const pozycja = within(menu!).queryByTestId('sld-menu-start-branch') as HTMLButtonElement | null;
+    expect(pozycja, 'pozycja start-branch obecna').toBeTruthy();
+    expect(pozycja!.disabled, 'pozycja zablokowana (kreator nie miałby punktu startu)').toBe(true);
+    await zamknijMenu();
+  });
+
+  it('NATYWNY prawy klik w etykietę stacji Z wolnym polem FEEDER: pozycja AKTYWNA', async () => {
+    const { enm: zPolem, stationRef } = zWolnymPolemOdgaleznym();
+    useSnapshotStore.setState({ snapshot: zPolem });
+    const { container } = render(<SldCanvasV3Workspace width={W} height={H} lodOverride={2} />);
+    const etykieta = container.querySelector(
+      `[${HIT_ATTR.role}="obrys"][${HIT_ATTR.ownerRef}^="${CSS.escape(stationRef)}#name-row"]`,
+    );
+    expect(etykieta, `etykieta stacji ${stationRef} ma uchwyt`).toBeTruthy();
+    await userEvent.pointer({ keys: '[MouseRight]', target: etykieta! });
+    const menu = screen.queryByRole('menu');
+    expect(menu, 'menu stacji otwarte').toBeTruthy();
+    const pozycja = within(menu!).queryByTestId('sld-menu-start-branch') as HTMLButtonElement | null;
+    expect(pozycja, 'pozycja start-branch obecna').toBeTruthy();
+    expect(pozycja!.disabled, 'pozycja aktywna — kreator dostanie punkt startu').toBe(false);
+    await zamknijMenu();
   });
 });

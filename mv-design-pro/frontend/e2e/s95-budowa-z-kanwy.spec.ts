@@ -117,19 +117,54 @@ async function wrocNaSchemat(page: Page): Promise<void> {
     await okruszek.click();
   }
   await expect(page.getByTestId('sld-canvas-v3')).toBeVisible({ timeout: 30000 });
-}
-
-async function prawyKlikWObiekt(page: Page, klasa: string) {
-  await wrocNaSchemat(page);
   // Po każdej operacji rysunek się przebudowuje, a nowy obiekt bywa poza
-  // kadrem — dociskamy widok realnym przyciskiem „Dopasuj widok" i czekamy, aż
-  // uchwyt trafienia ma NIEZEROWY prostokąt na ekranie (sam byt w DOM nie
-  // wystarcza: element poza `viewBox` jest nieklikalny).
+  // kadrem — dociskamy widok realnym przyciskiem „Dopasuj widok".
   const dopasuj = page.getByTestId('sld-v3-fit-view');
   if (await dopasuj.isVisible({ timeout: 2000 }).catch(() => false)) {
     await dopasuj.click();
   }
-  const uchwyt = uchwytKlasy(page, klasa);
+}
+
+/**
+ * S9-10 (dług `S9-5-DLUG-E2E-CYKL`): WARSTWA TRAFIEŃ WRACA po powrocie na
+ * schemat — dokładnie ta asercja, której brak blokował domknięcie cyklu.
+ * Pomiar 2026-08-07 (żywa aplikacja, próbkowanie DOM co 1 s): po zapisie
+ * KAŻDEGO kreatora warstwa jest z powrotem w t = 0 s (172/170/224 uchwytów),
+ * więc opisany w rejestrze stan „`data-hit-klasa` = 0 przez 60 s" NIE
+ * reprodukuje się na tej bazie (usunięty najpewniej wraz z odroczonym
+ * przekierowaniem nawigacji — karta S9-3). Limit 60 s zostaje jako uczciwa
+ * granica z pierwotnego pomiaru — regresja klasy „powrót na schemat po
+ * operacji" zbije tę asercję.
+ */
+async function czekajNaWarstweTrafien(page: Page): Promise<void> {
+  await expect
+    .poll(async () => page.locator('[data-hit-klasa]').count(), { timeout: 60000 })
+    .toBeGreaterThan(0);
+}
+
+/** Punkt NA geometrii uchwytu (środek długości ścieżki dla kresek, środek
+ *  prostokąta dla pozostałych). Odcinek bywa ŁAMANY — środek jego prostokąta
+ *  gabarytowego leży poza kreską i klik trafiłby w tło (pomiar S9-10). */
+async function punktNaUchwycie(
+  uchwyt: ReturnType<Page['locator']>,
+): Promise<{ x: number; y: number }> {
+  return uchwyt.evaluate((el) => {
+    const geo = el as unknown as SVGGeometryElement;
+    if (typeof geo.getTotalLength === 'function' && typeof geo.getPointAtLength === 'function') {
+      const p = geo.getPointAtLength(geo.getTotalLength() / 2);
+      const ctm = geo.getScreenCTM();
+      if (ctm) {
+        return { x: ctm.a * p.x + ctm.c * p.y + ctm.e, y: ctm.b * p.x + ctm.d * p.y + ctm.f };
+      }
+    }
+    const r = el.getBoundingClientRect();
+    return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+  });
+}
+
+async function prawyKlikWUchwyt(page: Page, uchwyt: ReturnType<Page['locator']>) {
+  // Czekamy, aż uchwyt trafienia ma NIEZEROWY prostokąt na ekranie (sam byt
+  // w DOM nie wystarcza: element poza `viewBox` jest nieklikalny).
   await expect
     .poll(async () => ((await uchwyt.boundingBox().catch(() => null))?.width ?? 0), { timeout: 60000 })
     .toBeGreaterThan(0);
@@ -137,11 +172,17 @@ async function prawyKlikWObiekt(page: Page, klasa: string) {
   // `locator.click` odrzuca cienkie kreski SVG jako „niewidoczne" (heurystyka
   // aktorowalności Playwrighta), a to jest właśnie ten kształt, który karta
   // S9-4 uczyniła klikalnym — więc celujemy myszą, nie omijamy ścieżki.
-  const box = (await uchwyt.boundingBox())!;
-  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2, { button: 'right' });
+  const punkt = await punktNaUchwycie(uchwyt);
+  await page.mouse.click(punkt.x, punkt.y, { button: 'right' });
   const menu = page.getByRole('menu');
   await expect(menu).toBeVisible({ timeout: 15000 });
   return menu;
+}
+
+async function prawyKlikWObiekt(page: Page, klasa: string) {
+  await wrocNaSchemat(page);
+  await czekajNaWarstweTrafien(page);
+  return prawyKlikWUchwyt(page, uchwytKlasy(page, klasa));
 }
 
 test.describe('S9-5 — operacje budowy ciągu SN dostępne wyłącznie z kanwy', () => {
@@ -167,27 +208,33 @@ test.describe('S9-5 — operacje budowy ciągu SN dostępne wyłącznie z kanwy'
   });
 
   /**
-   * DŁUG NAZWANY `S9-5-DLUG-E2E-CYKL` (Zero-Debt pkt 4) — spec NIE jest
-   * wyłączony po cichu, tylko oznaczony z podaniem stanu pomiaru.
+   * S9-10 — DŁUG `S9-5-DLUG-E2E-CYKL` DOMKNIĘTY (spłata, nie maskowanie):
+   * `test.fixme` zdjęty po POMIARZE na żywej aplikacji (2026-08-07, baza
+   * bf1884a1): po zapisie KAŻDEGO kreatora warstwa trafień wraca w t = 0 s
+   * (próbkowanie DOM co 1 s; kolejno 172/170/224 uchwytów), więc blokada
+   * „`data-hit-klasa` = 0 przez 60 s" z pierwotnego pomiaru (2026-08-06) już
+   * nie występuje — przyczyna usunięta najpewniej kartą S9-3 (odroczone
+   * przekierowanie nawigacji po biegu). Asercja `czekajNaWarstweTrafien`
+   * przypina ten stan po KAŻDYM ogniwie (regresja klasy „powrót na schemat po
+   * operacji" zbije ją wprost).
    *
-   * CO JUŻ PRZESZŁO na żywej aplikacji (zmierzone, nie deklarowane): prawy klik
-   * w tło → kreator GPZ → ZAPIS; prawy klik w symbol GPZ → „Wyprowadź ciąg
-   * główny SN" → kreator magistrali Z PUNKTEM STARTU → ZAPIS odcinka (w modelu
-   * „Odcinek 01 3 × NA2XS2Y 1×150/25 mm² · 0,30 km"); prawy klik w odcinek →
-   * „Zakończ odcinek stacją SN/nN" → kreator stacji → ZAPIS stacji.
-   *
-   * CO BLOKUJE DOMKNIĘCIE: po zapisie kreatora powrót na rysunek nie odtwarza
-   * warstwy trafień w oknie 60 s (kanwa jest w drzewie, `data-hit-klasa` = 0),
-   * więc kolejnego ogniwa nie da się kliknąć w tym samym biegu. To ODRĘBNE
-   * znalezisko klasy „powrót na schemat po operacji" (sąsiad W-3 z karty S9-3),
-   * a NIE brak wejścia budowy — dostępność wejść mierzy sonda odbioru
-   * `menu_chain_probe` (54 stacje i 115 odcinków z realnym wejściem, próg 15).
+   * DWIE LEKCJE POMIARU wpisane w metodę klikania (bez nich cykl NIE domyka
+   * się z przyczyn POMIAROWYCH, nie produktowych):
+   *  1. odcinek magistrali bywa ŁAMANY i pierwszy uchwyt klasy `tor` bywa
+   *     PRZEWODEM POLA (kategoria aparat) — celujemy w uchwyt, którego
+   *     `data-hit-owner-ref` jest gałęzią ISTNIEJĄCĄ w modelu, i klikamy w
+   *     punkt NA geometrii ścieżki (`getPointAtLength`), nie w środek
+   *     prostokąta gabarytowego;
+   *  2. na poziomie pełnego szczegółu stacja jest ROZŁOŻONA na pola (klasa
+   *     `stacja` nie występuje) — uchwytem całej stacji jest etykieta jej
+   *     nazwy (`⟨stationRef⟩#name-row-…`), której temat menu to stacja
+   *     (kotwica modelu po odcięciu sufiksu rysunkowego — S9-5).
    */
-  test.fixme('pełny cykl budowy wyłącznie prawym klikiem: GPZ → ciąg → stacja na odcinku → ciąg dalej', async ({
+  test('pełny cykl budowy wyłącznie prawym klikiem: GPZ → ciąg → stacja na odcinku → ciąg dalej', async ({
     page,
     request,
   }) => {
-    test.setTimeout(1_800_000);
+    test.setTimeout(600_000);
     const { caseId } = await otworzAplikacje(page, request);
 
     // ---- Ogniwo 1: źródło GPZ z menu TŁA -----------------------------------
@@ -199,6 +246,8 @@ test.describe('S9-5 — operacje budowy ciągu SN dostępne wyłącznie z kanwy'
     await expect
       .poll(async () => (await pobierzEnm(request, caseId)).substations?.length ?? 0, { timeout: 60000 })
       .toBeGreaterThanOrEqual(1);
+    await wrocNaSchemat(page);
+    await czekajNaWarstweTrafien(page);
 
     // ---- Ogniwo 2: ciąg główny z SYMBOLU GPZ na rysunku ---------------------
     const menuZrodla = await prawyKlikWObiekt(page, 'zrodlo');
@@ -208,24 +257,53 @@ test.describe('S9-5 — operacje budowy ciągu SN dostępne wyłącznie z kanwy'
     await expect
       .poll(async () => (await pobierzEnm(request, caseId)).branches?.length ?? 0, { timeout: 60000 })
       .toBeGreaterThanOrEqual(1);
+    await wrocNaSchemat(page);
+    await czekajNaWarstweTrafien(page);
 
     // ---- Ogniwo 3: stacja na odcinku z menu ODCINKA ------------------------
-    const menuOdcinka = await prawyKlikWObiekt(page, 'tor');
+    // Celujemy w TOR będący REALNĄ gałęzią modelu (lekcja pomiaru nr 1).
+    const enmPoMagistrali = await pobierzEnm(request, caseId);
+    const galazRef = (enmPoMagistrali.branches ?? []).find(
+      (b) => b.type === 'cable' || b.type === 'line_overhead',
+    )?.ref_id;
+    expect(galazRef, 'model ma gałąź terenową po zapisie magistrali').toBeTruthy();
+    await wrocNaSchemat(page);
+    const uchwytOdcinka = page.locator(
+      `[data-hit-klasa="tor"][data-hit-role="obrys"][data-hit-owner-ref="${galazRef}"]`,
+    ).first();
+    const menuOdcinka = await prawyKlikWUchwyt(page, uchwytOdcinka);
     await expect(menuOdcinka.getByTestId('sld-menu-insert-station')).toBeEnabled();
     await menuOdcinka.getByTestId('sld-menu-insert-station').click();
     await zapiszStacje(page, 1);
     await expect
       .poll(async () => (await pobierzEnm(request, caseId)).substations?.length ?? 0, { timeout: 120000 })
       .toBeGreaterThanOrEqual(2);
+    await wrocNaSchemat(page);
+    await czekajNaWarstweTrafien(page);
 
-    // ---- Ogniwo 4: powtarzalnosc cyklu ------------------------------------
-    // Dostepnosc wejscia „kontynuuj ciag / rozpocznij odgalezienie" NA STACJI
-    // mierzy sonda odbioru `scripts/sld_v3_acceptance.mjs` (`menu_chain_probe`)
-    // na sieci referencyjnej: 54 stacje i 115 odcinkow z realnym wejsciem, przy
-    // progu karty 15. Tutaj NIE powtarzamy tego klikiem, bo po zapisie kreatora
-    // powrot na rysunek nie odtwarza warstwy trafien w oknie 60 s — to ODREBNE
-    // znalezisko (dlug `S9-5-DLUG-POWROT-NA-RYSUNEK` w rejestrze), a nie brak
-    // wejscia budowy.
+    // ---- Ogniwo 4: cykl domknięty — KOLEJNY odcinek ZE STACJI ---------------
+    // Uchwytem stacji na pełnym szczególe jest etykieta jej nazwy (lekcja
+    // pomiaru nr 2). Dostępność wejść budowy NA SKALĘ (54 stacje / 115
+    // odcinków, próg 15) mierzy nadal sonda odbioru `menu_chain_probe` —
+    // tutaj domykamy PĘTLĘ: stacja zapisana ogniwem 3 jest źródłem ogniwa 4.
+    const enmPoStacji = await pobierzEnm(request, caseId);
+    const stacjaRef = (enmPoStacji.substations ?? []).find(
+      (s) => String(s.station_type ?? '').toLowerCase() !== 'gpz',
+    )?.ref_id;
+    expect(stacjaRef, 'model ma stację SN/nN po ogniwie 3').toBeTruthy();
+    const galezieprzedOgniwem4 = (enmPoStacji.branches ?? []).length;
+    const uchwytStacji = page.locator(
+      `[data-hit-role="obrys"][data-hit-owner-ref^="${stacjaRef}#name-row"]`,
+    ).first();
+    const menuStacji = await prawyKlikWUchwyt(page, uchwytStacji);
+    await expect(menuStacji.getByTestId('sld-menu-continue-trunk')).toBeEnabled();
+    await menuStacji.getByTestId('sld-menu-continue-trunk').click();
+    await zapiszMagistrale(page);
+    await expect
+      .poll(async () => (await pobierzEnm(request, caseId)).branches?.length ?? 0, { timeout: 60000 })
+      .toBeGreaterThan(galezieprzedOgniwem4);
+    await wrocNaSchemat(page);
+    await czekajNaWarstweTrafien(page);
 
     // ---- Pomiar koncowy: model naprawde urosl ------------------------------
     const enm = await pobierzEnm(request, caseId);
@@ -297,8 +375,13 @@ async function zapiszStacje(page: Page, numer: number): Promise<void> {
 
   const wybor = page.getByTestId('mvd-kreator-stacja-szablon-wybor');
   await expect(wybor).toBeVisible({ timeout: 30000 });
-  const opcje = await wybor.locator('option').all();
-  expect(opcje.length).toBeGreaterThan(1);
+  // S9-10: lista szablonów ładuje się ASYNCHRONICZNIE po pokazaniu pola —
+  // odczyt `.all()` zaraz po `toBeVisible` bywał wyścigiem (pomiar: 1 opcja
+  // w chwili odczytu, komplet ułamek sekundy później). Czekamy na realny
+  // stan zamiast liczyć na szczęśliwy timing.
+  await expect
+    .poll(async () => wybor.locator('option').count(), { timeout: 60000 })
+    .toBeGreaterThan(1);
   await wybor.selectOption({ index: 1 });
   await page.getByTestId('mvd-kreator-stacja-szablon-zastosuj').click();
   await expect(page.getByTestId('mvd-kreator-stacja-szablon-zastosowany')).toBeVisible({

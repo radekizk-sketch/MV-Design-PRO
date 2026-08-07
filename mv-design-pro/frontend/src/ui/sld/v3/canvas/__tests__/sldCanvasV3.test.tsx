@@ -211,6 +211,9 @@ describe('SldCanvasV3 — klik w symbol', () => {
     expect(onElementClick).toHaveBeenCalledWith(expectedTestId, {
       ownerRef: scene.symbols[0].meta?.ownerRef,
       elementKind: scene.symbols[0].meta?.elementKind,
+      // S9-10: lewy klik niesie też KLASĘ trafienia (wspólny `metaZTrafienia`
+      // z prawym klikiem) — pierwszy symbol L0 to blok stacji.
+      klasa: 'stacja',
     });
   });
 
@@ -228,6 +231,8 @@ describe('SldCanvasV3 — klik w symbol', () => {
     expect(onElementClick).toHaveBeenCalledWith(expect.any(String), {
       ownerRef: scene.symbols[stationIndex].meta?.ownerRef,
       elementKind: 'station',
+      // S9-10: klasa trafienia w lewym kliku — patrz test wyżej.
+      klasa: 'stacja',
     });
   });
 

@@ -210,7 +210,10 @@ export function getMenuActions(
   context?: {
     readonly bayHasOutgoingRun?: boolean;
     readonly bayIsRunEndpoint?: boolean;  // Phase 0B: czy pole jest endpointem ciągu (free terminal)
-    readonly stationHasFreeBay?: boolean;
+    /** S9-10 (predykaty parami): punkt startu ODGAŁĘZIENIA liczony TYM SAMYM
+     *  resolverem co kreator (`resolveBranchStartAvailability`). Zastępuje
+     *  martwe `stationHasFreeBay` (S9-5: bramka bez żadnego pisarza). */
+    readonly branchStartAvailable?: boolean;
     readonly hasResults?: boolean;
     readonly apparatusKind?: string;
     /** K5-A: czy stacja ma szynę nN (realne FK substation.bus_refs → bus nN);
@@ -276,11 +279,20 @@ export function getMenuActions(
           'Brak wolnego pola liniowego SN w tej rozdzielni. Dodaj pole odpływowe albo kontynuuj ciąg z istniejącego odcinka.',
       };
     }
-    if (a.id === 'start-branch' && kind === 'station' && ctx.stationHasFreeBay === false) {
+    /* S9-10 (klasa S9-5, predykaty PARAMI): pozycja „Rozpocznij odgałęzienie"
+     * jest bramkowana TYM SAMYM resolverem, którego użyje kreator
+     * (`resolveBranchStartAvailability` — patrz pisarze kontekstu). Pomiar
+     * S9-10: bez tej bramki pozycja była aktywna na KAŻDEJ stacji, źródle GPZ
+     * i szynie sekcji sieci referencyjnej, a kreator otwierał się z „Brak
+     * wskazania źródła" i trwale zablokowanym zapisem. Bramka kind-agnostyczna:
+     * o tym, dla których obiektów policzyć dostępność, decyduje PISARZ
+     * kontekstu (ten sam obiekt = ten sam resolver co formularz). */
+    if (a.id === 'start-branch' && ctx.branchStartAvailable === false) {
       return {
         ...a,
         disabled: true,
-        disabledReasonPl: 'Brak wolnego pola SN. Najpierw dodaj pole odgałęzienia.',
+        disabledReasonPl:
+          'Brak wolnego pola odgałęźnego SN (pole roli FEEDER z wolnym zaciskiem). Najpierw dodaj pole odgałęzienia w rozdzielni.',
       };
     }
     if (a.id === 'show-results' && ctx.hasResults === false) {

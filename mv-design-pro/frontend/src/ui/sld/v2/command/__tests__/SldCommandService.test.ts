@@ -112,12 +112,31 @@ describe('SldCommandService — getMenuActions z context', () => {
     expect(extendAction?.disabledReasonPl).toContain('wyprowadzony');
   });
 
-  it('start-branch ze stacji disabled gdy stationHasFreeBay=false', () => {
-    const actions = getMenuActions('station', { stationHasFreeBay: false });
-    const branchAction = actions.find((a) => a.id === 'start-branch');
-    expect(branchAction?.disabled).toBe(true);
-    expect(branchAction?.disabledReasonPl).toContain('Brak wolnego pola');
-  });
+  // S9-10 (intencja S9-5 zachowana, predykat WYMIENIONY): dawne
+  // `stationHasFreeBay` było bramką bez żadnego pisarza (warunek martwy) —
+  // `branchStartAvailable` liczy TEN SAM resolver co kreator odgałęzienia
+  // (`resolveBranchStartAvailability`), więc menu i formularz nie mogą się
+  // rozjechać. Bramka jest kind-agnostyczna: iloczyn {kotwyca z pozycją
+  // start-branch} × {dostępność false/true/brak pomiaru}.
+  it.each(['station', 'gpz', 'section'] as const)(
+    'start-branch na %s ZABLOKOWANE gdy branchStartAvailable=false (kreator nie miałby punktu startu)',
+    (kind) => {
+      const actions = getMenuActions(kind, { branchStartAvailable: false });
+      const branchAction = actions.find((a) => a.id === 'start-branch');
+      expect(branchAction?.disabled).toBe(true);
+      expect(branchAction?.disabledReasonPl).toContain('Brak wolnego pola');
+    },
+  );
+
+  it.each(['station', 'gpz', 'section'] as const)(
+    'start-branch na %s AKTYWNE gdy branchStartAvailable=true; brak pomiaru (undefined) nie blokuje',
+    (kind) => {
+      const dostepne = getMenuActions(kind, { branchStartAvailable: true });
+      expect(dostepne.find((a) => a.id === 'start-branch')?.disabled).not.toBe(true);
+      const bezPomiaru = getMenuActions(kind, {});
+      expect(bezPomiaru.find((a) => a.id === 'start-branch')?.disabled).not.toBe(true);
+    },
+  );
 
   it('show-results disabled gdy hasResults=false', () => {
     const actions = getMenuActions('bay', { hasResults: false });

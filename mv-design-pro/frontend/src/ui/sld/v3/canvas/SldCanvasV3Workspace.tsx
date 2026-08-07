@@ -117,6 +117,7 @@ import {
   buildCanvasModelIndex,
   resolveCanvasMenuSubject,
   type CanvasMenuSubject,
+  type MenuAnchorKind,
 } from './canvasMenuSubject';
 import { selectStationDistributionTransformers } from '../../../network-build/stationTransformerSelection';
 import { useMeasuredSize } from '../../shared/useMeasuredSize';
@@ -131,6 +132,7 @@ import {
 import {
   DRAWER_ACTION_LABEL_PL,
   parseGpzApparatusSelectionId,
+  resolveBranchStartAvailability,
   resolveGpzTrunkStartFieldRef,
   stationRefOfBusOrSource,
   useSldActionExecutor,
@@ -496,11 +498,14 @@ function resolveTransformerRefForOwnerRef(snapshot: EnergyNetworkModel | null, o
  * transformer/apparatus (rozwiązywanie refu/stacji-właściciela z `ownerRef`,
  * patrz funkcje wyżej). `null` = drawer się NIE otwiera.
  *
- * `apparatus`: scena v3 nie niesie refu POJEDYNCZEGO urządzenia (tylko
- * `bayRef`), więc `apparatusState`/`parentBayLabel` w zwróconym obiekcie
- * ZOSTAJĄ `null` (budowniczy nie znajduje dopasowania w
- * `primary_device_states`/`equipment_refs` po samym `bayRef`) —
- * UDOKUMENTOWANA LUKA, NIE fabrykowany stan. `stationCode`/
+ * `apparatus`: S9-10 (dług `S9-4-DLUG-INSPEKTOR` SPŁACONY) — scena v3 niesie
+ * TERAZ ref POJEDYNCZEGO urządzenia (`PreviewElementMeta.deviceRef`,
+ * WYŁĄCZNIE ścieżka danych `apparatusSource==='dane'`), a klik przenosi go w
+ * `SldElementClickMeta.deviceRef`. Budowniczy dostaje wtedy REF URZĄDZENIA
+ * (nie pola), więc `apparatusState`/`parentBayLabel`/`globalId` rozwiązują
+ * się per-aparat. Aparat BEZ `deviceRef` (stos konwencji §12.4) zachowuje
+ * dotychczasową ścieżkę po `bayRef` — uczciwy brak rozdzielczości, NIE
+ * fabrykowany ref. `stationCode`/
  * `parentStationLabel` w budowniczym współdzielonym spadłyby na arbitralny
  * `sldData.stations[0]` (fallback v2, tam martwy, bo `id` tam zawsze
  * rozwiązywalny — tu NIE) — KORYGOWANE tu dla aparatu STACJI, rozwiązanego
@@ -515,6 +520,7 @@ function buildDetailDrawerDataForElementKind(
   overlayPayload: RawOverlayPayload | null,
   elementKind: PreviewElementKind | undefined,
   id: string,
+  deviceRef?: string,
 ): SldDetailDrawerData | null {
   if (elementKind === 'station') {
     return buildStationDetailDrawerData(snapshot, sldData, overlayPayload, id);
@@ -525,7 +531,12 @@ function buildDetailDrawerDataForElementKind(
     return buildDetailDrawerDataForKind('transformer', transformerRef, { snapshot, sldData, overlayPayload });
   }
   if (elementKind === 'apparatus') {
-    const apparatusDrawerData = buildDetailDrawerDataForKind('apparatus', id, { snapshot, sldData, overlayPayload });
+    // S9-10 (dług `S9-4-DLUG-INSPEKTOR`): gdy klik niesie ref POJEDYNCZEGO
+    // urządzenia (ścieżka danych), budowniczy dostaje JEGO, nie ref pola —
+    // dwa aparaty jednego pola przestają dzielić jedną treść inspektora.
+    // Korekta stacji-właściciela liczy się nadal z refu POLA (`id`), bo
+    // relacja `Bay.substation_ref` jest zakotwiczona w polu.
+    const apparatusDrawerData = buildDetailDrawerDataForKind('apparatus', deviceRef ?? id, { snapshot, sldData, overlayPayload });
     if (!apparatusDrawerData) return null;
     const stationRef = stationRefForBayOwner(snapshot, id);
     const correctedStationCode = stationRef
@@ -537,6 +548,22 @@ function buildDetailDrawerDataForElementKind(
   if (!drawerKind) return null;
   return buildDetailDrawerDataForKind(drawerKind, id, { snapshot, sldData, overlayPayload });
 }
+
+/**
+ * S9-10: kotwica MODELU (temat menu, `canvasMenuSubject.ts`) → kategoria
+ * elementu budowniczych szuflady. Tabela ZAMKNIĘTA (`satisfies`) — nowy rodzaj
+ * kotwicy nie skompiluje się bez decyzji tutaj. Używana WYŁĄCZNIE na ścieżce
+ * zapasowej otwierania szuflady dla refów kompozytowych (etykiety, `#sn-bus`).
+ */
+const ELEMENT_KIND_KOTWICY = {
+  stacja: 'station',
+  szyna: 'bus',
+  galaz: 'segment',
+  pole: 'apparatus',
+  zrodlo: 'source',
+  generator: 'der',
+  transformator: 'transformer',
+} satisfies Record<MenuAnchorKind, PreviewElementKind>;
 
 const ALL_SCENE_LODS: readonly SceneLod[] = [0, 1, 2];
 
@@ -1700,10 +1727,19 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
     // Karta S9-5: wejścia budowy ciągu (GPZ / szyna sekcji) są dostępne tylko
     // wtedy, gdy rozdzielnia ma WOLNE POLE LINIOWE — inaczej kreator otwarłby
     // się bez punktu startu i zapis byłby w nim trwale zablokowany.
+    // S9-10 (ta sama klasa, predykaty PARAMI): „Rozpocznij odgałęzienie"
+    // bramkowane TYM SAMYM resolverem, którego użyje kreator odgałęzienia
+    // (`resolveBranchStartAvailability`) — dla KAŻDEJ kotwicy tematu, która ma
+    // tę pozycję w menu (zrodlo/szyna/stacja).
     if (contextSubject && (contextSubject.kotwica === 'zrodlo' || contextSubject.kotwica === 'szyna')) {
       const stationRef = stationRefOfBusOrSource(snapshot, contextSubject.modelRef);
       return {
         trunkStartFieldAvailable: resolveGpzTrunkStartFieldRef(snapshot, stationRef) !== null,
+        branchStartAvailable: resolveBranchStartAvailability(
+          snapshot,
+          contextSubject.menuKind,
+          contextSubject.modelRef,
+        ),
       };
     }
     if (!contextSubject || contextSubject.kotwica !== 'stacja') return undefined;
@@ -1717,7 +1753,14 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
       );
       return bus != null && bus.voltage_kv > 0 && bus.voltage_kv < 1;
     });
-    return { stationHasNnBus: hasNnBus };
+    return {
+      stationHasNnBus: hasNnBus,
+      branchStartAvailable: resolveBranchStartAvailability(
+        snapshot,
+        contextSubject.menuKind,
+        contextSubject.modelRef,
+      ),
+    };
   }, [contextSubject, snapshot]);
   // F11.4-B / ARCH-3 (spec §10.1: „wykonawca akcji domenowych na v3: BRAMKA
   // REALNA, wdrażana"): `onAction` woła TEN SAM wykonawca co v2
@@ -1748,6 +1791,9 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
     return getMenuActions(menuKind, {
       hasResults: activeCaseResultStatus === 'FRESH',
       apparatusKind,
+      // S9-10 (predykaty parami): akcje szuflady czytają TĘ SAMĄ prawdę o
+      // punkcie startu odgałęzienia co menu kanwy i kreator.
+      branchStartAvailable: resolveBranchStartAvailability(snapshot, menuKind, detailDrawerData.elementId),
     }).map((action) => ({
       id: action.id,
       labelPl: DRAWER_ACTION_LABEL_PL[action.id] ?? action.labelPl,
@@ -1755,7 +1801,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
       disabledReasonPl: action.disabled ? action.disabledReasonPl ?? 'Akcja niedostępna dla bieżącego obiektu.' : undefined,
       onClick: () => handleAction(action.id, menuKind, detailDrawerData.elementId),
     }));
-  }, [activeCaseResultStatus, detailDrawerData, handleAction]);
+  }, [activeCaseResultStatus, detailDrawerData, handleAction, snapshot]);
 
   // F8c pkt 4: paleta DER — hook + przycisk RENDER-AGNOSTYCZNE (v2
   // `useDerDragDrop`/`DerPaletteButton`, zero zmian), reużyte wprost.
@@ -2276,10 +2322,40 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
       // = drawer się NIE otwiera (uczciwy brak, bez crasha, bez zgadywania) —
       // jeśli już otwarty dla innego elementu, zostaje (spójne z v2:
       // `handleSelectElement` też nie zamyka drawera na niezmapowany `kind`).
-      const drawerData = buildDetailDrawerDataForElementKind(snapshot, sldData, rawOverlayPayload, meta?.elementKind, id);
+      let drawerData = buildDetailDrawerDataForElementKind(snapshot, sldData, rawOverlayPayload, meta?.elementKind, id, meta?.deviceRef);
+      // S9-10 (dług `S9-4-DLUG-INSPEKTOR`, ogniwo etykiet): ref KOMPOZYTOWY
+      // (`…#name-row-0`, `…#sn-bus` itd.) nie rozwiązuje się w budowniczych —
+      // panel się nie otwierał (pomiar: klik w etykietę nazwy stacji, drawer
+      // = null). Kotwicę modelu rozstrzyga TEN SAM moduł, który robi to dla
+      // menu kontekstowego (`resolveCanvasMenuSubject` — jedno źródło prawdy;
+      // ślepe zdejmowanie sufiksu byłoby fabrykacją, patrz rejestr). Ścieżka
+      // jest WYŁĄCZNIE zapasowa: obiekty rozwiązywalne wprost (jak dotąd)
+      // nie zmieniają zachowania.
+      if (!drawerData && meta?.ownerRef) {
+        const wynik = resolveCanvasMenuSubject(
+          {
+            klasa: meta.klasa,
+            ownerRef: meta.ownerRef,
+            elementKind: meta.elementKind,
+            derKind: meta.derKind,
+            busRef: meta.busRef,
+          },
+          modelIndex,
+        );
+        if (wynik.stan === 'temat') {
+          drawerData = buildDetailDrawerDataForElementKind(
+            snapshot,
+            sldData,
+            rawOverlayPayload,
+            ELEMENT_KIND_KOTWICY[wynik.temat.kotwica],
+            wynik.temat.modelRef,
+            meta?.deviceRef,
+          );
+        }
+      }
       if (drawerData) setDetailDrawerData(drawerData);
     },
-    [derDrag, rawOverlayPayload, selectElement, sldData, snapshot],
+    [derDrag, modelIndex, rawOverlayPayload, selectElement, sldData, snapshot],
   );
 
   /**

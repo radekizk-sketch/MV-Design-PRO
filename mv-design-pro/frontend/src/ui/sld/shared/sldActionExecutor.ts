@@ -40,6 +40,7 @@ import { useAppStateStore } from '../../app-state';
 import { useNetworkBuildStore } from '../../network-build/networkBuildStore';
 import type { NetworkBuildOperationName } from '../../network-build/internal/legacySurfaceTypes';
 import { buildOperationContext } from '../../network-build/operationContext';
+import { resolveBranchStartOperationContext } from '../../network-build/operationContextResolvers';
 import { notify } from '../../notifications/store';
 import { useSelectionStore } from '../../selection';
 import { useSnapshotStore } from '../../topology/snapshotStore';
@@ -397,6 +398,33 @@ export function resolveGpzTrunkStartFieldRef(
   // Wybór deterministyczny: pierwsze wolne pole w porządku leksykalnym
   // (identyfikatory pól GPZ są numerowane, więc to porządek rozdzielni).
   return wolne.sort((left, right) => left.localeCompare(right))[0] ?? null;
+}
+
+/**
+ * S9-10 (klasa S9-5 „pozycja budowy MUSI mieć punkt startu", predykaty
+ * PARAMI): dostępność pozycji „Rozpocznij odgałęzienie" liczona TYM SAMYM
+ * resolverem, którego użyje kreator odgałęzienia (`KreatorOdgalezienia` →
+ * `resolveBranchSourceContextFromOperation` czyta `from_ref` zbudowany przez
+ * `resolveBranchStartOperationContext`). Pomiar S9-10 (fixtury referencyjne +
+ * świeży GPZ): menu oferowało pozycję na KAŻDEJ stacji, źródle GPZ i szynie
+ * sekcji, a resolver dla WSZYSTKICH zwracał pusty `fromRef` — kreator otwierał
+ * się z „Brak wskazania źródła" i trwale zablokowanym zapisem (martwy klik
+ * opakowany w okno; bramka `stationHasFreeBay` z S9-5 ISTNIAŁA, ale żaden
+ * wołający jej nie zasilał — warunek martwy, deklaracja bez testu).
+ *
+ * `undefined` = rodzaj bez wpisu `start-branch` w menu (nie ma czego bramkować)
+ * albo brak refu/migawki (brak pomiaru nie jest dowodem — pozycja zostaje
+ * aktywna jak dotąd).
+ */
+export function resolveBranchStartAvailability(
+  snapshot: EnergyNetworkModel | null,
+  kind: SldElementKindForMenu,
+  elementId: string | null,
+): boolean | undefined {
+  if (!snapshot || !elementId) return undefined;
+  const elementType = elementTypeForSldKind(kind);
+  if (!elementType) return undefined;
+  return resolveBranchStartOperationContext(snapshot, elementId, elementType).fromRef.trim().length > 0;
 }
 
 export function buildSldOperationContext(
