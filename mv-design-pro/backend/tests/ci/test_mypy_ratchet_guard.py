@@ -40,12 +40,16 @@ def test_guard_istnieje_i_ma_zmierzony_prog() -> None:
     # TOR U2 (2026-08-02): brama przypisania katalogu zastąpiła DWA równoległe bloki
     # materializacji w `assign_catalog_to_element` jednym wywołaniem — zniknęła
     # kolizja nazw `binding_payload`/`materialized_params` ⇒ pomiar 22/14 → 20/14.
+    # POMIAR-ODG-TYPY (2026-08-07): zapadka zapaliła się w CI (21/14) po karcie
+    # POMIAR-ODG — naprawiona CAŁA klasa wzorca `float(Any | None)` maskowanego
+    # przez `try/except TypeError` w `station_templates/apply.py` (trzy wystąpienia)
+    # ⇒ pomiar 21/14 → 18/13.
     #
     # To JEDYNE miejsce, w którym zmierzona liczba jest powtórzona poza samym guardem.
     # Test „odcina w obie strony" poniżej wyprowadza ją z modułu, więc obniżenie progu
     # wymaga świadomej zmiany dokładnie tutaj (i nigdzie indziej).
-    assert modul.BASELINE_ERRORS == 20
-    assert modul.BASELINE_FILES == 14
+    assert modul.BASELINE_ERRORS == 18
+    assert modul.BASELINE_FILES == 13
 
 
 def test_guard_jest_wpiety_do_workflow_ci() -> None:

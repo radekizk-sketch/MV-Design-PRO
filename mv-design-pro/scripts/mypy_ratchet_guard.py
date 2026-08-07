@@ -65,8 +65,14 @@ BACKEND = ROOT / "backend"
 # jednym wywolaniem. Zniknela kolizja nazw `binding_payload`/`materialized_params`
 # (te same nazwy lokalne w dwoch galeziach o roznych typach), ktora chowala przed
 # analiza dwa realne bledy typow. Pomiar wlasny: 22/14 -> 20/14.
-BASELINE_ERRORS = 20
-BASELINE_FILES = 14
+# POMIAR-ODG-TYPY (2026-08-07): karta POMIAR-ODG dolozyla w `station_templates/apply.py`
+# trzeci przypadek wzorca `float(x)` na `Any | None` maskowanego przez `try/except
+# TypeError` — zapadka zapalila sie w CI (20 -> 21). Naprawiona CALA KLASA w pliku
+# (trzy wystapienia: szyna nN po napieciu, napiecie dolne transformatora z katalogu,
+# moc przeksztaltnika z katalogu): zwezenie `None` PRZED `float`, zachowanie bez zmian
+# (jawny `continue`/`return None` zamiast lapania TypeError). Pomiar wlasny: 21/14 -> 18/13.
+BASELINE_ERRORS = 18
+BASELINE_FILES = 13
 
 WZORZEC_PODSUMOWANIA = re.compile(r"Found (\d+) errors? in (\d+) files?")
 WZORZEC_SUKCESU = re.compile(r"Success: no issues found")

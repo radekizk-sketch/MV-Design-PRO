@@ -435,8 +435,11 @@ def _szyna_nn_stacji(
     for bus in enm_dict.get("buses", []):
         if not isinstance(bus, dict) or bus.get("ref_id") not in bus_refs:
             continue
+        surowe_napiecie = bus.get("voltage_kv")
+        if surowe_napiecie is None:
+            continue
         try:
-            napiecie = float(bus.get("voltage_kv"))
+            napiecie = float(surowe_napiecie)
         except (TypeError, ValueError):
             continue
         if abs(napiecie - nn_voltage_kv) < 1e-9:
@@ -868,6 +871,8 @@ def _transformer_lv_voltage_kv(transformer_ref: str | None) -> float | None:
     if item is None:
         return None
     value = getattr(item, "voltage_lv_kv", None) or getattr(item, "ulv_kv", None)
+    if value is None:
+        return None
     try:
         parsed = float(value)
     except (TypeError, ValueError):
@@ -941,6 +946,8 @@ def _converter_apparent_power_mva(catalog_ref: object) -> float | None:
         return None
     item = get_default_mv_catalog().get_converter_type(catalog_ref)
     value = getattr(item, "sn_mva", None) if item is not None else None
+    if value is None:
+        return None
     try:
         parsed = float(value)
     except (TypeError, ValueError):
