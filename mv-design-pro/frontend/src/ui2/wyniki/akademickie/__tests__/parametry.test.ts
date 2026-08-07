@@ -134,6 +134,31 @@ describe('zbudujParametry — metody detekcji i listy złożone', () => {
     });
   });
 
+  it('lista pusta NIE tworzy klucza — koniec zaszytego silnika powierzchni zastanej', () => {
+    // Pin dopisany po iniekcji: przywrócenie fabrykacji `motors: [MOTOR_SN_1 …]`
+    // przechodziło przez model i łapał je dopiero test okna. Deklaracja „okno nie
+    // podstawia danych wejściowych" musi mieć strażnika także tutaj.
+    const silniki = zbudujParametry({
+      rodzaj: 'motor_starting',
+      pola: {},
+      uziom: {},
+      metody: [],
+      wiersze: [],
+    });
+    expect(silniki).toEqual({});
+    expect('motors' in silniki).toBe(false);
+
+    const referencje = zbudujParametry({
+      rodzaj: 'benchmark_validation',
+      pola: {},
+      uziom: {},
+      metody: [],
+      wiersze: [{}],
+    });
+    expect(referencje).toEqual({});
+    expect('benchmark_references' in referencje).toBe(false);
+  });
+
   it('lista referencji benchmarkowych trafia pod własnym kluczem', () => {
     const parametry = zbudujParametry({
       rodzaj: 'benchmark_validation',

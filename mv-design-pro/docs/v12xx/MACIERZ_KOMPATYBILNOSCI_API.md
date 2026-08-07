@@ -99,7 +99,7 @@ Data wylaczenia dla deprecated: koniec M2, o ile wiersz nie wskazuje inaczej.
 | `GET /api/catalog/switch-equipment-types` | v12xx | aktywny | 2026-04-24 | - | Katalog lacznikow. | catalog tests | Administrator katalogow |
 | `GET /api/catalog/transformer-types` | v12xx | aktywny | 2026-04-24 | - | Katalog transformatorow. | catalog tests | Administrator katalogow |
 | `GET /api/catalog/vt-types` | v12xx | aktywny | 2026-04-24 | - | Katalog przekladnikow napieciowych. | catalog tests | Administrator katalogow |
-| `GET /api/catalog/v126/{namespace}` | v12.6 | aktywny | 2026-05-24 | - | Katalogi pomocnicze analiz akademickich V12.6. | v126 academic API tests | Administrator katalogow |
+| `GET /api/catalog/v126/{namespace}` | v12.6 | aktywny | 2026-05-24 | - | Katalogi pomocnicze analiz akademickich V12.6; konsument: `ui2/wyniki/akademickie` (lista rodzajow + sekcja danych odniesienia). | v126 academic API tests | Administrator katalogow |
 | `GET /api/ncrfg-tests/catalog` | v12.6 | aktywny | 2026-05-24 | - | Katalog testow procedury PTPiREE NC RfG oraz profile operatorow dla zakladki E-35/ncrfg-tests. | ncrfg ptpiree API tests | Architekt OZE |
 | `GET /api/ncrfg-tests/cases/{case_id}/compliance` | v12.6 | aktywny | 2026-07-21 | - | Zgodnosc NC RfG liczona z MODELU (most build_der_compliance_list_from_enm -> NcRfgComplianceChecker) per zrodlo DER dla wskazanego operatora; uczciwy stan zerowy bez DER (V12K-087). | ncrfg model bridge tests | Architekt OZE |
 | `GET /api/execution/batches/{batch_id}` | v12xx | aktywny | 2026-08-07 | - | Szczegoly serii przebiegow (wsadu) nad scenariuszami zwarciowymi: status, odcisk serii, identyfikatory biegow kanonicznych. | test_batch_execution.py | Architekt ruchowy |

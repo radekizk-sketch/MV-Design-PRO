@@ -176,7 +176,6 @@ export function FormularzParametrow({
           {wiersze.map((wiersz, indeks) => (
             // Wiersze listy nie mają identyfikatora niezależnego od pozycji — klucz
             // pozycyjny jest tu poprawny (dodawanie/usuwanie przebudowuje listę stanu).
-            // eslint-disable-next-line react/no-array-index-key
             <div className="mvd-akad-lista-wiersz" key={`wiersz-${indeks}`} data-testid={`mvd-akad-lista-wiersz-${indeks}`}>
               <div className="mvd-akad-pola-siatka">
                 {definicjeListy.map((definicja) => (
