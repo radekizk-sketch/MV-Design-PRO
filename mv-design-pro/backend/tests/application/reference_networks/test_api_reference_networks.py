@@ -61,6 +61,27 @@ def test_run_endpoint_returns_result() -> None:
     assert "buses" in body["result"]
 
 
+def test_run_endpoint_passes_convergence_through() -> None:
+    """Zbieznosc i iteracje sa czescia wyniku solvera — koncowka nie moze ich gubic.
+
+    ROUTERY-4A: `solve_reference_network` zwraca `converged`/`iterations`, a
+    `_run_solver_for_network` je UPUSZCZAL — konsument (panel biegu sieci
+    referencyjnych) nie mial jak odroznic zbieznosci od braku danych. Iloczyn
+    cech: siec symetryczna (NR) x niesymetryczna (BFS, S6) — obie drogi
+    dyspozycji solvera musza przenosic komplet.
+    """
+    from api.main import app
+
+    client = TestClient(app)
+    for network_id in ("ieee-4bus", "ieee-13bus"):
+        response = client.post(f"/api/v1/reference-networks/{network_id}/run")
+        assert response.status_code == 200
+        result = response.json()["result"]
+        assert result["converged"] is True, network_id
+        assert isinstance(result["iterations"], int), network_id
+        assert len(result["buses"]) > 0, network_id
+
+
 def test_validate_endpoint_ieee_4bus_passes() -> None:
     """End-to-end validation: actual matches expected → PASS."""
     from api.main import app

@@ -112,11 +112,23 @@ export function ReferenceNetworkRunPanel({
           <div className="mb-2 flex gap-4 text-xs">
             <span>
               <span className="text-chrome-500">Zbieżność: </span>
+              {/* Uczciwość braku: pole nieobecne w odpowiedzi to „—", nie
+                  werdykt „brak zbieżności" (absencja danych != porażka). */}
               <span
-                className={wynik.result.converged ? 'text-emerald-300' : 'text-red-300'}
+                className={
+                  wynik.result.converged === undefined
+                    ? 'text-chrome-400'
+                    : wynik.result.converged
+                      ? 'text-emerald-300'
+                      : 'text-red-300'
+                }
                 data-testid="run-panel-converged"
               >
-                {wynik.result.converged ? 'osiągnięta' : 'brak zbieżności'}
+                {wynik.result.converged === undefined
+                  ? '—'
+                  : wynik.result.converged
+                    ? 'osiągnięta'
+                    : 'brak zbieżności'}
               </span>
             </span>
             {typeof wynik.result.iterations === 'number' && (
