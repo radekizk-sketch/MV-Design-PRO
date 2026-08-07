@@ -28,6 +28,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { useAppStateStore } from '../../../../ui/app-state';
 import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
 import { EkranAnalizAkademickich } from '../EkranAnalizAkademickich';
+import { POWODY_NIEPREZENTOWANIA } from '../nieprezentowane';
 import { PREZENTACJA } from '../prezentacja';
 import odpowiedziSolvera from './odpowiedziSolvera.json';
 
@@ -308,9 +309,21 @@ describe('strażnik prezentacji — kontrola dodatnia reguł', () => {
 // STRAŻNIK — każdy rodzaj kontraktu, realna odpowiedź solvera
 // ---------------------------------------------------------------------------
 
-describe('strażnik prezentacji — 14 rodzajów kontraktu na realnych odpowiedziach', () => {
-  it('fixtura pokrywa KOMPLET rodzajów prezentacji (zbiór z kontraktu, nie z listy ręcznej)', () => {
-    expect(RODZAJE).toHaveLength(14);
+describe('strażnik prezentacji — rodzaje prezentowane na realnych odpowiedziach', () => {
+  /*
+   * INTENCJA BEZ ZMIAN, INNY KANON (V126-WYGASZENIE): zbiór skanowanych rodzajów
+   * nadal pochodzi Z KONTRAKTU, nie z listy ręcznej — ale kontrakt dzieli się
+   * teraz na rodzaje PREZENTOWANE i rodzaje WYCOFANE z toru projektanta
+   * (decyzja właściciela 2026-08-07, `nieprezentowane.ts`). Zamiast zaszytej
+   * liczby pinujemy RÓWNANIE: prezentowane + wycofane = komplet fixtury (a ta
+   * jest generowana z solvera). Rodzaj, który zniknąłby z obu zbiorów, daje
+   * czerwień tak samo jak przy zaszytej liczbie, ale bez ręcznego dostrajania
+   * stałej przy każdej decyzji produktowej.
+   */
+  it('fixtura pokrywa KOMPLET rodzajów kontraktu (prezentowane + wycofane)', () => {
+    const wycofane = Object.keys(POWODY_NIEPREZENTOWANIA);
+    expect([...RODZAJE, ...wycofane].sort()).toEqual(Object.keys(ODPOWIEDZI).sort());
+    expect(RODZAJE.length).toBeGreaterThan(0);
     RODZAJE.forEach((rodzaj) => {
       expect(ODPOWIEDZI[rodzaj], `brak odpowiedzi solvera dla rodzaju ${rodzaj}`).toBeDefined();
     });

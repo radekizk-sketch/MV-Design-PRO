@@ -40,9 +40,13 @@ export const OPISY_RODZAJOW: Record<RodzajAnalizy, string> = {
   ssci_impedance:
     'Kryterium impedancyjne Nyquista dla przekształtnika: Z_grid(f), Z_conv(f) i wzmocnienie '
     + 'pętli mniejszej. Werdykt stabilności ma własne okno „Stabilność SSCI".',
+  // V126-WYGASZENIE: opis mówił „margines … z krzywej P–U … z rozpływu", czyli
+  // obiecywał wielkość, której solver nie liczy rozpływem (przybliżenie ze
+  // sztywności węzła) i której ekran już nie pokazuje. Opis mówi teraz o tym,
+  // co analiza NAPRAWDĘ rozstrzyga — o bliskości załamania napięcia.
   voltage_stability:
-    'Margines stabilności napięciowej węzłów (krzywa P–U, współczynnik obciążalności) '
-    + 'z rozpływu zbudowanego na modelu przypadku.',
+    'Bliskość węzłów do punktu załamania napięcia — wskaźnik L z jawnym kryterium '
+    + 'oraz zapas mocy biernej węzła (krzywa Q–U).',
   reliability_contingency:
     'Wskaźniki niezawodności zasilania (SAIFI/SAIDI/ENS) z intensywności uszkodzeń '
     + 'i czasów odtworzenia elementów modelu.',

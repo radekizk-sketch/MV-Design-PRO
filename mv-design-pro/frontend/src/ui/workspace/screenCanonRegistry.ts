@@ -1202,7 +1202,13 @@ export const SCREEN_CANON_REGISTRY: Readonly<Record<CanonScreenId, ScreenCanonDe
     requiresSelection: false,
     requiresStudyCase: true,
     requiresOperatingVariant: true,
-    visibleInNavigation: true,
+    // V126-WYGASZENIE (decyzja właściciela 2026-08-07): walidacja na sieciach
+    // odniesienia bada NARZĘDZIE, nie projekt użytkownika, więc znika z toru
+    // projektanta. Ekran zostaje w kanonie (zdolność backendu istnieje i jest
+    // pilnowana w kontroli jakości — `test_ieee_benchmark_wiring.py`), ale nie
+    // ma go w nawigacji: pozycja „Benchmarki" obiecywałaby analizę, której okno
+    // już nie oferuje. Rozstrzygnięcie: docs/v12xx/REJESTR_KONFLIKTOW.md.
+    visibleInNavigation: false,
     surfaceKind: 'analityczny',
     subjectKind: 'analysis_case',
     sizeClass: 'C',

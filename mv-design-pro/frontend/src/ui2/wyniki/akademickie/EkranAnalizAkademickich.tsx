@@ -71,6 +71,7 @@ import {
   odczytaj,
   type TabelaObiektow,
 } from './prezentacja';
+import { tylkoPrezentowane, type RodzajPrezentowany } from './nieprezentowane';
 import { maParametry, zbudujParametry, type StanPol, type WierszListy } from './parametry';
 import { FormularzParametrow } from './FormularzParametrow';
 import { useNazwaObiektu } from './useNazwaObiektu';
@@ -200,7 +201,7 @@ function Chip({ tekst, istotnosc, testid }: { tekst: string; istotnosc: Istotnos
  * wierszy tabeli), a nie porównuje liczb z progiem.
  */
 function PanelWerdyktu({ rodzaj, payload }: { rodzaj: string; payload: unknown }) {
-  const projekt = PREZENTACJA[rodzaj as RodzajAnalizy];
+  const projekt = PREZENTACJA[rodzaj as RodzajPrezentowany];
   if (!projekt) return null;
   const w = projekt.werdykt;
 
@@ -272,7 +273,7 @@ function PanelWerdyktu({ rodzaj, payload }: { rodzaj: string; payload: unknown }
 
 /** Wielkości główne — liczba + jednostka + (gdy solver ją zwraca) odniesienie. */
 function PanelWielkosci({ rodzaj, payload }: { rodzaj: string; payload: unknown }) {
-  const projekt = PREZENTACJA[rodzaj as RodzajAnalizy];
+  const projekt = PREZENTACJA[rodzaj as RodzajPrezentowany];
   if (!projekt) return null;
   const obecne = projekt.wielkosciGlowne.filter((pole) => {
     const wartosc = odczytaj(payload, pole.sciezka);
@@ -791,8 +792,15 @@ type StanRodzajow =
 
 export interface EkranAnalizAkademickichProps {
   readonly trybZaawansowania: AdvancementMode;
-  /** Rodzaj wybrany z góry (wejście z ekranu trasowego) — użytkownik może go zmienić. */
-  readonly rodzajPoczatkowy?: RodzajAnalizy;
+  /**
+   * Rodzaj wybrany z góry (wejście z ekranu trasowego) — użytkownik może go zmienić.
+   *
+   * V126-WYGASZENIE: typ zawężony do rodzajów PREZENTOWANYCH. Rodzaj wycofany
+   * przekazany tutaj nie znalazłby się na liście wyboru i okno po cichu
+   * pokazałoby pierwszą pozycję z katalogu — czyli inną analizę niż obiecywało
+   * wejście. Typ zamyka tę drogę w czasie pisania kodu.
+   */
+  readonly rodzajPoczatkowy?: RodzajPrezentowany;
 }
 
 export function EkranAnalizAkademickich({
@@ -819,10 +827,17 @@ export function EkranAnalizAkademickich({
   const [wiersze, setWiersze] = useState<readonly WierszListy[]>([]);
   const [parametryOtwarte, setParametryOtwarte] = useState(false);
 
+  // V126-WYGASZENIE: lista rodzajów pochodzi z katalogu backendu (jedno źródło
+  // zbioru), ale przed pokazaniem przechodzi przez REJESTR WYCOFAŃ
+  // (`nieprezentowane.ts`). Rodzaj wycofany decyzją właściciela nie pojawia się
+  // w wyborze, choć backend dalej go wystawia — zdolność zostaje, znika
+  // prezentacja. Filtr jest w warstwie prezentacji, nie w kliencie API, bo to
+  // decyzja o EKRANIE, a nie o kontrakcie transportu.
   const wczytajRodzaje = useCallback(() => {
     setRodzaje({ rodzaj: 'ladowanie' });
     pobierzRodzajeAnaliz()
-      .then((kody) => {
+      .then((wszystkie) => {
+        const kody = tylkoPrezentowane(wszystkie);
         setRodzaje({ rodzaj: 'gotowe', kody });
         setWybrany((biezacy) => {
           if (biezacy !== '' && kody.includes(biezacy)) return biezacy;
@@ -981,10 +996,10 @@ export function EkranAnalizAkademickich({
             </select>
           </label>
         )}
-        {wybrany !== '' && PREZENTACJA[wybrany as RodzajAnalizy] !== undefined && (
+        {wybrany !== '' && PREZENTACJA[wybrany as RodzajPrezentowany] !== undefined && (
           <div className="mvd-akad-cel" data-testid="mvd-akad-cel">
             <span className="mvd-akad-wiersz-etyk">{S.celTytul}</span>
-            <p className="mvd-akad-cel-tresc">{PREZENTACJA[wybrany as RodzajAnalizy].pytanie}</p>
+            <p className="mvd-akad-cel-tresc">{PREZENTACJA[wybrany as RodzajPrezentowany].pytanie}</p>
           </div>
         )}
         {wybrany !== '' && <p className="mvd-akad-opis">{opisRodzaju(wybrany)}</p>}
@@ -1112,7 +1127,7 @@ export function EkranAnalizAkademickich({
               → następny krok. Zapis techniczny i ślad zostają, ale ZWINIĘTE. */}
           <PanelWerdyktu rodzaj={wybrany} payload={stan.dane.wynik.result.result} />
           <PanelWielkosci rodzaj={wybrany} payload={stan.dane.wynik.result.result} />
-          {(PREZENTACJA[wybrany as RodzajAnalizy]?.tabele ?? []).map((tabela) => (
+          {(PREZENTACJA[wybrany as RodzajPrezentowany]?.tabele ?? []).map((tabela) => (
             <PanelObiektow
               key={tabela.sciezka}
               tabela={tabela}
@@ -1122,11 +1137,11 @@ export function EkranAnalizAkademickich({
           ))}
           <PanelBrakow payload={stan.dane.wynik.result.result} />
           <PanelWiarygodnosci payload={stan.dane.wynik.result.result} />
-          {PREZENTACJA[wybrany as RodzajAnalizy] !== undefined && (
+          {PREZENTACJA[wybrany as RodzajPrezentowany] !== undefined && (
             <section className="mvd-akad-sekcja" data-testid="mvd-akad-nastepny-krok">
               <h3 className="mvd-akad-sekcja-tytul">{S.nastepnyKrokTytul}</h3>
               <p className="mvd-akad-opis">
-                {PREZENTACJA[wybrany as RodzajAnalizy].nastepnyKrok}
+                {PREZENTACJA[wybrany as RodzajPrezentowany].nastepnyKrok}
               </p>
             </section>
           )}

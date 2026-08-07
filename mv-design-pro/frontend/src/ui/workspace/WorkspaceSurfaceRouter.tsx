@@ -70,7 +70,7 @@ import {
 } from './surfaces/InfrastructureSurfaces';
 import { PvSourceSurface, BessSurface, FwSurface } from './surfaces/DerSurfaces';
 import { ReferenceNetworkSurface } from './surfaces/ReferenceNetworkSurface';
-import { EkranAnalizAkademickich, type RodzajAnalizy } from '../../ui2/wyniki/akademickie';
+import { EkranAnalizAkademickich, type RodzajPrezentowany } from '../../ui2/wyniki/akademickie';
 import { NcRfgTestsTab } from './surfaces/NcRfgTestsTab';
 import {
   AnalysisSurfaceComparisonWizard,
@@ -2853,12 +2853,20 @@ const delegatedSurfaceBodies: Record<string, (surface: WorkspaceSurfaceDescripto
  * wejście trasowe E-40…E-50 obchodziło bramę trybu (klasa: brama bramkująca
  * jedno z dwóch wejść nie jest bramą). Wzorzec z `ComplianceSurface`.
  */
-function PowierzchniaAnalizAkademickich({ rodzaj }: { rodzaj?: RodzajAnalizy }) {
+function PowierzchniaAnalizAkademickich({ rodzaj }: { rodzaj?: RodzajPrezentowany }) {
   const trybZaawansowania = useShellStore((state) => state.advancementMode);
   return <EkranAnalizAkademickich trybZaawansowania={trybZaawansowania} rodzajPoczatkowy={rodzaj} />;
 }
 
-const RODZAJ_EKRANU_V126: Partial<Record<string, RodzajAnalizy>> = {
+/*
+ * V126-WYGASZENIE: typ wartości zawężony do rodzajów PREZENTOWANYCH. Ekran
+ * trasowy nie może wskazywać rodzaju wycofanego z toru projektanta — okno
+ * odsiewa go z listy wyboru, więc taka mapa po cichu otwierałaby INNĄ analizę
+ * niż obiecuje wejście. `E-49` (walidacja na sieciach odniesienia) zniknął z tej
+ * mapy i z nawigacji (`screenCanonRegistry`, `visibleInNavigation: false`) na
+ * mocy decyzji właściciela 2026-08-07.
+ */
+const RODZAJ_EKRANU_V126: Partial<Record<string, RodzajPrezentowany>> = {
   'E-40': 'power_quality_harmonics',
   'E-41': 'voltage_stability',
   'E-42': 'reliability_contingency',
@@ -2868,7 +2876,6 @@ const RODZAJ_EKRANU_V126: Partial<Record<string, RodzajAnalizy>> = {
   'E-46': 'motor_starting',
   'E-47': 'hosting_capacity',
   'E-48': 'opf_loss_lcc',
-  'E-49': 'benchmark_validation',
   'E-50': 'uncertainty_sensitivity',
 };
 

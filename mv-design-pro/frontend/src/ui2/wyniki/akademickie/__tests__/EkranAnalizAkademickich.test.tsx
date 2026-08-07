@@ -16,6 +16,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { useAppStateStore } from '../../../../ui/app-state';
 import { useShellStore } from '../../../shell/useShellStore';
 import { EkranAnalizAkademickich } from '../EkranAnalizAkademickich';
+import { rodzajPrezentowany } from '../nieprezentowane';
 
 const CASE_ID = 'case-akad-1';
 const RUN_ID = 'run-akad-abc';
@@ -218,11 +219,20 @@ describe('EkranAnalizAkademickich — stany wejściowe', () => {
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
-  it('lista rodzajów pochodzi z katalogu backendu — komplet czternastu pozycji', async () => {
+  /*
+   * INTENCJA BEZ ZMIAN, INNY KANON (V126-WYGASZENIE): lista nadal pochodzi
+   * WYŁĄCZNIE z katalogu backendu — front nie trzyma własnej kopii zbioru.
+   * Zmieniła się jedna rzecz: przed pokazaniem lista przechodzi przez rejestr
+   * wycofań, więc komplet katalogu minus wycofane. Sam fakt wycofania i jego
+   * zakres pinuje `wygaszenie.test.tsx`.
+   */
+  it('lista rodzajów pochodzi z katalogu backendu — komplet minus rodzaje wycofane', async () => {
     ustawFetch();
     render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
     const selektor = (await screen.findByTestId('mvd-akad-rodzaj')) as HTMLSelectElement;
-    expect(Array.from(selektor.options).map((o) => o.value)).toEqual(RODZAJE);
+    expect(Array.from(selektor.options).map((o) => o.value)).toEqual(
+      RODZAJE.filter(rodzajPrezentowany),
+    );
   });
 
   it('rodzaj bez ekranu trasowego jest osiągalny (dobór uziemienia punktu neutralnego)', async () => {
