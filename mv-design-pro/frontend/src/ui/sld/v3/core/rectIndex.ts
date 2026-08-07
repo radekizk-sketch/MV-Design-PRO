@@ -27,7 +27,7 @@
  * Konsekwencja: wyjście `declutterLabels` i `planSceneLabels` jest BAJTOWO
  * identyczne przed i po (pin: `__tests__/rectIndex.test.ts` — równoważność z
  * przeglądem liniowym na iloczynie cech + odciski scen w
- * `scene/__tests__/buildScene.kosztS99.test.ts`).
+ * `scene/__tests__/kosztSceny.test.ts`).
  *
  * DETERMINIZM. Czysta arytmetyka, zero DOM/losowości/czasu. Rozmiar komórki i
  * układ kubełków wpływają WYŁĄCZNIE na koszt, nigdy na wynik.
