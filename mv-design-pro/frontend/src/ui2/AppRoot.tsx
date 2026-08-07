@@ -37,7 +37,12 @@ import { InspectorPanel } from './inspector';
 import { useObiektInspektora, useRewizjaModelu } from './adapters/inspectorAdapter';
 import { emituj, subskrybuj, startEventBusAdapters } from './events';
 import { CommandPalette, zbudujIndeksWyszukiwania, type PozycjaWyszukiwania } from './search';
-import { PulpitProjektu, OtworzProjektKontener, EkranArchiwum } from './spaces/projekt';
+import {
+  PulpitProjektu,
+  OtworzProjektKontener,
+  EkranArchiwum,
+  EkranImportuArkusza,
+} from './spaces/projekt';
 import { PanelGotowosci } from './spaces/gotowosc';
 import { ModelWarsztat } from './spaces/model';
 import { MenedzerPrzypadkow, PanelScenariuszy } from './spaces/obliczenia';
@@ -138,7 +143,9 @@ export function AppRoot() {
   // Okno „Archiwum projektu (ZIP)" przestrzeni „Projekt": otwiera je kafel
   // pulpitu ALBO karta huba dokumentacji (jednorazowe żądanie powłoki).
   const zadanieArchiwum = useShellStore((s) => s.zadanieArchiwumProjektu);
+  const zadanieArkusza = useShellStore((s) => s.zadanieImportuArkusza);
   const setZadanieArchiwum = useShellStore((s) => s.setZadanieArchiwumProjektu);
+  const setZadanieArkusza = useShellStore((s) => s.setZadanieImportuArkusza);
   const rewizjaModelu = useRewizjaModelu();
   const obiekt = useObiektInspektora(zaznaczonyId);
   const { status: backendStatus, reconnect } = useBackendHealth();
@@ -207,6 +214,9 @@ export function AppRoot() {
       setZmianaProjektu(false);
       if (useShellStore.getState().zadanieArchiwumProjektu) {
         useShellStore.getState().setZadanieArchiwumProjektu(false);
+      }
+      if (useShellStore.getState().zadanieImportuArkusza) {
+        useShellStore.getState().setZadanieImportuArkusza(false);
       }
     }
   }, [activeSpace]);
@@ -348,6 +358,10 @@ export function AppRoot() {
             // jest właśnie sposobem na zdobycie projektu.
             zadanieArchiwum ? (
               <EkranArchiwum onZamknij={() => setZadanieArchiwum(false)} />
+            ) : zadanieArkusza ? (
+              // Import z arkusza (E1) ma pierwszeństwo także BEZ otwartego projektu:
+              // wczytanie arkusza od operatora jest właśnie sposobem na zdobycie projektu.
+              <EkranImportuArkusza onZamknij={() => setZadanieArkusza(false)} />
             ) : // E1a (K4): sekwencja pierwszego użycia — bez aktywnego projektu
             // przestrzeń „Projekt" prowadzi ekranem „Nowy / otwórz projekt"
             // (W-102, realne akcje API w kontenerze); z projektem — pulpit.
@@ -365,6 +379,7 @@ export function AppRoot() {
                 onZaznaczPrzypadek={(id) => emituj({ typ: 'selekcja', obiektId: id, zrodlo: 'pulpit-projektu' })}
                 onOtworzPrzypadek={() => wybierzPrzestrzen('obliczenia')}
                 onOtworzArchiwum={() => setZadanieArchiwum(true)}
+                onOtworzImportArkusza={() => setZadanieArkusza(true)}
               />
             )
           }
