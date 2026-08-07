@@ -289,8 +289,9 @@ export function lvSideExtraHeight(
  * PREDYKAT JEDEN, KOŃCE DWA (reguła KLASA §3): obie składowe są liczone od
  * TEGO SAMEGO punktu odniesienia (szyna nN), więc łączy je `max`, nie suma —
  * i to samo zdanie egzekwuje test spójności measure↔compose
- * (`compose/__tests__/station.test.ts`), który mierzy REALNY zwis kompozycji
- * pod szyną nN i porównuje z tą liczbą.
+ * (`layout/__tests__/blokPusty.test.ts` §4), który buduje REALNĄ kompozycję,
+ * mierzy jej zwis pod `#lv-bus` i porównuje z tą liczbą na ILOCZYNIE
+ * {brak / odbiór / DER / odbiór+DER} × {1 pole / kilka / maksimum z fixtury}.
  */
 export function nnSideBelowBusHeight(
   station: Pick<StationMeasureInput, 'snBays' | 'aggregatedLvLoad' | 'derSources'>,
