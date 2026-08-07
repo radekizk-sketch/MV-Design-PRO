@@ -131,6 +131,38 @@ Claude-Session: https://claude.ai/code/session_01SQrF1rEGrDZ4E8gehUeRZk
    (najpierw zweryfikuj realne operacje domenowe); SA→F: sprawdź czy wiersz V12K-329 wymaga
    aktualizacji po S9-12.
 
+## 5A. FALA 3 — FAKTY ZMIERZONE Z GÓRY (2026-08-07, Opus; nie mierzyć ponownie)
+
+Pomiar wykonany w repo głównym na szczycie `aa053500`, żeby karty fali 3 poszły bez
+rozpoznania od zera. Liczby są stanem PRZED dla tych kart.
+
+**V126-OKNA** (wiersz „Pakiet akademicki V12.6" §6 inwentarza, ◐):
+- Powierzchnia zastana `frontend/src/ui/workspace/surfaces/V126AcademicSurface.tsx` —
+  **334 wiersze, ZERO testów** (brak pliku w `surfaces/__tests__/`); osiągalna przez most
+  „Pozostałe analizy"; wg wiersza macierzy ślad ucięty do 8 kroków, raport do 3 sekcji,
+  kolory poza tokenami `--mvd-*`.
+- Backend `backend/src/api/v126_academic.py` (prefiks `/api`, wpięty) niesie SIEDEM
+  rodzin końcówek — to jest kontrakt, z którego wyprowadza się kompletność okien:
+  `POST /api/cases/{case_id}/runs/v126/{analysis_type}` (uruchomienie),
+  `GET /api/analysis-runs/{run_id}/results/v126/{analysis_type}` (wynik),
+  `…/{analysis_type}/trace` (ŚLAD — pełny, nie 8 kroków),
+  `…/ssci_impedance/stability` (dedykowany wynik SSCI),
+  `…/{analysis_type}/proof` (DOWÓD), `…/{analysis_type}/report` (RAPORT),
+  `GET /api/catalog/v126/{namespace}` (katalog danych wejściowych).
+- Wzorzec do REUŻYCIA (jedna z 12 analiz ma już własne okno ui2): `frontend/src/ui2/wyniki/ssci/`
+  (`EkranSsci.tsx` + `api.ts`). Karta ma zmierzyć, które z 12 rodzajów mają okno, a które
+  jadą na powierzchni zastanej, i domknąć różnicę wzorcem SSCI + lądowiskiem wyników K3.
+
+**REF-PAKIET** (wiersz „Reference Engine" §6, ◐ — zaszyty pakiet zamiast wyboru):
+- `frontend/src/ui2/spaces/model/ZgodnoscReferencyjna.tsx:30` → `const PAKIET_OSD = 'osd_enea';`
+  użyte w `:83` (`fetchReferencePack(PAKIET_OSD)`) — ekran zgodności ma pakiet ZASZYTY.
+- `frontend/src/ui2/referencje/api.ts:67` → `fetchReferencePacks(...)` (lista `/api/reference/packs`,
+  wspiera filtr rodzaju, np. `'manufacturer'`) ma konsumenta **wyłącznie w teście**
+  (`ui2/referencje/__tests__/api.test.ts:73,79`).
+- Karta: wybór pakietu z listy backendu w obu miejscach zgodności (`spaces/model/ZgodnoscReferencyjna`
+  ORAZ `spaces/gotowosc/SekcjaZgodnosciReferencyjnej` — sprawdzić, czy ma tę samą zaszytą stałą:
+  KLASA, nie instancja), uczciwy stan zerowy (brak pakietów), pamięć wyboru wg zasad przypadku.
+
 OTWARTE DECYZJE PRODUKTOWE WŁAŚCICIELA (nie rozstrzygać samodzielnie; AskUserQuestion gdy aktywny):
 - ujednolicenie podziałki pól L1/L2 (S9-10 pkt C: dwie drogi z kosztami — rezerwacja szerokości
   L2 na L1 poszerza arkusz vs ściśnięcie L2 nakłada aparaty);
