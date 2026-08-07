@@ -71,6 +71,34 @@ const FIXTURA = resolve(
  *  `accept:sld-v3` i pomiar karty (`scripts/pomiar_proporcje.tsx`). */
 const SIEC = JSON.parse(readFileSync(FIXTURA, 'utf8')).enm as EnergyNetworkModel;
 
+const ZRODLO_GLIFOW = resolve(
+  dirname(fileURLToPath(import.meta.url)), '..', '..', 'symbols', 'glyphs.tsx',
+);
+
+/**
+ * Kreski glifów OMIJAJĄCE lejek kompensacji — czyta ŹRÓDŁO, nie wynik renderu.
+ *
+ * Nazwa związana wyrażeniem `grubosc(…)`/`skalujWagi(…)` jest przepustką dla
+ * siebie i dla swoich pól (`sw.path`), więc nowy glif liczący wagi tym samym
+ * lejkiem przechodzi BEZ dopisywania czegokolwiek do tego testu; przepustki nie
+ * dostaje ani liczba, ani goła stała świata (`V3_STROKE_APPARATUS`).
+ */
+function kreskiPozaLejkiem(zrodlo: string): readonly string[] {
+  const przezLejek = new Set<string>();
+  for (const m of zrodlo.matchAll(/const\s+(\w+)\s*=\s*(?:grubosc|skalujWagi)\s*\(/g)) {
+    przezLejek.add(m[1]);
+  }
+  const winne: string[] = [];
+  for (const m of zrodlo.matchAll(/strokeWidth=\{([^}]*)\}/g)) {
+    const wyrazenie = m[1].trim();
+    if (/^grubosc\s*\(/.test(wyrazenie)) continue;
+    const korzen = wyrazenie.match(/^(\w+)(?:\.\w+)?$/)?.[1];
+    if (korzen && przezLejek.has(korzen)) continue;
+    winne.push(wyrazenie);
+  }
+  return winne;
+}
+
 const KLASY: readonly LabelClass[] = ['t1', 't2', 't3', 't4'];
 const LODY: readonly SceneLod[] = [0, 1, 2];
 /** Skale: dolny kraniec · przegląd · dopasowanie typowej sieci · praca · zoom
@@ -420,5 +448,46 @@ describe('PROPORCJE §3/§4 — tożsamość stacji i oznaczenie pola', () => {
       const gabaryt = SYMBOL_DEFS.loadBreakSwitch.width;
       expect(szerokosc, `pole ${i} („${podpis}")`).toBeGreaterThan(gabaryt + podpis.length * 9 * 0.62);
     }
+  });
+});
+
+/**
+ * STRAŻNIK DEKLARACJI „JEDYNE wejście po `strokeWidth` w tym pliku"
+ * (`symbols/glyphs.tsx`, docstring funkcji `grubosc`).
+ *
+ * DLACZEGO OSOBNO: odbiór niezależny karty PROPORCJE założył iniekcję —
+ * JEDNA kreska `BreakerGlyph` przestawiona z `grubosc(props, V3_STROKE_APPARATUS)`
+ * na gołą stałą. Komplet 28 testów proporcji i hierarchii wag przeszedł NA
+ * ZIELONO: wyrocznie mierzą WARTOŚCI, które zwracają funkcje wag, więc kreska
+ * narysowana z ich pominięciem jest dla nich niewidzialna. Deklaracja obejmująca
+ * CAŁY PLIK nie miała przypiętego testu (reguła KLASA §4 — „deklaracja bez testu
+ * = fałszywa pewność"; groźniejsza od samego defektu, bo wyłącza czujność).
+ *
+ * Skutek pominięcia byłby dokładnie tą klasą, którą karta zamykała: przy
+ * oddaleniu wzmocniona reszta glifu rozjeżdża się z niewzmocnioną kreską, więc
+ * aparat wraca do rysunku włosowego — tylko w jednym miejscu i bez śladu w
+ * liczbach.
+ */
+describe('PROPORCJE §3 — kompensacja kreski obejmuje KAŻDĄ kreskę glifu (strażnik klasy, nie przykładu)', () => {
+  it('żadna kreska w glyphs.tsx nie omija lejka `grubosc`/`skalujWagi`', () => {
+    const zrodlo = readFileSync(ZRODLO_GLIFOW, 'utf8');
+    // Zapadka na strażnika, który przestał widzieć plik (zmiana nazwy atrybutu,
+    // przeniesienie glifów): pusty skan musi być błędem, nie ciszą.
+    expect([...zrodlo.matchAll(/strokeWidth=\{/g)].length).toBeGreaterThan(100);
+    expect(kreskiPozaLejkiem(zrodlo)).toEqual([]);
+  });
+
+  it('strażnik REAGUJE na obejście — liczba i goła stała świata są wskazane po nazwie', () => {
+    // Dowód czułości: dokładnie te dwie postacie, które przeszły w iniekcji
+    // odbioru. Bez tego testu zielony wynik powyżej nie odróżnia „nie ma
+    // obejść" od „skan nic nie widzi".
+    const podrobka = `
+      const sw = skalujWagi(props, swBazowe);
+      <line strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
+      <line strokeWidth={sw.path} />
+      <line strokeWidth={V3_STROKE_APPARATUS} />
+      <line strokeWidth={2} />
+    `;
+    expect(kreskiPozaLejkiem(podrobka)).toEqual(['V3_STROKE_APPARATUS', '2']);
   });
 });
