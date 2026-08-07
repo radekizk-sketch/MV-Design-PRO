@@ -268,6 +268,33 @@ describe('SldCanvasV3 — kotwiczenie kamery na zmianie (B-2)', () => {
     expect(kadrZDom(container)).toEqual(kadrPoZoomie);
   });
 
+  it('kandydat narysowany TYLKO na części poziomów jest odrzucany (wymóg kompletu LOD ma strażnika)', () => {
+    // ODBIÓR B-2 (nadzorca, 2026-08-07): nagłówek `kotwicaWidoku` deklaruje, że
+    // wymóg „narysowany na WSZYSTKICH trzech poziomach" jest CELOWY — kamera przy
+    // kotwiczeniu może zmienić poziom, więc kotwica ważna tylko na jednym byłaby
+    // pułapką (kadr celowałby w prostokąt z innego świata). Iniekcja odbiorcza
+    // (zamiana warunku na `if (!l2) continue;`) przeszła CAŁĄ suitę kanwy na
+    // zielono — deklaracja nie miała strażnika. Ten test jest tym strażnikiem:
+    // sprawdza go NA WYROCZNI, nie na przykładzie — kandydat, którego brakuje na
+    // dowolnym poziomie, nie może zostać kotwicą.
+    const enm = wczytajEnm('b2Droga-continue_trunk_segment_sn.enm.json');
+    const sceneByLod = { 0: buildSceneV3(enm, 0), 1: buildSceneV3(enm, 1), 2: buildSceneV3(enm, 2) } as const;
+
+    const narysowanyWszedzie = (ref: string): boolean =>
+      ([0, 1, 2] as const).every((lod) => prostokatElementuWScenie(sceneByLod[lod as SceneLod], ref) !== null);
+
+    // Szukamy w MODELU refu, który rysunek nosi na części poziomów — jeśli taki
+    // istnieje, kotwica MUSI go pominąć; jeśli nie istnieje, sprawdzamy wprost,
+    // że sam kandydat bez kompletu nie przechodzi.
+    const czesciowy = ([0, 1, 2] as const)
+      .flatMap((lod) => buildSceneV3(enm, lod as SceneLod).symbols.map((s) => s.meta?.ownerRef ?? ''))
+      .filter((ref) => ref && !narysowanyWszedzie(ref));
+
+    const kandydat = czesciowy[0] ?? 'ref/ktorego-rysunek-nie-nosi';
+    expect(narysowanyWszedzie(kandydat)).toBe(false);
+    expect(kotwicaWidoku(sceneByLod, [kandydat], sceneBoxToCameraWorld)).toBeNull();
+  });
+
   it('kandydat nierozwiązywalny na rysunku jest pomijany na rzecz następnego (droga „przedłuż magistralę")', () => {
     // Pomiar 2026-08-07: `continue_trunk_segment_sn` wskazuje `bus/…/downstream`,
     // którego rysunek NIE nosi — kotwicą jest dopiero utworzony odcinek.
