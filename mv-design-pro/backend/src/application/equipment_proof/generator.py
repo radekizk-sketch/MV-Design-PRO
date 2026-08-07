@@ -186,7 +186,9 @@ class EquipmentProofGenerator:
                 device_value=device_val,
                 required_source_key="ith_ka",
                 device_source_key="device.i_th_ka",
-                message_pl=(f"Energia cieplna I²t {required_i2t:.4f} <= {device_i2t:.4f} kA²s → {status}."),
+                message_pl=(
+                    f"Energia cieplna I²t {required_i2t:.4f} <= {device_i2t:.4f} kA²s → {status}."
+                ),
                 notes=(
                     f"t_th_s={device_time} s, tk_s={required_time} s",
                     f"I²t wymagane = Ith_req²·tk = {required_i2t:.4f} kA²s",

@@ -205,9 +205,7 @@ class SCAsymmetricalProofPack:
         builder = ProofPackBuilder(context)
 
         def _zbuduj(dokument: ProofDocument) -> bytes:
-            return builder.build(
-                dokument_deterministyczny(dokument, context, data.run_timestamp)
-            )
+            return builder.build(dokument_deterministyczny(dokument, context, data.run_timestamp))
 
         return {
             "SC1FZ": _zbuduj(result.proof_1fz),

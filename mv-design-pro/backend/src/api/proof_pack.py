@@ -416,5 +416,3 @@ def download_sc3f_pack(payload: SC3FPackRequest) -> Response:
         )
     }
     return Response(content=content, media_type="application/zip", headers=headers)
-
-
