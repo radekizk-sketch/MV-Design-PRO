@@ -3,11 +3,13 @@ import { describe, expect, it } from 'vitest';
 import {
   APARAT_OPCJE,
   DANE_DOMYSLNE,
+  RODZAJ_POMIARU_OPCJE,
   ROLE_OPCJE,
   aparatLabel,
   bayKindZRoli,
   maSzablonProducenta,
   maSzyne,
+  rodzajPomiaruLabel,
   rolaLabel,
   walidujFormularz,
   zbudujPayload,
@@ -109,6 +111,42 @@ describe('polaSnModel — payload', () => {
     expect(payload.switchgear_family_ref).toBeUndefined();
     expect(payload.bay_template_ref).toBeUndefined();
     expect(payload.manufacturer_ref).toBeUndefined();
+  });
+});
+
+describe('polaSnModel — rodzaj pomiaru (POMIAR-RODZAJ, kontrakt §5)', () => {
+  it('pole pomiarowe deklaruje rodzaj pomiaru JAWNIE w payloadzie add_sn_bay', () => {
+    const payload = zbudujPayload(
+      dane({ bay_role: 'MEASUREMENT', apparatus_kind: 'MEASUREMENT', rodzaj_pomiaru: 'ROZLICZENIOWY' }),
+      KONTEKST,
+    );
+    expect(payload.rodzaj_pomiaru).toBe('ROZLICZENIOWY');
+  });
+
+  it('domyślny rodzaj = KONTROLNY (status rozliczeniowy nigdy z domysłu)', () => {
+    expect(DANE_DOMYSLNE.rodzaj_pomiaru).toBe('KONTROLNY');
+    const payload = zbudujPayload(
+      dane({ bay_role: 'MEASUREMENT', apparatus_kind: 'MEASUREMENT' }),
+      KONTEKST,
+    );
+    expect(payload.rodzaj_pomiaru).toBe('KONTROLNY');
+  });
+
+  it('rola niepomiarowa NIE wysyła rodzaju pomiaru (backend by ją odrzucił)', () => {
+    for (const { value } of ROLE_OPCJE) {
+      if (value === 'MEASUREMENT') continue;
+      const payload = zbudujPayload(dane({ bay_role: value }), KONTEKST);
+      expect(payload.rodzaj_pomiaru, value).toBeUndefined();
+    }
+  });
+
+  it('każdy rodzaj ma polską etykietę (mapowanie totalne, bez surowych kodów)', () => {
+    for (const { value, label } of RODZAJ_POMIARU_OPCJE) {
+      expect(label.length).toBeGreaterThan(0);
+      expect(label).not.toBe(value);
+      expect(/^[A-Z_]+$/.test(label)).toBe(false);
+      expect(rodzajPomiaruLabel(value)).toBe(label);
+    }
   });
 });
 

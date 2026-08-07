@@ -19,6 +19,13 @@ export const POLE_STRINGS = {
   aparat: 'Rodzaj aparatu',
   aparatPomoc: 'Wyłącznik łączy przy zwarciu (pola z 50/51/67); rozłącznik/odłącznik bez zwarcia.',
 
+  rodzajPomiaru: 'Rodzaj pomiaru',
+  rodzajPomiaruPomoc:
+    'Pomiar rozliczeniowy mierzy cały i wyłącznie pobór odbiorcy (granica stron) — nie może '
+    + 'leżeć w torze tranzytu magistrali. Pomiar kontrolny/ruchowy OSD (bilans, telemetria) '
+    + 'jest wolny w każdej topologii.',
+  wierszRodzajPomiaru: 'Rodzaj pomiaru',
+
   szablonTytul: 'Szablon pola producenta',
   szablonPomoc:
     'Powiąż pole z gotowym szablonem producenta (rodzina rozdzielnicy → szablon pola). '

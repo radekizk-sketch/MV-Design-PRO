@@ -43,8 +43,11 @@ const ROLA_SZABLONU_NA_ROLE_POLA: Record<string, SnFieldRole> = {
   TRANSFORMATOROWE: 'TRANSFORMATOROWE',
   COUPLER: 'SPRZEGLO',
   SPRZEGLO: 'SPRZEGLO',
-  // Pole pomiarowe szablonu nie ma odpowiednika w kontrakcie pól SN operacji —
-  // backend traktuje je jak pole odpływowe (rola LINIA_ODG w modelu stacji).
+  // DŁUG NAZWANY (rejestr POMIAR-ODG pkt 4, POMIAR-RODZAJ): backend ZNA rolę
+  // POMIAROWE (wraz z rodzajem pomiaru i bramą tranzytu), ale słownik ról
+  // kreatora stacji (`SnFieldRole`) jeszcze jej nie niesie — do czasu osobnej
+  // karty rozszerzenia kreator DEGRADUJE pole pomiarowe szablonu do roli
+  // odpływowej (stacja powstaje BEZ układu pomiarowego).
   MEASUREMENT: 'LINIA_ODG',
 };
 

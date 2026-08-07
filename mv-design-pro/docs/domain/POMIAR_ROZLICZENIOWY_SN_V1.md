@@ -122,7 +122,85 @@ Reguły twarde:
   kablowy) i za słupem rozgałęźnym (odcinek napowietrzny). Zrzuty odbioru:
   `docs/sld/audyt-2026-08/odg-rysunek-po-{l0,l2}-{ciemny,jasny}.png`.
 
-## 5. Rejestr zmian
+## 5. Rodzaj pomiaru pola POMIAROWEGO (V12K-335 pkt 2, karta POMIAR-RODZAJ)
+
+Pole pomiarowe niesie atrybut **`rodzaj_pomiaru`** (klucz w specyfikacji pola
+`field_specs`, addytywny — wyłącznie dla pola o roli POMIAROWE; wartości po
+polsku, jak kanoniczna rola `POMIAROWE` i klucz `rodzaj` odcinków):
+
+| Wartość | Znaczenie | Brama tranzytu |
+|---|---|---|
+| `ROZLICZENIOWY` | układ pomiarowo-rozliczeniowy odbiorcy ([E-UP] §7/§10.1, granica stron) | PODLEGA — §1 tego kontraktu |
+| `KONTROLNY` | pomiar kontrolny / ruchowy OSD (bilans, telemetria) | NIE podlega — wolny na każdej drodze i w każdej topologii |
+
+### 5.1 Rozstrzygnięcie rodzaju (jedno źródło: `rozstrzygnij_rodzaj_pomiaru`)
+
+Rodzaj wynika z deklaracji; bez deklaracji rozstrzyga go KONTRAKT drogi
+wejścia — jedno pytanie: **czy operacja deklaruje przyłącze klienta?**
+
+- **Drogi budowy stacji** (`insert_station_on_segment_sn`,
+  `append_station_on_endpoint`, aplikacja szablonu) — deklaracja stacji z polem
+  POMIAROWYM opisuje przyłącze KLIENTA (§3 reguła 1), więc pole bez deklaracji
+  jest **ROZLICZENIOWE** (`RODZAJ_POMIARU_DOMYSLNY_BUDOWY_STACJI`). Skutek:
+  surowe payloady sprzed atrybutu zachowują dotychczasową semantykę bramy —
+  zero cichego poluzowania. Szablony biblioteki NIE korzystają z tej reguły:
+  każdy szablon z pomiarem deklaruje `ROZLICZENIOWY` JAWNIE
+  (`_resolve_sn_field_specs`, pin
+  `test_kazdy_szablon_z_pomiarem_deklaruje_rodzaj_rozliczeniowy_jawnie`).
+- **Droga dokładania pojedynczego pola** (`add_sn_bay`, w tym rekonfiguracja
+  `existing_field_ref`) — operacja NIE deklaruje przyłącza: pomiar na
+  istniejącej szynie bywa i pomiarem kontrolnym OSD, i rozliczeniowym
+  przyłączem z rozdzielni OSD (§2), więc kontekst nie rozstrzyga. Status
+  ROZLICZENIOWY ma skutki kontraktowe (granica stron, brama tranzytu) i
+  **nigdy nie powstaje z domysłu** — wymaga JAWNEJ deklaracji; bez niej pole
+  jest **KONTROLNE** (`RODZAJ_POMIARU_DOMYSLNY_POLA_DOKLADANEGO`).
+
+Wartość spoza słownika ⇒ błąd `sn.rodzaj_pomiaru_nieznany`; deklaracja na polu
+innej roli ⇒ błąd `sn.rodzaj_pomiaru_poza_polem_pomiarowym` (te same kody na
+każdej operacji). Pole rekonfigurowane na rolę niepomiarową TRACI atrybut.
+
+### 5.2 Brama — jedna reguła, wszystkie drogi
+
+Brama odmawia **wyłącznie pomiaru ROZLICZENIOWEGO** i mieszka w JEDNEJ funkcji
+źródłowej `enm.domain_operations.blad_pomiaru_w_torze_tranzytu` (reguła KLASA
+§3 — predykaty parami z jednego źródła). Reguła pozycyjna (uściślenie reguł
+twardych §3 pkt 2–3): pomiar rozliczeniowy na szynie prowadzącej tranzyt jest
+legalny WYŁĄCZNIE, gdy przed nim (od strony zasilania) stoi **czysta pętla
+OSD** — prefiks sekwencji pól zawiera pole odpływowe i nic spoza pary
+{dopływ, odpływ} (klasa C). Prefiks bez odpływu = klasa B (odmowa jak dotąd);
+prefiks z polem spoza pętli (TR, odgałęzienie, inny pomiar) = pomiar nie
+mierzy całego poboru za sobą (odmowa — dawna brama „klasa == B" ten układ
+przepuszczała).
+
+Prawda o tranzycie (druga połowa pary predykatów, udokumentowana w
+`szyna_prowadzi_tranzyt_sn`):
+
+| Droga wejścia | Tranzyt | Kod odmowy |
+|---|---|---|
+| `insert_station_on_segment_sn` (wcięcie; szablony klasy C, kreator stacji) | ZAWSZE — operacja rozcina odcinek | `station.insert.pomiar_w_torze_tranzytu` |
+| `append_station_on_endpoint` (stacja końcowa; szablony klasy B, kreator) | NIGDY — wolny terminal, brama nie woła | — |
+| `add_sn_bay` (nowe pole i rekonfiguracja; kreator „Dodaj pole SN") | z pary tranzytowej ról pól PO operacji (dopływ+odpływ) | `sn.pomiar_w_torze_tranzytu` |
+
+Rozdzielnia GPZ nie ma pola dopływowego SN (zasila ją transformator 110/SN),
+więc nie jest torem tranzytu — pomiar na szynie GPZ (kontrolny i rozliczeniowy
+wg §2) pozostaje wolny. Sekwencję `add_sn_bay` ocenia się PO operacji: pole
+rekonfigurowane na swojej pozycji, pole nowe na końcu; dokładanie pola na
+końcu nie zmienia prefiksu żadnego istniejącego pomiaru (pin
+`test_add_sn_bay_pole_za_pomiarem_nie_rusza_istniejacego_pomiaru`). Wpisy
+historyczne bez rodzaju ocenia operacja, która je stworzyła.
+
+Granica mechanizmu (nazwana, nie przemilczana): brama ocenia operację
+WPROWADZAJĄCĄ pomiar rozliczeniowy; edycja ról ISTNIEJĄCYCH pól, która
+mogłaby unieważnić legalny pomiar (np. rozbrojenie pętli OSD złącza klasy C),
+to zakres walidacji modelu — rejestr `docs/v12xx/REJESTR_KONFLIKTOW.md`,
+wiersz POMIAR-RODZAJ.
+
+Deklaracja w UI: kreator „Dodaj pole SN" (`ui2/kreatory/pole`) ma wybór
+„Rodzaj pomiaru" (Rozliczeniowy — przyłącze klienta / Kontrolny — ruchowy
+OSD), widoczny wyłącznie dla pola pomiarowego i mapowany 1:1 na
+`rodzaj_pomiaru` payloadu `add_sn_bay` (zero fantomów).
+
+## 6. Rejestr zmian
 
 - 2026-08-06: V1 — utworzony po korekcie właściciela (dwukrotnej) do
   V12K-329/330; źródło: [E-UP].
@@ -133,3 +211,12 @@ Reguły twarde:
   ciągi za nimi; punkt odgałęźny jest pełnoprawnym węzłem wiersza (symbol z
   rodzaju modelu, etykieta z danych, obszar trafienia, tor rozcinany w punkcie),
   wyrocznia pokrycia porównuje model z rysunkiem po TOŻSAMOŚCI, nie po liczniku.
+- 2026-08-07: §5 (karta POMIAR-RODZAJ, decyzja właściciela V12K-335 pkt 2) —
+  atrybut `rodzaj_pomiaru` (ROZLICZENIOWY/KONTROLNY) na polu pomiarowym; brama
+  pomiaru w torze tranzytu odmawia WYŁĄCZNIE rozliczeniowego i obejmuje
+  WSZYSTKIE drogi wejścia jedną funkcją źródłową
+  (`blad_pomiaru_w_torze_tranzytu`; reguła pozycyjna „czysta pętla OSD przed
+  pomiarem" — uściślenie reguł twardych §3, dawna brama „klasa == B"
+  przepuszczała prefiks z TR przed pomiarem); szablony klienckie deklarują
+  ROZLICZENIOWY jawnie; kreator „Dodaj pole SN" deklaruje rodzaj z polską
+  etykietą; pomiar OSD na szynie GPZ pozostaje wolny (§2).
