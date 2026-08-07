@@ -16,6 +16,7 @@ import { useCallback } from 'react';
 import { navigateToSld } from '../../../ui/navigation/routes';
 import { useSelectionStore } from '../../../ui/selection';
 import { resolveSelectedElementFromSnapshot } from '../../../ui/shared/selectionResolution';
+import { wskazanieOperacji } from '../../../ui/topology/wskazanieOperacji';
 import type { DomainOpResponseV1 } from '../../../types/enm';
 import type { ElementType } from '../../../ui/types';
 
@@ -51,13 +52,12 @@ export function mapujTypElementu(
   return fallback;
 }
 
-/** Wyłuskuje ref nowo utworzonego/wskazanego elementu z odpowiedzi operacji. */
+/** Wyłuskuje ref nowo utworzonego/wskazanego elementu z odpowiedzi operacji.
+ *  Reguła pierwszeństwa mieszka w `ui/topology/wskazanieOperacji.ts` — TYM
+ *  SAMYM źródle, z którego czyta kotwica kamery (karta B-2), żeby inspektor i
+ *  kadr nie mogły wskazać dwóch różnych obiektów. */
 export function refZOperacji(response: DomainOpResponseV1 | null): string | null {
-  return (
-    response?.selection_hint?.element_id
-    ?? response?.changes?.created_element_ids?.[0]
-    ?? null
-  );
+  return wskazanieOperacji(response?.selection_hint, response?.changes)?.kandydaci[0] ?? null;
 }
 
 /**
@@ -71,10 +71,9 @@ export function refZOperacji(response: DomainOpResponseV1 | null): string | null
  */
 export function kanonicznyRefZOperacji(response: DomainOpResponseV1 | null): string | null {
   if (!response) return null;
-  const kandydaci = [
-    response.selection_hint?.element_id ?? null,
-    ...(response.changes?.created_element_ids ?? []),
-  ].filter((ref): ref is string => typeof ref === 'string' && ref.trim().length > 0);
+  // Lista kandydatów z JEDNEGO źródła reguły (`ui/topology/wskazanieOperacji.ts`)
+  // — tej samej, z której czyta kotwica kamery (karta B-2).
+  const kandydaci = wskazanieOperacji(response.selection_hint, response.changes)?.kandydaci ?? [];
   if (kandydaci.length === 0) return null;
   const snapshot = response.snapshot ?? null;
   // Bez migawki w odpowiedzi nie da się kanonikalizować — zachowujemy dotychczasowe

@@ -81,6 +81,7 @@ import { useAppStateStore } from '../../../app-state';
 import { useSelectionStore } from '../../../selection';
 import { updateUrlWithSelection } from '../../../navigation/urlState';
 import { useSnapshotStore } from '../../../topology/snapshotStore';
+import { wskazanieOperacji } from '../../../topology/wskazanieOperacji';
 import { pustoscModelu } from '../../../topology/pustoscModelu';
 import { buildSupplyPathHighlight, isElementEnergized, type SupplyPathHighlight } from '../../v2/canvas/SupplyPathHighlighter';
 import {
@@ -1511,6 +1512,12 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   // `sldData.stations[].*` (fallbacki drawera stacji, patrz `shared/
   // detailDrawerData.ts::buildStationDetailDrawerData`).
   const logicalViews = useSnapshotStore((state) => state.logicalViews);
+  // B-2 (audyt §4.3): WSKAZANIE ostatniej operacji domenowej — kotwica widoku
+  // kamery po zmianie modelu. Oba pola ustawia store w JEDNYM zapisie razem z
+  // migawką (`ui/topology/snapshotStore.ts`), więc kotwica jest z definicji
+  // spójna z rysunkiem, który kanwa właśnie dostaje.
+  const selectionHint = useSnapshotStore((state) => state.selectionHint);
+  const lastChanges = useSnapshotStore((state) => state.lastChanges);
   const selectElement = useSelectionStore((state) => state.selectElement);
   const activeMode = useAppStateStore((state) => state.activeMode);
   const activeCaseResultStatus = useAppStateStore((state) => state.activeCaseResultStatus);
@@ -2143,6 +2150,16 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   // drugiego modelu kamery: workspace odczytuje stan, nie liczy go.
   // -------------------------------------------------------------------------
   const [minimapOpen, setMinimapOpen] = useState(false);
+  // B-2: kotwica widoku dla kamery — wskazanie ostatniej operacji przeliczone
+  // WSPÓLNĄ regułą (`ui/topology/wskazanieOperacji.ts`), z której korzysta też
+  // selekcja/inspektor. Kanwa dostaje LISTĘ kandydatów i sama sprawdza, którego
+  // z nich rysunek naprawdę nosi (`canvas/viewAnchor.ts`) — zero zgadywania po
+  // nazwie refu.
+  const viewAnchor = useMemo(() => {
+    const wskazanie = wskazanieOperacji(selectionHint, lastChanges);
+    if (!wskazanie) return null;
+    return { kandydaci: wskazanie.kandydaci, przenosKadr: wskazanie.przenosKadr };
+  }, [selectionHint, lastChanges]);
   const [centerRequest, setCenterRequest] = useState<{ readonly x: number; readonly y: number; readonly seq: number } | null>(null);
   // Scena nawigatora liczona TYLKO gdy panel jest rozwinięty — zwinięty
   // nawigator nie kosztuje ani jednego przebiegu buildera (memo przeliczane
@@ -2784,6 +2801,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
           fitSignal={fitSignal}
           fitTarget={fitTarget}
           centerRequest={centerRequest}
+          viewAnchor={viewAnchor}
           safeInsets={effectiveCanvasInsets}
         />
       ) : null}

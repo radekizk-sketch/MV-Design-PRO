@@ -69,6 +69,7 @@ import {
   type BoundingBox,
   type ViewportTransform,
 } from './camera';
+import { kotwicaWidoku } from './viewAnchor';
 // Przeliczenie ekran→świat pochodzi z kontrolera widoku v2 (jedno źródło prawdy
 // matematyki kamery) — wskaźnik ukrytych opisów kotwiczy się w rogu WIDOKU,
 // nie arkusza (V12K-222).
@@ -327,6 +328,24 @@ export interface SldCanvasV3Props {
    *  (`camera.ts`) jest CZYSTĄ translacją: skala i LOD nietknięte, geometria
    *  sceny nietknięta. Brak propa = zachowanie jak dotychczas. */
   readonly centerRequest?: { readonly x: number; readonly y: number; readonly seq: number } | null;
+  /** B-2 (audyt §4.3 „kamera nie nadąża za miejscem edycji"): KOTWICA WIDOKU —
+   *  obiekt wskazany przez operację domenową, która właśnie zmieniła migawkę.
+   *  Kandydaci pochodzą ze WSPÓLNEGO źródła wskazania (`ui/topology/
+   *  wskazanieOperacji.ts` — tego samego, z którego korzysta selekcja), więc
+   *  kadr i inspektor nie mogą wskazać dwóch różnych obiektów.
+   *
+   *  Zachowanie przy zmianie `snapshot`:
+   *   · kotwica podana i ROZWIĄZYWALNA na rysunku ⇒ akcja `'kotwicz'`
+   *     (przybliżenie i poziom szczegółu projektanta zostają, kadr wędruje na
+   *     wskazany obiekt);
+   *   · `przenosKadr === false` (kontrakt `SelectionHint.zoom_to`) ⇒ kamera
+   *     NIETKNIĘTA;
+   *   · brak kotwicy albo kandydat nierozwiązywalny ⇒ pełny refit (zachowanie
+   *     sprzed karty — uczciwie, bez zgadywania punktu). */
+  readonly viewAnchor?: {
+    readonly kandydaci: readonly string[];
+    readonly przenosKadr: boolean;
+  } | null;
   /** Karta S8 (płynność przejść LOD, P2): włącza krótki crossfade warstwy
    *  detalu przy ZMIANIE LOD (wejście nowego szczegółu z opacity 0→1, natywne
    *  SVG `<animate>`, SMIL — wzorzec repo, patrz znacznik pulse niżej; zero
@@ -2355,24 +2374,84 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
       computeInitialCameraState(arg.bbox, arg.viewportSize, arg.lodBboxes, arg.focusPoint, effectiveSafeInsets),
   );
 
-  // (k3) 'refit' PEŁNY gdy zmienia się `snapshot` (nowa sieć = nowy świat) lub
-  // `lodOverride` (zmienia się CEL fitu, patrz k4.1) — pan/zoom użytkownika
-  // NIE jest zachowywany (świadomie, spec §F8). Efekt pomija pierwsze
-  // wywołanie po mouncie — stan startowy już policzony przez lazy-initializer
-  // `useReducer` wyżej z tym samym `fitBbox`/`lodBboxes`.
+  // (k3) 'refit' PEŁNY gdy zmienia się `lodOverride` (zmienia się CEL fitu,
+  // patrz k4.1) — pan/zoom użytkownika NIE jest zachowywany (świadomie,
+  // spec §F8). Efekt pomija pierwsze wywołanie po mouncie — stan startowy już
+  // policzony przez lazy-initializer `useReducer` wyżej z tym samym
+  // `fitBbox`/`lodBboxes`.
   const skippedInitialRefit = useRef(false);
   useEffect(() => {
     if (!skippedInitialRefit.current) {
       skippedInitialRefit.current = true;
       return;
     }
-    // F12-C (E15): refit z punktem fokusu GPZ — nowa sieć/nowy cel fitu
-    // przechodzi przez tę samą semantykę kamery startowej co mount.
+    // F12-C (E15): refit z punktem fokusu GPZ — nowy cel fitu przechodzi przez
+    // tę samą semantykę kamery startowej co mount.
     dispatch({ type: 'refit', bbox: fitBbox, lodBboxes, viewportSize, focusPoint: gpzFocusPoint, safeInsets: effectiveSafeInsets });
     // `viewportSize` w akcji to viewport AKTUALNY w chwili refitu (nie w
     // chwili montażu) — poprawne nawet gdy width/height zmieniły się w tym
-    // samym renderze co snapshot/lodOverride.
-  }, [snapshot, lodOverride]);
+    // samym renderze co `lodOverride`.
+  }, [lodOverride]);
+
+  // -------------------------------------------------------------------------
+  // B-2 (audyt §4.3) — ZMIANA MIGAWKI: kotwiczenie na miejscu edycji zamiast
+  // bezwarunkowego refitu.
+  //
+  // Do tej karty każda zmiana `snapshot` (także taka, która modelu NIE ruszała
+  // — `refresh_snapshot` po odzyskaniu połączenia) wywoływała pełny refit:
+  // kamera wracała do widoku całej sieci, kasując przybliżenie i poziom
+  // szczegółu projektanta (pomiar: 9,01× oddalenia i L2→L0 po wstawieniu stacji
+  // — `canvas/viewAnchor.ts`). Trzy drogi, JEDNA decyzja podejmowana w jednym
+  // miejscu (predykaty parami — CLAUDE.md „KLASA, NIE INSTANCJA" pkt 3):
+  //
+  //  1. TEN SAM model (identyczny `hash_sha256` migawki) ⇒ kamera NIETKNIĘTA.
+  //     Świat się nie zmienił, więc nie ma czego dopasowywać; odświeżenie
+  //     migawki nie jest powodem, żeby wyrzucić projektanta z jego widoku.
+  //  2. Operacja WSKAZAŁA obiekt, który rysunek NOSI ⇒ `'kotwicz'`.
+  //  3. Brak wskazania (np. `delete_element` — backend świadomie nie wskazuje
+  //     usuniętego elementu) albo kandydat nierozwiązywalny ⇒ pełny refit,
+  //     czyli zachowanie sprzed karty. Uczciwie: bez wskazania nie ma czego
+  //     kotwiczyć, a zgadywanie punktu byłoby fabrykacją.
+  // -------------------------------------------------------------------------
+  const viewAnchor = props.viewAnchor ?? null;
+  const skippedInitialAnchor = useRef(false);
+  const poprzedniHashMigawki = useRef<string | null>(snapshot.header?.hash_sha256 ?? null);
+  useEffect(() => {
+    if (!skippedInitialAnchor.current) {
+      skippedInitialAnchor.current = true;
+      return;
+    }
+    const hashTeraz = snapshot.header?.hash_sha256 ?? null;
+    const hashPoprzedni = poprzedniHashMigawki.current;
+    poprzedniHashMigawki.current = hashTeraz;
+    // (1) Ten sam model — nic do zrobienia.
+    if (hashTeraz !== null && hashTeraz === hashPoprzedni) return;
+    // Operacja jawnie prosi, żeby nie przenosić widoku (`selection_hint.zoom_to`).
+    if (viewAnchor && !viewAnchor.przenosKadr) return;
+    const kotwica = viewAnchor
+      ? kotwicaWidoku(sceneByLod, viewAnchor.kandydaci, sceneBoxToCameraWorld)
+      : null;
+    // (2) Kotwiczenie na wskazanym obiekcie.
+    if (kotwica) {
+      dispatch({
+        type: 'kotwicz',
+        anchorByLod: kotwica.boxByLod,
+        lodBboxes,
+        viewportSize,
+        safeInsets: effectiveSafeInsets,
+        // k4.1: gdy poziom szczegółu jest WYMUSZONY, kotwica celuje w geometrię
+        // tego samego świata, który jest renderowany (jak cel fitu wyżej).
+        wymuszonyLod: lodOverride,
+      });
+      return;
+    }
+    // (3) Fallback: zachowanie sprzed karty.
+    dispatch({ type: 'refit', bbox: fitBbox, lodBboxes, viewportSize, focusPoint: gpzFocusPoint, safeInsets: effectiveSafeInsets });
+    // Efekt reaguje WYŁĄCZNIE na zmianę migawki — kotwica jest czytana w chwili
+    // wywołania (ta sama dyscyplina co `fitSignal`/`centerRequest` niżej);
+    // store dostarcza migawkę i wskazanie w JEDNYM zapisie, więc para jest
+    // spójna z definicji (`ui/topology/snapshotStore.ts`).
+  }, [snapshot]);
 
   // K11-A: jawne „Dopasuj widok" — refit na inkrementację sygnału (bez zmiany
   // świata; pomija montaż, bo stan startowy już zfitowany).
