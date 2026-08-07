@@ -97,6 +97,12 @@ interface ShellState {
    */
   zadanieArchiwumProjektu: boolean;
   /**
+   * Jednorazowe żądanie otwarcia okna „Import z arkusza (XLSX)" w przestrzeni
+   * „Projekt" — ten sam wzorzec co `zadanieArchiwumProjektu`. NIE persystowane
+   * (żądanie chwili, nie preferencja układu).
+   */
+  zadanieImportuArkusza: boolean;
+  /**
    * Tryb PODGLĄDU schematu (KD-4, luka L-1): kanwa bez edycji. Zdolność miała
    * dotąd wyłącznie trasa mostu `#sld-view`, osiągalna jedynie z wyszukiwarki
    * poleceń — powłoka nie umiała przełączyć kanwy w tryb tylko-do-odczytu.
@@ -110,6 +116,7 @@ interface ShellState {
   setWynikiTab: (tab: string | null, element?: string | null) => void;
   setZadanieNowyPrzypadek: (zadanie: boolean) => void;
   setZadanieArchiwumProjektu: (zadanie: boolean) => void;
+  setZadanieImportuArkusza: (zadanie: boolean) => void;
   setPodgladSchematu: (podglad: boolean) => void;
 
   getLayout: (space: SpaceId) => PanelLayoutState;
@@ -152,6 +159,7 @@ export const useShellStore = create<ShellState>()(
       wynikiTabElement: null,
       zadanieNowyPrzypadek: false,
       zadanieArchiwumProjektu: false,
+      zadanieImportuArkusza: false,
       podgladSchematu: false,
 
       setActiveSpace: (space) => set({ activeSpace: space }),
@@ -161,6 +169,7 @@ export const useShellStore = create<ShellState>()(
       setWynikiTab: (tab, element = null) => set({ wynikiTab: tab, wynikiTabElement: element }),
       setZadanieNowyPrzypadek: (zadanie) => set({ zadanieNowyPrzypadek: zadanie }),
       setZadanieArchiwumProjektu: (zadanie) => set({ zadanieArchiwumProjektu: zadanie }),
+      setZadanieImportuArkusza: (zadanie) => set({ zadanieImportuArkusza: zadanie }),
       setPodgladSchematu: (podglad) => set({ podgladSchematu: podglad }),
 
       getLayout: (space) => layoutFor(get(), space),

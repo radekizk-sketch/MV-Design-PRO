@@ -3803,6 +3803,7 @@ function Harness() {
         onZaznaczPrzypadek={() => undefined}
         onOtworzPrzypadek={() => undefined}
         onOtworzArchiwum={() => undefined}
+        onOtworzImportArkusza={() => undefined}
       />
     );
   else if (creator === 'uwaga') node = <EkranCoWymagaUwagi />;
