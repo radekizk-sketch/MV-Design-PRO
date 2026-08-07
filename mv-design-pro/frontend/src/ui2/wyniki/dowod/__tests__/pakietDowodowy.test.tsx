@@ -5,8 +5,9 @@
  * którą chodzi inżynier, inaczej regresja pobierania byłaby niewykrywalna.
  *
  * Pokrycie jako ILOCZYN CECH (nie jeden przykład z karty):
- * rodzaj biegu (pakiet zwarcia 3F / pakiet zwarć niesymetrycznych / rodzaj bez
- * pakietu) × liczba punktów (jeden — bez wyboru / wiele — wybór steruje żądaniem)
+ * rodzaj biegu (pakiet zwarcia 3F / pakiet zwarć niesymetrycznych / pakiet
+ * rozpływu mocy / rodzaj bez pakietu) × liczba punktów (zero — pakiet całej
+ * sieci / jeden — bez wyboru / wiele — wybór steruje żądaniem)
  * × stan pobrania (udane / odmowa serwera) × świeżość (aktualne / nieaktualne
  * względem modelu) × brak przebiegu.
  *
@@ -41,6 +42,22 @@ const DOSTEPNY_NIESYM: DostepnoscPakietu = {
   rodzaj: 'SC_NIESYMETRYCZNE',
   rodzaj_pl: 'Zwarcia niesymetryczne (1F-Z, 2F, 2F-Z)',
   punkty: [{ target_id: 'wezel-a', nazwa: 'Szyna glowna' }],
+};
+
+/**
+ * Rodzaj opisujący CAŁĄ sieć (rozpływ mocy, karta PACK-ROZPLYW): pakiet jest
+ * dostępny, ale punktów NIE MA — i pusta lista nie oznacza tu braku danych.
+ * Ten kształt odpowiedzi bramy pojawił się dopiero z pakietem rozpływu, więc
+ * bez tego przypadku nic nie pilnowałoby zachowania sekcji przy `punkty: []`.
+ */
+const DOSTEPNY_ROZPLYW: DostepnoscPakietu = {
+  run_id: 'run-1',
+  dostepny: true,
+  rodzaj: 'ROZPLYW_MOCY',
+  rodzaj_pl: 'Rozpływ mocy (zbieżność, bilans mocy, zakres napięć)',
+  powod_pl: null,
+  punkty: [],
+  zawartosc_pl: ['Dowód w postaci danych (proof.json)', 'Źródło dokumentu (proof.tex)'],
 };
 
 const BEZ_PAKIETU: DostepnoscPakietu = {
@@ -201,6 +218,26 @@ describe('PakietDowodowy — pobranie realną ścieżką', () => {
       const pobranie = zadania.find((u) => u.includes('/pakiet-dowodowy') && !u.includes('dostep'));
       expect(pobranie).toBeDefined();
       expect(pobranie).toContain('punkt=wezel-a');
+    });
+  });
+
+  it('pakiet całej sieci: bez wyboru punktu, a żądanie NIE niesie punktu', async () => {
+    // INTENCJA: pakiet rozpływu dokumentuje całą sieć. Serwer ODMAWIA żądania z
+    // punktem dla takiego rodzaju, więc doklejenie parametru „na wszelki wypadek"
+    // zamieniłoby działający przycisk w błąd 422 u projektanta.
+    zamontujFetch(DOSTEPNY_ROZPLYW);
+    render(<PakietDowodowy runId="run-1" />);
+    await waitFor(() => expect(screen.getByTestId('mvd-dowod-pakiet')).toBeInTheDocument());
+
+    expect(screen.getByTestId('mvd-dowod-pakiet-rodzaj')).toHaveTextContent('Rozpływ mocy');
+    expect(screen.queryByTestId('mvd-dowod-pakiet-punkt')).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByTestId('mvd-dowod-pakiet-pobierz'));
+
+    await waitFor(() => {
+      const pobranie = zadania.find((u) => u.includes('/pakiet-dowodowy') && !u.includes('dostep'));
+      expect(pobranie).toBeDefined();
+      expect(pobranie).not.toContain('punkt=');
     });
   });
 

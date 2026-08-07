@@ -1,14 +1,23 @@
 """
-P14 — Power Flow Proof Pack
+Pakiet dowodowy ROZPŁYWU MOCY.
 
 STATUS: CANONICAL & BINDING
 Reference: AGENTS.md, PROOF_SCHEMAS.md
 
-Proof Pack P14 udowadnia poprawnosc wynikow Power Flow:
+Pakiet udowadnia poprawnosc wynikow Power Flow:
 1. Zbieznosc (mismatch -> 0)
 2. Bilans mocy czynnej (SUM P = 0)
 3. Bilans mocy biernej (SUM Q = 0)
 4. Poprawnosc napiec (fizycznie sensowne)
+
+DROGA DO INŻYNIERA (karta PACK-ROZPLYW). Do 2026-08-07 ten generator nie miał
+ŻADNEGO konsumenta poza własnym re-eksportem w ``packs/__init__.py`` — pakiet
+dowodowy podstawowej analizy był nieosiągalny z interfejsu. Konsumentem jest
+brama pakietu przebiegu (``application/proof_engine/pakiet_biegu.py`` →
+``GET /api/analysis-runs/{run}/pakiet-dowodowy``), czyli ta sama droga, którą
+pobiera się pakiety zwarciowe. Wejście składane jest WYŁĄCZNIE z zapisu biegu
+przez warstwę wiązania ``application/solvers/power_flow_binding.py`` — rozpływ
+nie jest liczony po raz drugi (Proof Engine czyta wyniki READ-ONLY).
 """
 
 from __future__ import annotations
@@ -24,6 +33,12 @@ from application.proof_engine.equation_registry import (
     EQ_PF_003,
     EQ_PF_004,
 )
+from application.proof_engine.proof_pack import (
+    ProofPackBuilder,
+    ProofPackContext,
+    deterministic_artifact_id,
+    dokument_deterministyczny,
+)
 from application.proof_engine.types import (
     ProofDocument,
     ProofHeader,
@@ -36,14 +51,13 @@ from application.proof_engine.types import (
 
 if TYPE_CHECKING:
     from network_model.solvers.power_flow_result import PowerFlowResultV1
-    from network_model.solvers.power_flow_trace import PowerFlowTrace
 
 
 # =============================================================================
-# Proof Type dla P14
+# Proof Type
 # =============================================================================
 
-# P14 uses LOAD_FLOW_VOLTAGE type (already defined in ProofType)
+# Pakiet używa typu LOAD_FLOW_VOLTAGE (zdefiniowanego w ProofType)
 
 
 # =============================================================================
@@ -100,20 +114,35 @@ class P14PowerFlowInput:
     def from_power_flow_result(
         cls,
         result: PowerFlowResultV1,
-        trace: PowerFlowTrace | None = None,
-        project_name: str = "Projekt",
-        case_name: str = "Przypadek",
+        *,
+        project_name: str,
+        case_name: str,
+        run_timestamp: datetime,
+        solver_version: str,
+        max_mismatch_pu: float,
     ) -> P14PowerFlowInput:
-        """
-        Tworzy P14PowerFlowInput z PowerFlowResultV1 i opcjonalnego trace.
+        """Składa wejście dowodu z zamrożonego wyniku rozpływu.
+
+        ZERO FABRYKACJI I ZERO ZEGARA (karta PACK-ROZPLYW). Każdy argument jest
+        WYMAGANY i nazwany. Wcześniejsza wersja podstawiała ``datetime.utcnow()``,
+        wersję solvera ``"1.0.0"`` i niedopasowanie ``0.0``, gdy zabrakło śladu —
+        pierwsze łamało determinizm pakietu (dwa pobrania tego samego przebiegu
+        różniłyby się bajtami), a dwa pozostałe wpisywały do DOWODU liczby, których
+        nikt nie policzył. Wielkości spoza kontraktu FROZEN
+        (``max_mismatch_pu``, ``solver_version``) podaje warstwa wiązania, która
+        czyta je z zapisu biegu albo odmawia (``power_flow_binding``).
 
         Args:
-            result: Wynik Power Flow
-            trace: Opcjonalny trace dla dodatkowych informacji
-            project_name: Nazwa projektu
-            case_name: Nazwa przypadku
+            result: Zamrożony wynik rozpływu (READ-ONLY).
+            project_name: Nazwa projektu do nagłówka dowodu.
+            case_name: Nazwa przypadku obliczeniowego.
+            run_timestamp: Znacznik czasu PRZEBIEGU (nie „teraz").
+            solver_version: Wersja solvera z artefaktu biegu.
+            max_mismatch_pu: Końcowe niedopasowanie porównane z tolerancją.
         """
-        # Calculate generation and load from bus results
+        # Rozdział wstrzyk/pobór po ZNAKU mocy wstrzykniętej — kontrakt FROZEN
+        # `BusResult.p_injected_mw` (ujemna = pobór). Nie jest to fizyka, tylko
+        # sumowanie wierszy wyniku, których solver już nie zmieni.
         p_gen = 0.0
         p_load = 0.0
         q_gen = 0.0
@@ -130,21 +159,15 @@ class P14PowerFlowInput:
             else:
                 q_load += abs(bus.q_injected_mvar)
 
-        # Get max mismatch from trace if available
-        max_mismatch = 0.0
-        if trace and trace.iterations:
-            last_iter = trace.iterations[-1]
-            max_mismatch = last_iter.max_mismatch_pu
-
         return cls(
             project_name=project_name,
             case_name=case_name,
-            run_timestamp=datetime.utcnow(),
-            solver_version=trace.solver_version if trace else "1.0.0",
+            run_timestamp=run_timestamp,
+            solver_version=solver_version,
             converged=result.converged,
             iterations_count=result.iterations_count,
             tolerance=result.tolerance_used,
-            max_mismatch_pu=max_mismatch,
+            max_mismatch_pu=max_mismatch_pu,
             p_gen_total_mw=p_gen,
             p_load_total_mw=p_load,
             p_losses_total_mw=result.summary.total_losses_p_mw,
@@ -179,8 +202,12 @@ class P14PowerFlowProof:
     - WHITE BOX: wszystkie kroki audytowalne
     """
 
-    PACK_ID = "P14"
-    TITLE_PL = "Dowod poprawnosci rozpływu mocy"
+    #: Prefiks identyfikatorów kroków. Trafia do POBIERANEGO ``proof.json``, więc
+    #: nie może nieść roboczego oznaczenia projektu (CLAUDE.md reguła 8 — zakaz
+    #: dotyczy eksportów, nie tylko interfejsu). Pin:
+    #: tests/api/test_pakiet_dowodowy_biegu.py — cała treść pakietu bez oznaczeń.
+    PACK_ID = "PF"
+    TITLE_PL = "Dowód poprawności rozpływu mocy"
 
     THEORY = r"""
     \section{Rownania rozplywu mocy}
@@ -234,7 +261,7 @@ class P14PowerFlowProof:
         step1 = cls._create_convergence_step(1, data)
         steps.append(step1)
         if not data.converged:
-            warnings.append("Obliczenia nie osiagnely zbieznosci!")
+            warnings.append("Obliczenia nie osiągnęły zbieżności.")
 
         # Step 2: Bilans mocy czynnej
         step2 = cls._create_p_balance_step(2, data)
@@ -249,7 +276,7 @@ class P14PowerFlowProof:
         steps.append(step4)
         if data.v_min_pu < 0.9 or data.v_max_pu > 1.1:
             warnings.append(
-                f"Napiecia poza typowym zakresem: "
+                f"Napięcia poza typowym zakresem: "
                 f"U_min={data.v_min_pu:.4f} p.u., U_max={data.v_max_pu:.4f} p.u."
             )
 
@@ -320,6 +347,27 @@ class P14PowerFlowProof:
         )
 
     @classmethod
+    def generate_zip(
+        cls,
+        data: P14PowerFlowInput,
+        context: ProofPackContext,
+        artifact_id: UUID | None = None,
+    ) -> bytes:
+        """Zbuduj ZIP pakietu dowodowego rozpływu (dowód, źródło, wykaz, odcisk).
+
+        Ta sama mechanika co ``SC3FProofPack.generate_zip`` — REUŻYCIE
+        ``ProofPackBuilder``, nie druga droga pakowania. Bez jawnego
+        ``artifact_id`` tożsamość artefaktu wyprowadzamy z tożsamości pakietu
+        (``deterministic_artifact_id``), a znacznik dokumentu z PRZEBIEGU
+        (``dokument_deterministyczny``) — inaczej dwa pobrania tego samego
+        przebiegu różniłyby się bajtami, wbrew deklaracji ``manifest.json``.
+        """
+        proof = cls.generate(data, artifact_id or deterministic_artifact_id(context))
+        return ProofPackBuilder(context).build(
+            dokument_deterministyczny(proof, context, data.run_timestamp)
+        )
+
+    @classmethod
     def _create_convergence_step(
         cls,
         step_number: int,
@@ -371,7 +419,7 @@ class P14PowerFlowProof:
         )
 
         return ProofStep(
-            step_id=ProofStep.generate_step_id("P14", step_number),
+            step_id=ProofStep.generate_step_id(cls.PACK_ID, step_number),
             step_number=step_number,
             title_pl=equation.name_pl,
             equation=equation,
@@ -421,7 +469,7 @@ class P14PowerFlowProof:
         substitution = (
             f"{data.p_gen_total_mw:.4f} = {data.p_load_total_mw:.4f} + "
             f"{data.p_losses_total_mw:.4f} \\quad "
-            f"\\text{{roznica: {balance_check:.6f} MW}}"
+            f"\\text{{różnica: {balance_check:.6f} MW}}"
         )
 
         result = ProofValue.create(
@@ -444,7 +492,7 @@ class P14PowerFlowProof:
         )
 
         return ProofStep(
-            step_id=ProofStep.generate_step_id("P14", step_number),
+            step_id=ProofStep.generate_step_id(cls.PACK_ID, step_number),
             step_number=step_number,
             title_pl=equation.name_pl,
             equation=equation,
@@ -496,7 +544,7 @@ class P14PowerFlowProof:
         substitution = (
             f"{data.q_gen_total_mvar:.4f} = {data.q_load_total_mvar:.4f} + "
             f"{data.q_losses_total_mvar:.4f} \\quad "
-            f"\\text{{roznica: {balance_check:.6f} Mvar}}"
+            f"\\text{{różnica: {balance_check:.6f} Mvar}}"
         )
 
         result = ProofValue.create(
@@ -519,7 +567,7 @@ class P14PowerFlowProof:
         )
 
         return ProofStep(
-            step_id=ProofStep.generate_step_id("P14", step_number),
+            step_id=ProofStep.generate_step_id(cls.PACK_ID, step_number),
             step_number=step_number,
             title_pl=equation.name_pl,
             equation=equation,
@@ -587,7 +635,7 @@ class P14PowerFlowProof:
         )
 
         return ProofStep(
-            step_id=ProofStep.generate_step_id("P14", step_number),
+            step_id=ProofStep.generate_step_id(cls.PACK_ID, step_number),
             step_number=step_number,
             title_pl=equation.name_pl,
             equation=equation,
