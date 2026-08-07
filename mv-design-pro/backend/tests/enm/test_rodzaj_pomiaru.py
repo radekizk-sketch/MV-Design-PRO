@@ -1,13 +1,22 @@
-"""Rodzaj pomiaru pola POMIAROWEGO — karta POMIAR-RODZAJ (V12K-335 pkt 2).
+"""Pomiar pola POMIAROWEGO — karta POMIAR-RODZAJ (V12K-335 pkt 2 + korekta
+właściciela V12K-336).
 
-Kontrakt `docs/domain/POMIAR_ROZLICZENIOWY_SN_V1.md` §5: pole pomiarowe niesie
-atrybut `rodzaj_pomiaru` (ROZLICZENIOWY / KONTROLNY), a brama pomiaru w torze
-tranzytu odmawia WYŁĄCZNIE pomiaru rozliczeniowego — TĄ SAMĄ funkcją źródłową
-(`blad_pomiaru_w_torze_tranzytu`) na KAŻDEJ drodze wejścia.
+Kontrakt `docs/domain/POMIAR_ROZLICZENIOWY_SN_V1.md` §5:
+
+- FUNKCJA pola (rozróżnienie klasowe, V12K-336 pkt 4): układ pomiarowy ENERGII
+  ([E-UP] pkt 3) vs pomiar NAPIĘCIA SZYN rozdzielni (przekładniki napięciowe
+  sekcji — nie jest układem pomiarowym energii);
+- RODZAJ układu pomiarowego energii — lista ZAMKNIĘTA ze standardu [E-UP]
+  pkt 3 (IRiESD): PODSTAWOWY, REZERWOWY, ROWNOWAZNY, KONTROLNY;
+- BRAMA tranzytu odmawia KAŻDEGO układu pomiarowego energii (wszystkie cztery
+  rodzaje) w torze tranzytu — TĄ SAMĄ funkcją źródłową
+  (`blad_pomiaru_w_torze_tranzytu`) na KAŻDEJ drodze wejścia; pomiar napięcia
+  szyn wolny wszędzie.
 
 Testy są ILOCZYNEM CECH (reguła KLASA, NIE INSTANCJA), nie przykładem z karty:
 
-      {rodzaj: ROZLICZENIOWY jawny, KONTROLNY jawny, bez deklaracji}
+      {pomiar: układ energii × {PODSTAWOWY, REZERWOWY, ROWNOWAZNY, KONTROLNY},
+       pomiar napięcia szyn, bez deklaracji}
     × {droga: wcięcie w odcinek, add_sn_bay (nowe pole i rekonfiguracja),
        stacja na końcu ciągu, szablony klas B/C}
     × {topologia: tor tranzytu (wcięcie / stacja przelotowa / pętla OSD),
@@ -15,6 +24,8 @@ Testy są ILOCZYNEM CECH (reguła KLASA, NIE INSTANCJA), nie przykładem z karty
 
 plus piny reguł domyślnych obu dróg, pin niezmienności prefiksów pomiarów
 i pin koherencji pary predykatów (klasa przyłączenia ↔ brama tranzytu).
+Walidacja normatywna 5 MW (V12K-336 pkt 2) —
+`tests/reference_engine/test_metering_control_5mw.py`.
 """
 
 from __future__ import annotations
@@ -23,13 +34,16 @@ import copy
 import json
 from typing import Any
 
+import pytest
 from enm.domain_operations import (
-    RODZAJ_POMIARU_DOMYSLNY_BUDOWY_STACJI,
-    RODZAJ_POMIARU_DOMYSLNY_POLA_DOKLADANEGO,
+    FUNKCJA_POMIARU_DOMYSLNA_BUDOWY_STACJI,
+    FUNKCJA_POMIARU_DOMYSLNA_POLA_DOKLADANEGO,
+    RODZAJ_UKLADU_DOMYSLNY,
+    RODZAJE_UKLADU_POMIAROWEGO,
     blad_pomiaru_w_torze_tranzytu,
     execute_domain_operation,
     klasa_przylaczenia_sn,
-    rozstrzygnij_rodzaj_pomiaru,
+    rozstrzygnij_pomiar_pola,
     szyna_prowadzi_tranzyt_sn,
 )
 from enm.hash import compute_enm_hash
@@ -37,6 +51,7 @@ from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
 
 APARAT_SN = "sw-cb-abb-vd4-17kv-630a"
 TRAFO_630 = "tr-sn-nn-15-04-630kva-dyn11"
+RODZAJE = ("PODSTAWOWY", "REZERWOWY", "ROWNOWAZNY", "KONTROLNY")
 
 
 def _binding(namespace: str, item_id: str) -> dict[str, Any]:
@@ -154,34 +169,67 @@ def _stacja_przelotowa(enm: dict[str, Any], segment_ref: str) -> tuple[dict[str,
 
 
 # ---------------------------------------------------------------------------
-# Rozstrzygnięcie rodzaju — jedno źródło (rozstrzygnij_rodzaj_pomiaru)
+# Rozstrzygnięcie pomiaru — jedno źródło (rozstrzygnij_pomiar_pola)
 # ---------------------------------------------------------------------------
 
 
-def test_rozstrzygniecie_rodzaju_pomiaru_jedno_zrodlo() -> None:
-    """Brak deklaracji ⇒ domyślna DROGI; literówka ⇒ błąd; alias wielkości
-    liter ⇒ wartość kanoniczna; rodzaj na polu niepomiarowym ⇒ błąd."""
-    rodzaj, blad = rozstrzygnij_rodzaj_pomiaru(
-        None, rola_kanoniczna="POMIAROWE", domyslny="ROZLICZENIOWY"
+def test_taksonomia_ukladow_pomiarowych_jest_zamknieta_wg_standardu() -> None:
+    """Lista rodzajów układów pomiarowych energii wprost z [E-UP] pkt 3
+    (IRiESD): podstawowy, rezerwowy, równoważny, kontrolny — ŻADNYCH innych."""
+    assert RODZAJE_UKLADU_POMIAROWEGO == frozenset(RODZAJE)
+    assert RODZAJ_UKLADU_DOMYSLNY == "PODSTAWOWY"
+    assert FUNKCJA_POMIARU_DOMYSLNA_BUDOWY_STACJI == "UKLAD_ENERGII"
+    assert FUNKCJA_POMIARU_DOMYSLNA_POLA_DOKLADANEGO == "NAPIECIA_SZYN"
+
+
+def test_rozstrzygniecie_pomiaru_pola_jedno_zrodlo() -> None:
+    """Reguły źródłowe: domyślna DROGI dla braku deklaracji; rodzaj implikuje
+    układ energii; układ bez rodzaju = PODSTAWOWY (reguła standardu); rodzaj
+    przy pomiarze napięcia szyn = błąd; literówki i deklaracje poza polem
+    pomiarowym = błędy jawnie kodowane."""
+    # Brak deklaracji — domyślna drogi budowy stacji (układ energii/PODSTAWOWY).
+    assert rozstrzygnij_pomiar_pola(
+        None, None, rola_kanoniczna="POMIAROWE", domyslna_funkcja="UKLAD_ENERGII"
+    ) == ("UKLAD_ENERGII", "PODSTAWOWY", None)
+    # Brak deklaracji — domyślna drogi dokładania pola (pomiar napięcia szyn).
+    assert rozstrzygnij_pomiar_pola(
+        None, None, rola_kanoniczna="POMIAROWE", domyslna_funkcja="NAPIECIA_SZYN"
+    ) == ("NAPIECIA_SZYN", None, None)
+    # Rodzaj implikuje układ energii; aliasy wielkości liter kanonizowane.
+    assert rozstrzygnij_pomiar_pola(
+        None, "kontrolny", rola_kanoniczna="POMIAROWE", domyslna_funkcja="NAPIECIA_SZYN"
+    ) == ("UKLAD_ENERGII", "KONTROLNY", None)
+    # Jawna funkcja układu bez rodzaju = PODSTAWOWY (obowiązkowy układ punktu
+    # rozliczeniowego, [E-UP] pkt 3) — jedna reguła obu dróg.
+    assert rozstrzygnij_pomiar_pola(
+        "UKLAD_ENERGII", None, rola_kanoniczna="POMIAROWE", domyslna_funkcja="NAPIECIA_SZYN"
+    ) == ("UKLAD_ENERGII", "PODSTAWOWY", None)
+    # Rodzaj przy pomiarze napięcia szyn — błąd.
+    _, _, blad = rozstrzygnij_pomiar_pola(
+        "NAPIECIA_SZYN",
+        "PODSTAWOWY",
+        rola_kanoniczna="POMIAROWE",
+        domyslna_funkcja="NAPIECIA_SZYN",
     )
-    assert (rodzaj, blad) == ("ROZLICZENIOWY", None)
-    rodzaj, blad = rozstrzygnij_rodzaj_pomiaru(
-        "kontrolny", rola_kanoniczna="POMIAROWE", domyslny="ROZLICZENIOWY"
+    assert blad is not None and blad["error_code"] == "sn.rodzaj_pomiaru_poza_ukladem_energii"
+    # Literówki.
+    _, _, blad = rozstrzygnij_pomiar_pola(
+        "UKLAD", None, rola_kanoniczna="POMIAROWE", domyslna_funkcja="NAPIECIA_SZYN"
     )
-    assert (rodzaj, blad) == ("KONTROLNY", None)
-    rodzaj, blad = rozstrzygnij_rodzaj_pomiaru(
-        "TARYFOWY", rola_kanoniczna="POMIAROWE", domyslny="ROZLICZENIOWY"
+    assert blad is not None and blad["error_code"] == "sn.funkcja_pomiaru_nieznana"
+    _, _, blad = rozstrzygnij_pomiar_pola(
+        None, "ROZLICZENIOWY", rola_kanoniczna="POMIAROWE", domyslna_funkcja="NAPIECIA_SZYN"
     )
-    assert rodzaj is None
     assert blad is not None and blad["error_code"] == "sn.rodzaj_pomiaru_nieznany"
-    rodzaj, blad = rozstrzygnij_rodzaj_pomiaru(
-        "ROZLICZENIOWY", rola_kanoniczna="LINIA_IN", domyslny="ROZLICZENIOWY"
+    # Deklaracja poza polem pomiarowym.
+    _, _, blad = rozstrzygnij_pomiar_pola(
+        None, "PODSTAWOWY", rola_kanoniczna="LINIA_IN", domyslna_funkcja="UKLAD_ENERGII"
     )
-    assert rodzaj is None
-    assert blad is not None and blad["error_code"] == "sn.rodzaj_pomiaru_poza_polem_pomiarowym"
-    # Obie stałe dróg wejścia są kanonicznymi rodzajami — pin dokumentu decyzji.
-    assert RODZAJ_POMIARU_DOMYSLNY_BUDOWY_STACJI == "ROZLICZENIOWY"
-    assert RODZAJ_POMIARU_DOMYSLNY_POLA_DOKLADANEGO == "KONTROLNY"
+    assert blad is not None and blad["error_code"] == "sn.pomiar_poza_polem_pomiarowym"
+    # Pole niepomiarowe bez deklaracji — nic.
+    assert rozstrzygnij_pomiar_pola(
+        None, None, rola_kanoniczna="LINIA_IN", domyslna_funkcja="UKLAD_ENERGII"
+    ) == (None, None, None)
 
 
 def test_tranzyt_rozdzielnicy_wynika_z_pary_tranzytowej_rol() -> None:
@@ -196,12 +244,13 @@ def test_tranzyt_rozdzielnicy_wynika_z_pary_tranzytowej_rol() -> None:
 
 
 def test_brama_zrodlowa_regula_pozycyjna() -> None:
-    """Reguła bramy na parach (rola, rodzaj): rozliczeniowy legalny wyłącznie
-    za CZYSTĄ pętlą OSD; kontrolny i wpisy bez rodzaju — nieoceniane."""
+    """Reguła bramy na parach (rola, funkcja): układ pomiarowy energii legalny
+    wyłącznie za CZYSTĄ pętlą OSD; pomiar napięcia szyn i wpisy bez funkcji —
+    nieoceniane."""
     # Klasa B (prefiks bez odpływu) — odmowa.
     assert (
         blad_pomiaru_w_torze_tranzytu(
-            [("LINIA_IN", None), ("POMIAROWE", "ROZLICZENIOWY"), ("TRANSFORMATOROWE", None)],
+            [("LINIA_IN", None), ("POMIAROWE", "UKLAD_ENERGII"), ("TRANSFORMATOROWE", None)],
             szyna_prowadzi_tranzyt=True,
             kod_bledu="x",
         )
@@ -210,7 +259,7 @@ def test_brama_zrodlowa_regula_pozycyjna() -> None:
     # Klasa C (czysta pętla przed pomiarem) — wolne.
     assert (
         blad_pomiaru_w_torze_tranzytu(
-            [("LINIA_IN", None), ("LINIA_OUT", None), ("POMIAROWE", "ROZLICZENIOWY")],
+            [("LINIA_IN", None), ("LINIA_OUT", None), ("POMIAROWE", "UKLAD_ENERGII")],
             szyna_prowadzi_tranzyt=True,
             kod_bledu="x",
         )
@@ -223,17 +272,17 @@ def test_brama_zrodlowa_regula_pozycyjna() -> None:
                 ("LINIA_IN", None),
                 ("TRANSFORMATOROWE", None),
                 ("LINIA_OUT", None),
-                ("POMIAROWE", "ROZLICZENIOWY"),
+                ("POMIAROWE", "UKLAD_ENERGII"),
             ],
             szyna_prowadzi_tranzyt=True,
             kod_bledu="x",
         )
         is not None
     )
-    # Kontrolny — wolny w każdej pozycji.
+    # Pomiar napięcia szyn — wolny w każdej pozycji.
     assert (
         blad_pomiaru_w_torze_tranzytu(
-            [("LINIA_IN", None), ("POMIAROWE", "KONTROLNY"), ("TRANSFORMATOROWE", None)],
+            [("LINIA_IN", None), ("POMIAROWE", "NAPIECIA_SZYN"), ("TRANSFORMATOROWE", None)],
             szyna_prowadzi_tranzyt=True,
             kod_bledu="x",
         )
@@ -242,7 +291,7 @@ def test_brama_zrodlowa_regula_pozycyjna() -> None:
     # Bez tranzytu — brama nie ogranicza.
     assert (
         blad_pomiaru_w_torze_tranzytu(
-            [("LINIA_IN", None), ("POMIAROWE", "ROZLICZENIOWY"), ("TRANSFORMATOROWE", None)],
+            [("LINIA_IN", None), ("POMIAROWE", "UKLAD_ENERGII"), ("TRANSFORMATOROWE", None)],
             szyna_prowadzi_tranzyt=False,
             kod_bledu="x",
         )
@@ -255,7 +304,13 @@ def test_brama_zrodlowa_regula_pozycyjna() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_wciecie_odmawia_rozliczeniowego_jawnego_w_ukladzie_klasy_b() -> None:
+@pytest.mark.parametrize("rodzaj", RODZAJE)
+def test_wciecie_odmawia_ukladu_energii_kazdego_rodzaju_w_ukladzie_klasy_b(
+    rodzaj: str,
+) -> None:
+    """V12K-336 pkt 3: KAŻDY układ pomiarowy energii (kontrolny też — towarzyszy
+    rozliczeniowemu w gałęzi klienta przy granicy stron) jest zakazany w torze
+    tranzytu — nie tylko rozliczeniowy."""
     enm, odcinki = _magistrala(3)
     wynik = execute_domain_operation(
         enm_dict=enm,
@@ -264,7 +319,7 @@ def test_wciecie_odmawia_rozliczeniowego_jawnego_w_ukladzie_klasy_b() -> None:
             odcinki[1],
             [
                 {"field_role": "LINIA_IN"},
-                {"field_role": "POMIAROWE", "rodzaj_pomiaru": "ROZLICZENIOWY"},
+                {"field_role": "POMIAROWE", "rodzaj_pomiaru": rodzaj},
                 {"field_role": "TRANSFORMATOROWE"},
             ],
         ),
@@ -273,10 +328,11 @@ def test_wciecie_odmawia_rozliczeniowego_jawnego_w_ukladzie_klasy_b() -> None:
     assert wynik.get("snapshot") is None
 
 
-def test_wciecie_bez_deklaracji_rodzaju_odmawia_jak_dotychczas() -> None:
+def test_wciecie_bez_deklaracji_pomiaru_odmawia_jak_dotychczas() -> None:
     """Pin reguły domyślnej drogi budowy stacji (kontrakt §5): pole POMIAROWE
-    bez deklaracji jest ROZLICZENIOWE, więc zachowanie bramy sprzed atrybutu
-    (POMIAR-ODG) pozostaje BEZ ZMIAN — zero cichego poluzowania."""
+    bez deklaracji jest układem pomiarowym energii (PODSTAWOWYM), więc
+    zachowanie bramy sprzed atrybutów (POMIAR-ODG) pozostaje BEZ ZMIAN —
+    zero cichego poluzowania."""
     enm, odcinki = _magistrala(3)
     wynik = execute_domain_operation(
         enm_dict=enm,
@@ -289,9 +345,9 @@ def test_wciecie_bez_deklaracji_rodzaju_odmawia_jak_dotychczas() -> None:
     assert wynik.get("error_code") == "station.insert.pomiar_w_torze_tranzytu"
 
 
-def test_wciecie_przyjmuje_pomiar_kontrolny_w_stacji_przelotowej() -> None:
-    """Pomiar kontrolny/ruchowy OSD jest wolny także we wcięciu (V12K-335
-    pkt 2) — stacja przelotowa OSD może nieść pomiar kontrolny."""
+def test_wciecie_przyjmuje_pomiar_napiecia_szyn_w_stacji_przelotowej() -> None:
+    """V12K-336 pkt 4: pole pomiaru napięcia szyn (przekładniki napięciowe
+    sekcji) NIE jest układem pomiarowym energii — wolne także we wcięciu."""
     enm, odcinki = _magistrala(3)
     wynik = _wykonaj(
         enm,
@@ -300,27 +356,31 @@ def test_wciecie_przyjmuje_pomiar_kontrolny_w_stacji_przelotowej() -> None:
             odcinki[1],
             [
                 {"field_role": "LINIA_IN"},
-                {"field_role": "POMIAROWE", "rodzaj_pomiaru": "KONTROLNY"},
+                {"field_role": "POMIAROWE", "funkcja_pomiaru": "NAPIECIA_SZYN"},
                 {"field_role": "TRANSFORMATOROWE"},
                 {"field_role": "LINIA_OUT"},
             ],
-            nazwa="Stacja OSD z pomiarem kontrolnym",
+            nazwa="Stacja OSD z pomiarem napięcia szyn",
         ),
     )
     stacja = _stacja_z_wyboru(wynik)
     pomiar = next(
         spec for spec in _specyfikacje_pol(stacja) if spec.get("bay_role") == "MEASUREMENT"
     )
-    assert pomiar["rodzaj_pomiaru"] == "KONTROLNY"
-    # Pola pozostałych ról NIE niosą atrybutu (addytywność — bajtowa zgodność
+    assert pomiar["funkcja_pomiaru"] == "NAPIECIA_SZYN"
+    assert "rodzaj_pomiaru" not in pomiar
+    # Pola pozostałych ról NIE niosą atrybutów (addytywność — bajtowa zgodność
     # istniejących migawek bez pomiaru).
     for spec in _specyfikacje_pol(stacja):
         if spec.get("bay_role") != "MEASUREMENT":
+            assert "funkcja_pomiaru" not in spec
             assert "rodzaj_pomiaru" not in spec
 
 
-def test_wciecie_przyjmuje_rozliczeniowy_za_czysta_petla_osd() -> None:
-    """Klasa C: pętla OSD przed pomiarem — wcięcie legalne, rodzaj utrwalony."""
+@pytest.mark.parametrize("rodzaj", RODZAJE)
+def test_wciecie_przyjmuje_uklad_energii_za_czysta_petla_osd(rodzaj: str) -> None:
+    """Klasa C: pętla OSD przed pomiarem — wcięcie legalne dla każdego rodzaju
+    układu; funkcja i rodzaj utrwalone w specyfikacji pola."""
     enm, odcinki = _magistrala(3)
     wynik = _wykonaj(
         enm,
@@ -330,7 +390,7 @@ def test_wciecie_przyjmuje_rozliczeniowy_za_czysta_petla_osd() -> None:
             [
                 {"field_role": "LINIA_IN"},
                 {"field_role": "LINIA_OUT"},
-                {"field_role": "POMIAROWE", "rodzaj_pomiaru": "ROZLICZENIOWY"},
+                {"field_role": "POMIAROWE", "rodzaj_pomiaru": rodzaj},
                 {"field_role": "TRANSFORMATOROWE"},
             ],
             nazwa="Złącze ZK-SN z pomiarem",
@@ -340,11 +400,12 @@ def test_wciecie_przyjmuje_rozliczeniowy_za_czysta_petla_osd() -> None:
     pomiar = next(
         spec for spec in _specyfikacje_pol(stacja) if spec.get("bay_role") == "MEASUREMENT"
     )
-    assert pomiar["rodzaj_pomiaru"] == "ROZLICZENIOWY"
+    assert pomiar["funkcja_pomiaru"] == "UKLAD_ENERGII"
+    assert pomiar["rodzaj_pomiaru"] == rodzaj
 
 
-def test_wciecie_odmawia_rozliczeniowego_za_brudnym_prefiksem() -> None:
-    """Reguły twarde §3: przed pomiarem rozliczeniowym wolno stać wyłącznie
+def test_wciecie_odmawia_ukladu_energii_za_brudnym_prefiksem() -> None:
+    """Reguły twarde §3: przed układem pomiarowym energii wolno stać wyłącznie
     dopływowi (B) albo czystej pętli IN/OUT (C). Pole TR przed pomiarem =
     pomiar nie mierzy całego poboru za sobą — odmowa, choć zbiorowy test
     „jest odpływ przed pomiarem" uznałby układ za pętlę OSD.
@@ -362,15 +423,17 @@ def test_wciecie_odmawia_rozliczeniowego_za_brudnym_prefiksem() -> None:
                 {"field_role": "LINIA_IN"},
                 {"field_role": "TRANSFORMATOROWE"},
                 {"field_role": "LINIA_OUT"},
-                {"field_role": "POMIAROWE", "rodzaj_pomiaru": "ROZLICZENIOWY"},
+                {"field_role": "POMIAROWE", "rodzaj_pomiaru": "PODSTAWOWY"},
             ],
         ),
     )
     assert wynik.get("error_code") == "station.insert.pomiar_w_torze_tranzytu"
 
 
-def test_wciecie_odmawia_nieznanego_rodzaju_pomiaru() -> None:
+def test_wciecie_odmawia_bledow_deklaracji_pomiaru() -> None:
     enm, odcinki = _magistrala(3)
+    # Nieznany rodzaj układu (stare pojęcie ROZLICZENIOWY też jest już błędem —
+    # lista zamknięta z [E-UP] pkt 3).
     wynik = execute_domain_operation(
         enm_dict=enm,
         op_name="insert_station_on_segment_sn",
@@ -379,28 +442,57 @@ def test_wciecie_odmawia_nieznanego_rodzaju_pomiaru() -> None:
             [
                 {"field_role": "LINIA_IN"},
                 {"field_role": "LINIA_OUT"},
-                {"field_role": "POMIAROWE", "rodzaj_pomiaru": "TARYFOWY"},
+                {"field_role": "POMIAROWE", "rodzaj_pomiaru": "ROZLICZENIOWY"},
             ],
         ),
     )
     assert wynik.get("error_code") == "sn.rodzaj_pomiaru_nieznany"
-
-
-def test_wciecie_odmawia_rodzaju_na_polu_niepomiarowym() -> None:
-    enm, odcinki = _magistrala(3)
+    # Nieznana funkcja pomiaru.
     wynik = execute_domain_operation(
         enm_dict=enm,
         op_name="insert_station_on_segment_sn",
         payload=_payload_wciecia(
             odcinki[1],
             [
-                {"field_role": "LINIA_IN", "rodzaj_pomiaru": "KONTROLNY"},
+                {"field_role": "LINIA_IN"},
+                {"field_role": "LINIA_OUT"},
+                {"field_role": "POMIAROWE", "funkcja_pomiaru": "TARYFOWA"},
+            ],
+        ),
+    )
+    assert wynik.get("error_code") == "sn.funkcja_pomiaru_nieznana"
+    # Rodzaj układu przy pomiarze napięcia szyn.
+    wynik = execute_domain_operation(
+        enm_dict=enm,
+        op_name="insert_station_on_segment_sn",
+        payload=_payload_wciecia(
+            odcinki[1],
+            [
+                {"field_role": "LINIA_IN"},
+                {"field_role": "LINIA_OUT"},
+                {
+                    "field_role": "POMIAROWE",
+                    "funkcja_pomiaru": "NAPIECIA_SZYN",
+                    "rodzaj_pomiaru": "PODSTAWOWY",
+                },
+            ],
+        ),
+    )
+    assert wynik.get("error_code") == "sn.rodzaj_pomiaru_poza_ukladem_energii"
+    # Deklaracja na polu niepomiarowym.
+    wynik = execute_domain_operation(
+        enm_dict=enm,
+        op_name="insert_station_on_segment_sn",
+        payload=_payload_wciecia(
+            odcinki[1],
+            [
+                {"field_role": "LINIA_IN", "rodzaj_pomiaru": "PODSTAWOWY"},
                 {"field_role": "LINIA_OUT"},
                 {"field_role": "TRANSFORMATOROWE"},
             ],
         ),
     )
-    assert wynik.get("error_code") == "sn.rodzaj_pomiaru_poza_polem_pomiarowym"
+    assert wynik.get("error_code") == "sn.pomiar_poza_polem_pomiarowym"
 
 
 # ---------------------------------------------------------------------------
@@ -413,7 +505,8 @@ def _dodaj_pole_pomiarowe(
     *,
     bus_ref: str,
     station_ref: str,
-    rodzaj: str | None,
+    rodzaj: str | None = None,
+    funkcja: str | None = None,
     bay_role: str = "MEASUREMENT",
 ) -> dict[str, Any]:
     payload: dict[str, Any] = {
@@ -424,77 +517,94 @@ def _dodaj_pole_pomiarowe(
     }
     if rodzaj is not None:
         payload["rodzaj_pomiaru"] = rodzaj
+    if funkcja is not None:
+        payload["funkcja_pomiaru"] = funkcja
     return execute_domain_operation(enm_dict=enm, op_name="add_sn_bay", payload=payload)
 
 
-def test_add_sn_bay_odmawia_rozliczeniowego_na_stacji_przelotowej() -> None:
-    """Karta pkt 3b: dołożenie pola ROZLICZENIOWEGO na szynę z tranzytem —
-    odmowa TĄ SAMĄ funkcją źródłową, co brama wcięcia."""
+@pytest.mark.parametrize("rodzaj", RODZAJE)
+def test_add_sn_bay_odmawia_ukladu_energii_na_stacji_przelotowej(rodzaj: str) -> None:
+    """Karta pkt 3b + V12K-336 pkt 3: dołożenie układu pomiarowego energii
+    (każdego rodzaju) na szynę z tranzytem — odmowa TĄ SAMĄ funkcją źródłową,
+    co brama wcięcia."""
     enm, odcinki = _magistrala(3)
     enm, station_ref, szyna_sn = _stacja_przelotowa(enm, odcinki[1])
-    wynik = _dodaj_pole_pomiarowe(
-        enm, bus_ref=szyna_sn, station_ref=station_ref, rodzaj="ROZLICZENIOWY"
-    )
-    assert wynik.get("error_code") == "sn.pomiar_w_torze_tranzytu"
+    wynik = _dodaj_pole_pomiarowe(enm, bus_ref=szyna_sn, station_ref=station_ref, rodzaj=rodzaj)
+    assert wynik.get("error_code") == "sn.pomiar_w_torze_tranzytu", rodzaj
     assert wynik.get("snapshot") is None
 
 
-def test_add_sn_bay_przyjmuje_kontrolny_na_stacji_przelotowej() -> None:
+def test_add_sn_bay_przyjmuje_pomiar_napiecia_szyn_na_stacji_przelotowej() -> None:
     enm, odcinki = _magistrala(3)
     enm, station_ref, szyna_sn = _stacja_przelotowa(enm, odcinki[1])
     wynik = _dodaj_pole_pomiarowe(
-        enm, bus_ref=szyna_sn, station_ref=station_ref, rodzaj="KONTROLNY"
+        enm, bus_ref=szyna_sn, station_ref=station_ref, funkcja="NAPIECIA_SZYN"
     )
     assert not wynik.get("error"), wynik.get("error")
     stacja = next(s for s in wynik["snapshot"]["substations"] if s["ref_id"] == station_ref)
     pomiar = _specyfikacje_pol(stacja)[-1]
     assert pomiar["bay_role"] == "MEASUREMENT"
-    assert pomiar["rodzaj_pomiaru"] == "KONTROLNY"
+    assert pomiar["funkcja_pomiaru"] == "NAPIECIA_SZYN"
+    assert "rodzaj_pomiaru" not in pomiar
 
 
-def test_add_sn_bay_bez_deklaracji_jest_pomiarem_kontrolnym() -> None:
-    """Pin reguły domyślnej drogi dokładania pola (kontrakt §5): operacja nie
-    deklaruje przyłącza klienta, więc status ROZLICZENIOWY wymaga deklaracji
-    JAWNEJ — pole bez niej jest pomiarem kontrolnym/ruchowym OSD i przechodzi
-    także na szynie z tranzytem."""
+def test_add_sn_bay_bez_deklaracji_jest_pomiarem_napiecia_szyn() -> None:
+    """Pin reguły domyślnej drogi dokładania pola (kontrakt §5, V12K-336
+    pkt 4): pole pomiarowe dokładane do istniejącej rozdzielni to
+    konstrukcyjnie pole pomiaru napięcia szyn (przekładniki napięciowe
+    sekcji) — status układu pomiarowego ENERGII wymaga deklaracji JAWNEJ."""
     enm, odcinki = _magistrala(3)
     enm, station_ref, szyna_sn = _stacja_przelotowa(enm, odcinki[1])
-    wynik = _dodaj_pole_pomiarowe(enm, bus_ref=szyna_sn, station_ref=station_ref, rodzaj=None)
+    wynik = _dodaj_pole_pomiarowe(enm, bus_ref=szyna_sn, station_ref=station_ref)
     assert not wynik.get("error"), wynik.get("error")
     stacja = next(s for s in wynik["snapshot"]["substations"] if s["ref_id"] == station_ref)
-    assert _specyfikacje_pol(stacja)[-1]["rodzaj_pomiaru"] == "KONTROLNY"
+    spec = _specyfikacje_pol(stacja)[-1]
+    assert spec["funkcja_pomiaru"] == "NAPIECIA_SZYN"
+    assert "rodzaj_pomiaru" not in spec
 
 
-def test_add_sn_bay_przyjmuje_rozliczeniowy_na_szynie_gpz() -> None:
-    """Kontrakt §2: pole SN stacji 110 kV/SN to legalne miejsce układu
-    rozliczeniowego (przyłącze z rozdzielni OSD) — rozdzielnia GPZ nie ma pary
-    tranzytowej, więc brama nie ogranicza."""
+def test_add_sn_bay_pin_gpz_pomiar_napiecia_szyn_wolny() -> None:
+    """PIN GPZ (rozróżnienie klasowe zamiast wyjątku, V12K-336 pkt 4): pole
+    pomiarowe na szynie rozdzielni GPZ to pomiar napięcia szyn — legalne bez
+    deklaracji; rozdzielnia GPZ nie ma pary tranzytowej, więc także jawny
+    układ pomiarowy energii (przyłącze z rozdzielni OSD, kontrakt §2)
+    pozostaje wolny."""
     gpz_snapshot = _wykonaj(
         _pusty_enm(),
         "add_grid_source_sn",
-        {
-            "voltage_kv": 15.0,
-            "sk3_mva": 250.0,
-            "catalog_ref": "src-gpz-15kv-250mva-rx010",
-        },
+        {"voltage_kv": 15.0, "sk3_mva": 250.0, "catalog_ref": "src-gpz-15kv-250mva-rx010"},
     )["snapshot"]
     substation = gpz_snapshot["substations"][0]
+    # Bez deklaracji — pomiar napięcia szyn.
     wynik = _dodaj_pole_pomiarowe(
-        gpz_snapshot,
+        copy.deepcopy(gpz_snapshot),
         bus_ref=substation["bus_refs"][0],
         station_ref=substation["ref_id"],
-        rodzaj="ROZLICZENIOWY",
     )
     assert not wynik.get("error"), wynik.get("error")
     stacja = next(
         s for s in wynik["snapshot"]["substations"] if s["ref_id"] == substation["ref_id"]
     )
-    assert _specyfikacje_pol(stacja)[-1]["rodzaj_pomiaru"] == "ROZLICZENIOWY"
+    assert _specyfikacje_pol(stacja)[-1]["funkcja_pomiaru"] == "NAPIECIA_SZYN"
+    # Jawny układ energii (podstawowy) — wolny na GPZ (brak pary tranzytowej).
+    wynik = _dodaj_pole_pomiarowe(
+        copy.deepcopy(gpz_snapshot),
+        bus_ref=substation["bus_refs"][0],
+        station_ref=substation["ref_id"],
+        rodzaj="PODSTAWOWY",
+    )
+    assert not wynik.get("error"), wynik.get("error")
+    stacja = next(
+        s for s in wynik["snapshot"]["substations"] if s["ref_id"] == substation["ref_id"]
+    )
+    spec = _specyfikacje_pol(stacja)[-1]
+    assert spec["funkcja_pomiaru"] == "UKLAD_ENERGII"
+    assert spec["rodzaj_pomiaru"] == "PODSTAWOWY"
 
 
-def test_add_sn_bay_przyjmuje_rozliczeniowy_na_stacji_koncowej() -> None:
-    """Koniec gałęzi: stacja końcowa nie prowadzi tranzytu — pomiar
-    rozliczeniowy dokładany do jej rozdzielnicy jest wolny."""
+def test_add_sn_bay_przyjmuje_uklad_energii_na_stacji_koncowej() -> None:
+    """Koniec gałęzi: stacja końcowa nie prowadzi tranzytu — układ pomiarowy
+    energii dokładany do jej rozdzielnicy jest wolny."""
     enm, _odcinki = _magistrala(2)
     koniec = enm["branches"][-1]["to_bus_ref"]
     wynik_stacji = _wykonaj(
@@ -514,14 +624,14 @@ def test_add_sn_bay_przyjmuje_rozliczeniowy_na_stacji_koncowej() -> None:
         wynik_stacji["snapshot"],
         bus_ref=_szyna_sn(stacja, wynik_stacji["snapshot"]),
         station_ref=stacja["ref_id"],
-        rodzaj="ROZLICZENIOWY",
+        rodzaj="PODSTAWOWY",
     )
     assert not wynik.get("error"), wynik.get("error")
 
 
-def test_add_sn_bay_przyjmuje_rozliczeniowy_za_czysta_petla_osd() -> None:
+def test_add_sn_bay_przyjmuje_uklad_energii_za_czysta_petla_osd() -> None:
     """Przyrostowa budowa złącza klasy C: rozdzielnica [dopływ, odpływ pętli]
-    prowadzi tranzyt, ale pomiar rozliczeniowy dołożony ZA pętlą jest polem
+    prowadzi tranzyt, ale układ pomiarowy energii dołożony ZA pętlą jest polem
     odpływowym gałęzi klienta — ta sama reguła pozycyjna, co przy wcięciu."""
     enm, odcinki = _magistrala(3)
     wynik_zlacza = _wykonaj(
@@ -539,11 +649,13 @@ def test_add_sn_bay_przyjmuje_rozliczeniowy_za_czysta_petla_osd() -> None:
         wynik_zlacza["snapshot"],
         bus_ref=_szyna_sn(stacja, wynik_zlacza["snapshot"]),
         station_ref=stacja["ref_id"],
-        rodzaj="ROZLICZENIOWY",
+        rodzaj="PODSTAWOWY",
     )
     assert not wynik.get("error"), wynik.get("error")
     stacja_po = next(s for s in wynik["snapshot"]["substations"] if s["ref_id"] == stacja["ref_id"])
-    assert _specyfikacje_pol(stacja_po)[-1]["rodzaj_pomiaru"] == "ROZLICZENIOWY"
+    spec = _specyfikacje_pol(stacja_po)[-1]
+    assert spec["funkcja_pomiaru"] == "UKLAD_ENERGII"
+    assert spec["rodzaj_pomiaru"] == "PODSTAWOWY"
 
 
 def test_add_sn_bay_pole_za_pomiarem_nie_rusza_istniejacego_pomiaru() -> None:
@@ -559,7 +671,7 @@ def test_add_sn_bay_pole_za_pomiarem_nie_rusza_istniejacego_pomiaru() -> None:
             [
                 {"field_role": "LINIA_IN"},
                 {"field_role": "LINIA_OUT"},
-                {"field_role": "POMIAROWE", "rodzaj_pomiaru": "ROZLICZENIOWY"},
+                {"field_role": "POMIAROWE", "rodzaj_pomiaru": "PODSTAWOWY"},
                 {"field_role": "TRANSFORMATOROWE"},
             ],
             nazwa="Złącze ZK-SN",
@@ -579,9 +691,9 @@ def test_add_sn_bay_pole_za_pomiarem_nie_rusza_istniejacego_pomiaru() -> None:
     assert not wynik.get("error"), wynik.get("error")
 
 
-def test_add_sn_bay_rekonfiguracja_pola_na_pomiar_rozliczeniowy_podlega_bramie() -> None:
-    """Rekonfiguracja ISTNIEJĄCEGO pola (existing_field_ref) na pomiar
-    rozliczeniowy ocenia pole na JEGO pozycji — na stacji przelotowej prefiks
+def test_add_sn_bay_rekonfiguracja_pola_na_uklad_energii_podlega_bramie() -> None:
+    """Rekonfiguracja ISTNIEJĄCEGO pola (existing_field_ref) na układ pomiarowy
+    energii ocenia pole na JEGO pozycji — na stacji przelotowej prefiks
     zawiera pola spoza pętli, więc brama odmawia tak samo jak przy nowym polu."""
     enm, odcinki = _magistrala(3)
     enm, station_ref, szyna_sn = _stacja_przelotowa(enm, odcinki[1])
@@ -606,15 +718,15 @@ def test_add_sn_bay_rekonfiguracja_pola_na_pomiar_rozliczeniowy_podlega_bramie()
             "station_ref": station_ref,
             "bay_role": "MEASUREMENT",
             "apparatus_kind": "MEASUREMENT",
-            "rodzaj_pomiaru": "ROZLICZENIOWY",
+            "rodzaj_pomiaru": "KONTROLNY",
         },
     )
     assert wynik.get("error_code") == "sn.pomiar_w_torze_tranzytu"
 
 
-def test_add_sn_bay_rekonfiguracja_pomiaru_na_inna_role_usuwa_rodzaj() -> None:
-    """Atrybut nie może kłamać o roli: pole rekonfigurowane z pomiaru na
-    odgałęzienie traci `rodzaj_pomiaru`."""
+def test_add_sn_bay_rekonfiguracja_pomiaru_na_inna_role_usuwa_atrybuty() -> None:
+    """Atrybuty nie mogą kłamać o roli: pole rekonfigurowane z pomiaru na
+    odgałęzienie traci `funkcja_pomiaru` i `rodzaj_pomiaru`."""
     gpz_snapshot = _wykonaj(
         _pusty_enm(),
         "add_grid_source_sn",
@@ -629,13 +741,15 @@ def test_add_sn_bay_rekonfiguracja_pomiaru_na_inna_role_usuwa_rodzaj() -> None:
             "station_ref": substation["ref_id"],
             "bay_role": "MEASUREMENT",
             "apparatus_kind": "MEASUREMENT",
+            "rodzaj_pomiaru": "PODSTAWOWY",
         },
     )
     stacja = next(
         s for s in wynik_pomiaru["snapshot"]["substations"] if s["ref_id"] == substation["ref_id"]
     )
     spec_pomiaru = _specyfikacje_pol(stacja)[-1]
-    assert spec_pomiaru["rodzaj_pomiaru"] == "KONTROLNY"
+    assert spec_pomiaru["funkcja_pomiaru"] == "UKLAD_ENERGII"
+    assert spec_pomiaru["rodzaj_pomiaru"] == "PODSTAWOWY"
     wynik = _wykonaj(
         wynik_pomiaru["snapshot"],
         "add_sn_bay",
@@ -656,29 +770,44 @@ def test_add_sn_bay_rekonfiguracja_pomiaru_na_inna_role_usuwa_rodzaj() -> None:
         if spec.get("field_ref") == spec_pomiaru["field_ref"]
     )
     assert spec_po["bay_role"] == "FEEDER"
+    assert "funkcja_pomiaru" not in spec_po
     assert "rodzaj_pomiaru" not in spec_po
 
 
-def test_add_sn_bay_odmawia_nieznanego_rodzaju_i_rodzaju_poza_pomiarem() -> None:
+def test_add_sn_bay_odmawia_bledow_deklaracji() -> None:
     enm, odcinki = _magistrala(3)
     enm, station_ref, szyna_sn = _stacja_przelotowa(enm, odcinki[1])
-    wynik = _dodaj_pole_pomiarowe(enm, bus_ref=szyna_sn, station_ref=station_ref, rodzaj="TARYFOWY")
+    wynik = _dodaj_pole_pomiarowe(
+        enm, bus_ref=szyna_sn, station_ref=station_ref, rodzaj="ROZLICZENIOWY"
+    )
     assert wynik.get("error_code") == "sn.rodzaj_pomiaru_nieznany"
+    wynik = _dodaj_pole_pomiarowe(
+        enm, bus_ref=szyna_sn, station_ref=station_ref, funkcja="TARYFOWA"
+    )
+    assert wynik.get("error_code") == "sn.funkcja_pomiaru_nieznana"
+    wynik = _dodaj_pole_pomiarowe(
+        enm,
+        bus_ref=szyna_sn,
+        station_ref=station_ref,
+        funkcja="NAPIECIA_SZYN",
+        rodzaj="PODSTAWOWY",
+    )
+    assert wynik.get("error_code") == "sn.rodzaj_pomiaru_poza_ukladem_energii"
     wynik = _dodaj_pole_pomiarowe(
         enm, bus_ref=szyna_sn, station_ref=station_ref, rodzaj="KONTROLNY", bay_role="OUT"
     )
-    assert wynik.get("error_code") == "sn.rodzaj_pomiaru_poza_polem_pomiarowym"
+    assert wynik.get("error_code") == "sn.pomiar_poza_polem_pomiarowym"
 
 
-def test_add_sn_bay_pomiar_kontrolny_jest_deterministyczny() -> None:
+def test_add_sn_bay_pomiar_jest_deterministyczny() -> None:
     """Ten sam model + ten sam payload ⇒ identyczna migawka (hash ENM)."""
     enm, odcinki = _magistrala(3)
     enm, station_ref, szyna_sn = _stacja_przelotowa(enm, odcinki[1])
     pierwszy = _dodaj_pole_pomiarowe(
-        copy.deepcopy(enm), bus_ref=szyna_sn, station_ref=station_ref, rodzaj="KONTROLNY"
+        copy.deepcopy(enm), bus_ref=szyna_sn, station_ref=station_ref, funkcja="NAPIECIA_SZYN"
     )
     drugi = _dodaj_pole_pomiarowe(
-        copy.deepcopy(enm), bus_ref=szyna_sn, station_ref=station_ref, rodzaj="KONTROLNY"
+        copy.deepcopy(enm), bus_ref=szyna_sn, station_ref=station_ref, funkcja="NAPIECIA_SZYN"
     )
     assert compute_enm_hash(
         EnergyNetworkModel.model_validate(pierwszy["snapshot"])
@@ -689,13 +818,14 @@ def test_add_sn_bay_pomiar_kontrolny_jest_deterministyczny() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Droga: stacja na końcu ciągu (budowa stacji — domyślna ROZLICZENIOWY)
+# Droga: stacja na końcu ciągu (budowa stacji — domyślnie układ energii)
 # ---------------------------------------------------------------------------
 
 
-def test_stacja_koncowa_bez_deklaracji_utrwala_rozliczeniowy() -> None:
+def test_stacja_koncowa_bez_deklaracji_utrwala_uklad_podstawowy() -> None:
     """Droga budowy stacji deklaruje przyłącze (kontrakt §3 reguła 1), więc
-    pole POMIAROWE bez deklaracji dostaje jawny zapis ROZLICZENIOWY."""
+    pole POMIAROWE bez deklaracji dostaje jawny zapis układu pomiarowego
+    energii o rodzaju PODSTAWOWYM."""
     enm, _odcinki = _magistrala(2)
     koniec = enm["branches"][-1]["to_bus_ref"]
     wynik = _wykonaj(
@@ -718,7 +848,8 @@ def test_stacja_koncowa_bez_deklaracji_utrwala_rozliczeniowy() -> None:
     pomiar = next(
         spec for spec in _specyfikacje_pol(stacja) if spec.get("bay_role") == "MEASUREMENT"
     )
-    assert pomiar["rodzaj_pomiaru"] == "ROZLICZENIOWY"
+    assert pomiar["funkcja_pomiaru"] == "UKLAD_ENERGII"
+    assert pomiar["rodzaj_pomiaru"] == "PODSTAWOWY"
 
 
 def test_stacja_koncowa_odmawia_nieznanego_rodzaju() -> None:
@@ -761,7 +892,7 @@ def test_klasa_i_brama_sa_koherentne_na_ksztaltach_kontraktu() -> None:
     for role in ksztalty:
         klasa = klasa_przylaczenia_sn(role)
         blad = blad_pomiaru_w_torze_tranzytu(
-            [(rola, "ROZLICZENIOWY" if rola == "POMIAROWE" else None) for rola in role],
+            [(rola, "UKLAD_ENERGII" if rola == "POMIAROWE" else None) for rola in role],
             szyna_prowadzi_tranzyt=True,
             kod_bledu="x",
         )

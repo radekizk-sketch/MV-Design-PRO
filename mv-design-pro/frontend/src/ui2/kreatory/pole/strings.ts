@@ -21,8 +21,10 @@ export const POLE_STRINGS = {
 
   rodzajPomiaru: 'Rodzaj pomiaru',
   rodzajPomiaruPomoc:
-    'Pomiar rozliczeniowy mierzy cały i wyłącznie pobór odbiorcy (granica stron) — nie może '
-    + 'leżeć w torze tranzytu magistrali. Pomiar kontrolny/ruchowy OSD (bilans, telemetria) '
+    'Układ pomiarowy energii (rozliczeniowy podstawowy, rezerwowy, równoważny lub '
+    + 'pomiarowo-kontrolny — wg standardu układów pomiarowych i IRiESD) mierzy energię przy '
+    + 'granicy stron i nie może leżeć w torze tranzytu magistrali. Pomiar napięcia szyn '
+    + '(przekładniki napięciowe sekcji rozdzielni) nie jest układem pomiarowym energii — '
     + 'jest wolny w każdej topologii.',
   wierszRodzajPomiaru: 'Rodzaj pomiaru',
 

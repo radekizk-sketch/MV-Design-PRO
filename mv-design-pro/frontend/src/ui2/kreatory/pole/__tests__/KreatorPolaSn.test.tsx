@@ -147,16 +147,16 @@ describe('KreatorPolaSn — realna ścieżka', () => {
     });
   });
 
-  it('pole pomiarowe: wybór rodzaju pomiaru trafia do payloadu add_sn_bay', async () => {
+  it('pole pomiarowe: wybór układu pomiarowego energii trafia do payloadu add_sn_bay', async () => {
     executeDomainOperationMock.mockResolvedValue({ error: null });
     render(<KreatorPolaSn />);
     await pick();
-    // Wybór rodzaju widoczny dopiero dla roli pomiarowej (realna ścieżka).
+    // Wybór pomiaru widoczny dopiero dla roli pomiarowej (realna ścieżka).
     expect(screen.queryByTestId('mvd-kreator-pole-rodzaj-pomiaru')).not.toBeInTheDocument();
     await userEvent.selectOptions(screen.getByTestId('mvd-kreator-pole-rola'), 'MEASUREMENT');
     await userEvent.selectOptions(
       screen.getByTestId('mvd-kreator-pole-rodzaj-pomiaru'),
-      'ROZLICZENIOWY',
+      'KONTROLNY',
     );
 
     await userEvent.click(screen.getByTestId('mvd-kreator-pole-zapisz'));
@@ -167,13 +167,28 @@ describe('KreatorPolaSn — realna ścieżka', () => {
         'add_sn_bay',
         expect.objectContaining({
           bay_role: 'MEASUREMENT',
-          rodzaj_pomiaru: 'ROZLICZENIOWY',
+          funkcja_pomiaru: 'UKLAD_ENERGII',
+          rodzaj_pomiaru: 'KONTROLNY',
         }),
       );
     });
   });
 
-  it('rola niepomiarowa nie wysyła rodzaju pomiaru (zero fantomów)', async () => {
+  it('pole pomiarowe bez zmiany wyboru = pomiar napięcia szyn (jawnie w payloadzie)', async () => {
+    executeDomainOperationMock.mockResolvedValue({ error: null });
+    render(<KreatorPolaSn />);
+    await pick();
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-pole-rola'), 'MEASUREMENT');
+    await userEvent.click(screen.getByTestId('mvd-kreator-pole-zapisz'));
+    await waitFor(() => {
+      expect(executeDomainOperationMock).toHaveBeenCalled();
+    });
+    const payload = executeDomainOperationMock.mock.calls[0][2] as Record<string, unknown>;
+    expect(payload.funkcja_pomiaru).toBe('NAPIECIA_SZYN');
+    expect(payload.rodzaj_pomiaru).toBeUndefined();
+  });
+
+  it('rola niepomiarowa nie wysyła pomiaru (zero fantomów)', async () => {
     executeDomainOperationMock.mockResolvedValue({ error: null });
     render(<KreatorPolaSn />);
     await pick();
@@ -183,6 +198,7 @@ describe('KreatorPolaSn — realna ścieżka', () => {
       expect(executeDomainOperationMock).toHaveBeenCalled();
     });
     const payload = executeDomainOperationMock.mock.calls[0][2] as Record<string, unknown>;
+    expect(payload.funkcja_pomiaru).toBeUndefined();
     expect(payload.rodzaj_pomiaru).toBeUndefined();
   });
 
