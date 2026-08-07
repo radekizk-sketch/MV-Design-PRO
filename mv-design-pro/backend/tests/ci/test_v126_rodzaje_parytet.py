@@ -109,7 +109,15 @@ def test_wyjatki_bez_kontrolki_sa_realnie_czytane() -> None:
 
 def test_powierzchnia_zastana_nie_wrocila() -> None:
     """Jedno wejście do zdolności V12.6: powierzchnia zastana pozostaje wygaszona."""
-    zastana = PROJECT_ROOT / "frontend" / "src" / "ui" / "workspace" / "surfaces" / "V126AcademicSurface.tsx"
+    zastana = (
+        PROJECT_ROOT
+        / "frontend"
+        / "src"
+        / "ui"
+        / "workspace"
+        / "surfaces"
+        / "V126AcademicSurface.tsx"
+    )
     assert not zastana.exists(), (
         "Powierzchnia zastana V126AcademicSurface wróciła — dwa równoległe wejścia "
         "do tej samej zdolności oznaczają dwa źródła prawdy o kontrakcie V12.6."
