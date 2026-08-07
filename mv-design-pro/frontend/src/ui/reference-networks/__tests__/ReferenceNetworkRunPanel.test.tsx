@@ -155,6 +155,19 @@ describe('ReferenceNetworkRunPanel — sieć symetryczna i błędy', () => {
     expect(String(wolanieBiegu?.[0])).toContain('solver_kind=power_flow_newton');
   });
 
+  it('odpowiedź bez pól zbieżności: uczciwe „—" (absencja danych to nie porażka)', async () => {
+    const bezZbieznosci = runOdpowiedz();
+    delete (bezZbieznosci.result as { converged?: boolean }).converged;
+    delete (bezZbieznosci.result as { iterations?: number }).iterations;
+    mockFetch(detail(), bezZbieznosci);
+    renderPanel();
+    await waitFor(() => expect(screen.getByTestId('run-solver-button')).toBeEnabled());
+    fireEvent.click(screen.getByTestId('run-solver-button'));
+    await waitFor(() => expect(screen.getByTestId('run-panel-result')).toBeInTheDocument());
+    expect(screen.getByTestId('run-panel-converged')).toHaveTextContent('—');
+    expect(screen.queryByText('brak zbieżności')).toBeNull();
+  });
+
   it('błąd biegu (success=false): komunikat błędu z backendu', async () => {
     mockFetch(
       detail(),
