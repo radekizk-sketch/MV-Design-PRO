@@ -119,7 +119,7 @@ describe('E1.4 — integracja powłoki (shell + nav + inspector + events)', () =
       }),
     );
     act(() => {
-      useSnapshotStore.setState({ snapshot: snapshotZRewizja(5) });
+      useSnapshotStore.setState({ snapshot: snapshotZRewizja(5), rewizjaBiezacegoModelu: 5 });
       useTopologyStore.setState({ summary: summaryZGpz() });
       useShellStore.setState({ activeSpace: 'model' });
       // E1a (K4): przestrzeń „Projekt" pokazuje pulpit tylko przy AKTYWNYM
@@ -140,7 +140,7 @@ describe('E1.4 — integracja powłoki (shell + nav + inspector + events)', () =
     cleanup();
     vi.unstubAllGlobals();
     act(() => {
-      useSnapshotStore.setState({ snapshot: null });
+      useSnapshotStore.setState({ snapshot: null, rewizjaBiezacegoModelu: null });
       useTopologyStore.setState({ summary: null });
       useAppStateStore.getState().reset();
     });
@@ -167,7 +167,7 @@ describe('E1.4 — integracja powłoki (shell + nav + inspector + events)', () =
     await renderujPowloke();
     expect(screen.getByText('Model: rew. 5')).toBeTruthy();
     act(() => {
-      useSnapshotStore.setState({ snapshot: snapshotZRewizja(6) });
+      useSnapshotStore.setState({ snapshot: snapshotZRewizja(6), rewizjaBiezacegoModelu: 6 });
     });
     expect(screen.getByText('Model: rew. 6')).toBeTruthy();
   });
