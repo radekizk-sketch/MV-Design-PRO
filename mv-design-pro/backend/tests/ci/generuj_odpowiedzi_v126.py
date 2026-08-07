@@ -23,9 +23,12 @@ import sys
 from pathlib import Path
 from typing import Any
 
-_SRC = Path(__file__).resolve().parents[2] / "src"
-if str(_SRC) not in sys.path:
-    sys.path.insert(0, str(_SRC))
+# Uruchomienie jako skrypt CLI (poza pytest) wymaga `src` na sciezce importu.
+# Sciezka podana WPROST — guard `test_testy_nie_cieniuja_pakietow_zrodlowych`
+# czyta tekst argumentu, a nie wartosc zmiennej, i ma racje: nazwa katalogu
+# musi byc widoczna w miejscu wstrzykniecia.
+if str(Path(__file__).resolve().parents[2] / "src") not in sys.path:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
 from network_model.solvers.v126_academic import V126AcademicSolver  # noqa: E402
 from solver_input.v126_contracts import (  # noqa: E402
