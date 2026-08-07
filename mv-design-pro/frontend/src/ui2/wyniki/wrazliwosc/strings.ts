@@ -56,15 +56,16 @@ export const WRAZLIWOSC_STRINGS = {
   kreska: '—',
 } as const;
 
-/** Kody kryteriów wrażliwości ogólnej → język projektanta (zbiór ZAMKNIĘTY
- * builderem `analysis/sensitivity` — każdy nowy kod pokaże się jako surowy
- * identyfikator, co test domykający wykryje). */
+/** Kody kryteriów wrażliwości ogólnej → język projektanta. Zbiór ZAMKNIĘTY
+ * builderem `analysis/sensitivity/builder.py` (wyliczenie: `parameter_id=`
+ * w kodzie źródłowym) — kompletność przypięta testem `strings.test.ts`;
+ * nieznany kod pokazuje się surowo (uczciwość zamiast zgadywania). */
 export const KRYTERIA_PL: Readonly<Record<string, string>> = {
   voltage_limit: 'Odchyłka napięcia węzła',
   load_q: 'Obciążenie mocą bierną',
   load_p: 'Obciążenie mocą czynną',
   short_circuit_level: 'Poziom mocy zwarciowej',
-  protection_settings: 'Marginesy nastaw zabezpieczeń',
+  protection_margin: 'Marginesy nastaw zabezpieczeń',
   protection_curve_margin: 'Marginesy krzywych zabezpieczeń',
 };
 
