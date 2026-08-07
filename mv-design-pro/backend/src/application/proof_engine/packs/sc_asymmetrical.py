@@ -234,27 +234,30 @@ class SCAsymmetricalProofPack:
         fizycznych. Interfejs, który ich nie liczy (i liczyć nie wolno mu), nie mógł
         po ten pakiet sięgnąć; końcówka stała bez konsumenta.
 
-        Tu jest ta sama droga co w pakiecie SC3F (``sc_symmetrical.py``): snapshot →
-        graf → solver → wejście dowodu. Impedancje składowe pochodzą z FROZEN wyniku
+        Droga jest ta sama co w pakiecie SC3F (``sc_symmetrical.py``): snapshot →
+        wynik → wejście dowodu. Impedancje składowe pochodzą z FROZEN wyniku
         solvera zwarcia jednofazowego (jedyny wariant liczący sieć zerową ``Z0``,
         potrzebną dla 1F-Z i 2F-Z), ``U_f`` i ``a`` — ze stałych warstwy solverów.
+
+        FIZYKA NIE DZIEJE SIĘ TUTAJ (poprawione 2026-08-07). Mapowanie snapshotu,
+        macierz zerowa i wejście w solver stoją w warstwie wiązania
+        (``application/solvers/short_circuit_binding.py``) — patrz komentarz przy
+        ``wynik_zwarcia_1f_ze_snapshotu``. Pakiet dostaje gotowy FROZEN wynik i
+        tylko go opisuje, zgodnie z rolą Proof Engine (interpretacja, nie produkcja
+        liczb). Wcześniejsza wersja liczyła to sama i zapalała
+        ``no_direct_fault_params_guard``.
         """
-        from enm.mapping import build_zero_sequence_zbus, map_enm_to_network_graph
-        from enm.models import EnergyNetworkModel
+        from application.solvers.short_circuit_binding import wynik_zwarcia_1f_ze_snapshotu
         from network_model.solvers.short_circuit_asymmetrical_quantities import (
             OPERATOR_FORTESCUE_A,
             napiecie_fazowe_przedzwarciowe_kv,
         )
-        from network_model.solvers.short_circuit_iec60909 import ShortCircuitIEC60909Solver
 
-        enm = EnergyNetworkModel.model_validate(snapshot)
-        graph = map_enm_to_network_graph(enm)
-        result = ShortCircuitIEC60909Solver.compute_1ph_short_circuit(
-            graph=graph,
+        result = wynik_zwarcia_1f_ze_snapshotu(
+            snapshot=snapshot,
             fault_node_id=fault_node_id,
             c_factor=c_factor,
             tk_s=tk_s,
-            z0_bus=build_zero_sequence_zbus(enm, graph),
         )
         if result.z1_ohm is None or result.z2_ohm is None or result.z0_ohm is None:
             raise ValueError(

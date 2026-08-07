@@ -99,6 +99,17 @@ reguły zgodności specyficzne dla OSD (REF-PAKIET) · `api/snapshots.py` bez
 podziałka pól L1/L2 (S9-10 pkt C) · edycja ról pól mogąca rozbroić pętlę OSD złączy
 klasy C · lista rodzajów analiz V12.6 bez wartości inżynierskiej do wycofania.
 
+**KLASTER GUARDÓW ODBIORU — POPRAWKA OBOWIĄZKOWA (2026-08-07).** Odbiór karty
+dotykającej BACKENDU musi zawierać `no_direct_fault_params_guard` (i cały
+workflow `P0 Extended Guards`). Pomiar: CI było CZERWONE od `a346c3de` przez
+CZTERY kolejne szczyty, bo jedno naruszenie w `packs/sc_asymmetrical.py`
+zapalało dwa biegi (`P0 Extended Guards` oraz `Python tests` przez pin
+`test_bramka_na_szczycie_repo_jest_zielona_i_niepusta`), a klaster nadzorcy
+sprawdzał wyłącznie guardy UI/SLD i pełny pytest — który tego guarda NIE
+uruchamia. **Wniosek ogólniejszy: lokalna zieleń pytest ≠ zielone CI.** Po
+każdym pushu sprawdzaj konkluzje biegów, nie tylko własne bramki. Naprawa
+opisana w wierszu `PACK-1F-WIAZANIE` rejestru; dług bliźniaczy: PACK-SC3F-WIAZANIE.
+
 ## 2. W BIEGU — DWIE KARTY DO ODEBRANIA (stan sprzed przejęcia — historyczny)
 
 | Karta | Kopia | Zakres | Odbiór — na co zwrócić uwagę |
