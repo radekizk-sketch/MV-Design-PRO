@@ -63,7 +63,7 @@ export function pustoscModelu(
     return 'nieustalona';
   }
   const niepusty = RODZINY_ELEMENTOW.some((rodzina) => {
-    const elementy = (snapshot as Record<string, unknown>)[rodzina];
+    const elementy = (snapshot as unknown as Record<string, unknown>)[rodzina];
     return Array.isArray(elementy) && elementy.length > 0;
   });
   return niepusty ? 'niepusty' : 'pusty';

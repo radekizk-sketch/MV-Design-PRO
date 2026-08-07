@@ -3,17 +3,18 @@
  *
  * INTENCJA: trasa wyników (`#analysis?run=…`) MUSI prowadzić do warsztatu ui2
  * przestrzeni „Wyniki i dowody" — nie do mostu legacy (hub E-35). Dotąd hash
- * nie ustawiał `activeSpace`, więc:
- *  - zimny deep-link (nowa karta przeglądarki) lądował w moście,
- *  - DONE-owe `navigateToResults` po kliku „Oblicz" prowadziło komunikatem
- *    „Otwieram wyniki" również do mostu.
- * Po K3-A1 hash `#analysis` (i aliasy wyników) ustawia przestrzeń 'wyniki';
- * po K3-A4 zakładka startowa dochodzi do rodzaju przebiegu po hydratacji K2.
+ * nie ustawiał `activeSpace`, więc zimny deep-link (nowa karta przeglądarki)
+ * lądował w moście. Po K3-A1 hash `#analysis` (i aliasy wyników) ustawia
+ * przestrzeń 'wyniki'; po K3-A4 zakładka startowa dochodzi do rodzaju
+ * przebiegu po hydratacji K2.
+ *
+ * S9-11 / W-4: bieg NIE nawiguje automatycznie — wyniki otwiera JAWNY klik
+ * w nawigację przestrzeni (most tras dokleja `?run=` świeżego biegu).
  *
  * Wzorzec seedu: e2e/restart-po-biegu.spec.ts (real backend; sieć budowana
  * przez API domain-ops). Test 1 uruchamia bieg przez API execution (wzorzec
  * industrial) — bada NAWIGACJĘ deep-linku w czystym kontekście; test 2 klika
- * „Oblicz" REALNIE i sprawdza lądowanie bez żadnego dodatkowego kliku.
+ * „Oblicz" REALNIE i otwiera wyniki jednym jawnym klikiem.
  */
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
 
@@ -310,7 +311,7 @@ test('zimny deep-link #analysis?run= ląduje w warsztacie ui2, nie w moście leg
   }
 });
 
-test('po DONE klik „Oblicz" z przestrzeni obliczeń ląduje w ui2 z zakładką wg rodzaju (bramka K3-A1/A4)', async ({ page, request }) => {
+test('po DONE jawny klik „Wyniki i dowody" ląduje w ui2 z zakładką wg rodzaju (bramka K3-A1/A4 × S9-11/W-4)', async ({ page, request }) => {
   test.setTimeout(240000);
 
   const caseId = await createCaseFromUi(page, request);
@@ -330,8 +331,12 @@ test('po DONE klik „Oblicz" z przestrzeni obliczeń ląduje w ui2 z zakładką
     .first();
   await expect(toastSukcesu).toBeVisible({ timeout: 90000 });
 
-  // BEZ żadnego dodatkowego kliku: DONE-owe `navigateToResults` („Otwieram
-  // wyniki") ma wylądować w warsztacie ui2 z zakładką rodzaju przebiegu.
+  // S9-11 / W-4: bieg NIE nawiguje — projektant zostaje w „Obliczeniach".
+  // Wyniki otwiera JAWNY klik w nawigację przestrzeni; most tras dokleja
+  // `?run=` świeżego biegu (deep-link K3), a warsztat ui2 otwiera zakładkę
+  // rodzaju przebiegu (K3-A4 po hydratacji K2).
+  await expect(page).not.toHaveURL(/#analysis\?/);
+  await page.getByRole('button', { name: /^Wyniki i dowody \d$/ }).click();
   await expect(page).toHaveURL(/#analysis\?/);
   await expect(page.getByTestId('mvd-wyniki-warsztat')).toBeVisible({ timeout: 20000 });
   await expect(page.getByTestId('mvd-wyniki-zakladka-zwarcia')).toHaveAttribute(

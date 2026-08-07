@@ -313,9 +313,15 @@ async function zrzutObuMotywow(page: Page, nazwa: string): Promise<void> {
   await page.getByTestId('mvd-theme-toggle').click();
 }
 
-/** Realna ścieżka projektanta do tabeli zwarć: przestrzeń „Wyniki i dowody" → zakładka „Zwarcia". */
+/**
+ * Realna ścieżka projektanta do tabeli zwarć: przestrzeń „Wyniki i dowody" →
+ * zakładka „Zwarcia". Selektor celuje w przycisk NAWIGACJI (etykieta + skrót,
+ * np. „Wyniki i dowody 6") — po S9-11/W-4 bieg zostawia projektanta na
+ * schemacie, więc w DOM współistnieje drugi legalny przycisk „Otwórz wyniki
+ * i dowody" (pas „następny krok"), a niedookreślona nazwa łamie strict mode.
+ */
 async function otworzZakladkeZwarc(page: Page): Promise<void> {
-  await page.getByRole('button', { name: 'Wyniki i dowody' }).click();
+  await page.getByRole('button', { name: /^Wyniki i dowody \d$/ }).click();
   await expect(page.getByTestId('mvd-wyniki-warsztat')).toBeVisible();
   await page.getByTestId('mvd-wyniki-zakladka-zwarcia').click();
 }

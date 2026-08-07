@@ -1,19 +1,21 @@
 /**
- * Pułapka nawigacji po biegu — bramka karty S9-3 (audyt `docs/sld/AUDYT_JAKOSCI_SLD_2026-08.md`,
- * znalezisko W-3 wagi 3).
+ * Bieg a miejsce pracy projektanta — bramka kart S9-3 i S9-11 (audyt
+ * `docs/sld/AUDYT_JAKOSCI_SLD_2026-08.md`, znaleziska W-3 wagi 3 i W-4 wagi 2).
  *
- * OBJAW ZMIERZONY W AUDYCIE: po biegu klik „Schemat (SLD)" przechodzi na `#sld`,
- * kanwa montuje się (96 elementów `sld-v3-*` w 303 ms), a po ~2,3 s aplikacja
- * SAMA wraca na `#analysis?run=…` i odmontowuje kanwę — dopiero DRUGI klik zostaje.
+ * OBJAW ZMIERZONY W AUDYCIE (W-3): po biegu klik „Schemat (SLD)" przechodzi na
+ * `#sld`, kanwa montuje się (96 elementów `sld-v3-*` w 303 ms), a po ~2,3 s
+ * aplikacja SAMA wraca na `#analysis?run=…` i odmontowuje kanwę — dopiero
+ * DRUGI klik zostaje. (W-4): sam klik „Oblicz" wyprowadzał projektanta ze
+ * schematu na widok analizy.
  *
- * INTENCJA BRAMKI (kontrakt „nawigacja użytkownika wygrywa z automatyczną"):
- * przekierowanie po zakończonym biegu wolno wykonać NAJWYŻEJ RAZ i wyłącznie
- * wtedy, gdy projektant nie zmienił miejsca pracy od startu biegu. Gdy zmienił —
- * automatyczna nawigacja MUSI ustąpić, a kanwa zostać zamontowana.
+ * INTENCJA BRAMKI (kontrakt S9-11): bieg NIE nawiguje WCALE — projektant
+ * zostaje tam, gdzie jest, gotowość wyniku sygnalizuje komunikat, a wejście
+ * na wyniki pozostaje OSIĄGALNE wyłącznie jawnym klikiem (nawigacja
+ * przestrzeni „Wyniki i dowody", deep-linki K3).
  *
  * Spec ćwiczy REALNĄ ścieżkę użytkownika (natywne kliki w przycisk „Oblicz"
- * powłoki i pozycję „Schemat (SLD)" nawigacji przestrzeni) na ŻYWEJ aplikacji
- * z REALNYM backendem — zero syntetycznych zdarzeń, zero wymuszania stanu store'ów.
+ * powłoki i pozycje nawigacji przestrzeni) na ŻYWEJ aplikacji z REALNYM
+ * backendem — zero syntetycznych zdarzeń, zero wymuszania stanu store'ów.
  *
  * Wzorzec budowy sieci i kontekstu: e2e/restart-po-biegu.spec.ts (K2).
  */
@@ -313,30 +315,54 @@ test.describe('W-3 · pierwszy powrót na schemat po biegu', () => {
     expect((lista.runs ?? []).some((r) => (r.status ?? '').toUpperCase() === 'DONE')).toBe(true);
   });
 
-  test('po wylądowaniu na wynikach pierwszy klik „Schemat (SLD)" zostaje (bramka S9-3)', async ({ page, request }) => {
+  test('bieg bez interakcji zostawia projektanta na miejscu; wyniki po JAWNYM kliku (bramka S9-11 / W-4)', async ({ page, request }) => {
     test.setTimeout(300000);
 
     const caseId = await otworzPowlokeZKontekstem(page, request);
     await zbudujSiecGotowaDoObliczen(request, caseId);
     await przeladujPowloke(page);
 
-    await page.getByRole('button', { name: 'Oblicz', exact: true }).click();
-
-    // Kontrola dodatnia lądowiska wyników (V12K-273): bieg bez interakcji
-    // użytkownika NADAL przenosi na wyniki — jednorazowo.
-    await expect
-      .poll(async () => page.evaluate(() => window.location.hash), { timeout: 120000 })
-      .toMatch(/^#analysis\?.*run=/);
-
-    // PIERWSZY klik „Schemat (SLD)" po biegu ma zostać.
+    // Projektant pracuje na schemacie — realny klik w nawigację przestrzeni.
     await klikSchemat(page);
     await expect(page.locator('svg[data-testid="sld-canvas-v3"]')).toBeVisible({ timeout: 20000 });
 
+    // REALNY klik „Oblicz" — bieg bez żadnej dalszej interakcji użytkownika.
+    await page.getByRole('button', { name: 'Oblicz', exact: true }).click();
+    await expect(
+      page.getByTestId('notification-toast').filter({ hasText: 'Obliczenie zakończone' }).first(),
+    ).toBeVisible({ timeout: 120000 });
+
+    // W-4: bieg NIE wyprowadza ze schematu — kanwa stoi przez całe okno
+    // obserwacji, adres nie staje się `#analysis`.
     const slad = await sledzTrwaloscKanwy(page, OKNO_OBSERWACJI_MS);
     const cofniecie = pierwszeCofniecie(slad);
     expect(
       cofniecie,
-      `Pierwszy powrót na schemat został cofnięty po ${cofniecie?.tMs} ms (hash=${cofniecie?.hash}).\nŚlad:\n${opisSladu(slad)}`,
+      `Bieg wyprowadził projektanta ze schematu po ${cofniecie?.tMs} ms (hash=${cofniecie?.hash}).\nŚlad:\n${opisSladu(slad)}`,
+    ).toBeNull();
+
+    // Kontrola dodatnia: bieg NAPRAWDĘ się zakończył (rejestr przebiegów
+    // zakresu — ta sama końcówka, z której czyta powłoka).
+    const przebiegi = await request.get(`${BACKEND_BASE}/api/execution/study-cases/${caseId}/runs`);
+    expect(przebiegi.ok()).toBeTruthy();
+    const lista = (await przebiegi.json()) as { runs?: Array<{ status?: string }> };
+    expect((lista.runs ?? []).some((r) => (r.status ?? '').toUpperCase() === 'DONE')).toBe(true);
+
+    // Wyniki OSIĄGALNE jawnym klikiem (deep-link K3 z parametrem świeżego
+    // biegu): nawigacja przestrzeni „Wyniki i dowody".
+    await page.getByRole('button', { name: /^Wyniki i dowody \d$/ }).click();
+    await expect
+      .poll(async () => page.evaluate(() => window.location.hash), { timeout: 20000 })
+      .toMatch(/^#analysis\?.*run=/);
+
+    // Powrót na schemat po biegu: PIERWSZY klik zostaje (dawny objaw W-3).
+    await klikSchemat(page);
+    await expect(page.locator('svg[data-testid="sld-canvas-v3"]')).toBeVisible({ timeout: 20000 });
+    const sladPowrotu = await sledzTrwaloscKanwy(page, OKNO_OBSERWACJI_MS);
+    const cofnieciePowrotu = pierwszeCofniecie(sladPowrotu);
+    expect(
+      cofnieciePowrotu,
+      `Pierwszy powrót na schemat został cofnięty po ${cofnieciePowrotu?.tMs} ms (hash=${cofnieciePowrotu?.hash}).\nŚlad:\n${opisSladu(sladPowrotu)}`,
     ).toBeNull();
   });
 });
