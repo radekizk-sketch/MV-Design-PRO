@@ -1,23 +1,26 @@
 /*
  * PRZYPIĘCIE DEKLARACJI (reguła KLASA, NIE INSTANCJA §4: „deklaracja bez testu =
- * fałszywa pewność"). Karta S9-3 stawia mocne zdanie:
+ * fałszywa pewność"). Karta S9-11 stawia mocne zdanie:
  *
- *   „Nawigacja po zakończonym biegu idzie WYŁĄCZNIE przez `nawigujAutomatycznie`."
+ *   „Tor wykonania przebiegu NIE nawiguje. Bieg zostawia projektanta tam,
+ *    gdzie jest — bez wyjątku."
  *
- * Bez testu takie zdanie wyłącza czujność: wystarczy, że ktoś dopisze w torze
- * biegu drugie, bezwarunkowe `navigateTo…`, a defekt W-3 wraca w tej samej
- * postaci (odłożony skok depczący nawigację projektanta) — i to bez czerwonego
- * testu, bo scenariusz wyścigu przechodziłby przez nową, nieosłoniętą ścieżkę.
+ * HISTORIA KLASY (W-3 → W-4 audytu `docs/sld/AUDYT_JAKOSCI_SLD_2026-08.md`):
+ *  - przed S9-3 tor biegu kończył się bezwarunkowym `navigateToResults` —
+ *    odłożony skok depczący nawigację projektanta (W-3, waga 3),
+ *  - S9-3 ograniczył skok warunkiem „miejsce pracy niezmienione" — ale w
+ *    NAJCZĘSTSZYM scenariuszu (bieg bez ruchu myszy) nadal wyrywał projektanta
+ *    ze schematu i odmontowywał kanwę (W-4, waga 2),
+ *  - S9-11 usuwa skok w całości: gotowość wyniku sygnalizuje komunikat i
+ *    samoodświeżająca się nakładka (most S9-2), a wejście na wyniki jest
+ *    wyłącznie JAWNYM klikiem (nawigacja przestrzeni, pas „następny krok",
+ *    deep-linki K3).
  *
- * Test czyta ŹRÓDŁO toru wykonania przebiegu i pilnuje dwóch rzeczy:
- *  1. każde wywołanie `navigateTo…(` w pliku stoi wewnątrz `nawigujAutomatycznie`,
- *  2. plik faktycznie importuje mechanizm (nie „przeszedł", bo nikt nie nawiguje).
- *
- * Zakres celowo wąski i nazwany: tor `uruchomObliczenie` jest jedynym miejscem,
- * w którym nawigacja jest ODŁOŻONA o czas biegu. Kreatory nawigują w obrębie
- * jednej operacji domenowej wywołanej klikiem, którego DEKLAROWANYM skutkiem
- * jest właśnie powrót na schemat — to nie jest nawigacja automatyczna w
- * rozumieniu tego kontraktu (inwentarz klasy w meldunku karty S9-3).
+ * Bez tego testu wystarczy, że ktoś dopisze w torze biegu jedno `navigateTo…`
+ * albo `przejdzDoPrzestrzeni`, a pułapka nawigacji wraca w tej samej postaci —
+ * i to bez czerwonego testu, bo scenariusz wyścigu przechodziłby przez nową,
+ * nieosłoniętą ścieżkę. Test czyta ŹRÓDŁO toru wykonania przebiegu i pilnuje,
+ * że nie ma w nim ŻADNEJ formy nawigacji.
  */
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
@@ -26,50 +29,49 @@ import { join } from 'node:path';
 const PLIK_TORU = join(process.cwd(), 'src', 'ui2', 'spaces', 'obliczenia', 'uruchomObliczenie.ts');
 const ZRODLO = readFileSync(PLIK_TORU, 'utf8');
 
-/** Wywołania nawigacji (bez importów i bez samego `nawigujAutomatycznie`). */
-function wywolaniaNawigacji(zrodlo: string): string[] {
-  return zrodlo
-    .split('\n')
-    .filter((linia) => /\bnavigateTo\w*\s*\(/.test(linia))
-    .map((linia) => linia.trim());
-}
-
-/**
- * Pełne wywołanie zaczynające się pod `poczatek` — zliczanie nawiasów, nie
- * pierwsze napotkane `});`: samo wywołanie nawigacji kończy się `});`, więc
- * naiwne szukanie ucinałoby badany fragment i test przechodziłby na skróty.
- */
-function cialoWywolania(zrodlo: string, poczatek: number): string {
-  const otwierajacy = zrodlo.indexOf('(', poczatek);
-  let glebokosc = 0;
-  for (let i = otwierajacy; i < zrodlo.length; i += 1) {
-    if (zrodlo[i] === '(') glebokosc += 1;
-    if (zrodlo[i] === ')') {
-      glebokosc -= 1;
-      if (glebokosc === 0) return zrodlo.slice(poczatek, i + 1);
+/** Linie kodu (bez komentarzy) — deklaracje intencji w komentarzach są dozwolone. */
+function linieKodu(zrodlo: string): string[] {
+  let wBloku = false;
+  const wynik: string[] = [];
+  for (const linia of zrodlo.split('\n')) {
+    const t = linia.trim();
+    if (wBloku) {
+      if (t.includes('*/')) wBloku = false;
+      continue;
     }
+    if (t.startsWith('/*')) {
+      if (!t.includes('*/')) wBloku = true;
+      continue;
+    }
+    if (t.startsWith('//') || t.startsWith('*')) continue;
+    wynik.push(linia);
   }
-  throw new Error('Niedomknięte wywołanie nawigujAutomatycznie w torze biegu');
+  return wynik;
 }
 
-describe('S9-3 — nawigacja po biegu tylko przez nawigujAutomatycznie', () => {
-  it('tor wykonania przebiegu importuje mechanizm zgody', () => {
-    expect(ZRODLO).toMatch(/import\s*\{[^}]*nawigujAutomatycznie[^}]*\}\s*from\s*'[^']*miejscePracy'/);
-    expect(ZRODLO).toMatch(/biezaceMiejscePracy\s*\(\s*\)/);
+describe('S9-11 — tor wykonania przebiegu nie nawiguje (W-3/W-4)', () => {
+  const kod = linieKodu(ZRODLO);
+
+  it('zero wywołań nawigacji tras (navigateTo…)', () => {
+    const wywolania = kod.filter((linia) => /\bnavigateTo\w*\s*\(/.test(linia));
+    expect(wywolania).toEqual([]);
   });
 
-  it('w torze wykonania przebiegu istnieje dokładnie jedno wywołanie nawigacji', () => {
-    expect(wywolaniaNawigacji(ZRODLO)).toHaveLength(1);
+  it('zero przejść przestrzeni powłoki (przejdzDoPrzestrzeni / setActiveSpace)', () => {
+    const wywolania = kod.filter(
+      (linia) => /\bprzejdzDoPrzestrzeni\s*\(/.test(linia) || /\bsetActiveSpace\s*\(/.test(linia),
+    );
+    expect(wywolania).toEqual([]);
   });
 
-  it('jedyne wywołanie nawigacji stoi wewnątrz nawigujAutomatycznie', () => {
-    const indeksZgody = ZRODLO.indexOf('nawigujAutomatycznie(miejscePracyNaStarcie');
-    expect(indeksZgody).toBeGreaterThan(-1);
+  it('zero zapisu trasy (window.location.hash / history.pushState)', () => {
+    const wywolania = kod.filter(
+      (linia) => /location\.hash\s*=/.test(linia) || /history\.(push|replace)State/.test(linia),
+    );
+    expect(wywolania).toEqual([]);
+  });
 
-    const cialoZgody = cialoWywolania(ZRODLO, indeksZgody);
-
-    for (const wywolanie of wywolaniaNawigacji(ZRODLO)) {
-      expect(cialoZgody).toContain(wywolanie);
-    }
+  it('kontrola dodatnia: bieg wiąże świeży przebieg z powłoką (setActiveRun) — jawny klik otwiera JEGO wyniki', () => {
+    expect(ZRODLO).toMatch(/setActiveRun\s*\(\s*run\.id\s*\)/);
   });
 });

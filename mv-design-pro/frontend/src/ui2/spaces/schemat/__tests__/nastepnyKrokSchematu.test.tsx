@@ -197,4 +197,21 @@ describe('S9-3 / W-6 — podpowiedź „następny krok" po zakończonym biegu', 
 
     expect(screen.getByTestId('mvd-schemat-nastepny')).toHaveAttribute('data-stan', 'przed-biegiem');
   });
+
+  it('S9-11 (W-4 × W-6): bieg zostawia projektanta na schemacie, a pas przełącza się NA MIEJSCU', () => {
+    // Po karcie S9-11 bieg NIE nawiguje — projektant zostaje na schemacie z
+    // zamontowanym pasem. Rejestr przebiegów zyskuje zakończony bieg (tak,
+    // jak po realnym torze `uruchomObliczenie`), a pas MUSI zareagować bez
+    // przemontowania: to jedyny sygnał „następnego kroku" widoczny w miejscu,
+    // w którym projektant faktycznie jest.
+    render(<NastepnyKrokSchematu />);
+    expect(screen.getByTestId('mvd-schemat-nastepny')).toHaveAttribute('data-stan', 'przed-biegiem');
+
+    act(() => {
+      useExecutionRunsStore.setState({ runs: [przebieg()] } as never);
+    });
+
+    expect(screen.getByTestId('mvd-schemat-nastepny')).toHaveAttribute('data-stan', 'po-biegu');
+    expect(screen.getByText(SCHEMAT_STRINGS.nastepnyKrokPoBieguOpis)).toBeInTheDocument();
+  });
 });

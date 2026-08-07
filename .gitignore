@@ -23,6 +23,8 @@ TestResults.xml
 
 ### Node ###
 node_modules/
+# symlink node_modules (worktree wykonawcy) tez ignorowany - wzorzec bez ukosnika:
+node_modules
 *.log
 
 ### Python ###

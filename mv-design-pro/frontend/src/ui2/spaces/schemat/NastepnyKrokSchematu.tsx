@@ -4,9 +4,11 @@
  * jest NIEPUSTY, pasek nad kanwą prowadzi jednym kliknięciem do przestrzeni
  * „Gotowość" (bramka z werdyktem należy do `PanelGotowosci`).
  *
- * ZERO fizyki i ZERO oceny gotowości w UI: warunek widoczności to wyłącznie
- * licznik elementów migawki (`mapujModel` — reużycie czystej projekcji
- * pulpitu E2.1), a klik to sama nawigacja (`przejdzDoPrzestrzeni` — ta sama
+ * ZERO fizyki i ZERO oceny gotowości w UI: warunek widoczności to werdykt
+ * pustości modelu z JEDNEGO źródła (`ui/topology/pustoscModelu` — S9-11 /
+ * P-8: ta sama prawda, którą montuje się stan pusty kanwy; dotąd pas liczył
+ * pustość osobno licznikiem kafla pulpitu), a klik to sama nawigacja
+ * (`przejdzDoPrzestrzeni` — ta sama
  * ścieżka co jawny wybór przestrzeni w AppShell, z czyszczeniem trasy
  * nadrzędnej `#sld`, bez którego przestrzeń „Gotowość" nie mogłaby się
  * wyrenderować — patrz `shell/przejsciaPrzestrzeni.ts`).
@@ -32,20 +34,17 @@ import './schemat.css';
 
 import { useAppStateStore } from '../../../ui/app-state';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
+import { modelNiepusty as werdyktModelNiepusty } from '../../../ui/topology/pustoscModelu';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import { przejdzDoPrzestrzeni } from '../../shell/przejsciaPrzestrzeni';
 import { ostatniZakonczonyPrzebiegPrzypadku } from '../../shell/shellStatus';
-import { mapujModel } from '../projekt/pulpitAdapter';
 import { SCHEMAT_STRINGS } from './strings';
 
 export function NastepnyKrokSchematu() {
   const snapshot = useSnapshotStore((s) => s.snapshot);
   const activeCaseId = useAppStateStore((s) => s.activeCaseId);
   const runs = useExecutionRunsStore((s) => s.runs);
-  const modelNiepusty = useMemo(
-    () => (snapshot ? mapujModel(snapshot).elementow > 0 : false),
-    [snapshot],
-  );
+  const modelNiepusty = useMemo(() => werdyktModelNiepusty(snapshot), [snapshot]);
   const poBiegu = useMemo(
     () => ostatniZakonczonyPrzebiegPrzypadku(runs, activeCaseId) != null,
     [runs, activeCaseId],

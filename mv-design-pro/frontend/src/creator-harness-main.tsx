@@ -3142,9 +3142,13 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
 // --- Zaszczepienie stanu store ------------------------------------------
 useAppStateStore.setState({ activeCaseId: 'case-demo' } as never);
 useSnapshotStore.setState({
+  // S9-11 / W-5: znaczniki świeżości czytają JEDNO źródło rewizji bieżącego
+  // modelu (`rewizjaBiezacegoModelu`), nie rewizję wyświetlanej migawki — sceny
+  // harnessu zasiewają oba pola spójnie (jak każda odpowiedź domain-ops).
+  rewizjaBiezacegoModelu: 1,
   snapshot: {
     // K3-B1: rewizja modelu w migawce globalnej — bez niej znacznik świeżości
-    // nagłówka (`useSwiezoscNaglowka` → `snapshot.header.revision`) nie renderował
+    // nagłówka (`useSwiezoscNaglowka`) nie renderował
     // się w ŻADNEJ scenie mimo kontraktu przebiegu z `rewizja_modelu`. Sceny z
     // własnym zasiewem migawki (dokumentacja rev. 7, pulpit rev. 9, zbieżność —
     // ZBIEZNOSC_SNAPSHOT, cieplna rev. 2 = wariant NIEAKTUALNY) nadpisują ją niżej.
@@ -3207,6 +3211,7 @@ if (creator === 'arcflash') {
   } as never);
   const szyna = (v: number, i: number) => ({ ref_id: `bus-${v}-${i}`, name: `Szyna ${v} kV`, voltage_kv: v });
   useSnapshotStore.setState({
+    rewizjaBiezacegoModelu: 7,
     snapshot: {
       header: { name: 'Projekt demonstracyjny', revision: 7, hash_sha256: 'a1b2c3d4e5f60718' },
       substations: [{ ref_id: 'st-demo', name: 'GPZ-01', bus_refs: ['bus-110-0', 'bus-15-0'] }],
@@ -3229,6 +3234,7 @@ if (creator === 'arcflash') {
   // Pulpit projektu (E1 — K2/V12K-103): kafel „Warunki przyłączenia" z warunkami
   // OSD z nagłówka + werdykt bilansu (generacja 6,2 MW > limit 5,0 MW).
   useSnapshotStore.setState({
+    rewizjaBiezacegoModelu: 9,
     snapshot: {
       header: {
         name: 'Przyłączenie farmy PV 8 MW', revision: 9, hash_sha256: 'f00dfacecafe0123',
@@ -3560,7 +3566,10 @@ if (creator === 'arcflash') {
   // transformatorem OLTC (założenia zaczepów modelu).
   useShellStore.setState({ advancementMode: 'expert' });
   useAppStateStore.getState().setActiveProject('proj-demo', 'Przyłączenie farmy PV 8 MW');
-  useSnapshotStore.setState({ snapshot: ZBIEZNOSC_SNAPSHOT } as never);
+  useSnapshotStore.setState({
+    snapshot: ZBIEZNOSC_SNAPSHOT,
+    rewizjaBiezacegoModelu: ZBIEZNOSC_SNAPSHOT.header.revision,
+  } as never);
   useExecutionRunsStore.setState({
     runs: [
       {
@@ -3731,6 +3740,7 @@ if (creator === 'arcflash') {
   // nagłówek pokazuje „nieaktualne (rew. 1 → 2)" + panel „Co się zmieniło"
   // z atrapy dziennika zmian. Kształt migawki = zasiew globalny (ta sama sieć).
   useSnapshotStore.setState({
+    rewizjaBiezacegoModelu: 2,
     snapshot: {
       header: { name: 'Projekt demonstracyjny', revision: 2 },
       substations: [{ ref_id: 'st-demo', name: 'Rozdzielnia GPZ-01', bus_refs: ['bus-sn-demo', 'bus-nn-demo'] }],

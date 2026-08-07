@@ -81,6 +81,7 @@ import { useAppStateStore } from '../../../app-state';
 import { useSelectionStore } from '../../../selection';
 import { updateUrlWithSelection } from '../../../navigation/urlState';
 import { useSnapshotStore } from '../../../topology/snapshotStore';
+import { pustoscModelu } from '../../../topology/pustoscModelu';
 import { buildSupplyPathHighlight, isElementEnergized, type SupplyPathHighlight } from '../../v2/canvas/SupplyPathHighlighter';
 import {
   previousPayloadForAnalysis,
@@ -1823,18 +1824,16 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   const [fitSignal, setFitSignal] = useState(0);
   const [fitTarget, setFitTarget] = useState<'tresc' | 'arkusz'>('tresc');
 
-  // F12-B pkt 3 (spec §10.1 ARCH-4, „ProofPacksPanel"): `hasNetworkModel` —
-  // TA SAMA definicja co v2 `!isEmpty` (`SldWorkspaceContainer.tsx`:
-  // `sldData.gpzs/stations/cableRuns/ders` wszystkie puste ⇒ `isEmpty`).
+  // F12-B pkt 3 (spec §10.1 ARCH-4, „ProofPacksPanel") + S9-11 / P-8: pustość
+  // MODELU z JEDNEGO źródła (`ui/topology/pustoscModelu`), nie z kategorii
+  // adaptera rysunku. Poprzednia definicja (`sldData.gpzs/stations/cableRuns/
+  // ders` puste ⇒ „brak modelu") myliła BRAK MIGAWKI (hydratacja w toku) i
+  // elementy spoza kategorii rysunku z PUSTYM modelem — akcje stanu pustego
+  // (`sld-empty-state*`) siedziały w drzewie przy sieci 16 i 51 stacji
+  // (pomiar audytu §3.3).
   const [proofPanelOpen, setProofPanelOpen] = useState(false);
-  const hasNetworkModel = useMemo(
-    () =>
-      sldData.gpzs.length > 0
-      || sldData.stations.length > 0
-      || sldData.cableRuns.length > 0
-      || sldData.ders.length > 0,
-    [sldData],
-  );
+  const pustoscModeluWerdykt = useMemo(() => pustoscModelu(snapshot), [snapshot]);
+  const hasNetworkModel = pustoscModeluWerdykt === 'niepusty';
 
   // F12-B pkt 4 (spec §10.1 ARCH-4, „LayerTogglePanel jako realny filtr"):
   // stan LOKALNY warstw v3 (`v3/canvas/layers.ts`) — brak wpisu = widoczna
@@ -2599,8 +2598,10 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
           jawnym CTA GPZ i katalogami, przeniesiony 1:1 z kontenera v2
           (te same testid/etykiety PL; akcje przez WSPÓŁDZIELONY wykonawca
           `handleAction`, więc zachowanie identyczne — `insert-gpz` otwiera
-          formularz `add_grid_source_sn`, `open-catalogs` nawigację E-38). */}
-      {!hasNetworkModel && (
+          formularz `add_grid_source_sn`, `open-catalogs` nawigację E-38).
+          S9-11 / P-8: montowany WYŁĄCZNIE przy werdykcie 'pusty' — pustość
+          NIEUSTALONA (migawka nie przyszła) nie jest pustym modelem. */}
+      {pustoscModeluWerdykt === 'pusty' && (
         <div
           data-testid="sld-empty-state"
           className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center"

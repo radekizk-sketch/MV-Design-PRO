@@ -310,15 +310,15 @@ describe('Znacznik świeżości wyników w pasku aktywnego przypadku (K4/D1 + V1
     expect(useShellStore.getState().activeSpace).toBe('projekt');
   });
 
-  it('PODGLĄD PRZEBIEGU w store: rewizja migawki opisuje stary model → „nieustalone", nie „aktualne"', async () => {
+  it('PODGLĄD PRZEBIEGU w store nie oślepia chipu: werdykt trwa przy rewizji BIEŻĄCEGO modelu (S9-11 / W-5)', async () => {
     // Wejście na link przebiegu wpisuje do `useSnapshotStore` migawkę SPRZED
     // biegu (`setAnalysisRunSnapshot`). Jej `header.revision` równa się rewizji
-    // wyniku ZAWSZE — porównanie wychodziłoby „aktualne" niezależnie od tego,
-    // jak daleko pojechał żywy model. Chip musi wtedy powiedzieć „nie wiadomo".
-    //
-    // Ten test pilnuje też literału znacznika podglądu powtórzonego w
-    // `shellStatus.ts` (stała store'u nie jest eksportowana): akcja wołana niżej
-    // jest PRODUKCYJNA, więc zmiana znacznika w store'ie zapali ten scenariusz.
+    // wyniku ZAWSZE — naiwne porównanie z nią wychodziłoby „aktualne"
+    // niezależnie od tego, jak daleko pojechał żywy model. Do karty S9-11 chip
+    // odpowiadał na to „nieustalone" (ślepota zamiast fałszu — dług
+    // S9-3-DLUG-W5); teraz rewizja bieżącego modelu żyje w OSOBNYM polu
+    // (`rewizjaBiezacegoModelu`), którego podgląd nie dotyka — chip mówi
+    // PRAWDĘ w obu kierunkach. Obie akcje store'u są PRODUKCYJNE.
     stubFetch(RUN_ZGODNY, 8, 8);
     window.location.hash = `#sld?project=${PROJECT_ID}&case=${CASE_ID}`;
 
@@ -332,16 +332,41 @@ describe('Znacznik świeżości wyników w pasku aktywnego przypadku (K4/D1 + V1
       );
     });
 
-    // Ta sama migawka wchodzi do store'u jako PODGLĄD PRZEBIEGU (akcja produkcyjna).
+    // Kierunek 1: model NIE zmienił się od biegu — podgląd przebiegu w store
+    // nie zmienia werdyktu („aktualne" zostaje, bez ślepego „nieustalone").
     const migawka = useSnapshotStore.getState().snapshot;
     expect(migawka).not.toBeNull();
     act(() => {
       useSnapshotStore.getState().setAnalysisRunSnapshot(migawka!, 'snap-podglad');
     });
-
     await waitFor(() => {
       expect(screen.getByTestId('mvd-casebar-results')).toHaveTextContent(
-        SHELL_STRINGS.resultsUnknown,
+        SHELL_STRINGS.resultsFresh,
+      );
+    });
+
+    // Kierunek 2 (PUŁAPKA z pomiaru audytu): model jedzie dalej (rew. 9,
+    // odpowiedź domain-ops — akcja produkcyjna `setSnapshot`)…
+    act(() => {
+      useSnapshotStore.getState().setSnapshot(
+        domainOpResponse(9) as never,
+      );
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId('mvd-casebar-results')).toHaveTextContent(
+        SHELL_STRINGS.resultsOutdated,
+      );
+    });
+
+    // …a potem wraca PODGLĄD przebiegu z rew. 8 (= rewizja wyniku). Naiwne
+    // porównanie z rewizją migawki dałoby „aktualne" — chip MUSI trwać na
+    // „nieaktualne", bo bieżący model to wciąż rew. 9.
+    act(() => {
+      useSnapshotStore.getState().setAnalysisRunSnapshot(migawka!, 'snap-podglad-2');
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId('mvd-casebar-results')).toHaveTextContent(
+        SHELL_STRINGS.resultsOutdated,
       );
     });
     expect(screen.getByTestId('mvd-casebar-results')).not.toHaveTextContent(
