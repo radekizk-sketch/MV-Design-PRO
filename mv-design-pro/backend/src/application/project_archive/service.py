@@ -41,6 +41,7 @@ from domain.project_archive import (
     dict_to_archive,
     verify_archive_integrity,
 )
+from network_model.catalog.governance import wymaga_referencji_katalogowej
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -1385,14 +1386,15 @@ def _find_elements_without_catalog(archive: ProjectArchive) -> list[str]:
     elements_no_catalog: list[str] = []
     seen: set[str] = set()
 
-    # Typy branchow wymagajace katalogu
-    catalog_required_branch_types = {"cable", "line_overhead"}
+    # Typy branchow wymagajace katalogu — predykat wspolny dla WSZYSTKICH drog
+    # wejscia modelu (archiwum ZIP i import XLSX), zeby bramka katalogowa nie
+    # rozjechala sie miedzy importerami (`catalog.governance`).
 
     # Sprawdz branches z modelu sieci
     for branch in archive.network_model.branches:
         branch_type = branch.get("type", "")
         ref_id = branch.get("ref_id", branch.get("id", ""))
-        if branch_type in catalog_required_branch_types and ref_id not in seen:
+        if wymaga_referencji_katalogowej(branch_type) and ref_id not in seen:
             if not branch.get("catalog_ref"):
                 elements_no_catalog.append(ref_id)
                 seen.add(ref_id)
@@ -1406,7 +1408,7 @@ def _find_elements_without_catalog(archive: ProjectArchive) -> list[str]:
         for branch in graph.get("branches", []):
             branch_type = branch.get("type", "")
             ref_id = branch.get("ref_id", "")
-            if branch_type in catalog_required_branch_types and ref_id not in seen:
+            if wymaga_referencji_katalogowej(branch_type) and ref_id not in seen:
                 if not branch.get("catalog_ref"):
                     elements_no_catalog.append(ref_id)
                     seen.add(ref_id)

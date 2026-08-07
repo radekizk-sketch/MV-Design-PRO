@@ -36,6 +36,12 @@ passlib = {extras = ["bcrypt"], version = "^1.7.4"}
 httpx = "^0.26.0"
 celery = "^5.3.6"
 pandas = "^2.1.4"
+# Odczyt arkuszy XLSX (import sieci z arkusza operatora). Zaleznosc GLOWNA, nie dev:
+# koncowka `POST /api/import/xlsx` czyta plik uzytkownika przez openpyxl na produkcji.
+# Do 2026-08-07 biblioteki NIE BYLO w zaleznosciach — koncowka zwracala 422
+# „Brak biblioteki openpyxl" dla KAZDEGO wejscia, a testy tego nie wykrywaly, bo
+# chodzily obok realnej sciezki (`import_from_dict`).
+openpyxl = "^3.1.5"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.4.4"

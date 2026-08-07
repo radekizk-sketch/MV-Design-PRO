@@ -28,6 +28,41 @@ class ImportMode(Enum):
     REPLACE = "replace"  # Replace library (blocked if types are in use)
 
 
+# ---------------------------------------------------------------------------
+# Bramka katalogowa importu — JEDNO ZRODLO PRAWDY dla wszystkich drog wejscia
+# ---------------------------------------------------------------------------
+#
+# KLASA, NIE INSTANCJA: „ktore rodzaje galezi wymagaja referencji katalogowej"
+# bylo zaszyte lokalnie w imporcie archiwum ZIP (`project_archive/service.py`,
+# zbior {"cable", "line_overhead"}). Kazda kolejna droga wejscia modelu (import
+# XLSX, przyszle importy) powielalaby ten warunek wlasnym zbiorem — dwa
+# niezalezne predykaty, ktore „dzis sie zgadzaja", rozjezdzaja sie przy pierwszym
+# nowym rodzaju. Predykat ponizej normalizuje OBA nazewnictwa uzywane w systemie:
+#   * ENM / archiwum:      "cable", "line_overhead",
+#   * rdzen solverowy:     BranchType.CABLE.value = "CABLE", BranchType.LINE.value = "LINE".
+# Transformator NIE jest tu wymagany — tak jak w bramce archiwum; wymog katalogu
+# dla transformatorow rozstrzyga polityka operacji domenowych (`domain_ops_policy`),
+# nie bramka importu.
+_RODZAJE_GALEZI_WYMAGAJACE_KATALOGU: frozenset[str] = frozenset(
+    {"cable", "line_overhead", "line", "overhead_line"}
+)
+
+
+def wymaga_referencji_katalogowej(rodzaj_galezi: str | None) -> bool:
+    """Czy galaz danego rodzaju wymaga referencji katalogowej przy imporcie.
+
+    Args:
+        rodzaj_galezi: rodzaj galezi w dowolnym z nazewnictw systemu
+            (ENM: ``cable`` / ``line_overhead``; rdzen: ``CABLE`` / ``LINE``).
+
+    Returns:
+        True, gdy brak referencji katalogowej ma zapalic bramke katalogowa importu.
+    """
+    if not rodzaj_galezi:
+        return False
+    return rodzaj_galezi.strip().lower() in _RODZAJE_GALEZI_WYMAGAJACE_KATALOGU
+
+
 @dataclass(frozen=True)
 class TypeLibraryManifest:
     """

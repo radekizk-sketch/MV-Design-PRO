@@ -1,5 +1,27 @@
-"""XLSX Network Importer — import sieci z arkuszy Excel."""
+"""Import sieci z arkusza XLSX — odczyt arkusza i zapis do modelu projektu."""
 
-from .importer import XlsxImportResult, XlsxNetworkImporter, XlsxValidationError
+from .importer import (
+    BladArkusza,
+    SiecZArkusza,
+    XlsxImportResult,
+    XlsxNetworkImporter,
+    XlsxValidationError,
+)
+from .service import (
+    PodsumowanieArkusza,
+    WynikImportu,
+    WynikPodgladu,
+    XlsxImportService,
+)
 
-__all__ = ["XlsxNetworkImporter", "XlsxImportResult", "XlsxValidationError"]
+__all__ = [
+    "BladArkusza",
+    "PodsumowanieArkusza",
+    "SiecZArkusza",
+    "WynikImportu",
+    "WynikPodgladu",
+    "XlsxImportResult",
+    "XlsxImportService",
+    "XlsxNetworkImporter",
+    "XlsxValidationError",
+]
