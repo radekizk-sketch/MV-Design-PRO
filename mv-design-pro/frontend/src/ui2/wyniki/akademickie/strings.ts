@@ -157,6 +157,47 @@ export const AKADEMICKIE_STRINGS = {
   wynikPokazWszystko: 'Pokaż pełny wynik',
   wynikLiczbaPol: (n: number): string => `pól wyniku: ${n}`,
 
+  // Ekran inżynierski (V126-JEZYK)
+  celTytul: 'Co ta analiza rozstrzyga',
+  werdyktTytul: 'Werdykt',
+  werdyktBrak: 'Solver nie wystawił werdyktu dla tej analizy',
+  werdyktBrakOpis:
+    'Pole werdyktu nie występuje w odpowiedzi — najczęściej dlatego, że brakuje danych '
+    + 'wejściowych. Sprawdź sekcję wiarygodności i parametry projektowe.',
+  werdyktZbiorczy: (spelnione: number, lacznie: number, obiekty: string): string =>
+    `kryterium spełnione dla ${spelnione} z ${lacznie} ${obiekty}`,
+  werdyktWartosc: 'wielkość wynikowa (bez progu normatywnego)',
+  kryteriumEtykieta: 'Kryterium oceny',
+  normaEtykieta: 'Podstawa metody',
+  wielkosciTytul: 'Wielkości wynikowe',
+  wielkosciOpis: 'Wielkości główne analizy — każda z jednostką, przy wartościach '
+    + 'dopuszczalnych podanych przez solver także z wartością odniesienia.',
+  odniesienieDomyslne: 'odniesienie',
+  obiektyBrak: 'Solver nie zwrócił obiektów dla tej analizy',
+  nastepnyKrokTytul: 'Następny krok',
+
+  // Uczciwy stan niekompletny (solver melduje brak danych)
+  brakiTytul: 'Brakujące dane wejściowe',
+  brakiLista: 'Solver nie wystawił werdyktu, bo w modelu brakuje:',
+
+  // Wiarygodność wyniku (blok `sanity` solvera)
+  wiarygodnoscTytul: 'Wiarygodność wyniku',
+  wiarygodnoscOpis:
+    'Kontrola granic fizycznych wykonana przez solver po obliczeniach — odpowiada '
+    + 'na pytanie „czy tym liczbom można ufać", a nie „czy projekt jest zgodny z normą".',
+  wiarygodnoscSprawdzen: (zdane: number, lacznie: number): string =>
+    `sprawdzeń zdanych: ${zdane} z ${lacznie}`,
+  wiarygodnoscNaruszenia: 'Przekroczone granice wiarygodności',
+  wiarygodnoscBrak: 'Solver nie dołączył kontroli wiarygodności do tego wyniku',
+
+  // Zapis surowy (audyt)
+  surowyTytul: 'Surowy zapis odpowiedzi solvera',
+  surowyOpis:
+    'Pełna odpowiedź solvera w postaci technicznej — do audytu obliczeń i zgłoszeń '
+    + 'serwisowych. Nazwy pól są nazwami kontraktu obliczeniowego, nie etykietami ekranu.',
+  surowyPokaz: 'Pokaż zapis techniczny',
+  surowyUkryj: 'Ukryj zapis techniczny',
+
   // Ślad WHITE BOX
   sladTytul: 'Pełna jawność obliczeń',
   sladOpis: 'Ślad WHITE BOX przebiegu: wzór → dane → podstawienie → wynik → sprawdzenie jednostek.',

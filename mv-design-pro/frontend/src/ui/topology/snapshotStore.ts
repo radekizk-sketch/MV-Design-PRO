@@ -178,6 +178,22 @@ export interface SnapshotOperationHistoryEntry {
   deletedElementIds?: string[];
 }
 
+/**
+ * Most referencja → nazwa obiektu na schemacie (warstwa prezentacji).
+ *
+ * Był tu od początku, ale WYŁĄCZNIE prywatnie — dziennik operacji był jedynym
+ * konsumentem, więc każdy inny ekran pokazywał surowe referencje
+ * (`gpz/8600…/section/001/bus_sn`). Karta V126-JEZYK: ekran wyników nazywa
+ * obiekty tak, jak nazywa je schemat; brak nazwy = uczciwy `null`, nigdy
+ * nazwa zmyślona z referencji.
+ */
+export function selectElementName(
+  snapshot: EnergyNetworkModel | null,
+  elementRef: string | null,
+): string | null {
+  return resolveElementName(snapshot, elementRef);
+}
+
 function resolveElementName(
   snapshot: EnergyNetworkModel | null,
   elementRef: string | null,
