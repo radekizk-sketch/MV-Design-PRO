@@ -97,6 +97,37 @@ export const GOTOWOSC_STRINGS = {
   filtrWyczysc: 'Wyczyść filtry',
   filtrBrakWynikow: 'Filtr nie wskazuje braków.',
 
+  // Sekcja „Pokrycie analizami" (ROUTERY-4A — zdolność A3 macierzy pokrycia)
+  pokrycieSekcjaTytul: 'Pokrycie analizami',
+  pokrycieSekcjaOpis:
+    'Kompletność pakietu analiz przypadku: punktacja 0–100 oraz lista brakujących '
+    + 'dowodów i widoków. Punktacja rośnie wraz z wykonanymi obliczeniami.',
+  pokrycieBrakPrzypadku: 'Wybierz zakres obliczeń, aby zobaczyć pokrycie analizami.',
+  pokrycieLadowanie: 'Wczytywanie pokrycia analizami…',
+  pokrycieBlad: 'Błąd wczytywania pokrycia analizami',
+  pokrycieWynik: 'Punktacja pokrycia',
+  pokrycieBezBiegu:
+    'Przypadek nie ma jeszcze zakończonego przebiegu rozpływu — punktacja liczona od zera.',
+  pokrycieBrakiTytul: 'Czego brakuje',
+  pokrycieLukiTytul: 'Luki krytyczne',
+  pokrycieBezBrakow: 'Pakiet analiz kompletny — brak braków.',
+
+  // Sekcja „Granica sieci" (ROUTERY-4A — zdolność A2 macierzy pokrycia)
+  granicaSekcjaTytul: 'Granica sieci (węzeł przyłączenia)',
+  granicaSekcjaOpis:
+    'Interpretacja bieżącego modelu: gdzie sieć projektu styka się z siecią '
+    + 'zasilającą. Wynik z heurystyk (źródło zewnętrzne, przewaga generacji, '
+    + 'pojedynczy zasilacz, granica napięć) z poziomem ufności.',
+  granicaBrakPrzypadku: 'Wybierz zakres obliczeń, aby zobaczyć granicę sieci.',
+  granicaLadowanie: 'Wyznaczanie granicy sieci…',
+  granicaBlad: 'Błąd wyznaczania granicy sieci',
+  granicaWezel: 'Węzeł przyłączenia',
+  granicaMetoda: 'Metoda identyfikacji',
+  granicaUfnosc: 'Ufność',
+  granicaNieznaleziona: 'Nie wskazano jednoznacznego węzła przyłączenia.',
+  granicaDiagnostyka: 'Diagnostyka',
+  granicaNapiecie: 'Napięcie znamionowe',
+
   // Wiersz problemu
   napraw: 'Napraw…',
   wymagaInterwencji: 'Wymaga interwencji projektanta',

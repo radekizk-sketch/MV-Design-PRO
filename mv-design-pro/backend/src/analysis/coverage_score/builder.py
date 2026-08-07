@@ -16,13 +16,18 @@ from analysis.sensitivity.models import SensitivityView
 from analysis.voltage_profile.models import VoltageProfileStatus, VoltageProfileView
 from application.proof_engine.types import ProofDocument, ProofType
 
+# Etykiety pakietów dowodowych PO POLSKU i BEZ kodenamów projektowych (P11/P15/…):
+# lista `missing_items` trafia wprost do interfejsu (sekcja „Pokrycie analizami"),
+# a reguła „No Codenames in UI" (CLAUDE.md §8) zakazuje kodenamów w łańcuchach
+# widocznych dla użytkownika. Naprawa u źródła podczas wpinania łańcucha
+# router→UI (karta ROUTERY-4A), nie w warstwie prezentacji.
 _PROOF_WEIGHTS: tuple[tuple[str, ProofType, float], ...] = (
-    ("P11: SC3F", ProofType.SC3F_IEC60909, 15.0),
-    ("P11: VDROP", ProofType.VDROP, 15.0),
-    ("P15: Load Currents", ProofType.LOAD_CURRENTS_OVERLOAD, 10.0),
-    ("P17: Losses & Energy", ProofType.LOSSES_ENERGY, 10.0),
-    ("P18: Protection Overcurrent", ProofType.PROTECTION_OVERCURRENT, 10.0),
-    ("P19: Earthing SN", ProofType.EARTHING_GROUND_FAULT_SN, 10.0),
+    ("zwarcie trójfazowe SC3F (IEC 60909)", ProofType.SC3F_IEC60909, 15.0),
+    ("spadki napięć (VDROP)", ProofType.VDROP, 15.0),
+    ("obciążenia prądowe i przeciążenia", ProofType.LOAD_CURRENTS_OVERLOAD, 10.0),
+    ("straty i energia", ProofType.LOSSES_ENERGY, 10.0),
+    ("zabezpieczenia nadprądowe", ProofType.PROTECTION_OVERCURRENT, 10.0),
+    ("uziemienie — zwarcie doziemne SN", ProofType.EARTHING_GROUND_FAULT_SN, 10.0),
 )
 
 
@@ -49,26 +54,28 @@ class CoverageScoreBuilder:
                 missing_items.append(f"Brak dowodu: {label}.")
                 score -= weight
                 if proof_type == ProofType.EARTHING_GROUND_FAULT_SN:
-                    critical_gaps.append("P14-GAP-001: brak pakietu P19 (earthing SN).")
+                    critical_gaps.append(
+                        "LUKA-UZIEMIENIE: brak pakietu dowodu uziemienia " "(zwarcie doziemne SN)."
+                    )
 
         if normative_report is None:
-            missing_items.append("Brak P20 (raport normatywny).")
+            missing_items.append("Brak raportu normatywnego.")
             score -= 5.0
         if voltage_profile is None:
-            missing_items.append("Brak P21 (profil napięć).")
+            missing_items.append("Brak profilu napięć.")
             score -= 5.0
         if protection_insight is None:
-            missing_items.append("Brak P22a (analiza zabezpieczeń).")
+            missing_items.append("Brak analizy zabezpieczeń.")
             score -= 5.0
         if protection_curves_it is None:
-            missing_items.append("Brak P22 (krzywe I–t).")
+            missing_items.append("Brak krzywych czasowo-prądowych I–t.")
             score -= 3.0
-            critical_gaps.append("P14-GAP-002: selektywność bez pełnych krzywych I–t.")
+            critical_gaps.append("LUKA-SELEKTYWNOSC: selektywność bez pełnych krzywych I–t.")
         if sensitivity is None:
-            missing_items.append("Brak P25 (wrażliwość).")
+            missing_items.append("Brak analizy wrażliwości.")
             score -= 5.0
         if recommendations is None:
-            missing_items.append("Brak P26 (rekomendacje).")
+            missing_items.append("Brak rekomendacji.")
             score -= 5.0
 
         not_computed_count = _count_not_computed(

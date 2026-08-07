@@ -5,6 +5,7 @@ import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
+from api.analysis_insights import router as analysis_insights_router
 from api.analysis_runs import router as analysis_runs_router
 from api.audit2_catalogs import router as audit2_catalogs_router
 from api.audit2_station_config import router as audit2_station_config_router
@@ -123,6 +124,7 @@ register_exception_handlers(app)
 # projektu pod `/projects` bylo z przegladarki NIEOSIAGALNE, a klient rozplywu
 # wolal `/api/power-flow-runs/...`, ktorego backend NIE serwowal (trasa MARTWA).
 # Odstepstwo od kanonu lapie `scripts/route_prefix_guard.py`.
+app.include_router(analysis_insights_router)
 app.include_router(analysis_runs_router, prefix="/api")
 app.include_router(audit2_catalogs_router)
 app.include_router(audit2_station_config_router)

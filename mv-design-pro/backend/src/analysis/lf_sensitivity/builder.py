@@ -303,7 +303,12 @@ def _drivers_for_element(
                 warn=warn,
                 fail=fail,
             )
-            why = "Wpływ parametru z modelu P32; " f"margines względem progu {margin_ref}."
+            # PL bez kodenamów (CLAUDE.md §8): why_pl trafia wprost do interfejsu
+            # (zakładka „Wrażliwość"), więc nazwa progu i źródło danych po polsku.
+            why = (
+                "Wpływ parametru z dowodu spadków napięć rozpływu; "
+                f"margines względem progu: {_etykieta_progu(margin_ref)}."
+            )
             drivers.append(
                 LFSensitivityDriver(
                     bus_id=bus_id,
@@ -345,7 +350,10 @@ def _drivers_for_u_nom(
             warn=warn,
             fail=fail,
         )
-        why = "Wpływ napięcia znamionowego z modelu P32; " f"margines względem progu {margin_ref}."
+        why = (
+            "Wpływ napięcia znamionowego z dowodu spadków napięć rozpływu; "
+            f"margines względem progu: {_etykieta_progu(margin_ref)}."
+        )
         drivers.append(
             LFSensitivityDriver(
                 bus_id=bus_id,
@@ -358,6 +366,11 @@ def _drivers_for_u_nom(
         )
 
     return drivers
+
+
+def _etykieta_progu(margin_ref: str) -> str:
+    """Polska etykieta progu odniesienia marginesu (token wewnętrzny → PL)."""
+    return "ostrzeżenie" if margin_ref == "warning" else "przekroczenie"
 
 
 def _format_perturbation(delta_pct: float) -> str:
