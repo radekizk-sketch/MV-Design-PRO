@@ -42,6 +42,7 @@ import { PanelGotowosci } from './spaces/gotowosc';
 import { ModelWarsztat } from './spaces/model';
 import { MenedzerPrzypadkow, PanelScenariuszy } from './spaces/obliczenia';
 import { PrzebiegiPanel } from './spaces/obliczenia/przebiegi';
+import { SeriePanel } from './spaces/obliczenia/serie';
 import { WynikiWarsztat } from './spaces/wyniki';
 import { MostDokumentacji } from './spaces/dokumentacja';
 import { LegacySurface } from './legacy/LegacySurface';
@@ -255,6 +256,12 @@ export function AppRoot() {
   // przejść „następnego kroku" (np. Schemat → Gotowość). `przejdzDoPrzestrzeni`
   // = setActiveSpace + most (identyczna para wywołań jak dotychczas).
   const wybierzPrzestrzen = przejdzDoPrzestrzeni;
+  // Lądowisko K3 dla biegu: aktywacja przebiegu + jawne przejście do „Wyników".
+  // JEDNA funkcja dla obu paneli historii (przebiegi i serie) — parytet mostu.
+  const pokazWynikiBiegu = (runId: string) => {
+    useAppStateStore.getState().setActiveRun(runId);
+    wybierzPrzestrzen('wyniki');
+  };
   const wykonajPozycje = (pozycja: PozycjaWyszukiwania) => {
     if (pozycja.id.startsWith('przestrzen:')) {
       wybierzPrzestrzen(pozycja.id.slice('przestrzen:'.length) as SpaceId);
@@ -294,13 +301,20 @@ export function AppRoot() {
                   do tej karty zdolność żyła wyłącznie na trasie mostu, do
                   której nie prowadziło ŻADNE wejście produkcyjne. */}
               <PanelScenariuszy />
+              {/* Karta BATCH-ROUTER: seria przebiegów nad scenariuszami —
+                  wejście w wyniki pojedynczego biegu tym samym lądowiskiem K3. */}
+              <SeriePanel
+                trybZaawansowania={advancementMode}
+                onPokazWyniki={pokazWynikiBiegu}
+                onPrzejdzDoScenariuszy={() => {
+                  document
+                    .querySelector('[data-testid="mvd-scenariusze"]')
+                    ?.scrollIntoView?.({ block: 'start' });
+                }}
+              />
               <PrzebiegiPanel
                 trybZaawansowania={advancementMode}
-                onPokazWyniki={(runId) => {
-                  // Parytet mostu: aktywacja przebiegu + przejście do Wyników.
-                  useAppStateStore.getState().setActiveRun(runId);
-                  wybierzPrzestrzen('wyniki');
-                }}
+                onPokazWyniki={pokazWynikiBiegu}
               />
             </div>
           }
