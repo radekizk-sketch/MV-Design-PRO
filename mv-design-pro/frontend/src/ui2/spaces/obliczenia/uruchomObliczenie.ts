@@ -15,14 +15,20 @@
  * Tor (bez zmian względem ekstrakcji): walidacja aktywnego zakresu → bramka
  * gotowości (blokady) → `createAndExecuteRun` (POST /api/study-cases/{id}/runs
  * + POST /api/runs/{id}/execute) → oczekiwanie na stan terminalny (pollRunStatus)
- * → kontrola zdrowia przebiegu → status wyników + migawka → przejście do wyników.
+ * → kontrola zdrowia przebiegu → status wyników + migawka → sygnał gotowości
+ * wyniku BEZ nawigacji.
  *
- * S9-3 (W-3, naprawa u źródła): przejście do wyników jest nawigacją AUTOMATYCZNĄ
- * odłożoną o CAŁY czas biegu, więc idzie przez `nawigujAutomatycznie` — wykona
- * się najwyżej RAZ i wyłącznie wtedy, gdy projektant nie zmienił miejsca pracy
- * od startu biegu. Wejście na schemat w trakcie liczenia jest decyzją człowieka
- * i wygrywa; komunikat końcowy mówi wtedy prawdę („wyniki czekają"), zamiast
- * obiecywać otwarcie, którego nie było.
+ * S9-11 (W-4, naprawa u źródła; zaostrzenie S9-3/W-3): bieg NIE nawiguje WCALE.
+ * Projektant zostaje tam, gdzie jest — na schemacie nakładka wynikowa odświeża
+ * się sama (most refów S9-2: `setActiveRun` → orkiestrator pobiera
+ * `results/v1`), a komunikat końcowy mówi, gdzie wynik czeka. Wejście na wyniki
+ * pozostaje OSIĄGALNE wyłącznie jawnym klikiem (nawigacja przestrzeni, pas
+ * „następny krok", deep-linki K3 `#analysis?run=…`). Poprzedni kompromis S9-3
+ * („skok tylko z niezmienionego miejsca pracy") nadal wyrywał projektanta ze
+ * schematu w NAJCZĘSTSZYM scenariuszu — bieg bez ruchu myszy — i dlatego został
+ * zastąpiony brakiem skoku; klasa „odroczona nawigacja depcząca wybór
+ * użytkownika" (W-3) znika w tym torze strukturalnie, co przypina test
+ * `shell/__tests__/nawigacjaAutomatyczna.inwariant.test.ts`.
  *
  * ZERO fizyki, ZERO mutacji NetworkModelu — wyłącznie istniejące akcje store'ów
  * i istniejące endpointy.
@@ -34,10 +40,8 @@ import { useAppStateStore } from '../../../ui/app-state';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import type { ExecutionAnalysisType, ExecutionRun } from '../../../ui/study-cases/types';
-import { navigateToResults } from '../../../ui/navigation';
 import { notify } from '../../../ui/notifications/store';
 import { sanitizePublicReadinessMessage } from '../../../ui/shared/publicReadinessMessage';
-import { biezaceMiejscePracy, nawigujAutomatycznie } from '../../shell/miejscePracy';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -98,12 +102,10 @@ export function analysisRunFailureMessage(): string {
   return 'Obliczenia nie zakończyły się wynikiem. Sprawdź konfigurację układu i dane katalogowe.';
 }
 
-/** Komunikat końca biegu, gdy powłoka OTWIERA wyniki (projektant został na miejscu). */
-export const KOMUNIKAT_BIEG_OTWARTO_WYNIKI = 'Obliczenie zakończone. Otwieram wyniki.';
 /**
- * Komunikat końca biegu, gdy projektant zmienił miejsce pracy w trakcie liczenia.
- * Bieg NIE wyrywa go z bieżącej pracy — sygnalizuje gotowość wyniku i mówi, gdzie
- * on czeka (W-4: „bieg ma zostawiać projektanta tam, gdzie był").
+ * Jedyny komunikat końca udanego biegu (S9-11 / W-4): bieg NIE wyrywa
+ * projektanta z bieżącej pracy — sygnalizuje gotowość wyniku i mówi, gdzie on
+ * czeka. Na schemacie nakładka wynikowa odświeża się sama (most S9-2).
  */
 export const KOMUNIKAT_BIEG_WYNIKI_CZEKAJA =
   'Obliczenie zakończone. Wyniki czekają w przestrzeni „Wyniki i dowody".';
@@ -135,10 +137,6 @@ export async function uruchomObliczenie(analysisType: ExecutionAnalysisType): Pr
     notify('Wybierz aktywny zakres obliczeń.', 'error');
     return false;
   }
-
-  // Znacznik miejsca pracy Z CHWILI STARTU biegu — jedyna podstawa późniejszej
-  // zgody na automatyczne przejście do wyników (S9-3 / W-3).
-  const miejscePracyNaStarcie = biezaceMiejscePracy();
 
   const readiness = useSnapshotStore.getState().readiness;
   if (readiness && !readiness.ready) {
@@ -201,18 +199,11 @@ export async function uruchomObliczenie(analysisType: ExecutionAnalysisType): Pr
     } catch {
       // Wyniki pozostają dostępne; panel statusu pokaże brak wersji modelu, jeśli backend jej nie zwróci.
     }
-    // Nawigacja użytkownika ZAWSZE wygrywa z automatyczną: skok do wyników
-    // wykonujemy tylko wtedy, gdy projektant jest wciąż tam, gdzie zaczął bieg.
-    // Kolejność „powiadom, potem nawiguj" ZACHOWANA z wersji sprzed karty —
-    // specy lądowiska czekają na komunikat i asertują stan po nim; odwrócenie
-    // przesunęłoby ten punkt synchronizacji o całą nawigację.
-    const otwartoWyniki = nawigujAutomatycznie(miejscePracyNaStarcie, () => {
-      notify(KOMUNIKAT_BIEG_OTWARTO_WYNIKI, 'success');
-      navigateToResults({ runId: run.id });
-    });
-    if (!otwartoWyniki) {
-      notify(KOMUNIKAT_BIEG_WYNIKI_CZEKAJA, 'success');
-    }
+    // S9-11 / W-4: bieg zostawia projektanta TAM, GDZIE JEST — zero nawigacji.
+    // `setActiveRun` wyżej już związał świeży przebieg z powłoką: nakładka na
+    // schemacie odświeża się sama (S9-2), a jawny klik w „Wyniki i dowody"
+    // otwiera wyniki tego biegu (`mostTrasyPrzestrzeni` dokleja `?run=`).
+    notify(KOMUNIKAT_BIEG_WYNIKI_CZEKAJA, 'success');
     return true;
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Błąd wykonania obliczeń';

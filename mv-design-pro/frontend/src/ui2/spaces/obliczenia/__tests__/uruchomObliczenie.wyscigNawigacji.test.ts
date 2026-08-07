@@ -1,19 +1,23 @@
 /*
- * Wyścig „koniec biegu vs nawigacja projektanta" (karta S9-3, znalezisko W-3
- * audytu `docs/sld/AUDYT_JAKOSCI_SLD_2026-08.md`).
+ * Bieg a miejsce pracy projektanta (karta S9-11, znaleziska W-3 i W-4 audytu
+ * `docs/sld/AUDYT_JAKOSCI_SLD_2026-08.md`; następca testu karty S9-3).
  *
- * DEFEKT: `uruchomObliczenie` kończyło się bezwarunkowym `navigateToResults`.
- * Bieg trwa sekundy, więc skok lądował na projektancie, który w międzyczasie
- * wrócił na schemat — kanwa montowała się i po chwili znikała (pomiar HEAD:
- * 590 ms). Kontrakt naprawy: nawigacja użytkownika ZAWSZE wygrywa; skok po
- * biegu wolno wykonać najwyżej RAZ i tylko z niezmienionego miejsca pracy.
+ * HISTORIA DEFEKTU: `uruchomObliczenie` kończyło się `navigateToResults` —
+ * najpierw bezwarunkowym (W-3: odłożony skok depczący nawigację projektanta,
+ * pomiar audytu: kanwa montowała się i po 590 ms znikała), potem warunkowym
+ * S9-3 („skok tylko z niezmienionego miejsca pracy") — który w NAJCZĘSTSZYM
+ * scenariuszu (bieg bez ruchu myszy) nadal wyrywał projektanta ze schematu
+ * i odmontowywał kanwę (W-4).
+ *
+ * KONTRAKT S9-11: bieg NIE nawiguje WCALE. Projektant zostaje tam, gdzie jest;
+ * gotowość wyniku sygnalizuje komunikat, a świeży przebieg jest ZWIĄZANY z
+ * powłoką (`setActiveRun`), więc jawny klik w „Wyniki i dowody" otwiera JEGO
+ * wyniki (deep-link K3 przez `mostTrasyPrzestrzeni` dokleja `?run=`).
  *
  * ILOCZYN CECH (reguła KLASA, NIE INSTANCJA §2) — nie sam przykład z karty:
- *   {bieg kończy się PO wejściu na schemat, PRZED wejściem}
- *   × {miejsce startu: schemat / obliczenia / wyniki}
- *   × {bieg udany, bieg nieudany}.
- * Kontrola dodatnia jest równie ważna jak reprodukcja: lądowisko wyników
- * (V12K-273) MUSI dalej działać dla biegu bez interakcji użytkownika.
+ *   {miejsce startu: schemat / obliczenia / wyniki}
+ *   × {projektant przechodzi w trakcie biegu / nie rusza się}
+ *   × {bieg udany / bieg nieudany}.
  *
  * ŚCIEŻKA UŻYTKOWNIKA: zmianę miejsca pracy w trakcie biegu wykonujemy
  * PRODUKCYJNĄ funkcją `przejdzDoPrzestrzeni` (tą samą, którą woła klik w
@@ -23,10 +27,11 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-import { uruchomObliczenie } from '../uruchomObliczenie';
+import { uruchomObliczenie, KOMUNIKAT_BIEG_WYNIKI_CZEKAJA } from '../uruchomObliczenie';
 import { przejdzDoPrzestrzeni } from '../../../shell/przejsciaPrzestrzeni';
 import { useShellStore } from '../../../shell/useShellStore';
 import { useAppStateStore } from '../../../../ui/app-state';
+import { useNotificationStore } from '../../../../ui/notifications/store';
 import { useExecutionRunsStore } from '../../../../ui/study-cases/runStore';
 import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
 import type { ExecutionRun } from '../../../../ui/study-cases/types';
@@ -75,10 +80,19 @@ function trasa(): string {
   return q >= 0 ? hash.slice(0, q) : hash;
 }
 
+function komunikaty(): string[] {
+  return useNotificationStore.getState().notifications.map((n) => n.message);
+}
+
 beforeEach(() => {
   window.history.replaceState(null, '', '/');
   window.location.hash = '';
-  useAppStateStore.setState({ activeProjectId: 'projekt-1', activeCaseId: CASE_ID } as never);
+  useNotificationStore.getState().clearAll();
+  useAppStateStore.setState({
+    activeProjectId: 'projekt-1',
+    activeCaseId: CASE_ID,
+    activeRunId: null,
+  } as never);
   useSnapshotStore.setState({ readiness: { ready: true, blockers: [], warnings: [] } } as never);
   useShellStore.setState({ activeSpace: 'obliczenia' });
   vi.stubGlobal(
@@ -92,12 +106,66 @@ afterEach(() => {
   window.location.hash = '';
 });
 
-describe('W-3 — bieg kończy się PO wejściu projektanta na schemat', () => {
-  it('start ze „Schematu": zero automatycznej nawigacji, projektant zostaje na kanwie', async () => {
+describe('W-4 — bieg bez ruchu projektanta zostawia go TAM, GDZIE BYŁ', () => {
+  it('start ze „Schematu": trasa #sld i przestrzeń bez zmian, komunikat mówi, gdzie czeka wynik', async () => {
     window.location.hash = '#sld';
     useShellStore.setState({ activeSpace: 'schemat' });
-    // Projektant „odchodzi" w trakcie biegu na Gotowość i wraca na Schemat —
-    // ważne, że OSTATNIA nawigacja jest jego, a nie powłoki.
+    torBiegu();
+
+    const ok = await uruchomObliczenie('SC_3F');
+
+    expect(ok).toBe(true);
+    expect(useShellStore.getState().activeSpace).toBe('schemat');
+    expect(trasa()).toBe('#sld');
+    expect(komunikaty()).toContain(KOMUNIKAT_BIEG_WYNIKI_CZEKAJA);
+  });
+
+  it('start z „Obliczeń": zero przeniesienia na wyniki, przebieg związany z powłoką', async () => {
+    window.location.hash = '#case-config';
+    useShellStore.setState({ activeSpace: 'obliczenia' });
+    torBiegu();
+
+    const ok = await uruchomObliczenie('SC_3F');
+
+    expect(ok).toBe(true);
+    expect(useShellStore.getState().activeSpace).toBe('obliczenia');
+    expect(trasa()).toBe('#case-config');
+    // Kontrola dodatnia: świeży przebieg jest aktywny — jawny klik otworzy JEGO wyniki.
+    expect(useAppStateStore.getState().activeRunId).toBe(RUN_ID);
+  });
+
+  it('start z „Wyników": ponowny bieg nie zmienia trasy ani parametru ?run= bez klika', async () => {
+    window.location.hash = '#analysis?run=stary';
+    useShellStore.setState({ activeSpace: 'wyniki' });
+    torBiegu();
+
+    await uruchomObliczenie('SC_3F');
+
+    expect(trasa()).toBe('#analysis');
+    // Trasa należy do użytkownika: bieg jej nie przepisuje (parametr zostaje).
+    expect(window.location.hash).toBe('#analysis?run=stary');
+    // Świeży przebieg jest aktywny w powłoce — ekran wyników czyta go ze store'u.
+    expect(useAppStateStore.getState().activeRunId).toBe(RUN_ID);
+  });
+
+  it('bieg NIEUDANY też nie nawiguje i nie obiecuje wyników', async () => {
+    window.location.hash = '#sld';
+    useShellStore.setState({ activeSpace: 'schemat' });
+    torBiegu({ run: runFixture({ status: 'FAILED' }) });
+
+    const ok = await uruchomObliczenie('SC_3F');
+
+    expect(ok).toBe(false);
+    expect(useShellStore.getState().activeSpace).toBe('schemat');
+    expect(trasa()).toBe('#sld');
+    expect(komunikaty()).not.toContain(KOMUNIKAT_BIEG_WYNIKI_CZEKAJA);
+  });
+});
+
+describe('W-3 — nawigacja projektanta W TRAKCIE biegu jest nienaruszalna', () => {
+  it('przejście na „Gotowość" w trakcie biegu zostaje (start ze „Schematu")', async () => {
+    window.location.hash = '#sld';
+    useShellStore.setState({ activeSpace: 'schemat' });
     torBiegu({ wTrakcieBiegu: () => przejdzDoPrzestrzeni('gotowosc') });
 
     const ok = await uruchomObliczenie('SC_3F');
@@ -107,7 +175,7 @@ describe('W-3 — bieg kończy się PO wejściu projektanta na schemat', () => {
     expect(trasa()).not.toBe('#analysis');
   });
 
-  it('start z „Obliczeń": wejście na schemat w trakcie biegu wygrywa', async () => {
+  it('wejście na schemat w trakcie biegu zostaje (start z „Obliczeń")', async () => {
     window.location.hash = '#case-config';
     useShellStore.setState({ activeSpace: 'obliczenia' });
     torBiegu({ wTrakcieBiegu: () => przejdzDoPrzestrzeni('schemat') });
@@ -118,7 +186,7 @@ describe('W-3 — bieg kończy się PO wejściu projektanta na schemat', () => {
     expect(trasa()).toBe('#sld');
   });
 
-  it('start z „Wyników": wejście na schemat w trakcie biegu wygrywa (rozpływ)', async () => {
+  it('wejście na schemat w trakcie biegu zostaje także dla rozpływu (start z „Wyników")', async () => {
     window.location.hash = '#analysis';
     useShellStore.setState({ activeSpace: 'wyniki' });
     torBiegu({
@@ -143,41 +211,26 @@ describe('W-3 — bieg kończy się PO wejściu projektanta na schemat', () => {
     const ok = await uruchomObliczenie('SC_3F');
 
     expect(ok).toBe(false);
+    expect(useShellStore.getState().activeSpace).toBe('gotowosc');
     expect(trasa()).not.toBe('#analysis');
   });
 });
 
-describe('Kontrola dodatnia — lądowisko wyników bez interakcji (V12K-273 nietknięte)', () => {
-  it('start z „Obliczeń": bieg bez ruchu użytkownika przenosi na wyniki z ?run=', async () => {
-    window.location.hash = '#case-config';
-    useShellStore.setState({ activeSpace: 'obliczenia' });
-    torBiegu();
-
-    const ok = await uruchomObliczenie('SC_3F');
-
-    expect(ok).toBe(true);
-    expect(trasa()).toBe('#analysis');
-    expect(window.location.hash).toContain(`run=${RUN_ID}`);
-  });
-
-  it('start ze „Schematu": bieg bez ruchu użytkownika też przenosi na wyniki', async () => {
+describe('Kontrola dodatnia — wyniki OSIĄGALNE jawnym klikiem (deep-link K3 nietknięty)', () => {
+  it('po biegu jawne przejście do „Wyników" otwiera trasę z parametrem świeżego przebiegu', async () => {
     window.location.hash = '#sld';
     useShellStore.setState({ activeSpace: 'schemat' });
     torBiegu();
 
     await uruchomObliczenie('SC_3F');
+    // Projektant został na schemacie…
+    expect(trasa()).toBe('#sld');
 
-    expect(trasa()).toBe('#analysis');
-    expect(window.location.hash).toContain(`run=${RUN_ID}`);
-  });
+    // …a JAWNY wybór przestrzeni „Wyniki i dowody" (ta sama ścieżka co klik w
+    // AppShell) prowadzi na wyniki TEGO biegu.
+    przejdzDoPrzestrzeni('wyniki');
 
-  it('start z „Wyników": ponowny bieg odświeża ?run= bez zmiany trasy', async () => {
-    window.location.hash = '#analysis?run=stary';
-    useShellStore.setState({ activeSpace: 'wyniki' });
-    torBiegu();
-
-    await uruchomObliczenie('SC_3F');
-
+    expect(useShellStore.getState().activeSpace).toBe('wyniki');
     expect(trasa()).toBe('#analysis');
     expect(window.location.hash).toContain(`run=${RUN_ID}`);
   });
