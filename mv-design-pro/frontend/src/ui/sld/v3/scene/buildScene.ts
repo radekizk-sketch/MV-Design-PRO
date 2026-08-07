@@ -2530,22 +2530,36 @@ function composeCollapsedGpz(
     // bloku niesie wiersz tytułowy wyżej, reużyty z kompozycji pełnej).
     role: 'dane' as const,
   };
-  // BLOK-PUSTY (znalezisko wyroczni `labelGrowthReservationGaps`): ten wiersz
-  // jest DOPISYWANY do pasma, więc slot odziedziczony po kompozycji pełnej
-  // (zmierzony WYŁĄCZNIE dla wiersza tytułowego, `compose/gpz.ts` `headerSlot`)
-  // go nie obejmował — zmierzone na fixturze referencyjnej: tekst 391 j.św. w
-  // slocie 296 j.św., czyli napis wystawał poza własną rezerwację o 95 j.św.
-  // (declutter i wyrocznia kolizji widziały prostokąt WĘŻSZY niż rysunek).
-  // Reguła F6b-1: rezerwacja bez rysunku ORAZ rysunek bez rezerwacji to oba
-  // błędy — slot liczymy z TYCH SAMYCH tekstów, które pasmo naprawdę rysuje,
-  // tą samą formułą co `compose/gpz.ts` (`measureLabelWidth + 2×GRID`, snapUp).
-  const wymaganaSzerokosc = Math.max(
-    base.nameSlot.width,
-    ...[...base.rows, wierszStanu].map((r) => snapUp(measureLabelWidth(r.text, r.labelClass) + 2 * GRID)),
-  );
+  // DŁUG NAZWANY WPROST (BLOK-PUSTY, §0 R3 „brak pokrycia = dług nazwany, NIE
+  // obejście") — WIERSZ STANU NIE MIEŚCI SIĘ W BANERZE STREFY GPZ.
+  //
+  // POMIAR (fixtura referencyjna, L0): baner strefy (`compose/gpz.ts`
+  // `headerSlot`) ma 296 j.św. i jest zmierzony WYŁĄCZNIE dla wiersza
+  // tytułowego; wiersz stanu niesie 391 j.św. tuszu, więc wystaje poza własną
+  // rezerwację o 95 j.św. (≈47 na stronę, bo wiersze pasma są centrowane).
+  // Defekt jest PIERWOTNY — istniał przed tą kartą; różnica polega tylko na
+  // tym, że dopóki prostokąt etykiety BYŁ slotem, nikt tego nie widział.
+  //
+  // DLACZEGO TA KARTA GO NIE ZAMYKA. To nadmiar TUSZU nad rezerwacją, czyli
+  // ODWROTNY kierunek niż klasa BLOK-PUSTY (rezerwacja ponad tuszem), a obie
+  // naprawy, które się narzucają, łamią rzecz NIETYKALNĄ (§0 R4):
+  //  · poszerzenie slotu od lewej krawędzi przesuwa ŚRODEK pasma o 56 j.św.
+  //    między L0 a L1/L2 — kotwica bloku dryfuje przy zmianie poziomu
+  //    szczegółu (KD-5/S1 „jedna kotwica"; pada `buildScene.w2GS4b`,
+  //    `buildScene.w2cDerSnTopology`, `buildScene.test.ts`);
+  //  · poszerzenie symetryczne środek zachowuje, ale wypycha wiersz na
+  //    x = −39,5, czyli POZA lewą krawędź arkusza (pada wyrocznia D2/k5b), i
+  //    rozjeżdża szerokość arkusza między poziomami (8392 wobec 8344).
+  // Zmieszczenie wiersza wymaga rozstrzygnięcia, GDZIE podpis zwinięcia
+  // należy: do banera (wtedy trzeba go przełamać na wiersze) czy do CAŁEJ
+  // strefy (wtedy pasmo ma dwa różne środki) — to decyzja kontraktu KD-5
+  // o zwinięciu GPZ, nie tej karty. Dług pilnuje test: `layout/__tests__/
+  // blokPusty.test.ts` §1 wymaga, żeby to było JEDYNE takie miejsce rysunku
+  // i żeby nadmiar miał DOKŁADNIE zmierzoną wartość — nowy przypadek albo
+  // zmiana rozmiaru zapala się natychmiast.
   const nameBand: StationNameBandOwnerInput = {
     ownerRef: base.ownerRef,
-    nameSlot: { ...base.nameSlot, width: wymaganaSzerokosc },
+    nameSlot: base.nameSlot,
     rows: [...base.rows, wierszStanu],
   };
 
