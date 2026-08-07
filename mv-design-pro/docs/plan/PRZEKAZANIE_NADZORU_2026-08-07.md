@@ -110,6 +110,22 @@ uruchamia. **Wniosek ogólniejszy: lokalna zieleń pytest ≠ zielone CI.** Po
 każdym pushu sprawdzaj konkluzje biegów, nie tylko własne bramki. Naprawa
 opisana w wierszu `PACK-1F-WIAZANIE` rejestru; dług bliźniaczy: PACK-SC3F-WIAZANIE.
 
+**NARZĘDZIE ZASTĘPUJĄCE RĘCZNĄ LISTĘ:** `poetry run python ../scripts/guardy_z_ci.py`
+(z katalogu `backend/`). Czyta `.github/workflows/*.yml`, wyciąga każde wywołanie
+`python scripts/<nazwa>.py` i uruchamia **komplet 69 guardów** bieżącym
+interpreterem — nowy guard dopisany do workflowa wchodzi do odbioru sam.
+Uruchamiaj interpreterem z venv backendu (`trace_determinism`,
+`catalog_enforcement` potrzebują `networkx`; systemowy Python daje fałszywą
+czerwień). **To jest odtąd bramka guardów każdego odbioru — nie wybieraj
+guardów ręcznie.**
+
+**DRUGA PUŁAPKA, ZMIERZONA TEGO SAMEGO DNIA:** `black src tests scripts ../scripts`
+w JEDNYM wywołaniu psuje wykrywanie konfiguracji (black bierze wspólny katalog
+nadrzędny, nie znajduje `[tool.black]`, formatuje szerokością 88 zamiast 100 —
+przeformatowało 979 plików). Formatuj DWOMA wywołaniami, dokładnie jak CI:
+`black --check src tests` oraz `black --check --config pyproject.toml ../scripts`.
+Workflow `python-tests.yml` ostrzega przed tym w komentarzu.
+
 ## 2. W BIEGU — DWIE KARTY DO ODEBRANIA (stan sprzed przejęcia — historyczny)
 
 | Karta | Kopia | Zakres | Odbiór — na co zwrócić uwagę |
