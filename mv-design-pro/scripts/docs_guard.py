@@ -295,6 +295,58 @@ def check_stage_doc_file_references(project_root: Path | None = None) -> list[st
     return violations
 
 
+#: Audyt jakości SLD — wiersz znaleziska bez statusu jest ZAKAZANY.
+#:
+#: DLACZEGO MECHANICZNIE: „100% uruchomienia" (pkt 3 dokumentu przekazania)
+#: deklaruje, że żaden wiersz audytu nie zostaje bez statusu. Do 2026-08-07 była
+#: to deklaracja bez sprawdzenia — pomiar znalazł DZIEWIĘĆ wierszy bez znacznika.
+#: Wszystkie okazały się obserwacjami pozytywnymi (nie było czego zamykać), ale
+#: czytający nie miał jak ich odróżnić od znalezisk porzuconych, a przy 46
+#: wierszach nikt tego nie przejdzie ręcznie drugi raz. Deklaracja bez strażnika
+#: jest groźniejsza od samego braku, bo wyłącza czujność (reguła KLASA §4).
+SLD_AUDIT_DOC = "docs/sld/AUDYT_JAKOSCI_SLD_2026-08.md"
+#: Wiersz tabeli otwierany identyfikatorem znaleziska: `| C-14 |`, `| W-1 |`.
+SLD_AUDIT_ROW_PATTERN = re.compile(r"^\|\s*([A-Z]{1,3}-\d+)\s*\|")
+#: Statusy DOZWOLONE. Lista zamknięta świadomie: każdy nowy status to decyzja,
+#: która ma przejść przez ten plik, a nie wejść bokiem w treści wiersza.
+SLD_AUDIT_STATUSES = ("ZAMKNIĘTE", "CZĘŚCIOWO", "OTWARTE", "OBSERWACJA POZYTYWNA")
+#: Zapadka na strażnika, który przestał widzieć tabelę (zmiana formatu, podział
+#: pliku): pusty skan musi być błędem, nie ciszą. Audyt ma 46 wierszy.
+SLD_AUDIT_MIN_ROWS = 40
+
+
+def check_sld_audit_row_status(project_root: Path | None = None) -> list[str]:
+    """Każdy wiersz znaleziska audytu SLD niesie status z listy zamkniętej."""
+    root = project_root or PROJECT_ROOT
+    path = root / SLD_AUDIT_DOC
+    content = _read_text(path)
+    if content is None:
+        return [f"{SLD_AUDIT_DOC}: nie da się odczytać dokumentu audytu"]
+
+    violations: list[str] = []
+    wierszy = 0
+    for line_number, line in enumerate(content.splitlines(), start=1):
+        match = SLD_AUDIT_ROW_PATTERN.match(line)
+        if not match:
+            continue
+        wierszy += 1
+        opis = line.split("|")[2] if line.count("|") > 2 else ""
+        if not any(status in opis for status in SLD_AUDIT_STATUSES):
+            violations.append(
+                f"{SLD_AUDIT_DOC}:{line_number}: wiersz {match.group(1)} bez statusu "
+                f"(dozwolone: {', '.join(SLD_AUDIT_STATUSES)})"
+            )
+
+    if wierszy < SLD_AUDIT_MIN_ROWS:
+        violations.append(
+            f"{SLD_AUDIT_DOC}: skan znalazł {wierszy} wierszy znalezisk "
+            f"(oczekiwane co najmniej {SLD_AUDIT_MIN_ROWS}) — format tabeli się zmienił "
+            f"i strażnik przestał cokolwiek sprawdzać"
+        )
+
+    return violations
+
+
 def _print_block(title: str, violations: list[str]) -> None:
     if not violations:
         return
@@ -339,6 +391,14 @@ def main() -> int:
         _print_block(
             "DOCS GUARD: STAGE DOCS CONTAIN MISSING REPO REFERENCES",
             stage_ref_violations,
+        )
+        all_ok = False
+
+    sld_audit_violations = check_sld_audit_row_status()
+    if sld_audit_violations:
+        _print_block(
+            "DOCS GUARD: WIERSZE AUDYTU SLD BEZ STATUSU",
+            sld_audit_violations,
         )
         all_ok = False
 
