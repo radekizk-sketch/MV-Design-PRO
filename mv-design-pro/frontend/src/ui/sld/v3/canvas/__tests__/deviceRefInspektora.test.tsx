@@ -15,7 +15,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render } from '@testing-library/react';
+import { cleanup, fireEvent, render } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import type { EnergyNetworkModel } from '../../../../../types/enm';
@@ -198,6 +198,16 @@ describe('S9-10 — klik w ETYKIETĘ otwiera panel właściciela (drugie ogniwo 
     useSnapshotStore.setState({ snapshot: substrateEnm });
     const user = userEvent.setup();
     const { container } = render(<SldCanvasV3Workspace width={1322} height={696} lodOverride={2} />);
+    // PROPORCJE (2026-08-07): kadr dopasowania sieci 53 stacji ma skalę 0,101 —
+    // na takim oddaleniu oznaczniki aparatu NIE SĄ rysowane (sufit proporcji:
+    // napis trzykrotnie wyższy od symbolu, który opisuje, byłby szyldem, nie
+    // rysunkiem). Test sprawdza ROZWIĄZYWANIE KOTWICY etykiety aparatu, więc
+    // musi stać na kadrze ROBOCZYM — projektant dojeżdża tam TAK SAMO jak w
+    // aplikacji: natywnym kółkiem myszy (ścieżka realna, nie wymuszony stan).
+    const svg = container.querySelector('[data-testid="sld-canvas-v3"]')!;
+    for (let i = 0; i < 40; i += 1) {
+      fireEvent.wheel(svg, { clientX: 1322 / 2, clientY: 696 / 2, deltaY: -140 });
+    }
     // Etykieta, której temat menu kotwiczy się na POLU (aparat) — bierzemy
     // pierwszą etykietę o refie kompozytowym wskazującym pole sn_field.
     const etykieta = Array.from(

@@ -31,6 +31,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
+import { cleanup, render } from '@testing-library/react';
 import { renderToStaticMarkup } from 'react-dom/server';
 
 import {
@@ -48,6 +49,7 @@ import {
 import {
   APPARATUS_STROKE_WIDTH,
   apparatusStrokeWidthForScale,
+  MIN_TRUNK_STROKE_SCREEN_PX,
   SEGMENT_STROKE_WIDTH,
   segmentStrokeWidthForScale,
   strokeScaleFactor,
@@ -56,6 +58,7 @@ import { MAX_SCALE, MIN_SCALE } from '../../canvas/camera';
 import { buildSceneV3, sceneObstacleRects, type SceneLod } from '../../scene/buildScene';
 import { SYMBOL_DEFS } from '../../symbols/defs';
 import { SYMBOL_GLYPHS, V3_STROKE_APPARATUS } from '../../symbols/glyphs';
+import { SldCanvasV3 } from '../../canvas/SldCanvasV3';
 import { fieldCaptionAt } from '../../compose/directions';
 import { bayColumnRequiredWidth } from '../../layout/measure';
 import type { EnergyNetworkModel } from '../../../../../types/enm';
@@ -87,14 +90,27 @@ const NAJMNIEJSZY_OPISYWANY: Readonly<Record<LabelClass, number>> = {
   t3: 24,
   t4: 24,
 };
-const MAX_STOSUNEK_NAPIS_OBIEKT = 1.5;
+/**
+ * DWA PROGI (patrz `LabelTypography.maxEnlargement`): napis opisujący APARAT
+ * albo źródło ma być „mniejszy albo porównywalny" (1,5) — to klasa zgłoszenia
+ * właściciela; napis opisujący BLOK stacji może być do 2,44 jego NAJMNIEJSZEJ
+ * reprezentacji (glif zwinięty 48 j.św.), bo blok jest KONTENEREM o śladzie
+ * kilkuset jednostek, a jego nazwa jest jedynym napisem, który KD-11 każe
+ * utrzymać na przeglądzie. Oba progi są WYRAŹNIE poniżej „3–4×" ze zgłoszenia.
+ */
+const MAX_STOSUNEK_NAPIS_OBIEKT: Readonly<Record<LabelClass, number>> = {
+  t1: 2.5,
+  t2: 1.5,
+  t3: 1.5,
+  t4: 1.5,
+};
 
 describe('PROPORCJE §1 — sufit napis:obiekt (klasa × skala)', () => {
   it('kanon: sufity klas wyprowadzone z gabarytów glifów dają stosunek ≤ 1,5', () => {
     for (const cls of KLASY) {
       const najwiekszePismo = LABEL_TYPOGRAPHY[cls].fontSize * LABEL_TYPOGRAPHY[cls].maxEnlargement;
       expect(najwiekszePismo / NAJMNIEJSZY_OPISYWANY[cls], `${cls}`).toBeLessThanOrEqual(
-        MAX_STOSUNEK_NAPIS_OBIEKT + 1e-9,
+        MAX_STOSUNEK_NAPIS_OBIEKT[cls] + 1e-9,
       );
     }
   });
@@ -115,7 +131,7 @@ describe('PROPORCJE §1 — sufit napis:obiekt (klasa × skala)', () => {
         );
         expect(rozmiar / fontSize, `sufit ${cls} @${scale}`).toBeLessThanOrEqual(maxEnlargement + 1e-9);
         expect(rozmiar / NAJMNIEJSZY_OPISYWANY[cls], `napis:obiekt ${cls} @${scale}`).toBeLessThanOrEqual(
-          MAX_STOSUNEK_NAPIS_OBIEKT + 1e-9,
+          MAX_STOSUNEK_NAPIS_OBIEKT[cls] + 1e-9,
         );
       }
     }
@@ -193,9 +209,17 @@ describe('PROPORCJE §1 — plan renderu na REALNEJ scenie (poziom szczegółu �
     // stacji MUSZĄ przetrwać. Gdyby sufit t1 zjechał poniżej tej wartości,
     // kadr „Dopasuj widok" straciłby wszystkie podpisy — dokładnie regresja,
     // którą naprawiała KD-11.
-    expect(proportionCutoffScale('t1')).toBeLessThan(0.14);
+    // Pasmo skal dopasowania sieci 53 stacji w realnych rozmiarach okna:
+    // 0,108 (okno 1000×640) … 0,141 (1400×900). Granica t1 MUSI leżeć PONIŻEJ
+    // całego pasma, inaczej obecność nazw stacji zależałaby od rozmiaru okna.
+    // Pasmo skal dopasowania sieci 53 stacji na REALNYCH kanwach: 0,101
+    // (1322×696, poziom L2 — zmierzone renderem produkcyjnym) … 0,141
+    // (1400×900, L0). Granica t1 MUSI leżeć poniżej CAŁEGO pasma z zapasem,
+    // inaczej obecność nazw stacji zależałaby od rozmiaru okna albo od jednego
+    // pola dołożonego do jednej rozdzielnicy.
+    expect(proportionCutoffScale('t1')).toBeLessThan(0.09);
     const scene = sceny[0];
-    const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), 0.14);
+    const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), 0.101);
     const nazwy = plan.drawn.filter((p) => p.label.labelRole === 'tozsamosc');
     expect(nazwy.length).toBeGreaterThan(0);
   });
@@ -205,7 +229,7 @@ describe('PROPORCJE §1 — plan renderu na REALNEJ scenie (poziom szczegółu �
     // urosłoby do 9/0,05 = 180 j.św. obok glifu stacji 48 j.św.
     const bezSufitu = MIN_READABLE_LABEL_SCREEN_PX / MIN_SCALE;
     expect(bezSufitu / NAJMNIEJSZY_OPISYWANY.t1).toBeCloseTo(3.75, 9);
-    expect(bezSufitu / NAJMNIEJSZY_OPISYWANY.t1).toBeGreaterThan(MAX_STOSUNEK_NAPIS_OBIEKT);
+    expect(bezSufitu / NAJMNIEJSZY_OPISYWANY.t1).toBeGreaterThan(MAX_STOSUNEK_NAPIS_OBIEKT.t1);
     // Po naprawie ta sama skala nie daje ŻADNEGO rozmiaru (napis nie powstaje).
     expect(enlargedFontSizeWithinProportion('t1', MIN_SCALE)).toBeNull();
   });
@@ -281,6 +305,30 @@ describe('PROPORCJE §2 — hierarchia grubości OBEJMUJE APARATURĘ (rodzaj kre
     for (const zla of [0, -1, Number.NaN]) {
       expect(renderToStaticMarkup(<Glyph x={0} y={0} strokeScale={zla} />), `@${zla}`).toBe(bez);
     }
+  });
+
+  it('KANWA podaje glifom TĘ SAMĄ kompensację, którą stosuje do torów (drugi koniec pary)', () => {
+    // PREDYKATY PARAMI: `apparatusStrokeWidthForScale` jest wejściem wyroczni,
+    // ale rysunek robi KANWA — gdyby podawała glifom inny mnożnik (albo żaden),
+    // wyrocznia świeciłaby na zielono przy odwróconej hierarchii na ekranie.
+    // Dlatego mierzymy WPROST na wyrenderowanej kanwie: stosunek grubości
+    // kreski aparatu do grubości szyny musi być TEN SAM co w tabeli rang, i to
+    // przy skali, na której kompensacja realnie działa.
+    const { container } = render(
+      <SldCanvasV3 snapshot={SIEC} width={420} height={280} lodOverride={2} animateLodTransitions={false} />,
+    );
+    const kadr = container.querySelector('[data-testid="sld-canvas-v3"]')!.getAttribute('viewBox')!.split(' ');
+    const skala = 420 / Number(kadr[2]);
+    // Skala musi być NIŻSZA od progu gaśnięcia wzmocnienia, inaczej test nie
+    // ćwiczy kompensacji (mnożnik = 1 i wszystko przechodzi trywialnie).
+    expect(skala).toBeLessThan(MIN_TRUNK_STROKE_SCREEN_PX / SEGMENT_STROKE_WIDTH.snTrunk);
+    const aparat = container.querySelector('[data-symbol-canon="disconnector"] line');
+    expect(aparat, 'kanwa rysuje symbol odłącznika').toBeTruthy();
+    expect(Number(aparat!.getAttribute('stroke-width'))).toBeCloseTo(
+      apparatusStrokeWidthForScale(skala),
+      6,
+    );
+    cleanup();
   });
 
   it('WNĘTRZE sylwetki skalowane RAZEM z obrysem (zwinięty blok stacji — cały rekord wag)', () => {

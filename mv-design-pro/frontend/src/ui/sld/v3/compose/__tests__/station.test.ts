@@ -1477,7 +1477,12 @@ describe('V3 compose/station — F10.3 §18.4: etykieta szyny SN (busbar-voltage
       stationTypeLabel: undefined,
       busVoltageKv: null,
     });
-    const withWideVoltage = { ...shortNameStation, id: 'width-cmp-wide', busVoltageKv: 123456 };
+    // PROPORCJE (2026-08-07): sidecar pola niesie teraz oznacznik („FS1 ·
+    // sprzęgłowe"), więc gałąź „blok pól" jest szersza niż przed kartą — żeby
+    // dowód pozostał DOWODEM (a nie tautologią), etykieta szyny musi ją
+    // realnie przewyższyć. Intencja testu bez zmian: rezerwacja kolumny
+    // ROŚNIE, gdy najszerszym kandydatem jest etykieta szyny.
+    const withWideVoltage = { ...shortNameStation, id: 'width-cmp-wide', busVoltageKv: 1234567890123 };
     expect(requiredStationWidth(withWideVoltage)).toBeGreaterThan(requiredStationWidth(shortNameStation));
   });
 });

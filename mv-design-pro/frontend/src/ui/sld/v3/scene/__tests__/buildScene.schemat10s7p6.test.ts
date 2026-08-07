@@ -126,9 +126,18 @@ describe('SCHEMAT-10 S7.6 — kontraktowe minimum światła pasm (Z1 KOMPRESJA)'
     // sieci — a te bywają różne na tym samym rysunku. Wariant „Un = " ze
     // spacjami kosztowałby +2536 px i obniżał gęstość tuszu 2,03 %→1,94 %,
     // dlatego wybrano formę zwartą (pomiar w `formatRatedVoltageKv`).
-    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 0))).toBe(22440);
-    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 1))).toBe(39448);
-    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 2))).toBe(39448);
+    // PROPORCJE (karta PROPORCJE, 2026-08-07): OBNIŻONY 22440/39448/39448 →
+    // 21480/38488/38488 (−960 px jednolicie na wszystkich poziomach). Przyczyna
+    // ZMIERZONA, nie oszacowana: kod stacji pada w bloku RAZ (niesie go opis
+    // sekcji — rozstrzygnięcie S9-8/S9-12), więc pasmo nazw straciło wiersz z
+    // gołym kodem; wysokość pasma jest częścią wysokości bloku stacji, a ta
+    // przez „jedną kotwicę" S1 propaguje deltę jednolicie na L0/L1/L2. To jest
+    // SPADEK, więc reguła „nie-rosnąca" (§15.1) spełniona z zapasem. Skutek
+    // uboczny zamierzony: skala dopasowania sieci referencyjnej rośnie
+    // 0,1346 → 0,1407, czyli przegląd jest o 4,5% bliżej.
+    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 0))).toBe(21480);
+    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 1))).toBe(38488);
+    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 2))).toBe(38488);
   });
 
   it('determinizm: rekordy pasm identyczne w dwóch biegach (fixtura referencyjna, L2)', () => {

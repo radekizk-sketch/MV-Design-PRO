@@ -23,7 +23,7 @@ import {
   stationPortCaptionHeight,
   type StationMeasureInput,
 } from '../measure';
-import { fieldFunctionalDesignation } from '../../compose/directions';
+import { fieldCaptionAt, fieldFunctionalDesignation } from '../../compose/directions';
 import { BUS_AXIS_BAND_HEIGHT, DESCENT_STRIP_HEIGHT, computeBands, noBandsOverlap, type StationBandHeights } from '../bands';
 import { allColumnsOnGrid, computeColumns, type ComputeColumnsInput } from '../columns';
 import {
@@ -193,8 +193,13 @@ describe('V3 layout — measure (spec §5.1, FIX-3: rezerwacja etykiet WŁASNYCH
     // liniowe" dla RMU_LINE, nigdy pusty); DODATKOWO rezerwacja PO LEWEJ
     // stosu na identyfikatory per-aparat Q/QE/T (`apparatusIdentifierLeftReserve`).
     const leftReserve = apparatusIdentifierLeftReserve(bay);
-    const fieldRoleLabel = fieldFunctionalDesignation(bay.fieldRole);
-    expect(fieldRoleLabel).toBe('pole liniowe');
+    // PROPORCJE (2026-08-07): sidecar niesie OZNACZNIK pola przed rolą
+    // („F01 · liniowe") — bez niego trzy pola liniowe jednej rozdzielnicy mają
+    // identyczny opis, a cztery „Q1" nie mają po czym być rozróżnione.
+    // Rachunek RĘCZNY zostaje rachunkiem ręcznym: bierze REALNY podpis z tego
+    // samego źródła, którego używa kompozycja (`fieldCaptionAt`).
+    const fieldRoleLabel = fieldCaptionAt(station.snBays, 0);
+    expect(fieldRoleLabel).toBe('F01 · liniowe');
     const expectedBlockWidth = leftReserve + expectedFootprintWidth + GRID + measureLabelWidth(fieldRoleLabel, 't3');
     const expectedNameWidth = measureLabelWidth('A', 't1');
     expect(requiredStationWidth(station)).toBe(
