@@ -92,7 +92,6 @@ export function WyborPakietuReferencyjnego({
     };
     // `pakietId` celowo poza zależnościami: zmiana wyboru nie przeładowuje
     // listy (lista zależy wyłącznie od rejestru i ręcznego ponowienia).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [proba, ustawPakiet]);
 
   const ponow = useCallback(() => setProba((n) => n + 1), []);
