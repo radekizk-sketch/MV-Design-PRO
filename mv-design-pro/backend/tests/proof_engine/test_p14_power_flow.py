@@ -16,6 +16,11 @@ from application.proof_engine.packs.p14_power_flow import (
     P14PowerFlowProof,
 )
 from application.proof_engine.types import ProofType
+from network_model.solvers.power_flow_result import (
+    PowerFlowBusResult,
+    PowerFlowResultV1,
+    PowerFlowSummary,
+)
 
 
 def _build_converged_input() -> P14PowerFlowInput:
@@ -120,7 +125,10 @@ def test_p14_non_converged_warning() -> None:
     proof = P14PowerFlowProof.generate(data)
 
     assert len(proof.summary.warnings) > 0
-    assert any("zbieznosci" in w.lower() for w in proof.summary.warnings)
+    # Intencja bez zmian (ostrzeżenie o braku zbieżności); tekst przepisany do
+    # obecnego kanonu — komunikat trafia do POBIERANEGO dowodu, więc musi być
+    # poprawną polszczyzną (karta PACK-ROZPLYW).
+    assert any("zbieżności" in w.lower() for w in proof.summary.warnings)
 
 
 def test_p14_p_balance_math() -> None:
@@ -162,7 +170,7 @@ def test_p14_voltage_warning_for_out_of_range() -> None:
     proof = P14PowerFlowProof.generate(data)
 
     # Should have voltage warning because v_min=0.85 < 0.9 and v_max=1.15 > 1.1
-    voltage_warnings = [w for w in proof.summary.warnings if "napiecia" in w.lower()]
+    voltage_warnings = [w for w in proof.summary.warnings if "napięcia" in w.lower()]
     assert len(voltage_warnings) > 0
 
 
@@ -227,3 +235,129 @@ def test_p14_overall_status_warn() -> None:
     proof = P14PowerFlowProof.generate(data)
 
     assert proof.summary.overall_status == "WARN"
+
+
+# ---------------------------------------------------------------------------
+# Karta PACK-ROZPLYW: wejście dowodu bez zegara i bez zapasów
+# ---------------------------------------------------------------------------
+
+
+def _wynik_rozplywu() -> PowerFlowResultV1:
+    """Zamrożony wynik rozpływu: szyna wstrzykująca + szyna pobierająca."""
+    return PowerFlowResultV1(
+        result_version="1.0.0",
+        converged=True,
+        iterations_count=3,
+        tolerance_used=1e-8,
+        base_mva=100.0,
+        slack_bus_id="bus-slack",
+        bus_results=(
+            PowerFlowBusResult(
+                bus_id="bus-slack",
+                v_pu=1.0,
+                angle_deg=0.0,
+                p_injected_mw=2.5,
+                q_injected_mvar=0.8,
+            ),
+            PowerFlowBusResult(
+                bus_id="bus-odbior",
+                v_pu=0.98,
+                angle_deg=-0.4,
+                p_injected_mw=-2.0,
+                q_injected_mvar=-0.6,
+            ),
+        ),
+        branch_results=(),
+        summary=PowerFlowSummary(
+            total_losses_p_mw=0.5,
+            total_losses_q_mvar=0.2,
+            min_v_pu=0.98,
+            max_v_pu=1.0,
+            slack_p_mw=2.5,
+            slack_q_mvar=0.8,
+        ),
+    )
+
+
+def test_wejscie_z_wyniku_bierze_znacznik_z_przebiegu_a_nie_z_zegara() -> None:
+    """Pin deklaracji „ZERO ZEGARA" z docstringu ``from_power_flow_result``.
+
+    Znacznik czasu dowodu MUSI być tym, który podał przebieg — inaczej dwa
+    pobrania tego samego biegu dałyby różne bajty pakietu.
+    """
+    znacznik = datetime(2026, 3, 4, 5, 6, 7)
+
+    dane = P14PowerFlowInput.from_power_flow_result(
+        _wynik_rozplywu(),
+        project_name="Projekt",
+        case_name="Przypadek",
+        run_timestamp=znacznik,
+        solver_version="load-flow-newton-raphson-v1",
+        max_mismatch_pu=4e-11,
+    )
+
+    assert dane.run_timestamp == znacznik
+    assert dane.solver_version == "load-flow-newton-raphson-v1"
+    assert dane.max_mismatch_pu == pytest.approx(4e-11)
+
+
+def test_wejscie_z_wyniku_nie_ma_ani_jednej_wartosci_domyslnej() -> None:
+    """Pin deklaracji „każdy argument jest WYMAGANY" (zakaz cichego zapasu).
+
+    Deklaracja bez strażnika jest groźniejsza niż defekt: gdyby któryś argument
+    dostał wartość domyślną, dowód mógłby powstać z liczby, której nikt nie
+    policzył — i nikt by tego nie zauważył.
+    """
+    import inspect
+
+    podpis = inspect.signature(P14PowerFlowInput.from_power_flow_result)
+    bez_domyslnej = {
+        nazwa
+        for nazwa, parametr in podpis.parameters.items()
+        if parametr.default is inspect.Parameter.empty
+    }
+    assert bez_domyslnej == {
+        "result",
+        "project_name",
+        "case_name",
+        "run_timestamp",
+        "solver_version",
+        "max_mismatch_pu",
+    }
+
+
+def test_wejscie_z_wyniku_rozdziela_wstrzyk_od_poboru_po_znaku() -> None:
+    """Sumy generacji/poboru pochodzą z wierszy wyniku, nie z ponownej fizyki."""
+    dane = P14PowerFlowInput.from_power_flow_result(
+        _wynik_rozplywu(),
+        project_name="Projekt",
+        case_name="Przypadek",
+        run_timestamp=datetime(2026, 3, 4, 5, 6, 7),
+        solver_version="load-flow-newton-raphson-v1",
+        max_mismatch_pu=0.0,
+    )
+
+    assert dane.p_gen_total_mw == pytest.approx(2.5)
+    assert dane.p_load_total_mw == pytest.approx(2.0)
+    assert dane.q_gen_total_mvar == pytest.approx(0.8)
+    assert dane.q_load_total_mvar == pytest.approx(0.6)
+    assert dane.p_losses_total_mw == pytest.approx(0.5)
+
+
+def test_identyfikatory_krokow_bez_oznaczen_roboczych_projektu() -> None:
+    """Kroki dowodu trafiają do POBIERANEGO ``proof.json`` (CLAUDE.md reguła 8).
+
+    Zakaz nazw roboczych obowiązuje eksporty, nie tylko interfejs — a ten dowód
+    jest od karty PACK-ROZPLYW realnie pobierany przez projektanta.
+    """
+    import re
+
+    proof = P14PowerFlowProof.generate(_build_converged_input())
+
+    # `\b` nie odcina `P14_STEP_001` (podkreślenie jest znakiem słowa), więc
+    # wzorzec guardu kodenamów przepuszczał oznaczenie robocze w identyfikatorze
+    # kroku. Tu wzorzec jest szerszy — inaczej pin byłby fałszywą pewnością.
+    wzorzec = re.compile(r"(?<![A-Za-z0-9])[pP](?!0(?![0-9]))\d+(?![0-9])")
+    for krok in proof.steps:
+        assert not wzorzec.search(krok.step_id), krok.step_id
+    assert not wzorzec.search(proof.title_pl)

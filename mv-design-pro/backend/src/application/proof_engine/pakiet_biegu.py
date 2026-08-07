@@ -25,26 +25,37 @@ które „dziś się zgadzają", byłyby defektem czekającym na dane brzegowe.
 
 NOT-A-SOLVER: ten moduł nie liczy fizyki. Woła solvery (``ShortCircuitIEC60909Solver``,
 ``compute_sc1_asymmetrical_quantities`` przez pakiet) i pakiety dowodowe, a sam
-wyłącznie zestawia ich wejścia z zapisanego biegu.
+wyłącznie zestawia ich wejścia z zapisanego biegu. Pakiet ROZPŁYWU nie woła nawet
+solvera: bieg zapisał gotowy, zamrożony wynik, a warstwa wiązania
+(``application/solvers/power_flow_binding.py``) wyłącznie go odtwarza — fizyka
+NIE POWTARZA SIĘ (karta PACK-ROZPLYW).
 """
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 
+from application.proof_engine.packs.p14_power_flow import P14PowerFlowInput, P14PowerFlowProof
 from application.proof_engine.packs.sc_asymmetrical import (
     SCAsymmetricalPackInput,
     SCAsymmetricalProofPack,
 )
 from application.proof_engine.packs.sc_symmetrical import SC3FPackInput, SC3FProofPack
 from application.proof_engine.proof_pack import ProofPackContext, resolve_mv_design_pro_version
+from application.solvers.power_flow_binding import (
+    BrakDanychRozplywuError,
+    RozplywZBiegu,
+    rozplyw_z_biegu,
+)
 from enm.canonical_analysis import CanonicalRun
 
 #: Rodzaje pakietów dowodowych osiągalne dla biegu kanonicznego.
 RODZAJ_SC3F = "SC3F"
 RODZAJ_SC_NIESYMETRYCZNE = "SC_NIESYMETRYCZNE"
+RODZAJ_ROZPLYW = "ROZPLYW_MOCY"
 
 #: Rodzaj wykonawczy biegu → rodzaj pakietu. Lista ZAMKNIĘTA: rodzaj spoza mapy
 #: NIE MA pakietu dowodowego i brama mówi to wprost (zamiast budować pakiet
@@ -54,19 +65,29 @@ _RODZAJ_PAKIETU_PO_BIEGU: dict[str, str] = {
     "SC_1F": RODZAJ_SC_NIESYMETRYCZNE,
     "SC_2F": RODZAJ_SC_NIESYMETRYCZNE,
     "SC_2F_G": RODZAJ_SC_NIESYMETRYCZNE,
+    "LOAD_FLOW": RODZAJ_ROZPLYW,
 }
 
 #: Nazwa rodzaju pakietu w języku ekranu (strefa pierwszoplanowa mówi po polsku).
 _RODZAJ_PL: dict[str, str] = {
     RODZAJ_SC3F: "Zwarcie trójfazowe (IEC 60909)",
     RODZAJ_SC_NIESYMETRYCZNE: "Zwarcia niesymetryczne (1F-Z, 2F, 2F-Z)",
+    RODZAJ_ROZPLYW: "Rozpływ mocy (zbieżność, bilans mocy, zakres napięć)",
 }
+
+#: Rodzaje pakietu dokumentujące POJEDYNCZY PUNKT sieci. JEDNO ŹRÓDŁO PRAWDY
+#: (reguła predykatów parami): czyta je i lista punktów w odpowiedzi o dostępności,
+#: i wybór punktu przy budowie, i odmowa dla punktu podanego tam, gdzie punkt nie
+#: ma sensu. Pakiet rozpływu opisuje CAŁĄ sieć naraz — dlatego go tu nie ma, a
+#: nie dlatego, że „na razie" nie zebrano punktów.
+_RODZAJE_Z_PUNKTEM: frozenset[str] = frozenset({RODZAJ_SC3F, RODZAJ_SC_NIESYMETRYCZNE})
 
 #: Powody braku pakietu — po polsku, każdy z realnym następnym krokiem.
 _POWOD_RODZAJ_BEZ_PAKIETU = (
     "Ten rodzaj obliczenia nie ma jeszcze dedykowanego pakietu dowodowego. "
-    "Pakiet składany jest dla zwarć: trójfazowego oraz niesymetrycznych "
-    "(1F-Z, 2F, 2F-Z). Ślad obliczeń i źródło LaTeX tego przebiegu pozostają dostępne."
+    "Pakiet składany jest dla rozpływu mocy oraz dla zwarć: trójfazowego i "
+    "niesymetrycznych (1F-Z, 2F, 2F-Z). "
+    "Ślad obliczeń i źródło LaTeX tego przebiegu pozostają dostępne."
 )
 _POWOD_BIEG_NIEZAKONCZONY = (
     "Przebieg nie zakończył się wynikiem — pakiet dowodowy powstaje wyłącznie "
@@ -114,7 +135,13 @@ def punkty_pakietu(run: CanonicalRun) -> list[PunktPakietu]:
     Źródło: artefakt wyniku biegu (te same wiersze, które widzi ekran zwarć) —
     a nie ponowne przeliczanie modelu. Punkt, którego bieg nie policzył, nie jest
     ofertą pakietu.
+
+    Rodzaj pakietu opisujący całą sieć (rozpływ mocy) nie ma punktów i zwraca
+    pustą listę — z ``_RODZAJE_Z_PUNKTEM``, czyli z tego samego źródła, z którego
+    korzysta budowa. Pusta lista nie oznacza tu „brak danych"; to cecha rodzaju.
     """
+    if rodzaj_pakietu_biegu(run) not in _RODZAJE_Z_PUNKTEM:
+        return []
     graph_nodes = ((run.raw_result or {}).get("graph") or {}).get("nodes", {})
     punkty: list[PunktPakietu] = []
     for item in (run.raw_result or {}).get("results", []):
@@ -128,20 +155,53 @@ def punkty_pakietu(run: CanonicalRun) -> list[PunktPakietu]:
     return punkty
 
 
+def _powod_braku_punktow(run: CanonicalRun) -> str | None:
+    """Kontrola danych rodzajów punktowych: bieg musi mieć co udokumentować."""
+    return None if punkty_pakietu(run) else _POWOD_BRAK_PUNKTOW
+
+
+def _powod_braku_rozplywu(run: CanonicalRun) -> str | None:
+    """Kontrola danych rodzaju rozpływowego: bieg musi nieść komplet wyniku.
+
+    Sprawdzenie polega na PRÓBIE odtworzenia wyniku dokładnie tą funkcją, której
+    użyje budowa pakietu — nie na osobnej liście warunków, która „dziś się zgadza"
+    (reguła predykatów parami). Dzięki temu „dostępny" nie może rozjechać się z
+    „da się pobrać" na żadnych danych brzegowych.
+    """
+    try:
+        _rozplyw_biegu(run)
+    except BrakDanychRozplywuError as exc:
+        return str(exc)
+    return None
+
+
+#: Rodzaj pakietu → kontrola danych, których TEN rodzaj wymaga od biegu. Mapa jest
+#: ZAMKNIĘTA i pokrywa wszystkie rodzaje z ``_RODZAJ_PAKIETU_PO_BIEGU``: rodzaj
+#: bez kontroli byłby rodzajem, dla którego brama obiecuje pakiet bez sprawdzenia
+#: podstawy. Pin równości zbiorów: tests/api/test_pakiet_dowodowy_biegu.py.
+_KONTROLA_DANYCH_RODZAJU: dict[str, Callable[[CanonicalRun], str | None]] = {
+    RODZAJ_SC3F: _powod_braku_punktow,
+    RODZAJ_SC_NIESYMETRYCZNE: _powod_braku_punktow,
+    RODZAJ_ROZPLYW: _powod_braku_rozplywu,
+}
+
+
 def dostepnosc_pakietu(run: CanonicalRun) -> dict[str, Any]:
     """Opis dostępności pakietu dowodowego przebiegu (kontrakt ekranu dowodu).
 
-    Uczciwie rozdziela trzy różne „nie ma": rodzaj bez pakietu, bieg bez wyniku,
-    bieg bez punktów — każdy z własnym powodem po polsku.
+    Uczciwie rozdziela różne „nie ma": rodzaj bez pakietu, bieg bez wyniku oraz
+    brak danych właściwy rodzajowi (brak punktów zwarcia / niekompletny albo
+    niepełny rozpływ) — każdy z własnym powodem po polsku.
     """
     rodzaj = rodzaj_pakietu_biegu(run)
     if rodzaj is None:
         return _niedostepny(run, _POWOD_RODZAJ_BEZ_PAKIETU)
     if run.status != "FINISHED":
         return _niedostepny(run, _POWOD_BIEG_NIEZAKONCZONY, rodzaj=rodzaj)
+    powod = _KONTROLA_DANYCH_RODZAJU[rodzaj](run)
+    if powod is not None:
+        return _niedostepny(run, powod, rodzaj=rodzaj)
     punkty = punkty_pakietu(run)
-    if not punkty:
-        return _niedostepny(run, _POWOD_BRAK_PUNKTOW, rodzaj=rodzaj)
     return {
         "run_id": str(run.id),
         "dostepny": True,
@@ -189,6 +249,27 @@ def zbuduj_pakiet_biegu(run: CanonicalRun, *, punkt: str | None = None) -> tuple
     if not dostepnosc["dostepny"]:
         raise PakietBieguError(str(dostepnosc["powod_pl"]))
 
+    context = ProofPackContext(
+        project_id=str(run.project_id or ""),
+        case_id=str(run.case_id),
+        run_id=str(run.id),
+        snapshot_id=str(run.snapshot_hash),
+        mv_design_pro_version=resolve_mv_design_pro_version(),
+    )
+    rodzaj = str(dostepnosc["rodzaj"])
+
+    if rodzaj not in _RODZAJE_Z_PUNKTEM:
+        # Pakiet opisujący całą sieć. Punkt podany dla takiego rodzaju NIE jest
+        # po cichu pomijany — ciche zignorowanie parametru byłoby kłamstwem o
+        # tym, co dokumentuje pobrany plik.
+        if punkt is not None:
+            raise PakietBieguError(
+                f"Pakiet dowodowy tego rodzaju ({_RODZAJ_PL[rodzaj]}) dokumentuje całą sieć, "
+                "więc nie przyjmuje pojedynczego punktu."
+            )
+        zawartosc = _zbuduj_rozplyw(run, context)
+        return f"pakiet_dowodowy_rozplyw_mocy__{run.id}.zip", zawartosc
+
     punkty = punkty_pakietu(run)
     if punkt is None:
         wybrany = punkty[0]
@@ -201,14 +282,6 @@ def zbuduj_pakiet_biegu(run: CanonicalRun, *, punkt: str | None = None) -> tuple
             )
         wybrany = znaleziony
 
-    context = ProofPackContext(
-        project_id=str(run.project_id or ""),
-        case_id=str(run.case_id),
-        run_id=str(run.id),
-        snapshot_id=str(run.snapshot_hash),
-        mv_design_pro_version=resolve_mv_design_pro_version(),
-    )
-    rodzaj = str(dostepnosc["rodzaj"])
     if rodzaj == RODZAJ_SC3F:
         zawartosc = _zbuduj_sc3f(run, wybrany, context)
         nazwa = f"pakiet_dowodowy_zwarcie_3f__{run.id}__{wybrany.target_id}.zip"
@@ -251,6 +324,38 @@ def _nazwa_projektu(run: CanonicalRun) -> str:
     naglowek = (run.snapshot or {}).get("header") or {}
     nazwa = naglowek.get("name")
     return str(nazwa) if nazwa else str(run.project_id or "")
+
+
+def _rozplyw_biegu(run: CanonicalRun) -> RozplywZBiegu:
+    """Zamrożony wynik rozpływu ODTWORZONY z zapisu biegu (bez ponownej fizyki).
+
+    Jedyne wejście pakietu rozpływu — czyta je i kontrola dostępności, i budowa.
+    Podnosi ``BrakDanychRozplywuError`` z powodem po polsku, gdy bieg nie niesie
+    kompletu (wtedy brama melduje brak zamiast składać dowód z domysłów).
+    """
+    return rozplyw_z_biegu(
+        raw_result=run.raw_result,
+        white_box_trace=run.white_box_trace,
+    )
+
+
+def _zbuduj_rozplyw(run: CanonicalRun, context: ProofPackContext) -> bytes:
+    rozplyw = _rozplyw_biegu(run)
+    pack_input = P14PowerFlowInput.from_power_flow_result(
+        rozplyw.wynik,
+        project_name=_nazwa_projektu(run),
+        case_name=_nazwa_przypadku(run),
+        run_timestamp=_znacznik_czasu(run),
+        # Wersja solvera z ARTEFAKTU biegu (`load-flow-<metoda>-v1`), nie z
+        # `_wersja_solvera` — tam etykieta zapasowa „nieznana" jest uczciwa dla
+        # zwarć, a tu warstwa wiązania już odmówiła, gdyby wersji zabrakło.
+        solver_version=rozplyw.solver_version,
+        max_mismatch_pu=rozplyw.max_mismatch_pu,
+    )
+    try:
+        return P14PowerFlowProof.generate_zip(pack_input, context)
+    except (KeyError, ValueError) as exc:
+        raise PakietBieguError(f"Nie udało się złożyć pakietu dowodowego: {exc}") from exc
 
 
 def _zbuduj_sc3f(

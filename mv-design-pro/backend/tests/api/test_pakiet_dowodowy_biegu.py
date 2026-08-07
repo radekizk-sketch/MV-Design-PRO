@@ -9,14 +9,23 @@ Testy chodzą REALNĄ ścieżką: bieg tworzony i wykonywany przez tor wykonawcz
 łapie także rozjazd między tym, co bieg zapisuje, a tym, czego brama szuka.
 
 Pokrycie jako ILOCZYN CECH (nie jeden przykład):
-rodzaj biegu (3F / 1F-Z / 2F / 2F+Z / rozpływ mocy) × dostępność pakietu
-(dostępny / rodzaj bez pakietu) × punkt (domyślny / wskazany / spoza biegu) ×
-zawartość (dowód + źródło + wykaz + odcisk) × determinizm (dwa wywołania).
+rodzaj biegu (3F / 1F-Z / 2F / 2F+Z / rozpływ mocy / stan fazowy) × dostępność
+pakietu (dostępny / rodzaj bez pakietu / bieg bez wyniku) × punkt (domyślny /
+wskazany / spoza biegu / podany tam, gdzie punktu nie ma) × zawartość (dowód +
+źródło + wykaz + odcisk) × determinizm (dwa wywołania).
+
+Dla pakietu ROZPŁYWU dochodzi drugi iloczyn — cechy MODELU, które zmieniają moc
+faktycznie wstrzykniętą przez solver (karta PACK-ROZPLYW):
+regulacja falowników {jest / nie ma} × model ZIP odbioru {jest / nie ma} ×
+regulacja zaczepów {jest / nie ma} × stan biegu {zbieżny / niezbieżny / bez wyniku}.
+Ten iloczyn nie jest ozdobą: gdyby dowód czytał moc ŻĄDANĄ z modelu zamiast mocy
+z wyniku, bilans domknąłby się tylko w wariancie bez ZIP i bez regulacji.
 """
 
 from __future__ import annotations
 
 import io
+import json
 import zipfile
 from uuid import uuid4
 
@@ -161,11 +170,16 @@ def _seed_enm(case_id: str) -> None:
     )
 
 
-def _wykonaj_bieg(client: TestClient, case_id: str, analysis_type: str) -> str:
+def _wykonaj_bieg(
+    client: TestClient,
+    case_id: str,
+    analysis_type: str,
+    solver_input: dict | None = None,
+) -> str:
     """Realna ścieżka: utworzenie biegu + wykonanie (tor wykonawczy, nie fixture)."""
     create = client.post(
         f"/api/execution/study-cases/{case_id}/runs",
-        json={"analysis_type": analysis_type, "solver_input": {}},
+        json={"analysis_type": analysis_type, "solver_input": solver_input or {}},
     )
     assert create.status_code == 201, create.text
     run_id = create.json()["id"]
@@ -215,15 +229,17 @@ def test_dostepnosc_pakietu_dla_rodzajow_zwarciowych(
     assert payload["zawartosc_pl"], "opis zawartości pakietu jest częścią kontraktu ekranu"
 
 
-def test_dostepnosc_pakietu_rozplyw_mocy_bez_pakietu_z_powodem(client: TestClient) -> None:
-    """Rozpływ mocy nie ma pakietu — brama mówi to WPROST, zamiast milczeć.
+def test_dostepnosc_pakietu_rodzaj_bez_pakietu_z_powodem(client: TestClient) -> None:
+    """Rodzaj spoza zamkniętej listy nie ma pakietu — brama mówi to WPROST.
 
-    Cecha brzegowa: rodzaj biegu spoza zamkniętej listy pakietów. Ekran ma
-    dostać powód po polsku, a nie pusty przycisk.
+    Cecha brzegowa: rodzaj biegu spoza mapy pakietów. Ekran ma dostać powód po
+    polsku, a nie pusty przycisk. Nośnikiem cechy jest stan fazowy SN — rozpływ
+    mocy przestał być przykładem „rodzaju bez pakietu" z chwilą, gdy dostał
+    własny pakiet (karta PACK-ROZPLYW); intencja pinu bez zmian.
     """
     case_id = str(uuid4())
     _seed_enm(case_id)
-    run_id = _wykonaj_bieg(client, case_id, "LOAD_FLOW")
+    run_id = _wykonaj_bieg(client, case_id, "PHASE_STATE_SN")
 
     response = client.get(f"/api/analysis-runs/{run_id}/pakiet-dowodowy/dostepnosc")
 
@@ -240,7 +256,7 @@ def test_pakiet_niedostepny_odmawia_zamiast_zwracac_pusty_plik(client: TestClien
     """Pobranie pakietu dla rodzaju bez pakietu = odmowa z powodem, nie pusty ZIP."""
     case_id = str(uuid4())
     _seed_enm(case_id)
-    run_id = _wykonaj_bieg(client, case_id, "LOAD_FLOW")
+    run_id = _wykonaj_bieg(client, case_id, "PHASE_STATE_SN")
 
     response = client.get(f"/api/analysis-runs/{run_id}/pakiet-dowodowy")
 
@@ -393,8 +409,483 @@ def test_nazwa_pliku_i_manifest_bez_oznaczen_roboczych(client: TestClient) -> No
     response = client.get(f"/api/analysis-runs/{run_id}/pakiet-dowodowy")
     assert response.status_code == 200
 
-    wzorzec = re.compile(r"\b[pP](?!0\b)\d+\b")
+    # Wzorzec SZERSZY niż w guardzie kodenamów: `\b` nie odcina `P14_STEP_001`,
+    # bo podkreślenie jest znakiem słowa — a właśnie w identyfikatorach kroków
+    # oznaczenie robocze siedziało latami w POBIERANYM dowodzie. Sprawdzone
+    # iniekcją: wzorzec z `\b` przepuszczał przywrócony prefiks roboczy.
+    wzorzec = re.compile(r"(?<![A-Za-z0-9])[pP](?!0(?![0-9]))\d+(?![0-9])")
     assert not wzorzec.search(response.headers["content-disposition"])
     with zipfile.ZipFile(io.BytesIO(response.content)) as archiwum:
         manifest = archiwum.read("proof_pack/manifest.json").decode("utf-8")
     assert not wzorzec.search(manifest)
+
+
+# ---------------------------------------------------------------------------
+# Pakiet ROZPŁYWU MOCY (karta PACK-ROZPLYW)
+# ---------------------------------------------------------------------------
+
+#: Wielomian ZIP „stała impedancja" — model odbioru, przy którym moc FAKTYCZNIE
+#: wstrzyknięta różni się od mocy zadanej w modelu (skaluje się z napięciem).
+_ZIP_STALA_IMPEDANCJA = {
+    "a_p": 1.0,
+    "b_p": 0.0,
+    "c_p": 0.0,
+    "a_q": 1.0,
+    "b_q": 0.0,
+    "c_q": 0.0,
+    "v0_pu": 1.0,
+}
+
+
+def _seed_enm_rozplyw(
+    case_id: str,
+    *,
+    falowniki: bool = False,
+    zip_model: bool = False,
+    oltc: bool = False,
+) -> None:
+    """Sieć 110/15 kV pod rozpływ: GPZ → transformator → linia SN → odbiór.
+
+    Trzy przełączniki odpowiadają trzem torom, którymi ``_execute_power_flow``
+    zmienia moc FAKTYCZNIE wstrzykniętą wobec mocy zadanej w modelu:
+    regulacja falownika (Q(U)/cosφ), wielomian ZIP odbioru oraz automatyczna
+    regulacja zaczepów. Każdy z nich musi dać ten sam domknięty bilans w dowodzie
+    — inaczej dowód czytałby model zamiast wyniku.
+    """
+    from enm.models import EnergyNetworkModel
+    from enm.store import set_enm
+
+    transformator = {
+        "id": "00000000-0000-0000-0000-000000000610",
+        "ref_id": "tr-gpz",
+        "name": "TR 110/15",
+        "tags": [],
+        "meta": {},
+        "hv_bus_ref": "b-wn",
+        "lv_bus_ref": "b-sn",
+        "sn_mva": 25.0,
+        "uhv_kv": 110.0,
+        "ulv_kv": 15.0,
+        "uk_percent": 12.0,
+        "pk_kw": 120.0,
+        "catalog_ref": "tr-wn-sn-110-15-25mva-yd11",
+        "catalog_namespace": "TRAFO_SN_NN",
+    }
+    if oltc:
+        transformator["tap_changer"] = {
+            "regulation_type": "OLTC",
+            "regulated_winding": "HV",
+            "neutral_position": 0,
+            "current_position": 0,
+            "min_position": -9,
+            "max_position": 9,
+            "step_percent": 1.25,
+            "control_mode": "AUTOMATIC",
+            "voltage_setpoint_kv": 15.5,
+            "deadband_kv": 0.2,
+            "controlled_bus_ref": "b-sn",
+            "catalog_ref": "tc_oltc_110sn_19_125",
+        }
+
+    odbior = {
+        "id": "00000000-0000-0000-0000-000000000620",
+        "ref_id": "load-sn",
+        "name": "Odbior SN",
+        "tags": [],
+        "meta": {},
+        "bus_ref": "b-odbior",
+        "p_mw": 6.0,
+        "q_mvar": 2.0,
+        "model": "zip" if zip_model else "pq",
+    }
+    if zip_model:
+        odbior["materialized_params"] = dict(_ZIP_STALA_IMPEDANCJA)
+
+    # Falownik jest elementem nN (walidator ENM tego pilnuje), więc wariant z
+    # regulacją dokłada szynę nN i transformator blokowy — tak, jak w modelu
+    # rzeczywistego przyłączenia OZE.
+    szyna_nn = {
+        "id": "00000000-0000-0000-0000-000000000605",
+        "ref_id": "b-nn",
+        "name": "Szyna nN PV",
+        "tags": [],
+        "meta": {},
+        "voltage_kv": 0.4,
+        "phase_system": "3ph",
+    }
+    transformator_blokowy = {
+        "id": "00000000-0000-0000-0000-000000000612",
+        "ref_id": "tr-pv",
+        "name": "TR blokowy PV",
+        "tags": [],
+        "meta": {},
+        "hv_bus_ref": "b-odbior",
+        "lv_bus_ref": "b-nn",
+        "sn_mva": 2.5,
+        "uhv_kv": 15.0,
+        "ulv_kv": 0.4,
+        "uk_percent": 6.0,
+        "pk_kw": 20.0,
+        "catalog_ref": "tr-sn-nn-15-04-2p5mva-dyn5",
+        "catalog_namespace": "TRAFO_SN_NN",
+    }
+    falownik = {
+        "id": "00000000-0000-0000-0000-000000000630",
+        "ref_id": "pv-1",
+        "name": "Farma PV",
+        "tags": [],
+        # Regulacja REALNIE aktywna (cosφ ≠ 1) — inaczej tor konwertera nie
+        # zostałby w ogóle zbudowany i cecha byłaby pozorna.
+        "meta": {"control_mode": "STALY_COS_PHI", "cos_phi": 0.95},
+        "bus_ref": "b-nn",
+        "p_mw": 2.0,
+        "q_mvar": 0.0,
+        "gen_type": "pv_inverter",
+        "connection_variant": "block_transformer",
+        "blocking_transformer_ref": "tr-pv",
+    }
+
+    set_enm(
+        case_id,
+        EnergyNetworkModel.model_validate(
+            {
+                "header": {
+                    "name": "Pakiet dowodowy rozpływu",
+                    "enm_version": "1.0",
+                    "defaults": {"frequency_hz": 50, "unit_system": "SI"},
+                    "created_at": "2024-01-01T00:00:00Z",
+                    "updated_at": "2024-01-01T00:00:00Z",
+                    "revision": 1,
+                    "hash_sha256": "",
+                },
+                "buses": [
+                    {
+                        "id": "00000000-0000-0000-0000-000000000601",
+                        "ref_id": "b-wn",
+                        "name": "110 kV",
+                        "tags": [],
+                        "meta": {},
+                        "voltage_kv": 110,
+                        "phase_system": "3ph",
+                    },
+                    {
+                        "id": "00000000-0000-0000-0000-000000000602",
+                        "ref_id": "b-sn",
+                        "name": "Szyna SN",
+                        "tags": [],
+                        "meta": {},
+                        "voltage_kv": 15,
+                        "phase_system": "3ph",
+                    },
+                    {
+                        "id": "00000000-0000-0000-0000-000000000603",
+                        "ref_id": "b-odbior",
+                        "name": "Szyna odbioru",
+                        "tags": [],
+                        "meta": {},
+                        "voltage_kv": 15,
+                        "phase_system": "3ph",
+                    },
+                ]
+                + ([szyna_nn] if falowniki else []),
+                "branches": [
+                    {
+                        "id": "00000000-0000-0000-0000-000000000611",
+                        "ref_id": "ln-sn",
+                        "name": "Linia SN",
+                        "tags": [],
+                        "meta": {},
+                        "from_bus_ref": "b-sn",
+                        "to_bus_ref": "b-odbior",
+                        "status": "closed",
+                        "type": "line_overhead",
+                        "length_km": 5.0,
+                        "r_ohm_per_km": 0.3,
+                        "x_ohm_per_km": 0.4,
+                        "catalog_ref": "LINIA_SN:reczne",
+                        "catalog_namespace": "LINIA_SN",
+                    }
+                ],
+                "transformers": [transformator]
+                + ([transformator_blokowy] if falowniki else []),
+                "sources": [
+                    {
+                        "id": "00000000-0000-0000-0000-000000000604",
+                        "tags": [],
+                        "meta": {},
+                        **gpz_source_record(
+                            ref_id="src-gpz",
+                            name="Zasilanie GPZ",
+                            bus_ref="b-wn",
+                            voltage_kv=110.0,
+                            sk3_mva=3000.0,
+                            rx_ratio=0.10,
+                        ),
+                    }
+                ],
+                "loads": [odbior],
+                "generators": [falownik] if falowniki else [],
+                "shunt_capacitors": [],
+                "substations": [],
+                "bays": [],
+                "junctions": [],
+                "corridors": [],
+                "measurements": [],
+                "protection_assignments": [],
+                "branch_points": [],
+            }
+        ),
+    )
+
+
+def _dowod_z_pakietu(content: bytes) -> dict:
+    with zipfile.ZipFile(io.BytesIO(content)) as archiwum:
+        return json.loads(archiwum.read("proof_pack/proof.json").decode("utf-8"))
+
+
+#: ILOCZYN CECH MODELU: 2 (falowniki) × 2 (ZIP) × 2 (zaczepy). Każda trójka
+#: prowadzi do INNYCH liczb w wyniku — sprawdzone pomiarem, nie założeniem.
+_WARIANTY_ROZPLYWU = [
+    pytest.param(f, z, o, id=f"falowniki={int(f)}-zip={int(z)}-zaczepy={int(o)}")
+    for f in (False, True)
+    for z in (False, True)
+    for o in (False, True)
+]
+
+
+@pytest.mark.parametrize(("falowniki", "zip_model", "oltc"), _WARIANTY_ROZPLYWU)
+def test_pakiet_rozplywu_powstaje_dla_kazdej_kombinacji_cech_modelu(
+    client: TestClient, falowniki: bool, zip_model: bool, oltc: bool
+) -> None:
+    """Pakiet rozpływu jest dostępny i pobieralny w KAŻDEJ kombinacji cech.
+
+    Dług PACK-DOWODY-DLUG-ROZPLYW brzmiał: „podpięcie wymaga odtworzenia wejść
+    solvera PF z biegu (tor niesie regulacje falowników, ZIP i OLTC)". Ten pin
+    pokazuje, że odtwarzanie WEJŚĆ było niepotrzebne — dowód opisuje WYNIK, a
+    wynik bieg już zapisał; dlatego żadna z tych cech nie odbiera pakietu.
+    """
+    case_id = str(uuid4())
+    _seed_enm_rozplyw(case_id, falowniki=falowniki, zip_model=zip_model, oltc=oltc)
+    run_id = _wykonaj_bieg(client, case_id, "LOAD_FLOW")
+
+    dostepnosc = client.get(f"/api/analysis-runs/{run_id}/pakiet-dowodowy/dostepnosc")
+    assert dostepnosc.status_code == 200, dostepnosc.text
+    payload = dostepnosc.json()
+    assert payload["dostepny"] is True, payload["powod_pl"]
+    assert payload["rodzaj"] == "ROZPLYW_MOCY"
+    assert payload["rodzaj_pl"]
+    assert payload["powod_pl"] is None
+    # Pakiet opisuje CAŁĄ sieć — brak punktów jest cechą rodzaju, nie brakiem danych.
+    assert payload["punkty"] == []
+    assert payload["zawartosc_pl"]
+
+    pakiet = client.get(f"/api/analysis-runs/{run_id}/pakiet-dowodowy")
+    assert pakiet.status_code == 200, pakiet.text
+    assert pakiet.headers["content-type"] == "application/zip"
+    wpisy = _wpisy_zip(pakiet.content)
+    assert "proof_pack/proof.json" in wpisy
+    assert "proof_pack/proof.tex" in wpisy
+    assert "proof_pack/manifest.json" in wpisy
+    assert "proof_pack/signature.json" in wpisy
+
+
+@pytest.mark.parametrize(("falowniki", "zip_model", "oltc"), _WARIANTY_ROZPLYWU)
+def test_bilans_w_dowodzie_domyka_sie_dla_kazdej_kombinacji_cech(
+    client: TestClient, falowniki: bool, zip_model: bool, oltc: bool
+) -> None:
+    """Dowód czyta moc WSTRZYKNIĘTĄ przez solver, a nie moc zadaną w modelu.
+
+    To jest ostrze tego iloczynu cech. Na szynie z wielomianem ZIP albo z
+    regulacją falownika moc faktycznie wstrzyknięta RÓŻNI SIĘ od zadanej w
+    modelu (dla wariantu ZIP: 5,23 MW wobec 6,00 MW zadanych — zmierzone).
+    Gdyby wejście dowodu składano z modelu, bilans domknąłby się wyłącznie w
+    wariancie bez ZIP i bez regulacji, a pozostałe siedem pokazałoby projektantowi
+    fałszywą różnicę rzędu 0,7 MW.
+    """
+    case_id = str(uuid4())
+    _seed_enm_rozplyw(case_id, falowniki=falowniki, zip_model=zip_model, oltc=oltc)
+    run_id = _wykonaj_bieg(client, case_id, "LOAD_FLOW")
+
+    pakiet = client.get(f"/api/analysis-runs/{run_id}/pakiet-dowodowy")
+    assert pakiet.status_code == 200, pakiet.text
+    dowod = _dowod_z_pakietu(pakiet.content)
+
+    assert dowod["summary"]["key_results"]["converged"]["value"] == 1.0
+    assert dowod["summary"]["overall_status"] == "PASS", dowod["summary"]["warnings"]
+
+    reszty = {
+        krok["result"]["source_key"]: abs(krok["result"]["value"])
+        for krok in dowod["steps"]
+        if krok["result"]["source_key"] in {"p_balance_mw", "q_balance_mvar"}
+    }
+    assert set(reszty) == {"p_balance_mw", "q_balance_mvar"}
+    assert reszty["p_balance_mw"] < 1e-6, reszty
+    assert reszty["q_balance_mvar"] < 1e-6, reszty
+
+
+@pytest.mark.parametrize(("falowniki", "zip_model", "oltc"), _WARIANTY_ROZPLYWU)
+def test_pakiet_rozplywu_jest_deterministyczny_bajt_w_bajt(
+    client: TestClient, falowniki: bool, zip_model: bool, oltc: bool
+) -> None:
+    """Dwa pobrania tego samego przebiegu = identyczny plik, w każdym wariancie.
+
+    Znacznik dowodu bierze się z PRZEBIEGU, a tożsamość artefaktu z tożsamości
+    pakietu — dlatego powtórzenie nie może dać innych bajtów (i dlatego
+    ``from_power_flow_result`` nie wolno było zostawić z ``datetime.utcnow()``).
+    """
+    case_id = str(uuid4())
+    _seed_enm_rozplyw(case_id, falowniki=falowniki, zip_model=zip_model, oltc=oltc)
+    run_id = _wykonaj_bieg(client, case_id, "LOAD_FLOW")
+
+    pierwszy = client.get(f"/api/analysis-runs/{run_id}/pakiet-dowodowy")
+    drugi = client.get(f"/api/analysis-runs/{run_id}/pakiet-dowodowy")
+
+    assert pierwszy.status_code == drugi.status_code == 200
+    assert pierwszy.content == drugi.content
+
+
+def test_rozne_cechy_modelu_daja_rozne_pakiety(client: TestClient) -> None:
+    """Cechy modelu realnie sterują treścią dowodu (a nie tylko nazwą pliku).
+
+    Bez tego pinu poprzednie testy przechodziłyby także wtedy, gdyby pakiet
+    ignorował wynik i zawsze pisał to samo.
+    """
+    pakiety = []
+    for zip_model in (False, True):
+        case_id = str(uuid4())
+        _seed_enm_rozplyw(case_id, zip_model=zip_model)
+        run_id = _wykonaj_bieg(client, case_id, "LOAD_FLOW")
+        odpowiedz = client.get(f"/api/analysis-runs/{run_id}/pakiet-dowodowy")
+        assert odpowiedz.status_code == 200, odpowiedz.text
+        pakiety.append(_dowod_z_pakietu(odpowiedz.content))
+
+    bez_zip, z_zip = pakiety
+    assert (
+        bez_zip["summary"]["key_results"]["p_losses_mw"]["value"]
+        != z_zip["summary"]["key_results"]["p_losses_mw"]["value"]
+    )
+
+
+def test_bieg_niezbiezny_daje_pakiet_ktory_MOWI_o_braku_zbieznosci(
+    client: TestClient,
+) -> None:
+    """Bieg bez zbieżności nie jest ukrywany — dowód nazywa rzecz po imieniu.
+
+    Odmowa byłaby tu gorsza od dowodu: projektant potrzebuje udokumentowanego
+    śladu nieudanego obliczenia. Kłamstwem byłoby dopiero podanie takiego dowodu
+    jako poprawnego — dlatego krok zbieżności kończy się niepowodzeniem, a
+    podsumowanie niesie ostrzeżenie.
+    """
+    case_id = str(uuid4())
+    _seed_enm_rozplyw(case_id)
+    run_id = _wykonaj_bieg(client, case_id, "LOAD_FLOW", {"max_iterations": 1})
+
+    dostepnosc = client.get(f"/api/analysis-runs/{run_id}/pakiet-dowodowy/dostepnosc").json()
+    assert dostepnosc["dostepny"] is True
+
+    pakiet = client.get(f"/api/analysis-runs/{run_id}/pakiet-dowodowy")
+    assert pakiet.status_code == 200, pakiet.text
+    dowod = _dowod_z_pakietu(pakiet.content)
+
+    assert dowod["summary"]["key_results"]["converged"]["value"] == 0.0
+    assert dowod["summary"]["overall_status"] != "PASS"
+    assert any("zbieżności" in ostrzezenie for ostrzezenie in dowod["summary"]["warnings"])
+
+
+def test_bieg_rozplywu_bez_wyniku_nie_ma_pakietu_z_powodem_po_polsku(
+    client: TestClient,
+) -> None:
+    """Bieg utworzony, ale niewykonany: pakietu nie ma i brama mówi dlaczego.
+
+    Cecha „bieg bez wyniku" nie przechodzi przez tor wykonawczy HTTP (ten zawsze
+    wykonuje), więc bieg zostaje w stanie utworzonym — to jest realny stan bazy,
+    nie spreparowana fikstura.
+    """
+    from enm.canonical_analysis import create_run
+
+    case_id = str(uuid4())
+    _seed_enm_rozplyw(case_id)
+    run = create_run(case_id=case_id, analysis_type="PF")
+
+    dostepnosc = client.get(f"/api/analysis-runs/{run.id}/pakiet-dowodowy/dostepnosc")
+    assert dostepnosc.status_code == 200, dostepnosc.text
+    payload = dostepnosc.json()
+    assert payload["dostepny"] is False
+    # Rodzaj jest znany mimo braku wyniku — brak dotyczy DANYCH, nie rodzaju.
+    assert payload["rodzaj"] == "ROZPLYW_MOCY"
+    assert "nie zakończył się wynikiem" in payload["powod_pl"]
+
+    pobranie = client.get(f"/api/analysis-runs/{run.id}/pakiet-dowodowy")
+    assert pobranie.status_code == 422
+    assert pobranie.json()["detail"] == payload["powod_pl"]
+
+
+def test_punkt_podany_dla_pakietu_calej_sieci_odmawia_zamiast_go_zignorowac(
+    client: TestClient,
+) -> None:
+    """Ciche pominięcie parametru byłoby kłamstwem o tym, co dokumentuje plik."""
+    case_id = str(uuid4())
+    _seed_enm_rozplyw(case_id)
+    run_id = _wykonaj_bieg(client, case_id, "LOAD_FLOW")
+
+    odpowiedz = client.get(
+        f"/api/analysis-runs/{run_id}/pakiet-dowodowy",
+        params={"punkt": "jakas-szyna"},
+    )
+
+    assert odpowiedz.status_code == 422
+    assert "całą sieć" in odpowiedz.json()["detail"]
+
+
+def test_pakiet_rozplywu_bez_oznaczen_roboczych_w_CALEJ_zawartosci(
+    client: TestClient,
+) -> None:
+    """Eksport bez nazw roboczych — sprawdzany na KAŻDYM pliku pakietu.
+
+    Rozszerzenie klasy wobec pinu zwarciowego (tamten patrzył na nazwę pliku i
+    wykaz): identyfikatory kroków dowodu też jadą do pobieranego ``proof.json``,
+    a te przez lata niosły oznaczenie robocze karty.
+    """
+    import re
+
+    case_id = str(uuid4())
+    _seed_enm_rozplyw(case_id)
+    run_id = _wykonaj_bieg(client, case_id, "LOAD_FLOW")
+
+    odpowiedz = client.get(f"/api/analysis-runs/{run_id}/pakiet-dowodowy")
+    assert odpowiedz.status_code == 200
+
+    # Wzorzec SZERSZY niż w guardzie kodenamów: `\b` nie odcina `P14_STEP_001`,
+    # bo podkreślenie jest znakiem słowa — a właśnie w identyfikatorach kroków
+    # oznaczenie robocze siedziało latami w POBIERANYM dowodzie. Sprawdzone
+    # iniekcją: wzorzec z `\b` przepuszczał przywrócony prefiks roboczy.
+    wzorzec = re.compile(r"(?<![A-Za-z0-9])[pP](?!0(?![0-9]))\d+(?![0-9])")
+    assert not wzorzec.search(odpowiedz.headers["content-disposition"])
+    with zipfile.ZipFile(io.BytesIO(odpowiedz.content)) as archiwum:
+        for nazwa in sorted(archiwum.namelist()):
+            if nazwa.endswith("/") or nazwa.endswith(".pdf"):
+                continue
+            tresc = archiwum.read(nazwa).decode("utf-8")
+            znalezione = wzorzec.findall(tresc)
+            assert not znalezione, (nazwa, sorted(set(znalezione))[:5])
+
+
+# ---------------------------------------------------------------------------
+# Zamknięcie mapy rodzajów (deklaracja MUSI mieć strażnika)
+# ---------------------------------------------------------------------------
+
+
+def test_kazdy_rodzaj_pakietu_ma_wlasna_kontrole_danych() -> None:
+    """Pin deklaracji „mapa jest ZAMKNIĘTA i pokrywa wszystkie rodzaje".
+
+    Rodzaj dopisany do mapy pakietów bez kontroli danych byłby rodzajem, dla
+    którego brama obiecuje pakiet, nie sprawdziwszy podstawy — i objawiłby się
+    dopiero błędem serwera u projektanta.
+    """
+    from application.proof_engine import pakiet_biegu
+
+    rodzaje = set(pakiet_biegu._RODZAJ_PAKIETU_PO_BIEGU.values())
+    assert set(pakiet_biegu._KONTROLA_DANYCH_RODZAJU) == rodzaje
+    assert set(pakiet_biegu._RODZAJ_PL) == rodzaje
+    # Rodzaje punktowe to PODZBIÓR rodzajów — nie druga, niezależna lista.
+    assert pakiet_biegu._RODZAJE_Z_PUNKTEM <= rodzaje
