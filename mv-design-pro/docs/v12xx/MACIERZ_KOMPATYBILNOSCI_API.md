@@ -195,6 +195,9 @@ Data wylaczenia dla deprecated: koniec M2, o ile wiersz nie wskazuje inaczej.
 | `POST /api/oze-analysis/connection-study` | v12xx | aktywny | 2026-07-17 | - | Dokument studium przylaczeniowego (JSON, D17). | dokument studium tests | Architekt OZE |
 | `POST /api/oze-analysis/connection-study.docx` | v12xx | aktywny | 2026-07-17 | - | Dokument studium (DOCX deterministyczny, D17). | dokument studium tests | Architekt OZE |
 | `POST /api/oze-analysis/connection-study.pdf` | v12xx | aktywny | 2026-07-17 | - | Dokument studium (PDF deterministyczny, D17). | dokument studium tests | Architekt OZE |
+| `GET /api/insights/sensitivity` | v12xx | aktywny | 2026-08-07 | - | Wrazliwosc wynikow rozplywu: LF (czynniki wplywu na profil napiec) + ogolna (marginesy przy ±delta%) z przebiegu PF (ROUTERY-4A). | analysis insights tests | Architekt jakosci |
+| `GET /api/insights/analysis-coverage` | v12xx | aktywny | 2026-08-07 | - | Pokrycie analizami przypadku: punktacja 0-100 + braki po polsku (ROUTERY-4A). | analysis insights tests | Architekt jakosci |
+| `GET /api/insights/network-boundary` | v12xx | aktywny | 2026-08-07 | - | Granica sieci (wezel przylaczenia) z biezacego modelu ENM przypadku (ROUTERY-4A). | analysis insights tests | Architekt jakosci |
 | `GET /api/quality/sanity-bounds` | v12xx | aktywny | 2026-07-17 | - | Wiarygodnosc Ik'' per wezel (D2). | quality analysis tests | Architekt jakosci |
 | `GET /api/quality/energy-validation` | v12xx | aktywny | 2026-07-17 | - | Walidacja energetyczna rozplywu (D2). | quality analysis tests | Architekt jakosci |
 | `GET /api/quality/flicker` | v12xx | aktywny | 2026-07-17 | - | Migotanie i szybkie zmiany napiecia IEC 61000-3-7 (D11). | migotanie tests | Architekt jakosci |

@@ -77,7 +77,10 @@ const ODPOWIEDZ: WrazliwoscResponse = {
         parameter_id: 'voltage_limit',
         parameter_label: 'Voltage limits',
         target_id: 'wezel-a',
-        source: 'P21',
+        // Surowy kod wewnetrzny kontraktu — wartosc syntetyczna, bo asercja
+        // sprawdza KLASE: zaden surowy kod `source` nie jest renderowany
+        // (kodenamow projektu nie wolno uzywac nawet w fixturach testow).
+        source: 'kod-zrodla-wewnetrzny',
         base_margin: 3.9,
         margin_unit: '%',
         base_decision: 'PASS',
@@ -94,7 +97,10 @@ const ODPOWIEDZ: WrazliwoscResponse = {
 function mockFetchTrasowany(odpowiedz: WrazliwoscResponse) {
   const spy = vi.fn((url: RequestInfo | URL) => {
     const adres = String(url);
-    if (adres.startsWith('/api/insights/sensitivity')) {
+    // PEŁNA ścieżka z separatorem zapytania (klasa z iniekcji sekcji pokrycia:
+    // `startsWith('/api/insights/sensitivity')` dopasowałby też zepsutą
+    // ścieżkę `/api/insights/sensitivityX` — test maskowałby defekt klienta).
+    if (adres.startsWith('/api/insights/sensitivity?')) {
       return Promise.resolve({ ok: true, json: async () => odpowiedz } as Response);
     }
     // Kontrakt przebiegu (świeżość) — brak danych to brak znacznika, nie awaria.
@@ -161,9 +167,9 @@ describe('EkranWrazliwosci — wynik', () => {
       expect(screen.getByTestId('mvd-wrazliwosc-lf')).toBeTruthy();
       expect(screen.getByTestId('mvd-wrazliwosc-ogolna')).toBeTruthy();
     });
-    // Końcówka wołana identyfikatorem dobranego przebiegu rozpływu.
+    // PEŁNY adres końcówki z identyfikatorem dobranego przebiegu rozpływu.
     expect(
-      spy.mock.calls.some((c) => String(c[0]).includes('run_id=pf-1')),
+      spy.mock.calls.some((c) => String(c[0]) === '/api/insights/sensitivity?run_id=pf-1'),
     ).toBe(true);
     // Wiersz rankingu LF: nazwa szyny z mapy węzłów (nie surowy identyfikator).
     expect(screen.getAllByText('Szyna SN').length).toBeGreaterThan(0);
@@ -173,7 +179,7 @@ describe('EkranWrazliwosci — wynik', () => {
     ).toBeTruthy();
     // Kryterium ogólne przetłumaczone na PL (nie surowe parameter_id/source).
     expect(screen.getByText('Odchyłka napięcia węzła')).toBeTruthy();
-    expect(screen.queryByText('P21')).toBeNull();
+    expect(screen.queryByText('kod-zrodla-wewnetrzny')).toBeNull();
     // Uczciwa deklaracja pominiętych źródeł.
     expect(screen.getByTestId('mvd-wrazliwosc-pominiete')).toHaveTextContent(
       'raport normatywny',
