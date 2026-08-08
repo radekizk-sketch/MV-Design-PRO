@@ -130,6 +130,19 @@ przez trzy szczyty**. Narzędzie obiecywało „to, co robi CI", i była to obie
 szersza od tego, co sprawdzało. Skrypt uruchamia teraz obie połowy; sprawdzone
 iniekcją (przywrócenie nieaktualnego wpisu zapadki → RC=1).
 
+**TRZECIA WPADKA TEGO SAMEGO DNIA, WARTA ZAPAMIĘTANIA — MOJA.** Zapisałem
+w rejestrze, że brakuje strażnika klasy „front woła trasę, której backend nie
+serwuje", i dołączyłem dwa własne nieudane matchery jako dowód trudności.
+Sprawdziłem to potem iniekcją: `route_prefix_guard` **ma** tę regułę
+(`[route-prefix-martwa]`) i łapie ją z plikiem i numerem linii, normalizując
+ścieżkę składaną w miejscu wywołania. Martwy moduł przeżył nie przez ślepotę
+bramki, tylko dlatego, że był ZAREJESTROWANY w zamrożonej liście długu
+z adnotacją „do decyzji". Brakowało DECYZJI, nie strażnika.
+
+**Reguła na przyszłość: zanim nazwiesz brak strażnika, sprawdź iniekcją, czy
+istniejący go nie ma.** Pisanie od zera czegoś, co już działa, to złamanie
+dyrektywy reużycia — tej samej, którą egzekwuję w kartach u wykonawców.
+
 **DRUGA PUŁAPKA, ZMIERZONA TEGO SAMEGO DNIA:** `black src tests scripts ../scripts`
 w JEDNYM wywołaniu psuje wykrywanie konfiguracji (black bierze wspólny katalog
 nadrzędny, nie znajduje `[tool.black]`, formatuje szerokością 88 zamiast 100 —
