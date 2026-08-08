@@ -660,8 +660,45 @@ def test_jawna_nie_liczba_nie_jest_podstawieniem() -> None:
     do tekstu sladu.
     """
     assert guard.is_not_a_number_literal(ast.parse('float("nan")', mode="eval").body)
-    assert guard.is_not_a_number_literal(ast.parse('float("inf")', mode="eval").body)
     assert not guard.is_numeric(ast.parse('float("nan")', mode="eval").body)
     # Kontrola dodatnia: konwersja REALNEJ danej nadal jest liczba.
     assert guard.is_numeric(ast.parse("float(base_p)", mode="eval").body)
     assert guard.is_numeric(ast.parse("float(250)", mode="eval").body)
+
+
+def test_nieskonczonosc_nie_jest_meldunkiem_braku() -> None:
+    """`float("inf")` JEST podstawieniem — dzielenie ja POCHLANIA.
+
+    DLACZEGO TEN TEST ISTNIEJE (odbior rundy 4, 2026-08-08). Regula
+    `is_not_a_number_literal` obejmowala pierwotnie takze nieskonczonosc, z
+    uzasadnieniem wspolnym dla NaN: „kazde dzialanie na nich daje NaN/inf, a
+    warstwa wiarygodnosci lapie to jako wynik niefizyczny". Zdanie jest prawdziwe
+    dla NaN i FALSZYWE dla nieskonczonosci.
+
+    POMIAR NADZORCY — iniekcja w `power_flow_newton.py` (plik w zakresie skanu):
+
+        impedancja = gen.internal_impedance_pu or float("inf")
+        return 1.0 / impedancja
+
+    daje `0.0`, dla ktorego `math.isfinite` jest PRAWDA. Zero jako „impedancja
+    wewnetrzna nieobecna" przechodzi przez `_finite` jak pomiar — czyli dokladnie
+    ta klasa, ktora ta bramka zwalcza. Przy szerokiej regule bramka meldowala RC=0.
+
+    Zawezenie kosztowalo ZERO nowych pozycji budzetu: zadne zywe
+    `<pole kontraktu> or float("inf")` w zakresie nie istnieje (stan repo
+    przypiety `test_zapadka_odpowiada_stanowi_repo`).
+    """
+    import math
+
+    # Wlasnosc, na ktorej stoi rozroznienie — sprawdzana, nie zakladana.
+    assert math.isnan(float("nan") / 2.0), "NaN musi propagowac przez dzialanie"
+    assert math.isfinite(1.0 / float("inf")), "nieskonczonosc jest POCHLANIANA przez dzielenie"
+
+    assert not guard.is_not_a_number_literal(ast.parse('float("inf")', mode="eval").body)
+    assert guard.is_numeric(ast.parse('float("inf")', mode="eval").body)
+    # Warianty zapisu tej samej wartosci — regula nie moze ich przepuscic.
+    for zapis in ('float("inf")', 'float("-inf")', 'float("Infinity")', 'float("INF")'):
+        assert guard.is_numeric(ast.parse(zapis, mode="eval").body), zapis
+    # NaN w kazdym zapisie ZOSTAJE uczciwym meldunkiem braku (druga polowa pary).
+    for zapis in ('float("nan")', 'float("NaN")', 'float(" nan ")'):
+        assert not guard.is_numeric(ast.parse(zapis, mode="eval").body), zapis

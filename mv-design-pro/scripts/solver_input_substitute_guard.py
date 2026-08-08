@@ -50,11 +50,23 @@ Dwa warunki musza zajsc RAZEM i oba sa czytane Z KODU, nie z listy w bramce:
    arytmetyczne, `float/int/abs/max/min/round`. Galaz `None` NIE jest trafieniem,
    bo `None` to wlasnie uczciwy meldunek braku; napis i wartosc logiczna tez nie,
    bo nie wchodza do arytmetyki fizyki. NIE JEST TEZ trafieniem jawna NIE-LICZBA
-   `float("nan")` / `float("inf")` (`is_not_a_number_literal`): NaN nie moze udawac
-   pomiaru, bo kazde dzialanie na nim daje NaN, a warstwa wiarygodnosci lapie go
-   jako wynik niefizyczny — to meldunek braku w typie liczbowym. Rozroznienie jest
-   strukturalne (argument `float` jest napisem nieliczbowym), nie lista wyjatkow;
+   `float("nan")` (`is_not_a_number_literal`): NaN nie moze udawac pomiaru, bo
+   kazde dzialanie na nim daje NaN, a warstwa wiarygodnosci lapie go jako wynik
+   niefizyczny — to meldunek braku w typie liczbowym. Rozroznienie jest
+   strukturalne (argument `float` jest napisem „nan"), nie lista wyjatkow;
    `float(base_p)` — konwersja realnej danej — nadal jest liczba.
+
+   NIESKONCZONOSC JEST TRAFIENIEM (zawezone przy odbiorze rundy 4, 2026-08-08).
+   Regula obejmowala pierwotnie takze `float("inf")` z uzasadnieniem „kazde
+   dzialanie daje NaN/inf". Uzasadnienie jest prawdziwe dla NaN i FALSZYWE dla
+   nieskonczonosci — dzielenie ja POCHLANIA. Iniekcja nadzorcy w pliku w zakresie
+   skanu (`power_flow_newton.py`): `gen.internal_impedance_pu or float("inf")`,
+   a nastepnie `1.0 / impedancja` daje `0.0`, dla ktorego `math.isfinite` jest
+   prawda — czyli liczbe udajaca pomiar, przepuszczana przez `_finite`. Bramka
+   meldowala wtedy RC=0. Ten sam wzorzec zyje w repozytorium: tabela wspolczynnika
+   mu w `machine_sc_iec60909.py` (w. 75) uzywa `float("inf")` tam, gdzie
+   `e^{-0.38 I''_k/I_r}` daje 0,0. Zawezenie kosztowalo ZERO nowych pozycji
+   budzetu — zadne zywe `or float("inf")` na polu kontraktu nie istnieje.
    Pomiar tej granicy: bez warunku liczbowosci skan warstwy solverow daje 40
    trafien, z czego 26 to formy UCZCIWE albo niefizyczne (`... else None`, nazwa
    do wyswietlenia, flaga `in_service`, sposob uziemienia jako napis) — budzet,
@@ -499,15 +511,33 @@ def nested_contract_field(expr: ast.expr, fields: set[str]) -> str | None:
 
 
 def is_not_a_number_literal(expr: ast.expr) -> bool:
-    """Czy wyrazenie to jawna NIE-LICZBA: `float("nan")` / `float("inf")`.
+    """Czy wyrazenie to jawna NIE-LICZBA: `float("nan")`. WYLACZNIE NaN.
 
-    NaN i nieskonczonosc sa jedynymi wartosciami „liczbowymi", ktore NIE MOGA
-    udawac pomiaru: kazde dzialanie na nich daje NaN/inf, a warstwa wiarygodnosci
-    analiz (`_finite` w `v126_academic.py`) lapie je jako wynik niefizyczny.
-    Podstawienie NaN jest wiec forma MELDUNKU BRAKU, a nie zmyslonej wielkosci —
-    tak samo jak `None`, tylko w typie liczbowym.
+    NaN nie moze udawac pomiaru: kazde dzialanie na nim daje NaN, a warstwa
+    wiarygodnosci analiz (`_finite` w `v126_academic.py`) lapie go jako wynik
+    niefizyczny. Podstawienie NaN jest wiec forma MELDUNKU BRAKU, a nie zmyslonej
+    wielkosci — tak samo jak `None`, tylko w typie liczbowym.
 
-    Rozroznienie jest STRUKTURALNE (argument `float` jest napisem nieliczbowym),
+    NIESKONCZONOSC NIE MA TEJ WLASNOSCI — zawezone przy odbiorze rundy 4
+    (2026-08-08). Regula obejmowala pierwotnie takze `float("inf")`, z tym samym
+    uzasadnieniem („kazde dzialanie daje NaN/inf"). Uzasadnienie jest prawdziwe
+    dla NaN i FALSZYWE dla nieskonczonosci: dzielenie ja POCHLANIA i daje wynik
+    SKONCZONY, ktory przechodzi przez `_finite` jak pomiar.
+
+    POMIAR NADZORCY (iniekcja w `power_flow_newton.py`, plik w zakresie skanu):
+
+        impedancja = gen.internal_impedance_pu or float("inf")
+        return 1.0 / impedancja        # -> 0.0, math.isfinite(...) == True
+
+    Bramka meldowala RC=0. Zero jako „impedancja wewnetrzna nieobecna" jest
+    dokladnie ta klasa, ktora ta bramka zwalcza — liczba udajaca pomiar.
+    Ten sam wzorzec zyje w repozytorium: `machine_sc_iec60909.py` w. 75 uzywa
+    `float("inf")` w tabeli wspolczynnika mu, gdzie `e^{-0.38 I''_k/I_r}` przy
+    nieskonczonosci daje 0,0 — wartosc skonczona i uzyta dalej.
+
+    Przypiete `test_solver_input_substitute_guard.py` (NaN uczciwy / inf gryzie).
+
+    Rozroznienie pozostaje STRUKTURALNE (argument `float` jest napisem „nan"),
     a nie lista wyjatkow. `float(base_p)` — konwersja realnej danej — pozostaje
     liczba i nadal jest trafieniem, gdy stoi w galezi zapasowej.
     """
@@ -519,7 +549,7 @@ def is_not_a_number_literal(expr: ast.expr) -> bool:
     if not isinstance(arg, ast.Constant) or not isinstance(arg.value, str):
         return False
     tekst = arg.value.strip().lower().lstrip("+-")
-    return tekst in {"nan", "inf", "infinity"}
+    return tekst == "nan"
 
 
 def is_numeric(expr: ast.expr) -> bool:
