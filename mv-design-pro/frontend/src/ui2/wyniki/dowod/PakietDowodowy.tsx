@@ -140,7 +140,14 @@ export function PakietDowodowy({ runId, akcjaBrak }: PakietDowodowyProps) {
         <div className="mvd-dowod-latex-akcje">
           {wieleP && (
             <label className="mvd-dowod-pakiet-punkt">
-              <span className="mvd-dowod-zakres-etyk">{T.pakietPunkt}</span>
+              {/*
+                Etykieta wyboru pochodzi z SERWERA: dla pakietów zwarciowych to
+                punkt zwarcia, dla pakietu rozpływu — odcinek dla spadku napięcia.
+                Zapas z `strings` służy wyłącznie odpowiedzi bez tego pola.
+              */}
+              <span className="mvd-dowod-zakres-etyk">
+                {dane.punkty_etykieta_pl ?? T.pakietPunkt}
+              </span>
               <select
                 className="mvd-dowod-pakiet-wybor"
                 data-testid="mvd-dowod-pakiet-punkt"
