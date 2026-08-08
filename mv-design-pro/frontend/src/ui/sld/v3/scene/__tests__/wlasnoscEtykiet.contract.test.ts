@@ -634,16 +634,25 @@ describe('BLOK-LATERAL-WLASNOSC §6b — rozdzielenie rodzaju nie osierociło wy
     expect(glowice.length).toBeGreaterThan(50);
     for (const head of glowice) {
       const ref = head.meta?.ownerRef;
-      expect(ref, 'głowica kablowa bez właściciela — `#termination` zbudowałby ref zastępczy').toBeTruthy();
+      // Bez właściciela podpis zakończenia toru NIE POWSTAJE (dawny zapas
+      // `?? 'nieznane-pole'` fabrykował ref i został usunięty przy tej karcie —
+      // reguła KLASA §5). Ten pin trzyma przesłankę: głowice mają właścicieli.
+      expect(ref, 'głowica kablowa bez właściciela — podpis zakończenia toru nie powstanie').toBeTruthy();
       expect(
         odcinki.has(String(ref)),
         `ref głowicy ${ref} JEST narysowanym odcinkiem — podpis zakończenia toru celowałby w aparat przy refie odcinka`,
       ).toBe(false);
     }
-    // A jeśli fixtura kiedyś taką etykietę wyprodukuje, ma spełniać obie rzeczy.
+    // A jeśli fixtura kiedyś taką etykietę wyprodukuje, ma spełniać obie rzeczy
+    // ORAZ nieść ref, który rysunek naprawdę niesie (zero fabrykacji).
+    const refyRysunku = new Set<string>();
+    for (const sym of scene.symbols) if (sym.meta?.ownerRef) refyRysunku.add(sym.meta.ownerRef);
     for (const label of scene.labels.filter((l) => l.ownerRef.endsWith('#termination'))) {
       expect(label.ownerKind).toBe('port-caption');
       expect(odcinki.has(bazaRefu(label.ownerRef))).toBe(false);
+      expect(refyRysunku.has(bazaRefu(label.ownerRef))).toBe(true);
     }
+    // ZAKAZ FABRYKACJI wprost: żadna etykieta sceny nie niesie refu zastępczego.
+    expect(scene.labels.filter((l) => l.ownerRef.startsWith('nieznane'))).toHaveLength(0);
   });
 });
