@@ -638,6 +638,126 @@ def _seed_enm_rozplyw(
     )
 
 
+def _seed_enm_rozplyw_bez_odcinkow(case_id: str) -> None:
+    """Sieć 110/15 kV BEZ ani jednej linii i ani jednego kabla (GPZ → TR → odbiór).
+
+    Cecha brzegowa pakietu zbiorczego: bilans mocy i straty opisują całą sieć i
+    NALEŻĄ SIĘ projektantowi także wtedy, gdy nie ma czego udokumentować dowodem
+    spadku napięcia. Bez tej sieci nic nie pilnowałoby, że brak odcinków nie
+    odbiera całego pakietu (rodzaj rozpływu ma punkt NIEOBOWIĄZKOWY).
+    """
+    from enm.models import EnergyNetworkModel
+    from enm.store import set_enm
+
+    set_enm(
+        case_id,
+        EnergyNetworkModel.model_validate(
+            {
+                "header": {
+                    "name": "Rozpływ bez odcinków",
+                    "enm_version": "1.0",
+                    "defaults": {"frequency_hz": 50, "unit_system": "SI"},
+                    "created_at": "2024-01-01T00:00:00Z",
+                    "updated_at": "2024-01-01T00:00:00Z",
+                    "revision": 1,
+                    "hash_sha256": "",
+                },
+                "buses": [
+                    {
+                        "id": "00000000-0000-0000-0000-000000000701",
+                        "ref_id": "b-wn",
+                        "name": "110 kV",
+                        "tags": [],
+                        "meta": {},
+                        "voltage_kv": 110,
+                        "phase_system": "3ph",
+                    },
+                    {
+                        "id": "00000000-0000-0000-0000-000000000702",
+                        "ref_id": "b-sn",
+                        "name": "Szyna SN",
+                        "tags": [],
+                        "meta": {},
+                        "voltage_kv": 15,
+                        "phase_system": "3ph",
+                    },
+                ],
+                "branches": [],
+                "transformers": [
+                    {
+                        "id": "00000000-0000-0000-0000-000000000710",
+                        "ref_id": "tr-gpz",
+                        "name": "TR 110/15",
+                        "tags": [],
+                        "meta": {},
+                        "hv_bus_ref": "b-wn",
+                        "lv_bus_ref": "b-sn",
+                        "sn_mva": 25.0,
+                        "uhv_kv": 110.0,
+                        "ulv_kv": 15.0,
+                        "uk_percent": 12.0,
+                        "pk_kw": 120.0,
+                        "catalog_ref": "tr-wn-sn-110-15-25mva-yd11",
+                        "catalog_namespace": "TRAFO_SN_NN",
+                    }
+                ],
+                "sources": [
+                    {
+                        "id": "00000000-0000-0000-0000-000000000704",
+                        "tags": [],
+                        "meta": {},
+                        **gpz_source_record(
+                            ref_id="src-gpz",
+                            name="Zasilanie GPZ",
+                            bus_ref="b-wn",
+                            voltage_kv=110.0,
+                            sk3_mva=3000.0,
+                            rx_ratio=0.10,
+                        ),
+                    }
+                ],
+                "loads": [
+                    {
+                        "id": "00000000-0000-0000-0000-000000000720",
+                        "ref_id": "load-sn",
+                        "name": "Odbior SN",
+                        "tags": [],
+                        "meta": {},
+                        "bus_ref": "b-sn",
+                        "p_mw": 6.0,
+                        "q_mvar": 2.0,
+                    }
+                ],
+                "generators": [],
+                "shunt_capacitors": [],
+                "substations": [],
+                "bays": [],
+                "junctions": [],
+                "corridors": [],
+                "measurements": [],
+                "protection_assignments": [],
+                "branch_points": [],
+            }
+        ),
+    )
+
+
+def _artefakt_biegu(run_id: str) -> dict:
+    """Zamrożony artefakt wyniku biegu — ŹRÓDŁO ODNIESIENIA dla asercji.
+
+    Czytamy go z magazynu biegów, a nie z pakietu: pin ma porównać dowód z tym,
+    co ZAPISAŁ tor obliczeniowy, więc obie strony porównania nie mogą pochodzić
+    z tego samego pliku.
+    """
+    from uuid import UUID
+
+    from enm.canonical_analysis import get_run
+
+    run = get_run(UUID(run_id))
+    assert run is not None and run.raw_result is not None
+    return run.raw_result
+
+
 def _dowod_z_pakietu(content: bytes) -> dict:
     with zipfile.ZipFile(io.BytesIO(content)) as archiwum:
         return json.loads(archiwum.read("proof_pack/proof.json").decode("utf-8"))
@@ -906,6 +1026,202 @@ def test_pakiet_rozplywu_bez_oznaczen_roboczych_w_CALEJ_zawartosci(
                 sprawdzone += 1
     # Zapadka na pusty zbiór: pin bez plików przechodziłby zawsze.
     assert sprawdzone >= 12, sprawdzone
+
+
+# ---------------------------------------------------------------------------
+# Straty i spadek napięcia w pakiecie zbiorczym (karta PACK-BEZ-KONSUMENTA)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(("falowniki", "zip_model", "oltc"), _WARIANTY_ROZPLYWU)
+def test_dowod_strat_zgadza_sie_z_wynikiem_biegu_w_kazdym_wariancie(
+    client: TestClient, falowniki: bool, zip_model: bool, oltc: bool
+) -> None:
+    """Straty w dowodzie to straty Z WYNIKU, a nie policzone po raz drugi.
+
+    Ostrze iloczynu cech: regulacja falownika, wielomian ZIP i zaczepy zmieniają
+    moc faktycznie wstrzykniętą, więc zmieniają też straty. Gdyby dowód składał
+    je z modelu albo liczył od nowa, rozjechałby się z tabelą wyników w co
+    najmniej siedmiu z ośmiu wariantów.
+    """
+    case_id = str(uuid4())
+    _seed_enm_rozplyw(case_id, falowniki=falowniki, zip_model=zip_model, oltc=oltc)
+    run_id = _wykonaj_bieg(client, case_id, "LOAD_FLOW")
+
+    pakiet = client.get(f"/api/analysis-runs/{run_id}/pakiet-dowodowy")
+    assert pakiet.status_code == 200, pakiet.text
+    dowod = _dowod_z_pakietu_zbiorczego(pakiet.content, "straty")
+
+    podsumowanie = _artefakt_biegu(run_id)["result_v1"]["summary"]
+    kluczowe = dowod["summary"]["key_results"]
+
+    assert kluczowe["p_losses_total_mw"]["value"] == pytest.approx(
+        podsumowanie["total_losses_p_mw"], abs=1e-12
+    )
+    assert kluczowe["q_losses_total_mvar"]["value"] == pytest.approx(
+        podsumowanie["total_losses_q_mvar"], abs=1e-12
+    )
+    assert kluczowe["branch_count"]["value"] >= 1.0
+
+
+@pytest.mark.parametrize(
+    ("etykieta", "seed"),
+    [
+        # ILOCZYN CECH podstawy odniesienia: początek odcinka NA napięciu
+        # znamionowym (kabel od szyny bilansującej) oraz PONIŻEJ niego (szyna SN
+        # za transformatorem). Druga sieć jest tu konieczna — pierwszy pomiar tej
+        # karty wypadł tylko na pierwszej i wyglądał na dowód pełnej zgodności.
+        ("poczatek na napieciu znamionowym", "_seed_enm"),
+        ("poczatek ponizej napiecia znamionowego", "_seed_enm_rozplyw"),
+    ],
+)
+def test_spadek_z_dowodu_zgadza_sie_ze_spadkiem_policzonym_przez_solver(
+    client: TestClient, etykieta: str, seed: str
+) -> None:
+    """ΔU z dowodu a ΔU z napięć węzłowych biegu — zgodność ZMIERZONA.
+
+    Wzór dowodu (ΔU = (R·P + X·Q)/U_n²) jest klasycznym przybliżeniem: pomija
+    składową poprzeczną, którą rozpływ zna dokładnie. Deklaracja z docstringu
+    warstwy wiązania („sam spadek zgadza się z biegiem") MUSI mieć strażnika —
+    inaczej byłaby fałszywą pewnością.
+
+    Zmierzone: 0,4 V przy ΔU = 6,36 % (sieć 110/15 kV) i poniżej 0,001 V przy
+    ΔU = 0,03 % (kabel SN). Próg 1 V wynika z tego pomiaru, nie z wygody:
+    większy rozjazd znaczyłby, że dowód opisuje inny przebieg niż tabela wyników.
+    """
+    case_id = str(uuid4())
+    globals()[seed](case_id)
+    run_id = _wykonaj_bieg(client, case_id, "LOAD_FLOW")
+
+    pakiet = client.get(f"/api/analysis-runs/{run_id}/pakiet-dowodowy")
+    assert pakiet.status_code == 200, pakiet.text
+    dowod = _dowod_z_pakietu_zbiorczego(pakiet.content, "spadek_napiecia")
+
+    delta_u_proc = dowod["summary"]["key_results"]["delta_u_total_percent"]["value"]
+
+    surowy = _artefakt_biegu(run_id)
+    wezly = surowy["graph"]["nodes"]
+    pary = (dowod["header"]["source_bus"], dowod["header"]["target_bus"])
+    dopasowane = [
+        opis
+        for opis in surowy["graph"]["branches"].values()
+        if (
+            wezly[opis["from_node_id"]]["element_id"],
+            wezly[opis["to_node_id"]]["element_id"],
+        )
+        == pary
+    ]
+    assert len(dopasowane) == 1, ("dowód wskazuje DOKŁADNIE jeden odcinek biegu", etykieta)
+    opis = dopasowane[0]
+    u_n_kv = wezly[opis["from_node_id"]]["voltage_level"]
+    spadek_biegu_kv = (
+        surowy["node_voltage_kv"][opis["from_node_id"]]
+        - surowy["node_voltage_kv"][opis["to_node_id"]]
+    )
+
+    assert 0.0 < delta_u_proc < 10.0, (delta_u_proc, etykieta)
+    spadek_dowodu_kv = delta_u_proc / 100.0 * u_n_kv
+    assert abs(spadek_dowodu_kv - spadek_biegu_kv) * 1000.0 < 1.0, (
+        etykieta,
+        spadek_dowodu_kv,
+        spadek_biegu_kv,
+    )
+
+
+def test_wskazany_odcinek_daje_inny_dowod_spadku_niz_domyslny(client: TestClient) -> None:
+    """Wybór odcinka steruje TREŚCIĄ dowodu, a nie tylko nazwą pliku."""
+    case_id = str(uuid4())
+    _seed_enm(case_id)
+    run_id = _wykonaj_bieg(client, case_id, "LOAD_FLOW")
+
+    dostepnosc = client.get(f"/api/analysis-runs/{run_id}/pakiet-dowodowy/dostepnosc").json()
+    assert dostepnosc["punkty"], dostepnosc
+    odcinek = dostepnosc["punkty"][0]["target_id"]
+
+    domyslny = client.get(f"/api/analysis-runs/{run_id}/pakiet-dowodowy")
+    wskazany = client.get(f"/api/analysis-runs/{run_id}/pakiet-dowodowy", params={"punkt": odcinek})
+
+    assert domyslny.status_code == wskazany.status_code == 200
+    # Ta sieć ma jeden odcinek, więc wskazanie go WPROST musi dać ten sam plik —
+    # inaczej „domyślny" znaczyłoby coś innego niż „pierwszy z listy".
+    assert domyslny.content == wskazany.content
+
+    dowod = _dowod_z_pakietu_zbiorczego(wskazany.content, "spadek_napiecia")
+    assert dowod["header"]["source_bus"] == "bus-main"
+    assert dowod["header"]["target_bus"] == "bus-odbior"
+
+
+def test_rozplyw_bez_odcinkow_ma_pakiet_ale_bez_dowodu_spadku(client: TestClient) -> None:
+    """Brak linii i kabli NIE odbiera projektantowi bilansu mocy ani strat.
+
+    Zapadka na pusty zbiór po stronie danych: gdyby rodzaj rozpływu wymagał punktu
+    tak jak rodzaje zwarciowe, ta sieć straciłaby CAŁY pakiet — a nie ma w niej
+    nic wadliwego, po prostu nie ma czego udokumentować dowodem spadku.
+    """
+    case_id = str(uuid4())
+    _seed_enm_rozplyw_bez_odcinkow(case_id)
+    run_id = _wykonaj_bieg(client, case_id, "LOAD_FLOW")
+
+    dostepnosc = client.get(f"/api/analysis-runs/{run_id}/pakiet-dowodowy/dostepnosc")
+    assert dostepnosc.status_code == 200, dostepnosc.text
+    payload = dostepnosc.json()
+    assert payload["dostepny"] is True, payload["powod_pl"]
+    assert payload["punkty"] == []
+    # Uczciwy stan zerowy: powód braku dowodu spadku jest NAZWANY w opisie
+    # zawartości, a nie przemilczany.
+    assert any("Bez dowodu spadku napięcia" in poz for poz in payload["zawartosc_pl"])
+
+    pakiet = client.get(f"/api/analysis-runs/{run_id}/pakiet-dowodowy")
+    assert pakiet.status_code == 200, pakiet.text
+    assert _wpisy_zip(pakiet.content) == {
+        "pakiet_dowodowy/rozplyw.zip",
+        "pakiet_dowodowy/straty.zip",
+    }
+    assert _dowod_z_pakietu_zbiorczego(pakiet.content, "straty")["summary"]["key_results"]
+
+
+def test_trzy_dowody_pakietu_maja_ROZNE_tozsamosci_artefaktow(client: TestClient) -> None:
+    """Dowody z jednego przebiegu nie mogą podawać się za ten sam artefakt.
+
+    Bez rozróżnika w ziarnie identyfikatora wszystkie trzy dostałyby ten sam
+    ``artifact_id`` i ``document_id`` — pakiet twierdziłby, że bilans, straty i
+    spadek napięcia to jeden i ten sam dokument.
+    """
+    case_id = str(uuid4())
+    _seed_enm_rozplyw(case_id)
+    run_id = _wykonaj_bieg(client, case_id, "LOAD_FLOW")
+
+    pakiet = client.get(f"/api/analysis-runs/{run_id}/pakiet-dowodowy")
+    assert pakiet.status_code == 200, pakiet.text
+    dowody = [
+        _dowod_z_pakietu_zbiorczego(pakiet.content, nazwa)
+        for nazwa in ("rozplyw", "straty", "spadek_napiecia")
+    ]
+
+    artefakty = {d["artifact_id"] for d in dowody}
+    dokumenty = {d["document_id"] for d in dowody}
+    assert len(artefakty) == 3, artefakty
+    assert len(dokumenty) == 3, dokumenty
+    # Znacznik czasu WSPÓLNY — wszystkie opisują ten sam przebieg.
+    assert len({d["created_at"] for d in dowody}) == 1
+
+
+def test_pakiet_zbiorczy_ze_wskazanym_odcinkiem_jest_deterministyczny(
+    client: TestClient,
+) -> None:
+    """Dwa pobrania tego samego przebiegu i odcinka = identyczny plik."""
+    case_id = str(uuid4())
+    _seed_enm_rozplyw(case_id)
+    run_id = _wykonaj_bieg(client, case_id, "LOAD_FLOW")
+    odcinek = client.get(f"/api/analysis-runs/{run_id}/pakiet-dowodowy/dostepnosc").json()[
+        "punkty"
+    ][0]["target_id"]
+
+    pierwszy = client.get(f"/api/analysis-runs/{run_id}/pakiet-dowodowy", params={"punkt": odcinek})
+    drugi = client.get(f"/api/analysis-runs/{run_id}/pakiet-dowodowy", params={"punkt": odcinek})
+
+    assert pierwszy.status_code == drugi.status_code == 200
+    assert pierwszy.content == drugi.content
 
 
 # ---------------------------------------------------------------------------
