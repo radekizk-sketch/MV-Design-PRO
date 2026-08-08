@@ -17,7 +17,14 @@
 
 const BAZA_PRZEBIEGOW = '/api/analysis-runs';
 
-/** Punkt zwarcia, dla którego serwer potrafi złożyć pakiet. */
+/**
+ * Wybór, dla którego serwer potrafi złożyć pakiet.
+ *
+ * Czym jest ten wybór, ROZSTRZYGA SERWER: dla pakietów zwarciowych punktem jest
+ * miejsce zwarcia, dla pakietu rozpływu — odcinek linii/kabla dokumentowany
+ * dowodem spadku napięcia. Ekran nie zna tej różnicy i nie ma jej znać; nazwę
+ * wyboru dostaje w `punkty_etykieta_pl`.
+ */
 export interface PunktPakietu {
   readonly target_id: string;
   readonly nazwa: string;
@@ -34,6 +41,14 @@ export interface DostepnoscPakietu {
   /** Powód braku pakietu po polsku; `null` gdy pakiet jest. */
   readonly powod_pl: string | null;
   readonly punkty: readonly PunktPakietu[];
+  /**
+   * Jak nazywa się wybór z `punkty` — po polsku, od serwera.
+   *
+   * ZERO ZGADYWANIA NAZWY: dawniej ekran miał zaszytą etykietę „Punkt zwarcia",
+   * co po dołożeniu pakietu rozpływu (wybór = ODCINEK) byłoby kłamstwem o tym,
+   * co użytkownik wskazuje. `null` = ten rodzaj pakietu nie ma wyboru.
+   */
+  readonly punkty_etykieta_pl: string | null;
   /** Co użytkownik dostaje w pobranym pliku (opis zawartości z serwera). */
   readonly zawartosc_pl: readonly string[];
 }
@@ -94,7 +109,7 @@ export function nazwaPlikuZOdpowiedzi(response: Response, runId: string): string
   return `pakiet_dowodowy__${runId.trim().slice(0, 8) || 'przebieg'}.zip`;
 }
 
-/** Pobiera pakiet dowodowy przebiegu (opcjonalnie dla wskazanego punktu zwarcia). */
+/** Pobiera pakiet dowodowy przebiegu (opcjonalnie dla wskazanego punktu/odcinka). */
 export async function pobierzPakiet(
   runId: string,
   punkt?: string | null,

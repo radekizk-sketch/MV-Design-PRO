@@ -34,6 +34,7 @@ const DOSTEPNY_3F: DostepnoscPakietu = {
     { target_id: 'wezel-a', nazwa: 'Szyna glowna' },
     { target_id: 'wezel-b', nazwa: 'Szyna odbioru' },
   ],
+  punkty_etykieta_pl: 'Punkt zwarcia',
   zawartosc_pl: ['Dowód w postaci danych (proof.json)', 'Źródło dokumentu (proof.tex)'],
 };
 
@@ -45,19 +46,37 @@ const DOSTEPNY_NIESYM: DostepnoscPakietu = {
 };
 
 /**
- * Rodzaj opisujący CAŁĄ sieć (rozpływ mocy, karta PACK-ROZPLYW): pakiet jest
- * dostępny, ale punktów NIE MA — i pusta lista nie oznacza tu braku danych.
- * Ten kształt odpowiedzi bramy pojawił się dopiero z pakietem rozpływu, więc
- * bez tego przypadku nic nie pilnowałoby zachowania sekcji przy `punkty: []`.
+ * Rozpływ w sieci BEZ odcinków linii/kabla (sama rozdzielnia z transformatorem):
+ * pakiet jest dostępny — bilans i straty opisują całą sieć — ale wyboru NIE MA.
+ * Pusta lista nie oznacza tu braku danych; bez tego przypadku nic nie
+ * pilnowałoby zachowania sekcji przy `punkty: []` (zapadka na pusty zbiór).
  */
-const DOSTEPNY_ROZPLYW: DostepnoscPakietu = {
+const DOSTEPNY_ROZPLYW_BEZ_ODCINKOW: DostepnoscPakietu = {
   run_id: 'run-1',
   dostepny: true,
   rodzaj: 'ROZPLYW_MOCY',
   rodzaj_pl: 'Rozpływ mocy (zbieżność, bilans mocy, zakres napięć)',
   powod_pl: null,
   punkty: [],
-  zawartosc_pl: ['Dowód w postaci danych (proof.json)', 'Źródło dokumentu (proof.tex)'],
+  punkty_etykieta_pl: 'Odcinek dla spadku napięcia',
+  zawartosc_pl: [
+    'Dowód rozpływu mocy: zbieżność, bilans P i Q, zakres napięć (rozplyw.zip)',
+    'Bez dowodu spadku napięcia — ten przebieg nie zawiera odcinka linii ani kabla.',
+  ],
+};
+
+/**
+ * Rozpływ z ODCINKAMI (karta PACK-BEZ-KONSUMENTA): wybór istnieje, ale nie jest
+ * punktem zwarcia. Ten przypadek pilnuje, że ekran bierze NAZWĘ wyboru z serwera
+ * — zaszyta etykieta „Punkt zwarcia" byłaby tu kłamstwem o tym, co użytkownik
+ * wskazuje.
+ */
+const DOSTEPNY_ROZPLYW_Z_ODCINKAMI: DostepnoscPakietu = {
+  ...DOSTEPNY_ROZPLYW_BEZ_ODCINKOW,
+  punkty: [
+    { target_id: 'odcinek-1', nazwa: 'Linia SN' },
+    { target_id: 'odcinek-2', nazwa: 'Kabel odbiorczy' },
+  ],
 };
 
 const BEZ_PAKIETU: DostepnoscPakietu = {
@@ -67,6 +86,7 @@ const BEZ_PAKIETU: DostepnoscPakietu = {
   rodzaj_pl: null,
   powod_pl: 'Ten rodzaj obliczenia nie ma jeszcze dedykowanego pakietu dowodowego.',
   punkty: [],
+  punkty_etykieta_pl: null,
   zawartosc_pl: [],
 };
 
@@ -221,11 +241,13 @@ describe('PakietDowodowy — pobranie realną ścieżką', () => {
     });
   });
 
-  it('pakiet całej sieci: bez wyboru punktu, a żądanie NIE niesie punktu', async () => {
-    // INTENCJA: pakiet rozpływu dokumentuje całą sieć. Serwer ODMAWIA żądania z
-    // punktem dla takiego rodzaju, więc doklejenie parametru „na wszelki wypadek"
-    // zamieniłoby działający przycisk w błąd 422 u projektanta.
-    zamontujFetch(DOSTEPNY_ROZPLYW);
+  it('rozpływ bez odcinków: bez wyboru, a żądanie NIE niesie punktu', async () => {
+    // INTENCJA ZACHOWANA: pusta lista wyborów nie może zamienić działającego
+    // przycisku w błąd 422 przez doklejenie parametru „na wszelki wypadek".
+    // Nośnikiem cechy jest dziś rozpływ w sieci bez linii i kabli — bilans mocy
+    // należy się projektantowi także wtedy, gdy nie ma czego udokumentować
+    // dowodem spadku napięcia.
+    zamontujFetch(DOSTEPNY_ROZPLYW_BEZ_ODCINKOW);
     render(<PakietDowodowy runId="run-1" />);
     await waitFor(() => expect(screen.getByTestId('mvd-dowod-pakiet')).toBeInTheDocument());
 
@@ -239,6 +261,25 @@ describe('PakietDowodowy — pobranie realną ścieżką', () => {
       expect(pobranie).toBeDefined();
       expect(pobranie).not.toContain('punkt=');
     });
+  });
+
+  it('rozpływ z odcinkami: nazwa wyboru pochodzi z SERWERA, nie z ekranu', async () => {
+    // Ekran nie zna różnicy między punktem zwarcia a odcinkiem i nie ma jej znać.
+    // Zaszyta etykieta „Punkt zwarcia" przy pakiecie rozpływu byłaby kłamstwem o
+    // tym, co użytkownik wskazuje — dlatego nazwa przychodzi z bramy.
+    zamontujFetch(DOSTEPNY_ROZPLYW_Z_ODCINKAMI);
+    render(<PakietDowodowy runId="run-1" />);
+    await waitFor(() => expect(screen.getByTestId('mvd-dowod-pakiet')).toBeInTheDocument());
+
+    const wybor = screen.getByTestId('mvd-dowod-pakiet-punkt');
+    expect(wybor).toBeInTheDocument();
+    expect(screen.getByText('Odcinek dla spadku napięcia')).toBeInTheDocument();
+    expect(screen.queryByText(T.pakietPunkt)).not.toBeInTheDocument();
+
+    await userEvent.selectOptions(wybor, 'odcinek-2');
+    await userEvent.click(screen.getByTestId('mvd-dowod-pakiet-pobierz'));
+
+    await waitFor(() => expect(zadania.some((u) => u.includes('punkt=odcinek-2'))).toBe(true));
   });
 
   it('odmowa serwera: komunikat błędu zamiast cichego niepowodzenia', async () => {
