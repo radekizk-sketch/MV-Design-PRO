@@ -183,7 +183,7 @@ describe('BLOK-LATERAL-WLASNOSC §1 — podpis odcinka nosi ref ODCINKA, który 
 
 /**
  * CECHY BLOKU — osie iloczynu §3. To NIE jest podział rozłączny: „stacja
- * przelotowa" i „stacja z transformatorem" to dwie NIEZALEŻNE osie i blok
+ * magistrali" i „stacja z transformatorem" to dwie NIEZALEŻNE osie i blok
  * zwykle ma obie naraz. Zbiór cech (a nie jedna kategoria) jest tu jedyną
  * uczciwą formą — pomiar na fiksturze: 54 bloki = 1 GPZ + 12 stacji magistrali
  * + 41 stacji odgałęzień, a transformator ma KAŻDA z 53 stacji. Gdyby cechy
@@ -210,6 +210,8 @@ const CECHY: readonly CechaBloku[] = [
   'stacja rozpoczynająca odgałęzienie',
 ];
 
+let pamiecRozpoczynajacych: ReadonlySet<string> | null = null;
+
 /**
  * Stacje, do których WCHODZI zejście lateralu — czyli DOKŁADNIE te bloki, które
  * przed kartą były rozciągane cudzym podpisem (12 sztuk, skrajnie 512×2222
@@ -217,9 +219,11 @@ const CECHY: readonly CechaBloku[] = [
  * portem wejściowym stacji, więc leży w jej prostokącie; test wymaga, żeby
  * zawierał go DOKŁADNIE JEDEN blok (gdyby zawierało go zero albo dwa, byłby to
  * regres rysunku, nie luka wyroczni).
+ *
+ * Liczone LENIWIE i zapamiętywane: gdyby stało w inicjalizacji modułu, iniekcja
+ * przywracająca dawną własność wywalałaby CAŁY plik na zbiorze testów („no
+ * tests") zamiast zapalać nazwane wyrocznie §1/§2/§4/§6.
  */
-let pamiecRozpoczynajacych: ReadonlySet<string> | null = null;
-
 function stacjeRozpoczynajaceOdgalezienie(): ReadonlySet<string> {
   if (pamiecRozpoczynajacych) return pamiecRozpoczynajacych;
   const scene = sceneByLod[2];
