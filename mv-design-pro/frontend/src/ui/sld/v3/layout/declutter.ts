@@ -52,6 +52,10 @@ export const LABEL_PRIORITY: Readonly<Record<OwnerKind, number>> = {
   apparatus: 60, // identyfikator aparatu (Q/QE/T)
   'field-role': 55, // rola pola (pole liniowe/…)
   'port-caption': 40, // podpis kierunku (kier./odg.)
+  // BLOK-LATERAL-WLASNOSC: TA SAMA waga co `port-caption`, którą ten rodzaj
+  // dotąd pożyczał — rozdział dotyczy celu kliknięcia, nie pierwszeństwa w
+  // odgruzowywaniu, więc wynik declutteru zostaje CO DO BAJTU ten sam.
+  'segment-endpoint': 40, // „koniec otwarty" / odsyłacz ciągu dalszego
   'segment-span': 30, // PARAMETRY przęsła poziomego (typ·przekrój·długość)
   'segment-lateral': 30, // PARAMETRY przęsła pionowego
   'lv-load': 25, // odbiór zagregowany nN / granica modelu
