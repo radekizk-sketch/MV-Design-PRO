@@ -24,10 +24,24 @@
  *      `chainLengths` przesuwa slot na ostatni udział przęsła; `n=1` niczego
  *      nie zmienia (norma).
  *  (4) „Podpis przęsła leży na kablu, który opisuje" — na CAŁEJ scenie
- *      referencyjnej × {L0, L1, L2}: prostokąt każdego podpisu przecina
- *      zakres X polilinii swojego właściciela (z kawałkami `#tee-N`, bo to
- *      TEN SAM kabel za kropką węzła), a środek podpisu leży w tym zakresie.
+ *      referencyjnej × {L0, L1, L2}, DWIEMA jawnie rozróżnionymi miarami
+ *      (runda 2, uwaga nadzorcy: zdanie w raporcie i asercja w teście muszą
+ *      znaczyć to samo):
+ *      (M1) ODDALENIE = 0 — prostokąt podpisu i polilinia właściciela (z
+ *           kawałkami `#tee-N`, bo to TEN SAM kabel za kropką węzła) zachodzą
+ *           na siebie w osi X, a środek napisu leży na kablu ALBO napis
+ *           pokrywa kabel w całości;
+ *      (M2) NADMIAR PONAD MINIMUM GEOMETRYCZNE = 0 — samo WYSTAWANIE poza
+ *           kawałek jest nieuniknione, gdy napis jest od niego dłuższy (na
+ *           tej fixturze 362 j.św. napisu na 56 j.św. kawałka), i ma wtedy
+ *           minimum `szer. napisu − dł. kawałka`. Wyrocznią jest NADMIAR
+ *           ponad to minimum, bo tylko on jest sterowalny.
  *      Zapadka na pusty zbiór: L2 MUSI mieć niezerową liczbę podpisów.
+ *  (6) „Laterale są tą zmianą nietknięte" — ZAPADKA na osi Y: podpis pionowy
+ *      stoi przy swojej linii i nie wystaje ponad minimum geometryczne.
+ *      Karta nie rusza `resolveSegmentLateralLabel`, ale rusza WSPÓLNY kod
+ *      slotów (`columns.ts`, `segments.ts`, `measure.ts`), więc deklaracja
+ *      „laterale czyste" bez pinu byłaby fałszywą pewnością (KLASA §4).
  *  (5) „Etykieta ustępuje kanałowi WZDŁUŻ własnego kabla, a nie rozpycha
  *      arkusza" — `insertColumnChannels` z przekazanymi stacjami nie rusza
  *      kolumn tam, gdzie wystarczy przesunąć slot; przesunięty slot zostaje
@@ -293,6 +307,23 @@ function zakresWlasciciela(scene: SceneV3, ref: string): { min: number; max: num
   return Number.isFinite(min) ? { min, max } : null;
 }
 
+/** Zakres Y polilinii niosącej dany ref — bliźniak `zakresWlasciciela`, tylko
+ *  w drugiej osi. Podpis lateralu jest ROTOWANY i biegnie WZDŁUŻ pionu, więc
+ *  „wzdłuż swojego odcinka" znaczy dla niego to samo w Y, co dla przęsła w X. */
+function zakresWlascicielaY(scene: SceneV3, ref: string): { min: number; max: number } | null {
+  let min = Number.POSITIVE_INFINITY;
+  let max = Number.NEGATIVE_INFINITY;
+  for (const g of scene.segments) {
+    const owner = g.meta?.ownerRef?.replace(/#tee-\d+$/, '');
+    if (owner !== ref) continue;
+    for (const p of g.points) {
+      min = Math.min(min, p.y);
+      max = Math.max(max, p.y);
+    }
+  }
+  return Number.isFinite(min) ? { min, max } : null;
+}
+
 describe('SLOT-DRYF-PRZĘSŁA §3 — podpis przęsła stoi na swoim kablu (scena referencyjna)', () => {
   for (const lod of LODY) {
     it(`L${lod}: prostokąt i środek KAŻDEGO podpisu przęsła leżą w zakresie X jego kabla`, () => {
@@ -328,6 +359,17 @@ describe('SLOT-DRYF-PRZĘSŁA §3 — podpis przęsła stoi na swoim kablu (scen
           srodekNaKablu || napisPokrywaKabel,
           `${l.text}: podpis [${x0}..${x1}] nie leży na swoim kablu [${kabel!.min}..${kabel!.max}]`,
         ).toBe(true);
+        // (M2) Wystawanie NIE PRZEKRACZA minimum geometrycznego. Minimum jest
+        // niezerowe tylko wtedy, gdy napis jest DŁUŻSZY od kawałka — wtedy
+        // osiąga się je, pokrywając kawałek w całości. Każdy nadmiar ponad tę
+        // wartość to napis odsunięty od swojego kabla bez powodu.
+        const wystawanie = Math.max(0, kabel!.min - x0) + Math.max(0, x1 - kabel!.max);
+        const minimum = Math.max(0, l.rect.width - (kabel!.max - kabel!.min));
+        expect(
+          wystawanie,
+          `${l.text}: wystawanie ${wystawanie} ponad minimum geometryczne ${minimum} `
+            + `(napis ${l.rect.width}, kawałek ${kabel!.max - kabel!.min})`,
+        ).toBeLessThanOrEqual(minimum);
       }
     });
   }
@@ -345,6 +387,11 @@ describe('SLOT-DRYF-PRZĘSŁA §3 — podpis przęsła stoi na swoim kablu (scen
     const srodek = (x0 + x1) / 2;
     expect(srodek >= kabel.min && srodek <= kabel.max).toBe(false);
     expect(x0 <= kabel.min && x1 >= kabel.max).toBe(false);
+    // …i ta sama kontrola dla (M2): przesunięcie o własną szerokość MUSI
+    // wypchnąć wystawanie ponad minimum geometryczne.
+    const wystawanie = Math.max(0, kabel.min - x0) + Math.max(0, x1 - kabel.max);
+    const minimum = Math.max(0, podpis!.rect.width - (kabel.max - kabel.min));
+    expect(wystawanie).toBeGreaterThan(minimum);
   });
 });
 
@@ -417,5 +464,56 @@ describe('SLOT-DRYF-PRZĘSŁA §4 — kanał zejścia przesuwa etykietę wzdłu�
     const wynik = insertColumnChannels(columns, [kanal], 'test', stations);
     expect(wynik.result.columns[1].x).toBeGreaterThan(kolumna.x);
     expect(wynik.result.totalWidth).toBeGreaterThan(columns.totalWidth);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// (6) LATERALE — ZAPADKA. Karta nie rusza `resolveSegmentLateralLabel`, ale
+// rusza WSPÓLNY kod slotów. Deklaracja „laterale czyste" bez pinu = fałszywa
+// pewność (KLASA §4).
+// ---------------------------------------------------------------------------
+
+describe('SLOT-DRYF-PRZĘSŁA §5 — podpis lateralu stoi przy swojej linii (oś Y)', () => {
+  for (const lod of LODY) {
+    it(`L${lod}: żaden podpis lateralu nie odsuwa się od swojego pionu ani nie wystaje ponad minimum`, () => {
+      const scene = buildSceneV3(enm, lod);
+      const podpisy = scene.labels.filter((l) => l.ownerKind === 'segment-lateral');
+      // ZAPADKA NA PUSTY ZBIÓR: laterale rysują się na L2 (12 na tej
+      // fixturze); na L0/L1 zbiór jest pusty Z DEFINICJI.
+      if (lod === 2) expect(podpisy.length).toBeGreaterThanOrEqual(10);
+      else expect(podpisy).toEqual([]);
+
+      for (const l of podpisy) {
+        const ref = l.ownerRef.replace(/#lateral-label$/, '').replace(/#segment-label$/, '');
+        const pion = zakresWlascicielaY(scene, ref);
+        expect(pion, `pion dla ${l.ownerRef}`).not.toBeNull();
+        const y0 = l.rect.y;
+        const y1 = l.rect.y + l.rect.height;
+        const srodek = (y0 + y1) / 2;
+        // (M1) środek napisu leży na swoim pionie ALBO napis pokrywa go w całości.
+        expect(
+          (srodek >= pion!.min && srodek <= pion!.max) || (y0 <= pion!.min && y1 >= pion!.max),
+          `${l.text}: podpis lateralu [${y0}..${y1}] nie leży przy swoim pionie [${pion!.min}..${pion!.max}]`,
+        ).toBe(true);
+        // (M2) wystawanie nie przekracza minimum geometrycznego.
+        const wystawanie = Math.max(0, pion!.min - y0) + Math.max(0, y1 - pion!.max);
+        const minimum = Math.max(0, l.rect.height - (pion!.max - pion!.min));
+        expect(wystawanie, `${l.text}: wystawanie lateralu ponad minimum`).toBeLessThanOrEqual(minimum);
+      }
+    });
+  }
+
+  it('CZUŁOŚĆ wyroczni lateralu: podpis odsunięty o własną wysokość MUSI oblać', () => {
+    const scene = buildSceneV3(enm, 2);
+    const podpis = scene.labels.find((l) => l.ownerKind === 'segment-lateral');
+    expect(podpis).toBeDefined();
+    const ref = podpis!.ownerRef.replace(/#lateral-label$/, '').replace(/#segment-label$/, '');
+    const pion = zakresWlascicielaY(scene, ref)!;
+    const y0 = pion.max + podpis!.rect.height;
+    const y1 = y0 + podpis!.rect.height;
+    const srodek = (y0 + y1) / 2;
+    expect((srodek >= pion.min && srodek <= pion.max) || (y0 <= pion.min && y1 >= pion.max)).toBe(false);
+    const wystawanie = Math.max(0, pion.min - y0) + Math.max(0, y1 - pion.max);
+    expect(wystawanie).toBeGreaterThan(Math.max(0, podpis!.rect.height - (pion.max - pion.min)));
   });
 });

@@ -2174,6 +2174,29 @@ function truncateSpanAtChannels(
   return { spanStart, spanEnd: Math.max(spanStart, firstPoint - GRID) };
 }
 
+/**
+ * SLOT-DRYF-PRZĘSŁA (runda 2): zakres X KAWAŁKA, który niesie ref `ownerRef`,
+ * spośród kawałków łańcucha danego przęsła. `null`, gdy podziału na człony nie
+ * wykonano (kawałek = całe przęsło, wołający zna wtedy jego końce wprost).
+ *
+ * DLACZEGO WPROST, A NIE PROPORCJĄ. `layout/segments.ts` `udzialWlasciciela`
+ * przybliża udział członu w osi X (nie zna geometrii trasy). Tam, gdzie
+ * kawałki są JUŻ policzone — przęsła wychodzące z GPZ i z pola odpływowego
+ * GPZ — wołający ma prawdziwy zakres i nie ma powodu go przybliżać.
+ */
+function zakresKawalkaLancucha(
+  chain: readonly string[],
+  pieces: readonly (readonly RouteVertex[])[],
+  ownerRef: string,
+): { readonly startX: number; readonly endX: number } | null {
+  if (chain.length === 0 || pieces.length !== chain.length) return null;
+  const i = chain.indexOf(ownerRef);
+  if (i < 0) return null;
+  const xs = pieces[i].map((p) => p.x);
+  if (xs.length === 0) return null;
+  return { startX: Math.min(...xs), endX: Math.max(...xs) };
+}
+
 /** Odcinki MIĘDZY kolejnymi stacjami TEGO SAMEGO wiersza (magistrala lub
  *  lateral) — spec §5.4 „route między tapX kolejnych węzłów". `channelPointsX`
  *  (F6d, domyślnie puste — magistrala nie ma kanałów): patrz
@@ -3597,10 +3620,20 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
               // TUTAJ. Domykamy ją TĄ SAMĄ regułą centrowania na pełnych
               // danych; bez tego podpis „GPZ ↔ S01" mijał środek swojego
               // kabla o 824 j.św. (pomiar `scripts/pomiar_slotu.tsx`).
+              // SLOT-DRYF-PRZĘSŁA (runda 2): centrujemy na KAWAŁKU, który
+              // niesie ref podpisu (`zakresKawalkaLancucha`) — przęsło
+              // GPZ→S0 bywa łańcuchem kilku segmentów ENM, a podpis opisuje
+              // OSTATNI z nich. Centrowanie na całym (przyciętym) przęśle
+              // odsuwało napis o 24 j.św. PONAD nieunikniony nadmiar
+              // (135 wobec 111 = szer. napisu − dł. kawałka). Fallback na
+              // przęsło przycięte do prawej krawędzi GPZ zostaje dla
+              // przypadku bez podziału na człony.
               primaryRect: wysrodkujSlotNaPrzesle(
                 slot.rect,
-                Math.max(gpzPort.x, gpzRightEdgeX),
-                first.composed.entryPort.x,
+                zakresKawalkaLancucha(gpzChain, gpzPieces, wchodzacy.segmentRef)?.startX
+                  ?? Math.max(gpzPort.x, gpzRightEdgeX),
+                zakresKawalkaLancucha(gpzChain, gpzPieces, wchodzacy.segmentRef)?.endX
+                  ?? first.composed.entryPort.x,
               ),
             });
           }
@@ -4067,10 +4100,14 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
             busAxisY: feederLayout.busAxisY,
             // SLOT-DRYF-PRZĘSŁA: jak przy GPZ→S0 wyżej — lewy koniec przęsła
             // (pole odpływowe GPZ) znany dopiero tutaj.
+            // SLOT-DRYF-PRZĘSŁA (runda 2): jak przy GPZ→S0 — kawałek
+            // niosący ref podpisu, gdy przęsło jest łańcuchem.
             primaryRect: wysrodkujSlotNaPrzesle(
               slot.rect,
-              Math.max(feederPort.x, gpzRightEdgeX),
-              first.composed.entryPort.x,
+              zakresKawalkaLancucha(feederChain, feederPieces, wchodzacy.segmentRef)?.startX
+                ?? Math.max(feederPort.x, gpzRightEdgeX),
+              zakresKawalkaLancucha(feederChain, feederPieces, wchodzacy.segmentRef)?.endX
+                ?? first.composed.entryPort.x,
             ),
           });
         }

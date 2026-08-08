@@ -168,6 +168,22 @@ interface OdciskiLod {
  *   · bbox arkusza ZMALAŁ: referencyjna 8344×5254 → 8296×5254, podwojona
  *     14536/14622 → 14488/14574 szerokości; długość toru 119368 → 116592.
  *
+ * AKTUALIZACJA ŚWIADOMA (SLOT-DRYF-PRZĘSŁA, runda poprawkowa 2026-08-08) —
+ * odciski przeliczone ponownie po jednej zmianie:
+ *  (10) przęsło wychodzące z GPZ (i z pola odpływowego GPZ) bywa ŁAŃCUCHEM
+ *       segmentów ENM, a podpis opisuje OSTATNI z nich — rezerwacja centruje
+ *       się teraz na KAWAŁKU niosącym ref podpisu (`zakresKawalkaLancucha`,
+ *       `scene/buildScene.ts`), a nie na całym przęśle przyciętym do prawej
+ *       krawędzi GPZ. Zmienia się prostokąt JEDNEJ etykiety na sieci
+ *       referencyjnej („GPZ ↔ S01": [408..743] → [337..672]).
+ * POWÓD: to był OSTATNI podpis, którego wystawanie poza własny kawałek
+ * przekraczało minimum geometryczne (135 wobec 111 j.św. = szer. napisu −
+ * dł. kawałka). Po zmianie nadmiar ponad minimum wynosi 0 dla WSZYSTKICH 37
+ * podpisów przęseł — i to jest asercja, nie deklaracja
+ * (`layout/__tests__/slotDryfPrzesla.test.ts`, miara M2).
+ * Bez zmian: kolizje 0, `declutter.dropped` 0 na obu sieciach × L0/L1/L2,
+ * „Ukryto N opisów" 1/164/333 i 1/323/659, bbox 8296×5254 i 14488/14574.
+ *
  * Kolejność `plany` odpowiada `SKALE`.
  */
 const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly OdciskiLod[]>> = {
@@ -199,16 +215,16 @@ const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly Odc
       ],
     },
     {
-      scena: '14aae8b78815f7c7658a9841a5e4d2bd',
-      declutter: 'ebe81a491ec1b6e48843abe59a25e21e',
+      scena: 'e2f107a56e6ab4c789c49620a9b742ab',
+      declutter: '03f819f4f473de1e2335c5702fc10da5',
       plany: [
-        '976da9f7965a531444eea873b7f11624',
-        '26813a148031ec51ba3e62e5d30c68c3',
-        '1fe97d5dca024505b64fd39f8988979e',
-        'c69d6d6fe3939e51ea897c89e4ef7d0f',
-        'f6977f204333c3dd6b66fdd253448ab2',
-        '1cadba69bc81b6b6c1629e439789ab36',
-        '1cadba69bc81b6b6c1629e439789ab36',
+        '5bd341c5c57e19380d32d1db9bc2e9ed',
+        'a5fc99352d3b9c12233c08b684b67137',
+        '1a96d954081a71f86cbb632a60ef0e9d',
+        '806708d307d27097c8cb46d62015fcd6',
+        '78e457fb917ead0f1d34570230a8116e',
+        'bea381630d196ce330efd2bf3287f4b6',
+        'bea381630d196ce330efd2bf3287f4b6',
       ],
     },
   ],
@@ -240,16 +256,16 @@ const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly Odc
       ],
     },
     {
-      scena: 'e39bf040bd5ec75d373ffcc6fe6d3706',
-      declutter: '1ce4bed993c431765875f073056d743d',
+      scena: 'd2808caaa3eaac558c25de8164796f52',
+      declutter: 'a818b29235142839af2812550fce4da7',
       plany: [
-        'd84e0dde3e4e89423d99314789aec000',
-        '0b9c3965150f9fc8b2ef04aa6fa6412b',
-        '58a8fa66191a28515ec8f677fb7b9877',
-        'bba44c87de6618706c624b8819b608c0',
-        '75b1aee08d60a84993bf8c1ad0196cc1',
-        'a028d00f4055dd5544c410a0be0ec657',
-        'a028d00f4055dd5544c410a0be0ec657',
+        'e53dae522da7f3cc612f0d8436092e0f',
+        '0b4fbdfced3d4e0ebae0de1857576711',
+        '9403f37c25f9b1388353359e3f5ed473',
+        '2ca02de9e32a8dc864fe112b77ce53b1',
+        '0a9b0699b841340fc157dee2e1e7e33d',
+        '3aa132e2b84308750d526095a88b21f7',
+        '3aa132e2b84308750d526095a88b21f7',
       ],
     },
   ],
