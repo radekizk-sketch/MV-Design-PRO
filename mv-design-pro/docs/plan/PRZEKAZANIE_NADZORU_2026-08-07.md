@@ -209,6 +209,41 @@ na którym działa kod?**
 - `kopia/KLIK-ETYKIETA-KOTWICA` — trzy tabele orzekają o rodzaju TEGO SAMEGO
   klikniętego obiektu i rozjeżdżają się na 61 z 1083 etykiet LOD2 (pomiar nadzorcy,
   sieć 52 stacji). Zakres: `ui/sld/v3/canvas/**` — rozłączny ze dwiema kartami wyżej.
+- `kopia/ROUTERY-MARTWE` — 13 modułów `backend/src/api/**` definiuje `APIRouter`,
+  którego aplikacja NIGDY nie montuje (42 trasy nieosiągalne; pomiar po tożsamości
+  funkcji obsługi na żywym `app`, nie po napisie ścieżki). Klasa jest bez strażnika:
+  iniekcja nadzorcy (nowy router pod `/api`, niezamontowany) przeszła 69 guardów CI
+  i 160 testów guardów na ZIELONO. Zakres: `backend/src/api/**` + nowy guard.
+
+#### QU-FABRYKACJA — runda 3 (luka znaleziona przy odbiorze rundy 2)
+
+Wykonawca zbudował zapadkę `solver_input_substitute_guard.py` na klasę „stała
+podstawiona za nieobecną daną": AST, trzy formy (`or` / wyrażenie warunkowe /
+`getattr`), warunek podwójny — pole musi być ZADEKLAROWANE w modelu wejściowym
+ORAZ gałąź zapasowa musi być liczbowa. Rozwiązanie lepsze od tego, które
+zapisałem w karcie (odczyt słownika wypada Z KONSTRUKCJI REGUŁY, nie wyjątkiem),
+a mój punkt 3 („zamroź dziewięć długów imiennie") wykonawca obalił słusznie:
+osiem z nich to nagie stałe w działaniu, składniowo nierozróżnialne od stałej
+normowej — żądanie było żądaniem fałszywej pewności.
+
+LUKA, którą znalazłem iniekcją: mapa pól powstaje z `solver_input/**` +
+`enm/models.py` (563 pola), ale zakres skanu obejmuje `network_model/solvers/**`,
+gdzie klasyczne solvery czytają model DOMENOWY. Pomiar: **54 pola zadeklarowane
+w `network_model/core/**` są poza mapą**, a warstwa solverów czyta je **165 razy**
+(`voltage_level` 24×, `cos_phi` 8×, `un_kv` 3×, `voltage_magnitude` 2×,
+`voltage_angle` 2×). Iniekcja `gen.cos_phi or 0.95` dopisana do
+`power_flow_newton.py` — pliku W ZAKRESIE — przeszła **RC=0**. Granica nr 5
+guarda mówiła, że niewidoczne są dane czytane „bez modelu", więc czytelnik
+wnosił, że pole zadeklarowane JEST pokryte — zdanie MYLĄCE, nie tylko niepełne.
+
+#### Obserwacja wzrokowa, którą pomiar OBALIŁ (zapis, żeby nikt jej nie wskrzesił)
+
+Na zrzucie detalu GPZ wnętrze przerywanej ramy wyglądało w większości pusto —
+wziąłem to za kolejną instancję punktu 6 właściciela. `scripts/pomiar_bloku.tsx`:
+L2 **0/54 bloków** powyżej progu 90%, GPZ nie jest wśród dziesięciu najpustszych
+(mediana 82,3%, najgorszy 88,1%). Wrażenie brało się z KADRU (przerywana rama
+wychodziła poza widoczny fragment), nie z rysunku. Domknięcie karty BLOK-PUSTY
+się broni; wrażenie wzrokowe bez pomiaru nie jest znaleziskiem.
 
 #### Pomiar, na którym stoi karta KLIK-ETYKIETA-KOTWICA (nie mierzyć ponownie)
 
@@ -243,11 +278,27 @@ moduł już tego nie rozstrzyga.
 
 ### Kolejka po nich
 
-PACK-DLUG-STRATY / -SPADEK / -NASTAWY (4 pakiety dowodowe bez konsumenta, powody
-merytoryczne w rejestrze) · reguły zgodności specyficzne dla OSD (REF-PAKIET) ·
-`api/snapshots.py` bez `include_router` (wpinać WYŁĄCZNIE z konsumentem) · dług
-aparatury: katalog bez `U_m`/`I_cu` w postaci czytanej przez widok wytrzymałości ·
-9 pozostałych długów stałych zastępczych z `INWENTARZ_STALYCH_V126_2026-08-08.md`.
+1. **MOST-ZMYSLONE-GALEZIE** (rozstrzygnięcie produktowe, pod moim nazwiskiem).
+   `solver_input/v126_contracts.py` — most `build_v126_input_from_enm` podstawia
+   `length_km = 1,0` km dla odcinka bez długości oraz `r/x_ohm_per_km = 0,18/0,12`.
+   Wykonawca QU-FABRYKACJA nazwał to „NAJGORSZĄ rodziną w całym zakresie" i ma
+   rację: solver nie ma jak odróżnić tych liczb od pomiaru. Naprawa wymaga
+   rozstrzygnięcia TEJ SAMEJ wagi co wygaszenie stabilności napięciowej: pominąć
+   element w wejściu czy zameldować „dane niekompletne" dla całej analizy.
+2. **TYPY-SKRYPTY** — 94 błędy typów pod wykluczeniami `tsconfig.json`: 37 w
+   `frontend/scripts/**` (poza `include` w całości), 45 w `src/ui/sld/core/**`,
+   7 w `src/ui/sld/inspector/**`, 1 w `ResultsInspectorPage.tsx` (import modułu,
+   którego NIE MA — strona nie jest eksportowana z bariery ani importowana w
+   produkcji, a test `workspaceShellV125` MOCKUJE eksport, którego moduł nie ma).
+   Pięć martwych wykluczeń zdjąłem 2026-08-08; reszta to karta.
+3. PACK-DLUG-STRATY / -SPADEK / -NASTAWY (4 pakiety dowodowe bez konsumenta,
+   powody merytoryczne w rejestrze) · reguły zgodności specyficzne dla OSD
+   (REF-PAKIET) · dług aparatury: katalog bez `U_m`/`I_cu` w postaci czytanej
+   przez widok wytrzymałości · 9 długów stałych zastępczych z
+   `INWENTARZ_STALYCH_V126_2026-08-08.md` · rozszerzenie zapadki podstawień na
+   `enm/**` (zmierzone 33 trafienia poza zakresem, `enm/mapping.py` 11) ·
+   `protection_coordination` — 7 endpointów + martwy klient frontu, decyzja o
+   ZDOLNOŚCI (zbudować ekran koordynacji czy usunąć oba).
 
 ### Decyzje właściciela podjęte w tej fali
 
