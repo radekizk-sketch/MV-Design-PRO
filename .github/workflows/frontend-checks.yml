@@ -57,3 +57,11 @@ jobs:
       - name: Local Truth Guard
         working-directory: mv-design-pro
         run: python scripts/local_truth_guard.py
+      # Zasieg bramki typow (karta TYPY-POZA-BRAMKA). Krok „Type check" wyzej
+      # melduje zielen zgodnie z prawda — ale na zbiorze, ktory definiuje
+      # `tsconfig.json`. Ten guard pilnuje, zeby ten zbior obejmowal CALY kod
+      # frontendu, i trzyma zamrozony budzet dlugu poza bramka (zapadka w obie
+      # strony). MUSI stac po `npm ci`, bo uruchamia `npx tsc`.
+      - name: TSConfig Gate Guard
+        working-directory: mv-design-pro
+        run: python scripts/tsconfig_gate_guard.py

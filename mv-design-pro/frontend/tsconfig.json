@@ -16,17 +16,23 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src"],
-  "exclude": [
-    "src/**/__tests__/**/*",
-    "src/**/*.test.ts",
-    "src/**/*.test.tsx",
-    "e2e",
-    "src/ui/results-inspector/ResultsInspectorPage.tsx",
-    "src/ui/sld/*.ts",
-    "src/ui/sld/*.tsx",
-    "src/ui/sld/core/**/*",
-    "src/ui/sld/inspector/**/*"
-  ],
+  // ZASIEG BRAMKI TYPOW. `npm run type-check` (i `npm run build`) sprawdza
+  // DOKLADNIE to, co tu stoi. Katalog z kodem, ktorego tu nie ma, zyje poza
+  // bramka — dlatego zasieg pilnuje `scripts/tsconfig_gate_guard.py`, a nie
+  // dobre checi. `scripts` dopisany 2026-08-08 (karta TYPY-POZA-BRAMKA): caly
+  // katalog byl poza `include`, przez co 37 bledow typow w skryptach renderu
+  // dowodowego nie mialo zadnej wyroczni.
+  "include": ["src", "scripts"],
+  // JEDYNE dopuszczone wykluczenie: pliki testowe. Uzasadnienie MERYTORYCZNE:
+  // testy niosa wlasny, zmierzony dlug typow (patrz `POZA_BRAMKA` w
+  // `scripts/tsconfig_gate_guard.py` — liczba ZAMROZONA, zapadka dziala w obie
+  // strony), a spora jego czesc lezy w `src/ui2/**`, gdzie rownolegle trwa
+  // przebudowa. Wpisanie testow do bramki DZIS zrobiloby CI trwale czerwonym,
+  // co jest gorsze niz brak bramki. Wykluczenie NIE JEST wiec zgoda na dlug:
+  // jest jego zamrozeniem pod zapadka.
+  //
+  // KAZDE NOWE WYKLUCZENIE TU = NARUSZENIE (`tsconfig_gate_guard`). Blad typow
+  // naprawia sie u zrodla, nie wypisaniem pliku z zasiegu.
+  "exclude": ["src/**/__tests__/**/*", "src/**/*.test.ts", "src/**/*.test.tsx"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }
