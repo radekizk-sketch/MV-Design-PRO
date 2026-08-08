@@ -128,10 +128,23 @@ def test_each_v126_analysis_has_deterministic_proof_and_report_artifacts() -> No
 
 
 def test_voltage_stability_returns_modal_contract() -> None:
+    """Kontrakt stabilności napięciowej jest KOMPLETNY, a wartości są jawnym brakiem.
+
+    INTENCJA ZACHOWANA (karta QU-FABRYKACJA): pierwotnie test pilnował, że analiza
+    zwraca komplet kluczy bloku modalnego. Ten wymóg ZOSTAJE — kontrakty są FROZEN,
+    więc żaden klucz nie może zniknąć. Zmieniła się WARTOŚĆ: solver przestał
+    wyznaczać te wielkości ze współczynników bez pokrycia w danych, więc melduje
+    `None` z powodem po polsku zamiast liczby. Asercja „> 0" pilnowała wyłącznie
+    tego, że fabrykacja zwraca liczbę dodatnią.
+    """
     result = V126AcademicSolver().run(V126AnalysisType.VOLTAGE_STABILITY, _academic_input())
     modal = result["result"]["modal_analysis"]
-    assert modal["smallest_eigenvalue"] > 0
-    assert modal["critical_mode"]["participating_buses"]
+    assert set(modal) == {"smallest_eigenvalue", "critical_mode", "brak_danych"}
+    assert modal["smallest_eigenvalue"] is None
+    assert set(modal["critical_mode"]) == {"eigenvalue", "participating_buses"}
+    assert modal["critical_mode"]["eigenvalue"] is None
+    assert modal["critical_mode"]["participating_buses"] == []
+    assert len(modal["brak_danych"]) > 40
 
 
 def test_reliability_indices_are_reportable() -> None:
