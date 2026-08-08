@@ -223,3 +223,29 @@ jobs:
 
       - name: Martwy kod backendu (vulture)
         run: python scripts/vulture_guard.py
+
+      # =====================================================================
+      # KARTA ROUTERY-MARTWE — luka „guard istnieje, ale nikt go nie uruchamia"
+      # ODROSLA PO RAZ TRZECI (pomiar 2026-08-08).
+      # =====================================================================
+      # `guardy_z_ci.py` czyta liste guardow WPROST z tych workflowow, wiec guard
+      # niewpiety tutaj nie jest uruchamiany ani w CI, ani przez bramke odbioru
+      # nadzorcy. Na HEAD dwa guardy stały poza CI mimo zieleni:
+      #
+      #   * `route_prefix_guard` — kanon prefiksu tras + rejestr martwych klientow
+      #     frontu (16 sciezek w 4 modulach). Guard z ZAPADKA, ktorej nikt nie
+      #     zdejmowal, bo nikt jej nie uruchamial.
+      #   * `export_codenames_guard` — zakaz kryptonimow projektu w eksportach.
+      #
+      # Trzeci krok to nowy guard tej karty: `api_lifecycle_guard` i
+      # `route_prefix_guard` chodza po trasach WPIETYCH, wiec router zdefiniowany
+      # i nigdy niezamontowany byl dla nich niewidzialny Z KONSTRUKCJI (iniekcja
+      # pustego routera przechodzila komplet 69 guardow z RC=0).
+      - name: Kanon prefiksu tras (backend / front / proxy)
+        run: python scripts/route_prefix_guard.py
+
+      - name: Kryptonimy projektu w eksportach
+        run: python scripts/export_codenames_guard.py
+
+      - name: Montaz routerow (router zdefiniowany = router wpiety)
+        run: python scripts/router_mount_guard.py

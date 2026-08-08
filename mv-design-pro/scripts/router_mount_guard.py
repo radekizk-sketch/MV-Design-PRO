@@ -291,9 +291,7 @@ def resolve_chain(
     if value is None:
         reexport = _reexport_target(tree, symbol)
         if reexport is None:
-            raise UnresolvedRouter(
-                f"{module}.{symbol} nie jest przypisany na poziomie modulu"
-            )
+            raise UnresolvedRouter(f"{module}.{symbol} nie jest przypisany na poziomie modulu")
         deeper, target = resolve_chain(reexport[0], reexport[1], api_dir, _depth + 1)
         return visited | deeper, target
 
@@ -371,9 +369,7 @@ def mounted_router_keys(
     return mounted, problems
 
 
-def check_premises(
-    backend_src: Path | None = None, main_path: Path | None = None
-) -> list[str]:
+def check_premises(backend_src: Path | None = None, main_path: Path | None = None) -> list[str]:
     """Zalozenia guarda egzekwowane, zeby nie stac sie cicha dziura."""
     src = backend_src or BACKEND_SRC
     main = main_path or MAIN_PATH
@@ -435,9 +431,7 @@ def check_premises(
     return violations
 
 
-def check_router_mounts(
-    api_dir: Path | None = None, main_path: Path | None = None
-) -> list[str]:
+def check_router_mounts(api_dir: Path | None = None, main_path: Path | None = None) -> list[str]:
     """Naruszenia reguly „kazdy router zamontowany albo swiadomie odstawiony”."""
     directory = api_dir or API_DIR
     main = main_path or MAIN_PATH
