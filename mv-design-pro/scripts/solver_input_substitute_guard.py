@@ -33,6 +33,22 @@ Trafieniem jest ODCZYT POLA KONTRAKTU WEJSCIOWEGO z GALEZIA ZAPASOWA LICZBOWA:
   B. `... <obiekt>.<pole> ... if <warunek> else <wyrazenie liczbowe>`
   C. `getattr(<obiekt>, "<pole>", <wyrazenie liczbowe>)`
 
+ODCZYT PRZEZ `getattr` LICZY SIE TAK SAMO, CO PRZEZ KROPKE (2026-08-08, karta
+MOST-WEJSCIA-V126): w formach A i B `<obiekt>.<pole>` obejmuje rowniez
+`getattr(<obiekt>, "<pole>")`. Bez tego zlozenie
+`getattr(obiekt, "pole", None) or <liczba>` bylo NIEWIDZIALNE, mimo ze jest
+doslownie forma A — tylko innym zapisem odczytu. Pomiar: cztery takie zlozenia
+zyly w `solver_input/v126_contracts.py`, a bramka meldowala RC=0 „PASS".
+Jedno miejsce w kodzie daje JEDNA pozycje budzetu: gdy `getattr` ma zapas
+liczbowy, jest forma C i nie liczy sie po raz drugi jako A (`getattr_read`).
+
+WYRAZENIEM LICZBOWYM JEST TEZ STALA MODULU zwiazana z literalem liczbowym
+(`numeric_module_constants`). Bez tego kazdy zastepnik chowal sie jednym ruchem —
+przeniesieniem liczby do nazwanej stalej. Wykryte na wlasnej skorze przy tej samej
+karcie: sprowadzenie zdublowanego literalu 0,1 (stosunek R/X wg IEC 60909-0) do
+jednej stalej sprawilo, ze pozycja budzetu ZNIKNELA SAMA, bez zmiany zachowania
+kodu. Cicha zielen jest gorsza niz czerwien — nie da sie jej odroznic od naprawy.
+
 Dwa warunki musza zajsc RAZEM i oba sa czytane Z KODU, nie z listy w bramce:
 
 1. `<pole>` jest POLEM ZADEKLAROWANYM w modelu wejsciowym — zbior pol powstaje
@@ -135,19 +151,26 @@ GRANICE BRAMKI — czego ta detekcja NIE wykrywa (jawnie, zamiast cicho)
 
 ZAKRES SKANU
 ------------
-`network_model/solvers/**` (tam mieszka fizyka — regula NOT-A-SOLVER) ORAZ
-`solver_input/**` (tam wejscia solvera POWSTAJA). Drugi korzen jest w zakresie,
-bo zastepnik wstrzykniety po drodze do solvera jest w skutku identyczny, a nawet
-gorszy: solver nie ma jak odroznic go od pomiaru. Pomiar potwierdzil, ze to nie
-teoria — most `build_v126_input_from_enm` zmysla `length_km = 1.0` km dla odcinka
-bez dlugosci oraz `r_ohm_per_km = 0.18` i `x_ohm_per_km = 0.12`.
+`network_model/solvers/**` (tam mieszka fizyka — regula NOT-A-SOLVER),
+`solver_input/**` (tam wejscia solvera POWSTAJA) ORAZ `enm/**` (drugi most tego
+samego modelu: ENM -> graf domenowy dla solverow klasycznych). Korzenie mostow sa
+w zakresie, bo zastepnik wstrzykniety PO DRODZE do solvera jest w skutku
+identyczny, a nawet gorszy: solver nie ma jak odroznic go od pomiaru.
 
-SKALA POZA ZAKRESEM (pomiar 2026-08-08, ta sama regula na calym `backend/src`):
-55 trafien w 19 plikach, wiec 22 w zakresie i 33 poza nim — najwiecej w
-`enm/mapping.py` (11) i `enm/zero_sequence_transformer.py` (3). Rozszerzenie
-zakresu na `enm/**` jest uzasadnione i ZGLOSZONE jako nazwany, zmierzony dlug
-(wiersz QU-FABRYKACJA rejestru) — nie robimy tego w tej karcie, zeby zamrozic
-budzet, ktorego nikt nie przeczytal.
+`enm/**` DOLOZONY 2026-08-08 (karta MOST-WEJSCIA-V126). Poprzednia wersja tego
+akapitu zapowiadala rozszerzenie i odkladala je „na pozniej"; to sie stalo.
+Pomiar dolozenia: +17 trafien, WSZYSTKIE w `enm/**`, ZERO kolateralnych w
+warstwie skanowanej wczesniej (mapa pol urosla o 115 pozycji bez ani jednego
+nowego trafienia gdzie indziej). Wczesniejsza liczba „33 dla enm/**" krazaca
+w opisie karty NIE POTWIERDZILA SIE pomiarem: 33 dotyczylo calego `backend/src`
+POZA zakresem skanu, a nie samego `enm/**`.
+
+CO POZOSTAJE POZA ZAKRESEM (jawnie, pomiar 2026-08-08 na zbiorze 1807 pol):
+38 trafien — `application/**` (29), `network_model/catalog/**` (3),
+`infrastructure/**` (2), `network_model/core/**` (2), `api/**` (1),
+`diagnostics/**` (1). To warstwy INTERPRETACJI, katalogu i dostepu, a nie tor
+WEJSCIA solvera; kolejne rozszerzenie wymaga wlasnego pomiaru i wlasnego budzetu,
+bo bez tego zamrozilibysmy liczbe, ktorej nikt nie przeczytal.
 
 ZAPADKA (`ZASTANE_ZASTEPNIKI`)
 -----------------------------

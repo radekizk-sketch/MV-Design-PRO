@@ -141,6 +141,47 @@ przyjmuje 0,0 i wchodzi do współczynnika wygaszania IEC 60909 §6.6/§6.7, wi�
 uzasadnione i zgłoszone jako dług; nie zrobione od razu, bo zamrażanie budżetu,
 którego nikt nie przeczytał, zamienia zapadkę w ścianę.
 
+## Domknięcie długu zakresu — karta MOST-WEJSCIA-V126 (2026-08-08)
+
+Dług zapowiedziany akapitem wyżej został **spłacony**: `enm/**` jest w zakresie
+skanu, a mapa pól obejmuje cały ten korzeń (warunek zamykający „co skanujemy, to
+czytamy jako model"). Pomiar dołożenia: **+17 trafień, wszystkie w `enm/**`,
+zero kolateralnych** w warstwie skanowanej wcześniej (mapa urosła o 115 pozycji
+bez ani jednego nowego trafienia gdzie indziej), po naprawach opisanych niżej.
+
+**Korekta liczby z poprzedniego akapitu.** Zdanie „33 poza zakresem, najwięcej
+`enm/mapping.py` (11)" bywało czytane jako „33 w `enm/**`". Pomiar własny tej
+karty: w `enm/**` było **17**, a 33 dotyczyło całego `backend/src` poza zakresem.
+Po tej karcie poza zakresem zostaje **38 trafień** (zbiór pól urósł do 1807):
+`application/**` 29, `network_model/catalog/**` 3, `infrastructure/**` 2,
+`network_model/core/**` 2, `api/**` 1, `diagnostics/**` 1 — to warstwy
+interpretacji i dostępu, nie tor wejścia solvera.
+
+### Dwie ślepe plamki samej reguły, wykryte i domknięte
+
+| Forma | Dlaczego była niewidzialna | Pomiar |
+|---|---|---|
+| `getattr(obiekt, "pole", None) or <liczba>` | reguła patrzyła wyłącznie na `ast.Attribute`, więc ten sam odczyt zapisany przez `getattr` wypadał poza nią — mimo że to dosłownie forma A | **4 żywe wystąpienia** w `solver_input/v126_contracts.py`, w tym obciążalność 300 A i `r_ohm or 0.001`; bramka meldowała RC=0 „PASS" |
+| `... or STALA_MODULU` | nazwa nie jest `ast.Constant`, więc `is_numeric` dawało fałsz — nadanie liczbie nazwy **wygaszało regułę** | wykryte na własnej skórze: sprowadzenie zdublowanego literału 0,1 (R/X wg IEC 60909-0) do jednej stałej sprawiło, że pozycja budżetu **zniknęła sama**, bez zmiany zachowania kodu |
+
+Obie mają przypięte testy (`scripts/test_solver_input_substitute_guard.py`),
+w tym kontrolę dwustronną dla stałej **nie**będącej liczbą — inaczej byłaby to
+reguła o nazwach, a nie o podstawianiu liczb.
+
+### Nowe pozycje długu nazwane tą kartą (poza budżetem zapadki — granica nr 1)
+
+Formy, których analiza składni nie odróżni od stałej normowej, więc idą tutaj,
+a nie do budżetu:
+
+| Miejsce | Stała | Zastępuje | Werdykt |
+|---|---|---|---|
+| `v126_contracts.py` — most, gałąź odcinka | `failure_rate_per_year = 0.08 / 0.015`, `mttr_h = 3.5 / 12.0` | intensywność uszkodzeń i czas odtworzenia | **BRAK DANYCH** — model ENM nie ma pól niezawodnościowych, a liczby wchodzą wprost do SAIDI/SAIFI i do dotkliwości N-1 |
+| `v126_contracts.py` — most, gałąź aparatu | `failure_rate_per_year = 0.015`, `mttr_h = 4.0` | jak wyżej, dla aparatu | **BRAK DANYCH** |
+| `v126_contracts.py` — źródło harmoniczne | `spectrum_percent = {5: 3.0, 7: 2.0, 11: 1.2, 13: 1.0}` | widmo harmoniczne falownika | **BRAK DANYCH** — ani model, ani karta katalogowa `ConverterType` nie niosą widma; jego dodanie to zmiana schematu katalogu, czyli osobna karta. Prąd bazowy tego samego źródła został naprawiony (napięcie szyny zamiast zaszytych 15 kV) |
+| `v126_contracts.py` — przekształtnik | `droop_p_f_percent = 4.0`, `droop_q_u_percent = 3.0` | statyzmy regulacji falownika GFM | **BRAK DANYCH** — pola kontraktu są `float \| None`, więc uczciwe `None` jest dostępne bez zmiany schematu |
+| `v126_academic.py` — `_hosting_capacity` | wspólny `random.Random` dla wszystkich szyn | — | **PARAMETR METODY, ale defekt** — wynik szyny zależy od tego, ile losowań zużyła szyna poprzednia (zmierzone: naprawa obciążalności na szynie GPZ przesunęła wynik szyny stacji 7,6 → 7,4 MW bez żadnej zmiany jej danych). Naprawa (ziarno per szyna) zmienia KAŻDĄ liczbę zdolności przyłączeniowej, więc wymaga własnej karty i własnego uzasadnienia złotego pliku |
+
+
 ## Rodowody nazw — trzeci rodzaj defektu tej klasy
 
 Poza stałą bez pokrycia karta nazwała **fałszywy rodowód**: nazwa mówiąca, SKĄD liczba
