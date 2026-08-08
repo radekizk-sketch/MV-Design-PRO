@@ -206,14 +206,48 @@ na którym działa kod?**
 - `kopia/SLOT-DRYF` — 2 z 37 podpisów przęseł stoi 888 j.św. od swojej polilinii.
   §0: granica z geometrii odcinka, nie z zaszytego progu; diagnoza poprzednika jest
   hipotezą do sprawdzenia.
+- `kopia/KLIK-ETYKIETA-KOTWICA` — trzy tabele orzekają o rodzaju TEGO SAMEGO
+  klikniętego obiektu i rozjeżdżają się na 61 z 1083 etykiet LOD2 (pomiar nadzorcy,
+  sieć 52 stacji). Zakres: `ui/sld/v3/canvas/**` — rozłączny ze dwiema kartami wyżej.
+
+#### Pomiar, na którym stoi karta KLIK-ETYKIETA-KOTWICA (nie mierzyć ponownie)
+
+`LABEL_OWNER_ELEMENT_KIND` (`canvas/hitAreas.ts`) deklaruje rodzaj obiektu dla
+etykiety; złożenie `resolveCanvasMenuSubject` → `ELEMENT_KIND_KOTWICY`
+(`canvas/SldCanvasV3Workspace.tsx`) rozstrzyga go NIEZALEŻNIE, w modelu. Ta sama
+przeciwdziedzina, ten sam obiekt, dwa orzeczenia — kształt z reguły KLASA §3, tylko
+że tu one już się nie zgadzają:
+
+| etykiet | rodzaj etykiety | deklaracja | kotwica modelu | skutek |
+|---|---|---|---|---|
+| 54 | `busbar-voltage` | `bus` | `stacja` | menu STACJI na napisie „Szyna WN · 110 kV" |
+| 4 | `station-name` (TR1) | `station` | `transformator` | selekcja omija rozwiązanie refu transformatora |
+| 3 | `station-name` (źródło) | `station` | `zrodlo` | to samo, na źródle systemowym |
+| 1 | `busbar-voltage` (sekcja GPZ) | `bus` | brak w modelu | etykieta bez menu |
+
+Przyczyna rozjazdu 54 etykiet: przejście „kompozyt stacji → kanoniczna szyna SN" jest
+bramkowane `input.klasa === 'szyna'`, a klasa `'szyna'` powstaje WYŁĄCZNIE dla kresek
+(`klasaOdcinka`). Etykieta niesie `klasa: 'etykieta'`, więc przejście nigdy dla niej
+nie odpala. Naprawiono INSTANCJĘ (kreska szyny), nie KLASĘ (wszystko, co szynę
+reprezentuje).
+
+**Sprostowanie własnego wpisu.** Kolejka niżej nosiła pozycję „rozdział
+`apparatus`/`bus`, którego scena nie unosi" — sformułowanie wzięte z granicy §6 karty
+BLOK-LATERAL-WLASNOSC i przeze mnie przyjęte bez sprawdzenia. Jest FAŁSZYWE w części,
+która ma znaczenie: scena rzeczywiście tej pary nie unosi, ale MODEL ją unosi i
+`canvasMenuSubject` już ją z modelu wyprowadza. Prawdziwym problemem nie był brak
+rozróżnienia, a to, że **istnieją dwa niezależne rozróżnienia, które się rozjeżdżają**.
+Lekcja tej samej rodziny co „zanim nazwiesz brak strażnika, sprawdź iniekcją, czy
+istniejący go nie ma": zanim nazwiesz coś nierozstrzygalnym, sprawdź, czy sąsiedni
+moduł już tego nie rozstrzyga.
 
 ### Kolejka po nich
 
 PACK-DLUG-STRATY / -SPADEK / -NASTAWY (4 pakiety dowodowe bez konsumenta, powody
-merytoryczne w rejestrze) · rozdział `apparatus`/`bus`, którego scena nie unosi ·
-reguły zgodności specyficzne dla OSD (REF-PAKIET) · `api/snapshots.py` bez
-`include_router` (wpinać WYŁĄCZNIE z konsumentem) · dług aparatury: katalog bez
-`U_m`/`I_cu` w postaci czytanej przez widok wytrzymałości.
+merytoryczne w rejestrze) · reguły zgodności specyficzne dla OSD (REF-PAKIET) ·
+`api/snapshots.py` bez `include_router` (wpinać WYŁĄCZNIE z konsumentem) · dług
+aparatury: katalog bez `U_m`/`I_cu` w postaci czytanej przez widok wytrzymałości ·
+9 pozostałych długów stałych zastępczych z `INWENTARZ_STALYCH_V126_2026-08-08.md`.
 
 ### Decyzje właściciela podjęte w tej fali
 
