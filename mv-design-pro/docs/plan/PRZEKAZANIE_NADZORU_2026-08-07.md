@@ -366,8 +366,25 @@ moduł już tego nie rozstrzyga.
    ROUTERY-MARTWE: USUNIĘTE. Reguła „wpinać wyłącznie z konsumentem" nie miała
    kogo wpiąć — jedyny kandydat (`frontend/src/designer/`) sam był wyspą bez
    importerów, wołającą ścieżki, których backend nigdy nie serwował.
-5. PACK-DLUG-STRATY / -SPADEK / -NASTAWY (4 pakiety dowodowe bez konsumenta,
-   powody merytoryczne w rejestrze) · reguły zgodności specyficzne dla OSD
+5. **PACK-BEZ-KONSUMENTA** — zmierzone AST 2026-08-08 (nie grepem: grep łapie
+   nazwę także w komentarzu i daje wynik bezwartościowy). Z 10 generatorów pakietów
+   dowodowych **CZTERY nie mają ANI JEDNEGO importera**: `vdrop` (spadek napięcia),
+   `p16_losses` (straty), `protection_settings` (nastawy zabezpieczeń),
+   `qu_regulation` (regulacja Q(U) instalacji OZE). Pozostałe sześć ma konsumenta
+   (`api/proof_pack.py`, `pakiet_biegu.py`, `enm/canonical_analysis.py`,
+   `api/audit2_*`, `ground_fault_bridge.py`).
+
+   **To LUKA ZDOLNOŚCI, nie martwy kod** — i to jest różnica wobec trzech wysp
+   zamkniętych w tej fali. Sprawdziłem hipotezę, że `qu_regulation` należy usunąć
+   razem z wygaszoną analizą stabilności napięciowej: **jest fałszywa.** Pakiet
+   dotyczy charakterystyki regulacji Q(U) instalacji OZE wg NC RfG / IRiESD ENEA
+   (zgodność ±5% Un, wpływ na profil napięć), a wygaszony został margines Q–U
+   liczony ze zmyślonych współczynników w solverze akademickim — dwie różne rzeczy.
+   Karta ma zatem WPIĄĆ cztery pakiety (z konsumentem, zgodnie z regułą), a nie
+   kasować. Przed budową sprawdź per pakiet, czy dane, których wymaga, są w zapisie
+   biegu — wzorzec z karty PACK-ROZPLYW (tam teza długu „trzeba odtworzyć wejścia
+   solvera" okazała się fałszywa: wynik był w zapisie w całości).
+6. Reszta kolejki: reguły zgodności specyficzne dla OSD
    (REF-PAKIET) · dług aparatury: katalog bez `U_m`/`I_cu` w postaci czytanej
    przez widok wytrzymałości · 9 długów stałych zastępczych z
    `INWENTARZ_STALYCH_V126_2026-08-08.md` · rozszerzenie zapadki podstawień na
