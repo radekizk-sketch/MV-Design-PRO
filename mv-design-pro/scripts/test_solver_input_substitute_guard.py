@@ -404,3 +404,126 @@ def test_zapadka_niesie_powod_przy_kazdym_pliku() -> None:
         komentarz = [w for w in przed.splitlines() if w.strip().startswith("#")]
         assert komentarz, f"{rel}: wpis zapadki bez powodu merytorycznego"
         assert len("".join(komentarz)) > 60, f"{rel}: powod haslowy"
+
+
+# ---------------------------------------------------------------------------
+# WYROCZNIA CHODZI PO TYM SAMYM ZBIORZE, CO KOD (runda 3)
+# ---------------------------------------------------------------------------
+#
+# ZNALEZISKO, KTORE WYMUSILO TE SEKCJE. Mapa pol powstawala z dwoch korzeni
+# (kontrakt V12.6 + model ENM), a klasyczne solvery czytaja model DOMENOWY
+# z `network_model/core/**`. Pomiar: 54 pola `core` poza mapa, 165 ich odczytow
+# w warstwie objetej skanem. Iniekcja `return gen.cos_phi or 0.95` dopisana do
+# `power_flow_newton.py` — PLIKU W ZAKRESIE SKANU — dawala RC=0 „PASS".
+# Bramka deklarowala zakres, ktorego jej wyrocznia nie obejmowala.
+
+
+def test_iniekcja_cos_phi_w_modelu_domenowym_jest_naruszeniem(
+    tmp_path, monkeypatch, capsys
+) -> None:
+    """Iniekcja nadzorcy z rundy 3, na modelu DOMENOWYM zamiast kontraktu V12.6.
+
+    Przed dolozeniem `network_model/core` do `CONTRACT_SOURCES` ten przypadek
+    dawal RC=0. Test stoi na sztucznym drzewie, wiec pilnuje SAMEJ REGULY, a nie
+    biezacej zawartosci repozytorium.
+    """
+    root = tmp_path / "src"
+    (root / "network_model" / "core").mkdir(parents=True)
+    (root / "network_model" / "core" / "generator.py").write_text(
+        "from dataclasses import dataclass\n\n\n"
+        "@dataclass\n"
+        "class Generator:\n"
+        "    id: str\n"
+        "    cos_phi: float | None = None\n",
+        encoding="utf-8",
+    )
+    (root / "network_model" / "solvers").mkdir(parents=True)
+    (root / "network_model" / "solvers" / "power_flow_newton.py").write_text(
+        "def _iniekcja_nadzorcy(gen) -> float:\n    return gen.cos_phi or 0.95\n",
+        encoding="utf-8",
+    )
+    (root / "solver_input").mkdir(parents=True)
+    (root / "solver_input" / "kontrakty.py").write_text(KONTRAKT, encoding="utf-8")
+
+    monkeypatch.setattr(guard, "BACKEND_SRC", root)
+    monkeypatch.setattr(guard, "ZASTANE_ZASTEPNIKI", {})
+    monkeypatch.setattr(guard, "MODEL_ROOTS_POZA_MAPA", {})
+
+    # Kontrola dwustronna: ze zbiorem pol BEZ modelu domenowego bramka MILCZY —
+    # dokladnie tak, jak milczala przed naprawa. To dowodzi, ze test mierzy
+    # zawartosc mapy, a nie cokolwiek innego.
+    monkeypatch.setattr(guard, "CONTRACT_SOURCES", ("solver_input",))
+    assert guard.main() == 0, "Kontrola dwustronna: bez `core` w mapie ma byc cicho."
+    capsys.readouterr()
+
+    monkeypatch.setattr(guard, "CONTRACT_SOURCES", ("solver_input", "network_model/core"))
+    assert guard.main() == 1
+    assert "A:or:gen.cos_phi" in capsys.readouterr().out
+
+
+def test_kazdy_model_czytany_przez_zakres_jest_w_mapie() -> None:
+    """KAZDY korzen modeli importowany przez zakres ma DECYZJE: w mapie albo poza nia.
+
+    To jest pin na SAMEJ WYROCZNI, nie na jej wyniku. Bez niego nastepny solver
+    napisany na NOWYM kontrakcie wypadlby poza zasieg reguly po cichu — dokladnie
+    tak, jak klasyczne solvery na modelu domenowym wypadly przed runda 3.
+
+    Wzorzec ten sam, co „prezentowane + nieprezentowane = komplet kontraktu":
+    dwa zbiory ROZLACZNE, ktorych SUMA pokrywa komplet wyprowadzony z kodu.
+    """
+    korzenie = guard.model_roots_read_by_scope()
+    assert korzenie, "Parser importow nie zobaczyl zadnego modelu — wyrocznia do poprawy."
+
+    bez_decyzji = sorted(
+        rel
+        for rel in korzenie
+        if not guard.is_covered_by_contract_sources(rel) and rel not in guard.MODEL_ROOTS_POZA_MAPA
+    )
+    assert bez_decyzji == [], (
+        "Moduly-modele czytane przez warstwe objeta skanem, a nieujete w mapie pol: "
+        f"{bez_decyzji}. Dopisz je do CONTRACT_SOURCES albo do MODEL_ROOTS_POZA_MAPA "
+        "z powodem merytorycznym — bramka nie moze deklarowac zakresu, ktorego jej "
+        "wyrocznia nie obejmuje."
+    )
+
+
+def test_zbiory_mapy_sa_rozlaczne() -> None:
+    """Korzen nie moze byc jednoczesnie w mapie i poza nia — inaczej suma klamie."""
+    wspolne = sorted(
+        rel for rel in guard.MODEL_ROOTS_POZA_MAPA if guard.is_covered_by_contract_sources(rel)
+    )
+    assert wspolne == [], f"Korzenie jednoczesnie w mapie i poza nia: {wspolne}"
+
+
+def test_kazde_wylaczenie_korzenia_niesie_powod_merytoryczny() -> None:
+    """Wylaczenie korzenia to DECYZJA, wiec ma powod — „poza zakresem" nim nie jest."""
+    for rel, powod in guard.MODEL_ROOTS_POZA_MAPA.items():
+        assert len(powod) > 80, f"{rel}: powod wylaczenia pusty albo haslowy"
+        assert "poza zakresem" not in powod.lower(), f"{rel}: odeslanie zamiast powodu"
+
+
+def test_wylaczony_korzen_jest_realnie_czytany_przez_zakres() -> None:
+    """Lista wylaczen nie zawiera pozycji martwych.
+
+    Wpis wskazujacy modul, ktorego zakres juz nie importuje, to nieaktualne
+    rozstrzygniecie udajace aktualne — rejestr moze tylko malec.
+    """
+    korzenie = set(guard.model_roots_read_by_scope())
+    martwe = sorted(rel for rel in guard.MODEL_ROOTS_POZA_MAPA if rel not in korzenie)
+    assert martwe == [], (
+        f"Wylaczenia wskazujace moduly nieczytane juz przez zakres: {martwe} — "
+        "zdejmij wpis z MODEL_ROOTS_POZA_MAPA."
+    )
+
+
+def test_model_domenowy_klasycznych_solverow_jest_w_mapie() -> None:
+    """Pin na KONKRETNEJ luce rundy 3 — `network_model/core` nie moze wypasc z mapy.
+
+    Ogolny pin wyzej pilnuje mechanizmu; ten pilnuje INSTANCJI, ktora kosztowala
+    przepuszczona iniekcje. Oba sa potrzebne: gdyby ktos dopisal `core` do
+    MODEL_ROOTS_POZA_MAPA z wiarygodnie brzmiacym powodem, ogolny pin przeszedlby.
+    """
+    assert guard.is_covered_by_contract_sources("network_model/core/node.py")
+    pola = guard.contract_fields()
+    for pole in ("cos_phi", "voltage_level", "voltage_magnitude", "voltage_angle", "un_kv"):
+        assert pole in pola, f"Pole modelu domenowego '{pole}' wypadlo z mapy bramki."

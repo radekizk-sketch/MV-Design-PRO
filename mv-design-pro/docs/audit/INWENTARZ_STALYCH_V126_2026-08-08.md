@@ -88,6 +88,25 @@ jest w budżecie imiennie. Pozostałe osiem należy do formy niedetekowalnej i i
 jedynym pilnowaniem jest ten dokument oraz przegląd. Zdanie „zapadka zamraża całą
 listę długu" byłoby nieprawdą i dlatego nie jest tu napisane.
 
+**Runda 3 — wyrocznia zapadki chodziła po innym zbiorze niż kod.** Mapa pól
+bramki obejmowała kontrakt V12.6 i model ENM, ale klasyczne solvery czytają model
+domenowy z `network_model/core/**`. Pomiar: 120 pól w `core`, **54 poza mapą**,
+**165 ich odczytów** w warstwie objętej skanem; iniekcja `gen.cos_phi or 0.95`
+w `power_flow_newton.py` dawała RC=0. Po naprawie mapa powstaje z **importów
+warstwy objętej skanem** (26 pozycji, 1249 pól), a kompletność pilnuje
+`test_kazdy_model_czytany_przez_zakres_jest_w_mapie`: każdy korzeń modeli musi
+mieć decyzję — mapa albo `MODEL_ROOTS_POZA_MAPA` z powodem. Jedno wyłączenie:
+`stability_rms/contracts.py` deklaruje pola `real`/`imag`, czyli nazwy atrybutów
+wbudowanego `complex` (8 kolizji, nie odczytów danych).
+
+Budżet urósł do **27 pozycji w 7 plikach**. Jedna z nich jest uzasadniona
+merytorycznie, a nie nazwana długiem: podstawienie 1,0 pu / 0 rad
+w `_build_initial_voltage` to punkt startowy Newtona, nie wielkość wejściowa —
+i to twierdzenie ma przypięty test
+(`tests/network_model/solvers/test_punkt_startowy_nie_zmienia_wyniku.py`),
+bo pomiar wykazał, że wszystkie 6 testów repozytorium używających `flat_start`
+ustawiało `True` i gałąź z podstawieniem nie była wykonywana ani razu.
+
 **Skala poza zakresem zapadki (pomiar tą samą regułą na całym `backend/src`):**
 55 trafień w 19 plikach — 22 w zakresie (`network_model/solvers/**` +
 `solver_input/**`) i 33 poza nim, najwięcej `enm/mapping.py` (11) i
