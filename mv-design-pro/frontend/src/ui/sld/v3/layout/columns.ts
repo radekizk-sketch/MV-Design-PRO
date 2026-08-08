@@ -281,8 +281,10 @@ function computeContentBounds(columns: readonly ColumnResult[]): ContentBounds[]
  * `CHANNEL_MIN_CLEARANCE` z każdej strony).
  *
  * REGUŁY (wszystkie wyprowadzone z geometrii, zero progów w jednostkach):
- *  1. slot wolno przesunąć TYLKO w obrębie przęsła, które opisuje
- *     (`dozwolone[stationIndex]`) — napis nie może zejść z własnego kabla;
+ *  1. slot wolno przesunąć tylko tak, by jego ŚRODEK został w obrębie
+ *     przęsła, które opisuje (`dozwolone[stationIndex]`) — napis nie może
+ *     zejść ze swojego kabla, ale WOLNO mu z niego wystawać, bo bywa od
+ *     niego dłuższy;
  *  2. kandydaci to skrajne położenia „tuż przed" / „tuż za" każdym punktem
  *     kanału — wybieramy ten NAJBLIŻSZY położeniu idealnemu (środek kabla),
  *     przy remisie mniejszy `x` (determinizm P7);
@@ -314,10 +316,17 @@ function przesunSlotyPozaKanaly(
       kandydaci.push(snapUp(p + CHANNEL_MIN_CLEARANCE));
       kandydaci.push(snapDown(p - CHANNEL_MIN_CLEARANCE - slot.rect.width));
     }
+    const lewy = Math.min(zakres.startX, zakres.endX);
+    const prawy = Math.max(zakres.startX, zakres.endX);
     const dopuszczalny = (x: number): boolean => {
-      if (x < Math.min(zakres.startX, zakres.endX) || x + slot.rect.width > Math.max(zakres.startX, zakres.endX)) {
-        return false;
-      }
+      // NA SWOIM KABLU = ŚRODEK napisu leży w zakresie przęsła. Warunek
+      // „cały prostokąt wewnątrz" byłby NIEWYKONALNY dla przęseł krótszych
+      // od własnego podpisu (na sieci referencyjnej kable od 56 j.św. przy
+      // podpisach 335–362 j.św.) — mechanizm nigdy by się nie odpalił i
+      // udawałby ochronę, której nie ma.
+      const srodek = x + slot.rect.width / 2;
+      if (srodek < lewy || srodek > prawy) return false;
+      if (x < 0) return false;
       if (koliduje(x, slot.rect.width)) return false;
       return !wynik.some(
         (inny, j) =>
