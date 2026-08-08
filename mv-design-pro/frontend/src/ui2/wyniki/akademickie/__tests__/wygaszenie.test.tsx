@@ -35,6 +35,8 @@ import {
   tylkoPrezentowane,
 } from '../nieprezentowane';
 import { PREZENTACJA } from '../prezentacja';
+import { ETYKIETY_RODZAJOW, OPISY_RODZAJOW } from '../strings';
+import { SCREEN_CANON_REGISTRY } from '../../../../ui/workspace/screenCanonRegistry';
 import odpowiedziSolvera from './odpowiedziSolvera.json';
 
 const CASE_ID = 'case-wygaszenie';
@@ -250,7 +252,7 @@ describe('lista wyboru rodzaju — wejście projektanta', () => {
     for (const kod of WYCOFANE) expect(opcje, `${kod} wciąż w wyborze`).not.toContain(kod);
     // Kontrola dodatnia: pozostałe rodzaje NIE zniknęły przy okazji.
     expect(opcje).toEqual(KATALOG_BACKENDU.filter((kod) => !WYCOFANE.includes(kod)));
-    expect(opcje).toContain('voltage_stability');
+    expect(opcje).toContain('power_quality_harmonics');
     expect(opcje).toContain('neutral_earthing_design');
   });
 
@@ -272,106 +274,84 @@ describe('lista wyboru rodzaju — wejście projektanta', () => {
 });
 
 // ---------------------------------------------------------------------------
-// STABILNOŚĆ NAPIĘCIOWA — L zostaje, margines P–U znika
+// STABILNOŚĆ NAPIĘCIOWA — CAŁY RODZAJ WYCOFANY (karta QU-FABRYKACJA)
 // ---------------------------------------------------------------------------
 
-describe('ekran stabilności napięciowej po wycofaniu marginesu P–U', () => {
-  async function uruchomStabilnosc(): Promise<HTMLElement> {
-    ustawFetch(KATALOG_BACKENDU, 'voltage_stability');
-    render(
-      <EkranAnalizAkademickich trybZaawansowania="expert" rodzajPoczatkowy="voltage_stability" />,
-    );
-    const selektor = await screen.findByTestId('mvd-akad-rodzaj');
-    fireEvent.change(selektor, { target: { value: 'voltage_stability' } });
-    fireEvent.click(screen.getByTestId('mvd-akad-uruchom'));
-    await screen.findByTestId('mvd-akad-wyniki');
-    return screen.getByTestId('mvd-akad-ekran');
-  }
+/*
+ * DLACZEGO TEN BLOK ZMIENIŁ SENS. Karta V126-WYGASZENIE zdjęła stąd rodzinę P–U
+ * i BRONIŁA sąsiadów: wskaźnika L („ma jawne kryterium") oraz zapasu mocy biernej
+ * (krzywa Q–U). Pomiar karty QU-FABRYKACJA pokazał, że bronieni sąsiedzi stali na
+ * tym samym gruncie, co wycięta rodzina — zapas Q–U liczony z krotności mocy
+ * czynnej mimo dostępnego `bus.load_mvar` i BEZ jakiejkolwiek danej o zdolności
+ * wytwórczej mocy biernej, wskaźnik L z mnożnika bez pokrycia, a wspólne wejście
+ * wszystkich (moc zwarciowa węzła) podstawiane z napięcia znamionowego dla
+ * 99,7 % szyn sieci odniesienia. Solver przestał wyznaczać cokolwiek, więc ekran
+ * nie ma czego pokazać i rodzaj schodzi z toru projektanta w CAŁOŚCI.
+ *
+ * ILOCZYN CECH TEGO BLOKU:
+ *   {rodzaj wycofany} × {rejestr · filtr · lista wyboru · wejście trasowe}
+ *   {tekst widoczny} × {nazwa wielkości · fałszywy rodowód metody}
+ */
 
-  /*
-   * SĄSIAD MUSI PRZEŻYĆ WYCIĘCIE. Wskaźnik L ma jawne kryterium i to on niesie
-   * wartość inżynierską tej analizy — gdyby wycięcie marginesu zabrało ze sobą
-   * L albo jego próg, karta zamieniłaby jeden defekt na gorszy.
-   */
-  it('wskaźnik L i jego próg zostają na ekranie', async () => {
-    const ekran = await uruchomStabilnosc();
-    const tekst = tekstDlaProjektanta(ekran);
-    expect(tekst).toContain('Wskaźnik bliskości załamania L');
-    expect(tekst).toContain('L < 0,5');
-    expect(tekst).toContain('Bliskość załamania napięcia w węzłach');
-    // Werdykt zbiorczy per węzeł nadal cytuje status solvera.
-    expect(tekst).toMatch(/2 z 2 węzłów/);
+describe('stabilność napięciowa — rodzaj wycofany w całości', () => {
+  it('nie ma projektu ekranu — wpis zniknął z PREZENTACJA', () => {
+    expect(Object.keys(PREZENTACJA)).not.toContain('voltage_stability');
   });
 
-  it('margines obciążalności P–U zniknął z oferty ekranu', async () => {
-    const ekran = await uruchomStabilnosc();
-    const tekst = tekstDlaProjektanta(ekran);
-    expect(tekst).not.toContain('Najmniejszy margines obciążalności P–U w sieci');
-    expect(tekst).not.toContain('Obciążalność węzłów (krzywa P–U)');
-    expect(tekst).not.toContain('Krotność obciążenia w punkcie załamania');
-    expect(tekst).not.toContain('Napięcie w punkcie załamania');
-    // Wartość „250 %" z fixtury (margines z przybliżenia) nie może wrócić inną drogą.
-    expect(tekst).not.toContain('250');
+  it('jest w rejestrze wycofań z powodem merytorycznym', () => {
+    const powod = POWODY_NIEPREZENTOWANIA.voltage_stability;
+    expect(powod.length).toBeGreaterThan(40);
+    expect(powod.toLowerCase()).not.toContain('poza zakresem');
+    // Powód nazywa POMIAR, a nie samo „nie działa" — inaczej wycofanie byłoby
+    // opinią, a nie rozstrzygnięciem.
+    expect(powod).toContain('zwarciowej');
   });
 
-  /*
-   * DROGA, KTÓREJ ASERCJE NA ETYKIETACH NIE WIDZĄ (znalezione zrzutem, nie testem):
-   * opis rodzaju pod listą wyboru obiecywał „Margines stabilności napięciowej
-   * węzłów (krzywa P–U …) z rozpływu" — czyli wielkość zdjętą z ekranu, i to
-   * z fałszywym rodowodem („z rozpływu"). Etykiety tabel już jej nie mają, więc
-   * poprzedni test przechodził. Pin jest teraz na CAŁYM tekście widocznym:
-   * żadne „P–U" nie ma prawa paść na ekranie stabilności napięciowej.
-   * (Q–U to inna wielkość — inna litera, więc ten pin jej nie dotyczy.)
-   */
-  /*
-   * TEN SAM RODZAJ FAŁSZU, INNE ZDANIE (znalezione przy odbiorze karty).
-   * Ekran obiecywał „najmniejszą wartość własną macierzy wrażliwości", a solver
-   * żadnej macierzy wrażliwości nie liczy: `_voltage_stability` wyznacza
-   * `max(0,001; (1 − L) · U_pu)` i bierze minimum po węzłach. To ta sama klasa
-   * co „krzywa P–U z rozpływu" — etykieta mówiąca, SKĄD liczba pochodzi, choć
-   * nie stamtąd pochodzi. Pin trzyma OBA końce: nazwa metody, której nie ma,
-   * nie wraca na ekran, a nazwa mówiąca, czym liczba jest, na nim stoi.
-   */
-  it('wielkość główna nie obiecuje analizy modalnej, której solver nie liczy', async () => {
-    const ekran = await uruchomStabilnosc();
-    const tekst = tekstDlaProjektanta(ekran);
-    expect(tekst).not.toContain('wartość własna');
-    expect(tekst).not.toContain('macierzy wrażliwości');
-    expect(tekst).toContain('zapas do załamania');
+  it('filtr listy wyboru go odsiewa', () => {
+    expect(rodzajPrezentowany('voltage_stability')).toBe(false);
+    expect(tylkoPrezentowane(KATALOG_BACKENDU)).not.toContain('voltage_stability');
   });
 
-  it('ekran nie obiecuje krzywej P–U w ŻADNYM miejscu widocznym dla projektanta', async () => {
-    const ekran = await uruchomStabilnosc();
-    const tekst = tekstDlaProjektanta(ekran);
-    expect(tekst).not.toContain('P–U');
-    expect(tekst).not.toContain('P-U');
-    expect(tekst).not.toContain('Margines stabilności');
+  it('znika z listy wyboru okna, a sąsiedzi zostają', async () => {
+    ustawFetch(KATALOG_BACKENDU);
+    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
+    const selektor = (await screen.findByTestId('mvd-akad-rodzaj')) as HTMLSelectElement;
+    const opcje = Array.from(selektor.options).map((o) => o.value);
+    expect(opcje).not.toContain('voltage_stability');
+    // Kontrola dodatnia: analiza sąsiednia z tego samego obszaru ZOSTAŁA.
+    expect(opcje).toContain('reliability_contingency');
   });
 
   /*
-   * KLASA, NIE INSTANCJA: `margin_percent = (lambda_max − 1) · 100 %`, więc
-   * zdjęcie samego marginesu z pozostawieniem krotności byłoby zdjęciem tej
-   * samej liczby w jednej skali i zostawieniem jej w drugiej. Projekt ekranu
-   * nie może odwoływać się do ŻADNEJ wielkości z tego przybliżenia.
+   * FAŁSZYWY RODOWÓD NIE WRACA INNĄ DROGĄ. Karta zdjęła nazwy mówiące, SKĄD
+   * liczba pochodzi, choć nie była to prawda: „krzywa Q–U" (we wzorze nie
+   * występowało napięcie) i „krzywa P–U … z rozpływu" (rozpływu tam nie ma).
+   * Skan obejmuje CAŁY zbiór tekstów prezentacji, a nie jedno pole — poprzednim
+   * razem obietnica wróciła na ekran właśnie obok pinu postawionego punktowo.
    */
-  it('projekt ekranu nie sięga po żadną wielkość z przybliżenia P–U', () => {
-    const projekt = JSON.stringify(PREZENTACJA.voltage_stability);
-    for (const pole of [
-      'voltage_stability_margin_percent',
-      'pv_curves',
-      'lambda_max',
-      'u_at_max',
-    ]) {
-      expect(projekt, `projekt wciąż czyta ${pole}`).not.toContain(pole);
+  it('żaden projekt ekranu nie obiecuje krzywej Q–U ani P–U', () => {
+    const wszystkie = JSON.stringify(PREZENTACJA);
+    for (const falszywy of ['krzywa Q–U', 'krzywej Q–U', 'krzywa P–U', 'krzywej P–U']) {
+      expect(wszystkie, `prezentacja obiecuje „${falszywy}"`).not.toContain(falszywy);
     }
-    // Kryterium mówi już tylko o L — bez zdania o marginesie bez progu.
-    expect(PREZENTACJA.voltage_stability.kryterium).toContain('L < 0,5');
-    expect(PREZENTACJA.voltage_stability.kryterium).not.toContain('P–U');
+    // Kontrola dodatnia skanu: obiekt prezentacji NIE jest pusty.
+    expect(wszystkie.length).toBeGreaterThan(2000);
   });
 
-  it('zapas mocy biernej (krzywa Q–U) NIE został zabrany przy okazji', async () => {
-    const ekran = await uruchomStabilnosc();
-    const tekst = tekstDlaProjektanta(ekran);
-    expect(tekst).toContain('Zapas mocy biernej węzłów (krzywa Q–U)');
+  it('opis rodzaju mówi o wstrzymaniu, a nie o wielkościach, których nie ma', () => {
+    expect(OPISY_RODZAJOW.voltage_stability).toContain('wstrzymana');
+    expect(OPISY_RODZAJOW.voltage_stability).not.toContain('Q–U');
+    // Etykieta PL ZOSTAJE — wynik wczytany z zapisanego przebiegu ma być nazwany
+    // po polsku, a nie kodem kontraktu.
+    expect(ETYKIETY_RODZAJOW.voltage_stability).toBe('Stabilność napięciowa');
+  });
+
+  it('ekran trasowy E-41 zniknął z nawigacji, ale został w kanonie', () => {
+    const ekran = SCREEN_CANON_REGISTRY['E-41'];
+    expect(ekran, 'E-41 wypadł z kanonu — złamana ciągłość numeracji').toBeDefined();
+    expect(ekran.visibleInNavigation).toBe(false);
+    // Kontrola dodatnia: sąsiedni ekran akademicki nadal JEST w nawigacji,
+    // więc asercja wyżej mierzy wycofanie, a nie globalne wyłączenie obszaru.
+    expect(SCREEN_CANON_REGISTRY['E-42'].visibleInNavigation).toBe(true);
   });
 });

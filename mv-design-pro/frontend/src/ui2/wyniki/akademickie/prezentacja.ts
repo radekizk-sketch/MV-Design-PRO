@@ -274,97 +274,36 @@ export const PREZENTACJA: Record<RodzajPrezentowany, PrezentacjaRodzaju> = {
   },
 
   // -------------------------------------------------------------------------
-  voltage_stability: {
-    pytanie:
-      'Jak blisko punktu załamania napięcia pracują węzły sieci — ile jeszcze mocy '
-      + 'można w nich obciążyć?',
-    kryterium:
-      'Wskaźnik bliskości załamania napięcia L < 0,5 dla każdego węzła (powyżej tej '
-      + 'wartości solver podnosi alarm).',
-    norma: 'wskaźnik L (Kessel–Glavitsch); krzywa Q–U zapasu mocy biernej',
-    werdykt: {
-      rodzaj: 'zbiorczy',
-      sciezkaTablicy: 'l_index_per_bus',
-      kluczStatusu: 'alert',
-      mapa: {
-        false: { tekst: 'bez alarmu', istotnosc: 'ok' },
-        true: { tekst: 'alarm bliskości załamania', istotnosc: 'err' },
-      },
-      wartoscSpelniona: 'false',
-      obiektyDopelniacz: 'węzłów',
-    },
-    /*
-     * V126-WYGASZENIE (decyzja właściciela 2026-08-07): margines obciążalności
-     * P–U ZDJĘTY z ekranu. Nie powstaje z krzywej P–U liczonej rozpływem, tylko
-     * z przybliżenia ze sztywności węzła o zaszytych stałych
-     * (`lambda_max = 1 + min(2,5; S_sc/P/20)`, solver `_voltage_stability`), więc
-     * nie niesie wartości inżynierskiej. Wartość ma tam wskaźnik L — ma jawne
-     * kryterium — i ten ZOSTAJE wraz z progiem.
-     *
-     * KLASA, NIE INSTANCJA: z ekranu znika CAŁA rodzina wielkości pochodzących
-     * z tego samego wzoru — `voltage_stability_margin_percent` (minimum sieci)
-     * oraz tabela `pv_curves` (`lambda_max`, `u_at_max`, `margin_percent`).
-     * `margin_percent = (lambda_max − 1) · 100 %`, więc zdjęcie samego marginesu
-     * z pozostawieniem `lambda_max` byłoby zdjęciem tej samej liczby w jednej
-     * skali i zostawieniem jej w drugiej.
-     *
-     * Pola POZOSTAJĄ w odpowiedzi backendu (kontrakty FROZEN). DŁUG NAZWANY:
-     * albo liczyć realną krzywą P–U rozpływem, albo zdjąć pola z kontraktu przy
-     * zmianie wersji głównej — `docs/v12xx/REJESTR_KONFLIKTOW.md`, V126-WYGASZENIE.
-     */
-    /*
-     * RODOWÓD WIELKOŚCI GŁÓWNEJ (poprawione przy odbiorze karty, 2026-08-07).
-     * Pole kontraktu nazywa się `smallest_eigenvalue`, a ekran obiecywał
-     * „najmniejszą wartość własną macierzy wrażliwości". Solver NIE liczy żadnej
-     * macierzy wrażliwości ani jej widma — `_voltage_stability` wyznacza
-     * `max(0,001; (1 − L) · U_pu)` i bierze minimum po węzłach. Etykieta mówiła
-     * więc, SKĄD liczba pochodzi, a nie było to prawdą — ta sama klasa co
-     * „krzywa P–U z rozpływu", którą karta właśnie zdjęła (zero fabrykacji).
-     * Nazwa mówi teraz, czym liczba JEST; nazwa POLA kontraktu zostaje (FROZEN).
-     * DŁUG NAZWANY: albo policzyć realną analizę modalną macierzy wrażliwości
-     * Q–U, albo przemianować pole przy zmianie wersji głównej — rejestr,
-     * wiersz V126-WYGASZENIE.
-     */
-    wielkosciGlowne: [
-      {
-        sciezka: 'modal_analysis.smallest_eigenvalue',
-        etykieta: 'Najmniejszy w sieci zapas do załamania (1 − L, ważony napięciem węzła)',
-      },
-    ],
-    tabele: [
-      {
-        sciezka: 'l_index_per_bus',
-        tytul: 'Bliskość załamania napięcia w węzłach',
-        kluczRef: 'bus_ref',
-        etykietaRef: 'Szyna',
-        kolumny: [
-          { klucz: 'l_index', etykieta: 'Wskaźnik bliskości załamania L' },
-          {
-            klucz: 'alert',
-            etykieta: 'Kryterium L < 0,5',
-            mapaStatusu: {
-              false: { tekst: 'spełnione', istotnosc: 'ok' },
-              true: { tekst: 'niespełnione', istotnosc: 'err' },
-            },
-          },
-        ],
-      },
-      {
-        sciezka: 'qv_curves',
-        tytul: 'Zapas mocy biernej węzłów (krzywa Q–U)',
-        kluczRef: 'bus_ref',
-        etykietaRef: 'Szyna',
-        kolumny: [
-          { klucz: 'q_available_mvar', etykieta: 'Moc bierna dostępna', jednostka: 'Mvar' },
-          { klucz: 'q_min_mvar', etykieta: 'Moc bierna wymagana', jednostka: 'Mvar' },
-          { klucz: 'margin_mvar', etykieta: 'Zapas mocy biernej', jednostka: 'Mvar' },
-        ],
-      },
-    ],
-    nastepnyKrok:
-      'Węzeł z alarmem wzmocnij: dołóż kompensację mocy biernej, zmień punkt '
-      + 'podziału sieci albo wzmocnij tor zasilania (przekrój / drugie zasilanie).',
-  },
+  /*
+   * STABILNOŚĆ NAPIĘCIOWA — RODZAJ WYCOFANY Z EKRANU (karta QU-FABRYKACJA,
+   * 2026-08-08). Projekt ekranu USUNIĘTY, wpis przeniesiony do rejestru
+   * `nieprezentowane.ts` z powodem merytorycznym.
+   *
+   * DLACZEGO CAŁY RODZAJ, A NIE KOLEJNA TABELA. Karta V126-WYGASZENIE zdjęła
+   * stąd rodzinę P–U i zostawiła wskaźnik L, bo „ma jawne kryterium", oraz zapas
+   * mocy biernej (krzywa Q–U). Pomiar karty QU-FABRYKACJA pokazał, że KAŻDA
+   * z pozostałych wielkości stała na tym samym gruncie:
+   *   · zapas Q–U — zdolność wytwórcza brana jako 0,15 · P, zapotrzebowanie jako
+   *     0,35 · P, choć `bus.load_mvar` jest w kontrakcie i jest używane obok;
+   *     zdolności wytwórczej mocy biernej kontrakt nie niesie w ogóle. Nazwa
+   *     „krzywa Q–U" była fałszywym rodowodem — we wzorze nie było napięcia;
+   *   · wskaźnik L — `P/S_sc · 4`, mnożnik bez pokrycia w danych i w normie;
+   *   · wartość własna — pochodna wskaźnika L, ważona napięciem, które model
+   *     wypełnia wartością domyślną kontraktu;
+   *   · wspólne wejście wszystkich — moc zwarciowa węzła — podane dla 1 z 315
+   *     szyn sieci odniesienia, dla reszty podstawiane z napięcia znamionowego.
+   *
+   * Solver przestał je wyznaczać (wersja 1.2): pola kontraktu zostają, wartością
+   * jest `null` z powodem po polsku. Ekran bez ani jednej liczby to nie jest
+   * uczciwy stan zerowy, tylko pusty ekran — dlatego rodzaj schodzi z toru
+   * projektanta, a nie zostaje z samymi kreskami.
+   *
+   * POWRÓT NA EKRAN wymaga POLICZENIA wielkości, nie przywrócenia tabel:
+   * krzywa P–U z rozpływu, wskaźnik L z macierzy admitancyjnej przy zbieżnym
+   * rozpływie, zdolność wytwórcza mocy biernej doprowadzona do kontraktu
+   * wejściowego (`GenLimits` → most ENM→V12.6). Rejestr: QU-FABRYKACJA.
+   */
+
 
   // -------------------------------------------------------------------------
   reliability_contingency: {

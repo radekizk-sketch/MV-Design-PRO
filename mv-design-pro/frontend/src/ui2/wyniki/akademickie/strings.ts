@@ -40,13 +40,17 @@ export const OPISY_RODZAJOW: Record<RodzajAnalizy, string> = {
   ssci_impedance:
     'Kryterium impedancyjne Nyquista dla przekształtnika: Z_grid(f), Z_conv(f) i wzmocnienie '
     + 'pętli mniejszej. Werdykt stabilności ma własne okno „Stabilność SSCI".',
-  // V126-WYGASZENIE: opis mówił „margines … z krzywej P–U … z rozpływu", czyli
-  // obiecywał wielkość, której solver nie liczy rozpływem (przybliżenie ze
-  // sztywności węzła) i której ekran już nie pokazuje. Opis mówi teraz o tym,
-  // co analiza NAPRAWDĘ rozstrzyga — o bliskości załamania napięcia.
+  // QU-FABRYKACJA (2026-08-08): opis obiecywał „wskaźnik L z jawnym kryterium
+  // oraz zapas mocy biernej węzła (krzywa Q–U)" — obie wielkości powstawały ze
+  // współczynników bez pokrycia w danych, a nazwa „krzywa Q–U" była fałszywym
+  // rodowodem (we wzorze nie występowało napięcie). Solver ich nie wyznacza,
+  // rodzaj jest wycofany z toru projektanta (`nieprezentowane.ts`). Opis ZOSTAJE,
+  // bo wynik wczytany inną drogą (zapisany przebieg) ma być nazwany po polsku —
+  // i mówi teraz prawdę o stanie zdolności, a nie o wielkościach, których nie ma.
   voltage_stability:
-    'Bliskość węzłów do punktu załamania napięcia — wskaźnik L z jawnym kryterium '
-    + 'oraz zapas mocy biernej węzła (krzywa Q–U).',
+    'Bliskość węzłów do punktu załamania napięcia. Analiza wstrzymana: wymaga '
+    + 'rozpływu mocy oraz mocy zwarciowej węzłów w modelu — bez nich solver nie '
+    + 'wyznacza żadnej wielkości i melduje jawny brak.',
   reliability_contingency:
     'Wskaźniki niezawodności zasilania (SAIFI/SAIDI/ENS) z intensywności uszkodzeń '
     + 'i czasów odtworzenia elementów modelu.',

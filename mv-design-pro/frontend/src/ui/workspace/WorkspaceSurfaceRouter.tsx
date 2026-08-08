@@ -2868,7 +2868,11 @@ function PowierzchniaAnalizAkademickich({ rodzaj }: { rodzaj?: RodzajPrezentowan
  */
 const RODZAJ_EKRANU_V126: Partial<Record<string, RodzajPrezentowany>> = {
   'E-40': 'power_quality_harmonics',
-  'E-41': 'voltage_stability',
+  // 'E-41' (stabilność napięciowa) ZDJĘTE z mapy — rodzaj wycofany kartą
+  // QU-FABRYKACJA. Wpis zostawiony wskazywałby rodzaj nieobecny na liście wyboru
+  // okna, więc ekran po cichu pokazałby PIERWSZĄ pozycję katalogu, czyli inną
+  // analizę niż obiecuje nawigacja. Typ mapy (`RodzajPrezentowany`) i tak nie
+  // pozwoliłby tu na rodzaj wycofany — to samo rozstrzygnięcie, co dla E-49.
   'E-42': 'reliability_contingency',
   'E-43': 'earthing_safety',
   'E-44': 'insulation_coordination',
