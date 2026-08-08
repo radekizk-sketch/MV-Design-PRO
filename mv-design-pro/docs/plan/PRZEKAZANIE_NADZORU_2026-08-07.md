@@ -92,8 +92,13 @@ Kolumna ❌ macierzy §6 jest PUSTA (27 ✅ / 18 ◐ / 0 ❌).
 **Kolejka po tych dwóch:** S9-12-DLUG-LATERAL-ETYKIETA · reszta klasy
 KLIENT-BEZ-DOSTAWCY · B-5 (kontrakt kopii, V12K-325) · PACK-DOWODY-DLUG-APARATURA
 (katalog bez `U_m`/`I_cu`) · PACK-DOWODY-DLUG-ROZPLYW (generator bez końcówki) ·
-reguły zgodności specyficzne dla OSD (REF-PAKIET) · `api/snapshots.py` bez
-`include_router` (wpinać WYŁĄCZNIE z konsumentem, inaczej fantom).
+reguły zgodności specyficzne dla OSD (REF-PAKIET).
+~~`api/snapshots.py` bez `include_router`~~ — **ZAMKNIĘTE 2026-08-08 (karta
+ROUTERY-MARTWE): USUNIĘTE.** Jedyny kandydat na konsumenta (`frontend/src/designer/`)
+sam był wyspą bez importerów i wołał ścieżki, których backend nigdy nie serwował —
+więc „wpiąć z konsumentem" nie miało kogo wpiąć. Klasa (12 modułów `src/api/**` z
+routerem, którego aplikacja nie montuje) domknięta guardem
+`scripts/router_mount_guard.py`.
 
 **Decyzje produktowe czekające na właściciela** (nie rozstrzygać samodzielnie):
 podziałka pól L1/L2 (S9-10 pkt C) · edycja ról pól mogąca rozbroić pętlę OSD złączy
@@ -291,7 +296,11 @@ moduł już tego nie rozstrzyga.
    którego NIE MA — strona nie jest eksportowana z bariery ani importowana w
    produkcji, a test `workspaceShellV125` MOCKUJE eksport, którego moduł nie ma).
    Pięć martwych wykluczeń zdjąłem 2026-08-08; reszta to karta.
-3. PACK-DLUG-STRATY / -SPADEK / -NASTAWY (4 pakiety dowodowe bez konsumenta,
+3. ~~`api/snapshots.py` bez `include_router`~~ — ZAMKNIĘTE 2026-08-08 kartą
+   ROUTERY-MARTWE: USUNIĘTE. Reguła „wpinać wyłącznie z konsumentem" nie miała
+   kogo wpiąć — jedyny kandydat (`frontend/src/designer/`) sam był wyspą bez
+   importerów, wołającą ścieżki, których backend nigdy nie serwował.
+4. PACK-DLUG-STRATY / -SPADEK / -NASTAWY (4 pakiety dowodowe bez konsumenta,
    powody merytoryczne w rejestrze) · reguły zgodności specyficzne dla OSD
    (REF-PAKIET) · dług aparatury: katalog bez `U_m`/`I_cu` w postaci czytanej
    przez widok wytrzymałości · 9 długów stałych zastępczych z
