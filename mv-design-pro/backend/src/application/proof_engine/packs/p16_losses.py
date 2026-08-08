@@ -422,7 +422,7 @@ class P16LossesProof:
         )
 
         return ProofStep(
-            step_id=ProofStep.generate_step_id("P16", step_number),
+            step_id=ProofStep.generate_step_id(cls.PACK_ID, step_number),
             step_number=step_number,
             title_pl=f"{equation.name_pl} ({branch.branch_id})",
             equation=equation,
@@ -487,7 +487,7 @@ class P16LossesProof:
         )
 
         return ProofStep(
-            step_id=ProofStep.generate_step_id("P16", step_number),
+            step_id=ProofStep.generate_step_id(cls.PACK_ID, step_number),
             step_number=step_number,
             title_pl=f"{equation.name_pl} ({branch.branch_id})",
             equation=equation,
@@ -553,7 +553,7 @@ class P16LossesProof:
         )
 
         return ProofStep(
-            step_id=ProofStep.generate_step_id("P16", step_number),
+            step_id=ProofStep.generate_step_id(cls.PACK_ID, step_number),
             step_number=step_number,
             title_pl=equation.name_pl,
             equation=equation,
@@ -610,7 +610,7 @@ class P16LossesProof:
         )
 
         return ProofStep(
-            step_id=ProofStep.generate_step_id("P16", step_number),
+            step_id=ProofStep.generate_step_id(cls.PACK_ID, step_number),
             step_number=step_number,
             title_pl=equation.name_pl,
             equation=equation,
@@ -679,7 +679,7 @@ class P16LossesProof:
         )
 
         return ProofStep(
-            step_id=ProofStep.generate_step_id("P16", step_number),
+            step_id=ProofStep.generate_step_id(cls.PACK_ID, step_number),
             step_number=step_number,
             title_pl=equation.name_pl,
             equation=equation,

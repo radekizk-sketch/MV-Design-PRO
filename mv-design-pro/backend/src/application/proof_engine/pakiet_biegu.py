@@ -29,6 +29,15 @@ wyłącznie zestawia ich wejścia z zapisanego biegu. Pakiet ROZPŁYWU nie woła
 solvera: bieg zapisał gotowy, zamrożony wynik, a warstwa wiązania
 (``application/solvers/power_flow_binding.py``) wyłącznie go odtwarza — fizyka
 NIE POWTARZA SIĘ (karta PACK-ROZPLYW).
+
+PAKIET PRZEBIEGU JEST PEŁNĄ DOKUMENTACJĄ PRZEBIEGU, NIE JEDNYM DOWODEM (karta
+PACK-BEZ-KONSUMENTA). Bieg rozpływu wydaje pakiet ZBIORCZY: bilans i zbieżność
+(``p14_power_flow``), straty mocy (``p16_losses``) oraz spadek napięcia na
+wskazanym odcinku (``vdrop``). Wszystkie trzy czytają TEN SAM zamrożony wynik, więc
+nie mogą się ze sobą rozjechać; rozbicie ich na osobne „rodzaje pakietu" zmuszałoby
+projektanta do wyboru pozornego między pozycjami wyprowadzonymi z identycznych
+danych. Do 2026-08-08 dwa z tych trzech generatorów nie miały ANI JEDNEGO
+konsumenta.
 """
 
 from __future__ import annotations
@@ -39,16 +48,27 @@ from datetime import UTC, datetime
 from typing import Any
 
 from application.proof_engine.packs.p14_power_flow import P14PowerFlowInput, P14PowerFlowProof
+from application.proof_engine.packs.p16_losses import P16LossesInput, P16LossesProof
 from application.proof_engine.packs.sc_asymmetrical import (
     SCAsymmetricalPackInput,
     SCAsymmetricalProofPack,
 )
 from application.proof_engine.packs.sc_symmetrical import SC3FPackInput, SC3FProofPack
-from application.proof_engine.proof_pack import ProofPackContext, resolve_mv_design_pro_version
+from application.proof_engine.packs.vdrop import VDROPPackInput, zbuduj_zip_vdrop
+from application.proof_engine.proof_pack import (
+    ProofPackContext,
+    resolve_mv_design_pro_version,
+    zbuduj_zip_zbiorczy,
+)
 from application.solvers.power_flow_binding import (
     BrakDanychRozplywuError,
     RozplywZBiegu,
     rozplyw_z_biegu,
+)
+from application.solvers.voltage_drop_binding import (
+    BrakDanychSpadkuError,
+    OdcinekSpadku,
+    odcinki_spadku_napiecia,
 )
 from enm.canonical_analysis import CanonicalRun
 
@@ -75,12 +95,32 @@ _RODZAJ_PL: dict[str, str] = {
     RODZAJ_ROZPLYW: "Rozpływ mocy (zbieżność, bilans mocy, zakres napięć)",
 }
 
-#: Rodzaje pakietu dokumentujące POJEDYNCZY PUNKT sieci. JEDNO ŹRÓDŁO PRAWDY
-#: (reguła predykatów parami): czyta je i lista punktów w odpowiedzi o dostępności,
-#: i wybór punktu przy budowie, i odmowa dla punktu podanego tam, gdzie punkt nie
-#: ma sensu. Pakiet rozpływu opisuje CAŁĄ sieć naraz — dlatego go tu nie ma, a
-#: nie dlatego, że „na razie" nie zebrano punktów.
+#: Rodzaje pakietu, których CAŁA treść dotyczy jednego punktu sieci — bez punktu
+#: nie ma czego udokumentować, więc bieg bez punktów nie ma takiego pakietu.
+#: JEDNO ŹRÓDŁO PRAWDY (reguła predykatów parami): czyta je i lista punktów w
+#: odpowiedzi o dostępności, i wybór punktu przy budowie, i odmowa dla punktu
+#: podanego tam, gdzie punkt nie ma sensu.
 _RODZAJE_Z_PUNKTEM: frozenset[str] = frozenset({RODZAJ_SC3F, RODZAJ_SC_NIESYMETRYCZNE})
+
+#: Rodzaje pakietu opisujące CAŁĄ sieć, do których punkt DOKŁADA jeden dokument.
+#: Pakiet rozpływu dokumentuje bilans i straty całej sieci ZAWSZE, a spadek
+#: napięcia — na wskazanym odcinku, o ile bieg jakiś odcinek policzył. Dlatego
+#: punkt jest tu NIEOBOWIĄZKOWY: brak odcinków (sama rozdzielnia z transformatorem)
+#: NIE MOŻE odebrać projektantowi bilansu mocy.
+#:
+#: Rozłączność z ``_RODZAJE_Z_PUNKTEM`` jest wymagana (rodzaj byłby jednocześnie
+#: „bez punktu nie ma pakietu" i „punkt opcjonalny") i przypięta testem.
+_RODZAJE_Z_ODCINKIEM: frozenset[str] = frozenset({RODZAJ_ROZPLYW})
+
+#: Jak nazywa się to, co użytkownik wybiera — po polsku, dla ekranu. Klucze
+#: pokrywają DOKŁADNIE sumę obu zbiorów powyżej (pin równości w testach): rodzaj
+#: z wyborem, ale bez nazwy wyboru, dałby w interfejsie listę bez etykiety.
+_ETYKIETA_PUNKTU_PL: dict[str, str] = {
+    RODZAJ_SC3F: "Punkt zwarcia",
+    RODZAJ_SC_NIESYMETRYCZNE: "Punkt zwarcia",
+    RODZAJ_ROZPLYW: "Odcinek dla spadku napięcia",
+}
+
 
 #: Powody braku pakietu — po polsku, każdy z realnym następnym krokiem.
 _POWOD_RODZAJ_BEZ_PAKIETU = (
@@ -130,17 +170,21 @@ def rodzaj_pakietu_biegu(run: CanonicalRun) -> str | None:
 
 
 def punkty_pakietu(run: CanonicalRun) -> list[PunktPakietu]:
-    """Punkty zwarcia biegu (deterministycznie posortowane po identyfikatorze).
+    """Punkty wyboru biegu (deterministycznie posortowane po identyfikatorze).
 
-    Źródło: artefakt wyniku biegu (te same wiersze, które widzi ekran zwarć) —
+    Źródło: artefakt wyniku biegu (te same wiersze, które widzi ekran wyników) —
     a nie ponowne przeliczanie modelu. Punkt, którego bieg nie policzył, nie jest
     ofertą pakietu.
 
-    Rodzaj pakietu opisujący całą sieć (rozpływ mocy) nie ma punktów i zwraca
-    pustą listę — z ``_RODZAJE_Z_PUNKTEM``, czyli z tego samego źródła, z którego
-    korzysta budowa. Pusta lista nie oznacza tu „brak danych"; to cecha rodzaju.
+    Czym jest punkt, rozstrzyga RODZAJ pakietu — z tych samych zbiorów, z których
+    korzysta budowa (reguła predykatów parami): dla pakietów zwarciowych to punkt
+    zwarcia, dla pakietu rozpływu ODCINEK linii/kabla. Rodzaj bez wyboru zwraca
+    pustą listę; pusta lista nie oznacza wtedy „brak danych", tylko cechę rodzaju.
     """
-    if rodzaj_pakietu_biegu(run) not in _RODZAJE_Z_PUNKTEM:
+    rodzaj = rodzaj_pakietu_biegu(run)
+    if rodzaj in _RODZAJE_Z_ODCINKIEM:
+        return _odcinki_jako_punkty(run)
+    if rodzaj not in _RODZAJE_Z_PUNKTEM:
         return []
     graph_nodes = ((run.raw_result or {}).get("graph") or {}).get("nodes", {})
     punkty: list[PunktPakietu] = []
@@ -153,6 +197,27 @@ def punkty_pakietu(run: CanonicalRun) -> list[PunktPakietu]:
         punkty.append(PunktPakietu(target_id=str(target_id), nazwa=str(nazwa)))
     punkty.sort(key=lambda p: p.target_id)
     return punkty
+
+
+def _odcinki_biegu(run: CanonicalRun) -> list[OdcinekSpadku]:
+    """Odcinki spadku napięcia przebiegu — JEDNO wejście dla listy i dla budowy.
+
+    Bieg, którego artefakt nie nadaje się do odczytu odcinków, daje pustą listę
+    zamiast wyjątku: brak dowodu spadku nie może odebrać projektantowi bilansu
+    mocy, a powód braku CAŁEGO pakietu rozpływu ustala osobna kontrola danych
+    (``_powod_braku_rozplywu``).
+    """
+    try:
+        return odcinki_spadku_napiecia(raw_result=run.raw_result, snapshot=run.snapshot)
+    except BrakDanychSpadkuError:
+        return []
+
+
+def _odcinki_jako_punkty(run: CanonicalRun) -> list[PunktPakietu]:
+    return [
+        PunktPakietu(target_id=odcinek.id_galezi, nazwa=odcinek.nazwa)
+        for odcinek in _odcinki_biegu(run)
+    ]
 
 
 def _powod_braku_punktow(run: CanonicalRun) -> str | None:
@@ -209,11 +274,12 @@ def dostepnosc_pakietu(run: CanonicalRun) -> dict[str, Any]:
         "rodzaj_pl": _RODZAJ_PL[rodzaj],
         "powod_pl": None,
         "punkty": [p.to_dict() for p in punkty],
-        "zawartosc_pl": list(_ZAWARTOSC_PL),
+        "punkty_etykieta_pl": _ETYKIETA_PUNKTU_PL.get(rodzaj),
+        "zawartosc_pl": _zawartosc_pl(rodzaj, punkty),
     }
 
 
-#: Co użytkownik dostaje w pobranym pliku — opis ZAWARTOŚCI, nie obietnica.
+#: Pliki, które są W KAŻDYM pakiecie dowodowym — opis ZAWARTOŚCI, nie obietnica.
 #: Zgodny z ``ProofPackBuilder.build`` (proof.json/proof.tex/manifest/signature;
 #: proof.pdf wyłącznie gdy toolchain LaTeX jest dostępny na serwerze).
 _ZAWARTOSC_PL: tuple[str, ...] = (
@@ -224,6 +290,35 @@ _ZAWARTOSC_PL: tuple[str, ...] = (
     "Dokument PDF (proof.pdf) — gdy serwer ma złożenie LaTeX",
 )
 
+#: Dowody, które niesie pakiet ZBIORCZY rozpływu. Wiersz spadku napięcia dokładany
+#: jest WYŁĄCZNIE wtedy, gdy bieg ma odcinek do udokumentowania — obietnica dowodu,
+#: którego w pliku nie będzie, jest gorsza od braku wiersza.
+_ZAWARTOSC_ROZPLYWU_PL: tuple[str, ...] = (
+    "Dowód rozpływu mocy: zbieżność, bilans P i Q, zakres napięć (rozplyw.zip)",
+    "Dowód strat mocy: straty gałęziowe, sumy sieci, udział strat (straty.zip)",
+)
+_ZAWARTOSC_SPADKU_PL = (
+    "Dowód spadku napięcia na wskazanym odcinku linii/kabla (spadek_napiecia.zip)"
+)
+_ZAWARTOSC_BEZ_ODCINKA_PL = (
+    "Bez dowodu spadku napięcia — ten przebieg nie zawiera odcinka linii ani kabla "
+    "o znanej impedancji i długości."
+)
+
+
+def _zawartosc_pl(rodzaj: str, punkty: list[PunktPakietu]) -> list[str]:
+    """Co PROJEKTANT znajdzie w pobranym pliku — opis prawdziwy dla TEGO biegu.
+
+    Dla pakietu zbiorczego rozpływu lista zależy od danych: wiersz spadku napięcia
+    pojawia się wtedy i tylko wtedy, gdy bieg ma odcinek (czyli gdy ``punkty`` są
+    niepuste — z tego samego źródła, z którego korzysta budowa).
+    """
+    if rodzaj not in _RODZAJE_Z_ODCINKIEM:
+        return list(_ZAWARTOSC_PL)
+    dowody = list(_ZAWARTOSC_ROZPLYWU_PL)
+    dowody.append(_ZAWARTOSC_SPADKU_PL if punkty else _ZAWARTOSC_BEZ_ODCINKA_PL)
+    return dowody + [f"W każdym dowodzie: {pozycja}" for pozycja in _ZAWARTOSC_PL]
+
 
 def _niedostepny(run: CanonicalRun, powod_pl: str, *, rodzaj: str | None = None) -> dict[str, Any]:
     return {
@@ -233,6 +328,7 @@ def _niedostepny(run: CanonicalRun, powod_pl: str, *, rodzaj: str | None = None)
         "rodzaj_pl": _RODZAJ_PL.get(rodzaj) if rodzaj else None,
         "powod_pl": powod_pl,
         "punkty": [],
+        "punkty_etykieta_pl": None,
         "zawartosc_pl": [],
     }
 
@@ -240,10 +336,12 @@ def _niedostepny(run: CanonicalRun, powod_pl: str, *, rodzaj: str | None = None)
 def zbuduj_pakiet_biegu(run: CanonicalRun, *, punkt: str | None = None) -> tuple[str, bytes]:
     """Zbuduj pakiet dowodowy przebiegu: ``(nazwa_pliku, zawartość ZIP)``.
 
-    ``punkt`` = identyfikator punktu zwarcia; ``None`` = pierwszy punkt biegu
-    (deterministycznie: najmniejszy identyfikator). Punkt spoza biegu i rodzaj bez
-    pakietu kończą się ``PakietBieguError`` z powodem po polsku — API tłumaczy go
-    na odpowiedź HTTP, a ekran pokazuje wprost.
+    ``punkt`` = identyfikator wyboru właściwego rodzajowi: punkt zwarcia dla
+    pakietów zwarciowych, ODCINEK linii/kabla dla pakietu rozpływu. ``None`` =
+    pierwszy z listy biegu (deterministycznie: najmniejszy identyfikator). Punkt
+    spoza biegu, punkt podany dla rodzaju, który go nie ma, i rodzaj bez pakietu
+    kończą się ``PakietBieguError`` z powodem po polsku — API tłumaczy go na
+    odpowiedź HTTP, a ekran pokazuje wprost.
     """
     dostepnosc = dostepnosc_pakietu(run)
     if not dostepnosc["dostepny"]:
@@ -258,16 +356,14 @@ def zbuduj_pakiet_biegu(run: CanonicalRun, *, punkt: str | None = None) -> tuple
     )
     rodzaj = str(dostepnosc["rodzaj"])
 
-    if rodzaj not in _RODZAJE_Z_PUNKTEM:
-        # Pakiet opisujący całą sieć. Punkt podany dla takiego rodzaju NIE jest
-        # po cichu pomijany — ciche zignorowanie parametru byłoby kłamstwem o
-        # tym, co dokumentuje pobrany plik.
-        if punkt is not None:
-            raise PakietBieguError(
-                f"Pakiet dowodowy tego rodzaju ({_RODZAJ_PL[rodzaj]}) dokumentuje całą sieć, "
-                "więc nie przyjmuje pojedynczego punktu."
-            )
-        zawartosc = _zbuduj_rozplyw(run, context)
+    # KAŻDY rodzaj pakietu deklaruje, czym jest jego punkt (równość zbiorów
+    # przypięta testem), więc nie ma tu gałęzi „rodzaj, który punktu nie zna".
+    # Gdyby kiedyś powstał rodzaj opisujący wyłącznie całą sieć, pin równości
+    # zapali się i wymusi ŚWIADOMĄ decyzję: albo punkt, albo jawna odmowa dla
+    # podanego parametru. Ciche pominięcie parametru byłoby kłamstwem o tym, co
+    # dokumentuje pobrany plik, i dlatego nie może powstać przez przeoczenie.
+    if rodzaj in _RODZAJE_Z_ODCINKIEM:
+        zawartosc = _zbuduj_rozplyw_zbiorczy(run, context, punkt=punkt)
         return f"pakiet_dowodowy_rozplyw_mocy__{run.id}.zip", zawartosc
 
     punkty = punkty_pakietu(run)
@@ -339,8 +435,55 @@ def _rozplyw_biegu(run: CanonicalRun) -> RozplywZBiegu:
     )
 
 
-def _zbuduj_rozplyw(run: CanonicalRun, context: ProofPackContext) -> bytes:
+def _zbuduj_rozplyw_zbiorczy(
+    run: CanonicalRun,
+    context: ProofPackContext,
+    *,
+    punkt: str | None,
+) -> bytes:
+    """Pakiet ZBIORCZY przebiegu rozpływu: rozpływ + straty (+ spadek napięcia).
+
+    Trzy dowody czytają TEN SAM zamrożony wynik, więc nie mogą się ze sobą
+    rozjechać. Dowód spadku dokłada się wyłącznie wtedy, gdy bieg ma odcinek —
+    brak odcinków nie odbiera projektantowi bilansu mocy (dlatego rodzaj rozpływu
+    ma punkt NIEOBOWIĄZKOWY, a nie obowiązkowy jak rodzaje zwarciowe).
+    """
     rozplyw = _rozplyw_biegu(run)
+    pakiety = {
+        "rozplyw": _zbuduj_dowod_rozplywu(run, context, rozplyw),
+        "straty": _zbuduj_dowod_strat(run, context, rozplyw),
+    }
+    odcinek = _wybierz_odcinek(run, punkt)
+    if odcinek is not None:
+        pakiety["spadek_napiecia"] = _zbuduj_dowod_spadku(run, context, odcinek)
+    return zbuduj_zip_zbiorczy(pakiety)
+
+
+def _wybierz_odcinek(run: CanonicalRun, punkt: str | None) -> OdcinekSpadku | None:
+    """Odcinek wskazany przez użytkownika albo pierwszy z listy biegu.
+
+    Zwraca ``None`` wyłącznie wtedy, gdy bieg NIE MA odcinków — i tylko wtedy
+    pakiet powstaje bez dowodu spadku. Odcinek WSKAZANY, którego bieg nie zna,
+    jest odmową, nie cichym podstawieniem pierwszego z brzegu: projektant, który
+    prosił o odcinek A, nie może dostać dokumentu o odcinku B.
+    """
+    odcinki = _odcinki_biegu(run)
+    if punkt is None:
+        return odcinki[0] if odcinki else None
+    znaleziony = next((o for o in odcinki if o.id_galezi == punkt), None)
+    if znaleziony is None:
+        raise PakietBieguError(
+            f"Odcinek {punkt} nie występuje w tym przebiegu jako linia ani kabel o znanej "
+            "impedancji i długości — wybierz odcinek z listy."
+        )
+    return znaleziony
+
+
+def _zbuduj_dowod_rozplywu(
+    run: CanonicalRun,
+    context: ProofPackContext,
+    rozplyw: RozplywZBiegu,
+) -> bytes:
     pack_input = P14PowerFlowInput.from_power_flow_result(
         rozplyw.wynik,
         project_name=_nazwa_projektu(run),
@@ -356,6 +499,44 @@ def _zbuduj_rozplyw(run: CanonicalRun, context: ProofPackContext) -> bytes:
         return P14PowerFlowProof.generate_zip(pack_input, context)
     except (KeyError, ValueError) as exc:
         raise PakietBieguError(f"Nie udało się złożyć pakietu dowodowego: {exc}") from exc
+
+
+def _zbuduj_dowod_strat(
+    run: CanonicalRun,
+    context: ProofPackContext,
+    rozplyw: RozplywZBiegu,
+) -> bytes:
+    pack_input = P16LossesInput.from_power_flow_result(
+        rozplyw.wynik,
+        project_name=_nazwa_projektu(run),
+        case_name=_nazwa_przypadku(run),
+        run_timestamp=_znacznik_czasu(run),
+        solver_version=rozplyw.solver_version,
+    )
+    try:
+        return P16LossesProof.generate_zip(pack_input, context)
+    except (KeyError, ValueError) as exc:
+        raise PakietBieguError(f"Nie udało się złożyć pakietu dowodowego strat: {exc}") from exc
+
+
+def _zbuduj_dowod_spadku(
+    run: CanonicalRun,
+    context: ProofPackContext,
+    odcinek: OdcinekSpadku,
+) -> bytes:
+    pack_input = VDROPPackInput.z_odcinka_biegu(
+        odcinek,
+        project_name=_nazwa_projektu(run),
+        case_name=_nazwa_przypadku(run),
+        run_timestamp=_znacznik_czasu(run),
+        solver_version=_rozplyw_biegu(run).solver_version,
+    )
+    try:
+        return zbuduj_zip_vdrop(pack_input, context)
+    except (KeyError, ValueError) as exc:
+        raise PakietBieguError(
+            f"Nie udało się złożyć pakietu dowodowego spadku napięcia: {exc}"
+        ) from exc
 
 
 def _zbuduj_sc3f(

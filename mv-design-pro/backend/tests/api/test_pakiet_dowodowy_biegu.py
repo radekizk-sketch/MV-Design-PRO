@@ -27,6 +27,7 @@ from __future__ import annotations
 import io
 import json
 import zipfile
+from pathlib import Path
 from uuid import uuid4
 
 import pytest
@@ -642,6 +643,17 @@ def _dowod_z_pakietu(content: bytes) -> dict:
         return json.loads(archiwum.read("proof_pack/proof.json").decode("utf-8"))
 
 
+def _podpakiet(content: bytes, nazwa: str) -> bytes:
+    """Zagnieżdżony pakiet ZBIORCZY (``pakiet_dowodowy/<nazwa>.zip``)."""
+    with zipfile.ZipFile(io.BytesIO(content)) as archiwum:
+        return archiwum.read(f"pakiet_dowodowy/{nazwa}.zip")
+
+
+def _dowod_z_pakietu_zbiorczego(content: bytes, nazwa: str) -> dict:
+    """Dowód spod wskazanej pozycji pakietu zbiorczego (rozpływ / straty / spadek)."""
+    return _dowod_z_pakietu(_podpakiet(content, nazwa))
+
+
 #: ILOCZYN CECH MODELU: 2 (falowniki) × 2 (ZIP) × 2 (zaczepy). Każda trójka
 #: prowadzi do INNYCH liczb w wyniku — sprawdzone pomiarem, nie założeniem.
 _WARIANTY_ROZPLYWU = [
@@ -674,18 +686,29 @@ def test_pakiet_rozplywu_powstaje_dla_kazdej_kombinacji_cech_modelu(
     assert payload["rodzaj"] == "ROZPLYW_MOCY"
     assert payload["rodzaj_pl"]
     assert payload["powod_pl"] is None
-    # Pakiet opisuje CAŁĄ sieć — brak punktów jest cechą rodzaju, nie brakiem danych.
-    assert payload["punkty"] == []
+    # Punktem pakietu rozpływu jest ODCINEK linii/kabla (karta PACK-BEZ-KONSUMENTA).
+    # Ta sieć ma linię SN, więc lista nie może być pusta — a etykieta wyboru musi
+    # przyjść z serwera, bo to on wie, co użytkownik wybiera.
+    assert payload["punkty"], "bieg rozpływu z linią SN ma odcinek do udokumentowania"
+    assert all(p["target_id"] and p["nazwa"] for p in payload["punkty"])
+    assert payload["punkty_etykieta_pl"] == "Odcinek dla spadku napięcia"
     assert payload["zawartosc_pl"]
 
     pakiet = client.get(f"/api/analysis-runs/{run_id}/pakiet-dowodowy")
     assert pakiet.status_code == 200, pakiet.text
     assert pakiet.headers["content-type"] == "application/zip"
-    wpisy = _wpisy_zip(pakiet.content)
-    assert "proof_pack/proof.json" in wpisy
-    assert "proof_pack/proof.tex" in wpisy
-    assert "proof_pack/manifest.json" in wpisy
-    assert "proof_pack/signature.json" in wpisy
+    # Pakiet przebiegu rozpływu jest ZBIORCZY: bilans, straty i spadek napięcia.
+    assert _wpisy_zip(pakiet.content) == {
+        "pakiet_dowodowy/rozplyw.zip",
+        "pakiet_dowodowy/straty.zip",
+        "pakiet_dowodowy/spadek_napiecia.zip",
+    }
+    for nazwa in ("rozplyw", "straty", "spadek_napiecia"):
+        wpisy = _wpisy_zip(_podpakiet(pakiet.content, nazwa))
+        assert "proof_pack/proof.json" in wpisy, nazwa
+        assert "proof_pack/proof.tex" in wpisy, nazwa
+        assert "proof_pack/manifest.json" in wpisy, nazwa
+        assert "proof_pack/signature.json" in wpisy, nazwa
 
 
 @pytest.mark.parametrize(("falowniki", "zip_model", "oltc"), _WARIANTY_ROZPLYWU)
@@ -707,7 +730,7 @@ def test_bilans_w_dowodzie_domyka_sie_dla_kazdej_kombinacji_cech(
 
     pakiet = client.get(f"/api/analysis-runs/{run_id}/pakiet-dowodowy")
     assert pakiet.status_code == 200, pakiet.text
-    dowod = _dowod_z_pakietu(pakiet.content)
+    dowod = _dowod_z_pakietu_zbiorczego(pakiet.content, "rozplyw")
 
     assert dowod["summary"]["key_results"]["converged"]["value"] == 1.0
     assert dowod["summary"]["overall_status"] == "PASS", dowod["summary"]["warnings"]
@@ -756,7 +779,7 @@ def test_rozne_cechy_modelu_daja_rozne_pakiety(client: TestClient) -> None:
         run_id = _wykonaj_bieg(client, case_id, "LOAD_FLOW")
         odpowiedz = client.get(f"/api/analysis-runs/{run_id}/pakiet-dowodowy")
         assert odpowiedz.status_code == 200, odpowiedz.text
-        pakiety.append(_dowod_z_pakietu(odpowiedz.content))
+        pakiety.append(_dowod_z_pakietu_zbiorczego(odpowiedz.content, "rozplyw"))
 
     bez_zip, z_zip = pakiety
     assert (
@@ -784,7 +807,7 @@ def test_bieg_niezbiezny_daje_pakiet_ktory_MOWI_o_braku_zbieznosci(
 
     pakiet = client.get(f"/api/analysis-runs/{run_id}/pakiet-dowodowy")
     assert pakiet.status_code == 200, pakiet.text
-    dowod = _dowod_z_pakietu(pakiet.content)
+    dowod = _dowod_z_pakietu_zbiorczego(pakiet.content, "rozplyw")
 
     assert dowod["summary"]["key_results"]["converged"]["value"] == 0.0
     assert dowod["summary"]["overall_status"] != "PASS"
@@ -819,21 +842,29 @@ def test_bieg_rozplywu_bez_wyniku_nie_ma_pakietu_z_powodem_po_polsku(
     assert pobranie.json()["detail"] == payload["powod_pl"]
 
 
-def test_punkt_podany_dla_pakietu_calej_sieci_odmawia_zamiast_go_zignorowac(
+def test_odcinek_spoza_przebiegu_odmawia_zamiast_podstawic_pierwszy(
     client: TestClient,
 ) -> None:
-    """Ciche pominięcie parametru byłoby kłamstwem o tym, co dokumentuje plik."""
+    """Wskazanie, którego bieg nie zna, jest odmową — nie cichym podstawieniem.
+
+    INTENCJA ZACHOWANA z pinu „punkt podany dla pakietu całej sieci odmawia
+    zamiast go zignorować". Rodzaj rozpływu przyjmuje dziś ODCINEK (karta
+    PACK-BEZ-KONSUMENTA), więc nośnikiem tej samej cechy jest odcinek spoza
+    przebiegu: projektant, który poprosił o odcinek A, nie może dostać dokumentu
+    o odcinku B ani dokumentu bez dowodu spadku.
+    """
     case_id = str(uuid4())
     _seed_enm_rozplyw(case_id)
     run_id = _wykonaj_bieg(client, case_id, "LOAD_FLOW")
 
     odpowiedz = client.get(
         f"/api/analysis-runs/{run_id}/pakiet-dowodowy",
-        params={"punkt": "jakas-szyna"},
+        params={"punkt": "jakis-odcinek"},
     )
 
     assert odpowiedz.status_code == 422
-    assert "całą sieć" in odpowiedz.json()["detail"]
+    assert "jakis-odcinek" in odpowiedz.json()["detail"]
+    assert "wybierz odcinek z listy" in odpowiedz.json()["detail"]
 
 
 def test_pakiet_rozplywu_bez_oznaczen_roboczych_w_CALEJ_zawartosci(
@@ -860,13 +891,21 @@ def test_pakiet_rozplywu_bez_oznaczen_roboczych_w_CALEJ_zawartosci(
     # iniekcją: wzorzec z `\b` przepuszczał przywrócony prefiks roboczy.
     wzorzec = re.compile(r"(?<![A-Za-z0-9])[pP](?!0(?![0-9]))\d+(?![0-9])")
     assert not wzorzec.search(odpowiedz.headers["content-disposition"])
-    with zipfile.ZipFile(io.BytesIO(odpowiedz.content)) as archiwum:
-        for nazwa in sorted(archiwum.namelist()):
-            if nazwa.endswith("/") or nazwa.endswith(".pdf"):
-                continue
-            tresc = archiwum.read(nazwa).decode("utf-8")
-            znalezione = wzorzec.findall(tresc)
-            assert not znalezione, (nazwa, sorted(set(znalezione))[:5])
+    # Pakiet rozpływu jest ZBIORCZY, więc skan musi zejść do KAŻDEGO podpakietu —
+    # inaczej oznaczenie robocze schowałoby się jedno piętro niżej niż pin patrzy.
+    sprawdzone = 0
+    for podpakiet in _wpisy_zip(odpowiedz.content):
+        assert not wzorzec.search(podpakiet), podpakiet
+        with zipfile.ZipFile(io.BytesIO(_podpakiet(odpowiedz.content, Path(podpakiet).stem))) as z:
+            for nazwa in sorted(z.namelist()):
+                if nazwa.endswith("/") or nazwa.endswith(".pdf"):
+                    continue
+                tresc = z.read(nazwa).decode("utf-8")
+                znalezione = wzorzec.findall(tresc)
+                assert not znalezione, (podpakiet, nazwa, sorted(set(znalezione))[:5])
+                sprawdzone += 1
+    # Zapadka na pusty zbiór: pin bez plików przechodziłby zawsze.
+    assert sprawdzone >= 12, sprawdzone
 
 
 # ---------------------------------------------------------------------------
@@ -884,7 +923,17 @@ def test_kazdy_rodzaj_pakietu_ma_wlasna_kontrole_danych() -> None:
     from application.proof_engine import pakiet_biegu
 
     rodzaje = set(pakiet_biegu._RODZAJ_PAKIETU_PO_BIEGU.values())
+    assert rodzaje, "mapa rodzajów nie może być pusta (zapadka na pusty zbiór)"
     assert set(pakiet_biegu._KONTROLA_DANYCH_RODZAJU) == rodzaje
     assert set(pakiet_biegu._RODZAJ_PL) == rodzaje
     # Rodzaje punktowe to PODZBIÓR rodzajów — nie druga, niezależna lista.
     assert pakiet_biegu._RODZAJE_Z_PUNKTEM <= rodzaje
+    assert pakiet_biegu._RODZAJE_Z_ODCINKIEM <= rodzaje
+    # Rodzaj nie może być jednocześnie „bez punktu nie ma pakietu" i „punkt opcjonalny".
+    assert not (pakiet_biegu._RODZAJE_Z_PUNKTEM & pakiet_biegu._RODZAJE_Z_ODCINKIEM)
+    # KAŻDY rodzaj deklaruje, czym jest jego punkt, i jak się ten wybór nazywa na
+    # ekranie. Ta równość jest ZAPADKĄ: rodzaj opisujący wyłącznie całą sieć zapali
+    # ten pin i wymusi świadomą decyzję (punkt albo jawna odmowa dla parametru),
+    # zamiast cicho ignorować `punkt` przekazany przez klienta.
+    assert pakiet_biegu._RODZAJE_Z_PUNKTEM | pakiet_biegu._RODZAJE_Z_ODCINKIEM == rodzaje
+    assert set(pakiet_biegu._ETYKIETA_PUNKTU_PL) == rodzaje
