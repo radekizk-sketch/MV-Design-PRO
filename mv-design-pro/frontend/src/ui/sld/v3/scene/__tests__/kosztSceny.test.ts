@@ -108,6 +108,20 @@ interface OdciskiLod {
  * żeby go zamrozić. Zmiana wchodzi w TYM SAMYM commicie co zmiana kodu, z
  * uzasadnieniem wyżej; gdyby którykolwiek z tych mechanizmów wrócił do stanu
  * sprzed karty, test zapali się natychmiast.
+
+ * AKTUALIZACJA ŚWIADOMA (karta BLOK-LATERAL-WLASNOSC, 2026-08-08) — WSZYSTKIE
+ * odciski przeliczone ponownie, bo karta zmienia rysunek w JEDNYM miejscu:
+ *   (6) podpis odcinka (`segment-span`, `segment-lateral`) nosi `ownerRef`
+ *       ODCINKA, który opisuje, a nie stacji, przy której akurat stoi ramka
+ *       (`scene/buildScene.ts`, 5 miejsc emisji) ⇒ zmienia się CIĄG `ownerRef`
+ *       w 49 etykietach sceny referencyjnej, a przez to odcisk sceny, wynik
+ *       declutteru (etykiety wchodzą do niego w całości) i plan etykiet.
+ * DOWÓD, ŻE TO JEDYNA ZMIANA: zrzut sceny L0/L1/L2 z `ownerRef` etykiet
+ * `segment-*` zastąpionym stałą jest CO DO BAJTU identyczny przed i po karcie
+ * (sha256 `06f0c88b5f80b060bb34a4c048505e63192256b0155976079f9fa2549729bc00`
+ * w obu fazach) — żadna współrzędna, żaden prostokąt i żadna treść napisu się
+ * nie ruszyły. Gdyby karta przy okazji przesunęła cokolwiek na rysunku, ten
+ * zrzut by się rozjechał.
  *
  * Kolejność `plany` odpowiada `SKALE`.
  */
@@ -140,16 +154,16 @@ const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly Odc
       ],
     },
     {
-      scena: 'bda03f4635e203ff883e1680f13e8963',
-      declutter: 'db4aca1587e4b48df38610b93e17dbd6',
+      scena: '2b7f10174efbf1eb8f9fb5b843394cce',
+      declutter: '3e6849b5c904588d0e93938dd4216b2b',
       plany: [
-        '730c2b574b9ed4fb81188097d480466d',
-        '36bdd12a7ad4d72034f30929ad3890e2',
-        'd265aef7da6bac03392578e3fdf47516',
-        '9a28af5b0f93aa0e23462d3c80d6cff0',
-        '21a5ee33004c24282c4e74e6d4cae832',
-        'aa3331a2769b966c4bac76699b546f9f',
-        'aa3331a2769b966c4bac76699b546f9f',
+        '5a862489887b21a65ee6c0eb54595b7d',
+        '6d51eb4efa05197e050dc07dc429bafa',
+        '8998dfbb011f572de18d5e8cd1b8e8a6',
+        'af5ed28520d3aab4f19cd4955670509d',
+        'ac6230d6614b13b1c7bf4655b3da001f',
+        '1a9e952c182140fad7809da426678b61',
+        '1a9e952c182140fad7809da426678b61',
       ],
     },
   ],
@@ -181,16 +195,16 @@ const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly Odc
       ],
     },
     {
-      scena: 'cdadfff1cda4b2115610c4de7d741a5d',
-      declutter: 'f7e1fe7fd5aeff81a7ffa99e633320a9',
+      scena: 'afce42e7ac471c66ee622c177a4d0f4a',
+      declutter: '128bf818e1e46e9e4f3e39c390201985',
       plany: [
-        'c3567aab447a8e1ae6abeacda3888cf5',
-        '33f0670851434f8ac50f11f53902f9fe',
-        'fb38183006c5e7b308f87aa7cf4735bc',
-        'e7ba4351d8c62caa51cce85c39e075b8',
-        'f8bba4c77e467e000e2c7e8cf658bd85',
-        '66a8417d522aa78a1eee52feee74071d',
-        '66a8417d522aa78a1eee52feee74071d',
+        'd3cf7045389b4cdf1a3d83cbae759616',
+        'f92886cad879e942b4027c00a17df9cf',
+        '4a4c4aba70110bb2bdbfee3ac8b6c5f2',
+        'ebbdf0ea83967439df95feca465564a3',
+        '75fb7e4ccc120391ba9d80616896fc8a',
+        '1c0b43f2fd4b113f76d02762bb93c53e',
+        '1c0b43f2fd4b113f76d02762bb93c53e',
       ],
     },
   ],

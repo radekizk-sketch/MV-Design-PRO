@@ -2,12 +2,22 @@
  * W3-KABLE-ETYKIETY §17 (kotwiczenie etykiet do właściciela) + §7 (etykiety
  * techniczne linii) — dowody sceny na fixturze referencyjnej (53 stacje).
  *
- * §17 ANTY-DRYF: każda etykieta przęsła (`segment-span`) ma właściciela (kod
- * stacji docelowej w `ownerRef` = „⟨stationId⟩#segment-label") i musi leżeć
- * BLIŻEJ kolumny swojej stacji-właściciela niż kolumny KAŻDEJ innej stacji
- * ciągu — inaczej etykieta „dryfuje" do sąsiedniego przęsła i gubi jednoznaczne
+ * §17 ANTY-DRYF: etykieta przęsła (`segment-span`) musi leżeć BLIŻEJ kolumny
+ * stacji, do której to przęsło wchodzi, niż kolumny KAŻDEJ innej stacji tego
+ * WIERSZA — inaczej „dryfuje" do sąsiedniego przęsła i gubi jednoznaczne
  * przypisanie (recenzja pkt 13). Odległość = |środek-x etykiety − środek-x
  * zakresu symboli stacji|.
+ *
+ * INTENCJA BEZ ZMIAN, ŹRÓDŁO PRZYPISANIA INNE (karta BLOK-LATERAL-WLASNOSC,
+ * 2026-08-08). Dotąd stację-właściciela test odczytywał z `ownerRef` etykiety
+ * („⟨stationId⟩#segment-label") — ale to była właśnie POMYŁKA WŁASNOŚCI, którą
+ * ta karta naprawia: podpis opisuje ODCINEK, nie stację, przy której stoi, więc
+ * jego `ownerRef` niesie dziś ref odcinka. Przypisanie do stacji test wyprowadza
+ * teraz z TREŚCI podpisu — z pary końców „⟨A⟩ ↔ ⟨B⟩" (recenzja pkt 13, §17
+ * „kotwica tożsamości"), zestawionej z kodem stacji, który blok niesie na
+ * etykiecie napięcia szyny (S9-12: kod pada w bloku RAZ, właśnie tam). Test jest
+ * przez to MOCNIEJSZY niż przed zmianą: nie da się go zaspokoić samym refem —
+ * musi się zgadzać to, co czyta CZŁOWIEK.
  */
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -63,6 +73,17 @@ describe('W3 §17 — kotwiczenie etykiet przęseł do właściciela (anty-dryf)
       .filter((c): c is { id: string; x: number; row: number } => c.x != null);
     expect(allCenters.length).toBeGreaterThan(1);
 
+    // KOD STACJI → REF BLOKU. Kod pada w bloku RAZ — na etykiecie napięcia szyny
+    // („S01 · Sekcja 1 · 15 kV", S9-12), która NALEŻY do stacji. To jest to samo
+    // źródło, z którego kod czyta projektant patrzący na rysunek.
+    const stacjaKodu = new Map<string, string>();
+    for (const l of scene.labels) {
+      if (l.ownerKind !== 'busbar-voltage') continue;
+      const kod = /^([A-Za-z]+\d+)\b/.exec(l.text)?.[1];
+      if (kod) stacjaKodu.set(kod, l.ownerRef.split('#')[0]);
+    }
+    expect(stacjaKodu.size).toBeGreaterThan(40);
+
     const spanLabels = scene.labels.filter(
       (l) => l.ownerKind === 'segment-span' && l.ownerRef.endsWith('#segment-label'),
     );
@@ -70,9 +91,11 @@ describe('W3 §17 — kotwiczenie etykiet przęseł do właściciela (anty-dryf)
 
     let checked = 0;
     for (const label of spanLabels) {
-      const ownerId = label.ownerRef.replace(/#segment-label$/, '');
-      const owner = allCenters.find((c) => c.id === ownerId);
-      if (!owner) continue; // GPZ→S0 właściciel to stacja0 — obecny w centers; inne pomijamy uczciwie
+      // Koniec „do" pary — stacja, DO KTÓREJ przęsło wchodzi.
+      const kodDo = / ↔ (\S+) · /.exec(label.text)?.[1];
+      const ownerId = kodDo ? stacjaKodu.get(kodDo) : undefined;
+      const owner = ownerId ? allCenters.find((c) => c.id === ownerId) : undefined;
+      if (!owner) continue; // przęsło kończące się poza ciągiem głównym — pomijamy uczciwie
       const labelCenterX = label.rect.x + label.rect.width / 2;
       const distToOwner = Math.abs(labelCenterX - owner.x);
       for (const other of allCenters) {
