@@ -382,6 +382,71 @@ zeszła do kontroli jakości, test istniał wcześniej, sprawdzone) oraz margine
 (przybliżenie ze sztywności węzła, nie krzywa z rozpływu). Q–U rozstrzygnięte przez
 nadzorcę na wniosek właściciela („decyduj") — patrz karta w biegu.
 
+
+## 2D. FALA 5 — JEDNA KLASA DEFEKTU W SZEŚCIU ODSŁONACH (2026-08-08, Fable)
+
+**SZCZYT: `547b58d7`.** Odebrane i scalone: QU-FABRYKACJA (4 rundy), SLOT-DRYF-PRZESLA
+(runda 2 w biegu), ROUTERY-MARTWE, KLIK-ETYKIETA-KOTWICA. W biegu: TYPY-POZA-BRAMKA.
+
+### Wszystkie znaleziska tej fali są wariantem JEDNEGO pytania
+
+*Czy zbiór, po którym chodzi wyrocznia, jest tym samym zbiorem, na którym działa kod?*
+
+1. zapadka podstawień nie widziała modelu domenowego — 54 pola, 165 odczytów w
+   skanowanej warstwie; iniekcja `gen.cos_phi or 0.95` przechodziła RC=0;
+2. ta sama zapadka nie widziała kontraktów deklarowanych WEWNĄTRZ swojej warstwy
+   (nieimportowanych, więc niewidocznych dla pinu opartego na importach) — 28 pól;
+3. reguła „jawna nie-liczba nie jest podstawieniem" obejmowała nieskończoność,
+   którą **dzielenie pochłania do skończonego zera** — liczba udająca pomiar;
+4. `route_prefix_guard` nie widzi klienta wołającego rodzinę tras, której backend
+   nie ma W OGÓLE (tak przeżyła wyspa `designer/`);
+5. wyrocznia podpisów przęseł mierzyła odległość do KOLUMNY STACJI (600–1200 j.św.
+   szerokości) zamiast do kabla — dryf nie miał jak zostać zauważony;
+6. `LABEL_OWNER_ELEMENT_KIND` orzekała o rodzaju klikniętego obiektu równolegle do
+   kotwicy w modelu — rozjazd na 61 z 1084 etykiet.
+
+**Wniosek dla następnej sesji: to pytanie zadaj przy KAŻDYM odbiorze, przed iniekcją.
+W tej fali zarobiło sześć trafień, z czego cztery na moich własnych kartach.**
+
+### Narzędzie kontroli dziedziczy dziurę kontrolowanego
+
+`route_prefix_guard` i `export_codenames_guard` istniały w repo i **nigdy się nie
+wykonały** — nie było ich w żadnym workflow. Mój `guardy_z_ci.py` też ich nie widział,
+bo listę guardów czyta Z WORKFLOWÓW. Po naprawie 69 → 73 guardy.
+**Reguła: sprawdzaj narzędzie kontroli tą samą metodą, którą sprawdzasz kod.**
+
+### Deklaracja bez pokrycia sięga poziomu dokumentu
+
+`CLAUDE.md` wymieniał sześć „krytycznych testów kontraktowych SLD Determinism CI".
+**Nie istniał ani jeden.** Lista zastąpiona spisaną z workflowa.
+
+### Cztery obalenia mojego §0 przez wykonawców — wszystkie trafne
+
+Najważniejsze: bramkowanie przejścia stacja→szyna wartością `elementKind === 'bus'`,
+które zaproponowałem, **wprowadziłoby defekt gorszy od naprawianego** — `szynaSnStacji`
+brała PIERWSZĄ szynę ponad nN, a GPZ ma dwie (SN 15 kV, WN 110 kV), więc napis
+„Szyna WN · 110 kV" wskazywałby szynę 15 kV. Cicha podmiana obiektu.
+**Furtka „obal moje §0, jeśli pomiar tak mówi" zwróciła się z nawiązką — nie usuwaj jej.**
+
+### Trzy moje błędy metody — wszystkie tego samego kształtu
+
+Sonda chodziła po innym zbiorze albo podawała inne wejścia niż produkcja:
+(a) porównanie tożsamości funkcji przy `src.api.X` vs `api.X` (dwa klucze
+`sys.modules`) — moduł WPIĘTY wyglądał na martwy; (b) kolumna „wołań frontu"
+liczyła segmenty ścieżek, nie konsumentów; (c) pomiar kliknięcia bez `elementKind`,
+od którego zależy bramka — 53 napisy wyglądały na niedomknięte, a były poprawne.
+**Reguła: zanim nazwiesz niedomknięcie, sprawdź, czy Twoja sonda podaje WSZYSTKIE
+wejścia, które podaje produkcja, i czyta TEN SAM obiekt.**
+
+### Błąd odbioru pod moim nazwiskiem
+
+Przy V126-WYGASZENIE przyjąłem „wskaźnik L zostaje, bo ma jawne kryterium", nie
+sprawdzając rodowodu samego L — a L stał na zmyślonej mocy zwarciowej i mnożniku
+bez uzasadnienia. **Jawne kryterium na wskaźniku nie jest dowodem, że wielkości pod
+nim są zmierzone.** Drugi: przyjąłem CHWIEJNY-WSPOLBIEZNOSC jako domknięcie KLASY
+„test na zegarze ściennym", a było domknięciem instancji — `kosztSceny.test.ts`
+przetrwał i chwieje się do dziś.
+
 ## 2. W BIEGU — DWIE KARTY DO ODEBRANIA (stan sprzed przejęcia — historyczny)
 
 | Karta | Kopia | Zakres | Odbiór — na co zwrócić uwagę |
