@@ -1712,61 +1712,67 @@
     ]
   },
   "voltage_stability": {
+    "brak_danych": "Margines obciążalności P–U nie jest wyznaczany: powstawał z przybliżenia ze sztywności węzła o zaszytych współczynnikach, a nie z krzywej P–U liczonej rozpływem. Wymaga rozpływu mocy na modelu przypadku.",
     "l_index_per_bus": [
       {
-        "alert": false,
+        "alert": null,
+        "brak_danych": "Wskaźnik bliskości załamania napięcia nie jest wyznaczany: poprzedni wzór mnożył stosunek obciążenia do mocy zwarciowej przez współczynnik bez pokrycia w danych i w normie. Wymaga wyznaczenia z macierzy admitancyjnej przy zbieżnym rozpływie oraz mocy zwarciowej węzłów w modelu.",
         "bus_ref": "gpz/860003b4514aa388b39561d5005ce584/section/001/bus_sn",
-        "l_index": 0.0008
+        "l_index": null
       },
       {
-        "alert": false,
+        "alert": null,
+        "brak_danych": "Wskaźnik bliskości załamania napięcia nie jest wyznaczany: poprzedni wzór mnożył stosunek obciążenia do mocy zwarciowej przez współczynnik bez pokrycia w danych i w normie. Wymaga wyznaczenia z macierzy admitancyjnej przy zbieżnym rozpływie oraz mocy zwarciowej węzłów w modelu.",
         "bus_ref": "station/1f4c9a02b7d84e6690ab5cc31d772e18/bus_sn",
-        "l_index": 0.055
+        "l_index": null
       }
     ],
     "modal_analysis": {
+      "brak_danych": "Wskaźnik bliskości załamania napięcia nie jest wyznaczany: poprzedni wzór mnożył stosunek obciążenia do mocy zwarciowej przez współczynnik bez pokrycia w danych i w normie. Wymaga wyznaczenia z macierzy admitancyjnej przy zbieżnym rozpływie oraz mocy zwarciowej węzłów w modelu.",
       "critical_mode": {
-        "eigenvalue": 0.945,
-        "participating_buses": [
-          "station/1f4c9a02b7d84e6690ab5cc31d772e18/bus_sn"
-        ]
+        "eigenvalue": null,
+        "participating_buses": []
       },
-      "smallest_eigenvalue": 0.945
+      "smallest_eigenvalue": null
     },
     "pv_curves": [
       {
+        "brak_danych": "Margines obciążalności P–U nie jest wyznaczany: powstawał z przybliżenia ze sztywności węzła o zaszytych współczynnikach, a nie z krzywej P–U liczonej rozpływem. Wymaga rozpływu mocy na modelu przypadku.",
         "bus_ref": "gpz/860003b4514aa388b39561d5005ce584/section/001/bus_sn",
-        "lambda_max": 3.5,
-        "margin_percent": 250.0,
-        "u_at_max": 0.7
+        "lambda_max": null,
+        "margin_percent": null,
+        "u_at_max": null
       },
       {
+        "brak_danych": "Margines obciążalności P–U nie jest wyznaczany: powstawał z przybliżenia ze sztywności węzła o zaszytych współczynnikach, a nie z krzywej P–U liczonej rozpływem. Wymaga rozpływu mocy na modelu przypadku.",
         "bus_ref": "station/1f4c9a02b7d84e6690ab5cc31d772e18/bus_sn",
-        "lambda_max": 3.5,
-        "margin_percent": 250.0,
-        "u_at_max": 0.7
+        "lambda_max": null,
+        "margin_percent": null,
+        "u_at_max": null
       }
     ],
     "qv_curves": [
       {
+        "brak_danych": "Zapas mocy biernej nie jest wyznaczany: kontrakt wejściowy nie niesie zdolności wytwórczej mocy biernej (ani granic Q wytwórcy, ani krzywej producenta P–Q), a poprzednia wartość powstawała z krotności mocy czynnej bez pokrycia w danych. Uzupełnij granice mocy biernej źródeł, aby przywrócić tę wielkość.",
         "bus_ref": "gpz/860003b4514aa388b39561d5005ce584/section/001/bus_sn",
-        "margin_mvar": -0.0175,
-        "q_available_mvar": 0.0,
-        "q_min_mvar": -0.0175
+        "margin_mvar": null,
+        "q_available_mvar": null,
+        "q_min_mvar": null
       },
       {
+        "brak_danych": "Zapas mocy biernej nie jest wyznaczany: kontrakt wejściowy nie niesie zdolności wytwórczej mocy biernej (ani granic Q wytwórcy, ani krzywej producenta P–Q), a poprzednia wartość powstawała z krotności mocy czynnej bez pokrycia w danych. Uzupełnij granice mocy biernej źródeł, aby przywrócić tę wielkość.",
         "bus_ref": "station/1f4c9a02b7d84e6690ab5cc31d772e18/bus_sn",
-        "margin_mvar": -0.34,
-        "q_available_mvar": 0.045,
-        "q_min_mvar": -0.385
+        "margin_mvar": null,
+        "q_available_mvar": null,
+        "q_min_mvar": null
       }
     ],
     "sanity": {
-      "checks_passed": 4,
+      "checks_passed": 0,
       "checks_total": 4,
-      "status": "zweryfikowany",
+      "status": "dane niekompletne",
       "violations": []
     },
-    "voltage_stability_margin_percent": 250.0
+    "voltage_stability_margin_percent": null
   }
 }
