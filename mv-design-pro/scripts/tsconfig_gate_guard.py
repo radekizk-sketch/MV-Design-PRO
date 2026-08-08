@@ -8,16 +8,22 @@ w polach `include`/`exclude` — ani pliku więcej. Kod spoza tego zasięgu nie 
 ŻADNEJ wyroczni typów, a wygląda jak pilnowany, bo bramka w CI świeci na zielono.
 
 POMIAR NA HEAD PRZED NAPRAWĄ (2026-08-08): pod `include: ["src"]` i pięcioma
-wykluczeniami żyły 82 błędy typów, których nie widział nikt:
+wykluczeniami żyły 133 błędy typów, których nie widział nikt:
   * `scripts/` — CAŁY katalog poza `include` (37 błędów w skryptach renderu
     dowodowego; jeden z nich podawał do renderu aparaty pola z `deviceRef ===
     undefined`, bo skrypt budował kształt ENM zamiast kontraktu widoku);
+  * `e2e/` — CAŁY katalog poza `include` (51 błędów; w SIEDMIU specyfikacjach
+    rzutowanie `as typeof readiness` celowało w typ zawężony do `null`, więc
+    odpowiedź backendu wchodziła do testu jako `null`, a cały blok domykania
+    blokerów gotowości był nietypowany);
   * `src/ui/sld/core/**` + `src/ui/sld/inspector/**` + `src/ui/sld/*.ts` — 52
     błędy w martwej wyspie, której 22 błędy to ZEPSUTE IMPORTY (moduły
     nieistniejące w repozytorium). Kod, którego nie da się zaimportować, żył
     latami, bo wykluczenie zdejmowało z niego wyrocznię;
   * `src/ui/results-inspector/ResultsInspectorPage.tsx` — wykluczenie na
-    POJEDYNCZYM PLIKU, który importował nieistniejący moduł.
+    POJEDYNCZYM PLIKU, który importował nieistniejący moduł;
+  * `playwright.config.ts` — plik w korzeniu `frontend/`, nieobjęty ŻADNYM
+    projektem TypeScriptu.
 Trzy fikstury sceny miały ZŁĄ liczbę segmentów `../` w `import type` — błąd
 niewidoczny podwójnie (esbuild kasuje `import type` przed rozwiązaniem ścieżki,
 a tsconfig wyklucza testy).
@@ -88,8 +94,9 @@ FRONTEND = ROOT / "frontend"
 TSCONFIG = FRONTEND / "tsconfig.json"
 PACKAGE_JSON = FRONTEND / "package.json"
 
-#: Zasięg bramki. Zmiana tej listy wymaga zmiany `tsconfig.json` — i odwrotnie.
-WYMAGANY_INCLUDE = ("src", "scripts")
+#: Zasięg bramki. Zmiana tej listy wymaga zmiany `tsconfig.json` — i odwrotnie
+#: (pilnuje tego `test_zamrozenia_zgadzaja_sie_z_plikiem_repozytorium`).
+WYMAGANY_INCLUDE = ("src", "scripts", "e2e", "playwright.config.ts")
 
 #: JEDYNE dopuszczone wykluczenia. Uzasadnienie stoi w `tsconfig.json` przy polu
 #: `exclude`; tu jest zamrożenie. Nowy wpis = naruszenie.
@@ -120,23 +127,13 @@ DOPUSZCZONE_TSCONFIG = ("tsconfig.json", "tsconfig.node.json")
 #: Katalogi/pliki źródłowe ŚWIADOMIE poza bramką — z uzasadnieniem MERYTORYCZNYM
 #: i zmierzonym długiem. „Poza zakresem karty” NIE jest uzasadnieniem.
 POZA_BRAMKA: dict[str, str] = {
-    "e2e": (
-        "specyfikacje Playwrighta. Nie sa kompilowane przez `tsc` (Playwright ma "
-        "wlasny transpiler), a ich dlug typow (51 bledow w chwili zalozenia "
-        "zapadki: `Array.at` spoza `lib: ES2020`, `page.evaluate` zwracajace "
-        "`never`, implicit any w argumentach callbackow) siedzi w plikach, "
-        "ktorych ta sesja nie moze URUCHOMIC (brak przegladarki i backendu). "
-        "Poprawka typow w tescie, ktorego nie da sie odpalic, to zmiana w ciemno."
-    ),
-    "playwright.config.ts": (
-        "konfiguracja Playwrighta w korzeniu `frontend/`; 1 blad — import "
-        "nietypowanego `./scripts/playwright-env.mjs` (patrz forma 3 wyzej: "
-        "pliki `.mjs` sa poza zasiegiem `tsc` bez `allowJs`)."
-    ),
     "vite.config.ts": (
-        "objety OSOBNYM projektem `tsconfig.node.json` (referencja z "
-        "`tsconfig.json`). Zero bledow; sprawdzany przez `tsc -p "
-        "tsconfig.node.json`, ktory ten guard uruchamia razem z pomiarem."
+        "objety OSOBNYM projektem `tsconfig.node.json` (referencja z `tsconfig.json`), "
+        "bo wymaga `allowSyntheticDefaultImports` i typow Node, ktorych projekt aplikacji "
+        "nie wlacza. Zero bledow. UWAGA: `tsc --noEmit` z korzenia NIE buduje referencji "
+        "(potrzebne `tsc -b`), wiec byl to projekt, ktorego nikt nie uruchamial — dlatego "
+        "ten guard odpala go osobno (`zmierz_projekt_node`) i traktuje kazdy blad jako "
+        "naruszenie twarde."
     ),
 }
 
@@ -155,14 +152,14 @@ POMIJANE_KATALOGI = {
 # Ta liczba MA MALEĆ. Podniesienie wymaga uzasadnienia w commicie i wpisu w
 # rejestrze — inaczej zapadka przestaje być zapadką.
 #
-# STAN W CHWILI ZAŁOŻENIA: 82 błędy poza bramką zdjęte U ŹRÓDŁA (kasacja martwej
-# wyspy SLD + naprawy w `scripts/` i fiksturach), zostaje dług testów i e2e.
+# STAN W CHWILI ZAŁOŻENIA: 133 błędy poza bramką zdjęte U ŹRÓDŁA (kasacja
+# martwej wyspy SLD, naprawy w `scripts/`, fiksturach sceny i `e2e/`), zostaje
+# WYŁĄCZNIE dług testów jednostkowych:
 #   * `src/**/__tests__` + `*.test.ts(x)`: 552 błędy w 161 plikach
-#     (z tego 106 w `src/ui2/**` — obszar równoległej przebudowy),
-#   * `e2e/**`: 51 błędów,
-#   * `playwright.config.ts`: 1 błąd.
-# --------------------------------------------------------------------------
-BUDZET_BLEDOW_POZA_BRAMKA = 604
+#     (z tego 106 w `src/ui2/**` — obszar równoległej przebudowy).
+# `e2e/` i `playwright.config.ts` weszły DO bramki (0 błędów) — nie są już
+# długiem, tylko zasięgiem.
+BUDZET_BLEDOW_POZA_BRAMKA = 552
 
 #: Jawne wyciszenia błędów typu. Zamrożone, żeby nie dało się „obniżyć progu”
 #: przez dopisanie komentarza zamiast naprawy. Pomiar 2026-08-08: 35 wystąpień,

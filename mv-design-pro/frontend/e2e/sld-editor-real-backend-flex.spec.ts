@@ -333,7 +333,9 @@ test('real backend SLD editor flow: source -> trunk -> station -> branch -> upda
   });
   const stationBus = (op.snapshot?.buses ?? []).find((bus) => bus.ref_id.includes('sn_bus'));
   expect(stationBus).toBeDefined();
-  const transformerRef = op.snapshot?.transformers?.at(-1)?.ref_id;
+  // `Array.prototype.at` pochodzi z ES2022, projekt deklaruje `lib: ES2020`.
+  const transformatory = op.snapshot?.transformers;
+  const transformerRef = transformatory?.[transformatory.length - 1]?.ref_id;
   expect(transformerRef).toBeTruthy();
   await reloadEditorPage(page);
   await capture(page, testInfo, '03-after-station');

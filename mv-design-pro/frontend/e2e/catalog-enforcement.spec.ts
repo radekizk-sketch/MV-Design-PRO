@@ -185,7 +185,11 @@ async function addCableSegment(request: APIRequestContext, caseId: string, lengt
       catalog_binding: buildCatalogBinding('KABEL_SN', CABLE_ID),
     },
   });
-  const segmentRef = op.snapshot?.corridors?.[0]?.ordered_segment_refs?.at(-1);
+  // `Array.prototype.at` pochodzi z ES2022, a projekt deklaruje `lib: ES2020`.
+  // Indeksowanie daje DOKLADNIE ten sam wynik bez podnoszenia `lib` calemu
+  // projektowi (co poszerzyloby zbior dozwolonych API takze w kodzie produkcyjnym).
+  const segmentRefs = op.snapshot?.corridors?.[0]?.ordered_segment_refs;
+  const segmentRef = segmentRefs?.[segmentRefs.length - 1];
   expect(segmentRef).toBeTruthy();
   return segmentRef!;
 }
@@ -199,7 +203,11 @@ async function addOverheadSegment(request: APIRequestContext, caseId: string, le
       catalog_binding: buildCatalogBinding('LINIA_SN', LINE_ID),
     },
   });
-  const segmentRef = op.snapshot?.corridors?.[0]?.ordered_segment_refs?.at(-1);
+  // `Array.prototype.at` pochodzi z ES2022, a projekt deklaruje `lib: ES2020`.
+  // Indeksowanie daje DOKLADNIE ten sam wynik bez podnoszenia `lib` calemu
+  // projektowi (co poszerzyloby zbior dozwolonych API takze w kodzie produkcyjnym).
+  const segmentRefs = op.snapshot?.corridors?.[0]?.ordered_segment_refs;
+  const segmentRef = segmentRefs?.[segmentRefs.length - 1];
   expect(segmentRef).toBeTruthy();
   return segmentRef!;
 }

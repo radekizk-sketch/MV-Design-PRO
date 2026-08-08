@@ -21,6 +21,21 @@ type DomainOpResponse = {
     buses?: Array<{ ref_id: string }>;
     branches?: Array<{ ref_id: string; type?: string }>;
     transformers?: Array<{ ref_id: string }>;
+    /** POPRAWKA 2026-08-08 (karta TYPY-POZA-BRAMKA): pole CZYTANE nizej
+     *  (`op.snapshot?.substations`), a niezadeklarowane — przez co
+     *  `station.meta.field_specs` i argumenty `find` szly jako implicit any.
+     *  Ksztalt odwzorowuje `src/types/enm.ts` (`Substation` + dynamiczne
+     *  `meta.field_specs` uzywane przez operacje domenowe). */
+    substations?: Array<{
+      ref_id: string;
+      meta?: {
+        field_specs?: Array<{
+          field_ref?: string;
+          field_role?: string | null;
+          bay_role?: string | null;
+        }>;
+      };
+    }>;
   };
 };
 

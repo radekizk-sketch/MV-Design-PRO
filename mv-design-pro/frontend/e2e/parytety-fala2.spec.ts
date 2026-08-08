@@ -22,7 +22,10 @@ let opCounter = 0;
 
 type DomainOpResponse = {
   error?: string | null;
-  snapshot?: { branches?: Array<{ ref_id: string }> };
+  // `type` jest CZYTANY nizej (filtr odcinkow liniowych) — bez deklaracji
+  // filtr milczaco odpadal na bledzie typow poza bramka. Wartosci zgodne z
+  // `src/types/enm.ts` (`Branch.type`).
+  snapshot?: { branches?: Array<{ ref_id: string; type?: string }> };
 };
 
 function catalogBinding(namespace: string, itemId: string) {

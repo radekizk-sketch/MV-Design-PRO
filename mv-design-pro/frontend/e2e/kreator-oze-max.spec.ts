@@ -14,6 +14,18 @@
  */
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
 
+
+/** Odczyt gotowosci inzynierskiej przypadku (`GET /api/cases/{id}/engineering-readiness`).
+ *  POPRAWKA 2026-08-08 (karta TYPY-POZA-BRAMKA): rzutowanie `as typeof readiness`
+ *  celowalo w typ ZAWEZONY do `null` (zmienna byla dopiero co zainicjowana `null`),
+ *  wiec odpowiedz backendu wchodzila do testu jako `null`, a caly ponizszy blok
+ *  domykania blokerow byl NIETYPOWANY (`issues` na `never`, argumenty `filter` na
+ *  implicit any). Typ nazwany jednym bytem usuwa i rzutowanie w ciemno, i 6 bledow. */
+type OdczytGotowosci = {
+  ready: boolean;
+  issues?: Array<{ code: string; element_ref?: string | null }>;
+};
+
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 const CABLE_ID = 'cable-tfk-yakxs-3x120';
 const TRAFO_ID = 'tr-sn-nn-15-04-630kva-dyn11';
@@ -244,7 +256,7 @@ async function zbudujSiecGotowaDoObliczen(
     });
   }
 
-  let readiness: { ready: boolean; issues?: Array<{ code: string; element_ref?: string | null }> } | null = null;
+  let readiness: OdczytGotowosci | null = null;
   for (let attempt = 0; attempt < 5; attempt += 1) {
     const readinessResponse = await request.get(
       `${BACKEND_BASE}/api/cases/${caseId}/engineering-readiness`,
@@ -252,7 +264,7 @@ async function zbudujSiecGotowaDoObliczen(
       { timeout: 30000 },
     );
     expect(readinessResponse.ok()).toBeTruthy();
-    readiness = (await readinessResponse.json()) as typeof readiness;
+    readiness = (await readinessResponse.json()) as OdczytGotowosci;
     if (readiness?.ready) break;
 
     for (const issue of (readiness?.issues ?? []).filter((i) => i.code.includes('catalog') && i.element_ref)) {
