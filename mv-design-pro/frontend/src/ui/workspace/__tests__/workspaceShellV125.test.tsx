@@ -144,18 +144,19 @@ vi.mock('../../study-cases/RunHistoryPanel', () => ({
   ),
 }));
 
-vi.mock('../../results-inspector', () => ({
-  ResultsInspectorPage: ({ forcedTab }: { forcedTab?: string }) => (
-    <div data-testid="results-inspector-page">{forcedTab ? 'RESULTS' : 'BRAK_ZAKLADKI'}</div>
-  ),
-}));
-
+// ZDJETE 2026-08-08 (karta TYPY-POZA-BRAMKA): dwie atrapy udawaly, ze pilnuja
+// czegos, czego nie ma. `vi.mock('../../results-inspector')` deklarowal eksport
+// `ResultsInspectorPage`, ktorego bariera modulu NIGDY nie eksportowala (a sam
+// ekran nie kompilowal sie od czasu zniknieciu `./EmbeddedSldWorkspace` i zostal
+// skasowany ta sama karta). `vi.mock('../../protection-results')` wskazywal na
+// katalog, ktory w repozytorium NIE ISTNIEJE. Zadna z atrap nie byla asercja —
+// `data-testid` results-inspector-page / protection-results-page nie wystepuje w
+// ani jednym `expect` w tym pliku. Atrapa modulu, ktorego nikt nie importuje,
+// jest zerowa operacja udajaca pokrycie: wlacza czujnosc tam, gdzie nic nie ma.
+// Zostaje `power-flow-results` — bariera i eksport ISTNIEJA (inna klasa; brak
+// importera bariery jest zdolnoscia bez konsumenta, nie fikcja w tescie).
 vi.mock('../../power-flow-results', () => ({
   PowerFlowResultsInspectorPage: () => <div data-testid="power-flow-results-page">PF</div>,
-}));
-
-vi.mock('../../protection-results', () => ({
-  ProtectionResultsInspectorPage: () => <div data-testid="protection-results-page">PROT</div>,
 }));
 
 vi.mock('../../comparison/ResultsComparisonPage', () => ({
