@@ -75,6 +75,15 @@ SC3F (zwarcie 3-fazowe, z obowiązkowymi I_dyn oraz I_th), VDROP (spadek napięc
 Earthing (ziemnozwarciowe), LF Voltage, pakiet akademicki V12.6.
 Eksport: `proof.json`, `proof.tex`, `proof.pdf`, DOCX. Matematyka wyłącznie w LaTeX `$$...$$`.
 
+**Droga do inżyniera (stan 2026-08-08, karty PACK-DOWODY / PACK-ROZPLYW / PACK-BEZ-KONSUMENTA).**
+Pakiety pobiera się JEDNĄ drogą — `GET /api/analysis-runs/{run}/pakiet-dowodowy[/dostepnosc]`,
+sekcja „Pakiet dowodowy" okna dowodu. Rodzaj pakietu wynika z DANYCH biegu, nigdy z ekranu.
+Pakiet biegu rozpływu jest ZBIORCZY: `rozplyw.zip` (zbieżność, bilans P/Q, zakres napięć) +
+`straty.zip` (straty gałęziowe, sumy, udział) + `spadek_napiecia.zip` (ΔU na ODCINKU wskazanym
+przez użytkownika, o ile bieg ma linię lub kabel). Bez konsumenta pozostają DWA generatory —
+`protection_settings` i `qu_regulation` — każdy z powodu BRAKU DANYCH nazwanego pole po polu
+w `docs/v12xx/REJESTR_KONFLIKTOW.md` (wiersz PACK-BEZ-KONSUMENTA), nie z powodu zakresu.
+
 ## 4. Powierzchnia API (`backend/src/api/`, 62 moduły)
 
 Routery wpięte w `main.py` (38, stan HEAD `b30249d`): analysis_runs, audit2_catalogs, audit2_station_config,
