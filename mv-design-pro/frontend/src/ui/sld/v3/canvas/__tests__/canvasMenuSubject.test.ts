@@ -189,15 +189,42 @@ describe('S9-5 — bramka klasy przy odcinaniu sufiksów', () => {
     expect(wynik.stan).toBe('brak');
   });
 
+  // KARTA KLIK-ETYKIETA-KOTWICA — INTENCJA BEZ ZMIAN, WEJŚCIE DOPROWADZONE DO
+  // PRODUKCYJNEGO. Bramka przejścia stacja→szyna czyta teraz DEKLAROWANY rodzaj
+  // (`elementKind === 'bus'`), a nie klasę trafienia (`klasa === 'szyna'`), bo
+  // klasa `'szyna'` powstaje wyłącznie dla KRESEK — uchwyt tej samej szyny
+  // (napis napięcia) jej nie miał i przejście dla niego nie odpalało (zmierzone:
+  // 54 z 1084 etykiet LOD2 dostawało menu STACJI z pozycją „Usuń stację").
+  // Kreska szyny NIESIE `elementKind:'bus'` w produkcji — zmierzone na sieci
+  // referencyjnej: wszystkie 55 odcinków szynowych sceny (LOD 1/2). Wejście testu
+  // je pomijało, więc badało kombinację, która na kanwie nie występuje.
   it('szyna narysowana jako kompozyt stacji sprowadza się do KANONICZNEJ szyny SN tej stacji', () => {
-    const wynik = resolveCanvasMenuSubject({ klasa: 'szyna', ownerRef: 'stn/A/station#sn-bus' }, index);
+    const wynik = resolveCanvasMenuSubject(
+      { klasa: 'szyna', elementKind: 'bus', ownerRef: 'stn/A/station#sn-bus' },
+      index,
+    );
+    expect(wynik.stan === 'temat' && wynik.temat.kotwica).toBe('szyna');
+    expect(wynik.stan === 'temat' && wynik.temat.modelRef).toBe('bus/A/sn');
+    expect(wynik.stan === 'temat' && wynik.temat.menuKind).toBe('section');
+  });
+
+  it('UCHWYT szyny (napis napięcia) sprowadza się do TEJ SAMEJ szyny, co jej kreska', () => {
+    // Druga połowa pary (reguła KLASA pkt 3): oba końce z jednego źródła. Napis
+    // ma klasę `'etykieta'`, więc dawna bramka po klasie trafienia go pomijała.
+    const wynik = resolveCanvasMenuSubject(
+      { klasa: 'etykieta', elementKind: 'bus', ownerRef: 'stn/A/station#busbar-voltage' },
+      index,
+    );
     expect(wynik.stan === 'temat' && wynik.temat.kotwica).toBe('szyna');
     expect(wynik.stan === 'temat' && wynik.temat.modelRef).toBe('bus/A/sn');
     expect(wynik.stan === 'temat' && wynik.temat.menuKind).toBe('section');
   });
 
   it('stacja BEZ szyny SN nie podstawia menu stacji pod kreskę szyny (odmowa zamiast podmiany obiektu)', () => {
-    const wynik = resolveCanvasMenuSubject({ klasa: 'szyna', ownerRef: 'stn/B/station#sn-bus' }, index);
+    const wynik = resolveCanvasMenuSubject(
+      { klasa: 'szyna', elementKind: 'bus', ownerRef: 'stn/B/station#sn-bus' },
+      index,
+    );
     expect(wynik.stan).toBe('brak');
   });
 
