@@ -58,6 +58,7 @@ import { SLD_CANVAS_DOCK_INSETS } from './toolbarLayout';
 import type { SafeInsets } from '../../v2/viewport/ViewportController';
 import type { RouteVertex } from '../layout/route';
 import { labelReservationRect } from '../layout/labels';
+import { buildKanonicznyRefSzynyWgBazy, kanonicznyRefSzynyUchwytu } from './canvasMenuSubject';
 import {
   boundingBoxOfRect,
   cameraReducer,
@@ -2798,6 +2799,13 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
    *  `ownerRef` klikniętego obiektu, nie jego kontenera). */
   const klikMeta = useMemo(() => {
     const mapa = new Map<string, SldElementClickMeta>();
+    /** KARTA KLIK-ETYKIETA-KOTWICA — kanoniczny ref szyny dla UCHWYTU (napisu).
+     *  Reguła i jej uzasadnienie pomiarowe: `canvasMenuSubject.
+     *  buildKanonicznyRefSzynyWgBazy` / `kanonicznyRefSzynyUchwytu` — JEDNA
+     *  implementacja, z której korzysta i render, i wyrocznia kontraktu (druga
+     *  kopia byłaby dokładnie tym drugim, niezależnym predykatem, który ta karta
+     *  usuwa). */
+    const kanonicznyRefSzynyWgBazy = buildKanonicznyRefSzynyWgBazy(scene.segments);
     scene.segments.forEach((segment, index) => {
       mapa.set(segmentTestId(segment, index), {
         ownerRef: segment.meta?.ownerRef,
@@ -2825,6 +2833,10 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
       mapa.set(`sld-v3-label-${planned.index}`, {
         ownerRef: planned.label.ownerRef,
         elementKind: LABEL_OWNER_ELEMENT_KIND[planned.label.ownerKind],
+        // KARTA KLIK-ETYKIETA-KOTWICA: kanoniczny ref obiektu, którego napis jest
+        // uchwytem — ten sam kanał `busRef`, którym dysponuje kreska szyny, więc
+        // uchwyt i jego szyna rozstrzygają się na TEN SAM obiekt modelu.
+        busRef: kanonicznyRefSzynyUchwytu(planned.label, kanonicznyRefSzynyWgBazy),
       });
     });
     return mapa;
