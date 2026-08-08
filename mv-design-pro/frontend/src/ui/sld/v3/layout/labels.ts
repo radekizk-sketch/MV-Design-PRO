@@ -57,6 +57,20 @@ import { labelLineHeight, measureLabelWidth, type LabelClass, type LabelRole } f
 export type OwnerKind =
   | 'segment-span'      // segment magistrali poziomy (slot podstawowy = primaryRect, poprawka F4)
   | 'segment-lateral'    // segment pionowy (lateral), etykieta rotowana 90°
+  // BLOK-LATERAL-WLASNOSC (runda poprawkowa 2026-08-08): adnotacja KOŃCA
+  // ODCINKA — „koniec otwarty" (§16-v3) i odsyłacze ciągu dalszego na złamaniu
+  // arkusza „dalej wiersz n"/„z wiersza n" (S9-1). Dotąd pożyczały
+  // `'port-caption'`, czyli rodzaj PODPISU PORTU APARATU, przez co
+  // `hitAreas.LABEL_OWNER_ELEMENT_KIND` deklarowało dla nich trafienie w
+  // APARAT, podczas gdy ich `ownerRef` jest refem ODCINKA (zmierzone: 15
+  // etykiet na fiksturze referencyjnej — 13 „koniec otwarty" + 2 odsyłacze).
+  // To ta sama pomyłka własności co `#lateral-label` pod refem stacji, tylko
+  // o piętro dalej: deklaracja celu kliknięcia rozjeżdżała się z refem.
+  // WŁASNY rodzaj, a nie przestawienie `'port-caption'` — ten dzielą PRAWDZIWE
+  // podpisy kierunku pola (`#direction`, `#caption`) i zakończenia toru
+  // (`#termination`, ref POLA, zweryfikowane pomiarem), które celują w aparat
+  // słusznie i zepsułoby je jedno wspólne przestawienie.
+  | 'segment-endpoint'   // adnotacja KOŃCA odcinka (koniec otwarty, odsyłacz ciągu dalszego)
   | 'station-name'       // wiersz pasma nazw stacji (B5)
   | 'port-caption'       // podpis kierunku pola (t3, spec §9/§19.2: „⟨nazwa linii⟩ · kier. Sxx"/„odg. Sxx")
   | 'field-role'         // F10.2: oznaczenie FUNKCYJNE pola (spec §19.1: „pole liniowe"/…, t3)
@@ -113,6 +127,11 @@ export const LABEL_ROLE_BY_OWNER_KIND: Readonly<Record<OwnerKind, LabelRole>> = 
   'port-caption': 'dane',
   'segment-span': 'dane',
   'segment-lateral': 'dane',
+  // BLOK-LATERAL-WLASNOSC: „koniec otwarty" i odsyłacze ciągu dalszego to
+  // ADNOTACJE toru — ta sama klasa znaczeniowa co `port-caption`, którą dotąd
+  // pożyczały, więc warstwa czytelności widzi DOKŁADNIE to samo co przed
+  // zmianą (rozdział dotyczy CELU KLIKNIĘCIA, nie widoczności).
+  'segment-endpoint': 'dane',
   'lv-load': 'dane',
 };
 

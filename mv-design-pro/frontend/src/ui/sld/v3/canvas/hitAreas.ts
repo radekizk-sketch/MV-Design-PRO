@@ -239,6 +239,11 @@ function klasaOdcinka(segment: PreviewSegment): HitObjectClass {
 export const LABEL_OWNER_ELEMENT_KIND = {
   'segment-span': 'segment',
   'segment-lateral': 'segment',
+  // BLOK-LATERAL-WLASNOSC: adnotacja końca odcinka niesie ref ODCINKA, więc i
+  // celuje w odcinek. Dopóki dzieliła `'port-caption'`, ta tabela deklarowała
+  // APARAT przy refie odcinka — rozjazd tej samej klasy co podpis kabla pod
+  // refem stacji. Przypięte `scene/__tests__/wlasnoscEtykiet.contract.test.ts` §6.
+  'segment-endpoint': 'segment',
   'station-name': 'station',
   'port-caption': 'apparatus',
   'field-role': 'apparatus',

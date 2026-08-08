@@ -2870,11 +2870,15 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       const height = labelLineHeight(labelClass);
       openTerminalLabels.push({
         ownerRef: `${lastSegmentRef}#open-terminal-label`,
-        ownerKind: 'port-caption',
+        // BLOK-LATERAL-WLASNOSC (R1): ta etykieta opisuje KONIEC ODCINKA i
+        // niesie ref ODCINKA, więc ma własny rodzaj deklarujący trafienie w
+        // odcinek. Dawne `'port-caption'` deklarowało APARAT przy refie
+        // odcinka (`hitAreas.LABEL_OWNER_ELEMENT_KIND`).
+        ownerKind: 'segment-endpoint',
         labelClass,
         // KD-11: adnotacja zakończenia toru — dane szczegółowe (sam słupek
         // terminalny jest rysowany zawsze, więc znak końca nie znika).
-        labelRole: LABEL_ROLE_BY_OWNER_KIND['port-caption'],
+        labelRole: LABEL_ROLE_BY_OWNER_KIND['segment-endpoint'],
         text,
         slotIndex: 1,
         // Wycentrowana POD słupkiem (ta sama konwencja co `terminationLabels`
@@ -2953,9 +2957,12 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       const width = measureLabelWidth(mark.text, 't4');
       openTerminalLabels.push({
         ownerRef: mark.ref,
-        ownerKind: 'port-caption',
+        // BLOK-LATERAL-WLASNOSC (R1): odsyłacz ciągu dalszego opisuje TEN
+        // ODCINEK na złamaniu arkusza i niesie jego ref — jak „koniec otwarty"
+        // wyżej, ta sama klasa własności.
+        ownerKind: 'segment-endpoint',
         labelClass: 't4',
-        labelRole: LABEL_ROLE_BY_OWNER_KIND['port-caption'],
+        labelRole: LABEL_ROLE_BY_OWNER_KIND['segment-endpoint'],
         text: mark.text,
         slotIndex: 1,
         rect: { x: mark.x, y: mark.y, width, height: labelLineHeight('t4') },
@@ -5609,17 +5616,17 @@ export function lineBayCaptionGaps(scene: SceneV3): readonly LineBayCaptionGap[]
     // „koniec toru" (spec §18.6 „uczciwe stwierdzenie faktu") — POZA
         // zakresem formatu „kier./odg." §19.2, własna wyrocznia §18.6.
     .filter((l) => !(l.ownerRef.endsWith('#termination') && l.text === 'koniec toru'))
-    // §16-v3: etykieta biegu OTWARTEGO („koniec otwarty", `#open-terminal-label`)
-    // — ta sama kategoria uczciwego stwierdzenia faktu co „koniec toru" wyżej,
-    // własna wyrocznia `openTerminalGaps`; poza formatem „kier./odg." §19.2.
-    .filter((l) => !(l.ownerRef.endsWith('#open-terminal-label') && l.text === 'koniec otwarty'))
-    // S9-1 (ŁAMANIE ARKUSZA, decyzja §5): odsyłacze ciągu dalszego
-    // (`#sheet-continuation-{out,in}-label`) — ta sama kategoria co „koniec
-    // otwarty": uczciwe stwierdzenie faktu o TORZE, nie podpis kierunku POLA.
-    // Format pilnuje WŁASNA wyrocznia `sheetContinuationLabelGaps` (niżej), a
-    // nie regex §19.2 — bez tego wyłączenia wyrocznia pola liniowego zgłaszała
-    // je jako luki (pomiar S9-1: 2 luki na sieci referencyjnej).
-    .filter((l) => !SHEET_CONTINUATION_LABEL_REF.test(l.ownerRef))
+    // BLOK-LATERAL-WLASNOSC (runda poprawkowa 2026-08-08): stały tu jeszcze DWA
+    // wyłączenia — „koniec otwarty" (`#open-terminal-label`, §16-v3) i odsyłacze
+    // ciągu dalszego (`#sheet-continuation-{out,in}-label`, S9-1). Obie grupy
+    // niosą ref ODCINKA, a nie pola, więc dostały WŁASNY `ownerKind:
+    // 'segment-endpoint'` i nie przechodzą już przez filtr `'port-caption'`
+    // wyżej. Wyłączenia byłyby od tej chwili MARTWE, więc zostały usunięte, a
+    // nie zostawione „na wszelki wypadek" — pilnują ich własne wyrocznie
+    // (`openTerminalGaps`, `sheetContinuationLabelGaps`), co jest wprost
+    // przypięte testem `__tests__/wlasnoscEtykiet.contract.test.ts` §6b.
+    // `#termination` ZOSTAJE: jego ref to ref POLA (`cableHead.meta.ownerRef`,
+    // zweryfikowane pomiarem), więc słusznie jest podpisem portu aparatu.
     .filter((l) => !LINE_BAY_CAPTION_PATTERN.test(l.text))
     .map((l) => ({ ownerRef: l.ownerRef, text: l.text }));
 }

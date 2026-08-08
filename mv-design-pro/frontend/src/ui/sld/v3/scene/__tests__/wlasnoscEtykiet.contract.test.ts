@@ -62,7 +62,14 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import type { EnergyNetworkModel } from '../../../../../types/enm';
-import { buildSceneV3, type SceneLod, type SceneV3 } from '../buildScene';
+import {
+  buildSceneV3,
+  lineBayCaptionGaps,
+  openTerminalGaps,
+  sheetContinuationGaps,
+  type SceneLod,
+  type SceneV3,
+} from '../buildScene';
 import { kotwicaWidoku, prostokatElementuWScenie } from '../../canvas/viewAnchor';
 import { LABEL_OWNER_ELEMENT_KIND } from '../../canvas/hitAreas';
 import type { OwnerKind } from '../../layout/labels';
@@ -459,34 +466,184 @@ describe('BLOK-LATERAL-WLASNOSC §5 — kontrakt B-2 (kotwica na WSZYSTKICH trze
 // §6 — druga para predykatów: deklaracja trafienia vs. niesiony ref
 // ---------------------------------------------------------------------------
 
-describe('BLOK-LATERAL-WLASNOSC §6 — deklaracja „klik w podpis celuje w odcinek" zgadza się z niesionym refem', () => {
-  it('L2: rodzaj elementu z `LABEL_OWNER_ELEMENT_KIND` odpowiada temu, czym NAPRAWDĘ jest ref etykiety', () => {
-    // Dopóki podpis kabla nosił ref stacji, te dwie tabele przeczyły sobie co
-    // dzień: `hitAreas` deklarowało `'segment'`, a `canvasMenuSubject` odcinało
-    // sufiks i trafiało w STACJĘ (menu stacji z pozycją „Usuń stację" pod
-    // kliknięciem w podpis kabla). Zderzamy deklarację z rysunkiem.
+describe('BLOK-LATERAL-WLASNOSC §6 — deklaracja celu kliknięcia zgadza się z niesionym refem', () => {
+  /**
+   * ZAKRES REGUŁY I JEJ GRANICA — nazwane wprost, żeby „zielone" nie znaczyło
+   * „sprawdzono wszystko".
+   *
+   * `LABEL_OWNER_ELEMENT_KIND` (`canvas/hitAreas.ts`) DEKLARUJE, w co celuje
+   * klik w etykietę; `canvasMenuSubject` obcina sufiks refu i szuka obiektu
+   * modelu. Rozjazd tych dwóch tabel jest DOKŁADNIE klasą tej karty. Pierwsza
+   * wersja §6 zderzała tylko dwie deklaracje z dwunastu — iniekcja nadzorcy
+   * (przestawienie `'field-role'` z `'apparatus'` na `'der'`) przeszła 14/14 na
+   * zielono. Reguła jest więc rozszerzona na CAŁĄ tabelę, ale tylko tak daleko,
+   * jak scena UNOSI rozstrzygnięcie:
+   *
+   *  (a) `'segment'` ⇒ ref MUSI być refem NARYSOWANEGO odcinka i NIE MOŻE leżeć
+   *      w przestrzeni nazw bloku;
+   *  (b) każda INNA deklaracja ⇒ ref NIE MOŻE być refem narysowanego odcinka
+   *      (to jest para do (a) i to ona łapie „koniec otwarty" pod
+   *      `'port-caption'`, czyli trzecią instancję klasy — 15 etykiet);
+   *  (c) `'station'` ⇒ ref MUSI leżeć w przestrzeni nazw bloku (`stn/…`/`gpz/…`);
+   *  (d) `'der'` ⇒ pod tym refem rysunek MUSI mieć symbol źródła (`symbolId`
+   *      zaczynający się od `der`) — jedyne rozróżnienie tej deklaracji
+   *      wyprowadzalne ze sceny.
+   *
+   * CZEGO REGUŁA NIE ROZSTRZYGA (granica, nie przeoczenie):
+   *  - `'apparatus'` vs `'bus'` — oba są refami LEŻĄCYMI WEWNĄTRZ bloku i żaden
+   *    nie ma symbolu, który by je odróżnił, więc scena tej pary nie unosi.
+   *    Zostają objęte wyłącznie regułą (b).
+   *  - „ref NIE MOŻE być KORZENIEM bloku" — świadomie NIE wchodzi do reguły.
+   *    Pomiar: taka klauzula zapala się na 54 etykietach `busbar-voltage`
+   *    („S01 · Sekcja 1 · 15 kV") i byłaby FAŁSZYWIE dodatnia, bo szyna SN
+   *    stacji nie ma refu innego niż kompozyt korzenia (`⟨stacja⟩#sn-bus`) —
+   *    korzeń JEST jej uczciwym właścicielem. To samo dotyczy badge „NO".
+   *    Szkodliwy jest ref CUDZEGO obiektu, nie ref własnego rodzica.
+   */
+  const DEKLARACJE_SPRAWDZANE = ['segment', 'station', 'der'] as const;
+
+  for (const lod of LODY) {
+    it(`L${lod}: każda deklaracja z tabeli trafień zgadza się z tym, czym ref NAPRAWDĘ jest`, () => {
+      const scene = sceneByLod[lod];
+      const odcinki = refyNarysowanychOdcinkow(scene);
+      const symboleRefu = new Map<string, string[]>();
+      for (const s of scene.symbols) {
+        const ref = s.meta?.ownerRef;
+        if (!ref) continue;
+        symboleRefu.set(ref, [...(symboleRefu.get(ref) ?? []), s.symbolId]);
+      }
+
+      const sprawdzonePerDeklaracja = new Map<string, number>();
+      for (const label of scene.labels) {
+        const deklarowany = LABEL_OWNER_ELEMENT_KIND[label.ownerKind];
+        const baza = bazaRefu(label.ownerRef);
+        const opis = `etykieta „${label.text}" (${label.ownerKind} → ${deklarowany}, ref ${baza})`;
+        sprawdzonePerDeklaracja.set(
+          deklarowany,
+          (sprawdzonePerDeklaracja.get(deklarowany) ?? 0) + 1,
+        );
+
+        if (deklarowany === 'segment') {
+          // (a)
+          expect(odcinki.has(baza), `${opis} deklaruje ODCINEK, a rysunek nie niesie takiego odcinka`).toBe(true);
+          expect(korzenBloku(`${baza}/`), `${opis} udaje odcinek, a leży w przestrzeni nazw bloku`).toBeNull();
+        } else {
+          // (b) — PARA do (a). Tu wpadał „koniec otwarty" pod `'port-caption'`.
+          expect(
+            odcinki.has(baza),
+            `${opis} NIE deklaruje odcinka, a jej ref JEST narysowanym odcinkiem `
+              + '— klik celowałby w co innego, niż etykieta opisuje',
+          ).toBe(false);
+        }
+
+        if (deklarowany === 'station') {
+          // (c)
+          expect(korzenBloku(`${baza}/`), `${opis} deklaruje STACJĘ, a jej ref nie należy do bloku`).not.toBeNull();
+        }
+
+        if (deklarowany === 'der') {
+          // (d)
+          expect(
+            (symboleRefu.get(baza) ?? []).some((id) => id.startsWith('der')),
+            `${opis} deklaruje ŹRÓDŁO, a pod tym refem rysunek nie ma symbolu źródła`,
+          ).toBe(true);
+        }
+      }
+
+      // ZAPADKI NA PUSTY ZBIÓR — bez nich przypadek przechodzi bezgłośnie na
+      // fiksturze, która akurat danej deklaracji nie produkuje. Progi to
+      // POMIAR na sieci referencyjnej, nie życzenie.
+      expect(sprawdzonePerDeklaracja.get('station') ?? 0).toBeGreaterThan(50);
+      if (lod === 2) {
+        expect(sprawdzonePerDeklaracja.get('segment') ?? 0).toBeGreaterThan(45);
+      }
+      if (lod !== 0) {
+        expect(sprawdzonePerDeklaracja.get('der') ?? 0).toBeGreaterThan(10);
+        expect(sprawdzonePerDeklaracja.get('apparatus') ?? 0).toBeGreaterThan(100);
+        expect(sprawdzonePerDeklaracja.get('bus') ?? 0).toBeGreaterThan(50);
+      }
+    });
+  }
+
+  it('KONTROLA CZUŁOŚCI: przestawienie deklaracji w tabeli trafień ZAPALA regułę', () => {
+    // Iniekcja nadzorcy w oryginale (`'field-role'` → `'der'`) przechodziła
+    // 14/14 na zielono. Odtwarzamy ją na KOPII tabeli — reguła (d) musi ją
+    // złapać, bo pod refem pola nie ma symbolu źródła.
+    const scene = sceneByLod[2];
+    const symboleRefu = new Map<string, string[]>();
+    for (const s of scene.symbols) {
+      const ref = s.meta?.ownerRef;
+      if (!ref) continue;
+      symboleRefu.set(ref, [...(symboleRefu.get(ref) ?? []), s.symbolId]);
+    }
+    const podmieniona: Record<string, string> = { ...LABEL_OWNER_ELEMENT_KIND, 'field-role': 'der' };
+    const zle = scene.labels.filter((l) => {
+      if (podmieniona[l.ownerKind] !== 'der') return false;
+      return !(symboleRefu.get(bazaRefu(l.ownerRef)) ?? []).some((id) => id.startsWith('der'));
+    });
+    expect(zle.length, 'przestawiona deklaracja musi dać naruszenia, inaczej reguła (d) jest ślepa').toBeGreaterThan(100);
+    // …a na tabeli PRAWDZIWEJ tych naruszeń nie ma.
+    const czyste = scene.labels.filter((l) => {
+      if (LABEL_OWNER_ELEMENT_KIND[l.ownerKind] !== 'der') return false;
+      return !(symboleRefu.get(bazaRefu(l.ownerRef)) ?? []).some((id) => id.startsWith('der'));
+    });
+    expect(czyste).toHaveLength(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// §6b — wyrocznie „końca toru" po rozdzieleniu rodzaju
+// ---------------------------------------------------------------------------
+
+describe('BLOK-LATERAL-WLASNOSC §6b — rozdzielenie rodzaju nie osierociło wyroczni końca toru', () => {
+  it('„koniec otwarty" i odsyłacze ciągu dalszego nie są już podpisami portu, a mimo to nie zgłaszają się jako luki pola', () => {
+    // Usunąłem z `lineBayCaptionGaps` dwa wyłączenia, które po zmianie rodzaju
+    // stały się MARTWE. Ten test jest dowodem, że były martwe, a nie że coś
+    // przestało być pilnowane: etykiety końca toru mają dziś własny rodzaj,
+    // ich format pilnują `openTerminalGaps` / `sheetContinuationGaps`,
+    // a wyrocznia podpisu pola nadal nie zgłasza ani jednej luki.
+    const scene = sceneByLod[2];
+    const konce = scene.labels.filter((l) => l.ownerKind === 'segment-endpoint');
+    expect(konce.length).toBeGreaterThan(10);
+    expect(konce.every((l) => LABEL_OWNER_ELEMENT_KIND[l.ownerKind] === 'segment')).toBe(true);
+    // Żadna z nich nie jest już `port-caption` — inaczej wyłączenia byłyby
+    // potrzebne, a ich usunięcie byłoby regresem.
+    expect(konce.some((l) => (l.ownerKind as string) === 'port-caption')).toBe(false);
+    expect(lineBayCaptionGaps(scene)).toHaveLength(0);
+    expect(openTerminalGaps(scene)).toHaveLength(0);
+    expect(sheetContinuationGaps(scene)).toHaveLength(0);
+  });
+
+  it('podpis zakończenia toru (`#termination`) ZOSTAJE podpisem portu — bo rodzi się z refu GŁOWICY, nie odcinka', () => {
+    // CZWARTY KANDYDAT Z TEJ SAMEJ RODZINY — sprawdzony i ŚWIADOMIE NIE
+    // zmieniony. `#termination` siada pod `cableHead.meta.ownerRef`, czyli pod
+    // refem POLA, więc deklaracja „aparat" jest tam prawdziwa i przestawienie
+    // rodzaju byłoby regresem, nie naprawą.
+    //
+    // UCZCIWIE O GRANICY POMIARU: na sieci referencyjnej takich etykiet jest
+    // ZERO — powstają wyłącznie dla głowicy, której NIE dotyka żadna trasa
+    // (fizyczny koniec ciągu), a tu każda głowica jest dotknięta. Asercja „jest
+    // ich > 0" byłaby więc kłamstwem o fiksturze. Pinujemy zamiast tego
+    // PRZESŁANKĘ, z której wynika poprawność tej gałęzi i którą fixtura unosi:
+    // ref KAŻDEJ głowicy kablowej nie jest refem narysowanego odcinka. Gdyby
+    // kiedyś nim był, `#termination` wpadłby dokładnie w regułę (b) §6 — i ten
+    // test zapali się PIERWSZY, zanim gałąź ożyje.
     const scene = sceneByLod[2];
     const odcinki = refyNarysowanychOdcinkow(scene);
-    let sprawdzone = 0;
-    for (const label of scene.labels) {
-      const deklarowany = LABEL_OWNER_ELEMENT_KIND[label.ownerKind];
-      const baza = bazaRefu(label.ownerRef);
-      if (deklarowany === 'segment') {
-        expect(
-          odcinki.has(baza),
-          `etykieta „${label.text}" deklaruje trafienie w ODCINEK, a jej ref ${baza} nie jest odcinkiem rysunku`,
-        ).toBe(true);
-        expect(korzenBloku(`${baza}/`), `ref odcinka ${baza} udaje blok stacji/GPZ`).toBeNull();
-        sprawdzone += 1;
-      }
-      if (deklarowany === 'station') {
-        expect(
-          korzenBloku(`${baza}/`),
-          `etykieta „${label.text}" deklaruje trafienie w STACJĘ, a jej ref ${baza} nie jest blokiem`,
-        ).not.toBeNull();
-        sprawdzone += 1;
-      }
+    const glowice = scene.symbols.filter((sym) => sym.symbolId === 'cableHead');
+    expect(glowice.length).toBeGreaterThan(50);
+    for (const head of glowice) {
+      const ref = head.meta?.ownerRef;
+      expect(ref, 'głowica kablowa bez właściciela — `#termination` zbudowałby ref zastępczy').toBeTruthy();
+      expect(
+        odcinki.has(String(ref)),
+        `ref głowicy ${ref} JEST narysowanym odcinkiem — podpis zakończenia toru celowałby w aparat przy refie odcinka`,
+      ).toBe(false);
     }
-    expect(sprawdzone).toBeGreaterThan(40);
+    // A jeśli fixtura kiedyś taką etykietę wyprodukuje, ma spełniać obie rzeczy.
+    for (const label of scene.labels.filter((l) => l.ownerRef.endsWith('#termination'))) {
+      expect(label.ownerKind).toBe('port-caption');
+      expect(odcinki.has(bazaRefu(label.ownerRef))).toBe(false);
+    }
   });
 });
