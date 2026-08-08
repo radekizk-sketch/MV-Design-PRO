@@ -28,13 +28,30 @@ jest wyłącznie linia napowietrzna albo kabel: aparat łączeniowy nie ma dług
 a transformator zmienia napięcie przekładnią, nie spadkiem wzdłużnym, więc wzór
 ΔU = (R·P + X·Q)/U_n² nie opisuje ani jednego, ani drugiego.
 
-ZGODNOŚĆ Z WYNIKIEM BIEGU — ZMIERZONA, NIE ZAŁOŻONA. Wzór dowodu jest przybliżeniem
-(pomija składową poprzeczną), a bieg zna napięcia dokładne. Pomiar na sieci SN
-15 kV: przy ΔU = 0,03 % różnica U_końca wynosi 0,000 V, przy ΔU = 1,27 % — 0,008 V,
-przy ΔU = 8,14 % (już poza dopuszczalnym zakresem eksploatacyjnym) — 0,245 V.
-Rozjazd zaczyna być widoczny dopiero przy ΔU rzędu 25 % (4,6 V), czyli w sieci,
-której nikt nie zaprojektuje. Pin: ``tests/api/test_pakiet_dowodowy_biegu.py``
-sprawdza zgodność dowodu z napięciami biegu w zakresie normatywnym.
+ZGODNOŚĆ Z WYNIKIEM BIEGU — ZMIERZONA, NIE ZAŁOŻONA (i słabsza, niż wyglądała).
+Wzór dowodu ΔU = (R·P + X·Q)/U_n² jest klasycznym przybliżeniem: pomija składową
+poprzeczną, którą rozpływ zna dokładnie. Zmierzone na dwóch sieciach:
+
+* SAM SPADEK ΔU zgadza się z biegiem bardzo dobrze. Sieć 110/15 kV, ΔU = 6,36 %:
+  dowód 0,9536 kV wobec 0,9532 kV z napięć węzłowych biegu — różnica 0,4 V.
+  Kabel SN przy ΔU = 0,03 %: różnica poniżej 0,001 V. Ten wynik ma pin.
+* NAPIĘCIE KOŃCA ODCINKA (krok EQ_VDROP_007) jest słabsze: 13,858 kV w dowodzie
+  wobec 13,845 kV w biegu — 12,4 V, czyli 0,09 % U. Przyczyna jest arytmetyczna,
+  nie fizyczna: krok mnoży ΔU ODNIESIONE DO U_n przez napięcie POCZĄTKU odcinka,
+  a te dwie podstawy są różne, gdy początek nie stoi na napięciu znamionowym.
+  Przy U_początku = U_n różnica znika (zmierzone 0,000 V).
+
+Pierwszy pomiar tej karty pokazywał 0,245 V i wyglądał na dowód pełnej zgodności —
+bo padł na sieci, w której początek odcinka stał DOKŁADNIE na 15 kV, czyli akurat
+tam, gdzie mieszanie podstaw nic nie kosztuje. Deklaracja została osłabiona do
+prawdy zamiast zostać przy liczbie z wygodnego przypadku.
+
+DŁUG NAZWANY — PODSTAWA KROKU KOŃCOWEGO. Naprawa polega na zmianie kanonicznego
+równania EQ_VDROP_007 (odjęcie ΔU w kV zamiast mnożenia przez ułamek odniesiony do
+innej podstawy), co jest rozstrzygnięciem o treści kanonu dowodu, nie o tej
+warstwie — dlatego idzie osobną kartą, z powyższym pomiarem jako podstawą. Wybór
+wejść tej warstwy jest przy obecnym równaniu NAJLEPSZY ZE ZMIERZONYCH: podstawienie
+U_początku także pod U_n daje 13,8 V rozjazdu, a podstawienie U_n pod oba — 200 V.
 """
 
 from __future__ import annotations
