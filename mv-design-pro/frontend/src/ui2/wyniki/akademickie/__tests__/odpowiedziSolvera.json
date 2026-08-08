@@ -64,17 +64,18 @@
   "hosting_capacity": {
     "hosting_capacity": [
       {
+        "brak_danych": "Żaden element zasilający tę szynę nie ma obciążalności długotrwałej — kryterium prądowe pominięto, ograniczeniem jest wyłącznie napięcie.",
         "bus_ref": "gpz/860003b4514aa388b39561d5005ce584/section/001/bus_sn",
         "confidence_percent": 95,
         "critical_limit": "U_max",
-        "hosting_capacity_mw": 7.7,
+        "hosting_capacity_mw": 10.0,
         "monte_carlo_n": 64
       },
       {
         "bus_ref": "station/1f4c9a02b7d84e6690ab5cc31d772e18/bus_sn",
         "confidence_percent": 95,
         "critical_limit": "U_max",
-        "hosting_capacity_mw": 7.6,
+        "hosting_capacity_mw": 7.4,
         "monte_carlo_n": 64
       }
     ],

@@ -170,7 +170,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 BACKEND_SRC = PROJECT_ROOT / "backend" / "src"
 
 #: Korzenie skanowania (wzgledem `BACKEND_SRC`) — patrz „ZAKRES SKANU".
-SCAN_ROOTS: tuple[str, ...] = ("network_model/solvers", "solver_input")
+SCAN_ROOTS: tuple[str, ...] = ("network_model/solvers", "solver_input", "enm")
 
 #: Zrodla zbioru pol modeli WEJSCIOWYCH. Zbior jest CZYTANY Z KODU, zeby zmiana
 #: kontraktu nie rozbrajala reguly po cichu.
@@ -193,7 +193,15 @@ SCAN_ROOTS: tuple[str, ...] = ("network_model/solvers", "solver_input")
 CONTRACT_SOURCES: tuple[str, ...] = (
     # Kontrakty wejsciowe i model ENM (zakres pierwotny).
     "solver_input",
-    "enm/models.py",
+    # CALY `enm` — dolozony 2026-08-08 razem z rozszerzeniem zakresu skanu
+    # (karta MOST-WEJSCIA-V126). Warunek zamykajacy `test_kazdy_skanowany_korzen_
+    # jest_zrodlem_pol` zada, zeby korzen SKANOWANY byl tez zrodlem pol; inaczej
+    # kontrakt zadeklarowany w `enm/**` (np. `enm/domain_ops_models.py`, ktory i
+    # tak byl juz wymieniony osobno) bylby dla bramki niewidzialny — luka rundy 4
+    # w nowym miejscu. Pomiar dolozenia: +115 pol (1543 -> 1658) i ZERO nowych
+    # trafien w warstwie skanowanej wczesniej, czyli czysty zysk zasiegu.
+    # `enm/models.py` jest podzbiorem tego korzenia (wpis zdjety jako zbedny).
+    "enm",
     # WLASNE deklaracje warstwy objetej skanem (runda 4). Kontrakt zadeklarowany
     # WEWNATRZ warstwy nie jest przez nia IMPORTOWANY, wiec pin mapy — ktory
     # wyprowadza korzenie z importow — z konstrukcji nie mogl zazadac o nim
@@ -213,9 +221,24 @@ CONTRACT_SOURCES: tuple[str, ...] = (
     # Pomiar przyrostowy per korzen: 21 z nich kosztuje +0 trafien (czysty zysk
     # precyzji), `enm/domain_ops_models.py` ujawnia 2 realne, a
     # `network_model/solvers/power_flow_newton.py` — 1 realne.
+    #
+    # DZIESIEC KORZENI DOLOZONYCH 2026-08-08 (karta MOST-WEJSCIA-V126) — pin mapy
+    # zazadal o nie decyzji, gdy `enm` wszedl do zakresu skanu i warstwa zaczela
+    # importowac wlasne modele. Pomiar per korzen: KAZDY kosztuje +0 trafien
+    # (lacznie +149 pol, 1658 -> 1807, zero nowych trafien i zero kolizji nazw),
+    # wiec decyzja brzmi „do mapy", a nie „poza mapa" — szerszy zasieg bez halasu.
+    "application/automation/trace.py",
+    "application/compliance/source_compliance.py",
+    "application/proof_engine/packs/phase_state_sn.py",
+    "application/stability/dynamic_stability.py",
+    "application/stability/voltage_trajectory.py",
+    "domain/canonical_operations.py",
     "domain/study_case.py",
     "enm/domain_ops_models.py",
+    "infrastructure/persistence/models.py",
     "network_model/catalog/audit2_catalogs.py",
+    "network_model/catalog/bay_templates.py",
+    "network_model/catalog/materialization.py",
     "network_model/catalog/repository.py",
     "network_model/catalog/types.py",
     "network_model/solvers/cable_ampacity_derating.py",
@@ -236,6 +259,7 @@ CONTRACT_SOURCES: tuple[str, ...] = (
     "network_model/solvers/short_circuit_core.py",
     "network_model/solvers/state_estimation_wls.py",
     "network_model/whitebox/tracer.py",
+    "reference_engine/validation.py",
 )
 
 #: Korzenie modeli SWIADOMIE POZA mapa pol — z POWODEM MERYTORYCZNYM, nie „poza
@@ -360,20 +384,99 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
         "B:ifexp:converter.filter_r_pu": 2,
         "B:ifexp:converter.rated_mva": 3,
     },
-    # Most ENM -> wejscie V12.6. NAJGORSZA rodzina w calym zakresie: solver nie ma
-    # jak odroznic tych liczb od pomiaru. `length_km = 1.0` km dla odcinka bez
-    # dlugosci oraz `r/x_ohm_per_km = 0.18/0.12` to zmyslone parametry gałęzi.
-    # DLUG NAZWANY WPROST w rejestrze — do zamiany na brak elementu w wejsciu
-    # albo na meldunek „dane niekompletne" dla calej analizy.
+    # Most ENM -> wejscie V12.6. CZTERY POZYCJE ZDJETE karta MOST-WEJSCIA-V126
+    # (2026-08-08): `C:getattr:length_km`, `C:getattr:r_ohm_per_km`,
+    # `C:getattr:x_ohm_per_km` byly MARTWYMI wartosciami zapasowymi (pola sa
+    # WYMAGANE w `OverheadLine`/`Cable`, wiec pydantic nie dopusci obiektu bez
+    # nich — galaz zapasowa nie mogla sie wykonac ANI RAZU, a wygladala na
+    # zalozenie projektowe); `C:getattr:b_siemens_per_km` zamieniony na jawne
+    # `None` w kontrakcie („susceptancja nieznana" != „susceptancja zerowa").
+    # Ta sama karta usunela z tego pliku podstawienia NIEWIDZIALNE dla poprzedniej
+    # wersji reguly (`getattr(..., None) or <liczba>`): obciazalnosc 300 A odcinka,
+    # obciazalnosc 630 A KAZDEGO aparatu oraz `r_ohm/x_ohm or 0.001` kasujace
+    # JAWNE 0,0 Ω aparatu — patrz `reads_contract_field`.
     "solver_input/v126_contracts.py": {
+        # Czestotliwosc bazowa sieci: brak -> 50 Hz. DLUG NAZWANY — wartosc
+        # znamionowa systemu, ale nadal podstawienie; do zamiany na wymog danej.
         "A:or:enm.frequency_hz": 1,
-        "A:or:generator.q_mvar": 1,
-        "A:or:transformer.p0_kw": 1,
         "B:ifexp:enm.frequency_hz": 1,
-        "C:getattr:b_siemens_per_km": 1,
-        "C:getattr:length_km": 1,
-        "C:getattr:r_ohm_per_km": 1,
-        "C:getattr:x_ohm_per_km": 1,
+        # Moc bierna wytworcy nieokreslona -> 0 Mvar (praca przy cos φ = 1).
+        # DLUG NAZWANY: to zalozenie o trybie regulacji, nie pomiar.
+        "A:or:generator.q_mvar": 1,
+        # Straty jalowe transformatora nieokreslone -> 0 kW. DLUG NAZWANY: brak
+        # danej tabliczkowej udaje transformator bezstratny w stanie jalowym.
+        "A:or:transformer.p0_kw": 1,
+    },
+    # --- korzen `enm` dolozony do zakresu karta MOST-WEJSCIA-V126 (2026-08-08) ---
+    # Pomiar dolozenia: +17 trafien, WSZYSTKIE w `enm/**`, zero kolateralnych w
+    # warstwie skanowanej wczesniej. Nadzorca podawal wczesniej liczbe 33 dla
+    # `enm/**` — pomiar wlasny jej NIE POTWIERDZIL: 33 to bylo cale `backend/src`
+    # POZA zakresem skanu, a nie samo `enm/**`.
+    #
+    # Drugi most modelu: ENM -> graf domenowy (`NetworkGraph`) dla solverow
+    # klasycznych. Pozycje `B:ifexp:*` maja tu forme `X if X is not None else <liczba>`
+    # PO naprawie: karta zamienila operator `or` na predykat `is None`, bo `or` nie
+    # odroznial BRAKU od jawnego zera. Najostrzej przy skoku zaczepu — jawnie podane
+    # 0,0 % (transformator bez regulacji) stawalo sie 2,5 %, czyli regulacja, ktorej
+    # model NIE MA, a to wchodzi wprost do przekladni t = 1 + poz·skok/100.
+    # Same wartosci zapasowe zostaja w budzecie, bo naleza do kontraktu
+    # `TransformerBranch`/`Switch` (`i0_percent: float = 0.0`, `tap_step_percent:
+    # float = 2.5`) — czyli do granicy nr 4, ktora jest OSOBNA decyzja projektowa.
+    "enm/mapping.py": {
+        # Liczba jednostek rownoleglych: brak -> 1. To KARDYNALNOSC elementu
+        # („ile sztuk reprezentuje ta pozycja"), a nie wielkosc mierzona —
+        # element bez podanej liczby jest jedna sztuka. Powod merytoryczny.
+        "A:or:gen.n_parallel": 1,
+        "A:or:trafo.n_parallel": 1,
+        # Moc bierna wytworcy -> 0 Mvar. Ta sama pozycja, co w moscie V12.6 wyzej
+        # (jeden defekt, dwa mosty) — DLUG NAZWANY, do rozstrzygniecia razem.
+        "A:or:gen.q_mvar": 1,
+        # Stosunek R/X zasilania systemowego wg IEC 60909-0 §3.2 dla sieci WN.
+        # Wartosc NORMOWA z przypisem, nie wymyslona; karta sprowadzila ja do
+        # JEDNEJ stalej modulu (byly DWIE niezalezne kopie tego obliczenia).
+        # Zostaje w budzecie, bo norma podaje ja jako wartosc TYPOWA, a nie jako
+        # wlasciwosc konkretnego przylacza.
+        "B:ifexp:source.rx_ratio": 1,
+        # Prad/napiecie znamionowe bezpiecznika -> 0. Wartosc nalezy do kontraktu
+        # `Switch` (`rated_current_a: float = 0.0`); rola mostu ogranicza sie do
+        # odroznienia braku od danej i to zostalo naprawione (`is None`).
+        "B:ifexp:branch.rated_current_a": 1,
+        "B:ifexp:branch.rated_voltage_kv": 1,
+        # Dane jalowe i zaczepowe transformatora — jak wyzej, wartosci naleza do
+        # kontraktu `TransformerBranch`. DLUG NAZWANY dla `tap_step_percent`:
+        # 2,5 % to typowy skok, a nie skok TEGO transformatora.
+        "B:ifexp:trafo.i0_percent": 1,
+        "B:ifexp:trafo.p0_kw": 1,
+        "B:ifexp:trafo.tap_position": 1,
+        "B:ifexp:trafo.tap_step_percent": 1,
+    },
+    # Skladowa zerowa transformatora. Dane OBOWIAZKOWE sa juz uczciwe: rezystor
+    # NER bez R_N i cewka Petersena bez X_N koncza sie `ValueError` z polskim
+    # powodem, bez zadnej wartosci zastepczej. W budzecie zostaja wylacznie
+    # skladowe TOWARZYSZACE (reaktancja rezystora, rezystancja tlumienia dlawika),
+    # ktorych pominiecie jest udokumentowanym uproszczeniem modelu, oraz
+    # zabezpieczenie dzielenia przez moc znamionowa.
+    "enm/zero_sequence_transformer.py": {
+        "B:ifexp:grounding.r_ohm": 1,
+        "B:ifexp:grounding.x_ohm": 1,
+        # `r_pu = (pk/1000)/Sn if Sn > 0 else 0.0` — ZABEZPIECZENIE DZIELENIA na
+        # danej niepoprawnej (Sn <= 0), nie podstawienie za brak. Powod
+        # merytoryczny; dana niepoprawna nalezy odrzucic walidacja modelu.
+        "B:ifexp:trafo.sn_mva": 1,
+    },
+    # Rzut grafu domenowego na kanoniczna specyfikacje mocy wezla. `active_power`
+    # jest `float | None`, gdzie `None` znaczy „wezel nie ma wstrzykniecia" — a
+    # BRAK WSTRZYKNIECIA JEST ZEREM WATOW, nie brakiem pomiaru. Powod
+    # merytoryczny, nie dlug.
+    "enm/canonical_analysis.py": {
+        "A:or:node.active_power": 1,
+        "A:or:node.reactive_power": 1,
+    },
+    # Numeracja rewizji dokumentu (`revision if existing else 0`). Ksiegowosc
+    # magazynu, nie wielkosc fizyczna — pierwsza rewizja startuje od zera z
+    # definicji. Powod merytoryczny, nie dlug.
+    "enm/store.py": {
+        "B:ifexp:existing.revision": 1,
     },
 }
 
@@ -492,19 +595,65 @@ def leftmost_name(expr: ast.expr) -> str | None:
     return current.id if isinstance(current, ast.Name) else None
 
 
-def reads_contract_field(expr: ast.expr, fields: set[str]) -> str | None:
-    """`<baza>.<pole>` gdy wyrazenie czyta zadeklarowane pole kontraktu."""
+def getattr_read(expr: ast.expr, stale: set[str] | None = None) -> tuple[str, str | None] | None:
+    """`getattr(<obiekt>, "<pole>"[, <zapas>])` -> (pole, nazwa obiektu).
+
+    Zwraca None, gdy wywolanie nie jest odczytem pola przez `getattr` ALBO gdy
+    wartosc zapasowa `getattr` jest LICZBA — bo wtedy to samo miejsce w kodzie
+    jest juz trafieniem formy C i policzenie go po raz drugi rozdmuchaloby budzet
+    o pozycje-widmo. PREDYKATY PARAMI: warunek wejscia do formy D i warunek
+    wejscia do formy C pochodza z jednego pomiaru (`is_numeric` na trzecim
+    argumencie), a nie z dwoch niezaleznie utrzymywanych list.
+    """
+    if not isinstance(expr, ast.Call) or not isinstance(expr.func, ast.Name):
+        return None
+    if expr.func.id != "getattr" or len(expr.args) not in (2, 3):
+        return None
+    klucz = expr.args[1]
+    if not isinstance(klucz, ast.Constant) or not isinstance(klucz.value, str):
+        return None
+    if len(expr.args) == 3 and is_numeric(expr.args[2], stale):
+        return None
+    return klucz.value, leftmost_name(expr.args[0])
+
+
+def reads_contract_field(
+    expr: ast.expr, fields: set[str], stale: set[str] | None = None
+) -> str | None:
+    """`<baza>.<pole>` gdy wyrazenie czyta zadeklarowane pole kontraktu.
+
+    ODCZYT PRZEZ `getattr` LICZY SIE TAK SAMO, CO PRZEZ KROPKE (dolozone
+    2026-08-08, karta MOST-WEJSCIA-V126). Do tej karty regula patrzyla wylacznie
+    na `ast.Attribute`, wiec zlozenie `getattr(obiekt, "pole", None) or <liczba>`
+    bylo dla niej NIEWIDZIALNE — mimo ze jest doslownie ta sama forma, tylko
+    zapisana innym zapisem odczytu.
+
+    POMIAR, KTORY TO WYMUSIL: w `solver_input/v126_contracts.py` — pliku, ktory
+    docstring tej bramki nazywa „NAJGORSZA rodzina w calym zakresie" — zyly
+    CZTERY takie zlozenia, w tym `getattr(rating, "in_a", None) or 300.0`
+    (obciazalnosc odcinka) i `getattr(branch, "r_ohm", None) or 0.001`
+    (rezystancja aparatu, kasujaca JAWNE 0,0 na kazdym aparacie tworzonym przez
+    operacje domenowe). Bramka meldowala wtedy RC=0 „PASS". To byla TRZECIA droga
+    do klasy, ktora docstring uznawal za domknieta „z obu stron" — dwa piny mapy
+    pilnowaly, CZY pole jest znane, a nie CZY odczyt pola jest rozpoznawany.
+    """
     if isinstance(expr, ast.Attribute) and expr.attr in fields:
         base = leftmost_name(expr)
         if base is not None:
             return f"{base}.{expr.attr}"
+    odczyt = getattr_read(expr, stale)
+    if odczyt is not None and odczyt[0] in fields:
+        pole, baza = odczyt
+        return f"{baza or 'getattr'}.{pole}"
     return None
 
 
-def nested_contract_field(expr: ast.expr, fields: set[str]) -> str | None:
+def nested_contract_field(
+    expr: ast.expr, fields: set[str], stale: set[str] | None = None
+) -> str | None:
     """Pierwsze (deterministycznie: najplytsze, potem najwczesniejsze) pole w drzewie."""
     for node in ast.walk(expr):
-        target = reads_contract_field(node, fields)
+        target = reads_contract_field(node, fields, stale)
         if target is not None:
             return target
     return None
@@ -552,7 +701,47 @@ def is_not_a_number_literal(expr: ast.expr) -> bool:
     return tekst == "nan"
 
 
-def is_numeric(expr: ast.expr) -> bool:
+def numeric_module_constants(tree: ast.AST) -> set[str]:
+    """Nazwy stalych MODULU zwiazanych z literalem liczbowym.
+
+    PO CO. Bez tego kazdy zastepnik chowa sie przed regula jednym ruchem:
+    przeniesieniem liczby do stalej (`... or _DOMYSLNY_RX`). Nazwa nie jest
+    `ast.Constant`, wiec `is_numeric` meldowala falsz i trafienie znikalo —
+    „naprawa" polegajaca na nadaniu liczbie nazwy wygaszalaby bramke, zamiast
+    zmniejszac dlug. Wykryte przy tej samej karcie, ktora zamieniala zdublowany
+    literal 0,1 (stosunek R/X wg IEC 60909-0) na jedna stala: pozycja budzetu
+    zniknela SAMA, bez zadnej zmiany zachowania kodu. Cicha zielen jest gorsza
+    niz czerwien, bo nie da sie jej odroznic od naprawy.
+
+    Zasieg celowo waski i strukturalny: WYLACZNIE przypisania na poziomie modulu
+    o postaci `NAZWA = <literal liczbowy>` (takze ze znakiem i z adnotacja typu).
+    Wyrazenia, wywolania i stale importowane z innych modulow pozostaja poza
+    regula — to granica nazwana, nie przeoczenie.
+    """
+    stale: set[str] = set()
+    for node in getattr(tree, "body", []):
+        cele: list[ast.expr] = []
+        if isinstance(node, ast.Assign):
+            cele = list(node.targets)
+            wartosc = node.value
+        elif isinstance(node, ast.AnnAssign) and node.value is not None:
+            cele = [node.target]
+            wartosc = node.value
+        else:
+            continue
+        if isinstance(wartosc, ast.UnaryOp) and isinstance(wartosc.op, ast.USub | ast.UAdd):
+            wartosc = wartosc.operand
+        if not isinstance(wartosc, ast.Constant):
+            continue
+        if not isinstance(wartosc.value, int | float) or isinstance(wartosc.value, bool):
+            continue
+        for cel in cele:
+            if isinstance(cel, ast.Name):
+                stale.add(cel.id)
+    return stale
+
+
+def is_numeric(expr: ast.expr, stale: set[str] | None = None) -> bool:
     """Czy wyrazenie NA PEWNO daje liczbe wchodzaca dalej do arytmetyki JAKO POMIAR.
 
     `None` (uczciwy meldunek braku), napis, wartosc logiczna oraz jawna NIE-LICZBA
@@ -563,41 +752,46 @@ def is_numeric(expr: ast.expr) -> bool:
         return False
     if isinstance(expr, ast.Constant):
         return isinstance(expr.value, int | float) and not isinstance(expr.value, bool)
+    if isinstance(expr, ast.Name):
+        # Stala modulu zwiazana z literalem liczbowym — patrz
+        # `numeric_module_constants`: nadanie liczbie nazwy nie moze wygaszac reguly.
+        return expr.id in (stale or set())
     if isinstance(expr, ast.UnaryOp) and isinstance(expr.op, ast.USub | ast.UAdd):
-        return is_numeric(expr.operand)
+        return is_numeric(expr.operand, stale)
     if isinstance(expr, ast.BinOp):
-        return is_numeric(expr.left) or is_numeric(expr.right)
+        return is_numeric(expr.left, stale) or is_numeric(expr.right, stale)
     if isinstance(expr, ast.Call) and isinstance(expr.func, ast.Name):
         return expr.func.id in _NUMERIC_CALLS
     if isinstance(expr, ast.IfExp):
-        return is_numeric(expr.body) or is_numeric(expr.orelse)
+        return is_numeric(expr.body, stale) or is_numeric(expr.orelse, stale)
     return False
 
 
 def collect_findings(tree: ast.AST, fields: set[str]) -> list[tuple[str, int]]:
     """Lista (`<forma>:<cel>`, wiersz) dla jednego pliku."""
     findings: list[tuple[str, int]] = []
+    stale = numeric_module_constants(tree)
     for node in ast.walk(tree):
         # A. dana or <liczba>
         if isinstance(node, ast.BoolOp) and isinstance(node.op, ast.Or):
             for index, value in enumerate(node.values[:-1]):
-                target = reads_contract_field(value, fields)
-                if target is not None and is_numeric(node.values[index + 1]):
+                target = reads_contract_field(value, fields, stale)
+                if target is not None and is_numeric(node.values[index + 1], stale):
                     findings.append((f"A:or:{target}", node.lineno))
         # B. ... dana ... if <warunek> else <liczba>
         if isinstance(node, ast.IfExp):
-            target = nested_contract_field(node.body, fields)
+            target = nested_contract_field(node.body, fields, stale)
             if (
                 target is not None
-                and is_numeric(node.orelse)
-                and nested_contract_field(node.orelse, fields) is None
+                and is_numeric(node.orelse, stale)
+                and nested_contract_field(node.orelse, fields, stale) is None
             ):
                 findings.append((f"B:ifexp:{target}", node.lineno))
         # C. getattr(obj, "dana", <liczba>)
         if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
             if node.func.id == "getattr" and len(node.args) == 3:
                 key = node.args[1].value if isinstance(node.args[1], ast.Constant) else None
-                if isinstance(key, str) and key in fields and is_numeric(node.args[2]):
+                if isinstance(key, str) and key in fields and is_numeric(node.args[2], stale):
                     findings.append((f"C:getattr:{key}", node.lineno))
     return findings
 

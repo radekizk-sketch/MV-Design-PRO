@@ -107,13 +107,32 @@ def _map_tap_changer(
     )
 
 
+#: Typowy stosunek R_Q/X_Q zasilania systemowego wg IEC 60909-0 §3.2 (sieci
+#: wysokiego napięcia). Wartość NORMOWA, nie wymyślona — stosowana wyłącznie wtedy,
+#: gdy model nie niesie własnego stosunku R/X źródła. Jedno miejsce w całym module:
+#: ta sama liczba stała wcześniej w DWÓCH niezależnych kopiach obliczenia
+#: impedancji źródła (w tym pliku), a dwie kopie tej samej reguły rozjeżdżają się
+#: przy pierwszej zmianie jednej z nich.
+_IEC60909_RX_ZASILANIA_SYSTEMOWEGO = 0.1
+
+
 def _source_positive_impedance_ohm(source: Source, bus_voltage_kv: float) -> complex | None:
+    """Impedancja zgodna zasilania systemowego Z_Q [Ω] albo ``None``.
+
+    ``None`` znaczy „źródło nie ma z czego policzyć impedancji" (brak jawnego
+    R/X i brak mocy zwarciowej) — wołający POMIJA takie źródło, zamiast wstawiać
+    za nie liczbę.
+    """
     if source.r_ohm is not None and source.x_ohm is not None:
         return complex(source.r_ohm, source.x_ohm)
     if source.sk3_mva is None or source.sk3_mva <= 0:
         return None
     z_abs = (bus_voltage_kv**2) / source.sk3_mva
-    rx = source.rx_ratio if source.rx_ratio and source.rx_ratio > 0 else 0.1
+    rx = (
+        source.rx_ratio
+        if source.rx_ratio is not None and source.rx_ratio > 0
+        else _IEC60909_RX_ZASILANIA_SYSTEMOWEGO
+    )
     x_ohm = z_abs / math.sqrt(1.0 + rx**2)
     r_ohm = x_ohm * rx
     return complex(r_ohm, x_ohm)
@@ -692,8 +711,17 @@ def map_enm_to_network_graph(enm: EnergyNetworkModel) -> NetworkGraph:
                 switch_type=SwitchType.FUSE,
                 state=SwitchState.CLOSED if branch.status == "closed" else SwitchState.OPEN,
                 in_service=True,
-                rated_current_a=branch.rated_current_a or 0.0,
-                rated_voltage_kv=branch.rated_voltage_kv or 0.0,
+                # Ta sama reguła, co przy transformatorze: rozstrzyga BRAK
+                # (`is None`), nie prawdziwościowość liczby. Bezpiecznik z jawnie
+                # podanym prądem znamionowym 0 A jest błędem danych, który ma
+                # dojść do walidacji nietknięty — a nie zostać po drodze
+                # zrównany z bezpiecznikiem bez danych.
+                rated_current_a=(
+                    branch.rated_current_a if branch.rated_current_a is not None else 0.0
+                ),
+                rated_voltage_kv=(
+                    branch.rated_voltage_kv if branch.rated_voltage_kv is not None else 0.0
+                ),
             )
             graph.add_switch(sw)
 
@@ -721,11 +749,21 @@ def map_enm_to_network_graph(enm: EnergyNetworkModel) -> NetworkGraph:
             voltage_lv_kv=trafo.ulv_kv,
             uk_percent=trafo.uk_percent,
             pk_kw=trafo.pk_kw,
-            i0_percent=trafo.i0_percent or 0.0,
-            p0_kw=trafo.p0_kw or 0.0,
-            vector_group=trafo.vector_group or "Dyn11",
-            tap_position=trafo.tap_position or 0,
-            tap_step_percent=trafo.tap_step_percent or 2.5,
+            # PREDYKATY `is None`, NIE prawdziwościowość liczby (karta
+            # MOST-WEJSCIA-V126). Model ENM deklaruje te pola jako `float | None`,
+            # a wartość domyślna należy do kontraktu `TransformerBranch` — więc
+            # rolą mostu jest wyłącznie odróżnić BRAK od wartości podanej.
+            # Operator `or` tego nie umiał: najostrzej przy SKOKU ZACZEPU, gdzie
+            # jawnie podane 0,0 % (transformator bez regulacji zaczepowej) było
+            # podmieniane na 2,5 %, czyli na regulację, której model NIE MA — a to
+            # wchodzi wprost do przekładni t = 1 + poz·skok/100, czyli do rozpływu.
+            i0_percent=trafo.i0_percent if trafo.i0_percent is not None else 0.0,
+            p0_kw=trafo.p0_kw if trafo.p0_kw is not None else 0.0,
+            vector_group=trafo.vector_group if trafo.vector_group is not None else "Dyn11",
+            tap_position=trafo.tap_position if trafo.tap_position is not None else 0,
+            tap_step_percent=(
+                trafo.tap_step_percent if trafo.tap_step_percent is not None else 2.5
+            ),
             tap_changer=tap_changer,
         )
         graph.add_branch(tb)
@@ -753,21 +791,13 @@ def map_enm_to_network_graph(enm: EnergyNetworkModel) -> NetworkGraph:
         if bus_voltage_kv <= 0:
             continue
 
-        # Compute source impedance R + jX
-        r_ohm = 0.0
-        x_ohm = 0.0
-
-        if source.r_ohm is not None and source.x_ohm is not None:
-            r_ohm = source.r_ohm
-            x_ohm = source.x_ohm
-        elif source.sk3_mva is not None and source.sk3_mva > 0:
-            un_kv = bus_voltage_kv
-            z_abs = (un_kv**2) / source.sk3_mva  # Z = Un² / Sk'' [Ohm]
-            rx = source.rx_ratio if source.rx_ratio and source.rx_ratio > 0 else 0.1
-            x_ohm = z_abs / math.sqrt(1.0 + rx**2)
-            r_ohm = x_ohm * rx
-
-        if r_ohm == 0 and x_ohm == 0:
+        # Impedancja Z_Q z JEDNEGO źródła prawdy — tej samej funkcji, z której
+        # korzysta sieć składowej zerowej niżej w tym pliku. Do tej karty stała tu
+        # DRUGA, dosłowna kopia obliczenia (z własnym literałem R/X = 0,1): dwie
+        # kopie tej samej reguły to defekt czekający na zmianę jednej z nich, a
+        # różnica między nimi byłaby niewidoczna, bo obie dawały „jakąś" liczbę.
+        z_ohm = _source_positive_impedance_ohm(source, bus_voltage_kv)
+        if z_ohm is None or z_ohm == 0:
             continue
 
         graph.add_grid_sc_source(
@@ -775,7 +805,7 @@ def map_enm_to_network_graph(enm: EnergyNetworkModel) -> NetworkGraph:
                 id=_ref_to_uuid(f"_zsrc_{source.ref_id}"),
                 name=source.name or source.ref_id,
                 node_id=bus_node_id,
-                z_ohm=complex(r_ohm, x_ohm),
+                z_ohm=z_ohm,
             )
         )
 

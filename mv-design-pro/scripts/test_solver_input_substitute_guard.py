@@ -42,12 +42,21 @@ class SzynaWejsciowa(BaseModel):
 
 
 def _drzewo(tmp_path: Path, pliki: dict[str, str]) -> Path:
-    """Zbuduj sztuczne drzewo `backend/src` z kontraktem i podanymi plikami."""
+    """Zbuduj sztuczne drzewo `backend/src` z kontraktem i podanymi plikami.
+
+    Korzenie skanowania sa brane Z BRAMKI (`guard.SCAN_ROOTS`), a nie wypisane
+    tutaj recznie. Do karty MOST-WEJSCIA-V126 byly wypisane — i dolozenie korzenia
+    `enm` wywrocilo CZTERNASCIE testow naraz z powodu „korzen nie istnieje",
+    zamiast sprawdzic to, co mialy sprawdzac. Osprzet testowy, ktory trzeba
+    poprawiac przy kazdym rozszerzeniu zakresu, uczy ludzi obchodzic bramke.
+    """
     root = tmp_path / "src"
     (root / "solver_input").mkdir(parents=True)
     (root / "solver_input" / "kontrakty.py").write_text(KONTRAKT, encoding="utf-8")
-    (root / "network_model" / "solvers").mkdir(parents=True)
-    (root / "network_model" / "solvers" / "__init__.py").write_text("", encoding="utf-8")
+    for korzen in guard.SCAN_ROOTS:
+        katalog = root / korzen
+        katalog.mkdir(parents=True, exist_ok=True)
+        (katalog / "__init__.py").write_text("", encoding="utf-8")
     for rel, tresc in pliki.items():
         sciezka = root / rel
         sciezka.parent.mkdir(parents=True, exist_ok=True)
@@ -123,6 +132,105 @@ def test_forma_getattr_jest_naruszeniem(tmp_path, monkeypatch, capsys) -> None:
     )
     assert kod == 1, wyjscie
     assert "C:getattr:nominal_kv" in wyjscie
+
+
+def test_forma_getattr_w_zlozeniu_or_jest_naruszeniem(tmp_path, monkeypatch, capsys) -> None:
+    """TRZECIA DROGA do tej samej klasy (karta MOST-WEJSCIA-V126, 2026-08-08).
+
+    `getattr(obiekt, "pole", None) or <liczba>` jest doslownie forma A, tylko
+    zapisana innym zapisem ODCZYTU. Regula patrzyla wylacznie na `ast.Attribute`,
+    wiec byla na to slepa Z KONSTRUKCJI — a piny mapy pilnowaly, czy pole jest
+    ZNANE, nie czy odczyt jest ROZPOZNAWANY.
+
+    POMIAR, KTORY TO WYMUSIL: w `solver_input/v126_contracts.py` — pliku, ktory
+    docstring bramki nazywa „NAJGORSZA rodzina w calym zakresie" — zyly cztery
+    takie zlozenia, w tym `getattr(rating, "in_a", None) or 300.0` i
+    `getattr(branch, "r_ohm", None) or 0.001`. Bramka meldowala RC=0 „PASS".
+    """
+    kod, wyjscie = _uruchom(
+        tmp_path,
+        monkeypatch,
+        capsys,
+        {
+            "solver_input/most.py": (
+                "def buduj(branch):\n"
+                '    return float(getattr(branch, "load_mvar", None) or 300.0)\n'
+            )
+        },
+    )
+    assert kod == 1, wyjscie
+    assert "A:or:branch.load_mvar" in wyjscie
+
+
+def test_getattr_z_liczbowym_zapasem_liczy_sie_raz(tmp_path, monkeypatch, capsys) -> None:
+    """PREDYKATY PARAMI: jedno miejsce w kodzie = jedna pozycja budzetu.
+
+    Gdy `getattr` ma zapas LICZBOWY i stoi jeszcze w `or`, to nadal JEDNO
+    podstawienie. Policzenie go dwa razy (raz jako forma C, raz jako forma A)
+    rozdmuchaloby budzet o pozycje-widmo, ktorej nie da sie zdjac zadna naprawa —
+    a budzet, ktorego nie da sie wyzerowac, uczy ludzi go ignorowac.
+    """
+    kod, wyjscie = _uruchom(
+        tmp_path,
+        monkeypatch,
+        capsys,
+        {
+            "solver_input/most.py": (
+                "def buduj(branch):\n"
+                '    return float(getattr(branch, "load_mvar", 0.0) or 300.0)\n'
+            )
+        },
+    )
+    assert kod == 1, wyjscie
+    assert wyjscie.count("load_mvar") == 1, wyjscie
+    assert "C:getattr:load_mvar" in wyjscie
+
+
+def test_stala_modulu_nie_ukrywa_podstawienia(tmp_path, monkeypatch, capsys) -> None:
+    """Nadanie liczbie NAZWY nie moze wygaszac reguly (karta MOST-WEJSCIA-V126).
+
+    Bez tego kazdy zastepnik chowa sie jednym ruchem: `... or _DOMYSLNY_RX`.
+    Wykryte na wlasnej skorze — karta sprowadzila zdublowany literal 0,1
+    (stosunek R/X wg IEC 60909-0) do jednej stalej modulu i pozycja budzetu
+    ZNIKNELA SAMA, bez zadnej zmiany zachowania kodu. Cicha zielen jest gorsza
+    niz czerwien, bo nie da sie jej odroznic od naprawy.
+    """
+    kod, wyjscie = _uruchom(
+        tmp_path,
+        monkeypatch,
+        capsys,
+        {
+            "network_model/solvers/most.py": (
+                "_DOMYSLNY_RX = 0.1\n\n\n"
+                "def licz(source):\n"
+                "    return source.load_mvar or _DOMYSLNY_RX\n"
+            )
+        },
+    )
+    assert kod == 1, wyjscie
+    assert "A:or:source.load_mvar" in wyjscie
+
+
+def test_stala_modulu_niebedaca_liczba_nie_jest_trafieniem(tmp_path, monkeypatch, capsys) -> None:
+    """Kontrola dwustronna do testu wyzej — granica jest w LICZBIE, nie w NAZWIE.
+
+    Stala modulu zwiazana z napisem albo z wyrazeniem pozostaje poza regula, tak
+    samo jak literal napisowy. Bez tej pary „stala modulu gryzie" bylaby regula
+    o nazwach, a nie o podstawianiu liczb.
+    """
+    kod, wyjscie = _uruchom(
+        tmp_path,
+        monkeypatch,
+        capsys,
+        {
+            "network_model/solvers/most.py": (
+                '_SPOSOB = "izolowany"\n\n\n'
+                "def licz(source):\n"
+                "    return source.load_mvar or _SPOSOB\n"
+            )
+        },
+    )
+    assert kod == 0, wyjscie
 
 
 def test_most_wejsc_jest_w_zakresie(tmp_path, monkeypatch, capsys) -> None:
@@ -445,6 +553,13 @@ def test_iniekcja_cos_phi_w_modelu_domenowym_jest_naruszeniem(
     )
     (root / "solver_input").mkdir(parents=True)
     (root / "solver_input" / "kontrakty.py").write_text(KONTRAKT, encoding="utf-8")
+    # Komplet korzeni skanowania — brany Z BRAMKI, nie wypisany tutaj (ta sama
+    # zasada, co w `_drzewo`): rozszerzenie zakresu nie moze wywracac testu
+    # regulacji na bledzie „korzen nie istnieje".
+    for korzen in guard.SCAN_ROOTS:
+        katalog = root / korzen
+        katalog.mkdir(parents=True, exist_ok=True)
+        (katalog / "__init__.py").write_text("", encoding="utf-8")
 
     monkeypatch.setattr(guard, "BACKEND_SRC", root)
     monkeypatch.setattr(guard, "ZASTANE_ZASTEPNIKI", {})
@@ -580,6 +695,13 @@ def test_kontrakt_zadeklarowany_w_skanowanej_warstwie_jest_w_mapie(
     )
     (root / "solver_input").mkdir(parents=True)
     (root / "solver_input" / "kontrakty.py").write_text(KONTRAKT, encoding="utf-8")
+    # Komplet korzeni skanowania — brany Z BRAMKI, nie wypisany tutaj (ta sama
+    # zasada, co w `_drzewo`): rozszerzenie zakresu nie moze wywracac testu
+    # regulacji na bledzie „korzen nie istnieje".
+    for korzen in guard.SCAN_ROOTS:
+        katalog = root / korzen
+        katalog.mkdir(parents=True, exist_ok=True)
+        (katalog / "__init__.py").write_text("", encoding="utf-8")
 
     monkeypatch.setattr(guard, "BACKEND_SRC", root)
     monkeypatch.setattr(guard, "ZASTANE_ZASTEPNIKI", {})

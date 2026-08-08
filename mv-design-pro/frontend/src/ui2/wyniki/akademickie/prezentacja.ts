@@ -627,6 +627,13 @@ export const PREZENTACJA: Record<RodzajPrezentowany, PrezentacjaRodzaju> = {
           },
           { klucz: 'confidence_percent', etykieta: 'Poziom ufności', jednostka: '%' },
           { klucz: 'monte_carlo_n', etykieta: 'Liczba losowań' },
+          // Uczciwy stan zerowy (karta MOST-WEJSCIA-V126): szyna, do której nie
+          // wchodzi żaden element z obciążalnością długotrwałą, ma wynik oparty
+          // WYŁĄCZNIE na kryterium napięciowym. Bez tej kolumny ekran pokazywałby
+          // „granica napięcia" jako rozstrzygnięcie, przemilczając, że drugiego
+          // kryterium w ogóle nie zastosowano — a przed tą kartą liczono je
+          // z obciążalności 300 A wziętej z powietrza.
+          { klucz: 'brak_danych', etykieta: 'Czego zabrakło' },
         ],
       },
     ],
