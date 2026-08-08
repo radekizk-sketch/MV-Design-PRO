@@ -599,13 +599,20 @@ All 4 workflows run on push and pull_request:
 - Component tests use @testing-library/react
 - Tests run with `--no-file-parallelism` (required for determinism)
 - Test environment: jsdom with globals enabled
-- Critical contract tests (run in SLD Determinism CI):
-  - `sld/core/__tests__/visualGraph.test.ts`
-  - `sld/core/__tests__/determinism.test.ts`
-  - `sld/core/__tests__/layoutPipeline.test.ts`
-  - `sld/core/__tests__/topologyAdapterV2.test.ts`
-  - `sld/core/__tests__/switchgearConfig.test.ts`
-  - `sld/core/__tests__/switchgearConfig.hashParity.test.ts`
+- Critical contract tests (run in SLD Determinism CI) — **spisane z
+  `.github/workflows/sld-determinism.yml`, nie z pamięci** (korekta 2026-08-08:
+  poprzednia lista wymieniała sześć plików w `sld/core/__tests__/`, z których
+  **nie istniał ANI JEDEN** — ani tam, ani nigdzie w `src`; workflow nie
+  uruchamia niczego z `sld/core/**`. Przy każdej zmianie tego workflowa
+  aktualizuj tę listę, inaczej wróci fikcja):
+  - `sld/v2/geometry/__tests__/layoutEngine.substrate.test.ts`
+  - `sld/v2/geometry/__tests__/portAnchoredGeometry.substrate.test.ts`
+  - `sld/v2/__tests__/{ViewportController,LodPolicy,renderers,StationInternalView}.test.ts(x)`
+  - `sld/v2/command/__tests__/SldCommandService.test.ts` · `sld/v2/core/__tests__/ports.test.ts`
+  - `sld/v3/scene/__tests__/{lodContinuity,buildScene.sheetRows,buildScene.gpzCollapsed,busbarLabelClearance}.test.ts`
+  - `sld/v3/canvas/__tests__/{minSymbolSize,kadrTresci,toolbarLayout,tozsamoscEtykiet}.contract.test.ts(x)`
+    oraz `gpzCollapsedExpand.test.tsx`
+  - `sld/v3/layout/__tests__/sheetRows.test.ts` · `sld/v3/theme/__tests__/palette.test.ts`
 - Critical E2E (real backend): `e2e/critical-run-flow.spec.ts` via `npm run test:e2e:real`
 
 ## Proof Engine

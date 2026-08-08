@@ -330,12 +330,32 @@ moduł już tego nie rozstrzyga.
 
    Karta ma zacząć od potwierdzenia tego pomiaru na drugiej, niereferencyjnej
    sieci (sprawdzam jedną fiksturę — to za mało, żeby orzekać o produkcie).
-2. **TYPY-SKRYPTY** — 94 błędy typów pod wykluczeniami `tsconfig.json`: 37 w
-   `frontend/scripts/**` (poza `include` w całości), 45 w `src/ui/sld/core/**`,
-   7 w `src/ui/sld/inspector/**`, 1 w `ResultsInspectorPage.tsx` (import modułu,
-   którego NIE MA — strona nie jest eksportowana z bariery ani importowana w
-   produkcji, a test `workspaceShellV125` MOCKUJE eksport, którego moduł nie ma).
-   Pięć martwych wykluczeń zdjąłem 2026-08-08; reszta to karta.
+2. **TYPY-SKRYPTY** — 94 błędy typów pod wykluczeniami `tsconfig.json`. Pięć
+   martwych wykluczeń zdjąłem 2026-08-08 (0 błędów — chroniły już tylko siebie);
+   reszta rozłożona pomiarem 2026-08-08:
+   - **52 błędy w TRZECH plikach**, i wszystkie trzy wyglądają na MARTWĄ WYSPĘ:
+     `sld/core/layoutPipeline.ts` (37) i `sld/core/layoutEngine.ts` (8) importują
+     się **wyłącznie nawzajem** (żadnego importera produkcyjnego; żywy silnik
+     układu to `engine/sld-layout/layoutEngine`, wołany z `sld/v2/geometry`),
+     a `layoutEngine.ts` importuje moduł `./layoutInputGraph`, **którego nie ma
+     nigdzie w `src`**; `sld/inspector/fieldDeviceInspector.ts` (7) nie ma
+     ANI JEDNEGO importera — ani w produkcji, ani w testach. 22 z 52 błędów to
+     zepsute importy (TS2305/TS2307), czyli ta sama zgnilizna co w skryptach
+     renderujących. **Kandydat na kasację, nie na naprawę typów** — ale decyzję
+     poprzedź pomiarem na drugim modelu (patrz pozycja 1).
+   - 37 w `frontend/scripts/**` (katalog poza `include` w całości).
+   - 1 w `ResultsInspectorPage.tsx` — import modułu, którego NIE MA; strona nie
+     jest eksportowana z bariery ani importowana w produkcji, a test
+     `workspaceShellV125` MOCKUJE eksport, którego moduł nie ma.
+
+   **ZNALEZISKO PRZY OKAZJI, POWAŻNIEJSZE OD SAMEGO DŁUGU (poprawione od razu):**
+   `CLAUDE.md` wymieniał sześć „krytycznych testów kontraktowych uruchamianych
+   w SLD Determinism CI", wszystkie w `sld/core/__tests__/`. **Nie istniał ANI
+   JEDEN** — ani tam, ani nigdzie w `src` (jedyny test w tym katalogu to
+   `portBasedLayout.test.ts`), a workflow nie uruchamia niczego z `sld/core/**`.
+   Wiążący plik instrukcji opisywał zabezpieczenie, którego nie ma — dokładnie
+   klasa „deklaracja bez pokrycia", którą ta fala ściga w kodzie. Lista zastąpiona
+   spisaną z `.github/workflows/sld-determinism.yml` (19 plików, v2 + v3).
 3. **KLIENT-BEZ-RODZINY** (znalezisko oddane przez wykonawcę ROUTERY-MARTWE, nie
    zamiecione). `route_prefix_guard` zbiera ścieżki frontu WYŁĄCZNIE dla pierwszych
    segmentów, które backend serwuje — klient wołający rodzinę, której backend nie
