@@ -68,9 +68,13 @@ def test_jsonc_nie_zdejmuje_ukosnikow_z_napisow(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_w_bramce_zwykle_moduly_src_i_scripts() -> None:
+def test_w_bramce_wszystkie_cztery_korzenie_zasiegu() -> None:
     assert guard.w_bramce("src/ui/sld/v3/scene/buildScene.ts")
     assert guard.w_bramce("scripts/render_schemat10_r2.tsx")
+    # `e2e/` i `playwright.config.ts` weszly do bramki 2026-08-08 (89 bledow
+    # zdjete u zrodla) — specyfikacja `*.spec.ts` NIE jest wykluczeniem testowym.
+    assert guard.w_bramce("e2e/critical-run-flow.spec.ts")
+    assert guard.w_bramce("playwright.config.ts")
 
 
 def test_poza_bramka_testy_niezaleznie_od_zapisu() -> None:
@@ -80,10 +84,11 @@ def test_poza_bramka_testy_niezaleznie_od_zapisu() -> None:
     assert not guard.w_bramce("src/ui/sld/v3/scene/__tests__/fixtures/w1MatrixVariants.ts")
 
 
-def test_poza_bramka_e2e_i_korzen_frontendu() -> None:
-    assert not guard.w_bramce("e2e/critical-run-flow.spec.ts")
-    assert not guard.w_bramce("playwright.config.ts")
+def test_poza_bramka_wylacznie_projekt_node() -> None:
+    """`vite.config.ts` jest jedynym plikiem źródłowym poza głównym projektem —
+    ma własny (`tsconfig.node.json`), który guard uruchamia osobno."""
     assert not guard.w_bramce("vite.config.ts")
+    assert list(guard.POZA_BRAMKA) == ["vite.config.ts"]
 
 
 # ---------------------------------------------------------------------------

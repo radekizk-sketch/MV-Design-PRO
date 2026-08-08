@@ -474,8 +474,12 @@ test.describe('kreatory:screenshot', () => {
         const root = page.locator('[data-testid="creator-harness-root"]').first();
         await expect(root).toHaveAttribute('data-status', 'ready', { timeout: 15000 });
 
-        // GPZ: panel teorii jest na kroku „źródło i strona WN" (2); odbiór na „dane" (1).
-        if (c === 'zrodlo') await page.getByTestId('mvd-kreator-zrodlo-dalej').click();
+        // Odbiór ma panel teorii juz na kroku „dane" (1) — bez przejscia dalej.
+        // ZDJETE 2026-08-08 (karta TYPY-POZA-BRAMKA): stal tu warunek
+        // `if (c === 'zrodlo') …` na petli zawezonej do `['odbior'] as const`,
+        // czyli galaz NIGDY nieosiagalna. TypeScript melduje to jako TS2367
+        // („porownanie bez czesci wspolnej") — blad zyl poza bramka, bo `e2e/`
+        // nie bylo w `include`.
 
         await page.getByTestId(`mvd-kreator-${c}-teoria`).locator('summary').click();
         await page.waitForTimeout(300);
