@@ -399,11 +399,34 @@ function toTerminalForOwner(cableRun: SldCableRun | undefined, ownerRef: string)
   return (cableRun?.segmentPaths ?? []).find((p) => p.toTerminal?.ownerRef === ownerRef)?.toTerminal;
 }
 
-function incomingLabelText(cableRun: SldCableRun | undefined, ownerRef: string): string | null {
+/**
+ * BLOK-LATERAL-WLASNOSC (R3 „predykaty parami"): ODCINEK WCHODZĄCY do
+ * `ownerRef` — JEDNO wyszukanie zwracające i JEGO REF, i JEGO PODPIS.
+ *
+ * Dotąd były to DWIE niezależne kopie tego samego predykatu
+ * (`p.toTerminal?.ownerRef === ownerRef`): jedna w `incomingLabelText`
+ * (skąd bierze się TREŚĆ podpisu), druga w `incomingSegmentRef` (skąd bierze
+ * się WŁAŚCICIEL rysunku). Dopóki podpis nosił ref STACJI, rozjazd był
+ * niewidoczny. Gdy podpis zaczyna nosić ref ODCINKA, rozjazd stałby się
+ * fabrykacją albo cichym zniknięciem napisu, więc źródło prawdy jest JEDNO:
+ * z tego zwrotu wynika WPROST niezmiennik „`text != null` ⇒ `segmentRef`
+ * istnieje" (gałąź awaryjna nie jest martwa z przypadku, tylko NIEMOŻLIWA
+ * z konstrukcji). Przypięte testem
+ * `__tests__/wlasnoscEtykiet.contract.test.ts` §1.
+ */
+interface IncomingSegment {
+  readonly segmentRef: string;
+  readonly text: string | null;
+}
+
+function incomingSegment(
+  cableRun: SldCableRun | undefined,
+  ownerRef: string,
+): IncomingSegment | null {
   const sp = (cableRun?.segmentPaths ?? []).find((p) => p.toTerminal?.ownerRef === ownerRef);
   if (!sp) return null;
   const label = (cableRun?.segmentLabels ?? []).find((l) => l.segmentRef === sp.segmentRef);
-  if (!label) return null;
+  if (!label) return { segmentRef: sp.segmentRef, text: null };
   // W3-KABLE-ETYKIETY §7 (L2): jeśli adapter niesie STRUKTURALNE dane techniczne
   // (typ z żyły×przekrój · napięcie znamionowe · długość „l = …" · mufa), składamy
   // PEŁNY człon techniczny L2 z realnych danych (zero fabrykacji — brakująca dana
@@ -411,9 +434,13 @@ function incomingLabelText(cableRun: SldCableRun | undefined, ownerRef: string):
   // strukturalnych (żaden run bez `technical`). Span rysowany tylko na L2 (bramka
   // `lod===2` u wołających), więc wzbogacenie nie zmienia L0/L1.
   const technicalText = label.technical ? formatLineTechnicalLabel(label.technical) : null;
-  if (technicalText) return technicalText;
+  if (technicalText) return { segmentRef: sp.segmentRef, text: technicalText };
   const text = label.text?.trim();
-  return text ? text : null;
+  return { segmentRef: sp.segmentRef, text: text ? text : null };
+}
+
+function incomingLabelText(cableRun: SldCableRun | undefined, ownerRef: string): string | null {
+  return incomingSegment(cableRun, ownerRef)?.text ?? null;
 }
 
 /**
@@ -442,10 +469,12 @@ function segmentSpanTextWithEndpoints(
  * dotyka granicy). Zero zgadywania: `undefined`, gdy adapter nie ma
  * dopasowania (np. odcinek GPZ→stacja0 bez zbudowanego `cableRun`) —
  * WOŁAJĄCY zostawia `meta.ownerRef` nieustawione, NIE fabrykuje refu.
+ *
+ * BLOK-LATERAL-WLASNOSC: „TEN SAM wzorzec" przestał być deklaracją w
+ * komentarzu — obie funkcje czytają teraz JEDEN `incomingSegment` (R3).
  */
 function incomingSegmentRef(cableRun: SldCableRun | undefined, ownerRef: string): string | undefined {
-  const sp = (cableRun?.segmentPaths ?? []).find((p) => p.toTerminal?.ownerRef === ownerRef);
-  return sp?.segmentRef;
+  return incomingSegment(cableRun, ownerRef)?.segmentRef;
 }
 
 /**
@@ -2225,15 +2254,19 @@ function connectRowStations(
     routeGeoms.push({ points: route.points });
     if (lod === 2) {
       const slot = layout.columnsResult.segmentLabelSlots.find((s) => s.stationIndex === i);
+      // BLOK-LATERAL-WLASNOSC (R1): podpis opisuje ODCINEK (typ · przekrój ·
+      // długość · para końców), więc nosi ref ODCINKA. Ref i treść z JEDNEGO
+      // wyszukania (`incomingSegment`) — patrz R3.
+      const wchodzacy = incomingSegment(cableRun, cur.id);
       const text = segmentSpanTextWithEndpoints(
-        incomingLabelText(cableRun, cur.id),
+        wchodzacy?.text ?? null,
         codeOf?.(prev.id),
         codeOf?.(cur.id),
       );
-      if (slot && text) {
+      if (slot && text && wchodzacy) {
         const { spanStart, spanEnd } = truncateSpanAtChannels(fromPort.x, toPort.x, channelPointsX);
         spanLabels.push({
-          ownerRef: `${cur.id}#segment-label`,
+          ownerRef: `${wchodzacy.segmentRef}#segment-label`,
           text,
           spanStart,
           spanEnd,
@@ -3535,12 +3568,15 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
         allRouteGeoms.push({ points: route.points });
         if (lod === 2) {
           const slot = rowLayout.columnsResult.segmentLabelSlots.find((s) => s.stationIndex === 0);
+          // BLOK-LATERAL-WLASNOSC (R1/R3): ref ODCINKA i jego treść z jednego
+          // wyszukania.
+          const wchodzacy = incomingSegment(mainCableRun, first.id);
           const text = segmentSpanTextWithEndpoints(
-            incomingLabelText(mainCableRun, first.id), GPZ_NODE_CODE, stationCodeOfId(first.id),
+            wchodzacy?.text ?? null, GPZ_NODE_CODE, stationCodeOfId(first.id),
           );
-          if (slot && text) {
+          if (slot && text && wchodzacy) {
             segmentSpans.push({
-              ownerRef: `${first.id}#segment-label`,
+              ownerRef: `${wchodzacy.segmentRef}#segment-label`,
               text,
               // DECYZJA (patrz `gpzRightEdgeX` w sekcji 2): `spanStart` dla
               // ETYKIETY (nie dla trasy — `route` powyżej wciąż liczy od
@@ -3633,12 +3669,15 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       );
       if (lod === 2) {
         const slot = rowLayout.columnsResult.segmentLabelSlots.find((s) => s.stationIndex === 0);
+        // BLOK-LATERAL-WLASNOSC (R1/R3): ref ODCINKA i jego treść z jednego
+        // wyszukania.
+        const wchodzacy = incomingSegment(mainCableRun, first.id);
         const text = segmentSpanTextWithEndpoints(
-          incomingLabelText(mainCableRun, first.id), stationCodeOfId(prev.last.id), stationCodeOfId(first.id),
+          wchodzacy?.text ?? null, stationCodeOfId(prev.last.id), stationCodeOfId(first.id),
         );
-        if (slot && text) {
+        if (slot && text && wchodzacy) {
           segmentSpans.push({
-            ownerRef: `${first.id}#segment-label`,
+            ownerRef: `${wchodzacy.segmentRef}#segment-label`,
             text,
             // Przęsło łącznika biegnie przez dwa pasma — środek „geometryczny"
             // nie ma sensu kartograficznego, więc etykieta siada w SLOCIE
@@ -4000,12 +4039,15 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       allRouteGeoms.push({ points: inPoints });
       if (lod === 2) {
         const slot = feederLayout.columnsResult.segmentLabelSlots.find((s) => s.stationIndex === 0);
+        // BLOK-LATERAL-WLASNOSC (R1/R3): ref ODCINKA i jego treść z jednego
+        // wyszukania.
+        const wchodzacy = incomingSegment(cableRun, first.id);
         const text = segmentSpanTextWithEndpoints(
-          incomingLabelText(cableRun, first.id), GPZ_NODE_CODE, stationCodeOfId(first.id),
+          wchodzacy?.text ?? null, GPZ_NODE_CODE, stationCodeOfId(first.id),
         );
-        if (slot && text) {
+        if (slot && text && wchodzacy) {
           segmentSpans.push({
-            ownerRef: `${first.id}#segment-label`,
+            ownerRef: `${wchodzacy.segmentRef}#segment-label`,
             text,
             spanStart: Math.max(feederPort.x, gpzRightEdgeX),
             spanEnd: first.composed.entryPort.x,
@@ -4418,12 +4460,18 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       allRouteGeoms.push({ points: jogPoints });
       if (lod === 2) {
         // pkt 13 (recenzja NO-GO 2026-07-17): para końców origin↔stacja0.
+        // BLOK-LATERAL-WLASNOSC (R1): ten podpis opisuje ODCINEK ZEJŚCIA
+        // (kabel schodzący z magistrali do stacji 0 lateralu) — jego treść to
+        // typ·przekrój·napięcie·długość TEGO kabla — więc nosi ref TEGO
+        // ODCINKA, nie stacji, przy której kiedyś stała ramka. Ref i treść z
+        // JEDNEGO wyszukania (`incomingSegment`) — patrz R3 przy definicji.
+        const wchodzacy = incomingSegment(cableRun, first.id);
         const text = segmentSpanTextWithEndpoints(
-          incomingLabelText(cableRun, first.id),
+          wchodzacy?.text ?? null,
           trunkNodeCodeOfId(originOwnerRef ?? '') ?? null,
           stationCodeOfId(first.id),
         );
-        if (text) {
+        if (text && wchodzacy) {
           // SCHEMAT-10 S7.6 (V12K-137, Z1 KOMPRESJA): etykieta zejścia kotwiczona
           // do PASA ZEJŚĆ tuż pod magistralą (`dropBandTop`..`dropBandBottom`),
           // przy channelX PUNKTU ODEJŚCIA — NIE do gapu nad odległą stacją
@@ -4434,7 +4482,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
           // `dropBandBottom−dropBandTop == dropBandHeight ≥ alongLine+2×GRID` z
           // konstrukcji (prepass max), więc `fitsLength` zawsze spełnione.
           segmentLaterals.push({
-            ownerRef: `${first.id}#lateral-label`,
+            ownerRef: `${wchodzacy.segmentRef}#lateral-label`,
             text,
             lineX: channelX,
             lineYStart: dropBandTop,
