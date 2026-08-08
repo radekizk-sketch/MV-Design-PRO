@@ -193,7 +193,7 @@ class ProofPackBuilder:
 _NAMESPACE_ARTEFAKTU_PAKIETU = UUID("4b1f6a2e-9c53-4a1d-8f7b-2d0c5a6e91d4")
 
 
-def deterministic_artifact_id(context: ProofPackContext) -> UUID:
+def deterministic_artifact_id(context: ProofPackContext, rozroznik: str = "") -> UUID:
     """Identyfikator artefaktu WYPROWADZONY z tożsamości pakietu (nie losowy).
 
     DEFEKT, KTÓRY TO ZAMYKA (karta PACK-DOWODY). ``manifest.json`` każdego pakietu
@@ -207,22 +207,30 @@ def deterministic_artifact_id(context: ProofPackContext) -> UUID:
 
     Tożsamość pakietu = projekt + przypadek + przebieg + wersja modelu. Ta sama
     czwórka ⇒ ten sam identyfikator; inny przebieg albo inna wersja modelu ⇒ inny.
+
+    ``rozroznik`` (karta PACK-BEZ-KONSUMENTA) oddziela DOKUMENTY składane z tego
+    samego przebiegu. Pakiet zbiorczy rozpływu niesie trzy dowody (rozpływ, straty,
+    spadek napięcia na odcinku) — bez rozróżnika wszystkie trzy dostałyby ten sam
+    identyfikator artefaktu, czyli pakiet twierdziłby, że to jeden i ten sam dowód.
+    Pusty rozróżnik daje ziarno IDENTYCZNE jak przed dodaniem parametru, więc
+    odciski pakietów wydanych dotąd są nietknięte (pin: dwa pobrania bajt-w-bajt).
     """
-    seed = "|".join(
-        (
-            context.project_id,
-            context.case_id,
-            context.run_id,
-            context.snapshot_id,
-        )
-    )
-    return uuid5(_NAMESPACE_ARTEFAKTU_PAKIETU, seed)
+    czlony = [
+        context.project_id,
+        context.case_id,
+        context.run_id,
+        context.snapshot_id,
+    ]
+    if rozroznik:
+        czlony.append(rozroznik)
+    return uuid5(_NAMESPACE_ARTEFAKTU_PAKIETU, "|".join(czlony))
 
 
 def dokument_deterministyczny(
     proof_doc: ProofDocument,
     context: ProofPackContext,
     znacznik_czasu: datetime,
+    rozroznik: str = "",
 ) -> ProofDocument:
     """Dokument dowodowy o TOŻSAMOŚCI wyprowadzonej z pakietu, nie z zegara i losu.
 
@@ -235,15 +243,51 @@ def dokument_deterministyczny(
 
     ``znacznik_czasu`` = czas PRZEBIEGU (nie „teraz"): dowód dokumentuje obliczenie,
     które już się odbyło. Pin: pakiet pobrany dwa razy jest bajt-w-bajt identyczny.
+
+    ``rozroznik`` jak w ``deterministic_artifact_id``: pusty ⇒ ziarno IDENTYCZNE
+    jak przed dodaniem parametru; niepusty ⇒ osobna tożsamość dokumentu w pakiecie
+    zbiorczym. Oba miejsca MUSZĄ dostawać ten sam rozróżnik — inaczej pakiet
+    miałby dwa niezgodne identyfikatory tego samego dowodu.
     """
-    seed = "|".join(
-        (context.project_id, context.case_id, context.run_id, context.snapshot_id, "document")
-    )
+    czlony = [
+        context.project_id,
+        context.case_id,
+        context.run_id,
+        context.snapshot_id,
+    ]
+    if rozroznik:
+        czlony.append(rozroznik)
+    czlony.append("document")
     return replace(
         proof_doc,
-        document_id=uuid5(_NAMESPACE_ARTEFAKTU_PAKIETU, seed),
+        document_id=uuid5(_NAMESPACE_ARTEFAKTU_PAKIETU, "|".join(czlony)),
         created_at=znacznik_czasu,
     )
+
+
+def zbuduj_zip_zbiorczy(pakiety: dict[str, bytes]) -> bytes:
+    """Jeden ZIP zbiorczy z kilku pakietów dowodowych, deterministyczny.
+
+    Kolejność wpisów i znacznik czasu stałe — ten sam zestaw daje bajt-w-bajt ten
+    sam plik. Miejsce tej funkcji jest TU (warstwa pakietu), a nie w konkretnym
+    generatorze: sięgają po nią pakiet zwarć niesymetrycznych (1F-Z / 2F / 2F-Z)
+    ORAZ pakiet rozpływu (rozpływ / straty / spadek napięcia), a warstwie aplikacji
+    nie wolno importować z warstwy API.
+    """
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(
+        buffer,
+        mode="w",
+        compression=zipfile.ZIP_DEFLATED,
+        compresslevel=9,
+    ) as bundle:
+        for nazwa in sorted(pakiety.keys()):
+            path = f"pakiet_dowodowy/{nazwa}.zip"
+            info = zipfile.ZipInfo(path, date_time=_FIXED_ZIP_TIMESTAMP)
+            info.create_system = 0
+            info.external_attr = 0o100644 << 16
+            bundle.writestr(info, pakiety[nazwa])
+    return buffer.getvalue()
 
 
 def resolve_mv_design_pro_version() -> str | None:
