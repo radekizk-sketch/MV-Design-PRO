@@ -107,6 +107,33 @@ i to twierdzenie ma przypięty test
 bo pomiar wykazał, że wszystkie 6 testów repozytorium używających `flat_start`
 ustawiało `True` i gałąź z podstawieniem nie była wykonywana ani razu.
 
+**Runda 4 — ta sama klasa, trzeci raz, drugą drogą.** Pin mapy z rundy 3 wyprowadza
+korzenie modeli z **importów** skanowanej warstwy, więc kontrakt zadeklarowany
+**wewnątrz** tej warstwy był dla niego niewidzialny. Pomiar: warstwa deklaruje
+976 pól w 36 plikach (675 nazw, **314 poza mapą**; zawężone do `*Input`/`*Options`
+z typem liczbowym — **28 pól**). Iniekcja `wejscie.transformer_current_a or 250.0`
+dawała RC=0. Warstwa dołożona do źródeł pól (mapa 1249 → 1543), przyrost **+5
+trafień, wszystkie realne**.
+
+Klasa jest teraz domknięta z obu stron dwoma pinami: `test_kazdy_model_czytany_przez_zakres_jest_w_mapie`
+(korzenie zewnętrzne, z importów) i `test_kazdy_skanowany_korzen_jest_zrodlem_pol`
+(korzenie wewnętrzne — co skanujemy, to też czytamy jako model).
+
+Dwa defekty własne wykryte przy okazji i naprawione u źródła:
+- **predykaty parami (KLASA §3)** — wykluczenie `MODEL_ROOTS_POZA_MAPA` działało
+  tylko „przez nieobecność" w `CONTRACT_SOURCES`, więc po dołożeniu całej warstwy
+  wykluczony moduł wrócił do mapy tylnymi drzwiami (8 kolizji `real`/`imag`);
+  teraz odjęcie stosuje `contract_fields()` — jedno źródło prawdy;
+- **nowa granica strukturalna** — `float("nan")` nie jest podstawieniem, tylko
+  meldunkiem braku w typie liczbowym (4 pozycje w `power_flow_oltc_studies.py`,
+  gdzie wartość trafia wyłącznie do tekstu śladu).
+
+Budżet zapadki: **32 wystąpienia w 8 plikach**. Nowe pozycje długu z rundy 4:
+`der_selection_preview.py` `reserve_pu` ×3 oraz `machine_sc_iec60909.py` `ir_a` ×2
+— prąd znamionowy maszyny w mianowniku ilorazu I_p/I_r; przy jego braku iloraz
+przyjmuje 0,0 i wchodzi do współczynnika wygaszania IEC 60909 §6.6/§6.7, więc
+**zmienia wynik**, a nie tylko zabezpiecza dzielenie.
+
 **Skala poza zakresem zapadki (pomiar tą samą regułą na całym `backend/src`):**
 55 trafień w 19 plikach — 22 w zakresie (`network_model/solvers/**` +
 `solver_input/**`) i 33 poza nim, najwięcej `enm/mapping.py` (11) i

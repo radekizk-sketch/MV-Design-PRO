@@ -49,12 +49,19 @@ Dwa warunki musza zajsc RAZEM i oba sa czytane Z KODU, nie z listy w bramce:
 2. Galaz zapasowa jest WYRAZENIEM LICZBOWYM (`is_numeric`) — stala, dzialanie
    arytmetyczne, `float/int/abs/max/min/round`. Galaz `None` NIE jest trafieniem,
    bo `None` to wlasnie uczciwy meldunek braku; napis i wartosc logiczna tez nie,
-   bo nie wchodza do arytmetyki fizyki. Pomiar tej granicy: bez niej skan warstwy
-   solverow daje 40 trafien, z czego 26 to formy UCZCIWE albo niefizyczne
-   (`... if ... else None`, nazwa do wyswietlenia, flaga `in_service`, sposob
-   uziemienia jako napis) — budzet, w ktorym dwie trzecie pozycji to falszywe
-   alarmy, uczy ludzi ignorowac bramke i zamraza poprawne konstrukcje.
-   Z granica: 14 trafien w warstwie solverow, wszystkie realne.
+   bo nie wchodza do arytmetyki fizyki. NIE JEST TEZ trafieniem jawna NIE-LICZBA
+   `float("nan")` / `float("inf")` (`is_not_a_number_literal`): NaN nie moze udawac
+   pomiaru, bo kazde dzialanie na nim daje NaN, a warstwa wiarygodnosci lapie go
+   jako wynik niefizyczny — to meldunek braku w typie liczbowym. Rozroznienie jest
+   strukturalne (argument `float` jest napisem nieliczbowym), nie lista wyjatkow;
+   `float(base_p)` — konwersja realnej danej — nadal jest liczba.
+   Pomiar tej granicy: bez warunku liczbowosci skan warstwy solverow daje 40
+   trafien, z czego 26 to formy UCZCIWE albo niefizyczne (`... else None`, nazwa
+   do wyswietlenia, flaga `in_service`, sposob uziemienia jako napis) — budzet,
+   w ktorym dwie trzecie pozycji to falszywe alarmy, uczy ludzi ignorowac bramke
+   i zamraza poprawne konstrukcje. Bez reguly NaN doszlyby 4 pozycje
+   z `power_flow_oltc_studies.py`, gdzie podstawiona wartosc trafia WYLACZNIE do
+   tekstu sladu. Z obiema granicami: 24 trafienia w warstwie solverow, realne.
 
 GRANICE BRAMKI — czego ta detekcja NIE wykrywa (jawnie, zamiast cicho)
 ----------------------------------------------------------------------
@@ -94,11 +101,24 @@ GRANICE BRAMKI — czego ta detekcja NIE wykrywa (jawnie, zamiast cicho)
     RC=0 „PASS". Zdanie granicy WYLACZALO CZUJNOSC zamiast ja kierowac — a to
     grozniejsze niz sam defekt (regula KLASA §4). Korzen zostal dolozony.
 
-    ZEBY TO SIE NIE POWTORZYLO, granica ma PIN, nie tylko akapit:
-    `test_kazdy_model_czytany_przez_zakres_jest_w_mapie` wyprowadza korzenie modeli
-    Z IMPORTOW warstwy objetej skanem i zada, zeby kazdy byl w `CONTRACT_SOURCES`.
-    Solver dopisany na NOWYM kontrakcie zapali czerwien, zamiast po cichu wypasc
-    poza zasieg reguly.
+    TA SAMA KLASA WROCILA W RUNDZIE 4 — DRUGA DROGA. Pin z rundy 3 wyprowadza
+    korzenie Z IMPORTOW, a kontrakt zadeklarowany WEWNATRZ skanowanej warstwy nie
+    jest przez nia importowany, wiec pin z konstrukcji nie mogl o niego zapytac.
+    Pomiar: warstwa deklaruje 976 pol w 36 plikach (675 nazw unikalnych, 314 poza
+    mapa; zawezone do `*Input`/`*Options` z typem liczbowym — 28 pol, m.in.
+    `CableSelectionInput.transformer_current_a`, `GridSourcePreviewInput.tk_s`).
+    Iniekcja `wejscie.transformer_current_a or 250.0` dawala RC=0. Warstwa zostala
+    dolozona do zrodel pol.
+
+    ZEBY TO SIE NIE POWTORZYLO PO RAZ TRZECI, granica ma DWA PINY domykajace klase
+    z OBU stron, nie akapit:
+      * `test_kazdy_model_czytany_przez_zakres_jest_w_mapie` — korzenie ZEWNETRZNE:
+        kazdy model IMPORTOWANY przez warstwe ma decyzje (mapa albo wykluczenie
+        z powodem); solver na NOWYM kontrakcie zapala czerwien;
+      * `test_kazdy_skanowany_korzen_jest_zrodlem_pol` — korzenie WEWNETRZNE:
+        co skanujemy, to tez czytamy jako model, wiec kontrakt zadeklarowany
+        w skanowanej warstwie nie moze byc dla bramki niewidzialny.
+    Trzecia droga do tej samej luki musialaby ominac oba warunki naraz.
  6. **Wykonanie z napisu** (`eval`, `exec`) — poza zasiegiem analizy skladni.
 
 ZAKRES SKANU
@@ -162,6 +182,17 @@ CONTRACT_SOURCES: tuple[str, ...] = (
     # Kontrakty wejsciowe i model ENM (zakres pierwotny).
     "solver_input",
     "enm/models.py",
+    # WLASNE deklaracje warstwy objetej skanem (runda 4). Kontrakt zadeklarowany
+    # WEWNATRZ warstwy nie jest przez nia IMPORTOWANY, wiec pin mapy — ktory
+    # wyprowadza korzenie z importow — z konstrukcji nie mogl zazadac o nim
+    # decyzji. Pomiar luki: 36 plikow warstwy deklaruje 976 pol w klasach, 675
+    # nazw unikalnych, **314 poza mapa**; zawezone do klas `*Input`/`*Options`
+    # z typem liczbowym — **28 pol**, m.in. `CableSelectionInput.transformer_current_a`,
+    # `BlockTransformerSelectionInput.sum_apparent_power_mva`, `GridSourcePreviewInput.tk_s`.
+    # Iniekcja `wejscie.transformer_current_a or 250.0` w `der_selection_preview.py`
+    # dawala RC=0 „PASS". Przyrost po dolozeniu: +5 trafien, wszystkie realne
+    # (0 kolizji — patrz `MODEL_ROOTS_POZA_MAPA` i `is_not_a_number_literal`).
+    "network_model/solvers",
     # Model DOMENOWY klasycznych solverow (runda 3 — patrz akapit wyzej).
     "network_model/core",
     # Pozostale moduly-modele IMPORTOWANE przez warstwe objeta skanem. Lista jest
@@ -221,7 +252,7 @@ _NUMERIC_CALLS: frozenset[str] = frozenset(
 
 #: Zapadka zastanych zastepnikow: plik -> {"<forma>:<cel>": liczba}.
 #: Pomiar zamrozenia 2026-08-08 (karta QU-FABRYKACJA, rundy 2 i 3):
-#: 19 wystapien w warstwie solverow + 8 w moscie wejsc = 27 w 7 plikach.
+#: 24 wystapienia w warstwie solverow + 8 w moscie wejsc = 32 w 8 plikach.
 #: Runda 3 dolozyla `network_model/core` do mapy pol (+54 pola, 563 -> 617)
 #: (563 -> 1249 pol po dolozeniu wszystkich korzenii z importow) i ujawnila
 #: 5 nowych pozycji: 2 w `power_flow_newton_internal.py`, 2 w
@@ -246,6 +277,12 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
     # `enm/domain_ops_models.py` do mapy pol.
     "network_model/solvers/der_selection_preview.py": {
         "B:ifexp:data.loadability_pu": 1,
+        # `reserve_pu` (3x) dolozone w rundzie 4 — ta sama rodzina, co dwa wpisy
+        # obok, ale widoczna dopiero po dolozeniu WLASNYCH deklaracji warstwy do
+        # mapy: `CableSelectionInput`/`BlockTransformerSelectionInput` mieszkaja
+        # w `network_model/solvers/**`, wiec warstwa ich nie IMPORTUJE i pin mapy
+        # nie mogl o nie zapytac.
+        "B:ifexp:data.reserve_pu": 3,
         "B:ifexp:data.simultaneity_factor": 1,
     },
     # Odczyt WYNIKU rozplywu z wartoscia zastepcza zero: `getattr(solution,
@@ -255,6 +292,16 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
     # (rozplyw ZAWSZE oddaje straty), a nie cicho zerowany.
     "network_model/solvers/power_flow_oltc_studies.py": {
         "C:getattr:losses_total": 1,
+    },
+    # Prad znamionowy maszyny w mianowniku ilorazu I_p/I_r: przy braku danej
+    # (`ir_a <= 0`) iloraz przyjmuje 0,0 i tak wchodzi do `mu_factor`, czyli do
+    # wspolczynnika wygaszania IEC 60909 §6.6/§6.7 — a wiec ZMIENIA WYNIK, a nie
+    # tylko zabezpiecza dzielenie. DLUG NAZWANY: maszyna bez pradu znamionowego
+    # powinna zostac POMINIETA z meldunkiem braku (wzorzec
+    # `_grid_source_shunt_admittance`), a nie liczona ze wspolczynnikiem z zera.
+    # Ujawnione w rundzie 4 razem z wlasnymi deklaracjami warstwy.
+    "network_model/solvers/machine_sc_iec60909.py": {
+        "B:ifexp:m.ir_a": 2,
     },
     # PUNKT STARTOWY ITERACJI, NIE WIELKOSC WEJSCIOWA — jedyny wpis budzetu
     # uzasadniony MERYTORYCZNIE, a nie nazwany dlugiem. `_build_initial_voltage`
@@ -322,15 +369,27 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
 def contract_fields() -> set[str]:
     """Nazwy pol zadeklarowanych w modelach wejsciowych — CZYTANE Z KODU.
 
-    Zbior powstaje z adnotacji `nazwa: typ` w cialach klas `solver_input/**`
-    i `enm/models.py`. To on odsiewa odczyty slownikowe: klucz `parameters` nie
-    jest zadeklarowanym polem, wiec nie moze byc trafieniem.
+    Zbior powstaje z adnotacji `nazwa: typ` w cialach klas z `CONTRACT_SOURCES`.
+    To on odsiewa odczyty slownikowe: klucz `parameters` nie jest zadeklarowanym
+    polem, wiec nie moze byc trafieniem.
+
+    PREDYKATY PARAMI (regula KLASA §3). Wykluczenie `MODEL_ROOTS_POZA_MAPA` jest
+    stosowane TUTAJ, a nie tylko w tescie pinujacym mape. Do rundy 4 wykluczenie
+    dzialalo wylacznie „przez nieobecnosc" — modul po prostu nie byl wymieniony
+    w `CONTRACT_SOURCES`. Dwa niezaleznie utrzymywane warunki, ktore „dzis sie
+    zgadzaja", sa defektem czekajacym na dane brzegowe: gdy runda 4 dolozyla
+    `network_model/solvers` jako calosc, wykluczony `stability_rms/contracts.py`
+    WROCIL do mapy tylnymi drzwiami i przywrocil 8 kolizji `real`/`imag`.
+    Teraz wejscie i wyjscie ze zbioru pochodza z JEDNEGO zrodla prawdy.
     """
     fields: set[str] = set()
     for entry in CONTRACT_SOURCES:
         root = BACKEND_SRC / entry
         files = sorted(root.rglob("*.py")) if root.is_dir() else ([root] if root.is_file() else [])
         for path in files:
+            rel = path.relative_to(BACKEND_SRC).as_posix()
+            if rel in MODEL_ROOTS_POZA_MAPA:
+                continue
             try:
                 tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
             except (OSError, SyntaxError, UnicodeDecodeError):
@@ -439,12 +498,39 @@ def nested_contract_field(expr: ast.expr, fields: set[str]) -> str | None:
     return None
 
 
-def is_numeric(expr: ast.expr) -> bool:
-    """Czy wyrazenie NA PEWNO daje liczbe wchodzaca dalej do arytmetyki.
+def is_not_a_number_literal(expr: ast.expr) -> bool:
+    """Czy wyrazenie to jawna NIE-LICZBA: `float("nan")` / `float("inf")`.
 
-    `None` (uczciwy meldunek braku), napis i wartosc logiczna sa POZA regula —
-    to granica, ktora odsiewa dwie trzecie falszywych alarmow (patrz docstring).
+    NaN i nieskonczonosc sa jedynymi wartosciami „liczbowymi", ktore NIE MOGA
+    udawac pomiaru: kazde dzialanie na nich daje NaN/inf, a warstwa wiarygodnosci
+    analiz (`_finite` w `v126_academic.py`) lapie je jako wynik niefizyczny.
+    Podstawienie NaN jest wiec forma MELDUNKU BRAKU, a nie zmyslonej wielkosci —
+    tak samo jak `None`, tylko w typie liczbowym.
+
+    Rozroznienie jest STRUKTURALNE (argument `float` jest napisem nieliczbowym),
+    a nie lista wyjatkow. `float(base_p)` — konwersja realnej danej — pozostaje
+    liczba i nadal jest trafieniem, gdy stoi w galezi zapasowej.
     """
+    if not isinstance(expr, ast.Call) or not isinstance(expr.func, ast.Name):
+        return False
+    if expr.func.id != "float" or len(expr.args) != 1:
+        return False
+    arg = expr.args[0]
+    if not isinstance(arg, ast.Constant) or not isinstance(arg.value, str):
+        return False
+    tekst = arg.value.strip().lower().lstrip("+-")
+    return tekst in {"nan", "inf", "infinity"}
+
+
+def is_numeric(expr: ast.expr) -> bool:
+    """Czy wyrazenie NA PEWNO daje liczbe wchodzaca dalej do arytmetyki JAKO POMIAR.
+
+    `None` (uczciwy meldunek braku), napis, wartosc logiczna oraz jawna NIE-LICZBA
+    (`float("nan")`) sa POZA regula — to granica, ktora odsiewa dwie trzecie
+    falszywych alarmow (patrz docstring modulu).
+    """
+    if is_not_a_number_literal(expr):
+        return False
     if isinstance(expr, ast.Constant):
         return isinstance(expr.value, int | float) and not isinstance(expr.value, bool)
     if isinstance(expr, ast.UnaryOp) and isinstance(expr.op, ast.USub | ast.UAdd):
