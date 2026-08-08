@@ -335,13 +335,41 @@ describe('S9-9 — budżet przeliczeń synchronicznych ścieżki gestu', () => {
     // Kryterium ILORAZOWE zamiast bezwzględnego — nie zależy od szybkości
     // maszyny. Sieć podwojona ma 2× więcej etykiet: koszt liniowy daje ~2×,
     // kwadratowy ~4×. Próg 3× rozdziela te dwa reżimy.
-    // PODŁOGA BEZWZGLĘDNA (wzorzec z V12K-325: iloraz na podsekundowych
-    // pomiarach mierzy szum planisty, nie algorytm): przy pomiarze bazowym
-    // poniżej 2 ms iloraz jest nierozstrzygalny i asercji nie wykonujemy —
-    // moc detekcyjna zostaje, bo koszt kwadratowy tej podłogi nie osiąga.
-    const bazowy = najgorszyPlan(siecReferencyjna);
-    const podwojony = najgorszyPlan(siecPodwojona);
-    if (bazowy < 2) return;
-    expect(podwojony / bazowy).toBeLessThan(3);
+    //
+    // MEDIANA ILORAZÓW, NIE ILORAZ JEDNEJ PARY (SLOT-DRYF-PRZĘSŁA, runda
+    // poprawkowa 2026-08-08 — defekt PIERWOTNY tego testu, napotkany przy
+    // przeliczaniu odcisków). Poprzednia wersja brała JEDNĄ parę pomiarów i
+    // porównywała ich iloraz z progiem. Oba składniki to pojedyncze cyfry
+    // milisekund w jsdom, więc iloraz jest ZDOMINOWANY przez szum planisty:
+    // zmierzone dziewięć kolejnych ilorazów BEZ ŻADNEJ zmiany kodu dało
+    // 1,22 · 1,59 · 1,92 · 1,98 · 2,07 · 2,31 · 3,10 · 3,20 · 5,70 (i tak
+    // samo na drzewie SPRZED tej karty: 1,24 … 4,38). Trzy z dziewięciu
+    // przekraczają próg 3 — test przewracał się losowo, mierząc obciążenie
+    // maszyny, a nie złożoność algorytmu. PODŁOGA `bazowy < 2 ms` tego nie
+    // ratowała: na tej maszynie bazowy to 3–5 ms, czyli podłoga nigdy nie
+    // odpalała, a szum i tak sięgał progu.
+    //
+    // NAPRAWA U ŹRÓDŁA, NIE ROZLUŹNIENIE PROGU: próg zostaje 3×, zmienia się
+    // ESTYMATOR — mediana z `PROBEK_ILORAZU` niezależnych par. Moc detekcyjna
+    // ZOSTAJE: koszt kwadratowy daje ~4× w KAŻDEJ próbce, więc jego mediana
+    // też jest ~4× i próg łapie go tak samo pewnie jak wcześniej; zmienia się
+    // tylko odporność na pojedynczy wyskok. Zmierzone mediany: 2,07 · 2,28
+    // (drzewo po karcie) i 2,45 · 2,61 (drzewo sprzed karty).
+    const PROBEK_ILORAZU = 5;
+    const ilorazy: number[] = [];
+    for (let i = 0; i < PROBEK_ILORAZU; i++) {
+      const bazowy = najgorszyPlan(siecReferencyjna);
+      // PODŁOGA BEZWZGLĘDNA (wzorzec z V12K-325): przy pomiarze bazowym
+      // poniżej 2 ms iloraz jest nierozstrzygalny — próbkę pomijamy.
+      if (bazowy < 2) continue;
+      ilorazy.push(najgorszyPlan(siecPodwojona) / bazowy);
+    }
+    // Wszystkie próbki pod podłogą ⇒ maszyna zbyt szybka na ten pomiar;
+    // asercji nie wykonujemy (moc detekcyjna zostaje — koszt kwadratowy tej
+    // podłogi nie osiąga).
+    if (ilorazy.length === 0) return;
+    ilorazy.sort((a, b) => a - b);
+    const medianaIlorazu = ilorazy[Math.floor(ilorazy.length / 2)];
+    expect(medianaIlorazu).toBeLessThan(3);
   });
 });
