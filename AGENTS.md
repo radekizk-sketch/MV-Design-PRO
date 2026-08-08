@@ -23,11 +23,12 @@ Project authority order, highest first. Updated 2026-05-13 per conflict resoluti
 4. `mv-design-pro/SYSTEM_SPEC.md`
 5. `mv-design-pro/ARCHITECTURE.md`
 6. `mv-design-pro/AGENTS.md`
-7. `mv-design-pro/POWERFACTORY_COMPLIANCE.md`
-8. `mv-design-pro/PLANS.md`
-9. `mv-design-pro/docs/INDEX.md` + `INDEX_KANONICZNY.md`
-10. `mv-design-pro/docs/spec/SPEC_CHAPTER_*.md` (18 chapters) — **ARCHIVAL** (V11 reference; not active source of truth; all 28 files carry "Historical note (V12.5)" disclaimer)
-11. `mv-design-pro/docs/audit/archive/` + `historical_execplans/` — archive
+7. `mv-design-pro/PLANS.md`
+8. `mv-design-pro/docs/INDEX.md` + `INDEX_KANONICZNY.md`
+9. `mv-design-pro/docs/spec/SPEC_CHAPTER_*.md` (18 chapters) — **ARCHIVAL** (V11 reference; not active source of truth; all 28 files carry "Historical note (V12.5)" disclaimer)
+10. `mv-design-pro/docs/audit/archive/` + `historical_execplans/` — archive
+
+Note: `mv-design-pro/POWERFACTORY_COMPLIANCE.md` was removed in the V12.5.1 hard cut (2026-04-21). Catalog/PowerFactory compliance guidance now lives in `mv-design-pro/docs/system/SPEC_KATALOGI_I_MATERIALIZACJA_PARAMETROW.md` (priority 2 above).
 
 If documents conflict, stop and follow the highest-authority document. Record any conflict in `mv-design-pro/docs/v12xx/REJESTR_KONFLIKTOW.md`. For architecture changes, consult `mv-design-pro/docs/v12xx/KANON_V12_XX.md` and `mv-design-pro/docs/system/` first.
 

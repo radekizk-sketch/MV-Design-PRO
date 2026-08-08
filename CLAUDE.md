@@ -53,11 +53,10 @@ MV-Design-PRO/
 │   └── system/                   # System-level docs
 │   # Detailed audit reports + execution plans live under mv-design-pro/docs/audit/ and mv-design-pro/docs/plan/
 ├── mv-design-pro/                # Main application
-│   ├── SYSTEM_SPEC.md            # Executive overview + navigation hub (BINDING, v4.0)
-│   ├── AGENTS.md                 # Agent governance rules (BINDING, v4.0)
+│   ├── SYSTEM_SPEC.md            # Executive overview + navigation hub (BINDING, v4.1)
+│   ├── AGENTS.md                 # Agent governance rules (BINDING, v4.3)
 │   ├── ARCHITECTURE.md           # Technical architecture reference (BINDING, v4.0)
 │   ├── PLANS.md                  # Operational status & next steps (LIVING, v5.1)
-│   ├── POWERFACTORY_COMPLIANCE.md# PowerFactory alignment checklist (BINDING, v3.0)
 │   ├── docker-compose.yml        # 6 services: backend, frontend, postgres, mongodb, redis, celery
 │   ├── backend/
 │   │   ├── pyproject.toml        # Poetry configuration
@@ -241,11 +240,12 @@ Authority order (highest first). Updated 2026-05-13 per conflict resolution V12K
 | 4 | `mv-design-pro/SYSTEM_SPEC.md` | Executive overview + navigation hub |
 | 5 | `mv-design-pro/ARCHITECTURE.md` | Technical architecture reference |
 | 6 | `mv-design-pro/AGENTS.md` | Agent governance rules |
-| 7 | `mv-design-pro/POWERFACTORY_COMPLIANCE.md` | PowerFactory alignment checklist |
-| 8 | `mv-design-pro/PLANS.md` | Operational status & next steps (LIVING) |
-| 9 | `mv-design-pro/docs/INDEX.md` + `INDEX_KANONICZNY.md` | Active canon indexes |
-| 10 | `mv-design-pro/docs/spec/SPEC_CHAPTER_*.md` (18 chapters) | ARCHIVAL — V11 reference for spec-vs-code audit. All 28 files marked "Historical note (V12.5)". |
-| 11 | `mv-design-pro/docs/audit/archive/` + `historical_execplans/` | ARCHIVE (closed audits, ExecPlans) |
+| 7 | `mv-design-pro/PLANS.md` | Operational status & next steps (LIVING) |
+| 8 | `mv-design-pro/docs/INDEX.md` + `INDEX_KANONICZNY.md` | Active canon indexes |
+| 9 | `mv-design-pro/docs/spec/SPEC_CHAPTER_*.md` (18 chapters) | ARCHIVAL — V11 reference for spec-vs-code audit. All 28 files marked "Historical note (V12.5)". |
+| 10 | `mv-design-pro/docs/audit/archive/` + `historical_execplans/` | ARCHIVE (closed audits, ExecPlans) |
+
+Note: `POWERFACTORY_COMPLIANCE.md` was removed in the V12.5.1 hard cut (2026-04-21); PowerFactory/catalog compliance guidance now lives in `mv-design-pro/docs/system/SPEC_KATALOGI_I_MATERIALIZACJA_PARAMETROW.md` (priority 2 above).
 
 In case of conflict: higher priority wins. Conflicts must be recorded in `docs/v12xx/REJESTR_KONFLIKTOW.md`. The latest canon documents (DOC_INVENTORY_2026-05, AUDYT_BRAKI_2026-05, PLAN_E2E_INDUSTRIAL_2026-05, SLD_INDUSTRIAL_SPEC_v1) live under `mv-design-pro/docs/audit/` and `mv-design-pro/docs/plan/` and `mv-design-pro/docs/sld/`.
 
@@ -536,14 +536,18 @@ python scripts/smoke_local.sh                     # Local smoke test
 
 ## CI/CD Pipelines
 
-All 4 workflows run on push and pull_request:
+8 workflows in `.github/workflows/`, all on push and pull_request (`frontend-e2e-smoke.yml` is path-filtered to `frontend/**` + `backend/**`):
 
 | Workflow | File | What It Does |
 |----------|------|-------------|
-| Python tests | `python-tests.yml` | pytest + pcc_zero + domain_no_guessing + canonical_ops + readiness_codes guards |
+| Python tests | `python-tests.yml` | pytest + pcc_zero + domain_no_guessing + canonical_ops + readiness_codes + catalog_binding + catalog_gate + audit_contract + repo_hygiene guards |
 | Frontend checks | `frontend-checks.yml` | type-check + lint + vitest + codenames + dialog_completeness + local_truth guards |
-| SLD Determinism | `sld-determinism.yml` | Python SLD guards + 18 Vitest contract tests + render artifacts |
+| SLD Determinism | `sld-determinism.yml` | Python SLD guards + SLD v2/v3 Vitest contract tests + render-odbiór acceptance |
 | Docs Guard | `docs-guard.yml` | Documentation integrity check (broken links, PCC terms) |
+| Architecture & Repo Hygiene | `arch-guard.yml` | arch_guard + repo_hygiene guards |
+| P0 Extended Guards | `p0-extended-guards.yml` | V12K invariant guards (load_flow/protection heuristics, solver_boundary, overlay_no_physics, trace_determinism, fault_scenarios_determinism, ui_terminology, forbidden_ui_terms) |
+| Physics Label Guard | `physics-label-guard.yml` | Catalog-first physics field guard for modals |
+| Frontend E2E smoke | `frontend-e2e-smoke.yml` | Playwright e2e against the real backend (`npm run test:e2e:real`) |
 
 ## Code Style & Conventions
 
@@ -600,13 +604,16 @@ All 4 workflows run on push and pull_request:
 - Component tests use @testing-library/react
 - Tests run with `--no-file-parallelism` (required for determinism)
 - Test environment: jsdom with globals enabled
-- Critical contract tests (run in SLD Determinism CI):
-  - `sld/core/__tests__/visualGraph.test.ts`
-  - `sld/core/__tests__/determinism.test.ts`
-  - `sld/core/__tests__/layoutPipeline.test.ts`
-  - `sld/core/__tests__/topologyAdapterV2.test.ts`
-  - `sld/core/__tests__/switchgearConfig.test.ts`
-  - `sld/core/__tests__/switchgearConfig.hashParity.test.ts`
+- Critical contract tests (run in SLD Determinism CI, SLD v2/v3 pipeline):
+  - `sld/v2/geometry/__tests__/layoutEngine.substrate.test.ts`
+  - `sld/v2/__tests__/ViewportController.test.ts`
+  - `sld/v2/__tests__/LodPolicy.test.ts`
+  - `sld/v2/__tests__/renderers.test.tsx`
+  - `sld/v2/geometry/__tests__/portAnchoredGeometry.substrate.test.ts`
+  - `sld/v2/__tests__/StationInternalView.test.tsx`
+  - `sld/v2/command/__tests__/SldCommandService.test.ts`
+  - `sld/v2/core/__tests__/ports.test.ts`
+  - SLD v3 render-odbiór acceptance: `npm run accept:sld-v3`
 - Critical E2E (real backend): `e2e/critical-run-flow.spec.ts` via `npm run test:e2e:real`
 
 ## Proof Engine
@@ -709,7 +716,7 @@ Historical K30 handoff: `mv-design-pro/docs/audit/K30_SESSION_HANDOFF_2026-05-16
 - Only ONE case active at a time
 
 ### Adding Catalog Types
-1. Review `mv-design-pro/POWERFACTORY_COMPLIANCE.md` for catalog compliance rules
+1. Review `mv-design-pro/docs/system/SPEC_KATALOGI_I_MATERIALIZACJA_PARAMETROW.md` for catalog compliance rules
 2. Add to `network_model/catalog/` (types are immutable once published)
 3. Run catalog guards: `catalog_binding_guard.py`, `catalog_enforcement_guard.py`, `catalog_gate_guard.py`
 
@@ -779,7 +786,7 @@ python scripts/vulture_guard.py
 10. **ALWAYS** preserve deterministic behavior (same input = same output)
 11. **ALWAYS** consult `docs/spec/` before architectural changes
 12. **ALWAYS** run relevant guards before pushing changes
-13. **ALWAYS** consult `POWERFACTORY_COMPLIANCE.md` when adding/modifying network model elements
+13. **ALWAYS** consult `docs/system/SPEC_KATALOGI_I_MATERIALIZACJA_PARAMETROW.md` when adding/modifying network model elements
 
 ## Zero-Debt Rule (BINDING — dyrektywa właściciela, 2026-07-17)
 
@@ -884,6 +891,17 @@ Skumulowane, wiążące zasady właściciela (dyrektywy 2026-07-17…19). Obowi�
     warstwy (backend pytest, frontend vitest), type-check, lint, właściwe guardy,
     determinizm/hash. Kontrakty FROZEN i determinizm nietknięte (nowe pola addytywne,
     `exclude_none`; seed bez zmian dla istniejących payloadów).
+
+## Zasady inżynierskie (dyrektywa właściciela)
+
+1. Nie dbaj o kompatybilność wsteczną. Co przestarzałe, to usuń na amen – bez warstw kompatybilności, bez migracji, bez fallbacków.
+2. Wybierz najprostszą implementację, która spełnia bieżące potrzeby. Zero prewencyjnych abstrakcji, zero zbędnych warstw konfiguracyjnych.
+3. Dziel system na warstwy, ale stopniowo. Najpierw uruchom minimalną wersję end-to-end, potem dodawaj. Nigdy nie rozwalaj działającej rzeczy dla niedokończonej złożoności.
+4. Trzymaj komponenty modułowe, separuj odpowiedzialności.
+5. Stawiaj na dojrzałe, utrzymywane biblioteki. Bez konkretnego powodu nie przepisuj od zera.
+6. Najpierw sprawdź, co potrafią istniejące zależności w projekcie, zanim zaczniesz dodawać nowe pakiety czy pisać własne. Nie zakładaj z góry, że w bibliotekach niczego nie ma.
+7. Podejmuj decyzje architektoniczne z myślą o przyszłości. Nie akceptuj prowizorek w stylu „na razie tak, potem zmienimy".
+8. Sprawdź, jak dojrzałe produkty rozwiązują ten sam problem – korzystaj z zweryfikowanych wzorców, nie wymyślaj koła na nowo.
 
 ## Escalation
 
