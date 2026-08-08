@@ -7,11 +7,28 @@
  * KAŻDEGO podpisu przęsła i KAŻDEGO poziomu szczegółu — nie tylko dla dwóch
  * przypadków ze zgłoszenia.
  *
- * WYROCZNIA (R1 karty, wyprowadzona z GEOMETRII, nie z progu w jednostkach):
- * prostokąt podpisu ma leżeć w zakresie X polilinii, którą opisuje. „Dryf"
- * to odległość prostokąta podpisu od przedziału [minX, maxX] polilinii —
- * ZERO, gdy prostokąt się z nią pokrywa w X. Nie ma tu zaszytego progu: gdy
- * odcinek jest długi, zakres jest szeroki; gdy krótki — wąski.
+ * DWIE MIARY, JAWNIE ROZRÓŻNIONE (runda 2, uwaga nadzorcy — zdanie w raporcie
+ * i asercja w teście muszą znaczyć TO SAMO):
+ *
+ *  (M1) ODDALENIE: odległość prostokąta podpisu od przedziału [minX, maxX]
+ *       polilinii właściciela. ZERO = prostokąt i polilinia zachodzą na siebie
+ *       w osi X, czyli napis stoi PRZY swoim odcinku. To jest miara „czy w
+ *       ogóle jest przy nim".
+ *
+ *  (M2) WYSTAWANIE: o ile prostokąt WYCHODZI poza ten przedział. NIE MOŻE być
+ *       zerowe zawsze — podpis kabla („S07 ↔ S08 · Linia napowietrzna Al
+ *       120 mm² · Un=20 kV · l = 150 m", 362 j.św.) bywa 3–6× DŁUŻSZY niż
+ *       narysowany kawałek, który opisuje (56 j.św.). Wystawanie ma wtedy
+ *       NIEUNIKNIONE minimum `szer. napisu − dł. kawałka`, osiągane, gdy napis
+ *       pokrywa kawałek w całości. Wyrocznią jest więc NADMIAR PONAD TO
+ *       MINIMUM, a nie samo wystawanie — i on ma być zerowy.
+ *
+ * Obie miary liczone wobec polilinii NIOSĄCEJ REF podpisu (z kawałkami
+ * `#tee-N`, patrz `refBazowy`), NIE wobec rodziny `seg/<hash>/…`: jedna
+ * rodzina bywa na tej fixturze WSPÓLNA dla 2–3 SĄSIEDNICH przęseł (np.
+ * `seg/6c75…` niesie i „S08 ↔ S09", i „S09 ↔ S10"), więc mieszczenie się w
+ * jej zakresie pozwalałoby napisowi usiąść na CUDZYM przęśle. Zero progów w
+ * jednostkach: granica wynika z rozciągłości opisywanego obiektu.
  *
  * MIERZY:
  *   (A) dla każdego podpisu klasy `segment-span`: dryf w X (poza zakres
@@ -271,6 +288,25 @@ for (const siec of SIECI) {
         `      WŁAŚCICIEL: błąd środka med ${f(mediana(bl))} · max ${f(Math.max(0, ...bl))} j.św. · `
           + `względnie med ${(mediana(wzgl) * 100).toFixed(0)}% · max ${(Math.max(0, ...wzgl) * 100).toFixed(0)}% długości odcinka`,
       );
+      // (M2) WYSTAWANIE i NADMIAR PONAD MINIMUM GEOMETRYCZNE.
+      let wystajacych = 0;
+      let ponadMinimum = 0;
+      let maxNadmiar = 0;
+      for (const w of zPolilinia) {
+        const z = w.zakresPolilinii!;
+        const wyst = Math.max(0, z.min - w.zakresPodpisu.min) + Math.max(0, w.zakresPodpisu.max - z.max);
+        const minimum = Math.max(0, w.zakresPodpisu.max - w.zakresPodpisu.min - (z.max - z.min));
+        if (wyst > 0) wystajacych++;
+        if (wyst > minimum) {
+          ponadMinimum++;
+          maxNadmiar = Math.max(maxNadmiar, wyst - minimum);
+        }
+      }
+      console.log(
+        `      WYSTAWANIE (M2): wystaje poza swój kawałek ${wystajacych}/${zPolilinia.length} `
+          + `(napis bywa dłuższy od kawałka — minimum nieuniknione) · `
+          + `PONAD minimum geometryczne ${ponadMinimum} (max nadmiar ${f(maxNadmiar)} j.św.)`,
+      );
       for (const v of naj.sort((a, b) => b.e - a.e).slice(0, 3)) {
         console.log(`         błąd ${f(v.e)} · „${v.t.slice(0, 40)}"`);
       }
@@ -315,6 +351,17 @@ for (const siec of SIECI) {
   // (C) INWENTARZ KLASY — czy dryf dotyka też innych rodzajów podpisów.
   const scene2 = buildSceneV3(enm, 2);
   const wszystkie = zmierzDryf(scene2, RODZAJE_KLASY);
+  // LATERALE W OSI Y — podpis pionowy stoi wzdłuż swojej linii; miary te same
+  // co dla przęseł, tylko oś inna. Wpis jest ZAPADKĄ: karta nie rusza
+  // `resolveSegmentLateralLabel`, więc liczby mają zostać, a nie „poprawić się".
+  const lateralne = wszystkie.filter((w) => w.rodzaj === 'segment-lateral' && Number.isFinite(w.dryfY));
+  if (lateralne.length > 0) {
+    const bledyY = lateralne.map((w) => w.dryfY);
+    console.log(
+      `  LATERALE (oś Y): ${lateralne.length} podpisów · oddalenie od swojej linii med `
+        + `${f(mediana(bledyY))} max ${f(Math.max(...bledyY))} j.św.`,
+    );
+  }
   console.log('  INWENTARZ KLASY (L2, podpisy niosące ref obiektu z polilinią):');
   for (const rodzaj of RODZAJE_KLASY) {
     const grupa = wszystkie.filter((w) => w.rodzaj === rodzaj);
