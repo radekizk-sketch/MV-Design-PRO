@@ -24,6 +24,17 @@
  * Uruchomienie (cwd: mv-design-pro/frontend):
  *   FAZA=po CANON_OUT=<dir> npx vite-node scripts/render_blok_pusty.tsx
  *   CANON_OUT=<dir> node scripts/rasterize.mjs
+ *
+ * REUŻYCIE (karta BLOK-LATERAL-WLASNOSC, 2026-08-08): ten sam stelaż obsługuje
+ * blok, którego rama była rozciągnięta podpisem CUDZEJ własności — a taka rama
+ * (skrajnie 512×2222 j.św.) nie mieści się w kadrze przy skali roboczej. Stąd
+ * TRZY parametry środowiskowe zamiast drugiego skryptu: `PREFIKS` (nazwa pliku),
+ * `SKALA` (px/j.św.) i `KOTWICA_Y` (gdzie w kadrze siada szyna SN bloku —
+ * rama rosła W GÓRĘ, więc szyna musi siąść nisko, żeby cała była widoczna).
+ * Domyślne wartości = zachowanie sprzed zmiany, więc zrzuty BLOK-PUSTY
+ * odtwarzają się co do bitu.
+ *   PREFIKS=lateral STACJA="Stacja L4-1" SKALA=0.32 KOTWICA_Y=0.88 \
+ *     FAZA=przed CANON_OUT=<dir> npx vite-node scripts/render_blok_pusty.tsx
  */
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -48,6 +59,8 @@ const FAZA = process.env.FAZA ?? 'po';
 /** Stacja pokazowa — wybrana PO NAZWIE, nie po pozycji, żeby kadr PRZED i PO
  *  pokazywał ten sam obiekt niezależnie od kolejności w scenie. */
 const STACJA = process.env.STACJA ?? 'Stacja L9-2';
+/** Przedrostek nazwy pliku — jedna karta = jeden zestaw zrzutów. */
+const PREFIKS = process.env.PREFIKS ?? 'blok';
 mkdirSync(OUT, { recursive: true });
 
 const enm = (
@@ -60,7 +73,10 @@ const KADR = { width: 1500, height: 820 } as const;
 const STOPKA = 92;
 const LOD: SceneLod = 2;
 /** Skala kadru — STAŁA w obu fazach (kadr ma być ten sam, nie „dopasowany”). */
-const SKALA = 1.4;
+const SKALA = Number(process.env.SKALA ?? '1.4');
+/** Gdzie w kadrze siada szyna SN bloku (ułamek wysokości). Blok zwisa POD nią,
+ *  ale rama rozciągnięta cudzym podpisem rośnie NAD nią — stąd parametr. */
+const KOTWICA_Y = Number(process.env.KOTWICA_Y ?? '0.3');
 
 const MOTYWY = [
   { klucz: 'ciemny', mode: 'dark_scada' as const },
@@ -150,7 +166,7 @@ const transform = {
   // Szyna SN stoi w 1/4 wysokości kadru, nie w połowie: blok zwisa POD nią,
   // więc kadr wyśrodkowany na szynie zostawiałby górną połowę pustą (co byłoby
   // pustką KADRU, nie pustką ramy — dokładnie ten błąd zafałszował sondę).
-  translateY: KADR.height * 0.3 - srodek.y * SKALA,
+  translateY: KADR.height * KOTWICA_Y - srodek.y * SKALA,
 };
 const bboxKamery = (s: SceneV3) =>
   sceneBoxToCameraWorld({ minX: s.bbox.x, minY: s.bbox.y, maxX: s.bbox.x + s.bbox.width, maxY: s.bbox.y + s.bbox.height });
@@ -188,7 +204,7 @@ const stopka2 =
 // SAMEGO obiektu w tym samym miejscu ekranu; różnica translacji jest wypisana,
 // żeby nikt nie wziął jej za dryf rysunku.
 const stopka3 =
-  `kotwica kadru: szyna SN bloku w świecie (${srodek.x.toFixed(0)}, ${srodek.y.toFixed(0)}) → 30% wysokości kadru; ` +
+  `kotwica kadru: szyna SN bloku w świecie (${srodek.x.toFixed(0)}, ${srodek.y.toFixed(0)}) → ${(KOTWICA_Y * 100).toFixed(0)}% wysokości kadru; ` +
   `obie fazy tą samą skalą i tym samym punktem zaczepu`;
 
 console.log(`${FAZA}: rama ${Math.round(ramaSceny.maxX - ramaSceny.minX)}x${Math.round(ramaSceny.maxY - ramaSceny.minY)} pustka ${(pustka * 100).toFixed(1)}% srodek=${srodek.x},${srodek.y}`);
@@ -218,7 +234,7 @@ for (const motyw of MOTYWY) {
     `<text x="16" y="${KADR.height + 50}" font-family="system-ui,sans-serif" font-size="14" fill="${paleta.baseStroke}">${stopka2}</text>` +
     `<text x="16" y="${KADR.height + 70}" font-family="system-ui,sans-serif" font-size="14" fill="${paleta.baseStroke}">${stopka3}</text>` +
     `</svg>`;
-  const nazwa = `blok-${FAZA}-${motyw.klucz}.svg`;
+  const nazwa = `${PREFIKS}-${FAZA}-${motyw.klucz}.svg`;
   writeFileSync(resolve(OUT, nazwa), svg, 'utf8');
   console.log('svg', nazwa);
 }
