@@ -1,14 +1,32 @@
-"""
-P16 — Losses Proof Pack
+"""Pakiet dowodowy STRAT MOCY.
 
 STATUS: CANONICAL & BINDING
 Reference: AGENTS.md, PROOF_SCHEMAS.md
 
-Proof Pack P16 oblicza i udowadnia straty mocy:
+Pakiet dokumentuje straty mocy przebiegu rozplywu:
 1. Straty P na galeziach
 2. Straty Q na galeziach
 3. Suma strat w sieci
-4. Procentowe straty
+4. Procentowe straty wzgledem generacji
+
+DROGA DO INZYNIERA (karta PACK-BEZ-KONSUMENTA). Do 2026-08-08 ten generator nie
+mial ZADNEGO konsumenta poza wlasnym re-eksportem w ``packs/__init__.py`` — bilans
+strat sieci, czyli pozycja obowiazkowa opracowania, byl nieosiagalny z interfejsu.
+Konsumentem jest brama pakietu przebiegu (``application/proof_engine/pakiet_biegu.py``
+→ ``GET /api/analysis-runs/{run}/pakiet-dowodowy``), ta sama droga, ktora wydaje
+pakiet rozplywu: pakiet biegu LOAD_FLOW jest ZBIORCZY i niesie oba dowody.
+
+DLACZEGO JEDEN PAKIET, A NIE DWA RODZAJE (rozstrzygniecie zapisane w rejestrze jako
+otwarte). Straty i bilans rozplywu czyta sie z TEGO SAMEGO zamrozonego wyniku
+(``raw_result["result_v1"]``), wiec nie moga sie ze soba rozjechac. Zmuszanie
+projektanta do wyboru miedzy dwiema pozycjami wyprowadzonymi z identycznych danych
+byloby wyborem pozornym; jeden pakiet przebiegu = jedna kompletna dokumentacja
+tego przebiegu.
+
+INVARIANTS:
+- Solver untouched — pakiet wylacznie opisuje zamrozony wynik (READ-ONLY)
+- ZERO ZEGARA I ZERO ZAPASOW — znacznik i wersja solvera pochodza z zapisu biegu
+- Deterministic — ten sam przebieg → identyczne bajty
 """
 
 from __future__ import annotations
@@ -24,6 +42,12 @@ from application.proof_engine.equation_registry import (
     EQ_LOSS_003,
     EQ_LOSS_004,
     EQ_LOSS_005,
+)
+from application.proof_engine.proof_pack import (
+    ProofPackBuilder,
+    ProofPackContext,
+    deterministic_artifact_id,
+    dokument_deterministyczny,
 )
 from application.proof_engine.types import (
     ProofDocument,
@@ -97,16 +121,30 @@ class P16LossesInput:
     def from_power_flow_result(
         cls,
         result: PowerFlowResultV1,
-        project_name: str = "Projekt",
-        case_name: str = "Przypadek",
+        *,
+        project_name: str,
+        case_name: str,
+        run_timestamp: datetime,
+        solver_version: str,
     ) -> P16LossesInput:
-        """
-        Tworzy P16LossesInput z PowerFlowResultV1.
+        """Sklada wejscie dowodu strat z zamrozonego wyniku rozplywu.
+
+        ZERO FABRYKACJI I ZERO ZEGARA (karta PACK-BEZ-KONSUMENTA, ta sama klasa
+        defektu co w pakiecie rozplywu). Wczesniejsza wersja podstawiala
+        ``datetime.utcnow()`` oraz nazwy „Projekt"/„Przypadek", a jako wersje
+        solvera brala ``result.result_version`` — czyli wersje KONTRAKTU wyniku,
+        nie narzedzia, ktorym go policzono. Zegar lamal determinizm pakietu (dwa
+        pobrania tego samego przebiegu roznilyby sie bajtami), a pozostale trzy
+        wpisywaly do DOWODU dane, ktorych nikt nie ustalil. Wszystkie argumenty
+        sa teraz WYMAGANE i nazwane; podaje je warstwa wiazania, ktora czyta je z
+        zapisu biegu albo odmawia (``power_flow_binding``).
 
         Args:
-            result: Wynik Power Flow
-            project_name: Nazwa projektu
-            case_name: Nazwa przypadku
+            result: Zamrozony wynik rozplywu (READ-ONLY).
+            project_name: Nazwa projektu do naglowka dowodu.
+            case_name: Nazwa przypadku obliczeniowego.
+            run_timestamp: Znacznik czasu PRZEBIEGU (nie „teraz").
+            solver_version: Wersja solvera z artefaktu biegu.
         """
         branches: list[P16BranchLossInput] = []
 
@@ -129,8 +167,8 @@ class P16LossesInput:
         return cls(
             project_name=project_name,
             case_name=case_name,
-            run_timestamp=datetime.utcnow(),
-            solver_version=result.result_version,
+            run_timestamp=run_timestamp,
+            solver_version=solver_version,
             branches=branches,
             p_losses_total_mw=result.summary.total_losses_p_mw,
             q_losses_total_mvar=result.summary.total_losses_q_mvar,
@@ -145,7 +183,7 @@ class P16LossesInput:
 
 class P16LossesProof:
     """
-    Proof Pack P16: Dowod strat mocy.
+    Pakiet dowodowy strat mocy.
 
     Oblicza:
     1. Straty P na galeziach (P_from + P_to)
@@ -160,8 +198,12 @@ class P16LossesProof:
     - WHITE BOX: wszystkie kroki audytowalne
     """
 
-    PACK_ID = "P16"
-    TITLE_PL = "Dowod strat mocy"
+    #: Prefiks identyfikatorow krokow. Trafia do POBIERANEGO ``proof.json``, wiec
+    #: nie moze niesc roboczego oznaczenia projektu (CLAUDE.md regula 8 — zakaz
+    #: dotyczy eksportow, nie tylko interfejsu). Pin: caly pakiet rozplywu bez
+    #: oznaczen roboczych w tests/api/test_pakiet_dowodowy_biegu.py.
+    PACK_ID = "STRAT"
+    TITLE_PL = "Dowód strat mocy"
 
     THEORY = r"""
     \section{Straty mocy czynnej}
@@ -232,8 +274,9 @@ class P16LossesProof:
 
         if len(data.branches) > max_branch_steps:
             warnings.append(
-                f"Pokazano {max_branch_steps} z {len(data.branches)} galezi "
-                f"(posortowane wg strat P)"
+                f"Pokazano {max_branch_steps} z {len(data.branches)} gałęzi "
+                "(posortowane malejąco według strat mocy czynnej); "
+                "sumy poniżej obejmują WSZYSTKIE gałęzie przebiegu."
             )
 
         # Total losses steps
@@ -303,6 +346,31 @@ class P16LossesProof:
             header=header,
             steps=steps,
             summary=summary,
+        )
+
+    #: Rozroznik tozsamosci dokumentu w pakiecie ZBIORCZYM przebiegu. Bez niego
+    #: dowod strat i dowod rozplywu — skladane z tego samego przebiegu — dostalyby
+    #: ten sam identyfikator artefaktu, czyli pakiet twierdzilby, ze to jeden dowod.
+    ROZROZNIK = "straty"
+
+    @classmethod
+    def generate_zip(
+        cls,
+        data: P16LossesInput,
+        context: ProofPackContext,
+        artifact_id: UUID | None = None,
+    ) -> bytes:
+        """Zbuduj ZIP pakietu dowodowego strat (dowod, zrodlo, wykaz, odcisk).
+
+        Ta sama mechanika co ``P14PowerFlowProof.generate_zip`` — REUZYCIE
+        ``ProofPackBuilder``, nie druga droga pakowania. Bez jawnego ``artifact_id``
+        tozsamosc artefaktu i dokumentu wyprowadzamy z tozsamosci pakietu wraz z
+        ``ROZROZNIK``, a znacznik dokumentu z PRZEBIEGU — inaczej dwa pobrania tego
+        samego przebiegu roznilyby sie bajtami, wbrew deklaracji ``manifest.json``.
+        """
+        proof = cls.generate(data, artifact_id or deterministic_artifact_id(context, cls.ROZROZNIK))
+        return ProofPackBuilder(context).build(
+            dokument_deterministyczny(proof, context, data.run_timestamp, cls.ROZROZNIK)
         )
 
     @classmethod

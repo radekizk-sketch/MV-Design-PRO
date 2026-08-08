@@ -27,8 +27,6 @@ INVARIANTS:
 
 from __future__ import annotations
 
-import io
-import zipfile
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
@@ -40,14 +38,12 @@ from application.proof_engine.proof_pack import (
     ProofPackContext,
     deterministic_artifact_id,
     dokument_deterministyczny,
+    zbuduj_zip_zbiorczy,
 )
 from application.proof_engine.types import ProofDocument
 from network_model.solvers.short_circuit_asymmetrical_quantities import (
     compute_sc1_asymmetrical_quantities,
 )
-
-#: Stały znacznik czasu wpisów ZIP (determinizm pakietu — ten sam wynik → ten sam plik).
-_FIXED_ZIP_TIMESTAMP = (1980, 1, 1, 0, 0, 0)
 
 
 @dataclass
@@ -293,25 +289,12 @@ class SCAsymmetricalProofPack:
     def zbuduj_zip_zbiorczy(cls, packs: dict[str, bytes]) -> bytes:
         """Jeden ZIP zbiorczy z trzech pakietów (1F-Z / 2F / 2F-Z), deterministyczny.
 
-        Kolejność wpisów i znacznik czasu stałe — ten sam pakiet daje bajt-w-bajt
-        ten sam plik. Miejsce tej funkcji jest TU (warstwa pakietów), a nie w routerze
-        HTTP: sięga po nią i router, i brama pakietu przebiegu (``pakiet_biegu.py``),
-        a warstwie aplikacji nie wolno importować z warstwy API.
+        Samo pakowanie stoi w warstwie pakietu (``proof_pack.zbuduj_zip_zbiorczy``)
+        — REUŻYCIE, nie druga droga: ten sam bundler składa pakiet zbiorczy
+        rozpływu (rozpływ / straty / spadek napięcia). Ta metoda zostaje jako
+        nazwa czytelna w miejscu użycia (router zwarciowy, brama przebiegu).
         """
-        buffer = io.BytesIO()
-        with zipfile.ZipFile(
-            buffer,
-            mode="w",
-            compression=zipfile.ZIP_DEFLATED,
-            compresslevel=9,
-        ) as bundle:
-            for fault_type in sorted(packs.keys()):
-                path = f"pakiet_dowodowy/{fault_type}.zip"
-                info = zipfile.ZipInfo(path, date_time=_FIXED_ZIP_TIMESTAMP)
-                info.create_system = 0
-                info.external_attr = 0o100644 << 16
-                bundle.writestr(info, packs[fault_type])
-        return buffer.getvalue()
+        return zbuduj_zip_zbiorczy(packs)
 
     @classmethod
     def validate_completeness(cls, result: SCAsymmetricalPackResult) -> list[str]:
