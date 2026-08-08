@@ -145,6 +145,9 @@ jobs:
       - name: Brak bezposrednich parametrow zwarcia
         run: python scripts/no_direct_fault_params_guard.py
 
+      - name: Brak podstawiania liczb za nieobecne dane wejsciowe solvera
+        run: python scripts/solver_input_substitute_guard.py
+
       - name: Solver diff (hasze referencyjne solwerow)
         run: python scripts/solver_diff_guard.py
 
