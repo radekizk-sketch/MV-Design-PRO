@@ -138,7 +138,6 @@ MV-Design-PRO/
 │   │   ├── src/
 │   │   │   ├── App.tsx           # Root React component
 │   │   │   ├── main.tsx          # Entry point
-│   │   │   ├── designer/         # Designer/Wizard page
 │   │   │   ├── engine/           # Algorithm engines
 │   │   │   │   └── sld-layout/   # SLD auto-layout engine (7-phase pipeline)
 │   │   │   ├── proof-inspector/  # Proof inspector UI module

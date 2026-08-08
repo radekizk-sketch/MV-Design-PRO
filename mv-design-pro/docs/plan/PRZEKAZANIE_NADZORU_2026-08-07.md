@@ -214,11 +214,29 @@ na którym działa kod?**
 - `kopia/KLIK-ETYKIETA-KOTWICA` — trzy tabele orzekają o rodzaju TEGO SAMEGO
   klikniętego obiektu i rozjeżdżają się na 61 z 1083 etykiet LOD2 (pomiar nadzorcy,
   sieć 52 stacji). Zakres: `ui/sld/v3/canvas/**` — rozłączny ze dwiema kartami wyżej.
-- `kopia/ROUTERY-MARTWE` — 13 modułów `backend/src/api/**` definiuje `APIRouter`,
-  którego aplikacja NIGDY nie montuje (42 trasy nieosiągalne; pomiar po tożsamości
-  funkcji obsługi na żywym `app`, nie po napisie ścieżki). Klasa jest bez strażnika:
-  iniekcja nadzorcy (nowy router pod `/api`, niezamontowany) przeszła 69 guardów CI
-  i 160 testów guardów na ZIELONO. Zakres: `backend/src/api/**` + nowy guard.
+- ~~`kopia/ROUTERY-MARTWE`~~ — **ODEBRANA I SCALONA 2026-08-08.** Klasa „moduł
+  deklaruje `APIRouter`, aplikacja go nie montuje" domknięta guardem
+  `scripts/router_mount_guard.py` (budżet 16 odstawionych tras, ratchet w OBIE
+  strony). 8 modułów usuniętych, 4 świadomie odstawione z uzasadnieniem.
+  **Tablica tras aplikacji identyczna przed i po — 310 = 310, `diff` pusty**
+  (sprawdzone przeze mnie w osobnym worktree, nie przyjęte na słowo).
+
+  **Moje §0 obalone dwukrotnie i oba razy słusznie.** (a) Nie 13 modułów/42 trasy,
+  tylko 12/36: `protection_runs` JEST zamontowany przez 4-wierszowy re-eksport
+  `api/protection_analysis_runs.py`. Mój pomiar go przeoczył z powodu **mojego
+  błędu metodycznego**: porównywałem tożsamość funkcji obsługi importując
+  `src.api.protection_runs`, gdy aplikacja ładuje `api.protection_runs` — Python
+  trzyma je pod różnymi kluczami `sys.modules`, więc obiekty funkcji się nie
+  zgadzały. **Lekcja: przy porównaniu po tożsamości obiektów sprawdź najpierw, czy
+  obie strony ładują ten sam moduł.** (b) Kolumna „wołań frontu" w moim pomiarze
+  liczyła SEGMENTY ścieżek, nie konsumentów — 58 wołań `analysis-runs` obsługują
+  moduły ŻYWE. Martwe moduły miały zero konsumentów.
+
+  **Znalezisko uboczne wykonawcy, ważniejsze niż sama karta:** `route_prefix_guard`
+  i `export_codenames_guard` **nie były wpięte do żadnego workflowa — nigdy się nie
+  wykonały**. To ta sama klasa, którą zapisałem jako lekcję fali 4 („workflow CI,
+  który nigdy się nie wykonał"), i mój własny `guardy_z_ci.py` ich nie widział,
+  bo czyta listę guardów Z WORKFLOWÓW. Po naprawie: 69 → 73 guardy w przemiale.
 
 #### QU-FABRYKACJA — runda 3 (luka znaleziona przy odbiorze rundy 2)
 
@@ -296,11 +314,17 @@ moduł już tego nie rozstrzyga.
    którego NIE MA — strona nie jest eksportowana z bariery ani importowana w
    produkcji, a test `workspaceShellV125` MOCKUJE eksport, którego moduł nie ma).
    Pięć martwych wykluczeń zdjąłem 2026-08-08; reszta to karta.
-3. ~~`api/snapshots.py` bez `include_router`~~ — ZAMKNIĘTE 2026-08-08 kartą
+3. **KLIENT-BEZ-RODZINY** (znalezisko oddane przez wykonawcę ROUTERY-MARTWE, nie
+   zamiecione). `route_prefix_guard` zbiera ścieżki frontu WYŁĄCZNIE dla pierwszych
+   segmentów, które backend serwuje — klient wołający rodzinę, której backend nie
+   ma w ogóle, wypada ze skanu z konstrukcji. Tak przeżyła wyspa `designer/`:
+   trzy ścieżki do nieistniejącej rodziny `/snapshots`, zero alarmów. Klasa
+   ta sama co dwie poprzednie: **wyrocznia chodzi po węższym zbiorze niż kod.**
+4. ~~`api/snapshots.py` bez `include_router`~~ — ZAMKNIĘTE 2026-08-08 kartą
    ROUTERY-MARTWE: USUNIĘTE. Reguła „wpinać wyłącznie z konsumentem" nie miała
    kogo wpiąć — jedyny kandydat (`frontend/src/designer/`) sam był wyspą bez
    importerów, wołającą ścieżki, których backend nigdy nie serwował.
-4. PACK-DLUG-STRATY / -SPADEK / -NASTAWY (4 pakiety dowodowe bez konsumenta,
+5. PACK-DLUG-STRATY / -SPADEK / -NASTAWY (4 pakiety dowodowe bez konsumenta,
    powody merytoryczne w rejestrze) · reguły zgodności specyficzne dla OSD
    (REF-PAKIET) · dług aparatury: katalog bez `U_m`/`I_cu` w postaci czytanej
    przez widok wytrzymałości · 9 długów stałych zastępczych z
