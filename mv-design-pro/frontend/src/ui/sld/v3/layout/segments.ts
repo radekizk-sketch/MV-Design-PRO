@@ -183,10 +183,20 @@ export interface SegmentSpanEndsX {
  * środku bloku, więc rezerwacja musi zrobić dokładnie to samo (reguła KLASA
  * §3 — predykat wejścia i wyjścia z jednego źródła prawdy).
  *
- * Dla `index === 0` (pierwsza stacja wiersza) lewym końcem jest krawędź
- * świata `0`: przęsło wchodzące do niej rysuje wołający (GPZ→S0, feeder,
- * łącznik ciągu dalszego S9-1) i jego lewy koniec nie jest znany na tym
- * etapie potoku — zachowanie NIEZMIENIONE względem stanu sprzed karty.
+ * `index === 0` (pierwsza stacja wiersza) NIE MA tu znanego przęsła: kabel
+ * wchodzący do niej rysuje wołający — z GPZ, z pola odpływowego GPZ (feeder)
+ * albo z poprzedniego wiersza arkusza (łącznik ciągu dalszego, S9-1) — a oba
+ * jego końce powstają dopiero w `scene/buildScene.ts`. Zwracamy wtedy
+ * ZACHOWAWCZY zakres sprzed karty (`0`..`tapX`), czyli lewą część wiersza,
+ * i to wołający, który zna prawdziwe końce, domyka rezerwację przez
+ * `wysrodkujSlotNaPrzesle` (GPZ, feeder).
+ *
+ * DLACZEGO ZACHOWAWCZY, A NIE „głowica wejścia". Centrowanie rezerwacji na
+ * samej głowicy wejścia wypycha 335-jednostkowy podpis o ~167 j.św. na LEWO
+ * od kolumny 0 wiersza — na sieci podwojonej podpis „S12 ↔ S13" wchodził tak
+ * w grot łącznika ciągu dalszego (`#sheet-continuation-in-0`) i silnik etykiet
+ * go ODRZUCAŁ, czyli napis znikał z rysunku. Zgadywanie lewego końca kosztuje
+ * więcej niż przyznanie, że go tu nie znamy.
  */
 /**
  * SLOT-DRYF-PRZĘSŁA: część przęsła, którą zajmuje CZŁON NIOSĄCY REF podpisu.
@@ -242,7 +252,8 @@ export function segmentSpanEndsX(
       ) ?? taps[i].tapX
     );
   };
-  return { startX: index > 0 ? wyjscie(index - 1) : 0, endX: wejscie(index) };
+  if (index === 0) return { startX: 0, endX: taps[0].tapX };
+  return { startX: wyjscie(index - 1), endX: wejscie(index) };
 }
 
 /**

@@ -18,7 +18,7 @@ import {
 } from '../measure';
 import { BUS_AXIS_BAND_HEIGHT, computeBands, type StationBandHeights } from '../bands';
 import { computeColumns, type ComputeColumnsInput } from '../columns';
-import { colorSegmentLabelRows, computeSegmentLabelSlotX } from '../segments';
+import { colorSegmentLabelRows, computeSegmentLabelSlotX, segmentSpanEndsX } from '../segments';
 import {
   labelGrowthReservationGaps,
   labelRectsWiderThanInk,
@@ -285,25 +285,37 @@ describe('V3 labels — segment przęsłowy (spec §4/§5.5, decyzja r8)', () =>
 // clampa do primaryRect (spec §5.2/§4, decyzja nadzorcy r7b w columns.ts).
 // ---------------------------------------------------------------------------
 
-describe('V3 labels — integracja columns→labels z REALNYM tapX (r7b)', () => {
-  it('dwie zwyczajne stacje, umiarkowana etykieta kabla ⇒ slot 1, wyśrodkowana na REALNYM przęśle tap-do-tap, bez leadera', () => {
+describe('V3 labels — integracja columns→labels z REALNYM przęsłem', () => {
+  // SLOT-DRYF-PRZĘSŁA (zmiana kanonu wobec r7b, intencja ZACHOWANA): ten test
+  // dowodzi, że etykieta ląduje WYŚRODKOWANA NA PRZĘŚLE, a nie dosunięta do
+  // krawędzi rezerwacji. Zmienia się tylko to, CZYM jest przęsło: nie parą
+  // `tapX` (środki bloków stacji), a parą głowic kablowych — bo tam
+  // FAKTYCZNIE zaczyna się i kończy narysowany kabel (`segmentSpanEndsX`,
+  // `../segments`; `scene/buildScene.ts` podaje resolverowi dokładnie te dwa
+  // punkty jako `fromPort.x`/`toPort.x`). Test karmiony parą `tapX` mierzyłby
+  // spójność dwóch RÓŻNYCH definicji przęsła i pękał na tej różnicy.
+  it('dwie zwyczajne stacje, umiarkowana etykieta kabla ⇒ slot 1, wyśrodkowana na przęśle głowica→głowica, bez leadera', () => {
     const stationA = makeStation('a', 10, 3);
     const stationB = makeStation('b', 10, 3);
     const segmentTexts = [null, 'YAKXS 3×120/16 · 40 m'];
     const { bandsResult, columnsResult } = buildPipeline([stationA, stationB], segmentTexts);
 
     const slot = columnsResult.segmentLabelSlots.find((s) => s.stationIndex === 1)!;
-    const tapPrev = columnsResult.columns[0].tapX;
-    const tapThis = columnsResult.columns[1].tapX;
-    // Przęsło tap-do-tap jest REALNE (nie krawędzie kolumn/GAP=24px) — dużo
-    // szersze niż potrzebuje umiarkowana etykieta kabla.
-    expect(tapThis - tapPrev).toBeGreaterThan(100);
+    const taps = columnsResult.columns.map((c) => ({ x: c.x, width: c.width, tapX: c.tapX }));
+    const przeslo = segmentSpanEndsX([stationA, stationB], taps, 1);
+    // Przęsło głowica→głowica jest REALNE (nie krawędzie kolumn/GAP=24px) —
+    // dużo szersze niż potrzebuje umiarkowana etykieta kabla.
+    expect(przeslo.endX - przeslo.startX).toBeGreaterThan(100);
+    // …i RÓŻNE od pary `tapX` (inaczej test nie rozdzielałby obu definicji).
+    expect((przeslo.startX + przeslo.endX) / 2).not.toBe(
+      (columnsResult.columns[0].tapX + columnsResult.columns[1].tapX) / 2,
+    );
 
     const owner: SegmentSpanOwnerInput = {
       ownerRef: 'seg-b',
       text: segmentTexts[1]!,
-      spanStart: tapPrev,
-      spanEnd: tapThis,
+      spanStart: przeslo.startX,
+      spanEnd: przeslo.endX,
       busAxisY: bandsResult.bands.B2.y,
       primaryRect: slot.rect,
     };
@@ -311,12 +323,10 @@ describe('V3 labels — integracja columns→labels z REALNYM tapX (r7b)', () =>
 
     expect(label.slotIndex).toBe(1);
     expect(label.leader).toBeUndefined();
-    const spanCenter = (tapPrev + tapThis) / 2;
+    const spanCenter = (przeslo.startX + przeslo.endX) / 2;
     const labelCenter = label.rect.x + label.rect.width / 2;
-    // Wyśrodkowana NA PRZĘŚLE (z tolerancją snap-to-grid) — NIE zaklamrowana
-    // do krawędzi `primaryRect` (który jest tu tap-centered, ale zwykle
-    // szerszy niż etykieta — patrz `columns.ts` r7b: `rect.width =
-    // snapUp(requiredSegmentLabelWidth(text))`).
+    // Wyśrodkowana NA PRZĘŚLE (z tolerancją snap-to-grid) — NIE dosunięta do
+    // krawędzi `primaryRect`.
     expect(Math.abs(labelCenter - spanCenter)).toBeLessThan(GRID);
   });
 });
