@@ -123,6 +123,22 @@ interface OdciskiLod {
  * nie ruszyły. Gdyby karta przy okazji przesunęła cokolwiek na rysunku, ten
  * zrzut by się rozjechał.
  *
+ * AKTUALIZACJA ŚWIADOMA (BLOK-LATERAL-WLASNOSC, runda poprawkowa 2026-08-08) —
+ * WSZYSTKIE odciski przeliczone po raz kolejny, bo karta zmienia rysunek w
+ * JEDNYM miejscu:
+ *   (7) adnotacje KOŃCA ODCINKA („koniec otwarty", odsyłacze ciągu dalszego)
+ *       dostały własny `OwnerKind` `'segment-endpoint'` zamiast pożyczanego
+ *       `'port-caption'` (`layout/labels.ts`, `scene/buildScene.ts`) ⇒ zmienia
+ *       się CIĄG `ownerKind` w 15 etykietach sceny referencyjnej, a przez to
+ *       odcisk sceny, declutteru i planu etykiet.
+ * DOWÓD, ŻE TO JEDYNA ZMIANA: zrzut sceny L0/L1/L2 z `ownerKind` i `labelRole`
+ * tych etykiet zastąpionymi stałą jest CO DO BAJTU identyczny przed i po
+ * (sha256 `faac9ae0624c693850dab3ab442d52f26a779701a5c7bcf3beb9b40cb6faf45c`
+ * w obu fazach). Nowy rodzaj dostał w `LABEL_PRIORITY` TĘ SAMĄ wagę (40) i w
+ * `LABEL_ROLE_BY_OWNER_KIND` TĘ SAMĄ rolę („dane") co rodzaj, który zastąpił,
+ * więc ani odgruzowywanie, ani próg czytelności nie widzą różnicy — rozdział
+ * dotyczy WYŁĄCZNIE celu kliknięcia.
+ *
  * Kolejność `plany` odpowiada `SKALE`.
  */
 const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly OdciskiLod[]>> = {
@@ -154,16 +170,16 @@ const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly Odc
       ],
     },
     {
-      scena: '2b7f10174efbf1eb8f9fb5b843394cce',
-      declutter: '3e6849b5c904588d0e93938dd4216b2b',
+      scena: 'daecc342b15bbd61467505406ffd3ea6',
+      declutter: '80867536bb664119f1d9a0f53b92d3af',
       plany: [
-        '5a862489887b21a65ee6c0eb54595b7d',
-        '6d51eb4efa05197e050dc07dc429bafa',
-        '8998dfbb011f572de18d5e8cd1b8e8a6',
-        'af5ed28520d3aab4f19cd4955670509d',
-        'ac6230d6614b13b1c7bf4655b3da001f',
-        '1a9e952c182140fad7809da426678b61',
-        '1a9e952c182140fad7809da426678b61',
+        '13802dffd19479d330ecef7d839b7f50',
+        '2e0dfdcd1c8cf93db43a4448a2ab4bc9',
+        'f5ef648c49bbbd909306921606b8c0ac',
+        '0c17999e7aaea040570716c2c0394497',
+        '669aa43da35a244765ac8489ebbb845d',
+        '5b39ccb0969e557e93ff27da0e4fc021',
+        '5b39ccb0969e557e93ff27da0e4fc021',
       ],
     },
   ],
@@ -195,16 +211,16 @@ const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly Odc
       ],
     },
     {
-      scena: 'afce42e7ac471c66ee622c177a4d0f4a',
-      declutter: '128bf818e1e46e9e4f3e39c390201985',
+      scena: 'b5dd8fff21a7ebf9fa0ecf3166712654',
+      declutter: '2d51b11036897bc94897b0e405fdf6cc',
       plany: [
-        'd3cf7045389b4cdf1a3d83cbae759616',
-        'f92886cad879e942b4027c00a17df9cf',
-        '4a4c4aba70110bb2bdbfee3ac8b6c5f2',
-        'ebbdf0ea83967439df95feca465564a3',
-        '75fb7e4ccc120391ba9d80616896fc8a',
-        '1c0b43f2fd4b113f76d02762bb93c53e',
-        '1c0b43f2fd4b113f76d02762bb93c53e',
+        '301668e9fd48df48a9f99d8280853929',
+        '3b2fc2f578c5690a8036a2b95e6a9a41',
+        'c1257fdf466e67c349375cd6782b0ed9',
+        '408325108ebe987ed964bbef9ca5832d',
+        'a7ecd2fc9dae0191f54d7dbb1c8e9d0f',
+        '2b13e469d50a9daf06d03a040fe16b24',
+        '2b13e469d50a9daf06d03a040fe16b24',
       ],
     },
   ],
