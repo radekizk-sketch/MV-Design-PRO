@@ -366,24 +366,33 @@ moduł już tego nie rozstrzyga.
    ROUTERY-MARTWE: USUNIĘTE. Reguła „wpinać wyłącznie z konsumentem" nie miała
    kogo wpiąć — jedyny kandydat (`frontend/src/designer/`) sam był wyspą bez
    importerów, wołającą ścieżki, których backend nigdy nie serwował.
-5. **PACK-BEZ-KONSUMENTA** — zmierzone AST 2026-08-08 (nie grepem: grep łapie
-   nazwę także w komentarzu i daje wynik bezwartościowy). Z 10 generatorów pakietów
-   dowodowych **CZTERY nie mają ANI JEDNEGO importera**: `vdrop` (spadek napięcia),
-   `p16_losses` (straty), `protection_settings` (nastawy zabezpieczeń),
-   `qu_regulation` (regulacja Q(U) instalacji OZE). Pozostałe sześć ma konsumenta
-   (`api/proof_pack.py`, `pakiet_biegu.py`, `enm/canonical_analysis.py`,
-   `api/audit2_*`, `ground_fault_bridge.py`).
+5. ~~**PACK-BEZ-KONSUMENTA** (cztery generatory bez importera)~~ — ZAMKNIĘTE
+   CZĘŚCIOWO 2026-08-08 kartą PACK-BEZ-KONSUMENTA. **DWA WPIĘTE:** `p16_losses`
+   i `vdrop` — pakiet przebiegu rozpływu jest ZBIORCZY (`rozplyw.zip` +
+   `straty.zip` + `spadek_napiecia.zip`), a odcinek dla dowodu spadku wybiera
+   UŻYTKOWNIK, tak jak wybiera punkt zwarcia. Pomiar pole po polu: dla obu
+   BRAKOWAŁO ZERO PÓL — wpis PACK-DLUG-SPADEK miał rację co do zasady („dowolny
+   wybór odcinka byłby fabrykacją zakresu"), ale wniosek był odwrotny: wyboru nie
+   robi kod, tylko człowiek.
 
-   **To LUKA ZDOLNOŚCI, nie martwy kod** — i to jest różnica wobec trzech wysp
-   zamkniętych w tej fali. Sprawdziłem hipotezę, że `qu_regulation` należy usunąć
-   razem z wygaszoną analizą stabilności napięciowej: **jest fałszywa.** Pakiet
-   dotyczy charakterystyki regulacji Q(U) instalacji OZE wg NC RfG / IRiESD ENEA
-   (zgodność ±5% Un, wpływ na profil napięć), a wygaszony został margines Q–U
-   liczony ze zmyślonych współczynników w solverze akademickim — dwie różne rzeczy.
-   Karta ma zatem WPIĄĆ cztery pakiety (z konsumentem, zgodnie z regułą), a nie
-   kasować. Przed budową sprawdź per pakiet, czy dane, których wymaga, są w zapisie
-   biegu — wzorzec z karty PACK-ROZPLYW (tam teza długu „trzeba odtworzyć wejścia
-   solvera" okazała się fałszywa: wynik był w zapisie w całości).
+   **DWA ZOSTAJĄ, każdy z NAZWANYMI brakującymi polami** (nie z powodem
+   zakresowym): `protection_settings` — sześć pól bez dostawcy, bo metoda Hoppla
+   wymaga gałęzi c_max ORAZ c_min ORAZ rozpływu, a jeden bieg kanoniczny niesie
+   jeden `c_factor` (dokumentuje to sam tor nadprądowy: `_build_fault_levels`
+   wypełnia klucz min ALBO max, drugi zostawia `None`); nastawy produkuje wyłącznie
+   `application/protection_settings/engine.py`, który SAM nie ma konsumentów
+   produkcyjnych — wyspa karmiąca wyspę. `qu_regulation` — pięć pól bez dostawcy:
+   przemiatanie po poziomach generacji (żaden bieg go nie robi), punkty
+   charakterystyki Q(U) (model niesie nachylenie i pasmo nieczułości, nie punkty),
+   `cos_phi_min` (model niesie nastawę cosφ, nie minimum) oraz moc bierna ŹRÓDŁA,
+   nieodzyskiwalna z `PowerFlowBusResult`, który publikuje wstrzyk per SZYNA.
+
+   Długi: **PACK-DLUG-NASTAWY**, **PACK-DLUG-REGULACJA-QU** oraz nowy
+   **PACK-DLUG-PODSTAWA-VDROP** (krok EQ_VDROP_007 mnoży ΔU odniesione do U_n przez
+   napięcie POCZĄTKU odcinka — zmierzone 12,4 V rozjazdu na 13,8 kV; naprawa to
+   zmiana kanonicznego równania dowodu). Szczegóły i pomiary: wiersz
+   PACK-BEZ-KONSUMENTA w `docs/v12xx/REJESTR_KONFLIKTOW.md`.
+6. Reszta kolejki: reguły zgodności specyficzne dla OSD
 6. **CZAS-SCIENNY-RESZTA** (granica nazwana przy odbiorze SLOT-DRYF rundy 2,
    nie domknieta swiadomie). Karta naprawila iloraz w `kosztSceny.test.ts`
    (prog 3x zostal, estymator zmieniony na mediane niezaleznych par). Moj
