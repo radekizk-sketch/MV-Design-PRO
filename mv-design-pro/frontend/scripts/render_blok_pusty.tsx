@@ -31,8 +31,13 @@
  * TRZY parametry środowiskowe zamiast drugiego skryptu: `PREFIKS` (nazwa pliku),
  * `SKALA` (px/j.św.) i `KOTWICA_Y` (gdzie w kadrze siada szyna SN bloku —
  * rama rosła W GÓRĘ, więc szyna musi siąść nisko, żeby cała była widoczna).
- * Domyślne wartości = zachowanie sprzed zmiany, więc zrzuty BLOK-PUSTY
- * odtwarzają się co do bitu.
+ * Domyślne wartości są DOKŁADNIE te, które skrypt miał wpisane na sztywno przed
+ * parametryzacją (`blok`, 1,4 px/j.św., 30% wysokości kadru), więc wywołanie bez
+ * zmiennych robi to samo, co robił wcześniej. UWAGA — to NIE znaczy, że stare
+ * PNG odtworzą się co do bitu: karta BLOK-LATERAL-WLASNOSC zabiera z ramy bloku
+ * także podpis przęsła poziomego, więc obwódka bloku „Stacja L9-2" jest po niej
+ * mniejsza — ZMIERZONE: 696×334 → 472×310 j.św. Zmiana obrazu jest wynikiem
+ * NAPRAWY, nie parametryzacji skryptu.
  *   PREFIKS=lateral STACJA="Stacja L4-1" SKALA=0.32 KOTWICA_Y=0.88 \
  *     FAZA=przed CANON_OUT=<dir> npx vite-node scripts/render_blok_pusty.tsx
  */
