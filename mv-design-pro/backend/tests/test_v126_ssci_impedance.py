@@ -118,7 +118,6 @@ def _model_with_grid(
 _F_BASE_HZ = 50.0
 
 
-
 def test_z_conv_high_frequency_approaches_filter() -> None:
     """As w -> inf the controller terms roll off and Z_conv -> Z_f = R_f + jwL_f."""
     card = _reference_card()

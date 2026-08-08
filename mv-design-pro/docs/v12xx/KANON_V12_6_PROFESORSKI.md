@@ -52,6 +52,25 @@ Dodatkowym torem wykonawczym V12.6 jest zakładka `E-35 / ncrfg-tests`, która r
 >   (`voltage_stability_margin_percent`, tabela `pv_curves`). Na ekranie zostaje
 >   wskaźnik L z kryterium `L < 0,5` oraz zapas mocy biernej (Q–U). Pola pozostają
 >   w odpowiedzi solvera — kontrakty FROZEN; dług nazwany w rejestrze konfliktów.
+
+> **Nota wykonawcza (2026-08-08, karta QU-FABRYKACJA) — E-41 wycofany w CAŁOŚCI.**
+> Pomiar na sieciach odniesienia pokazał, że wielkości zostawione poprzednią notą
+> stały na tym samym gruncie, co wycięta rodzina P–U: zapas mocy biernej liczony
+> z krotności mocy czynnej (`0,15 · P` i `0,35 · P`) mimo dostępnego `bus.load_mvar`
+> i BEZ jakiejkolwiek danej o zdolności wytwórczej mocy biernej (0 z 35 wytwórców
+> niesie `GenLimits.q_min/max_mvar`), wskaźnik L z mnożnika `· 4` bez pokrycia
+> w danych i w normie, a wspólne wejście wszystkich czterech wielkości — moc
+> zwarciowa węzła — podstawiane z napięcia znamionowego dla **99,7 %** szyn
+> (`fault_level_mva` podane dla 1 z 315). Solver (wersja 1.2) nie wyznacza już
+> żadnej z nich: kontrakt odpowiedzi zostaje w komplecie, wartością jest `null`
+> z powodem po polsku, blok wiarygodności melduje „dane niekompletne".
+> `voltage_stability` przechodzi do rejestru rodzajów nieprezentowanych,
+> E-41 dostaje `visibleInNavigation: false` i znika z mapy rodzajów ekranów
+> trasowych; ekran ZOSTAJE w kanonie (ciągłość numeracji E-00…E-50).
+> Powrót na tor projektanta wymaga POLICZENIA wielkości, nie przywrócenia tabel:
+> krzywa P–U z rozpływu, wskaźnik L z macierzy F na Y-bus, moc zwarciowa węzła
+> i granice mocy biernej doprowadzone przez most ENM→V12.6. Pełny inwentarz stałych
+> całego solvera: `docs/audit/INWENTARZ_STALYCH_V126_2026-08-08.md`.
 >
 > Rejestr rodzajów nieprezentowanych (z powodem na każdy wpis):
 > `frontend/src/ui2/wyniki/akademickie/nieprezentowane.ts`. Parytet

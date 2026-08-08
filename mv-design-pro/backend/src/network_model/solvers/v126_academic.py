@@ -636,9 +636,7 @@ class V126AcademicSolver:
 
         # Probe Z_conv mandatory fields once (clear missing-data, no fabrication).
         try:
-            self._z_conv_components(
-                converter, frequencies[0], f_base_hz=model.base_frequency_hz
-            )
+            self._z_conv_components(converter, frequencies[0], f_base_hz=model.base_frequency_hz)
         except ValueError as exc:
             f_ci = converter.current_loop_bandwidth_hz
             f_pll = converter.pll_bandwidth_hz
