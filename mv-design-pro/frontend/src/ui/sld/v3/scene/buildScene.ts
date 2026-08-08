@@ -4686,7 +4686,22 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
     for (const head of allSymbols) {
       if (head.symbolId !== 'cableHead') continue;
       if (endpointSet.has(`${head.x + portDx},${head.y + portDy}`)) continue;
-      const ownerRef = head.meta?.ownerRef ?? 'nieznane-pole';
+      // BLOK-LATERAL-WLASNOSC (reguła KLASA §5 „uczciwość w obrębie jednego
+      // pliku"): dawny zapas `?? 'nieznane-pole'` FABRYKOWAŁ ref właściciela —
+      // etykieta zakończenia toru dostawała `nieznane-pole#termination`, czyli
+      // ref, którego model nie zna i którego klik nie ma jak rozwiązać. Karta
+      // zakazuje zmyślonych refów właściciela, więc zakaz obowiązuje też w
+      // sąsiedniej funkcji tego samego pliku. Bez właściciela nie ma podpisu, a
+      // brak jest POLICZONY w `stopNotes` (KD-11/S9-7: tożsamość nie znika po
+      // cichu), nie przemilczany.
+      const ownerRef = head.meta?.ownerRef;
+      if (!ownerRef) {
+        stopNotes.push(
+          'Głowica kablowa bez właściciela na rysunku — podpis zakończenia toru pominięty '
+            + '(ref zakończenia musi pochodzić z pola, nie może być zmyślony).',
+        );
+        continue;
+      }
       const text = captionByOwnerPrefix.get(ownerRef) ?? 'koniec toru';
       const labelClass = 't4' as const;
       const width = measureLabelWidth(text, labelClass);
