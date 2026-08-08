@@ -16,7 +16,7 @@
  * przechwyci to na etapie kompilacji zamiast cichego rozjazdu kopii.
  */
 
-import { GRID, snapUp } from '../core/grid';
+import { GRID, snapToGrid, snapUp } from '../core/grid';
 import {
   BUSBAR_LABEL_PATH_CLEARANCE,
   MIN_FIELD_CLEARANCE,
@@ -29,7 +29,7 @@ import {
   formatTransformerRatedPower,
   type StationOnRunRendererProps,
 } from '../../v2/renderer/StationOnRunRenderer';
-import { fieldCaptionAt } from '../compose/directions';
+import { classifyLineBayDirection, fieldCaptionAt, isLineLikeRole } from '../compose/directions';
 import {
   apparatusIdentifiers,
   bayApparatusPlanFootprint,
@@ -756,6 +756,84 @@ export function requiredStationWidth(station: StationMeasureInput): number {
  */
 export function requiredSegmentLabelWidth(text: string): number {
   return measureLabelWidth(text, 't2') + 2 * GRID;
+}
+
+// ---------------------------------------------------------------------------
+// SLOT-DRYF-PRZĘSŁA: OŚ X KOLUMNY POLA — JEDNO ŹRÓDŁO PRAWDY.
+// ---------------------------------------------------------------------------
+
+/**
+ * SLOT-DRYF-PRZĘSŁA: X osi stosu aparatów pola `bayIndex` w kolumnie stacji
+ * zaczepionej lewą krawędzią w `columnX`. To jest DOKŁADNIE ten sam punkt, w
+ * którym `compose/station.ts` stawia stos pola i z którego wyprowadza pion
+ * zejścia `⟨bayRef⟩#descent`, a `scene/buildScene.ts` (`portOfBay`) czyta X
+ * portu połączenia kabla — czyli miejsce, GDZIE FAKTYCZNIE zaczyna się i
+ * kończy narysowany kabel międzystacyjny.
+ *
+ * DLACZEGO TU, A NIE W COMPOSE. Rezerwacja slotu etykiety przęsła
+ * (`layout/segments.ts` `computeSegmentLabelSlotX`) musi znać końce
+ * rysowanego kabla ZANIM cokolwiek zostanie skomponowane (potok measure →
+ * bands → columns → compose): bez tego slot centrował się na odcinku
+ * tap-do-tap (ŚRODKACH bloków), a kabel biegnie od głowicy do głowicy —
+ * różnica na fixturze referencyjnej sięgała 756 j.św., czyli 46% długości
+ * opisywanego kabla. `compose/station.ts` woła TĘ SAMĄ funkcję zamiast
+ * własnej arytmetyki (reguła KLASA §3 — predykat wejścia i wyjścia z jednego
+ * źródła prawdy), więc rezerwacja i rysunek nie mogą się rozjechać.
+ *
+ * Zwraca `null`, gdy `bayIndex` nie wskazuje istniejącego pola — wołający
+ * spada wtedy na `tapX` (środek bloku), tak jak `portOfBay(...) ?? {x: tapX}`
+ * w `scene/buildScene.ts`.
+ */
+export function bayStackCenterX(
+  snBays: readonly MiniBlockBayDescriptor[],
+  bayIndex: number | null,
+  columnX: number,
+  bayDirectionCaptions: readonly (string | null)[] | undefined,
+  entryDescentBayIndex?: number | null,
+): number | null {
+  if (bayIndex == null || bayIndex < 0 || bayIndex >= snBays.length) return null;
+  // `compose/station.ts`: `blockLeftX = column.x + GRID`, potem prefix-sum
+  // `bx += bayColumnRequiredWidth(index) + GRID` (światło §5
+  // `MIN_GLYPH_CLEARANCE`, wartość bazowa GRID — ta sama stała, którą
+  // `stationBlockWidth` dolicza między kolumnami).
+  let bx = columnX + GRID;
+  for (let i = 0; i < bayIndex; i++) {
+    bx += bayColumnRequiredWidth(snBays, i, bayDirectionCaptions, entryDescentBayIndex) + GRID;
+  }
+  const bay = snBays[bayIndex];
+  const mainStackWidth = bayApparatusPlanFootprint(planBayApparatus(bay)).mainStack.width;
+  return snapToGrid(bx + apparatusIdentifierLeftReserve(bay) + mainStackWidth / 2);
+}
+
+/** Klasyfikacja pól liniowych (§9): które pole jest portem WEJŚCIA
+ *  („poprzednik"), które WYJŚCIA („następnik"), a które odgałęzieniem.
+ *
+ *  SLOT-DRYF-PRZĘSŁA: przeniesione z `scene/buildScene.ts` (gdzie było
+ *  prywatne) do `layout/`, bo TEJ SAMEJ klasyfikacji potrzebuje rezerwacja
+ *  slotu etykiety przęsła (`layout/segments.ts`), a `layout/` nie może
+ *  importować ze `scene/` (cykl). `buildScene.ts` woła stąd — jedna
+ *  klasyfikacja, zero cienia (ta sama zasada co `fieldCaptionAt`). */
+export interface LineBayIndices {
+  readonly previousIndex: number | null;
+  readonly nextIndex: number | null;
+  readonly branchIndices: readonly number[];
+}
+
+export function findLineBayIndices(snBays: readonly MiniBlockBayDescriptor[]): LineBayIndices {
+  const lineBayIdx: number[] = [];
+  snBays.forEach((bay, i) => {
+    if (isLineLikeRole(bay.fieldRole)) lineBayIdx.push(i);
+  });
+  let previousIndex: number | null = null;
+  let nextIndex: number | null = null;
+  const branchIndices: number[] = [];
+  lineBayIdx.forEach((idx, pos) => {
+    const direction = classifyLineBayDirection(snBays[idx].fieldRole, pos);
+    if (direction === 'previous') previousIndex = idx;
+    else if (direction === 'next') nextIndex = idx;
+    else if (direction === 'branch') branchIndices.push(idx);
+  });
+  return { previousIndex, nextIndex, branchIndices };
 }
 
 /**

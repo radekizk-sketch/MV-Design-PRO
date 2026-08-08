@@ -46,6 +46,8 @@
 import { GRID, snapToGrid } from '../core/grid';
 import { labelLineHeight } from '../core/text';
 import {
+  bayStackCenterX,
+  findLineBayIndices,
   requiredSegmentLabelWidth,
   requiredStationWidth,
   snapUp,
@@ -155,6 +157,94 @@ export interface SegmentLabelSlotX {
   readonly width: number;
 }
 
+/** SLOT-DRYF-PRZĘSŁA: końce X PRZĘSŁA FAKTYCZNIE RYSOWANEGO — od głowicy
+ *  kablowej pola „następnik" stacji `index-1` do głowicy pola „poprzednik"
+ *  stacji `index`. Dokładnie te dwa punkty, między którymi `scene/
+ *  buildScene.ts` (`connectRowStations` → `connectViaCorridor(fromPort,
+ *  toPort, …)`) prowadzi kabel międzystacyjny. */
+export interface SegmentSpanEndsX {
+  readonly startX: number;
+  readonly endX: number;
+}
+
+/**
+ * SLOT-DRYF-PRZĘSŁA: końce rysowanego przęsła wchodzącego do stacji `index`.
+ *
+ * DLACZEGO NIE `tapX`. `tapX` to ŚRODEK BLOKU stacji, a kabel międzystacyjny
+ * biegnie od GŁOWICY do GŁOWICY (dolne porty pól liniowych „następnik"/
+ * „poprzednik", §9/§12.3) — dwa różne punkty. Slot centrowany na odcinku
+ * tap-do-tap mijał środek opisywanego kabla o medianę 38% jego długości
+ * (max 131%) na sieci referencyjnej, a przy trzech podpisach ŚRODEK NAPISU
+ * wypadał poza rysowany kabel w ogóle (pomiar `scripts/pomiar_slotu.tsx`).
+ *
+ * FALLBACK (`?? tapX`) jest TYM SAMYM fallbackiem, którego używa render:
+ * `scene/buildScene.ts` `portOfBay(index) ?? { x: column.tapX, y: busAxisY }`
+ * — stacja bez pola liniowego „poprzednik"/„następnik" zaczepia kabel w
+ * środku bloku, więc rezerwacja musi zrobić dokładnie to samo (reguła KLASA
+ * §3 — predykat wejścia i wyjścia z jednego źródła prawdy).
+ *
+ * Dla `index === 0` (pierwsza stacja wiersza) lewym końcem jest krawędź
+ * świata `0`: przęsło wchodzące do niej rysuje wołający (GPZ→S0, feeder,
+ * łącznik ciągu dalszego S9-1) i jego lewy koniec nie jest znany na tym
+ * etapie potoku — zachowanie NIEZMIENIONE względem stanu sprzed karty.
+ */
+/**
+ * SLOT-DRYF-PRZĘSŁA: część przęsła, którą zajmuje CZŁON NIOSĄCY REF podpisu.
+ *
+ * Przęsło rysunkowe bywa łańcuchem `n` segmentów ENM (węzły bez stacji,
+ * §16-v3) — `scene/buildScene.ts` dzieli wtedy polilinię na `n` kawałków o
+ * równym udziale długości, a KAŻDY dostaje własny `ownerRef`. Podpis niesie
+ * ref członu KOŃCOWEGO (`incomingSegment`, `toTerminal === stacja docelowa`)
+ * — i to przy TYM członie ma stać (R1), a nie przy środku całego łańcucha.
+ *
+ * `n = 1` (norma: 31 z 37 przęseł sieci referencyjnej) ⇒ udział to CAŁE
+ * przęsło, więc wynik jest identyczny z jego środkiem.
+ *
+ * PRZYBLIŻENIE, KTÓRE TU JEST: udział liczymy w osi X, a `splitPolylineIntoPieces`
+ * dzieli po DŁUGOŚCI polilinii (z odcinkami pionowymi jogu). Dla przęsła
+ * poziomego z krótkim jogiem różnica jest rzędu wysokości jogu; wyrocznia
+ * pokrycia (`__tests__/slotDryfPrzesla.test.ts`) sprawdza WYNIK na realnej
+ * scenie, a nie to przybliżenie — gdyby jog kiedyś urósł na tyle, że podpis
+ * zjedzie z własnego członu, test to złapie.
+ */
+function udzialWlasciciela(startX: number, endX: number, chainLength: number): SegmentSpanEndsX {
+  const n = Math.max(1, Math.floor(chainLength));
+  if (n === 1) return { startX, endX };
+  return { startX: startX + ((endX - startX) * (n - 1)) / n, endX };
+}
+
+export function segmentSpanEndsX(
+  stations: readonly StationMeasureInput[],
+  taps: readonly StationTap[],
+  index: number,
+): SegmentSpanEndsX {
+  const wejscie = (i: number): number => {
+    const s = stations[i];
+    return (
+      bayStackCenterX(
+        s.snBays,
+        findLineBayIndices(s.snBays).previousIndex,
+        taps[i].x,
+        s.bayDirectionCaptions,
+        s.entryDescentBayIndex,
+      ) ?? taps[i].tapX
+    );
+  };
+  const wyjscie = (i: number): number => {
+    const s = stations[i];
+    return (
+      bayStackCenterX(
+        s.snBays,
+        findLineBayIndices(s.snBays).nextIndex,
+        taps[i].x,
+        s.bayDirectionCaptions,
+        s.entryDescentBayIndex,
+      ) ?? taps[i].tapX
+    );
+  };
+  return { startX: index > 0 ? wyjscie(index - 1) : 0, endX: wejscie(index) };
+}
+
 /**
  * x/width KAŻDEGO slotu etykiety segmentu (r9, poprawka po recenzji r7b —
  * patrz nagłówek pliku): wyśrodkowany na przęśle tap-do-tap jak w r7b
@@ -172,6 +262,10 @@ export function computeSegmentLabelSlotX(
   stations: readonly StationMeasureInput[],
   segmentTexts: readonly (string | null)[],
   columnGap: number = COLUMN_GAP,
+  /** SLOT-DRYF-PRZĘSŁA: liczba członów ENM przęsła wchodzącego do stacji
+   *  `index` (`chainSegmentRefs`, `scene/buildScene.ts`) — patrz
+   *  `udzialWlasciciela`. Brak/`null` = jeden człon (norma). */
+  chainLengths?: readonly (number | null | undefined)[],
 ): readonly (SegmentLabelSlotX | null)[] {
   if (segmentTexts.length !== stations.length) {
     throw new Error('segmentTexts musi mieć tę samą długość co stations (spec §5.3)');
@@ -184,14 +278,46 @@ export function computeSegmentLabelSlotX(
   return stations.map((_, index) => {
     const text = normalizeSegmentText(segmentTexts[index]);
     if (text == null) return null;
-    const spanStart = index > 0 ? taps[index - 1].tapX : 0;
-    const spanCenter = (spanStart + taps[index].tapX) / 2;
+    // SLOT-DRYF-PRZĘSŁA: środek RYSOWANEGO przęsła (głowica→głowica), nie
+    // odcinka tap-do-tap (środek bloku→środek bloku) — patrz
+    // `segmentSpanEndsX` wyżej.
+    const przeslo = segmentSpanEndsX(stations, taps, index);
+    const wlasciciel = udzialWlasciciela(
+      przeslo.startX,
+      przeslo.endX,
+      chainLengths?.[index] ?? 1,
+    );
+    const spanCenter = (wlasciciel.startX + wlasciciel.endX) / 2;
     const width = snapUp(requiredSegmentLabelWidth(text));
     const rawX = snapToGrid(spanCenter - width / 2);
     const maxX = Math.max(0, totalWidth - width);
     const x = Math.min(Math.max(rawX, 0), maxX);
     return { stationIndex: index, x, width };
   });
+}
+
+/**
+ * SLOT-DRYF-PRZĘSŁA: przesuwa GOTOWĄ rezerwację slotu tak, by jej środek
+ * wypadł na środku przęsła `spanStart..spanEnd`. Szerokość NIETKNIĘTA (więc
+ * kontrakt `labels.ts` „`primaryRect.width >= etykieta`" zostaje w mocy) i
+ * `x` nigdy nie schodzi poniżej 0 (lewa krawędź arkusza).
+ *
+ * DLA KOGO. Dla przęseł, których LEWEGO końca `computeSegmentLabelSlotX` nie
+ * może znać: pierwsza stacja wiersza (`stationIndex === 0`) dostaje kabel od
+ * GPZ, od pola odpływowego GPZ (feeder) albo z poprzedniego wiersza arkusza
+ * (S9-1) — te trzy punkty są wyliczane DOPIERO w `scene/buildScene.ts`, po
+ * skomponowaniu GPZ/poprzedniego wiersza. Rezerwacja liczona bez nich (od
+ * krawędzi świata `0`) mijała środek rysowanego kabla o 824 j.św. na sieci
+ * referencyjnej. Wołający, który ZNA oba końce, domyka to tą funkcją — nie
+ * drugą regułą centrowania, tylko tą samą regułą na pełnych danych.
+ */
+export function wysrodkujSlotNaPrzesle<T extends { readonly x: number; readonly width: number }>(
+  rect: T,
+  spanStart: number,
+  spanEnd: number,
+): T {
+  const srodek = (spanStart + spanEnd) / 2;
+  return { ...rect, x: Math.max(0, snapToGrid(srodek - rect.width / 2)) };
 }
 
 /**

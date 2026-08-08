@@ -66,6 +66,7 @@ import { BUSBAR_LABEL_PATH_CLEARANCE } from '../layout/clearances';
 import {
   apparatusIdentifierLeftReserve,
   bayColumnRequiredWidth,
+  bayStackCenterX,
   DER_ROW_TOP_CLEARANCE,
   derColumnRequiredWidth,
   entryDescentCaptionInset,
@@ -926,7 +927,18 @@ export function composeStation(input: ComposeStationInput): StationComposition {
     // DOKŁADNIE na `bx + leftReserve`, zgodnie z modelem measure.
     const footprint = planFootprint.mainStack;
     const stackLeftX = bx + leftReserve;
-    const centerX = snapToGrid(stackLeftX + footprint.width / 2);
+    // SLOT-DRYF-PRZĘSŁA: oś stosu z `layout/measure.ts` (`bayStackCenterX`) —
+    // TA SAMA arytmetyka co dotąd liczona tutaj inline, ale wyprowadzona do
+    // JEDNEGO źródła prawdy, bo rezerwacja slotu etykiety przęsła
+    // (`layout/segments.ts`) musi znać ten X ZANIM cokolwiek zostanie
+    // skomponowane (reguła KLASA §3 — predykaty parami z jednego źródła).
+    const centerX = bayStackCenterX(
+      station.snBays,
+      index,
+      column.x,
+      station.bayDirectionCaptions,
+      station.entryDescentBayIndex,
+    )!;
     busTapXs.push(centerX);
 
     const stack = buildBayStack(items, centerX, blockTopY, bay, source, footprint.width);
