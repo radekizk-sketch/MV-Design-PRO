@@ -63,6 +63,38 @@ jako uzasadniona: wszystkie są tu wypisane jako otwarte.
 | `_hosting_capacity` | `betavariate(5; 2)`, `gauss(0,75; 0,15)` | rozkłady obciążenia i produkcji PV | model nie niesie profili ani ich parametrów statystycznych | wprowadzić profile do modelu albo nazwać wielkość analizą scenariuszową o zadanych rozkładach (z kontrolkami) |
 | `_insulation` | `mcov · 2,8` | napięcie obniżone ogranicznika przy braku karty | most `build_v126_insulation_from_enm` przenosi `u_residual_at_10ka_kv` z katalogu, gdy karta istnieje; przy braku karty solver wykonuje udokumentowany dobór wstępny | oznaczyć wynik doboru wstępnego jako oszacowanie w kontrakcie odpowiedzi (osobne pole jakości), nie jako pomiar |
 
+## Zapadka — co jest pilnowane maszynowo, a co tylko tym dokumentem
+
+**Runda poprawkowa (2026-08-08).** Sam inwentarz nie zabezpiecza klasy: iniekcja
+nadzorcy dopisała NOWY zastępnik w sąsiedniej funkcji (`_power_quality`:
+`harmonic = f_hz / (model.base_frequency_hz or 50.0)`) i przeszła 26 z 26 testów
+karty oraz 114 testów rodziny V12.6. Dlatego powstała zapadka
+`scripts/solver_input_substitute_guard.py` (analiza składni, budżet zamrożony
+per plik, działanie w obie strony), wpisana do
+`.github/workflows/p0-extended-guards.yml`.
+
+**Podział pilnowania — bez fałszywej pewności:**
+
+| Forma defektu | Kto pilnuje | Uwaga |
+|---|---|---|
+| Pole kontraktu z gałęzią zapasową liczbową (`or` / wyrażenie warunkowe / `getattr`) | **zapadka, maszynowo** | 22 wystąpienia zamrożone w 4 plikach; nowe = czerwień CI |
+| Naga stała w działaniu (`0,45²`, `0,12 · SAIFI`, `0,15 · z`, `betavariate`) | **tylko ten dokument** | składniowo nierozróżnialna od stałej normowej — rozstrzyga człowiek |
+| Podłoga/sufit na danej obecnej (`max(x; 0,05)`) | nikt | inny defekt; forma zlewa się z zabezpieczeniem dzielenia |
+| Parametr projektowy bez kontrolki w oknie | `test_kazdy_czytany_parametr_ma_kontrolke` | istniejący parytet, nie powtarzany w zapadce |
+
+Z dziewięciu długów wypisanych wyżej zapadka widzi **jeden** — `mcov · 2,8`
+w koordynacji izolacji, bo ma formę zapasową (`item.arrester_residual_10ka_kv or …`);
+jest w budżecie imiennie. Pozostałe osiem należy do formy niedetekowalnej i ich
+jedynym pilnowaniem jest ten dokument oraz przegląd. Zdanie „zapadka zamraża całą
+listę długu" byłoby nieprawdą i dlatego nie jest tu napisane.
+
+**Skala poza zakresem zapadki (pomiar tą samą regułą na całym `backend/src`):**
+55 trafień w 19 plikach — 22 w zakresie (`network_model/solvers/**` +
+`solver_input/**`) i 33 poza nim, najwięcej `enm/mapping.py` (11) i
+`enm/zero_sequence_transformer.py` (3). Rozszerzenie zakresu na `enm/**` jest
+uzasadnione i zgłoszone jako dług; nie zrobione od razu, bo zamrażanie budżetu,
+którego nikt nie przeczytał, zamienia zapadkę w ścianę.
+
 ## Rodowody nazw — trzeci rodzaj defektu tej klasy
 
 Poza stałą bez pokrycia karta nazwała **fałszywy rodowód**: nazwa mówiąca, SKĄD liczba
