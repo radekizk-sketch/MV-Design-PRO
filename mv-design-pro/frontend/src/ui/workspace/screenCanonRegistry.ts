@@ -1018,7 +1018,15 @@ export const SCREEN_CANON_REGISTRY: Readonly<Record<CanonScreenId, ScreenCanonDe
     requiresSelection: false,
     requiresStudyCase: true,
     requiresOperatingVariant: true,
-    visibleInNavigation: true,
+    // QU-FABRYKACJA (2026-08-08): solver przestał wyznaczać JAKĄKOLWIEK wielkość
+    // tej analizy — wszystkie stały na mocy zwarciowej węzła podstawianej
+    // z napięcia znamionowego (pole podane dla 1 z 315 szyn sieci odniesienia)
+    // oraz na współczynnikach bez pokrycia w danych i w normie. Ekran zostaje
+    // w kanonie (ciągłość numeracji E-00…E-50, zdolność backendu istnieje i jest
+    // pilnowana testem `test_v126_stabilnosc_bez_fabrykacji.py`), ale znika
+    // z nawigacji: pozycja „Stabilnosc U" obiecywałaby analizę, która nie ma
+    // ani jednej liczby do pokazania. Rozstrzygnięcie: docs/v12xx/REJESTR_KONFLIKTOW.md.
+    visibleInNavigation: false,
     surfaceKind: 'analityczny',
     subjectKind: 'analysis_case',
     sizeClass: 'C',

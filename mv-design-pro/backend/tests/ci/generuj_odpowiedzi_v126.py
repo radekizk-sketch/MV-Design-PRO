@@ -14,6 +14,41 @@ projektant.
 Uruchomienie (z katalogu `backend/`):
     poetry run python tests/ci/generuj_odpowiedzi_v126.py
 Parytet pliku z bieżącym solverem pilnuje `tests/ci/test_v126_odpowiedzi_fixtury.py`.
+
+PRZELICZENIA FIXTURY — ŚWIADOME, Z WARTOŚCIAMI PRZED I PO
+---------------------------------------------------------
+Fixtura jest odciskiem odpowiedzi solvera, więc każda zmiana numeryki ją
+przelicza. Przeliczenie MILCZĄCE jest zabronione — poniżej rejestr zmian.
+
+2026-08-08, karta QU-FABRYKACJA, rodzaj `voltage_stability`
+(wersja solvera 1.1 → 1.2). Solver przestał wyznaczać wielkości stojące na
+współczynnikach bez pokrycia w danych i na zmyślonej mocy zwarciowej węzła.
+
+  wielkość                            PRZED                     PO
+  ----------------------------------- ------------------------- ------
+  voltage_stability_margin_percent    250,0                      None
+  pv_curves[].lambda_max              3,5 (obie szyny)           None
+  pv_curves[].margin_percent          250,0 (obie szyny)         None
+  pv_curves[].u_at_max                0,7 (obie szyny)           None
+  qv_curves[].q_min_mvar              −0,0175 · −0,385           None
+  qv_curves[].q_available_mvar        0,0 · 0,045                None
+  qv_curves[].margin_mvar             −0,0175 · −0,34            None
+  l_index_per_bus[].l_index           0,0008 · 0,055             None
+  l_index_per_bus[].alert             false (obie szyny)         None
+  modal_analysis.smallest_eigenvalue  0,945                      None
+  critical_mode.participating_buses   [szyna stacji]             []
+  sanity.status                       „zweryfikowany"            „dane niekompletne"
+  sanity.checks_passed                4                          0
+
+Trzy liczby warte odnotowania, bo pokazują, czym te wielkości były naprawdę:
+`margin_percent` wychodził 250,0 dla KAŻDEJ szyny (nasycenie zaszytego 2,5),
+`u_at_max` — 0,7 dla każdej (obcięcie dolne), a `q_available_mvar` = 0,0 dla
+szyny GPZ było ZEREM UDAJĄCYM POMIAR: nie znaczyło „zmierzono brak zapasu",
+tylko „nie było czego liczyć". Dokładnie tego rozróżnienia pilnuje teraz `None`.
+
+Klucze DOPISANE (kontrakt addytywny, FROZEN nietknięty): `brak_danych` na
+poziomie wyniku, w każdym wierszu `pv_curves`/`qv_curves`/`l_index_per_bus`
+oraz w `modal_analysis` — powód po polsku mówiący, jakich danych brakuje.
 """
 
 from __future__ import annotations

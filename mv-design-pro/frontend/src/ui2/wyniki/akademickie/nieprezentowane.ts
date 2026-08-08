@@ -35,7 +35,7 @@ import type { RodzajAnalizy } from './api';
  * z powodem w `POWODY_NIEPREZENTOWANIA` (typ wymusza to w czasie pisania kodu)
  * oraz wiersza w `docs/v12xx/REJESTR_KONFLIKTOW.md`.
  */
-export type RodzajNieprezentowany = 'benchmark_validation';
+export type RodzajNieprezentowany = 'benchmark_validation' | 'voltage_stability';
 
 /** Rodzaje analiz obecne na ekranie projektanta — dopełnienie rejestru wycofań. */
 export type RodzajPrezentowany = Exclude<RodzajAnalizy, RodzajNieprezentowany>;
@@ -50,6 +50,14 @@ export const POWODY_NIEPREZENTOWANIA: Record<RodzajNieprezentowany, string> = {
     'Bada, czy solver odtwarza sieci odniesienia — sprawdza narzędzie, nie projekt '
     + 'użytkownika, więc jego miejscem jest kontrola jakości, nie ekran wyników '
     + '(decyzja właściciela 2026-08-07).',
+  voltage_stability:
+    'Solver nie wyznacza już żadnej wielkości tej analizy: wszystkie stały na mocy '
+    + 'zwarciowej węzła, którą podstawiał z napięcia znamionowego (pomiar: pole podane '
+    + 'dla 1 z 315 szyn sieci odniesienia), oraz na współczynnikach bez pokrycia '
+    + 'w danych i w normie — zapas mocy biernej z krotności mocy czynnej, margines P–U '
+    + 'ze sztywności węzła, wskaźnik L z mnożnika 4. Ekran nie ma czego pokazać, '
+    + 'dopóki wielkości nie zostaną policzone rozpływem na modelu przypadku '
+    + '(karta QU-FABRYKACJA, 2026-08-08).',
 };
 
 /** Zbiór kodów wycofanych — pochodna rejestru, nie druga lista do utrzymania. */

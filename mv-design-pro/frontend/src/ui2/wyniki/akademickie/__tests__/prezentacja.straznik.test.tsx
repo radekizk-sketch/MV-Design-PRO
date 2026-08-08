@@ -357,11 +357,17 @@ describe('strażnik prezentacji — rodzaje prezentowane na realnych odpowiedzia
   });
 
   it('zapis techniczny jest ZWINIĘTY — pola kontraktu nie wchodzą na ekran same z siebie', async () => {
-    await uruchomRodzaj('voltage_stability');
-    expect(screen.queryByTestId('mvd-akad-grupa-modal_analysis')).not.toBeInTheDocument();
+    // Grupa czytana Z FIXTURY realnych odpowiedzi, nie wpisana ręcznie: nośnik
+    // testu zmienił się przy karcie QU-FABRYKACJA (stabilność napięciowa zeszła
+    // z ekranu), a asercja na ręcznie wpisanym kluczu cicho przestałaby cokolwiek
+    // sprawdzać, gdyby klucz zniknął z kontraktu razem z nośnikiem.
+    const grupa = Object.keys(ODPOWIEDZI.reliability_contingency)[0];
+    expect(grupa, 'fixtura odpowiedzi bez grup — parser nośnika do poprawy').toBeTruthy();
+    await uruchomRodzaj('reliability_contingency');
+    expect(screen.queryByTestId(`mvd-akad-grupa-${grupa}`)).not.toBeInTheDocument();
     fireEvent.click(screen.getByTestId('mvd-akad-wynik-przelacz'));
     await waitFor(() =>
-      expect(screen.getByTestId('mvd-akad-grupa-modal_analysis')).toBeInTheDocument(),
+      expect(screen.getByTestId(`mvd-akad-grupa-${grupa}`)).toBeInTheDocument(),
     );
   });
 
@@ -376,7 +382,7 @@ describe('strażnik prezentacji — rodzaje prezentowane na realnych odpowiedzia
   it('sekcja bez treści NIE ma przycisku „Pokaż…” (zero martwych klików)', async () => {
     // Korekta nadzoru 2026-08-07 pkt 2: „Raport — sekcji: 0 · metryk: 0" z aktywnym
     // przyciskiem to martwy klik. KLASA: reguła obowiązuje wszystkie sekcje zwijane.
-    await uruchomRodzaj('voltage_stability');
+    await uruchomRodzaj('reliability_contingency');
     for (const sekcja of ['mvd-akad-slad', 'mvd-akad-dowod', 'mvd-akad-raport', 'mvd-akad-wynik']) {
       const pusty = screen.queryByTestId(`${sekcja}-pusty`);
       const przelacz = screen.queryByTestId(`${sekcja}-przelacz`);
@@ -414,7 +420,7 @@ describe('strażnik prezentacji — rodzaje prezentowane na realnych odpowiedzia
   it('zapis techniczny NIE jest pierwszą sekcją ekranu i startuje zwinięty', async () => {
     // Korekta nadzoru 2026-08-07 pkt 4: sekcja audytowa przechodzi wyłącznie jako
     // świadomie schowane narzędzie — nigdy jako pierwsze, co widzi projektant.
-    const ekran = await uruchomRodzaj('voltage_stability');
+    const ekran = await uruchomRodzaj('reliability_contingency');
     const sekcje = Array.from(ekran.querySelectorAll('[data-testid^="mvd-akad-"]'))
       .map((element) => element.getAttribute('data-testid'))
       .filter((id): id is string => id !== null);

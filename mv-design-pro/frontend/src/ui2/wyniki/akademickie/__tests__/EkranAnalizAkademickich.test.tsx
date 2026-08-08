@@ -25,7 +25,7 @@ const RUN_ID = 'run-akad-abc';
 const RODZAJE = [
   'power_quality_harmonics',
   'ssci_impedance',
-  'voltage_stability',
+  'voltage_stability', // zostaje: to KOMPLET katalogu backendu, nie lista wyboru
   'reliability_contingency',
   'earthing_safety',
   'insulation_coordination',
@@ -101,7 +101,7 @@ function ustawFetch(opcje: OpcjeMocka = {}): ReturnType<typeof vi.fn> {
     if (adres.includes('/trace')) {
       return odpowiedz({
         run_id: RUN_ID,
-        analysis_type: 'voltage_stability',
+        analysis_type: 'reliability_contingency',
         trace_version: 'AcademicWhiteBoxTraceV1',
         deterministic_hash: 'hash-akad',
         steps: Array.from({ length: krokow }, (_, i) => ({
@@ -124,7 +124,7 @@ function ustawFetch(opcje: OpcjeMocka = {}): ReturnType<typeof vi.fn> {
         proof_id: 'proof:v126:test:abc',
         run_id: RUN_ID,
         case_id: CASE_ID,
-        analysis_type: 'voltage_stability',
+        analysis_type: 'reliability_contingency',
         source_result_hash: 'hash-akad',
         trace_step_count: krokow,
         steps: Array.from({ length: krokow }, (_, i) => ({
@@ -146,7 +146,7 @@ function ustawFetch(opcje: OpcjeMocka = {}): ReturnType<typeof vi.fn> {
         report_id: 'report:v126:test:abc',
         run_id: RUN_ID,
         case_id: CASE_ID,
-        analysis_type: 'voltage_stability',
+        analysis_type: 'reliability_contingency',
         source_result_hash: 'hash-akad',
         source_proof_hash: 'hash-dowodu',
         export_policy: 'frozen_result_and_proof_only',
@@ -162,12 +162,12 @@ function ustawFetch(opcje: OpcjeMocka = {}): ReturnType<typeof vi.fn> {
       return odpowiedz({
         run_id: RUN_ID,
         case_id: CASE_ID,
-        analysis_type: 'voltage_stability',
+        analysis_type: 'reliability_contingency',
         status: 'FINISHED',
         created_at: '2026-08-07T10:00:00+00:00',
         result: {
           contract: 'AcademicAnalysisResultV1',
-          analysis_type: 'voltage_stability',
+          analysis_type: 'reliability_contingency',
           solver_version: 'v126-test',
           input_hash: 'hash-wejscia',
           result: opcje.wynik ?? { margines_pu: 0.42, spelnione: true },
@@ -263,7 +263,7 @@ describe('EkranAnalizAkademickich — ścieżka natywna biegu', () => {
   it('klik „Uruchom" → wynik, ślad, dowód i raport z czterech końcówek', async () => {
     const mock = ustawFetch({ krokowSladu: 4, sekcjiRaportu: 3 });
     render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
-    await wybierzRodzaj('voltage_stability');
+    await wybierzRodzaj('reliability_contingency');
 
     fireEvent.click(screen.getByTestId('mvd-akad-uruchom'));
 
@@ -274,11 +274,11 @@ describe('EkranAnalizAkademickich — ścieżka natywna biegu', () => {
     expect(screen.getByTestId('mvd-akad-raport')).toBeInTheDocument();
 
     const adresy = mock.mock.calls.map((w) => String(w[0]));
-    expect(adresy.some((a) => a.endsWith(`/api/cases/${CASE_ID}/runs/v126/voltage_stability`))).toBe(true);
-    expect(adresy).toContain(`/api/analysis-runs/${RUN_ID}/results/v126/voltage_stability`);
-    expect(adresy).toContain(`/api/analysis-runs/${RUN_ID}/results/v126/voltage_stability/trace`);
-    expect(adresy).toContain(`/api/analysis-runs/${RUN_ID}/results/v126/voltage_stability/proof`);
-    expect(adresy).toContain(`/api/analysis-runs/${RUN_ID}/results/v126/voltage_stability/report`);
+    expect(adresy.some((a) => a.endsWith(`/api/cases/${CASE_ID}/runs/v126/reliability_contingency`))).toBe(true);
+    expect(adresy).toContain(`/api/analysis-runs/${RUN_ID}/results/v126/reliability_contingency`);
+    expect(adresy).toContain(`/api/analysis-runs/${RUN_ID}/results/v126/reliability_contingency/trace`);
+    expect(adresy).toContain(`/api/analysis-runs/${RUN_ID}/results/v126/reliability_contingency/proof`);
+    expect(adresy).toContain(`/api/analysis-runs/${RUN_ID}/results/v126/reliability_contingency/report`);
   });
 
   it('rodzaj bez parametrów wysyła PUSTY ładunek — zero fabrykacji danych wejściowych', async () => {
@@ -296,7 +296,7 @@ describe('EkranAnalizAkademickich — ścieżka natywna biegu', () => {
   it('błąd biegu → uczciwy komunikat backendu (pole detail), bez wyniku', async () => {
     ustawFetch({ bladBiegu: 'Przypadek nie ma committed ENM z węzłami.' });
     render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
-    await wybierzRodzaj('voltage_stability');
+    await wybierzRodzaj('reliability_contingency');
     fireEvent.click(screen.getByTestId('mvd-akad-uruchom'));
 
     expect(await screen.findByTestId('mvd-akad-blad')).toBeInTheDocument();
@@ -309,7 +309,7 @@ describe('EkranAnalizAkademickich — komplet artefaktów bez zaszytych limitów
   it('ślad dłuższy niż 8 kroków renderuje się w CAŁOŚCI (limit powierzchni zastanej)', async () => {
     ustawFetch({ krokowSladu: 25 });
     render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
-    await wybierzRodzaj('voltage_stability');
+    await wybierzRodzaj('reliability_contingency');
     fireEvent.click(screen.getByTestId('mvd-akad-uruchom'));
     await screen.findByTestId('mvd-akad-wyniki');
 
@@ -322,7 +322,7 @@ describe('EkranAnalizAkademickich — komplet artefaktów bez zaszytych limitów
   it('dowód dłuższy niż 8 kroków renderuje się w CAŁOŚCI', async () => {
     ustawFetch({ krokowSladu: 17 });
     render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
-    await wybierzRodzaj('voltage_stability');
+    await wybierzRodzaj('reliability_contingency');
     fireEvent.click(screen.getByTestId('mvd-akad-uruchom'));
     await screen.findByTestId('mvd-akad-wyniki');
 
@@ -333,7 +333,7 @@ describe('EkranAnalizAkademickich — komplet artefaktów bez zaszytych limitów
   it('raport z więcej niż 3 sekcjami renderuje się w CAŁOŚCI (limit zastanej)', async () => {
     ustawFetch({ sekcjiRaportu: 7 });
     render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
-    await wybierzRodzaj('voltage_stability');
+    await wybierzRodzaj('reliability_contingency');
     fireEvent.click(screen.getByTestId('mvd-akad-uruchom'));
     await screen.findByTestId('mvd-akad-wyniki');
 
@@ -346,7 +346,7 @@ describe('EkranAnalizAkademickich — komplet artefaktów bez zaszytych limitów
     for (let i = 0; i < 30; i += 1) wynik[`pole_${i}`] = i;
     ustawFetch({ wynik });
     render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
-    await wybierzRodzaj('voltage_stability');
+    await wybierzRodzaj('reliability_contingency');
     fireEvent.click(screen.getByTestId('mvd-akad-uruchom'));
     await screen.findByTestId('mvd-akad-wyniki');
 
@@ -469,7 +469,7 @@ describe('EkranAnalizAkademickich — świeżość i tryb ekspercki', () => {
   it('identyfikatory techniczne przebiegu są w oknie eksperckim', async () => {
     ustawFetch();
     render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
-    await wybierzRodzaj('voltage_stability');
+    await wybierzRodzaj('reliability_contingency');
     fireEvent.click(screen.getByTestId('mvd-akad-uruchom'));
     await screen.findByTestId('mvd-akad-wyniki');
     expect(screen.getByText(RUN_ID)).toBeInTheDocument();
