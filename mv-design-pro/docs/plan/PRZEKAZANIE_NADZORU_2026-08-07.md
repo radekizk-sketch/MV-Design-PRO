@@ -301,13 +301,35 @@ moduł już tego nie rozstrzyga.
 
 ### Kolejka po nich
 
-1. **MOST-ZMYSLONE-GALEZIE** (rozstrzygnięcie produktowe, pod moim nazwiskiem).
-   `solver_input/v126_contracts.py` — most `build_v126_input_from_enm` podstawia
-   `length_km = 1,0` km dla odcinka bez długości oraz `r/x_ohm_per_km = 0,18/0,12`.
-   Wykonawca QU-FABRYKACJA nazwał to „NAJGORSZĄ rodziną w całym zakresie" i ma
-   rację: solver nie ma jak odróżnić tych liczb od pomiaru. Naprawa wymaga
-   rozstrzygnięcia TEJ SAMEJ wagi co wygaszenie stabilności napięciowej: pominąć
-   element w wejściu czy zameldować „dane niekompletne" dla całej analizy.
+1. **MOST-WEJSCIA-V126** — pozycja PRZEFORMUŁOWANA po moim pomiarze 2026-08-08.
+
+   **SPROSTOWANIE POD MOIM NAZWISKIEM.** Wpisałem tu wcześniej, za wykonawcą
+   QU-FABRYKACJA, że `length_km = 1,0` i `r/x_ohm_per_km = 0,18/0,12` w moście
+   `build_v126_input_from_enm` to „NAJGORSZA rodzina w całym zakresie". **Zmierzone
+   — to nieprawda, i powtórzyłem cudze zdanie bez sprawdzenia.** Fakty z sieci
+   referencyjnej (260 gałęzi):
+   - domysł `length_km = 1,0` obejmuje WYŁĄCZNIE gałąź `cable`/`line_overhead`;
+     wszystkie **88** kabli i linii tej sieci MA długość, więc nie odpala;
+   - 172 gałęzie bez długości to **aparaty łączeniowe** (171 wyłączników + 1
+     łącznik, `APARAT_SN`) — brak długości jest tam POPRAWNY, a idą one drugą
+     gałęzią mostu (`length_km = 0,001`);
+   - dla modelu pydantic pole ISTNIEJE i bywa `None`, więc `float(getattr(b,
+     "length_km", 1.0))` **nie zwraca domysłu, tylko rzuca `TypeError`**
+     (sprawdzone). Domysł jest zatem praktycznie NIEOSIĄGALNY, a nie „najgorszy".
+
+   **CO W TYM MOŚCIE JEST REALNE (i tego dotyczy karta):**
+   - `ampacity_a = 630.0` **zaszyte dla WSZYSTKICH 172 aparatów** — nie domysł
+     zapasowy, tylko wprost wpisany prąd znamionowy każdego łącznika w sieci;
+   - `ampacity_a = float(rating.in_a or 300.0)` — odpala na **2 z 88** kabli
+     bez znamionowego, a wielkość wchodzi do oceny obciążalności cieplnej;
+   - `r_ohm_per_km = float(branch.r_ohm or 0.001)` na aparatach: `r_ohm` wynosi
+     **0,0 dla wszystkich 171**, a `0.0` jest wartością fałszywą, więc `or`
+     **nadpisuje jawne, poprawne zero** liczbą 0,001. To nie podstawienie za
+     brak danej, tylko ciche przykrycie danej OBECNEJ (granica nr 2 zapadki);
+   - `b_siemens_per_km = ... or 0.0` — 2 kable, przyjęcie zerowej pojemności.
+
+   Karta ma zacząć od potwierdzenia tego pomiaru na drugiej, niereferencyjnej
+   sieci (sprawdzam jedną fiksturę — to za mało, żeby orzekać o produkcie).
 2. **TYPY-SKRYPTY** — 94 błędy typów pod wykluczeniami `tsconfig.json`: 37 w
    `frontend/scripts/**` (poza `include` w całości), 45 w `src/ui/sld/core/**`,
    7 w `src/ui/sld/inspector/**`, 1 w `ResultsInspectorPage.tsx` (import modułu,
