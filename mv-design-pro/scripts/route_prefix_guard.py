@@ -131,10 +131,20 @@ FRONTEND_DEAD_CLIENT_DEBT: dict[str, tuple[tuple[str, ...], str]] = {
             "/api/protection-coordination/{p}/export/pdf",
             "/api/protection-coordination/{p}/export/docx",
         ),
-        "backend NIGDY nie mial routera /api/protection-coordination. Modul nie ma ANI "
-        "JEDNEGO importera; zywy ekran koordynacji (E-28) to ui2/wyniki/koordynacja, ktory "
-        "czyta /api/protection/overcurrent-settings. Do decyzji: usunac martwy modul albo "
-        "zbudowac dostawce koordynacji.",
+        # SPROSTOWANE 2026-08-08 (karta ROUTERY-MARTWE). Poprzednie uzasadnienie
+        # glosilo „backend NIGDY nie mial routera /api/protection-coordination" —
+        # to NIEPRAWDA i przeklamywala czekajaca tu decyzje: sugerowala budowe
+        # dostawcy OD ZERA, podczas gdy dostawca w wiekszosci ISTNIEJE.
+        "backend MA modul `api/protection_coordination.py` z 7 trasami pod prefiksem "
+        "`/protection-coordination`, ale aplikacja go NIE MONTUJE (pilnuje tego "
+        "`router_mount_guard`, wpis w `SWIADOMIE_ODSTAWIONE`). Zestawienie klienta z "
+        "modulem: 7 z 9 wolan ma dokladny odpowiednik w module (run, {id}, tcc, trace, "
+        "checks/sensitivity, checks/selectivity, checks/overload); BRAKUJE dwoch "
+        "eksportow ({id}/export/pdf, {id}/export/docx). Modul nie ma ANI JEDNEGO "
+        "importera; zywy ekran koordynacji (E-28) to ui2/wyniki/koordynacja, ktory czyta "
+        "/api/protection/overcurrent-settings — czyli WEZSZA zdolnosc (nastawy jednego "
+        "pola, bez pary gora-dol). Do decyzji: usunac oba martwe konce albo domknac "
+        "koordynacje end-to-end (montaz pod /api + dwa eksporty + ekran).",
     ),
     # WPIS ZDJETY 2026-08-07 (wiersz KLIENT-BEZ-TRASY-WARIANTY w rejestrze).
     # „Do decyzji: usunac albo zbudowac warianty end-to-end" rozstrzygniete na

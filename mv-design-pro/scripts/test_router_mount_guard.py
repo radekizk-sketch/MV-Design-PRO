@@ -142,9 +142,7 @@ def test_router_pochodny_znaczy_takze_router_bazowy(monkeypatch, tmp_path) -> No
     """
     _bez_zapadek(monkeypatch)
     modul = (
-        'router = APIRouter(prefix="/a")\n'
-        + _trasa()
-        + "_WYLACZONE = {('/a/x', 'GET')}\n"
+        'router = APIRouter(prefix="/a")\n' + _trasa() + "_WYLACZONE = {('/a/x', 'GET')}\n"
         "def _build_production_router():\n"
         "    produkcyjny = APIRouter()\n"
         "    for trasa in router.routes:\n"
@@ -230,7 +228,7 @@ def test_router_niezamontowany_na_liscie_odstawionych_przechodzi(monkeypatch, tm
     assert guard.check_router_mounts(api_dir, main_path) == []
 
 
-def test_jeden_router_zamontowany_drugi_nie_w_TYM_SAMYM_pliku(monkeypatch, tmp_path) -> None:
+def test_jeden_router_zamontowany_drugi_nie_w_tym_samym_pliku(monkeypatch, tmp_path) -> None:
     """Kilka routerow w jednym pliku — granularnosc MODULU by to przegapila."""
     _bez_zapadek(monkeypatch)
     api_dir, main_path = _drzewo(
@@ -308,7 +306,7 @@ def test_montaz_aliasu_bez_importu_z_api_jest_nierozwiazany(monkeypatch, tmp_pat
 # ---------------------------------------------------------------------------
 
 
-def test_wpis_odstawiony_dla_routera_ZAMONTOWANEGO_zapala_czerwien(monkeypatch, tmp_path) -> None:
+def test_wpis_odstawiony_dla_routera_zamontowanego_zapala_czerwien(monkeypatch, tmp_path) -> None:
     _bez_zapadek(monkeypatch)
     monkeypatch.setattr(guard, "SWIADOMIE_ODSTAWIONE", {"a": (("router",), "uzasadnienie")})
     api_dir, main_path = _drzewo(
@@ -337,7 +335,9 @@ def test_wpis_odstawiony_dla_nieistniejacej_zmiennej_zapala_czerwien(monkeypatch
     monkeypatch.setattr(
         guard, "SWIADOMIE_ODSTAWIONE", {"a": (("router", "byly_router"), "uzasadnienie")}
     )
-    api_dir, main_path = _drzewo(tmp_path, {"a": 'router = APIRouter(prefix="/a")\n' + _trasa()}, "")
+    api_dir, main_path = _drzewo(
+        tmp_path, {"a": 'router = APIRouter(prefix="/a")\n' + _trasa()}, ""
+    )
 
     naruszenia = guard.check_router_mounts(api_dir, main_path)
 
@@ -388,7 +388,9 @@ def test_budzet_zmalal_zapala_czerwien(monkeypatch, tmp_path) -> None:
     """
     _bez_zapadek(monkeypatch, budzet=5)
     monkeypatch.setattr(guard, "SWIADOMIE_ODSTAWIONE", {"a": (("router",), "uzasadnienie")})
-    api_dir, main_path = _drzewo(tmp_path, {"a": 'router = APIRouter(prefix="/a")\n' + _trasa()}, "")
+    api_dir, main_path = _drzewo(
+        tmp_path, {"a": 'router = APIRouter(prefix="/a")\n' + _trasa()}, ""
+    )
 
     naruszenia = guard.check_router_mounts(api_dir, main_path)
 
@@ -425,7 +427,9 @@ def test_montaz_warunkowy_jest_naruszeniem(tmp_path) -> None:
 
 
 def test_druga_aplikacja_fastapi_jest_naruszeniem(tmp_path) -> None:
-    api_dir, main_path = _drzewo(tmp_path, {"druga": "from fastapi import FastAPI\ninna = FastAPI()\n"}, "")
+    api_dir, main_path = _drzewo(
+        tmp_path, {"druga": "from fastapi import FastAPI\ninna = FastAPI()\n"}, ""
+    )
 
     naruszenia = guard.check_premises(api_dir.parent, main_path)
 
@@ -443,7 +447,7 @@ def test_apirouter_poza_katalogiem_api_jest_naruszeniem(tmp_path) -> None:
     assert any("[router-poza-katalogiem-api]" in v for v in naruszenia)
 
 
-def test_zalozenia_sa_spelnione_na_HEAD() -> None:
+def test_zalozenia_sa_spelnione_na_head() -> None:
     """DEKLARACJA PRZYPIETA TESTEM (naglowek guarda, punkty 1-3).
 
     Naglowek twierdzi, ze repozytorium ma JEDNA aplikacje FastAPI, ZERO montazy
@@ -453,7 +457,7 @@ def test_zalozenia_sa_spelnione_na_HEAD() -> None:
     assert guard.check_premises() == []
 
 
-def test_guard_jest_zielony_na_HEAD() -> None:
+def test_guard_jest_zielony_na_head() -> None:
     """DEKLARACJA PRZYPIETA TESTEM: kazdy router w repo jest zamontowany albo
     stoi na liscie odstawionych z uzasadnieniem — a budzet zgadza sie co do trasy."""
     assert guard.check_router_mounts() == []

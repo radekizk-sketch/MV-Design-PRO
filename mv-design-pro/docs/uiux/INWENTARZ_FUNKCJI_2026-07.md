@@ -95,16 +95,29 @@ Nowe routery wpięte (dodane 2026-07-20, źródło: `api/main.py` include_router
 - **reference_engine** (`api/reference_engine.py`) — Reference Engine: `/api/reference/packs`,
   `/api/reference/packs/{pack_id}`, `/api/cases/{case_id}/reference/compliance`.
 
-Wpięcie pozostałych modułów `src/api/` — ZWERYFIKOWANE 2026-07-15 (U0.3, grep importów w żywym klonie):
+Wpięcie pozostałych modułów `src/api/` — PRZEMIERZONE 2026-08-08 (karta ROUTERY-MARTWE)
+po **tożsamości funkcji obsługi w żywej aplikacji**, nie po nazwie pliku ani napisie ścieżki.
+Pomiar z 2026-07-15 (grep importów) mylił się w trzech miejscach i wszystkie trzy są tu
+sprostowane — dlatego ta lista nie jest już utrzymywana ręcznie, tylko **pilnowana przez
+`scripts/router_mount_guard.py`** (router zdefiniowany = router wpięty albo świadomie
+odstawiony z uzasadnieniem; zapadka działa w obie strony).
+
 - **Wpięte pośrednio** (importowane przez zamontowane routery): analysis_case_context,
-  analysis_run_exports, canonical_run_views, domain_ops_policy, protection_runs
-  (przez protection_analysis_runs), v125_contracts, cases (w main.py).
-- **NIEWPIĘTE do aplikacji** (moduł istnieje, router niezamontowany w `main.py` ani pośrednio):
-  analysis_runs_index, analysis_runs_read, archive_diff, batch_execution (ma testy),
-  case_runs (ma testy), cloud_backup, design_synth, domain_operations (mutacje ENM idą przez
-  router enm.py — moduł do decyzji: wpiąć albo zarchiwizować), incremental_archive,
-  protection_coordination, protection_engine_v1, snapshots, topology_links.
-  Decyzja wpiąć/zarchiwizować per moduł = karty epików E7/E10/E13/E15 (zero bytów równoległych).
+  analysis_run_exports, canonical_run_views, domain_ops_policy, v125_contracts,
+  protection_runs (przez 5-liniowy reeksport `protection_analysis_runs` — 6 tras ŻYWYCH
+  pod `/api/...`; poprzedni pomiar zaliczał ten moduł do niewpiętych).
+- **SPROSTOWANIA poprzedniego pomiaru:** `cases` NIE był „wpięty w main.py" — `main.py`
+  nigdy go nie importował, więc jego 3 trasy nie istniały dla nikogo; `batch_execution`
+  JEST wpięty (karta BATCH-ROUTER); `case_runs` już nie istnieje jako plik.
+- **USUNIĘTE 2026-08-08** jako cienie zdolności wystawionych żywą trasą albo sieroty bez
+  konsumenta: analysis_runs_index, analysis_runs_read, cases, design_synth,
+  domain_operations, protection_engine_v1 (sam router HTTP; `domain/protection_engine_v1.py`
+  zostaje — jest żywy przez `application/execution_engine`), snapshots, topology_links.
+  Uzasadnienie per moduł w komunikacie commitu kasacji.
+- **ŚWIADOMIE ODSTAWIONE** (moduł zostaje, router niewpięty, decyzja o ZDOLNOŚCI należy do
+  osobnej karty — uzasadnienia merytoryczne w `SWIADOMIE_ODSTAWIONE` w guardzie):
+  protection_coordination, archive_diff, incremental_archive, cloud_backup.
+  Reguła właściciela: montować WYŁĄCZNIE z konsumentem — trasa bez odbiorcy to fantom.
 
 ## 5. Powierzchnia frontendu (stan zastany)
 
@@ -302,10 +315,12 @@ Synchronizacja inwentarza z rzeczywistą powierzchnią kodu na HEAD `b30249d` (g
 
 ### 8.5 Bez zmian (potwierdzone jako nadal aktualne)
 
-- Lista modułów NIEWPIĘTYCH z §4 (analysis_runs_index, analysis_runs_read, archive_diff,
-  batch_execution, case_runs, cloud_backup, design_synth, domain_operations, incremental_archive,
-  protection_coordination, protection_engine_v1, snapshots, topology_links) — żaden nie jest
-  zamontowany w `api/main.py` na HEAD `b30249d`.
+- ~~Lista modułów NIEWPIĘTYCH z §4~~ — **NIEAKTUALNE, rozstrzygnięte 2026-08-08**
+  (karta ROUTERY-MARTWE). Ten wpis był podwójnie nieprawdziwy: `batch_execution` był już
+  wpięty, a `case_runs` już nie istniał — czyli „potwierdzone jako nadal aktualne" nie
+  zostało wtedy przemierzone. Stan po rozstrzygnięciu: 8 modułów usuniętych, 4 świadomie
+  odstawione, granica pilnowana przez `scripts/router_mount_guard.py` (patrz §4).
+  Wpisu NIE odtwarzaj ręcznie — ręcznie utrzymywana lista modułów zawsze odjedzie od kodu.
 - ❌ pozostające (rewizja 2026-07-21c): BRAK — zero funkcji ❌ zero-UI. Zwarcia maszyn skorygowane
   ❌→◐ (widoczne przez ProofPack SC3F, G-SCM F2 — patrz macierz §6).
 - ◐ Stabilność SSCI: backend wpięty 2026-07-21 (`api/v126_academic.py` +
