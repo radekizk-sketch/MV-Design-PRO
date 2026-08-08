@@ -49,14 +49,21 @@ PREZENTACJA_TS = FRONT_AKADEMICKIE / "prezentacja.ts"
 NIEPREZENTOWANE_TS = FRONT_AKADEMICKIE / "nieprezentowane.ts"
 ROUTER_TSX = PROJECT_ROOT / "frontend" / "src" / "ui" / "workspace" / "WorkspaceSurfaceRouter.tsx"
 SOLVER_PY = PROJECT_ROOT / "backend" / "src" / "network_model" / "solvers" / "v126_academic.py"
-KONTROLA_JAKOSCI_PY = (
-    PROJECT_ROOT
+#: Plik kontroli jakości dla KAŻDEGO rodzaju wycofanego z toru projektanta.
+#: Wpis w rejestrze wycofań bez pozycji tutaj zapala `test_zdolnosc_wycofana_ma_kontrole_jakosci`
+#: — wycofanie ma PRZENOSIĆ zdolność do kontroli jakości, nie zostawiać jej bez konsumenta.
+KONTROLA_JAKOSCI_WYCOFANYCH: dict[str, Path] = {
+    "benchmark_validation": PROJECT_ROOT
     / "backend"
     / "tests"
     / "application"
     / "reference_networks"
-    / "test_ieee_benchmark_wiring.py"
-)
+    / "test_ieee_benchmark_wiring.py",
+    "voltage_stability": PROJECT_ROOT
+    / "backend"
+    / "tests"
+    / "test_v126_stabilnosc_bez_fabrykacji.py",
+}
 
 #: Klucze `parameters`, które NIE są polem formularza, bo docierają do solvera inną,
 #: udokumentowaną drogą. Lista ZAMKNIĘTA — każda pozycja z uzasadnieniem.
@@ -255,21 +262,36 @@ def test_zaden_ekran_trasowy_nie_prowadzi_do_rodzaju_wycofanego() -> None:
 def test_zdolnosc_wycofana_ma_kontrole_jakosci() -> None:
     """Wycofanie z ekranu PRZENOSI zdolność do kontroli jakości, nie kasuje jej.
 
-    Walidacja na sieciach odniesienia zniknęła z okna projektanta, więc jedyne,
-    co ją jeszcze wykonuje, to test kontroli jakości. Gdyby zniknął i on,
-    zdolność stałaby się martwym kodem, a pierwsza regresja solvera przeszłaby
-    niezauważona — dokładnie ten scenariusz pilnuje ten test.
+    Rodzaj zdjęty z okna projektanta traci JEDYNEGO widocznego konsumenta, więc
+    bez testu stałby się martwym kodem, a pierwsza regresja solvera przeszłaby
+    niezauważona.
+
+    KLASA, NIE INSTANCJA (karta QU-FABRYKACJA): pierwotnie ten test wymieniał
+    wprost jeden rodzaj i jeden plik. Drugie wycofanie pokazało, że taka postać
+    NIE pilnuje klasy — nowy wpis w rejestrze przeszedłby bez żadnej kontroli
+    jakości, bo test patrzył wyłącznie na rodzaj nazwany w karcie. Teraz wymóg
+    jest zbiorowy: KAŻDY wpis rejestru wycofań musi mieć wskazany plik kontroli
+    jakości, a plik musi realnie uruchamiać ten rodzaj.
     """
-    assert KONTROLA_JAKOSCI_PY.exists(), (
-        "Zniknęła kontrola jakości walidacji referencyjnej "
-        f"({KONTROLA_JAKOSCI_PY.name}) — zdolność wycofana z ekranu straciłaby "
-        "jedyne miejsce, w którym jest naprawdę uruchamiana."
-    )
-    tresc = _tekst(KONTROLA_JAKOSCI_PY)
-    assert (
-        "V126AnalysisType.BENCHMARK_VALIDATION" in tresc
-    ), "Kontrola jakości nie uruchamia już rodzaju BENCHMARK_VALIDATION."
-    assert "build_ieee_frozen_solver_benchmark_references" in tresc, (
+    tresci: dict[str, str] = {}
+    for kod in _rodzaje_nieprezentowane():
+        sciezka = KONTROLA_JAKOSCI_WYCOFANYCH.get(kod)
+        assert sciezka is not None, (
+            f"Rodzaj wycofany '{kod}' nie ma wskazanej kontroli jakości — dopisz plik "
+            "do KONTROLA_JAKOSCI_WYCOFANYCH albo nie wycofuj zdolności bez pokrycia."
+        )
+        assert sciezka.exists(), (
+            f"Zniknęła kontrola jakości rodzaju '{kod}' ({sciezka.name}) — zdolność "
+            "wycofana z ekranu straciłaby jedyne miejsce, w którym jest uruchamiana."
+        )
+        tresci[kod] = _tekst(sciezka)
+        assert (
+            f"V126AnalysisType.{kod.upper()}" in tresci[kod]
+        ), f"Kontrola jakości nie uruchamia już rodzaju {kod.upper()}."
+
+    # Walidacja referencyjna dodatkowo NIE MOŻE być tautologią: porównuje wynik
+    # naszego solvera z referencją z niezależnej implementacji.
+    assert "build_ieee_frozen_solver_benchmark_references" in tresci["benchmark_validation"], (
         "Kontrola jakości nie porównuje już solvera produkcyjnego z referencją "
         "niezależną — zostałby test tautologiczny."
     )
@@ -294,32 +316,55 @@ def test_rodzaj_wycofany_zachowuje_kontrakt_backendu() -> None:
         assert f"{kod}:" in etykiety, f"{kod}: wycofanie zabrało polską etykietę"
 
 
-def test_margines_pu_zdjety_z_prezentacji_a_wskaznik_l_zostal() -> None:
-    """Stabilność napięciowa: znika CAŁA rodzina wielkości z przybliżenia, zostaje L.
+def test_stabilnosc_napieciowa_nie_ma_juz_projektu_ekranu() -> None:
+    """Stabilność napięciowa zeszła z ekranu w CAŁOŚCI (karta QU-FABRYKACJA).
 
-    `margin_percent = (lambda_max - 1) * 100 %`, więc zdjęcie samego marginesu
-    z pozostawieniem krotności obciążenia byłoby zdjęciem tej samej liczby
-    w jednej skali i zostawieniem jej w drugiej (KLASA, nie instancja).
+    INTENCJA POPRZEDNIEGO PINU ZACHOWANA I ROZSZERZONA. Karta V126-WYGASZENIE
+    zdjęła z ekranu rodzinę P–U i zostawiła wskaźnik L, bo „ma jawne kryterium".
+    Pomiar karty QU-FABRYKACJA pokazał, że kryterium było jawne, ale LICZBA pod
+    nim — nie: wskaźnik powstawał jako ``P/S_sc · 4`` (współczynnik bez pokrycia
+    w danych i w normie, nazwa zapożyczona od opublikowanego wskaźnika liczonego
+    zupełnie inaczej), a moc zwarciowa węzła, na której stał, jest podana dla
+    1 z 315 szyn sieci odniesienia — dla reszty solver ją ZMYŚLAŁ. Skoro solver
+    nie wyznacza już ŻADNEJ wielkości tej analizy, ekran nie ma czego pokazać.
     """
-    tekst = _tekst(PREZENTACJA_TS)
-    blok = tekst.split("  voltage_stability: {", 1)[1].split("\n  },", 1)[0]
-    for pole in ("voltage_stability_margin_percent", "pv_curves", "lambda_max", "u_at_max"):
-        assert f"'{pole}'" not in blok, f"Projekt ekranu wciąż czyta {pole}"
-    assert "'l_index_per_bus'" in blok, "Wskaźnik L zniknął razem z marginesem"
-    assert "L < 0,5" in blok, "Kryterium wskaźnika L zniknęło razem z marginesem"
-
-
-def test_margines_pu_zostaje_w_odpowiedzi_solvera() -> None:
-    """Kontrakty wyniku są FROZEN — pole zniknęło z EKRANU, nie z odpowiedzi.
-
-    Dług nazwany wprost (`docs/v12xx/REJESTR_KONFLIKTOW.md`, V126-WYGASZENIE):
-    albo policzyć realną krzywą P–U rozpływem, albo zdjąć pole przy zmianie
-    wersji głównej. Ten test pilnuje, żeby „wycofanie z ekranu" nie przerodziło
-    się w cichą zmianę kontraktu.
-    """
-    solver = _tekst(SOLVER_PY)
-    assert '"voltage_stability_margin_percent": margin_min' in solver, (
-        "Pole marginesu zniknęło z odpowiedzi solvera — to zmiana kontraktu FROZEN, "
-        "a decyzja właściciela obejmowała wyłącznie prezentację."
+    prezentowane = _rodzaje_prezentowane()
+    assert "voltage_stability" not in prezentowane, (
+        "Stabilność napięciowa wróciła do PREZENTACJA — solver nie wyznacza dla niej "
+        "żadnej wielkości, więc ekran pokazywałby same puste stany."
     )
-    assert '"pv_curves": pv_curves' in solver, "Krzywe P–U zniknęły z odpowiedzi solvera."
+    assert "voltage_stability" in _rodzaje_nieprezentowane(), (
+        "Stabilność napięciowa zniknęła z obu zbiorów — to ciche wykluczenie, "
+        "dokładnie to, czemu ten strażnik ma zapobiegać."
+    )
+
+
+def test_rodzina_pu_i_qu_zostaje_w_kontrakcie_solvera_jako_jawny_brak() -> None:
+    """Kontrakty wyniku są FROZEN — zniknęła LICZBA, nie POLE.
+
+    Poprzedni pin (V126-WYGASZENIE) czytał literał ``"…": margin_min``, czyli
+    pilnował obecności pola PRZEZ nazwę zmiennej z wartością. Karta QU-FABRYKACJA
+    zamyka dług nazwany w tamtym wierszu rejestru („albo policzyć realną krzywą
+    P–U rozpływem, albo zdjąć pole przy zmianie wersji głównej") TRZECIĄ,
+    addytywną drogą: pole zostaje w kontrakcie, wartością jest jawny brak.
+    Dlatego pin czyta teraz ODPOWIEDŹ, a nie tekst źródła — asercja na literale
+    nie odróżniłaby `None` od liczby.
+    """
+    from network_model.solvers.v126_academic import V126AcademicSolver
+    from solver_input.v126_contracts import V126AcademicInput, V126BusInput
+
+    model = V126AcademicInput(
+        buses=[V126BusInput(ref="B1", name="Szyna", nominal_kv=15.0, fault_level_mva=250.0)]
+    )
+    wynik = V126AcademicSolver().run(V126AnalysisType.VOLTAGE_STABILITY, model)["result"]
+
+    for pole in ("pv_curves", "qv_curves", "l_index_per_bus", "modal_analysis"):
+        assert pole in wynik, f"Pole {pole} zniknęło z kontraktu FROZEN odpowiedzi solvera."
+    assert "voltage_stability_margin_percent" in wynik, (
+        "Pole marginesu zniknęło z odpowiedzi solvera — to zmiana kontraktu FROZEN, "
+        "a wycofanie miało zdjąć liczbę, nie pole."
+    )
+    assert wynik["voltage_stability_margin_percent"] is None
+    for wiersz in wynik["pv_curves"] + wynik["qv_curves"] + wynik["l_index_per_bus"]:
+        assert wiersz["bus_ref"] == "B1"
+        assert len(wiersz["brak_danych"]) > 40, "Brak powodu merytorycznego przy wielkości"

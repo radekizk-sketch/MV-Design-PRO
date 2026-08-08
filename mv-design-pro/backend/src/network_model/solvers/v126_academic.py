@@ -18,7 +18,14 @@ JsonDict = dict[str, Any]
 # przepisano na język inżynierski z pełną polszczyzną. Kontrakt maszynowy (`result`,
 # `formula`, `data`) NIETKNIĘTY — zmiana jest addytywna; odcisk przebiegu zmienia się
 # raz, bo ślad jest częścią wyniku, więc wersja solvera idzie w górę razem z nim.
-V126_SOLVER_VERSION = "v126-academic-whitebox-1.1"
+# 1.2 (karta QU-FABRYKACJA, 2026-08-08): solver przestał podstawiać współczynniki
+# w miejsce danych wejściowych. `_voltage_stability` nie wyznacza już żadnej
+# wielkości (wszystkie stały na zmyślonej mocy zwarciowej węzła i na zdolności
+# wytwórczej mocy biernej, której kontrakt nie niesie) — pola kontraktu zostają,
+# wartością jest jawny brak z powodem. `_z_conv_components` bierze częstotliwość
+# podstawową z kontraktu zamiast z zaszytego 50 Hz. Odciski przebiegów obu
+# rodzajów zmieniają się RAZ, razem z wersją.
+V126_SOLVER_VERSION = "v126-academic-whitebox-1.2"
 
 
 def _canonical_payload(payload: Any) -> str:
@@ -455,7 +462,9 @@ class V126AcademicSolver:
         step = (math.log10(hi) - math.log10(lo)) / (n - 1)
         return [round(10 ** (math.log10(lo) + step * k), 4) for k in range(n)]
 
-    def _z_conv_components(self, converter: Any, f_hz: float) -> tuple[complex, dict[str, complex]]:
+    def _z_conv_components(
+        self, converter: Any, f_hz: float, *, f_base_hz: float
+    ) -> tuple[complex, dict[str, complex]]:
         """Positive-sequence small-signal output impedance Z_conv(jw) of one
         grid-following current-controlled VSC at frequency ``f_hz`` (ohms), plus
         the intermediate transfer functions (for the white-box trace).
@@ -501,6 +510,15 @@ class V126AcademicSolver:
         MANDATORY card fields: current_loop_bandwidth_hz, pll_bandwidth_hz,
         filter_l_pu. Missing any of these raises ValueError (caught by the caller
         and surfaced as missing-data — NO fallback / NO fabricated value).
+
+        ``f_base_hz`` — częstotliwość podstawowa sieci, KEYWORD BEZ WARTOŚCI
+        DOMYŚLNEJ. Wcześniej ``w_base`` stało tu na zaszytym ``2π·50``, mimo że
+        kontrakt wejściowy niesie ``V126AcademicInput.base_frequency_hz`` i ten
+        sam plik czyta je w czterech innych miejscach (jakość energii, przemiatanie
+        SSCI, projekt uziemienia punktu neutralnego). Był to ten sam defekt, co
+        w `_voltage_stability`: zmyślone wejście przy dostępnej danej rzeczywistej
+        (reguła KLASA §5 — uczciwość w obrębie jednego pliku). Brak wartości
+        domyślnej sprawia, że nowe wywołanie nie powstanie bez podania podstawy.
         """
         f_ci = converter.current_loop_bandwidth_hz
         f_pll = converter.pll_bandwidth_hz
@@ -522,7 +540,7 @@ class V126AcademicSolver:
         t_d = converter.control_delay_ms * 1e-3 if converter.control_delay_ms is not None else 0.0
 
         w = 2.0 * math.pi * f_hz
-        w_base = 2.0 * math.pi * 50.0
+        w_base = 2.0 * math.pi * f_base_hz
         w_pu = w / w_base
         s_pu = complex(0.0, w_pu)
         a_ci = 2.0 * math.pi * f_ci / w_base
@@ -618,7 +636,9 @@ class V126AcademicSolver:
 
         # Probe Z_conv mandatory fields once (clear missing-data, no fabrication).
         try:
-            self._z_conv_components(converter, frequencies[0])
+            self._z_conv_components(
+                converter, frequencies[0], f_base_hz=model.base_frequency_hz
+            )
         except ValueError as exc:
             f_ci = converter.current_loop_bandwidth_hz
             f_pll = converter.pll_bandwidth_hz
@@ -662,7 +682,9 @@ class V126AcademicSolver:
             harmonic = f_hz / model.base_frequency_hz
             zdiag = self._driving_point_impedance(model, harmonic, with_source_shunt=True)
             z_grid = complex(zdiag[bus_idx])
-            z_conv, _components = self._z_conv_components(converter, f_hz)
+            z_conv, _components = self._z_conv_components(
+                converter, f_hz, f_base_hz=model.base_frequency_hz
+            )
             minor_loop = z_grid / z_conv if abs(z_conv) else complex(math.inf, 0.0)
             z_grid_rows.append({"f_hz": f_hz, **self._phasor(z_grid)})
             z_conv_rows.append({"f_hz": f_hz, **self._phasor(z_conv)})
@@ -674,7 +696,9 @@ class V126AcademicSolver:
         # White-box trace: emit the model + the per-step transfer functions at a
         # representative low (sub-PLL) frequency so the proof shows the mechanism.
         probe_f = frequencies[0]
-        _z_probe, comp = self._z_conv_components(converter, probe_f)
+        _z_probe, comp = self._z_conv_components(
+            converter, probe_f, f_base_hz=model.base_frequency_hz
+        )
         f_pll = float(converter.pll_bandwidth_hz)
         z_base = converter.rated_kv**2 / converter.rated_mva if converter.rated_kv else 1.0
         t_d_ms = converter.control_delay_ms if converter.control_delay_ms is not None else 0.0
@@ -792,88 +816,160 @@ class V126AcademicSolver:
         }
 
     def _voltage_stability(self, model: V126AcademicInput, trace: TraceBuilder) -> JsonDict:
-        pv_curves: list[JsonDict] = []
-        qv_curves: list[JsonDict] = []
-        l_indices: list[JsonDict] = []
-        smallest = 999.0
-        participants: list[str] = []
-        for bus in model.buses:
-            net_load = max(bus.load_mw - bus.generation_mw, 0.05)
-            fault_level = bus.fault_level_mva or max(25.0, bus.nominal_kv * 10.0)
-            strength = fault_level / max(net_load, 0.05)
-            lambda_max = 1.0 + min(2.5, strength / 20.0)
-            margin = (lambda_max - 1.0) * 100.0
-            l_index = min(0.98, net_load / max(fault_level, 1e-6) * 4.0)
-            eigen = max(0.001, (1.0 - l_index) * bus.voltage_pu)
-            if eigen < smallest:
-                smallest = eigen
-                participants = [bus.ref]
-            pv_curves.append(
-                {
-                    "bus_ref": bus.ref,
-                    "lambda_max": _round(lambda_max),
-                    "u_at_max": _round(max(0.7, bus.voltage_pu - 0.12 * (lambda_max - 1.0))),
-                    "margin_percent": _round(margin, 3),
-                }
-            )
-            q_available = abs(bus.generation_mvar) + 0.15 * max(bus.generation_mw, 0.0)
-            q_min = -0.35 * net_load
-            qv_curves.append(
-                {
-                    "bus_ref": bus.ref,
-                    "q_min_mvar": _round(q_min, 4),
-                    "q_available_mvar": _round(q_available, 4),
-                    "margin_mvar": _round(q_available - abs(q_min), 4),
-                }
-            )
-            l_indices.append(
-                {"bus_ref": bus.ref, "l_index": _round(l_index, 5), "alert": l_index > 0.5}
-            )
+        """Stabilność napięciowa — analiza WSTRZYMANA (karta QU-FABRYKACJA).
+
+        DLACZEGO SOLVER PRZESTAJE TU LICZYĆ. Każda z czterech wielkości, jakie ta
+        analiza podawała, powstawała ze WSPÓŁCZYNNIKA BEZ POKRYCIA W DANYCH albo
+        z wejścia, którego model nie niesie i które solver sobie DOMYŚLAŁ:
+
+        1. ZAPAS MOCY BIERNEJ (`qv_curves`) — zdolność wytwórcza brana jako
+           ``0,15 · P``, zapotrzebowanie jako ``0,35 · P``. Zapotrzebowanie model
+           NIESIE (``bus.load_mvar``, używane niżej w `_branch_current_a`), więc
+           liczenie go z krotności mocy czynnej było fabrykacją przy dostępnej
+           danej rzeczywistej. Zdolność wytwórcza NIE MA DROGI DO SOLVERA:
+           `V126BusInput` ani `V126ConverterInput` nie mają pola zdolności biernej,
+           a w modelu ENM (pomiar 2026-08-08 na `sldSubstrate52s` i `demo_oze_sc`)
+           `Generator.limits.q_min_mvar/q_max_mvar` nie niesie ŻADEN z 35 wytwórców,
+           krzywej producenta `pq_curve` — żaden, ``cosphi_min`` — żaden;
+           ``materialized_params.qmin_mvar`` niesie 7 z 35 (20 %). Margines jest
+           RÓŻNICĄ obu członów, więc jest tak uczciwy, jak jego gorszy człon:
+           pokrycie 0 %. Nazwa „krzywa Q–U" była do tego fałszywym rodowodem —
+           we wzorze nie występowało napięcie w żadnej postaci.
+        2. MARGINES OBCIĄŻALNOŚCI P–U (`pv_curves`,
+           `voltage_stability_margin_percent`) — ``1 + min(2,5; S_sc/P/20)``,
+           dalej ``0,7`` i ``0,12`` w napięciu w punkcie krytycznym. Zdjęty
+           z ekranu kartą V126-WYGASZENIE z długiem nazwanym wprost („albo liczyć
+           realną krzywą P–U rozpływem, albo zdjąć pole"). Ta karta dług ZAMYKA:
+           pole kontraktu zostaje, znika liczba.
+        3. WSKAŹNIK L (`l_index_per_bus`) — ``P/S_sc · 4`` z obcięciem na ``0,98``.
+           Czwórka nie ma pokrycia ani w danych, ani w normie. Opublikowany
+           wskaźnik L (Kessel–Glavitsch 1986) liczy się z macierzy F wyprowadzonej
+           z Y-bus przy ZBIEŻNYM rozpływie — to inny wzór, więc nazwa „L" była
+           trzecim fałszywym rodowodem tego samego pliku.
+        4. WARTOŚĆ WŁASNA (`modal_analysis`) — ``(1 − L) · U_pu``, czyli pochodna
+           punktu 3, do tego ważona napięciem, które model wypełnia wartością
+           domyślną kontraktu (pomiar: ``voltage_pu ≠ 1,0`` dla 0 z 408 szyn).
+
+        WSPÓLNY MIANOWNIK: moc zwarciowa węzła. Wszystkie cztery stały na
+        ``bus.fault_level_mva or max(25; U_n · 10)`` — a pomiar pokazał, że pole
+        jest podane dla 1 z 315 szyn (`sldSubstrate52s`) i 1 z 93 (`demo_oze_sc`),
+        czyli dla 99,7 % węzłów liczba wchodziła ZMYŚLONA. Zmyślone wejście psuje
+        nie tylko ekran, ale i zapis audytowy oraz pakiet dowodowy.
+
+        CO ZOSTAJE: kontrakt odpowiedzi (FROZEN) w komplecie — te same klucze,
+        ta sama struktura, wartości ``None`` i DODATKOWE pole ``brak_danych``
+        z powodem po polsku. Nigdy zero udające pomiar: zero jest wynikiem
+        pomiaru, ``None`` jest jego brakiem i te dwa stany nie mogą wyglądać
+        tak samo. Blok wiarygodności melduje „dane niekompletne".
+
+        JAK PRZYWRÓCIĆ (dług nazwany, `docs/v12xx/REJESTR_KONFLIKTOW.md`,
+        wiersz QU-FABRYKACJA): (a) doprowadzić do kontraktu moc zwarciową węzła
+        i zdolność wytwórczą mocy biernej (`GenLimits` → most ENM→V12.6), (b)
+        policzyć wskaźnik L z macierzy F na Y-bus przy rozpływie (moduł `_ybus`
+        w tym pliku już istnieje), (c) krzywą P–U liczyć rozpływem, nie ze
+        sztywności węzła. Do tego czasu analiza melduje uczciwy brak.
+        """
+        powod_qu = (
+            "Zapas mocy biernej nie jest wyznaczany: kontrakt wejściowy nie niesie "
+            "zdolności wytwórczej mocy biernej (ani granic Q wytwórcy, ani krzywej "
+            "producenta P–Q), a poprzednia wartość powstawała z krotności mocy czynnej "
+            "bez pokrycia w danych. Uzupełnij granice mocy biernej źródeł, aby "
+            "przywrócić tę wielkość."
+        )
+        powod_pu = (
+            "Margines obciążalności P–U nie jest wyznaczany: powstawał z przybliżenia "
+            "ze sztywności węzła o zaszytych współczynnikach, a nie z krzywej P–U "
+            "liczonej rozpływem. Wymaga rozpływu mocy na modelu przypadku."
+        )
+        powod_l = (
+            "Wskaźnik bliskości załamania napięcia nie jest wyznaczany: poprzedni wzór "
+            "mnożył stosunek obciążenia do mocy zwarciowej przez współczynnik bez "
+            "pokrycia w danych i w normie. Wymaga wyznaczenia z macierzy admitancyjnej "
+            "przy zbieżnym rozpływie oraz mocy zwarciowej węzłów w modelu."
+        )
+        pv_curves: list[JsonDict] = [
+            {
+                "bus_ref": bus.ref,
+                "lambda_max": None,
+                "u_at_max": None,
+                "margin_percent": None,
+                "brak_danych": powod_pu,
+            }
+            for bus in model.buses
+        ]
+        qv_curves: list[JsonDict] = [
+            {
+                "bus_ref": bus.ref,
+                "q_min_mvar": None,
+                "q_available_mvar": None,
+                "margin_mvar": None,
+                "brak_danych": powod_qu,
+            }
+            for bus in model.buses
+        ]
+        l_indices: list[JsonDict] = [
+            {
+                "bus_ref": bus.ref,
+                "l_index": None,
+                "alert": None,
+                "brak_danych": powod_l,
+            }
+            for bus in model.buses
+        ]
         trace.add(
             "voltage_stability_indices",
-            "L_j ~= P_load / S_sc * 4; PM = (lambda_max - 1) * 100%",
-            {"buses": len(model.buses)},
-            "Dla każdego węzła wyznaczono margines obciążalności z krzywej P–U, zapas mocy "
-            "biernej z krzywej Q–U oraz wskaźnik bliskości załamania napięcia L.",
-            {"smallest_eigenvalue": _round(smallest, 6)},
-            "Wskaźnik L jest bezwymiarowy; margines obciążalności w %.",
+            r"\text{brak danych wejściowych} \Rightarrow \text{wielkość niewyznaczana}",
+            {
+                "buses": len(model.buses),
+                "buses_with_fault_level": sum(
+                    1 for bus in model.buses if bus.fault_level_mva is not None
+                ),
+                "reactive_capability_source": None,
+            },
+            "Żadna z wielkości stabilności napięciowej nie została wyznaczona — "
+            "brakuje mocy zwarciowej węzłów oraz zdolności wytwórczej mocy biernej, "
+            "a poprzednie wzory zastępowały te dane współczynnikami bez pokrycia.",
+            {
+                "pv_curves": None,
+                "qv_curves": None,
+                "l_index_per_bus": None,
+                "modal_analysis": None,
+            },
+            "Brak wielkości do sprawdzenia jednostek — analiza nie wyznacza liczb.",
             result_pl=(
-                f"Najmniejszy w sieci zapas do załamania (1 − L, ważony napięciem): {_round(smallest, 6)}"
+                "Analiza wstrzymana: brak danych wejściowych (moc zwarciowa węzłów "
+                f"podana dla {sum(1 for bus in model.buses if bus.fault_level_mva is not None)} "
+                f"z {len(model.buses)} szyn; zdolność wytwórcza mocy biernej nieprzenoszona "
+                "przez kontrakt wejściowy)."
             ),
         )
-        margin_min = _round(min((row["margin_percent"] for row in pv_curves), default=0.0), 3)
-        l_values = [float(row["l_index"]) for row in l_indices]
-        # K-08: sanity-bounds — margines skończony i nieujemny, L-index w [0,1]
-        # (L>1 lub eigen<=0 => kolaps napięciowy / wynik niefizyczny).
+        # Blok wiarygodności: nie ma czego oceniać, więc melduje „dane niekompletne"
+        # — ten sam stan, co każda inna analiza V12.6 bez kompletu wejść. Lista
+        # kontroli pozostaje nazwana, żeby przywrócenie wielkości wracało razem
+        # ze swoimi granicami, a nie do bloku bez kontroli.
         sanity = _sanity_block(
             [
-                ("margin_finite", _finite(margin_min), "Margines P-V nieskończony/NaN"),
-                ("margin_nonneg", margin_min >= 0.0, "Margines P-V < 0 (układ za punktem kolapsu)"),
-                (
-                    "l_index_range",
-                    _finite(*l_values) and all(0.0 <= v <= 1.0 for v in l_values),
-                    "L-index poza [0,1] (niefizyczny)",
-                ),
-                (
-                    "eigenvalue_positive",
-                    _finite(smallest) and smallest > 0.0,
-                    "Zapas do załamania <= 0 (kolaps napięciowy)",
-                ),
+                ("margin_finite", False, "Margines P-V nieskończony/NaN"),
+                ("margin_nonneg", False, "Margines P-V < 0 (układ za punktem kolapsu)"),
+                ("l_index_range", False, "L-index poza [0,1] (niefizyczny)"),
+                ("eigenvalue_positive", False, "Zapas do załamania <= 0 (kolaps napięciowy)"),
             ],
-            has_inputs=len(model.buses) > 0,
+            has_inputs=False,
         )
         return {
             "pv_curves": pv_curves,
             "qv_curves": qv_curves,
             "modal_analysis": {
-                "smallest_eigenvalue": _round(smallest, 6),
+                "smallest_eigenvalue": None,
                 "critical_mode": {
-                    "eigenvalue": _round(smallest, 6),
-                    "participating_buses": participants,
+                    "eigenvalue": None,
+                    "participating_buses": [],
                 },
+                "brak_danych": powod_l,
             },
             "l_index_per_bus": l_indices,
-            "voltage_stability_margin_percent": margin_min,
+            "voltage_stability_margin_percent": None,
+            "brak_danych": powod_pu,
             "sanity": sanity,
         }
 
