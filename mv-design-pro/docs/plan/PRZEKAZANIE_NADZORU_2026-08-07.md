@@ -376,7 +376,7 @@ moduł już tego nie rozstrzyga.
    robi kod, tylko człowiek.
 
    **DWA ZOSTAJĄ, każdy z NAZWANYMI brakującymi polami** (nie z powodem
-   zakresowym): `protection_settings` — sześć pól bez dostawcy, bo metoda Hoppla
+   zakresowym): `protection_settings` — dziewięć pól bez dostawcy, bo metoda Hoppla
    wymaga gałęzi c_max ORAZ c_min ORAZ rozpływu, a jeden bieg kanoniczny niesie
    jeden `c_factor` (dokumentuje to sam tor nadprądowy: `_build_fault_levels`
    wypełnia klucz min ALBO max, drugi zostawia `None`); nastawy produkuje wyłącznie
