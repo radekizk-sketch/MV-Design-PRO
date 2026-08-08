@@ -22,6 +22,7 @@ Kod wyjscia odbierany zawsze bezposrednio (`main()`), nigdy przez potok.
 
 from __future__ import annotations
 
+import ast
 from pathlib import Path
 
 import solver_input_substitute_guard as guard
@@ -487,12 +488,30 @@ def test_kazdy_model_czytany_przez_zakres_jest_w_mapie() -> None:
     )
 
 
-def test_zbiory_mapy_sa_rozlaczne() -> None:
-    """Korzen nie moze byc jednoczesnie w mapie i poza nia — inaczej suma klamie."""
-    wspolne = sorted(
-        rel for rel in guard.MODEL_ROOTS_POZA_MAPA if guard.is_covered_by_contract_sources(rel)
+def test_wylaczenie_wygrywa_z_pokryciem_prefiksem() -> None:
+    """Wykluczenie jest ODJECIEM od pokrycia i MUSI wygrywac z prefiksem korzenia.
+
+    INTENCJA ZACHOWANA, KANON ZMIENIONY (runda 4). Pierwotnie test zadal, zeby
+    zbiory byly ROZLACZNE: wykluczony modul nie mogl byc objety zadnym wpisem
+    `CONTRACT_SOURCES`. Bylo to prawda, dopoki wykluczenie dzialalo „przez
+    nieobecnosc". Po dolozeniu `network_model/solvers` jako CALOSCI wykluczony
+    `stability_rms/contracts.py` LEZY pod pokrytym prefiksem — i tak ma byc:
+    wykluczenie stalo sie jawnym odjeciem stosowanym w `contract_fields()`.
+    Rozlacznosc nazw przestala byc wiec wlasciwym niezmiennikiem; wlasciwym jest
+    SKUTECZNOSC odjecia, ktora pilnuje `test_wylaczenie_korzenia_dziala_takze_na_mape_pol`.
+
+    Ten test trzyma druga polowe tej samej pary: wpis wykluczenia nie moze byc
+    BEZPRZEDMIOTOWY. Modul spoza pokrycia i tak nie wnosilby pol, wiec wpis o nim
+    udawalby rozstrzygniecie, ktorego nie ma — i ukrywalby fakt, ze prawdziwe
+    zrodlo pol lezy gdzie indziej.
+    """
+    bezprzedmiotowe = sorted(
+        rel for rel in guard.MODEL_ROOTS_POZA_MAPA if not guard.is_covered_by_contract_sources(rel)
     )
-    assert wspolne == [], f"Korzenie jednoczesnie w mapie i poza nia: {wspolne}"
+    assert bezprzedmiotowe == [], (
+        f"Wpisy wykluczen bez skutku (modul i tak poza pokryciem): {bezprzedmiotowe}. "
+        "Albo objeto go zrodlem pol i wykluczenie ma sens, albo zdejmij wpis."
+    )
 
 
 def test_kazde_wylaczenie_korzenia_niesie_powod_merytoryczny() -> None:
@@ -527,3 +546,122 @@ def test_model_domenowy_klasycznych_solverow_jest_w_mapie() -> None:
     pola = guard.contract_fields()
     for pole in ("cos_phi", "voltage_level", "voltage_magnitude", "voltage_angle", "un_kv"):
         assert pole in pola, f"Pole modelu domenowego '{pole}' wypadlo z mapy bramki."
+
+
+# ---------------------------------------------------------------------------
+# KONTRAKT ZADEKLAROWANY WEWNATRZ SKANOWANEJ WARSTWY (runda 4)
+# ---------------------------------------------------------------------------
+#
+# ZNALEZISKO. `CONTRACT_SOURCES` to korzenie modeli, a pin mapy wyprowadza je
+# z IMPORTOW warstwy objetej skanem. Kontrakt zadeklarowany WEWNATRZ tej warstwy
+# nie jest przez nia importowany, wiec pin Z KONSTRUKCJI nie mogl zazadac o nim
+# decyzji. Pomiar: 36 plikow warstwy deklaruje 976 pol, 675 nazw unikalnych,
+# 314 poza mapa; zawezone do `*Input`/`*Options` z typem liczbowym — 28 pol.
+# Iniekcja `wejscie.transformer_current_a or 250.0` dawala RC=0 „PASS".
+
+
+def test_kontrakt_zadeklarowany_w_skanowanej_warstwie_jest_w_mapie(
+    tmp_path, monkeypatch, capsys
+) -> None:
+    """Iniekcja nadzorcy z rundy 4: model zadeklarowany W TYM SAMYM pliku, co solver.
+
+    Kontrola DWUSTRONNA: bez warstwy w zrodlach pol bramka MA milczec (tak bylo
+    przed naprawa), z warstwa — gryzc. Inaczej test nie mierzylby zawartosci mapy.
+    """
+    root = tmp_path / "src"
+    (root / "network_model" / "solvers").mkdir(parents=True)
+    (root / "network_model" / "solvers" / "dobor.py").write_text(
+        "from pydantic import BaseModel\n\n\n"
+        "class CableSelectionInput(BaseModel):\n"
+        "    transformer_current_a: float | None = None\n\n\n"
+        "def licz(wejscie: CableSelectionInput) -> float:\n"
+        "    return wejscie.transformer_current_a or 250.0\n",
+        encoding="utf-8",
+    )
+    (root / "solver_input").mkdir(parents=True)
+    (root / "solver_input" / "kontrakty.py").write_text(KONTRAKT, encoding="utf-8")
+
+    monkeypatch.setattr(guard, "BACKEND_SRC", root)
+    monkeypatch.setattr(guard, "ZASTANE_ZASTEPNIKI", {})
+    monkeypatch.setattr(guard, "MODEL_ROOTS_POZA_MAPA", {})
+    monkeypatch.setattr(guard, "SCAN_ROOTS", ("network_model/solvers", "solver_input"))
+
+    monkeypatch.setattr(guard, "CONTRACT_SOURCES", ("solver_input",))
+    assert guard.main() == 0, "Kontrola dwustronna: bez warstwy w mapie ma byc cicho."
+    capsys.readouterr()
+
+    monkeypatch.setattr(guard, "CONTRACT_SOURCES", ("solver_input", "network_model/solvers"))
+    assert guard.main() == 1
+    assert "A:or:wejscie.transformer_current_a" in capsys.readouterr().out
+
+
+def test_kazdy_skanowany_korzen_jest_zrodlem_pol() -> None:
+    """INWARIANT ZAMYKAJACY KLASE: co skanujemy, to tez czytamy jako model.
+
+    Pin mapy z rundy 3 pilnuje korzeni ZEWNETRZNYCH (wyprowadzonych z importow).
+    Ten pilnuje WEWNETRZNYCH: kazdy korzen skanowania musi byc jednoczesnie
+    zrodlem pol, inaczej kontrakt zadeklarowany w skanowanej warstwie jest dla
+    bramki niewidzialny — dokladnie luka rundy 4. Oba piny razem zamykaja klase
+    z obu stron, wiec nie da sie jej powtorzyc po raz czwarty.
+    """
+    niepokryte = sorted(
+        root
+        for root in guard.SCAN_ROOTS
+        if not guard.is_covered_by_contract_sources(f"{root}/x.py")
+    )
+    assert niepokryte == [], (
+        f"Korzenie skanowane, ale nieczytane jako zrodlo pol: {niepokryte}. "
+        "Kontrakt zadeklarowany w takiej warstwie bylby dla bramki niewidzialny."
+    )
+
+
+def test_wylaczenie_korzenia_dziala_takze_na_mape_pol() -> None:
+    """PREDYKATY PARAMI (regula KLASA §3) — jedno zrodlo prawdy dla wejscia i wyjscia.
+
+    Do rundy 4 `MODEL_ROOTS_POZA_MAPA` bylo czytane WYLACZNIE przez pin mapy,
+    a `contract_fields()` wykluczalo modul tylko „przez nieobecnosc" w
+    `CONTRACT_SOURCES`. Dwa niezalezne warunki, ktore dzis sie zgadzaja: gdy
+    runda 4 dolozyla `network_model/solvers` jako CALOSC, wykluczony
+    `stability_rms/contracts.py` wrocil do mapy tylnymi drzwiami i przywrocil
+    8 kolizji `real`/`imag`. Ten test pilnuje, ze wykluczenie znaczy to samo
+    w obu miejscach.
+    """
+    wykluczone = set(guard.MODEL_ROOTS_POZA_MAPA)
+    assert wykluczone, "Brak wykluczen — test bezprzedmiotowy, sprawdz konfiguracje."
+    pola = guard.contract_fields()
+    for rel in wykluczone:
+        sciezka = guard.BACKEND_SRC / rel
+        if not sciezka.is_file():
+            continue
+        wlasne = set()
+        drzewo = ast.parse(sciezka.read_text(encoding="utf-8"))
+        for node in ast.walk(drzewo):
+            if isinstance(node, ast.ClassDef):
+                for stmt in node.body:
+                    if isinstance(stmt, ast.AnnAssign) and isinstance(stmt.target, ast.Name):
+                        wlasne.add(stmt.target.id)
+        # Pola WYLACZNIE tego modulu nie moga trafic do mapy przez zaden inny korzen.
+        tylko_tam = {"real", "imag"} & wlasne
+        assert tylko_tam, f"{rel}: modul nie deklaruje juz kolidujacych pol — zdejmij wpis."
+        assert not (tylko_tam & pola), (
+            f"{rel}: pola {sorted(tylko_tam & pola)} wrocily do mapy mimo wykluczenia — "
+            "warunek wejscia i wyjscia ze zbioru rozjechal sie (regula KLASA §3)."
+        )
+
+
+def test_jawna_nie_liczba_nie_jest_podstawieniem() -> None:
+    """`float("nan")` to MELDUNEK BRAKU w typie liczbowym, nie zmyslony pomiar.
+
+    Rozroznienie jest strukturalne (argument `float` jest napisem nieliczbowym),
+    nie lista wyjatkow: NaN nie moze udawac pomiaru, bo kazde dzialanie na nim
+    daje NaN, a warstwa wiarygodnosci lapie to jako wynik niefizyczny.
+    Zmierzone: bez tej reguly zapadka zamrozilaby 4 pozycje w
+    `power_flow_oltc_studies.py`, gdzie podstawiona wartosc trafia WYLACZNIE
+    do tekstu sladu.
+    """
+    assert guard.is_not_a_number_literal(ast.parse('float("nan")', mode="eval").body)
+    assert guard.is_not_a_number_literal(ast.parse('float("inf")', mode="eval").body)
+    assert not guard.is_numeric(ast.parse('float("nan")', mode="eval").body)
+    # Kontrola dodatnia: konwersja REALNEJ danej nadal jest liczba.
+    assert guard.is_numeric(ast.parse("float(base_p)", mode="eval").body)
+    assert guard.is_numeric(ast.parse("float(250)", mode="eval").body)
