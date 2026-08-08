@@ -79,10 +79,26 @@ GRANICE BRAMKI — czego ta detekcja NIE wykrywa (jawnie, zamiast cicho)
     w modelu pydantic. To swiadoma czesc kontraktu (i osobna decyzja projektowa),
     a nie podstawienie w kodzie liczacym. Bramka patrzy na warstwe solverow i
     mostu, nie na definicje modeli.
- 5. **Pole o nazwie nieistniejacej w zadnym modelu wejsciowym** — regula stoi na
-    zbiorze zadeklarowanych pol, wiec dana czytana przez `dict`/`Any` bez modelu
-    jest niewidoczna. Pomiar mapy pol: patrz `main()`, ktory PADA przy pustej
-    mapie — martwa regula byloby cicha dziura.
+ 5. **Dana, ktora NIE JEST polem zadeklarowanym w zadnym z `CONTRACT_SOURCES`** —
+    czyli odczyt przez `dict`/`Any` bez modelu, przez klase spoza wymienionych
+    korzeni albo przez pole nadane dynamicznie (`setattr`). Regula stoi na zbiorze
+    zadeklarowanych pol i widzi DOKLADNIE tyle, ile ten zbior obejmuje.
+
+    UWAGA — TA GRANICA BYLA MYLACA I TO KOSZTOWALO PRAWDZIWA LUKE (runda 3,
+    2026-08-08). Poprzednie brzmienie mowilo „pole nieistniejace w ZADNYM modelu
+    wejsciowym", z czego czytelnik wyciagal wniosek, ze pole ZADEKLAROWANE jest
+    pokryte. Nie bylo: `CONTRACT_SOURCES` obejmowalo tylko kontrakt V12.6 i model
+    ENM, a klasyczne solvery czytaja model domenowy z `network_model/core/**`.
+    Zmierzona luka: 54 pola `core` poza mapa, 165 ich odczytow w warstwie objetej
+    skanem; iniekcja `return gen.cos_phi or 0.95` w `power_flow_newton.py` dawala
+    RC=0 „PASS". Zdanie granicy WYLACZALO CZUJNOSC zamiast ja kierowac — a to
+    grozniejsze niz sam defekt (regula KLASA §4). Korzen zostal dolozony.
+
+    ZEBY TO SIE NIE POWTORZYLO, granica ma PIN, nie tylko akapit:
+    `test_kazdy_model_czytany_przez_zakres_jest_w_mapie` wyprowadza korzenie modeli
+    Z IMPORTOW warstwy objetej skanem i zada, zeby kazdy byl w `CONTRACT_SOURCES`.
+    Solver dopisany na NOWYM kontrakcie zapali czerwien, zamiast po cichu wypasc
+    poza zasieg reguly.
  6. **Wykonanie z napisu** (`eval`, `exec`) — poza zasiegiem analizy skladni.
 
 ZAKRES SKANU
@@ -124,9 +140,79 @@ BACKEND_SRC = PROJECT_ROOT / "backend" / "src"
 #: Korzenie skanowania (wzgledem `BACKEND_SRC`) — patrz „ZAKRES SKANU".
 SCAN_ROOTS: tuple[str, ...] = ("network_model/solvers", "solver_input")
 
-#: Zrodla zbioru pol kontraktow wejsciowych. Zbior jest CZYTANY Z KODU, zeby
-#: zmiana kontraktu nie rozbrajala reguly po cichu.
-CONTRACT_SOURCES: tuple[str, ...] = ("solver_input", "enm/models.py")
+#: Zrodla zbioru pol modeli WEJSCIOWYCH. Zbior jest CZYTANY Z KODU, zeby zmiana
+#: kontraktu nie rozbrajala reguly po cichu.
+#:
+#: `network_model/core` DOLOZONE 2026-08-08 (runda 3, znalezisko nadzorcy).
+#: Poprzedni zbior obejmowal wylacznie kontrakt V12.6 i model ENM, a KLASYCZNE
+#: solvery (IEC 60909, Newton-Raphson, ZIP) czytaja model DOMENOWY z
+#: `network_model/core/**`. Pomiar luki: 120 pol zadeklarowanych w `core`, z czego
+#: **54 nie bylo w mapie**, a warstwa objeta skanem czytala je **165 razy**
+#: (`node_id` 68x, `voltage_level` 24x, `cos_phi` 8x, `un_kv` 3x). Iniekcja
+#: `return gen.cos_phi or 0.95` dopisana do `power_flow_newton.py` — pliku W
+#: ZAKRESIE SKANU — dawala **RC=0 „PASS"**, czyli dokladnie ta forme, ktora ta
+#: bramka zwalcza, przepuszczala w warstwie zadeklarowanej jako wlasny zakres.
+#:
+#: WYROCZNIA MUSI CHODZIC PO TYM SAMYM ZBIORZE, CO KOD. Zbior zrodel modeli i
+#: zakres skanu nie moga sie rozjezdzac — pilnuje tego
+#: `test_solver_input_substitute_guard.py::test_kazdy_model_czytany_przez_zakres_jest_w_mapie`,
+#: ktore wyprowadza korzenie modeli Z IMPORTOW warstwy objetej skanem, a nie
+#: z listy pisanej recznie. Nowy solver na nowym kontrakcie nie powtorzy tej luki.
+CONTRACT_SOURCES: tuple[str, ...] = (
+    # Kontrakty wejsciowe i model ENM (zakres pierwotny).
+    "solver_input",
+    "enm/models.py",
+    # Model DOMENOWY klasycznych solverow (runda 3 — patrz akapit wyzej).
+    "network_model/core",
+    # Pozostale moduly-modele IMPORTOWANE przez warstwe objeta skanem. Lista jest
+    # WYPROWADZONA z importow (`model_roots_read_by_scope`), a nie pisana z glowy;
+    # kompletnosc pilnuje test `test_kazdy_model_czytany_przez_zakres_jest_w_mapie`.
+    # Pomiar przyrostowy per korzen: 21 z nich kosztuje +0 trafien (czysty zysk
+    # precyzji), `enm/domain_ops_models.py` ujawnia 2 realne, a
+    # `network_model/solvers/power_flow_newton.py` — 1 realne.
+    "domain/study_case.py",
+    "enm/domain_ops_models.py",
+    "network_model/catalog/audit2_catalogs.py",
+    "network_model/catalog/repository.py",
+    "network_model/catalog/types.py",
+    "network_model/solvers/cable_ampacity_derating.py",
+    "network_model/solvers/cable_voltage_drop.py",
+    "network_model/solvers/conductor_thermal_withstand.py",
+    "network_model/solvers/equipment_checks/cable_thermal_aging.py",
+    "network_model/solvers/equipment_checks/ct_burden_saturation.py",
+    "network_model/solvers/equipment_checks/transformer_losses.py",
+    "network_model/solvers/equipment_checks/vt_burden_voltage_drop.py",
+    "network_model/solvers/fault_loop_iec60364.py",
+    "network_model/solvers/frt_hvrt/contracts.py",
+    "network_model/solvers/power_flow_inverter.py",
+    "network_model/solvers/power_flow_newton.py",
+    "network_model/solvers/power_flow_oltc.py",
+    "network_model/solvers/power_flow_types.py",
+    "network_model/solvers/power_flow_zip.py",
+    "network_model/solvers/short_circuit_contributions.py",
+    "network_model/solvers/short_circuit_core.py",
+    "network_model/solvers/state_estimation_wls.py",
+    "network_model/whitebox/tracer.py",
+)
+
+#: Korzenie modeli SWIADOMIE POZA mapa pol — z POWODEM MERYTORYCZNYM, nie „poza
+#: zakresem". Zbior jest drugim koncem pary: `test_kazdy_model_czytany_przez_zakres_jest_w_mapie`
+#: zada, zeby KAZDY korzen wyprowadzony z importow byl albo w `CONTRACT_SOURCES`,
+#: albo TUTAJ. Nowy solver na nowym kontrakcie nie moze wiec po cichu wypasc poza
+#: zasieg reguly — musi dostac DECYZJE. Ten sam wzorzec, co
+#: „prezentowane + nieprezentowane = komplet kontraktu".
+MODEL_ROOTS_POZA_MAPA: dict[str, str] = {
+    "network_model/solvers/stability_rms/contracts.py": (
+        "Deklaruje pola `real` i `imag` (fazor jako model danych), a to sa NAZWY "
+        "ATRYBUTOW WBUDOWANEGO typu `complex`. Mapa pol jest plaskim zbiorem NAZW, "
+        "wiec wlaczenie tego korzenia zamienia kazdy odczyt `z.real` / `z.imag` "
+        "w warstwie solverow w trafienie: pomiar dal 8 falszywych alarmow "
+        "(`losses_total.real`, `loss_total.imag`, `voltage.imag`, `z.imag`), czyli "
+        "kolizje nazw, a nie odczyty danych modelu. Zamrozenie ich w budzecie "
+        "byloby dokladnie tym halasem, przed ktorym bronila runda 2. Pola tego "
+        "modulu nie sa danymi wejsciowymi fizyki — to postac wyniku."
+    ),
+}
 
 #: Wywolania, ktore na pewno daja liczbe — galaz zapasowa z nimi jest zastepnikiem.
 _NUMERIC_CALLS: frozenset[str] = frozenset(
@@ -134,8 +220,12 @@ _NUMERIC_CALLS: frozenset[str] = frozenset(
 )
 
 #: Zapadka zastanych zastepnikow: plik -> {"<forma>:<cel>": liczba}.
-#: Pomiar zamrozenia 2026-08-08 (karta QU-FABRYKACJA, runda poprawkowa):
-#: 14 wystapien w warstwie solverow + 8 w moscie wejsc = 22 w 4 plikach.
+#: Pomiar zamrozenia 2026-08-08 (karta QU-FABRYKACJA, rundy 2 i 3):
+#: 19 wystapien w warstwie solverow + 8 w moscie wejsc = 27 w 7 plikach.
+#: Runda 3 dolozyla `network_model/core` do mapy pol (+54 pola, 563 -> 617)
+#: (563 -> 1249 pol po dolozeniu wszystkich korzenii z importow) i ujawnila
+#: 5 nowych pozycji: 2 w `power_flow_newton_internal.py`, 2 w
+#: `der_selection_preview.py`, 1 w `power_flow_oltc_studies.py`.
 #: KAZDY wpis niesie powod. „Poza zakresem karty" powodem NIE jest.
 ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
     # Rozdzial mocy odbioru na czesc stala ZIP: gdy `base_p/base_q` nie podano,
@@ -146,6 +236,43 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
     "network_model/solvers/power_flow_zip.py": {
         "B:ifexp:spec.p_mw": 1,
         "B:ifexp:spec.q_mvar": 1,
+    },
+    # Dobor DER — wspolczynnik jednoczesnosci i obciazalnosc podstawiane JEDYNKA,
+    # gdy podano wartosc niedodatnia. Jedynka nie jest neutralna: znaczy „brak
+    # redukcji jednoczesnoscia", czyli najostrzejszy przypadek doboru, i wchodzi
+    # wprost do mocy obliczeniowej. DLUG NAZWANY: dana niedodatnia to blad wejscia
+    # — nalezy go ODRZUCIC walidacja (jak dwa wiersze wyzej robia napiecia), a nie
+    # zastepowac liczba. Ujawnione dopiero w rundzie 3, po dolozeniu
+    # `enm/domain_ops_models.py` do mapy pol.
+    "network_model/solvers/der_selection_preview.py": {
+        "B:ifexp:data.loadability_pu": 1,
+        "B:ifexp:data.simultaneity_factor": 1,
+    },
+    # Odczyt WYNIKU rozplywu z wartoscia zastepcza zero: `getattr(solution,
+    # "losses_total", 0.0 + 0.0j)`. Zero strat nie jest brakiem strat — to zero
+    # udajace pomiar, dokladnie ta klasa, ktora karta zdjela z `q_available_mvar`.
+    # DLUG NAZWANY: brak pola wyniku powinien byc bledem programistycznym
+    # (rozplyw ZAWSZE oddaje straty), a nie cicho zerowany.
+    "network_model/solvers/power_flow_oltc_studies.py": {
+        "C:getattr:losses_total": 1,
+    },
+    # PUNKT STARTOWY ITERACJI, NIE WIELKOSC WEJSCIOWA — jedyny wpis budzetu
+    # uzasadniony MERYTORYCZNIE, a nie nazwany dlugiem. `_build_initial_voltage`
+    # podstawia 1,0 pu / 0 rad za brakujace napiecie wezla, ale jest to kanoniczny
+    # „plaski start" metody Newtona: wynik ZBIEZNY nie zalezy od punktu startowego,
+    # zmienia sie tylko droga do niego. Forma jest ta sama, co w defekcie, wiec
+    # rozstrzyga merytoryka — i dlatego twierdzenie MA PRZYPIETY TEST (regula
+    # „deklaracja bez testu = falszywa pewnosc"):
+    # `backend/tests/network_model/solvers/test_punkt_startowy_nie_zmienia_wyniku.py`
+    # przechodzi iloczyn {plaski start · cieply z kompletem napiec · cieply z BRAKIEM
+    # napiec, czyli ta galezia · cieply z napieciami ODLEGLYMI od rozwiazania w obie
+    # strony} i sprawdza rownosc rozwiazan do 1e-7 pu. Pomiar, ktory wymusil ten
+    # test: WSZYSTKIE 6 testow repozytorium uzywajacych `flat_start` ustawialo
+    # `True`, wiec galaz z podstawieniem nie byla wykonywana ANI RAZU i uzasadnienie
+    # tego wpisu bylo nie do sprawdzenia.
+    "network_model/solvers/power_flow_newton_internal.py": {
+        "B:ifexp:node.voltage_angle": 1,
+        "B:ifexp:node.voltage_magnitude": 1,
     },
     # Slad K_t transformatora: impedancja zastepcza liczona z danych znamionowych,
     # gdy gałąź ich nie ma. DLUG NAZWANY — patrz inwentarz stalych, pozycja
@@ -215,6 +342,72 @@ def contract_fields() -> set[str]:
                     if isinstance(stmt, ast.AnnAssign) and isinstance(stmt.target, ast.Name):
                         fields.add(stmt.target.id)
     return fields
+
+
+def declares_model_fields(path: Path) -> bool:
+    """Czy modul DEKLARUJE model danych (klasa z polami adnotowanymi).
+
+    Kryterium jest strukturalne: klasa z co najmniej jednym `nazwa: typ` w ciele.
+    Obejmuje pydantic i dataclass bez rozrozniania — z punktu widzenia tej bramki
+    obie sa tym samym: nosnikiem pola, ktore mozna podstawic liczba.
+    """
+    try:
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    except (OSError, SyntaxError, UnicodeDecodeError):
+        return False
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ClassDef):
+            for stmt in node.body:
+                if isinstance(stmt, ast.AnnAssign) and isinstance(stmt.target, ast.Name):
+                    return True
+    return False
+
+
+def _module_to_path(module: str) -> Path | None:
+    """`a.b.c` -> sciezka w `BACKEND_SRC` (plik albo pakiet), gdy istnieje lokalnie."""
+    base = BACKEND_SRC / Path(*module.split("."))
+    if base.with_suffix(".py").is_file():
+        return base.with_suffix(".py")
+    if (base / "__init__.py").is_file():
+        return base / "__init__.py"
+    return None
+
+
+def model_roots_read_by_scope() -> dict[str, set[str]]:
+    """Moduly-modele IMPORTOWANE przez warstwe objeta skanem.
+
+    Zwraca {sciezka modulu wzgledem BACKEND_SRC -> zbior plikow, ktore go importuja}.
+    Wyrocznia mapy pol jest wyprowadzana Z KODU (z importow), a nie z listy pisanej
+    recznie — inaczej nastepny solver na nowym kontrakcie powtorzylby luke rundy 3.
+    """
+    found: dict[str, set[str]] = {}
+    for root_name in SCAN_ROOTS:
+        root = BACKEND_SRC / root_name
+        if not root.is_dir():
+            continue
+        for path in sorted(root.rglob("*.py")):
+            try:
+                tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+            except (OSError, SyntaxError, UnicodeDecodeError):
+                continue
+            modules: set[str] = set()
+            for node in ast.walk(tree):
+                if isinstance(node, ast.ImportFrom) and node.module and node.level == 0:
+                    modules.add(node.module)
+                elif isinstance(node, ast.Import):
+                    modules.update(alias.name for alias in node.names)
+            for module in modules:
+                target = _module_to_path(module)
+                if target is None or not declares_model_fields(target):
+                    continue
+                rel = target.relative_to(BACKEND_SRC).as_posix()
+                found.setdefault(rel, set()).add(path.relative_to(BACKEND_SRC).as_posix())
+    return found
+
+
+def is_covered_by_contract_sources(rel: str) -> bool:
+    """Czy modul jest objety zbiorem zrodel pol (`CONTRACT_SOURCES`)."""
+    return any(rel == entry or rel.startswith(f"{entry}/") for entry in CONTRACT_SOURCES)
 
 
 def leftmost_name(expr: ast.expr) -> str | None:
