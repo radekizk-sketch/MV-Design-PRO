@@ -229,12 +229,46 @@ function klasaOdcinka(segment: PreviewSegment): HitObjectClass {
 }
 
 /**
- * Kategoria elementu, którą niesie klik w ETYKIETĘ — JAWNA, ZAMKNIĘTA tabela
- * `OwnerKind → PreviewElementKind`. Etykieta jest UCHWYTEM swojego właściciela:
- * klik w napis „S08 · 15 kV" zaznacza szynę, klik w „Q1" — aparat pola, a nie
- * stację ani tło (audyt P-2: „zaznaczenie musi nieść owner-ref klikniętego
- * aparatu"). Dopisanie nowego `OwnerKind` bez decyzji tutaj nie skompiluje się
- * (`satisfies Record<OwnerKind, …>`).
+ * KATEGORIA RYSUNKOWA napisu — JAWNA, ZAMKNIĘTA tabela `OwnerKind →
+ * PreviewElementKind`. Mówi, O CZYM JEST NAPIS, a NIE „jakim obiektem modelu
+ * jest kliknięty element". Dopisanie nowego `OwnerKind` bez decyzji tutaj nie
+ * skompiluje się (`satisfies Record<OwnerKind, …>`).
+ *
+ * ---------------------------------------------------------------------------
+ * KARTA KLIK-ETYKIETA-KOTWICA — CO TA TABELA UMIE, A CZEGO NIE (POMIAR)
+ * ---------------------------------------------------------------------------
+ * Do tej karty nagłówek deklarował: „klik w napis »S08 · 15 kV« zaznacza szynę,
+ * klik w »Q1« — aparat pola". Pomiar na sieci referencyjnej (52 stacje, LOD 0/1/2,
+ * `buildCanvasHitAreas` × `resolveCanvasMenuSubject`) wykazał, że pierwsza połowa
+ * była NIEPRAWDZIWA: klik w napis napięcia szyny otwierał menu i szufladę STACJI
+ * (54 z 1084 etykiet LOD2), a napis „TR1" transformatora GPZ — również stacji
+ * (4 etykiety) mimo kotwicy w transformatorze.
+ *
+ * PRZYCZYNA STRUKTURALNA: `OwnerKind` NIE ODWZOROWUJE rodzaju obiektu modelu.
+ * Jeden rodzaj `'station-name'` obsługuje wiersz pasma nazw STACJI (266 etykiet),
+ * TRANSFORMATORA (4) i ŹRÓDŁA (3) — jedna wartość nie może być prawdziwa dla
+ * wszystkich trzech. Ta tabela jest więc niezdolna do niesienia tożsamości
+ * obiektu i nie jest już o nią pytana.
+ *
+ * ROZSTRZYGNIĘCIE: rodzaj i ref obiektu MODELU dla kliknięcia w uchwyt (etykieta,
+ * znacznik wyniku) pochodzą z KOTWICY W MODELU (`canvasMenuSubject.
+ * resolveCanvasMenuSubject` + bijekcja `ELEMENT_KIND_KOTWICY`) — jedno wywołanie
+ * na trafienie, wspólne dla menu, szuflady i selekcji. Ta tabela pozostaje
+ * WSKAZÓWKĄ RYSUNKOWĄ i jest używana wyłącznie tam, gdzie pytanie dotyczy
+ * napisu, nie obiektu:
+ *  * `'protectionAnnotation'` — napis adnotacji zabezpieczeń nie ma obiektu
+ *    modelu (uczciwa odmowa tematu menu);
+ *  * `ELEMENT_KIND_KOTWICY.szyna` — filtr „czy ten napis mówi o szynie",
+ *    bramkujący dziedziczenie kanonicznego refu szyny przez uchwyt
+ *    (`SldCanvasV3.klikMeta`).
+ * Oba zastosowania są PRZYPIĘTE testami wyroczni
+ * (`__tests__/kotwicaJednoZrodlo.contract.test.ts`).
+ *
+ * `'lv-load'` NIE MA DZIŚ PRODUCENTA — żadne miejsce w kodzie nie tworzy etykiety
+ * o tym `OwnerKind` (grep całego `src/`); wpis istnieje wyłącznie dlatego, że
+ * `satisfies Record<OwnedKind, …>` wymaga kompletu kluczy. Fakt braku producenta
+ * jest przypięty testem: gdy producent się pojawi, test każe rozstrzygnąć jego
+ * kategorię świadomie, zamiast odziedziczyć niesprawdzone `'bus'`.
  */
 export const LABEL_OWNER_ELEMENT_KIND = {
   'segment-span': 'segment',

@@ -118,8 +118,9 @@ import { getMenuActions, type SldElementKindForMenu } from '../../v2/command/Sld
 import {
   buildCanvasModelIndex,
   resolveCanvasMenuSubject,
+  ELEMENT_KIND_KOTWICY,
+  KLASY_UCHWYTU,
   type CanvasMenuSubject,
-  type MenuAnchorKind,
 } from './canvasMenuSubject';
 import { selectStationDistributionTransformers } from '../../../network-build/stationTransformerSelection';
 import { useMeasuredSize } from '../../shared/useMeasuredSize';
@@ -569,22 +570,6 @@ function buildDetailDrawerDataForElementKind(
   if (!drawerKind) return null;
   return buildDetailDrawerDataForKind(drawerKind, id, { snapshot, sldData, overlayPayload });
 }
-
-/**
- * S9-10: kotwica MODELU (temat menu, `canvasMenuSubject.ts`) → kategoria
- * elementu budowniczych szuflady. Tabela ZAMKNIĘTA (`satisfies`) — nowy rodzaj
- * kotwicy nie skompiluje się bez decyzji tutaj. Używana WYŁĄCZNIE na ścieżce
- * zapasowej otwierania szuflady dla refów kompozytowych (etykiety, `#sn-bus`).
- */
-const ELEMENT_KIND_KOTWICY = {
-  stacja: 'station',
-  szyna: 'bus',
-  galaz: 'segment',
-  pole: 'apparatus',
-  zrodlo: 'source',
-  generator: 'der',
-  transformator: 'transformer',
-} satisfies Record<MenuAnchorKind, PreviewElementKind>;
 
 const ALL_SCENE_LODS: readonly SceneLod[] = [0, 1, 2];
 
@@ -2525,9 +2510,65 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
       // normalizacji klik w kawałek otwierał drawer z refem, którego API
       // nie zna (luka wykryta adaptacją e2e sld-editor-real-backend-flex).
       const rawId = meta?.ownerRef ?? elementIdFromTestId(testId);
-      const id = meta?.elementKind === 'segment'
-        ? rawId.replace(/_(?:[LR]_)*[LR]$/, '')
-        : rawId;
+
+      // KARTA KLIK-ETYKIETA-KOTWICA — RODZAJ I REF KLIKNIĘTEGO OBIEKTU Z JEDNEGO
+      // ŹRÓDŁA (kotwicy modelu), TYM SAMYM wywołaniem, którym rozstrzyga je menu.
+      //
+      // Trzy konsumenty niżej (normalizacja refu przęsła, zrzut układu OZE na
+      // stację, rozwiązanie realnego refu transformatora) pytały o rodzaj obiektu
+      // `meta.elementKind`, czyli tabelę `hitAreas.LABEL_OWNER_ELEMENT_KIND`.
+      // Dla trafienia w UCHWYT (etykieta, znacznik wyniku) ta tabela nie jest
+      // orzeczeniem o obiekcie modelu, tylko o rodzaju NAPISU — a jeden
+      // `OwnerKind:'station-name'` obsługuje wiersz nazwy STACJI, TRANSFORMATORA
+      // i ŹRÓDŁA. Zmierzone skutki na sieci referencyjnej (LOD 1/2):
+      //  * napis „TR1" transformatora GPZ deklarował `'station'`, więc (a) NIE
+      //    odpalało się rozwiązanie realnego refu transformatora — deklaracja
+      //    §16-v3 niżej („selekcja transformatora niesie REALNY ref") była
+      //    nieprawdziwa dla uchwytu — a jednocześnie (b) przy uzbrojonej palecie
+      //    OZE odpalał się `derDrag.dropOnStation()` Z REFEM TRANSFORMATORA
+      //    (`dropOnStation` nie weryfikuje niczego, a `buildDerDropDetailDrawerData`
+      //    nie znajdując stacji pokazywał jako nazwę SUFIKS RYSUNKOWY
+      //    „wn_sn#label#name-row-0");
+      //  * napis nazwy STACJI (266 etykiet) trafiał do `dropOnStation` z refem
+      //    KOMPOZYTOWYM `…/station#name-row-0`, więc szuflada OZE też pokazywała
+      //    sufiks rysunkowy zamiast kodu stacji.
+      // Dla uchwytu rodzaj i ref pochodzą więc TERAZ z kotwicy modelu; obiekty
+      // rysujące SIEBIE (symbol, kreska) zachowują dotychczasową ścieżkę — ich
+      // kategoria rysunkowa jest o nich samych i niesie informację, której kotwica
+      // nie ma (symbol transformatora stacji ma `ownerRef` = ref POLA).
+      const uchwyt = meta?.klasa !== undefined && KLASY_UCHWYTU.has(meta.klasa);
+      const tematUchwytu = uchwyt && meta?.ownerRef
+        ? resolveCanvasMenuSubject(
+            {
+              klasa: meta.klasa,
+              ownerRef: meta.ownerRef,
+              elementKind: meta.elementKind,
+              derKind: meta.derKind,
+              busRef: meta.busRef,
+            },
+            modelIndex,
+          )
+        : null;
+      const kotwicaUchwytu = tematUchwytu?.stan === 'temat' ? tematUchwytu.temat.kotwica : undefined;
+      // Rodzaj obiektu dla WSZYSTKICH konsumentów niżej. Uchwyt bez kotwicy w
+      // modelu (napis nad fragmentem rysunku bez odpowiednika) nie dostaje
+      // ŻADNEGO rodzaju — uczciwy brak, zero podstawiania rodzaju napisu.
+      const elementKind = uchwyt
+        ? kotwicaUchwytu === undefined
+          ? undefined
+          : ELEMENT_KIND_KOTWICY[kotwicaUchwytu]
+        : meta?.elementKind;
+      // Ref modelu uchwytu jest już KANONICZNY (zweryfikowany w snapshocie przez
+      // `resolveCanvasMenuSubject`), więc NIE przechodzi normalizacji sufiksu
+      // trasy: `seg/⟨id⟩/segment_L` i `seg/⟨id⟩/segment` to DWA różne, realne
+      // rekordy `Branch` w modelu — obcięcie zweryfikowanego refu byłoby podmianą
+      // obiektu. Normalizacja dotyczy wyłącznie refu RYSUNKOWEGO (ścieżka symbolu/
+      // kreski), po to powstała.
+      const id = uchwyt
+        ? (tematUchwytu?.stan === 'temat' ? tematUchwytu.temat.modelRef : rawId)
+        : elementKind === 'segment'
+          ? rawId.replace(/_(?:[LR]_)*[LR]$/, '')
+          : rawId;
 
       // F8c pkt 4: drag DER uzbrojony — klik w STACJĘ „zrzuca" (jak v2
       // K30-78: `if (kind === 'station' && derDrag.state)`); klik gdziekolwiek
@@ -2537,7 +2578,11 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
       // ŚWIADOMA, bezpieczna reguła v3, żeby użytkownik nie utknął uzbrojony —
       // patrz test (b) `derPalette.test.tsx`).
       if (derDrag.state) {
-        if (meta?.elementKind === 'station') {
+        // KARTA KLIK-ETYKIETA-KOTWICA: `elementKind`/`id` z JEDNEGO źródła wyżej —
+        // `dropOnStation` nie weryfikuje własnego argumentu (hook v2 przyjmuje
+        // dowolny łańcuch), więc uczciwa odmowa musi paść TUTAJ, w jedynym
+        // miejscu, które zna model.
+        if (elementKind === 'station') {
           const dropResult = derDrag.dropOnStation(id);
           if (dropResult) {
             // F11.4-B: `buildDerDropDetailDrawerData` — WSPÓŁDZIELONA z v2
@@ -2550,14 +2595,18 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
         return;
       }
 
-      const type = elementTypeForKind(meta?.elementKind);
+      const type = elementTypeForKind(elementKind);
       // §16-v3/adaptacja flex: selekcja TRANSFORMATORA niesie REALNY ref
       // transformatora (ta sama rozdzielczość, której używa drawer —
       // `resolveTransformerRefForOwnerRef`), nie bay-ref symbolu — inspektor
       // inżynierski (`InspectorEngineeringView`, selekcja globalna) rozwiązuje
       // element po ref_id; bay-ref pokazywałby pusty/obcy panel.
+      // KARTA KLIK-ETYKIETA-KOTWICA: obowiązuje też dla UCHWYTU transformatora
+      // (napis „TR1") — do tej karty uchwyt deklarował `'station'`, więc ta gałąź
+      // się dla niego nie wykonywała i deklaracja zdania wyżej była nieprawdziwa.
+      // Teraz PRZYPIĘTA testem (`kotwicaJednoZrodlo.contract.test.ts`).
       const selectId =
-        meta?.elementKind === 'transformer'
+        elementKind === 'transformer'
           ? resolveTransformerRefForOwnerRef(snapshot, id) ?? id
           : id;
       selectElement(type ? { id: selectId, type, name: selectId } : { id, type: 'DescriptiveElement', name: id });
@@ -2569,16 +2618,17 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
       // = drawer się NIE otwiera (uczciwy brak, bez crasha, bez zgadywania) —
       // jeśli już otwarty dla innego elementu, zostaje (spójne z v2:
       // `handleSelectElement` też nie zamyka drawera na niezmapowany `kind`).
-      let drawerData = buildDetailDrawerDataForElementKind(snapshot, sldData, rawOverlayPayload, meta?.elementKind, id, meta?.deviceRef);
+      let drawerData = buildDetailDrawerDataForElementKind(snapshot, sldData, rawOverlayPayload, elementKind, id, meta?.deviceRef);
       // S9-10 (dług `S9-4-DLUG-INSPEKTOR`, ogniwo etykiet): ref KOMPOZYTOWY
-      // (`…#name-row-0`, `…#sn-bus` itd.) nie rozwiązuje się w budowniczych —
-      // panel się nie otwierał (pomiar: klik w etykietę nazwy stacji, drawer
-      // = null). Kotwicę modelu rozstrzyga TEN SAM moduł, który robi to dla
+      // (`…#sn-bus` itd.) nie rozwiązuje się w budowniczych — panel się nie
+      // otwierał. Kotwicę modelu rozstrzyga TEN SAM moduł, który robi to dla
       // menu kontekstowego (`resolveCanvasMenuSubject` — jedno źródło prawdy;
       // ślepe zdejmowanie sufiksu byłoby fabrykacją, patrz rejestr). Ścieżka
-      // jest WYŁĄCZNIE zapasowa: obiekty rozwiązywalne wprost (jak dotąd)
-      // nie zmieniają zachowania.
-      if (!drawerData && meta?.ownerRef) {
+      // jest WYŁĄCZNIE zapasowa dla obiektów rysujących SIEBIE (kreska szyny
+      // stacji): UCHWYTY (etykieta, znacznik wyniku) mają kotwicę policzoną już
+      // na wejściu, jednym wywołaniem dla wszystkich trzech konsumentów
+      // (KARTA KLIK-ETYKIETA-KOTWICA), więc drugi raz jej nie liczymy.
+      if (!drawerData && !uchwyt && meta?.ownerRef) {
         const wynik = resolveCanvasMenuSubject(
           {
             klasa: meta.klasa,
