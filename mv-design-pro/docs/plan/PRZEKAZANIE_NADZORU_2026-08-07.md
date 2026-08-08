@@ -150,6 +150,78 @@ przeformatowało 979 plików). Formatuj DWOMA wywołaniami, dokładnie jak CI:
 `black --check src tests` oraz `black --check --config pyproject.toml ../scripts`.
 Workflow `python-tests.yml` ostrzega przed tym w komentarzu.
 
+## 2C. AKTUALIZACJA — FALA 4 ZAMKNIĘTA (2026-08-08, Opus)
+
+**SZCZYT: `01ddb662`. CI 8/8 ZIELONE na czterech kolejnych szczytach.**
+
+Odebrane i scalone od §2B (każde z własną iniekcją nadzorcy, pełnymi bramkami,
+dopiskiem odbioru w rejestrze): **V126-JEZYK · V126-WYGASZENIE · BLOK-PUSTY ·
+PACK-ROZPLYW · BLOK-LATERAL-WLASNOSC · CHWIEJNY-WSPOLBIEZNOSC**, plus trzy
+naprawy własne nadzorcy (PACK-1F-WIAZANIE + PACK-SC3F-WIAZANIE, martwa wyspa
+wariantów, dziura `\b` w guardzie kodenamów).
+
+**PUNKT 6 ZGŁOSZENIA WŁAŚCICIELA ZAMKNIĘTY** (puste wnętrze ramy stacji):
+L0 bloków ponad progiem 53/54 → 4/54, L1 16/54 → 0/54, **L2 11/54 → 0/54**.
+Domknięcie na L2 dała dopiero druga karta — przyczyną nie była rezerwacja, tylko
+etykieta odgałęzienia nosząca ref STACJI zamiast odgałęzienia.
+
+### Cztery lekcje procesowe tej fali — wszystkie kosztowały czerwone CI albo błędny wpis
+
+1. **BRAMKA GUARDÓW MA DWIE POŁOWY.** `scripts/guardy_z_ci.py` uruchamia teraz
+   69 skryptów **oraz** `python -m pytest ../scripts` (własne testy guardów, poza
+   `testpaths` backendu). Pierwsza wersja robiła tylko połowę i meldowała „komplet
+   zielony" — CI było czerwone przez trzy szczyty. **Nie wybieraj guardów ręcznie.**
+2. **`black` z wieloma ścieżkami w jednym wywołaniu psuje wykrywanie konfiguracji**
+   (formatuje szerokością 88 zamiast 100; przeformatowało 979 plików). Dwa osobne
+   wywołania, dokładnie jak CI.
+3. **ZANIM NAZWIESZ BRAK STRAŻNIKA — SPRAWDŹ INIEKCJĄ, CZY ISTNIEJĄCY GO NIE MA.**
+   Zapisałem w rejestrze dług na budowę bramki „front woła trasę, której nie ma".
+   `route_prefix_guard` MA tę regułę (`[route-prefix-martwa]`). Martwy moduł
+   przeżył, bo był ZAREJESTROWANY w zamrożonej liście długu z adnotacją „do
+   decyzji" — brakowało DECYZJI, nie strażnika. Sprostowane jawnie w rejestrze.
+4. **ROZSTRZYGNIĘCIE §0 JEST HIPOTEZĄ DO ZMIERZENIA, NIE DOGMATEM.** Dwa razy w tej
+   fali wykonawca odrzucił moje rozstrzygnięcie POMIAREM i dwa razy miał rację:
+   próg względny dla współbieżności (mylił się na 19–25 pomiarach na 160) oraz
+   klauzula „ref nie może być korzeniem bloku" (54 fałszywe trafienia — korzeń JEST
+   uczciwym właścicielem szyny SN stacji). **Karta, w której nikt nigdy nie
+   kwestionuje §0, to karta, w której nikt nie mierzy.** Zostawiaj w §0 jawną furtkę
+   („jeśli pomiar obali — powiedz to wprost, uczciwy brak bije pozorny sukces").
+
+### Wzorzec iniekcji odbiorczej — najskuteczniejszy z siedmiu fal
+
+**Celuj w MOCNE ZDANIA nagłówków i w ZASIĘG wyroczni.** Trafienia tej fali:
+deklaracja „jedyne wejście po `strokeWidth` w tym pliku" bez strażnika · pin
+liczący dwa rodzaje z dwunastu · gałąź martwa na fiksturze, więc niewidoczna dla
+wyroczni chodzącej po scenie · furtka czasowa, przez którą test przechodził
+w 79 na 80 prób przy CAŁKOWICIE zablokowanej pętli.
+**Pytanie kontrolne: czy zbiór, po którym chodzi wyrocznia, jest tym samym zbiorem,
+na którym działa kod?**
+
+### W biegu (strefy rozłączne)
+
+- `kopia/QU-FABRYKACJA` — solver liczy moc bierną ze zmyślonych współczynników
+  (`q_min = −0,35 · P` przy DOSTĘPNYM `bus.load_mvar` w tym samym pliku), a nazywa
+  to „krzywą Q–U" bez żadnej zależności od napięcia. §0: sedno w solverze, nie na
+  ekranie; przy niewystarczających danych PRZESTAĆ liczyć i zameldować brak.
+- `kopia/SLOT-DRYF` — 2 z 37 podpisów przęseł stoi 888 j.św. od swojej polilinii.
+  §0: granica z geometrii odcinka, nie z zaszytego progu; diagnoza poprzednika jest
+  hipotezą do sprawdzenia.
+
+### Kolejka po nich
+
+PACK-DLUG-STRATY / -SPADEK / -NASTAWY (4 pakiety dowodowe bez konsumenta, powody
+merytoryczne w rejestrze) · rozdział `apparatus`/`bus`, którego scena nie unosi ·
+reguły zgodności specyficzne dla OSD (REF-PAKIET) · `api/snapshots.py` bez
+`include_router` (wpinać WYŁĄCZNIE z konsumentem) · dług aparatury: katalog bez
+`U_m`/`I_cu` w postaci czytanej przez widok wytrzymałości.
+
+### Decyzje właściciela podjęte w tej fali
+
+Wycofanie z toru projektanta walidacji referencyjnej (bada NARZĘDZIE, nie projekt —
+zeszła do kontroli jakości, test istniał wcześniej, sprawdzone) oraz marginesu P–U
+(przybliżenie ze sztywności węzła, nie krzywa z rozpływu). Q–U rozstrzygnięte przez
+nadzorcę na wniosek właściciela („decyduj") — patrz karta w biegu.
+
 ## 2. W BIEGU — DWIE KARTY DO ODEBRANIA (stan sprzed przejęcia — historyczny)
 
 | Karta | Kopia | Zakres | Odbiór — na co zwrócić uwagę |
