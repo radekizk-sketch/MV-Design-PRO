@@ -339,9 +339,8 @@ def zbuduj_pakiet_biegu(run: CanonicalRun, *, punkt: str | None = None) -> tuple
     ``punkt`` = identyfikator wyboru właściwego rodzajowi: punkt zwarcia dla
     pakietów zwarciowych, ODCINEK linii/kabla dla pakietu rozpływu. ``None`` =
     pierwszy z listy biegu (deterministycznie: najmniejszy identyfikator). Punkt
-    spoza biegu, punkt podany dla rodzaju, który go nie ma, i rodzaj bez pakietu
-    kończą się ``PakietBieguError`` z powodem po polsku — API tłumaczy go na
-    odpowiedź HTTP, a ekran pokazuje wprost.
+    spoza biegu i rodzaj bez pakietu kończą się ``PakietBieguError`` z powodem po
+    polsku — API tłumaczy go na odpowiedź HTTP, a ekran pokazuje wprost.
     """
     dostepnosc = dostepnosc_pakietu(run)
     if not dostepnosc["dostepny"]:
@@ -455,7 +454,7 @@ def _zbuduj_rozplyw_zbiorczy(
     }
     odcinek = _wybierz_odcinek(run, punkt)
     if odcinek is not None:
-        pakiety["spadek_napiecia"] = _zbuduj_dowod_spadku(run, context, odcinek)
+        pakiety["spadek_napiecia"] = _zbuduj_dowod_spadku(run, context, rozplyw, odcinek)
     return zbuduj_zip_zbiorczy(pakiety)
 
 
@@ -522,6 +521,7 @@ def _zbuduj_dowod_strat(
 def _zbuduj_dowod_spadku(
     run: CanonicalRun,
     context: ProofPackContext,
+    rozplyw: RozplywZBiegu,
     odcinek: OdcinekSpadku,
 ) -> bytes:
     pack_input = VDROPPackInput.z_odcinka_biegu(
@@ -529,7 +529,10 @@ def _zbuduj_dowod_spadku(
         project_name=_nazwa_projektu(run),
         case_name=_nazwa_przypadku(run),
         run_timestamp=_znacznik_czasu(run),
-        solver_version=_rozplyw_biegu(run).solver_version,
+        # Wersja solvera z ARTEFAKTU biegu — ta sama, którą podpisano dowód
+        # rozpływu w tym samym pakiecie. Odczyt raz, przekazany dalej: dwa
+        # niezależne odczyty tej samej wielkości to dwa źródła prawdy.
+        solver_version=rozplyw.solver_version,
     )
     try:
         return zbuduj_zip_vdrop(pack_input, context)
