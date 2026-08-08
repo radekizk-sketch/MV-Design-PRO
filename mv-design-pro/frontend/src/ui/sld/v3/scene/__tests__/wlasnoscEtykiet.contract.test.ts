@@ -40,8 +40,13 @@
  *     pilnujemy, że stacja, na którą kotwica się cofa, jest osiągalna.
  *  §6 DRUGA PARA PREDYKATÓW: `hitAreas.LABEL_OWNER_ELEMENT_KIND` DEKLARUJE, że
  *     klik w podpis przęsła celuje w ODCINEK. Dopóki podpis nosił ref stacji,
- *     deklaracja i ref przeczyły sobie KAŻDEGO DNIA (klik w podpis kabla
- *     otwierał menu STACJI). Test zderza obie tabele.
+ *     deklaracja i ref przeczyły sobie KAŻDEGO DNIA, nie tylko na danych
+ *     brzegowych: `canvasMenuSubject` odcinał sufiks i trafiał w STACJĘ, więc
+ *     klik w podpis KABLA otwierał menu stacji (z pozycją „Usuń stację").
+ *     Zmierzone `accept:sld-v3`, klasa `etykieta` na L2 — PRZED: `station:263`;
+ *     PO: `station:214 · cable_segment_sn:46 · overhead_line_sn:3`. Różnica 49
+ *     zgadza się co do sztuki z liczbą podpisów odcinków (37 przęseł + 12
+ *     zejść). Test zderza obie tabele.
  *
  * ILOCZYN CECH, NIE PRZYKŁAD Z KARTY (reguła KLASA §2): defekt nazwany w karcie
  * dotyczył `#lateral-label` (12 sztuk). Ta sama pomyłka własności siedziała w
