@@ -19,7 +19,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import type { BayPrimaryDevice, EnergyNetworkModel } from '../../../../../types/enm';
+import type { BayPrimaryDevice, EnergyNetworkModel } from '../../../../../../types/enm';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 // Baza: MAŁA, renderowalna sieć (GPZ + 2 stacje inline z TR odbiorczym, BEZ

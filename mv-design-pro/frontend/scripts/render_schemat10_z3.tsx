@@ -55,7 +55,6 @@ function pickTarget(): { stationRef: string; fieldRef: string; texts: string[] }
   throw new Error('Z3: brak pola z oznaczeniem producenckim spoza wzorca konwencji na macierzy');
 }
 const target = pickTarget();
-const stationHash = target.stationRef.split('/')[1];
 
 // Kotwica stacji (station-name #name-row-0). UWAGA: pozycja ABSOLUTNA stacji
 // różni się między snapshotem macierzy (dane) a bazowym (konwencja), bo

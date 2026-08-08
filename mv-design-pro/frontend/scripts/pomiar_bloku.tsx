@@ -43,7 +43,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
 import type { EnergyNetworkModel } from '../src/types/enm';
-import { buildSceneV3, type SceneLod, type SceneV3 } from '../src/ui/sld/v3/scene/buildScene';
+import { buildSceneV3, type SceneV3 } from '../src/ui/sld/v3/scene/buildScene';
 import { prostokatElementuWScenie } from '../src/ui/sld/v3/canvas/viewAnchor';
 import { SYMBOL_DEFS } from '../src/ui/sld/v3/symbols/defs';
 import { SEGMENT_STROKE_WIDTH, type PreviewSegmentKind } from '../src/ui/sld/v3/compose/preview';

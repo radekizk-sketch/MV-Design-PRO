@@ -35,7 +35,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { buildSceneV3 } from '../src/ui/sld/v3/scene/buildScene';
 import { SYMBOL_DEFS, type SymbolId } from '../src/ui/sld/v3/symbols/defs';
 import { SYMBOL_GLYPHS } from '../src/ui/sld/v3/symbols/glyphs';
-import { buildResultLabelsFromScene, singleHopSegmentRefs } from '../src/ui/sld/v3/canvas/resultLabels';
+import { buildResultLabelsFromScene, orientedSegmentRefs } from '../src/ui/sld/v3/canvas/resultLabels';
 import { computeResultLabelPlacements } from '../src/ui/sld/v3/canvas/SldCanvasV3';
 import type { EnergyNetworkModel } from '../src/types/enm';
 import type { RawOverlayElement, RawOverlayPayload } from '../src/ui/sld-overlay/rawResultOverlayStore';
@@ -48,7 +48,10 @@ const enmPath = resolve(here, '..', 'src', 'ui', 'sld', 'v2', 'geometry', '__tes
 const enm = (JSON.parse(readFileSync(enmPath, 'utf8')) as { readonly enm: EnergyNetworkModel }).enm;
 
 const scene = buildSceneV3(enm, 2);
-const singleHop = singleHopSegmentRefs(enm);
+// Bramka przesel: KLUCZE mapy orientacji (`orientedSegmentRefs`) — dokumentowany
+// zamiennik usunietej `singleHopSegmentRefs`, ta sama derywacja co produkcja
+// (`SldCanvasV3Workspace.buildResultLabelsForSnapshot`).
+const singleHop = new Set(orientedSegmentRefs(enm).keys());
 
 // Payload REALNIE zakluczowany: źródło + wybrane przęsła jednokawałkowe sceny.
 const sourceRef = scene.symbols.find((s) => s.meta?.elementKind === 'source' && s.meta?.ownerRef)?.meta?.ownerRef;

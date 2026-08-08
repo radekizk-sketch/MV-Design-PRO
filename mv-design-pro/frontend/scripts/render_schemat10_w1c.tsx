@@ -144,7 +144,7 @@ const gaps = catalog.gaps;
 const gapLine =
   `packi bez celek: ${gaps.manufacturer_packs_without_cell_configurations.length} · ` +
   `typy pól bez szablonu: ${gaps.field_types_without_template.length} · ` +
-  `celki bez toru głównego: ${gaps.producer_cells_without_main_path.length}`;
+  `celki nie-renderowalne: ${gaps.producer_non_renderable_cells.length}`;
 
 const title =
   `<text x="20" y="34" font-family="Inter, system-ui, sans-serif" font-size="23" font-weight="700" fill="#E8EEF4">` +
