@@ -318,13 +318,26 @@ def zmierz_projekt_node() -> tuple[int, str]:
     """Sprawdź `tsconfig.node.json` — projekt referencyjny, którego `tsc --noEmit`
     z korzenia NIE buduje (referencje wymagają `tsc -b`). Bez tego `vite.config.ts`
     byłby „objęty projektem, którego nikt nie uruchamia”."""
-    wynik = subprocess.run(
-        ["npx", "tsc", "-p", "tsconfig.node.json", "--noEmit"],
-        cwd=FRONTEND,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
+    with tempfile.TemporaryDirectory() as katalog:
+        # `tsconfig.node.json` ma `composite: true`, więc `tsc` zapisuje pamięć
+        # podręczną kompilacji przyrostowej NAWET z `--noEmit`. Bez przekierowania
+        # każdy bieg guarda zostawiałby w repozytorium `tsconfig.node.tsbuildinfo`
+        # — wyrocznia, która brudzi drzewo robocze, uczy ignorować `git status`.
+        wynik = subprocess.run(
+            [
+                "npx",
+                "tsc",
+                "-p",
+                "tsconfig.node.json",
+                "--noEmit",
+                "--tsBuildInfoFile",
+                str(Path(katalog) / "node.tsbuildinfo"),
+            ],
+            cwd=FRONTEND,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
     wyjscie = wynik.stdout + wynik.stderr
     return sum(1 for linia in wyjscie.splitlines() if WZORZEC_BLEDU.match(linia)), wyjscie
 

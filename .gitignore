@@ -26,6 +26,10 @@ node_modules/
 # symlink node_modules (worktree wykonawcy) tez ignorowany - wzorzec bez ukosnika:
 node_modules
 *.log
+# Pamiec podreczna kompilacji przyrostowej TypeScriptu. `tsc -p tsconfig.node.json`
+# zapisuje ja NAWET z `--noEmit` (projekt ma `composite: true`), wiec kazdy bieg
+# bramki typow brudzil drzewo robocze artefaktem - raz nawet wszedl do commita.
+*.tsbuildinfo
 
 ### Python ###
 __pycache__/
