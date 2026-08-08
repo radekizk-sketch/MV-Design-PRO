@@ -104,7 +104,6 @@ import {
 import { buildCanonicalGpzProps } from '../../v2/canvas/enmToCanonicalGpzAdapter';
 import type { GpzCanonicalRendererProps } from '../../v2/renderer/GpzCanonicalRenderer';
 import type { StationOnRunRendererProps } from '../../v2/renderer/StationOnRunRenderer';
-import type { MiniBlockBayDescriptor } from '../../v2/renderer/MiniBlockRmuRenderer';
 
 import { GRID, snapToGrid, snapUp, rectsOverlap, type V3Rect } from '../core/grid';
 import { labelLineHeight, measureLabelWidth } from '../core/text';
@@ -121,6 +120,7 @@ import { LATERAL_APPARATUS_SYMBOLS, symbolIdForPrimaryDeviceKind } from '../comp
 import { createUnikalnyTestId } from '../compose/unikalnyTestId';
 import {
   bayMainPathHeight,
+  findLineBayIndices,
   stationBlockHeight,
   stationBusbarLabelHeight,
   stationNameBandHeight,
@@ -129,7 +129,12 @@ import {
 } from '../layout/measure';
 import { computeBands, BUS_AXIS_BAND_HEIGHT, DESCENT_STRIP_HEIGHT, type BandsResult, type StationBandHeights } from '../layout/bands';
 import { computeColumns, insertColumnChannels, type ColumnsResult, type ColumnResult } from '../layout/columns';
-import { computeSegmentLabelSlotX, colorSegmentLabelRows, COLUMN_GAP } from '../layout/segments';
+import {
+  computeSegmentLabelSlotX,
+  colorSegmentLabelRows,
+  wysrodkujSlotNaPrzesle,
+  COLUMN_GAP,
+} from '../layout/segments';
 import { MIN_PARALLEL_CABLE_CLEARANCE, MIN_SUBTREE_CLEARANCE, TOP_LEVEL_FIELD_CLEARANCE } from '../layout/clearances';
 import {
   planSheetRows,
@@ -162,8 +167,6 @@ import {
 import {
   resolveStationDirectionContext,
   stationBayCaptions,
-  isLineLikeRole,
-  classifyLineBayDirection,
   classifyStationTopologicalType,
   FORBIDDEN_RAW_DIRECTION_TOKENS,
 } from '../compose/directions';
@@ -923,28 +926,10 @@ function buildLineRunShims(
 // (`compose/directions.ts`, wyeksportowana), zero cienia.
 // ---------------------------------------------------------------------------
 
-interface LineBayIndices {
-  readonly previousIndex: number | null;
-  readonly nextIndex: number | null;
-  readonly branchIndices: readonly number[];
-}
-
-function findLineBayIndices(snBays: readonly MiniBlockBayDescriptor[]): LineBayIndices {
-  const lineBayIdx: number[] = [];
-  snBays.forEach((bay, i) => {
-    if (isLineLikeRole(bay.fieldRole)) lineBayIdx.push(i);
-  });
-  let previousIndex: number | null = null;
-  let nextIndex: number | null = null;
-  const branchIndices: number[] = [];
-  lineBayIdx.forEach((idx, pos) => {
-    const direction = classifyLineBayDirection(snBays[idx].fieldRole, pos);
-    if (direction === 'previous') previousIndex = idx;
-    else if (direction === 'next') nextIndex = idx;
-    else if (direction === 'branch') branchIndices.push(idx);
-  });
-  return { previousIndex, nextIndex, branchIndices };
-}
+// SLOT-DRYF-PRZĘSŁA: `findLineBayIndices` przeniesione do `layout/measure.ts`
+// (importowane niżej) — TEJ SAMEJ klasyfikacji potrzebuje rezerwacja slotu
+// etykiety przęsła w `layout/segments.ts`, a `layout/` nie może importować ze
+// `scene/` (cykl). Jedna klasyfikacja, zero cienia.
 
 // ---------------------------------------------------------------------------
 // measure → bands → columns dla JEDNEGO wiersza (magistrala LUB lateral) —
@@ -1234,7 +1219,17 @@ function buildRowLayout(
     ),
   );
 
-  const slotXs = computeSegmentLabelSlotX(geometryInputs, incomingTexts, columnGap);
+  // SLOT-DRYF-PRZĘSŁA: ile członów ENM ma przęsło wchodzące do stacji `i`
+  // (§16-v3 — łańcuch segmentów połączonych węzłami BEZ stacji). Podpis niesie
+  // ref członu KOŃCOWEGO, więc rezerwacja centruje się na JEGO udziale
+  // (`udzialWlasciciela`, `layout/segments.ts`), a nie na środku całego
+  // łańcucha. Liczone z `cableRun` (dane topologii), nie z geometrii — dostępne
+  // na tym etapie potoku, przed bands/columns.
+  const incomingChainLengths: (number | null)[] = geometryInputs.map((m, i) =>
+    i === 0 ? null : chainSegmentRefs(cableRun, geometryInputs[i - 1].id, m.id).length,
+  );
+
+  const slotXs = computeSegmentLabelSlotX(geometryInputs, incomingTexts, columnGap, incomingChainLengths);
   const rows = colorSegmentLabelRows(slotXs);
   const stationBandHeights: StationBandHeights[] = geometryInputs.map((m, i) => ({
     incomingSegmentLabelText: incomingTexts[i],
@@ -1253,6 +1248,7 @@ function buildRowLayout(
   const columnsResult = computeColumns({
     stations: geometryInputs,
     incomingSegmentLabelTexts: incomingTexts,
+    incomingSegmentChainLengths: incomingChainLengths,
     nameSlotBand: bandsResult.bands.B5,
     segmentSlotBand: bandsResult.bands.B1,
     columnGap,
@@ -3595,7 +3591,17 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
               spanStart: Math.max(gpzPort.x, gpzRightEdgeX),
               spanEnd: first.composed.entryPort.x,
               busAxisY: rowLayout.busAxisY,
-              primaryRect: slot.rect,
+              // SLOT-DRYF-PRZĘSŁA: rezerwacja stacji 0 jest liczona
+              // (`computeSegmentLabelSlotX`) od krawędzi świata `0`, bo lewy
+              // koniec tego przęsła — prawa krawędź GPZ — powstaje dopiero
+              // TUTAJ. Domykamy ją TĄ SAMĄ regułą centrowania na pełnych
+              // danych; bez tego podpis „GPZ ↔ S01" mijał środek swojego
+              // kabla o 824 j.św. (pomiar `scripts/pomiar_slotu.tsx`).
+              primaryRect: wysrodkujSlotNaPrzesle(
+                slot.rect,
+                Math.max(gpzPort.x, gpzRightEdgeX),
+                first.composed.entryPort.x,
+              ),
             });
           }
         }
@@ -4059,7 +4065,13 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
             spanStart: Math.max(feederPort.x, gpzRightEdgeX),
             spanEnd: first.composed.entryPort.x,
             busAxisY: feederLayout.busAxisY,
-            primaryRect: slot.rect,
+            // SLOT-DRYF-PRZĘSŁA: jak przy GPZ→S0 wyżej — lewy koniec przęsła
+            // (pole odpływowe GPZ) znany dopiero tutaj.
+            primaryRect: wysrodkujSlotNaPrzesle(
+              slot.rect,
+              Math.max(feederPort.x, gpzRightEdgeX),
+              first.composed.entryPort.x,
+            ),
           });
         }
       }
@@ -4264,7 +4276,14 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       .slice(li + 1)
       .map((laterRun) => lateralChannelXById.get(laterRun.id))
       .filter((x): x is number => x != null);
-    const channels = insertColumnChannels(layout.columnsResult, laterChannelXs, `Lateral „${run.id}"`);
+    const channels = insertColumnChannels(
+      layout.columnsResult,
+      laterChannelXs,
+      `Lateral „${run.id}"`,
+      // SLOT-DRYF-PRZĘSŁA: etykieta przęsła ustępuje kanałowi WZDŁUŻ własnego
+      // kabla (geometria stacji tego wiersza), zamiast rozpychać kolumny.
+      layout.geometryInputs,
+    );
     stopNotes.push(...channels.stopNotes);
     layout = { ...layout, columnsResult: channels.result };
 

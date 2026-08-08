@@ -48,13 +48,14 @@
  */
 
 import { MIN_ROUTE_CLEARANCE } from './clearances';
-import { GRID, snapUp, type V3Rect } from '../core/grid';
+import { GRID, snapDown, snapUp, type V3Rect } from '../core/grid';
 import type { StationMeasureInput } from './measure';
 import {
   colorSegmentLabelRows,
   COLUMN_GAP,
   computeSegmentLabelSlotX,
   computeStationTaps,
+  segmentSpanEndsX,
   SEGMENT_LABEL_ROW_HEIGHT,
 } from './segments';
 
@@ -123,6 +124,10 @@ export interface ComputeColumnsInput {
    *  wejściowego (nie powinno się zdarzyć w praktyce, ale funkcja jest
    *  czystą arytmetyką i nie waliduje topologii — to zakres warstwy wyżej). */
   readonly incomingSegmentLabelTexts: readonly (string | null)[];
+  /** SLOT-DRYF-PRZĘSŁA: liczba członów ENM przęsła wchodzącego do stacji
+   *  `index` — przekazywana wprost do `computeSegmentLabelSlotX` (patrz
+   *  `udzialWlasciciela` w `./segments`). Brak = same jednoczłonowe przęsła. */
+  readonly incomingSegmentChainLengths?: readonly (number | null | undefined)[];
   /** Pasmo B5 (pasmo nazw) z `computeBands` — pozycja pionowa slotu nazw. */
   readonly nameSlotBand: ColumnBandY;
   /** Pasmo B1 (etykiety segmentów) z `computeBands` — pozycja slotu segmentu. */
@@ -155,7 +160,12 @@ export function computeColumns(input: ComputeColumnsInput): ColumnsResult {
   // kolorowanie grafu przedziałów) liczone z TEJ SAMEJ pary wejść
   // (`stations`, `incomingSegmentLabelTexts`) — determinizm (P7).
   const taps = computeStationTaps(stations, incomingSegmentLabelTexts, columnGap);
-  const slotXs = computeSegmentLabelSlotX(stations, incomingSegmentLabelTexts, columnGap);
+  const slotXs = computeSegmentLabelSlotX(
+    stations,
+    incomingSegmentLabelTexts,
+    columnGap,
+    input.incomingSegmentChainLengths,
+  );
   const rows = colorSegmentLabelRows(slotXs);
 
   const columns: ColumnResult[] = [];
@@ -239,31 +249,97 @@ export interface InsertColumnChannelsResult {
   readonly stopNotes: readonly string[];
 }
 
-/** Zasięg X „treści" przypisanej indeksowi kolumny `i`: UNIA bloku+pasma
- *  nazw (`col.x`..`col.x+col.width`) i — gdy stacja `i` ma slot etykiety
- *  segmentu wchodzącego (B1) — TEGO slotu (`computeSegmentLabelSlotX`
- *  wyśrodkowuje go na przęśle tap-do-tap, więc bywa PRZESUNIĘTY względem
- *  własnej kolumny, wystając w szczelinę `COLUMN_GAP` PRZED nią — właśnie
- *  tam, gdzie ten moduł chce wstawiać kanały). Bez tej unii kanał mógłby
- *  ominąć blok/pasmo nazw, ale wciąż przeciąć etykietę B1 (znalezisko F6d —
- *  patrz raport: 2 kolizje klasy `segment-span` na realnej fixturze przed tą
- *  poprawką). */
+/** Zasięg X „treści" przypisanej indeksowi kolumny `i`: blok + pasmo nazw
+ *  (`col.x`..`col.x+col.width`).
+ *
+ *  SLOT-DRYF-PRZĘSŁA — DLACZEGO JUŻ BEZ SLOTU ETYKIETY PRZĘSŁA. F6d dokładał
+ *  tu UNIĘ ze slotem B1, bo kanał potrafił ominąć blok, a mimo to przeciąć
+ *  etykietę przęsła (2 kolizje klasy `segment-span` na fixturze). Lekarstwo
+ *  było jednak nieproporcjonalne: żeby przepuścić kanał obok NAPISU,
+ *  przesuwaliśmy CAŁĄ KOLUMNĘ STACJI wraz z całym ogonem wiersza. Po tej
+ *  karcie slot jest wyśrodkowany na kablu, który opisuje, więc leży dokładnie
+ *  tam, gdzie kanały chcą przechodzić — utrzymanie unii kosztowałoby +2,2%
+ *  szerokości i +7,6% wysokości arkusza (pomiar `scripts/pomiar_slotu.tsx`,
+ *  bbox 8344×5254 → 8528×5654).
+ *
+ *  Kolizja jest rozwiązywana ZASOBEM, KTÓRY MA LUZ: napis może przesunąć się
+ *  WZDŁUŻ swojego kabla (`przesunSlotyPozaKanaly` niżej), stacja nie może
+ *  ruszyć się nigdzie. Niezmiennik „kanał nie przecina etykiety przęsła"
+ *  zostaje w mocy — zmienia się tylko to, KTO ustępuje. */
 interface ContentBounds {
   readonly left: number;
   readonly right: number;
 }
 
-function computeContentBounds(
-  columns: readonly ColumnResult[],
+function computeContentBounds(columns: readonly ColumnResult[]): ContentBounds[] {
+  return columns.map((col) => ({ left: col.x, right: col.x + col.width }));
+}
+
+/**
+ * SLOT-DRYF-PRZĘSŁA: przesuwa sloty etykiet przęseł WZDŁUŻ ich własnych
+ * kabli, tak by żaden punkt kanału nie wypadł w slocie (z prześwitem
+ * `CHANNEL_MIN_CLEARANCE` z każdej strony).
+ *
+ * REGUŁY (wszystkie wyprowadzone z geometrii, zero progów w jednostkach):
+ *  1. slot wolno przesunąć TYLKO w obrębie przęsła, które opisuje
+ *     (`dozwolone[stationIndex]`) — napis nie może zejść z własnego kabla;
+ *  2. kandydaci to skrajne położenia „tuż przed" / „tuż za" każdym punktem
+ *     kanału — wybieramy ten NAJBLIŻSZY położeniu idealnemu (środek kabla),
+ *     przy remisie mniejszy `x` (determinizm P7);
+ *  3. kandydat musi być wolny od WSZYSTKICH punktów kanału ORAZ rozłączny ze
+ *     slotami tego samego WIERSZA B1 — inaczej naprawa jednej kolizji
+ *     tworzyłaby drugą (dowód rozłączności z `colorSegmentLabelRows` musi
+ *     zostać w mocy);
+ *  4. gdy żaden kandydat nie spełnia (1)–(3), slot ZOSTAJE na miejscu, a
+ *     wołający dostaje notatkę STOP — brak cichego rozjazdu.
+ */
+function przesunSlotyPozaKanaly(
   slots: readonly SegmentLabelSlotResult[],
-): ContentBounds[] {
-  const slotByIndex = new Map(slots.map((s) => [s.stationIndex, s]));
-  return columns.map((col, i) => {
-    const slot = slotByIndex.get(i);
-    const left = slot ? Math.min(col.x, slot.rect.x) : col.x;
-    const right = slot ? Math.max(col.x + col.width, slot.rect.x + slot.rect.width) : col.x + col.width;
-    return { left, right };
+  channelPointsX: readonly number[],
+  dozwolone: ReadonlyMap<number, { readonly startX: number; readonly endX: number }>,
+  rowLabel: string,
+  stopNotes: string[],
+): SegmentLabelSlotResult[] {
+  const wynik = slots.map((s) => ({ ...s, rect: { ...s.rect } }));
+  const koliduje = (x: number, width: number): boolean =>
+    channelPointsX.some((p) => p >= x - CHANNEL_MIN_CLEARANCE && p <= x + width + CHANNEL_MIN_CLEARANCE);
+
+  wynik.forEach((slot, idx) => {
+    if (!koliduje(slot.rect.x, slot.rect.width)) return;
+    const zakres = dozwolone.get(slot.stationIndex);
+    if (!zakres) return;
+    const idealnyX = slot.rect.x;
+    const kandydaci: number[] = [];
+    for (const p of channelPointsX) {
+      kandydaci.push(snapUp(p + CHANNEL_MIN_CLEARANCE));
+      kandydaci.push(snapDown(p - CHANNEL_MIN_CLEARANCE - slot.rect.width));
+    }
+    const dopuszczalny = (x: number): boolean => {
+      if (x < Math.min(zakres.startX, zakres.endX) || x + slot.rect.width > Math.max(zakres.startX, zakres.endX)) {
+        return false;
+      }
+      if (koliduje(x, slot.rect.width)) return false;
+      return !wynik.some(
+        (inny, j) =>
+          j !== idx &&
+          inny.rowIndex === slot.rowIndex &&
+          x < inny.rect.x + inny.rect.width &&
+          inny.rect.x < x + slot.rect.width,
+      );
+    };
+    const wybrany = kandydaci
+      .filter(dopuszczalny)
+      .sort((a, b) => Math.abs(a - idealnyX) - Math.abs(b - idealnyX) || a - b)[0];
+    if (wybrany == null) {
+      stopNotes.push(
+        `${rowLabel}: kanał zejścia lateralu przecina slot etykiety przęsła stacji ${slot.stationIndex} — ` +
+          `nie ma na tym kablu położenia wolnego od kanałów i rozłącznego z sąsiadami wiersza B1; slot zostaje na miejscu.`,
+      );
+      return;
+    }
+    slot.rect.x = wybrany;
   });
+  return wynik;
 }
 
 /** Czy `point` leży (z prześwitem `CHANNEL_MIN_CLEARANCE` z każdej strony)
@@ -283,6 +359,13 @@ export function insertColumnChannels(
   input: ColumnsResult,
   channelPointsX: readonly number[],
   rowLabel: string,
+  /** SLOT-DRYF-PRZĘSŁA: stacje wiersza (index-aligned do `input.columns`) —
+   *  z nich liczone jest przęsło (kabel), po którym wolno PRZESUWAĆ slot
+   *  etykiety, gdy kanał wypadłby w tym slocie. Liczone WEWNĄTRZ, na
+   *  kolumnach PO przesunięciach, żeby nie istniała druga (nieaktualna)
+   *  kopia tej geometrii. Brak = slot nie ustępuje kanałowi (zachowanie
+   *  sprzed karty dla wołających, którzy stacji nie przekazują). */
+  stations?: readonly StationMeasureInput[],
 ): InsertColumnChannelsResult {
   if (channelPointsX.length === 0) return { result: input, stopNotes: [] };
 
@@ -294,7 +377,7 @@ export function insertColumnChannels(
   const sortedPoints = [...new Set(channelPointsX)].sort((a, b) => a - b);
 
   for (const point of sortedPoints) {
-    const bounds = computeContentBounds(columns, slots);
+    const bounds = computeContentBounds(columns);
     const idx = bounds.findIndex((b) => pointInDangerZone(point, b));
     if (idx === -1) continue; // już bezpieczny (leży w istniejącej szczelinie z prześwitem)
     if (idx === 0) {
@@ -312,6 +395,16 @@ export function insertColumnChannels(
     );
     slots = slots.map((s) => (s.stationIndex >= idx ? { ...s, rect: { ...s.rect, x: s.rect.x + delta } } : s));
     totalWidth += delta;
+  }
+
+  // SLOT-DRYF-PRZĘSŁA: kanały omijają BLOKI (pętla wyżej), a etykiety przęseł
+  // ustępują im WZDŁUŻ własnych kabli — zamiast rozpychać arkusz.
+  if (stations && stations.length === columns.length) {
+    const taps = columns.map((c) => ({ x: c.x, width: c.width, tapX: c.tapX }));
+    const przesla = new Map<number, { startX: number; endX: number }>(
+      slots.map((slot) => [slot.stationIndex, segmentSpanEndsX(stations, taps, slot.stationIndex)]),
+    );
+    slots = przesunSlotyPozaKanaly(slots, sortedPoints, przesla, rowLabel, stopNotes);
   }
 
   return { result: { columns, segmentLabelSlots: slots, totalWidth, segmentLabelRowCount: input.segmentLabelRowCount }, stopNotes };
