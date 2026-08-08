@@ -384,7 +384,18 @@ moduł już tego nie rozstrzyga.
    kasować. Przed budową sprawdź per pakiet, czy dane, których wymaga, są w zapisie
    biegu — wzorzec z karty PACK-ROZPLYW (tam teza długu „trzeba odtworzyć wejścia
    solvera" okazała się fałszywa: wynik był w zapisie w całości).
-6. Reszta kolejki: reguły zgodności specyficzne dla OSD
+6. **CZAS-SCIENNY-RESZTA** (granica nazwana przy odbiorze SLOT-DRYF rundy 2,
+   nie domknieta swiadomie). Karta naprawila iloraz w `kosztSceny.test.ts`
+   (prog 3x zostal, estymator zmieniony na mediane niezaleznych par). Moj
+   inwentarz klasy znalazl DWIE dalsze asercje na czasie, ale ABSOLUTNE:
+   `buildScene.p1Recenzja` (budzety 5/12/30 s) i `schemat10s7p4` (15 s).
+   Zmierzone czasy rzeczywiste: 358 ms / 1957 ms / 7115 ms — margines 14x, 6x
+   i **4,2x** (najciasniejszy, siec ~500 stacji). To inny profil ryzyka niz
+   iloraz z jednocyfrowymi milisekundami w liczniku i mianowniku, wiec nie
+   zadalem trzeciej rundy — ale przy silnym obciazeniu maszyny (cztery karty
+   w biegu + shardy, jak w tej sesji) 4,2x moze zostac zjedzone. Do rozwazenia:
+   miara deterministyczna (liczba operacji) zamiast zegara, jak w reszcie kanonu.
+7. Reszta kolejki: reguły zgodności specyficzne dla OSD
    (REF-PAKIET) · dług aparatury: katalog bez `U_m`/`I_cu` w postaci czytanej
    przez widok wytrzymałości · 9 długów stałych zastępczych z
    `INWENTARZ_STALYCH_V126_2026-08-08.md` · rozszerzenie zapadki podstawień na
