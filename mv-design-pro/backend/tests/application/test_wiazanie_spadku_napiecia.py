@@ -9,6 +9,11 @@ rodzaj gałęzi {linia · kabel · aparat · transformator} × stan danych {komp
 brak przepływu w wyniku · wielkość nieliczbowa · długość zerowa · napięcie
 znamionowe zerowe} × artefakt biegu {kompletny · bez wyniku · bez przepływów ·
 bez napięć węzłowych · bez opisu sieci · innego rodzaju analizy}.
+
+Oś dołożona przy odbiorze karty: PRZYPISANIE wielkości do gałęzi. Komplet danych
+to za mało — liczby muszą pochodzić z TEJ gałęzi, a nie z sąsiedniej. Zestawy
+wielogałęziowe muszą więc mieć wartości PARAMI RÓŻNE, inaczej permutacja jest
+niewidoczna (zmierzone: iniekcja czytająca sąsiada przechodziła 24/24).
 """
 
 from __future__ import annotations
@@ -106,6 +111,84 @@ def test_kazdy_rodzaj_odcinka_daje_oferte_z_liczbami_z_biegu(rodzaj: str) -> Non
     assert (odcinek.p_mw, odcinek.q_mvar) == (1.5, 0.4)
     assert odcinek.u_poczatku_kv == 14.99
     assert odcinek.u_n_kv == 15.0
+
+
+def test_kazda_wielkosc_oferty_pochodzi_z_TEJ_galezi_a_nie_z_sasiedniej() -> None:
+    """Przypisanie wielkości do gałęzi — pin postawiony przy odbiorze karty.
+
+    Wszystkie dotychczasowe zestawy wielogałęziowe w tym pliku nadawały gałęziom
+    IDENTYCZNE liczby, więc żaden nie mógł zobaczyć PERMUTACJI: iniekcja czytająca
+    przepływ sąsiedniej gałęzi przechodziła tu na zielono (24/24), a łapał ją
+    dopiero pin zgodności na poziomie bramy — i to wyłącznie na tej z dwóch sieci,
+    która ma więcej niż jedną gałąź. Warstwa, której cały sens to „przeczytaj
+    wielkości TEGO odcinka", nie miała własnego strażnika przypisania.
+
+    Dlatego tu KAŻDA wielkość jest inna na każdej gałęzi (impedancja, długość,
+    przepływ, napięcie znamionowe, napięcie początku), a wyrocznia bierze się z tej
+    samej mapy, z której zbudowano zapis — żadna liczba nie jest przepisana ręcznie.
+    Rozłączność par węzłów sprawia, że przestawienie gałęzi zmienia też napięcia.
+    """
+    dane = {
+        "g-1": {"r": 0.11, "x": 0.21, "l": 1.5, "p": 1.10, "q": 0.31, "u_n": 15.0, "u_p": 14.91},
+        "g-2": {"r": 0.12, "x": 0.22, "l": 2.5, "p": 2.20, "q": 0.32, "u_n": 20.0, "u_p": 19.92},
+        "g-3": {"r": 0.13, "x": 0.23, "l": 3.5, "p": 3.30, "q": 0.33, "u_n": 30.0, "u_p": 29.93},
+    }
+    # Zapadka na zestaw zdegenerowany: gdyby ktoś zrównał wartości, pin przestałby
+    # widzieć permutację, nie zmieniając ani jednej asercji poniżej.
+    for pole in ("r", "x", "l", "p", "q", "u_n", "u_p"):
+        wartosci = [rzad[pole] for rzad in dane.values()]
+        assert len(set(wartosci)) == len(wartosci), f"wartości `{pole}` muszą być parami różne"
+
+    wezly: dict[str, Any] = {}
+    galezie: dict[str, Any] = {}
+    napiecia: dict[str, float] = {}
+    przeplywy: list[dict[str, Any]] = []
+    snapshot_galezie: list[dict[str, Any]] = []
+    for id_galezi, rzad in dane.items():
+        od_wezla, do_wezla = f"n-{id_galezi}-od", f"n-{id_galezi}-do"
+        wezly[od_wezla] = {"element_id": f"bus-{id_galezi}-od", "voltage_level": rzad["u_n"]}
+        wezly[do_wezla] = {"element_id": f"bus-{id_galezi}-do", "voltage_level": rzad["u_n"]}
+        napiecia[od_wezla] = rzad["u_p"]
+        napiecia[do_wezla] = rzad["u_p"] - 0.05
+        galezie[id_galezi] = {
+            "element_id": f"ln-{id_galezi}",
+            "name": f"Odcinek {id_galezi}",
+            "from_node_id": od_wezla,
+            "to_node_id": do_wezla,
+        }
+        przeplywy.append({"branch_id": id_galezi, "p_from_mw": rzad["p"], "q_from_mvar": rzad["q"]})
+        snapshot_galezie.append(
+            {
+                "ref_id": f"ln-{id_galezi}",
+                "type": "cable",
+                "r_ohm_per_km": rzad["r"],
+                "x_ohm_per_km": rzad["x"],
+                "length_km": rzad["l"],
+            }
+        )
+
+    artefakt = _artefakt(galezie_grafu=galezie, przeplywy=przeplywy, napiecia=napiecia)
+    artefakt["graph"]["nodes"] = wezly
+
+    odcinki = odcinki_spadku_napiecia(raw_result=artefakt, snapshot={"branches": snapshot_galezie})
+
+    assert len(odcinki) == len(dane)
+    for odcinek in odcinki:
+        rzad = dane[odcinek.id_galezi]
+        assert (odcinek.r_ohm_per_km, odcinek.x_ohm_per_km, odcinek.length_km) == (
+            rzad["r"],
+            rzad["x"],
+            rzad["l"],
+        ), odcinek.id_galezi
+        assert (odcinek.p_mw, odcinek.q_mvar) == (rzad["p"], rzad["q"]), odcinek.id_galezi
+        assert (odcinek.u_n_kv, odcinek.u_poczatku_kv) == (
+            rzad["u_n"],
+            rzad["u_p"],
+        ), odcinek.id_galezi
+        assert (odcinek.od_szyny, odcinek.do_szyny) == (
+            f"bus-{odcinek.id_galezi}-od",
+            f"bus-{odcinek.id_galezi}-do",
+        ), odcinek.id_galezi
 
 
 def test_kolejnosc_odcinkow_jest_deterministyczna() -> None:

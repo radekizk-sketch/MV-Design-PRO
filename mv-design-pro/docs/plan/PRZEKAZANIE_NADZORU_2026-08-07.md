@@ -392,7 +392,6 @@ moduł już tego nie rozstrzyga.
    napięcie POCZĄTKU odcinka — zmierzone 12,4 V rozjazdu na 13,8 kV; naprawa to
    zmiana kanonicznego równania dowodu). Szczegóły i pomiary: wiersz
    PACK-BEZ-KONSUMENTA w `docs/v12xx/REJESTR_KONFLIKTOW.md`.
-6. Reszta kolejki: reguły zgodności specyficzne dla OSD
 6. **CZAS-SCIENNY-RESZTA** (granica nazwana przy odbiorze SLOT-DRYF rundy 2,
    nie domknieta swiadomie). Karta naprawila iloraz w `kosztSceny.test.ts`
    (prog 3x zostal, estymator zmieniony na mediane niezaleznych par). Moj
