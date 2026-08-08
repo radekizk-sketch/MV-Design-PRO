@@ -163,7 +163,13 @@ def _neutral_grounded_and_zn(
                     "przyjmować R_N=0 (to byłoby uziemienie bezpośrednie, nie "
                     "rezystancyjne). Podaj r_ohm rezystora NER."
                 )
-            return True, complex(grounding.r_ohm, grounding.x_ohm or 0.0)
+            # `is None`, nie `or`: rezystor NER z jawnie podaną reaktancją 0 Ω to
+            # dana, a nie brak. Wartości obie formy dają dziś tę samą, ale operator
+            # `or` nie odróżnia zera od braku — a to jest dokładnie ta klasa, która
+            # w moście wejść V12.6 kasowała jawne 0,0 Ω aparatu (MOST-WEJSCIA-V126).
+            return True, complex(
+                grounding.r_ohm, grounding.x_ohm if grounding.x_ohm is not None else 0.0
+            )
         # petersen_coil: reaktancja X_N jest wielkością dostrajaną do pojemności
         # sieci (dominuje Z0) i MUSI być podana; rezystancja tłumienia dławika
         # (r_ohm) może być pominięta (0 Ω — brak jawnie podanych strat dławika).
@@ -175,7 +181,9 @@ def _neutral_grounded_and_zn(
                 "przyjmować X_N=0 (to byłoby uziemienie bezpośrednie, nie "
                 "przez cewkę Petersena). Podaj x_ohm dławika ziemnozwarciowego."
             )
-        return True, complex(grounding.r_ohm or 0.0, grounding.x_ohm)
+        return True, complex(
+            grounding.r_ohm if grounding.r_ohm is not None else 0.0, grounding.x_ohm
+        )
     # Brak jawnej konfiguracji: uziemienie wynika z litery neutralnej (bezpośrednie).
     return neutral_letter_present, 0j
 

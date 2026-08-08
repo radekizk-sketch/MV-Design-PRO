@@ -182,10 +182,71 @@ class V126AcademicSolver:
             branch.r_ohm_per_km * branch.length_km, branch.x_ohm_per_km * branch.length_km
         )
 
+    def _indeks_wezla_elektrycznego(self, model: V126AcademicInput) -> dict[str, int]:
+        """Odwzorowanie szyna → indeks WĘZŁA ELEKTRYCZNEGO (karta MOST-WEJSCIA-V126).
+
+        Gałąź ZAMKNIĘTA o zerowej impedancji szeregowej to POŁĄCZENIE IDEALNE:
+        obie szyny są tym samym węzłem elektrycznym i mają identyczny potencjał.
+        Kanoniczne ujęcie w metodzie węzłowej to REDUKCJA (sklejenie) węzłów — tak
+        samo robi ``AdmittanceMatrixBuilder`` dla łączników w modelu domenowym.
+
+        PO CO TO JEST. Przed tą kartą ``_ybus`` na gałęzi o ``abs(z) == 0``
+        wykonywał ``continue``, czyli po cichu ROZSPAJAŁ sieć w miejscu aparatu.
+        Defekt był uśpiony wyłącznie dlatego, że most wstawiał każdemu aparatowi
+        zmyśloną impedancję 0,001 Ω/km — dopiero uczciwe przeniesienie jawnego
+        ``r_ohm = 0,0`` z modelu (ta sama karta) postawiłoby sieć na tej ścieżce.
+        Naprawa jednego defektu nie może budzić drugiego.
+
+        DETERMINIZM I ZGODNOŚĆ WSTECZ: reprezentantem grupy jest szyna o
+        NAJMNIEJSZYM indeksie w kolejności modelu, a numeracja węzłów idzie w
+        kolejności pierwszego wystąpienia reprezentanta. Gdy sieć nie ma ani
+        jednego połączenia idealnego, odwzorowanie jest TOŻSAMOŚCIĄ i macierz
+        wychodzi bajtowo taka sama jak przed kartą.
+        """
+        kolejnosc = [bus.ref for bus in model.buses]
+        pozycja = {ref: idx for idx, ref in enumerate(kolejnosc)}
+        rodzic = list(range(len(kolejnosc)))
+
+        def znajdz(i: int) -> int:
+            while rodzic[i] != i:
+                rodzic[i] = rodzic[rodzic[i]]
+                i = rodzic[i]
+            return i
+
+        for branch in model.branches:
+            if branch.is_open:
+                continue
+            i = pozycja.get(branch.from_bus_ref)
+            j = pozycja.get(branch.to_bus_ref)
+            if i is None or j is None or i == j:
+                continue
+            if abs(self._branch_z_ohm(branch)) != 0:
+                continue
+            a, b = znajdz(i), znajdz(j)
+            if a != b:
+                # Reprezentantem zostaje MNIEJSZY indeks — jedno, deterministyczne
+                # kryterium niezależne od kolejności gałęzi w modelu.
+                rodzic[max(a, b)] = min(a, b)
+
+        numer_wezla: dict[int, int] = {}
+        wynik: dict[str, int] = {}
+        for idx, ref in enumerate(kolejnosc):
+            reprezentant = znajdz(idx)
+            if reprezentant not in numer_wezla:
+                numer_wezla[reprezentant] = len(numer_wezla)
+            wynik[ref] = numer_wezla[reprezentant]
+        return wynik
+
     def _ybus(self, model: V126AcademicInput, harmonic: float = 1.0) -> np.ndarray[Any, Any]:
-        size = len(model.buses)
+        """Macierz admitancyjna nad WĘZŁAMI ELEKTRYCZNYMI (nie nad szynami).
+
+        Rozmiar równa się liczbie szyn dopóki sieć nie zawiera połączeń idealnych
+        (patrz :meth:`_indeks_wezla_elektrycznego`); wtedy jest o tyle mniejszy,
+        ile szyn skleiły zwarte aparaty bez impedancji styku.
+        """
+        index = self._indeks_wezla_elektrycznego(model)
+        size = len(set(index.values()))
         ybus = np.zeros((size, size), dtype=complex)
-        index = self._bus_index(model)
         for branch in model.branches:
             if branch.is_open:
                 continue
@@ -197,10 +258,18 @@ class V126AcademicSolver:
                 branch.r_ohm_per_km * branch.length_km,
                 harmonic * branch.x_ohm_per_km * branch.length_km,
             )
-            if abs(z) == 0:
+            if abs(z) == 0 or i == j:
+                # Połączenie idealne jest już uwzględnione REDUKCJĄ węzłów (oba
+                # zaciski mają ten sam indeks), więc nie ma czego stemplować.
+                # `continue` nie rozspaja tu niczego — w odróżnieniu od stanu
+                # sprzed karty, gdzie ten sam wiersz gubił połączenie.
                 continue
             y = 1 / z
-            shunt = 1j * harmonic * branch.b_siemens_per_km * branch.length_km / 2
+            # Susceptancja NIEZNANA (`None`) to nie zero: gałąź bez danej o
+            # pojemności doczepnej nie wnosi bocznika i mówi o tym wprost tam,
+            # gdzie decyzja od tego zależy (ryzyko ferrorezonansu).
+            b_per_km = branch.b_siemens_per_km
+            shunt = 1j * harmonic * b_per_km * branch.length_km / 2 if b_per_km is not None else 0j
             ybus[i, i] += y + shunt
             ybus[j, j] += y + shunt
             ybus[i, j] -= y
@@ -208,7 +277,7 @@ class V126AcademicSolver:
         for transformer in model.transformers:
             i = index.get(transformer.hv_bus_ref)
             j = index.get(transformer.lv_bus_ref)
-            if i is None or j is None:
+            if i is None or j is None or i == j:
                 continue
             z_base = (transformer.uhv_kv**2) / transformer.sn_mva
             z = complex(
@@ -243,7 +312,11 @@ class V126AcademicSolver:
         assumption). This shunt is added ONLY on the SSCI path so the existing
         power-quality Z-scan stays byte-identical.
         """
-        index = self._bus_index(model)
+        # Indeks WĘZŁA ELEKTRYCZNEGO — ta sama przestrzeń, co macierz `_ybus`.
+        # Gdy dwie szyny sklejone połączeniem idealnym niosą własne moce zwarciowe,
+        # ich boczniki sumują się na wspólnym węźle (równoległe źródła zastępcze),
+        # zamiast nadpisywać się nawzajem.
+        index = self._indeks_wezla_elektrycznego(model)
         shunt: dict[int, complex] = {}
         for bus in model.buses:
             if not bus.fault_level_mva:
@@ -255,7 +328,7 @@ class V126AcademicSolver:
             z_src = complex(0.15 * z, harmonic * 0.99 * z)
             if abs(z_src) == 0:
                 continue
-            shunt[bus_idx] = 1.0 / z_src
+            shunt[bus_idx] = shunt.get(bus_idx, 0j) + 1.0 / z_src
         return shunt
 
     def _driving_point_impedance(
@@ -292,16 +365,22 @@ class V126AcademicSolver:
         if with_source_shunt:
             # Undo the artificial 1e6 reference (power-quality-only stiffening) so
             # the physical grid Thevenin governs the SSCI driving-point impedance.
-            if len(model.buses):
+            if ybus.shape[0]:
                 ybus[0, 0] -= 1e6
             shunts = self._grid_source_shunt_admittance(model, harmonic)
             for bus_idx, y_src in shunts.items():
                 ybus[bus_idx, bus_idx] += y_src
-            if not shunts and len(model.buses):
+            if not shunts and ybus.shape[0]:
                 # No grid-source bus: keep a small reference to avoid singularity.
                 ybus[0, 0] += 1e-6
         zbus = np.linalg.pinv(ybus)
-        return np.diag(zbus)
+        przekatna_wezlowa = np.diag(zbus)
+        # ROZWINIĘCIE DO PORZĄDKU SZYN. Macierz stoi na węzłach elektrycznych, a
+        # wołający indeksują wynik szyną (`_bus_index`). Szyny sklejone
+        # połączeniem idealnym są JEDNYM węzłem, więc widzą tę samą impedancję
+        # widzianą z zacisków — i to jest ścisłe, a nie przybliżenie.
+        index = self._indeks_wezla_elektrycznego(model)
+        return np.array([przekatna_wezlowa[index[bus.ref]] for bus in model.buses], dtype=complex)
 
     def _solve_linear(
         self, ybus: np.ndarray[Any, Any], injections: np.ndarray[Any, Any]
@@ -313,7 +392,11 @@ class V126AcademicSolver:
 
     def _power_quality(self, model: V126AcademicInput, trace: TraceBuilder) -> JsonDict:
         harmonics = sorted({2, 3, 5, 7, 11, 13, 17, 19, 23, 25, 29, 31, 35, 37, 41, 43, 47, 49})
+        # `index` adresuje SZYNY (wyniki po szynach), `indeks_wezla` — WĘZŁY
+        # ELEKTRYCZNE macierzy. Bez połączeń idealnych oba są tożsame.
         index = self._bus_index(model)
+        indeks_wezla = self._indeks_wezla_elektrycznego(model)
+        liczba_wezlow = len(set(indeks_wezla.values()))
         bus_results: dict[str, JsonDict] = {
             bus.ref: {
                 "bus_ref": bus.ref,
@@ -337,9 +420,12 @@ class V126AcademicSolver:
         k_factor: dict[str, float] = {bus.ref: 0.0 for bus in model.buses}
         for h in harmonics:
             ybus = self._ybus(model, float(h))
-            injections = np.zeros(len(model.buses), dtype=complex)
+            # Wstrzyknięcia sumują się na WĘZLE: dwie szyny sklejone połączeniem
+            # idealnym to jeden punkt sieci, więc ich prądy harmoniczne wchodzą
+            # do jednego bilansu prądowego (prawo Kirchhoffa), a nie do dwóch.
+            injections = np.zeros(liczba_wezlow, dtype=complex)
             for source in model.harmonic_sources:
-                bus_idx = index.get(source.bus_ref)
+                bus_idx = indeks_wezla.get(source.bus_ref)
                 if bus_idx is None:
                     continue
                 percent = source.spectrum_percent.get(h, 0.0) / 100.0
@@ -349,7 +435,7 @@ class V126AcademicSolver:
                 k_factor[source.bus_ref] += current**2 * h**2
             voltages = self._solve_linear(ybus, injections)
             for bus in model.buses:
-                bus_idx = index[bus.ref]
+                bus_idx = indeks_wezla[bus.ref]
                 voltage = voltages[bus_idx] / 1000.0
                 magnitude_kv = abs(voltage)
                 phase = (
@@ -985,21 +1071,36 @@ class V126AcademicSolver:
         customers_total = max(sum(bus.customer_count for bus in model.buses), 1)
         saidi = 0.0
         saifi = 0.0
+        bez_obciazalnosci: list[str] = []
         for branch in model.branches:
             current = self._branch_current_a(model, branch)
-            overload = max(0.0, current / branch.ampacity_a - 1.0)
             affected = sum(
                 bus.customer_count for bus in model.buses if bus.ref == branch.to_bus_ref
             )
-            severity = overload * 100.0 + affected / customers_total * 10.0
-            contingencies.append(
-                {
-                    "contingency": branch.ref,
-                    "order": "N-1",
-                    "severity": _round(severity, 4),
-                    "max_loading_percent": _round(current / branch.ampacity_a * 100.0, 2),
-                }
-            )
+            # Obciążalność NIEZNANA ⇒ stopnia obciążenia NIE DA SIĘ policzyć i
+            # człon przeciążeniowy dotkliwości nie powstaje. Przed kartą
+            # MOST-WEJSCIA-V126 most wstawiał tu 630 A każdemu aparatowi i 300 A
+            # każdemu odcinkowi bez obciążalności, więc iloraz I/I_dop wychodził
+            # zawsze — tylko z liczby, której nikt nie zmierzył.
+            pozycja: JsonDict = {
+                "contingency": branch.ref,
+                "order": "N-1",
+            }
+            if branch.ampacity_a is None:
+                bez_obciazalnosci.append(branch.ref)
+                severity = affected / customers_total * 10.0
+                pozycja["max_loading_percent"] = None
+                pozycja["brak_danych"] = (
+                    "Element nie ma obciążalności długotrwałej w modelu ani w karcie "
+                    "katalogowej — stopnia obciążenia i przeciążenia nie policzono. "
+                    "Dotkliwość obejmuje wyłącznie skutek odbiorowy."
+                )
+            else:
+                overload = max(0.0, current / branch.ampacity_a - 1.0)
+                severity = overload * 100.0 + affected / customers_total * 10.0
+                pozycja["max_loading_percent"] = _round(current / branch.ampacity_a * 100.0, 2)
+            pozycja["severity"] = _round(severity, 4)
+            contingencies.append(pozycja)
             saidi += (
                 branch.failure_rate_per_year * branch.mttr_h * 60.0 * affected / customers_total
             )
@@ -1017,7 +1118,16 @@ class V126AcademicSolver:
         caidi = saidi / saifi if saifi else 0.0
         # D-14: sanity-bounds (IEEE 1366 — wielkości fizycznie ograniczone).
         minutes_per_year = 525600.0
-        overloaded = [c for c in contingencies if c.get("max_loading_percent", 0.0) > 100.0]
+        # `max_loading_percent` bywa teraz `None` (gałąź bez obciążalności) — brak
+        # nie jest ani przeciążeniem, ani jego brakiem, więc nie wchodzi do zliczenia.
+        # Porównanie `None > 100.0` podniosłoby TypeError, a `get(..., 0.0)` cicho
+        # zaliczyłoby brak do „bez przeciążenia" — obie formy byłyby nieuczciwe.
+        overloaded = [
+            c
+            for c in contingencies
+            if isinstance(c.get("max_loading_percent"), int | float)
+            and c["max_loading_percent"] > 100.0
+        ]
         raw_customers = sum(bus.customer_count for bus in model.buses)
         sanity = _sanity_block(
             [
@@ -1053,7 +1163,7 @@ class V126AcademicSolver:
                 f"Przerwy na odbiorcę: {_round(saidi, 4)} min/rok, {_round(saifi, 5)} 1/rok"
             ),
         )
-        return {
+        wynik: JsonDict = {
             "contingency_ranking": sorted(
                 contingencies, key=lambda item: (-item["severity"], item["contingency"])
             )[:100],
@@ -1065,6 +1175,17 @@ class V126AcademicSolver:
             },
             "sanity": sanity,
         }
+        if bez_obciazalnosci:
+            # Meldunek ZBIORCZY obok meldunków przy pozycjach: czytelnik ma
+            # zobaczyć zasięg braku raz, a nie składać go z rankingu przyciętego
+            # do stu pozycji.
+            wynik["brak_danych"] = (
+                f"{len(bez_obciazalnosci)} z {len(model.branches)} elementów nie ma "
+                "obciążalności długotrwałej (model ani karta katalogowa) — dla nich "
+                "stopnia obciążenia N-1 nie policzono."
+            )
+            wynik["elementy_bez_obciazalnosci"] = sorted(bez_obciazalnosci)
+        return wynik
 
     def _earthing(self, model: V126AcademicInput, trace: TraceBuilder) -> JsonDict:
         data = model.earthing
@@ -1685,10 +1806,20 @@ class V126AcademicSolver:
             )
         inrush_multiple = float(model.parameters.get("inrush_multiple_in", 8.0))
         second_harmonic_percent = 63.0 / inrush_multiple
-        ferro_risk = (
-            str(model.parameters.get("neutral_grounding", "isolated")) == "isolated"
-            and sum(branch.b_siemens_per_km * branch.length_km for branch in model.branches) > 1e-5
+        # Ryzyko ferrorezonansu stoi na POJEMNOŚCI DOCZEPNEJ sieci (suma B·ℓ).
+        # Gałąź bez danej o susceptancji nie wnosi do tej sumy ZERA — ona po
+        # prostu nic o pojemności nie mówi. Rozróżnienie ma skutek: gdy żaden
+        # element nie niesie B, suma wychodzi 0 i przed kartą MOST-WEJSCIA-V126
+        # ocena meldowała „brak ryzyka" wyłącznie z braku danych.
+        galezie_z_susceptancja = [
+            branch for branch in model.branches if branch.b_siemens_per_km is not None
+        ]
+        suma_b_l = sum(
+            branch.b_siemens_per_km * branch.length_km for branch in galezie_z_susceptancja
         )
+        siec_izolowana = str(model.parameters.get("neutral_grounding", "isolated")) == "isolated"
+        ferro_ocenialne = bool(galezie_z_susceptancja) or not siec_izolowana
+        ferro_risk = siec_izolowana and suma_b_l > 1e-5
         trace.add(
             "trv_inrush_ferro",
             "u_TRV(t)=Ur*(1-cos(wn*t))*exp(-t/tau)+Ur/sqrt(3)",
@@ -1733,6 +1864,17 @@ class V126AcademicSolver:
                     "przekładników napięciowych"
                     if ferro_risk
                     else "brak przesłanek do ferrorezonansu"
+                ),
+                **(
+                    {}
+                    if ferro_ocenialne
+                    else {
+                        "brak_danych": (
+                            "Sieć z punktem neutralnym izolowanym, a żaden element nie niesie "
+                            "susceptancji doziemnej — pojemności doczepnej nie zsumowano, więc "
+                            "ocena „brak przesłanek” wynika z braku danych, nie z pomiaru."
+                        )
+                    }
                 ),
             },
         }
@@ -1841,6 +1983,19 @@ class V126AcademicSolver:
             z = abs(self._source_impedance(model, bus.ref))
             accepted = 0.0
             limiting = "U_max"
+            # Obciążalność toru zasilającego szynę — WYŁĄCZNIE z elementów, które
+            # ją niosą. Przed kartą MOST-WEJSCIA-V126 stało tu `default=300.0`,
+            # więc szyna bez ani jednego dowiązanego elementu z obciążalnością
+            # (np. szyna GPZ, do której nic nie wchodzi) dostawała kryterium
+            # prądowe policzone z liczby wziętej z powietrza. Odczyt wyniesiony
+            # też POZA pętlę Monte Carlo — nie zależy od losowania, a liczył się
+            # sto tysięcy razy na szynę.
+            obciazalnosci = [
+                branch.ampacity_a
+                for branch in model.branches
+                if branch.to_bus_ref == bus.ref and branch.ampacity_a is not None
+            ]
+            ampacity = max(obciazalnosci) if obciazalnosci else None
             for candidate_mw in [x * 0.1 for x in range(1, 101)]:
                 ok = 0
                 for _ in range(simulations):
@@ -1850,31 +2005,33 @@ class V126AcademicSolver:
                     dv = net_gen * z / max(bus.nominal_kv**2, 1e-9)
                     voltage = bus.voltage_pu + dv
                     current = abs(net_gen) * 1000 / (math.sqrt(3) * bus.nominal_kv)
-                    ampacity = max(
-                        (
-                            branch.ampacity_a
-                            for branch in model.branches
-                            if branch.to_bus_ref == bus.ref
-                        ),
-                        default=300.0,
-                    )
-                    if 0.90 <= voltage <= 1.10 and current <= ampacity:
+                    # Kryterium napięciowe stoi na danych, które są, więc liczy się
+                    # zawsze. Kryterium prądowe NIE JEST stosowane, gdy nie ma z
+                    # czym porównać — wynik ogranicza wtedy samo napięcie, a brak
+                    # obciążalności jest zameldowany przy szynie (nigdy udawany
+                    # domyślną liczbą, nigdy też cicho pomijany).
+                    kryterium_pradowe = ampacity is None or current <= ampacity
+                    if 0.90 <= voltage <= 1.10 and kryterium_pradowe:
                         ok += 1
                 probability = ok / simulations
                 if probability >= 0.95:
                     accepted = candidate_mw
                 else:
-                    limiting = "I_galaz" if current > ampacity else "U_max"
+                    limiting = "I_galaz" if ampacity is not None and current > ampacity else "U_max"
                     break
-            results.append(
-                {
-                    "bus_ref": bus.ref,
-                    "hosting_capacity_mw": _round(accepted, 3),
-                    "critical_limit": limiting,
-                    "confidence_percent": 95,
-                    "monte_carlo_n": simulations,
-                }
-            )
+            pozycja: JsonDict = {
+                "bus_ref": bus.ref,
+                "hosting_capacity_mw": _round(accepted, 3),
+                "critical_limit": limiting,
+                "confidence_percent": 95,
+                "monte_carlo_n": simulations,
+            }
+            if ampacity is None:
+                pozycja["brak_danych"] = (
+                    "Żaden element zasilający tę szynę nie ma obciążalności długotrwałej "
+                    "— kryterium prądowe pominięto, ograniczeniem jest wyłącznie napięcie."
+                )
+            results.append(pozycja)
         trace.add(
             "stochastic_hosting_capacity",
             "P_przyl = max(P_gen) przy prawdopodobieństwie spełnienia kryteriów ≥ 95%",
