@@ -32,7 +32,7 @@ import { SYMBOL_GLYPHS } from '../src/ui/sld/v3/symbols/glyphs';
 import {
   buildResultLabelsFromScene,
   resultRefForSegment,
-  singleHopSegmentRefs,
+  orientedSegmentRefs,
 } from '../src/ui/sld/v3/canvas/resultLabels';
 import { CANVAS_BACKGROUND } from '../src/ui/sld/v3/theme/colorTokens';
 import type { RawOverlayElement, RawOverlayPayload } from '../src/ui/sld-overlay/rawResultOverlayStore';
@@ -249,7 +249,10 @@ function renderStationTile(cfg: StationConfig, ox: number, oy: number, tileW: nu
 // (B) PELNA siec L2 z WARSTWA ZWARCIA — Ik'' per szyna z realnego biegu SC.
 // ===========================================================================
 {
-  const singleHop = singleHopSegmentRefs(enm);
+  // Bramka przesel: KLUCZE mapy orientacji (`orientedSegmentRefs`) — dokumentowany
+  // zamiennik usunietej `singleHopSegmentRefs`, ta sama derywacja co produkcja
+  // (`SldCanvasV3Workspace.buildResultLabelsForSnapshot`).
+  const singleHop = new Set(orientedSegmentRefs(enm).keys());
 
   // Payload wynikowy: dla KAZDEJ szyny sceny odczytaj realny wpis SC (po refie
   // produkcyjnym `resultRefForSegment`, a gdy brak — po kluczu seedowym). Wartosci
