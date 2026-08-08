@@ -19,6 +19,16 @@ Kroki obowiązkowe dowodu (per generate_vdrop_proof w ProofGenerator):
 
 Eksport: JSON + LaTeX + PDF + DOCX (V12K-007 light_technical).
 
+DROGA DO INŻYNIERA (karta PACK-BEZ-KONSUMENTA). Do 2026-08-08 ten generator nie
+miał ŻADNEGO konsumenta poza własnym re-eksportem w ``packs/__init__.py``.
+Konsumentem jest brama pakietu przebiegu (``application/proof_engine/pakiet_biegu.py``
+→ ``GET /api/analysis-runs/{run}/pakiet-dowodowy?punkt=<odcinek>``): pakiet biegu
+rozpływu jest ZBIORCZY i niesie dowód spadku napięcia dla ODCINKA WSKAZANEGO przez
+użytkownika — tą samą drogą, którą wskazuje się punkt zwarcia. Odcinek wybiera
+użytkownik ze zbioru odcinków, które bieg policzył (``application/solvers/
+voltage_drop_binding.py``); kod go NIE wybiera, bo wybór za użytkownika byłby
+fabrykacją ZAKRESU dowodu.
+
 INVARIANTS:
 - Solver untouched — pack tylko mapuje wyniki na ProofDocument
 - Deterministic — same input → identical proof
@@ -30,7 +40,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from uuid import UUID, uuid4
 
 from application.proof_engine.proof_generator import (
@@ -38,7 +48,16 @@ from application.proof_engine.proof_generator import (
     VDROPInput,
     VDROPSegmentInput,
 )
+from application.proof_engine.proof_pack import (
+    ProofPackBuilder,
+    ProofPackContext,
+    deterministic_artifact_id,
+    dokument_deterministyczny,
+)
 from application.proof_engine.types import ProofDocument
+
+if TYPE_CHECKING:
+    from application.solvers.voltage_drop_binding import OdcinekSpadku
 
 
 @dataclass
@@ -74,6 +93,52 @@ class VDROPPackInput:
     solver_version: str
     segments: list[VDROPPackSegment]
     u_source_kv: float
+
+    @classmethod
+    def z_odcinka_biegu(
+        cls,
+        odcinek: OdcinekSpadku,
+        *,
+        project_name: str,
+        case_name: str,
+        run_timestamp: datetime,
+        solver_version: str,
+    ) -> VDROPPackInput:
+        """Składa wejście dowodu z ODCINKA odtworzonego z zapisu biegu.
+
+        ZERO FABRYKACJI I ZERO ZEGARA (karta PACK-BEZ-KONSUMENTA — ta sama klasa
+        defektu co w pakiecie rozpływu). Każdy argument jest WYMAGANY i nazwany;
+        wielkości fizyczne przychodzą w komplecie z warstwy wiązania, która czyta
+        je z zapisu biegu albo w ogóle nie oferuje odcinka.
+
+        ``u_source_kv`` to napięcie POCZĄTKU odcinka POLICZONE PRZEZ SOLVER
+        (``node_voltage_kv``), a nie napięcie znamionowe. Dzięki temu ostatni krok
+        dowodu (``U = U_źr·(1 − ΔU/100)``) jest zakotwiczony w tym samym przebiegu,
+        który dowód opisuje — a nie w wartości katalogowej, która z wynikiem biegu
+        nie ma nic wspólnego.
+        """
+        return cls(
+            project_name=project_name,
+            case_name=case_name,
+            source_bus_id=odcinek.od_szyny,
+            target_bus_id=odcinek.do_szyny,
+            run_timestamp=run_timestamp,
+            solver_version=solver_version,
+            segments=[
+                VDROPPackSegment(
+                    segment_id=odcinek.id_galezi,
+                    from_bus_id=odcinek.od_szyny,
+                    to_bus_id=odcinek.do_szyny,
+                    r_ohm_per_km=odcinek.r_ohm_per_km,
+                    x_ohm_per_km=odcinek.x_ohm_per_km,
+                    length_km=odcinek.length_km,
+                    p_mw=odcinek.p_mw,
+                    q_mvar=odcinek.q_mvar,
+                    u_n_kv=odcinek.u_n_kv,
+                )
+            ],
+            u_source_kv=odcinek.u_poczatku_kv,
+        )
 
     def to_generator_input(self) -> VDROPInput:
         """Konwersja do formatu wymaganego przez ProofGenerator.generate_vdrop_proof."""
@@ -130,6 +195,41 @@ def generate_vdrop_pack(
     return ProofGenerator.generate_vdrop_proof(
         pack_input.to_generator_input(),
         artifact_id=artifact_id,
+    )
+
+
+def rozroznik_vdrop(pack_input: VDROPPackInput) -> str:
+    """Rozróżnik tożsamości dokumentu spadku w pakiecie ZBIORCZYM przebiegu.
+
+    Zawiera identyfikator ODCINKA: dwa pakiety tego samego przebiegu, złożone dla
+    różnych odcinków, muszą mieć różne identyfikaty artefaktu — inaczej twierdziłyby,
+    że dokumentują to samo. Bez odcinka (pusta lista) rozróżnik jest samą nazwą
+    rodzaju — ale takiego wejścia generator i tak nie przyjmuje.
+    """
+    id_odcinka = pack_input.segments[0].segment_id if pack_input.segments else ""
+    return f"spadek-napiecia|{id_odcinka}" if id_odcinka else "spadek-napiecia"
+
+
+def zbuduj_zip_vdrop(
+    pack_input: VDROPPackInput,
+    context: ProofPackContext,
+    artifact_id: UUID | None = None,
+) -> bytes:
+    """Zbuduj ZIP pakietu dowodowego spadku (dowód, źródło, wykaz, odcisk).
+
+    Ta sama mechanika co ``P14PowerFlowProof.generate_zip`` — REUŻYCIE
+    ``ProofPackBuilder``, nie druga droga pakowania. Bez jawnego ``artifact_id``
+    tożsamość artefaktu i dokumentu wyprowadzamy z tożsamości pakietu wraz z
+    rozróżnikiem odcinka, a znacznik dokumentu z PRZEBIEGU — inaczej dwa pobrania
+    tego samego przebiegu różniłyby się bajtami, wbrew deklaracji ``manifest.json``.
+    """
+    rozroznik = rozroznik_vdrop(pack_input)
+    dokument = generate_vdrop_pack(
+        pack_input,
+        artifact_id=artifact_id or deterministic_artifact_id(context, rozroznik),
+    )
+    return ProofPackBuilder(context).build(
+        dokument_deterministyczny(dokument, context, pack_input.run_timestamp, rozroznik)
     )
 
 
