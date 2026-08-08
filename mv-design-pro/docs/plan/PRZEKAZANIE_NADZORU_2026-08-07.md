@@ -119,6 +119,17 @@ Uruchamiaj interpreterem z venv backendu (`trace_determinism`,
 czerwień). **To jest odtąd bramka guardów każdego odbioru — nie wybieraj
 guardów ręcznie.**
 
+**POPRAWKA 2026-08-07 (druga wpadka tego samego rodzaju, tym razem w moim
+narzędziu).** Krok CI ma DWIE połowy: skrypty guardów ORAZ `poetry run python
+-m pytest -q ../scripts`, czyli WŁASNE TESTY guardów, leżące poza `testpaths`
+backendu. Pierwsza wersja `guardy_z_ci.py` uruchamiała tylko pierwszą połowę
+i meldowała „komplet zielony". Skutek zmierzony: po zdjęciu martwego modułu
+`variantStore.ts` zapadka `FRONTEND_DEAD_CLIENT_DEBT` zażądała obniżenia
+(działa w obie strony) — bramka odbioru tego nie zobaczyła i **CI było czerwone
+przez trzy szczyty**. Narzędzie obiecywało „to, co robi CI", i była to obietnica
+szersza od tego, co sprawdzało. Skrypt uruchamia teraz obie połowy; sprawdzone
+iniekcją (przywrócenie nieaktualnego wpisu zapadki → RC=1).
+
 **DRUGA PUŁAPKA, ZMIERZONA TEGO SAMEGO DNIA:** `black src tests scripts ../scripts`
 w JEDNYM wywołaniu psuje wykrywanie konfiguracji (black bierze wspólny katalog
 nadrzędny, nie znajduje `[tool.black]`, formatuje szerokością 88 zamiast 100 —

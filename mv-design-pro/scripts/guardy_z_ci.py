@@ -12,6 +12,15 @@ Ten skrypt CZYTA `.github/workflows/*.yml`, wyciąga z nich każde wywołanie
 `python scripts/<nazwa>.py` i uruchamia komplet bieżącym interpreterem. Nowy
 guard dopisany do workflowa wchodzi tu SAM — nie ma drugiej listy do pilnowania.
 
+DRUGA POŁOWA, DOPISANA 2026-08-07 PO WŁASNEJ WPADCE. Pierwsza wersja uruchamiała
+wyłącznie SKRYPTY guardów i meldowała „komplet zielony", podczas gdy CI ma w tym
+samym kroku jeszcze `poetry run python -m pytest -q ../scripts` — czyli WŁASNE
+TESTY guardów, leżące poza `testpaths` backendu. Skutek zmierzony: nadzorca zdjął
+martwy moduł `variantStore.ts`, zapadka `FRONTEND_DEAD_CLIENT_DEBT` zażądała
+obniżenia (działa w obie strony), a bramka odbioru tego nie zobaczyła — CI było
+czerwone przez TRZY szczyty. Narzędzie obiecywało „to, co robi CI", i była to
+obietnica szersza od tego, co sprawdzało. Teraz uruchamia OBIE połowy.
+
 Uruchamiaj interpreterem z venv backendu: część guardów (`trace_determinism`,
 `catalog_enforcement`) importuje `networkx`, którego systemowy Python nie ma, i
 bez venv zgłasza fałszywą czerwień.
@@ -97,7 +106,26 @@ def main() -> int:
         )
 
     print(f"\nUruchomiono {len(nazwy) - len(brakujace)} guardow z {len(nazwy)} wolanych przez CI.")
-    if czerwone or brakujace:
+
+    # Druga polowa kroku CI: wlasne testy guardow (poza `testpaths` backendu).
+    print("\n--- testy wlasne guardow (`python -m pytest ../scripts`) ---")
+    testy = subprocess.run(
+        [sys.executable, "-m", "pytest", "-q", str(SCRIPTS_DIR)],
+        cwd=PROJECT_ROOT / "backend",
+        capture_output=True,
+        text=True,
+    )
+    print(
+        (testy.stdout or testy.stderr).strip().splitlines()[-1]
+        if (testy.stdout or testy.stderr).strip()
+        else ""
+    )
+    if testy.returncode != 0:
+        for linia in (testy.stdout + testy.stderr).splitlines()[-25:]:
+            print(f"    {linia}", file=sys.stderr)
+        print("CZERWONE: testy wlasne guardow", file=sys.stderr)
+
+    if czerwone or brakujace or testy.returncode != 0:
         if czerwone:
             print(
                 "CZERWONE: " + ", ".join(f"{n} (RC={rc})" for n, rc in czerwone),

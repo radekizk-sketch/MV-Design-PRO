@@ -136,15 +136,13 @@ FRONTEND_DEAD_CLIENT_DEBT: dict[str, tuple[tuple[str, ...], str]] = {
         "czyta /api/protection/overcurrent-settings. Do decyzji: usunac martwy modul albo "
         "zbudowac dostawce koordynacji.",
     ),
-    "frontend/src/ui/sld-overlay/variantStore.ts": (
-        (
-            "/api/projects/{p}/variants",
-            "/api/variants/{p}/compare/{p}",
-            "/api/variants/{p}/duplicate",
-        ),
-        "warianty projektu nie maja dostawcy w backendzie. Store uzywany wylacznie przez "
-        "wlasny test. Do decyzji: usunac albo zbudowac warianty end-to-end.",
-    ),
+    # WPIS ZDJETY 2026-08-07 (wiersz KLIENT-BEZ-TRASY-WARIANTY w rejestrze).
+    # „Do decyzji: usunac albo zbudowac warianty end-to-end" rozstrzygniete na
+    # USUNIECIE: zdolnosc porownania A/B juz istnieje inna, zywa droga (przestrzen
+    # wynikow, routery power-flow-comparisons i execution/comparisons), wiec budowa
+    # drugiego dostawcy byla by duplikacja. Modul `variantStore.ts` + `VariantSelector.tsx`
+    # usuniety razem z testem; zapadka ZMALALA o trzy sciezki i tak ma zostac.
+    # Nie przywracaj tego wpisu bez przywrocenia modulu — bramka zada wtedy jego zdjecia.
     "frontend/src/ui/comparison/api.ts": (
         (
             "/api/projects/{p}/runs",
