@@ -16,6 +16,12 @@ import type { ReactNode } from 'react';
 
 import { GRID } from '../core/grid';
 import { LABEL_TYPOGRAPHY, labelLineHeight, screenFixedFontSize, screenFixedLength } from '../core/text';
+import {
+  SHEET_BORDER_STROKE_SCREEN_PX,
+  SHEET_CAPTION_OFFSET_SCREEN_PX,
+  sheetLodCaptionText,
+  sheetScaleCaptionText,
+} from '../canvas/chromeLayout';
 import { SHEET_WIDTH_QUANTUM } from '../layout/sheetRows';
 import { SYMBOL_DEFS, type SymbolId } from '../symbols/defs';
 import { SYMBOL_GLYPHS } from '../symbols/glyphs';
@@ -52,8 +58,11 @@ const ZONE_LABEL_OFFSET_SCREEN_PX = 10;
 const ZONE_TICK_SCREEN_PX = 6;
 /** S9-7: odsunięcie liter wierszy od lewej krawędzi ramki [px EKRANU]. */
 const ZONE_ROW_LABEL_OFFSET_SCREEN_PX = 16;
-/** S9-7: odstęp podpisów dolnych (skala, poziom szczegółu) od ramki [px EKRANU]. */
-const SHEET_CAPTION_OFFSET_SCREEN_PX = 20;
+/* S9-7: odstęp podpisów dolnych (skala, poziom szczegółu) od ramki mieszka od
+ * karty RAMKA-TNIE-PODPISY w `canvas/chromeLayout.ts` — RAZEM z układem
+ * całego dolnego pasa chromu, żeby wskaźnik ekranowy „Ukryto N opisów" liczył
+ * ustąpienie z TEJ SAMEJ liczby, z której ramka liczy położenie podpisu
+ * (wcześniej: dwie prawdy, kolizja w 12 na 12 zmierzonych kadrów). */
 /** Margines ramki na oznaczenia stref (litery/cyfry) NA ZEWNĄTRZ obszaru rysunku.
  *  SCHEMAT-10 S4 (V12K-135/136, D12 reszta): eksportowany (dawniej lokalny) —
  *  `v3/export/exportFrame.ts` reużywa TĘ SAMĄ stałą dla kadru fit-do-treści
@@ -525,7 +534,7 @@ export function SheetFrame(props: SheetFrameProps): JSX.Element {
           height={height}
           fill="none"
           stroke={palette.baseStroke}
-          strokeWidth={screenFixedLength(1.5, cameraScale)}
+          strokeWidth={screenFixedLength(SHEET_BORDER_STROKE_SCREEN_PX, cameraScale)}
         />
         <ZoneMarkers width={width} height={height} cameraScale={cameraScale} rowBands={props.rowBands} />
         <text
@@ -539,7 +548,7 @@ export function SheetFrame(props: SheetFrameProps): JSX.Element {
           fontWeight={LABEL_TYPOGRAPHY.t2.fontWeight}
           fill={palette.baseStroke}
         >
-          {`Skala ${scaleLabel}`}
+          {sheetScaleCaptionText(scaleLabel)}
         </text>
         {lodLabel ? (
           <text
@@ -553,7 +562,7 @@ export function SheetFrame(props: SheetFrameProps): JSX.Element {
             fontWeight={LABEL_TYPOGRAPHY.t2.fontWeight}
             fill={palette.baseStroke}
           >
-            {`Widok: ${lodLabel}`}
+            {sheetLodCaptionText(lodLabel)}
           </text>
         ) : null}
         {/* K12 (KARTA_K12, dyrektywa właściciela 2026-07-30): legenda NIE jest

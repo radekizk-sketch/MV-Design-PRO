@@ -16,7 +16,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { EnergyNetworkModel } from '../../../../../types/enm';
 import { buildSceneV3, type SceneV3 } from '../../scene/buildScene';
-import { sheetSizeFor } from '../../canvas/SldCanvasV3';
+import { sheetSizeFor } from '../../sheet/outline';
 import { FRAME_MARGIN } from '../../sheet/Frame';
 import { applyContentFitFrame, computeContentFitFrame, contentFitRatio } from '../exportFrame';
 

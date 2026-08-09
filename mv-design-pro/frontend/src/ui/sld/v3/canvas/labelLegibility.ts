@@ -76,6 +76,24 @@
  * spełnić obu się nie da, trafia do `droppedIdentity` — tak samo jak ta, dla
  * której zabrakło miejsca. Wyrocznia: `plannedLabelsAboveProportionCeiling`.
  *
+ * RAMKA-TNIE-PODPISY (zgłoszenie właściciela 2026-08-08 „ramka przecina
+ * podpisy stacji") — TRZECIA GRANICA: OBRYS ARKUSZA. Poprzednie dwie pilnowały
+ * ROZMIARU pisma; POŁOŻENIA względem krawędzi rysunku nie pilnowała żadna.
+ * Arkusz jest jednak wyprowadzony z REZERWACJI etykiet (`labelReservationRect`
+ * → `scene.bbox` → `sheet/outline.ts` `sheetSizeFor`), a rezerwacja liczona
+ * jest pismem NATURALNYM — więc każde powiększenie awaryjne wypychało tusz
+ * poza ramkę, którą sam wyznaczył. POMIAR stanu przed (kadr 1800×1100,
+ * `scripts/pomiar_ramka.tsx`): nazwa stacji ostatniego wiersza schodzi
+ * 36,7 j.św. pod dolną krawędź na L0 @0,181 (długi ciąg: 52,3 j.), podpis pola
+ * „FT1 · transformatorowe" wychodzi 282 j. za prawą krawędź na L2 @0,30,
+ * a opis zbiorczy GPZ 39,5 j. przed lewą — przy KAŻDEJ skali roboczej, bo tam
+ * pismo nie jest nawet powiększane (tekst jest po prostu szerszy od slotu).
+ * Od tej karty obrys arkusza jest przeszkodą w `wolne()` — tej samej rangi co
+ * symbol i tor — więc przelew rozwiązują ISTNIEJĄCE stopnie swobody (zmiana
+ * strony kotwicy, skracanie), a napis, którego zmieścić się nie da, trafia do
+ * `droppedIdentity` i do licznika „Ukryto N opisów". Wyrocznia:
+ * `plannedLabelsOutsideSheet`.
+ *
  * Czysta funkcja: brak DOM/Date/losowości (P7) — ten sam wynik w renderze,
  * teście i runnerze odbioru.
  */
@@ -93,6 +111,7 @@ import {
 } from '../core/text';
 import { labelPriority, labelResolutionOrder } from '../layout/declutter';
 import type { OwnedLabel, SimpleAnchorPlacement } from '../layout/labels';
+import { rectWithinSheet, type SheetOutline } from '../sheet/outline';
 
 /** Etykieta zaplanowana do narysowania — geometria EFEKTYWNA (po ewentualnym
  *  powiększeniu pisma i skróceniu tekstu), nie surowa z sceny. */
@@ -105,7 +124,18 @@ export interface PlannedLabel {
   readonly text: string;
   /** Rozmiar pisma [px ŚWIATA] — naturalny albo powiększony do minimum. */
   readonly fontSize: number;
-  /** Prostokąt efektywny [świat] — do rozstrzygania kolizji i kotwiczenia. */
+  /**
+   * Prostokąt TUSZU [świat] — dokładnie tyle, ile zajmą NARYSOWANE glify
+   * (`prostokatTuszu` niżej), a nie slot, w którym stoją.
+   *
+   * RAMKA-TNIE-PODPISY: do tej karty pole znaczyło DWIE różne rzeczy —
+   * dla etykiety powiększonej prostokąt tuszu, a dla etykiety w rozmiarze
+   * naturalnym surowy slot sceny. Rozjazd był mierzalny: opis zbiorczy GPZ
+   * („Widok zbiorczy · sekcje SN: 1 · …", `t3`) ma tusz 391 j.św. przy slocie
+   * 296 j.św., więc malowany wychodził 39,5 j.św. na LEWO od arkusza — przy
+   * KAŻDEJ skali roboczej, bo tam pismo nie jest nawet powiększane. Jedno pole
+   * = jedno znaczenie: prostokąt jest tym, co widać.
+   */
   readonly rect: V3Rect;
   /** `true`, gdy pismo powiększono ponad rozmiar klasy typograficznej. */
   readonly enlarged: boolean;
@@ -167,6 +197,46 @@ function wysokoscWiersza(fontSize: number): number {
   return fontSize + 6;
 }
 
+/** Rozciągłość prostokąta WZDŁUŻ tekstu [j.św.]. Etykieta obrócona (lateral,
+ *  czytana z dołu) rozciąga się wzdłuż osi PIONOWEJ, więc jej „szerokością
+ *  tekstu" jest `height` — ta sama umowa, co w `layout/labels.ts`
+ *  (`tuszWSlocie`, `labelReservationRect`). */
+function rozciagloscWzdluzTekstu(rect: V3Rect, rotated: boolean): number {
+  return rotated ? rect.height : rect.width;
+}
+
+/**
+ * RAMKA-TNIE-PODPISY — prostokąt TUSZU: dokładnie to, co pokryją narysowane
+ * glify. JEDYNE miejsce w planie, które zamienia (tekst, pismo, obrót) na
+ * geometrię — wcześniej robiły to dwa miejsca w dwóch konwencjach, przez co
+ * etykieta w rozmiarze naturalnym miała w planie slot, a nie tusz.
+ *
+ * Obrót zamienia osie (rozciągłość tekstu idzie w pion, wysokość wiersza w
+ * poziom). Do tej karty `anchoredRect` dostawał zawsze `measureTextWidth` jako
+ * SZEROKOŚĆ, więc prostokąt powiększonej etykiety obróconej byłby
+ * transponowany; dziś jest to nieosiągalne (wszystkie etykiety obrócone mają
+ * klasę znaczeniową `'dane'`, a te nie są powiększane), ale zostawianie w tym
+ * samym pliku drugiej konwencji osi jest dokładnie tym, czego zakazuje reguła
+ * KLASA §5.
+ *
+ * `placement === undefined` ⇒ tusz WYŚRODKOWANY w slocie (tak rysuje
+ * `SceneLabelNode`: `x`/`y` = środek prostokąta, `textAnchor=middle`,
+ * `dominantBaseline=middle`) — to postać dla pisma NATURALNEGO, które nie
+ * rośnie, więc nie ma od czego rosnąć. Pismo POWIĘKSZONE kotwiczy się stroną
+ * (patrz `anchoredRect`).
+ */
+function prostokatTuszu(
+  slot: V3Rect,
+  text: string,
+  fontSize: number,
+  rotated: boolean,
+  placement: OwnedLabel['placement'],
+): V3Rect {
+  const wzdluz = measureTextWidth(text, fontSize);
+  const wpoprzek = wysokoscWiersza(fontSize);
+  return anchoredRect(slot, rotated ? wpoprzek : wzdluz, rotated ? wzdluz : wpoprzek, placement);
+}
+
 const NAME_ROW_SUFFIX = /#name-row-\d+$/;
 
 /**
@@ -174,8 +244,21 @@ const NAME_ROW_SUFFIX = /#name-row-\d+$/;
  * liczone od GÓRY pasma, z wysokościami efektywnymi — wiersz powiększony
  * przesuwa następne w dół zamiast na nie nachodzić, a wiersz nierysowany
  * (dane poniżej progu) nie zajmuje miejsca. Zwraca mapę indeks → slot.
+ *
+ * RAMKA-TNIE-PODPISY — PASMO TEŻ MA MIEŚCIĆ SIĘ W ARKUSZU. Przestawianie
+ * kotwiczy pasmo GÓRĄ, więc powiększone wiersze rosną w DÓŁ; dla stacji
+ * ostatniego wiersza arkusza pasmo dotyka dolnej krawędzi (rezerwacja kończy
+ * się DOKŁADNIE na `bbox.height` — to ona tę krawędź wyznacza), więc urosnąć
+ * w dół nie ma gdzie. Co gorsza, przestawienie ZABIERAŁO etykiecie stopień
+ * swobody: slot dostawał już wysokość powiększoną, więc `anchoredRect` dla
+ * strony `'above'` dawał ten sam prostokąt co `'below'` i ucieczka w górę
+ * przestawała istnieć (pomiar: nazwy S51/S52/S53 na L0 @0,181 nie kolidowały
+ * z NICZYM na rysunku, a mimo to wypadały). Dlatego całe pasmo, które po
+ * przestawieniu wyszłoby poza arkusz, jest PRZESUWANE z powrotem do środka —
+ * jako blok, bez rozrywania wierszy. Kolizję z rysunkiem, jeśli powstanie w
+ * nowym miejscu, rozstrzyga niżej ta sama maszyneria co zawsze.
  */
-function przestawPasma(kandydaci: readonly Kandydat[]): Map<number, V3Rect> {
+function przestawPasma(kandydaci: readonly Kandydat[], sheet: SheetOutline): Map<number, V3Rect> {
   const pasma = new Map<string, Kandydat[]>();
   for (const k of kandydaci) {
     if (k.label.ownerKind !== 'station-name') continue;
@@ -188,11 +271,22 @@ function przestawPasma(kandydaci: readonly Kandydat[]): Map<number, V3Rect> {
   for (const wiersze of pasma.values()) {
     // Kolejność wierszy = kolejność sceny (indeks rośnie razem z `#name-row-N`).
     const uporzadkowane = [...wiersze].sort((a, b) => a.index - b.index);
-    let y = Math.min(...uporzadkowane.map((k) => k.slot.y));
+    const gora = Math.min(...uporzadkowane.map((k) => k.slot.y));
+    let y = gora;
+    const pas: { readonly index: number; readonly rect: V3Rect }[] = [];
     for (const k of uporzadkowane) {
       const height = k.enlarged ? wysokoscWiersza(k.fontSize) : k.slot.height;
-      wynik.set(k.index, { x: k.slot.x, y, width: k.slot.width, height });
+      pas.push({ index: k.index, rect: { x: k.slot.x, y, width: k.slot.width, height } });
       y += height;
+    }
+    // Przesunięcie pasma jako bloku: najpierw w górę o wystawanie pod arkusz,
+    // potem (gdy pasmo jest wyższe od miejsca nad nim) z powrotem do y=0.
+    // Pasmo wyższe od CAŁEGO arkusza zostaje bez przesunięcia — nie ma dokąd
+    // go przesunąć, a udawanie, że jest inaczej, byłoby cichym zerem.
+    const przelew = Math.max(0, y - sheet.height);
+    const korekta = Math.min(przelew, Math.max(0, gora));
+    for (const { index, rect } of pas) {
+      wynik.set(index, korekta === 0 ? rect : { ...rect, y: rect.y - korekta });
     }
   }
   return wynik;
@@ -259,22 +353,34 @@ function najlepszeDopasowanie(
   kandydat: Kandydat,
   zajete: RectIndex,
   obstacles: RectIndex,
+  sheet: SheetOutline,
 ): Dopasowanie | null {
   const { label, fontSize, slot, tekstBazowy } = kandydat;
-  const height = kandydat.enlarged ? wysokoscWiersza(fontSize) : slot.height;
+  const rotated = label.rotated === true;
   // S9-9: ten sam predykat co dotąd (`rectsOverlap` na obu zbiorach), tylko
   // liczony indeksem przestrzennym zamiast przeglądem liniowym — patrz
   // `core/rectIndex.ts`. Wynik bajtowo identyczny; koszt planu na sieci 160
   // stacji spada z ~0,94 s na ~0,02 s, czyli schodzi z budżetu klatki gestu.
+  //
+  // RAMKA-TNIE-PODPISY: trzeci człon — OBRYS ARKUSZA (`sheet/outline.ts`,
+  // ta sama funkcja, z której `sheet/Frame.tsx` bierze prostokąt ramki).
+  // Krawędź arkusza jest przeszkodą tej samej rangi co symbol i tor: napis,
+  // przez który przechodzi ramka, jest tak samo nie do przeczytania jak napis
+  // leżący na symbolu. Dzięki temu istniejące stopnie swobody (zmiana strony
+  // kotwicy, skracanie) rozwiązują przelew SAME — napis znad dolnej krawędzi
+  // idzie nad slot zamiast wyjść pod ramkę.
   const wolne = (rect: V3Rect): boolean =>
-    !obstacles.anyOverlap(rect) && !zajete.anyOverlap(rect);
+    rectWithinSheet(rect, sheet) && !obstacles.anyOverlap(rect) && !zajete.anyOverlap(rect);
 
   if (!kandydat.enlarged) {
-    // Etykiety NIEpowiększone nie mają czego skracać ani gdzie przestawiać —
-    // ich prostokąt jest REZERWACJĄ sceny (rozstrzygniętą już declutterem przy
-    // budowie), a nie funkcją tekstu.
-    return tekstBazowy.length > 0 && wolne(slot)
-      ? { text: tekstBazowy, rect: slot, fontSize, enlarged: false }
+    // Etykiety NIEpowiększone nie mają gdzie się przestawiać — ich slot jest
+    // rozstrzygnięty declutterem przy budowie sceny. Prostokątem planu jest
+    // jednak TUSZ (wyśrodkowany w slocie, tak jak go rysuje `SceneLabelNode`),
+    // a nie sam slot: tekst został już skrócony do rozciągłości slotu
+    // (`tekstBazowy`), więc tusz ⊆ slot ⊆ rezerwacja ⊆ arkusz.
+    const tusz = prostokatTuszu(slot, tekstBazowy, fontSize, rotated, undefined);
+    return tekstBazowy.length > 0 && wolne(tusz)
+      ? { text: tekstBazowy, rect: tusz, fontSize, enlarged: false }
       : null;
   }
 
@@ -297,7 +403,7 @@ function najlepszeDopasowanie(
 
   const proboj = (placement: OwnedLabel['placement']): Dopasowanie | null => {
     const prostokatDla = (text: string): V3Rect =>
-      anchoredRect(slot, measureTextWidth(text, fontSize), height, placement);
+      prostokatTuszu(slot, text, fontSize, rotated, placement);
 
     const pelny = prostokatDla(tekstBazowy);
     if (tekstBazowy.length > 0 && wolne(pelny)) {
@@ -350,17 +456,31 @@ export function planSceneLabels(
   labels: readonly OwnedLabel[],
   obstacles: readonly V3Rect[],
   scale: number,
+  sheet: SheetOutline,
 ): LabelRenderPlan {
   if (!Number.isFinite(scale) || scale <= 0) {
     return {
-      drawn: labels.map((label, index) => ({
-        label,
-        index,
-        text: label.text,
-        fontSize: LABEL_TYPOGRAPHY[label.labelClass].fontSize,
-        rect: label.rect,
-        enlarged: false,
-      })),
+      drawn: labels.map((label, index) => {
+        const fontSize = LABEL_TYPOGRAPHY[label.labelClass].fontSize;
+        const rotated = label.rotated === true;
+        // Skrócenie do slotu jest NIEZALEŻNE od skali (wynika z tego, że tekst
+        // nie mieści się we własnej rezerwacji), więc obowiązuje także tutaj —
+        // inaczej ścieżka „brak wiarygodnego pomiaru" malowałaby napis poza
+        // arkuszem dokładnie tak, jak robiła to ścieżka zwykła przed tą kartą.
+        const text = shortenPreservingIdentity(
+          label.text,
+          fontSize,
+          rozciagloscWzdluzTekstu(label.rect, rotated),
+        );
+        return {
+          label,
+          index,
+          text,
+          fontSize,
+          rect: prostokatTuszu(label.rect, text, fontSize, rotated, undefined),
+          enlarged: false,
+        };
+      }),
       hiddenDetail: [],
       droppedIdentity: [],
     };
@@ -405,10 +525,28 @@ export function planSceneLabels(
     // ZOSTAJE dokładnie ten sam: dla wiersza pasma nazw to nadal szerokość
     // kolumny stacji. Brak rezerwacji ⇒ granicą jest sam tusz (etykieta
     // kotwiczona punktowo nie ma zapasu z definicji).
-    const tekstBazowy =
+    //
+    // RAMKA-TNIE-PODPISY — DRUGA gałąź pary: pismo NATURALNE też ma granicę, i
+    // jest nią WŁASNY SLOT etykiety. Do tej karty gałąź `: label.text` nie
+    // skracała niczego, więc napis szerszy od slotu był malowany „na wylot":
+    // opis zbiorczy GPZ (`t3`, tusz 391 j.św., slot 296 j.św.) wychodził
+    // 39,5 j.św. na lewo POZA ARKUSZ przy każdej skali roboczej. Scena o tym
+    // WIEDZIAŁA — `tuszWSlocie` (`layout/labels.ts`) zostawia slot bez zmian,
+    // gdy tekst się w nim nie mieści — ale nikt tej wiedzy nie konsumował.
+    const rotated = label.rotated === true;
+    const granicaTekstu =
       !czytelna && label.ownerKind === 'station-name'
-        ? shortenPreservingIdentity(label.text, fontSize, label.rezerwacjaSzerokosci ?? label.rect.width)
-        : label.text;
+        ? label.rezerwacjaSzerokosci ?? rozciagloscWzdluzTekstu(label.rect, rotated)
+        : rozciagloscWzdluzTekstu(label.rect, rotated);
+    // Etykiety zakotwiczone punktowo (napięcie szyny, oznaczenie pola, DER)
+    // rezerwacji z zapasem NIE mają — ich slot to sama szerokość tekstu w
+    // rozmiarze NATURALNYM — więc skracanie POWIĘKSZONEGO pisma do slotu
+    // cofnęłoby całe powiększenie. Dla nich granicą zostaje dopiero
+    // rozstrzyganie kolizji (razem z obrysem arkusza) niżej.
+    const tekstBazowy =
+      !czytelna && label.ownerKind !== 'station-name'
+        ? label.text
+        : shortenPreservingIdentity(label.text, fontSize, granicaTekstu);
     kandydaci.push({ label, index, fontSize, enlarged: !czytelna, slot: label.rect, tekstBazowy });
   });
 
@@ -423,9 +561,12 @@ export function planSceneLabels(
       drawn: kandydaci.map((k) => ({
         label: k.label,
         index: k.index,
-        text: k.label.text,
+        // RAMKA-TNIE-PODPISY: `k.tekstBazowy`, nie `k.label.text` — ścieżka
+        // szybka pomijała skrócenie do slotu, więc dokładnie tu ginęła jedyna
+        // granica pisma naturalnego (i tędy uciekał opis zbiorczy GPZ).
+        text: k.tekstBazowy,
         fontSize: k.fontSize,
-        rect: k.slot,
+        rect: prostokatTuszu(k.slot, k.tekstBazowy, k.fontSize, k.label.rotated === true, undefined),
         enlarged: false,
       })),
       hiddenDetail,
@@ -438,7 +579,7 @@ export function planSceneLabels(
   }
 
   // (b) pasmo etykiet — wiersze pasma nazw przestawione przed rozstrzyganiem.
-  const przestawione = przestawPasma(kandydaci);
+  const przestawione = przestawPasma(kandydaci, sheet);
   const zeSlotami = kandydaci.map((k) => ({ ...k, slot: przestawione.get(k.index) ?? k.slot }));
 
   // (d) pierwszeństwo — ta sama reguła, co declutter sceny.
@@ -455,7 +596,7 @@ export function planSceneLabels(
   const zajete = createRectIndex();
   const zaplanowane = new Map<number, PlannedLabel>();
   for (const kandydat of kolejnosc) {
-    const dopasowanie = najlepszeDopasowanie(kandydat, zajete, obstacleIndex);
+    const dopasowanie = najlepszeDopasowanie(kandydat, zajete, obstacleIndex, sheet);
     if (!dopasowanie || dopasowanie.text.length === 0) {
       if (kandydat.label.labelRole === 'tozsamosc') droppedIdentity.push(kandydat.label);
       else hiddenDetail.push(kandydat.label);
@@ -557,6 +698,37 @@ export function plannedLabelsAboveProportionCeiling(
     }))
     .filter((p) => p.enlargement > p.sufit + 1e-9)
     .map(({ ownerRef, enlargement }) => ({ ownerRef, enlargement }));
+}
+
+/**
+ * RAMKA-TNIE-PODPISY — WYROCZNIA OBRYSU ARKUSZA: etykiety NARYSOWANE, których
+ * TUSZ wychodzi poza prostokąt arkusza (ten sam, który `sheet/Frame.tsx`
+ * rysuje jako `sld-sheet-border`).
+ *
+ * Na poprawnym planie ZAWSZE pusta — plan albo mieści napis w arkuszu, albo go
+ * nie rysuje. Istnieje dlatego, że zdanie „ramka nie przecina podpisów" bez
+ * PRZYPIĘTEGO strażnika jest fałszywą pewnością (reguła KLASA §4): defekt żył
+ * w repozytorium mimo kompletu wyroczni czytelności, proporcji i kolizji, bo
+ * ŻADNA z nich nie pytała o krawędź rysunku.
+ *
+ * Zwraca PRZELEW w jednostkach świata (największy z czterech kierunków), żeby
+ * raport odbioru mówił „o ile", a nie tylko „gdzieś pękło".
+ */
+export function plannedLabelsOutsideSheet(
+  plan: LabelRenderPlan,
+  sheet: SheetOutline,
+): readonly { readonly ownerRef: string; readonly overflow: number }[] {
+  return plan.drawn
+    .filter((p) => !rectWithinSheet(p.rect, sheet))
+    .map((p) => ({
+      ownerRef: p.label.ownerRef,
+      overflow: Math.max(
+        -p.rect.x,
+        -p.rect.y,
+        p.rect.x + p.rect.width - sheet.width,
+        p.rect.y + p.rect.height - sheet.height,
+      ),
+    }));
 }
 
 /** Etykiety NARYSOWANE, które nachodzą na jakikolwiek prostokąt rysunku

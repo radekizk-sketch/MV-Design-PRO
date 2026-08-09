@@ -20,7 +20,7 @@
  * kończą z IDENTYCZNYMI wymiarami: zero dodatkowego marginesu do
  * kalibrowania, zero rozjazdu między „co widać" i „co jest".
  */
-import { sheetSizeFor } from '../canvas/SldCanvasV3';
+import { sheetSizeFor } from '../sheet/outline';
 import { FRAME_MARGIN } from '../sheet/Frame';
 import type { SceneV3 } from '../scene/buildScene';
 

@@ -34,7 +34,7 @@ import {
 import { SYMBOL_DEFS } from '../symbols/defs';
 import { SYMBOL_GLYPHS } from '../symbols/glyphs';
 import { sourceStateOverlayColor, type DerSourceKind } from '../compose/sourceKind';
-import { LABEL_TYPOGRAPHY, labelLineHeight, measureLabelWidth } from '../core/text';
+import { LABEL_TYPOGRAPHY, labelLineHeight, measureLabelWidth, measureTextWidth, screenFixedFontSize } from '../core/text';
 import { GRID } from '../core/grid';
 import { planSceneLabels, type PlannedLabel } from './labelLegibility';
 import {
@@ -54,6 +54,14 @@ import {
   type PreviewSymbol,
 } from '../compose/preview';
 import { FRAME_MARGIN, SheetFrame, type SheetLegendEntry } from '../sheet/Frame';
+import { sheetSizeFor } from '../sheet/outline';
+import {
+  HIDDEN_LABELS_HINT_FONT_PX,
+  hiddenLabelsHintPlateRect,
+  hiddenLabelsHintScreenRect,
+  hiddenLabelsHintText,
+  sheetCaptionScreenRects,
+} from './chromeLayout';
 import { SLD_CANVAS_DOCK_INSETS } from './toolbarLayout';
 import type { SafeInsets } from '../../v2/viewport/ViewportController';
 import type { RouteVertex } from '../layout/route';
@@ -153,11 +161,18 @@ const FAULT_ARROW_MIN_RUN = 2 * FLOW_ARROW_LENGTH;
  *  jeden „tick" typowej myszy, deltaY≈100, daje ~16% zmiany skali). */
 const WHEEL_ZOOM_SENSITIVITY = 0.0015;
 
-/** K11-B: odsunięcie komunikatu o ukrytych opisach od dolnej krawędzi widoku
- *  [px ekranu]. Wartość = pas zajmowany przez doki dolne kanwy (`bottom-3`
- *  = 12 px marginesu + przycisk `h-7` = 28 px), żeby komunikat nie chował się
- *  pod przyciskiem „Warstwy"/„Dowody". Patrz render niżej. */
-const HIDDEN_LABELS_HINT_BOTTOM_PX = 52;
+/** RAMKA-TNIE-PODPISY: treść podpisu skali arkusza. Kanwa ekranowa nie ma
+ *  podziałki liczbowej (skala zmienia się z zoomem), więc podpis mówi wprost,
+ *  skąd się bierze. Stała, bo tę samą wartość czyta ramka (rysuje podpis) i
+ *  układ dolnego pasa chromu (liczy jego prostokąt, żeby wskaźnik ekranowy
+ *  miał czemu ustąpić). */
+const SHEET_SCALE_LABEL = 'wg kamery';
+
+/* RAMKA-TNIE-PODPISY: geometria komunikatu o ukrytych opisach (odsunięcia,
+ * rozmiar pisma, treść) mieszka w `canvas/chromeLayout.ts` RAZEM z geometrią
+ * podpisów dolnych arkusza — inaczej oba pasma liczą swoje miejsce osobno i
+ * nachodzą na siebie przy kadrze „Dopasuj widok" (pomiar: 12 na 12 kadrów).
+ */
 
 /** Karta S8 (P2, płynność przejść LOD): czas trwania crossfade warstwy detalu
  *  przy zmianie LOD [s] — wyłącznie prezentacyjne, zero wpływu na determinizm
@@ -2295,13 +2310,6 @@ export function scenePointToCameraWorld(point: { readonly x: number; readonly y:
   return { x: point.x + FRAME_MARGIN, y: point.y + FRAME_MARGIN };
 }
 
-export function sheetSizeFor(scene: SceneV3): { readonly width: number; readonly height: number } {
-  return {
-    width: Math.max(scene.bbox.x + scene.bbox.width, 0),
-    height: Math.max(scene.bbox.y + scene.bbox.height, 0),
-  };
-}
-
 /** Punkt kliencki (page) → lokalny względem SVG (rect-relative) — `zoomToCursor`
  *  (v2 `ViewportController`, reużyta) zakłada „screen" = piksele WEWNĄTRZ
  *  elementu, nie page-absolute (ten sam wzorzec co `SldCanvasV2.handleWheel`:
@@ -2675,12 +2683,16 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
   // kolizji (`canvas/labelLegibility.ts`). Ukrywane są WYŁĄCZNIE dane
   // szczegółowe — i to one stoją we wskaźniku „Ukryto N opisów".
   const labelObstacles = useMemo(() => sceneObstacleRects(scene), [scene]);
+  // RAMKA-TNIE-PODPISY: plan dostaje TEN SAM obrys arkusza (`sheetSize`), który
+  // dostaje `SheetFrame` niżej — jedna wartość, jedna prawda o krawędzi
+  // rysunku. Wcześniej plan o krawędzi nie wiedział nic, więc powiększone
+  // pismo malowało się pod ramką (patrz nagłówek `canvas/labelLegibility.ts`).
   const labelPlan = useMemo(
     () =>
       isLayerVisible('labels', layerVisibility)
-        ? planSceneLabels(scene.labels, labelObstacles, camera.transform.scale)
+        ? planSceneLabels(scene.labels, labelObstacles, camera.transform.scale, sheetSize)
         : { drawn: [], hiddenDetail: [], droppedIdentity: [] },
-    [scene, labelObstacles, camera.transform.scale, layerVisibility],
+    [scene, labelObstacles, camera.transform.scale, layerVisibility, sheetSize],
   );
   // Ile opisów wypadło przez próg czytelności (V12K-218) — potrzebne, żeby
   // ukrycie było JAWNE dla projektanta, a nie cichym zniknięciem danych.
@@ -2703,6 +2715,30 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
   // sprawdzić bez podwójnego liczenia — komunikat jest SUMĄ tych dwóch, a nie
   // trzecią, niezależną liczbą.
   const niewidoczneOpisy = hiddenUnreadableLabels + labelPlan.droppedIdentity.length;
+
+  // RAMKA-TNIE-PODPISY (drugi objaw): DOLNY PAS CHROMU liczony JEDNĄ funkcją
+  // (`canvas/chromeLayout.ts`). Podpisy arkusza („Widok: …", „Skala …") jadą z
+  // ramką, wskaźnik ekranowy im USTĘPUJE — wcześniej obie rodziny liczyły swoje
+  // miejsce osobno i przy kadrze „Dopasuj widok" descendery „Skala wg kamery"
+  // wchodziły w wersaliki „Ukryto N opisów" (pomiar: 12 na 12 kadrów).
+  const hintTekst = hiddenLabelsHintText(niewidoczneOpisy);
+  const hintScreenRect = useMemo(() => {
+    const captions = sheetCaptionScreenRects(
+      {
+        sheet: sheetSize,
+        frameMargin: FRAME_MARGIN,
+        camera: camera.transform,
+        // Podpisy arkusza mają STAŁY rozmiar EKRANOWY (S9-7) — wyprowadzony, nie
+        // wpisany: `screenFixedFontSize` × skala to z definicji rozmiar naturalny
+        // klasy, więc zmiana tamtej reguły przechodzi tu sama.
+        captionFontPx: screenFixedFontSize('t2', camera.transform.scale) * camera.transform.scale,
+        scaleLabel: SHEET_SCALE_LABEL,
+        lodLabel: SCENE_LOD_LABELS_PL[effectiveLod],
+      },
+      { measure: measureTextWidth },
+    );
+    return hiddenLabelsHintScreenRect({ width, height }, hintTekst, captions, { measure: measureTextWidth });
+  }, [sheetSize, camera.transform, effectiveLod, hintTekst, width, height]);
 
   // K12 (KARTA_K12, dyrektywa właściciela 2026-07-30): legenda symboli NIE
   // jest już domyślną treścią kanwy — zabierała miejsce, była cięższa
@@ -3107,7 +3143,7 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
         width={sheetSize.width}
         height={sheetSize.height}
         legend={SLD_V3_CANVAS_LEGEND}
-        scaleLabel="wg kamery"
+        scaleLabel={SHEET_SCALE_LABEL}
         lodLabel={SCENE_LOD_LABELS_PL[effectiveLod]}
         // S9-7 (audyt C-4): aparat arkusza (strefy, podziałka, poziom
         // szczegółu) w PIKSELACH EKRANU — inaczej przy wpasowaniu sieci dużej
@@ -3422,20 +3458,53 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
        * była zasłonięta. Komunikat o UKRYTEJ treści, który sam jest zasłonięty,
        * nie informuje o niczym. */}
       {niewidoczneOpisy > 0 && Number.isFinite(camera.transform.scale) && camera.transform.scale > 0 && (
+        <g data-testid="sld-v3-hidden-labels-hint-grupa">
+        {/* PODKŁADKA (RAMKA-TNIE-PODPISY): komunikat systemowy leży NAD
+         *  rysunkiem, więc bez własnego tła przecinała go pierwsza lepsza
+         *  kreska — na zrzucie odbiorczym prawa krawędź ramki szła przez
+         *  środek zdania. Ten sam wzorzec, co tabliczka pochodzenia wyniku. */}
+        {(() => {
+          const plyta = hiddenLabelsHintPlateRect(hintScreenRect);
+          const lewyGorny = screenToWorld({ x: plyta.x, y: plyta.y }, camera.transform);
+          return (
+            <rect
+              data-testid="sld-v3-hidden-labels-hint-plyta"
+              x={lewyGorny.x}
+              y={lewyGorny.y}
+              width={plyta.width / camera.transform.scale}
+              height={plyta.height / camera.transform.scale}
+              rx={3 / camera.transform.scale}
+              fill={palette.canvasBackground}
+              stroke={palette.baseStroke}
+              strokeWidth={1 / camera.transform.scale}
+            />
+          );
+        })()}
         <text
           data-testid="sld-v3-hidden-labels-hint"
           data-hidden-count={niewidoczneOpisy}
-          x={screenToWorld({ x: width - 12, y: height - HIDDEN_LABELS_HINT_BOTTOM_PX }, camera.transform).x}
-          y={screenToWorld({ x: width - 12, y: height - HIDDEN_LABELS_HINT_BOTTOM_PX }, camera.transform).y}
+          x={
+            screenToWorld(
+              { x: hintScreenRect.x + hintScreenRect.width, y: hintScreenRect.y + HIDDEN_LABELS_HINT_FONT_PX },
+              camera.transform,
+            ).x
+          }
+          y={
+            screenToWorld(
+              { x: hintScreenRect.x + hintScreenRect.width, y: hintScreenRect.y + HIDDEN_LABELS_HINT_FONT_PX },
+              camera.transform,
+            ).y
+          }
           textAnchor="end"
           fontFamily="sans-serif"
-          fontSize={12 / camera.transform.scale}
+          fontSize={HIDDEN_LABELS_HINT_FONT_PX / camera.transform.scale}
           fontWeight={600}
           fill={palette.baseStroke}
           opacity={0.75}
         >
-          {`Ukryto ${niewidoczneOpisy} ${niewidoczneOpisy === 1 ? 'opis' : 'opisów'} — przybliż, aby zobaczyć`}
+          {hintTekst}
         </text>
+        </g>
       )}
       </g>
     </svg>

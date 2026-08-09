@@ -95,11 +95,13 @@ import {
   minParallelCableClearance,
   sceneObstacleRects,
 } from '../src/ui/sld/v3/scene/buildScene.ts';
+import { rectWithinSheet, sheetSizeFor } from '../src/ui/sld/v3/sheet/outline.ts';
 import {
   planSceneLabels,
   plannedLabelCollisions,
   plannedLabelObstacleCollisions,
   plannedLabelsBelowScreenFloor,
+  plannedLabelsOutsideSheet,
 } from '../src/ui/sld/v3/canvas/labelLegibility.ts';
 import { MIN_TEXT_SCREEN_PX, screenFixedFontSize } from '../src/ui/sld/v3/core/text.ts';
 import { MIN_SCALE, MAX_SCALE } from '../src/ui/sld/v3/canvas/camera.ts';
@@ -114,7 +116,7 @@ import {
   TOP_LEVEL_FIELD_CLEARANCE,
 } from '../src/ui/sld/v3/layout/clearances.ts';
 import { allBayTemplatesValid, bayTemplateGaps } from '../src/ui/sld/v3/scene/buildScene.ts';
-import { overlapProbe } from '../src/ui/sld/v3/layout/labels.ts';
+import { labelReservationRect, overlapProbe } from '../src/ui/sld/v3/layout/labels.ts';
 import {
   SEGMENT_STROKE_WIDTH,
   segmentStrokeWidthForScale,
@@ -2018,7 +2020,7 @@ line('=== identity_label_probe (KD-11: tożsamość na rysunku, bez kolizji) ===
       `${tozsamosci} etykiet tożsamości`,
     );
     for (const scale of SKALE_PRODUKCYJNE[lod]) {
-      const plan = planSceneLabels(scene.labels, obstacles, scale);
+      const plan = planSceneLabels(scene.labels, obstacles, scale, sheetSizeFor(scene));
       const narysowaneTozsamosci = plan.drawn.filter((p) => p.label.labelRole === 'tozsamosc').length;
       check(
         `identity_label_probe (KD-11) L${lod} @ ${scale}: 0 porzuconych tożsamości`,
@@ -2049,7 +2051,7 @@ line('=== identity_label_probe (KD-11: tożsamość na rysunku, bez kolizji) ===
   }
   // Negatyw obowiązkowy: wyrocznia kolizji MUSI gryźć na planie sfabrykowanym.
   const scene = buildSceneV3(enm, 2);
-  const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), 1.02);
+  const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), 1.02, sheetSizeFor(scene));
   const sabotaz = {
     ...plan,
     drawn: [plan.drawn[0], { ...plan.drawn[1], rect: { ...plan.drawn[0].rect } }],
@@ -2079,7 +2081,7 @@ line('=== screen_text_floor_probe (S9-7, C-4: zero napisów < 8 px ekranu) ===')
     const scene = buildSceneV3(enm, lod);
     const obstacles = sceneObstacleRects(scene);
     for (const scale of SKALE_EKRANOWE) {
-      const plan = planSceneLabels(scene.labels, obstacles, scale);
+      const plan = planSceneLabels(scene.labels, obstacles, scale, sheetSizeFor(scene));
       const ponizej = plannedLabelsBelowScreenFloor(plan, scale, MIN_TEXT_SCREEN_PX);
       check(
         `screen_text_floor_probe (S9-7, treść rysunku) L${lod} @ ${scale}: 0 narysowanych napisów < ${MIN_TEXT_SCREEN_PX} px ekranu`,
@@ -2108,11 +2110,79 @@ line('=== screen_text_floor_probe (S9-7, C-4: zero napisów < 8 px ekranu) ===')
   // zielona dlatego, że nic nie mierzy).
   {
     const scene = buildSceneV3(enm, 2);
-    const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), 1);
+    const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), 1, sheetSizeFor(scene));
     const sabotaz = { ...plan, drawn: [{ ...plan.drawn[0], fontSize: 2 }] };
     check(
       'screen_text_floor_probe (test negatywny — dowód, że wyrocznia gryzie): napis 2 px ekranu MUSI dać zgłoszenie',
       plannedLabelsBelowScreenFloor(sabotaz, 1, MIN_TEXT_SCREEN_PX).length === 1,
+    );
+  }
+}
+
+// -- RAMKA-TNIE-PODPISY sheet_outline_probe: rysunek mieści się w swojej ramce
+// Arkusz jest wyprowadzony z REZERWACJI etykiet (`labelReservationRect` →
+// `scene.bbox` → `sheetSizeFor`), liczonych pismem NATURALNYM, a plan malowania
+// pismo POWIĘKSZA — więc do tej karty napis wychodził poza ramkę, którą sam
+// wyznaczył (pomiar: nazwa stacji ostatniego wiersza 36,7 j.św. pod dolną
+// krawędzią na L0 @0,181; podpis pola 282 j. za prawą na L2 @0,30; opis zbiorczy
+// GPZ 39,5 j. przed lewą przy KAŻDEJ skali roboczej). Sonda pilnuje OBU stron
+// pary: rezerwacji (wejście) i tuszu (wyjście).
+line('');
+line('=== sheet_outline_probe (RAMKA-TNIE-PODPISY: zero tuszu poza obrysem arkusza) ===');
+{
+  const SKALE_OBRYSU = [MIN_SCALE, 0.1, 0.14, 0.3, 0.5, 0.6923076923076923, 1, 2, MAX_SCALE];
+  for (const lod of LODS) {
+    const scene = buildSceneV3(enm, lod);
+    const obstacles = sceneObstacleRects(scene);
+    const sheet = sheetSizeFor(scene);
+    check(
+      `sheet_outline_probe L${lod}: arkusz zaczyna się w (0,0) — `
+        + 'inaczej `sheetSizeFor` nie opisuje prostokąta, który rysuje ramka',
+      scene.bbox.x >= 0 && scene.bbox.y >= 0,
+      `bbox=(${scene.bbox.x},${scene.bbox.y})`,
+    );
+    const rezerwacjePoza = scene.labels.filter((l) => !rectWithinSheet(labelReservationRect(l), sheet));
+    check(
+      `sheet_outline_probe L${lod} (WEJŚCIE): 0 rezerwacji etykiet poza arkuszem ${sheet.width}×${sheet.height}`,
+      rezerwacjePoza.length === 0,
+      `etykiet=${scene.labels.length} poza=${rezerwacjePoza.length}`,
+    );
+    for (const scale of SKALE_OBRYSU) {
+      const plan = planSceneLabels(scene.labels, obstacles, scale, sheet);
+      const poza = plannedLabelsOutsideSheet(plan, sheet);
+      check(
+        `sheet_outline_probe L${lod} @ ${scale} (WYJŚCIE): 0 narysowanych napisów poza obrysem arkusza`,
+        poza.length === 0,
+        `narysowanych=${plan.drawn.length} powiększonych=${plan.drawn.filter((p) => p.enlarged).length}`
+          + ` poza=${poza.length}`
+          + (poza.length > 0 ? ` np. ${poza[0].ownerRef} o ${poza[0].overflow.toFixed(1)} j.św.` : ''),
+      );
+    }
+  }
+  // Test negatywny OBOWIĄZKOWY — plan liczony z arkuszem NIESKOŃCZONYM musi
+  // przywrócić zmierzony przelew (dowód, że sonda mierzy naprawę, a nie zbieg
+  // okoliczności), a etykiet przy tym NIE ubywa (tożsamość jest PRZESUWANA).
+  {
+    const scene = buildSceneV3(enm, 0);
+    const obstacles = sceneObstacleRects(scene);
+    const sheet = sheetSizeFor(scene);
+    const bezGranicy = planSceneLabels(scene.labels, obstacles, 0.181, {
+      width: Number.MAX_SAFE_INTEGER,
+      height: Number.MAX_SAFE_INTEGER,
+    });
+    const przelewy = plannedLabelsOutsideSheet(bezGranicy, sheet);
+    check(
+      'sheet_outline_probe (test negatywny — dowód, że wyrocznia gryzie): plan bez granicy arkusza MUSI dać przelew',
+      przelewy.length > 0 && Math.max(...przelewy.map((p) => p.overflow)) > 30,
+      `przelewów=${przelewy.length} max=${przelewy.length ? Math.max(...przelewy.map((p) => p.overflow)).toFixed(1) : 'n/d'} j.św.`,
+    );
+    const zGranica = planSceneLabels(scene.labels, obstacles, 0.181, sheet);
+    check(
+      'sheet_outline_probe: granica arkusza NIE zabiera tożsamości — ta sama liczba napisów co bez granicy',
+      zGranica.drawn.length === bezGranicy.drawn.length
+        && zGranica.droppedIdentity.length === bezGranicy.droppedIdentity.length,
+      `z granicą ${zGranica.drawn.length}/${zGranica.droppedIdentity.length}`
+        + ` bez granicy ${bezGranicy.drawn.length}/${bezGranicy.droppedIdentity.length}`,
     );
   }
 }
@@ -2256,7 +2326,7 @@ line('=== hit_grid_probe (S9-4): trafienie i tożsamość zaznaczenia ===');
       const svg = new JSDOM(`<body>${markup}</body>`).window.document.querySelector('[data-testid="sld-canvas-v3"]');
       const viewBox = (svg.getAttribute('viewBox') ?? '0 0 1 1').split(' ').map(Number);
       const scale = widok.width / viewBox[2];
-      const labelPlan = planSceneLabels(scene.labels, sceneObstacleRects(scene), scale);
+      const labelPlan = planSceneLabels(scene.labels, sceneObstacleRects(scene), scale, sheetSizeFor(scene));
       const layoutWynikow = layoutResultLabels(scene, rlByRef, [], lod);
       const oczekiwane = buildCanvasHitAreas({
         symbols: scene.symbols,
@@ -2429,7 +2499,7 @@ line('=== menu_subject_probe (S9-5): menu zależne od trafionego obiektu ===');
 
   for (const lod of LODS) {
     const scene = buildSceneV3(enm, lod);
-    const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), 1);
+    const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), 1, sheetSizeFor(scene));
     const busRefy = busRefSceny(scene);
     const obszary = buildCanvasHitAreas({
       symbols: scene.symbols,

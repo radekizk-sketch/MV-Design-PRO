@@ -30,6 +30,7 @@ import { JSDOM } from 'jsdom';
 import type { EnergyNetworkModel } from '../src/types/enm';
 import { buildSceneV3, sceneObstacleRects, type SceneLod } from '../src/ui/sld/v3/scene/buildScene';
 import { planSceneLabels } from '../src/ui/sld/v3/canvas/labelLegibility';
+import { sheetSizeFor } from '../src/ui/sld/v3/sheet/outline';
 import { SldCanvasV3, layoutResultLabels, scenePointToCameraWorld } from '../src/ui/sld/v3/canvas/SldCanvasV3';
 import { buildResultLabelsFromScene } from '../src/ui/sld/v3/canvas/resultLabels';
 import { orientedSegmentRefs } from '../src/ui/sld/v3/canvas/overlay';
@@ -187,7 +188,7 @@ for (const przypadek of PRZYPADKI) {
     const viewBox = svgEl.getAttribute('viewBox')!.split(' ').map(Number);
     const scale = KAMERA.width / viewBox[2];
 
-    const labelPlan = planSceneLabels(scene.labels, sceneObstacleRects(scene), scale);
+    const labelPlan = planSceneLabels(scene.labels, sceneObstacleRects(scene), scale, sheetSizeFor(scene));
     const layoutWynikow = layoutResultLabels(scene, rlByRef, [], przypadek.lod);
     const oczekiwane = buildCanvasHitAreas({
       symbols: scene.symbols,

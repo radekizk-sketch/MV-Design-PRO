@@ -57,6 +57,7 @@ import { buildSceneV3, type SceneLod, type SceneV3 } from '../src/ui/sld/v3/scen
 import { rectsOverlap } from '../src/ui/sld/v3/core/grid';
 import { sceneObstacleRects } from '../src/ui/sld/v3/scene/buildScene';
 import { planSceneLabels } from '../src/ui/sld/v3/canvas/labelLegibility';
+import { sheetSizeFor } from '../src/ui/sld/v3/sheet/outline';
 import type { OwnerKind } from '../src/ui/sld/v3/layout/labels';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -249,7 +250,7 @@ const RODZAJE_KLASY = new Set<OwnerKind>([
 const SKALE_KAMERY = [0.2, 0.5, 1] as const;
 
 function ukryteOpisy(scene: SceneV3, skala: number): number {
-  const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), skala);
+  const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), skala, sheetSizeFor(scene));
   return plan.hiddenDetail.length;
 }
 

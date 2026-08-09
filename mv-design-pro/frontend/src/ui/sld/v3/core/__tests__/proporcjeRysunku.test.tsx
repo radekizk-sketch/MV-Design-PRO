@@ -41,6 +41,7 @@ import {
   proportionCutoffScale,
   type LabelClass,
 } from '../text';
+import { sheetSizeFor } from '../../sheet/outline';
 import {
   planSceneLabels,
   plannedLabelsAboveProportionCeiling,
@@ -208,7 +209,7 @@ describe('PROPORCJE §1 — plan renderu na REALNEJ scenie (poziom szczegółu �
       const scene = sceny[lod];
       const przeszkody = sceneObstacleRects(scene);
       for (const scale of SKALE) {
-        const plan = planSceneLabels(scene.labels, przeszkody, scale);
+        const plan = planSceneLabels(scene.labels, przeszkody, scale, sheetSizeFor(scene));
         expect(
           plannedLabelsBelowScreenFloor(plan, scale, MIN_READABLE_LABEL_SCREEN_PX),
           `podłoga L${lod} @${scale}`,
@@ -221,7 +222,7 @@ describe('PROPORCJE §1 — plan renderu na REALNEJ scenie (poziom szczegółu �
   it('napis usunięty przez sufit jest POLICZONY, nie zgubiony po cichu', () => {
     const scene = sceny[2];
     const przeszkody = sceneObstacleRects(scene);
-    const plan = planSceneLabels(scene.labels, przeszkody, MIN_SCALE);
+    const plan = planSceneLabels(scene.labels, przeszkody, MIN_SCALE, sheetSizeFor(scene));
     const tozsamosci = scene.labels.filter((l) => l.labelRole === 'tozsamosc');
     expect(tozsamosci.length).toBeGreaterThan(0);
     // Przy dolnym krańcu zoomu ŻADNEJ tożsamości nie da się narysować
@@ -247,7 +248,7 @@ describe('PROPORCJE §1 — plan renderu na REALNEJ scenie (poziom szczegółu �
     // pola dołożonego do jednej rozdzielnicy.
     expect(proportionCutoffScale('t1')).toBeLessThan(0.09);
     const scene = sceny[0];
-    const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), 0.101);
+    const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), 0.101, sheetSizeFor(scene));
     const nazwy = plan.drawn.filter((p) => p.label.labelRole === 'tozsamosc');
     expect(nazwy.length).toBeGreaterThan(0);
   });

@@ -38,6 +38,7 @@ import {
 } from '../src/ui/sld/v3/canvas/camera';
 import { SLD_CANVAS_DOCK_INSETS } from '../src/ui/sld/v3/canvas/toolbarLayout';
 import { planSceneLabels } from '../src/ui/sld/v3/canvas/labelLegibility';
+import { sheetSizeFor } from '../src/ui/sld/v3/sheet/outline';
 import { LABEL_TYPOGRAPHY, type LabelClass } from '../src/ui/sld/v3/core/text';
 import {
   APPARATUS_STROKE_WIDTH,
@@ -145,7 +146,7 @@ for (const lod of [0, 1, 2] as const) {
   const aparaty = symboleAparatury(scene);
   const medianaH = mediana(aparaty.map((a) => a.h));
   for (const s of SKALE) {
-    const plan = planSceneLabels(scene.labels, przeszkody, s.v);
+    const plan = planSceneLabels(scene.labels, przeszkody, s.v, sheetSizeFor(scene));
     const perKlasa: Record<LabelClass, number[]> = { t1: [], t2: [], t3: [], t4: [] };
     for (const p of plan.drawn) perKlasa[p.label.labelClass].push(p.fontSize * s.v);
     const powiekszonych = plan.drawn.filter((p) => p.enlarged).length;
@@ -252,7 +253,7 @@ for (const lod of [0, 1, 2] as const) {
   const scene = sceny[lod];
   const przeszkody = sceneObstacleRects(scene);
   for (const s of SKALE) {
-    const plan = planSceneLabels(scene.labels, przeszkody, s.v);
+    const plan = planSceneLabels(scene.labels, przeszkody, s.v, sheetSizeFor(scene));
     const skrocone = plan.drawn.filter((p) => p.text !== p.label.text).length;
     console.log(
       `L${lod} ${s.nazwa.padEnd(12)} | ${String(skrocone).padStart(10)} | ${String(plan.droppedIdentity.length).padStart(22)} | ${String(plan.hiddenDetail.length).padStart(15)}`,
