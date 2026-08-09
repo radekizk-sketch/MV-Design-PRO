@@ -185,6 +185,37 @@ interface OdciskiLod {
  * Bez zmian: kolizje 0, `declutter.dropped` 0 na obu sieciach × L0/L1/L2,
  * „Ukryto N opisów" 1/164/333 i 1/323/659, bbox 8296×5254 i 14488/14574.
  *
+ * AKTUALIZACJA ŚWIADOMA (RAMKA-TNIE-PODPISY, 2026-08-09) — przeliczone
+ * WYŁĄCZNIE odciski PLANU: 17 z 42 pozycji. Odciski SCENY i DECLUTTERU są
+ * BAJTOWO NIETKNIĘTE (6 z 6 i 6 z 6) — i to jest tu najważniejsza liczba:
+ * karta rusza WARSTWĘ RENDERU, więc geometria świata nie miała prawa drgnąć,
+ * a wyrocznia to potwierdza, zamiast tego deklarować.
+ *
+ * CO SIĘ ZMIENIŁO W PLANIE (trzy mechanizmy, wszystkie w
+ * `canvas/labelLegibility.ts`):
+ *  (11a) `PlannedLabel.rect` niesie teraz TUSZ także dla pisma NATURALNEGO
+ *        (dotąd: surowy slot sceny). Różnica realna dla jednej etykiety —
+ *        opis zbiorczy GPZ, którego tekst jest szerszy od slotu;
+ *  (11b) pismo naturalne jest SKRACANE do własnego slotu (dotąd nie było
+ *        skracane wcale, więc malowało się „na wylot" 39,5 j.św. poza lewą
+ *        krawędź arkusza);
+ *  (11c) obrys arkusza jest przeszkodą planu, a pasmo nazw stacji przesuwa
+ *        się w całości, gdy po powiększeniu wyszłoby poza arkusz.
+ *
+ * KIERUNEK ZMIANY jest zgodny z regułą nie-rosnącą §15.1: nic nie urosło.
+ * Liczba narysowanych etykiet i porzuconych tożsamości jest IDENTYCZNA jak
+ * przed kartą na obu sieciach i całej drabinie skal (pomiar: plan z arkuszem
+ * nieskończonym vs plan z granicą — te same liczby, patrz
+ * `sheet/__tests__/obrysArkusza.contract.test.tsx` „INIEKCJA (−)"). Zmienia
+ * się POŁOŻENIE kilku prostokątów i POSTAĆ kilku napisów (skrócone ZE ZNAKIEM
+ * „…" wg S9-7/C-6) — czyli dokładnie to, co karta miała zmienić.
+ *
+ * ODCISKI NIEZMIENIONE tam, gdzie zmiana nie sięga — 25 z 42, w tym CAŁA
+ * skala 0,05 (przy niej sufit proporcji odrzuca wszystkie tożsamości, więc
+ * nie ma czego mieścić w arkuszu) i skale ≥1,5 na L1/L2 (pismo naturalne
+ * mieści się w slotach). Gdyby zmieniły się wszystkie 42, byłby to sygnał,
+ * że naprawa sięga dalej, niż opisuje.
+ *
  * Kolejność `plany` odpowiada `SKALE`.
  */
 const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly OdciskiLod[]>> = {
@@ -194,12 +225,12 @@ const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly Odc
       declutter: 'e9a5595fa2275cc62ec211444d0089c4',
       plany: [
         'd1d791097538d20dfc39304316b19d9f',
-        '3b38ae2131c781824e88dacfa34da0cf',
-        '877591a853463a9ff87358f9894ac992',
-        '22ad794bfb095d6b744deeeff37d9816',
+        'e03484c7ff81c1f037924c849ac437a7',
+        '7d510e3678d48a323c666d5ecb591bb6',
+        'd6eaf96d73270d82c6d31c1d78904365',
         '59fb2fb3576b18d6e6d06169f39a0b68',
-        'dd5fd8e6754fb37f6449b614b033ef21',
-        'dd5fd8e6754fb37f6449b614b033ef21',
+        'c926b70251423ecf5ba05b0422a945be',
+        'c926b70251423ecf5ba05b0422a945be',
       ],
     },
     {
@@ -207,9 +238,9 @@ const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly Odc
       declutter: 'cf410bbe7722c159c06499a06f0c6327',
       plany: [
         '429caf349602fa110d225921fa057213',
-        '0c47414cbc8bb3fa37adc2b9799bbb6c',
+        '975ab2c98e037d47a4f447088176bf57',
         'c8f08829e1931a3208cef985aadab57d',
-        '53fe08f5001f997a52da10f4697cb343',
+        '140b323b014af0f31938e6b0099dfbc0',
         '16d5c79b17d21fa548d97de51fd7a70d',
         '0c5a708cb70bf9f12d97449fc26bfccc',
         '0c5a708cb70bf9f12d97449fc26bfccc',
@@ -220,10 +251,10 @@ const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly Odc
       declutter: '03f819f4f473de1e2335c5702fc10da5',
       plany: [
         '5bd341c5c57e19380d32d1db9bc2e9ed',
-        'a5fc99352d3b9c12233c08b684b67137',
+        'e3b315e99b100a8f41b186cad6fa5511',
         '1a96d954081a71f86cbb632a60ef0e9d',
-        '806708d307d27097c8cb46d62015fcd6',
-        '78e457fb917ead0f1d34570230a8116e',
+        'c37d6450733e03b60c22fb22cd142f4f',
+        '8ca28b07eb11609f978138a3647bc8e0',
         'bea381630d196ce330efd2bf3287f4b6',
         'bea381630d196ce330efd2bf3287f4b6',
       ],
@@ -235,12 +266,12 @@ const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly Odc
       declutter: 'ebb4683a7bedaf71c969fbfae8034952',
       plany: [
         'd3fda9b40499a6a03b05bbbee6aaae69',
-        'b4dc02bccacf2cb217b5ef828797f788',
-        '2d5d4ac6739c824d2e1abaacbd781bc5',
-        'cb8967ceecff8425c6863aa3f733f71f',
+        '8f96f0299c93e2189f62a30a1c96d118',
+        '94739b707bb3830d7d48732a01434c7f',
+        'b84946347731784eb9a77128d85a2eb0',
         '8d1efd1da31bfb19f40ea2cac6544c81',
-        '9dbbd824159e11c2d7b8e040b2b3624c',
-        '9dbbd824159e11c2d7b8e040b2b3624c',
+        'db7f2b1dfb9e2bdcd8cac379ea96eacd',
+        'db7f2b1dfb9e2bdcd8cac379ea96eacd',
       ],
     },
     {
@@ -248,7 +279,7 @@ const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly Odc
       declutter: 'b7b648203cb1ce8e337ce6923ac1db34',
       plany: [
         '76e4ed44be4c3679544ecae10458ebd1',
-        'b8548e23afa089847c1c25be2685a104',
+        'ca0bc7ce47de851206efa3830bf757ed',
         '5b56ae3355102a903d4ec6f65bc2c1c9',
         'd88dcd9235660be32aede53a1dd91321',
         '9bec7d4e8b68863a4f7f100d7a00846d',
@@ -261,7 +292,7 @@ const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly Odc
       declutter: 'a818b29235142839af2812550fce4da7',
       plany: [
         'e53dae522da7f3cc612f0d8436092e0f',
-        '0b4fbdfced3d4e0ebae0de1857576711',
+        '71a8fd6603e2be139cc95558444052c8',
         '9403f37c25f9b1388353359e3f5ed473',
         '2ca02de9e32a8dc864fe112b77ce53b1',
         '0a9b0699b841340fc157dee2e1e7e33d',
