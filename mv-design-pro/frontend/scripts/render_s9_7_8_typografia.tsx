@@ -30,6 +30,7 @@ import {
   type SceneV3,
 } from '../src/ui/sld/v3/scene/buildScene';
 import { planSceneLabels } from '../src/ui/sld/v3/canvas/labelLegibility';
+import { sheetSizeFor } from '../src/ui/sld/v3/sheet/outline';
 import { appendUnitToTrunk, loadEnm } from '../src/ui/sld/v3/scene/__tests__/syntheticNetworks';
 import { SldCanvasV3, contentBoundingBoxOf, sceneBoxToCameraWorld } from '../src/ui/sld/v3/canvas/SldCanvasV3';
 import { boundingBoxOfRect, computeInitialCameraState } from '../src/ui/sld/v3/canvas/camera';
@@ -92,7 +93,7 @@ for (const siec of SIECI) {
   for (const lod of [0, 2] as SceneLod[]) {
     const scene = sceneByLod[lod];
     const scale = skalaKamery(sceneByLod, lod);
-    const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), scale);
+    const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), scale, sheetSizeFor(scene));
     const najmniejszyNapis = plan.drawn.reduce((min, p) => Math.min(min, p.fontSize * scale), Infinity);
     const kolumnStref = Math.max(1, Math.ceil((scene.bbox.x + scene.bbox.width) / SHEET_WIDTH_QUANTUM));
     const wagaMagistrali = segmentStrokeWidthForScale('snTrunk', scale) * scale;

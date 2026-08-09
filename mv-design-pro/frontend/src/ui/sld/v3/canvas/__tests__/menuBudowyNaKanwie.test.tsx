@@ -37,6 +37,7 @@ import { buildSceneV3, sceneObstacleRects, type SceneLod } from '../../scene/bui
 import { resultRefForSegment } from '../resultLabels';
 import type { DerSourceKind } from '../../compose/sourceKind';
 import { planSceneLabels } from '../labelLegibility';
+import { sheetSizeFor } from '../../sheet/outline';
 import { HIT_ATTR, buildCanvasHitAreas, type CanvasHitArea, type HitObjectClass } from '../hitAreas';
 import {
   buildCanvasModelIndex,
@@ -91,7 +92,7 @@ function renderKanwe(lod: SceneLod): Kanwa {
   const viewBox = svg.getAttribute('viewBox')!.split(' ').map(Number);
   const scale = W / viewBox[2];
   const scene = buildSceneV3(enm, lod);
-  const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), scale);
+  const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), scale, sheetSizeFor(scene));
   const obszary = buildCanvasHitAreas({
     symbols: scene.symbols,
     segments: scene.segments,
@@ -496,7 +497,7 @@ describe('S9-5 C — menu nie obiecuje operacji na obiektach spoza modelu', () =
     let tematow = 0;
     for (const lod of [0, 1, 2] as SceneLod[]) {
       const scene = buildSceneV3(enm, lod);
-      const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), 1);
+      const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), 1, sheetSizeFor(scene));
       const obszary = buildCanvasHitAreas({
         symbols: scene.symbols,
         segments: scene.segments,

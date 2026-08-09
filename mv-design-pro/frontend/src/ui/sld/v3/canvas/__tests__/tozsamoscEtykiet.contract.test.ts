@@ -30,6 +30,7 @@ import type { EnergyNetworkModel } from '../../../../../types/enm';
 import { buildSceneV3, sceneObstacleRects, type SceneLod, type SceneV3 } from '../../scene/buildScene';
 import { computeInitialCameraState, DEFAULT_LOD_THRESHOLDS, LOD_HYSTERESIS_MARGIN } from '../camera';
 import { contentBoundingBoxOf, sceneBoxToCameraWorld } from '../SldCanvasV3';
+import { sheetSizeFor } from '../../sheet/outline';
 import {
   planSceneLabels,
   plannedLabelCollisions,
@@ -155,7 +156,7 @@ describe('KD-11 §2 (bramka 1) — kadr „Dopasuj widok" na sieci z rozwinięty
     it(`LOD ${lod}: KAŻDA etykieta tożsamości jest narysowana, licznik ukrytych to WYŁĄCZNIE dane szczegółowe`, () => {
       const scene = sceny[lod];
       const scale = skalaDopasowania(sceny, lod);
-      const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), scale);
+      const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), scale, sheetSizeFor(scene));
 
       const tozsamosci = scene.labels.filter((l) => l.labelRole === 'tozsamosc');
       const narysowaneTozsamosci = new Set(
@@ -183,7 +184,7 @@ describe('KD-11 §2 (bramka 1) — kadr „Dopasuj widok" na sieci z rozwinięty
   it('LOD 1: podpisy tożsamości są rysowane pismem o rozmiarze ekranowym ≥ próg czytelności', () => {
     const scene = sceny[1];
     const scale = skalaDopasowania(sceny, 1);
-    const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), scale);
+    const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), scale, sheetSizeFor(scene));
     const powiekszone = plan.drawn.filter((p) => p.enlarged);
     expect(powiekszone.length).toBeGreaterThan(0);
     for (const p of plan.drawn) {
@@ -199,7 +200,7 @@ describe('KD-11 §2 (bramka 1) — kadr „Dopasuj widok" na sieci z rozwinięty
   it('skrócenie z wielokropkiem nie wychodzi poza prostokąt planu (pomiar szerokości)', () => {
     const scene = sceny[1];
     const scale = skalaDopasowania(sceny, 1);
-    const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), scale);
+    const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), scale, sheetSizeFor(scene));
     const skrocone = plan.drawn.filter((p) => p.text !== p.label.text);
     expect(skrocone.length).toBeGreaterThan(0); // kadr faktycznie ćwiczy skracanie
     for (const p of skrocone) {
@@ -223,7 +224,7 @@ describe('KD-11 §3 (bramka 2) — wyrocznia braku kolizji na golden sieci wielo
       it(`LOD ${lod} @ skala ${scale.toFixed(4)}: zero nachodzeń etykieta↔etykieta i etykieta↔rysunek`, () => {
         const scene = sceny[lod];
         const obstacles = sceneObstacleRects(scene);
-        const plan = planSceneLabels(scene.labels, obstacles, scale);
+        const plan = planSceneLabels(scene.labels, obstacles, scale, sheetSizeFor(scene));
         const pary = plannedLabelCollisions(plan);
         expect(pary.map((p) => `${p.a} ↔ ${p.b}`)).toEqual([]);
         const naRysunku = plannedLabelObstacleCollisions(plan, obstacles);
@@ -235,7 +236,7 @@ describe('KD-11 §3 (bramka 2) — wyrocznia braku kolizji na golden sieci wielo
       const scene = sceny[lod];
       const obstacles = sceneObstacleRects(scene);
       for (const scale of skaleProdukcyjne(lod, skalaFit)) {
-        const plan = planSceneLabels(scene.labels, obstacles, scale);
+        const plan = planSceneLabels(scene.labels, obstacles, scale, sheetSizeFor(scene));
         expect(
           plan.droppedIdentity.map((l) => `${scale.toFixed(4)}:${l.ownerKind}:${l.text}`),
         ).toEqual([]);
@@ -258,7 +259,7 @@ describe('KD-11 §4 (bramka 3) — wyrocznie GRYZĄ', () => {
     );
     expect(ukryteTozsamosci.length).toBeGreaterThan(0);
     // …a kontrakt wyżej wymaga, żeby po naprawie było ich ZERO w planie.
-    const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), scale);
+    const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), scale, sheetSizeFor(scene));
     const narysowane = new Set(plan.drawn.map((p) => p.label.ownerRef));
     for (const l of ukryteTozsamosci) expect(narysowane.has(l.ownerRef)).toBe(true);
   });
@@ -266,7 +267,7 @@ describe('KD-11 §4 (bramka 3) — wyrocznie GRYZĄ', () => {
   it('wyrocznia kolizji GRYZIE: sztuczny plan z nachodzącymi etykietami jest zgłaszany', () => {
     const scene = sceny[1];
     const scale = skalaDopasowania(sceny, 1);
-    const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), scale);
+    const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), scale, sheetSizeFor(scene));
     const [a, b] = plan.drawn;
     const sabotaz = { ...plan, drawn: [a, { ...b, rect: { ...a.rect } }] };
     expect(plannedLabelCollisions(sabotaz).length).toBeGreaterThan(0);
@@ -276,7 +277,7 @@ describe('KD-11 §4 (bramka 3) — wyrocznie GRYZĄ', () => {
   it('brak wiarygodnego pomiaru skali NIE ukrywa i NIE powiększa niczego', () => {
     const scene = sceny[1];
     for (const scale of [0, -1, Number.NaN]) {
-      const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), scale);
+      const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), scale, sheetSizeFor(scene));
       expect(plan.drawn.length).toBe(scene.labels.length);
       expect(plan.hiddenDetail).toEqual([]);
       expect(plan.drawn.every((p) => !p.enlarged)).toBe(true);
@@ -285,7 +286,7 @@ describe('KD-11 §4 (bramka 3) — wyrocznie GRYZĄ', () => {
 
   it('powyżej progu plan jest TOŻSAMOŚCIĄ renderu sprzed KD-11 (zero zmiany zachowania)', () => {
     const scene = sceny[2];
-    const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), 2);
+    const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), 2, sheetSizeFor(scene));
     expect(plan.drawn.length).toBe(scene.labels.length);
     expect(plan.hiddenDetail).toEqual([]);
     for (const p of plan.drawn) {

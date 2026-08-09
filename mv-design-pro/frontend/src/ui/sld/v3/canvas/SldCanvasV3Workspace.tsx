@@ -266,7 +266,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { FRAME_MARGIN, SheetLegend, type SheetLegendEntry } from '../sheet/Frame';
 import { computeProjectLegendEntries } from '../sheet/projectLegend';
 import { SYMBOL_GLYPHS } from '../symbols/glyphs';
-import { sheetSizeFor } from './SldCanvasV3';
+import { sheetSizeFor } from '../sheet/outline';
 import type { SymbolId } from '../symbols/defs';
 
 const MIN_CANVAS_WIDTH_PX = 320;

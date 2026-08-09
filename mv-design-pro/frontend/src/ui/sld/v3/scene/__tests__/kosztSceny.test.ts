@@ -41,6 +41,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import { planSceneLabels } from '../../canvas/labelLegibility';
+import { sheetSizeFor } from '../../sheet/outline';
 import { declutterLabels } from '../../layout/declutter';
 import { buildSceneV3, sceneObstacleRects, type SceneLod } from '../buildScene';
 import { synthLargeTrunk } from './syntheticNetworks';
@@ -297,7 +298,7 @@ describe('S9-9 — tożsamość bajtowa sceny, declutteru i planu etykiet', () =
     const policzone = LODY.map((lod) => {
       const scena = buildSceneV3(model, lod);
       const przeszkody = sceneObstacleRects(scena);
-      return SKALE.map((skala) => odcisk(planSceneLabels(scena.labels, przeszkody, skala)));
+      return SKALE.map((skala) => odcisk(planSceneLabels(scena.labels, przeszkody, skala, sheetSizeFor(scena))));
     });
     expect(policzone).toEqual(ODCISKI_BAZOWE[nazwa].map((o) => o.plany));
   });
@@ -320,7 +321,7 @@ describe('S9-9 — budżet przeliczeń synchronicznych ścieżki gestu', () => {
   function najgorszyPlan(model: EnergyNetworkModel): number {
     const scena = buildSceneV3(model, 2);
     const przeszkody = sceneObstacleRects(scena);
-    return Math.max(...SKALE.map((s) => mediana(() => planSceneLabels(scena.labels, przeszkody, s))));
+    return Math.max(...SKALE.map((s) => mediana(() => planSceneLabels(scena.labels, przeszkody, s, sheetSizeFor(scena)))));
   }
 
   it('plan etykiet mieści się w budżecie klatki na sieci podwojonej (107 stacji)', () => {

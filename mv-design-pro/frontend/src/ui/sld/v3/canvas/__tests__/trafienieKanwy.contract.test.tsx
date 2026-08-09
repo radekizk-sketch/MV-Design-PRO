@@ -32,6 +32,7 @@ import userEvent from '@testing-library/user-event';
 import type { EnergyNetworkModel } from '../../../../../types/enm';
 import { buildSceneV3, sceneObstacleRects, type SceneLod } from '../../scene/buildScene';
 import { planSceneLabels } from '../labelLegibility';
+import { sheetSizeFor } from '../../sheet/outline';
 import { SldCanvasV3 } from '../SldCanvasV3';
 import {
   HIT_ATTR,
@@ -102,7 +103,7 @@ describe('S9-4 — render buduje uchwyty tą samą funkcją, którą czyta sonda
       );
       const scene = buildSceneV3(enm, lod);
       const scale = scaleOf(container);
-      const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), scale);
+      const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), scale, sheetSizeFor(scene));
       const oczekiwane = buildCanvasHitAreas({
         symbols: scene.symbols,
         segments: scene.segments,
@@ -152,7 +153,7 @@ describe('S9-4 — inwentarz klasy: KAŻDY rodzaj obiektu kanwy ma uchwyt ≥ 24
     );
     const scene = buildSceneV3(enm, lod);
     const scale = scaleOf(container);
-    const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), scale);
+    const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), scale, sheetSizeFor(scene));
     const oczekiwane = buildCanvasHitAreas({
       symbols: scene.symbols,
       segments: scene.segments,
@@ -292,7 +293,7 @@ describe('S9-4 — tożsamość zaznaczenia niesiona klikiem NATYWNYM', () => {
     );
     const scene = buildSceneV3(enm, 2);
     const scale = scaleOf(container);
-    const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), scale);
+    const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), scale, sheetSizeFor(scene));
     const etykieta = plan.drawn.find((p) => p.label.ownerKind === 'apparatus')
       ?? plan.drawn.find((p) => p.label.ownerKind === 'station-name')!;
     await user.click(hitNode(container, `sld-v3-label-${etykieta.index}`, 'obrys')!);
