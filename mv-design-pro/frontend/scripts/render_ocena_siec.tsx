@@ -29,6 +29,7 @@ import { buildResultLabelsForSnapshot } from '../src/ui/sld/v3/canvas/SldCanvasV
 import { computeResultLabelPlacements } from '../src/ui/sld/v3/canvas/SldCanvasV3';
 import type { CameraState } from '../src/ui/sld/v3/canvas/camera';
 import { CANVAS_BACKGROUND } from '../src/ui/sld/v3/theme/colorTokens';
+import { LABEL_TYPOGRAPHY, labelLineHeight } from '../src/ui/sld/v3/core/text';
 import type { RawOverlayElement, RawOverlayPayload } from '../src/ui/sld-overlay/rawResultOverlayStore';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -215,7 +216,14 @@ renderCanvasLod(2, 'pełne pola i aparaty · oznaczenia z danych · CT/VT · pod
     );
   }
   // Warstwa wynikowa: etykiety P na przęsłach (placements produkcyjne).
-  const lineH = 5.6;
+  // JEDNO ZRODLO PRAWDY dla podkladki i pisma (naprawa narzedzia oceny 2026-08-09).
+  // Do tej poprawki podkladka byla skalowana (`p.width * scale`), a rozmiar pisma stal
+  // zaszyty na 5,2 — dwie rozne podstawy, wiec tusz wychodzil poza wlasne tlo na
+  // WSZYSTKICH 88 etykietach (zmierzone: tusz 33,00 przy podkladce 19,8). Produkcyjna
+  // kanwa liczy oba z `measureLabelWidth(..., 't4')`; tu bierzemy ten sam rozmiar pisma
+  // i te sama skale, wiec obraz oceny pokazuje to, co pokazuje produkt.
+  const fontRes = LABEL_TYPOGRAPHY.t4.fontSize * scale;
+  const lineH = labelLineHeight('t4') * scale;
   for (const p of placements) {
     parts.push(
       `<rect x="${tx(minX + (p.x - minX)).toFixed(1)}" y="${ty(minY + (p.y - minY)).toFixed(1)}" ` +
@@ -226,7 +234,7 @@ renderCanvasLod(2, 'pełne pola i aparaty · oznaczenia z danych · CT/VT · pod
       parts.push(
         `<text x="${(tx(minX + (p.x - minX)) + (p.width * scale) / 2).toFixed(1)}" ` +
           `y="${(ty(minY + (p.y - minY)) + lineH * (i + 1)).toFixed(1)}" text-anchor="middle" ` +
-          `font-family="Inter, system-ui, sans-serif" font-size="5.2" font-weight="600" fill="${RESULT}">${escapeXml(`${line.prefix} ${line.text}`)}</text>`,
+          `font-family="Inter, system-ui, sans-serif" font-size="${fontRes.toFixed(2)}" font-weight="600" fill="${RESULT}">${escapeXml(`${line.prefix} ${line.text}`)}</text>`,
       );
     });
   }
