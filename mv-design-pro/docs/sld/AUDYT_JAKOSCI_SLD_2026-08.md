@@ -77,6 +77,8 @@ Kanwa: **1322 × 696 px**. Pomiar przez `getBoundingClientRect` elementów rende
 | C-16 | **[ZAMKNIĘTE 2026-08-07, karta PROPORCJE]** **Tożsamość stacji powtórzona w jednym bloku.** Zgłoszenie właściciela pkt 3 (na zrzucie: „S50 · Sekcja 1", „Stacja…B)", „S50"). POMIAR: kod stacji padał jako TOŻSAMOŚĆ bloku **dwukrotnie** — osobnym wierszem pasma nazw („S01") i w opisie sekcji („S01 · Sekcja 1 · 15 kV"); trzeci napis widoczny na zrzucie to NAZWA stacji, czyli inna dana. Etykieta przęsła („GPZ ↔ S01 · …") nazywa RELACJĘ, nie stację — poza naprawą z uzasadnieniem. | pomiar (f) w `pomiar_proporcje.tsx`: mediana 2 wystąpienia/blok na L2 | CAD, ZW | 2 | Kod niesie OPIS SEKCJI (rozstrzygnięcie S9-8/S9-12 nietknięte), pasmo nazw pokazuje nazwę; jeden predykat dla obu końców. |
 | C-17 | **[ZAMKNIĘTE 2026-08-07, karta PROPORCJE]** **Powtarzalne oznaczniki aparatu bez rozróżnienia pola.** Zgłoszenie właściciela pkt 4: „CZTERY identyczne «Q1» w jednej rozdzielni". POMIAR: **53 z 54** rozdzielni ma powtórzony oznacznik (rekord 4× „Q1"), a **53 z 53** bloków ma opisy pól NIEROZRÓŻNIALNE („pole liniowe" ×3 + „pole transformatorowe"). Recenzja NO-GO 2026-07-17 pkt 9 rozstrzygnęła, że rysunek zostaje przy krótkich Q/QE/T „w obrębie OPISANEGO pola" — zrealizowana była tylko pierwsza połowa tej pary. Dane pól SN stacji NIE niosą numeru pola (`StationFieldSpec` bez `bay_number`) — nazwane wprost, bez fabrykacji. | pomiar (g)/(g2) w `pomiar_proporcje.tsx` | CAD, PSN | 2 | Podpis pola niesie oznacznik przed rolą („F01 · liniowe") — deterministyczny licznik pozycyjny, ta sama konwencja co pola GPZ i identyfikator globalny inspektora. |
 | C-18 | **[ZAMKNIĘTE 2026-08-07, karta PROPORCJE — ZNALEZISKO O SONDZIE, NIE O PRODUKCIE]** **Skrypt zrzutów zniekształcał mierzony rysunek.** `frontend/scripts/render_b2_kotwica.tsx` renderował kanwę z jej WŁASNĄ kamerą (dopasowanie całej sieci, skala 0,133), a dopiero POTEM podmieniał atrybut `viewBox` na kadr kotwicy (1,380). Plan etykiet i wagi kresek zależą od skali kamery, więc rysunek był PLANOWANY dla jednej skali, a POKAZYWANY w innej: napisy na zrzucie miały ~7,4× rozmiar tego, co widzi projektant, a stopka podawała skalę, której obraz nad nią nie dotyczył. Defekty C-14/C-15 są REALNE w produkcie, ale na zrzucie były ZWIELOKROTNIONE przez sondę. | porównanie stopki `b2-po-ciemny.png` (1,380) z rozmiarem glifów na obrazie; `proporcje-po-*` po naprawie | CAD | 2 | Kadr podawany KANWIE (`SldCanvasV3.cameraOverride`), nie nakładany na jej wynik; skrypt asertuje, że narysowany `viewBox` == zadany. |
+| C-19 | **[ZAMKNIĘTE 2026-08-09, karta RAMKA-TNIE-PODPISY]** **Ramka arkusza przecina podpisy — rezerwacja i malowanie to dwa źródła prawdy.** Zgłoszenie właściciela 2026-08-08: „dolna krawędź ramki przechodzi przez ŚRODEK liter oznaczeń S51/S52/S53". POMIAR POTWIERDZIŁ i ROZSZERZYŁ: arkusz jest wyprowadzony z REZERWACJI etykiet (`labelReservationRect` → `scene.bbox` → `sheetSizeFor`), liczonych pismem NATURALNYM, a plan malowania pismo POWIĘKSZA (do 9× dla `t1`) — więc napis wychodził poza ramkę, którą sam wyznaczył. Przelew NIE dotyczy tylko dolnej krawędzi na L0: **dół** −36,7 j.św. (sieć referencyjna L0 @0,181) i −52,3 j.św. (długi ciąg 93 stacje), **prawo** −282 j.św. (L2 @0,30, podpis pola „FT1 · transformatorowe"), **lewo** −39,5 j.św. (opis zbiorczy GPZ, `t3`, tusz 391 j. przy slocie 296 j. — przy KAŻDEJ skali roboczej, bo tam pismo nie jest nawet powiększane, tylko tekst jest szerszy od własnego slotu i NIC go nie skracało). Górna krawędź czysta na całym paśmie skal. Teza §0 karty „etykiet wystających poza bbox: 0, scena jest sama ze sobą zgodna" OBALONA: zgodne są REZERWACJE, nie TUSZ. | `frontend/scripts/pomiar_ramka.tsx` (iloczyn {krawędź} × {LOD} × {sieć} × {skala}); wyrocznia `plannedLabelsOutsideSheet`; sonda odbioru `sheet_outline_probe`; zrzuty `ramka-przed-*` vs `ramka-po-*` | CAD | **3** | Obrys arkusza (`sheet/outline.ts`) jest przeszkodą planu etykiet — tej samej rangi co symbol i tor; pismo naturalne skracane do własnego slotu; pasmo nazw przesuwane W CAŁOŚCI, gdy po powiększeniu wyszłoby poza arkusz. |
+| C-20 | **[ZAMKNIĘTE 2026-08-09, karta RAMKA-TNIE-PODPISY — DRUGI OBJAW, TA SAMA KLASA]** **Dwa pasma chromu przy dolnej krawędzi nachodzą na siebie.** Podpisy „Widok: …" / „Skala …" należą do ARKUSZA (`sheet/Frame.tsx`, `SHEET_CAPTION_OFFSET_SCREEN_PX` pod ramką), a wskaźnik „Ukryto N opisów" do EKRANU (prawy-dolny róg widoku) — dwa odniesienia, zero wiedzy o sobie. Przy kadrze „Dopasuj widok" dolna krawędź arkusza ląduje tuż nad dolną krawędzią widoku, więc oba pasma trafiają w to samo miejsce: POMIAR wykazał kolizję w **12 na 12** par {kadr 1400×900 · 1800×1100 · 1322×696 · 2000×1180} × {L0 · L1 · L2}. Oględziny po pierwszym podejściu ujawniły warstwę trzecią: wskaźnik, ustąpiwszy podpisom, wylądował NA linii ramki, a potem na jej prawej krawędzi — nakładka ekranowa nie ma „miejsca, gdzie nic nie ma". | `frontend/src/ui/sld/v3/sheet/__tests__/obrysArkusza.contract.test.tsx` (iloczyn {kadr} × {LOD} × {zoom}, 48 układów); zrzuty `ramka-*--rog-prawy-dol` | CAD, UX | 2 | Jeden układ dolnego pasa (`canvas/chromeLayout.ts`): wskaźnik EKRANOWY ustępuje całemu dolnemu aparatowi ARKUSZA (krawędź ramki + oba podpisy) i dostaje własną podkładkę, bo leży nad rysunkiem. |
 
 ---
 
@@ -405,7 +407,7 @@ Nazwy pomiarów cytowane w kolumnach „Dowód" odpowiadają wpisom dziennika po
 wypisywanego przez specyfikacje audytowe (uruchamiane spoza repozytorium — audyt nie
 zmienia kodu produktu).
 
-### Spis zrzutów (`audyt-2026-08/`, 25 plików)
+### Spis zrzutów (`audyt-2026-08/`)
 
 **Czytelność arkusza** — komplet L0/L1/L2 × dwie sieci × dwa motywy (12 plików):
 `czytelnosc-duza-L{0,1,2}-{ciemny,jasny}.png`,
@@ -425,3 +427,16 @@ S9-5 (menu kontekstowe i budowa z kanwy): `s9-5-{tlo,zrodlo,tor,stacja,szyna,apa
 `wyniki-nakladka-L0.png`, `wyniki-nakladka-L2.png`.
 
 **Eksport:** `eksport-menu-narzedzia.png`, `eksport-formaty-menu.png`.
+
+**Ramka a podpisy (karta RAMKA-TNIE-PODPISY, 2026-08-09; 48 plików):**
+`ramka-{przed,po}-{referencyjna,dlugi-ciag}-L{0,2}-{ciemny,jasny}.png` — pełna kanwa
+produkcyjna `SldCanvasV3` przy kadrze dopasowania (kamera podana kanwie przez
+`cameraOverride`, ZERO podmiany `viewBox` po fakcie), ze stopką pomiarową
+(luz malowanego tuszu do każdej z czterech krawędzi arkusza + liczba kolizji chromu);
+plus wycinki w powiększeniu ×3: `…--dol-lewo.png` (ostatni wiersz nazw stacji przy dolnej
+krawędzi) i `…--rog-prawy-dol.png` (dolny pas chromu). Renderowane
+`frontend/scripts/render_ramka.tsx` + `frontend/scripts/rasterize.mjs`; faza „przed"
+powstaje przez odwrócenie trzech mechanizmów naprawy (granica arkusza, przesunięcie pasma
+nazw, ustępowanie wskaźnika) — te same pliki źródłowe, ten sam kadr, więc różnica na
+obrazie jest różnicą NAPRAWY, a nie ustawienia sondy.
+
