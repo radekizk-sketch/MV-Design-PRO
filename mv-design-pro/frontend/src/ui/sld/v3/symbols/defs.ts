@@ -258,7 +258,7 @@ export const SYMBOL_DEFS: Readonly<Record<SymbolId, SymbolDef>> = {
  * „minimalny rozmiar renderowania symboli"): PRÓG ROZPOZNAWALNOŚCI symbolu w
  * pikselach EKRANU.
  *
- * Odpowiednik `MIN_READABLE_LABEL_SCREEN_PX` (`core/text.ts`, 6 px) dla
+ * Odpowiednik `MIN_READABLE_LABEL_SCREEN_PX` (`core/text.ts`, 9 px) dla
  * rysunku aparatu. Wyższy niż próg pisma, bo aparat komunikuje TREŚĆ
  * KSZTAŁTEM (przerwa styku odłącznika, poprzeczka rozłącznika, prostokąt
  * wyłącznika — `symbols/glyphs.tsx`): pismo poniżej progu jest nieczytelne,

@@ -166,7 +166,15 @@ export function sheetCaptionScreenRects(
   return rects;
 }
 
-function zachodza(a: ScreenRect, b: ScreenRect): boolean {
+/**
+ * Zachodzenie dwóch prostokątów ekranu — JEDYNA definicja w tym module.
+ *
+ * Wyeksportowana przy odbiorze karty, żeby pin ustępowania wskaźnika pytał TĘ
+ * funkcję, a nie własną kopię reguły: dwa niezależne warunki zachodzenia, które
+ * „dziś się zgadzają", są defektem oczekującym na dane brzegowe (reguła KLASA
+ * §3, predykaty parami).
+ */
+export function zachodza(a: ScreenRect, b: ScreenRect): boolean {
   return (
     a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height
   );

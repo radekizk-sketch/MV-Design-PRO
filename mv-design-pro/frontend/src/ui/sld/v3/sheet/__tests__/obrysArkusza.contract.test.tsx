@@ -43,9 +43,13 @@ import {
 } from '../../canvas/labelLegibility';
 import {
   chromeCaptionCollisions,
+  hiddenLabelsHintPlateRect,
   hiddenLabelsHintScreenRect,
   hiddenLabelsHintText,
   sheetCaptionScreenRects,
+  zachodza,
+  HIDDEN_LABELS_HINT_PLATE_PADDING_X_PX,
+  HIDDEN_LABELS_HINT_PLATE_PADDING_Y_PX,
 } from '../../canvas/chromeLayout';
 import { rectWithinSheet, sheetSizeFor } from '../outline';
 import { FRAME_MARGIN } from '../Frame';
@@ -395,5 +399,51 @@ describe('DOLNY PAS CHROMU — podpisy arkusza i wskaźnik ekranowy są rozłąc
       METRYKA,
     );
     expect(daleko.y).toBe(kadr.height - 52 - 12);
+  });
+
+  it('ustępowanie liczy się dla PODKŁADKI, nie dla gołego napisu (pin dołożony przy odbiorze)', () => {
+    /*
+     * DLACZEGO TEN PIN ISTNIEJE. Podkładka wskaźnika powstała z OGLĘDZIN zrzutu —
+     * napis systemowy, ustąpiwszy podpisom arkusza, lądował na treści rysunku i na
+     * linii ramki, więc dostał nieprzezroczyste tło. Docstring `hiddenLabelsHintPlateRect`
+     * nazywa to koniecznością, ale przy odbiorze karty zmierzono, że NIC tego nie
+     * pilnowało: przestawienie warunku kolizji z podkładki na sam napis zostawiało
+     * 675 testów na zielono. Skutek takiego przestawienia jest dokładnie tą klasą,
+     * którą karta zamykała — nieprzezroczyste tło nachodzi na podpis arkusza i
+     * ZASŁANIA go, czyli informacja ginie tak samo, tylko w drugą stronę.
+     *
+     * Wyrocznia bierze przeszkodę stojącą w PASIE PODKŁADKI, ale POZA prostokątem
+     * napisu: goły napis jej nie dotyka, podkładka owszem. Bez naprawy wskaźnik
+     * zostaje w slocie bazowym; z naprawą ustępuje.
+     */
+    const kadr = { width: 1400, height: 900 };
+    const tekst = hiddenLabelsHintText(1);
+    const slotBazowy = hiddenLabelsHintScreenRect(kadr, tekst, [], METRYKA);
+    const podkladka = hiddenLabelsHintPlateRect(slotBazowy);
+
+    // Zapadka na przypadek zdegenerowany: pas podkładki poza napisem MUSI istnieć,
+    // inaczej przeszkoda poniżej byłaby pusta i test przechodziłby bez treści.
+    expect(HIDDEN_LABELS_HINT_PLATE_PADDING_X_PX).toBeGreaterThan(0);
+    expect(HIDDEN_LABELS_HINT_PLATE_PADDING_Y_PX).toBeGreaterThan(0);
+
+    const przeszkodaTylkoPodPodkladka = {
+      x: podkladka.x,
+      y: podkladka.y,
+      width: HIDDEN_LABELS_HINT_PLATE_PADDING_X_PX,
+      height: podkladka.height,
+    };
+    expect(zachodza(przeszkodaTylkoPodPodkladka, podkladka)).toBe(true);
+    expect(zachodza(przeszkodaTylkoPodPodkladka, slotBazowy)).toBe(false);
+
+    const poUstapieniu = hiddenLabelsHintScreenRect(
+      kadr,
+      tekst,
+      [przeszkodaTylkoPodPodkladka],
+      METRYKA,
+    );
+    expect(poUstapieniu.y).toBeLessThan(slotBazowy.y);
+    expect(zachodza(hiddenLabelsHintPlateRect(poUstapieniu), przeszkodaTylkoPodPodkladka)).toBe(
+      false,
+    );
   });
 });
