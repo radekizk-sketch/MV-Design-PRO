@@ -17,3 +17,9 @@ jobs:
           python-version: "3.x"
       - name: Run docs guard
         run: python mv-design-pro/scripts/docs_guard.py
+      # Opis struktury w CLAUDE.md musi zgadzac sie z repozytorium. Ta sama klasa
+      # fikcji wyszla z tego pliku trzy razy (nieistniejace testy kontraktowe SLD,
+      # skasowany `designer/`, osiemnascie modulow widmo przy przemilczanej
+      # warstwie `ui2/`), wiec tekst dostaje straznika zamiast kolejnej korekty.
+      - name: Run CLAUDE.md structure guard
+        run: python mv-design-pro/scripts/claude_md_struktura_guard.py

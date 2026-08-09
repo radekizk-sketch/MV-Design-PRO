@@ -143,74 +143,87 @@ MV-Design-PRO/
 │   │   │   ├── proof-inspector/  # Proof inspector UI module
 │   │   │   ├── types/            # Shared TypeScript type definitions
 │   │   │   ├── test/             # Test infrastructure (setup.ts)
-│   │   │   └── ui/               # React components (60+ feature modules)
-│   │   │       ├── sld/          # Single Line Diagram (primary)
-│   │   │       │   ├── core/     # VisualGraph, TopologyAdapter, LayoutPipeline, StationBlockBuilder
-│   │   │       │   ├── etap_symbols/
-│   │   │       │   ├── export/
-│   │   │       │   ├── inspector/
-│   │   │       │   ├── layout/
-│   │   │       │   └── symbols/
-│   │   │       ├── sld-editor/   # SLD editing (CAD geometry, drag, routing)
-│   │   │       ├── sld-overlay/  # Result overlays on SLD
-│   │   │       ├── wizard/       # Network wizard (switchgear config)
-│   │   │       ├── study-cases/  # Study case manager
-│   │   │       ├── case-manager/ # Case lifecycle management
-│   │   │       ├── active-case-bar/    # Active case display bar
-│   │   │       ├── results-browser/    # Results hierarchy browser
-│   │   │       ├── results-inspector/  # Result details inspector
-│   │   │       ├── results-workspace/  # Results view container
-│   │   │       ├── results/            # Results module
-│   │   │       ├── run-results-inspector/ # Run-level result inspector
-│   │   │       ├── proof/              # Proof pack display
-│   │   │       ├── protection/         # Protection library browser
-│   │   │       ├── protection-coordination/ # TCC charts, protection curves
-│   │   │       ├── protection-curves/  # Protection curve rendering
-│   │   │       ├── protection-diagnostics/
-│   │   │       ├── protection-engine-v1/ # Protection engine interface
-│   │   │       ├── protection-results/ # Protection result display
-│   │   │       ├── protection-comparison/ # A/B comparison for protection
-│   │   │       ├── property-grid/      # Element property editor
-│   │   │       ├── catalog/            # Type library browser
-│   │   │       ├── topology/           # Topology tree
-│   │   │       ├── power-flow-results/ # Load flow results
-│   │   │       ├── power-flow-comparison/ # Load flow A/B comparison
-│   │   │       ├── power-distribution/ # Power distribution analysis
-│   │   │       ├── context-menu/       # Context menu actions
-│   │   │       ├── app-state/          # Global Zustand store
-│   │   │       ├── history/            # Undo/redo
-│   │   │       ├── selection/          # Element selection
-│   │   │       ├── mode-gate/          # Expert mode gating
-│   │   │       ├── contracts/          # API contract definitions
-│   │   │       ├── analysis-eligibility/ # Analysis pre-check display
-│   │   │       ├── batch-execution/    # Batch analysis execution
-│   │   │       ├── data-manager/       # Data management panel
-│   │   │       ├── engineering-readiness/ # Readiness gate UI
-│   │   │       ├── enm-inspector/      # ENM model inspector
-│   │   │       ├── fault-scenarios/    # Fault scenario configuration
-│   │   │       ├── main-menu/          # Application main menu
-│   │   │       ├── navigation/         # App navigation
-│   │   │       ├── notifications/      # Notification display
-│   │   │       ├── project-archive/    # Project ZIP import/export
-│   │   │       ├── project-tree/       # Project hierarchy tree
-│   │   │       ├── projects/           # Projects list/management
-│   │   │       ├── reference-patterns/ # Reference network patterns
-│   │   │       ├── schema-completeness/ # Schema completeness display
-│   │   │       ├── status-bar/         # Application status bar
-│   │   │       ├── voltage-profile/    # Voltage profile charts
-│   │   │       ├── compare/            # General comparison view
-│   │   │       ├── comparison/         # Comparison module
-│   │   │       ├── comparisons/        # Comparisons list
-│   │   │       ├── inspector/          # Generic inspector
-│   │   │       ├── inspector-panel/    # Inspector panel wrapper
-│   │   │       ├── issue-panel/        # Validation issue panel
-│   │   │       ├── canon/              # Canonical form utilities
-│   │   │       ├── field/              # Form field components
-│   │   │       ├── network-build/      # Network building utilities
-│   │   │       ├── workspace/          # Workspace management
-│   │   │       ├── icons/              # Icon definitions
-│   │   │       ├── shell/              # Shell components
-│   │   │       └── ...                 # shared/, common/, config/, layout/, types.ts
+│   │   │   ├── ui/               # React components — 56 modulow (stan zmierzony, pin: scripts/claude_md_struktura_guard.py)
+│   │   │   │   ├── analysis-eligibility/  # Wynik pre-kontroli analizy
+│   │   │   │   ├── app-state/             # Globalny store Zustand
+│   │   │   │   ├── audit/                 # Narzedzia audytowe
+│   │   │   │   ├── canon/                 # Narzedzia postaci kanonicznej
+│   │   │   │   ├── catalog/               # Przegladarka biblioteki typow
+│   │   │   │   ├── common/                # Wspolne
+│   │   │   │   ├── comparison/            # Modul porownania
+│   │   │   │   ├── config/                # Konfiguracja
+│   │   │   │   ├── context-menu/          # Akcje menu kontekstowego
+│   │   │   │   ├── contracts/             # Definicje kontraktow API
+│   │   │   │   ├── data-manager/          # Panel zarzadzania danymi
+│   │   │   │   ├── engineering-readiness/ # Bramka gotowosci inzynierskiej
+│   │   │   │   ├── enm-inspector/         # Inspektor modelu ENM
+│   │   │   │   ├── fault-scenarios/       # Konfiguracja scenariuszy zwarciowych
+│   │   │   │   ├── field/                 # Komponenty pol formularza
+│   │   │   │   ├── help/                  # Pomoc kontekstowa
+│   │   │   │   ├── history/               # Cofnij/ponow
+│   │   │   │   ├── icons/                 # Definicje ikon
+│   │   │   │   ├── inspector/             # Inspektor ogolny
+│   │   │   │   ├── issue-panel/           # Panel bledow walidacji
+│   │   │   │   ├── mode-gate/             # Bramkowanie trybu eksperckiego
+│   │   │   │   ├── navigation/            # Nawigacja aplikacji
+│   │   │   │   ├── ncrfg-tests/           # Testy zgodnosci NC RfG
+│   │   │   │   ├── network-build/         # Narzedzia budowy sieci
+│   │   │   │   ├── notifications/         # Powiadomienia
+│   │   │   │   ├── onboarding/            # Wdrozenie uzytkownika
+│   │   │   │   ├── power-distribution/    # Analiza rozdzialu mocy
+│   │   │   │   ├── power-flow-comparison/ # Porownanie A/B rozplywu
+│   │   │   │   ├── power-flow-results/    # Wyniki rozplywu mocy
+│   │   │   │   ├── project-archive/       # Import/eksport projektu (ZIP)
+│   │   │   │   ├── projects/              # Lista i zarzadzanie projektami
+│   │   │   │   ├── proof/                 # Prezentacja pakietu dowodowego
+│   │   │   │   ├── property-grid/         # Edytor wlasciwosci elementu
+│   │   │   │   ├── protection/            # Przegladarka biblioteki zabezpieczen
+│   │   │   │   ├── protection-comparison/ # Porownanie A/B zabezpieczen
+│   │   │   │   ├── protection-coordination/ # Wykresy TCC, koordynacja
+│   │   │   │   ├── protection-curves/     # Rysowanie krzywych zabezpieczen
+│   │   │   │   ├── reference-networks/    # Sieci referencyjne (fikstury)
+│   │   │   │   ├── reference-patterns/    # Wzorce sieci referencyjnych
+│   │   │   │   ├── reports/               # Raporty
+│   │   │   │   ├── results/               # Modul wynikow
+│   │   │   │   ├── results-inspector/     # Inspektor szczegolow wyniku
+│   │   │   │   ├── schema-completeness/   # Kompletnosc schematu
+│   │   │   │   ├── selection/             # Zaznaczenie elementow
+│   │   │   │   ├── settings/              # Ustawienia
+│   │   │   │   ├── shared/                # Wspoldzielone
+│   │   │   │   ├── shell/                 # Komponenty powloki
+│   │   │   │   ├── sld/          # Schemat jednokreskowy (kanwa v2/v3, sedno produktu)
+│   │   │   │   │   ├── canonical_symbols/
+│   │   │   │   │   ├── core/
+│   │   │   │   │   ├── export/
+│   │   │   │   │   ├── reference/
+│   │   │   │   │   ├── shared/
+│   │   │   │   │   ├── v2/
+│   │   │   │   │   ├── v3/
+│   │   │   │   ├── sld-editor/            # Edycja SLD (geometria CAD, przeciaganie, trasowanie)
+│   │   │   │   ├── sld-overlay/           # Nakladka wynikow na SLD
+│   │   │   │   ├── status-bar/            # Pasek stanu
+│   │   │   │   ├── study-cases/           # Menedzer przypadkow obliczeniowych
+│   │   │   │   ├── tech-card/             # Karta techniczna elementu
+│   │   │   │   ├── topology/              # Drzewo topologii
+│   │   │   │   ├── voltage-profile/       # Wykresy profilu napiecia
+│   │   │   │   ├── workspace/             # Zarzadzanie przestrzenia robocza
+│   │   │   └── ui2/              # Warstwa UI programu 2026-07 — 16 modulow (tu toczy sie biezaca praca)
+│   │   │       ├── adapters/          # Adaptery do kontraktow backendu
+│   │   │       ├── events/            # Szyna zdarzen
+│   │   │       ├── freshness/         # Znaczniki swiezosci wynikow
+│   │   │       ├── inspector/         # Inspektor ui2
+│   │   │       ├── kreatory/          # Kreatory (stacja, pole SN, zrodlo OZE, pierscien)
+│   │   │       ├── kryteria/          # Kryteria oceny
+│   │   │       ├── legacy/            # Mosty do warstwy ui/
+│   │   │       ├── model/             # Warstwa modelu ui2
+│   │   │       ├── nav/               # Nawigacja etapow E1-E8
+│   │   │       ├── oze/               # Strumien OZE (krzywe, LOM, zgodnosc NC RfG)
+│   │   │       ├── referencje/        # Referencje katalogowe
+│   │   │       ├── search/            # Wyszukiwanie
+│   │   │       ├── shell/             # Powloka ui2 (chrom, doki, store powloki)
+│   │   │       ├── spaces/            # Przestrzenie pracy (projekt, model, analizy)
+│   │   │       ├── theme/             # Motyw i tokeny
+│   │   │       ├── wyniki/            # Ekrany wynikow (rozplyw, zwarcia, porownanie, estymacja, skladowe)
 │   │   └── e2e/                  # Playwright end-to-end tests
 │   ├── scripts/                  # CI/CD guard scripts (64+ scripts)
 │   └── docs/                     # Detailed documentation (150+ files)
