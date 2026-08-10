@@ -280,3 +280,32 @@ Data wejscia statusow: 2026-05-24.
 | `POST /api/v1/reference-networks/{network_id}/validate` | v12xx | aktywny | 2026-05-24 | - | Walidacja sieci referencyjnej. | reference network tests | Architekt testow |
 | `POST /api/v1/reference-networks/{network_id}/validate-dynamic` | v12xx | aktywny | 2026-05-24 | - | Walidacja dynamiczna sieci referencyjnej. | reference network tests | Architekt testow |
 | `PUT /api/v1/projects/{project_id}/audit2-station-config/{station_id:path}` | v12xx.m1 | adapter | 2026-05-24 | koniec M4 | Zapis konfiguracji stacji audit2. | audit2 station config tests | Architekt stacji |
+| `GET /api/power-flow-comparisons/{comparison_id}` | v12xx | aktywny | 2026-08-10 | - | Odczyt porównania rozpływów. | power flow comparison API tests | Architekt API |
+| `GET /api/power-flow-comparisons/{comparison_id}/export/docx` | v12xx | aktywny | 2026-08-10 | - | Eksport porównania rozpływów do DOCX. | power flow comparison export tests | Architekt raportów |
+| `GET /api/power-flow-comparisons/{comparison_id}/export/json` | v12xx | aktywny | 2026-08-10 | - | Eksport porównania rozpływów do JSON. | power flow comparison export tests | Architekt raportów |
+| `GET /api/power-flow-comparisons/{comparison_id}/export/pdf` | v12xx | aktywny | 2026-08-10 | - | Eksport porównania rozpływów do PDF. | power flow comparison export tests | Architekt raportów |
+| `GET /api/power-flow-comparisons/{comparison_id}/results` | v12xx | aktywny | 2026-08-10 | - | Odczyt wyników porównania rozpływów. | power flow comparison API tests | Architekt wyników |
+| `GET /api/power-flow-comparisons/{comparison_id}/trace` | v12xx | aktywny | 2026-08-10 | - | Odczyt śladu porównania rozpływów. | power flow comparison trace tests | Architekt proof |
+| `GET /api/power-flow-runs/{run_id}` | v12xx | aktywny | 2026-08-10 | - | Odczyt przebiegu rozpływu. | power flow run API tests | Architekt wyników |
+| `GET /api/power-flow-runs/{run_id}/export/docx` | v12xx | aktywny | 2026-08-10 | - | Eksport rozpływu do DOCX. | power flow export tests | Architekt raportów |
+| `GET /api/power-flow-runs/{run_id}/export/json` | v12xx | aktywny | 2026-08-10 | - | Eksport rozpływu do JSON. | power flow export tests | Architekt raportów |
+| `GET /api/power-flow-runs/{run_id}/export/pdf` | v12xx | aktywny | 2026-08-10 | - | Eksport rozpływu do PDF. | power flow export tests | Architekt raportów |
+| `GET /api/power-flow-runs/{run_id}/export/proof/json` | v12xx | aktywny | 2026-08-10 | - | Eksport dowodu rozpływu do JSON. | power flow proof export tests | Architekt proof |
+| `GET /api/power-flow-runs/{run_id}/export/proof/latex` | v12xx | aktywny | 2026-08-10 | - | Eksport dowodu rozpływu do LaTeX. | power flow proof export tests | Architekt proof |
+| `GET /api/power-flow-runs/{run_id}/export/proof/pdf` | v12xx | aktywny | 2026-08-10 | - | Eksport dowodu rozpływu do PDF. | power flow proof export tests | Architekt proof |
+| `GET /api/power-flow-runs/{run_id}/export/xlsx` | v12xx | aktywny | 2026-08-10 | - | Eksport rozpływu do XLSX. | power flow export tests | Architekt raportów |
+| `GET /api/power-flow-runs/{run_id}/interpretation` | v12xx | aktywny | 2026-08-10 | - | Odczyt interpretacji rozpływu bez obliczeń fizyki. | power flow interpretation tests | Architekt analiz |
+| `GET /api/power-flow-runs/{run_id}/results` | v12xx | aktywny | 2026-08-10 | - | Odczyt wyników rozpływu. | power flow result API tests | Architekt wyników |
+| `GET /api/power-flow-runs/{run_id}/trace` | v12xx | aktywny | 2026-08-10 | - | Odczyt śladu WHITE BOX rozpływu. | power flow trace tests | Architekt proof |
+| `GET /api/projects/{project_id}/power-flow-runs` | v12xx | aktywny | 2026-08-10 | - | Lista przebiegów rozpływu projektu. | power flow run API tests | Architekt wyników |
+| `GET /api/protection-coordination/{run_id}` | v12xx | aktywny | 2026-08-10 | - | Odczyt wyniku koordynacji zabezpieczeń. | protection coordination API tests | Projektant zabezpieczeń |
+| `GET /api/protection-coordination/{run_id}/checks/overload` | v12xx | aktywny | 2026-08-10 | - | Odczyt kontroli przeciążeniowej. | protection coordination API tests | Projektant zabezpieczeń |
+| `GET /api/protection-coordination/{run_id}/checks/selectivity` | v12xx | aktywny | 2026-08-10 | - | Odczyt kontroli selektywności. | protection coordination API tests | Projektant zabezpieczeń |
+| `GET /api/protection-coordination/{run_id}/checks/sensitivity` | v12xx | aktywny | 2026-08-10 | - | Odczyt kontroli czułości. | protection coordination API tests | Projektant zabezpieczeń |
+| `GET /api/protection-coordination/{run_id}/tcc` | v12xx | aktywny | 2026-08-10 | - | Odczyt krzywych czasowo-prądowych. | protection coordination API tests | Projektant zabezpieczeń |
+| `GET /api/protection-coordination/{run_id}/trace` | v12xx | aktywny | 2026-08-10 | - | Odczyt śladu koordynacji. | protection coordination trace tests | Projektant zabezpieczeń |
+| `POST /api/power-flow-comparisons` | v12xx | aktywny | 2026-08-10 | - | Utworzenie deterministycznego porównania dwóch rozpływów. | power flow comparison API tests | Architekt analiz |
+| `POST /api/power-flow-runs/{run_id}/execute` | v12xx | aktywny | 2026-08-10 | - | Uruchomienie dedykowanego solvera rozpływu. | power flow run API tests | Architekt solverów |
+| `POST /api/power-flow-runs/{run_id}/interpretation` | v12xx | aktywny | 2026-08-10 | - | Utworzenie interpretacji gotowego wyniku rozpływu. | power flow interpretation tests | Architekt analiz |
+| `POST /api/projects/{project_id}/power-flow-runs` | v12xx | aktywny | 2026-08-10 | - | Utworzenie przebiegu rozpływu dla projektu. | power flow run API tests | Architekt wyników |
+| `POST /api/protection-coordination/projects/{project_id}/run` | v12xx | aktywny | 2026-08-10 | - | Uruchomienie analizy koordynacji z jawnymi parami zabezpieczeń. | protection coordination API tests | Projektant zabezpieczeń |
