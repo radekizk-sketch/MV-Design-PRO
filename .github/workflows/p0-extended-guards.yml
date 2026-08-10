@@ -123,6 +123,15 @@ jobs:
       - name: API lifecycle (macierz endpointow)
         run: python scripts/api_lifecycle_guard.py
 
+      - name: Spójność rodzin tras klient-serwer
+        run: python scripts/route_prefix_guard.py
+
+      - name: Spójność wejść weryfikacyjnych
+        run: python scripts/verification_entrypoints_guard.py
+
+      - name: Kontrakty V12.6 bez atrap
+        run: python scripts/v126_contract_text_guard.py
+
       - name: Domain ops — jeden kanoniczny klient HTTP
         run: python scripts/domain_ops_unified_guard.py
 

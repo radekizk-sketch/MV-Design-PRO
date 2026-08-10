@@ -31,6 +31,7 @@ from api.projects import router as projects_router
 from api.proof_pack import router as proof_pack_router
 from api.protection_analysis_runs import router as protection_analysis_runs_router
 from api.protection_comparisons import router as protection_comparisons_router
+from api.protection_coordination import router as protection_coordination_router
 from api.protection_overcurrent_settings import (
     router as protection_overcurrent_settings_router,
 )
@@ -123,8 +124,8 @@ app.include_router(equipment_proof_pack_router)
 app.include_router(health_router)
 app.include_router(ncrfg_ptpiree_tests_router)
 app.include_router(oze_analysis_runs_router)
-app.include_router(power_flow_comparisons_router)
-app.include_router(power_flow_runs_router)
+app.include_router(power_flow_comparisons_router, prefix="/api")
+app.include_router(power_flow_runs_router, prefix="/api")
 app.include_router(quality_analysis_runs_router)
 app.include_router(reference_engine_router)
 app.include_router(reference_networks_router)
@@ -132,6 +133,7 @@ app.include_router(project_archive_router)
 app.include_router(projects_router)
 app.include_router(proof_pack_router)
 app.include_router(protection_comparisons_router)
+app.include_router(protection_coordination_router, prefix="/api")
 app.include_router(protection_analysis_runs_router, prefix="/api")
 # Karta F-K5 (dlug V12K-189): prezentacja nastaw, w tym NIEDOSTEPNYCH, z akcja naprawcza.
 app.include_router(protection_overcurrent_settings_router)
