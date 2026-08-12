@@ -128,7 +128,10 @@ def _relative(path: Path) -> str:
         return str(path)
 
 
-def scan_file(path: Path) -> list[Violation]:
+def scan_file_raw(path: Path) -> list[Violation]:
+    """Jak `scan_file()`, ale PRZED filtrem ALLOWLIST — karta
+    ZAPADKI-ALLOWLIST-RESZTA (pozycja e, 2026-08-12), zasila zarowno filtr
+    (`scan_file`), jak i zapadke swiezosci (`check_allowlist_freshness`)."""
     try:
         source = path.read_text(encoding="utf-8")
         tree = ast.parse(source)
@@ -155,10 +158,37 @@ def scan_file(path: Path) -> list[Violation]:
             tokens += [m.group(0) for m in API_NAME_PATTERN.finditer(text)]
             tokens += [m.group(0) for m in SOURCE_PATH_PATTERN.finditer(text)]
         for token in tokens:
-            if ALLOWLIST.get((rel, node.lineno, token)):
-                continue
             snippet = text.strip().splitlines()[0][:90] if text.strip() else ""
             violations.append(Violation(rel, node.lineno, token, snippet))
+    return violations
+
+
+def scan_file(path: Path) -> list[Violation]:
+    rel = _relative(path)
+    return [v for v in scan_file_raw(path) if not ALLOWLIST.get((rel, v.line_number, v.token))]
+
+
+def check_allowlist_freshness() -> list[str]:
+    """Zapadka swiezosci ALLOWLIST (karta ZAPADKI-ALLOWLIST-RESZTA, pozycja e).
+
+    ALLOWLIST jest DZIS PUSTA — no-op na HEAD, ale wpieta JUZ TERAZ (patrz
+    analogiczna funkcja w ui_production_codes_guard.py — te dwa guardy dziela
+    identyczny mechanizm allowlisty (sciezka, linia, token) i identyczne
+    ryzyko). Kazdy wpis musi nadal odpowiadac REALNEMU trafieniu
+    `scan_file_raw()` — TA SAMA funkcja, ktorej `scan_file()` uzywa do
+    filtrowania (predykaty parami, KLASA-NIE-INSTANCJA S3).
+    """
+    violations: list[str] = []
+    for (rel_path, lineno, token), reason in sorted(ALLOWLIST.items()):
+        full_path = REPO_ROOT / rel_path
+        raw = scan_file_raw(full_path) if full_path.is_file() else []
+        if any(v.line_number == lineno and v.token == token for v in raw):
+            continue
+        violations.append(
+            f"[export-codenames-wpis-osierocony] ALLOWLIST[({rel_path!r}, {lineno}, "
+            f"{token!r})] nie odpowiada juz zadnemu surowemu trafieniu — usun ten wpis "
+            f"(uzasadnienie bylo: {reason})"
+        )
     return violations
 
 
@@ -181,6 +211,15 @@ def main(argv: list[str]) -> int:
     for file_path in iter_files(targets):
         violations.extend(scan_file(file_path))
 
+    freshness_violations = check_allowlist_freshness()
+    if freshness_violations:
+        print("=" * 70, file=sys.stderr)
+        print("EXPORT-CODENAMES GUARD: WPISY OSIEROCONE", file=sys.stderr)
+        print("=" * 70, file=sys.stderr)
+        for message in freshness_violations:
+            print(f"  {message}", file=sys.stderr)
+        print(file=sys.stderr)
+
     if violations:
         print("=" * 70, file=sys.stderr)
         print("EXPORT-CODENAMES GUARD: NARUSZENIE WYKRYTE", file=sys.stderr)
@@ -201,6 +240,8 @@ def main(argv: list[str]) -> int:
             "Napraw naruszenia przed scaleniem (etykiety PL zamiast kodów).",
             file=sys.stderr,
         )
+
+    if violations or freshness_violations:
         return 1
 
     print("export-codenames-guard: OK (brak naruszeń)")
