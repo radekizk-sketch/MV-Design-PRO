@@ -101,4 +101,4 @@ V12.6 jest domknięte, gdy:
 - API odmawia uruchomienia bez committed ENM.
 - Testy backend potwierdzają deterministyczny hash, komplet trace oraz deterministyczne artefakty proof/report.
 - Frontend renderuje wspólny ekran V12.6 bez obliczeń po stronie klienta i pobiera result/proof/report z backendu.
-- `verify:v12.6` uruchamia guardy kanonu, mojibake, testy V12.6 backend i testy rejestru UI.
+- Guardy kanonu, mojibake i kontraktu tekstowego V12.6 dzialaja bezposrednio w `p0-extended-guards.yml` (w tym `scripts/v126_contract_text_guard.py`); testy V12.6 backend biegna w pelnej `pytest -q` (`python-tests.yml`), testy rejestru UI w pelnej suicie vitest (`frontend-checks.yml`). (Skrypt `npm run verify:v12.6` / `scripts/verify_v12_6.py` skasowany karta SUITA-BEZ-WYWOLANIA 2026-08-12 — nigdy nie stal w zadnym workflow CI i wskazywal 5 nieistniejacych guardow SLD oraz nieistniejacy `V126AcademicSurface.tsx`.)
