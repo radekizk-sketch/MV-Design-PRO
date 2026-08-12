@@ -1,5 +1,95 @@
 # CLAUDE.md - AI Assistant Guidelines for MV-DESIGN-PRO
 
+---
+
+## ⛔ ZASADY NADRZĘDNE PROJEKTU (czytaj przed każdą pracą)
+
+Pełny kanon: `PROMPT_MV_DESIGN_PRO_PRZEBUDOWA.md` (UWAGA: pliku NIE MA w repo — przywołuje go też `mv-design-pro/STAN_REPO.md`; do czasu dodania kanonu obowiązuje hierarchia dokumentów z sekcji „Document Hierarchy" poniżej). Stan i dług: `mv-design-pro/STAN_REPO.md` (czytaj NAJPIERW). Repo > specy > rejestr.
+
+**ZASADA NR 1 — ZERO DŁUGU.** Każda funkcja w UI ma w pełni wdrożony backend: UI + solver + kontrakt + testy + integracja. Zakaz `no_module` / `funkcja w przygotowaniu` / `TODO` / zaślepek. Funkcja istniejąca tylko w testach, niewpięta w ścieżkę użytkownika, to dług.
+
+**ZASADA NR 2 — WERYFIKACJA WIZUALNA.** Kod się kompiluje ≠ ekran działa. Dowodem jest render/zrzut, nie kod. Werdykt wizualny SLD wystawia właściciel (gate B-02), nie agent. Zakaz samocertyfikacji jakości wizualnej.
+
+**ZASADA NR 3 — NIC NA POTEM.** Wykryte = naprawione natychmiast, w tej samej pracy. Zakaz: „follow-on", „osobny przebieg", „sekwencyjnie", „bounded increment", „dług porządkowy odłożony", jawnego błędu (`NotSupportedError`) zamiast funkcji, okrajania zakresu „bo nie tu". Dług architektoniczny wykryty przy okazji (np. dwie ścieżki tej samej fizyki) → naprawiony od razu. „Duże/przekrojowe" → orkiestracja teraz (`mv-design-pro/ORKIESTRACJA_AGENTOW.md`), nie odroczenie. Jeśli piszesz „później/sekwencyjnie/poza zakresem" — to sygnał, że odkładasz: zatrzymaj się i zrób to teraz.
+
+**ZAKAZ SKRÓTÓW.** Kompletność ponad zwięzłość. Zakaz „etc.", „analogicznie", „uproszczony", „do dopracowania", „do dopracowania później". Każdy przypadek brzegowy, każde miejsce wpięcia, każdy solver — w pełni, jawnie.
+
+**PEŁNA IMPLEMENTACJA.** Luka wykryta = solver napisany wg właściwej normy + kontrakt + White Box + testy + sanity-bounds + wpięcie we WSZYSTKIE miejsca (nie część). Wymaganie nie pasujące do bieżącego miejsca wpinasz tam, gdzie pasuje — nie odkładasz.
+
+**JEDYNE DOZWOLONE ZATRZYMANIA** (to NIE są odroczenia): (1) edycja zamrożonego rdzenia bez zgody właściciela — B-01; (2) werdykt wizualny SLD — B-02; (3) bramki bezpieczeństwa, np. reduce-to-NR przy zmianie rdzenia. Poza tym: działaj do końca, autonomicznie, bez odkładania.
+
+**UCZCIWOŚĆ.** Raportuj stan zgodnie z prawdą — co domknięte z dowodem, co częściowe, czego nie zrobiono i dlaczego. Korekta w obie strony. Nigdy nie zawyżaj. „Renderuje się / testy zielone / wygląda gotowo" ≠ dowód ukończenia.
+
+---
+
+## 🤖 INSTRUKCJA MODELU — Claude Opus 4.8 (`claude-opus-4-8`)
+
+Oficjalna dokumentacja: https://platform.claude.com/docs/en/about-claude/models/overview
+
+### Limity i kontekst
+- **Okno kontekstu wejścia:** 1 000 000 tokenów (API, Bedrock, Vertex); 200k (Foundry)
+- **Maks. output:** 128k tokenów (synchroniczny) / 300k (Batch API z headerem `output-300k-2026-03-24`)
+- **Wiedza do:** styczeń 2026
+
+### Myślenie — wyłącznie `adaptive` (nie `extended`)
+Opus 4.8 NIE obsługuje `thinking: {type: "enabled", budget_tokens: N}` → zwróci błąd 400.
+Jedyna dozwolona forma: `thinking: {type: "adaptive"}` lub pominięcie parametru.
+Model sam decyduje, kiedy myśleć; nie trać tokenów na proste zapytania.
+
+**Parametr `effort`** (zamiast `budget_tokens`):
+| Poziom | Kiedy używać |
+|--------|-------------|
+| `max` | Najtrudniejsze problemy frontierowe |
+| `xhigh` | Agentic coding, długie przebiegi (≥30 min) — **domyślne dla tego projektu** |
+| `high` | Złożone rozumowanie, trudne zadania (factory default) |
+| `medium` | Balans koszt/jakość przy ograniczonym czasie |
+| `low` | Subagenty, proste kroki, wysoki wolumen |
+
+### Zakazy (400-błąd na Opus 4.8)
+- `temperature`, `top_p`, `top_k` — steruj przez prompt, nie parametry
+- `thinking: {type: "enabled"}` z `budget_tokens` — użyj `adaptive`
+- `tool_choice: "any"` — tylko `"auto"` lub `"none"` przy aktywnym myśleniu
+
+### Równoległe wywołania narzędzi
+Wysyłaj wiele wywołań narzędzi w jednej turze tylko gdy są **od siebie niezależne**.
+Model z `adaptive` myśli między wywołaniami (interleaved thinking) — to naturalne i pożądane.
+W system prompt wpisz: `"Only batch tool calls that are independent of each other."`
+
+### Prompt caching — minimalizuj koszty
+- Minimum do cache'owania: **1 024 tokeny**
+- TTL: 5 min (1,25× koszt zapisu) lub 1h (2× koszt zapisu); odczyt: 0,1× (90% oszczędności)
+- Maks. 4 punkty `cache_control` per request; lookback: 20 bloków
+- **Reguła:** umieszczaj `cache_control` na ostatnim bloku, który NIE zmienia się między requestami (system prompt, narzędzia, stałe dokumenty). Dynamiczne dane (timestamps, IDs) ZAWSZE na końcu, po breakpoincie.
+- Pre-warm: `max_tokens: 0` ładuje cache przed pierwszym użytkownikiem.
+
+### Multi-agent i subagenty
+- Subagenty przechowują wiedzę w `~/.claude/agent-memory/` między sesjami.
+- Orkiestruj setki równoległych subagentów — to mocna strona Opus 4.8.
+- Subagenty wykonujące proste kroki: ustaw `effort: "low"` (oszczędność tokenów myślenia).
+- Mid-conversation system messages (`role: "system"` po turze użytkownika) zachowują trafienia cache w długich pętlach agentowych.
+
+### Streaming i Fast Mode
+- Domyślnie: `thinking display: "omitted"` — szybszy czas do pierwszego tokenu, ale płacisz za pełne tokeny myślenia.
+- Fast Mode (research preview): 2,5× wyższy throughput; dostępny na Claude API.
+- Dla interaktywnych widoków w tym projekcie: używaj streamingu z `display: "omitted"`.
+
+### Koszt (orientacyjny)
+| Typ | Koszt |
+|-----|-------|
+| Input | $5 / 1M tokenów |
+| Output | $25 / 1M tokenów |
+| Cache write 5m | $6,25 / 1M |
+| Cache write 1h | $10 / 1M |
+| Cache read | $0,50 / 1M |
+| Batch API | −50% od powyższych |
+
+### Wizja i pliki
+- Obrazy: JPEG, PNG, GIF, WebP (do 2 576 px na dłuższym boku)
+- Files API (beta, header `anthropic-beta: files-api-2025-04-14`): limit 100 GB/org, 500 MB/plik, typy: PDF, obrazy, tekst, CSV, JSON, kod źródłowy
+- Output only text (brak generowania obrazów/audio/wideo)
+
+---
+
 ## Project Overview
 
 MV-DESIGN-PRO is a professional Medium Voltage (MV) network design and analysis system for the power industry. It provides tools for network modeling, short circuit calculations (IEC 60909), power flow analysis (Newton-Raphson, Gauss-Seidel, Fast Decoupled), protection coordination, and proof generation with full OZE (renewable energy) integration.
