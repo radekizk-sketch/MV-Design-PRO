@@ -46,12 +46,30 @@ bo padł na sieci, w której początek odcinka stał DOKŁADNIE na 15 kV, czyli 
 tam, gdzie mieszanie podstaw nic nie kosztuje. Deklaracja została osłabiona do
 prawdy zamiast zostać przy liczbie z wygodnego przypadku.
 
-DŁUG NAZWANY — PODSTAWA KROKU KOŃCOWEGO. Naprawa polega na zmianie kanonicznego
-równania EQ_VDROP_007 (odjęcie ΔU w kV zamiast mnożenia przez ułamek odniesiony do
-innej podstawy), co jest rozstrzygnięciem o treści kanonu dowodu, nie o tej
-warstwie — dlatego idzie osobną kartą, z powyższym pomiarem jako podstawą. Wybór
-wejść tej warstwy jest przy obecnym równaniu NAJLEPSZY ZE ZMIERZONYCH: podstawienie
-U_początku także pod U_n daje 13,8 V rozjazdu, a podstawienie U_n pod oba — 200 V.
+DŁUG PODSTAWA-VDROP — ZAMKNIĘTY (karta PODSTAWA-VDROP, 2026-08-12). Naprawa
+zmieniła kanoniczne równanie EQ_VDROP_007: odjęcie w kV (``U = U_source −
+ΔU_total``, oba w kV) zamiast mnożenia U_source przez ułamek ΔU_total%
+odniesiony do U_n. ΔU_total w kV pochodzi z SUMY spadków odcinkowych w
+jednostkach bezwzględnych — łańcuch EQ_VDROP_001..006 TEGO SAMEGO dowodu
+(R, X, P, Q, U_n odcinka), przeliczony przez U_n, NIGDY z wyniku biegu (to
+byłoby dowodzeniem cyrkularnym). Ta warstwa (``voltage_drop_binding.py``) się
+NIE zmieniła — dostarczała komplet R/X/P/Q/U_n/U_początku już wcześniej;
+naprawa siedzi wyłącznie w ``proof_generator.py`` (krok EQ_VDROP_007) i
+``equation_registry.py`` (definicja równania), zgodnie z zapowiedzią wyżej.
+
+POMIAR PO NAPRAWIE (sieć 110/15 kV, ta sama co wyżej: U_początku = 14,7984 kV,
+ΔU_total = 6,3574 %). Krok EQ_VDROP_007 daje teraz 13,8448 kV wobec 13,8452 kV
+z napięć węzłowych biegu — 0,375 V rozjazdu, ZNACZĄCO mniej niż 12,4 V sprzed
+naprawy (redukcja ~33×). Rezydualna różnica jest tej samej natury co różnica
+SAMEGO ΔU zmierzona wyżej (0,4 V) — bo po naprawie są ALGEBRAICZNIE tą samą
+liczbą: U_source kroku i napięcie węzła początku z biegu to TA SAMA wartość
+(``u_poczatku_kv`` tej warstwy), więc rozjazd U_end = rozjazd ΔU_total_kV, nie
+nowy, niezależny błąd. Rezydualne 0,375 V wynika z przybliżenia ΔU =
+(R·P+X·Q)/U_n², które pomija składową poprzeczną znaną rozpływowi dokładnie —
+NIE z mieszania podstaw (usuniętego z konstrukcji). Pin:
+``tests/api/test_pakiet_dowodowy_biegu.py::test_napiecie_konca_z_dowodu_zgadza_sie_z_napieciem_biegu_karta_podstawa_vdrop``
+oraz testy jednostkowe w
+``tests/proof_engine/test_proof_engine.py::TestVDROPPodstawaKonca``.
 """
 
 from __future__ import annotations

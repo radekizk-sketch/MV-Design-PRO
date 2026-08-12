@@ -1128,6 +1128,96 @@ def test_spadek_z_dowodu_zgadza_sie_ze_spadkiem_policzonym_przez_solver(
     )
 
 
+@pytest.mark.parametrize(
+    ("etykieta", "seed"),
+    [
+        # Ten sam iloczyn cech co w teście ΔU powyżej — i z TEGO SAMEGO powodu:
+        # bez sieci, w której początek odcinka NIE stoi na U_n, mieszanie
+        # podstaw krokowi EQ_VDROP_007 nic by nie kosztowało i naprawa
+        # wyglądałaby na potwierdzoną, choć w rogu, który ją wywołał, nie
+        # byłaby zmierzona wcale.
+        ("poczatek na napieciu znamionowym", "_seed_enm"),
+        ("poczatek ponizej napiecia znamionowego", "_seed_enm_rozplyw"),
+    ],
+)
+def test_napiecie_konca_z_dowodu_zgadza_sie_z_napieciem_biegu_karta_podstawa_vdrop(
+    client: TestClient, etykieta: str, seed: str
+) -> None:
+    """U z EQ_VDROP_007 (krok końcowy) a napięcie węzła KOŃCA z biegu — zgodność
+    ZMIERZONA po naprawie karty PODSTAWA-VDROP.
+
+    Przed naprawą krok mnożył ΔU_total% (odniesione do U_n) przez U_source —
+    na sieci 110/15 kV (początek odcinka POD napięciem znamionowym) dawało to
+    12,4 V rozjazdu wobec napięcia węzła z biegu. Próg 1 V wynika z tego samego
+    pomiaru co próg testu ΔU powyżej: po naprawie U = U_source − ΔU_total_kV, a
+    ΔU_total_kV jest TĄ SAMĄ liczbą co `spadek_dowodu_kv` z testu ΔU (obie
+    liczone jako ΔU_total% / 100 · U_n) i u_source_kv proofu jest TĄ SAMĄ
+    liczbą co napięcie węzła POCZĄTKU z biegu (obie pochodzą z
+    ``node_voltage_kv`` warstwy wiązania) — więc rozjazd U_end jest
+    ALGEBRAICZNIE identyczny z już zmierzonym rozjazdem ΔU, nie nowym pomiarem
+    z odrębnym ryzykiem.
+    """
+    case_id = str(uuid4())
+    globals()[seed](case_id)
+    run_id = _wykonaj_bieg(client, case_id, "LOAD_FLOW")
+
+    pakiet = client.get(f"/api/analysis-runs/{run_id}/pakiet-dowodowy")
+    assert pakiet.status_code == 200, pakiet.text
+    dowod = _dowod_z_pakietu_zbiorczego(pakiet.content, "spadek_napiecia")
+    kluczowe = dowod["summary"]["key_results"]
+
+    u_kv_dowodu = kluczowe["u_kv"]["value"]
+    delta_u_total_kv_dowodu = kluczowe["delta_u_total_kv"]["value"]
+
+    surowy = _artefakt_biegu(run_id)
+    wezly = surowy["graph"]["nodes"]
+    pary = (dowod["header"]["source_bus"], dowod["header"]["target_bus"])
+    dopasowane = [
+        opis
+        for opis in surowy["graph"]["branches"].values()
+        if (
+            wezly[opis["from_node_id"]]["element_id"],
+            wezly[opis["to_node_id"]]["element_id"],
+        )
+        == pary
+    ]
+    assert len(dopasowane) == 1, ("dowód wskazuje DOKŁADNIE jeden odcinek biegu", etykieta)
+    opis = dopasowane[0]
+    u_poczatku_biegu = surowy["node_voltage_kv"][opis["from_node_id"]]
+    u_konca_biegu = surowy["node_voltage_kv"][opis["to_node_id"]]
+
+    # Podstawa dowodu (u_source_kv w kroku EQ_VDROP_007) MUSI być napięciem
+    # POCZĄTKU odcinka z TEGO SAMEGO biegu — inaczej rozjazd U_end mógłby
+    # wynikać z podstawienia innej wielkości, nie z arytmetyki kroku.
+    u_source_dowodu = kluczowe["u_kv"]["value"] + delta_u_total_kv_dowodu
+    assert u_source_dowodu == pytest.approx(u_poczatku_biegu, abs=1e-9), (
+        etykieta,
+        "u_source kroku EQ_VDROP_007 musi pochodzić z napięcia POCZĄTKU biegu",
+    )
+
+    rozjazd_v = abs(u_kv_dowodu - u_konca_biegu) * 1000.0
+    # Próg 1 V — ten sam, zmierzony próg co ΔU (patrz docstring): po naprawie
+    # oba rozjazdy są tą samą liczbą z algebry powyżej, więc próg musi być
+    # identyczny, nie „zwyczajowo mniejszy".
+    assert rozjazd_v < 1.0, (
+        etykieta,
+        "rozjazd U_end po naprawie PODSTAWA-VDROP",
+        u_kv_dowodu,
+        u_konca_biegu,
+        rozjazd_v,
+    )
+    # Zapadka na regresję do STAREJ (wadliwej) formy: na sieci, gdzie
+    # U_początku ≠ U_n, stara forma dawała 12,4 V rozjazdu — więc próg 1 V
+    # powyżej odróżnia naprawę od regresji tylko wtedy, gdy ta sieć faktycznie
+    # ma U_początku ≠ U_n. Bez tej asercji test przechodziłby także na sieci
+    # zdegenerowanej do rogu bez kosztu.
+    if seed == "_seed_enm_rozplyw":
+        u_n_kv_poczatku = wezly[opis["from_node_id"]]["voltage_level"]
+        assert abs(u_poczatku_biegu - u_n_kv_poczatku) > 0.01, (
+            "sieć musi mieć U_poczatku != U_n, inaczej pomiar nie dowodzi naprawy",
+        )
+
+
 def test_wskazany_odcinek_daje_inny_dowod_spadku_niz_domyslny(client: TestClient) -> None:
     """Wybór odcinka steruje TREŚCIĄ dowodu, a nie tylko nazwą pliku."""
     case_id = str(uuid4())
