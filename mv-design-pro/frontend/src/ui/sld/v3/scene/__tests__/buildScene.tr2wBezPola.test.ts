@@ -42,6 +42,7 @@
  * backendu jej nie produkuje, więc fixtura sceny byłaby zmyśleniem danych,
  * których operacja domenowa nie generuje.
  */
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -51,6 +52,7 @@ import { describe, expect, it } from 'vitest';
 import type { EnergyNetworkModel } from '../../../../../types/enm';
 import { STATION_TR_FIELD_GAP_TEXT } from '../../layout/measure';
 import { buildSceneV3, type SceneLod, type SceneV3 } from '../buildScene';
+import { sceneSignature } from './syntheticNetworks';
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -198,6 +200,38 @@ describe('TR2W-BEZ-POLA T1 — stacja Z polem transformatorowym: zero regresu', 
     const b = JSON.stringify(buildSceneV3(clone(enmZPolem), 2));
     expect(a).toBe(b);
   });
+
+  /**
+   * ODCISK RYSUNKU — zapadka na ZERO REGRESU geometrii (§0.C.7 karty).
+   *
+   * DLACZEGO ODCISK, A NIE SAM DETERMINIZM. Porównanie „scena == ta sama
+   * scena" przechodzi także wtedy, gdy CAŁA geometria przesunie się o stałą —
+   * bo obie strony równania są zepsute tak samo. Pomiar iniekcją (dryf osi
+   * kolumny pola o 8 j.św. w `compose/station.ts`) pokazał to wprost: zestaw
+   * asercji wyżej pozostał ZIELONY, mimo że rysunek stacji był przesunięty.
+   * Odcisk podpisu sceny (symbole + trasy + etykiety) łapie KAŻDĄ zmianę
+   * rysunku stacji Z polem TR, także jednostajną.
+   *
+   * POCHODZENIE WARTOŚCI: policzone na ścieżce polowej PO tej karcie i
+   * porównane ze stanem SPRZED niej (źródła przywrócone do commitu bazowego
+   * `d232b592`, ten sam probe) — IDENTYCZNE, co jest dowodem, że kotwica
+   * topologiczna nie tknęła stacji z polem transformatorowym. Aktualizacja
+   * odcisku wymaga ZAMIERZONEJ zmiany rysunku, opisanej w tym samym commicie
+   * (wzór `kosztSceny.test.ts`).
+   */
+  const ODCISK_Z_POLEM_TR: Readonly<Record<1 | 2, string>> = {
+    1: '287797929716b1b46306cc4af7293823',
+    2: 'bf74045d9485d831c6461bc90986c24d',
+  };
+  for (const lod of [1, 2] as const) {
+    it(`L${lod}: odcisk rysunku stacji Z polem TR bez zmian (zapadka na dryf geometrii)`, () => {
+      const odcisk = createHash('sha256')
+        .update(sceneSignature(buildSceneV3(enmZPolem, lod)))
+        .digest('hex')
+        .slice(0, 32);
+      expect(odcisk).toBe(ODCISK_Z_POLEM_TR[lod]);
+    });
+  }
 
   it('L2: aparatura pola TR (rozłącznik/uziemnik) NADAL na rysunku — nie zniknęła przy naprawie', () => {
     const scene = buildSceneV3(enmZPolem, 2);
