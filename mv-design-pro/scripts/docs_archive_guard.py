@@ -187,26 +187,82 @@ META_AUDIT_ALLOWLIST = {
     "docs/audit/DOC_INVENTORY_2026-05.md",
     "docs/audit/AUDYT_BRAKI_2026-05.md",
     "docs/plan/PLAN_E2E_INDUSTRIAL_2026-05.md",
-    "docs/plan/PLAN_SLD_REWORK.md",
     # 2026-07 programs — discuss the docs/spec/ archival drift (and its fix) as
     # audit findings; they do not route active canon through docs/spec/.
     "docs/plan/PLAN_PRZEBUDOWY_10X_2026-07.md",
     "docs/uiux/PROGRAM_UIUX_2026-07.md",
-    "docs/sld/SLD_INDUSTRIAL_SPEC_v1.md",
     # V12.xx canon registry already records conflict V12K-002 about docs/spec/
     # so its mention there is the canonical authoritative reference, not routing.
     "docs/v12xx/REJESTR_KONFLIKTOW.md",
     # 2026-05 cleanup audits (extended) — discuss docs/spec/ status as part of
     # the documentation cleanup, do not route active canon through docs/spec/.
     "docs/audit/DOCUMENTATION_CLEANUP_AUDIT.md",
-    "docs/audit/SLD_VISUAL_QUALITY_AUDIT.md",
-    "docs/audit/ENGINEER_WORKFLOW_AUDIT.md",
-    "docs/audit/IMPLEMENTATION_GAP_ANALYSIS.md",
-    "docs/sld/SLD_INDUSTRIAL_SCADA_CAD_TARGET.md",
-    "docs/sld/SLD_VISUAL_ACCEPTANCE_CRITERIA.md",
-    "docs/sld/SLD_ENGINEER_WORKFLOW_END_TO_END.md",
-    "docs/sld/SLD_IMPLEMENTATION_ROADMAP.md",
+    # DZIEWIEC WPISOW USUNIETYCH 2026-08-12 (karta ZAPADKI-ALLOWLIST-RESZTA,
+    # pozycja c — POMIAR PRZED NAPRAWA): check_meta_audit_allowlist_freshness()
+    # zastala je jako sieroty — dokumenty istnieja, ale ZADEN juz nie zawiera
+    # zadnego z HISTORICAL_SPEC_PATTERNS (potwierdzone niezaleznym grep).
+    # Usuniecie nie odslania naruszenia w
+    # check_indexed_active_docs_for_historical_spec_refs() (ten check dziala
+    # per-linia po tym samym wzorcu — zero linii do zgloszenia w tych plikach):
+    # "docs/plan/PLAN_SLD_REWORK.md", "docs/sld/SLD_INDUSTRIAL_SPEC_v1.md",
+    # "docs/audit/SLD_VISUAL_QUALITY_AUDIT.md",
+    # "docs/audit/ENGINEER_WORKFLOW_AUDIT.md",
+    # "docs/audit/IMPLEMENTATION_GAP_ANALYSIS.md",
+    # "docs/sld/SLD_INDUSTRIAL_SCADA_CAD_TARGET.md",
+    # "docs/sld/SLD_VISUAL_ACCEPTANCE_CRITERIA.md",
+    # "docs/sld/SLD_ENGINEER_WORKFLOW_END_TO_END.md",
+    # "docs/sld/SLD_IMPLEMENTATION_ROADMAP.md".
 }
+
+
+def _historical_pattern_hits(text: str) -> list[int]:
+    """Numery linii (1-based) zawierajace ktorykolwiek z HISTORICAL_SPEC_PATTERNS.
+
+    JEDYNE zrodlo prawdy dla pytania "czy TEN dokument routuje kanon przez
+    docs/spec/?" — uzywane zarowno przez
+    `check_indexed_active_docs_for_historical_spec_refs()` (gdzie kazde
+    trafienie w NIE-allowlistowanym dokumencie jest naruszeniem), jak i przez
+    `check_meta_audit_allowlist_freshness()` (gdzie wpis META_AUDIT_ALLOWLIST
+    wymaga co najmniej jednego trafienia w SWOIM dokumencie, zeby nie byc
+    sierota) — karta ZAPADKI-ALLOWLIST-RESZTA, pozycja c, predykaty parami
+    (KLASA-NIE-INSTANCJA S3).
+    """
+    return [
+        line_no
+        for line_no, line in enumerate(text.splitlines(), start=1)
+        if any(pattern in line for pattern in HISTORICAL_SPEC_PATTERNS)
+    ]
+
+
+def check_meta_audit_allowlist_freshness() -> list[str]:
+    """Zapadka swiezosci META_AUDIT_ALLOWLIST (karta ZAPADKI-ALLOWLIST-RESZTA,
+    pozycja c, 2026-08-12).
+
+    Kazdy wpis musi wskazywac ISTNIEJACY dokument, ktory NADAL zawiera co
+    najmniej jeden HISTORICAL_SPEC_PATTERNS — czyli wciaz produkowalby
+    naruszenie [historical-spec-ref], gdyby nie byl na liscie. Wpis, ktorego
+    dokument zniknal albo zostal wyczyszczony z tych wzmianek, jest MARTWYM
+    WYJATKIEM: gdyby ktos INNY dokument pod ta sama sciezka kiedys powstal (albo
+    ten sam plik zaczal znow routowac kanon przez docs/spec/ w innym
+    kontekscie), przeszedlby bez kontroli.
+    """
+    violations: list[str] = []
+    for rel_path in sorted(META_AUDIT_ALLOWLIST):
+        full_path = ROOT / rel_path
+        if not full_path.is_file():
+            violations.append(
+                f"[meta-audit-wpis-osierocony] META_AUDIT_ALLOWLIST zawiera {rel_path!r}, "
+                "ktorego juz nie ma w repo — usun ten wpis"
+            )
+            continue
+        text = full_path.read_text(encoding="utf-8", errors="ignore")
+        if _historical_pattern_hits(text):
+            continue
+        violations.append(
+            f"[meta-audit-wpis-osierocony] META_AUDIT_ALLOWLIST zawiera {rel_path!r}, "
+            "ktory juz nie zawiera zadnego wzorca HISTORICAL_SPEC_PATTERNS — usun ten wpis"
+        )
+    return violations
 
 
 def check_indexed_active_docs_for_historical_spec_refs() -> list[str]:
@@ -232,12 +288,8 @@ def check_indexed_active_docs_for_historical_spec_refs() -> list[str]:
             rel_path = resolved_target.relative_to(ROOT).as_posix()
             if rel_path in META_AUDIT_ALLOWLIST:
                 continue
-            for line_no, line in enumerate(
-                resolved_target.read_text(encoding="utf-8", errors="ignore").splitlines(),
-                start=1,
-            ):
-                if not any(pattern in line for pattern in HISTORICAL_SPEC_PATTERNS):
-                    continue
+            text = resolved_target.read_text(encoding="utf-8", errors="ignore")
+            for line_no in _historical_pattern_hits(text):
                 violations.append(
                     f"[historical-spec-ref] {rel_path}:{line_no}: indexed active docs must not route canon through docs/spec/"
                 )
@@ -255,6 +307,7 @@ def main() -> int:
     violations.extend(check_active_doc_archive_links())
     violations.extend(check_index_targets_exist())
     violations.extend(check_indexed_active_docs_for_historical_spec_refs())
+    violations.extend(check_meta_audit_allowlist_freshness())
 
     if violations:
         print("V12.5 docs archive guard failed:")
