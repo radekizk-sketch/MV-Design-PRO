@@ -366,16 +366,17 @@ def scan_file(path: Path) -> list[tuple[int, str, str]]:
     return violations
 
 
-def scan_tree(scan_dirs: list[Path]) -> list[tuple[Path, int, str, str]]:
-    """Scan the given directories, returning all NON-allowlisted violations.
+def scan_tree_raw(scan_dirs: list[Path]) -> list[tuple[Path, int, str, str]]:
+    """Wszystkie trafienia PHYSICS_PATTERNS PRZED filtrem ALLOWLIST.
 
-    Raw detection lives in scan_file() (untouched by the allowlist), so a
-    baseline hit-count measurement can still be taken against it; allowlist
-    filtering happens only here, keyed to the exact (repo-relative path, line)
-    of each reasoned ALLOWLIST entry — a new hit elsewhere in an allowlisted
-    file is never silently absorbed.
+    Karta ZAPADKI-ALLOWLIST-RESZTA (pozycja a, 2026-08-12): wydzielone z
+    `scan_tree()`, zeby zasilic ROWNIEZ zapadke swiezosci
+    (`check_allowlist_freshness`) tym samym surowym skanem, ktorego uzywa
+    filtr allowlisty — bez tego wydzielenia zapadka i filtr liczylyby z dwoch
+    rownoleglych przejsc po drzewie plikow, ktore moglyby z czasem dryfowac
+    (regula KLASA-NIE-INSTANCJA S3, predykaty parami).
     """
-    all_violations: list[tuple[Path, int, str, str]] = []
+    all_hits: list[tuple[Path, int, str, str]] = []
     for scan_dir in scan_dirs:
         if not scan_dir.exists():
             continue
@@ -387,10 +388,67 @@ def scan_tree(scan_dirs: list[Path]) -> list[tuple[Path, int, str, str]]:
             if _should_exclude_file(path):
                 continue
             for line_no, line_content, pattern in scan_file(path):
-                if _is_allowlisted(path, line_no):
-                    continue
-                all_violations.append((path, line_no, line_content, pattern))
-    return all_violations
+                all_hits.append((path, line_no, line_content, pattern))
+    return all_hits
+
+
+def scan_tree(scan_dirs: list[Path]) -> list[tuple[Path, int, str, str]]:
+    """Scan the given directories, returning all NON-allowlisted violations.
+
+    Raw detection lives in scan_file() (untouched by the allowlist), so a
+    baseline hit-count measurement can still be taken against it; allowlist
+    filtering happens only here, keyed to the exact (repo-relative path, line)
+    of each reasoned ALLOWLIST entry — a new hit elsewhere in an allowlisted
+    file is never silently absorbed. Filters `scan_tree_raw()` through
+    `_is_allowlisted()` — the SAME predicate `check_allowlist_freshness()`
+    uses below to decide whether a raw hit still covers its ALLOWLIST entry.
+    """
+    return [
+        (path, line_no, line_content, pattern)
+        for path, line_no, line_content, pattern in scan_tree_raw(scan_dirs)
+        if not _is_allowlisted(path, line_no)
+    ]
+
+
+def check_allowlist_freshness(
+    raw_hits: list[tuple[Path, int, str, str]],
+) -> list[str]:
+    """Zapadka swiezosci ALLOWLIST (karta ZAPADKI-ALLOWLIST-RESZTA, pozycja a).
+
+    Osierocenie JUZ SIE RAZ ZDARZYLO w tym guardzie (13 wpisow na usuniety
+    katalog VT, wykryte dopiero recznym pomiarem V12K-267 — jedyny automatyczny
+    detektor, `test_ui_allowlist_entries_are_not_stale`, zyje wylacznie w
+    `backend/tests/ci/`, POZA guardem: `python scripts/ui_no_physics_guard.py`
+    uruchomiony samodzielnie (tak jak w CI, `guardy_z_ci.py`) nie widzial i nie
+    widzi tamtego testu. Ta funkcja przenosi zapadke DO SAMEGO GUARDA, zeby
+    `main()` failowal niezaleznie od tego, czy pytest w ogole sie uruchamia.
+
+    Kazdy wpis ALLOWLIST musi nadal odpowiadac REALNEMU dzisiejszemu trafieniu:
+    plik istnieje (bo inaczej `raw_hits` nigdy by go nie wyprodukowal — `scan_tree_raw`
+    czyta z dysku) ORAZ wzorzec fizyki faktycznie wystepuje w TYM pliku na TEJ
+    linii. Sprawdzane przez `_is_allowlisted()` — TA SAMA funkcja, ktora
+    `scan_tree()` uzywa do ODEJMOWANIA allowlisty od surowych trafien; tutaj
+    uzywana do SUMOWANIA, ktore wpisy maja jeszcze co odejmowac (predykaty
+    parami, KLASA-NIE-INSTANCJA S3 — nie ma drugiej, rownoleglej definicji
+    "trafienie odpowiada wpisowi").
+    """
+    covered: set[tuple[str, int]] = set()
+    for path, line_no, _content, _pattern in raw_hits:
+        if _is_allowlisted(path, line_no):
+            rel = _relative_path_str(path)
+            if rel is not None:
+                covered.add((rel, line_no))
+
+    violations: list[str] = []
+    for (rel_path, line_no), reason in sorted(ALLOWLIST.items()):
+        if (rel_path, line_no) in covered:
+            continue
+        violations.append(
+            f"[ui-no-physics-wpis-osierocony] ALLOWLIST[({rel_path!r}, {line_no})] "
+            "nie odpowiada juz zadnemu trafieniu wzorca fizyki w dzisiejszym drzewie "
+            f"— usun ten wpis (uzasadnienie bylo: {reason})"
+        )
+    return violations
 
 
 def main() -> int:
@@ -401,7 +459,13 @@ def main() -> int:
         )
         return 2
 
-    all_violations = scan_tree(SCAN_DIRS)
+    raw_hits = scan_tree_raw(SCAN_DIRS)
+    all_violations = [
+        (path, line_no, line_content, pattern)
+        for path, line_no, line_content, pattern in raw_hits
+        if not _is_allowlisted(path, line_no)
+    ]
+    freshness_violations = check_allowlist_freshness(raw_hits)
 
     if all_violations:
         print("UI-NO-PHYSICS-GUARD VIOLATIONS (ui/**, ui2/**):", file=sys.stderr)
@@ -417,6 +481,13 @@ def main() -> int:
             "docstring).",
             file=sys.stderr,
         )
+
+    if freshness_violations:
+        print("UI-NO-PHYSICS-GUARD ALLOWLIST FRESHNESS VIOLATIONS:", file=sys.stderr)
+        for violation in freshness_violations:
+            print(f"  {violation}", file=sys.stderr)
+
+    if all_violations or freshness_violations:
         return 1
 
     print("ui-no-physics-guard: PASS (0 violations in ui/**, ui2/**)")
