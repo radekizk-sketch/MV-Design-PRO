@@ -25,6 +25,39 @@ z czego 30 poza kanonem `/api`; 4 rodziny klientow frontu wolaly `/api/<X>`
 dla routerow stojacych pod `/<X>` (rozplyw, porownania rozplywu, porownania
 zabezpieczen, lista biegow rozplywu projektu) — lacznie 13 martwych sciezek.
 
+DRUGA INSTANCJA TEJ SAMEJ KLASY — KLIENT-BEZ-RODZINY (naprawiona 2026-08-12)
+-----------------------------------------------------------------------
+Karta PREFIKSY naprawila rozjazd MIEDZY dwiema tablicami tras. Zapadka miala
+jednak WLASNY blad tej samej klasy: `collect_frontend_paths` zbieral literaly
+frontu WYLACZNIE dla PIERWSZYCH SEGMENTOW, ktore backend juz serwuje
+(`backend_first_segments`, wyprowadzone z tablicy tras backendu). Skutek:
+klient wolajacy RODZINE, ktorej backend nie ma W OGOLE (pierwszy segment nie
+wystepuje w zadnej trasie), mial pierwszy segment SPOZA `backend_first_segments`
+i wypadal ze skanu Z KONSTRUKCJI — ani zgloszony, ani policzony. Tak przezyla
+(do usuniecia inna karta, commit `d0419a1a`) wyspa `frontend/src/designer/` z
+trzema sciezkami do nieistniejacej rodziny `/snapshots` — zero alarmow przez
+caly czas istnienia guarda. Odnotowane w `docs/plan/PRZEKAZANIE_NADZORU_2026-08-07.md`
+jako kolejkowa pozycja „KLIENT-BEZ-RODZINY".
+
+NAPRAWA: `collect_frontend_paths` zbiera TERAZ kazdy literal absolutny z pliku
+zawierajacego wywolanie HTTP, niezaleznie od tego, czy jego pierwszy segment
+nalezy do dzisiejszej tablicy tras backendu. Jedynym filtrem zostaje jawna
+`FRONTEND_PATH_EXCEPTIONS` — z uzasadnieniem PER POZYCJA, tak jak dla literalow,
+ktore adresami HTTP nie sa. `backend_first_segments` (obliczenie oparte na
+DRUGIEJ stronie porownania) zostalo usuniete jako martwe.
+
+POMIAR PO NAPRAWIE (2026-08-12): 0 zywych rodzin „klient bez backendu" w repo —
+wyspa `designer/` byla jedynym instancja i zostala juz usunieta (commit
+`d0419a1a`, 2026-08-08). Poszerzony skan ujawnil 6 literalow spoza `/api` w
+plikach z wywolaniem HTTP, ZADEN nie jest realnym adresem: separator `.join('/')`
+(`ui/proof/proofLatexApi.ts`), trzy sufiksy sklejane w `adresWyniku()`
+(`ui2/wyniki/akademickie/api.ts`: `/trace`, `/proof`, `/report` — literal
+wylapany OSOBNO od bazy przez plaski skan pliku, bo nie sa czescia tego samego
+literalu co `BAZA_PRZEBIEGU`) oraz dwie sciezki zasobow statycznych serwowanych
+przez Vite z `public/test-fixtures/` w harnessie zrzutow ekranu, nie przez
+backend (`screenshot-harness-main.tsx`). Wszystkie szesc opisane per-pozycja w
+`FRONTEND_PATH_EXCEPTIONS` ponizej.
+
 KANON (rozstrzygniecie karty PREFIKSY)
 --------------------------------------
 KAZDY router HTTP montowany jest pod `/api/...`. Prefiks `/api` jest jedyna
@@ -78,8 +111,48 @@ BACKEND_PREFIX_EXCEPTIONS: dict[str, str] = {}
 # WYJATKI PO STRONIE FRONTU. Literal sciezki, ktorego guard nie ma dopasowywac
 # do tablicy tras — wylacznie dla przypadkow, gdzie sciezka NIE jest adresem
 # HTTP backendu (np. sciezka pliku, klucz slownika zaczynajacy sie od `/`).
+#
+# Klucz jest GLOBALNY (nie per-plik) — tak samo jak `BACKEND_PREFIX_EXCEPTIONS`.
+# Kazda pozycja ponizej zostala potwierdzona pelnym skanem repo (2026-08-12,
+# naprawa KLIENT-BEZ-RODZINY): to JEDYNE literaly spoza `/api` w plikach z
+# wywolaniem HTTP — zaden z nich nie jest adresem, ktorego brak dostawcy
+# nalezaloby zarejestrowac w `FRONTEND_DEAD_CLIENT_DEBT` ponizej.
 # --------------------------------------------------------------------------
-FRONTEND_PATH_EXCEPTIONS: dict[str, str] = {}
+FRONTEND_PATH_EXCEPTIONS: dict[str, str] = {
+    "/": (
+        "frontend/src/ui/proof/proofLatexApi.ts: separator `.join('/')` przy budowie "
+        "URL-a (`[BAZA, id, ...SEGMENTY].join('/')`), nie samodzielny adres — plaski "
+        "skan literalow pliku wylapuje go jako oddzielny literal `'/'`."
+    ),
+    "/trace": (
+        "frontend/src/ui2/wyniki/akademickie/api.ts: sufiks doklejany jako argument "
+        "`adresWyniku(runId, rodzaj, '/trace')` — realny adres to "
+        "`/api/analysis-runs/{id}/results/v126/{rodzaj}/trace`, ale sufiks jest "
+        "OSOBNYM literalem od bazy `BAZA_PRZEBIEGU`, wiec plaski skan pliku wylapuje "
+        "go jako niezalezna, pozorna rodzine `/trace`."
+    ),
+    "/proof": (
+        "frontend/src/ui2/wyniki/akademickie/api.ts: jak `/trace` powyzej — sufiks "
+        "`adresWyniku(runId, rodzaj, '/proof')`, realny adres "
+        "`/api/analysis-runs/{id}/results/v126/{rodzaj}/proof`."
+    ),
+    "/report": (
+        "frontend/src/ui2/wyniki/akademickie/api.ts: jak `/trace` powyzej — sufiks "
+        "`adresWyniku(runId, rodzaj, '/report')`, realny adres "
+        "`/api/analysis-runs/{id}/results/v126/{rodzaj}/report`."
+    ),
+    "/test-fixtures/sldSubstrate52s.powerflow.json": (
+        "frontend/src/screenshot-harness-main.tsx: fixtura wizualna serwowana przez "
+        "Vite jako plik statyczny z `frontend/public/test-fixtures/` (harness zrzutow "
+        "ekranu, `screenshot-harness.html`, poza glowna aplikacja SPA) — backend nigdy "
+        "nie serwuje tej sciezki i nie ma jej serwowac."
+    ),
+    "/test-fixtures/{p}.enm.json": (
+        "frontend/src/screenshot-harness-main.tsx: jak wyzej, nazwa fixtury wybierana "
+        "parametrem `?fixture=` (`fetch(`/test-fixtures/${fixtureNameFromQuery()}.enm.json`)`) "
+        "— plik statyczny Vite, nie adres backendu."
+    ),
+}
 
 # --------------------------------------------------------------------------
 # REJESTR DLUGU „KLIENT BEZ DOSTAWCY" (inna klasa niz rozjazd prefiksu).
@@ -244,14 +317,28 @@ def _substitute_placeholders(raw: str, consts: dict[str, str]) -> str:
 LITERAL = re.compile(r"'((?:[^'\\\n]|\\.)*)'|\"((?:[^\"\\\n]|\\.)*)\"|`((?:[^`\\]|\\.)*)`", re.S)
 
 
-def collect_frontend_paths(backend_first_segments: set[str]) -> list[FrontendPath]:
-    """Literale sciezek absolutnych wolanych przez klientow frontu.
+def collect_all_frontend_literals() -> list[FrontendPath]:
+    """Wszystkie literaly sciezek absolutnych z plikow wolajacych HTTP, PRZED
+    filtrem `FRONTEND_PATH_EXCEPTIONS`.
 
-    Zawezenie do PIERWSZEGO SEGMENTU nalezacego do backendu jest celowe: front
-    trzyma tez sciezki, ktore adresami HTTP nie sa (trasy nawigacji, klucze,
-    sciezki plikow). Segment pierwszy bierzemy z realnej tablicy tras, wiec
-    zakres guardu rosnie SAM, gdy backend dostaje nowy prefiks — nie ma tu
-    reczne j listy do zapomnienia.
+    ZAKRES JEST PELNY: kazdy literal absolutny z pliku zawierajacego wywolanie
+    HTTP (`fetch`/`axios.*`) jest kandydatem, NIEZALEZNIE od tego, czy jego
+    pierwszy segment nalezy do dzisiejszej tablicy tras backendu.
+
+    Dawniej zbior byl zawezany do pierwszych segmentow JUZ znanych backendowi
+    (`backend_first_segments`, wyprowadzone z DRUGIEJ strony porownania) —
+    to byl blad, nie zabezpieczenie: klient wolajacy RODZINE, ktorej backend
+    nie ma W OGOLE, mial pierwszy segment spoza tego zbioru i wypadal ze
+    skanu z konstrukcji, zamiast zostac zgloszony jako martwy. Tak przezyla
+    (do usuniecia inna karta, `d0419a1a`) wyspa `frontend/src/designer/` z
+    trzema sciezkami do nieistniejacej rodziny `/snapshots` — zero alarmow
+    przez caly czas istnienia guarda (karta KLIENT-BEZ-RODZINY, 2026-08-12).
+
+    Funkcja CELOWO nie filtruje `FRONTEND_PATH_EXCEPTIONS` — surowy wynik sluzy
+    zapadce pustego skanu w `check_route_prefixes` (zero literalow PRZED
+    wyjatkami = skan zepsuty; zero PO wyjatkach, gdy przed nimi bylo cos, to
+    zwykly, legalny stan „wszystko wylapane to nie-adresy"). Filtr wyjatkow
+    stosuje wylacznie `collect_frontend_paths` ponizej.
     """
     found: list[FrontendPath] = []
     for path in sorted(FRONTEND_SRC.rglob("*")):
@@ -273,13 +360,27 @@ def collect_frontend_paths(backend_first_segments: set[str]) -> list[FrontendPat
                 continue
             candidate = resolved.split("?", 1)[0].split("#", 1)[0]
             segments = candidate.split("/")
-            if len(segments) < 2 or segments[1] not in backend_first_segments:
-                continue
-            if candidate in FRONTEND_PATH_EXCEPTIONS:
+            if len(segments) < 2:
                 continue
             line = text.count("\n", 0, match.start()) + 1
             found.append(FrontendPath(path=candidate, source=rel, line=line))
     return found
+
+
+def collect_frontend_paths() -> list[FrontendPath]:
+    """`collect_all_frontend_literals()` po odjeciu jawnych `FRONTEND_PATH_EXCEPTIONS`
+
+    Front trzyma tez literaly, ktore adresami HTTP NIE SA (separatory `.join`,
+    sufiksy sklejane w helperach budujacych URL, sciezki zasobow statycznych
+    spoza backendu) — jedynym filtrem na to jest JAWNA `FRONTEND_PATH_EXCEPTIONS`
+    z uzasadnieniem per pozycja, nie domyslne wykluczenie oparte na tym, co
+    backend akurat dzis serwuje.
+    """
+    return [
+        item
+        for item in collect_all_frontend_literals()
+        if item.path not in FRONTEND_PATH_EXCEPTIONS
+    ]
 
 
 def parse_vite_proxy_prefixes() -> list[str]:
@@ -411,15 +512,6 @@ def check_route_prefixes() -> list[str]:
         )
 
     served_paths = sorted({route.path for route in routes})
-    # Zakres skanowania frontu = pierwsze segmenty realnych tras PLUS zawsze
-    # segment kanoniczny. Bez tego drugiego skladnika guard mial slepa plamke
-    # dokladnie na defekcie, ktory ma lapac: gdy backend serwuje `/x`, a klient
-    # wola `/api/x`, segment `api` moglby nie wystapic w zadnej trasie i literal
-    # klienta wypadlby poza zakres — czyli rozjazd byl niewidoczny.
-    backend_first_segments = {
-        route.path.split("/")[1] for route in routes if len(route.path.split("/")) > 1
-    }
-    backend_first_segments.add(CANONICAL_PREFIX.strip("/"))
     proxy_prefixes = parse_vite_proxy_prefixes()
 
     # --- REGULY 2 i 3: klient frontu kontra realna tablica tras -------------
@@ -430,7 +522,22 @@ def check_route_prefixes() -> list[str]:
         for source, (paths, _) in FRONTEND_DEAD_CLIENT_DEBT.items()
         for path in paths
     }
-    for front in collect_frontend_paths(backend_first_segments):
+    raw_frontend_literals = collect_all_frontend_literals()
+    # Zapadka na pusty zbior: skan bez ANI JEDNEGO kandydata (PRZED filtrem
+    # FRONTEND_PATH_EXCEPTIONS) jest sam w sobie naruszeniem (fail-closed), nie
+    # cichym „wszystko OK". Realny frontend ma dziesiatki modulow klienckich pod
+    # `/api` — zero trafien znaczy, ze skan (rozszerzenie plikow, katalog
+    # FRONTEND_SRC, wzorzec HTTP_CALL_HINT) jest zepsuty, a nie ze repo nie ma
+    # klientow HTTP. Sprawdzamy zbior SUROWY (przed wyjatkami), zeby modul, w
+    # ktorym KAZDY znaleziony literal akurat trafil na wyjatek, nie wygladal
+    # tak samo jak skan, ktory nie znalazl niczego w ogole.
+    if not raw_frontend_literals:
+        violations.append(
+            "[route-prefix-skan-pusty] collect_all_frontend_literals() nie znalazl ANI JEDNEGO "
+            "literalu sciezki w plikach z wywolaniem HTTP — skan jest zepsuty (rozszerzenie "
+            "plikow / FRONTEND_SRC / HTTP_CALL_HINT), nie repo bez klientow"
+        )
+    for front in collect_frontend_paths():
         if not _front_matches_served(front.path, served_paths):
             key = (front.source, front.path)
             if key in debt_hits:

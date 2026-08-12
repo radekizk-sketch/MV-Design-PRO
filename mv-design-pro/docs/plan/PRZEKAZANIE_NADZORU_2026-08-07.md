@@ -356,12 +356,26 @@ moduł już tego nie rozstrzyga.
    Wiążący plik instrukcji opisywał zabezpieczenie, którego nie ma — dokładnie
    klasa „deklaracja bez pokrycia", którą ta fala ściga w kodzie. Lista zastąpiona
    spisaną z `.github/workflows/sld-determinism.yml` (19 plików, v2 + v3).
-3. **KLIENT-BEZ-RODZINY** (znalezisko oddane przez wykonawcę ROUTERY-MARTWE, nie
-   zamiecione). `route_prefix_guard` zbiera ścieżki frontu WYŁĄCZNIE dla pierwszych
-   segmentów, które backend serwuje — klient wołający rodzinę, której backend nie
-   ma w ogóle, wypada ze skanu z konstrukcji. Tak przeżyła wyspa `designer/`:
-   trzy ścieżki do nieistniejącej rodziny `/snapshots`, zero alarmów. Klasa
-   ta sama co dwie poprzednie: **wyrocznia chodzi po węższym zbiorze niż kod.**
+3. ~~**KLIENT-BEZ-RODZINY**~~ — ZAMKNIĘTE 2026-08-12 (karta KLIENT-BEZ-RODZINY,
+   gałąź `kopia/KLIENT-BEZ-RODZINY`). `collect_frontend_paths` przestał zawężać
+   skan do pierwszych segmentów, które backend JUŻ serwuje (`backend_first_segments`
+   wyprowadzone z DRUGIEJ strony porównania — usunięte); zbiera teraz KAŻDY
+   literal absolutny w pliku wołającym HTTP, filtrowany wyłącznie jawną
+   `FRONTEND_PATH_EXCEPTIONS` z uzasadnieniem per pozycja. Dodana zapadka na pusty
+   skan (`[route-prefix-skan-pusty]`, oparta o zbiór SUROWY sprzed filtra
+   wyjątków, żeby moduł, w którym wszystko trafiło na wyjątek, nie wyglądał jak
+   zepsuty skan). Pomiar po naprawie: 0 żywych rodzin „klient bez backendu" —
+   wyspa `designer/` była jedyną instancją i już nie istnieje (`d0419a1a`,
+   2026-08-08). Poszerzony skan ujawnił 6 literałów spoza `/api` w plikach z
+   wywołaniem HTTP, żaden nie jest realnym adresem (separator `.join('/')`,
+   trzy sufiksy sklejane w `adresWyniku()`, dwie ścieżki zasobów statycznych
+   harnessu zrzutów ekranu serwowane przez Vite) — wszystkie opisane per-pozycja
+   w `FRONTEND_PATH_EXCEPTIONS`. Ostrość sprawdzona iniekcją na żywym pliku
+   (`fetch('/snapshots/latest')` w `ui/proof/proofLatexApi.ts`): stary guard
+   RC=0 (nie widział), naprawiony RC=1 z nazwaną ścieżką; iniekcja przywrócona
+   bajt-w-bajt (sha256 identyczne przed/po). 8 nowych testów jednostkowych
+   (iloczyn cech: rodzina serwowana/nie × klient jest/nie × ścieżka
+   statyczna/szablonowa + 2 na zapadkę pustego skanu).
 4. ~~`api/snapshots.py` bez `include_router`~~ — ZAMKNIĘTE 2026-08-08 kartą
    ROUTERY-MARTWE: USUNIĘTE. Reguła „wpinać wyłącznie z konsumentem" nie miała
    kogo wpiąć — jedyny kandydat (`frontend/src/designer/`) sam był wyspą bez
