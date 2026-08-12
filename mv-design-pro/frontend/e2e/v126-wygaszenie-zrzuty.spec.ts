@@ -54,8 +54,22 @@ test.describe('V126-WYGASZENIE — zrzuty pary przed/po', () => {
     test(`stabilnosc napieciowa (${motyw.nazwa})`, async ({ page }) => {
       await page.setViewportSize({ width: 1440, height: 1400 });
       await otworz(page, motyw.kod);
+      // NAPRAWA (karta TESTY-DRYF-E2E poz. 4, 2026-08-12; przepisanie wg
+      // zmiany kanonu — CLAUDE.md Zero-Debt): `voltage_stability` ŚWIADOMIE
+      // wycofany z toru projektanta kartą QU-FABRYKACJA (2026-08-08,
+      // `ui2/wyniki/akademickie/nieprezentowane.ts`) — dokładnie ten fakt ten
+      // plik ma udowodnić („zrzut «po» pokazuje odsiew rodzaju wycofanego",
+      // docstring pliku pkt 9). Test WZMOCNIONY, nie tylko przepisany: NAJPIERW
+      // dowodzi wprost, że opcja zniknęła z `<select>` (realny dowód
+      // wygaszenia — dawniej test tego nie sprawdzał, tylko zakładał, że
+      // opcja istnieje i próbował ją wybrać), a DOPIERO POTEM zrzuca ekran
+      // wyniku innego, wciąż prezentowanego rodzaju (`earthing_safety` — ma
+      // WŁASNY dedykowany krok śladu w harnessu, `sladDemoV126`), żeby
+      // artefakt PNG nadal dowodził, że reszta przepływu działa niezaburzona
+      // wycofaniem jednej pozycji.
+      await expect(page.getByTestId('mvd-akad-rodzaj').locator('option[value="voltage_stability"]')).toHaveCount(0);
       // Natywna ścieżka użytkownika: wybór rodzaju → uruchomienie analizy.
-      await page.getByTestId('mvd-akad-rodzaj').selectOption('voltage_stability');
+      await page.getByTestId('mvd-akad-rodzaj').selectOption('earthing_safety');
       await page.getByTestId('mvd-akad-uruchom').click();
       await expect(page.getByTestId('mvd-akad-wyniki')).toBeVisible();
       fs.mkdirSync(OUTPUT_DIR, { recursive: true });

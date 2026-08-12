@@ -231,6 +231,30 @@ function findBranchCapableFieldPort(snapshot: DomainOpResponse['snapshot']): str
   return null;
 }
 
+/**
+ * NAPRAWA (karta TESTY-DRYF-E2E poz. 5, 2026-08-12; przepisanie wg zmiany
+ * kanonu — CLAUDE.md Zero-Debt): kanwa v3 ma dziś poziomy szczegółu (LOD,
+ * `docs/sld/SLD_LOD_SPEC_OPERATOR_GRADE.md`) — na widoku startowym po
+ * `reloadEditorPage` (LOD „mapa sieci", bloki kompaktowe) stacja renderuje
+ * się jako JEDEN zbiorczy symbol, bez osobnego węzła DOM dla transformatora
+ * wewnątrz niej (`g[data-element-kind="transformer"]` nie istnieje, dopóki
+ * kamera nie przybliży sceny do poziomu obiektów/pól). Tego LOD nie było,
+ * gdy `openElementInspector` powstawał (2026-07-17). Realny gest kółka
+ * (ta sama ścieżka co `zoomujAzWidoczne` w `wyspy-menu-sld.spec.ts`) —
+ * zero wymuszonego stanu kamery.
+ */
+async function zoomUntilSelectorVisible(page: Page, selector: string, deltaY: number): Promise<void> {
+  const canvas = page.locator('svg[data-testid="sld-canvas-v3"]');
+  const box = await canvas.boundingBox();
+  expect(box, 'kanwa sld-canvas-v3 bez geometrii').not.toBeNull();
+  await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2);
+  for (let i = 0; i < 30; i += 1) {
+    if ((await page.locator(selector).count()) > 0) return;
+    await page.mouse.wheel(0, deltaY);
+    await page.waitForTimeout(100);
+  }
+}
+
 async function openElementInspector(page: Page, elementRef: string): Promise<void> {
   // Adaptacja v3 (2026-07-17): kanwa v3 nie niesie `sld-symbol-*`/
   // `data-element-id` — symbol ma `data-element-kind` + `data-owner-ref`
@@ -340,6 +364,7 @@ test('real backend SLD editor flow: source -> trunk -> station -> branch -> upda
   await reloadEditorPage(page);
   await capture(page, testInfo, '03-after-station');
 
+  await zoomUntilSelectorVisible(page, 'g[data-element-kind="transformer"][data-owner-ref^="stn/"]', -240);
   await openElementInspector(page, transformerRef!);
   await expect(page.getByTestId('engineering-section-typ_i_katalog')).toContainText(TRAFO_ID);
   await capture(page, testInfo, '03a-transformer-inspector');

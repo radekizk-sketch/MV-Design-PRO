@@ -17,7 +17,7 @@
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
 
 const SCREENSHOT_DIR = join(
   dirname(fileURLToPath(import.meta.url)),
@@ -28,6 +28,14 @@ const SCREENSHOT_DIR = join(
   'screenshots',
 );
 
+const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
+let entityCounter = 0;
+
+function nextEntitySuffix(): string {
+  entityCounter += 1;
+  return String(entityCounter).padStart(4, '0');
+}
+
 async function waitForAppReady(page: Page): Promise<void> {
   await page.waitForSelector('[data-testid="app-ready"]', {
     state: 'attached',
@@ -35,29 +43,119 @@ async function waitForAppReady(page: Page): Promise<void> {
   });
 }
 
+/**
+ * NAPRAWA (karta TESTY-DRYF-E2E poz. 1, 2026-08-12): `/#sld` bez ŻADNEGO
+ * aktywnego projektu/case'a pokazuje dziś bramkę „Start projektu: zakres
+ * obliczeń i GPZ" zamiast montować workspace (świadoma zmiana kanonu —
+ * karty K2-hydratacja i K5 wprowadziły bramkowanie aktywnym case'em na
+ * poziomie `WorkflowContextStrip`: `!hasModel` zastępuje CAŁY warsztat
+ * bramką, workspace SLD nigdy się nie montuje). Test przepisany do
+ * obecnego kanonu Z ZACHOWANIEM INTENCJI (widoczność toru zasilania /
+ * pustego stanu na kanwie v3): case zakłada się i aktywuje realną ścieżką
+ * (POST /api/projects + /api/study-cases, seed `mv-design-app-state" —
+ * ten sam wzorzec co inne zielone specy real-backend, np.
+ * critical-run-flow.spec.ts, wyspy-menu-sld.spec.ts), BEZ żadnej operacji
+ * domenowej — model pozostaje realnie pusty, więc kontrakt v3 F12-C
+ * ("pusty model ⇒ kanwa SVG nie istnieje, sld-empty-state aktywny") jest
+ * dalej dokładnie tym, co sprawdzały te testy przed zmianą bramki.
+ */
+async function createEmptyCaseFromUi(page: Page, request: APIRequestContext): Promise<string> {
+  const suffix = nextEntitySuffix();
+  const projectName = `E2E tor mocy widocznosc ${suffix}`;
+  const caseName = `Przypadek tor mocy ${suffix}`;
+
+  const projectResponse = await request.post(`${BACKEND_BASE}/api/projects`, {
+    data: {
+      name: projectName,
+      description: 'Bramka TESTY-DRYF-E2E poz. 1: widocznosc toru mocy na pustym modelu',
+      mode: 'TO-BE',
+      voltage_level_kv: 15.0,
+      frequency_hz: 50.0,
+    },
+  });
+  expect(projectResponse.ok()).toBeTruthy();
+  const project = (await projectResponse.json()) as { id: string };
+
+  const caseResponse = await request.post(`${BACKEND_BASE}/api/study-cases`, {
+    data: {
+      project_id: project.id,
+      name: caseName,
+      description: '',
+      config: {},
+      set_active: true,
+    },
+  });
+  expect(caseResponse.ok()).toBeTruthy();
+  const studyCase = (await caseResponse.json()) as { id: string };
+
+  await page.addInitScript((seed) => {
+    localStorage.setItem(
+      'mv-design-app-state',
+      JSON.stringify({
+        state: {
+          activeProjectId: seed.projectId,
+          activeProjectName: seed.projectName,
+          activeCaseId: seed.caseId,
+          activeCaseName: seed.caseName,
+          activeCaseKind: 'ShortCircuitCase',
+          activeCaseResultStatus: 'NONE',
+          activeSnapshotId: null,
+          activeMode: 'MODEL_EDIT',
+          activeRunId: null,
+          activeAnalysisType: 'SHORT_CIRCUIT',
+          caseManagerOpen: false,
+          issuePanelOpen: false,
+        },
+        version: 1,
+      }),
+    );
+  }, { projectId: project.id, projectName, caseId: studyCase.id, caseName });
+
+  await page.goto('/', { waitUntil: 'commit' });
+  await page.waitForSelector('[data-testid="app-ready"]', { state: 'attached', timeout: 30000 });
+  await expect(page.getByTestId('active-case-bar')).toContainText(/Zakres|Bieżący zestaw/);
+  return studyCase.id;
+}
+
 test.describe('Tor mocy — SupplyPathHighlighter w UI', () => {
-  test('aplikacja na #sld renderuje workspace v3 (smoke)', async ({ page }) => {
+  test('aplikacja na #sld renderuje workspace v3 (smoke)', async ({ page, request }) => {
+    await createEmptyCaseFromUi(page, request);
     await page.goto('/#sld');
     await waitForAppReady(page);
 
-    // Pusty model ⇒ kanwa SVG celowo nie istnieje (kontrakt v3, F12-C) —
+    // Pusty model ⇒ workspace montuje kanwę SVG (pustą) pod nakładką pustego
+    // stanu (kontrakt v3, F12-C — patrz uzasadnienie w teście poniżej) —
     // smoke potwierdza workspace + pusty stan.
     await expect(page.getByTestId('sld-canvas-v3-workspace')).toBeVisible();
     await expect(page.getByTestId('sld-empty-state')).toBeVisible();
   });
 
-  test('SLD render bez ENM nie wybucha — empty state aktywny', async ({ page }) => {
+  test('SLD render bez ENM nie wybucha — empty state aktywny', async ({ page, request }) => {
+    await createEmptyCaseFromUi(page, request);
     await page.goto('/#sld');
     await waitForAppReady(page);
 
-    // v3 renderuje pusty stan gdy brak ENM (np. operator nie wybrał
-    // projektu). Tor mocy w takim stanie nie jest pokazany (brak źródeł),
-    // a kanwa SVG nie istnieje (kontrakt v3).
+    // v3 renderuje pusty stan gdy case jest aktywny, ale model nie ma
+    // jeszcze żadnych elementów (świeżo założony przypadek). Tor mocy w
+    // takim stanie nie jest pokazany (brak źródeł).
+    //
+    // NAPRAWA (karta TESTY-DRYF-E2E poz. 1, 2026-08-12; przepisanie wg
+    // zmiany kanonu): dawna asercja `sld-canvas-v3` → count 0 zakładała, że
+    // pusty model wyklucza istnienie kanwy SVG. Obecny kontrakt F12-C
+    // (`SldCanvasV3Workspace.tsx`, komentarz „S9-11/P-8") renderuje `<SldCanvasV3>`
+    // (testid `sld-canvas-v3`) WYŁĄCZNIE na podstawie `Boolean(snapshot)` —
+    // migawka ENM przychodzi (nawet z zerem elementów) i kanwa się montuje;
+    // `sld-empty-state` jest NIEZALEŻNĄ nakładką (`z-20`, `pointer-events-none`)
+    // pokazywaną na podstawie osobnego werdyktu pustości. Intencja bez zmian
+    // (empty state aktywny, brak crasha) — sprawdzamy oba fakty pod obecnym
+    // kontraktem: kanwa istnieje (pusta, pod spodem), a nakładka pustego stanu
+    // jest widoczna.
     await expect(page.getByTestId('sld-empty-state')).toBeVisible();
-    await expect(page.getByTestId('sld-canvas-v3')).toHaveCount(0);
+    await expect(page.getByTestId('sld-canvas-v3')).toHaveCount(1);
   });
 
-  test('screenshot SLD pustego widoku — dowód browser pass', async ({ page }) => {
+  test('screenshot SLD pustego widoku — dowód browser pass', async ({ page, request }) => {
+    await createEmptyCaseFromUi(page, request);
     await page.goto('/#sld');
     await waitForAppReady(page);
     await expect(page.getByTestId('sld-empty-state')).toBeVisible();

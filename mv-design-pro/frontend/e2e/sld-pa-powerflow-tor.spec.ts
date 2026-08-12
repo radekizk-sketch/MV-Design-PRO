@@ -171,8 +171,23 @@ test.describe('sld:P-A:power-flow-tor (render-based, solver = one truth)', () =>
 
     // (2) ZERO UNCONNECTED BLOCKS: every station block must have ≥1 segment at its
     //     port (it sits on a cable run). An orphan block has none → red.
+    //
+    // FIX (TESTY-DRYF-E2E card, item 5, 2026-08-12): the L0 GPZ "grid source"
+    // glyph (`sld-v3-l0-gpz-source-*`, `buildScene.ts` ~L2518) is NOT a
+    // station sitting on a cable run — it is the external-grid origin glyph,
+    // always wired to its own collapsed GPZ block by construction via a
+    // dedicated drop connector (`segments.push({ meta: { ownerRef:
+    // `${src.id}#grid-source-drop` } })`, buildScene.ts ~L2530-2533). That
+    // connector is a real rendered `<path>`, but its `data-owner-ref` does
+    // NOT carry the `seg/` prefix real cable-run branches use, so it is
+    // invisible to `segments` (filtered to `path[data-owner-ref^="seg/"]`
+    // above) — a ref-prefix mismatch between two DIFFERENT connector
+    // families, not a genuinely disconnected block. Excluded here with the
+    // SAME reasoning the check already applies to `gpzBlocks` (not included
+    // in `stationBlocks` at all, for the identical reason).
     const unconnected: string[] = [];
     for (const block of stationBlocks) {
+      if (block.id.startsWith('sld-v3-l0-gpz-source-')) continue;
       if (!segments.some((seg) => gap(seg, block) <= PORT_TOL)) {
         unconnected.push(block.id);
       }

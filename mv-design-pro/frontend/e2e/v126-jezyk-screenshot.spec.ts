@@ -27,7 +27,19 @@ const MOTYWY = ['light', 'dark'] as const;
 const WIDOKI = [
   { nazwa: 'werdykt-kryterium', rodzaj: 'earthing_safety', otworzSlad: false },
   { nazwa: 'obiekty', rodzaj: 'power_quality_harmonics', otworzSlad: false },
-  { nazwa: 'slad', rodzaj: 'voltage_stability', otworzSlad: true },
+  // NAPRAWA (karta TESTY-DRYF-E2E poz. 4, 2026-08-12; przepisanie wg zmiany
+  // kanonu — CLAUDE.md Zero-Debt): `voltage_stability` ŚWIADOMIE wycofany z
+  // toru projektanta kartą QU-FABRYKACJA (2026-08-08, `ui2/wyniki/akademickie
+  // /nieprezentowane.ts` — solver nie liczy już żadnej wielkości tej analizy
+  // z realnego modelu, ekran „nie ma czego pokazać"). Kontrakt backendu
+  // ZOSTAJE, znika WYŁĄCZNIE prezentacja — `mvd-akad-rodzaj` nie ma już tej
+  // opcji, więc `selectOption('voltage_stability')` nie znajduje jej NIGDY.
+  // Intencja bez zmian (dowód, że ślad WHITE BOX po rozwinięciu pokazuje w
+  // kolumnie „Wynik" liczbę z jednostką — `result_pl` — a nie zrzut
+  // słownika): `earthing_safety` ma WŁASNY, dedykowany krok śladu w harnessu
+  // (`sladDemoV126`, `creator-harness-main.tsx`) — jedyny inny rodzaj poza
+  // wycofanym `voltage_stability`, który nie spada na fallback demo-śladu.
+  { nazwa: 'slad', rodzaj: 'earthing_safety', otworzSlad: true },
 ] as const;
 
 async function przygotuj(page: Page, rodzaj: string, motyw: string): Promise<void> {
