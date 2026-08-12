@@ -164,8 +164,15 @@ def build_patterns() -> list[tuple[re.Pattern, str]]:
     return patterns
 
 
-def scan_file(file_path: Path, patterns: list[tuple[re.Pattern, str]]) -> list[Violation]:
-    """Scan a single file for physics fields in input contexts."""
+def scan_file_raw(file_path: Path, patterns: list[tuple[re.Pattern, str]]) -> list[Violation]:
+    """Scan a single file for physics fields in input contexts, PRZED filtrem
+    ALLOWED_OPERATIONAL_SETPOINTS.
+
+    Karta ZAPADKI-ALLOWLIST-RESZTA (pozycja d, 2026-08-12): wydzielone z
+    `scan_file()`, zeby zasilic ROWNIEZ zapadke swiezosci
+    (`check_allowed_operational_setpoints_freshness`) tym samym surowym
+    skanem, ktorego uzywa filtr — predykaty parami, KLASA-NIE-INSTANCJA S3.
+    """
     violations = []
 
     try:
@@ -197,8 +204,6 @@ def scan_file(file_path: Path, patterns: list[tuple[re.Pattern, str]]) -> list[V
         # Check all patterns
         for pattern, field_name in patterns:
             if pattern.search(line):
-                if (file_path.name, field_name) in ALLOWED_OPERATIONAL_SETPOINTS:
-                    continue
                 violations.append(
                     Violation(
                         file_path=str(file_path.relative_to(REPO_ROOT)),
@@ -208,6 +213,47 @@ def scan_file(file_path: Path, patterns: list[tuple[re.Pattern, str]]) -> list[V
                     )
                 )
 
+    return violations
+
+
+def scan_file(file_path: Path, patterns: list[tuple[re.Pattern, str]]) -> list[Violation]:
+    """`scan_file_raw()` po odjeciu jawnych ALLOWED_OPERATIONAL_SETPOINTS
+    (klucz: nazwa pliku, nie sciezka — tak samo jak w `iter_files`/oryginalnym
+    skanie)."""
+    return [
+        v
+        for v in scan_file_raw(file_path, patterns)
+        if (file_path.name, v.field_name) not in ALLOWED_OPERATIONAL_SETPOINTS
+    ]
+
+
+def check_allowed_operational_setpoints_freshness(root: Path) -> list[str]:
+    """Zapadka swiezosci ALLOWED_OPERATIONAL_SETPOINTS (karta
+    ZAPADKI-ALLOWLIST-RESZTA, pozycja d, 2026-08-12).
+
+    Kazdy wpis (nazwa_pliku, pole) musi nadal odpowiadac REALNEMU trafieniu
+    `scan_file_raw()` w pliku o tej nazwie gdziekolwiek w SCAN_DIRS: plik musi
+    istniec ORAZ pole musi nadal wystepowac w kontekscie edytowalnym
+    (wejsciowym). Wpis, ktorego pole zniknelo z formularza (przepisane,
+    usuniete, przemianowane), jest MARTWYM WYJATKIEM: gdyby to samo pole
+    wrocilo w INNYM pliku o tej samej nazwie, przeszloby bez kontroli — klucz
+    jest po nazwie pliku, nie po pelnej sciezce.
+    """
+    patterns = build_patterns()
+    raw_fields_by_filename: dict[str, set[str]] = {}
+    for f in iter_files(root):
+        for hit in scan_file_raw(f, patterns):
+            raw_fields_by_filename.setdefault(f.name, set()).add(hit.field_name)
+
+    violations: list[str] = []
+    for (filename, field_name), reason in sorted(ALLOWED_OPERATIONAL_SETPOINTS.items()):
+        if field_name in raw_fields_by_filename.get(filename, set()):
+            continue
+        violations.append(
+            f"[physics-label-wpis-osierocony] ALLOWED_OPERATIONAL_SETPOINTS"
+            f"[({filename!r}, {field_name!r})] nie odpowiada juz zadnemu trafieniu w "
+            f"SCAN_DIRS — usun ten wpis (uzasadnienie bylo: {reason})"
+        )
     return violations
 
 
@@ -233,6 +279,16 @@ def main() -> int:
     for file_path in iter_files(REPO_ROOT):
         file_violations = scan_file(file_path, patterns)
         violations.extend(file_violations)
+
+    freshness_violations = check_allowed_operational_setpoints_freshness(REPO_ROOT)
+
+    if freshness_violations:
+        print("=" * 70, file=sys.stderr)
+        print("PHYSICS-LABEL GUARD: ALLOWED_OPERATIONAL_SETPOINTS OSIEROCONY", file=sys.stderr)
+        print("=" * 70, file=sys.stderr)
+        for message in freshness_violations:
+            print(f"  {message}", file=sys.stderr)
+        print(file=sys.stderr)
 
     if violations:
         print("=" * 70, file=sys.stderr)
@@ -262,6 +318,8 @@ def main() -> int:
             "Napraw powyższe naruszenia, zanim kod zostanie scalony.",
             file=sys.stderr,
         )
+
+    if violations or freshness_violations:
         return 1
 
     print("physics-label-guard: OK (brak naruszeń)", file=sys.stdout)
