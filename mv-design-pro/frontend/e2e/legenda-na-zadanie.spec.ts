@@ -10,15 +10,19 @@
  * Bramka 1 karty:
  *  (a) po otwarciu schematu legenda NIE jest widoczna na kanwie,
  *  (b) przycisk legendy otwiera panel; panel zawiera WYŁĄCZNIE symbole
- *      obecne w projekcie (asercja: brak wpisu dla symbolu nieobecnego —
- *      sieć TEGO testu nie ma agregatu 0,4 kV, więc „Odbiór (zagregowany)"
- *      nie może się pojawić),
+ *      obecne w projekcie (asercja negatywna: sieć NIE ma ŻADNEGO źródła
+ *      DER, więc „Instalacja fotowoltaiczna" nie może się pojawić),
  *  (c) zamknięcie panelu przywraca kanwę (legenda znika z DOM).
  *
  * Sieć testowa: TA SAMA sekwencja domain-ops co `critical-run-flow.spec.ts`
  * (źródło SN → magistrala → stacja SN/nN z transformatorem, BEZ kroku
- * dodania odbioru/Load) — celowo BEZ agregatu, żeby bramka (b) miała realny
- * negatyw do sprawdzenia (nie tylko pozytyw „to, co dodaliśmy, się pokazuje").
+ * dodania odbioru/Load) + pole SN roli `'TR'` (karta BUGI-PRODUKTU-E2E,
+ * patrz komentarz przy `sn_fields` niżej — bez niego transformator NIE jest
+ * NIGDZIE narysowany, mimo że poprawnie istnieje w modelu). ZALOŻENIE „sieć
+ * bez agregatu 0,4 kV" z pierwszej wersji tej karty było BŁĘDNE: backend
+ * materializuje „potrzeby własne" stacji (mały odbiór nN) bezwarunkowo przy
+ * KAŻDYM tworzeniu transformatora — sieć WIĘC ma agregat, a `loadArrow` jest
+ * dziś asercją POZYTYWNĄ; negatyw bramki (b) idzie przez brak źródła DER.
  *
  * Uruchomienie (WYŁĄCZNIE tak — patrz CLAUDE.md/karta):
  *   cd mv-design-pro/frontend && node ./scripts/playwright-run.mjs \
@@ -122,10 +126,38 @@ async function createProjectAndCase(
   return { projectId: project.id, projectName, caseId: studyCase.id, caseName };
 }
 
-/** Sieć BEZ agregatu 0,4 kV: źródło SN → magistrala (1 odcinek) → stacja
- *  SN/nN z transformatorem. Żaden krok NIE dodaje `Load` — `loadArrow`
- *  ("Odbiór (zagregowany)") nie ma prawa pojawić się na scenie ani w legendzie. */
-async function buildNetworkWithoutAggregateLoad(request: APIRequestContext, caseId: string): Promise<void> {
+/**
+ * Sieć BEZ DER: źródło SN → magistrala (1 odcinek) → stacja SN/nN z
+ * transformatorem. Żaden krok NIE dodaje generatora/PV/BESS — symbole DER
+ * (np. `derPv`) nie mają prawa pojawić się na scenie ani w legendzie.
+ * `loadArrow` ("Odbiór (zagregowany)") NA ODWRÓT: JEST obecny — backend
+ * materializuje "potrzeby własne" stacji (mały odbiór nN) bezwarunkowo przy
+ * każdym tworzeniu transformatora, żaden krok nie musi dodawać `Load` jawnie.
+ *
+ * POLE 'TR' JEST WYMAGANE (karta BUGI-PRODUKTU-E2E, diagnoza root-cause).
+ * Backend (`domain_operations.py::insert_station_on_segment_sn`) ZAWSZE łączy
+ * nowy transformator wprost `sn_bus_id → nn_bus_id`, ale wiąże go z polem SN
+ * (dopisuje `tr_id` do `equipment_refs`) WYŁĄCZNIE gdy `sn_fields` niesie wpis
+ * `bay_role: 'TR'` (pętla „Update substation" po utworzeniu transformatora).
+ * Front (`enmToSldAdapter.ts::buildStationMiniBaysFromFieldSpecs` →
+ * `compose/station.ts`) rysuje symbol `transformer2W` WYŁĄCZNIE jako część
+ * stosu aparatów pola z rolą TRANSFORMER/RMU_TRANSFORMER — bez pola TR
+ * transformator ISTNIEJE w modelu (poprawnie połączony, widoczny w KPI/
+ * badge'ach stacji), ale NIE JEST NIGDZIE narysowany na kanwie v3 (potwierdzone
+ * pomiarem DOM: `scene.symbols` dla takiej stacji niesie WYŁĄCZNIE
+ * loadBreakSwitch/cableHead/earthSwitch trzech pól liniowych, zero
+ * `transformer2W`). Sekwencja `['IN','OUT','FEEDER']` (bez `'TR'`) jest
+ * powielona w ~29 innych plikach e2e (w tym `critical-run-flow.spec.ts`) —
+ * KLASA defektu nazwana w `docs/v12xx/REJESTR_KONFLIKTOW.md` (wpis
+ * BUGI-PRODUKTU-E2E), naprawa rysowania transformatora BEZ pola TR jest poza
+ * zakresem tej karty (dotyka `compose/station.ts`, współdzielonego z ~20
+ * zrzutami ekranowymi innej, równolegle prowadzonej karty — zmiana geometrii
+ * przesunęłaby ich baseline'y). Tu: sieć zbudowana z JAWNYM polem TR — droga
+ * już poprawnie zaimplementowana i przetestowana — żeby bramka (b) testowała
+ * legendę (jej filtr „tylko obecne symbole"), a nie nieudokumentowany brak
+ * rysunku.
+ */
+async function buildStationNetworkWithoutDer(request: APIRequestContext, caseId: string): Promise<void> {
   await executeDomainOp(request, caseId, 'add_grid_source_sn', {
     voltage_kv: 15.0,
     sk3_mva: 250.0,
@@ -151,7 +183,7 @@ async function buildNetworkWithoutAggregateLoad(request: APIRequestContext, case
     station_type: 'B',
     insert_at: { value: 0.5 },
     station: { sn_voltage_kv: 15.0, nn_voltage_kv: 0.4 },
-    sn_fields: ['IN', 'OUT', 'FEEDER'],
+    sn_fields: ['IN', 'OUT', 'FEEDER', 'TR'],
     transformer: {
       create: true,
       catalog_binding: buildCatalogBinding('TRAFO_SN_NN', TRAFO_ID),
@@ -186,6 +218,21 @@ async function openSldWithActiveCase(
     );
   }, seed);
 
+  // Rozmiar viewportu WPŁYWA na dobór poziomu szczegółu (LOD, karta
+  // BUGI-PRODUKTU-E2E, diagnoza root-cause bramki (b)). Kanwa v3 auto-
+  // dopasowuje kamerę do treści przy starcie; przy DOMYŚLNYM viewporcie
+  // Playwrighta (1280×720, `playwright.config.ts`) ta MAŁA sieć referencyjna
+  // (GPZ + 1 stacja) mieści się w kadrze przy skali odpowiadającej L0
+  // („Przegląd sieci" — stacja/GPZ jako symbol ZBIORCZY, `stationCollapsed`/
+  // `gpzCollapsed`; zero aparatury pola, w tym `transformer2W`, w scenie tego
+  // LOD — `buildMeasureInput`, `SldCanvasV3.tsx`). Pomiar: identyczna sieć,
+  // identyczna sekwencja kliknięć, RÓŻNI się WYŁĄCZNIE viewport — 1280×720 daje
+  // legendę (6) bez `transformer2W`/pól SN, 1600×900 daje legendę (13) z pełną
+  // aparaturą. Pozostałe specy potrzebujące szczegółu pola (np. `kd8-motyw-
+  // jedna-prawda.spec.ts`) już ustawiają 1600×900 z tego samego powodu — ta
+  // sama, jedna przyczyna źródłowa, ten sam zaradczy wzorzec.
+  await page.setViewportSize({ width: 1600, height: 900 });
+
   await page.goto('/#sld', { waitUntil: 'commit' });
   // Timeout hojny (nie 30000 jak w innych specach): PIERWSZA nawigacja po
   // starcie webServera (`reuseExistingServer` startuje serwer OD ZERA, gdy
@@ -204,7 +251,7 @@ test.describe('Legenda symboli na żądanie (K12)', () => {
 
   test('(a) po otwarciu schematu legenda NIE jest widoczna na kanwie', async ({ page, request }) => {
     const seed = await createProjectAndCase(request);
-    await buildNetworkWithoutAggregateLoad(request, seed.caseId);
+    await buildStationNetworkWithoutDer(request, seed.caseId);
     await openSldWithActiveCase(page, seed);
 
     await expect(page.getByTestId('sld-sheet-legend')).toHaveCount(0);
@@ -220,7 +267,7 @@ test.describe('Legenda symboli na żądanie (K12)', () => {
     request,
   }) => {
     const seed = await createProjectAndCase(request);
-    await buildNetworkWithoutAggregateLoad(request, seed.caseId);
+    await buildStationNetworkWithoutDer(request, seed.caseId);
     await openSldWithActiveCase(page, seed);
 
     // Klik NATYWNY Playwright (nie syntetyczny dispatchEvent) — dyrektywa
@@ -235,10 +282,19 @@ test.describe('Legenda symboli na żądanie (K12)', () => {
     await expect(panel.getByTestId('sld-v3-legend-panel-item-transformer2W')).toBeVisible();
     await expect(panel.getByTestId('sld-v3-legend-panel-item-gridSource')).toBeVisible();
 
-    // Negatyw (zero fabrykacji, §0.3 karty): sieć NIE ma agregatu 0,4 kV —
-    // "Odbiór (zagregowany)" nie może być wpisem legendy tego projektu.
-    await expect(panel.getByTestId('sld-v3-legend-panel-item-loadArrow')).toHaveCount(0);
-    await expect(panel).not.toContainText('zagregowany');
+    // Pozytyw (karta BUGI-PRODUKTU-E2E, POPRAWKA ZALOZENIA): backend materializuje
+    // "potrzeby wlasne" stacji — maly, ZAWSZE obecny odbior nN — bezwarunkowo przy
+    // KAZDYM tworzeniu transformatora (`_materialize_station_auxiliary_load`,
+    // `domain_operations.py::insert_station_on_segment_sn`, poza gestia pola `TR`).
+    // Ta siec WIEC ma agregat 0,4 kV — `loadArrow` to REALNY, nie fabrykowany wpis;
+    // dawna asercja negatywna byla oparta na blednym zalozeniu (patrz komentarz
+    // naglowka pliku).
+    await expect(panel.getByTestId('sld-v3-legend-panel-item-loadArrow')).toBeVisible();
+
+    // Negatyw (zero fabrykacji, §0.3 karty): sieć NIE ma ŻADNEGO źródła DER —
+    // "Instalacja fotowoltaiczna" nie może być wpisem legendy tego projektu.
+    await expect(panel.getByTestId('sld-v3-legend-panel-item-derPv')).toHaveCount(0);
+    await expect(panel).not.toContainText('fotowoltaiczna');
 
     // "Linia napowietrzna" nigdy nie jest wpisem (v3 nie renderuje tego stylu
     // linii — zero fabrykacji rozciągnięte na linie, patrz `projectLegend.ts`).
@@ -247,7 +303,7 @@ test.describe('Legenda symboli na żądanie (K12)', () => {
 
   test('(c) zamknięcie panelu przywraca kanwę bez legendy', async ({ page, request }) => {
     const seed = await createProjectAndCase(request);
-    await buildNetworkWithoutAggregateLoad(request, seed.caseId);
+    await buildStationNetworkWithoutDer(request, seed.caseId);
     await openSldWithActiveCase(page, seed);
 
     const toggle = page.getByTestId('sld-v3-legend-toggle');
