@@ -57,6 +57,7 @@ import { SEGMENT_STROKE_WIDTH, type PreviewElementKind, type PreviewSegment, typ
 import { SYMBOL_DEFS } from '../symbols/defs';
 import type { OwnerKind } from '../layout/labels';
 import type { PlannedLabel } from './labelLegibility';
+import { STATION_TR_FIELD_GAP_TEXT } from '../layout/measure';
 
 /**
  * Najmniejszy dopuszczalny wymiar obszaru trafienia w pikselach EKRANU.
@@ -135,6 +136,12 @@ export interface CanvasHitArea {
    *  `undefined` = symbol bez refu urządzenia (konwencja / nie-aparat). */
   readonly deviceRef?: string | undefined;
   readonly elementKind: PreviewElementKind | undefined;
+  /** TR2W-BEZ-POLA (§0.C.5): PODPOWIEDŹ obiektu — natywny `<title>` SVG na
+   *  kształcie, KTÓRY UŻYTKOWNIK FAKTYCZNIE WSKAZUJE KURSOREM (warstwa trafień
+   *  leży NAD rysunkiem, więc `<title>` na grupie rysunkowej nigdy by się nie
+   *  pokazał — byłby kontrolką-widmem). Dziś WYŁĄCZNIE zdanie o transformatorze
+   *  bez skonfigurowanego pola SN; `undefined` dla obiektów bez podpowiedzi. */
+  readonly tytul?: string | undefined;
   readonly klasa: HitObjectClass;
   /** Kolejność malowania w DOM (rośnie = wyżej). Rozstrzyga nakładanie. */
   readonly z: number;
@@ -366,6 +373,9 @@ export function buildCanvasHitAreas(input: CanvasHitAreaInput): readonly CanvasH
       // S9-10: ref pojedynczego aparatu przenoszony 1:1 ze sceny.
       deviceRef: symbol.meta?.deviceRef,
       elementKind: symbol.meta?.elementKind,
+      // TR2W-BEZ-POLA (§0.C.5): treść stanu niekompletnego — na kształcie
+      // trafienia, bo to on odbiera wskazanie kursorem.
+      tytul: symbol.meta?.transformerFieldGap === true ? STATION_TR_FIELD_GAP_TEXT : undefined,
       klasa: klasaSymbolu(symbol.meta?.elementKind),
       z: z++,
       obrys: { ksztalt: 'prostokat', x: rect.x, y: rect.y, width: rect.width, height: rect.height },

@@ -42,6 +42,7 @@ import {
   implicitStationTransformers,
   stationBlockHeight,
   stationBlockWidth,
+  requiredStationWidth,
   stationHasLvSide,
   stationSnColumnLayout,
   STATION_TR_FIELD_GAP_TEXT,
@@ -309,6 +310,38 @@ describe('TR2W-BEZ-POLA — degradacja bez zgadywania sekcji', () => {
   });
 });
 
+describe('TR2W-BEZ-POLA — przypadki brzegowe planu kolumn', () => {
+  // Reguła KLASA §2: iloczyn cech, nie przykład z karty. Stacja z
+  // transformatorem, ale BEZ ŻADNEGO pola SN, jest kształtem, który dane
+  // dopuszczają (stacja utworzona bez `sn_fields`) — plan kolumn musi go
+  // udźwignąć, bo dotąd blok o zerowej liczbie pól miał zerową szerokość.
+  const bezPol = makeStation('s-zero-pol', [], {
+    hasTransformer: true,
+    transformerUnits: [{ ref: 'tr/1', hvBusRef: 'stn/test/sn_bus', lvBusRef: 'stn/test/nn_bus' }],
+  });
+
+  it('stacja BEZ pól SN, z transformatorem: jedna kolumna, niezerowa szerokość i wysokość bloku', () => {
+    const plan = stationSnColumnLayout(bezPol, 0);
+    expect(plan).toHaveLength(1);
+    expect(plan[0].kind).toBe('transformer');
+    expect(stationBlockWidth(bezPol)).toBe(32);
+    expect(stationBlockHeight(bezPol)).toBeGreaterThan(0);
+  });
+
+  it('stacja BEZ pól SN i BEZ transformatora: zero kolumn, zerowa szerokość (stan sprzed karty)', () => {
+    const pusta = makeStation('s-pusta', []);
+    expect(stationSnColumnLayout(pusta, 0)).toEqual([]);
+    expect(stationBlockWidth(pusta)).toBe(0);
+  });
+
+  it('kompozycja stacji bez pól rysuje transformator i stronę nN', () => {
+    const c = compose(bezPol);
+    expect(transformatory(c)).toHaveLength(1);
+    expect(c.segments.filter((x) => x.ownerRef.endsWith('#lv-bus'))).toHaveLength(1);
+    expect(c.segments.filter((x) => x.ownerRef === 'tr/1#descent')).toHaveLength(1);
+  });
+});
+
 describe('TR2W-BEZ-POLA — stacja Z polem TR: ścieżka dzisiejsza nietknięta', () => {
   const zPolem = makeStation('s-z-polem', [
     makeBay(FIELD_ROLE.RMU_LINE, 0, SEKCJA_A),
@@ -329,10 +362,27 @@ describe('TR2W-BEZ-POLA — stacja Z polem TR: ścieżka dzisiejsza nietknięta'
     expect(stationBlockWidth(zPolem)).toBe(stationBlockWidth(bezDanych));
   });
 
-  it('BEZ markera i BEZ wiersza braku pola (transformator ma swoje pole)', () => {
+  it('BEZ markera i BEZ śladu braku pola (transformator ma swoje pole)', () => {
     const c = compose(zPolem);
     expect(transformatory(c).every((s) => s.transformerFieldGap === undefined)).toBe(true);
-    expect(c.labels.stationName.rows.some((r) => r.text === STATION_TR_FIELD_GAP_TEXT)).toBe(false);
     expect(c.missingData.filter((m) => m.startsWith('station.transformer.'))).toEqual([]);
+  });
+
+  it('pasmo nazw NIE niesie zdania o braku pola w ŻADNYM wariancie (treść żyje w podpowiedzi)', () => {
+    // Zapadka na powrót wiersza-adnotacji do pasma nazw: to on rozsadzał
+    // szerokość kolumny stacji (239 j.św. w t4 wobec 184 najszerszego wiersza
+    // danych) i zdejmował skalę „Dopasuj widok" poniżej progów KD-11/K11-A.
+    for (const st of [zPolem, jednaSekcja([{ ref: 'tr/1', hvBusRef: SEKCJA_A, lvBusRef: null }])]) {
+      const c = compose(st);
+      expect(c.labels.stationName.rows.some((r) => r.text === STATION_TR_FIELD_GAP_TEXT)).toBe(false);
+    }
+  });
+
+  it('szerokość kolumny stacji BEZ pola TR nie rośnie o adnotację (tylko o kolumnę transformatora)', () => {
+    const zTr = jednaSekcja([{ ref: 'tr/1', hvBusRef: SEKCJA_A, lvBusRef: null }]);
+    const bezTr = makeStation('s-1sekcja', zTr.snBays);
+    // Różnica = SAMA kolumna transformatora (32) + światło (8), nic ponadto.
+    expect(stationBlockWidth(zTr) - stationBlockWidth(bezTr)).toBe(40);
+    expect(requiredStationWidth(zTr) - requiredStationWidth(bezTr)).toBeLessThanOrEqual(40);
   });
 });
