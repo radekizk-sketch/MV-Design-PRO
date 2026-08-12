@@ -74,7 +74,6 @@ _FRONT_EXT = r"(?:py|ts|tsx|js|jsx|mjs)"
 _ANY_EXT = r"(?:py|ts|tsx|js|jsx|mjs|md|json)"
 
 _NPM_TOKEN = re.compile(r"^(?:src|e2e)/[\w\-./]+\." + _FRONT_EXT + r"$")
-_SCRIPTS_LITERAL = re.compile(r"[\"'](scripts/[\w\-./]+\.py)[\"']")
 _SRC_TESTS_LITERAL = re.compile(r"[\"']((?:src|tests)/[\w\-./]+\." + _FRONT_EXT + r")[\"']")
 _ANY_REPO_LITERAL = re.compile(
     r"[\"']((?:scripts|backend|frontend|docs)/[\w\-./]+\." + _ANY_EXT + r")[\"']"
@@ -113,16 +112,13 @@ def check_verification_scripts(scripts_dir: Path, root: Path) -> list[str]:
             continue
 
         text = path.read_text(encoding="utf-8", errors="replace")
-        is_contract_text_guard = path.name.endswith("_contract_text_guard.py")
-
-        if is_contract_text_guard:
-            for match in _ANY_REPO_LITERAL.finditer(text):
-                candidate = match.group(1)
-                if not (root / candidate).exists():
-                    violations.append(f"{path.name}: brak pliku {candidate}")
-            continue
-
-        for match in _SCRIPTS_LITERAL.finditer(text):
+        # Karta ALLOWLIST-WIDMA (2026-08-12): skan literalow repo-relatywnych
+        # ROZSZERZONY z konwencji *_contract_text_guard.py na WSZYSTKIE pliki
+        # (pomiar przed rozszerzeniem: 5 widm w 4 guardach delta/allowlist,
+        # ZERO falszywych trafien na calym korpusie scripts/). Wpis allowlisty
+        # wskazujacy nieistniejacy plik to cicha utrata ochrony: delta-guard
+        # nie pilnuje pliku, ktorego sciezka nie moze sie pojawic w diffie.
+        for match in _ANY_REPO_LITERAL.finditer(text):
             candidate = match.group(1)
             if not (root / candidate).exists():
                 violations.append(f"{path.name}: brak pliku {candidate}")

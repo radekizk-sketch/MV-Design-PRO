@@ -37,7 +37,6 @@ FILE_EXTENSIONS = {".ts", ".tsx"}
 EXCLUDED_DIRS = ("frontend/src/ui/tech-card/",)
 EXCLUDED_RELATIVE_FILES = {
     # Test artifacts intencjonalnie używają tych literałów:
-    "frontend/src/ui/tech-card/__tests__/redactor.test.ts",
 }
 
 # Wzorzec 1: { key: 'content_hash' / 'input_hash' / ... } - hashe są zawsze debug

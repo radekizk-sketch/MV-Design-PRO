@@ -82,8 +82,6 @@ DOSTAWCY_ZRODEL_NN: list[tuple[str, list[str]]] = [
         "agregat pradotworczy / UPS na nN",
         [
             "frontend/src/ui2/kreatory/zrodlo-dyspozycyjne/zrodloDyspozycyjneModel.ts",
-            "frontend/src/ui/topology/modals/GensetModal.tsx",
-            "frontend/src/ui/topology/modals/UPSModal.tsx",
         ],
     ),
 ]

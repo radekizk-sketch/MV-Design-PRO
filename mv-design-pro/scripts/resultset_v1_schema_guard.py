@@ -5,7 +5,7 @@ import sys
 from guard_diff_base import zmienione_pliki
 
 PROTECTED_FILES = [
-    "backend/src/application/result_mapping/sc_to_resultset_v1.py",
+    "backend/src/application/result_mapping/short_circuit_to_resultset_v1.py",
     "backend/src/application/result_mapping/protection_to_resultset_v1.py",
 ]
 

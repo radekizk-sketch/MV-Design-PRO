@@ -14,7 +14,11 @@ from guard_diff_base import zmienione_pliki
 
 WATCHED_PATHS = [
     "backend/src/network_model/solvers/short_circuit_iec60909.py",
-    "backend/src/network_model/solvers/short_circuit_iec60909_internal.py",
+    # Wpis-widmo `short_circuit_iec60909_internal.py` (plik NIGDY nie istnial w
+    # historii repo — zmierzone `git log --all`; karta ALLOWLIST-WIDMA 2026-08-12)
+    # zastapiony REALNYMI plikami wewnetrznymi solvera SC:
+    "backend/src/network_model/solvers/short_circuit_core.py",
+    "backend/src/network_model/solvers/short_circuit_asymmetrical_quantities.py",
     "backend/src/network_model/solvers/short_circuit_contributions.py",
     "backend/src/domain/protection_engine_v1.py",
 ]
@@ -57,6 +61,12 @@ SANCTIONED_CHANGES = {
         "V12K-180 (SM-2): przesuniecie fazowe grupy polaczen w PF, twarde wg "
         "V12K-175, WHITE BOX + re-baseline katow goldenow z dowodem |V| "
         "niezmienione; wpis do usuniecia po scaleniu do main."
+    ),
+    "backend/src/network_model/solvers/short_circuit_asymmetrical_quantities.py": (
+        "PACK-DOWODY: ADDYTYWNE 18 linii — stala definicyjna OPERATOR_FORTESCUE_A "
+        "(IEC 60909-0:2016) przeniesiona do warstwy solvera, zeby klient HTTP nie "
+        "niosl wielkosci fizycznej; zero zmian istniejacych sciezek. Wpis do "
+        "usuniecia po scaleniu do main."
     ),
     "backend/src/domain/protection_engine_v1.py": (
         "V12K-174: WYLACZNIE formatowanie black (parentezacja przypisan "
