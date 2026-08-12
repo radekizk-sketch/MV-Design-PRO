@@ -130,7 +130,10 @@ def _docstring_constants(tree: ast.AST) -> set[int]:
     return doc_ids
 
 
-def scan_python_file(path: Path) -> list[Violation]:
+def scan_python_file_raw(path: Path) -> list[Violation]:
+    """Jak `scan_python_file()`, ale PRZED filtrem ALLOWLIST — karta
+    ZAPADKI-ALLOWLIST-RESZTA (pozycja e, 2026-08-12), zasila zarowno filtr
+    (`scan_python_file`), jak i zapadke swiezosci (`check_allowlist_freshness`)."""
     try:
         source = path.read_text(encoding="utf-8")
         tree = ast.parse(source)
@@ -146,14 +149,21 @@ def scan_python_file(path: Path) -> list[Violation]:
         if id(node) in doc_ids:
             continue
         for token in _tokens_for_text(node.value):
-            if ALLOWLIST.get((rel, node.lineno, token)):
-                continue
             snippet = node.value.strip().splitlines()[0][:90] if node.value.strip() else ""
             violations.append(Violation(rel, node.lineno, token, snippet))
     return violations
 
 
-def scan_ts_file(path: Path) -> list[Violation]:
+def scan_python_file(path: Path) -> list[Violation]:
+    rel = _relative(path)
+    return [
+        v for v in scan_python_file_raw(path) if not ALLOWLIST.get((rel, v.line_number, v.token))
+    ]
+
+
+def scan_ts_file_raw(path: Path) -> list[Violation]:
+    """Jak `scan_ts_file()`, ale PRZED filtrem ALLOWLIST (patrz
+    `scan_python_file_raw`)."""
     try:
         source = path.read_text(encoding="utf-8")
     except (OSError, UnicodeDecodeError) as exc:
@@ -167,9 +177,66 @@ def scan_ts_file(path: Path) -> list[Violation]:
         for match in TS_STRING_PATTERN.finditer(line):
             literal = match.group("string")[1:-1]
             for token in _tokens_for_text(literal):
-                if ALLOWLIST.get((rel, lineno, token)):
-                    continue
                 violations.append(Violation(rel, lineno, token, literal.strip()[:90]))
+    return violations
+
+
+def scan_ts_file(path: Path) -> list[Violation]:
+    rel = _relative(path)
+    return [v for v in scan_ts_file_raw(path) if not ALLOWLIST.get((rel, v.line_number, v.token))]
+
+
+def _raw_violations_for_path(rel_path: str) -> list[Violation]:
+    """Surowe trafienia (PRZED ALLOWLIST/EXCLUDED_FILES) dla JEDNEJ sciezki
+    wzglednej — uzywane przez zapadki swiezosci ponizej, niezaleznie od tego,
+    czy SCAN_TARGETS domyslnie w ogole odwiedza ten plik."""
+    full_path = REPO_ROOT / rel_path
+    if not full_path.is_file():
+        return []
+    if full_path.suffix == ".py":
+        return scan_python_file_raw(full_path)
+    if full_path.suffix in (".ts", ".tsx"):
+        return scan_ts_file_raw(full_path)
+    return []
+
+
+def check_allowlist_freshness() -> list[str]:
+    """Zapadka swiezosci ALLOWLIST (karta ZAPADKI-ALLOWLIST-RESZTA, pozycja e).
+
+    ALLOWLIST jest DZIS PUSTA — funkcja jest no-op na HEAD, ale MUSI istniec i
+    byc wpieta w main() teraz: pierwszy wpis dopisany bez rownoczesnej zapadki
+    usypia dokladnie to samo ryzyko, ktore juz raz zmaterializowalo sie w
+    ui_no_physics_guard.ALLOWLIST (pozycja a) — osierocenie bez detektora.
+    Kazdy wpis musi nadal odpowiadac REALNEMU trafieniu `_raw_violations_for_path()`
+    na (sciezka, linia, token) — TA SAMA funkcja, ktorej uzywaja
+    `scan_python_file`/`scan_ts_file` do filtrowania (predykaty parami,
+    KLASA-NIE-INSTANCJA S3).
+    """
+    violations: list[str] = []
+    for (rel_path, lineno, token), reason in sorted(ALLOWLIST.items()):
+        raw = _raw_violations_for_path(rel_path)
+        if any(v.line_number == lineno and v.token == token for v in raw):
+            continue
+        violations.append(
+            f"[ui-production-codes-wpis-osierocony] ALLOWLIST[({rel_path!r}, {lineno}, "
+            f"{token!r})] nie odpowiada juz zadnemu surowemu trafieniu — usun ten wpis "
+            f"(uzasadnienie bylo: {reason})"
+        )
+    return violations
+
+
+def check_excluded_files_freshness() -> list[str]:
+    """Zapadka swiezosci EXCLUDED_FILES (karta ZAPADKI-ALLOWLIST-RESZTA,
+    pozycja e — przy okazji, ta sama klasa co podklasa `f` w innych guardach:
+    wykluczenie calego pliku wskazujace plik, ktorego juz nie ma, jest martwym
+    wyjatkiem czekajacym, az ktos utworzy NOWY plik pod ta sama sciezka)."""
+    violations: list[str] = []
+    for rel_path in sorted(EXCLUDED_FILES):
+        if not (REPO_ROOT / rel_path).is_file():
+            violations.append(
+                f"[ui-production-codes-wykluczenie-osierocone] EXCLUDED_FILES zawiera "
+                f"{rel_path!r}, ktorego juz nie ma w repo — usun ten wpis"
+            )
     return violations
 
 
@@ -215,6 +282,15 @@ def main(argv: list[str]) -> int:
     for file_path in iter_files(targets):
         violations.extend(scan_file(file_path))
 
+    freshness_violations = check_allowlist_freshness() + check_excluded_files_freshness()
+    if freshness_violations:
+        print("=" * 70, file=sys.stderr)
+        print("UI-PRODUCTION-CODES GUARD: WPISY OSIEROCONE", file=sys.stderr)
+        print("=" * 70, file=sys.stderr)
+        for message in freshness_violations:
+            print(f"  {message}", file=sys.stderr)
+        print(file=sys.stderr)
+
     if violations:
         print("=" * 70, file=sys.stderr)
         print("UI-PRODUCTION-CODES GUARD: NARUSZENIE WYKRYTE", file=sys.stderr)
@@ -232,6 +308,8 @@ def main(argv: list[str]) -> int:
             print(f"    Token: {v.token}", file=sys.stderr)
             print(f"    Literał: {v.snippet}", file=sys.stderr)
         print("-" * 70, file=sys.stderr)
+
+    if violations or freshness_violations:
         return 1
 
     print("ui-production-codes-guard: OK (brak naruszeń)")
