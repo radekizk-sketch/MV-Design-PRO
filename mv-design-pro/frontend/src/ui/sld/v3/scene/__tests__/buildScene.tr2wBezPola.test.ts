@@ -51,7 +51,19 @@ import { describe, expect, it } from 'vitest';
 
 import type { EnergyNetworkModel } from '../../../../../types/enm';
 import { STATION_TR_FIELD_GAP_TEXT } from '../../layout/measure';
-import { buildSceneV3, type SceneLod, type SceneV3 } from '../buildScene';
+import {
+  allApparatusIdentifiersValid,
+  allBusbarLabelsValid,
+  allSceneGeometryOnGrid,
+  allSceneSegmentEndpointsAnchored,
+  allSwitchSymbolsUnambiguous,
+  allVerticalsAttributed,
+  buildSceneV3,
+  noSceneSymbolOverlaps,
+  noSymbolWireCollisions,
+  type SceneLod,
+  type SceneV3,
+} from '../buildScene';
 import { sceneSignature } from './syntheticNetworks';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -327,6 +339,37 @@ describe('TR2W-BEZ-POLA T2 — stacja BEZ pola transformatorowego', () => {
     expect(JSON.stringify(buildSceneV3(enm, 2))).toBe(
       JSON.stringify(buildSceneV3(bezPolaTr(enmZPolem), 2)),
     );
+  });
+
+  // §0.C.9 (reguła KLASA §1 — inwentarz miejsc, nie jedno miejsce z karty):
+  // nowa kolumna wchodzi w te same wyrocznie rysunku, co każda inna. Bez tego
+  // „transformator jest widoczny" mogłoby znaczyć „leży na sąsiedniej kolumnie
+  // / poza siatką / bez zakotwiczonego pionu".
+  for (const lod of [1, 2] as SceneLod[]) {
+    it(`L${lod}: wyrocznie rysunku ZIELONE dla kolumny transformatora bez pola`, () => {
+      const scene = buildSceneV3(enm, lod);
+      expect(allSceneGeometryOnGrid(scene)).toBe(true);
+      expect(noSceneSymbolOverlaps(scene)).toBe(true);
+      expect(noSymbolWireCollisions(scene)).toBe(true);
+      expect(allSceneSegmentEndpointsAnchored(scene)).toBe(true);
+      expect(allVerticalsAttributed(scene)).toBe(true);
+      expect(allBusbarLabelsValid(scene)).toBe(true);
+      expect(allSwitchSymbolsUnambiguous(scene)).toBe(true);
+      // Oznaczniki aparatów żyją WYŁĄCZNIE na L2 (kontrakt LOD §17.4) — na L1
+      // ta wyrocznia zwraca `false` także dla stacji Z polem TR (zmierzone na
+      // TEJ SAMEJ fixturze przed przekształceniem), więc asercja jest L2-only.
+      if (lod === 2) expect(allApparatusIdentifiersValid(scene)).toBe(true);
+    });
+  }
+
+  // §0.C.9: klik w transformator bez pola trafia w REALNY ref ENM (szuflada
+  // szczegółów rozwiązuje rekord `Transformer` wprost), a nie w „nic".
+  it('L2: symbol niesie kategorię `transformer` i realny ownerRef — cel kliku istnieje', () => {
+    const scene = buildSceneV3(enm, 2);
+    const tr = transformatoryStacji(scene)[0];
+    expect(tr.meta?.elementKind).toBe('transformer');
+    expect((enm.transformers ?? []).some((t) => t.ref_id === tr.meta?.ownerRef)).toBe(true);
+    expect(tr.meta?.testId).toBeTruthy();
   });
 });
 
