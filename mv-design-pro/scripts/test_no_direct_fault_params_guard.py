@@ -343,6 +343,11 @@ def test_odczyt_wyniku_nie_jest_naruszeniem(tmp_path, monkeypatch, capsys) -> No
     """Warstwa odczytu wyniku przechodzi BEZ wpisu na bialej liscie."""
     root = _drzewo(tmp_path, {"application/raporty/eksport.py": ODCZYT_WYNIKU})
     monkeypatch.setattr(guard, "BACKEND_SRC", root)
+    # Drzewo syntetyczne nie zawiera plikow warstwy wiazania z WHITELISTED_PATHS
+    # (nie jest to przedmiotem TEGO testu) — zapadka swiezosci (pozycja b karty
+    # ZAPADKI-ALLOWLIST-RESZTA) inaczej zglosilaby wszystkie 5 wpisow jako
+    # sieroty, bo szuka ich pod podmienionym BACKEND_SRC.
+    monkeypatch.setattr(guard, "WHITELISTED_PATHS", set())
 
     rc = guard.main()
 
@@ -354,6 +359,8 @@ def test_odczyt_wyniku_nie_jest_naruszeniem(tmp_path, monkeypatch, capsys) -> No
 def test_definicja_funkcji_nie_jest_naruszeniem(tmp_path, monkeypatch) -> None:
     root = _drzewo(tmp_path, {"application/definicja.py": DEFINICJA_BEZ_WYWOLANIA})
     monkeypatch.setattr(guard, "BACKEND_SRC", root)
+    # patrz komentarz w test_odczyt_wyniku_nie_jest_naruszeniem powyzej.
+    monkeypatch.setattr(guard, "WHITELISTED_PATHS", set())
 
     assert guard.main() == 0
 
@@ -369,8 +376,10 @@ def test_warstwa_solvera_i_warstwa_wiazania_sa_dozwolone(tmp_path, monkeypatch) 
         z_warstwa_solvera=True,
     )
     monkeypatch.setattr(guard, "BACKEND_SRC", root)
-
-    assert guard.main() == 0
+    # patrz komentarz w test_odczyt_wyniku_nie_jest_naruszeniem powyzej. Drzewo
+    # ma TYLKO 2 z 5 plikow WHITELISTED_PATHS (celowo, do testu regul A/B/C) —
+    # zapadka swiezosci zglosilaby brakujace 3 jako sieroty.
+    monkeypatch.setattr(guard, "WHITELISTED_PATHS", set())
 
 
 # --- FORMY POSREDNIE (audyt 2026-08-01, znalezisko P8) -----------------------------------
@@ -486,6 +495,8 @@ def test_zapadka_przepuszcza_dokladnie_zastane_wywolania(tmp_path, monkeypatch, 
         {"application/reference_networks/computation.py": ZASTANE_ZGODNE_Z_BUDZETEM},
     )
     monkeypatch.setattr(guard, "BACKEND_SRC", root)
+    # patrz komentarz w test_odczyt_wyniku_nie_jest_naruszeniem powyzej.
+    monkeypatch.setattr(guard, "WHITELISTED_PATHS", set())
 
     rc = guard.main()
 
@@ -589,6 +600,8 @@ def test_plik_z_bledem_skladni_jest_liczony_i_nie_wywraca_bramki(
 ) -> None:
     root = _drzewo(tmp_path, {"application/zepsuty.py": "def f(:\n", "api/ok.py": CZYSTY})
     monkeypatch.setattr(guard, "BACKEND_SRC", root)
+    # patrz komentarz w test_odczyt_wyniku_nie_jest_naruszeniem powyzej.
+    monkeypatch.setattr(guard, "WHITELISTED_PATHS", set())
 
     rc = guard.main()
 
@@ -639,6 +652,55 @@ def test_brak_korzenia_skanowania_jest_bledem(tmp_path, monkeypatch, capsys) -> 
 def test_korzen_skanowania_w_repo_istnieje_i_jest_niepusty() -> None:
     assert guard.BACKEND_SRC.is_dir(), f"brak korzenia skanowania: {guard.BACKEND_SRC}"
     assert len(list(guard.BACKEND_SRC.rglob("*.py"))) > 0
+
+
+# =============================================================================
+# ZAPADKA SWIEZOSCI WHITELISTED_PATHS (karta ZAPADKI-ALLOWLIST-RESZTA,
+# pozycja b, 2026-08-12). Minimalna zapadka: kazda sciezka musi istniec pod
+# BACKEND_SRC — lista wyznacza warstwe wiazania FaultScenario (miejsce, gdzie
+# parametry zwarcia MAJA prawo powstawac), nie zbior zastanych naruszen, wiec
+# nie ma tu dodatkowego "wzorca" do sprawdzenia poza samym istnieniem pliku.
+# =============================================================================
+
+
+def test_whitelisted_paths_freshness_is_green_na_repo() -> None:
+    assert guard.check_whitelisted_paths_freshness() == []
+
+
+def test_whitelisted_paths_wszystkie_istnieja_pod_backend_src() -> None:
+    for path in guard.WHITELISTED_PATHS:
+        assert (guard.BACKEND_SRC / path).is_file(), f"WHITELISTED_PATHS: brak pliku {path!r}"
+
+
+def test_whitelisted_paths_freshness_lapie_sierote(monkeypatch) -> None:
+    """Wpis wskazujacy plik, ktorego juz nie ma -> naruszenie z NAZWA wpisu."""
+    monkeypatch.setattr(
+        guard,
+        "WHITELISTED_PATHS",
+        {"domain/nigdy_nieistniejacy_plik_wstrzykniety_testem.py"},
+    )
+
+    violations = guard.check_whitelisted_paths_freshness()
+
+    assert len(violations) == 1
+    assert "[fault-params-wyjatek-osierocony]" in violations[0]
+    assert "nigdy_nieistniejacy_plik_wstrzykniety_testem.py" in violations[0]
+
+
+def test_whitelisted_paths_freshness_wpieta_w_main(monkeypatch, capsys) -> None:
+    """RC=1 z main(), kiedy WHITELISTED_PATHS zawiera sierote — zapadka W GUARDZIE,
+    nie tylko w funkcji pomocniczej."""
+    monkeypatch.setattr(
+        guard,
+        "WHITELISTED_PATHS",
+        {"domain/nigdy_nieistniejacy_plik_wstrzykniety_testem.py"},
+    )
+
+    rc = guard.main()
+
+    out = capsys.readouterr().out
+    assert rc == 1
+    assert "fault-params-wyjatek-osierocony" in out
 
 
 def test_bramka_na_szczycie_repo_jest_zielona_i_niepusta() -> None:
