@@ -15,7 +15,9 @@ Kroki obowiązkowe dowodu (per generate_vdrop_proof w ProofGenerator):
 4. Składowa bierna ΔU_X = X·Q / U_n² × 100%
 5. Spadek na odcinku ΔU = ΔU_R + ΔU_X
 6. Suma spadków ΔU_total (multi-segment ready, MVP=1)
-7. Napięcie w punkcie U_target = U_source × (1 - ΔU/100)
+7. Napięcie w punkcie U_target = U_source − ΔU_total (kV, karta PODSTAWA-VDROP
+   2026-08-12: odjęcie w kV, nie mnożenie U_source przez ułamek % odniesiony
+   do U_n — te dwie podstawy mieszały się, gdy U_source ≠ U_n)
 
 Eksport: JSON + LaTeX + PDF + DOCX (V12K-007 light_technical).
 
@@ -82,7 +84,8 @@ class VDROPPackInput:
 
     Pack-level wrapper nad VDROPInput w ProofGenerator. Trzyma kontekst projektu
     (project_name, case_name, run_timestamp) + listę odcinków od source do target
-    + napięcie źródłowe u_source_kv (do obliczenia U_target = U_source · (1-ΔU/100)).
+    + napięcie źródłowe u_source_kv (do obliczenia U_target = U_source − ΔU_total,
+    oba w kV — karta PODSTAWA-VDROP).
     """
 
     project_name: str
@@ -113,9 +116,13 @@ class VDROPPackInput:
 
         ``u_source_kv`` to napięcie POCZĄTKU odcinka POLICZONE PRZEZ SOLVER
         (``node_voltage_kv``), a nie napięcie znamionowe. Dzięki temu ostatni krok
-        dowodu (``U = U_źr·(1 − ΔU/100)``) jest zakotwiczony w tym samym przebiegu,
-        który dowód opisuje — a nie w wartości katalogowej, która z wynikiem biegu
-        nie ma nic wspólnego.
+        dowodu (``U = U_źr − ΔU_total``, oba w kV — karta PODSTAWA-VDROP) jest
+        zakotwiczony w tym samym przebiegu, który dowód opisuje — a nie w
+        wartości katalogowej, która z wynikiem biegu nie ma nic wspólnego.
+        ΔU_total w kV pochodzi z sumy spadków odcinkowych EQ_VDROP_001..006
+        (przeliczonych przez U_n odcinka), NIE z ``u_source_kv`` powyżej ani z
+        żadnej innej wielkości policzonej przez solver poza kompletem R/X/P/Q —
+        inaczej krok końcowy dowodziłby cyrkularnie.
         """
         return cls(
             project_name=project_name,
