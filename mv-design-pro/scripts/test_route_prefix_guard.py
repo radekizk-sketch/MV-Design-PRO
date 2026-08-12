@@ -1,4 +1,5 @@
-"""Testy guardu kanonu prefiksu tras (karta PREFIKSY, dlug V12K-325).
+"""Testy guardu kanonu prefiksu tras (karta PREFIKSY, dlug V12K-325; karta
+KLIENT-BEZ-RODZINY, 2026-08-12).
 
 Testy sa IZOLOWANE od repozytorium: podmieniaja zrodla, z ktorych guard czyta
 (tablice tras, katalog frontu, plik vite), zeby sprawdzac SAMA REGULE, a nie
@@ -225,6 +226,137 @@ def test_sciezka_w_komentarzu_nie_liczy_sie_jako_wolanie(monkeypatch, tmp_path) 
     _stub_vite(monkeypatch, tmp_path)
 
     assert guard.check_route_prefixes() == []
+
+
+# ---------------------------------------------------------------------------
+# REGULA 2b — rodzina, ktorej backend NIE SERWUJE W OGOLE (dawny slepy punkt
+# guardu, karta KLIENT-BEZ-RODZINY). Iloczyn cech: {rodzina serwowana /
+# nieserwowana} x {klient istnieje / nie} x {sciezka statyczna / szablonowa}.
+# ---------------------------------------------------------------------------
+
+
+def test_rodzina_nieserwowana_klient_istnieje_sciezka_statyczna_jest_naruszeniem(
+    monkeypatch, tmp_path
+) -> None:
+    """Dokladnie ksztalt wyspy `designer/` (commit `d0419a1a`): backend nie ma
+    ANI JEDNEJ trasy pod `/snapshots`, front wola ja literalem statycznym.
+    Dawniej pierwszy segment `snapshots` byl spoza `backend_first_segments`
+    (zbior wyprowadzony z DRUGIEJ strony porownania) i literal wypadal ze skanu
+    Z KONSTRUKCJI — zero alarmu. Musi zostac zgloszony PO NAZWIE."""
+    _no_debt(monkeypatch)
+    _stub_backend(monkeypatch, [_route("GET", "/api/health")])
+    _stub_frontend(
+        monkeypatch,
+        tmp_path,
+        {"designer/api.ts": "const r = await fetch('/snapshots/latest');"},
+    )
+    _stub_vite(monkeypatch, tmp_path)
+
+    violations = guard.check_route_prefixes()
+
+    assert any("[route-prefix-martwa]" in v and "/snapshots/latest" in v for v in violations)
+
+
+def test_rodzina_nieserwowana_klient_istnieje_sciezka_szablonowa_jest_naruszeniem(
+    monkeypatch, tmp_path
+) -> None:
+    """Ten sam ksztalt co wyzej, ale sciezka budowana szablonem (`${id}`) —
+    znacznik frontu nie moze przypadkiem „uratowac" rodziny, ktorej backend
+    nie serwuje ani jednej trasy."""
+    _no_debt(monkeypatch)
+    _stub_backend(monkeypatch, [_route("GET", "/api/health")])
+    _stub_frontend(
+        monkeypatch,
+        tmp_path,
+        {"designer/api.ts": "const r = await fetch(`/snapshots/${id}/latest`);"},
+    )
+    _stub_vite(monkeypatch, tmp_path)
+
+    violations = guard.check_route_prefixes()
+
+    assert any("[route-prefix-martwa]" in v and "/snapshots/{p}/latest" in v for v in violations)
+
+
+def test_rodzina_nieserwowana_bez_klienta_nie_jest_naruszeniem(monkeypatch, tmp_path) -> None:
+    """Zerowy klient (nikt nie wola rodziny `/snapshots`) NIE MOZE stac sie
+    falszywym alarmem — kontrast z dwoma testami powyzej: to WOLANIE KLIENTA
+    tworzy naruszenie, nie samo istnienie/nieistnienie rodziny w backendzie."""
+    _no_debt(monkeypatch)
+    _stub_backend(monkeypatch, [_route("GET", "/api/health")])
+    _stub_frontend(
+        monkeypatch, tmp_path, {"ui/inny/api.ts": "const r = await fetch('/api/health');"}
+    )
+    _stub_vite(monkeypatch, tmp_path)
+
+    assert guard.check_route_prefixes() == []
+
+
+def test_rodzina_serwowana_klient_istnieje_sciezka_szablonowa_przechodzi(
+    monkeypatch, tmp_path
+) -> None:
+    """Kontrast z pierwszymi dwoma testami tej sekcji: gdy backend rodzine
+    SERWUJE, ten sam ksztalt wolania (szablon) MUSI przejsc bez naruszenia —
+    naprawa filtra nie moze zamienic sie w nadmierna czujnosc na kazdy szablon."""
+    _no_debt(monkeypatch)
+    _stub_backend(monkeypatch, [_route("GET", "/api/snapshots/{id}/latest")])
+    _stub_frontend(
+        monkeypatch,
+        tmp_path,
+        {"ui/ok/api.ts": "const r = await fetch(`/api/snapshots/${id}/latest`);"},
+    )
+    _stub_vite(monkeypatch, tmp_path)
+
+    assert guard.check_route_prefixes() == []
+
+
+def test_wyjatek_frontu_zawiesza_naruszenie_takze_dla_rodziny_bez_backendu(
+    monkeypatch, tmp_path
+) -> None:
+    """`FRONTEND_PATH_EXCEPTIONS` musi dzialac takze na rodzine spoza tablicy
+    tras backendu — jawny wyjatek (nie domyslne wykluczenie po segmencie) jest
+    JEDYNYM dopuszczalnym sposobem wyciszenia takiej sciezki."""
+    _no_debt(monkeypatch)
+    _stub_backend(monkeypatch, [_route("GET", "/api/health")])
+    _stub_frontend(
+        monkeypatch,
+        tmp_path,
+        {"harness/x.ts": "const r = await fetch('/test-fixtures/foo.json');"},
+    )
+    _stub_vite(monkeypatch, tmp_path)
+    monkeypatch.setattr(
+        guard, "FRONTEND_PATH_EXCEPTIONS", {"/test-fixtures/foo.json": "test: zasob statyczny"}
+    )
+
+    assert guard.check_route_prefixes() == []
+
+
+# ---------------------------------------------------------------------------
+# Zapadka: skan frontu bez ANI JEDNEGO wyniku jest naruszeniem (fail-closed),
+# nie cichym „wszystko OK" — inaczej zepsuty skan (zle rozszerzenie, zly
+# katalog, zly wzorzec HTTP_CALL_HINT) przechodzilby niezauwazony.
+# ---------------------------------------------------------------------------
+
+
+def test_pusty_skan_frontu_jest_naruszeniem(monkeypatch, tmp_path) -> None:
+    _no_debt(monkeypatch)
+    _stub_backend(monkeypatch, [_route("GET", "/api/health")])
+    _stub_frontend(monkeypatch, tmp_path, {"ui/bez_http/plain.ts": "export const x = 1;"})
+    _stub_vite(monkeypatch, tmp_path)
+
+    violations = guard.check_route_prefixes()
+
+    assert any("[route-prefix-skan-pusty]" in v for v in violations)
+
+
+def test_pusty_skan_frontu_nie_zapala_sie_gdy_klient_istnieje(monkeypatch, tmp_path) -> None:
+    _no_debt(monkeypatch)
+    _stub_backend(monkeypatch, [_route("GET", "/api/health")])
+    _stub_frontend(monkeypatch, tmp_path, {"ui/ok/api.ts": "const r = await fetch('/api/health');"})
+    _stub_vite(monkeypatch, tmp_path)
+
+    violations = guard.check_route_prefixes()
+
+    assert not any("[route-prefix-skan-pusty]" in v for v in violations)
 
 
 # ---------------------------------------------------------------------------
