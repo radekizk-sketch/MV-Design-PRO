@@ -1,4 +1,5 @@
 import { test, expect, type ConsoleMessage, type Page } from '@playwright/test';
+import { pustaOdpowiedzDomainOps } from './fixtures/emptyDomainOpsResponse';
 
 interface ConsoleGuards {
   errors: string[];
@@ -149,6 +150,24 @@ async function mockCaseCreationApi(page: Page): Promise<void> {
               config: {},
             })
           : '',
+      });
+      return;
+    }
+
+    // Naprawa (dryf kontraktu mocka, znaleziony przy audycie E2E-MOCK-BEZ-CI):
+    // po utworzeniu case'a shell montuje się i natychmiast woła
+    // refresh_snapshot (store.ts: refreshFromBackend na mount) zanim
+    // operator zdąży cokolwiek zrobić. Catch-all '{}' nie ma kształtu
+    // DomainOpResponseV1 (brak `snapshot`), więc `hasModel` nigdy nie staje
+    // się `true` i pasek utyka na „Ładowanie układu sieci" (WorkflowContextStrip.tsx)
+    // — kanwa SLD i `sld-empty-state` nigdy się nie montują. Kształt
+    // odpowiedzi zweryfikowany na żywym backendzie (pusty case, operacja
+    // refresh_snapshot).
+    if (method === 'POST' && pathname === '/api/cases/case-001/enm/domain-ops') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(pustaOdpowiedzDomainOps('case-001')),
       });
       return;
     }
