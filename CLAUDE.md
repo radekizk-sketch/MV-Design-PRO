@@ -131,11 +131,16 @@ The system is architecturally aligned with **DIgSILENT PowerFactory** principles
 
 ```
 MV-Design-PRO/
-├── .github/workflows/            # CI/CD pipelines (4 workflows)
+├── .github/workflows/            # CI/CD pipelines (9 workflows — see "CI/CD Pipelines" below)
 │   ├── python-tests.yml          # Backend tests + Python guards
 │   ├── frontend-checks.yml       # Frontend tests, lint, type-check + guards
 │   ├── sld-determinism.yml       # SLD contract tests + render artifacts
-│   └── docs-guard.yml            # Documentation integrity checks
+│   ├── docs-guard.yml            # Documentation integrity checks
+│   ├── arch-guard.yml            # Architecture layer + repo hygiene guards
+│   ├── p0-extended-guards.yml    # V12K invariant guards
+│   ├── physics-label-guard.yml   # Catalog-first physics field guard
+│   ├── frontend-e2e-smoke.yml    # Critical-path Playwright e2e (real backend)
+│   └── frontend-e2e-full.yml     # Full Playwright e2e suite (real backend)
 ├── docs/                         # Root-level documentation index
 │   ├── INDEX.md                  # UI documentation index
 │   ├── ui/                       # UI contracts (root-level)
@@ -638,7 +643,7 @@ python scripts/smoke_local.sh                     # Local smoke test
 
 ## CI/CD Pipelines
 
-8 workflows in `.github/workflows/`, all on push and pull_request (`frontend-e2e-smoke.yml` is path-filtered to `frontend/**` + `backend/**`):
+9 workflows in `.github/workflows/`, all on push and pull_request (`frontend-e2e-smoke.yml` and `frontend-e2e-full.yml` are path-filtered to `frontend/**` + `backend/**`):
 
 | Workflow | File | What It Does |
 |----------|------|-------------|
@@ -650,6 +655,7 @@ python scripts/smoke_local.sh                     # Local smoke test
 | P0 Extended Guards | `p0-extended-guards.yml` | V12K invariant guards (load_flow/protection heuristics, solver_boundary, overlay_no_physics, trace_determinism, fault_scenarios_determinism, ui_terminology, forbidden_ui_terms) |
 | Physics Label Guard | `physics-label-guard.yml` | Catalog-first physics field guard for modals |
 | Frontend E2E smoke | `frontend-e2e-smoke.yml` | Playwright e2e against the real backend (`npm run test:e2e:real`) |
+| Frontend E2E full | `frontend-e2e-full.yml` | Full Playwright e2e suite against the real backend (`npm run test:e2e`, all `e2e/*.spec.ts`) |
 
 ## Code Style & Conventions
 

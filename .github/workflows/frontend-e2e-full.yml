@@ -1,0 +1,60 @@
+name: Frontend E2E full
+
+# Karta E2E-MOCK-BEZ-CI / TESTY-DRYF-E2E (2026-08-12): pełna suita
+# `npm run test:e2e` (82 pliki e2e/*.spec.ts, wszystkie hitujące realny
+# backend — `PLAYWRIGHT_REAL_BACKEND=1` wymuszony bezwarunkowo w
+# `playwright-run.mjs`) nie miała ŻADNEGO workflow CI mimo unikalnego
+# pokrycia (kreatory, SLD, zrzuty audytowe, motyw) niepokrytego przez
+# `frontend-e2e-smoke.yml` (2 pliki krytyczne + KD-11). Ten workflow domyka
+# tę lukę po naprawieniu dryfu do pełnej zielonej suity.
+
+on:
+  push:
+    paths:
+      - 'mv-design-pro/frontend/**'
+      - 'mv-design-pro/backend/**'
+      - '.github/workflows/frontend-e2e-full.yml'
+  pull_request:
+    paths:
+      - 'mv-design-pro/frontend/**'
+      - 'mv-design-pro/backend/**'
+      - '.github/workflows/frontend-e2e-full.yml'
+
+jobs:
+  full-real-backend-e2e:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: mv-design-pro/frontend/package-lock.json
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Poetry
+        uses: abatilo/actions-poetry@v3
+        with:
+          poetry-version: '1.8.3'
+
+      - name: Install frontend dependencies
+        working-directory: mv-design-pro/frontend
+        run: npm ci
+
+      - name: Install backend and browser dependencies
+        working-directory: mv-design-pro/frontend
+        run: npm run test:e2e:setup:real
+
+      # Pełna suita — jedno wywołanie Playwrighta uruchamia backend + vite
+      # RAZ (webServer), niezależnie od liczby plików speców.
+      - name: Run full real-backend E2E suite
+        working-directory: mv-design-pro/frontend
+        run: npm run test:e2e
