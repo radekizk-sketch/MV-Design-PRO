@@ -249,3 +249,22 @@ jobs:
 
       - name: Montaz routerow (router zdefiniowany = router wpiety)
         run: python scripts/router_mount_guard.py
+
+      # =====================================================================
+      # KARTA SUITA-BEZ-WYWOLANIA (2026-08-12) — dlug nazwany w REJESTR_KONFLIKTOW.md
+      # V12K-276(e): `scripts/verify_v12_5.py`/`verify_v12_5_1.py`/`verify_v12_6.py`
+      # (agregatory 655/655/254 linii) nigdy nie stały w ŻADNYM workflow CI, a
+      # dodatkowo wskazywały pliki, których nie było (6/6 golden testów frontu,
+      # 11/23 sciezek trybu --quick, 5/17 guardow SLD wolanych przez verify_v12_6,
+      # 1 plik UI V126AcademicSurface.tsx). Oba agregatory SKASOWANE. Dwa realne
+      # kroki, ktore wolały wylacznie przez nie, wpiete tutaj bezposrednio; trzeci
+      # to zapadka na powrot tej samej klasy defektu.
+      # =====================================================================
+      - name: SLD — GPZ 110 kV -> TR -> SN bez pominiecia rozdzielni
+        run: python scripts/no_direct_110kv_tr_tie_without_switchgear.py
+
+      - name: Kontrakt tekstowy V12.6 (kanon akademicki NC RfG/PTPiREE)
+        run: python scripts/v126_contract_text_guard.py
+
+      - name: Zapadka — suita weryfikacyjna wskazujaca pliki, ktorych nie ma
+        run: python scripts/verification_phantom_paths_guard.py

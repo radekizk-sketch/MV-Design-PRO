@@ -188,7 +188,7 @@ Publiczne wartosci severity i statusu walidacji sa zdefiniowane w jednym kontrak
 
 ## 10.2 Lifecycle testow E2E
 
-Pelna weryfikacja V12.xx jest bramka produktu i nie moze wisiec bez wyniku. Wykrywanie przegladarki Chromium musi obslugiwac cache Playwright Chromium, ma jawny limit `PLAYWRIGHT_CHROMIUM_VERSION_TIMEOUT_MS`, setup Windows musi uzywac `playwright.cmd` i nie moze przechodzic do fallbacku APT, kazdy krok `verify_v12_5.py` ma timeout procesu, a realny backend Playwright jest uruchamiany przez `cwd: backendCwd`, bez shellowego `Set-Location` albo `cd ../backend`. Powrot do shellowego handoffu backendu albo probe przegladarki bez timeoutu jest regresja blokowana przez `v12xx_canon_guard.py`.
+Pelna weryfikacja V12.xx jest bramka produktu i nie moze wisiec bez wyniku. Wykrywanie przegladarki Chromium musi obslugiwac cache Playwright Chromium, ma jawny limit `PLAYWRIGHT_CHROMIUM_VERSION_TIMEOUT_MS`, setup Windows musi uzywac `playwright.cmd` i nie moze przechodzic do fallbacku APT, kazdy krok CI ma timeout zadania (workflow YAML), a realny backend Playwright jest uruchamiany przez `cwd: backendCwd`, bez shellowego `Set-Location` albo `cd ../backend`. Powrot do shellowego handoffu backendu albo probe przegladarki bez timeoutu jest regresja blokowana przez `v12xx_canon_guard.py`. (Karta SUITA-BEZ-WYWOLANIA, 2026-08-12: `scripts/verify_v12_5.py` — agregator, ktory nigdy nie stal w zadnym workflow CI — skasowany; guardy dawniej wolane przez niego dzialaja bezposrednio w `p0-extended-guards.yml`/`python-tests.yml`/`frontend-checks.yml`/`frontend-e2e-smoke.yml`. Szczegoly: `REJESTR_KONFLIKTOW.md` V12K-337.)
 
 ## 11. Migracja
 
