@@ -236,6 +236,36 @@ def iter_backend_files(root: Path) -> list[Path]:
     return sorted(set(files))
 
 
+def check_excluded_relative_files_freshness(root: Path) -> list[str]:
+    """Zapadka swiezosci EXCLUDED_RELATIVE_FILES (karta ZAPADKI-ALLOWLIST-RESZTA,
+    pozycja f, 2026-08-12).
+
+    Pelna zapadka DWUKIERUNKOWA (nie tylko istnienie pliku — tanie do policzenia,
+    bo `scan_file()` juz istnieje i nie zaglada do EXCLUDED_RELATIVE_FILES samo
+    z siebie, wiec mozna je wywolac wprost na wykluczonym pliku): kazdy wpis
+    musi wskazywac plik, ktory (a) istnieje ORAZ (b) nadal produkowalby >=1
+    trafienie `scan_file()`, gdyby nie byl wykluczony — inaczej wpis jest
+    MARTWYM WYJATKIEM, ktory po cichu poszerzylby wylaczenie na kazdy przyszly
+    plik pod ta sama sciezka.
+    """
+    violations: list[str] = []
+    for rel_path in sorted(EXCLUDED_RELATIVE_FILES):
+        full_path = root / rel_path
+        if not full_path.is_file():
+            violations.append(
+                f"[no-codenames-wykluczenie-osierocone] EXCLUDED_RELATIVE_FILES zawiera "
+                f"{rel_path!r}, ktorego juz nie ma w repo — usun ten wpis"
+            )
+            continue
+        if scan_file(full_path):
+            continue
+        violations.append(
+            f"[no-codenames-wykluczenie-osierocone] EXCLUDED_RELATIVE_FILES zawiera "
+            f"{rel_path!r}, ktory juz nie produkuje zadnego trafienia kodenamu — usun ten wpis"
+        )
+    return violations
+
+
 def iter_files(root: Path) -> list[Path]:
     """Iterate over files to scan."""
     files = []
@@ -265,6 +295,15 @@ def main() -> int:
     for file_path in iter_backend_files(REPO_ROOT):
         violations.extend(scan_backend_file(file_path))
 
+    freshness_violations = check_excluded_relative_files_freshness(REPO_ROOT)
+    if freshness_violations:
+        print("=" * 70, file=sys.stderr)
+        print("NO-CODENAMES GUARD: WYKLUCZENIA OSIEROCONE", file=sys.stderr)
+        print("=" * 70, file=sys.stderr)
+        for message in freshness_violations:
+            print(f"  {message}", file=sys.stderr)
+        print(file=sys.stderr)
+
     if violations:
         print("=" * 70, file=sys.stderr)
         print("NO-CODENAMES GUARD: NARUSZENIE WYKRYTE", file=sys.stderr)
@@ -293,6 +332,8 @@ def main() -> int:
             "Napraw powyższe naruszenia, zanim kod zostanie scalony.",
             file=sys.stderr,
         )
+
+    if violations or freshness_violations:
         return 1
 
     print("no-codenames-guard: OK (brak naruszeń)", file=sys.stdout)

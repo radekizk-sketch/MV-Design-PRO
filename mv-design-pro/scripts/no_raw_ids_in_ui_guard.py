@@ -105,6 +105,38 @@ def scan_file(file_path: Path) -> list[Violation]:
     return violations
 
 
+def check_excluded_relative_files_freshness(root: Path) -> list[str]:
+    """Zapadka swiezosci EXCLUDED_RELATIVE_FILES (karta ZAPADKI-ALLOWLIST-RESZTA,
+    pozycja f, 2026-08-12). Lista jest DZIS PUSTA — funkcja jest no-op na HEAD,
+    ale wpieta JUZ TERAZ (patrz uzasadnienie w ui_no_physics_guard.ALLOWLIST,
+    pozycja a tej samej karty: osierocenie tam JUZ SIE RAZ ZDARZYLO bez
+    detektora).
+
+    Pelna zapadka dwukierunkowa: wpis musi wskazywac plik, ktory (a) istnieje
+    ORAZ (b) nadal produkowalby >=1 trafienie `scan_file()`, gdyby nie byl
+    wykluczony — `scan_file()` sama nie zaglada do EXCLUDED_RELATIVE_FILES,
+    wiec mozna ja wywolac wprost i uzyskac ten sam predykat, ktorego uzywa
+    `is_excluded()` do decyzji o pominieciu (predykaty parami,
+    KLASA-NIE-INSTANCJA S3).
+    """
+    violations: list[str] = []
+    for rel_path in sorted(EXCLUDED_RELATIVE_FILES):
+        full_path = root / rel_path
+        if not full_path.is_file():
+            violations.append(
+                f"[no-raw-ids-wykluczenie-osierocone] EXCLUDED_RELATIVE_FILES zawiera "
+                f"{rel_path!r}, ktorego juz nie ma w repo — usun ten wpis"
+            )
+            continue
+        if scan_file(full_path):
+            continue
+        violations.append(
+            f"[no-raw-ids-wykluczenie-osierocone] EXCLUDED_RELATIVE_FILES zawiera "
+            f"{rel_path!r}, ktory juz nie produkuje zadnego trafienia — usun ten wpis"
+        )
+    return violations
+
+
 def main() -> int:
     all_violations: list[Violation] = []
     for scan_dir in SCAN_DIRS:
@@ -140,6 +172,17 @@ def main() -> int:
             "Jeśli wyciek jest świadomy (np. test redactora) - dodaj komentarz\n"
             "// no-raw-ids-ignore na końcu linii."
         )
+
+    freshness_violations = check_excluded_relative_files_freshness(REPO_ROOT)
+    if freshness_violations:
+        print("=" * 60)
+        print("GUARD: no_raw_ids_in_ui_guard — WYKLUCZENIA OSIEROCONE")
+        print("=" * 60)
+        for message in freshness_violations:
+            print(f"  {message}")
+        print()
+
+    if all_violations or freshness_violations:
         return 1
 
     print("no-raw-ids-in-ui guard: OK (brak naruszeń)")

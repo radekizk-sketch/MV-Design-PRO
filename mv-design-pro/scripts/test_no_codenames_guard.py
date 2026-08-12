@@ -12,9 +12,9 @@ Verifies that the guard correctly:
 import tempfile
 from pathlib import Path
 
-import pytest
-
 # Import functions from guard
+import no_codenames_guard as guard_module
+import pytest
 from no_codenames_guard import (
     ALLOWED_TECHNICAL_TOKENS,
     CODENAME_PATTERN,
@@ -276,6 +276,77 @@ class TestKodenameObokPodkreslenia:
         KONSTRUKCJA wzorca, a nie biała lista, której trzeba by pilnować."""
         assert self._trafienia("SCHNEIDER_P3M30") == []
         assert self._trafienia("SCHNEIDER_P3F30") == []
+
+
+class TestExcludedRelativeFilesFreshness:
+    """Zapadka swiezosci EXCLUDED_RELATIVE_FILES (karta ZAPADKI-ALLOWLIST-RESZTA,
+    pozycja f, 2026-08-12). Pelna zapadka dwukierunkowa: plik musi istniec ORAZ
+    nadal produkowac >=1 trafienie scan_file(), gdyby nie byl wykluczony.
+    """
+
+    def test_zielony_na_repo(self) -> None:
+        assert guard_module.check_excluded_relative_files_freshness(guard_module.REPO_ROOT) == []
+
+    def test_wpis_ma_realne_trafienie_bez_wykluczenia(self) -> None:
+        """Potwierdzenie POMIARU: jedyny dzisiejszy wpis (trade name z 'P3' w
+        nazwie modelu falownika) faktycznie produkuje raw hit."""
+        for rel_path in guard_module.EXCLUDED_RELATIVE_FILES:
+            full_path = guard_module.REPO_ROOT / rel_path
+            assert full_path.is_file(), f"brak pliku {rel_path!r}"
+            assert scan_file(full_path), f"EXCLUDED_RELATIVE_FILES[{rel_path!r}] to sierota"
+
+    def test_lapie_brakujacy_plik(self, monkeypatch) -> None:
+        monkeypatch.setattr(
+            guard_module,
+            "EXCLUDED_RELATIVE_FILES",
+            {"frontend/src/ui/nigdy/nieistniejacy_plik.ts"},
+        )
+
+        naruszenia = guard_module.check_excluded_relative_files_freshness(guard_module.REPO_ROOT)
+
+        assert len(naruszenia) == 1
+        assert "[no-codenames-wykluczenie-osierocone]" in naruszenia[0]
+        assert "nieistniejacy_plik.ts" in naruszenia[0]
+
+    def test_lapie_plik_ktory_juz_nie_produkuje_trafienia(
+        self, tmp_path: Path, monkeypatch
+    ) -> None:
+        """Plik istnieje, ale kodename z niego zniknal (np. model zmieniony) —
+        sierota SEMANTYCZNA, nie tylko brak pliku."""
+        katalog = tmp_path / "frontend" / "src" / "ui" / "katalog"
+        katalog.mkdir(parents=True, exist_ok=True)
+        plik = katalog / "czysty.ts"
+        plik.write_text("export const MODEL = 'BEZ_KODENAME';\n", encoding="utf-8")
+        monkeypatch.setattr(
+            guard_module, "EXCLUDED_RELATIVE_FILES", {"frontend/src/ui/katalog/czysty.ts"}
+        )
+
+        naruszenia = guard_module.check_excluded_relative_files_freshness(tmp_path)
+
+        assert len(naruszenia) == 1
+        assert "juz nie produkuje zadnego trafienia" in naruszenia[0]
+
+    def test_akceptuje_plik_ktory_nadal_produkuje_trafienie(
+        self, tmp_path: Path, monkeypatch
+    ) -> None:
+        katalog = tmp_path / "frontend" / "src" / "ui" / "katalog"
+        katalog.mkdir(parents=True, exist_ok=True)
+        plik = katalog / "z_kodename.ts"
+        plik.write_text("export const MODEL = 'HD-P3-model';\n", encoding="utf-8")
+        monkeypatch.setattr(
+            guard_module, "EXCLUDED_RELATIVE_FILES", {"frontend/src/ui/katalog/z_kodename.ts"}
+        )
+
+        assert guard_module.check_excluded_relative_files_freshness(tmp_path) == []
+
+    def test_main_zwraca_1_gdy_wykluczenie_osierocone(self, monkeypatch) -> None:
+        monkeypatch.setattr(
+            guard_module,
+            "EXCLUDED_RELATIVE_FILES",
+            {"frontend/src/ui/nigdy/nieistniejacy_plik.ts"},
+        )
+
+        assert guard_module.main() == 1
 
 
 if __name__ == "__main__":
