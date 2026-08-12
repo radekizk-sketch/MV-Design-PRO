@@ -65,13 +65,15 @@ import type { RoutePort, RouteVertex } from '../layout/route';
 import { BUSBAR_LABEL_PATH_CLEARANCE } from '../layout/clearances';
 import {
   apparatusIdentifierLeftReserve,
-  bayColumnRequiredWidth,
-  bayStackCenterX,
   DER_ROW_TOP_CLEARANCE,
   derColumnRequiredWidth,
   entryDescentCaptionInset,
   formatTransformerRatedPower,
+  implicitStationTransformers,
   LV_MODEL_BOUNDARY_TEXT,
+  stationSnColumnLayout,
+  STATION_TR_FIELD_GAP_TEXT,
+  type StationSnColumnPlacement,
   PORT_CAPTION_BUS_CLEARANCE,
   stationBusbarLabelText,
   stationSectionLabelCarriesCode,
@@ -288,6 +290,19 @@ export interface ComposedSymbolInstance {
    *  §14.1) — WSZYSTKIE cztery eksportowane, `scene/buildScene.ts` (runda
    *  korekcyjna F9.4, patrz raport — dawniej wyrocznie-widma bez ciała). */
   readonly sourceRef?: string;
+  /** TR2W-BEZ-POLA (§0.C.1): REALNY `Transformer.ref_id` — WYŁĄCZNIE dla
+   *  symbolu `transformer2W` rysowanego BEZ pola roli TR (transformator
+   *  wewnątrz stosu pola jest identyfikowany `bayRef`em tego pola, jak każdy
+   *  inny aparat). Zero fabrykacji: symbol powstaje TYLKO dla refu, który
+   *  przyszedł z migawki ENM (`selectStationTransformerUnits`). */
+  readonly transformerRef?: string;
+  /** TR2W-BEZ-POLA (§0.C.5): `true`, gdy ten transformator jest przyłączony do
+   *  szyny SN BEZ skonfigurowanego pola transformatorowego — konfiguracja
+   *  NIEKOMPLETNA. Wyprowadzone z KSZTAŁTU MODELU (rekord `Transformer` bez
+   *  powiązanego pola roli TR), nie z osobnej flagi backendu. Konsument:
+   *  `scene/buildScene.ts` → `PreviewElementMeta.transformerFieldGap` →
+   *  `GlyphProps.hasFieldGapWarning` (marker „!" przy stronie WN). */
+  readonly transformerFieldGap?: boolean;
   /** F9.4 (spec §13.1, f92-2): `true`, gdy ten DER reprezentuje dane
    *  niekompletne (`kind==='unknown'`) — adnotacja audytora, NIE fabrykacja
    *  rodzaju (`compose/sourceKind.ts`). */
@@ -812,6 +827,74 @@ function composeDerSnChain(
   });
 }
 
+/**
+ * TR2W-BEZ-POLA (§0.C.1/§0.C.4/§0.C.5) — kolumna transformatora SN/nN, dla
+ * którego dane NIE niosą pola rozdzielni.
+ *
+ * CO RYSUJEMY: pion z osi szyny SN wprost do portu `hv` symbolu
+ * `transformer2W` kluczowanego REALNYM `Transformer.ref_id`, oraz port `lv`
+ * dopisany do `lvPorts` wołającego — dalej idzie JEDNA, wspólna ścieżka strony
+ * nN (`hasLvSection && lvPorts.length > 0` niżej w `composeStation` nie
+ * rozróżnia pochodzenia portu, więc pole z TR i transformator bez pola kończą
+ * w tym samym zbiorze; zero duplikacji rysunku szyny nN/odpływów/etykiet).
+ *
+ * CZEGO NIE RYSUJEMY (§0.C.4, zakaz fabrykacji): ŻADNEGO wyłącznika,
+ * rozłącznika, rozłącznika bezpiecznikowego, bezpiecznika, CT, VT, uziemnika
+ * ani zabezpieczenia. Dane nie mówią, jakim aparatem transformator jest
+ * przyłączony — konwencja §12.4 opisuje WYPOSAŻENIE POLA, a pola tu nie ma.
+ * Dorysowanie aparatu byłoby wymyśleniem nieistniejącego elementu, czyli
+ * dokładnie tym, czego zakazuje §0.B.
+ *
+ * STAN NIEKOMPLETNY: symbol niesie `transformerFieldGap` (marker „!" przy
+ * stronie WN, `symbols/glyphs.tsx`) i wpis `station.transformer.brakPolaSN`
+ * w `missingData`; wiersz pasma nazw ze zdaniem `STATION_TR_FIELD_GAP_TEXT`
+ * dokłada `composeStation`. Symbol transformatora POZOSTAJE symbolem
+ * transformatora — nie zamieniamy go na symbol błędu (§0.C.5).
+ */
+function composeImplicitTransformerColumn(
+  placement: StationSnColumnPlacement,
+  busAxisY: number,
+  blockTopY: number,
+  sink: {
+    readonly symbols: ComposedSymbolInstance[];
+    readonly segments: ComposedSegment[];
+    readonly busTapXs: number[];
+    readonly lvPorts: RoutePort[];
+    readonly missingData: string[];
+  },
+): void {
+  const ref = placement.transformerRef!;
+  const def = SYMBOL_DEFS.transformer2W;
+  const trX = snapToGrid(placement.centerX - def.width / 2);
+  const trY = blockTopY;
+  const ports = portsInWorld(def, trX, trY);
+  sink.busTapXs.push(placement.centerX);
+  sink.segments.push({
+    ownerRef: `${ref}#descent`,
+    points: [
+      { x: placement.centerX, y: busAxisY },
+      { x: placement.centerX, y: ports.hv.y },
+    ],
+  });
+  sink.symbols.push({
+    symbolId: 'transformer2W',
+    transformerRef: ref,
+    transformerFieldGap: true,
+    x: trX,
+    y: trY,
+    ports,
+  });
+  sink.lvPorts.push(ports.lv);
+  // §0.C.5: stan niekompletny JAWNY — nie cichy wariant rysunku.
+  sink.missingData.push(`station.transformer.brakPolaSN:${ref}`);
+  if (!placement.sectionResolved) {
+    // §0.C.2: pola deklarują sekcje, ale terminal WN transformatora nie pasuje
+    // do żadnej z nich (albo dana terminala jest pusta) — kolumna siadła na
+    // końcu bloku jako uczciwa degradacja, zamiast zgadywać sekcję.
+    sink.missingData.push(`station.transformer.sectionUnresolved:${ref}`);
+  }
+}
+
 function computeBbox(symbols: readonly ComposedSymbolInstance[], segments: readonly ComposedSegment[]): V3Rect {
   let minX = Infinity;
   let minY = Infinity;
@@ -894,14 +977,28 @@ export function composeStation(input: ComposeStationInput): StationComposition {
     if (s.connectionSide === 'sn' && s.chain) chainSourceByFieldRef.set(s.chain.mvFieldRef, s);
   }
 
-  let bx = blockLeftX;
-  station.snBays.forEach((bay, index) => {
-    const reservedWidth = bayColumnRequiredWidth(
-      station.snBays,
-      index,
-      station.bayDirectionCaptions,
-      station.entryDescentBayIndex,
-    );
+  // TR2W-BEZ-POLA §0.C.2: kolejność i osie kolumn bloku SN pochodzą z JEDNEGO
+  // planu (`layout/measure.ts` `stationSnColumnLayout`) — pola w kolejności z
+  // danych, transformator BEZ pola wstawiony w obrębie SWOJEJ sekcji szyn
+  // (kotwica z `Transformer.hv_bus_ref`). Ta sama funkcja rezerwuje szerokość
+  // bloku (`stationBlockWidth`) i wskazuje oś przęsła (`bayStackCenterX`), więc
+  // rezerwacja, rysunek i trasowanie nie mogą się rozjechać.
+  const columnPlan = stationSnColumnLayout(station, column.x);
+  columnPlan.forEach((placement) => {
+    if (placement.kind === 'transformer') {
+      composeImplicitTransformerColumn(placement, busAxisY, blockTopY, {
+        symbols,
+        segments,
+        busTapXs,
+        lvPorts,
+        missingData,
+      });
+      return;
+    }
+    const index = placement.bayIndex!;
+    const bay = station.snBays[index];
+    const bx = placement.leftX;
+    const reservedWidth = placement.width;
     // F9.3 (§12.1): stos „dane" gdy `bay.primaryDevices` niepuste i
     // mapowalne, inaczej fallback konwencji (§12.4) — JEDNA prawda z
     // `layout/measure.ts` (`bayColumnFootprint`/`bayColumnRequiredWidth`
@@ -932,13 +1029,7 @@ export function composeStation(input: ComposeStationInput): StationComposition {
     // JEDNEGO źródła prawdy, bo rezerwacja slotu etykiety przęsła
     // (`layout/segments.ts`) musi znać ten X ZANIM cokolwiek zostanie
     // skomponowane (reguła KLASA §3 — predykaty parami z jednego źródła).
-    const centerX = bayStackCenterX(
-      station.snBays,
-      index,
-      column.x,
-      station.bayDirectionCaptions,
-      station.entryDescentBayIndex,
-    )!;
+    const centerX = placement.centerX;
     busTapXs.push(centerX);
 
     const stack = buildBayStack(items, centerX, blockTopY, bay, source, footprint.width);
@@ -1321,9 +1412,24 @@ export function composeStation(input: ComposeStationInput): StationComposition {
     // gdy pole niesie dopasowane źródło z torem (`chain.mvFieldRef === bayRef`).
     const chainSource = chainSourceByFieldRef.get(bay.bayRef);
     if (chainSource) composeDerSnChain(chainSource, stack.bottomPort, centerX, chainSink);
-
-    bx += reservedWidth + GRID;
   });
+
+  // Pierwszy wolny X ZA blokiem kolumn (pola + kolumny transformatorów bez
+  // pola) — baza rzędu DER i pól źródłowych SN, dopisywanych PO PRAWEJ bloku.
+  const lastColumn = columnPlan.length > 0 ? columnPlan[columnPlan.length - 1] : null;
+  let bx = lastColumn ? lastColumn.leftX + lastColumn.width + GRID : blockLeftX;
+
+  // TR2W-BEZ-POLA (§0.C.4 „zero fabrykacji"): domena mówi „stacja ma
+  // transformator", ale migawka nie niesie ŻADNEGO rekordu `Transformer` z
+  // refem — nie rysujemy symbolu na wymyślonym identyfikatorze. Uczciwa
+  // degradacja z jawnym śladem, nie ciche pominięcie.
+  if (
+    hasLvSection
+    && lvPorts.length === 0
+    && implicitStationTransformers(station).length === 0
+  ) {
+    missingData.push('station.transformer.refMissing');
+  }
 
   // W2c: prymitywy toru DER-SN scalone PO pętli pól (ADDYTYWNIE, jak warstwa
   // adnotacji) — tor nie zmienia geometrii pól, tylko dokłada tor pod głowicą.
@@ -1718,6 +1824,12 @@ export function composeStation(input: ComposeStationInput): StationComposition {
       labelClass: 't4',
       role: 'dane',
     });
+  }
+  // TR2W-BEZ-POLA §0.C.5: jawny stan niekompletny — TEN SAM predykat, którym
+  // `layout/measure.ts` (`stationNameBandHeight`/`requiredStationWidth`)
+  // rezerwuje wiersz i jego szerokość (jedno zdanie, dwa końce).
+  if (implicitStationTransformers(station).length > 0) {
+    rows.push({ text: STATION_TR_FIELD_GAP_TEXT, labelClass: 't4', role: 'dane' });
   }
 
   const stationName: StationNameBandOwnerInput = { ownerRef: station.id, nameSlot, rows };

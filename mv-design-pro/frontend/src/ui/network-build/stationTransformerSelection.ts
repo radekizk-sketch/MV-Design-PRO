@@ -105,22 +105,70 @@ export function selectStationDistributionTransformers(
   });
 }
 
-export function selectStationDistributionTransformerRefs(
+/**
+ * TR2W-BEZ-POLA (§0.C.2 „kotwica topologiczna"): JEDNA jednostka
+ * transformatorowa stacji — ref + OBA końce topologiczne (`Transformer.
+ * hv_bus_ref`/`lv_bus_ref`). Terminal WN jest jedyną prawdą o tym, DO KTÓREJ
+ * SEKCJI szyn SN transformator jest przyłączony; rysunek SLD wyprowadza z
+ * niego miejsce kolumny (`layout/measure.ts` `stationSnColumnLayout`), a NIE
+ * z pozycji ostatniego pola w tablicy (reguła pozycyjna była zakazana wprost
+ * w recenzji właściciela — „ZAKAZ reguły `transformer_slot = last_field + 1`
+ * jako reguły elektrycznej").
+ *
+ * `hvBusRef`/`lvBusRef` = `null` WYŁĄCZNIE dla ścieżki awaryjnej niżej
+ * (`Substation.transformer_refs` wskazuje ref, którego rekordu `Transformer`
+ * w migawce NIE MA) — dana niekompletna, NIE domysł: kompozycja degraduje
+ * wtedy jawnie (`station.transformer.sectionUnresolved`), zamiast zgadywać
+ * sekcję.
+ */
+export interface StationTransformerUnit {
+  readonly ref: string;
+  readonly hvBusRef: string | null;
+  readonly lvBusRef: string | null;
+}
+
+/**
+ * TR2W-BEZ-POLA: jednostki transformatorowe stacji — JEDNO źródło prawdy dla
+ * listy refów (`selectStationDistributionTransformerRefs` niżej wyprowadza z
+ * TEJ funkcji) i dla kotwicy topologicznej rysunku. Dwie niezależne selekcje
+ * — jedna „które refy", druga „jakie terminale" — rozjechałyby się przy
+ * pierwszej zmianie reguły wyboru (reguła KLASA §3 „predykaty parami z
+ * jednego źródła").
+ */
+export function selectStationTransformerUnits(
   snapshot: EnergyNetworkModel | null | undefined,
   station: Substation | null | undefined,
-): string[] {
+): StationTransformerUnit[] {
   const selected = selectStationDistributionTransformers(snapshot, station)
-    .map((transformer) => transformer.ref_id ?? transformer.id)
-    .filter(nonEmptyRef)
-    .sort();
+    .map((transformer): StationTransformerUnit | null => {
+      const ref = transformer.ref_id ?? transformer.id;
+      if (!nonEmptyRef(ref)) return null;
+      return {
+        ref,
+        hvBusRef: nonEmptyRef(transformer.hv_bus_ref) ? transformer.hv_bus_ref : null,
+        lvBusRef: nonEmptyRef(transformer.lv_bus_ref) ? transformer.lv_bus_ref : null,
+      };
+    })
+    .filter((unit): unit is StationTransformerUnit => unit != null)
+    .sort((a, b) => (a.ref < b.ref ? -1 : a.ref > b.ref ? 1 : 0));
   if (selected.length > 0 || !station) {
     return selected;
   }
 
+  // Ścieżka awaryjna: stacja deklaruje `transformer_refs`, ale migawka nie
+  // niesie odpowiadających rekordów `Transformer` — refy bez terminali.
   const blockTransformerRefs = collectDerBlockTransformerRefs(snapshot);
   return (station.transformer_refs ?? [])
     .filter(nonEmptyRef)
     .filter((ref) => !blockTransformerRefs.has(ref))
     .filter((ref) => !BLOCK_TRANSFORMER_TOKEN_RE.test(ref.toLowerCase()))
-    .sort();
+    .sort()
+    .map((ref) => ({ ref, hvBusRef: null, lvBusRef: null }));
+}
+
+export function selectStationDistributionTransformerRefs(
+  snapshot: EnergyNetworkModel | null | undefined,
+  station: Substation | null | undefined,
+): string[] {
+  return selectStationTransformerUnits(snapshot, station).map((unit) => unit.ref);
 }

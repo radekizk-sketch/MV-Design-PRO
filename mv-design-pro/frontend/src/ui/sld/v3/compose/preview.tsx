@@ -344,6 +344,12 @@ export interface PreviewElementMeta {
    *  (A/V z `Measurement.measurement_type`) — WYŁĄCZNIE dla symboli
    *  `meter`; `MeterGlyph` pokazuje ją zamiast mylącego „M". */
   readonly meterQuantity?: 'A' | 'V';
+  /** TR2W-BEZ-POLA (§0.C.5): `true` dla symbolu `transformer2W` stacji, który
+   *  wisi na szynie SN BEZ skonfigurowanego pola transformatorowego —
+   *  konfiguracja NIEKOMPLETNA. Steruje markerem „!" przy stronie WN
+   *  (`Transformer2WGlyph.hasFieldGapWarning`, wzór `hasTopologyWarning`);
+   *  pełne zdanie stanu żyje w paśmie nazw stacji i w `stopNotes` sceny. */
+  readonly transformerFieldGap?: boolean;
   /** §16-v3: `true` WYŁĄCZNIE dla ostatniego kawałka biegu OTWARTEGO (ciąg
    *  bez stacji na końcu — segment ENM istnieje, następnika brak). Ostatni
    *  wierzchołek takiego kawałka MUSI dotykać słupka terminalnego
@@ -492,6 +498,7 @@ function PreviewSymbolNode(props: { readonly symbol: PreviewSymbol; readonly str
         stroke={effectiveStroke}
         labelLines={symbol.meta?.protectionCodes}
         hasTopologyWarning={(symbol.meta?.topologyGaps?.length ?? 0) > 0}
+        hasFieldGapWarning={symbol.meta?.transformerFieldGap === true}
         meterQuantity={symbol.meta?.meterQuantity}
         stationSectioned={symbol.meta?.stationGlyph?.sectioned}
         stationLineTopology={symbol.meta?.stationGlyph?.lineTopology}

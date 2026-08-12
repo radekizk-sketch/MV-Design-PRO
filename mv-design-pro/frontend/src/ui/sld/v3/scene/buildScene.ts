@@ -1005,13 +1005,30 @@ function presentedStationTopologicalType(
   return { derived, presented };
 }
 
+/**
+ * TR2W-BEZ-POLA: JEDNA prawda faktu domenowego „stacja ma transformator
+ * SN/nN". Przed tą kartą L0 (sylwetka, niżej) i L1/L2 (`hasLvSection` w
+ * `composeRowStation`) liczyły ten fakt DWOMA niezależnymi wyrażeniami
+ * (`props.hasTransformer ?? props.transformerRatedKva != null` vs
+ * `props.hasTransformer ?? false`) — predykat wejścia i wyjścia z dwóch źródeł
+ * (naruszenie reguły KLASA §3), rozjeżdżający się dokładnie wtedy, gdy
+ * `hasTransformer` jest nieustawione, a `transformerRatedKva` jest. Jedna
+ * funkcja dla WSZYSTKICH trzech konsumentów (sylwetka L0, bramka strony nN
+ * L1/L2, `StationMeasureInput.hasTransformer`).
+ */
+function stationHasTransformerFact(
+  props: Pick<StationOnRunRendererProps, 'hasTransformer' | 'transformerRatedKva'>,
+): boolean {
+  return props.hasTransformer ?? props.transformerRatedKva != null;
+}
+
 function stationCompactGlyphSummary(
   props: StationOnRunRendererProps,
   derSources: readonly StationDerSourceInput[],
   stopNotes: string[],
   terminalInRun: boolean,
 ): StationCompactGlyphSummary {
-  const hasTransformer = props.hasTransformer ?? props.transformerRatedKva != null;
+  const hasTransformer = stationHasTransformerFact(props);
   const derBehindTr = dominantDerGlyphKind(derSources, ['nn']);
   if (derBehindTr != null && !hasTransformer) {
     stopNotes.push(
@@ -1116,6 +1133,12 @@ function buildMeasureInput(
     // brak (etykieta bez napięcia / jawna granica modelu).
     nnVoltageKv: props.nnVoltageKv ?? null,
     aggregatedLvLoad: props.aggregatedLvLoad ?? null,
+    // TR2W-BEZ-POLA (§0.B): fakt domenowy + jednostki transformatorowe z
+    // terminalami — `layout/measure.ts` (`stationHasLvSide`,
+    // `stationSnColumnLayout`) czyta je, żeby zarezerwować miejsce i ustawić
+    // kolumnę transformatora BEZ pola w obrębie właściwej sekcji szyn.
+    hasTransformer: stationHasTransformerFact(props),
+    transformerUnits: props.transformerUnits,
   };
 }
 
@@ -1380,7 +1403,9 @@ function composeRowStation(
     };
   }
 
-  const hasLvSection = props.hasTransformer ?? false;
+  // TR2W-BEZ-POLA: JEDNA prawda z sylwetką L0 i `StationMeasureInput.
+  // hasTransformer` — ta linia POMIJAŁA fallback `transformerRatedKva != null`.
+  const hasLvSection = stationHasTransformerFact(props);
   const composition: StationComposition = composeStation({
     station: measureInput,
     column: { x: column.x, width: column.width, tapX: column.tapX },
@@ -1519,10 +1544,20 @@ function composeRowStation(
       // F9.4: DER nie mają `bayRef` (nie należą do żadnego pola) — `testId`/
       // `ownerRef` spadają na `sourceRef` (`SldSourceView.id`, WHITE BOX).
       testId: unikalnyTestId(
-        s.bayRef ? `${s.bayRef}#${s.symbolId}` : s.sourceRef ? `${s.sourceRef}#${s.symbolId}` : undefined,
+        s.bayRef
+          ? `${s.bayRef}#${s.symbolId}`
+          : s.sourceRef
+            ? `${s.sourceRef}#${s.symbolId}`
+            : s.transformerRef
+              ? `${s.transformerRef}#${s.symbolId}`
+              : undefined,
       ),
-      ownerRef: s.bayRef ?? s.sourceRef,
+      ownerRef: s.bayRef ?? s.sourceRef ?? s.transformerRef,
       elementKind: classifySymbolElementKind(s.symbolId),
+      // TR2W-BEZ-POLA (§0.C.5): stan niekompletny przepisany 1:1 — glif
+      // transformatora rysuje marker „!" przy stronie WN, treść zdania żyje w
+      // paśmie nazw B5 i w `stopNotes` (WHITE BOX, zero duplikacji tekstu).
+      transformerFieldGap: s.transformerFieldGap,
       // F9.3 (spec §12.1): przepisane 1:1 z kompozycji — audytor DOM
       // (`data-apparatus-source`) i testy czytają WYŁĄCZNIE stąd, zero
       // re-derywacji. `ownerRef` NIEZMIENIONE (nadal `bayRef`, spec §16/

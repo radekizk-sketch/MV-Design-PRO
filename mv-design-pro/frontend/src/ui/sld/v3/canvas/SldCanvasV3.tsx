@@ -493,6 +493,9 @@ function SceneSymbolNode(props: {
       data-device-ref={symbol.meta?.deviceRef}
       data-element-kind={symbol.meta?.elementKind}
       data-der-kind={symbol.meta?.derKind}
+      // TR2W-BEZ-POLA (§0.C.5): kanał audytu stanu niekompletnego — sonda
+      // odbioru i testy kontraktowe czytają go z WYRENDEROWANEGO drzewa.
+      data-transformer-field-gap={symbol.meta?.transformerFieldGap ? 'true' : undefined}
     >
       {/* Karta S9-4: węzeł symbolu jest CZYSTYM RYSUNKIEM — uchwyt kliku
        *  (prostokąt gabarytowy + jego rozszerzenie do 24 px ekranu) mieszka w
@@ -508,6 +511,9 @@ function SceneSymbolNode(props: {
         strokeScale={strokeScaleFactor(cameraScale)}
         labelLines={symbol.meta?.protectionCodes}
         hasTopologyWarning={(symbol.meta?.topologyGaps?.length ?? 0) > 0}
+        // TR2W-BEZ-POLA (§0.C.5): marker „!" przy stronie WN transformatora
+        // bez skonfigurowanego pola SN.
+        hasFieldGapWarning={symbol.meta?.transformerFieldGap === true}
         meterQuantity={symbol.meta?.meterQuantity}
         stationSectioned={symbol.meta?.stationGlyph?.sectioned}
         stationLineTopology={symbol.meta?.stationGlyph?.lineTopology}

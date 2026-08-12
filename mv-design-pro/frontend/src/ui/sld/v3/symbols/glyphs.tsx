@@ -67,6 +67,16 @@ export interface GlyphProps {
    *  ostrzeżenia (np. „67N: brak VT") żyje w `missingData`/inspektorze, NIE
    *  na scenie jako tekst — glif niesie WYŁĄCZNIE sygnał obecności. */
   readonly hasTopologyWarning?: boolean;
+  /** TR2W-BEZ-POLA (§0.C.5): `true` gdy transformator SN/nN wisi na szynie SN
+   *  BEZ skonfigurowanego pola transformatorowego — WYŁĄCZNIE
+   *  `Transformer2WGlyph` czyta to pole (jak `labelLines`/`hasTopologyWarning`
+   *  dla przekaźnika). Rysuje MAŁY marker „!" w narożniku strony WN (geometria
+   *  WEWNĄTRZ bboxa 32×40, w polu wolnym od okręgów uzwojeń — zero nowej
+   *  rezerwacji width/height w `layout/measure.ts`). Symbol transformatora
+   *  POZOSTAJE symbolem transformatora: marker jest ADNOTACJĄ stanu danych, nie
+   *  podmianą na symbol błędu. Pełne zdanie („Brak skonfigurowanego pola
+   *  transformatorowego SN") niesie pasmo nazw stacji i `stopNotes` sceny. */
+  readonly hasFieldGapWarning?: boolean;
   /** Recenzja NO-GO 2026-07-17 pkt 11: litera mierzonej WIELKOŚCI miernika
    *  (A = prąd z CT, V = napięcie z VT) — WYŁĄCZNIE `MeterGlyph` czyta to
    *  pole (wzorzec `labelLines`). Brak danych ⇒ fallback „M" (rozstrzygany
@@ -327,6 +337,24 @@ export function Transformer2WGlyph(props: GlyphProps): JSX.Element {
       <circle cx={16} cy={13} r={11} fill="none" stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
       <circle cx={16} cy={27} r={11} fill="none" stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
       <line x1={16} y1={38} x2={16} y2={40} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
+      {/* TR2W-BEZ-POLA (§0.C.5): marker stanu NIEKOMPLETNEGO — transformator
+       *  przyłączony do szyny SN bez pola transformatorowego. Narożnik strony
+       *  WN (u góry, przy punkcie przyłączenia — tam wchodzi pion z szyny),
+       *  poza obrysem uzwojeń (okrąg r=11 wokół (16,13): odległość środka
+       *  markera od środka uzwojenia to 15,0 > 11+3,6), więc nie zasłania
+       *  symbolu i nie wymaga ani jednego piksela nowej rezerwacji.
+       *  Mono jak reszta glifu bazowego — kolor nie koduje tu stanu fizycznego. */}
+      {props.hasFieldGapWarning && (
+        <g data-field-gap-warning="true">
+          <circle cx={28} cy={4} r={3.6} fill="none" stroke={stroke(props)} strokeWidth={grubosc(props, 0.9)} />
+          <text
+            x={28} y={6.2} textAnchor="middle"
+            fill={stroke(props)} fontFamily="sans-serif" fontSize={6} fontWeight={700}
+          >
+            !
+          </text>
+        </g>
+      )}
     </g>
   );
 }
