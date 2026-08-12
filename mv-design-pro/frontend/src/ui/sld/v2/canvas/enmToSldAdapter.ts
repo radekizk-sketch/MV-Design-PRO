@@ -92,7 +92,10 @@ import type {
   SldTerminalElementType,
   SldTopologyRun,
 } from './SldTopologyContracts';
-import { selectStationDistributionTransformerRefs } from '../../../network-build/stationTransformerSelection';
+import {
+  selectStationTransformerUnits,
+  type StationTransformerUnit,
+} from '../../../network-build/stationTransformerSelection';
 
 // =============================================================================
 // Telemetry mapping (Phase 0B-1: BayRuntimeState → GpzBayDescriptor)
@@ -3458,6 +3461,8 @@ function buildStations(snapshot: EnergyNetworkModel): StationOnRunRendererProps[
         snBays: stationSldDetails.snBays,
         hasTransformer: stationSldDetails.hasTransformer,
         transformerRefs: stationSldDetails.transformerRefs,
+        // TR2W-BEZ-POLA (§0.C.2/§0.C.3): jednostki TR z terminalami WN/nN.
+        transformerUnits: stationSldDetails.transformerUnits,
         transformerRatedKva: stationSldDetails.transformerRatedKva,
         nnFeedersCount: stationSldDetails.nnFeedersCount,
         derBadges: stationSldDetails.derBadges,
@@ -3500,6 +3505,8 @@ function buildStations(snapshot: EnergyNetworkModel): StationOnRunRendererProps[
         snBays: stationSldDetails.snBays,
         hasTransformer: stationSldDetails.hasTransformer,
         transformerRefs: stationSldDetails.transformerRefs,
+        // TR2W-BEZ-POLA (§0.C.2/§0.C.3): jednostki TR z terminalami WN/nN.
+        transformerUnits: stationSldDetails.transformerUnits,
         transformerRatedKva: stationSldDetails.transformerRatedKva,
         nnFeedersCount: stationSldDetails.nnFeedersCount,
         derBadges: stationSldDetails.derBadges,
@@ -3523,6 +3530,11 @@ interface StationMiniBlockDetails {
   readonly snBays: readonly MiniBlockBayDescriptor[];
   readonly hasTransformer: boolean;
   readonly transformerRefs: readonly string[];
+  /** TR2W-BEZ-POLA (§0.C.2/§0.C.3): jednostki transformatorowe stacji z
+   *  terminalami WN/nN — kotwica topologiczna kolumny transformatora na SLD
+   *  (`layout/measure.ts` `stationSnColumnLayout`). `transformerRefs` wyżej to
+   *  ta sama lista zredukowana do refów. */
+  readonly transformerUnits: readonly StationTransformerUnit[];
   readonly nnFeedersCount: number;
   readonly derBadges: readonly MiniBlockDerBadge[];
   readonly transformerRatedKva: number | null;
@@ -3580,7 +3592,8 @@ function buildStationMiniBlockDetails(
     derSourceBays.length > 0 ||
     derBadges.some((badge) => badge.connectionSide !== 'nn');
   const footprintType = deriveFootprintType(station.station_type, explicitRoles, hasMvSideDer);
-  const transformerRefs = collectStationTransformerRefs(snapshot, station);
+  const transformerUnits = collectStationTransformerUnits(snapshot, station);
+  const transformerRefs = transformerUnits.map((unit) => unit.ref);
   const transformerRatedKva = inferTransformerRatedKva(snapshot, transformerRefs);
 
   // K30-15.3: zsumuj load + DER generation po stronie transformatora stacji.
@@ -3652,6 +3665,7 @@ function buildStationMiniBlockDetails(
     footprintType,
     snBays,
     transformerRefs,
+    transformerUnits,
     hasTransformer:
       transformerRefs.length > 0 ||
       snBays.some((bay) => bay.fieldRole === FIELD_ROLE.RMU_TRANSFORMER || bay.fieldRole === FIELD_ROLE.TRANSFORMER),
@@ -3710,11 +3724,17 @@ function inferTransformerRatedKva(
   return kva > 0 ? kva : null;
 }
 
-function collectStationTransformerRefs(
+/**
+ * TR2W-BEZ-POLA (§0.C.2): jednostki transformatorowe stacji Z TERMINALAMI.
+ * `transformerRefs` (lista samych refów, dotychczasowy kontrakt read-modelu)
+ * wyprowadzana jest z TEJ SAMEJ listy — jedno źródło prawdy zamiast dwóch
+ * niezależnych selekcji (reguła KLASA §3).
+ */
+function collectStationTransformerUnits(
   snapshot: EnergyNetworkModel,
   station: Substation,
-): string[] {
-  return selectStationDistributionTransformerRefs(snapshot, station);
+): StationTransformerUnit[] {
+  return selectStationTransformerUnits(snapshot, station);
 }
 
 function buildExplicitStationMiniBays(
@@ -3742,6 +3762,9 @@ function buildExplicitStationMiniBays(
         fieldRole,
         designation: bay.bay_number ?? bay.feeder_short_name ?? bay.name ?? `Pole ${index + 1}`,
         hasMissingRequiredDevice: bay.equipment_refs.length === 0,
+        // TR2W-BEZ-POLA (§0.C.2): sekcja szyn tego pola (`Bay.bus_ref`) —
+        // ta sama dana co `field_specs[].bus_ref` na ścieżce szablonowej.
+        busRef: bay.bus_ref,
         cbState: states.cb,
         dsState: states.ds,
         esState: states.es,
@@ -3879,6 +3902,10 @@ function buildStationMiniBaysFromFieldSpecs(
         fieldRole: mapStationBayRoleToMiniRole(fieldRole),
         designation: stationFieldDesignation(spec, index),
         hasMissingRequiredDevice: spec.equipment_refs.length === 0,
+        // TR2W-BEZ-POLA (§0.C.2): sekcja szyn tego pola — `field_specs[].
+        // bus_ref` (backend `_build_field_spec`, klucz zawsze obecny) był już
+        // parsowany przez `readStationFieldSpecs`, ale nigdzie nie docierał.
+        busRef: spec.bus_ref,
         cbState: states.cb,
         dsState: states.ds,
         esState: states.es,

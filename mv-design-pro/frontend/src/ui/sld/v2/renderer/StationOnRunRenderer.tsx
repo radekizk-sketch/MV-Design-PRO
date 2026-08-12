@@ -23,6 +23,7 @@ import {
   type MiniBlockDerBadge,
 } from './MiniBlockRmuRenderer';
 import type { StationFootprintType } from './MiniBlockFootprints';
+import type { StationTransformerUnit } from '../../../network-build/stationTransformerSelection';
 
 // K30-4: enlarged for industrial readability (24+ px symbols @ LOD-2).
 // Previously: 176/124/120/30/48 (mikroskopijny w widoku K30 30-station chain).
@@ -57,6 +58,14 @@ export interface StationOnRunRendererProps {
   readonly snBays?: readonly MiniBlockBayDescriptor[];
   readonly hasTransformer?: boolean;
   readonly transformerRefs?: readonly string[];
+  /** TR2W-BEZ-POLA (§0.C.2/§0.C.3): jednostki transformatorowe stacji z OBOMA
+   *  końcami topologicznymi (`Transformer.hv_bus_ref`/`lv_bus_ref`) — 0..N od
+   *  początku, każda z własnym refem i własnym przypisaniem do sekcji szyn.
+   *  `transformerRefs` wyżej to TA SAMA lista zredukowana do samych refów
+   *  (`selectStationTransformerUnits`, jedno źródło prawdy) — konsumenci
+   *  potrzebujący wyłącznie tożsamości (szuflada szczegółów, renderery v2)
+   *  zostają przy niej bez zmian. */
+  readonly transformerUnits?: readonly StationTransformerUnit[];
   readonly transformerRatedKva?: number | null;
   readonly nnFeedersCount?: number;
   readonly derBadges?: readonly MiniBlockDerBadge[];

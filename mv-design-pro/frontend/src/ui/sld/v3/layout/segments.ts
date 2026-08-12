@@ -133,11 +133,7 @@ export function computeStationTaps(
     // DER) — zaczep magistrali musi leżeć na szynie SN; ekstent z DER liczy
     // wyłącznie `requiredStationWidth` (rezerwacja kolumny), patrz
     // `layout/measure.ts` `stationBlockWidth`.
-    const blockWidth = stationBlockWidth(
-      station.snBays,
-      station.bayDirectionCaptions,
-      station.entryDescentBayIndex,
-    );
+    const blockWidth = stationBlockWidth(station);
     // Margines lewy GRID wewnątrz kolumny (spec §5.1 "+2×GRID", GRID/stronę)
     // — blok NIE jest centrowany w (być może szerszej) kolumnie, patrz
     // DECYZJA przy `ColumnResult.tapX` w `./columns`.
@@ -231,25 +227,13 @@ export function segmentSpanEndsX(
   const wejscie = (i: number): number => {
     const s = stations[i];
     return (
-      bayStackCenterX(
-        s.snBays,
-        findLineBayIndices(s.snBays).previousIndex,
-        taps[i].x,
-        s.bayDirectionCaptions,
-        s.entryDescentBayIndex,
-      ) ?? taps[i].tapX
+      bayStackCenterX(s, findLineBayIndices(s.snBays).previousIndex, taps[i].x) ?? taps[i].tapX
     );
   };
   const wyjscie = (i: number): number => {
     const s = stations[i];
     return (
-      bayStackCenterX(
-        s.snBays,
-        findLineBayIndices(s.snBays).nextIndex,
-        taps[i].x,
-        s.bayDirectionCaptions,
-        s.entryDescentBayIndex,
-      ) ?? taps[i].tapX
+      bayStackCenterX(s, findLineBayIndices(s.snBays).nextIndex, taps[i].x) ?? taps[i].tapX
     );
   };
   if (index === 0) return { startX: 0, endX: taps[0].tapX };

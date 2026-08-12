@@ -179,13 +179,11 @@ describe('SLOT-DRYF-PRZĘSŁA §1 — `bayStackCenterX` jest tą samą osią, w 
       expect(zejscia.length).toBe(stacja.snBays.length);
 
       stacja.snBays.forEach((bay, index) => {
-        const zMeasure = bayStackCenterX(
-          stacja.snBays,
-          index,
-          column.x,
-          stacja.bayDirectionCaptions,
-          stacja.entryDescentBayIndex,
-        );
+        // TR2W-BEZ-POLA: `bayStackCenterX` przyjmuje CAŁĄ stację (nie samą
+        // tablicę pól), bo plan kolumn bloku SN może zawierać także kolumnę
+        // transformatora bez pola — intencja wyroczni bez zmian: oś z measure
+        // MUSI być tą samą osią, w której compose stawia pion zejścia pola.
+        const zMeasure = bayStackCenterX(stacja, index, column.x);
         const zejscie = composition.segments.find((s) => s.ownerRef === `${bay.bayRef}#descent`);
         expect(zejscie, `pion zejścia pola ${bay.bayRef}`).toBeDefined();
         expect(zMeasure).toBe(zejscie!.points[0].x);
@@ -196,21 +194,19 @@ describe('SLOT-DRYF-PRZĘSŁA §1 — `bayStackCenterX` jest tą samą osią, w 
   it('CZUŁOŚĆ: oś pola zależy od pól PRZED nim — inaczej wyrocznia niczego nie pilnuje', () => {
     const waska = stacjaPrzelotowa('s-w', 0);
     const szeroka = stacjaPrzelotowa('s-s', 3);
-    const osWaskiej = bayStackCenterX(waska.snBays, waska.snBays.length - 2, 0, undefined, null);
-    const osSzerokiej = bayStackCenterX(szeroka.snBays, szeroka.snBays.length - 2, 0, undefined, null);
+    const osWaskiej = bayStackCenterX(waska, waska.snBays.length - 2, 0);
+    const osSzerokiej = bayStackCenterX(szeroka, szeroka.snBays.length - 2, 0);
     expect(osWaskiej).not.toBe(osSzerokiej);
     // Pierwsze pole stoi w tym samym miejscu w OBU (prefix-sum jest pusty) —
     // dowód, że różnica wyżej pochodzi z pól poprzedzających, a nie z szumu.
-    expect(bayStackCenterX(waska.snBays, 0, 0, undefined, null)).toBe(
-      bayStackCenterX(szeroka.snBays, 0, 0, undefined, null),
-    );
+    expect(bayStackCenterX(waska, 0, 0)).toBe(bayStackCenterX(szeroka, 0, 0));
   });
 
   it('pole spoza zakresu daje `null` (wołający spada na `tapX`, tak jak `portOfBay` w renderze)', () => {
     const s = stacjaPrzelotowa('s-n', 1);
-    expect(bayStackCenterX(s.snBays, null, 0, undefined, null)).toBeNull();
-    expect(bayStackCenterX(s.snBays, s.snBays.length, 0, undefined, null)).toBeNull();
-    expect(bayStackCenterX([], 0, 0, undefined, null)).toBeNull();
+    expect(bayStackCenterX(s, null, 0)).toBeNull();
+    expect(bayStackCenterX(s, s.snBays.length, 0)).toBeNull();
+    expect(bayStackCenterX({ ...s, snBays: [] }, 0, 0)).toBeNull();
   });
 });
 
