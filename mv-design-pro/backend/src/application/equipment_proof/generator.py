@@ -25,6 +25,11 @@ from application.proof_engine.types import (
 
 STATUS_PASS = "PASS"
 STATUS_FAIL = "FAIL"
+#: KARTA UM-ICU-KATALOG (2a): stan jawny dla aparatow bez zdolnosci wylaczania
+#: zwarc z definicji normy (rozlacznik/odlacznik/uziemnik). NIE jest to ani
+#: PASS (nic nie zostalo sprawdzone), ani FAIL (aparat nie ma tej wady — po
+#: prostu kryterium go nie dotyczy). Nie liczy sie do failed_checks.
+STATUS_NOT_APPLICABLE = "NIE_DOTYCZY"
 
 _P12_NAMESPACE = UUID("7c80f6aa-28db-4b8e-8e1d-139fd4e223db")
 _P12_TIMESTAMP = datetime(2026, 1, 1, 0, 0, 0)
@@ -88,8 +93,25 @@ class EquipmentProofGenerator:
     def _check_icu(
         cls, device: DeviceRating, required: dict[str, Any]
     ) -> EquipmentProofCheckResult:
-        device_val = device.i_cu_ka
         required_val = _as_float(required.get("ikss_ka"))
+        if device.i_cu_not_applicable:
+            # KARTA UM-ICU-KATALOG (2a): rozlacznik/odlacznik/uziemnik nie ma
+            # zdolnosci wylaczania zwarc Z DEFINICJI normy — brak i_cu_ka nie
+            # jest brakiem danej, tylko wlasciwoscia klasy aparatu. Werdykt
+            # NIE_DOTYCZY jest jawny w dowodzie, nigdy pozorny FAIL/PASS.
+            return EquipmentProofCheckResult(
+                name="Icu",
+                status=STATUS_NOT_APPLICABLE,
+                required_value=required_val,
+                device_value=None,
+                required_source_key="ikss_ka",
+                device_source_key="device.i_cu_ka",
+                message_pl=(
+                    "Nie dotyczy — aparat bez zdolności wyłączania zwarć "
+                    "(rozłącznik/odłącznik/uziemnik) z definicji normy."
+                ),
+            )
+        device_val = device.i_cu_ka
         if device_val is None or required_val is None:
             return EquipmentProofCheckResult(
                 name="Icu",
@@ -307,7 +329,7 @@ class EquipmentProofGenerator:
         )
         input_values = (
             _value_or_missing("U_m", device.u_m_kv, "kV", "device.u_m_kv"),
-            _value_or_missing("I_{cu}", device.i_cu_ka, "kA", "device.i_cu_ka"),
+            _value_or_icu(device, "device.i_cu_ka"),
             _value_or_missing("I_{dyn}", device.i_dyn_ka, "kA", "device.i_dyn_ka"),
             _value_or_missing("I_{th}", device.i_th_ka, "kA", "device.i_th_ka"),
             _value_or_missing("t_{th}", device.t_th_s, "s", "device.t_th_s"),
@@ -406,7 +428,9 @@ class EquipmentProofGenerator:
             ),
         )
         input_values = (
-            _value_or_missing("I_{cu}", check.device_value, "kA", "device.i_cu_ka"),
+            _value_or_not_applicable(
+                "I_{cu}", check.device_value, "kA", "device.i_cu_ka", check.status
+            ),
             _value_or_missing("I_k''", check.required_value, "kA", "ikss_ka"),
         )
         substitution = _substitution_from_values(input_values)
@@ -625,6 +649,40 @@ def _value_or_missing(
         unit=unit,
         source_key=source_key,
     )
+
+
+def _value_or_icu(device: DeviceRating, source_key: str) -> ProofValue:
+    """I_cu w kroku "dane urządzenia" — NIE_DOTYCZY zamiast BRAK, gdy aparat
+    nie ma zdolności wyłączania zwarć z definicji normy (2a).
+    """
+    if device.i_cu_not_applicable:
+        return ProofValue(
+            symbol="I_{cu}",
+            value="NIE DOTYCZY",
+            unit="kA",
+            formatted="NIE DOTYCZY kA".strip(),
+            source_key=source_key,
+        )
+    return _value_or_missing("I_{cu}", device.i_cu_ka, "kA", source_key)
+
+
+def _value_or_not_applicable(
+    symbol: str,
+    value: float | None,
+    unit: str,
+    source_key: str,
+    status: str,
+) -> ProofValue:
+    """Jak ``_value_or_missing``, ale rozróżnia NIE_DOTYCZY od braku danej."""
+    if status == STATUS_NOT_APPLICABLE:
+        return ProofValue(
+            symbol=symbol,
+            value="NIE DOTYCZY",
+            unit=unit,
+            formatted=f"NIE DOTYCZY {unit}".strip(),
+            source_key=source_key,
+        )
+    return _value_or_missing(symbol, value, unit, source_key)
 
 
 def _substitution_from_values(values: tuple[ProofValue, ...]) -> str:
