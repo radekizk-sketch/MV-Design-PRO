@@ -27,9 +27,26 @@ const CATALOG_VERSION = '2024.1';
 /** Paleta dokumentowa arkusza (`ui/sld/v3/export/exportPalette.ts`). */
 const DOKUMENT_SN = '#0F7A3D';
 const DOKUMENT_TLO = '#FFFFFF';
-/** Zieleń SN motywu ciemnego i jasnego (`ui/sld/v3/theme/*`). */
-const EKRAN_SN_CIEMNY = '#13C45A';
-const EKRAN_SN_JASNY = '#0F7A3D';
+/**
+ * Zieleń ODCINKA SN motywu ciemnego i jasnego, NAPRAWIONA (karta
+ * BUGI-PRODUKTU-E2E). Sieć tej sceny jest w CAŁOŚCI zasilona (źródło →
+ * odcinki → stacja, same zamknięte łączniki, zero NOP) — `SupplyPathHighlight`
+ * (`SupplyPathHighlighter.ts`, BFS topologiczny od źródła przez zamknięte
+ * łączniki, ZAWSZE liczony gdy jest snapshot, niezależnie od biegu solvera)
+ * oznacza więc KAŻDY odcinek SN jako energizowany. `strokeForEnergization`
+ * (`SldCanvasV3.tsx`) ma WYŻSZY priorytet niż barwa bazowa napięcia
+ * (precedencja udokumentowana w `theme/colorTokens.ts`: „1. stan źródła DER,
+ * 2. nakładka wynikowa (energizacja/…), … 4. napięcie — baza, gdy nic wyżej
+ * nie ustawia koloru") — barwa „SN" czysta (`VOLTAGE_COLOR.sn`, dawne stałe
+ * tu) jest więc TYLKO fallbackiem dla elementów BEZ nakładki i nigdy nie
+ * trafia na ekran w tej scenie. Realnie renderowana (i poprawnie zależna od
+ * motywu — `palette.highlight.energized`) barwa to podświetlenie
+ * energizacji: `HIGHLIGHT_COLOR.energized` (ciemny, `colorTokens.ts`) i
+ * `LIGHT_TECHNICAL_SLD_PALETTE.highlight.energized` (jasny, `theme/
+ * palette.ts`).
+ */
+const EKRAN_SN_CIEMNY = '#2ECC71';
+const EKRAN_SN_JASNY = '#1E7A46';
 
 let opCounter = 0;
 let entityCounter = 0;
@@ -190,13 +207,28 @@ async function tlaPowierzchni(page: Page): Promise<Record<string, string>> {
   });
 }
 
-/** Kolor kreski REALNEGO odcinka toru SN na scenie (próbka rysunku). */
+/**
+ * Kolor kreski REALNEGO odcinka toru SN na scenie (próbka rysunku).
+ *
+ * SELEKTOR NAPRAWIONY (karta BUGI-PRODUKTU-E2E): dawny `[data-testid="sld-v3-
+ * segments"] g path` zakładał odcinek zagnieżdżony w DODATKOWYM `<g>` z DWOMA
+ * ścieżkami (kolorowa + niewidzialny hitbox `stroke="transparent"`) — kształt
+ * sprzed karty S9-4. Od S9-4 `SceneSegmentNode` (`SldCanvasV3.tsx`) rysuje
+ * odcinek jako POJEDYNCZY `<path>`, DZIECKO WPROST `<g data-testid="sld-v3-
+ * segments">` (bez pośredniego `<g>`), a uchwyt kliku żyje w OSOBNEJ warstwie
+ * `sld-v3-trafienia` (rysunek jest bierny). Kombinator potomka `g path`
+ * wymagał WĘZŁA POŚREDNIEGO `<g>`, którego już nie ma — selektor NIGDY nie
+ * trafiał (0 elementów w KAŻDYM motywie, nie tylko po przełączeniu), funkcja
+ * zawsze zwracała `BRAK` niezależnie od koloru rzeczywiście narysowanego przez
+ * `stroke={stroke}` w `SceneSegmentNode`. Dowód pomiarowy w DOM: `document.
+ * querySelectorAll('[data-testid="sld-v3-segments"] path')` (bez pośredniego
+ * `g`) trafia w każdy odcinek jego prawdziwym `testId`
+ * (`segmentTestId`/`sld-v3-segment-N`).
+ */
 async function kreskaOdcinkaSn(page: Page): Promise<string> {
   return page.evaluate(() => {
-    // Odcinki toru niosą `data-element-kind="segment"`; pierwsza ścieżka o
-    // realnym kolorze (druga to niewidzialny hitbox `stroke="transparent"`).
     const kandydaci = Array.from(
-      document.querySelectorAll('[data-testid="sld-v3-segments"] g path, [data-element-kind="segment"] path'),
+      document.querySelectorAll('[data-testid="sld-v3-segments"] path'),
     );
     for (const el of kandydaci) {
       const stroke = el.getAttribute('stroke');
