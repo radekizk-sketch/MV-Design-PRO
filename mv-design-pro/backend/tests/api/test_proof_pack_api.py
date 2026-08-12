@@ -665,3 +665,128 @@ def test_pakiet_dowodowy_aparatury_bez_oznaczen_roboczych(tmp_path):
     dokument = _json.loads(dowod)
     assert not wzorzec.search(dokument["title_pl"])
     assert not wzorzec.search(dokument["header"]["solver_version"])
+
+
+def test_pakiet_dowodowy_wylacznik_sn_z_type_ref_bez_jawnych_um_icu_czyta_katalog(tmp_path):
+    """Karta UM-ICU-KATALOG (most, poz. c): klient poda TYLKO ``type_ref``
+    (bez u_m_kv/i_cu_ka) -> backend rozwiazuje je z katalogu aparatury SN.
+    """
+    import json as _json
+
+    client, data = _prepare_api_client(tmp_path)
+    payload = {
+        "project_id": str(data["project_id"]),
+        "case_id": str(data["case_id"]),
+        "run_id": str(data["run_id"]),
+        "connection_node_id": "bus-main",
+        "device": {
+            "device_id": "wyl-vd4-01",
+            "name_pl": "Wylacznik pola liniowego VD4",
+            "type_ref": "sw-cb-abb-vd4-12kv-630a",
+            "i_dyn_ka": 50.0,
+            "i_th_ka": 20.0,
+            "t_th_s": 1.0,
+        },
+        "required_fault_results": {
+            "u_kv": 10.0,
+            "ikss_ka": 15.0,
+            "ip_ka": 20.0,
+            "ith_ka": 15.0,
+            "tk_s": 1.0,
+        },
+    }
+
+    response = client.post("/api/equipment-proof/pack", json=payload)
+
+    assert response.status_code == 200
+    with zipfile.ZipFile(io.BytesIO(response.content)) as archiwum:
+        dokument = _json.loads(archiwum.read("proof_pack/proof.json").decode("utf-8"))
+    # VD4 12kV 630A z katalogu: U_m=12kV >= 10kV wymagane; I_cu=20kA >= 15kA -> PASS.
+    u_m_value = next(v for v in dokument["steps"][0]["input_values"] if v["symbol"] == "U_m")
+    icu_value = next(v for v in dokument["steps"][0]["input_values"] if v["symbol"] == "I_{cu}")
+    assert u_m_value["value"] == 12.0
+    assert icu_value["value"] == 20.0
+    assert dokument["summary"]["key_results"]["u_m_ok"]["value"] == "PASS"
+    assert dokument["summary"]["key_results"]["icu_ok"]["value"] == "PASS"
+
+
+def test_pakiet_dowodowy_rozlacznik_sn_z_type_ref_daje_nie_dotyczy_dla_icu(tmp_path):
+    """Rozłącznik z katalogu (LOAD_SWITCH, bez zdolności wyłączania zwarć)
+    -> Icu = NIE_DOTYCZY w dowodzie pobranym z rzeczywistego API, U_m liczone.
+    """
+    import json as _json
+
+    client, data = _prepare_api_client(tmp_path)
+    payload = {
+        "project_id": str(data["project_id"]),
+        "case_id": str(data["case_id"]),
+        "run_id": str(data["run_id"]),
+        "connection_node_id": "bus-main",
+        "device": {
+            "device_id": "rozl-nal-01",
+            "name_pl": "Rozlacznik pola liniowego ABB NAL",
+            "type_ref": "sw-ls-abb-nal-12kv-400a",
+            "i_dyn_ka": 50.0,
+            "i_th_ka": 20.0,
+            "t_th_s": 1.0,
+        },
+        "required_fault_results": {
+            "u_kv": 10.0,
+            "ikss_ka": 8.0,
+            "ip_ka": 20.0,
+            "ith_ka": 8.0,
+            "tk_s": 1.0,
+        },
+    }
+
+    response = client.post("/api/equipment-proof/pack", json=payload)
+
+    assert response.status_code == 200
+    with zipfile.ZipFile(io.BytesIO(response.content)) as archiwum:
+        dokument = _json.loads(archiwum.read("proof_pack/proof.json").decode("utf-8"))
+    assert dokument["summary"]["key_results"]["icu_ok"]["value"] == "NIE_DOTYCZY"
+    assert dokument["summary"]["key_results"]["u_m_ok"]["value"] == "PASS"
+    assert "Icu" not in dokument["summary"]["failed_checks"]
+    assert dokument["summary"]["overall_status"] == "PASS"
+
+
+def test_pakiet_dowodowy_jawne_um_icu_klienta_nadrzedne_wobec_katalogu(tmp_path):
+    """Jawne u_m_kv/i_cu_ka w payloadzie SĄ NADRZĘDNE — most nie nadpisuje
+    świadomej decyzji inżyniera (np. inny egzemplarz niż katalogowy typowy).
+    """
+    import json as _json
+
+    client, data = _prepare_api_client(tmp_path)
+    payload = {
+        "project_id": str(data["project_id"]),
+        "case_id": str(data["case_id"]),
+        "run_id": str(data["run_id"]),
+        "connection_node_id": "bus-main",
+        "device": {
+            "device_id": "wyl-override-01",
+            "name_pl": "Wylacznik z jawnym nadpisaniem",
+            "type_ref": "sw-cb-abb-vd4-12kv-630a",
+            "u_m_kv": 99.0,
+            "i_cu_ka": 77.0,
+            "i_dyn_ka": 50.0,
+            "i_th_ka": 20.0,
+            "t_th_s": 1.0,
+        },
+        "required_fault_results": {
+            "u_kv": 10.0,
+            "ikss_ka": 8.0,
+            "ip_ka": 20.0,
+            "ith_ka": 8.0,
+            "tk_s": 1.0,
+        },
+    }
+
+    response = client.post("/api/equipment-proof/pack", json=payload)
+
+    assert response.status_code == 200
+    with zipfile.ZipFile(io.BytesIO(response.content)) as archiwum:
+        dokument = _json.loads(archiwum.read("proof_pack/proof.json").decode("utf-8"))
+    u_m_value = next(v for v in dokument["steps"][0]["input_values"] if v["symbol"] == "U_m")
+    icu_value = next(v for v in dokument["steps"][0]["input_values"] if v["symbol"] == "I_{cu}")
+    assert u_m_value["value"] == 99.0
+    assert icu_value["value"] == 77.0

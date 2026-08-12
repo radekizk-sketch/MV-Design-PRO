@@ -979,6 +979,17 @@ class SwitchEquipmentType:
         ik_ka: Short-circuit breaking current [kA] (for breakers).
         icw_ka: Short-time withstand current [kA] (for disconnectors).
         medium: Quenching medium (e.g., "SF6", "VACUUM").
+        u_m_kv: Napiecie najwyzsze urzadzenia U_m [kV] wg IEC 62271-1 — karta
+            UM-ICU-KATALOG. Dla aparatury SN rownowazne Ur z karty katalogowej
+            (rodzina napieciowa "12/17.5/24 kV" JEST U_m). ``None`` = karta
+            katalogowa tej pozycji jeszcze nie wniosla tej wartosci wprost.
+        i_cu_ka: Znamionowa zdolnosc wylaczalna zwarciowa I_cu [kA] wg
+            IEC 62271-100 — WYLACZNIE dla aparatow zdolnych wylaczac prady
+            zwarciowe (wylaczniki, reklozery, bezpieczniki). Rozlaczniki i
+            odlaczniki (equipment_kind LOAD_SWITCH/DISCONNECTOR/EARTH_SWITCH)
+            NIE MAJA tej zdolnosci z definicji normy — ``None`` u nich oznacza
+            "nie dotyczy", nie brak danej. ``None`` u wylacznika oznacza brak
+            danej z karty katalogowej.
     """
 
     id: str
@@ -990,6 +1001,8 @@ class SwitchEquipmentType:
     ik_ka: float = 0.0
     icw_ka: float = 0.0
     medium: str | None = None
+    u_m_kv: float | None = None
+    i_cu_ka: float | None = None
     verification_status: str = CatalogVerificationStatus.CZESCIOWO_ZWERYFIKOWANY.value
     source_reference: str = "Katalog aparatury MV-DESIGN-PRO"
     catalog_status: str = CatalogStatus.PRODUKCYJNY_V1.value
@@ -1008,6 +1021,8 @@ class SwitchEquipmentType:
             "ik_ka": self.ik_ka,
             "icw_ka": self.icw_ka,
             "medium": self.medium,
+            "u_m_kv": self.u_m_kv,
+            "i_cu_ka": self.i_cu_ka,
             **_catalog_metadata_to_dict(
                 verification_status=self.verification_status,
                 source_reference=self.source_reference,
@@ -1030,6 +1045,8 @@ class SwitchEquipmentType:
             ik_ka=float(data.get("ik_ka", 0.0)),
             icw_ka=float(data.get("icw_ka", 0.0)),
             medium=data.get("medium"),
+            u_m_kv=(float(data["u_m_kv"]) if data.get("u_m_kv") is not None else None),
+            i_cu_ka=(float(data["i_cu_ka"]) if data.get("i_cu_ka") is not None else None),
             **_catalog_metadata_kwargs(
                 data,
                 default_source_reference="Katalog aparatury MV-DESIGN-PRO / karty katalogowe producentow",
@@ -2344,6 +2361,15 @@ class LVApparatusType:
         i_n_a: Rated current [A].
         breaking_capacity_ka: Breaking capacity [kA] (optional).
         manufacturer: Manufacturer (optional).
+        u_m_kv: Znamionowe napiecie laczeniowe Ue [kV] wg IEC 60947-2/-3 —
+            karta UM-ICU-KATALOG. Dla aparatury nN (Emax2/Tmax XT/Jean Muller
+            NH) katalogi producentow podaja Ue = 690 V (0,69 kV) jako
+            znamionowe napiecie robocze niezaleznie od napiecia sieci 0,4 kV.
+        i_cu_ka: Znamionowa zdolnosc wylaczalna I_cu [kA] przy Ue z karty
+            katalogowej. Dla ROZLACZNIK_BEZPIECZNIKOWY (Jean Muller NH) jest to
+            warunkowy prad zwarciowy z wkladka NH — aparat MA zdolnosc
+            wylaczania dzieki bezpiecznikowi, wiec pole jest wypelnione (nie
+            "nie dotyczy").
     """
 
     id: str
@@ -2353,6 +2379,8 @@ class LVApparatusType:
     i_n_a: float = 0.0
     breaking_capacity_ka: float | None = None
     manufacturer: str | None = None
+    u_m_kv: float | None = None
+    i_cu_ka: float | None = None
     verification_status: str = CatalogVerificationStatus.REFERENCYJNY.value
     source_reference: str = "Katalog aparatury nN MV-DESIGN-PRO"
     catalog_status: str = CatalogStatus.REFERENCYJNY_V1.value
@@ -2368,6 +2396,8 @@ class LVApparatusType:
             "i_n_a": self.i_n_a,
             "breaking_capacity_ka": self.breaking_capacity_ka,
             "manufacturer": self.manufacturer,
+            "u_m_kv": self.u_m_kv,
+            "i_cu_ka": self.i_cu_ka,
             **_catalog_metadata_to_dict(
                 verification_status=self.verification_status,
                 source_reference=self.source_reference,
@@ -2391,6 +2421,8 @@ class LVApparatusType:
                 else None
             ),
             manufacturer=data.get("manufacturer"),
+            u_m_kv=(float(data["u_m_kv"]) if data.get("u_m_kv") is not None else None),
+            i_cu_ka=(float(data["i_cu_ka"]) if data.get("i_cu_ka") is not None else None),
             **_catalog_metadata_kwargs(
                 data,
                 default_source_reference="Katalog aparatury nN MV-DESIGN-PRO / dane referencyjne",

@@ -17,6 +17,12 @@ class DeviceRating:
     i_th_ka: float | None
     t_th_s: float | None
     meta: dict[str, Any] = field(default_factory=dict)
+    #: KARTA UM-ICU-KATALOG (2a): True gdy aparat NIE MA zdolnosci wylaczania
+    #: zwarc z definicji normy (rozlacznik/odlacznik/uziemnik — equipment_kind
+    #: LOAD_SWITCH/DISCONNECTOR/EARTH_SWITCH). Rozstrzyga, czy brak i_cu_ka w
+    #: dowodzie jest stanem "NIE_DOTYCZY" (jawny, nie FAIL) czy "brak danej"
+    #: (FAIL — aparat POWINIEN miec te zdolnosc, ale karta jej nie wniosla).
+    i_cu_not_applicable: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         payload = {
@@ -29,6 +35,7 @@ class DeviceRating:
             "i_th_ka": self.i_th_ka,
             "t_th_s": self.t_th_s,
             "meta": self.meta,
+            "i_cu_not_applicable": self.i_cu_not_applicable,
         }
         return canonicalize_json(payload)
 

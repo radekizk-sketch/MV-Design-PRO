@@ -179,6 +179,72 @@ def test_equipment_proof_ith_missing_catalog_time_fails_honestly():
     assert "brak" in check.message_pl.lower()
 
 
+def test_equipment_proof_icu_not_applicable_gives_explicit_status_not_fail():
+    """Karta UM-ICU-KATALOG (2a, d): rozłącznik/odłącznik/uziemnik bez
+    zdolności wyłączania zwarć -> Icu = NIE_DOTYCZY, nie FAIL, nie wpada do
+    failed_checks; U_m nadal jest liczone normalnie.
+    """
+    proof_input = _input_with_device(_base_input(), i_cu_ka=None, i_cu_not_applicable=True)
+    bundle = EquipmentProofGenerator.generate(proof_input)
+    check_icu = _find_check(bundle, "Icu")
+    check_u = _find_check(bundle, "U")
+
+    assert check_icu.status == "NIE_DOTYCZY"
+    assert "nie dotyczy" in check_icu.message_pl.lower()
+    assert "Icu" not in bundle.result.failed_checks
+    assert bundle.result.key_results["icu_ok"] == "NIE_DOTYCZY"
+    # U_m nadal PASS/FAIL normalnie — flaga rozłącznika nie wyłącza innych kryteriów.
+    assert check_u.status == "PASS"
+    # Skoro U/Idyn/Ith PASS i Icu jest NIE_DOTYCZY (nie FAIL) -> całość PASS.
+    assert bundle.result.overall_status == "PASS"
+
+
+def test_equipment_proof_icu_not_applicable_overrides_stray_numeric_value():
+    """Predykat parami: flaga i_cu_not_applicable jest NADRZĘDNA — nawet gdy
+    device.i_cu_ka niesie (błędnie) liczbę, generator i tak zwraca
+    NIE_DOTYCZY, zamiast po cichu policzyć PASS/FAIL z niewłaściwej liczby.
+    """
+    proof_input = _input_with_device(_base_input(), i_cu_ka=999.0, i_cu_not_applicable=True)
+    bundle = EquipmentProofGenerator.generate(proof_input)
+    check_icu = _find_check(bundle, "Icu")
+
+    assert check_icu.status == "NIE_DOTYCZY"
+    assert check_icu.device_value is None
+
+
+def test_equipment_proof_icu_not_applicable_with_missing_u_m_still_fails_u_honestly():
+    """Iloczyn cech: rozłącznik (Icu NIE_DOTYCZY) + brak danych U_m ->
+    U pozostaje uczciwym FAIL "brak podstawy" (flaga dotyczy WYŁĄCZNIE Icu).
+    """
+    proof_input = _input_with_device(
+        _base_input(), u_m_kv=None, i_cu_ka=None, i_cu_not_applicable=True
+    )
+    bundle = EquipmentProofGenerator.generate(proof_input)
+    check_icu = _find_check(bundle, "Icu")
+    check_u = _find_check(bundle, "U")
+
+    assert check_icu.status == "NIE_DOTYCZY"
+    assert check_u.status == "FAIL"
+    assert "brak" in check_u.message_pl.lower()
+    assert "U" in bundle.result.failed_checks
+    assert bundle.result.overall_status == "FAIL"
+
+
+def test_equipment_proof_not_applicable_step_shows_nie_dotyczy_not_brak():
+    """Krok „Dane urządzenia” pokazuje NIE DOTYCZY dla I_cu rozłącznika,
+    zamiast mylącego BRAK (który sugerowałby lukę w karcie katalogowej).
+    """
+    proof_input = _input_with_device(_base_input(), i_cu_ka=None, i_cu_not_applicable=True)
+    bundle = EquipmentProofGenerator.generate(proof_input)
+    device_step = next(
+        s for s in bundle.proof_document.steps if s.title_pl == "Dane urządzenia (nameplate)"
+    )
+    icu_value = next(v for v in device_step.input_values if v.symbol == "I_{cu}")
+
+    assert icu_value.value == "NIE DOTYCZY"
+    assert "BRAK" not in icu_value.formatted
+
+
 def test_equipment_proof_determinism_json():
     proof_input = _base_input()
     first = EquipmentProofGenerator.generate(proof_input)
