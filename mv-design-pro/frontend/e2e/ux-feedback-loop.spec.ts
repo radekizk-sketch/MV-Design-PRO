@@ -14,6 +14,7 @@
  * pełen łańcuch: projekt → case → snapshot → katalog → domain-ops.
  */
 import { test, expect, type ConsoleMessage, type Page } from '@playwright/test';
+import { pustaOdpowiedzDomainOps } from './fixtures/emptyDomainOpsResponse';
 
 interface ConsoleGuards {
   errors: string[];
@@ -175,7 +176,19 @@ async function mockBackend(page: Page, options: MockOptions = {}): Promise<void>
 
     // --- Domain ops (operacja GPZ) ---
     if (method === 'POST' && pathname.includes('/enm/domain-ops')) {
-      const response = snapshotWithGpz() as Record<string, unknown>;
+      // Naprawa (dryf kontraktu mocka, audyt E2E-MOCK-BEZ-CI): shell woła
+      // `refresh_snapshot` NATYCHMIAST po zamontowaniu case'a (store.ts:
+      // refreshFromBackend na mount), ZANIM operator otworzy kreator GPZ.
+      // Ten handler zwracał `snapshotWithGpz()` dla KAŻDEJ operacji —
+      // bootstrap dostawał więc snapshot z gotowym GPZ, `sld-empty-state`
+      // nigdy się nie montował (model od razu "niepusty"), a asercja
+      // `createProjectAndOpenSld` wisiała do timeoutu. Realną operację GPZ
+      // (`add_grid_source_sn`) rozpoznajemy z payloadu żądania.
+      const body = request.postDataJSON() as { operation?: { name?: string } } | null;
+      const opName = body?.operation?.name;
+      const response = opName === 'add_grid_source_sn'
+        ? (snapshotWithGpz() as Record<string, unknown>)
+        : pustaOdpowiedzDomainOps('case-ux');
       if (options.withSemanticIssues) {
         response.semantic_issues = [
           {
