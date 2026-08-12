@@ -210,6 +210,31 @@ def relative_to_backend(filepath: Path) -> str | None:
         return None
 
 
+def check_whitelisted_paths_freshness() -> list[str]:
+    """Zapadka swiezosci WHITELISTED_PATHS (karta ZAPADKI-ALLOWLIST-RESZTA,
+    pozycja b, 2026-08-12).
+
+    Kazda sciezka w WHITELISTED_PATHS musi nadal istniec pod BACKEND_SRC —
+    minimalna zapadka (istnienie), zgodnie z rozstrzygnieciem karty: lista
+    wyznacza warstwe wiazania FaultScenario (miejsce, gdzie parametry zwarcia
+    MAJA prawo powstawac), nie zbior zastanych naruszen jak
+    LEGACY_DIRECT_SOLVER_CALLERS ponizej — nie ma tu "wzorca, ktory kiedys tu
+    trafil" do sprawdzenia poza samym istnieniem pliku. Wpis wskazujacy usuniety
+    plik jest MARTWYM WYJATKIEM: gdyby ktos kiedys utworzyl NOWY plik pod tą samą
+    sciezka wzgledna, przeszedlby przez `is_whitelisted()` bez zadnej kontroli.
+    Uzywa TEGO SAMEGO skladania sciezki (`BACKEND_SRC / path`) co
+    `is_whitelisted()` ponizej (predykaty parami, KLASA-NIE-INSTANCJA S3).
+    """
+    violations: list[str] = []
+    for path in sorted(WHITELISTED_PATHS):
+        if not (BACKEND_SRC / path).is_file():
+            violations.append(
+                f"[fault-params-wyjatek-osierocony] WHITELISTED_PATHS zawiera {path!r}, "
+                "ktorego juz nie ma w backend/src — usun ten wpis"
+            )
+    return violations
+
+
 def is_whitelisted(filepath: Path) -> bool:
     """Czy plik jest poza zakresem inwariantu.
 
@@ -598,6 +623,8 @@ def main() -> int:
     if scanned == 0:
         print("FAIL: Empty scan — 0 files inspected. An empty guard proves nothing.")
         return 1
+
+    violations.extend(check_whitelisted_paths_freshness())
 
     if violations:
         print("FAIL: Direct fault parameter usage detected outside whitelisted modules:")
