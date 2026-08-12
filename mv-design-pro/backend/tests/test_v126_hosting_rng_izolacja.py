@@ -20,10 +20,9 @@ z karty (T1-T4) oraz dodatkowy test wiążący `seed_bus` z ziarnem modelu
 
 from __future__ import annotations
 
+import network_model.solvers.v126_academic as v126_academic
 from network_model.solvers.v126_academic import TraceBuilder, V126AcademicSolver
 from solver_input.v126_contracts import V126AcademicInput, V126AnalysisType, V126BusInput
-
-import network_model.solvers.v126_academic as v126_academic
 
 
 def _bus(ref: str, *, fault_level_mva: float = 100.0, load_mw: float = 1.0) -> V126BusInput:
@@ -91,9 +90,7 @@ def test_t1_permutacja_kolejnosci_szyn_nie_zmienia_wynikow() -> None:
     # Ziarno modelu samo w sobie też jest niezależne od kolejności wejścia —
     # to WŁAŚNIE ono niesie izolację dalej, do każdej szyny.
     assert (
-        krok_1["data"]["seed_model"]
-        == krok_2["data"]["seed_model"]
-        == krok_3["data"]["seed_model"]
+        krok_1["data"]["seed_model"] == krok_2["data"]["seed_model"] == krok_3["data"]["seed_model"]
     )
 
 
@@ -149,9 +146,7 @@ def test_t2_izolacja_strumieni_przy_ustalonym_ziarnie_modelu(monkeypatch) -> Non
     bus_y = _bus("Y", fault_level_mva=45.0, load_mw=2.2)
     bus_z_dodatkowa = _bus("Z-dolozona", fault_level_mva=300.0, load_mw=0.1)
 
-    model_bez_z = V126AcademicInput(
-        buses=[bus_x, bus_y], parameters={"hosting_monte_carlo_n": 64}
-    )
+    model_bez_z = V126AcademicInput(buses=[bus_x, bus_y], parameters={"hosting_monte_carlo_n": 64})
     wynik_bez_z, krok_bez_z = _hosting(model_bez_z)
 
     pozycje_wstawienia = {
@@ -160,9 +155,7 @@ def test_t2_izolacja_strumieni_przy_ustalonym_ziarnie_modelu(monkeypatch) -> Non
         "po_obu": [bus_x, bus_y, bus_z_dodatkowa],
     }
     for nazwa_pozycji, kolejnosc in pozycje_wstawienia.items():
-        model_z_z = V126AcademicInput(
-            buses=kolejnosc, parameters={"hosting_monte_carlo_n": 64}
-        )
+        model_z_z = V126AcademicInput(buses=kolejnosc, parameters={"hosting_monte_carlo_n": 64})
         wynik_z_z, krok_z_z = _hosting(model_z_z)
 
         # Ziarno modelu jest (podmienione) identyczne we wszystkich wywołaniach
@@ -224,9 +217,7 @@ def test_t4_bezposrednia_kolizja_pary_referencji_na_male_probce() -> None:
     """Bezpośredni test funkcji czystej: różne `bus_ref` → różne `seed_bus`."""
     seed_modelu = 123456789
     referencje = [f"bus_{i:03d}" for i in range(200)]
-    seedy = [
-        V126AcademicSolver._hosting_capacity_bus_seed(seed_modelu, ref) for ref in referencje
-    ]
+    seedy = [V126AcademicSolver._hosting_capacity_bus_seed(seed_modelu, ref) for ref in referencje]
     assert len(seedy) == len(set(seedy))
 
 
