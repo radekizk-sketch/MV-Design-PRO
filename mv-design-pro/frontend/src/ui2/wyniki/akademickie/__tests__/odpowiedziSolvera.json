@@ -75,7 +75,7 @@
         "bus_ref": "station/1f4c9a02b7d84e6690ab5cc31d772e18/bus_sn",
         "confidence_percent": 95,
         "critical_limit": "U_max",
-        "hosting_capacity_mw": 7.4,
+        "hosting_capacity_mw": 7.6,
         "monte_carlo_n": 64
       }
     ],
