@@ -1437,6 +1437,38 @@ function composeRowStation(
   // synchroniczny WPROST na SN, przypadek 4) = tor NIEPEŁNY. Placeholder W2
   // (symbol na szynie SN) pozostaje jako UCZCIWA DEGRADACJA, ale scena niesie
   // JAWNY ślad braku (koniec cichego uproszczenia — reguła 7).
+  // TR2W-BEZ-POLA (§0.C.5/§0.C.2): transformator przyłączony do szyny SN bez
+  // skonfigurowanego pola transformatorowego (stan NIEKOMPLETNY) oraz — gdy
+  // rozdzielnica jest sekcjonowana, a terminal WN nie wskazuje żadnej z jej
+  // sekcji — nierozstrzygnięte przypisanie do sekcji. Oba WPROST w audycie
+  // sceny; rysunek niesie marker i wiersz pasma nazw, tekst diagnostyczny żyje
+  // tutaj (WHITE BOX, zero duplikacji zdania na rysunku).
+  for (const code of composition.missingData) {
+    if (code.startsWith('station.transformer.brakPolaSN:')) {
+      const trRef = code.slice('station.transformer.brakPolaSN:'.length);
+      stopNotes.push(
+        `Stacja „${measureInput.id}": transformator „${trRef}" przyłączony do szyny SN BEZ ` +
+          `skonfigurowanego pola transformatorowego — konfiguracja niekompletna. Rysunek pokazuje ` +
+          `transformator (istnieje w modelu i uczestniczy w obliczeniach) z markerem braku pola; ` +
+          `aparatura pola NIE jest dorysowywana, bo dane jej nie niosą.`,
+      );
+    }
+    if (code.startsWith('station.transformer.sectionUnresolved:')) {
+      const trRef = code.slice('station.transformer.sectionUnresolved:'.length);
+      stopNotes.push(
+        `Stacja „${measureInput.id}": terminal WN transformatora „${trRef}" nie wskazuje żadnej ` +
+          `z sekcji zadeklarowanych przez pola tej rozdzielnicy — kolumna postawiona na końcu bloku ` +
+          `jako uczciwa degradacja, przypisanie do sekcji NIEROZSTRZYGNIĘTE (zero zgadywania).`,
+      );
+    }
+  }
+  if (composition.missingData.includes('station.transformer.refMissing')) {
+    stopNotes.push(
+      `Stacja „${measureInput.id}": model deklaruje transformator SN/nN, ale migawka nie niesie ` +
+        `żadnego rekordu „Transformer" z refem — symbol NIE jest rysowany (zakaz rysunku na ` +
+        `identyfikatorze fabrykowanym), strona nN pozostaje bez zaczepu.`,
+    );
+  }
   for (const code of composition.missingData) {
     if (code.startsWith('der.sn.torNiepelny:')) {
       const sourceId = code.slice('der.sn.torNiepelny:'.length);
