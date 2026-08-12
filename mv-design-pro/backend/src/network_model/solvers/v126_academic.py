@@ -1974,12 +1974,53 @@ class V126AcademicSolver:
         )
         return self._branch_z_ohm(path_branch) if path_branch is not None else complex(0.1, 0.4)
 
+    @staticmethod
+    def _hosting_capacity_bus_seed(seed_modelu: int, bus_ref: str) -> int:
+        """Ziarno losowania WYŁĄCZNIE dla jednej szyny (karta HOSTING-RNG-IZOLACJA).
+
+        Czysta funkcja pary (ziarno modelu, referencja szyny) — ten sam
+        mechanizm haszujący co ziarno modelu (`_hash`). Bycie funkcją
+        WYŁĄCZNIE tych dwóch argumentów dowodzi izolacji: podstrumień szyny nie
+        może zależeć od niczego poza jej WŁASNĄ referencją i ziarnem modelu —
+        obecność, liczba czy kolejność INNYCH szyn w modelu nie mają jak go
+        poruszyć. Testowalna wprost (`test_v126_hosting_rng_izolacja.py`).
+        """
+        return int(_hash(f"{seed_modelu}:{bus_ref}")[:12], 16)
+
     def _hosting_capacity(self, model: V126AcademicInput, trace: TraceBuilder) -> JsonDict:
-        seed = int(_hash(model.model_dump(mode="json"))[:12], 16)
-        rng = random.Random(seed)
+        # Ziarno modelu: odcisk CAŁEGO modelu wejściowego, ale z listą szyn w
+        # postaci KANONICZNEJ — posortowanej wg `ref`. Lista szyn nie niesie
+        # znaczenia fizycznego jako SEKWENCJA (to zbiór węzłów sieci, kolejność
+        # jest artefaktem budowy modelu), więc kolejność wpisów w `model.buses`
+        # NIE MOŻE wpływać na wynik ŻADNEJ szyny (karta HOSTING-RNG-IZOLACJA,
+        # własność T1). Bez tego sortowania ziarno modelu — a więc i
+        # podstrumień KAŻDEJ szyny — zmieniałoby się przy samej zmianie
+        # kolejności wejścia: ta sama klasa błędu, którą ta karta naprawia,
+        # tylko przeniesiona o poziom wyżej. Pozostałe listy modelu (gałęzie,
+        # transformatory, ...) NIE są tu sortowane — poza zakresem tej karty,
+        # która dotyczy wyłącznie izolacji podstrumieni MIĘDZY SZYNAMI.
+        payload = model.model_dump(mode="json")
+        payload["buses"] = sorted(payload["buses"], key=lambda b: b["ref"])
+        seed = int(_hash(payload)[:12], 16)
         results: list[JsonDict] = []
+        seeds_by_bus: JsonDict = {}
         simulations = int(model.parameters.get("hosting_monte_carlo_n", 1000))
         for bus in model.buses:
+            # HOSTING-RNG-IZOLACJA (dług zarejestrowany przy MOST-WEJSCIA-V126,
+            # ok. linii 1978-2005 sprzed naprawy): PRZED naprawą `rng` był
+            # JEDNYM strumieniem DZIELONYM między WSZYSTKIE szyny — pętla
+            # kandydatów kończyła się `break` w różnym miejscu per szyna, więc
+            # LICZBA zużytych losowań szyny k przesuwała podstrumień szyny
+            # k+1: wynik szyny zależał od losowań szyn POPRZEDNICH (dołożenie
+            # niepowiązanej szyny albo zmiana kolejności szyn zmieniały wyniki
+            # INNYCH szyn — fizycznie bezsensowne sprzężenie; determinizm
+            # same-input=same-output był formalnie zachowany, ale izolacja
+            # przedmiotowa złamana). Każda szyna dostaje teraz WŁASNY,
+            # niezależny podstrumień wyprowadzony jawnie z pary (ziarno
+            # modelu, `bus.ref`).
+            seed_bus = self._hosting_capacity_bus_seed(seed, bus.ref)
+            seeds_by_bus[bus.ref] = seed_bus
+            rng = random.Random(seed_bus)
             z = abs(self._source_impedance(model, bus.ref))
             accepted = 0.0
             limiting = "U_max"
@@ -2035,9 +2076,17 @@ class V126AcademicSolver:
         trace.add(
             "stochastic_hosting_capacity",
             "P_przyl = max(P_gen) przy prawdopodobieństwie spełnienia kryteriów ≥ 95%",
-            {"simulations": simulations, "seed": seed},
+            {
+                "simulations": simulations,
+                "seed_model": seed,
+                "seed_bus_rule": "int(sha256(f'{seed_model}:{bus_ref}')[:12], 16)",
+                "seeds_by_bus": seeds_by_bus,
+            },
             "Obciążenie losowane z rozkładu beta, generacja z rozkładu normalnego obciętego "
-            "do zakresu fizycznego; ziarno losowania wyprowadzone z odcisku danych "
+            "do zakresu fizycznego; KAŻDA szyna losuje z WŁASNEGO podstrumienia — ziarno "
+            "szyny wyprowadzone jawnie z pary (ziarno modelu, referencja szyny), więc "
+            "wynik jednej szyny nie zależy od losowań zużytych przez inne szyny (karta "
+            "HOSTING-RNG-IZOLACJA); ziarno modelu wyprowadzone z odcisku danych "
             "wejściowych (powtarzalność wyniku).",
             {"buses": len(results)},
             "Moc przyłączeniowa w [MW]; prawdopodobieństwo bezwymiarowe.",
