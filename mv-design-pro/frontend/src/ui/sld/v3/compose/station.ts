@@ -72,7 +72,6 @@ import {
   implicitStationTransformers,
   LV_MODEL_BOUNDARY_TEXT,
   stationSnColumnLayout,
-  STATION_TR_FIELD_GAP_TEXT,
   type StationSnColumnPlacement,
   PORT_CAPTION_BUS_CLEARANCE,
   stationBusbarLabelText,
@@ -1824,12 +1823,6 @@ export function composeStation(input: ComposeStationInput): StationComposition {
       labelClass: 't4',
       role: 'dane',
     });
-  }
-  // TR2W-BEZ-POLA §0.C.5: jawny stan niekompletny — TEN SAM predykat, którym
-  // `layout/measure.ts` (`stationNameBandHeight`/`requiredStationWidth`)
-  // rezerwuje wiersz i jego szerokość (jedno zdanie, dwa końce).
-  if (implicitStationTransformers(station).length > 0) {
-    rows.push({ text: STATION_TR_FIELD_GAP_TEXT, labelClass: 't4', role: 'dane' });
   }
 
   const stationName: StationNameBandOwnerInput = { ownerRef: station.id, nameSlot, rows };

@@ -64,6 +64,7 @@ import {
   type SceneLod,
   type SceneV3,
 } from '../buildScene';
+import { buildCanvasHitAreas } from '../../canvas/hitAreas';
 import { sceneSignature } from './syntheticNetworks';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -288,9 +289,17 @@ describe('TR2W-BEZ-POLA T2 — stacja BEZ pola transformatorowego', () => {
     it(`L${lod}: OSTRZEŻENIE o stanie niekompletnym obecne (marker + zdanie + ślad audytu)`, () => {
       const scene = buildSceneV3(enm, lod);
       expect(transformatoryStacji(scene)[0].meta?.transformerFieldGap).toBe(true);
-      expect(scene.labels.some((l) => l.text === STATION_TR_FIELD_GAP_TEXT)).toBe(true);
-      // Ślad audytu sceny (wzorzec `der.sn.torNiepelny` — kod kompozycji
-      // przekładany na zdanie diagnostyczne, nie duplikowany na rysunku).
+      // ZDANIE NIE JEST ETYKIETĄ RYSUNKU — i to jest rozstrzygnięcie, nie
+      // przeoczenie. Pomiar: wiersz pasma nazw z tym zdaniem (239 j.św. w t4)
+      // był SZERSZY niż najszerszy dotychczasowy wiersz bloku, a
+      // `requiredStationWidth` bierze `max()` po wierszach — jedno zdanie
+      // adnotacji dyktowałoby szerokość kolumny każdej stacji bez pola TR
+      // (+30%), przez co „Dopasuj widok" skracał podpis tożsamości GPZ i
+      // wypełnienie osi spadało poniżej progu (bramki KD-11 i K11-A padły na
+      // pełnej suicie e2e). Ta sama reguła co §20.3 dla ostrzeżeń
+      // topologicznych: rysunek niesie SYGNAŁ, treść żyje w podpowiedzi
+      // obiektu (`canvas/hitAreas.ts` → `<title>`) i w `stopNotes`.
+      expect(scene.labels.some((l) => l.text === STATION_TR_FIELD_GAP_TEXT)).toBe(false);
       const trRef = transformatoryStacji(scene)[0].meta?.ownerRef ?? '';
       expect(
         scene.meta.stopNotes.some(
@@ -361,6 +370,42 @@ describe('TR2W-BEZ-POLA T2 — stacja BEZ pola transformatorowego', () => {
       if (lod === 2) expect(allApparatusIdentifiersValid(scene)).toBe(true);
     });
   }
+
+  // §0.C.5: PODPOWIEDŹ obiektu niesie pełne zdanie stanu — i wisi na kształcie
+  // TRAFIENIA, bo to on odbiera wskazanie kursorem (warstwa trafień leży NAD
+  // rysunkiem). Podpowiedź na grupie rysunkowej byłaby kontrolką-widmem:
+  // istniałaby w DOM i nigdy nie pokazała się użytkownikowi.
+  for (const lod of [1, 2] as SceneLod[]) {
+    it(`L${lod}: kształt trafienia transformatora niesie podpowiedź ze zdaniem stanu`, () => {
+      const scene = buildSceneV3(enm, lod);
+      const obszary = buildCanvasHitAreas({
+        symbols: scene.symbols,
+        segments: scene.segments,
+        labels: [],
+        resultMarkers: [],
+        scale: 1,
+      });
+      const trRef = transformatoryStacji(scene)[0].meta?.ownerRef ?? '';
+      const zPodpowiedzia = obszary.filter((a) => a.tytul === STATION_TR_FIELD_GAP_TEXT);
+      expect(zPodpowiedzia).toHaveLength(1);
+      expect(zPodpowiedzia[0].ownerRef).toBe(trRef);
+      // Kontrola negatywna: ŻADEN inny obiekt kanwy podpowiedzi nie dostaje
+      // (zero pustych/fałszywych `<title>`).
+      expect(obszary.filter((a) => a.tytul != null)).toHaveLength(1);
+    });
+  }
+
+  it('stacja Z polem TR: ZERO podpowiedzi o braku pola (predykat parami)', () => {
+    const scene = buildSceneV3(enmZPolem, 2);
+    const obszary = buildCanvasHitAreas({
+      symbols: scene.symbols,
+      segments: scene.segments,
+      labels: [],
+      resultMarkers: [],
+      scale: 1,
+    });
+    expect(obszary.filter((a) => a.tytul != null)).toHaveLength(0);
+  });
 
   // §0.C.9: klik w transformator bez pola trafia w REALNY ref ENM (szuflada
   // szczegółów rozwiązuje rekord `Transformer` wprost), a nie w „nic".

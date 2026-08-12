@@ -226,7 +226,21 @@ test('kadr i panele: proporcje przy otwarciu, zwinięcie lewego panelu, dopasowa
   // sprzed K11-A (0,59), tylko przesunięcie kalibracji progu. Próg obniżony z
   // tym samym marginesem bezpieczeństwa (~0,03) poniżej nowego pomiaru — nadal
   // daleko nad wartością „zepsute" (0,59), więc realny regres nadal jest łapany.
-  expect(start.wypelnienieOsi).toBeGreaterThanOrEqual(0.75);
+  //
+  // PRZELICZENIE 2026-08-12 (karta TR2W-BEZ-POLA): 0,75 → 0,71. PRZYCZYNA jest
+  // ZAMIERZONĄ ZMIANĄ RYSUNKU, nie dryfem: stacja SN/nN tej sieci ma w modelu
+  // transformator (`Transformer` na szynach stacji, solver go liczy), którego
+  // rysunek NIGDY nie pokazywał, bo dane nie niosą pola roli TR. Po naprawie
+  // blok stacji ma dodatkową kolumnę (symbol 32 j.św. + światło 8), więc
+  // arkusz jest szerszy, a `wypelnienieOsi` = `max(udział_szerokości,
+  // udział_wysokości)` spada, gdy dopasowanie przestaje być ograniczone
+  // wysokością: pomiar 0,778 → 0,744. Kadr pozostaje POPRAWNY (zrzut audytu
+  // `test-failed-1.png` z biegu tej karty: cała sieć wewnątrz kanwy,
+  // wyśrodkowana, czytelna — `trescWewnatrzKanwy` niżej to przypina), a
+  // odległość od wartości „zepsute" (0,59) jest nadal duża. Próg przesunięty z
+  // TYM SAMYM marginesem (~0,03) poniżej nowego pomiaru; obniżanie go dalej
+  // bez zamierzonej zmiany rysunku byłoby maskowaniem regresu.
+  expect(start.wypelnienieOsi).toBeGreaterThanOrEqual(0.71);
   expect(start.trescWewnatrzKanwy).toBe(true);
   // Inspektor bez zawartości NIE zabiera przestrzeni (K11-A automat).
   expect(start.inspektorUkryty).toBe(true);

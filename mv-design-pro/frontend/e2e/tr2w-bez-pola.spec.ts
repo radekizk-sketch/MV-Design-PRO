@@ -265,11 +265,20 @@ test.describe('Transformator SN/nN na rysunku BEZ pola roli TR', () => {
     await expect(transformator).toHaveAttribute('data-transformer-field-gap', 'true');
     await expect(transformator.locator('g[data-field-gap-warning="true"]')).toHaveCount(1);
 
-    // Pełne ZDANIE stanu żyje w paśmie nazw stacji, więc — jak KAŻDY opis na
-    // tej kanwie — podlega odrzucaniu nieczytelnych etykiet przy oddaleniu
-    // („Ukryto N opisów — przybliż, aby zobaczyć"). MARKER przy symbolu jest
-    // widoczny NIEZALEŻNIE od kadru (asercja wyżej, kadr startowy = poziom 1);
-    // zdanie sprawdzamy tam, gdzie rysunek je obiecuje — na pełnym szczególe.
+    // Pełne ZDANIE stanu żyje w PODPOWIEDZI obiektu (natywny `<title>` SVG na
+    // kształcie trafienia — tym, który odbiera wskazanie kursorem), a NIE jako
+    // etykieta rysunku: pomiar pokazał, że wiersz pasma nazw z tym zdaniem
+    // (239 j.św.) dyktował szerokość kolumny każdej stacji bez pola TR i
+    // zdejmował skalę „Dopasuj widok" poniżej progów bramek KD-11/K11-A.
+    // Sprawdzamy więc, że podpowiedź ISTNIEJE w wyrenderowanym drzewie i wisi
+    // na kształcie trafienia TEGO transformatora (nie na grupie rysunkowej,
+    // gdzie byłaby kontrolką-widmem — warstwa trafień leży nad rysunkiem).
+    const uchwyt = canvas.locator(`[data-hit-owner-ref="${transformerRef}"]`);
+    await expect(uchwyt.first()).toBeAttached();
+    await expect(uchwyt.locator('title', { hasText: TEKST_BRAKU_POLA }).first()).toBeAttached();
+
+    // …a marker NIE znika przy zmianie poziomu szczegółu (§0.C.8: transformator
+    // bez pola żyje na TYCH SAMYCH poziomach co transformator z polem).
     // Ta sama mechanika kadrowania co `kd11-zrzuty-screenshot.spec.ts`.
     const symbolBox = await transformator.boundingBox();
     const kadr = (await canvas.boundingBox())!;
@@ -284,10 +293,16 @@ test.describe('Transformator SN/nN na rysunku BEZ pola roli TR', () => {
       poziom = await canvas.getAttribute('data-scene-lod');
     }
     await expect(canvas).toHaveAttribute('data-scene-lod', '2');
-    await expect(canvas).toContainText(TEKST_BRAKU_POLA);
-    // …a marker NIE znika przy zmianie poziomu szczegółu (§0.C.8: transformator
-    // bez pola żyje na TYCH SAMYCH poziomach co transformator z polem).
     await expect(canvas.locator('g[data-field-gap-warning="true"]')).toHaveCount(1);
+    // Podpowiedź żyje także na pełnym szczególe (kontrakt niezależny od kadru).
+    await expect(
+      canvas.locator(`[data-hit-owner-ref="${transformerRef}"] title`).first(),
+    ).toHaveText(TEKST_BRAKU_POLA);
+    // ZERO tekstu adnotacji na samym rysunku — to jest rozstrzygnięcie karty
+    // (treść w podpowiedzi, sygnał na rysunku), więc jest przypięte, nie
+    // pozostawione przypadkowi.
+    const napisy = await canvas.locator('text').allTextContents();
+    expect(napisy.some((t) => t.includes('skonfigurowanego pola'))).toBe(false);
 
     // (c) ZERO fabrykacji: pod refem transformatora nie ma ŻADNEGO innego
     // obiektu rysunku — żadnego wyłącznika, rozłącznika, bezpiecznika, CT, VT,

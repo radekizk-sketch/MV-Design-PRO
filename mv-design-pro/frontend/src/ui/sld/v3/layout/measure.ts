@@ -306,12 +306,24 @@ export const IMPLICIT_TR_SYMBOL_HEIGHT = 40;
  * wariant — rysunek ma ją pokazać JAKO niekompletną, nie zamilczeć i nie
  * dorysować pola, którego dane nie niosą.
  *
- * Tekst żyje w PAŚMIE NAZW B5 — tym samym mechanizmie, którym blok niesie
- * podpis szyny nN i „granicę modelu" (kolizyjnie bezpiecznym Z KONSTRUKCJI
- * przez `stationNameBandHeight`/`requiredStationWidth`), a nie jako luźna
- * etykieta przy symbolu, która na arkuszu 52 stacji wchodziłaby w tor sąsiada.
- * Sam MARKER przy punkcie przyłączenia rysuje glif transformatora
- * (`symbols/glyphs.tsx`, badge „!" w narożniku strony WN).
+ * GDZIE ŻYJE TEN TEKST — i dlaczego NIE na rysunku (pomiar, nie preferencja).
+ * Pierwsza wersja tej karty stawiała zdanie jako wiersz pasma nazw B5.
+ * Pomiar: `measureLabelWidth(…, 't4') = 239` j.św., czyli WIĘCEJ niż
+ * najszerszy dotychczasowy wiersz bloku (odbiór zagregowany: 184; nazwa
+ * stacji t1: 146) — a `requiredStationWidth` bierze `max()` po wierszach, więc
+ * JEDNO zdanie adnotacji dyktowałoby szerokość kolumny KAŻDEJ stacji bez pola
+ * TR (+30%). Skutek zmierzony na pełnej suicie e2e: arkusz szerszy ⇒ mniejsza
+ * skala „Dopasuj widok" ⇒ podpis tożsamości GPZ skracany do „GPZ…15 kV"
+ * (bramka KD-11) i wypełnienie osi 0,728 < 0,75 (bramka K11-A). Adnotacja
+ * pogarszała czytelność rysunku, o którym mówi.
+ *
+ * Dlatego, zgodnie z regułą, którą ten sam kod stosuje do ostrzeżeń
+ * topologicznych zabezpieczeń (spec §20.3 — „warstwa zwarta, nie zasłania
+ * toru": glif niesie WYŁĄCZNIE sygnał obecności, treść żyje w
+ * `missingData`/inspektorze): rysunek niesie MARKER przy symbolu
+ * (`symbols/glyphs.tsx`, badge „!" po stronie WN), a to zdanie trafia do
+ * PODPOWIEDZI obiektu (warstwa trafień, `canvas/hitAreas.ts` → `<title>`) i do
+ * `stopNotes` sceny. Zero rezerwacji szerokości, zero wpływu na proporcje.
  */
 export const STATION_TR_FIELD_GAP_TEXT = 'Brak skonfigurowanego pola transformatorowego SN';
 
@@ -919,10 +931,6 @@ export function stationNameBandHeight(station: StationMeasureInput): number {
   // pkt 6 (recenzja NO-GO 2026-07-17): dwa wiersze strony nN (szyna nN +
   // odbiór/granica modelu) — TA SAMA kolejność co `composeStation` `rows`.
   if (stationHasLvSide(station)) height += 2 * LABEL_LINE_HEIGHT_T4;
-  // TR2W-BEZ-POLA §0.C.5: wiersz jawnego stanu niekompletnego — TA SAMA
-  // kolejność i ten sam predykat co `composeStation` `rows` (jedno zdanie dla
-  // obu końców: kto rezerwuje i kto pisze).
-  if (implicitStationTransformers(station).length > 0) height += LABEL_LINE_HEIGHT_T4;
   return height;
 }
 
@@ -958,11 +966,6 @@ export function requiredStationWidth(station: StationMeasureInput): number {
   if (station.stationTypeLabel) nameWidths.push(measureLabelWidth(station.stationTypeLabel, 't4'));
   // pkt 6 (recenzja NO-GO 2026-07-17): wiersze strony nN pasma B5.
   nameWidths.push(...lvSideNameRowWidths(station));
-  // TR2W-BEZ-POLA §0.C.5: wiersz jawnego stanu niekompletnego — kandydat pasma
-  // nazw, jak każdy inny wiersz B5 (jedna prawda z `stationNameBandHeight`).
-  if (implicitStationTransformers(station).length > 0) {
-    nameWidths.push(measureLabelWidth(STATION_TR_FIELD_GAP_TEXT, 't4'));
-  }
   const nameBandWidth = Math.max(...nameWidths);
 
   // F10.3 (spec §18.4): trzeci kandydat — etykieta szyny SN, TA SAMA

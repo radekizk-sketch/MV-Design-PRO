@@ -586,7 +586,13 @@ function HitShapeNode(props: {
         height={shape.height}
         fill="transparent"
         pointerEvents="all"
-      />
+      >
+        {/* TR2W-BEZ-POLA (§0.C.5): natywna podpowiedź obiektu. Musi wisieć na
+         *  kształcie TRAFIENIA, nie na rysunku — warstwa trafień leży NAD
+         *  rysunkiem, więc `<title>` na grupie symbolu nigdy by się nie pokazał
+         *  (kontrolka-widmo). `undefined` ⇒ brak węzła, zero pustych `<title>`. */}
+        {area.tytul != null ? <title>{area.tytul}</title> : null}
+      </rect>
     );
   }
   return (
