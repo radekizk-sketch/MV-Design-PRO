@@ -158,6 +158,22 @@ async function ustawPrzelacznik(page: Page, testid: string, otwarty: boolean): P
 async function otworzOknoAkademickie(page: Page): Promise<void> {
   await page.getByRole('button', { name: /^Wyniki i dowody \d$/ }).click();
   await expect(page.getByTestId('mvd-wyniki-warsztat')).toBeVisible({ timeout: 30000 });
+  // NAPRAWA (karta TESTY-DRYF-E2E poz. 4, 2026-08-12; przepisanie wg zmiany
+  // kanonu — CLAUDE.md Zero-Debt): karta V126-JEZYK (ocena właściciela
+  // 2026-08-07) przeniosła zakładkę „Analizy akademickie" z toru
+  // podstawowego do trybu EKSPERCKIEGO (`WynikiWarsztat.tsx`,
+  // `MIN_TRYB_ZAKLADKI.akademickie = 'expert'`) — lista zakładek jest
+  // FILTROWANA wg trybu PRZED renderem, więc `mvd-wyniki-zakladka-akademickie`
+  // po prostu nie istnieje w DOM w trybie Podstawowy (domyślnym), stąd
+  // martwy timeout kliknięcia. Test przełącza tryb REALNYM przyciskiem
+  // powłoki (grupa „Tryb"), tak jak inne asercje w tym pliku przełączają
+  // motyw realnym `mvd-theme-toggle` (uczciwość zrzutu — bez zasiewu stanu).
+  const przyciskEkspercki = page.locator('[data-mvd-mode="expert"]');
+  await expect(przyciskEkspercki).toBeVisible({ timeout: 15000 });
+  if ((await przyciskEkspercki.getAttribute('aria-pressed')) !== 'true') {
+    await przyciskEkspercki.click();
+    await expect(przyciskEkspercki).toHaveAttribute('aria-pressed', 'true');
+  }
   await page.getByTestId('mvd-wyniki-zakladka-akademickie').click();
   await expect(page.getByTestId('mvd-akad-ekran')).toBeVisible({ timeout: 30000 });
 }
@@ -183,7 +199,18 @@ test('V126-OKNA — zrzuty okna analiz akademickich (oba motywy)', async ({ page
     });
 
     // 2. Bieg rodzaju liczącego wprost z modelu — wynik, ślad, dowód, raport.
-    await page.getByTestId('mvd-akad-rodzaj').selectOption('voltage_stability');
+    //
+    // NAPRAWA (karta TESTY-DRYF-E2E poz. 4, 2026-08-12; przepisanie wg zmiany
+    // kanonu — CLAUDE.md Zero-Debt): `voltage_stability` ŚWIADOMIE wycofany
+    // z toru projektanta kartą QU-FABRYKACJA (2026-08-08,
+    // `ui2/wyniki/akademickie/nieprezentowane.ts` — solver nie liczy już
+    // żadnej wielkości tej analizy z realnego modelu). Intencja bez zmian
+    // (dowód biegu rodzaju liczącego WPROST z modelu, bez formularza
+    // parametrów — kontrast z krokiem 4 niżej, `earthing_safety`, który
+    // wymaga danych spoza modelu): `power_quality_harmonics` ma równie puste
+    // parametry (`parametry.ts: power_quality_harmonics: PUSTY`) i własny
+    // ekran wyniku.
+    await page.getByTestId('mvd-akad-rodzaj').selectOption('power_quality_harmonics');
     await page.getByTestId('mvd-akad-uruchom').click();
     await expect(page.getByTestId('mvd-akad-wyniki')).toBeVisible({ timeout: 60000 });
     await page.screenshot({

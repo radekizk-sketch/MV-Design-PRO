@@ -329,9 +329,25 @@ test('edycja modelu PO biegu: chip świeżości przestaje mówić „aktualne" (
     await kontekstPo.close();
   }
 
-  // OKNO WYNIKÓW (podgląd przebiegu w store'ie): rewizja migawki opisuje model
-  // SPRZED biegu, więc porównanie jest nierozstrzygalne. Chip MUSI powiedzieć
-  // „nie wiadomo" — nigdy „aktualne" (to była treść pomiaru audytu).
+  // OKNO WYNIKÓW (podgląd przebiegu w store'ie), ZIMNE WEJŚCIE na link biegu.
+  //
+  // NAPRAWA (karta TESTY-DRYF-E2E poz. 5, 2026-08-12; przepisanie wg zmiany
+  // kanonu — CLAUDE.md Zero-Debt): dawny komentarz zakładał, że rewizja
+  // migawki na tej trasie jest TRWALE nierozstrzygalna („MUSI powiedzieć
+  // nie wiadomo"), więc test czekał (do 30 s) na DOSŁOWNY tekst „nieustalone".
+  // To założenie jest dziś nieaktualne — `useRewizjeSwiezosci`
+  // (`ui2/shell/shellStatus.ts`, komentarz przy `rewizjaBiezacegoModelu`)
+  // wprost dokumentuje, że rewizja bieżącego modelu jest zasilana też
+  // „odczytem gotowości PRZY ZIMNYM WEJŚCIU NA LINK PRZEBIEGU" — dokładnie
+  // tą ścieżką, którą ćwiczy ten test (`browser.newContext()` + świeża
+  // nawigacja na `#analysis?run=`). „Nieustalone" jest więc dziś WYŁĄCZNIE
+  // krótkotrwałym stanem ładowania PRZED tym odczytem gotowości — zmierzone
+  // asercją na dosłowny tekst ściga się z tym odczytem (zależnie od
+  // timingu sieci albo łapie stan przejściowy, albo już rozstrzygnięty,
+  // stąd migotanie testu między dwoma uruchomieniami). Intencja bez zmian
+  // (chip NIGDY nie ma mówić „aktualne" — to była treść pomiaru audytu):
+  // sprawdzamy OSTATECZNY, ROZSTRZYGNIĘTY werdykt („nieaktualne" — model
+  // faktycznie zmienił się po biegu), nie migawkę stanu ładowania.
   const kontekstWynik = await browser.newContext();
   try {
     const strona = await kontekstWynik.newPage();
@@ -345,7 +361,7 @@ test('edycja modelu PO biegu: chip świeżości przestaje mówić „aktualne" (
     await expect(strona.getByTestId('mvd-wyniki-warsztat')).toBeVisible({ timeout: 30000 });
 
     const chip = strona.getByTestId('mvd-casebar-results');
-    await expect(chip).toContainText('Wyniki: nieustalone', { timeout: 30000 });
+    await expect(chip).toContainText('Wyniki: nieaktualne', { timeout: 30000 });
     await expect(chip).not.toHaveText('Wyniki: aktualne');
   } finally {
     await kontekstWynik.close();

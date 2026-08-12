@@ -147,7 +147,7 @@ async function createCaseFromUi(page: Page, request: APIRequestContext): Promise
 async function zbudujSiecZeStacja(
   request: APIRequestContext,
   caseId: string,
-): Promise<{ bayRefs: string[] }> {
+): Promise<{ bayRefs: string[]; stationRef: string }> {
   let op = await executeDomainOp(request, caseId, 'add_grid_source_sn', {
     voltage_kv: 15.0,
     sk3_mva: 250.0,
@@ -192,7 +192,16 @@ async function zbudujSiecZeStacja(
     .map((fieldSpec) => fieldSpec.field_ref ?? '')
     .filter((ref) => ref.length > 0);
   expect(bayRefs.length).toBeGreaterThan(0);
-  return { bayRefs };
+
+  // NAPRAWA (karta TESTY-DRYF-E2E poz. 2, ta sama KLASA co punkty 1-2
+  // powyżej): `op.snapshot.substations` niesie DWA obiekty — syntetyczną
+  // rozdzielnię GPZ (`gpz/…/substation`, BEZ szyny nN — to poprawne, GPZ
+  // nie ma strony nN) i realną stację dystrybucyjną SN/nN zbudowaną wyżej
+  // (`stn/…/station`). Wzorzec odróżnienia — `critical-run-flow.spec.ts`
+  // (`ref_id.includes('/station')`, wyklucza `/substation` GPZ).
+  const stacjaWpis = (op.snapshot?.substations ?? []).find((item) => item.ref_id.includes('/station'));
+  expect(stacjaWpis, 'Brak realnej stacji SN/nN w migawce (odróżnionej od rozdzielni GPZ)').toBeTruthy();
+  return { bayRefs, stationRef: stacjaWpis!.ref_id };
 }
 
 /** Przeładowanie powłoki z czekaniem na odświeżenie migawki modelu z serwera. */
@@ -256,7 +265,7 @@ test('menu kanwy SLD otwiera kreatory kompensatora, ogranicznika i źródła dys
   test.setTimeout(240000);
 
   const caseId = await createCaseFromUi(page, request);
-  const { bayRefs } = await zbudujSiecZeStacja(request, caseId);
+  const { bayRefs, stationRef } = await zbudujSiecZeStacja(request, caseId);
 
   // Powłoka musi zobaczyć zbudowany model (migawka z serwera).
   await przeladujPowloke(page);
@@ -284,15 +293,37 @@ test('menu kanwy SLD otwiera kreatory kompensatora, ogranicznika i źródła dys
   // więc sonda elementFromPoint musi próbkować DOKŁADNIE ten sam punkt —
   // ułamek piksela potrafi przełączyć trafienie między nakładającymi się
   // hitboxami (szyna vs łącznik TR→szyna; zmierzone diagnostyką K5-A).
+  //
+  // NAPRAWA (karta TESTY-DRYF-E2E poz. 2, 2026-08-12 — diagnoza dokończona
+  // do końca rurociągu menu v3, rejestr konfliktów urwał ją na „filtr jest
+  // gdzie indziej"): kryterium trafienia `top === el` NIGDY nie mogło się
+  // ziścić — kreska widoczna (`el`, `data-owner-ref` wprost) i obszar
+  // trafienia (`data-hit-*`) to DWA RÓŻNE elementy SVG w RÓŻNYCH grupach
+  // (`top.parentElement === el.parentElement` też fałszywe), więc sonda
+  // ZAWSZE cicho spadała na fallback (środek bboxa szyny). Zmierzone
+  // debugiem (elementsFromPoint na siatce referencyjnej): środek bboxa
+  // szyny GPZ pokrywa się PIKSEL W PIKSEL z hit-areą zejścia transformatora
+  // do szyny (`data-hit-klasa="tor"`, `.../transformer/.../wn_sn#tr-field-to-bus`),
+  // która w tym punkcie leży NAD hit-areą szyny w z-order. Klasa „tor" nie
+  // ma prawa rozwiązać się do kategorii menu „section" (`KOTWICE_DOZWOLONE_DLA_KLASY.tor
+  // = ['galaz','pole']`, `canvasMenuSubject.ts`) — menu nie dostaje ŻADNEGO
+  // dopuszczalnego tematu i nie otwiera się wcale (martwy prawy klik w
+  // TYM JEDNYM punkcie T-złącza, nie defekt rejestru pozycji menu sekcji).
+  // Poprawne kryterium trafienia: `elementFromPoint` zwraca hit-area O
+  // WŁAŚCIWEJ klasie („szyna") WSKAZUJĄCĄ na TĘ SAMĄ szynę (`data-hit-owner-ref`
+  // zgodny z `data-owner-ref` kreski) — nie tożsamość/rodzeństwo DOM.
   const punktSzyny = await szyna.evaluate((el) => {
     const rect = (el as SVGGraphicsElement).getBoundingClientRect();
     const yBase = Math.round(rect.y + rect.height / 2);
-    for (const frac of [0.5, 0.3, 0.7, 0.15, 0.85, 0.4, 0.6, 0.05, 0.95]) {
+    const wlasnyRef = el.getAttribute('data-owner-ref');
+    for (const frac of [0.5, 0.3, 0.7, 0.15, 0.85, 0.4, 0.6, 0.05, 0.95, 0.1, 0.9]) {
       for (const dy of [0, -1, 1, -2, 2]) {
         const x = Math.round(rect.x + rect.width * frac);
         const y = yBase + dy;
         const top = document.elementFromPoint(x, y);
-        if (top === el || (top != null && top.parentElement === el.parentElement)) {
+        const klasa = top?.getAttribute('data-hit-klasa');
+        const hitRef = top?.getAttribute('data-hit-owner-ref');
+        if (klasa === 'szyna' && hitRef === wlasnyRef) {
           return { x, y };
         }
       }
@@ -330,7 +361,15 @@ test('menu kanwy SLD otwiera kreatory kompensatora, ogranicznika i źródła dys
     }
   }
   expect(aparatPola, 'Na kanwie brak aparatu z ownerRef pola SN z modelu').not.toBeNull();
-  await aparatPola!.click({ button: 'right' });
+  // NAPRAWA (karta TESTY-DRYF-E2E poz. 2, ta sama KLASA co punkt 1 powyżej):
+  // scena v3 renderuje osobną nadrzędną grupę trafień (`sld-v3-trafienia`,
+  // `<rect data-hit-klasa="aparat">`) NAD warstwą wizualną — Playwright bez
+  // `force` odmawia klika, bo topowy element w tym punkcie (hit-rect) nie
+  // jest potomkiem lokatora `<g data-element-kind="apparatus">`. Hit-rect
+  // niesie TEN SAM `data-owner-ref` co lokator, więc trafienie jest
+  // poprawne — `force` tylko pomija sprawdzenie DOM-ancestry Playwrighta,
+  // nie zmienia współrzędnych kliku.
+  await aparatPola!.click({ button: 'right', force: true });
   const akcjaOgranicznika = page.getByTestId('sld-menu-add-arrester');
   await expect(akcjaOgranicznika).toBeVisible();
   await akcjaOgranicznika.click();
@@ -346,8 +385,17 @@ test('menu kanwy SLD otwiera kreatory kompensatora, ogranicznika i źródła dys
   //    zoom-out kółkiem, potem prawy klik w stację.
   // ------------------------------------------------------------------
   await expect(page.locator('svg[data-testid="sld-canvas-v3"]')).toBeVisible();
-  const stacja = await zoomujAzWidoczne(page, '[data-element-kind="station"]', 320);
-  await stacja.click({ button: 'right' });
+  // NAPRAWA (karta TESTY-DRYF-E2E poz. 2): selektor generyczny
+  // `[data-element-kind="station"]` łapał PIERWSZY pasujący symbol na
+  // kanwie — GPZ (`gpz/…/substation`) renderuje WŁASNY symbol zbiorczy L0
+  // z tym samym `data-element-kind="station"`, ale bez szyny nN (poprawnie
+  // — GPZ nie ma strony nN), więc menu poprawnie blokowało agregat/UPS dla
+  // ZŁEGO obiektu. Selektor zawężony do realnej stacji SN/nN (`stationRef`).
+  const stacja = await zoomujAzWidoczne(page, `[data-element-kind="station"][data-owner-ref="${stationRef}"]`, 320);
+  // NAPRAWA (karta TESTY-DRYF-E2E poz. 2, ta sama KLASA co punkty wyżej):
+  // hit-rect nadrzędnej grupy `sld-v3-trafienia` (`data-hit-klasa="stacja"`,
+  // ten sam `data-owner-ref`) przechwytuje wskaźnik nad `<g data-element-kind="station">`.
+  await stacja.click({ button: 'right', force: true });
   const akcjaAgregatu = page.getByTestId('sld-menu-add-genset');
   await expect(akcjaAgregatu).toBeVisible();
   // Obie akcje źródeł dyspozycyjnych obecne w menu stacji.

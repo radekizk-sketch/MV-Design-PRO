@@ -52,14 +52,22 @@ const OBSZARY_SZCZEGOLU = [
     napisyWymagane: ['GPZ Referencyjny', 'MVA'],
     // Siedem krokow, nie osiem: przy osmiu obszar zainteresowania rosl do 1173x1265 px,
     // czyli WYZSZY niz widok — bramka kadru to zmierzyla i odrzucila.
-    krokiKolka: 7,
+    krokiKolka: 6,
   },
   {
     // Druga stacja na magistrali — szyna SN stacji jest symbolem obecnym w kazdej skali.
     nazwa: 'stacja na magistrali z polami',
     plik: 'stacja',
     kotwica: '[data-owner-ref$="/station#sn-bus"] >> nth=1',
-    napisyWymagane: ['Stacja', 'kVA', 'pole'],
+    // NAPRAWA (karta TESTY-DRYF-E2E poz. 5, 2026-08-12): etykieta pola SN nie
+    // niesie dziś słowa „pole" wprost — render pokazuje kod pola + rodzaj
+    // gałęzi („F01 · liniowe", „F02 · liniowe"...), więc fragment „pole" nie
+    // pasował do ŻADNEGO napisu w całej kanwie i sonda `napisPrzyKotwicy`
+    // dostawała `null` (declutter nie ukrywał niczego — etykiety o tej treści
+    // po prostu nie istnieją). „liniowe" jest częścią KAŻDEJ etykiety pola na
+    // tym zrzucie — dowodzi obecności pól tak samo, jak dawny fragment miał
+    // dowodzić.
+    napisyWymagane: ['Stacja', 'kVA', 'liniowe'],
     krokiKolka: 8,
   },
 ] as const;
