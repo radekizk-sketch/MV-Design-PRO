@@ -58,6 +58,34 @@ przez Vite z `public/test-fixtures/` w harnessie zrzutow ekranu, nie przez
 backend (`screenshot-harness-main.tsx`). Wszystkie szesc opisane per-pozycja w
 `FRONTEND_PATH_EXCEPTIONS` ponizej.
 
+TRZECIA INSTANCJA TEJ SAMEJ KLASY — FRONTEND-WYJATKI-STALE (naprawiona 2026-08-12)
+-----------------------------------------------------------------------------
+Odbior karty KLIENT-BEZ-RODZINY nazwal dlug NASTEPNY, zanim zdazyl powstac:
+wpis `FRONTEND_PATH_EXCEPTIONS` moze OSIEROCEC — literal, ktory go uzasadnial,
+zniknie z frontu (plik usuniety, sufiks przepisany, helper zmieniony), a wpis
+zostanie. Osierocony wpis nie jest neutralny: PO CICHU poszerza allowliste —
+przyszly literal o TEJ SAMEJ sciezce (przypadkiem albo celowo) przeszedlby
+guard bez zadnej kontroli, bo dopasowanie jest po samej sciezce, nie po
+zrodle, ktore ja wyprodukowalo.
+
+NAPRAWA: `check_frontend_path_exceptions_freshness()` — kazdy wpis
+`FRONTEND_PATH_EXCEPTIONS` musi nadal pasowac do co najmniej jednego literalu
+z `collect_all_frontend_literals()` (zbior SUROWY, PRZED filtrem wyjatkow).
+Wpis bez pokrycia = naruszenie nazywajace wpis po kluczu, z zadaniem jego
+usuniecia. Zapadka i filtr (`collect_frontend_paths()`) czytaja z JEDNEGO
+zrodla prawdy — `_exception_covers_literal()` — zamiast dwoch rownoleglych
+porownan sciezek, ktore moglyby z czasem dryfowac (regula KLASA-NIE-INSTANCJA
+§3, predykaty parami).
+
+Zapadka MUSI liczyc po zbiorze SUROWYM, nie po `collect_frontend_paths()`
+(ktory sam juz odejmuje `FRONTEND_PATH_EXCEPTIONS`) — inaczej kazdy dzialajacy
+wpis wygladalby jak sierota, bo literal, ktory go uzasadnia, znika z
+przefiltrowanego zbioru WLASNIE DLATEGO, ze wyjatek zadzialal poprawnie.
+
+POMIAR NA HEAD PRZED NAPRAWA (2026-08-12): 6/6 wpisow `FRONTEND_PATH_EXCEPTIONS`
+mialo dokladnie jedno pokrycie w surowym skanie (0 sierot) — dlug byl
+NAZWANY, nie jeszcze ZREALIZOWANY. Zapadka pilnuje, zeby nie powstal cicho.
+
 KANON (rozstrzygniecie karty PREFIKSY)
 --------------------------------------
 KAZDY router HTTP montowany jest pod `/api/...`. Prefiks `/api` jest jedyna
@@ -82,6 +110,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from api_lifecycle_guard import (  # noqa: E402
+    RouteContract,
     discover_all_routes_with_problems,
 )
 
@@ -104,6 +133,10 @@ CANONICAL_PREFIX = "/api"
 # Koncowki infrastrukturalne aplikacji (`/`, `/health`, `/ready`, `/docs`,
 # `/redoc`, `/openapi.json`) NIE przechodza przez `include_router`, wiec nie sa
 # przedmiotem tej listy — guard ich nie widzi i widziec nie musi.
+#
+# ZAPADKA SWIEZOSCI (karta FRONTEND-WYJATKI-STALE, 2026-08-12): kazdy wpis
+# musi nadal wskazywac trase, ktora RZECZYWISCIE stoi poza `/api` w dzisiejszej
+# tablicy tras — sprawdza to `check_backend_prefix_exceptions_freshness()`.
 # --------------------------------------------------------------------------
 BACKEND_PREFIX_EXCEPTIONS: dict[str, str] = {}
 
@@ -117,6 +150,14 @@ BACKEND_PREFIX_EXCEPTIONS: dict[str, str] = {}
 # naprawa KLIENT-BEZ-RODZINY): to JEDYNE literaly spoza `/api` w plikach z
 # wywolaniem HTTP — zaden z nich nie jest adresem, ktorego brak dostawcy
 # nalezaloby zarejestrowac w `FRONTEND_DEAD_CLIENT_DEBT` ponizej.
+#
+# ZAPADKA SWIEZOSCI (karta FRONTEND-WYJATKI-STALE, 2026-08-12): kazdy wpis
+# ponizej musi nadal pasowac do co najmniej jednego literalu zebranego przez
+# `collect_all_frontend_literals()` (zbior SUROWY, sprzed odjecia tej samej
+# listy) — sprawdza to `check_frontend_path_exceptions_freshness()`. Wpis,
+# ktorego literal zniknal z frontu (plik usuniety, helper przepisany), jest
+# naruszeniem: osierocony wpis po cichu poszerza allowliste dla przyszlego
+# literalu o tej samej sciezce.
 # --------------------------------------------------------------------------
 FRONTEND_PATH_EXCEPTIONS: dict[str, str] = {
     "/": (
@@ -367,6 +408,22 @@ def collect_all_frontend_literals() -> list[FrontendPath]:
     return found
 
 
+def _exception_covers_literal(exception_path: str, literal: FrontendPath) -> bool:
+    """JEDYNE zrodlo prawdy dla pytania „czy wpis `FRONTEND_PATH_EXCEPTIONS`
+    dotyczy TEGO literalu?" — uzywane zarowno przez filtr
+    (`collect_frontend_paths`, ktory odejmuje wyjatki od surowego zbioru), jak
+    i przez zapadke swiezosci (`check_frontend_path_exceptions_freshness`,
+    ktora sprawdza, ze kazdy wyjatek ma jeszcze co odejmowac).
+
+    Dopasowanie jest DOKLADNA rownoscia sciezek (klucz wyjatku == `literal.path`).
+    Funkcja istnieje mimo trywialnosci reguly, zeby oba miejsca uzycia czytaly
+    z JEDNEGO porownania zamiast dwoch rownoleglych, ktore moglyby z czasem
+    rozjechac sie w definicji „dopasowania" (regula KLASA-NIE-INSTANCJA §3,
+    predykaty parami — karta FRONTEND-WYJATKI-STALE, 2026-08-12).
+    """
+    return exception_path == literal.path
+
+
 def collect_frontend_paths() -> list[FrontendPath]:
     """`collect_all_frontend_literals()` po odjeciu jawnych `FRONTEND_PATH_EXCEPTIONS`
 
@@ -379,8 +436,66 @@ def collect_frontend_paths() -> list[FrontendPath]:
     return [
         item
         for item in collect_all_frontend_literals()
-        if item.path not in FRONTEND_PATH_EXCEPTIONS
+        if not any(
+            _exception_covers_literal(exception_path, item)
+            for exception_path in FRONTEND_PATH_EXCEPTIONS
+        )
     ]
+
+
+def check_frontend_path_exceptions_freshness(
+    raw_literals: list[FrontendPath],
+) -> list[str]:
+    """Zapadka swiezosci `FRONTEND_PATH_EXCEPTIONS` (karta FRONTEND-WYJATKI-STALE).
+
+    Kazdy wpis MUSI nadal pasowac do co najmniej jednego literalu z `raw_literals`
+    — zbioru SUROWEGO (`collect_all_frontend_literals()`), sprzed odjecia tej
+    samej listy. Wpis bez pokrycia = literal, ktory go uzasadnial, zniknal z
+    frontu (plik usuniety, sufiks przepisany, helper zmieniony) — wyjatek
+    OSIEROCIAL i po cichu poszerza allowliste dla kazdego PRZYSZLEGO literalu
+    o tej samej sciezce, ktory guard juz nigdy by nie zobaczyl.
+
+    Zbior MUSI byc SUROWY (przed filtrem), nie wynik `collect_frontend_paths()`
+    — ten drugi juz ODEJMUJE `FRONTEND_PATH_EXCEPTIONS`, wiec kazdy dzialajacy
+    wpis wygladalby jak sierota: literal, ktory go uzasadnia, znika z
+    przefiltrowanego zbioru WLASNIE DLATEGO, ze wyjatek zadzialal poprawnie.
+
+    Uzywa `_exception_covers_literal()` — TEGO SAMEGO porownania, ktorym
+    `collect_frontend_paths()` odejmuje wyjatki od surowego zbioru (regula
+    KLASA-NIE-INSTANCJA §3, predykaty parami): zapadka i filtr nie moga
+    dryfowac w rozne strony, bo czytaja z jednej funkcji.
+    """
+    violations: list[str] = []
+    for exception_path, reason in sorted(FRONTEND_PATH_EXCEPTIONS.items()):
+        if any(_exception_covers_literal(exception_path, item) for item in raw_literals):
+            continue
+        violations.append(
+            f"[route-prefix-wyjatek-osierocony] FRONTEND_PATH_EXCEPTIONS[{exception_path!r}] "
+            "nie pasuje juz do zadnego literalu znalezionego w plikach frontu z "
+            f"wywolaniem HTTP — usun ten wpis (uzasadnienie bylo: {reason})"
+        )
+    return violations
+
+
+def check_backend_prefix_exceptions_freshness(routes: list[RouteContract]) -> list[str]:
+    """Zapadka swiezosci `BACKEND_PREFIX_EXCEPTIONS` — ta sama klasa ryzyka co
+    `check_frontend_path_exceptions_freshness()` powyzej, w tym samym pliku i
+    tym samym guardzie: wpis moze osierocec, gdy trasa, ktora go uzasadniala,
+    zostanie przeniesiona pod `/api` albo usunieta. Naprawiona przy okazji
+    (karta FRONTEND-WYJATKI-STALE, 2026-08-12) — trywialna, mechanicznie
+    identyczna z naprawa frontu.
+    """
+    served_paths = {route.path for route in routes}
+    violations: list[str] = []
+    for exception_path, reason in sorted(BACKEND_PREFIX_EXCEPTIONS.items()):
+        if exception_path in served_paths:
+            continue
+        violations.append(
+            f"[route-prefix-wyjatek-osierocony-backend] BACKEND_PREFIX_EXCEPTIONS"
+            f"[{exception_path!r}] nie pasuje juz do zadnej trasy w dzisiejszej "
+            f"tablicy — usun ten wpis (uzasadnienie bylo: {reason})"
+        )
+    return violations
 
 
 def parse_vite_proxy_prefixes() -> list[str]:
@@ -510,6 +625,7 @@ def check_route_prefixes() -> list[str]:
             f"[route-prefix-poza-kanonem] {route.key} ({route.source}) "
             f"stoi poza {CANONICAL_PREFIX!r} i nie ma wpisu w BACKEND_PREFIX_EXCEPTIONS"
         )
+    violations.extend(check_backend_prefix_exceptions_freshness(routes))
 
     served_paths = sorted({route.path for route in routes})
     proxy_prefixes = parse_vite_proxy_prefixes()
@@ -537,6 +653,7 @@ def check_route_prefixes() -> list[str]:
             "literalu sciezki w plikach z wywolaniem HTTP — skan jest zepsuty (rozszerzenie "
             "plikow / FRONTEND_SRC / HTTP_CALL_HINT), nie repo bez klientow"
         )
+    violations.extend(check_frontend_path_exceptions_freshness(raw_frontend_literals))
     for front in collect_frontend_paths():
         if not _front_matches_served(front.path, served_paths):
             key = (front.source, front.path)

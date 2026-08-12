@@ -34,6 +34,17 @@ def _stub_backend(monkeypatch, routes, problems=()) -> None:
 
 
 def _stub_frontend(monkeypatch, tmp_path: Path, files: dict[str, str]) -> None:
+    """Podmienia drzewo frontu na `files` i domyslnie CZYSCI `FRONTEND_PATH_EXCEPTIONS`.
+
+    Bez tego kazdy test stubujacy front (a wiec nietrzymajacy realnych literalow
+    produkcyjnych typu `/trace`, `/proof`, `/test-fixtures/...`) zapalalby zapadke
+    swiezosci (karta FRONTEND-WYJATKI-STALE) na wszystkich sześciu wpisach
+    produkcyjnych — nie dlatego, ze zapadka jest zla, tylko dlatego, ze test
+    izoluje sie od repozytorium (patrz docstring modulu), a lista wyjatkow
+    zostawala nieizolowana. Test, ktory chce sprawdzic sam mechanizm wyjatkow,
+    ustawia `FRONTEND_PATH_EXCEPTIONS` PO tym wywolaniu (kolejny `monkeypatch.setattr`
+    nadpisuje ten reset).
+    """
     src = tmp_path / "frontend" / "src"
     src.mkdir(parents=True)
     for name, content in files.items():
@@ -42,6 +53,7 @@ def _stub_frontend(monkeypatch, tmp_path: Path, files: dict[str, str]) -> None:
         target.write_text(content, encoding="utf-8")
     monkeypatch.setattr(guard, "FRONTEND_SRC", src)
     monkeypatch.setattr(guard, "ROOT", tmp_path)
+    monkeypatch.setattr(guard, "FRONTEND_PATH_EXCEPTIONS", {})
 
 
 def _stub_vite(monkeypatch, tmp_path: Path, prefixes: tuple[str, ...] = ("/api",)) -> None:
@@ -328,6 +340,131 @@ def test_wyjatek_frontu_zawiesza_naruszenie_takze_dla_rodziny_bez_backendu(
     )
 
     assert guard.check_route_prefixes() == []
+
+
+# ---------------------------------------------------------------------------
+# Zapadka SWIEZOSCI FRONTEND_PATH_EXCEPTIONS (karta FRONTEND-WYJATKI-STALE,
+# 2026-08-12). Kazdy wpis MUSI nadal pasowac do co najmniej jednego literalu
+# w SUROWYM skanie (`collect_all_frontend_literals()`, sprzed odjecia tej
+# samej listy) — inaczej literal, ktory go uzasadnial, zniknal z frontu, a
+# wpis OSIEROCIAL: po cichu poszerza allowliste dla kazdego przyszlego
+# literalu o tej samej sciezce.
+# ---------------------------------------------------------------------------
+
+
+def test_wyjatek_z_pokryciem_w_surowym_skanie_przechodzi(monkeypatch, tmp_path) -> None:
+    """(a) Wpis, ktorego literal nadal istnieje we froncie, jest ZIELONY."""
+    _no_debt(monkeypatch)
+    _stub_backend(monkeypatch, [_route("GET", "/api/health")])
+    _stub_frontend(
+        monkeypatch,
+        tmp_path,
+        {"ui/proof/proofLatexApi.ts": "const r = await fetch([BAZA, id].join('/'));"},
+    )
+    _stub_vite(monkeypatch, tmp_path)
+    monkeypatch.setattr(guard, "FRONTEND_PATH_EXCEPTIONS", {"/": "test: separator .join('/')"})
+
+    violations = guard.check_route_prefixes()
+
+    assert not any("[route-prefix-wyjatek-osierocony]" in v for v in violations)
+
+
+def test_wyjatek_bez_pokrycia_jest_osierocony(monkeypatch, tmp_path) -> None:
+    """(b) Wpis, ktorego literal ZNIKNAL z frontu (np. plik usuniety), jest
+    naruszeniem, ktory NAZYWA wpis po kluczu — inaczej naprawiajacy nie wie,
+    ktory z kilku wpisow ma usunac."""
+    _no_debt(monkeypatch)
+    _stub_backend(monkeypatch, [_route("GET", "/api/health")])
+    _stub_frontend(monkeypatch, tmp_path, {"ui/ok/api.ts": "const r = await fetch('/api/health');"})
+    _stub_vite(monkeypatch, tmp_path)
+    monkeypatch.setattr(
+        guard,
+        "FRONTEND_PATH_EXCEPTIONS",
+        {"/dawno-usuniety-literal": "test: wpis powinien byc sierota"},
+    )
+
+    violations = guard.check_route_prefixes()
+
+    assert any(
+        "[route-prefix-wyjatek-osierocony]" in v and "/dawno-usuniety-literal" in v
+        for v in violations
+    )
+
+
+def test_wyjatek_pasuje_mimo_ze_collect_frontend_paths_go_odfiltrowuje(
+    monkeypatch, tmp_path
+) -> None:
+    """(c) Iloczyn cech: literal, ktory `collect_frontend_paths()` ODEJMUJE
+    (bo trafil na wyjatek), MUSI mimo to pokrywac wpis w zapadce swiezosci —
+    zapadka liczy po zbiorze SUROWYM (`collect_all_frontend_literals()`), nie
+    po przefiltrowanym. Gdyby zapadka bledem czytala z `collect_frontend_paths()`,
+    KAZDY dzialajacy wpis wygladalby jak sierota: literal znika z
+    przefiltrowanego zbioru WLASNIE DLATEGO, ze wyjatek zadzialal poprawnie —
+    ten test przypina wybor SUROWEGO zrodla, nie tylko koncowy wynik.
+    """
+    _no_debt(monkeypatch)
+    _stub_backend(monkeypatch, [_route("GET", "/api/health")])
+    _stub_frontend(
+        monkeypatch,
+        tmp_path,
+        {"harness/x.ts": "const r = await fetch('/test-fixtures/foo.json');"},
+    )
+    _stub_vite(monkeypatch, tmp_path)
+    monkeypatch.setattr(
+        guard,
+        "FRONTEND_PATH_EXCEPTIONS",
+        {"/test-fixtures/foo.json": "test: zasob statyczny"},
+    )
+
+    # Literal jest w zbiorze SUROWYM...
+    raw = guard.collect_all_frontend_literals()
+    assert any(item.path == "/test-fixtures/foo.json" for item in raw)
+    # ...ale `collect_frontend_paths()` go ODEJMUJE — wyjatek zadzialal
+    # poprawnie, wiec w przefiltrowanym zbiorze literalu JUZ NIE MA. To jest
+    # dokladnie scenariusz, w ktorym zapadka czytajaca z niewlasciwego zrodla
+    # zglosilaby falszywego sierote.
+    filtered_paths = {item.path for item in guard.collect_frontend_paths()}
+    assert "/test-fixtures/foo.json" not in filtered_paths
+
+    violations = guard.check_route_prefixes()
+
+    assert not any("[route-prefix-wyjatek-osierocony]" in v for v in violations)
+
+
+def test_backend_wyjatek_z_pokryciem_przechodzi(monkeypatch, tmp_path) -> None:
+    """Ta sama klasa ryzyka po stronie backendu (BACKEND_PREFIX_EXCEPTIONS),
+    naprawiona przy okazji w tym samym pliku/guardzie: wpis wskazujacy
+    ISTNIEJACA trase poza kanonem jest ZIELONY."""
+    _no_debt(monkeypatch)
+    _stub_backend(monkeypatch, [_route("POST", "/projects/import")])
+    _stub_frontend(monkeypatch, tmp_path, {})
+    _stub_vite(monkeypatch, tmp_path, ("/api", "/projects"))
+    monkeypatch.setattr(
+        guard, "BACKEND_PREFIX_EXCEPTIONS", {"/projects/import": "uzasadnienie testowe"}
+    )
+
+    violations = guard.check_route_prefixes()
+
+    assert not any("[route-prefix-wyjatek-osierocony-backend]" in v for v in violations)
+
+
+def test_backend_wyjatek_bez_pokrycia_jest_osierocony(monkeypatch, tmp_path) -> None:
+    """Wpis BACKEND_PREFIX_EXCEPTIONS, ktorego trasa zniknela (przeniesiona
+    pod /api albo usunieta), jest naruszeniem, ktory NAZYWA wpis po kluczu."""
+    _no_debt(monkeypatch)
+    _stub_backend(monkeypatch, [_route("GET", "/api/health")])
+    _stub_frontend(monkeypatch, tmp_path, {"ui/ok/api.ts": "const r = await fetch('/api/health');"})
+    _stub_vite(monkeypatch, tmp_path)
+    monkeypatch.setattr(
+        guard, "BACKEND_PREFIX_EXCEPTIONS", {"/dawno-przeniesiona/trasa": "test: sierota"}
+    )
+
+    violations = guard.check_route_prefixes()
+
+    assert any(
+        "[route-prefix-wyjatek-osierocony-backend]" in v and "/dawno-przeniesiona/trasa" in v
+        for v in violations
+    )
 
 
 # ---------------------------------------------------------------------------
