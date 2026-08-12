@@ -1,0 +1,338 @@
+/**
+ * TR2W-BEZ-POLA — KOTWICA TOPOLOGICZNA kolumny transformatora bez pola roli TR
+ * (karta naprawcza §0.C.2/§0.C.3; `REJESTR_KONFLIKTOW.md`, wiersz
+ * BUGI-PRODUKTU-E2E).
+ *
+ * ROZSTRZYGNIĘCIE, KTÓRE TEN PLIK PILNUJE. Miejsce kolumny transformatora
+ * wynika z jego TERMINALA WN (`Transformer.hv_bus_ref`) → sekcji szyn, do
+ * której ten terminal należy → wolnego slotu W OBRĘBIE tej sekcji. Reguła
+ * pozycyjna („kolumna za ostatnim polem rozdzielnicy") daje ten sam wynik
+ * WYŁĄCZNIE na rozdzielnicy jednosekcyjnej; na rozdzielnicy sekcjonowanej
+ * (dwa systemy szyn, sprzęgło, TR1 zasilany z sekcji A i TR2 z sekcji B)
+ * postawiłaby oba transformatory na końcu bloku, czyli SKŁAMAŁA o tym, skąd
+ * który transformator jest zasilany. To informacja ruchowa, nie kosmetyka —
+ * dlatego jest przypięta testem, a nie tylko opisana w docstringu (reguła
+ * KLASA §4: „deklaracja bez testu = fałszywa pewność").
+ *
+ * DLACZEGO TU, A NIE NA SCENIE. Fixtury referencyjne nie niosą stacji SN/nN z
+ * sekcjonowaną rozdzielnicą i dwoma transformatorami, a operacja domenowa
+ * backendu (`insert_station_on_segment_sn`) takiej stacji nie produkuje —
+ * fixtura ENM byłaby więc zmyśleniem kształtu danych, którego kreator nie
+ * generuje. Kotwica mieszka w `layout/measure.ts` `stationSnColumnLayout` i
+ * `compose/station.ts`, i dokładnie tam jest ćwiczona: wejściem jest
+ * `StationMeasureInput` — ten sam kontrakt, który `scene/buildScene.ts`
+ * buduje z adaptera. Pełny łańcuch adapter→scena dla stacji jednosekcyjnej
+ * pokrywa `scene/__tests__/buildScene.tr2wBezPola.test.ts`.
+ *
+ * ILOCZYN CECH: {1 sekcja, 2 sekcje} × {1 TR, 2 TR} × {terminal WN pasujący,
+ * niepasujący, pusty} × {pole TR obecne/nieobecne}.
+ */
+import { describe, expect, it } from 'vitest';
+
+import { FIELD_ROLE, type FieldRole } from '../../../v2/domain/apparatusContracts';
+import type { MiniBlockBayDescriptor } from '../../../v2/renderer/MiniBlockRmuRenderer';
+import { computeBands, type StationBandHeights } from '../../layout/bands';
+import { computeColumns } from '../../layout/columns';
+import {
+  colorSegmentLabelRows,
+  computeSegmentLabelSlotX,
+} from '../../layout/segments';
+import {
+  bayStackCenterX,
+  implicitStationTransformers,
+  stationBlockHeight,
+  stationBlockWidth,
+  stationHasLvSide,
+  stationSnColumnLayout,
+  STATION_TR_FIELD_GAP_TEXT,
+  type StationMeasureInput,
+} from '../../layout/measure';
+import { composeStation, type ComposeStationInput, type StationComposition } from '../station';
+
+const SEKCJA_A = 'stn/test/sn_bus_a';
+const SEKCJA_B = 'stn/test/sn_bus_b';
+
+function makeBay(
+  fieldRole: FieldRole,
+  index: number,
+  busRef?: string,
+): MiniBlockBayDescriptor {
+  return {
+    bayRef: `bay-${index}`,
+    fieldRole,
+    designation: `Pole ${index}`,
+    hasMissingRequiredDevice: false,
+    busRef,
+  };
+}
+
+function makeStation(
+  id: string,
+  snBays: readonly MiniBlockBayDescriptor[],
+  overrides: Partial<StationMeasureInput> = {},
+): StationMeasureInput {
+  return {
+    id,
+    name: `Stacja ${id}`,
+    stationCode: 'S01',
+    transformerRatedKva: 630,
+    stationTypeLabel: 'stacja przelotowa',
+    snBays,
+    ...overrides,
+  };
+}
+
+function buildComposeInput(station: StationMeasureInput): ComposeStationInput {
+  const rows = colorSegmentLabelRows(computeSegmentLabelSlotX([station], [null]));
+  const bandHeights: StationBandHeights = {
+    incomingSegmentLabelText: null,
+    portCaptionHeight: 0,
+    stationBlockHeight: stationBlockHeight(station),
+    nameBandHeight: 40,
+  };
+  const bands = computeBands([bandHeights], rows.rowCount);
+  const { columns } = computeColumns({
+    stations: [station],
+    incomingSegmentLabelTexts: [null],
+    nameSlotBand: bands.bands.B5,
+    segmentSlotBand: bands.bands.B1,
+  });
+  const column = columns[0];
+  return {
+    station,
+    column: { x: column.x, width: column.width, tapX: column.tapX },
+    busAxisY: bands.bands.B2.y,
+    blockTopY: bands.bands.B4.y,
+    nameSlot: column.nameSlot,
+    hasLvSection: stationHasLvSide(station),
+  };
+}
+
+const compose = (station: StationMeasureInput): StationComposition =>
+  composeStation(buildComposeInput(station));
+
+const transformatory = (c: StationComposition) =>
+  c.symbols.filter((s) => s.symbolId === 'transformer2W');
+
+/** Rozdzielnica JEDNOSEKCYJNA (wszystkie pola na tej samej szynie). */
+const jednaSekcja = (units: StationMeasureInput['transformerUnits']): StationMeasureInput =>
+  makeStation('s-1sekcja', [
+    makeBay(FIELD_ROLE.RMU_LINE, 0, SEKCJA_A),
+    makeBay(FIELD_ROLE.RMU_LINE, 1, SEKCJA_A),
+  ], { hasTransformer: true, transformerUnits: units });
+
+/** Rozdzielnica SEKCJONOWANA: pola 0-1 na sekcji A, sprzęgło, pola 3-4 na B. */
+const dwieSekcje = (units: StationMeasureInput['transformerUnits']): StationMeasureInput =>
+  makeStation('s-2sekcje', [
+    makeBay(FIELD_ROLE.RMU_LINE, 0, SEKCJA_A),
+    makeBay(FIELD_ROLE.RMU_LINE, 1, SEKCJA_A),
+    makeBay(FIELD_ROLE.COUPLER, 2, SEKCJA_A),
+    makeBay(FIELD_ROLE.RMU_LINE, 3, SEKCJA_B),
+    makeBay(FIELD_ROLE.RMU_LINE, 4, SEKCJA_B),
+  ], { hasTransformer: true, transformerUnits: units });
+
+// ---------------------------------------------------------------------------
+// T4 — DWA transformatory na JEDNEJ sekcji.
+// ---------------------------------------------------------------------------
+
+describe('TR2W-BEZ-POLA T4 — 2× transformator na jednej sekcji: dwa niezależne tory', () => {
+  const station = jednaSekcja([
+    { ref: 'tr/1', hvBusRef: SEKCJA_A, lvBusRef: 'stn/test/nn_bus_1' },
+    { ref: 'tr/2', hvBusRef: SEKCJA_A, lvBusRef: 'stn/test/nn_bus_2' },
+  ]);
+
+  it('plan kolumn: DWIE kolumny transformatora, każda z WŁASNYM realnym refem', () => {
+    const plan = stationSnColumnLayout(station, 0);
+    const tr = plan.filter((p) => p.kind === 'transformer');
+    expect(tr.map((p) => p.transformerRef)).toEqual(['tr/1', 'tr/2']);
+    // Rozdzielnica jednosekcyjna ⇒ sekcja rozstrzygnięta dla obu.
+    expect(tr.every((p) => p.sectionResolved)).toBe(true);
+    // Kolumny są ROZŁĄCZNE (nie leżą na sobie).
+    expect(tr[0].leftX + tr[0].width).toBeLessThanOrEqual(tr[1].leftX);
+  });
+
+  it('kompozycja: dwa symbole, dwa PIONY zejścia, dwa zaczepy na szynie nN', () => {
+    const c = compose(station);
+    const tr = transformatory(c);
+    expect(tr.map((s) => s.transformerRef)).toEqual(['tr/1', 'tr/2']);
+    expect(tr[0].x).not.toBe(tr[1].x);
+    expect(c.segments.filter((s) => s.ownerRef === 'tr/1#descent')).toHaveLength(1);
+    expect(c.segments.filter((s) => s.ownerRef === 'tr/2#descent')).toHaveLength(1);
+    // Szyna nN spina OBA transformatory (dwa zejścia `#lv-drop-*`).
+    expect(c.segments.filter((s) => s.ownerRef.includes('#lv-drop-'))).toHaveLength(2);
+    expect(c.segments.filter((s) => s.ownerRef.endsWith('#lv-bus'))).toHaveLength(1);
+  });
+
+  it('OBA transformatory oznaczone jako stan niekompletny (nie tylko pierwszy)', () => {
+    const c = compose(station);
+    expect(transformatory(c).map((s) => s.transformerFieldGap)).toEqual([true, true]);
+    expect(c.missingData).toContain('station.transformer.brakPolaSN:tr/1');
+    expect(c.missingData).toContain('station.transformer.brakPolaSN:tr/2');
+  });
+
+  it('rezerwacja szerokości bloku OBEJMUJE obie kolumny (measure↔compose)', () => {
+    const bezTr = jednaSekcja([]);
+    const szerokoscZ = stationBlockWidth(station);
+    const szerokoscBez = stationBlockWidth({ ...bezTr, hasTransformer: false });
+    expect(szerokoscZ).toBeGreaterThan(szerokoscBez);
+    // Rysunek mieści się w rezerwacji: prawa krawędź ostatniego symbolu nie
+    // wychodzi poza blok policzony przez measure.
+    const c = compose(station);
+    const plan = stationSnColumnLayout(station, 0);
+    const prawaKrawedz = Math.max(...plan.map((p) => p.leftX + p.width));
+    expect(prawaKrawedz - 8).toBe(szerokoscZ);
+    expect(transformatory(c)).toHaveLength(2);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// T5 — TR1 na sekcji A, TR2 na sekcji B: KAŻDY ZE SWOJEJ SEKCJI.
+// ---------------------------------------------------------------------------
+
+describe('TR2W-BEZ-POLA T5 — rozdzielnica sekcjonowana: każdy transformator ze swojej sekcji', () => {
+  const station = dwieSekcje([
+    { ref: 'tr/A', hvBusRef: SEKCJA_A, lvBusRef: 'stn/test/nn_bus_a' },
+    { ref: 'tr/B', hvBusRef: SEKCJA_B, lvBusRef: 'stn/test/nn_bus_b' },
+  ]);
+
+  it('kolumna TR sekcji A leży W OBRĘBIE sekcji A — MIĘDZY polami, nie na końcu bloku', () => {
+    const plan = stationSnColumnLayout(station, 0);
+    const kolejnosc = plan.map((p) =>
+      p.kind === 'transformer' ? `TR:${p.transformerRef}` : `pole:${p.bayIndex}`,
+    );
+    // Sekcja A: pola 0,1,2 (ze sprzęgłem) → TR/A → sekcja B: pola 3,4 → TR/B.
+    expect(kolejnosc).toEqual([
+      'pole:0', 'pole:1', 'pole:2', 'TR:tr/A', 'pole:3', 'pole:4', 'TR:tr/B',
+    ]);
+  });
+
+  it('geometria: TR sekcji A stoi NA LEWO od pierwszego pola sekcji B', () => {
+    const c = compose(station);
+    const tr = transformatory(c);
+    const trA = tr.find((s) => s.transformerRef === 'tr/A')!;
+    const trB = tr.find((s) => s.transformerRef === 'tr/B')!;
+    const osPola3 = bayStackCenterX(station, 3, 0)!;
+    const osPola4 = bayStackCenterX(station, 4, 0)!;
+    expect(trA.x).toBeLessThan(osPola3);
+    expect(trB.x).toBeGreaterThan(osPola4);
+  });
+
+  it('CZUŁOŚĆ: zamiana sekcji terminala WN PRZESTAWIA kolumnę — kotwica jest naprawdę topologiczna', () => {
+    // Ten sam zbiór pól, ten sam zbiór transformatorów, RÓŻNE terminale WN.
+    const zamienione = dwieSekcje([
+      { ref: 'tr/A', hvBusRef: SEKCJA_B, lvBusRef: 'stn/test/nn_bus_a' },
+      { ref: 'tr/B', hvBusRef: SEKCJA_A, lvBusRef: 'stn/test/nn_bus_b' },
+    ]);
+    const kolejnosc = (s: StationMeasureInput): string[] =>
+      stationSnColumnLayout(s, 0).map((p) =>
+        p.kind === 'transformer' ? `TR:${p.transformerRef}` : `pole:${p.bayIndex}`,
+      );
+    expect(kolejnosc(zamienione)).toEqual([
+      'pole:0', 'pole:1', 'pole:2', 'TR:tr/B', 'pole:3', 'pole:4', 'TR:tr/A',
+    ]);
+    expect(kolejnosc(zamienione)).not.toEqual(kolejnosc(station));
+  });
+
+  it('oś przęsła pola sekcji B UWZGLĘDNIA wstawioną kolumnę TR sekcji A (jedna suma prefiksowa)', () => {
+    const bezTr = dwieSekcje([]);
+    const zTr = station;
+    // Pole 3 (pierwsze sekcji B) przesuwa się w prawo dokładnie dlatego, że
+    // przed nim stanęła kolumna transformatora sekcji A.
+    expect(bayStackCenterX(zTr, 3, 0)!).toBeGreaterThan(
+      bayStackCenterX({ ...bezTr, hasTransformer: false }, 3, 0)!,
+    );
+    // …a pole 0 (przed wstawką) NIE drgnęło — dowód, że różnica pochodzi z
+    // wstawionej kolumny, a nie z ogólnego przesunięcia bloku.
+    expect(bayStackCenterX(zTr, 0, 0)!).toBe(
+      bayStackCenterX({ ...bezTr, hasTransformer: false }, 0, 0)!,
+    );
+  });
+
+  it('rysunek zgadza się z planem: X pionu zejścia KAŻDEGO pola == oś z measure', () => {
+    const input = buildComposeInput(station);
+    const c = composeStation(input);
+    station.snBays.forEach((bay, index) => {
+      const zejscie = c.segments.find((s) => s.ownerRef === `${bay.bayRef}#descent`);
+      expect(zejscie, `pion zejścia pola ${bay.bayRef}`).toBeDefined();
+      expect(bayStackCenterX(station, index, input.column.x)).toBe(zejscie!.points[0].x);
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Degradacja bez zgadywania + pole TR obecne (ścieżka dzisiejsza).
+// ---------------------------------------------------------------------------
+
+describe('TR2W-BEZ-POLA — degradacja bez zgadywania sekcji', () => {
+  it('terminal WN nie pasuje do ŻADNEJ sekcji ⇒ koniec bloku + JAWNY ślad, nie cicha sekcja A', () => {
+    const station = dwieSekcje([
+      { ref: 'tr/obcy', hvBusRef: 'stn/inna-stacja/sn_bus', lvBusRef: null },
+    ]);
+    const plan = stationSnColumnLayout(station, 0);
+    const tr = plan.filter((p) => p.kind === 'transformer');
+    expect(tr).toHaveLength(1);
+    expect(tr[0].sectionResolved).toBe(false);
+    // Kolumna NA KOŃCU bloku (za ostatnim polem), nie w środku.
+    expect(plan[plan.length - 1].transformerRef).toBe('tr/obcy');
+    expect(compose(station).missingData).toContain(
+      'station.transformer.sectionUnresolved:tr/obcy',
+    );
+  });
+
+  it('terminal WN PUSTY (rekord Transformer nieobecny w migawce) ⇒ ten sam ślad', () => {
+    const station = dwieSekcje([{ ref: 'tr/bezTerminala', hvBusRef: null, lvBusRef: null }]);
+    expect(compose(station).missingData).toContain(
+      'station.transformer.sectionUnresolved:tr/bezTerminala',
+    );
+  });
+
+  it('rozdzielnica BEZ zadeklarowanych sekcji ⇒ NIE zgłaszamy luki (nie ma czego rozstrzygać)', () => {
+    const station = makeStation('s-bez-busref', [
+      makeBay(FIELD_ROLE.RMU_LINE, 0),
+      makeBay(FIELD_ROLE.RMU_LINE, 1),
+    ], {
+      hasTransformer: true,
+      transformerUnits: [{ ref: 'tr/1', hvBusRef: 'stn/test/sn_bus', lvBusRef: null }],
+    });
+    const plan = stationSnColumnLayout(station, 0);
+    expect(plan.filter((p) => p.kind === 'transformer')[0].sectionResolved).toBe(true);
+    expect(
+      compose(station).missingData.filter((m) => m.startsWith('station.transformer.sectionUnresolved')),
+    ).toEqual([]);
+  });
+
+  it('fakt domenowy BEZ refu ⇒ ZERO symboli i jawny `refMissing` (zakaz rysunku na wymyślonym refie)', () => {
+    const station = jednaSekcja([]);
+    const c = compose({ ...station, hasTransformer: true, transformerUnits: [] });
+    expect(transformatory(c)).toHaveLength(0);
+    expect(c.missingData).toContain('station.transformer.refMissing');
+  });
+});
+
+describe('TR2W-BEZ-POLA — stacja Z polem TR: ścieżka dzisiejsza nietknięta', () => {
+  const zPolem = makeStation('s-z-polem', [
+    makeBay(FIELD_ROLE.RMU_LINE, 0, SEKCJA_A),
+    makeBay(FIELD_ROLE.RMU_TRANSFORMER, 1, SEKCJA_A),
+  ], {
+    hasTransformer: true,
+    transformerUnits: [{ ref: 'tr/1', hvBusRef: SEKCJA_A, lvBusRef: 'stn/test/nn_bus' }],
+  });
+
+  it('ZERO kolumn implicit — transformator jest elementem stosu pola', () => {
+    expect(implicitStationTransformers(zPolem)).toEqual([]);
+    expect(stationSnColumnLayout(zPolem, 0).every((p) => p.kind === 'bay')).toBe(true);
+  });
+
+  it('plan kolumn IDENTYCZNY z wariantem bez danych o transformatorze (zero regresu geometrii)', () => {
+    const bezDanych = makeStation('s-z-polem', zPolem.snBays);
+    expect(stationSnColumnLayout(zPolem, 0)).toEqual(stationSnColumnLayout(bezDanych, 0));
+    expect(stationBlockWidth(zPolem)).toBe(stationBlockWidth(bezDanych));
+  });
+
+  it('BEZ markera i BEZ wiersza braku pola (transformator ma swoje pole)', () => {
+    const c = compose(zPolem);
+    expect(transformatory(c).every((s) => s.transformerFieldGap === undefined)).toBe(true);
+    expect(c.labels.stationName.rows.some((r) => r.text === STATION_TR_FIELD_GAP_TEXT)).toBe(false);
+    expect(c.missingData.filter((m) => m.startsWith('station.transformer.'))).toEqual([]);
+  });
+});
