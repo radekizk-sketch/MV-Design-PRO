@@ -71,6 +71,9 @@ LINIA_KOMENTARZA = re.compile(r"//[^\n]*")
 IMPORT_REJESTRU_OBSZAROW = re.compile(r"""['"][^'"]*navigation/areaRegistry['"]""")
 STAN_OBSZARU = re.compile(r"\b(?:set)?[aA]ctiveArea\b")
 FLAGA_V3 = re.compile(r"\bUSE_LAYOUT_V3\b|\bVITE_USE_LAYOUT_V3\b")
+#: Guard i jego test — jedyne pliki, w ktorych zakazane nazwy sa dozwolone.
+PLIKI_WLASNE_GUARDA = frozenset({Path(__file__).name, f"test_{Path(__file__).name}"})
+
 DEFINICJA_PALETY = re.compile(
     r"^\s*(?:export\s+)?(?:function|const|class)\s+CommandPalette\b", re.MULTILINE
 )
@@ -182,7 +185,10 @@ def regula_c_flaga_v3() -> list[str]:
                 ".yaml",
             }:
                 continue
-            if sciezka.name == Path(__file__).name:
+            # Guard i JEGO TEST musza wymieniac zakazana nazwe — inaczej
+            # regula nie da sie ani zapisac, ani udowodnic (test, ktory nie
+            # potrafi zapalic guarda na czerwono, niczego nie pilnuje).
+            if sciezka.name in PLIKI_WLASNE_GUARDA:
                 continue
             for numer, linia in enumerate(
                 sciezka.read_text(encoding="utf-8", errors="ignore").splitlines(), start=1
