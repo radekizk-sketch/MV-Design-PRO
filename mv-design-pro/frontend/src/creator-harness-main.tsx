@@ -84,6 +84,12 @@ import {
 import { PvSourceSurface } from './ui/workspace/surfaces/DerSurfaces';
 import { HubDokumentacji } from './ui2/spaces/dokumentacja';
 import { PulpitProjektu } from './ui2/spaces/projekt';
+import { PanelDiagnozy } from './ui2/spaces/obliczenia/diagnoza';
+import {
+  diagnostykaZBrakamiFixture,
+  diagnozaNiezbieznaFixture,
+  preflightZablokowanyFixture,
+} from './ui2/spaces/obliczenia/diagnoza/__tests__/fixtures';
 import { EkranCoWymagaUwagi } from './ui2/wyniki/co-wymaga-uwagi';
 import { CaseBar } from './ui2/shell/CaseBar';
 import { useShellCaseInfo } from './ui2/shell/shellStatus';
@@ -3429,6 +3435,43 @@ if (creator === 'arcflash') {
     started_at: '2026-07-21T10:30:00Z', finished_at: '2026-07-21T10:30:00Z',
   } as unknown as ExecutionRun;
   useExecutionRunsStore.setState({ runs: [run], activeRunId: 'run-lf-1' } as never);
+} else if (creator === 'diagnoza') {
+  // Diagnoza przebiegu (D7): najbardziej informacyjny stan do oceny wizualnej —
+  // preflight z blokadami + problemy modelu + bieg NIEZBIEZNY (limit iteracji).
+  // Harness jest frontend-only, wiec trzy trasy diagnostyki dostaja atrape fetch
+  // na FIKSTURACH z testow kontraktu (te same ksztalty, ktore pilnuje adapter).
+  const odpowiedzJson = (dane: unknown): Response =>
+    new Response(JSON.stringify(dane), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  const oryginalneFetch = window.fetch.bind(window);
+  window.fetch = async (wejscie: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+    const url =
+      typeof wejscie === 'string'
+        ? wejscie
+        : wejscie instanceof URL
+          ? wejscie.toString()
+          : wejscie.url;
+    if (url.includes('/diagnostics/preflight')) return odpowiedzJson(preflightZablokowanyFixture());
+    if (url.includes('/api/execution/runs/') && url.includes('/diagnostics'))
+      return odpowiedzJson(diagnozaNiezbieznaFixture());
+    if (url.includes('/api/cases/') && url.includes('/diagnostics'))
+      return odpowiedzJson(diagnostykaZBrakamiFixture());
+    return oryginalneFetch(wejscie, init);
+  };
+  const biegDiagnozy: ExecutionRun = {
+    id: 'run-diagnoza-1',
+    analysis_type: 'LOAD_FLOW',
+    status: 'DONE',
+    started_at: '2026-08-14T09:00:00Z',
+    finished_at: '2026-08-14T09:00:04Z',
+  } as unknown as ExecutionRun;
+  useExecutionRunsStore.setState({
+    runs: [biegDiagnozy],
+    activeRunId: 'run-diagnoza-1',
+    activeStudyCaseId: 'case-oceny-diagnozy',
+  } as never);
 } else if (creator === 'pulpit') {
   // Pulpit projektu (E1 — K2/V12K-103): kafel „Warunki przyłączenia" z warunkami
   // OSD z nagłówka + werdykt bilansu (generacja 6,2 MW > limit 5,0 MW).
@@ -4067,6 +4110,8 @@ function Harness() {
         onAkcjaNaprawcza={() => undefined}
       />
     );
+  else if (creator === 'diagnoza')
+    node = <PanelDiagnozy onPrzejdzDoUruchomienia={() => undefined} />;
   else if (creator === 'uwaga') node = <EkranCoWymagaUwagi />;
   else if (creator === 'swiezosc') node = <SwiezoscScena />;
   else if (creator === 'walidacja')
