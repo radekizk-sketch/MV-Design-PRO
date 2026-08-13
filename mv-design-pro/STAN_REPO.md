@@ -291,6 +291,42 @@ nietykalne dla nN; powierzchnia `protection/curves` zachowana adapterami).
 Bramka drzewa scalonego: pytest **9413 passed / 13 skipped**, vitest
 **849 plików / 11163 testy**, tsc+eslint czyste. Karty P0.7 i G-22 zlecone
 ponownie na bazie `3489e171` (rozłączne zbiory plików, granice w §0).
+
+**Aktualizacja 2026-08-13 (ta sama sesja): G-22 i P0.7 WYKONANE.**
+- G-22 (`19b6dba8` + odbiór `747b90ea`): `FAULT_LOOP_NN`/`SWZ_NN` w AnalysisKind (5)
+  i AnalysisType (6); bramki eligibility reużywają predykaty `fault_loop.service`;
+  dispatch woła wprost serwisy P0.6 na `enm.store` (uczciwe FAILED, deterministyczny
+  run_id); bez persystencji AnalysisRun (świadome — most ENM→ResultSet osobną
+  decyzją). Odbiór: 4276 testów + 7 guardów; iniekcja nadzoru wykryła klasę
+  „deklaracja bez testu" (fixtura-kopia z deklaracją „jedno źródło prawdy") —
+  dodany pin predykatów parami ELIGIBLE⇒FINISHED na jednym modelu.
+- P0.7 (`f4a822bb`): jedna fizyka krzywych (N-D4: `compute_idmt_generic` +
+  `compute_ieee_c37112_generic` w protection_iec60255; iec/ieee_curves = delegacja
+  z własnym denom_guard; tożsamość numeryczna 1440 kombinacji 0 rozbieżności;
+  coordination/** NIETKNIĘTE, 324 testy zielone bez edycji); NOWY solver
+  `protection_lv_curves.py` (MCB B/C/D jako PASMA gwarancji normy — przedział albo
+  jawna nieoznaczoność, nigdy zmyślona linia; MCCB parametryczny; FUSE_GG na
+  bramkach G-D2); G-D2: Inf=1,25·In / If=1,6·In podwójnie źródłowane, czasy umowne
+  63/160/400 A JEDNO mocne źródło (nazwane w kodzie), In≤16 A fail-closed;
+  pola rundy 3 wdrożone (`breaking_capacity_ka`=120 kA NH gG — 5 producentów;
+  `conditional_sc_current_ka` — migracja rb_nn_* z i_cu_ka, PRZENIESIONE nie
+  zdublowane; naprawiony skutek uboczny w equipment_proof/catalog_bridge —
+  dokładnie defekt, przed którym ostrzegała runda 2); dobór aparatu
+  `nn_device_selection.py` (4 kryteria, trzeci stan nigdy nie znika, ranking
+  deterministyczny) + `GET .../enm/nn-device-selection`. Odbiór: pełny pytest
+  **9632 passed / 13 skipped**, 8 guardów; iniekcja nadzoru (podmiana pola
+  kombinacji na stare i_cu_ka → 2 piny rundy 3 czerwone, sha-identyczne
+  odtworzenie).
+DŁUGI NAZWANE z meldunku P0.7 (nie ciche): (1) N-D5 fantom FUSE — 2 miejsca
+w `coordination/analyzer.py` (standard_map bez FUSE, fallback do IEC) — POZA
+granicą rundy 4 (własność nadzoru), zgłoszone nadzorowi w UZGODNIENIA runda 4b;
+(2) `czas_wylaczenia_galezi/pola` nie obsługują branż z wkładką (FUSE poza
+`_APARATY_WYLACZAJACE`) — osobny wątek danych „nastawa dla aparatu katalogowego";
+(3) kontrakt materializacji APARAT_NN nie kopiuje pól zdolności do gałęzi
+(bez konsumenta dziś — pole bez konsumenta byłoby martwą wagą; wpięcie razem
+z konsumentem); (4) czasy umowne gG — drugie źródło do domknięcia flip-to-verified.
+Zostają: P0.8 (SLD nN), P0.9 (nN STUDIO UI), P0.10 (pakiet dowodowy + raport),
+bramka E2E §80 planu H.
 **Aktualizacja 2026-08-13 (ta sama sesja): P0.6 WYKONANE (`b746b6a9`) — „serce modułu".**
 - Pętla zwarcia z REALNEJ trasy grafu: `application/analyses/fault_loop/route.py`
   (NOWY) — BFS po ENM (kable/łącznik/wkładka `status=closed`), fail-closed na brak

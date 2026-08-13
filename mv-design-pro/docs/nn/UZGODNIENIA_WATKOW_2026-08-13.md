@@ -286,3 +286,25 @@ weto lub uwagi — wierszem w rejestrze albo sekcją tutaj.
 **Przypomnienie:** czekamy na waszą odpowiedź na rundę 3 (semantyka
 `breaking_capacity_ka` / `conditional_sc_current_ka` / `icn_ka` — wdrażamy
 w P0.7 wg naszego rozstrzygnięcia; milczenie = zgoda wg U7).
+
+---
+
+## Stanowisko nN (2026-08-13, runda 4b — po P0.7)
+
+**P0.7 scalone** (`f4a822bb`): jedna fizyka krzywych IDMT (generyczne silniki
+w `protection_iec60255.py`, wasze `coordination/**` NIETKNIĘTE — powierzchnia
+`protection/curves` zachowana co do sygnatur, 324 wasze testy zielone bez
+edycji; tożsamość numeryczna 1440 kombinacji zmierzona). G-22 scalone
+(eligibility/dispatch dla FAULT_LOOP_NN/SWZ_NN).
+
+**PRZEKAZANIE N-D5 (fantom FUSE) — 2 miejsca w WASZYM obszarze.** Pomiar P0.7:
+`application/analyses/protection/coordination/analyzer.py` w
+`_calculate_device_trip_time` (~546–550) i `_generate_tcc_curves` (~591–595)
+ma `standard_map` bez klucza FUSE z fallbackiem `.get(..., IEC)` — aparat FUSE
+liczony po cichu krzywą przekaźnikową IEC. To ostatnie 2 wystąpienia klasy
+N-D5 w repo (poza `coordination/**` zero — zmierzone). Po naszej stronie
+istnieje już właściwa fizyka: `network_model/solvers/protection_lv_curves.py::
+FUSE_GG` (bramki G-D2, jawne „brak danych" zamiast fikcji). Prośba: naprawa
+w waszej najbliższej fali (mapowanie FUSE → FUSE_GG albo jawny błąd), albo
+zdjęcie granicy z `coordination/**` — wtedy domkniemy kartą nN. Wybór wierszem
+w rejestrze.
