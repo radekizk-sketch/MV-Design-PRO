@@ -32,6 +32,9 @@ Trafieniem jest ODCZYT POLA KONTRAKTU WEJSCIOWEGO z GALEZIA ZAPASOWA LICZBOWA:
   A. `<obiekt>.<pole> or <wyrazenie liczbowe>`
   B. `... <obiekt>.<pole> ... if <warunek> else <wyrazenie liczbowe>`
   C. `getattr(<obiekt>, "<pole>", <wyrazenie liczbowe>)`
+  D. `<slownik>["<pole>"] or <wyrazenie liczbowe>` / `<slownik>.get("<pole>") or <wyrazenie liczbowe>`
+  F. `<slownik>.get("<pole>", <wyrazenie liczbowe>)`
+  G. `... <slownik>["<pole>"]/.get("<pole>") ... if <warunek> else <wyrazenie liczbowe>`
 
 ODCZYT PRZEZ `getattr` LICZY SIE TAK SAMO, CO PRZEZ KROPKE (2026-08-08, karta
 MOST-WEJSCIA-V126): w formach A i B `<obiekt>.<pole>` obejmuje rowniez
@@ -41,6 +44,15 @@ doslownie forma A — tylko innym zapisem odczytu. Pomiar: cztery takie zlozenia
 zyly w `solver_input/v126_contracts.py`, a bramka meldowala RC=0 „PASS".
 Jedno miejsce w kodzie daje JEDNA pozycje budzetu: gdy `getattr` ma zapas
 liczbowy, jest forma C i nie liczy sie po raz drugi jako A (`getattr_read`).
+
+FORMY D/F/G — ODCZYT SLOWNIKOWY LICZY SIE TAK SAMO, CO ATRYBUT (2026-08-13,
+karta RATCHET-DICT-READ). Czwarta droga do tego samego pola, obok kropki i
+`getattr`: `<slownik>["<pole>"]` i `<slownik>.get("<pole>", ...)`. Ten sam
+warunek DEDUPU, co przy `getattr`: 2-argumentowe `.get()` z zapasem LICZBOWYM
+jest juz forma F i nie liczy sie ponownie jako D/G (`reads_contract_dict_field`).
+Szczegoly pomiaru, historia OBALONEJ probki (73/79 falszywych trafien w rundzie
+QU-FABRYKACJA) i uzasadnienie warunku 1. ponizej dla tej formy — patrz docstring
+`reads_contract_dict_field`.
 
 WYRAZENIEM LICZBOWYM JEST TEZ STALA MODULU zwiazana z literalem liczbowym
 (`numeric_module_constants`). Bez tego kazdy zastepnik chowal sie jednym ruchem —
@@ -53,14 +65,23 @@ Dwa warunki musza zajsc RAZEM i oba sa czytane Z KODU, nie z listy w bramce:
 
 1. `<pole>` jest POLEM ZADEKLAROWANYM w modelu wejsciowym — zbior pol powstaje
    z adnotacji klas w `solver_input/**` i `enm/models.py` (`contract_fields`).
-   Dzieki temu odczyt slownika (`parameters.get("H", 1.0)`, `entry.get("step_norm", 0)`)
-   NIE JEST trafieniem Z KONSTRUKCJI REGULY, a nie przez wyjatek w komentarzu:
-   klucz slownika nie jest zadeklarowanym polem kontraktu. To rozroznienie realizuje
-   wymog „parametr projektowy z kontrolka w oknie nie wchodzi do budzetu" —
-   parametry projektowe docieraja przez `model.parameters`, czyli slownik, a ich
-   parytet z kontrolkami pilnuje OSOBNY, istniejacy mechanizm
-   (`backend/tests/ci/test_v126_rodzaje_parytet.py::test_kazdy_czytany_parametr_ma_kontrolke`).
-   Bramka nie powtarza tamtej roboty (reuzycie zamiast duplikacji).
+   Dzieki temu odczyt slownika PARAMETROW PROJEKTOWYCH (`parameters.get("H", 1.0)`,
+   `entry.get("step_norm", 0)`) NIE JEST trafieniem Z KONSTRUKCJI REGULY, a nie
+   przez wyjatek w komentarzu: klucz `H`/`step_norm` NIE JEST zadeklarowanym
+   `AnnAssign` polem zadnej klasy w `CONTRACT_SOURCES` — to klucz surowego worka
+   `dict[str, Any]`, ktorego zawartosc opisuje kontrakt UI, a nie kod solvera. To
+   rozroznienie realizuje wymog „parametr projektowy z kontrolka w oknie nie
+   wchodzi do budzetu" — parametry projektowe docieraja przez `model.parameters`,
+   czyli slownik, a ich parytet z kontrolkami pilnuje OSOBNY, istniejacy
+   mechanizm (`backend/tests/ci/test_v126_rodzaje_parytet.py::
+   test_kazdy_czytany_parametr_ma_kontrolke`). Bramka nie powtarza tamtej roboty
+   (reuzycie zamiast duplikacji). UWAGA (karta RATCHET-DICT-READ, 2026-08-13):
+   ten sam warunek NIE odsiewa kazdego odczytu slownikowego — gdy klucz slownika
+   NAZWANO tak samo, jak realne pole kontraktu innego elementu (np. `segment.get
+   ("r_ohm_per_km", 0.0)` — `r_ohm_per_km` jest polem `Cable`/`OverheadLine`),
+   trafienie jest widoczne od tej karty (formy D/F/G nizej) i wymaga OSOBNEJ,
+   recznej klasyfikacji per miejsce — patrz `reads_contract_dict_field` i
+   `ZASTANE_ZASTEPNIKI`.
 
 2. Galaz zapasowa jest WYRAZENIEM LICZBOWYM (`is_numeric`) — stala, dzialanie
    arytmetyczne, `float/int/abs/max/min/round`. Galaz `None` NIE jest trafieniem,
@@ -326,6 +347,64 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
     "network_model/solvers/power_flow_zip.py": {
         "B:ifexp:spec.p_mw": 1,
         "B:ifexp:spec.q_mvar": 1,
+        # Karta RATCHET-DICT-READ (2026-08-13). `zip_coeffs_from_materialized_
+        # params(params: dict | None)` — wlasny docstring funkcji: „Returns None
+        # for constant-power, frequency-independent load (default) ... Defaults:
+        # voltage = pure constant power (c=1), frequency sensitivity = 0". Brak
+        # WSPOLCZYNNIKA ZIP w materializacji katalogu (Rule #10) znaczy „katalog
+        # nie zglosil zaleznosci napieciowej/czestotliwosciowej tego odbioru" —
+        # a a_p=0/b_p=0/c_p=1 to MATEMATYCZNY neutral element wielomianu ZIP
+        # (P=P0·(a·V²+b·V+c), c=1 przy a=b=0 daje P=P0 — model stalej mocy),
+        # nie zmyslona wielkosc fizyczna. SOLVER — ZAKAZ zmian w tej karcie
+        # (§0.4 ZAKAZY); pozycja zostaje zamrozona z uzasadnieniem merytorycznym.
+        "F:dictget:params.a_p": 1,
+        "F:dictget:params.a_q": 1,
+        "F:dictget:params.b_p": 1,
+        "F:dictget:params.b_q": 1,
+        "F:dictget:params.c_p": 1,
+        "F:dictget:params.c_q": 1,
+        "F:dictget:params.f0_hz": 1,
+        "F:dictget:params.k_pf": 1,
+        "F:dictget:params.k_qf": 1,
+        "F:dictget:params.v0_pu": 1,
+    },
+    # Karta RATCHET-DICT-READ (2026-08-13). `inverter_control_from_params(params:
+    # dict | None, ...)` — SIOSTRZANA funkcja `zip_coeffs_from_materialized_params`
+    # wyzej (ten sam wzorzec „Rule #10": materializacja katalogu, `None` gdy
+    # zrodlo pasywne). `qmin_mvar`/`qmax_mvar`/`pmax_mw`=0.0 i `qu_deadband_low/
+    # high_pu`=1.0/`qu_slope_pu_per_pu`=0.0 sa domyslnymi „regulacja NIEAKTYWNA"
+    # (limity zerowe / brak pasma martwego), spojne z semantyka „katalog nie
+    # zglosil krzywej Q(U) -> brak regulacji". `cosphi`=1.0/`f0_hz`=50.0 to
+    # normowe wartosci startowe (cos φ=1, 50 Hz). DLUG NAZWANY dla podzbioru:
+    # gdy `control_mode` faktycznie wybiera Q(U)/LFSM, zerowe limity MOGA
+    # tlumic zamierzona regulacje zamiast tylko oznaczac jej brak — wymaga
+    # decyzji produktowej (jak dokladnie katalog powinien walidowac komplet
+    # pol regulacji), nie syntaktycznej naprawy. SOLVER — ZAKAZ zmian w tej
+    # karcie (§0.4 ZAKAZY).
+    "network_model/solvers/power_flow_inverter.py": {
+        "F:dictget:params.cosphi": 1,
+        "F:dictget:params.f0_hz": 1,
+        "F:dictget:params.lfsm_deadband_hz": 1,
+        "F:dictget:params.lfsm_droop_pct": 1,
+        "F:dictget:params.pmax_mw": 1,
+        "F:dictget:params.qmax_mvar": 1,
+        "F:dictget:params.qmin_mvar": 1,
+        "F:dictget:params.qu_deadband_high_pu": 1,
+        "F:dictget:params.qu_deadband_low_pu": 1,
+        "F:dictget:params.qu_slope_pu_per_pu": 1,
+    },
+    # Karta RATCHET-DICT-READ (2026-08-13). `entry` to pojedynczy krok sladu
+    # Newtona ZBUDOWANY PRZEZ TEN SAM SOLVER kilka wywolan wczesniej (whitebox
+    # trace) — odczyt tu formatuje juz POLICZONY wynik do `PowerFlowTraceStep`,
+    # nie wstrzykuje danej WEJSCIOWEJ do fizyki. Inwariant tej bramki dotyczy
+    # wejscia solvera, nie serializacji jego wlasnego sladu — ta sama klasa,
+    # co odczyty `iteration`/`step`/`item`/`row` juz zaakceptowane wyzej w
+    # `enm/canonical_analysis.py`. SOLVER — ZAKAZ zmian w tej karcie (§0.4
+    # ZAKAZY); zamrozone jako MERYTORYCZNIE uzasadnione (nie dlug).
+    "network_model/solvers/power_flow_trace.py": {
+        "F:dictget:entry.damping_used": 1,
+        "F:dictget:entry.max_mismatch_pu": 1,
+        "F:dictget:entry.step_norm": 1,
     },
     # Dobor DER — wspolczynnik jednoczesnosci i obciazalnosc podstawiane JEDYNKA,
     # gdy podano wartosc niedodatnia. Jedynka nie jest neutralna: znaczy „brak
@@ -351,6 +430,15 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
     # (rozplyw ZAWSZE oddaje straty), a nie cicho zerowany.
     "network_model/solvers/power_flow_oltc_studies.py": {
         "C:getattr:losses_total": 1,
+        # Karta RATCHET-DICT-READ (2026-08-13). `(int(trace["total_switch_count"])
+        # if trace else 0) if licz_laczenia else None` — `trace` jest slownikiem
+        # zdarzen laczeniowych ZBUDOWANYM PRZEZ TEN SAM SOLVER w tej samej funkcji
+        # (nie wejsciem); `0` jest wartoscia dla `trace` PUSTEGO (brak zdarzen w
+        # tej probce = zero przelaczen), a caly wyraz jest jeszcze OSLONIETY
+        # zewnetrznym `if licz_laczenia else None` (funkcja liczy przelaczenia
+        # tylko na zyczenie). SOLVER — ZAKAZ zmian w tej karcie (§0.4 ZAKAZY);
+        # zamrozone jako MERYTORYCZNIE uzasadnione (nie dlug).
+        "G:dictifexp:trace.total_switch_count": 1,
     },
     # Prad znamionowy maszyny w mianowniku ilorazu I_p/I_r: przy braku danej
     # (`ir_a <= 0`) iloraz przyjmuje 0,0 i tak wchodzi do `mu_factor`, czyli do
@@ -491,15 +579,202 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
     # jest `float | None`, gdzie `None` znaczy „wezel nie ma wstrzykniecia" — a
     # BRAK WSTRZYKNIECIA JEST ZEREM WATOW, nie brakiem pomiaru. Powod
     # merytoryczny, nie dlug.
+    #
+    # NIZEJ: karta RATCHET-DICT-READ (2026-08-13), pierwsza fala trafien formy
+    # slownikowej (D/F/G). Trzy klasy, wszystkie MERYTORYCZNIE uzasadnione,
+    # ZERO dlugu w tym pliku (jedna fabrykacja, `target_bus.get("voltage_kv")
+    # or 15.0`, zostala NAPRAWIONA w tej samej karcie — patrz
+    # `_execute_phase_state_sn`, teraz melduje blad zamiast zgadywac):
+    #
+    # (a) KONFIGURACJA PRZYPADKU OBLICZENIOWEGO (`run.options`/`run_options`).
+    # `CanonicalRun.options: dict[str, Any]` (enm/canonical_analysis.py) jest
+    # workiem parametrow STUDY CASE — dokladnie „Case stores ONLY calculation
+    # parameters (configuration)" z reguly Case Immutability (CLAUDE.md #4).
+    # Tolerancja/max_iter/damping solvera rozplywu, progi alarmowe stanu
+    # fazowego, kąty/napiecia stabilnosci dynamicznej, wspolczynnik c wg
+    # IEC 60909, docelowy punkt OLTC — to STROJENIE ANALIZY, nie dana fizyczna
+    # elementu sieci. `run_options` (parametr funkcji) jest TYM SAMYM workiem
+    # przekazanym przez wywolanie (`_run_oltc_study(..., run.options)`, w. 1817)
+    # — zweryfikowane bezposrednio w kodzie, nie zalozone z nazwy.
+    # `p.load_scale` (profil OLTC) pochodzi z listy `run_options.get(
+    # "oltc_load_profile")`, czyli z TEGO SAMEGO worka.
+    #
+    # (b) ODCZYT SLADU/WYNIKU SOLVERA DO RAPORTU, NIE WEJSCIE SOLVERA.
+    # `iteration`/`step` pochodza z `solution.nr_trace`/kroku budowanego PRZEZ
+    # solver (whitebox trace rozplywu Newtona) — inwariant tej bramki dotyczy
+    # danych WEJSCIOWYCH plynacych DO fizyki, nie formatowania juz policzonego
+    # WYNIKU do JSON. `item` pochodzi z `result_v1.get("branch_results")` —
+    # WYNIK wczesniejszego uruchomienia rozplywu, tu tylko przeliczany na S_mva
+    # do wyswietlenia. `row` pochodzi z `automation_trace.get("events")` —
+    # log zdarzen JUZ zapisanych przez automatyzacje, sortowany do raportu.
+    # `defaults.get("frequency_hz", 50.0)` POWTARZA domyslna wartosc z
+    # SYGNATURY kontraktu (`ENMDefaults.frequency_hz: float = 50.0` w
+    # enm/models.py) przy odczycie surowego (niewalidowanego) JSON tego
+    # samego pola — granica nr 4 modulu (domyslna w sygnaturze modelu to
+    # swiadoma decyzja kontraktu, nie fabrykacja w kodzie liczacym).
     "enm/canonical_analysis.py": {
         "A:or:node.active_power": 1,
         "A:or:node.reactive_power": 1,
+        "D:dictor:run_options.angle_damping": 1,
+        "D:dictor:run_options.rebuild_matrices_every": 1,
+        "D:dictor:run_options.voltage_damping": 1,
+        "F:dictget:defaults.frequency_hz": 1,
+        "F:dictget:item.p_from_mw": 1,
+        "F:dictget:item.q_from_mvar": 1,
+        "F:dictget:iteration.max_mismatch_pu": 2,
+        "F:dictget:p.load_scale": 1,
+        "F:dictget:row.event_seq": 1,
+        "F:dictget:run.base_mva": 1,
+        "F:dictget:run.c_factor": 1,
+        "F:dictget:run.clearing_time_ms": 1,
+        "F:dictget:run.during_fault_angle_deg": 1,
+        "F:dictget:run.max_iter": 1,
+        "F:dictget:run.post_fault_angle_deg": 1,
+        "F:dictget:run.post_fault_frequency_pu": 1,
+        "F:dictget:run.post_fault_voltage_pu": 1,
+        "F:dictget:run.pre_fault_angle_deg": 1,
+        "F:dictget:run.thermal_time_seconds": 1,
+        "F:dictget:run.tolerance": 1,
+        "F:dictget:run.unbalance_alert_percent": 1,
+        "F:dictget:step.max_mismatch_pu": 2,
+    },
+    # Karta RATCHET-DICT-READ (2026-08-13). Dziewiec funkcji `topology_ops.py`
+    # tworzy elementy ENM z surowego `data: dict[str, Any]` (payload atomowej
+    # operacji CRUD). WSZYSTKIE pozycje ponizej sa MERYTORYCZNIE uzasadnione —
+    # zero dlugu, dwie klasy:
+    #
+    # (a) SENTINEL PRZED WALIDACJA BLOCKER. `voltage_kv`/`length_km`/`sn_mva`/
+    # `uk_percent`/`uhv_kv`/`ulv_kv`/`pk_kw` czytane sa z domyslna wartoscia 0,
+    # ktora NATYCHMIAST wywoluje jawny warunek `<= 0` -> `OpIssue(..., "BLOCKER",
+    # ...)` i operacja PRZERYWA sie PRZED zapisem do modelu — brak danej nigdy
+    # nie dociera do fizyki jako liczba udajaca pomiar, tylko jako odrzucenie
+    # operacji z polskim komunikatem. Ten sam wzorzec, co `None` w pozostalych
+    # formach tej bramki: 0 tu gra role uczciwego meldunku braku, nie pomiaru.
+    # `uhv_kv`/`ulv_kv`/`pk_kw` DOSTALY ten sam wzorzec walidacji w tej samej
+    # karcie (byly fabrykacja bez BLOCKER — patrz commit naprawczy tej karty).
+    #
+    # (b) BRAK WSTRZYKNIECIA = ZERO. `p_mw`/`q_mvar` odbioru/generatora bez
+    # podanej wartosci -> 0 MW/Mvar. Ta sama pozycja klasy, co juz zaakceptowane
+    # `A:or:node.active_power`/`A:or:node.reactive_power` wyzej w tym samym
+    # pliku (mapowanie tego samego pola z innego mostu) — element bez podanej
+    # mocy jest elementem NIE WSTRZYKUJACYM, a nie brakiem pomiaru.
+    "enm/topology_ops.py": {
+        "F:dictget:data.length_km": 1,
+        "F:dictget:data.p_mw": 2,
+        "F:dictget:data.pk_kw": 1,
+        "F:dictget:data.q_mvar": 1,
+        "F:dictget:data.sn_mva": 1,
+        "F:dictget:data.uhv_kv": 1,
+        "F:dictget:data.uk_percent": 1,
+        "F:dictget:data.ulv_kv": 1,
+        "F:dictget:data.voltage_kv": 1,
+    },
+    # Karta RATCHET-DICT-READ (2026-08-13). Pre-solver hook, ktory adaptuje
+    # siec do audit2 extensions (`Brak danych = brak adjustment" — wlasny
+    # docstring modulu, w. 17). Dwie klasy:
+    #
+    # (a) MERYTORYCZNIE UZASADNIONE (zero dlugu):
+    # `mode.get("reserved_capacity_percent", 0)` — 0% rezerwy = "bez korekty
+    # mocy DER", dokladnie sentinel "brak = brak adjustment" z docstringu.
+    # `curve.get("droop_percent", 0)` — kod NATYCHMIAST sprawdza
+    # `if droop_pct == 0: continue` (w. 330-331) — sentinel, nie fabrykacja.
+    # `tc_dict.get("neutral_position", 0)` — konwencja katalogu zaczepow:
+    # pozycja 0 jest z DEFINICJI pozycja neutralna (bez podbicia/obnizenia)
+    # dla symetrycznie numerowanego zaczepu — to nie zgadywanie pomiaru, tylko
+    # odczyt konwencji numeracji tego samego pola, ktore funkcja WLASNIE
+    # ustawia (komentarz w kodzie: "Pozycja neutralna").
+    #
+    # (b) DLUG NAZWANY (ta sama klasa, co juz zaakceptowana w
+    # `enm/mapping.py` ponizej — `tap_step_percent`/typowe wartosci pasma
+    # czestotliwosci — DRUGI most do tych samych pol, inna wartosc domyslna):
+    # `tc_dict.get("step_percent", 1.25)` — typowy skok zaczepu 1,25%, gdy
+    # katalog nie niesie wlasnej wartosci (`enm/mapping.py` ma TEN SAM dlug z
+    # wartoscia 2,5% — dwie kopie tej samej klasy, rozne liczby, do
+    # rozstrzygniecia razem).
+    # `curve.get("f_min_hz", 47.5)`/`f_max_hz(51.5)`/`deadband_hz(0.2)` —
+    # typowe pasmo czestotliwosci P(f) wg NC RfG, gdy karta krzywej DER nie
+    # niesie wlasnych granic. Wartosci normowe (nie zmyslone), ale nadal
+    # WLASCIWOSC KONKRETNEGO DER, nie stala fizyczna — jak R/X=0,1 w
+    # `enm/mapping.py`, wiec zostaje jako dlug nazwany, nie naprawa w tej
+    # karcie (zmiana zachowania regulacji P(f) bez dedykowanych testow
+    # wykracza poza dyskryminator zapadki).
+    "solver_input/audit2_solver_adjuster.py": {
+        "F:dictget:curve.deadband_hz": 1,
+        "F:dictget:curve.droop_percent": 1,
+        "F:dictget:curve.f_max_hz": 1,
+        "F:dictget:curve.f_min_hz": 1,
+        "F:dictget:mode.reserved_capacity_percent": 2,
+        "F:dictget:tc_dict.neutral_position": 1,
+        "F:dictget:tc_dict.step_percent": 1,
     },
     # Numeracja rewizji dokumentu (`revision if existing else 0`). Ksiegowosc
     # magazynu, nie wielkosc fizyczna — pierwsza rewizja startuje od zera z
     # definicji. Powod merytoryczny, nie dlug.
     "enm/store.py": {
         "B:ifexp:existing.revision": 1,
+    },
+    # Karta RATCHET-DICT-READ (2026-08-13). `enm/domain_operations.py` jest
+    # ZAKAZANE do edycji W TEJ KARCIE (§0.4 ZAKAZY: „zero enm/domain_operations*
+    # (watek nN)" — plik nalezy do rownoleglego watku nN). Zbior ponizej to
+    # PELNY inwentarz form D/F formy slownikowej z kluczem bedacym zadeklarowanym
+    # polem kontraktu, zmierzony na dzien odbioru tej karty — nie sa to
+    # deklaracje „wszystko tu jest legalne": KLASYFIKACJA PER GRUPA (peany
+    # meldunek koncowy karty ma pelne uzasadnienie per pozycja):
+    #   * `insert_at.value`/`s.order`/`seed.*` — parametry operacji wstawienia/
+    #     kolejnosci sekcji (RATIO domyslny 0,5; kolejnosc 0 dla pierwszego
+    #     elementu) — MERYTORYCZNIE bliskie kardynalnosci/domyslnej pozycji.
+    #   * `segment.length_km`/`r_ohm_per_km`/`x_ohm_per_km` (dzielenie
+    #     ISTNIEJACEGO odcinka na dwa) — pola WYMAGANE w kontrakcie ENM
+    #     `Cable`/`OverheadLine` (enm/models.py), wiec galaz zapasowa jest
+    #     strukturalnie martwa DLA odcinka pochodzacego z juz zwalidowanego
+    #     ENM — analogiczna martwa wartosc zapasowa, jak `C:getattr:length_km`
+    #     zdjeta w MOST-WEJSCIA-V126 dla atrybutowej formy tego samego pola.
+    #   * `payload.sn_mva`/`uk_percent`/`pk_kw`/`dlugosc_m`, `t.sn_mva`,
+    #     `nn_block.outgoing_feeders_nn_count`, `genset_spec`/`ups_spec.
+    #     rated_power_kw` (w domain_operations_v2.py) — tabliczki znamionowe
+    #     transformatora/generatora/UPS tworzonego z surowego payloadu
+    #     kreatora — TA SAMA KLASA fabrykacji, co naprawiona w tej karcie dla
+    #     `enm/topology_ops.py` (uhv_kv/ulv_kv/pk_kw) i `enm/catalog_completion.py`
+    #     (switch_rated_current_a), ale w PLIKU ZAKAZANYM do edycji. DLUG
+    #     NAZWANY, NIENAPRAWIALNY W TEJ SESJI (Zero-Debt pkt 4): wymaga
+    #     koordynacji z watkiem nN (ten sam plik jest w trakcie rownoleglej
+    #     pracy), nie decyzji syntaktycznej tej karty.
+    "enm/domain_operations.py": {
+        "D:dictor:payload.dlugosc_m": 2,
+        "D:dictor:payload.pk_kw": 1,
+        "D:dictor:payload.sn_mva": 1,
+        "D:dictor:payload.uk_percent": 1,
+        "D:dictor:segment.dlugosc_m": 1,
+        "D:dictor:t.sn_mva": 2,
+        "F:dictget:insert_at.value": 4,
+        "F:dictget:nn_block.outgoing_feeders_nn_count": 1,
+        "F:dictget:s.order": 3,
+        "F:dictget:seed.max_position": 1,
+        "F:dictget:seed.min_position": 1,
+        "F:dictget:seed.neutral_position": 2,
+        "F:dictget:seed.step_percent": 1,
+        "F:dictget:segment.length_km": 3,
+        "F:dictget:segment.r_ohm_per_km": 5,
+        "F:dictget:segment.x_ohm_per_km": 5,
+    },
+    # Karta RATCHET-DICT-READ (2026-08-13). `enm/domain_operations_v2.py` jest
+    # ZAKAZANE do edycji W TEJ KARCIE (§0.4 ZAKAZY, ten sam powod, co
+    # `enm/domain_operations.py` wyzej — watek nN). `payload.quantity`
+    # (kardynalnosc, ta sama klasa co `A:or:gen.n_parallel` juz zaakceptowane w
+    # `enm/mapping.py`) i `payload.active_power_kw` (brak wstrzykniecia = zero
+    # MW, ta sama klasa co `A:or:node.active_power` w `enm/canonical_analysis.py`)
+    # SA merytorycznie uzasadnione. `genset_spec.rated_power_kw`/`ups_spec.
+    # rated_power_kw` (0 kW fabrykowane dla mocy znamionowej agregatu/UPS
+    # tworzonego z payloadu kreatora) SA DLUGIEM NAZWANYM tej samej klasy, co
+    # `enm/domain_operations.py` wyzej — NIENAPRAWIALNE W TEJ SESJI (Zero-Debt
+    # pkt 4, ZAKAZY, watek nN).
+    "enm/domain_operations_v2.py": {
+        "D:dictor:genset_spec.rated_power_kw": 1,
+        "D:dictor:payload.quantity": 1,
+        "D:dictor:ups_spec.rated_power_kw": 1,
+        "F:dictget:genset_spec.rated_power_kw": 1,
+        "F:dictget:payload.active_power_kw": 1,
+        "F:dictget:ups_spec.rated_power_kw": 1,
     },
 }
 
@@ -682,6 +957,111 @@ def nested_contract_field(
     return None
 
 
+def dict_key_read(expr: ast.expr) -> tuple[str, str | None] | None:
+    """`<slownik>["<klucz>"]` -> (klucz, nazwa slownika). WYLACZNIE klucz-STRING.
+
+    Karta RATCHET-DICT-READ (2026-08-13). Analogon `ast.Attribute` dla odczytu
+    SLOWNIKOWEGO — druga (obok atrybutu/`getattr`) droga, ktora KOD uzywa do
+    czytania tego samego pola kontraktu. Klucz musi byc literalem string;
+    `d[zmienna]` nie jest analizowalne skladniowo (nie wiadomo, jakie pole
+    czyta), wiec pozostaje POZA regula — jak `eval`/`exec` (granica nr 6 modulu).
+    """
+    if not isinstance(expr, ast.Subscript):
+        return None
+    key = expr.slice
+    if isinstance(key, ast.Constant) and isinstance(key.value, str):
+        return key.value, leftmost_name(expr.value)
+    return None
+
+
+def dict_get_read(
+    expr: ast.expr,
+) -> tuple[str, str | None, ast.expr | None] | None:
+    """`<slownik>.get("<klucz>"[, <zapas>])` -> (klucz, slownik, zapas_lub_None).
+
+    Karta RATCHET-DICT-READ (2026-08-13). Trzecia droga (obok atrybutu i
+    `getattr`) do tego samego pola: metoda `.get` na `dict`. Rozroznienie 1- i
+    2-argumentowego wywolania jest SWIADOME — patrz `reads_contract_dict_field`:
+    2-argumentowe z zapasem LICZBOWYM jest juz forma F i nie liczy sie ponownie
+    jako forma D (ten sam wzorzec dedupu, co `getattr_read` kontra forma A/B).
+    """
+    if not isinstance(expr, ast.Call) or not isinstance(expr.func, ast.Attribute):
+        return None
+    if expr.func.attr != "get" or len(expr.args) not in (1, 2):
+        return None
+    key = expr.args[0]
+    if not isinstance(key, ast.Constant) or not isinstance(key.value, str):
+        return None
+    zapas = expr.args[1] if len(expr.args) == 2 else None
+    return key.value, leftmost_name(expr.func.value), zapas
+
+
+def reads_contract_dict_field(
+    expr: ast.expr, fields: set[str], stale: set[str] | None = None
+) -> str | None:
+    """`<slownik>["<pole>"]`/`<slownik>.get("<pole>"[, ...])` — odczyt SLOWNIKOWY
+    zadeklarowanego pola kontraktu (karta RATCHET-DICT-READ, 2026-08-13).
+
+    PO CO TA FUNKCJA — DLUG Z MOST-WEJSCIA-V126. Odbior tamtej karty (nadzorca,
+    2026-08-09) zmierzyl **31 zywych wystapien** trzech form slownikowych
+    (`dane["pole"] or <liczba>`, `dane.get("pole") or <liczba>`,
+    `dane.get("pole", <liczba>)`) w zakresie objetym zapadka — zero z nich bylo
+    widocznych, bo `reads_contract_field` patrzy WYLACZNIE na `ast.Attribute` i
+    `getattr`. Ten sam nadzorca ostrzegl: SLEPE rozszerzenie na te forme juz raz
+    OBALONO pomiarem (73 z 79 trafien bylo legalnymi slownikami parametrow —
+    runda QU-FABRYKACJA). Warunek `<pole>` w `fields` (ten sam zbior, ktory juz
+    odsiewa `model.parameters.get(...)` w formach A/B/C — patrz `contract_
+    fields()`) jest DOKLADNIE TYM SAMYM filtrem, ktory dziala dla atrybutu i
+    `getattr`: klucz slownika `parameters`/`options`/kontrolek projektowych NIE
+    JEST zadeklarowanym polem `AnnAssign` w zadnej klasie `CONTRACT_SOURCES`
+    (np. `H`, `Pm`, `trv_natural_frequency_hz` — to klucze SUROWEGO worka
+    `dict[str, Any]`, nie nazwy pol w kodzie klasy), wiec nie przechodza tego
+    samego sita, co poprzednio odsiewalo `parameters.get(...)`.
+
+    POMIAR NA TYM WARUNKU (2026-08-13, wykonawca karty RATCHET-DICT-READ): 172
+    zywych wystapien trzech form slownikowych w SCAN_ROOTS, z czego 107 ma klucz
+    W zbiorze `fields` — i TEN zbior byl reczne sklasyfikowany KAZDY z osobna
+    (nie wg tej samej syntaktyki, co poprzednia OBALONA proba): configi
+    Case/StudyCase (`run.options`/`run_options` — `CanonicalRun.options: dict`,
+    reguła Case Immutability z CLAUDE.md), odczyty SLADU/WYNIKU solvera do
+    raportu (nie WEJSCIA solvera — poza inwariantem tej bramki), wzorzec
+    sentinel-przed-walidacja-BLOCKER (0 -> natychmiastowe odrzucenie operacji,
+    nie fabrykacja plynaca do fizyki), zdeklarowane w SYGNATURZE modelu defaulty
+    (granica nr 4 modulu, np. `ENMDefaults.frequency_hz = 50.0`) powtorzone w
+    odczycie surowego JSON tego samego pola, i garstka REALNYCH fabrykacji —
+    trzy z nich (switch_rated_current_a=630, uhv_kv/ulv_kv/pk_kw=0,
+    target_bus.voltage_kv=15) NAPRAWIONO u zrodla w tej samej karcie (enm/
+    catalog_completion.py, enm/topology_ops.py, enm/canonical_analysis.py).
+    Reszta zamrozona w `ZASTANE_ZASTEPNIKI` z powodem per plik — wiekszosc w
+    `enm/domain_operations.py`/`domain_operations_v2.py` (ZAKAZANE do edycji w
+    tej karcie — watek nN) oraz w `network_model/solvers/**` (ZAKAZANE zmiany
+    solverow w tej karcie).
+    """
+    sub = dict_key_read(expr)
+    if sub is not None and sub[0] in fields:
+        klucz, baza = sub
+        return f"{baza or '<dict>'}.{klucz}"
+    get = dict_get_read(expr)
+    if get is not None and get[0] in fields:
+        klucz, baza, zapas = get
+        if zapas is not None and is_numeric(zapas, stale):
+            return None  # forma F liczy to samo miejsce — patrz docstring
+        return f"{baza or '<dict>'}.{klucz}"
+    return None
+
+
+def nested_contract_dict_field(
+    expr: ast.expr, fields: set[str], stale: set[str] | None = None
+) -> str | None:
+    """Pierwsze (deterministycznie: najplytsze, potem najwczesniejsze) pole
+    slownikowe w drzewie — analogon `nested_contract_field` dla formy G."""
+    for node in ast.walk(expr):
+        target = reads_contract_dict_field(node, fields, stale)
+        if target is not None:
+            return target
+    return None
+
+
 def is_not_a_number_literal(expr: ast.expr) -> bool:
     """Czy wyrazenie to jawna NIE-LICZBA: `float("nan")`. WYLACZNIE NaN.
 
@@ -801,6 +1181,11 @@ def collect_findings(tree: ast.AST, fields: set[str]) -> list[tuple[str, int]]:
                 target = reads_contract_field(value, fields, stale)
                 if target is not None and is_numeric(node.values[index + 1], stale):
                     findings.append((f"A:or:{target}", node.lineno))
+                # D. slownik["dana"] or <liczba> / slownik.get("dana") or <liczba>
+                # (karta RATCHET-DICT-READ) — patrz `reads_contract_dict_field`.
+                dict_target = reads_contract_dict_field(value, fields, stale)
+                if dict_target is not None and is_numeric(node.values[index + 1], stale):
+                    findings.append((f"D:dictor:{dict_target}", node.lineno))
         # B. ... dana ... if <warunek> else <liczba>
         if isinstance(node, ast.IfExp):
             target = nested_contract_field(node.body, fields, stale)
@@ -810,12 +1195,29 @@ def collect_findings(tree: ast.AST, fields: set[str]) -> list[tuple[str, int]]:
                 and nested_contract_field(node.orelse, fields, stale) is None
             ):
                 findings.append((f"B:ifexp:{target}", node.lineno))
+            # G. ... slownik["dana"]/.get("dana") ... if <warunek> else <liczba>
+            # (karta RATCHET-DICT-READ) — analogon formy B dla odczytu slownikowego.
+            dict_target = nested_contract_dict_field(node.body, fields, stale)
+            if (
+                dict_target is not None
+                and is_numeric(node.orelse, stale)
+                and nested_contract_dict_field(node.orelse, fields, stale) is None
+            ):
+                findings.append((f"G:dictifexp:{dict_target}", node.lineno))
         # C. getattr(obj, "dana", <liczba>)
         if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
             if node.func.id == "getattr" and len(node.args) == 3:
                 key = node.args[1].value if isinstance(node.args[1], ast.Constant) else None
                 if isinstance(key, str) and key in fields and is_numeric(node.args[2], stale):
                     findings.append((f"C:getattr:{key}", node.lineno))
+        # F. slownik.get("dana", <liczba>) (karta RATCHET-DICT-READ) — analogon
+        # formy C dla odczytu slownikowego przez `.get` z jawnym zapasem.
+        if isinstance(node, ast.Call):
+            get = dict_get_read(node)
+            if get is not None and get[2] is not None:
+                key, base, zapas = get
+                if key in fields and is_numeric(zapas, stale):
+                    findings.append((f"F:dictget:{base or '<dict>'}.{key}", node.lineno))
     return findings
 
 
