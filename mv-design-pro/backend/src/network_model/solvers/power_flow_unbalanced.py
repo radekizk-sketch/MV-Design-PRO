@@ -497,8 +497,12 @@ def solve_unbalanced_backward_forward_sweep(
                 q_mvar_a=s_from_a.imag,
                 q_mvar_b=s_from_b.imag,
                 q_mvar_c=s_from_c.imag,
-                losses_p_mw=loss_total.real if hasattr(loss_total, "real") else float(loss_total),
-                losses_q_mvar=loss_total.imag if hasattr(loss_total, "imag") else 0.0,
+                # loss_total = Σ|I|²·Z (zespolone): Re = straty czynne w R,
+                # Im = moc bierna pochłaniana w X. Dawna gałąź obronna
+                # `float(loss_total)` była martwa (complex i float mają .real)
+                # i rzuciłaby TypeError, gdyby kiedykolwiek się wykonała.
+                losses_p_mw=loss_total.real,
+                losses_q_mvar=loss_total.imag,
             )
         )
         total_losses_p += branch_results[-1].losses_p_mw

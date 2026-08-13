@@ -1628,7 +1628,19 @@ export function KreatorStacjiSnNn() {
 
           <div>
             <div className="mvd-pole-etykieta">{T.podgladTytul}</div>
-            <PodgladRozdzielnicySn snFields={snFields} testid="mvd-kreator-stacja-podglad" />
+            {/* MINI-RMU-CAD: podgląd rysuje symbole normowe z REALNEJ konfiguracji
+                — rodzaj aparatu bierze z pozycji katalogu APARAT_SN wskazanej w
+                polu, opis transformatora z pozycji TRAFO_SN_NN wybranej w kroku
+                „Transformator". Bez tych katalogów rysunek nie miałby z czego
+                odróżnić wyłącznika od rozłącznika (stan sprzed karty). */}
+            <PodgladRozdzielnicySn
+              snFields={snFields}
+              aparaty={aparaty}
+              transformatory={typy}
+              transformatorRef={dane.catalog_ref}
+              snVoltageKv={kontekst.snVoltageKv}
+              testid="mvd-kreator-stacja-podglad"
+            />
           </div>
 
           <PanelTeorii

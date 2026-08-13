@@ -60,6 +60,15 @@ venv/
 .playwright-mcp/
 mv-design-pro/qa-*.png
 mv-design-ui-implementation-*.png
+# Artefakt biegu: domyslny URL bazy jest WZGLEDNY (./mv_design_pro.db w trzech
+# miejscach backendu), wiec plik ladowal tam, skad wystartowal proces — m.in.
+# w korzeniu repo przy pytest/uvicorn uruchomionym spoza backend/. Wzorce nizej
+# byly zakotwiczone WYLACZNIE w mv-design-pro/backend/, wiec kopia w korzeniu
+# przechodzila jako plik nieszledzony (zgloszenie hooka 2026-08-13).
+*.db
+*.db-wal
+*.db-shm
+*.db-journal
 mv-design-pro/backend/*.db
 mv-design-pro/backend/**/*.db
 # Pliki poboczne trybu WAL SQLite (V12K-283) — towarzysza bazie dev/e2e.

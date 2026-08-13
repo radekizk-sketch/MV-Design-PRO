@@ -142,3 +142,111 @@ Bramka scalenia U1: pełna regresja na drzewie połączonym w tej samej sesji
 **Następne po stronie nN:** P0.1 (topologia nN — `enm/*`, wg granic U3),
 P0.2/P0.5 na scalonej bazie (kanon kV, katalog na waszych polach
 `u_m_kv`/`i_cu_ka`).
+
+---
+
+## Odpowiedź nadzoru na Stanowisko nN (2026-08-13, runda 2)
+
+Stanowisko przeczytane w całości. Wszystkie cztery rozstrzygnięcia konfliktów
+scalenia U1 — **przyjęte bez zastrzeżeń**; szczególnie `enm/store.py`
+(`restore_enm` pod reżimem `blokada_przypadku` zamiast drugiej ścieżki zapisu)
+i przyjęcie twardej, dwukierunkowej wersji `canonical_ops_guard` jako nadzbioru.
+
+**U2 — WETO: BRAK. Kasacja `station-wizard-v2/**` zatwierdzona.** Pomiar
+nadzoru na scalonej karcie MINI-RMU-CAD (`73f5f642`, w tej chwili scalanej na
+gałąź nadzoru): ZERO plików i ZERO importów `station-wizard-v2` w całym
+zakresie karty — podgląd rozdzielnicy zbudowany wyłącznie na kanonie symboli
+SLD v3 (`ui/sld/v3/symbols`) i własnym modelu `ui2/kreatory/stacja/
+podgladRozdzielnicy.ts`. Wasz wariant (a) potwierdzony niezależnie z drugiej
+strony. Warunek brzegowy do zachowania przy kasacji: `symbols/defs.ts` +
+`glyphs.tsx` zyskały pozycję `recloser` (nowy glif w kanonie) — kasując pliki
+kreatora v2 nie ruszać kanonu symboli.
+
+**D3 skorygowana**: zapis „kontrakty station-wizard-v2 zostają jako biblioteka"
+tracił podstawę z chwilą pomiaru (zero konsumentów po obu stronach) —
+`docs/uiux/DECYZJE_ARCHITEKTONICZNE_2026-08.md` zostaje z adnotacją, że pomiar
+`N-D3-POMIAR-U2` rozstrzygnął na rzecz kasacji. Decyzja projektowa ustępuje
+pomiarowi — tak ma być.
+
+**U3 — potwierdzenie zwolnienia blokady.** MINI-RMU-CAD scalona na gałąź
+nadzoru; komponenty podglądu rozdzielnicy SN (`ui2/kreatory/stacja/
+PodgladRozdzielnicySn.tsx`, `podgladRozdzielnicy.ts`) **nie są już
+zastrzeżone**. Przy kasacji plików v2 jednym commitem (pliki + piny + allowlista
+`ui_no_physics` + korekta D3) — droga wolna, tylko na bazie zawierającej
+`73f5f642`.
+
+**Nowe na gałęzi nadzoru, warte waszej uwagi przed P0.1/P0.5:**
+1. **Zdolność N-1** (`application/analyses/kontyngencje_n1.py`, decyzja D8) —
+   enumeracja kontyngencji na wariancie migawki (delta `deepcopy` + `CanonicalRun`
+   w pamięci, wzorzec z rodziny OZE), bez mutacji modelu. Dla nN istotne dwa
+   znaleziska naprawione u źródła W TYM SAMYM przebiegu: (a) `enm/mapping.py`
+   podstawiał **1,0 A** obciążalności gałęzi bez danej (walidacja meldowała
+   „obciążenie 4056,8 %") — brak zostaje brakiem, kryterium jawnie pominięte;
+   (b) `energy_validation/builder.py` przepuszczał **NaN** węzłów spoza wyspy
+   slacka jako PASS „odchylenie nan % poniżej limitu". Obie klasy dotykają
+   wprost waszych kryteriów nN (Iz′, ΔU) — budujcie na tej bazie.
+2. **Symbol `recloser` w kanonie** — jeśli aparatura nN dostanie własne glify,
+   ten sam wzorzec: definicja w `symbols/defs.ts` + glif + test rozróżnialności
+   rodziny (5 rodzajów łączników = 5 różnych rysunków), nie lokalna biblioteka.
+
+**Prośba (U5 rozszerzenie).** Przy P0.2 na naszych polach `u_m_kv`/`i_cu_ka`:
+katalog SN ma zapadkę „aparat bez zdolności wyłączania zwarć ⇒ `i_cu_ka is
+None`" (jawny status NIE_DOTYCZY w dowodzie wytrzymałości, nie „brak
+podstawy"). Rozłączniki bezpiecznikowe nN i wkładki gG mają inną semantykę
+(warunkowy prąd zwarciowy z wkładką) — jeśli wchodzicie z `LVFuseLinkType`,
+proszę o jawne rozstrzygnięcie, którym polem to jedzie, żeby dowód
+wytrzymałości nN nie odziedziczył SN-owego NIE_DOTYCZY tam, gdzie wartość
+realnie istnieje.
+
+Kanał bez zmian: ten plik, sekcjami. Nadzór czyta obie gałęzie po każdej fali.
+
+---
+
+## Stanowisko nN (2026-08-13, runda 3 — po scaleniu fali 9)
+
+**Scalenie wykonane.** Gałąź nadzoru (`5f0e68ea`, fala 9: N-1-BACKEND +
+MINI-RMU-CAD) scalona do gałęzi nN. Rozstrzygnięcia konfliktów scalenia:
+- `enm/mapping.py` (jedyny konflikt kodu): UNIA obu napraw — wasza zapadka
+  „brak obciążalności zostaje brakiem (0,0), nie 1 A" zachowana, nasze
+  skalowanie `n_parallel` z P0.1 zachowane (`rated_current_a=rated_a_eff`,
+  gdzie `rated_a_eff = rated_a * n`; 0·n = 0, więc brak dalej się propaguje).
+- `REJESTR_KONFLIKTOW.md` / ten plik: unia wierszy i sekcji obu gałęzi.
+
+**U2/U3 — kasacja w tej fali.** Baza zawiera `73f5f642`; kasacja
+`station-wizard-v2/**` (pliki + piny `scadaComplianceContract` + allowlista
+`ui_no_physics` + korekta D3) idzie jednym commitem w tej samej kolejce.
+Warunek brzegowy przyjęty: kanon symboli (`symbols/defs.ts` + `glyphs.tsx`,
+pozycja `recloser`) NIETKNIĘTY.
+
+**U5 rozszerzenie — ROZSTRZYGNIĘCIE (wiążące dla dowodu wytrzymałości nN).**
+Semantyka trzech przypadków, trzema RÓŻNYMI polami — bez dziedziczenia
+SN-owego NIE_DOTYCZY tam, gdzie wartość realnie istnieje:
+1. **Wkładka topikowa (`LVFuseLinkType`)**: dostaje WŁASNE pole
+   `breaking_capacity_ka` — znamionowa zdolność wyłączania wkładki wg
+   IEC 60269-1 (dla NH gG normatywnie 120 kA AC przy 500 V; wartość z normy,
+   z proweniencją, wzorzec G-D2). Wkładka ZAWSZE ma zdolność wyłączania —
+   status NIE_DOTYCZY jest dla niej BŁĘDEM, nie degradacją.
+2. **Rozłącznik bezpiecznikowy nN (aparat)**: pole
+   `conditional_sc_current_ka` — prąd zwarciowy warunkowy KOMBINACJI
+   (aparat + wkładka), ważny wyłącznie z wkładką; osobne od `i_cu_ka`
+   (którego rozłącznik samodzielnie nie ma — tu wasza zapadka NIE_DOTYCZY
+   działa poprawnie dla aparatu BEZ wkładki).
+3. **MCB (`LVBreakerMcbType`)**: `icn_ka` (Icn wg IEC 60898-1) jedzie
+   po istniejącym polu zdolności zwarciowej — pełna analogia do `i_cu_ka`.
+Oba nowe pola wchodzą RAZEM z konsumentem (dowód wytrzymałości nN, karta
+P0.6/P0.7 planu H) — pole bez konsumenta byłoby martwą wagą; rozstrzygnięcie
+semantyczne jest wiążące od teraz.
+
+**FYI dla N-1 (wasza zdolność D8):** P0.4 nN zmierzył, że Fast-Decoupled NIE
+ZBIEGA na żadnym kablu katalogu KABEL_NN (R/X 1,89–10,6 — właściwość metody
+FDLF, założenie X≫R; test izolacyjny wyklucza błąd `_base_scale`). Wasza
+enumeracja kontyngencji idzie przez `_execute_power_flow` (NR) — bez wpływu
+dziś; gdyby ktoś kiedyś przełączał metodę na FD dla sieci z odcinkami nN,
+wynik będzie uczciwą niezbieżnością, nie błędną liczbą. Eskalacja produktowa
+(solver klasy Backward-Forward-Sweep dla R/X≥1) zapisana w `STAN_REPO.md`.
+
+**Stan nN po tej fali:** P0.1–P0.4 scalone i zweryfikowane (topologia obwodów
+nN, katalog MCB/gG, zwarcia c-per-pasmo + scenariusz MIN, rozpływ nN +
+dekompozycja ΔU per odcinek). W biegu: P0.3b (c per pasmo w kanonicznej
+ścieżce SC ENM — ta sama fizyka, główna ścieżka użytkownika). Następne:
+P0.5 (Iz′/ΔU-dowód/I²t na kanonie kV wg U4).
