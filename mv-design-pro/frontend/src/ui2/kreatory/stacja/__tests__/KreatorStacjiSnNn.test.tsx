@@ -259,23 +259,55 @@ vi.mock('../szablonyUzytkownika', () => ({
   usunSzablonUzytkownika: () => Promise.resolve(),
 }));
 
+/**
+ * Biblioteka szablonów per KATEGORIA + sterowanie momentem odpowiedzi.
+ *
+ * Mock zwracał wcześniej JEDNĄ listę niezależnie od kategorii i rozstrzygał się
+ * natychmiast — przy takim dublerze nie dawało się zobaczyć stanu „kategoria
+ * zmieniona, odpowiedź jeszcze nie przyszła", czyli dokładnie tego, w którym
+ * picker pokazywał szablony poprzedniej kategorii.
+ */
+const biblioteka = vi.hoisted(() => {
+  const szablon = (id: string, name_pl: string, category: string) => ({
+    id,
+    name_pl,
+    category,
+    description_pl: 'Szablon testowy',
+    use_case_pl: '',
+    nc_rfg_type: 'B',
+    tags: [],
+    icon: 'station-pv-farm',
+  });
+  const wgKategorii: Record<string, ReturnType<typeof szablon>[]> = {
+    typowa_sn_nn: [szablon('tpl_typowa_400', 'Typowa 400 kVA', 'typowa_sn_nn')],
+    farma_pv: [szablon('tpl_farma_pv_1mw', 'Farma PV 1 MW', 'farma_pv')],
+  };
+  /** Gdy ustawione — odpowiedź czeka na ręczne zwolnienie (`zwolnij`). */
+  let wstrzymaj: (() => void) | null = null;
+  return {
+    wgKategorii,
+    /** Wstrzymuje KOLEJNE żądanie do czasu wywołania `zwolnij()`. */
+    wstrzymajNastepne(): void {
+      wstrzymaj = null;
+      biblioteka.oczekujace = new Promise<void>((resolve) => {
+        wstrzymaj = resolve;
+      });
+    },
+    oczekujace: null as Promise<void> | null,
+    zwolnij(): void {
+      wstrzymaj?.();
+      wstrzymaj = null;
+      biblioteka.oczekujace = null;
+    },
+  };
+});
+
 vi.mock('../../../../ui/network-build/station-templates/api', () => ({
-  fetchStationTemplates: () =>
-    Promise.resolve({
-      templates: [
-        {
-          id: 'tpl_farma_pv_1mw',
-          name_pl: 'Farma PV 1 MW',
-          category: 'farma_pv',
-          description_pl: 'Szablon testowy',
-          use_case_pl: '',
-          nc_rfg_type: 'B',
-          tags: [],
-          icon: 'station-pv-farm',
-        },
-      ],
-      total: 1,
-    }),
+  fetchStationTemplates: async (kategoria: string) => {
+    if (biblioteka.oczekujace) await biblioteka.oczekujace;
+    const templates = biblioteka.wgKategorii[kategoria] ?? [];
+    return { templates, total: templates.length };
+  },
   fetchStationTemplate: (id: string) =>
     Promise.resolve({
       id,
@@ -885,8 +917,48 @@ describe('B-8 — zapisz konfigurację jako szablon użytkownika', () => {
     const wlasny = wybor.querySelector('option[value="user_test1"]');
     expect(wlasny?.textContent).toContain('(mój szablon)');
     // Wbudowany ma własne oznaczenie — projektant widzi, skąd szablon pochodzi.
-    const wbudowany = wybor.querySelector('option[value="tpl_farma_pv_1mw"]');
+    // Wbudowany DOMYŚLNEJ kategorii (`typowa_sn_nn`): lista jest per kategoria,
+    // więc szablon farmy PV pojawia się dopiero po jej wybraniu.
+    const wbudowany = wybor.querySelector('option[value="tpl_typowa_400"]');
     expect(wbudowany?.textContent).toContain('(wbudowany)');
+  });
+
+  it('zmiana kategorii NIE zostawia na liście szablonów poprzedniej kategorii', async () => {
+    // DEFEKT, KTÓRY TO PILNUJE: lista wbudowanych nie była czyszczona przy
+    // zmianie kategorii, więc przez czas trwania żądania picker oferował
+    // szablony POPRZEDNIEJ kategorii jako szablony wybranej — projektant mógł
+    // wypełnić formularz szablonem z zupełnie innej kategorii, a pusty stan
+    // („ta kategoria nie zawiera szablonów") padał również PODCZAS ładowania.
+    render(<KreatorStacjiSnNn />);
+    const wybor = (await screen.findByTestId(
+      'mvd-kreator-stacja-szablon-wybor',
+    )) as HTMLSelectElement;
+    await waitFor(() => {
+      expect(wybor.querySelector('option[value="tpl_typowa_400"]')).not.toBeNull();
+    });
+
+    // Odpowiedź dla NOWEJ kategorii wstrzymana — mierzymy dokładnie okno,
+    // w którym dane wybranej kategorii jeszcze nie dotarły.
+    biblioteka.wstrzymajNastepne();
+    await userEvent.selectOptions(
+      screen.getByTestId('mvd-kreator-stacja-szablon-kategoria'),
+      'farma_pv',
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('mvd-kreator-stacja-szablon-laduje')).toBeInTheDocument();
+    });
+    expect(wybor.querySelector('option[value="tpl_typowa_400"]')).toBeNull();
+    expect(wybor.querySelector('option[value="tpl_farma_pv_1mw"]')).toBeNull();
+    // Ładowanie ≠ pustka: komunikat „ta kategoria nie zawiera szablonów" nie
+    // może paść, zanim odpowiedź przyjdzie.
+    expect(screen.queryByTestId('mvd-kreator-stacja-szablon-pusty')).toBeNull();
+
+    biblioteka.zwolnij();
+    await waitFor(() => {
+      expect(wybor.querySelector('option[value="tpl_farma_pv_1mw"]')).not.toBeNull();
+    });
+    expect(screen.queryByTestId('mvd-kreator-stacja-szablon-laduje')).toBeNull();
   });
 
   it('bez nazwy przycisk zapisu jest nieaktywny (uczciwy stan zerowy)', async () => {

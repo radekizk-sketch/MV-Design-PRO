@@ -9,8 +9,15 @@
  *   2. `bez-pola-tr` — po świadomym usunięciu pola TR: panel nazywający skutki
  *      (znacznik na schemacie, ostrzeżenie gotowości, zamknięta droga do
  *      dokumentacji wykonawczej) + akcja przywrócenia,
- *   3. `warianty-aparatu` — rozwinięta lista aparatu pola transformatorowego:
- *      rozłącznik bezpiecznikowy albo wyłącznik (zawężenie z katalogu backendu).
+ *   3. `warianty-aparatu` — WIERSZ pola transformatorowego z bliska: wybrany
+ *      aparat i zdanie nazywające rozwiązania dopuszczalne w tym polu
+ *      (rozłącznik bezpiecznikowy albo wyłącznik — zawężenie z katalogu
+ *      backendu). Kadrujemy WIERSZ, nie całego kreatora: pierwsza wersja
+ *      robiła trzeci zrzut całego panelu po `scrollIntoViewIfNeeded()` na
+ *      `<select>`, więc powstawał plik BAJT W BAJT identyczny ze zrzutem (1)
+ *      — obrazek podpisany „warianty aparatu", który wariantów nie pokazywał
+ *      (natywnej listy rozwijanej `<select>` nie da się zrzucić). Dowód, który
+ *      pokazuje co innego, niż głosi podpis, jest gorszy niż brak dowodu.
  *
  * Renderuje REALNY komponent kreatora przez harness `/creator-harness.html`
  * (ta sama droga, co pozostałe zrzuty kreatorów) — nie makietę.
@@ -69,8 +76,13 @@ test.describe('kreator stacji — pole transformatorowe', () => {
       const opcje = await aparatTr.locator('option').allTextContents();
       expect(opcje.join(' | ')).toContain('rozłącznik bezpiecznikowy');
       expect(opcje.join(' | ')).not.toContain('odłącznik');
-      await aparatTr.scrollIntoViewIfNeeded();
-      await root.screenshot({
+      // Kadr = WIERSZ pola transformatorowego (patrz nagłówek pliku: zrzut
+      // całego panelu byłby kopią zrzutu (1)). Zdanie o dopuszczalnych
+      // rozwiązaniach musi być NA obrazku — inaczej podpis znów wyprzedza treść.
+      const wierszTr = page.getByTestId('mvd-kreator-stacja-pole-wiersz-4');
+      await expect(wierszTr).toContainText('rozłącznik bezpiecznikowy');
+      await wierszTr.scrollIntoViewIfNeeded();
+      await wierszTr.screenshot({
         path: path.join(OUTPUT_DIR, `kreator_stacja_pola_warianty_aparatu_${theme}.png`),
       });
 

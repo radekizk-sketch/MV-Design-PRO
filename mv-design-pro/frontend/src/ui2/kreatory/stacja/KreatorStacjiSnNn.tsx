@@ -255,6 +255,18 @@ export function KreatorStacjiSnNn() {
   // Krok 0 — biblioteka szablonów stacji.
   const [kategoriaSzablonu, setKategoriaSzablonu] = useState<string>(KATEGORIE_SZABLONOW[0]);
   const [szablonyStacji, setSzablonyStacji] = useState<StationTemplateSummary[]>([]);
+  /**
+   * Stan pobrania biblioteki szablonów DLA WYBRANEJ KATEGORII.
+   *
+   * Do tej karty stanu nie było, a lista przy zmianie kategorii NIE była
+   * czyszczona — przez czas trwania żądania picker pokazywał szablony
+   * POPRZEDNIEJ kategorii jako szablony wybranej. Projektant, który wybrał
+   * kategorię i od razu sięgnął po szablon, mógł wypełnić formularz szablonem z
+   * zupełnie innej kategorii; nic go o tym nie informowało. Osobno: pusty stan
+   * („biblioteka nie ma szablonów") wyświetlał się także PODCZAS ładowania,
+   * czyli mówił „nie ma", zanim wiadomo było, czy jest.
+   */
+  const [szablonyStan, setSzablonyStan] = useState<'laduje' | 'gotowe'>('laduje');
   const [bladSzablonow, setBladSzablonow] = useState<string | null>(null);
   const [wybranySzablonId, setWybranySzablonId] = useState<string>('');
   // B-8: szablony ZAPISANE PRZEZ UŻYTKOWNIKA — osobny zbiór, osobna przestrzeń
@@ -449,16 +461,25 @@ export function KreatorStacjiSnNn() {
   );
 
   // Biblioteka szablonów stacji (krok 0) — lista dla wybranej kategorii.
+  // Lista jest CZYSZCZONA na wejściu: dopóki nie wiadomo, jakie szablony ma
+  // wybrana kategoria, picker nie może pokazywać szablonów poprzedniej (patrz
+  // `szablonyStan` wyżej — oferta z cudzej kategorii jest gorsza od chwilowego
+  // braku oferty, bo wygląda dokładnie jak prawdziwa).
   useEffect(() => {
     let cancelled = false;
     setBladSzablonow(null);
+    setSzablonyStacji([]);
+    setSzablonyStan('laduje');
     fetchStationTemplates(kategoriaSzablonu)
       .then((odp) => {
-        if (!cancelled) setSzablonyStacji([...(odp.templates ?? [])]);
+        if (cancelled) return;
+        setSzablonyStacji([...(odp.templates ?? [])]);
+        setSzablonyStan('gotowe');
       })
       .catch((e: unknown) => {
         if (cancelled) return;
         setSzablonyStacji([]);
+        setSzablonyStan('gotowe');
         setBladSzablonow(e instanceof Error ? e.message : T.szablonBlad);
       });
     return () => {
@@ -1173,7 +1194,10 @@ export function KreatorStacjiSnNn() {
           {bladSzablonow ? (
             <KreatorInfo testid="mvd-kreator-stacja-szablon-blad">{bladSzablonow}</KreatorInfo>
           ) : null}
-          {!bladSzablonow && szablonyStacji.length === 0 ? (
+          {!bladSzablonow && szablonyStan === 'laduje' ? (
+            <KreatorInfo testid="mvd-kreator-stacja-szablon-laduje">{T.szablonLaduje}</KreatorInfo>
+          ) : null}
+          {!bladSzablonow && szablonyStan === 'gotowe' && szablonyStacji.length === 0 ? (
             <KreatorInfo testid="mvd-kreator-stacja-szablon-pusty">{T.szablonPusty}</KreatorInfo>
           ) : null}
 
