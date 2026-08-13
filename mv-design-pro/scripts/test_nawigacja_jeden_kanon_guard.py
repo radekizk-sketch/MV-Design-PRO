@@ -32,6 +32,14 @@ MOST_TS = """
 export const TRASY_KANONICZNE = {};
 """
 
+APPROOT_TSX = """
+import { przejdzDoPrzestrzeni } from './shell/przejsciaPrzestrzeni';
+const wybierzPrzestrzen = przejdzDoPrzestrzeni;
+export function AppRoot() {
+  return null;
+}
+"""
+
 
 def zbuduj_front(tmp_path: Path) -> Path:
     """Minimalne, POPRAWNE drzewo frontu — punkt wyjscia kazdego przypadku."""
@@ -39,9 +47,12 @@ def zbuduj_front(tmp_path: Path) -> Path:
     (src / "ui" / "navigation").mkdir(parents=True)
     (src / "ui" / "navigation" / "routes.ts").write_text(ROUTES_TS, encoding="utf-8")
     (src / "ui2" / "search").mkdir(parents=True)
-    (src / "ui2" / "search" / "CommandPalette.tsx").write_text(PALETA_TSX, encoding="utf-8")
+    (src / "ui2" / "search" / "CommandPalette.tsx").write_text(
+        PALETA_TSX, encoding="utf-8"
+    )
     (src / "ui2" / "legacy").mkdir(parents=True)
     (src / "ui2" / "legacy" / "mostObszarow.ts").write_text(MOST_TS, encoding="utf-8")
+    (src / "ui2" / "AppRoot.tsx").write_text(APPROOT_TSX, encoding="utf-8")
     return src
 
 
@@ -50,7 +61,10 @@ def przypnij(monkeypatch, src: Path) -> None:
     monkeypatch.setattr(guard, "FRONTEND_SRC", src)
     monkeypatch.setattr(guard, "PLIK_TRAS", src / "ui" / "navigation" / "routes.ts")
     monkeypatch.setattr(guard, "PLIK_MOSTU", src / "ui2" / "legacy" / "mostObszarow.ts")
-    monkeypatch.setattr(guard, "PLIK_PALETY", src / "ui2" / "search" / "CommandPalette.tsx")
+    monkeypatch.setattr(
+        guard, "PLIK_PALETY", src / "ui2" / "search" / "CommandPalette.tsx"
+    )
+    monkeypatch.setattr(guard, "PLIK_APPROOT", src / "ui2" / "AppRoot.tsx")
     monkeypatch.setattr(
         guard,
         "SCIEZKA_REJESTRU_OBSZAROW",
@@ -153,7 +167,8 @@ def test_regula_b_lapie_wskrzeszony_rejestr_obszarow(tmp_path, monkeypatch) -> N
 def test_regula_b_lapie_import_rejestru(tmp_path, monkeypatch) -> None:
     src = zbuduj_front(tmp_path)
     (src / "ui2" / "cos.ts").write_text(
-        "import type { AreaId } from '../ui/navigation/areaRegistry';\n", encoding="utf-8"
+        "import type { AreaId } from '../ui/navigation/areaRegistry';\n",
+        encoding="utf-8",
     )
     przypnij(monkeypatch, src)
 
@@ -236,7 +251,9 @@ def test_regula_d_lapie_druga_definicje_palety(tmp_path, monkeypatch) -> None:
 
     naruszenia = guard.regula_d_jedna_paleta()
 
-    assert any("[paleta-duplikat]" in wpis and "2 definicje" in wpis for wpis in naruszenia)
+    assert any(
+        "[paleta-duplikat]" in wpis and "2 definicje" in wpis for wpis in naruszenia
+    )
 
 
 def test_regula_d_lapie_duplikat_zapisany_jako_stala(tmp_path, monkeypatch) -> None:
@@ -263,6 +280,29 @@ def test_regula_d_lapie_brak_palety(tmp_path, monkeypatch) -> None:
 # --------------------------------------------------------------------------
 # Guard na zywym repozytorium
 # --------------------------------------------------------------------------
+
+
+def test_regula_e_czysto_przy_wiazaniu_kanonicznym(tmp_path, monkeypatch) -> None:
+    src = zbuduj_front(tmp_path)
+    przypnij(monkeypatch, src)
+
+    assert guard.regula_e_wiazanie_pulpitu() == []
+
+
+def test_regula_e_lapie_goly_setter_zamiast_kanonu(tmp_path, monkeypatch) -> None:
+    # Dokladnie iniekcja odbioru PULPIT-NBA (2026-08-14), ktora przetrwala 371
+    # testow jednostkowych: podmiana wiazania na goly setActiveSpace zostawia
+    # trase nadrzedna (most tras nie idzie) i klik z pulpitu jest martwy.
+    src = zbuduj_front(tmp_path)
+    (src / "ui2" / "AppRoot.tsx").write_text(
+        "const wybierzPrzestrzen = (s) => useShellStore.getState().setActiveSpace(s);\n",
+        encoding="utf-8",
+    )
+    przypnij(monkeypatch, src)
+
+    naruszenia = guard.regula_e_wiazanie_pulpitu()
+
+    assert any("[pulpit-poza-kanonem]" in wpis for wpis in naruszenia)
 
 
 def test_guard_zielony_na_repozytorium() -> None:

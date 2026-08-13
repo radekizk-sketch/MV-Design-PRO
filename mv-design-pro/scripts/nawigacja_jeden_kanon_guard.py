@@ -191,7 +191,8 @@ def regula_c_flaga_v3() -> list[str]:
             if sciezka.name in PLIKI_WLASNE_GUARDA:
                 continue
             for numer, linia in enumerate(
-                sciezka.read_text(encoding="utf-8", errors="ignore").splitlines(), start=1
+                sciezka.read_text(encoding="utf-8", errors="ignore").splitlines(),
+                start=1,
             ):
                 if FLAGA_V3.search(linia):
                     naruszenia.append(
@@ -220,6 +221,29 @@ def regula_d_jedna_paleta() -> list[str]:
     ]
 
 
+#: Regula E (znalezisko odbioru PULPIT-NBA, 2026-08-14). Nawigacja z pulpitu
+#: (mapa etapow, NBA, kafle) MUSI biec pelnym przejsciem kanonicznym
+#: `przejdzDoPrzestrzeni` (aktywacja przestrzeni + most tras). Goly
+#: `setActiveSpace` zostawia trase nadrzedna, ktora przykrywa cel — dokladnie
+#: mechanizm martwego klika usuniety karta NAWIGACJA-JEDEN-KANON. Iniekcja
+#: odbioru (podmiana na goly setter w AppRoot) przetrwala 371 testow — pin
+#: modulu proces stoi na mockach i nie widzi szwu AppRoot, wiec szew pilnuje
+#: guard literalem, ta sama granulacja co reguly A-D.
+PLIK_APPROOT = FRONTEND_SRC / "ui2" / "AppRoot.tsx"
+WIAZANIE_KANONU_D1 = "const wybierzPrzestrzen = przejdzDoPrzestrzeni;"
+
+
+def regula_e_wiazanie_pulpitu() -> list[str]:
+    tresc = bez_komentarzy(PLIK_APPROOT.read_text(encoding="utf-8"))
+    if WIAZANIE_KANONU_D1 in tresc:
+        return []
+    return [
+        "[pulpit-poza-kanonem] AppRoot.tsx nie wiaze nawigacji pulpitu z "
+        f"przejdzDoPrzestrzeni (oczekiwany literal: {WIAZANIE_KANONU_D1!r}) — "
+        "goly setActiveSpace zostawia trase nadrzedna i klik jest martwy (D1)"
+    ]
+
+
 def main() -> int:
     if not FRONTEND_SRC.is_dir():
         print(f"BLAD: brak katalogu {FRONTEND_SRC}", file=sys.stderr)
@@ -230,6 +254,7 @@ def main() -> int:
     naruszenia += regula_b_druga_nawigacja()
     naruszenia += regula_c_flaga_v3()
     naruszenia += regula_d_jedna_paleta()
+    naruszenia += regula_e_wiazanie_pulpitu()
 
     if naruszenia:
         print("NAWIGACJA-JEDEN-KANON: NARUSZENIA")
@@ -238,7 +263,9 @@ def main() -> int:
         print(f"\nRazem: {len(naruszenia)}")
         return 1
 
-    print("NAWIGACJA-JEDEN-KANON: czysto (trasy, obszary, flaga V3, paleta)")
+    print(
+        "NAWIGACJA-JEDEN-KANON: czysto (trasy, obszary, flaga V3, paleta, wiazanie pulpitu)"
+    )
     return 0
 
 
