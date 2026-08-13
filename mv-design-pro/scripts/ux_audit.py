@@ -34,9 +34,14 @@ FE = REPO_ROOT / "frontend/src"
 STORE = FE / "ui/topology/snapshotStore.ts"
 MESSAGES = FE / "ui/topology/operationSuccessMessages.ts"
 ROUTER = FE / "ui/workspace/WorkspaceSurfaceRouter.tsx"
+# Zero-Debt (karta NAWIGACJA-JEDEN-KANON): obie dawne sciezki shellu
+# (AppShellV12.tsx, CanonicalLayoutV3.tsx) zostaly skasowane odpowiednio w
+# a88c6960 i 3693c01e, wiec `_semantic_banner_wired` pytal o NIEISTNIEJACE
+# pliki i mogl zwrocic falszywy wynik. Zywa powloka to ui2: AppShell +
+# LegacyWarsztat (ten drugi montuje SemanticIssuesBanner nad warsztatem).
 SHELL_CANDIDATES = [
-    FE / "ui/shell/AppShellV12.tsx",
-    FE / "ui/layout/CanonicalLayoutV3.tsx",
+    FE / "ui2/shell/AppShell.tsx",
+    FE / "ui2/legacy/LegacyWarsztat.tsx",
 ]
 
 
