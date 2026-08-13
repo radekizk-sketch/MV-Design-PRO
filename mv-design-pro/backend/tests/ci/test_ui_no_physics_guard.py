@@ -47,10 +47,10 @@ def test_guard_main_returns_zero_on_repo():
 
 
 def test_ui_allowlist_matches_measured_baseline():
-    """Baseline (re-measured 2026-07-31, KD-2 acceptance): exactly 16 raw
+    """Baseline (re-measured 2026-08-13, N-D3 kasacja): exactly 13 raw
     physics-pattern hits in frontend/src/ui/** (pre-allowlist, via scan_file
     which the allowlist
-    never touches), classified 0 class-a (real physics) / 16 class-b (false
+    never touches), classified 0 class-a (real physics) / 13 class-b (false
     positive: string, label, comment continuation, ratio of two backend values,
     unit conversion, chart-axis normalisation) / 0 class-c. If this count
     changes, a new hit appeared and MUST be re-classified explicitly
@@ -73,7 +73,11 @@ def test_ui_allowlist_matches_measured_baseline():
     (2026-07-31) re-measured 16 after card KD-1 (V12K-289) deleted the dead
     station-wizard-v2 component holding two allowlisted label hits (KD-1's own
     gates skipped pytest -- zero backend files in its diff -- so this backend
-    test scanning frontend files could only catch it on the merged tip). All
+    test scanning frontend files could only catch it on the merged tip);
+    N-D3 kasacja (2026-08-13, row N-D3-POMIAR-U2 in
+    docs/v12xx/REJESTR_KONFLIKTOW.md) re-measured 13 after deleting the whole
+    station-wizard-v2 contracts library (3 raw hits / 2 allowlist entries;
+    zero consumers measured on both branches). All
     re-measurements lowered the baseline BY MEASUREMENT, never by widening
     tolerance.
     """
@@ -85,7 +89,7 @@ def test_ui_allowlist_matches_measured_baseline():
         if ui_no_physics_guard._should_exclude_file(path):
             continue
         raw += len(ui_no_physics_guard.scan_file(path))
-    assert raw == 16
+    assert raw == 13
 
 
 def test_ui_allowlist_entries_are_not_stale():

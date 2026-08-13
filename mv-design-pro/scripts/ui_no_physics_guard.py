@@ -123,12 +123,10 @@ ALLOWLIST: dict[tuple[str, int], str] = {
     # 684: napis metody IEC 60909-0) USUNIETE 2026-07-31: karta KD-1 (V12K-289)
     # skasowala caly martwy komponent kreatora stacji v2, wiec wpisy przestaly
     # wskazywac na istniejacy kod. Pomiar bazowy obnizony 18 -> 16.
-    # metersContract.ts — trailing comment (not a whole-line comment, so the
-    # guard's SKIP_LINE_PATTERNS regex does not recognise it as a comment).
-    (
-        "frontend/src/ui/network-build/station-wizard-v2/metersContract.ts",
-        57,
-    ): "b: trailing line comment ('typ. 100 / root3'), not code",
+    # station-wizard-v2 (metersContract.ts 57, calculationTemplateContract.ts
+    # 64) — wpisy USUNIETE 2026-08-13: kasacja N-D3 (wiersz N-D3-POMIAR-U2 w
+    # docs/v12xx/REJESTR_KONFLIKTOW.md) skasowala cala biblioteke kontraktow
+    # (zero konsumentow zmierzone na obu galeziach). Pomiar bazowy 16 -> 13.
     # sldCanonKit.tsx — string template building a display label.
     (
         "frontend/src/ui/sld/v2/station-rozdzielnia/canon/sldCanonKit.tsx",
@@ -149,10 +147,6 @@ ALLOWLIST: dict[tuple[str, int], str] = {
         "frontend/src/ui/canon/technicalDebtRegistry.ts",
         71,
     ): "b: string z komendą powłoki ('pytest tests/test_short_circuit_iec60909.py') — ukośnik jest separatorem ścieżki",
-    (
-        "frontend/src/ui/network-build/station-wizard-v2/calculationTemplateContract.ts",
-        64,
-    ): "b: tytuł kroku kreatora ('Zwarcia, aparatura i warunki I_dyn/I_th') — napis, nie działanie",
     (
         "frontend/src/ui/protection-curves/itCurveAdapter.ts",
         80,
