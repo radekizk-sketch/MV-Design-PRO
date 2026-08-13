@@ -784,9 +784,23 @@ def _execute_phase_state_sn(run: CanonicalRun) -> None:
             for raw_bus in snapshot.get("buses") or []
             if isinstance(raw_bus, dict) and str(raw_bus.get("ref_id") or "") == target_bus_ref
         ),
-        {},
+        None,
     )
-    source_voltage_default = float(target_bus.get("voltage_kv") or 15.0) / math.sqrt(3.0)
+    # Karta RATCHET-DICT-READ (2026-08-13): USUNIETA fabrykacja "or 15.0". `Bus.
+    # voltage_kv` jest WYMAGANE w kontrakcie ENM (enm/models.py), a `execute_run`
+    # odrzuca "phase_state_sn" bez co najmniej jednej szyny PRZED uruchomieniem
+    # tej funkcji (`if analysis_type == "phase_state_sn" and not enm.buses: raise
+    # ValueError`), wiec auto-dobor celu (`_pick_phase_state_target`) zawsze
+    # trafia w istniejaca szyne z realnym napieciem. Jedyna droga do `target_bus
+    # is None` to JAWNIE podany `target_bus_ref`/`target_id` w opcjach przypadku,
+    # ktory nie wskazuje zadnej realnej szyny (literowka, usunieta szyna) — to
+    # blad danych wejsciowych uzytkownika, ktory nalezy zamelodowac wprost, a nie
+    # cichaczem zgadywac napiecie 15 kV rozdzielni SN.
+    if target_bus is None:
+        raise ValueError(
+            f"Stan fazowy SN: docelowa szyna '{target_bus_ref}' nie istnieje w modelu ENM"
+        )
+    source_voltage_default = float(target_bus["voltage_kv"]) / math.sqrt(3.0)
     solver_input = PhaseStateSNInput(
         source_voltage_kv=_phase_value_from_options(
             run.options,
