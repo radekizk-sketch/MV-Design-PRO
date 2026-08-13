@@ -22,7 +22,6 @@ vi.mock('../../../network-build/networkBuildStore', () => ({
 
 import { SchematContextPanel } from '../SchematContextPanel';
 import { useSnapshotStore } from '../../../topology/snapshotStore';
-import { useAppStateStore } from '../../../app-state/store';
 import { useShellStore } from '../../../../ui2/shell/useShellStore';
 
 describe('SchematContextPanel - synchronizacja kontroli zakresu', () => {

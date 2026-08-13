@@ -14,6 +14,7 @@ import { useAppStateStore } from '../../../../ui/app-state';
 import { useExecutionRunsStore } from '../../../../ui/study-cases/runStore';
 import type { ExecutionRun } from '../../../../ui/study-cases/types';
 import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
+import { getCurrentHashRoute } from '../../../../ui/navigation';
 import { useShellStore } from '../../../shell/useShellStore';
 import { NastepnyKrokSchematu } from '../NastepnyKrokSchematu';
 import { SCHEMAT_STRINGS } from '../strings';
@@ -121,7 +122,17 @@ describe('K4-E2 — NastepnyKrokSchematu (jawne przejście Schemat → Gotowoś�
     expect(window.location.hash).toBe('');
   });
 
-  it('klik przejścia bez trasy nadrzędnej nie zmienia trasy (deep-linki nietknięte)', () => {
+  /*
+   * KANON ZMIENIONY W D1, INTENCJA ZACHOWANA. Dawniej test wymagał, żeby trasa
+   * `#analysis?run=abc` po przejściu do „Gotowości" została NIETKNIĘTA — bo
+   * tylko pięć tras z ręcznej listy podlegało czyszczeniu. Skutek był taki, że
+   * po kanonie D1 (każda trasa ląduje w swojej przestrzeni) orkiestrator
+   * natychmiast wracał do przestrzeni „Wyniki" i użytkownik NIE DOCHODZIŁ do
+   * gotowości. Intencją testu było „deep-link nie ginie", nie „adres jest
+   * dosłownie ten sam": chroniony jest KONTEKST (`?run=abc`), a trasa należąca
+   * do innej przestrzeni ustępuje jawnemu wyborowi użytkownika.
+   */
+  it('klik przejścia zostawia kontekst deep-linku, zdejmując cudzą trasę', () => {
     window.location.hash = '#analysis?run=abc';
     act(() => {
       useSnapshotStore.setState({
@@ -133,7 +144,10 @@ describe('K4-E2 — NastepnyKrokSchematu (jawne przejście Schemat → Gotowoś�
     fireEvent.click(screen.getByTestId('mvd-schemat-nastepny-akcja'));
 
     expect(useShellStore.getState().activeSpace).toBe('gotowosc');
-    expect(window.location.hash).toBe('#analysis?run=abc');
+    // Kontekst przebiegu przeżywa przejście (to jest sedno deep-linku)…
+    expect(window.location.hash).toContain('run=abc');
+    // …a trasa cudzej przestrzeni znika, więc „Gotowość" może się wyrenderować.
+    expect(getCurrentHashRoute()).toBe('');
   });
 });
 

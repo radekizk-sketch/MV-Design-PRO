@@ -23,7 +23,12 @@ import {
 
 const navigateToSldMock = vi.fn();
 
-vi.mock('../../../../ui/navigation/routes', () => ({
+// Atrapa CZĘŚCIOWA: podmieniamy tylko `navigateToSld` (jego wywołanie bada
+// test). Pełne zastąpienie modułu tras wywracało zestaw po D1 — most przestrzeni
+// czyta z niego `ROUTES`, więc atrapa bez tego eksportu wysadzała import
+// łańcucha powłoki jeszcze przed pierwszym przypadkiem testowym.
+vi.mock('../../../../ui/navigation/routes', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../../../ui/navigation/routes')>()),
   navigateToSld: () => navigateToSldMock(),
 }));
 

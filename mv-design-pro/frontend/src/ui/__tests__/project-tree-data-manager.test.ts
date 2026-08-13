@@ -19,7 +19,6 @@ import { useSelectionStore } from '../selection/store';
 import { useDataManagerUIStore } from '../data-manager/store';
 import { normalizeOperatingMode } from '../operatingMode';
 import type {
-  TreeNode,
   TreeNodeType,
   DataManagerColumn,
   DataManagerRow,
@@ -29,7 +28,6 @@ import type {
   ElementType,
   OperatingMode,
   ColumnViewPreset,
-  ValidationMessage,
 } from '../types';
 import { COLUMN_VIEW_PRESET_LABELS } from '../types';
 
@@ -88,7 +86,10 @@ describe('Drzewo Projektu', () => {
     });
 
     it('should build tree with correct Polish labels', () => {
-      const expectedLabels: Record<TreeNodeType, string> = {
+      // Próbka etykiet (nie komplet rejestru `TreeNodeType` — dlatego `Partial`):
+      // test pilnuje, że etykiety są niepustymi napisami PL, nie że pokrywają
+      // każdy rodzaj węzła. Pokrycie rejestru to osobna zdolność.
+      const expectedLabels: Partial<Record<TreeNodeType, string>> = {
         PROJECT: 'Projekt',
         NETWORK: 'Sieć',
         BUSES: 'Szyny',
@@ -288,7 +289,6 @@ describe('Menedżer Danych', () => {
       ];
 
       // Sort by name (all same), should use ID as tie-breaker
-      const sort: DataManagerSort = { column: 'name', direction: 'asc' };
       const sorted = [...rows].sort((a, b) => {
         const nameCompare = a.name.localeCompare(b.name, 'pl');
         if (nameCompare !== 0) return nameCompare;
@@ -466,13 +466,8 @@ describe('Menedżer Danych', () => {
     });
 
     it('should show all when filter is ALL', () => {
-      const filter: DataManagerFilter = {
-        inServiceOnly: false,
-        withTypeOnly: false,
-        withoutTypeOnly: false,
-        switchStateFilter: 'ALL',
-      };
-      // ALL means no filtering by switch state
+      // ALL means no filtering by switch state — obiekt filtra był tu tylko
+      // deklaracją bez użycia (i bez wymaganego pola `showErrorsOnly`).
       expect(switchRows.length).toBe(3);
     });
   });
@@ -898,8 +893,11 @@ describe('Filtrowanie i sygnalizacja błędów', () => {
       showErrorsOnly: true,
     };
 
-    const filtered = testRowsWithErrors.filter((row) =>
-      row.validationMessages.some((m) => m.severity === 'ERROR')
+    // Filtr JEST użyty (dotąd stał obok jako martwa deklaracja, a filtrowanie
+    // szło ręcznie — test nie badał tego, co deklarował).
+    const filtered = testRowsWithErrors.filter(
+      (row) =>
+        !filter.showErrorsOnly || row.validationMessages.some((m) => m.severity === 'ERROR'),
     );
 
     expect(filtered.length).toBe(1);
@@ -933,7 +931,10 @@ describe('Filtrowanie i sygnalizacja błędów', () => {
 
 describe('Szybkie akcje', () => {
   it('should have toggle in-service action', () => {
-    const operations: BatchEditOperation[] = [
+    // Typ elementu ZAWĘŻONY do wariantu unii, którego dotyczy przypadek —
+    // dotąd tablica była typowana całą unią `BatchEditOperation`, więc odczyt
+    // `.value` nie kompilował się (pole istnieje tylko w jednym wariancie).
+    const operations: Array<Extract<BatchEditOperation, { type: 'SET_IN_SERVICE' }>> = [
       { type: 'SET_IN_SERVICE', value: true },
       { type: 'SET_IN_SERVICE', value: false },
     ];
@@ -944,7 +945,7 @@ describe('Szybkie akcje', () => {
   });
 
   it('should have toggle switch state action', () => {
-    const operations: BatchEditOperation[] = [
+    const operations: Array<Extract<BatchEditOperation, { type: 'SET_SWITCH_STATE' }>> = [
       { type: 'SET_SWITCH_STATE', state: 'OPEN' },
       { type: 'SET_SWITCH_STATE', state: 'CLOSED' },
     ];
