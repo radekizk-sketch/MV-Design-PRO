@@ -180,6 +180,42 @@ export function BreakerGlyph(props: GlyphProps): JSX.Element {
   );
 }
 
+/**
+ * MINI-RMU-CAD: REKLOZER — korpus wyłącznika (ta sama geometria styku co
+ * `BreakerGlyph`, bo reklozer JEST wyłącznikiem) + ŁUK automatyki samoczynnego
+ * ponownego załączenia nad korpusem. Parytet z `canonical_symbols/auto_recloser.svg`
+ * (biblioteka kanoniczna v1): korpus + łuk ze strzałką; tor przechodzi przez
+ * łuk, dokładnie jak tam.
+ *
+ * DLACZEGO BEZ NAPISU „79". Symbol kanoniczny v1 ma numer funkcji ANSI wpisany
+ * w rysunek, ale przy gabarycie 16×24 px świata pismo miałoby ~4 px — poniżej
+ * progu czytelności `MIN_READABLE_LABEL_SCREEN_PX` (`core/text.ts`, 9 px) przy
+ * skali 1:1, więc byłaby to plama, nie informacja. Rozróżnialność niesie ŁUK
+ * (kształt), zgodnie z zasadą biblioteki: treść wyrażona geometrią, nie kolorem
+ * ani mikropismem. Kody funkcji zabezpieczeniowych mają własny nośnik
+ * (`ProtectionRelayGlyph`, 24×24 z `labelLines`).
+ */
+export function RecloserGlyph(props: GlyphProps): JSX.Element {
+  const state = props.state ?? 'unknown';
+  const w = grubosc(props, V3_STROKE_APPARATUS);
+  return (
+    <g {...glyphGroupProps('recloser', props)}>
+      {/* Łuk SPZ: półokrąg nad korpusem, strzałka na końcu (kierunek powrotu). */}
+      <path d="M 3 7 A 5 5 0 0 1 13 7" fill="none" stroke={stroke(props)} strokeWidth={w} data-recloser-arc="true" />
+      <path d="M 13 7 L 11 4.6 M 13 7 L 15.4 5.4" fill="none" stroke={stroke(props)} strokeWidth={w} />
+      <line x1={8} y1={0} x2={8} y2={8} stroke={stroke(props)} strokeWidth={w} />
+      <rect
+        x={2} y={8} width={12} height={12}
+        fill={state === 'closed' ? stroke(props) : 'none'}
+        fillOpacity={state === 'unknown' ? 0.35 : 1}
+        stroke={stroke(props)}
+        strokeWidth={w}
+      />
+      <line x1={8} y1={20} x2={8} y2={24} stroke={stroke(props)} strokeWidth={w} />
+    </g>
+  );
+}
+
 export function DisconnectorGlyph(props: GlyphProps): JSX.Element {
   const state = props.state ?? 'unknown';
   // Nóż: zamknięty = w osi toru; otwarty = odchylony 45° (IEC 60617-7).
@@ -845,6 +881,7 @@ export function MeterGlyph(props: GlyphProps): JSX.Element {
 
 export const SYMBOL_GLYPHS: Readonly<Record<SymbolId, (props: GlyphProps) => JSX.Element>> = {
   breaker: BreakerGlyph,
+  recloser: RecloserGlyph,
   disconnector: DisconnectorGlyph,
   loadBreakSwitch: LoadBreakSwitchGlyph,
   loadArrow: LoadArrowGlyph,
