@@ -53,6 +53,7 @@ import { ModelWarsztat } from './spaces/model';
 import { MenedzerPrzypadkow, PanelScenariuszy } from './spaces/obliczenia';
 import { PrzebiegiPanel } from './spaces/obliczenia/przebiegi';
 import { SeriePanel } from './spaces/obliczenia/serie';
+import { PanelDiagnozy } from './spaces/obliczenia/diagnoza';
 import { WynikiWarsztat } from './spaces/wyniki';
 import { MostDokumentacji } from './spaces/dokumentacja';
 import { LegacySurface } from './legacy/LegacySurface';
@@ -341,6 +342,17 @@ export function AppRoot() {
               <PrzebiegiPanel
                 trybZaawansowania={advancementMode}
                 onPokazWyniki={pokazWynikiBiegu}
+              />
+              {/* D7 (karta DIAGNOZA-PRZEBIEGU): odpowiedź na „dlaczego nie
+                  policzyło" tuż pod historią przebiegów — ten sam wzorzec
+                  wejścia co SeriePanel/PrzebiegiPanel (panel w warsztacie
+                  przestrzeni, nie osobna trasa). */}
+              <PanelDiagnozy
+                onPrzejdzDoUruchomienia={() => {
+                  document
+                    .querySelector('[data-testid="mvd-uruchom-obliczenie"]')
+                    ?.scrollIntoView?.({ block: 'start' });
+                }}
               />
             </div>
           }

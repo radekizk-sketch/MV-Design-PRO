@@ -92,6 +92,10 @@ KODY_WALIDATORA_BEZ_KANONU: dict[str, str] = {
     "W006": "Referencja do nieistniejacego obiektu (pole) — jak W005.",
     "W007": "Kanon nie ma kodu dla liczby galezi w wezle T.",
     "W008": "Referencja do nieistniejacego obiektu (magistrala) — jak W005.",
+    "W009": (
+        "Kanon nie ma kodu dla sprzecznej czestotliwosci szyny wobec czestotliwosci "
+        "studium — to spojnosc modelu, nie brak danych projektu."
+    ),
     "W040": "Kanon nie ma kodow baterii kondensatorow (niezgodnosc napiecia).",
     "bays.earthing_interlock_violation": (
         "Naruszenie blokady uziemnika to stan LACZENIOWY, nie brak danych projektu."
