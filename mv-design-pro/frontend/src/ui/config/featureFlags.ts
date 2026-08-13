@@ -90,18 +90,6 @@ export interface FeatureFlags {
    * Env override: VITE_FF_SLD_OVERLAY_DEMO_VISIBLE
    */
   SLD_OVERLAY_DEMO_VISIBLE: boolean;
-
-  /**
-   * USE_LAYOUT_V3
-   *
-   * Włącza shell V3 (chrome 146→76px, NavRail collapsible,
-   * 3-poziomowa hierarchia akcji). Domyślnie V12.
-   *
-   * Domyślnie: false (V12 default)
-   * Env override: VITE_USE_LAYOUT_V3
-   */
-  USE_LAYOUT_V3: boolean;
-
 }
 
 /**
@@ -124,10 +112,6 @@ export const featureFlags: Readonly<FeatureFlags> = Object.freeze({
   SLD_OVERLAY_DEMO_VISIBLE: parseEnvBoolean(
     getViteEnv('VITE_FF_SLD_OVERLAY_DEMO_VISIBLE'),
     false // storybook showcase — domyślnie ukryty
-  ),
-  USE_LAYOUT_V3: parseEnvBoolean(
-    getViteEnv('VITE_USE_LAYOUT_V3'),
-    false
   ),
 });
 
