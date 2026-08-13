@@ -13,6 +13,7 @@ import { GRID, isOnGrid, type SymbolPort } from '../core/grid';
 
 export type SymbolId =
   | 'breaker'          // wyłącznik (CB)
+  | 'recloser'         // reklozer — wyłącznik z automatyką SPZ (MINI-RMU-CAD)
   | 'disconnector'     // odłącznik (DS)
   | 'loadBreakSwitch'  // rozłącznik (łącznik obciążeniowy, spec §12.5 — recenzja NO-GO pkt 5)
   | 'earthSwitch'      // uziemnik (ES)
@@ -64,6 +65,19 @@ export const SYMBOL_DEFS: Readonly<Record<SymbolId, SymbolDef>> = {
     { name: 'top', x: 8, y: 0, dir: 'N' },
     { name: 'bottom', x: 8, y: 16, dir: 'S' },
   ], 'Wyłącznik'),
+  // MINI-RMU-CAD: REKLOZER — łącznik pola liniowego z automatyką samoczynnego
+  // ponownego załączenia (`device_kind` REKLOZER katalogu APARAT_SN; backend
+  // dopuszcza go dla ról IN/OUT/FEEDER — `BAY_PRIMARY_APPARATUS_KINDS_BY_ROLE`).
+  // Do tej karty biblioteka nie miała dla niego symbolu, więc każdy rysunek
+  // pokazywał go jako zwykły wyłącznik — projektant nie widział z rysunku, że
+  // pole ma automatykę SPZ, a to zmienia koordynację zabezpieczeń ciągu.
+  // Gabaryt 16×24 (nie 16×16 jak wyłącznik): łuk automatyki ponownego
+  // załączenia potrzebuje własnego pasa nad korpusem — parytet z symbolem
+  // `auto_recloser.svg` biblioteki kanonicznej v1 (korpus wyłącznika + łuk).
+  recloser: def('recloser', 16, 24, [
+    { name: 'top', x: 8, y: 0, dir: 'N' },
+    { name: 'bottom', x: 8, y: 24, dir: 'S' },
+  ], 'Reklozer (wyłącznik z automatyką SPZ)'),
   disconnector: def('disconnector', 16, 24, [
     { name: 'top', x: 8, y: 0, dir: 'N' },
     { name: 'bottom', x: 8, y: 24, dir: 'S' },
