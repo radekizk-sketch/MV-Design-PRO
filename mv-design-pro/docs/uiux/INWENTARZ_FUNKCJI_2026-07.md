@@ -205,6 +205,7 @@ wystąpień poza definicją i testem. Kod wygrywa z dokumentem.
 | Rekomendacje | A13 | ❌ brak końcówki dla `analysis/recommendations` | `ui2/wyniki/co-wymaga-uwagi` — skonsolidowany rejestr przekroczeń z akcją „Popraw w modelu" (źródła: werdykt projektowy + rozpływ); 2 testy | ◐ (zdolność obsłużona zastępczo z innych źródeł; moduł A13 `analysis/recommendations` nie ma w backendzie ANI JEDNEGO importera) |
 | Pokrycie analizami | A3 | ✅ `GET /api/insights/analysis-coverage?case_id=` (`api/analysis_insights.py` → `application/analyses/pokrycie_analiz.py`: `CoverageScoreBuilder` na najnowszym zakończonym biegu PF przypadku) | `ui2/spaces/gotowosc/SekcjaPokryciaAnaliz` — punktacja 0–100 + braki + luki krytyczne (etykiety PL bez kodenamów — naprawa u źródła w `coverage_score/builder.py`); 5 testów | ✅ (2026-08-07, ROUTERY-4A; brakujące pakiety dowodowe na liście braków to PRZEDMIOT widoku, nie luka powierzchni) |
 | Granice (boundary) | A2 | ✅ `GET /api/insights/network-boundary?case_id=` (`api/analysis_insights.py` → `application/analyses/granice_sieci.py`: `BoundaryIdentifier` na BIEŻĄCYM modelu ENM, case_params mapowane przepisem `ref_to_graph_id`) | `ui2/spaces/gotowosc/SekcjaGranicySieci` — szyna + metoda PL + ufność albo uczciwa diagnostyka PL; 4 testy | ✅ (2026-08-07, ROUTERY-4A; fasada `application/analyses/boundary.py` pozostaje bez importerów — łańcuch idzie wprost z `analysis/boundary`) |
+| Kontyngencje N-1 (enumeracja) | `application/analyses/kontyngencje_n1.py` (ORKIESTRACJA istniejącego solvera rozpływu: wariant wejścia bez elementu → bieg → macierz skutków; kryteria z walidacji energetycznej A4 i z wyspy węzła bilansującego solvera) | ✅ `GET /api/insights/n-1-contingency?run_id=[&element_refs=]` (`api/analysis_insights.py`) | ❌ BRAK powierzchni UI — ekran należy do fali 12 wg decyzji D8 (`docs/uiux/DECYZJE_ARCHITEKTONICZNE_2026-08.md`); karta N-1-BACKEND miała zakaz frontendu | ❌ (2026-08-13, karta N-1-BACKEND: backend end-to-end domknięty — solver, kontrakt, WHITE BOX, determinizm, API, 26 testów; luka O.1 audytu zamknięta po stronie zdolności, otwarta po stronie ekranu. Dług NAZWANY: komplet N-1 na sieci 53 stacji = 142 kontyngencje / 374,7 s / 2,64 s na kontyngencję (bieg sekwencyjny, determinizm) — ekran musi zawęzić listę parametrem `element_refs` albo uruchomić enumerację w tle; skracanie listy heurystyką jest zakazane) |
 | Raporty PDF/DOCX | A14 | ✅ `analysis-runs/{id}/export/report/{json,docx,pdf}` + `.../export/proof/{json,latex,pdf}` (komplet 6 końcówek) | `ui2/spaces/dokumentacja/generator/GeneratorRaportu` — KAŻDA kontrolka składu (zakres, poziom, profil, sekcje) jest parametrem realnego wywołania eksportu; zamontowany w `MostDokumentacji.tsx:53`; test | ✅ (2026-08-06: most E-37 z kontrolkami-atrapami zastąpiony) |
 | Dowody WHITE BOX (wszystkie pakiety §3) | Proof Engine | proof_pack (`/sc3f/pack`, `/sc-asymmetrical/pack`, `/sc3f/contributions`), equipment_proof_pack, result_contract_v1 + **brama pakietu przebiegu** `GET /api/analysis-runs/{run}/pakiet-dowodowy[/dostepnosc]` (`application/proof_engine/pakiet_biegu.py`) | `ui2/wyniki/dowod` (PrzegladDowodu w kanonie pięciu pól, spis kroków, źródło LaTeX) + **sekcja „Pakiet dowodowy”** (`PakietDowodowy.tsx`: rodzaj pakietu i punkty zwarcia z serwera, pobranie ZIP, świeżość z `useSwiezoscWynikow`, uczciwy powód braku); 11 testów UI + 44 testy kontraktu bramy | ◐ (2026-08-07, karta PACK-DOWODY: pakiety zwarciowe — 3F oraz niesymetryczne 1F-Z/2F/2F-Z — mają realnego konsumenta i są deterministyczne bajt-w-bajt; `GET /api/proof/{project}/{case}/{run}/pack` to 410 Gone (wycofany świadomie, nie luka). POZA nawiasem z podaniem przyczyny: `/api/equipment-proof/pack` — katalog APARAT_SN nie niesie U_m ani I_cu, więc dwa z czterech kryteriów dałyby dowód z pozornym FAIL; pakiet rozpływu mocy — DOMKNIĘTY 2026-08-07 kartą PACK-ROZPLYW: rodzaj `ROZPLYW_MOCY` w tej samej bramie, wejście z zapisu biegu przez `application/solvers/power_flow_binding.py` (rozpływ NIE jest liczony po raz drugi), pakiet deterministyczny bajt-w-bajt w ośmiu wariantach modelu. Poza nawiasem zostaje wyłącznie `/api/equipment-proof/pack` — nazwany dług w rejestrze) |
 | Migotanie (flicker) | `application/analyses/migotanie.py` | ✅ `/api/quality/flicker` | `ui2/wyniki/jakosc` sekcja 3 „Migotanie i szybkie zmiany napięcia" (Pst/Plt per moduł); test `migotanie.test.tsx` | ✅ |
@@ -394,3 +395,35 @@ domknięty przy karcie F-K3). Metoda bez zmian: grep w żywym repo, każdy wpis 
 | Przypadek pracy toru DER w doborze kabla: solver ✔ / API ✖ / UI ✖ → ✔ solver + API + UI | `der_selection_preview.propose_mv_cable`; `/api/solver/der-selection-preview`; `ui2/kreatory/zrodlo-oze/DoborToruSn.tsx` | Dług V12K-190 domknięty: charakter Q zmienia dobrany przekrój |
 | Korekta obciążalności wg warunków ułożenia: pozycji nie było (rachunek tylko w UI, bez konsumenta produkcyjnego) → ✔ solver + API + UI + MODEL | `cable_ampacity_derating.py`; `/api/solver/cable-laying-conditions` + `/api/solver/cable-ampacity-derating-preview` + `der-selection-preview`; `ui2/kreatory/zrodlo-oze/DoborToruSn.tsx`; `meta.cable_laying_conditions` kabla DER; raport zgodności D2 | Z6 domknięte: kryterium doborowe w solverze, założenie jawne w wyniku i w modelu, drugi rachunek w warstwie prezentacji usunięty |
 | Kryteria POZA automatem (selektywność zabezpieczeń, wytrzymałość aparatury na całym modelu, korekta obciążalności wg warunków ułożenia **na całym modelu** — po V12K-207 działa w torze DER, ekonomiczna gęstość prądu) | `werdykt_projektowy.ZAKRES_POZA_AUTOMATEM` | Luki są WIDOCZNE w produkcie, nie tylko w dokumentach — nie da się ich przeoczyć. Zakres wpisu o obciążalności ZAWĘŻONY (nie skreślony): korekta jest w torze DER, ale nie ma przebiegu dla wszystkich przewodów modelu |
+
+## 10. Rewizja 2026-08-13 (karta N-1-BACKEND — decyzja D8)
+
+**Powód rewizji.** Audyt Phase A–D wskazał enumerację N-1 jako lukę zdolności (O.1);
+decyzja D8 przypisała ją warstwie `application/analyses` jako ORKIESTRACJĘ istniejących
+solverów, z ekranem odłożonym do fali 12. Karta N-1-BACKEND domknęła część backendową.
+
+### 10.1 Dodane — analiza (§2/§6)
+
+| Delta | Dowód | Uzasadnienie |
+|---|---|---|
+| Enumeracja kontyngencji N-1: pozycji nie było → analiza ✔ + API ✔ + UI ✖ | `application/analyses/kontyngencje_n1.py`; `GET /api/insights/n-1-contingency`; `tests/application/analyses/test_kontyngencje_n1_service.py` (20), `tests/api/test_kontyngencje_n1_api.py` (6) | Zdolność O.1 (D8). Zero nowej fizyki: dla każdego kwalifikowanego elementu (linia, kabel, transformator) powstaje wariant WEJŚCIA solvera bez tego elementu i biegnie ISTNIEJĄCY solver rozpływu; model w magazynie pozostaje nietknięty (Case Immutability) |
+
+### 10.2 Naprawione przy okazji — dwa defekty klasy „brak danej udający wynik"
+
+| Delta | Dowód | Uzasadnienie |
+|---|---|---|
+| Gałąź bez obciążalności długotrwałej dostawała w moście ENM→graf podstawione 1,0 A | `enm/mapping.py`; `tests/enm/test_enm_mapping.py::TestObciazalnoscGalezi` | Kryterium obciążenia liczyło się ZAWSZE — z liczby, której nikt nie zmierzył: linia 15 kV przy 40,6 A dostawała werdykt „Obciążenie 4056,80 % przekracza limit 100,0 %". Teraz brak zostaje brakiem (0,0 = wielkość nieznana), a walidacja energetyczna melduje pozycję NIEOBLICZONĄ. Ta sama klasa była już naprawiona w imporcie XLSX i w moście wejściowym V12.6 — to była jej ostatnia instancja, na głównej ścieżce modelu |
+| Szyna POZBAWIONA ZASILANIA dostawała od walidacji energetycznej werdykt PASS | `analysis/energy_validation/builder.py`; `tests/analysis/test_energy_validation.py::TestZnacznikBrakuRozwiazania` | Solver oznacza węzły spoza wyspy węzła bilansującego wartością NaN; predykat `is None` tego znacznika nie łapał, więc każdy próg „przechodził" (porównania z NaN są fałszywe), a `nan` wychodził w polu odpowiedzi JSON — literał spoza RFC 8259. Znacznik rozstrzygany jest teraz w jednym miejscu dla WSZYSTKICH pięciu kontroli modułu (prąd gałęzi, moc transformatora, napięcie, budżet strat, bilans mocy biernej) |
+
+### 10.3 Pomiar wydajności (substrat referencyjny 53 stacji)
+
+| Wielkość | Wartość |
+|---|---|
+| Model | 315 szyn, 260 gałęzi, 54 transformatory, 20 odbiorów |
+| Kontyngencji kwalifikowanych | 142 |
+| Czas łączny (sekwencyjnie, jeden rdzeń) | 374,7 s |
+| Czas na kontyngencję | 2,64 s |
+
+Wynik jest poza progiem interaktywnym i jest DŁUGIEM NAZWANYM karty ekranu N-1 (fala 12):
+dopuszczalne domknięcia to zawężenie listy parametrem `element_refs` albo bieg w tle;
+niedopuszczalne jest skracanie listy kontyngencji heurystyką.

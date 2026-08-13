@@ -379,6 +379,20 @@ def test_wylaczenie_galezi_pierscienia_daje_przeciazenie_objazdu() -> None:
     assert "Linia GPZ-B" in refy_przeciazone
     pozycja = next(p for p in przeciazona["przeciazenia"] if p["element_name"] == "Linia GPZ-B")
     assert pozycja["check_type"] == "BRANCH_LOADING"
+    # Naruszenie MUSI dac sie zwiazac z elementem modelu — inaczej ekran pokaze
+    # przeciazenie, ktorego projektant nie umie znalezc w sieci.
+    assert pozycja["element_ref"] == "ln_src_b"
+    assert set(pozycja) == {
+        "check_type",
+        "element_ref",
+        "element_id",
+        "element_name",
+        "wartosc",
+        "granica_pct",
+        "jednostka",
+        "powod_pl",
+        "slad_kryterium",
+    }
     assert pozycja["wartosc"] > pozycja["granica_pct"]
     # WHITE BOX kryterium pochodzi z buildera D2 (wzór → dane → wynik → próg).
     assert [krok["tekst"] for krok in pozycja["slad_kryterium"]][0].startswith("Wzor:")
@@ -460,6 +474,7 @@ def test_brak_obciazalnosci_pomija_kryterium_pradowe_jawnie() -> None:
     ]
     assert [p["element_name"] for p in pominiete] == ["Linia bez obciazalnosci"]
     assert pominiete[0]["powod_pl"] == "Brak pradu znamionowego galezi."
+    assert pominiete[0]["element_ref"] == "ln_bez_ratingu"
     # Gałąź bez obciążalności NIE MOŻE trafić do przeciążeń: przed naprawą
     # mostu ENM→graf dostawała podstawiony prąd znamionowy 1 A i meldowała
     # przeciążenie rzędu tysięcy procent.
@@ -566,6 +581,14 @@ def test_kontrakt_widoku_jest_kompletny() -> None:
     kryteria = widok["parameters"]["kryteria"]
     assert kryteria["obciazenie"]["granica_fail_pct"] == 100.0
     assert kryteria["napiecie"]["granica_fail_pct"] == 10.0
+    # ZAMKNIETA lista ocenianych kategorii — deklaracja przypieta testem, a nie
+    # zapisana wylacznie w komentarzu. Kazde nowe kryterium musi tu dojsc swiadomie.
+    assert kryteria["ocenione_kategorie"] == [
+        "BRANCH_LOADING",
+        "TRANSFORMER_LOADING",
+        "VOLTAGE_DEVIATION",
+    ]
+    assert "Budżet strat" in kryteria["poza_zakresem_pl"]
     assert kryteria["ranking"]["kolejnosc_kategorii"] == [
         "odbiory_bez_zasilania",
         "przeciazenia",
@@ -604,6 +627,23 @@ def test_kontrakt_widoku_jest_kompletny() -> None:
 # ---------------------------------------------------------------------------
 # Zawężenie enumeracji i błędy wejścia
 # ---------------------------------------------------------------------------
+
+
+def test_zaden_skutek_nie_wychodzi_poza_zamknieta_liste_kategorii() -> None:
+    """Wynik NIE MOZE zawierac kryterium spoza zadeklarowanej listy.
+
+    Kontrole sieciowe walidacji energetycznej (budzet strat, bilans mocy biernej)
+    sa w tym samym zrodle pozycji, wiec bez tej asercji ich przypadkowe wpuszczenie
+    do skutkow kontyngencji przeszloby niezauwazone.
+    """
+    dozwolone = {"BRANCH_LOADING", "TRANSFORMER_LOADING", "VOLTAGE_DEVIATION"}
+    widok = build_kontyngencje_n1_view(_bieg(_promien_z_transformatorem()))
+    pozycje = []
+    for grupa in (widok["przypadek_bazowy"], *widok["kontyngencje"]):
+        pozycje += grupa["przeciazenia"] + grupa["naruszenia_napiecia"]
+        pozycje += grupa["kryteria_pominiete"]
+    assert pozycje, "Brak pozycji do sprawdzenia — test nie mialby czego pilnowac"
+    assert {p["check_type"] for p in pozycje} <= dozwolone
 
 
 def test_zawezenie_enumeracji_do_wskazanych_elementow() -> None:
