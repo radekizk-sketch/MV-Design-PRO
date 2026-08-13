@@ -573,57 +573,107 @@ def build_jacobian_v2(
     p_calc: np.ndarray,
     q_calc: np.ndarray,
 ) -> np.ndarray:
+    """Jakobian rozpływu Newtona-Raphsona — SKŁADANIE BLOKOWE (bez pętli skalarnej).
+
+    FIZYKA NIETKNIĘTA. To jest wyłącznie zmiana SPOSOBU SKŁADANIA tej samej
+    macierzy: każdy wyraz ``J[row, col]`` powstaje z DOKŁADNIE tego samego wyrażenia
+    i w tej samej kolejności działań, co w pętli skalarnej — zmieniło się tylko to,
+    że wyrażenie jest liczone dla całego bloku naraz zamiast wyraz po wyrazie.
+    Żaden wyraz nie jest pomijany (również tam, gdzie ``g[i,k] == b[i,k] == 0``),
+    więc nie powstają zera o innym znaku niż w pętli, i nie ma tu ŻADNEJ redukcji
+    (sumowania po osi), która mogłaby zmienić kolejność dodawań.
+
+    Kolejność działań przepisana wyraz w wyraz z postaci skalarnej:
+      J11 poza przekątną  ``v_mag[i] * v_mag[k] * (g*sin - b*cos)``  → ``(vm_i*vm_k)*expr``
+      J12 poza przekątną  ``v_mag[i] * (g*cos + b*sin)``
+      J21 poza przekątną  ``-v_mag[i] * v_mag[k] * (g*cos + b*sin)`` → ``((-vm_i)*vm_k)*expr``
+      J22 poza przekątną  ``v_mag[i] * (g*sin - b*cos)``
+    Wyraz przekątniowy (warunek ``i == k`` na indeksach WĘZŁA, nie wiersza/kolumny —
+    dla bloków mieszanych ns×pq przekątna nie leży na ``row == col``) wybiera maska
+    ``np.equal.outer``, czyli ten sam predykat, który w pętli był instrukcją ``if``.
+
+    Wektorowe ``np.sin``/``np.cos`` muszą dawać bit w bit to samo, co wywołania
+    skalarne — to założenie o bibliotece, więc jest PRZYPIĘTE TESTEM
+    (``tests/network_model/test_jacobian_v2_skladanie.py``): porównanie z referencyjną
+    implementacją skalarną odbywa się na wzorcu bitów (``view(np.uint64)``), więc
+    złapie też różnicę ``-0.0`` vs ``0.0``. Gdyby przyszła wersja numpy zmieniła
+    ścieżkę SIMD dla sinusa, pin zaświeci na czerwono, zamiast po cichu przesunąć
+    ostatnie cyfry wyniku rozpływu.
+
+    Powód zmiany (karta N1-WYDAJNOSC): profil enumeracji N-1 na substracie 53 stacji
+    wskazał tę funkcję jako 76 % czasu WŁASNEGO całej analizy — dla sieci 315 węzłów
+    pętla wykonywała ~394 tys. skalarnych wywołań ufunc na jedno złożenie jakobianu.
+    """
     g = ybus.real
     b = ybus.imag
-    n_p = len(non_slack_indices)
-    n_q = len(pq_indices)
-    j11 = np.zeros((n_p, n_p))
-    j12 = np.zeros((n_p, n_q))
-    j21 = np.zeros((n_q, n_p))
-    j22 = np.zeros((n_q, n_q))
+    ns = np.asarray(non_slack_indices, dtype=np.intp)
+    pq = np.asarray(pq_indices, dtype=np.intp)
 
     v_mag = np.abs(v)
     v_ang = np.angle(v)
 
-    for row, i in enumerate(non_slack_indices):
-        for col, k in enumerate(non_slack_indices):
-            theta = v_ang[i] - v_ang[k]
-            if i == k:
-                j11[row, col] = -q_calc[i] - b[i, i] * v_mag[i] ** 2
-            else:
-                sin_t = np.sin(theta)
-                cos_t = np.cos(theta)
-                j11[row, col] = v_mag[i] * v_mag[k] * (g[i, k] * sin_t - b[i, k] * cos_t)
+    vm_ns = v_mag[ns]
+    vm_pq = v_mag[pq]
+    va_ns = v_ang[ns]
+    va_pq = v_ang[pq]
 
-    for row, i in enumerate(non_slack_indices):
-        for col, k in enumerate(pq_indices):
-            theta = v_ang[i] - v_ang[k]
-            if i == k:
-                j12[row, col] = p_calc[i] / v_mag[i] + g[i, i] * v_mag[i]
-            else:
-                sin_t = np.sin(theta)
-                cos_t = np.cos(theta)
-                j12[row, col] = v_mag[i] * (g[i, k] * cos_t + b[i, k] * sin_t)
+    def _blok(
+        wiersze: np.ndarray,
+        kolumny: np.ndarray,
+        vm_w: np.ndarray,
+        va_w: np.ndarray,
+        va_k: np.ndarray,
+        poza_przekatna: Any,
+        przekatna: np.ndarray,
+    ) -> np.ndarray:
+        """Złóż jeden blok: wyraz poza przekątną, wyraz przekątniowy wg maski ``i == k``."""
+        theta = va_w[:, None] - va_k[None, :]
+        sin_t = np.sin(theta)
+        cos_t = np.cos(theta)
+        wybor = np.ix_(wiersze, kolumny)
+        wartosci = poza_przekatna(g[wybor], b[wybor], sin_t, cos_t, vm_w)
+        return np.where(np.equal.outer(wiersze, kolumny), przekatna[:, None], wartosci)
 
-    for row, i in enumerate(pq_indices):
-        for col, k in enumerate(non_slack_indices):
-            theta = v_ang[i] - v_ang[k]
-            if i == k:
-                j21[row, col] = p_calc[i] - g[i, i] * v_mag[i] ** 2
-            else:
-                sin_t = np.sin(theta)
-                cos_t = np.cos(theta)
-                j21[row, col] = -v_mag[i] * v_mag[k] * (g[i, k] * cos_t + b[i, k] * sin_t)
-
-    for row, i in enumerate(pq_indices):
-        for col, k in enumerate(pq_indices):
-            theta = v_ang[i] - v_ang[k]
-            if i == k:
-                j22[row, col] = q_calc[i] / v_mag[i] - b[i, i] * v_mag[i]
-            else:
-                sin_t = np.sin(theta)
-                cos_t = np.cos(theta)
-                j22[row, col] = v_mag[i] * (g[i, k] * sin_t - b[i, k] * cos_t)
+    j11 = _blok(
+        ns,
+        ns,
+        vm_ns,
+        va_ns,
+        va_ns,
+        lambda g_ik, b_ik, sin_t, cos_t, vm_i: vm_i[:, None]
+        * vm_ns[None, :]
+        * (g_ik * sin_t - b_ik * cos_t),
+        -q_calc[ns] - b[ns, ns] * vm_ns**2,
+    )
+    j12 = _blok(
+        ns,
+        pq,
+        vm_ns,
+        va_ns,
+        va_pq,
+        lambda g_ik, b_ik, sin_t, cos_t, vm_i: vm_i[:, None] * (g_ik * cos_t + b_ik * sin_t),
+        p_calc[ns] / vm_ns + g[ns, ns] * vm_ns,
+    )
+    j21 = _blok(
+        pq,
+        ns,
+        vm_pq,
+        va_pq,
+        va_ns,
+        lambda g_ik, b_ik, sin_t, cos_t, vm_i: -vm_i[:, None]
+        * vm_ns[None, :]
+        * (g_ik * cos_t + b_ik * sin_t),
+        p_calc[pq] - g[pq, pq] * vm_pq**2,
+    )
+    j22 = _blok(
+        pq,
+        pq,
+        vm_pq,
+        va_pq,
+        va_pq,
+        lambda g_ik, b_ik, sin_t, cos_t, vm_i: vm_i[:, None] * (g_ik * sin_t - b_ik * cos_t),
+        q_calc[pq] / vm_pq - b[pq, pq] * vm_pq,
+    )
 
     top = np.hstack([j11, j12])
     bottom = np.hstack([j21, j22])
