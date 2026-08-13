@@ -441,10 +441,16 @@ def export_pattern_result_docx(fixture_file: str) -> Response:
 
     Returns:
         DOCX file as attachment
+
+    Deterministyczny: ten sam wzorzec eksportowany wielokrotnie daje identyczne
+    bajty (`docx_determinism.make_docx_bytes_deterministic` — sam python-docx
+    NIE zeruje znacznikow czasu wpisow ZIP ani docProps/core.xml, dwa kolejne
+    `Document().save()` roznia sie bajtowo, gdy wywolania przetna granice sekundy).
     """
     import io
 
     from fastapi.responses import Response
+    from network_model.reporting.docx_determinism import make_docx_bytes_deterministic
 
     try:
         from docx import Document
@@ -622,7 +628,7 @@ def export_pattern_result_docx(fixture_file: str) -> Response:
     filename = f"wzorzec_odniesienia_{fixture_name}.docx"
 
     return Response(
-        content=buffer.getvalue(),
+        content=make_docx_bytes_deterministic(buffer.getvalue()),
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )

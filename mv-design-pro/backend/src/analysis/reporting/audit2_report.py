@@ -211,12 +211,18 @@ def render_audit2_report_docx(ctx: Audit2ReportContext) -> bytes:
     DOCX z python-docx (deterministyczny).
 
     Gdy docx niedostepny: zwraca tekst jako bytes z extension .txt fallback.
+
+    Determinizm binarny wymaga normalizacji `docx_determinism` — sam python-docx
+    NIE zeruje znacznikow czasu wpisow ZIP ani docProps/core.xml (dwa kolejne
+    `Document().save()` roznia sie bajtowo, gdy wywolania przetna granice sekundy).
     """
     try:
         from docx import Document
         from docx.shared import Pt
     except ImportError:
         return render_audit2_report_text(ctx).encode("utf-8")
+
+    from network_model.reporting.docx_determinism import make_docx_bytes_deterministic
 
     doc = Document()
     # Tytul.
@@ -271,7 +277,7 @@ def render_audit2_report_docx(ctx: Audit2ReportContext) -> bytes:
 
     buffer = BytesIO()
     doc.save(buffer)
-    return buffer.getvalue()
+    return make_docx_bytes_deterministic(buffer.getvalue())
 
 
 def render_audit2_report_latex(ctx: Audit2ReportContext) -> str:

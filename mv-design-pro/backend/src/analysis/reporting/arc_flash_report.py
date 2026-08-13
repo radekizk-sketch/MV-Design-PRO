@@ -267,12 +267,19 @@ def render_arc_flash_report_pdf(ctx: ArcFlashReportContext) -> bytes:
 
 
 def render_arc_flash_report_docx(ctx: ArcFlashReportContext) -> bytes:
-    """DOCX z python-docx (deterministyczny). Fallback: tekst, gdy docx niedostępny."""
+    """DOCX z python-docx (deterministyczny). Fallback: tekst, gdy docx niedostępny.
+
+    Determinizm binarny wymaga normalizacji `docx_determinism` — sam python-docx
+    NIE zeruje znacznikow czasu wpisow ZIP ani docProps/core.xml (dwa kolejne
+    `Document().save()` roznia sie bajtowo, gdy wywolania przetna granice sekundy).
+    """
     try:
         from docx import Document
         from docx.shared import Pt
     except ImportError:
         return render_arc_flash_report_text(ctx).encode("utf-8")
+
+    from network_model.reporting.docx_determinism import make_docx_bytes_deterministic
 
     results = _results(ctx)
     summary = _summary(results)
@@ -332,7 +339,7 @@ def render_arc_flash_report_docx(ctx: ArcFlashReportContext) -> bytes:
 
     buffer = BytesIO()
     doc.save(buffer)
-    return buffer.getvalue()
+    return make_docx_bytes_deterministic(buffer.getvalue())
 
 
 def render_arc_flash_report_latex(ctx: ArcFlashReportContext) -> str:
