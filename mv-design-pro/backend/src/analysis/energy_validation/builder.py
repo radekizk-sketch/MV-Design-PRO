@@ -24,6 +24,38 @@ from network_model.core.branch import LineBranch, TransformerBranch
 from network_model.core.graph import NetworkGraph
 
 
+def _znana(wartosc: float | None) -> float | None:
+    """Wielkosc z wyniku rozplywu, o ile jest ZNANA (podana i skonczona).
+
+    Solver rozplywu oznacza wezly SPOZA WYSPY WEZLA BILANSUJACEGO wartoscia NaN
+    (kontrakt FROZEN, `power_flow_newton.py`: „not_solved_nodes z NaN marker";
+    `BusResult.status = "not_solved"`, `v_pu = null`). Predykat `is None` tego
+    znacznika NIE lapal, wiec szyna POZBAWIONA ZASILANIA dostawala od walidacji
+    energetycznej werdykt PASS „Odchylenie napieciowe nan % ponizej limitu"
+    (porownania z NaN sa falszywe, wiec kazdy prog „przechodzil"), a `nan`
+    wychodzil w polu `observed_value` odpowiedzi JSON — literal spoza RFC 8259.
+    Interpretacja znacznika nalezy do TEJ warstwy (analiza czyta wynik solvera),
+    dlatego rozstrzygamy go w jednym miejscu dla WSZYSTKICH kontroli tego modulu:
+    obciazenia galezi, obciazenia transformatora, odchylenia napiecia, budzetu
+    strat i bilansu mocy biernej. Brak danej ma byc pozycja NOT_COMPUTED z
+    powodem po polsku — nigdy wynikiem „w normie".
+
+    Zwraca wartosc, gdy jest znana, albo `None` — dzieki temu KAZDA kontrola ma
+    dalej dokladnie JEDEN warunek braku (`is None`), a znacznik NaN nie przecieka
+    do arytmetyki progow.
+    """
+    if wartosc is None or not math.isfinite(wartosc):
+        return None
+    return wartosc
+
+
+def _znana_zespolona(wartosc: complex | None) -> complex | None:
+    """Jak `_znana`, dla wielkosci zespolonych (moce pozorne z wyniku PF)."""
+    if wartosc is None or not (math.isfinite(wartosc.real) and math.isfinite(wartosc.imag)):
+        return None
+    return wartosc
+
+
 class EnergyValidationBuilder:
     def __init__(
         self,
@@ -68,7 +100,7 @@ class EnergyValidationBuilder:
             if not branch.in_service:
                 continue
 
-            i_ka = pf.branch_current_ka.get(branch_id)
+            i_ka = _znana(pf.branch_current_ka.get(branch_id))
             if i_ka is None:
                 items.append(
                     EnergyValidationItem(
@@ -155,8 +187,8 @@ class EnergyValidationBuilder:
             if not branch.in_service:
                 continue
 
-            s_from = pf.branch_s_from_mva.get(branch_id)
-            s_to = pf.branch_s_to_mva.get(branch_id)
+            s_from = _znana_zespolona(pf.branch_s_from_mva.get(branch_id))
+            s_to = _znana_zespolona(pf.branch_s_to_mva.get(branch_id))
 
             if s_from is None and s_to is None:
                 items.append(
@@ -243,7 +275,7 @@ class EnergyValidationBuilder:
         items: list[EnergyValidationItem] = []
         for node_id in sorted(graph.nodes.keys()):
             node = graph.nodes[node_id]
-            u_kv = pf.node_voltage_kv.get(node_id)
+            u_kv = _znana(pf.node_voltage_kv.get(node_id))
             u_nom_kv = node.voltage_level
 
             if u_kv is None or u_nom_kv <= 0:
@@ -306,10 +338,12 @@ class EnergyValidationBuilder:
         graph: NetworkGraph,
         config: EnergyValidationConfig,
     ) -> list[EnergyValidationItem]:
-        p_loss_pu = pf.losses_total_pu.real if pf.losses_total_pu else 0.0
-        p_slack_pu = pf.slack_power_pu.real if pf.slack_power_pu else 0.0
+        straty_pu = _znana_zespolona(pf.losses_total_pu)
+        moc_slack_pu = _znana_zespolona(pf.slack_power_pu)
+        p_loss_pu = straty_pu.real if straty_pu else 0.0
+        p_slack_pu = moc_slack_pu.real if moc_slack_pu else 0.0
 
-        if abs(p_slack_pu) < 1e-12:
+        if straty_pu is None or moc_slack_pu is None or abs(p_slack_pu) < 1e-12:
             return [
                 EnergyValidationItem(
                     check_type=EnergyCheckType.LOSS_BUDGET,
@@ -321,7 +355,11 @@ class EnergyValidationBuilder:
                     limit_fail=config.loss_fail_pct,
                     margin_pct=None,
                     status=EnergyValidationStatus.NOT_COMPUTED,
-                    why_pl="Brak mocy bilansowej slack (P_slack ~ 0).",
+                    why_pl=(
+                        "Bilans strat nieoznaczony w wyniku PF (wartosc NaN)."
+                        if (straty_pu is None or moc_slack_pu is None)
+                        else "Brak mocy bilansowej slack (P_slack ~ 0)."
+                    ),
                 )
             ]
 
@@ -366,10 +404,11 @@ class EnergyValidationBuilder:
         pf: PowerFlowResult,
         graph: NetworkGraph,
     ) -> list[EnergyValidationItem]:
-        q_slack_pu = pf.slack_power_pu.imag if pf.slack_power_pu else 0.0
-        p_slack_pu = pf.slack_power_pu.real if pf.slack_power_pu else 0.0
+        moc_slack_pu = _znana_zespolona(pf.slack_power_pu)
+        q_slack_pu = moc_slack_pu.imag if moc_slack_pu else 0.0
+        p_slack_pu = moc_slack_pu.real if moc_slack_pu else 0.0
 
-        if abs(p_slack_pu) < 1e-12:
+        if moc_slack_pu is None or abs(p_slack_pu) < 1e-12:
             return [
                 EnergyValidationItem(
                     check_type=EnergyCheckType.REACTIVE_BALANCE,
@@ -381,7 +420,11 @@ class EnergyValidationBuilder:
                     limit_fail=None,
                     margin_pct=None,
                     status=EnergyValidationStatus.NOT_COMPUTED,
-                    why_pl="Brak mocy bilansowej slack.",
+                    why_pl=(
+                        "Moc bilansowa slack nieoznaczona w wyniku PF (wartosc NaN)."
+                        if moc_slack_pu is None
+                        else "Brak mocy bilansowej slack."
+                    ),
                 )
             ]
 

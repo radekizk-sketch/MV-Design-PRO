@@ -660,7 +660,24 @@ def map_enm_to_network_graph(enm: EnergyNetworkModel) -> NetworkGraph:
                 x_ohm_per_km=branch.x_ohm_per_km,
                 b_us_per_km=b_us_per_km,
                 length_km=branch.length_km,
-                rated_current_a=rated_a if rated_a > 0 else 1.0,
+                # BRAK OBCIAZALNOSCI ZOSTAJE BRAKIEM (0.0), NIE STAJE SIE 1 A.
+                # Stan PRZED wstawial tu 1.0 A kazdej galezi bez `rating.in_a`,
+                # wiec kryterium obciazenia liczylo sie ZAWSZE — z liczby, ktorej
+                # nikt nie zmierzyl. Skutek zmierzony (karta N-1-BACKEND): linia
+                # 15 kV bez obciazalnosci przy pradzie 40,6 A dostawala od
+                # walidacji energetycznej werdykt „Obciazenie 4056,80 % przekracza
+                # limit 100,0 %" — fabrykacja przeciazenia, nie brak danych.
+                # Konsumenci grafu juz umieja czytac 0.0 jako „wielkosc nieznana,
+                # kryterium niesprawdzalne": `analysis/energy_validation/builder.py`
+                # (pozycja NOT_COMPUTED „Brak pradu znamionowego galezi"),
+                # `analysis/power_flow/analysis.py`, `application/sld/overlay_builder.py`
+                # i `application/reference_networks/station_archetype_substrate.py`
+                # bramkuja `rated > 0`. Ta sama klasa defektu zostala juz naprawiona
+                # w imporcie XLSX (`application/xlsx_import/importer.py`: „ZERO
+                # WARTOSCI FIKCYJNYCH … 0.0 = wielkosc nieznana") oraz w moscie
+                # wejsciowym V12.6 (630 A / 300 A per aparat) — tu byla ostatnia
+                # instancja klasy, na glownej sciezce ENM -> graf.
+                rated_current_a=rated_a,
                 # Karta F-K1 faza 3: przeniesienie danych cieplnych ZYLY FAZOWEJ do
                 # grafu. Bez tego ogniwa kryterium wytrzymalosci zwarciowej przewodu
                 # nie mialo w warstwie analizy z czego liczyc pradu dopuszczalnego
