@@ -21,7 +21,14 @@ from api.canonical_run_views import (
 )
 from api.v125_contracts import build_export_artifact, build_export_policy, resolve_proof_pack_ref
 from application.analysis_run.read_model import build_trace_summary, canonicalize_json
+from application.dokumentacja_wykonawcza import (
+    PROFIL_DOKUMENTACJI_WYKONAWCZEJ,
+    GotowoscDokumentacjiWykonawczej,
+    komunikat_odmowy,
+    ocen_gotowosc_dokumentacji_wykonawczej,
+)
 from enm.canonical_analysis import CanonicalRun
+from fastapi import HTTPException
 from fastapi.responses import Response
 from network_model.reporting.czcionki import zarejestruj_czcionki
 
@@ -220,6 +227,39 @@ def _build_report_results_section(
     }
 
 
+def gotowosc_dokumentacji_wykonawczej_biegu(run: CanonicalRun) -> GotowoscDokumentacjiWykonawczej:
+    """Werdykt bramki dokumentacji wykonawczej dla MIGAWKI tego biegu.
+
+    Dokumentacja wykonawcza opisuje model, na którym bieg został policzony —
+    dlatego bramka pyta `run.snapshot`, a nie bieżący model przypadku (ten mógł
+    zostać poprawiony PO biegu; wtedy dokumentację wydaje się z nowego biegu).
+    """
+    snapshot = run.snapshot if isinstance(run.snapshot, dict) else {}
+    return ocen_gotowosc_dokumentacji_wykonawczej(snapshot)
+
+
+def _wymus_gotowosc_dokumentacji_wykonawczej(run: CanonicalRun, profile: str) -> None:
+    """Odmawia raportu w profilu „Wykonawczy", gdy model nie jest do niego gotowy.
+
+    Profile OSD i audytowy przechodzą bez zmian — bramka dotyczy WYŁĄCZNIE
+    dokumentacji wykonawczej (karta KOMPLETNOSC-POLA-TR §0 pkt 2: „NIE blokuje
+    pracy koncepcyjnej, NIE blokuje obliczeń").
+    """
+    if profile != PROFIL_DOKUMENTACJI_WYKONAWCZEJ:
+        return
+    werdykt = gotowosc_dokumentacji_wykonawczej_biegu(run)
+    if werdykt.gotowy:
+        return
+    raise HTTPException(
+        status_code=409,
+        detail={
+            "code": "documentation.executive_not_ready",
+            "message_pl": komunikat_odmowy(werdykt),
+            "gotowosc_dokumentacji_wykonawczej": werdykt.to_dict(),
+        },
+    )
+
+
 def build_analysis_run_report_payload(
     run: CanonicalRun,
     *,
@@ -227,6 +267,12 @@ def build_analysis_run_report_payload(
 ) -> dict[str, Any]:
     analysis_case_context = build_analysis_case_context(run)
     normalized_options = normalize_report_options(**(report_options or {}))
+    # KOMPLETNOSC-POLA-TR §0 pkt 2: brama dokumentacji wykonawczej. Sprawdzenie
+    # siedzi TUTAJ, a nie w trzech końcówkach HTTP, bo to JEDYNE miejsce, przez
+    # które przechodzą WSZYSTKIE trzy formaty raportu (JSON/DOCX/PDF) — bramka
+    # dopięta do jednej końcówki byłaby bramką, którą omija się zmianą formatu
+    # w adresie.
+    _wymus_gotowosc_dokumentacji_wykonawczej(run, normalized_options["profile"])
     trace_payload = canonicalize_json(build_extended_trace_response(run))
     results_section = _build_report_results_section(
         run,

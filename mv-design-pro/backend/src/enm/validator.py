@@ -22,6 +22,13 @@ from .models import (
     OverheadLine,
     SwitchBranch,
 )
+from .pole_transformatorowe import (
+    PASMO_NN_MAX_KV,
+    PASMO_SN_MAX_KV,
+    komunikat_braku_pola,
+    pasmo_napieciowe,
+    transformatory_bez_pola_sn,
+)
 from .severity import (
     SEVERITY_BLOCKER,
     SEVERITY_IMPORTANT,
@@ -41,17 +48,15 @@ from .severity import (
 #   nN : voltage_kv < 1.0
 #   SN : 1.0 <= voltage_kv <= 60.0
 #   WN : voltage_kv > 60.0
-_VOLTAGE_BAND_NN_MAX = 1.0
-_VOLTAGE_BAND_SN_MAX = 60.0
-
-
-def _voltage_band(voltage_kv: float) -> str:
-    """Zwroc pasmo napieciowe szyny: 'nN', 'SN' albo 'WN'."""
-    if voltage_kv < _VOLTAGE_BAND_NN_MAX:
-        return "nN"
-    if voltage_kv <= _VOLTAGE_BAND_SN_MAX:
-        return "SN"
-    return "WN"
+#
+# KOMPLETNOSC-POLA-TR: progi i funkcja pasma PRZENIESIONE do
+# `enm/pole_transformatorowe.py` — predykat pola transformatorowego pyta o to
+# samo pasmo („strona gorna na szynie SN"), a dwie kopie granicy 60 kV byłyby
+# dwoma zrodlami prawdy czekajacymi na rozjazd (regula KLASA §3). Walidator jest
+# tu KONSUMENTEM definicji, nie jej wlascicielem.
+_VOLTAGE_BAND_NN_MAX = PASMO_NN_MAX_KV
+_VOLTAGE_BAND_SN_MAX = PASMO_SN_MAX_KV
+_voltage_band = pasmo_napieciowe
 
 
 _STRICT_PORT_BINDING_ENV = "ENM_STRICT_PORT_BINDING"
@@ -110,6 +115,8 @@ class ENMValidator:
         # V12S-007: pasmo napieciowe + ciaglosc przez stacje przelotowa
         self._check_voltage_band_consistency(enm, issues)
         self._check_through_station_continuity(enm, issues)
+        # KOMPLETNOSC-POLA-TR: transformator na szynie SN bez pola roli TR
+        self._check_transformer_sn_bay(enm, issues)
 
         # Deterministic sort: severity_rank → code → first element_ref
         issues.sort(
@@ -994,6 +1001,49 @@ class ENMValidator:
                         wizard_step_hint="K4",
                     )
                 )
+
+    # ------------------------------------------------------------------
+    # Pole transformatorowe SN (W041)
+    # ------------------------------------------------------------------
+
+    def _check_transformer_sn_bay(
+        self, enm: EnergyNetworkModel, issues: list[ValidationIssue]
+    ) -> None:
+        """W041: transformator na szynie SN stacji BEZ pola roli TR.
+
+        Odejścia od szyn rozdzielni realizuje się POLAMI — transformator
+        przyłączony wprost do szyny SN, bez pola transformatorowego, jest
+        konfiguracją NIEKOMPLETNĄ (dyspozycja recenzenta-właściciela
+        2026-08-12 §7). Poziom IMPORTANT, nie BLOCKER: stan jest legalnym
+        stanem ROBOCZYM (projektant może świadomie zrezygnować z pola na
+        etapie koncepcji), więc nie blokuje ani pracy, ani obliczeń — blokuje
+        wyłącznie drogę do dokumentacji wykonawczej
+        (`application/dokumentacja_wykonawcza/gotowosc.py`).
+
+        Predykat pochodzi z JEDNEGO źródła (`enm/pole_transformatorowe.py`),
+        wspólnego z markerem rysunku — parytet pilnuje wspólna tablica
+        decyzyjna `backend/schemas/pole_transformatorowe_parytet_v1.json`.
+        """
+        for znalezisko in transformatory_bez_pola_sn(enm):
+            issues.append(
+                ValidationIssue(
+                    code="W041",
+                    severity=SEVERITY_IMPORTANT,
+                    message_pl=komunikat_braku_pola(znalezisko),
+                    element_refs=[znalezisko.transformer_ref, znalezisko.station_ref],
+                    wizard_step_hint="K5",
+                    suggested_fix=(
+                        "Dodaj do rozdzielni SN tej stacji pole transformatorowe "
+                        "(rola TR) i przypisz do niego transformator."
+                    ),
+                    fix_action=FixAction(
+                        action_type="OPEN_MODAL",
+                        element_ref=znalezisko.station_ref,
+                        modal_type="add_sn_bay",
+                        payload_hint={"bay_role": "TR"},
+                    ),
+                )
+            )
 
     # ------------------------------------------------------------------
     # Shunt capacitor banks (E040-E042, W040)

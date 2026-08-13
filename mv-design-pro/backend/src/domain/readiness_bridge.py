@@ -44,6 +44,10 @@ ODWZOROWANIE_WALIDATOR_NA_KANON: dict[str, str] = {
     "E009": "catalog.binding_missing",
     # „Stacja przelotowa: pola IN/OUT" == brak wymaganego pola SN stacji.
     "E021": "station.required_field_missing",
+    # „Transformator na szynie SN bez pola roli TR" == brak konfiguracji pola
+    # transformatorowego (KOMPLETNOSC-POLA-TR — ten sam warunek, jedno zrodlo
+    # predykatu `enm/pole_transformatorowe.py`).
+    "W041": "transformer.bay_missing",
     # „Magistrala nie ma segmentow" == brak segmentu magistrali.
     "I004": "trunk.segment_missing",
     # „Magistrala pierscieniowa nie ma punktu normalnie otwartego" == wymog NOP.

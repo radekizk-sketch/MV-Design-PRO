@@ -11,6 +11,7 @@ from api.analysis_run_exports import (
     export_run_report_json_response,
     export_run_report_pdf_response,
     export_run_trace_pdf_response,
+    gotowosc_dokumentacji_wykonawczej_biegu,
 )
 from api.canonical_run_views import (
     build_analysis_run_detail,
@@ -349,6 +350,24 @@ def _report_options_from_query(
         "scope": scope,
         "sections": sections,
         "focus_table": focus_table,
+    }
+
+
+@router.get("/analysis-runs/{run_id}/gotowosc-dokumentacji-wykonawczej")
+def get_gotowosc_dokumentacji_wykonawczej(run_id: UUID) -> dict[str, Any]:
+    """Czy z tego biegu wolno wydać dokumentację wykonawczą (profil „Wykonawczy").
+
+    Końcówka istnieje po to, żeby generator raportu POKAZAŁ stan bramki ZANIM
+    projektant kliknie eksport — inaczej jedyną drogą do informacji byłby błąd
+    409 po kliknięciu, czyli martwy klik z komunikatem po fakcie. Zwraca ten sam
+    werdykt, którym bramka odmawia eksportu (jedno źródło:
+    `application/dokumentacja_wykonawcza/gotowosc.py`).
+    """
+    run = _require_canonical_run(run_id)
+    return {
+        "run_id": str(run.id),
+        "profil": "wykonawczy",
+        **gotowosc_dokumentacji_wykonawczej_biegu(run).to_dict(),
     }
 
 
