@@ -275,6 +275,37 @@ wpięcie c per pasmo + scenariusz MIN w głównej ścieżce użytkownika), P0.5�
   czerwonych, w tym piny dowód↔bieg z PODSTAWA-VDROP; sha-identyczne odtworzenie).
 Następne: P0.6 (pętla zwarcia z grafu + SWZ — serce modułu), P0.7 (krzywe nN + pola
 zdolności wyłączania wg rozstrzygnięcia rundy 3), P0.8–P0.10.
+**Aktualizacja 2026-08-13 (ta sama sesja): P0.6 WYKONANE (`b746b6a9`) — „serce modułu".**
+- Pętla zwarcia z REALNEJ trasy grafu: `application/analyses/fault_loop/route.py`
+  (NOWY) — BFS po ENM (kable/łącznik/wkładka `status=closed`), fail-closed na brak
+  R/X żyły powrotnej PE/PEN i na linie napowietrzne (P1). Impedancja transformatora
+  ujednolicona (zero-sequence-aware, gate na `LV_SHUNT_GROUND` — rodzina Dyn) i
+  upstream Thevenin SN (reuse `build_zbus`) w JEDNEJ funkcji dla widoku „u źródła",
+  dowolnego punktu i wszystkich punktów per odpływ (ranking po rzeczywistej |Z|,
+  nie po liczbie hopów — dowód testem z rozgałęzieniem, gdzie krótsza gałąź ma
+  większą impedancję).
+- SWZ (`application/analyses/swz/`, NOWY pakiet): werdykt 3-stanowy z dowodem
+  liczbowym Ik1_min (scenariusz MIN, R_θ) vs Ia (IEC 60898-1, G-D4) vs t_wymagany
+  (Tab. 41.1 IEC 60364-4-41, G-D3, 2 źródła/wartość, status REFERENCYJNY do
+  weryfikacji przy dostępie do normy). Wkładka gG (G-D2 puste) = zawsze
+  NIEROZSTRZYGALNE.
+- Klasa-nie-instancja: dodano `return_conductor_x_ohm_per_km` (reaktancja żyły
+  powrotnej — nie istniała NIGDZIE w repo) + naprawiono kontrakt materializacji
+  KABEL_NN (gubił pola żyły powrotnej — ten sam defekt co F-K1/P0.5a) w 5 miejscach.
+  Przy okazji naprawiony bug granicy pasma Tab. 41.1 (400V/√3=230,94V wpadało w złe
+  pasmo) i dwa pre-existing błędy mypy napotkane na bramce.
+- Test krzyżowy Ik1 pętla vs IEC 60909 (Z1+Z2+Z0, Dyn11): ratio ≈0,86, przyczyny
+  różnic nazwane (brak K_T w fault_loop, model Z0 kabla symetryczne vs PE/PEN
+  fizyczne, wzór napięciowy).
+- Bramka: pełny pytest **14619 passed / 16 skipped**, ruff+black+mypy czyste,
+  16 guardów zielonych (solver_diff, resultset_v1_schema, solver_boundary, arch,
+  catalog_binding/enforcement/gate/metadata, domain_no_guessing, pcc_zero,
+  readiness_codes, audit_contract, repo_hygiene, vulture, import_graph,
+  api_lifecycle, no_codenames).
+- Świadomie POZA zakresem: G-22 (wpięcie FAULT_LOOP_NN/SWZ_NN do `AnalysisKind`/
+  eligibility dispatch) — nowe endpointy są read-only pod `/enm/` (wzorzec
+  `station-fault-loop` już istniejący), tak jak ich poprzednik; G-22 zostaje
+  osobnym zadaniem (cross-cutting dla wszystkich analiz nN, nie tylko P0.6).
 
 -----
 
