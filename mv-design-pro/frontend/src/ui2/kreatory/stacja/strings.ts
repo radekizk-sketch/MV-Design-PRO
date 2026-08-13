@@ -309,7 +309,7 @@ export const STACJA_STRINGS = {
   podgladTytul: 'Podgląd pól rozdzielnicy SN',
   // MINI-RMU-CAD — opisy schematu jednokreskowego rozdzielnicy w kroku pól.
   podgladOpisRysunku:
-    'Schemat jednokreskowy rozdzielnicy rysowany symbolami normowymi z konfiguracji poniżej: '
+    'Schemat jednokreskowy rozdzielnicy rysowany symbolami normowymi z konfiguracji pól powyżej: '
     + 'każde pole dostaje symbol aparatu, który w nim wskazałeś. Rysunek pokazuje wyłącznie '
     + 'elementy wynikające z wyboru (aparat pola, transformator stacji, wskazane przekładniki '
     + 'i przekaźnik) — nie uzupełnia składu pola o aparaty, których szablon nie deklaruje.',
