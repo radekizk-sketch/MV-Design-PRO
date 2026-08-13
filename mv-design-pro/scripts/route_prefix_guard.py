@@ -229,37 +229,19 @@ FRONTEND_PATH_EXCEPTIONS: dict[str, str] = {
 # identyfikator). Zdolnosc „roznice na schemacie" dostala dostawce w zywej
 # sciezce (`POST /api/short-circuit-comparisons/sld-overlay`), a duplikat
 # (klient, store porownan, panel) zostal usuniety.
-# STAN PO SPLACIE: 5 modulow, 19 martwych sciezek.
+# STAN PO SPLACIE (2026-08-06): 4 modulow, 16 martwych sciezek (komentarz
+# „5 modulow, 19 sciezek" byl NIEAKTUALNY — nie zaktualizowany po splacie
+# powyzej; sprostowane w karcie ZAB-100-BACKEND przy okazji kolejnej splaty).
+#
+# SPLACONE (2026-08-13, karta ZAB-100-BACKEND, decyzja D10): modul
+# `ui/protection-coordination/api.ts` (10 sciezek) — backend zamontowany pod
+# `/api/protection-coordination` (7 tras FIX-12 + 2 nowe eksporty PDF/DOCX w
+# `api/protection_coordination.py`, wpiety w `api/main.py`; wpis
+# `SWIADOMIE_ODSTAWIONE["protection_coordination"]` w `router_mount_guard.py`
+# usuniety). Wszystkie 10 sciezek klienta majace teraz zywy odpowiednik.
+# STAN PO SPLACIE: 3 modulow, 6 martwych sciezek.
 # --------------------------------------------------------------------------
 FRONTEND_DEAD_CLIENT_DEBT: dict[str, tuple[tuple[str, ...], str]] = {
-    "frontend/src/ui/protection-coordination/api.ts": (
-        (
-            "/api/protection-coordination",
-            "/api/protection-coordination/projects/{p}/run",
-            "/api/protection-coordination/{p}",
-            "/api/protection-coordination/{p}/tcc",
-            "/api/protection-coordination/{p}/trace",
-            "/api/protection-coordination/{p}/checks/sensitivity",
-            "/api/protection-coordination/{p}/checks/selectivity",
-            "/api/protection-coordination/{p}/checks/overload",
-            "/api/protection-coordination/{p}/export/pdf",
-            "/api/protection-coordination/{p}/export/docx",
-        ),
-        # SPROSTOWANE 2026-08-08 (karta ROUTERY-MARTWE). Poprzednie uzasadnienie
-        # glosilo „backend NIGDY nie mial routera /api/protection-coordination" —
-        # to NIEPRAWDA i przeklamywala czekajaca tu decyzje: sugerowala budowe
-        # dostawcy OD ZERA, podczas gdy dostawca w wiekszosci ISTNIEJE.
-        "backend MA modul `api/protection_coordination.py` z 7 trasami pod prefiksem "
-        "`/protection-coordination`, ale aplikacja go NIE MONTUJE (pilnuje tego "
-        "`router_mount_guard`, wpis w `SWIADOMIE_ODSTAWIONE`). Zestawienie klienta z "
-        "modulem: 7 z 9 wolan ma dokladny odpowiednik w module (run, {id}, tcc, trace, "
-        "checks/sensitivity, checks/selectivity, checks/overload); BRAKUJE dwoch "
-        "eksportow ({id}/export/pdf, {id}/export/docx). Modul nie ma ANI JEDNEGO "
-        "importera; zywy ekran koordynacji (E-28) to ui2/wyniki/koordynacja, ktory czyta "
-        "/api/protection/overcurrent-settings — czyli WEZSZA zdolnosc (nastawy jednego "
-        "pola, bez pary gora-dol). Do decyzji: usunac oba martwe konce albo domknac "
-        "koordynacje end-to-end (montaz pod /api + dwa eksporty + ekran).",
-    ),
     # WPIS ZDJETY 2026-08-07 (wiersz KLIENT-BEZ-TRASY-WARIANTY w rejestrze).
     # „Do decyzji: usunac albo zbudowac warianty end-to-end" rozstrzygniete na
     # USUNIECIE: zdolnosc porownania A/B juz istnieje inna, zywa droga (przestrzen
