@@ -1,7 +1,7 @@
 import { render } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import { AREA_DEFINITIONS } from '../../navigation/areaRegistry';
+import { OBSZARY_KONTEKSTU } from '../../../ui2/legacy/mostObszarow';
 // E1.7c: pasek obszarów starej ramy (NavigationRail) skasowany — aktywną
 // nawigacją jest SpaceNav nowej powłoki (te same wymogi etykiet).
 import { SpaceNav } from '../../../ui2/shell/SpaceNav';
@@ -59,8 +59,8 @@ describe('ui-label-blacklist - strażnik etykiet użytkownika', () => {
     fragments.push(collectUserFacingText(nawigacja.container));
     nawigacja.unmount();
 
-    for (const area of AREA_DEFINITIONS) {
-      const view = render(<AreaContextPanel areaCode={area.id} />);
+    for (const obszar of OBSZARY_KONTEKSTU) {
+      const view = render(<AreaContextPanel obszar={obszar} />);
       fragments.push(collectUserFacingText(view.container));
       view.unmount();
     }

@@ -8,6 +8,7 @@ import { useSelectionStore } from '../../selection';
 import { formatLengthKm } from '../../shared/formatPolishValue';
 import { sanitizePublicReadinessMessage } from '../../shared/publicReadinessMessage';
 import { navigateToAnalysis } from '../../navigation/routes';
+import { przejdzDoPrzestrzeni } from '../../../ui2/shell/przejsciaPrzestrzeni';
 import type { ElementType } from '../../types';
 import {
   ANALYSIS_SURFACE_SCREEN_CODE,
@@ -76,7 +77,6 @@ function slugForTestId(value: string): string {
 }
 
 export function SchematContextPanel() {
-  const setActiveArea = useAppStateStore((s) => s.setActiveArea);
   const setActiveWorkMode = useAppStateStore((s) => s.setActiveWorkMode);
   const activeCaseId = useAppStateStore((s) => s.activeCaseId);
   const activeRunId = useAppStateStore((s) => s.activeRunId);
@@ -299,7 +299,10 @@ export function SchematContextPanel() {
   };
 
   const openAnalysisWorkspace = () => {
-    setActiveArea('WYNIKI_ANALIZY');
+    // D1: lądowiskiem wyników jest PRZESTRZEŃ „Wyniki i dowody"; trasa
+    // #analysis niesie kontekst (przypadek/przebieg), a most obszarów ustawia
+    // panel kontekstu — jedno źródło prawdy zamiast osobnego `setActiveArea`.
+    przejdzDoPrzestrzeni('wyniki');
     navigateToAnalysis({ caseId: activeCaseId, runId: activeRunId });
     openRouteSurface(ANALYSIS_SURFACE_SCREEN_CODE, {
       entityType: 'analysis_run',
@@ -316,7 +319,7 @@ export function SchematContextPanel() {
 
   const openNextAction = () => {
     if (!hasNetworkTopology) {
-      setActiveArea('MODEL_SIECI');
+      przejdzDoPrzestrzeni('model');
       return;
     }
 
@@ -531,7 +534,7 @@ export function SchematContextPanel() {
         <button
           type="button"
           data-testid="schemat-action-go-model"
-          onClick={() => setActiveArea('MODEL_SIECI')}
+          onClick={() => przejdzDoPrzestrzeni('model')}
           className="flex h-9 flex-1 items-center gap-2 rounded-sm border border-scada-border bg-scada-bg px-2 text-scada-muted hover:border-cyan-500/55 hover:text-scada-text"
         >
           <span className="text-lg leading-none">+</span>
@@ -542,7 +545,7 @@ export function SchematContextPanel() {
           data-testid="left-panel-mode-readiness"
           onClick={() => {
             clearRouteManagedSurface();
-            setActiveArea('MODEL_SIECI');
+            przejdzDoPrzestrzeni('model');
           }}
           className="h-9 rounded-sm border border-scada-border bg-scada-bg px-2 text-[10px] text-cyan-300 hover:border-cyan-500/55 hover:text-scada-text"
         >

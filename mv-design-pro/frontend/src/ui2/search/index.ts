@@ -20,6 +20,7 @@ export {
 
 export {
   zbudujIndeksWyszukiwania,
+  type AkcjeIndeksu,
   type BudowaIndeksuOpcje,
   type ObiektDoIndeksu,
   type ProviderObiektow,

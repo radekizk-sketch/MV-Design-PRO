@@ -1,7 +1,6 @@
 import { render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import { AREA_DEFINITIONS } from '../../navigation/areaRegistry';
 import { CANONICAL_SCREEN_REGISTRY } from '../../workspace/screenCanonRegistry';
 import {
   analysisIconRegistry,
@@ -15,8 +14,13 @@ import {
 
 describe('technical-icons - rejestr ikon technicznych', () => {
   it('każdy obszar, ekran, obiekt i typ analityczny ma ikonę w rejestrze', () => {
-    for (const area of AREA_DEFINITIONS) {
-      expect(hasTechnicalIcon(area.icon)).toBe(true);
+    // D1: rejestr obszarow `ui/navigation/areaRegistry` skasowany (druga
+    // nawigacja bez konsumentow). Ikony `ikona-obszar-*` ZOSTAJA — czyta je
+    // `ui/context-menu/contextMenuRegistry`. Petla po CALYM rejestrze ikon jest
+    // nadzbiorem dawnej petli po dziewieciu obszarach: kazdy zarejestrowany
+    // klucz musi mieć rysunek.
+    for (const icon of Object.keys(technicalIconRegistry)) {
+      expect(hasTechnicalIcon(icon)).toBe(true);
     }
     for (const screen of Object.values(CANONICAL_SCREEN_REGISTRY)) {
       expect(hasTechnicalIcon(screen.icon)).toBe(true);

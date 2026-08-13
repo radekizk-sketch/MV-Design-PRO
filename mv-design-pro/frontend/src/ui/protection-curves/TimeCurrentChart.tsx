@@ -189,6 +189,16 @@ function CustomTooltip({ active, payload, label, curves }: CustomTooltipProps) {
 // Empty State Component
 // =============================================================================
 
+/**
+ * Stan zerowy wykresu TCC.
+ *
+ * Zero-Debt (karta NAWIGACJA-JEDEN-KANON): gałąź bez `onAddCurve` prowadziła
+ * odnośnikiem `#protection-library` — trasy o tej nazwie NIE MA w żadnym
+ * rejestrze, więc klik lądował na stronie „Nieznana trasa interfejsu". Żaden
+ * konsument (`ItCurvePanel`, `TccChart`) nie podawał `onAddCurve`, czyli
+ * WYŁĄCZNIE ta martwa gałąź była widoczna dla użytkownika. Odnośnik usunięty;
+ * został uczciwy stan zerowy z akcją, gdy wołający ją dostarczy.
+ */
 interface EmptyStateProps {
   onAddCurve?: () => void;
 }
@@ -225,15 +235,7 @@ function EmptyState({ onAddCurve }: EmptyStateProps = {}) {
         >
           Dodaj krzywą zabezpieczenia
         </button>
-      ) : (
-        <a
-          href="#protection-library"
-          data-testid="empty-state-tcc-cta"
-          className="text-sm font-semibold text-amber-500 underline hover:text-amber-400"
-        >
-          Przejdź do biblioteki zabezpieczeń →
-        </a>
-      )}
+      ) : null}
     </div>
   );
 }

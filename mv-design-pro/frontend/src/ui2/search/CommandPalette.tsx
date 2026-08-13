@@ -99,7 +99,10 @@ export function CommandPalette({
   }, [otwarta]);
 
   const dopasowane = useMemo(
-    () => filtrujISortuj(fraza, pozycje, (p) => p.etykietaPL),
+    () =>
+      filtrujISortuj(fraza, pozycje, (p) =>
+        p.slowaKluczowe ? `${p.etykietaPL} ${p.slowaKluczowe}` : p.etykietaPL,
+      ),
     [fraza, pozycje],
   );
 

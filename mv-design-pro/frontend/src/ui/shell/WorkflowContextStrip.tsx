@@ -14,6 +14,7 @@ import { useMemo } from 'react';
 import { clsx } from 'clsx';
 
 import { useAppStateStore } from '../app-state/store';
+import { przejdzDoPrzestrzeni } from '../../ui2/shell/przejsciaPrzestrzeni';
 import { useNetworkBuildDerived } from '../network-build/networkBuildStore';
 import { formatLengthKm } from '../shared/formatPolishValue';
 import { isTerrainSnSegment } from '../shared/enmVisibility';
@@ -94,7 +95,6 @@ export function WorkflowContextStrip({
   onOpenProjectMetadata,
   onOpenSnapshotHistory,
 }: WorkflowContextStripProps) {
-  const setActiveArea = useAppStateStore((state) => state.setActiveArea);
   const activeProjectId = useAppStateStore((state) => state.activeProjectId);
   const activeCaseId = useAppStateStore((state) => state.activeCaseId);
   const {
@@ -259,7 +259,7 @@ export function WorkflowContextStrip({
             <button
               type="button"
               data-testid="wcs-start-model"
-              onClick={() => setActiveArea('MODEL_SIECI')}
+              onClick={() => przejdzDoPrzestrzeni('model')}
               className="ml-2 h-8 shrink-0 rounded-sm border border-sygnal-info bg-sygnal-info-tlo px-3 text-[11px] font-semibold text-sygnal-info-tusz transition-colors hover:brightness-105"
             >
               Przejdź do budowy GPZ

@@ -56,7 +56,6 @@ vi.mock('../../../ui/app-state', () => ({
 vi.mock('../../../ui/app-state/store', () => ({
   useAppStateStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({
-      activeArea: 'SCHEMAT_TOPOLOGIA',
       activeWorkMode: 'TE',
       activeProjectId: 'project-1',
       activeCaseName: 'Przypadek testowy',
@@ -69,7 +68,12 @@ vi.mock('../../../ui/app-state/store', () => ({
     }),
 }));
 
-vi.mock('../../../ui/navigation/routes', () => ({
+// Atrapa CZĘŚCIOWA: podmieniamy wyłącznie `navigateToCatalog` (to jego wywołanie
+// bada test). Pełne zastąpienie modułu tras wywracało zestaw po D1 — most
+// przestrzeni czyta z niego `ROUTES`, więc atrapa bez tego eksportu wysadzała
+// import łańcucha powłoki jeszcze przed pierwszym przypadkiem testowym.
+vi.mock('../../../ui/navigation/routes', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../../ui/navigation/routes')>()),
   navigateToCatalog: () => mockNavigateToCatalog(),
 }));
 
