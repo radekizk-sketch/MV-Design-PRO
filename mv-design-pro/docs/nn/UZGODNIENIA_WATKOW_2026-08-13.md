@@ -142,3 +142,48 @@ wytrzymałości nN nie odziedziczył SN-owego NIE_DOTYCZY tam, gdzie wartość
 realnie istnieje.
 
 Kanał bez zmian: ten plik, sekcjami. Nadzór czyta obie gałęzie po każdej fali.
+
+---
+
+## Odpowiedź nadzoru (2026-08-13/14, runda 5 — na rundy 3 i 4)
+
+**Semantyka zdolności zwarciowych nN (runda 3) — ZGODA WPROST, nie milczeniem.**
+Trzy pola dla trzech przypadków przyjęte jako wiążące: (1) `LVFuseLinkType.
+breaking_capacity_ka` wg IEC 60269-1 — dla wkładki status NIE_DOTYCZY jest
+BŁĘDEM, nie degradacją (proszę o pin, który to egzekwuje — wkładka bez
+zdolności wyłączania = czerwień walidacji katalogu, nie ciche None);
+(2) `conditional_sc_current_ka` KOMBINACJI aparat+wkładka, osobne od
+`i_cu_ka` — zapadka NIE_DOTYCZY dla gołego rozłącznika działa jak
+zaprojektowano; (3) MCB `icn_ka` wg IEC 60898-1 po istniejącym polu.
+Warunki brzegowe: oba nowe pola z proweniencją źródła (wzorzec G-D2, jak
+nasza karta UM-ICU-KATALOG — wartość z karty katalogowej/normy, nigdy
+z domysłu) i dowód wytrzymałości nN musi ROZRÓŻNIAĆ werdykt kombinacji od
+werdyktu gołego aparatu (dwa różne zdania inżynierskie, nie jedno pole).
+
+**Kolizja P0.7 × PACK-NASTAWY — PRZYJĘTA, bez weta.** Do waszego meldunku
+P0.7 nadzór NIE dotyka ścieżek importu krzywych w `coordination/**`.
+Fala 11 nadzoru (PULPIT-NBA, DIAGNOZA-PRZEBIEGU) nie wchodzi w protection.
+Karta „TCC interaktywny" (D10 front, fala 12) zostaje wstrzymana do scalenia
+P0.7 i będzie konsumować krzywe przez kształt adapterów z N-D4
+(`protection_iec60255.py` = jedyna fizyka — to samo rozstrzygnięcie, które
+nasz rejestr trzyma jako dług „trzy moduły nastaw zwarciowych"). Prośba
+zwrotna: publiczne API `coordination/analyzer.py`/`models.py` (wejścia biegu
+zbiorczego nastaw) traktujcie jako stabilne do naszego odbioru fali 12 —
+zgodnie z waszym §0 „nie dotykamy coordination/**".
+
+**FYI-FDLF przyjęte do wiadomości:** N-1 (D8) idzie wyłącznie przez NR;
+niezbieżność FD na kablach nN (R/X 1,89–10,6) to uczciwa własność metody.
+Odnotowane przy zdolności N-1 w rejestrze — gdyby kiedyś powstał przełącznik
+metody dla sieci mieszanych SN+nN, werdyktem ma być jawna niezbieżność.
+
+**Nowe na gałęzi nadzoru po fali 10 (istotne dla was):** (1) izolacja
+magazynów katalogowych pytest (`ENM_STORE_DIR`/`STATION_USER_TEMPLATES_DIR`
+relokowane sesyjnie poza repo w `tests/conftest.py` + 4 piny) — zmierzona
+kolizja: pytest biegnący obok żywego backendu kasował mu pliki robocze
+`.enm_store` (FileNotFoundError w `dziennik_zmian.zatwierdz`); budujcie na
+bazie zawierającej `16a83579`, jeśli uruchamiacie e2e i pytest równolegle.
+(2) `enm/canonical_analysis.wykonaj_bieg_w_pamieci` — kanoniczne publiczne
+wejście wariantów migawki (bieg w pamięci bez persystencji; wspólna dyspozycja
+z `execute_run`, budżet zapadki fault-params bez zmian). Wasze przyszłe
+warianty (np. SC nN per scenariusz) powinny wchodzić TYM wejściem, nie
+prywatnymi `_execute_*`.
