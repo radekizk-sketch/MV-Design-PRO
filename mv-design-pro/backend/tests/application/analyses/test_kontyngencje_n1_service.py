@@ -25,7 +25,7 @@ from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
 import pytest
-from application.analyses.kontyngencje_n1 import build_kontyngencje_n1_view
+from application.analyses.kontyngencje_n1 import _klucz_rankingu, build_kontyngencje_n1_view
 from enm.canonical_analysis import (
     CanonicalRun,
     create_run,
@@ -682,3 +682,59 @@ def test_model_bez_kwalifikowanych_elementow_konczy_sie_bledem() -> None:
     )
     with pytest.raises(ValueError, match="kwalifikowanego elementu"):
         build_kontyngencje_n1_view(_bieg(enm))
+
+
+def test_priorytet_kategorii_dotkliwosci_jest_przypiety_a_nie_tylko_zadeklarowany() -> None:
+    """Kolejność kategorii w kluczu rankingu — PRZYPIĘTA, nie tylko opisana.
+
+    Znalezisko odbioru nadzoru (2026-08-13, karta N-1-BACKEND): docstring
+    ``_klucz_rankingu`` deklaruje porządek „odbiory bez zasilania → przeciążenia
+    → naruszenia napięciowe", ale ODWRÓCENIE tej kolejności w kodzie nie
+    czerwieniło ŻADNEGO testu — deklaracja bez testu (KLASA-NIE-INSTANCJA §4).
+    Ten test ustawia trzy pozycje tak, by KAŻDA para kategorii rozstrzygała się
+    inaczej przy odwróconym porządku: „tylko odbiór bez zasilania" musi wygrać z
+    „wiele przeciążeń", a „jedno przeciążenie" z „wiele naruszeń napięciowych".
+    """
+    pozycje = [
+        {
+            "element_ref": "b_napiecia",
+            "dotkliwosc": {
+                "odbiory_bez_zasilania": 0,
+                "przeciazenia": 0,
+                "naruszenia_napiecia": 9,
+            },
+        },
+        {
+            "element_ref": "a_przeciazenia",
+            "dotkliwosc": {
+                "odbiory_bez_zasilania": 0,
+                "przeciazenia": 1,
+                "naruszenia_napiecia": 0,
+            },
+        },
+        {
+            "element_ref": "c_odbior",
+            "dotkliwosc": {
+                "odbiory_bez_zasilania": 1,
+                "przeciazenia": 0,
+                "naruszenia_napiecia": 0,
+            },
+        },
+    ]
+
+    kolejnosc = [p["element_ref"] for p in sorted(pozycje, key=_klucz_rankingu)]
+
+    assert kolejnosc == ["c_odbior", "a_przeciazenia", "b_napiecia"]
+
+
+def test_remis_pelnej_dotkliwosci_rozstrzyga_element_ref_rosnaco() -> None:
+    """Tie-break rankingu — deterministyczny i przypięty (ta sama klasa co wyżej)."""
+    dotkliwosc = {"odbiory_bez_zasilania": 2, "przeciazenia": 1, "naruszenia_napiecia": 0}
+    pozycje = [
+        {"element_ref": "z_ostatni", "dotkliwosc": dict(dotkliwosc)},
+        {"element_ref": "a_pierwszy", "dotkliwosc": dict(dotkliwosc)},
+    ]
+
+    kolejnosc = [p["element_ref"] for p in sorted(pozycje, key=_klucz_rankingu)]
+
+    assert kolejnosc == ["a_pierwszy", "z_ostatni"]

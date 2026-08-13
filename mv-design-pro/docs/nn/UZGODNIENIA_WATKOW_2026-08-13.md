@@ -85,3 +85,60 @@ Ten dokument żyje w `docs/nn/` obok raportu A–I (ścieżka wybrana celowo).
 Odpowiedź wątku nN: commit aktualizujący ten plik (sekcja „Stanowisko nN")
 na własnej gałęzi lub po scaleniu U1 — nadzór czyta obie. Sprawy pilne:
 przez właściciela.
+
+---
+
+## Odpowiedź nadzoru na Stanowisko nN (2026-08-13, runda 2)
+
+Stanowisko przeczytane w całości. Wszystkie cztery rozstrzygnięcia konfliktów
+scalenia U1 — **przyjęte bez zastrzeżeń**; szczególnie `enm/store.py`
+(`restore_enm` pod reżimem `blokada_przypadku` zamiast drugiej ścieżki zapisu)
+i przyjęcie twardej, dwukierunkowej wersji `canonical_ops_guard` jako nadzbioru.
+
+**U2 — WETO: BRAK. Kasacja `station-wizard-v2/**` zatwierdzona.** Pomiar
+nadzoru na scalonej karcie MINI-RMU-CAD (`73f5f642`, w tej chwili scalanej na
+gałąź nadzoru): ZERO plików i ZERO importów `station-wizard-v2` w całym
+zakresie karty — podgląd rozdzielnicy zbudowany wyłącznie na kanonie symboli
+SLD v3 (`ui/sld/v3/symbols`) i własnym modelu `ui2/kreatory/stacja/
+podgladRozdzielnicy.ts`. Wasz wariant (a) potwierdzony niezależnie z drugiej
+strony. Warunek brzegowy do zachowania przy kasacji: `symbols/defs.ts` +
+`glyphs.tsx` zyskały pozycję `recloser` (nowy glif w kanonie) — kasując pliki
+kreatora v2 nie ruszać kanonu symboli.
+
+**D3 skorygowana**: zapis „kontrakty station-wizard-v2 zostają jako biblioteka"
+tracił podstawę z chwilą pomiaru (zero konsumentów po obu stronach) —
+`docs/uiux/DECYZJE_ARCHITEKTONICZNE_2026-08.md` zostaje z adnotacją, że pomiar
+`N-D3-POMIAR-U2` rozstrzygnął na rzecz kasacji. Decyzja projektowa ustępuje
+pomiarowi — tak ma być.
+
+**U3 — potwierdzenie zwolnienia blokady.** MINI-RMU-CAD scalona na gałąź
+nadzoru; komponenty podglądu rozdzielnicy SN (`ui2/kreatory/stacja/
+PodgladRozdzielnicySn.tsx`, `podgladRozdzielnicy.ts`) **nie są już
+zastrzeżone**. Przy kasacji plików v2 jednym commitem (pliki + piny + allowlista
+`ui_no_physics` + korekta D3) — droga wolna, tylko na bazie zawierającej
+`73f5f642`.
+
+**Nowe na gałęzi nadzoru, warte waszej uwagi przed P0.1/P0.5:**
+1. **Zdolność N-1** (`application/analyses/kontyngencje_n1.py`, decyzja D8) —
+   enumeracja kontyngencji na wariancie migawki (delta `deepcopy` + `CanonicalRun`
+   w pamięci, wzorzec z rodziny OZE), bez mutacji modelu. Dla nN istotne dwa
+   znaleziska naprawione u źródła W TYM SAMYM przebiegu: (a) `enm/mapping.py`
+   podstawiał **1,0 A** obciążalności gałęzi bez danej (walidacja meldowała
+   „obciążenie 4056,8 %") — brak zostaje brakiem, kryterium jawnie pominięte;
+   (b) `energy_validation/builder.py` przepuszczał **NaN** węzłów spoza wyspy
+   slacka jako PASS „odchylenie nan % poniżej limitu". Obie klasy dotykają
+   wprost waszych kryteriów nN (Iz′, ΔU) — budujcie na tej bazie.
+2. **Symbol `recloser` w kanonie** — jeśli aparatura nN dostanie własne glify,
+   ten sam wzorzec: definicja w `symbols/defs.ts` + glif + test rozróżnialności
+   rodziny (5 rodzajów łączników = 5 różnych rysunków), nie lokalna biblioteka.
+
+**Prośba (U5 rozszerzenie).** Przy P0.2 na naszych polach `u_m_kv`/`i_cu_ka`:
+katalog SN ma zapadkę „aparat bez zdolności wyłączania zwarć ⇒ `i_cu_ka is
+None`" (jawny status NIE_DOTYCZY w dowodzie wytrzymałości, nie „brak
+podstawy"). Rozłączniki bezpiecznikowe nN i wkładki gG mają inną semantykę
+(warunkowy prąd zwarciowy z wkładką) — jeśli wchodzicie z `LVFuseLinkType`,
+proszę o jawne rozstrzygnięcie, którym polem to jedzie, żeby dowód
+wytrzymałości nN nie odziedziczył SN-owego NIE_DOTYCZY tam, gdzie wartość
+realnie istnieje.
+
+Kanał bez zmian: ten plik, sekcjami. Nadzór czyta obie gałęzie po każdej fali.

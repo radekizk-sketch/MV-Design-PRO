@@ -292,6 +292,36 @@ describe('MINI-RMU-CAD — etykieta pola czyta dane katalogu', () => {
     expect(container.querySelectorAll('[data-symbol-canon]').length).toBe(0);
   });
 
+  it('brak aparatu jest ZNACZONY jako usterka, nie zwykly opis (kolor bledu)', () => {
+    // Znalezisko odbioru nadzoru (2026-08-13, karta MINI-RMU-CAD): sam komunikat
+    // „aparat pola niewskazany" byl przypiety, ale FLAGA `brakAparatu` — jedyne,
+    // co odrozni ten stan wizualnie (kolor bledu etykiety) — juz nie:
+    // podmiana `brakAparatu` na stale `false` NIE czerwienila zadnego testu.
+    // Deklaracja bez testu (KLASA-NIE-INSTANCJA §4): stan niekompletny musi byc
+    // WIDOCZNY jako niekompletny, inaczej czyta sie jak poprawna konfiguracja.
+    const bez = zbudujPodglad({
+      snFields: [pole('LINIA_IN', null)],
+      aparaty: KATALOG,
+      snVoltageKv: 15,
+    });
+    const zAparatem = zbudujPodglad({
+      snFields: [pole('LINIA_IN', 'ap-WYLACZNIK')],
+      aparaty: KATALOG,
+      snVoltageKv: 15,
+    });
+
+    expect(bez.sloty[0].brakAparatu).toBe(true);
+    expect(zAparatem.sloty[0].brakAparatu).toBe(false);
+
+    const { container } = render(
+      <PodgladRozdzielnicySn snFields={[pole('LINIA_IN', null)]} aparaty={KATALOG} snVoltageKv={15} />,
+    );
+    const wErr = Array.from(container.querySelectorAll('text')).filter(
+      (t) => (t.getAttribute('fill') ?? '').includes('--mvd-err'),
+    );
+    expect(wErr.length).toBeGreaterThan(0);
+  });
+
   it('napięcie szyny z kontekstu; bez kontekstu — bez zmyślonej liczby', () => {
     const z = render(<PodgladRozdzielnicySn snFields={[pole('LINIA_IN', 'ap-WYLACZNIK')]} aparaty={KATALOG} snVoltageKv={15} />);
     expect(tekstRysunku(z.container)).toContain('Szyna SN 15 kV');
