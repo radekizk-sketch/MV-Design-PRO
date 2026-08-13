@@ -52,6 +52,7 @@ vi.mock('../../../shared/generatorTypeLabels', () => ({
 }));
 
 import { useAppStateStore } from '../../../app-state/store';
+import { useShellStore } from '../../../../ui2/shell/useShellStore';
 import { useSelectionStore } from '../../../selection/store';
 import { type SnapshotState, useSnapshotStore } from '../../../topology/snapshotStore';
 import { AreaContextPanel } from '../AreaContextPanel';
@@ -66,14 +67,21 @@ describe('AreaContextPanel - routing dziewięciu obszarów', () => {
     render(<AreaContextPanel obszar="MODEL_SIECI" />);
     expect(screen.getByTestId('mo-context-panel')).toBeInTheDocument();
     expect(screen.getByTestId('mo-project-start')).toBeInTheDocument();
-    expect(screen.getByTestId('mo-create-project')).toHaveTextContent(
-      'Utwórz projekt i przejdź do GPZ',
-    );
-    expect(screen.getByText('Cel obliczeń')).toBeInTheDocument();
-    expect(screen.getByText('Stan projektu')).toBeInTheDocument();
+    expect(screen.getByTestId('mo-create-project')).toHaveTextContent('Nowy / otwórz projekt');
   });
 
-  it('Model sieci: pierwszy krok tworzy jednoznaczny projekt z domyślnymi parametrami', () => {
+  /*
+   * ZERO FABRYKACJI (naprawa u źródła + testu — „test maskujący defekt produktu
+   * = dwa defekty"). Dwa poprzednie przypadki tego pliku UTRWALAŁY defekt:
+   * sprawdzały, że klik w „Utwórz projekt" nadaje `activeProjectName`,
+   * `activeCaseId` (losowy UUID) i `activeCaseName` — czyli że aplikacja
+   * WYMYŚLA projekt i zakres obliczeń po stronie klienta, bez ani jednego
+   * wywołania API. Powstawał zakres-widmo: identyfikator, którego serwer nie
+   * zna, więc kolejna operacja domenowa i każdy bieg trafiały w pustkę.
+   * Formularz usunięty; stan zerowy prowadzi do REALNEJ ścieżki zakładania
+   * projektu (przestrzeń „Projekt", zapis przez API).
+   */
+  it('Model sieci bez projektu: stan zerowy prowadzi do przestrzeni „Projekt", nic nie wymyśla', () => {
     act(() => {
       useAppStateStore.getState().setActiveProject(null);
       useAppStateStore.getState().setActiveCase(null);
@@ -85,15 +93,14 @@ describe('AreaContextPanel - routing dziewięciu obszarów', () => {
       fireEvent.click(screen.getByTestId('mo-create-project'));
     });
 
+    expect(useShellStore.getState().activeSpace).toBe('projekt');
     const state = useAppStateStore.getState();
-    expect(state.activeProjectName).toBe('Sieć SN - projekt roboczy');
-    expect(state.activeCaseId).toMatch(/^[0-9a-f-]{36}$/i);
-    expect(state.activeCaseId).toMatch(/^[0-9a-f-]{36}$/i);
-    expect(state.activeCaseName).toBe('Zwarcie maksymalne IEC 60909');
-    expect(state.activeVariantName).toBe('Stan projektowany 2026');
+    expect(state.activeProjectId).toBeNull();
+    expect(state.activeCaseId).toBeNull();
+    expect(state.activeCaseName).toBeNull();
   });
 
-  it('Model sieci: istniejący projekt dostaje zakres obliczeń bez zmiany nazwy projektu', () => {
+  it('Model sieci z projektem bez zakresu: stan zerowy prowadzi do „Obliczeń"', () => {
     act(() => {
       useAppStateStore.getState().setActiveProject('project:e2e-existing', 'E2E UIUX RESET');
       useAppStateStore.getState().setActiveCase(null);
@@ -101,19 +108,18 @@ describe('AreaContextPanel - routing dziewięciu obszarów', () => {
     });
     render(<AreaContextPanel obszar="MODEL_SIECI" />);
 
-    expect(screen.getByRole('heading', { name: 'Utwórz zakres obliczeń' })).toBeInTheDocument();
     expect(screen.getByTestId('mo-create-project')).toHaveTextContent(
-      'Utwórz zakres i przejdź do GPZ',
+      'Przejdź do zakresów obliczeń',
     );
 
     act(() => {
       fireEvent.click(screen.getByTestId('mo-create-project'));
     });
 
-    const state = useAppStateStore.getState();
-    expect(state.activeProjectId).toBe('project:e2e-existing');
-    expect(state.activeProjectName).toBe('E2E UIUX RESET');
-    expect(state.activeCaseName).toBe('Zwarcie maksymalne IEC 60909');
+    expect(useShellStore.getState().activeSpace).toBe('obliczenia');
+    // Projekt bez zmian, zakres NADAL nieustalony — panel nic nie wymyślił.
+    expect(useAppStateStore.getState().activeProjectId).toBe('project:e2e-existing');
+    expect(useAppStateStore.getState().activeCaseId).toBeNull();
   });
 
   it('renderuje panel Schemat i topologia', () => {

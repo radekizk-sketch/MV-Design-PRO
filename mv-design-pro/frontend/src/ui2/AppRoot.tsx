@@ -141,6 +141,7 @@ export function AppRoot() {
   const [zmianaProjektu, setZmianaProjektu] = useState(false);
   const activeSpace = useShellStore((s) => s.activeSpace);
   const advancementMode = useShellStore((s) => s.advancementMode);
+  const panelSchematu = useShellStore((s) => s.panelSchematu);
   // Okno „Archiwum projektu (ZIP)" przestrzeni „Projekt": otwiera je kafel
   // pulpitu ALBO karta huba dokumentacji (jednorazowe żądanie powłoki).
   const zadanieArchiwum = useShellStore((s) => s.zadanieArchiwumProjektu);
@@ -402,11 +403,16 @@ export function AppRoot() {
       }
       contextPanel={
         activeSpace === 'schemat' ? (
-          // Most E1.7c: panel kontekstu OBSZARU (schemat/proces budowy) —
-          // przeniesiona funkcja lewego panelu starej ramy. D1: klucz panelu
-          // WYPROWADZAMY Z TRASY (`mostObszarow`), zamiast trzymać równoległy
-          // stan `activeArea` w store — jedno źródło prawdy nawigacji.
-          <AreaContextPanel obszar={obszarDlaTrasy(route)} />
+          // Most E1.7c: panel kontekstu lewego doku. D1 rozdzielił dwie role,
+          // które dotąd pełnił jeden stan `activeArea`:
+          //  - ADRES wyznacza obszar (projekcja trasy, `mostObszarow`),
+          //  - PRZEŁĄCZNIK powłoki wybiera panel schematu: tor pracy na
+          //    schemacie albo warsztat budowy modelu (przycisk „Konfiguracja"
+          //    w stopce panelu; dotąd gasł przy każdej zmianie adresu, bo
+          //    zapisywał się w tym samym polu co obszar trasy).
+          <AreaContextPanel
+            obszar={panelSchematu === 'model' ? 'MODEL_SIECI' : obszarDlaTrasy(route)}
+          />
         ) : (
           <DrzewoPrzestrzeni space={activeSpace} zaznaczonyId={zaznaczonyId} onZaznacz={zaznacz} />
         )

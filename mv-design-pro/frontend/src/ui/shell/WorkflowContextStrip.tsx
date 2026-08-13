@@ -15,6 +15,7 @@ import { clsx } from 'clsx';
 
 import { useAppStateStore } from '../app-state/store';
 import { przejdzDoPrzestrzeni } from '../../ui2/shell/przejsciaPrzestrzeni';
+import { useShellStore } from '../../ui2/shell/useShellStore';
 import { useNetworkBuildDerived } from '../network-build/networkBuildStore';
 import { formatLengthKm } from '../shared/formatPolishValue';
 import { isTerrainSnSegment } from '../shared/enmVisibility';
@@ -259,7 +260,13 @@ export function WorkflowContextStrip({
             <button
               type="button"
               data-testid="wcs-start-model"
-              onClick={() => przejdzDoPrzestrzeni('model')}
+              onClick={() => {
+                // Parytet zachowania: przycisk otwierał panel BUDOWY MODELU w
+                // lewym doku schematu (dawniej przez `setActiveArea`), a nie
+                // przenosił do innego etapu pracy.
+                useShellStore.getState().setPanelSchematu('model');
+                przejdzDoPrzestrzeni('schemat');
+              }}
               className="ml-2 h-8 shrink-0 rounded-sm border border-sygnal-info bg-sygnal-info-tlo px-3 text-[11px] font-semibold text-sygnal-info-tusz transition-colors hover:brightness-105"
             >
               Przejdź do budowy GPZ
