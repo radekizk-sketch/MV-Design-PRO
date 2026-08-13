@@ -63,6 +63,21 @@ const KATALOG: readonly MVApparatusCatalogType[] = Object.keys(OCZEKIWANY_SYMBOL
   breaking_capacity_ka: 25,
 })) as unknown as readonly MVApparatusCatalogType[];
 
+/**
+ * Katalog o REALNYCH nazwach pozycji (kształt odpowiedzi backendu z katalogu
+ * kanonicznego). Testy układu muszą stać na tekstach tej długości, co żywa
+ * aplikacja — na krótkich atrapach każdy układ wygląda na czysty, także ten
+ * sprzed karty (stała szerokość slotu 96 px).
+ */
+const KATALOG_REALNY: readonly MVApparatusCatalogType[] = [
+  { id: 'ap-WYLACZNIK', name: 'Wyłącznik próżniowy VD4 17,5 kV', device_kind: 'WYLACZNIK', u_n_kv: 17.5, i_n_a: 630, breaking_capacity_ka: 25 },
+  { id: 'ap-REKLOZER', name: 'ABB REC615 17,5 kV 630 A', device_kind: 'REKLOZER', u_n_kv: 17.5, i_n_a: 630, breaking_capacity_ka: 12.5 },
+  { id: 'ap-ROZLACZNIK', name: 'Rozłącznik LBS 17,5 kV', device_kind: 'ROZLACZNIK', u_n_kv: 17.5, i_n_a: 630, breaking_capacity_ka: 20 },
+  { id: 'ap-ROZLACZNIK_BEZPIECZNIKOWY', name: 'Rozłącznik bezpiecznikowy ETI VV 17,5 kV', device_kind: 'ROZLACZNIK_BEZPIECZNIKOWY', u_n_kv: 17.5, i_n_a: 63 },
+  { id: 'ap-ODLACZNIK', name: 'Odłącznik OJS 17,5 kV', device_kind: 'ODLACZNIK', u_n_kv: 17.5, i_n_a: 630 },
+  { id: 'ap-UZIEMNIK', name: 'Uziemnik pola OJS-U 17,5 kV', device_kind: 'UZIEMNIK', u_n_kv: 17.5, i_n_a: 630 },
+] as unknown as readonly MVApparatusCatalogType[];
+
 const TRAFO: readonly TransformerType[] = [
   {
     id: 'tr-630',
@@ -420,18 +435,30 @@ describe('MINI-RMU-CAD — układ: etykiety nie stykają się, rysunek nie wycho
     'TRANSFORMATOROWE',
   ];
 
+  // ILOCZYN CECH układu: liczba pól × obecność wyposażenia. Wyposażenie
+  // POSZERZA slot (odgałęzienie VT, adnotacja przekaźnika), więc sam wariant
+  // „z wyposażeniem" maskowałby układ, w którym szerokość slotu nie wynika z
+  // etykiet — czyli dokładnie stan sprzed karty.
   for (const liczba of [3, 4, 5, 6, 7, 8]) {
-    it(`${liczba} pól: zero kolizji etykiet i zero wyjść poza slot`, () => {
+    for (const zWyposazeniem of [false, true]) {
+    it(`${liczba} pól (${zWyposazeniem ? 'z wyposażeniem' : 'bez wyposażenia'}): zero kolizji etykiet i zero wyjść poza slot`, () => {
+      const wyposazenie = zWyposazeniem
+        ? {
+            ct: { catalog_ref: 'ct-1' },
+            vt: { catalog_ref: 'vt-1' },
+            relay: { catalog_ref: 'rel-1' },
+          }
+        : undefined;
       const snFields = Array.from({ length: liczba }, (_, i) =>
-        pole(dlugieRole[i % dlugieRole.length], `ap-${Object.keys(OCZEKIWANY_SYMBOL)[i % 6]}`, {
-          ct: { catalog_ref: 'ct-1' },
-          vt: { catalog_ref: 'vt-1' },
-          relay: { catalog_ref: 'rel-1' },
-        }),
+        pole(
+          dlugieRole[i % dlugieRole.length],
+          `ap-${Object.keys(OCZEKIWANY_SYMBOL)[i % 6]}`,
+          wyposazenie,
+        ),
       );
       const podglad = zbudujPodglad({
         snFields,
-        aparaty: KATALOG,
+        aparaty: KATALOG_REALNY,
         transformatory: TRAFO,
         transformatorRef: 'tr-630',
         snVoltageKv: 15,
@@ -439,6 +466,7 @@ describe('MINI-RMU-CAD — układ: etykiety nie stykają się, rysunek nie wycho
       expect(kolizjeEtykiet(podglad)).toEqual([]);
       expect(wyjsciaPozaSlot(podglad)).toEqual([]);
     });
+    }
   }
 
   it('bardzo długa nazwa katalogowa POSZERZA slot zamiast wchodzić w sąsiada', () => {
