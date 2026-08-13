@@ -114,6 +114,12 @@ const CATALOG_FIXTURES: Record<string, unknown> = {
     { id: 'ap-2', name: 'Rozłącznik LBS 17,5 kV', device_kind: 'ROZLACZNIK', u_n_kv: 17.5, i_n_a: 630, breaking_capacity_ka: 20 },
     { id: 'ap-3', name: 'Rozłącznik bezpiecznikowy ETI VV 17,5 kV', device_kind: 'ROZLACZNIK_BEZPIECZNIKOWY', u_n_kv: 17.5, i_n_a: 63 },
     { id: 'ap-4', name: 'Odłącznik OJS 17,5 kV', device_kind: 'ODLACZNIK', u_n_kv: 17.5, i_n_a: 630 },
+    // MINI-RMU-CAD: REKLOZER — rodzaj dopuszczony przez backend dla pól liniowych
+    // (`BAY_PRIMARY_APPARATUS_KINDS_BY_ROLE`: IN/OUT/FEEDER), którego scena NIE
+    // serwowała: zawężenie roli je przepuszczało, ale lista była pusta z tego
+    // rodzaju, więc zrzut nie mógł pokazać pola liniowego z reklozerem. Pozycja
+    // odwzorowuje realny wpis katalogu (`mv_switch_catalog.py` SWITCH_RECLOSERS).
+    { id: 'sw-rec-abb-rec615-17kv-630a', name: 'ABB REC615 17,5 kV 630 A', device_kind: 'REKLOZER', u_n_kv: 17.5, i_n_a: 630, breaking_capacity_ka: 12.5 },
   ],
   // Zawężenie rodzaju aparatu per rola pola — lustro `BAY_PRIMARY_APPARATUS_KINDS_BY_ROLE`.
   '/api/catalog/bay-apparatus-kinds': {
