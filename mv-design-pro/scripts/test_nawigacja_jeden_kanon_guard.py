@@ -47,9 +47,7 @@ def zbuduj_front(tmp_path: Path) -> Path:
     (src / "ui" / "navigation").mkdir(parents=True)
     (src / "ui" / "navigation" / "routes.ts").write_text(ROUTES_TS, encoding="utf-8")
     (src / "ui2" / "search").mkdir(parents=True)
-    (src / "ui2" / "search" / "CommandPalette.tsx").write_text(
-        PALETA_TSX, encoding="utf-8"
-    )
+    (src / "ui2" / "search" / "CommandPalette.tsx").write_text(PALETA_TSX, encoding="utf-8")
     (src / "ui2" / "legacy").mkdir(parents=True)
     (src / "ui2" / "legacy" / "mostObszarow.ts").write_text(MOST_TS, encoding="utf-8")
     (src / "ui2" / "AppRoot.tsx").write_text(APPROOT_TSX, encoding="utf-8")
@@ -61,9 +59,7 @@ def przypnij(monkeypatch, src: Path) -> None:
     monkeypatch.setattr(guard, "FRONTEND_SRC", src)
     monkeypatch.setattr(guard, "PLIK_TRAS", src / "ui" / "navigation" / "routes.ts")
     monkeypatch.setattr(guard, "PLIK_MOSTU", src / "ui2" / "legacy" / "mostObszarow.ts")
-    monkeypatch.setattr(
-        guard, "PLIK_PALETY", src / "ui2" / "search" / "CommandPalette.tsx"
-    )
+    monkeypatch.setattr(guard, "PLIK_PALETY", src / "ui2" / "search" / "CommandPalette.tsx")
     monkeypatch.setattr(guard, "PLIK_APPROOT", src / "ui2" / "AppRoot.tsx")
     monkeypatch.setattr(
         guard,
@@ -251,9 +247,7 @@ def test_regula_d_lapie_druga_definicje_palety(tmp_path, monkeypatch) -> None:
 
     naruszenia = guard.regula_d_jedna_paleta()
 
-    assert any(
-        "[paleta-duplikat]" in wpis and "2 definicje" in wpis for wpis in naruszenia
-    )
+    assert any("[paleta-duplikat]" in wpis and "2 definicje" in wpis for wpis in naruszenia)
 
 
 def test_regula_d_lapie_duplikat_zapisany_jako_stala(tmp_path, monkeypatch) -> None:
