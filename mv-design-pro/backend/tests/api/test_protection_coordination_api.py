@@ -303,16 +303,19 @@ def test_export_pdf_is_byte_deterministic_across_repeated_calls(app_client: Any)
 
 
 def test_export_docx_is_byte_deterministic_across_repeated_calls(app_client: Any) -> None:
-    """Odstep >1s MIEDZY wywolaniami jest CELOWY, nie kosmetyczny: DOCX jest ZIP-em,
-    a `zipfile` znakuje kazdy wpis biezacym czasem lokalnym z rozdzielczoscia
-    SEKUNDY — dwa wywolania w tej samej sekundzie „przechodza" nawet bez
-    normalizacji (`docx_determinism.make_docx_bytes_deterministic`), co dawaloby
-    falszywa zielen. Test musi przeciac granice sekundy, zeby cokolwiek dowodzic
+    """Odstep >2s MIEDZY wywolaniami jest CELOWY, nie kosmetyczny: DOCX jest ZIP-em,
+    a `zipfile` znakuje kazdy wpis biezacym czasem lokalnym w formacie DOS, ktory
+    ma rozdzielczosc DWOCH SEKUND (pole sekund koduje wartosc/2) — dwa wywolania
+    oddalone o <=2s moga trafic w TEN SAM znacznik nawet bez normalizacji
+    (`docx_determinism.make_docx_bytes_deterministic`), co dawaloby falszywa
+    zielen. Test musi przeciac granice DWOCH sekund, zeby cokolwiek dowodzic
     (zweryfikowane iniekcja I2 karty ZAB-100-BACKEND: `deterministic=False` w
-    warstwie API przechodzil ten sam test BEZ odstepu czasowego)."""
+    warstwie API przechodzil ten sam test BEZ odstepu czasowego; DOCX-DETERMINIZM-RESZTA
+    2026-08-13 doprecyzowala granulacje — odstep 1.1s dawal ok. 30% falszywych
+    zielonych w pomiarze empirycznym z powodu 2-sekundowej ziarnistosci DOS)."""
     run_id = _run(app_client).json()["run_id"]
     first = app_client.get(f"/api/protection-coordination/{run_id}/export/docx")
-    time.sleep(1.1)
+    time.sleep(2.1)
     second = app_client.get(f"/api/protection-coordination/{run_id}/export/docx")
     assert first.status_code == 200
     assert second.status_code == 200

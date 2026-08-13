@@ -7,9 +7,13 @@ polskie etykiety, uczciwy stan zerowy, podsumowanie najgorszego przypadku.
 
 from __future__ import annotations
 
+import hashlib
+import time
+
 from analysis.reporting.arc_flash_report import (
     ArcFlashReportContext,
     render_arc_flash_report_all_formats,
+    render_arc_flash_report_docx,
     render_arc_flash_report_json,
     render_arc_flash_report_latex,
     render_arc_flash_report_text,
@@ -115,3 +119,28 @@ def test_determinism_same_input_same_output():
     assert render_arc_flash_report_json(ctx1) == render_arc_flash_report_json(ctx2)
     assert render_arc_flash_report_text(ctx1) == render_arc_flash_report_text(ctx2)
     assert render_arc_flash_report_latex(ctx1) == render_arc_flash_report_latex(ctx2)
+
+
+def test_docx_export_is_byte_deterministic_across_repeated_calls():
+    """DOCX-DETERMINIZM-RESZTA: 2x render z odstepem >2s -> identyczne bajty (SHA256).
+
+    Odstep >2s MIEDZY wywolaniami jest CELOWY, nie kosmetyczny: DOCX jest ZIP-em,
+    a `zipfile` znakuje kazdy wpis biezacym czasem lokalnym w formacie DOS, ktory
+    ma rozdzielczosc DWOCH SEKUND (pole sekund koduje wartosc/2) — dwa wywolania
+    oddalone o <=2s moga trafic w TEN SAM znacznik nawet bez normalizacji
+    (`docx_determinism.make_docx_bytes_deterministic`), co dawaloby falszywa
+    zielen (lekcja karty ZAB-100-BACKEND, iniekcja I2; DOCX-DETERMINIZM-RESZTA
+    doprecyzowala granulacje na 2s empirycznym pomiarem — 1.1s dawal falszywa
+    zielen w ok. 30% powtorzen).
+    """
+    ctx = _make_ctx([_result("bus-a", 7.0, 850.0, "2")])
+    first = render_arc_flash_report_docx(ctx)
+    time.sleep(2.1)
+    second = render_arc_flash_report_docx(ctx)
+
+    assert first[:2] == b"PK", "DOCX powinien byc plikiem ZIP"
+    hash_1 = hashlib.sha256(first).hexdigest()
+    hash_2 = hashlib.sha256(second).hexdigest()
+    assert hash_1 == hash_2, (
+        f"DOCX export arc_flash_report nie deterministyczny\n" f"Hash 1: {hash_1}\nHash 2: {hash_2}"
+    )

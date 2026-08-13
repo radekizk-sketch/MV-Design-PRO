@@ -449,10 +449,18 @@ def export_power_flow_comparison_docx(
     comparison_id: str,
     uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> Response:
-    """P20d: Export power flow comparison to DOCX file."""
+    """P20d: Export power flow comparison to DOCX file.
+
+    Deterministyczny: ten sam zapisany wynik porownania eksportowany wielokrotnie
+    daje identyczne bajty (`docx_determinism.make_docx_bytes_deterministic` —
+    sam python-docx NIE zeruje znacznikow czasu wpisow ZIP ani docProps/core.xml,
+    dwa kolejne `Document().save()` roznia sie bajtowo, gdy wywolania przetna
+    granice sekundy).
+    """
     import io
 
     from fastapi.responses import Response
+    from network_model.reporting.docx_determinism import make_docx_bytes_deterministic
 
     try:
         from docx import Document
@@ -562,7 +570,7 @@ def export_power_flow_comparison_docx(
     buffer.seek(0)
 
     return Response(
-        content=buffer.getvalue(),
+        content=make_docx_bytes_deterministic(buffer.getvalue()),
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         headers={
             "Content-Disposition": f'attachment; filename="power_flow_comparison_{comparison_id}.docx"'
