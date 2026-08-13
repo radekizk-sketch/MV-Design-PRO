@@ -306,8 +306,13 @@ describe('Znacznik świeżości wyników w pasku aktywnego przypadku (K4/D1 + V1
     const chip = screen.getByTestId('mvd-casebar-results');
     expect(chip.tagName).toBe('SPAN');
 
+    // Sedno: znacznik AKTUALNY jest statyczny — klik NIE nawiguje. Dawniej test
+    // zapisywał to jako „przestrzeń == 'projekt'", czyli utrwalał wartość
+    // domyślną powłoki; po kanonie D1 trasa `#sld` ląduje w „Schemacie", więc
+    // literał mówiłby o czymś innym niż intencja. Porównujemy PRZED/PO.
+    const przestrzenPrzedKlikiem = useShellStore.getState().activeSpace;
     fireEvent.click(chip);
-    expect(useShellStore.getState().activeSpace).toBe('projekt');
+    expect(useShellStore.getState().activeSpace).toBe(przestrzenPrzedKlikiem);
   });
 
   it('PODGLĄD PRZEBIEGU w store nie oślepia chipu: werdykt trwa przy rewizji BIEŻĄCEGO modelu (S9-11 / W-5)', async () => {
