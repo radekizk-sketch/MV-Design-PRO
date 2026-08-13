@@ -47,6 +47,7 @@ from .domain_operations import (
     _materialize_catalog_payload,
     _require_catalog_ref,
     _response,
+    _rodzaj_aparatu_sn_z_katalogu,
     _station_has_transformer,
     blad_pomiaru_w_torze_tranzytu,
     rozstrzygnij_pomiar_pola,
@@ -302,9 +303,20 @@ def _same_nominal_voltage(left_kv: float, right_kv: float, tolerance_kv: float =
 
 def _sn_bay_branch_type(apparatus_kind: object) -> str:
     normalized = apparatus_kind.strip().upper() if isinstance(apparatus_kind, str) else ""
-    if normalized in {"DISCONNECTOR", "DS", "ODLACZNIK", "ODŁĄCZNIK"}:
+    if normalized in {"DISCONNECTOR", "DS", "ODLACZNIK", "ODŁĄCZNIK", "UZIEMNIK"}:
         return "disconnector"
-    if normalized in {"LOAD_SWITCH", "LS", "ROZLACZNIK", "ROZŁĄCZNIK"}:
+    if normalized in {
+        "LOAD_SWITCH",
+        "LS",
+        "ROZLACZNIK",
+        "ROZŁĄCZNIK",
+        # KOMPLETNOSC-POLA-TR: rozłącznik bezpiecznikowy — typowy aparat pola
+        # transformatorowego RMU. Bez tego wpisu wskazanie takiej pozycji
+        # katalogu lądowało w modelu jako WYŁĄCZNIK (gałąź `breaker`), czyli
+        # jako inny wyrób niż wybrany.
+        "ROZLACZNIK_BEZPIECZNIKOWY",
+        "FUSE_SWITCH",
+    }:
         return "switch"
     if normalized in {"MEASUREMENT", "VT", "POMIAR"}:
         return "switch"
@@ -1961,7 +1973,14 @@ def add_sn_bay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
         if blad_katalogu is not None:
             return blad_katalogu
         apparatus_params = zmaterializowane or {}
-    branch_type = _sn_bay_branch_type(apparatus_kind)
+    # KOMPLETNOSC-POLA-TR: rodzaj aparatu z KATALOGU wygrywa z deklaracją payloadu.
+    # `apparatus_kind` to intencja wołającego, a `device_kind` wskazanej pozycji to
+    # FAKT o wyrobie — gdy oba są obecne i różne (np. intencja BREAKER przy wskazanym
+    # rozłączniku bezpiecznikowym), model musi opisywać wyrób, który realnie stoi w
+    # polu (reguła katalog-first). Brak pozycji katalogowej ⇒ decyduje deklaracja,
+    # jak dotąd.
+    rodzaj_z_katalogu = _rodzaj_aparatu_sn_z_katalogu(catalog_ref) if catalog_ref else None
+    branch_type = _sn_bay_branch_type(rodzaj_z_katalogu or apparatus_kind)
 
     # V12K-058 (G-POLE-R): powiązania producenckie pola (szablon/rodzina/producent/
     # zabezpieczenie) — trafiają na field_spec przez _build_field_spec (parytet ze stacją/

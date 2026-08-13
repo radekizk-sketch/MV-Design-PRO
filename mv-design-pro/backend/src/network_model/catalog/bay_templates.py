@@ -175,6 +175,50 @@ def protection_codes_for_bay_role(bay_role: str) -> list[str]:
     return list(BAY_PROTECTION_CODES_BY_ROLE.get(bay_role, []))
 
 
+# Rodzaje APARATU GŁÓWNEGO (łącznika toru głównego) dopuszczalne dla roli pola SN.
+# Wartości = `device_kind` pozycji katalogu APARAT_SN (`catalog/repository.py`
+# `kind_map`), więc lista jest FILTREM po realnym katalogu, a nie osobnym słownikiem
+# wariantów.
+#
+# DLACZEGO TO ISTNIEJE (karta KOMPLETNOSC-POLA-TR §0 pkt 1). Kreator stacji pokazywał
+# dla KAŻDEGO pola tę samą, niefiltrowaną listę 48 pozycji katalogu — łącznie z
+# uziemnikiem i reklozerem jako „aparatem pola transformatorowego". To nie jest wybór
+# wariantu, tylko brak wyboru: projektant nie widział, że pole transformatorowe realnie
+# ma DWA rozwiązania (rozłącznik bezpiecznikowy dla stacji rozdzielczych małej mocy,
+# wyłącznik dla stacji abonenckich/większych jednostek), bo tonęły w pozycjach, które w
+# tym polu nie występują.
+#
+# ZASTOSOWANE ROZWIĄZANIA (praktyka krajowa PTPiREE/IRiESD, rozdzielnice RMU i pola
+# wyłącznikowe):
+#   * pole transformatorowe — rozłącznik bezpiecznikowy (RMU do ~630 kVA) albo
+#     wyłącznik (pole wyłącznikowe); rozłącznik bez bezpieczników nie zabezpiecza
+#     transformatora, więc NIE jest tu wariantem,
+#   * pola liniowe (dopływ/odpływ/odgałęzienie) — wyłącznik, rozłącznik, reklozer
+#     (pole liniowe ciągu z automatyką SPZ),
+#   * sprzęgło — wyłącznik albo rozłącznik,
+#   * pole pomiarowe — tor przekładników napięciowych bez łącznika głównego
+#     (odłącznik jako aparat separujący),
+#   * pole źródłowe OZE — wyłącznik albo rozłącznik (interfejs NC RfG wymaga
+#     łącznika zdolnego do wyłączania).
+#
+# Rola spoza tablicy = brak zawężenia (cały katalog) — nie zgadujemy dla ról, których
+# ta tablica nie opisuje.
+BAY_PRIMARY_APPARATUS_KINDS_BY_ROLE: dict[str, list[str]] = {
+    "IN": ["WYLACZNIK", "ROZLACZNIK", "REKLOZER"],
+    "OUT": ["WYLACZNIK", "ROZLACZNIK", "REKLOZER"],
+    "FEEDER": ["WYLACZNIK", "ROZLACZNIK", "REKLOZER"],
+    "TR": ["ROZLACZNIK_BEZPIECZNIKOWY", "WYLACZNIK"],
+    "COUPLER": ["WYLACZNIK", "ROZLACZNIK"],
+    "MEASUREMENT": ["ODLACZNIK"],
+    "OZE": ["WYLACZNIK", "ROZLACZNIK"],
+}
+
+
+def primary_apparatus_kinds_for_bay_role(bay_role: str) -> list[str]:
+    """Dopuszczalne rodzaje aparatu głównego dla roli pola (pusta = brak zawężenia)."""
+    return list(BAY_PRIMARY_APPARATUS_KINDS_BY_ROLE.get(bay_role, []))
+
+
 BAY_TEMPLATE_TRANSFORMER = BayTemplate(
     template_id="bay_template_transformer",
     name="Pole transformatorowe",

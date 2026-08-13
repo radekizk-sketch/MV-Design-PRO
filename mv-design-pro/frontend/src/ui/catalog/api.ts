@@ -251,6 +251,17 @@ export async function fetchBayProtectionCodes(): Promise<Record<string, string[]
   return fetchCatalogJson<Record<string, string[]>>('/api/catalog/bay-protection-codes');
 }
 
+/**
+ * Rodzaje aparatu GŁÓWNEGO dopuszczalne dla ról pól SN (`device_kind` pozycji
+ * katalogu APARAT_SN) — readout z backendu, bez kopiowania tablicy do frontendu.
+ * Kreator zawęża nim picker aparatu do rozwiązań, które w danym polu realnie
+ * występują (karta KOMPLETNOSC-POLA-TR: pole transformatorowe = rozłącznik
+ * bezpiecznikowy albo wyłącznik, nie 48 pozycji całego katalogu).
+ */
+export async function fetchBayApparatusKinds(): Promise<Record<string, string[]>> {
+  return fetchCatalogJson<Record<string, string[]>>('/api/catalog/bay-apparatus-kinds');
+}
+
 export async function fetchCtTypes(): Promise<CTCatalogType[]> {
   return fetchCatalogJson<CTCatalogType[]>('/api/catalog/ct-types');
 }

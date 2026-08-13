@@ -4299,6 +4299,60 @@ def _payload_field_apparatus_catalog_ref(payload: dict[str, Any]) -> str | None:
     return None
 
 
+#: Rodzaj aparatu z katalogu APARAT_SN (`device_kind`) → typ gałęzi łącznikowej ENM
+#: (`enm.models.SwitchBranch.type`) + nazwa elementu w modelu.
+#:
+#: DEFEKT, KTÓRY TO USUWA (karta KOMPLETNOSC-POLA-TR §0 pkt 1, zakaz fabrykacji).
+#: Obie operacje stacyjne zapisywały aparat pola JAKO WYŁĄCZNIK — `type: "breaker"`,
+#: nazwa „Wyłącznik pola SN n" — NIEZALEŻNIE od tego, jaką pozycję katalogu wskazał
+#: projektant. Stacja 630 kVA z rozłącznikiem bezpiecznikowym (typowe pole
+#: transformatorowe RMU) lądowała w modelu jako stacja z wyłącznikiem: nazwa w drzewie
+#: projektu, typ gałęzi i wszystko, co z typu wynika, mówiły coś innego niż wybór
+#: projektanta. Kreator, który oferuje wariant „rozłącznik bezpiecznikowy albo
+#: wyłącznik", byłby wtedy kontrolką bez pokrycia (phantom) — dlatego wariant i jego
+#: skutek w modelu wchodzą JEDNĄ kartą.
+#:
+#: Odwzorowanie jest jawne i zamknięte: rodzaj spoza tablicy zostaje „breaker"
+#: (zachowanie dotychczasowe) — nie zgadujemy typu dla pozycji, której katalog nie
+#: klasyfikuje.
+_DEVICE_KIND_NA_TYP_GALEZI: dict[str, tuple[str, str]] = {
+    "WYLACZNIK": ("breaker", "Wyłącznik"),
+    "ROZLACZNIK": ("switch", "Rozłącznik"),
+    "ROZLACZNIK_BEZPIECZNIKOWY": ("switch", "Rozłącznik bezpiecznikowy"),
+    "ODLACZNIK": ("disconnector", "Odłącznik"),
+    "REKLOZER": ("breaker", "Reklozer"),
+    "UZIEMNIK": ("disconnector", "Uziemnik"),
+}
+
+
+def _rodzaj_aparatu_sn_z_katalogu(apparatus_catalog_ref: str) -> str | None:
+    """`device_kind` pozycji katalogu APARAT_SN (``None``, gdy katalog jej nie zna)."""
+    from network_model.catalog.repository import get_default_mv_catalog
+
+    pozycja = get_default_mv_catalog().mv_apparatus_types.get(apparatus_catalog_ref)
+    kind = getattr(pozycja, "device_kind", None)
+    return kind.strip().upper() if isinstance(kind, str) and kind.strip() else None
+
+
+def _typ_i_nazwa_aparatu_pola(
+    apparatus_catalog_ref: str,
+    *,
+    ordinal: int,
+    bay_role: str,
+) -> tuple[str, str]:
+    """Typ gałęzi ENM i nazwa aparatu pola — Z RODZAJU wskazanej pozycji katalogu.
+
+    Sprzęgło zachowuje typ `bus_coupler` niezależnie od rodzaju aparatu: to jest
+    rola ELEMENTU w topologii rozdzielni (łącznik sekcji), a nie rodzaj wyrobu —
+    dwie różne osie, których nie wolno sklejać.
+    """
+    kind = _rodzaj_aparatu_sn_z_katalogu(apparatus_catalog_ref)
+    typ, nazwa = _DEVICE_KIND_NA_TYP_GALEZI.get(kind or "", ("breaker", "Aparat"))
+    if bay_role == "COUPLER":
+        typ = "bus_coupler"
+    return typ, f"{nazwa} pola SN {ordinal}"
+
+
 def _field_apparatus_missing_error(*, index: int, field_role: str, code: str) -> dict[str, Any]:
     """Jawny błąd walidacji: pole SN bez wskazanego aparatu (B-12)."""
     rola = field_role.strip() or "bez roli"
@@ -5861,12 +5915,15 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
         new_enm = result.enm
         created.append(terminal_bus_ref)
 
+        typ_aparatu, nazwa_aparatu = _typ_i_nazwa_aparatu_pola(
+            breaker_catalog_ref, ordinal=idx + 1, bay_role=bay_role
+        )
         result = create_branch(
             new_enm,
             {
                 "ref_id": breaker_ref,
-                "name": f"Wyłącznik pola SN {idx + 1}",
-                "type": "breaker",
+                "name": nazwa_aparatu,
+                "type": typ_aparatu,
                 "from_bus_ref": sn_bus_id,
                 "to_bus_ref": terminal_bus_ref,
                 "status": "closed",
@@ -8791,12 +8848,14 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
                 [],
             )
 
-        apparatus_kind = "bus_coupler" if bay_role == "COUPLER" else "breaker"
+        apparatus_kind, apparatus_name = _typ_i_nazwa_aparatu_pola(
+            apparatus_catalog_ref, ordinal=ordinal, bay_role=bay_role
+        )
         apparatus_result = create_branch(
             terminal_result.enm,
             {
                 "ref_id": apparatus_ref,
-                "name": f"Aparat pola SN {ordinal}",
+                "name": apparatus_name,
                 "type": apparatus_kind,
                 "from_bus_ref": endpoint_bus_ref,
                 "to_bus_ref": terminal_ref,

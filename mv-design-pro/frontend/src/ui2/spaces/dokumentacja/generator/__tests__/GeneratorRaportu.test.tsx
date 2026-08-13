@@ -197,3 +197,128 @@ describe('model generatora — czyste selektory', () => {
     );
   });
 });
+
+/**
+ * KOMPLETNOSC-POLA-TR §0 pkt 2 — brama dokumentacji wykonawczej w generatorze.
+ *
+ * Ekran nie ocenia modelu: pyta backend o werdykt (ten sam, którym backend
+ * odmawia eksportu) i POKAZUJE go przed kliknięciem. Test jedzie realną ścieżką
+ * użytkownika i sprawdza SKUTEK (czy żądanie eksportu poszło), nie sam napis.
+ */
+describe('GeneratorRaportu — brama dokumentacji wykonawczej', () => {
+  /** Fetch z werdyktem bramy: model z luką pola transformatorowego SN. */
+  function przechwycFetchZBrama(gotowy: boolean): string[] {
+    const urls: string[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        urls.push(url);
+        if (url.includes('/gotowosc-dokumentacji-wykonawczej')) {
+          return new Response(
+            JSON.stringify({
+              gotowy,
+              blokady: gotowy
+                ? []
+                : [
+                    {
+                      code: 'transformer.bay_missing',
+                      message_pl:
+                        "Transformator 'tr-1' jest połączony elektrycznie z szyną SN, "
+                        + 'lecz nie posiada kompletnej konfiguracji pola transformatorowego '
+                        + 'po stronie SN.',
+                      element_refs: ['tr-1', 'stn-1'],
+                    },
+                  ],
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          );
+        }
+        if (url.includes('/results/index')) {
+          return new Response(JSON.stringify({ tables: [] }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
+        return new Response('x', { status: 200 });
+      }),
+    );
+    return urls;
+  }
+
+  beforeEach(() => {
+    useAppStateStore.setState({ activeRunId: null });
+    useExecutionRunsStore.setState({ runs: [] });
+    useShellStore.setState({ activeSpace: 'dokumentacja' });
+    Object.defineProperty(window.URL, 'createObjectURL', { value: () => 'blob:x', writable: true });
+    Object.defineProperty(window.URL, 'revokeObjectURL', { value: () => undefined, writable: true });
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it('model z luką pola TR: profil „Wykonawczy" → powód widoczny, eksport niedostępny', async () => {
+    const user = userEvent.setup();
+    const urls = przechwycFetchZBrama(false);
+    useExecutionRunsStore.setState({ runs: [przebieg('run-pw', 'PF', '2026-08-01T10:00:00Z')] });
+
+    render(<GeneratorRaportu />);
+
+    // Domyślny profil (OSD) NIE jest bramkowany — nic nie zasłania ekranu.
+    await waitFor(() =>
+      expect(urls.some((u) => u.includes('/gotowosc-dokumentacji-wykonawczej'))).toBe(true),
+    );
+    expect(screen.queryByTestId('mvd-generator-brama-pw')).toBeNull();
+    expect(screen.getByTestId('mvd-generator-raport-pdf')).not.toBeDisabled();
+
+    await user.selectOptions(screen.getByTestId('mvd-generator-profil'), 'wykonawczy');
+
+    const brama = await screen.findByTestId('mvd-generator-brama-pw');
+    expect(brama.textContent).toMatch(/pola transformatorowego/);
+    // Przycisk nieaktywny — i realnie nie wysyła żądania (martwy klik byłby
+    // gorszy niż brak przycisku).
+    const przycisk = screen.getByTestId('mvd-generator-raport-pdf');
+    expect(przycisk).toBeDisabled();
+    await user.click(przycisk);
+    expect(urls.some((u) => u.includes('/export/report/'))).toBe(false);
+  });
+
+  it('model kompletny: profil „Wykonawczy" przechodzi bez przeszkód', async () => {
+    const user = userEvent.setup();
+    const urls = przechwycFetchZBrama(true);
+    useExecutionRunsStore.setState({ runs: [przebieg('run-ok', 'PF', '2026-08-01T10:00:00Z')] });
+
+    render(<GeneratorRaportu />);
+    await waitFor(() =>
+      expect(urls.some((u) => u.includes('/gotowosc-dokumentacji-wykonawczej'))).toBe(true),
+    );
+
+    await user.selectOptions(screen.getByTestId('mvd-generator-profil'), 'wykonawczy');
+    expect(screen.queryByTestId('mvd-generator-brama-pw')).toBeNull();
+
+    await user.click(screen.getByTestId('mvd-generator-raport-pdf'));
+    await waitFor(() => {
+      const eksport = urls.find((u) => u.includes('/export/report/pdf'));
+      expect(eksport).toBeTruthy();
+      expect(eksport).toContain('profile=wykonawczy');
+    });
+  });
+
+  it('pakiet dowodowy NIE jest bramkowany — brama dotyczy dokumentacji wykonawczej', async () => {
+    const user = userEvent.setup();
+    const urls = przechwycFetchZBrama(false);
+    useExecutionRunsStore.setState({ runs: [przebieg('run-pw2', 'PF', '2026-08-01T10:00:00Z')] });
+
+    render(<GeneratorRaportu />);
+    await user.selectOptions(screen.getByTestId('mvd-generator-profil'), 'wykonawczy');
+    await screen.findByTestId('mvd-generator-brama-pw');
+
+    await user.click(screen.getByTestId('mvd-generator-dowod-json'));
+    await waitFor(() => {
+      expect(urls.some((u) => u.includes('/export/proof/json'))).toBe(true);
+    });
+  });
+});

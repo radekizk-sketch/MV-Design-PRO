@@ -576,11 +576,6 @@ export interface InsertStationOnSegmentSNPayload {
   sn_fields: SNFieldSpec[];
   transformer: TransformerSpec;
   nn_block: NNBlockSpec;
-  options: {
-    create_transformer_field: boolean;
-    create_default_fields: boolean;
-    create_nn_bus: boolean;
-  };
 }
 
 export interface StartBranchSegmentSNPayload {

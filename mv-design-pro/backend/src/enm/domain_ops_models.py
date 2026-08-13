@@ -659,22 +659,6 @@ class SourceNN(_FrozenBase):
     in_service: bool = True
 
 
-class StationOptions(_FrozenBase):
-    """Opcje tworzenia stacji SN/nN.
-
-    Flagi sterujące automatycznym tworzeniem elementów stacji.
-    """
-
-    create_transformer_field: bool = True
-    """Czy utworzyć pole transformatorowe."""
-
-    create_default_fields: bool = True
-    """Czy utworzyć domyślne pola SN."""
-
-    create_nn_bus: bool = True
-    """Czy utworzyć szynę nN."""
-
-
 # ===========================================================================
 # 5. Operation-specific payloads — payloady operacji domenowych
 # ===========================================================================
@@ -822,7 +806,18 @@ class InsertStationOnSegmentSNPayload(_FrozenBase):
     """Specyfikacja tworzonej stacji."""
 
     sn_fields: list[SNFieldSpec]
-    """Lista pól SN rozdzielnicy."""
+    """Lista pól SN rozdzielnicy.
+
+    KOMPLETNOSC-POLA-TR: to JEDYNE miejsce, w którym rozstrzyga się obecność pola
+    transformatorowego. Do tej karty payload niósł dodatkowo blok `options` z
+    flagami `create_transformer_field` / `create_default_fields` / `create_nn_bus`
+    — operacja NIE CZYTAŁA żadnej z nich (grep: zero odczytów poza definicją), więc
+    wołający mógł wysłać `create_transformer_field: false` i dostać dokładnie ten sam
+    model. Kontrolka bez pokrycia w backendzie jest zakazana (phantom rule), a
+    „naprawa przez uhonorowanie" byłaby gorsza: automatyczne dołożenie pola TR
+    wymagałoby DOBRANIA jego aparatu przez operację, czego zakazuje B-12 (aparat pola
+    wskazuje projektant, operacja nie fabrykuje decyzji projektowej). Flagi usunięte
+    — decyzja o polu transformatorowym jest w tej liście, jawnie."""
 
     field_apparatus_catalog_ref: str | None = None
     """Wspólny aparat pól SN z katalogu APARAT_SN (B-12) — używany, gdy pole nie
@@ -833,9 +828,6 @@ class InsertStationOnSegmentSNPayload(_FrozenBase):
 
     nn_block: NNBlockSpec
     """Specyfikacja bloku nN."""
-
-    options: StationOptions
-    """Opcje tworzenia stacji."""
 
     trunk_ref: TrunkRef | None = None
     """Opcjonalna referencja do magistrali."""

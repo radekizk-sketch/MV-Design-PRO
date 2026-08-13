@@ -186,7 +186,36 @@ vi.mock('../../../../ui/catalog/api', () => ({
         u_n_kv: 24,
         i_n_a: 1250,
       },
+      // KOMPLETNOSC-POLA-TR: rozłącznik bezpiecznikowy — realne rozwiązanie pola
+      // transformatorowego RMU (i JEDYNY sposób, by sprawdzić, że picker zawęża
+      // listę rolą, a nie pokazuje wszystkiego wszędzie).
+      {
+        id: 'sw-fuse-eti-vv-17kv-63a',
+        name: 'ETI VV 17,5 kV 63 A',
+        device_kind: 'ROZLACZNIK_BEZPIECZNIKOWY',
+        u_n_kv: 17.5,
+        i_n_a: 63,
+      },
+      {
+        id: 'sw-ds-abb-ojs-17kv-630a',
+        name: 'ABB OJS 17,5 kV 630 A',
+        device_kind: 'ODLACZNIK',
+        u_n_kv: 17.5,
+        i_n_a: 630,
+      },
     ]),
+  // KOMPLETNOSC-POLA-TR: rodzaje aparatu głównego dopuszczalne per rola pola
+  // (readout `/api/catalog/bay-apparatus-kinds` — jedno źródło prawdy backendu).
+  fetchBayApparatusKinds: () =>
+    Promise.resolve({
+      IN: ['WYLACZNIK', 'ROZLACZNIK', 'REKLOZER'],
+      OUT: ['WYLACZNIK', 'ROZLACZNIK', 'REKLOZER'],
+      FEEDER: ['WYLACZNIK', 'ROZLACZNIK', 'REKLOZER'],
+      TR: ['ROZLACZNIK_BEZPIECZNIKOWY', 'WYLACZNIK'],
+      COUPLER: ['WYLACZNIK', 'ROZLACZNIK'],
+      MEASUREMENT: ['ODLACZNIK'],
+      OZE: ['WYLACZNIK', 'ROZLACZNIK'],
+    }),
 }));
 
 // B-8 (karta KD-3): klient szablonów UŻYTKOWNIKA — osobny zbiór od wbudowanych.
@@ -855,5 +884,145 @@ describe('B-8 — zapisz konfigurację jako szablon użytkownika', () => {
     await przejdzDoKroku('Podgląd skutków');
     const przycisk = await screen.findByTestId('mvd-kreator-stacja-szablon-zapisz');
     expect(przycisk).toBeDisabled();
+  });
+});
+
+/**
+ * KOMPLETNOSC-POLA-TR §0 pkt 1/4 — pole transformatorowe w kreatorze stacji.
+ *
+ * WSZYSTKO PRZEZ REALNĄ ŚCIEŻKĘ UŻYTKOWNIKA: nawigacja klikiem w nagłówek kroku,
+ * wybory `selectOptions`, usuwanie i przywracanie pola klikiem w przycisk.
+ * Żadnego `dispatchEvent` ani wymuszania stanu store — test, który omija
+ * interakcję, nie wykryłby regresji tej właśnie interakcji (zasada Zero-Debt
+ * pkt 5: test maskujący defekt produktu = dwa defekty).
+ */
+describe('KreatorStacjiSnNn — pole transformatorowe (KOMPLETNOSC-POLA-TR)', () => {
+  beforeEach(() => {
+    appState.activeCaseId = 'case-1';
+    context = { segment_id: 'seg-1', position_on_segment: 0.5 };
+    snapshotState.error = null;
+    closeFormMock.mockReset();
+    executeDomainOperationMock.mockReset();
+    navigateToSldMock.mockReset();
+    selectElementMock.mockReset();
+    centerSldOnElementMock.mockReset();
+  });
+
+  afterEach(() => cleanup());
+
+  it('DOMYŚLNIE tworzy pole transformatorowe — bez ani jednego kliknięcia w listę pól', async () => {
+    executeDomainOperationMock.mockResolvedValue({ error: null });
+    render(<KreatorStacjiSnNn />);
+
+    await przejdzDoTransformatora();
+    await wybierzTyp();
+    await przejdzIWybierzRozdzielnice();
+    // Krok pól odwiedzony, ale NIC w nim nie zmieniamy — sprawdzamy DOMYŚLNĄ
+    // zawartość listy, nie skutek edycji.
+    expect(screen.queryByTestId('mvd-kreator-stacja-brak-pola-tr')).toBeNull();
+
+    await userEvent.click(screen.getByTestId('mvd-kreator-stacja-zapisz'));
+
+    await waitFor(() => expect(executeDomainOperationMock).toHaveBeenCalled());
+    const payload = executeDomainOperationMock.mock.calls[0]?.[2] as Record<string, unknown>;
+    const role = (payload.sn_fields as Array<{ field_role: string }>).map((f) => f.field_role);
+    expect(role).toContain('TRANSFORMATOROWE');
+  });
+
+  it('pole transformatorowe dostaje aparat DOPUSZCZALNY dla swojej roli (zawężenie z backendu)', async () => {
+    executeDomainOperationMock.mockResolvedValue({ error: null });
+    render(<KreatorStacjiSnNn />);
+
+    await przejdzDoTransformatora();
+    await wybierzTyp();
+    await przejdzIWybierzRozdzielnice();
+
+    // Pole 4 to pole transformatorowe (kolejność ról stacji odgałęźnej).
+    const aparatTr = screen.getByTestId('mvd-kreator-stacja-aparat-4') as HTMLSelectElement;
+    const opcjeTr = [...aparatTr.querySelectorAll('option')].map((o) => o.value).filter(Boolean);
+    // TR: rozłącznik bezpiecznikowy albo wyłącznik — odłącznik NIE jest aparatem
+    // pola transformatorowego i nie może się w liście pojawić.
+    expect(opcjeTr).toContain('sw-fuse-eti-vv-17kv-63a');
+    expect(opcjeTr).toContain('sw-cb-abb-vd4-17kv-630a');
+    expect(opcjeTr).not.toContain('sw-ds-abb-ojs-17kv-630a');
+
+    // Pole liniowe (1) ma INNY zbiór: bez rozłącznika bezpiecznikowego.
+    const aparatLinia = screen.getByTestId('mvd-kreator-stacja-aparat-1') as HTMLSelectElement;
+    const opcjeLinia = [...aparatLinia.querySelectorAll('option')].map((o) => o.value).filter(Boolean);
+    expect(opcjeLinia).toContain('sw-cb-abb-vd4-17kv-630a');
+    expect(opcjeLinia).not.toContain('sw-fuse-eti-vv-17kv-63a');
+  });
+
+  it('rozłącznik bezpiecznikowy wybrany natywnie dla pola TR jedzie do operacji', async () => {
+    executeDomainOperationMock.mockResolvedValue({ error: null });
+    render(<KreatorStacjiSnNn />);
+
+    await przejdzDoTransformatora();
+    await wybierzTyp();
+    await przejdzIWybierzRozdzielnice();
+    await userEvent.selectOptions(
+      screen.getByTestId('mvd-kreator-stacja-aparat-4'),
+      'sw-fuse-eti-vv-17kv-63a',
+    );
+    await userEvent.click(screen.getByTestId('mvd-kreator-stacja-zapisz'));
+
+    await waitFor(() => expect(executeDomainOperationMock).toHaveBeenCalled());
+    const payload = executeDomainOperationMock.mock.calls[0]?.[2] as Record<string, unknown>;
+    const polaTr = (payload.sn_fields as Array<{ field_role: string; apparatus_catalog_ref: string }>)
+      .filter((f) => f.field_role === 'TRANSFORMATOROWE');
+    expect(polaTr).toHaveLength(1);
+    expect(polaTr[0].apparatus_catalog_ref).toBe('sw-fuse-eti-vv-17kv-63a');
+  });
+
+  it('rezygnacja z pola TR: usunięcie pola → jawny komunikat skutków + operacja BEZ roli TR', async () => {
+    executeDomainOperationMock.mockResolvedValue({ error: null });
+    render(<KreatorStacjiSnNn />);
+
+    await przejdzDoTransformatora();
+    await wybierzTyp();
+    await przejdzIWybierzRozdzielnice();
+
+    // Usunięcie pola transformatorowego natywnym klikiem.
+    await userEvent.click(screen.getByTestId('mvd-kreator-stacja-pole-usun-4'));
+
+    // Kreator NAZYWA skutek rezygnacji (marker na schemacie, ostrzeżenie gotowości,
+    // zamknięta droga do dokumentacji wykonawczej) — zamiast milczeć.
+    const panel = await screen.findByTestId('mvd-kreator-stacja-brak-pola-tr');
+    expect(panel.textContent).toMatch(/znacznik braku pola/);
+    expect(panel.textContent).toMatch(/dokumentacji wykonawczej/);
+
+    // Zapis JEST możliwy — to legalny stan roboczy, nie błąd.
+    await userEvent.click(screen.getByTestId('mvd-kreator-stacja-zapisz'));
+    await waitFor(() => expect(executeDomainOperationMock).toHaveBeenCalled());
+    const payload = executeDomainOperationMock.mock.calls[0]?.[2] as Record<string, unknown>;
+    const role = (payload.sn_fields as Array<{ field_role: string }>).map((f) => f.field_role);
+    expect(role).not.toContain('TRANSFORMATOROWE');
+  });
+
+  it('przywrócenie pola TR jednym kliknięciem — komunikat znika, rola wraca do operacji', async () => {
+    executeDomainOperationMock.mockResolvedValue({ error: null });
+    render(<KreatorStacjiSnNn />);
+
+    await przejdzDoTransformatora();
+    await wybierzTyp();
+    await przejdzIWybierzRozdzielnice();
+    await userEvent.click(screen.getByTestId('mvd-kreator-stacja-pole-usun-4'));
+    await screen.findByTestId('mvd-kreator-stacja-brak-pola-tr');
+
+    await userEvent.click(screen.getByTestId('mvd-kreator-stacja-przywroc-pole-tr'));
+    await waitFor(() => {
+      expect(screen.queryByTestId('mvd-kreator-stacja-brak-pola-tr')).toBeNull();
+    });
+
+    await userEvent.click(screen.getByTestId('mvd-kreator-stacja-zapisz'));
+    await waitFor(() => expect(executeDomainOperationMock).toHaveBeenCalled());
+    const payload = executeDomainOperationMock.mock.calls[0]?.[2] as Record<string, unknown>;
+    const pola = payload.sn_fields as Array<{ field_role: string; apparatus_catalog_ref: string }>;
+    const tr = pola.filter((f) => f.field_role === 'TRANSFORMATOROWE');
+    expect(tr).toHaveLength(1);
+    // Przywrócone pole jest KOMPLETNE: aparat dopuszczalny dla roli TR.
+    expect(['sw-fuse-eti-vv-17kv-63a', 'sw-cb-abb-vd4-17kv-630a']).toContain(
+      tr[0].apparatus_catalog_ref,
+    );
   });
 });

@@ -174,6 +174,11 @@ async function zbudujScene(request: APIRequestContext): Promise<Scena> {
         },
       },
       'OUT',
+      // KOMPLETNOSC-POLA-TR (klasa A): stacja SN/nN Z transformatorem — pole roli
+      // 'TR' dopisane, bo realna rozdzielnia realizuje odejscie do transformatora
+      // polem transformatorowym. Kreator stacji tworzy je domyslnie, wiec fixture
+      // bez niego opisywal siec, ktorej kreator by nie zbudowal.
+      'TR',
     ],
     transformer: { create: true, catalog_binding: catalogBinding('TRAFO_SN_NN', TRAFO_ID) },
   });
