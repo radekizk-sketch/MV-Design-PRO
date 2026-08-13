@@ -42,6 +42,28 @@ function makeIssue(
 
 describe('ReadinessLivePanel — §3 UX 10/10', () => {
   describe('classifyIssueGroup', () => {
+    it('KOMPLETNOSC-POLA-TR: kod KANONICZNY rozstrzyga grupę, nie kod walidatora', () => {
+      // Sygnał przychodzi z walidatora ENM (`W041`), a treść i podział — z kanonu
+      // (`transformer.bay_missing`). Bez czytania kodu kanonicznego ostrzeżenie o
+      // braku pola transformatorowego lądowało w „Magistrali", bo `W041` nie ma
+      // żadnego z prefiksów klasyfikatora.
+      const zgloszenie: ReadinessIssue = {
+        ...makeIssue('W041', 'IMPORTANT', 'tr-1'),
+        canonical_code: 'transformer.bay_missing',
+        canonical_level: 'WARNING',
+      };
+      expect(classifyIssueGroup(zgloszenie)).toBe('STACJE');
+      // Bez kodu kanonicznego zostaje uczciwy fallback na kod zgłoszenia.
+      expect(classifyIssueGroup(makeIssue('W041', 'IMPORTANT'))).toBe('MAGISTRALA');
+      // Ten sam mechanizm naprawia pozostałe kody walidatora z odwzorowaniem.
+      expect(
+        classifyIssueGroup({
+          ...makeIssue('E001'),
+          canonical_code: 'source.grid_supply_missing',
+        }),
+      ).toBe('ZRODLA');
+    });
+
     it('classifies protection codes to ZABEZPIECZENIA', () => {
       expect(classifyIssueGroup(makeIssue('protection.relay_missing'))).toBe('ZABEZPIECZENIA');
       expect(classifyIssueGroup(makeIssue('relay.settings_invalid'))).toBe('ZABEZPIECZENIA');

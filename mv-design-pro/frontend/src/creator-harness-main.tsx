@@ -29,6 +29,7 @@ import { KreatorKompensatoraSn } from './ui2/kreatory/kompensator';
 import { KreatorMagistralaSn } from './ui2/kreatory/magistrala';
 import { KreatorOdbioruNn } from './ui2/kreatory/odbior';
 import { KreatorPolaSn } from './ui2/kreatory/pole';
+import { KreatorStacjiSnNn } from './ui2/kreatory/stacja';
 import { KreatorTransformatoraSnNn } from './ui2/kreatory/transformator';
 import { KreatorZrodloZasilania } from './ui2/kreatory/zrodlo';
 import { KreatorZrodlaOze } from './ui2/kreatory/zrodlo-oze';
@@ -103,9 +104,44 @@ document.body.style.background = theme === 'light_technical' ? '#f5f7fa' : '#071
 
 // --- Podmiana fetch: dane katalogowe (bez backendu) ----------------------
 const CATALOG_FIXTURES: Record<string, unknown> = {
+  // KOMPLETNOSC-POLA-TR: `device_kind` w REALNYM kształcie kanonicznego katalogu
+  // (`catalog/repository.py` `kind_map` → WYLACZNIK/ROZLACZNIK/…). Wcześniej scena
+  // serwowała warianty angielskie (BREAKER/LOAD_SWITCH), których żywy backend nie
+  // zwraca — zrzut pokazywałby wtedy inne dane niż aplikacja, a zawężenie pickera
+  // rolą pola (readout `/bay-apparatus-kinds`) nie miałoby czego dopasować.
   '/api/catalog/mv-apparatus-types': [
-    { id: 'ap-1', name: 'Wyłącznik próżniowy VD4', device_kind: 'BREAKER', u_n_kv: 17.5, i_n_a: 630, breaking_capacity_ka: 25 },
-    { id: 'ap-2', name: 'Rozłącznik LBS', device_kind: 'LOAD_SWITCH', u_n_kv: 17.5, i_n_a: 630, breaking_capacity_ka: 20 },
+    { id: 'ap-1', name: 'Wyłącznik próżniowy VD4 17,5 kV', device_kind: 'WYLACZNIK', u_n_kv: 17.5, i_n_a: 630, breaking_capacity_ka: 25 },
+    { id: 'ap-2', name: 'Rozłącznik LBS 17,5 kV', device_kind: 'ROZLACZNIK', u_n_kv: 17.5, i_n_a: 630, breaking_capacity_ka: 20 },
+    { id: 'ap-3', name: 'Rozłącznik bezpiecznikowy ETI VV 17,5 kV', device_kind: 'ROZLACZNIK_BEZPIECZNIKOWY', u_n_kv: 17.5, i_n_a: 63 },
+    { id: 'ap-4', name: 'Odłącznik OJS 17,5 kV', device_kind: 'ODLACZNIK', u_n_kv: 17.5, i_n_a: 630 },
+  ],
+  // Zawężenie rodzaju aparatu per rola pola — lustro `BAY_PRIMARY_APPARATUS_KINDS_BY_ROLE`.
+  '/api/catalog/bay-apparatus-kinds': {
+    IN: ['WYLACZNIK', 'ROZLACZNIK', 'REKLOZER'],
+    OUT: ['WYLACZNIK', 'ROZLACZNIK', 'REKLOZER'],
+    FEEDER: ['WYLACZNIK', 'ROZLACZNIK', 'REKLOZER'],
+    TR: ['ROZLACZNIK_BEZPIECZNIKOWY', 'WYLACZNIK'],
+    COUPLER: ['WYLACZNIK', 'ROZLACZNIK'],
+    MEASUREMENT: ['ODLACZNIK'],
+    OZE: ['WYLACZNIK', 'ROZLACZNIK'],
+  },
+  '/api/catalog/bay-protection-codes': {
+    IN: ['51', '50', '51N'],
+    OUT: ['51', '50', '51N', '67N'],
+    FEEDER: ['51', '50', '51N', '67N'],
+    TR: ['87T', '51', '50', '49', '63', '26'],
+    COUPLER: ['51', '50'],
+    MEASUREMENT: [],
+  },
+  '/api/catalog/manufacturers': [
+    { manufacturer_ref: 'ZPUE_WLOSZCZOWA', name: 'ZPUE Włoszczowa', country: 'PL', status: 'verified', source_refs: ['katalog'], notes_pl: null },
+  ],
+  '/api/catalog/mv-protection-device-types': [
+    { id: 'rel-mv-1', name: 'Zabezpieczenie nadprądowe SN', vendor: 'ABB' },
+  ],
+  '/api/catalog/transformer-types': [
+    { id: 'tr-sn-nn-15-04-630kva-dyn11', name: 'Transformator 630 kVA 15/0,4 kV Dyn11', rated_power_mva: 0.63, voltage_hv_kv: 15, voltage_lv_kv: 0.4, uk_percent: 4.5, pk_kw: 6.5, vector_group: 'Dyn11' },
+    { id: 'tr-sn-nn-15-04-400kva-dyn11', name: 'Transformator 400 kVA 15/0,4 kV Dyn11', rated_power_mva: 0.4, voltage_hv_kv: 15, voltage_lv_kv: 0.4, uk_percent: 4.0, pk_kw: 4.6, vector_group: 'Dyn11' },
   ],
   '/api/catalog/switchgear-families': [
     // DWA REKORDY CELOWO ROZNE (V12K-259). Pierwszy niesie `voltage_levels`, wiec scena
@@ -1893,7 +1929,36 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     );
   }
   if (url.includes('/api/catalog/complete-bay-templates')) {
-    return new Response(JSON.stringify([]), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    // KOMPLETNOSC-POLA-TR: kompletne szablony pól producenta — bez nich krok
+    // „Pola rozdzielnicy SN" nie ma czego pokazać (pusta lista = ekran, którego
+    // projektant nigdy nie zobaczy). Kształt 1:1 z `CompleteMvBayTemplateSummary`.
+    const szablon = (ref: string, kind: string, nazwa: string) => ({
+      template_ref: ref,
+      bay_kind: kind,
+      bay_role: kind === 'transformatorowe' ? 'TR' : 'OUT',
+      manufacturer_ref: 'ZPUE_WLOSZCZOWA',
+      switchgear_family_ref: 'zpue_rotoblok',
+      source_status: 'repo_verified',
+      source_refs: ['https://zpue.pl'],
+      name_pl: nazwa,
+    });
+    return new Response(
+      JSON.stringify([
+        szablon('ZPUE__ROTOBLOK__LINE_IN', 'liniowe_doplywowe', 'Pole liniowe dopływowe'),
+        szablon('ZPUE__ROTOBLOK__LINE_OUT', 'liniowe_odplywowe', 'Pole liniowe odpływowe'),
+        szablon('ZPUE__ROTOBLOK__TRANSFORMER', 'transformatorowe', 'Pole transformatorowe'),
+        szablon('ZPUE__ROTOBLOK__COUPLER', 'sprzeglowe_poprzeczne', 'Pole sprzęgłowe'),
+      ]),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
+  if (url.includes('/api/station-templates')) {
+    // Biblioteka szablonów stacji — krok 0 kreatora. Pusta lista = uczciwy stan
+    // „brak szablonów", ekran działa dalej (ścieżka „od zera").
+    return new Response(JSON.stringify({ templates: [], total: 0 }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
   if (url.includes('/api/quality/conductor-thermal-withstand/proof')) {
     // Karta F-K1 faza 7: dowod LINII NAPOWIETRZNEJ. Krok 1 pokazuje rodzaj przewodu
@@ -3878,6 +3943,38 @@ if (creator === 'arcflash') {
     catalog_namespace: 'TRAFO_SN_NN',
     catalog_item_id: 'trafo-630-15-04',
   });
+} else if (creator === 'stacja') {
+  // KOMPLETNOSC-POLA-TR: kreator stacji SN/nN wstawianej w odcinek magistrali.
+  // Kontekst operacji = ten sam, który daje kanwa (świadomy podział odcinka).
+  useSnapshotStore.setState({
+    rewizjaBiezacegoModelu: 1,
+    snapshot: {
+      header: { name: 'Projekt demonstracyjny', revision: 1 },
+      substations: [{ ref_id: 'st-demo', name: 'GPZ-01', bus_refs: ['bus-sn-demo'] }],
+      transformers: [],
+      buses: [
+        { ref_id: 'bus-sn-demo', name: 'Szyna SN', voltage_kv: 15 },
+        { ref_id: 'bus-sn-koniec', name: 'Koniec ciągu', voltage_kv: 15 },
+      ],
+      branches: [
+        {
+          ref_id: 'seg-demo',
+          name: 'Odcinek magistrali',
+          type: 'cable',
+          from_bus_ref: 'bus-sn-demo',
+          to_bus_ref: 'bus-sn-koniec',
+          length_km: 1.2,
+        },
+      ],
+      sources: [],
+      loads: [],
+      bays: [],
+    },
+  } as never);
+  useNetworkBuildStore.getState().openOperationForm('insert_station_on_segment_sn' as never, {
+    segment_id: 'seg-demo',
+    position_on_segment: 0.5,
+  });
 } else if (creator === 'edycja-parametrow') {
   // Karta Z-2: ekspercki override parametru istniejącego elementu (transformator demo).
   useNetworkBuildStore.getState().openOperationForm('update_element_parameters' as never, {
@@ -4099,6 +4196,7 @@ function Harness() {
   else if (creator === 'pole-nn') node = <KreatorPolaNn />;
   else if (creator === 'przypisanie-katalogu') node = <KreatorPrzypisaniaKatalogu />;
   else if (creator === 'edycja-parametrow') node = <KreatorEdycjiParametrow />;
+  else if (creator === 'stacja') node = <KreatorStacjiSnNn />;
   else node = <KreatorPolaSn />;
 
   return (

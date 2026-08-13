@@ -1035,6 +1035,15 @@ export function KreatorStacjiSnNn() {
           ? `${snFields.length} pól · ${selectedManufacturer?.name ?? dane.manufacturer_ref}`
           : 'Do doboru',
     },
+    // KOMPLETNOSC-POLA-TR: stan pola transformatorowego W PANELU KONTROLI, czyli
+    // widoczny z KAŻDEGO kroku — panel skutków w kroku pól zobaczy tylko ten, kto
+    // do tego kroku wróci. `ostrzezenie` (nie `brak`), bo rezygnacja z pola jest
+    // legalnym stanem roboczym: zapis pozostaje możliwy.
+    {
+      etykieta: T.wierszPoleTr,
+      stan: brakPolaTransformatorowego ? 'ostrzezenie' : 'kompletne',
+      wartosc: brakPolaTransformatorowego ? T.wierszPoleTrBrak : T.wierszPoleTrJest,
+    },
     {
       etykieta: T.wierszNn,
       stan: nnBlokKompletny ? 'kompletne' : 'brak',
