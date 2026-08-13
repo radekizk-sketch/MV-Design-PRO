@@ -552,6 +552,33 @@ describe('MINI-RMU-CAD — determinizm rysunku', () => {
     ]);
   });
 
+  it('struktura rysunku stacji sekcyjnej z pomiarem: sprzęgło, VT na odgałęzieniu, TR', () => {
+    const podglad = zbudujPodglad({
+      snFields: [
+        pole('LINIA_IN', 'ap-WYLACZNIK', { ct: { catalog_ref: 'ct-1' }, relay: { catalog_ref: 'rel-1' } }),
+        pole('LINIA_ODG', 'ap-ODLACZNIK', { vt: { catalog_ref: 'vt-1' } }),
+        pole('SPRZEGLO', 'ap-ROZLACZNIK'),
+        pole('TRANSFORMATOROWE', 'ap-ROZLACZNIK_BEZPIECZNIKOWY', { ct: { catalog_ref: 'ct-1' } }),
+      ],
+      aparaty: KATALOG_REALNY,
+      transformatory: TRAFO,
+      transformatorRef: 'tr-630',
+      snVoltageKv: 15,
+    });
+    expect(
+      podglad.sloty.map((s) => `${s.numer}:${s.rola}:${s.symbole.map((sym) => sym.id).join('+')}`),
+    ).toEqual([
+      '1:LINIA_IN:breaker+currentTransformer+protectionRelay',
+      '2:LINIA_ODG:disconnector+voltageTransformer',
+      '3:SPRZEGLO:loadBreakSwitch',
+      '4:TRANSFORMATOROWE:fuseSwitch+currentTransformer+transformer2W',
+    ]);
+    // Szyna w dwóch sekcjach WYŁĄCZNIE z powodu sprzęgła.
+    expect(podglad.odcinkiSzyny).toHaveLength(2);
+    expect(kolizjeEtykiet(podglad)).toEqual([]);
+    expect(wyjsciaPozaSlot(podglad)).toEqual([]);
+  });
+
   it('dwa pola tej samej roli mają ROZŁĄCZNE identyfikatory (numer w testid)', () => {
     const { container } = render(
       <PodgladRozdzielnicySn
