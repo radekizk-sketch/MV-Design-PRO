@@ -11,7 +11,7 @@ Contract version: 1.0
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -116,6 +116,12 @@ class BusPayload(BaseModel):
     voltage_angle_rad: float | None = None
     active_power_mw: float | None = None
     reactive_power_mvar: float | None = None
+    # Karta P0.3: c PER PASMO (IEC 60909-0 Table 1) for THIS bus's own voltage
+    # band, for the payload's scenario — <=1 kV -> 1.05/0.95, >1 kV -> 1.10/1.00
+    # (network_model.core.voltage_factor.c_for_node). Informational only: this
+    # preview payload is not tied to one fault node, so every bus carries the
+    # c that WOULD apply if a fault were placed here.
+    c_factor_iec60909: float | None = None
 
     model_config = {"frozen": True}
 
@@ -241,6 +247,12 @@ class ShortCircuitPayload(BaseModel):
     # P0.9 V12K: simplified grid source (used when sc_input_mode == 'simplified').
     # Optional — None means solver uses full 110 kV + TR model from buses/branches.
     simplified_grid_source: SimplifiedGridSource | None = None
+    # Karta P0.3: SHORT_CIRCUIT_MIN as a scenario, not a separate analysis_type
+    # (docs/nn/H_PLAN_IMPLEMENTACJI_NN.md §P0.3). "MAX" -> Ik''max/Ip/Ith (default,
+    # backward compatible); "MIN" -> Ik''min with per-bus c (see BusPayload.
+    # c_factor_iec60909) and R_theta line/cable temperature correction applied
+    # at execution time (application.solvers.lv_temperature_correction).
+    scenario: Literal["MAX", "MIN"] = "MAX"
 
     model_config = {"frozen": True}
 

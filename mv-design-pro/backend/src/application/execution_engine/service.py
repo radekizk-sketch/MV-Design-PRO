@@ -23,7 +23,7 @@ from __future__ import annotations
 
 import copy
 import logging
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
 
 import numpy as np
@@ -478,6 +478,7 @@ class ExecutionEngineService:
         readiness_snapshot: dict[str, Any],
         validation_snapshot: dict[str, Any],
         z0_bus: np.ndarray | None = None,
+        scenario: Literal["MAX", "MIN"] = "MAX",
     ) -> tuple[Run, ResultSet]:
         """
         Execute a short-circuit run end-to-end (PR-18 binding).
@@ -498,6 +499,9 @@ class ExecutionEngineService:
             readiness_snapshot: Readiness state at run time.
             validation_snapshot: Validation state at run time.
             z0_bus: Zero-sequence bus matrix (required for SC_1F).
+            scenario: "MAX" (Ik''max, default) or "MIN" (Ik''min — karta P0.3:
+                per-band c + R_theta temperature correction on line/cable
+                branches). Threaded straight into ``execute_short_circuit``.
 
         Returns:
             Tuple of (completed Run in DONE status, ResultSet v1).
@@ -530,6 +534,7 @@ class ExecutionEngineService:
                 analysis_type=run.analysis_type,
                 config=config,
                 fault_node_id=fault_node_id,
+                scenario=scenario,
                 z0_bus=z0_bus,
             )
 

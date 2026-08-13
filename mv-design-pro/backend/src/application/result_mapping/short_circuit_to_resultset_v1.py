@@ -59,6 +59,18 @@ def map_short_circuit_to_resultset_v1(
 
     # Build global results from the solver output
     global_results = _build_global_results(sr, binding_result.analysis_type)
+    # Karta P0.3: scenario/override/temperature-correction are BINDING-layer
+    # metadata (ShortCircuitBindingResult), never part of the FROZEN solver
+    # result — added here as additive ResultSet v1 "meta" keys (contract has
+    # additionalProperties:true; older results without these keys are
+    # unaffected).
+    global_results["scenario"] = binding_result.scenario
+    global_results["c_factor_auto"] = float(binding_result.c_factor_auto)
+    global_results["c_factor_override"] = bool(binding_result.c_factor_override)
+    if binding_result.temperature_correction_notes:
+        global_results["temperature_correction_notes"] = list(
+            binding_result.temperature_correction_notes
+        )
 
     return build_result_set(
         run_id=run_id,

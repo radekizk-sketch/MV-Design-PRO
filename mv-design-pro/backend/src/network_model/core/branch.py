@@ -26,6 +26,7 @@ from network_model.catalog import (
     resolve_transformer_params,
 )
 from network_model.catalog.types import TransformerType
+from network_model.core.voltage_factor import c_for_node
 
 
 class BranchType(Enum):
@@ -885,29 +886,29 @@ class TransformerBranch(Branch):
         """
         Get IEC 60909 maximum voltage factor c for LV side.
 
+        Delegates to the shared IEC 60909-0 Table 1 lookup (karta P0.3, one
+        source of truth for c across the codebase — see
+        ``network_model.core.voltage_factor.c_for_node``).
+
         Returns:
             Maximum voltage factor c.
         """
         self._validate_short_circuit_inputs()
-        if self.voltage_lv_kv <= 1.0:
-            return 1.05
-        if self.voltage_lv_kv <= 35.0:
-            return 1.10
-        return 1.10
+        return c_for_node(self.voltage_lv_kv, "MAX")
 
     def get_voltage_factor_c_min(self) -> float:
         """
         Get IEC 60909 minimum voltage factor c for LV side.
 
+        Delegates to the shared IEC 60909-0 Table 1 lookup (karta P0.3, one
+        source of truth for c across the codebase — see
+        ``network_model.core.voltage_factor.c_for_node``).
+
         Returns:
             Minimum voltage factor c.
         """
         self._validate_short_circuit_inputs()
-        if self.voltage_lv_kv <= 1.0:
-            return 0.95
-        if self.voltage_lv_kv <= 35.0:
-            return 1.00
-        return 1.00
+        return c_for_node(self.voltage_lv_kv, "MIN")
 
     def get_ikss_lv_ka(self, c: float) -> float:
         """

@@ -13,12 +13,13 @@ INVARIANTS:
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 from domain.study_case import StudyCaseConfig
 from network_model.catalog.repository import CatalogRepository
 from network_model.core.branch import BranchType, LineBranch, TransformerBranch
 from network_model.core.graph import NetworkGraph
+from network_model.core.voltage_factor import c_for_node
 from solver_input.contracts import (
     SOLVER_INPUT_CONTRACT_VERSION,
     BranchPayload,
@@ -49,8 +50,15 @@ from solver_input.provenance import (
 # ---------------------------------------------------------------------------
 
 
-def _build_bus_payloads(graph: NetworkGraph) -> list[BusPayload]:
-    """Build deterministically sorted bus payloads from graph nodes."""
+def _build_bus_payloads(
+    graph: NetworkGraph, *, scenario: Literal["MAX", "MIN"] = "MAX"
+) -> list[BusPayload]:
+    """Build deterministically sorted bus payloads from graph nodes.
+
+    Karta P0.3: each bus carries the IEC 60909-0 Table 1 voltage factor c for
+    ITS OWN voltage band and the requested scenario (c_factor_iec60909) — one
+    shared source of truth (network_model.core.voltage_factor.c_for_node).
+    """
     payloads: list[BusPayload] = []
     for node in sorted(graph.nodes.values(), key=lambda n: n.id):
         payloads.append(
@@ -63,6 +71,7 @@ def _build_bus_payloads(graph: NetworkGraph) -> list[BusPayload]:
                 voltage_angle_rad=node.voltage_angle,
                 active_power_mw=node.active_power,
                 reactive_power_mvar=node.reactive_power,
+                c_factor_iec60909=c_for_node(node.voltage_level, scenario),
             )
         )
     return payloads
@@ -388,6 +397,7 @@ def build_solver_input(
     analysis_type: SolverAnalysisType,
     config: StudyCaseConfig | None = None,
     audit2_station_payload: dict[str, Any] | None = None,
+    scenario: Literal["MAX", "MIN"] = "MAX",
 ) -> SolverInputEnvelope:
     """
     Build canonical solver-input envelope from ENM + catalog + case config.
@@ -401,6 +411,9 @@ def build_solver_input(
         enm_revision: ENM snapshot/revision identifier.
         analysis_type: Target analysis type.
         config: Study case calculation config (optional, defaults used if None).
+        scenario: "MAX" (Ik''max, default) or "MIN" (Ik''min) — karta P0.3.
+            Only affects SHORT_CIRCUIT_* payloads (per-bus c_factor_iec60909 +
+            ShortCircuitPayload.scenario/c_factor); ignored otherwise.
 
     Returns:
         SolverInputEnvelope with payload, eligibility, and provenance trace.
@@ -419,7 +432,7 @@ def build_solver_input(
         payload_dict = {}
     else:
         # Build common element lists
-        buses = _build_bus_payloads(graph)
+        buses = _build_bus_payloads(graph, scenario=scenario)
         branches = _build_branch_payloads(graph, catalog, trace_entries)
         transformers = _build_transformer_payloads(graph, catalog, trace_entries)
         inverters = _build_inverter_payloads(graph, trace_entries)
@@ -447,10 +460,14 @@ def build_solver_input(
                 transformers=transformers,
                 inverter_sources=inverters,
                 switches=switches,
-                c_factor=cfg.c_factor_max,
+                # Karta P0.3: single study-wide fallback for callers reading
+                # `c_factor` directly (backward compatible for scenario="MAX").
+                # Per-bus, per-band c is in BusPayload.c_factor_iec60909.
+                c_factor=cfg.c_factor_max if scenario == "MAX" else cfg.c_factor_min,
                 thermal_time_seconds=cfg.thermal_time_seconds,
                 include_inverter_contribution=cfg.include_inverter_contribution,
                 simplified_grid_source=simplified_source,
+                scenario=scenario,
             )
             payload_dict = sc_payload.model_dump(mode="json")
 

@@ -126,6 +126,10 @@ class TestSchemaLock:
             # K3 wizard "Uproszczony" mode (P0.9 V12K K3 toggle): Sk_SN + R/X
             # zamiast pelnego 110 kV + TR + GPZ modelu. Optional field.
             "simplified_grid_source",
+            # Karta P0.3 (docs/nn/H_PLAN_IMPLEMENTACJI_NN.md): MAX (default) |
+            # MIN scenario selector for c per pasmo — additive, backward
+            # compatible (same precedent as simplified_grid_source above).
+            "scenario",
         }
         assert props == expected_props, (
             f"ShortCircuitPayload schema changed. "
