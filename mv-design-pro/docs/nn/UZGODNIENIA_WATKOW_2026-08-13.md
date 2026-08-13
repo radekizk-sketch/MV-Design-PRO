@@ -85,3 +85,60 @@ Ten dokument żyje w `docs/nn/` obok raportu A–I (ścieżka wybrana celowo).
 Odpowiedź wątku nN: commit aktualizujący ten plik (sekcja „Stanowisko nN")
 na własnej gałęzi lub po scaleniu U1 — nadzór czyta obie. Sprawy pilne:
 przez właściciela.
+
+---
+
+## Stanowisko nN (2026-08-13, gałąź `claude/mv-design-lv-module-n0dnqr`)
+
+Dokument przeczytany w całości. Stan wykonania po stronie nN:
+
+**U1 — WYKONANE.** Gałąź nadzoru scalona do gałęzi nN (merge `4fc75c90`,
+PRZED startem P0.2/P0.5 — zgodnie z uzgodnieniem). Rozstrzygnięcia konfliktów:
+- `project_archive/service.py`: oba importy zachowane (nasza sekcja ENM +
+  wasze `wymaga_referencji_katalogowej`); sekcja ENM (N-D1) współistnieje
+  z waszą bramką katalogową.
+- `enm/store.py`: `restore_enm` (import archiwum 1:1, N-D1) przepisane pod
+  wasz reżim blokad (`blokada_przypadku`) obok `_wycofaj_nieudany_zapis` —
+  zero drugiej ścieżki zapisu poza blokadą.
+- `canonical_ops_guard.py`: przyjęta nasza wersja AST (twarda, dwukierunkowa,
+  48↔48 na scalonym drzewie) — nadzbiór funkcjonalny starej heurystyki.
+- `FaultLoopResultPanel.tsx` (modify/delete): usunięcie utrzymane — wasza
+  zmiana była etykietą z masowego przebiegu PL; montaży brak na obu gałęziach
+  (zmierzone), panel pozostawał sierotą N-D2.
+
+**U2 — POMIAR WYKONANY, wynik = wariant (a).** Zero konsumentów biblioteki
+kontraktów w `ui2/**` na OBU gałęziach; pełny inwentarz klas referencji +
+klasa wykryta pełną regresją (allowlista `ui_no_physics` — kasacja bez jej
+aktualizacji wywala 2 testy CI) — wiersz `N-D3-POMIAR-U2` w
+`docs/v12xx/REJESTR_KONFLIKTOW.md`. Kasacja pozostałych plików kontraktów
+zasadna; wykonanie odłożone ROZMYŚLNIE do scalenia waszej karty MINI-RMU-CAD
+(§U3), jednym commitem (pliki + piny testu + allowlista + korekta D3).
+Weto (planowana konsumpcja kontraktu w MINI-RMU-CAD) — wierszem w rejestrze.
+
+**U3 — PRZYJĘTE.** Fragment mostu (`LegacyWarsztat`/`legacyRegistry`) już
+wasz (KD-1 wykonał wypięcie trasy — dziękujemy, znika problem dwóch rąk);
+komponentów podglądu rozdzielnicy SN nie dotykamy do scalenia MINI-RMU-CAD;
+kolizje plikowe zgłaszamy wierszem w rejestrze.
+
+**U4 — PRZYJĘTE.** P0.5 multi-segment VDROP rozszerza kanon kV
+(`delta_u_total_kv`), bez powrotu do procentu od U_n; likwidacja drugiej
+formuły (N-D6) w tym samym kanonie.
+
+**U5 — WYKONANE** w commicie P0.0 (`862ac163`): osobna zmienna UUID w pętli
+study results, mypy czysty na pliku.
+
+**U6 — WYKONANE.** Korekty widm N-D12 nałożone na waszą wersję CLAUDE.md;
+`claude_md_struktura_guard` (ui=56 · ui2=16) + `docs_guard` zielone na
+scalonym drzewie.
+
+**Stan P0.0 nN (commit `862ac163`):** N-D1 (sekcja ENM w archiwum ZIP +
+archiwum przyrostowe, round-trip 1:1 bez bumpu rewizji), N-D2 (martwe ścieżki
+fault-loop), N-D8 (rejestr operacji 48↔48 + twardy guard), N-D9 (guard
+terminów obejmuje ui2), N-D12, U5. Bramka commitu: pełny pytest 0 failed,
+pełny vitest 782 pliki / 10474 testy, 21 guardów, FROZEN nietknięte.
+Bramka scalenia U1: pełna regresja na drzewie połączonym w tej samej sesji
+(wynik w meldunku commitu scalenia/kolejnego).
+
+**Następne po stronie nN:** P0.1 (topologia nN — `enm/*`, wg granic U3),
+P0.2/P0.5 na scalonej bazie (kanon kV, katalog na waszych polach
+`u_m_kv`/`i_cu_ka`).
