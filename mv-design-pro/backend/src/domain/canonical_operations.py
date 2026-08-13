@@ -660,6 +660,22 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "modal": "select_catalog",
         },
     ),
+    # KOMPLETNOSC-POLA-TR: transformator przyłączony do szyny SN bez pola roli TR.
+    # OSTRZEŻENIE, nie BLOCKER — stan roboczy legalny (koncepcja), lecz zamknięta
+    # droga do dokumentacji wykonawczej. Emiter: `enm/validator.py` W041 przez
+    # odwzorowanie w `domain/readiness_bridge.py`.
+    "transformer.bay_missing": ReadinessCodeSpec(
+        code="transformer.bay_missing",
+        area=ReadinessArea.STATIONS,
+        priority=3,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Transformator jest połączony elektrycznie z szyną SN, lecz nie posiada "
+            "kompletnej konfiguracji pola transformatorowego po stronie SN"
+        ),
+        fix_action_id="fix_station_field",
+        fix_navigation={"panel": "inspector", "tab": "pola"},
+    ),
     "transformer.connection_missing": ReadinessCodeSpec(
         code="transformer.connection_missing",
         area=ReadinessArea.STATIONS,
