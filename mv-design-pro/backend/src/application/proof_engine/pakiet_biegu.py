@@ -47,6 +47,8 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 
+from application.analyses.energy_validation.service import _graph
+from application.analyses.voltage_profile_view import _power_flow_result_v1
 from application.proof_engine.packs.p14_power_flow import P14PowerFlowInput, P14PowerFlowProof
 from application.proof_engine.packs.p16_losses import P16LossesInput, P16LossesProof
 from application.proof_engine.packs.sc_asymmetrical import (
@@ -59,6 +61,10 @@ from application.proof_engine.proof_pack import (
     ProofPackContext,
     resolve_mv_design_pro_version,
     zbuduj_zip_zbiorczy,
+)
+from application.proof_engine.vdrop_chain_binding import (
+    BrakLancuchaSpadkuError,
+    lancuch_spadku_napiecia,
 )
 from application.solvers.power_flow_binding import (
     BrakDanychRozplywuError,
@@ -298,7 +304,8 @@ _ZAWARTOSC_ROZPLYWU_PL: tuple[str, ...] = (
     "Dowód strat mocy: straty gałęziowe, sumy sieci, udział strat (straty.zip)",
 )
 _ZAWARTOSC_SPADKU_PL = (
-    "Dowód spadku napięcia na wskazanym odcinku linii/kabla (spadek_napiecia.zip)"
+    "Dowód spadku napięcia na trasie od źródła do wskazanego odcinka — łańcuch "
+    "odcinków linii/kabla i granic transformatora (spadek_napiecia.zip)"
 )
 _ZAWARTOSC_BEZ_ODCINKA_PL = (
     "Bez dowodu spadku napięcia — ten przebieg nie zawiera odcinka linii ani kabla "
@@ -524,8 +531,31 @@ def _zbuduj_dowod_spadku(
     rozplyw: RozplywZBiegu,
     odcinek: OdcinekSpadku,
 ) -> bytes:
-    pack_input = VDROPPackInput.z_odcinka_biegu(
-        odcinek,
+    """Dowód spadku napięcia dla ŁAŃCUCHA od źródła do końca ``odcinek`` (P0.5b).
+
+    ``odcinek`` pozostaje WYBOREM użytkownika (ta sama lista „punktów" —
+    ``punkty_pakietu``/``_wybierz_odcinek``, zero zmiany kontraktu wyboru);
+    dowód dokumentuje jednak CAŁĄ trasę od źródła (SLACK) do końca tej gałęzi,
+    nie samą gałąź z osobna — REUŻYCIE dekompozycji ΔU per odcinek P0.4
+    (``vdrop_chain_binding.lancuch_spadku_napiecia``).
+    """
+    graph = _graph(run)
+    pf_result = _power_flow_result_v1(run)
+    try:
+        lancuch = lancuch_spadku_napiecia(
+            graph=graph,
+            pf_result=pf_result,
+            raw_result=run.raw_result,
+            snapshot=run.snapshot,
+            docelowa_galaz_id=odcinek.id_galezi,
+        )
+    except BrakLancuchaSpadkuError as exc:
+        raise PakietBieguError(
+            f"Nie udało się złożyć łańcucha dowodu spadku napięcia: {exc}"
+        ) from exc
+
+    pack_input = VDROPPackInput.z_lancucha_biegu(
+        lancuch,
         project_name=_nazwa_projektu(run),
         case_name=_nazwa_przypadku(run),
         run_timestamp=_znacznik_czasu(run),

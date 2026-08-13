@@ -297,6 +297,13 @@ class UnitVerifier:
             "inputs": {"U_{source}": "kV", "ΔU_{total}^{kV}": "kV"},
             "output": "kV",
         },
+        "EQ_VDROP_010": {
+            # Karta P0.5b (2026-08-13): granica transformatora na łańcuchu VDROP —
+            # U_1/U_2 z rozwiązania rozpływu, obie strony w kV.
+            "rule": "kV - kV = kV",
+            "inputs": {"U_{1}": "kV", "U_{2}": "kV"},
+            "output": "kV",
+        },
         # P32: Load Flow & Voltage
         "EQ_LF_001": {
             "rule": "MW² + Mvar² = MVA² → MVA",

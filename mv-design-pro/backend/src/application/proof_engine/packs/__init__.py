@@ -55,6 +55,7 @@ from application.proof_engine.packs.sc_symmetrical import (
 from application.proof_engine.packs.vdrop import (
     VDROPPackInput,
     VDROPPackSegment,
+    VDROPPackTransformerBoundary,
     generate_vdrop_pack,
     serialize_vdrop_pack,
 )
@@ -77,9 +78,10 @@ __all__ = [
     "QURegulationProofInput",
     "QURegulationProofPack",
     "QURegulationProofResult",
-    # VDROP pack (V12K-015, 2026-05)
+    # VDROP pack (V12K-015, 2026-05; łańcuch multi-segment: karta P0.5b, 2026-08-13)
     "VDROPPackInput",
     "VDROPPackSegment",
+    "VDROPPackTransformerBoundary",
     "generate_vdrop_pack",
     "serialize_vdrop_pack",
     # Earthing / Ground Fault SN pack (V12K-015, 2026-05)

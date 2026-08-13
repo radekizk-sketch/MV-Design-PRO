@@ -194,12 +194,20 @@ notes: |
 
 ### EQ_VDROP_007 — Napięcie w punkcie
 
+**UWAGA (2026-08-13): forma poniżej BYŁA aktualna do karty PODSTAWA-VDROP
+(2026-08-12) — od tamtej karty równanie ODEJMUJE w kV zamiast mnożyć przez
+ułamek procentowy (mieszanie podstaw U_source vs U_n, naprawione). Karta P0.5b
+(2026-08-13) rozszerzyła sumę ΔU_total^{kV} na łańcuch dowolnej długości
+(odcinki linii/kabla + granice transformatora, EQ_VDROP_010). Kod źródłowy
+(`equation_registry.py`) jest kanonem — ten plik jest dokumentacją pomocniczą,
+zaktualizowaną tu, by nie kłamać o aktualnej formie.**
+
 ```yaml
 equation_id: EQ_VDROP_007
 name_pl: "Napięcie w punkcie po uwzględnieniu spadku"
 standard_ref: "—"
 latex: |
-  U = U_{source} \cdot \left(1 - \frac{\Delta U_{total}}{100}\right)
+  U = U_{source} - \Delta U_{total}^{kV}
 symbols:
   - symbol: "U"
     unit: "kV"
@@ -207,13 +215,22 @@ symbols:
     mapping_key: "u_kv"
   - symbol: "U_{source}"
     unit: "kV"
-    description_pl: "Napięcie źródła"
+    description_pl: "Napięcie źródła (początku łańcucha)"
     mapping_key: "u_source_kv"
-  - symbol: "\\Delta U_{total}"
-    unit: "%"
-    description_pl: "Sumaryczny spadek napięcia"
-    mapping_key: "delta_u_total_percent"
-unit_derivation: "kV · — = kV"
+  - symbol: "\\Delta U_{total}^{kV}"
+    unit: "kV"
+    description_pl: "Sumaryczny spadek napięcia w jednostkach bezwzględnych — suma wkładów WSZYSTKICH kroków łańcucha (odcinki EQ_VDROP_001..005 + granice transformatora EQ_VDROP_010, karta P0.5b)"
+    mapping_key: "delta_u_total_kv"
+unit_derivation: "kV - kV = kV"
+notes: |
+  Karta PODSTAWA-VDROP (2026-08-12): odjęcie w kV, NIE mnożenie przez ułamek
+  odniesiony do U_n — obie strony w tej samej podstawie (poprzednia forma
+  mieszała podstawy, gdy U_source != U_n). ΔU_total^{kV} pochodzi WYŁĄCZNIE z
+  łańcucha EQ_VDROP_001..005/EQ_VDROP_010 tego samego dowodu, NIGDY z wyniku
+  biegu — inaczej krok byłby cyrkularny. Forma % (EQ_VDROP_006,
+  delta_u_total_percent) pozostaje WYŁĄCZNIE prezentacyjna (karta P0.5b,
+  uzgodnienie U4): przy łańcuchu krzyżującym transformator odcinki po obu
+  stronach mają RÓŻNE U_n, więc suma % nie jest wielkością fizyczną.
 ```
 
 ---
@@ -283,6 +300,47 @@ notes: |
   Używać gdy wymagana wysoka dokładność.
 ```
 
+**Uwaga (2026-08-13): EQ_VDROP_008 i EQ_VDROP_009 są zaplanowane w tym
+dokumencie, ale NIE ZAIMPLEMENTOWANE w `equation_registry.py`** (zmierzone
+grepem przy karcie P0.5b) — `EQ_VDROP_010` (niżej) numeruje się z pominięciem
+tych dwóch świadomie, żeby nie kolidować z ewentualną przyszłą implementacją.
+
+---
+
+### EQ_VDROP_010 — Zmiana podstawy napięcia na transformatorze (granica łańcucha)
+
+```yaml
+equation_id: EQ_VDROP_010
+name_pl: "Zmiana podstawy napięcia na transformatorze (granica łańcucha)"
+standard_ref: "—"
+latex: |
+  \Delta U_{TR}^{kV} = U_1 - U_2
+symbols:
+  - symbol: "\\Delta U_{TR}^{kV}"
+    unit: "kV"
+    description_pl: "Wkład granicy transformatora do sumy łańcucha"
+    mapping_key: "delta_u_tr_kv"
+  - symbol: "U_1"
+    unit: "kV"
+    description_pl: "Napięcie strony pierwotnej (rozwiązanie rozpływu)"
+    mapping_key: "u_primary_kv"
+  - symbol: "U_2"
+    unit: "kV"
+    description_pl: "Napięcie strony wtórnej (rozwiązanie rozpływu)"
+    mapping_key: "u_secondary_kv"
+unit_derivation: "kV - kV = kV"
+notes: |
+  Karta P0.5b (2026-08-13, N-D6 + uzgodnienie U4). Transformator NIE JEST
+  odcinkiem VDROP (RODZAJE_ODCINKA w voltage_drop_binding.py go wyklucza od
+  początku istnienia tego modułu) — wzór ΔU=(R·P+X·Q)/U_n² nie ma
+  zastosowania, bo zmiana napięcia wynika z przekładni, nie spadku
+  wzdłużnego. U_1/U_2 pochodzą z JUŻ ROZWIĄZANEGO rozpływu (fizyka
+  transformatora policzona przez solver PF, poza domeną VDROP) — odczyt nie
+  zastępuje żadnej formuły VDROP, bo taka formuła dla transformatora nigdy
+  nie istniała. Wkład do sumy łańcucha (EQ_VDROP_007) wchodzi tak samo jak
+  odcinek linii/kabla — jako kolejny składnik sumy w kV.
+```
+
 ---
 
 ## 3. Tabela podsumowująca
@@ -294,10 +352,11 @@ notes: |
 | `EQ_VDROP_003` | Składowa R·P | $\Delta U_R = \frac{R \cdot P}{U_n^2}$ | % | `delta_u_r_percent` |
 | `EQ_VDROP_004` | Składowa X·Q | $\Delta U_X = \frac{X \cdot Q}{U_n^2}$ | % | `delta_u_x_percent` |
 | `EQ_VDROP_005` | Spadek na odcinku | $\Delta U = \Delta U_R + \Delta U_X$ | % | `delta_u_percent` |
-| `EQ_VDROP_006` | Suma spadków | $\Delta U_{total} = \sum \Delta U_i$ | % | `delta_u_total_percent` |
-| `EQ_VDROP_007` | Napięcie w punkcie | $U = U_{src} \cdot (1 - \Delta U/100)$ | kV | `u_kv` |
-| `EQ_VDROP_008` | Napięcie p.u. | $U_{pu} = U / U_n$ | p.u. | `u_pu` |
-| `EQ_VDROP_009` | Wzór dokładny | (patrz wyżej) | % | `delta_u_exact_percent` |
+| `EQ_VDROP_006` | Suma spadków (%) | $\Delta U_{total} = \sum \Delta U_i$ | % | `delta_u_total_percent` |
+| `EQ_VDROP_007` | Napięcie w punkcie | $U = U_{src} - \Delta U_{total}^{kV}$ | kV | `u_kv` |
+| `EQ_VDROP_008` | *(planowane, NIEZAIMPLEMENTOWANE)* Napięcie p.u. | $U_{pu} = U / U_n$ | p.u. | `u_pu` |
+| `EQ_VDROP_009` | *(planowane, NIEZAIMPLEMENTOWANE)* Wzór dokładny | (patrz wyżej) | % | `delta_u_exact_percent` |
+| `EQ_VDROP_010` | Granica transformatora (łańcuch) | $\Delta U_{TR}^{kV} = U_1 - U_2$ | kV | `delta_u_tr_kv` |
 
 ---
 

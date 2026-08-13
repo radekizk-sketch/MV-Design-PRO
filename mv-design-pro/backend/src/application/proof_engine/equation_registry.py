@@ -823,6 +823,49 @@ EQ_VDROP_007 = EquationDefinition(
     ),
 )
 
+EQ_VDROP_010 = EquationDefinition(
+    equation_id="EQ_VDROP_010",
+    name_pl="Zmiana podstawy napięcia na transformatorze (granica łańcucha)",
+    standard_ref="—",
+    latex=r"\Delta U_{TR}^{kV} = U_{1} - U_{2}",
+    symbols=(
+        SymbolDefinition(
+            symbol="\\Delta U_{TR}^{kV}",
+            unit="kV",
+            description_pl="Wkład granicy transformatora do sumy łańcucha",
+            mapping_key="delta_u_tr_kv",
+        ),
+        SymbolDefinition(
+            symbol="U_{1}",
+            unit="kV",
+            description_pl="Napięcie strony pierwotnej (rozwiązanie rozpływu)",
+            mapping_key="u_primary_kv",
+        ),
+        SymbolDefinition(
+            symbol="U_{2}",
+            unit="kV",
+            description_pl="Napięcie strony wtórnej (rozwiązanie rozpływu)",
+            mapping_key="u_secondary_kv",
+        ),
+    ),
+    unit_derivation="kV - kV = kV",
+    notes=(
+        "KARTA P0.5b (2026-08-13, N-D6 + uzgodnienie U4). Transformator NIE JEST "
+        "odcinkiem w sensie VDROP — RODZAJE_ODCINKA (`voltage_drop_binding.py`) "
+        "wyklucza go od początku istnienia tego modułu, bo zmienia napięcie "
+        "przekładnią, nie spadkiem wzdłużnym; wzór ΔU=(R·P+X·Q)/U_n² NIE MA "
+        "zastosowania. Ten krok NIE liczy fizyki transformatora — nazywa jawnie "
+        "zmianę podstawy napięcia, czytając U_1/U_2 z JUŻ ROZWIĄZANEGO rozpływu "
+        "(fizyka transformatora policzona przez solver PF, poza domeną VDROP). "
+        "To NIE jest cyrkularność zakazana kartą PODSTAWA-VDROP: tamten zakaz "
+        "dotyczy PODMIANY ΔU odcinka linii/kabla (który VDROP rości sobie prawo "
+        "policzyć przez R/X/P/Q) wynikiem biegu — tu żadna konkurencyjna formuła "
+        "VDROP nie istnieje, więc odczyt nie zastępuje niczego. Wkład do sumy "
+        "łańcucha (EQ_VDROP_007, ΔU_total^{kV}) wchodzi TAK SAMO jak odcinek "
+        "linii/kabla — jako kolejny składnik sumy w kV."
+    ),
+)
+
 
 # -----------------------------------------------------------------------------
 # P32: Load Flow & Voltage Drop Proof Pack — równania dowodowe
@@ -2654,6 +2697,7 @@ VDROP_EQUATIONS: dict[str, EquationDefinition] = {
     "EQ_VDROP_005": EQ_VDROP_005,
     "EQ_VDROP_006": EQ_VDROP_006,
     "EQ_VDROP_007": EQ_VDROP_007,
+    "EQ_VDROP_010": EQ_VDROP_010,
 }
 
 # P32: Load Flow & Voltage Drop equations registry

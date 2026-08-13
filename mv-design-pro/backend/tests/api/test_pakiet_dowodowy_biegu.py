@@ -774,6 +774,21 @@ def _dowod_z_pakietu_zbiorczego(content: bytes, nazwa: str) -> dict:
     return _dowod_z_pakietu(_podpakiet(content, nazwa))
 
 
+def _wezel_id_po_element_id(wezly: dict, element_id: str) -> str:
+    """ID węzła GRAFU (klucz ``node_voltage_kv``) po referencji ``element_id``.
+
+    Karta P0.5b: nagłówek dowodu (``source_bus``/``target_bus``) opisuje ŁAŃCUCH
+    od źródła do punktu — może obejmować WIELE odcinków (i granicę
+    transformatora), więc nie da się już znaleźć „dokładnie jednej gałęzi"
+    łączącej oba końce wprost. Odwrotne wyszukanie po ``element_id`` działa dla
+    łańcucha DOWOLNEJ długości.
+    """
+    for id_wezla, opis in wezly.items():
+        if opis.get("element_id") == element_id:
+            return id_wezla
+    raise AssertionError(f"Węzeł o element_id='{element_id}' nie istnieje w grafie biegu.")
+
+
 #: ILOCZYN CECH MODELU: 2 (falowniki) × 2 (ZIP) × 2 (zaczepy). Każda trójka
 #: prowadzi do INNYCH liczb w wyniku — sprawdzone pomiarem, nie założeniem.
 _WARIANTY_ROZPLYWU = [
@@ -1078,12 +1093,19 @@ def test_dowod_strat_zgadza_sie_z_wynikiem_biegu_w_kazdym_wariancie(
 def test_spadek_z_dowodu_zgadza_sie_ze_spadkiem_policzonym_przez_solver(
     client: TestClient, etykieta: str, seed: str
 ) -> None:
-    """ΔU z dowodu a ΔU z napięć węzłowych biegu — zgodność ZMIERZONA.
+    """ΔU_total (kV) z dowodu a ΔU z napięć węzłowych biegu — zgodność ZMIERZONA.
 
-    Wzór dowodu (ΔU = (R·P + X·Q)/U_n²) jest klasycznym przybliżeniem: pomija
-    składową poprzeczną, którą rozpływ zna dokładnie. Deklaracja z docstringu
-    warstwy wiązania („sam spadek zgadza się z biegiem") MUSI mieć strażnika —
-    inaczej byłaby fałszywą pewnością.
+    Wzór dowodu PER ODCINEK (ΔU = (R·P + X·Q)/U_n²) jest klasycznym
+    przybliżeniem: pomija składową poprzeczną, którą rozpływ zna dokładnie.
+    Deklaracja z docstringu warstwy wiązania („sam spadek zgadza się z biegiem")
+    MUSI mieć strażnika — inaczej byłaby fałszywą pewnością.
+
+    Karta P0.5b: dowód jest teraz ŁAŃCUCHEM (może obejmować granicę
+    transformatora, karta EQ_VDROP_010), więc porównanie idzie przez
+    ``delta_u_total_kv`` (fizycznie spójna suma w kV — patrz EQ_VDROP_007,
+    karta PODSTAWA-VDROP) — NIE przez ``delta_u_total_percent`` (prezentacyjne,
+    może mieszać podstawy różnych odcinków łańcucha) ani przez rekonstrukcję z
+    jednego wspólnego U_n (niepoprawne przy łańcuchu wielopodstawowym).
 
     Zmierzone: 0,4 V przy ΔU = 6,36 % (sieć 110/15 kV) i poniżej 0,001 V przy
     ΔU = 0,03 % (kabel SN). Próg 1 V wynika z tego pomiaru, nie z wygody:
@@ -1097,33 +1119,24 @@ def test_spadek_z_dowodu_zgadza_sie_ze_spadkiem_policzonym_przez_solver(
     assert pakiet.status_code == 200, pakiet.text
     dowod = _dowod_z_pakietu_zbiorczego(pakiet.content, "spadek_napiecia")
 
-    delta_u_proc = dowod["summary"]["key_results"]["delta_u_total_percent"]["value"]
+    kluczowe = dowod["summary"]["key_results"]
+    delta_u_total_kv_dowodu = kluczowe["delta_u_total_kv"]["value"]
 
     surowy = _artefakt_biegu(run_id)
     wezly = surowy["graph"]["nodes"]
-    pary = (dowod["header"]["source_bus"], dowod["header"]["target_bus"])
-    dopasowane = [
-        opis
-        for opis in surowy["graph"]["branches"].values()
-        if (
-            wezly[opis["from_node_id"]]["element_id"],
-            wezly[opis["to_node_id"]]["element_id"],
-        )
-        == pary
-    ]
-    assert len(dopasowane) == 1, ("dowód wskazuje DOKŁADNIE jeden odcinek biegu", etykieta)
-    opis = dopasowane[0]
-    u_n_kv = wezly[opis["from_node_id"]]["voltage_level"]
-    spadek_biegu_kv = (
-        surowy["node_voltage_kv"][opis["from_node_id"]]
-        - surowy["node_voltage_kv"][opis["to_node_id"]]
-    )
+    source_id = _wezel_id_po_element_id(wezly, dowod["header"]["source_bus"])
+    target_id = _wezel_id_po_element_id(wezly, dowod["header"]["target_bus"])
+    spadek_biegu_kv = surowy["node_voltage_kv"][source_id] - surowy["node_voltage_kv"][target_id]
 
-    assert 0.0 < delta_u_proc < 10.0, (delta_u_proc, etykieta)
-    spadek_dowodu_kv = delta_u_proc / 100.0 * u_n_kv
-    assert abs(spadek_dowodu_kv - spadek_biegu_kv) * 1000.0 < 1.0, (
+    # Uwaga: ``delta_u_total_percent`` NIE MA tu sensownej granicy sanity —
+    # przy łańcuchu krzyżującym transformator jego wkład % jest odniesiony do
+    # napięcia WTÓRNEGO i zdominowany przez przekładnię (rząd setek %, nie
+    # spadku wzdłużnego); to jest właśnie powód, dla którego forma % pozostaje
+    # WYŁĄCZNIE prezentacyjna (karta PODSTAWA-VDROP/U4), a porównaniem fizycznym
+    # jest ``delta_u_total_kv`` poniżej.
+    assert abs(delta_u_total_kv_dowodu - spadek_biegu_kv) * 1000.0 < 1.0, (
         etykieta,
-        spadek_dowodu_kv,
+        delta_u_total_kv_dowodu,
         spadek_biegu_kv,
     )
 
@@ -1144,18 +1157,16 @@ def test_napiecie_konca_z_dowodu_zgadza_sie_z_napieciem_biegu_karta_podstawa_vdr
     client: TestClient, etykieta: str, seed: str
 ) -> None:
     """U z EQ_VDROP_007 (krok końcowy) a napięcie węzła KOŃCA z biegu — zgodność
-    ZMIERZONA po naprawie karty PODSTAWA-VDROP.
+    ZMIERZONA po naprawie karty PODSTAWA-VDROP (rozszerzonej na łańcuch kartą
+    P0.5b).
 
     Przed naprawą krok mnożył ΔU_total% (odniesione do U_n) przez U_source —
-    na sieci 110/15 kV (początek odcinka POD napięciem znamionowym) dawało to
-    12,4 V rozjazdu wobec napięcia węzła z biegu. Próg 1 V wynika z tego samego
-    pomiaru co próg testu ΔU powyżej: po naprawie U = U_source − ΔU_total_kV, a
-    ΔU_total_kV jest TĄ SAMĄ liczbą co `spadek_dowodu_kv` z testu ΔU (obie
-    liczone jako ΔU_total% / 100 · U_n) i u_source_kv proofu jest TĄ SAMĄ
-    liczbą co napięcie węzła POCZĄTKU z biegu (obie pochodzą z
-    ``node_voltage_kv`` warstwy wiązania) — więc rozjazd U_end jest
-    ALGEBRAICZNIE identyczny z już zmierzonym rozjazdem ΔU, nie nowym pomiarem
-    z odrębnym ryzykiem.
+    na sieci 110/15 kV dawało to 12,4 V rozjazdu wobec napięcia węzła z biegu.
+    Karta P0.5b: dowód jest teraz ŁAŃCUCHEM (źródło = SLACK trasy, nie „początek
+    JEDNEGO odcinka" — może obejmować granicę transformatora, EQ_VDROP_010), a
+    ΔU_total_kV jest SUMĄ wkładów WSZYSTKICH kroków łańcucha — porównanie
+    idzie więc po ``dowod["header"]``/``node_voltage_kv`` znalezionych po
+    ``element_id`` (dowolna długość łańcucha), nie po „dokładnie jednej gałęzi".
     """
     case_id = str(uuid4())
     globals()[seed](case_id)
@@ -1171,23 +1182,13 @@ def test_napiecie_konca_z_dowodu_zgadza_sie_z_napieciem_biegu_karta_podstawa_vdr
 
     surowy = _artefakt_biegu(run_id)
     wezly = surowy["graph"]["nodes"]
-    pary = (dowod["header"]["source_bus"], dowod["header"]["target_bus"])
-    dopasowane = [
-        opis
-        for opis in surowy["graph"]["branches"].values()
-        if (
-            wezly[opis["from_node_id"]]["element_id"],
-            wezly[opis["to_node_id"]]["element_id"],
-        )
-        == pary
-    ]
-    assert len(dopasowane) == 1, ("dowód wskazuje DOKŁADNIE jeden odcinek biegu", etykieta)
-    opis = dopasowane[0]
-    u_poczatku_biegu = surowy["node_voltage_kv"][opis["from_node_id"]]
-    u_konca_biegu = surowy["node_voltage_kv"][opis["to_node_id"]]
+    source_id = _wezel_id_po_element_id(wezly, dowod["header"]["source_bus"])
+    target_id = _wezel_id_po_element_id(wezly, dowod["header"]["target_bus"])
+    u_poczatku_biegu = surowy["node_voltage_kv"][source_id]
+    u_konca_biegu = surowy["node_voltage_kv"][target_id]
 
     # Podstawa dowodu (u_source_kv w kroku EQ_VDROP_007) MUSI być napięciem
-    # POCZĄTKU odcinka z TEGO SAMEGO biegu — inaczej rozjazd U_end mógłby
+    # POCZĄTKU łańcucha z TEGO SAMEGO biegu — inaczej rozjazd U_end mógłby
     # wynikać z podstawienia innej wielkości, nie z arytmetyki kroku.
     u_source_dowodu = kluczowe["u_kv"]["value"] + delta_u_total_kv_dowodu
     assert u_source_dowodu == pytest.approx(u_poczatku_biegu, abs=1e-9), (
@@ -1206,15 +1207,20 @@ def test_napiecie_konca_z_dowodu_zgadza_sie_z_napieciem_biegu_karta_podstawa_vdr
         u_konca_biegu,
         rozjazd_v,
     )
-    # Zapadka na regresję do STAREJ (wadliwej) formy: na sieci, gdzie
-    # U_początku ≠ U_n, stara forma dawała 12,4 V rozjazdu — więc próg 1 V
-    # powyżej odróżnia naprawę od regresji tylko wtedy, gdy ta sieć faktycznie
-    # ma U_początku ≠ U_n. Bez tej asercji test przechodziłby także na sieci
-    # zdegenerowanej do rogu bez kosztu.
+    # Zapadka na regresję do STAREJ (wadliwej) formy: sieć musi zawierać co
+    # najmniej JEDEN węzeł POŚREDNI (za transformatorem), którego napięcie
+    # rzeczywiste odbiega od znamionowego — inaczej mieszanie podstaw w starej
+    # formie nic by nie kosztowało, a pomiar wyglądałby na potwierdzenie
+    # naprawy bez faktycznego jej wykonania (ta sama lekcja co próg testu ΔU
+    # powyżej). Węzeł „b-sn" (szyna SN, TUŻ ZA transformatorem 110/15 w sieci
+    # `_seed_enm_rozplyw`) jest tym węzłem — jego napięcie z definicji NIE jest
+    # dokładnie na U_n, bo transformator wnosi własny spadek (uk_percent).
     if seed == "_seed_enm_rozplyw":
-        u_n_kv_poczatku = wezly[opis["from_node_id"]]["voltage_level"]
-        assert abs(u_poczatku_biegu - u_n_kv_poczatku) > 0.01, (
-            "sieć musi mieć U_poczatku != U_n, inaczej pomiar nie dowodzi naprawy",
+        posredni_id = _wezel_id_po_element_id(wezly, "b-sn")
+        u_posredniego = surowy["node_voltage_kv"][posredni_id]
+        u_n_posredniego = wezly[posredni_id]["voltage_level"]
+        assert abs(u_posredniego - u_n_posredniego) > 0.01, (
+            "sieć musi mieć węzeł pośredni z U != U_n, inaczej pomiar nie dowodzi naprawy",
         )
 
 
