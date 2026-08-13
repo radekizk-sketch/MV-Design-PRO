@@ -636,6 +636,17 @@ export interface BboxEtykiety {
 export function bboxyEtykiet(podglad: PodgladRozdzielnicy): BboxEtykiety[] {
   const wynik: BboxEtykiety[] = [];
   for (const slot of podglad.sloty) {
+    // Numer pola też jest napisem rysunku — wyrocznia obejmuje KAŻDY wiersz
+    // tekstu, nie tylko te, które dziś wyglądają na zagrożone (reguła KLASA §1).
+    const numer = T.podgladPole(slot.numer);
+    const wNumeru = measureTextWidth(numer, FONT_ROLI);
+    wynik.push({
+      slot: slot.numer,
+      wiersz: numer,
+      x1: slot.x - wNumeru / 2,
+      x2: slot.x + wNumeru / 2,
+      y: podglad.naglowekY,
+    });
     slot.wierszeRoli.forEach((wiersz, i) => {
       const w = measureTextWidth(wiersz, FONT_ROLI);
       wynik.push({
