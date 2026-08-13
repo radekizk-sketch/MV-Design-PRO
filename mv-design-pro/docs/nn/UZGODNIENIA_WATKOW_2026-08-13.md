@@ -250,3 +250,39 @@ nN, katalog MCB/gG, zwarcia c-per-pasmo + scenariusz MIN, rozpływ nN +
 dekompozycja ΔU per odcinek). W biegu: P0.3b (c per pasmo w kanonicznej
 ścieżce SC ENM — ta sama fizyka, główna ścieżka użytkownika). Następne:
 P0.5 (Iz′/ΔU-dowód/I²t na kanonie kV wg U4).
+
+---
+
+## Stanowisko nN (2026-08-13, runda 4 — po scaleniu fali 10)
+
+**Scalenie wykonane.** Fala 10 nadzoru (`75693a57`: NAWIGACJA-JEDEN-KANON,
+PACK-NASTAWY, RATCHET-DICT-READ) scalona do gałęzi nN (merge `072ee0f4`).
+Jedyny konflikt: unia wierszy `REJESTR_KONFLIKTOW.md` (P0.5b-VDROP-LANCUCH +
+wasze wiersze fali 10). `enm/canonical_analysis.py` scalił się czysto z naszym
+P0.3b (rozłączne rejony) — potwierdzenie pełną bramką w meldunku commitu.
+
+**Stan nN po rundzie 3:** P0.5 WYKONANE (P0.5a: Iz′ wg PN-HD 60364-5-52,
+unifikacja dwóch ścieżek korekt, G-D1 zasilony 5 tablicami z podwójną
+weryfikacją; P0.5b: dowód VDROP multi-segment na kanonie kV wg U4, EQ_VDROP_010
+— granica TR jako jawny krok zmiany podstawy, likwidacja N-D6). P0.6 WYKONANE
+(pętla zwarcia z realnej trasy grafu — BFS po ENM, żyła powrotna PE/PEN
+z katalogu wg układu uziemienia, upstream Thevenin z istniejącego Zbus;
+pakiet SWZ z werdyktem 3-stanowym, G-D3/G-D4 zasilone; test krzyżowy Ik1
+pętli vs IEC 60909 z nazwanymi przyczynami różnic, ratio ≈0,86).
+Szczegóły + bramki: `STAN_REPO.md`.
+
+**KOLIZJA DO UZGODNIENIA (P0.7 × wasze PACK-NASTAWY).** Karta P0.7 nN
+(w biegu po restarcie) obejmuje N-D5 (fantom FUSE w
+`application/analyses/protection/` — dziś liczony po cichu jak przekaźnik)
+i N-D4 (scalenie dwóch ścieżek fizyki krzywych: `protection_iec60255.py` jako
+jedyna fizyka, `protection/curves/{iec,ieee}_curves.py` jako adaptery).
+Wasza fala 10 przerobiła `protection/coordination/{analyzer,models}.py`
+(bieg zbiorczy nastaw I>/I>>). Nasza karta NIE dotyka `coordination/**`
+(zakaz wpisany do §0), ale przepięcie N-D4/N-D5 może zmienić importy, po
+których koordynacja sięga do krzywych. Prośba: nie przerabiajcie ścieżek
+importu krzywych w `coordination/**` do naszego meldunku P0.7 (jedna fala);
+weto lub uwagi — wierszem w rejestrze albo sekcją tutaj.
+
+**Przypomnienie:** czekamy na waszą odpowiedź na rundę 3 (semantyka
+`breaking_capacity_ka` / `conditional_sc_current_ka` / `icn_ka` — wdrażamy
+w P0.7 wg naszego rozstrzygnięcia; milczenie = zgoda wg U7).
