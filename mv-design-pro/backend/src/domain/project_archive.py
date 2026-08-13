@@ -184,6 +184,19 @@ class IssuesSection:
 
 
 @dataclass(frozen=True)
+class EnmSection:
+    """Sekcja modeli ENM (EnergyNetworkModel) per przypadek w archiwum.
+
+    Każdy wpis: {"case_id": str, "snapshot": dict} — pełny zrzut modelu ENM
+    (model_dump) dla przypadku, posortowane po case_id dla determinizmu.
+    ENM jest jedynym nośnikiem stacji/transformatorów/strony nN — bez tej
+    sekcji dane ENM znikały przy eksporcie/imporcie projektu (dług N-D1).
+    """
+
+    models: list[dict[str, Any]] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
 class ArchiveFingerprints:
     """Fingerprints (hashe) wszystkich sekcji archiwum."""
 
@@ -197,6 +210,7 @@ class ArchiveFingerprints:
     proofs_hash: str
     interpretations_hash: str
     issues_hash: str
+    enm_hash: str = ""  # puste w archiwach sprzed sekcji ENM
 
 
 @dataclass(frozen=True)
@@ -231,6 +245,7 @@ class ProjectArchive:
     interpretations: InterpretationsSection
     issues: IssuesSection
     fingerprints: ArchiveFingerprints
+    enm: EnmSection = field(default_factory=EnmSection)
 
 
 # ============================================================================
@@ -279,6 +294,7 @@ def compute_archive_fingerprints(
     proofs: dict[str, Any],
     interpretations: dict[str, Any],
     issues: dict[str, Any],
+    enm: dict[str, Any] | None = None,
 ) -> ArchiveFingerprints:
     """Oblicz fingerprints dla wszystkich sekcji archiwum."""
     project_meta_hash = compute_hash(project_meta)
@@ -290,6 +306,7 @@ def compute_archive_fingerprints(
     proofs_hash = compute_hash(proofs)
     interpretations_hash = compute_hash(interpretations)
     issues_hash = compute_hash(issues)
+    enm_hash = compute_hash(enm if enm is not None else {"models": []})
 
     # Hash całego archiwum to hash wszystkich hash'y
     archive_hash = compute_hash(
@@ -303,6 +320,7 @@ def compute_archive_fingerprints(
             "proofs": proofs_hash,
             "interpretations": interpretations_hash,
             "issues": issues_hash,
+            "enm": enm_hash,
         }
     )
 
@@ -317,6 +335,7 @@ def compute_archive_fingerprints(
         proofs_hash=proofs_hash,
         interpretations_hash=interpretations_hash,
         issues_hash=issues_hash,
+        enm_hash=enm_hash,
     )
 
 
@@ -380,6 +399,9 @@ def archive_to_dict(archive: ProjectArchive) -> dict[str, Any]:
             "issues": {
                 "snapshot": archive.issues.snapshot,
             },
+            "enm": {
+                "models": archive.enm.models,
+            },
             "fingerprints": {
                 "archive_hash": archive.fingerprints.archive_hash,
                 "project_meta_hash": archive.fingerprints.project_meta_hash,
@@ -391,6 +413,7 @@ def archive_to_dict(archive: ProjectArchive) -> dict[str, Any]:
                 "proofs_hash": archive.fingerprints.proofs_hash,
                 "interpretations_hash": archive.fingerprints.interpretations_hash,
                 "issues_hash": archive.fingerprints.issues_hash,
+                "enm_hash": archive.fingerprints.enm_hash,
             },
         }
     )
@@ -433,6 +456,7 @@ def dict_to_archive(data: dict[str, Any]) -> ProjectArchive:
     proofs = data["proofs"]
     interpretations = data.get("interpretations", {"cached": []})
     issues = data.get("issues", {"snapshot": []})
+    enm = data.get("enm", {"models": []})
     fp = data["fingerprints"]
 
     return ProjectArchive(
@@ -487,6 +511,9 @@ def dict_to_archive(data: dict[str, Any]) -> ProjectArchive:
         issues=IssuesSection(
             snapshot=issues.get("snapshot", []),
         ),
+        enm=EnmSection(
+            models=enm.get("models", []),
+        ),
         fingerprints=ArchiveFingerprints(
             archive_hash=fp["archive_hash"],
             project_meta_hash=fp["project_meta_hash"],
@@ -498,6 +525,7 @@ def dict_to_archive(data: dict[str, Any]) -> ProjectArchive:
             proofs_hash=fp["proofs_hash"],
             interpretations_hash=fp.get("interpretations_hash", ""),
             issues_hash=fp.get("issues_hash", ""),
+            enm_hash=fp.get("enm_hash", ""),
         ),
     )
 
@@ -537,6 +565,7 @@ def verify_archive_integrity(archive: ProjectArchive) -> list[str]:
         proofs=archive_dict["proofs"],
         interpretations=archive_dict.get("interpretations", {"cached": []}),
         issues=archive_dict.get("issues", {"snapshot": []}),
+        enm=archive_dict.get("enm", {"models": []}),
     )
 
     checks = [
@@ -560,6 +589,8 @@ def verify_archive_integrity(archive: ProjectArchive) -> list[str]:
         )
     if archive.fingerprints.issues_hash:
         checks.append(("issues", computed.issues_hash, archive.fingerprints.issues_hash))
+    if archive.fingerprints.enm_hash:
+        checks.append(("enm", computed.enm_hash, archive.fingerprints.enm_hash))
 
     for section, computed_hash, stored_hash in checks:
         if computed_hash != stored_hash:

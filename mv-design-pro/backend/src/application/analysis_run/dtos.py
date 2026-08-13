@@ -169,7 +169,7 @@ class RunHeaderDTO:
     created_at: datetime
     status: str
     result_state: str  # VALID, OUTDATED, NONE
-    solver_kind: str  # PF, short_circuit_sn, fault_loop_nn
+    solver_kind: str  # PF, short_circuit_sn
     input_hash: str
 
     def to_dict(self) -> dict[str, Any]:

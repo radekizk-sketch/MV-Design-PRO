@@ -160,6 +160,25 @@ def set_enm(
     return enm
 
 
+def restore_enm(case_id: str, snapshot: dict) -> EnergyNetworkModel | None:
+    """Przywróć snapshot ENM z archiwum projektu 1:1 (import ZIP).
+
+    W odróżnieniu od `set_enm` NIE podbija rewizji, NIE przelicza hasha i NIE
+    dopisuje wpisu do dziennika zmian — przywrócony model ma być bajtowo
+    tożsamy z wyeksportowanym (round-trip archiwum, inwariant LV-INV-10:
+    rewizja/hash wyniku wskazują na tę samą rewizję modelu co przed eksportem).
+    Zwraca None, gdy snapshot nie waliduje się jako EnergyNetworkModel —
+    decyzję o zgłoszeniu ostrzeżenia podejmuje warstwa importu.
+    """
+    try:
+        enm = EnergyNetworkModel.model_validate(snapshot)
+    except ValueError:
+        return None
+    _enm_store[case_id] = enm
+    _persist_enm(case_id, enm)
+    return enm
+
+
 def reset_enm_store(*, remove_persisted: bool = True) -> None:
     _enm_store.clear()
     if not remove_persisted:

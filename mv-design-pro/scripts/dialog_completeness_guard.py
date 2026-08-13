@@ -94,8 +94,6 @@ NO_MODAL_NEEDED = {
     "run_power_flow",  # button action
     "run_time_series_power_flow",  # button action
     "compare_study_cases",  # comparison UI
-    "export_project_artifacts",  # export dialog (separate module)
-    "run_protection_study",  # button action
     "set_case_switch_state",
     "set_case_normal_state",
     "set_case_source_mode",

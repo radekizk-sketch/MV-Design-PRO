@@ -195,14 +195,13 @@ MV-Design-PRO/
 │   │   │   │   │   ├── short_circuit_iec60909.py
 │   │   │   │   │   ├── power_flow_newton.py
 │   │   │   │   │   ├── power_flow_gauss_seidel.py
-│   │   │   │   │   ├── power_flow_fast_decoupled.py
-│   │   │   │   │   └── fault_scenario_executor.py
+│   │   │   │   │   └── power_flow_fast_decoupled.py
 │   │   │   │   ├── validation/   # NetworkValidator, rules, constraints
 │   │   │   │   └── whitebox/     # Calculation trace utilities
 │   │   │   ├── protection/       # Protection domain (NOT a solver)
 │   │   │   ├── solver_input/     # Solver input preparation, contracts, eligibility
 │   │   │   ├── solvers/          # Solver wrapper/dispatcher layer
-│   │   │   └── whitebox/         # Top-level trace, proof, equation registry, LaTeX
+│   │   │   └── whitebox/         # Stub (realny proof engine: application/proof_engine/)
 │   │   ├── tests/                # Backend tests (1600+ tests)
 │   │   │   ├── conftest.py
 │   │   │   ├── analysis/         # Analysis layer tests
@@ -230,7 +229,6 @@ MV-Design-PRO/
 │   │   │   ├── designer/         # Designer/Wizard page
 │   │   │   ├── engine/           # Algorithm engines
 │   │   │   │   └── sld-layout/   # SLD auto-layout engine (7-phase pipeline)
-│   │   │   ├── proof-inspector/  # Proof inspector UI module
 │   │   │   ├── types/            # Shared TypeScript type definitions
 │   │   │   ├── test/             # Test infrastructure (setup.ts)
 │   │   │   └── ui/               # React components (60+ feature modules)

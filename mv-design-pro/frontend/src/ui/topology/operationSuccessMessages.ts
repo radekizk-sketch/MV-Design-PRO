@@ -62,12 +62,10 @@ export const OPERATION_SUCCESS_MESSAGES: Record<string, string> = {
   run_power_flow: 'Uruchomiono rozpływ mocy',
   run_time_series_power_flow: 'Uruchomiono serię rozpływów mocy',
   compare_study_cases: 'Porównano przypadki obliczeniowe',
-  run_protection_study: 'Uruchomiono analizę zabezpieczeń',
   // Editing
   delete_element: 'Usunięto element',
   rename_element: 'Zmieniono nazwę elementu',
   set_label: 'Ustawiono etykietę',
-  export_project_artifacts: 'Wyeksportowano pakiet projektu',
   // V12K-263: dwie operacje kanoniczne kończyły się BEZ własnego potwierdzenia.
   // Fallback („Operacja zakończona powodzeniem") nie mówił, CO się zmieniło, więc
   // projektant nie miał sygnału, że zapisały się akurat warunki przyłączenia albo

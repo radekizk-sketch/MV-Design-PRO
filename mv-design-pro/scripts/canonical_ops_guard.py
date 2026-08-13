@@ -2,20 +2,25 @@
 """
 Canonical Operations Completeness Guard
 
-Ensures that ALL canonical operations defined in the registry are implemented
-in the domain operations module, and that no undocumented operations exist.
+Ensures that the canonical-operation registry and the domain-operation
+handler dictionaries are in exact two-way sync:
 
 SCAN FILES:
   backend/src/domain/canonical_operations.py  (registry)
-  backend/src/enm/domain_operations.py        (V1 implementation)
-  backend/src/enm/domain_operations_v2.py     (V2 implementation)
+  backend/src/enm/domain_operations.py        (_HANDLERS)
+  backend/src/enm/domain_operations_v2.py     (ALL_V2_HANDLERS)
 
-CHECKS:
-  1. Every canonical operation has an implementation (or alias mapping)
-  2. Every implemented operation is registered (no orphans)
-  3. Alias map is consistent (aliases resolve to canonical names)
-  4. No duplicate operation names
-  5. All operations have Polish descriptions
+CHECKS (all HARD — any drift fails the build):
+  1. Every canonical operation has a handler in _HANDLERS | ALL_V2_HANDLERS
+     (directly or as an alias target).
+  2. Every handler key is a registered canonical operation (or alias source).
+  3. Alias map is consistent (aliases resolve to canonical names).
+  4. No duplicate operation names across registry + aliases.
+  5. All operations have Polish descriptions (checked in registry tests).
+
+Handler keys are extracted via AST from the actual dict literals (no regex
+heuristics), so an op added to a handler dict without registry registration
+— or vice versa — is a guard failure, not silent drift.
 
 EXIT CODES:
   0 = clean (no violations)
@@ -35,51 +40,44 @@ REGISTRY_FILE = REPO_ROOT / "backend" / "src" / "domain" / "canonical_operations
 OPS_V1_FILE = REPO_ROOT / "backend" / "src" / "enm" / "domain_operations.py"
 OPS_V2_FILE = REPO_ROOT / "backend" / "src" / "enm" / "domain_operations_v2.py"
 
+HANDLER_DICTS = {
+    OPS_V1_FILE: {"_HANDLERS"},
+    OPS_V2_FILE: {"ALL_V2_HANDLERS"},
+}
+
 
 def extract_canonical_names(filepath: Path) -> set[str]:
     """Extract canonical operation names from the registry module."""
     if not filepath.exists():
         return set()
     text = filepath.read_text(encoding="utf-8")
-    # Match dictionary keys in CANONICAL_OPERATIONS
-    pattern = re.compile(r'^\s+"([a-z_]+)":\s+OperationSpec\(', re.MULTILINE)
+    pattern = re.compile(r'^\s+"([a-z_0-9]+)":\s+OperationSpec\(', re.MULTILINE)
     return set(pattern.findall(text))
 
 
-def extract_implemented_ops(filepath: Path) -> set[str]:
-    """Extract operation names registered in the dispatcher."""
+def extract_handler_keys(filepath: Path, dict_names: set[str]) -> set[str]:
+    """Extract string keys of the named handler dict literals via AST."""
     if not filepath.exists():
         return set()
-    text = filepath.read_text(encoding="utf-8")
-    # Look for function definitions that match operation patterns
-    # and dispatcher registrations
-    ops = set()
-
-    # Pattern 1: def operation_name(enm, payload) functions
-    func_pattern = re.compile(
-        r'^def\s+(add_\w+|continue_\w+|insert_\w+|start_\w+|connect_\w+|'
-        r'set_\w+|assign_\w+|update_\w+|rename_\w+|calculate_\w+|'
-        r'validate_\w+|create_\w+|run_\w+|compare_\w+|link_\w+|'
-        r'export_\w+)\s*\(',
-        re.MULTILINE,
-    )
-    ops.update(func_pattern.findall(text))
-
-    # Pattern 2: registry dict entries "op_name": handler
-    registry_pattern = re.compile(r'["\']([a-z_]+)["\']\s*:\s*\w+', re.MULTILINE)
-    for match in registry_pattern.findall(text):
-        if any(
-            match.startswith(p)
-            for p in (
-                "add_", "continue_", "insert_", "start_", "connect_",
-                "set_", "assign_", "update_", "rename_", "calculate_",
-                "validate_", "create_", "run_", "compare_", "link_",
-                "export_",
-            )
+    tree = ast.parse(filepath.read_text(encoding="utf-8"))
+    keys: set[str] = set()
+    for node in ast.walk(tree):
+        value = None
+        if isinstance(node, ast.Assign):
+            for target in node.targets:
+                if isinstance(target, ast.Name) and target.id in dict_names:
+                    value = node.value
+        elif (
+            isinstance(node, ast.AnnAssign)
+            and isinstance(node.target, ast.Name)
+            and node.target.id in dict_names
         ):
-            ops.add(match)
-
-    return ops
+            value = node.value
+        if value is not None and isinstance(value, ast.Dict):
+            for key in value.keys:
+                if isinstance(key, ast.Constant) and isinstance(key.value, str):
+                    keys.add(key.value)
+    return keys
 
 
 def extract_alias_map(filepath: Path) -> dict[str, str]:
@@ -88,7 +86,6 @@ def extract_alias_map(filepath: Path) -> dict[str, str]:
         return {}
     text = filepath.read_text(encoding="utf-8")
     aliases = {}
-    pattern = re.compile(r'^\s+"([a-z_]+)":\s+"([a-z_]+)"', re.MULTILINE)
     in_alias_section = False
     for line in text.splitlines():
         if "ALIAS_MAP" in line and "=" in line:
@@ -97,7 +94,7 @@ def extract_alias_map(filepath: Path) -> dict[str, str]:
         if in_alias_section:
             if line.strip() == "}":
                 break
-            m = re.match(r'^\s+"([a-z_]+)":\s+"([a-z_]+)"', line)
+            m = re.match(r'^\s+"([a-z_0-9]+)":\s+"([a-z_0-9]+)"', line)
             if m:
                 aliases[m.group(1)] = m.group(2)
     return aliases
@@ -106,60 +103,69 @@ def extract_alias_map(filepath: Path) -> dict[str, str]:
 def main() -> int:
     violations: list[str] = []
 
-    # 1. Load canonical names
     canonical = extract_canonical_names(REGISTRY_FILE)
     if not canonical:
-        print("WARNING: No canonical operations found in registry. "
-              "File may not exist yet: %s" % REGISTRY_FILE)
-        return 0  # Not a violation if registry doesn't exist yet
+        print(f"VIOLATION: no canonical operations found in registry {REGISTRY_FILE}")
+        return 1
 
-    # 2. Load implemented operations
-    impl_v1 = extract_implemented_ops(OPS_V1_FILE)
-    impl_v2 = extract_implemented_ops(OPS_V2_FILE)
-    implemented = impl_v1 | impl_v2
+    implemented: set[str] = set()
+    for filepath, dict_names in HANDLER_DICTS.items():
+        keys = extract_handler_keys(filepath, dict_names)
+        if not keys:
+            violations.append(
+                f"HANDLER DICT EMPTY/NOT FOUND: {sorted(dict_names)} in {filepath.name} "
+                "(guard extraction broken or dict renamed — fix the guard, not the code)"
+            )
+        implemented |= keys
 
-    # 3. Load alias map
     aliases = extract_alias_map(REGISTRY_FILE)
-    alias_targets = set(aliases.values())
     alias_sources = set(aliases.keys())
+    alias_targets = set(aliases.values())
 
-    # 4. Check: every canonical op has implementation (or alias)
+    # 1. HARD: every canonical op must have a handler (directly or via alias target).
     for op_name in sorted(canonical):
-        if op_name not in implemented:
-            # Check if it's covered by an alias
-            reverse_aliases = {v: k for k, v in aliases.items()}
-            if op_name not in reverse_aliases and op_name not in alias_targets:
-                # Some operations may be analysis-only (no model mutation)
-                # Allow operations that don't mutate model to skip implementation check
-                pass  # Soft check — analysis operations may not be in domain_operations
+        if op_name not in implemented and op_name not in alias_targets:
+            violations.append(
+                f"REGISTERED WITHOUT HANDLER: '{op_name}' is in CANONICAL_OPERATIONS "
+                "but has no entry in _HANDLERS/ALL_V2_HANDLERS"
+            )
 
-    # 5. Check: alias targets must be canonical
+    # 2. HARD: every handler key must be registered (or be an alias source).
+    for op_name in sorted(implemented):
+        if op_name not in canonical and op_name not in alias_sources:
+            violations.append(
+                f"HANDLER WITHOUT REGISTRATION: '{op_name}' is in a handler dict "
+                "but not in CANONICAL_OPERATIONS (add an OperationSpec entry)"
+            )
+
+    # 3. Alias targets must be canonical.
     for alias, target in aliases.items():
         if target not in canonical:
             violations.append(
                 f"ALIAS '{alias}' -> '{target}': target is NOT a canonical operation"
             )
 
-    # 6. Check: no duplicate names
+    # 4. No duplicate names across registry + alias sources.
     all_names = list(canonical) + list(alias_sources)
-    seen = set()
+    seen: set[str] = set()
     for name in all_names:
         if name in seen:
             violations.append(f"DUPLICATE operation name: '{name}'")
         seen.add(name)
 
-    # Report
     if violations:
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"CANONICAL OPERATIONS GUARD: {len(violations)} violation(s)")
-        print(f"{'='*60}\n")
+        print(f"{'=' * 60}\n")
         for v in violations:
             print(f"  VIOLATION: {v}")
         print()
         return 1
 
-    print(f"Canonical Operations Guard: OK ({len(canonical)} ops, "
-          f"{len(aliases)} aliases, {len(implemented)} implemented)")
+    print(
+        f"Canonical Operations Guard: OK ({len(canonical)} ops, "
+        f"{len(aliases)} aliases, {len(implemented)} handler keys, two-way sync)"
+    )
     return 0
 
 

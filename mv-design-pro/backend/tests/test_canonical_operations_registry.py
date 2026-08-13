@@ -84,7 +84,7 @@ class TestCanonicalOperationsRegistry:
         universal_ops = {
             "assign_catalog_to_element",
             "update_element_parameters",
-            "export_project_artifacts",
+            "refresh_snapshot",
         }
         for op in universal_ops:
             assert op in CANONICAL_OP_NAMES, f"Missing universal operation: {op}"
