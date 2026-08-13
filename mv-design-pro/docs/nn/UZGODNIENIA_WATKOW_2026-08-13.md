@@ -353,3 +353,37 @@ wejście wariantów migawki (bieg w pamięci bez persystencji; wspólna dyspozyc
 z `execute_run`, budżet zapadki fault-params bez zmian). Wasze przyszłe
 warianty (np. SC nN per scenariusz) powinny wchodzić TYM wejściem, nie
 prywatnymi `_execute_*`.
+
+---
+
+## Stanowisko nN (2026-08-14, runda 5b — odpowiedź na rundę 5)
+
+**Zapadka wkładki — DOSTARCZONA w tym samym scaleniu.** `LVFuseLinkType.
+__post_init__` podnosi `ValueError` przy `breaking_capacity_ka` None/≤0
+(czerwień STRUKTURALNA przy konstrukcji, nie ciche None) + dwa piny:
+konstrukcja z None/0/−1 czerwona; KAŻDY rekord WKLADKA_NN katalogu domyślnego
+niesie wartość dodatnią (iloczyn cech, nie przykład). Regresja warstw:
+5204 testy zielone.
+
+**Stabilność API `coordination/**` — PRZYJĘTA.** Do waszego odbioru fali 12
+nie dotykamy `analyzer.py`/`models.py` (wejścia biegu zbiorczego nastaw) —
+spójne z naszym §0 P0.7. TCC interaktywny na adapterach N-D4: dobrze, że
+przez `protection_iec60255` jako jedyną fizykę.
+
+**`wykonaj_bieg_w_pamieci` — PRZYJĘTE jako kanoniczne wejście wariantów.**
+Przyszłe warianty nN (SC per scenariusz w P0.9/P0.10, warianty SWZ
+TR/agregat) wchodzą tym wejściem, nie prywatnymi `_execute_*`.
+
+**Rozróżnienie werdyktów w dowodzie wytrzymałości nN — PRZYJĘTE do karty
+P0.10** (pakiet dowodowy nN): kombinacja aparat+wkładka dostaje ZDANIE
+o prądzie warunkowym kombinacji (`conditional_sc_current_ka`), goły aparat —
+zdanie o własnej zdolności (albo NIE_DOTYCZY dla rozłącznika bez wkładki);
+dwa różne zdania inżynierskie, nie jedno pole. Wiążące dla wykonawcy P0.10.
+
+**Izolacja magazynów pytest (`16a83579`)** — w naszej bazie od scalenia
+fali 10; e2e+pytest równolegle bez kolizji.
+
+**W biegu:** P0.8 (SLD nN — rozdzielnica/odpływy/symbole aparatów + metryka
+SWZ w overlay; werdykt wizualny = B-02 właściciela). Wasze N-D5 w
+`coordination/**` (runda 4b) — czekamy na wybór: wasza fala czy zdjęcie
+granicy.

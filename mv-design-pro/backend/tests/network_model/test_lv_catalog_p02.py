@@ -81,27 +81,57 @@ class TestLVBreakerMcbTypeSchema:
 
 class TestLVFuseLinkTypeSchema:
     def test_creation_and_round_trip(self) -> None:
+        # Kanon rundy 5 uzgodnień: wkładka ZAWSZE niesie breaking_capacity_ka
+        # (intencja pierwotna testu — round-trip schematu — zachowana; default
+        # None przestał być legalny, patrz test zapadki niżej).
         t = LVFuseLinkType(
             id="fuse_test",
             name="gG NH00 63A",
             in_a=63.0,
             fuse_class="gG",
             size="NH00",
+            breaking_capacity_ka=120.0,
         )
         assert t.in_a == 63.0
         assert t.fuse_class == "gG"
         assert t.size == "NH00"
         assert t.i2t_prearc_a2s is None
-        assert t.breaking_capacity_ka is None  # default — karta P0.7
 
         d = t.to_dict()
         assert d["i2t_prearc_a2s"] is None
-        assert d["breaking_capacity_ka"] is None
+        assert d["breaking_capacity_ka"] == 120.0
         restored = LVFuseLinkType.from_dict(d)
         assert restored.to_dict() == d
 
+    def test_zapadka_wkladka_bez_zdolnosci_wylaczania_czerwona(self) -> None:
+        """Zapadka rundy 5 (odpowiedź nadzoru na rundę 3): wkładka bez
+        `breaking_capacity_ka` (albo z wartością <=0) = BŁĄD DANYCH katalogu
+        podnoszony STRUKTURALNIE przy konstrukcji — nigdy ciche None, żeby
+        dowód wytrzymałości nN nie odziedziczył SN-owego NIE_DOTYCZY."""
+        for zly in (None, 0.0, -1.0):
+            with pytest.raises(ValueError, match="zdolności wyłączania"):
+                LVFuseLinkType(
+                    id="fuse_bad",
+                    name="gG NH00 63A",
+                    in_a=63.0,
+                    fuse_class="gG",
+                    size="NH00",
+                    breaking_capacity_ka=zly,
+                )
+
+    def test_zapadka_caly_katalog_wkladek_zasilony(self) -> None:
+        """Iloczyn cech, nie przykład: KAŻDY rekord WKLADKA_NN w katalogu
+        domyślnym niesie dodatnią zdolność wyłączania (zapadka + dane spójne)."""
+        catalog = get_default_mv_catalog()
+        wkladki = catalog.list_lv_fuse_link_types()
+        assert wkladki
+        for w in wkladki:
+            assert w.breaking_capacity_ka is not None and w.breaking_capacity_ka > 0
+
     def test_frozen(self) -> None:
-        t = LVFuseLinkType(id="a", name="a", in_a=25.0, fuse_class="gG", size="NH00")
+        t = LVFuseLinkType(
+            id="a", name="a", in_a=25.0, fuse_class="gG", size="NH00", breaking_capacity_ka=120.0
+        )
         with pytest.raises(AttributeError):
             t.size = "NH1"  # type: ignore[misc]
 
@@ -277,7 +307,9 @@ class TestMaterializationContracts:
         ].solver_fields:
             assert field_name in mcb_dict
 
-        fuse = LVFuseLinkType(id="b", name="b", in_a=25.0, fuse_class="gG", size="NH00")
+        fuse = LVFuseLinkType(
+            id="b", name="b", in_a=25.0, fuse_class="gG", size="NH00", breaking_capacity_ka=120.0
+        )
         fuse_dict = fuse.to_dict()
         for field_name in MATERIALIZATION_CONTRACTS[
             CatalogNamespace.WKLADKA_NN.value

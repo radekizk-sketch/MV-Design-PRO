@@ -2768,6 +2768,20 @@ class LVFuseLinkType:
     contract_version: str = CATALOG_CONTRACT_VERSION
     verification_note: str | None = None
 
+    def __post_init__(self) -> None:
+        # Zapadka rundy 5 uzgodnień (docs/nn/UZGODNIENIA_WATKOW_2026-08-13.md):
+        # wkładka topikowa ZAWSZE ma znamionową zdolność wyłączania (IEC 60269-1
+        # jej wymaga) — None/0 to BŁĄD DANYCH katalogu, nie stan "nie dotyczy".
+        # Czerwień strukturalna zamiast cichego None, żeby dowód wytrzymałości
+        # nN nigdy nie odziedziczył SN-owego NIE_DOTYCZY dla wkładki.
+        if self.breaking_capacity_ka is None or self.breaking_capacity_ka <= 0:
+            raise ValueError(
+                f"Wkładka topikowa '{self.id}' bez znamionowej zdolności wyłączania "
+                f"(breaking_capacity_ka={self.breaking_capacity_ka!r}) — IEC 60269-1 "
+                "wymaga tej wartości dla każdej wkładki; uzupełnij z karty "
+                "katalogowej/normy z proweniencją (wzorzec G-D2)."
+            )
+
     def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
