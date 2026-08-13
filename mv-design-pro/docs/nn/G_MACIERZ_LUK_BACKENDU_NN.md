@@ -28,7 +28,7 @@ Priorytety: P0 = przed pierwszym użyciem modułu; P1/P2 wg faz H.
 | G-19 | **LV HARMONIC LOAD FLOW** (THDi, widma, prąd N, derating) | brak | jawny BACKEND GAP — kontrakt do zdefiniowania przy P2; reuse `_power_quality` Z(f) | P2 |
 | G-20 | Eksport XLSX/CSV tabel | brak jakiegokolwiek eksportu | moduł eksportu tabel (odcinki, wyniki) | P1 |
 | G-21 | Pak dowodowy `LV_CIRCUIT_VERIFICATION` + raport nN | brak paku; VDROP osierocony | procedura 10-krokowa (A10 §9) + sekcje raportu §63 | P0 (pak) / P1 (pełny raport) |
-| G-22 | Eligibility/dispatch dla analiz nN | `AnalysisKind` = 3 rodzaje; eligibility 4 typy | + `FAULT_LOOP_NN`/`SWZ_NN` w dispatch + macierzy eligibility | P0 |
+| G-22 | Eligibility/dispatch dla analiz nN | ~~`AnalysisKind` = 3 rodzaje; eligibility 4 typy~~ **WYKONANE 2026-08-13 (karta G-22)**: `AnalysisKind` = 5, `AnalysisType` = 6; bramki eligibility reużywają predykaty `fault_loop.service`; dispatch woła wprost serwisy P0.6 na `enm.store` (deterministyczny `run_id`, uczciwe FAILED); bez persystencji `AnalysisRun` (świadome — most ENM→ResultSet to osobna decyzja); pin predykatów parami eligibility↔dispatch w `test_dispatch_service.py` (odbiór nadzoru) | + `FAULT_LOOP_NN`/`SWZ_NN` w dispatch + macierzy eligibility | P0 |
 
 ## 2. Rejestr danych normatywnych (zakaz odtwarzania z pamięci — wzorzec D-01/Arc Flash)
 

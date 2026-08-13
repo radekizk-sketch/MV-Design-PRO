@@ -910,3 +910,53 @@ class TestAnalysisKindMappingNn:
     def test_swz_nn_round_trip(self):
         analysis_type = kind_to_analysis_type(AnalysisKind.SWZ_NN)
         assert analysis_type_to_kind(analysis_type) == AnalysisKind.SWZ_NN
+
+
+class TestEligibilityDispatchSprzezenie:
+    """Pin PREDYKATU PARAMI (odbiór nadzoru G-22, KLASA-NIE-INSTANCJA §3/§4).
+
+    Docstring fixtury `_nn_ready_enm` DEKLARUJE „jedno źródło prawdy o
+    kompletności danych" między eligibility a dispatch, ale obie strony oceniają
+    gotowość WŁASNYM predykatem (kontrole strukturalne EligibilityService vs
+    realne wymagania wejścia serwisów P0.6). Deklaracja bez testu = fałszywa
+    pewność: gdyby predykaty się rozjechały, oba zbiory testów zostałyby
+    zielone, a obietnica produktu („ELIGIBLE ⇒ bieg się powiedzie") pękłaby
+    po cichu. Ten test sprzęga OBA końce na JEDNYM modelu.
+    """
+
+    def test_eligible_implikuje_finished_dla_obu_rodzajow(self):
+        from application.eligibility_service import EligibilityService
+        from domain.eligibility_models import AnalysisType, EligibilityStatus
+        from enm.validator import ENMValidator
+
+        wizard, _, dispatch_svc, _ = _build_services()
+        project, case = _setup_nn_project(wizard)
+        enm = _nn_ready_enm()
+        set_enm(str(case.id), enm)
+
+        validator = ENMValidator()
+        readiness = validator.readiness(validator.validate(enm))
+        matrix = EligibilityService().compute_matrix(
+            enm=enm, readiness=readiness, case_id=str(case.id)
+        )
+        for analysis_type in (AnalysisType.FAULT_LOOP_NN, AnalysisType.SWZ_NN):
+            row = next(r for r in matrix.matrix if r.analysis_type == analysis_type)
+            assert row.status == EligibilityStatus.ELIGIBLE, (
+                f"{analysis_type}: eligibility nie uznaje modelu referencyjnego "
+                f"dispatchu za gotowy — predykaty się rozjechały ({row.status})."
+            )
+
+        for kind, options in (
+            (AnalysisKind.FAULT_LOOP_NN, {"station_ref": "stn", "bus_ref": "b1"}),
+            (AnalysisKind.SWZ_NN, {"station_ref": "stn", "bus_ref": "b1", "breaker_ref": "ap1"}),
+        ):
+            summary = dispatch_svc.dispatch(
+                analysis_kind=kind,
+                project_id=project.id,
+                study_case_id=case.id,
+                options=options,
+            )
+            assert summary.status == "FINISHED", (
+                f"{kind}: ELIGIBLE model nie przeszedł dispatchu "
+                f"({summary.status}: {summary.error_message}) — predykaty parami złamane."
+            )
