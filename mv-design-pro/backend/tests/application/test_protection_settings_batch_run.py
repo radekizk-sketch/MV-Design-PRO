@@ -232,6 +232,28 @@ def test_zbuduj_wejscie_nastaw_deterministyczny_dla_tych_samych_wejsc() -> None:
     assert w1.engine_input == w2.engine_input
 
 
+def test_k_b_k_bth_delta_t_s_pochodza_z_parametrow_wywolania_nie_z_opcji_kotwicy() -> None:
+    """Zrodlo konfiguracji (k_b/k_bth/delta_t_s) to PARAMETRY WYWOLANIA, nigdy
+    `kotwica.options` (ktore niesie wylacznie fault_type/c_factor/thermal_time_seconds
+    — SC nie zna k_b/k_bth). Jesli kod kiedys zaczalby czytac je z opcji kotwicy,
+    wartosci nieobecne w options dalyby CICHO domyslne 1.2/1.1/0.3 zamiast
+    jawnie przekazanych — ten test lapie taki rozjazd zrodla."""
+    kotwica = _kotwica(_siec_promieniowa())
+    assert "k_b" not in kotwica.options and "k_bth" not in kotwica.options
+    wejscie = zbuduj_wejscie_nastaw(
+        kotwica,
+        line_id="ln1",
+        next_bus_id="b_b",
+        c_min=1.0,
+        delta_t_s=0.45,
+        k_b=1.35,
+        k_bth=1.18,
+    )
+    assert wejscie.engine_input.k_b == 1.35
+    assert wejscie.engine_input.k_bth == 1.18
+    assert wejscie.engine_input.delta_t_s == 0.45
+
+
 # ---------------------------------------------------------------------------
 # Iloczyn cech: kotwica zlego rodzaju/stanu
 # ---------------------------------------------------------------------------
