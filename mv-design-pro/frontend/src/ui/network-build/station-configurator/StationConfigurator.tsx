@@ -125,7 +125,7 @@ const GROUP_STYLE: Record<StepGroup, { readonly text: string; readonly border: s
     text: 'text-scada-sn',
     border: 'border-scada-sn',
     bg: 'bg-cyan-950/25',
-    button: 'bg-scada-sn text-slate-950',
+    button: 'bg-scada-sn text-scada-bg',
   },
   Pomiary: {
     text: 'text-sky-300',

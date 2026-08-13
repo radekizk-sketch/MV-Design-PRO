@@ -227,8 +227,11 @@ def test_coverage_score_gap_detection() -> None:
         recommendations=_recommendation_view(),
     )
 
-    assert any("P19" in item for item in view.missing_items)
-    assert any("P14-GAP-001" in item for item in view.critical_gaps)
+    # Intencja bez zmian: brak pakietu uziemienia jest wykryty jako brak i jako
+    # luka krytyczna. Etykiety przepisane na polskie BEZ kodenamów projektowych
+    # (ROUTERY-4A: lista braków trafia wprost do UI — CLAUDE.md §8).
+    assert any("uziemienie" in item for item in view.missing_items)
+    assert any("LUKA-UZIEMIENIE" in item for item in view.critical_gaps)
     assert view.total_score < 100.0
 
 

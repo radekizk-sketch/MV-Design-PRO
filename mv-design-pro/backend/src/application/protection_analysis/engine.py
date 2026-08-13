@@ -24,7 +24,7 @@ NOT SUPPORTED (P15b+):
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from domain.protection_analysis import (
     ProtectionEvaluation,
@@ -39,6 +39,11 @@ from network_model.catalog.types import (
     ProtectionDeviceType,
     ProtectionSettingTemplate,
 )
+
+if TYPE_CHECKING:
+    # Rejestr krzywych producenta jest importowany LENIWIE w cialach funkcji
+    # (tak jak dotad); tu potrzebna jest tylko nazwa typu dla analizy statycznej.
+    from domain.protection_vendors import VendorCurveDefinition
 
 # =============================================================================
 # CURVE COEFFICIENTS (IEC 60255-151:2009)
@@ -742,7 +747,7 @@ def build_device_from_vendor_curve(
     )
 
 
-def _vendor_to_curve_kind(vendor_curve) -> str:
+def _vendor_to_curve_kind(vendor_curve: VendorCurveDefinition) -> str:
     """
     Map vendor curve to engine curve_kind.
 

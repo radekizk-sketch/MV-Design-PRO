@@ -8,10 +8,15 @@ describe('KatalogPanel', () => {
   it('renderuje wszystkie kategorie katalogu', async () => {
     render(<KatalogPanel zaladujTypy={stubLoader} />);
     expect(screen.getByRole('button', { name: 'Linie napowietrzne' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Kable' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Kable SN' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Transformatory' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Aparaty łączeniowe' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Aparaty łączeniowe SN' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Falowniki (OZE)' })).toBeInTheDocument();
+    // L-16 (karta KD-3): cztery przestrzenie dołożone do adaptera ui2.
+    expect(screen.getByRole('button', { name: 'Przekładniki prądowe' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Przekładniki napięciowe' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Kable nN' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Aparaty nN' })).toBeInTheDocument();
     // Poczekaj na zakończenie asynchronicznego ładowania listy (unik ostrzeżeń act()).
     await screen.findByRole('button', { name: /AFL-6 120/ });
   });

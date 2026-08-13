@@ -21,8 +21,16 @@ from api.canonical_run_views import (
 )
 from api.v125_contracts import build_export_artifact, build_export_policy, resolve_proof_pack_ref
 from application.analysis_run.read_model import build_trace_summary, canonicalize_json
+from application.dokumentacja_wykonawcza import (
+    PROFIL_DOKUMENTACJI_WYKONAWCZEJ,
+    GotowoscDokumentacjiWykonawczej,
+    komunikat_odmowy,
+    ocen_gotowosc_dokumentacji_wykonawczej,
+)
 from enm.canonical_analysis import CanonicalRun
+from fastapi import HTTPException
 from fastapi.responses import Response
+from network_model.reporting.czcionki import zarejestruj_czcionki
 
 ReportProfile = Literal["osd", "wykonawczy", "audytowy"]
 ReportDetailLevel = Literal["minimalny", "standardowy", "pelny"]
@@ -219,6 +227,39 @@ def _build_report_results_section(
     }
 
 
+def gotowosc_dokumentacji_wykonawczej_biegu(run: CanonicalRun) -> GotowoscDokumentacjiWykonawczej:
+    """Werdykt bramki dokumentacji wykonawczej dla MIGAWKI tego biegu.
+
+    Dokumentacja wykonawcza opisuje model, na którym bieg został policzony —
+    dlatego bramka pyta `run.snapshot`, a nie bieżący model przypadku (ten mógł
+    zostać poprawiony PO biegu; wtedy dokumentację wydaje się z nowego biegu).
+    """
+    snapshot = run.snapshot if isinstance(run.snapshot, dict) else {}
+    return ocen_gotowosc_dokumentacji_wykonawczej(snapshot)
+
+
+def _wymus_gotowosc_dokumentacji_wykonawczej(run: CanonicalRun, profile: str) -> None:
+    """Odmawia raportu w profilu „Wykonawczy", gdy model nie jest do niego gotowy.
+
+    Profile OSD i audytowy przechodzą bez zmian — bramka dotyczy WYŁĄCZNIE
+    dokumentacji wykonawczej (karta KOMPLETNOSC-POLA-TR §0 pkt 2: „NIE blokuje
+    pracy koncepcyjnej, NIE blokuje obliczeń").
+    """
+    if profile != PROFIL_DOKUMENTACJI_WYKONAWCZEJ:
+        return
+    werdykt = gotowosc_dokumentacji_wykonawczej_biegu(run)
+    if werdykt.gotowy:
+        return
+    raise HTTPException(
+        status_code=409,
+        detail={
+            "code": "documentation.executive_not_ready",
+            "message_pl": komunikat_odmowy(werdykt),
+            "gotowosc_dokumentacji_wykonawczej": werdykt.to_dict(),
+        },
+    )
+
+
 def build_analysis_run_report_payload(
     run: CanonicalRun,
     *,
@@ -226,6 +267,12 @@ def build_analysis_run_report_payload(
 ) -> dict[str, Any]:
     analysis_case_context = build_analysis_case_context(run)
     normalized_options = normalize_report_options(**(report_options or {}))
+    # KOMPLETNOSC-POLA-TR §0 pkt 2: brama dokumentacji wykonawczej. Sprawdzenie
+    # siedzi TUTAJ, a nie w trzech końcówkach HTTP, bo to JEDYNE miejsce, przez
+    # które przechodzą WSZYSTKIE trzy formaty raportu (JSON/DOCX/PDF) — bramka
+    # dopięta do jednej końcówki byłaby bramką, którą omija się zmianą formatu
+    # w adresie.
+    _wymus_gotowosc_dokumentacji_wykonawczej(run, normalized_options["profile"])
     trace_payload = canonicalize_json(build_extended_trace_response(run))
     results_section = _build_report_results_section(
         run,
@@ -235,7 +282,10 @@ def build_analysis_run_report_payload(
 
     payload: dict[str, Any] = {
         "report_type": "analysis_run_report",
-        "report_version": "2.0.0",
+        # 2.1.0 (V12K-281, K13): wiersze `results.short_circuit.rows` bez
+        # `branch_contributions` (+ flaga `branch_contributions_available`) —
+        # rozpływ per punkt zwarcia dostępny endpointem na żądanie.
+        "report_version": "2.1.0",
         "title": _analysis_title(run),
         "report_options": normalized_options,
         "analysis_case_context": analysis_case_context,
@@ -381,7 +431,9 @@ def build_analysis_run_export_payload(run: CanonicalRun) -> dict[str, Any]:
         )
         return {
             "report_type": "short_circuit_result",
-            "report_version": "1.1.0",
+            # 1.2.0 (V12K-281, K13): wiersze `short_circuit_results.rows` bez
+            # `branch_contributions` (+ flaga dostępności) — patrz raport 2.1.0.
+            "report_version": "1.2.0",
             "analysis_case_context": analysis_case_context,
             "proof_pack_ref": resolve_proof_pack_ref(run),
             "export_artifact": build_export_artifact(run, export_kind="json"),
@@ -880,23 +932,24 @@ def export_run_pdf_response(
     white_box_trace = bundle.get("white_box_trace") or []
 
     buffer = io.BytesIO()
-    canvas_obj = canvas.Canvas(buffer, pagesize=A4)
+    zarejestruj_czcionki()
+    canvas_obj = canvas.Canvas(buffer, pagesize=A4, invariant=1, pageCompression=0)
     page_width, page_height = A4
     left_margin = 25 * mm
     top_margin = page_height - 25 * mm
     y = top_margin
     line_height = 5 * mm
 
-    canvas_obj.setFont("Helvetica-Bold", 16)
+    canvas_obj.setFont("DejaVuSans-Bold", 16)
     title = "Raport rozpływu mocy"
     canvas_obj.drawString(
-        (page_width - canvas_obj.stringWidth(title, "Helvetica-Bold", 16)) / 2,
+        (page_width - canvas_obj.stringWidth(title, "DejaVuSans-Bold", 16)) / 2,
         y,
         title,
     )
     y -= 10 * mm
 
-    canvas_obj.setFont("Helvetica", 10)
+    canvas_obj.setFont("DejaVuSans", 10)
     status_text = (
         f"Status: {'Zbieżny' if result.get('converged') else 'Niezbieżny'} | "
         f"Iteracje: {result.get('iterations_count', '—')} | "
@@ -905,11 +958,11 @@ def export_run_pdf_response(
     canvas_obj.drawString(left_margin, y, status_text)
     y -= 8 * mm
 
-    canvas_obj.setFont("Helvetica-Bold", 12)
+    canvas_obj.setFont("DejaVuSans-Bold", 12)
     canvas_obj.drawString(left_margin, y, "Podsumowanie")
     y -= 6 * mm
 
-    canvas_obj.setFont("Helvetica", 10)
+    canvas_obj.setFont("DejaVuSans", 10)
     summary = result.get("summary", {})
     summary_lines = [
         f"Węzeł bilansujący: {result.get('slack_bus_id', '—')}",
@@ -924,10 +977,10 @@ def export_run_pdf_response(
         y -= line_height
 
     y -= 5 * mm
-    canvas_obj.setFont("Helvetica-Bold", 12)
+    canvas_obj.setFont("DejaVuSans-Bold", 12)
     canvas_obj.drawString(left_margin, y, "Kontekst katalogowy")
     y -= 5 * mm
-    canvas_obj.setFont("Helvetica", 8)
+    canvas_obj.setFont("DejaVuSans", 8)
     if catalog_context_lines:
         canvas_obj.drawString(
             left_margin,
@@ -941,16 +994,16 @@ def export_run_pdf_response(
             if y < 30 * mm:
                 canvas_obj.showPage()
                 y = top_margin
-                canvas_obj.setFont("Helvetica", 8)
+                canvas_obj.setFont("DejaVuSans", 8)
     else:
         canvas_obj.drawString(left_margin, y, "Brak jawnego kontekstu katalogowego.")
         y -= line_height
 
     y -= 5 * mm
-    canvas_obj.setFont("Helvetica-Bold", 12)
+    canvas_obj.setFont("DejaVuSans-Bold", 12)
     canvas_obj.drawString(left_margin, y, "Wywód szczegółowy")
     y -= 5 * mm
-    canvas_obj.setFont("Helvetica", 8)
+    canvas_obj.setFont("DejaVuSans", 8)
     if white_box_trace:
         for step in white_box_trace[:10]:
             title = step.get("title") or step.get("key") or "Krok"
@@ -963,7 +1016,7 @@ def export_run_pdf_response(
             if y < 30 * mm:
                 canvas_obj.showPage()
                 y = top_margin
-                canvas_obj.setFont("Helvetica", 8)
+                canvas_obj.setFont("DejaVuSans", 8)
         if len(white_box_trace) > 10:
             canvas_obj.drawString(
                 left_margin,
@@ -976,11 +1029,11 @@ def export_run_pdf_response(
         y -= line_height
 
     y -= 5 * mm
-    canvas_obj.setFont("Helvetica-Bold", 12)
+    canvas_obj.setFont("DejaVuSans-Bold", 12)
     canvas_obj.drawString(left_margin, y, "Wyniki węzłowe (top 20)")
     y -= 5 * mm
 
-    canvas_obj.setFont("Helvetica", 9)
+    canvas_obj.setFont("DejaVuSans", 9)
     for bus in result.get("bus_results", [])[:20]:
         text = (
             f"{str(bus.get('bus_id', '—'))[:12]}: "
@@ -1260,7 +1313,8 @@ def export_run_report_pdf_response(
     results_section = payload.get("results", {})
 
     buffer = io.BytesIO()
-    canvas_obj = canvas.Canvas(buffer, pagesize=A4)
+    zarejestruj_czcionki()
+    canvas_obj = canvas.Canvas(buffer, pagesize=A4, invariant=1, pageCompression=0)
     page_width, page_height = A4
     left_margin = 25 * mm
     top_margin = page_height - 25 * mm
@@ -1274,14 +1328,14 @@ def export_run_report_pdf_response(
             canvas_obj.showPage()
             y = top_margin
 
-    def draw_line(text: str, *, font: str = "Helvetica", size: int = 9) -> None:
+    def draw_line(text: str, *, font: str = "DejaVuSans", size: int = 9) -> None:
         nonlocal y
         ensure_page(1)
         canvas_obj.setFont(font, size)
         canvas_obj.drawString(left_margin, y, text[:155])
         y -= line_height
 
-    canvas_obj.setFont("Helvetica-Bold", 16)
+    canvas_obj.setFont("DejaVuSans-Bold", 16)
     canvas_obj.drawString(left_margin, y, payload["title"])
     y -= 8 * mm
 
@@ -1296,7 +1350,7 @@ def export_run_report_pdf_response(
     y -= 2 * mm
 
     if "summary" in options["sections"]:
-        canvas_obj.setFont("Helvetica-Bold", 12)
+        canvas_obj.setFont("DejaVuSans-Bold", 12)
         canvas_obj.drawString(left_margin, y, "Podsumowanie")
         y -= line_height
         for key, value in (payload.get("summary", {}) or {}).items():
@@ -1304,13 +1358,13 @@ def export_run_report_pdf_response(
         y -= 2 * mm
 
     if "results" in options["sections"]:
-        canvas_obj.setFont("Helvetica-Bold", 12)
+        canvas_obj.setFont("DejaVuSans-Bold", 12)
         canvas_obj.drawString(left_margin, y, "Wyniki tabelaryczne")
         y -= line_height
         for table in results_section.get("index", {}).get("tables", []):
             draw_line(
                 str(table.get("label_pl") or table.get("table_id") or "Tabela"),
-                font="Helvetica-Bold",
+                font="DejaVuSans-Bold",
                 size=10,
             )
             if table.get("table_id") == "buses":
@@ -1368,7 +1422,7 @@ def export_run_report_pdf_response(
         y -= 2 * mm
 
     if "catalog" in options["sections"]:
-        canvas_obj.setFont("Helvetica-Bold", 12)
+        canvas_obj.setFont("DejaVuSans-Bold", 12)
         canvas_obj.drawString(left_margin, y, "Kontekst katalogowy")
         y -= line_height
         catalog_context = payload.get("catalog_context", [])
@@ -1389,7 +1443,7 @@ def export_run_report_pdf_response(
         y -= 2 * mm
 
     if "trace" in options["sections"]:
-        canvas_obj.setFont("Helvetica-Bold", 12)
+        canvas_obj.setFont("DejaVuSans-Bold", 12)
         canvas_obj.drawString(left_margin, y, "Wywód szczegółowy")
         y -= line_height
         white_box_trace = (payload.get("trace", {}) or {}).get("white_box_trace", [])
@@ -1443,7 +1497,8 @@ def export_run_trace_pdf_response(
     trace_payload = build_analysis_run_trace_export_payload(run)
     summary = build_trace_summary(trace_payload.get("white_box_trace") or [])
     buffer = io.BytesIO()
-    canvas_obj = canvas.Canvas(buffer, pagesize=A4)
+    zarejestruj_czcionki()
+    canvas_obj = canvas.Canvas(buffer, pagesize=A4, invariant=1, pageCompression=0)
     page_width, page_height = A4
     left_margin = 20 * mm
     right_margin = page_width - 20 * mm
@@ -1460,7 +1515,7 @@ def export_run_trace_pdf_response(
     def draw_wrapped(
         text: str,
         *,
-        font_name: str = "Helvetica",
+        font_name: str = "DejaVuSans",
         font_size: int = 9,
         max_chars: int = 110,
         line_height: float = 4.5 * mm,
@@ -1473,26 +1528,26 @@ def export_run_trace_pdf_response(
             canvas_obj.drawString(left_margin, y, line)
             y -= line_height
 
-    canvas_obj.setFont("Helvetica-Bold", 15)
+    canvas_obj.setFont("DejaVuSans-Bold", 15)
     title = "Wywód obliczeń"
     canvas_obj.drawString(
-        (page_width - canvas_obj.stringWidth(title, "Helvetica-Bold", 15)) / 2,
+        (page_width - canvas_obj.stringWidth(title, "DejaVuSans-Bold", 15)) / 2,
         y,
         title,
     )
     y -= 7 * mm
 
     draw_wrapped(
-        f"Uruchomienie: {trace_payload.get('run_id')}", font_name="Helvetica", font_size=10
+        f"Uruchomienie: {trace_payload.get('run_id')}", font_name="DejaVuSans", font_size=10
     )
     draw_wrapped(
         f"Wersja modelu: {trace_payload.get('snapshot_id') or '—'} | Hash wejścia: {trace_payload.get('input_hash') or '—'}",
-        font_name="Helvetica",
+        font_name="DejaVuSans",
         font_size=9,
     )
     draw_wrapped(
         f"Liczba kroków: {summary.get('count', 0)} | Fazy: {', '.join(summary.get('phases', []) or []) or '—'}",
-        font_name="Helvetica",
+        font_name="DejaVuSans",
         font_size=9,
     )
     y -= 3 * mm
@@ -1500,7 +1555,7 @@ def export_run_trace_pdf_response(
     white_box_trace = trace_payload.get("white_box_trace") or []
     for index, step in enumerate(white_box_trace, start=1):
         ensure_page(6)
-        canvas_obj.setFont("Helvetica-Bold", 11)
+        canvas_obj.setFont("DejaVuSans-Bold", 11)
         heading = step.get("title") or step.get("key") or f"Krok {index}"
         canvas_obj.drawString(left_margin, y, f"{index}. {heading}")
         y -= 5 * mm
@@ -1512,12 +1567,12 @@ def export_run_trace_pdf_response(
                 f"Cel: {step.get('target_id') or '—'}",
             ]
         )
-        draw_wrapped(meta, font_name="Helvetica", font_size=8, max_chars=120, line_height=4 * mm)
+        draw_wrapped(meta, font_name="DejaVuSans", font_size=8, max_chars=120, line_height=4 * mm)
 
         if step.get("formula_latex"):
             draw_wrapped(
                 f"Wzór: {step.get('formula_latex')}",
-                font_name="Helvetica-Oblique",
+                font_name="DejaVuSans-Oblique",
                 font_size=8,
                 max_chars=110,
                 line_height=4 * mm,
@@ -1525,7 +1580,7 @@ def export_run_trace_pdf_response(
         if step.get("substitution"):
             draw_wrapped(
                 f"Podstawienie: {step.get('substitution')}",
-                font_name="Helvetica",
+                font_name="DejaVuSans",
                 font_size=8,
                 max_chars=110,
                 line_height=4 * mm,
@@ -1533,7 +1588,7 @@ def export_run_trace_pdf_response(
         if step.get("result") is not None:
             draw_wrapped(
                 f"Wynik: {json.dumps(step.get('result'), ensure_ascii=False, sort_keys=True)}",
-                font_name="Helvetica",
+                font_name="DejaVuSans",
                 font_size=8,
                 max_chars=110,
                 line_height=4 * mm,
@@ -1541,7 +1596,7 @@ def export_run_trace_pdf_response(
         if step.get("notes"):
             draw_wrapped(
                 f"Uwagi: {step.get('notes')}",
-                font_name="Helvetica",
+                font_name="DejaVuSans",
                 font_size=8,
                 max_chars=110,
                 line_height=4 * mm,
@@ -1549,7 +1604,7 @@ def export_run_trace_pdf_response(
         y -= 2 * mm
 
     ensure_page(2)
-    canvas_obj.setFont("Helvetica", 8)
+    canvas_obj.setFont("DejaVuSans", 8)
     canvas_obj.drawRightString(
         right_margin, bottom_margin - 2 * mm, "Wygenerowano przez MV-DESIGN-PRO"
     )

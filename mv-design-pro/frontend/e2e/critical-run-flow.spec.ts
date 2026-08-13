@@ -19,8 +19,23 @@ type DomainOpResponse = {
     header?: { hash_sha256?: string };
     corridors?: Array<{ ordered_segment_refs?: string[] }>;
     buses?: Array<{ ref_id: string }>;
-    branches?: Array<{ ref_id: string }>;
+    branches?: Array<{ ref_id: string; type?: string }>;
     transformers?: Array<{ ref_id: string }>;
+    /** POPRAWKA 2026-08-08 (karta TYPY-POZA-BRAMKA): pole CZYTANE nizej
+     *  (`op.snapshot?.substations`), a niezadeklarowane — przez co
+     *  `station.meta.field_specs` i argumenty `find` szly jako implicit any.
+     *  Ksztalt odwzorowuje `src/types/enm.ts` (`Substation` + dynamiczne
+     *  `meta.field_specs` uzywane przez operacje domenowe). */
+    substations?: Array<{
+      ref_id: string;
+      meta?: {
+        field_specs?: Array<{
+          field_ref?: string;
+          field_role?: string | null;
+          bay_role?: string | null;
+        }>;
+      };
+    }>;
   };
 };
 
@@ -151,7 +166,12 @@ async function createCaseFromUi(page: Page, request: APIRequestContext): Promise
   });
 
   await page.goto('/', { waitUntil: 'commit' });
-  await page.waitForSelector('[data-testid="app-ready"]', { state: 'attached', timeout: 30000 });
+  // Budzet ROZRUCHU narzedzia (nie asercja produktu): PIERWSZE wejscie w biegu
+  // uruchamia zimny transform vite dev calego grafu modulow — zmierzone na tym
+  // kontenerze 36 s przy zimnym starcie, ~2 s przy kolejnych. 30 s wywracalo ten
+  // spec, gdy szedl jako pierwszy po starcie serwera. Asercje ponizej maja wlasne,
+  // krotkie limity, wiec realne zwisy UI nadal sa lapane.
+  await page.waitForSelector('[data-testid="app-ready"]', { state: 'attached', timeout: 90000 });
   await expect(page.getByTestId('active-case-bar')).toContainText(/Zakres|Bieżący zestaw/);
   return caseId;
 }
@@ -184,11 +204,17 @@ test('krytyczny flow V1 na realnym backendzie: case -> GPZ -> trunk -> station -
 
   // Krok 3: Wstawienie stacji SN/nN
   op = await executeDomainOp(request, caseId, 'insert_station_on_segment_sn', {
+    // B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+    field_apparatus_catalog_ref: 'sw-cb-abb-vd4-17kv-630a',
     segment_id: segmentRefs[segmentRefs.length - 1],
     station_type: 'B',
     insert_at: { value: 0.5 },
     station: { sn_voltage_kv: 15.0, nn_voltage_kv: 0.4 },
-    sn_fields: ['IN', 'OUT', 'FEEDER'],
+    // KOMPLETNOSC-POLA-TR (klasa A): stacja SN/nN Z transformatorem — pole roli
+    // 'TR' dopisane, bo realna rozdzielnia realizuje odejscie do transformatora
+    // polem transformatorowym. Kreator stacji tworzy je domyslnie, wiec fixture
+    // bez niego opisywal siec, ktorej kreator by nie zbudowal.
+    sn_fields: ['IN', 'OUT', 'FEEDER', 'TR'],
     transformer: {
       create: true,
       catalog_binding: buildCatalogBinding('TRAFO_SN_NN', TRAFO_ID),
@@ -213,7 +239,15 @@ test('krytyczny flow V1 na realnym backendzie: case -> GPZ -> trunk -> station -
   });
 
   // Krok 5: Przypisanie katalogów do trunk/branch/transformer
-  for (const branch of op.snapshot?.branches ?? []) {
+  // Kategoria katalogu MUSI pasować do rodzaju gałęzi: pozycję KABEL_SN dostają
+  // WYŁĄCZNIE odcinki liniowe. Ta pętla przypisywała wcześniej kabel TAKŻE
+  // aparatom pól, kasując po cichu ich wiązanie APARAT_SN — backend to
+  // przyjmował (defekt zastany naprawiony u źródła w KD-6:
+  // `catalog.namespace_mismatch`), więc spec nigdy tego nie zauważył.
+  const odcinkiLiniowe = (op.snapshot?.branches ?? []).filter(
+    (branch) => branch.type === 'cable' || branch.type === 'line_overhead',
+  );
+  for (const branch of odcinkiLiniowe) {
     await executeDomainOp(request, caseId, 'assign_catalog_to_element', {
       element_ref: branch.ref_id,
       catalog_binding: buildCatalogBinding('KABEL_SN', CABLE_ID),
@@ -312,10 +346,14 @@ test('krytyczny flow V1 na realnym backendzie: case -> GPZ -> trunk -> station -
   }
 
   await page.goto(`/#analysis?run=${runId}`, { waitUntil: 'commit' });
-  await page.waitForSelector('[data-testid="app-ready"]', { state: 'attached', timeout: 30000 });
+  await page.waitForSelector('[data-testid="app-ready"]', { state: 'attached', timeout: 90000 });
   await expect(page).toHaveURL(new RegExp(`#analysis\\?run=${runId}`));
   await expect(page.getByTestId('canonical-layout')).toBeVisible();
-  await expect(page.getByTestId('workspace-surface-main')).toBeVisible();
+  // K3-A1 (jedno lądowisko wyników): trasa #analysis ustawia przestrzeń
+  // „Wyniki" — lądowiskiem jest warsztat ui2 (zakładki), nie rozwinięta
+  // powierzchnia mostu z testid `workspace-surface-main` (intencja bez zmian:
+  // deep-link z runId prowadzi do żywego widoku wyników).
+  await expect(page.getByTestId('mvd-wyniki-warsztat')).toBeVisible();
   // PR-5c: stary embedded SLD wygaszony — nowy SLD v2 jest osobnym surface'em
   // (testowane oddzielnie w v2/geometry/__tests__/layoutEngine.substrate.test.ts).
 
@@ -323,7 +361,10 @@ test('krytyczny flow V1 na realnym backendzie: case -> GPZ -> trunk -> station -
     window.location.hash = `#proof?run=${targetRunId}`;
   }, runId);
   await expect(page).toHaveURL(new RegExp(`#proof\\?run=${runId}`));
-  await expect(page.getByTestId('workspace-surface-main')).toBeVisible();
+  // K3: przestrzeń „Wyniki" pozostaje lądowiskiem (alias #proof nie wybija
+  // z warsztatu; powierzchnię śladu mostu otwiera orkiestrator w zakładce
+  // „Pozostałe analizy" — zakładkowy dowód ui2 prowadzi Ctrl+K „proof").
+  await expect(page.getByTestId('mvd-wyniki-warsztat')).toBeVisible();
   // PR-5c: stary panel "Przebieg obliczeń analizy" wygaszony razem z proof inspector v1.
 
   // Krok 8: Realne wyniki backend

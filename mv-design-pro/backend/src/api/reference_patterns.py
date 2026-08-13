@@ -16,7 +16,7 @@ NO CODENAMES IN UI.
 from __future__ import annotations
 
 import json
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
 from application.reference_patterns import (
@@ -26,8 +26,14 @@ from application.reference_patterns import (
     get_pattern_a_fixtures_dir,
     run_pattern_a,
 )
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Response
+from network_model.reporting.czcionki import zarejestruj_czcionki
 from pydantic import BaseModel
+
+if TYPE_CHECKING:
+    # python-docx jest importowany LENIWIE w ciele eksportu (brak paczki => 501),
+    # wiec typ tabeli sprowadzamy wylacznie na potrzeby analizy statycznej.
+    from docx.table import Table
 
 router = APIRouter(
     prefix="/api/reference-patterns",
@@ -168,7 +174,7 @@ async def list_patterns() -> PatternListResponse:
 
 
 @router.get("/patterns/{pattern_id}/fixtures", response_model=FixtureListResponse)
-async def list_pattern_fixtures(pattern_id: str) -> FixtureListResponse:
+def list_pattern_fixtures(pattern_id: str) -> FixtureListResponse:
     """
     List available fixtures (test cases) for a pattern.
 
@@ -185,7 +191,7 @@ async def list_pattern_fixtures(pattern_id: str) -> FixtureListResponse:
 
 
 @router.post("/run", response_model=PatternRunResponse)
-async def run_pattern(request: PatternRunRequest) -> PatternRunResponse:
+def run_pattern(request: PatternRunRequest) -> PatternRunResponse:
     """
     Run a reference pattern validation.
 
@@ -234,7 +240,7 @@ async def run_pattern(request: PatternRunRequest) -> PatternRunResponse:
 
 
 @router.get("/fixtures/{fixture_file}", response_model=PatternRunResponse)
-async def run_pattern_with_fixture(fixture_file: str) -> PatternRunResponse:
+def run_pattern_with_fixture(fixture_file: str) -> PatternRunResponse:
     """
     Run Pattern A with a specific fixture file (convenience GET endpoint).
 
@@ -266,7 +272,7 @@ async def run_pattern_with_fixture(fixture_file: str) -> PatternRunResponse:
 
 
 @router.get("/fixtures/{fixture_file}/export/pdf")
-async def export_pattern_result_pdf(fixture_file: str):
+def export_pattern_result_pdf(fixture_file: str) -> Response:
     """
     Export reference pattern result to PDF.
 
@@ -305,7 +311,8 @@ async def export_pattern_result_pdf(fixture_file: str):
 
     # Create PDF in memory
     buffer = io.BytesIO()
-    c = canvas.Canvas(buffer, pagesize=A4)
+    zarejestruj_czcionki()
+    c = canvas.Canvas(buffer, pagesize=A4, invariant=1, pageCompression=0)
     page_width, page_height = A4
 
     left_margin = 25 * mm
@@ -314,29 +321,29 @@ async def export_pattern_result_pdf(fixture_file: str):
     line_height = 5 * mm
 
     # Title
-    c.setFont("Helvetica-Bold", 16)
+    c.setFont("DejaVuSans-Bold", 16)
     title = f"Raport wzorca odniesienia: {data['name_pl']}"
     c.drawString(left_margin, y, title)
     y -= 10 * mm
 
     # Verdict banner
-    c.setFont("Helvetica-Bold", 14)
+    c.setFont("DejaVuSans-Bold", 14)
     verdict_text = f"Werdykt: {data['verdict']}"
     c.drawString(left_margin, y, verdict_text)
     y -= 6 * mm
 
-    c.setFont("Helvetica", 10)
+    c.setFont("DejaVuSans", 10)
     c.drawString(left_margin, y, data["verdict_description_pl"])
     y -= 6 * mm
     c.drawString(left_margin, y, data["summary_pl"])
     y -= 10 * mm
 
     # Checks section
-    c.setFont("Helvetica-Bold", 12)
+    c.setFont("DejaVuSans-Bold", 12)
     c.drawString(left_margin, y, "Sprawdzenia")
     y -= 6 * mm
 
-    c.setFont("Helvetica", 9)
+    c.setFont("DejaVuSans", 9)
     for check in data.get("checks", []):
         status_text = f"[{check['status']}] {check['name_pl']}: {check['description_pl']}"
         # Truncate if too long
@@ -351,11 +358,11 @@ async def export_pattern_result_pdf(fixture_file: str):
     y -= 5 * mm
 
     # Artifacts section
-    c.setFont("Helvetica-Bold", 12)
+    c.setFont("DejaVuSans-Bold", 12)
     c.drawString(left_margin, y, "Wartosci posrednie")
     y -= 6 * mm
 
-    c.setFont("Helvetica", 9)
+    c.setFont("DejaVuSans", 9)
     artifacts = data.get("artifacts", {})
     artifact_items = [
         ("Czas zwarcia sumaryczny (tk)", artifacts.get("tk_total_s"), "s"),
@@ -386,11 +393,11 @@ async def export_pattern_result_pdf(fixture_file: str):
     # Trace section (summary)
     trace = data.get("trace", [])
     if trace:
-        c.setFont("Helvetica-Bold", 12)
+        c.setFont("DejaVuSans-Bold", 12)
         c.drawString(left_margin, y, f"Slad obliczen ({len(trace)} krokow)")
         y -= 6 * mm
 
-        c.setFont("Helvetica", 8)
+        c.setFont("DejaVuSans", 8)
         for step in trace[:20]:  # Limit to first 20 steps
             step_text = f"{step['step']}: {step['description_pl']}"
             if len(step_text) > 90:
@@ -407,7 +414,7 @@ async def export_pattern_result_pdf(fixture_file: str):
 
     # Footer
     y = 15 * mm
-    c.setFont("Helvetica", 8)
+    c.setFont("DejaVuSans", 8)
     c.drawString(left_margin, y, "Wygenerowano przez MV-DESIGN PRO — Wzorce odniesienia")
 
     c.save()
@@ -425,7 +432,7 @@ async def export_pattern_result_pdf(fixture_file: str):
 
 
 @router.get("/fixtures/{fixture_file}/export/docx")
-async def export_pattern_result_docx(fixture_file: str):
+def export_pattern_result_docx(fixture_file: str) -> Response:
     """
     Export reference pattern result to DOCX.
 
@@ -525,7 +532,7 @@ async def export_pattern_result_docx(fixture_file: str):
             for r in p.runs:
                 r.bold = True
 
-    def add_artifact_row(table, label, value, unit=""):
+    def add_artifact_row(table: Table, label: str, value: Any, unit: str = "") -> None:
         if value is not None:
             row = table.add_row().cells
             row[0].text = label

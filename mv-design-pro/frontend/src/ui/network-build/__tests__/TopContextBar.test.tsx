@@ -7,6 +7,11 @@ const mocks = vi.hoisted(() => ({
     buildPhaseLabel: 'Układ skonfigurowany',
     blockersByCategory: { total: 0, topologia: 0, katalogi: 0, eksploatacja: 0 },
     isReady: true,
+    // V12K-319 (karta X3): licznik zero znaczy „bez zagadnien" WYLACZNIE wtedy,
+    // gdy gotowosc zostala ustalona. Atrapa bez tego pola opisywala stan, ktory
+    // w produkcji jest nieustalona gotowoscia — i mimo to oczekiwala zielonego
+    // werdyktu, czyli przypinala defekt zamiast zachowania.
+    readinessUstalona: true,
   },
   snapshot: {
     buses: [{}],
@@ -38,6 +43,7 @@ describe('TopContextBar', () => {
       buildPhaseLabel: 'Układ skonfigurowany',
       blockersByCategory: { total: 0, topologia: 0, katalogi: 0, eksploatacja: 0 },
       isReady: true,
+      readinessUstalona: true,
     };
   });
 
@@ -57,6 +63,7 @@ describe('TopContextBar', () => {
       buildPhaseLabel: 'Układ w konfiguracji',
       blockersByCategory: { total: 3, topologia: 1, katalogi: 1, eksploatacja: 1 },
       isReady: false,
+      readinessUstalona: true,
     };
 
     const { container } = render(<TopContextBar projectName="Projekt testowy" />);
@@ -64,5 +71,21 @@ describe('TopContextBar', () => {
     expect(screen.getByText(/3 zagadnień konfiguracji/)).toBeInTheDocument();
     expect(screen.getAllByText('Układ w konfiguracji').length).toBeGreaterThan(0);
     expect(container.textContent ?? '').not.toMatch(/blokad|Model gotowy|Model w toku/u);
+  });
+  it('gotowosc NIEUSTALONA → zamiast zielonej plakietki mowi, ze nie ustalono', () => {
+    mocks.derived = {
+      buildPhase: 'READY',
+      buildPhaseLabel: 'Układ skonfigurowany',
+      // Zera z BRAKU POMIARU wygladaja identycznie jak zera z pomiaru —
+      // rozroznia je wylacznie sygnal ustalonej gotowosci.
+      blockersByCategory: { total: 0, topologia: 0, katalogi: 0, eksploatacja: 0 },
+      isReady: false,
+      readinessUstalona: false,
+    };
+
+    render(<TopContextBar projectName="Projekt testowy" />);
+
+    expect(screen.getByTestId('top-context-gotowosc-nieustalona')).toBeInTheDocument();
+    expect(screen.queryByText('Układ bez zagadnień konfiguracji')).toBeNull();
   });
 });

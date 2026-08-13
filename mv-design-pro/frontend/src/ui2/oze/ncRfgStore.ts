@@ -14,6 +14,7 @@
 
 import { create } from 'zustand';
 
+import { useAppStateStore } from '../../ui/app-state';
 import {
   fetchNcRfgTestCatalog,
   runNcRfgPtpireeTests,
@@ -25,6 +26,23 @@ import { MACIERZ_STRINGS } from './macierz/strings';
 
 /** Status biegu NC RfG (spójny z lokalnym stanem sprzed przeniesienia). */
 export type StatusBieguNcRfg = 'idle' | 'running' | 'ready' | 'error';
+
+/**
+ * K5-B (H-3 pkt 4): wynik walidacji FRT/HVRT zapisany z okna „Walidacja modelu
+ * falownika" (EkranFrt). Werdykt POCHODZI z biegu solvera trajektorii — store
+ * tylko go przechowuje per moduł (klucz = id modułu DER, ta sama tożsamość co
+ * kolumny macierzy `zbudujModuly` → `der.id`), żeby macierz NC RfG pokazywała
+ * wynik FRT obok werdyktów testów PTPiREE.
+ */
+export interface ZapisanyWynikFrt {
+  /** Rodzaj testu, z którego pochodzi werdykt. */
+  readonly testKind: 'lvrt' | 'hvrt';
+  /** Tekst werdyktu PL (agregacja słownikowa z pól solvera — frtModel). */
+  readonly tekst: string;
+  readonly istotnosc: 'ok' | 'warn' | 'err';
+  /** Operator OSD, wobec którego przeprowadzono walidację. */
+  readonly operatorId: string;
+}
 
 export interface NcRfgStoreState {
   /** Katalog wymogów procedury (pobrany jednorazowo). */
@@ -41,6 +59,11 @@ export interface NcRfgStoreState {
    * certyfikatu zgodności (1:1 z danymi, które wyprodukowały `wynik`).
    */
   readonly ostatnieWejscia: readonly NcRfgModuleInput[] | null;
+  /**
+   * Wyniki walidacji FRT/HVRT per moduł DER (klucz zewnętrzny = id modułu,
+   * klucz wewnętrzny = rodzaj testu — LVRT i HVRT trwają niezależnie).
+   */
+  readonly wynikiFrt: Readonly<Record<string, Partial<Record<'lvrt' | 'hvrt', ZapisanyWynikFrt>>>>;
 
   /** Pobiera katalog wymogów (idempotentnie — pomija, gdy już wczytany). */
   zaladujKatalog: () => Promise<void>;
@@ -51,6 +74,8 @@ export interface NcRfgStoreState {
     modules: readonly NcRfgModuleInput[],
     procedureVersion?: string,
   ) => Promise<void>;
+  /** K5-B: zapis wyniku walidacji FRT/HVRT dla modułu (macierz go pokazuje). */
+  zapiszWynikFrt: (derRef: string, wynik: ZapisanyWynikFrt) => void;
   /** Reset do stanu początkowego (testy / nowy projekt). */
   reset: () => void;
 }
@@ -63,6 +88,7 @@ const STAN_POCZATKOWY = {
   wynik: null,
   bladBiegu: null,
   ostatnieWejscia: null,
+  wynikiFrt: {},
 };
 
 export const useNcRfgStore = create<NcRfgStoreState>((set, get) => ({
@@ -88,10 +114,15 @@ export const useNcRfgStore = create<NcRfgStoreState>((set, get) => ({
     if (modules.length === 0) return;
     set({ status: 'running', bladBiegu: null });
     try {
-      const payload = await runNcRfgPtpireeTests({
-        modules,
-        procedure_version: procedureVersion,
-      });
+      // Aktywny przypadek → backend dopina dowód certyfikatu PTPiREE z tabliczek
+      // urządzeń modelu (bez niego certificate_evidence wraca z pustymi polami).
+      const payload = await runNcRfgPtpireeTests(
+        {
+          modules,
+          procedure_version: procedureVersion,
+        },
+        useAppStateStore.getState().activeCaseId,
+      );
       set({ wynik: payload, status: 'ready', ostatnieWejscia: modules });
     } catch (err) {
       set({
@@ -100,6 +131,14 @@ export const useNcRfgStore = create<NcRfgStoreState>((set, get) => ({
       });
     }
   },
+
+  zapiszWynikFrt: (derRef, wynik) =>
+    set((stan) => ({
+      wynikiFrt: {
+        ...stan.wynikiFrt,
+        [derRef]: { ...stan.wynikiFrt[derRef], [wynik.testKind]: wynik },
+      },
+    })),
 
   reset: () => set({ ...STAN_POCZATKOWY }),
 }));

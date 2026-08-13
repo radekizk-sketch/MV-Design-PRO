@@ -136,9 +136,11 @@ export function KartaTechniczna({
       <h4 className="mvd-katalog__sekcja-tytul">{STRINGS.kartaPochodzenie}</h4>
       <div>
         {pochodzenie.map((w) => (
-          <div key={w.etykieta} className="mvd-katalog__param">
+          <div key={w.etykieta} className="mvd-katalog__param mvd-katalog__param--tekst">
             <span>{w.etykieta}</span>
-            <span className="mvd-katalog__param-wartosc">{w.wartosc}</span>
+            <span className="mvd-katalog__param-wartosc mvd-katalog__param-wartosc--tekst">
+              {w.wartosc}
+            </span>
           </div>
         ))}
       </div>

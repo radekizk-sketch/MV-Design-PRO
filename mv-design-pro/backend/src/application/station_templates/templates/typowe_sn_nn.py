@@ -10,6 +10,7 @@ from application.station_templates._choices import (
     CT_OPTIONS,
     NN_CB_OPTIONS,
     PROT_FEEDER_OPTIONS,
+    SN_APPARATUS_OPTIONS,
     TR_OPTIONS_LARGE,
     TR_OPTIONS_MEDIUM,
     TR_OPTIONS_SMALL,
@@ -43,6 +44,7 @@ def _typowa(
     max_feeders: int = 8,
     icon: str = "station-distribution",
     use_case: str = "Standardowa dystrybucyjna terenowa.",
+    bay_roles: tuple[BayRoleSpec, ...] | None = None,
 ) -> StationTemplate:
     return StationTemplate(
         id=tpl_id,
@@ -61,8 +63,9 @@ def _typowa(
             sn_bays_count=TemplateParamInt(
                 default=default_bays, min_value=1, max_value=8, label_pl="Liczba pól SN"
             ),
-            sn_bay_roles=_base_bay_roles(),
+            sn_bay_roles=bay_roles if bay_roles is not None else _base_bay_roles(),
             sn_bay_protection_options=PROT_FEEDER_OPTIONS,
+            sn_bay_apparatus_options=SN_APPARATUS_OPTIONS,
             nn_feeders_count=TemplateParamInt(
                 default=default_feeders,
                 min_value=1,
@@ -125,6 +128,21 @@ TYPOWE_SN_NN_TEMPLATES = (
         tr_options=TR_OPTIONS_MEDIUM,
         default_feeders=4,
         default_bays=4,
+        # Nazwa obiecuje POMIARY ⇒ to stacja ABONENCKA (klasa B kontraktu
+        # `docs/domain/POMIAR_ROZLICZENIOWY_SN_V1.md`, V12K-333): pomiar
+        # rozliczeniowy mierzy CAŁY i TYLKO pobór klienta, więc rozdzielnica
+        # klienta NIE prowadzi tranzytu magistrali OSD — zestaw ról BEZ pary
+        # tranzytowej: dopływ → pomiar → TR → rezerwa odpływowa. (Historia:
+        # V12K-329 fantom bez pomiaru; V12K-330 pomiar przed TR; V12K-333
+        # usunięty tranzyt z rozdzielnicy klienta po korekcie właściciela —
+        # standard Enei: przekładniki pola pomiarowego 5/5–15/5 A to prądy
+        # przyłącza klienta, nie magistrali.) Pole TR chroni reguła keep-TR.
+        bay_roles=(
+            BayRoleSpec(role="IN", label_pl="Pole liniowe dopływowe"),
+            BayRoleSpec(role="MEASUREMENT", label_pl="Pole pomiarowe (VT)"),
+            BayRoleSpec(role="TR", label_pl="Pole transformatorowe"),
+            BayRoleSpec(role="OUT", label_pl="Pole odpływowe rezerwowe"),
+        ),
     ),
     _typowa(
         "tpl_sn_nn_1250kva",
@@ -141,6 +159,15 @@ TYPOWE_SN_NN_TEMPLATES = (
         tr_options=TR_OPTIONS_MEDIUM,
         default_feeders=6,
         default_bays=5,
+        # Jak wyżej (V12K-333, klasa B): stacja abonencka bez tranzytu OSD —
+        # dopływ → pomiar → TR → dwie rezerwy odpływowe.
+        bay_roles=(
+            BayRoleSpec(role="IN", label_pl="Pole liniowe dopływowe"),
+            BayRoleSpec(role="MEASUREMENT", label_pl="Pole pomiarowe (VT)"),
+            BayRoleSpec(role="TR", label_pl="Pole transformatorowe"),
+            BayRoleSpec(role="OUT", label_pl="Pole odpływowe rezerwowe"),
+            BayRoleSpec(role="OUT", label_pl="Pole odpływowe rezerwowe 2"),
+        ),
     ),
     _typowa(
         "tpl_sn_nn_2000kva",

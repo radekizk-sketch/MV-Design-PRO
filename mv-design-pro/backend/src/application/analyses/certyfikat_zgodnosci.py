@@ -21,8 +21,16 @@ Determinizm: identyczne wejście → identyczny widok JSON, identyczny
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from io import BytesIO
 
+from application.analyses.dowod_certyfikatu import (
+    TYTUL_DOWODU,
+    NcRfgCertificateEvidence,
+    sekcja_dowodu,
+    wiersze_dowodu_pl,
+)
+from network_model.reporting.czcionki import zarejestruj_czcionki
 from network_model.reporting.docx_determinism import make_docx_bytes_deterministic
 from network_model.solvers.ncrfg_ptpiree import (
     NcRfgPtpireeRunRequest,
@@ -118,14 +126,22 @@ def build_certyfikat_view(
     *,
     nazwa_projektu: str,
     nazwa_przypadku: str | None = None,
+    dowody: Sequence[NcRfgCertificateEvidence] | None = None,
 ) -> dict:
     """Zbuduj widok JSON certyfikatu z gotowego wyniku macierzy zgodności.
 
     Rzuca ``CertyfikatBrakiError`` gdy dane są niekompletne (bramka kompletności).
+
+    ``dowody`` (opcjonalne) to dowód certyfikacji PTPiREE per urządzenie z
+    tabliczek modelu — dokładnie ten sam blok, który niesie bieg NC RfG. Bez
+    dowodów (wywołanie bez wskazanego przypadku) widok jest IDENTYCZNY jak przed
+    dodaniem sekcji: klucz ``dowod_certyfikatu`` w ogóle nie powstaje.
     """
     braki = zbierz_braki(run_result)
     if braki:
         raise CertyfikatBrakiError(braki)
+
+    indeks_dowodow = {dowod.der_ref: dowod for dowod in dowody} if dowody is not None else None
 
     moduly_view: list[dict] = []
     modulow_zgodnych = 0
@@ -144,25 +160,29 @@ def build_certyfikat_view(
             for test in module.tests
             if test.required or test.verdict != "not_required"
         ]
-        moduly_view.append(
-            {
-                "der_ref": module.der_ref,
-                "der_name": module.der_name,
-                "operator_pl": module.operator_name_pl,
-                "klasa": module.module_type,
-                "rodzina": module.module_family,
-                "p_max_kw": module.p_max_kw,
-                "voltage_kv": module.voltage_kv,
-                "status": module.overall_status,
-                "status_pl": _STATUS_MODULU_PL.get(module.overall_status, module.overall_status),
-                "podsumowanie": {
-                    "wymagane": module.required_count,
-                    "spelnia": module.pass_count,
-                    "nie_spelnia": module.fail_count,
-                },
-                "testy": testy_view,
-            }
-        )
+        modul_view: dict = {
+            "der_ref": module.der_ref,
+            "der_name": module.der_name,
+            "operator_pl": module.operator_name_pl,
+            "klasa": module.module_type,
+            "rodzina": module.module_family,
+            "p_max_kw": module.p_max_kw,
+            "voltage_kv": module.voltage_kv,
+            "status": module.overall_status,
+            "status_pl": _STATUS_MODULU_PL.get(module.overall_status, module.overall_status),
+            "podsumowanie": {
+                "wymagane": module.required_count,
+                "spelnia": module.pass_count,
+                "nie_spelnia": module.fail_count,
+            },
+            "testy": testy_view,
+        }
+        if indeks_dowodow is not None:
+            dowod = indeks_dowodow.get(module.der_ref)
+            modul_view["dowod_certyfikatu"] = sekcja_dowodu(
+                dowod if dowod is not None else NcRfgCertificateEvidence(der_ref=module.der_ref)
+            )
+        moduly_view.append(modul_view)
 
     modulow = len(run_result.modules)
     modulow_niezgodnych = modulow - modulow_zgodnych
@@ -273,6 +293,18 @@ def render_certyfikat_docx(view: dict) -> bytes:
             row[2].text = test["werdykt_pl"]
             row[3].text = test["wartosci_pl"]
 
+        dowod = module.get("dowod_certyfikatu")
+        if dowod is not None:
+            dow_para = doc.add_paragraph()
+            dow_para.add_run(f"{TYTUL_DOWODU}: ").bold = True
+            wiersze = wiersze_dowodu_pl(dowod)
+            if wiersze:
+                dow_para.add_run(
+                    "  |  ".join(f"{etykieta}: {wartosc}" for etykieta, wartosc in wiersze)
+                )
+            else:
+                dow_para.add_run(str(dowod["stan_pl"]))
+
     doc.add_paragraph()
     doc.add_heading("Założenia i źródła", level=1)
     for pozycja in view["zalozenia_i_zrodla"]:
@@ -292,12 +324,14 @@ def render_certyfikat_pdf(view: dict) -> bytes:
 
     Determinizm bajtowy: canvas z ``invariant=1`` (stały ``CreationDate`` i ``ID``
     dokumentu) oraz ``pageCompression=0`` — dwa wywołania na tym samym widoku dają
-    identyczne bajty. Fonty Helvetica jak istniejące raporty PDF (bez nowych zasobów).
+    identyczne bajty. Czcionki DejaVu Sans (polskie diakrytyki) rejestrowane wspólnym
+    modułem ``network_model.reporting.czcionki`` (subset TTF jest deterministyczny).
     """
     if not _PDF_AVAILABLE:  # pragma: no cover
         raise ImportError("Eksport PDF wymaga reportlab. Zainstaluj: pip install reportlab")
 
     buffer = BytesIO()
+    zarejestruj_czcionki()
     c = canvas.Canvas(buffer, pagesize=A4, invariant=1, pageCompression=0)
     page_width, page_height = A4
     left_margin = 25 * mm
@@ -321,7 +355,7 @@ def render_certyfikat_pdf(view: dict) -> bytes:
 
     def para(text: str, *, size: int = 10, bold: bool = False, indent: float = 0.0) -> None:
         nonlocal y
-        font = "Helvetica-Bold" if bold else "Helvetica"
+        font = "DejaVuSans-Bold" if bold else "DejaVuSans"
         for line in simpleSplit(text, font, size, content_width - indent):
             ensure(line_height)
             c.setFont(font, size)
@@ -331,7 +365,7 @@ def render_certyfikat_pdf(view: dict) -> bytes:
 
     # 1) Tytuł (wyśrodkowany).
     title = str(view["tytul"])
-    c.setFont("Helvetica-Bold", 16)
+    c.setFont("DejaVuSans-Bold", 16)
     c.drawCentredString(page_width / 2, y, title)
     y -= 10 * mm
 
@@ -350,9 +384,9 @@ def render_certyfikat_pdf(view: dict) -> bytes:
     # 3) Werdykt zbiorczy (kolor zależny od statusu).
     werdykt = view["werdykt_zbiorczy"]
     ensure(line_height * 2)
-    c.setFont("Helvetica-Bold", 12)
+    c.setFont("DejaVuSans-Bold", 12)
     c.drawString(left_margin, y, "Werdykt zbiorczy: ")
-    prefix_width = c.stringWidth("Werdykt zbiorczy: ", "Helvetica-Bold", 12)
+    prefix_width = c.stringWidth("Werdykt zbiorczy: ", "DejaVuSans-Bold", 12)
     if werdykt["status"] == "zgodny":
         c.setFillColorRGB(22 / 255, 163 / 255, 74 / 255)
     else:
@@ -381,7 +415,7 @@ def render_certyfikat_pdf(view: dict) -> bytes:
         )
         header = ["Test", "Zdolność", "Werdykt", "Wartości"]
         ensure(line_height)
-        c.setFont("Helvetica-Bold", 9)
+        c.setFont("DejaVuSans-Bold", 9)
         col_x = left_margin
         for i, label in enumerate(header):
             c.drawString(col_x, y, label)
@@ -395,18 +429,27 @@ def render_certyfikat_pdf(view: dict) -> bytes:
                 str(test["wartosci_pl"]),
             ]
             wrapped = [
-                simpleSplit(cell, "Helvetica", 9, module_cols[i] - 2 * mm)
+                simpleSplit(cell, "DejaVuSans", 9, module_cols[i] - 2 * mm)
                 for i, cell in enumerate(cells)
             ]
             row_lines = max(len(w) for w in wrapped)
             ensure(line_height * row_lines)
-            c.setFont("Helvetica", 9)
+            c.setFont("DejaVuSans", 9)
             col_x = left_margin
             for i, lines in enumerate(wrapped):
                 for j, line in enumerate(lines):
                     c.drawString(col_x, y - j * line_height, line)
                 col_x += module_cols[i]
             y -= line_height * row_lines
+        dowod = module.get("dowod_certyfikatu")
+        if dowod is not None:
+            wiersze = wiersze_dowodu_pl(dowod)
+            tresc = (
+                "  |  ".join(f"{etykieta}: {wartosc}" for etykieta, wartosc in wiersze)
+                if wiersze
+                else str(dowod["stan_pl"])
+            )
+            para(f"{TYTUL_DOWODU}: {tresc}", size=9)
         y -= line_height
 
     # 5) Założenia i źródła.

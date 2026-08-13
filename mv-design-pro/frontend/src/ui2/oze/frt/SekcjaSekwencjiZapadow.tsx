@@ -42,6 +42,8 @@ function etykietaPrzebieguZwarciowego(run: ExecutionRun): string {
   const analiza = ANALYSIS_TYPE_LABELS[run.analysis_type];
   return run.finished_at ? `${analiza} · ${run.finished_at}` : analiza;
 }
+import { PrzyciskAkcjiStanu } from '../../wyniki/wzorzec';
+import type { AkcjaStanuZerowego } from '../../wyniki/wzorzec';
 
 type StanZasobu =
   | { readonly rodzaj: 'idle' }
@@ -54,11 +56,15 @@ function StanPanel({
   opis,
   wariant,
   testid,
+  akcja,
 }: {
   komunikat: string;
   opis?: string;
   wariant: 'info' | 'blad';
   testid: string;
+  /* K6 / H-5: slot akcji stanu zerowego — realny następny krok (bieg obliczeń,
+     nawigacja, formularz operacji). Brak akcji = panel czysto informacyjny. */
+  akcja?: AkcjaStanuZerowego;
 }) {
   return (
     <div
@@ -67,6 +73,7 @@ function StanPanel({
     >
       <p className="mvd-frt-stan-title">{komunikat}</p>
       {opis && <p className="mvd-frt-stan-desc">{opis}</p>}
+      <PrzyciskAkcjiStanu akcja={akcja} testid={testid} />
     </div>
   );
 }

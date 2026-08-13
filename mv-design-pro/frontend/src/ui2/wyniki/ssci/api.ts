@@ -14,7 +14,7 @@
  *   pochodzą WYŁĄCZNIE z buildera warstwy analizy — ZERO fizyki w UI.
  * - Utworzenie przebiegu SSCI — `POST /api/cases/{case_id}/runs/v126/ssci_impedance`:
  *   `v126_academic.py::run_v126_analysis` (wzór doboru przebiegu z
- *   `ui/workspace/surfaces/V126AcademicSurface.tsx`). Przebieg powstaje z committed
+ *   `ui2/wyniki/akademickie`). Przebieg powstaje z committed
  *   ENM aktywnego przypadku; brak przekształtnika/DER → solver „dane niekompletne"
  *   → werdykt „brak danych" (uczciwy stan zerowy, bez fabrykacji).
  *

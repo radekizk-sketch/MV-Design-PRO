@@ -22,6 +22,20 @@ import { useSelectionStore } from '../../../../selection';
 import { SldCanvasV3Workspace } from '../SldCanvasV3Workspace';
 import { useRawResultOverlayStore } from '../../../../sld-overlay/rawResultOverlayStore';
 
+/**
+ * KD-8 poz. 2: pas narzędzi kanwy jest JEDNYM rzędem — przy wąskiej kanwie
+ * (te testy renderują 800 px) grupy o niższej randze są ZWINIĘTE do menu
+ * „Narzędzia", zamiast nachodzić na sąsiadów. Użytkownik sięga po nie jednym
+ * klikiem w to menu i test idzie DOKŁADNIE tą samą drogą — nie zakłada, że
+ * kontrolka jest zawsze w pasie (założenie, które maskowałoby zwinięcie).
+ */
+function rozwinZwinieteNarzedzia(): void {
+  const menu = screen.queryByTestId('sld-v3-toolbar-menu-toggle');
+  if (menu && screen.queryByTestId('sld-v3-toolbar-menu') === null) {
+    fireEvent.click(menu);
+  }
+}
+
 beforeEach(() => {
   // jsdom nie implementuje URL.createObjectURL/revokeObjectURL — shim przed
   // spy (ten sam wzorzec co `v2/export/__tests__/SldExportButton.test.tsx`).
@@ -76,6 +90,7 @@ describe('SldCanvasV3Workspace — F12-B pkt 1: eksport SVG', () => {
     vi.stubGlobal('Blob', blobCtorSpy);
 
     render(<SldCanvasV3Workspace width={800} height={600} />);
+    rozwinZwinieteNarzedzia();
 
     const exportBtn = screen.getByTestId('sld-v3-export-svg');
     expect(exportBtn).toBeInTheDocument();
@@ -90,12 +105,22 @@ describe('SldCanvasV3Workspace — F12-B pkt 1: eksport SVG', () => {
     const svgStr = String(parts[0]);
     expect(svgStr).toContain('<svg');
     expect(svgStr).toContain('sld-canvas-v3');
+    // Karta S9-4: warstwa TRAFIEŃ jest powierzchnią zdarzeń EKRANU, nie treścią
+    // rysunku — do dokumentu nie trafia. Bez tej asercji plik urósłby o kilka
+    // tysięcy niewidocznych węzłów, a deklaracja w kodzie eksportu byłaby
+    // obietnicą bez pokrycia.
+    expect(svgStr).not.toContain('sld-v3-trafienia');
+    expect(svgStr).not.toContain('data-hit-for');
+    // Dowód, że asercja mierzy USUNIĘCIE, a nie nieobecność od początku:
+    // kanwa na ekranie warstwę trafień ma.
+    expect(document.querySelector('[data-testid="sld-v3-trafienia"]')).toBeTruthy();
 
     vi.unstubAllGlobals();
   });
 
   it('SldExportFormatMenu (wielo-format) jest zamontowane obok przycisku SVG', () => {
     render(<SldCanvasV3Workspace width={800} height={600} />);
+    rozwinZwinieteNarzedzia();
     expect(screen.getByTestId('sld-v3-export-dock')).toBeInTheDocument();
     // SldExportFormatMenu — komponent standalone z v2/export, reużyty wprost;
     // dropdown trigger istnieje w tym samym doku.
@@ -288,5 +313,189 @@ describe('SldCanvasV3Workspace — W5 §18: podwarstwy L2 przełączalne (widocz
         (screen.getByTestId(`sld-v3-l2-sublayer-toggle-${id}`) as HTMLInputElement).getAttribute('data-sublayer-state'),
       ).toBe('on');
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// K12 (KARTA_K12, dyrektywa właściciela 2026-07-30) — legenda symboli „na
+// żądanie": NIE na stałym widoku kanwy, dok `sld-v3-view-dock` otwiera panel,
+// treść panelu WYŁĄCZNIE z fixtury realnej (zero fabrykacji — patrz też
+// wyrocznie czystej funkcji `sheet/__tests__/projectLegend.test.ts`).
+// ---------------------------------------------------------------------------
+
+describe('SldCanvasV3Workspace — K12: legenda symboli na żądanie', () => {
+  it('domyślnie (bez interakcji) legenda NIE jest częścią kanwy — brak grupy `sld-sheet-legend` w DOM', () => {
+    const { container } = render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
+    expect(container.querySelector('[data-testid="sld-sheet-legend"]')).toBeNull();
+    // Dok istnieje i przycisk informuje o liczbie wpisów — fixtura ma
+    // symbole/odcinki, więc panel nie byłby pusty, gdyby otworzyć.
+    const toggle = screen.getByTestId('sld-v3-legend-toggle');
+    expect(toggle).toBeInTheDocument();
+    expect(toggle.textContent).toMatch(/Legenda \(\d+\)/);
+  });
+
+  it('otwarcie panelu (dok `sld-v3-view-dock`) pokazuje WYŁĄCZNIE symbole obecne w fixturze — fixtura ma agregat (loads[]), więc "Odbiór (zagregowany)" jest obecny', () => {
+    render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
+    expect(screen.queryByTestId('sld-v3-legend-panel')).toBeNull();
+
+    fireEvent.click(screen.getByTestId('sld-v3-legend-toggle'));
+
+    const panel = screen.getByTestId('sld-v3-legend-panel');
+    expect(panel).toBeInTheDocument();
+    const scene = buildSceneV3(enm, 2);
+    const presentIds = new Set(scene.symbols.map((s) => s.symbolId));
+    // Fixtura `sldSubstrate52s` niesie 20 rekordów `Load` — agregat 0,4 kV
+    // jest naprawdę na scenie, więc panel MUSI go objaśnić (zero fabrykacji
+    // działa w OBIE strony: nie pokazuje NIEobecnych, ale też nie gubi
+    // OBECNYCH).
+    expect(presentIds.has('loadArrow')).toBe(true);
+    expect(within(panel).getByTestId('sld-v3-legend-panel-item-loadArrow')).toBeInTheDocument();
+    // Każdy wpis symbolu w panelu odpowiada symbolowi REALNIE obecnemu na scenie.
+    for (const item of panel.querySelectorAll('[data-testid^="sld-v3-legend-panel-item-"]')) {
+      const id = item.getAttribute('data-testid')!.replace('sld-v3-legend-panel-item-', '');
+      if (id === 'cable' || id === 'openTerminal' || id === 'sn-neutral-earthing') continue;
+      expect(presentIds.has(id as never)).toBe(true);
+    }
+  });
+
+  it('"overhead" (linia napowietrzna) NIGDY nie pojawia się w panelu — v3 nie renderuje tego stylu linii (fałszywy wpis byłby fabrykacją)', () => {
+    render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
+    fireEvent.click(screen.getByTestId('sld-v3-legend-toggle'));
+    expect(screen.queryByTestId('sld-v3-legend-panel-item-overhead')).toBeNull();
+  });
+
+  it('zamknięcie panelu (drugi klik) przywraca kanwę do stanu bez legendy — dok zostaje, panel znika', () => {
+    render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
+    const toggle = screen.getByTestId('sld-v3-legend-toggle');
+
+    fireEvent.click(toggle);
+    expect(screen.getByTestId('sld-v3-legend-panel')).toBeInTheDocument();
+
+    fireEvent.click(toggle);
+    expect(screen.queryByTestId('sld-v3-legend-panel')).toBeNull();
+  });
+
+  // S9-6 (audyt E-4): wartość domyślna ODWRÓCONA — rysunek techniczny wychodzi
+  // z legendą, a projektant, który jej nie chce, odznacza pole. Intencja
+  // testów sprzed karty zachowana (opcja steruje TYLKO plikiem, nigdy kanwą),
+  // zamieniona jest wyłącznie strona domyślna.
+  it('opcja eksportu „Dołącz legendę" domyślnie WŁĄCZONA ⇒ plik SVG niesie grupę legendy z etykietą obecnego symbolu (np. transformator)', () => {
+    const createObjectUrlSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock');
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+    const RealBlob = globalThis.Blob;
+    const blobCtorSpy = vi.fn((parts: BlobPart[], options?: BlobPropertyBag) => new RealBlob(parts, options));
+    vi.stubGlobal('Blob', blobCtorSpy);
+
+    render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
+    rozwinZwinieteNarzedzia();
+    const checkbox = screen.getByTestId('sld-v3-export-include-legend') as HTMLInputElement;
+    expect(checkbox.checked).toBe(true);
+
+    fireEvent.click(screen.getByTestId('sld-v3-export-svg'));
+    expect(createObjectUrlSpy).toHaveBeenCalledTimes(1);
+    const svgStr = String(blobCtorSpy.mock.calls[0][0][0]);
+    expect(svgStr).toContain('sld-sheet-legend');
+    expect(svgStr).toContain('Transformator SN/nN');
+    // Kanwa EKRANOWA (nie eksportowany string) zostaje BEZ legendy — opcja
+    // eksportu nie włącza legendy na żywym widoku.
+    expect(document.querySelector('[data-testid="sld-sheet-legend"]')).toBeNull();
+
+    vi.unstubAllGlobals();
+  });
+
+  it('odznaczenie opcji „Dołącz legendę" ⇒ plik SVG bez grupy legendy', () => {
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock');
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+    const RealBlob = globalThis.Blob;
+    const blobCtorSpy = vi.fn((parts: BlobPart[], options?: BlobPropertyBag) => new RealBlob(parts, options));
+    vi.stubGlobal('Blob', blobCtorSpy);
+
+    render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
+    rozwinZwinieteNarzedzia();
+    fireEvent.click(screen.getByTestId('sld-v3-export-include-legend'));
+    fireEvent.click(screen.getByTestId('sld-v3-export-svg'));
+
+    const svgStr = String(blobCtorSpy.mock.calls[0][0][0]);
+    expect(svgStr).not.toContain('sld-sheet-legend');
+    // Tabliczka rysunkowa NIE jest opcjonalna — zostaje niezależnie od legendy.
+    expect(svgStr).toContain('sld-sheet-title-block');
+
+    vi.unstubAllGlobals();
+  });
+});
+
+describe('SldCanvasV3Workspace — K11-B: minimapa (nawigator) na żądanie', () => {
+  it('domyślnie nawigator jest ZWINIĘTY — schemat nie traci ani piksela', () => {
+    render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
+    expect(screen.queryByTestId('sld-v3-minimap-dock')).toBeNull();
+    expect(screen.queryByTestId('sld-v3-minimap-panel')).toBeNull();
+    // Przełącznik żyje w TYM SAMYM doku widoku co „Dopasuj widok"/„Legenda"
+    // (jedno miejsce na sterowanie widokiem — scalony dok K11-A/K12).
+    const dock = screen.getByTestId('sld-v3-view-dock');
+    expect(within(dock).getByTestId('sld-v3-minimap-toggle')).toBeInTheDocument();
+  });
+
+  it('rozwinięcie pokazuje nawigator z kształtami REALNEJ sceny i prostokątem kadru', () => {
+    render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
+    fireEvent.click(screen.getByTestId('sld-v3-minimap-toggle'));
+
+    const panel = screen.getByTestId('sld-v3-minimap-panel');
+    expect(panel).toBeInTheDocument();
+    const svg = within(panel).getByTestId('sld-v3-minimap-svg');
+    // Kształty pochodzą ze sceny LOD 0 — liczba węzłów rysunku odpowiada
+    // liczbie elementów tej sceny (nawigator niczego nie dorysowuje).
+    const sceneL0 = buildSceneV3(enm, 0);
+    expect(svg.querySelectorAll('polyline').length).toBe(
+      sceneL0.segments.filter((s) => s.points.length >= 2).length,
+    );
+    // Prostokąty: symbole sceny + prostokąt przycięcia (clipPath) + kadr.
+    expect(svg.querySelectorAll('rect').length).toBe(sceneL0.symbols.length + 2);
+    expect(within(panel).getByTestId('sld-v3-minimap-frame')).toBeInTheDocument();
+  });
+
+  it('wskazanie w nawigatorze PRZESUWA kadr kamery, NIE zmieniając skali (kontrakt K11-B §0.1)', () => {
+    const { container } = render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
+    fireEvent.click(screen.getByTestId('sld-v3-minimap-toggle'));
+
+    const canvas = container.querySelector('[data-testid="sld-canvas-v3"]')!;
+    const przed = canvas.getAttribute('viewBox')!.split(/\s+/).map(Number);
+
+    const svg = screen.getByTestId('sld-v3-minimap-svg');
+    // jsdom nie liczy layoutu — podajemy prostokąt panelu jawnie, żeby
+    // przeliczenie punktu było realne (sama ścieżka kodu produkcyjnego).
+    vi.spyOn(svg, 'getBoundingClientRect').mockReturnValue({
+      x: 0, y: 0, left: 0, top: 0, right: 260, bottom: 100, width: 260, height: 100,
+      toJSON: () => ({}),
+    } as DOMRect);
+    // UZASADNIENIE ZDARZENIA SYNTETYCZNEGO (CLAUDE.md §5 „test maskujący
+    // defekt produktu"): jsdom w tym środowisku NIE implementuje
+    // `PointerEvent` (zweryfikowane empirycznie, patrz nota metodologiczna w
+    // `sldCanvasV3.test.tsx`), więc `fireEvent.pointerDown` gubi
+    // `clientX/clientY/button` — handler produkcyjny odrzuciłby zdarzenie z
+    // `button === undefined` i test „przechodziłby" nie ćwicząc niczego.
+    // Budujemy więc `MouseEvent` typu `pointerdown`, który TE POLA NIESIE:
+    // wołany jest DOKŁADNIE ten sam handler produkcyjny (`onPointerDown`
+    // panelu), z realnymi współrzędnymi. Ścieżkę w pełni NATYWNĄ (prawdziwy
+    // PointerEvent przeglądarki) ćwiczy `e2e/sld-minimapa.spec.ts` klikiem
+    // Playwrighta — ten test pilnuje kontraktu jednostkowego, tamten realnej
+    // ścieżki użytkownika.
+    fireEvent(svg, new MouseEvent('pointerdown', { bubbles: true, clientX: 230, clientY: 40, button: 0 }));
+
+    const po = canvas.getAttribute('viewBox')!.split(/\s+/).map(Number);
+    // Kadr się PRZESUNĄŁ…
+    expect(po[0]).not.toBeCloseTo(przed[0], 3);
+    // …a jego ROZMIAR (czyli skala kamery) jest bez zmian.
+    expect(po[2]).toBeCloseTo(przed[2], 6);
+    expect(po[3]).toBeCloseTo(przed[3], 6);
+  });
+
+  it('zwinięcie (drugi klik) chowa nawigator — dok zostaje', () => {
+    render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
+    const toggle = screen.getByTestId('sld-v3-minimap-toggle');
+    fireEvent.click(toggle);
+    expect(screen.getByTestId('sld-v3-minimap-panel')).toBeInTheDocument();
+    fireEvent.click(toggle);
+    expect(screen.queryByTestId('sld-v3-minimap-panel')).toBeNull();
+    expect(screen.getByTestId('sld-v3-minimap-toggle')).toBeInTheDocument();
   });
 });

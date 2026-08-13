@@ -1,16 +1,14 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { renderHook } from '@testing-library/react';
+import { act, renderHook } from '@testing-library/react';
 
 import { useAppStateStore, useCanCalculate } from '../store';
 import { useSnapshotStore } from '../../topology/snapshotStore';
-import { useReadinessLiveStore } from '../../engineering-readiness/readinessLiveStore';
 import { makeCalculationReadySnapshot } from '../../../test/enmCalculationSnapshot';
 
 describe('useCanCalculate — bramka gotowości z backendu', () => {
   beforeEach(() => {
     useAppStateStore.getState().reset();
     useSnapshotStore.getState().reset();
-    useReadinessLiveStore.getState().clear();
   });
 
   it('blokuje obliczenia, gdy readiness.ready = false', () => {
@@ -72,34 +70,39 @@ describe('useCanCalculate — bramka gotowości z backendu', () => {
     expect(result.current.reason).toBeNull();
   });
 
-  it('traktuje readiness ze snapshotu jako nadrzędne wobec przestarzałego live-store', () => {
+  it('gotowość migawki jest JEDYNYM źródłem bramki — zmiana źródła przełącza bramkę', () => {
+    // Intencja zachowana z wersji sprzed KD-1 („readiness ze snapshotu nadrzędne
+    // wobec przestarzałego live-store"): po usunięciu drugiego źródła
+    // (`readinessLiveStore` — nikt nigdy nie wołał jego `refresh`) bramka ma
+    // reagować WYŁĄCZNIE na `useSnapshotStore.readiness`, i to natychmiast.
     useAppStateStore.getState().setActiveCase('case-1', 'Zakres 1', 'ShortCircuitCase', 'OUTDATED');
     useSnapshotStore.setState({
       snapshot: makeCalculationReadySnapshot(),
       readiness: {
-        ready: true,
-        blockers: [],
+        ready: false,
+        blockers: [
+          {
+            code: 'pv_bess.transformer_required',
+            message_pl: 'Układ PV wymaga transformatora',
+            element_ref: 'pv/converter',
+            severity: 'BLOCKER',
+          },
+        ],
         warnings: [],
       },
     });
-    useReadinessLiveStore.setState({
-      ready: false,
-      status: 'FAIL',
-      issues: [
-        {
-          code: 'pv_bess.transformer_required',
-          severity: 'BLOCKER',
-          message_pl: 'Stary komunikat live-store',
-          element_ref: 'pv/stale/converter',
-          element_refs: ['pv/stale/converter'],
-          wizard_step_hint: null,
-          suggested_fix: null,
-        },
-      ],
-      bySeverity: { BLOCKER: 1, IMPORTANT: 0, INFO: 0 },
-    });
 
-    const { result } = renderHook(() => useCanCalculate());
+    const { result, rerender } = renderHook(() => useCanCalculate());
+
+    expect(result.current.allowed).toBe(false);
+    expect(result.current.reason).toBe('Układ PV wymaga transformatora');
+
+    act(() => {
+      useSnapshotStore.setState({
+        readiness: { ready: true, blockers: [], warnings: [] },
+      });
+    });
+    rerender();
 
     expect(result.current.allowed).toBe(true);
     expect(result.current.reason).toBeNull();

@@ -124,9 +124,7 @@ def _iter_frontend_files() -> list[Path]:
     for pattern in ("**/*.ts", "**/*.tsx"):
         candidates.extend(FRONTEND_SRC.glob(pattern))
     # Pomijamy testy — zera w testach są intencjonalne.
-    return sorted(
-        p for p in candidates if p.is_file() and "__tests__" not in str(p)
-    )
+    return sorted(p for p in candidates if p.is_file() and "__tests__" not in str(p))
 
 
 def run(*, strict: bool, json_output: bool) -> int:

@@ -17,11 +17,12 @@ OZE (Regulacja), zasilają koordynację/zgodność.
 
 from __future__ import annotations
 
-from enm.models import EnergyNetworkModel, Generator
+from enm.models import GEN_TYPES_PRZEKSZTALTNIKOWE, EnergyNetworkModel, Generator
 
 from .checker import DerDataForCompliance
 
-_INVERTER_GEN_TYPES = {"pv_inverter", "wind_inverter", "fw_pmsg", "fw_dfig", "fw_scig", "bess"}
+# Jedno zrodlo prawdy predykatu DER: enm/models.py (obok Literalu gen_type).
+_INVERTER_GEN_TYPES = GEN_TYPES_PRZEKSZTALTNIKOWE
 _QU_CONTROL_MODES = {"Q_OD_U", "Q_U", "VOLT_VAR"}
 
 

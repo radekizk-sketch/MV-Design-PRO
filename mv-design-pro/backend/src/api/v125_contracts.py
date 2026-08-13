@@ -137,6 +137,45 @@ def _stable_hash(value: Any) -> str | None:
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
+# V12K-281 (K13): dwie NAJDROŻSZE, czyste derywacje kontekstu liczone raz per
+# niemutowalną treść, nie per wywołanie. Zmierzone na sieci 50 stacji: pełny
+# kanoniczny skrót artefaktu wyniku (`_stable_hash(run.raw_result)`) plus
+# przejście snapshotu pod wpisy materializacji katalogowej kosztowały ~35 s
+# NA KAŻDE wywołanie kontekstu przypadku, a raport woła kontekst dla każdej
+# sekcji (~200 s serwera przy raporcie 0,9 MiB). Klucze są bezpieczne z
+# konstrukcji: artefakt wyniku jest zapisywany RAZ przy zakończeniu biegu i
+# niemutowalny (reguła zamrożonych wyników), a snapshot jest adresowany
+# treścią (`snapshot_hash`). Wartości pozostają identyczne — pamięć podręczna
+# eliminuje wyłącznie powtórne przeliczanie tej samej treści.
+_RESULT_HASH_CACHE: dict[tuple[str, str, str], str | None] = {}
+_MATERIALIZATION_CACHE: dict[str, tuple[list[dict[str, Any]], str | None]] = {}
+_CONTEXT_CACHE_MAX = 16
+
+
+def _result_hash_for_run(run: CanonicalRun) -> str | None:
+    if run.raw_result is None:
+        return None
+    key = (str(run.id), str(run.finished_at or ""), str(run.result_status))
+    if key not in _RESULT_HASH_CACHE:
+        if len(_RESULT_HASH_CACHE) >= _CONTEXT_CACHE_MAX:
+            _RESULT_HASH_CACHE.pop(next(iter(_RESULT_HASH_CACHE)))
+        _RESULT_HASH_CACHE[key] = _stable_hash(run.raw_result)
+    return _RESULT_HASH_CACHE[key]
+
+
+def _materialization_for_run(run: CanonicalRun) -> tuple[list[dict[str, Any]], str | None]:
+    key = _snapshot_ref(run)
+    if not key:
+        entries = _catalog_materialization_entries(run.snapshot or {})
+        return entries, (_stable_hash(entries) if entries else None)
+    if key not in _MATERIALIZATION_CACHE:
+        if len(_MATERIALIZATION_CACHE) >= _CONTEXT_CACHE_MAX:
+            _MATERIALIZATION_CACHE.pop(next(iter(_MATERIALIZATION_CACHE)))
+        entries = _catalog_materialization_entries(run.snapshot or {})
+        _MATERIALIZATION_CACHE[key] = (entries, _stable_hash(entries) if entries else None)
+    return _MATERIALIZATION_CACHE[key]
+
+
 def _snapshot_header(run: CanonicalRun) -> dict[str, Any]:
     header = (run.snapshot or {}).get("header") or {}
     return header if isinstance(header, dict) else {}
@@ -267,10 +306,7 @@ def resolve_proof_pack_ref(run: CanonicalRun) -> str:
 def build_analysis_case_reproducibility(run: CanonicalRun) -> dict[str, Any]:
     snapshot_header = _snapshot_header(run)
     snapshot_ref = _snapshot_ref(run)
-    catalog_materialization_entries = _catalog_materialization_entries(run.snapshot or {})
-    catalog_materialization_hash = (
-        _stable_hash(catalog_materialization_entries) if catalog_materialization_entries else None
-    )
+    catalog_materialization_entries, catalog_materialization_hash = _materialization_for_run(run)
     solver_family = {
         "PF": "power_flow_newton",
         "short_circuit_sn": "iec60909_short_circuit",
@@ -327,7 +363,7 @@ def build_analysis_case_reproducibility(run: CanonicalRun) -> dict[str, Any]:
         "formula_set_version": run.options.get("formula_set_version") or formula_set_version,
         "standard_basis_ref": run.options.get("standard_basis_ref") or standard_basis_ref,
         "input_hash": run.input_hash,
-        "result_hash": _stable_hash(run.raw_result),
+        "result_hash": _result_hash_for_run(run),
         "domain_model_version": snapshot_header.get("enm_version")
         or snapshot_header.get("schema_version")
         or "ENM/1.0",
@@ -381,7 +417,7 @@ def build_export_artifact(
 ) -> dict[str, Any]:
     generated_at_value = (generated_at or datetime.now(UTC)).isoformat()
     completeness_status = infer_completeness_status(run)
-    result_hash = _stable_hash(run.raw_result)
+    result_hash = _result_hash_for_run(run)
     proof_pack_ref = resolve_proof_pack_ref(run)
     lineage = {
         "run_ref": str(run.id),

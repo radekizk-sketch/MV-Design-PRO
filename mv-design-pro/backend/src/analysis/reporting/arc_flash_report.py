@@ -26,6 +26,8 @@ from dataclasses import dataclass
 from io import BytesIO
 from typing import Any
 
+from network_model.reporting.czcionki import ustaw_czcionki_stylow, zarejestruj_czcionki
+
 # Publiczny próg granicy łuku (definicja fizyczna IEEE 1584): E = 1,2 cal/cm².
 _AFB_THRESHOLD_CAL_CM2 = 1.2
 
@@ -57,15 +59,14 @@ def _fmt(value: Any, digits: int = 2) -> str:
 def _summary(results: list[dict[str, Any]]) -> dict[str, Any]:
     """Podsumowanie: najgorszy przypadek + rozkład kategorii ŚOI + braki danych."""
     energies = [
-        (r.get("bus_ref"), r.get("incident_energy_cal_cm2"))
+        (r.get("bus_ref"), float(e))
         for r in results
-        if isinstance(r.get("incident_energy_cal_cm2"), int | float)
+        if isinstance((e := r.get("incident_energy_cal_cm2")), int | float)
     ]
     worst_bus_ref: str | None = None
     worst_energy: float | None = None
     if energies:
-        worst_bus_ref, worst_val = max(energies, key=lambda e: float(e[1]))
-        worst_energy = float(worst_val)
+        worst_bus_ref, worst_energy = max(energies, key=lambda t: t[1])
 
     ppe_distribution: dict[str, int] = {}
     for r in results:
@@ -172,6 +173,7 @@ def render_arc_flash_report_pdf(ctx: ArcFlashReportContext) -> bytes:
     results = _results(ctx)
     summary = _summary(results)
     buffer = BytesIO()
+    zarejestruj_czcionki()
     doc = SimpleDocTemplate(
         buffer,
         pagesize=A4,
@@ -181,8 +183,11 @@ def render_arc_flash_report_pdf(ctx: ArcFlashReportContext) -> bytes:
         rightMargin=2 * cm,
         title=f"Raport arc flash — {ctx.station_id}",
         author="MV-DESIGN-PRO",
+        invariant=1,
+        pageCompression=0,
     )
     styles = getSampleStyleSheet()
+    ustaw_czcionki_stylow(styles)
     elements: list = []
 
     elements.append(Paragraph("Raport zagrożenia łukiem elektrycznym", styles["Title"]))
@@ -213,7 +218,7 @@ def render_arc_flash_report_pdf(ctx: ArcFlashReportContext) -> bytes:
             [
                 ("BACKGROUND", (0, 0), (0, -1), rl_colors.HexColor("#cccccc")),
                 ("GRID", (0, 0), (-1, -1), 0.25, rl_colors.black),
-                ("FONTNAME", (0, 0), (-1, -1), "Helvetica"),
+                ("FONTNAME", (0, 0), (-1, -1), "DejaVuSans"),
                 ("FONTSIZE", (0, 0), (-1, -1), 10),
             ]
         )
@@ -249,7 +254,7 @@ def render_arc_flash_report_pdf(ctx: ArcFlashReportContext) -> bytes:
                 [
                     ("BACKGROUND", (0, 0), (-1, 0), rl_colors.HexColor("#dddddd")),
                     ("GRID", (0, 0), (-1, -1), 0.25, rl_colors.black),
-                    ("FONTNAME", (0, 0), (-1, -1), "Helvetica"),
+                    ("FONTNAME", (0, 0), (-1, -1), "DejaVuSans"),
                     ("FONTSIZE", (0, 0), (-1, -1), 8),
                     ("VALIGN", (0, 0), (-1, -1), "TOP"),
                 ]

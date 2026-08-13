@@ -158,13 +158,36 @@ describe('EkranAnalizTechnicznych — hub po przebudowie', () => {
     const user = userEvent.setup();
     render(<EkranAnalizTechnicznych />);
     const karta = screen.getByTestId('mvd-analizy-karta-cieplna');
-    // Opis wskazuje bilans IEC 60909 i miejsce werdyktu (dobór aparatów).
+    // INTENCJA BEZ ZMIAN: opis mówi, CO karta daje i GDZIE zapada werdykt.
+    // KANON PO KD-4 (ogniwo „zwarcie → aparatura"): werdykt wytrzymałości jest
+    // WPROST pod punktem zwarcia, więc opis nie odsyła już do karty pola.
     expect(within(karta).getByText(/Bilans IEC 60909/)).toBeTruthy();
-    expect(within(karta).getByText(/dobór aparatów/)).toBeTruthy();
+    expect(within(karta).getByText(/werdykt wytrzymałości aparatury/)).toBeTruthy();
     await user.click(within(karta).getByRole('button', { name: 'Otwórz' }));
     expect(useShellStore.getState().wynikiTab).toBe('zwarcia');
     expect(useNetworkBuildStore.getState().activeSurface).toBeNull();
   });
+
+  // K3-A3: karty E-29…E-32 mają realnych dostawców zakładkowych w warsztacie
+  // Wyników (wzorzec E-33/E-34) — deep-link zakładki zamiast powierzchni mostu.
+  for (const [testid, zakladka] of [
+    ['mvd-analizy-karta-skladowe', 'skladowe'],
+    ['mvd-analizy-karta-zbieznosc', 'zbieznosc'],
+    ['mvd-analizy-karta-fazowy', 'stan-fazowy'],
+    ['mvd-analizy-karta-stabilnosc', 'stabilnosc'],
+  ] as const) {
+    it(`karta ${testid} (K3-A3) prowadzi do zakładki „${zakladka}" warsztatu Wyników (klik natywny)`, async () => {
+      const user = userEvent.setup();
+      render(<EkranAnalizTechnicznych />);
+      await user.click(
+        within(screen.getByTestId(testid)).getByRole('button', { name: 'Otwórz' }),
+      );
+      expect(useShellStore.getState().wynikiTab).toBe(zakladka);
+      expect(useShellStore.getState().activeSpace).toBe('wyniki');
+      // Bez powierzchni trasowej mostu — dostawcą jest zakładka ui2.
+      expect(useNetworkBuildStore.getState().activeSurface).toBeNull();
+    });
+  }
 
   it('widoki klasyczne otwierają jawne taby powierzchni analiz (parytet mostu)', async () => {
     const user = userEvent.setup();

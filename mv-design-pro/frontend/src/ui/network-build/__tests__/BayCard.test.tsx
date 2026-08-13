@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useShellStore } from '../../../ui2/shell/useShellStore';
 import { BayCard } from '../cards/BayCard';
+import { readinessZListy } from '../../../test/gotowoscTestUtils';
 
 const closeObjectCard = vi.fn();
 const openOperationForm = vi.fn();
@@ -46,12 +47,18 @@ const snapshot = {
   ],
 };
 
+// JEDNA prawda gotowości (KD-1 / V12K-286): karta pola czyta problemy przez
+// `gotowoscAdapter` z `useSnapshotStore.readiness`, więc scena musi podać PEŁNY
+// kształt odpowiedzi domenowej (`blockers` + `warnings` + `fixActions`) —
+// niepełny fixture przechodził tylko dlatego, że gotowość czytało wtedy osobne,
+// nigdy nieodświeżane źródło.
 vi.mock('../../topology/snapshotStore', () => ({
   useSnapshotStore: (selector: (state: unknown) => unknown) =>
     selector({
       snapshot,
       logicalViews: null,
-      readiness: { blockers: [] },
+      readiness: readinessZListy([]),
+      fixActions: [],
     }),
 }));
 

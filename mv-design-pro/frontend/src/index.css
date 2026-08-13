@@ -8,6 +8,108 @@
  * ========================================================================= */
 
 @layer base {
+  /* =========================================================================
+   * KD-8 poz. 1 — JEDNA PRAWDA MOTYWU dla powierzchni powłoki.
+   *
+   * Tokeny `--scada-*` są JEDYNYM źródłem kolorów palety `scada-*`
+   * (`tailwind.config.js` czyta je przez `rgb(var(--scada-…) / <alpha-value>)`).
+   * Dawniej paleta była zbiorem literałów CIEMNYCH, więc każdy ekran zbudowany
+   * z klas `bg-scada-*`/`text-scada-*` zostawał ciemny także przy motywie
+   * jasnym — dokładnie defekt zmierzony na zrzucie odbiorczym KD-5
+   * (pasek metryk, karta konfiguratora stacji, doki kanwy).
+   *
+   * Wartości to TRÓJKI RGB (bez `rgb()`), bo modyfikatory przezroczystości
+   * Tailwinda (`bg-scada-panel/95`) wymagają miejsca na `<alpha-value>`.
+   *
+   * Motyw publikuje `applyThemeMode` jako atrybut `data-theme` na `<html>`
+   * (`ui2/theme/themeMode.ts`). `:root` bez atrybutu = tryb dyspozytorski,
+   * bo taki jest domyślny stan sterownika (`useThemeModeStore`).
+   * ========================================================================= */
+  :root,
+  :root[data-theme='dark_scada'] {
+    --scada-bg: 11 16 20;
+    --scada-bg-hover: 16 26 36;
+    --scada-surface: 14 22 32;
+    --scada-panel: 17 27 38;
+    --scada-panel-raised: 23 34 46;
+    --scada-border: 30 45 61;
+    --scada-grid: 21 32 40;
+    --scada-sn: 255 212 0;
+    --scada-nn: 63 169 245;
+    --scada-wn: 192 132 252;
+    --scada-energized: 0 229 168;
+    /* KD-8 (Zero-Debt): dawne `92 100 112` dawało 3,20:1 na tle — token bywa
+     * TEKSTEM („bez napięcia"), więc podniesione do 4,67:1 przy zachowaniu
+     * roli barwy wygaszonej. */
+    --scada-dead: 118 126 140;
+    --scada-grounded: 255 138 0;
+    --scada-alarm: 255 59 59;
+    --scada-earth: 126 138 153;
+    --scada-text: 226 235 243;
+    --scada-muted: 126 138 153;
+    --scada-active: 26 48 80;
+    --scada-hover-nav: 22 34 56;
+    --scada-border-strong: 71 89 105;
+    --scada-focus: 56 189 248;
+    /* Skala komunikatów (KD-8 poz. 3): blokada > ostrzeżenie > informacja.
+     * Każdy poziom ma TRZY tokeny — akcent (obrys/ikona), tło i TUSZ; tusz jest
+     * osobny, bo sam akcent na własnym tle nie osiąga 4,5:1. */
+    --scada-status-err: 221 90 82;
+    --scada-status-err-bg: 46 21 18;
+    --scada-status-err-ink: 255 217 213;
+    --scada-status-warn: 227 166 60;
+    --scada-status-warn-bg: 44 34 16;
+    --scada-status-warn-ink: 255 230 184;
+    --scada-status-ok: 61 190 123;
+    --scada-status-ok-bg: 18 41 29;
+    --scada-status-ok-ink: 201 242 219;
+    --scada-status-info: 65 168 222;
+    --scada-status-info-bg: 16 39 58;
+    --scada-status-info-ink: 205 233 248;
+    --scada-shadow-panel: 0 20px 50px rgb(0 0 0 / 0.42);
+    --scada-shadow-inset: inset 0 1px 0 rgb(255 255 255 / 0.06);
+  }
+
+  :root[data-theme='light_technical'] {
+    --scada-bg: 237 241 245;
+    --scada-bg-hover: 226 232 239;
+    --scada-surface: 247 249 251;
+    --scada-panel: 255 255 255;
+    --scada-panel-raised: 255 255 255;
+    --scada-border: 195 205 216;
+    --scada-grid: 225 231 237;
+    /* Klasy napięć: TA SAMA barwa (hue), inna jasność/nasycenie — semantyka
+     * WN/SN/nN jest kontraktem inżynierskim i nie wolno jej przemapować. */
+    --scada-sn: 122 92 0;
+    --scada-nn: 11 94 138;
+    --scada-wn: 107 63 160;
+    --scada-energized: 14 122 82;
+    --scada-dead: 90 100 112;
+    --scada-grounded: 160 83 0;
+    --scada-alarm: 179 38 30;
+    --scada-earth: 90 100 112;
+    --scada-text: 22 32 43;
+    --scada-muted: 82 97 111;
+    --scada-active: 214 231 245;
+    --scada-hover-nav: 229 236 243;
+    --scada-border-strong: 154 168 182;
+    --scada-focus: 31 127 181;
+    --scada-status-err: 179 56 47;
+    --scada-status-err-bg: 249 228 226;
+    --scada-status-err-ink: 122 36 29;
+    --scada-status-warn: 154 106 20;
+    --scada-status-warn-bg: 248 238 218;
+    --scada-status-warn-ink: 107 74 14;
+    --scada-status-ok: 30 126 75;
+    --scada-status-ok-bg: 226 243 233;
+    --scada-status-ok-ink: 20 96 58;
+    --scada-status-info: 31 127 181;
+    --scada-status-info-bg: 228 240 248;
+    --scada-status-info-ink: 18 88 127;
+    --scada-shadow-panel: 0 8px 24px rgb(20 30 40 / 0.14);
+    --scada-shadow-inset: inset 0 1px 0 rgb(20 30 40 / 0.05);
+  }
+
   html {
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
     font-size: 14px;
@@ -16,10 +118,17 @@
     text-rendering: optimizeLegibility;
   }
 
+  /* Tło i tusz dokumentu z tokenów motywu (KD-8 poz. 1) — dawniej twarde
+   * `bg-chrome-900 text-chrome-100 / color-scheme: dark` zostawiały ciemny
+   * dokument także przy motywie jasnym. */
   body {
-    @apply bg-chrome-900 text-chrome-100;
+    @apply bg-scada-bg text-scada-text;
     overflow: hidden;
     color-scheme: dark;
+  }
+
+  :root[data-theme='light_technical'] body {
+    color-scheme: light;
   }
 
   /* Scrollbar styling — industrial thin */
@@ -32,18 +141,18 @@
     @apply bg-transparent;
   }
 
+  /* Pasek przewijania i zaznaczenie tekstu z tokenów motywu (KD-8 poz. 1). */
   ::-webkit-scrollbar-thumb {
-    @apply rounded-full bg-chrome-700;
+    @apply rounded-full bg-scada-border;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-chrome-500;
+    @apply bg-scada-border-strong;
   }
 
-  /* Selection color */
   ::selection {
-    background: rgba(34, 211, 238, 0.3);
-    color: #ecfeff;
+    background: rgb(var(--scada-focus) / 0.3);
+    color: rgb(var(--scada-text));
   }
 }
 
@@ -57,55 +166,49 @@
    * keep the separate light technical rendering contract.
    * ========================================================================= */
 
+  /* KD-8 poz. 1: blok NIE deklaruje już własnych literałów kolorów — czyta
+   * TE SAME tokeny `--scada-*` co paleta Tailwinda (`@layer base` wyżej).
+   * Wcześniej te same nazwy zmiennych niosły tutaj INNE wartości (slate),
+   * czyli jedna nazwa = dwie prawdy koloru na jednym ekranie. */
   .mv-dark-scada {
-    --scada-bg: #020617;
-    --scada-surface: #0f172a;
-    --scada-surface-raised: #111827;
-    --scada-surface-muted: #1e293b;
-    --scada-border: #334155;
-    --scada-border-strong: #475569;
-    --scada-text: #e5e7eb;
-    --scada-text-muted: #cbd5e1;
-    --scada-text-subtle: #94a3b8;
-    --scada-focus: #38bdf8;
-    background: var(--scada-bg);
-    color: var(--scada-text);
+    background: rgb(var(--scada-bg));
+    color: rgb(var(--scada-text));
     color-scheme: dark;
   }
 
   .mv-dark-scada :where(.bg-white, .bg-gray-50, .bg-slate-50, .bg-zinc-50, .bg-chrome-50):not([data-sld-export-theme] *) {
-    background-color: var(--scada-surface) !important;
+    background-color: rgb(var(--scada-surface)) !important;
   }
 
   .mv-dark-scada :where(.bg-gray-100, .bg-slate-100, .bg-zinc-100, .bg-chrome-100):not([data-sld-export-theme] *) {
-    background-color: var(--scada-surface-muted) !important;
+    background-color: rgb(var(--scada-panel)) !important;
   }
 
   .mv-dark-scada :where(.bg-canvas-bg):not([data-sld-export-theme] *) {
-    background-color: var(--scada-bg) !important;
+    background-color: rgb(var(--scada-bg)) !important;
   }
 
   .mv-dark-scada :where(.text-gray-900, .text-slate-900, .text-zinc-900, .text-black):not([data-sld-export-theme] *) {
-    color: var(--scada-text) !important;
+    color: rgb(var(--scada-text)) !important;
   }
 
   .mv-dark-scada :where(.text-gray-800, .text-gray-700, .text-slate-800, .text-slate-700, .text-zinc-800, .text-zinc-700, .text-chrome-700, .text-chrome-800):not([data-sld-export-theme] *) {
-    color: var(--scada-text-muted) !important;
+    color: rgb(var(--scada-text)) !important;
   }
 
   .mv-dark-scada :where(.text-gray-600, .text-gray-500, .text-slate-600, .text-slate-500, .text-zinc-600, .text-zinc-500, .text-chrome-600, .text-chrome-500):not([data-sld-export-theme] *) {
-    color: var(--scada-text-subtle) !important;
+    color: rgb(var(--scada-muted)) !important;
   }
 
   .mv-dark-scada :where(.border-gray-100, .border-gray-200, .border-gray-300, .border-slate-100, .border-slate-200, .border-slate-300, .border-zinc-100, .border-zinc-200, .border-zinc-300, .border-chrome-100, .border-chrome-200, .border-chrome-300):not([data-sld-export-theme] *) {
-    border-color: var(--scada-border) !important;
+    border-color: rgb(var(--scada-border)) !important;
   }
 
   /* TM2: divide-slate-200 remap — Tailwind koloruje separatory na dzieciach
      (> * + *), więc grupa border-* powyżej ich nie łapie. Utrzymuje subtelne
      ciemne separatory w motywie ciemnym (zero regresji dark). */
   .mv-dark-scada :where(.divide-slate-100, .divide-slate-200, .divide-slate-300):not([data-sld-export-theme] *) > :not([hidden]) ~ :not([hidden]) {
-    border-color: var(--scada-border) !important;
+    border-color: rgb(var(--scada-border)) !important;
   }
 
   .mv-dark-scada :where(.shadow-sm, .shadow, .shadow-lg, .shadow-xl, .shadow-2xl):not([data-sld-export-theme] *) {
@@ -113,18 +216,18 @@
   }
 
   .mv-dark-scada :where(input, select, textarea):not([data-sld-export-theme] *) {
-    background-color: var(--scada-surface-raised) !important;
-    border-color: var(--scada-border-strong) !important;
-    color: var(--scada-text) !important;
+    background-color: rgb(var(--scada-panel-raised)) !important;
+    border-color: rgb(var(--scada-border-strong)) !important;
+    color: rgb(var(--scada-text)) !important;
   }
 
   .mv-dark-scada :where(input, select, textarea):not([data-sld-export-theme] *)::placeholder {
-    color: var(--scada-text-subtle) !important;
+    color: rgb(var(--scada-muted)) !important;
   }
 
   .mv-dark-scada :where(button):not([data-sld-export-theme] *):focus-visible,
   .mv-dark-scada :where(a, input, select, textarea):not([data-sld-export-theme] *):focus-visible {
-    outline: 2px solid var(--scada-focus);
+    outline: 2px solid rgb(var(--scada-focus));
     outline-offset: 2px;
   }
 
@@ -146,30 +249,39 @@
    * ========================================================================= */
 
   .mv-light-technical {
-    background: #f8fafc;
+    background: rgb(var(--scada-bg));
+    color: rgb(var(--scada-text));
     color-scheme: light;
+  }
+
+  /* Obrys ogniskowania z tokenu motywu — symetrycznie do gałęzi ciemnej
+   * (KD-8 poz. 1: ta sama reguła, inny token, zero literałów). */
+  .mv-light-technical :where(button):focus-visible,
+  .mv-light-technical :where(a, input, select, textarea):focus-visible {
+    outline: 2px solid rgb(var(--scada-focus));
+    outline-offset: 2px;
   }
 }
 
 @layer components {
+  /* KD-8 poz. 1: powierzchnie i tusz z tokenów motywu — dawniej literały
+   * ciemne, więc te komponenty zostawały ciemne przy motywie jasnym. */
   .scada-panel {
-    border: 1px solid #173041;
+    border: 1px solid rgb(var(--scada-border));
     border-radius: 18px;
-    background: linear-gradient(180deg, rgba(11, 23, 34, 0.98) 0%, rgba(8, 18, 28, 0.96) 100%);
-    box-shadow:
-      0 20px 50px rgba(2, 8, 23, 0.42),
-      inset 0 1px 0 rgba(148, 163, 184, 0.08);
+    background: rgb(var(--scada-panel));
+    box-shadow: var(--scada-shadow-panel);
   }
 
   .scada-panel-muted {
-    border: 1px solid #1d3446;
+    border: 1px solid rgb(var(--scada-border));
     border-radius: 14px;
-    background: rgba(9, 22, 33, 0.82);
-    box-shadow: inset 0 1px 0 rgba(148, 163, 184, 0.06);
+    background: rgb(var(--scada-surface));
+    box-shadow: var(--scada-shadow-inset);
   }
 
   .scada-shell-eyebrow {
-    color: #6f8ca4;
+    color: rgb(var(--scada-muted));
     font-size: 10px;
     font-weight: 600;
     letter-spacing: 0.22em;
@@ -177,13 +289,13 @@
   }
 
   .scada-shell-title {
-    color: #f8fafc;
+    color: rgb(var(--scada-text));
     font-size: 0.875rem;
     font-weight: 600;
   }
 
   .scada-shell-copy {
-    color: #8ea6ba;
+    color: rgb(var(--scada-muted));
     font-size: 0.75rem;
     line-height: 1.25rem;
   }
@@ -200,41 +312,41 @@
   }
 
   .scada-chip-neutral {
-    border-color: #2a4355;
-    background: #0d1c29;
-    color: #dde8f2;
+    border-color: rgb(var(--scada-border));
+    background: rgb(var(--scada-panel-raised));
+    color: rgb(var(--scada-text));
   }
 
   .scada-chip-ok {
-    border-color: rgba(16, 185, 129, 0.35);
-    background: rgba(16, 185, 129, 0.12);
-    color: #d1fae5;
+    border-color: rgb(var(--scada-status-ok) / 0.5);
+    background: rgb(var(--scada-status-ok-bg));
+    color: rgb(var(--scada-status-ok-ink));
   }
 
   .scada-chip-warn {
-    border-color: rgba(245, 158, 11, 0.35);
-    background: rgba(245, 158, 11, 0.12);
-    color: #fef3c7;
+    border-color: rgb(var(--scada-status-warn) / 0.5);
+    background: rgb(var(--scada-status-warn-bg));
+    color: rgb(var(--scada-status-warn-ink));
   }
 
   .scada-chip-danger {
-    border-color: rgba(244, 63, 94, 0.35);
-    background: rgba(244, 63, 94, 0.12);
-    color: #ffe4e6;
+    border-color: rgb(var(--scada-status-err) / 0.5);
+    background: rgb(var(--scada-status-err-bg));
+    color: rgb(var(--scada-status-err-ink));
   }
 
   .scada-chip-accent {
-    border-color: rgba(6, 182, 212, 0.35);
-    background: rgba(6, 182, 212, 0.12);
-    color: #cffafe;
+    border-color: rgb(var(--scada-status-info) / 0.5);
+    background: rgb(var(--scada-status-info-bg));
+    color: rgb(var(--scada-status-info-ink));
   }
 
   .scada-metric-tile {
-    border: 1px solid #20384a;
+    border: 1px solid rgb(var(--scada-border));
     border-radius: 14px;
-    background: rgba(10, 24, 36, 0.86);
+    background: rgb(var(--scada-surface));
     padding: 0.5rem 0.75rem;
-    box-shadow: inset 0 1px 0 rgba(148, 163, 184, 0.05);
+    box-shadow: var(--scada-shadow-inset);
   }
 
   .scada-action-btn {
@@ -242,11 +354,11 @@
     align-items: center;
     justify-content: center;
     gap: 0.375rem;
-    border: 1px solid #264053;
+    border: 1px solid rgb(var(--scada-border));
     border-radius: 12px;
-    background: #0a1824;
+    background: rgb(var(--scada-panel-raised));
     padding: 0.5rem 0.75rem;
-    color: #d7e5ef;
+    color: rgb(var(--scada-text));
     font-size: 0.75rem;
     font-weight: 500;
     transition:
@@ -260,11 +372,11 @@
     align-items: center;
     justify-content: center;
     gap: 0.375rem;
-    border: 1px solid rgba(34, 211, 238, 0.35);
+    border: 1px solid rgb(var(--scada-status-info) / 0.5);
     border-radius: 12px;
-    background: rgba(6, 182, 212, 0.14);
+    background: rgb(var(--scada-status-info-bg));
     padding: 0.5rem 0.75rem;
-    color: #ecfeff;
+    color: rgb(var(--scada-status-info-ink));
     font-size: 0.75rem;
     font-weight: 600;
     transition:
@@ -274,12 +386,12 @@
   }
 
   .scada-action-btn:hover {
-    background: #112433;
-    color: #ffffff;
+    background: rgb(var(--scada-hover-nav));
+    color: rgb(var(--scada-text));
   }
 
   .scada-action-btn-primary:hover {
-    background: rgba(6, 182, 212, 0.2);
+    background: rgb(var(--scada-status-info) / 0.25);
   }
 
   /* =========================================================================
@@ -356,9 +468,9 @@
     align-items: center;
     justify-content: space-between;
     padding: 0.5rem 0.75rem;
-    border-bottom: 1px solid #1c3344;
-    background: #08131d;
-    color: #7ea7c4;
+    border-bottom: 1px solid rgb(var(--scada-border));
+    background: rgb(var(--scada-surface));
+    color: rgb(var(--scada-muted));
     font-size: 0.75rem;
     font-weight: 600;
     letter-spacing: 0.08em;
@@ -435,55 +547,10 @@
   .ind-dot-error { @apply ind-dot bg-status-error; }
   .ind-dot-none { @apply ind-dot bg-status-none; }
 
-  /* =========================================================================
-   * Canonical SLD Typography — CANONICAL/IEC
-   * ========================================================================= */
-
-  .sld-node-label {
-    font-family: 'JetBrains Mono', 'Fira Code', monospace;
-    font-size: 11px;
-    fill: #374151;
-    font-weight: 600;
-  }
-
-  .sld-segment-label {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
-    fill: #1D4ED8;
-    font-weight: 500;
-  }
-
-  .sld-segment-params {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 9px;
-    fill: #6B7280;
-  }
-
-  .sld-apparatus-label {
-    font-family: 'Inter', system-ui, sans-serif;
-    font-size: 10px;
-    fill: #374151;
-  }
-
-  .sld-apparatus-params {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 9px;
-    fill: #6B7280;
-  }
-
-  .sld-station-title {
-    font-family: 'Inter', system-ui, sans-serif;
-    font-size: 11px;
-    fill: #111827;
-    font-weight: 700;
-  }
-
-  .sld-iec-designation {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
-    fill: #DC2626;
-    font-weight: 600;
-  }
+  /* KD-8 (Zero-Debt, znalezisko uboczne): klasy `.sld-*-label`/`.sld-*-params`/
+   * `.sld-station-title`/`.sld-iec-designation` USUNIĘTE — martwy kod z twardymi
+   * literałami koloru (pomiar: `grep -rn` po całym repo = 0 użyć w src/e2e/docs).
+   * Rysunek v3 koloruje się WYŁĄCZNIE tokenami `ui/sld/v3/theme/palette.ts`. */
 
   /* =========================================================================
    * Wizard Form Styles — Industrial Grade
@@ -517,7 +584,7 @@
     margin: 0 0.375rem;
     height: 1.25rem;
     width: 1px;
-    background: #1f384a;
+    background: rgb(var(--scada-border));
   }
 
   .ind-divider-h {
@@ -576,139 +643,9 @@
 }
 
 /* =========================================================================
- * SLD Canvas Grid — Iter 3 fix (CAD blocker #1)
- * Dot-grid 20×20 px na canvas placeholder + warstwa rysunkowa, zgodnie z
- * GRID_BASE_PX z theme/tokens.ts. Operatorzy CAD (ETAP/AutoCAD Electrical)
- * oczekują widocznej siatki nawet na pustym canvasie.
+ * KD-8 (Zero-Debt, znalezisko uboczne): blok `.sld-canvas-grid`/
+ * `.sld-canvas-ruler*` (siatka i linijki CAD placeholdera) USUNIĘTY —
+ * martwy kod z twardymi literałami koloru (pomiar: `grep -rn` po repo
+ * = 0 użyć w kodzie; wzmianki wyłącznie w ARCHIWALNYCH raportach audytu).
+ * Kanwa v3 rysuje siatkę własnym rendererem, sterowanym motywem.
  * ========================================================================= */
-/* Iter 6 — CAD-grade pełny grid per iter 5 verify (CAD 6.5/10 NO-GO):
-   "Major 0.50 → 0.65, linewidth 1.0 → 1.2px"
-   "Dodać MAJOR-MAJOR intersection markers (krzyżyki + jasne dots 0.85)"
-   "Origin axes (X=0, Y=0) wyraźne hue 0/60 @ 0.80 alpha"  */
-.sld-canvas-grid {
-  background-color: #152033;
-  background-image:
-    linear-gradient(rgba(110, 160, 200, 0.22) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(110, 160, 200, 0.22) 1px, transparent 1px),
-    radial-gradient(
-      circle,
-      rgba(150, 185, 220, 0.70) 1.4px,
-      transparent 1.6px
-    );
-  background-size: 20px 20px, 20px 20px, 20px 20px;
-  background-position: 0 0, 0 0, 0 0;
-}
-
-.sld-canvas-grid::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background-image:
-    /* MAJOR lines 100×100 — 1.2 px alpha 0.65 (CAD-grade) */
-    linear-gradient(rgba(130, 180, 220, 0.65) 1.2px, transparent 1.2px),
-    linear-gradient(90deg, rgba(130, 180, 220, 0.65) 1.2px, transparent 1.2px),
-    /* MAJOR-MAJOR intersection markers (cross-hatch dots 0.85, 2.5px) */
-    radial-gradient(
-      circle,
-      rgba(180, 215, 240, 0.85) 2.5px,
-      transparent 3px
-    );
-  background-size: 100px 100px, 100px 100px, 100px 100px;
-  background-position: 0 0, 0 0, 0 0;
-  z-index: 0;
-}
-
-/* CAD Rulers — iter 7 (per CAD verify iter 5: "rulers + toolbar").
-   Top X ruler i Left Y ruler z tickami co 100 px (major) i co 20 px (minor).
-   Statyczne, pointer-events: none, dekoracyjne (aria-hidden). */
-.sld-canvas-ruler {
-  position: absolute;
-  pointer-events: none;
-  z-index: 2;
-  background-color: rgba(21, 32, 51, 0.92);
-  border: 1px solid rgba(110, 160, 200, 0.30);
-}
-
-.sld-canvas-ruler-top {
-  top: 0;
-  left: 24px; /* przesunięcie aby nie krzyżował się z left ruler */
-  right: 0;
-  height: 18px;
-  background-image:
-    /* major ticks co 100px (5px wysokie) */
-    linear-gradient(
-      to right,
-      transparent 0,
-      transparent calc(100% - 1px),
-      rgba(180, 215, 240, 0.85) 1px
-    ),
-    /* minor ticks co 20px (2px wysokie) */
-    repeating-linear-gradient(
-      to right,
-      rgba(110, 160, 200, 0.45) 0,
-      rgba(110, 160, 200, 0.45) 1px,
-      transparent 1px,
-      transparent 20px
-    ),
-    repeating-linear-gradient(
-      to right,
-      rgba(180, 215, 240, 0.85) 0,
-      rgba(180, 215, 240, 0.85) 1px,
-      transparent 1px,
-      transparent 100px
-    );
-  background-size: 100% 5px, 100% 2px, 100% 100%;
-  background-position: bottom right, bottom right, bottom right;
-  background-repeat: no-repeat, repeat, repeat;
-}
-
-.sld-canvas-ruler-left {
-  top: 0;
-  left: 0;
-  bottom: 0;
-  width: 24px;
-  background-image:
-    repeating-linear-gradient(
-      to bottom,
-      rgba(110, 160, 200, 0.45) 0,
-      rgba(110, 160, 200, 0.45) 1px,
-      transparent 1px,
-      transparent 20px
-    ),
-    repeating-linear-gradient(
-      to bottom,
-      rgba(180, 215, 240, 0.85) 0,
-      rgba(180, 215, 240, 0.85) 1px,
-      transparent 1px,
-      transparent 100px
-    );
-  background-size: 5px 100%, 100% 100%;
-  background-position: right top, right top;
-  background-repeat: repeat, repeat;
-}
-
-/* Origin axes (X=0 / Y=0) — pomarańczowo-żółte CAD standard hue.
-   Pseudoelement ::after renderuje 1 px linie X/Y axis na pozycji 0,0. */
-.sld-canvas-grid::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  background-image:
-    linear-gradient(to bottom, rgba(255, 180, 80, 0.80) 1px, transparent 1px),
-    linear-gradient(to right, rgba(255, 180, 80, 0.80) 1px, transparent 1px);
-  background-size: 100% 1px, 1px 100%;
-  background-position: 0 0, 0 0;
-  background-repeat: no-repeat, no-repeat;
-  z-index: 1;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .sld-canvas-grid {
-    background-image: none;
-  }
-}

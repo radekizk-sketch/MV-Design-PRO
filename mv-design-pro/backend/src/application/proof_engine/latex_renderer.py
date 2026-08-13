@@ -16,7 +16,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from application.proof_engine.types import ProofDocument, ProofStep
+    from application.proof_engine.types import ProofDocument, ProofStep, ProofValue
 
 
 class LaTeXRenderer:
@@ -518,7 +518,7 @@ class LaTeXRenderer:
 
         rows: list[tuple[str, str, str, str]] = []
 
-        def _add_row(key: str, label: str, unit: str):
+        def _add_row(key: str, label: str, unit: str) -> None:
             key_a = f"{key}_a"
             key_b = f"{key}_b"
             key_d = f"delta_{key}"
@@ -635,7 +635,7 @@ class LaTeXRenderer:
         return text
 
     @classmethod
-    def _format_value_latex(cls, val) -> str:
+    def _format_value_latex(cls, val: ProofValue) -> str:
         """Formatuje wartość do LaTeX."""
         if isinstance(val.value, complex):
             r = val.value.real
@@ -648,7 +648,7 @@ class LaTeXRenderer:
             return rf"{val.value}\,\text{{{val.unit}}}"
 
     @classmethod
-    def _format_numeric_value(cls, value) -> str:
+    def _format_numeric_value(cls, value: float | complex | str) -> str:
         """Formatuje wartość numeryczną."""
         if isinstance(value, complex):
             r = value.real

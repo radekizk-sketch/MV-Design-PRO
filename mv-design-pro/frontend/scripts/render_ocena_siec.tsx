@@ -21,13 +21,15 @@ import { fileURLToPath } from 'node:url';
 import { renderToStaticMarkup } from 'react-dom/server';
 
 import type { EnergyNetworkModel } from '../src/types/enm';
-import { buildSceneV3, SCENE_LOD_LABELS_PL } from '../src/ui/sld/v3/scene/buildScene';
-import { SldCanvasV3 } from '../src/ui/sld/v3/canvas/SldCanvasV3';
+import { buildSceneV3, SCENE_LOD_LABELS_PL, type SceneV3 } from '../src/ui/sld/v3/scene/buildScene';
+import { SldCanvasV3, sceneBoxToCameraWorld } from '../src/ui/sld/v3/canvas/SldCanvasV3';
 import { SYMBOL_DEFS, type SymbolId } from '../src/ui/sld/v3/symbols/defs';
 import { SYMBOL_GLYPHS } from '../src/ui/sld/v3/symbols/glyphs';
-import { buildResultLabelsFromScene, singleHopSegmentRefs } from '../src/ui/sld/v3/canvas/resultLabels';
+import { buildResultLabelsForSnapshot } from '../src/ui/sld/v3/canvas/SldCanvasV3Workspace';
 import { computeResultLabelPlacements } from '../src/ui/sld/v3/canvas/SldCanvasV3';
+import type { CameraState } from '../src/ui/sld/v3/canvas/camera';
 import { CANVAS_BACKGROUND } from '../src/ui/sld/v3/theme/colorTokens';
+import { LABEL_TYPOGRAPHY, labelLineHeight } from '../src/ui/sld/v3/core/text';
 import type { RawOverlayElement, RawOverlayPayload } from '../src/ui/sld-overlay/rawResultOverlayStore';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -79,55 +81,64 @@ renderCanvasLod(1, 'histereza LOD · rozwinięcie pól/aparatów · kropki poł�
 renderCanvasLod(2, 'pełne pola i aparaty · oznaczenia z danych · CT/VT · podwarstwy L2-A/B/C/D', 'ocena-l2');
 
 // --- (2) Detal GPZ (źródło + rozdzielnia) -----------------------------------
+//
+// KADR WYCHODZI Z KANWY, NIE JEST NA NIĄ NAKŁADANY.
+// Ta sekcja rysowała detal WŁASNĄ, równoległą pętlą po `scene.segments` /
+// `scene.symbols` / `scene.labels`. Skutek zmierzony na zrzucie 2026-08-08:
+// obraz miał DWA elementy tekstowe (tytuł i podtytuł) i ANI JEDNEJ etykiety
+// rysunku, mimo że jego własny podpis obiecuje „aparaty z oznaczeniami z
+// danych". Przyczyna: pętla czytała `lab.x`/`lab.y`/`lab.fontSize`, a
+// `OwnedLabel` niesie prostokąt tuszu (`rect`) i nie ma tych pól od czasu
+// przebudowy etykiet — `inWin(undefined, undefined)` odrzucał więc KAŻDĄ
+// etykietę. Nic tego nie wykryło, bo `frontend/scripts/**` stoi poza bramką
+// typów (`tsconfig.json` obejmuje wyłącznie `src`).
+//
+// Rozstrzygnięcie jest już w repo i pochodzi z karty, która wprowadziła
+// `cameraOverride`: „sonda, która zniekształca mierzony obiekt, jest defektem
+// tej samej wagi co defekt produktu — kadr musi wychodzić z kanwy". Tamta karta
+// naprawiła swoją instancję; ta sekcja była kolejną instancją TEJ SAMEJ klasy.
+// Detal renderuje więc PRODUKCYJNA kanwa z podanym `CameraState` (ten sam
+// wzorzec co `scripts/render_blok_pusty.tsx`), a nie drugi renderer.
 {
   const scene = buildSceneV3(enm, 2);
-  // GPZ = symbol źródła; okno detalu wokół niego.
+  const sceny = { 0: buildSceneV3(enm, 0), 1: buildSceneV3(enm, 1), 2: scene } as const;
+  // GPZ = symbol źródła; kadr wokół niego.
   const src = scene.symbols.find((s) => s.meta?.elementKind === 'source');
   const cx = src ? src.x + (SYMBOL_DEFS[src.symbolId as SymbolId]?.width ?? 0) / 2 : 0;
   const cy = src ? src.y + (SYMBOL_DEFS[src.symbolId as SymbolId]?.height ?? 0) / 2 : 0;
-  const WIN_W = 1500;
-  const WIN_H = 900;
+  const KADR = { width: 1500, height: 900 } as const;
   const SCALE = 1.6; // powiększenie detalu GPZ
-  const minX = cx - WIN_W / (2 * SCALE);
-  const minY = cy - WIN_H / (2 * SCALE);
-  const inWin = (x: number, y: number, w = 0, h = 0): boolean =>
-    x + w >= minX && x <= minX + WIN_W / SCALE && y + h >= minY && y <= minY + WIN_H / SCALE;
-  const tx = (x: number): number => (x - minX) * SCALE;
-  const ty = (y: number): number => (y - minY) * SCALE;
   const HEADER = 78;
-  const parts: string[] = [];
-  for (const seg of scene.segments) {
-    const xs = seg.points.map((p) => p.x);
-    const ys = seg.points.map((p) => p.y);
-    if (!inWin(Math.min(...xs), Math.min(...ys), Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys))) continue;
-    const d = seg.points.map((p, i) => `${i === 0 ? 'M' : 'L'}${tx(p.x).toFixed(1)},${(ty(p.y) + HEADER).toFixed(1)}`).join(' ');
-    parts.push(`<path d="${d}" fill="none" stroke="${WIRE}" stroke-width="1.6"/>`);
-  }
-  for (const s of scene.symbols) {
-    const def = SYMBOL_DEFS[s.symbolId as SymbolId];
-    const Glyph = SYMBOL_GLYPHS[s.symbolId as SymbolId];
-    if (!def || !Glyph || !inWin(s.x, s.y, def.width, def.height)) continue;
-    parts.push(
-      `<g transform="translate(${tx(s.x).toFixed(1)},${(ty(s.y) + HEADER).toFixed(1)}) scale(${SCALE})">` +
-        renderToStaticMarkup(<Glyph x={0} y={0} state={s.state as 'closed' | 'open' | 'unknown' | undefined} stroke={TXT} />) +
-        `</g>`,
-    );
-  }
-  for (const lab of scene.labels) {
-    if (!inWin(lab.x, lab.y)) continue;
-    parts.push(
-      `<text x="${tx(lab.x).toFixed(1)}" y="${(ty(lab.y) + HEADER).toFixed(1)}" font-family="Inter, system-ui, sans-serif" ` +
-        `font-size="${Math.max(9, (lab.fontSize ?? 11) * SCALE * 0.5).toFixed(0)}" fill="${SUB}">${escapeXml(lab.text)}</text>`,
-    );
-  }
+  // Świat kamery = świat sceny przesunięty o offset kanwy (`sceneBoxToCameraWorld`).
+  const offset = sceneBoxToCameraWorld({ minX: 0, minY: 0, maxX: 0, maxY: 0 });
+  const srodek = { x: cx + offset.minX, y: cy + offset.minY };
+  const bboxKamery = (s: SceneV3) =>
+    sceneBoxToCameraWorld({ minX: s.bbox.x, minY: s.bbox.y, maxX: s.bbox.x + s.bbox.width, maxY: s.bbox.y + s.bbox.height });
+  const kamera: CameraState = {
+    transform: {
+      scale: SCALE,
+      translateX: KADR.width / 2 - srodek.x * SCALE,
+      // Źródło stoi w 1/3 wysokości kadru: GPZ rozwija się POD nim (transformator,
+      // szyna SN, pola), więc kadr wyśrodkowany na źródle zostawiałby górną
+      // połowę pustą — pustka KADRU, nie rysunku.
+      translateY: KADR.height / 3 - srodek.y * SCALE,
+    },
+    lod: 2,
+    viewportSize: KADR,
+    lodBboxes: { 0: bboxKamery(sceny[0]), 1: bboxKamery(sceny[1]), 2: bboxKamery(sceny[2]) },
+  };
+  const inner = renderToStaticMarkup(
+    <SldCanvasV3 snapshot={enm} width={KADR.width} height={KADR.height} lodOverride={2} cameraOverride={kamera} />,
+  ).replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" ');
   const title =
     `<text x="18" y="32" font-family="Inter, system-ui, sans-serif" font-size="21" font-weight="700" fill="${TXT}">` +
     `Detal GPZ — źródło sieciowe + rozdzielnia (L2, ×${SCALE})</text>` +
     `<text x="18" y="56" font-family="Inter, system-ui, sans-serif" font-size="14" fill="${SUB}">` +
     `Opcje: pola liniowe/transformatorowe · OLTC (przesunięcie fazowe grupy SM-2 w PF) · aparaty z oznaczeniami z danych · kropki węzłów</text>`;
   const svg =
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${WIN_W}" height="${WIN_H + HEADER}" viewBox="0 0 ${WIN_W} ${WIN_H + HEADER}">` +
-    `<rect width="${WIN_W}" height="${WIN_H + HEADER}" fill="${CANVAS_BACKGROUND}"/>${title}${parts.join('')}</svg>`;
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${KADR.width}" height="${KADR.height + HEADER}" viewBox="0 0 ${KADR.width} ${KADR.height + HEADER}">` +
+    `<rect width="${KADR.width}" height="${KADR.height + HEADER}" fill="${CANVAS_BACKGROUND}"/>${title}` +
+    `<g transform="translate(0,${HEADER})">${inner}</g></svg>`;
   writeFileSync(`${OUT}/ocena-gpz.svg`, svg);
   console.log('wrote', 'ocena-gpz.svg', src ? `src=${src.meta?.ownerRef}` : 'brak src');
 }
@@ -135,7 +146,6 @@ renderCanvasLod(2, 'pełne pola i aparaty · oznaczenia z danych · CT/VT · pod
 // --- (3) Pełna sieć L2 z warstwą wynikową (realne P z biegu NR) --------------
 {
   const scene = buildSceneV3(enm, 2);
-  const singleHop = singleHopSegmentRefs(enm);
   // Payload wyników: realne p_from_mw per przęsło z biegu NR (zero fabrykacji).
   const elements: Record<string, RawOverlayElement> = {};
   let nWyniki = 0;
@@ -160,7 +170,14 @@ renderCanvasLod(2, 'pełne pola i aparaty · oznaczenia z danych · CT/VT · pod
     analysis_type: 'load_flow',
     elements,
   };
-  const resultLabels = buildResultLabelsFromScene(scene, payload, singleHop);
+  // WEJŚCIE PRODUKCYJNE, nie własny potok. Skrypt ma pokazywać właścicielowi to,
+  // co widzi aplikacja, więc etykiety liczy TA SAMA funkcja, którą woła kanwa
+  // (`SldCanvasV3Workspace.buildResultLabelsForSnapshot`) — razem z bramką przęseł
+  // (klucze `orientedSegmentRefs`) i MOSTEM REFÓW (szyny stacji, blok stacji L0,
+  // transformator stacji). Poprzednio skrypt składał ten potok sam, bez mostu, i
+  // przy usunięciu bramki `singleHopSegmentRefs` przestał się w ogóle uruchamiać —
+  // czego nic nie wykryło, bo `frontend/scripts/**` stoi poza bramką typów.
+  const resultLabels = buildResultLabelsForSnapshot(enm, payload);
   const placements = computeResultLabelPlacements(scene, resultLabels, [], 2);
 
   // bbox sceny
@@ -199,7 +216,14 @@ renderCanvasLod(2, 'pełne pola i aparaty · oznaczenia z danych · CT/VT · pod
     );
   }
   // Warstwa wynikowa: etykiety P na przęsłach (placements produkcyjne).
-  const lineH = 5.6;
+  // JEDNO ZRODLO PRAWDY dla podkladki i pisma (naprawa narzedzia oceny 2026-08-09).
+  // Do tej poprawki podkladka byla skalowana (`p.width * scale`), a rozmiar pisma stal
+  // zaszyty na 5,2 — dwie rozne podstawy, wiec tusz wychodzil poza wlasne tlo na
+  // WSZYSTKICH 88 etykietach (zmierzone: tusz 33,00 przy podkladce 19,8). Produkcyjna
+  // kanwa liczy oba z `measureLabelWidth(..., 't4')`; tu bierzemy ten sam rozmiar pisma
+  // i te sama skale, wiec obraz oceny pokazuje to, co pokazuje produkt.
+  const fontRes = LABEL_TYPOGRAPHY.t4.fontSize * scale;
+  const lineH = labelLineHeight('t4') * scale;
   for (const p of placements) {
     parts.push(
       `<rect x="${tx(minX + (p.x - minX)).toFixed(1)}" y="${ty(minY + (p.y - minY)).toFixed(1)}" ` +
@@ -210,7 +234,7 @@ renderCanvasLod(2, 'pełne pola i aparaty · oznaczenia z danych · CT/VT · pod
       parts.push(
         `<text x="${(tx(minX + (p.x - minX)) + (p.width * scale) / 2).toFixed(1)}" ` +
           `y="${(ty(minY + (p.y - minY)) + lineH * (i + 1)).toFixed(1)}" text-anchor="middle" ` +
-          `font-family="Inter, system-ui, sans-serif" font-size="5.2" font-weight="600" fill="${RESULT}">${escapeXml(`${line.prefix} ${line.text}`)}</text>`,
+          `font-family="Inter, system-ui, sans-serif" font-size="${fontRes.toFixed(2)}" font-weight="600" fill="${RESULT}">${escapeXml(`${line.prefix} ${line.text}`)}</text>`,
       );
     });
   }

@@ -14,7 +14,7 @@ Integracja:
   `profile.to_frt_parameters()`.
 """
 
-from src.network_model.catalog.der_dynamic.defaults import (
+from network_model.catalog.der_dynamic.defaults import (
     DEFAULT_BESS_GFL,
     DEFAULT_BESS_GFM,
     DEFAULT_PV_GFL,
@@ -26,7 +26,7 @@ from src.network_model.catalog.der_dynamic.defaults import (
     INVERTER_DYNAMIC_PROFILES,
     WIND_DYNAMIC_PROFILES,
 )
-from src.network_model.catalog.der_dynamic.models import (
+from network_model.catalog.der_dynamic.models import (
     DerDynamicProfile,
     DerKind,
     InverterControlMode,
@@ -34,7 +34,7 @@ from src.network_model.catalog.der_dynamic.models import (
     WindIecType,
     WindTurbineDynamicProfile,
 )
-from src.network_model.catalog.der_dynamic.resolver import (
+from network_model.catalog.der_dynamic.resolver import (
     DerDynamicResolution,
     get_profile,
     list_all_profile_ids,

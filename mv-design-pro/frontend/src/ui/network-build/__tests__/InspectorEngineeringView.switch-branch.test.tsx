@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 
 import { InspectorEngineeringView } from '../InspectorEngineeringView';
+import { readinessZListy } from '../../../test/gotowoscTestUtils';
 
 const openOperationForm = vi.fn();
 const openRouteSurface = vi.fn();
@@ -52,19 +53,20 @@ vi.mock('../../selection', () => ({
     selector({ selectedElements: mockSelectedElements }),
 }));
 
+// JEDNA prawda gotowosci (KD-1 / V12K-286): inspektor czyta problemy przez
+// `gotowoscAdapter` z `useSnapshotStore.readiness`, wiec scena zasila TO pole
+// (dawna atrapa `readinessLiveStore` byla osobnym, nigdy nieodswiezanym zrodlem).
 vi.mock('../../topology/snapshotStore', () => ({
   useSnapshotStore: (selector: (state: unknown) => unknown) =>
     selector({
       snapshot,
       logicalViews: null,
       executeDomainOperation: vi.fn(),
+      readiness: readinessZListy([]),
+      fixActions: [],
     }),
 }));
 
-vi.mock('../../engineering-readiness/readinessLiveStore', () => ({
-  useReadinessLiveStore: (selector: (state: { issues: unknown[] }) => unknown) =>
-    selector({ issues: [] }),
-}));
 
 vi.mock('../../field/useFieldReadModel', () => ({
   useFieldReadModel: () => ({

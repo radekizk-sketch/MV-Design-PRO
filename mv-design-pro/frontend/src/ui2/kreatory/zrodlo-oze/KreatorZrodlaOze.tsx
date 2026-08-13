@@ -12,12 +12,17 @@ import { useAppStateStore } from '../../../ui/app-state';
 import { fetchConverterTypes, fetchLvApparatusTypes, getCatalogErrorMessage } from '../../../ui/catalog/api';
 import type { ConverterType, LVApparatusType } from '../../../ui/catalog/types';
 import {
+  listNnFeederOptions,
   listSnBusOptions,
   resolveBusNnRef,
   resolveBusSnRef,
   resolveStationRef,
   stationLabel,
 } from '../../../ui/network-build/forms/enmResolvers';
+import {
+  DerPersistenceApiError,
+  patchDerCatalogBindings,
+} from '../../../ui/sld/v2/canvas/derPersistenceApi';
 import { useActiveOperationContext, useNetworkBuildStore } from '../../../ui/network-build/networkBuildStore';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import {
@@ -51,6 +56,7 @@ import {
   etykietaKonwertera,
   maKontekst,
   regulacjaLabel,
+  refUtworzonegoWytworcy,
   sugerujDerSn,
   technologiaLabel,
   transformatoryBlokowe,
@@ -58,9 +64,12 @@ import {
   walidujFormularz,
   wariantLabel,
   zbudujDerTopology,
+  zbudujLimityBierne,
   zbudujPayload,
+  zbudujWiazaniaDer,
   type BladPolaOze,
   type DerSnFormData,
+  type EtapSekwencjiZapisu,
   type KontekstOze,
   type OzeFormData,
   type TechnologiaOze,
@@ -70,6 +79,9 @@ import {
   type WariantPrzylaczenia,
 } from './zrodloOzeModel';
 import { DoborToruSn } from './DoborToruSn';
+import { KrokAparatura, KrokZgodnosc } from './KrokiAparaturaZgodnosc';
+import { GotowoscDer } from './GotowoscDer';
+import type { SourceOperatingMode } from '../../../types/domainOps';
 import { PodsumowanieAutoBieg } from './PodsumowanieAutoBieg';
 import { zastosujPropozycje } from './zrodloOzeDobor';
 import type {
@@ -91,13 +103,16 @@ import type { RunStatus } from '../../../ui/study-cases/types';
 type FazaPodsumowania = 'formularz' | 'bieg' | 'dokumenty' | 'gotowe';
 
 // Krok „dobor" (dobór toru SN z katalogu) wchodzi po „katalog" tylko dla wariantu
-// z transformatorem blokowym (tor materializowany po stronie SN).
+// z transformatorem blokowym (tor materializowany po stronie SN). K9-A: po doborze
+// wchodzą kroki „aparatura" (wiązania aparaturowe) i „zgodnosc" (profile NC RfG).
 function zbudujKroki(zTorem: boolean): readonly KrokKreatora[] {
   const kroki: KrokKreatora[] = [
     { id: 'tech', tytul: T.krokTechnologia },
     { id: 'katalog', tytul: T.krokKatalog },
   ];
   if (zTorem) kroki.push({ id: 'dobor', tytul: T.krokDobor });
+  kroki.push({ id: 'aparatura', tytul: T.krokAparatura });
+  kroki.push({ id: 'zgodnosc', tytul: T.krokZgodnosc });
   kroki.push({ id: 'regulacja', tytul: T.krokRegulacja });
   kroki.push({ id: 'zapis', tytul: T.krokZapis });
   return kroki;
@@ -111,6 +126,9 @@ const OPCJE_UMIEJSCOWIENIE = [
   { id: 'NEW_FIELD', etykieta: T.umiejscowienieNowe },
   { id: 'EXISTING_FIELD', etykieta: T.umiejscowienieIstniejace },
 ];
+// K9-A O5: słownik trybów pracy źródła (1:1 z kontraktem odczytu pola) + pusty
+// wybór „bez wskazania" (operacja trybu jest wtedy pomijana — uczciwy stan zerowy).
+const OPCJE_TRYB_PRACY = [{ id: '', etykieta: T.trybPracyBrak }, ...T.trybPracyOpcje];
 
 function trimmed(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
@@ -181,6 +199,15 @@ export function KreatorZrodlaOze() {
   const [runStatus, setRunStatus] = useState<RunStatus | null>(null);
   const [raport, setRaport] = useState<RaportZgodnosci | null>(null);
   const [bom, setBom] = useState<ListaMaterialowa | null>(null);
+  // K9-A: przebieg sekwencji zapisu (uczciwie: co zapisane, co padło, co pominięte)
+  // + ref utworzonego wytwórcy dla readoutu osi gotowości.
+  const [sekwencja, setSekwencja] = useState<EtapSekwencjiZapisu[]>([]);
+  const [generatorRef, setGeneratorRef] = useState<string | null>(null);
+  // Odpowiedź zapisu do wiązania ze schematem przy ZAKOŃCZENIU kreatora: selekcja
+  // wytwórcy w trakcie otwartego kreatora uruchamia nawigację do konfiguratora
+  // źródła (orkiestrator tras), która zastępuje powierzchnię kreatora — podsumowanie
+  // po zapisie ginęło. Selekcję i wycentrowanie wykonujemy przy „Zakończ".
+  const [odpowiedzZapisu, setOdpowiedzZapisu] = useState<Parameters<typeof selekcjaPoOperacji>[0]>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -246,6 +273,17 @@ export function KreatorZrodlaOze() {
     const opcja = listSnBusOptions(snapshot, kontekst.station_ref).find((b) => b.ref_id === snBusRef);
     return opcja?.voltage_kv ?? null;
   }, [snapshot, kontekst.station_ref, snBusRef]);
+
+  // K9-A O12: istniejące pola odpływowe nN rozdzielni — wybór dla umiejscowienia
+  // „istniejące pole" (operacja czyta existing_field_ref).
+  const polaOdplywowe = useMemo(
+    () => listNnFeederOptions(snapshot, kontekst.station_ref, kontekst.bus_nn_ref),
+    [snapshot, kontekst.station_ref, kontekst.bus_nn_ref],
+  );
+  const opcjePolOdplywowych = useMemo(
+    () => polaOdplywowe.map((p) => ({ id: p.ref_id, etykieta: p.name })),
+    [polaOdplywowe],
+  );
 
   const zmien = useCallback(<K extends keyof OzeFormData>(pole: K, wartosc: OzeFormData[K]) => {
     setDane((p) => ({ ...p, [pole]: wartosc }));
@@ -320,8 +358,93 @@ export function KreatorZrodlaOze() {
         setBladGlobalny(response.error);
         return;
       }
-      selekcjaPoOperacji(response, { type: 'Generator', name: dane.source_name.trim() || 'Źródło OZE' });
+      // Wiązanie ze schematem (selekcja + centrowanie) dopiero przy „Zakończ" —
+      // selekcja wytwórcy przy otwartym kreatorze zastępuje jego powierzchnię
+      // konfiguratorem źródła (nawigacja orkiestratora tras po typie selekcji).
+      setOdpowiedzZapisu(response);
       setKrok('zapis');
+
+      // K9-A §0.4: SEKWENCJA operacji po utworzeniu elementu — wiązania aparaturowe
+      // i profile, tryb pracy, limity mocy biernej. Model nie zapewnia atomowości,
+      // więc każdy etap raportujemy osobno (co zapisane, co padło, co pominięte).
+      // Ref WYTWÓRCY (nie wskazania selekcji — to może być pole): operacje sekwencji
+      // działają na generatorze.
+      const nowyRef = refUtworzonegoWytworcy(response);
+      setGeneratorRef(nowyRef);
+      const etapy: EtapSekwencjiZapisu[] = [
+        { id: 'zrodlo', etykieta: T.sekwencjaKrokZrodlo, stan: 'zapisane' },
+      ];
+
+      const wiazania = zbudujWiazaniaDer(dane);
+      if (!wiazania) {
+        etapy.push({ id: 'wiazania', etykieta: T.sekwencjaKrokWiazania, stan: 'pominiete' });
+      } else if (!nowyRef || !activeProjectId) {
+        etapy.push({
+          id: 'wiazania',
+          etykieta: T.sekwencjaKrokWiazania,
+          stan: 'blad',
+          komunikat: activeProjectId ? T.walidacjaStopka : T.brakProjektu,
+        });
+      } else {
+        try {
+          await patchDerCatalogBindings(activeProjectId, activeCaseId, nowyRef, wiazania);
+          etapy.push({ id: 'wiazania', etykieta: T.sekwencjaKrokWiazania, stan: 'zapisane' });
+        } catch (bladWiazan) {
+          etapy.push({
+            id: 'wiazania',
+            etykieta: T.sekwencjaKrokWiazania,
+            stan: 'blad',
+            komunikat:
+              bladWiazan instanceof DerPersistenceApiError || bladWiazan instanceof Error
+                ? bladWiazan.message
+                : T.walidacjaStopka,
+          });
+        }
+      }
+
+      if (!dane.operating_mode) {
+        etapy.push({ id: 'tryb', etykieta: T.sekwencjaKrokTryb, stan: 'pominiete' });
+      } else if (!nowyRef) {
+        etapy.push({ id: 'tryb', etykieta: T.sekwencjaKrokTryb, stan: 'blad', komunikat: T.walidacjaStopka });
+      } else {
+        const odpTryb = await executeDomainOperation(activeCaseId, 'set_source_operating_mode', {
+          source_ref: nowyRef,
+          mode: dane.operating_mode,
+        });
+        etapy.push(
+          !odpTryb || odpTryb.error
+            ? {
+                id: 'tryb',
+                etykieta: T.sekwencjaKrokTryb,
+                stan: 'blad',
+                komunikat: odpTryb?.error ?? useSnapshotStore.getState().error ?? T.walidacjaStopka,
+              }
+            : { id: 'tryb', etykieta: T.sekwencjaKrokTryb, stan: 'zapisane' },
+        );
+      }
+
+      const limity = zbudujLimityBierne(dane);
+      if (!limity) {
+        etapy.push({ id: 'limity', etykieta: T.sekwencjaKrokLimity, stan: 'pominiete' });
+      } else if (!nowyRef) {
+        etapy.push({ id: 'limity', etykieta: T.sekwencjaKrokLimity, stan: 'blad', komunikat: T.walidacjaStopka });
+      } else {
+        const odpLimity = await executeDomainOperation(activeCaseId, 'update_element_parameters', {
+          element_ref: nowyRef,
+          parameters: { limits: limity },
+        });
+        etapy.push(
+          !odpLimity || odpLimity.error
+            ? {
+                id: 'limity',
+                etykieta: T.sekwencjaKrokLimity,
+                stan: 'blad',
+                komunikat: odpLimity?.error ?? useSnapshotStore.getState().error ?? T.walidacjaStopka,
+              }
+            : { id: 'limity', etykieta: T.sekwencjaKrokLimity, stan: 'zapisane' },
+        );
+      }
+      setSekwencja(etapy);
 
       // D4 (wymaganie 12+13+BOM): auto-bieg (LF + SC) po zapisie + raport zgodności + BOM.
       // Bez fizyki w UI — bieg reużywa mechanizmu przebiegów, dokumenty liczy backend.
@@ -350,6 +473,27 @@ export function KreatorZrodlaOze() {
     setActiveSpace('dokumentacja');
     closeForm();
   }, [closeForm, setActiveSpace]);
+
+  // „Zakończ" = zamknięcie kreatora + wiązanie ze schematem (V12K-073): selekcja
+  // nowego wytwórcy, wycentrowanie, powrót na schemat. Wykonywane PO zamknięciu
+  // formularza, żeby nawigacja po selekcji nie zastępowała powierzchni kreatora.
+  const zakonczPoZapisie = useCallback(() => {
+    closeForm();
+    selekcjaPoOperacji(odpowiedzZapisu, {
+      type: 'Generator',
+      name: dane.source_name.trim() || 'Źródło OZE',
+    });
+  }, [closeForm, dane.source_name, odpowiedzZapisu, selekcjaPoOperacji]);
+
+  // K9-A: postęp wyborów aparatury (CT/VT/zabezpieczenie) i profili (profil + 3 krzywe).
+  const liczbaAparatury = [dane.ct_catalog_ref, dane.vt_catalog_ref, dane.protection_catalog_ref]
+    .filter((ref) => Boolean(ref?.trim())).length;
+  const liczbaProfili = [
+    dane.nc_rfg_profile_ref,
+    dane.lvrt_curve_ref,
+    dane.hvrt_curve_ref,
+    dane.pf_curve_ref,
+  ].filter((ref) => Boolean(ref?.trim())).length;
 
   const przylaczenieWartosc = isBlock
     ? materializowanyTorSn
@@ -382,7 +526,36 @@ export function KreatorZrodlaOze() {
       stan: dane.converter_catalog_ref ? 'kompletne' : 'brak',
       wartosc: dane.converter_catalog_ref ? 'Kompletne' : 'Do konfiguracji',
     },
+    // K9-A: aparatura (3 wiązania katalogowe) i profile NC RfG (profil + 3 krzywe)
+    // — kontrola pokazuje postęp wyborów; komplet odblokowuje osie gotowości analiz.
+    {
+      etykieta: T.wierszAparatura,
+      stan: liczbaAparatury === 3 ? 'kompletne' : liczbaAparatury > 0 ? 'ostrzezenie' : 'brak',
+      wartosc:
+        liczbaAparatury === 3
+          ? 'Kompletne'
+          : liczbaAparatury > 0
+          ? T.aparaturaCzesciowa(liczbaAparatury, 3)
+          : T.doKonfiguracji,
+    },
+    {
+      etykieta: T.wierszZgodnosc,
+      stan: liczbaProfili === 4 ? 'kompletne' : liczbaProfili > 0 ? 'ostrzezenie' : 'brak',
+      wartosc:
+        liczbaProfili === 4
+          ? 'Kompletne'
+          : liczbaProfili > 0
+          ? T.aparaturaCzesciowa(liczbaProfili, 4)
+          : T.doKonfiguracji,
+    },
     { etykieta: T.wierszRegulacja, stan: 'kompletne', wartosc: regulacjaLabel(dane.control_mode) },
+    {
+      etykieta: T.wierszTrybPracy,
+      stan: 'kompletne',
+      wartosc: dane.operating_mode
+        ? T.trybPracyOpcje.find((o) => o.id === dane.operating_mode)?.etykieta ?? dane.operating_mode
+        : T.bezWskazania,
+    },
   ];
 
   const aside = (
@@ -392,15 +565,30 @@ export function KreatorZrodlaOze() {
     </>
   );
 
+  // O7: jawna semantyka liczby jednostek — zestaw (N × typ) i sumy z tabliczki
+  // katalogowej (prezentacja agregacji danych katalogowych, agregat liczy backend).
+  const liczbaJednostek = Math.max(1, dane.quantity);
   const paramReadout = wybranyKonwerter ? (
-    <KreatorSiatka kolumny={3}>
-      <RzadWartosci etykieta={T.paramNapiecie} wartosc={`${wybranyKonwerter.un_kv} kV`} />
-      <RzadWartosci etykieta={T.paramMoc} wartosc={`${wybranyKonwerter.sn_mva.toFixed(3)} MVA`} />
-      <RzadWartosci
-        etykieta={T.paramPmax}
-        wartosc={`${(wybranyKonwerter.pmax_mw * Math.max(1, dane.quantity)).toFixed(3)} MW`}
-      />
-    </KreatorSiatka>
+    <>
+      <KreatorSiatka kolumny={2}>
+        <RzadWartosci
+          etykieta={T.paramZestaw}
+          wartosc={`${liczbaJednostek} × ${wybranyKonwerter.name}`}
+        />
+        <RzadWartosci etykieta={T.paramNapiecie} wartosc={`${wybranyKonwerter.un_kv} kV`} />
+      </KreatorSiatka>
+      <KreatorSiatka kolumny={3}>
+        <RzadWartosci etykieta={T.paramMoc} wartosc={`${wybranyKonwerter.sn_mva.toFixed(3)} MVA`} />
+        <RzadWartosci
+          etykieta={T.paramMocAgregat}
+          wartosc={`${(wybranyKonwerter.sn_mva * liczbaJednostek).toFixed(3)} MVA`}
+        />
+        <RzadWartosci
+          etykieta={T.paramPmax}
+          wartosc={`${(wybranyKonwerter.pmax_mw * liczbaJednostek).toFixed(3)} MW`}
+        />
+      </KreatorSiatka>
+    </>
   ) : null;
 
   const krokIndex = KROKI.findIndex((k) => k.id === krok);
@@ -408,7 +596,7 @@ export function KreatorZrodlaOze() {
 
   const akcjaGlowna =
     faza === 'gotowe'
-      ? { etykieta: P.zakoncz, onClick: () => closeForm(), testid: 'mvd-kreator-oze-zapisz' }
+      ? { etykieta: P.zakoncz, onClick: zakonczPoZapisie, testid: 'mvd-kreator-oze-zapisz' }
       : wToku
       ? {
           etykieta: faza === 'bieg' ? P.fazaBieg : P.fazaDokumenty,
@@ -528,13 +716,34 @@ export function KreatorZrodlaOze() {
                     testid="mvd-kreator-oze-aparat"
                   />
                 </>
-              ) : null}
+              ) : (
+                <>
+                  {/* K9-A O12: wskazanie istniejącego pola odpływowego wprost w kreatorze
+                      (dotąd wyłącznie z kontekstu wywołania). */}
+                  <PoleWyboru
+                    etykieta={T.istniejacePole}
+                    wartosc={dane.existing_field_ref ?? kontekst.existing_field_ref ?? ''}
+                    onZmiana={(v) => zmien('existing_field_ref', v || null)}
+                    opcje={[{ id: '', etykieta: T.istniejacePolePlaceholder }, ...opcjePolOdplywowych]}
+                    blad={bladDlaPola('existing_field_ref')}
+                    testid="mvd-kreator-oze-istniejace-pole"
+                  />
+                  {opcjePolOdplywowych.length === 0 && !kontekst.existing_field_ref ? (
+                    <KreatorInfo>{T.istniejacePoleBrak}</KreatorInfo>
+                  ) : null}
+                </>
+              )}
               {bladDlaPola('bus_nn_ref') ? <p className="mvd-pole-blad">{bladDlaPola('bus_nn_ref')}</p> : null}
-              {bladDlaPola('existing_field_ref') ? (
-                <p className="mvd-pole-blad">{bladDlaPola('existing_field_ref')}</p>
-              ) : null}
             </>
           )}
+          {/* K9-A O13: konsekwencje wariantu — opis strukturalny operacji (bez liczb). */}
+          <KreatorSekcja tytul={T.konsekwencjeTytul} testid="mvd-kreator-oze-konsekwencje">
+            <ul className="mvd-kreator-lista">
+              {(isBlock ? T.konsekwencjeBlok : T.konsekwencjeNn).map((punkt) => (
+                <li key={punkt}>{punkt}</li>
+              ))}
+            </ul>
+          </KreatorSekcja>
           <PanelTeorii
             tytul={T.teoriaTechTytul}
             opis={T.teoriaTechOpis}
@@ -600,9 +809,22 @@ export function KreatorZrodlaOze() {
         </KreatorSekcja>
       ) : null}
 
+      {krok === 'aparatura' ? <KrokAparatura dane={dane} zmien={zmien} /> : null}
+
+      {krok === 'zgodnosc' ? <KrokZgodnosc dane={dane} zmien={zmien} /> : null}
+
       {krok === 'regulacja' ? (
         <>
           <KreatorSekcja tytul={T.sekcjaRegulacja} testid="mvd-kreator-oze-regulacja">
+            {/* K9-A O5: tryb pracy źródła — zapis osobną operacją po utworzeniu elementu. */}
+            <PoleWyboru
+              etykieta={T.trybPracy}
+              wartosc={dane.operating_mode ?? ''}
+              onZmiana={(v) => zmien('operating_mode', (v || null) as SourceOperatingMode | null)}
+              opcje={OPCJE_TRYB_PRACY}
+              pomoc={T.trybPracyPomoc}
+              testid="mvd-kreator-oze-tryb-pracy"
+            />
             <KreatorInfo><TekstZWzorami tekst={T.regulacjaPomoc} /></KreatorInfo>
             <PoleWyboru
               etykieta={T.regulacja}
@@ -792,6 +1014,23 @@ export function KreatorZrodlaOze() {
                 <RzadWartosci etykieta={T.bessTryb} wartosc={bessLabel(dane.bess_mode)} />
               ) : null}
               <RzadWartosci etykieta={T.nazwa} wartosc={dane.source_name.trim() || tech.defaultName} />
+              <RzadWartosci
+                etykieta={T.wierszAparatura}
+                wartosc={liczbaAparatury > 0 ? T.aparaturaCzesciowa(liczbaAparatury, 3) : T.doKonfiguracji}
+              />
+              <RzadWartosci
+                etykieta={T.wierszZgodnosc}
+                wartosc={liczbaProfili > 0 ? T.aparaturaCzesciowa(liczbaProfili, 4) : T.doKonfiguracji}
+              />
+              <RzadWartosci
+                etykieta={T.wierszTrybPracy}
+                wartosc={
+                  dane.operating_mode
+                    ? T.trybPracyOpcje.find((o) => o.id === dane.operating_mode)?.etykieta
+                      ?? dane.operating_mode
+                    : T.bezWskazania
+                }
+              />
             </KreatorSiatka>
           </KreatorSekcja>
           <KreatorSekcja tytul={P.sekcjaAutoBieg} testid="mvd-kreator-oze-autobieg">
@@ -823,6 +1062,39 @@ export function KreatorZrodlaOze() {
         </KreatorSekcja>
       ) : null}
 
+      {/* K9-A §0.4: uczciwy przebieg sekwencji zapisu — co zapisane, co padło. */}
+      {krok === 'zapis' && sekwencja.length > 0 ? (
+        <KreatorSekcja tytul={T.sekwencjaTytul} testid="mvd-kreator-oze-sekwencja">
+          <KreatorInfo>{T.sekwencjaOpis}</KreatorInfo>
+          <ul className="mvd-kreator-sekwencja">
+            {sekwencja.map((etap) => (
+              <li key={etap.id} data-stan={etap.stan} data-testid={`mvd-kreator-oze-sekwencja-${etap.id}`}>
+                {etap.etykieta}
+                {' — '}
+                <strong>
+                  {etap.stan === 'zapisane'
+                    ? T.sekwencjaZapisane
+                    : etap.stan === 'pominiete'
+                    ? T.sekwencjaPominiete
+                    : T.sekwencjaBlad}
+                </strong>
+                {etap.komunikat ? (
+                  <span className="mvd-kreator-sekwencja-komunikat">{etap.komunikat}</span>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+          {sekwencja.some((etap) => etap.stan === 'blad') ? (
+            <KreatorInfo>{T.sekwencjaBladPodsumowanie}</KreatorInfo>
+          ) : null}
+        </KreatorSekcja>
+      ) : null}
+
+      {/* K9-A O15: osie gotowości wytwórcy — readout z modelu po zapisie. */}
+      {krok === 'zapis' && faza === 'gotowe' ? (
+        <GotowoscDer projectId={activeProjectId} caseId={activeCaseId} generatorRef={generatorRef} />
+      ) : null}
+
       {krok === 'zapis' && faza === 'gotowe' ? (
         <PodsumowanieAutoBieg
           runStatus={runStatus}
@@ -830,7 +1102,7 @@ export function KreatorZrodlaOze() {
           raport={raport}
           bom={bom}
           onOtworzDokumentacje={otworzDokumentacje}
-          onZakoncz={() => closeForm()}
+          onZakoncz={zakonczPoZapisie}
         />
       ) : null}
     </KreatorRama>

@@ -11,6 +11,7 @@ from api.analysis_run_exports import (
     export_run_report_json_response,
     export_run_report_pdf_response,
     export_run_trace_pdf_response,
+    gotowosc_dokumentacji_wykonawczej_biegu,
 )
 from api.canonical_run_views import (
     build_analysis_run_detail,
@@ -26,12 +27,18 @@ from api.canonical_run_views import (
     build_results_index_response,
     build_run_trace_payload,
     build_short_circuit_results_response,
+    build_short_circuit_rozplyw_response,
     build_sld_overlay,
     build_source_compliance_results_response,
 )
 from api.dependencies import get_uow_factory
 from api.document_store import store_generated_document_from_response
 from application.analysis_run.read_model import build_trace_summary, canonicalize_json
+from application.proof_engine.pakiet_biegu import (
+    PakietBieguError,
+    dostepnosc_pakietu,
+    zbuduj_pakiet_biegu,
+)
 from enm.canonical_analysis import (
     CanonicalRun,
 )
@@ -302,14 +309,85 @@ def _proof_latex_response(run: CanonicalRun) -> Response:
     )
 
 
+def _report_options_from_query(
+    profile: str | None,
+    detail_level: str | None,
+    scope: str | None,
+    sections: list[str] | None,
+    focus_table: str | None,
+) -> dict[str, Any] | None:
+    """
+    Kompozycja raportu z parametrow zapytania (KD-4, luka L-15).
+
+    Budowniczy raportu (`build_analysis_run_report_payload`) od dawna przyjmowal
+    `report_options` (profil, poziom szczegolowosci, zakres, sekcje, tabela
+    wiodaca), ale ZADEN endpoint HTTP ich nie wystawial — kompozycji nie dalo sie
+    wybrac z aplikacji, wiec generator w powloce musialby albo udawac
+    (kontrolki, ktorych backend nie widzi = phantom), albo jej nie miec.
+
+    Zmiana jest CZYSTO ADDYTYWNA: brak parametrow = `None` = dzisiejsze
+    zachowanie 1:1 (`normalize_report_options()` bez argumentow). Nazwy pol sa
+    identyczne z kluczami `report_options` w odpowiedzi, wiec konsument czyta
+    wprost to, co wyslal. Wartosci spoza kontraktu normalizator odrzuca do
+    wartosci domyslnych (zero bledow 4xx za literowke w linku).
+
+    Zwracany jest SUROWY zestaw argumentow — normalizacje robi budowniczy
+    raportu (`build_analysis_run_report_payload`), zeby normalizator zostal
+    wolany DOKLADNIE RAZ (jego wynik niesie tez etykiety, ktorych sam nie
+    przyjmuje jako wejscia).
+    """
+    if (
+        profile is None
+        and detail_level is None
+        and scope is None
+        and not sections
+        and focus_table is None
+    ):
+        return None
+    return {
+        "profile": profile,
+        "detail_level": detail_level,
+        "scope": scope,
+        "sections": sections,
+        "focus_table": focus_table,
+    }
+
+
+@router.get("/analysis-runs/{run_id}/gotowosc-dokumentacji-wykonawczej")
+def get_gotowosc_dokumentacji_wykonawczej(run_id: UUID) -> dict[str, Any]:
+    """Czy z tego biegu wolno wydać dokumentację wykonawczą (profil „Wykonawczy").
+
+    Końcówka istnieje po to, żeby generator raportu POKAZAŁ stan bramki ZANIM
+    projektant kliknie eksport — inaczej jedyną drogą do informacji byłby błąd
+    409 po kliknięciu, czyli martwy klik z komunikatem po fakcie. Zwraca ten sam
+    werdykt, którym bramka odmawia eksportu (jedno źródło:
+    `application/dokumentacja_wykonawcza/gotowosc.py`).
+    """
+    run = _require_canonical_run(run_id)
+    return {
+        "run_id": str(run.id),
+        "profil": "wykonawczy",
+        **gotowosc_dokumentacji_wykonawczej_biegu(run).to_dict(),
+    }
+
+
 @router.get("/analysis-runs/{run_id}/export/report/json")
 def export_analysis_run_report_json(
-    run_id: UUID, zapisz_do_magazynu: bool = Query(default=False)
+    run_id: UUID,
+    zapisz_do_magazynu: bool = Query(default=False),
+    profile: str | None = Query(default=None),
+    detail_level: str | None = Query(default=None),
+    scope: str | None = Query(default=None),
+    sections: list[str] | None = Query(default=None),
+    focus_table: str | None = Query(default=None),
 ) -> Response:
     run = _require_canonical_run(run_id)
     response = export_run_report_json_response(
         run,
         filename_stem=_analysis_run_filename_stem(run, "raport"),
+        report_options=_report_options_from_query(
+            profile, detail_level, scope, sections, focus_table
+        ),
     )
     if zapisz_do_magazynu:
         store_generated_document_from_response(
@@ -325,13 +403,22 @@ def export_analysis_run_report_json(
 
 @router.get("/analysis-runs/{run_id}/export/report/docx")
 def export_analysis_run_report_docx(
-    run_id: UUID, zapisz_do_magazynu: bool = Query(default=False)
+    run_id: UUID,
+    zapisz_do_magazynu: bool = Query(default=False),
+    profile: str | None = Query(default=None),
+    detail_level: str | None = Query(default=None),
+    scope: str | None = Query(default=None),
+    sections: list[str] | None = Query(default=None),
+    focus_table: str | None = Query(default=None),
 ) -> Response:
     run = _require_canonical_run(run_id)
     try:
         response = export_run_report_docx_response(
             run,
             filename_stem=_analysis_run_filename_stem(run, "raport"),
+            report_options=_report_options_from_query(
+                profile, detail_level, scope, sections, focus_table
+            ),
         )
     except ValueError as exc:
         raise HTTPException(
@@ -351,13 +438,22 @@ def export_analysis_run_report_docx(
 
 @router.get("/analysis-runs/{run_id}/export/report/pdf")
 def export_analysis_run_report_pdf(
-    run_id: UUID, zapisz_do_magazynu: bool = Query(default=False)
+    run_id: UUID,
+    zapisz_do_magazynu: bool = Query(default=False),
+    profile: str | None = Query(default=None),
+    detail_level: str | None = Query(default=None),
+    scope: str | None = Query(default=None),
+    sections: list[str] | None = Query(default=None),
+    focus_table: str | None = Query(default=None),
 ) -> Response:
     run = _require_canonical_run(run_id)
     try:
         response = export_run_report_pdf_response(
             run,
             filename_stem=_analysis_run_filename_stem(run, "raport"),
+            report_options=_report_options_from_query(
+                profile, detail_level, scope, sections, focus_table
+            ),
         )
     except ValueError as exc:
         raise HTTPException(
@@ -445,6 +541,38 @@ def export_analysis_run_proof_pdf(
     return response
 
 
+@router.get("/analysis-runs/{run_id}/pakiet-dowodowy/dostepnosc")
+def get_pakiet_dowodowy_dostepnosc(run_id: UUID) -> dict[str, Any]:
+    """Czy TEN przebieg ma dedykowany pakiet dowodowy — i dla jakich punktów.
+
+    Rodzaj pakietu wynika z DANYCH biegu (rodzaj analizy + opcje), nigdy z ekranu,
+    który pyta. Brak pakietu nie jest błędem: odpowiedź niesie powód po polsku,
+    żeby okno dowodu powiedziało wprost, dlaczego przycisku nie ma.
+    """
+    return canonicalize_json(dostepnosc_pakietu(_require_canonical_run(run_id)))
+
+
+@router.get("/analysis-runs/{run_id}/pakiet-dowodowy")
+def get_pakiet_dowodowy(run_id: UUID, punkt: str | None = Query(default=None)) -> Response:
+    """Pakiet dowodowy przebiegu (ZIP: dowód, źródło LaTeX, wykaz plików, odcisk).
+
+    Cała fizyka po stronie serwera — klient podaje wyłącznie przebieg i punkt
+    zwarcia. ``punkt`` pominięty ⇒ pierwszy punkt biegu (deterministycznie).
+    """
+    run = _require_canonical_run(run_id)
+    try:
+        filename, content = zbuduj_pakiet_biegu(run, punkt=punkt)
+    except PakietBieguError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
+        ) from exc
+    return Response(
+        content=content,
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
 @router.get("/analysis-runs/{run_id}/results/index")
 def get_results_index(run_id: UUID) -> dict[str, Any]:
     return canonicalize_json(build_results_index_response(_require_canonical_run(run_id)))
@@ -463,6 +591,22 @@ def get_branch_results(run_id: UUID) -> dict[str, Any]:
 @router.get("/analysis-runs/{run_id}/results/short-circuit")
 def get_short_circuit_results(run_id: UUID) -> dict[str, Any]:
     return canonicalize_json(build_short_circuit_results_response(_require_canonical_run(run_id)))
+
+
+@router.get("/analysis-runs/{run_id}/results/short-circuit/rozplyw")
+def get_short_circuit_rozplyw(run_id: UUID, target_id: str = Query(...)) -> dict[str, Any]:
+    # V12K-281 (K13): rozpływ gałęziowy JEDNEGO punktu zwarcia na żądanie —
+    # wiersze zbiorcze `/results/short-circuit` nie niosą już rozpływu
+    # (iloczyn źródło×gałąź per wiersz dawał odpowiedź/raport 730 MB).
+    # `target_id` jako parametr zapytania: refy węzłów ENM zawierają ukośniki.
+    run = _require_canonical_run(run_id)
+    try:
+        return canonicalize_json(build_short_circuit_rozplyw_response(run, target_id))
+    except KeyError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Brak punktu zwarcia {target_id} w wynikach obliczenia {run_id}",
+        ) from exc
 
 
 @router.get("/analysis-runs/{run_id}/results/phase-state")

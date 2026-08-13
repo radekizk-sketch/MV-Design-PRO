@@ -114,3 +114,25 @@ def test_model_pydantic_waliduje_zakresy_addytywnie() -> None:
         raise AssertionError("cosφ > 1 powinien być odrzucony")
     except ValueError:
         pass
+
+
+def test_warunki_przylaczenia_nie_wchodza_do_odcisku_enm() -> None:
+    """PIN wykluczenia z odcisku (odbiór POMIAR-RODZAJ, reguła KLASA pkt 4).
+
+    Deklaracja naprawy utrwalania brzmi: pole `header.connection_conditions`
+    jest wykluczone z odcisku ENM, więc deklaracja pola w ENMHeader NIE
+    przestawia odcisków istniejących modeli. Bez tego testu mocne zdanie
+    z `enm/hash.py` było obietnicą bez strażnika — iniekcja odbiorcza
+    (usunięcie wykluczenia) przechodziła przez całą suitę na zielono.
+    """
+    from enm.hash import compute_enm_hash
+    from enm.models import EnergyNetworkModel
+
+    bez = EnergyNetworkModel.model_validate(_enm())
+    po_zapisie = set_connection_conditions(
+        _enm(),
+        {"moc_przylaczeniowa_mw": 8.0, "cos_phi_wymagany": 0.95},
+    )
+    z_warunkami = EnergyNetworkModel.model_validate(po_zapisie["snapshot"])
+    assert z_warunkami.header.connection_conditions is not None
+    assert compute_enm_hash(z_warunkami) == compute_enm_hash(bez)

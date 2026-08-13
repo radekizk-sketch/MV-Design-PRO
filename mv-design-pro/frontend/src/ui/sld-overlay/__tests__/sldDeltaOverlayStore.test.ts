@@ -1,205 +1,163 @@
 /**
- * SLD Delta Overlay Store Tests -- PR-21
+ * NAKŁADKA RÓŻNIC A/B — klient i store.
  *
- * Tests for the delta overlay store integration.
- * Verifies backend fetch, PR-16 overlay store integration,
- * and determinism.
+ * DŁUG, KTÓRY TE TESTY ZAMYKAJĄ (klasa „klient bez dostawcy"): poprzedni klient
+ * wołał trasę, której żaden router nie serwuje, a testy tego nie widziały, bo
+ * mockowały klienta i nigdy nie sprawdzały ADRESU. Dlatego tutaj mockowany jest
+ * `fetch` (granica sieci), a nie własny moduł — asercja na URL jest jedynym
+ * miejscem, w którym rozjazd „klient ↔ dostawca" może zostać złapany po stronie
+ * frontu.
+ *
+ * Pokrycie: adres i metoda · kształt odpowiedzi (odrzucenie obcego) · droga
+ * błędu (bez pozostawiania połowicznego stanu) · wyjście z trybu różnic ·
+ * postać payloadu dla warstwy etykiet.
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { useSldDeltaOverlayStore } from '../sldDeltaOverlayStore';
-import { useOverlayStore } from '../overlayStore';
-import type { DeltaOverlayPayload } from '../../comparison/sldDeltaOverlay.types';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-// Mock the API
-vi.mock('../../comparison/sldDeltaOverlay.api', () => ({
-  fetchDeltaOverlay: vi.fn(),
-}));
+import { pobierzNakladkeRoznic, type NakladkaRoznic } from '../sldDeltaOverlay.api';
+import { payloadEtykietRoznic, useSldDeltaOverlayStore } from '../sldDeltaOverlayStore';
 
-import { fetchDeltaOverlay } from '../../comparison/sldDeltaOverlay.api';
-
-// ---------------------------------------------------------------------------
-// Fixtures
-// ---------------------------------------------------------------------------
-
-const DELTA_PAYLOAD: DeltaOverlayPayload = {
-  run_id: '00000000-0000-0000-0000-000000000001',
-  analysis_type: 'DELTA_SC_3F',
-  elements: [
-    {
-      element_ref: 'source_A',
-      element_type: 'Source',
-      visual_state: 'WARNING',
-      numeric_badges: {
-        i_contrib_a_base: 600,
-        i_contrib_a_other: 630,
-        i_contrib_a_abs: 30,
-        i_contrib_a_rel: 0.05,
+const NAKLADKA: NakladkaRoznic = {
+  run_id_a: 'run-a',
+  run_id_b: 'run-b',
+  analysis_type: 'DELTA_SC',
+  report_version: '1.3.0',
+  elements: {
+    'bus-1': {
+      ref_id: 'bus-1',
+      kind: 'bus',
+      badges: [],
+      severity: 'WARNING',
+      metrics: {
+        DELTA_IK_3F_KA: {
+          code: 'DELTA_IK_3F_KA',
+          value: 2,
+          unit: 'kA',
+          format_hint: 'fixed2',
+          source: 'solver',
+        },
       },
-      color_token: 'delta_change',
-      stroke_token: 'bold',
-      animation_token: null,
     },
-    {
-      element_ref: 'branch_B',
-      element_type: 'Branch',
-      visual_state: 'OK',
-      numeric_badges: {
-        i_contrib_a_base: 200,
-        i_contrib_a_other: 200,
-        i_contrib_a_abs: 0,
-        i_contrib_a_rel: 0,
-      },
-      color_token: 'delta_none',
-      stroke_token: 'normal',
-      animation_token: null,
-    },
-  ],
-  legend: [
-    { color_token: 'delta_none', label: 'Bez zmian', description: 'Identyczne wartosci' },
-    { color_token: 'delta_change', label: 'Zmiana', description: 'Rozne wartosci' },
-    { color_token: 'delta_inactive', label: 'Brak danych', description: null },
-  ],
-  content_hash: 'abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890',
+  },
+  legend: {
+    title: 'Legenda roznic A/B',
+    entries: [
+      { severity: 'INFO', label: 'Bez zmian', description: 'Wartości identyczne' },
+      { severity: 'WARNING', label: 'Zmiana', description: 'Wartości różne' },
+    ],
+  },
+  content_hash: 'a'.repeat(64),
+  liczba_punktow_zmienionych: 1,
+  liczba_punktow_bez_zmian: 0,
+  liczba_punktow_bez_odpowiednika: 0,
+  liczba_punktow_bez_danych: 0,
 };
 
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
+function odpowiedz(dane: unknown, ok = true, status = 200): Response {
+  return {
+    ok,
+    status,
+    json: async () => dane,
+  } as unknown as Response;
+}
 
-describe('SldDeltaOverlayStore', () => {
-  beforeEach(() => {
-    // Reset both stores
-    useSldDeltaOverlayStore.setState({
-      activeComparisonId: null,
-      deltaPayload: null,
-      contentHash: null,
-      enabled: true,
-      isLoading: false,
-      error: null,
-    });
-    useOverlayStore.setState({
-      activeRunId: null,
-      overlay: null,
-      enabled: true,
-    });
-    vi.clearAllMocks();
+beforeEach(() => {
+  useSldDeltaOverlayStore.setState({ nakladka: null, wTrakcie: false, blad: null });
+  vi.restoreAllMocks();
+});
+
+describe('Klient nakładki różnic', () => {
+  it('woła trasę, którą backend REALNIE serwuje (metoda POST, para przebiegów)', async () => {
+    const mockFetch = vi.fn().mockResolvedValue(odpowiedz(NAKLADKA));
+    vi.stubGlobal('fetch', mockFetch);
+
+    await pobierzNakladkeRoznic('run-a', 'run-b');
+
+    const [url, init] = mockFetch.mock.calls[0];
+    expect(url).toBe('/api/short-circuit-comparisons/sld-overlay');
+    expect(init.method).toBe('POST');
+    expect(JSON.parse(init.body)).toEqual({ run_id_a: 'run-a', run_id_b: 'run-b' });
   });
 
-  describe('Initial state', () => {
-    it('starts with no active overlay', () => {
-      const state = useSldDeltaOverlayStore.getState();
-      expect(state.activeComparisonId).toBeNull();
-      expect(state.deltaPayload).toBeNull();
-      expect(state.contentHash).toBeNull();
-      expect(state.enabled).toBe(true);
-      expect(state.isLoading).toBe(false);
-      expect(state.error).toBeNull();
-    });
+  it('odrzuca odpowiedź o obcym kształcie zamiast wpuszczać ją dalej', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(odpowiedz({ cokolwiek: true })));
+    await expect(pobierzNakladkeRoznic('run-a', 'run-b')).rejects.toThrow(/kształt/);
   });
 
-  describe('loadDeltaOverlay', () => {
-    it('fetches payload and updates both stores', async () => {
-      vi.mocked(fetchDeltaOverlay).mockResolvedValue(DELTA_PAYLOAD);
+  it('błąd HTTP niesie status w komunikacie', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(odpowiedz(null, false, 404)));
+    await expect(pobierzNakladkeRoznic('run-a', 'run-b')).rejects.toThrow(/404/);
+  });
+});
 
-      await useSldDeltaOverlayStore.getState().loadDeltaOverlay('comp-123');
-
-      // Delta overlay store updated
-      const deltaState = useSldDeltaOverlayStore.getState();
-      expect(deltaState.activeComparisonId).toBe('comp-123');
-      expect(deltaState.deltaPayload).toBe(DELTA_PAYLOAD);
-      expect(deltaState.contentHash).toBe(DELTA_PAYLOAD.content_hash);
-      expect(deltaState.enabled).toBe(true);
-      expect(deltaState.isLoading).toBe(false);
-
-      // PR-16 overlay store also updated
-      const overlayState = useOverlayStore.getState();
-      expect(overlayState.activeRunId).toBe(DELTA_PAYLOAD.run_id);
-      expect(overlayState.overlay).not.toBeNull();
-      expect(overlayState.overlay!.analysis_type).toBe('DELTA_SC_3F');
-      expect(overlayState.overlay!.elements).toHaveLength(2);
-      expect(overlayState.overlay!.legend).toHaveLength(3);
-    });
-
-    it('handles fetch error', async () => {
-      vi.mocked(fetchDeltaOverlay).mockRejectedValue(
-        new Error('Porownanie nie istnieje')
-      );
-
-      await useSldDeltaOverlayStore.getState().loadDeltaOverlay('comp-999');
-
-      const state = useSldDeltaOverlayStore.getState();
-      expect(state.error).toBe('Porownanie nie istnieje');
-      expect(state.isLoading).toBe(false);
-      expect(state.deltaPayload).toBeNull();
-    });
+describe('Store nakładki różnic', () => {
+  it('zaczyna bez nakładki (tryb różnic wyłączony)', () => {
+    const stan = useSldDeltaOverlayStore.getState();
+    expect(stan.nakladka).toBeNull();
+    expect(stan.wTrakcie).toBe(false);
+    expect(stan.blad).toBeNull();
   });
 
-  describe('clearDeltaOverlay', () => {
-    it('resets delta overlay and PR-16 overlay store', async () => {
-      // Set up loaded state
-      vi.mocked(fetchDeltaOverlay).mockResolvedValue(DELTA_PAYLOAD);
-      await useSldDeltaOverlayStore.getState().loadDeltaOverlay('comp-123');
+  it('wczytuje różnice pary przebiegów', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(odpowiedz(NAKLADKA)));
 
-      // Verify loaded
-      expect(useSldDeltaOverlayStore.getState().activeComparisonId).toBe('comp-123');
-      expect(useOverlayStore.getState().overlay).not.toBeNull();
+    await useSldDeltaOverlayStore.getState().wczytajRoznice('run-a', 'run-b');
 
-      // Clear
-      useSldDeltaOverlayStore.getState().clearDeltaOverlay();
-
-      // Delta store cleared
-      const deltaState = useSldDeltaOverlayStore.getState();
-      expect(deltaState.activeComparisonId).toBeNull();
-      expect(deltaState.deltaPayload).toBeNull();
-      expect(deltaState.contentHash).toBeNull();
-
-      // PR-16 store also cleared
-      const overlayState = useOverlayStore.getState();
-      expect(overlayState.overlay).toBeNull();
-      expect(overlayState.activeRunId).toBeNull();
-    });
+    const stan = useSldDeltaOverlayStore.getState();
+    expect(stan.nakladka?.run_id_a).toBe('run-a');
+    expect(stan.nakladka?.run_id_b).toBe('run-b');
+    expect(stan.wTrakcie).toBe(false);
+    expect(stan.blad).toBeNull();
   });
 
-  describe('toggleDeltaOverlay', () => {
-    it('toggles enabled state', () => {
-      expect(useSldDeltaOverlayStore.getState().enabled).toBe(true);
+  it('błąd pobrania NIE zostawia połowicznej nakładki', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(odpowiedz(null, false, 500)));
 
-      useSldDeltaOverlayStore.getState().toggleDeltaOverlay();
-      expect(useSldDeltaOverlayStore.getState().enabled).toBe(false);
+    await useSldDeltaOverlayStore.getState().wczytajRoznice('run-a', 'run-b');
 
-      useSldDeltaOverlayStore.getState().toggleDeltaOverlay();
-      expect(useSldDeltaOverlayStore.getState().enabled).toBe(true);
-    });
-
-    it('accepts forced value', () => {
-      useSldDeltaOverlayStore.getState().toggleDeltaOverlay(false);
-      expect(useSldDeltaOverlayStore.getState().enabled).toBe(false);
-
-      useSldDeltaOverlayStore.getState().toggleDeltaOverlay(true);
-      expect(useSldDeltaOverlayStore.getState().enabled).toBe(true);
-    });
-
-    it('syncs with PR-16 overlay store', () => {
-      useSldDeltaOverlayStore.getState().toggleDeltaOverlay(false);
-      expect(useOverlayStore.getState().enabled).toBe(false);
-
-      useSldDeltaOverlayStore.getState().toggleDeltaOverlay(true);
-      expect(useOverlayStore.getState().enabled).toBe(true);
-    });
+    const stan = useSldDeltaOverlayStore.getState();
+    expect(stan.nakladka).toBeNull();
+    expect(stan.wTrakcie).toBe(false);
+    expect(stan.blad).toMatch(/500/);
   });
 
-  describe('No hex colors in payload', () => {
-    it('delta payload contains no hex color strings', async () => {
-      vi.mocked(fetchDeltaOverlay).mockResolvedValue(DELTA_PAYLOAD);
-      await useSldDeltaOverlayStore.getState().loadDeltaOverlay('comp-123');
+  it('ponowne wczytanie po błędzie czyści komunikat', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(odpowiedz(null, false, 500)));
+    await useSldDeltaOverlayStore.getState().wczytajRoznice('run-a', 'run-b');
+    expect(useSldDeltaOverlayStore.getState().blad).not.toBeNull();
 
-      const payload = useSldDeltaOverlayStore.getState().deltaPayload!;
-      const payloadStr = JSON.stringify(payload);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(odpowiedz(NAKLADKA)));
+    await useSldDeltaOverlayStore.getState().wczytajRoznice('run-a', 'run-b');
 
-      // No hex color patterns (#RGB, #RRGGBB, #RRGGBBAA)
-      const hexPattern = /#[0-9a-fA-F]{3,8}/;
-      expect(hexPattern.test(payloadStr)).toBe(false);
-    });
+    expect(useSldDeltaOverlayStore.getState().blad).toBeNull();
+    expect(useSldDeltaOverlayStore.getState().nakladka).not.toBeNull();
+  });
+
+  it('wyjście z trybu różnic zeruje stan', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(odpowiedz(NAKLADKA)));
+    await useSldDeltaOverlayStore.getState().wczytajRoznice('run-a', 'run-b');
+
+    useSldDeltaOverlayStore.getState().wyczyscRoznice();
+
+    expect(useSldDeltaOverlayStore.getState().nakladka).toBeNull();
+    expect(useSldDeltaOverlayStore.getState().blad).toBeNull();
+  });
+});
+
+describe('Payload różnic dla warstwy etykiet', () => {
+  it('brak nakładki ⇒ brak payloadu (warstwa wraca do wyniku przebiegu)', () => {
+    expect(payloadEtykietRoznic(null)).toBeNull();
+  });
+
+  it('wiąże nakładkę z przebiegiem porównywanym i zachowuje elementy 1:1', () => {
+    const payload = payloadEtykietRoznic(NAKLADKA);
+    expect(payload?.run_id).toBe('run-b');
+    expect(payload?.analysis_type).toBe('DELTA_SC');
+    expect(payload?.elements).toBe(NAKLADKA.elements);
+  });
+
+  it('nakładka nie niesie kolorów — wyłącznie wagi i wartości z backendu', () => {
+    expect(/#[0-9a-fA-F]{3,8}/.test(JSON.stringify(NAKLADKA))).toBe(false);
   });
 });

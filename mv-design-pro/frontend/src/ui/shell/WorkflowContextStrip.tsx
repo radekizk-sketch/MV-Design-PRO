@@ -19,20 +19,23 @@ import { formatLengthKm } from '../shared/formatPolishValue';
 import { isTerrainSnSegment } from '../shared/enmVisibility';
 import { useSnapshotStore } from '../topology/snapshotStore';
 
+/* KD-8 poz. 3: chip fazy budowy na SKALI SYGNAŁOWEJ (tokeny motywu). Dawniej
+ * `bg-*-500/12` + `text-*-100` — blady tusz na bladym tle: w motywie jasnym
+ * chip fazy („BUDOWA") był praktycznie nieczytelny. */
 const PHASE_CHIP: Record<string, string> = {
-  NO_SOURCE:   'border-rose-500/40 bg-rose-500/12 text-rose-100',
-  HAS_SOURCE:  'border-amber-500/40 bg-amber-500/12 text-amber-100',
-  HAS_TRUNKS:  'border-yellow-500/40 bg-yellow-500/12 text-yellow-100',
-  HAS_STATIONS:'border-sky-500/40 bg-sky-500/12 text-sky-100',
-  READY:       'border-emerald-500/40 bg-emerald-500/12 text-emerald-100',
+  NO_SOURCE:   'border-sygnal-blokada bg-sygnal-blokada-tlo text-sygnal-blokada-tusz',
+  HAS_SOURCE:  'border-sygnal-uwaga bg-sygnal-uwaga-tlo text-sygnal-uwaga-tusz',
+  HAS_TRUNKS:  'border-sygnal-uwaga bg-sygnal-uwaga-tlo text-sygnal-uwaga-tusz',
+  HAS_STATIONS:'border-sygnal-info bg-sygnal-info-tlo text-sygnal-info-tusz',
+  READY:       'border-sygnal-ok bg-sygnal-ok-tlo text-sygnal-ok-tusz',
 };
 
 const PHASE_DOT: Record<string, string> = {
-  NO_SOURCE:   'bg-rose-400',
-  HAS_SOURCE:  'bg-amber-400',
-  HAS_TRUNKS:  'bg-yellow-400',
-  HAS_STATIONS:'bg-sky-400',
-  READY:       'bg-emerald-400',
+  NO_SOURCE:   'bg-sygnal-blokada',
+  HAS_SOURCE:  'bg-sygnal-uwaga',
+  HAS_TRUNKS:  'bg-sygnal-uwaga',
+  HAS_STATIONS:'bg-sygnal-info',
+  READY:       'bg-sygnal-ok',
 };
 
 function IconSearch() {
@@ -218,14 +221,14 @@ export function WorkflowContextStrip({
     return (
       <div
         data-testid="workflow-context-strip"
-        className="flex h-[48px] shrink-0 items-center border-b border-scada-border bg-[#0c1822] px-3"
+        className="flex h-[48px] shrink-0 items-center border-b border-scada-border bg-scada-bg px-3"
       >
         {pendingKnownModel ? (
           <div
             data-testid="wcs-model-loading"
             className="flex min-w-0 flex-1 items-center gap-3"
           >
-            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-sm border border-emerald-500/35 bg-emerald-500/10 font-mono text-[12px] font-bold text-emerald-200">
+            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-sm border border-sygnal-ok bg-sygnal-ok-tlo font-mono text-[12px] font-bold text-sygnal-ok-tusz">
               SN
             </span>
             <div className="min-w-0">
@@ -242,7 +245,7 @@ export function WorkflowContextStrip({
             data-testid="wcs-empty-model-start"
             className="flex min-w-0 flex-1 items-center gap-3"
           >
-            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-sm border border-cyan-500/45 bg-cyan-500/12 font-mono text-[12px] font-bold text-cyan-200">
+            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-sm border border-sygnal-info bg-sygnal-info-tlo font-mono text-[12px] font-bold text-sygnal-info-tusz">
               1
             </span>
             <div className="min-w-0">
@@ -257,7 +260,7 @@ export function WorkflowContextStrip({
               type="button"
               data-testid="wcs-start-model"
               onClick={() => setActiveArea('MODEL_SIECI')}
-              className="ml-2 h-8 shrink-0 rounded-sm border border-cyan-500/60 bg-cyan-500/15 px-3 text-[11px] font-semibold text-cyan-100 transition-colors hover:bg-cyan-500/25"
+              className="ml-2 h-8 shrink-0 rounded-sm border border-sygnal-info bg-sygnal-info-tlo px-3 text-[11px] font-semibold text-sygnal-info-tusz transition-colors hover:brightness-105"
             >
               Przejdź do budowy GPZ
             </button>
@@ -278,7 +281,7 @@ export function WorkflowContextStrip({
   return (
     <div
       data-testid="workflow-context-strip"
-      className="flex h-[48px] shrink-0 items-center border-b border-scada-border bg-[#0c1822] px-3"
+      className="flex h-[48px] shrink-0 items-center border-b border-scada-border bg-scada-bg px-3"
     >
       <div className="flex min-w-0 flex-1 items-center">
         <div
@@ -308,10 +311,10 @@ export function WorkflowContextStrip({
             !hasModel
               ? 'bg-scada-bg text-scada-muted ring-1 ring-scada-border'
               : !hasTopologyElements
-                ? 'bg-cyan-500/15 text-cyan-200 ring-1 ring-cyan-500/35'
+                ? 'bg-sygnal-info-tlo text-sygnal-info-tusz ring-1 ring-sygnal-info'
                 : display.blockers > 0
-                  ? 'bg-amber-500/20 text-amber-200 ring-1 ring-amber-500/45'
-                  : 'bg-emerald-500/15 text-emerald-300',
+                  ? 'bg-sygnal-uwaga-tlo text-sygnal-uwaga-tusz ring-1 ring-sygnal-uwaga'
+                  : 'bg-sygnal-ok-tlo text-sygnal-ok-tusz',
           )}>
             {blockerLabel}
           </span>
@@ -319,7 +322,7 @@ export function WorkflowContextStrip({
 
         <div className="flex h-8 items-center gap-2 border-r border-scada-border px-4" data-testid="wcs-model-readiness">
           <span className="text-[11px] text-scada-muted">{calculationControlCaption}</span>
-          <span className={clsx('font-mono text-[11px] font-semibold', isModelReady ? 'text-emerald-300' : 'text-amber-300')}>
+          <span className={clsx('font-mono text-[11px] font-semibold', isModelReady ? 'text-sygnal-ok' : 'text-sygnal-uwaga')}>
             {calculationControlLabel}
           </span>
         </div>
@@ -399,7 +402,7 @@ function WorkflowAction({
       <span className="text-scada-muted">{icon}</span>
       <span className="text-[10px] leading-none">{label}</span>
       {badge !== undefined && (
-        <span className="absolute -right-1 top-0 grid h-4 min-w-4 place-items-center rounded-full bg-amber-500 px-1 text-[9px] font-bold text-[#111827]">
+        <span className="absolute -right-1 top-0 grid h-4 min-w-4 place-items-center rounded-full bg-amber-500 px-1 text-[9px] font-bold text-scada-bg">
           {badge}
         </span>
       )}

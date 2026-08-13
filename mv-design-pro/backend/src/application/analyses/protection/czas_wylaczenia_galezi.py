@@ -255,8 +255,12 @@ def _przypisanie_dla_aparatu(
     return None
 
 
-def _nastawa_zwarciowa(wpis: dict[str, Any]) -> dict[str, Any] | None:
+def nastawa_zwarciowa(wpis: dict[str, Any]) -> dict[str, Any] | None:
     """Nastawa funkcji nadpradowej zwarciowej o NAJNIZSZYM progu rozruchowym.
+
+    NAZWA PUBLICZNA od karty KD-6: tego samego wyboru nastawy uzywa czas
+    wylaczenia POLA stacji (`czas_wylaczenia_pola`). Druga implementacja wyboru
+    stopnia rozjechalaby sie z ta przy pierwszej zmianie regul.
 
     Przy kilku stopniach (50 i 51) zwarcie wylacza ten, ktory zadziala — wybor
     najnizszego progu jest zachowawczy i nie wymaga zgadywania logiki blokad.
@@ -274,7 +278,7 @@ def _nastawa_zwarciowa(wpis: dict[str, Any]) -> dict[str, Any] | None:
     return min(kandydaci, key=lambda n: (float(n["threshold_a"]), str(n.get("function_type"))))
 
 
-def _czas_z_nastawy(
+def czas_z_nastawy(
     nastawa: dict[str, Any], prad_a: float
 ) -> tuple[float | None, str | None, str, tuple[float, float] | None]:
     """(czas, powod_braku, opis_krzywej, stale (A, B)) dla nastawy i pradu galezi.
@@ -395,7 +399,7 @@ def wyznacz_czasy_wylaczenia(
             )
             continue
 
-        nastawa = _nastawa_zwarciowa(wpis)
+        nastawa = nastawa_zwarciowa(wpis)
         if nastawa is None:
             wynik[branch_id] = CzasWylaczeniaGalezi(
                 branch_id=branch_id,
@@ -411,7 +415,7 @@ def wyznacz_czasy_wylaczenia(
             )
             continue
 
-        czas, powod_braku, krzywa_txt, stale = _czas_z_nastawy(nastawa, prad)
+        czas, powod_braku, krzywa_txt, stale = czas_z_nastawy(nastawa, prad)
         prog = float(nastawa["threshold_a"])
         funkcja = str(nastawa.get("function_type"))
         if czas is None:

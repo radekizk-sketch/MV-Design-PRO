@@ -26,7 +26,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from application.reference_networks import REFERENCE_NETWORK_REGISTRY, list_reference_networks
+# Import PO ustawieniu sys.path (skrypt uruchamiany spoza pakietu) — E402 świadome.
+from application.reference_networks import (  # noqa: E402
+    REFERENCE_NETWORK_REGISTRY,
+    list_reference_networks,
+)
 
 
 def regenerate_one(network_id: str, *, confirm: bool) -> dict:
@@ -34,7 +38,7 @@ def regenerate_one(network_id: str, *, confirm: bool) -> dict:
     net = REFERENCE_NETWORK_REGISTRY[network_id]
     print(f"\n>>> {network_id} ({net.name_pl})")
     if not net.expected_path.exists():
-        print(f"  No existing expected JSON — skipping (would need manual seeding from literature)")
+        print("  No existing expected JSON — skipping (would need manual seeding from literature)")
         return {"network_id": network_id, "action": "skip", "reason": "no existing JSON"}
 
     existing = json.loads(net.expected_path.read_text(encoding="utf-8"))
@@ -82,7 +86,7 @@ def main() -> int:
     for nid in network_ids:
         results.append(regenerate_one(nid, confirm=args.confirm))
 
-    print(f"\n=== Summary ===")
+    print("\n=== Summary ===")
     for r in results:
         print(f"  {r['network_id']}: {r['action']}")
     return 0

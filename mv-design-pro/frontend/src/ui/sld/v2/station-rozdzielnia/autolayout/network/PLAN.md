@@ -9,8 +9,11 @@
   buduje **ENM** (EnergyNetworkModel): GPZ 110/15 + **53 stacje** (12 magistrala „branch" + 41 fidery
   „inline"), **promieniowa** (1 magistrala + 12 odgałęzień po 3–4), **1 łącznik N.O.**, napięcia 110/15/0,4.
   `line_runs.stations` puste → drzewo odtwarzane z gałęzi (kabel/linia/łącznik/wyłącznik).
-- Istnieje `core/layoutPipeline.ts` (VisualGraph→LayoutResult, 7 faz) ale adapter ENM→VisualGraph
+- ~~Istnieje `core/layoutPipeline.ts`~~ (VisualGraph→LayoutResult, 7 faz) ale adapter ENM→VisualGraph
   **brakuje/stub**; `engine/sld-layout` rysuje stacje jako **bloki 120×80** = reprezentacja stratna.
+  **NIEAKTUALNE od 2026-08-08 (karta TYPY-POZA-BRAMKA): plik USUNIĘTY jako nieimportowalny**
+  (sięgał po trzy nieistniejące moduły). Decyzja poniżej („NIE używa … ciężkiego
+  `core/layoutPipeline`") jest tym POTWIERDZONA.
 - Lekcja E2: **równoległa reprezentacja gubi wierność** → E3 czyta TEN SAM model (ENM) i komponuje E2.
 
 → **Decyzja:** E3 = NOWA warstwa sieciowa komponująca E2; NIE używa bloków `engine/sld-layout` ani

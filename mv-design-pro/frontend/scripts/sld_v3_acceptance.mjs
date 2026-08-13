@@ -52,6 +52,7 @@ import {
   noBranchWithoutAccent,
   noForbiddenDirectionTokens,
   noLabelWireCollisions,
+  busbarLabelPathClearanceGaps,
   noProtectionAnnotationAtLod0,
   noSceneSymbolOverlaps,
   noSymbolWireCollisions,
@@ -76,6 +77,11 @@ import {
   totalHorizontalSegmentLength,
   orthogonalBendCount,
   sheetFillRatio,
+  sheetAspectRatio,
+  sheetRowStationIds,
+  sheetRowBandsOf,
+  sheetContinuationGaps,
+  allSheetContinuationsMarked,
   trunkThicknessGaps,
   allTopBandFieldsClearance,
   topBandClearanceViolations,
@@ -87,11 +93,35 @@ import {
   localDensityMetrics,
   LOCAL_DENSITY_WINDOW_CELLS,
   minParallelCableClearance,
+  sceneObstacleRects,
 } from '../src/ui/sld/v3/scene/buildScene.ts';
-import { MIN_PARALLEL_CABLE_CLEARANCE, TOP_LEVEL_FIELD_CLEARANCE } from '../src/ui/sld/v3/layout/clearances.ts';
+import { rectWithinSheet, sheetSizeFor } from '../src/ui/sld/v3/sheet/outline.ts';
+import {
+  planSceneLabels,
+  plannedLabelCollisions,
+  plannedLabelObstacleCollisions,
+  plannedLabelsBelowScreenFloor,
+  plannedLabelsOutsideSheet,
+} from '../src/ui/sld/v3/canvas/labelLegibility.ts';
+import { MIN_TEXT_SCREEN_PX, screenFixedFontSize } from '../src/ui/sld/v3/core/text.ts';
+import { MIN_SCALE, MAX_SCALE } from '../src/ui/sld/v3/canvas/camera.ts';
+import {
+  SHEET_MAX_ASPECT,
+  SHEET_TARGET_ASPECT,
+  SHEET_WIDTH_QUANTUM,
+} from '../src/ui/sld/v3/layout/sheetRows.ts';
+import {
+  BUSBAR_LABEL_PATH_CLEARANCE,
+  MIN_PARALLEL_CABLE_CLEARANCE,
+  TOP_LEVEL_FIELD_CLEARANCE,
+} from '../src/ui/sld/v3/layout/clearances.ts';
 import { allBayTemplatesValid, bayTemplateGaps } from '../src/ui/sld/v3/scene/buildScene.ts';
-import { overlapProbe } from '../src/ui/sld/v3/layout/labels.ts';
-import { SEGMENT_STROKE_WIDTH } from '../src/ui/sld/v3/compose/preview.tsx';
+import { labelReservationRect, overlapProbe } from '../src/ui/sld/v3/layout/labels.ts';
+import {
+  SEGMENT_STROKE_WIDTH,
+  segmentStrokeWidthForScale,
+  MIN_TRUNK_STROKE_SCREEN_PX,
+} from '../src/ui/sld/v3/compose/preview.tsx';
 import { fieldSilhouettesAreInjective } from '../src/ui/sld/v3/compose/station.ts';
 import { sourceKindSymbolsAreInjective } from '../src/ui/sld/v3/compose/sourceKind.ts';
 import { SYMBOL_DEFS } from '../src/ui/sld/v3/symbols/defs.ts';
@@ -118,10 +148,36 @@ import {
   buildFlowOverlayFromScene,
   flowOverlayValuesTraceToPayload,
   isFlowOverlayEmpty,
-  singleHopSegmentRefs,
+  orientedSegmentRefs,
 } from '../src/ui/sld/v3/canvas/overlay.ts';
-import { computeFlowOverlayPlacements, layoutResultLabels } from '../src/ui/sld/v3/canvas/SldCanvasV3.tsx';
-import { buildResultLabelsFromScene } from '../src/ui/sld/v3/canvas/resultLabels.ts';
+import { computeFlowOverlayPlacements, layoutResultLabels, SldCanvasV3 } from '../src/ui/sld/v3/canvas/SldCanvasV3.tsx';
+import { buildResultLabelsFromScene, resultRefForSegment } from '../src/ui/sld/v3/canvas/resultLabels.ts';
+import { buildResultRefBridge } from '../src/ui/sld/v3/canvas/resultRefBridge.ts';
+// Karta S9-4 (trafienie i tożsamość zaznaczenia): sonda siatkowa odczytuje
+// uchwyty z FAKTYCZNIE wyrenderowanego drzewa kanwy, a oczekiwanie liczy ze
+// sceny — patrz nagłówek `canvas/hitAreas.ts` (dwa niezależne źródła).
+import React from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { JSDOM } from 'jsdom';
+import {
+  MIN_HIT_SCREEN_PX,
+  buildCanvasHitAreas,
+  hitAreasFromDom,
+  hitLayerOrderingInDom,
+  pointerBlockersInDom,
+  sondaSiatkowaTrafien,
+  HIT_OBJECT_CLASSES,
+} from '../src/ui/sld/v3/canvas/hitAreas.ts';
+// Karta S9-5 (menu kontekstowe i operacje budowy na kanwie): temat menu ma
+// KOTWICĘ zweryfikowaną w modelu — patrz nagłówek `canvas/canvasMenuSubject.ts`.
+import {
+  buildCanvasModelIndex,
+  resolveCanvasMenuSubject,
+} from '../src/ui/sld/v3/canvas/canvasMenuSubject.ts';
+import {
+  SLD_MENU_REGISTRY,
+  getMenuActions,
+} from '../src/ui/sld/v2/command/SldCommandService.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -133,12 +189,36 @@ const here = dirname(fileURLToPath(import.meta.url));
  * zapasem chroni przed regresją „chowamy za dużo"; spadek dozwolony). */
 const RESULT_LABEL_HIDDEN_BUDGET = { 0: 0, 1: 5, 2: 25 };
 
-/** Buduje PEŁNY, syntetyczny payload rozpływu na REALNYCH refach sceny (źródła/
- *  TR/szyny/przęsła jednokawałkowe) — kształt identyczny z `RawOverlayPayload`,
- *  wartości 1:1 z kontraktu (zero fizyki w skrypcie). Odwzorowuje bieg z
- *  wynikami na całej sieci — maksymalne obciążenie deklutteru/agregacji. */
-function buildFullResultPayload(scene, singleHop) {
-  const metricsForKind = (kind) => {
+/** Napięcie znamionowe szyn modelu — `Bus.ref_id → voltage_kv`. Jedyne źródło
+ *  wartości U w syntetycznym payloadzie niżej i miara `bus_result_voltage_level_probe`. */
+function busVoltageIndex(model) {
+  return new Map((model.buses ?? []).map((b) => [b.ref_id, b.voltage_kv]));
+}
+
+/**
+ * Buduje PEŁNY, syntetyczny payload rozpływu na REALNYCH refach sceny (źródła/
+ * TR/szyny/odcinki z udowodnioną orientacją) — kształt identyczny z
+ * `RawOverlayPayload`, wartości 1:1 z kontraktu (zero fizyki w skrypcie).
+ * Odwzorowuje bieg z wynikami na całej sieci — maksymalne obciążenie
+ * deklutteru/agregacji.
+ *
+ * PRZESTRZEŃ KLUCZY = przestrzeń BACKENDU (karta WN-WYNIK). Klucz szyny bierzemy
+ * dokładnie tak, jak robi to produkcja: najpierw MOST REFÓW (`resultRefBridge`,
+ * szyny stacji i blok stacji na L0), potem `resultRefForSegment` (kanoniczny
+ * `busResultRef` szyn GPZ). Wcześniej sonda dla szyn stacji fabrykowała klucz
+ * RYSUNKOWY (`stn/…/station#sn-bus`) — kształt, którego backend NIGDY nie emituje
+ * — więc mierzyła mapowanie nieistniejące w produkcji (Zero-Debt pkt 5: test
+ * omijający realną ścieżkę maskuje defekt produktu).
+ *
+ * NAPIĘCIE SZYNY = `Bus.voltage_kv` TEJ szyny (z lekkim, deterministycznym
+ * odchyłem +0,13 %, żeby wartość wyglądała jak odczyt rozpływu, a nie jak
+ * przepisana tabliczka). Wcześniej KAŻDA szyna dostawała jedną stałą 15,02 kV —
+ * także szyna 110 kV GPZ i szyna 0,4 kV stacji. Sonda akceptacyjna renderowała
+ * więc „U 15,02 kV" NA SZYNIE WN i wszystkie bramki świeciły na zielono: to
+ * dokładnie ta fabrykacja, którą zgłosił właściciel.
+ */
+function buildFullResultPayload(scene, oriented, busVoltageByRef, bridge) {
+  const metricsForKind = (kind, ref) => {
     if (kind === 'branch') {
       return {
         LOADING_PCT: { code: 'LOADING_PCT', value: 72.5, unit: '%', format_hint: 'fixed1' },
@@ -148,36 +228,87 @@ function buildFullResultPayload(scene, singleHop) {
     }
     if (kind === 'source') return { P_MW: { code: 'P_MW', value: 6.546769, unit: 'MW', format_hint: 'fixed4' } };
     if (kind === 'transformer') return { S_MVA: { code: 'S_MVA', value: 0.63, unit: 'MVA', format_hint: 'fixed2' } };
-    return { U_kV: { code: 'U_kV', value: 15.02, unit: 'kV', format_hint: 'fixed2' } };
+    const un = busVoltageByRef.get(ref);
+    if (un == null) return {};
+    return { U_kV: { code: 'U_kV', value: un * 1.0013, unit: 'kV', format_hint: 'fixed2' } };
   };
   const elements = {};
+  const dodaj = (ref, kind) => {
+    if (!ref || elements[ref]) return;
+    const metrics = metricsForKind(kind, ref);
+    if (Object.keys(metrics).length === 0) return;
+    elements[ref] = { ref_id: ref, kind, badges: [], severity: 'INFO', metrics };
+  };
   for (const s of scene.symbols) {
     const k = s.meta?.elementKind;
     const ref = s.meta?.ownerRef;
-    if ((k === 'source' || k === 'transformer') && ref && !elements[ref]) {
-      elements[ref] = { ref_id: ref, kind: k, badges: [], severity: 'INFO', metrics: metricsForKind(k) };
-    }
+    if (!ref) continue;
+    if (k === 'source' || k === 'transformer') dodaj(ref, k);
+    // Blok stacji na L0 i symbol TR stacji zakotwiczony na polu — punkt wyniku
+    // zna WYŁĄCZNIE most refów (ta sama droga co produkcja).
+    const binding = bridge?.get(ref);
+    if (binding) dodaj(binding.resultRef, binding.kind === 'bus' ? 'bus' : binding.kind);
   }
   for (const s of scene.segments) {
     const k = s.meta?.elementKind;
     const ref = s.meta?.ownerRef;
-    if (k === 'bus') {
-      // ADAPTER-BUSREF: payload backendu jest kluczowany KANONICZNYM `Bus.ref_id`
-      // — dla szyn GPZ kompozytowych używamy `busResultRef` (jak realny backend),
-      // dla szyn stacji `ownerRef` (który JUŻ jest realnym refem). Tożsame z
-      // `resultRefForSegment` w warstwie wynikowej — sonda ćwiczy realną ścieżkę
-      // mapowania, nie fabrykuje klucza kompozytowego.
-      const busRef = s.meta?.busResultRef ?? ref;
-      if (busRef && !elements[busRef]) {
-        elements[busRef] = { ref_id: busRef, kind: 'bus', badges: [], severity: 'INFO', metrics: metricsForKind('bus') };
-      }
+    // Kolejność 1:1 z `buildResultLabelsFromScene`: MOST ma pierwszeństwo przed
+    // klasą odcinka — szyna nN stacji (`…#lv-bus`) jest w scenie zwykłym
+    // odcinkiem toru, a punktem wyniku jest szyna nN (0,4 kV). Bez tej gałęzi
+    // sonda w ogóle nie widziała poziomu nN.
+    const binding = ref ? bridge?.get(ref) : undefined;
+    if (binding) {
+      dodaj(binding.resultRef, binding.kind === 'bus' ? 'bus' : binding.kind);
       continue;
     }
-    if (k === 'segment' && ref && !ref.includes('#') && singleHop.has(ref) && !elements[ref]) {
-      elements[ref] = { ref_id: ref, kind: 'branch', badges: [], severity: 'INFO', metrics: metricsForKind('branch') };
+    if (k === 'bus') {
+      dodaj(resultRefForSegment(s.meta), 'bus');
+      continue;
     }
+    if (k === 'segment' && ref && !ref.includes('#') && oriented.has(ref)) dodaj(ref, 'branch');
   }
   return { run_id: 'accept-sld-v3-result-labels', analysis_type: 'LOAD_FLOW', elements };
+}
+
+/** Liczba z linii etykiety wynikowej („15,02 kV" → 15.02; zapis POLSKI, tak jak
+ *  renderuje warstwa). `null` = linia nie niesie liczby (nie zgadujemy). */
+function liczbaZLiniiEtykiety(text) {
+  const m = /^(-?\d+(?:,\d+)?)\s/.exec(text);
+  return m ? Number(m[1].replace(',', '.')) : null;
+}
+
+/**
+ * `bus_result_voltage_level_probe` (karta WN-WYNIK) — SONDA POZIOMU NAPIĘCIA.
+ *
+ * Każda etykieta wynikowa klasy `bus` niesie U TEJ szyny, do której jest
+ * przypięta: punkt wyniku MUSI być szyną modelu, a odczyt MUSI zgadzać się z jej
+ * `Bus.voltage_kv` CO DO RZĘDU (|U/Un − 1| < 0,5 — zapas obejmuje realne odchyłki
+ * rozpływu i regulację zaczepów, ale 15 kV na szynie 110 kV to 0,86, a 110 kV na
+ * szynie 15 kV to 6,3). Zamyka klasę „wynik jednego poziomu napięcia na szynie
+ * innego poziomu": każde przyszłe pomylenie refów (most, adapter, kompozycja)
+ * przewraca tę bramkę, niezależnie od tego, kto je popełni.
+ *
+ * Zwraca listę naruszeń (pusta = stan docelowy).
+ */
+function naruszeniaPoziomuNapiecia(entries, busVoltageByRef) {
+  const naruszenia = [];
+  for (const ownerRef of Object.keys(entries).sort()) {
+    const entry = entries[ownerRef];
+    if (entry.kind !== 'bus') continue;
+    const linia = entry.lines.find((l) => l.prefix === 'U');
+    if (!linia) continue;
+    const u = liczbaZLiniiEtykiety(linia.text);
+    if (u == null) continue;
+    const un = busVoltageByRef.get(entry.resultRef);
+    if (un == null) {
+      naruszenia.push(`${ownerRef}: punkt wyniku „${entry.resultRef}" NIE jest szyną modelu`);
+      continue;
+    }
+    if (!(Math.abs(u / un - 1) < 0.5)) {
+      naruszenia.push(`${ownerRef}: U=${u} kV na szynie ${entry.resultRef} o Un=${un} kV`);
+    }
+  }
+  return naruszenia;
 }
 const fixturePath = resolve(
   here,
@@ -192,6 +323,12 @@ const fixturePath = resolve(
   'sldSubstrate52s.enm.json',
 );
 const enm = JSON.parse(readFileSync(fixturePath, 'utf8')).enm;
+
+/** Karta WN-WYNIK: most refów i napięcia szyn liczone RAZ na całą sonde —
+ *  ta sama para, którą produkcja karmi warstwę wynikową
+ *  (`SldCanvasV3Workspace.buildResultLabelsForSnapshot`). */
+const RESULT_REF_BRIDGE = buildResultRefBridge(enm);
+const BUS_VOLTAGE_BY_REF = busVoltageIndex(enm);
 
 const LODS = [0, 1, 2];
 const EXPECTED_STATION_COUNT = 53;
@@ -308,7 +445,42 @@ const EXPECTED_STATION_COUNT = 53;
 // przyłączenia od szyny. Wzrost jest kosztem NOWEJ TREŚCI rysunku, nie regresją
 // układu — aparat stoi obok sekcji (poza pasem pól), a trasa ma jeden róg, bo
 // biegnie poziomo od lewego końca szyny i schodzi pionowo do aparatu.
-const VERTICAL_LENGTH_BASELINE = { 0: 22944, 1: 39888, 2: 39888 };
+  // KD-8 poz. 5 (2026-07-31, CELOWA aktualizacja baseline): PODNIESIONY
+  // 22896/39888/39888 → 23232/40224/40224 (+336 px pionów JEDNOLICIE na LOD).
+  // Przyczyna dokładna: prześwit etykiety napięcia szyny od TORU urósł z GRID
+  // (8 px) do BUSBAR_LABEL_PATH_CLEARANCE (16 px), a rezerwacja pasma
+  // (`stationBusbarLabelHeight`) urosła razem z nim — 42 wiersze stacji z
+  // polami SN na fixturze referencyjnej × 8 px = 336 px. Odstępstwo od reguły
+  // „nie-rosnąca" (§15.1 „redukcja jest ograniczeniem MIĘKKIM") ŚWIADOME i tej
+  // samej klasy co F10.3: czytelność podpisu szyny ma pierwszeństwo przed
+  // minimalizacją pionów. Dowód braku regresji układu: `accept:sld-v3` ALL PASS
+  // (w tym nowa sonda `busbar_label_clearance_probe` — 55 etykiet szyn,
+  // 0 naruszeń) oraz zero nowych kolizji etykieta↔etykieta/symbol/przewód.
+// S9-1 (ŁAMANIE ARKUSZA, `docs/sld/DECYZJA_LAMANIE_ARKUSZA.md`) — baseline
+// OBNIŻONY 23232/40224/40224 → 22232/39240/39240: odgałęzienia leżą w PAŚMIE
+// swojego wiersza arkusza (przeplot §4), więc piony zejść nie muszą już
+// przebiegać pod całym rysunkiem. Reguła „nie-rosnąca" spełniona.
+// S9-7/8 (TYPOGRAFIA I HIERARCHIA RYSUNKU) — baseline PODNIESIONY 22232/39240/
+// 39240 → 22440/39448/39448 (+208 px pionów JEDNOLICIE na każdym LOD).
+// PRZYCZYNA ZMIERZONA, nie zgadnięta: oznacznik jednoznaczności napięcia
+// znamionowego kabla („Un=" przed wartością, `layout/lineLabel.ts` — S9-8
+// „jednoznaczne oznaczenie napięcia znamionowego kabla przy przęśle") wydłuża
+// etykietę przęsła o 3 glify, a etykieta przęsła jest REZERWACJĄ szerokości
+// kolumny stacji (`requiredSegmentLabelWidth`, `layout/measure.ts`). Szersze
+// sloty inaczej dzielą się na wiersze pasma B1 (`colorSegmentLabelRows`,
+// `layout/segments.ts`, NIEZMIENIONE) i „jedna kotwica" SCHEMAT-10 S1
+// propaguje deltę jednolicie na L0/L1/L2.
+//
+// ŚWIADOME ODSTĘPSTWO od reguły „nie-rosnąca" (spec §15.1: „redukcja jest
+// ograniczeniem MIĘKKIM — nigdy kosztem czytelności"): kabel opisany samym
+// „20 kV" w łańcuchu członów rozdzielonych tym samym separatorem nie mówi, czy
+// to napięcie IZOLACJI KABLA, czy PRACY SIECI — a te bywają różne na tym samym
+// rysunku. Wariant droższy („Un = " ze spacjami) kosztowałby +2536 px pionów i
+// obniżał gęstość tuszu na przeglądzie z 2,03 % do 1,94 %; wybrano formę zwartą
+// (pomiar w docstringu `formatRatedVoltageKv`). Gęstość tuszu po zmianie: L0
+// referencyjna 1,67 % → 1,66 %, L0 długi ciąg 2,03 % → 2,03 % (bez zmiany).
+// Zero nowych kolizji jakiegokolwiek rodzaju (ten skrypt zielony).
+const VERTICAL_LENGTH_BASELINE = { 0: 22440, 1: 39448, 2: 39448 };
 
 /**
  * SCHEMAT-10 S6 (V12K-137) — funkcja kosztu layoutu (recenzja ekspercka pkt 3):
@@ -344,8 +516,32 @@ const VERTICAL_LENGTH_BASELINE = { 0: 22944, 1: 39888, 2: 39888 };
 // 48208/68384/71976 (+960/LOD, jednolicie) — ta sama przyczyna co
 // `VERTICAL_LENGTH_BASELINE` wyżej (szersze kolumny pełnej etykiety L2 wydłużają
 // pododcinki poziome przęseł/slotów o stałą na LOD). Załamania (bends) BEZ zmian.
-const HORIZONTAL_LENGTH_BASELINE = { 0: 48224, 1: 68400, 2: 71992 };
-const BEND_COUNT_BASELINE = { 0: 40, 1: 168, 2: 168 };
+// S9-1 (ŁAMANIE ARKUSZA) — baseline PODNIESIONY, świadome odstępstwo od reguły
+// „nie-rosnąca" (spec §15.1: redukcja kosztu jest ograniczeniem MIĘKKIM,
+// czytelność ma pierwszeństwo). Przyczyna zmierzona, nie oszacowana: każde
+// złamanie arkusza dokłada ŁĄCZNIK CIĄGU DALSZEGO (kanał powrotny w prawo,
+// bieg nad wierszem następnym, rynna podjęcia) — to +2 biegi poziome i +4 rogi
+// na złamanie. Ceną 9120/9440/9424 px poziomów i 3/4/4 rogów kupujemy zejście
+// proporcji arkusza z 4,06 : 1 do 1,49 : 1 (znalezisko C-1 wagi 3), a PIONY w
+// tym samym bilansie SPADAJĄ (patrz `VERTICAL_LENGTH_BASELINE` wyżej).
+// S9-7/8: PODNIESIONY 57344/77840/81416 → 57392/77888/81464 (+48 px poziomów
+// jednolicie) — ta sama przyczyna i to samo uzasadnienie co przy
+// `VERTICAL_LENGTH_BASELINE` wyżej (oznacznik „Un=" w etykiecie przęsła).
+// PROPORCJE (karta PROPORCJE, 2026-08-07): PODNIESIONY 57392/77888/81464 ->
+// 57848/78568/82096 (+456/+680/+632). Przyczyna ZMIERZONA: podpis pola niesie
+// OZNACZNIK przed rola („F01 · liniowe” zamiast „pole liniowe”, +6 j.św. na
+// sidecar), bo bez niego trzy pola liniowe jednej rozdzielnicy maja identyczny
+// opis, a cztery „Q1” nie maja po czym byc rozroznione (zgloszenie wlasciciela
+// 2026-08-07 pkt 4; audyt C-17). Sidecar wchodzi do rezerwacji KAZDEJ kolumny
+// pola, wiec koszt jest rozlozony na caly arkusz: +0,8% szerokosci bboxa
+// (8280 -> 8344 j.św.) BEZ zmiany liczby wierszy arkusza. Swiadome odstepstwo
+// od reguly „nie-rosnaca” (spec §15.1 „redukcja jest ograniczeniem MIEKKIM”),
+// tej samej klasy co S9-1 i S9-7/8. Wariant pelny („F01 · pole liniowe”)
+// ODRZUCONY POMIAREM: kosztuje CALY dodatkowy wiersz arkusza (bbox
+// 8280x5259 -> 7808x6851) i obniza skale dopasowania 0,168 -> 0,131.
+// PIONY w tym samym bilansie SPADAJA o 960/LOD (`VERTICAL_LENGTH_BASELINE`).
+const HORIZONTAL_LENGTH_BASELINE = { 0: 57848, 1: 78568, 2: 82096 };
+const BEND_COUNT_BASELINE = { 0: 43, 1: 172, 2: 172 };
 
 /**
  * S6 pkt 10 (eliminacja pustych przestrzeni) — PODŁOGA wykorzystania arkusza
@@ -384,7 +580,14 @@ const BEND_COUNT_BASELINE = { 0: 40, 1: 168, 2: 168 };
 // (S6 §6) — bbox rośnie o REALNĄ treść (dłuższe, kompletne etykiety), nie o pustą
 // rezerwę. Podłoga = NOWA zmierzona wartość minus ~0.00005 na jitter metryk
 // tekstu (ta sama reguła co S7-P1/P4). Korekta per liczba.
-const SHEET_FILL_FLOOR = { 0: 0.01374, 1: 0.02223, 2: 0.02281 };
+// KD-8 poz. 5 (2026-07-31, CELOWA korekta podłogi L2): OBNIŻONA 0.02281 →
+// 0.02275. Przyczyna: pasmo etykiety szyny urosło o 8 px na wiersz stacji
+// (prześwit podpisu od toru — patrz `VERTICAL_LENGTH_BASELINE` wyżej), więc
+// bbox arkusza rośnie o REALNĄ treść (czytelny podpis), a udział pokrytych
+// komórek spada marginalnie: zmierzone L2 0.022805 (L0 0.013808 i L1 0.022240
+// zostają nad dotychczasową podłogą — bez korekty). Podłoga = NOWA zmierzona
+// wartość minus ~0.00005 na jitter metryk tekstu (ta sama reguła co S7-P1/P4).
+const SHEET_FILL_FLOOR = { 0: 0.01374, 1: 0.02223, 2: 0.02275 };
 
 /**
  * F9.7 (dług F9.3(b), spec §11.4 `wire_probe` rozszerzony o symbole —
@@ -467,11 +670,22 @@ function checkContinuity(scene) {
   );
   if (!allResolved) return null;
 
-  let orderOk = true;
+  // S9-1 (ŁAMANIE ARKUSZA): kolejność topologiczna czytana jest teraz
+  // leksykograficznie (wiersz arkusza, potem X) — każdy wiersz zaczyna się od
+  // lewego marginesu, więc „rosnące X w poprzek całego ciągu" przestało być
+  // kanonem. Intencja bez zmian: ciąg czyta się od zasilania w głąb sieci.
+  const rows = sheetRowStationIds(scene);
+  const rowOf = new Map();
+  rows.forEach((row, i) => row.forEach((id) => rowOf.set(id, i)));
+  let orderOk = rows.flat().join('|') === ids.join('|');
   for (let i = 1; i < ranges.length; i++) {
+    if (rowOf.get(ids[i - 1]) !== rowOf.get(ids[i])) continue; // granica wiersza
     if (!(ranges[i - 1].max < ranges[i].min)) orderOk = false;
   }
-  check('§16/§15.2: stacje ciągu głównego narysowane w kolejności topologyRuns[].stationRefs (rosnące X)', orderOk);
+  check(
+    `§16/§15.2: stacje ciągu głównego narysowane w kolejności topologyRuns[].stationRefs (wiersz arkusza, potem rosnące X; wierszy=${rows.length})`,
+    orderOk,
+  );
 
   let bridgingOk = true;
   for (let i = 1; i < ranges.length; i++) {
@@ -637,6 +851,16 @@ for (const lod of LODS) {
     'noLabelWireCollisions (D3/k6): zero kolizji etykieta↔przewód',
     noLabelWireCollisions(scene) && wireHits.length === 0,
     `kolizje=${wireHits.length}`,
+  );
+
+  // -- KD-8 poz. 5: PRZEŚWIT etykiet szyn od toru (nie przecięcie — styk) ----
+  const clearanceGaps = busbarLabelPathClearanceGaps(scene, BUSBAR_LABEL_PATH_CLEARANCE);
+  check(
+    `busbar_label_clearance_probe (KD-8 poz. 5): każda etykieta szyny trzyma od toru ≥ ${BUSBAR_LABEL_PATH_CLEARANCE}px świata`,
+    clearanceGaps.length === 0,
+    clearanceGaps.length === 0
+      ? `etykiety_szyn=${scene.labels.filter((l) => l.ownerKind === 'busbar-voltage').length} naruszenia=0`
+      : clearanceGaps.map((g) => `${g.text}=${g.clearance}px`).join(', '),
   );
 
   // -- W3 §5: światła równoległych kabli -------------------------------------
@@ -1028,18 +1252,43 @@ for (const lod of LODS) {
   );
 
   // -- §21 (F13.1, D3-1/D3-2): GPZ jako dominanta WN/SN ----------------------
-  const hvGaps = gpzHvColumnGaps(scene, enm);
-  check(
-    'gpz_hv_column_probe (§21.1): ENM niesie TR WN/SN ⇒ scena rysuje kolumnę WN (przyłącze→szyna WN→TR→sekcje SN); 0 GPZ z danymi WN bez kolumny',
-    allGpzHvColumnsComplete(scene, enm) && hvGaps.length === 0,
-    `luki=${hvGaps.length}`,
-  );
-  const domGaps = gpzDominanceGaps(scene);
-  check(
-    'gpz_dominance_probe (§21.2): strefa GPZ ≥ największa stacja; szyna GPZ grubsza (busGpz>bus); tabliczka danych przy źródle',
-    gpzIsDominant(scene) && domGaps.length === 0,
-    `luki=${domGaps.length}${domGaps.length ? ' np. ' + JSON.stringify(domGaps[0]) : ''}`,
-  );
+  // V12K-293 (KD-5) + KD-7 poz. 5: helpery §21 same czytają SCENĘ
+  // (`gpzBlockCollapsed`) — scena ze zwiniętym blokiem nie wymaga kolumny WN
+  // ani dominanty, ale rysunek ROZWINIĘTY podlega §21 na KAŻDYM poziomie LOD.
+  // Dlatego sondy biegną bezwarunkowo; na L0 dodatkowo sonda kanonu zwinięcia.
+  {
+    const hvGaps = gpzHvColumnGaps(scene, enm);
+    check(
+      'gpz_hv_column_probe (§21.1): ENM niesie TR WN/SN ⇒ scena rysuje kolumnę WN (przyłącze→szyna WN→TR→sekcje SN); 0 GPZ z danymi WN bez kolumny',
+      allGpzHvColumnsComplete(scene, enm) && hvGaps.length === 0,
+      `luki=${hvGaps.length}`,
+    );
+    const domGaps = gpzDominanceGaps(scene);
+    check(
+      'gpz_dominance_probe (§21.2): strefa GPZ ≥ największa stacja; szyna GPZ grubsza (busGpz>bus); tabliczka danych przy źródle',
+      gpzIsDominant(scene) && domGaps.length === 0,
+      `luki=${domGaps.length}${domGaps.length ? ' np. ' + JSON.stringify(domGaps[0]) : ''}`,
+    );
+  }
+  if (lod === 0) {
+    const gpzInFull = buildSceneV3(enm, 1).symbols.some(
+      (s) => (s.meta?.ownerRef ?? '').startsWith('gpz/'),
+    );
+    const collapsedCount = scene.symbols.filter((s) => s.symbolId === 'gpzCollapsed').length;
+    const internalExtra = scene.symbols.filter(
+      (s) =>
+        (s.meta?.ownerRef ?? '').startsWith('gpz/') &&
+        s.symbolId !== 'gpzCollapsed' &&
+        s.symbolId !== 'gridSource' &&
+        s.symbolId !== 'breaker',
+    );
+    check(
+      'gpz_collapsed_probe (§21.3, V12K-293): L0 rysuje GPZ ZWINIĘTY — dokładnie jeden gpzCollapsed (gdy pełny detal niesie pasmo gpz/), a poza nim wyłącznie glif źródła i aparaty ciągłości pól',
+      (!gpzInFull && collapsedCount === 0) ||
+        (gpzInFull && collapsedCount === 1 && internalExtra.length === 0),
+      `gpz_w_pelnym_detalu=${gpzInFull} zwiniete=${collapsedCount} wewnetrzne_nadmiarowe=${internalExtra.length}${internalExtra.length ? ' np. ' + JSON.stringify(internalExtra[0]?.symbolId) : ''}`,
+    );
+  }
 
   // -- §12.5 (recenzja NO-GO 2026-07-17 pkt 5): szablony technologiczne pól --
   const templateGaps = bayTemplateGaps(scene, enm);
@@ -1150,16 +1399,17 @@ for (const lod of LODS) {
   // Store`, zasilany przez `App.tsx`) i UDOKUMENTOWANA luka backendu, przez
   // którą jest on dziś pusty dla gałęzi na KAŻDYM realnym przebiegu
   // LOAD_FLOW, opisane w `canvas/overlay.ts` nagłówek F9.5. Bramka F-1
-  // (recenzja Opusa): kierunek emitowany WYŁĄCZNIE dla przęseł
-  // jednokawałkowych (`singleHopSegmentRefs`) — na tej fixturze 45/53.
-  const singleHop = singleHopSegmentRefs(enm);
-  const emptyFlow = buildFlowOverlayFromScene(scene, null, singleHop);
+  // w kanonie S9-2: kierunek emitowany WYŁĄCZNIE dla odcinków z orientacją
+  // DOWODZONĄ refami węzłów gałęzi (`orientedSegmentRefs`) — poprzednik
+  // (`singleHopSegmentRefs`, przęsła jednokawałkowe) był jej podzbiorem.
+  const oriented = orientedSegmentRefs(enm);
+  const emptyFlow = buildFlowOverlayFromScene(scene, null, oriented);
   check('flow_overlay_probe (§14.2, a): overlay wyłączony bez wyniku (payload=null ⇒ pusta nakładka, zero atrap)', isFlowOverlayEmpty(emptyFlow));
 
   const flowCandidateRef = scene.segments.find(
-    (s) => s.meta?.elementKind === 'segment' && s.meta.ownerRef && !s.meta.ownerRef.includes('#') && singleHop.has(s.meta.ownerRef),
+    (s) => s.meta?.elementKind === 'segment' && s.meta.ownerRef && !s.meta.ownerRef.includes('#') && oriented.has(s.meta.ownerRef),
   )?.meta?.ownerRef;
-  if (check('flow_overlay_probe: scena LOD ' + lod + ' zawiera odcinek z realnym segmentRef jednokawałkowym (kandydat do sondy b/c/negatyw)', flowCandidateRef != null)) {
+  if (check('flow_overlay_probe: scena LOD ' + lod + ' zawiera odcinek z realnym segmentRef o udowodnionej orientacji (kandydat do sondy b/c/negatyw)', flowCandidateRef != null)) {
     const syntheticMetricsOf = (ref) => ({
       ref_id: ref,
       kind: 'branch',
@@ -1176,12 +1426,12 @@ for (const lod of LODS) {
       analysis_type: 'LOAD_FLOW',
       elements: { [flowCandidateRef]: syntheticMetricsOf(flowCandidateRef) },
     };
-    const flow = buildFlowOverlayFromScene(scene, syntheticPayload, singleHop);
+    const flow = buildFlowOverlayFromScene(scene, syntheticPayload, oriented);
     check(
       'flow_overlay_probe (§14.2, b): każda wartość nakładki wywiedziona z wyniku (brak wartości wpisanych w UI)',
       !isFlowOverlayEmpty(flow) && flowOverlayValuesTraceToPayload(flow, syntheticPayload),
     );
-    const flowAgain = buildFlowOverlayFromScene(scene, syntheticPayload, singleHop);
+    const flowAgain = buildFlowOverlayFromScene(scene, syntheticPayload, oriented);
     check(
       'flow_overlay_probe (§14.2, c): determinizm nakładki (dwukrotne wywołanie tego samego wejścia ⇒ identyczny JSON)',
       JSON.stringify(flow) === JSON.stringify(flowAgain),
@@ -1194,30 +1444,28 @@ for (const lod of LODS) {
       flowOverlayValuesTraceToPayload(fabricated, syntheticPayload) === false,
     );
 
-    // -- F-1 (recenzja Opusa): bramka kierunku gryzie ------------------------
-    const multiHopRef = scene.segments.find(
-      (s) => s.meta?.elementKind === 'segment' && s.meta.ownerRef && !s.meta.ownerRef.includes('#') && !singleHop.has(s.meta.ownerRef),
-    )?.meta?.ownerRef;
-    if (lod === 2) {
-      check(
-        'flow_overlay_probe (F-1): fixtura zawiera przęsła wielokawałkowe — bramka jednokawałkowa ma realny skutek',
-        multiHopRef != null,
-      );
-    }
-    if (multiHopRef != null) {
-      const multiHopPayload = {
+    // -- F-1 (recenzja Opusa, kanon S9-2): bramka orientacji gryzie ----------
+    // Odcinek BEZ udowodnionej orientacji nie dostaje strzałki. Dowód przez
+    // WYCOFANIE dowodu: kandydatowi zabieramy wpis z mapy orientacji (kopia,
+    // nie mutacja) i podajemy wynik z P_MW — nakładka MUSI zostać pusta.
+    // Ten sam wzorzec co vitest `overlay.test.ts` (kopia mapy orientacji);
+    // działa niezależnie od tego, ile odcinków fixtury ma dowód orientacji.
+    {
+      const withoutProof = new Map(oriented);
+      withoutProof.delete(flowCandidateRef);
+      const unprovenPayload = {
         run_id: 'accept-sld-v3-synthetic',
         analysis_type: 'LOAD_FLOW',
-        elements: { [multiHopRef]: syntheticMetricsOf(multiHopRef) },
+        elements: { [flowCandidateRef]: syntheticMetricsOf(flowCandidateRef) },
       };
       check(
-        'flow_overlay_probe (F-1, negatyw): przęsło wielokawałkowe z P_MW w wyniku ⇒ ZERO wpisu kierunku (uczciwe „nie wiem", nie błędna strzałka)',
-        isFlowOverlayEmpty(buildFlowOverlayFromScene(scene, multiHopPayload, singleHop)),
+        'flow_overlay_probe (F-1, negatyw): odcinek bez udowodnionej orientacji z P_MW w wyniku ⇒ ZERO wpisu kierunku (uczciwe „nie wiem", nie błędna strzałka)',
+        isFlowOverlayEmpty(buildFlowOverlayFromScene(scene, unprovenPayload, withoutProof)),
       );
     }
 
     // -- V-1/V-2 (recenzja wizualna): rozmieszczenie etykiet przepływu -------
-    // Payload na WSZYSTKICH odcinkach jednokawałkowych naraz (jak harness
+    // Payload na WSZYSTKICH odcinkach z udowodnioną orientacją naraz (jak harness
     // renderowy nadzorcy) — każda etykieta musi znaleźć pozycję rozłączną
     // z etykietami sceny (w tym tytułami stacji — V-1), symbolami (ikony
     // DER — V-2) i innymi etykietami przepływu. L0 bez etykiet (spec §15.2).
@@ -1234,10 +1482,10 @@ for (const lod of LODS) {
       const fullElements = {};
       for (const s of scene.segments) {
         const ref = s.meta?.ownerRef;
-        if (ref && s.meta?.elementKind === 'segment' && singleHop.has(ref)) fullElements[ref] = syntheticMetricsOf(ref);
+        if (ref && s.meta?.elementKind === 'segment' && oriented.has(ref)) fullElements[ref] = syntheticMetricsOf(ref);
       }
       const fullPayload = { run_id: 'accept-sld-v3-synthetic', analysis_type: 'LOAD_FLOW', elements: fullElements };
-      const fullFlow = buildFlowOverlayFromScene(scene, fullPayload, singleHop);
+      const fullFlow = buildFlowOverlayFromScene(scene, fullPayload, oriented);
       const placements = computeFlowOverlayPlacements(scene, fullFlow, lod === 1 ? 'p-only' : 'full');
 
       // Flaga wewnętrzna algorytmu (informacyjna — NIE jedyna podstawa PASS).
@@ -1282,8 +1530,8 @@ for (const lod of LODS) {
   // ukryte ≤ budżet per LOD. Czas mierzony poza kontraktem determinizmu (nie
   // wchodzi do porównania JSON) — sam raportowany.
   {
-    const rlPayload = buildFullResultPayload(scene, singleHop);
-    const rlByRef = buildResultLabelsFromScene(scene, rlPayload, singleHop);
+    const rlPayload = buildFullResultPayload(scene, oriented, BUS_VOLTAGE_BY_REF, RESULT_REF_BRIDGE);
+    const rlByRef = buildResultLabelsFromScene(scene, rlPayload, new Set(oriented.keys()), undefined, RESULT_REF_BRIDGE);
     const t0 = performance.now();
     const layout = layoutResultLabels(scene, rlByRef, [], lod);
     const layoutMs = performance.now() - t0;
@@ -1314,6 +1562,61 @@ for (const lod of LODS) {
       `result_label_metrics_probe (§wym.19): determinizm rozmieszczania (placements+agregaty+ukryte+metryki identyczne) na LOD ${lod}`,
       JSON.stringify(layout) === JSON.stringify(layoutAgain),
     );
+    // -- WN-WYNIK: bus_result_voltage_level_probe ---------------------------
+    // (a) każda etykieta szyny zgodna CO DO RZĘDU z `Bus.voltage_kv` tej szyny.
+    {
+      const naruszenia = naruszeniaPoziomuNapiecia(rlByRef, BUS_VOLTAGE_BY_REF);
+      check(
+        `bus_result_voltage_level_probe (WN-WYNIK a): U etykiety == poziom napięcia szyny (|U/Un−1| < 0,5) dla WSZYSTKICH szyn na LOD ${lod}`,
+        naruszenia.length === 0,
+        naruszenia.length === 0 ? undefined : `naruszenia=${naruszenia.length}, np. ${naruszenia.slice(0, 3).join(' | ')}`,
+      );
+      // (b) dowód POZYTYWNY, że sonda ma co mierzyć: warstwa niesie etykiety
+      // szyn z CO NAJMNIEJ DWÓCH poziomów napięcia (WN/SN/nN). Bez tego bramka
+      // (a) mogłaby być prawdziwa „przez pustkę" — sieć referencyjna ma szynę
+      // 110 kV GPZ, szyny 15 kV i szyny 0,4 kV stacji.
+      const poziomy = new Set();
+      for (const ownerRef of Object.keys(rlByRef)) {
+        const e = rlByRef[ownerRef];
+        if (e.kind !== 'bus') continue;
+        const un = BUS_VOLTAGE_BY_REF.get(e.resultRef);
+        if (un != null) poziomy.add(un);
+      }
+      if (lod !== 0) {
+        check(
+          `bus_result_voltage_level_probe (WN-WYNIK b, dowód pozytywny): etykiety szyn obejmują ≥ 2 poziomy napięcia na LOD ${lod}`,
+          poziomy.size >= 2,
+          `poziomy=${[...poziomy].sort((x, y) => x - y).join('/')} kV`,
+        );
+      }
+      // (c) test NEGATYWNY — dowód, że wyrocznia gryzie: podmieniamy odczyt
+      // szyny WN na wartość szyny SN (dokładnie defekt zgłoszony przez
+      // właściciela: „U 15,02 kV" na szynie 110 kV). Sonda MUSI zgłosić.
+      if (lod !== 0) {
+        const wnRef = [...BUS_VOLTAGE_BY_REF.entries()].filter(([, u]) => u > 60).map(([r]) => r).sort()[0];
+        const wpisWn = wnRef ? Object.keys(rlByRef).find((o) => rlByRef[o].resultRef === wnRef) : undefined;
+        if (wpisWn) {
+          const podmieniony = {
+            ...rlByRef,
+            [wpisWn]: {
+              ...rlByRef[wpisWn],
+              lines: rlByRef[wpisWn].lines.map((l) => (l.prefix === 'U' ? { ...l, text: '15,02 kV' } : l)),
+            },
+          };
+          check(
+            `bus_result_voltage_level_probe (WN-WYNIK c, test negatywny): odczyt SN wstrzyknięty na szynę WN MUSI dać naruszenie (LOD ${lod})`,
+            naruszeniaPoziomuNapiecia(podmieniony, BUS_VOLTAGE_BY_REF).length > 0,
+          );
+        } else {
+          check(
+            `bus_result_voltage_level_probe (WN-WYNIK c, test negatywny): szyna WN obecna w warstwie wynikowej (LOD ${lod})`,
+            false,
+            `brak wpisu dla szyny WN „${wnRef ?? '(brak szyny WN w modelu)'}"`,
+          );
+        }
+      }
+    }
+
     // Priorytet (wym. 12): źródła/transformatory NIGDY ukryte, gdy niżej-
     // priorytetowe klasy obecne — dowód, że wyrocznia mierzy realny priorytet.
     if (lod !== 0) {
@@ -1421,6 +1724,25 @@ for (const lod of LODS) {
       lod0ReadabilityGaps(sabotaged).some((g) => g.element === 'sylwetka stacji') && !allLod0ElementsReadable(sabotaged),
     );
   }
+
+  // -- S9-1 (ŁAMANIE ARKUSZA, audyt C-1 wagi 3) — PROPORCJA ARKUSZA ----------
+  // Kryterium odbioru karty: bbox arkusza NIE MOŻE przekroczyć 2 : 1 na ŻADNYM
+  // poziomie szczegółu (sieć referencyjna miała 4,06 : 1, a sieć 51 stacji z
+  // audytu — 53 : 1). Docelowo 1,41 : 1 (A3 poziomo).
+  const aspect = sheetAspectRatio(scene);
+  check(
+    `sheet_aspect_probe (S9-1, C-1): proporcja arkusza ≤ ${SHEET_MAX_ASPECT} : 1 (docelowo ${SHEET_TARGET_ASPECT.toFixed(2)} : 1)`,
+    aspect > 0 && aspect <= SHEET_MAX_ASPECT && 1 / aspect <= SHEET_MAX_ASPECT,
+    `proporcja=${aspect.toFixed(3)} bbox=${scene.bbox.width}×${scene.bbox.height} wierszy arkusza=${sheetRowStationIds(scene).length}`,
+  );
+  const contGaps = sheetContinuationGaps(scene);
+  check(
+    'sheet_continuation_probe (S9-1 §5): każde złamanie arkusza ma znak ciągu dalszego (kreski + odsyłacze na L2)',
+    allSheetContinuationsMarked(scene),
+    contGaps.length === 0
+      ? `złamań=${Math.max(0, sheetRowStationIds(scene).length - 1)}`
+      : `luki=${contGaps.length}: ${contGaps.slice(0, 3).map((g) => `${g.ownerRef}: ${g.powod}`).join(' | ')}`,
+  );
 
   // -- S6 (V12K-137) funkcja kosztu layoutu: poziomy + załamania (pkt 3) ------
   const horizontalLength = totalHorizontalSegmentLength(scene);
@@ -1667,6 +1989,633 @@ for (const lod of LODS) {
     // gałąź defensywna, nie oczekiwana w praktyce (dowód POZYTYWNY negatywu
     // żyje wtedy WYŁĄCZNIE w testach vitest syntetycznych).
     line('  [SKIP] secondary_link_duality_probe (test negatywny): fixtura L2 bez symbolu breaker');
+  }
+}
+
+// -- KD-11 identity_label_probe: tożsamość elementów NIE znika i NIE koliduje -
+// Rysunek techniczny bez tożsamości (nazwa stacji/transformatora, napięcie
+// szyny/sekcji, oznaczenie pola, nazwa źródła) nie mówi, CO przedstawia —
+// regresja użytkowa z odbioru KD-8 („Ukryto 35 opisów" na rozwiniętym GPZ).
+// Wyrocznia sprawdza PLAN RENDERU (`canvas/labelLegibility.ts`) na sieci
+// referencyjnej, w skalach, przy których dany LOD jest AKTYWNY w kamerze
+// produkcyjnej (progi + histereza `canvas/camera.ts`): (a) żadna etykieta
+// tożsamości nie jest porzucona, (b) zero nachodzeń etykieta↔etykieta,
+// (c) zero nachodzeń etykieta↔rysunek (symbol/tor).
+line('');
+line('=== identity_label_probe (KD-11: tożsamość na rysunku, bez kolizji) ===');
+{
+  const SKALE_PRODUKCYJNE = {
+    0: [0.51, 0.68],
+    1: [0.51, 0.69, 1.02, 1.38],
+    2: [1.02, 1.38, 2],
+  };
+  for (const lod of LODS) {
+    const scene = buildSceneV3(enm, lod);
+    const obstacles = sceneObstacleRects(scene);
+    const tozsamosci = scene.labels.filter((l) => l.labelRole === 'tozsamosc').length;
+    check(
+      `identity_label_probe (KD-11) L${lod}: scena niesie etykiety tożsamości i KAŻDA ma zadeklarowaną stronę kotwicy`,
+      tozsamosci > 0 &&
+        scene.labels.every((l) => l.labelRole !== 'tozsamosc' || l.placement !== undefined),
+      `${tozsamosci} etykiet tożsamości`,
+    );
+    for (const scale of SKALE_PRODUKCYJNE[lod]) {
+      const plan = planSceneLabels(scene.labels, obstacles, scale, sheetSizeFor(scene));
+      const narysowaneTozsamosci = plan.drawn.filter((p) => p.label.labelRole === 'tozsamosc').length;
+      check(
+        `identity_label_probe (KD-11) L${lod} @ ${scale}: 0 porzuconych tożsamości`,
+        plan.droppedIdentity.length === 0,
+        `${narysowaneTozsamosci}/${tozsamosci} narysowanych, porzucone: ${plan.droppedIdentity
+          .slice(0, 3)
+          .map((l) => l.text)
+          .join(', ')}`,
+      );
+      const pary = plannedLabelCollisions(plan);
+      check(
+        `identity_label_probe (KD-11) L${lod} @ ${scale}: 0 nachodzeń etykieta↔etykieta`,
+        pary.length === 0,
+        `${pary.length} par`,
+      );
+      const naRysunku = plannedLabelObstacleCollisions(plan, obstacles);
+      check(
+        `identity_label_probe (KD-11) L${lod} @ ${scale}: 0 nachodzeń etykieta↔rysunek (symbol/tor)`,
+        naRysunku.length === 0,
+        `${naRysunku.length} etykiet`,
+      );
+      check(
+        `identity_label_probe (KD-11) L${lod} @ ${scale}: licznik „Ukryto N opisów" liczy WYŁĄCZNIE dane szczegółowe`,
+        plan.hiddenDetail.every((l) => l.labelRole === 'dane'),
+        `${plan.hiddenDetail.length} ukrytych opisów`,
+      );
+    }
+  }
+  // Negatyw obowiązkowy: wyrocznia kolizji MUSI gryźć na planie sfabrykowanym.
+  const scene = buildSceneV3(enm, 2);
+  const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), 1.02, sheetSizeFor(scene));
+  const sabotaz = {
+    ...plan,
+    drawn: [plan.drawn[0], { ...plan.drawn[1], rect: { ...plan.drawn[0].rect } }],
+  };
+  check(
+    'identity_label_probe (test negatywny — dowód, że wyrocznia gryzie): dwie etykiety w TYM SAMYM prostokącie MUSZĄ dać FAIL',
+    plannedLabelCollisions(sabotaz).length > 0,
+  );
+}
+
+// -- S9-7 screen_text_floor_probe: ŻADEN napis nie schodzi poniżej 8 px EKRANU
+// Audyt C-4 zmierzył na L0 sieci dużej 114 ze 165 napisów o wysokości 2 px
+// (znaczniki stref, podziałka, opis GPZ). Sonda pilnuje OBU rodzin napisów:
+// (a) TREŚCI RYSUNKU — plan etykiet sceny (`canvas/labelLegibility.ts`) na
+//     KAŻDYM poziomie szczegółu i przy skalach od dolnego krańca kamery
+//     (`MIN_SCALE`) po górny (`MAX_SCALE`): albo napis jest czytelny, albo go
+//     nie ma (jest wtedy policzony jako ukryty/porzucony);
+// (b) APARATU ARKUSZA — ramka, znaczniki stref, podziałka, poziom szczegółu,
+//     legenda (`sheet/Frame.tsx`): rozmiar STAŁY na ekranie, więc próg musi
+//     trzymać przy dowolnej skali z definicji (`screenFixedFontSize`).
+line('');
+line('=== screen_text_floor_probe (S9-7, C-4: zero napisów < 8 px ekranu) ===');
+{
+  // Skale: dolny kraniec kamery, wpasowanie sieci dużej, 1:1, górny kraniec.
+  const SKALE_EKRANOWE = [MIN_SCALE, 0.13, 1, MAX_SCALE];
+  for (const lod of LODS) {
+    const scene = buildSceneV3(enm, lod);
+    const obstacles = sceneObstacleRects(scene);
+    for (const scale of SKALE_EKRANOWE) {
+      const plan = planSceneLabels(scene.labels, obstacles, scale, sheetSizeFor(scene));
+      const ponizej = plannedLabelsBelowScreenFloor(plan, scale, MIN_TEXT_SCREEN_PX);
+      check(
+        `screen_text_floor_probe (S9-7, treść rysunku) L${lod} @ ${scale}: 0 narysowanych napisów < ${MIN_TEXT_SCREEN_PX} px ekranu`,
+        ponizej.length === 0,
+        `narysowanych=${plan.drawn.length} poniżej=${ponizej.length}` +
+          (ponizej.length > 0 ? ` np. ${ponizej[0].ownerRef} @${ponizej[0].screenPx.toFixed(2)}px` : '') +
+          ` ukrytych=${plan.hiddenDetail.length} porzuconych=${plan.droppedIdentity.length}`,
+      );
+    }
+  }
+  // (b) aparat arkusza — rozmiar stały na ekranie dla KAŻDEJ klasy typograficznej,
+  // której ramka używa (t1 znaczniki stref, t2 podziałka/poziom, t3 legenda).
+  const KLASY_ARKUSZA = ['t1', 't2', 't3'];
+  for (const scale of SKALE_EKRANOWE) {
+    const najmniejszy = Math.min(
+      ...KLASY_ARKUSZA.map((cls) => screenFixedFontSize(cls, scale) * scale),
+    );
+    check(
+      `screen_text_floor_probe (S9-7, aparat arkusza) @ ${scale}: najmniejszy napis ramki ≥ ${MIN_TEXT_SCREEN_PX} px ekranu`,
+      najmniejszy >= MIN_TEXT_SCREEN_PX - 1e-9,
+      `najmniejszy=${najmniejszy.toFixed(2)}px`,
+    );
+  }
+  // Test negatywny OBOWIĄZKOWY — dowód, że wyrocznia gryzie: plan z pismem
+  // wprost poniżej progu MUSI zostać zgłoszony (bez tego sonda mogłaby być
+  // zielona dlatego, że nic nie mierzy).
+  {
+    const scene = buildSceneV3(enm, 2);
+    const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), 1, sheetSizeFor(scene));
+    const sabotaz = { ...plan, drawn: [{ ...plan.drawn[0], fontSize: 2 }] };
+    check(
+      'screen_text_floor_probe (test negatywny — dowód, że wyrocznia gryzie): napis 2 px ekranu MUSI dać zgłoszenie',
+      plannedLabelsBelowScreenFloor(sabotaz, 1, MIN_TEXT_SCREEN_PX).length === 1,
+    );
+  }
+}
+
+// -- RAMKA-TNIE-PODPISY sheet_outline_probe: rysunek mieści się w swojej ramce
+// Arkusz jest wyprowadzony z REZERWACJI etykiet (`labelReservationRect` →
+// `scene.bbox` → `sheetSizeFor`), liczonych pismem NATURALNYM, a plan malowania
+// pismo POWIĘKSZA — więc do tej karty napis wychodził poza ramkę, którą sam
+// wyznaczył (pomiar: nazwa stacji ostatniego wiersza 36,7 j.św. pod dolną
+// krawędzią na L0 @0,181; podpis pola 282 j. za prawą na L2 @0,30; opis zbiorczy
+// GPZ 39,5 j. przed lewą przy KAŻDEJ skali roboczej). Sonda pilnuje OBU stron
+// pary: rezerwacji (wejście) i tuszu (wyjście).
+line('');
+line('=== sheet_outline_probe (RAMKA-TNIE-PODPISY: zero tuszu poza obrysem arkusza) ===');
+{
+  const SKALE_OBRYSU = [MIN_SCALE, 0.1, 0.14, 0.3, 0.5, 0.6923076923076923, 1, 2, MAX_SCALE];
+  for (const lod of LODS) {
+    const scene = buildSceneV3(enm, lod);
+    const obstacles = sceneObstacleRects(scene);
+    const sheet = sheetSizeFor(scene);
+    check(
+      `sheet_outline_probe L${lod}: arkusz zaczyna się w (0,0) — `
+        + 'inaczej `sheetSizeFor` nie opisuje prostokąta, który rysuje ramka',
+      scene.bbox.x >= 0 && scene.bbox.y >= 0,
+      `bbox=(${scene.bbox.x},${scene.bbox.y})`,
+    );
+    const rezerwacjePoza = scene.labels.filter((l) => !rectWithinSheet(labelReservationRect(l), sheet));
+    check(
+      `sheet_outline_probe L${lod} (WEJŚCIE): 0 rezerwacji etykiet poza arkuszem ${sheet.width}×${sheet.height}`,
+      rezerwacjePoza.length === 0,
+      `etykiet=${scene.labels.length} poza=${rezerwacjePoza.length}`,
+    );
+    for (const scale of SKALE_OBRYSU) {
+      const plan = planSceneLabels(scene.labels, obstacles, scale, sheet);
+      const poza = plannedLabelsOutsideSheet(plan, sheet);
+      check(
+        `sheet_outline_probe L${lod} @ ${scale} (WYJŚCIE): 0 narysowanych napisów poza obrysem arkusza`,
+        poza.length === 0,
+        `narysowanych=${plan.drawn.length} powiększonych=${plan.drawn.filter((p) => p.enlarged).length}`
+          + ` poza=${poza.length}`
+          + (poza.length > 0 ? ` np. ${poza[0].ownerRef} o ${poza[0].overflow.toFixed(1)} j.św.` : ''),
+      );
+    }
+  }
+  // Test negatywny OBOWIĄZKOWY — plan liczony z arkuszem NIESKOŃCZONYM musi
+  // przywrócić zmierzony przelew (dowód, że sonda mierzy naprawę, a nie zbieg
+  // okoliczności), a etykiet przy tym NIE ubywa (tożsamość jest PRZESUWANA).
+  {
+    const scene = buildSceneV3(enm, 0);
+    const obstacles = sceneObstacleRects(scene);
+    const sheet = sheetSizeFor(scene);
+    const bezGranicy = planSceneLabels(scene.labels, obstacles, 0.181, {
+      width: Number.MAX_SAFE_INTEGER,
+      height: Number.MAX_SAFE_INTEGER,
+    });
+    const przelewy = plannedLabelsOutsideSheet(bezGranicy, sheet);
+    check(
+      'sheet_outline_probe (test negatywny — dowód, że wyrocznia gryzie): plan bez granicy arkusza MUSI dać przelew',
+      przelewy.length > 0 && Math.max(...przelewy.map((p) => p.overflow)) > 30,
+      `przelewów=${przelewy.length} max=${przelewy.length ? Math.max(...przelewy.map((p) => p.overflow)).toFixed(1) : 'n/d'} j.św.`,
+    );
+    const zGranica = planSceneLabels(scene.labels, obstacles, 0.181, sheet);
+    check(
+      'sheet_outline_probe: granica arkusza NIE zabiera tożsamości — ta sama liczba napisów co bez granicy',
+      zGranica.drawn.length === bezGranicy.drawn.length
+        && zGranica.droppedIdentity.length === bezGranicy.droppedIdentity.length,
+      `z granicą ${zGranica.drawn.length}/${zGranica.droppedIdentity.length}`
+        + ` bez granicy ${bezGranicy.drawn.length}/${bezGranicy.droppedIdentity.length}`,
+    );
+  }
+}
+
+// -- S9-7/S9-8 sheet_grid_probe: siatka odniesienia i hierarchia wag --------
+// Znaczniki stref muszą opisywać FORMAT ARKUSZA (kwant `SHEET_WIDTH_QUANTUM`,
+// wiersze z `meta.sheetRowBands`), a nie stałą 400 px oderwaną od łamania;
+// hierarchia wag toru (§22.4) musi przetrwać KAŻDĄ skalę kamery, nie tylko 1:1.
+line('');
+line('=== sheet_grid_probe (S9-7 strefy z formatu arkusza) + stroke_rank_probe (S9-8) ===');
+{
+  for (const lod of LODS) {
+    const scene = buildSceneV3(enm, lod);
+    const wiersze = sheetRowStationIds(scene).length;
+    const pasy = sheetRowBandsOf(scene);
+    const dol = pasy.length > 0 ? pasy[pasy.length - 1].y + pasy[pasy.length - 1].height : 0;
+    const ciagle = pasy.every((b, i) => i === 0 || Math.abs(b.y - (pasy[i - 1].y + pasy[i - 1].height)) < 1e-9);
+    check(
+      `sheet_grid_probe (S9-7) L${lod}: pasy stref == wiersze arkusza, rozłączne i pokrywające bbox`,
+      pasy.length === wiersze &&
+        ciagle &&
+        pasy.every((b) => b.height > 0) &&
+        Math.abs(pasy[0].y - scene.bbox.y) < 1e-9 &&
+        Math.abs(dol - (scene.bbox.y + scene.bbox.height)) < 1e-9,
+      `pasów=${pasy.length} wierszy=${wiersze} od=${pasy[0]?.y} do=${dol} bbox=${scene.bbox.y}..${scene.bbox.y + scene.bbox.height}`,
+    );
+    const kolumn = Math.max(1, Math.ceil((scene.bbox.x + scene.bbox.width) / SHEET_WIDTH_QUANTUM));
+    check(
+      `sheet_grid_probe (S9-7) L${lod}: kolumn stref liczonych KWANTEM formatu (${SHEET_WIDTH_QUANTUM} px), nie stałą oderwaną od łamania`,
+      kolumn >= 1 && kolumn <= 32,
+      `kolumn=${kolumn} (dawna stała 400 px dałaby ${Math.ceil((scene.bbox.x + scene.bbox.width) / 400)})`,
+    );
+  }
+  // Hierarchia wag §22.4 na KAŻDEJ skali: wzmocnienie jest jednorodne, więc
+  // porządek jest zachowany co do ilorazu — sonda mierzy to wprost.
+  const RANGI = ['busGpz', 'bus', 'snTrunk', 'sn', 'lv', 'leader'];
+  for (const scale of [MIN_SCALE, 0.13, 0.51, 1, MAX_SCALE]) {
+    const wagi = RANGI.map((k) => segmentStrokeWidthForScale(k, scale) * scale);
+    const malejaco = wagi.every((w, i) => i === 0 || w < wagi[i - 1]);
+    const magistralaCzytelna = segmentStrokeWidthForScale('snTrunk', scale) * scale >= MIN_TRUNK_STROKE_SCREEN_PX - 1e-9;
+    check(
+      `stroke_rank_probe (S9-8) @ ${scale}: hierarchia wag §22.4 zachowana i magistrala ≥ ${MIN_TRUNK_STROKE_SCREEN_PX} px ekranu`,
+      malejaco && magistralaCzytelna,
+      `px ekranu: ${RANGI.map((k, i) => `${k}=${wagi[i].toFixed(2)}`).join(' ')}`,
+    );
+  }
+  // Test negatywny — bez wzmocnienia magistrala przy wpasowaniu ma 0,31 px
+  // (stan sprzed karty), więc sonda MUSI to wyłapać.
+  check(
+    'stroke_rank_probe (test negatywny — dowód, że wyrocznia gryzie): waga BEZ wzmocnienia przy skali 0,13 jest poniżej progu',
+    SEGMENT_STROKE_WIDTH.snTrunk * 0.13 < MIN_TRUNK_STROKE_SCREEN_PX,
+    `bez wzmocnienia=${(SEGMENT_STROKE_WIDTH.snTrunk * 0.13).toFixed(2)}px`,
+  );
+}
+
+// ---------------------------------------------------------------------------
+// KARTA S9-4 — SONDA SIATKOWA TRAFIEŃ (audyt §3.2: P-1 „klik w element w
+// większości nic nie zaznacza", P-2 „inspektor nie rozróżnia obiektów",
+// P-3 „aparaty rysowane kreską są niekilkalne", P-6 „klik w tło zaznacza").
+// ---------------------------------------------------------------------------
+//
+// METODA (dwa niezależne źródła — inaczej sonda pytałaby modelu o model):
+//  - OCZEKIWANIE ze SCENY (`buildCanvasHitAreas`): siatka punktów o kroku
+//    1 j.św. po OBRYSIE każdego obiektu; obiektem oczekiwanym jest ten, którego
+//    obrys zawiera punkt (przy nałożeniu — malowany najwyżej);
+//  - WYNIK z DRZEWA RENDERU: `SldCanvasV3` przepuszczony przez
+//    `renderToStaticMarkup`, sparsowany jsdom-em i odczytany przez
+//    `hitAreasFromDom`. Obiekt, któremu render nie dał uchwytu, NIE ISTNIEJE w
+//    tym zbiorze, więc każdy klik nad nim jest chybieniem (dokładnie stan
+//    etykiet przed tą kartą: 0 uchwytów na 1137 etykiet L2).
+//
+// ILOCZYN CECH (reguła KLASA, NIE INSTANCJA pkt 2): {rodzaj obiektu: symbol
+// stacji · aparat pola · transformator · źródło · układ DER · szyna · tor ·
+// łącznik wiersza arkusza (S9-1) · etykieta · znacznik wyniku (S9-2)} ×
+// {LOD 0/1/2} × {zoom mały/duży}. Zoom sterowany rozmiarem widoku (skala
+// kamery = szerokość widoku / szerokość `viewBox`), więc obie skrajności są
+// mierzone na TEJ SAMEJ scenie.
+line('');
+line('=== hit_grid_probe (S9-4): trafienie i tożsamość zaznaczenia ===');
+{
+  const WIDOKI = [
+    { nazwa: 'mały', width: 1322, height: 696 },
+    { nazwa: 'duży', width: 13220, height: 6960 },
+  ];
+  /** Próg odbioru karty S9-4: ≥ 95 % klików nad elementem zaznacza TEN element. */
+  const PROG_SKUTECZNOSCI = 0.95;
+  /** Minimalny obszar trafienia [px EKRANU] — kryterium KARTY, zapisane tu
+   *  LICZBĄ, świadomie NIE importowane z `hitAreas.ts`. Bramka mierząca się
+   *  stałą, której pilnuje, nie pilnuje niczego: obniżenie `MIN_HIT_SCREEN_PX`
+   *  obniżyłoby jednocześnie cel i miarę (sprawdzone iniekcją 24 → 4: przy
+   *  imporcie stałej bramka przechodziła na zielono). */
+  const PROG_MIN_PX_EKRANU = 24;
+  check(
+    `hit_size_probe (S9-4): stała renderu MIN_HIT_SCREEN_PX nie schodzi poniżej progu karty (${PROG_MIN_PX_EKRANU} px)`,
+    MIN_HIT_SCREEN_PX >= PROG_MIN_PX_EKRANU,
+    `MIN_HIT_SCREEN_PX=${MIN_HIT_SCREEN_PX}`,
+  );
+  const orientedRefs = orientedSegmentRefs(enm);
+
+  for (const lod of LODS) {
+    const scene = buildSceneV3(enm, lod);
+    // Warstwa wynikowa WŁĄCZONA — znaczniki S9-2 są obiektami kanwy tak samo
+    // jak symbol czy tor, więc podlegają temu samemu minimum i tej samej
+    // tożsamości (bez payloadu ta klasa nie byłaby w ogóle zmierzona).
+    const rlByRef = buildResultLabelsFromScene(
+      scene,
+      buildFullResultPayload(scene, orientedRefs, BUS_VOLTAGE_BY_REF, RESULT_REF_BRIDGE),
+      new Set(orientedRefs.keys()),
+      undefined,
+      RESULT_REF_BRIDGE,
+    );
+    const overlay = { energizedByTestId: {}, resultLabelsByOwnerRef: rlByRef };
+
+    // Tożsamość: każdy obiekt kanwy MUSI mieć własny, niepowtarzalny `testId` —
+    // bez tego „TEN element" nie ma sensu, bo dwa obiekty są nieodróżnialne.
+    const wszystkieTestId = [
+      ...scene.segments.map((s, i) => s.meta?.testId ?? `sld-v3-segment-${i}`),
+      ...scene.symbols.map((s, i) => s.meta?.testId ?? `sld-v3-symbol-${i}`),
+    ];
+    const powtorzone = wszystkieTestId.filter((t, i) => wszystkieTestId.indexOf(t) !== i);
+    check(
+      `hit_identity_probe (S9-4, P-2) LOD ${lod}: każdy obiekt kanwy ma NIEPOWTARZALNĄ tożsamość (testId)`,
+      powtorzone.length === 0,
+      powtorzone.length === 0 ? `obiektów=${wszystkieTestId.length}` : `powtórzone=${[...new Set(powtorzone)].join(', ')}`,
+    );
+
+    for (const widok of WIDOKI) {
+      const markup = renderToStaticMarkup(
+        React.createElement(SldCanvasV3, {
+          snapshot: enm,
+          width: widok.width,
+          height: widok.height,
+          lodOverride: lod,
+          overlay,
+          onElementClick: () => {},
+          onElementContextMenu: () => {},
+          onResultLabelActivate: () => {},
+          animateLodTransitions: false,
+        }),
+      );
+      const svg = new JSDOM(`<body>${markup}</body>`).window.document.querySelector('[data-testid="sld-canvas-v3"]');
+      const viewBox = (svg.getAttribute('viewBox') ?? '0 0 1 1').split(' ').map(Number);
+      const scale = widok.width / viewBox[2];
+      const labelPlan = planSceneLabels(scene.labels, sceneObstacleRects(scene), scale, sheetSizeFor(scene));
+      const layoutWynikow = layoutResultLabels(scene, rlByRef, [], lod);
+      const oczekiwane = buildCanvasHitAreas({
+        symbols: scene.symbols,
+        segments: scene.segments,
+        labels: labelPlan.drawn,
+        resultMarkers: [
+          ...layoutWynikow.placements.map((p, i) => ({
+            testId: `sld-v3-result-label-${i}`, ownerRef: p.ownerRef, x: p.x, y: p.y, width: p.width, height: p.height,
+          })),
+          ...layoutWynikow.aggregates.map((a, i) => ({
+            testId: `sld-v3-result-aggregate-${i}`, ownerRef: a.anchorRef, x: a.x, y: a.y, width: a.width, height: a.height,
+          })),
+        ],
+        scale,
+      });
+      const zDrzewa = hitAreasFromDom(svg);
+      const wynik = sondaSiatkowaTrafien(oczekiwane, { scale, trafiane: zDrzewa, minEkranPx: PROG_MIN_PX_EKRANU });
+      const etykieta = `LOD ${lod} · zoom ${widok.nazwa} (skala ${scale.toFixed(4)})`;
+
+      // (a) Kolejność warstw uchwytów — bez niej rozszerzenie kradnie klik obrysowi.
+      const porzadek = hitLayerOrderingInDom(svg);
+      check(
+        `hit_layer_order_probe (S9-4) ${etykieta}: wszystkie obszary rozszerzone LEŻĄ POD obrysami rysunku`,
+        porzadek !== null && porzadek.poprawna,
+        porzadek === null ? 'brak warstwy trafień' : `maks(obszar)=${porzadek.maksZObszaru} < min(obrys)=${porzadek.minZObrysu}`,
+      );
+
+      // (b) Nic poza uchwytami nie łapie kliku — napis bez obsługi nie połyka zdarzenia.
+      const blokery = pointerBlockersInDom(svg);
+      check(
+        `hit_blocker_probe (S9-4, P-1/P-3) ${etykieta}: 0 węzłów rysunku łapiących klik poza warstwą trafień`,
+        blokery.length === 0,
+        blokery.length === 0 ? 'rysunek bierny' : `blokery=${blokery.length}: ${blokery.slice(0, 5).join(', ')}`,
+      );
+
+      // (c) Minimum ekranowe na KAŻDYM obiekcie.
+      check(
+        `hit_size_probe (S9-4) ${etykieta}: każdy obiekt ma obszar trafienia ≥ ${PROG_MIN_PX_EKRANU} px ekranu`,
+        wynik.ponizejMinimum.length === 0,
+        wynik.ponizejMinimum.length === 0
+          ? `obiektów=${oczekiwane.length}`
+          : `poniżej=${wynik.ponizejMinimum.length}, np. ${wynik.ponizejMinimum.slice(0, 3).map((o) => `${o.testId}=${o.ekranPx.toFixed(1)}px`).join(', ')}`,
+      );
+
+      // (d) KRYTERIUM ODBIORU: ≥ 95 % klików nad elementem zaznacza TEN element.
+      check(
+        `hit_grid_probe (S9-4, kryterium odbioru) ${etykieta}: ≥ ${(100 * PROG_SKUTECZNOSCI).toFixed(0)} % klików nad elementem zaznacza TEN element`,
+        wynik.skutecznosc >= PROG_SKUTECZNOSCI,
+        `${(100 * wynik.skutecznosc).toFixed(2)} % (${wynik.trafionych}/${wynik.probek})`
+        + (wynik.chybienia.length > 0
+          ? ` · pierwsze chybienie: ${wynik.chybienia[0].oczekiwanyTestId} → ${wynik.chybienia[0].otrzymanyTestId ?? 'tło'}`
+          : ''),
+      );
+      line(
+        `  hit_grid (${etykieta}) wg rodzaju: `
+        + wynik.wgKlas
+          .filter((k) => k.obiektow > 0)
+          .map((k) => `${k.klasa}=${k.probek > 0 ? ((100 * k.trafionych) / k.probek).toFixed(1) : '—'}%/${k.obiektow}ob.`)
+          .join(' '),
+      );
+
+      // (e) TEST NEGATYWNY (dowód, że wyrocznia gryzie): usunięcie uchwytów
+      //     etykiet z drzewa MUSI zbić skuteczność poniżej progu — to dokładnie
+      //     stan sprzed karty S9-4 (napis rysowany, ale nieklikalny).
+      // PROPORCJE (2026-08-07): test negatywny biegnie na widoku, w ktorym
+      // etykiety FAKTYCZNIE sa rysowane. Po wprowadzeniu sufitu proporcji
+      // (napis nie moze byc wiekszy od tego, co opisuje) kadr „mały” 1322x696
+      // pokazuje siec 53 stacji przy skali 0,101 i niesie juz tylko 54 podpisy
+      // stacji — usuniecie ich z drzewa zbija skutecznosc do 96,9 %, czyli
+      // POWYZEJ progu, wiec test przestal czegokolwiek dowodzic. Wlasnosc, ktorej
+      // pilnuje („napis rysowany MUSI byc klikalny”), jest ta sama; mierzy sie ja
+      // tam, gdzie napisow jest komplet.
+      if (widok.nazwa === 'duży') {
+        const bezEtykiet = zDrzewa.filter((a) => a.klasa !== 'etykieta');
+        const wynikBez = sondaSiatkowaTrafien(oczekiwane, { scale, trafiane: bezEtykiet, minEkranPx: PROG_MIN_PX_EKRANU });
+        check(
+          `hit_grid_probe (test negatywny — dowód, że wyrocznia gryzie) LOD ${lod}: uchwyty etykiet usunięte z drzewa MUSZĄ zbić skuteczność poniżej progu`,
+          wynikBez.skutecznosc < PROG_SKUTECZNOSCI,
+          `${(100 * wynikBez.skutecznosc).toFixed(2)} % (bez ${zDrzewa.length - bezEtykiet.length} uchwytów etykiet)`,
+        );
+      }
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// KARTA S9-5 — MENU KONTEKSTOWE I OPERACJE BUDOWY NA KANWIE (audyt §3.3 P-7
+// „brak menu kontekstowego kanwy", §5 B-4 „dalsza budowa nie ma ścieżki na
+// kanwie"). KRYTERIUM ODBIORU KARTY: budowa sieci 15 stacji wykonalna
+// WYŁĄCZNIE z kanwy.
+// ---------------------------------------------------------------------------
+//
+// CO MIERZY (i czego NIE mierzy — uczciwość pomiarowa): sonda liczy POKRYCIE
+// ŁAŃCUCHA BUDOWY na scenie, czyli ile obiektów kanwy udostępnia z rysunku
+// wejście do każdej operacji domenowej ciągu SN, i czy ref jadący do tej
+// operacji ISTNIEJE w modelu. Sonda NIE wykonuje operacji (to robi spec e2e na
+// żywym backendzie) — mierzy DOSTĘPNOŚĆ, bo to ona była zerowa przed kartą.
+//
+// ILOCZYN CECH (reguła KLASA, NIE INSTANCJA pkt 2): {klasa obiektu kanwy} ×
+// {LOD 0/1/2} × {rodzina gałęzi: kabel / linia napowietrzna}.
+line('');
+line('=== menu_subject_probe (S9-5): menu zależne od trafionego obiektu ===');
+{
+  /** Minimalna liczba stacji ciągu z wejściem budowy — kryterium karty. */
+  const PROG_STACJI = 15;
+  const indexModelu = buildCanvasModelIndex(enm);
+  /** Refy modelu — druga, NIEZALEŻNA strona kontraktu „ref istnieje". */
+  const refyModelu = new Set();
+  for (const kolekcja of [enm.substations, enm.buses, enm.branches, enm.generators, enm.sources, enm.transformers]) {
+    for (const el of kolekcja ?? []) {
+      if (el.ref_id) refyModelu.add(el.ref_id);
+      if (el.id) refyModelu.add(el.id);
+    }
+  }
+  for (const stacja of enm.substations ?? []) {
+    for (const spec of stacja.meta?.field_specs ?? []) {
+      if (spec?.field_ref) refyModelu.add(spec.field_ref);
+    }
+  }
+
+  /** Ogniwa łańcucha budowy: kategoria menu → wymagana pozycja. */
+  const OGNIWA = [
+    { krok: 'ciąg z GPZ', menuKind: 'gpz', action: 'continue-trunk' },
+    { krok: 'odgałęzienie z GPZ', menuKind: 'gpz', action: 'start-branch' },
+    { krok: 'ciąg z szyny sekcji', menuKind: 'section', action: 'continue-trunk' },
+    { krok: 'stacja na odcinku (kabel)', menuKind: 'cable_segment_sn', action: 'insert-station' },
+    { krok: 'stacja na odcinku (napowietrzna)', menuKind: 'overhead_line_sn', action: 'insert-station' },
+    { krok: 'dociągnięcie odcinka', menuKind: 'cable_segment_sn', action: 'continue-trunk-from-endpoint' },
+    { krok: 'ciąg ze stacji', menuKind: 'station', action: 'continue-trunk' },
+    { krok: 'odgałęzienie ze stacji', menuKind: 'station', action: 'start-branch' },
+  ];
+
+  // (a) Każde ogniwo ma pozycję w rejestrze menu i jest AKTYWNE, gdy warunek
+  //     jego wykonania jest spełniony — pozycja permanentnie zablokowana nie
+  //     jest wejściem. Kontekst `trunkStartFieldAvailable: true` odwzorowuje
+  //     rozdzielnię z WOLNYM polem liniowym (stan świeżo wstawionego GPZ).
+  for (const ogniwo of OGNIWA) {
+    const akcje = getMenuActions(ogniwo.menuKind, { trunkStartFieldAvailable: true });
+    const pozycja = akcje.find((a) => a.id === ogniwo.action);
+    check(
+      `menu_chain_probe (S9-5, kryterium odbioru) ogniwo „${ogniwo.krok}": menu ${ogniwo.menuKind} ma AKTYWNĄ pozycję ${ogniwo.action}`,
+      pozycja != null && pozycja.disabled !== true,
+      pozycja == null ? 'BRAK pozycji w SLD_MENU_REGISTRY' : pozycja.disabled ? `zablokowana: ${pozycja.disabledReasonPl}` : 'aktywna',
+    );
+  }
+
+  // (a2) UCZCIWA ODMOWA: rozdzielnia BEZ wolnego pola liniowego blokuje
+  //      wyprowadzenie ciągu z POWODEM — kreator magistrali odmówiłby zapisu
+  //      (`maStartCiagu`), więc otwarcie go byłoby martwym klikiem w oknie.
+  for (const menuKind of ['gpz', 'section']) {
+    const pozycja = getMenuActions(menuKind, { trunkStartFieldAvailable: false })
+      .find((a) => a.id === 'continue-trunk');
+    check(
+      `menu_chain_probe (S9-5, zero fabrykacji) menu ${menuKind} BEZ wolnego pola liniowego: „continue-trunk" zablokowany z powodem`,
+      pozycja != null && pozycja.disabled === true && (pozycja.disabledReasonPl ?? '').includes('wolnego pola liniowego'),
+      pozycja == null ? 'BRAK pozycji' : `disabled=${pozycja.disabled} powod=${pozycja.disabledReasonPl ?? '—'}`,
+    );
+  }
+
+  /** Kanoniczny `Bus.ref_id` szyn GPZ — TEN SAM kanał, którym karmi rozstrzyganie
+   *  tematu żywy `SldCanvasV3` (`klikMeta.busRef = resultRefForSegment(meta)`).
+   *  Bez niego sonda mierzyłaby INNE wejście niż aplikacja. */
+  const busRefSceny = (scene) => {
+    const mapa = new Map();
+    scene.segments.forEach((segment, index) => {
+      mapa.set(segment.meta?.testId ?? `sld-v3-segment-${index}`, resultRefForSegment(segment.meta));
+    });
+    return mapa;
+  };
+
+  for (const lod of LODS) {
+    const scene = buildSceneV3(enm, lod);
+    const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), 1, sheetSizeFor(scene));
+    const busRefy = busRefSceny(scene);
+    const obszary = buildCanvasHitAreas({
+      symbols: scene.symbols,
+      segments: scene.segments,
+      labels: plan.drawn,
+      resultMarkers: [],
+      scale: 1,
+    });
+    const wgKlasy = new Map(HIT_OBJECT_CLASSES.map((k) => [k, { obiektow: 0, tematow: 0, kategorie: new Map() }]));
+    let refySpozaModelu = 0;
+    let pierwszyZlyRef = null;
+    for (const area of obszary) {
+      const wpis = wgKlasy.get(area.klasa);
+      if (!wpis) continue;
+      wpis.obiektow += 1;
+      const wynik = resolveCanvasMenuSubject(
+        { klasa: area.klasa, ownerRef: area.ownerRef, elementKind: area.elementKind, busRef: busRefy.get(area.testId) },
+        indexModelu,
+      );
+      if (wynik.stan !== 'temat') continue;
+      wpis.tematow += 1;
+      wpis.kategorie.set(wynik.temat.menuKind, (wpis.kategorie.get(wynik.temat.menuKind) ?? 0) + 1);
+      if (!refyModelu.has(wynik.temat.modelRef)) {
+        refySpozaModelu += 1;
+        pierwszyZlyRef ??= `${area.testId} → ${wynik.temat.modelRef}`;
+      }
+    }
+
+    // (b) ZERO FABRYKACJI: żaden otwarty temat menu nie wskazuje refu spoza modelu.
+    check(
+      `menu_ref_probe (S9-5, B-4) LOD ${lod}: 0 tematów menu z refem spoza modelu`,
+      refySpozaModelu === 0,
+      refySpozaModelu === 0 ? `tematów=${[...wgKlasy.values()].reduce((s, w) => s + w.tematow, 0)}` : `złych=${refySpozaModelu}, np. ${pierwszyZlyRef}`,
+    );
+
+    // (c) Pokrycie łańcucha: stacje i odcinki z realnym wejściem budowy.
+    const stacjeZWejsciem = obszary.filter((a) => {
+      if (a.klasa !== 'stacja') return false;
+      const w = resolveCanvasMenuSubject({ klasa: a.klasa, ownerRef: a.ownerRef, elementKind: a.elementKind, busRef: busRefy.get(a.testId) }, indexModelu);
+      return w.stan === 'temat' && w.temat.menuKind === 'station';
+    }).length;
+    const odcinkiZWejsciem = obszary.filter((a) => {
+      if (a.klasa !== 'tor' && a.klasa !== 'lacznik-wiersza') return false;
+      const w = resolveCanvasMenuSubject({ klasa: a.klasa, ownerRef: a.ownerRef, elementKind: a.elementKind, busRef: busRefy.get(a.testId) }, indexModelu);
+      return w.stan === 'temat' && w.temat.kotwica === 'galaz';
+    }).length;
+    if (lod === 0) {
+      check(
+        `menu_chain_probe (S9-5, kryterium odbioru) LOD 0: ≥ ${PROG_STACJI} stacji z wejściem „kontynuuj ciąg / odgałęzienie" na rysunku`,
+        stacjeZWejsciem >= PROG_STACJI,
+        `stacji=${stacjeZWejsciem}`,
+      );
+    }
+    check(
+      `menu_chain_probe (S9-5) LOD ${lod}: ≥ ${PROG_STACJI} odcinków z wejściem „zakończ odcinek stacją"`,
+      odcinkiZWejsciem >= PROG_STACJI,
+      `odcinków=${odcinkiZWejsciem}`,
+    );
+
+    line(
+      `  menu_subject (LOD ${lod}) wg klasy: `
+      + HIT_OBJECT_CLASSES.filter((k) => (wgKlasy.get(k)?.obiektow ?? 0) > 0)
+        .map((k) => {
+          const w = wgKlasy.get(k);
+          const kat = [...w.kategorie.entries()].sort(([a], [b]) => (a < b ? -1 : 1)).map(([n, c]) => `${n}:${c}`).join('|');
+          return `${k}=${w.tematow}/${w.obiektow}${kat ? `(${kat})` : ''}`;
+        })
+        .join(' '),
+    );
+  }
+
+  // (d) Rodzina gałęzi rozstrzyga kategorię — obie rodziny obecne i ROZŁĄCZNE.
+  {
+    const sceneL2 = buildSceneV3(enm, 2);
+    const obszaryL2 = buildCanvasHitAreas({
+      symbols: sceneL2.symbols, segments: sceneL2.segments, labels: [], resultMarkers: [], scale: 1,
+    });
+    const rodziny = new Map();
+    for (const area of obszaryL2) {
+      if (area.klasa !== 'tor') continue;
+      const w = resolveCanvasMenuSubject({ klasa: area.klasa, ownerRef: area.ownerRef, elementKind: area.elementKind }, indexModelu);
+      if (w.stan !== 'temat' || w.temat.kotwica !== 'galaz') continue;
+      rodziny.set(w.temat.menuKind, (rodziny.get(w.temat.menuKind) ?? 0) + 1);
+    }
+    check(
+      'menu_family_probe (S9-5): kategoria menu odcinka idzie za rodziną gałęzi (kabel i linia napowietrzna są ROZRÓŻNIANE)',
+      (rodziny.get('cable_segment_sn') ?? 0) > 0 && (rodziny.get('overhead_line_sn') ?? 0) > 0,
+      `kabel=${rodziny.get('cable_segment_sn') ?? 0} napowietrzna=${rodziny.get('overhead_line_sn') ?? 0}`,
+    );
+    check(
+      'menu_family_probe (S9-5): menu kabla i menu linii napowietrznej mają ROZŁĄCZNE pozycje zakończenia odcinka',
+      SLD_MENU_REGISTRY.cable_segment_sn.some((a) => a.id === 'insert-zksn')
+      && !SLD_MENU_REGISTRY.cable_segment_sn.some((a) => a.id === 'insert-pole')
+      && SLD_MENU_REGISTRY.overhead_line_sn.some((a) => a.id === 'insert-pole')
+      && !SLD_MENU_REGISTRY.overhead_line_sn.some((a) => a.id === 'insert-zksn'),
+      'kabel→ZK SN, napowietrzna→słup rozgałęźny',
+    );
+  }
+
+  // (e) TEST NEGATYWNY (dowód, że wyrocznia gryzie): rozstrzyganie tematu bez
+  //     weryfikacji w modelu (indeks PUSTY) MUSI zbić pokrycie do zera —
+  //     inaczej sonda mierzyłaby samą deklarację, nie zachowanie.
+  {
+    const pustyIndex = buildCanvasModelIndex(null);
+    const sceneL2 = buildSceneV3(enm, 2);
+    const obszaryL2 = buildCanvasHitAreas({
+      symbols: sceneL2.symbols, segments: sceneL2.segments, labels: [], resultMarkers: [], scale: 1,
+    });
+    const tematy = obszaryL2.filter(
+      (a) => resolveCanvasMenuSubject({ klasa: a.klasa, ownerRef: a.ownerRef, elementKind: a.elementKind }, pustyIndex).stan === 'temat',
+    ).length;
+    check(
+      'menu_subject_probe (test negatywny — dowód, że wyrocznia gryzie): model pusty MUSI dać 0 tematów menu',
+      tematy === 0,
+      `tematów=${tematy}`,
+    );
   }
 }
 

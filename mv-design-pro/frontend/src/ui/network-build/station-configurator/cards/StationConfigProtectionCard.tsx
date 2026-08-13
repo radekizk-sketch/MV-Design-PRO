@@ -1,16 +1,20 @@
 /**
  * Karta 8 — Zabezpieczenia i automatyka (PR-8a, brief §8 karta 8).
  *
- * Naprawa eng.20: walidacja VT voltage_factor vs typ uziemienia neutralnego.
- * Naprawa eng.18: walidacja Idyn/Ith aparatury (IEC 60909).
+ * Dwa werdykty inżynierskie tej karty pochodzą Z BACKENDU i karta ich NIE LICZY:
+ *  - zgodność przekładnika napięciowego ze sposobem uziemienia (IEC 61869-3) —
+ *    `WalidacjaVtPolaSekcja` (V12K-257),
+ *  - wytrzymałość zwarciowa aparatury I_dyn / I_th (IEC 60909) —
+ *    `WalidacjaWytrzymalosciAparaturySekcja` (K7-B, 2026-07-31).
+ * Karta zestawia dane pól i pokazuje odpowiedzi; reguła NOT-A-SOLVER.
  */
 
 import { useEffect, useState } from 'react';
 
 import { fetchVtTypes } from '../../../catalog/api';
 import type { VTCatalogType } from '../../../catalog/types';
-import { validateDeviceWithstand } from '../../station-der/protection-catalogs';
 import { WalidacjaVtPolaSekcja } from './WalidacjaVtPolaSekcja';
+import { WalidacjaWytrzymalosciAparaturySekcja } from './WalidacjaWytrzymalosciAparaturySekcja';
 
 export interface ProtectionRow {
   readonly relayId: string;
@@ -98,17 +102,6 @@ export function StationConfigProtectionCard(
     };
   }, [onChangeVt]);
 
-  // Naprawa eng.18: walidacja wytrzymałości aparatury.
-  const withstandValidations = (deviceWithstandRows ?? []).map((row) => ({
-    bayDesignation: row.bayDesignation,
-    ...validateDeviceWithstand({
-      device_id: row.deviceCatalogRef,
-      i_peak_calculated_ka: row.i_peak_calculated_ka,
-      i_thermal_calculated_ka: row.i_thermal_calculated_ka,
-      t_clearing_s: row.t_clearing_s,
-    }),
-  }));
-
   return (
     <div data-testid="station-config-protection" className="flex flex-col gap-2 text-xs">
       <div className="text-[10px] font-bold uppercase tracking-widest text-scada-muted">
@@ -195,30 +188,7 @@ export function StationConfigProtectionCard(
         typUziemienia={mvNeutralGroundingType}
       />
 
-      {withstandValidations.length > 0 && (
-        <div data-testid="device-withstand-validation" className="space-y-1">
-          <div className="text-[10px] font-medium text-scada-muted">
-            Walidacja wytrzymałości aparatury I_dyn / I_th (IEC 60909)
-          </div>
-          <div className="grid grid-cols-1 gap-1">
-            {withstandValidations.map((row) => (
-              <div
-                key={row.bayDesignation}
-                data-testid={`withstand-${row.bayDesignation}`}
-                data-withstand-ok={String(row.ok)}
-                className={
-                  'rounded border px-2 py-1 text-[11px] '
-                  + (row.ok
-                    ? 'border-emerald-700 bg-emerald-950/20 text-emerald-200'
-                    : 'border-rose-700 bg-rose-950/20 text-rose-200')
-                }
-              >
-                <span className="font-mono">{row.bayDesignation}</span>: {row.message_pl}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      <WalidacjaWytrzymalosciAparaturySekcja pola={deviceWithstandRows ?? []} />
 
       <div className="flex justify-between border-t border-scada-border pt-1.5 text-[11px]">
         <div>

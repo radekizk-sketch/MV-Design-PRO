@@ -23,6 +23,7 @@ import {
 } from '../field/fieldControlSelectors';
 import { useFieldReadModel } from '../field/useFieldReadModel';
 import { useSnapshotStore } from '../topology/snapshotStore';
+import { GOTOWOSC_STRINGS } from '../../ui2/spaces/gotowosc/strings';
 import {
   resolveBranchSourceContext,
   resolveBranchSourceRef,
@@ -30,10 +31,10 @@ import {
 
 type StatusLevel = 'done' | 'partial' | 'empty' | 'error';
 
-const mutedTextClass = 'text-[#8fb4d8]';
+const mutedTextClass = 'text-scada-text';
 const primaryTextClass = 'text-scada-text';
-const rowHoverClass = 'hover:bg-[#0a2033]';
-const sectionBorderClass = 'border-[#15324f]';
+const rowHoverClass = 'hover:bg-scada-surface';
+const sectionBorderClass = 'border-scada-border';
 
 function scopedTestId(testId: string, scope?: string): string {
   return scope ? `${scope}-${testId}` : testId;
@@ -82,7 +83,7 @@ function SectionHeader({ id, label, status, badge, collapsed, onToggle, testIdSc
       type="button"
       onClick={onToggle}
       className={clsx(
-        'w-full flex items-center gap-2 px-3 py-2 text-left transition-colors border-b bg-[#06101c]',
+        'w-full flex items-center gap-2 px-3 py-2 text-left transition-colors border-b bg-scada-bg',
         rowHoverClass,
         sectionBorderClass,
       )}
@@ -93,7 +94,7 @@ function SectionHeader({ id, label, status, badge, collapsed, onToggle, testIdSc
       <StatusDot level={status} />
       <span className={clsx('flex-1 text-xs font-semibold uppercase tracking-wider', primaryTextClass)}>{label}</span>
       {badge && (
-        <span className="rounded border border-[#24506f] bg-[#081827] px-1.5 py-0.5 text-[10px] text-[#9ecbff]">{badge}</span>
+        <span className="rounded border border-scada-border-strong bg-scada-bg px-1.5 py-0.5 text-[10px] text-sygnal-info-tusz">{badge}</span>
       )}
     </button>
   );
@@ -117,8 +118,8 @@ function ActionButton({ label, onClick, variant = 'secondary', testId, testIdSco
       className={clsx(
         'w-full text-left px-3 py-1.5 text-[11px] rounded-ind transition-colors border',
         variant === 'primary'
-          ? 'border-[#00d4ff] bg-[#07415f] text-scada-text hover:bg-[#09567d] disabled:border-[#1c2d3f] disabled:bg-[#07111f] disabled:text-[#536b86]'
-          : 'border-[#15324f] bg-[#07111f] text-[#9ecbff] hover:border-[#00d4ff] hover:bg-[#0a2033] hover:text-scada-text disabled:border-[#15324f] disabled:text-[#536b86] disabled:hover:bg-[#07111f]',
+          ? 'border-sygnal-info bg-sygnal-info-tlo text-scada-text hover:bg-sygnal-info-tlo disabled:border-scada-border disabled:bg-scada-bg disabled:text-scada-muted'
+          : 'border-scada-border bg-scada-bg text-sygnal-info-tusz hover:border-sygnal-info hover:bg-scada-surface hover:text-scada-text disabled:border-scada-border disabled:text-scada-muted disabled:hover:bg-scada-bg',
       )}
       data-testid={testId ? scopedTestId(testId, testIdScope) : undefined}
     >
@@ -380,7 +381,7 @@ function TrunksSection({
                 type="button"
                 onClick={() => handleInsertStation(trunk)}
                 disabled={trunk.segments.length === 0}
-                className="ml-auto text-[10px] text-[#67d9ff] hover:text-scada-text"
+                className="ml-auto text-[10px] text-sygnal-info-tusz hover:text-scada-text"
               >
                 Podziel odcinek i wstaw stację
               </button>
@@ -390,14 +391,14 @@ function TrunksSection({
       )}
 
       {openTerminals.length > 0 && (
-        <div className="space-y-1 border-t border-[#15324f] pt-2">
+        <div className="space-y-1 border-t border-scada-border pt-2">
           <p className={clsx('text-[10px] font-medium uppercase', mutedTextClass)}>Wolne zaciski układu sieci</p>
           {openTerminals.map((terminal) => (
             <button
               key={`${terminal.element_id}-${terminal.port_id}`}
               type="button"
               onClick={() => handleContinueTrunk(terminal)}
-              className="w-full rounded px-2 py-1 text-left text-[11px] text-[#9ecbff] hover:bg-[#0a2033]"
+              className="w-full rounded px-2 py-1 text-left text-[11px] text-sygnal-info-tusz hover:bg-scada-surface"
               data-testid={scopedTestId(`btn-connect-port-${safeTestToken(terminal.element_id)}-${safeTestToken(terminal.port_id)}`, testIdScope)}
             >
               <span className="block font-medium">Połącz zacisk</span>
@@ -409,7 +410,7 @@ function TrunksSection({
         </div>
       )}
 
-      <div className="border-t border-[#15324f] pt-2">
+      <div className="border-t border-scada-border pt-2">
         <p className={clsx('text-[10px]', mutedTextClass)}>
           ZKSN i słup rozgałęźny dodawaj na końcu odcinka albo przez świadomy podział odcinka z podglądem skutków topologicznych.
         </p>
@@ -487,7 +488,7 @@ function StationsSection({ stations }: { stations: StationSummary[] }) {
                     type="button"
                     disabled={!branchContext}
                     onClick={() => handleStartBranch(station.id)}
-                    className="text-[10px] text-[#67d9ff] hover:text-scada-text disabled:cursor-not-allowed disabled:text-[#536b86]"
+                    className="text-[10px] text-sygnal-info-tusz hover:text-scada-text disabled:cursor-not-allowed disabled:text-scada-muted"
                     title={branchContext ? 'Rozpocznij odgałęzienie z pola liniowego stacji' : 'Najpierw wybierz wolne pole liniowe stacji'}
                   >
                     [Pole liniowe]
@@ -516,7 +517,7 @@ function BranchesSection({ branches }: { branches: BranchViewV1[] }) {
             >
               <span className="font-medium">O{index + 1}</span>
               <span className={mutedTextClass}>{branchSourceLabel(branch)}</span>
-              <span className="text-[#6f8cac]">{branch.segments.length} segm.</span>
+              <span className="text-scada-muted">{branch.segments.length} segm.</span>
             </div>
           ))}
         </div>
@@ -618,7 +619,7 @@ function TransformersSection({
               className={clsx('flex items-center gap-2 text-[11px] py-1 px-2 rounded', primaryTextClass, rowHoverClass)}
             >
               <span className="truncate flex-1">{transformer.name}</span>
-              <span className="text-[#6f8cac]">{transformer.snKva} kVA</span>
+              <span className="text-scada-muted">{transformer.snKva} kVA</span>
               {transformer.catalogRef ? (
                 <span className="text-[10px] text-eng-green">KAT</span>
               ) : (
@@ -629,7 +630,7 @@ function TransformersSection({
         </div>
       )}
 
-      <div className="border-t border-[#15324f] pt-2">
+      <div className="border-t border-scada-border pt-2">
         <div className={clsx('mb-1 text-[10px] font-semibold uppercase tracking-wider', mutedTextClass)}>
           Odbiory nN
         </div>
@@ -643,7 +644,7 @@ function TransformersSection({
                 className={clsx('flex items-center gap-2 rounded px-2 py-1 text-[11px]', primaryTextClass, rowHoverClass)}
               >
                 <span className="truncate flex-1">{load.name}</span>
-                <span className="text-[#6f8cac]">{load.pKw.toFixed(1)} kW</span>
+                <span className="text-scada-muted">{load.pKw.toFixed(1)} kW</span>
                 {load.catalogRef ? (
                   <span className="text-[10px] text-eng-green">KAT</span>
                 ) : (
@@ -733,7 +734,7 @@ function OzeSection({
                 {formatGeneratorTypeShortLabelPl(source.genType)}
               </span>
               <span className="truncate flex-1">{source.name}</span>
-              <span className="text-[#6f8cac]">{(source.pMw * 1000).toFixed(0)} kW</span>
+              <span className="text-scada-muted">{(source.pMw * 1000).toFixed(0)} kW</span>
             </div>
           ))}
         </div>
@@ -845,21 +846,46 @@ function ProtectionSection({ testIdScope }: { testIdScope?: string }) {
 
 function CalculationControlSection({
   isReady,
+  gotowoscUstalona,
   blockersByCategory,
 }: {
   isReady: boolean;
+  gotowoscUstalona: boolean;
   blockersByCategory: { topologia: number; katalogi: number; eksploatacja: number; analiza: number; total: number };
 }) {
+  // DŁUG V12K-318 poz. 4: przy gotowości NIEUSTALONEJ liczniki są zerami z BRAKU
+  // POMIARU — napis „0 zagadnień technicznych" twierdził wtedy, że policzono i
+  // wyszło zero. Sygnał rozróżniający z toru U5, napisy z panelu „Gotowość".
   return (
     <div className="px-3 py-2 space-y-2">
       <div className="flex items-center gap-2">
-        <StatusDot level={isReady ? 'done' : blockersByCategory.total > 0 ? 'error' : 'partial'} />
-        <span className={clsx('text-xs font-semibold', isReady ? 'text-eng-green' : primaryTextClass)}>
-          {isReady ? 'Układ dopuszczony do analizy' : `${blockersByCategory.total} zagadnień technicznych`}
+        <StatusDot
+          level={
+            !gotowoscUstalona
+              ? 'empty'
+              : isReady
+                ? 'done'
+                : blockersByCategory.total > 0
+                  ? 'error'
+                  : 'partial'
+          }
+        />
+        <span
+          className={clsx(
+            'text-xs font-semibold',
+            isReady && gotowoscUstalona ? 'text-eng-green' : primaryTextClass,
+          )}
+          data-testid="proces-stan-gotowosci"
+        >
+          {!gotowoscUstalona
+            ? GOTOWOSC_STRINGS.nieustalonaTytul
+            : isReady
+              ? 'Układ dopuszczony do analizy'
+              : `${blockersByCategory.total} zagadnień technicznych`}
         </span>
       </div>
 
-      {!isReady && blockersByCategory.total > 0 && (
+      {gotowoscUstalona && !isReady && blockersByCategory.total > 0 && (
         <div className="grid grid-cols-2 gap-1 text-[10px]">
           {blockersByCategory.topologia > 0 && (
             <span className="text-eng-red">Topologia: {blockersByCategory.topologia}</span>
@@ -894,6 +920,7 @@ export function ProcessPanel({ className, testIdScope }: ProcessPanelProps) {
     blockersByCategory,
     branchCount,
     buildPhaseLabel,
+    readinessUstalona,
     configuredGpzSnFieldCount,
     configuredGpzSnFields,
     generatorCount,
@@ -963,15 +990,21 @@ export function ProcessPanel({ className, testIdScope }: ProcessPanelProps) {
       : protectionStats.withCt > 0 || protectionStats.fields > 0
         ? 'partial'
         : 'empty';
-  const readinessStatus: StatusLevel = isReady ? 'done' : blockersByCategory.total > 0 ? 'error' : 'partial';
+  const readinessStatus: StatusLevel = !readinessUstalona
+    ? 'empty'
+    : isReady
+      ? 'done'
+      : blockersByCategory.total > 0
+        ? 'error'
+        : 'partial';
 
   return (
     <div
       className={clsx('flex flex-col h-full overflow-hidden', className)}
       data-testid={scopedTestId('process-panel', testIdScope)}
     >
-      <div className="border-b border-[#15324f] bg-[#07111f] px-3 py-2">
-        <p className="font-mono-eng text-[10px] font-semibold uppercase tracking-[0.22em] text-[#8fb4d8]">
+      <div className="border-b border-scada-border bg-scada-bg px-3 py-2">
+        <p className="font-mono-eng text-[10px] font-semibold uppercase tracking-[0.22em] text-scada-text">
           Prowadzony edytor SLD
         </p>
         <p className="mt-1 text-[11px] font-semibold text-scada-text">{buildPhaseLabel}</p>
@@ -1127,7 +1160,11 @@ export function ProcessPanel({ className, testIdScope }: ProcessPanelProps) {
           testIdScope={testIdScope}
         />
         {!isSectionCollapsed('readiness') && (
-          <CalculationControlSection isReady={isReady} blockersByCategory={blockersByCategory} />
+          <CalculationControlSection
+            isReady={isReady}
+            gotowoscUstalona={readinessUstalona}
+            blockersByCategory={blockersByCategory}
+          />
         )}
       </div>
     </div>

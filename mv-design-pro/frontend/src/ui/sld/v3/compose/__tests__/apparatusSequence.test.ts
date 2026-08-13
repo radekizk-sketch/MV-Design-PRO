@@ -1,9 +1,16 @@
 /**
  * SLD V3 F10.2 — testy `compose/apparatusSequence.ts` `apparatusIdentifiers`
  * (SLD_CAD_SPEC_V3 §19.1, V12K-035): identyfikator PER-APARAT (Q/QE/T),
- * fallback konwencji WYŁĄCZNIE dla aparatów wymienionych wprost w spec §19.1
+ * fallback konwencji dla aparatów wymienionych wprost w spec §19.1
  * (wyłącznik/rozłącznik/odłącznik → „Q"; uziemnik → „QE"; transformator →
- * „T"). CT/VT/SA/cableHead NIE dostają identyfikatora w tej fazie.
+ * „T") ORAZ — od dyrektywy właściciela 2026-08-06 (audyt sieci pokazowej:
+ * anonimowy przekładnik pola pomiarowego czytał się jak „mały transformator")
+ * — przekładnik napięciowy → „TV" (klasa przekładników PN-EN 81346-2:
+ * TA=prądowy, TV=napięciowy) ORAZ — od decyzji właściciela 2026-08-07
+ * (V12K-335 pkt 3, karta S9-12) — ogranicznik przepięć → „F" (klasa
+ * ochronników PN-EN 81346-2; dług „SA bez konwencji" z V12K-329
+ * ROZSTRZYGNIĘTY). CT/cableHead NIE dostają identyfikatora w tej fazie
+ * (CT ma własną adnotację §18.3/F10.4).
  */
 import { describe, expect, it } from 'vitest';
 
@@ -28,17 +35,59 @@ describe('apparatusIdentifiers (spec §19.1 — identyfikator per-aparat, fallba
     expect(apparatusIdentifiers(symbolIds)).toEqual(['Q1', 'Q2', 'T1']);
   });
 
-  it('pole pomiarowe (konwencja §12.4): DS→VT→ES ⇒ Q1,null,QE1 (VT bez identyfikatora w F10.2)', () => {
+  it('pole pomiarowe (konwencja §12.4): DS→VT→ES ⇒ Q1,TV1,QE1 (przekładnik napięciowy z oznacznikiem — dyrektywa 2026-08-06)', () => {
+    // Intencja pierwotna (VT ⇒ null) była świadomą decyzją „zero zgadywania";
+    // zmiana kanonu rozstrzygnięta dyrektywą właściciela po audycie sieci
+    // pokazowej — VT bez oznacznika czytał się jak transformator mocy.
     const symbolIds: readonly SymbolId[] = ['disconnector', 'voltageTransformer', 'earthSwitch'];
-    expect(apparatusIdentifiers(symbolIds)).toEqual(['Q1', null, 'QE1']);
+    expect(apparatusIdentifiers(symbolIds)).toEqual(['Q1', 'TV1', 'QE1']);
   });
 
-  it('CT/VT/SA/cableHead nigdy nie dostają identyfikatora (poza zakresem F10.2 — §18.3/F10.4, brak konwencji dla VT/SA)', () => {
+  it('CT/cableHead nigdy nie dostają identyfikatora (§18.3/F10.4 dla CT), VT dostaje TV, SA dostaje F (V12K-335 pkt 3)', () => {
+    // Intencja pierwotna (SA ⇒ null) była świadomym długiem „brak konwencji,
+    // zero zgadywania" (V12K-329); decyzja właściciela 2026-08-07 rozstrzygnęła
+    // rodzinę F wg PN-EN 81346-2 — test przepisany do obecnego kanonu.
     const symbolIds: readonly SymbolId[] = ['currentTransformer', 'voltageTransformer', 'surgeArrester', 'cableHead'];
-    expect(apparatusIdentifiers(symbolIds)).toEqual([null, null, null, null]);
+    expect(apparatusIdentifiers(symbolIds)).toEqual([null, 'TV1', 'F1', null]);
   });
 
-  it('liczniki Q/QE/T są NIEZALEŻNE — pozycja aparatu jednej kategorii nie wpływa na numerację innej', () => {
+  it('dwa ograniczniki w polu ⇒ F1, F2 (licznik kategorii F, jak Q/QE/T/TV); licznik resetuje się między polami', () => {
+    const symbolIds: readonly SymbolId[] = ['disconnector', 'surgeArrester', 'surgeArrester', 'earthSwitch'];
+    expect(apparatusIdentifiers(symbolIds)).toEqual(['Q1', 'F1', 'F2', 'QE1']);
+    // Reset per pole: NOWE wywołanie (nowe pole) zaczyna od F1, nie F3.
+    expect(apparatusIdentifiers(['surgeArrester'])).toEqual(['F1']);
+  });
+
+  it('dana per-aparat wygrywa nad konwencją F (prymat danych §12.1 obejmuje ogranicznik — np. producenckie „Z1")', () => {
+    const symbolIds: readonly SymbolId[] = ['surgeArrester'];
+    expect(apparatusIdentifiers(symbolIds, ['Z1'])).toEqual(['Z1']);
+    expect(apparatusIdentifierSources(symbolIds, ['Z1'])).toEqual(['dane']);
+    expect(apparatusIdentifierSources(symbolIds)).toEqual(['konwencja']);
+  });
+
+  it('KOLIZJA dana↔konwencja F: dana „F1" na bezpieczniku + konwencyjny F1 ogranicznika ⇒ deterministyczny sufiks', () => {
+    // Iloczyn cech nazwany w V12K-329 jako powód wstrzymania F: producenckie
+    // „F1" bezpiecznika w JEDNYM polu z ogranicznikiem konwencji. Mechanizm
+    // disambiguacji Z3 §0.3 rozstrzyga kolizję JAWNIE (sufiks „·k"), zero
+    // cichego nadpisania.
+    const symbolIds: readonly SymbolId[] = ['fuseSwitch', 'surgeArrester'];
+    const designations = ['F1', null];
+    expect(apparatusIdentifiers(symbolIds, designations)).toEqual(['F1', 'F1·2']);
+  });
+
+  it('dwa przekładniki napięciowe w polu ⇒ TV1, TV2 (licznik kategorii TV, jak Q/QE/T)', () => {
+    const symbolIds: readonly SymbolId[] = ['disconnector', 'voltageTransformer', 'voltageTransformer', 'earthSwitch'];
+    expect(apparatusIdentifiers(symbolIds)).toEqual(['Q1', 'TV1', 'TV2', 'QE1']);
+  });
+
+  it('dana per-aparat wygrywa nad konwencją TV (prymat danych §12.1 obejmuje przekładnik)', () => {
+    const symbolIds: readonly SymbolId[] = ['voltageTransformer'];
+    expect(apparatusIdentifiers(symbolIds, ['PN-7'])).toEqual(['PN-7']);
+    expect(apparatusIdentifierSources(symbolIds, ['PN-7'])).toEqual(['dane']);
+    expect(apparatusIdentifierSources(symbolIds)).toEqual(['konwencja']);
+  });
+
+  it('liczniki Q/QE/T/TV/F są NIEZALEŻNE — pozycja aparatu jednej kategorii nie wpływa na numerację innej', () => {
     const symbolIds: readonly SymbolId[] = [
       'earthSwitch', // QE1
       'breaker', // Q1
@@ -46,8 +95,10 @@ describe('apparatusIdentifiers (spec §19.1 — identyfikator per-aparat, fallba
       'disconnector', // Q2
       'earthSwitch', // QE2
       'transformer2W', // T2
+      'voltageTransformer', // TV1 — licznik TV niezależny od T
+      'surgeArrester', // F1 — licznik F niezależny od pozostałych
     ];
-    expect(apparatusIdentifiers(symbolIds)).toEqual(['QE1', 'Q1', 'T1', 'Q2', 'QE2', 'T2']);
+    expect(apparatusIdentifiers(symbolIds)).toEqual(['QE1', 'Q1', 'T1', 'Q2', 'QE2', 'T2', 'TV1', 'F1']);
   });
 
   it('sekwencja pusta ⇒ tablica pusta', () => {
@@ -78,7 +129,7 @@ describe('F10.6 (DOMAIN, V12K-035, D1) — apparatusIdentifiers/apparatusIdentif
     expect(apparatusIdentifiers(symbolIds)).toEqual(['Q1', 'Q2', 'QE1', 'T1']);
   });
 
-  it('apparatusIdentifierSources: "dane" wyłącznie gdy designation obecny na pozycji identyfikowalnej, null dla CT/VT/SA', () => {
+  it('apparatusIdentifierSources: "dane" wyłącznie gdy designation obecny na pozycji identyfikowalnej, null dla CT', () => {
     const symbolIds: readonly SymbolId[] = ['breaker', 'disconnector', 'currentTransformer', 'earthSwitch'];
     const designations = ['Q7', undefined, 'ignorowane-CT-nie-ma-identyfikatora', undefined];
     expect(apparatusIdentifierSources(symbolIds, designations)).toEqual(['dane', 'konwencja', null, 'konwencja']);
@@ -91,7 +142,7 @@ describe('F10.6 (DOMAIN, V12K-035, D1) — apparatusIdentifiers/apparatusIdentif
 });
 
 describe('Z3 (AUDYT_POWYKONAWCZY_SLD §Z3 + dług W1c) — prymat danych i unikalność w polu', () => {
-  it('PEŁNE dane producenckie: „F1"/„TR" (poza wzorcem §19.1) wygrywają nad konwencją', () => {
+  it('PEŁNE dane producenckie: „F1"/„TR" wygrywają nad konwencją („TR" nadal poza wzorcem §19.1 — prymat danych)', () => {
     // Pole transformatorowe RMU z packa: rozłącznik bezpiecznikowy „F1" +
     // uziemnik „Q9" (dana) + transformator „TR". Dane spływają 1:1.
     const symbolIds: readonly SymbolId[] = ['fuseSwitch', 'earthSwitch', 'transformer2W'];

@@ -143,7 +143,8 @@ export function isUsableManufacturer(manufacturer: Manufacturer): boolean {
 
 export function isUsableSwitchgearFamily(family: SwitchgearFamily): boolean {
   return (
-    (family.status === 'verified' && family.source_refs.length > 0)
+    ((family.status === 'verified' || family.status === 'repo_verified')
+      && family.source_refs.length > 0)
     || family.status === 'user_defined'
   );
 }
@@ -588,6 +589,18 @@ export interface StationSnFieldTemplate {
   bay_template_ref: string | null;
   source_status: CompleteMvBayTemplateSummary['source_status'];
   source_refs: readonly string[];
+  /**
+   * Aparat pola z katalogu APARAT_SN (B-12) — operacja domenowa NIE dobiera go
+   * sama, więc brak referencji kończy zapis jawnym błędem walidacji.
+   */
+  apparatus_catalog_ref: string | null;
+  /**
+   * Wyposażenie pomiarowo-zabezpieczeniowe pola (B-3) — payload operacji
+   * `add_ct`/`add_vt`/`add_relay` pod kluczami `ct`/`vt`/`relay`. Wskazane
+   * wyposażenie powstaje w TEJ SAMEJ operacji i migawce co stacja (atomowo);
+   * pominięcie pola zachowuje dotychczasowy tor (operacje osobne).
+   */
+  equipment?: Record<string, unknown>;
 }
 
 export function buildStationSnFields(
@@ -595,6 +608,7 @@ export function buildStationSnFields(
   templatesByRole: Partial<Record<SnFieldRole, CompleteMvBayTemplateSummary>>,
   switchgearChoice: StationSwitchgearChoice,
   bayKindMap: Record<SnFieldRole, BayKind>,
+  apparatusByRole: Partial<Record<SnFieldRole, string>> = {},
 ): StationSnFieldTemplate[] {
   return buildDefaultSnFields(stationKind).map((field) => {
     const role = field.field_role as SnFieldRole;
@@ -604,6 +618,7 @@ export function buildStationSnFields(
       manufacturer_ref: switchgearChoice.manufacturerRef,
       switchgear_family_ref: switchgearChoice.switchgearFamilyRef,
       bay_kind: bayKindMap[role],
+      apparatus_catalog_ref: apparatusByRole[role] ?? null,
       bay_template_ref: template?.template_ref ?? null,
       source_status: template?.source_status ?? 'requires_catalog',
       source_refs: template?.source_refs ?? [],

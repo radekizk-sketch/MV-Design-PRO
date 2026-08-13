@@ -200,7 +200,7 @@ export const JAKOSC_STRINGS = {
   modulPominiety: 'Pominięty w sumowaniu',
   modulWliczony: 'Wliczony do sumowania',
   // Ślad WHITE BOX
-  sladTytul: 'Ślad obliczeń (WHITE BOX)',
+  sladTytul: 'Ślad obliczeń (pełna jawność)',
   sladPokaz: 'Pokaż ślad obliczeń',
   sladUkryj: 'Ukryj ślad obliczeń',
   sladWzor: 'Wzór',

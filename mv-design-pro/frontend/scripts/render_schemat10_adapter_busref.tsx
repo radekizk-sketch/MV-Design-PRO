@@ -19,7 +19,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
 import { buildSceneV3, type SceneV3 } from '../src/ui/sld/v3/scene/buildScene';
-import { buildResultLabelsFromScene, singleHopSegmentRefs } from '../src/ui/sld/v3/canvas/resultLabels';
+import { buildResultLabelsFromScene, orientedSegmentRefs } from '../src/ui/sld/v3/canvas/resultLabels';
 import { layoutResultLabels } from '../src/ui/sld/v3/canvas/SldCanvasV3';
 import { SYMBOL_DEFS } from '../src/ui/sld/v3/symbols/defs';
 import type { EnergyNetworkModel } from '../src/types/enm';
@@ -34,7 +34,10 @@ const enm = (JSON.parse(readFileSync(enmPath, 'utf8')) as { readonly enm: Energy
 const GPZ_PREFIX = 'gpz/1021aa18ea28ab398f1166359a58215a';
 
 const scene = buildSceneV3(enm, 2);
-const singleHop = singleHopSegmentRefs(enm);
+// Bramka przesel: KLUCZE mapy orientacji (`orientedSegmentRefs`) — dokumentowany
+// zamiennik usunietej `singleHopSegmentRefs`, ta sama derywacja co produkcja
+// (`SldCanvasV3Workspace.buildResultLabelsForSnapshot`).
+const singleHop = new Set(orientedSegmentRefs(enm).keys());
 
 function el(refId: string, kind: string, metrics: RawOverlayElement['metrics'], severity = 'INFO'): RawOverlayElement {
   return { ref_id: refId, kind, badges: [], metrics, severity };
@@ -80,7 +83,11 @@ void layoutResultLabels; // potok layoutu istnieje w produkcji; tu rysujemy wpis
 
 // -- Krop do regionu GPZ (elementy o ref z prefiksem GPZ). -------------------
 const inGpz = (ref?: string): boolean => !!ref && ref.startsWith(GPZ_PREFIX);
-const gpzSyms = scene.symbols.filter((s) => inGpz(s.meta?.ownerRef) || inGpz(s.meta?.bayRef));
+// `PreviewElementMeta.bayRef` nie istnieje od przebudowy meta sceny; klauzula byla
+// martwa (JS milczaco czytal `undefined`). POMIAR na sieci referencyjnej L2:
+// 16 symboli ma `ownerRef` z prefiksem GPZ i DOKLADNIE 16 ma prefiks GPZ w
+// jakimkolwiek polu `meta` — roznica ZERO, wiec `ownerRef` pokrywa caly zbior.
+const gpzSyms = scene.symbols.filter((s) => inGpz(s.meta?.ownerRef));
 const gpzSegs = scene.segments.filter((s) => inGpz(s.meta?.ownerRef));
 let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
 for (const s of gpzSyms) {
@@ -98,7 +105,7 @@ const cropW = maxX - minX, cropH = maxY - minY;
 
 // -- Style ------------------------------------------------------------------
 const BG = '#0E1621', PANEL_BG = '#12202E', WIRE = '#8FA8BE', BUS = '#5FA8D3';
-const TXT = '#E8EEF4', SUB = '#9FB3C8', RESULT = '#B39DDB', MISS = '#5A6B7A', HL = '#F2C14E';
+const TXT = '#E8EEF4', SUB = '#9FB3C8', MISS = '#5A6B7A', HL = '#F2C14E';
 function esc(s: string): string { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
 const gpzBusOwnerRefs = new Set(gpzSegs.filter((s) => s.meta?.elementKind === 'bus').map((s) => s.meta!.ownerRef!));

@@ -47,6 +47,7 @@ except ImportError:
     _PDF_AVAILABLE = False
 
 # Import DOCX determinism utilities
+from network_model.reporting.czcionki import zarejestruj_czcionki
 from network_model.reporting.docx_determinism import make_docx_deterministic
 
 # =============================================================================
@@ -550,7 +551,8 @@ def export_reference_pattern_to_pdf(
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Utwórz canvas PDF z stabilnymi metadanymi
-    c = canvas.Canvas(str(output_path), pagesize=A4)
+    zarejestruj_czcionki()
+    c = canvas.Canvas(str(output_path), pagesize=A4, invariant=1, pageCompression=0)
 
     # Ustaw stałe metadane dokumentu (dla powtarzalności)
     c.setTitle(f"Raport wzorca odniesienia: {result.name_pl}")
@@ -579,19 +581,19 @@ def export_reference_pattern_to_pdf(
 
     def draw_text(text: str, x: float, font_size: int = 10, bold: bool = False) -> None:
         nonlocal y
-        font_name = "Helvetica-Bold" if bold else "Helvetica"
+        font_name = "DejaVuSans-Bold" if bold else "DejaVuSans"
         c.setFont(font_name, font_size)
         c.drawString(x, y, text)
         y -= line_height
 
     def draw_wrapped_text(text: str, x: float, max_width: float, font_size: int = 10) -> None:
         nonlocal y
-        c.setFont("Helvetica", font_size)
+        c.setFont("DejaVuSans", font_size)
         words = text.split()
         current_line = ""
         for word in words:
             test_line = f"{current_line} {word}".strip()
-            if c.stringWidth(test_line, "Helvetica", font_size) < max_width:
+            if c.stringWidth(test_line, "DejaVuSans", font_size) < max_width:
                 current_line = test_line
             else:
                 if current_line:
@@ -606,24 +608,24 @@ def export_reference_pattern_to_pdf(
 
     # 1) STRONA TYTUŁOWA
     # Tytuł główny
-    c.setFont("Helvetica-Bold", 18)
+    c.setFont("DejaVuSans-Bold", 18)
     title = "Raport wzorca odniesienia"
-    title_width = c.stringWidth(title, "Helvetica-Bold", 18)
+    title_width = c.stringWidth(title, "DejaVuSans-Bold", 18)
     c.drawString((page_width - title_width) / 2, y, title)
     y -= 12 * mm
 
     # Nazwa wzorca
-    c.setFont("Helvetica-Bold", 14)
+    c.setFont("DejaVuSans-Bold", 14)
     pattern_name = result.name_pl
-    if c.stringWidth(pattern_name, "Helvetica-Bold", 14) > (right_margin - left_margin):
+    if c.stringWidth(pattern_name, "DejaVuSans-Bold", 14) > (right_margin - left_margin):
         # Jeśli za długa, użyj mniejszej czcionki
-        c.setFont("Helvetica-Bold", 12)
-    name_width = c.stringWidth(pattern_name, "Helvetica-Bold", 12)
+        c.setFont("DejaVuSans-Bold", 12)
+    name_width = c.stringWidth(pattern_name, "DejaVuSans-Bold", 12)
     c.drawString((page_width - name_width) / 2, y, pattern_name)
     y -= 10 * mm
 
     # Metadane
-    c.setFont("Helvetica", 10)
+    c.setFont("DejaVuSans", 10)
     meta_lines = [
         f"Projekt: {metadata.project_name}",
         f"Przypadek: {metadata.case_name}",
@@ -632,7 +634,7 @@ def export_reference_pattern_to_pdf(
     ]
     for line in meta_lines:
         y = check_page_break(line_height)
-        line_width = c.stringWidth(line, "Helvetica", 10)
+        line_width = c.stringWidth(line, "DejaVuSans", 10)
         c.drawString((page_width - line_width) / 2, y, line)
         y -= line_height
 
@@ -645,18 +647,18 @@ def export_reference_pattern_to_pdf(
 
     # Werdykt
     y = check_page_break(line_height * 2)
-    c.setFont("Helvetica-Bold", 11)
+    c.setFont("DejaVuSans-Bold", 11)
     c.drawString(left_margin, y, f"Werdykt: {result.verdict}")
     y -= line_height
 
     # Opis werdyktu
     verdict_desc = VERDICT_DESCRIPTIONS_PL.get(result.verdict, result.verdict)
-    c.setFont("Helvetica", 10)
+    c.setFont("DejaVuSans", 10)
     c.drawString(left_margin, y, f"({verdict_desc})")
     y -= line_height * 2
 
     # Podsumowanie
-    c.setFont("Helvetica-Bold", 10)
+    c.setFont("DejaVuSans-Bold", 10)
     c.drawString(left_margin, y, "Podsumowanie:")
     y -= line_height
     draw_wrapped_text(result.summary_pl, left_margin, right_margin - left_margin, 10)
@@ -675,7 +677,7 @@ def export_reference_pattern_to_pdf(
         name = check.get("name_pl", "—")
         status = check.get("status_pl", check.get("status", "—"))
 
-        c.setFont("Helvetica-Bold", 10)
+        c.setFont("DejaVuSans-Bold", 10)
         c.drawString(left_margin, y, f"{name}: {status}")
         y -= line_height
 
@@ -713,7 +715,7 @@ def export_reference_pattern_to_pdf(
         value = result.artifacts.get(key)
         if value is not None:
             y = check_page_break(line_height)
-            c.setFont("Helvetica", 10)
+            c.setFont("DejaVuSans", 10)
             c.drawString(label_x, y, label + ":")
             c.drawString(value_x, y, _format_value(value))
             y -= line_height
@@ -733,11 +735,11 @@ def export_reference_pattern_to_pdf(
             step_name = step.get("step", f"krok_{i}")
             description = step.get("description_pl", "—")
 
-            c.setFont("Helvetica-Bold", 9)
+            c.setFont("DejaVuSans-Bold", 9)
             c.drawString(left_margin, y, f"{i}. {step_name}")
             y -= line_height
 
-            c.setFont("Helvetica", 9)
+            c.setFont("DejaVuSans", 9)
             # Skróć opis jeśli za długi
             if len(description) > 80:
                 description = description[:77] + "..."
@@ -746,7 +748,7 @@ def export_reference_pattern_to_pdf(
 
         if len(result.trace) > max_steps:
             y = check_page_break(line_height)
-            c.setFont("Helvetica-Oblique", 9)
+            c.setFont("DejaVuSans-Oblique", 9)
             c.drawString(
                 left_margin, y, f"... oraz {len(result.trace) - max_steps} dodatkowych kroków"
             )
@@ -759,7 +761,7 @@ def export_reference_pattern_to_pdf(
     draw_text("Informacje o raporcie", left_margin, font_size=14, bold=True)
     y -= 3 * mm
 
-    c.setFont("Helvetica", 9)
+    c.setFont("DejaVuSans", 9)
     info_text = (
         "Raport generowany przez MV-DESIGN-PRO. "
         "Dane wejściowe określają deterministycznie treść raportu."

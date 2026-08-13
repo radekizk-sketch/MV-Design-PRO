@@ -6,10 +6,13 @@ Rejestr: V12K-054 (G-SCM F2). Domyka lukę: zwarcie 3-fazowe (najczęstsze) nie 
 dotąd pakietu dowodowego, a generator ``ProofGenerator.generate_sc3f_proof`` (jedyne
 miejsce z krokami maszynowymi μ/q/i_b, IEC 60909-0:2016 §6.6) był osierocony.
 
-Pakiet liczy WSZYSTKO po stronie serwera z kanonicznego snapshotu ENM (ZERO fizyki w
+Wszystko liczy się po stronie serwera z kanonicznego snapshotu ENM (ZERO fizyki w
 UI, WHITE BOX):
-- ``map_enm_to_network_graph`` → graf (ze źródłami zwarciowymi maszyn/DER, G-SCM F1),
-- ``ShortCircuitIEC60909Solver.compute_3ph_short_circuit`` → I″k / ip / I_th / S_k,
+- ``zwarcie_3f_ze_snapshotu`` (warstwa wiązania) → graf + FROZEN wynik
+  I″k / ip / I_th / S_k. Mapowanie ENM i wejście w solver stoją TAM, nie tutaj:
+  pakiet dowodowy OPISUJE wynik, nie produkuje go (dług PACK-SC3F-WIAZANIE
+  domknięty 2026-08-07; bliźniak `wynik_zwarcia_1f_ze_snapshotu` dla pakietu
+  niesymetrycznego).
 - ``compute_machine_contributions`` → rozbicie per-maszyna (μ, q, i_b) — dołączane do
   dowodu WYŁĄCZNIE gdy sieć zawiera maszyny wirujące (brak → dowód bez sekcji
   maszynowej, determinizm zachowany).
@@ -29,12 +32,15 @@ from typing import Any
 from uuid import UUID, uuid4
 
 from application.proof_engine.proof_generator import ProofGenerator, SC3FInput
-from application.proof_engine.proof_pack import ProofPackBuilder, ProofPackContext
+from application.proof_engine.proof_pack import (
+    ProofPackBuilder,
+    ProofPackContext,
+    deterministic_artifact_id,
+    dokument_deterministyczny,
+)
 from application.proof_engine.types import ProofDocument
-from enm.mapping import map_enm_to_network_graph
-from enm.models import EnergyNetworkModel
+from application.solvers.short_circuit_binding import zwarcie_3f_ze_snapshotu
 from network_model.solvers.machine_sc_iec60909 import compute_machine_contributions
-from network_model.solvers.short_circuit_iec60909 import ShortCircuitIEC60909Solver
 
 
 @dataclass
@@ -84,15 +90,19 @@ class SC3FProofPack:
         if artifact_id is None:
             artifact_id = uuid4()
 
-        enm = EnergyNetworkModel.model_validate(data.snapshot)
-        graph = map_enm_to_network_graph(enm)
-
-        result = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
-            graph=graph,
+        # FIZYKA NIE DZIEJE SIĘ TUTAJ (dług PACK-SC3F-WIAZANIE domknięty 2026-08-07).
+        # Mapowanie snapshotu i wejście w solver stoją w warstwie wiązania; pakiet
+        # dowodowy OPISUJE wynik, nie produkuje go (kanon: „Proof Engine reads results
+        # READ-ONLY"). Graf wraca razem z wynikiem, bo rozbicie per-maszyna niżej musi
+        # liczyć się na TYM SAMYM grafie — drugie mapowanie byłoby drugim źródłem prawdy.
+        zwarcie = zwarcie_3f_ze_snapshotu(
+            snapshot=data.snapshot,
             fault_node_id=data.fault_node_id,
             c_factor=data.c_factor,
             tk_s=data.tk_s,
         )
+        result = zwarcie.wynik
+        graph = zwarcie.graf
 
         # Rozbicie per-maszyna (μ/q/i_b, §6.6) z tego samego grafu; t_min = czas prądu
         # wyłączeniowego (tb_s), zgodnie z torem AnalysisRunService. Dołączane do dowodu
@@ -150,9 +160,16 @@ class SC3FProofPack:
         context: ProofPackContext,
         artifact_id: UUID | None = None,
     ) -> bytes:
-        """Zbuduj ZIP pakietu dowodowego SC3F."""
-        result = cls.generate(data, artifact_id)
-        return ProofPackBuilder(context).build(result.proof_sc3f)
+        """Zbuduj ZIP pakietu dowodowego SC3F.
+
+        Bez jawnego ``artifact_id`` identyfikator artefaktu wyprowadzamy z tożsamości
+        pakietu (``deterministic_artifact_id``) — inaczej dwa pobrania tego samego
+        przebiegu różniłyby się bajtami, wbrew deklaracji ``manifest.json``.
+        """
+        result = cls.generate(data, artifact_id or deterministic_artifact_id(context))
+        return ProofPackBuilder(context).build(
+            dokument_deterministyczny(result.proof_sc3f, context, data.run_timestamp)
+        )
 
     @classmethod
     def validate_completeness(cls, result: SC3FPackResult) -> list[str]:

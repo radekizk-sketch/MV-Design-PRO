@@ -21,6 +21,8 @@ from dataclasses import dataclass
 from io import BytesIO
 from typing import Any
 
+from network_model.reporting.czcionki import ustaw_czcionki_stylow, zarejestruj_czcionki
+
 
 @dataclass(frozen=True)
 class Audit2ReportContext:
@@ -125,6 +127,7 @@ def render_audit2_report_pdf(ctx: Audit2ReportContext) -> bytes:
         return render_audit2_report_text(ctx).encode("utf-8")
 
     buffer = BytesIO()
+    zarejestruj_czcionki()
     doc = SimpleDocTemplate(
         buffer,
         pagesize=A4,
@@ -134,8 +137,11 @@ def render_audit2_report_pdf(ctx: Audit2ReportContext) -> bytes:
         rightMargin=2 * cm,
         title=f"Raport walidacji audytu 2 — {ctx.station_id}",
         author="MV-DESIGN-PRO",
+        invariant=1,
+        pageCompression=0,
     )
     styles = getSampleStyleSheet()
+    ustaw_czcionki_stylow(styles)
     elements: list = []
 
     # Naglowek.
@@ -165,7 +171,7 @@ def render_audit2_report_pdf(ctx: Audit2ReportContext) -> bytes:
             [
                 ("BACKGROUND", (0, 0), (-1, 0), rl_colors.HexColor("#cccccc")),
                 ("GRID", (0, 0), (-1, -1), 0.25, rl_colors.black),
-                ("FONTNAME", (0, 0), (-1, -1), "Helvetica"),
+                ("FONTNAME", (0, 0), (-1, -1), "DejaVuSans"),
                 ("FONTSIZE", (0, 0), (-1, -1), 10),
             ]
         )
@@ -187,7 +193,7 @@ def render_audit2_report_pdf(ctx: Audit2ReportContext) -> bytes:
                 [
                     ("BACKGROUND", (0, 0), (-1, 0), rl_colors.HexColor("#dddddd")),
                     ("GRID", (0, 0), (-1, -1), 0.25, rl_colors.black),
-                    ("FONTNAME", (0, 0), (-1, -1), "Helvetica"),
+                    ("FONTNAME", (0, 0), (-1, -1), "DejaVuSans"),
                     ("FONTSIZE", (0, 0), (-1, -1), 9),
                     ("VALIGN", (0, 0), (-1, -1), "TOP"),
                 ]
@@ -254,7 +260,7 @@ def render_audit2_report_docx(ctx: Audit2ReportContext) -> bytes:
             tbl.rows[i].cells[0].text = status
             tbl.rows[i].cells[1].text = str(p.get("summary_pl", ""))[:300]
 
-    # Style: Helvetica 10pt for all paragraphs.
+    # Style: domyślny font akapitów (Calibri) 10pt — DOCX obsługuje Unicode natywnie.
     for _section in doc.sections:
         for para in doc.paragraphs:
             for run in para.runs:

@@ -147,6 +147,61 @@ describe('KreatorPolaSn — realna ścieżka', () => {
     });
   });
 
+  it('pole pomiarowe: wybór układu pomiarowego energii trafia do payloadu add_sn_bay', async () => {
+    executeDomainOperationMock.mockResolvedValue({ error: null });
+    render(<KreatorPolaSn />);
+    await pick();
+    // Wybór pomiaru widoczny dopiero dla roli pomiarowej (realna ścieżka).
+    expect(screen.queryByTestId('mvd-kreator-pole-rodzaj-pomiaru')).not.toBeInTheDocument();
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-pole-rola'), 'MEASUREMENT');
+    await userEvent.selectOptions(
+      screen.getByTestId('mvd-kreator-pole-rodzaj-pomiaru'),
+      'KONTROLNY',
+    );
+
+    await userEvent.click(screen.getByTestId('mvd-kreator-pole-zapisz'));
+
+    await waitFor(() => {
+      expect(executeDomainOperationMock).toHaveBeenCalledWith(
+        'case-1',
+        'add_sn_bay',
+        expect.objectContaining({
+          bay_role: 'MEASUREMENT',
+          funkcja_pomiaru: 'UKLAD_ENERGII',
+          rodzaj_pomiaru: 'KONTROLNY',
+        }),
+      );
+    });
+  });
+
+  it('pole pomiarowe bez zmiany wyboru = pomiar napięcia szyn (jawnie w payloadzie)', async () => {
+    executeDomainOperationMock.mockResolvedValue({ error: null });
+    render(<KreatorPolaSn />);
+    await pick();
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-pole-rola'), 'MEASUREMENT');
+    await userEvent.click(screen.getByTestId('mvd-kreator-pole-zapisz'));
+    await waitFor(() => {
+      expect(executeDomainOperationMock).toHaveBeenCalled();
+    });
+    const payload = executeDomainOperationMock.mock.calls[0][2] as Record<string, unknown>;
+    expect(payload.funkcja_pomiaru).toBe('NAPIECIA_SZYN');
+    expect(payload.rodzaj_pomiaru).toBeUndefined();
+  });
+
+  it('rola niepomiarowa nie wysyła pomiaru (zero fantomów)', async () => {
+    executeDomainOperationMock.mockResolvedValue({ error: null });
+    render(<KreatorPolaSn />);
+    await pick();
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-pole-rola'), 'OUT');
+    await userEvent.click(screen.getByTestId('mvd-kreator-pole-zapisz'));
+    await waitFor(() => {
+      expect(executeDomainOperationMock).toHaveBeenCalled();
+    });
+    const payload = executeDomainOperationMock.mock.calls[0][2] as Record<string, unknown>;
+    expect(payload.funkcja_pomiaru).toBeUndefined();
+    expect(payload.rodzaj_pomiaru).toBeUndefined();
+  });
+
   it('uczciwy stan zerowy: bez szyny/stacji zapis zablokowany', async () => {
     resolved.station = null;
     resolved.bus = null;

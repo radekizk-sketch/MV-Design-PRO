@@ -21,6 +21,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from network_model.reporting.czcionki import zarejestruj_czcionki
+
 # Check for reportlab availability at import time
 try:
     from reportlab import rl_config
@@ -99,6 +101,7 @@ def export_protection_coordination_to_pdf(
     rl_config.invariant = 1
 
     # Create PDF canvas with invariant mode
+    zarejestruj_czcionki()
     c = canvas.Canvas(str(output_path), pagesize=A4, invariant=1, pageCompression=0)
 
     # Set fixed metadata for determinism
@@ -130,7 +133,7 @@ def export_protection_coordination_to_pdf(
     def draw_text(text: str, x: float, font_size: int = 10, bold: bool = False) -> None:
         """Draw text at current y position."""
         nonlocal y
-        font_name = "Helvetica-Bold" if bold else "Helvetica"
+        font_name = "DejaVuSans-Bold" if bold else "DejaVuSans"
         c.setFont(font_name, font_size)
         c.drawString(x, y, text)
         y -= line_height
@@ -141,11 +144,11 @@ def export_protection_coordination_to_pdf(
         x: float,
         font_size: int = 9,
         bold: bool = False,
-        colors: list[str] | None = None,
+        colors: list[str | None] | None = None,
     ) -> None:
         """Draw a table row with optional column colors."""
         nonlocal y
-        font_name = "Helvetica-Bold" if bold else "Helvetica"
+        font_name = "DejaVuSans-Bold" if bold else "DejaVuSans"
         current_x = x
         for i, val in enumerate(values):
             text = str(val)[:25]  # Truncate long text
@@ -170,7 +173,7 @@ def export_protection_coordination_to_pdf(
 
         # Draw text
         c.setFillColor(HexColor("#ffffff"))
-        c.setFont("Helvetica-Bold", 9)
+        c.setFont("DejaVuSans-Bold", 9)
         c.drawString(x + 2 * mm, y_pos, label)
         c.setFillColor(HexColor("#000000"))
 
@@ -178,8 +181,8 @@ def export_protection_coordination_to_pdf(
     # 1) TITLE
     # ==========================================================================
     report_title = title if title else "Raport koordynacji zabezpieczeń nadprądowych"
-    c.setFont("Helvetica-Bold", 16)
-    title_width = c.stringWidth(report_title, "Helvetica-Bold", 16)
+    c.setFont("DejaVuSans-Bold", 16)
+    title_width = c.stringWidth(report_title, "DejaVuSans-Bold", 16)
     c.drawString((page_width - title_width) / 2, y, report_title)
     y -= 12 * mm
 
@@ -191,7 +194,7 @@ def export_protection_coordination_to_pdf(
         "overall_verdict_pl", VERDICT_LABELS_PL.get(overall_verdict, overall_verdict)
     )
 
-    c.setFont("Helvetica", 12)
+    c.setFont("DejaVuSans", 12)
     c.drawString(left_margin, y, "Wynik analizy:")
     draw_verdict_badge(overall_verdict, left_margin + 35 * mm, y)
     y -= 8 * mm
@@ -204,7 +207,7 @@ def export_protection_coordination_to_pdf(
         if metadata.get("created_at"):
             meta_parts.append(f"Data: {metadata['created_at'][:19]}")
         if meta_parts:
-            c.setFont("Helvetica", 9)
+            c.setFont("DejaVuSans", 9)
             c.drawString(left_margin, y, " | ".join(meta_parts))
             y -= line_height
 
@@ -234,7 +237,7 @@ def export_protection_coordination_to_pdf(
 
     for label, value in summary_fields:
         y = check_page_break(line_height)
-        c.setFont("Helvetica", 10)
+        c.setFont("DejaVuSans", 10)
         c.drawString(label_x, y, label)
         c.drawString(value_x, y, value)
         y -= line_height
@@ -276,7 +279,7 @@ def export_protection_coordination_to_pdf(
                 left_margin,
             )
     else:
-        c.setFont("Helvetica-Oblique", 10)
+        c.setFont("DejaVuSans-Oblique", 10)
         c.drawString(left_margin, y, "Brak urządzeń")
         y -= line_height
 
@@ -319,7 +322,7 @@ def export_protection_coordination_to_pdf(
                 colors=[None, None, None, None, verdict_color],
             )
     else:
-        c.setFont("Helvetica-Oblique", 10)
+        c.setFont("DejaVuSans-Oblique", 10)
         c.drawString(left_margin, y, "Brak danych")
         y -= line_height
 
@@ -363,7 +366,7 @@ def export_protection_coordination_to_pdf(
                 colors=[None, None, None, None, None, verdict_color],
             )
     else:
-        c.setFont("Helvetica-Oblique", 10)
+        c.setFont("DejaVuSans-Oblique", 10)
         c.drawString(left_margin, y, "Brak danych (wymaga min. 2 urządzeń)")
         y -= line_height
 
@@ -408,7 +411,7 @@ def export_protection_coordination_to_pdf(
                 colors=[None, None, None, None, verdict_color],
             )
     else:
-        c.setFont("Helvetica-Oblique", 10)
+        c.setFont("DejaVuSans-Oblique", 10)
         c.drawString(left_margin, y, "Brak danych")
         y -= line_height
 
@@ -443,11 +446,11 @@ def export_protection_coordination_to_pdf(
             )
 
         y -= 3 * mm
-        c.setFont("Helvetica-Oblique", 9)
+        c.setFont("DejaVuSans-Oblique", 9)
         c.drawString(left_margin, y, "Wykres TCC dostępny w eksporcie interaktywnym")
         y -= line_height
     else:
-        c.setFont("Helvetica-Oblique", 10)
+        c.setFont("DejaVuSans-Oblique", 10)
         c.drawString(left_margin, y, "Brak krzywych TCC")
         y -= line_height
 
@@ -456,7 +459,7 @@ def export_protection_coordination_to_pdf(
     # ==========================================================================
     y = check_page_break(20 * mm)
     y -= section_spacing
-    c.setFont("Helvetica", 8)
+    c.setFont("DejaVuSans", 8)
     c.setFillColor(HexColor("#6b7280"))
     c.drawString(left_margin, y, f"Run ID: {result.get('run_id', '—')}")
     c.drawString(left_margin, y - 4 * mm, f"Wygenerowano: {result.get('created_at', '—')[:19]}")

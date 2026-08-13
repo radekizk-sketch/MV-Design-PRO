@@ -17,7 +17,14 @@ export type KategoriaId =
   | 'KABEL'
   | 'TRANSFORMATOR'
   | 'APARAT'
-  | 'FALOWNIK';
+  | 'FALOWNIK'
+  // L-16 (inwentarz mostów): przestrzenie obecne w API katalogu i w moście
+  // `CatalogBrowser`, a nieobecne w adapterze ui2 — przez to projektant nie
+  // widział w warsztacie modelu ani przekładników, ani osprzętu nN.
+  | 'CT'
+  | 'VT'
+  | 'KABEL_NN'
+  | 'APARAT_NN';
 
 /**
  * Pojedyncza pozycja katalogu w postaci znormalizowanej dla widoku.

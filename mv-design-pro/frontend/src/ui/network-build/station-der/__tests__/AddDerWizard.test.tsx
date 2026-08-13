@@ -1,5 +1,5 @@
 ﻿/**
- * Testy AddDerWizard (Faza D) â€” 5-krokowy guided flow dodawania DER.
+ * Testy AddDerWizard (Faza D) — 5-krokowy guided flow dodawania DER.
  */
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -12,7 +12,7 @@ import { useSnapshotStore } from '../../../topology/snapshotStore';
 import { AddDerWizard } from '../AddDerWizard';
 import { useStationDerStore, selectDersOfStation } from '../store';
 
-// Phase 8: Wizard pulls catalog snapshot via React Query â€” need QueryClient.
+// Phase 8: Wizard pulls catalog snapshot via React Query — need QueryClient.
 function render(ui: ReactElement) {
   // Stub fetch dla useAudit2CatalogSnapshot (Wizard pre-fetcher).
   if (!(global as { fetch?: unknown }).fetch || (global.fetch as { _isStub?: boolean })._isStub !== true) {
@@ -39,7 +39,7 @@ function render(ui: ReactElement) {
 
 const FROZEN_NOW = '2026-05-06T10:00:00Z';
 
-describe('AddDerWizard â€” 5-krokowy guided flow', () => {
+describe('AddDerWizard — 5-krokowy guided flow', () => {
   beforeEach(() => {
     useStationDerStore.getState().reset();
     useAppStateStore.getState().reset();
@@ -62,7 +62,7 @@ describe('AddDerWizard â€” 5-krokowy guided flow', () => {
     expect(container.firstChild).toBeNull();
   });
 
-  it('renderuje 5 krokĂłw stepper z polskimi etykietami', () => {
+  it('renderuje 5 kroków stepper z polskimi etykietami', () => {
     render(
       <AddDerWizard
         isOpen
@@ -90,7 +90,7 @@ describe('AddDerWizard â€” 5-krokowy guided flow', () => {
     expect(screen.getByTestId('variant-dedicated_transformer')).toBeInTheDocument();
   });
 
-  it('Krok 1: FW pokazuje 2 warianty (SN, dedicated) â€” bez nN', () => {
+  it('Krok 1: FW pokazuje 2 warianty (SN, dedicated) — bez nN', () => {
     render(
       <AddDerWizard isOpen stationId="s" stationName="S" derKind="FW" projectId="p" onClose={vi.fn()} />,
     );
@@ -110,7 +110,7 @@ describe('AddDerWizard â€” 5-krokowy guided flow', () => {
     expect(next.disabled).toBe(false);
   });
 
-  it('peĹ‚ny flow PV po SN: 5 krokĂłw â†’ utwĂłrz', async () => {
+  it('pełny flow PV po SN: 5 kroków → utwórz', async () => {
     const onClose = vi.fn();
     render(
       <AddDerWizard
@@ -147,7 +147,7 @@ describe('AddDerWizard â€” 5-krokowy guided flow', () => {
     // Krok 5: review + utworz
     fireEvent.click(screen.getByTestId('add-der-create'));
 
-    // Po utworzeniu DER jest w store + onClose wywoĹ‚any.
+    // Po utworzeniu DER jest w store + onClose wywołany.
     await waitFor(() => expect(onClose).toHaveBeenCalled());
     const ders = selectDersOfStation(useStationDerStore.getState(), 'station_test');
     expect(ders).toHaveLength(1);
@@ -164,18 +164,18 @@ describe('AddDerWizard â€” 5-krokowy guided flow', () => {
     expect(ders[0].completeness).toBe('complete');
   });
 
-  it('po nN: krok 2 pokazuje wybĂłr poziomu napiÄ™cia z katalogu (5 opcji + placeholder)', () => {
+  it('po nN: krok 2 pokazuje wybór poziomu napięcia z katalogu (5 opcji + placeholder)', () => {
     render(
       <AddDerWizard isOpen stationId="s" stationName="S" derKind="BESS" projectId="p" onClose={vi.fn()} />,
     );
     fireEvent.click(screen.getByTestId('variant-nN'));
     fireEvent.click(screen.getByTestId('add-der-next'));
     const select = screen.getByTestId('add-der-voltage-level') as HTMLSelectElement;
-    // 5 poziomĂłw + 1 placeholder = 6 opcji
+    // 5 poziomów + 1 placeholder = 6 opcji
     expect(select.options.length).toBe(6);
   });
 
-  it('po nN: podpowiada gotowy punkt PCC, nazwÄ™ DER i napiÄ™cie z katalogu', () => {
+  it('po nN: podpowiada gotowy punkt PCC, nazwę DER i napięcie z katalogu', () => {
     render(
       <AddDerWizard
         isOpen
@@ -350,7 +350,7 @@ describe('AddDerWizard â€” 5-krokowy guided flow', () => {
     render(
       <AddDerWizard isOpen stationId="s" stationName="S" derKind="PV" projectId="p" onClose={vi.fn()} />,
     );
-    // PrzejĹ›cie do kroku 4
+    // Przejście do kroku 4
     fireEvent.click(screen.getByTestId('variant-SN'));
     fireEvent.click(screen.getByTestId('add-der-next'));
     fireEvent.change(screen.getByTestId('add-der-name'), { target: { value: 'P' } });
@@ -455,7 +455,7 @@ describe('AddDerWizard â€” 5-krokowy guided flow', () => {
     expect(screen.getByTestId('add-der-step-content-review')).toHaveTextContent('1250 kVA');
   });
 
-  it('po przekroczeniu mocy pozwala zmieniÄ‡ transformator stacji na wiÄ™kszy wariant katalogowy', async () => {
+  it('po przekroczeniu mocy pozwala zmienić transformator stacji na większy wariant katalogowy', async () => {
     const originalExecute = useSnapshotStore.getState().executeDomainOperation;
     const executeDomainOperation = vi.fn().mockResolvedValue({
       snapshot: { header: { hash_sha256: 'after-upgrade' } },

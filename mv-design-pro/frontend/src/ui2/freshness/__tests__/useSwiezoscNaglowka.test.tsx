@@ -25,8 +25,12 @@ vi.mock('../../../ui/workspace/analysisRunContract', () => ({
 }));
 
 function ustawModel(revision: number | undefined): void {
+  // S9-11 / W-5: hook czyta JEDNO źródło rewizji bieżącego modelu
+  // (`rewizjaBiezacegoModelu`) — zasiew odzwierciedla realne ścieżki store'u,
+  // które ustawiają je razem z migawką (odpowiedź domain-ops).
   useSnapshotStore.setState({
     snapshot: revision === undefined ? null : ({ header: { revision } } as never),
+    rewizjaBiezacegoModelu: revision === undefined ? null : revision,
   } as never);
 }
 

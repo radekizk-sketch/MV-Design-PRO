@@ -576,3 +576,35 @@ class FaultScenarioService:
             ],
             "label": composite_label,
         }
+
+
+# ---------------------------------------------------------------------------
+# Wejście solvera ze scenariusza — JEDNO źródło prawdy (karta BATCH-ROUTER)
+# ---------------------------------------------------------------------------
+
+
+def solver_input_for_scenario(scenario: FaultScenario) -> dict[str, Any]:
+    """Zbuduj wejście solvera biegu kanonicznego ze scenariusza zwarciowego.
+
+    JEDNO źródło prawdy dla OBU ścieżek uruchomienia (pojedynczy bieg
+    `POST /api/execution/fault-scenarios/{id}/runs` oraz seria
+    `POST /api/execution/study-cases/{id}/batches` — reguła KLASA, NIE
+    INSTANCJA: dwie niezależne konstrukcje tego samego wejścia były
+    defektem oczekującym na rozjazd).
+
+    NAPRAWA U ŹRÓDŁA (karta BATCH-ROUTER): konfiguracja scenariusza
+    (`c_factor`, `thermal_time_seconds`) była dotąd przekazywana WYŁĄCZNIE
+    zagnieżdżona pod kluczem ``config``, a wykonawca kanoniczny
+    (`enm.canonical_analysis._execute_short_circuit`) czyta te wartości
+    Z WIERZCHU opcji — konfiguracja scenariusza była cicho ignorowana
+    i bieg liczył się na domyślnych 1.10/1.0 s. Wartości idą teraz także
+    na wierzch opcji; klucz ``config`` zostaje jako pochodzenie (WHITE BOX).
+    """
+    return {
+        "scenario_id": str(scenario.scenario_id),
+        "fault_type": scenario.fault_type.value,
+        "location": scenario.location.to_dict(),
+        "config": scenario.config.to_dict(),
+        "c_factor": scenario.config.c_factor,
+        "thermal_time_seconds": scenario.config.thermal_time_seconds,
+    }

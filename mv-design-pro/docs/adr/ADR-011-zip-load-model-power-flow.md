@@ -56,6 +56,47 @@ typie katalogowym `LoadType` (`catalog/types.py`), eksponowane przez
 `udział_agg = Σ(P0ᵢ·udziałᵢ)/Σ P0ᵢ` (analogicznie Q i `k`). Helper `aggregate_zip`.
 `Node` niesie zagregowane `ZipCoeffs`; `PQSpec.zip_coeffs` z nich powstaje.
 
+Suma zerowa (Σ P0 = 0 albo Σ Q0 = 0 — np. odbiór skompensowany do cosφ = 1) nie
+niesie wagi, więc agregat przyjmuje **wartość domyślną każdego współczynnika**:
+stała moc `(a, b, c) = (0, 0, 1)` i zerową czułość częstotliwościową. Wielomian o
+sumie 0 jest zakazany (wywracał `build_zip_table` na modelu poprawnym). Każdy
+agregat przechodzi `validate_zip_coeffs` **przed** zwróceniem.
+
+### 4a. Rozdzielenie składników szyny — wielomian dotyczy WYŁĄCZNIE odbiorów
+
+Wielomian ZIP opisuje **odbiór**. Szyna może nieść jednocześnie odbiór i generację,
+a `Node.active_power` jest mocą **wypadkową** (odbiory minus generacja). Nałożenie
+wielomianu zbudowanego z udziałów odbiorów na moc wypadkową jest błędem fizycznym
+(defekt D1, audyt 2026-08-01: przy przewadze generacji **odwracał znak** mocy na
+przyłączu). Kanon:
+
+```
+P_szyny(V) = -P_odb·f_ZIP(V) + P_gen        (generator PQ = stała moc)
+```
+
+Realizacja (addytywna, bez zmiany kształtu FROZEN `PowerFlowResult`):
+
+- `Node.zip_load_active_power` / `zip_load_reactive_power` — część **odbiorowa**
+  szyny (konwencja generatorowa, jak `active_power`), ustawiana przez
+  `map_enm_to_network_graph` razem z `zip_coeffs`;
+- `PQSpec.zip_base_p_mw` / `zip_base_q_mvar` — ta sama część w konwencji `p_mw`
+  (`None` ⇒ cała moc szyny jest bazą wielomianu = ścieżka historyczna);
+- `split_zip_constant_part` (raz, **przed** `apply_zip_frequency`) przestawia
+  `p_spec/q_spec` na bazę odbiorową i zwraca resztę jako część **stałą**;
+  zwraca `None`, gdy żadna szyna nie ma czego rozdzielać — wtedy wszystkie
+  ścieżki są bajtowo historyczne (reduce-to-NR);
+- `zip_effective_spec` (NR/GS/FD) dodaje część stałą **po** wielomianie:
+  `p_eff = p_base·f_ZIP(V) + p_const`; pochodna w Jakobianie NR liczy się po
+  samej bazie odbiorowej (część stała ma pochodną zero);
+- ślad WHITE BOX (`zip_loads`) niesie `p_base_pu`/`q_base_pu` i
+  `p_const_pu`/`q_const_pu` obok `p_spec_pu`/`q_spec_pu`, więc audyt odtwarza
+  mnożnik z samych liczb.
+
+`bus_results.p_injected_mw`/`q_injected_mvar` raportują moc **faktycznie
+wstrzykniętą** (wartość po wielomianie, ze solvera: `node_p_spec_effective_pu`) —
+inaczej bilans węzłowy nie domyka się na szynie ZIP. Poprawka WARTOŚCI, nie
+schematu; dla szyny stałomocowej wartość jest bitowo dotychczasowa.
+
 ### 5. Integracja w solverach (wszystkie trzy)
 
 - **NR (v1 i v2):** `p_spec/q_spec` przeliczane per iteracja z bieżącego |V|;
@@ -140,6 +181,10 @@ ZIP wykonują **identyczny kod** → wynik bajt-w-bajt. Egzekwowane testami per 
 5. **determinizm** + **white-box** (człon ZIP w trace).
 6. **walidacja:** suma ≠ 1 ⇒ błąd; `f0/v0 ≤ 0` ⇒ błąd.
 7. **e2e wpięcia:** ENM Load `model="zip"` z katalogu → `PQSpec.zip_coeffs` → solver.
+8. **rozdzielenie składników (§4a):** szyna odbiór ZIP + generacja — moc na
+   przyłączu zgodna z NIEZALEŻNYM Newtonem (znak i wartość), `p_injected_mw`
+   równe przepływowi gałęzi, parytet NR/GS/FD; szyna bez generacji bajtowo
+   niezmieniona; agregat przy Σ Q0 = 0 → `(0,0,1)` i bieg kończy się sukcesem.
 
 ## Powiązane
 - Inwariant **Z-ZIP-04** — `docs/spec/SPEC_CHAPTER_07_SOURCES_GENERATORS_LOADS.md:1032`

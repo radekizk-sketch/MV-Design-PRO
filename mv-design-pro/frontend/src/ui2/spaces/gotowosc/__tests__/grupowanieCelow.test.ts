@@ -45,6 +45,21 @@ describe('celDlaKodu — mapowanie realnych kodów gotowości', () => {
     expect(celDlaKodu('oze.card_field_not_accepted')).toBe('wniosekOsd');
   });
 
+  it('certyfikat PTPiREE przetwornicy DER -> wniosekOsd (wpis dokładny)', () => {
+    // Skutkiem braku (albo warunkowego) powiązania certyfikatu jest ryzyko
+    // odrzucenia WNIOSKU przez OSD, nie błąd rozpływu — mimo obszaru GENERATORS
+    // w kanonicznym rejestrze. Ta sama droga, co `oze.card_field_not_accepted`.
+    expect(celDlaKodu('der.inverter_certificate_unlinked')).toBe('wniosekOsd');
+    expect(celDlaKodu('der.inverter_certificate_conditional')).toBe('wniosekOsd');
+  });
+
+  it('nieznany kod przestrzeni der.* -> Pozostałe (prefiks der NIE ma fallbacku)', () => {
+    // Kody kreatora DER (`der.station_not_found` itd.) należą do kanału BŁĘDU
+    // OPERACJI, nie do toru gotowości — mapa celów nie ma prawa udawać, że je
+    // rozpoznaje. Wpis dokładny jest jedyną drogą do celu.
+    expect(celDlaKodu('der.station_not_found')).toBe('pozostale');
+  });
+
   it('kod bez kropki (brak przestrzeni nazw) -> Pozostałe, bez zgadywania', () => {
     expect(celDlaKodu('E010')).toBe('pozostale');
     expect(celDlaKodu('W001')).toBe('pozostale');
@@ -64,6 +79,36 @@ describe('celDlaKodu — mapowanie realnych kodów gotowości', () => {
     expect(celDlaKodu('transformer.catalog_missing')).toBe('wspolne');
     expect(celDlaKodu('transformer.connection_missing')).toBe('stacje');
     expect(celDlaKodu('transformer.hv_invalid')).toBe('pozostale');
+  });
+
+  // Karta W4 (dług nazwany w V12K-317 poz. 8). Kody bram katalogowych trafiały
+  // do „Wspólne" wyłącznie fallbackiem prefiksu — czyli były grupowane, ale
+  // NIEROZPOZNANE: bez wpisu w kanonicznym rejestrze projektant nie dostawał
+  // ani zdania po polsku, ani nawigacji naprawczej. Kompletność zbioru pilnuje
+  // test klasy backendu (skan AST kodu bram czytający rejestr i tę mapę);
+  // tutaj sprawdzamy SKUTEK dla projektanta: kod bramy ląduje we właściwym celu.
+  it('kody bram katalogowych -> wspolne (karta W4, wpis dokładny w rejestrze)', () => {
+    for (const kod of [
+      'catalog.item_not_found',
+      'catalog.ref_missing',
+      'catalog.item_missing',
+      'catalog.item_id_missing',
+      'catalog.binding_required',
+      'catalog.binding_invalid',
+      'catalog.namespace_missing',
+      'catalog.namespace_required',
+      'catalog.unknown_namespace',
+      'catalog.namespace_mismatch',
+      'catalog.element_missing',
+      'catalog.element_not_found',
+      'catalog.clear_forbidden',
+      'catalog.materialization_required',
+      'catalog.materialization_incomplete',
+      'catalog.nameplate_mismatch',
+      'catalog.gate_result_mismatch',
+    ]) {
+      expect(celDlaKodu(kod)).toBe('wspolne');
+    }
   });
 });
 

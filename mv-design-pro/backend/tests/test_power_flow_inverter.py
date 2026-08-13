@@ -183,7 +183,35 @@ def test_white_box_trace_exposes_inverter_sources() -> None:
     last = entries[-1]
     assert "B" in last["inverter_sources"]
     assert last["inverter_sources"]["B"]["mode"] == "Q_U"
-    assert set(last["inverter_sources"]["B"]) == {"p_spec_pu", "q_spec_pu", "mode"}
+    # Defect B (§2.5): the trace must carry the shaping INPUT (the source's own
+    # power) next to the bus value, otherwise a source deriving its Q from the
+    # LOAD's power looks exactly like a correct one — which is how defect B
+    # survived the audit.
+    assert set(last["inverter_sources"]["B"]) == {
+        "p_spec_pu",
+        "q_spec_pu",
+        "p_source_pu",
+        "q_source_pu",
+        "p_shaped_pu",
+        "q_shaped_pu",
+        "lfsm_factor",
+        "q_volt_var_pu",
+        "mode",
+    }
+
+
+def test_white_box_trace_reproduces_cosphi_from_source_power_alone() -> None:
+    """§2.5: an auditor reconstructs the shaping from the trace numbers only."""
+    cc = inverter_control_from_params(
+        {"control_mode": "COSPHI_CONST", "cosphi": 0.95, "lfsm_droop_pct": 5.0}, 10.0
+    )
+    s = _solve(cc, f_hz=51.0, trace="full")
+    rec = [e for e in s.nr_trace if "inverter_sources" in e][-1]["inverter_sources"]["B"]
+    assert rec["mode"] == "COSPHI_CONST"  # shaped sources are traced, not only Q(U)
+    # p_shaped = p_source * lfsm_factor, q_shaped = q_over_p * |p_shaped|
+    assert rec["p_shaped_pu"] == pytest.approx(rec["p_source_pu"] * rec["lfsm_factor"])
+    assert rec["q_shaped_pu"] == pytest.approx(math.tan(math.acos(0.95)) * abs(rec["p_shaped_pu"]))
+    assert rec["lfsm_factor"] < 1.0  # 51 Hz => LFSM-O curtails the source
 
 
 def test_inverter_solution_is_deterministic() -> None:

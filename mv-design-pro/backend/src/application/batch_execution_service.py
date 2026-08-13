@@ -1,277 +1,295 @@
-"""
-Batch Execution Service — PR-20: Deterministic Batch Orchestration
+"""Serwis serii przebiegów (wsadu) — karta BATCH-ROUTER.
 
-Application service for executing multiple FaultScenarios in a single,
-deterministic, sequential batch.
+Orkiestracja SERII biegów kanonicznych nad scenariuszami zwarciowymi jednego
+przypadku obliczeniowego. Każdy element serii to ZWYKŁY bieg kanoniczny
+(`enm.canonical_analysis.create_run` + `execute_run`) — ten sam tor, którym
+idzie pojedynczy bieg ze scenariusza (`POST /api/execution/fault-scenarios/
+{id}/runs` + `POST /api/execution/runs/{id}/execute`). Seria niczego nie
+liczy sama (NOT-A-SOLVER) i nie przechowuje wyników — wyniki żyją w
+artefaktach biegów kanonicznych, dostępnych istniejącymi końcówkami
+(`GET /api/execution/runs/{run_id}/results`).
 
-INVARIANTS:
-- SEQUENTIAL execution only (v1)
-- ZERO parallelism
-- ZERO retry
-- ZERO partial success — any failure → FAILED
-- readiness false → FAILED
-- eligibility false → FAILED
-- solver exception → FAILED
-- Does NOT modify solvers, ResultSet API, or ExecutionEngine contract
+HISTORIA (pomiar karty BATCH-ROUTER, 2026-08-07): poprzednia wersja tego
+serwisu (PR-20) NIE wołała żadnego solvera — `execute_batch` kończyła biegi
+wynikami z ŻĄDANIA klienta (`solver_input["expected_results"]`) przez
+`ExecutionEngineService.complete_run`, a rejestr przypadków sprawdzała w
+pamięci silnika, której produkcja nigdy nie zasila. Wpięcie takiej końcówki
+byłoby fabrykacją wyników (fantom). Obecna wersja wykonuje KAŻDY scenariusz
+realnym torem kanonicznym.
+
+INWARIANTY:
+- Wykonanie SEKWENCYJNE w porządku posortowanych identyfikatorów scenariuszy
+  (determinizm; zero równoległości).
+- Zero ponowień; pierwszy nieudany scenariusz kończy serię stanem FAILED
+  (biegi ukończone przed awarią pozostają — są zwykłymi biegami kanonicznymi).
+- PREDYKATY PARAMI: odcisk treści scenariusza jest przypinany przy TWORZENIU
+  serii i weryfikowany przy WYKONANIU z tego samego źródła prawdy
+  (`compute_scenario_content_hash`); scenariusz zmieniony lub usunięty po
+  utworzeniu serii = uczciwa odmowa, nigdy cichy bieg innej treści.
+- Wejście solvera per scenariusz buduje `solver_input_for_scenario` — TO SAMO
+  źródło, którego używa ścieżka pojedynczego biegu (KLASA, NIE INSTANCJA).
+- `batch_input_hash` deterministyczny (domena `batch_job`, SHA-256).
 """
 
 from __future__ import annotations
 
 import logging
-from typing import Any
+from collections.abc import Callable
 from uuid import UUID
 
-from application.execution_engine.service import ExecutionEngineService
-from domain.batch_job import (
-    BatchJob,
-    BatchJobStatus,
-    new_batch_job,
+from application.fault_scenario_service import (
+    FaultScenarioNotFoundError,
+    FaultScenarioService,
+    solver_input_for_scenario,
 )
-from domain.execution import (
-    ExecutionAnalysisType,
-)
+from domain.batch_job import BatchJob, BatchJobStatus, new_batch_job
+from domain.execution import ExecutionAnalysisType
+from domain.fault_scenario import FaultScenario, compute_scenario_content_hash
+from enm.canonical_analysis import CanonicalRun
+from enm.canonical_analysis import create_run as _create_canonical_run
+from enm.canonical_analysis import execute_run as _execute_canonical_run
 
 logger = logging.getLogger(__name__)
 
 
 class BatchExecutionError(Exception):
-    """Base exception for batch execution errors."""
-
-    pass
+    """Błąd bazowy orkiestracji serii przebiegów."""
 
 
 class BatchNotFoundError(BatchExecutionError):
-    """BatchJob does not exist."""
+    """Seria przebiegów nie istnieje."""
 
     def __init__(self, batch_id: str) -> None:
-        super().__init__(f"Batch nie istnieje: {batch_id}")
+        super().__init__(f"Seria przebiegów nie istnieje: {batch_id}")
         self.batch_id = batch_id
 
 
 class BatchNotPendingError(BatchExecutionError):
-    """BatchJob is not in PENDING status."""
+    """Seria przebiegów nie jest w stanie PENDING."""
 
     def __init__(self, batch_id: str, status: str) -> None:
-        super().__init__(f"Batch {batch_id} ma status {status} — wymagany PENDING")
+        super().__init__(f"Seria {batch_id} ma status {status} — wymagany PENDING")
         self.batch_id = batch_id
         self.status = status
 
 
+#: Sygnatury wołań toru kanonicznego (wstrzykiwalne w testach kontraktowych).
+CreateRunFn = Callable[..., CanonicalRun]
+ExecuteRunFn = Callable[[UUID], CanonicalRun]
+
+
 class BatchExecutionService:
-    """
-    Orchestration service for deterministic batch execution.
+    """Orkiestracja serii biegów kanonicznych nad scenariuszami zwarciowymi.
 
-    Executes multiple scenarios sequentially through the ExecutionEngine.
-    No parallelism, no retry, no partial success.
+    Serwis trzyma WYŁĄCZNIE metadane orkiestracji (rekordy `BatchJob`
+    w pamięci — spójnie z `FaultScenarioService`, którego scenariusze
+    orkiestruje). Biegi i ich wyniki żyją w repozytorium biegów
+    kanonicznych — seria nie tworzy równoległego magazynu wyników.
     """
 
-    def __init__(self, engine: ExecutionEngineService) -> None:
-        self._engine = engine
+    def __init__(
+        self,
+        scenario_service: FaultScenarioService,
+        *,
+        create_canonical_run: CreateRunFn = _create_canonical_run,
+        execute_canonical_run: ExecuteRunFn = _execute_canonical_run,
+    ) -> None:
+        self._scenario_service = scenario_service
+        self._create_canonical_run = create_canonical_run
+        self._execute_canonical_run = execute_canonical_run
         self._batches: dict[UUID, BatchJob] = {}
         self._case_batches: dict[UUID, list[UUID]] = {}
+        #: Odciski treści scenariuszy przypięte przy tworzeniu serii
+        #: (para z weryfikacją przy wykonaniu — jedno źródło prawdy).
+        self._pinned_hashes: dict[UUID, dict[UUID, str]] = {}
 
-    def create_batch_job(
+    # ------------------------------------------------------------------
+    # Tworzenie serii
+    # ------------------------------------------------------------------
+
+    def create_batch(
         self,
         *,
         study_case_id: UUID,
-        analysis_type: ExecutionAnalysisType,
         scenario_ids: list[UUID],
-        scenario_content_hashes: list[str],
-        solver_inputs: list[dict[str, Any]],
-        readiness: dict[str, Any] | None = None,
-        eligibility: dict[str, Any] | None = None,
     ) -> BatchJob:
+        """Utwórz serię przebiegów (PENDING) nad scenariuszami przypadku.
+
+        Walidacje (polskie komunikaty — kontrakt API):
+        - lista scenariuszy niepusta i bez duplikatów,
+        - każdy scenariusz istnieje (`FaultScenarioNotFoundError` → 404),
+        - każdy scenariusz należy do wskazanego przypadku,
+        - wszystkie scenariusze mają TEN SAM typ analizy (domena `BatchJob`
+          niesie jeden `analysis_type` — seria mieszana to dwie serie).
+
+        Odcisk treści każdego scenariusza jest przypinany TERAZ i stanowi
+        warunek wykonania (przewidywalność: seria wykonuje dokładnie tę
+        treść, którą widział projektant przy jej tworzeniu).
         """
-        Create a new BatchJob in PENDING status.
+        if not scenario_ids:
+            raise ValueError("Seria przebiegów wymaga co najmniej jednego scenariusza")
 
-        Validates study case exists and stores the batch.
-        Solver inputs are stored for sequential execution.
+        scenarios: list[FaultScenario] = []
+        for scenario_id in scenario_ids:
+            scenario = self._scenario_service.get_scenario(scenario_id)
+            if scenario.study_case_id != study_case_id:
+                raise ValueError(
+                    f"Scenariusz {scenario_id} nie należy do przypadku {study_case_id}"
+                )
+            scenarios.append(scenario)
 
-        Args:
-            study_case_id: Study case this batch belongs to.
-            analysis_type: Analysis type for all scenarios.
-            scenario_ids: Scenario UUIDs (will be sorted).
-            scenario_content_hashes: Content hashes per scenario.
-            solver_inputs: Solver input dicts per scenario (same order as scenario_ids).
-            readiness: Optional readiness check result.
-            eligibility: Optional eligibility check result.
+        analysis_types = {scenario.analysis_type for scenario in scenarios}
+        if len(analysis_types) > 1:
+            posortowane = ", ".join(sorted(t.value for t in analysis_types))
+            raise ValueError(
+                "Wszystkie scenariusze serii muszą mieć ten sam typ analizy "
+                f"(otrzymano: {posortowane})"
+            )
+        analysis_type: ExecutionAnalysisType = analysis_types.pop()
 
-        Returns:
-            Created BatchJob in PENDING status.
-
-        Raises:
-            StudyCaseNotFoundError: If study case not registered.
-            ValueError: If inputs have mismatched lengths or duplicates.
-        """
-        # Verify study case exists
-        self._engine.get_study_case(study_case_id)
-
-        if len(scenario_ids) != len(solver_inputs):
-            raise ValueError("scenario_ids i solver_inputs muszą mieć tę samą długość")
-
+        content_hashes = [scenario.content_hash for scenario in scenarios]
         batch = new_batch_job(
             study_case_id=study_case_id,
             analysis_type=analysis_type,
             scenario_ids=scenario_ids,
-            scenario_content_hashes=scenario_content_hashes,
+            scenario_content_hashes=content_hashes,
         )
 
-        # Store solver inputs indexed by scenario_id for execution
-        # Sort to match the sorted scenario_ids in the batch
-        paired = sorted(
-            zip(scenario_ids, solver_inputs, scenario_content_hashes, strict=False),
-            key=lambda p: str(p[0]),
-        )
-        self._solver_inputs: dict[UUID, dict[UUID, dict[str, Any]]] = getattr(
-            self, "_solver_inputs", {}
-        )
-        self._batch_readiness: dict[UUID, dict[str, Any] | None] = getattr(
-            self, "_batch_readiness", {}
-        )
-        self._batch_eligibility: dict[UUID, dict[str, Any] | None] = getattr(
-            self, "_batch_eligibility", {}
-        )
-
-        self._solver_inputs[batch.batch_id] = {p[0]: p[1] for p in paired}
-        self._batch_readiness[batch.batch_id] = readiness
-        self._batch_eligibility[batch.batch_id] = eligibility
-
-        # Store batch
         self._batches[batch.batch_id] = batch
-        if study_case_id not in self._case_batches:
-            self._case_batches[study_case_id] = []
-        self._case_batches[study_case_id].append(batch.batch_id)
+        self._case_batches.setdefault(study_case_id, []).append(batch.batch_id)
+        self._pinned_hashes[batch.batch_id] = {
+            scenario.scenario_id: scenario.content_hash for scenario in scenarios
+        }
 
         logger.info(
-            "Created batch %s for case %s with %d scenarios, hash=%s",
+            "Utworzono serię %s dla przypadku %s (%d scenariuszy, odcisk=%s)",
             batch.batch_id,
             study_case_id,
             len(batch.scenario_ids),
             batch.batch_input_hash[:16],
         )
-
         return batch
 
+    # ------------------------------------------------------------------
+    # Wykonanie serii
+    # ------------------------------------------------------------------
+
     def execute_batch(self, batch_id: UUID) -> BatchJob:
-        """
-        Execute a batch job sequentially.
+        """Wykonaj serię sekwencyjnie torem kanonicznym.
 
-        FLOW:
-        1. Validate batch is PENDING
-        2. Mark as RUNNING
-        3. For each scenario (in sorted order):
-            a. Create Run via ExecutionEngine
-            b. Execute Run (start_run + complete_run)
-            c. Collect run_id and result_set_id
-        4. On success: mark DONE with all run_ids and result_set_ids
-        5. On ANY failure: mark FAILED immediately, no retry
+        Dla każdego scenariusza (w porządku posortowanych identyfikatorów):
+        1. pobierz scenariusz i zweryfikuj odcisk treści względem przypiętego
+           przy tworzeniu serii (usunięty/zmieniony scenariusz = odmowa),
+        2. brama uprawnień scenariusza (`check_scenario_eligibility` — ta sama
+           brama co pojedynczy bieg),
+        3. utwórz bieg kanoniczny (`create_run` — walidacja ENM u źródła),
+        4. wykonaj bieg (`execute_run` — realny solver, WHITE BOX),
+        5. powiąż bieg ze scenariuszem (`register_run` — parytet z pojedynczym
+           biegiem).
 
-        Args:
-            batch_id: ID of the batch to execute.
-
-        Returns:
-            Updated BatchJob (DONE or FAILED).
-
-        Raises:
-            BatchNotFoundError: If batch doesn't exist.
-            BatchNotPendingError: If batch is not PENDING.
+        Pierwsza awaria kończy serię stanem FAILED z polskim komunikatem;
+        biegi ukończone wcześniej pozostają dostępne jak zwykłe biegi.
         """
         batch = self._get_batch(batch_id)
         if batch.status != BatchJobStatus.PENDING:
             raise BatchNotPendingError(str(batch_id), batch.status.value)
 
-        # Transition to RUNNING
         batch = batch.mark_running()
         self._batches[batch_id] = batch
 
-        solver_inputs = self._solver_inputs.get(batch_id, {})
-        readiness = self._batch_readiness.get(batch_id)
-        eligibility = self._batch_eligibility.get(batch_id)
-
+        pinned = self._pinned_hashes.get(batch_id, {})
         collected_run_ids: list[UUID] = []
-        collected_result_set_ids: list[UUID] = []
 
-        # SEQUENTIAL execution — no parallelism
         for scenario_id in batch.scenario_ids:
-            si = solver_inputs.get(scenario_id, {})
             try:
-                # Create Run
-                run = self._engine.create_run(
-                    study_case_id=batch.study_case_id,
-                    analysis_type=batch.analysis_type,
-                    solver_input=si,
-                    readiness=readiness,
-                    eligibility=eligibility,
+                scenario = self._pobierz_zweryfikowany_scenariusz(scenario_id, pinned)
+                self._brama_uprawnien(scenario)
+                run = self._create_canonical_run(
+                    case_id=str(batch.study_case_id),
+                    project_id=None,
+                    analysis_type="short_circuit_sn",
+                    options=solver_input_for_scenario(scenario),
                 )
-
-                # Start Run
-                run = self._engine.start_run(run.id)
-
-                # Complete Run (simplified — real execution would call solver)
-                # For batch orchestration, we complete with the solver input as results
-                # The actual solver execution is done by execute_run_sc in the engine
-                run, result_set = self._engine.complete_run(
-                    run.id,
-                    validation_snapshot={"batch_id": str(batch_id)},
-                    readiness_snapshot=readiness or {},
-                    element_results=[],
-                    global_results=si.get("expected_results", {}),
-                )
-
+                run = self._execute_canonical_run(run.id)
+                if run.status != "FINISHED":
+                    collected_run_ids.append(run.id)
+                    raise BatchExecutionError(
+                        run.error_message or "Bieg zakończył się niepowodzeniem"
+                    )
+                self._scenario_service.register_run(scenario_id, run.id)
                 collected_run_ids.append(run.id)
-                collected_result_set_ids.append(run.id)  # ResultSet keyed by run_id
-
-                logger.info(
-                    "Batch %s: scenario %s completed, run=%s",
-                    batch_id,
-                    scenario_id,
-                    run.id,
-                )
-
             except Exception as exc:
-                error_msg = f"Scenariusz {scenario_id}: {exc}"
-                logger.warning(
-                    "Batch %s FAILED at scenario %s: %s",
-                    batch_id,
-                    scenario_id,
-                    exc,
-                )
+                komunikat = f"Scenariusz {scenario_id}: {exc}"
+                logger.warning("Seria %s FAILED na scenariuszu %s: %s", batch_id, scenario_id, exc)
                 batch = batch.mark_failed(
-                    errors=(error_msg,),
+                    errors=(komunikat,),
                     run_ids=tuple(collected_run_ids),
-                    result_set_ids=tuple(collected_result_set_ids),
+                    result_set_ids=tuple(collected_run_ids),
                 )
                 self._batches[batch_id] = batch
                 return batch
 
-        # All scenarios completed successfully
         batch = batch.mark_done(
             run_ids=tuple(collected_run_ids),
-            result_set_ids=tuple(collected_result_set_ids),
+            # Zestaw wyników biegu kanonicznego jest adresowany identyfikatorem
+            # biegu (`GET /api/execution/runs/{run_id}/results`).
+            result_set_ids=tuple(collected_run_ids),
         )
         self._batches[batch_id] = batch
-
-        logger.info(
-            "Batch %s DONE: %d runs completed",
-            batch_id,
-            len(collected_run_ids),
-        )
-
+        logger.info("Seria %s DONE: %d biegów", batch_id, len(collected_run_ids))
         return batch
 
+    def _pobierz_zweryfikowany_scenariusz(
+        self, scenario_id: UUID, pinned: dict[UUID, str]
+    ) -> FaultScenario:
+        """Scenariusz o treści IDENTYCZNEJ z przypiętą przy tworzeniu serii."""
+        try:
+            scenario = self._scenario_service.get_scenario(scenario_id)
+        except FaultScenarioNotFoundError as exc:
+            raise BatchExecutionError(
+                "Scenariusz został usunięty po utworzeniu serii — utwórz serię ponownie"
+            ) from exc
+        przypiety = pinned.get(scenario_id)
+        if przypiety is not None and compute_scenario_content_hash(scenario) != przypiety:
+            raise BatchExecutionError(
+                "Scenariusz został zmieniony po utworzeniu serii — utwórz serię ponownie"
+            )
+        return scenario
+
+    def _brama_uprawnien(self, scenario: FaultScenario) -> None:
+        """Ta sama brama uprawnień, którą przechodzi pojedynczy bieg."""
+        eligibility = self._scenario_service.check_scenario_eligibility(scenario.scenario_id)
+        if eligibility.status.value == "INELIGIBLE":
+            blokady = "; ".join(b.message_pl for b in eligibility.blockers)
+            raise BatchExecutionError(f"Analiza zablokowana: {blokady}")
+
+    # ------------------------------------------------------------------
+    # Odczyt
+    # ------------------------------------------------------------------
+
     def get_batch(self, batch_id: UUID) -> BatchJob:
-        """Get a batch job by ID."""
+        """Seria po identyfikatorze (`BatchNotFoundError` gdy brak)."""
         return self._get_batch(batch_id)
 
     def list_batches(self, study_case_id: UUID) -> list[BatchJob]:
-        """List all batches for a study case, newest first."""
+        """Serie przypadku, najnowsze pierwsze."""
         batch_ids = self._case_batches.get(study_case_id, [])
         batches = [self._batches[bid] for bid in batch_ids if bid in self._batches]
         return list(reversed(batches))
 
     def _get_batch(self, batch_id: UUID) -> BatchJob:
-        """Get a batch or raise BatchNotFoundError."""
         batch = self._batches.get(batch_id)
         if batch is None:
             raise BatchNotFoundError(str(batch_id))
         return batch
+
+    # ------------------------------------------------------------------
+    # Testy / izolacja stanu
+    # ------------------------------------------------------------------
+
+    def reset(self) -> None:
+        """Wyczyść stan orkiestracji (izolacja testów — parytet z resetami
+        pozostałych serwisów pamięciowych w `tests/`)."""
+        self._batches.clear()
+        self._case_batches.clear()
+        self._pinned_hashes.clear()

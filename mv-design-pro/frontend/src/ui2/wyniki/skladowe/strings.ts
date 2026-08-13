@@ -36,7 +36,7 @@ export const SKLADOWE_STRINGS = {
 
   // Tabela punktów.
   tabelaTytul: 'Punkty zwarcia — impedancje zastępcze i werdykt',
-  tabelaOpis: 'Wielkości bilansu z FROZEN solvera (wiersze kanoniczne przebiegu). '
+  tabelaOpis: 'Wielkości bilansu z kanonicznego wyniku solvera (tylko odczyt). '
     + 'Kliknij wiersz, aby zobaczyć składowe Z1/Z2/Z0 i uziemienie punktu.',
   kolPunkt: 'Punkt zwarcia',
   kolRodzaj: 'Rodzaj zwarcia',
@@ -51,7 +51,7 @@ export const SKLADOWE_STRINGS = {
 
   // Sekcja składowych (ze śladu WHITE BOX).
   skladoweTytul: 'Impedancje składowych Z1 / Z2 / Z0',
-  skladoweOpis: 'Wartości pochodzą ze śladu obliczeń WHITE BOX przebiegu (krok „Impedancja '
+  skladoweOpis: 'Wartości pochodzą ze śladu pełnej jawności obliczeń przebiegu (krok „Impedancja '
     + 'zastępcza w punkcie zwarcia") — prezentacja read-only, zero obliczeń w interfejsie.',
   skladowaZ1: 'Składowa zgodna Z1',
   skladowaZ2: 'Składowa przeciwna Z2',
@@ -63,10 +63,10 @@ export const SKLADOWE_STRINGS = {
   skladoweBrak: 'Ślad obliczeń tego przebiegu nie niesie kroku impedancji zastępczej '
     + 'dla wybranego punktu — składowych nie można pokazać bez fabrykacji.',
   skladoweSladNiedostepny: 'Ślad obliczeń przebiegu jest niedostępny (błąd pobierania). '
-    + 'Składowe Z1/Z2/Z0 są prezentowane wyłącznie ze śladu WHITE BOX — bez niego '
+    + 'Składowe Z1/Z2/Z0 są prezentowane wyłącznie ze śladu obliczeń — bez niego '
     + 'ekran pokazuje tylko bilans |Zk| z wierszy kanonicznych.',
   skladoweDowod: 'Otwórz pełny dowód obliczeń',
-  skladoweDowodOpis: 'Pełny ślad WHITE BOX przebiegu (wszystkie kroki) w zakładce „Dowód obliczeń".',
+  skladoweDowodOpis: 'Pełny ślad obliczeń przebiegu (wszystkie kroki) w zakładce „Dowód obliczeń".',
 
   // Sekcja uziemienia punktu neutralnego.
   uziemienieTytul: 'Sposób uziemienia punktu neutralnego',

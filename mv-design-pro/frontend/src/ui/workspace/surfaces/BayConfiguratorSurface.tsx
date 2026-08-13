@@ -87,7 +87,7 @@ export function BayConfiguratorSurface(props: BayConfiguratorSurfaceProps): JSX.
           {designation}
         </h2>
         {!bayRef && (
-          <p className="mt-2 rounded border border-amber-700 bg-amber-950/30 p-3 text-xs text-amber-200">
+          <p className="mt-2 rounded border border-sygnal-uwaga bg-sygnal-uwaga-tlo p-3 text-xs text-sygnal-uwaga-tusz">
             Brak referencji do pola SN w kontekście. Wybierz pole z lewego nawigatora
             modelu lub kliknij pole w SLD i wybierz "Otwórz okno pola".
           </p>

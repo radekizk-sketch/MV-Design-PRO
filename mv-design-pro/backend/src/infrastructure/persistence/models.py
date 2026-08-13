@@ -18,9 +18,10 @@ from sqlalchemy import (
     Text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.engine.interfaces import Dialect
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy.sql import func
-from sqlalchemy.types import TypeDecorator
+from sqlalchemy.types import TypeDecorator, TypeEngine
 
 
 class Base(DeclarativeBase):
@@ -31,19 +32,19 @@ class GUID(TypeDecorator[UUID]):
     impl = String(36)
     cache_ok = True
 
-    def load_dialect_impl(self, dialect):
+    def load_dialect_impl(self, dialect: Dialect) -> TypeEngine[Any]:
         if dialect.name == "postgresql":
             from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 
             return dialect.type_descriptor(PG_UUID(as_uuid=True))
         return dialect.type_descriptor(String(36))
 
-    def process_bind_param(self, value: UUID | None, dialect):
+    def process_bind_param(self, value: UUID | None, dialect: Dialect) -> str | None:
         if value is None:
             return None
         return str(value)
 
-    def process_result_value(self, value: str | None, dialect):
+    def process_result_value(self, value: str | None, dialect: Dialect) -> UUID | None:
         if value is None:
             return None
         return UUID(value)
@@ -78,24 +79,62 @@ def _canonicalize(value: Any) -> Any:
     return value
 
 
+def _kanoniczna_wartosc_spoza_json(value: Any) -> Any:
+    """Wartość, której `json` nie zna — sprowadzona do TEJ SAMEJ postaci co `_canonicalize`.
+
+    Wołane przez `json.dumps(default=…)` wyłącznie dla typów, na których
+    serializator się zatrzymuje (zbiory, numpy). Krotki i słowniki obsługuje sam
+    `json` (krotka → tablica, `sort_keys=True` → kolejność kluczy), więc wynik
+    jest BAJTOWO taki sam jak przy wcześniejszym osobnym przebiegu
+    kanonikalizacji — patrz test determinizmu w
+    `tests/infrastructure/test_deterministic_json.py`.
+    """
+    if isinstance(value, set | frozenset):
+        return sorted((_canonicalize(item) for item in value), key=_stable_sort_key)
+    try:
+        import numpy as np
+
+        if isinstance(value, np.ndarray):
+            return _canonicalize(value.tolist())
+        if isinstance(value, np.generic):
+            return value.item()
+    except ImportError:
+        pass
+    raise TypeError(f"Typ nieobslugiwany w kolumnie JSON: {type(value)!r}")
+
+
 class DeterministicJSON(TypeDecorator[Any]):
     impl = Text
     cache_ok = True
 
-    def load_dialect_impl(self, dialect):
+    def load_dialect_impl(self, dialect: Dialect) -> TypeEngine[Any]:
         if dialect.name == "postgresql":
             return dialect.type_descriptor(JSONB())
         return dialect.type_descriptor(Text())
 
-    def process_bind_param(self, value: Any, dialect):
+    def process_bind_param(self, value: Any, dialect: Dialect) -> Any:
         if value is None:
             return None
-        canonical = _canonicalize(value)
         if dialect.name == "postgresql":
-            return canonical
-        return json.dumps(canonical, sort_keys=True, separators=(",", ":"))
+            # JSONB dostaje STRUKTURĘ (serializuje sterownik), więc typy spoza
+            # JSON-a muszą być sprowadzone wcześniej.
+            return _canonicalize(value)
+        # WYDAJNOŚĆ ZAPISU (dług V12K-284, karta KD-2 poz. 5): dotąd każda wartość
+        # była przechodzona DWA razy — najpierw `_canonicalize` budowało kopię
+        # całej struktury z posortowanymi kluczami, potem `json.dumps(sort_keys=True)`
+        # sortowało je PONOWNIE. Pomiar na artefakcie sieci 50 stacji (104 punkty
+        # zwarcia × 11 506 wpisów rozpływu, 160 MiB tekstu): 9,42 s dwoma
+        # przebiegami wobec 3,04 s jednym — przy BAJTOWO identycznym wyniku
+        # (`sort_keys=True` daje ten sam porządek kluczy, krotki są tablicami,
+        # a zbiory/numpy sprowadza `default=`).
+        return json.dumps(
+            value,
+            sort_keys=True,
+            separators=(",", ":"),
+            default=_kanoniczna_wartosc_spoza_json,
+        )
 
-    def process_result_value(self, value: Any, dialect):
+    def process_result_value(self, value: Any, dialect: Dialect) -> Any:
         if value is None:
             return None
         if dialect.name == "postgresql":
@@ -480,6 +519,40 @@ class CanonicalRunORM(Base):
     )
     power_flow_trace_json: Mapped[dict[str, Any] | None] = mapped_column(
         DeterministicJSON(), nullable=True
+    )
+
+
+class CanonicalRunBranchFlowORM(Base):
+    """Rozpływ prądu zwarciowego JEDNEGO punktu zwarcia — osobno od artefaktu biegu.
+
+    DEFEKT, KTÓRY TO USUWA (dług nazwany w V12K-281, zmierzony na sieci 50 stacji):
+    zapisany artefakt biegu zwarciowego trzymał PEŁNY rozpływ gałęziowy w jednej
+    kolumnie JSON (`canonical_runs.raw_result_json`) — 104 punkty zwarcia × 11 506
+    wpisów iloczynu źródło×gałąź. Każdy odczyt biegu (a więc i każdy widok listy
+    biegów) deserializował całość, choć konsument potrzebuje rozpływu JEDNEGO
+    wybranego punktu.
+
+    Treść wpisów jest BAJTOWO ta sama, co dotąd w `results[].branch_contributions`:
+    surowe wkłady FROZEN solvera (`ShortCircuitResult.branch_contributions`), bez
+    żadnej projekcji. Zmienia się wyłącznie MIEJSCE przechowywania — determinizm i
+    kontrakty wyników nietknięte.
+
+    Wiersz jest zapisywany w TEJ SAMEJ transakcji co bieg (repozytorium biegów), więc
+    nie istnieje stan „bieg zapisany, rozpływ zgubiony".
+    """
+
+    __tablename__ = "canonical_run_branch_flows"
+    __table_args__ = (Index("ix_canonical_run_branch_flows_run_id", "run_id"),)
+
+    run_id: Mapped[UUID] = mapped_column(
+        GUID(),
+        ForeignKey("canonical_runs.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    #: Identyfikator węzła zwarcia w grafie przebiegu (`results[].fault_node_id`).
+    fault_node_id: Mapped[str] = mapped_column(String(512), primary_key=True)
+    contributions_json: Mapped[list[dict[str, Any]]] = mapped_column(
+        DeterministicJSON(), nullable=False
     )
 
 

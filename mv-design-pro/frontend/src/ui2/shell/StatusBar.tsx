@@ -1,8 +1,10 @@
 /*
  * Pasek stanu (rola ARIA status). Wskaźnik połączenia z serwerem (czerwony +
- * „Połącz ponownie" przy błędzie), rewizja modelu, etykieta przebiegu oraz
- * odcisk wyników SHA-256 (strefa techniczna). Klik pozycji → żądanie otwarcia
- * panelu dolnego (obsługa w E1.4) — karta §4a.
+ * „Połącz ponownie" przy błędzie), rewizja modelu, etykieta ostatniego
+ * przebiegu oraz WERSJA MODELU — skrócony odcisk SHA-256 migawki (strefa
+ * techniczna, K6/H-6 R4: chip pokazuje realny `hash_sha256` migawki, bo
+ * dawne źródło odcisku nie miało żywego dostawcy). Klik pozycji → żądanie
+ * otwarcia panelu dolnego (obsługa w E1.4) — karta §4a.
  */
 
 import type { ShellStatusInfo, BackendStatus } from './shellStatus';
@@ -29,7 +31,7 @@ function backendText(backend: BackendStatus): string {
 
 export function StatusBar({ status, onReconnect, onOpenBottomPanel }: StatusBarProps) {
   const error = status.backend === 'error';
-  const fingerprint = shortFingerprint(status.resultsFingerprint) ?? SHELL_STRINGS.emptyValue;
+  const wersjaModelu = shortFingerprint(status.wersjaModelu) ?? SHELL_STRINGS.emptyValue;
 
   return (
     <div className="mvd-statusbar" role="status" aria-live="polite" data-testid="mvd-statusbar">
@@ -65,7 +67,7 @@ export function StatusBar({ status, onReconnect, onOpenBottomPanel }: StatusBarP
       <span className="mvd-grow" />
 
       <span className="mvd-status-item mvd-status-static" data-testid="mvd-status-fingerprint">
-        {SHELL_STRINGS.fingerprint}: <span className="mvd-num">{fingerprint}</span>
+        {SHELL_STRINGS.wersjaModelu}: <span className="mvd-num">{wersjaModelu}</span>
       </span>
     </div>
   );

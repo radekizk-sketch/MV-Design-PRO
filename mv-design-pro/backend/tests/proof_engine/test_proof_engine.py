@@ -546,6 +546,136 @@ class TestVDROPProofGenerator:
 
 
 # =============================================================================
+# Karta PODSTAWA-VDROP — EQ_VDROP_007 nie miesza podstaw odniesienia
+# =============================================================================
+
+
+class TestVDROPPodstawaKonca:
+    """EQ_VDROP_007: U = U_source − ΔU_total, oba w kV (karta PODSTAWA-VDROP).
+
+    Do 2026-08-12 krok mnożył U_source przez (1 − ΔU_total%/100); ΔU_total% jest
+    odniesione do U_n odcinka, więc gdy U_source ≠ U_n, krok mieszał dwie różne
+    podstawy. Testy pilnują DWÓCH rzeczy naraz: (1) że wynik jest teraz
+    arytmetycznie odjęciem w kV, nie mnożeniem przez ułamek; (2) że ΔU_total w kV
+    pochodzi z łańcucha EQ_VDROP_001..006 (R/X/P/Q/U_n TEGO dowodu), a NIE z
+    u_source_kv — inaczej krok byłby cyrkularny (podstawiałby część własnego
+    wyniku jako dowód samego siebie).
+    """
+
+    @staticmethod
+    def _segment(u_n_kv: float = 15.0) -> VDROPSegmentInput:
+        return VDROPSegmentInput(
+            segment_id="SEG1",
+            from_bus_id="SOURCE",
+            to_bus_id="MID",
+            r_ohm_per_km=0.206,
+            x_ohm_per_km=0.075,
+            length_km=2.5,
+            p_mw=2.0,
+            q_mvar=1.0,
+            u_n_kv=u_n_kv,
+        )
+
+    def _input(self, *, u_source_kv: float, u_n_kv: float = 15.0) -> VDROPInput:
+        return VDROPInput(
+            project_name="Test Project",
+            case_name="Test Case PODSTAWA-VDROP",
+            source_bus_id="SOURCE",
+            target_bus_id="MID",
+            run_timestamp=datetime(2026, 8, 12, 10, 0, 0),
+            solver_version="1.0.0-test",
+            u_source_kv=u_source_kv,
+            segments=[self._segment(u_n_kv=u_n_kv)],
+        )
+
+    def test_krok_007_odejmuje_w_kv_a_nie_mnozy_przez_procent(self) -> None:
+        """U_source ≠ U_n: U = U_source − ΔU_total_kV, dokładnie (nie w przybliżeniu).
+
+        Iniekcja I1 karty (przywrócenie starej formy mnożenia) MUSI tu dać
+        czerwień: przy U_source ≠ U_n obie formy różnią się nietrywialnie.
+        """
+        dane = self._input(u_source_kv=14.8, u_n_kv=15.0)
+        proof = ProofGenerator.generate_vdrop_proof(dane)
+
+        kluczowe = proof.summary.key_results
+        delta_u_total_percent = kluczowe["delta_u_total_percent"].value
+        delta_u_total_kv = kluczowe["delta_u_total_kv"].value
+        u_kv = kluczowe["u_kv"].value
+
+        assert isinstance(delta_u_total_kv, float)
+        # Forma bezwzględna pochodzi z przeliczenia % przez U_n ODCINKA (15.0),
+        # a nie przez U_source (14.8) — to jest właśnie usunięcie mieszania
+        # podstaw z konstrukcji.
+        assert delta_u_total_kv == pytest.approx(delta_u_total_percent / 100.0 * 15.0, abs=1e-12)
+        # Wynik jest ODJĘCIEM w kV — dokładnie, bez tolerancji przybliżenia.
+        assert u_kv == pytest.approx(dane.u_source_kv - delta_u_total_kv, abs=1e-12)
+
+        stara_forma = dane.u_source_kv * (1 - delta_u_total_percent / 100.0)
+        # Stara (wadliwa) forma mnożenia daje INNY wynik niż nowa forma —
+        # dowód, że naprawa faktycznie zmieniła arytmetykę, nie tylko opis.
+        assert abs(u_kv - stara_forma) > 1e-6
+
+        krok_007 = next(s for s in proof.steps if s.equation.equation_id == "EQ_VDROP_007")
+        jednostki_wejsc = krok_007.unit_check.input_units
+        assert jednostki_wejsc["U_{source}"] == "kV"
+        assert jednostki_wejsc["ΔU_{total}^{kV}"] == "kV"
+        assert krok_007.unit_check.expected_unit == "kV"
+        assert krok_007.unit_check.passed
+
+    def test_krok_007_zgadza_sie_ze_stara_forma_gdy_u_source_rowna_u_n(self) -> None:
+        """U_source = U_n: stara i nowa forma dają TEN SAM wynik (róg bez kosztu).
+
+        To jest właśnie róg, w którym pierwszy pomiar karty PACK-BEZ-KONSUMENTA
+        wypadł niesłusznie uspokajająco (0,245 V) — bo akurat tu mieszanie
+        podstaw nic nie kosztuje.
+        """
+        dane = self._input(u_source_kv=15.0, u_n_kv=15.0)
+        proof = ProofGenerator.generate_vdrop_proof(dane)
+
+        kluczowe = proof.summary.key_results
+        delta_u_total_percent = kluczowe["delta_u_total_percent"].value
+        u_kv = kluczowe["u_kv"].value
+
+        stara_forma = dane.u_source_kv * (1 - delta_u_total_percent / 100.0)
+        assert u_kv == pytest.approx(stara_forma, abs=1e-9)
+
+    def test_delta_u_total_kv_niezalezne_od_u_source(self) -> None:
+        """ΔU_total w kV NIE pochodzi z u_source_kv — zero cyrkularności.
+
+        Iniekcja I2 karty (podmiana źródła ΔU_total na wynik biegu, tu
+        reprezentowany przez u_source_kv) MUSI tu dać czerwień: gdyby
+        ΔU_total_kV zależało od u_source_kv, dwa różne u_source_kv na TYM
+        SAMYM odcinku dałyby dwa różne ΔU_total_kV — a nie mogą, bo odcinek
+        (R, X, P, Q, U_n) jest identyczny w obu wywołaniach.
+        """
+        dane_a = self._input(u_source_kv=14.8, u_n_kv=15.0)
+        dane_b = self._input(u_source_kv=20.0, u_n_kv=15.0)  # celowo odległe
+
+        proof_a = ProofGenerator.generate_vdrop_proof(dane_a)
+        proof_b = ProofGenerator.generate_vdrop_proof(dane_b)
+
+        delta_a = proof_a.summary.key_results["delta_u_total_kv"].value
+        delta_b = proof_b.summary.key_results["delta_u_total_kv"].value
+        assert delta_a == pytest.approx(delta_b, abs=1e-12)
+
+        # U za to MUSI się różnić dokładnie o różnicę u_source — jedyna
+        # wielkość, która smie zależeć od u_source_kv, to U samo.
+        u_a = proof_a.summary.key_results["u_kv"].value
+        u_b = proof_b.summary.key_results["u_kv"].value
+        assert (u_b - u_a) == pytest.approx(dane_b.u_source_kv - dane_a.u_source_kv, abs=1e-12)
+
+    def test_krok_006_procent_pozostaje_odniesiony_do_un_bez_zmian(self) -> None:
+        """EQ_VDROP_001..006 (forma %) NIE ruszone tą kartą — pozostają dostępne
+        jako wielkość prezentacyjna/pochodna, zgodnie z §0 karty PODSTAWA-VDROP."""
+        dane = self._input(u_source_kv=14.8, u_n_kv=15.0)
+        proof = ProofGenerator.generate_vdrop_proof(dane)
+
+        krok_006 = next(s for s in proof.steps if s.equation.equation_id == "EQ_VDROP_006")
+        assert krok_006.result.unit == "%"
+        assert krok_006.unit_check.passed
+
+
+# =============================================================================
 # SC1 Tests (P11.1c)
 # =============================================================================
 

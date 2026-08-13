@@ -76,12 +76,21 @@ describe('SldCanonPresetG1 — canonical PV 1 MW template (G1)', () => {
     expect(txt).not.toContain('GRANICA'); // boundary is implied by the metering — no separate ⊟
   });
 
-  it('SN U readout is the consistent nominal placeholder (15,75 kV · 1,00 pu) pending §5', () => {
+  it('U readouts carry the SOLVED voltages (SN 1,00 pu; nN shows the PV export rise)', () => {
     const txt = renderG1().container.textContent ?? '';
-    // U shows the NOMINAL voltage at the solved pu (rounded) — internally consistent;
-    // the real value (possible export voltage rise) arrives from the solver in §5.
-    expect(txt).toContain('15,75 kV · 1,00 pu');
-    expect(txt).toContain('0,80 kV · 1,00 pu');
+    // INTENCJA (przepisane przy karcie X4): pierwotnie oba odczyty byly
+    // NOMINALNYM placeholderem „· 1,00 pu" w oczekiwaniu na §5. Po wpieciu
+    // testu regeneracji artefaktow GENERATED liczby pochodza z ZYWEGO solvera
+    // FROZEN — a przy eksporcie PV napiecie szyny nN jest lekko PODNIESIONE
+    // (1,01 pu), co jest fizycznie poprawne. Wartosci czytamy z companiona
+    // (jedno zrodlo), nie z literalu, zeby kolejna regeneracja nie zrywala
+    // testu przy legalnej zmianie liczb.
+    const snPu = G1.voltage_flow.buses['SN_PCC'].u_pu.toFixed(2).replace('.', ',');
+    const nnPu = G1.voltage_flow.buses['NN_800'].u_pu.toFixed(2).replace('.', ',');
+    expect(txt).toContain(`15,75 kV · ${snPu} pu`);
+    expect(txt).toContain(`0,80 kV · ${nnPu} pu`);
+    // Podbicie eksportowe ma byc widoczne, nie zaokraglone do udawanej nominali.
+    expect(G1.voltage_flow.buses['NN_800'].u_pu).toBeGreaterThan(1.0);
   });
 
   it('§5 readouts: ip beside Icw (dynamic withstand) + Ik″1f-z from OSD neutral earthing + IMD-IT', () => {

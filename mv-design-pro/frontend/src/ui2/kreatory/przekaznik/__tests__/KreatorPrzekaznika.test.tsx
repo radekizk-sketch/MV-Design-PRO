@@ -3,7 +3,7 @@
  * Pola wybierane natywnie (userEvent), payload weryfikowany 1:1 z operacją domenową.
  */
 
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -75,11 +75,25 @@ vi.mock('../../../../ui/field/fieldControlSelectors', () => ({
   measurementCountsForField: () => ({ ct: 1, vt: 1 }),
 }));
 
+/**
+ * Wybór pozycji katalogowej przekaźnika.
+ *
+ * CZEKAMY NA OPCJĘ, NIE NA SAM `<select>` (naprawa chwiejności, 2026-08-08).
+ * Lista pozycji przychodzi z asynchronicznego `fetchProtectionDeviceTypes`, a
+ * pole `<select>` renderuje się PRZED jej rozwiązaniem — więc warunek „element
+ * jest w dokumencie" spełniał się na PUSTEJ liście i `selectOptions` wywracał
+ * się z „Value »relay-1« not found in options". Objaw wychodził wyłącznie
+ * w pełnym przebiegu shardowanym (setki plików w jednym procesie, przesunięte
+ * kolejkowanie mikrozadań), a w izolacji test przechodził — czyli czekanie na
+ * niewłaściwy warunek udawało zieleń. Zmierzone: ten sam commit dawał raz
+ * czerwień, raz zieleń na `--shard=1/4`.
+ */
 async function pickCatalog() {
+  const katalog = await screen.findByTestId('mvd-kreator-przekaznik-katalog');
   await waitFor(() => {
-    expect(screen.getByTestId('mvd-kreator-przekaznik-katalog')).toBeInTheDocument();
+    expect(within(katalog).getByRole('option', { name: /REF615/ })).toBeInTheDocument();
   });
-  await userEvent.selectOptions(screen.getByTestId('mvd-kreator-przekaznik-katalog'), 'relay-1');
+  await userEvent.selectOptions(katalog, 'relay-1');
 }
 
 describe('KreatorPrzekaznika — realna ścieżka', () => {

@@ -44,7 +44,12 @@ export type { TekstZWzoramiProps } from './tekstZWzorami';
 
 export { VBW, VBH, PAD, PLW, PLH, px, py, RamkaWykresu } from './wykresPomoc';
 
-export { useSelekcjaPoOperacji, mapujTypElementu, refZOperacji } from './selekcjaPoOperacji';
+export {
+  useSelekcjaPoOperacji,
+  mapujTypElementu,
+  refZOperacji,
+  kanonicznyRefZOperacji,
+} from './selekcjaPoOperacji';
 export type { SelekcjaFallback } from './selekcjaPoOperacji';
 
 export { bladPola } from './model';

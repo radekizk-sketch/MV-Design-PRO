@@ -90,9 +90,62 @@ describe('SCHEMAT-10 S7.6 — kontraktowe minimum światła pasm (Z1 KOMPRESJA)'
     // pełna etykieta techniczna L2 poszerza footprint kolumn (patrz baseline
     // `vertical_length_probe` + `buildScene.test.ts`). Kompresja pasm (przedmiot
     // tego testu) NIETKNIĘTA — delta pochodzi z szerokości etykiet, nie z gapów.
-    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 0))).toBe(22944);
-    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 1))).toBe(39888);
-    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 2))).toBe(39888);
+    // KD-5 (zwinięcie bloku GPZ na L0): L0 22944 → 22896 (−48 px — piony
+    // wewnętrzne GPZ zastąpione dwoma pionami reprezentacji zwiniętej).
+    // L1/L2 BEZ ZMIAN — zwinięcie nie rusza geometrii świata (kompozycja
+    // geometryczna GPZ liczona przy pełnym szczególe na każdym LOD).
+    // KD-8 poz. 5 (2026-07-31, CELOWA aktualizacja baseline): PODNIESIONY
+    // 22896/39888/39888 → 23232/40224/40224 (+336 px pionów JEDNOLICIE na LOD).
+    // Przyczyna dokładna: prześwit etykiety napięcia szyny od TORU urósł z GRID
+    // (8 px) do BUSBAR_LABEL_PATH_CLEARANCE (16 px), a rezerwacja pasma
+    // (`stationBusbarLabelHeight`) urosła razem z nim — 42 wiersze stacji z
+    // polami SN na fixturze referencyjnej × 8 px = 336 px. Odstępstwo od reguły
+    // „nie-rosnąca" (§15.1 „redukcja jest ograniczeniem MIĘKKIM") ŚWIADOME i tej
+    // samej klasy co F10.3: czytelność podpisu szyny ma pierwszeństwo przed
+    // minimalizacją pionów. Dowód braku regresji układu: `accept:sld-v3` ALL PASS
+    // (w tym nowa sonda `busbar_label_clearance_probe` — 55 etykiet szyn,
+    // 0 naruszeń) oraz zero nowych kolizji etykieta↔etykieta/symbol/przewód.
+    // S9-1 (ŁAMANIE ARKUSZA, `docs/sld/DECYZJA_LAMANIE_ARKUSZA.md`) — baseline
+    // OBNIŻONY: 23232/40224/40224 → 22232/39240/39240 (−1000 / −984 / −984).
+    // Przyczyna zmierzona, nie oszacowana: po złamaniu ciągu na wiersze arkusza
+    // odgałęzienia leżą w PAŚMIE swojego wiersza (przeplot, decyzja §4), a nie
+    // pod całym rysunkiem — piony zejść lateralnych są krótsze o dystans, który
+    // wcześniej pokonywały przez wszystkie wiersze niżej. Nadwyżkę częściowo
+    // zjadają NOWE piony łączników ciągu dalszego (kanał powrotny + rynna
+    // podjęcia na każdym złamaniu), więc bilans netto jest UJEMNY — reguła
+    // „nie-rosnąca" (spec §15.1) spełniona.
+    // S9-7/8 (TYPOGRAFIA I HIERARCHIA RYSUNKU): PODNIESIONY 22232/39240/39240 →
+    // 22440/39448/39448 (+208 px jednolicie). Przyczyna ZMIERZONA: oznacznik
+    // jednoznaczności napięcia znamionowego kabla („Un=", `layout/lineLabel.ts`,
+    // S9-8) wydłuża etykietę przęsła o 3 glify, a ta jest REZERWACJĄ szerokości
+    // kolumny stacji (`requiredSegmentLabelWidth`), więc `colorSegmentLabelRows`
+    // inaczej dzieli sloty na wiersze pasma B1; „jedna kotwica" S1 propaguje
+    // deltę jednolicie na L0/L1/L2. Świadome odstępstwo od „nie-rosnącej"
+    // (§15.1 „redukcja jest ograniczeniem MIĘKKIM"): sam napis „20 kV" w
+    // łańcuchu członów nie mówi, czy to napięcie izolacji kabla, czy pracy
+    // sieci — a te bywają różne na tym samym rysunku. Wariant „Un = " ze
+    // spacjami kosztowałby +2536 px i obniżał gęstość tuszu 2,03 %→1,94 %,
+    // dlatego wybrano formę zwartą (pomiar w `formatRatedVoltageKv`).
+    // PROPORCJE (karta PROPORCJE, 2026-08-07): OBNIŻONY 22440/39448/39448 →
+    // 21480/38488/38488 (−960 px jednolicie na wszystkich poziomach). Przyczyna
+    // ZMIERZONA, nie oszacowana: kod stacji pada w bloku RAZ (niesie go opis
+    // sekcji — rozstrzygnięcie S9-8/S9-12), więc pasmo nazw straciło wiersz z
+    // gołym kodem; wysokość pasma jest częścią wysokości bloku stacji, a ta
+    // przez „jedną kotwicę" S1 propaguje deltę jednolicie na L0/L1/L2. To jest
+    // SPADEK, więc reguła „nie-rosnąca" (§15.1) spełniona z zapasem. Skutek
+    // uboczny zamierzony: skala dopasowania sieci referencyjnej rośnie
+    // 0,1346 → 0,1407, czyli przegląd jest o 4,5% bliżej.
+    // BLOK-PUSTY (2026-08-07): OBNIŻONY 21480/38488/38488 → 21064/37272/37272
+    // (−416 na L0, −1216 na L1/L2). Przyczyna ZMIERZONA: rezerwacja strony nN
+    // bloku stacji liczyła SUMĘ dwóch zwisów (rząd DER + strzałka odbioru),
+    // choć kompozycja wiesza OBA na tej samej szynie nN i rozsuwa je w
+    // POZIOMIE (`layout/measure.ts` `nnSideBelowBusHeight`) — blok każdej
+    // stacji z odbiorem nN i DER na nN skrócił się o 32 j.św., co przez pasma
+    // i przecięcia wierszy oddaje powyższą deltę. SPADEK ⇒ reguła
+    // „nie-rosnąca" (§15.1) spełniona.
+    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 0))).toBe(21064);
+    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 1))).toBe(37272);
+    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 2))).toBe(37272);
   });
 
   it('determinizm: rekordy pasm identyczne w dwóch biegach (fixtura referencyjna, L2)', () => {

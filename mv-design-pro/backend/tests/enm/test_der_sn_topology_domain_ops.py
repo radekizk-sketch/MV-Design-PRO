@@ -25,7 +25,22 @@ from network_model.solvers.short_circuit_iec60909 import ShortCircuitIEC60909Sol
 
 _TR_BLOCK = "tr-sn-nn-15-04-1000kva-dyn11"
 _CABLE = "cable-base-epr-al-1c-240"
-_APARAT_SN = "ap-sn-cb-630"
+#: Aparat pola SN i aparat pola nN — RZECZYWISTE pozycje katalogu. Wcześniejsze
+#: „ap-sn-cb-630" / „ap-nn-630" nie istniały w żadnej kategorii: operacja
+#: przyjmowała je bez sprawdzenia i zapisywała do modelu martwą referencję pod
+#: `source_mode: KATALOG` (defekt G — brama sprawdzała OBECNOŚĆ, nie ISTNIENIE).
+_APARAT_SN = "sw-cb-abb-vd4-17kv-630a"
+_APARAT_NN = "cb_nn_630a"
+
+#: Falowniki nN 0,4 kV — pozycje katalogowe, nie wymyślone identyfikatory.
+#: Tabliczka (un_kv/pmax_mw/sn_mva) pochodzi od tej chwili WYŁĄCZNIE z katalogu,
+#: dlatego payloady nie niosą już `materialized_params`: kanał, w którym test
+#: podawał własne liczby pod prawdziwie brzmiącym refem, był samym defektem.
+_KONWERTER = {
+    "PV": "conv-pv-nn-1mw-0p4kv",
+    "BESS": "conv-bess-nn-1mw-0p4kv",
+    "FW": "conv-wind-nn-2mw-0p4kv",
+}
 
 
 def _sn_station_enm(with_station_transformer: bool = False) -> dict:
@@ -147,17 +162,10 @@ def _der_sn_payload(
         "power_setpoint_mw": 1.0,
         "catalog_binding": {
             "catalog_namespace": namespace,
-            "catalog_item_id": f"conv-{technology.lower()}-04kv",
+            "catalog_item_id": _KONWERTER[technology],
             "catalog_item_version": "2024.1",
             "materialize": True,
             "snapshot_mapping_version": "1.0",
-        },
-        "materialized_params": {
-            "catalog_item_id": f"conv-{technology.lower()}-04kv",
-            "catalog_item_version": "2024.1",
-            "un_kv": 0.4,
-            "pmax_mw": 1.0,
-            "sn_mva": 1.0,
         },
         "der_topology": {
             "connection_level": "sn",
@@ -288,7 +296,7 @@ def test_case1_nn_variant_unchanged_no_block_transformer() -> None:
             "field_name": "Pole PV nN",
             "catalog_binding": {
                 "catalog_namespace": "APARAT_NN",
-                "catalog_item_id": "ap-nn-630",
+                "catalog_item_id": _APARAT_NN,
                 "catalog_item_version": "2024.1",
                 "materialize": True,
                 "snapshot_mapping_version": "1.0",
@@ -296,19 +304,14 @@ def test_case1_nn_variant_unchanged_no_block_transformer() -> None:
         },
         "source_name": "Blok PV nN",
         "power_setpoint_mw": 0.4,
+        # Falownik 0,5 MW / 0,55 MVA mieści się w transformatorze stacji 630 kVA —
+        # ten przypadek bada wariant `nn_side`, a nie kontrolę mocy toru.
         "catalog_binding": {
-            "catalog_namespace": "CONVERTER",
-            "catalog_item_id": "conv-pv-04kv",
+            "catalog_namespace": "ZRODLO_NN_PV",
+            "catalog_item_id": "conv-pv-nn-0p5mw-0p4kv",
             "catalog_item_version": "2024.1",
             "materialize": True,
             "snapshot_mapping_version": "1.0",
-        },
-        "materialized_params": {
-            "catalog_item_id": "conv-pv-04kv",
-            "catalog_item_version": "2024.1",
-            "un_kv": 0.4,
-            "pmax_mw": 0.4,
-            "sn_mva": 0.4,
         },
         # der_topology='nn' NIE może wyzwalać materializacji toru SN (interception tylko dla sn).
         "der_topology": {"connection_level": "nn"},

@@ -19,6 +19,15 @@ export const POLE_STRINGS = {
   aparat: 'Rodzaj aparatu',
   aparatPomoc: 'Wyłącznik łączy przy zwarciu (pola z 50/51/67); rozłącznik/odłącznik bez zwarcia.',
 
+  rodzajPomiaru: 'Rodzaj pomiaru',
+  rodzajPomiaruPomoc:
+    'Układ pomiarowy energii (rozliczeniowy podstawowy, rezerwowy, równoważny lub '
+    + 'pomiarowo-kontrolny — wg standardu układów pomiarowych i IRiESD) mierzy energię przy '
+    + 'granicy stron i nie może leżeć w torze tranzytu magistrali. Pomiar napięcia szyn '
+    + '(przekładniki napięciowe sekcji rozdzielni) nie jest układem pomiarowym energii — '
+    + 'jest wolny w każdej topologii.',
+  wierszRodzajPomiaru: 'Rodzaj pomiaru',
+
   szablonTytul: 'Szablon pola producenta',
   szablonPomoc:
     'Powiąż pole z gotowym szablonem producenta (rodzina rozdzielnicy → szablon pola). '

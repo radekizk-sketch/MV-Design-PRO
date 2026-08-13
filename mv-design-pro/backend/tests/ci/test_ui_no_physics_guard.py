@@ -4,6 +4,8 @@ import importlib.util
 import sys
 from pathlib import Path
 
+import pytest
+
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 SCRIPTS_DIR = PROJECT_ROOT / "scripts"
 
@@ -45,24 +47,35 @@ def test_guard_main_returns_zero_on_repo():
 
 
 def test_ui_allowlist_matches_measured_baseline():
-    """Baseline (re-measured 2026-07-28, V12K-267): exactly 5 raw physics-pattern
-    hits in frontend/src/ui/** (pre-allowlist, via scan_file which the allowlist
-    never touches), all classified 0 class-a (real physics) / 5 class-b (false
-    positive) / 0 class-c (catalog-constant exception). If this count changes, a
-    new hit appeared and MUST be re-classified explicitly (allowlisted with a
-    reason, or fixed as a real physics defect) -- never silently absorbed by a
-    broader allowlist entry.
+    """Baseline (re-measured 2026-07-31, KD-2 acceptance): exactly 16 raw
+    physics-pattern hits in frontend/src/ui/** (pre-allowlist, via scan_file
+    which the allowlist
+    never touches), classified 0 class-a (real physics) / 16 class-b (false
+    positive: string, label, comment continuation, ratio of two backend values,
+    unit conversion, chart-axis normalisation) / 0 class-c. If this count
+    changes, a new hit appeared and MUST be re-classified explicitly
+    (allowlisted with a reason, or fixed as a real physics defect) -- never
+    silently absorbed by a broader allowlist entry.
 
-    WHY THE NUMBER DROPPED (22 -> 5, and 18 -> 5 allowlist entries). The previous
-    baseline (H-1, 2026-07-22) counted 13 hits in
-    station-der/protection-catalogs.ts -- a VT (voltage transformer) catalog held
-    in the frontend. Commit dc525539 (V12K-257/258, "koniec rownoleglych
-    katalogow VT") moved that catalog to the backend, which is exactly the
-    direction this guard exists to push. The hits are gone because the code is
-    gone; the baseline is lowered by MEASUREMENT, not by widening tolerance.
-    Nobody re-measured after that card, so this test and
-    test_ui_allowlist_entries_are_not_stale were both red on the branch -- they
-    caught the drift correctly and were simply left unread.
+    WHY THE NUMBER MOVED (5 -> 18 raw, 5 -> 15 allowlist entries). Not drift:
+    K7-B WIDENED THE DETECTION PATTERNS. Until that card the guard only knew the
+    quantities that produced the defect which created it (sqrt(3), impedance,
+    dU/dP), so fifteen places in ui/** computing IEC 60255 characteristics,
+    IEC 60909 withstand scaling, adiabatic conductor sizing, earthing resistance,
+    instrument-transformer burden, THD and hosting capacity passed under a GREEN
+    guard. Those places were relocated to the backend or deleted (see
+    docs/uiux/DLUG_FIZYKA_W_UI_2026-07.md §7); what the new patterns still see in
+    ui/** are only labels, comments and ratios -- itemised in ALLOWLIST.
+
+    HISTORY. H-1 (2026-07-22) measured 22 raw hits / 18 entries; V12K-267
+    re-measured 5 after commit dc525539 moved the frontend VT catalog to the
+    backend; K7-B (2026-07-31) widened patterns and measured 18; KD-2 acceptance
+    (2026-07-31) re-measured 16 after card KD-1 (V12K-289) deleted the dead
+    station-wizard-v2 component holding two allowlisted label hits (KD-1's own
+    gates skipped pytest -- zero backend files in its diff -- so this backend
+    test scanning frontend files could only catch it on the merged tip). All
+    re-measurements lowered the baseline BY MEASUREMENT, never by widening
+    tolerance.
     """
     scan_dir = ui_no_physics_guard.REPO_ROOT / "frontend" / "src" / "ui"
     raw = 0
@@ -72,7 +85,7 @@ def test_ui_allowlist_matches_measured_baseline():
         if ui_no_physics_guard._should_exclude_file(path):
             continue
         raw += len(ui_no_physics_guard.scan_file(path))
-    assert raw == 5
+    assert raw == 16
 
 
 def test_ui_allowlist_entries_are_not_stale():
@@ -206,3 +219,241 @@ def test_guard_does_not_flag_backend_result_reads(tmp_path: Path):
     )
 
     assert ui_no_physics_guard.scan_tree([read_file.parent]) == []
+
+
+# =============================================================================
+# K7-B (2026-07-31) — REGRESJE WSTRZYKNIETE dla NOWYCH rodzin wzorcow.
+#
+# Kazdy test ponizej odtwarza JEDEN z rachunkow, ktore karta K7-B zastala w
+# `frontend/src/ui/**` przy ZIELONYM guardzie. Jesli ktorykolwiek wrocilby do
+# warstwy prezentacji, guard musi go zlapac — inaczej rozszerzenie wzorcow
+# byloby kosmetyka.
+# =============================================================================
+
+
+def _skan(tmp_path: Path, nazwa: str, tresc: str, warstwa: str = "ui"):
+    plik = tmp_path / "frontend" / "src" / warstwa / "kreator" / nazwa
+    plik.parent.mkdir(parents=True, exist_ok=True)
+    plik.write_text(tresc, encoding="utf-8")
+    return ui_no_physics_guard.scan_tree([plik.parent])
+
+
+def test_guard_lapie_charakterystyke_idmt_iec60255(tmp_path: Path):
+    """`computeTripTime` — trzy rownolegle kopie tego rachunku zyly w ui/**."""
+    violations = _skan(
+        tmp_path,
+        "protectionContract.ts",
+        "export function computeTripTime(m: number, tms: number, alpha: number) {\n"
+        "  const denominator = Math.pow(m, alpha) - 1;\n"
+        "  return (0.14 * tms) / denominator;\n"
+        "}\n",
+    )
+    flagged = {ln for _p, ln, _c, _pat in violations}
+    assert {2, 3}.issubset(flagged), violations
+
+
+def test_guard_lapie_skalowanie_wytrzymalosci_cieplnej(tmp_path: Path):
+    """`validateDeviceWithstand` — glowny trop karty K7-B (IEC 60909)."""
+    violations = _skan(
+        tmp_path,
+        "protection-catalogs.ts",
+        "export function validateDeviceWithstand(d: Dev, tClearing: number) {\n"
+        "  const i_th_effective = d.i_th_1s_ka * Math.sqrt(d.i_th_duration_s / tClearing);\n"
+        "  const utilization_dyn = (d.i_peak_calculated_ka / d.i_dyn_ka) * 100;\n"
+        "  return { i_th_effective, utilization_dyn };\n"
+        "}\n",
+    )
+    flagged = {ln for _p, ln, _c, _pat in violations}
+    assert {2, 3}.issubset(flagged), violations
+
+
+def test_guard_lapie_dobor_przekroju_adiabatyczny(tmp_path: Path):
+    """`cableAmpacityValidator` — S_min = I*sqrt(t)/k oraz derating obciazalnosci."""
+    violations = _skan(
+        tmp_path,
+        "cableAmpacityValidator.ts",
+        "export function validateCableAmpacity(i: In) {\n"
+        "  const deratedAmpacity = i.ratedAmpacityA * i.groupingFactor;\n"
+        "  const thermalMm2 = (i.shortCircuitKa * 1000 * Math.sqrt(i.tS)) / i.k;\n"
+        "  return { deratedAmpacity, thermalMm2 };\n"
+        "}\n",
+    )
+    flagged = {ln for _p, ln, _c, _pat in violations}
+    assert {2, 3}.issubset(flagged), violations
+
+
+def test_guard_lapie_rezystancje_uziemienia_i_bilans_wtorny(tmp_path: Path):
+    """`earthingGridCalculator` (IEEE 80) i `computeCtBurden` (IEC 61869-2)."""
+    violations = _skan(
+        tmp_path,
+        "earthingAndBurden.ts",
+        "export function obliczenia(soilResistivityOhmM: number, w: Wiring, c: Core) {\n"
+        "  const rg = soilResistivityOhmM * (1 / w.lengthM);\n"
+        "  const rp = (2 * w.lengthM) / (w.conductivityMperOhmMm2 * w.crossSectionMm2);\n"
+        "  const margin = ((c.ratedBurdenVa - c.computedBurdenVa) / c.ratedBurdenVa) * 100;\n"
+        "  return { rg, rp, margin };\n"
+        "}\n",
+    )
+    flagged = {ln for _p, ln, _c, _pat in violations}
+    assert {2, 3, 4}.issubset(flagged), violations
+
+
+def test_guard_lapie_thd_i_prad_szczytowy(tmp_path: Path):
+    """THD wg PN-EN 50160 oraz prad szczytowy ip = kappa*sqrt(2)*Ik (IEC 60909)."""
+    violations = _skan(
+        tmp_path,
+        "powerQualityContract.ts",
+        "export function jakosc(thdu: number, kappa: number, ikss: number) {\n"
+        "  const thduPct = thdu * 100;\n"
+        "  const ip = kappa * Math.sqrt(2) * ikss;\n"
+        "  return { thduPct, ip };\n"
+        "}\n",
+    )
+    flagged = {ln for _p, ln, _c, _pat in violations}
+    assert {2, 3}.issubset(flagged), violations
+
+
+def test_guard_nie_zglasza_specyfikatora_modulu_ani_komentarza_jsx(tmp_path: Path):
+    """Sciezka modulu i komentarz JSX nie sa dzieleniem — inaczej allowlista
+    puchlaby o wpisy bez tresci, a kazdy taki wpis to zgoda na cala linie."""
+    violations = _skan(
+        tmp_path,
+        "Ekran.tsx",
+        "import { A } from './ShortCircuitFlowOverlayAdapter';\n"
+        "export { WykresIkssChart } from './WykresIkssChart';\n"
+        "export function Ekran() {\n"
+        "  return (\n"
+        "    <div>\n"
+        "      {/* Pickup Current */}\n"
+        "      {/* Time Multiplier (TMS/TD) */}\n"
+        "    </div>\n"
+        "  );\n"
+        "}\n",
+    )
+    assert violations == [], violations
+
+
+def test_guard_nie_zglasza_odczytu_wielkosci_zwarciowych(tmp_path: Path):
+    """Odczyt i formatowanie gotowych wielkosci zwarciowych (bez mnozenia i
+    dzielenia) zostaje dozwolone — guard ma lapac RACHUNEK, nie slownictwo."""
+    violations = _skan(
+        tmp_path,
+        "readWithstand.ts",
+        "export function wiersz(r: { i_th_ka: number; i_dyn_ka: number }) {\n"
+        "  const ith = r.i_th_ka.toFixed(1);\n"
+        "  const idyn = r.i_dyn_ka.toFixed(1);\n"
+        "  return `withstand: ${ith} + ${idyn}`;\n"
+        "}\n",
+    )
+    assert violations == [], violations
+
+
+# =============================================================================
+# K7-B — REGRESJA WSTRZYKNIETA NA ORYGINALNYCH LINIACH.
+#
+# Ponizej sa PRAWDZIWE linie kodu, ktore karta K7-B wyjela z `frontend/src/ui/**`
+# (skopiowane 1:1 przed usunieciem), a nie ich uproszczone parafrazy. To jest
+# najmocniejszy dostepny dowod, ze rozszerzenie wzorcow dziala: gdyby ktorykolwiek
+# z tych rachunkow wrocil do warstwy prezentacji dokladnie w tej postaci, w ktorej
+# tam byl, guard zwroci RC=1. Kazdy wpis nazywa modul zrodlowy.
+# =============================================================================
+
+USUNIETE_RACHUNKI = [
+    (
+        "protection-catalogs.validateDeviceWithstand — skalowanie I_th (IEC 60909)",
+        "const i_th_effective = device.i_th_1s_ka * Math.sqrt("
+        "device.i_th_duration_s / Math.max(args.t_clearing_s, 0.01));",
+    ),
+    (
+        "protection-catalogs.validateDeviceWithstand — wykorzystanie I_dyn",
+        "const utilization_dyn = (args.i_peak_calculated_ka / device.i_dyn_ka) * 100;",
+    ),
+    (
+        "ProtectionWizard.computeAutoTms — krotnosc pradu (IEC 60255-151)",
+        "const ratio = i_fault_A / i_pickup_A;",
+    ),
+    (
+        "selectivity-grading.computeTripTime — charakterystyka IDMT",
+        "return (curve.tms * c.k) / denominator;",
+    ),
+    (
+        "protectionContract.computeTripTime — wykladnik charakterystyki",
+        "const denominator = Math.pow(currentMultiplier, constants.alpha) - 1;",
+    ),
+    (
+        "protectionContract.checkProtectionCoordination — krotnosc wzgledem nastawy",
+        "const downRatio = input.faultCurrent / input.downstream.pickup;",
+    ),
+    (
+        "cableAmpacityValidator — obciazalnosc po deratingu",
+        "const deratedAmpacity = ratedAmpacityA * groupingFactor * ambientFactor;",
+    ),
+    (
+        "cableAmpacityValidator — przekroj adiabatyczny S_min (IEC 60949)",
+        "thermalShortCircuitMm2 = Math.ceil((shortCircuitKa * 1000 * Math.sqrt("
+        "shortCircuitDurationS)) / k);",
+    ),
+    (
+        "earthingGridCalculator — rezystancja siatki (IEEE 80)",
+        "const rg = soilResistivityOhmM * (term1 + term2);",
+    ),
+    (
+        "earthingGridCalculator — napiecie dotykowe",
+        "const touchVoltageV = gridResistanceOhm * faultCurrentA * 0.5;",
+    ),
+    (
+        "ctMultiCoreContract.computeWireResistance (IEC 61869-2)",
+        "return (2 * wiring.lengthM) / (wiring.conductivityMperOhmMm2 * "
+        "wiring.crossSectionMm2);",
+    ),
+    (
+        "ctMultiCoreContract.computeCtBurden — margines mocy wtornej",
+        "const margin = ((core.ratedBurdenVa - computed) / core.ratedBurdenVa) * 100;",
+    ),
+    (
+        "ctMultiCoreContract.checkCtSaturation — krotnosc Ik/I1n",
+        "const ikRatio = shortCircuitCurrentA / primaryCurrentA;",
+    ),
+    (
+        "vtMultiWindingContract.computeVtBurden — rezystancja obwodu wtornego",
+        "const rp = (2 * wiring.lengthM) / (wiring.conductivityMperOhmMm2 * "
+        "wiring.crossSectionMm2);",
+    ),
+    (
+        "powerQualityContract.checkHarmonicCompliance — THD (PN-EN 50160)",
+        "const thduPct = thdu * 100;",
+    ),
+    (
+        "ctVtRatioValidator — wymagany ALF",
+        "const requiredAlf = (shortCircuitCurrentKa * 1000) / primaryCurrentA;",
+    ),
+    (
+        "protectionAutoSetter — nastawa z pradu zwarciowego",
+        "pickupValue: Math.round(0.8 * input.shortCircuitKa * 1000),",
+    ),
+    (
+        "measurementBurdenValidator — rezystancja przewodow wtornych",
+        "const rp = (2 * CU_RESISTIVITY_OHM_MM2_PER_M * cableLengthM) / " "cableCrossSectionMm2;",
+    ),
+    (
+        "lfDerivedMetrics — obciazenie liczone z ampacyjnosci",
+        "const loadingPct = (iMetric.value / ampacityA) * 100;",
+    ),
+    (
+        "ip = kappa * sqrt(2) * Ik'' (IEC 60909)",
+        "const ip = kappa * Math.sqrt(2) * ikssKa;",
+    ),
+]
+
+
+@pytest.mark.parametrize("opis,linia", USUNIETE_RACHUNKI, ids=[o for o, _ in USUNIETE_RACHUNKI])
+def test_guard_lapie_kazdy_rachunek_usuniety_karta_k7b(
+    opis: str, linia: str, tmp_path: Path
+) -> None:
+    plik = tmp_path / "frontend" / "src" / "ui" / "kreator" / "wznowiony.ts"
+    plik.parent.mkdir(parents=True, exist_ok=True)
+    plik.write_text(f"export function f() {{\n  {linia}\n}}\n", encoding="utf-8")
+
+    violations = ui_no_physics_guard.scan_tree([plik.parent])
+
+    assert violations, f"guard PRZEPUSCIL rachunek, ktory K7-B usunela z ui/**: {opis}"

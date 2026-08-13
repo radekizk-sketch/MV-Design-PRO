@@ -110,6 +110,13 @@ def _model_with_grid(
 # Z_conv(jw) sanity limits (computed directly from the solver helper)
 # ---------------------------------------------------------------------------
 
+#: Czestotliwosc podstawowa sieci uzywana w tych testach — TA SAMA, ktora niesie
+#: kontrakt wejsciowy (`V126AcademicInput.base_frequency_hz`, domyslnie 50 Hz).
+#: Wczesniej solver mial ja zaszyta w `_z_conv_components`; po karcie QU-FABRYKACJA
+#: podstawa jest argumentem NAZWANYM BEZ WARTOSCI DOMYSLNEJ, wiec zadne wywolanie
+#: (produkcyjne ani testowe) nie powstanie bez jawnego podania podstawy.
+_F_BASE_HZ = 50.0
+
 
 def test_z_conv_high_frequency_approaches_filter() -> None:
     """As w -> inf the controller terms roll off and Z_conv -> Z_f = R_f + jwL_f."""
@@ -117,9 +124,9 @@ def test_z_conv_high_frequency_approaches_filter() -> None:
     converter = _converter_from_card(card)
     solver = V126AcademicSolver()
     z_base = card.un_kv**2 / card.sn_mva
-    w_base = 2.0 * math.pi * 50.0
+    w_base = 2.0 * math.pi * _F_BASE_HZ
     for f_hz in (50_000.0, 200_000.0):
-        z_conv, _ = solver._z_conv_components(converter, f_hz)
+        z_conv, _ = solver._z_conv_components(converter, f_hz, f_base_hz=_F_BASE_HZ)
         w_pu = (2.0 * math.pi * f_hz) / w_base
         z_f_ohm = complex(card.filter_r_pu, w_pu * card.filter_l_pu) * z_base
         # |Z_conv| converges to |Z_f| (the filter) within a small relative tolerance.
@@ -133,10 +140,10 @@ def test_z_conv_in_band_is_high_impedance() -> None:
     converter = _converter_from_card(card)
     solver = V126AcademicSolver()
     z_base = card.un_kv**2 / card.sn_mva
-    w_base = 2.0 * math.pi * 50.0
+    w_base = 2.0 * math.pi * _F_BASE_HZ
     # A frequency well inside the current loop (f_ci=900 Hz) and above the PLL band.
     f_hz = 150.0
-    z_conv, _ = solver._z_conv_components(converter, f_hz)
+    z_conv, _ = solver._z_conv_components(converter, f_hz, f_base_hz=_F_BASE_HZ)
     w_pu = (2.0 * math.pi * f_hz) / w_base
     z_f_ohm = complex(card.filter_r_pu, w_pu * card.filter_l_pu) * z_base
     assert abs(z_conv) > 3.0 * abs(z_f_ohm), (abs(z_conv), abs(z_f_ohm))
@@ -151,10 +158,12 @@ def test_z_conv_negative_resistance_region_below_pll() -> None:
     f_pll = card.pll_bandwidth_hz
     # Scan sub-PLL frequencies; at least one must show negative real part.
     sub_pll = [f for f in (0.5, 1.0, 2.0, 3.0, 5.0) if f < f_pll]
-    re_parts = [solver._z_conv_components(converter, f)[0].real for f in sub_pll]
+    re_parts = [
+        solver._z_conv_components(converter, f, f_base_hz=_F_BASE_HZ)[0].real for f in sub_pll
+    ]
     assert any(re < 0.0 for re in re_parts), list(zip(sub_pll, re_parts, strict=False))
     # And well ABOVE the PLL band the real part is positive (passive-like).
-    re_above = solver._z_conv_components(converter, 5.0 * f_pll)[0].real
+    re_above = solver._z_conv_components(converter, 5.0 * f_pll, f_base_hz=_F_BASE_HZ)[0].real
     assert re_above > 0.0, re_above
 
 
@@ -173,7 +182,7 @@ def test_z_conv_requires_mandatory_card_fields() -> None:
         kwargs[missing] = None
         converter = V126ConverterInput(**kwargs)
         try:
-            solver._z_conv_components(converter, 10.0)
+            solver._z_conv_components(converter, 10.0, f_base_hz=_F_BASE_HZ)
         except ValueError as exc:
             assert missing in str(exc)
         else:  # pragma: no cover - defensive

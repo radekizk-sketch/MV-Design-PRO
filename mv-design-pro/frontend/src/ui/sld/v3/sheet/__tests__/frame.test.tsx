@@ -2,30 +2,95 @@
  * SLD V3 F4 — wyrocznie ramki arkusza (SLD_CAD_SPEC_V3 §2/§10).
  */
 import { describe, expect, it } from 'vitest';
-import { render } from '@testing-library/react';
+import { cleanup, render } from '@testing-library/react';
 
 import { rectsOverlap, type V3Rect } from '../../core/grid';
-import { computeLegendRowLayout, SheetFrame, type SheetLegendEntry } from '../Frame';
+import { LABEL_TYPOGRAPHY, MIN_TEXT_SCREEN_PX } from '../../core/text';
+import { SHEET_WIDTH_QUANTUM } from '../../layout/sheetRows';
+import { computeLegendRowLayout, SheetFrame, zoneRowBands, type SheetLegendEntry } from '../Frame';
 import { SCENE_LOD_LABELS_PL, type SceneLod } from '../../scene/buildScene';
 
-describe('V3 sheet — SheetFrame (spec §2: strefy referencyjne co 400px)', () => {
-  it('1600×800 (4 kolumny × 2 wiersze) ⇒ znaczniki stref 1..4 i A..B obecne', () => {
-    const { container } = render(<SheetFrame width={1600} height={800} scaleLabel="1:1000" />);
-    for (let i = 1; i <= 4; i++) {
+/**
+ * S9-7 (audyt C-4): KOLUMNY stref liczone KWANTEM FORMATU ARKUSZA
+ * (`SHEET_WIDTH_QUANTUM` = 128×GRID = 1024 px), a WIERSZE — z podziału na
+ * wiersze łamania (`meta.sheetRowBands`, prop `rowBands`), nie ze stałego
+ * kroku 400 px oderwanego od formatu. Intencja testu bez zmian: siatka
+ * odniesienia ma pokrywać arkusz i kończyć się na jego krawędzi.
+ */
+describe('V3 sheet — SheetFrame (S9-7 §2: strefy z FORMATU ARKUSZA)', () => {
+  it('3072×800 (3 kolumny kwantu) + 2 pasy wierszy ⇒ znaczniki 1..3 i A..B obecne', () => {
+    const { container } = render(
+      <SheetFrame
+        width={3 * SHEET_WIDTH_QUANTUM}
+        height={800}
+        scaleLabel="1:1000"
+        rowBands={[
+          { y: 0, height: 400 },
+          { y: 400, height: 400 },
+        ]}
+      />,
+    );
+    for (let i = 1; i <= 3; i++) {
       expect(container.querySelector(`[data-testid="sld-sheet-zone-col-${i}"]`)).toBeTruthy();
     }
     expect(container.querySelector('[data-testid="sld-sheet-zone-row-A"]')).toBeTruthy();
     expect(container.querySelector('[data-testid="sld-sheet-zone-row-B"]')).toBeTruthy();
-    expect(container.querySelector('[data-testid="sld-sheet-zone-col-5"]')).toBeFalsy();
+    expect(container.querySelector('[data-testid="sld-sheet-zone-col-4"]')).toBeFalsy();
     expect(container.querySelector('[data-testid="sld-sheet-zone-row-C"]')).toBeFalsy();
   });
 
-  it('rozmiar niebędący wielokrotnością 400 ⇒ ostatnia strefa nadal wyznaczona (ceil)', () => {
-    const { container } = render(<SheetFrame width={900} height={500} scaleLabel="1:500" />);
-    // ceil(900/400)=3, ceil(500/400)=2
+  it('szerokość niebędąca wielokrotnością kwantu ⇒ ostatnia kolumna nadal wyznaczona (ceil)', () => {
+    const { container } = render(
+      <SheetFrame width={2 * SHEET_WIDTH_QUANTUM + 100} height={500} scaleLabel="1:500" />,
+    );
     expect(container.querySelector('[data-testid="sld-sheet-zone-col-3"]')).toBeTruthy();
-    expect(container.querySelector('[data-testid="sld-sheet-zone-row-B"]')).toBeTruthy();
     expect(container.querySelector('[data-testid="sld-sheet-zone-col-4"]')).toBeFalsy();
+    // Brak `rowBands` (eksport/testy w izolacji) ⇒ JEDEN pas na cały arkusz.
+    expect(container.querySelector('[data-testid="sld-sheet-zone-row-A"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="sld-sheet-zone-row-B"]')).toBeFalsy();
+  });
+
+  it('S9-7: pasy wierszy przycięte do wysokości arkusza, zero pasów o zerowej wysokości', () => {
+    // Pasy wychodzące poza arkusz (np. bbox sceny szerszy niż okno) muszą być
+    // przycięte, a nie rysowane poza ramką.
+    const pasy = zoneRowBands(
+      [
+        { y: -50, height: 100 },
+        { y: 50, height: 200 },
+        { y: 400, height: 500 },
+      ],
+      300,
+    );
+    expect(pasy).toEqual([
+      { y: 0, height: 50 },
+      { y: 50, height: 200 },
+    ]);
+  });
+
+  it('S9-7: napisy aparatu arkusza mają STAŁY rozmiar ekranowy (iloczyn {skala} × {rodzaj napisu})', () => {
+    for (const scale of [0.05, 0.13, 1, 8]) {
+      const { container } = render(
+        <SheetFrame width={2048} height={800} scaleLabel="wg kamery" lodLabel="Przegląd sieci" cameraScale={scale} />,
+      );
+      const naEkranie = (sel: string): number =>
+        Number(container.querySelector(sel)?.getAttribute('font-size')) * scale;
+      expect(naEkranie('[data-testid="sld-sheet-zone-col-1"]')).toBeCloseTo(LABEL_TYPOGRAPHY.t1.fontSize, 6);
+      expect(naEkranie('[data-testid="sld-sheet-zone-row-A"]')).toBeCloseTo(LABEL_TYPOGRAPHY.t1.fontSize, 6);
+      expect(naEkranie('[data-testid="sld-sheet-scale-label"]')).toBeCloseTo(LABEL_TYPOGRAPHY.t2.fontSize, 6);
+      expect(naEkranie('[data-testid="sld-sheet-lod-label"]')).toBeCloseTo(LABEL_TYPOGRAPHY.t2.fontSize, 6);
+      // Twarda podłoga odbioru (S9-7) spełniona na każdej z tych skal.
+      expect(naEkranie('[data-testid="sld-sheet-zone-col-1"]')).toBeGreaterThanOrEqual(MIN_TEXT_SCREEN_PX);
+      cleanup();
+    }
+  });
+
+  it('S9-7: skala 1 (eksport/arkusz 1:1) daje typografię DOKŁADNIE jak przed kartą — brak kompensacji', () => {
+    const { container } = render(
+      <SheetFrame width={2048} height={800} scaleLabel="1:1000" cameraScale={1} />,
+    );
+    expect(container.querySelector('[data-testid="sld-sheet-zone-col-1"]')?.getAttribute('font-size')).toBe(
+      String(LABEL_TYPOGRAPHY.t1.fontSize),
+    );
   });
 
   it('ramka i obszar rysunku obecne, wymiary SVG uwzględniają margines', () => {

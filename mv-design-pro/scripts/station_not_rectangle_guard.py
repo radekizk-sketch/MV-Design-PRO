@@ -20,10 +20,7 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-MINI_RMU_PATH = (
-    REPO_ROOT
-    / "frontend/src/ui/sld/v2/renderer/MiniBlockRmuRenderer.tsx"
-)
+MINI_RMU_PATH = REPO_ROOT / "frontend/src/ui/sld/v2/renderer/MiniBlockRmuRenderer.tsx"
 
 REQUIRED_MARKERS: tuple[str, ...] = (
     "sld-v2-mini-rmu-",  # kontener z id

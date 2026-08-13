@@ -48,17 +48,17 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 FRONTEND_SRC = REPO_ROOT / "frontend" / "src" / "ui"
 
 FORBIDDEN_PATTERNS = [
-    (re.compile(r'\badjacencyList\b'), "adjacencyList (local graph)"),
-    (re.compile(r'\badjacencyMap\b'), "adjacencyMap (local graph)"),
-    (re.compile(r'\blocalGraph\b'), "localGraph (local topology)"),
-    (re.compile(r'\blocalTopology\b'), "localTopology (local topology)"),
-    (re.compile(r'\blocalNodes\b'), "localNodes (local graph)"),
-    (re.compile(r'\blocalEdges\b'), "localEdges (local graph)"),
-    (re.compile(r'\bpendingChanges\b'), "pendingChanges (bypasses domain ops)"),
-    (re.compile(r'\bpendingMutations\b'), "pendingMutations (bypasses domain ops)"),
-    (re.compile(r'\bpendingOps\b'), "pendingOps (bypasses domain ops)"),
-    (re.compile(r'\blocalBuses\b'), "localBuses (duplicates snapshot)"),
-    (re.compile(r'\blocalBranches\b'), "localBranches (duplicates snapshot)"),
+    (re.compile(r"\badjacencyList\b"), "adjacencyList (local graph)"),
+    (re.compile(r"\badjacencyMap\b"), "adjacencyMap (local graph)"),
+    (re.compile(r"\blocalGraph\b"), "localGraph (local topology)"),
+    (re.compile(r"\blocalTopology\b"), "localTopology (local topology)"),
+    (re.compile(r"\blocalNodes\b"), "localNodes (local graph)"),
+    (re.compile(r"\blocalEdges\b"), "localEdges (local graph)"),
+    (re.compile(r"\bpendingChanges\b"), "pendingChanges (bypasses domain ops)"),
+    (re.compile(r"\bpendingMutations\b"), "pendingMutations (bypasses domain ops)"),
+    (re.compile(r"\bpendingOps\b"), "pendingOps (bypasses domain ops)"),
+    (re.compile(r"\blocalBuses\b"), "localBuses (duplicates snapshot)"),
+    (re.compile(r"\blocalBranches\b"), "localBranches (duplicates snapshot)"),
 ]
 
 

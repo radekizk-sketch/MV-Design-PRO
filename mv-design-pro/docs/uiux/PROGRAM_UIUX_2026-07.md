@@ -198,12 +198,12 @@ Reguła konsolidacji: stary moduł znika w tym samym PR, w którym nowy przejmuj
 
 | Faza | Zakres | DoD (bramka wyjścia) |
 |---|---|---|
-| **U0 Porządek i kanon** | U0.1 inwentarz (✅); U0.2 rejestracja programu w INDEX/PLANS/CLAUDE.md (✅); U0.3 weryfikacja wpięcia API (✅ 2026-07-15 — wyniki w inwentarzu §4/§6); U0.4 porządkowanie PLANS.md (✅ — historia → archiwum); U0.5 karta koordynacyjna tokenów motywów z wątkiem SLD (✅ — czeka na odpowiedź wątku SLD); U0.6 makiety IA (artefakt HTML) zatwierdzone przez właściciela; U0.7 model interakcji + rejestr okien (✅ seed W-101…W-703) | inwentarz bez pozycji „do weryfikacji"; INDEX/PLANS/CLAUDE.md spójne; makiety zatwierdzone |
-| **U1 Powłoka** | E1, E2, E15 + design system (tokeny, komponenty bazowe) | nowa powłoka z 7 przestrzeniami; wszystkie dotychczasowe widoki osiągalne; pełne bramki zielone |
-| **U2 Model i dane** | E3, E4, E5, E6 | kreator od GPZ do DER przechodzi e2e; katalog-first wymuszony w UI; readiness czytelny |
-| **U3 Obliczenia i wyniki** | E7, E8, E9 | każda analiza z inwentarza uruchamialna i czytelna z UI; każdy wynik → ślad → dowód |
-| **U4 Specjalistyczne** | E10, E11, E12, E13 | macierz pokrycia: zero ❌, zero ◐; raporty kompletne |
-| **U5 Scalenie** | E14 + przejścia e2e wszystkich person §3, polish, visual regression nowej powłoki | ocena rady specjalistów ≥ 9/10 per przestrzeń; pełny e2e „projekt → analiza → dowód → raport" |
+| **U0 Porządek i kanon** | U0.1 inwentarz (✅); U0.2 rejestracja programu w INDEX/PLANS/CLAUDE.md (✅); U0.3 weryfikacja wpięcia API (✅ 2026-07-15 — wyniki w inwentarzu §4/§6); U0.4 porządkowanie PLANS.md (✅ — historia → archiwum); U0.5 karta koordynacyjna tokenów motywów z wątkiem SLD (✅ — czeka na odpowiedź wątku SLD); U0.6 makiety IA (artefakt HTML) zatwierdzone przez właściciela; U0.7 model interakcji + rejestr okien (✅ seed W-101…W-703) | inwentarz bez pozycji „do weryfikacji"; INDEX/PLANS/CLAUDE.md spójne; makiety zatwierdzone — **FAZA U0 ZAMKNIĘTA** (`PLANS.md` §3.-1: „FAZA U0 ZAMKNIĘTA") |
+| **U1 Powłoka** | E1, E2, E15 + design system (tokeny, komponenty bazowe) | nowa powłoka z 7 przestrzeniami; wszystkie dotychczasowe widoki osiągalne; pełne bramki zielone — **FAZA U1 ZAMKNIĘTA 2026-07-15** (`PLANS.md` §3.-1: „FAZA U1 ZAMKNIĘTA 2026-07-15") |
+| **U2 Model i dane** | E3, E4, E5, E6 | kreator od GPZ do DER przechodzi e2e; katalog-first wymuszony w UI; readiness czytelny — stan wg audytu bramek: `docs/uiux/AUDYT_BRAMEK_U2_U5_2026-08.md` (werdykt U2: 8/11) |
+| **U3 Obliczenia i wyniki** | E7, E8, E9 | każda analiza z inwentarza uruchamialna i czytelna z UI; każdy wynik → ślad → dowód — stan wg audytu bramek: `docs/uiux/AUDYT_BRAMEK_U2_U5_2026-08.md` (werdykt U3: 7/9) |
+| **U4 Specjalistyczne** | E10, E11, E12, E13 | macierz pokrycia: zero ❌, zero ◐; raporty kompletne — stan wg audytu bramek: `docs/uiux/AUDYT_BRAMEK_U2_U5_2026-08.md` (werdykt U4: 3/7) |
+| **U5 Scalenie** | E14 + przejścia e2e wszystkich person §3, polish, visual regression nowej powłoki | ocena rady specjalistów ≥ 9/10 per przestrzeń; pełny e2e „projekt → analiza → dowód → raport" — stan wg audytu bramek: `docs/uiux/AUDYT_BRAMEK_U2_U5_2026-08.md` (werdykt U5: 4/9) |
 
 Fazy sekwencyjne; wewnątrz fazy epiki mogą biec równolegle (różni wykonawcy, rozłączne pliki).
 

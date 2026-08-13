@@ -36,6 +36,24 @@ _FAULT_TYPE_MAPPING = {
     "SC2FZ": "SC2FZ",
 }
 
+#: Operator Fortescue ``a = e^{j120°}`` transformacji składowych symetrycznych.
+#: STAŁA DEFINICYJNA metody (IEC 60909-0:2016 / PN-EN 60909), nie parametr modelu
+#: ani danych projektu — dlatego jej miejscem jest warstwa solvera, a nie kontrakt
+#: HTTP. Dotąd każdy wywołujący pakiet dowodowy SC1 musiał ją PODAĆ w żądaniu, co
+#: zmuszało klienta (UI) do niesienia wielkości fizycznej — patrz karta PACK-DOWODY.
+OPERATOR_FORTESCUE_A = complex(-0.5, math.sqrt(3.0) / 2.0)
+
+
+def napiecie_fazowe_przedzwarciowe_kv(*, u_n_kv: float, c_factor: float) -> float:
+    """Napięcie fazowe przed zwarciem ``U_f = c · U_n / √3`` [kV].
+
+    Wielkość wejściowa prądów składowych zwarć niesymetrycznych (IEC 60909-0:2016:
+    źródło zastępcze w miejscu zwarcia ``c·U_n/√3``). Definicja tożsama z tą, którą
+    dotąd wyliczał WYWOŁUJĄCY i przekazywał jako ``u_prefault_kv`` — przeniesiona do
+    warstwy solverów, żeby klient pakietu dowodowego nie musiał liczyć fizyki.
+    """
+    return c_factor * u_n_kv / math.sqrt(3.0)
+
 
 @dataclass(frozen=True)
 class SC1AsymmetricalQuantities:

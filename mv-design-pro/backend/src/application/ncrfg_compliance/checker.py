@@ -11,9 +11,8 @@ from __future__ import annotations
 
 from typing import Literal
 
+from catalog.profiles.nc_rfg import load_nc_rfg_profile
 from pydantic import BaseModel, Field
-
-from src.catalog.profiles.nc_rfg import load_nc_rfg_profile
 
 ComplianceVerdict = Literal["pass", "fail", "no_data", "no_module"]
 
@@ -218,8 +217,8 @@ class NcRfgComplianceChecker:
                     ),
                 )
             # FRT/HVRT: uruchamiamy podpięty silnik RMS dla scenariusza testowego
-            from src.application.ncrfg_compliance.frt_input import build_frt_hvrt_input
-            from src.network_model.solvers.frt_hvrt import FrtHvrtSolverAdapter
+            from application.ncrfg_compliance.frt_input import build_frt_hvrt_input
+            from network_model.solvers.frt_hvrt import FrtHvrtSolverAdapter
 
             adapter = FrtHvrtSolverAdapter()
             test_kind: Literal["lvrt", "hvrt"] = "lvrt" if test_id == "T1" else "hvrt"

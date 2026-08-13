@@ -22,7 +22,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
-from src.network_model.catalog.der_dynamic.defaults import (
+from network_model.catalog.der_dynamic.defaults import (
     DEFAULT_BESS_GFL,
     DEFAULT_BESS_GFM,
     DEFAULT_PV_GFL,
@@ -34,7 +34,7 @@ from src.network_model.catalog.der_dynamic.defaults import (
     INVERTER_DYNAMIC_PROFILES,
     WIND_DYNAMIC_PROFILES,
 )
-from src.network_model.catalog.der_dynamic.models import (
+from network_model.catalog.der_dynamic.models import (
     DerDynamicProfile,
     DerKind,
     InverterControlMode,

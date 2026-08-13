@@ -340,9 +340,25 @@ def get_all_lv_apparatus_types() -> list[dict]:
     """Zwraca aparature laczeniowa nN — 14 rekordow.
 
     Zrodla:
-    - WYLACZNIK_GLOWNY (ABB SACE Emax2): ABB SACE Emax2 katalog 1SDA073513R1
+    - WYLACZNIK_GLOWNY (ABB SACE Emax2, 630-1600 A): ABB SACE Emax2 katalog
+      1SDA073513R1 / 1SDC200023D0203 (rama E1.2 wersja C, Icu 440V=50kA)
+    - WYLACZNIK_GLOWNY 400 A (ABB SACE Tmax XT5S — KOREKTA UM-ICU-KATALOG,
+      karta S-UM-ICU §0.4a): rama E1.2 Emax2 zaczyna sie od 630 A, wiec 400 A
+      nie moze byc Emax2; 400 A/50 kA odpowiada ramie XT5S. ABB Tmax XT5 karta
+      techniczna 1SXU210259D0201
     - WYLACZNIK_ODPLYWOWY (ABB SACE Tmax XT): ABB Tmax XT katalog 1SDA066835R1
-    - ROZLACZNIK_BEZPIECZNIKOWY (Jean Muller): Jean Muller NHR katalog
+      (100/160/250 A rama XT1C/XT3C wg 1SDC210064D0201; 400/630 A rama XT5N/S)
+    - ROZLACZNIK_BEZPIECZNIKOWY (Jean Muller NH, wielkosc 00/1): Jean Muller
+      NH Fuse-Switch-Disconnectors katalog (Ue=AC690V, warunkowy prad
+      zwarciowy=50kA) — KOREKTA UM-ICU-KATALOG: poprzednia wartosc 16kA
+      breaking_capacity_ka byla zanizona wobec karty katalogowej producenta
+
+    U_m / I_cu (IEC 60947-2/-3, karta UM-ICU-KATALOG): u_m_kv = 0,69 kV
+    (znamionowe napiecie laczeniowe Ue producenta) dla WSZYSTKICH pozycji
+    ponizej; i_cu_ka = zdolnosc wylaczalna I_cu przy Ue — dla
+    ROZLACZNIK_BEZPIECZNIKOWY jest to WARUNKOWY prad zwarciowy z wkladka NH
+    (aparat MA zdolnosc wylaczania dzieki bezpiecznikowi, wiec pole jest
+    wypelnione, nie "nie dotyczy").
     """
     return [
         # --- WYLACZNIK_GLOWNY: ABB SACE Emax2 ---
@@ -354,10 +370,12 @@ def get_all_lv_apparatus_types() -> list[dict]:
                 "u_n_kv": 0.4,
                 "i_n_a": 400.0,
                 "breaking_capacity_ka": 50.0,
+                "u_m_kv": 0.69,
+                "i_cu_ka": 50.0,
                 "manufacturer": "ABB",
                 "verification_status": "ZWERYFIKOWANY",
                 "catalog_status": "PRODUKCYJNY_V1",
-                "source_reference": "ABB SACE Emax2 katalog 1SDA073513R1",
+                "source_reference": "ABB SACE Emax2 katalog 1SDA073513R1 / ABB Tmax XT5 karta techniczna 1SXU210259D0201 (rama XT5S 400A, Icu 480V=50kA; KOREKTA atrybucji zrodlowej: rama E1.2 Emax2 zaczyna sie od 630A, wiec 400A/50kA nie moze byc Emax2 — pasuje do Tmax XT5S)",
                 "contract_version": "2.0",
             },
         },
@@ -369,10 +387,12 @@ def get_all_lv_apparatus_types() -> list[dict]:
                 "u_n_kv": 0.4,
                 "i_n_a": 630.0,
                 "breaking_capacity_ka": 50.0,
+                "u_m_kv": 0.69,
+                "i_cu_ka": 50.0,
                 "manufacturer": "ABB",
                 "verification_status": "ZWERYFIKOWANY",
                 "catalog_status": "PRODUKCYJNY_V1",
-                "source_reference": "ABB SACE Emax2 katalog 1SDA073513R1",
+                "source_reference": "ABB SACE Emax2 katalog 1SDA073513R1 / ABB SACE Emax2 katalog 1SDC200023D0203 str.2/2 (rama E1.2 wersja C, Icu 440V=50kA @ 630A)",
                 "contract_version": "2.0",
             },
         },
@@ -384,10 +404,12 @@ def get_all_lv_apparatus_types() -> list[dict]:
                 "u_n_kv": 0.4,
                 "i_n_a": 800.0,
                 "breaking_capacity_ka": 50.0,
+                "u_m_kv": 0.69,
+                "i_cu_ka": 50.0,
                 "manufacturer": "ABB",
                 "verification_status": "ZWERYFIKOWANY",
                 "catalog_status": "PRODUKCYJNY_V1",
-                "source_reference": "ABB SACE Emax2 katalog 1SDA073513R1",
+                "source_reference": "ABB SACE Emax2 katalog 1SDA073513R1 / ABB SACE Emax2 katalog 1SDC200023D0203 str.2/2 (rama E1.2 wersja C, Icu 440V=50kA @ 800A)",
                 "contract_version": "2.0",
             },
         },
@@ -399,10 +421,12 @@ def get_all_lv_apparatus_types() -> list[dict]:
                 "u_n_kv": 0.4,
                 "i_n_a": 1000.0,
                 "breaking_capacity_ka": 50.0,
+                "u_m_kv": 0.69,
+                "i_cu_ka": 50.0,
                 "manufacturer": "ABB",
                 "verification_status": "ZWERYFIKOWANY",
                 "catalog_status": "PRODUKCYJNY_V1",
-                "source_reference": "ABB SACE Emax2 katalog 1SDA073513R1",
+                "source_reference": "ABB SACE Emax2 katalog 1SDA073513R1 / ABB SACE Emax2 katalog 1SDC200023D0203 str.2/2 (rama E1.2 wersja C, Icu 440V=50kA @ 1000A)",
                 "contract_version": "2.0",
             },
         },
@@ -414,10 +438,12 @@ def get_all_lv_apparatus_types() -> list[dict]:
                 "u_n_kv": 0.4,
                 "i_n_a": 1250.0,
                 "breaking_capacity_ka": 50.0,
+                "u_m_kv": 0.69,
+                "i_cu_ka": 50.0,
                 "manufacturer": "ABB",
                 "verification_status": "ZWERYFIKOWANY",
                 "catalog_status": "PRODUKCYJNY_V1",
-                "source_reference": "ABB SACE Emax2 katalog 1SDA073513R1",
+                "source_reference": "ABB SACE Emax2 katalog 1SDA073513R1 / ABB SACE Emax2 katalog 1SDC200023D0203 str.2/2 (rama E1.2 wersja C, Icu 440V=50kA @ 1250A)",
                 "contract_version": "2.0",
             },
         },
@@ -429,10 +455,12 @@ def get_all_lv_apparatus_types() -> list[dict]:
                 "u_n_kv": 0.4,
                 "i_n_a": 1600.0,
                 "breaking_capacity_ka": 50.0,
+                "u_m_kv": 0.69,
+                "i_cu_ka": 50.0,
                 "manufacturer": "ABB",
                 "verification_status": "ZWERYFIKOWANY",
                 "catalog_status": "PRODUKCYJNY_V1",
-                "source_reference": "ABB SACE Emax2 katalog 1SDA073513R1",
+                "source_reference": "ABB SACE Emax2 katalog 1SDA073513R1 / ABB SACE Emax2 katalog 1SDC200023D0203 str.2/2 (rama E1.2 wersja C, Icu 440V=50kA @ 1600A)",
                 "contract_version": "2.0",
             },
         },
@@ -445,10 +473,12 @@ def get_all_lv_apparatus_types() -> list[dict]:
                 "u_n_kv": 0.4,
                 "i_n_a": 100.0,
                 "breaking_capacity_ka": 25.0,
+                "u_m_kv": 0.69,
+                "i_cu_ka": 25.0,
                 "manufacturer": "ABB",
                 "verification_status": "ZWERYFIKOWANY",
                 "catalog_status": "PRODUKCYJNY_V1",
-                "source_reference": "ABB Tmax XT katalog 1SDA066835R1",
+                "source_reference": "ABB Tmax XT katalog 1SDA066835R1 / ABB Tmax XT katalog 1SDC210064D0201 str.6 (rama XT1C 160, Icu 415V=25kA @ In=100A)",
                 "contract_version": "2.0",
             },
         },
@@ -460,10 +490,12 @@ def get_all_lv_apparatus_types() -> list[dict]:
                 "u_n_kv": 0.4,
                 "i_n_a": 160.0,
                 "breaking_capacity_ka": 25.0,
+                "u_m_kv": 0.69,
+                "i_cu_ka": 25.0,
                 "manufacturer": "ABB",
                 "verification_status": "ZWERYFIKOWANY",
                 "catalog_status": "PRODUKCYJNY_V1",
-                "source_reference": "ABB Tmax XT katalog 1SDA066835R1",
+                "source_reference": "ABB Tmax XT katalog 1SDA066835R1 / ABB Tmax XT katalog 1SDC210064D0201 str.6 (rama XT1C 160, Icu 415V=25kA @ In=150A/160A)",
                 "contract_version": "2.0",
             },
         },
@@ -475,10 +507,12 @@ def get_all_lv_apparatus_types() -> list[dict]:
                 "u_n_kv": 0.4,
                 "i_n_a": 250.0,
                 "breaking_capacity_ka": 25.0,
+                "u_m_kv": 0.69,
+                "i_cu_ka": 25.0,
                 "manufacturer": "ABB",
                 "verification_status": "ZWERYFIKOWANY",
                 "catalog_status": "PRODUKCYJNY_V1",
-                "source_reference": "ABB Tmax XT katalog 1SDA066835R1",
+                "source_reference": "ABB Tmax XT katalog 1SDA066835R1 / ABB Tmax XT katalog 1SDC210064D0201 str.7 (rama XT3C 250, Icu 415V=25kA @ In=250A)",
                 "contract_version": "2.0",
             },
         },
@@ -490,10 +524,12 @@ def get_all_lv_apparatus_types() -> list[dict]:
                 "u_n_kv": 0.4,
                 "i_n_a": 400.0,
                 "breaking_capacity_ka": 36.0,
+                "u_m_kv": 0.69,
+                "i_cu_ka": 36.0,
                 "manufacturer": "ABB",
                 "verification_status": "ZWERYFIKOWANY",
                 "catalog_status": "PRODUKCYJNY_V1",
-                "source_reference": "ABB Tmax XT katalog 1SDA066835R1",
+                "source_reference": "ABB Tmax XT katalog 1SDA066835R1 (rama XT5N 400A, Icu 415V=36kA; zweryfikowano posrednio kartą techniczną XT5 1SXU210259D0201 — Icu 480V N=35kA, ten sam wariant N — pelna tabela IEC przekroczyla limit rozmiaru pobierania w tej sesji)",
                 "contract_version": "2.0",
             },
         },
@@ -505,10 +541,12 @@ def get_all_lv_apparatus_types() -> list[dict]:
                 "u_n_kv": 0.4,
                 "i_n_a": 630.0,
                 "breaking_capacity_ka": 50.0,
+                "u_m_kv": 0.69,
+                "i_cu_ka": 50.0,
                 "manufacturer": "ABB",
                 "verification_status": "ZWERYFIKOWANY",
                 "catalog_status": "PRODUKCYJNY_V1",
-                "source_reference": "ABB Tmax XT katalog 1SDA066835R1",
+                "source_reference": "ABB Tmax XT katalog 1SDA066835R1 (rama XT5S 630A, Icu 415V=50kA; zgodnosc z karta techniczna XT5 1SXU210259D0201 — Icu 480V S=50kA, dokladne dopasowanie)",
                 "contract_version": "2.0",
             },
         },
@@ -520,11 +558,13 @@ def get_all_lv_apparatus_types() -> list[dict]:
                 "device_kind": "ROZLACZNIK_BEZPIECZNIKOWY",
                 "u_n_kv": 0.4,
                 "i_n_a": 100.0,
-                "breaking_capacity_ka": 16.0,
+                "breaking_capacity_ka": 50.0,
+                "u_m_kv": 0.69,
+                "i_cu_ka": 50.0,
                 "manufacturer": "Jean Muller",
                 "verification_status": "ZWERYFIKOWANY",
                 "catalog_status": "PRODUKCYJNY_V1",
-                "source_reference": "Jean Muller NHR katalog",
+                "source_reference": "Jean Muller NHR katalog / KOREKTA: Jean Muller NH Fuse-Switch-Disconnectors katalog str. T-30 (typ LTL00, Ue=AC690V, warunkowy prad zwarciowy=50kA) — poprzednia wartosc 16kA byla zanizona / bledna",
                 "contract_version": "2.0",
             },
         },
@@ -535,11 +575,13 @@ def get_all_lv_apparatus_types() -> list[dict]:
                 "device_kind": "ROZLACZNIK_BEZPIECZNIKOWY",
                 "u_n_kv": 0.4,
                 "i_n_a": 160.0,
-                "breaking_capacity_ka": 16.0,
+                "breaking_capacity_ka": 50.0,
+                "u_m_kv": 0.69,
+                "i_cu_ka": 50.0,
                 "manufacturer": "Jean Muller",
                 "verification_status": "ZWERYFIKOWANY",
                 "catalog_status": "PRODUKCYJNY_V1",
-                "source_reference": "Jean Muller NHR katalog",
+                "source_reference": "Jean Muller NHR katalog / KOREKTA: Jean Muller NH Fuse-Switch-Disconnectors katalog str. T-30 (typ LTL00, Ue=AC690V, warunkowy prad zwarciowy=50kA) — poprzednia wartosc 16kA byla zanizona / bledna",
                 "contract_version": "2.0",
             },
         },
@@ -550,11 +592,13 @@ def get_all_lv_apparatus_types() -> list[dict]:
                 "device_kind": "ROZLACZNIK_BEZPIECZNIKOWY",
                 "u_n_kv": 0.4,
                 "i_n_a": 250.0,
-                "breaking_capacity_ka": 16.0,
+                "breaking_capacity_ka": 50.0,
+                "u_m_kv": 0.69,
+                "i_cu_ka": 50.0,
                 "manufacturer": "Jean Muller",
                 "verification_status": "ZWERYFIKOWANY",
                 "catalog_status": "PRODUKCYJNY_V1",
-                "source_reference": "Jean Muller NHR katalog",
+                "source_reference": "Jean Muller NHR katalog / KOREKTA: Jean Muller NH Fuse-Switch-Disconnectors katalog str. T-30 (typ LTL1, Ue=AC690V, warunkowy prad zwarciowy=50kA bez Q-wspomagania / 80kA z Q-wspomaganiem — przyjeto wariant podstawowy 50kA) — poprzednia wartosc 16kA byla zanizona / bledna",
                 "contract_version": "2.0",
             },
         },
@@ -1143,6 +1187,7 @@ def get_all_protection_device_types() -> list[dict]:
                 "vendor": "ABB",
                 "series": "REX",
                 "revision": "v1",
+                "analytical_library_ref": "ACME_REX500_v1",
                 "notes_pl": "Rekord zgodny z katalogiem analitycznym ochrony.",
                 **_device_meta(
                     verification_status="CZESCIOWO_ZWERYFIKOWANY",
@@ -1159,6 +1204,7 @@ def get_all_protection_device_types() -> list[dict]:
                 "vendor": "ABB",
                 "series": "REX",
                 "revision": "v1",
+                "analytical_library_ref": "ACME_REX200_v1",
                 "notes_pl": "Rekord zgodny z katalogiem analitycznym ochrony.",
                 **_device_meta(
                     verification_status="CZESCIOWO_ZWERYFIKOWANY",
@@ -1175,6 +1221,7 @@ def get_all_protection_device_types() -> list[dict]:
                 "vendor": "ABB",
                 "series": "REX",
                 "revision": "v1",
+                "analytical_library_ref": "ACME_REX100_v1",
                 "notes_pl": "Rekord referencyjny rodziny REX dla nizszych zakresow linii i transformatorow.",
                 **_device_meta(
                     verification_status="CZESCIOWO_ZWERYFIKOWANY",
@@ -1191,6 +1238,7 @@ def get_all_protection_device_types() -> list[dict]:
                 "vendor": "ABB",
                 "series": "REX",
                 "revision": "v1",
+                "analytical_library_ref": "ACME_REX300_v1",
                 "notes_pl": "Rekord referencyjny rodziny REX dla typowych pol SN.",
                 **_device_meta(
                     verification_status="CZESCIOWO_ZWERYFIKOWANY",
@@ -1207,6 +1255,7 @@ def get_all_protection_device_types() -> list[dict]:
                 "vendor": "ABB",
                 "series": "REX",
                 "revision": "v1",
+                "analytical_library_ref": "ACME_REX700_v1",
                 "notes_pl": "Rekord referencyjny rodziny REX dla rozbudowanych zastosowan SN.",
                 **_device_meta(
                     verification_status="CZESCIOWO_ZWERYFIKOWANY",
@@ -1223,6 +1272,7 @@ def get_all_protection_device_types() -> list[dict]:
                 "vendor": "ELEKTROMETAL",
                 "series": "e2TANGO",
                 "revision": "v0",
+                "analytical_library_ref": "EM_ETANGO_400_V0",
                 "rated_current_a": 400.0,
                 "notes_pl": "Rekord analityczny - dane wymagaja weryfikacji produkcyjnej.",
                 **_device_meta(
@@ -1240,6 +1290,7 @@ def get_all_protection_device_types() -> list[dict]:
                 "vendor": "ELEKTROMETAL",
                 "series": "e2TANGO",
                 "revision": "v0",
+                "analytical_library_ref": "EM_ETANGO_600_V0",
                 "rated_current_a": 600.0,
                 "notes_pl": "Rekord analityczny - dane wymagaja weryfikacji produkcyjnej.",
                 **_device_meta(
@@ -1257,6 +1308,7 @@ def get_all_protection_device_types() -> list[dict]:
                 "vendor": "ELEKTROMETAL",
                 "series": "e2TANGO",
                 "revision": "v0",
+                "analytical_library_ref": "EM_ETANGO_800_V0",
                 "rated_current_a": 800.0,
                 "notes_pl": "Rekord analityczny - dane wymagaja weryfikacji produkcyjnej.",
                 **_device_meta(
@@ -1274,6 +1326,7 @@ def get_all_protection_device_types() -> list[dict]:
                 "vendor": "ELEKTROMETAL",
                 "series": "e2TANGO",
                 "revision": "v0",
+                "analytical_library_ref": "EM_ETANGO_1000_V0",
                 "rated_current_a": 1000.0,
                 "notes_pl": "Rekord analityczny - dane wymagaja weryfikacji produkcyjnej.",
                 **_device_meta(
@@ -1291,6 +1344,7 @@ def get_all_protection_device_types() -> list[dict]:
                 "vendor": "ELEKTROMETAL",
                 "series": "e2TANGO",
                 "revision": "v0",
+                "analytical_library_ref": "EM_ETANGO_1250_V0",
                 "rated_current_a": 1250.0,
                 "notes_pl": "Rekord analityczny - dane wymagaja weryfikacji produkcyjnej.",
                 **_device_meta(
@@ -1308,6 +1362,7 @@ def get_all_protection_device_types() -> list[dict]:
                 "vendor": "ELEKTROMETAL",
                 "series": "e2TANGO",
                 "revision": "v0",
+                "analytical_library_ref": "EM_ETANGO_1600_V0",
                 "rated_current_a": 1600.0,
                 "notes_pl": "Rekord analityczny - dane wymagaja weryfikacji produkcyjnej.",
                 **_device_meta(
@@ -1325,6 +1380,7 @@ def get_all_protection_device_types() -> list[dict]:
                 "vendor": "ELEKTROMETAL",
                 "series": "e2TANGO",
                 "revision": "v0",
+                "analytical_library_ref": "EM_ETANGO_2000_V0",
                 "rated_current_a": 2000.0,
                 "notes_pl": "Rekord analityczny - dane wymagaja weryfikacji produkcyjnej.",
                 **_device_meta(

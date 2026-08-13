@@ -1,21 +1,24 @@
 #!/usr/bin/env python3
-"""CI Guard: no dead clicks in SLD/context-menu actions.
+"""CI Guard: no dead clicks in SLD context-menu actions.
 
-The active UI has two menu paths:
-1. Engineering context menus built by actionMenuBuilders.ts and rendered through
-   EngineeringContextMenu.tsx. These actions are bound through a typed proxy and
-   sanitized before render.
-2. SLD V2 context menus from SLD_MENU_REGISTRY, rendered by
-   SldContextMenuController.tsx and routed in SldWorkspaceContainer.tsx.
+K5-A: the active UI has exactly ONE menu path — SLD_MENU_REGISTRY
+(frontend/src/ui/sld/v2/command/SldCommandService.ts) rendered by
+SldContextMenuController.tsx and executed by the shared action executor
+(frontend/src/ui/sld/shared/sldActionExecutor.ts, useSldActionExecutor wired
+into SldCanvasV3Workspace). The legacy engineering path (actionMenuBuilders.ts
++ EngineeringContextMenu.tsx + actionRouting.ts) was deleted as dead code.
 
-This guard checks the architecture that is actually active instead of treating
-every string literal in the builders as an unmapped action.
+The dead-click rule enforced here: every action id rendered from
+SLD_MENU_REGISTRY MUST have a handler branch in the executor — an entry in
+opByAction (domain-operation form), ACTION_TO_SCREEN (navigation),
+ACTION_ROADMAP_HINT_PL (honest roadmap toast), DELETE_ACTION_OBJECT_LABEL_PL
+(delete with confirmation), or one of the dedicated special branches. A
+registry entry without coverage is a dead click and fails the build.
 """
 from __future__ import annotations
 
 import re
 import sys
-from dataclasses import dataclass
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -24,104 +27,10 @@ CONTEXT_MENU_DIR = FRONTEND_SRC / "ui" / "context-menu"
 SLD_V2_DIR = FRONTEND_SRC / "ui" / "sld" / "v2"
 
 
-@dataclass(frozen=True)
-class ActionCall:
-    action_id: str
-    has_handler: bool
-    has_submenu: bool
-    source: str
-
-
 def read(path: Path) -> str:
     if not path.exists():
         raise FileNotFoundError(path)
     return path.read_text(encoding="utf-8")
-
-
-def matching_call_blocks(content: str, callee: str) -> list[str]:
-    """Return full blocks for calls named callee(...), with string/comment safety."""
-    blocks: list[str] = []
-    token = f"{callee}("
-    pos = 0
-    while True:
-        start = content.find(token, pos)
-        if start < 0:
-            break
-        if start > 0 and (content[start - 1].isalnum() or content[start - 1] in "_$"):
-            pos = start + len(token)
-            continue
-
-        depth = 0
-        quote: str | None = None
-        escaped = False
-        line_comment = False
-        block_comment = False
-        end = None
-
-        for index in range(start, len(content)):
-            char = content[index]
-            nxt = content[index + 1] if index + 1 < len(content) else ""
-
-            if line_comment:
-                if char == "\n":
-                    line_comment = False
-                continue
-            if block_comment:
-                if char == "*" and nxt == "/":
-                    block_comment = False
-                continue
-            if quote:
-                if escaped:
-                    escaped = False
-                    continue
-                if char == "\\":
-                    escaped = True
-                    continue
-                if char == quote:
-                    quote = None
-                continue
-            if char == "/" and nxt == "/":
-                line_comment = True
-                continue
-            if char == "/" and nxt == "*":
-                block_comment = True
-                continue
-            if char in ("'", '"', "`"):
-                quote = char
-                continue
-            if char == "(":
-                depth += 1
-            elif char == ")":
-                depth -= 1
-                if depth == 0:
-                    end = index + 1
-                    break
-
-        if end is None:
-            raise RuntimeError(f"Unclosed {callee}(...) call near offset {start}")
-        blocks.append(content[start:end])
-        pos = end
-    return blocks
-
-
-def extract_builder_action_calls() -> list[ActionCall]:
-    builders_file = CONTEXT_MENU_DIR / "actionMenuBuilders.ts"
-    content = read(builders_file)
-    calls: list[ActionCall] = []
-    first_arg = re.compile(r"""^action\(\s*(['"])(?P<id>[a-z][a-z0-9_]*)(?:\1)""", re.S)
-    for block in matching_call_blocks(content, "action"):
-        match = first_arg.search(block)
-        if not match:
-            continue
-        calls.append(
-            ActionCall(
-                action_id=match.group("id"),
-                has_handler=bool(re.search(r"\bhandler\s*:", block)),
-                has_submenu=bool(re.search(r"\bsubmenu\s*:", block)),
-                source="actionMenuBuilders.ts",
-            )
-        )
-    return calls
 
 
 def extract_string_set(content: str, export_name: str) -> set[str]:
@@ -142,61 +51,6 @@ def require_tokens(path: Path, tokens: list[str]) -> list[str]:
     return [token for token in tokens if token not in content]
 
 
-def check_engineering_menu_path() -> list[str]:
-    errors: list[str] = []
-    calls = extract_builder_action_calls()
-    no_handler = [
-        call.action_id
-        for call in calls
-        if not call.has_handler and not call.has_submenu
-    ]
-    if no_handler:
-        errors.append(
-            "Engineering action(s) without handler or submenu: "
-            + ", ".join(sorted(set(no_handler))[:40])
-        )
-
-    menu_path = CONTEXT_MENU_DIR / "EngineeringContextMenu.tsx"
-    missing = require_tokens(
-        menu_path,
-        [
-            "handlerNameToActionId",
-            "new Proxy<Record<string, () => void>>",
-            "makeHandler",
-            "sanitizeEngineeringActions",
-            "if (!hasHandler && !hasSubmenu)",
-            "checkCatalogGate",
-        ],
-    )
-    if missing:
-        errors.append(
-            f"EngineeringContextMenu missing active routing token(s): {', '.join(missing)}"
-        )
-
-    routing_content = read(CONTEXT_MENU_DIR / "actionRouting.ts")
-    missing = [
-        token
-        for token in [
-            "CONTEXT_ACTION_TO_OPERATION",
-            "NAVIGATION_ACTIONS",
-            "TOGGLE_ACTIONS",
-            "add_sn_bay",
-            "add_converter_source",
-            "insert_station_on_segment_sn",
-            "continue_trunk_segment_sn",
-            "start_branch_segment_sn",
-            "set_normal_open_point",
-        ]
-        if token not in routing_content
-    ]
-    if missing:
-        errors.append(f"actionRouting missing required route token(s): {', '.join(missing)}")
-
-    print(f"  Engineering menu action calls: {len(calls)}")
-    print(f"  Engineering menu ids: {len({call.action_id for call in calls})}")
-    return errors
-
-
 def extract_sld_registry_ids() -> set[str]:
     content = read(SLD_V2_DIR / "command" / "SldCommandService.ts")
     registry_start = content.find("SLD_MENU_REGISTRY")
@@ -207,7 +61,39 @@ def extract_sld_registry_ids() -> set[str]:
     return set(re.findall(r"""\bid:\s*['"]([a-z][a-z0-9_-]+)['"]""", registry))
 
 
-def check_sld_v2_menu_path() -> list[str]:
+def extract_sld_build_action_ids() -> set[str]:
+    """Action ids declared with group: 'budowa' (network-building operations).
+
+    Karta S9-5: a build action promises a change of the network model. Its only
+    honest providers are a canonical domain operation (opByAction) or a real
+    screen that performs the change (ACTION_TO_SCREEN / dedicated branch). A
+    roadmap toast is NOT a provider - the click leaves the model untouched,
+    which is exactly the dead position the SLD audit measured (P-7 / B-4).
+    """
+    content = read(SLD_V2_DIR / "command" / "SldCommandService.ts")
+    registry_start = content.find("SLD_MENU_REGISTRY")
+    registry_end = content.find("};", registry_start)
+    if registry_start < 0 or registry_end < 0:
+        raise RuntimeError("SLD_MENU_REGISTRY not found")
+    registry = content[registry_start:registry_end]
+    pattern = re.compile(
+        r"""\{\s*id:\s*['"]([a-z][a-z0-9_-]+)['"][^}]*?group:\s*['"]budowa['"]""",
+        re.DOTALL,
+    )
+    return set(pattern.findall(registry))
+
+
+def extract_dedicated_branch_ids(content: str) -> set[str]:
+    """Action ids handled by a dedicated `actionId === '<id>'` branch.
+
+    Karta S9-5: replaces the hardcoded allowlist that used to enumerate the
+    special branches by hand. A hardcoded list is a place where a dead position
+    can hide - the guard now reads the executor itself.
+    """
+    return set(re.findall(r"""actionId\s*===\s*['"]([a-z][a-z0-9_-]+)['"]""", content))
+
+
+def check_sld_menu_path() -> list[str]:
     errors: list[str] = []
     registry_ids = extract_sld_registry_ids()
 
@@ -227,15 +113,8 @@ def check_sld_v2_menu_path() -> list[str]:
 
     # F12-A (ARCH-3, spec SLD_CAD_SPEC_V3 par. 10.1): wykonawca akcji i jego
     # tabele routingu (ACTION_TO_SCREEN / opByAction / ROADMAP / DELETE-labels)
-    # zostaly wyciagniete z SldWorkspaceContainer.tsx do WSPOLDZIELONEGO
-    # ui/sld/shared/sldActionExecutor.ts (jedna prawda dla v2 i v3). Guard
-    # czyta tabele Z NOWEGO zrodla i dodatkowo wymaga, by OBA workspace'y
-    # (v2 kontener + v3 SldCanvasV3Workspace) byly SPIETE z wykonawca
-    # (useSldActionExecutor) — wzmocnienie: przed F12-A guard pilnowal
-    # wylacznie v2.
-    executor_content = read(
-        FRONTEND_SRC / "ui" / "sld" / "shared" / "sldActionExecutor.ts"
-    )
+    # zyja we WSPOLDZIELONYM ui/sld/shared/sldActionExecutor.ts (jedna prawda).
+    executor_content = read(FRONTEND_SRC / "ui" / "sld" / "shared" / "sldActionExecutor.ts")
     for token in [
         "buildSldOperationContext",
         "ACTION_TO_SCREEN",
@@ -263,26 +142,35 @@ def check_sld_v2_menu_path() -> list[str]:
     screen_ids = extract_string_set(executor_content, "const ACTION_TO_SCREEN")
     hint_ids = extract_string_set(executor_content, "const ACTION_ROADMAP_HINT_PL")
     delete_ids = extract_string_set(executor_content, "const DELETE_ACTION_OBJECT_LABEL_PL")
-    # Dedykowane galezie wykonawcy poza tabelami routingu:
-    #  - 'add-source': skrot do E-13 karty DER (Faza G),
-    #  - 'show-ncrfg': deep-link do macierzy wymogow NC RfG ui2 (zakladka
-    #    'ncrfg' warsztatu Wynikow, karta P-1 — luka F-E7 zamknieta).
-    #  - 'show-results': deep-link do zakladki 'rozplyw' warsztatu Wynikow ui2
-    #    (karta D-2, decyzja wlasciciela — koniec celowania w legacy E-24).
-    special_ids = {"add-source", "show-ncrfg", "show-results"}
+    # Dedykowane galezie wykonawcy poza tabelami routingu (np. 'add-source',
+    # 'show-ncrfg', 'show-results', 'insert-gpz') — czytane Z KODU wykonawcy,
+    # nie z recznej listy w guardzie (karta S9-5).
+    special_ids = extract_dedicated_branch_ids(executor_content)
     covered = op_ids | screen_ids | hint_ids | delete_ids | special_ids
 
-    # SLD actions that are rendered but have neither navigation, operation, hint,
-    # nor special branch in handleAction are actual dead clicks.
+    # SLD actions that are rendered but have neither navigation, operation,
+    # hint, nor special branch in the executor are actual dead clicks.
     uncovered = sorted(registry_ids - covered)
     if uncovered:
         errors.append(
-            "SLD_MENU_REGISTRY action(s) without route/operation/hint: "
-            + ", ".join(uncovered[:60])
+            "SLD_MENU_REGISTRY action(s) without route/operation/hint: " + ", ".join(uncovered[:60])
         )
 
-    print(f"  SLD V2 registry action ids: {len(registry_ids)}")
-    print(f"  SLD V2 route-covered ids: {len(covered & registry_ids)}")
+    # Karta S9-5 — pozycje BUDOWY musza miec realnego dostawce zmiany modelu.
+    # Sam wpis w ACTION_ROADMAP_HINT_PL nie jest pokryciem: klik konczy sie
+    # komunikatem, a model zostaje bez zmian (martwa pozycja menu).
+    build_ids = extract_sld_build_action_ids()
+    real_providers = op_ids | screen_ids | delete_ids | special_ids
+    hint_only = sorted(build_ids - real_providers)
+    if hint_only:
+        errors.append(
+            "SLD_MENU_REGISTRY build action(s) covered ONLY by a roadmap toast "
+            "(no domain operation, no screen, no dedicated branch): " + ", ".join(hint_only[:60])
+        )
+
+    print(f"  SLD registry action ids: {len(registry_ids)}")
+    print(f"  SLD route-covered ids: {len(covered & registry_ids)}")
+    print(f"  SLD build action ids: {len(build_ids)} (all with a real provider: {not hint_only})")
     return errors
 
 
@@ -311,13 +199,12 @@ def check_modal_registry() -> list[str]:
 def main() -> int:
     print("=" * 70)
     print("  Dead Click Guard")
-    print("  Checking active SLD and engineering menu routing...")
+    print("  Checking the single active SLD menu routing path...")
     print("=" * 70)
 
     errors: list[str] = []
     try:
-        errors.extend(check_engineering_menu_path())
-        errors.extend(check_sld_v2_menu_path())
+        errors.extend(check_sld_menu_path())
         errors.extend(check_modal_registry())
     except Exception as exc:  # noqa: BLE001 - guard must fail loudly.
         errors.append(f"Guard execution failed: {exc}")

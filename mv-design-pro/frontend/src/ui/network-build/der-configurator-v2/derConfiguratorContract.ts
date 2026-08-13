@@ -107,7 +107,7 @@ export const DER_READINESS_AXES: readonly DerReadinessAxis[] = [
   // Raportowanie (3 osi)
   { id: 'report_osd',     label: 'Raport OSD (wniosek przyłączeniowy)', group: 'Raportowanie' },
   { id: 'report_tech',    label: 'Uzasadnienie techniczne',         group: 'Raportowanie' },
-  { id: 'report_proof',   label: 'Pakiet dowodowy WhiteBox',        group: 'Raportowanie' },
+  { id: 'report_proof',   label: 'Pakiet dowodowy (pełna jawność obliczeń)',        group: 'Raportowanie' },
 ];
 
 /** Kanoniczna lista kategorii w kolejności wizualnej. */

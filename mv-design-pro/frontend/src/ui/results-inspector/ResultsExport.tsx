@@ -230,7 +230,7 @@ export function ResultsExport({ exportData }: ResultsExportProps) {
   const handleArtifactExport = useCallback(
     async (format: AnalysisRunExportFormat) => {
       try {
-        await downloadAnalysisRunExport(runHeader.project_id, runHeader.run_id, format);
+        await downloadAnalysisRunExport(runHeader.run_id, format);
         notify(`Pobrano pomocniczy eksport uruchomienia (${format.toUpperCase()}).`, 'success');
       } catch (error) {
         notify(
@@ -241,13 +241,13 @@ export function ResultsExport({ exportData }: ResultsExportProps) {
         );
       }
     },
-    [runHeader.project_id, runHeader.run_id],
+    [runHeader.run_id],
   );
 
   const handleReportExport = useCallback(
     async (format: AnalysisRunExportFormat) => {
       try {
-        await downloadAnalysisRunReport(runHeader.project_id, runHeader.run_id, format, reportOptions);
+        await downloadAnalysisRunReport(runHeader.run_id, format, reportOptions);
         notify(`Pobrano raport końcowy (${format.toUpperCase()}).`, 'success');
       } catch (error) {
         notify(
@@ -258,7 +258,7 @@ export function ResultsExport({ exportData }: ResultsExportProps) {
         );
       }
     },
-    [reportOptions, runHeader.project_id, runHeader.run_id],
+    [reportOptions, runHeader.run_id],
   );
 
   return (

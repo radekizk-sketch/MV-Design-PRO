@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from analysis.boundary import BoundaryIdentifier as _BoundaryIdentifier
 from analysis.boundary import BoundaryResult
+from network_model.core.graph import NetworkGraph
 from network_model.core.snapshot import NetworkSnapshot, SnapshotMeta
 
 
@@ -32,7 +33,7 @@ class BoundaryIdentifier:
         return self._identifier.identify(snapshot, case_params)
 
     def identify_connection_node(
-        self, network_graph, case_params: dict | None = None
+        self, network_graph: NetworkGraph, case_params: dict | None = None
     ) -> BoundaryResult:
         snapshot = NetworkSnapshot(
             meta=SnapshotMeta.create(
@@ -43,7 +44,9 @@ class BoundaryIdentifier:
         return self._identifier.identify(snapshot, case_params)
 
 
-def identify_connection_node(network_graph, case_params: dict | None = None) -> str | None:
+def identify_connection_node(
+    network_graph: NetworkGraph, case_params: dict | None = None
+) -> str | None:
     """
     Convenience function to identify BoundaryNode.
 

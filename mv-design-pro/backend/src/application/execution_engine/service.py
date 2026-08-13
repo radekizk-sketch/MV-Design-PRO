@@ -295,19 +295,75 @@ class ExecutionEngineService:
         try:
             pf_input = load_flow_input.to_power_flow_input()
             solution = PowerFlowNewtonSolver().solve(pf_input)
+            # ==================================================================
+            # SIGN CONVENTION OF THE NODAL POWER — one definition for this block
+            # (karta W2). Two conventions meet here and exactly ONE negation
+            # separates them:
+            #
+            #   INPUT side. LoadFlowLoadInput/LoadFlowGeneratorInput are handed
+            #   over unchanged as PQSpec/PVSpec, and those carry the LOAD
+            #   convention — p_mw > 0 == DRAW. The single source of that truth is
+            #   the solver itself: ``build_power_spec_v2`` writes
+            #   ``p_spec = -spec.p_mw / base_mva`` for pq AND pv alike
+            #   (power_flow_newton_internal.py).
+            #
+            #   RESULT side. The FROZEN field ``PowerFlowBusResult.p_injected_mw``
+            #   is an INJECTION — "ujemna = pobor", power_flow_result.py:35 — the
+            #   same convention as ``solution.slack_power``, which lands in this
+            #   very dict a few lines below.
+            #
+            # Composing the two without the negation put the PQ/PV buses at the
+            # sign OPPOSITE to both the slack next to them and the documented
+            # contract: a real 2,0 MW consumer was reported as +2,0 MW fed INTO
+            # the grid, and the nodal sum came out as 7,03 MW in a network whose
+            # losses are 0,031 MW. Measured, not presumed (karta W2 §2.1); the
+            # judge was Kirchhoff at the node rebuilt from the branch-end flows.
+            #
+            # The PQ value is taken STRAIGHT FROM THE SOLVER
+            # (``node_p_spec_effective_pu``, already injection convention, pu on
+            # base_mva). At a ZIP / inverter-controlled bus the declared power is
+            # only the REQUEST — the injected power is the one after the voltage
+            # polynomial (measured: request 1,5 MW vs injection 1,430975 MW), so
+            # reporting the request breaks the nodal balance exactly as defect D1
+            # did on the canonical path. For a constant-power bus the solver value
+            # is bit-identical to ``-p_mw / base_mva``, which is also the fallback
+            # for buses the solver skipped (outside the slack island). ZERO physics
+            # in this layer — same single source of truth as the canonical path in
+            # ``enm/canonical_analysis``.
+            #
+            # Bus sets: iterating ``pf_input.pq`` / ``pf_input.pv`` (not the raw
+            # component tuples) keys this dict on exactly the buses the solver
+            # saw — ``merge_bus_components`` has already folded several loads on
+            # one bus into one spec, and the two sets are provably disjoint
+            # because the solver REFUSES a node declared as both PQ and PV
+            # ("node_id cannot be specified as both PQ and PV"). One partition,
+            # one owner. Buses with neither load nor generation keep 0.0, which
+            # is their true injection.
+            # ==================================================================
             node_p_injected_pu = {node.node_id: 0.0 for node in load_flow_input.nodes}
             node_q_injected_pu = {node.node_id: 0.0 for node in load_flow_input.nodes}
-            for ld in load_flow_input.loads:
-                node_p_injected_pu[ld.node_id] = node_p_injected_pu.get(ld.node_id, 0.0) + (
-                    ld.p_mw / pf_input.base_mva
+            solver_p_effective = solution.node_p_spec_effective_pu
+            solver_q_effective = solution.node_q_spec_effective_pu
+            for pq in pf_input.pq:
+                node_p_injected_pu[pq.node_id] = solver_p_effective.get(
+                    pq.node_id, -pq.p_mw / pf_input.base_mva
                 )
-                node_q_injected_pu[ld.node_id] = node_q_injected_pu.get(ld.node_id, 0.0) + (
-                    ld.q_mvar / pf_input.base_mva
+                node_q_injected_pu[pq.node_id] = solver_q_effective.get(
+                    pq.node_id, -pq.q_mvar / pf_input.base_mva
                 )
-            for gen in load_flow_input.generators:
-                node_p_injected_pu[gen.node_id] = node_p_injected_pu.get(gen.node_id, 0.0) + (
-                    gen.p_mw / pf_input.base_mva
+            for pv in pf_input.pv:
+                # Debt W2-D1 CLOSED (card X1). A PV bus holds its active power at
+                # the declared value, and its reactive power is the free variable
+                # of the solve — the quantity that holds the requested voltage.
+                # The solver now publishes BOTH in the same dictionaries
+                # (``pv_calculated_injections``, read from the nodal equation),
+                # so this layer reads them instead of reporting 0.000000 Mvar
+                # against the 0.405463 Mvar of the Kirchhoff judge. The fallbacks
+                # cover buses outside the slack island, which the solver skips.
+                node_p_injected_pu[pv.node_id] = solver_p_effective.get(
+                    pv.node_id, -pv.p_mw / pf_input.base_mva
                 )
+                node_q_injected_pu[pv.node_id] = solver_q_effective.get(pv.node_id, 0.0)
             node_p_injected_pu[pf_input.slack.node_id] = float(np.real(solution.slack_power))
             node_q_injected_pu[pf_input.slack.node_id] = float(np.imag(solution.slack_power))
 
@@ -367,6 +423,9 @@ class ExecutionEngineService:
                 "snapshot_hash": mapped.snapshot_hash,
                 "convergence_status": mapped.convergence_status,
                 "iteration_count": mapped.iteration_count,
+                # V12K-320: utrata regulacji napiecia (PV->PQ na granicy Q)
+                # nalezy do wyniku biegu — patrz enm/canonical_analysis.
+                "pv_to_pq_switches": solution.pv_to_pq_switches,
                 "totals": mapped.totals.to_dict(),
                 "sld_overlay": {
                     "nodes": {

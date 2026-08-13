@@ -9,8 +9,10 @@
  *
  * Zakres wyniesionych efektów:
  * - hydracja store'ów z URL: ?project / ?case / ?run / ?snapshot (+ nazwy z API),
- * - deep-linki #analysis / #proof / #report / #catalog / #variants / #case-config /
- *   #switchgear przez openRouteSurface (WorkspaceSurfaceRouter),
+ * - deep-linki #analysis / #proof / #report / #catalog przez
+ *   openRouteSurface (WorkspaceSurfaceRouter); K8: #variants, #case-config,
+ *   #power-flow-results i #protection-results są WYGASZONE — lądują w oknach
+ *   ui2 wg `LADOWISKA_WYGASZONYCH_TRAS` (bez powierzchni mostu),
  * - restoreAnalysisRunSnapshot + handleCalculate / handleViewResults,
  * - ładowanie nakładki wyników (raw overlay) dla ?run,
  * - synchronizacja trybu (MODEL_EDIT / RESULT_VIEW) i obszaru z trasą,
@@ -23,13 +25,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useAppStateStore } from '../../ui/app-state';
+import { modelNiepusty } from '../../ui/topology/pustoscModelu';
 import { useSnapshotStore } from '../../ui/topology/snapshotStore';
 import { useExecutionRunsStore } from '../../ui/study-cases/runStore';
 import { getStudyCase } from '../../ui/study-cases/api';
 import { getProject } from '../../ui/projects/api';
 import { adaptRawOverlayToTyped, useOverlayStore } from '../../ui/sld-overlay';
 import { useRawResultOverlayStore } from '../../ui/sld-overlay/rawResultOverlayStore';
-import type { ExecutionAnalysisType, ExecutionRun } from '../../ui/study-cases/types';
+import type { ExecutionAnalysisType } from '../../ui/study-cases/types';
 import {
   ROUTES,
   getCurrentHashRoute,
@@ -39,24 +42,26 @@ import {
   resolveAnalysisRouteAliasTab,
   useUrlSelectionSync,
 } from '../../ui/navigation';
-import { notify } from '../../ui/notifications/store';
-import { sanitizePublicReadinessMessage } from '../../ui/shared/publicReadinessMessage';
+// K6 (H-5 dźwignia 2): tor wykonania przebiegu żyje w przestrzeni „Obliczenia"
+// (JEDNA prawda dla menu, paska tytułowego i akcji stanów zerowych ekranów
+// wyników). Tu pozostaje wyłącznie delegacja z rodzajem z `activeAnalysisType`.
+import {
+  fetchAnalysisRunHealth,
+  isFailedAnalysisRun,
+  isUuid,
+  uruchomObliczenie,
+  type AnalysisRunHealth,
+} from '../spaces/obliczenia/uruchomObliczenie';
+import { useShellStore } from '../shell/useShellStore';
 import { useNetworkBuildStore } from '../../ui/network-build/networkBuildStore';
 import { useSelectionStore } from '../../ui/selection/store';
 import type { AreaId } from '../../ui/navigation/areaRegistry';
 import type { SelectedElement } from '../../ui/types';
-import type { DomainOpResponseV1, EnergyNetworkModel } from '../../types/enm';
+import type { EnergyNetworkModel } from '../../types/enm';
 import {
   ANALYSIS_SURFACE_SCREEN_CODE,
-  ANALYSIS_ROUTE_DEFAULT_TAB,
   REPORT_SURFACE_SCREEN_CODE,
 } from '../../ui/workspace/types';
-
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-function isUuid(value: string | null | undefined): value is string {
-  return typeof value === 'string' && UUID_RE.test(value);
-}
 
 export function useActiveProjectName(): string | null {
   const store = useAppStateStore();
@@ -76,24 +81,6 @@ function mapAnalysisTypeToExecutionType(
   }
 }
 
-type AnalysisRunHealth = {
-  status?: string | null;
-  result_status?: string | null;
-  results_valid?: boolean | null;
-  error_message?: string | null;
-  not_found?: boolean | null;
-};
-
-function isFailedAnalysisRun(run?: ExecutionRun | null, health?: AnalysisRunHealth | null): boolean {
-  const executionStatus = run?.status?.toUpperCase();
-  const canonicalStatus = health?.status?.toUpperCase();
-  const resultStatus = health?.result_status?.toUpperCase();
-
-  return executionStatus === 'FAILED'
-    || canonicalStatus === 'FAILED'
-    || resultStatus === 'FAILED';
-}
-
 function hasRenderableRunResults(health: AnalysisRunHealth | null): boolean {
   if (!health || health.not_found) {
     return false;
@@ -110,34 +97,6 @@ function hasRenderableRunResults(health: AnalysisRunHealth | null): boolean {
   }
 
   return health.results_valid === true;
-}
-
-function isTerminalExecutionRun(run: ExecutionRun): boolean {
-  return run.status === 'DONE' || run.status === 'FAILED';
-}
-
-async function fetchAnalysisRunHealth(runId: string): Promise<AnalysisRunHealth | null> {
-  try {
-    const response = await fetch(`/api/analysis-runs/${runId}`);
-    if (response.status === 404) {
-      return {
-        status: 'NOT_FOUND',
-        result_status: 'NONE',
-        results_valid: false,
-        error_message: 'RUN_NOT_FOUND',
-        not_found: true,
-      };
-    }
-    if (!response.ok) {
-      return null;
-    }
-    return {
-      ...((await response.json()) as AnalysisRunHealth),
-      not_found: false,
-    };
-  } catch {
-    return null;
-  }
 }
 
 function isAnalysisRunMissing(health: AnalysisRunHealth | null): boolean {
@@ -168,23 +127,43 @@ function clearRunParamFromCurrentHash(routeRunId: string): boolean {
   return true;
 }
 
-function analysisRunFailureMessage(): string {
-  return 'Obliczenia nie zakończyły się wynikiem. Sprawdź konfigurację układu i dane katalogowe.';
-}
+/**
+ * K8 (wygaszenie mostów o pełnym parytecie) — trasy mostu, których dostawcą
+ * jest DZIŚ okno ui2, a nie powierzchnia trasowa. Wpis = lądowisko:
+ * przestrzeń powłoki + opcjonalna zakładka warsztatu (wzorzec lądowiska K3-A1:
+ * hash zostaje jedyną prawdą deep-linku, zmienia się TYLKO dostawca widoku).
+ *
+ * Uzasadnienie parytetu (inwentarz `docs/uiux/INWENTARZ_PARYTETU_MOSTOW_2026-07.md`):
+ *  - `#power-flow-results` most renderował GENERYCZNĄ tabelę analityczną E-35
+ *    (te same wiersze dla każdej zakładki) — okno „Rozpływ mocy" ui2 daje
+ *    tabele szyn i gałęzi, profil napięć i wejście w dowód (nadzbiór),
+ *  - `#protection-results` most też renderował generyczną tabelę (zakładka
+ *    'protection' nie miała własnej gałęzi) — zakładka „Koordynacja
+ *    zabezpieczeń" ui2 (EkranKoordynacji, dostawca E-28) daje realne krzywe
+ *    TCC, marginesy CTI i nastawy (nadzbiór),
+ *  - `#case-config` most otwierał powierzchnię E-07, dla której router NIE MA
+ *    gałęzi renderu — panel prawy pokazywał sam nagłówek bez treści; przestrzeń
+ *    „Obliczenia" ui2 (menedżer przypadków + przebiegi) jest jedynym realnym
+ *    dostawcą tej zdolności,
+ *  - `#variants` most otwierał kartę read-only E-08 (metryki przebiegów +
+ *    cztery przyciski nawigacyjne); wszystkie te dane i przejścia są w
+ *    przestrzeni „Obliczenia" (historia przebiegów) i w przestrzeniach
+ *    docelowych przycisków (Wyniki / Dokumentacja / Gotowość).
+ */
+const LADOWISKA_WYGASZONYCH_TRAS: Readonly<
+  Record<string, { przestrzen: 'wyniki' | 'obliczenia'; zakladkaWynikow?: string }>
+> = {
+  '#power-flow-results': { przestrzen: 'wyniki', zakladkaWynikow: 'rozplyw' },
+  '#protection-results': { przestrzen: 'wyniki', zakladkaWynikow: 'koordynacja' },
+  '#case-config': { przestrzen: 'obliczenia' },
+  '#variants': { przestrzen: 'obliczenia' },
+};
 
-async function waitForExecutionRunTerminalState(
-  initialRun: ExecutionRun,
-  pollRunStatus: (runId: string) => Promise<ExecutionRun>,
-): Promise<ExecutionRun> {
-  let current = initialRun;
-  for (let attempt = 0; attempt < 24; attempt += 1) {
-    if (isTerminalExecutionRun(current)) {
-      return current;
-    }
-    await new Promise((resolve) => window.setTimeout(resolve, 750));
-    current = await pollRunStatus(current.id);
-  }
-  return current;
+/** Lądowisko ui2 wygaszonej trasy mostu (null = trasa nadal w moście). */
+function ladowiskoWygaszonejTrasy(
+  route: string,
+): { przestrzen: 'wyniki' | 'obliczenia'; zakladkaWynikow?: string } | null {
+  return LADOWISKA_WYGASZONYCH_TRAS[route] ?? null;
 }
 
 function isResultsRoute(route: string): boolean {
@@ -219,9 +198,6 @@ function resolveRouteArea(route: string): AreaId | null {
   if (route === ROUTES.CATALOG.hash) {
     return 'KATALOGI_TECHNICZNE';
   }
-  if (route === ROUTES.SWITCHGEAR.hash) {
-    return 'SCHEMAT_TOPOLOGIA';
-  }
   if (route === ROUTES.FAULT_SCENARIOS.hash) {
     return 'STUDIA_OBLICZENIOWE';
   }
@@ -255,13 +231,6 @@ type AnalysisRunSnapshotPayload = {
   snapshot?: unknown;
 };
 
-const EMPTY_LOGICAL_VIEWS = {
-  trunks: [],
-  branches: [],
-  secondary_connectors: [],
-  terminals: [],
-};
-
 function isEnergyNetworkModel(value: unknown): value is EnergyNetworkModel {
   if (!value || typeof value !== 'object') {
     return false;
@@ -275,57 +244,12 @@ function isEnergyNetworkModel(value: unknown): value is EnergyNetworkModel {
   );
 }
 
+// S9-11 / P-8: pustość modelu z JEDNEGO źródła (`ui/topology/pustoscModelu`) —
+// lokalna lista rodzin (bez `measurements`/`protection_assignments`/
+// `shunt_capacitors`/`connection_nodes`) była trzecim, rozbieżnym werdyktem
+// tej samej klasy.
 function hasTopologicalContent(snapshot: EnergyNetworkModel | null | undefined): boolean {
-  if (!snapshot) {
-    return false;
-  }
-  return [
-    snapshot.sources,
-    snapshot.buses,
-    snapshot.branches,
-    snapshot.transformers,
-    snapshot.loads,
-    snapshot.generators,
-    snapshot.substations,
-    snapshot.bays,
-    snapshot.junctions,
-    snapshot.branch_points,
-    snapshot.corridors,
-    snapshot.line_runs,
-  ].some((items) => Array.isArray(items) && items.length > 0);
-}
-
-function createAnalysisRunSnapshotEnvelope(
-  snapshot: EnergyNetworkModel,
-  snapshotId: string,
-): DomainOpResponseV1 {
-  const stableSnapshotId = snapshotId || snapshot.header.hash_sha256;
-  return {
-    snapshot,
-    logical_views: snapshot.logical_views ?? EMPTY_LOGICAL_VIEWS,
-    readiness: {
-      ready: true,
-      blockers: [],
-      warnings: [],
-    },
-    fix_actions: [],
-    changes: {
-      created_element_ids: [],
-      updated_element_ids: [],
-      deleted_element_ids: [],
-    },
-    selection_hint: null,
-    audit_trail: [],
-    domain_events: [],
-    materialized_params: {
-      lines_sn: {},
-      transformers_sn_nn: {},
-    },
-    layout: {
-      layout_hash: stableSnapshotId,
-      layout_version: 'analysis-run-snapshot',
-    },
-  };
+  return modelNiepusty(snapshot);
 }
 
 interface DerSurfaceRouteTarget {
@@ -435,7 +359,7 @@ export interface LegacyOrchestratorApi {
   route: string;
   /** Uruchomienie obliczeń dla aktywnego zakresu (dawne App.handleCalculate). */
   handleCalculate: () => Promise<void>;
-  /** Przejście do kanonicznej powierzchni wyników E-24 (dawne App.handleViewResults). */
+  /** Przejście do wyników — warsztat ui2 przez trasę #analysis (K3-A1). */
   handleViewResults: () => void;
 }
 
@@ -451,8 +375,6 @@ export function useLegacyOrchestrator(): LegacyOrchestratorApi {
   const activeArea = useAppStateStore((state) => state.activeArea);
   const activeProjectId = useAppStateStore((state) => state.activeProjectId);
   const activeCaseId = useAppStateStore((state) => state.activeCaseId);
-  const activeCaseName = useAppStateStore((state) => state.activeCaseName);
-  const activeCaseKind = useAppStateStore((state) => state.activeCaseKind);
   const activeAnalysisType = useAppStateStore((state) => state.activeAnalysisType);
   const activeRunId = useAppStateStore((state) => state.activeRunId);
   const activeSnapshotId = useAppStateStore((state) => state.activeSnapshotId);
@@ -463,14 +385,14 @@ export function useLegacyOrchestrator(): LegacyOrchestratorApi {
   const setActiveCaseResultStatus = useAppStateStore((state) => state.setActiveCaseResultStatus);
   const executionActiveRunId = useExecutionRunsStore((state) => state.activeRunId);
   const setExecutionActiveRun = useExecutionRunsStore((state) => state.setActiveRun);
-  const readiness = useSnapshotStore((state) => state.readiness);
   const snapshot = useSnapshotStore((state) => state.snapshot);
   const snapshotError = useSnapshotStore((state) => state.error);
   const refreshSnapshotFromBackend = useSnapshotStore((state) => state.refreshFromBackend);
-  const setSnapshotFromResponse = useSnapshotStore((state) => state.setSnapshot);
+  const setAnalysisRunSnapshot = useSnapshotStore((state) => state.setAnalysisRunSnapshot);
+  const refreshReadinessFromBackend = useSnapshotStore(
+    (state) => state.refreshReadinessFromBackend,
+  );
   const resetSnapshotStore = useSnapshotStore((state) => state.reset);
-  const createAndExecuteRun = useExecutionRunsStore((state) => state.createAndExecuteRun);
-  const pollRunStatus = useExecutionRunsStore((state) => state.pollRunStatus);
   const projectName = useActiveProjectName();
   const openRouteSurface = useNetworkBuildStore((state) => state.openRouteSurface);
   const clearRouteManagedSurface = useNetworkBuildStore((state) => state.clearRouteManagedSurface);
@@ -524,9 +446,17 @@ export function useLegacyOrchestrator(): LegacyOrchestratorApi {
             setActiveCaseResultStatus(failedRun ? 'NONE' : 'FRESH');
           }
           if (isEnergyNetworkModel(payload?.snapshot) && hasTopologicalContent(payload.snapshot)) {
-            setSnapshotFromResponse(
-              createAnalysisRunSnapshotEnvelope(payload.snapshot, snapshotId),
-            );
+            // Migawka przebiegu to PODGLĄD modelu, na którym policzono wynik —
+            // nie niesie gotowości (końcówka zwraca wyłącznie `run_id`,
+            // `snapshot_id`, `snapshot`). Zapis nie rusza `readiness`: gotowość
+            // opisuje BIEŻĄCY model (jedna prawda — `useSnapshotStore.readiness`).
+            setAnalysisRunSnapshot(payload.snapshot, snapshotId);
+            if (fallbackCaseId && useSnapshotStore.getState().readiness == null) {
+              // Zimne wejście na głęboki link przebiegu: gotowości bieżącego
+              // modelu nikt jeszcze nie policzył — pytamy o nią backend, zamiast
+              // ją zmyślać. Nieudany odczyt zostawia stan nieustalony (`null`).
+              void refreshReadinessFromBackend(fallbackCaseId);
+            }
             return;
           }
 
@@ -542,13 +472,14 @@ export function useLegacyOrchestrator(): LegacyOrchestratorApi {
         });
     },
     [
+      refreshReadinessFromBackend,
       refreshSnapshotFromBackend,
       setActiveCaseResultStatus,
       setActiveRun,
       setActiveSnapshot,
+      setAnalysisRunSnapshot,
       setExecutionActiveRun,
       setHashVersion,
-      setSnapshotFromResponse,
     ],
   );
 
@@ -739,6 +670,40 @@ export function useLegacyOrchestrator(): LegacyOrchestratorApi {
     }
   }, [route, setActiveMode]);
 
+  // K3-A1 (jedno lądowisko wyników): warsztat przestrzeni „Wyniki" renderuje
+  // się wyłącznie przy activeSpace='wyniki' (LegacyWarsztat), a sam hash tego
+  // NIE ustawiał — zimny deep-link `#analysis?run=…` i DONE-owe
+  // `navigateToResults` lądowały w moście legacy (hub E-35).
+  //
+  // K8 (wygaszenie mostów): ten sam efekt obsługuje teraz WYGASZONE trasy —
+  // wpis w `LADOWISKA_WYGASZONYCH_TRAS` niesie przestrzeń i (dla wyników)
+  // zakładkę warsztatu, więc zimny deep-link starym adresem ląduje w oknie
+  // ui2 z zachowanym kontekstem (projekt/przypadek/przebieg hydratuje K2 i
+  // efekt trasowy niżej). #proof/#compare nadal mają zakładki ui2 wyłącznie
+  // przez Ctrl+K (bez pełnego parytetu trasy — patrz inwentarz K8).
+  // Bez pętli z mostem tras AppRoot: `mostTrasyPrzestrzeni` działa tylko przy
+  // JAWNYM wyborze przestrzeni (AppShell.selectSpace), nie przy zmianie store'a,
+  // a ustawienie tej samej przestrzeni po hashu jest idempotentne.
+  useEffect(() => {
+    const ladowisko = ladowiskoWygaszonejTrasy(route);
+    if (ladowisko) {
+      const shell = useShellStore.getState();
+      if (shell.activeSpace !== ladowisko.przestrzen) {
+        shell.setActiveSpace(ladowisko.przestrzen);
+      }
+      if (ladowisko.zakladkaWynikow) {
+        shell.setWynikiTab(ladowisko.zakladkaWynikow);
+      }
+      return;
+    }
+    if (route === ROUTES.ANALYSIS.hash || route === '#results') {
+      const shell = useShellStore.getState();
+      if (shell.activeSpace !== 'wyniki') {
+        shell.setActiveSpace('wyniki');
+      }
+    }
+  }, [hashVersion, route]);
+
   useEffect(() => {
     if (!activeCaseId || snapshot || snapshotError) {
       return;
@@ -893,6 +858,26 @@ export function useLegacyOrchestrator(): LegacyOrchestratorApi {
         return;
       }
     }
+    // K8: trasa WYGASZONA — kontekst przebiegu odtwarzamy tak samo jak dotąd
+    // (deep-link `?run=`/`?case=` musi działać po staremu), ale powierzchni
+    // mostu NIE otwieramy: lądowiskiem jest okno ui2, a zalegająca powierzchnia
+    // trasowa przykryłaby je (klasa C) albo zajęła prawy panel (klasa B).
+    const ladowisko = ladowiskoWygaszonejTrasy(route);
+    if (ladowisko) {
+      if (ladowisko.przestrzen === 'wyniki') {
+        if (activeRunId !== routeRunId) {
+          setActiveRun(routeRunId);
+        }
+        if (executionActiveRunId !== routeRunId) {
+          setExecutionActiveRun(routeRunId);
+        }
+        if (isUuid(routeRunId)) {
+          restoreAnalysisRunSnapshot(routeRunId, params.get('case')?.trim() || activeCaseId);
+        }
+      }
+      clearRouteManagedSurface();
+      return;
+    }
     if (
       route === ROUTES.ANALYSIS.hash
       || isAnalysisRouteAlias(route)
@@ -952,34 +937,13 @@ export function useLegacyOrchestrator(): LegacyOrchestratorApi {
       });
       return;
     }
-    if (route === ROUTES.VARIANTS.hash) {
-      // Phase 0 #2: canonical code zamiast legacy alias 'variants_runs'
-      openRouteSurface('E-08', {
-        subjectKind: 'helper_context',
-        subjectRef: params.get('case') ?? params.get('snapshot') ?? 'variants-context',
-      });
-      return;
-    }
+    // K8: gałęzie tras #variants (E-08) i #case-config (E-07) USUNIĘTE —
+    // obie trasy są wygaszone (patrz `LADOWISKA_WYGASZONYCH_TRAS` wyżej).
     if (route === ROUTES.CATALOG.hash) {
       // Phase 0 #2: canonical code zamiast legacy alias 'catalog_admin'
       openRouteSurface('E-38', {
         subjectKind: 'helper_context',
         subjectRef: params.get('sel') ?? 'catalog-root',
-      });
-      return;
-    }
-    if (route === ROUTES.CASE_CONFIG.hash) {
-      // Phase 0 #2: canonical code zamiast legacy alias 'case_context'
-      openRouteSurface('E-07', {
-        subjectKind: 'helper_context',
-        subjectRef: params.get('case') ?? params.get('snapshot') ?? 'case-context',
-      });
-      return;
-    }
-    if (route === ROUTES.SWITCHGEAR.hash) {
-      openRouteSurface('switchgear_wizard', {
-        subjectKind: 'helper_context',
-        subjectRef: params.get('case') ?? params.get('snapshot') ?? 'switchgear-context',
       });
       return;
     }
@@ -1033,105 +997,25 @@ export function useLegacyOrchestrator(): LegacyOrchestratorApi {
     });
   }, [openRouteSurface]);
 
+  /**
+   * Uruchomienie obliczeń dla aktywnego zakresu — delegacja do JEDNEJ prawdy
+   * toru wykonania (`spaces/obliczenia/uruchomObliczenie`). Rodzaj analizy
+   * pochodzi z `activeAnalysisType` (menu / pasek tytułowy / wyszukiwarka);
+   * ekrany wyników wołają ten sam tor z rodzajem WPROST (K6 / H-5).
+   */
   const handleCalculate = useCallback(async () => {
-    if (!activeCaseId) {
-      notify('Wybierz aktywny zakres obliczeń.', 'error');
-      return;
-    }
-
-    if (readiness && !readiness.ready) {
-      const firstBlocker = readiness.blockers?.[0];
-      notify(
-        firstBlocker
-          ? sanitizePublicReadinessMessage(firstBlocker.message_pl)
-          : 'Dokończ konfigurację układu przed analizą.',
-        'warning',
-      );
-      return;
-    }
-
-    try {
-      const analysisType = mapAnalysisTypeToExecutionType(activeAnalysisType);
-      let caseIdForRun = activeCaseId;
-      if (!isUuid(caseIdForRun)) {
-        caseIdForRun = crypto.randomUUID();
-        setActiveCase(
-          caseIdForRun,
-          activeCaseName ?? 'Zwarcie maksymalne IEC 60909',
-          activeCaseKind ?? 'ShortCircuitCase',
-          'NONE',
-        );
-      }
-      const createdRun = await createAndExecuteRun(caseIdForRun, { analysis_type: analysisType });
-      const run = await waitForExecutionRunTerminalState(createdRun, pollRunStatus);
-      const runHealth = await fetchAnalysisRunHealth(run.id);
-      setActiveRun(run.id);
-
-      if (isFailedAnalysisRun(run, runHealth)) {
-        setActiveCaseResultStatus('NONE');
-        notify(analysisRunFailureMessage(), 'error');
-        return;
-      }
-
-      if (run.status !== 'DONE') {
-        setActiveCaseResultStatus('NONE');
-        notify('Obliczenia są nadal wykonywane. Wyniki zostaną pokazane po zakończeniu solvera.', 'info');
-        return;
-      }
-
-      setActiveCaseResultStatus('FRESH');
-      try {
-        const response = await fetch(`/api/analysis-runs/${run.id}/snapshot`);
-        if (response.ok) {
-          const payload = (await response.json()) as { snapshot_id?: unknown };
-          if (typeof payload.snapshot_id === 'string' && payload.snapshot_id.trim()) {
-            setActiveSnapshot(payload.snapshot_id);
-          }
-        }
-      } catch {
-        // Wyniki pozostają dostępne; panel statusu pokaże brak wersji modelu, jeśli backend jej nie zwróci.
-      }
-      notify('Obliczenie zakończone. Otwieram wyniki.', 'success');
-      navigateToResults({ runId: run.id });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Błąd wykonania obliczeń';
-      notify(message, 'error');
-    }
-  }, [
-    activeAnalysisType,
-    activeCaseId,
-    activeCaseKind,
-    activeCaseName,
-    createAndExecuteRun,
-    navigateToResults,
-    pollRunStatus,
-    readiness,
-    setActiveCase,
-    setActiveCaseResultStatus,
-    setActiveRun,
-    setActiveSnapshot,
-  ]);
+    await uruchomObliczenie(mapAnalysisTypeToExecutionType(activeAnalysisType));
+  }, [activeAnalysisType]);
 
   /**
-   * Navigate to canonical E-24 results surface.
+   * Przejście do wyników (dawne App.handleViewResults). K3-A1: trasa
+   * #analysis ustawia przestrzeń 'wyniki' (efekt wyżej) — lądowiskiem jest
+   * warsztat ui2; powierzchnię mostu w zakładce „Pozostałe analizy" otwiera
+   * efekt trasowy orkiestratora (bez dublowania openRouteSurface tutaj).
    */
   const handleViewResults = useCallback(() => {
-    const params = getCurrentSearchParams();
-    openRouteSurface(ANALYSIS_SURFACE_SCREEN_CODE, {
-      titlePl: 'Analizy techniczne',
-      tabId: ANALYSIS_ROUTE_DEFAULT_TAB,
-      entityRef: params.get('sel'),
-      subjectKind: 'analysis_run',
-      subjectRef: effectiveRunId,
-      payload: {
-        runId: effectiveRunId,
-        legacyRoute: ROUTES.ANALYSIS.hash,
-        selectedName: params.get('name'),
-        selectedType: params.get('type'),
-      },
-    });
     navigateToResults({ runId: effectiveRunId });
-  }, [effectiveRunId, navigateToResults, openRouteSurface]);
+  }, [effectiveRunId, navigateToResults]);
 
   return { route, handleCalculate, handleViewResults };
 }

@@ -55,7 +55,16 @@ describe('W2 (GS-4b/Z2) — pole źródłowe SN vs rząd nN na scenie referencyj
       for (const label of scene.labels) {
         if (label.ownerKind === 'station-name' && label.ownerRef.endsWith('#name-row-0')) {
           const stationRef = label.ownerRef.slice(0, -'#name-row-0'.length);
-          m.set(stationRef, `${label.rect.x},${label.rect.y},${label.rect.width}`);
+          // BLOK-PUSTY: kotwica = PUNKT ZACZEPU wiersza (środek slotu w poziomie,
+          // strop w pionie) + SZEROKOŚĆ REZERWACJI. Do tej karty porównywano
+          // `rect.x`/`rect.width`, bo prostokąt wiersza BYŁ slotem kolumny;
+          // teraz prostokąt niesie sam tusz, a tusz z definicji zależy od
+          // TREŚCI poziomu (L0 rysuje kod stacji, L1/L2 nazwę). Intencja bez
+          // zmian i MOCNIEJSZA: sprawdzamy obie wielkości TEKSTOWO NIEZALEŻNE
+          // — środek zaczepu i rezerwację kolumny — więc dryf geometrii nadal
+          // pada, a różnica długości napisu już nie.
+          const srodek = label.rect.x + label.rect.width / 2;
+          m.set(stationRef, `${srodek},${label.rect.y},${label.rezerwacjaSzerokosci}`);
         }
       }
       return m;
@@ -63,9 +72,18 @@ describe('W2 (GS-4b/Z2) — pole źródłowe SN vs rząd nN na scenie referencyj
     const a0 = nameAnchors(0);
     const a1 = nameAnchors(1);
     const a2 = nameAnchors(2);
+    // KD-5: pasma nazw ELEMENTÓW WEWNĘTRZNYCH bloku GPZ (tabliczka TR/źródła)
+    // na L0 nie istnieją — blok jest zwinięty. Liczność porównujemy więc na
+    // STACJACH (intencja testu: kotwica STACJI nie dryfuje), a zbiór L0 musi
+    // pozostać podzbiorem L1/L2 (zwinięcie nie dodaje kotwic).
+    const stationsOnly = (m: Map<string, string>): Map<string, string> =>
+      new Map([...m].filter(([ref]) => ref.startsWith('stn/')));
     expect(a0.size).toBeGreaterThan(0);
-    expect(a1.size).toBe(a0.size);
-    expect(a2.size).toBe(a0.size);
+    expect(stationsOnly(a1).size).toBe(stationsOnly(a0).size);
+    expect(stationsOnly(a2).size).toBe(stationsOnly(a0).size);
+    for (const ref of a0.keys()) {
+      expect(a1.has(ref) && a2.has(ref), `kotwica ${ref} obecna na L0, brak na L1/L2`).toBe(true);
+    }
     const drift: string[] = [];
     for (const [ref, pos0] of a0) {
       if (a1.get(ref) !== pos0 || a2.get(ref) !== pos0) {

@@ -25,6 +25,18 @@ export interface ListaProjektowProps {
   onZaznacz: (id: string) => void;
   /** 2× klik / `Enter` / przycisk „Otwórz" = otwarcie. */
   onOtworz: (id: string) => void;
+  /**
+   * Ponowne pobranie listy z serwera (parytet mostu `#dashboard`, luka L-4).
+   * Brak funkcji = przycisk się nie renderuje (zero martwych kontrolek).
+   */
+  onOdswiez?: () => void;
+  /**
+   * Żądanie usunięcia zaznaczonego projektu (parytet mostu, luka L-2).
+   * Wołający odpowiada za potwierdzenie i wywołanie `DELETE /api/projects/{id}`.
+   */
+  onUsun?: (id: string) => void;
+  /** Operacja na liście w toku (blokuje akcje). */
+  wToku?: boolean;
 }
 
 export function ListaProjektow({
@@ -33,6 +45,9 @@ export function ListaProjektow({
   zaznaczonyId,
   onZaznacz,
   onOtworz,
+  onOdswiez,
+  onUsun,
+  wToku = false,
 }: ListaProjektowProps) {
   const rowRefs = useRef(new Map<string, HTMLTableRowElement>());
 
@@ -90,16 +105,42 @@ export function ListaProjektow({
     <section className="mvd-pulpit-cases" aria-label={OTWORZ_STRINGS.projektyTytul}>
       <div className="mvd-otworz-projekty-head">
         <h3 className="mvd-pulpit-cases-title">{OTWORZ_STRINGS.projektyTytul}</h3>
-        <button
-          type="button"
-          className="mvd-btn mvd-btn-primary"
-          disabled={!zaznaczonyId}
-          onClick={() => {
-            if (zaznaczonyId) onOtworz(zaznaczonyId);
-          }}
-        >
-          {OTWORZ_STRINGS.otworz}
-        </button>
+        <div className="mvd-otworz-projekty-akcje">
+          {onOdswiez && (
+            <button
+              type="button"
+              className="mvd-btn"
+              disabled={wToku || ladowanie}
+              onClick={onOdswiez}
+              data-testid="mvd-projekty-odswiez"
+            >
+              {OTWORZ_STRINGS.odswiezListe}
+            </button>
+          )}
+          {onUsun && (
+            <button
+              type="button"
+              className="mvd-btn"
+              disabled={!zaznaczonyId || wToku}
+              onClick={() => {
+                if (zaznaczonyId) onUsun(zaznaczonyId);
+              }}
+              data-testid="mvd-projekty-usun"
+            >
+              {OTWORZ_STRINGS.usunProjekt}
+            </button>
+          )}
+          <button
+            type="button"
+            className="mvd-btn mvd-btn-primary"
+            disabled={!zaznaczonyId || wToku}
+            onClick={() => {
+              if (zaznaczonyId) onOtworz(zaznaczonyId);
+            }}
+          >
+            {OTWORZ_STRINGS.otworz}
+          </button>
+        </div>
       </div>
 
       {ladowanie ? (

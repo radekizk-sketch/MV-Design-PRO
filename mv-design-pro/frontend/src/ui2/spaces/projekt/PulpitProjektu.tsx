@@ -21,6 +21,8 @@ import { KafelGotowosci } from './KafelGotowosci';
 import { KafelOstatniegoPrzebiegu } from './KafelOstatniegoPrzebiegu';
 import { KafelSpojnosci } from './KafelSpojnosci';
 import { KafelWkrotce } from './KafelWkrotce';
+import { KafelArchiwum } from './KafelArchiwum';
+import { KafelArkusza } from './KafelArkusza';
 import { KafelPrzylaczenia } from './KafelPrzylaczenia';
 import { ListaPrzypadkow } from './ListaPrzypadkow';
 import {
@@ -42,6 +44,10 @@ export interface PulpitProjektuProps {
   onZaznaczPrzypadek: (id: string) => void;
   /** 2× klik wiersza przypadku = otwarcie. */
   onOtworzPrzypadek: (id: string) => void;
+  /** Otwarcie okna „Archiwum projektu (ZIP)" (etap przekazania projektu). */
+  onOtworzArchiwum: () => void;
+  /** Otwarcie okna „Import z arkusza (XLSX)" (etap danych wejściowych). */
+  onOtworzImportArkusza: () => void;
 }
 
 export function PulpitProjektu({
@@ -49,6 +55,8 @@ export function PulpitProjektu({
   onOtworzProjekt,
   onZaznaczPrzypadek,
   onOtworzPrzypadek,
+  onOtworzArchiwum,
+  onOtworzImportArkusza,
 }: PulpitProjektuProps) {
   const stan = usePulpitStan();
   const model = useModelKafel();
@@ -104,6 +112,8 @@ export function PulpitProjektu({
         />
         <KafelSpojnosci dane={spojnosc} onKlik={() => onNawiguj('wyniki')} />
         {przylaczenie && <KafelPrzylaczenia dane={przylaczenie} />}
+        <KafelArchiwum onKlik={onOtworzArchiwum} />
+        <KafelArkusza onKlik={onOtworzImportArkusza} />
         <KafelWkrotce tytul={PULPIT_STRINGS.celTytul} />
       </div>
 

@@ -10,10 +10,18 @@ import type { WorkspaceSurfaceCode } from '../../../ui/workspace/types';
 
 /**
  * Rodzaj danych wymaganych przez analizę do pełnych danych:
- * przebieg obliczeń ('zwarciowy'/'rozplywowy'/'fazowy'/'dowolny') albo sam
- * model sieci ('model' — przeglądy konfiguracji, np. zabezpieczenia i automatyka).
+ * przebieg obliczeń ('zwarciowy'/'rozplywowy'/'fazowy'/'dowolny'), sam model
+ * sieci ('model' — przeglądy konfiguracji, np. zabezpieczenia i automatyka)
+ * albo dane wbudowane w system ('wbudowane' — sieci referencyjne IEEE/CIGRE/IEC,
+ * niezależne od projektu i przebiegów).
  */
-export type WymaganyPrzebieg = 'zwarciowy' | 'rozplywowy' | 'fazowy' | 'dowolny' | 'model';
+export type WymaganyPrzebieg =
+  | 'zwarciowy'
+  | 'rozplywowy'
+  | 'fazowy'
+  | 'dowolny'
+  | 'model'
+  | 'wbudowane';
 
 export interface KartaAnalizy {
   /** Kanoniczny kod zdolności (rejestr V12.xx) — klucz karty. */
@@ -71,6 +79,7 @@ export const GRUPY_ANALIZ: readonly GrupaAnaliz[] = [
         zrodlo: 'zakończony przebieg rozpływu mocy (wynik i ślad solvera)',
         wymaga: 'rozplywowy',
         testid: 'mvd-analizy-karta-zbieznosc',
+        zakladkaWynikow: 'zbieznosc',
       },
       {
         ekran: 'E-31',
@@ -79,6 +88,7 @@ export const GRUPY_ANALIZ: readonly GrupaAnaliz[] = [
         zrodlo: 'zakończony przebieg analizy stanu fazowego SN',
         wymaga: 'fazowy',
         testid: 'mvd-analizy-karta-fazowy',
+        zakladkaWynikow: 'stan-fazowy',
       },
       {
         ekran: 'E-32',
@@ -87,6 +97,18 @@ export const GRUPY_ANALIZ: readonly GrupaAnaliz[] = [
         zrodlo: 'zakończony przebieg analizy stabilności dynamicznej (scenariusz „wyłączenie zwarcia")',
         wymaga: 'dowolny',
         testid: 'mvd-analizy-karta-stabilnosc',
+        zakladkaWynikow: 'stabilnosc',
+      },
+      {
+        // ROUTERY-4A (S6): jedyna produkcyjna droga do rozpływu niesymetrycznego
+        // (BFS per faza) prowadzi przez sieci referencyjne — karta czyni
+        // powierzchnię E-39 osiągalną z nowej powłoki (dotąd ZERO wejść).
+        ekran: 'E-39',
+        tytul: 'Walidacja sieci referencyjnych',
+        opis: 'Rozpływ (w tym niesymetryczny BFS per faza) i zwarcia na wbudowanych sieciach wzorcowych IEEE/CIGRE/IEC — wynik solvera i porównanie z wartościami z literatury.',
+        zrodlo: 'wbudowane sieci referencyjne (IEEE, CIGRE, IEC) i solvery systemu',
+        wymaga: 'wbudowane',
+        testid: 'mvd-analizy-karta-sieci-referencyjne',
       },
     ],
   },
@@ -100,6 +122,7 @@ export const GRUPY_ANALIZ: readonly GrupaAnaliz[] = [
         zrodlo: 'zakończony przebieg zwarcia niesymetrycznego (IEC 60909) — wiersze, ślad WHITE BOX i wersja układu',
         wymaga: 'zwarciowy',
         testid: 'mvd-analizy-karta-skladowe',
+        zakladkaWynikow: 'skladowe',
       },
       {
         ekran: 'E-33',
@@ -113,8 +136,11 @@ export const GRUPY_ANALIZ: readonly GrupaAnaliz[] = [
       {
         ekran: 'E-34',
         tytul: 'Weryfikacja cieplna i dynamiczna toru',
-        opis: 'Pełny bilans IEC 60909 wybranego punktu zwarcia (Ik", ip, Ith, I²t, κ, X/R) jako podstawa oceny toru — werdykt wytrzymałości aparatury wydaje dobór aparatów w karcie pola.',
-        zrodlo: 'panel „Bilans IEC 60909" ekranu zwarć (zakończony przebieg zwarciowy)',
+        // KD-4: opis zaktualizowany po domknięciu ogniwa „zwarcie → aparatura" —
+        // werdykt wytrzymałości jest teraz WPROST pod punktem zwarcia (dotąd
+        // trzeba było iść po niego do karty pola konfiguratora stacji).
+        opis: 'Pełny bilans IEC 60909 wybranego punktu zwarcia (Ik", ip, Ith, I²t, κ, X/R) oraz werdykt wytrzymałości aparatury pól tej stacji (I_dyn, I_th) dla prądów z tego przebiegu.',
+        zrodlo: 'panele „Bilans IEC 60909" i „Wytrzymałość aparatury w punkcie zwarcia" ekranu zwarć (zakończony przebieg zwarciowy)',
         wymaga: 'zwarciowy',
         testid: 'mvd-analizy-karta-cieplna',
         zakladkaWynikow: 'zwarcia',
@@ -150,6 +176,9 @@ export function maZakonczonyPrzebieg(
 ): boolean {
   // Wymóg 'model' nie dotyczy przebiegów — dostępność ocenia widok po snapshotcie.
   if (wymaga === 'model') return true;
+  // Dane 'wbudowane' (sieci referencyjne) są zawsze dostępne — niezależne od
+  // projektu i przebiegów.
+  if (wymaga === 'wbudowane') return true;
   return przebiegi.some((r) => {
     if (r.status !== STATUS_ZAKONCZONY) return false;
     if (wymaga === 'dowolny') return true;

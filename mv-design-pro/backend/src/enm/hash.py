@@ -284,6 +284,12 @@ def compute_enm_hash(enm: EnergyNetworkModel) -> str:
                 "case_hash",
                 "variant_hash",
                 "switching_snapshot_hash",
+                # Warunki przyłączenia OSD (dane WEJŚCIOWE dokumentu, czytane
+                # w warstwie interpretacji — nie przez solver). Wykluczone jak
+                # pozostałe pola zmienne nagłówka: deklaracja pola w ENMHeader
+                # (naprawa defektu utrwalania, karta POMIAR-RODZAJ) nie może
+                # przestawić odcisków istniejących modeli.
+                "connection_conditions",
             }
         },
     )

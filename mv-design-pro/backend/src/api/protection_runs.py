@@ -19,7 +19,7 @@ from uuid import UUID
 
 from api.dependencies import get_uow_factory
 from application.protection_analysis import ProtectionAnalysisService
-from domain.protection_analysis import ProtectionRunStatus
+from domain.protection_analysis import ProtectionAnalysisRun, ProtectionRunStatus
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from infrastructure.persistence.unit_of_work import UnitOfWork
 from pydantic import BaseModel
@@ -387,7 +387,7 @@ def get_protection_sld_overlay(
     }
 
 
-def _run_to_response(run) -> dict[str, Any]:
+def _run_to_response(run: ProtectionAnalysisRun) -> dict[str, Any]:
     """Convert ProtectionAnalysisRun to response dict."""
     return {
         "id": str(run.id),

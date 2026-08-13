@@ -31,7 +31,9 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 
 CANONICAL_OPS_FILE = REPO_ROOT / "backend" / "src" / "domain" / "canonical_operations.py"
 SCHEMAS_DIR = REPO_ROOT / "backend" / "schemas"
-MODAL_REGISTRY_FILE = REPO_ROOT / "frontend" / "src" / "ui" / "topology" / "modals" / "modalRegistry.ts"
+MODAL_REGISTRY_FILE = (
+    REPO_ROOT / "frontend" / "src" / "ui" / "topology" / "modals" / "modalRegistry.ts"
+)
 MODAL_INDEX_FILE = REPO_ROOT / "frontend" / "src" / "ui" / "topology" / "modals" / "index.ts"
 
 
@@ -129,9 +131,14 @@ def main() -> int:
     # (This is a soft check — we log warnings but don't fail)
     if modal_types_in_readiness:
         known_modal_patterns = {
-            "CatalogPicker", "PropertyGrid", "ProtectionModal",
-            "LoadDERModal", "PVInverterModal", "BESSInverterModal",
-            "MeasurementModal", "TransformerStationModal",
+            "CatalogPicker",
+            "PropertyGrid",
+            "ProtectionModal",
+            "LoadDERModal",
+            "PVInverterModal",
+            "BESSInverterModal",
+            "MeasurementModal",
+            "TransformerStationModal",
         }
         for mt in sorted(modal_types_in_readiness):
             if mt not in known_modal_patterns:

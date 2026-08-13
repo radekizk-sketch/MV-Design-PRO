@@ -52,7 +52,10 @@ _FW_2P0 = "conv-wind-nn-2mw-0p4kv"  # farma wiatrowa 2.0 MW / 0.4 kV
 # --- Tor DER-SN (W2c): transformator blokowy + dedykowane pole SN. ----------
 _TR_BLOCK = "tr-sn-nn-15-04-1000kva-dyn11"
 _TR_BLOCK_NS = "TRAFO_SN_NN"
-_APARAT_SN = "ap-sn-cb-630"
+# Aparat pola SN — RZECZYWISTA pozycja katalogu APARAT_SN. Dawne „ap-sn-cb-630"
+# nie istnialo w katalogu: tor DER-SN zapisywal martwa referencje pod
+# `source_mode: KATALOG` (defekt G, brama sprawdzala OBECNOSC zamiast ISTNIENIA).
+_APARAT_SN = "sw-cb-abb-vd4-17kv-630a"
 _APARAT_SN_NS = "APARAT_SN"
 _CABLE_SN = "cable-base-epr-al-1c-240"
 _CABLE_SN_NS = "KABEL_SN"
@@ -102,13 +105,6 @@ def _add_der_sn_block(
             "catalog_item_version": "2024.1",
             "materialize": True,
             "snapshot_mapping_version": "1.0",
-        },
-        "materialized_params": {
-            "catalog_item_id": catalog_ref,
-            "catalog_item_version": "2024.1",
-            "un_kv": 0.4,
-            "pmax_mw": power_mw,
-            "sn_mva": round(power_mw * 1.1, 3),
         },
         "der_topology": {
             "connection_level": "sn",

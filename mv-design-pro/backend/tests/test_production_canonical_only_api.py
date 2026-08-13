@@ -109,14 +109,18 @@ def test_power_flow_router_ignores_legacy_analysis_run_rows(client: TestClient) 
         analysis_type="PF",
     )
 
-    list_response = client.get(f"/projects/{project_id}/power-flow-runs")
+    # Adresy MUSZA byc kanoniczne (`/api/...`, karta PREFIKSY). Gdyby zostal tu
+    # stary prefiks, ponizsze asercje 404 przechodzilyby z ZLEGO POWODU — nie
+    # dlatego, ze router pomija wiersz legacy, tylko dlatego, ze trasa w ogole
+    # nie istnieje. Test przestalby pilnowac czegokolwiek.
+    list_response = client.get(f"/api/projects/{project_id}/power-flow-runs")
     assert list_response.status_code == 200
     assert str(legacy_run.id) not in {item["id"] for item in list_response.json()["runs"]}
 
-    assert client.get(f"/power-flow-runs/{legacy_run.id}").status_code == 404
-    assert client.get(f"/power-flow-runs/{legacy_run.id}/trace").status_code == 404
-    assert client.get(f"/power-flow-runs/{legacy_run.id}/export/json").status_code == 404
-    assert client.get(f"/power-flow-runs/{legacy_run.id}/interpretation").status_code == 404
+    assert client.get(f"/api/power-flow-runs/{legacy_run.id}").status_code == 404
+    assert client.get(f"/api/power-flow-runs/{legacy_run.id}/trace").status_code == 404
+    assert client.get(f"/api/power-flow-runs/{legacy_run.id}/export/json").status_code == 404
+    assert client.get(f"/api/power-flow-runs/{legacy_run.id}/interpretation").status_code == 404
 
 
 def test_sld_overlay_rejects_legacy_run_ids(client: TestClient) -> None:
@@ -129,7 +133,7 @@ def test_sld_overlay_rejects_legacy_run_ids(client: TestClient) -> None:
     )
 
     response = client.get(
-        f"/projects/{project_id}/sld/{uuid4()}/overlay",
+        f"/api/projects/{project_id}/sld/{uuid4()}/overlay",
         params={"run_id": str(legacy_run.id)},
     )
 

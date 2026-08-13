@@ -16,22 +16,29 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src"],
-  "exclude": [
-    "src/**/__tests__/**/*",
-    "src/**/*.test.ts",
-    "src/**/*.test.tsx",
-    "e2e",
-    "src/ui/context-menu/EngineeringContextMenu.tsx",
-    "src/ui/layout/CanonicalLayout.tsx",
-    "src/ui/network-build/cards/BayCard.tsx",
-    "src/ui/network-build/InspectorEngineeringView.tsx",
-    "src/ui/network-build/ReadOnlyPanelRouter.tsx",
-    "src/ui/results-inspector/ResultsInspectorPage.tsx",
-    "src/ui/sld/*.ts",
-    "src/ui/sld/*.tsx",
-    "src/ui/sld/core/**/*",
-    "src/ui/sld/inspector/**/*"
-  ],
+  // ZASIEG BRAMKI TYPOW. `npm run type-check` (i `npm run build`) sprawdza
+  // DOKLADNIE to, co tu stoi. Katalog z kodem, ktorego tu nie ma, zyje poza
+  // bramka — dlatego zasieg pilnuje `scripts/tsconfig_gate_guard.py`, a nie
+  // dobre checi. `scripts`, `e2e` i `playwright.config.ts` dopisane 2026-08-08
+  // (karta TYPY-POZA-BRAMKA): kazdy z tych trzech byl poza `include` W CALOSCI,
+  // razem 89 bledow typow bez zadnej wyroczni — w tym skrypt renderu podajacy
+  // do rysunku aparaty pola z `deviceRef === undefined` i siedem specyfikacji
+  // e2e, w ktorych rzutowanie `as typeof readiness` celowalo w typ zawezony do
+  // `null`, przez co caly blok domykania blokerow gotowosci byl nietypowany.
+  // JEDYNY plik zrodlowy poza tym zasiegiem to `vite.config.ts` — objety
+  // osobnym projektem `tsconfig.node.json` (referencja nizej), ktory guard
+  // uruchamia osobno, bo `tsc --noEmit` z korzenia NIE buduje referencji.
+  "include": ["src", "scripts", "e2e", "playwright.config.ts"],
+  // JEDYNE dopuszczone wykluczenie: pliki testowe. Uzasadnienie MERYTORYCZNE:
+  // testy niosa wlasny, zmierzony dlug typow (patrz `POZA_BRAMKA` w
+  // `scripts/tsconfig_gate_guard.py` — liczba ZAMROZONA, zapadka dziala w obie
+  // strony), a spora jego czesc lezy w `src/ui2/**`, gdzie rownolegle trwa
+  // przebudowa. Wpisanie testow do bramki DZIS zrobiloby CI trwale czerwonym,
+  // co jest gorsze niz brak bramki. Wykluczenie NIE JEST wiec zgoda na dlug:
+  // jest jego zamrozeniem pod zapadka.
+  //
+  // KAZDE NOWE WYKLUCZENIE TU = NARUSZENIE (`tsconfig_gate_guard`). Blad typow
+  // naprawia sie u zrodla, nie wypisaniem pliku z zasiegu.
+  "exclude": ["src/**/__tests__/**/*", "src/**/*.test.ts", "src/**/*.test.tsx"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

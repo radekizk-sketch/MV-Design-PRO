@@ -3,24 +3,23 @@
 from __future__ import annotations
 
 import pytest
-
-from src.application.ncrfg_compliance import (
+from application.ncrfg_compliance import (
     NcRfgComplianceChecker,
     NcRfgComplianceReport,
 )
-from src.application.ncrfg_compliance.checker import DerDataForCompliance
-from src.network_model.solvers.frt_hvrt import (
+from application.ncrfg_compliance.checker import DerDataForCompliance
+from network_model.solvers.frt_hvrt import (
     FrtHvrtResult,
     FrtHvrtSolverAdapter,
     FrtHvrtSolverInput,
     FrtScenario,
 )
-from src.network_model.solvers.stability_rms import (
+from network_model.solvers.stability_rms import (
     StabilityResult,
     StabilitySolverAdapter,
     StabilitySolverInput,
 )
-from src.network_model.solvers.stability_rms.contracts import (
+from network_model.solvers.stability_rms.contracts import (
     DisturbanceEvent,
     DynamicModelParameters,
 )

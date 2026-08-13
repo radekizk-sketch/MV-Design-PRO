@@ -48,7 +48,9 @@ def _get_graph_for_case(case_id: str) -> NetworkGraph:
     return NetworkGraph(network_model_id=case_id)
 
 
-def _get_graph_for_snapshot(snapshot_id: str, uow_factory) -> NetworkGraph:
+def _get_graph_for_snapshot(
+    snapshot_id: str, uow_factory: Callable[[], UnitOfWork]
+) -> NetworkGraph:
     """
     Phase 36: ladowanie real NetworkGraph z persystencji (network_snapshots).
 
@@ -243,7 +245,7 @@ class EligibilityMapResponse(BaseModel):
         "eligibility, and provenance trace. Read-only, no side-effects."
     ),
 )
-async def get_solver_input(
+def get_solver_input(
     case_id: str = Path(..., description="Study case ID"),
     analysis_type: str = Path(
         ...,
@@ -338,7 +340,7 @@ async def get_solver_input(
         "for each analysis type. Read-only, no side-effects."
     ),
 )
-async def get_eligibility(
+def get_eligibility(
     case_id: str = Path(..., description="Study case ID"),
 ) -> EligibilityMapResponse:
     """Check eligibility for all analysis types for the given case."""

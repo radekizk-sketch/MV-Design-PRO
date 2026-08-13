@@ -108,13 +108,18 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe('EkranStanuFazowego — realna ścieżka wejścia (karta huba → powierzchnia E-31)', () => {
-  it('klik „Otwórz" na karcie stanu fazowego otwiera powierzchnię E-31 (klik natywny)', async () => {
+describe('EkranStanuFazowego — realna ścieżka wejścia (karta huba → zakładka warsztatu Wyników)', () => {
+  // INTENCJA bez zmian (karta huba prowadzi do realnego dostawcy); kanon K3-A3:
+  // dostawcą E-31 jest zakładka „stan-fazowy" warsztatu Wyników (deep-link
+  // setWynikiTab, wzorzec E-33/E-34), nie powierzchnia trasowa mostu.
+  it('klik „Otwórz" na karcie stanu fazowego prowadzi do zakładki „stan-fazowy" (klik natywny)', async () => {
     const user = userEvent.setup();
     render(<EkranAnalizTechnicznych />);
     const karta = screen.getByTestId('mvd-analizy-karta-fazowy');
     await user.click(within(karta).getByRole('button', { name: 'Otwórz' }));
-    expect(useNetworkBuildStore.getState().activeSurface?.screenCode).toBe('E-31');
+    expect(useShellStore.getState().wynikiTab).toBe('stan-fazowy');
+    expect(useShellStore.getState().activeSpace).toBe('wyniki');
+    expect(useNetworkBuildStore.getState().activeSurface).toBeNull();
   });
 
   it('karta huba uczciwie zapowiada wymóg przebiegu stanu fazowego (chip)', () => {

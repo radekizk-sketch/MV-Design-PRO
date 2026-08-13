@@ -157,7 +157,7 @@ export function TransformerStationEditor({
   const content = (
     <>
       {!hideHeader && (
-        <div className="border-b border-[#24405d] px-6 py-4">
+        <div className="border-b border-scada-border-strong px-6 py-4">
           <h2 className="text-lg font-semibold text-white">
             {mode === 'create'
               ? 'Nowa stacja transformatorowa'
@@ -169,49 +169,49 @@ export function TransformerStationEditor({
       <div className="space-y-4 px-6 py-4">
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="mb-1 block text-sm font-medium text-[#a8c7e2]">Identyfikator</label>
+            <label className="mb-1 block text-sm font-medium text-scada-text">Identyfikator</label>
             <input title="Identyfikator"
               type="text"
               value={formData.ref_id}
               onChange={(event) => handleChange('ref_id', event.target.value)}
               disabled={mode === 'edit'}
-              className={`w-full rounded-md border bg-[#07111c] px-3 py-2 text-sm text-[#e6f4ff] outline-none ${
-                getError('ref_id') ? 'border-red-500' : 'border-[#28425f]'
+              className={`w-full rounded-md border bg-scada-bg px-3 py-2 text-sm text-sygnal-info-tusz outline-none ${
+                getError('ref_id') ? 'border-red-500' : 'border-scada-border-strong'
               }`}
             />
             {getError('ref_id') && (
-              <p className="mt-1 text-xs text-[#ff9a9a]">{getError('ref_id')}</p>
+              <p className="mt-1 text-xs text-sygnal-blokada-tusz">{getError('ref_id')}</p>
             )}
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-[#a8c7e2]">Nazwa</label>
+            <label className="mb-1 block text-sm font-medium text-scada-text">Nazwa</label>
             <input title="Nazwa"
               type="text"
               value={formData.name}
               onChange={(event) => handleChange('name', event.target.value)}
-              className={`w-full rounded-md border bg-[#07111c] px-3 py-2 text-sm text-[#e6f4ff] outline-none ${
-                getError('name') ? 'border-red-500' : 'border-[#28425f]'
+              className={`w-full rounded-md border bg-scada-bg px-3 py-2 text-sm text-sygnal-info-tusz outline-none ${
+                getError('name') ? 'border-red-500' : 'border-scada-border-strong'
               }`}
             />
-            {getError('name') && <p className="mt-1 text-xs text-[#ff9a9a]">{getError('name')}</p>}
+            {getError('name') && <p className="mt-1 text-xs text-sygnal-blokada-tusz">{getError('name')}</p>}
           </div>
         </div>
 
         {busSelectionMode === 'station-sides' && (
           <div className="grid grid-cols-2 gap-4">
-            <div className="border border-[#14532d] bg-[#061f18] px-3 py-2">
-              <div className="font-mono-eng text-[11px] font-semibold uppercase tracking-[0.12em] text-[#17f7a8]">
+            <div className="border border-sygnal-ok bg-sygnal-ok-tlo px-3 py-2">
+              <div className="font-mono-eng text-[11px] font-semibold uppercase tracking-[0.12em] text-sygnal-ok-tusz">
                 Strona SN
               </div>
-              <div className="mt-1 text-sm font-medium text-[#d9ffe9]">
+              <div className="mt-1 text-sm font-medium text-sygnal-ok-tusz">
                 {stationSideLabels.high}
               </div>
             </div>
-            <div className="border border-[#164e63] bg-[#061826] px-3 py-2">
-              <div className="font-mono-eng text-[11px] font-semibold uppercase tracking-[0.12em] text-[#19e6ff]">
+            <div className="border border-sygnal-info bg-scada-bg px-3 py-2">
+              <div className="font-mono-eng text-[11px] font-semibold uppercase tracking-[0.12em] text-sygnal-info-tusz">
                 Strona nN
               </div>
-              <div className="mt-1 text-sm font-medium text-[#d7ecff]">
+              <div className="mt-1 text-sm font-medium text-sygnal-info-tusz">
                 {stationSideLabels.low}
               </div>
             </div>
@@ -220,14 +220,14 @@ export function TransformerStationEditor({
 
         <div className={`grid grid-cols-2 gap-4 ${busSelectionMode === 'station-sides' ? 'hidden' : ''}`}>
           <div>
-            <label className="mb-1 block text-sm font-medium text-[#a8c7e2]">
+            <label className="mb-1 block text-sm font-medium text-scada-text">
               Szyna strony górnej (GN)
             </label>
             <select title="Szyna strony górnej (GN)"
               value={formData.hv_bus_ref}
               onChange={(event) => handleChange('hv_bus_ref', event.target.value)}
-              className={`w-full rounded-md border bg-[#07111c] px-3 py-2 text-sm text-[#e6f4ff] outline-none ${
-                getError('hv_bus_ref') ? 'border-red-500' : 'border-[#28425f]'
+              className={`w-full rounded-md border bg-scada-bg px-3 py-2 text-sm text-sygnal-info-tusz outline-none ${
+                getError('hv_bus_ref') ? 'border-red-500' : 'border-scada-border-strong'
               }`}
             >
               <option value="">— wybierz —</option>
@@ -238,18 +238,18 @@ export function TransformerStationEditor({
               ))}
             </select>
             {getError('hv_bus_ref') && (
-              <p className="mt-1 text-xs text-[#ff9a9a]">{getError('hv_bus_ref')}</p>
+              <p className="mt-1 text-xs text-sygnal-blokada-tusz">{getError('hv_bus_ref')}</p>
             )}
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-[#a8c7e2]">
+            <label className="mb-1 block text-sm font-medium text-scada-text">
               Szyna strony dolnej (DN)
             </label>
             <select title="Szyna strony dolnej (DN)"
               value={formData.lv_bus_ref}
               onChange={(event) => handleChange('lv_bus_ref', event.target.value)}
-              className={`w-full rounded-md border bg-[#07111c] px-3 py-2 text-sm text-[#e6f4ff] outline-none ${
-                getError('lv_bus_ref') ? 'border-red-500' : 'border-[#28425f]'
+              className={`w-full rounded-md border bg-scada-bg px-3 py-2 text-sm text-sygnal-info-tusz outline-none ${
+                getError('lv_bus_ref') ? 'border-red-500' : 'border-scada-border-strong'
               }`}
             >
               <option value="">— wybierz —</option>
@@ -260,22 +260,22 @@ export function TransformerStationEditor({
               ))}
             </select>
             {getError('lv_bus_ref') && (
-              <p className="mt-1 text-xs text-[#ff9a9a]">{getError('lv_bus_ref')}</p>
+              <p className="mt-1 text-xs text-sygnal-blokada-tusz">{getError('lv_bus_ref')}</p>
             )}
           </div>
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-[#a8c7e2]">Pozycja zaczepu</label>
+          <label className="mb-1 block text-sm font-medium text-scada-text">Pozycja zaczepu</label>
           <input title="Pozycja zaczepu"
             type="number"
             value={formData.tap_position}
             onChange={(event) => handleChange('tap_position', parseInt(event.target.value, 10) || 0)}
-            className="w-full rounded-md border border-[#28425f] bg-[#07111c] px-3 py-2 text-sm text-[#e6f4ff] outline-none focus:border-[#04d6ff]"
+            className="w-full rounded-md border border-scada-border-strong bg-scada-bg px-3 py-2 text-sm text-sygnal-info-tusz outline-none focus:border-sygnal-info"
           />
         </div>
 
-        <div className="border-t border-[#24405d] pt-4">
+        <div className="border-t border-scada-border-strong pt-4">
           <CatalogPicker
             label="Typ transformatora z katalogu"
             entries={catalogEntries}
@@ -305,17 +305,17 @@ export function TransformerStationEditor({
         )}
       </div>
 
-      <div className="flex justify-end gap-3 border-t border-[#24405d] px-6 py-4">
+      <div className="flex justify-end gap-3 border-t border-scada-border-strong px-6 py-4">
         <button
           onClick={onCancel}
-          className="rounded-md border border-[#28425f] bg-[#07111c] px-4 py-2 text-sm font-medium text-[#c7dff6] hover:border-[#3a668f]"
+          className="rounded-md border border-scada-border-strong bg-scada-bg px-4 py-2 text-sm font-medium text-sygnal-info-tusz hover:border-scada-border-strong"
         >
           Anuluj
         </button>
         <button
           onClick={handleSubmit}
           data-testid="transformer-station-submit"
-          className="rounded-md bg-[#2563eb] px-4 py-2 text-sm font-medium text-white hover:bg-[#1d4ed8]"
+          className="rounded-md bg-sygnal-info px-4 py-2 text-sm font-medium text-white hover:bg-sygnal-info"
         >
           {submitLabel ?? (mode === 'create' ? 'Dodaj' : 'Zapisz')}
         </button>
@@ -324,12 +324,12 @@ export function TransformerStationEditor({
   );
 
   if (embedded) {
-    return <div className="border border-[#24405d] bg-[#081522]">{content}</div>;
+    return <div className="border border-scada-border-strong bg-scada-bg">{content}</div>;
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#010711]/75 backdrop-blur-sm">
-      <div className="mx-4 max-h-[90vh] w-full max-w-3xl overflow-y-auto border border-[#24405d] bg-[#07111c] shadow-[0_24px_80px_rgba(0,0,0,0.55)]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-scada-bg/75 backdrop-blur-sm">
+      <div className="mx-4 max-h-[90vh] w-full max-w-3xl overflow-y-auto border border-scada-border-strong bg-scada-bg shadow-[0_24px_80px_rgba(0,0,0,0.55)]">
         {content}
       </div>
     </div>

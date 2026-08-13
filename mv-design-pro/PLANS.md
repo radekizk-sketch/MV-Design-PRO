@@ -2,7 +2,8 @@
 
 **Version:** 5.1
 **Status:** LIVING DOCUMENT
-**Last updated:** 2026-07-17 (Reference Engine V1 — globalna integracja referencji SLD, V12K-060)
+**Last updated:** 2026-08-05
+**Stan operacyjny śledzi rejestr [`docs/v12xx/REJESTR_KONFLIKTOW.md`](docs/v12xx/REJESTR_KONFLIKTOW.md) (do V12K-322); poniższe sekcje statusowe mogą być starsze niż rejestr.**
 **Reference (canon):** [`docs/v12xx/KANON_V12_XX.md`](docs/v12xx/KANON_V12_XX.md) (binding), [`docs/system/`](docs/system/) (binding specs), [`SYSTEM_SPEC.md`](SYSTEM_SPEC.md) (executive overview).
 **Reference (archive):** [`docs/spec/`](docs/spec/) — historical V11 reference; not source of truth.
 **Active work:** see § 3 and [`docs/plan/PLAN_E2E_INDUSTRIAL_2026-05.md`](docs/plan/PLAN_E2E_INDUSTRIAL_2026-05.md).
@@ -99,10 +100,13 @@ Pełny zapis: `docs/v12xx/REJESTR_KONFLIKTOW.md` V12K-098…V12K-120; dokumenty 
       (+ FIX pre-existing solvera dla scalonych węzłów), parytet raportów PDF/DOCX/JSON
 - [x] Runda dowodowa (V12K-119): 12 ekranów z otwartym wywodem akademickim,
       stała strona `docs/audit/visual/dowody/` (24 PNG, spec-y z twardymi asercjami)
-- [ ] W toku (karty S-A/S-B/S-C): likwidacja duplikacji fizyki w dowodzie SC1,
-      strzałki kierunku przepływu na SLD, trzy delty zatwierdzone przez właściciela
-      (kroki Ib/I²t w dowodzie SC3F, porównanie I²t w doborze aparatów, delty bilansu
-      w porównaniach A/B)
+- [x] Karty S-A/S-B/S-C ZAMKNIĘTE (2026-07-22, V12K-122/121/123): S-A — likwidacja
+      duplikacji fizyki w dowodzie SC1 (fizyka przeniesiona verbatim do
+      `network_model/solvers/short_circuit_asymmetrical_quantities.py`, NOT-A-SOLVER
+      przywrócony, 6 hashy SHA-256 goldenów niezmienionych); S-B — strzałki kierunku
+      przepływu prądu zwarciowego na SLD (kanał `faultFlow`, kanwa v3); S-C — trzy
+      delty zatwierdzone przez właściciela (kroki Ib/I²t w dowodzie SC3F, porównanie
+      I²t w doborze aparatów, delty bilansu w porównaniach A/B)
 
 ### 3.-1 Program UI/UX klasy przemysłowej 2026-07 (ACTIVE)
 
@@ -209,12 +213,14 @@ Progress:
             `3693c01`). **FAZA U1 ZAMKNIĘTA 2026-07-15.**
       - [x] V12K-026 RESOLVED: słownik nowej IA („przypadek obliczeniowy", „kreator");
             guard terminologii zielony w całym repo (naprawione 2 zastane naruszenia)
-- [ ] U2 W TOKU (2026-07-16): E3.1 przeglądarka szablonów (82 t.) · E3.2 preselekcja+Z2 ·
+- [ ] U2 W TOKU (2026-07-16) — stan wg audytu bramek: `docs/uiux/AUDYT_BRAMEK_U2_U5_2026-08.md`
+        (werdykty: U2 8/11, U3 7/9, U4 3/7, U5 4/9): E3.1 przeglądarka szablonów (82 t.) · E3.2 preselekcja+Z2 ·
         E6.1 panel gotowości wg celów (61 t.) · E7.1 menedżer przypadków (38 t.) ·
         E7.2 przebiegi W-503 (43 t.) · E4.1 katalog+karta techniczna (44 t.) + 4 scalenia.
         Przestrzenie w pełni na nowej powłoce: Projekt, Gotowość, Obliczenia (3/7);
         Model = warsztat 3 zakładki (schemat/szablony/katalog). Pełny bieg: 7894 pass.
-- [ ] U3 W TOKU (2026-07-16): E8.1 wspólny wzorzec ekranu analizy + rozpływ szyn
+- [ ] U3 W TOKU (2026-07-16) — stan wg audytu bramek: `docs/uiux/AUDYT_BRAMEK_U2_U5_2026-08.md`
+        (werdykty: U2 8/11, U3 7/9, U4 3/7, U5 4/9): E8.1 wspólny wzorzec ekranu analizy + rozpływ szyn
         (Opus; 50 testów — wzorzec 27 + rozpływ 23; pełny vitest u wykonawcy 7944 pass
         z pipefail; ui2 655 pass u zarządcy; zintegrowane `fd630d8`; TODO-KARTA:
         wirtualizacja >500 wierszy, świeżość liczbowa w TabelaSzyn, dowód per-szyna,
@@ -250,7 +256,8 @@ Progress:
         powłoce; `42d7e79`; pełny bieg 8046 pass). Scalenie U3 #4: natywny wybór
         wiersza we wzorcu (delta API; zamyka TODO E8.2 A; `b5ae89b`; ui2 758).
         Karta E12.1 porównanie A/B rozpływu W-609 zarejestrowana (`115a225`).
-- [ ] U4 OTWARTE strumieniem OZE (2026-07-16): P39 macierz wymogów NC RfG (Opus;
+- [ ] U4 OTWARTE strumieniem OZE (2026-07-16) — stan wg audytu bramek: `docs/uiux/AUDYT_BRAMEK_U2_U5_2026-08.md`
+        (werdykty: U2 8/11, U3 7/9, U4 3/7, U5 4/9): P39 macierz wymogów NC RfG (Opus;
         33 testy; pełny vitest u wykonawcy 8079 pass ZERO failed; zintegrowane
         `a626f90`; napięcie przyłączenia WYŁĄCZNIE z modelu/katalogu — stan
         „brak danych" zamiast 15 kV z powietrza; USTALONE: backend klasyfikuje
@@ -1444,7 +1451,7 @@ Zakres zakończony w tym etapie:
 
 | Item | Description | Status |
 |------|-------------|--------|
-| SLD rework F1 (port-based routing + symbol library IEC 60617) | Główna przyczyna wyglądu „atrapy". Patrz `docs/plan/PLAN_SLD_REWORK.md`. | TODO |
+| SLD rework F1 (port-based routing + symbol library IEC 60617) | Główna przyczyna wyglądu „atrapy". Patrz `docs/plan/PLAN_SLD_REWORK.md`. Zakres F1–F5 zastąpiony i wykonany programem „SCHEMAT-10" fazy S1–S8 (`docs/plan/PLAN_SLD_REWORK.md` §0; domknięcie: V12K-142 karta S5-FINAL, V12K-146 karta S7.6-KOMPRESJA, V12K-141 karta S8-LOD — „Program SCHEMAT-10: fazy S1-S8 + GS-1..GS-5 + P1 recenzji DOSTARCZONE"). | DONE (S1–S8) |
 | Protection SI-100 stub removal | Bramka E2E dla zabezpieczeń. Patrz `docs/plan/PLAN_E2E_INDUSTRIAL_2026-05.md` § 3.2. | TODO |
 | VDROP + Earthing proof packs | Bramki audyt2 (dobór przewodów + grounding). | TODO |
 | Fault-loop NN solver | Stacje SN/NN bez tego nie mają pełnej analizy NN. | TODO |

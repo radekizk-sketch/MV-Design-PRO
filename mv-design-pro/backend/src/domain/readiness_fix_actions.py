@@ -16,7 +16,14 @@ INVARIANTS:
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 from enm.fix_actions import FixAction
+
+#: Fabryka FixAction: (element_id, element_type) -> FixAction. Typ byl dotad zapisany
+#: TYLKO w komentarzu obok `type[object] | object`, wiec `resolve_fix_action` wolal
+#: cos, co dla analizy nie bylo wolalne (`"object" not callable`).
+FixActionFactory = Callable[[str | None, str | None], FixAction]
 
 # ---------------------------------------------------------------------------
 # Code → FixAction factory mapping
@@ -320,7 +327,7 @@ def _fix_bess_transformer_required(
 
 _FIX_ACTION_MAP: dict[
     str,
-    type[object] | object,  # Callable[[str | None, str | None], FixAction]
+    FixActionFactory,
 ] = {
     # Generator validation
     "catalog.ref_missing": _fix_catalog_ref_missing,
@@ -364,7 +371,7 @@ _FIX_ACTION_MAP: dict[
 
 _PREFIX_FIX_ACTION_MAP: dict[
     str,
-    type[object] | object,  # Callable[[str | None, str | None], FixAction]
+    FixActionFactory,
 ] = {
     "field.device_missing.": _fix_field_device_missing,
 }

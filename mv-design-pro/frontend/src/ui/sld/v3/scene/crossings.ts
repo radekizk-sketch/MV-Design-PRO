@@ -33,7 +33,16 @@ export const BRIDGE_RADIUS = GRID / 2;
 
 /** Rodzaje segmentów NIE będące torem mocy (ta sama lista co wyłączenia
  *  wyroczni ciągłości — patrz `buildScene.ts` `isAnnotationSegment`). */
-const NON_POWER_KINDS: ReadonlySet<string> = new Set(['protectionTrip', 'measurementLink', 'leader']);
+// S9-1: `sheetContinuation` (kreski znaku ciągu dalszego na złamaniu arkusza)
+// leży NA torze, ale sama torem nie jest — bez tego wyjątku jej przecięcie z
+// pionem łącznika byłoby czytane jako węzeł T i dostawałoby kropkę węzłową
+// (`resolveTeeJunctions`), czyli rysunek KŁAMAŁBY o połączeniu elektrycznym.
+const NON_POWER_KINDS: ReadonlySet<string> = new Set([
+  'protectionTrip',
+  'measurementLink',
+  'leader',
+  'sheetContinuation',
+]);
 
 /** Rodzaje segmentów będące SZYNĄ (mostek zakazany — §22.1). */
 const BUS_KINDS: ReadonlySet<string> = new Set(['bus', 'busGpz']);
@@ -252,7 +261,12 @@ export function externalBranchNodes(segments: readonly PreviewSegment[]): readon
   // fałszywy T-węzeł „rozgalezienie-bez-kropki" (pomiar: 13 luk na fixturze
   // referencyjnej po dorysowaniu realnych ogonów otwartych ENM).
   const ext = segments.filter(
-    (s) => (s.meta?.ownerRef ?? '').startsWith('seg/') && s.meta?.kind !== 'openTerminal',
+    (s) =>
+      (s.meta?.ownerRef ?? '').startsWith('seg/') &&
+      s.meta?.kind !== 'openTerminal' &&
+      // S9-1: kreski znaku ciągu dalszego (złamanie arkusza) leżą NA torze, ale
+      // nie są torem — nie tworzą węzła T (jak słupek terminalny wyżej).
+      s.meta?.kind !== 'sheetContinuation',
   );
   const nodes: RouteVertex[] = [];
   const seen = new Set<string>();

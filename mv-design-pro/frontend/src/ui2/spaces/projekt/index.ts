@@ -5,11 +5,16 @@
  */
 
 export { PulpitProjektu, type PulpitProjektuProps } from './PulpitProjektu';
+export { OtworzProjektKontener } from './otworz/OtworzProjektKontener';
+export { EkranArchiwum, type EkranArchiwumProps } from './archiwum';
+export { EkranImportuArkusza, type EkranImportuArkuszaProps } from './arkusz';
 export { KafelModelu } from './KafelModelu';
 export { KafelGotowosci } from './KafelGotowosci';
 export { KafelOstatniegoPrzebiegu } from './KafelOstatniegoPrzebiegu';
 export { KafelSpojnosci } from './KafelSpojnosci';
 export { KafelWkrotce } from './KafelWkrotce';
+export { KafelArchiwum } from './KafelArchiwum';
+export { KafelArkusza } from './KafelArkusza';
 export { ListaPrzypadkow } from './ListaPrzypadkow';
 export { Kafel, KafelWiersz, Tag, type WariantTagu } from './Kafel';
 

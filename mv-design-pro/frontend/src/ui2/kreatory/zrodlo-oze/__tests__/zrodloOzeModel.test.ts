@@ -17,12 +17,15 @@ import {
   sposobPrzylaczeniaLabel,
   sugerujDerSn,
   technologiaLabel,
+  refUtworzonegoWytworcy,
   trybQWymagaWartosci,
   walidujDerSn,
   walidujFormularz,
   wariantLabel,
   zbudujDerTopology,
+  zbudujLimityBierne,
   zbudujPayload,
+  zbudujWiazaniaDer,
   type DerSnFormData,
   type OzeFormData,
   type TransformatorBlokowy,
@@ -488,5 +491,57 @@ describe('zrodloOzeModel — tor DER-SN (DerTopology)', () => {
       has_manufacturer_lv_switchgear: false,
     });
     expect(braki.map((b) => b.field)).toContain('connection_method');
+  });
+});
+
+// K9-A: buildery sekwencji zapisu (wiązania + limity) i ref utworzonego wytwórcy.
+describe('sekwencja zapisu K9-A', () => {
+  it('zbudujWiazaniaDer wysyła WYŁĄCZNIE pola z wyborem projektanta (pominięcie ≠ null)', () => {
+    expect(zbudujWiazaniaDer(DANE_DOMYSLNE)).toBeNull();
+    const wiazania = zbudujWiazaniaDer({
+      ...DANE_DOMYSLNE,
+      ct_catalog_ref: 'ct-1',
+      nc_rfg_profile_ref: 'ncrfg_pse',
+      fault_current_data_ref: '  DOK-1  ',
+    });
+    expect(wiazania).toEqual({
+      ct_catalog_ref: 'ct-1',
+      nc_rfg_profile_ref: 'ncrfg_pse',
+      fault_current_data_ref: 'DOK-1',
+    });
+    // Żadnych null-i dla pól niedotkniętych — null kasowałby wcześniejsze wiązania.
+    expect(Object.values(wiazania ?? {})).not.toContain(null);
+  });
+
+  it('zbudujLimityBierne zwraca limity Q tylko przy podanych wartościach (bez limitów P — brak konsumenta)', () => {
+    expect(zbudujLimityBierne(DANE_DOMYSLNE)).toBeNull();
+    expect(zbudujLimityBierne({ ...DANE_DOMYSLNE, q_min_mvar: -0.2 })).toEqual({ q_min_mvar: -0.2 });
+    expect(zbudujLimityBierne({ ...DANE_DOMYSLNE, q_min_mvar: -0.2, q_max_mvar: 0.3 })).toEqual({
+      q_min_mvar: -0.2,
+      q_max_mvar: 0.3,
+    });
+  });
+
+  it('refUtworzonegoWytworcy wybiera utworzony ref obecny w kolekcji wytwórców (nie ref pola)', () => {
+    expect(
+      refUtworzonegoWytworcy({
+        selection_hint: { element_id: 'nn/x/source_field' },
+        changes: { created_element_ids: ['nn/x/source_field', 'gen-7'] },
+        snapshot: { generators: [{ ref_id: 'gen-7' }] },
+      }),
+    ).toBe('gen-7');
+    // Bez migawki — pierwszy utworzony ref (odpowiedź okrojona, np. testy komponentu).
+    expect(
+      refUtworzonegoWytworcy({
+        changes: { created_element_ids: ['gen-1'] },
+      }),
+    ).toBe('gen-1');
+    // Z migawką bez dopasowania — null (uczciwy brak zamiast refu pola).
+    expect(
+      refUtworzonegoWytworcy({
+        changes: { created_element_ids: ['nn/x/source_field'] },
+        snapshot: { generators: [] },
+      }),
+    ).toBeNull();
   });
 });

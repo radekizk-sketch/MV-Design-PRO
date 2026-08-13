@@ -26,6 +26,7 @@ from domain.project_archive import (
     ArchiveError,
 )
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/archives", tags=["archive-diff"])
@@ -193,27 +194,34 @@ async def compare_archive_files(
     bytes_a = await file_a.read()
     bytes_b = await file_b.read()
 
-    with uow_factory() as uow:
-        service = ProjectArchiveService(uow.session)
+    # WSPÓŁBIEŻNOŚĆ: końcówka zostaje `async def`, bo czyta DWA przesłane pliki
+    # (`await file_*.read()`). Rozpakowanie obu archiwów i ich porównanie jest
+    # blokujące — na pętli zdarzeń wstrzymywało obsługę wszystkich pozostałych
+    # żądań na czas porównania.
+    def _porownaj() -> ArchiveDiffResponse:
+        with uow_factory() as uow:
+            service = ProjectArchiveService(uow.session)
 
-        try:
-            archive_a = service.load_archive_from_bytes(bytes_a)
-        except (ArchiveError, Exception) as e:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Blad odczytu archiwum A: {e}",
-            )
+            try:
+                archive_a = service.load_archive_from_bytes(bytes_a)
+            except (ArchiveError, Exception) as e:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Blad odczytu archiwum A: {e}",
+                )
 
-        try:
-            archive_b = service.load_archive_from_bytes(bytes_b)
-        except (ArchiveError, Exception) as e:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Blad odczytu archiwum B: {e}",
-            )
+            try:
+                archive_b = service.load_archive_from_bytes(bytes_b)
+            except (ArchiveError, Exception) as e:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Blad odczytu archiwum B: {e}",
+                )
 
-    result = compare_archives(archive_a, archive_b)
-    return _to_response(result)
+        result = compare_archives(archive_a, archive_b)
+        return _to_response(result)
+
+    return await run_in_threadpool(_porownaj)
 
 
 @router.post(

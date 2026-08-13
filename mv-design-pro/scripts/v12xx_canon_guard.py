@@ -262,9 +262,7 @@ def check_api_compatibility_matrix() -> list[str]:
             or rows_by_endpoint.get(normalize_endpoint(endpoint))
         )
         if row is None:
-            violations.append(
-                f"[api-matrix-endpoint] missing required endpoint: {endpoint}"
-            )
+            violations.append(f"[api-matrix-endpoint] missing required endpoint: {endpoint}")
             continue
 
         for field, expected_fragment in required_fields.items():
@@ -311,9 +309,7 @@ def check_v12_debt_closure() -> list[str]:
                 continue
             status = row.get("Status", "")
             if "zamkniety" not in status:
-                violations.append(
-                    f"[debt-register-open] {code} has non-closed status {status!r}"
-                )
+                violations.append(f"[debt-register-open] {code} has non-closed status {status!r}")
 
     if BACKLOG_PATH.exists():
         for row in markdown_table_rows(read_text(BACKLOG_PATH)):
@@ -322,9 +318,7 @@ def check_v12_debt_closure() -> list[str]:
                 continue
             status = row.get("Status", "")
             if not status.startswith("zamkniete"):
-                violations.append(
-                    f"[backlog-open] {code} has non-closed status {status!r}"
-                )
+                violations.append(f"[backlog-open] {code} has non-closed status {status!r}")
 
     if RED_TEAM_PATH.exists():
         text = read_text(RED_TEAM_PATH)
@@ -334,9 +328,7 @@ def check_v12_debt_closure() -> list[str]:
         )
         for fragment in forbidden_fragments:
             if fragment in text:
-                violations.append(
-                    f"[red-team-open-debt] forbidden fragment remains: {fragment}"
-                )
+                violations.append(f"[red-team-open-debt] forbidden fragment remains: {fragment}")
 
     return violations
 
@@ -348,9 +340,7 @@ def check_removed_legacy_public_endpoints() -> list[str]:
     active_routes = api_lifecycle_guard.discover_active_api_routes()
     for route in active_routes:
         if route.path.startswith(forbidden_prefix):
-            violations.append(
-                f"[removed-legacy-active-route] {route.key} from {route.source}"
-            )
+            violations.append(f"[removed-legacy-active-route] {route.key} from {route.source}")
 
     if API_MATRIX_PATH.exists():
         rows = markdown_table_rows(read_text(API_MATRIX_PATH))
@@ -368,15 +358,9 @@ def check_removed_legacy_public_endpoints() -> list[str]:
 
 def check_end_to_end_coverage_matrix() -> list[str]:
     if not COVERAGE_MATRIX_PATH.exists():
-        return [
-            f"[coverage-matrix-missing] {COVERAGE_MATRIX_PATH.relative_to(ROOT).as_posix()}"
-        ]
+        return [f"[coverage-matrix-missing] {COVERAGE_MATRIX_PATH.relative_to(ROOT).as_posix()}"]
 
-    rows = [
-        row
-        for row in markdown_table_rows(read_text(COVERAGE_MATRIX_PATH))
-        if row.get("Wymog")
-    ]
+    rows = [row for row in markdown_table_rows(read_text(COVERAGE_MATRIX_PATH)) if row.get("Wymog")]
     violations: list[str] = []
     if not rows:
         violations.append("[coverage-matrix-empty] no requirement rows found")
@@ -419,9 +403,7 @@ def check_end_to_end_coverage_matrix() -> list[str]:
 
 def check_playwright_env_timeout() -> list[str]:
     if not PLAYWRIGHT_ENV_PATH.exists():
-        return [
-            f"[playwright-env-missing] {PLAYWRIGHT_ENV_PATH.relative_to(ROOT).as_posix()}"
-        ]
+        return [f"[playwright-env-missing] {PLAYWRIGHT_ENV_PATH.relative_to(ROOT).as_posix()}"]
 
     text = read_text(PLAYWRIGHT_ENV_PATH)
     required_fragments = (
@@ -475,9 +457,7 @@ def check_playwright_webserver_lifecycle() -> list[str]:
 
 def check_playwright_setup_windows_launcher() -> list[str]:
     if not PLAYWRIGHT_SETUP_PATH.exists():
-        return [
-            f"[playwright-setup-missing] {PLAYWRIGHT_SETUP_PATH.relative_to(ROOT).as_posix()}"
-        ]
+        return [f"[playwright-setup-missing] {PLAYWRIGHT_SETUP_PATH.relative_to(ROOT).as_posix()}"]
 
     text = read_text(PLAYWRIGHT_SETUP_PATH)
     required_fragments = (
@@ -502,17 +482,9 @@ def check_dark_scada_screen_theme() -> list[str]:
     bay_renderer_path = (
         ROOT / "frontend" / "src" / "ui" / "power-distribution" / "BaySvgRenderer.tsx"
     )
-    field_renderer_path = (
-        ROOT / "frontend" / "src" / "ui" / "field" / "CanonicalFieldRenderer.tsx"
-    )
+    field_renderer_path = ROOT / "frontend" / "src" / "ui" / "field" / "CanonicalFieldRenderer.tsx"
     legacy_sld_renderer_path = (
-        ROOT
-        / "frontend"
-        / "src"
-        / "ui"
-        / "power-distribution"
-        / "engine"
-        / "rendererSld.tsx"
+        ROOT / "frontend" / "src" / "ui" / "power-distribution" / "engine" / "rendererSld.tsx"
     )
 
     paths = (
@@ -546,19 +518,25 @@ def check_dark_scada_screen_theme() -> list[str]:
         ".bg-gray-50",
         ".bg-slate-50",
         ".text-slate-900",
-        "[data-sld-export-theme=\"light_technical\"]",
+        '[data-sld-export-theme="light_technical"]',
         "color-scheme: dark",
     ):
         if fragment not in css_text:
             violations.append(f"[dark-scada-css] index.css must include {fragment!r}")
 
     if "DEFAULT_EXPORT_THEME: ExportThemeId = 'light_technical'" not in export_text:
-        violations.append("[dark-scada-export-theme] default SLD export theme must remain light_technical")
-    if "[data-sld-export-theme=\"light_technical\"]" not in export_text:
-        violations.append("[dark-scada-export-theme] export theme must keep light_technical CSS override")
+        violations.append(
+            "[dark-scada-export-theme] default SLD export theme must remain light_technical"
+        )
+    if '[data-sld-export-theme="light_technical"]' not in export_text:
+        violations.append(
+            "[dark-scada-export-theme] export theme must keep light_technical CSS override"
+        )
 
     if "theme = 'canonical-dark'" not in bay_text:
-        violations.append("[dark-scada-bay-renderer] BaySvgRenderer default theme must be canonical-dark")
+        violations.append(
+            "[dark-scada-bay-renderer] BaySvgRenderer default theme must be canonical-dark"
+        )
     if "theme = 'light'" in bay_text:
         violations.append("[dark-scada-bay-renderer] BaySvgRenderer must not default to light")
 
@@ -567,10 +545,14 @@ def check_dark_scada_screen_theme() -> list[str]:
         field_text,
         flags=re.DOTALL,
     ):
-        violations.append("[dark-scada-field-preview] form preview renderer must not use light screen theme")
+        violations.append(
+            "[dark-scada-field-preview] form preview renderer must not use light screen theme"
+        )
 
     if "style={{ background: '#FFFFFF' }}" in legacy_sld_text:
-        violations.append("[dark-scada-legacy-sld] RendererSld must not use white screen background")
+        violations.append(
+            "[dark-scada-legacy-sld] RendererSld must not use white screen background"
+        )
     if "const KOLOR_TLA_OBIEKTU = '#F8FAFC'" in legacy_sld_text:
         violations.append("[dark-scada-legacy-sld] RendererSld object background must not be light")
 

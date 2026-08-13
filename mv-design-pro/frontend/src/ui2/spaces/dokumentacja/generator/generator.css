@@ -1,0 +1,184 @@
+/*
+ * Generator raportu (KD-4, luka L-15). Wylacznie tokeny powloki (--mvd-*),
+ * oba motywy z automatu. Skala promieni i odstepow jak w hubie Dokumentacji.
+ */
+
+.mvd-gen {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+  color: var(--mvd-ink);
+}
+
+.mvd-gen-head h2 {
+  margin: 0 0 4px;
+  font-size: 20px;
+  line-height: 1.25;
+  color: var(--mvd-ink);
+}
+
+.mvd-gen-head p {
+  margin: 0;
+  max-width: 72ch;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--mvd-muted);
+}
+
+.mvd-gen-lbl {
+  font: 600 10.5px/1 var(--mvd-font-mono);
+  letter-spacing: 0.14em;
+  color: var(--mvd-accent);
+}
+
+.mvd-gen-sekcja {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--mvd-panel);
+  border: 1px solid var(--mvd-line);
+  border-radius: 10px;
+  padding: 12px 16px;
+}
+
+.mvd-gen-opis {
+  margin: 0;
+  max-width: 78ch;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--mvd-muted);
+}
+
+.mvd-gen-siatka {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.mvd-gen-pole {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mvd-gen-pole-etyk {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--mvd-ink);
+}
+
+.mvd-gen-pole select {
+  width: 100%;
+  padding: 6px 8px;
+  font-size: 13px;
+  color: var(--mvd-ink);
+  background: var(--mvd-bg);
+  border: 1px solid var(--mvd-line);
+  border-radius: 8px;
+}
+
+.mvd-gen-uwaga {
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--mvd-muted);
+}
+
+.mvd-gen-sekcje {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 8px;
+}
+
+.mvd-gen-chk {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 12.5px;
+  color: var(--mvd-ink);
+}
+
+.mvd-gen-chk--magazyn span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mvd-gen-grupa {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--mvd-line);
+}
+
+.mvd-gen-grupa h4 {
+  margin: 0;
+  font-size: 13px;
+  color: var(--mvd-ink);
+}
+
+.mvd-gen-przyciski {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.mvd-gen-akcja {
+  padding: 6px 14px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--mvd-bg);
+  background: var(--mvd-accent);
+  border: 1px solid var(--mvd-accent);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.mvd-gen-akcja--wtorna {
+  color: var(--mvd-ink);
+  background: transparent;
+  border-color: var(--mvd-line);
+}
+
+.mvd-gen-akcja:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.mvd-gen-stan {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.mvd-gen-stan--ok {
+  color: var(--mvd-ok);
+}
+
+.mvd-gen-stan--blad {
+  color: var(--mvd-err);
+}
+
+.mvd-gen-pusty {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: var(--mvd-panel);
+  border: 1px solid var(--mvd-line);
+  border-radius: 10px;
+  padding: 16px;
+}
+
+.mvd-gen-pusty-txt {
+  margin: 0;
+  font-size: 13px;
+  color: var(--mvd-muted);
+}

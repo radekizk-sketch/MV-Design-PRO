@@ -24,10 +24,59 @@ from application.station_templates.apply import (
     apply_template_to_case,
 )
 from application.station_templates.service import count_by_category
+from application.station_templates.user_store import (
+    lista_szablonow_uzytkownika as list_user_templates,
+)
+from application.station_templates.user_store import (
+    usun_szablon_uzytkownika as delete_user_template,
+)
+from application.station_templates.user_store import (
+    zapisz_szablon_uzytkownika as save_user_template,
+)
 from fastapi import APIRouter, Body, HTTPException, Query
 from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/api/station-templates", tags=["station-templates"])
+
+
+def klucz_przypadku(case_id: str) -> str:
+    """JEDYNE źródło prawdy o kluczu magazynu ENM dla końcówek szablonów.
+
+    ROZSTRZYGNIĘCIE (dług 2 z V12K-315, rozjazd normalizacji klucza przypadku).
+    Wygrywa **surowy łańcuch z adresu**, bo TAK klucz wyprowadza magazyn ENM
+    (`enm.store._case_path` liczy SHA-256 z tekstu identyfikatora, a blokada
+    `blokada_przypadku` indeksuje słownik tym samym tekstem) i tak samo robią
+    WSZYSTKIE pozostałe końcówki (`/api/cases/{case_id}/enm/**` przekazuje
+    `case_id` wprost). Normalizacja mogła zostać tylko wtedy, gdyby objęła też
+    magazyn — a magazynu ta karta nie zmienia, więc normalizacja znika.
+
+    Ta końcówka normalizowała klucz przez `str(UUID(...))`, czyli sprowadzała
+    identyfikator do postaci kanonicznej (małe litery, myślniki, bez klamer i
+    prefiksu `urn:uuid:`). Dopóki identyfikatory pochodzą z backendu, obie
+    postacie są identyczne — ale dla postaci NIEKANONICZNEJ zastosowanie
+    szablonu operowałoby na INNYM wpisie magazynu niż operacje domenowe: praca
+    lądowałaby pod kluczem `str(UUID(x))`, a `GET /api/cases/{x}/enm` czytałby
+    pusty model spod `x`. Blokada współbieżności też brałaby wtedy inny zamek,
+    więc szablon i operacje domenowe biegłyby równolegle po jednym modelu.
+
+    Funkcja jest ZWRACAJĄCĄ TOŻSAMOŚĆ z jawną walidacją formatu: identyfikator
+    musi być poprawnym UUID (kontrakt `case_id` całego API), ale wynik nigdy nie
+    jest przekształceniem wejścia. Postać niekanoniczna jest ODRZUCANA, a nie
+    po cichu tłumaczona — inaczej wróciłby ten sam rozjazd, tylko w innym
+    miejscu.
+
+    Podnosi ``ValueError`` dla identyfikatora spoza kontraktu.
+    """
+    # ŻADNEGO `strip()` ani innego oczyszczenia: każde przekształcenie wejścia jest
+    # tym samym defektem co normalizacja UUID, tylko o jeden znak mniej widocznym.
+    kanoniczny = str(UUID(case_id))
+    if kanoniczny != case_id:
+        raise ValueError(
+            f"identyfikator przypadku '{case_id}' nie jest w postaci kanonicznej "
+            f"('{kanoniczny}'). Klucz magazynu modelu to DOKŁADNIE tekst z adresu, "
+            "więc postać niekanoniczna wskazywałaby inny wpis niż operacje domenowe."
+        )
+    return case_id
 
 
 class ApplyTemplateRequest(BaseModel):
@@ -63,9 +112,11 @@ def preview_station_template(
         raise HTTPException(status_code=404, detail=f"Template '{template_id}' not found")
 
     from application.station_templates.apply import (
+        TemplateApplyError,
         _cascade_manufacturer_choice,
         _first_default_choice,
         _resolve_sn_bay_roles,
+        _resolve_sn_field_specs,
         _resolve_station_type,
         _resolve_transformer_ref_for_template,
     )
@@ -118,6 +169,24 @@ def preview_station_template(
             }
         )
 
+    # B-12: podgląd pokazuje JAWNIE dobrany aparat per pole (albo błąd szablonu).
+    # Rozstrzygnięcie liczby pól jest W TYM SAMYM bloku: od karty
+    # POMIAR-ODGAŁĘZIENIE `_resolve_sn_bay_roles` odmawia (zamiast po cichu ciąć
+    # pole pomiarowe), więc poza `try` dawałoby projektantowi błąd 500 zamiast
+    # komunikatu z minimalną liczbą pól.
+    try:
+        bay_roles = _resolve_sn_bay_roles(template, sn_bays_count)
+        sn_field_specs = _resolve_sn_field_specs(
+            template,
+            bay_roles=bay_roles,
+            overrides=dict(overrides),
+            catalog_profile=profile,
+        )
+    except TemplateApplyError as exc:
+        raise HTTPException(
+            status_code=422, detail={"code": exc.code, "message_pl": exc.message_pl}
+        ) from exc
+
     return {
         "template_id": template.id,
         "template_name_pl": template.name_pl,
@@ -129,7 +198,8 @@ def preview_station_template(
             "transformer_ref": transformer_ref,
             "transformer_count": transformer_count,
             "sn_bays_count": sn_bays_count,
-            "sn_bay_roles": _resolve_sn_bay_roles(template, sn_bays_count),
+            "sn_bay_roles": bay_roles,
+            "sn_fields": sn_field_specs,
             "sn_manufacturer": sn_manufacturer,
             "nn_feeders_count": nn_feeders_count,
             "nn_feeder_cb_ref": cb_catalog,
@@ -157,20 +227,31 @@ def apply_station_template(
     4. Execute domain operation
     5. Optionally chain DER additions
     6. Return created element refs + readiness report
+
+    Koncowka celowo pozostaje SYNCHRONICZNA (`def`): zastosowanie szablonu to
+    kilkaset milisekund pracy procesora, wiec w petli zdarzen zablokowaloby cala
+    aplikacje. Rownolegle zadania na TYM SAMYM przypadku serializuje blokada
+    przypadku zalozona w `apply_template_to_case` (defekt D4 audytu 2026-08-01) —
+    zamiana na `async def` NIE jest naprawa wyscigu, tylko schowaniem go za petla
+    zdarzen.
     """
     template = get_template(template_id)
     if template is None:
         raise HTTPException(status_code=404, detail=f"Template '{template_id}' not found")
 
     try:
-        case_uuid = UUID(request.case_id)
+        # JEDNO ŹRÓDŁO PRAWDY o kluczu magazynu — patrz `klucz_przypadku`.
+        # `UUID(...)` niżej jest bezskutkowe co do treści klucza: funkcja gwarantuje
+        # `str(UUID(klucz)) == klucz`, więc `apply_template_to_case` trafia w TEN SAM
+        # wpis magazynu, w który trafiają operacje domenowe pod tym samym adresem.
+        klucz = klucz_przypadku(request.case_id)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=f"Invalid case_id: {exc}") from exc
 
     try:
         result = apply_template_to_case(
             template=template,
-            case_id=case_uuid,
+            case_id=UUID(klucz),
             target_segment_id=request.target_segment_id,
             insert_at_ratio=request.insert_at_ratio,
             params_override=request.params_override,
@@ -182,6 +263,53 @@ def apply_station_template(
         ) from exc
 
     return result
+
+
+class SaveUserTemplateRequest(BaseModel):
+    """B-8: zapis biezacej konfiguracji kreatora jako szablonu uzytkownika."""
+
+    name_pl: str = Field(..., min_length=1, description="Nazwa szablonu (widoczna na liscie)")
+    description_pl: str | None = Field(default=None, description="Opis do czego szablon sluzy")
+    configuration: dict[str, Any] = Field(
+        ...,
+        description=(
+            "Stan formularza kreatora — przechowywany BEZ ZMIAN; backend go NIE "
+            "interpretuje (odtworzeniem zajmuje sie wylacznie kreator)"
+        ),
+    )
+
+
+@router.post("/user")
+def save_user_station_template(request: SaveUserTemplateRequest = Body(...)) -> dict[str, Any]:
+    """B-8 (karta KD-3): zapisz konfiguracje kreatora jako szablon uzytkownika.
+
+    Szablony WBUDOWANE pozostaja nietkniete — zapis idzie do OSOBNEGO zbioru z
+    wlasna przestrzenia identyfikatorow. Identyfikator jest wyprowadzony z TRESCI
+    (SHA-256), wiec powtorny zapis tej samej konfiguracji nadpisuje wpis zamiast
+    mnozyc duplikaty (determinizm).
+    """
+    return save_user_template(
+        nazwa=request.name_pl.strip(),
+        opis=request.description_pl,
+        konfiguracja=request.configuration,
+    )
+
+
+@router.get("/user")
+def list_user_station_templates() -> dict[str, Any]:
+    """Szablony zapisane przez uzytkownika (kolejnosc deterministyczna)."""
+    szablony = list_user_templates()
+    return {"templates": szablony, "total": len(szablony)}
+
+
+@router.delete("/user/{template_id}")
+def delete_user_station_template(template_id: str) -> dict[str, Any]:
+    """Usun szablon uzytkownika. Szablonu wbudowanego usunac sie NIE DA."""
+    if not delete_user_template(template_id):
+        raise HTTPException(
+            status_code=404, detail=f"Szablon użytkownika '{template_id}' nie istnieje"
+        )
+    return {"deleted": template_id}
 
 
 @router.get("")

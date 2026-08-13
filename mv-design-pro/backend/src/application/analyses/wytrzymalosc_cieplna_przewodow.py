@@ -66,7 +66,7 @@ from application.analyses.protection.czas_wylaczenia_galezi import (
     podsumowanie_czasow,
     slad_czasu,
 )
-from enm.canonical_analysis import CanonicalRun
+from enm.canonical_analysis import CanonicalRun, pobierz_rozplyw_biegu
 from enm.hash import compute_enm_hash
 from enm.mapping import map_enm_to_network_graph
 from enm.models import EnergyNetworkModel
@@ -364,16 +364,18 @@ def build_conductor_thermal_withstand_view(
 
 
 def _odtworz_wklady_galeziowe(
-    payload: Mapping[str, Any],
+    surowe: list[dict[str, Any]] | None,
 ) -> list[ShortCircuitBranchContribution] | None:
-    """Odtworz wklady galeziowe z wiersza wyniku biegu (read-only).
+    """Odtworz wklady galeziowe biegu (read-only).
 
-    Brak klucza => None, czyli BRAK ROZBICIA na galezie (kryterium niesprawdzalne
+    Brak wpisow => None, czyli BRAK ROZBICIA na galezie (kryterium niesprawdzalne
     z kodem gotowosci). Pusta lista => rozbicie ISTNIEJE i jest puste, wiec zadna
     galaz nie lezy na drodze zwarcia — to inny stan niz brak danych i nie wolno go
     z nim mylic.
+
+    K14: wejscie pochodzi z `pobierz_rozplyw_biegu` (jedna prawda dostepu do
+    rozplywu: artefakt inline albo osobna tabela rozplywu).
     """
-    surowe = payload.get("branch_contributions")
     if surowe is None:
         return None
     wklady: list[ShortCircuitBranchContribution] = []
@@ -473,7 +475,9 @@ def _odtworz_wynik_zwarciowy(run: CanonicalRun) -> ShortCircuitResult:
         tk_s=float(payload.get("tk_s", 0.0)),
         ib_a=float(payload.get("ib_a", 0.0)),
         tb_s=float(payload.get("tb_s", 0.0)),
-        branch_contributions=_odtworz_wklady_galeziowe(payload),
+        branch_contributions=_odtworz_wklady_galeziowe(
+            pobierz_rozplyw_biegu(run, str(payload.get("fault_node_id", "")))
+        ),
     )
     return sc_result
 

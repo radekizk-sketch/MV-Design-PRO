@@ -50,9 +50,12 @@ vi.mock('../../api', () => {
     pobierzZdolnoscPrzylaczeniowa: (z: unknown) => pobierzZdolnosc(z),
     pobierzObszarPQ: (z: unknown) => pobierzObszar(z),
     pobierzPokryciePQ: (z: unknown) => pobierzPokrycie(z),
-    pobierzDokumentStudium: (z: unknown) => pobierzDokument(z),
-    pobierzDokumentStudiumDocx: (z: unknown) => pobierzDokumentDocx(z),
-    pobierzDokumentStudiumPdf: (z: unknown) => pobierzDokumentPdf(z),
+    // Atrapa przekazuje OBA argumenty (żądanie + wskazanie przypadku). Gdyby
+    // gubiła drugi, test nie zobaczyłby braku `case_id`, a bez niego dokument
+    // nie niesie dowodu certyfikacji PTPiREE — atrapa maskowałaby defekt.
+    pobierzDokumentStudium: (z: unknown, c?: string | null) => pobierzDokument(z, c),
+    pobierzDokumentStudiumDocx: (z: unknown, c?: string | null) => pobierzDokumentDocx(z, c),
+    pobierzDokumentStudiumPdf: (z: unknown, c?: string | null) => pobierzDokumentPdf(z, c),
     DokumentStudiumBrakiError,
   };
 });
@@ -84,7 +87,11 @@ beforeEach(() => {
 afterEach(() => {
   useExecutionRunsStore.getState().reset();
   useSnapshotStore.getState().reset();
-  useAppStateStore.setState({ activeProjectName: null, activeCaseName: null });
+  useAppStateStore.setState({
+    activeProjectName: null,
+    activeCaseName: null,
+    activeCaseId: null,
+  } as never);
   vi.clearAllMocks();
   vi.restoreAllMocks();
 });
@@ -134,14 +141,40 @@ describe('KreatorStudium — dokument studium (żądanie i podgląd)', () => {
     await przeprowadzBieg();
     fireEvent.click(screen.getByTestId('mvd-studium-dok-przycisk'));
     await waitFor(() => expect(pobierzDokument).toHaveBeenCalledTimes(1));
-    expect(pobierzDokument).toHaveBeenCalledWith({
-      nazwa_projektu: 'Projekt testowy',
-      nazwa_przypadku: 'Wariant bazowy',
-      run_id: 'lf-run',
-      catalog_item_id: 'conv-pv-2mw',
-      operator_id: 'pse',
-      warianty: ['bus-a'],
-    });
+    expect(pobierzDokument).toHaveBeenCalledWith(
+      {
+        nazwa_projektu: 'Projekt testowy',
+        nazwa_przypadku: 'Wariant bazowy',
+        run_id: 'lf-run',
+        catalog_item_id: 'conv-pv-2mw',
+        operator_id: 'pse',
+        warianty: ['bus-a'],
+      },
+      null,
+    );
+  });
+
+  it('żądania dokumentu niosą aktywny przypadek (bez niego nie ma dowodu PTPiREE)', async () => {
+    useAppStateStore.setState({ activeCaseId: 'case-oze-1' } as never);
+    // @ts-expect-error shim jsdom
+    if (typeof URL.createObjectURL !== 'function') URL.createObjectURL = () => 'blob:shim';
+    // @ts-expect-error shim jsdom
+    if (typeof URL.revokeObjectURL !== 'function') URL.revokeObjectURL = () => {};
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock');
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+
+    await przeprowadzBieg();
+    fireEvent.click(screen.getByTestId('mvd-studium-dok-przycisk'));
+    await waitFor(() => expect(pobierzDokument).toHaveBeenCalledTimes(1));
+    expect(pobierzDokument.mock.calls[0][1]).toBe('case-oze-1');
+
+    fireEvent.click(await screen.findByTestId('mvd-studium-dok-pobierz-docx'));
+    await waitFor(() => expect(pobierzDokumentDocx).toHaveBeenCalledTimes(1));
+    expect(pobierzDokumentDocx.mock.calls[0][1]).toBe('case-oze-1');
+
+    fireEvent.click(screen.getByTestId('mvd-studium-dok-pobierz-pdf'));
+    await waitFor(() => expect(pobierzDokumentPdf).toHaveBeenCalledTimes(1));
+    expect(pobierzDokumentPdf.mock.calls[0][1]).toBe('case-oze-1');
   });
 
   it('brak nazwy projektu w aplikacji → nazwa_projektu ma polski zastępnik', async () => {

@@ -11,6 +11,7 @@ from enm.models import (
     BranchPointSN,
     Cable,
     EnergyNetworkModel,
+    ENMElement,
     FuseBranch,
     Generator,
     Load,
@@ -210,7 +211,7 @@ def compute_v2_projection_hash(projection: EnergyNetworkModelV2Projection) -> st
 def _build_element_refs(enm: EnergyNetworkModel) -> list[V2ElementReference]:
     refs: list[V2ElementReference] = []
 
-    typed_collections: list[tuple[str, str, list[object]]] = [
+    typed_collections: list[tuple[str, str, list[ENMElement]]] = [
         ("bus", "enm.buses", list(enm.buses)),
         ("branch", "enm.branches", list(enm.branches)),
         ("transformer", "enm.transformers", list(enm.transformers)),

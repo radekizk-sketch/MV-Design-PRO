@@ -15,10 +15,9 @@ EXIT 0 = pass, EXIT 1 = fail
 
 from __future__ import annotations
 
-import os
-from pathlib import Path
 import re
 import sys
+from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 BACKEND_SRC = PROJECT_ROOT / "backend" / "src"
@@ -26,26 +25,30 @@ BACKEND_SRC = PROJECT_ROOT / "backend" / "src"
 # Add backend/src to path
 sys.path.insert(0, str(BACKEND_SRC))
 
-REQUIRED_CATALOG_REQUIRED_OPERATIONS = frozenset({
-    "add_grid_source_sn",
-    "continue_trunk_segment_sn",
-    "insert_branch_pole_on_segment_sn",
-    "start_branch_segment_sn",
-    "insert_zksn_on_segment_sn",
-    "insert_station_on_segment_sn",
-    "add_transformer_sn_nn",
-    "add_nn_outgoing_field",
-    "add_nn_load",
-    "add_converter_source",
-    "insert_section_switch_sn",
-    "connect_secondary_ring_sn",
-})
+REQUIRED_CATALOG_REQUIRED_OPERATIONS = frozenset(
+    {
+        "add_grid_source_sn",
+        "continue_trunk_segment_sn",
+        "insert_branch_pole_on_segment_sn",
+        "start_branch_segment_sn",
+        "insert_zksn_on_segment_sn",
+        "insert_station_on_segment_sn",
+        "add_transformer_sn_nn",
+        "add_nn_outgoing_field",
+        "add_nn_load",
+        "add_converter_source",
+        "insert_section_switch_sn",
+        "connect_secondary_ring_sn",
+    }
+)
 
-BANNED_LEGACY_OPERATION_NAMES = frozenset({
-    "add_pv" "_inverter_nn",
-    "add_bess" "_inverter_nn",
-    "add_nn_source" "_field",
-})
+BANNED_LEGACY_OPERATION_NAMES = frozenset(
+    {
+        "add_pv" "_inverter_nn",
+        "add_bess" "_inverter_nn",
+        "add_nn_source" "_field",
+    }
+)
 
 CANONICAL_SURFACE_DIRS = (
     PROJECT_ROOT / "docs",
@@ -63,10 +66,7 @@ def check_catalog_required_operations() -> list[str]:
 
     missing = sorted(REQUIRED_CATALOG_REQUIRED_OPERATIONS - set(CATALOG_REQUIRED_OPERATIONS))
     if missing:
-        errors.append(
-            "FAIL: Brak operacji w CATALOG_REQUIRED_OPERATIONS: "
-            + ", ".join(missing)
-        )
+        errors.append("FAIL: Brak operacji w CATALOG_REQUIRED_OPERATIONS: " + ", ".join(missing))
 
     return errors
 
@@ -135,9 +135,7 @@ def check_catalog_binding_extraction_paths() -> list[str]:
     for operation, payload, expected_namespace, expected_item_id in cases:
         binding = extract_catalog_binding(operation, payload)
         if binding is None:
-            errors.append(
-                f"FAIL: extract_catalog_binding() nie zwraca bindingu dla {operation}"
-            )
+            errors.append(f"FAIL: extract_catalog_binding() nie zwraca bindingu dla {operation}")
             continue
 
         if binding.get("catalog_namespace") != expected_namespace:
@@ -156,9 +154,7 @@ def check_catalog_binding_extraction_paths() -> list[str]:
                 f"oczekiwano {DEFAULT_CATALOG_VERSION!r}"
             )
         if binding.get("materialize") is not True:
-            errors.append(
-                f"FAIL: {operation} nie wymusza materialize=True w extracted binding"
-            )
+            errors.append(f"FAIL: {operation} nie wymusza materialize=True w extracted binding")
 
     return errors
 
@@ -177,7 +173,12 @@ def check_catalog_binding_fields() -> list[str]:
     )
     d = binding.to_dict()
 
-    required = ["catalog_namespace", "catalog_item_id", "catalog_item_version", "materialize"]
+    required = [
+        "catalog_namespace",
+        "catalog_item_id",
+        "catalog_item_version",
+        "materialize",
+    ]
     for field in required:
         if field not in d:
             errors.append(f"FAIL: CatalogBinding missing field '{field}' in to_dict()")
@@ -189,16 +190,14 @@ def check_materialization_contracts() -> list[str]:
     """Check MaterializationContract exists for every CatalogNamespace."""
     errors: list[str] = []
 
-    from network_model.catalog.types import CatalogNamespace, MATERIALIZATION_CONTRACTS
+    from network_model.catalog.types import MATERIALIZATION_CONTRACTS, CatalogNamespace
 
     for ns in CatalogNamespace:
         if ns.value not in MATERIALIZATION_CONTRACTS:
             # CONVERTER and INVERTER may not have contracts (they use ConverterType)
             if ns.value in ("CONVERTER", "INVERTER"):
                 continue
-            errors.append(
-                f"FAIL: No MaterializationContract for CatalogNamespace.{ns.value}"
-            )
+            errors.append(f"FAIL: No MaterializationContract for CatalogNamespace.{ns.value}")
         else:
             contract = MATERIALIZATION_CONTRACTS[ns.value]
             if not contract.solver_fields:
@@ -218,15 +217,12 @@ def check_readiness_codes_coverage() -> list[str]:
     catalog_blockers = [
         (code, spec)
         for code, spec in READINESS_CODES.items()
-        if spec.level == ReadinessLevel.BLOCKER
-        and "catalog" in code.lower()
+        if spec.level == ReadinessLevel.BLOCKER and "catalog" in code.lower()
     ]
 
     for code, spec in catalog_blockers:
         if not spec.fix_action_id:
-            errors.append(
-                f"FAIL: Catalog BLOCKER '{code}' has no fix_action_id"
-            )
+            errors.append(f"FAIL: Catalog BLOCKER '{code}' has no fix_action_id")
 
     return errors
 
@@ -242,9 +238,7 @@ def check_namespace_accessor_coverage() -> list[str]:
         if ns.value in ("CONVERTER", "INVERTER"):
             continue
         if ns.value not in _NAMESPACE_ACCESSOR:
-            errors.append(
-                f"FAIL: No accessor in materialization engine for namespace {ns.value}"
-            )
+            errors.append(f"FAIL: No accessor in materialization engine for namespace {ns.value}")
 
     return errors
 
@@ -268,13 +262,9 @@ def check_clear_catalog_protection() -> list[str]:
 
     func_body = match.group(0)
     if "_element_requires_catalog" not in func_body:
-        errors.append(
-            "FAIL: assign_catalog_to_element() nie sprawdza _element_requires_catalog()"
-        )
+        errors.append("FAIL: assign_catalog_to_element() nie sprawdza _element_requires_catalog()")
     if "catalog.clear_forbidden" not in func_body:
-        errors.append(
-            "FAIL: assign_catalog_to_element() nie zwraca catalog.clear_forbidden"
-        )
+        errors.append("FAIL: assign_catalog_to_element() nie zwraca catalog.clear_forbidden")
 
     guard_index = func_body.find("catalog.clear_forbidden")
     clear_index = func_body.find('target_element["catalog_ref"] = None')
@@ -320,14 +310,32 @@ def main() -> int:
     all_errors: list[str] = []
 
     checks = [
-        ("Checking catalog-required operation coverage...", check_catalog_required_operations),
-        ("Checking canonical payload extraction paths...", check_catalog_binding_extraction_paths),
+        (
+            "Checking catalog-required operation coverage...",
+            check_catalog_required_operations,
+        ),
+        (
+            "Checking canonical payload extraction paths...",
+            check_catalog_binding_extraction_paths,
+        ),
         ("Checking CatalogBinding fields...", check_catalog_binding_fields),
-        ("Checking MaterializationContract coverage...", check_materialization_contracts),
-        ("Checking catalog readiness codes coverage...", check_readiness_codes_coverage),
-        ("Checking materialization accessor coverage...", check_namespace_accessor_coverage),
+        (
+            "Checking MaterializationContract coverage...",
+            check_materialization_contracts,
+        ),
+        (
+            "Checking catalog readiness codes coverage...",
+            check_readiness_codes_coverage,
+        ),
+        (
+            "Checking materialization accessor coverage...",
+            check_namespace_accessor_coverage,
+        ),
         ("Checking clear_catalog protection...", check_clear_catalog_protection),
-        ("Checking legacy operation names are absent in docs/scripts/tests...", check_no_legacy_operation_names_in_canonical_surface),
+        (
+            "Checking legacy operation names are absent in docs/scripts/tests...",
+            check_no_legacy_operation_names_in_canonical_surface,
+        ),
     ]
 
     for index, (label, check) in enumerate(checks, start=1):

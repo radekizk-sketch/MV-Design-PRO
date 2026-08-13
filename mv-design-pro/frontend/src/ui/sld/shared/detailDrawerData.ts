@@ -784,7 +784,6 @@ export function buildStationBranchDetailDrawerData(
           sldData.cableRuns.map((r) => ({
             id: r.id,
             segmentRefs: r.segmentRefs,
-            voltageKv: r.voltageKv,
           })),
         );
         const loading = lfMeta.cableLoadingPctByRunId.get(run.id);

@@ -6,6 +6,7 @@
  */
 
 export { OtworzProjekt, type OtworzProjektProps } from './OtworzProjekt';
+export { OtworzProjektKontener } from './OtworzProjektKontener';
 export { CelProjektu, type CelProjektuId, type CelProjektuProps } from './CelProjektu';
 export { ListaProjektow, type ListaProjektowProps } from './ListaProjektow';
 

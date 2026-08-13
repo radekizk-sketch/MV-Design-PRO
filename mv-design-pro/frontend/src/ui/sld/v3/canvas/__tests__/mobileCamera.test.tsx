@@ -25,7 +25,8 @@ import {
   computeInitialCameraState,
 } from '../camera';
 import { fitToView } from '../../../v2/viewport/ViewportController';
-import { SldCanvasV3 } from '../SldCanvasV3';
+import { SLD_CANVAS_DOCK_INSETS } from '../toolbarLayout';
+import { SldCanvasV3, contentBoundingBoxOf, sceneBoxToCameraWorld } from '../SldCanvasV3';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const fixturePath = resolve(
@@ -91,10 +92,18 @@ describe('SldCanvasV3 — F12-C kamera mobilna (E15/E16 parytet v2)', () => {
     expect(Math.abs(vy + vh / 2 - cy)).toBeLessThan(vh / 2);
   });
 
-  it('desktop/landscape: zachowanie NIEZMIENIONE — kamera startowa = czysty fit (tryb focus nie włącza się)', () => {
-    const bbox2 = boundingBoxOfRect(buildSceneV3(enm, 2).bbox);
+  it('desktop/landscape: kamera startowa = czysty fit do TREŚCI (tryb focus nie włącza się)', () => {
+    // K11-A: cel fitu = bbox treści sieci (contentBoundingBoxOf), nie pełny
+    // bbox sceny z meblami arkusza. INTENCJA testu bez zmian: desktop NIE
+    // wchodzi w tryb focus — kamera to zwykły fit.
+    // KD-7: cel fitu żyje w ŚWIECIE KAMERY (scena + margines arkusza —
+    // `sceneBoxToCameraWorld`), bo `SheetFrame` rysuje treść przesuniętą.
+    const scena2 = buildSceneV3(enm, 2);
+    const bbox2 = sceneBoxToCameraWorld(contentBoundingBoxOf(scena2) ?? boundingBoxOfRect(scena2.bbox));
+    // S9-8: kadr produkcyjny liczony w prostokącie BEZPIECZNYM (kanwa minus
+    // pasy doków) — oczekiwanie idzie tą samą drogą.
     const expectedFit = cameraViewBox(
-      computeInitialCameraState(bbox2, DESKTOP).transform,
+      computeInitialCameraState(bbox2, DESKTOP, undefined, null, SLD_CANVAS_DOCK_INSETS).transform,
       DESKTOP,
     );
     const { container } = render(

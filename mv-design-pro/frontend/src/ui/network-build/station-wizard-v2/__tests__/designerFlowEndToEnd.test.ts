@@ -41,20 +41,12 @@ import {
   computeCableVoltageDrop,
   computeRatedCurrentFromPower,
 } from '../cableSelectionContract';
-import {
-  CT_REFERENCE_200_3CORE,
-  computeCtBurden,
-} from '../ctMultiCoreContract';
+import { CT_REFERENCE_200_3CORE } from '../ctMultiCoreContract';
 import {
   TRANSFORMER_REFERENCE_CATALOG,
   computeTransformerNominalCurrents,
   computeInrushCurrent,
 } from '../transformerContract';
-import {
-  computeEarthingRequirement,
-  permittedFaultVoltageVfromDurationS,
-  computeEarthingFaultCurrent,
-} from '../earthingResistanceContract';
 import {
   selectNcRfgModule,
   getRequirementsForModule,
@@ -223,14 +215,17 @@ describe('Designer Flow End-to-End — naturalny flow projektanta', () => {
     expect(result.allowed).toBe(false);
   });
 
-  it('FLOW 5-6 (CT + VT): Pomiarowe 3-rdzeniowy + bilans wtórny', () => {
+  it('FLOW 5-6 (CT + VT): pole ma katalogowy przekładnik 3-rdzeniowy', () => {
+    // BILANS WTÓRNY USUNIĘTY Z FRONTU (K7-B): `computeCtBurden` liczyła w
+    // przeglądarce S2obl = Sl + Sz + I2²·Rp (IEC 61869-2) bez konsumenta
+    // produkcyjnego i bez śladu. Krok kreatora dobiera przekładnik z katalogu —
+    // i to jest tu przedmiotem sprawdzenia.
     expect(CT_REFERENCE_200_3CORE.length).toBe(3);
-    const burden = computeCtBurden(CT_REFERENCE_200_3CORE[0], {
-      lengthM: 10, crossSectionMm2: 2.5,
-      material: 'Cu', conductivityMperOhmMm2: 56, loadVa: 1.5,
-    });
-    expect(burden.computedBurdenVa).toBeCloseTo(5.17, 1);
-    expect(burden.ok).toBe(true);
+    expect(CT_REFERENCE_200_3CORE.map((c) => c.category)).toEqual([
+      'metering',
+      'analysis',
+      'protection',
+    ]);
   });
 
   it('FLOW 8 (Transformator): TR 630 kVA + inrush + protection', async () => {
@@ -242,25 +237,13 @@ describe('Designer Flow End-to-End — naturalny flow projektanta', () => {
     expect(inrush).toBeGreaterThan(200); // 10× In ≈ 242 A
   });
 
-  it('FLOW 9 (Uziemienie): RB ≤ UF/IK1 (PN-EN 50522)', () => {
-    const fault = computeEarthingFaultCurrent({
-      icsSectionA_A: 146.4,
-      icsSectionB_A: 134.10,
-      awsczCurrentA: 20,
-      awsczCount: 2,
-    });
-    expect(fault.ik1_A).toBeCloseTo(320.5, 1);
-
-    const uf = permittedFaultVoltageVfromDurationS(3.1);
-    expect(uf).toBeGreaterThan(80);
-    expect(uf).toBeLessThan(95);
-
-    const requirement = computeEarthingRequirement({
-      uF_V: uf,
-      ik1_A: 48.85, // Excel test value
-    });
-    expect(requirement.rb_max_resulting_ohm).toBeLessThan(2.0); // ≤ 1.78 Ω
-  });
+  // FLOW 9 (Uziemienie) — RACHUNEK USUNIĘTY Z FRONTU (K7-B, 2026-07-31).
+  // Stały tu asercje na `computeEarthingFaultCurrent` (IK1),
+  // `permittedFaultVoltageVfromDurationS` (krzywa UF(tF) PN-EN 50522) oraz
+  // `computeEarthingRequirement` (RB_max = UF/IK1) — cały moduł
+  // `earthingResistanceContract.ts` liczył fizykę doziemienia w przeglądarce i
+  // nie miał konsumenta produkcyjnego. Zdolność w backendzie: pętla zwarcia
+  // IEC 60364 (`api/fault_loop.py`) + pakiet dowodowy Earthing / Ground Fault SN.
 
   it('FLOW 11 (Źródła OZE): NC RfG module selection per Pmax + Upcc', () => {
     expect(selectNcRfgModule(100, 0.4)).toBe('A');

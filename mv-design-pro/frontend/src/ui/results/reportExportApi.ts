@@ -56,6 +56,42 @@ const PROOF_ENDPOINTS: Readonly<Record<ProofExportFormat, ExportEndpointSpec>> =
   },
 };
 
+/**
+ * Kompozycja raportu — 1:1 z kontraktem backendu (`normalize_report_options`
+ * w `api/analysis_run_exports.py`). Wystawiona po HTTP w karcie KD-4 (luka
+ * L-15): do tej pory budowniczy raportu znal te opcje, ale zaden endpoint ich
+ * nie przyjmowal. Pola opcjonalne — pominiete = dzisiejsze domyslne backendu.
+ */
+export interface KompozycjaRaportu {
+  readonly profile?: 'osd' | 'wykonawczy' | 'audytowy';
+  readonly detailLevel?: 'minimalny' | 'standardowy' | 'pelny';
+  readonly scope?: 'whole_run' | 'active_table';
+  readonly sections?: readonly ('summary' | 'results' | 'catalog' | 'trace')[];
+  readonly focusTable?: string | null;
+}
+
+/** Opcje wywolania eksportu (wszystkie addytywne — brak = zachowanie sprzed KD-4). */
+export interface OpcjeEksportu {
+  /** Zapis wyniku do magazynu dokumentow projektu (`zapisz_do_magazynu`). */
+  readonly zapiszDoMagazynu?: boolean;
+  /** Kompozycja raportu (dotyczy wylacznie eksportu raportu). */
+  readonly kompozycja?: KompozycjaRaportu;
+}
+
+/** Buduje query string kontraktu backendu (deterministyczna kolejnosc pol). */
+function queryEksportu(opcje: OpcjeEksportu | undefined, zKompozycja: boolean): string {
+  const params = new URLSearchParams();
+  if (opcje?.zapiszDoMagazynu) params.set('zapisz_do_magazynu', 'true');
+  const k = zKompozycja ? opcje?.kompozycja : undefined;
+  if (k?.profile) params.set('profile', k.profile);
+  if (k?.detailLevel) params.set('detail_level', k.detailLevel);
+  if (k?.scope) params.set('scope', k.scope);
+  if (k?.focusTable) params.set('focus_table', k.focusTable);
+  for (const sekcja of k?.sections ?? []) params.append('sections', sekcja);
+  const query = params.toString();
+  return query ? `?${query}` : '';
+}
+
 interface ExportResult {
   readonly ok: true;
   readonly filename: string;
@@ -81,14 +117,18 @@ function triggerBlobDownload(blob: Blob, filename: string): void {
   setTimeout(() => window.URL.revokeObjectURL(url), 1000);
 }
 
-async function fetchAndDownload(spec: ExportEndpointSpec, runId: string): Promise<ExportOutcome> {
+async function fetchAndDownload(
+  spec: ExportEndpointSpec,
+  runId: string,
+  query = '',
+): Promise<ExportOutcome> {
   if (!runId || runId.trim().length === 0) {
     return { ok: false, error: 'Brak identyfikatora ostatniego obliczenia.' };
   }
 
   let response: Response;
   try {
-    response = await fetch(spec.url(runId), {
+    response = await fetch(`${spec.url(runId)}${query}`, {
       method: 'GET',
       headers: { Accept: spec.mimeType },
     });
@@ -120,15 +160,19 @@ async function fetchAndDownload(spec: ExportEndpointSpec, runId: string): Promis
 export async function exportReport(
   runId: string,
   format: ReportExportFormat,
+  opcje?: OpcjeEksportu,
 ): Promise<ExportOutcome> {
-  return fetchAndDownload(REPORT_ENDPOINTS[format], runId);
+  return fetchAndDownload(REPORT_ENDPOINTS[format], runId, queryEksportu(opcje, true));
 }
 
 export async function exportProofPack(
   runId: string,
   format: ProofExportFormat,
+  opcje?: OpcjeEksportu,
 ): Promise<ExportOutcome> {
-  return fetchAndDownload(PROOF_ENDPOINTS[format], runId);
+  // Pakiet dowodowy nie ma kompozycji (backend jej dla niego nie przyjmuje) —
+  // przekazanie jej tutaj byloby kontrolka bez pokrycia.
+  return fetchAndDownload(PROOF_ENDPOINTS[format], runId, queryEksportu(opcje, false));
 }
 
 export const REPORT_FORMAT_LABELS_PL: Readonly<Record<ReportExportFormat, string>> = {

@@ -29,7 +29,6 @@ import {
   type RuntimeOperatingMode,
 } from '../operatingMode';
 import { useSnapshotStore } from '../topology/snapshotStore';
-import { useReadinessLiveStore } from '../engineering-readiness/readinessLiveStore';
 import {
   normalizeAreaId,
   type AreaId,
@@ -211,7 +210,6 @@ export const useAppStateStore = create<AppState>()(
         // If project changed, clear case context
         if (current.activeProjectId !== projectId) {
           useSnapshotStore.getState().reset();
-          useReadinessLiveStore.getState().clear();
           set({
             activeProjectId: projectId,
             activeProjectName: projectName,
@@ -239,7 +237,6 @@ export const useAppStateStore = create<AppState>()(
       setActiveCase: (caseId, caseName = null, caseKind = null, resultStatus = 'NONE') => {
         if (get().activeCaseId !== caseId) {
           useSnapshotStore.getState().reset();
-          useReadinessLiveStore.getState().clear();
           useExecutionRunsStore.getState().setActiveRun(null);
         }
         set({
@@ -504,11 +501,9 @@ export function useCanCalculate(): { allowed: boolean; reason: string | null } {
   const activeCaseId = useAppStateStore((state) => state.activeCaseId);
   const resultStatus = useAppStateStore((state) => state.activeCaseResultStatus);
   const snapshot = useSnapshotStore((state) => state.snapshot);
+  // JEDNA prawda gotowości (KD-1 / V12K-286): `useSnapshotStore.readiness` —
+  // ta sama odpowiedź domenowa, którą pokazuje panel gotowości i chrom powłoki.
   const readiness = useSnapshotStore((state) => state.readiness);
-  const liveReady = useReadinessLiveStore((state) => state.ready);
-  const liveBlocker = useReadinessLiveStore((state) =>
-    state.issues.find((issue) => issue.severity === 'BLOCKER') ?? null,
-  );
 
   if (!activeCaseId) {
     return { allowed: false, reason: 'Wybierz aktywny zakres obliczeń' };
@@ -522,18 +517,11 @@ export function useCanCalculate(): { allowed: boolean; reason: string | null } {
     };
   }
 
-  if (readiness) {
-    if (!readiness.ready) {
-      const blocker = readiness.blockers?.[0];
-      return {
-        allowed: false,
-        reason: blocker?.message_pl ?? 'Skonfiguruj wskazane zakresy układu przed analizą',
-      };
-    }
-  } else if (!liveReady || liveBlocker) {
+  if (readiness && !readiness.ready) {
+    const blocker = readiness.blockers?.[0];
     return {
       allowed: false,
-      reason: liveBlocker?.message_pl ?? 'Skonfiguruj wskazane zakresy układu przed analizą',
+      reason: blocker?.message_pl ?? 'Skonfiguruj wskazane zakresy układu przed analizą',
     };
   }
 

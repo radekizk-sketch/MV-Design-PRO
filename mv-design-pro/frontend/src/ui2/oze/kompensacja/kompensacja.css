@@ -253,6 +253,19 @@
   margin: 0;
   font-size: 13px;
 }
+/* K5-A (H-3 pkt 6): akcja „Dobierz kompensator na tej szynie" przy werdykcie. */
+.mvd-komp-dobor-kreator {
+  align-self: flex-start;
+  margin-top: 10px;
+  border: 1px solid var(--mvd-accent);
+  border-radius: 4px;
+  background: var(--mvd-accent);
+  color: var(--mvd-accent-ink);
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
 
 /* ---- ślad WHITE BOX ---- */
 .mvd-komp-slad-blok {

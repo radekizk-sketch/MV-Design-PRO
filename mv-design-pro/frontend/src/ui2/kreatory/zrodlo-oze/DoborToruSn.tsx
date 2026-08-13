@@ -72,6 +72,11 @@ export function DoborToruSn({
   const [rezerwaTr, setRezerwaTr] = useState<number | null>(0.1);
   const [rezerwaKabel, setRezerwaKabel] = useState<number | null>(0.1);
   const [maxDeltaU, setMaxDeltaU] = useState<number | null>(2.0);
+  // K9-A O8/O9/O11: pełne parametry progu doboru — jednoczesność k_j, obciążalność TR
+  // i rezerwa prądowa aparatu pola (wszystkie konsumowane przez końcówkę doboru).
+  const [jednoczesnosc, setJednoczesnosc] = useState<number | null>(null);
+  const [obciazalnoscTr, setObciazalnoscTr] = useState<number | null>(null);
+  const [rezerwaPole, setRezerwaPole] = useState<number | null>(0.1);
   // V12K-203: przypadek pracy toru sprawdzany w doborze. cos φ = 1 odtwarza dawne
   // zachowanie co do bitu (backend bez cos φ liczy S = ΣP), a charakter Q jest wtedy
   // bez znaczenia fizycznego — kreator mówi to wprost zamiast udawać wybór.
@@ -112,8 +117,11 @@ export function DoborToruSn({
       const request = zbudujZapytanieDoboru(converter, quantity, snBusVoltageKv, {
         cableLengthKm: cableLength,
         cosPhi,
+        simultaneityFactor: jednoczesnosc ?? undefined,
+        loadabilityPu: obciazalnoscTr ?? undefined,
         transformerReservePu: rezerwaTr ?? undefined,
         cableReservePu: rezerwaKabel ?? undefined,
+        fieldReservePu: rezerwaPole ?? undefined,
         maxDeltaUPct: maxDeltaU ?? undefined,
         reactiveCharacter: charakterQ,
         layingConditions: wybraneWarunki,
@@ -132,8 +140,11 @@ export function DoborToruSn({
     cableLength,
     quantity,
     cosPhi,
+    jednoczesnosc,
+    obciazalnoscTr,
     rezerwaTr,
     rezerwaKabel,
+    rezerwaPole,
     maxDeltaU,
     charakterQ,
     wybraneWarunki,
@@ -223,6 +234,28 @@ export function DoborToruSn({
       {warunkiBlad ? <KreatorInfo>{T.doborWarunkiUlozeniaNiedostepne}</KreatorInfo> : null}
       <KreatorSiatka kolumny={3}>
         <PoleLiczbowe
+          etykieta={T.doborJednoczesnosc}
+          wartosc={jednoczesnosc}
+          onZmiana={setJednoczesnosc}
+          krok={0.05}
+          min={0}
+          max={1}
+          placeholder="1,0"
+          pomoc={T.doborJednoczesnoscPomoc}
+          testid={`${testid}-jednoczesnosc`}
+        />
+        <PoleLiczbowe
+          etykieta={T.doborObciazalnoscTr}
+          jednostka="pu"
+          wartosc={obciazalnoscTr}
+          onZmiana={setObciazalnoscTr}
+          krok={0.05}
+          min={0}
+          placeholder="1,0"
+          pomoc={T.doborObciazalnoscTrPomoc}
+          testid={`${testid}-obciazalnosc-tr`}
+        />
+        <PoleLiczbowe
           etykieta={T.doborRezerwaTr}
           jednostka="pu"
           wartosc={rezerwaTr}
@@ -232,6 +265,8 @@ export function DoborToruSn({
           pomoc={T.doborRezerwaTrPomoc}
           testid={`${testid}-rezerwa-tr`}
         />
+      </KreatorSiatka>
+      <KreatorSiatka kolumny={3}>
         <PoleLiczbowe
           etykieta={T.doborRezerwaKabel}
           jednostka="pu"
@@ -241,6 +276,16 @@ export function DoborToruSn({
           min={0}
           pomoc={T.doborRezerwaKabelPomoc}
           testid={`${testid}-rezerwa-kabel`}
+        />
+        <PoleLiczbowe
+          etykieta={T.doborRezerwaPole}
+          jednostka="pu"
+          wartosc={rezerwaPole}
+          onZmiana={setRezerwaPole}
+          krok={0.05}
+          min={0}
+          pomoc={T.doborRezerwaPolePomoc}
+          testid={`${testid}-rezerwa-pole`}
         />
         <PoleLiczbowe
           etykieta={T.doborMaxDeltaU}
@@ -275,6 +320,13 @@ export function DoborToruSn({
               <RzadWartosci
                 etykieta={T.doborProgTr}
                 wartosc={`${response.transformer.required_apparent_power_mva.toFixed(3)} MVA`}
+              />
+              {/* K9-A O8: uk% WYŁĄCZNIE jako odczyt typu katalogowego — wartość rządzi
+                  katalog (materializacja nadpisuje wartość z żądania), więc kontrolka
+                  edycji byłaby pozorna. */}
+              <RzadWartosci
+                etykieta={T.doborUkTr}
+                wartosc={tr.uk_percent != null ? `${tr.uk_percent} %` : '—'}
               />
               {grupyKatalogu.length > 0 ? (
                 <PoleWyboru

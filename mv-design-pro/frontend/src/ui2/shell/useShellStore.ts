@@ -47,7 +47,10 @@ export const DEFAULT_LAYOUT: PanelLayoutState = {
   leftWidth: LEFT_DEFAULT,
   rightWidth: RIGHT_DEFAULT,
   leftCollapsed: false,
-  rightCollapsed: false,
+  // K11-A (dyrektywa SLD-first 2026-07-30): inspektor bez zawartości nie
+  // zabiera przestrzeni roboczej — otwiera go selekcja albo powierzchnia
+  // panelowa (useInspektorZaZawartoscia), nie sam montaż powłoki.
+  rightCollapsed: true,
 };
 
 export function clampLeftWidth(width: number): number {
@@ -78,16 +81,51 @@ interface ShellState {
    * kontekst (żadnych zalegających refów). NIE persystowany.
    */
   wynikiTabElement: string | null;
+  /**
+   * Jednorazowe żądanie otwarcia dialogu „Nowy przypadek" w przestrzeni
+   * „Obliczenia" (K6 / H-5 — akcja pustego drzewa przypadków). Wzorzec 1:1 jak
+   * `wynikiTab`: ustawia wołający, konsumuje i czyści menedżer przypadków.
+   * NIE persystowane (żądanie chwili, nie preferencja układu).
+   */
+  zadanieNowyPrzypadek: boolean;
+  /**
+   * Jednorazowe żądanie otwarcia okna „Archiwum projektu (ZIP)" w przestrzeni
+   * „Projekt". Wzorzec 1:1 jak `zadanieNowyPrzypadek`: ustawia wołający (karta
+   * huba dokumentacji), konsumuje przestrzeń „Projekt". Dzięki temu karta huba
+   * kończy się DZIAŁAJĄCĄ akcją, a nie samym przełączeniem przestrzeni.
+   * NIE persystowane (żądanie chwili, nie preferencja układu).
+   */
+  zadanieArchiwumProjektu: boolean;
+  /**
+   * Jednorazowe żądanie otwarcia okna „Import z arkusza (XLSX)" w przestrzeni
+   * „Projekt" — ten sam wzorzec co `zadanieArchiwumProjektu`. NIE persystowane
+   * (żądanie chwili, nie preferencja układu).
+   */
+  zadanieImportuArkusza: boolean;
+  /**
+   * Tryb PODGLĄDU schematu (KD-4, luka L-1): kanwa bez edycji. Zdolność miała
+   * dotąd wyłącznie trasa mostu `#sld-view`, osiągalna jedynie z wyszukiwarki
+   * poleceń — powłoka nie umiała przełączyć kanwy w tryb tylko-do-odczytu.
+   * Ustawienie WIDOKU (nie danych modelu), więc żyje tu i jest persystowane
+   * jak reszta preferencji układu.
+   */
+  podgladSchematu: boolean;
 
   setActiveSpace: (space: SpaceId) => void;
   setAdvancementMode: (mode: AdvancementMode) => void;
   setWynikiTab: (tab: string | null, element?: string | null) => void;
+  setZadanieNowyPrzypadek: (zadanie: boolean) => void;
+  setZadanieArchiwumProjektu: (zadanie: boolean) => void;
+  setZadanieImportuArkusza: (zadanie: boolean) => void;
+  setPodgladSchematu: (podglad: boolean) => void;
 
   getLayout: (space: SpaceId) => PanelLayoutState;
   setLeftWidth: (space: SpaceId, width: number) => void;
   setRightWidth: (space: SpaceId, width: number) => void;
   toggleLeftCollapsed: (space: SpaceId) => void;
   toggleRightCollapsed: (space: SpaceId) => void;
+  /** K11-A: jawne ustawienie zwinięcia inspektora (automat za zawartością). */
+  setRightCollapsed: (space: SpaceId, collapsed: boolean) => void;
   resetLayout: (space: SpaceId) => void;
 
   openBottomPanel: (tab: BottomPanelTab) => void;
@@ -119,12 +157,20 @@ export const useShellStore = create<ShellState>()(
       layoutBySpace: {},
       wynikiTab: null,
       wynikiTabElement: null,
+      zadanieNowyPrzypadek: false,
+      zadanieArchiwumProjektu: false,
+      zadanieImportuArkusza: false,
+      podgladSchematu: false,
 
       setActiveSpace: (space) => set({ activeSpace: space }),
       setAdvancementMode: (mode) => set({ advancementMode: mode }),
       // Kontekst elementu żyje i gaśnie razem z żądaniem zakładki (element
       // domyślnie null — istniejące wywołania `setWynikiTab(tab)` działają 1:1).
       setWynikiTab: (tab, element = null) => set({ wynikiTab: tab, wynikiTabElement: element }),
+      setZadanieNowyPrzypadek: (zadanie) => set({ zadanieNowyPrzypadek: zadanie }),
+      setZadanieArchiwumProjektu: (zadanie) => set({ zadanieArchiwumProjektu: zadanie }),
+      setZadanieImportuArkusza: (zadanie) => set({ zadanieImportuArkusza: zadanie }),
+      setPodgladSchematu: (podglad) => set({ podgladSchematu: podglad }),
 
       getLayout: (space) => layoutFor(get(), space),
 
@@ -152,6 +198,12 @@ export const useShellStore = create<ShellState>()(
           }),
         })),
 
+      setRightCollapsed: (space, collapsed) =>
+        set((state) => {
+          if (layoutFor(state, space).rightCollapsed === collapsed) return state;
+          return { layoutBySpace: patchLayout(state, space, { rightCollapsed: collapsed }) };
+        }),
+
       resetLayout: (space) =>
         set((state) => {
           const next = { ...state.layoutBySpace };
@@ -169,6 +221,7 @@ export const useShellStore = create<ShellState>()(
         activeSpace: state.activeSpace,
         advancementMode: state.advancementMode,
         layoutBySpace: state.layoutBySpace,
+        podgladSchematu: state.podgladSchematu,
       }),
     },
   ),

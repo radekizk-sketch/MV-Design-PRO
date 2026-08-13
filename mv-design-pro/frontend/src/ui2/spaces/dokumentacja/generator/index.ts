@@ -1,0 +1,1 @@
+export { GeneratorRaportu } from './GeneratorRaportu';

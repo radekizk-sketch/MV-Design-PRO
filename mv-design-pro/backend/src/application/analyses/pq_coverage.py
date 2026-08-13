@@ -33,9 +33,12 @@ from network_model.catalog.types import ConverterType
 _ROUND_MVAR = 6
 
 _COVERAGE_FORMULA = (
-    "punkt pokryty  <=>  q_min_prod <= q_wym_min  AND  q_max_prod >= q_wym_max; "
-    "margines = min(q_wym_min - q_min_prod, q_max_prod - q_wym_max); "
-    "q_wym_min = udzial_min * Pn, q_wym_max = udzial_max * Pn"
+    r"\text{punkt pokryty} \iff q_{\min,\text{prod}} \le q_{\text{wym,min}} "
+    r"\;\wedge\; q_{\max,\text{prod}} \ge q_{\text{wym,max}};\quad "
+    r"\text{margines} = \min(q_{\text{wym,min}} - q_{\min,\text{prod}},\; "
+    r"q_{\max,\text{prod}} - q_{\text{wym,max}});\quad "
+    r"q_{\text{wym,min}} = u_{\min} \cdot P_{n},\; "
+    r"q_{\text{wym,max}} = u_{\max} \cdot P_{n}"
 )
 
 

@@ -10,12 +10,13 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import type { EnergyNetworkModel } from '../../../../types/enm';
+import type { EnergyNetworkModel } from '../../../../../types/enm';
 import {
   buildSceneV3,
   allSourcesConnected,
   allSourcesVisible,
   allSceneSegmentEndpointsAnchored,
+  busbarLabelGaps,
   noSceneSymbolOverlaps,
   noSymbolWireCollisions,
   noLabelCollisions,
@@ -83,7 +84,11 @@ function nameAnchors(enm: EnergyNetworkModel, lod: SceneLod): Map<string, string
   for (const label of scene.labels) {
     if (label.ownerKind === 'station-name' && label.ownerRef.endsWith('#name-row-0')) {
       const ref = label.ownerRef.slice(0, -'#name-row-0'.length);
-      m.set(ref, `${label.rect.x},${label.rect.y},${label.rect.width}`);
+      // BLOK-PUSTY (jak w `buildScene.test.ts`): kotwica to punkt zaczepu +
+      // rezerwacja kolumny — wielkości niezależne od TREŚCI poziomu; prostokąt
+      // wiersza niesie od tej karty sam tusz napisu.
+      const srodek = label.rect.x + label.rect.width / 2;
+      m.set(ref, `${srodek},${label.rect.y},${label.rezerwacjaSzerokosci}`);
     }
   }
   return m;
@@ -163,9 +168,18 @@ describe('W2c — przypadek 2 (PV + TR blokowy + pole SN): pełny tor', () => {
     const a0 = nameAnchors(enm, 0);
     const a1 = nameAnchors(enm, 1);
     const a2 = nameAnchors(enm, 2);
+    // KD-5: pasma nazw elementów WEWNĘTRZNYCH bloku GPZ (tabliczka TR/źródła)
+    // znikają na L0 wraz ze zwinięciem bloku — liczność porównujemy na
+    // STACJACH (intencja: tor DER-SN nie przesuwa kotwic STACJI), zbiór L0
+    // pozostaje podzbiorem L1/L2.
+    const stationsOnly = (m: Map<string, string>): Map<string, string> =>
+      new Map([...m].filter(([ref]) => ref.startsWith('stn/')));
     expect(a0.size).toBeGreaterThan(0);
-    expect(a1.size).toBe(a0.size);
-    expect(a2.size).toBe(a0.size);
+    expect(stationsOnly(a1).size).toBe(stationsOnly(a0).size);
+    expect(stationsOnly(a2).size).toBe(stationsOnly(a0).size);
+    for (const ref of a0.keys()) {
+      expect(a1.has(ref) && a2.has(ref), `kotwica ${ref} obecna na L0, brak na L1/L2`).toBe(true);
+    }
     const drift: string[] = [];
     for (const [ref, p0] of a0) {
       if (a1.get(ref) !== p0 || a2.get(ref) !== p0) drift.push(`${ref}: L0=${p0} L1=${a1.get(ref)} L2=${a2.get(ref)}`);
@@ -319,4 +333,56 @@ describe('W2c — determinizm toru DER-SN na wszystkich LOD', () => {
       expect(JSON.stringify(buildSceneV3(enm, lod))).toBe(JSON.stringify(buildSceneV3(enm, lod)));
     });
   }
+});
+
+// ---------------------------------------------------------------------------
+// S9-12 (klasa C-8 audytu 2026-08) — etykieta szyny nN PRODUCENTA: gramatyka
+// nN zamiast pożyczonej gramatyki SEKCJI stacji + parowanie w wyroczni.
+// ---------------------------------------------------------------------------
+
+describe('S9-12 — etykieta szyny nN producenta DER (klasa C-8: opis nie udaje sekcji stacji)', () => {
+  // Iloczyn cech: {DWA tory DER w jednym kadrze} × {gramatyka nN} ×
+  // {wyrocznia busbar: parowanie + tekst}. Przed kartą oba tory nosiły
+  // IDENTYCZNY, semantycznie fałszywy opis „Sekcja 1 · 0,4 kV" (szyna
+  // producenta nie jest sekcją niczego w modelu), a wyrocznia
+  // `busbarLabelGaps` fałszywie flagowała każdą taką etykietę jako
+  // `label-without-bus` (etykieta spoza słownika parowania).
+  const { enm } = buildDerSnFixture([
+    { technology: 'PV', suffix: 'a' },
+    { technology: 'BESS', suffix: 'b' },
+  ]);
+
+  it('L2: obie szyny producentów opisane zamkniętą gramatyką nN („Szyna nN · V kV"), zero „Sekcja” poza stacjami', () => {
+    const scene = buildSceneV3(enm, 2);
+    const producerLabels = scene.labels.filter((l) => l.ownerRef.endsWith('#producer-bus-voltage'));
+    expect(producerLabels).toHaveLength(2);
+    expect(producerLabels.every((l) => /^Szyna nN(?: · \d+(?:,\d+)? kV)?$/.test(l.text))).toBe(true);
+    expect(producerLabels.every((l) => !l.text.includes('Sekcja'))).toBe(true);
+  });
+
+  it('L2: wyrocznia busbarLabelGaps bez luk — etykieta producenta sparowana ze SWOIM odcinkiem #lv-bus', () => {
+    const scene = buildSceneV3(enm, 2);
+    expect(busbarLabelGaps(scene)).toEqual([]);
+  });
+
+  it('(test negatywny a): etykieta producenta bez odcinka szyny ⇒ label-without-bus zgłoszony', () => {
+    const scene = buildSceneV3(enm, 2);
+    const producerLabel = scene.labels.find((l) => l.ownerRef.endsWith('#producer-bus-voltage'))!;
+    const busRef = producerLabel.ownerRef.replace(/#producer-bus-voltage$/, '#lv-bus');
+    const sabotaged = {
+      ...scene,
+      segments: scene.segments.filter((s) => s.meta?.ownerRef !== busRef),
+    };
+    expect(busbarLabelGaps(sabotaged).some((g) => g.reason === 'label-without-bus')).toBe(true);
+  });
+
+  it('(test negatywny b): powrót tekstu „Sekcja 1 · 0,4 kV" na szynie producenta ⇒ malformed-text zgłoszony', () => {
+    const scene = buildSceneV3(enm, 2);
+    const producerLabel = scene.labels.find((l) => l.ownerRef.endsWith('#producer-bus-voltage'))!;
+    const sabotaged = {
+      ...scene,
+      labels: scene.labels.map((l) => (l === producerLabel ? { ...l, text: 'Sekcja 1 · 0,4 kV' } : l)),
+    };
+    expect(busbarLabelGaps(sabotaged).some((g) => g.reason === 'malformed-text')).toBe(true);
+  });
 });

@@ -40,6 +40,7 @@ from network_model.solvers.power_flow_inverter import (
     InverterControl,
     apply_inverter_setpoint,
     build_inverter_table,
+    inverter_q_seed,
     inverter_relax_q,
 )
 from network_model.solvers.power_flow_newton import PowerFlowNewtonSolution
@@ -51,6 +52,8 @@ from network_model.solvers.power_flow_newton_internal import (
     build_ybus_pu,
     compute_branch_flows,
     compute_power_injections,
+    effective_pq_injections,
+    pv_calculated_injections,
     validate_input,
 )
 from network_model.solvers.power_flow_types import PowerFlowInput, PowerFlowOptions
@@ -58,6 +61,7 @@ from network_model.solvers.power_flow_zip import (
     ZipCoeffs,
     apply_zip_frequency,
     build_zip_table,
+    split_zip_constant_part,
     zip_effective_spec,
 )
 from scipy import linalg
@@ -243,6 +247,12 @@ class PowerFlowFastDecoupledSolver:
             pv_setpoints = {}
             pv_q_limits = {}
 
+        # Defect D1 (audit 2026-08-01): rebase ZIP buses onto their LOAD part and
+        # keep the rest (generation) as a constant term. BEFORE the frequency
+        # scaling, so P(f) scales the load only. None => nothing to split.
+        zip_const = split_zip_constant_part(
+            p_spec, q_spec, pf_input.pq, node_index_map, pf_input.base_mva
+        )
         # ADR-011 ZIP: one-time frequency base scaling (constant w.r.t. V) and the
         # voltage-dependent ZIP table (per-iteration recompute in the mismatch).
         # B'/B" stay constant (built from ybus.imag). Empty table => reduce-to-NR.
@@ -252,10 +262,21 @@ class PowerFlowFastDecoupledSolver:
         # ADR-011 §5b: one-time inverter shaping (LFSM P(f) + cosφ/Q modes); Q(U)
         # sources are recomputed per iteration in the Q mismatch via inv_table.
         # B'/B" stay constant (built from ybus.imag). Empty table => reduce-to-NR.
-        apply_inverter_setpoint(
-            p_spec, q_spec, pf_input.pq, node_index_map, pf_input.base_frequency_hz
+        # Defect B: the shaping reads the SOURCE's own power and enters as a
+        # component of the bus — on a ZIP bus into the constant part, so the load
+        # polynomial never scales it (hence zip_table/zip_const are handed over).
+        inv_shaping = apply_inverter_setpoint(
+            p_spec,
+            q_spec,
+            pf_input.pq,
+            node_index_map,
+            pf_input.base_frequency_hz,
+            pf_input.base_mva,
+            zip_table,
+            zip_const,
         )
         inv_table = build_inverter_table(pf_input.pq, node_index_map)
+        q_inv_seed = inverter_q_seed(inv_table, inv_shaping)
 
         # Run Fast-Decoupled iteration
         (
@@ -286,6 +307,8 @@ class PowerFlowFastDecoupledSolver:
             pf_input.base_mva,
             zip_table,
             inv_table,
+            zip_const,
+            q_inv_seed,
         )
 
         # Handle non-convergence
@@ -369,7 +392,25 @@ class PowerFlowFastDecoupledSolver:
         # Compute slack power
         p_calc, q_calc = compute_power_injections(ybus_pu, v)
         slack_power = complex(p_calc[slack_index], q_calc[slack_index])
+        # Defect D1: after the split p_spec/q_spec hold only the ZIP base, so the
+        # constant part is added back here — this diagnostic keeps its historical
+        # meaning (sum of the SPECIFIED PQ powers) and its historical value.
         sum_pq_spec = complex(float(np.sum(p_spec)), float(np.sum(q_spec)))
+        if zip_const is not None:
+            sum_pq_spec += complex(float(np.sum(zip_const[0])), float(np.sum(zip_const[1])))
+        node_p_spec_effective_pu, node_q_spec_effective_pu = effective_pq_injections(
+            pf_input.pq, node_index_map, p_spec, q_spec, v, zip_table, inv_table, zip_const
+        )
+        # DLUG W2-D1 (V12K-318) ZAMKNIETY: szyna PV tez wstrzykuje moc — jej moc
+        # bierna jest WYNIKIEM zbieznosci, nie zadaniem. Te same slowniki niosa
+        # teraz odpowiedz „ile faktycznie wstrzyknela kazda szyna niebilansujaca":
+        # dla szyny PQ z wielomianu/regulacji, dla szyny PV z rownania wezlowego.
+        # (Nazwa pola pochodzi sprzed rozszerzenia — patrz dlug X1-D1.)
+        node_p_pv_pu, node_q_pv_pu = pv_calculated_injections(
+            pf_input.pv, node_index_map, p_calc, q_calc
+        )
+        node_p_spec_effective_pu.update(node_p_pv_pu)
+        node_q_spec_effective_pu.update(node_q_pv_pu)
 
         if branch_flow_note:
             losses_total = 0.0 + 0.0j
@@ -403,6 +444,8 @@ class PowerFlowFastDecoupledSolver:
             applied_shunts=applied_shunts,
             pv_to_pq_switches=pv_to_pq_switches,
             init_state=init_state,
+            node_p_spec_effective_pu=node_p_spec_effective_pu,
+            node_q_spec_effective_pu=node_q_spec_effective_pu,
             solver_method="fast-decoupled",  # type: ignore[arg-type]
             fallback_info=None,
         )
@@ -519,6 +562,8 @@ class PowerFlowFastDecoupledSolver:
         base_mva: float,
         zip_table: dict[int, ZipCoeffs] | None = None,
         inv_table: dict[int, InverterControl] | None = None,
+        zip_const: tuple[np.ndarray, np.ndarray] | None = None,
+        q_inv_seed: dict[int, float] | None = None,
     ) -> tuple[
         np.ndarray,
         bool,
@@ -554,6 +599,9 @@ class PowerFlowFastDecoupledSolver:
             inv_table: Voltage-dependent inverter Q(U) controls keyed by bus index
                 (ADR-011 §5b). Only the Q mismatch uses the V-dependent spec; B'/B"
                 stay constant. Empty/None => classic path (reduce-to-NR).
+            zip_const: Constant (non-ZIP) part of a ZIP bus — generation on the
+                same bus (defect D1). None => nothing to split; p_spec/q_spec are
+                the whole bus power (historical path).
 
         Returns:
             Tuple of (voltage, converged, iterations, max_mismatch, trace, pv_switches).
@@ -572,12 +620,13 @@ class PowerFlowFastDecoupledSolver:
         active_pq = list(pq_indices)
         active_pv = list(pv_indices)
 
-        # ADR-011 §5b: under-relaxed Q(U) state. Seed from the base q_spec at the
-        # Q_U buses; advanced toward qu_q(|V|) at the start of each iteration with a
+        # ADR-011 §5b: under-relaxed Q(U) state. Seeded from the SOURCE's own
+        # declared Q (defect B — the bus power is not the source's on a prosumer
+        # bus); advanced toward qu_q(|V|) at the start of each iteration with a
         # slope-scaled step so the volt-var fixed-point gain stays < 1 (FD lacks NR's
         # ∂Q/∂V Jacobian feedback). Converged value == qu_q(v*) => parity with NR and
         # reduce-to-NR preserved (empty inv_table => no-op).
-        q_inv_state = {idx: float(q_spec[idx]) for idx in inv_table}
+        q_inv_state = dict(q_inv_seed or {})
 
         # Build and factor B matrices initially
         b_prime, b_double_prime, non_slack_indices, _ = self._build_b_matrices(
@@ -673,7 +722,7 @@ class PowerFlowFastDecoupledSolver:
 
             # ADR-011 ZIP: evaluate the specified injection at the current |V|
             # (no-op when zip_table is empty => reduce-to-NR). B' is unaffected.
-            p_eff, _ = zip_effective_spec(p_spec, q_spec, v, zip_table)
+            p_eff, _ = zip_effective_spec(p_spec, q_spec, v, zip_table, zip_const)
 
             # P mismatch for all non-slack buses
             d_p_full = p_eff - p_calc
@@ -711,11 +760,14 @@ class PowerFlowFastDecoupledSolver:
                 # ADR-011 §5b: the Q(U) buses use the under-relaxed Q(U) state (no-op
                 # when inv_table empty); inverter P is not voltage-dependent so the P
                 # side is untouched.
-                _, q_eff = zip_effective_spec(p_spec, q_spec, v, zip_table)
+                # Defect B: the volt-var value is ADDED to the composed bus power,
+                # not assigned over it — on a prosumer bus what is already there is
+                # the ZIP-scaled load, which assigning deleted from the model.
+                _, q_eff = zip_effective_spec(p_spec, q_spec, v, zip_table, zip_const)
                 if inv_table:
                     q_eff = q_eff.copy()
                     for idx in inv_table:
-                        q_eff[idx] = q_inv_state[idx]
+                        q_eff[idx] += q_inv_state[idx]
                 d_q_updated = q_eff[active_pq] - q_calc_updated[active_pq]
 
                 # ΔQ / |V| for PQ buses
@@ -749,11 +801,11 @@ class PowerFlowFastDecoupledSolver:
             # ADR-011 §5b: the Q(U) buses use the under-relaxed Q(U) state for the Q
             # mismatch (same value the Q-V half-iteration used this iteration), so the
             # convergence test is consistent. No-op when inv_table is empty.
-            p_eff_final, q_eff_final = zip_effective_spec(p_spec, q_spec, v, zip_table)
+            p_eff_final, q_eff_final = zip_effective_spec(p_spec, q_spec, v, zip_table, zip_const)
             if inv_table:
                 q_eff_final = q_eff_final.copy()
                 for idx in inv_table:
-                    q_eff_final[idx] = q_inv_state[idx]
+                    q_eff_final[idx] += q_inv_state[idx]
             d_p_final = p_eff_final[non_slack_indices] - p_calc_final[non_slack_indices]
             d_q_final = q_eff_final[active_pq] - q_calc_final[active_pq]
 

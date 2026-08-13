@@ -7,8 +7,7 @@ resolver — żaden nie zostaje bez modelu (brief 2 §15/§16).
 from __future__ import annotations
 
 import pytest
-
-from src.network_model.catalog.der_dynamic import (
+from network_model.catalog.der_dynamic import (
     DEFAULT_BESS_GFL,
     DEFAULT_BESS_GFM,
     DEFAULT_PV_GFL,
@@ -25,7 +24,7 @@ from src.network_model.catalog.der_dynamic import (
     list_all_profile_ids,
     resolve_der_dynamic_profile,
 )
-from src.network_model.catalog.repository import get_default_mv_catalog
+from network_model.catalog.repository import get_default_mv_catalog
 
 
 class TestDefaultProfilesPresent:
@@ -212,7 +211,7 @@ class TestCatalogEndToEndCoverage:
         assert unresolved == []
 
     def test_every_wind_turbine_has_default_dynamic_profile(self) -> None:
-        from src.network_model.catalog.wind_turbines.catalog import (
+        from network_model.catalog.wind_turbines.catalog import (
             list_wind_turbines,
         )
 

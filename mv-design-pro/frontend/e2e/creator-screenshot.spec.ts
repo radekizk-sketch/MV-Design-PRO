@@ -64,10 +64,13 @@ test.describe('kreatory:screenshot', () => {
     }
   }
 
-  // Wszystkie 4 ekrany konfiguracji kreatora OZE (technologia → falownik →
-  // regulacja → podsumowanie), z wypełnionymi danymi, w obu motywach.
+  // Wszystkie ekrany konfiguracji kreatora OZE, z wypełnionymi danymi, w obu
+  // motywach. INTENCJA: dokumentacyjny zrzut KAŻDEGO kroku toru pracy. K9-A
+  // przebudowała kreator do pełnego toru (technologia → falownik → aparatura
+  // pola → zgodność przyłączeniowa → regulacja → podsumowanie) — spec idzie
+  // po obecnym kanonie kroków.
   for (const theme of THEMES) {
-    test(`oze — 4 kroki konfiguracji (${theme})`, async ({ page }) => {
+    test(`oze — kroki konfiguracji, pełny tor (${theme})`, async ({ page }) => {
       const errs: string[] = [];
       const isNoise = (t: string): boolean =>
         /favicon|Download the React DevTools|Failed to load resource/i.test(t);
@@ -100,9 +103,30 @@ test.describe('kreatory:screenshot', () => {
       await page.getByTestId('mvd-kreator-oze-liczba').fill('12');
       await shot(2);
 
-      // Krok 3 — regulacja mocy biernej i czynnej (wartości rządzące + P(f)/LFSM).
+      // Krok 3 — aparatura pola (K9-A): CT/VT/zabezpieczenie z katalogu.
+      await page.getByTestId('mvd-kreator-oze-dalej').click();
+      await expect(page.getByTestId('mvd-kreator-oze-aparatura')).toBeVisible();
+      const ctWybor = page.getByTestId('mvd-kreator-oze-aparatura-ct');
+      await expect(ctWybor.locator('option').nth(1)).toBeAttached({ timeout: 15000 });
+      await ctWybor.selectOption('ct_200_5_5p10_10va_abb');
+      await page.getByTestId('mvd-kreator-oze-aparatura-vt').selectOption('vt-1');
+      await page.getByTestId('mvd-kreator-oze-aparatura-zabezpieczenie').selectOption('rel-1');
+      await shot(3);
+
+      // Krok 4 — zgodność przyłączeniowa (K9-A): profile NC RfG/LVRT/HVRT/PF.
+      await page.getByTestId('mvd-kreator-oze-dalej').click();
+      await expect(page.getByTestId('mvd-kreator-oze-zgodnosc')).toBeVisible();
+      await page.getByTestId('mvd-kreator-oze-zgodnosc-profil').selectOption('ncrfg_pse');
+      await page.getByTestId('mvd-kreator-oze-zgodnosc-lvrt').selectOption('lvrt_pse_b');
+      await page.getByTestId('mvd-kreator-oze-zgodnosc-hvrt').selectOption('hvrt_pse_b');
+      await page.getByTestId('mvd-kreator-oze-zgodnosc-pf').selectOption('pf_pse_b');
+      await shot(4);
+
+      // Krok 5 — regulacja mocy biernej i czynnej (wartości rządzące + P(f)/LFSM
+      // + tryb pracy źródła z K9-A).
       await page.getByTestId('mvd-kreator-oze-dalej').click();
       await expect(page.getByTestId('mvd-kreator-oze-tryb')).toBeVisible();
+      await page.getByTestId('mvd-kreator-oze-tryb-pracy').selectOption('praca_sieciowa');
       await page.getByTestId('mvd-kreator-oze-tryb').selectOption('Q_OD_U');
       await page.getByTestId('mvd-kreator-oze-qu-slope').fill('4');
       await page.getByTestId('mvd-kreator-oze-qu-db-low').fill('0.95');
@@ -114,12 +138,12 @@ test.describe('kreatory:screenshot', () => {
       await page.getByTestId('mvd-kreator-oze-deadband').fill('0.2');
       // Rozwiń panel teorii + charakterystyki NC RfG (G-OZE-B5), by zrzut pokazał wykresy.
       await page.getByTestId('mvd-kreator-oze-teoria').locator('summary').click();
-      await shot(3);
+      await shot(5);
 
-      // Krok 4 — podsumowanie i zapis.
+      // Krok 6 — podsumowanie i zapis.
       await page.getByTestId('mvd-kreator-oze-dalej').click();
       await expect(page.getByTestId('mvd-kreator-oze-zapis')).toBeVisible();
-      await shot(4);
+      await shot(6);
 
       if (errs.length > 0) console.log(`[oze/${theme}] errors:\n${errs.join('\n')}`);
       expect(errs, `no console/page errors for oze kroki/${theme}`).toEqual([]);
@@ -150,7 +174,7 @@ test.describe('kreatory:screenshot', () => {
       await page.getByTestId('mvd-kreator-transformator-dalej').click();
       await expect(page.getByTestId('mvd-kreator-transformator-regtyp')).toBeVisible();
       await page.getByTestId('mvd-kreator-transformator-regtyp').selectOption('OLTC');
-      await page.getByTestId('mvd-kreator-transformator-control').selectOption('AUTO');
+      await page.getByTestId('mvd-kreator-transformator-control').selectOption('AUTOMATIC');
       await page.getByTestId('mvd-kreator-transformator-setpoint').fill('15.75');
       await page.getByTestId('mvd-kreator-transformator-deadband').fill('0.3');
       await page.getByTestId('mvd-kreator-transformator-teoria').locator('summary').click();
@@ -209,12 +233,22 @@ test.describe('kreatory:screenshot', () => {
   // pokazuje trzy stany naraz (nazwa z katalogu / nazwa z katalogu / polecenie wyboru)
   // i że picker realnie się otwiera. Zrzut ładnego, ale martwego ekranu byłby fałszem.
   //
-  // JEDEN MOTYW, POMIAR ZAMIAST DOMYSŁU: powierzchnie `ui/**` stoją na palecie `scada`
-  // (tailwind.config.js, „V12 dark SCADA-tech palette") — stałe wartości hex bez wariantu
-  // jasnego i bez pośrednictwa zmiennych CSS. Motyw jasny (`--mvd-*`, tokens.css) obejmuje
-  // warstwę ui2. Ten ekran jest więc ciemny NIEZALEŻNIE od `data-theme` i test to
-  // SPRAWDZA (invariant poniżej) zamiast milcząco pomijać drugi motyw.
-  test('wiazania OZE — wybór z katalogu + niezmienniczość motywu', async ({ page }) => {
+  // JEDEN MOTYW, POMIAR ZAMIAST DOMYSŁU (kanon zaktualizowany, karta BUGI-PRODUKTU-E2E,
+  // konflikt V12D-036/V12K-243 vs KD-8 zapisany w docs/v12xx/REJESTR_KONFLIKTOW.md):
+  // do KD-8 (poz. 1, 2026-07-31) powierzchnie `ui/**` stały na palecie `scada` jako
+  // STAŁYCH wartościach hex niezależnych od motywu (V12K-243, 2026-07-27) — ten test
+  // wtedy sprawdzał niezmienniczość tła. KD-8 poz. 1 zamieniło CAŁĄ paletę `scada`
+  // (tailwind.config.js) na zmienne CSS `--scada-*` sterowane `[data-theme]`
+  // (src/index.css) właśnie po to, żeby powierzchnie `ui/**` — łącznie z kanwą SLD,
+  // paskiem metryk i kartą konfiguratora stacji (kd8-motyw-jedna-prawda.spec.ts) —
+  // PRZESTAŁY być ciemne niezależnie od motywu (ocena właściciela 2/10 ekranu jasnego).
+  // Panel wiązań OZE korzysta z TEJ SAMEJ klasy `bg-scada-panel` co 47 innych plików
+  // `ui/**` (m.in. `StationConfiguratorSurface.tsx`, naprawiony wprost przez KD-8) —
+  // stałość tła byłaby więc dziś JEDYNĄ niespójnością z resztą powłoki, nie dowodem
+  // poprawności. Test mierzy więc SPÓJNOŚĆ z tokenem motywu (intencja zachowana:
+  // złapać REGRESJĘ tła, tylko względem aktualnego źródła prawdy, nie względem
+  // zamrożonego literału sprzed KD-8).
+  test('wiazania OZE — wybór z katalogu + spójność z motywem powłoki', async ({ page }) => {
     const errs: string[] = [];
     const isNoise = (t: string): boolean =>
       /favicon|Download the React DevTools|Failed to load resource/i.test(t);
@@ -223,7 +257,7 @@ test.describe('kreatory:screenshot', () => {
     });
     page.on('pageerror', (e) => errs.push(`PAGEERROR: ${e.message}`));
 
-    const tloPanelu = async (theme: string): Promise<string> => {
+    const tloPanelu = async (theme: string): Promise<{ panel: string; token: string }> => {
       await page.goto(`${HARNESS_URL}?creator=wiazania&theme=${theme}`, {
         waitUntil: 'domcontentloaded',
         timeout: 40000,
@@ -232,19 +266,40 @@ test.describe('kreatory:screenshot', () => {
       await expect(root).toHaveAttribute('data-status', 'ready', { timeout: 15000 });
       await page.getByTestId('der-card-tab-readiness').click();
       await expect(page.getByTestId('der-wiazania-editor')).toBeVisible();
-      return page
+      const panel = await page
         .getByTestId('pv-source-surface')
         .locator('.bg-scada-panel')
         .first()
         .evaluate((el) => getComputedStyle(el).backgroundColor);
+      // Token ŹRÓDŁOWY (nie literał zamrożony w teście) — `--scada-panel` z `:root`
+      // (src/index.css), DOKŁADNIE to, co Tailwind wstrzykuje do `bg-scada-panel`.
+      const token = await page.evaluate(() => {
+        const raw = getComputedStyle(document.documentElement).getPropertyValue('--scada-panel').trim();
+        const [r, g, b] = raw.split(/\s+/).map(Number);
+        return `rgb(${r}, ${g}, ${b})`;
+      });
+      return { panel, token };
     };
 
     await page.setViewportSize({ width: 1220, height: 900 });
-    const tloJasny = await tloPanelu('light');
-    const tloCiemny = await tloPanelu('dark');
-    expect(tloJasny, 'powierzchnie ui/** stoją na stałej palecie scada — motyw ich nie zmienia').toBe(
-      tloCiemny,
-    );
+    const jasny = await tloPanelu('light');
+    const ciemny = await tloPanelu('dark');
+    expect(
+      jasny.panel,
+      'panel wiazan OZE musi isc za tokenem --scada-panel w motywie jasnym (KD-8 poz. 1)',
+    ).toBe(jasny.token);
+    expect(
+      ciemny.panel,
+      'panel wiazan OZE musi isc za tokenem --scada-panel w motywie ciemnym (KD-8 poz. 1)',
+    ).toBe(ciemny.token);
+    // Straznik sensownosci: gdyby token przestal roznic sie miedzy motywami, powyzsze
+    // dwie asercje przeszlyby fikcyjnie (panel zgodny sam ze soba, ale caly system
+    // wrocilby do stalej ciemnej palety sprzed KD-8) — test musialby to zlapac gdzie
+    // indziej. Ta asercja mierzy wprost, ze motyw FAKTYCZNIE zmienia token.
+    expect(
+      jasny.token,
+      'token --scada-panel musi faktycznie roznic sie miedzy motywami (inaczej test nic nie mierzy)',
+    ).not.toBe(ciemny.token);
 
     // Nazwy z REALNEGO katalogu dla przypisanych wiązań, polecenie wyboru dla pustego.
     await expect(page.getByTestId('der-wiazanie-wartosc-protection_catalog_ref')).toHaveText(
@@ -450,8 +505,12 @@ test.describe('kreatory:screenshot', () => {
         const root = page.locator('[data-testid="creator-harness-root"]').first();
         await expect(root).toHaveAttribute('data-status', 'ready', { timeout: 15000 });
 
-        // GPZ: panel teorii jest na kroku „źródło i strona WN" (2); odbiór na „dane" (1).
-        if (c === 'zrodlo') await page.getByTestId('mvd-kreator-zrodlo-dalej').click();
+        // Odbiór ma panel teorii juz na kroku „dane" (1) — bez przejscia dalej.
+        // ZDJETE 2026-08-08 (karta TYPY-POZA-BRAMKA): stal tu warunek
+        // `if (c === 'zrodlo') …` na petli zawezonej do `['odbior'] as const`,
+        // czyli galaz NIGDY nieosiagalna. TypeScript melduje to jako TS2367
+        // („porownanie bez czesci wspolnej") — blad zyl poza bramka, bo `e2e/`
+        // nie bylo w `include`.
 
         await page.getByTestId(`mvd-kreator-${c}-teoria`).locator('summary').click();
         await page.waitForTimeout(300);

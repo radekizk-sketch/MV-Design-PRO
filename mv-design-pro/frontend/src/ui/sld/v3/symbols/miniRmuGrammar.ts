@@ -122,6 +122,146 @@ export const MINI_RMU = {
   minGap: MINI_RMU_MIN_GAP,
 } as const;
 
+// ---------------------------------------------------------------------------
+// KD-5 — GRAMATYKA KONSTRUKCYJNA BLOKU GPZ ZWINIĘTEGO (L0).
+// ---------------------------------------------------------------------------
+
+const GPZ_BBOX = 16 * GRID; // 128 — patrz `SYMBOL_DEFS.gpzCollapsed` (wyprowadzenie z czytelności).
+const GPZ_AXIS = GPZ_BBOX / 2; // 64 — oś toru głównego: źródło → TR → szyna SN → pole odejściowe.
+
+/**
+ * KD-5 (dług nazwany w V12K-285): blok GPZ na L0 jako MINIATURA jego własnej
+ * gramatyki (SLD_CAD_SPEC_V3 §3 „GPZ"), TĄ SAMĄ zasadą co `MINI_RMU` dla
+ * stacji SN/nN: nie ikona-plakietka, tylko zwinięty schemat toru zasilania
+ * czytany z kształtu.
+ *
+ * Tor pionowy na osi (`GPZ_AXIS`), z góry na dół — dokładnie kolejność spec §3:
+ *   port N (od sieci zewnętrznej) → SZYNA WN → pole WN (aparat) → TRANSFORMATOR
+ *   (dwa uzwojenia) → pole TR (aparat) → SZYNA SN → POLA ODEJŚCIOWE (aparat),
+ *   z których pole magistrali schodzi portem S do toru magistrali.
+ *
+ * Reguły przejęte z mini-RMU (GS-3, `GRAMATYKA_MINI_RMU_2026-07.md`):
+ *  - kotwica = ŚRODEK bboxa, geometria WYŁĄCZNIE z tej stałej (zero literałów
+ *    w rendererze, reguła 13),
+ *  - szyny żyją WEWNĄTRZ enklozury (K2) — na zewnątrz wychodzą tylko tory
+ *    (zejście od źródła i zejście pola magistrali),
+ *  - obrys enklozury WTÓRNY (K7), tor + aparaty pierwszoplanowe,
+ *  - stan/rodzaj = geometria, nigdy kolor (P5).
+ *
+ * Liczba rysowanych PÓL ODEJŚCIOWYCH jest ograniczona do 3 (`xs`): pole
+ * magistrali na osi + po jednym w prawo/lewo. To NIE jest ukrywanie danych —
+ * przy skali przeglądu cały blok ma ≈15 px ekranu, więc czwarte pole byłoby
+ * nierozróżnialną kreską (ten sam próg `MIN_SYMBOL_SCREEN_PX`, dla którego L0
+ * w ogóle powstało); pełna liczba pól jest czytana z etykiety bloku (pas nazwy
+ * GPZ) i z rozwinięcia po przekroczeniu progu LOD.
+ */
+export const MINI_GPZ = {
+  bbox: { width: GPZ_BBOX, height: GPZ_BBOX },
+  center: { x: GPZ_AXIS, y: GPZ_AXIS },
+  axis: GPZ_AXIS,
+  /** Enklozura rozdzielni — obrys wtórny (K7). */
+  enclosure: { x: 8, y: 8, width: 112, height: 112, rx: 0 },
+  /** Zejście od sieci zewnętrznej: port N → szyna WN (przecina obrys, jak kable
+   *  pól liniowych w mini-RMU). */
+  zrodlo: { stub: { y1: 0, y2: 22 } },
+  szynaWn: { y: 22, x1: 44, x2: 84 },
+  poleWn: { x: GPZ_AXIS, aparat: { y: 29, size: 6 }, stub1: { y1: 22, y2: 29 }, stub2: { y1: 35, y2: 42 } },
+  transformator: { x: GPZ_AXIS, circleR: 7, circle1Y: 49, circle2Y: 59 },
+  poleTr: { x: GPZ_AXIS, aparat: { y: 72, size: 6 }, stub1: { y1: 66, y2: 72 }, stub2: { y1: 78, y2: 86 } },
+  szynaSn: { y: 86, x1: 24, x2: 104 },
+  /** Pola odejściowe SN: `xs[0]` = pole MAGISTRALI (na osi, schodzi portem S),
+   *  kolejne = pozostałe pola liniowe (kończą się wewnątrz enklozury). */
+  polaOdejsciowe: {
+    xs: [GPZ_AXIS, 88, 40],
+    aparat: { y: 93, size: 6 },
+    stub1: { y1: 86, y2: 93 },
+    stub2: { y1: 99, y2: 106 },
+    /** Pole NIE-magistralne: krótkie zejście kończone wewnątrz enklozury. */
+    stubKoncowy: { y1: 106, y2: 112 },
+    /** Pole magistrali: zejście na wylot do portu S (tor sceny). */
+    wyjscie: { y1: 106, y2: GPZ_BBOX },
+  },
+  /** Sprzęgło sekcyjne (>1 sekcja SN): realna PRZERWA szyny + styki, wzór
+   *  `MINI_RMU.sprzeglo`. Położone MIĘDZY polem magistrali (oś) a polem
+   *  prawym, więc nie koliduje z żadnym aparatem pola. */
+  sprzeglo: { x: 76, size: 5, gapHalf: 4 },
+  stroke: MINI_RMU_STROKE,
+  minGap: MINI_RMU_MIN_GAP,
+} as const;
+
+/** KD-5: cechy bloku GPZ rysowane sylwetką na L0 — WSZYSTKIE z realnych danych
+ *  kompozycji GPZ (`GpzComposition`), zero fabrykacji. */
+export interface MiniGpzFeatures {
+  /** Liczba SEKCJI szyn SN (>1 ⇒ sprzęgło sekcyjne w sylwetce). */
+  readonly sections: number;
+  /** Liczba transformatorów WN/SN (0 ⇒ sylwetka bez uzwojeń — GPZ bez TR w danych). */
+  readonly transformers: number;
+  /** Liczba PÓL ODEJŚCIOWYCH (liniowych) SN — rysowane do `MINI_GPZ.polaOdejsciowe.xs.length`. */
+  readonly feeders: number;
+}
+
+export function miniGpzSignature(f: MiniGpzFeatures): string {
+  return [`SEK:${f.sections}`, `TR:${f.transformers}`, `POLA:${f.feeders}`].join('|');
+}
+
+/**
+ * SONDA CIĄGŁOŚCI TORU ZASILANIA bloku GPZ (odpowiednik
+ * `miniRmuPathContinuityGaps`): łańcuch port N → szyna WN → pole WN →
+ * transformator → pole TR → szyna SN → pole odejściowe → port S pokrywa oś
+ * BEZ DZIUR, a obie szyny leżą wewnątrz enklozury (K2).
+ */
+export function miniGpzPathContinuityGaps(): readonly string[] {
+  const g: string[] = [];
+  const { enclosure: e, zrodlo, szynaWn, poleWn, transformator: tr, poleTr, szynaSn, polaOdejsciowe: po, bbox } = MINI_GPZ;
+  const eL = e.x;
+  const eR = e.x + e.width;
+  if (szynaWn.x1 <= eL || szynaWn.x2 >= eR) g.push('K2: szyna WN wychodzi poza enklozurę');
+  if (szynaSn.x1 <= eL || szynaSn.x2 >= eR) g.push('K2: szyna SN wychodzi poza enklozurę');
+  const chain: Array<[number, number, string]> = [
+    [zrodlo.stub.y1, zrodlo.stub.y2, 'zejście od źródła'],
+    [szynaWn.y, szynaWn.y, 'szyna WN'],
+    [poleWn.stub1.y1, poleWn.stub1.y2, 'zejście pola WN'],
+    [poleWn.aparat.y, poleWn.aparat.y + poleWn.aparat.size, 'aparat pola WN'],
+    [poleWn.stub2.y1, poleWn.stub2.y2, 'zejście do TR'],
+    [tr.circle1Y - tr.circleR, tr.circle2Y + tr.circleR, 'transformator'],
+    [poleTr.stub1.y1, poleTr.stub1.y2, 'zejście pola TR'],
+    [poleTr.aparat.y, poleTr.aparat.y + poleTr.aparat.size, 'aparat pola TR'],
+    [poleTr.stub2.y1, poleTr.stub2.y2, 'zejście do szyny SN'],
+    [szynaSn.y, szynaSn.y, 'szyna SN'],
+    [po.stub1.y1, po.stub1.y2, 'zejście pola odejściowego'],
+    [po.aparat.y, po.aparat.y + po.aparat.size, 'aparat pola odejściowego'],
+    [po.stub2.y1, po.stub2.y2, 'zejście za aparatem'],
+    [po.wyjscie.y1, po.wyjscie.y2, 'wyjście na magistralę'],
+  ];
+  for (let i = 1; i < chain.length; i++) {
+    if (chain[i - 1][1] < chain[i][0] - 0.001) g.push(`przerwa toru między „${chain[i - 1][2]}" a „${chain[i][2]}"`);
+  }
+  if (chain[0][0] !== 0 || chain[chain.length - 1][1] !== bbox.height) g.push('tor nie sięga portów N/S');
+  return g;
+}
+
+/** KD-5: sonda odstępów sylwetki GPZ — aparaty pól i sprzęgło rozłączne
+ *  (reguła 10 gramatyki), wszystko wewnątrz bboxa. */
+export function miniGpzMarkerSpacingGaps(): readonly string[] {
+  const g: string[] = [];
+  const { polaOdejsciowe: po, sprzeglo: sp, szynaSn, enclosure: e, minGap, transformator: tr } = MINI_GPZ;
+  for (const x of po.xs) {
+    if (x - po.aparat.size / 2 < szynaSn.x1 || x + po.aparat.size / 2 > szynaSn.x2)
+      g.push(`pole odejściowe x=${x} poza przęsłem szyny SN`);
+    if (Math.abs(x - sp.x) < sp.size / 2 + po.aparat.size / 2 + minGap.marker)
+      g.push(`pole odejściowe x=${x} koliduje ze sprzęgłem sekcyjnym`);
+  }
+  for (let i = 1; i < po.xs.length; i++) {
+    for (let j = 0; j < i; j++) {
+      if (Math.abs(po.xs[i] - po.xs[j]) < po.aparat.size + minGap.marker)
+        g.push(`pola odejściowe x=${po.xs[i]} i x=${po.xs[j]} zlewają się`);
+    }
+  }
+  if (tr.circle2Y + tr.circleR > e.y + e.height - minGap.outline) g.push('transformator wychodzi poza enklozurę');
+  if (po.stubKoncowy.y2 > e.y + e.height) g.push('pole odejściowe niemagistralne wychodzi poza enklozurę');
+  return g;
+}
+
 /** GS-5: topologia pól liniowych sylwetki — L0 niesie ROLĘ TOPOLOGICZNĄ
  *  stacji w ciągu (spec §19.3 + prezentacja stacji ostatniej w ciągu,
  *  recenzja NO-GO 2026-07-17 pkt 7): `końcowa` = jedno pole WE (szyna kończy

@@ -88,7 +88,7 @@ def _get_snapshot_for_case(request: Request, case_id: str) -> NetworkSnapshot:
 
 
 @router.get("/cases/{case_id}/diagnostics")
-async def get_diagnostics(
+def get_diagnostics(
     case_id: str,
     request: Request,
 ) -> dict[str, Any]:
@@ -105,7 +105,7 @@ async def get_diagnostics(
 
 
 @router.get("/cases/{case_id}/diagnostics/preflight")
-async def get_preflight(
+def get_preflight(
     case_id: str,
     request: Request,
 ) -> dict[str, Any]:
@@ -123,7 +123,7 @@ async def get_preflight(
 
 
 @router.get("/cases/{case_id}/enm/diff")
-async def get_enm_diff(
+def get_enm_diff(
     case_id: str,
     request: Request,
     from_snapshot: str = Query(alias="from", description="ID snapshotu źródłowego"),

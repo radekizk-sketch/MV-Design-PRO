@@ -80,7 +80,7 @@ export const SSCI_STRINGS = {
   dlaczegoTytul: 'Uzasadnienie',
 
   // Ślad WHITE BOX (tryb ekspercki)
-  sladTytul: 'Ślad obliczeń SSCI (WHITE BOX)',
+  sladTytul: 'Ślad obliczeń SSCI (pełna jawność)',
   sladPokaz: 'Pokaż ślad obliczeń',
   sladUkryj: 'Ukryj ślad obliczeń',
   sladKolSymbol: 'Wielkość',

@@ -126,6 +126,24 @@ const LV_OWNER_REF_MARKER = '#lv-';
 const ANNOTATION_SEGMENT_KINDS = new Set(['protectionTrip', 'measurementLink', 'leader']);
 
 /**
+ * KD-8 poz. 1 — KSZTAŁT palety rysunku (jeden zestaw kluczy, wiele motywów).
+ *
+ * Ten moduł niesie WARTOŚCI motywu dyspozytorskiego (ciemnego); wariant jasny
+ * ekranu i wybór palety po motywie żyją w `theme/palette.ts` (zero cyklu
+ * importów: `palette.ts` → `colorTokens.ts`, nigdy odwrotnie). Funkcje
+ * klasyfikujące niżej przyjmują paletę PARAMETREM (domyślnie ciemna), dzięki
+ * czemu pozostają czyste i deterministyczne — kolor NIE jest już własnością
+ * modułu, tylko argumentem renderu.
+ */
+export interface SldPalette {
+  readonly canvasBackground: string;
+  readonly baseStroke: string;
+  readonly voltage: Readonly<Record<VoltageClass, string>>;
+  readonly state: Readonly<Record<'closed' | 'open' | 'nop', string>>;
+  readonly highlight: Readonly<Record<HighlightKey, string>>;
+}
+
+/**
  * Klasyfikator napięcia odcinka/symbolu z `PreviewElementMeta` — CZYSTA
  * funkcja (`kind`/`ownerRef` już policzone przez `buildScene.ts`/`compose/*`,
  * zero re-derywacji z geometrii, zero zależności od `lod`: IDENTYCZNY wynik
@@ -149,9 +167,12 @@ export function voltageClassOf(meta: VoltageClassifiableMeta | undefined): Volta
  * `measurementLink`/`leader`) zostają na `BASE_STROKE` — nie są torem mocy,
  * kolorowanie napięciem sugerowałoby fałszywie, że niosą prąd sieci.
  */
-export function baseSegmentStrokeColor(meta: VoltageClassifiableMeta | undefined): string {
-  if (meta?.kind && ANNOTATION_SEGMENT_KINDS.has(meta.kind)) return BASE_STROKE;
-  return VOLTAGE_COLOR[voltageClassOf(meta)];
+export function baseSegmentStrokeColor(
+  meta: VoltageClassifiableMeta | undefined,
+  palette: SldPalette = DARK_SCADA_SLD_PALETTE,
+): string {
+  if (meta?.kind && ANNOTATION_SEGMENT_KINDS.has(meta.kind)) return palette.baseStroke;
+  return palette.voltage[voltageClassOf(meta)];
 }
 
 /**
@@ -175,11 +196,15 @@ export function baseSegmentStrokeColor(meta: VoltageClassifiableMeta | undefined
  * `PreviewElementMeta` — zmiana geometrii/kontraktu kompozycji POZA
  * zakresem S3 (S3 = tokeny, nie nowe pola danych).
  */
-export function baseSymbolStrokeColor(symbolId: SymbolId, meta: VoltageClassifiableMeta | undefined): string {
-  if (symbolId === 'noPoint') return STATE_COLOR.nop;
-  if (symbolId === 'gridSource') return VOLTAGE_COLOR.hv;
-  if (symbolId === 'loadArrow') return VOLTAGE_COLOR.nn;
-  return VOLTAGE_COLOR[voltageClassOf(meta)];
+export function baseSymbolStrokeColor(
+  symbolId: SymbolId,
+  meta: VoltageClassifiableMeta | undefined,
+  palette: SldPalette = DARK_SCADA_SLD_PALETTE,
+): string {
+  if (symbolId === 'noPoint') return palette.state.nop;
+  if (symbolId === 'gridSource') return palette.voltage.hv;
+  if (symbolId === 'loadArrow') return palette.voltage.nn;
+  return palette.voltage[voltageClassOf(meta)];
 }
 
 // ---------------------------------------------------------------------------
@@ -214,7 +239,21 @@ export const STATE_COLOR = {
 //    `SldCanvasV3.tsx`/`compose/sourceKind.ts`, TERAZ JEDNO miejsce).
 // ---------------------------------------------------------------------------
 
-export const HIGHLIGHT_COLOR = {
+export type HighlightKey =
+  | 'energized'
+  | 'deenergized'
+  | 'standby'
+  | 'maintenance'
+  | 'flow'
+  | 'oltc'
+  | 'fault'
+  | 'faultWarning'
+  | 'faultOk'
+  | 'resultLabel'
+  | 'resultStale'
+  | 'selection';
+
+export const HIGHLIGHT_COLOR: Readonly<Record<HighlightKey, string>> = {
   /** Energizacja (spec §6 P5) — dawne `OVERLAY_ENERGIZED_STROKE`
    *  (`SldCanvasV3.tsx`) I `SOURCE_STATE_OVERLAY_COLOR.energized`
    *  (`compose/sourceKind.ts`) — DWA literały z TĄ SAMĄ wartością w dwóch
@@ -250,14 +289,32 @@ export const HIGHLIGHT_COLOR = {
    *  Immutability Rule): wyszarzona lawenda + baner „⚠ wyniki nieaktualne".
    *  Etykiety NIE znikają (inżynier ma widzieć, że są stare), ale są wizualnie
    *  stłumione — odrębny, ściemniony odcień od `resultLabel`. */
-  resultStale: '#7A6E8F',
+  /* KD-8 poz. 1 (Zero-Debt, defekt zastany zmierzony przy tokenizacji):
+   * dawna wartość `#7A6E8F` dawała na tle kanwy 4,08:1 — etykieta LICZBOWA
+   * poniżej progu czytelności tekstu. Rozjaśniona do 5,09:1 z zachowaniem
+   * roli „stłumiona wobec `resultLabel`" (8,02:1) — wyniki stare nadal
+   * ustępują pierwszeństwa aktualnym, ale dają się PRZECZYTAĆ. */
+  resultStale: '#8A7E9F',
   /** Selekcja elementu (rezerwa tabeli — `SldCanvasV3.tsx` nie ma dziś
    *  własnej nakładki stroke dla selekcji, ta wchodzi przez `useSelectionStore`
    *  w warstwie wyższej; GAP do S4/S5: podłączenie tego tokenu jako realnej
    *  nakładki na kanwie, dziś poza zakresem S3 — nowa funkcja renderu, nie
    *  tokenizacja istniejącej). Wartość zgodna z v2 `COLOR_SELECTION`. */
   selection: '#35C7FF',
-} as const;
+};
+
+/**
+ * Paleta rysunku motywu DYSPOZYTORSKIEGO (ciemnego) — złożenie stałych wyżej
+ * w JEDEN obiekt. Ta struktura (nie luźne stałe) jest tym, co render przekazuje
+ * przez kontekst, a eksport bierze jako źródło substytucji.
+ */
+export const DARK_SCADA_SLD_PALETTE: SldPalette = {
+  canvasBackground: CANVAS_BACKGROUND,
+  baseStroke: BASE_STROKE,
+  voltage: VOLTAGE_COLOR,
+  state: STATE_COLOR,
+  highlight: HIGHLIGHT_COLOR,
+};
 
 // ---------------------------------------------------------------------------
 // R3 (RECENZJA_WARSTWA_WYNIKOWA_2026-07 §wym.9) — PROGI KOLORYSTYCZNE warstwy
@@ -274,17 +331,23 @@ export const HIGHLIGHT_COLOR = {
  * poprawny zostaje na bazowym kolorze warstwy (`HIGHLIGHT_COLOR.resultLabel`),
  * zero recoloringu „na zielono” w UI (brak sygnału OK per element w kontrakcie).
  */
-const SEVERITY_COLOR: Readonly<Record<string, string>> = {
-  CRITICAL: HIGHLIGHT_COLOR.fault,
-  IMPORTANT: HIGHLIGHT_COLOR.oltc,
-  WARNING: HIGHLIGHT_COLOR.standby,
+const SEVERITY_HIGHLIGHT_KEY: Readonly<Record<string, HighlightKey>> = {
+  CRITICAL: 'fault',
+  IMPORTANT: 'oltc',
+  WARNING: 'standby',
 } as const;
 
 /** Kolor progu dla severity (`null` = INFO/nieznane ⇒ bez nadpisania koloru
- *  bazowego warstwy). CZYSTA funkcja — zero fizyki, odczyt tabeli. */
-export function resultSeverityColor(severity: string | undefined): string | null {
+ *  bazowego warstwy). CZYSTA funkcja — zero fizyki, odczyt tabeli.
+ *  KD-8 poz. 1: tabela mapuje severity na KLUCZ tokenu, a kolor bierze z
+ *  palety podanej parametrem — próg zgodności zostaje ten sam w obu motywach. */
+export function resultSeverityColor(
+  severity: string | undefined,
+  palette: SldPalette = DARK_SCADA_SLD_PALETTE,
+): string | null {
   if (!severity) return null;
-  return SEVERITY_COLOR[severity] ?? null;
+  const key = SEVERITY_HIGHLIGHT_KEY[severity];
+  return key === undefined ? null : palette.highlight[key];
 }
 
 /** Ranga severity (wyższa liczba = poważniejsze) — do wyboru najgroźniejszego

@@ -6,24 +6,25 @@ import { ZWARCIA_POROWNANIE_STRINGS as SZ } from '../strings';
 import { WZORZEC_STRINGS } from '../../wzorzec';
 import { useShellStore } from '../../../shell/useShellStore';
 import { fetchPowerFlowRuns } from '../../../../ui/power-flow-comparison/api';
-import { fetchShortCircuitResults } from '../../../../ui/results-inspector/api';
+import { pobierzPorownanieZwarciowe } from '../zwarciaPorownanieApi';
 import { useExecutionRunsStore } from '../../../../ui/study-cases/runStore';
 import { useStudyCasesStore } from '../../../../ui/study-cases/store';
 import type { StudyCaseListItem } from '../../../../ui/study-cases/types';
 import { runsFixture } from './fixtures';
-import { przebiegFixture, wierszSc } from './zwarcieFixtures';
+import { przebiegFixture, punktPorownania } from './zwarcieFixtures';
 
 vi.mock('../../../../ui/power-flow-comparison/api', () => ({
   fetchPowerFlowRuns: vi.fn(),
   createPowerFlowComparison: vi.fn(),
 }));
 
-vi.mock('../../../../ui/results-inspector/api', () => ({
-  fetchShortCircuitResults: vi.fn(),
+// KD-3 poz. 11: ekran woła JEDNĄ końcówkę porównania — delty liczy backend.
+vi.mock('../zwarciaPorownanieApi', () => ({
+  pobierzPorownanieZwarciowe: vi.fn(),
 }));
 
 const mockPfRuns = vi.mocked(fetchPowerFlowRuns);
-const mockScResults = vi.mocked(fetchShortCircuitResults);
+const mockPorownanie = vi.mocked(pobierzPorownanieZwarciowe);
 
 function przypadek(over: Partial<StudyCaseListItem> = {}): StudyCaseListItem {
   return {
@@ -56,18 +57,46 @@ function ustawPrzebiegi() {
 
 beforeEach(() => {
   mockPfRuns.mockResolvedValue(runsFixture());
-  mockScResults.mockImplementation((runId: string) =>
-    Promise.resolve(
-      runId === 'sc-run-a'
-        ? { run_id: 'sc-run-a', rows: [wierszSc({ target_id: 'B1', target_name: 'Szyna 1', ikss_ka: 10 })] }
-        : {
-            run_id: 'sc-run-b',
-            rows: [
-              wierszSc({ target_id: 'B1', target_name: 'Szyna 1', ikss_ka: 12 }),
-              wierszSc({ target_id: 'B2', target_name: 'Szyna 2', ikss_ka: 8 }),
-            ],
-          },
-    ),
+  mockPorownanie.mockImplementation((runIdA: string, runIdB: string) =>
+    Promise.resolve({
+      run_id_a: runIdA,
+      run_id_b: runIdB,
+      report_version: '1.3.0',
+      punkty: [
+        punktPorownania({
+          target_id: 'B1',
+          target_name: 'Szyna 1',
+          ikss_ka_a: 10,
+          ikss_ka_b: 12,
+          delta_ikss_ka: 2,
+          delta_ikss_percent: 20,
+          ip_ka_a: 25,
+          ip_ka_b: 30,
+          delta_ip_ka: 5,
+          delta_ip_percent: 20,
+          ith_ka_a: 10.5,
+          ith_ka_b: 12.6,
+          delta_ith_ka: 2.1,
+          delta_ith_percent: 20,
+          sk_mva_a: 200,
+          sk_mva_b: 240,
+          delta_sk_mva: 40,
+          delta_sk_percent: 20,
+        }),
+        punktPorownania({
+          target_id: 'B2',
+          target_name: 'Szyna 2',
+          obecny_w: 'B',
+          ikss_ka_b: 8,
+          ip_ka_b: 20,
+          ith_ka_b: 8.4,
+          sk_mva_b: 160,
+        }),
+      ],
+      liczba_punktow_wspolnych: 1,
+      liczba_punktow_tylko_a: 0,
+      liczba_punktow_tylko_b: 1,
+    }),
   );
   ustawPrzebiegi();
   useStudyCasesStore.setState({ cases: [przypadek()] });
@@ -142,13 +171,15 @@ describe('Porównanie A/B zwarć — porównanie i tabela delt', () => {
     await screen.findByTestId('mvd-porz-wynik');
   }
 
-  it('klik „Porównaj przebiegi" woła backend dla obu przebiegów (zero automatyzmu)', async () => {
+  it('klik „Porównaj przebiegi" woła JEDNĄ końcówkę porównania (zero automatyzmu)', async () => {
     render(<EkranPorownania {...props()} />);
     await przejdzDoZwarc();
-    expect(mockScResults).not.toHaveBeenCalled();
+    expect(mockPorownanie).not.toHaveBeenCalled();
     await wykonaj();
-    expect(mockScResults).toHaveBeenCalledWith('sc-run-a');
-    expect(mockScResults).toHaveBeenCalledWith('sc-run-b');
+    // KD-3 poz. 11: jedno wołanie z parą przebiegów zamiast dwóch pobrań
+    // wyników i odejmowania w prezentacji.
+    expect(mockPorownanie).toHaveBeenCalledTimes(1);
+    expect(mockPorownanie).toHaveBeenCalledWith('sc-run-a', 'sc-run-b');
   });
 
   it('tabela delt: wspólny punkt z Ik" A/B/Δ (procent, format PL)', async () => {
@@ -171,7 +202,7 @@ describe('Porównanie A/B zwarć — porównanie i tabela delt', () => {
   });
 
   it('błąd backendu → uczciwy komunikat PL, brak wyniku', async () => {
-    mockScResults.mockRejectedValue(new Error('sieć padła'));
+    mockPorownanie.mockRejectedValue(new Error('sieć padła'));
     render(<EkranPorownania {...props()} />);
     await przejdzDoZwarc();
     fireEvent.change(screen.getByTestId('mvd-porz-select-a'), { target: { value: 'sc-run-a' } });
@@ -188,7 +219,7 @@ describe('Porównanie A/B zwarć — porównanie i tabela delt', () => {
     fireEvent.change(screen.getByTestId('mvd-porz-select-b'), { target: { value: 'sc-run-a' } });
     fireEvent.click(screen.getByTestId('mvd-porz-przycisk'));
     expect(screen.getByTestId('mvd-porz-blad')).toHaveTextContent(SZ.walidacjaTeSame);
-    expect(mockScResults).not.toHaveBeenCalled();
+    expect(mockPorownanie).not.toHaveBeenCalled();
   });
 });
 

@@ -86,7 +86,7 @@ def test_bidirectional_flow(companion: dict) -> None:
     assert reverse, "expected reverse-flowing branches (OZE backfeed upstream)"
 
 
-def test_direction_matches_solver_sign(companion: dict) -> None:
+def test_direction_matches_solver_sign(companion: dict, substrate: dict) -> None:
     """``flow_direction`` per branch EQUALS sign(Re(branch_s_from)) of the solver.
 
     Re-runs the frozen solver here and checks the companion did not invent or flip
@@ -110,8 +110,15 @@ def test_direction_matches_solver_sign(companion: dict) -> None:
     ``test_canonical_analysis_api.py::test_resultset_v1_load_flow_direction_and_voltage_drop_are_physically_correct``
     (p_from_mw>0 source->load and v_pu(load)<v_pu(slack) on a minimal,
     hand-verified 2-bus network).
+
+    INTENCJA (DET-9): przedmiotem testu jest PONOWNY BIEG SOLVERA na tym samym
+    wejsciu, co towarzysz — nie ponowna budowa substratu. Bierzemy wiec ENM z
+    fixture modulu (ten sam, z ktorego policzono `companion`), zamiast budowac
+    identyczna siec 53 stacji drugi raz; porownanie kierunkow jest tym samym
+    porownaniem, a nawet scislejszym, bo oba boki startuja z DOKLADNIE tego
+    samego ENM zamiast z dwoch osobnych, "powinny byc rowne" kopii.
     """
-    enm = EnergyNetworkModel.model_validate(build_sld_substrate_52s()["enm"])
+    enm = EnergyNetworkModel.model_validate(substrate["enm"])
     pf_input, _slack = _build_power_flow_input(enm)
     solution = solve_power_flow_physics(pf_input)
     eps = 1.0e-3
@@ -130,15 +137,51 @@ def test_direction_matches_solver_sign(companion: dict) -> None:
         )
 
 
-def test_determinism() -> None:
-    s1 = build_sld_substrate_52s()
+def test_determinism(companion: dict) -> None:
+    """INTENCJA: DWA niezalezne przebiegi (budowa substratu + towarzysz rozplywu)
+    daja identycznego towarzysza.
+
+    Bieg A to `companion` z fixture modulu — osobne wywolanie `build_sld_substrate_52s()`
+    i osobne `compute_substrate_power_flow()`. Bieg B liczymy tu od zera. Oba boki
+    porownania nadal pochodza z rozlacznych wywolan budowniczego i solvera (determinizm
+    jest realnie sprawdzany), ale nie liczymy strony A po raz drugi w tym samym module.
+    """
     s2 = build_sld_substrate_52s()
-    enm1 = EnergyNetworkModel.model_validate(s1["enm"])
     enm2 = EnergyNetworkModel.model_validate(s2["enm"])
-    c1 = compute_substrate_power_flow(
-        enm1, case_ref=_CASE_REF, case_label=_CASE_LABEL, enm_hash=s1["snapshot_hash"]
-    )
     c2 = compute_substrate_power_flow(
         enm2, case_ref=_CASE_REF, case_label=_CASE_LABEL, enm_hash=s2["snapshot_hash"]
     )
-    assert c1 == c2
+    assert companion == c2
+
+
+# ---- defekt A1: blizniaczy budowniczy nie moze zgubic generacji --------------
+
+
+def test_zip_split_is_carried_by_the_twin_builder() -> None:
+    """Ten budowniczy jest BLIZNIAKIEM `enm.canonical_analysis._execute_power_flow`.
+
+    Rozdzielenie ZIP (baza odbiorowa + czesc stala) musi przechodzic tak samo w
+    obu, inaczej ten sam model policzy sie inaczej w rozplywie kanonicznym i w
+    towarzyszu SLD. Defekt A1 (przeglad fali 2026-08-01) gubil CALA generacje na
+    szynie z odbiorem zaleznym wylacznie od czestotliwosci; kontrakt jest tu
+    przypiety na PQSpec, zeby blizniak nie mogl sie cicho rozjechac.
+    """
+    from tests.enm.test_zip_generation_split import _payload_freq_only
+
+    enm = EnergyNetworkModel.model_validate(_payload_freq_only("Blizniak SLD", p_gen_mw=2.0))
+    pf_input, _slack = _build_power_flow_input(enm)
+    zip_specs = [s for s in pf_input.pq if s.zip_coeffs is not None]
+    assert zip_specs, "szyna ZIP musi trafic do wejscia rozplywu"
+    spec = zip_specs[0]
+    # Baza ODBIOROWA (3,0 MW) obok mocy WYPADKOWEJ szyny (3,0 - 2,0 = 1,0 MW):
+    # bez tego pola solver przemnozylby wielomianem cala moc szyny.
+    assert spec.zip_base_p_mw == pytest.approx(3.0)
+    assert spec.p_mw == pytest.approx(1.0)
+
+    solution = solve_power_flow_physics(pf_input)
+    assert solution.converged
+    # Przy f = f0 mnoznik czestotliwosciowy = 1,0 i wielomian napieciowy jest
+    # trywialny, wiec moc wstrzyknieta szyny to dokladnie -3,0 + 2,0 = -1,0 MW.
+    assert solution.node_p_spec_effective_pu[spec.node_id] * pf_input.base_mva == pytest.approx(
+        -1.0, abs=1e-9
+    )

@@ -57,6 +57,31 @@ function gpzSourceOnHvBus(gpz: Substation, sources: readonly Source[] | undefine
   return sourceBus.voltage_kv > 60;
 }
 
+/**
+ * KD-7 (Zero-Debt, dług zastany): czy scena rysuje blok TEGO GPZ jako
+ * ZWINIĘTY (`gpzCollapsed`, KD-5 — widok przeglądowy L0)?
+ *
+ * DLACZEGO WYROCZNIE MUSZĄ TO WIEDZIEĆ. Obie wyrocznie §21 opisują RYSUNEK
+ * rozdzielni: kolumnę WN (§21.1) i wyróżnienie szyny SN grubością (§21.2).
+ * KD-5 wprowadziło kanon, w którym na poziomie przeglądowym cała geometria
+ * wewnętrzna GPZ jest ŚWIADOMIE zwinięta do jednego symbolu (symbole 16 px
+ * świata renderowały się tam po ≈1,9 px — szum, nie informacja). Wyroczni
+ * nie zaktualizowano, więc `npm run accept:sld-v3` — krok BLOKUJĄCY w
+ * `.github/workflows/sld-determinism.yml` — jest czerwony od `5bd044f2`
+ * (zmierzone 2026-07-31: zielony na `6946807a`, 2 luki na L0 od KD-5 poz. 1
+ * włącznie, L1/L2 czyste przez cały czas).
+ *
+ * INTENCJA WYROCZNI ZACHOWANA, NIE ROZLUŹNIONA: warunek czyta SCENĘ (obecność
+ * symbolu `gpzCollapsed` tego GPZ), a NIE numer LOD. Gdyby zwinięcie zniknęło
+ * — z poziomu przeglądowego albo w ogóle — wyrocznie natychmiast gryzą znowu
+ * na każdym poziomie. Rysunek ROZWINIĘTY nigdy nie jest zwolniony z §21.
+ */
+function gpzBlockCollapsed(scene: SceneV3, gpzRef?: string): boolean {
+  return scene.symbols.some(
+    (s) => s.symbolId === 'gpzCollapsed' && (gpzRef == null || s.meta?.ownerRef === gpzRef),
+  );
+}
+
 /** TR WN/SN wg tej samej regułY co adapter (`enmToCanonicalGpzAdapter.ts`
  *  `deriveHvSystemSource`): `Substation.transformer_refs` → transformator z
  *  `uhv_kv > 60` — WYODRĘBNIONE tu, bo wyrocznia NIE może importować adaptera
@@ -88,6 +113,9 @@ export function gpzHvColumnGaps(scene: SceneV3, snapshot: GpzHvColumnSnapshot): 
   const gpzSubstations = (snapshot.substations ?? []).filter((s) => s.station_type === 'gpz');
 
   for (const gpz of gpzSubstations) {
+    // KD-7: blok zwinięty (KD-5) nie rysuje geometrii wewnętrznej Z ZAŁOŻENIA —
+    // §21.1 opisuje kolumnę WN rysunku ROZWINIĘTEGO (patrz `gpzBlockCollapsed`).
+    if (gpzBlockCollapsed(scene, gpz.ref_id)) continue;
     const hvTransformers = hvTransformersOfGpz(gpz, snapshot.transformers ?? []);
     if (hvTransformers.length === 0) continue; // ENM nie niesie TR WN/SN dla tego GPZ — poza zakresem D3-1.
 
@@ -275,7 +303,10 @@ export function gpzDominanceGaps(scene: SceneV3): readonly GpzDominanceGap[] {
     if (!(GPZ_BUS_WIDTH > STATION_BUS_WIDTH)) {
       gaps.push({ reason: 'Szyna GPZ (busGpz) nie jest grubsza niż szyna stacji (bus) — regresja stałych SEGMENT_STROKE_WIDTH.' });
     }
-  } else if (!gpzSnBusThickness && scene.meta.sections.length > 0) {
+  } else if (!gpzSnBusThickness && scene.meta.sections.length > 0 && !gpzBlockCollapsed(scene)) {
+    // KD-7: blok zwinięty (KD-5) nie rysuje szyn sekcji SN — nie ma czego
+    // wyróżniać grubością; kryterium POWIERZCHNI strefy (a) obowiązuje nadal,
+    // także na przeglądzie (patrz `gpzBlockCollapsed`).
     gaps.push({
       reason:
         'GPZ ma sekcje SN, ale żaden segment szyny nie niesie meta.kind==="busGpz" — szyna GPZ nie jest wizualnie ' +

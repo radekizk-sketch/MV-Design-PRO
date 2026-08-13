@@ -43,7 +43,7 @@ describe('ApparatusEarthingSwitch — K30-108 IEC 60617-7-13-05 compliance', () 
     expect(allLineStrokes.filter((s) => s !== null).length).toBe(0);
   });
 
-  it('state=absent → empty g (uziemnik nie wystÄ™puje)', () => {
+  it('state=absent → empty g (uziemnik nie występuje)', () => {
     const { container } = render(
       <svg>
         <ApparatusEarthingSwitch cxAxis={100} cy={50} state="absent" />

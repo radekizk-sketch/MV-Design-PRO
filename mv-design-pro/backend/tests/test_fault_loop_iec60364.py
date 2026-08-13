@@ -256,7 +256,7 @@ class TestErrorLogging:
             return_conductor=LoopImpedanceComponent(label="PE", r_ohm=0.1, x_ohm=0.05),
             transformer_impedance=LoopImpedanceComponent(label="TR", r_ohm=0.01, x_ohm=0.04),
         )
-        with caplog.at_level("WARNING", logger="src.network_model.solvers.fault_loop_iec60364"):
+        with caplog.at_level("WARNING", logger="network_model.solvers.fault_loop_iec60364"):
             with pytest.raises(ValueError):
                 compute_fault_loop(bad)
         # exactly one warning emitted
@@ -266,7 +266,7 @@ class TestErrorLogging:
         assert getattr(warnings[0], "fault_node_id", None) == "bus_LV_42"
 
     def test_tt_network_emits_warning(self, caplog: pytest.LogCaptureFixture) -> None:
-        from src.network_model.solvers.fault_loop_iec60364 import NetworkType
+        from network_model.solvers.fault_loop_iec60364 import NetworkType
 
         bad = FaultLoopInput(
             fault_node_id="bus_TT_1",
@@ -276,7 +276,7 @@ class TestErrorLogging:
             transformer_impedance=LoopImpedanceComponent(label="TR", r_ohm=0.01, x_ohm=0.04),
             network_type=NetworkType.TT,
         )
-        with caplog.at_level("WARNING", logger="src.network_model.solvers.fault_loop_iec60364"):
+        with caplog.at_level("WARNING", logger="network_model.solvers.fault_loop_iec60364"):
             with pytest.raises(NotImplementedError):
                 compute_fault_loop(bad)
         warnings = [r for r in caplog.records if r.levelname == "WARNING"]
@@ -291,7 +291,7 @@ class TestErrorLogging:
             return_conductor=LoopImpedanceComponent(label="PE", r_ohm=1e-15, x_ohm=0),
             transformer_impedance=LoopImpedanceComponent(label="TR", r_ohm=1e-15, x_ohm=0),
         )
-        with caplog.at_level("WARNING", logger="src.network_model.solvers.fault_loop_iec60364"):
+        with caplog.at_level("WARNING", logger="network_model.solvers.fault_loop_iec60364"):
             with pytest.raises(ValueError):
                 compute_fault_loop(bad)
         warnings = [r for r in caplog.records if r.levelname == "WARNING"]
@@ -308,7 +308,7 @@ class TestErrorLogging:
             return_conductor=LoopImpedanceComponent(label="PE", r_ohm=0.1, x_ohm=0.05),
             transformer_impedance=LoopImpedanceComponent(label="TR", r_ohm=0.01, x_ohm=0.04),
         )
-        with caplog.at_level("WARNING", logger="src.network_model.solvers.fault_loop_iec60364"):
+        with caplog.at_level("WARNING", logger="network_model.solvers.fault_loop_iec60364"):
             with pytest.raises(ValueError):
                 compute_fault_loop(bad)
         warnings = [r for r in caplog.records if r.levelname == "WARNING"]
@@ -317,7 +317,7 @@ class TestErrorLogging:
 
     def test_success_path_emits_no_warning(self, caplog: pytest.LogCaptureFixture) -> None:
         """Happy path nie powinien logować — tylko reject paths logują."""
-        with caplog.at_level("WARNING", logger="src.network_model.solvers.fault_loop_iec60364"):
+        with caplog.at_level("WARNING", logger="network_model.solvers.fault_loop_iec60364"):
             compute_fault_loop(_make_typical_tn_s_input())
         assert [r for r in caplog.records if r.levelname == "WARNING"] == []
 

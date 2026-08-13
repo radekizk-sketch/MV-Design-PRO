@@ -6,7 +6,7 @@
  * 1. Powierzchnia rozwinięta (openMode 'expand_workspace') wypełnia warsztat
  *    (WorkspaceSurfaceRouter region="main" — jak stary `mainSurfaceExpanded`).
  * 2. Trasy dedykowane renderują dawne strony: #dashboard (pulpit projektów
- *    legacy), #sld-view (podgląd), #kreator-stacji-v2, #fault-scenarios,
+ *    legacy), #sld-view (podgląd), #fault-scenarios,
  *    #enm-inspector (za flagą), trasa nieznana → strona błędu trasy.
  * 3. W pozostałych przypadkach zawartość wyznacza aktywna przestrzeń
  *    (LegacySurface / pulpit projektu nowej powłoki).
@@ -18,17 +18,19 @@ import type { ReactNode } from 'react';
 
 import { EnmInspectorPage } from '../../ui/enm-inspector';
 import { FaultScenariosPanel, FaultScenarioModal } from '../../ui/fault-scenarios';
-import { StationWizardSurface } from '../../ui/network-build/station-wizard-v2/StationWizardSurface';
 import { featureFlags } from '../../ui/config/featureFlags';
 import { SldCanvasV3Workspace } from '../../ui/sld/v3/canvas/SldCanvasV3Workspace';
 import { ProjectDashboardSurface } from '../../ui/workspace/surfaces/ProjectDashboardSurface';
 import { WorkspaceSurfaceRouter } from '../../ui/workspace';
 import { SemanticIssuesBanner } from '../../ui/tech-card/SemanticIssuesBanner';
+import { useAppStateStore } from '../../ui/app-state';
 import { useNetworkBuildStore } from '../../ui/network-build/networkBuildStore';
 import { useSnapshotStore } from '../../ui/topology/snapshotStore';
 import { useSelectionStore } from '../../ui/selection/store';
 import { ROUTES, getRouteByHash, isAnalysisRouteAlias } from '../../ui/navigation';
 import type { SpaceId } from '../shell/spaces';
+import { NastepnyKrokSchematu, PrzelacznikPodgladu } from '../spaces/schemat';
+import { useShellStore } from '../shell/useShellStore';
 import { LegacySurface } from './LegacySurface';
 import { LegacyPasekNarzedzi } from './LegacyPasekNarzedzi';
 
@@ -43,6 +45,41 @@ function UnknownRoutePage({ route }: { route: string }) {
           powierzchni. Przejdź do jednej z aktywnych sekcji albo popraw routing.
         </p>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Trasa `#fault-scenarios` (most legacy) — K8, naprawa u źródła (Zero-Debt).
+ *
+ * Defekt zastany: panel dostawał `studyCaseId={null}` NA SZTYWNO, więc trasa
+ * ZAWSZE pokazywała stan „Wybierz wariant pracy…" — scenariuszy zwarciowych nie
+ * dało się obejrzeć ani dodać, niezależnie od aktywnego przypadku. Panel sam
+ * ustawia `studyCaseId` w store (efekt na propie), więc jedyną poprawną wartością
+ * jest AKTYWNY przypadek obliczeniowy powłoki; brak przypadku nadal daje uczciwy
+ * stan zerowy panelu (bez zgadywania identyfikatora).
+ */
+function ScenariuszeZwarcioweTrasa() {
+  const activeCaseId = useAppStateStore((state) => state.activeCaseId);
+  return (
+    <div className="flex flex-col h-full">
+      <FaultScenariosPanel studyCaseId={activeCaseId} />
+      <FaultScenarioModal />
+    </div>
+  );
+}
+
+/**
+ * Trasa `#sld` — kanwa schematu. KD-4 (luka L-1): tryb pracy kanwy (edycja /
+ * podgląd) jest JEDNĄ prawdą powłoki, więc jawna trasa schematu honoruje go
+ * tak samo jak przestrzeń „Schemat" (inaczej ten sam widok miałby dwa różne
+ * zachowania zależnie od tego, jak się do niego weszło).
+ */
+function SldTrasaSchematu() {
+  const podglad = useShellStore((state) => state.podgladSchematu);
+  return (
+    <div data-testid="workspace-surface-main" className="mvd-legacy-host">
+      <SldCanvasV3Workspace readOnly={podglad} />
     </div>
   );
 }
@@ -71,16 +108,13 @@ function TrasaLubPrzestrzen({ route, space, pulpit, gotowosc, model, obliczenia,
   if (route === '#enm-inspector' && featureFlags.ENM_INSPECTOR_VISIBLE) {
     return <EnmInspectorPage />;
   }
-  if (route === '#kreator-stacji-v2') {
-    return <StationWizardSurface />;
-  }
+  // KD-1: trasa `#kreator-stacji-v2` USUNIĘTA razem z podzespołem kreatora
+  // stacji v2 (werdykt MARTWY, inwentarz parytetu mostów L-6) — realnym
+  // kreatorem stacji jest `ui2/kreatory/stacja/KreatorStacjiSnNn` wpięty przez
+  // `operationFormRegistry` (operacje `insert_station_on_segment_sn` /
+  // `append_station_on_endpoint`). Nieznany hash → zachowanie domyślne.
   if (route === '#fault-scenarios') {
-    return (
-      <div className="flex flex-col h-full">
-        <FaultScenariosPanel studyCaseId={null} />
-        <FaultScenarioModal />
-      </div>
-    );
+    return <ScenariuszeZwarcioweTrasa />;
   }
   // Pulpit projektów legacy (lista projektów + nowy projekt) — trasa #dashboard;
   // przestrzeń „Projekt" nowej powłoki kieruje tu akcją „Otwórz projekt".
@@ -101,11 +135,7 @@ function TrasaLubPrzestrzen({ route, space, pulpit, gotowosc, model, obliczenia,
   // Jawna trasa schematu — kanwa SLD niezależnie od przestrzeni (parytet
   // starego wejścia: '#sld' zawsze renderował środowisko schematu).
   if (route === ROUTES.SLD.hash) {
-    return (
-      <div data-testid="workspace-surface-main" className="mvd-legacy-host">
-        <SldCanvasV3Workspace />
-      </div>
-    );
+    return <SldTrasaSchematu />;
   }
   if (getRouteByHash(route) === null && !isAnalysisRouteAlias(route)) {
     return <UnknownRoutePage route={route} />;
@@ -151,6 +181,14 @@ export function LegacyWarsztat(props: LegacyWarsztatProps) {
     && props.space !== 'wyniki'
     && props.space !== 'dokumentacja';
 
+  // K4-E2: jawne przejście E2→E3 — pasek „następnego kroku" nad kanwą schematu.
+  // Wyłącznie w przestrzeni „Schemat" z zawartością kanwy (trasa '' lub '#sld');
+  // trasy dedykowane (kreator stacji, scenariusze itd.) mają własny tor pracy.
+  const pokazNastepnyKrokSchematu =
+    props.space === 'schemat'
+    && !mainSurfaceExpanded
+    && (props.route === '' || props.route === ROUTES.SLD.hash);
+
   return (
     <div className="mvd-legacy-host">
       {/* Pasek przepływu pracy + modale funkcji globalnych (dawny AppShellV12). */}
@@ -162,6 +200,9 @@ export function LegacyWarsztat(props: LegacyWarsztatProps) {
           onSelectElement={(ref) => centerSldOnElement(ref)}
         />
       )}
+      {/* KD-4 (L-1): tryb pracy kanwy — przełącznik nad schematem. */}
+      {pokazNastepnyKrokSchematu && <PrzelacznikPodgladu />}
+      {pokazNastepnyKrokSchematu && <NastepnyKrokSchematu />}
       <div className="mvd-legacy-warsztat-tresc">
         {mainSurfaceExpanded ? <WorkspaceSurfaceRouter region="main" /> : <TrasaLubPrzestrzen {...props} />}
       </div>

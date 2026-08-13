@@ -53,6 +53,18 @@ export const PULPIT_STRINGS = {
   brakPrzypadkow: 'Brak przypadków obliczeniowych',
   aktywny: 'aktywny',
 
+  // Kafel „Archiwum projektu (ZIP)" — wejście do okna archiwum (etap przekazania)
+  archiwumTytul: 'Archiwum projektu (ZIP)',
+  archiwumOpis: 'Spakuj projekt do przekazania albo odtwórz go z otrzymanej paczki.',
+  archiwumAkcja: 'Otwórz archiwum',
+
+  // Kafel „Import z arkusza (XLSX)" — trzecia droga zdobycia projektu (etap E1:
+  // dane wejściowe od operatora). Do karty XLSX-IMPORT końcówka importu nie miała
+  // w interfejsie żadnego punktu wejścia.
+  arkuszTytul: 'Import z arkusza (XLSX)',
+  arkuszOpis: 'Utwórz projekt z danych sieci otrzymanych w arkuszu kalkulacyjnym.',
+  arkuszAkcja: 'Otwórz import z arkusza',
+
   // Stany przestrzeni
   brakProjektu: 'Nie otwarto projektu',
   brakProjektuOpis: 'Otwórz projekt, aby zobaczyć pulpit.',

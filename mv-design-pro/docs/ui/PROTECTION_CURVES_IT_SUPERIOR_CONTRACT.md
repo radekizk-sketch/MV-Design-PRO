@@ -4,49 +4,49 @@
 
 ## 1. Cel
 
-C-P22 definiuje **deterministyczny** kontrakt prezentacji krzywych czasowoâ€‘prądowych I–t,
-poĹ‚ączony z decyzją normatywną (P20), z jawnymi marginesami i uzasadnieniem WHY.
-Krzywe są **readâ€‘only** (postâ€‘hoc) i nie tworzą nowych obliczeĹ„ fizycznych.
+C-P22 definiuje **deterministyczny** kontrakt prezentacji krzywych czasowo‑prądowych I–t,
+połączony z decyzją normatywną (P20), z jawnymi marginesami i uzasadnieniem WHY.
+Krzywe są **read‑only** (post‑hoc) i nie tworzą nowych obliczeń fizycznych.
 
-## 2. benchmark vs MVâ€‘DESIGNâ€‘PRO — tabela rĂłĹĽnic
+## 2. benchmark vs MV‑DESIGN‑PRO — tabela różnic
 
-| Obszar | benchmark | MVâ€‘DESIGNâ€‘PRO (benchmark++) |
+| Obszar | benchmark | MV‑DESIGN‑PRO (benchmark++) |
 | --- | --- | --- |
-| Status decyzji | Brak | **PASS / WARNING / FAIL / NOT EVALUATED** na kaĹĽdym wykresie |
+| Status decyzji | Brak | **PASS / WARNING / FAIL / NOT EVALUATED** na każdym wykresie |
 | Uzasadnienie (WHY) | Ukryte | **Jawne, 1–2 linie** (deterministyczne) |
-| ReguĹ‚y normatywne (P20) | Brak listy | **Lista reguĹ‚ P20** przypisana do wykresu |
-| Marginesy | Niejawne | **Jawne marginesy [%]** (bez nowych obliczeĹ„) |
-| Overlay zdarzeĹ„ | Opcjonalny | **Ikâ€ł, i_p, I_th/IÂ˛t** z ProofDocument ID (P18/P19) |
-| Determinizm renderu | Zmienny | **Deterministyczny SVG/PDF** (staĹ‚y porządek serii/markerĂłw) |
+| Reguły normatywne (P20) | Brak listy | **Lista reguł P20** przypisana do wykresu |
+| Marginesy | Niejawne | **Jawne marginesy [%]** (bez nowych obliczeń) |
+| Overlay zdarzeń | Opcjonalny | **Ik″, i_p, I_th/I²t** z ProofDocument ID (P18/P19) |
+| Determinizm renderu | Zmienny | **Deterministyczny SVG/PDF** (stały porządek serii/markerów) |
 | Brak danych | Ukryty | **NOT EVALUATED + missing_data[]** |
 
 ## 3. Zasady interpretacji
 
-1. **Krzywa â‰  decyzja**: wykres zawsze zawiera status P20 (PASS/WARNING/FAIL/NOT EVALUATED).
-2. **Brak danych â‰  FAIL**: brak krzywych, markerĂłw lub reguĹ‚ → status **NOT EVALUATED** i lista `missing_data[]`.
-3. **Marginesy [%]** pochodzą z P22a / P18 (readâ€‘only). Nie są liczone od nowa.
-4. **WHY** zawiera deterministyczne uzasadnienie + listę reguĹ‚ (1–2 linie).
-5. **BUS/protectionâ€‘pair**: wykres jest centryczny względem BUS i pary PRIMARY/BACKUP.
+1. **Krzywa ≠ decyzja**: wykres zawsze zawiera status P20 (PASS/WARNING/FAIL/NOT EVALUATED).
+2. **Brak danych ≠ FAIL**: brak krzywych, markerów lub reguł → status **NOT EVALUATED** i lista `missing_data[]`.
+3. **Marginesy [%]** pochodzą z P22a / P18 (read‑only). Nie są liczone od nowa.
+4. **WHY** zawiera deterministyczne uzasadnienie + listę reguł (1–2 linie).
+5. **BUS/protection‑pair**: wykres jest centryczny względem BUS i pary PRIMARY/BACKUP.
 
 ## 4. Gwarancje determinismu
 
-- **Identyczne wejĹ›cia → identyczne SVG/PDF**.
-- StaĹ‚a kolejnoĹ›ć serii: **PRIMARY → BACKUP → series_id**.
-- StaĹ‚a kolejnoĹ›ć markerĂłw: **IKSS → IP → ITH**.
+- **Identyczne wejścia → identyczne SVG/PDF**.
+- Stała kolejność serii: **PRIMARY → BACKUP → series_id**.
+- Stała kolejność markerów: **IKSS → IP → ITH**.
 - Brak metadanych losowych (timestamp, UUID) w renderze.
 
-## 5. Relacje do pakietĂłw P18 / P20 / P22a / P24+
+## 5. Relacje do pakietów P18 / P20 / P22a / P24+
 
-- **P18/P19** dostarczają markery Ikâ€ł / i_p / I_th/IÂ˛t oraz ProofDocument ID.
-- **P20** dostarcza status normatywny i reguĹ‚y.
-- **P22a** dostarcza marginesy [%] i WHY dla zabezpieczeĹ„.
-- **P24+** zawiera sekcję â€žKrzywe I–t (jeĹ›li dostępne)â€ť z placeholderem
-  i statusem NOT EVALUATED w przypadku brakĂłw.
+- **P18/P19** dostarczają markery Ik″ / i_p / I_th/I²t oraz ProofDocument ID.
+- **P20** dostarcza status normatywny i reguły.
+- **P22a** dostarcza marginesy [%] i WHY dla zabezpieczeń.
+- **P24+** zawiera sekcję „Krzywe I–t (jeśli dostępne)” z placeholderem
+  i statusem NOT EVALUATED w przypadku braków.
 
 ## 6. Wymagania MUST
 
 - UI i terminologia **po polsku**.
 - Render **log–log**.
-- Status + reguĹ‚y + marginesy + WHY są zawsze widoczne.
-- No new physics: brak symulacji dynamicznych i modyfikacji solverĂłw.
+- Status + reguły + marginesy + WHY są zawsze widoczne.
+- No new physics: brak symulacji dynamicznych i modyfikacji solverów.
 

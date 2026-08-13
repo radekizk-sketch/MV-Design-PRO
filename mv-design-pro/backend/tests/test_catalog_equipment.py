@@ -8,27 +8,27 @@ Sprawdza:
 - Determinizm listowan
 """
 
-from src.network_model.catalog.mv_converter_catalog import (
+from network_model.catalog.mv_converter_catalog import (
     get_all_converter_types,
     get_bess_types,
     get_converter_catalog_statistics,
     get_pv_types,
     get_wind_types,
 )
-from src.network_model.catalog.mv_switch_catalog import (
+from network_model.catalog.mv_switch_catalog import (
     get_all_switch_equipment_types,
     get_circuit_breakers,
     get_reclosers,
     get_switch_catalog_statistics,
 )
-from src.network_model.catalog.mv_transformer_catalog import (
+from network_model.catalog.mv_transformer_catalog import (
     get_all_transformer_types,
     get_sn_nn_transformer_types,
     get_transformer_catalog_statistics,
     get_wn_sn_transformer_types,
 )
-from src.network_model.catalog.repository import get_default_mv_catalog
-from src.network_model.core.switch import SwitchType
+from network_model.catalog.repository import get_default_mv_catalog
+from network_model.core.switch import SwitchType
 
 # =============================================================================
 # TESTY KATALOGU TRANSFORMATOROW

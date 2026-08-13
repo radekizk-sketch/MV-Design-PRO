@@ -512,7 +512,7 @@ export function SnSegmentSurface(props: SnSegmentSurfaceProps): JSX.Element {
     >
       <div
         data-testid="segment-unified-card"
-        className="mb-4 border border-scada-border bg-[#0d1726] p-4"
+        className="mb-4 border border-scada-border bg-scada-bg p-4"
       >
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -540,7 +540,7 @@ export function SnSegmentSurface(props: SnSegmentSurfaceProps): JSX.Element {
         <div
           data-testid="sld-segment-inspector"
           data-segment-ref={segmentRef ?? ''}
-          className="mt-3 grid gap-2 border border-scada-border/70 bg-[#07111c] p-3 text-[11px] text-scada-muted sm:grid-cols-3"
+          className="mt-3 grid gap-2 border border-scada-border/70 bg-scada-bg p-3 text-[11px] text-scada-muted sm:grid-cols-3"
         >
           <div>
             <div className="font-semibold uppercase tracking-[0.14em]">Odcinek SN</div>
@@ -594,8 +594,8 @@ export function SnSegmentSurface(props: SnSegmentSurfaceProps): JSX.Element {
                     onClick={() => openEndpointOperation('insert_zksn_on_segment_sn')}
                     className={`border border-scada-border px-3 py-2 text-left text-xs font-semibold text-scada-text ${
                       canAppendZksn
-                        ? 'bg-[#07111c] hover:border-scada-sn'
-                        : 'cursor-not-allowed bg-[#13202c] opacity-50'
+                        ? 'bg-scada-bg hover:border-scada-sn'
+                        : 'cursor-not-allowed bg-scada-surface opacity-50'
                     }`}
                   >
                     Zakończ ZK SN
@@ -609,8 +609,8 @@ export function SnSegmentSurface(props: SnSegmentSurfaceProps): JSX.Element {
                     onClick={() => openEndpointOperation('insert_branch_pole_on_segment_sn')}
                     className={`border border-scada-border px-3 py-2 text-left text-xs font-semibold text-scada-text ${
                       canAppendBranchPole
-                        ? 'bg-[#07111c] hover:border-scada-sn'
-                        : 'cursor-not-allowed bg-[#13202c] opacity-50'
+                        ? 'bg-scada-bg hover:border-scada-sn'
+                        : 'cursor-not-allowed bg-scada-surface opacity-50'
                     }`}
                   >
                     Zakończ słupem rozgałęźnym
@@ -628,7 +628,7 @@ export function SnSegmentSurface(props: SnSegmentSurfaceProps): JSX.Element {
           {!endpointStatus.isFree && (
             <div
               data-testid="segment-endpoint-occupied"
-              className="mt-2 border border-[#7c5b1c] bg-[#1f1706] p-3 text-xs leading-5 text-[#ffe08a]"
+              className="mt-2 border border-sygnal-uwaga bg-sygnal-uwaga-tlo p-3 text-xs leading-5 text-sygnal-uwaga-tusz"
             >
               <div className="font-semibold text-white">Końcowy zacisk odcinka jest zajęty</div>
               <div className="mt-1">{endpointStatus.reasonPl}</div>
@@ -647,7 +647,7 @@ export function SnSegmentSurface(props: SnSegmentSurfaceProps): JSX.Element {
           {actionNotice && (
             <div
               data-testid="segment-action-notice"
-              className="mt-2 border border-[#7c5b1c] bg-[#1f1706] px-3 py-2 text-xs text-[#ffe08a]"
+              className="mt-2 border border-sygnal-uwaga bg-sygnal-uwaga-tlo px-3 py-2 text-xs text-sygnal-uwaga-tusz"
             >
               {actionNotice}
             </div>

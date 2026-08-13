@@ -18,7 +18,9 @@ from infrastructure.persistence.repositories.document_store_repository import (
 
 _TR_BLOCK = "tr-sn-nn-15-04-1000kva-dyn11"
 _CABLE = "cable-base-epr-al-1c-240"
-_APARAT_SN = "ap-sn-cb-630"
+#: Aparat pola SN — RZECZYWISTA pozycja katalogu (dawne „ap-sn-cb-630" nie
+#: istniało; operacja przyjmowała je bez sprawdzenia — defekt G).
+_APARAT_SN = "sw-cb-abb-vd4-17kv-630a"
 
 client = TestClient(app)
 
@@ -81,19 +83,14 @@ def _der_sn_payload() -> dict:
         "source_name": "Blok PV SN",
         "quantity": 1,
         "power_setpoint_mw": 0.998,
+        # Tabliczka WYŁĄCZNIE z katalogu (defekt G): payload wskazuje pozycję,
+        # a nie liczby. Pozycja 1 MW / 0,4 kV mieści się w TR blokowym 1 MVA.
         "catalog_binding": {
             "catalog_namespace": "ZRODLO_NN_PV",
-            "catalog_item_id": "conv-pv-04kv",
+            "catalog_item_id": "conv-pv-nn-1mw-0p4kv",
             "catalog_item_version": "2024.1",
             "materialize": True,
             "snapshot_mapping_version": "1.0",
-        },
-        "materialized_params": {
-            "catalog_item_id": "conv-pv-04kv",
-            "catalog_item_version": "2024.1",
-            "un_kv": 0.4,
-            "pmax_mw": 0.998,
-            "sn_mva": 1.0,
         },
         "der_topology": {
             "connection_level": "sn",
@@ -227,13 +224,6 @@ def _der_payload_4mva(*, cable_ref: str, laying_conditions: object | None) -> di
     payload["quantity"] = 2
     payload["power_setpoint_mw"] = 2.0
     payload["catalog_binding"]["catalog_item_id"] = "conv-pv-nn-2mw-0p69kv"
-    payload["materialized_params"] = {
-        "catalog_item_id": "conv-pv-nn-2mw-0p69kv",
-        "catalog_item_version": "2024.1",
-        "un_kv": 0.69,
-        "pmax_mw": 2.0,
-        "sn_mva": 2.0,
-    }
     topology = payload["der_topology"]
     topology["inverter_output_voltage_kv"] = 0.69
     topology["block_transformer"] = {

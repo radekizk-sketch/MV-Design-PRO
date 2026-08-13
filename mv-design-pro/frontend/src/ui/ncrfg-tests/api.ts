@@ -95,6 +95,21 @@ export interface NcRfgModuleResult {
   readonly tests: readonly NcRfgTestResult[];
 }
 
+/**
+ * Dowód certyfikacji PTPiREE urządzenia testowanego w biegu NC RfG.
+ * Wartości pochodzą WPROST z tabliczki urządzenia w modelu — brak danej = null
+ * (uczciwy stan zerowy), nigdy wartość domyślna.
+ */
+export interface NcRfgCertificateEvidence {
+  readonly der_ref: string;
+  readonly document_number: string | null;
+  readonly acceptance_date: string | null;
+  readonly wos_version: string | null;
+  readonly wipwc_version: string | null;
+  readonly ppm_scope: string | null;
+  readonly source_url: string | null;
+}
+
 export interface NcRfgRunResult {
   readonly contract: 'NcRfgPtpireeTestResultV1';
   readonly procedure_version: string;
@@ -102,6 +117,8 @@ export interface NcRfgRunResult {
   readonly input_hash: string;
   readonly deterministic_hash: string;
   readonly modules: readonly NcRfgModuleResult[];
+  /** Dowód certyfikatu per testowane urządzenie (pusty bez wskazania przypadku). */
+  readonly certificate_evidence: readonly NcRfgCertificateEvidence[];
   readonly test_catalog: readonly NcRfgTestDefinition[];
   readonly white_box_trace: readonly {
     readonly step: number;
@@ -142,6 +159,15 @@ export function fetchNcRfgTestCatalog(): Promise<NcRfgTestCatalogResponse> {
   return getJson<NcRfgTestCatalogResponse>('/api/ncrfg-tests/catalog');
 }
 
-export function runNcRfgPtpireeTests(request: NcRfgRunRequest): Promise<NcRfgRunResult> {
-  return postJson<NcRfgRunResult>('/api/ncrfg-tests/run', request);
+export function runNcRfgPtpireeTests(
+  request: NcRfgRunRequest,
+  caseId?: string | null,
+): Promise<NcRfgRunResult> {
+  // Bez case_id backend nie ma skąd wziąć tabliczek urządzeń z modelu i zwraca
+  // certificate_evidence z pustymi polami — przekazujemy aktywny przypadek zawsze,
+  // gdy wywołujący go zna.
+  const url = caseId
+    ? `/api/ncrfg-tests/run?case_id=${encodeURIComponent(caseId)}`
+    : '/api/ncrfg-tests/run';
+  return postJson<NcRfgRunResult>(url, request);
 }

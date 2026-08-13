@@ -160,6 +160,48 @@ describe('Pakiet G — wiring katalogów do UI cards', () => {
             }),
           } as Response;
         }
+        if (url.endsWith('/device-withstand')) {
+          // KATALOG APARATURY Z BACKENDU (K7-B) — front nie ma juz wlasnej kopii.
+          return {
+            ok: true,
+            status: 200,
+            json: async () => [
+              {
+                id: 'wstd_breaker_vacuum_15_25',
+                label_pl: 'Wyłącznik próżniowy 15 kV',
+                device_type: 'breaker_vacuum_15',
+                nominal_voltage_kv: 15,
+                nominal_current_a: 1250,
+                i_dyn_ka: 63,
+                i_th_1s_ka: 25,
+                i_th_duration_s: 1,
+              },
+            ],
+          } as Response;
+        }
+        if (url.includes('/validate-device-withstand')) {
+          // Atrapa RACHUNKU backendu (K7-B): od tej karty kryterium IEC 60909
+          // nie zyje juz we froncie — ekran pyta o werdykt.
+          const body = JSON.parse(String(init?.body ?? '{}')) as {
+            i_peak_calculated_ka?: number;
+          };
+          const iDynOk = Number(body.i_peak_calculated_ka) <= 63;
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              ok: iDynOk,
+              i_dyn_ok: iDynOk,
+              i_th_ok: true,
+              message_pl: iDynOk
+                ? 'OK: aparatura wytrzymała.'
+                : 'BLOKER: I_dyn 70,0 kA > 63,0 kA (limit) — przekroczenie '
+                  + 'wytrzymałości dynamicznej.',
+              utilization_dyn_percent: 0,
+              utilization_th_percent: 0,
+            }),
+          } as Response;
+        }
         throw new Error(`nieoczekiwane zapytanie: ${url}`);
       }) as unknown as typeof fetch;
     });
@@ -198,7 +240,7 @@ describe('Pakiet G — wiring katalogów do UI cards', () => {
       expect(validation.textContent?.toLowerCase()).toContain('petersena');
     });
 
-    it('renderuje walidację I_dyn / I_th aparatury (eng.18)', () => {
+    it('renderuje walidację I_dyn / I_th aparatury (eng.18) — werdykt z backendu', async () => {
       render(
         <StationConfigProtectionCard
           relays={[]}
@@ -216,7 +258,7 @@ describe('Pakiet G — wiring katalogów do UI cards', () => {
         />,
       );
 
-      const validation = screen.getByTestId('withstand-POLE-01');
+      const validation = await screen.findByTestId('withstand-POLE-01');
       expect(validation.getAttribute('data-withstand-ok')).toBe('false');
       expect(validation.textContent).toContain('I_dyn');
     });

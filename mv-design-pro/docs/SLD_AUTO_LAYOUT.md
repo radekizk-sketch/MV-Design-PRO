@@ -235,7 +235,7 @@ The engine supports these common topologies:
 
 - **Pattern A**: Radial (SEE → TR → Loads)
 - **Pattern B**: Multi-feeder (busbar with multiple feeders)
-- **Pattern C**: PrzyĹ‚ącze SN/nN (most common - substation connection)
+- **Pattern C**: Przyłącze SN/nN (most common - substation connection)
 - **Pattern D**: OZE/BESS (renewable energy integration)
 - **Pattern E**: Ring network
 - **Pattern F**: Dual-transformer SZR

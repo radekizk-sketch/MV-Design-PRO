@@ -194,7 +194,7 @@ def _run_solver_for_network(network_id: str, solver_kind: str) -> dict[str, Any]
     except FileNotFoundError:
         pass
 
-    return {
+    wynik: dict[str, Any] = {
         "buses": actual["buses"],
         "branches": {},  # branch flows TBD - extension point
         "short_circuit": actual_sc,
@@ -208,6 +208,14 @@ def _run_solver_for_network(network_id: str, solver_kind: str) -> dict[str, Any]
             *list(actual.get("trace", [])),
         ],
     }
+    # ROUTERY-4A: zbieznosc i liczba iteracji sa czescia wyniku solvera
+    # (`solve_reference_network` je zwraca) — upuszczanie ich tutaj zmuszalo
+    # konsumenta do zgadywania. Przepisywane ADDYTYWNIE i wylacznie wtedy,
+    # gdy solver je podal (starsze wpisy rejestru bez tych pol — bez zmiany).
+    for pole in ("converged", "iterations"):
+        if pole in actual:
+            wynik[pole] = actual[pole]
+    return wynik
 
 
 @router.post("/{network_id}/run", response_model=RunResponse)

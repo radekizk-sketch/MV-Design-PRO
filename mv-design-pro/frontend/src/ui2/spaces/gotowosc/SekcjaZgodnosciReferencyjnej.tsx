@@ -17,6 +17,11 @@
  * wzorzec innych ekranów. Brak przypadku → uczciwy stan pusty PL (bez wołania
  * API). Wzorzec zachowań: `ui/enm-inspector/ReferencePanel.tsx` (stany
  * pusty/ładowanie/błąd/„nie dotyczy") — wzorzec ZACHOWAŃ, nie designu.
+ *
+ * ZAKRES OCENY (karta REF-PAKIET): projektant wybiera referencję wspólną
+ * kontrolką `WyborPakietuReferencyjnego` (lista z `GET /api/reference/packs`).
+ * Wybór zawęża zapytanie parametrem `?packs=` — bez wyboru backend ocenia
+ * wszystkie pakiety rejestru (jego udokumentowana wartość domyślna).
  */
 
 import { Fragment, useEffect, useState } from 'react';
@@ -27,6 +32,8 @@ import {
   type ReferenceComplianceReport,
   type ReferencePackComplianceReport,
 } from '../../referencje/api';
+import { WyborPakietuReferencyjnego } from '../../referencje/WyborPakietuReferencyjnego';
+import { useWyborPakietu, zawezenieDlaWyboru } from '../../referencje/wyborPakietu';
 import { GOTOWOSC_STRINGS } from './strings';
 
 /** Etykieta wyniku: `score_percent=null` ⇒ „nie dotyczy" (nigdy 0%/100%). */
@@ -45,6 +52,7 @@ function klasaWyniku(pack: ReferencePackComplianceReport): string {
 
 export function SekcjaZgodnosciReferencyjnej() {
   const caseId = useActiveCaseId();
+  const pakietId = useWyborPakietu((s) => s.pakietId);
   const [rozwinieta, setRozwinieta] = useState(true);
   const [raport, setRaport] = useState<ReferenceComplianceReport | null>(null);
   const [ladowanie, setLadowanie] = useState(false);
@@ -61,7 +69,7 @@ export function SekcjaZgodnosciReferencyjnej() {
     let anulowane = false;
     setLadowanie(true);
     setBlad(null);
-    fetchReferenceCompliance(caseId)
+    fetchReferenceCompliance(caseId, zawezenieDlaWyboru(pakietId))
       .then((dane) => {
         if (!anulowane) setRaport(dane);
       })
@@ -76,7 +84,7 @@ export function SekcjaZgodnosciReferencyjnej() {
     return () => {
       anulowane = true;
     };
-  }, [caseId]);
+  }, [caseId, pakietId]);
 
   const idTresci = 'mvd-ref-sekcja-tresc';
 
@@ -98,6 +106,7 @@ export function SekcjaZgodnosciReferencyjnej() {
       {rozwinieta && (
         <div id={idTresci} className="mvd-ref-tresc">
           <p className="mvd-ref-opis">{GOTOWOSC_STRINGS.refSekcjaOpis}</p>
+          <WyborPakietuReferencyjnego idKontrolki="mvd-ref-wybor-gotowosc" />
           {!caseId ? (
             <p className="mvd-ref-stan" data-testid="mvd-ref-brak-przypadku">
               {GOTOWOSC_STRINGS.refBrakPrzypadku}

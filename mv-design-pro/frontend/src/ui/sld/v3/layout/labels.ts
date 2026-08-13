@@ -50,13 +50,27 @@
  * potrzebny a nieobecny).
  */
 
-import { GRID, rectsOverlap, snapToGrid, type V3Rect } from '../core/grid';
-import { labelLineHeight, measureLabelWidth, type LabelClass } from '../core/text';
+import { GRID, rectsOverlap, snapDown, snapToGrid, type V3Rect } from '../core/grid';
+import { labelLineHeight, measureLabelWidth, type LabelClass, type LabelRole } from '../core/text';
 
 /** Właściciel etykiety (spec §4, tabela slotów). */
 export type OwnerKind =
   | 'segment-span'      // segment magistrali poziomy (slot podstawowy = primaryRect, poprawka F4)
   | 'segment-lateral'    // segment pionowy (lateral), etykieta rotowana 90°
+  // BLOK-LATERAL-WLASNOSC (runda poprawkowa 2026-08-08): adnotacja KOŃCA
+  // ODCINKA — „koniec otwarty" (§16-v3) i odsyłacze ciągu dalszego na złamaniu
+  // arkusza „dalej wiersz n"/„z wiersza n" (S9-1). Dotąd pożyczały
+  // `'port-caption'`, czyli rodzaj PODPISU PORTU APARATU, przez co
+  // `hitAreas.LABEL_OWNER_ELEMENT_KIND` deklarowało dla nich trafienie w
+  // APARAT, podczas gdy ich `ownerRef` jest refem ODCINKA (zmierzone: 15
+  // etykiet na fiksturze referencyjnej — 13 „koniec otwarty" + 2 odsyłacze).
+  // To ta sama pomyłka własności co `#lateral-label` pod refem stacji, tylko
+  // o piętro dalej: deklaracja celu kliknięcia rozjeżdżała się z refem.
+  // WŁASNY rodzaj, a nie przestawienie `'port-caption'` — ten dzielą PRAWDZIWE
+  // podpisy kierunku pola (`#direction`, `#caption`) i zakończenia toru
+  // (`#termination`, ref POLA, zweryfikowane pomiarem), które celują w aparat
+  // słusznie i zepsułoby je jedno wspólne przestawienie.
+  | 'segment-endpoint'   // adnotacja KOŃCA odcinka (koniec otwarty, odsyłacz ciągu dalszego)
   | 'station-name'       // wiersz pasma nazw stacji (B5)
   | 'port-caption'       // podpis kierunku pola (t3, spec §9/§19.2: „⟨nazwa linii⟩ · kier. Sxx"/„odg. Sxx")
   | 'field-role'         // F10.2: oznaczenie FUNKCYJNE pola (spec §19.1: „pole liniowe"/…, t3)
@@ -64,8 +78,62 @@ export type OwnerKind =
   | 'der'                // rodzaj+moc DER (t2) pod symbolem
   | 'busbar-voltage'     // napięcie szyny (t2) nad lewym końcem
   | 'no-point'           // badge „NO" (t3) przy symbolu
+  | 'branch-point'       // ODG-RYSUNEK: nazwa punktu odgałęźnego (ZKSN / słup rozgałęźny) z danych
   | 'protection'         // F9.9: numer urządzenia „52" (spec §17.1/§17.3, ANSI/IEEE C37.2)
   | 'lv-load';           // recenzja NO-GO pkt 6: odbiór zagregowany / granica modelu (t4) pod szyną nN
+
+/**
+ * KD-11: KLASA ZNACZENIOWA etykiety wyprowadzona z RODZAJU WŁAŚCICIELA — dana
+ * sceny, nie heurystyka po treści tekstu (`core/text.ts` `LabelRole`).
+ *
+ * TOŻSAMOŚĆ (co się rysuje):
+ *  - `busbar-voltage` — napięcie szyny/sekcji („Sekcja 1 · 15 kV") — wprost z
+ *    rozstrzygnięcia karty;
+ *  - `apparatus` — oznaczenie pola/aparatu (numer pola WN „Pole liniowe GPZ",
+ *    identyfikatory Q1/QE1/T1);
+ *  - `field-role` — oznaczenie FUNKCYJNE pola („pole liniowe");
+ *  - `der` — rodzaj i moc źródła rozproszonego, czyli JEGO nazwa na rysunku
+ *    (symbol DER bez tej etykiety nie mówi, jakim jest źródłem);
+ *  - `no-point` — badge „NO": punkt podziału sieci jest CECHĄ elementu (co to
+ *    za łącznik), nie jego parametrem; dwa znaki, a jego brak zmienia odczyt
+ *    układu pracy sieci na FAŁSZYWY. Spójne z `LABEL_PRIORITY` (90 — wyżej niż
+ *    `der`/`apparatus`/`field-role`), gdzie już dziś jest chroniony jako
+ *    „mały, krytyczny semantycznie".
+ *  - `station-name` — pasmo MIESZANE (nazwa/kod stacji obok kVA i typu), więc
+ *    klasy NIE da się wyprowadzić z rodzaju właściciela: rozstrzyga ją
+ *    WIERSZ (`StationNameBandRow.role`, deklarowany przez `compose/*`).
+ *    Wpis w tej tabeli jest DOMYŚLNY (tożsamość) i używany tylko wtedy, gdy
+ *    wołający nie poda roli wiersza.
+ *
+ * DANE SZCZEGÓŁOWE (parametry i adnotacje — podlegają progowi czytelności):
+ *  - `segment-span`/`segment-lateral` — typ·przekrój·długość (wprost
+ *    „przekroje, długości" z rozstrzygnięcia karty);
+ *  - `protection` — adnotacje warstwy zabezpieczeń (numer urządzenia C37.2,
+ *    przekładnie CT, montaż VT, lista funkcji) — spec §17 nazywa je
+ *    ADNOTACJAMI toru, a karta zalicza nastawy do danych szczegółowych;
+ *  - `port-caption` — podpis kierunku pola („⟨linia⟩ · kier. S03") i
+ *    zakończenia toru;
+ *  - `lv-load` — odbiór zagregowany nN / granica modelu.
+ */
+export const LABEL_ROLE_BY_OWNER_KIND: Readonly<Record<OwnerKind, LabelRole>> = {
+  'station-name': 'tozsamosc',
+  'busbar-voltage': 'tozsamosc',
+  apparatus: 'tozsamosc',
+  'field-role': 'tozsamosc',
+  der: 'tozsamosc',
+  'no-point': 'tozsamosc',
+  'branch-point': 'tozsamosc',
+  protection: 'dane',
+  'port-caption': 'dane',
+  'segment-span': 'dane',
+  'segment-lateral': 'dane',
+  // BLOK-LATERAL-WLASNOSC: „koniec otwarty" i odsyłacze ciągu dalszego to
+  // ADNOTACJE toru — ta sama klasa znaczeniowa co `port-caption`, którą dotąd
+  // pożyczały, więc warstwa czytelności widzi DOKŁADNIE to samo co przed
+  // zmianą (rozdział dotyczy CELU KLIKNIĘCIA, nie widoczności).
+  'segment-endpoint': 'dane',
+  'lv-load': 'dane',
+};
 
 export interface LabelPoint {
   readonly x: number;
@@ -78,9 +146,36 @@ export interface OwnedLabel {
   readonly ownerRef: string;
   readonly ownerKind: OwnerKind;
   readonly labelClass: LabelClass;
+  /** KD-11: klasa ZNACZENIOWA (tożsamość vs dane szczegółowe) — steruje
+   *  widocznością w warstwie renderu (`canvas/labelLegibility.ts`). Dana
+   *  sceny: dla pasma nazw z wiersza (`StationNameBandRow.role`), dla
+   *  pozostałych z rodzaju właściciela (`LABEL_ROLE_BY_OWNER_KIND`).
+   *  Geometrycznie NEUTRALNA — nie wchodzi do `rect`, więc nie rusza
+   *  goldenów geometrii ani wyroczni sceny. */
+  readonly labelRole: LabelRole;
   readonly text: string;
   /** 1 = idealny (bez leadera), 2/3 = zapasowy (leader OBOWIĄZKOWY). */
   readonly slotIndex: 1 | 2 | 3;
+  /**
+   * Prostokąt TUSZU — dokładnie tyle, ile zajmuje NARYSOWANY tekst w rozmiarze
+   * swojej klasy (`measureLabelWidth` × `labelLineHeight`), NIE rezerwacja
+   * slotu, w którym stoi.
+   *
+   * BLOK-PUSTY (zgłoszenie właściciela 2026-08-07 pkt 6 „wnętrze ramy stacji w
+   * większości puste"): do tej karty wiersze pasma nazw dostawały tu CAŁĄ
+   * szerokość kolumny stacji. Zmierzone na fixturze 53 stacji: prostokąt był
+   * średnio **7,57×** szerszy od tekstu, który niesie (716 wobec 95 j.św.), i
+   * ustawiał LEWĄ i PRAWĄ krawędź ramy bloku w **100%** bloków (`viewAnchor.
+   * prostokatElementuWScenie` bierze prostokąty etykiet). Rama szła więc za
+   * REZERWACJĄ, a nie za treścią — dokładnie to widać na zrzucie właściciela.
+   * Reszta klas etykiet miała już wtedy 1,00× na obu osiach; wiersz pasma nazw
+   * był jedynym wyjątkiem (pomiar w `scripts/pomiar_bloku.tsx`).
+   *
+   * REZERWACJA nie znikła — przeniosła się do `rezerwacjaSzerokosci` niżej,
+   * bo jest realnie ZUŻYWANA (sufit powiększania pisma). Środek prostokąta
+   * pozostaje ten sam co środek slotu, więc tekst (rysowany `textAnchor=
+   * middle` w środku `rect`) NIE ZMIENIA POŁOŻENIA.
+   */
   readonly rect: V3Rect;
   /** Segment pionowy (lateral): etykieta czytana z dołu, obrócona 90°. */
   readonly rotated?: boolean;
@@ -98,6 +193,57 @@ export interface OwnedLabel {
    *  `data-ct-purpose`), geometrycznie neutralny (NIE wpływa na `text`/`rect`).
    *  `undefined` dla pozostałych etykiet. */
   readonly ctPurpose?: 'protection' | 'metering' | 'combined';
+  /** KD-11: STRONA, po której slot leży względem swojej kotwicy (symbolu,
+   *  toru, pasma). Potrzebna WYŁĄCZNIE etykietom klasy `'tozsamosc'`: gdy
+   *  render powiększa pismo do rozmiaru minimalnego czytelnego, prostokąt
+   *  rośnie OD kotwicy (etykieta nad szyną rośnie w GÓRĘ), więc prześwit od
+   *  toru (`BUSBAR_LABEL_PATH_CLEARANCE`) i odstęp od symbolu zostają
+   *  zachowane. Każda etykieta tożsamości ją niesie (kontrakt sprawdzany
+   *  testem); etykiety klasy `'dane'` nigdy nie są powiększane, więc mogą jej
+   *  nie mieć. Geometrycznie neutralna — `rect` bez zmian. */
+  readonly placement?: SimpleAnchorPlacement;
+  /**
+   * BLOK-PUSTY: SZEROKOŚĆ REZERWACJI, w której napis wolno POWIĘKSZYĆ
+   * (`canvas/labelLegibility.ts`, tryb ratunkowy KD-11: przy oddaleniu pismo
+   * tożsamości rośnie do rozmiaru minimalnego czytelnego). Dla wiersza pasma
+   * nazw to szerokość KOLUMNY stacji — powiększony wiersz nie ma prawa wyjść
+   * poza własną kolumnę.
+   *
+   * DWA KOŃCE PARY, JEDNO ŹRÓDŁO (reguła KLASA §3): `rect` mówi, ILE TUSZU
+   * jest narysowane (rama bloku, kolizje, trafienie kursorem), a to pole — DO
+   * ILU wolno urosnąć. Do karty BLOK-PUSTY obie role niosło jedno pole `rect`,
+   * więc rama bloku płaciła pełną szerokość kolumny (716 j.św.) za napis
+   * szerokości 95 j.św.
+   *
+   * `undefined` = etykieta zakotwiczona punktowo (oznacznik aparatu, DER,
+   * napięcie szyny) — nie ma rezerwacji z zapasem, jej granicą jest dopiero
+   * rozstrzyganie kolizji.
+   */
+  readonly rezerwacjaSzerokosci?: number;
+}
+
+/**
+ * BLOK-PUSTY: prostokąt TUSZU wpisany w slot — szerokość z REALNEGO pomiaru
+ * tekstu, środek slotu NIETKNIĘTY (tekst rysowany `textAnchor=middle` w środku
+ * prostokąta nie drga, więc obraz się nie przesuwa), wysokość slotu zachowana
+ * (jest już równa wysokości wiersza we WSZYSTKICH klasach — pomiar
+ * `scripts/pomiar_bloku.tsx`: 1,00× na osi pionowej dla każdej klasy).
+ *
+ * `rotated` (etykieta lateralu, czytana z dołu): rozciągłość tekstu leży wzdłuż
+ * osi PIONOWEJ prostokąta, więc zwężamy `height`, nie `width`.
+ *
+ * Prostokąt NIGDY nie rośnie — slot węższy od tekstu zostaje bez zmian, żeby
+ * „zwężenie" nie mogło przypadkiem POSZERZYĆ rezerwacji policzonej przez
+ * wołającego.
+ */
+function tuszWSlocie(slot: V3Rect, text: string, cls: LabelClass, rotated = false): V3Rect {
+  const tusz = measureLabelWidth(text, cls);
+  if (rotated) {
+    if (tusz >= slot.height) return slot;
+    return { x: slot.x, y: slot.y + (slot.height - tusz) / 2, width: slot.width, height: tusz };
+  }
+  if (tusz >= slot.width) return slot;
+  return { x: slot.x + (slot.width - tusz) / 2, y: slot.y, width: tusz, height: slot.height };
 }
 
 // ---------------------------------------------------------------------------
@@ -154,6 +300,7 @@ function resolveSegmentSpanLabel(owner: SegmentSpanOwnerInput): OwnedLabel {
       ownerRef: owner.ownerRef,
       ownerKind: 'segment-span',
       labelClass,
+      labelRole: LABEL_ROLE_BY_OWNER_KIND['segment-span'],
       text: owner.text,
       slotIndex: 1,
       rect: { x, y: owner.primaryRect.y, width: labelWidth, height: owner.primaryRect.height },
@@ -173,6 +320,7 @@ function resolveSegmentSpanLabel(owner: SegmentSpanOwnerInput): OwnedLabel {
       ownerRef: owner.ownerRef,
       ownerKind: 'segment-span',
       labelClass,
+      labelRole: LABEL_ROLE_BY_OWNER_KIND['segment-span'],
       text: owner.text,
       slotIndex: 1,
       rect: { x, y: owner.primaryRect.y, width: labelWidth, height: owner.primaryRect.height },
@@ -188,9 +336,17 @@ function resolveSegmentSpanLabel(owner: SegmentSpanOwnerInput): OwnedLabel {
     ownerRef: owner.ownerRef,
     ownerKind: 'segment-span',
     labelClass,
+    labelRole: LABEL_ROLE_BY_OWNER_KIND['segment-span'],
     text: owner.text,
     slotIndex: 2,
-    rect: owner.marginRect,
+    // BLOK-PUSTY (ta sama reguła co pasmo nazw — KLASA §5, uczciwość w obrębie
+    // pliku): prostokąt niesie TUSZ, slot marginesu zostaje REZERWACJĄ. Środek
+    // nietknięty, więc kotwica leadera (liczona ze środka/dna prostokąta) się
+    // nie rusza. Na sieci referencyjnej ta ścieżka nie występuje (0/37 etykiet
+    // przęseł na fixturze idzie do slotu 2 — pomiar `scripts/pomiar_bloku.tsx`),
+    // ale reguła nie może mieć wyjątku „bo tam i tak nikt nie wchodzi".
+    rect: tuszWSlocie(owner.marginRect, owner.text, labelClass),
+    rezerwacjaSzerokosci: owner.marginRect.width,
     leader: {
       from: {
         x: owner.marginRect.x + owner.marginRect.width / 2,
@@ -245,6 +401,7 @@ function resolveSegmentLateralLabel(owner: SegmentLateralOwnerInput): OwnedLabel
       ownerRef: owner.ownerRef,
       ownerKind: 'segment-lateral',
       labelClass,
+      labelRole: LABEL_ROLE_BY_OWNER_KIND['segment-lateral'],
       text: owner.text,
       slotIndex: 1,
       rotated: true,
@@ -258,6 +415,7 @@ function resolveSegmentLateralLabel(owner: SegmentLateralOwnerInput): OwnedLabel
       ownerRef: owner.ownerRef,
       ownerKind: 'segment-lateral',
       labelClass,
+      labelRole: LABEL_ROLE_BY_OWNER_KIND['segment-lateral'],
       text: owner.text,
       slotIndex: 2,
       rotated: true,
@@ -274,10 +432,15 @@ function resolveSegmentLateralLabel(owner: SegmentLateralOwnerInput): OwnedLabel
     ownerRef: owner.ownerRef,
     ownerKind: 'segment-lateral',
     labelClass,
+    labelRole: LABEL_ROLE_BY_OWNER_KIND['segment-lateral'],
     text: owner.text,
     slotIndex: 3,
     rotated: true,
-    rect: owner.fallbackRect,
+    // BLOK-PUSTY (jak wyżej): tusz zamiast slotu. Etykieta lateralu jest
+    // OBRÓCONA, więc rozciągłość tekstu leży na osi pionowej prostokąta —
+    // zwężamy `height`. Środek nietknięty ⇒ kotwica leadera bez zmian.
+    rect: tuszWSlocie(owner.fallbackRect, owner.text, labelClass, true),
+    rezerwacjaSzerokosci: owner.fallbackRect.height,
     leader: {
       from: {
         x: owner.fallbackRect.x + owner.fallbackRect.width / 2,
@@ -298,6 +461,13 @@ function resolveSegmentLateralLabel(owner: SegmentLateralOwnerInput): OwnedLabel
 export interface StationNameBandRow {
   readonly text: string;
   readonly labelClass: LabelClass;
+  /** KD-11: klasa ZNACZENIOWA wiersza — WYMAGANA, bo pasmo nazw jest
+   *  MIESZANE: nazwa/kod stacji, oznaczenie transformatora, nazwa źródła i
+   *  podpis szyny nN to TOŻSAMOŚĆ, a moc znamionowa, typ stacji, Yd11/uk%/Pk,
+   *  zaczepy czy odbiór zagregowany to DANE SZCZEGÓŁOWE. Klasa typograficzna
+   *  tego nie rozstrzyga (nazwa źródła jest `t2`, tak jak „Yd11 · 25 MVA"),
+   *  a treść tekstu nie jest dowodem — deklaruje wytwórca wiersza. */
+  readonly role: LabelRole;
 }
 
 export interface StationNameBandOwnerInput {
@@ -315,9 +485,18 @@ function resolveStationNameBand(owner: StationNameBandOwnerInput): OwnedLabel[] 
       ownerRef: `${owner.ownerRef}#name-row-${index}`,
       ownerKind: 'station-name',
       labelClass: row.labelClass,
+      labelRole: row.role,
       text: row.text,
       slotIndex: 1,
-      rect: { x: owner.nameSlot.x, y, width: owner.nameSlot.width, height },
+      // BLOK-PUSTY: TUSZ, nie slot. Wiersz jest wyśrodkowany w kolumnie tak
+      // samo jak dotąd (środek prostokąta = środek slotu), ale rama bloku,
+      // kolizje i trafienie kursorem widzą już tylko napis. Rezerwacja
+      // (szerokość kolumny) idzie do `rezerwacjaSzerokosci` niżej.
+      rect: tuszWSlocie({ x: owner.nameSlot.x, y, width: owner.nameSlot.width, height }, row.text, row.labelClass),
+      rezerwacjaSzerokosci: owner.nameSlot.width,
+      // KD-11: pasmo nazw wisi POD swoją kotwicą (symbolem/stacją) i rośnie w
+      // dół — powiększone pismo tożsamości nie może wejść w symbol nad sobą.
+      placement: 'below',
     };
     y += height;
     return label;
@@ -356,6 +535,7 @@ function resolvePortCaption(owner: PortCaptionOwnerInput): OwnedLabel {
       ownerRef: owner.ownerRef,
       ownerKind: 'port-caption',
       labelClass,
+      labelRole: LABEL_ROLE_BY_OWNER_KIND['port-caption'],
       text: owner.text,
       slotIndex: 1,
       rect: { x, y: owner.primaryRect.y, width: labelWidth, height: owner.primaryRect.height },
@@ -371,9 +551,12 @@ function resolvePortCaption(owner: PortCaptionOwnerInput): OwnedLabel {
     ownerRef: owner.ownerRef,
     ownerKind: 'port-caption',
     labelClass,
+    labelRole: LABEL_ROLE_BY_OWNER_KIND['port-caption'],
     text: owner.text,
     slotIndex: 2,
-    rect: owner.fallbackRect,
+    // BLOK-PUSTY (jak wyżej): tusz zamiast slotu, środek nietknięty.
+    rect: tuszWSlocie(owner.fallbackRect, owner.text, labelClass),
+    rezerwacjaSzerokosci: owner.fallbackRect.width,
     leader: {
       from: {
         x: owner.fallbackRect.x + owner.fallbackRect.width / 2,
@@ -395,7 +578,7 @@ export type SimpleAnchorPlacement = 'above' | 'below' | 'left' | 'right';
 
 export interface SimpleAnchoredOwnerInput {
   readonly ownerRef: string;
-  readonly ownerKind: 'apparatus' | 'field-role' | 'der' | 'busbar-voltage' | 'no-point' | 'protection' | 'lv-load';
+  readonly ownerKind: 'apparatus' | 'field-role' | 'der' | 'busbar-voltage' | 'no-point' | 'protection' | 'lv-load' | 'branch-point';
   readonly text: string;
   readonly labelClass: LabelClass;
   readonly anchor: LabelPoint;
@@ -408,38 +591,61 @@ export interface SimpleAnchoredOwnerInput {
    *  przenoszone 1:1 na `OwnedLabel.ctPurpose`. WYŁĄCZNIE dla adnotacji CT
    *  (`ownerKind:'protection'`); `undefined` dla reszty. */
   readonly ctPurpose?: 'protection' | 'metering' | 'combined';
+  /** KD-8 poz. 5: PRZEŚWIT slotu od kotwicy [px świata]. Domyślnie `GRID` (8) —
+   *  tyle wystarcza etykiecie zakotwiczonej na SYMBOLU (symbol ma własny bbox,
+   *  a wyrocznia etykieta↔symbol pilnuje rozłączności). Etykieta zakotwiczona
+   *  na TORZE (napięcie szyny) potrzebuje więcej: 8 px świata przy skali
+   *  przeglądowej to ~4 px ekranu, więc podpis „Sekcja 1 · 15 kV" siadał na
+   *  szynie (pomiar zrzutu odbiorczego KD-5: prześwit 7 px świata). */
+  readonly clearance?: number;
 }
 
 function resolveSimpleAnchoredLabel(owner: SimpleAnchoredOwnerInput): OwnedLabel {
   const width = measureLabelWidth(owner.text, owner.labelClass);
   const height = labelLineHeight(owner.labelClass);
+  const przeswit = owner.clearance ?? GRID;
   let x: number;
   let y: number;
   switch (owner.placement) {
     case 'above':
       x = owner.anchor.x - width / 2;
-      y = owner.anchor.y - GRID - height;
+      y = owner.anchor.y - przeswit - height;
       break;
     case 'below':
       x = owner.anchor.x - width / 2;
-      y = owner.anchor.y + GRID;
+      y = owner.anchor.y + przeswit;
       break;
     case 'left':
-      x = owner.anchor.x - GRID - width;
+      x = owner.anchor.x - przeswit - width;
       y = owner.anchor.y - height / 2;
       break;
     case 'right':
-      x = owner.anchor.x + GRID;
+      x = owner.anchor.x + przeswit;
       y = owner.anchor.y - height / 2;
       break;
   }
+  // KD-8 poz. 5: przy JAWNIE zadeklarowanym prześwicie przyciąganie do siatki
+  // idzie ZAWSZE OD kotwicy (w górę dla „above", w lewo dla „left" itd.), a nie
+  // do najbliższego węzła — inaczej zaokrąglenie zjada do połowy oczka i slot
+  // ląduje bliżej toru, niż deklaruje kontrakt (pomiar: 16 zadeklarowane → 15
+  // po `snapToGrid`). Bez deklaracji prześwitu zachowanie jest DOKŁADNIE takie
+  // jak dotąd (`snapToGrid` w obu osiach), więc geometria pozostałych etykiet
+  // się nie rusza.
+  const jawnyPrzeswit = owner.clearance !== undefined;
+  const snapX = jawnyPrzeswit && owner.placement === 'left' ? snapDown : snapToGrid;
+  const snapY = jawnyPrzeswit && owner.placement === 'above' ? snapDown : snapToGrid;
   return {
     ownerRef: owner.ownerRef,
     ownerKind: owner.ownerKind,
     labelClass: owner.labelClass,
+    labelRole: LABEL_ROLE_BY_OWNER_KIND[owner.ownerKind],
     text: owner.text,
     slotIndex: 1,
-    rect: { x: snapToGrid(x), y: snapToGrid(y), width, height },
+    rect: { x: snapX(x), y: snapY(y), width, height },
+    // KD-11: strona slotu względem kotwicy — kierunek, w którym prostokąt
+    // rośnie, gdy render powiększa pismo tożsamości do rozmiaru minimalnego
+    // (etykieta „above" rośnie w górę, więc prześwit od toru zostaje).
+    placement: owner.placement,
     // Z3 (spec §12.1): passthrough pochodzenia identyfikatora aparatu (tylko
     // etykiety `ownerKind:'apparatus'` niosą wartość; reszta `undefined`).
     ...(owner.designationSource !== undefined ? { designationSource: owner.designationSource } : {}),
@@ -530,4 +736,103 @@ export function overlapProbe(
  *  ręcznie skonstruowana bez leadera przy slocie zapasowym MUSI dać `false`). */
 export function leaderInvariantHolds(labels: readonly OwnedLabel[]): boolean {
   return labels.every((label) => label.slotIndex < 2 || label.leader != null);
+}
+
+/**
+ * BLOK-PUSTY: prostokąt REZERWACJI etykiety — `rect` rozciągnięty (wokół
+ * WŁASNEGO środka, więc bez przesunięcia) do `rezerwacjaSzerokosci`. Bez
+ * rezerwacji zwraca `rect` bez zmian.
+ *
+ * KIEDY REZERWACJA, A KIEDY TUSZ (rozstrzygnięcie karty; dwa pytania, dwie
+ * odpowiedzi, jedno źródło):
+ *  - TUSZ (`rect`) — wszystko, co odpowiada na pytanie „co widzi oko":
+ *    rama bloku stacji i kotwica kamery (`canvas/viewAnchor.ts`), trafienie
+ *    kursorem (`canvas/hitAreas.ts`), kolizje etykieta↔etykieta/etykieta↔tor;
+ *  - REZERWACJA (ta funkcja) — wszystko, co odpowiada na pytanie „jak szeroki
+ *    jest UKŁAD": bbox sceny (rozmiar arkusza), cel dopasowania kamery,
+ *    światła bbox-do-bbox między kolumnami pasa górnego.
+ *
+ * DLACZEGO UKŁAD NIE MOŻE IŚĆ ZA TUSZEM. Rezerwacja jest liczona z geometrii
+ * PEŁNEGO SZCZEGÓŁU (SCHEMAT-10 S1 „jedna kotwica": `scene/buildScene.ts`
+ * `buildRowLayout` liczy kolumny zawsze przy L2), a tusz zależy od TREŚCI
+ * rysowanej na danym poziomie — na L0 wiersz pasma nazw niesie kod stacji
+ * („S01", 25 j.św.), na L2 nazwę („Stacja T1", 73 j.św.). Gdyby arkusz szedł
+ * za tuszem, jego szerokość zmieniałaby się przy zoomie (pomiar: 8200 na L0
+ * wobec 8326 na L2), więc skala dopasowania i minimapa skakałyby przy każdej
+ * zmianie poziomu szczegółu — dokładnie to, czego zakazują KD-5 i S1.
+ */
+export function labelReservationRect(label: OwnedLabel): V3Rect {
+  const rezerwacja = label.rezerwacjaSzerokosci;
+  if (rezerwacja == null) return label.rect;
+  if (label.rotated) {
+    if (rezerwacja <= label.rect.height) return label.rect;
+    const cy = label.rect.y + label.rect.height / 2;
+    return { x: label.rect.x, y: cy - rezerwacja / 2, width: label.rect.width, height: rezerwacja };
+  }
+  if (rezerwacja <= label.rect.width) return label.rect;
+  const cx = label.rect.x + label.rect.width / 2;
+  return { x: cx - rezerwacja / 2, y: label.rect.y, width: rezerwacja, height: label.rect.height };
+}
+
+/** BLOK-PUSTY: etykieta, której PROSTOKĄT jest szerszy niż narysowany tekst. */
+export interface LabelInkGap {
+  readonly ownerRef: string;
+  /** Rozciągłość prostokąta wzdłuż tekstu [j.św.] (dla `rotated` — `height`). */
+  readonly rectExtent: number;
+  /** Realna szerokość tekstu w rozmiarze swojej klasy [j.św.]. */
+  readonly inkExtent: number;
+}
+
+/**
+ * WYROCZNIA KLASY (BLOK-PUSTY, reguła KLASA §2/§4 — „deklaracja bez testu =
+ * fałszywa pewność"): prostokąt KAŻDEJ etykiety niesie TUSZ, nie rezerwację.
+ *
+ * Mierzy WSZYSTKIE klasy właściciela i WSZYSTKIE sloty (1 i zapasowe), nie
+ * przykład z karty: defekt polegał na tym, że JEDNA klasa (wiersz pasma nazw)
+ * brała wymiar ze slotu, a rama bloku stacji szła za nią. Wyrocznia jest
+ * ZAMKNIĘTA — nie ma listy wyjątków, więc nowy resolver, który znów wpisze do
+ * `rect` cudzą rezerwację, zapala ją natychmiast.
+ *
+ * Tolerancja `0,5 j.św.` bierze się z arytmetyki zmiennoprzecinkowej
+ * centrowania (`(slot.width − tusz)/2`), nie z ustępstwa — pół jednostki świata
+ * to poniżej 1/16 modułu siatki.
+ *
+ * NIE jest to wyrocznia „rezerwacja ≥ tusz" (tamta stoi osobno,
+ * `labelGrowthReservationGaps` niżej) — te dwa zdania są DWOMA KOŃCAMI pary i
+ * muszą upaść niezależnie.
+ */
+export function labelRectsWiderThanInk(labels: readonly OwnedLabel[]): readonly LabelInkGap[] {
+  const gaps: LabelInkGap[] = [];
+  for (const label of labels) {
+    const rectExtent = label.rotated ? label.rect.height : label.rect.width;
+    const inkExtent = measureLabelWidth(label.text, label.labelClass);
+    if (rectExtent - inkExtent > 0.5) {
+      gaps.push({ ownerRef: label.ownerRef, rectExtent, inkExtent });
+    }
+  }
+  return gaps;
+}
+
+/**
+ * DRUGI KONIEC PARY (BLOK-PUSTY, reguła KLASA §3): etykieta, której REZERWACJA
+ * jest MNIEJSZA niż narysowany tusz — czyli napis wystaje poza obszar, w
+ * którym wolno mu było stanąć (dla wiersza pasma nazw: poza własną kolumnę
+ * stacji). Na poprawnym rysunku ZAWSZE pusta.
+ *
+ * Bez tej wyroczni zwężenie prostokąta z karty BLOK-PUSTY dałoby fałszywą
+ * zieleń: `labelRectsWiderThanInk` przechodziłoby też wtedy, gdyby rezerwacja
+ * została policzona ZA WĄSKO, bo prostokąt tusz-w-tusz nigdy nie jest szerszy
+ * od tekstu. Etykiety bez rezerwacji (kotwiczone punktowo) są poza zakresem —
+ * ich granicą jest rozstrzyganie kolizji, nie slot.
+ */
+export function labelGrowthReservationGaps(labels: readonly OwnedLabel[]): readonly LabelInkGap[] {
+  const gaps: LabelInkGap[] = [];
+  for (const label of labels) {
+    if (label.rezerwacjaSzerokosci == null) continue;
+    const inkExtent = measureLabelWidth(label.text, label.labelClass);
+    if (inkExtent - label.rezerwacjaSzerokosci > 0.5) {
+      gaps.push({ ownerRef: label.ownerRef, rectExtent: label.rezerwacjaSzerokosci, inkExtent });
+    }
+  }
+  return gaps;
 }

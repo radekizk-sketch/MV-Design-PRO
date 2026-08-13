@@ -76,6 +76,37 @@ def scan_file(file_path: Path) -> list[Violation]:
     return violations
 
 
+def check_excluded_relative_files_freshness(root: Path) -> list[str]:
+    """Zapadka swiezosci EXCLUDED_RELATIVE_FILES (karta ZAPADKI-ALLOWLIST-RESZTA,
+    pozycja f, 2026-08-12) — MINIMALNA (tylko istnienie), swiadomie NIE pelna.
+
+    Jedyny dzisiejszy wpis (`domainApi.ts`) jest wykluczony nie dlatego, ze
+    "regex go dzis lapie jako falszywy alarm" (jak analogiczne wpisy w
+    `no_codenames_guard`/`sld_layer_id_scope_guard`) — jest wykluczony PO
+    ROLI: to KANONICZNY klient, ktory ma prawo odwolywac sie do endpointu
+    wprost, niezaleznie od tego, czy dzisiejsza forma zapisu URL-a
+    (`${API_BASE}/${caseId}/enm/domain-ops`, zlozona z interpolacji) akurat
+    trafia w prosty `ENDPOINT_PATTERN` (regex na pojedynczy literal). ZMIERZONE
+    2026-08-12: dzis NIE trafia (`API_BASE` to osobny literal `'/api/cases'`,
+    reszta jest interpolowana) — `scan_file()` na tym pliku juz dzis zwraca [].
+    Pelna zapadka "musi nadal produkowac trafienie" usunelaby ten wpis jako
+    rzekoma sierote, ale to falszywy alarm: gdyby URL zostal kiedys przepisany
+    na POJEDYNCZY literal (`fetch('/api/cases/' + id + '/enm/domain-ops')`),
+    BEZ tego wpisu guard oznaczylby WLASNY kanoniczny klient jako naruszenie
+    reguly, ktora ma go wprost dopuszczac. Minimalna zapadka (istnienie pliku)
+    jest wiec WLASCIWA semantyka dla TEGO wpisu — uzasadnienie per KLASA
+    §0.2.f ("jesli nie [tanio], uzasadnienie per guard w meldunku").
+    """
+    violations: list[str] = []
+    for rel_path in sorted(EXCLUDED_RELATIVE_FILES):
+        if not (root / rel_path).is_file():
+            violations.append(
+                f"[domain-ops-wykluczenie-osierocone] EXCLUDED_RELATIVE_FILES zawiera "
+                f"{rel_path!r}, ktorego juz nie ma w repo — usun ten wpis"
+            )
+    return violations
+
+
 def main() -> int:
     all_violations: list[Violation] = []
     for scan_dir in SCAN_DIRS:
@@ -111,6 +142,17 @@ def main() -> int:
             "Jeśli ścieżka jest świadomie poza domainApi (np. test infrastruktura)\n"
             "- dodaj komentarz // domain-ops-ignore na końcu linii."
         )
+
+    freshness_violations = check_excluded_relative_files_freshness(REPO_ROOT)
+    if freshness_violations:
+        print("=" * 60)
+        print("GUARD: domain_ops_unified_guard — WYKLUCZENIA OSIEROCONE")
+        print("=" * 60)
+        for message in freshness_violations:
+            print(f"  {message}")
+        print()
+
+    if all_violations or freshness_violations:
         return 1
 
     print("domain-ops-unified-guard: OK (brak naruszeń)")

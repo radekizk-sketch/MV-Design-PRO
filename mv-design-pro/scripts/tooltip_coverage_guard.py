@@ -25,7 +25,6 @@ from __future__ import annotations
 import re
 import sys
 from pathlib import Path
-from typing import List, Tuple
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 FRONTEND_SRC = REPO_ROOT / "frontend" / "src"
@@ -42,11 +41,11 @@ TOOLTIP_HINTS = [
 ]
 
 
-def scan_file(path: Path) -> List[Tuple[int, str]]:
+def scan_file(path: Path) -> list[tuple[int, str]]:
     """Zwraca listę (line_no, tag) dla pól bez tooltipa w okolicy (±5 linii)."""
     text = path.read_text(encoding="utf-8")
     lines = text.splitlines()
-    findings: List[Tuple[int, str]] = []
+    findings: list[tuple[int, str]] = []
     for i, line in enumerate(lines):
         m = INPUT_PATTERN.search(line)
         if not m:
@@ -67,10 +66,13 @@ def main() -> int:
     strict = "--strict" in sys.argv
 
     if not FORMS_DIR.exists():
-        print(f"tooltip_coverage_guard: katalog {FORMS_DIR} nie istnieje, skip", file=sys.stderr)
+        print(
+            f"tooltip_coverage_guard: katalog {FORMS_DIR} nie istnieje, skip",
+            file=sys.stderr,
+        )
         return 0
 
-    all_findings: List[Tuple[Path, List[Tuple[int, str]]]] = []
+    all_findings: list[tuple[Path, list[tuple[int, str]]]] = []
     total_inputs = 0
     total_missing = 0
 
@@ -90,8 +92,10 @@ def main() -> int:
         return 0
 
     coverage = 1.0 - (total_missing / total_inputs)
-    print(f"tooltip_coverage_guard: coverage {coverage * 100:.1f}% "
-          f"({total_inputs - total_missing}/{total_inputs} pól ma tooltip)")
+    print(
+        f"tooltip_coverage_guard: coverage {coverage * 100:.1f}% "
+        f"({total_inputs - total_missing}/{total_inputs} pól ma tooltip)"
+    )
 
     if all_findings:
         print()

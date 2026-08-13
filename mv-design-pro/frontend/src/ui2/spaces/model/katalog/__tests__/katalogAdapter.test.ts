@@ -11,13 +11,20 @@ import { definicjaParametru } from '../parametryDefinicje';
 import { FIXTURE_FALOWNIKI, FIXTURE_LINIE } from './fixtures';
 
 describe('katalogAdapter — metadane kategorii', () => {
-  it('udostępnia 5 kategorii katalogu (linie/kable/transformatory/aparaty/falowniki)', () => {
+  it('udostępnia 9 kategorii katalogu (SN + przekładniki + osprzęt nN)', () => {
+    // L-16 (karta KD-3): cztery przestrzenie były w API katalogu i w moście
+    // `CatalogBrowser`, a nie było ich w adapterze ui2 — projektant nie widział
+    // w warsztacie modelu przekładników ani osprzętu nN.
     expect(KATEGORIE.map((k) => k.id)).toEqual([
       'LINIA',
       'KABEL',
       'TRANSFORMATOR',
       'APARAT',
       'FALOWNIK',
+      'CT',
+      'VT',
+      'KABEL_NN',
+      'APARAT_NN',
     ]);
   });
 

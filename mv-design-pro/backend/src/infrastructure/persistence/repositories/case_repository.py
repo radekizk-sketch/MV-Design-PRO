@@ -19,6 +19,7 @@ INVARIANTS:
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from typing import Any, cast
 from uuid import UUID
 
 from domain.models import OperatingCase
@@ -31,7 +32,7 @@ from domain.study_case import (
     StudyCaseResultStatus,
 )
 from infrastructure.persistence.models import OperatingCaseORM, StudyCaseORM
-from sqlalchemy import select, update
+from sqlalchemy import CursorResult, select, update
 from sqlalchemy.orm import Session
 
 
@@ -310,7 +311,11 @@ class CaseRepository:
                 updated_at=datetime.now(UTC),
             )
         )
-        result = self._session.execute(stmt)
+        # `Session.execute` jest typowane ogolnym `Result[Any]`, ale dla instrukcji DML
+        # (`update()`) SQLAlchemy ZAWSZE zwraca `CursorResult` — i tylko on niesie
+        # `rowcount`. Jawne zawezenie zamiast siegania po atrybut, ktorego deklarowany
+        # typ nie ma.
+        result = cast(CursorResult[Any], self._session.execute(stmt))
         if commit:
             self._session.commit()
         return result.rowcount
@@ -407,7 +412,11 @@ class CaseRepository:
                 updated_at=datetime.now(UTC),
             )
         )
-        result = self._session.execute(stmt)
+        # `Session.execute` jest typowane ogolnym `Result[Any]`, ale dla instrukcji DML
+        # (`update()`) SQLAlchemy ZAWSZE zwraca `CursorResult` — i tylko on niesie
+        # `rowcount`. Jawne zawezenie zamiast siegania po atrybut, ktorego deklarowany
+        # typ nie ma.
+        result = cast(CursorResult[Any], self._session.execute(stmt))
         if commit:
             self._session.commit()
         return result.rowcount
@@ -449,7 +458,11 @@ class CaseRepository:
                     updated_at=datetime.now(UTC),
                 )
             )
-        result = self._session.execute(stmt)
+        # `Session.execute` jest typowane ogolnym `Result[Any]`, ale dla instrukcji DML
+        # (`update()`) SQLAlchemy ZAWSZE zwraca `CursorResult` — i tylko on niesie
+        # `rowcount`. Jawne zawezenie zamiast siegania po atrybut, ktorego deklarowany
+        # typ nie ma.
+        result = cast(CursorResult[Any], self._session.execute(stmt))
         if commit:
             self._session.commit()
         return result.rowcount

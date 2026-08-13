@@ -42,6 +42,17 @@ jobs:
       - name: Run pytest
         working-directory: mv-design-pro/backend
         run: poetry run pytest -q
+      # KD-9: testy WLASNE guardow leza w `mv-design-pro/scripts`, czyli POZA
+      # `testpaths = ["tests"]` backendu — `poetry run pytest -q` powyzej nigdy
+      # ich nie zbieral, a zaden workflow ich nie wolal. 10 plikow / 71 testow
+      # bylo martwych od powstania: znaleziono to przy naprawie
+      # `api_lifecycle_guard.py`, ktorego test kontraktu jest wlasnie w tym
+      # zbiorze. Jeden z tych testow zdazyl w tym czasie zgnic (rejestr decyzji
+      # w atrapie nie nadazyl za kanonem V12D-036) — nikt tego nie widzial,
+      # bo test sie nie wykonywal. Czas biegu: ~2 s.
+      - name: Testy guardow (mv-design-pro/scripts, poza testpaths backendu)
+        working-directory: mv-design-pro/backend
+        run: poetry run python -m pytest -q ../scripts
       - name: Run audit2 backend integration tests (Phase 8-30)
         working-directory: mv-design-pro/backend
         run: |
@@ -102,6 +113,11 @@ jobs:
       - name: Audit Contract Guard
         working-directory: mv-design-pro
         run: python scripts/audit_contract_guard.py
+      # K10 (dyrektywa 2026-07-29): zero kodów rejestru/nazw API/ścieżek plików
+      # w treści widocznej dla inżyniera (stringi UI + pola śladów analiz).
+      - name: UI Production Codes Guard
+        working-directory: mv-design-pro
+        run: python scripts/ui_production_codes_guard.py
       - name: Repo Hygiene Guard
         working-directory: mv-design-pro
         run: python scripts/repo_hygiene_guard.py
@@ -120,3 +136,29 @@ jobs:
       - name: Mypy Ratchet Guard (dlug typow nie rosnie)
         working-directory: mv-design-pro/backend
         run: poetry run python ../scripts/mypy_ratchet_guard.py
+      # KD-9: ta sama choroba co V12K-240 wyzej, tyle ze dla formatu i lintu.
+      # `pyproject.toml` konfiguruje black (line-length 100) i ruff (E,F,W,I,N,UP,B,C4),
+      # CLAUDE.md podaje je jako polecenia obowiazkowe, a `grep -riE "black|ruff"`
+      # po `.github/workflows/` nie znajdowal ANI JEDNEGO wywolania — narzedzia
+      # skonfigurowane i nigdy nie uruchamiane. Oba sa ZIELONE na HEAD w chwili
+      # wpiecia (1317 plikow bez zmian formatu, ruff bez uwag), wiec krok wchodzi
+      # jako zapadka, nie jako dlug do splacenia. Stoi PO tescie, zeby usterka
+      # formatu nie zabierala sygnalu z regresji.
+      # V12K-301 (2026-08-01): zakres rozszerzony o `scripts/` — dlug nazwany w
+      # V12K-296/297 („scripts poza zapadka") splacony: 60 plikow sformatowanych,
+      # 58 uwag ruffa zamknietych (w tym DWIE martwe zmienne `pattern` — pozostalosc
+      # po refaktorze, w ktorym sprawdzenie przejelo wywolanie inline w petli).
+      # Dowod niezmiennosci zachowania: wyjscie WSZYSTKICH 43 guardow z
+      # `p0-extended-guards.yml` bajtowo identyczne przed i po zmianie.
+      - name: Format i lint backendu (black --check, ruff)
+        working-directory: mv-design-pro/backend
+        run: |
+          poetry run black --check src tests
+          poetry run ruff check src tests
+          # `scripts/` lezy POZA katalogiem projektu backendu, wiec black szuka
+          # konfiguracji od niego w gore i trafia na inny katalog niz nasz —
+          # bez `--config` sformatowalby te pliki domyslna szerokoscia 88
+          # zamiast kanonicznej 100. Dlatego OSOBNE wywolanie z jawna konfiguracja
+          # (laczenie sciezek w jednym wywolaniu psuje wykrywanie tak samo).
+          poetry run black --check --config pyproject.toml ../scripts
+          poetry run ruff check ../scripts

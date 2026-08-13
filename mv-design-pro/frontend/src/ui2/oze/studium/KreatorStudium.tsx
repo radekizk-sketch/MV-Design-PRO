@@ -34,6 +34,7 @@ import {
   type ZadanieDokumentuStudium,
 } from '../api';
 import { wybierzPrzebiegRozplywu } from '../zdolnosc/zdolnoscModel';
+import { PrzylaczZrodloPrzycisk } from '../PrzylaczZrodloPrzycisk';
 import { klasyOperatora } from '../ranking/rankingModel';
 import { WykresObszaruChart } from '../obszar/WykresObszaruChart';
 import { punktyObszaru, krokiSladuObszar } from '../obszar/obszarModel';
@@ -69,6 +70,8 @@ interface BrakiDokumentu {
   readonly komunikat: string;
   readonly braki: readonly string[];
 }
+import { PrzyciskAkcjiStanu } from '../../wyniki/wzorzec';
+import type { AkcjaStanuZerowego } from '../../wyniki/wzorzec';
 
 /** Parametry zakończonego biegu — źródło żądania dokumentu 1:1 (nie stan formularza). */
 interface ParametryZakonczonegoBiegu {
@@ -135,11 +138,15 @@ function StanPanel({
   opis,
   wariant,
   testid,
+  akcja,
 }: {
   komunikat: string;
   opis?: string;
   wariant: 'info' | 'blad';
   testid: string;
+  /* K6 / H-5: slot akcji stanu zerowego — realny następny krok (bieg obliczeń,
+     nawigacja, formularz operacji). Brak akcji = panel czysto informacyjny. */
+  akcja?: AkcjaStanuZerowego;
 }) {
   return (
     <div
@@ -150,6 +157,7 @@ function StanPanel({
     >
       <p className="mvd-studium-stan-title">{komunikat}</p>
       {opis && <p className="mvd-studium-stan-desc">{opis}</p>}
+      <PrzyciskAkcjiStanu akcja={akcja} testid={testid} />
     </div>
   );
 }
@@ -260,6 +268,13 @@ function SzczegolWariantu({
         {trybEkspercki && (
           <span className="mvd-studium-szczegol-id mvd-num">{wariant.busRef}</span>
         )}
+        {/* K5-B (H-3 pkt 1): pętla studium → model — formularz źródła OZE
+            z preselekcją węzła wariantu (bus_ref z biegu studium). */}
+        <PrzylaczZrodloPrzycisk
+          busRef={wariant.busRef}
+          zrodloAkcji="studium_wariant"
+          testid="mvd-studium-przylacz"
+        />
       </header>
 
       <div className="mvd-studium-szczegol-blok">
@@ -332,6 +347,9 @@ export function KreatorStudium({ trybZaawansowania }: KreatorStudiumProps) {
   // Identyfikacja domyślna z aktywnego projektu/przypadku (read-only, do dokumentu).
   const nazwaProjektuBazowa = useAppStateStore((s) => s.activeProjectName);
   const nazwaPrzypadkuBazowa = useAppStateStore((s) => s.activeCaseName);
+  // Aktywny przypadek → backend dopina do dokumentu dowód certyfikacji PTPiREE
+  // urządzeń modelu związanych z wybranym typem katalogowym przekształtnika.
+  const aktywnyPrzypadek = useAppStateStore((s) => s.activeCaseId);
 
   // Parametry zakończonego biegu — źródło żądania dokumentu 1:1 (nie stan formularza,
   // który użytkownik może zmienić po biegu). Ustawiane wyłącznie po zakończonym biegu.
@@ -490,7 +508,7 @@ export function KreatorStudium({ trybZaawansowania }: KreatorStudiumProps) {
     setDokBlad(null);
     setDokBraki(null);
     try {
-      setDokument(await pobierzDokumentStudium(zadanie));
+      setDokument(await pobierzDokumentStudium(zadanie, aktywnyPrzypadek));
     } catch (err) {
       obsluzBladDokumentu(err);
     } finally {
@@ -504,7 +522,7 @@ export function KreatorStudium({ trybZaawansowania }: KreatorStudiumProps) {
     setDocxLadowanie(true);
     setDokBlad(null);
     try {
-      const blob = await pobierzDokumentStudiumDocx(zadanie);
+      const blob = await pobierzDokumentStudiumDocx(zadanie, aktywnyPrzypadek);
       zapiszBlob(blob, nazwaPlikuDokumentuStudium(new Date(), 'docx'));
     } catch (err) {
       obsluzBladDokumentu(err);
@@ -519,7 +537,7 @@ export function KreatorStudium({ trybZaawansowania }: KreatorStudiumProps) {
     setPdfLadowanie(true);
     setDokBlad(null);
     try {
-      const blob = await pobierzDokumentStudiumPdf(zadanie);
+      const blob = await pobierzDokumentStudiumPdf(zadanie, aktywnyPrzypadek);
       zapiszBlob(blob, nazwaPlikuDokumentuStudium(new Date(), 'pdf'));
     } catch (err) {
       obsluzBladDokumentu(err);

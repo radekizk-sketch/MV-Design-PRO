@@ -31,7 +31,7 @@ BACKEND_SRC = REPO_ROOT / "backend" / "src"
 # description). Skanujemy literały tylko, by nie złapać nazw klas i pól typu
 # `branch`, `branches`, `case_id`, `run_id`, `snapshot_id` (te są kontraktem).
 _USER_VISIBLE_KEYS_RE = re.compile(
-    r'(?:message_pl|fix_hint_pl|notes_pl|description_pl|suggested_fix)\s*=\s*'
+    r"(?:message_pl|fix_hint_pl|notes_pl|description_pl|suggested_fix)\s*=\s*"
     r'(?:f|r)?["\']([^"\']*)["\']',
     re.MULTILINE | re.IGNORECASE,
 )

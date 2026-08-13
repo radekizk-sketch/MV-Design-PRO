@@ -47,8 +47,10 @@ from .models import (
     FuseBranch,
     Generator,
     OverheadLine,
+    Source,
     SwitchBranch,
 )
+from .models import TapChanger as EnmTapChanger
 
 
 def ref_to_graph_id(ref_id: str) -> str:
@@ -67,7 +69,9 @@ def ref_to_graph_id(ref_id: str) -> str:
 _ref_to_uuid = ref_to_graph_id
 
 
-def _map_tap_changer(tap_changer, ref_to_node_id: dict[str, str]) -> TapChanger | None:
+def _map_tap_changer(
+    tap_changer: EnmTapChanger | None, ref_to_node_id: dict[str, str]
+) -> TapChanger | None:
     """Project an ENM TapChanger onto the domain TapChanger (V12K-045).
 
     Resolves ``controlled_bus_ref`` (a bus ref_id) to the domain node id so the
@@ -103,19 +107,38 @@ def _map_tap_changer(tap_changer, ref_to_node_id: dict[str, str]) -> TapChanger 
     )
 
 
-def _source_positive_impedance_ohm(source, bus_voltage_kv: float) -> complex | None:
+#: Typowy stosunek R_Q/X_Q zasilania systemowego wg IEC 60909-0 §3.2 (sieci
+#: wysokiego napięcia). Wartość NORMOWA, nie wymyślona — stosowana wyłącznie wtedy,
+#: gdy model nie niesie własnego stosunku R/X źródła. Jedno miejsce w całym module:
+#: ta sama liczba stała wcześniej w DWÓCH niezależnych kopiach obliczenia
+#: impedancji źródła (w tym pliku), a dwie kopie tej samej reguły rozjeżdżają się
+#: przy pierwszej zmianie jednej z nich.
+_IEC60909_RX_ZASILANIA_SYSTEMOWEGO = 0.1
+
+
+def _source_positive_impedance_ohm(source: Source, bus_voltage_kv: float) -> complex | None:
+    """Impedancja zgodna zasilania systemowego Z_Q [Ω] albo ``None``.
+
+    ``None`` znaczy „źródło nie ma z czego policzyć impedancji" (brak jawnego
+    R/X i brak mocy zwarciowej) — wołający POMIJA takie źródło, zamiast wstawiać
+    za nie liczbę.
+    """
     if source.r_ohm is not None and source.x_ohm is not None:
         return complex(source.r_ohm, source.x_ohm)
     if source.sk3_mva is None or source.sk3_mva <= 0:
         return None
     z_abs = (bus_voltage_kv**2) / source.sk3_mva
-    rx = source.rx_ratio if source.rx_ratio and source.rx_ratio > 0 else 0.1
+    rx = (
+        source.rx_ratio
+        if source.rx_ratio is not None and source.rx_ratio > 0
+        else _IEC60909_RX_ZASILANIA_SYSTEMOWEGO
+    )
     x_ohm = z_abs / math.sqrt(1.0 + rx**2)
     r_ohm = x_ohm * rx
     return complex(r_ohm, x_ohm)
 
 
-def _source_zero_impedance_ohm(source, bus_voltage_kv: float) -> complex | None:
+def _source_zero_impedance_ohm(source: Source, bus_voltage_kv: float) -> complex | None:
     if source.r0_ohm is not None and source.x0_ohm is not None:
         return complex(source.r0_ohm, source.x0_ohm)
     if source.z0_z1_ratio is None or source.z0_z1_ratio <= 0:
@@ -259,22 +282,28 @@ def _assemble_zero_sequence_y0(
         bus_voltage_kv = bus_voltage.get(source.bus_ref, 0.0)
         if bus_voltage_kv <= 0:
             continue
-        z0_ohm = _source_zero_impedance_ohm(source, bus_voltage_kv)
-        if z0_ohm is None:
+        # Wlasna nazwa (nie `z0_ohm` z petli galeziowej wyzej): tam wartosc jest
+        # ZAWSZE zespolona, tu MOZE byc None (zrodlo bez danych skladowej zerowej).
+        # Wspoldzielenie jednej nazwy chowalo te roznice przed analiza typow.
+        z0_source_ohm = _source_zero_impedance_ohm(source, bus_voltage_kv)
+        if z0_source_ohm is None:
             continue
-        if z0_ohm == 0:
+        if z0_source_ohm == 0:
             raise ZeroDivisionError(
                 "Cannot compute source zero-sequence admittance: impedance is zero"
             )
         idx = node_index[bus_id]
-        y0_bus[idx, idx] += 1.0 / (z0_ohm / builder.get_zbase_ohm(bus_id))
+        y0_bus[idx, idx] += 1.0 / (z0_source_ohm / builder.get_zbase_ohm(bus_id))
         tracer.add(
             key=f"z0_source[{source.ref_id}]",
             title=f"Źródło {source.name or source.ref_id}: impedancja zerowa (bocznik do ziemi)",
             formula_latex=r"Y_{0,src} = 1 / (Z_{0,src}/Z_{base})",
-            inputs={"ref_id": source.ref_id, "z0_ohm": z0_ohm},
-            substitution=f"Z0(src) = {z0_ohm.real:.6g} + j{z0_ohm.imag:.6g} Ω (bocznik {bus_id})",
-            result={"z0_ohm": z0_ohm},
+            inputs={"ref_id": source.ref_id, "z0_ohm": z0_source_ohm},
+            substitution=(
+                f"Z0(src) = {z0_source_ohm.real:.6g} + j{z0_source_ohm.imag:.6g} Ω "
+                f"(bocznik {bus_id})"
+            ),
+            result={"z0_ohm": z0_source_ohm},
         )
 
     # SM-3 (V12K-181): transformatory w sieci składowej zerowej wg grupy połączeń.
@@ -364,7 +393,7 @@ def build_zero_sequence_trace(enm: EnergyNetworkModel, graph: NetworkGraph) -> l
 # short-circuit source model. Full converters (§6.7 bounded current source) →
 # InverterSource; rotating machines → voltage-behind-Z″ (§6.3 synchronous / §6.7
 # asynchronous, incl. DFIG Type 3 crowbar).
-_INVERTER_GEN_TYPES: dict[str, ConverterKind] = {
+_FULL_CONVERTER_SC_GEN_TYPES: dict[str, ConverterKind] = {
     "pv_inverter": ConverterKind.PV,
     "bess": ConverterKind.BESS,
     "wind_inverter": ConverterKind.WIND,
@@ -452,7 +481,7 @@ def _add_generator_sc_sources(
         if un_kv is None:
             continue
 
-        if gen_type in _INVERTER_GEN_TYPES:
+        if gen_type in _FULL_CONVERTER_SC_GEN_TYPES:
             sr_mva = _gen_rated_apparent_mva(gen, mp)
             if sr_mva is None:
                 continue
@@ -464,7 +493,7 @@ def _add_generator_sc_sources(
                     name=gen.name,
                     node_id=node_id,
                     type_ref=gen.catalog_ref,
-                    converter_kind=_INVERTER_GEN_TYPES[gen_type],
+                    converter_kind=_FULL_CONVERTER_SC_GEN_TYPES[gen_type],
                     in_rated_a=in_rated_a,
                     k_sc=float(k_sc) if isinstance(k_sc, int | float) and k_sc > 0 else 1.1,
                     contributes_negative_sequence=True,
@@ -531,9 +560,16 @@ def map_enm_to_network_graph(enm: EnergyNetworkModel) -> NetworkGraph:
     # Each entry is (P0_mw, Q0_mw, coeffs|None); coeffs comes from the load's
     # catalog-materialized params (None => constant power, no change).
     bus_zip_components: dict[str, list[tuple[float, float, ZipCoeffs | None]]] = {}
+    # Defect D1 (audit 2026-08-01): the ODBIOROWA part of the bus power, kept
+    # apart from bus_p/bus_q (which are NET: loads minus generation). The ZIP
+    # polynomial is built from the loads, so it may only be applied to the loads.
+    bus_load_p: dict[str, float] = {}
+    bus_load_q: dict[str, float] = {}
     for load in enm.loads:
         bus_p[load.bus_ref] = bus_p.get(load.bus_ref, 0.0) - load.p_mw
         bus_q[load.bus_ref] = bus_q.get(load.bus_ref, 0.0) - load.q_mvar
+        bus_load_p[load.bus_ref] = bus_load_p.get(load.bus_ref, 0.0) - load.p_mw
+        bus_load_q[load.bus_ref] = bus_load_q.get(load.bus_ref, 0.0) - load.q_mvar
         bus_zip_components.setdefault(load.bus_ref, []).append(
             (
                 load.p_mw,
@@ -559,6 +595,12 @@ def map_enm_to_network_graph(enm: EnergyNetworkModel) -> NetworkGraph:
         # ADR-011 (Z-ZIP-04): power-weighted aggregation of the bus loads into a
         # single ZipCoeffs. Constant-power buses aggregate to None (unchanged).
         bus_zip = aggregate_zip(bus_zip_components.get(bus.ref_id, []))
+        # Defect D1: a ZIP bus carries its LOAD part alongside the net power, so
+        # the solver can scale the polynomial by the loads only and keep the
+        # generation constant. Without ZIP coefficients there is nothing to
+        # scale, so nothing is carried (historical path, unchanged).
+        zip_load_p = bus_load_p.get(bus.ref_id, 0.0) if bus_zip is not None else None
+        zip_load_q = bus_load_q.get(bus.ref_id, 0.0) if bus_zip is not None else None
 
         if is_slack:
             node = Node(
@@ -571,6 +613,8 @@ def map_enm_to_network_graph(enm: EnergyNetworkModel) -> NetworkGraph:
                 active_power=p if p != 0.0 else None,
                 reactive_power=q if q != 0.0 else None,
                 zip_coeffs=bus_zip,
+                zip_load_active_power=zip_load_p,
+                zip_load_reactive_power=zip_load_q,
             )
         else:
             node = Node(
@@ -581,6 +625,8 @@ def map_enm_to_network_graph(enm: EnergyNetworkModel) -> NetworkGraph:
                 active_power=p,
                 reactive_power=q,
                 zip_coeffs=bus_zip,
+                zip_load_active_power=zip_load_p,
+                zip_load_reactive_power=zip_load_q,
             )
         graph.add_node(node)
 
@@ -665,8 +711,17 @@ def map_enm_to_network_graph(enm: EnergyNetworkModel) -> NetworkGraph:
                 switch_type=SwitchType.FUSE,
                 state=SwitchState.CLOSED if branch.status == "closed" else SwitchState.OPEN,
                 in_service=True,
-                rated_current_a=branch.rated_current_a or 0.0,
-                rated_voltage_kv=branch.rated_voltage_kv or 0.0,
+                # Ta sama reguła, co przy transformatorze: rozstrzyga BRAK
+                # (`is None`), nie prawdziwościowość liczby. Bezpiecznik z jawnie
+                # podanym prądem znamionowym 0 A jest błędem danych, który ma
+                # dojść do walidacji nietknięty — a nie zostać po drodze
+                # zrównany z bezpiecznikiem bez danych.
+                rated_current_a=(
+                    branch.rated_current_a if branch.rated_current_a is not None else 0.0
+                ),
+                rated_voltage_kv=(
+                    branch.rated_voltage_kv if branch.rated_voltage_kv is not None else 0.0
+                ),
             )
             graph.add_switch(sw)
 
@@ -694,11 +749,21 @@ def map_enm_to_network_graph(enm: EnergyNetworkModel) -> NetworkGraph:
             voltage_lv_kv=trafo.ulv_kv,
             uk_percent=trafo.uk_percent,
             pk_kw=trafo.pk_kw,
-            i0_percent=trafo.i0_percent or 0.0,
-            p0_kw=trafo.p0_kw or 0.0,
-            vector_group=trafo.vector_group or "Dyn11",
-            tap_position=trafo.tap_position or 0,
-            tap_step_percent=trafo.tap_step_percent or 2.5,
+            # PREDYKATY `is None`, NIE prawdziwościowość liczby (karta
+            # MOST-WEJSCIA-V126). Model ENM deklaruje te pola jako `float | None`,
+            # a wartość domyślna należy do kontraktu `TransformerBranch` — więc
+            # rolą mostu jest wyłącznie odróżnić BRAK od wartości podanej.
+            # Operator `or` tego nie umiał: najostrzej przy SKOKU ZACZEPU, gdzie
+            # jawnie podane 0,0 % (transformator bez regulacji zaczepowej) było
+            # podmieniane na 2,5 %, czyli na regulację, której model NIE MA — a to
+            # wchodzi wprost do przekładni t = 1 + poz·skok/100, czyli do rozpływu.
+            i0_percent=trafo.i0_percent if trafo.i0_percent is not None else 0.0,
+            p0_kw=trafo.p0_kw if trafo.p0_kw is not None else 0.0,
+            vector_group=trafo.vector_group if trafo.vector_group is not None else "Dyn11",
+            tap_position=trafo.tap_position if trafo.tap_position is not None else 0,
+            tap_step_percent=(
+                trafo.tap_step_percent if trafo.tap_step_percent is not None else 2.5
+            ),
             tap_changer=tap_changer,
         )
         graph.add_branch(tb)
@@ -726,21 +791,13 @@ def map_enm_to_network_graph(enm: EnergyNetworkModel) -> NetworkGraph:
         if bus_voltage_kv <= 0:
             continue
 
-        # Compute source impedance R + jX
-        r_ohm = 0.0
-        x_ohm = 0.0
-
-        if source.r_ohm is not None and source.x_ohm is not None:
-            r_ohm = source.r_ohm
-            x_ohm = source.x_ohm
-        elif source.sk3_mva is not None and source.sk3_mva > 0:
-            un_kv = bus_voltage_kv
-            z_abs = (un_kv**2) / source.sk3_mva  # Z = Un² / Sk'' [Ohm]
-            rx = source.rx_ratio if source.rx_ratio and source.rx_ratio > 0 else 0.1
-            x_ohm = z_abs / math.sqrt(1.0 + rx**2)
-            r_ohm = x_ohm * rx
-
-        if r_ohm == 0 and x_ohm == 0:
+        # Impedancja Z_Q z JEDNEGO źródła prawdy — tej samej funkcji, z której
+        # korzysta sieć składowej zerowej niżej w tym pliku. Do tej karty stała tu
+        # DRUGA, dosłowna kopia obliczenia (z własnym literałem R/X = 0,1): dwie
+        # kopie tej samej reguły to defekt czekający na zmianę jednej z nich, a
+        # różnica między nimi byłaby niewidoczna, bo obie dawały „jakąś" liczbę.
+        z_ohm = _source_positive_impedance_ohm(source, bus_voltage_kv)
+        if z_ohm is None or z_ohm == 0:
             continue
 
         graph.add_grid_sc_source(
@@ -748,7 +805,7 @@ def map_enm_to_network_graph(enm: EnergyNetworkModel) -> NetworkGraph:
                 id=_ref_to_uuid(f"_zsrc_{source.ref_id}"),
                 name=source.name or source.ref_id,
                 node_id=bus_node_id,
-                z_ohm=complex(r_ohm, x_ohm),
+                z_ohm=z_ohm,
             )
         )
 

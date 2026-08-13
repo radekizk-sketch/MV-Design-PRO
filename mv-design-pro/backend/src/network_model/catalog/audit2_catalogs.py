@@ -520,7 +520,7 @@ DEVICE_WITHSTAND_CATALOG: tuple[DeviceWithstandItem, ...] = (
         id="wstd_breaker_vacuum_15_25",
         catalog_namespace="device_withstand",
         catalog_version="2024.1",
-        label_pl="Wylacznik prozniowy 15 kV * I_dyn=63 kA * I_th=25 kA/1s",
+        label_pl="Wyłącznik próżniowy 15 kV · I_dyn=63 kA · I_th=25 kA/1s",
         device_type="breaker_vacuum_15",
         nominal_voltage_kv=15,
         nominal_current_a=1250,
@@ -532,7 +532,7 @@ DEVICE_WITHSTAND_CATALOG: tuple[DeviceWithstandItem, ...] = (
         id="wstd_breaker_sf6_15_31_5",
         catalog_namespace="device_withstand",
         catalog_version="2024.1",
-        label_pl="Wylacznik SF6 15 kV * I_dyn=80 kA * I_th=31,5 kA/3s",
+        label_pl="Wyłącznik SF6 15 kV · I_dyn=80 kA · I_th=31,5 kA/3s",
         device_type="breaker_sf6_15",
         nominal_voltage_kv=15,
         nominal_current_a=1250,
@@ -544,7 +544,7 @@ DEVICE_WITHSTAND_CATALOG: tuple[DeviceWithstandItem, ...] = (
         id="wstd_busbar_15_2000_50",
         catalog_namespace="device_withstand",
         catalog_version="2024.1",
-        label_pl="Szyna SN 15 kV * 2000 A * I_dyn=125 kA * I_th=50 kA/1s",
+        label_pl="Szyna SN 15 kV · 2000 A · I_dyn=125 kA · I_th=50 kA/1s",
         device_type="busbar_15_2000",
         nominal_voltage_kv=15,
         nominal_current_a=2000,
@@ -556,7 +556,7 @@ DEVICE_WITHSTAND_CATALOG: tuple[DeviceWithstandItem, ...] = (
         id="wstd_busbar_15_1250_25",
         catalog_namespace="device_withstand",
         catalog_version="2024.1",
-        label_pl="Szyna SN 15 kV * 1250 A * I_dyn=63 kA * I_th=25 kA/1s",
+        label_pl="Szyna SN 15 kV · 1250 A · I_dyn=63 kA · I_th=25 kA/1s",
         device_type="busbar_15_1250",
         nominal_voltage_kv=15,
         nominal_current_a=1250,
@@ -568,7 +568,7 @@ DEVICE_WITHSTAND_CATALOG: tuple[DeviceWithstandItem, ...] = (
         id="wstd_switch_load_15_25",
         catalog_namespace="device_withstand",
         catalog_version="2024.1",
-        label_pl="Rozlacznik z bezpiecznikami 15 kV * I_dyn=63 kA * I_th=25 kA/1s",
+        label_pl="Rozłącznik z bezpiecznikami 15 kV · I_dyn=63 kA · I_th=25 kA/1s",
         device_type="switch_load_15",
         nominal_voltage_kv=15,
         nominal_current_a=630,
@@ -1114,6 +1114,106 @@ def is_vt_voltage_factor_valid_for_grounding(
     return True, ""
 
 
+def ocen_wytrzymalosc_aparatu(
+    *,
+    etykieta_pl: str,
+    i_dyn_ka: float | None,
+    i_th_ka: float | None,
+    i_th_duration_s: float | None,
+    i_peak_calculated_ka: float,
+    i_thermal_calculated_ka: float,
+    t_clearing_s: float | None,
+) -> dict:
+    """JĄDRO WERDYKTU wytrzymałości (I_dyn / I_th) — jedno na cały system.
+
+    Wydzielone z ``validate_device_withstand`` w karcie KD-6 (poz. 2), bo ten sam
+    rachunek musi obsłużyć DWA źródła znamion: pozycję katalogu wytrzymałości
+    wskazaną ręcznie w konfiguracji stacji ORAZ pozycję APARAT_SN, którą pole
+    stacji ma w MODELU. Kopiowanie porównania do warstwy aplikacji zrobiłoby
+    drugą fizykę — jest jedna, tutaj.
+
+    KRYTERIA (IEC 60909 / IEC 62271-1):
+      dynamiczne:  i_p ≤ I_dyn
+      cieplne:     I_th ≤ I_th_zn · √(t_zn / t_wyl)
+
+    BRAK DANEJ NIE JEST WERDYKTEM: nieznane znamiona albo nieznany czas
+    wyłączenia dają ``None`` przy odpowiednim kryterium (a nie ``False``) —
+    „nie da się sprawdzić" to inny stan niż „nie wytrzymuje".
+    """
+    import math
+
+    i_dyn_ok: bool | None = None
+    util_dyn: float | None = None
+    if i_dyn_ka is not None and i_dyn_ka > 0:
+        i_dyn_ok = i_dyn_ka >= i_peak_calculated_ka
+        util_dyn = (i_peak_calculated_ka / i_dyn_ka) * 100
+
+    i_th_ok: bool | None = None
+    util_th: float | None = None
+    i_th_effective: float | None = None
+    if (
+        i_th_ka is not None
+        and i_th_ka > 0
+        and i_th_duration_s is not None
+        and i_th_duration_s > 0
+        and t_clearing_s is not None
+        and t_clearing_s > 0
+    ):
+        i_th_effective = i_th_ka * math.sqrt(i_th_duration_s / max(t_clearing_s, 0.01))
+        i_th_ok = i_th_effective >= i_thermal_calculated_ka
+        util_th = (i_thermal_calculated_ka / i_th_effective) * 100
+
+    braki: list[str] = []
+    if i_dyn_ok is None:
+        braki.append("prądu dynamicznego znamionowego")
+    if i_th_ok is None:
+        if i_th_ka is None or i_th_duration_s is None:
+            braki.append("prądu cieplnego znamionowego")
+        else:
+            braki.append("czasu wyłączenia")
+
+    niezaliczone: list[str] = []
+    if i_dyn_ok is False and util_dyn is not None and i_dyn_ka is not None:
+        niezaliczone.append(
+            f"I_dyn {i_peak_calculated_ka:.1f} kA > {i_dyn_ka:.1f} kA (limit) — "
+            "przekroczenie wytrzymałości dynamicznej"
+        )
+    if i_th_ok is False and i_th_effective is not None and t_clearing_s is not None:
+        niezaliczone.append(
+            f"I_th {i_thermal_calculated_ka:.1f} kA > {i_th_effective:.1f} kA "
+            f"(limit przy t={t_clearing_s:.2f} s) — przekroczenie wytrzymałości cieplnej"
+        )
+
+    if niezaliczone:
+        message = f"BLOKER: {'; '.join(niezaliczone)}."
+    elif braki:
+        zaliczone = []
+        if i_dyn_ok is True and util_dyn is not None:
+            zaliczone.append(f"I_dyn {util_dyn:.0f}%")
+        if i_th_ok is True and util_th is not None:
+            zaliczone.append(f"I_th {util_th:.0f}%")
+        czesc_zaliczona = f" Sprawdzone: {', '.join(zaliczone)}." if zaliczone else ""
+        message = (
+            f"NIEUSTALONE: aparatura „{etykieta_pl}” — brak {', '.join(braki)}."
+            f"{czesc_zaliczona}"
+        )
+    else:
+        message = (
+            f"OK: aparatura „{etykieta_pl}” wytrzymała "
+            f"(wykorzystanie I_dyn {util_dyn:.0f}%, I_th {util_th:.0f}%)."  # type: ignore[str-format]
+        )
+
+    return {
+        "ok": i_dyn_ok is True and i_th_ok is True,
+        "i_dyn_ok": i_dyn_ok,
+        "i_th_ok": i_th_ok,
+        "message_pl": message,
+        "utilization_dyn_percent": util_dyn,
+        "utilization_th_percent": util_th,
+        "i_th_effective_ka": i_th_effective,
+    }
+
+
 def validate_device_withstand(
     *,
     device_id: str,
@@ -1121,9 +1221,22 @@ def validate_device_withstand(
     i_thermal_calculated_ka: float,
     t_clearing_s: float,
 ) -> dict:
-    """Naprawa eng.18: walidacja I_dyn / I_th aparatury (IEC 60909)."""
-    import math
+    """Naprawa eng.18: walidacja I_dyn / I_th aparatury (IEC 60909).
 
+    JEDYNE ZRODLO WERDYKTU (K7-B, 2026-07-31). Do tej karty rownolegly rachunek
+    zyl w warstwie prezentacji (`frontend/src/ui/network-build/station-der/
+    protection-catalogs.ts::validateDeviceWithstand` + wlasna kopia katalogu
+    `DEVICE_WITHSTAND_CATALOG`) i to ON zasilal karte zabezpieczen. Ekran mowil
+    „wytrzymala" na podstawie liczb, ktorych zaden solver nie widzial i ktorych
+    nie obejmowal zaden slad. Karta zabezpieczen wola teraz to wyliczenie przez
+    `POST /api/v1/catalog/audit2/validate-device-withstand`, a `message_pl` jest
+    tekstem POKAZYWANYM UZYTKOWNIKOWI — stad pelna polszczyzna z diakrytykami.
+
+    KONTRAKT ODPOWIEDZI NIEZMIENIONY (KD-6): ta koncowka zawsze dostaje komplet
+    znamion z katalogu wytrzymalosci i jawny czas wylaczenia, wiec `i_dyn_ok` /
+    `i_th_ok` pozostaja logiczne, a pola dodane przez jadro (`i_th_effective_ka`)
+    sa ADDYTYWNE.
+    """
     device = get_device_withstand(device_id)
     if device is None:
         return {
@@ -1134,38 +1247,15 @@ def validate_device_withstand(
             "utilization_dyn_percent": 0,
             "utilization_th_percent": 0,
         }
-    # I_th_eff = I_th_rated * sqrt(t_rated / t_clearing).
-    i_th_effective = device.i_th_1s_ka * math.sqrt(device.i_th_duration_s / max(t_clearing_s, 0.01))
-    i_dyn_ok = device.i_dyn_ka >= i_peak_calculated_ka
-    i_th_ok = i_th_effective >= i_thermal_calculated_ka
-    util_dyn = (i_peak_calculated_ka / device.i_dyn_ka) * 100
-    util_th = (i_thermal_calculated_ka / i_th_effective) * 100
-    if i_dyn_ok and i_th_ok:
-        message = (
-            f"OK: aparatura '{device.label_pl}' wytrzymala "
-            f"(I_dyn util {util_dyn:.0f}%, I_th util {util_th:.0f}%)."
-        )
-    else:
-        failures: list[str] = []
-        if not i_dyn_ok:
-            failures.append(
-                f"I_dyn {i_peak_calculated_ka:.1f} kA > {device.i_dyn_ka:.1f} kA (limit) -> "
-                "przekroczenie wytrzymalosci dynamicznej"
-            )
-        if not i_th_ok:
-            failures.append(
-                f"I_th {i_thermal_calculated_ka:.1f} kA > {i_th_effective:.1f} kA "
-                f"(limit przy t={t_clearing_s:.2f} s) -> przekroczenie wytrzymalosci termicznej"
-            )
-        message = f"BLOKER: {'; '.join(failures)}."
-    return {
-        "ok": i_dyn_ok and i_th_ok,
-        "i_dyn_ok": i_dyn_ok,
-        "i_th_ok": i_th_ok,
-        "message_pl": message,
-        "utilization_dyn_percent": util_dyn,
-        "utilization_th_percent": util_th,
-    }
+    return ocen_wytrzymalosc_aparatu(
+        etykieta_pl=device.label_pl,
+        i_dyn_ka=device.i_dyn_ka,
+        i_th_ka=device.i_th_1s_ka,
+        i_th_duration_s=device.i_th_duration_s,
+        i_peak_calculated_ka=i_peak_calculated_ka,
+        i_thermal_calculated_ka=i_thermal_calculated_ka,
+        t_clearing_s=t_clearing_s,
+    )
 
 
 # =============================================================================

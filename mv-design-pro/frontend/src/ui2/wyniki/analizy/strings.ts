@@ -42,6 +42,7 @@ export const ANALIZY_STRINGS = {
   wymagaDowolnego: 'wymaga zakończonego przebiegu',
   wymagaModelu: 'wymaga modelu sieci',
   daneDostepne: 'dane dostępne',
+  daneWbudowane: 'dane wbudowane',
 
   klasyczneEyebrow: 'WIDOKI KLASYCZNE (MOST)',
   klasyczneNota: 'Klasyczne widoki dawnego interfejsu. Nowe odpowiedniki znajdziesz '

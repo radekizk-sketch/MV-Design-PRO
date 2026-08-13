@@ -17,6 +17,7 @@ from analysis.power_flow.types import (
 )
 from application.analysis_run.result_invalidator import ResultInvalidator
 from application.network_model import build_network_graph, network_model_id_for_project
+from application.power_flow_input_builder import merge_bus_components
 from application.sld.layout import build_auto_layout_diagram
 from domain.models import (
     OperatingCase,
@@ -1041,14 +1042,14 @@ class NetworkWizardService:
                 )
                 continue
             if source.get("source_type") == "CONVERTER":
-                setpoint = converter_setpoints.get(str(source.get("id")))
-                if setpoint is None:
+                conv_setpoint = converter_setpoints.get(str(source.get("id")))
+                if conv_setpoint is None:
                     continue
                 pq_specs.append(
                     PQSpec(
                         node_id=str(source["node_id"]),
-                        p_mw=setpoint.p_mw,
-                        q_mvar=self._resolve_converter_q_mvar(setpoint),
+                        p_mw=conv_setpoint.p_mw,
+                        q_mvar=self._resolve_converter_q_mvar(conv_setpoint),
                         inverter_control=inverter_control_from_params(
                             payload, base_mva, payload.get("sn_mva")
                         ),
@@ -1070,7 +1071,17 @@ class NetworkWizardService:
             graph=graph,
             base_mva=base_mva,
             slack=slack_spec,
-            pq=pq_specs,
+            # V12K-313/V12K-316: the loop above emits one entry per COMPONENT (a
+            # load and an inverter on one bus are two entries), while the solver
+            # contract holds exactly one `PQSpec` per BUS — `validate_input` refuses
+            # a duplicate `node_id` and `build_power_spec_v2` ASSIGNS. Without the
+            # fold the wizard REFUSED the ordinary prosumer model (a bus carrying a
+            # load and a regulated source at once) instead of computing it. The fold
+            # is the one shared with the other power flow input builders: it
+            # accumulates the bus power and keeps the source's own power and the
+            # load base recoverable next to it (single implementation, never a
+            # second one here).
+            pq=merge_bus_components(pq_specs),
             pv=pv_specs,
             options=PowerFlowOptions(**options_data),
         )
@@ -1419,8 +1430,8 @@ class NetworkWizardService:
 
             for source in parsed.get("sources", []):
                 try:
-                    payload = self._source_payload_from_dict(source)
-                    record = self._source_payload_to_record(project_id, payload)
+                    source_payload = self._source_payload_from_dict(source)
+                    record = self._source_payload_to_record(project_id, source_payload)
                     uow.wizard.upsert_source(project_id, record, commit=False)
                     result = "updated" if record["id"] in existing_source_ids else "created"
                     created, updated = self._bump_counts(result, created, updated, "sources")
@@ -1486,12 +1497,16 @@ class NetworkWizardService:
 
             for state in parsed.get("switching_states", []):
                 try:
-                    case_id = UUID(str(state.get("case_id")))
+                    state_case_id = UUID(str(state.get("case_id")))
                     element_id = UUID(str(state.get("element_id")))
                     element_type = str(state.get("element_type"))
                     in_service = bool(state.get("in_service", True))
                     uow.wizard.set_switching_state(
-                        case_id, element_id, element_type, in_service, commit=False
+                        state_case_id,
+                        element_id,
+                        element_type,
+                        in_service,
+                        commit=False,
                     )
                     created, updated = self._bump_counts(
                         "created", created, updated, "switching_states"

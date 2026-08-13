@@ -70,7 +70,7 @@ import {
 } from './surfaces/InfrastructureSurfaces';
 import { PvSourceSurface, BessSurface, FwSurface } from './surfaces/DerSurfaces';
 import { ReferenceNetworkSurface } from './surfaces/ReferenceNetworkSurface';
-import { V126AcademicSurface } from './surfaces/V126AcademicSurface';
+import { EkranAnalizAkademickich, type RodzajPrezentowany } from '../../ui2/wyniki/akademickie';
 import { NcRfgTestsTab } from './surfaces/NcRfgTestsTab';
 import {
   AnalysisSurfaceComparisonWizard,
@@ -2111,7 +2111,7 @@ function ModelGapsSurface({ surface: _surface }: { surface: WorkspaceSurfaceDesc
                       <button
                         type="button"
                         onClick={() => handleFixActionClick(action)}
-                        className="rounded border border-red-500 px-3 py-1 text-xs font-semibold text-red-100 hover:bg-red-900/40"
+                        className="rounded border border-sygnal-blokada px-3 py-1 text-xs font-semibold text-sygnal-blokada-tusz hover:bg-sygnal-blokada-tlo"
                       >
                         Konfiguruj układ
                       </button>
@@ -2265,12 +2265,12 @@ function ModelGapsSurface({ surface: _surface }: { surface: WorkspaceSurfaceDesc
                 className={
                   'rounded border p-3 text-sm '
                   + (row.status === 'requires_ramp_down'
-                    ? 'border-rose-700 bg-rose-950/30 text-rose-200'
+                    ? 'border-sygnal-blokada bg-sygnal-blokada-tlo text-sygnal-blokada-tusz'
                     : row.status === 'high_export_warning'
-                      ? 'border-amber-700 bg-amber-950/30 text-amber-200'
+                      ? 'border-sygnal-uwaga bg-sygnal-uwaga-tlo text-sygnal-uwaga-tusz'
                       : row.status === 'normal_export'
-                        ? 'border-blue-700 bg-blue-950/30 text-blue-200'
-                        : 'border-emerald-700 bg-emerald-950/30 text-emerald-200')
+                        ? 'border-sygnal-info bg-sygnal-info-tlo text-sygnal-info-tusz'
+                        : 'border-sygnal-ok bg-sygnal-ok-tlo text-sygnal-ok-tusz')
                 }
               >
                 <div className="font-semibold">Stacja: {row.station_id}</div>
@@ -2327,67 +2327,6 @@ function CatalogHelperSurface({ surface }: { surface: WorkspaceSurfaceDescriptor
       <SectionCard title="Przegladarka katalogowa" eyebrow={isPublicCatalogScreen ? 'Katalogi techniczne' : 'Panel pomocniczy'}>
         <div className="min-h-[420px]">
           <CatalogBrowser />
-        </div>
-      </SectionCard>
-    </div>
-  );
-}
-
-function CaseContextSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
-  const activeCaseId = useAppStateStore((state) => state.activeCaseId);
-  const activeCaseName = useAppStateStore((state) => state.activeCaseName);
-  const activeRunId = useAppStateStore((state) => state.activeRunId);
-  const openChildSurface = useChildSurfaceLauncher(surface);
-
-  return (
-    <div className="space-y-4">
-      <MiniSldCard surface={surface} />
-      <SectionCard title="Parametry analizy" eyebrow="Kontekst roboczy">
-        <KeyValueGrid
-          rows={[
-            { label: 'Wariant', value: displayScopeLabel(activeCaseName, activeCaseId) },
-            { label: 'Stan obliczeń', value: activeRunId ? 'Wybrane obliczenie jest dostępne' : 'Nie wybrano obliczenia' },
-            { label: 'Następny krok', value: 'Skontroluj konfigurację układu, wyniki albo raport techniczny dla aktywnego wariantu.' },
-          ]}
-        />
-      </SectionCard>
-      <SectionCard title="Nawigacja kanoniczna" eyebrow="Główne okno robocze">
-        <div className="flex flex-wrap gap-2">
-          <SurfaceActionButton
-            label="Stan obliczeń wariantu"
-            onClick={() =>
-              openChildSurface('variants', {
-                titlePl: 'Stan obliczeń wariantu',
-                sizeClass: 'C',
-                supportsMiniSld: false,
-                subjectKind: 'helper_context',
-                subjectRef: activeCaseId ?? surface.subjectRef ?? 'variants-context',
-              })
-            }
-          />
-          <SurfaceActionButton
-            label="Nakładka wynikowa"
-            onClick={() =>
-              openChildSurface('analysis', {
-                screenCode: ANALYSIS_SURFACE_SCREEN_CODE,
-                tabId: 'results',
-                titlePl: 'Nakładka wynikowa na schemacie',
-                sizeClass: 'C',
-                supportsMiniSld: true,
-              })
-            }
-          />
-          <SurfaceActionButton
-            label="Raporty i eksporty"
-            onClick={() =>
-              openChildSurface('report', {
-                screenCode: REPORT_SURFACE_SCREEN_CODE,
-                titlePl: 'Raporty i eksporty',
-                sizeClass: 'C',
-                supportsMiniSld: true,
-              })
-            }
-          />
         </div>
       </SectionCard>
     </div>
@@ -2900,6 +2839,50 @@ const delegatedSurfaceBodies: Record<string, (surface: WorkspaceSurfaceDescripto
   operation_form: (surface) => <OperationFormSurface surface={surface} />,
 };
 
+/**
+ * V126-OKNA: ekran trasowy → rodzaj analizy akademickiej (kontrakt
+ * `V126AnalysisType`). Mapa przeniesiona z wygaszonej powierzchni
+ * `V126AcademicSurface`, ale BEZ jej wartości domyślnej `?? 'earth_fault_detection'`:
+ * ta wartość udawała, że każdy nieznany kod ekranu to detekcja doziemień, więc
+ * jeden rodzaj analizy był osiągalny WYŁĄCZNIE przez pomyłkę. Kod spoza mapy
+ * pozostawia wybór rodzaju użytkownikowi (lista z katalogu backendu).
+ */
+/**
+ * V126-JEZYK: powierzchnia trasowa analiz akademickich czyta REALNY tryb
+ * zaawansowania powłoki. Do tej karty przekazywała zaszyte `"expert"`, więc
+ * wejście trasowe E-40…E-50 obchodziło bramę trybu (klasa: brama bramkująca
+ * jedno z dwóch wejść nie jest bramą). Wzorzec z `ComplianceSurface`.
+ */
+function PowierzchniaAnalizAkademickich({ rodzaj }: { rodzaj?: RodzajPrezentowany }) {
+  const trybZaawansowania = useShellStore((state) => state.advancementMode);
+  return <EkranAnalizAkademickich trybZaawansowania={trybZaawansowania} rodzajPoczatkowy={rodzaj} />;
+}
+
+/*
+ * V126-WYGASZENIE: typ wartości zawężony do rodzajów PREZENTOWANYCH. Ekran
+ * trasowy nie może wskazywać rodzaju wycofanego z toru projektanta — okno
+ * odsiewa go z listy wyboru, więc taka mapa po cichu otwierałaby INNĄ analizę
+ * niż obiecuje wejście. `E-49` (walidacja na sieciach odniesienia) zniknął z tej
+ * mapy i z nawigacji (`screenCanonRegistry`, `visibleInNavigation: false`) na
+ * mocy decyzji właściciela 2026-08-07.
+ */
+const RODZAJ_EKRANU_V126: Partial<Record<string, RodzajPrezentowany>> = {
+  'E-40': 'power_quality_harmonics',
+  // 'E-41' (stabilność napięciowa) ZDJĘTE z mapy — rodzaj wycofany kartą
+  // QU-FABRYKACJA. Wpis zostawiony wskazywałby rodzaj nieobecny na liście wyboru
+  // okna, więc ekran po cichu pokazałby PIERWSZĄ pozycję katalogu, czyli inną
+  // analizę niż obiecuje nawigacja. Typ mapy (`RodzajPrezentowany`) i tak nie
+  // pozwoliłby tu na rodzaj wycofany — to samo rozstrzygnięcie, co dla E-49.
+  'E-42': 'reliability_contingency',
+  'E-43': 'earthing_safety',
+  'E-44': 'insulation_coordination',
+  'E-45': 'transient_trv',
+  'E-46': 'motor_starting',
+  'E-47': 'hosting_capacity',
+  'E-48': 'opf_loss_lcc',
+  'E-50': 'uncertainty_sensitivity',
+};
+
 function renderSurfaceBody(surface: WorkspaceSurfaceDescriptor) {
   const delegate = surface.routeState.payload?.delegate;
   const delegateBodies = delegatedSurfaceBodies;
@@ -2908,16 +2891,17 @@ function renderSurfaceBody(surface: WorkspaceSurfaceDescriptor) {
   }
 
   switch (surface.screenCode) {
-    case 'E-08':
+    // K8: trasa #variants wygaszona (lądowisko = przestrzeń „Obliczenia" ui2),
+    // ale `VariantsSurface` ZOSTAJE — jest współdzielona z akcją naprawczą
+    // „historia" (`fixActionSurface('history')` → `variants_runs`), więc nie
+    // jest martwa. Kod ekranu 'E-08' nie ma już żadnego wołającego i zniknął
+    // z gałęzi (`case_context`/`CaseContextSurface` usunięte razem z trasą).
     case 'variants_runs':
       return <VariantsSurface surface={surface} />;
     case 'catalog_admin':
     case 'catalog_picker':
     case 'E-38':
       return <CatalogHelperSurface surface={surface} />;
-    case 'case_context':
-      return <CaseContextSurface surface={surface} />;
-    case 'switchgear_wizard':
     case ANALYSIS_SURFACE_SCREEN_CODE:
       return <AnalysisSurface surface={surface} />;
     case REPORT_SURFACE_SCREEN_CODE:
@@ -3018,7 +3002,12 @@ function renderSurfaceBody(surface: WorkspaceSurfaceDescriptor) {
     case 'E-48':
     case 'E-49':
     case 'E-50':
-      return <V126AcademicSurface surface={surface} />;
+      // V126-OKNA: powierzchnia zastana `V126AcademicSurface` WYGASZONA (334 w.,
+      // zero testów, trzy zaszyte limity gubiące pola wyniku, dane wejściowe
+      // fabrykowane w UI). Ekrany trasowe prowadzą do okna ui2, z rodzajem analizy
+      // wybranym z góry wg kodu ekranu — JEDNO wejście do zdolności, jedno źródło
+      // prawdy o kontrakcie V12.6.
+      return <PowierzchniaAnalizAkademickich rodzaj={RODZAJ_EKRANU_V126[surface.screenCode]} />;
     default:
       break;
   }

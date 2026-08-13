@@ -4,6 +4,15 @@ import pytest
 from enm.domain_operations import execute_domain_operation
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
 
+#: RZECZYWISTE pozycje katalogu. Testy podawały wcześniej wymyślone identyfikatory
+#: („conv-pv-1mw", „ap-nn-630") razem z `materialized_params` — i przechodziły
+#: WYŁĄCZNIE dzięki defektowi G: payloadowa tabliczka zastępowała materializację,
+#: więc katalog nie był czytany ani razu. Po naprawie tabliczka pochodzi z katalogu,
+#: a test ćwiczy tę samą intencję na pozycji, która naprawdę istnieje.
+_FALOWNIK_PV = "conv-pv-nn-0p5mw-0p4kv"  # 0,4 kV / 500 kW / 550 kVA
+_FALOWNIK_PV_SN = "conv-pv-0.5mw-15kv"  # 15 kV — do kontroli zgodności napięć
+_APARAT_NN = "cb_nn_630a"
+
 
 def _base_enm() -> dict:
     return EnergyNetworkModel(
@@ -90,7 +99,7 @@ def test_add_converter_source_creates_generator_and_field_for_new_nn_field() -> 
                 "field_name": "Pole PV nN",
                 "catalog_binding": {
                     "catalog_namespace": "APARAT_NN",
-                    "catalog_item_id": "ap-nn-630",
+                    "catalog_item_id": _APARAT_NN,
                     "catalog_item_version": "2024.1",
                     "materialize": True,
                     "snapshot_mapping_version": "1.0",
@@ -103,18 +112,11 @@ def test_add_converter_source_creates_generator_and_field_for_new_nn_field() -> 
             "q_min_mvar": -0.2,
             "q_max_mvar": 0.2,
             "catalog_binding": {
-                "catalog_namespace": "CONVERTER",
-                "catalog_item_id": "conv-pv-1mw",
+                "catalog_namespace": "ZRODLO_NN_PV",
+                "catalog_item_id": _FALOWNIK_PV,
                 "catalog_item_version": "2024.1",
                 "materialize": True,
                 "snapshot_mapping_version": "1.0",
-            },
-            "materialized_params": {
-                "catalog_item_id": "conv-pv-1mw",
-                "catalog_item_version": "2024.1",
-                "un_kv": 0.4,
-                "pmax_mw": 0.5,
-                "sn_mva": 0.5,
             },
         },
     )
@@ -125,12 +127,12 @@ def test_add_converter_source_creates_generator_and_field_for_new_nn_field() -> 
     field_specs = snapshot["substations"][0]["meta"]["nn_field_specs"]
 
     assert generator["gen_type"] == "pv_inverter"
-    assert generator["catalog_namespace"] == "CONVERTER"
+    assert generator["catalog_namespace"] == "ZRODLO_NN_PV"
     assert generator["connection_variant"] == "nn_side"
     assert generator["p_mw"] == 0.5
     assert generator["meta"]["field_ref"] == field_specs[0]["field_ref"]
     assert field_specs[0]["meta"]["source_field_kind"] == "PV"
-    assert field_specs[0]["meta"]["apparatus_catalog_ref"] == "ap-nn-630"
+    assert field_specs[0]["meta"]["apparatus_catalog_ref"] == _APARAT_NN
 
     EnergyNetworkModel.model_validate(snapshot)
 
@@ -152,7 +154,7 @@ def test_add_converter_source_persists_reactive_regulation_on_generator_meta() -
                 "field_name": "Pole PV nN",
                 "catalog_binding": {
                     "catalog_namespace": "APARAT_NN",
-                    "catalog_item_id": "ap-nn-630",
+                    "catalog_item_id": _APARAT_NN,
                     "catalog_item_version": "2024.1",
                     "materialize": True,
                     "snapshot_mapping_version": "1.0",
@@ -169,18 +171,11 @@ def test_add_converter_source_persists_reactive_regulation_on_generator_meta() -
             "lfsm_deadband_hz": 0.2,
             "power_setpoint_mw": 0.5,
             "catalog_binding": {
-                "catalog_namespace": "CONVERTER",
-                "catalog_item_id": "conv-pv-1mw",
+                "catalog_namespace": "ZRODLO_NN_PV",
+                "catalog_item_id": _FALOWNIK_PV,
                 "catalog_item_version": "2024.1",
                 "materialize": True,
                 "snapshot_mapping_version": "1.0",
-            },
-            "materialized_params": {
-                "catalog_item_id": "conv-pv-1mw",
-                "catalog_item_version": "2024.1",
-                "un_kv": 0.4,
-                "pmax_mw": 0.5,
-                "sn_mva": 0.5,
             },
         },
     )
@@ -212,28 +207,18 @@ def test_add_converter_source_accepts_station_transformer_bound_by_buses() -> No
                 "field_name": "Pole PV nN",
                 "catalog_binding": {
                     "catalog_namespace": "APARAT_NN",
-                    "catalog_item_id": "ap-nn-630",
+                    "catalog_item_id": _APARAT_NN,
                     "catalog_item_version": "2024.1",
                     "materialize": True,
                     "snapshot_mapping_version": "1.0",
                 },
             },
             "catalog_binding": {
-                "catalog_namespace": "CONVERTER",
-                "catalog_item_id": "conv-pv-bus-bound-transformer",
+                "catalog_namespace": "ZRODLO_NN_PV",
+                "catalog_item_id": _FALOWNIK_PV,
                 "catalog_item_version": "2024.1",
                 "materialize": True,
                 "snapshot_mapping_version": "1.0",
-            },
-            "materialized_params": {
-                "catalog_item_id": "conv-pv-bus-bound-transformer",
-                "catalog_item_version": "2024.1",
-                "un_kv": 0.4,
-                "rated_power_ac_kw": 500.0,
-                "max_power_kw": 500.0,
-                "control_mode": "STALY_COS_PHI",
-                "pmax_mw": 0.5,
-                "sn_mva": 0.5,
             },
         },
     )
@@ -256,21 +241,11 @@ def test_add_converter_source_returns_field_not_found_for_missing_existing_field
             "source_name": "Legacy PV",
             "power_setpoint_mw": 0.5,
             "catalog_binding": {
-                "catalog_namespace": "CONVERTER",
-                "catalog_item_id": "conv-pv-legacy",
+                "catalog_namespace": "ZRODLO_NN_PV",
+                "catalog_item_id": _FALOWNIK_PV,
                 "catalog_item_version": "2024.1",
                 "materialize": True,
                 "snapshot_mapping_version": "1.0",
-            },
-            "materialized_params": {
-                "catalog_item_id": "conv-pv-legacy",
-                "catalog_item_version": "2024.1",
-                "un_kv": 0.4,
-                "rated_power_ac_kw": 500.0,
-                "max_power_kw": 500.0,
-                "control_mode": "STALY_COS_PHI",
-                "pmax_mw": 0.5,
-                "sn_mva": 0.5,
             },
         },
     )
@@ -293,7 +268,7 @@ def test_add_converter_source_rejects_catalog_voltage_mismatch_with_nn_bus() -> 
                 "field_name": "Pole PV nN",
                 "catalog_binding": {
                     "catalog_namespace": "APARAT_NN",
-                    "catalog_item_id": "ap-nn-630",
+                    "catalog_item_id": _APARAT_NN,
                     "catalog_item_version": "2024.1",
                     "materialize": True,
                     "snapshot_mapping_version": "1.0",
@@ -303,20 +278,10 @@ def test_add_converter_source_rejects_catalog_voltage_mismatch_with_nn_bus() -> 
             "power_setpoint_mw": 0.5,
             "catalog_binding": {
                 "catalog_namespace": "ZRODLO_NN_PV",
-                "catalog_item_id": "conv-pv-15kv",
+                "catalog_item_id": _FALOWNIK_PV_SN,
                 "catalog_item_version": "2024.1",
                 "materialize": True,
                 "snapshot_mapping_version": "1.0",
-            },
-            "materialized_params": {
-                "catalog_item_id": "conv-pv-15kv",
-                "catalog_item_version": "2024.1",
-                "un_kv": 15.0,
-                "rated_power_ac_kw": 500.0,
-                "max_power_kw": 500.0,
-                "control_mode": "STALY_COS_PHI",
-                "pmax_mw": 0.5,
-                "sn_mva": 0.5,
             },
         },
     )
@@ -346,21 +311,11 @@ def test_add_converter_source_rejects_catalog_voltage_mismatch_with_nn_bus() -> 
                 "bus_nn_ref": "bus_nn_1",
                 "source_name": "PV bez listy",
                 "catalog_binding": {
-                    "catalog_namespace": "CONVERTER",
-                    "catalog_item_id": "conv-pv-nullable-list",
+                    "catalog_namespace": "ZRODLO_NN_PV",
+                    "catalog_item_id": _FALOWNIK_PV,
                     "catalog_item_version": "2024.1",
                     "materialize": True,
                     "snapshot_mapping_version": "1.0",
-                },
-                "materialized_params": {
-                    "catalog_item_id": "conv-pv-nullable-list",
-                    "catalog_item_version": "2024.1",
-                    "un_kv": 0.4,
-                    "rated_power_ac_kw": 500.0,
-                    "max_power_kw": 500.0,
-                    "control_mode": "STALY_COS_PHI",
-                    "pmax_mw": 0.5,
-                    "sn_mva": 0.5,
                 },
             },
             "OZE",

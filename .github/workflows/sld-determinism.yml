@@ -20,6 +20,13 @@ jobs:
       - name: Run SLD v2 determinism guards
         run: python mv-design-pro/scripts/sld_determinism_guards.py
 
+      # K11-B (dyrektywa właściciela z oceny ekranu 2/10, wymóg 3): LOD nie
+      # może ukryć toru przepływu energii ani aparatów ciągłości — asercja
+      # STATYCZNA na kontrakcie klas toru prądowego (poziom (b) strażnika;
+      # poziom (a) to test kontraktowy uruchamiany w jobie vitest niżej).
+      - name: Run SLD LOD continuity guard (K11-B)
+        run: python mv-design-pro/scripts/sld_lod_continuity_guard.py
+
   sld-contract-tests:
     name: SLD Contract Tests (Vitest)
     runs-on: ubuntu-latest
@@ -69,6 +76,80 @@ jobs:
       - name: Run Ports contract tests (PR-3/4)
         working-directory: mv-design-pro/frontend
         run: npx vitest run --no-file-parallelism src/ui/sld/v2/core/__tests__/ports.test.ts --reporter=verbose
+
+      # K11-B: wyrocznia DYNAMICZNA ciągłości toru na sieci referencyjnej —
+      # dla KAŻDEGO LOD tor od źródła przez magistralę do każdej stacji jest
+      # wyrysowany (z sekcją regresji wstrzykniętej, która dowodzi, że gryzie).
+      - name: Run SLD v3 LOD continuity contract tests (K11-B)
+        working-directory: mv-design-pro/frontend
+        run: npx vitest run --no-file-parallelism src/ui/sld/v3/scene/__tests__/lodContinuity.test.ts --reporter=verbose
+
+      # K11-B: minimalny rozmiar renderowania symboli — żaden poziom szczegółu
+      # nie jest aktywny przy skali, przy której jego symbole schodzą poniżej
+      # progu rozpoznawalności.
+      - name: Run SLD v3 minimum symbol size contract tests (K11-B)
+        working-directory: mv-design-pro/frontend
+        run: npx vitest run --no-file-parallelism src/ui/sld/v3/canvas/__tests__/minSymbolSize.contract.test.ts --reporter=verbose
+
+      # KD-5: zwinięcie bloku GPZ na poziomie przeglądowym L0 — jeden symbol,
+      # zero geometrii pól wewnętrznych, zachowana ciągłość toru i kotwica
+      # świata; z sekcją regresji wstrzykniętej (kontrakt musi gryźć).
+      - name: Run SLD v3 collapsed GPZ block contract tests (KD-5)
+        working-directory: mv-design-pro/frontend
+        run: npx vitest run --no-file-parallelism src/ui/sld/v3/scene/__tests__/buildScene.gpzCollapsed.test.ts --reporter=verbose
+
+      # KD-5: rozwinięcie bloku klikiem — próg LOD i realna ścieżka kliku.
+      - name: Run SLD v3 collapsed GPZ expand contract tests (KD-5)
+        working-directory: mv-design-pro/frontend
+        run: npx vitest run --no-file-parallelism src/ui/sld/v3/canvas/__tests__/gpzCollapsedExpand.test.tsx --reporter=verbose
+
+      # KD-7: kontrakt kadru — cała rysowana treść (symbole, tory i PODPISY)
+      # mieści się w kadrze z pełnym marginesem fitu, a cel fitu żyje w świecie
+      # arkusza (scena + margines ramki).
+      - name: Run SLD v3 content frame contract tests (KD-7)
+        working-directory: mv-design-pro/frontend
+        run: npx vitest run --no-file-parallelism src/ui/sld/v3/canvas/__tests__/kadrTresci.contract.test.tsx --reporter=verbose
+
+      # KD-8 poz. 5: prześwit podpisu szyny od toru (styk, nie tylko przecięcie)
+      # + próg czytelności opisów jako jawna stała gramatyki.
+      - name: Run SLD v3 busbar label clearance contract tests (KD-8)
+        working-directory: mv-design-pro/frontend
+        run: npx vitest run --no-file-parallelism src/ui/sld/v3/scene/__tests__/busbarLabelClearance.test.ts --reporter=verbose
+
+      # KD-11: tożsamość elementów na rysunku (nazwa/napięcie szyny/oznaczenie
+      # pola/nazwa źródła) NIE znika przy kadrze „Dopasuj widok" — jest
+      # renderowana pismem minimalnym czytelnym, bez kolizji; licznik „Ukryto N
+      # opisów" liczy WYŁĄCZNIE dane szczegółowe.
+      - name: Run SLD v3 identity label contract tests (KD-11)
+        working-directory: mv-design-pro/frontend
+        run: npx vitest run --no-file-parallelism src/ui/sld/v3/canvas/__tests__/tozsamoscEtykiet.contract.test.ts --reporter=verbose
+
+      # KD-8 poz. 1: paleta rysunku sterowana motywem — parytet kluczy,
+      # semantyka klas napięć, kontrast i NIEZALEŻNOŚĆ hashu geometrii sceny
+      # od motywu (paleta nie wchodzi do sceny).
+      - name: Run SLD v3 theme palette contract tests (KD-8)
+        working-directory: mv-design-pro/frontend
+        run: npx vitest run --no-file-parallelism src/ui/sld/v3/theme/__tests__/palette.test.ts --reporter=verbose
+
+      # KD-8 poz. 2: rozłączność grup jednej warstwy narzędzi kanwy.
+      - name: Run SLD v3 canvas toolbar layout contract tests (KD-8)
+        working-directory: mv-design-pro/frontend
+        run: npx vitest run --no-file-parallelism src/ui/sld/v3/canvas/__tests__/toolbarLayout.contract.test.ts --reporter=verbose
+
+      # S9-1 (ŁAMANIE ARKUSZA, `docs/sld/DECYZJA_LAMANIE_ARKUSZA.md`; audyt C-1):
+      # podział ciągu na wiersze arkusza — punkt łamania ZAWSZE na przęśle,
+      # podział pokrywa cały ciąg, prefiksowość (edycja nie przelewa arkusza),
+      # determinizm.
+      - name: Run SLD v3 sheet-row planner tests (S9-1)
+        working-directory: mv-design-pro/frontend
+        run: npx vitest run --no-file-parallelism src/ui/sld/v3/layout/__tests__/sheetRows.test.ts --reporter=verbose
+
+      # S9-1 kryteria odbioru na scenie: proporcja arkusza ≤ 2 : 1 na KAŻDYM
+      # poziomie szczegółu (C-1), auto-fit mieści 100 % symboli (C-2), stacja w
+      # tym samym wierszu na L0/L1/L2, stabilność wierszy przy edycji.
+      - name: Run SLD v3 sheet-break scene contract tests (S9-1)
+        working-directory: mv-design-pro/frontend
+        run: npx vitest run --no-file-parallelism src/ui/sld/v3/scene/__tests__/buildScene.sheetRows.test.ts --reporter=verbose
 
       - name: Run SLD v3 render-odbiór acceptance (F7/F8b-2)
         working-directory: mv-design-pro/frontend

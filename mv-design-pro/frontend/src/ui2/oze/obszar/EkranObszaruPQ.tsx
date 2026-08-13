@@ -18,6 +18,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import './obszar.css';
 import type { AdvancementMode } from '../../shell/modeModel';
+import type { GenLimits } from '../../../types/enm';
+import { useAppStateStore } from '../../../ui/app-state';
+import { notify } from '../../../ui/notifications/store';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useSnapshotStore, selectBusOptions } from '../../../ui/topology/snapshotStore';
 import { TabelaWynikow } from '../../wyniki/wzorzec';
@@ -41,6 +44,8 @@ import {
   wierszeTabeliObszaru,
 } from './obszarModel';
 import { OBSZAR_STRINGS, fmtMWObszar, fmtMvarObszar } from './strings';
+import { PrzyciskAkcjiStanu } from '../../wyniki/wzorzec';
+import type { AkcjaStanuZerowego } from '../../wyniki/wzorzec';
 
 const DOMYSLNY_STEP_P_MW = 0.5;
 const DOMYSLNY_STEP_Q_MVAR = 0.25;
@@ -62,11 +67,15 @@ function StanPanel({
   opis,
   wariant,
   testid,
+  akcja,
 }: {
   komunikat: string;
   opis?: string;
   wariant: 'info' | 'blad';
   testid: string;
+  /* K6 / H-5: slot akcji stanu zerowego — realny następny krok (bieg obliczeń,
+     nawigacja, formularz operacji). Brak akcji = panel czysto informacyjny. */
+  akcja?: AkcjaStanuZerowego;
 }) {
   return (
     <div
@@ -75,6 +84,7 @@ function StanPanel({
     >
       <p className="mvd-obszar-stan-title">{komunikat}</p>
       {opis && <p className="mvd-obszar-stan-desc">{opis}</p>}
+      <PrzyciskAkcjiStanu akcja={akcja} testid={testid} />
     </div>
   );
 }
@@ -195,6 +205,172 @@ function WynikObszaru({
         )}
       </div>
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// K5-B (H-3 pkt 3): akcja wyjściowa — zapis wyznaczonego pasma Q do ograniczeń
+// generatora (`GenLimits.q_min/q_max`) kanoniczną operacją
+// `update_element_parameters` (kolekcja `generators`, klucz `limits` na
+// allowliście backendu; wpis do pól legacy jest tam odrzucany —
+// `relay.legacy_write_disabled` — i taki powód pokazujemy wprost).
+// Wartości wstępne = agregacja pasm z odpowiedzi backendu (min/max po
+// wierzchołkach) — arytmetyka prezentacji, zero fizyki w UI.
+// ---------------------------------------------------------------------------
+
+function SekcjaLimitowQ({ dane }: { dane: WidokObszaruPQ }) {
+  const snapshot = useSnapshotStore((s) => s.snapshot);
+  const executeDomainOperation = useSnapshotStore((s) => s.executeDomainOperation);
+  const caseId = useAppStateStore((s) => s.activeCaseId);
+
+  const generatory = useMemo(
+    () => (snapshot?.generators ?? []).filter((g) => g.bus_ref === dane.bus_ref),
+    [snapshot, dane.bus_ref],
+  );
+
+  // Pasmo zbiorcze z wierzchołków (tylko wartości obecne w odpowiedzi).
+  const pasmo = useMemo(() => {
+    const dolne = dane.vertices
+      .map((w) => w.q_min_dop_mvar)
+      .filter((q): q is number => q !== null);
+    const gorne = dane.vertices
+      .map((w) => w.q_max_dop_mvar)
+      .filter((q): q is number => q !== null);
+    if (dolne.length === 0 || gorne.length === 0) return null;
+    return { qMin: Math.min(...dolne), qMax: Math.max(...gorne) };
+  }, [dane.vertices]);
+
+  const [wybranyGenerator, setWybranyGenerator] = useState('');
+  const [qMin, setQMin] = useState<string>(() => (pasmo ? String(pasmo.qMin) : ''));
+  const [qMax, setQMax] = useState<string>(() => (pasmo ? String(pasmo.qMax) : ''));
+  const [zapisywanie, setZapisywanie] = useState(false);
+  const [blad, setBlad] = useState<string | null>(null);
+
+  const generator =
+    generatory.find((g) => g.ref_id === wybranyGenerator) ?? generatory[0] ?? null;
+
+  const zapisz = async () => {
+    if (generator === null) return;
+    if (!caseId) {
+      setBlad(OBSZAR_STRINGS.limityBrakPrzypadku);
+      return;
+    }
+    const qMinLiczba = Number(qMin.replace(',', '.'));
+    const qMaxLiczba = Number(qMax.replace(',', '.'));
+    if (qMin.trim() === '' || qMax.trim() === ''
+      || !Number.isFinite(qMinLiczba) || !Number.isFinite(qMaxLiczba)) {
+      setBlad(OBSZAR_STRINGS.limityBrakWartosci);
+      return;
+    }
+    setZapisywanie(true);
+    setBlad(null);
+    try {
+      // Scalenie z istniejącymi ograniczeniami — backend nadpisuje cały klucz
+      // `limits`, więc bez scalenia zapis Q kasowałby P min/max.
+      const limity: GenLimits = {
+        ...(generator.limits ?? {}),
+        q_min_mvar: qMinLiczba,
+        q_max_mvar: qMaxLiczba,
+      };
+      const odpowiedz = await executeDomainOperation(caseId, 'update_element_parameters', {
+        element_ref: generator.ref_id,
+        parameters: { limits: limity },
+      });
+      if (!odpowiedz) {
+        setBlad(useSnapshotStore.getState().error ?? OBSZAR_STRINGS.limityBladZapisu);
+        return;
+      }
+      if (odpowiedz.error) {
+        // Uczciwy powód z backendu (np. bramka katalogowa / element legacy) —
+        // zero udawania zapisu.
+        setBlad(odpowiedz.error);
+        return;
+      }
+      notify(OBSZAR_STRINGS.limityZapisano, 'success');
+    } catch (err) {
+      setBlad(err instanceof Error ? err.message : OBSZAR_STRINGS.limityBladZapisu);
+    } finally {
+      setZapisywanie(false);
+    }
+  };
+
+  return (
+    <section className="mvd-obszar-limity" data-testid="mvd-obszar-limity">
+      <p className="mvd-obszar-limity-tytul">{OBSZAR_STRINGS.limityTytul}</p>
+      <p className="mvd-obszar-limity-opis">{OBSZAR_STRINGS.limityOpis}</p>
+
+      {generatory.length === 0 ? (
+        <p className="mvd-obszar-limity-brak" data-testid="mvd-obszar-limity-brak-generatorow">
+          {OBSZAR_STRINGS.limityBrakGeneratorow}
+        </p>
+      ) : (
+        <>
+          <div className="mvd-obszar-param">
+            <label htmlFor="mvd-obszar-limity-generator">
+              {OBSZAR_STRINGS.limityGenerator}
+            </label>
+            <select
+              id="mvd-obszar-limity-generator"
+              value={generator?.ref_id ?? ''}
+              onChange={(e) => setWybranyGenerator(e.target.value)}
+              data-testid="mvd-obszar-limity-generator"
+            >
+              {generatory.map((g) => (
+                <option key={g.ref_id} value={g.ref_id}>
+                  {g.name || g.ref_id}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="mvd-obszar-param">
+            <label htmlFor="mvd-obszar-limity-qmin">{OBSZAR_STRINGS.limityQMin}</label>
+            <div className="mvd-obszar-param-pole">
+              <input
+                id="mvd-obszar-limity-qmin"
+                type="number"
+                step={0.05}
+                value={qMin}
+                onChange={(e) => setQMin(e.target.value)}
+                data-testid="mvd-obszar-limity-qmin"
+              />
+              <span className="mvd-obszar-param-jedn">{OBSZAR_STRINGS.jednMvar}</span>
+            </div>
+          </div>
+
+          <div className="mvd-obszar-param">
+            <label htmlFor="mvd-obszar-limity-qmax">{OBSZAR_STRINGS.limityQMax}</label>
+            <div className="mvd-obszar-param-pole">
+              <input
+                id="mvd-obszar-limity-qmax"
+                type="number"
+                step={0.05}
+                value={qMax}
+                onChange={(e) => setQMax(e.target.value)}
+                data-testid="mvd-obszar-limity-qmax"
+              />
+              <span className="mvd-obszar-param-jedn">{OBSZAR_STRINGS.jednMvar}</span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            className="mvd-obszar-oblicz"
+            onClick={() => void zapisz()}
+            disabled={zapisywanie}
+            data-testid="mvd-obszar-limity-zapisz"
+          >
+            {OBSZAR_STRINGS.limityZapisz}
+          </button>
+
+          {blad !== null && (
+            <p className="mvd-obszar-limity-blad" data-testid="mvd-obszar-limity-blad">
+              {blad}
+            </p>
+          )}
+        </>
+      )}
+    </section>
   );
 }
 
@@ -439,11 +615,16 @@ export function EkranObszaruPQ({ trybZaawansowania }: EkranObszaruPQProps) {
               testid="mvd-obszar-blad"
             />
           ) : (
-            <WynikObszaru
-              dane={stan.dane}
-              trybZaawansowania={trybZaawansowania}
-              krzywaProducenta={krzywaProducenta}
-            />
+            <>
+              <WynikObszaru
+                dane={stan.dane}
+                trybZaawansowania={trybZaawansowania}
+                krzywaProducenta={krzywaProducenta}
+              />
+              {/* Akcja wyjściowa PO biegu — pasmo z tego wyniku zasila
+                  ograniczenia Q generatora w modelu. */}
+              <SekcjaLimitowQ key={stan.dane.input_hash} dane={stan.dane} />
+            </>
           )}
         </>
       )}

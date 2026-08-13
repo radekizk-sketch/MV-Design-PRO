@@ -307,7 +307,7 @@ def update_project(
 def delete_project(
     project_id: UUID,
     uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
-):
+) -> None:
     """
     Usuwa projekt (soft delete).
 

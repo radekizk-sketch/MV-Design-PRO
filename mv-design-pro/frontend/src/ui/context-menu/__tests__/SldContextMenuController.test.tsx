@@ -149,7 +149,7 @@ describe('SldContextMenuController — most SLD_MENU_REGISTRY ↔ ContextMenu', 
     expect(screen.getByText(/Farma wiatrowa/)).toBeInTheDocument();
   });
 
-  it('menu ZK SN przekazuje akcjÄ™ usuniÄ™cia do aktywnego routingu SLD', () => {
+  it('menu ZK SN przekazuje akcję usunięcia do aktywnego routingu SLD', () => {
     const onAction = vi.fn();
     const onClose = vi.fn();
 

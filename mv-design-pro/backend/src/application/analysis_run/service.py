@@ -24,6 +24,7 @@ from application.network_model import (
     network_model_id_for_project,
 )
 from application.network_wizard.dtos import ConverterSetpoint, InverterSetpoint
+from application.power_flow_input_builder import merge_bus_components
 from application.sld.overlay import ResultSldOverlayBuilder
 from domain.analysis_run import AnalysisRun, new_analysis_run
 from domain.project_design_mode import ProjectDesignMode
@@ -37,6 +38,7 @@ from network_model.solvers import ShortCircuitIEC60909Solver, ShortCircuitType
 from network_model.solvers.machine_sc_iec60909 import compute_machine_contributions
 from network_model.solvers.power_flow_inverter import inverter_control_from_params
 from network_model.solvers.power_flow_zip import zip_coeffs_from_materialized_params
+from network_model.solvers.short_circuit_iec60909 import ShortCircuitResult
 from network_model.validation import NetworkValidator as ModelNetworkValidator
 from network_model.validation import Severity as ModelSeverity
 
@@ -67,6 +69,11 @@ def _stable_list_key(item: Any) -> str:
             if key in item and item[key] is not None:
                 return str(item[key])
     return str(item)
+
+
+def _optional_float(value: Any) -> float | None:
+    """Optional numeric snapshot key: absent/None stays None (additive field)."""
+    return None if value is None else float(value)
 
 
 class AnalysisRunService:
@@ -422,11 +429,19 @@ class AnalysisRunService:
                 "node_id": str(load["node_id"]),
                 "p_mw": float((load.get("payload") or {}).get("p_mw", 0.0)),
                 "q_mvar": float((load.get("payload") or {}).get("q_mvar", 0.0)),
+                # ADR-011 (Z-ZIP-04): carry the load's voltage/frequency model into
+                # the snapshot. `_build_power_flow_input` has always READ these keys
+                # off the entry, but nothing ever wrote them: the load's polynomial
+                # was dropped between the model and the solver, so a ZIP load ran as
+                # constant power with no signal. Only keys the payload really has are
+                # emitted, so a constant-power load keeps its snapshot — and hence
+                # its input hash — byte-identical.
+                **self._zip_load_snapshot(load.get("payload") or {}),
             }
             for load in loads
             if load.get("in_service", True)
         ]
-        pq_specs.sort(key=lambda spec: spec["node_id"])
+        pq_specs.sort(key=lambda spec: str(spec["node_id"]))
 
         pv_specs = []
         for source in sources:
@@ -474,7 +489,7 @@ class AnalysisRunService:
                     "q_max_mvar": float(payload.get("q_max_mvar", 1e6)),
                 }
             )
-        pv_specs.sort(key=lambda spec: spec["node_id"])
+        pv_specs.sort(key=lambda spec: str(spec["node_id"]))
 
         return {
             "snapshot_id": snapshot_id,
@@ -575,6 +590,13 @@ class AnalysisRunService:
                         else None
                     ),
                 ),
+                # V12K-316 (debt 5): the source's OWN power (GENERATION convention)
+                # when the snapshot entry already aggregates the bus. The snapshot
+                # this service writes keeps one entry per COMPONENT and never emits
+                # these keys, so stored snapshots are untouched; the read side
+                # accepts them so an aggregated payload can state the split too.
+                inverter_p_mw=_optional_float(item.get("inverter_p_mw")),
+                inverter_q_mvar=_optional_float(item.get("inverter_q_mvar")),
             )
             for item in snapshot.get("pq", [])
         ]
@@ -593,7 +615,12 @@ class AnalysisRunService:
             graph=graph,
             base_mva=base_mva,
             slack=slack_spec,
-            pq=pq_specs,
+            # V12K-313/V12K-316: the snapshot lists one entry per COMPONENT (a load
+            # and a source on one node are two entries), while the solver contract
+            # holds one spec per BUS. The fold accumulates the bus power instead of
+            # letting the second entry overwrite the first or be refused as a
+            # duplicate, and keeps the source's own power next to the aggregate.
+            pq=merge_bus_components(pq_specs),
             pv=pv_specs,
             options=options,
         )
@@ -831,7 +858,7 @@ class AnalysisRunService:
         uow.snapshots.add_snapshot(snapshot, commit=False)
         return snapshot.meta.snapshot_id
 
-    def _solve_short_circuit(self, sc_input: dict[str, Any]):
+    def _solve_short_circuit(self, sc_input: dict[str, Any]) -> ShortCircuitResult:
         graph = sc_input["graph"]
         fault_spec = sc_input.get("fault_spec") or {}
         fault_type = self._map_fault_type(fault_spec.get("fault_type"))
@@ -904,7 +931,7 @@ class AnalysisRunService:
             return mapping[fault_type]
         raise ValueError(f"Unsupported fault_type: {fault_type}")
 
-    def _resolve_fault_node_id(self, graph, fault_spec: dict) -> str:
+    def _resolve_fault_node_id(self, graph: NetworkGraph, fault_spec: dict) -> str:
         fault_node_id = fault_spec.get("node_id")
         if fault_node_id:
             return str(fault_node_id)
@@ -1083,7 +1110,7 @@ class AnalysisRunService:
             }
             for source in sources
         ]
-        normalized.sort(key=lambda item: item["id"])
+        normalized.sort(key=lambda item: str(item["id"]))
         return normalized
 
     def _normalize_loads(self, loads: list[dict]) -> list[dict[str, Any]]:
@@ -1098,7 +1125,7 @@ class AnalysisRunService:
             }
             for load in loads
         ]
-        normalized.sort(key=lambda item: item["id"])
+        normalized.sort(key=lambda item: str(item["id"]))
         return normalized
 
     # ADR-011 §5b: control keys read by inverter_control_from_params, carried
@@ -1122,6 +1149,29 @@ class AnalysisRunService:
         "f0_hz",
         "sn_mva",
     )
+
+    # ADR-011 (Z-ZIP-04): the flat load-model keys read by
+    # zip_coeffs_from_materialized_params, carried through the input snapshot for
+    # loads. Absent keys => constant power, frequency-independent (reduce-to-NR).
+    _ZIP_LOAD_KEYS: tuple[str, ...] = (
+        "a_p",
+        "b_p",
+        "c_p",
+        "a_q",
+        "b_q",
+        "c_q",
+        "v0_pu",
+        "k_pf",
+        "k_qf",
+        "f0_hz",
+    )
+
+    def _zip_load_snapshot(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Extract the load's ZIP params from a load payload for the snapshot.
+
+        Returns only the keys present, so a constant-power load contributes nothing
+        and its snapshot stays byte-identical (reduce-to-NR)."""
+        return {key: payload[key] for key in self._ZIP_LOAD_KEYS if key in payload}
 
     def _inverter_control_snapshot(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Extract the U/f-control params from a source payload for the snapshot.

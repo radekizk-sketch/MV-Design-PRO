@@ -58,7 +58,7 @@ Dwóch wykonawców pracowało w worktree'ach (`/home/user/MV-Design-PRO/.claude/
 
 | # | Decyzja | Treść |
 |---|---------|-------|
-| R1 | D11 motyw kanwy | Kanwa na ekranie ZAWSZE SCADA-dark (tokeny z `docs/sld/DARK_SCADA_NEON_THEME_SPEC.md` jako baza); JASNY wariant techniczny wyłącznie w EKSPORCIE/wydruku (S4). Właściciel odrzucił pytanie o to — decyzja domyślna przyjęta, odwracalna tylko jego słowem. |
+| R1 | D11 motyw kanwy | ~~Kanwa na ekranie ZAWSZE SCADA-dark; JASNY wariant techniczny wyłącznie w EKSPORCIE/wydruku (S4).~~ **NIEAKTUALNE od 2026-07-31 (karta KD-8 poz. 1, słowo właściciela — ocena 2/10 ekranu jasnego: „motyw jasny jest deklaracją bez pokrycia").** Obowiązuje: paleta KAŻDEJ powierzchni, łącznie z kanwą, idzie z motywu (`ui/sld/v3/theme/palette.ts` — wariant ciemny i jasny o zachowanej semantyce klas napięć). Paleta DOKUMENTOWA eksportu (`export/exportPalette.ts`) zostaje niezależna od motywu ekranu. Decyzja domyślna R1 była „odwracalna tylko jego słowem" — i tym słowem została odwrócona. |
 | R2 | LOD | 3 poziomy `SceneLod` 0/1/2, nazwy: L0 „Przegląd sieci", L1 „Widok operatorski", L2 „Stacje i aparatura". Słownik v2 zdeprecjonowany (S1). Macierz prawdy LOD (audyt §3) jest JEDYNĄ prawdą zawartości poziomów. |
 | R3 | Zoom | Ciągłość tożsamości: kotwica stacji i oś magistrali identyczne na każdym LOD (test „JEDNA KOTWICA" musi być zielony zawsze). |
 | R4 | Kolizje etykiet | ZERO kolizji tekst-tekst i tekst-symbol, mierzone AUTOMATYCZNIE (wyrocznia S2); przegrany priorytet NIE renderuje się zamiast nachodzić. |

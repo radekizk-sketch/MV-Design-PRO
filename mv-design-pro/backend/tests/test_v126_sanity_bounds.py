@@ -145,7 +145,6 @@ class TestV126SanityCoverageAllAnalyses:
     """K-08: każda analiza V12.6 ma blok wiarygodności (sanity) — kompletna powłoka."""
 
     ALWAYS_COMPLETE = [
-        V126AnalysisType.VOLTAGE_STABILITY,
         V126AnalysisType.EARTH_FAULT_DETECTION,
         V126AnalysisType.TRANSIENT_TRV,
     ]
@@ -155,10 +154,20 @@ class TestV126SanityCoverageAllAnalyses:
         V126AnalysisType.INSULATION_COORDINATION,
         V126AnalysisType.MOTOR_STARTING,
     ]
+    #: Analiza WSTRZYMANA (karta QU-FABRYKACJA) — melduje „dane niekompletne"
+    #: NIEZALEŻNIE od wejścia, bo model nie niesie ani mocy zwarciowej węzłów,
+    #: ani zdolności wytwórczej mocy biernej, a poprzednie wzory zastępowały te
+    #: dane współczynnikami bez pokrycia. Zdjęta z ALWAYS_COMPLETE świadomie:
+    #: „zweryfikowany" nad wynikiem, którego nie ma, byłby cichym fałszem —
+    #: dokładnie tym, przed czym broni `test_missing_inputs_report_incomplete_not_fake_pass`.
+    ALWAYS_INCOMPLETE = [
+        V126AnalysisType.VOLTAGE_STABILITY,
+    ]
 
     def test_every_analysis_has_sanity_block(self) -> None:
         for analysis in [
             *self.ALWAYS_COMPLETE,
+            *self.ALWAYS_INCOMPLETE,
             *self.NEEDS_INPUT,
             V126AnalysisType.HOSTING_CAPACITY,
         ]:
@@ -176,6 +185,19 @@ class TestV126SanityCoverageAllAnalyses:
         for analysis in self.ALWAYS_COMPLETE:
             res = _run(analysis)
             assert res["sanity"]["status"] == "zweryfikowany", analysis.value
+
+    def test_always_incomplete_analyses_never_fake_verification(self) -> None:
+        """Analiza wstrzymana melduje brak, a nie „zweryfikowany" nad pustką.
+
+        Bez tego pinu przywrócenie dowolnego zaszytego współczynnika w
+        `_voltage_stability` wróciłoby ze statusem „zweryfikowany" i nikt by tego
+        nie zauważył — bo blok wiarygodności ocenia liczby, a nie ich rodowód.
+        """
+        for analysis in self.ALWAYS_INCOMPLETE:
+            res = _run(analysis)
+            assert res["sanity"]["status"] == "dane niekompletne", analysis.value
+            assert res["sanity"]["checks_passed"] == 0, analysis.value
+            assert res["sanity"]["checks_total"] >= 1, analysis.value
 
     def test_hosting_capacity_verified_and_within_scan(self) -> None:
         res = _run(V126AnalysisType.HOSTING_CAPACITY, {"hosting_monte_carlo_n": 30})

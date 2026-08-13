@@ -59,6 +59,8 @@ import {
   istotnoscZbieznosci,
   type IstotnoscStanu,
 } from './strings';
+import { PrzyciskAkcjiStanu, useAkcjaUruchomObliczenie } from '../wzorzec';
+import type { AkcjaStanuZerowego } from '../wzorzec';
 
 // ---------------------------------------------------------------------------
 // Elementy wspólne (chip, tag, panel stanu)
@@ -99,11 +101,15 @@ function StanPanel({
   opis,
   wariant,
   testid,
+  akcja,
 }: {
   komunikat: string;
   opis?: string;
   wariant: 'info' | 'blad';
   testid: string;
+  /* K6 / H-5: slot akcji stanu zerowego — realny następny krok (bieg obliczeń,
+     nawigacja, formularz operacji). Brak akcji = panel czysto informacyjny. */
+  akcja?: AkcjaStanuZerowego;
 }) {
   return (
     <div
@@ -112,6 +118,7 @@ function StanPanel({
     >
       <p className="mvd-est-stan-title">{komunikat}</p>
       {opis && <p className="mvd-est-stan-desc">{opis}</p>}
+      <PrzyciskAkcjiStanu akcja={akcja} testid={testid} />
     </div>
   );
 }
@@ -652,6 +659,9 @@ export function EkranEstymacji({ trybZaawansowania, onOtworzDowod }: EkranEstyma
   );
   const runId = przebieg?.id ?? null;
   const trybEkspercki = trybZaawansowania === 'expert';
+  // K6 / H-5: estymacja stanu potrzebuje Y-bus z przebiegu rozpływu —
+  // stan zerowy uruchamia brakujący przebieg zamiast prowadzić w zaułek.
+  const akcjaBiegu = useAkcjaUruchomObliczenie('LOAD_FLOW');
 
   const [stanWym, setStanWym] = useState<StanWymagan>({ rodzaj: 'ladowanie' });
   const [wiersze, setWiersze] = useState<WierszEdytora[]>([WIERSZ_EDYTORA_DOMYSLNY]);
@@ -742,6 +752,7 @@ export function EkranEstymacji({ trybZaawansowania, onOtworzDowod }: EkranEstyma
           opis={S.brakPrzebieguOpis}
           wariant="info"
           testid="mvd-est-brak-przebiegu"
+          akcja={akcjaBiegu}
         />
       </div>
     );

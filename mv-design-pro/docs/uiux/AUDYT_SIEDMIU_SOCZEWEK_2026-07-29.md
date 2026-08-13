@@ -53,6 +53,11 @@ Dopóki to nie stanie, każdy nowy ekran (w tym znacznik świeżości z V12K-265
 - Brak w łańcuchu: z wyniku zwarciowego nie ma przejścia do weryfikacji wytrzymałości
   aparatu (ta logika siedzi… w UI legacy `validateDeviceWithstand` — fizyka w UI, patrz
   raport nadzoru) ani do nastaw zabezpieczeń.
+  > **Domknięte częściowo (K7-B, 2026-07-31):** fizyka `validateDeviceWithstand` wyszła
+  > z UI do backendu (`POST /api/v1/catalog/audit2/validate-device-withstand`, parytet
+  > liczbowy w `backend/tests/network_model/test_device_withstand_parity.py`). Samo
+  > PRZEJŚCIE z wyniku zwarciowego do weryfikacji aparatu nadal nie istnieje — pozostaje
+  > jako brak łańcucha (osobna karta).
 
 ## 3. Soczewka: zabezpieczenia
 
@@ -84,6 +89,9 @@ Dopóki to nie stanie, każdy nowy ekran (w tym znacznik świeżości z V12K-265
 - **Wyjątek zaprzeczający regule:** `DEVICE_WITHSTAND_CATALOG` — katalog RÓWNOLEGŁY
   zaszyty we froncie (protection-catalogs.ts) z własną fizyką werdyktu, podczas gdy
   backendowy odpowiednik (`validateDeviceWithstandApi`) istnieje i nie jest używany.
+  > **ZAMKNIĘTE (K7-B, 2026-07-31):** równoległy katalog i fizyka werdyktu usunięte
+  > z frontu; karta zabezpieczeń woła końcówkę backendu przez `validateDeviceWithstandApi`.
+  > Szczegóły i pełny inwentarz piętnastu takich miejsc: `docs/uiux/DLUG_FIZYKA_W_UI_2026-07.md` §7.
 - Trzy kreatory katalogowe są WYSPAMI (patrz §7-lista) — katalog ma pozycje
   (kompensatory, ograniczniki, agregaty/UPS), których nie da się użyć z żywego UI.
 

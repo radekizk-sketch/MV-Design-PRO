@@ -27,6 +27,7 @@ import {
   type DerReadinessMatrix,
   type StationDerConnection,
 } from './types';
+import { mergeStationDers } from './zModelu';
 
 // =============================================================================
 // State + actions
@@ -84,6 +85,13 @@ export interface StationDerState {
     nowIso?: string,
   ) => void;
   updateDerReadiness: (id: string, patch: Partial<DerReadinessMatrix>) => void;
+  /**
+   * Wprowadź do warsztatu wytwórców Z MODELU (migawka ENM). Model wygrywa po
+   * `id`; rekord lokalny (kreator stacji) zostaje, o ile nie dubluje modelowego
+   * znaczeniowo — reguła scalania jest jedna dla całej aplikacji
+   * (`zModelu.mergeStationDers`).
+   */
+  synchronizujZModelu: (deryModelu: readonly StationDerConnection[]) => void;
   /** Pełny reset (testy + nowy projekt). */
   reset: () => void;
 }
@@ -212,8 +220,31 @@ export const useStationDerStore = create<StationDerState>((set) => ({
     });
   },
 
+  synchronizujZModelu: (deryModelu) => {
+    set((state) => {
+      const polaczone = mergeStationDers(deryModelu, Object.values(state.ders));
+      const nastepne: Record<string, StationDerConnection> = {};
+      for (const der of polaczone) {
+        // Zachowaj IDENTYCZNOŚĆ referencji dla rekordów bez zmiany treści —
+        // inaczej każda migawka odpalałaby ponowny render wszystkich ekranów
+        // czytających `selectAllDers` (i pętlę efektu synchronizacji).
+        const poprzedni = state.ders[der.id];
+        nastepne[der.id] = poprzedni && rekordyRowne(poprzedni, der) ? poprzedni : der;
+      }
+      const bezZmian =
+        Object.keys(nastepne).length === Object.keys(state.ders).length
+        && Object.entries(nastepne).every(([id, der]) => state.ders[id] === der);
+      return bezZmian ? state : { ders: nastepne };
+    });
+  },
+
   reset: () => set({ ders: {} }),
 }));
+
+/** Porównanie treści rekordu (stabilność referencji przy synchronizacji). */
+function rekordyRowne(left: StationDerConnection, right: StationDerConnection): boolean {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
 
 // =============================================================================
 // Selektory (deterministyczne — sortowanie po id)

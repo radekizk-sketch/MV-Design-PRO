@@ -37,8 +37,14 @@ import {
   type ProblemGotowosci,
 } from './grupowanieCelow';
 import { FILTRY_PUSTE, czyFiltrPusty, filtrujProblemy, type FiltryGotowosci } from './filtry';
-import { useProblemyGotowosci, useStanGotowosci } from './adapters/gotowoscAdapter';
+import {
+  usePonowOdczytGotowosci,
+  useProblemyGotowosci,
+  useStanGotowosci,
+} from './adapters/gotowoscAdapter';
 import { SekcjaCelu } from './SekcjaCelu';
+import { SekcjaGranicySieci } from './SekcjaGranicySieci';
+import { SekcjaPokryciaAnaliz } from './SekcjaPokryciaAnaliz';
 import { SekcjaZgodnosciReferencyjnej } from './SekcjaZgodnosciReferencyjnej';
 import { GOTOWOSC_STRINGS } from './strings';
 import { ETYKIETA_CELU } from './grupowanieCelow';
@@ -59,6 +65,7 @@ export function PanelGotowosci({
 }: PanelGotowosciProps) {
   const stan = useStanGotowosci();
   const issues = useProblemyGotowosci();
+  const ponowOdczytGotowosci = usePonowOdczytGotowosci();
   const setActiveSpace = useShellStore((s) => s.setActiveSpace);
   const trybEkspercki = trybZaawansowania === 'expert';
 
@@ -112,6 +119,32 @@ export function PanelGotowosci({
       <div className="mvd-gotowosc">
         <div className="mvd-gotowosc-state" role="alert">
           <p className="mvd-gotowosc-state-title">{GOTOWOSC_STRINGS.blad}</p>
+        </div>
+      </div>
+    );
+  }
+
+  /* Gotowość NIEUSTALONA (dług V12K-309 poz. 1): model wczytany, ale gotowości
+     nikt nie policzył. Dotąd ta sytuacja wpadała w stan `wszystko-gotowe` —
+     panel deklarował „Gotowe do analiz" dokładnie wtedy, gdy NIE WIADOMO.
+     Uczciwy stan zerowy z akcją; przycisk tylko wtedy, gdy jest o co zapytać. */
+  if (stan === 'nieustalona') {
+    return (
+      <div className="mvd-gotowosc">
+        <div className="mvd-gotowosc-state" role="alert" data-testid="mvd-gotowosc-nieustalona">
+          <p className="mvd-gotowosc-state-title">{GOTOWOSC_STRINGS.nieustalonaTytul}</p>
+          <p className="mvd-gotowosc-state-desc">{GOTOWOSC_STRINGS.nieustalonaOpis}</p>
+          {ponowOdczytGotowosci && (
+            <button
+              type="button"
+              className="mvd-btn"
+              onClick={ponowOdczytGotowosci}
+              data-testid="mvd-gotowosc-ponow"
+              title={GOTOWOSC_STRINGS.nieustalonaTytul}
+            >
+              {GOTOWOSC_STRINGS.sprobujPonownie}
+            </button>
+          )}
         </div>
       </div>
     );
@@ -186,6 +219,10 @@ export function PanelGotowosci({
       )}
 
       <SekcjaZgodnosciReferencyjnej />
+      {/* ROUTERY-4A: zdolności A3 (pokrycie analizami) i A2 (granica sieci) —
+          sekcje samodzielne (własne pobrania), wzorzec sekcji referencyjnej. */}
+      <SekcjaPokryciaAnaliz />
+      <SekcjaGranicySieci />
     </div>
   );
 }

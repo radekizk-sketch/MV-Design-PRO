@@ -295,7 +295,7 @@ def check_legacy_catalog_payloads(root: Path = PROJECT_ROOT) -> list[Violation]:
             if not re.search(r"\bfrom_bus_ref\s*:", line):
                 continue
 
-            context_window = "\n".join(lines[max(0, line_no - 8): line_no])
+            context_window = "\n".join(lines[max(0, line_no - 8) : line_no])
             if "connect_secondary_ring_sn" in context_window:
                 continue
 

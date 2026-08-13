@@ -291,8 +291,10 @@ class UnitVerifier:
             "output": "%",
         },
         "EQ_VDROP_007": {
-            "rule": "kV · (1 - %) = kV",
-            "inputs": {"U_{source}": "kV", "ΔU_{total}": "%"},
+            # Karta PODSTAWA-VDROP (2026-08-12): odjęcie w kV zamiast mnożenia
+            # przez ułamek odniesiony do U_n — obie strony w tej samej podstawie.
+            "rule": "kV - kV = kV",
+            "inputs": {"U_{source}": "kV", "ΔU_{total}^{kV}": "kV"},
             "output": "kV",
         },
         # P32: Load Flow & Voltage

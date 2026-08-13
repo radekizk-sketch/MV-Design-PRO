@@ -4,6 +4,12 @@
  * backendu na tej gałęzi). Weryfikacja: null→„nie dotyczy" (NIGDY 0%/100%),
  * progi kolorów (100/≥80/<80/null), rozwinięcie sprawdzeń, stany
  * pusty/ładowanie/błąd/bez przypadku.
+ *
+ * REF-PAKIET: sekcja pobiera DWIE różne rzeczy — katalog referencji
+ * (`/reference/packs`, niezależny od przypadku) i raport zgodności
+ * (`/cases/{id}/reference/compliance`). Mock MUSI rozróżniać adresy; wspólna
+ * odpowiedź „cokolwiek na każdy adres" ukrywałaby, którym zapytaniem ekran
+ * faktycznie się posłużył.
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -11,9 +17,11 @@ import { render, screen, fireEvent, waitFor, within } from '@testing-library/rea
 import { SekcjaZgodnosciReferencyjnej } from '../SekcjaZgodnosciReferencyjnej';
 import { GOTOWOSC_STRINGS } from '../strings';
 import { useAppStateStore } from '../../../../ui/app-state/store';
+import { useWyborPakietu } from '../../../referencje/wyborPakietu';
 import type {
   ReferenceComplianceReport,
   ReferencePackComplianceReport,
+  ReferencePackSummary,
 } from '../../../referencje/api';
 
 function pack(over: Partial<ReferencePackComplianceReport> = {}): ReferencePackComplianceReport {
@@ -35,11 +43,35 @@ function raport(packs: ReferencePackComplianceReport[]): ReferenceComplianceRepo
   return { packs };
 }
 
-function mockFetchOk(report: ReferenceComplianceReport) {
-  const spy = vi.fn().mockResolvedValue({
-    ok: true,
-    json: async () => report,
-  } as Response);
+/** Katalog referencji zwracany przez `/reference/packs` (dane, nie stała UI). */
+const KATALOG: ReferencePackSummary[] = [
+  {
+    pack_id: 'iec62271',
+    kind: 'norm',
+    name_pl: 'IEC 62271',
+    version: '1.0',
+    status: 'repo_verified',
+    switchgear_family_ref: null,
+    source_document_refs: [],
+  },
+  {
+    pack_id: 'osd_enea',
+    kind: 'osd',
+    name_pl: 'OSD Enea',
+    version: '3.2',
+    status: 'repo_verified',
+    switchgear_family_ref: null,
+    source_document_refs: [],
+  },
+];
+
+function mockFetchOk(report: ReferenceComplianceReport, katalog: ReferencePackSummary[] = KATALOG) {
+  const spy = vi.fn(async (url: string) => {
+    if (String(url).includes('/reference/packs')) {
+      return { ok: true, json: async () => katalog } as Response;
+    }
+    return { ok: true, json: async () => report } as Response;
+  });
   vi.stubGlobal('fetch', spy);
   return spy;
 }
@@ -49,6 +81,8 @@ function ustawPrzypadek(id: string | null) {
 }
 
 beforeEach(() => {
+  localStorage.clear();
+  useWyborPakietu.setState({ pakietId: null });
   ustawPrzypadek('C1');
 });
 
@@ -56,18 +90,23 @@ afterEach(() => {
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
   ustawPrzypadek(null);
+  useWyborPakietu.setState({ pakietId: null });
+  localStorage.clear();
 });
 
 describe('SekcjaZgodnosciReferencyjnej — stany', () => {
-  it('bez aktywnego przypadku: uczciwy stan pusty PL, bez wołania API', () => {
-    const spy = vi.fn();
-    vi.stubGlobal('fetch', spy);
+  it('bez aktywnego przypadku: uczciwy stan pusty PL, bez wołania oceny zgodności', () => {
+    // Intencja pierwotna: brak przypadku ⇒ ekran NIE liczy zgodności.
+    // REF-PAKIET: katalog referencji (`/reference/packs`) nie zależy od
+    // przypadku i wolno go pobrać — zakazane jest wołanie oceny zgodności.
+    const spy = mockFetchOk(raport([]));
     ustawPrzypadek(null);
     render(<SekcjaZgodnosciReferencyjnej />);
     expect(screen.getByTestId('mvd-ref-brak-przypadku')).toHaveTextContent(
       GOTOWOSC_STRINGS.refBrakPrzypadku,
     );
-    expect(spy).not.toHaveBeenCalled();
+    const adresy = spy.mock.calls.map((c) => String(c[0]));
+    expect(adresy.some((u) => u.includes('/reference/compliance'))).toBe(false);
   });
 
   it('ładowanie: komunikat PL w trakcie pobierania', async () => {

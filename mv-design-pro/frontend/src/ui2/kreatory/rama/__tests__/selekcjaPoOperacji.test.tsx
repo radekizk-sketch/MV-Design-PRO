@@ -5,8 +5,9 @@
 import { renderHook } from '@testing-library/react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
-import type { DomainOpResponseV1 } from '../../../../types/enm';
+import type { DomainOpResponseV1, EnergyNetworkModel } from '../../../../types/enm';
 import {
+  kanonicznyRefZOperacji,
   mapujTypElementu,
   refZOperacji,
   useSelekcjaPoOperacji,
@@ -82,6 +83,63 @@ describe('refZOperacji', () => {
   it('zwraca null dla braku odpowiedzi lub braku elementu', () => {
     expect(refZOperacji(null)).toBeNull();
     expect(refZOperacji(odpowiedz({}))).toBeNull();
+  });
+});
+
+// K9-A (regresja naprawy): wskazanie NIEKANONICZNE (np. ref specyfikacji pola
+// w metadanych stacji) wybierane wprost wywalało selekcję i zamykało otwarty
+// kreator — selekcja może paść wyłącznie na ref rozwiązywalny w migawce.
+describe('kanonicznyRefZOperacji', () => {
+  const migawka = {
+    header: {} as never,
+    buses: [],
+    branches: [],
+    transformers: [],
+    sources: [],
+    loads: [],
+    generators: [
+      { id: 'gen-1', ref_id: 'gen-1', name: 'Blok PV', gen_type: 'pv_inverter', bus_ref: 'b-1', p_mw: 0.1, tags: [], meta: {} },
+    ],
+    substations: [],
+    bays: [],
+    junctions: [],
+    branch_points: [],
+    corridors: [],
+    measurements: [],
+    protection_assignments: [],
+  } as unknown as EnergyNetworkModel;
+
+  it('pomija wskazanie niekanoniczne i wybiera utworzony element rozwiązywalny w migawce', () => {
+    const r = odpowiedz({
+      snapshot: migawka,
+      selection_hint: { element_id: 'nn/deadbeef/source_field', element_type: 'bay', zoom_to: true },
+      changes: {
+        created_element_ids: ['nn/deadbeef/source_field', 'gen-1'],
+        updated_element_ids: [],
+        deleted_element_ids: [],
+      },
+    });
+    expect(kanonicznyRefZOperacji(r)).toBe('gen-1');
+  });
+
+  it('zwraca null, gdy żaden kandydat nie jest rozwiązywalny (bez selekcji zamiast złej selekcji)', () => {
+    const r = odpowiedz({
+      snapshot: migawka,
+      selection_hint: { element_id: 'nn/deadbeef/source_field', element_type: 'bay', zoom_to: true },
+      changes: {
+        created_element_ids: ['nn/deadbeef/source_field'],
+        updated_element_ids: [],
+        deleted_element_ids: [],
+      },
+    });
+    expect(kanonicznyRefZOperacji(r)).toBeNull();
+  });
+
+  it('bez migawki w odpowiedzi zachowuje dotychczasowe wskazanie', () => {
+    const r = odpowiedz({
+      selection_hint: { element_id: 'tr-1', element_type: 'transformer', zoom_to: true },
+    });
+    expect(kanonicznyRefZOperacji(r)).toBe('tr-1');
   });
 });
 

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import math
+
 import pytest
 from enm.hash import compute_enm_hash
 from enm.models import (
@@ -148,6 +150,14 @@ def test_store_materializes_catalog_loads_for_legacy_station_feeders() -> None:
     assert load.catalog_ref == "load_uslugi_30kw"
     assert load.catalog_namespace == "OBCIAZENIE"
     assert load.meta["feeder_ref"] == "stn/test/nn_feeder/001"
+    # Intencja: migracja ma zapisać KOMPLETNĄ tabliczkę katalogową, a nie samą
+    # moc czynną. Do naprawy defektu D7 odbiór dostawał `q_mvar = 0.0` mimo
+    # katalogowego cosφ = 0,92 i rozpływ liczył go z cosφ = 1,0 (phantom cosφ,
+    # ta sama klasa co V12K-050 dla `add_nn_load`).
+    assert load.p_mw == pytest.approx(0.03, abs=1e-12)
+    assert load.q_mvar == pytest.approx(0.03 * math.tan(math.acos(0.92)), abs=1e-9)
+    assert load.materialized_params is not None
+    assert load.materialized_params["q_source"] == "KATALOG_COS_PHI"
 
     reread = get_enm("case-store-load-migration")
     assert len(reread.loads) == 1

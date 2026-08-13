@@ -109,7 +109,8 @@ describe('buildPdfExportSpec — V12K-007 invariant', () => {
   it('throws when mode=dark_scada', () => {
     expect(() =>
       buildPdfExportSpec('<svg/>', { mode: 'dark_scada' as never }),
-    ).toThrow(/V12K-007/);
+    // K10: asercja na semantykę inwariantu (komunikat bez kodu rejestru).
+    ).toThrow(/naruszony inwariant kanonu eksportu/);
   });
 
   it('defaults to light_technical mode', () => {

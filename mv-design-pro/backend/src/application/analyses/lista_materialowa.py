@@ -161,14 +161,20 @@ def _inverter_position(track: DerSnTrack) -> dict[str, Any]:
 
 def build_bom_from_track(track: DerSnTrack) -> dict[str, Any]:
     """Zbuduj deterministyczną listę materiałową z gotowego widoku toru."""
-    raw = [
-        _transformer_position(track),
-        _cable_position(track),
-        _apparatus_position(track),
-        _producer_bus_position(track),
-        _inverter_position(track),
+    # Kategoria ogniwa MUSI być znana zanim zapytamy budowniczego — brakujące ogniwo
+    # zwraca ``None`` i wtedy nie ma z czego odczytać nazwy kategorii. Wcześniej
+    # `braki_ogniw` liczono jako ``p["kategoria"] for p in raw if p is None``, co przy
+    # KAŻDYM niekompletnym torze wywracało generator na `TypeError` (`None` nie jest
+    # indeksowalny) i sprawiało, że pole `braki_ogniw` nigdy nie działało. Testy tego
+    # nie łapały, bo ćwiczyły wyłącznie tor kompletny.
+    raw: list[tuple[str, dict[str, Any] | None]] = [
+        ("transformator_blokowy", _transformer_position(track)),
+        ("kabel_sn", _cable_position(track)),
+        ("pole_zrodlowe_sn", _apparatus_position(track)),
+        ("szyna_nn_producenta", _producer_bus_position(track)),
+        ("falownik", _inverter_position(track)),
     ]
-    positions = [p for p in raw if p is not None]
+    positions = [position for _kategoria, position in raw if position is not None]
     positions.sort(
         key=lambda p: (
             _CATEGORY_ORDER.get(str(p["kategoria"]), 99),
@@ -179,7 +185,7 @@ def build_bom_from_track(track: DerSnTrack) -> dict[str, Any]:
     for index, position in enumerate(positions, start=1):
         position["lp"] = index
 
-    braki = [str(p["kategoria"]) for p in raw if p is None]
+    braki = [kategoria for kategoria, position in raw if position is None]
     return {
         "wersja": "1.0",
         "source_ref": track.source_ref,

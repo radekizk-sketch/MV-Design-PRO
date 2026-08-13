@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen, cleanup } from '@testing-library/react';
+import { fireEvent, render, screen, cleanup } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -29,12 +29,19 @@ function resetShell() {
 describe('Powłoka — landmarki ARIA', () => {
   beforeEach(resetShell);
 
-  it('udostępnia role nav / main / complementary / status', () => {
+  it('udostępnia role nav / main / status, a complementary po rozwinięciu inspektora', () => {
+    // K11-A: inspektor bez zawartości startuje ZWINIĘTY (atrybut `hidden`
+    // zdejmuje go z drzewa dostępności) — landmark complementary pojawia się
+    // z zawartością/rozwinięciem. INTENCJA bez zmian: powłoka udostępnia
+    // wszystkie cztery landmarki.
     render(<AppShell />);
     expect(screen.getByRole('navigation', { name: SHELL_STRINGS.spacesHeading })).toBeInTheDocument();
     expect(screen.getByRole('main', { name: SHELL_STRINGS.workspaceLabel })).toBeInTheDocument();
-    expect(screen.getByRole('complementary', { name: SHELL_STRINGS.inspectorHeading })).toBeInTheDocument();
     expect(screen.getByRole('status')).toBeInTheDocument();
+    expect(screen.queryByRole('complementary')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('mvd-toggle-right'));
+    expect(screen.getByRole('complementary', { name: SHELL_STRINGS.inspectorHeading })).toBeInTheDocument();
   });
 });
 

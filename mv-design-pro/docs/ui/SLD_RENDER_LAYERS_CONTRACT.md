@@ -9,7 +9,7 @@
 
 ## 1. Cel dokumentu
 
-Definicja **dwĂłch warstw renderingu SLD**: CAD (statyczny schemat) vs SCADA (runtime).
+Definicja **dwóch warstw renderingu SLD**: CAD (statyczny schemat) vs SCADA (runtime).
 
 ---
 
@@ -20,20 +20,20 @@ Definicja **dwĂłch warstw renderingu SLD**: CAD (statyczny schemat) vs SCADA (
 | Aspekt | Opis |
 |--------|------|
 | Cel | Schemat techniczny zgodny z IEC 61082, IEEE 315 |
-| ZawartoĹ›ć | Symbole, etykiety, parametry katalogowe |
+| Zawartość | Symbole, etykiety, parametry katalogowe |
 | Tryb | Wszystkie elementy widoczne (w tym out_of_service) |
-| Kolory | Czarno-biaĹ‚y lub paleta IEC |
-| Wydruk | âś“ TAK (PDF, DWG) |
+| Kolory | Czarno-biały lub paleta IEC |
+| Wydruk | ✓ TAK (PDF, DWG) |
 
 ### 2.2 SLD_SCADA_LAYER (Runtime)
 
 | Aspekt | Opis |
 |--------|------|
-| Cel | Monitoring, operacje Ĺ‚ączeniowe |
-| ZawartoĹ›ć | Stany aparatĂłw, wyniki, alarmy |
+| Cel | Monitoring, operacje łączeniowe |
+| Zawartość | Stany aparatów, wyniki, alarmy |
 | Kolory | Semantyczne (czerwony=alarm, zielony=OK) |
-| Animacje | PrzepĹ‚yw mocy, miganie alarmĂłw |
-| Wydruk | âś“ TAK (z legendą kolorĂłw) |
+| Animacje | Przepływ mocy, miganie alarmów |
+| Wydruk | ✓ TAK (z legendą kolorów) |
 
 ---
 
@@ -41,17 +41,17 @@ Definicja **dwĂłch warstw renderingu SLD**: CAD (statyczny schemat) vs SCADA (
 
 | Tryb | CAD Layer | SCADA Layer |
 |------|-----------|-------------|
-| CAD Mode | âś“ WIDOCZNY | âś— UKRYTY |
-| SCADA Mode | âś“ WIDOCZNY (tĹ‚o) | âś“ WIDOCZNY (overlay) |
-| HYBRID Mode | âś“ WIDOCZNY | âś“ KONFIGUROWALNE nakĹ‚adki |
+| CAD Mode | ✓ WIDOCZNY | ✗ UKRYTY |
+| SCADA Mode | ✓ WIDOCZNY (tło) | ✓ WIDOCZNY (overlay) |
+| HYBRID Mode | ✓ WIDOCZNY | ✓ KONFIGUROWALNE nakładki |
 
 ---
 
 ## 4. FORBIDDEN
 
-- Mieszanie parametrĂłw katalogowych w SCADA
+- Mieszanie parametrów katalogowych w SCADA
 - Eksport SCADA bez CAD (wyniki bez schematu)
-- Brak legendy kolorĂłw w PDF z SCADA
+- Brak legendy kolorów w PDF z SCADA
 
 ---
 
@@ -59,9 +59,9 @@ Definicja **dwĂłch warstw renderingu SLD**: CAD (statyczny schemat) vs SCADA (
 
 | Feature | benchmark | benchmark | MV-DESIGN-PRO | Status |
 |---------|------|--------------|---------------|--------|
-| CAD Layer | âś“ | âś“ | âś“ | âś… FULL |
-| SCADA Layer | âś— | âś“ | âś“ | âś… FULL |
-| Hybrid Mode | âś— | âś— | âś“ | âž• SUPERIOR |
+| CAD Layer | ✓ | ✓ | ✓ | ✅ FULL |
+| SCADA Layer | ✗ | ✓ | ✓ | ✅ FULL |
+| Hybrid Mode | ✗ | ✗ | ✓ | ➕ SUPERIOR |
 
 ---
 

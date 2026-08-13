@@ -4,13 +4,13 @@
 
 ## ⛔ ZASADY NADRZĘDNE PROJEKTU (czytaj przed każdą pracą)
 
-Pełny kanon: `PROMPT_MV_DESIGN_PRO_PRZEBUDOWA.md`. Stan i dług: `STAN_REPO.md` (czytaj NAJPIERW). Repo > specy > rejestr.
+Pełny kanon: `PROMPT_MV_DESIGN_PRO_PRZEBUDOWA.md` (UWAGA: pliku NIE MA w repo — przywołuje go też `mv-design-pro/STAN_REPO.md`; do czasu dodania kanonu obowiązuje hierarchia dokumentów z sekcji „Document Hierarchy" poniżej). Stan i dług: `mv-design-pro/STAN_REPO.md` (czytaj NAJPIERW). Repo > specy > rejestr.
 
 **ZASADA NR 1 — ZERO DŁUGU.** Każda funkcja w UI ma w pełni wdrożony backend: UI + solver + kontrakt + testy + integracja. Zakaz `no_module` / `funkcja w przygotowaniu` / `TODO` / zaślepek. Funkcja istniejąca tylko w testach, niewpięta w ścieżkę użytkownika, to dług.
 
 **ZASADA NR 2 — WERYFIKACJA WIZUALNA.** Kod się kompiluje ≠ ekran działa. Dowodem jest render/zrzut, nie kod. Werdykt wizualny SLD wystawia właściciel (gate B-02), nie agent. Zakaz samocertyfikacji jakości wizualnej.
 
-**ZASADA NR 3 — NIC NA POTEM.** Wykryte = naprawione natychmiast, w tej samej pracy. Zakaz: „follow-on", „osobny przebieg", „sekwencyjnie", „bounded increment", „dług porządkowy odłożony", jawnego błędu (`NotSupportedError`) zamiast funkcji, okrajania zakresu „bo nie tu". Dług architektoniczny wykryty przy okazji (np. dwie ścieżki tej samej fizyki) → naprawiony od razu. „Duże/przekrojowe" → orkiestracja teraz (`ORKIESTRACJA_AGENTOW.md`), nie odroczenie. Jeśli piszesz „później/sekwencyjnie/poza zakresem" — to sygnał, że odkładasz: zatrzymaj się i zrób to teraz.
+**ZASADA NR 3 — NIC NA POTEM.** Wykryte = naprawione natychmiast, w tej samej pracy. Zakaz: „follow-on", „osobny przebieg", „sekwencyjnie", „bounded increment", „dług porządkowy odłożony", jawnego błędu (`NotSupportedError`) zamiast funkcji, okrajania zakresu „bo nie tu". Dług architektoniczny wykryty przy okazji (np. dwie ścieżki tej samej fizyki) → naprawiony od razu. „Duże/przekrojowe" → orkiestracja teraz (`mv-design-pro/ORKIESTRACJA_AGENTOW.md`), nie odroczenie. Jeśli piszesz „później/sekwencyjnie/poza zakresem" — to sygnał, że odkładasz: zatrzymaj się i zrób to teraz.
 
 **ZAKAZ SKRÓTÓW.** Kompletność ponad zwięzłość. Zakaz „etc.", „analogicznie", „uproszczony", „do dopracowania", „do dopracowania później". Każdy przypadek brzegowy, każde miejsce wpięcia, każdy solver — w pełni, jawnie.
 
@@ -131,11 +131,16 @@ The system is architecturally aligned with **DIgSILENT PowerFactory** principles
 
 ```
 MV-Design-PRO/
-├── .github/workflows/            # CI/CD pipelines (4 workflows)
+├── .github/workflows/            # CI/CD pipelines (9 workflows — see "CI/CD Pipelines" below)
 │   ├── python-tests.yml          # Backend tests + Python guards
 │   ├── frontend-checks.yml       # Frontend tests, lint, type-check + guards
 │   ├── sld-determinism.yml       # SLD contract tests + render artifacts
-│   └── docs-guard.yml            # Documentation integrity checks
+│   ├── docs-guard.yml            # Documentation integrity checks
+│   ├── arch-guard.yml            # Architecture layer + repo hygiene guards
+│   ├── p0-extended-guards.yml    # V12K invariant guards
+│   ├── physics-label-guard.yml   # Catalog-first physics field guard
+│   ├── frontend-e2e-smoke.yml    # Critical-path Playwright e2e (real backend)
+│   └── frontend-e2e-full.yml     # Full Playwright e2e suite (real backend)
 ├── docs/                         # Root-level documentation index
 │   ├── INDEX.md                  # UI documentation index
 │   ├── ui/                       # UI contracts (root-level)
@@ -226,79 +231,91 @@ MV-Design-PRO/
 │   │   ├── src/
 │   │   │   ├── App.tsx           # Root React component
 │   │   │   ├── main.tsx          # Entry point
-│   │   │   ├── designer/         # Designer/Wizard page
 │   │   │   ├── engine/           # Algorithm engines
 │   │   │   │   └── sld-layout/   # SLD auto-layout engine (7-phase pipeline)
 │   │   │   ├── types/            # Shared TypeScript type definitions
 │   │   │   ├── test/             # Test infrastructure (setup.ts)
-│   │   │   └── ui/               # React components (60+ feature modules)
-│   │   │       ├── sld/          # Single Line Diagram (primary)
-│   │   │       │   ├── core/     # VisualGraph, TopologyAdapter, LayoutPipeline, StationBlockBuilder
-│   │   │       │   ├── etap_symbols/
-│   │   │       │   ├── export/
-│   │   │       │   ├── inspector/
-│   │   │       │   ├── layout/
-│   │   │       │   └── symbols/
-│   │   │       ├── sld-editor/   # SLD editing (CAD geometry, drag, routing)
-│   │   │       ├── sld-overlay/  # Result overlays on SLD
-│   │   │       ├── wizard/       # Network wizard (switchgear config)
-│   │   │       ├── study-cases/  # Study case manager
-│   │   │       ├── case-manager/ # Case lifecycle management
-│   │   │       ├── active-case-bar/    # Active case display bar
-│   │   │       ├── results-browser/    # Results hierarchy browser
-│   │   │       ├── results-inspector/  # Result details inspector
-│   │   │       ├── results-workspace/  # Results view container
-│   │   │       ├── results/            # Results module
-│   │   │       ├── run-results-inspector/ # Run-level result inspector
-│   │   │       ├── proof/              # Proof pack display
-│   │   │       ├── protection/         # Protection library browser
-│   │   │       ├── protection-coordination/ # TCC charts, protection curves
-│   │   │       ├── protection-curves/  # Protection curve rendering
-│   │   │       ├── protection-diagnostics/
-│   │   │       ├── protection-engine-v1/ # Protection engine interface
-│   │   │       ├── protection-results/ # Protection result display
-│   │   │       ├── protection-comparison/ # A/B comparison for protection
-│   │   │       ├── property-grid/      # Element property editor
-│   │   │       ├── catalog/            # Type library browser
-│   │   │       ├── topology/           # Topology tree
-│   │   │       ├── power-flow-results/ # Load flow results
-│   │   │       ├── power-flow-comparison/ # Load flow A/B comparison
-│   │   │       ├── power-distribution/ # Power distribution analysis
-│   │   │       ├── context-menu/       # Context menu actions
-│   │   │       ├── app-state/          # Global Zustand store
-│   │   │       ├── history/            # Undo/redo
-│   │   │       ├── selection/          # Element selection
-│   │   │       ├── mode-gate/          # Expert mode gating
-│   │   │       ├── contracts/          # API contract definitions
-│   │   │       ├── analysis-eligibility/ # Analysis pre-check display
-│   │   │       ├── batch-execution/    # Batch analysis execution
-│   │   │       ├── data-manager/       # Data management panel
-│   │   │       ├── engineering-readiness/ # Readiness gate UI
-│   │   │       ├── enm-inspector/      # ENM model inspector
-│   │   │       ├── fault-scenarios/    # Fault scenario configuration
-│   │   │       ├── main-menu/          # Application main menu
-│   │   │       ├── navigation/         # App navigation
-│   │   │       ├── notifications/      # Notification display
-│   │   │       ├── project-archive/    # Project ZIP import/export
-│   │   │       ├── project-tree/       # Project hierarchy tree
-│   │   │       ├── projects/           # Projects list/management
-│   │   │       ├── reference-patterns/ # Reference network patterns
-│   │   │       ├── schema-completeness/ # Schema completeness display
-│   │   │       ├── status-bar/         # Application status bar
-│   │   │       ├── voltage-profile/    # Voltage profile charts
-│   │   │       ├── compare/            # General comparison view
-│   │   │       ├── comparison/         # Comparison module
-│   │   │       ├── comparisons/        # Comparisons list
-│   │   │       ├── inspector/          # Generic inspector
-│   │   │       ├── inspector-panel/    # Inspector panel wrapper
-│   │   │       ├── issue-panel/        # Validation issue panel
-│   │   │       ├── canon/              # Canonical form utilities
-│   │   │       ├── field/              # Form field components
-│   │   │       ├── network-build/      # Network building utilities
-│   │   │       ├── workspace/          # Workspace management
-│   │   │       ├── icons/              # Icon definitions
-│   │   │       ├── shell/              # Shell components
-│   │   │       └── ...                 # shared/, common/, config/, layout/, types.ts
+│   │   │   ├── ui/               # React components — 56 modulow (stan zmierzony, pin: scripts/claude_md_struktura_guard.py)
+│   │   │   │   ├── analysis-eligibility/  # Wynik pre-kontroli analizy
+│   │   │   │   ├── app-state/             # Globalny store Zustand
+│   │   │   │   ├── audit/                 # Narzedzia audytowe
+│   │   │   │   ├── canon/                 # Narzedzia postaci kanonicznej
+│   │   │   │   ├── catalog/               # Przegladarka biblioteki typow
+│   │   │   │   ├── common/                # Wspolne
+│   │   │   │   ├── comparison/            # Modul porownania
+│   │   │   │   ├── config/                # Konfiguracja
+│   │   │   │   ├── context-menu/          # Akcje menu kontekstowego
+│   │   │   │   ├── contracts/             # Definicje kontraktow API
+│   │   │   │   ├── data-manager/          # Panel zarzadzania danymi
+│   │   │   │   ├── engineering-readiness/ # Bramka gotowosci inzynierskiej
+│   │   │   │   ├── enm-inspector/         # Inspektor modelu ENM
+│   │   │   │   ├── fault-scenarios/       # Konfiguracja scenariuszy zwarciowych
+│   │   │   │   ├── field/                 # Komponenty pol formularza
+│   │   │   │   ├── help/                  # Pomoc kontekstowa
+│   │   │   │   ├── history/               # Cofnij/ponow
+│   │   │   │   ├── icons/                 # Definicje ikon
+│   │   │   │   ├── inspector/             # Inspektor ogolny
+│   │   │   │   ├── issue-panel/           # Panel bledow walidacji
+│   │   │   │   ├── mode-gate/             # Bramkowanie trybu eksperckiego
+│   │   │   │   ├── navigation/            # Nawigacja aplikacji
+│   │   │   │   ├── ncrfg-tests/           # Testy zgodnosci NC RfG
+│   │   │   │   ├── network-build/         # Narzedzia budowy sieci
+│   │   │   │   ├── notifications/         # Powiadomienia
+│   │   │   │   ├── onboarding/            # Wdrozenie uzytkownika
+│   │   │   │   ├── power-distribution/    # Analiza rozdzialu mocy
+│   │   │   │   ├── power-flow-comparison/ # Porownanie A/B rozplywu
+│   │   │   │   ├── power-flow-results/    # Wyniki rozplywu mocy
+│   │   │   │   ├── project-archive/       # Import/eksport projektu (ZIP)
+│   │   │   │   ├── projects/              # Lista i zarzadzanie projektami
+│   │   │   │   ├── proof/                 # Prezentacja pakietu dowodowego
+│   │   │   │   ├── property-grid/         # Edytor wlasciwosci elementu
+│   │   │   │   ├── protection/            # Przegladarka biblioteki zabezpieczen
+│   │   │   │   ├── protection-comparison/ # Porownanie A/B zabezpieczen
+│   │   │   │   ├── protection-coordination/ # Wykresy TCC, koordynacja
+│   │   │   │   ├── protection-curves/     # Rysowanie krzywych zabezpieczen
+│   │   │   │   ├── reference-networks/    # Sieci referencyjne (fikstury)
+│   │   │   │   ├── reference-patterns/    # Wzorce sieci referencyjnych
+│   │   │   │   ├── reports/               # Raporty
+│   │   │   │   ├── results/               # Modul wynikow
+│   │   │   │   ├── results-inspector/     # Inspektor szczegolow wyniku
+│   │   │   │   ├── schema-completeness/   # Kompletnosc schematu
+│   │   │   │   ├── selection/             # Zaznaczenie elementow
+│   │   │   │   ├── settings/              # Ustawienia
+│   │   │   │   ├── shared/                # Wspoldzielone
+│   │   │   │   ├── shell/                 # Komponenty powloki
+│   │   │   │   ├── sld/          # Schemat jednokreskowy (kanwa v2/v3, sedno produktu)
+│   │   │   │   │   ├── canonical_symbols/
+│   │   │   │   │   ├── core/
+│   │   │   │   │   ├── export/
+│   │   │   │   │   ├── reference/
+│   │   │   │   │   ├── shared/
+│   │   │   │   │   ├── v2/
+│   │   │   │   │   ├── v3/
+│   │   │   │   ├── sld-editor/            # Edycja SLD (geometria CAD, przeciaganie, trasowanie)
+│   │   │   │   ├── sld-overlay/           # Nakladka wynikow na SLD
+│   │   │   │   ├── status-bar/            # Pasek stanu
+│   │   │   │   ├── study-cases/           # Menedzer przypadkow obliczeniowych
+│   │   │   │   ├── tech-card/             # Karta techniczna elementu
+│   │   │   │   ├── topology/              # Drzewo topologii
+│   │   │   │   ├── voltage-profile/       # Wykresy profilu napiecia
+│   │   │   │   ├── workspace/             # Zarzadzanie przestrzenia robocza
+│   │   │   └── ui2/              # Warstwa UI programu 2026-07 — 16 modulow (tu toczy sie biezaca praca)
+│   │   │       ├── adapters/          # Adaptery do kontraktow backendu
+│   │   │       ├── events/            # Szyna zdarzen
+│   │   │       ├── freshness/         # Znaczniki swiezosci wynikow
+│   │   │       ├── inspector/         # Inspektor ui2
+│   │   │       ├── kreatory/          # Kreatory (stacja, pole SN, zrodlo OZE, pierscien)
+│   │   │       ├── kryteria/          # Kryteria oceny
+│   │   │       ├── legacy/            # Mosty do warstwy ui/
+│   │   │       ├── model/             # Warstwa modelu ui2
+│   │   │       ├── nav/               # Nawigacja etapow E1-E8
+│   │   │       ├── oze/               # Strumien OZE (krzywe, LOM, zgodnosc NC RfG)
+│   │   │       ├── referencje/        # Referencje katalogowe
+│   │   │       ├── search/            # Wyszukiwanie
+│   │   │       ├── shell/             # Powloka ui2 (chrom, doki, store powloki)
+│   │   │       ├── spaces/            # Przestrzenie pracy (projekt, model, analizy)
+│   │   │       ├── theme/             # Motyw i tokeny
+│   │   │       ├── wyniki/            # Ekrany wynikow (rozplyw, zwarcia, porownanie, estymacja, skladowe)
 │   │   └── e2e/                  # Playwright end-to-end tests
 │   ├── scripts/                  # CI/CD guard scripts (64+ scripts)
 │   └── docs/                     # Detailed documentation (150+ files)
@@ -624,7 +641,7 @@ python scripts/smoke_local.sh                     # Local smoke test
 
 ## CI/CD Pipelines
 
-8 workflows in `.github/workflows/`, all on push and pull_request (`frontend-e2e-smoke.yml` is path-filtered to `frontend/**` + `backend/**`):
+9 workflows in `.github/workflows/`, all on push and pull_request (`frontend-e2e-smoke.yml` and `frontend-e2e-full.yml` are path-filtered to `frontend/**` + `backend/**`):
 
 | Workflow | File | What It Does |
 |----------|------|-------------|
@@ -636,6 +653,7 @@ python scripts/smoke_local.sh                     # Local smoke test
 | P0 Extended Guards | `p0-extended-guards.yml` | V12K invariant guards (load_flow/protection heuristics, solver_boundary, overlay_no_physics, trace_determinism, fault_scenarios_determinism, ui_terminology, forbidden_ui_terms) |
 | Physics Label Guard | `physics-label-guard.yml` | Catalog-first physics field guard for modals |
 | Frontend E2E smoke | `frontend-e2e-smoke.yml` | Playwright e2e against the real backend (`npm run test:e2e:real`) |
+| Frontend E2E full | `frontend-e2e-full.yml` | Full Playwright e2e suite against the real backend (`npm run test:e2e`, all `e2e/*.spec.ts`) |
 
 ## Code Style & Conventions
 
@@ -692,15 +710,20 @@ python scripts/smoke_local.sh                     # Local smoke test
 - Component tests use @testing-library/react
 - Tests run with `--no-file-parallelism` (required for determinism)
 - Test environment: jsdom with globals enabled
-- Critical contract tests (run in SLD Determinism CI, SLD v2/v3 pipeline):
+- Critical contract tests (run in SLD Determinism CI) — **spisane z
+  `.github/workflows/sld-determinism.yml`, nie z pamięci** (korekta 2026-08-08:
+  poprzednia lista wymieniała sześć plików w `sld/core/__tests__/`, z których
+  **nie istniał ANI JEDEN** — ani tam, ani nigdzie w `src`; workflow nie
+  uruchamia niczego z `sld/core/**`. Przy każdej zmianie tego workflowa
+  aktualizuj tę listę, inaczej wróci fikcja):
   - `sld/v2/geometry/__tests__/layoutEngine.substrate.test.ts`
-  - `sld/v2/__tests__/ViewportController.test.ts`
-  - `sld/v2/__tests__/LodPolicy.test.ts`
-  - `sld/v2/__tests__/renderers.test.tsx`
   - `sld/v2/geometry/__tests__/portAnchoredGeometry.substrate.test.ts`
-  - `sld/v2/__tests__/StationInternalView.test.tsx`
-  - `sld/v2/command/__tests__/SldCommandService.test.ts`
-  - `sld/v2/core/__tests__/ports.test.ts`
+  - `sld/v2/__tests__/{ViewportController,LodPolicy,renderers,StationInternalView}.test.ts(x)`
+  - `sld/v2/command/__tests__/SldCommandService.test.ts` · `sld/v2/core/__tests__/ports.test.ts`
+  - `sld/v3/scene/__tests__/{lodContinuity,buildScene.sheetRows,buildScene.gpzCollapsed,busbarLabelClearance}.test.ts`
+  - `sld/v3/canvas/__tests__/{minSymbolSize,kadrTresci,toolbarLayout,tozsamoscEtykiet}.contract.test.ts(x)`
+    oraz `gpzCollapsedExpand.test.tsx`
+  - `sld/v3/layout/__tests__/sheetRows.test.ts` · `sld/v3/theme/__tests__/palette.test.ts`
   - SLD v3 render-odbiór acceptance: `npm run accept:sld-v3`
 - Critical E2E (real backend): `e2e/critical-run-flow.spec.ts` via `npm run test:e2e:real`
 
@@ -915,6 +938,42 @@ Zasady wykonania:
    przekierowywał click na tło) był latami niewidoczny, bo wszystkie specy
    klikały syntetycznie. Nowy test interakcji ZAWSZE zaczyna od ścieżki
    natywnej; syntetyczny event wymaga uzasadnienia w komentarzu.
+
+## Reguła KLASA, NIE INSTANCJA (BINDING — wniosek z przeglądu 2026-08-01)
+
+Przegląd kodu fali audytu (`docs/audit/PRZEGLAD_FALI_2026-08-01.md`) wykrył
+**jeden błąd metodyczny powtórzony cztery razy w czterech niezależnych kartach**:
+naprawiono INSTANCJĘ defektu nazwaną w audycie, a nie jego KLASĘ. Za każdym razem
+zbiór, na którym działa nowy mechanizm, okazał się inny niż zbiór, na którym
+powinien: rozdzielano szerzej niż doklejano z powrotem (wielomian ZIP), bramkowano
+transformator, ale nie źródło nN ani aparat pola (brama katalogowa), blokowano
+jeden z czterech cykli zapisu (współbieżność), wycofywano model, ale nie dziennik.
+Wszystkie cztery przeszły pełną regresję, komplet guardów i iniekcje — bo iniekcje
+sprawdzały ścieżkę, którą ktoś przewidział.
+
+Dlatego każda karta naprawcza MUSI zawierać:
+
+1. **Inwentarz klasy przed naprawą.** Wypisz WSZYSTKIE miejsca/ścieżki/elementy
+   dzielące ten sam mechanizm — nie tylko to z audytu. Inwentarz idzie do meldunku
+   i do wpisu rejestru. Miejsce świadomie zostawione poza naprawą wymaga
+   uzasadnienia merytorycznego (nie „poza zakresem karty").
+2. **Test jako ILOCZYN CECH, nie przykład z karty.** Nowe testy pokrywają iloczyn
+   cech, w którym defekt mógłby się schować (np. „czułość częstotliwościowa ×
+   generacja na szynie", „ten sam obiekt × awaria zapisu dziennika", „operacja A ×
+   operacja B równolegle"), a nie tylko scenariusz opisany w karcie. Zanim uznasz
+   pokrycie za wystarczające, wypisz cechy i sprawdź grepem, czy ich kombinacja
+   występuje w testach.
+3. **Predykaty parami.** Gdy kod dzieli zbiór na dwie części i składa je z powrotem
+   (rozdziel/dołóż, zablokuj/zwolnij, zapisz/wycofaj), warunek WEJŚCIA i WYJŚCIA
+   musi pochodzić z JEDNEGO źródła prawdy. Dwa niezależne warunki, które „dziś się
+   zgadzają", są defektem oczekującym na dane brzegowe.
+4. **Deklaracja bez testu = fałszywa pewność.** Każde mocne zdanie w docstringu,
+   rejestrze albo dokumencie („operacja meldująca błąd nie zostawia żadnego skutku",
+   „lista ZAMKNIĘTA — każde nowe miejsce to naruszenie") musi mieć PRZYPIĘTY test.
+   Obietnica bez testu jest groźniejsza niż sam defekt, bo wyłącza czujność.
+5. **Uczciwość w obrębie jednego pliku.** Jeśli karta zakazuje wzorca (zaszyty próg,
+   ciche zero, domysł), przeszukaj CAŁY moduł, w którym pracujesz — zostawienie tego
+   samego wzorca w sąsiedniej funkcji jest naruszeniem tej samej karty.
 
 ## Dyrektywy właściciela — projektowanie i wdrażanie (BINDING)
 

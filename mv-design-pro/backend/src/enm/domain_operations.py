@@ -1,7 +1,7 @@
 """
 Operacje domenowe V1 — budowa sieci SN od GPZ z SLD na żywo.
 
-Kanoniczny zestaw operacji semantycznych kompozytuj?cych niskopoziomowe CRUD
+Kanoniczny zestaw operacji semantycznych kompozytujących niskopoziomowe CRUD
 z topology_ops.py w spójne przepływy domenowe.
 
 DETERMINISTYCZNE: identyczne wejście → identyczny wynik.
@@ -15,7 +15,8 @@ import hashlib
 import json
 import math
 import re
-from typing import Any
+from collections.abc import Iterable
+from typing import TYPE_CHECKING, Any
 
 from network_model.catalog.audit2_catalogs import (
     get_tap_changer,
@@ -23,9 +24,14 @@ from network_model.catalog.audit2_catalogs import (
 )
 from network_model.catalog.bay_templates import TRANSFORMER_BAY_PROTECTION_CODES
 from network_model.catalog.materialization import materialize_catalog_binding
+
+if TYPE_CHECKING:
+    from network_model.catalog.repository import CatalogRepository
 from network_model.catalog.types import CatalogBinding
 
-from .models import EnergyNetworkModel
+from .kopia_graniczna import kopia_graniczna_enm
+from .load_zip_model import KOD_BLEDU_ZIP, zip_odbioru_z_parametrow_materializacji
+from .models import GEN_TYPES_PRZEKSZTALTNIKOWE, EnergyNetworkModel
 from .topology_ops import (
     create_branch,
     create_device,
@@ -116,19 +122,33 @@ def _normalize_branch_point_switch_state(value: Any) -> str:
     return "closed"
 
 
-def _branch_point_catalog_params(catalog_ref: str | None) -> dict[str, Any]:
+def _branch_point_catalog_item(catalog_ref: str | None) -> dict[str, Any] | None:
+    """Pozycja katalogu punktów rozgałęzienia albo ``None``, gdy jej NIE MA.
+
+    Rozdzielenie „pozycji nie ma" od „pozycja jest, ale bez parametrów" jest
+    warunkiem uczciwej deklaracji pochodzenia: `_branch_point_catalog_params`
+    zwracał pusty słownik w OBU przypadkach, więc punkt rozgałęzienia
+    z referencją, której w katalogu nie ma, i tak dostawał `source_mode: KATALOG`.
+    """
     if not isinstance(catalog_ref, str) or not catalog_ref.strip():
-        return {}
+        return None
     try:
         from network_model.catalog.mv_branch_point_catalog import get_all_branch_point_types
 
         for item in get_all_branch_point_types():
-            if item.get("id") == catalog_ref:
-                params = item.get("params")
-                return copy.deepcopy(params) if isinstance(params, dict) else {}
+            if isinstance(item, dict) and item.get("id") == catalog_ref.strip():
+                return item
     except Exception:
+        return None
+    return None
+
+
+def _branch_point_catalog_params(catalog_ref: str | None) -> dict[str, Any]:
+    item = _branch_point_catalog_item(catalog_ref)
+    if item is None:
         return {}
-    return {}
+    params = item.get("params")
+    return copy.deepcopy(params) if isinstance(params, dict) else {}
 
 
 def _branch_point_port_count(
@@ -140,10 +160,13 @@ def _branch_point_port_count(
     if branch_point_type == "branch_pole":
         return 1
     raw = payload.get("branch_ports_count", catalog_params.get("branch_ports_count"))
+    domyslne = 2 if "2P" in str(payload.get("catalog_ref") or "").upper() else 1
+    if raw is None:
+        return max(1, min(2, domyslne))
     try:
         value = int(raw)
     except (TypeError, ValueError):
-        value = 2 if "2P" in str(payload.get("catalog_ref") or "").upper() else 1
+        value = domyslne
     return max(1, min(2, value))
 
 
@@ -204,13 +227,13 @@ def _branch_point_materialized_params(
     catalog_params: dict[str, Any],
     branch_ports_count: int,
 ) -> dict[str, Any]:
+    payload_params_raw = payload.get("materialized_params")
+    payload_params: dict[str, Any] = (
+        payload_params_raw if isinstance(payload_params_raw, dict) else {}
+    )
     materialized = {
         **catalog_params,
-        **(
-            payload.get("materialized_params")
-            if isinstance(payload.get("materialized_params"), dict)
-            else {}
-        ),
+        **payload_params,
         "catalog_item_id": catalog_ref,
         "catalog_namespace": payload.get("catalog_namespace") or "mv_branch_points",
         "has_transformer": False,
@@ -241,56 +264,73 @@ def _is_helper_topology_bus(bus: dict[str, Any]) -> bool:
     return isinstance(tags, list) and "helper_bus" in tags and "topology_terminal" in tags
 
 
-def _bus_reference_count(enm: dict[str, Any], bus_ref: str) -> int:
-    refs = 0
+def _referenced_bus_refs(enm: dict[str, Any]) -> set[str]:
+    """Wszystkie odwołania do szyn w modelu — JEDEN przebieg po modelu.
+
+    KOSZT ZALEŻNY OD ZASIĘGU ZMIANY (karta S9-9, znalezisko B-5 audytu
+    `docs/sld/AUDYT_JAKOSCI_SLD_2026-08.md`). Wcześniej odpowiednik tej funkcji
+    (`_bus_reference_count`) liczył odwołania DO JEDNEJ szyny, przeglądając w tym
+    celu CAŁY model — a jedyny wołający (`_remove_unreferenced_helper_topology_buses`)
+    robił to dla KAŻDEJ szyny pomocniczej. Koszt rósł więc kwadratowo z rozmiarem
+    sieci; na modelu 100 stacji (607 szyn) był to najdroższy przebieg w budowie
+    odpowiedzi operacji domenowej (pomiar: 525 wywołań na jedno `apply`).
+
+    ŹRÓDŁA ODWOŁAŃ SĄ TE SAME, CO DOTĄD, w tej samej kolejności: końce gałęzi,
+    strony transformatora, `bus_ref` źródeł/odbiorów/wytwórców, `bus_ref` oraz
+    `bus_refs` stacji, `bus_ref` i porty punktów odgałęźnych.
+
+    Jedyny predykat, którego potrzebuje wołający, to „zero odwołań", więc ZBIÓR
+    jest równoważny liczbie: `count == 0` ⟺ `ref not in _referenced_bus_refs(enm)`.
+    Krotność odwołań nie była nigdzie czytana (jedyny wołający porównywał z zerem).
+    """
+    referenced: set[str] = set()
+
+    def dodaj(wartosc: Any) -> None:
+        if isinstance(wartosc, str):
+            referenced.add(wartosc)
+
     for branch in enm.get("branches", []):
-        if branch.get("from_bus_ref") == bus_ref:
-            refs += 1
-        if branch.get("to_bus_ref") == bus_ref:
-            refs += 1
+        dodaj(branch.get("from_bus_ref"))
+        dodaj(branch.get("to_bus_ref"))
     for transformer in enm.get("transformers", []):
-        if transformer.get("hv_bus_ref") == bus_ref:
-            refs += 1
-        if transformer.get("lv_bus_ref") == bus_ref:
-            refs += 1
+        dodaj(transformer.get("hv_bus_ref"))
+        dodaj(transformer.get("lv_bus_ref"))
     for collection in ("sources", "loads", "generators"):
         for item in enm.get(collection, []):
-            if item.get("bus_ref") == bus_ref:
-                refs += 1
+            dodaj(item.get("bus_ref"))
     for substation in enm.get("substations", []):
-        if substation.get("bus_ref") == bus_ref:
-            refs += 1
+        dodaj(substation.get("bus_ref"))
         for ref in substation.get("bus_refs") or []:
-            if ref == bus_ref:
-                refs += 1
+            dodaj(ref)
     for branch_point in enm.get("branch_points", []):
-        if branch_point.get("bus_ref") == bus_ref:
-            refs += 1
+        dodaj(branch_point.get("bus_ref"))
         ports = branch_point.get("ports")
         if isinstance(ports, dict):
             for value in ports.values():
-                if value == bus_ref:
-                    refs += 1
-                elif isinstance(value, list):
-                    refs += sum(1 for ref in value if ref == bus_ref)
-    return refs
+                if isinstance(value, list):
+                    for ref in value:
+                        dodaj(ref)
+                else:
+                    dodaj(value)
+    return referenced
 
 
 def _remove_unreferenced_helper_topology_buses(enm: dict[str, Any]) -> dict[str, Any]:
     buses = enm.get("buses")
     if not isinstance(buses, list):
         return enm
+    referenced = _referenced_bus_refs(enm)
     orphan_refs = {
         bus.get("ref_id")
         for bus in buses
         if isinstance(bus, dict)
         and isinstance(bus.get("ref_id"), str)
         and _is_helper_topology_bus(bus)
-        and _bus_reference_count(enm, bus["ref_id"]) == 0
+        and bus["ref_id"] not in referenced
     }
     if not orphan_refs:
         return enm
-    cleaned = copy.deepcopy(enm)
+    cleaned = kopia_graniczna_enm(enm)
     cleaned["buses"] = [
         bus
         for bus in cleaned.get("buses", [])
@@ -315,7 +355,7 @@ def _complete_catalog_branch_point_defaults(enm: dict[str, Any]) -> dict[str, An
         if not bp.get("catalog_ref") or bp.get("switch_state"):
             continue
         if not changed:
-            completed = copy.deepcopy(enm)
+            completed = kopia_graniczna_enm(enm)
             changed = True
         completed_branch_points = completed.get("branch_points", [])
         completed_bp = completed_branch_points[idx]
@@ -360,7 +400,7 @@ def _extract_catalog_binding_namespace(catalog_binding: object) -> str | None:
 
 
 def _extract_catalog_binding_version(catalog_binding: object) -> str | None:
-    """Odczytaj wersj? katalogu z payloadu binding."""
+    """Odczytaj wersję katalogu z payloadu binding."""
     if not isinstance(catalog_binding, dict):
         return None
 
@@ -373,6 +413,49 @@ def _extract_catalog_binding_version(catalog_binding: object) -> str | None:
     return None
 
 
+#: INWENTARZ KLASY „deklaracja pochodzenia katalogowego" (V12K-315 poz. 7,
+#: V12K-316 poz. 2 i 3).
+#:
+#: ZAMKNIĘTA lista funkcji tego modułu, którym wolno zapisać do migawki
+#: ``source_mode: KATALOG`` / ``parameter_source: CATALOG``, wraz z bramą, która
+#: to uprawnienie nadaje. Reguła klasy: znacznik pochodzenia wolno postawić
+#: WYŁĄCZNIE po udanej materializacji ISTNIEJĄCEJ pozycji katalogu — element
+#: deklarujący katalog przy pustej tabliczce niesie „tabliczkę znikąd".
+#:
+#: Lista jest ZAMKNIĘTA: każde nowe miejsce zapisujące znacznik bez wpisu tutaj
+#: jest naruszeniem. Deklarację pilnuje test klasy (skan AST całego modułu
+#: w `tests/enm/test_brama_pochodzenia_katalogowego.py`) — bez niego obietnica
+#: byłaby groźniejsza niż sam defekt, bo wyłączałaby czujność.
+INWENTARZ_DEKLARACJI_KATALOGOWYCH: dict[str, str] = {
+    "_apply_catalog_metadata": (
+        "wspólny zapisywacz metadanych — wołany PO materializacji, nigdy zamiast niej"
+    ),
+    "add_grid_source_sn": (
+        "źródło i transformator WN/SN: _materialize_catalog_payload; "
+        "aparat pola liniowego: _brama_katalogowa_aparatu_sn"
+    ),
+    "continue_trunk_segment_sn": "odcinek magistrali: _materialize_catalog_payload",
+    "start_branch_segment_sn": "odcinek odgałęzienia: _materialize_catalog_payload",
+    "connect_secondary_ring_sn": "odcinek powiązania pierścieniowego: _materialize_catalog_payload",
+    "insert_station_on_segment_sn": (
+        "odcinki i transformator: _materialize_catalog_payload; "
+        "aparat pola SN: _materialize_sn_field_apparatus_catalog"
+    ),
+    "append_station_on_endpoint": (
+        "transformator: _materialize_catalog_payload; "
+        "aparat pola SN: _materialize_sn_field_apparatus_catalog"
+    ),
+    "_materialize_sn_field_apparatus": "aparat pola SN: _materialize_sn_field_apparatus_catalog",
+    "_materialize_nn_source": "źródło nN stacji: _materialize_catalog_payload",
+    "insert_section_switch_sn": "łącznik sekcyjny: _brama_katalogowa_aparatu_sn",
+    "add_transformer_sn_nn": "transformator SN/nN: _materialize_catalog_payload",
+    "_insert_branch_point_on_segment_sn": (
+        "punkt rozgałęzienia: _branch_point_catalog_item (własny katalog obiektów)"
+    ),
+    "assign_catalog_to_element": "przypisanie pozycji do elementu: _brama_katalogowa_przypisania",
+}
+
+
 def _apply_catalog_metadata(
     target: dict[str, Any],
     catalog_binding: object,
@@ -380,7 +463,12 @@ def _apply_catalog_metadata(
     default_namespace: str | None = None,
     default_source_mode: str = "KATALOG",
 ) -> None:
-    """Uzupełnij snapshot elementu o kanoniczne metadane katalogowe."""
+    """Uzupełnij snapshot elementu o kanoniczne metadane katalogowe.
+
+    UWAGA: ta funkcja tylko ZAPISUJE znacznik pochodzenia — nie jest bramą.
+    Wolno ją wołać dopiero po udanej materializacji pozycji katalogu
+    (patrz `INWENTARZ_DEKLARACJI_KATALOGOWYCH`).
+    """
     namespace = _extract_catalog_binding_namespace(catalog_binding) or default_namespace
     if namespace:
         target["catalog_namespace"] = namespace
@@ -629,7 +717,7 @@ def _resolve_gpz_wn_sn_transformer_catalog_ref(
         (
             "Transformator WN/SN GPZ wymaga pozycji katalogowej. "
             f"Brak domyślnego rekordu dla 110/{voltage_key} kV {power_key} MVA. "
-            f"Dost?pne rekordy: {supported}."
+            f"Dostępne rekordy: {supported}."
         ),
         "source.transformer_catalog_ref_missing",
     )
@@ -673,6 +761,36 @@ def _infer_catalog_namespace_for_element(element: dict[str, Any]) -> str | None:
     if element_type == "transformer":
         return "TRAFO_SN_NN"
     return None
+
+
+#: Kategorie katalogu dopuszczalne dla danego RODZAJU gałęzi.
+#:
+#: KD-6 (Zero-Debt): `assign_catalog_to_element` przyjmował DOWOLNĄ kategorię dla
+#: dowolnej gałęzi, więc wyłącznik pola dawało się przepiąć na pozycję katalogu
+#: KABEL_SN. Skutek nie był kosmetyczny: wiązanie APARAT_SN, którego operacja
+#: stacyjna WYMAGA (B-12), znikało po cichu, a materializacja wpisywałaby
+#: parametry kabla (r/x na km, obciążalność) w aparat łączeniowy. Wykryte przy
+#: budowie ogniwa „wynik zwarciowy → wytrzymałość aparatury": stacja traciła
+#: aparaty pól po przypisaniu katalogów gałęziom.
+_NAMESPACE_DOZWOLONE_DLA_GALEZI: dict[str, frozenset[str]] = {
+    "cable": frozenset({"KABEL_SN", "KABEL_NN"}),
+    "line_overhead": frozenset({"LINIA_SN"}),
+    "breaker": frozenset({"APARAT_SN", "APARAT_NN"}),
+    "switch": frozenset({"APARAT_SN", "APARAT_NN"}),
+    "bus_coupler": frozenset({"APARAT_SN", "APARAT_NN"}),
+    "disconnector": frozenset({"APARAT_SN", "APARAT_NN"}),
+    "fuse": frozenset({"APARAT_SN", "APARAT_NN"}),
+}
+
+
+def _namespace_pasuje_do_galezi(element: dict[str, Any], namespace: str | None) -> bool:
+    """Czy kategoria katalogu odpowiada RODZAJOWI gałęzi (kabel ≠ wyłącznik)."""
+    if not namespace:
+        return True
+    dozwolone = _NAMESPACE_DOZWOLONE_DLA_GALEZI.get(str(element.get("type")))
+    if dozwolone is None:
+        return True
+    return namespace in dozwolone
 
 
 def _resolve_catalog_ref(catalog_ref: object, catalog_binding: object) -> str | None:
@@ -757,6 +875,8 @@ def _build_field_spec(
     primary_devices: list[dict[str, Any]] | None = None,
     tags: list[str] | None = None,
     meta: dict[str, Any] | None = None,
+    funkcja_pomiaru: str | None = None,
+    rodzaj_pomiaru: str | None = None,
 ) -> dict[str, Any]:
     spec: dict[str, Any] = {
         "field_ref": field_ref,
@@ -770,6 +890,16 @@ def _build_field_spec(
     }
     if gpz_section_id:
         spec["gpz_section_id"] = gpz_section_id
+    # Pomiar pola POMIAROWEGO (kontrakt POMIAR_ROZLICZENIOWY_SN_V1 §5,
+    # V12K-336): `funkcja_pomiaru` (układ energii vs pomiar napięcia szyn)
+    # oraz `rodzaj_pomiaru` (rodzaj układu pomiarowego energii, [E-UP] pkt 3).
+    # Klucze WYŁĄCZNIE dla pola pomiarowego (addytywnie, exclude gdy None) —
+    # pola innych ról nie niosą atrybutów, więc istniejące migawki są bajtowo
+    # niezmienione.
+    if funkcja_pomiaru:
+        spec["funkcja_pomiaru"] = funkcja_pomiaru
+    if rodzaj_pomiaru:
+        spec["rodzaj_pomiaru"] = rodzaj_pomiaru
     # Wymagane funkcje zabezpieczeniowe pola (ANSI/IEC, np. 50/51/67, 87T) — projekcja
     # na Bay.protection_codes (read-model + glify SLD). Wyprowadzane z szablonu pola
     # producenta (protection_requirements) albo z roli pola. exclude puste.
@@ -1175,7 +1305,7 @@ def _ensure_line_run_for_corridor(
         normalized_kind = "main_trunk"
     line_run = {
         "id": corridor_ref,
-        "name": corridor.get("name") if isinstance(corridor.get("name"), str) else "Ci?g SN",
+        "name": corridor.get("name") if isinstance(corridor.get("name"), str) else "Ciąg SN",
         "run_kind": normalized_kind,
         "starting_bay_ref": start_bay,
         "starting_port_ref": start_port,
@@ -1215,10 +1345,12 @@ def _is_mv_route_segment(branch: dict[str, Any] | None) -> bool:
         return False
     if branch.get("type") not in {"cable", "line_overhead"}:
         return False
-    tags = branch.get("tags") if isinstance(branch.get("tags"), list) else []
+    tags_raw = branch.get("tags")
+    tags: list[Any] = tags_raw if isinstance(tags_raw, list) else []
     if "branch_point_internal_connector" in tags:
         return False
-    meta = branch.get("meta") if isinstance(branch.get("meta"), dict) else {}
+    meta_raw = branch.get("meta")
+    meta: dict[str, Any] = meta_raw if isinstance(meta_raw, dict) else {}
     return meta.get("render_on_sld") is not False
 
 
@@ -1317,6 +1449,13 @@ def _find_branch_or_split_child(enm: dict[str, Any], ref_id: str) -> dict[str, A
         if str(branch.get("ref_id") or "").startswith(split_prefix):
             return branch
     return None
+
+
+#: Rodzaje generatorow ENM bedace ZRODLAMI PRZEKSZTALTNIKOWYMI (DER), czyli
+#: dokladnie te, ktore podlegaja certyfikacji PTPiREE, testom NC RfG i bramom
+#: gotowosci DER. Jedno zrodlo prawdy: ``enm/models.py`` (obok Literalu
+#: ``Generator.gen_type``) — semantyka i granice zbioru opisane przy definicji.
+_GEN_TYPES_PRZEKSZTALTNIKOWE: frozenset[str] = GEN_TYPES_PRZEKSZTALTNIKOWE
 
 
 def _station_has_transformer(enm: dict[str, Any], station_ref: object) -> bool:
@@ -1420,9 +1559,11 @@ def _resolve_initial_trunk_start_field(
     field_specs_by_bus = _field_specs_by_bus(enm)
     source_bus_refs = sorted(
         {
-            source.get("bus_ref")
+            bus_ref
             for source in enm.get("sources", [])
-            if isinstance(source, dict) and isinstance(source.get("bus_ref"), str)
+            if isinstance(source, dict)
+            for bus_ref in [source.get("bus_ref")]
+            if isinstance(bus_ref, str)
         }
     )
     for bus_ref in source_bus_refs:
@@ -1446,7 +1587,9 @@ def _resolve_initial_trunk_start_field(
     return None
 
 
-def _build_readiness(enm: dict[str, Any]) -> dict[str, Any]:
+def _build_readiness(
+    enm: dict[str, Any],
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     """Oblicz gotowość i blokery z walidatora."""
     try:
         enm_model = EnergyNetworkModel.model_validate(enm)
@@ -1484,10 +1627,13 @@ def _build_readiness(enm: dict[str, Any]) -> dict[str, Any]:
                 entry["severity"] = "OSTRZEZENIE"
                 warnings.append(entry)
 
-        # Domain-level check: PV/BESS generators without transformer
+        # Domain-level check: DER przeksztaltnikowy bez transformatora w sciezce.
+        # Predykat = kanoniczny zbior GEN_TYPES_PRZEKSZTALTNIKOWE (enm/models.py),
+        # nie podciagi nazw — dopasowanie podciagiem gubilo farmy fw_pmsg/fw_dfig/
+        # fw_scig (przylaczane na nN tak samo jak PV/BESS).
         for gen in enm.get("generators", []):
             gen_type = (gen.get("gen_type") or "").lower()
-            if "pv" in gen_type or "bess" in gen_type or "inverter" in gen_type:
+            if gen_type in _GEN_TYPES_PRZEKSZTALTNIKOWE:
                 has_trafo = bool(gen.get("blocking_transformer_ref")) or _station_has_transformer(
                     enm,
                     gen.get("station_ref"),
@@ -1517,6 +1663,68 @@ def _build_readiness(enm: dict[str, Any]) -> dict[str, Any]:
                         }
                     )
 
+        # Certyfikat PTPiREE przetwornicy DER (karta P2) — OSTRZEZENIE, nie blokada.
+        #
+        # Status i nota pochodza WYLACZNIE z tabliczki urzadzenia, ktora zapisal
+        # kreator DER z rekordu katalogowego (`annotate_with_ptpiree_status`).
+        # ZERO drugiej definicji statusu: ten tor NIE pyta katalogu ponownie i
+        # NIE wyprowadza wlasnych regul waznosci certyfikatow — cytuje note
+        # rekordu tak, jak ja zapisano.
+        for gen in enm.get("generators", []):
+            if (gen.get("gen_type") or "") not in _GEN_TYPES_PRZEKSZTALTNIKOWE:
+                continue
+            tabliczka = gen.get("materialized_params") or {}
+            status_ptpiree = tabliczka.get("ptpiree_status")
+            nota_ptpiree = str(tabliczka.get("ptpiree_note") or "").strip()
+            # Styk P1/P2 (V12K-321): nota istnieje dla KAZDEGO dopasowania
+            # (opis dowodowy wykazu), wiec „warunkowo" kluczujemy na OSOBNYM
+            # polu warunku albo na przejsciowym WOS 2018 — nigdy na samej nocie.
+            warunek_ptpiree = str(tabliczka.get("ptpiree_certificate_condition") or "").strip()
+            wos_przejsciowy = tabliczka.get("ptpiree_wos_version") == "WOS 2018"
+            nazwa_der = gen.get("name") or gen.get("ref_id")
+            if status_ptpiree != "POWIAZANY":
+                kod = "der.inverter_certificate_unlinked"
+                komunikat = (
+                    f"Przetwornica źródła DER '{nazwa_der}' nie ma powiązanego "
+                    f"certyfikatu PTPiREE — wniosek do OSD może zostać odrzucony. "
+                    f"Ostateczna akceptacja przyłączeniowa pozostaje po stronie "
+                    f"właściwego OSD."
+                )
+                naprawa = "Wskaż przetwornicę z powiązanym certyfikatem PTPiREE."
+            elif warunek_ptpiree or wos_przejsciowy:
+                kod = "der.inverter_certificate_conditional"
+                powod = (
+                    f"Warunek ważności certyfikatu: „{warunek_ptpiree}”"
+                    if warunek_ptpiree
+                    else f"Certyfikat WOS 2018 w okresie przejściowym. Nota wykazu: „{nota_ptpiree}”"
+                )
+                komunikat = (
+                    f"Certyfikat PTPiREE przetwornicy źródła DER '{nazwa_der}' jest "
+                    f"powiązany warunkowo. {powod}"
+                )
+                naprawa = "Potwierdź warunki noty wykazu PTPiREE dla tego urządzenia."
+            else:
+                continue
+            warnings.append(
+                {
+                    "code": kod,
+                    "message_pl": komunikat,
+                    "element_ref": gen.get("ref_id"),
+                    "severity": "OSTRZEZENIE",
+                }
+            )
+            fix_actions.append(
+                {
+                    "code": kod,
+                    "action_type": "SELECT_CATALOG",
+                    "element_ref": gen.get("ref_id"),
+                    "panel": "catalog",
+                    "step": None,
+                    "focus": gen.get("ref_id"),
+                    "message_pl": naprawa,
+                }
+            )
+
         # Domain-level check: branch points (slup rozgałęźny / ZKSN)
         for bp in enm.get("branch_points", []):
             bp_ref = bp.get("ref_id")
@@ -1534,7 +1742,7 @@ def _build_readiness(enm: dict[str, Any]) -> dict[str, Any]:
                 blockers.append(
                     {
                         "code": "branch_point.invalid_parent_medium",
-                        "message_pl": f"{bp_label} wymaga poprawnego odcinka nadrz?dnego.",
+                        "message_pl": f"{bp_label} wymaga poprawnego odcinka nadrzędnego.",
                         "element_ref": bp_ref,
                         "severity": "BLOKUJACE",
                     }
@@ -1676,9 +1884,11 @@ def _compute_logical_views(enm: dict[str, Any]) -> dict[str, Any]:
     field_specs_by_bus = _field_specs_by_bus(enm)
     source_bus_refs = sorted(
         {
-            source.get("bus_ref")
+            bus_ref
             for source in enm.get("sources", [])
-            if isinstance(source, dict) and isinstance(source.get("bus_ref"), str)
+            if isinstance(source, dict)
+            for bus_ref in [source.get("bus_ref")]
+            if isinstance(bus_ref, str)
         }
     )
 
@@ -2032,7 +2242,7 @@ def _lookup_branch_from_ref_for_bus(
     return None, "branch_connection.source_not_branch_capable"
 
 
-def _get_catalog_safe():
+def _get_catalog_safe() -> CatalogRepository | None:
     """Załaduj katalog MV (bezpieczne — zwraca None przy braku)."""
     try:
         from network_model.catalog import get_default_mv_catalog
@@ -2265,7 +2475,9 @@ def _apply_materialized_transformer_fields(
             target[target_key] = materialized_params[source_key]
 
 
-def _as_positive_float(value: object) -> float | None:
+def _as_positive_float(value: float | str | None) -> float | None:
+    if value is None:
+        return None
     try:
         parsed = float(value)
     except (TypeError, ValueError):
@@ -2273,9 +2485,11 @@ def _as_positive_float(value: object) -> float | None:
     return parsed if parsed > 0 else None
 
 
-def _opt_int(value: object) -> int | None:
+def _opt_int(value: float | str | None) -> int | None:
+    if value is None:
+        return None
     try:
-        return int(value)  # type: ignore[arg-type]
+        return int(value)
     except (TypeError, ValueError):
         return None
 
@@ -2379,6 +2593,59 @@ def _build_gpz_tap_changer(
     return tc
 
 
+#: Kontrakt domenowy podzespolu zaczepow (`enm.models.TapChanger`) — JEDNO miejsce,
+#: w ktorym zapisane sa dozwolone wartosci. Bez tej listy payload przechodzil
+#: WPROST do modelu (walidacja Pydantic nie jest uruchamiana przy zapisie migawki),
+#: wiec regulacja spoza kontraktu zapisywala sie cicho i wywracala solver dopiero
+#: przy odczycie. Znalezisko karty KD-3 (B-2), naprawa u zrodla dla WSZYSTKICH
+#: wolajacych `_build_gpz_tap_changer`, nie tylko dla operacji stacyjnej.
+_TAP_REGULATION_TYPES = ("NONE", "DETC", "OLTC")
+_TAP_REGULATED_WINDINGS = ("HV", "LV")
+_TAP_CONTROL_MODES = ("MANUAL", "AUTOMATIC", "PROFILE", "REMOTE")
+
+
+def _blad_zaczepow(tap_changer: dict[str, Any]) -> str | None:
+    """Zwroc opis bledu zaczepow albo ``None``, gdy podzespol jest poprawny."""
+    regulacja = str(tap_changer.get("regulation_type") or "")
+    if regulacja not in _TAP_REGULATION_TYPES:
+        return (
+            f"Typ regulacji '{regulacja}' jest nieprawidłowy. "
+            f"Dozwolone: {', '.join(_TAP_REGULATION_TYPES)}."
+        )
+    uzwojenie = str(tap_changer.get("regulated_winding") or "")
+    if uzwojenie not in _TAP_REGULATED_WINDINGS:
+        return (
+            f"Regulowane uzwojenie '{uzwojenie}' jest nieprawidłowe. "
+            f"Dozwolone: {', '.join(_TAP_REGULATED_WINDINGS)}."
+        )
+    tryb = str(tap_changer.get("control_mode") or "")
+    if tryb not in _TAP_CONTROL_MODES:
+        return (
+            f"Tryb sterowania '{tryb}' jest nieprawidłowy. "
+            f"Dozwolone: {', '.join(_TAP_CONTROL_MODES)}."
+        )
+
+    minimum = tap_changer.get("min_position")
+    maksimum = tap_changer.get("max_position")
+    biezaca = tap_changer.get("current_position")
+    neutralna = tap_changer.get("neutral_position")
+    if not all(isinstance(v, int) for v in (minimum, maksimum, biezaca, neutralna)):
+        return "Pozycje zaczepów muszą być liczbami całkowitymi."
+    assert isinstance(minimum, int) and isinstance(maksimum, int)
+    assert isinstance(biezaca, int) and isinstance(neutralna, int)
+    if minimum > maksimum:
+        return f"Zakres zaczepów jest odwrócony (min {minimum} > max {maksimum})."
+    if not minimum <= biezaca <= maksimum:
+        return f"Pozycja bieżąca {biezaca} jest poza zakresem [{minimum}, {maksimum}]."
+    if not minimum <= neutralna <= maksimum:
+        return f"Pozycja neutralna {neutralna} jest poza zakresem [{minimum}, {maksimum}]."
+
+    krok = tap_changer.get("step_percent")
+    if not isinstance(krok, int | float) or krok < 0:
+        return "Krok zaczepu musi być liczbą nieujemną."
+    return None
+
+
 def _validate_transformer_voltage_compatibility(
     *,
     transformer_data: dict[str, Any],
@@ -2438,7 +2705,7 @@ def _compute_materialized_params(enm: dict[str, Any]) -> dict[str, Any]:
 
     Każdy segment z catalog_ref ma skopiowane parametry.
     Jeśli dostępny jest katalog (CatalogRepository), parametry są
-    rozwi?zywane z katalogu (precedence: catalog > instance).
+    rozwiązywane z katalogu (precedence: catalog > instance).
     """
     lines_sn: dict[str, Any] = {}
     transformers_sn_nn: dict[str, Any] = {}
@@ -2697,7 +2964,7 @@ def _require_catalog_ref(
 
 def _resolve_manual_source_equivalent(
     payload: dict[str, Any],
-) -> dict[str, Any] | None | dict[str, Any]:
+) -> dict[str, Any] | None:
     manual = payload.get("manual_equivalent")
     if manual is None:
         return None
@@ -2756,7 +3023,11 @@ def _resolve_manual_source_equivalent(
             "source.manual_equivalent_incomplete",
         )
 
-    if input_side == "HV_110" and voltage_kv is None:
+    # Rownowaznie do dotychczasowego `input_side == "HV_110" and voltage_kv is None`:
+    # dla strony SN `voltage_kv` JEST `sn_voltage_kv`, a brak `sn_voltage_kv` odciela juz
+    # bramka powyzej — wiec `voltage_kv is None` moze zajsc wylacznie po stronie WN.
+    # Warunek na samej wartosci zweza typ do `float` w calej reszcie funkcji.
+    if voltage_kv is None:
         return _error_response(
             "Reczna umowa rownowazna GPZ WN/SN wymaga dodatniego napiecia strony WN.",
             "source.manual_equivalent_incomplete",
@@ -2783,7 +3054,7 @@ def _resolve_manual_source_equivalent(
         z_abs = math.hypot(r_ohm, x_ohm)
         if z_abs <= 0:
             return _error_response(
-                "Impedancja zast?pcza GPZ musi by? dodatnia.",
+                "Impedancja zastępcza GPZ musi być dodatnia.",
                 "source.manual_equivalent_incomplete",
             )
 
@@ -2853,7 +3124,7 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
     manual_equivalent = _resolve_manual_source_equivalent(payload)
     if isinstance(manual_equivalent, dict) and manual_equivalent.get("error"):
         return manual_equivalent
-    manual_source_mode = isinstance(manual_equivalent, dict)
+    manual_source_mode = manual_equivalent is not None
     gpz_section_entries = _normalize_gpz_section_entries(payload)
     sections_count = int(payload.get("sections_count", len(gpz_section_entries) or 1) or 1)
     if len(gpz_section_entries) != sections_count:
@@ -2871,7 +3142,7 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
         ]
     if sections_count < 1 or sections_count > 4:
         return _error_response(
-            "GPZ musi mie? od 1 do 4 sekcji szyn SN.",
+            "GPZ musi mieć od 1 do 4 sekcji szyn SN.",
             "source.invalid_sections_count",
         )
     transformer_count = _read_gpz_transformer_count(payload, sections_count)
@@ -2890,19 +3161,19 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
             return _error_response(
                 (
                     "Sekcja GPZ "
-                    f"{index + 1} musi mie? od 1 do {MAX_GPZ_LINE_FIELDS_PER_SECTION} "
+                    f"{index + 1} musi mieć od 1 do {MAX_GPZ_LINE_FIELDS_PER_SECTION} "
                     "pól liniowych odpływowych."
                 ),
                 "source.invalid_line_fields_count",
             )
-    if manual_source_mode and (voltage_kv is None or voltage_kv <= 0):
+    if manual_equivalent is not None and (voltage_kv is None or voltage_kv <= 0):
         voltage_kv = manual_equivalent["voltage_kv"]
     if voltage_kv is None or voltage_kv <= 0:
         # Pobierz napięcie z jawnych ustawień projektu (ENM defaults)
         voltage_kv = enm.get("header", {}).get("defaults", {}).get("sn_nominal_kv")
     if voltage_kv is None or voltage_kv <= 0:
         return _error_response(
-            "Brak napi?cia znamionowego SN: podaj voltage_kv w payloadzie lub ustaw "
+            "Brak napięcia znamionowego SN: podaj voltage_kv w payloadzie lub ustaw "
             "defaults.sn_nominal_kv w nagłówku ENM.",
             "source.missing_voltage",
         )
@@ -2933,7 +3204,10 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
         )
     if source_identity:
         for source in existing_sources:
-            source_meta = source.get("meta") if isinstance(source.get("meta"), dict) else {}
+            source_meta_raw = source.get("meta")
+            source_meta: dict[str, Any] = (
+                source_meta_raw if isinstance(source_meta_raw, dict) else {}
+            )
             existing_identity = (
                 source_meta.get("source_id")
                 or source_meta.get("solution_ref")
@@ -2972,7 +3246,7 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
             grounding_config["x_ohm"] = float(grounding_payload["x_ohm"])
 
     zero_sequence_payload = payload.get("zero_sequence")
-    zero_sequence_config = None
+    zero_sequence_config: dict[str, bool | float] | None = None
     if zero_sequence_payload is not None:
         if not isinstance(zero_sequence_payload, dict):
             return _error_response(
@@ -2986,7 +3260,7 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
 
     catalog_binding = payload.get("catalog_binding")
     binding_payload = None
-    if manual_source_mode:
+    if manual_equivalent is not None:
         catalog_ref = None
         materialized_params = {
             "voltage_rating_kv": manual_equivalent["voltage_kv"],
@@ -3042,6 +3316,25 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
             "source.missing_voltage",
         )
     line_field_apparatus = _normalize_gpz_line_field_apparatus(payload)
+    if line_field_apparatus is not None:
+        # BRAMA KATALOGOWA aparatu pola liniowego stacji zasilającej (dług 7
+        # z V12K-315): dotąd `_apply_catalog_metadata` wpisywał aparatowi
+        # `source_mode: KATALOG` / `parameter_source: CATALOG` BEZ materializacji
+        # i bez sprawdzenia, czy pozycja w ogóle istnieje — element deklarował
+        # pochodzenie katalogowe przy `materialized_params: null`. Sprawdzamy
+        # PRZED jakąkolwiek zmianą modelu, więc zła pozycja nie zostawia
+        # połowicznej stacji zasilającej w migawce.
+        apparatus_materialization = _brama_katalogowa_aparatu_sn(
+            line_field_apparatus["catalog_ref"],
+            catalog_binding=line_field_apparatus["catalog_binding"],
+            opis_pl="Aparat pola liniowego stacji zasilającej",
+        )
+        if isinstance(apparatus_materialization, dict):
+            return apparatus_materialization
+        (
+            line_field_apparatus["catalog_binding"],
+            line_field_apparatus["materialized_params"],
+        ) = apparatus_materialization
 
     # Rodzina rozdzielnicy producenta (Reference Engine) — opcjonalna, addytywna.
     # Wiąże pola GPZ ze szablonami producenta; spływa do SLD (internal_layout),
@@ -3100,7 +3393,7 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
         gpz_section_bus_refs.append(section_bus_ref)
         gpz_section_bus_names.append(section_bus_name)
 
-    new_enm = copy.deepcopy(enm)
+    new_enm = kopia_graniczna_enm(enm)
     created = []
     events = []
     audit = []
@@ -3233,6 +3526,14 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
         # (regulated per its own SN busbar). Absent when regulation not requested.
         gpz_tap_changer = _build_gpz_tap_changer(payload, controlled_bus_ref=section["bus_ref"])
         if gpz_tap_changer is not None:
+            # Kontrakt domenowy zaczepów sprawdzany PRZED zapisem (karta KD-3):
+            # wartość spoza kontraktu zapisywała się dotąd cicho.
+            blad_zaczepow = _blad_zaczepow(gpz_tap_changer)
+            if blad_zaczepow is not None:
+                return _error_response(
+                    f"Transformator {transformer_ref} — {blad_zaczepow}",
+                    "transformer.tap_changer_invalid",
+                )
             transformer["tap_changer"] = gpz_tap_changer
         new_enm.setdefault("transformers", []).append(transformer)
         gpz_transformer_refs.append(transformer_ref)
@@ -3287,6 +3588,20 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
     elif manual_source_mode:
         source_data["source_mode"] = payload.get("source_mode") or "EKSPERCKI_RECZNY"
         source_data["parameter_source"] = payload.get("parameter_source") or "MANUAL_EQUIVALENT"
+    # Znacznik pochodzenia z payloadu NIE MOŻE awansować źródła do katalogu.
+    # Bez `binding_payload` tabliczka pochodzi z ręcznego ekwiwalentu zwarciowego,
+    # więc „KATALOG"/„CATALOG" byłoby w migawce zdaniem nieprawdziwym — ta sama
+    # klasa defektu co aparat pola deklarujący katalog bez materializacji.
+    if binding_payload is None and (
+        str(payload.get("source_mode") or "").strip().upper() == "KATALOG"
+        or str(payload.get("parameter_source") or "").strip().upper() == "CATALOG"
+    ):
+        return _error_response(
+            "Źródło bez wiązania katalogowego nie może deklarować pochodzenia "
+            "katalogowego. Wskaż pozycję katalogu ZRODLO_SN albo zostaw tryb "
+            "ekspercki (ręczny ekwiwalent zwarciowy).",
+            "catalog.ref_required",
+        )
     if payload.get("source_mode"):
         source_data["source_mode"] = payload["source_mode"]
     if payload.get("parameter_source"):
@@ -3357,12 +3672,14 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
             {"step": ev_seq, "action": "Utworzono sprzęgło sekcyjne GPZ", "element_id": coupler_ref}
         )
 
-    field_specs = []
+    field_specs: list[dict[str, Any]] = []
     for idx, section in enumerate(gpz_sections):
-        line_field_names = section.get("line_field_names")
-        if not isinstance(line_field_names, list):
-            line_field_names = []
-        section_bays = section.get("bays") if isinstance(section.get("bays"), list) else []
+        section_field_names_raw = section.get("line_field_names")
+        section_field_names = (
+            section_field_names_raw if isinstance(section_field_names_raw, list) else []
+        )
+        section_bays_raw = section.get("bays")
+        section_bays = section_bays_raw if isinstance(section_bays_raw, list) else []
         for field_index in range(int(section.get("line_fields_count") or 1)):
             bay_spec = section_bays[field_index] if field_index < len(section_bays) else {}
             bay_ref = _make_id("gpz", seed, f"bay/{idx + 1:03d}/{field_index + 1:03d}")
@@ -3378,7 +3695,11 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
             )
             bay_name = (
                 bay_spec.get("name")
-                or (line_field_names[field_index] if field_index < len(line_field_names) else None)
+                or (
+                    section_field_names[field_index]
+                    if field_index < len(section_field_names)
+                    else None
+                )
                 or f"Pole liniowe GPZ {idx + 1}.{field_index + 1}"
             )
             # Szablon pola producenta: preferuj per-pole, potem sekcyjny.
@@ -3456,6 +3777,11 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
                         "requires_catalog_binding": False,
                         "catalog_binding": copy.deepcopy(apparatus_binding),
                     },
+                    # Pozycja przeszła bramę katalogową powyżej — dopiero teraz
+                    # wolno zapisać tabliczkę i zadeklarować pochodzenie.
+                    "materialized_params": copy.deepcopy(
+                        line_field_apparatus["materialized_params"]
+                    ),
                 }
                 _apply_catalog_metadata(
                     apparatus_data, apparatus_binding, default_namespace="APARAT_SN"
@@ -3693,7 +4019,7 @@ def continue_trunk_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> d
     new_bus_ref = f"bus/{seed}/downstream"
     branch_ref = f"seg/{seed}/segment"
 
-    new_enm = copy.deepcopy(enm)
+    new_enm = kopia_graniczna_enm(enm)
     created = []
     events = []
     audit = []
@@ -3947,6 +4273,389 @@ def _apply_transformer_parallelism(
         tr_data["n_parallel"] = n
 
 
+def _sn_field_apparatus_catalog_ref(
+    field_spec: dict[str, Any],
+    payload_default_ref: str | None,
+) -> str | None:
+    """Referencja katalogowa aparatu pola SN — WYŁĄCZNIE z jawnego wskazania (B-12).
+
+    Kolejność: `apparatus_catalog_ref` pola → wspólny
+    `field_apparatus_catalog_ref` payloadu. Brak obu ⇒ ``None`` i JAWNY błąd
+    walidacji u wołającego. Dawny zaszyty typ wyłącznika (fallback) był
+    fabrykacją decyzji projektowej — aparat wybiera projektant z katalogu
+    APARAT_SN, nie operacja domenowa.
+    """
+    raw = field_spec.get("apparatus_catalog_ref")
+    if isinstance(raw, str) and raw.strip():
+        return raw.strip()
+    return payload_default_ref
+
+
+def _payload_field_apparatus_catalog_ref(payload: dict[str, Any]) -> str | None:
+    """Wspólna referencja aparatu pól SN z payloadu operacji (B-12)."""
+    raw = payload.get("field_apparatus_catalog_ref")
+    if isinstance(raw, str) and raw.strip():
+        return raw.strip()
+    return None
+
+
+#: Rodzaj aparatu z katalogu APARAT_SN (`device_kind`) → typ gałęzi łącznikowej ENM
+#: (`enm.models.SwitchBranch.type`) + nazwa elementu w modelu.
+#:
+#: DEFEKT, KTÓRY TO USUWA (karta KOMPLETNOSC-POLA-TR §0 pkt 1, zakaz fabrykacji).
+#: Obie operacje stacyjne zapisywały aparat pola JAKO WYŁĄCZNIK — `type: "breaker"`,
+#: nazwa „Wyłącznik pola SN n" — NIEZALEŻNIE od tego, jaką pozycję katalogu wskazał
+#: projektant. Stacja 630 kVA z rozłącznikiem bezpiecznikowym (typowe pole
+#: transformatorowe RMU) lądowała w modelu jako stacja z wyłącznikiem: nazwa w drzewie
+#: projektu, typ gałęzi i wszystko, co z typu wynika, mówiły coś innego niż wybór
+#: projektanta. Kreator, który oferuje wariant „rozłącznik bezpiecznikowy albo
+#: wyłącznik", byłby wtedy kontrolką bez pokrycia (phantom) — dlatego wariant i jego
+#: skutek w modelu wchodzą JEDNĄ kartą.
+#:
+#: Odwzorowanie jest jawne i zamknięte: rodzaj spoza tablicy zostaje „breaker"
+#: (zachowanie dotychczasowe) — nie zgadujemy typu dla pozycji, której katalog nie
+#: klasyfikuje.
+_DEVICE_KIND_NA_TYP_GALEZI: dict[str, tuple[str, str]] = {
+    "WYLACZNIK": ("breaker", "Wyłącznik"),
+    "ROZLACZNIK": ("switch", "Rozłącznik"),
+    "ROZLACZNIK_BEZPIECZNIKOWY": ("switch", "Rozłącznik bezpiecznikowy"),
+    "ODLACZNIK": ("disconnector", "Odłącznik"),
+    "REKLOZER": ("breaker", "Reklozer"),
+    "UZIEMNIK": ("disconnector", "Uziemnik"),
+}
+
+
+def _rodzaj_aparatu_sn_z_katalogu(apparatus_catalog_ref: str) -> str | None:
+    """`device_kind` pozycji katalogu APARAT_SN (``None``, gdy katalog jej nie zna)."""
+    from network_model.catalog.repository import get_default_mv_catalog
+
+    pozycja = get_default_mv_catalog().mv_apparatus_types.get(apparatus_catalog_ref)
+    kind = getattr(pozycja, "device_kind", None)
+    return kind.strip().upper() if isinstance(kind, str) and kind.strip() else None
+
+
+def _typ_i_nazwa_aparatu_pola(
+    apparatus_catalog_ref: str,
+    *,
+    ordinal: int,
+    bay_role: str,
+) -> tuple[str, str]:
+    """Typ gałęzi ENM i nazwa aparatu pola — Z RODZAJU wskazanej pozycji katalogu.
+
+    Sprzęgło zachowuje typ `bus_coupler` niezależnie od rodzaju aparatu: to jest
+    rola ELEMENTU w topologii rozdzielni (łącznik sekcji), a nie rodzaj wyrobu —
+    dwie różne osie, których nie wolno sklejać.
+    """
+    kind = _rodzaj_aparatu_sn_z_katalogu(apparatus_catalog_ref)
+    typ, nazwa = _DEVICE_KIND_NA_TYP_GALEZI.get(kind or "", ("breaker", "Aparat"))
+    if bay_role == "COUPLER":
+        typ = "bus_coupler"
+    return typ, f"{nazwa} pola SN {ordinal}"
+
+
+def _field_apparatus_missing_error(*, index: int, field_role: str, code: str) -> dict[str, Any]:
+    """Jawny błąd walidacji: pole SN bez wskazanego aparatu (B-12)."""
+    rola = field_role.strip() or "bez roli"
+    return _error_response(
+        f"Pole SN nr {index + 1} (rola: {rola}) nie ma wskazanego aparatu. "
+        "Wskaż pozycję katalogu APARAT_SN w polu 'apparatus_catalog_ref' tego pola "
+        "albo wspólną dla wszystkich pól w 'field_apparatus_catalog_ref'.",
+        code,
+    )
+
+
+def _brama_katalogowa_aparatu_sn(
+    apparatus_catalog_ref: str,
+    *,
+    catalog_binding: object = None,
+    opis_pl: str,
+) -> tuple[dict[str, Any], dict[str, Any]] | dict[str, Any]:
+    """JEDYNA brama katalogowa aparatu łączeniowego SN w tym module.
+
+    Zwraca ``(binding_payload, materialized_params)`` albo odpowiedź błędu
+    ``catalog.item_not_found``. Deklarację pochodzenia katalogowego
+    (``source_mode: KATALOG`` / ``parameter_source: CATALOG``) wolno postawić
+    WYŁĄCZNIE na tym wyniku — inaczej migawka niesie tabliczkę znikąd.
+
+    Brama sprawdza DOKŁADNIE tę pozycję, która trafi do migawki: ``catalog_binding``
+    z payloadu (jeśli jest) rozstrzyga kategorię, więc predykat wejścia i wpis
+    wyjściowy mają JEDNO źródło prawdy.
+
+    Bez tego kroku operacje zapisywały do modelu jako FAKT zdanie „Aparat SN
+    z jawnie wskazanej pozycji katalogu APARAT_SN: X" dla pozycji, której
+    w katalogu NIE MA, przy ``materialized_params = null``. Most katalogowy
+    aparat → wytrzymałość (I_th/I_dyn) dostawał wtedy martwą referencję, a
+    projektant dowiadywał się o tym dopiero z niedostępności kryterium.
+    """
+    materialization = _materialize_catalog_payload(
+        catalog_ref=apparatus_catalog_ref,
+        catalog_binding=catalog_binding,
+        default_namespace="APARAT_SN",
+        default_version="2024.1",
+    )
+    if isinstance(materialization, dict):
+        return _error_response(
+            f"{opis_pl}: {materialization['error']} "
+            "Wskaż istniejącą pozycję katalogu APARAT_SN.",
+            str(materialization.get("error_code") or "catalog.item_not_found"),
+        )
+    return materialization
+
+
+def _materialize_sn_field_apparatus_catalog(
+    apparatus_catalog_ref: str,
+    *,
+    index: int,
+    field_role: str,
+) -> tuple[dict[str, Any], dict[str, Any]] | dict[str, Any]:
+    """Brama katalogowa aparatu pola SN (APARAT_SN) — wspólna dla obu operacji stacyjnych.
+
+    Cienka nakładka na `_brama_katalogowa_aparatu_sn` dodająca adres pola do
+    komunikatu — parytet z torem atomowym (`add_sn_bay`, `insert_section_switch_sn`),
+    gdzie ten sam ref jest odrzucany.
+    """
+    rola = field_role.strip() or "bez roli"
+    return _brama_katalogowa_aparatu_sn(
+        apparatus_catalog_ref,
+        opis_pl=f"Pole SN nr {index + 1} (rola: {rola})",
+    )
+
+
+# ---------------------------------------------------------------------------
+# B-3 — wyposażenie pomiarowo-zabezpieczeniowe pola W TEJ SAMEJ operacji
+# ---------------------------------------------------------------------------
+
+#: Kolejność zakładania wyposażenia pola: CT → VT → zabezpieczenie. Zabezpieczenie
+#: wiąże CT/VT TEGO SAMEGO pola (`add_relay` szuka ich po `bay_ref`), więc musi
+#: powstać jako ostatnie. Czwarty element to przestrzeń katalogu, w której
+#: referencja wyposażenia musi być rozstrzygalna (brama katalogowa, defekt F).
+_KOLEJNOSC_WYPOSAZENIA_POLA = (
+    ("ct", "add_ct", "przekładnika prądowego CT", "CT"),
+    ("vt", "add_vt", "przekładnika napięciowego VT", "VT"),
+    ("relay", "add_relay", "zabezpieczenia", "ZABEZPIECZENIE"),
+)
+
+
+def _ref_wyposazenia_pola(dane: dict[str, Any], klucz: str) -> str | None:
+    """Referencja katalogowa wyposażenia pola — LUSTRO odczytu operacji atomowej.
+
+    `add_relay` czyta najpierw zagnieżdżony blok `protection`
+    (`catalog_item_id`/`catalog_ref`), a dopiero potem korzeń payloadu — brama
+    domenowa musi sprawdzać DOKŁADNIE tę pozycję, która trafi do migawki.
+    Brak referencji ⇒ ``None``: operacja atomowa zwróci wtedy `catalog.ref_required`.
+    """
+    if klucz == "relay":
+        protection = dane.get("protection")
+        if isinstance(protection, dict):
+            ref = _resolve_catalog_ref(
+                protection.get("catalog_item_id") or protection.get("catalog_ref"),
+                None,
+            )
+            if ref is not None:
+                return ref
+    return _resolve_catalog_ref(dane.get("catalog_ref"), dane.get("catalog_binding"))
+
+
+def _wyposazenie_pola_z_wpisu(field_spec: Any) -> dict[str, Any]:
+    """Wyposażenie pola z wpisu `sn_fields[i].equipment` (brak → pusty słownik).
+
+    B-3: pole payloadu jest ADDYTYWNE i opcjonalne — wołający, który go nie
+    podaje, dostaje dokładnie dotychczasowe zachowanie operacji stacyjnej.
+    """
+    if not isinstance(field_spec, dict):
+        return {}
+    equipment = field_spec.get("equipment")
+    if not isinstance(equipment, dict):
+        return {}
+    return {
+        klucz: wartosc
+        for klucz, wartosc in equipment.items()
+        if isinstance(wartosc, dict) and wartosc
+    }
+
+
+def _zastosuj_wyposazenie_pol(
+    new_enm: dict[str, Any],
+    wyposazenie_pol: list[tuple[str, str, dict[str, Any]]],
+    *,
+    kod_bledu: str,
+) -> tuple[dict[str, Any], list[str], list[dict[str, Any]]] | dict[str, Any]:
+    """Zakłada CT/VT/zabezpieczenie pól W TEJ SAMEJ migawce co stacja (B-3).
+
+    DŁUG, KTÓRY TO ZAMYKA (B-3, nazwany w V12K-283): kreator stacji zapisywał
+    stację JEDNĄ operacją, a wyposażenie pól dokładał SEKWENCJĄ osobnych operacji
+    `add_ct`/`add_vt`/`add_relay` po zapisie. Gdy krok pośredni zawiódł (brak
+    pozycji katalogowej, pole bez wyłącznika), model zostawał w stanie połowicznym
+    — stacja zapisana, wyposażenie częściowe — a kreator mógł tylko uczciwie
+    zameldować „wykonano N z M".
+
+    Tu wyposażenie powstaje na TEJ SAMEJ, jeszcze niezapisanej migawce co stacja:
+    błąd któregokolwiek elementu kończy CAŁĄ operację błędem, więc do zapisu
+    trafia albo stacja z kompletnym wyposażeniem, albo nic. Reużyte są DOKŁADNIE
+    te same handlery operacji (`domain_operations_v2`) — te same bramy katalogowe,
+    ta sama materializacja, zero równoległej implementacji. Payload pola jest
+    przekazywany bez zmian (wołający steruje wszystkim, co przyjmuje operacja),
+    domykany wyłącznie o `bay_ref` utworzonego pola.
+
+    Zwraca ``(migawka, utworzone_refy, zdarzenia)`` albo odpowiedź błędu.
+    """
+    if not wyposazenie_pol:
+        return new_enm, [], []
+
+    from enm.domain_operations_v2 import add_ct, add_relay, add_vt
+
+    handlery = {"add_ct": add_ct, "add_vt": add_vt, "add_relay": add_relay}
+    utworzone: list[str] = []
+    zdarzenia: list[dict[str, Any]] = []
+
+    for field_ref, field_role, equipment in wyposazenie_pol:
+        for klucz, nazwa_operacji, etykieta, przestrzen in _KOLEJNOSC_WYPOSAZENIA_POLA:
+            dane = equipment.get(klucz)
+            if not isinstance(dane, dict) or not dane:
+                continue
+            # BRAMA KATALOGOWA (defekt F): pozycja wyposażenia musi ISTNIEĆ w katalogu,
+            # a nie tylko być wskazana. Handlery atomowe sprawdzają wyłącznie obecność
+            # referencji, więc bez tego kroku tor domenowy przyjmował literówkę
+            # (odrzucaną w torze payloadu) i zapisywał martwe wiązanie do migawki.
+            ref_wyposazenia = _ref_wyposazenia_pola(dane, klucz)
+            if ref_wyposazenia is not None:
+                materializacja = _materialize_catalog_payload(
+                    catalog_ref=ref_wyposazenia,
+                    catalog_binding=dane.get("catalog_binding"),
+                    default_namespace=przestrzen,
+                    default_version="2024.1",
+                )
+                if isinstance(materializacja, dict):
+                    rola = field_role.strip() or "bez roli"
+                    return _error_response(
+                        f"Pole {rola} ({field_ref}) — nie udało się dodać {etykieta}: "
+                        f"{materializacja['error']}",
+                        str(materializacja.get("error_code") or kod_bledu),
+                    )
+            odpowiedz = handlery[nazwa_operacji](new_enm, {**dane, "bay_ref": field_ref})
+            blad = odpowiedz.get("error")
+            if blad:
+                rola = field_role.strip() or "bez roli"
+                return _error_response(
+                    f"Pole {rola} ({field_ref}) — nie udało się dodać {etykieta}: {blad}",
+                    str(odpowiedz.get("error_code") or kod_bledu),
+                )
+            migawka = odpowiedz.get("snapshot")
+            if not isinstance(migawka, dict):
+                return _error_response(
+                    f"Pole {field_role} ({field_ref}) — operacja {nazwa_operacji} "
+                    "nie zwróciła migawki modelu.",
+                    kod_bledu,
+                )
+            new_enm = migawka
+            utworzone.extend(
+                ref
+                for ref in (odpowiedz.get("changes") or {}).get("created_element_ids", [])
+                if isinstance(ref, str)
+            )
+            for zdarzenie in odpowiedz.get("domain_events") or []:
+                if isinstance(zdarzenie, dict):
+                    zdarzenia.append({**zdarzenie, "field_ref": field_ref})
+
+    return new_enm, utworzone, zdarzenia
+
+
+def _zastosuj_zaczepy_transformatora(
+    new_enm: dict[str, Any],
+    transformer_block: dict[str, Any],
+    *,
+    transformer_ref: str,
+    controlled_bus_ref: str,
+    kod_bledu: str,
+) -> tuple[dict[str, Any], list[dict[str, Any]]] | dict[str, Any]:
+    """Ustaw zaczepy transformatora stacyjnego W TEJ SAMEJ migawce co stacja (B-2).
+
+    DLUG, KTORY TO ZAMYKA (B-2). Kanoniczny podzespol zaczepow ``tap_changer``
+    (V12K-045) istnial WYLACZNIE dla transformatora GPZ: `add_grid_source_sn`
+    budowal go z payloadu, a `update_element_parameters` nie mial go nawet w
+    liscie pol dozwolonych. Transformator stacji SN/nN powstawal wiec zawsze bez
+    regulacji, a projektant nie mial jak jej ustawic — ani w kreatorze, ani
+    osobna operacja.
+
+    ZERO POL ROWNOLEGLYCH. Uzywamy DOKLADNIE tego samego buildera co GPZ
+    (`_build_gpz_tap_changer`) i DOKLADNIE tego samego handlera co operacja
+    osobna (`update_element_parameters`) — te same klucze payloadu
+    (``transformer_*``), ta sama walidacja, ta sama sciezka zapisu. Blad zapisu
+    zaczepow konczy CALA operacje stacyjna, wiec do modelu trafia albo
+    transformator z regulacja, albo nic (wzorzec `_zastosuj_wyposazenie_pol`).
+
+    Zwraca ``(migawka, zdarzenia)`` albo odpowiedz bledu. Brak regulacji w
+    payloadzie = brak zmian (zgodnosc wsteczna co do bitu).
+    """
+    tap_changer = _build_gpz_tap_changer(transformer_block, controlled_bus_ref=controlled_bus_ref)
+    if tap_changer is None:
+        return new_enm, []
+
+    blad_kontraktu = _blad_zaczepow(tap_changer)
+    if blad_kontraktu is not None:
+        return _error_response(
+            f"Transformator {transformer_ref} — {blad_kontraktu}", "transformer.tap_changer_invalid"
+        )
+
+    odpowiedz = update_element_parameters(
+        new_enm,
+        {"element_ref": transformer_ref, "parameters": {"tap_changer": tap_changer}},
+    )
+    blad = odpowiedz.get("error")
+    if blad:
+        return _error_response(
+            f"Transformator {transformer_ref} — nie udało się ustawić zaczepów: {blad}",
+            str(odpowiedz.get("error_code") or kod_bledu),
+        )
+    migawka = odpowiedz.get("snapshot")
+    if not isinstance(migawka, dict):
+        return _error_response(
+            f"Transformator {transformer_ref} — operacja zaczepów nie zwróciła migawki modelu.",
+            kod_bledu,
+        )
+    return migawka, [{"event_type": "TAP_CHANGER_SET", "element_id": transformer_ref}]
+
+
+#: Dozwolone typy konstrukcji stacji (B-5) — parytet z `enm.models.Substation`
+#: i katalogiem szablonów stacji (`network_model.catalog.station_templates`).
+_STATION_CONSTRUCTION_TYPES = (
+    "wnetrzowa",
+    "kontenerowa",
+    "slupowa",
+    "prefabrykowana",
+    "inna",
+)
+
+
+def _station_identity_fields(
+    station: dict[str, Any],
+    payload: dict[str, Any],
+) -> tuple[dict[str, Any], dict[str, Any] | None]:
+    """Pola tożsamości stacji: oznaczenie (B-4) i typ konstrukcji (B-5).
+
+    Addytywne: brak wartości ⇒ pusty słownik (klucze nie trafiają do rekordu,
+    więc odcisk ENM istniejących zapisów pozostaje bez zmian). Typ konstrukcji
+    spoza listy kończy operację jawnym błędem — zero domysłu.
+    Zwraca ``(pola, blad)``.
+    """
+    fields: dict[str, Any] = {}
+    raw_designation = station.get("designation") or payload.get("designation")
+    if isinstance(raw_designation, str) and raw_designation.strip():
+        fields["designation"] = raw_designation.strip()
+
+    raw_construction = station.get("construction_type") or payload.get("construction_type")
+    if isinstance(raw_construction, str) and raw_construction.strip():
+        construction = raw_construction.strip()
+        if construction not in _STATION_CONSTRUCTION_TYPES:
+            return fields, _error_response(
+                f"Typ konstrukcji stacji '{construction}' jest nieprawidłowy. "
+                f"Dozwolone: {', '.join(_STATION_CONSTRUCTION_TYPES)}.",
+                "station.construction_type_invalid",
+            )
+        fields["construction_type"] = construction
+    return fields, None
+
+
 def _materialize_station_auxiliary_load(
     new_enm: dict[str, Any],
     payload: dict[str, Any],
@@ -4048,6 +4757,54 @@ def _build_nn_field_specs(
     return nn_field_specs
 
 
+#: Konfiguracja bloku nN → (technologia, gen_type, przestrzeń katalogu, zdarzenie).
+#:
+#: Przestrzeń katalogu jest DOKŁADNIE tą, której używa tor atomowy
+#: `add_converter_source` (PV→ZRODLO_NN_PV, BESS→ZRODLO_NN_BESS, FW→CONVERTER):
+#: ten sam ref musi być rozstrzygalny w obu torach, inaczej brama jednego z nich
+#: jest fikcją. Dawne „ZRODLO_NN_FW" NIE JEST przestrzenią katalogu — to nazwa
+#: ROLI POLA nN (`feeder_role`), więc materializacja falownika wiatrowego pod tą
+#: nazwą nigdy nie mogła się powieść.
+_NN_SOURCE_KIND_MAP: dict[str, tuple[str, str, str, str]] = {
+    "PV_INVERTER": ("PV", "pv_inverter", "ZRODLO_NN_PV", "PV_INVERTER_CREATED"),
+    "BESS_INVERTER": ("BESS", "bess", "ZRODLO_NN_BESS", "BESS_SOURCE_CREATED"),
+    "FW_INVERTER": ("WIND", "wind_inverter", "CONVERTER", "FW_SOURCE_CREATED"),
+}
+
+
+def _nn_source_nameplate_from_catalog(
+    catalog_namespace: str,
+    catalog_params: dict[str, Any],
+) -> tuple[float, float, float] | None:
+    """Tabliczka źródła nN ``(un_kv, pmax_mw, sn_mva)`` — WYŁĄCZNIE z katalogu.
+
+    Jednostki różnią się między przestrzeniami katalogu: ZRODLO_NN_PV/BESS trzymają
+    moce w kW i kVA (przelicznik 1/1000), CONVERTER (FW) od razu w MW i MVA.
+    Wyprowadzenie jest kopią przeliczeń toru atomowego `add_converter_source`.
+
+    Brak którejkolwiek wartości ⇒ ``None`` i JAWNY błąd u wołającego. Nigdy nie
+    podstawiamy tabliczki z payloadu — model deklaruje ``source_mode: KATALOG``,
+    więc liczby MUSZĄ pochodzić z pozycji katalogowej.
+    """
+    un_kv = _as_positive_float(catalog_params.get("un_kv"))
+    if catalog_namespace == "ZRODLO_NN_PV":
+        pmax_kw = _as_positive_float(catalog_params.get("p_max_kw"))
+        sn_kva = _as_positive_float(catalog_params.get("s_n_kva"))
+        pmax_mw = pmax_kw / 1000.0 if pmax_kw is not None else None
+        sn_mva = sn_kva / 1000.0 if sn_kva is not None else None
+    elif catalog_namespace == "ZRODLO_NN_BESS":
+        pmax_kw = _as_positive_float(catalog_params.get("p_discharge_kw"))
+        sn_kva = _as_positive_float(catalog_params.get("s_n_kva"))
+        pmax_mw = pmax_kw / 1000.0 if pmax_kw is not None else None
+        sn_mva = sn_kva / 1000.0 if sn_kva is not None else None
+    else:
+        pmax_mw = _as_positive_float(catalog_params.get("pmax_mw"))
+        sn_mva = _as_positive_float(catalog_params.get("sn_mva"))
+    if un_kv is None or pmax_mw is None or sn_mva is None:
+        return None
+    return un_kv, pmax_mw, sn_mva
+
+
 def _materialize_nn_source(
     *,
     new_enm: dict[str, Any],
@@ -4058,7 +4815,7 @@ def _materialize_nn_source(
     transformer_ref: str,
     transformer_created: bool,
     created: list[str],
-) -> tuple[str, str] | None:
+) -> tuple[str, str] | dict[str, Any] | None:
     """Zmaterializuj źródło nN (PV/BESS/FW) z ``nn_block`` do ENM.
 
     Wspólny materializator dla ``insert_station_on_segment_sn`` i
@@ -4066,39 +4823,145 @@ def _materialize_nn_source(
     wpis w ``substation.meta.source_specs`` oraz — gdy podano ``source_protection``
     — ``protection_assignment``. Determinizm wynika ze ``station_seed``.
 
+    BRAMA KATALOGOWA (defekt F): referencja falownika i referencja urządzenia
+    zabezpieczeniowego są rozstrzygane w katalogu PRZED jakąkolwiek zmianą modelu.
+    Wcześniej generator dostawał ``parameter_source: CATALOG`` / ``source_mode:
+    KATALOG`` przy tabliczce sklejonej z payloadu, a jego ``p_mw`` wchodziło
+    wprost do bilansu rozpływu — model kłamał o pochodzeniu liczby.
+
     Zwraca ``(generator_ref, event_type)`` gdy źródło utworzono (do emisji
-    zdarzenia przez wywołującego), w przeciwnym razie ``None``.
+    zdarzenia przez wywołującego), odpowiedź błędu gdy referencja katalogowa jest
+    nierozstrzygalna, ``None`` gdy operacja źródła nie tworzy.
     """
     nn_configuration = str(nn_block.get("nn_configuration") or "")
     source_converter_ref = nn_block.get("source_converter_catalog_ref")
     source_converter_kind = str(nn_block.get("source_converter_kind") or "")
     source_protection = nn_block.get("source_protection")
-    source_kind_map = {
-        "PV_INVERTER": ("PV", "pv_inverter", "ZRODLO_NN_PV", "PV_INVERTER_CREATED"),
-        "BESS_INVERTER": ("BESS", "bess", "ZRODLO_NN_BESS", "BESS_SOURCE_CREATED"),
-        "FW_INVERTER": ("WIND", "wind_inverter", "ZRODLO_NN_FW", "FW_SOURCE_CREATED"),
-    }
-    source_spec = source_kind_map.get(nn_configuration)
+    source_spec = _NN_SOURCE_KIND_MAP.get(nn_configuration)
     if not (source_spec and source_converter_ref):
         return None
 
     _technology, gen_type, catalog_namespace, event_type = source_spec
+
+    # Materializacja PRZED mutacją modelu: nierozstrzygalny ref kończy operację
+    # bez pozostawiania połowicznej stacji w migawce.
+    materialization = _materialize_catalog_payload(
+        catalog_ref=str(source_converter_ref),
+        catalog_binding=None,
+        default_namespace=catalog_namespace,
+        default_version="2024.1",
+    )
+    if isinstance(materialization, dict):
+        return materialization
+    binding_payload, catalog_params = materialization
+    nameplate = _nn_source_nameplate_from_catalog(catalog_namespace, catalog_params)
+    if nameplate is None:
+        return _error_response(
+            f"Pozycja katalogowa źródła nN '{source_converter_ref}' "
+            f"(kategoria {catalog_namespace}) nie ma kompletnej tabliczki: wymagane "
+            "napięcie znamionowe, moc czynna i moc pozorna. Wskaż inną pozycję "
+            "katalogu albo uzupełnij rekord katalogowy — operacja nie przyjmie "
+            "tabliczki z formularza.",
+            "catalog.materialization_incomplete",
+        )
+    un_kv, pmax_mw, sn_mva = nameplate
+
+    protection_catalog_ref: str | None = None
+    if isinstance(source_protection, dict):
+        raw_protection_ref = source_protection.get("device_catalog_ref")
+        if isinstance(raw_protection_ref, str) and raw_protection_ref.strip():
+            protection_catalog_ref = raw_protection_ref.strip()
+            protection_materialization = _materialize_catalog_payload(
+                catalog_ref=protection_catalog_ref,
+                catalog_binding=None,
+                default_namespace="ZABEZPIECZENIE",
+                default_version="2024.1",
+            )
+            if isinstance(protection_materialization, dict):
+                return _error_response(
+                    f"Zabezpieczenie źródła nN: {protection_materialization['error']} "
+                    "Wskaż istniejącą pozycję katalogu ZABEZPIECZENIE.",
+                    str(protection_materialization.get("error_code") or "catalog.item_not_found"),
+                )
+
     generator_ref = _make_id("stn", station_seed, f"nn_source/{gen_type}")
     station_transformer_ref = transformer_ref if transformer_created else None
-    p_mw = (
-        _as_positive_float(nn_block.get("source_converter_pmax_mw"))
-        or _as_positive_float(nn_block.get("source_converter_sn_mva"))
-        or 0.0
-    )
+    p_mw = pmax_mw
     materialized_source_params = {
-        "catalog_item_id": source_converter_ref,
-        "catalog_item_version": "2024.1",
-        "un_kv": nn_block.get("source_converter_un_kv"),
-        "pmax_mw": p_mw,
-        "sn_mva": nn_block.get("source_converter_sn_mva"),
+        "catalog_item_id": binding_payload["catalog_item_id"],
+        "catalog_item_version": binding_payload["catalog_item_version"],
+        "un_kv": un_kv,
+        "pmax_mw": pmax_mw,
+        "sn_mva": sn_mva,
         "station_transformer_ref": station_transformer_ref,
         "protection_intent": source_protection if isinstance(source_protection, dict) else None,
     }
+
+    # PARYTET KONTROLI DOBORU z torem atomowym (`add_converter_source`): ta sama
+    # pozycja katalogowa i ten sam transformator MUSZĄ dać ten sam werdykt
+    # niezależnie od drogi. Dotąd kontrola mocy transformatora istniała WYŁĄCZNIE
+    # w torze atomowym, więc falownik przekraczający moc transformatora stacji
+    # bywał przyjęty przy tworzeniu stacji i odrzucony przy dodaniu źródła osobno
+    # — dwa różne werdykty dla tego samego doboru. Reużyta jest DOKŁADNIE ta sama
+    # funkcja kontrolna (zero równoległej implementacji), a kontrola stoi PRZED
+    # dopisaniem generatora, więc odrzucenie nie zostawia śladu w migawce.
+    from enm.domain_operations_v2 import (
+        _bus_voltage_kv,
+        _has_transformer_in_path,
+        _same_nominal_voltage,
+        _validate_converter_transformer_capacity,
+    )
+
+    # ZGODNOŚĆ NAPIĘĆ — ten sam werdykt co w torze atomowym. Bez tego falownik
+    # 0,69 kV siadał CICHO na szynie 0,4 kV (zmierzone: `un_kv=0.69` przy szynie
+    # 0,4 kV, brak błędu), a jego moc czynna wchodziła do bilansu rozpływu —
+    # ta sama pozycja katalogowa dawała dwa różne werdykty zależnie od drogi.
+    bus_voltage_kv = _bus_voltage_kv(new_enm, nn_bus_id)
+    if bus_voltage_kv is None:
+        return _error_response(
+            "Nie znaleziono napięcia szyny dla źródła przekształtnikowego.",
+            "converter.bus_voltage_missing",
+        )
+    if not _same_nominal_voltage(un_kv, bus_voltage_kv):
+        return _error_response(
+            (
+                "Napięcie katalogowe źródła nie jest zgodne z napięciem szyny. "
+                f"Źródło: {un_kv:g} kV, szyna: {bus_voltage_kv:g} kV."
+            ),
+            "converter.voltage_mismatch",
+        )
+
+    station = next(
+        (
+            sub
+            for sub in new_enm.get("substations", [])
+            if isinstance(sub, dict) and sub.get("ref_id") == station_id
+        ),
+        None,
+    )
+    if station is not None:
+        # Ten sam PRÓG wejścia co w torze atomowym: źródło po stronie nN wymaga
+        # transformatora w ścieżce zasilania. Bez tego stacja bez transformatora
+        # przyjmowała źródło, które operacja atomowa odrzuca — ten sam rozjazd
+        # werdyktów co przy kontroli mocy, tylko o krok wcześniej.
+        if not _has_transformer_in_path(new_enm, station):
+            return _error_response(
+                f"Źródło {_technology} wymaga transformatora w ścieżce zasilania stacji.",
+                f"{_technology.lower()}.transformer_required",
+            )
+        capacity_error = _validate_converter_transformer_capacity(
+            new_enm,
+            station=station,
+            bus_ref=nn_bus_id,
+            blocking_transformer_ref=None,
+            connection_variant="nn_side",
+            technology=_technology,
+            payload=nn_block,
+            materialized_params=materialized_source_params,
+        )
+        if capacity_error is not None:
+            return capacity_error
+
     new_enm.setdefault("generators", []).append(
         {
             "ref_id": generator_ref,
@@ -4156,7 +5019,9 @@ def _materialize_nn_source(
                 "ct_ref": None,
                 "vt_ref": None,
                 "device_type": "overcurrent",
-                "catalog_ref": source_protection.get("device_catalog_ref"),
+                # Ref przeszedł bramę katalogową ZABEZPIECZENIE powyżej — do modelu
+                # trafia DOKŁADNIE ta pozycja, która została rozstrzygnięta.
+                "catalog_ref": protection_catalog_ref,
                 "settings": [],
                 "is_enabled": True,
                 "tags": ["station_nn_source_protection", "requires_ct_vt"],
@@ -4171,6 +5036,381 @@ def _materialize_nn_source(
         )
         created.append(protection_ref)
     return generator_ref, event_type
+
+
+#: JEDNA prawda słownika ról pól SN dla operacji budujących stację
+#: (`insert_station_on_segment_sn`, `append_station_on_endpoint`).
+#:
+#: Do 2026-08-06 każda z tych operacji miała WŁASNY słownik i żaden nie znał roli
+#: POMIAROWEJ: wstawienie w odcinek zapisywało pole pomiarowe jako `bay_role`
+#: FEEDER (pomiar rozliczeniowy nie do odróżnienia od odgałęzienia w read-modelu),
+#: a stacja na końcu ciągu MILCZĄCO POMIJAŁA takie pole (`if not bay_role:
+#: continue`) — szablon deklarował pomiar, model go nie miał. Dwa słowniki, dwa
+#: różne skutki dla tej samej roli; stąd jeden słownik dla obu dróg.
+#:
+#: Aliasy: kanoniczna rola pola to `field_role` z read-modelu
+#: (`application/field_read_model.CANONICAL_BAY_ROLE_MAP`); przyjmujemy też skróty
+#: `bay_role` (IN/OUT/TR/…) — tak wołają kreatory i szablony.
+_SN_FIELD_ROLE_ALIASES: dict[str, str] = {
+    "IN": "LINIA_IN",
+    "OUT": "LINIA_OUT",
+    "FEEDER": "LINIA_ODG",
+    "TR": "TRANSFORMATOROWE",
+    "COUPLER": "SPRZEGLO",
+    "MEASUREMENT": "POMIAROWE",
+    "LINIA_IN": "LINIA_IN",
+    "LINIA_OUT": "LINIA_OUT",
+    "LINIA_ODG": "LINIA_ODG",
+    "TRANSFORMATOROWE": "TRANSFORMATOROWE",
+    "SPRZEGLO": "SPRZEGLO",
+    "POMIAROWE": "POMIAROWE",
+}
+
+#: Kanoniczna rola pola (`field_role`) → rola pola w modelu (`Bay.bay_role`).
+#: Lustro `application.field_read_model.CANONICAL_BAY_ROLE_MAP`.
+_SN_FIELD_ROLE_TO_BAY_ROLE: dict[str, str] = {
+    "LINIA_IN": "IN",
+    "LINIA_OUT": "OUT",
+    "LINIA_ODG": "FEEDER",
+    "TRANSFORMATOROWE": "TR",
+    "SPRZEGLO": "COUPLER",
+    "POMIAROWE": "MEASUREMENT",
+}
+
+
+def _canonical_sn_field_role(raw: object) -> str:
+    """Kanoniczna rola pola SN z dowolnego przyjmowanego aliasu.
+
+    Rola nierozpoznana przechodzi bez zmiany (wołający decyduje, co z nią zrobić)
+    — funkcja NIE zgaduje roli i nie podstawia domyślnej.
+    """
+    if not isinstance(raw, str):
+        return ""
+    normalized = raw.strip().upper()
+    return _SN_FIELD_ROLE_ALIASES.get(normalized, normalized)
+
+
+def klasa_przylaczenia_sn(role_pol: Iterable[object]) -> str:
+    """Klasa przyłączenia stacji SN z KOLEJNOŚCI ról pól — JEDNA prawda.
+
+    Kontrakt `docs/domain/POMIAR_ROZLICZENIOWY_SN_V1.md` §3:
+
+    - ``A`` — brak pola pomiarowego (stacja dystrybucyjna OSD, wcięcie przelotowe);
+    - ``B`` — pole pomiarowe, a PRZED nim (od strony zasilania) NIE MA pola
+      odpływowego: cała rozdzielnica leży za układem pomiarowym ⇒ stacja
+      abonencka, przyłączana ODGAŁĘZIENIEM;
+    - ``C`` — pole pomiarowe, a przed nim pętla OSD (pole dopływowe + odpływowe)
+      ⇒ złącze kablowe ZK-SN, wcinane w magistralę; pomiar jest polem gałęzi
+      klienta, tranzyt pętli przez niego nie przechodzi.
+
+    PREDYKAT JEST POZYCYJNY, nie zbiorowy. Stacja abonencka miewa pola REZERWOWE
+    o roli odpływowej ZA pomiarem (np. „dopływ, POMIAR, TR, rezerwa") — test
+    obecności roli odpływowej w zbiorze uznałby ją za pętlę OSD i przepuścił
+    rozdzielnicę klienta do toru tranzytu. Kolejność ról to fizyczny układ pola
+    od strony zasilania (V12K-330), więc to ona niesie tę różnicę.
+
+    Klasa dotyczy pola pomiarowego będącego UKŁADEM POMIAROWYM ENERGII
+    (kontrakt §3 reguła 1: deklaracja stacji z polem POMIAROWYM opisuje
+    przyłącze klienta) — funkcja jest wołana wyłącznie na drogach BUDOWY
+    STACJI, gdzie niezadeklarowana funkcja pomiaru rozstrzyga się na układ
+    energii (`FUNKCJA_POMIARU_DOMYSLNA_BUDOWY_STACJI`).
+
+    Wołający podaje role w dowolnym przyjmowanym aliasie (`bay_role` albo
+    `field_role`) — normalizuje `_canonical_sn_field_role`.
+    """
+    kanoniczne = [_canonical_sn_field_role(rola) for rola in role_pol]
+    if "POMIAROWE" not in kanoniczne:
+        return "A"
+    przed_pomiarem = kanoniczne[: kanoniczne.index("POMIAROWE")]
+    return "C" if "LINIA_OUT" in przed_pomiarem else "B"
+
+
+# ---------------------------------------------------------------------------
+# Pomiar pola POMIAROWEGO: funkcja pola + rodzaj układu pomiarowego energii
+# (V12K-335 pkt 2 + korekta właściciela V12K-336; kontrakt
+# `docs/domain/POMIAR_ROZLICZENIOWY_SN_V1.md` §5)
+# ---------------------------------------------------------------------------
+
+#: FUNKCJA pola pomiarowego — rozróżnienie KLASOWE (V12K-336 pkt 4):
+#: - `UKLAD_ENERGII` — układ pomiarowy energii elektrycznej ([E-UP] pkt 3);
+#:   towarzyszy granicy stron w gałęzi klienta, podlega bramie pomiaru
+#:   w torze tranzytu i niesie rodzaj układu (`rodzaj_pomiaru`);
+#: - `NAPIECIA_SZYN` — pole pomiaru napięcia szyn rozdzielni (przekładniki
+#:   napięciowe sekcji, np. pole pomiarowe GPZ); to NIE jest układ pomiarowy
+#:   energii — wolne na każdej drodze i w każdej topologii, bez atrybutu
+#:   rodzaju rozliczenia.
+FUNKCJE_POMIARU_SN: frozenset[str] = frozenset({"UKLAD_ENERGII", "NAPIECIA_SZYN"})
+
+#: Rodzaje układów pomiarowych energii elektrycznej — lista ZAMKNIĘTA wprost
+#: ze standardu [E-UP] pkt 3 (definicja „Układy pomiarowe energii
+#: elektrycznej", zgodna z IRiESD): układ pomiarowo-rozliczeniowy PODSTAWOWY,
+#: REZERWOWY, RÓWNOWAŻNY lub układ pomiarowo-KONTROLNY. Żadnych innych wartości
+#: (korekta właściciela V12K-336 pkt 1).
+RODZAJE_UKLADU_POMIAROWEGO: frozenset[str] = frozenset(
+    {"PODSTAWOWY", "REZERWOWY", "ROWNOWAZNY", "KONTROLNY"}
+)
+
+#: Domyślna FUNKCJA pola pomiarowego na drogach BUDOWY STACJI
+#: (`insert_station_on_segment_sn`, `append_station_on_endpoint`, aplikacja
+#: szablonu): deklaracja stacji z polem POMIAROWYM opisuje przyłącze KLIENTA
+#: (kontrakt §3 reguła 1), więc pole bez deklaracji jest układem pomiarowym
+#: ENERGII. Dzięki temu surowy payload sprzed wprowadzenia atrybutów zachowuje
+#: dotychczasową semantykę bramy (zero cichego poluzowania).
+FUNKCJA_POMIARU_DOMYSLNA_BUDOWY_STACJI = "UKLAD_ENERGII"
+
+#: Domyślna FUNKCJA pola pomiarowego na drodze DOKŁADANIA pojedynczego pola
+#: (`add_sn_bay`): pole pomiarowe dokładane do ISTNIEJĄCEJ rozdzielni (szyna
+#: GPZ, stacja OSD) to konstrukcyjnie pole pomiaru NAPIĘCIA SZYN (przekładniki
+#: napięciowe sekcji) — operacja nie deklaruje przyłącza ani granicy stron.
+#: Układ pomiarowy ENERGII na tej drodze wymaga deklaracji JAWNEJ (funkcji albo
+#: rodzaju układu) — status układu energii nigdy nie powstaje z domysłu.
+FUNKCJA_POMIARU_DOMYSLNA_POLA_DOKLADANEGO = "NAPIECIA_SZYN"
+
+#: Domyślny RODZAJ układu pomiarowego energii, gdy funkcja układu jest
+#: rozstrzygnięta, a rodzaju nie zadeklarowano: PODSTAWOWY. To reguła
+#: standardu, nie domysł — układ pomiarowo-rozliczeniowy podstawowy jest
+#: obowiązkowym elementem każdego punktu rozliczeniowego ([E-UP] pkt 3;
+#: rezerwowy/równoważny/kontrolny są układami DODATKOWYMI). Jedna reguła dla
+#: wszystkich dróg wejścia.
+RODZAJ_UKLADU_DOMYSLNY = "PODSTAWOWY"
+
+#: Kody błędów wspólne dla wszystkich operacji przyjmujących atrybuty pomiaru.
+KOD_FUNKCJI_POMIARU_NIEZNANA = "sn.funkcja_pomiaru_nieznana"
+KOD_RODZAJU_POMIARU_NIEZNANY = "sn.rodzaj_pomiaru_nieznany"
+KOD_POMIARU_POZA_POLEM = "sn.pomiar_poza_polem_pomiarowym"
+KOD_RODZAJU_POZA_UKLADEM = "sn.rodzaj_pomiaru_poza_ukladem_energii"
+
+
+def funkcja_pomiaru_sn(raw: object) -> str | None:
+    """Kanoniczna funkcja pola pomiarowego z deklaracji; None gdy brak.
+
+    Wartość spoza słownika `FUNKCJE_POMIARU_SN` również zwraca None — wołający
+    MUSI odróżnić brak deklaracji od wartości błędnej
+    (`rozstrzygnij_pomiar_pola`), nigdy nie zgadywać.
+    """
+    if not isinstance(raw, str):
+        return None
+    normalized = raw.strip().upper()
+    return normalized if normalized in FUNKCJE_POMIARU_SN else None
+
+
+def rodzaj_pomiaru_sn(raw: object) -> str | None:
+    """Kanoniczny rodzaj układu pomiarowego energii z deklaracji; None gdy brak.
+
+    Wartość spoza zamkniętej listy [E-UP] pkt 3 również zwraca None — wołający
+    MUSI odróżnić brak deklaracji od wartości błędnej
+    (`rozstrzygnij_pomiar_pola`), nigdy nie zgadywać.
+    """
+    if not isinstance(raw, str):
+        return None
+    normalized = raw.strip().upper()
+    return normalized if normalized in RODZAJE_UKLADU_POMIAROWEGO else None
+
+
+def rozstrzygnij_pomiar_pola(
+    raw_funkcja: object,
+    raw_rodzaj: object,
+    *,
+    rola_kanoniczna: str,
+    domyslna_funkcja: str,
+) -> tuple[str | None, str | None, dict[str, Any] | None]:
+    """JEDNO źródło rozstrzygnięcia (funkcja, rodzaj) dla KAŻDEJ drogi wejścia.
+
+    Zwraca trójkę (funkcja, rodzaj, błąd):
+
+    - pole NIE-pomiarowe: jakakolwiek deklaracja ⇒ błąd
+      `sn.pomiar_poza_polem_pomiarowym` (atrybut nie może kłamać o roli);
+      bez deklaracji ⇒ (None, None, None);
+    - deklaracja spoza słownika ⇒ błąd (`sn.funkcja_pomiaru_nieznana` /
+      `sn.rodzaj_pomiaru_nieznany`) — literówka nie może zmienić semantyki;
+    - funkcja NAPIECIA_SZYN z zadeklarowanym rodzajem ⇒ błąd
+      `sn.rodzaj_pomiaru_poza_ukladem_energii` (rodzaj układu przysługuje
+      wyłącznie układowi pomiarowemu energii — V12K-336 pkt 4);
+    - funkcja UKLAD_ENERGII bez rodzaju ⇒ rodzaj PODSTAWOWY
+      (`RODZAJ_UKLADU_DOMYSLNY`, reguła standardu — patrz stała);
+    - rodzaj zadeklarowany bez funkcji ⇒ funkcja UKLAD_ENERGII (rodzaj układu
+      implikuje układ energii);
+    - brak obu deklaracji ⇒ funkcja domyślna DROGI wejścia (stałe
+      `FUNKCJA_POMIARU_DOMYSLNA_*` dokumentują, KTÓRY kontekst rozstrzyga);
+      dla UKLAD_ENERGII rodzaj PODSTAWOWY.
+    """
+    funkcja_podana = isinstance(raw_funkcja, str) and bool(raw_funkcja.strip())
+    rodzaj_podany = isinstance(raw_rodzaj, str) and bool(raw_rodzaj.strip())
+    if rola_kanoniczna != "POMIAROWE":
+        if funkcja_podana or rodzaj_podany:
+            return (
+                None,
+                None,
+                _error_response(
+                    "Funkcję i rodzaj pomiaru można zadeklarować wyłącznie na polu "
+                    f"pomiarowym (rola pola: '{rola_kanoniczna or 'nieznana'}').",
+                    KOD_POMIARU_POZA_POLEM,
+                ),
+            )
+        return None, None, None
+    funkcja = funkcja_pomiaru_sn(raw_funkcja)
+    if funkcja_podana and funkcja is None:
+        dozwolone = ", ".join(sorted(FUNKCJE_POMIARU_SN))
+        return (
+            None,
+            None,
+            _error_response(
+                f"Nieznana funkcja pomiaru '{raw_funkcja}'. Dozwolone wartości: {dozwolone}.",
+                KOD_FUNKCJI_POMIARU_NIEZNANA,
+            ),
+        )
+    rodzaj = rodzaj_pomiaru_sn(raw_rodzaj)
+    if rodzaj_podany and rodzaj is None:
+        dozwolone = ", ".join(sorted(RODZAJE_UKLADU_POMIAROWEGO))
+        return (
+            None,
+            None,
+            _error_response(
+                f"Nieznany rodzaj układu pomiarowego '{raw_rodzaj}'. "
+                f"Dozwolone wartości ([E-UP] pkt 3, IRiESD): {dozwolone}.",
+                KOD_RODZAJU_POMIARU_NIEZNANY,
+            ),
+        )
+    if funkcja == "NAPIECIA_SZYN":
+        if rodzaj is not None:
+            return (
+                None,
+                None,
+                _error_response(
+                    "Rodzaj układu pomiarowego przysługuje wyłącznie układowi "
+                    "pomiarowemu energii — pole pomiaru napięcia szyn nie niesie "
+                    "rodzaju rozliczenia.",
+                    KOD_RODZAJU_POZA_UKLADEM,
+                ),
+            )
+        return "NAPIECIA_SZYN", None, None
+    if funkcja == "UKLAD_ENERGII" or rodzaj is not None:
+        return "UKLAD_ENERGII", rodzaj or RODZAJ_UKLADU_DOMYSLNY, None
+    if domyslna_funkcja == "UKLAD_ENERGII":
+        return "UKLAD_ENERGII", RODZAJ_UKLADU_DOMYSLNY, None
+    return "NAPIECIA_SZYN", None, None
+
+
+def rozstrzygnij_pomiary_pol(
+    sn_fields: list[dict[str, Any]],
+    *,
+    domyslna_funkcja: str,
+) -> dict[str, Any] | None:
+    """Rozstrzygnij (funkcja, rodzaj) KAŻDEGO wpisu listy `sn_fields` in-place.
+
+    Wspólny krok dróg budowy stacji (wcięcie w odcinek, stacja na końcu ciągu,
+    aplikacja szablonu przez te operacje). Zwraca błąd operacji albo None.
+    """
+    for field_spec in sn_fields:
+        if not isinstance(field_spec, dict):
+            continue
+        rola = _canonical_sn_field_role(field_spec.get("field_role"))
+        funkcja, rodzaj, blad = rozstrzygnij_pomiar_pola(
+            field_spec.get("funkcja_pomiaru"),
+            field_spec.get("rodzaj_pomiaru"),
+            rola_kanoniczna=rola,
+            domyslna_funkcja=domyslna_funkcja,
+        )
+        if blad is not None:
+            return blad
+        if funkcja is not None:
+            field_spec["funkcja_pomiaru"] = funkcja
+        if rodzaj is not None:
+            field_spec["rodzaj_pomiaru"] = rodzaj
+        elif rola == "POMIAROWE":
+            field_spec.pop("rodzaj_pomiaru", None)
+    return None
+
+
+def szyna_prowadzi_tranzyt_sn(role_pol: Iterable[object]) -> bool:
+    """Czy rozdzielnica o podanych rolach pól prowadzi tranzyt magistrali.
+
+    JEDNO źródło prawdy o tranzycie dla dróg działających na ISTNIEJĄCEJ szynie
+    (`add_sn_bay`): rozdzielnica prowadzi tranzyt, gdy jej pola zawierają parę
+    tranzytową — pole dopływowe (LINIA_IN) ORAZ pole odpływowe (LINIA_OUT).
+
+    Operacje, których semantyka rozstrzyga tranzyt bez patrzenia na role, NIE
+    wołają tej funkcji, tylko przekazują wynik wprost (dokumentowany kontrakt
+    pary predykatów):
+    - `insert_station_on_segment_sn` ROZCINA odcinek ⇒ tranzyt ZAWSZE (True),
+      niezależnie od zadeklarowanych ról — obie połówki odcinka i tak wchodzą
+      na szynę stacji;
+    - `append_station_on_endpoint` buduje stację KOŃCOWĄ (wolny terminal,
+      ≤1 odcinek) ⇒ tranzytu NIE MA (operacja bramy nie woła).
+
+    GPZ nie ma pola dopływowego SN (zasila go transformator 110/SN), więc
+    rozdzielnia GPZ NIE jest torem tranzytu. Pole rezerwowe o roli odpływowej
+    liczy się jak odpływ: role pól są jedyną deklaracją projektową, jaką ta
+    droga ma do dyspozycji.
+    """
+    kanoniczne = {_canonical_sn_field_role(rola) for rola in role_pol}
+    return "LINIA_IN" in kanoniczne and "LINIA_OUT" in kanoniczne
+
+
+def blad_pomiaru_w_torze_tranzytu(
+    pola: Iterable[tuple[object, object]],
+    *,
+    szyna_prowadzi_tranzyt: bool,
+    kod_bledu: str,
+) -> dict[str, Any] | None:
+    """BRAMA układu pomiarowego energii w torze tranzytu — JEDNA funkcja źródłowa.
+
+    Kontrakt `docs/domain/POMIAR_ROZLICZENIOWY_SN_V1.md` §1–§3 i §5 (V12K-335
+    pkt 2, korekta V12K-336 pkt 3): układ pomiarowy energii elektrycznej
+    ([E-UP] pkt 3 — podstawowy, rezerwowy, równoważny i kontrolny) towarzyszy
+    granicy stron w gałęzi klienta, więc KAŻDY z jego rodzajów jest ZAKAZANY
+    w torze tranzytu magistrali OSD. Pole pomiaru NAPIĘCIA SZYN (funkcja
+    `NAPIECIA_SZYN` — przekładniki napięciowe sekcji rozdzielni) nie jest
+    układem pomiarowym energii i bramie nie podlega.
+
+    Wejście: sekwencja par (rola pola, funkcja pomiaru) w kolejności OD STRONY
+    ZASILANIA (kolejność pól z danych, V12K-330). Funkcja None = wpis
+    nieoceniany (pole niepomiarowe albo wpis historyczny, którego legalność
+    oceniła operacja tworząca — prefiksy pól są niezmienne, bo dokładanie pola
+    na końcu sekwencji nie zmienia prefiksu żadnego istniejącego pomiaru).
+
+    REGUŁA POZYCYJNA (reguły twarde §3 pkt 2–3): układ pomiarowy energii na
+    szynie prowadzącej tranzyt jest legalny WYŁĄCZNIE, gdy przed nim (od strony
+    zasilania) stoi czysta pętla OSD — prefiks zawiera pole odpływowe LINIA_OUT
+    i NIC spoza pary liniowej {LINIA_IN, LINIA_OUT} (klasa C). Prefiks bez
+    odpływu = klasa B (rozdzielnica klienta w torze tranzytu — odmowa, jak
+    dotychczas); prefiks z polem spoza pętli (TR, odgałęzienie, inny pomiar)
+    = pomiar nie mierzy całego poboru za sobą — odmowa. Szyna bez tranzytu
+    (stacja końcowa, GPZ) — brama nie ogranicza.
+
+    TA SAMA funkcja bramkuje KAŻDĄ drogę wejścia (wcięcie w odcinek,
+    `add_sn_bay`; szablony i kreatory wchodzą przez te operacje) — kod błędu
+    jest parametrem adresu operacji, reguła jest jedna.
+    """
+    if not szyna_prowadzi_tranzyt:
+        return None
+    kanoniczne: list[tuple[str, str | None]] = [
+        (_canonical_sn_field_role(rola), funkcja_pomiaru_sn(funkcja)) for rola, funkcja in pola
+    ]
+    petla_osd = {"LINIA_IN", "LINIA_OUT"}
+    for indeks, (rola, funkcja) in enumerate(kanoniczne):
+        if rola != "POMIAROWE" or funkcja != "UKLAD_ENERGII":
+            continue
+        prefiks = [rola_przed for rola_przed, _ in kanoniczne[:indeks]]
+        czysta_petla = "LINIA_OUT" in prefiks and all(
+            rola_przed in petla_osd for rola_przed in prefiks
+        )
+        if not czysta_petla:
+            return _error_response(
+                "Układ pomiarowy energii elektrycznej (podstawowy, rezerwowy, "
+                "równoważny lub kontrolny) nie może leżeć w torze tranzytu "
+                "magistrali — mierzy energię przy granicy stron i obejmuje cały "
+                "i wyłącznie pobór odbiorcy. Stację abonencką przyłącz "
+                "ODGAŁĘZIENIEM (punkt odgałęzienia na odcinku → odcinek gałęzi → "
+                "stacja końcowa). Jeśli budujesz złącze kablowe z pętlą OSD, para "
+                "pól liniowych (dopływowe i odpływowe) musi stać PRZED pomiarem "
+                "i przed nim nie może stać żadne inne pole. Pole pomiaru napięcia "
+                "szyn rozdzielni (przekładniki napięciowe sekcji) nie jest układem "
+                "pomiarowym energii — zadeklaruj funkcję pomiaru NAPIECIA_SZYN, "
+                "jeśli pole mierzy wyłącznie napięcie szyn.",
+                kod_bledu,
+            )
+    return None
 
 
 def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
@@ -4200,20 +5440,21 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
 
     if dry_run:
         # Wykonaj na deep-copy, NIE mutując oryginalnego ENM (`copy` zaimportowane na poziomie modułu).
-        enm = copy.deepcopy(enm)
+        enm = kopia_graniczna_enm(enm)
 
-    # Normalize sn_fields: accept list of strings or list of dicts
-    _role_str_map = {
-        "IN": "LINIA_IN",
-        "OUT": "LINIA_OUT",
-        "FEEDER": "LINIA_ODG",
-        "TR": "TRANSFORMATOROWE",
-        "COUPLER": "SPRZEGLO",
-    }
+    # Normalize sn_fields: accept list of strings or list of dicts.
+    # Rola pola przechodzi przez WSPÓLNY słownik `_SN_FIELD_ROLE_ALIASES` —
+    # także dla wpisów słownikowych: szablon klasy pomiarowej wysyła
+    # `field_role="MEASUREMENT"`, a bez normalizacji ta rola nie trafiała do
+    # mapy ról i pole lądowało w modelu jako odgałęzienie (FEEDER).
     sn_fields: list[dict[str, Any]] = []
     for item in sn_fields_raw:
         if isinstance(item, str):
-            sn_fields.append({"field_role": _role_str_map.get(item, item)})
+            sn_fields.append({"field_role": _canonical_sn_field_role(item)})
+        elif isinstance(item, dict):
+            sn_fields.append(
+                {**item, "field_role": _canonical_sn_field_role(item.get("field_role"))}
+            )
         else:
             sn_fields.append(item)
 
@@ -4276,6 +5517,61 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
                 ["LINIA_IN", "TRANSFORMATOROWE"],
             )
         ]
+    # POMIAR POLA (kontrakt §5, korekta V12K-336): droga budowy stacji
+    # deklaruje przyłącze, więc pole POMIAROWE bez deklaracji jest układem
+    # pomiarowym ENERGII o rodzaju PODSTAWOWYM (jedno źródło rozstrzygnięcia —
+    # `rozstrzygnij_pomiar_pola`); wartość błędna albo deklaracja na polu
+    # niepomiarowym kończy operację jawnym błędem.
+    blad_pomiaru = rozstrzygnij_pomiary_pol(
+        sn_fields, domyslna_funkcja=FUNKCJA_POMIARU_DOMYSLNA_BUDOWY_STACJI
+    )
+    if blad_pomiaru is not None:
+        return blad_pomiaru
+
+    # BRAMA KONTRAKTU UKŁADU POMIAROWEGO ENERGII
+    # (`docs/domain/POMIAR_ROZLICZENIOWY_SN_V1.md` §1 i §5): układ pomiarowy
+    # energii ([E-UP] pkt 3 — każdy z czterech rodzajów) nie może leżeć w torze
+    # tranzytu magistrali OSD. Ta operacja ROZCINA odcinek, czyli z definicji
+    # wprowadza tranzyt przez szynę tworzonej stacji
+    # (`szyna_prowadzi_tranzyt=True` — patrz kontrakt pary predykatów
+    # w `szyna_prowadzi_tranzyt_sn`) — dopuszczalne WYŁĄCZNIE dla klasy C
+    # kontraktu (czysta pętla OSD IN+OUT przed pomiarem). Pole pomiaru napięcia
+    # szyn (funkcja NAPIECIA_SZYN) bramie nie podlega (V12K-336 pkt 4).
+    #
+    # PREDYKATY PARAMI: odmawia DOKŁADNIE TA SAMA funkcja źródłowa
+    # (`blad_pomiaru_w_torze_tranzytu`), która bramkuje `add_sn_bay` — jedno
+    # źródło prawdy, nie dwa „dziś zgodne" warunki. Bez bramy tutaj reguła
+    # żyłaby wyłącznie w warstwie szablonów, a każda inna droga wejścia (surowe
+    # API operacji, kreator stacji, seedy e2e) mogłaby zbudować układ zakazany
+    # kontraktem.
+    blad_bramy = blad_pomiaru_w_torze_tranzytu(
+        [
+            (field_spec.get("field_role"), field_spec.get("funkcja_pomiaru"))
+            for field_spec in sn_fields
+        ],
+        szyna_prowadzi_tranzyt=True,
+        kod_bledu="station.insert.pomiar_w_torze_tranzytu",
+    )
+    if blad_bramy is not None:
+        return blad_bramy
+
+    # B-4/B-5: oznaczenie i typ konstrukcji stacji (addytywne pola tożsamości).
+    station_identity, identity_error = _station_identity_fields(station, payload)
+    if identity_error is not None:
+        return identity_error
+
+    # B-12: aparat KAŻDEGO pola SN musi być wskazany jawnie (katalog APARAT_SN).
+    # Walidacja przed jakąkolwiek zmianą modelu — brak referencji kończy operację
+    # błędem ze wskazaniem pola, nigdy domysłem.
+    payload_field_apparatus_ref = _payload_field_apparatus_catalog_ref(payload)
+    for idx, field_spec in enumerate(sn_fields):
+        if _sn_field_apparatus_catalog_ref(field_spec, payload_field_apparatus_ref) is None:
+            return _field_apparatus_missing_error(
+                index=idx,
+                field_role=str(field_spec.get("field_role", "")),
+                code="station.insert.field_apparatus_ref_missing",
+            )
+
     # The semantic station_type stored in substation record
     substation_semantic_type = substation_type_map.get(station_type_raw, "mv_lv")
     station_display_name = (
@@ -4321,14 +5617,14 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
                 break
         if not sn_voltage_kv or sn_voltage_kv <= 0:
             return _error_response(
-                "Brak napi?cia SN stacji. Podaj sn_voltage_kv lub upewnij si?, "
+                "Brak napięcia SN stacji. Podaj sn_voltage_kv lub upewnij się, "
                 "że szyna źródłowa segmentu ma zdefiniowane napięcie.",
                 "station.insert.sn_voltage_missing",
             )
 
     if not nn_voltage_kv or nn_voltage_kv <= 0:
         return _error_response(
-            "Brak napi?cia nN stacji. Podaj nn_voltage_kv.",
+            "Brak napięcia nN stacji. Podaj nn_voltage_kv.",
             "station.insert.nn_voltage_missing",
         )
 
@@ -4370,7 +5666,7 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
     # Szyna, z której wychodzi prawy odcinek (WY): sekcja B dla sekcyjnej, inaczej A.
     right_from_bus_id = sn_bus_b_id if is_sectional else sn_bus_id
 
-    new_enm = copy.deepcopy(enm)
+    new_enm = kopia_graniczna_enm(enm)
     created = []
     deleted = []
     events = []
@@ -4546,24 +5842,25 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
     ev_seq += 1
     events.append({"event_seq": ev_seq, "event_type": "STATION_CREATED", "element_id": stn_id})
 
-    role_map = {
-        "LINIA_IN": "IN",
-        "LINIA_OUT": "OUT",
-        "LINIA_ODG": "FEEDER",
-        "TRANSFORMATOROWE": "TR",
-        "SPRZEGLO": "COUPLER",
-    }
     field_specs: list[dict[str, Any]] = []
+    # B-3: wyposażenie pomiarowo-zabezpieczeniowe wskazane per pole w payloadzie —
+    # zakładane W TEJ SAMEJ migawce, po utworzeniu wszystkich pól stacji.
+    wyposazenie_pol: list[tuple[str, str, dict[str, Any]]] = []
     # Wiązanie szablonu producenta + kody zabezpieczeń pola — PARYTET z add_sn_bay
     # i append (PS-1/PS-2). Wspólny resolver (reużycie, zero fabrykacji).
     from enm.domain_operations_v2 import _resolve_bay_template_protection_codes
 
     station_switchgear = station.get("switchgear") or {}
-    sn_field_specs_sorted = sorted(sn_fields, key=lambda f: f.get("field_role", ""))
-    for idx, field_spec in enumerate(sn_field_specs_sorted):
+    # KOLEJNOŚĆ PÓL POCHODZI Z DANYCH (V12K-330). Do 2026-08-06 pola szły przez
+    # `sorted(..., key=field_role)` — alfabet, nie projekt. Dla stacji abonenckiej
+    # [dopływ, POMIAR, TR, rezerwa] alfabet stawiał REZERWĘ przed układem
+    # pomiarowym, więc rysunek kłamał o miejscu pomiaru (kontrakt
+    # `docs/domain/POMIAR_ROZLICZENIOWY_SN_V1.md`). Rysunek już czytał kolejność
+    # z danych — reorder w producencie danych był drugą, przeciwną prawdą.
+    for idx, field_spec in enumerate(sn_fields):
         field_role = str(field_spec.get("field_role", ""))
         field_ref = _make_id("stn", station_seed, f"sn_field/{idx:03d}")
-        bay_role = role_map.get(field_role, "FEEDER")
+        bay_role = _SN_FIELD_ROLE_TO_BAY_ROLE.get(field_role, "FEEDER")
         # Refy producenta z pola (fallback na wybór rozdzielnicy stacji).
         field_manufacturer_ref = field_spec.get("manufacturer_ref") or station_switchgear.get(
             "manufacturer_ref"
@@ -4578,11 +5875,21 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
         )
         terminal_bus_ref = _make_id("stn", station_seed, f"sn_field_terminal/{idx:03d}")
         breaker_ref = _make_id("stn", station_seed, f"sn_field_breaker/{idx:03d}")
-        breaker_catalog_ref = (
-            field_spec.get("apparatus_catalog_ref")
-            or payload.get("field_apparatus_catalog_ref")
-            or "sw-cb-abb-vd4-17kv-630a"
+        breaker_catalog_ref = _sn_field_apparatus_catalog_ref(
+            field_spec, payload_field_apparatus_ref
         )
+        if breaker_catalog_ref is None:
+            return _field_apparatus_missing_error(
+                index=idx,
+                field_role=field_role,
+                code="station.insert.field_apparatus_ref_missing",
+            )
+        apparatus_materialization = _materialize_sn_field_apparatus_catalog(
+            breaker_catalog_ref, index=idx, field_role=field_role
+        )
+        if isinstance(apparatus_materialization, dict):
+            return apparatus_materialization
+        _apparatus_binding, apparatus_params = apparatus_materialization
 
         result = create_node(
             new_enm,
@@ -4608,12 +5915,15 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
         new_enm = result.enm
         created.append(terminal_bus_ref)
 
+        typ_aparatu, nazwa_aparatu = _typ_i_nazwa_aparatu_pola(
+            breaker_catalog_ref, ordinal=idx + 1, bay_role=bay_role
+        )
         result = create_branch(
             new_enm,
             {
                 "ref_id": breaker_ref,
-                "name": f"Wyłącznik pola SN {idx + 1}",
-                "type": "breaker",
+                "name": nazwa_aparatu,
+                "type": typ_aparatu,
                 "from_bus_ref": sn_bus_id,
                 "to_bus_ref": terminal_bus_ref,
                 "status": "closed",
@@ -4621,6 +5931,11 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
                 "x_ohm": 0.0,
                 "catalog_ref": breaker_catalog_ref,
                 "catalog_namespace": "APARAT_SN",
+                # Pozycja przeszła bramę katalogową (defekt F) — dopiero teraz
+                # wolno zadeklarować pochodzenie katalogowe i zapisać tabliczkę.
+                "parameter_source": "CATALOG",
+                "source_mode": "KATALOG",
+                "materialized_params": apparatus_params,
                 "tags": ["station_field_device"],
                 "meta": {
                     "field_ref": field_ref,
@@ -4630,7 +5945,12 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
                     "render_on_sld": False,
                     "show_in_project_tree": False,
                     "requires_catalog_binding": False,
-                    "catalog_message": "Aparat pola SN dobrany z katalogu APARAT_SN.",
+                    # Komunikat opisuje STAN RZECZYWISTY (B-12): aparat pochodzi
+                    # z jawnego wskazania projektanta, nie z domyślnego typu.
+                    "catalog_message": (
+                        "Aparat pola SN z jawnie wskazanej pozycji katalogu APARAT_SN: "
+                        f"{breaker_catalog_ref}."
+                    ),
                 },
             },
         )
@@ -4641,6 +5961,10 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
             )
         new_enm = result.enm
         created.append(breaker_ref)
+
+        wyposazenie_pola = _wyposazenie_pola_z_wpisu(field_spec)
+        if wyposazenie_pola:
+            wyposazenie_pol.append((field_ref, field_role, wyposazenie_pola))
 
         field_specs.append(
             _build_field_spec(
@@ -4661,6 +5985,10 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
                     "default_device_ref": breaker_ref,
                     "requires_catalog_binding": True,
                 },
+                # Rozstrzygnięty pomiar pola (kontrakt §5) — klucze obecne
+                # wyłącznie na polu POMIAROWYM po `rozstrzygnij_pomiary_pol`.
+                funkcja_pomiaru=field_spec.get("funkcja_pomiaru"),
+                rodzaj_pomiaru=field_spec.get("rodzaj_pomiaru"),
             )
         )
 
@@ -4697,6 +6025,7 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
             "bus_refs": [sn_bus_id, sn_bus_b_id] if is_sectional else [sn_bus_id],
             "transformer_refs": [],
             "tags": [],
+            **station_identity,
             "meta": {
                 "station_type_sn": station_type,
                 "station_type_semantic": station_type_raw,
@@ -4825,6 +6154,9 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
         transformer_created=bool(transformer.get("create", True)),
         created=created,
     )
+    if isinstance(source_event, dict):
+        # Brama katalogowa źródła nN — nierozstrzygalna pozycja kończy operację.
+        return source_event
     if source_event is not None:
         generator_ref, event_type = source_event
         ev_seq += 1
@@ -4872,8 +6204,42 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
         {"event_seq": ev_seq, "event_type": "LOGICAL_VIEWS_UPDATED", "element_id": stn_id}
     )
 
+    # B-2: zaczepy transformatora w TEJ SAMEJ migawce co stacja. Krok stoi TUTAJ
+    # (a nie zaraz po utworzeniu transformatora), bo handler
+    # `update_element_parameters` zwraca GŁĘBOKĄ KOPIĘ modelu — wcześniejsza
+    # podmiana `new_enm` unieważniłaby lokalne referencje, które kolejne kroki
+    # jeszcze mutują. Parytet z `append_station_on_endpoint`.
+    if transformer.get("create", True):
+        wynik_zaczepow = _zastosuj_zaczepy_transformatora(
+            new_enm,
+            transformer,
+            transformer_ref=tr_id,
+            controlled_bus_ref=nn_bus_id,
+            kod_bledu="station.insert.tap_changer_failed",
+        )
+        if isinstance(wynik_zaczepow, dict):
+            return wynik_zaczepow
+        new_enm, zdarzenia_zaczepow = wynik_zaczepow
+        for zdarzenie in zdarzenia_zaczepow:
+            ev_seq += 1
+            events.append({**zdarzenie, "event_seq": ev_seq})
+
+    # B-3: CT/VT/zabezpieczenia pól w TEJ SAMEJ migawce co stacja (atomowo).
+    wynik_wyposazenia = _zastosuj_wyposazenie_pol(
+        new_enm,
+        wyposazenie_pol,
+        kod_bledu="station.insert.field_equipment_failed",
+    )
+    if isinstance(wynik_wyposazenia, dict):
+        return wynik_wyposazenia
+    new_enm, wyposazenie_created, wyposazenie_events = wynik_wyposazenia
+    created.extend(wyposazenie_created)
+    for zdarzenie in wyposazenie_events:
+        ev_seq += 1
+        events.append({**zdarzenie, "event_seq": ev_seq})
+
     audit.append(
-        {"step": ev_seq, "action": f"Wstawiono stacj? typ {station_type}", "element_id": stn_id}
+        {"step": ev_seq, "action": f"Wstawiono stację typ {station_type}", "element_id": stn_id}
     )
 
     response = _response(
@@ -5005,7 +6371,7 @@ def _build_split_preview_metadata(
     }
 
     # Invalidated results — wyniki run/proof które staną się stale po split
-    # Heurystyka: znajdujemy results powi?zane z source_segment albo z connected buses.
+    # Heurystyka: znajdujemy results powiązane z source_segment albo z connected buses.
     invalidated_results: list[dict[str, Any]] = []
     affected_proof_packs: list[dict[str, Any]] = []
 
@@ -5121,6 +6487,17 @@ def _insert_branch_point_on_segment_sn(
     if isinstance(bp_catalog_ref, dict):
         return bp_catalog_ref
 
+    # BRAMA KATALOGOWA punktu rozgałęzienia (ta sama klasa co aparat pola):
+    # migawka deklaruje `source_mode: KATALOG`, więc pozycja MUSI istnieć.
+    # Dotąd nieznana referencja dawała ciche `{}` parametrów katalogowych,
+    # a tabliczka powstawała z payloadu i wartości domyślnych.
+    if _branch_point_catalog_item(bp_catalog_ref) is None:
+        return _error_response(
+            f"Nie znaleziono pozycji katalogu punktów rozgałęzienia: {bp_catalog_ref}. "
+            "Wskaż istniejącą pozycję katalogu — operacja nie przyjmie tabliczki "
+            "z formularza.",
+            "catalog.item_not_found",
+        )
     catalog_params = _branch_point_catalog_params(bp_catalog_ref)
     branch_ports_count = _branch_point_port_count(
         branch_point_type=branch_point_type,
@@ -5170,7 +6547,7 @@ def _insert_branch_point_on_segment_sn(
         else "Odcinek SN"
     )
 
-    new_enm = copy.deepcopy(enm)
+    new_enm = kopia_graniczna_enm(enm)
     created: list[str] = []
     deleted: list[str] = []
 
@@ -5422,7 +6799,7 @@ def start_branch_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dic
 
     Wymaga jawnego from_ref (port BRANCH na stacji lub branch-poincie).
     from_bus_ref jest obsługiwane wyłącznie jako pole kompatybilności
-    i musi mapowa? si? 1:1 do bus_ref rozwi?zanego z from_ref.
+    i musi mapować się 1:1 do bus_ref rozwiązanego z from_ref.
     """
     from_ref = payload.get("from_ref")
     from_bus_ref = payload.get("from_bus_ref")
@@ -5473,7 +6850,7 @@ def start_branch_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dic
         and payload.get("from_bus_ref") != from_bus_ref
     ):
         return _error_response(
-            "Pole from_bus_ref nie zgadza si? z bus_ref wynikaj?cym z from_ref.",
+            "Pole from_bus_ref nie zgadza się z bus_ref wynikającym z from_ref.",
             "branch_connection.source_not_branch_capable",
         )
 
@@ -5484,23 +6861,6 @@ def start_branch_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dic
             break
     if not from_bus:
         return _error_response(f"Szyna '{from_bus_ref}' nie istnieje.", "branch.from_bus_not_found")
-
-    rodzaj = segment.get("rodzaj", "KABEL")
-    dlugosc_m = segment.get("dlugosc_m") or payload.get("dlugosc_m") or 0
-    if dlugosc_m <= 0:
-        return _error_response(
-            "Brak długości odcinka odgałęzienia (dlugosc_m). Podaj jawną wartość > 0.",
-            "branch.dlugosc_missing",
-        )
-
-    branch_catalog_binding = segment.get("catalog_binding") or payload.get("catalog_binding")
-    branch_catalog_ref = _require_catalog_ref(
-        payload_ref=segment.get("catalog_ref"),
-        payload_binding=branch_catalog_binding,
-        context_code="start_branch_segment_sn",
-    )
-    if isinstance(branch_catalog_ref, dict):
-        return branch_catalog_ref
 
     seed = _compute_seed(
         {
@@ -5513,7 +6873,7 @@ def start_branch_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dic
     new_bus_ref = f"bus/{seed}/branch_end"
     branch_ref = f"seg/{seed}/branch_segment"
 
-    new_enm = copy.deepcopy(enm)
+    new_enm = kopia_graniczna_enm(enm)
     created = []
     events = []
     ev_seq = 0
@@ -5704,6 +7064,22 @@ def insert_section_switch_sn(enm: dict[str, Any], payload: dict[str, Any]) -> di
     if isinstance(switch_catalog_ref, dict):
         return switch_catalog_ref
 
+    # BRAMA KATALOGOWA łącznika sekcyjnego (ta sama klasa co aparat pola stacji
+    # zasilającej): dotąd tor domenowy sprawdzał wyłącznie OBECNOŚĆ referencji,
+    # a do migawki wpisywał `source_mode: KATALOG` przy `materialized_params: null`.
+    # Odrzucenie pozycji nieistniejącej działo się tylko w torze payloadu (brama
+    # API), więc ta sama referencja bywała przyjęta domenowo i odrzucona przez
+    # końcówkę. Sprawdzamy PRZED usunięciem odcinka — zła pozycja nie zostawia
+    # modelu bez odcinka i bez łącznika.
+    switch_materialization = _brama_katalogowa_aparatu_sn(
+        switch_catalog_ref,
+        catalog_binding=payload.get("catalog_binding"),
+        opis_pl="Łącznik sekcyjny SN",
+    )
+    if isinstance(switch_materialization, dict):
+        return switch_materialization
+    switch_binding_payload, switch_materialized_params = switch_materialization
+
     from_bus_ref = segment.get("from_bus_ref")
     to_bus_ref = segment.get("to_bus_ref")
     length_km = segment.get("length_km", 1.0)
@@ -5729,7 +7105,7 @@ def insert_section_switch_sn(enm: dict[str, Any], payload: dict[str, Any]) -> di
     seg_left_id = f"{segment_id}_SL"
     seg_right_id = f"{segment_id}_SR"
 
-    new_enm = copy.deepcopy(enm)
+    new_enm = kopia_graniczna_enm(enm)
     created = []
     deleted = []
     events = []
@@ -5750,7 +7126,7 @@ def insert_section_switch_sn(enm: dict[str, Any], payload: dict[str, Any]) -> di
             break
     if not voltage_kv or voltage_kv <= 0:
         return _error_response(
-            f"Szyna '{from_bus_ref}' nie ma napi?cia znamionowego.",
+            f"Szyna '{from_bus_ref}' nie ma napięcia znamionowego.",
             "switch.from_bus_voltage_missing",
         )
 
@@ -5830,20 +7206,20 @@ def insert_section_switch_sn(enm: dict[str, Any], payload: dict[str, Any]) -> di
     created.append(switch_bus2_ref)
 
     # Redo: switch between two buses
-    result = create_branch(
-        new_enm,
-        {
-            "ref_id": switch_ref,
-            "name": payload.get("switch_name") or "Łącznik sekcyjny",
-            "type": sw_type,
-            "from_bus_ref": switch_bus_ref,
-            "to_bus_ref": switch_bus2_ref,
-            "status": normal_state,
-            "source_mode": "KATALOG",
-            "catalog_namespace": "APARAT_SN",
-            "catalog_ref": switch_catalog_ref,
-        },
-    )
+    switch_data: dict[str, Any] = {
+        "ref_id": switch_ref,
+        "name": payload.get("switch_name") or "Łącznik sekcyjny",
+        "type": sw_type,
+        "from_bus_ref": switch_bus_ref,
+        "to_bus_ref": switch_bus2_ref,
+        "status": normal_state,
+        "catalog_ref": switch_catalog_ref,
+        # Pozycja przeszła bramę katalogową powyżej — dopiero teraz wolno
+        # zapisać tabliczkę i zadeklarować pochodzenie katalogowe.
+        "materialized_params": switch_materialized_params,
+    }
+    _apply_catalog_metadata(switch_data, switch_binding_payload, default_namespace="APARAT_SN")
+    result = create_branch(new_enm, switch_data)
     if result.success:
         new_enm = result.enm
         created.append(switch_ref)
@@ -5926,7 +7302,7 @@ def connect_secondary_ring_sn(enm: dict[str, Any], payload: dict[str, Any]) -> d
     )
     ring_ref = f"seg/{seed}/ring_closure"
 
-    new_enm = copy.deepcopy(enm)
+    new_enm = kopia_graniczna_enm(enm)
     created = []
     events = []
     ev_seq = 0
@@ -6007,7 +7383,7 @@ def set_normal_open_point(enm: dict[str, Any], payload: dict[str, Any]) -> dict[
     if not switch_ref:
         return _error_response("Brak identyfikatora łącznika.", "nop.switch_missing")
 
-    new_enm = copy.deepcopy(enm)
+    new_enm = kopia_graniczna_enm(enm)
     updated = []
     events = []
     ev_seq = 0
@@ -6069,7 +7445,7 @@ def add_transformer_sn_nn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[
     seed = _compute_seed({"op": "add_transformer_sn_nn", "hv": hv_bus_ref, "lv": lv_bus_ref})
     tr_ref = f"tr/{seed}/transformer"
 
-    new_enm = copy.deepcopy(enm)
+    new_enm = kopia_graniczna_enm(enm)
     created = []
     events = []
     ev_seq = 0
@@ -6118,6 +7494,12 @@ def add_transformer_sn_nn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[
     # pole TapChanger (zero fabrykacji). Strona regulowana domyślnie = szyna nN (LV).
     tap_changer = _build_gpz_tap_changer(payload, controlled_bus_ref=lv_bus_ref)
     if tap_changer is not None:
+        # Kontrakt domenowy zaczepów sprawdzany PRZED zapisem (karta KD-3).
+        blad_zaczepow = _blad_zaczepow(tap_changer)
+        if blad_zaczepow is not None:
+            return _error_response(
+                f"Transformator {tr_ref} — {blad_zaczepow}", "transformer.tap_changer_invalid"
+            )
         tr_data["tap_changer"] = tap_changer
 
     if payload.get("station_ref"):
@@ -6147,6 +7529,61 @@ def add_transformer_sn_nn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[
 # ---------------------------------------------------------------------------
 
 
+def _brama_katalogowa_przypisania(
+    *,
+    collection: str,
+    catalog_item_id: str,
+    catalog_namespace: str | None,
+    catalog_version: str | None,
+    target_element: dict[str, Any],
+) -> tuple[dict[str, Any] | None, dict[str, Any]] | dict[str, Any]:
+    """Brama katalogowa przypisania pozycji do ISTNIEJĄCEGO elementu.
+
+    JEDYNE wejście do deklaracji pochodzenia katalogowego w
+    `assign_catalog_to_element`. Zwraca ``(binding_payload, tabliczka)`` — gdzie
+    ``binding_payload`` jest ``None`` dla katalogu punktów rozgałęzienia, który
+    nie ma kontraktu materializacji — albo odpowiedź błędu.
+
+    Punkty rozgałęzienia mają WŁASNY katalog (`mv_branch_point_catalog`) poza
+    `CatalogRepository`, więc ich istnienie sprawdzamy w tamtym rejestrze;
+    tabliczka zachowuje wcześniej wyliczoną strukturę portów (opis topologii
+    obiektu, nie fizyka pozycji) i nadpisuje parametry z NOWEJ pozycji.
+    """
+    if collection == "branch_points":
+        if _branch_point_catalog_item(catalog_item_id) is None:
+            return _error_response(
+                f"Nie znaleziono pozycji katalogu punktów rozgałęzienia: {catalog_item_id}. "
+                "Wskaż istniejącą pozycję katalogu.",
+                "catalog.item_not_found",
+            )
+        biezaca = target_element.get("materialized_params")
+        tabliczka: dict[str, Any] = dict(biezaca) if isinstance(biezaca, dict) else {}
+        tabliczka.update(_branch_point_catalog_params(catalog_item_id))
+        tabliczka["catalog_item_id"] = catalog_item_id
+        if catalog_namespace:
+            tabliczka["catalog_namespace"] = catalog_namespace
+        return None, tabliczka
+
+    if not catalog_namespace:
+        return _error_response(
+            f"Nie da się ustalić kategorii katalogu dla elementu "
+            f"'{target_element.get('ref_id')}' — podaj catalog_namespace albo "
+            "catalog_binding z kategorią. Bez kategorii nie ma czego sprawdzić "
+            "w katalogu, więc element nie może deklarować pochodzenia katalogowego.",
+            "catalog.namespace_required",
+        )
+
+    return _materialize_catalog_payload(
+        catalog_ref=catalog_item_id,
+        catalog_binding={
+            "catalog_namespace": catalog_namespace,
+            "catalog_item_version": catalog_version or "legacy",
+        },
+        default_namespace=catalog_namespace,
+        default_version=catalog_version,
+    )
+
+
 def assign_catalog_to_element(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     """Przypisz katalog do elementu."""
     element_ref = payload.get("element_ref")
@@ -6174,7 +7611,7 @@ def assign_catalog_to_element(enm: dict[str, Any], payload: dict[str, Any]) -> d
             f"Element '{element_ref}' nie znaleziony.", "catalog.element_not_found"
         )
 
-    new_enm = copy.deepcopy(enm)
+    new_enm = kopia_graniczna_enm(enm)
     coll, idx = loc
     target_element = new_enm[coll][idx]
 
@@ -6199,17 +7636,19 @@ def assign_catalog_to_element(enm: dict[str, Any], payload: dict[str, Any]) -> d
         if isinstance(meta, dict):
             meta.pop("catalog_item_version", None)
     else:
-        target_element["catalog_ref"] = catalog_item_id
-        target_element["parameter_source"] = "CATALOG"
-        target_element["source_mode"] = payload.get("source_mode") or "KATALOG"
-
         catalog_namespace = (
             payload.get("catalog_namespace")
             or _extract_catalog_binding_namespace(catalog_binding)
             or _infer_catalog_namespace_for_element(target_element)
         )
-        if catalog_namespace:
-            target_element["catalog_namespace"] = catalog_namespace
+        if coll == "branches" and not _namespace_pasuje_do_galezi(
+            target_element, catalog_namespace
+        ):
+            return _error_response(
+                f"Kategoria katalogu '{catalog_namespace}' nie pasuje do gałęzi rodzaju "
+                f"'{target_element.get('type')}' — wskaż pozycję właściwej kategorii.",
+                "catalog.namespace_mismatch",
+            )
 
         catalog_item_version = _extract_catalog_binding_version(catalog_binding) or payload.get(
             "catalog_item_version"
@@ -6219,50 +7658,49 @@ def assign_catalog_to_element(enm: dict[str, Any], payload: dict[str, Any]) -> d
             if isinstance(catalog_item_version, str) and catalog_item_version.strip()
             else target_element.get("meta", {}).get("catalog_item_version")
         )
+
+        # BRAMA KATALOGOWA PRZYPISANIA (ta sama klasa co aparat pola stacji
+        # zasilającej). Dotąd `parameter_source: CATALOG` / `source_mode: KATALOG`
+        # wpisywano ZAWSZE, a materializacja obejmowała WYŁĄCZNIE kable/linie
+        # i transformatory: aparat łączeniowy, źródło, odbiór i punkt rozgałęzienia
+        # dostawały deklarację pochodzenia katalogowego bez tabliczki i bez
+        # sprawdzenia, czy wskazana pozycja w ogóle istnieje.
+        brama = _brama_katalogowa_przypisania(
+            collection=coll,
+            catalog_item_id=str(catalog_item_id),
+            catalog_namespace=catalog_namespace,
+            catalog_version=effective_catalog_version,
+            target_element=target_element,
+        )
+        if not isinstance(brama, tuple):
+            return brama
+        binding_przypisania, tabliczka_przypisania = brama
+
+        # Znacznik pochodzenia NIE pochodzi już z payloadu: po udanej materializacji
+        # element JEST katalogowy, a bez niej operacja kończy się wyżej błędem.
+        # `source_mode` z payloadu pozwalał wcześniej opisać pochodzenie inaczej,
+        # niż wynika ze stanu faktycznego (kable i transformatory i tak je gubiły).
+        target_element["catalog_ref"] = catalog_item_id
+        target_element["parameter_source"] = "CATALOG"
+        target_element["source_mode"] = "KATALOG"
+        target_element["materialized_params"] = tabliczka_przypisania
+        if catalog_namespace:
+            target_element["catalog_namespace"] = catalog_namespace
         if effective_catalog_version:
             target_element.setdefault("meta", {})[
                 "catalog_item_version"
             ] = effective_catalog_version
 
-        if (
-            coll == "branches"
-            and target_element.get("type") in {"cable", "line_overhead"}
-            and catalog_namespace
-        ):
-            materialization = _materialize_catalog_payload(
-                catalog_ref=catalog_item_id,
-                catalog_binding={
-                    "catalog_namespace": catalog_namespace,
-                    "catalog_item_version": effective_catalog_version or "legacy",
-                },
-                default_namespace=catalog_namespace,
-                default_version=effective_catalog_version,
-            )
-            if isinstance(materialization, dict):
-                return materialization
-            binding_payload, materialized_params = materialization
+        # Fizyka z TEJ SAMEJ materializacji, którą przepuściła brama — drugie
+        # wywołanie katalogu mogłoby dać inny wynik niż sprawdzony przez bramę.
+        if binding_przypisania is not None:
             _apply_catalog_metadata(
-                target_element, binding_payload, default_namespace=catalog_namespace
+                target_element, binding_przypisania, default_namespace=catalog_namespace
             )
-            _apply_materialized_branch_fields(target_element, materialized_params)
-
-        if coll == "transformers" and catalog_namespace:
-            materialization = _materialize_catalog_payload(
-                catalog_ref=catalog_item_id,
-                catalog_binding={
-                    "catalog_namespace": catalog_namespace,
-                    "catalog_item_version": effective_catalog_version or "legacy",
-                },
-                default_namespace=catalog_namespace,
-                default_version=effective_catalog_version,
-            )
-            if isinstance(materialization, dict):
-                return materialization
-            binding_payload, materialized_params = materialization
-            _apply_catalog_metadata(
-                target_element, binding_payload, default_namespace=catalog_namespace
-            )
-            _apply_materialized_transformer_fields(target_element, materialized_params)
+            if coll == "branches" and target_element.get("type") in {"cable", "line_overhead"}:
+                _apply_materialized_branch_fields(target_element, tabliczka_przypisania)
+            elif coll == "transformers":
+                _apply_materialized_transformer_fields(target_element, tabliczka_przypisania)
 
     return _response(
         new_enm,
@@ -6320,7 +7758,7 @@ def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> d
             catalog_ref = parameters.get("catalog_ref")
             if catalog_ref is None or (isinstance(catalog_ref, str) and not catalog_ref.strip()):
                 return _error_response(
-                    "Element fizyczny wymaga przypi?tego katalogu.", "catalog.ref_required"
+                    "Element fizyczny wymaga przypiętego katalogu.", "catalog.ref_required"
                 )
 
         effective_source_mode = parameters.get("source_mode", current_element.get("source_mode"))
@@ -6344,7 +7782,7 @@ def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> d
             if effective_source_mode == "KATALOG":
                 if not isinstance(materialized, dict) or not materialized:
                     return _error_response(
-                        "materialized_params musi by? kompletne dla source_mode=KATALOG.",
+                        "materialized_params musi być kompletne dla source_mode=KATALOG.",
                         "catalog.ref_required",
                     )
                 required_keys = {"branch_point_type", "parent_segment_id", "ports"}
@@ -6394,6 +7832,13 @@ def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> d
                 "tap_min",
                 "tap_max",
                 "tap_step_percent",
+                # B-2 (karta KD-3): KANONICZNY podzespol zaczepow (V12K-045) —
+                # do tej pory jedyne zrodlo prawdy o regulacji nie mialo zadnej
+                # drogi zapisu poza operacja zrodla GPZ, wiec zaczepy
+                # transformatora stacyjnego byly nieedytowalne. Dopisanie go tu
+                # NIE tworzy pola rownoleglego: starsze `tap_*` zostaja dla
+                # zgodnosci wstecznej, kanonem jest `tap_changer`.
+                "tap_changer",
                 "catalog_ref",
                 "parameter_source",
                 "overrides",
@@ -6449,7 +7894,15 @@ def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> d
                 "params.key_not_allowed",
             )
 
-    new_enm = copy.deepcopy(enm)
+    # Korekta ekspercka tabliczki odbioru przechodzi przez ten sam kontrakt modelu
+    # ZIP co kreator odbioru: wielomian, którego rozpływ nie policzy, nie ma prawa
+    # wejść do modelu żadną z dróg zapisu.
+    if coll == "loads" and "materialized_params" in parameters:
+        blad_zip = zip_odbioru_z_parametrow_materializacji(parameters["materialized_params"])
+        if blad_zip is not None:
+            return _error_response(blad_zip, KOD_BLEDU_ZIP)
+
+    new_enm = kopia_graniczna_enm(enm)
     for key, value in parameters.items():
         if key not in ("ref_id", "id", "type"):
             new_enm[coll][idx][key] = value
@@ -6482,7 +7935,7 @@ def delete_element(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, An
             f"Element '{element_ref}' nie znaleziony.", "delete.element_not_found"
         )
 
-    new_enm = copy.deepcopy(enm)
+    new_enm = kopia_graniczna_enm(enm)
     coll, idx = loc
     deleted_ids: list[str] = [element_ref]
     events: list[dict[str, Any]] = []
@@ -6667,8 +8120,65 @@ def _find_substation(enm: dict[str, Any], substation_ref: str) -> dict[str, Any]
     return None
 
 
+def _szyny_stron_gpz(enm: dict[str, Any], sub: dict[str, Any]) -> tuple[set[str], set[str]]:
+    """Szyny stacji GPZ o UDOWODNIONEJ stronie: (WN, SN).
+
+    Dowód pochodzi z RELACJI modelu, nie z progu napięciowego:
+      * strona WN — `hv_bus_ref` transformatorów tej stacji oraz zadeklarowane
+        `meta.gpz_hv_bus_refs`;
+      * strona SN — `lv_bus_ref` tych transformatorów oraz `bus_ref` istniejących
+        sekcji SN (`gpz_sections`).
+    Szyna nienależąca do żadnego z tych zbiorów NIE ma dowodu strony (np. nowa
+    szyna dokładana przez edytor) — wołający nie wolno wtedy niczego domniemywać.
+    """
+    transformer_refs = set(sub.get("transformer_refs") or [])
+    wn: set[str] = {
+        ref for ref in (sub.get("meta", {}) or {}).get("gpz_hv_bus_refs", []) or [] if ref
+    }
+    sn: set[str] = {
+        section.get("bus_ref")
+        for section in (sub.get("gpz_sections") or [])
+        if section.get("bus_ref")
+    }
+    for transformer in enm.get("transformers", []):
+        if transformer.get("ref_id") not in transformer_refs:
+            continue
+        if transformer.get("hv_bus_ref"):
+            wn.add(transformer["hv_bus_ref"])
+        if transformer.get("lv_bus_ref"):
+            sn.add(transformer["lv_bus_ref"])
+    return wn, sn
+
+
+def _blad_strony_sekcji_gpz(
+    enm: dict[str, Any], sub: dict[str, Any], side: str, bus_ref: str
+) -> dict[str, Any] | None:
+    """Odmowa, gdy sekcja przypisuje szynę do UDOWODNIONEJ przeciwnej strony.
+
+    KARTA WN-WYNIK (klasa „wielkość jednego poziomu napięcia na szynie innego").
+    Sekcja HV wskazująca szynę SN była dotąd przyjmowana w ciszy, a schemat
+    opisywał wtedy szynę WN napięciem szyny SN (kompozycja bierze napięcie
+    etykiety z `gpz_hv_sections[0].bus_ref` — pomiar: „Szyna WN · 15 kV" na
+    szynie 110 kV). Blokujemy WYŁĄCZNIE przypadek udowodniony relacjami modelu
+    (patrz `_szyny_stron_gpz`); szyna bez dowodu strony przechodzi jak dotąd —
+    reguła ma łapać sprzeczność, nie zgadywać za projektanta.
+    """
+    wn, sn = _szyny_stron_gpz(enm, sub)
+    if side == "hv" and bus_ref in sn:
+        return _error_response(
+            f"Szyna '{bus_ref}' jest szyną SN tej stacji — nie może być sekcją WN.",
+            "gpz_section.add.bus_side_mismatch",
+        )
+    if side == "lv" and bus_ref in wn:
+        return _error_response(
+            f"Szyna '{bus_ref}' jest szyną WN tej stacji — nie może być sekcją SN.",
+            "gpz_section.add.bus_side_mismatch",
+        )
+    return None
+
+
 def add_gpz_section(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
-    """Dodaje GPZ sekcj? (LV lub HV) do istniej?cej stacji typu 'gpz'.
+    """Dodaje GPZ sekcję (LV lub HV) do istniejącej stacji typu 'gpz'.
 
     Payload:
       substation_ref: str        — ID stacji GPZ
@@ -6715,6 +8225,10 @@ def add_gpz_section(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, A
             f"Szyna '{bus_ref}' nie istnieje.", "gpz_section.add.bus_ref_missing"
         )
 
+    strona_niezgodna = _blad_strony_sekcji_gpz(enm, sub, side, bus_ref)
+    if strona_niezgodna is not None:
+        return strona_niezgodna
+
     existing = list(sub.get(sections_field) or [])
     if any(s.get("section_id") == section_id for s in existing):
         return _error_response(
@@ -6736,7 +8250,7 @@ def add_gpz_section(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, A
     if payload.get("line_field_name"):
         new_section["line_field_name"] = payload["line_field_name"]
 
-    new_enm = copy.deepcopy(enm)
+    new_enm = kopia_graniczna_enm(enm)
     new_sub = _find_substation(new_enm, substation_ref)
     assert new_sub is not None  # already checked
     new_sections = list(new_sub.get(sections_field) or [])
@@ -6764,7 +8278,7 @@ def add_gpz_section(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, A
 
 
 def update_gpz_section(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
-    """Aktualizuje istniej?c? sekcj? GPZ (jej name, order, bus_ref, *_coupler_ref).
+    """Aktualizuje istniejącą sekcję GPZ (jej name, order, bus_ref, *_coupler_ref).
 
     Payload:
       substation_ref: str
@@ -6824,7 +8338,7 @@ def update_gpz_section(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
                 "gpz_section.update.bus_ref_missing",
             )
 
-    new_enm = copy.deepcopy(enm)
+    new_enm = kopia_graniczna_enm(enm)
     new_sub = _find_substation(new_enm, substation_ref)
     assert new_sub is not None
     new_sections = list(new_sub.get(sections_field) or [])
@@ -6910,7 +8424,7 @@ def delete_gpz_section(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
             "gpz_section.delete.in_use",
         )
 
-    new_enm = copy.deepcopy(enm)
+    new_enm = kopia_graniczna_enm(enm)
     new_sub = _find_substation(new_enm, substation_ref)
     assert new_sub is not None
     new_sections = [
@@ -6921,7 +8435,7 @@ def delete_gpz_section(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
     audit = [
         {
             "step": 1,
-            "action": f"Usuni?to sekcj? {side.upper()} '{section_id}'",
+            "action": f"Usunięto sekcję {side.upper()} '{section_id}'",
             "element_id": section_id,
         }
     ]
@@ -6963,7 +8477,7 @@ def _bus_is_free_terminal(enm: dict[str, Any], bus_ref: str) -> bool:
     """Czy szyna jest wolnym terminalem (helper_bus + topology_terminal)?
 
     Wolny terminal = nie jest przypisany do żadnej Substation (poza GPZ),
-    nie ma innych branch wychodz?cych, ma tag 'topology_terminal'.
+    nie ma innych branch wychodzących, ma tag 'topology_terminal'.
     """
     bus = None
     for b in enm.get("buses", []):
@@ -7007,7 +8521,7 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
 
     Determinizm: stacja generuje stabilny ID z seed = endpoint_bus_ref + station.name.
     Operacja addytywna — nie modyfikuje istniejących Bus, Branch ani innych
-    Substation. Endpoint_bus staje si? pierwsz? szyn? SN nowej stacji.
+    Substation. Endpoint_bus staje się pierwszą szyną SN nowej stacji.
     """
     dry_run = bool(payload.get("dry_run", False))
     endpoint_bus_ref = payload.get("endpoint_bus_ref")
@@ -7027,7 +8541,7 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
     if not endpoint_bus_ref:
         return _error_response(
             "Brak identyfikatora terminala. Podaj `endpoint_bus_ref` lub `run_ref` "
-            "z istniej?cym corridor.",
+            "z istniejącym corridor.",
             "station.append.endpoint_missing",
         )
 
@@ -7055,13 +8569,18 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
     sn_voltage_kv = endpoint_bus.get("voltage_kv")
     if not sn_voltage_kv or sn_voltage_kv <= 0:
         return _error_response(
-            f"Szyna '{endpoint_bus_ref}' nie ma napi?cia znamionowego.",
+            f"Szyna '{endpoint_bus_ref}' nie ma napięcia znamionowego.",
             "station.append.voltage_missing",
         )
 
+    # B-4/B-5: oznaczenie i typ konstrukcji stacji (addytywne pola tożsamości).
+    station_identity, identity_error = _station_identity_fields(station_payload, payload)
+    if identity_error is not None:
+        return identity_error
+
     if nn_voltage_kv <= 0:
         return _error_response(
-            "Brak napi?cia nN stacji. Podaj `nn_voltage_kv` > 0.",
+            "Brak napięcia nN stacji. Podaj `nn_voltage_kv` > 0.",
             "station.append.nn_voltage_missing",
         )
 
@@ -7104,22 +8623,34 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
     transformer_ref = f"tr/{seed}/transformer"
     sn_fields_payload = payload.get("sn_fields")
     raw_sn_fields = sn_fields_payload if isinstance(sn_fields_payload, list) else []
-    sn_fields: list[dict[str, Any]] = [field for field in raw_sn_fields if isinstance(field, dict)]
-    sn_field_role_to_bay_role = {
-        "LINIA_IN": "IN",
-        "LINIA_OUT": "OUT",
-        "LINIA_ODG": "FEEDER",
-        "TRANSFORMATOROWE": "TR",
-        "SPRZEGLO": "COUPLER",
-    }
+    sn_fields: list[dict[str, Any]] = [
+        dict(field) for field in raw_sn_fields if isinstance(field, dict)
+    ]
+    # POMIAR POLA (kontrakt §5, V12K-336): stacja końcowa to droga BUDOWY
+    # STACJI — pole POMIAROWE bez deklaracji jest układem pomiarowym ENERGII
+    # o rodzaju PODSTAWOWYM (to samo źródło rozstrzygnięcia, co wcięcie
+    # w odcinek). Stacja końcowa nie prowadzi tranzytu, więc brama pomiaru
+    # w torze tranzytu nie ma tu czego bramkować (kontrakt pary predykatów
+    # w `szyna_prowadzi_tranzyt_sn`).
+    blad_pomiaru = rozstrzygnij_pomiary_pol(
+        sn_fields, domyslna_funkcja=FUNKCJA_POMIARU_DOMYSLNA_BUDOWY_STACJI
+    )
+    if blad_pomiaru is not None:
+        return blad_pomiaru
     # PS-4: wspólny resolver kodów zabezpieczeń pól (parytet z insert/add_sn_bay).
     from enm.domain_operations_v2 import _resolve_bay_template_protection_codes
 
     field_role_counts: dict[str, int] = {}
     field_specs: list[dict[str, Any]] = []
+    # B-3: wyposażenie pól z payloadu — zakładane w TEJ SAMEJ migawce co stacja.
+    wyposazenie_pol: list[tuple[str, str, dict[str, Any]]] = []
     for index, field in enumerate(sn_fields, start=1):
-        field_role = str(field.get("field_role") or "").strip()
-        bay_role = sn_field_role_to_bay_role.get(field_role)
+        # Rola pola przez WSPÓLNY słownik (`_SN_FIELD_ROLE_ALIASES`) — własny,
+        # niepełny słownik tej operacji MILCZĄCO POMIJAŁ pole POMIAROWE
+        # (`continue` niżej), więc stacja abonencka na końcu gałęzi powstawała
+        # bez układu pomiarowego, choć szablon go deklarował.
+        field_role = _canonical_sn_field_role(field.get("field_role"))
+        bay_role = _SN_FIELD_ROLE_TO_BAY_ROLE.get(field_role)
         if not bay_role:
             continue
         field_role_counts[field_role] = field_role_counts.get(field_role, 0) + 1
@@ -7132,34 +8663,53 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
             bay_ref = f"bay/{seed}/{field_role.lower()}_{role_index}"
         field_manufacturer_ref = field.get("manufacturer_ref")
         field_bay_template_ref = field.get("bay_template_ref")
-        field_specs.append(
-            {
-                "field_ref": f"field/{seed}/{index}",
-                "bay_ref": bay_ref,
-                "field_role": field_role,
-                "bay_role": bay_role,
-                "bus_ref": endpoint_bus_ref,
-                "bay_kind": field.get("bay_kind"),
-                "manufacturer_ref": field_manufacturer_ref,
-                "switchgear_family_ref": field.get("switchgear_family_ref"),
-                "bay_template_ref": field_bay_template_ref,
-                "protection_codes": _resolve_bay_template_protection_codes(
-                    field_manufacturer_ref, field_bay_template_ref, bay_role
-                ),
-                "source_status": field.get("source_status"),
-                "source_refs": list(field.get("source_refs") or []),
-                "catalog_bindings": field.get("catalog_bindings"),
-                "equipment_refs": [
-                    ref
-                    for ref in field.get("equipment_refs", [])
-                    if isinstance(ref, str) and ref.strip()
-                ],
-                "meta": {
-                    "created_by": "append_station_on_endpoint",
-                    "terminal_bus_ref": endpoint_bus_ref,
-                },
-            }
-        )
+        wyposazenie_pola = _wyposazenie_pola_z_wpisu(field)
+        if wyposazenie_pola:
+            wyposazenie_pol.append((f"field/{seed}/{index}", field_role, wyposazenie_pola))
+        field_spec_entry: dict[str, Any] = {
+            "field_ref": f"field/{seed}/{index}",
+            "bay_ref": bay_ref,
+            "field_role": field_role,
+            "bay_role": bay_role,
+            "bus_ref": endpoint_bus_ref,
+            "bay_kind": field.get("bay_kind"),
+            "manufacturer_ref": field_manufacturer_ref,
+            "switchgear_family_ref": field.get("switchgear_family_ref"),
+            "bay_template_ref": field_bay_template_ref,
+            "protection_codes": _resolve_bay_template_protection_codes(
+                field_manufacturer_ref, field_bay_template_ref, bay_role
+            ),
+            "source_status": field.get("source_status"),
+            "source_refs": list(field.get("source_refs") or []),
+            "catalog_bindings": field.get("catalog_bindings"),
+            "equipment_refs": [
+                ref
+                for ref in field.get("equipment_refs", [])
+                if isinstance(ref, str) and ref.strip()
+            ],
+            "meta": {
+                "created_by": "append_station_on_endpoint",
+                "terminal_bus_ref": endpoint_bus_ref,
+            },
+        }
+        # Pomiar pola POMIAROWEGO (kontrakt §5, V12K-336) — klucze wyłącznie
+        # dla pola pomiarowego (rozstrzygnięte wyżej), addytywnie: pola innych
+        # ról nie niosą atrybutów, więc istniejące migawki są bajtowo
+        # niezmienione. Rodzaj układu tylko dla układu pomiarowego energii.
+        if field_role == "POMIAROWE":
+            field_spec_entry["funkcja_pomiaru"] = field.get("funkcja_pomiaru")
+            if field.get("rodzaj_pomiaru") is not None:
+                field_spec_entry["rodzaj_pomiaru"] = field.get("rodzaj_pomiaru")
+        # B-12/defekt F: aparat WSKAZANY NA POLU. Bez tego klucza specyfikacja
+        # gubiła wybór projektanta, a `_materialize_sn_field_apparatus` widziało
+        # wyłącznie wspólny `field_apparatus_catalog_ref` payloadu — kreator stacji
+        # ui2 wysyła aparat per pole, więc stacja na końcu ciągu kończyła się
+        # błędem „pole bez wskazanego aparatu". Klucz DOPISUJEMY tylko gdy podany,
+        # żeby payloady bez wskazania per pole zachowały identyczną migawkę.
+        field_apparatus_ref = field.get("apparatus_catalog_ref")
+        if isinstance(field_apparatus_ref, str) and field_apparatus_ref.strip():
+            field_spec_entry["apparatus_catalog_ref"] = field_apparatus_ref.strip()
+        field_specs.append(field_spec_entry)
 
     def _field_spec_for_role(role: str) -> dict[str, Any] | None:
         for spec in field_specs:
@@ -7250,6 +8800,26 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
         if equipment_refs:
             return None, equipment_refs
 
+        # B-12: aparat pola SN WYŁĄCZNIE z jawnego wskazania (katalog APARAT_SN).
+        apparatus_catalog_ref = _sn_field_apparatus_catalog_ref(
+            spec, _payload_field_apparatus_catalog_ref(payload)
+        )
+        if apparatus_catalog_ref is None:
+            return (
+                _field_apparatus_missing_error(
+                    index=ordinal - 1,
+                    field_role=field_role,
+                    code="station.append.field_apparatus_ref_missing",
+                ),
+                [],
+            )
+        apparatus_materialization = _materialize_sn_field_apparatus_catalog(
+            apparatus_catalog_ref, index=ordinal - 1, field_role=field_role
+        )
+        if isinstance(apparatus_materialization, dict):
+            return apparatus_materialization, []
+        _apparatus_binding, apparatus_params = apparatus_materialization
+
         terminal_ref = _make_id("bus", seed, f"sn_field_terminal/{ordinal:03d}")
         apparatus_ref = _make_id("stn", seed, f"sn_field_apparatus/{ordinal:03d}")
         terminal_result = create_node(
@@ -7278,24 +8848,27 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
                 [],
             )
 
-        apparatus_kind = "bus_coupler" if bay_role == "COUPLER" else "breaker"
+        apparatus_kind, apparatus_name = _typ_i_nazwa_aparatu_pola(
+            apparatus_catalog_ref, ordinal=ordinal, bay_role=bay_role
+        )
         apparatus_result = create_branch(
             terminal_result.enm,
             {
                 "ref_id": apparatus_ref,
-                "name": f"Aparat pola SN {ordinal}",
+                "name": apparatus_name,
                 "type": apparatus_kind,
                 "from_bus_ref": endpoint_bus_ref,
                 "to_bus_ref": terminal_ref,
                 "status": "closed",
                 "r_ohm": 0.0,
                 "x_ohm": 0.0,
-                "catalog_ref": (
-                    spec.get("apparatus_catalog_ref")
-                    or payload.get("field_apparatus_catalog_ref")
-                    or "sw-cb-abb-vd4-17kv-630a"
-                ),
+                "catalog_ref": apparatus_catalog_ref,
                 "catalog_namespace": "APARAT_SN",
+                # Pozycja przeszła bramę katalogową (defekt F) — dopiero teraz
+                # wolno zadeklarować pochodzenie katalogowe i zapisać tabliczkę.
+                "parameter_source": "CATALOG",
+                "source_mode": "KATALOG",
+                "materialized_params": apparatus_params,
                 "tags": ["station_field_device"],
                 "meta": {
                     "field_ref": spec.get("field_ref"),
@@ -7306,7 +8879,11 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
                     "render_on_sld": False,
                     "show_in_project_tree": False,
                     "requires_catalog_binding": False,
-                    "catalog_message": "Aparat pola SN dobrany z katalogu APARAT_SN.",
+                    # Komunikat opisuje STAN RZECZYWISTY (B-12).
+                    "catalog_message": (
+                        "Aparat pola SN z jawnie wskazanej pozycji katalogu APARAT_SN: "
+                        f"{apparatus_catalog_ref}."
+                    ),
                 },
             },
         )
@@ -7328,7 +8905,7 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
         return apparatus_result, [apparatus_ref]
 
     # Dry-run: deepcopy, zwracamy preview metadata
-    new_enm = copy.deepcopy(enm)
+    new_enm = kopia_graniczna_enm(enm)
     created: list[str] = []
     events: list[dict[str, Any]] = []
     audit: list[dict[str, Any]] = []
@@ -7342,6 +8919,7 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
         "bus_refs": [endpoint_bus_ref],
         "transformer_refs": [],
         "tags": [],
+        **station_identity,
         "meta": {
             "created_by": "append_station_on_endpoint",
             "station_type_semantic": station_type_raw,
@@ -7360,7 +8938,7 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
         }
     )
 
-    # Step 3: Bay(IN) wskazuj?cy na endpoint_bus
+    # Step 3: Bay(IN) wskazujący na endpoint_bus
     bay_in_spec = _field_spec_for_bay_ref(bay_in_ref) or _field_spec_for_role("LINIA_IN")
     bay_in_materialization, bay_in_equipment_refs = _materialize_sn_field_apparatus(
         spec=bay_in_spec,
@@ -7406,7 +8984,7 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
     ) or transformer_payload.get("catalog_ref")
     if transformer_catalog_ref:
         # Bus nN
-        bus_nn = {
+        bus_nn: dict[str, Any] = {
             "ref_id": bus_nn_ref,
             "name": f"Szyna nN {station_name}",
             "voltage_kv": nn_voltage_kv,
@@ -7427,6 +9005,9 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
         )
 
         # Transformator SN/nN
+        # PARYTET z insert_station_on_segment_sn: fizyka transformatora pochodzi
+        # WYŁĄCZNIE z materializacji katalogu. Wartości poniżej są inicjalne i
+        # zostają nadpisane przez katalog; payload nie wstrzykuje impedancji.
         transformer = {
             "ref_id": transformer_ref,
             "name": f"TR {station_name}",
@@ -7434,25 +9015,28 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
             "lv_bus_ref": bus_nn_ref,
             "uhv_kv": sn_voltage_kv,
             "ulv_kv": nn_voltage_kv,
-            "sn_mva": transformer_payload.get("sn_mva", 0.0),
-            "uk_percent": transformer_payload.get("uk_percent", 0.0),
-            "pk_kw": transformer_payload.get("pk_kw", 0.0),
-            "catalog_ref": transformer_catalog_ref,
-            "catalog_namespace": "TRAFO_SN_NN",
-            "source_mode": "KATALOG",
+            "sn_mva": 0.001,  # Wartosc inicjalna — materializacja z katalogu
+            "uk_percent": 0.01,  # Wartosc inicjalna — materializacja z katalogu
+            "pk_kw": 0.0,
             "tags": [],
             "meta": {},
         }
-        # Materializacja z katalogu (ujednolicony wzorzec)
+        # Materializacja z katalogu (ujednolicony wzorzec).
+        # Nieudana materializacja = błąd operacji (wzorzec pozostałych wywołań
+        # _materialize_catalog_payload). Metadane katalogowe — w tym
+        # source_mode: KATALOG — wolno wpisać DOPIERO po udanej materializacji,
+        # inaczej migawka deklarowałaby wiązanie katalogowe, którego nie ma.
         materialization = _materialize_catalog_payload(
             catalog_ref=transformer_catalog_ref,
             catalog_binding=transformer_payload.get("catalog_binding"),
             default_namespace="TRAFO_SN_NN",
         )
-        if not isinstance(materialization, dict):
-            binding_payload, materialized_params = materialization
-            _apply_catalog_metadata(transformer, binding_payload, default_namespace="TRAFO_SN_NN")
-            _apply_materialized_transformer_fields(transformer, materialized_params)
+        if isinstance(materialization, dict):
+            return materialization
+        binding_payload, materialized_params = materialization
+        transformer["catalog_ref"] = transformer_catalog_ref
+        _apply_catalog_metadata(transformer, binding_payload, default_namespace="TRAFO_SN_NN")
+        _apply_materialized_transformer_fields(transformer, materialized_params)
         # Uziemienie punktu neutralnego — PARYTET z insert (G-STK-1).
         _apply_station_neutral_grounding(
             transformer, payload, station=substation_ref, new_enm=new_enm
@@ -7518,17 +9102,17 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
             equipment_refs = [transformer_ref]
             spec["equipment_refs"] = [transformer_ref]
         else:
-            materialization, equipment_refs = _materialize_sn_field_apparatus(
+            bay_materialization, equipment_refs = _materialize_sn_field_apparatus(
                 spec=spec,
                 bay_ref=bay_ref,
                 bay_role=bay_role,
                 field_role=field_role,
                 ordinal=len(existing_bay_refs) + 1,
             )
-            if isinstance(materialization, dict):
-                return materialization
-            if materialization is not None:
-                new_enm = materialization.enm
+            if isinstance(bay_materialization, dict):
+                return bay_materialization
+            if bay_materialization is not None:
+                new_enm = bay_materialization.enm
         new_bay = {
             "ref_id": bay_ref,
             "name": f"Pole {bay_role} — {station_name}",
@@ -7612,6 +9196,9 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
             transformer_created=bool(transformer_catalog_ref),
             created=created,
         )
+        if isinstance(source_event, dict):
+            # Brama katalogowa źródła nN — nierozstrzygalna pozycja kończy operację.
+            return source_event
         if source_event is not None:
             generator_ref, event_type = source_event
             ev_seq += 1
@@ -7669,6 +9256,40 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
                 break
         line_run = _ensure_line_run_for_corridor(new_enm, effective_run_ref)
         _append_line_run_station(line_run, substation_ref)
+
+    # B-2: zaczepy transformatora w TEJ SAMEJ migawce co stacja — PARYTET z
+    # `insert_station_on_segment_sn`. Krok stoi TUTAJ, a nie zaraz po utworzeniu
+    # transformatora, bo handler `update_element_parameters` zwraca GŁĘBOKĄ KOPIĘ
+    # modelu: wcześniejsze podmienienie `new_enm` unieważniłoby lokalne referencje
+    # (`new_substation`, specyfikacje pól), które kolejne kroki jeszcze mutują.
+    if transformer_catalog_ref:
+        wynik_zaczepow = _zastosuj_zaczepy_transformatora(
+            new_enm,
+            transformer_payload,
+            transformer_ref=transformer_ref,
+            controlled_bus_ref=bus_nn_ref,
+            kod_bledu="station.append.tap_changer_failed",
+        )
+        if isinstance(wynik_zaczepow, dict):
+            return wynik_zaczepow
+        new_enm, zdarzenia_zaczepow = wynik_zaczepow
+        for zdarzenie in zdarzenia_zaczepow:
+            ev_seq += 1
+            events.append({**zdarzenie, "event_seq": ev_seq})
+
+    # B-3: CT/VT/zabezpieczenia pól w TEJ SAMEJ migawce co stacja (atomowo).
+    wynik_wyposazenia = _zastosuj_wyposazenie_pol(
+        new_enm,
+        wyposazenie_pol,
+        kod_bledu="station.append.field_equipment_failed",
+    )
+    if isinstance(wynik_wyposazenia, dict):
+        return wynik_wyposazenia
+    new_enm, wyposazenie_created, wyposazenie_events = wynik_wyposazenia
+    created.extend(wyposazenie_created)
+    for zdarzenie in wyposazenie_events:
+        ev_seq += 1
+        events.append({**zdarzenie, "event_seq": ev_seq})
 
     # Audit + emit STATION_APPENDED_ON_ENDPOINT
     audit.append(
@@ -7761,7 +9382,7 @@ def execute_domain_operation(
 
     if handler is None:
         return _error_response(
-            f"Nieznana operacja: '{op_name}'. Dost?pne: {', '.join(sorted(CANONICAL_OPS))}",
+            f"Nieznana operacja: '{op_name}'. Dostępne: {', '.join(sorted(CANONICAL_OPS))}",
             "dispatcher.unknown_operation",
         )
 

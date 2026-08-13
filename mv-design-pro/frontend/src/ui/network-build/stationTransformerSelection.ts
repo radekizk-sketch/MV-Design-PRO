@@ -88,6 +88,29 @@ export function selectStationDistributionTransformers(
   const blockTransformerRefs = collectDerBlockTransformerRefs(snapshot);
 
   return (snapshot.transformers ?? []).filter((transformer) => {
+    // KOMPLETNOSC-POLA-TR — GRANICA TEJ REGUŁY, ZMIERZONA I NAZWANA.
+    // Wskazanie `Generator.blocking_transformer_ref` wyklucza transformator ze
+    // zbioru transformatorów rozdzielczych stacji — TAKŻE wtedy, gdy stacja
+    // deklaruje go w `transformer_refs` (operacja DER dopisuje tam transformator
+    // blokowy toru źródłowego, `Etap3Configurators` mierzy to na stacji PV z
+    // DWOMA transformatorami: rozdzielczym 250 kVA i blokowym 1250 kVA).
+    //
+    // Pierwsza wersja tej karty odwracała tę kolejność, żeby uratować przypadek
+    // odwrotny (PV na szynie nN wskazuje JEDYNY transformator stacji przez
+    // auto-resolve V12K-022 — `domain_operations_v2.py`). Pomiar pokazał, że
+    // OBA kształty są w danych IDENTYCZNE: transformator, na którego szynie
+    // dolnej stoi generator deklarujący go jako blokowy. Danych nie da się więc
+    // rozstrzygnąć bez nowego pola w modelu — a zgadywanie po nazwie/liczbie
+    // transformatorów byłoby heurystyką, nie regułą.
+    //
+    // Dlatego OBIE strony parytetu (rysunek tutaj i bramka gotowości
+    // `enm/pole_transformatorowe.py`) stosują TĘ SAMĄ, węższą regułę: wskazanie
+    // po stronie źródła wyklucza. Skutek jest jawny i przypięty wierszem
+    // tablicy `pole_transformatorowe_parytet_v1.json` (`tr-stacji-z-der-na-nn`):
+    // stacja, której jedyny transformator jest zarazem transformatorem blokowym
+    // źródła, NIE dostaje ani markera, ani ostrzeżenia — brak pola TR pozostaje
+    // wtedy niewykryty. To jest ZNANA GRANICA, nie cichy wyjątek; jej zniesienie
+    // wymaga jawnej roli transformatora w modelu (osobna karta).
     if (!isStationDistributionTransformer(transformer, blockTransformerRefs)) {
       return false;
     }
@@ -105,22 +128,93 @@ export function selectStationDistributionTransformers(
   });
 }
 
-export function selectStationDistributionTransformerRefs(
+/**
+ * TR2W-BEZ-POLA (§0.C.2 „kotwica topologiczna"): JEDNA jednostka
+ * transformatorowa stacji — ref + OBA końce topologiczne (`Transformer.
+ * hv_bus_ref`/`lv_bus_ref`). Terminal WN jest jedyną prawdą o tym, DO KTÓREJ
+ * SEKCJI szyn SN transformator jest przyłączony; rysunek SLD wyprowadza z
+ * niego miejsce kolumny (`layout/measure.ts` `stationSnColumnLayout`), a NIE
+ * z pozycji ostatniego pola w tablicy (reguła pozycyjna była zakazana wprost
+ * w recenzji właściciela — „ZAKAZ reguły `transformer_slot = last_field + 1`
+ * jako reguły elektrycznej").
+ *
+ * `hvBusRef`/`lvBusRef` = `null` WYŁĄCZNIE dla ścieżki awaryjnej niżej
+ * (`Substation.transformer_refs` wskazuje ref, którego rekordu `Transformer`
+ * w migawce NIE MA) — dana niekompletna, NIE domysł: kompozycja degraduje
+ * wtedy jawnie (`station.transformer.sectionUnresolved`), zamiast zgadywać
+ * sekcję.
+ */
+export interface StationTransformerUnit {
+  readonly ref: string;
+  readonly hvBusRef: string | null;
+  readonly lvBusRef: string | null;
+  /**
+   * KOMPLETNOSC-POLA-TR (parytet marker ↔ ostrzeżenie): napięcie znamionowe
+   * szyny, na której leży strona GÓRNA transformatora. Reguła bramki gotowości
+   * brzmi „strona górna przyłączona do szyny SN" (`enm/pole_transformatorowe.py`),
+   * więc marker rysunku musi znać dokładnie tę samą daną — inaczej dla
+   * transformatora 110/15 kV (strona górna WN) rysunek pokazywałby brak pola
+   * SN, o którym bramka słusznie milczy.
+   *
+   * `null` = migawka nie niesie napięcia tej szyny. Brak NIE dyskwalifikuje
+   * (ta sama tolerancja po stronie backendu): gdyby dyskwalifikował, marker
+   * gasłby dokładnie tam, gdzie danych jest najmniej.
+   */
+  readonly hvVoltageKv: number | null;
+}
+
+/**
+ * TR2W-BEZ-POLA: jednostki transformatorowe stacji — JEDNO źródło prawdy dla
+ * listy refów (`selectStationDistributionTransformerRefs` niżej wyprowadza z
+ * TEJ funkcji) i dla kotwicy topologicznej rysunku. Dwie niezależne selekcje
+ * — jedna „które refy", druga „jakie terminale" — rozjechałyby się przy
+ * pierwszej zmianie reguły wyboru (reguła KLASA §3 „predykaty parami z
+ * jednego źródła").
+ */
+export function selectStationTransformerUnits(
   snapshot: EnergyNetworkModel | null | undefined,
   station: Substation | null | undefined,
-): string[] {
+): StationTransformerUnit[] {
+  const voltageByBusRef = new Map<string, number>();
+  for (const bus of snapshot?.buses ?? []) {
+    if (typeof bus.voltage_kv !== 'number') continue;
+    for (const ref of [bus.ref_id, bus.id]) {
+      if (nonEmptyRef(ref)) voltageByBusRef.set(ref, bus.voltage_kv);
+    }
+  }
+
   const selected = selectStationDistributionTransformers(snapshot, station)
-    .map((transformer) => transformer.ref_id ?? transformer.id)
-    .filter(nonEmptyRef)
-    .sort();
+    .map((transformer): StationTransformerUnit | null => {
+      const ref = transformer.ref_id ?? transformer.id;
+      if (!nonEmptyRef(ref)) return null;
+      const hvBusRef = nonEmptyRef(transformer.hv_bus_ref) ? transformer.hv_bus_ref : null;
+      return {
+        ref,
+        hvBusRef,
+        lvBusRef: nonEmptyRef(transformer.lv_bus_ref) ? transformer.lv_bus_ref : null,
+        hvVoltageKv: (hvBusRef !== null ? voltageByBusRef.get(hvBusRef) : undefined) ?? null,
+      };
+    })
+    .filter((unit): unit is StationTransformerUnit => unit != null)
+    .sort((a, b) => (a.ref < b.ref ? -1 : a.ref > b.ref ? 1 : 0));
   if (selected.length > 0 || !station) {
     return selected;
   }
 
+  // Ścieżka awaryjna: stacja deklaruje `transformer_refs`, ale migawka nie
+  // niesie odpowiadających rekordów `Transformer` — refy bez terminali.
   const blockTransformerRefs = collectDerBlockTransformerRefs(snapshot);
   return (station.transformer_refs ?? [])
     .filter(nonEmptyRef)
     .filter((ref) => !blockTransformerRefs.has(ref))
     .filter((ref) => !BLOCK_TRANSFORMER_TOKEN_RE.test(ref.toLowerCase()))
-    .sort();
+    .sort()
+    .map((ref) => ({ ref, hvBusRef: null, lvBusRef: null, hvVoltageKv: null }));
+}
+
+export function selectStationDistributionTransformerRefs(
+  snapshot: EnergyNetworkModel | null | undefined,
+  station: Substation | null | undefined,
+): string[] {
+  return selectStationTransformerUnits(snapshot, station).map((unit) => unit.ref);
 }

@@ -3,13 +3,40 @@
  * spec §9/§12): tabela Reference Score, „nie dotyczy" dla score null,
  * rozwinięcie sprawdzeń ✓/✗, stan błędu. Fetch mockowany (kontrakt
  * GET /api/cases/{id}/reference/compliance).
+ *
+ * REF-PAKIET: panel dzieli wybór referencji z przestrzeniami „Model" i
+ * „Gotowość", więc woła też katalog `/reference/packs`. Mock rozróżnia adresy —
+ * jedna odpowiedź na wszystko ukrywała, którym zapytaniem panel się posłużył.
  */
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { useWyborPakietu } from '../../../ui2/referencje/wyborPakietu';
+import type { ReferencePackSummary } from '../../../ui2/referencje/api';
 import { ReferencePanel } from '../ReferencePanel';
 import type { ReferenceComplianceReport } from '../types';
+
+const KATALOG: ReferencePackSummary[] = [
+  {
+    pack_id: 'iec62271',
+    kind: 'norm',
+    name_pl: 'IEC 62271-200 — rozdzielnice SN (profile pól)',
+    version: '1.0.0',
+    status: 'repo_verified',
+    switchgear_family_ref: null,
+    source_document_refs: [],
+  },
+  {
+    pack_id: 'osd_enea',
+    kind: 'osd',
+    name_pl: 'Enea Operator — standardy sieci',
+    version: '2025-01',
+    status: 'repo_verified',
+    switchgear_family_ref: null,
+    source_document_refs: [],
+  },
+];
 
 const REPORT: ReferenceComplianceReport = {
   packs: [
@@ -53,19 +80,28 @@ const REPORT: ReferenceComplianceReport = {
   ],
 };
 
+function mockFetch() {
+  const spy = vi.fn(async (url: string) => {
+    if (String(url).includes('/reference/packs')) {
+      return { ok: true, json: async () => KATALOG } as Response;
+    }
+    return { ok: true, json: async () => REPORT } as Response;
+  });
+  vi.stubGlobal('fetch', spy);
+  return spy;
+}
+
 describe('ReferencePanel', () => {
   beforeEach(() => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve(REPORT),
-      }),
-    );
+    localStorage.clear();
+    useWyborPakietu.setState({ pakietId: null });
+    mockFetch();
   });
 
   afterEach(() => {
     vi.unstubAllGlobals();
+    useWyborPakietu.setState({ pakietId: null });
+    localStorage.clear();
   });
 
   it('renderuje tabelę Reference Score z wynikiem i „nie dotyczy"', async () => {
@@ -77,7 +113,19 @@ describe('ReferencePanel', () => {
     expect(screen.getByTestId('reference-score-value-osd_enea').textContent).toBe(
       'nie dotyczy',
     );
-    expect(global.fetch).toHaveBeenCalledWith('/api/cases/case-1/reference/compliance');
+    // Bez zawężenia (zakres „wszystkie referencje") adres jest bez `?packs=`.
+    const adresy = (global.fetch as ReturnType<typeof vi.fn>).mock.calls.map((c) => String(c[0]));
+    expect(adresy).toContain('/api/cases/case-1/reference/compliance');
+  });
+
+  it('wybrana referencja zawęża ocenę parametrem ?packs= (REF-PAKIET)', async () => {
+    useWyborPakietu.setState({ pakietId: 'osd_enea' });
+    render(<ReferencePanel caseId="case-1" />);
+    await waitFor(() =>
+      expect(screen.getByTestId('reference-score-table')).toBeInTheDocument(),
+    );
+    const adresy = (global.fetch as ReturnType<typeof vi.fn>).mock.calls.map((c) => String(c[0]));
+    expect(adresy).toContain('/api/cases/case-1/reference/compliance?packs=osd_enea');
   });
 
   it('rozwija listę sprawdzeń ✓/✗ po kliknięciu wiersza pakietu', async () => {
@@ -106,9 +154,12 @@ describe('ReferencePanel', () => {
     );
   });
 
-  it('bez aktywnego wariantu pokazuje pusty stan (bez fetch)', () => {
+  it('bez aktywnego wariantu pokazuje pusty stan (bez oceny zgodności)', () => {
+    // Intencja pierwotna: brak wariantu ⇒ panel NIE pobiera oceny zgodności.
+    // REF-PAKIET: katalog referencji nie zależy od wariantu i wolno go pobrać.
     render(<ReferencePanel caseId={null} />);
     expect(screen.getByTestId('reference-panel-empty')).toBeInTheDocument();
-    expect(global.fetch).not.toHaveBeenCalled();
+    const adresy = (global.fetch as ReturnType<typeof vi.fn>).mock.calls.map((c) => String(c[0]));
+    expect(adresy.some((u) => u.includes('/reference/compliance'))).toBe(false);
   });
 });

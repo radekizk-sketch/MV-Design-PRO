@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from dataclasses import dataclass, field
+from functools import lru_cache
 
 from .types import (
     BESSInverterType,
@@ -54,6 +55,57 @@ def _copy_catalog_quality(record: dict) -> dict:
     return quality
 
 
+#: Memoizacja OBIEKTOW certyfikatow PTPiREE (V12K-321, dlug wydajnosci P1-D1).
+#: Snapshot wykazu ma 6887 wierszy, a `get_default_mv_catalog()` jest wolane w
+#: 88 miejscach — bez memo kazde wywolanie parsowalo 6887x `from_dict`
+#: (zmierzone 87 ms/wywolanie; krok pytest w CI wydluzyl sie ~2x, z ~18 do
+#: ponad 45 minut). Obiekty sa ZAMROZONE (frozen dataclass), wiec
+#: wspoldzielenie miedzy instancjami repozytorium jest bezpieczne. Straznica
+#: swiezosci: klucz niesie numer dokumentu i model, wiec rekord testowy o tym
+#: samym id ale INNEJ tresci nie dostanie cudzego obiektu.
+_PTPIREE_CERT_MEMO: dict[tuple[str, str, str], PtpireeGeneratorCertificate] = {}
+
+
+def _certyfikat_ptpiree_z_memo(record: dict) -> PtpireeGeneratorCertificate:
+    params = record.get("params") or {}
+    klucz = (
+        str(record.get("id")),
+        str(params.get("document_number") or ""),
+        str(params.get("model") or record.get("name") or ""),
+    )
+    obiekt = _PTPIREE_CERT_MEMO.get(klucz)
+    if obiekt is None:
+        data = {"id": record.get("id"), "name": record.get("name")}
+        data.update(params)
+        obiekt = PtpireeGeneratorCertificate.from_dict(data)
+        _PTPIREE_CERT_MEMO[klucz] = obiekt
+    return obiekt
+
+
+#: Czas odniesienia prądu wytrzymywanego krótkotrwale w katalogu aparatury SN.
+#: Konwencja katalogu jest zapisana w jego nagłówku ("icw_ka [kA] — prad
+#: wytrzymywany krotkotrwale 1s"), więc czas NIE jest tu zgadywany — jest
+#: odczytem jednostki, w której zapisano daną.
+_ICW_CZAS_ODNIESIENIA_S = 1.0
+
+
+def _dodatnia(wartosc: object) -> float | None:
+    """Liczba dodatnia albo ``None`` — zero w katalogu znaczy „nie dotyczy”.
+
+    Bezpiecznik topikowy ma ``icw_ka = 0.0`` (nie ma wytrzymałości
+    krótkotrwałej — przepala się), a uziemnik ``ik_ka = 0.0`` (nie łączy
+    prądów zwarciowych). Przepisanie takiego zera jako znamiona dałoby werdykt
+    „nie wytrzymuje” tam, gdzie kryterium w ogóle nie istnieje.
+    """
+    if wartosc is None:
+        return None
+    try:
+        liczba = float(wartosc)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return None
+    return liczba if liczba > 0 else None
+
+
 def _derive_mv_apparatus_records(
     switch_equipment_records: Iterable[dict],
 ) -> list[dict]:
@@ -68,6 +120,7 @@ def _derive_mv_apparatus_records(
     derived: list[dict] = []
     for record in switch_equipment_records:
         params = dict(record.get("params") or {})
+        icw_ka = _dodatnia(params.get("icw_ka"))
         derived.append(
             {
                 "id": record.get("id"),
@@ -80,7 +133,17 @@ def _derive_mv_apparatus_records(
                     "u_n_kv": params.get("un_kv"),
                     "i_n_a": params.get("in_a"),
                     "breaking_capacity_ka": params.get("ik_ka"),
-                    "making_capacity_ka": params.get("icw_ka"),
+                    # KD-6 poz. 1: prąd wytrzymywany krótkotrwale (Icw) to
+                    # WYTRZYMAŁOŚĆ CIEPLNA aparatu — trafia w pole I_th razem ze
+                    # swoim czasem odniesienia. Prąd załączalny szczytowy
+                    # (making capacity) jest INNĄ wielkością (wartość szczytowa
+                    # przy załączeniu na zwarcie) i do tej chwili niósł tu kopię
+                    # Icw, czyli wartość SKUTECZNĄ pod nazwą szczytowej. Zostaje
+                    # `None`, dopóki karty producentów nie wniosą jej wprost —
+                    # brak danej jest uczciwszy niż dana o cudzym znaczeniu.
+                    "making_capacity_ka": None,
+                    "i_th_ka": icw_ka,
+                    "i_th_duration_s": (_ICW_CZAS_ODNIESIENIA_S if icw_ka is not None else None),
                     "manufacturer": params.get("manufacturer"),
                     **_copy_catalog_quality(record),
                 },
@@ -331,9 +394,7 @@ class CatalogRepository:
         def _build_ptpiree_generator_certificate(
             record: dict,
         ) -> PtpireeGeneratorCertificate:
-            data = {"id": record.get("id"), "name": record.get("name")}
-            data.update(record.get("params") or {})
-            return PtpireeGeneratorCertificate.from_dict(data)
+            return _certyfikat_ptpiree_z_memo(record)
 
         switch_records = list(switch_equipment_types or [])
         converter_records = list(converter_types or [])
@@ -438,7 +499,7 @@ class CatalogRepository:
         return self._sorted(self.switch_equipment_types.values())
 
     def list_converter_types(self, kind: ConverterKind | None = None) -> list[ConverterType]:
-        values = self.converter_types.values()
+        values: list[ConverterType] = list(self.converter_types.values())
         if kind is not None:
             values = [item for item in values if item.kind == kind]
         return sorted(values, key=lambda item: str(item.id))
@@ -572,6 +633,18 @@ class CatalogRepository:
         return sorted(values, key=lambda item: (str(item.name_pl), str(item.id)))
 
 
+#: Memoizacja CALEGO kanonicznego repozytorium katalogowego (V12K-322, dlug 9 / DET-9).
+#: Bez memo `get_default_mv_catalog()` odbudowywalo komplet slownikow typow przy KAZDYM
+#: wywolaniu (zmierzone 89 ms), a pojedyncza operacja domenowa wola je 18 razy przez
+#: `_get_catalog_safe()` (`enm/domain_operations.py`) — profil `insert_station_on_segment_sn`
+#: pokazal 1,61 s katalogu na 1,69 s calej operacji, czyli ~95% czasu na przebudowie tych
+#: samych, NIEZMIENNYCH danych. To ta sama klasa defektu co memo obiektow PTPiREE nizej,
+#: tyle ze o poziom wyzej: tam zapamietano LISCIE, tu zapamietujemy caly agregat.
+#: Bezpieczenstwo wspoldzielenia: rekordy zrodlowe (`mv_*_catalog.get_all_*`) sa statyczne
+#: (brak rejestracji w czasie zycia procesu), `CatalogRepository` jest `frozen=True` i
+#: kontraktowo niezmienne ("Immutable catalog repository"), a w calym repo nie ma zapisu do
+#: zadnego z jego slownikow. Swiezosc na zadanie: `get_default_mv_catalog.cache_clear()`.
+@lru_cache(maxsize=1)
 def get_default_mv_catalog() -> CatalogRepository:
     """
     Get default MV catalog with full equipment data.

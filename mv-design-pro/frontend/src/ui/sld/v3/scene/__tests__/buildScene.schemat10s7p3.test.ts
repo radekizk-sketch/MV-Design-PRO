@@ -31,7 +31,7 @@ import { dirname, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import type { EnergyNetworkModel } from '../../../../../types/enm';
-import { buildSceneV3, layoutMetricsReport, type SceneV3 } from '../buildScene';
+import { buildSceneV3, layoutMetricsReport, sheetRowStationIds, type SceneV3 } from '../buildScene';
 import {
   MIN_GLYPH_CLEARANCE,
   MIN_LABEL_CLEARANCE,
@@ -235,11 +235,38 @@ describe('SCHEMAT-10 S7 etap 3 — generalizacja świateł + packingu (WYTYCZNE 
     console.log(
       `[S7 etap 3 §9 stabilność] zmiana footprintu 1 lateralu → ciąg główny: anchorMovementCount=${stab.anchorMovementCount} totalAnchorDisplacement=${stab.totalAnchorDisplacement} maxAnchorDisplacement=${stab.maxAnchorDisplacement} (stacje ciągu=${trunkIds.length})`,
     );
-    // LOKALNOŚĆ: ciąg główny leży NAD lateralami (pas 0 packera) — zmiana niżej
-    // NIE może go ruszyć. Zero przemieszczeń niezwiązanych z lokalną zmianą.
-    expect(stab.anchorMovementCount).toBe(0);
-    expect(stab.totalAnchorDisplacement).toBe(0);
-    expect(stab.maxAnchorDisplacement).toBe(0);
+    // S9-1 (ŁAMANIE ARKUSZA, `docs/sld/DECYZJA_LAMANIE_ARKUSZA.md` §4) —
+    // ZMIANA KANONU, intencja zachowana. Dotąd cały ciąg leżał NAD wszystkimi
+    // odgałęzieniami, więc „lokalność" znaczyła „ciąg się nie rusza". Po
+    // złamaniu arkusza pasma są PRZEPLATANE (wiersz → jego odgałęzienia →
+    // wiersz następny), więc wyższe odgałęzienie MUSI zepchnąć w dół wiersze
+    // leżące pod nim — inaczej weszłoby w nie geometrią. Lokalność znaczy
+    // teraz: skutek idzie WYŁĄCZNIE W DÓŁ i WYŁĄCZNIE jako sztywny ruch całego
+    // wiersza. Trzy niezmienniki poniżej łapią każdą realną reorganizację
+    // (przetasowanie w X, rozjazd stacji wewnątrz wiersza, ruch w górę).
+    const rows = sheetRowStationIds(base);
+    expect(sheetRowStationIds(mutated)).toEqual(rows);
+    let seenShiftedRow = false;
+    for (const row of rows) {
+      const deltas = row.flatMap((id) => {
+        const a = stationSymbolAnchors(base, id);
+        const b = stationSymbolAnchors(mutated, id);
+        const n = Math.min(a.length, b.length);
+        return Array.from({ length: n }, (_, i) => ({ dx: b[i][0] - a[i][0], dy: b[i][1] - a[i][1] }));
+      });
+      expect(deltas.length).toBeGreaterThan(0);
+      // (a) zero przemeblowania poziomego — kolumny wiersza są nietknięte.
+      for (const d of deltas) expect(d.dx).toBe(0);
+      // (b) wiersz jedzie w dół JAKO CAŁOŚĆ (jedna wartość Δy na wiersz).
+      const dys = new Set(deltas.map((d) => d.dy));
+      expect(dys.size).toBe(1);
+      const dy = deltas[0].dy;
+      // (c) skutek idzie tylko w dół i tylko po wierszu, który już się przesunął
+      //     (żaden wiersz nad zmianą nie rusza się po tym, jak niższy stanął).
+      expect(dy).toBeGreaterThanOrEqual(0);
+      if (dy > 0) seenShiftedRow = true;
+      else expect(seenShiftedRow).toBe(false);
+    }
   });
 
   it('§10 (wydajność): czas budowy sceny per fixtura w budżecie (raport)', () => {

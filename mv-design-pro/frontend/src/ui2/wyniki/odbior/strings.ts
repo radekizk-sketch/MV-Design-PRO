@@ -103,12 +103,12 @@ export const ODBIOR_STRINGS = {
   szczegolTytulModel: 'Model',
   szczegolTytulOdchylka: 'Odchyłka',
   szczegolTytulTolerancja: 'Tolerancja',
-  sladTytul: 'Ślad obliczeń (WHITE BOX)',
+  sladTytul: 'Ślad obliczeń (pełna jawność)',
   sladPokaz: 'Pokaż ślad obliczeń',
   sladUkryj: 'Ukryj ślad obliczeń',
 
   // Tryb ekspercki
-  ekspHash: 'Identyfikator wejścia (hash)',
+  ekspHash: 'Identyfikator wejścia (skrót)',
 
   // Jednostki i wartości puste
   jednProcent: '%',

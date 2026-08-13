@@ -20,101 +20,101 @@ Niniejszy dokument definiuje **kanoniczny kontrakt Element Inspector** — centr
 
 ### 2.1 Element Inspector
 
-**Element Inspector** to dedykowany panel boczny UI prezentujący peĹ‚ne informacje o wybranym elemencie sieci.
+**Element Inspector** to dedykowany panel boczny UI prezentujący pełne informacje o wybranym elemencie sieci.
 
 | Atrybut | Opis |
 |---------|------|
-| Panel Position | RIGHT (domyĹ›lnie) / BOTTOM / FLOATING |
+| Panel Position | RIGHT (domyślnie) / BOTTOM / FLOATING |
 | Panel Width | 400px (min) / 600px (max) / resizable |
 | Active Element | Aktualnie inspekcjonowany element |
-| Active Tab | Aktywna zakĹ‚adka (Overview / Parameters / Results / ...) |
+| Active Tab | Aktywna zakładka (Overview / Parameters / Results / ...) |
 | Edit Mode | READ_ONLY (default) / EDIT (Designer Mode) |
 
-### 2.2 ObsĹ‚ugiwane typy elementĂłw
+### 2.2 Obsługiwane typy elementów
 
-| Typ | Opis | ZakĹ‚adki dostępne |
+| Typ | Opis | Zakładki dostępne |
 |-----|------|-------------------|
-| BUS | WęzeĹ‚ sieci | All 6 tabs |
+| BUS | Węzeł sieci | All 6 tabs |
 | LINE | Linia / kabel | All except Contributions (limited) |
 | TRAFO | Transformator | All 6 tabs |
-| SOURCE | ĹąrĂłdĹ‚o (Grid/Gen/PV/BESS) | All 6 tabs |
-| LOAD | ObciąĹĽenie | Overview, Parameters, Results |
-| SWITCH | Ĺącznik | Overview, Parameters, Switching History |
+| SOURCE | Źródło (Grid/Gen/PV/BESS) | All 6 tabs |
+| LOAD | Obciążenie | Overview, Parameters, Results |
+| SWITCH | Łącznik | Overview, Parameters, Switching History |
 | PROTECTION | Zabezpieczenie | All 6 tabs + Proof P11 |
 
 ---
 
-## 3. ZakĹ‚adki Element Inspector (BINDING)
+## 3. Zakładki Element Inspector (BINDING)
 
 ### 3.1 Tab: Overview
 
 **Cel:** Szybki przegląd kluczowych informacji o elemencie.
 
-| Sekcja | ZawartoĹ›ć |
+| Sekcja | Zawartość |
 |--------|-----------|
 | **Identity** | Element ID, Name, Type, Subtype |
 | **Location** | Station, Voltage Level, Feeder, Zone |
 | **Status** | in_service, State (OPEN/CLOSED), Connection Status |
 | **Key Values** | Voltage [kV/p.u.], Power [MW/Mvar], Current [A] |
-| **Violations** | Lista naruszeĹ„ norm (czerwone badges) |
+| **Violations** | Lista naruszeń norm (czerwone badges) |
 | **Quick Actions** | Open in SLD, Compare, Export |
 
 ### 3.2 Tab: Parameters
 
-**Cel:** Edycja i przegląd parametrĂłw technicznych elementu.
+**Cel:** Edycja i przegląd parametrów technicznych elementu.
 
-| Sekcja | ZawartoĹ›ć | Edytowalne |
+| Sekcja | Zawartość | Edytowalne |
 |--------|-----------|------------|
-| **Catalog Reference** | Type ID, Type Name, Manufacturer | âś— (read-only, see Catalog Browser) |
-| **Rated Values** | U_n, I_n, S_n, P_n | âś— (from Type) |
-| **Impedance** | R, X, B, G (per phase) | âś— (from Type) |
-| **Operational** | in_service, tap_position | âś“ (Designer Mode) |
-| **Setpoints** | P_setpoint, Q_setpoint, U_setpoint | âś“ (Case-specific) |
-| **Limits** | I_max, U_min, U_max | âś“ (Designer Mode) |
-| **Protection Settings** | I_trip, t_trip, curve_type | âś“ (Protection only) |
+| **Catalog Reference** | Type ID, Type Name, Manufacturer | ✗ (read-only, see Catalog Browser) |
+| **Rated Values** | U_n, I_n, S_n, P_n | ✗ (from Type) |
+| **Impedance** | R, X, B, G (per phase) | ✗ (from Type) |
+| **Operational** | in_service, tap_position | ✓ (Designer Mode) |
+| **Setpoints** | P_setpoint, Q_setpoint, U_setpoint | ✓ (Case-specific) |
+| **Limits** | I_max, U_min, U_max | ✓ (Designer Mode) |
+| **Protection Settings** | I_trip, t_trip, curve_type | ✓ (Protection only) |
 
 **Visual Distinction:**
 
 | Pole | Style | Znaczenie |
 |------|-------|-----------|
-| Editable | White background + border | MoĹĽna edytować (w Designer Mode) |
-| Read-only (from Type) | Gray background | Z katalogu typĂłw |
+| Editable | White background + border | Można edytować (w Designer Mode) |
+| Read-only (from Type) | Gray background | Z katalogu typów |
 | Calculated | Blue italic | Obliczone przez solver |
-| Case-specific | Yellow border | WartoĹ›ć zaleĹĽna od Case |
+| Case-specific | Yellow border | Wartość zależna od Case |
 
 ### 3.3 Tab: Results
 
-**Cel:** Prezentacja wynikĂłw obliczeĹ„ dla elementu.
+**Cel:** Prezentacja wyników obliczeń dla elementu.
 
 **Struktura (Multi-Case View):**
 
 ```
-â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-â”‚                    RESULTS — BUS_007                             â”‚
-â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
-â”‚ Analysis: Short-Circuit (IEC 60909)                             â”‚
-â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
-â”‚ Case          â”‚ Ik_max [kA] â”‚ Ik_min [kA] â”‚ ip [kA] â”‚ Status   â”‚
-â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
-â”‚ SC_BASE       â”‚   12.50     â”‚    8.20     â”‚  28.50  â”‚   OK     â”‚
-â”‚ SC_VARIANT_A  â”‚   14.35     â”‚    9.10     â”‚  32.70  â”‚ VIOLATIONâ”‚
-â”‚ SC_VARIANT_B  â”‚   11.80     â”‚    7.95     â”‚  26.90  â”‚   OK     â”‚
-â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
-â”‚ Î” (A vs BASE) â”‚   +1.85     â”‚   +0.90     â”‚  +4.20  â”‚   â–˛      â”‚
-â”‚ Î” (B vs BASE) â”‚   -0.70     â”‚   -0.25     â”‚  -1.60  â”‚   â–Ľ      â”‚
-â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+┌─────────────────────────────────────────────────────────────────┐
+│                    RESULTS — BUS_007                             │
+├─────────────────────────────────────────────────────────────────┤
+│ Analysis: Short-Circuit (IEC 60909)                             │
+├─────────────────────────────────────────────────────────────────┤
+│ Case          │ Ik_max [kA] │ Ik_min [kA] │ ip [kA] │ Status   │
+├───────────────┼─────────────┼─────────────┼─────────┼──────────┤
+│ SC_BASE       │   12.50     │    8.20     │  28.50  │   OK     │
+│ SC_VARIANT_A  │   14.35     │    9.10     │  32.70  │ VIOLATION│
+│ SC_VARIANT_B  │   11.80     │    7.95     │  26.90  │   OK     │
+├───────────────┼─────────────┼─────────────┼─────────┼──────────┤
+│ Δ (A vs BASE) │   +1.85     │   +0.90     │  +4.20  │   ▲      │
+│ Δ (B vs BASE) │   -0.70     │   -0.25     │  -1.60  │   ▼      │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 **Multi-Case View Features:**
 - Wyniki dla WSZYSTKICH Cases z aktywnego Study
-- Kolumna Delta (porĂłwnanie z baseline Case)
-- Trend indicators (â–˛/â–Ľ/=)
+- Kolumna Delta (porównanie z baseline Case)
+- Trend indicators (▲/▼/=)
 - Filtrowanie po Case, Analysis
 - Eksport pojedynczej tabeli
 
 ### 3.4 Tab: Contributions
 
-**Cel:** Analiza kontrybutorĂłw do prądu zwarciowego (Bus) lub obciąĹĽenia (Line/Trafo).
+**Cel:** Analiza kontrybutorów do prądu zwarciowego (Bus) lub obciążenia (Line/Trafo).
 
 **Dla BUS (Short-Circuit Contributions):**
 
@@ -137,20 +137,20 @@ Niniejszy dokument definiuje **kanoniczny kontrakt Element Inspector** — centr
 
 ### 3.5 Tab: Limits
 
-**Cel:** Prezentacja limitĂłw normatywnych i marginesĂłw.
+**Cel:** Prezentacja limitów normatywnych i marginesów.
 
 **Struktura:**
 
 | Parameter | Limit | Current Value | Margin | Status |
 |-----------|-------|---------------|--------|--------|
-| U_min [p.u.] | 0.95 | 0.97 | +0.02 (+2.1%) | âś… OK |
-| U_max [p.u.] | 1.05 | 0.97 | -0.08 (-7.6%) | âś… OK |
-| Ik_max [kA] | 25.0 | 12.5 | -12.5 (-50%) | âś… OK |
-| I_loading [%] | 100% | 85.3% | -14.7% | âš ď¸Ź WARNING |
-| THD [%] | 8.0% | 3.2% | -4.8% | âś… OK |
+| U_min [p.u.] | 0.95 | 0.97 | +0.02 (+2.1%) | ✅ OK |
+| U_max [p.u.] | 1.05 | 0.97 | -0.08 (-7.6%) | ✅ OK |
+| Ik_max [kA] | 25.0 | 12.5 | -12.5 (-50%) | ✅ OK |
+| I_loading [%] | 100% | 85.3% | -14.7% | ⚠️ WARNING |
+| THD [%] | 8.0% | 3.2% | -4.8% | ✅ OK |
 
-**ĹąrĂłdĹ‚a norm:**
-- PN-EN 50160 (jakoĹ›ć napięcia)
+**Źródła norm:**
+- PN-EN 50160 (jakość napięcia)
 - IEC 60909 (prądy zwarciowe)
 - IEC 60076 (transformatory)
 - IEEE 519 (harmoniczne)
@@ -159,15 +159,15 @@ Niniejszy dokument definiuje **kanoniczny kontrakt Element Inspector** — centr
 
 **Cel:** Dostęp do dowodu matematycznego P11 dla elementu.
 
-**DostępnoĹ›ć:** BUS, PROTECTION (gdzie dowĂłd P11 jest generowany)
+**Dostępność:** BUS, PROTECTION (gdzie dowód P11 jest generowany)
 
-**ZawartoĹ›ć:**
+**Zawartość:**
 
 | Sekcja | Opis |
 |--------|------|
-| Proof Summary | TytuĹ‚, Case, Run, Solver Version |
-| Proof Steps | Lista krokĂłw dowodu (collapsible) |
-| Navigation | Spis treĹ›ci, Prev/Next |
+| Proof Summary | Tytuł, Case, Run, Solver Version |
+| Proof Steps | Lista kroków dowodu (collapsible) |
+| Navigation | Spis treści, Prev/Next |
 | Export | PDF, LaTeX, DOCX |
 
 **Link:** → Proof Inspector (P11_1d_PROOF_UI_EXPORT.md)
@@ -180,37 +180,37 @@ Niniejszy dokument definiuje **kanoniczny kontrakt Element Inspector** — centr
 
 **Multi-Case View** = Element Inspector pokazuje wyniki dla WSZYSTKICH Cases w jednej tabeli.
 
-**PowĂłd:** UĹĽytkownik chce porĂłwnać wartoĹ›ci bez przeĹ‚ączania między Cases.
+**Powód:** Użytkownik chce porównać wartości bez przełączania między Cases.
 
 ### 4.2 Implementacja
 
 ```
-â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-â”‚ Element: BUS_007                          [Switch to Single Case]â”‚
-â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
-â”‚ â—Ź Multi-Case View (3 cases)               â—‹ Single Case View    â”‚
-â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
-â”‚                                                                 â”‚
-â”‚ [SC_BASE]  [SC_VARIANT_A]  [SC_VARIANT_B]                      â”‚
-â”‚    âś“ Baseline       Compare→         Compare→                   â”‚
-â”‚                                                                 â”‚
-â”‚ â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”â”‚
-â”‚ â”‚ Case          â”‚ Ik_max â”‚ ip    â”‚ Ith   â”‚ Status â”‚          â”‚â”‚
-â”‚ â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤â”‚
-â”‚ â”‚ SC_BASE       â”‚ 12.50  â”‚ 28.50 â”‚ 14.20 â”‚   OK   â”‚ baseline â”‚â”‚
-â”‚ â”‚ SC_VARIANT_A  â”‚ 14.35  â”‚ 32.70 â”‚ 16.30 â”‚VIOLATE â”‚ +14.8%   â”‚â”‚
-â”‚ â”‚ SC_VARIANT_B  â”‚ 11.80  â”‚ 26.90 â”‚ 13.40 â”‚   OK   â”‚  -5.6%   â”‚â”‚
-â”‚ â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”â”‚
-â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+┌─────────────────────────────────────────────────────────────────┐
+│ Element: BUS_007                          [Switch to Single Case]│
+├─────────────────────────────────────────────────────────────────┤
+│ ● Multi-Case View (3 cases)               ○ Single Case View    │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│ [SC_BASE]  [SC_VARIANT_A]  [SC_VARIANT_B]                      │
+│    ✓ Baseline       Compare→         Compare→                   │
+│                                                                 │
+│ ┌─────────────────────────────────────────────────────────────┐│
+│ │ Case          │ Ik_max │ ip    │ Ith   │ Status │          ││
+│ ├───────────────┼────────┼───────┼───────┼────────┼──────────┤│
+│ │ SC_BASE       │ 12.50  │ 28.50 │ 14.20 │   OK   │ baseline ││
+│ │ SC_VARIANT_A  │ 14.35  │ 32.70 │ 16.30 │VIOLATE │ +14.8%   ││
+│ │ SC_VARIANT_B  │ 11.80  │ 26.90 │ 13.40 │   OK   │  -5.6%   ││
+│ └─────────────────────────────────────────────────────────────┘│
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 ### 4.3 Interakcje
 
 | Akcja | Reakcja |
 |-------|---------|
-| Klik "Baseline" | Ustawia Case jako baseline dla porĂłwnaĹ„ |
+| Klik "Baseline" | Ustawia Case jako baseline dla porównań |
 | Klik "Compare→" | Aktywuje Delta view dla tego Case |
-| Toggle Single/Multi | PrzeĹ‚ącza między widokami |
+| Toggle Single/Multi | Przełącza między widokami |
 | Hover nad Case | Tooltip z metadanymi (Run, Timestamp) |
 
 ---
@@ -220,7 +220,7 @@ Niniejszy dokument definiuje **kanoniczny kontrakt Element Inspector** — centr
 ### 5.1 READ_ONLY Mode (Default)
 
 - Wszystkie pola read-only
-- Brak przyciskĂłw "Save"
+- Brak przycisków "Save"
 - Dostępne dla Operator, Analyst, Auditor
 
 ### 5.2 EDIT Mode (Designer only)
@@ -228,9 +228,9 @@ Niniejszy dokument definiuje **kanoniczny kontrakt Element Inspector** — centr
 - Pola Operational i Setpoints edytowalne
 - Przyciski "Save" i "Revert"
 - Walidacja przy zapisie (NetworkValidator)
-- Automatyczne oznaczenie wynikĂłw jako OUTDATED
+- Automatyczne oznaczenie wyników jako OUTDATED
 
-### 5.3 PrzeĹ‚ączanie trybĂłw
+### 5.3 Przełączanie trybów
 
 ```
 [Designer Mode] → Element Inspector → Parameters tab → EDIT mode aktywny
@@ -245,7 +245,7 @@ Niniejszy dokument definiuje **kanoniczny kontrakt Element Inspector** — centr
 
 Element Inspector MUSI reagować na zmiany Global Focus:
 
-| ĹąrĂłdĹ‚o zmiany | Reakcja Element Inspector |
+| Źródło zmiany | Reakcja Element Inspector |
 |---------------|---------------------------|
 | Klik w SLD | Zmiana Active Element, refresh content |
 | Klik w Results Browser | Zmiana Active Element, scroll to element |
@@ -257,8 +257,8 @@ Element Inspector MUSI reagować na zmiany Global Focus:
 
 | Akcja w Element Inspector | Propagacja |
 |---------------------------|------------|
-| Klik "Open in SLD" | SLD centruje i podĹ›wietla element |
-| Klik wiersz w Contributions | SLD podĹ›wietla contributor |
+| Klik "Open in SLD" | SLD centruje i podświetla element |
+| Klik wiersz w Contributions | SLD podświetla contributor |
 | Edycja parametru | Wyniki → OUTDATED, banner w SLD |
 
 ---
@@ -278,9 +278,9 @@ Element Inspector MUSI reagować na zmiany Global Focus:
 
 | Klawisz | Akcja |
 |---------|-------|
-| Tab | PrzejdĹş do następnego pola |
-| Shift+Tab | PrzejdĹş do poprzedniego pola |
-| Ctrl+1..6 | PrzeĹ‚ącz na zakĹ‚adkę 1..6 |
+| Tab | Przejdź do następnego pola |
+| Shift+Tab | Przejdź do poprzedniego pola |
+| Ctrl+1..6 | Przełącz na zakładkę 1..6 |
 | Escape | Zamknij inspector / Revert changes |
 | Ctrl+S | Save changes (EDIT mode) |
 | F5 | Refresh content |
@@ -293,23 +293,23 @@ Element Inspector MUSI reagować na zmiany Global Focus:
 
 | Feature | benchmark | benchmark | MV-DESIGN-PRO | Status |
 |---------|------|--------------|---------------|--------|
-| Multi-tab Inspector | âś“ | âś“ | âś“ | âś… FULL |
-| Overview Tab | âś“ | âś“ | âś“ | âś… FULL |
-| Parameters Tab | âś“ | âś“ | âś“ | âś… FULL |
-| Results Tab | âś“ | âś“ | âś“ | âś… FULL |
-| Contributions Tab | âś— | âś“ | âś“ | âś… FULL |
-| Limits Tab | âś“ (partial) | âś“ | âś“ + Margin % | âž• SUPERIOR |
-| Proof Tab (P11) | âś— | âś— | âś“ | âž• SUPERIOR |
-| Multi-Case View | âś— | âś— | âś“ | âž• SUPERIOR |
-| Delta Comparison | âś— | âś“ | âś“ + Trend | âž• SUPERIOR |
-| Inline Edit (Designer) | âś“ | âś“ | âś“ + Validation | âž• SUPERIOR |
-| Sync with SLD | âś“ | âś“ | âś“ + Focus Lock | âž• SUPERIOR |
-| Sync with Results Browser | âś— | âś“ | âś“ | âś… FULL |
-| Read-only protection | âś— | âś“ | âś“ + Expert Modes | âž• SUPERIOR |
+| Multi-tab Inspector | ✓ | ✓ | ✓ | ✅ FULL |
+| Overview Tab | ✓ | ✓ | ✓ | ✅ FULL |
+| Parameters Tab | ✓ | ✓ | ✓ | ✅ FULL |
+| Results Tab | ✓ | ✓ | ✓ | ✅ FULL |
+| Contributions Tab | ✗ | ✓ | ✓ | ✅ FULL |
+| Limits Tab | ✓ (partial) | ✓ | ✓ + Margin % | ➕ SUPERIOR |
+| Proof Tab (P11) | ✗ | ✗ | ✓ | ➕ SUPERIOR |
+| Multi-Case View | ✗ | ✗ | ✓ | ➕ SUPERIOR |
+| Delta Comparison | ✗ | ✓ | ✓ + Trend | ➕ SUPERIOR |
+| Inline Edit (Designer) | ✓ | ✓ | ✓ + Validation | ➕ SUPERIOR |
+| Sync with SLD | ✓ | ✓ | ✓ + Focus Lock | ➕ SUPERIOR |
+| Sync with Results Browser | ✗ | ✓ | ✓ | ✅ FULL |
+| Read-only protection | ✗ | ✓ | ✓ + Expert Modes | ➕ SUPERIOR |
 
-### 8.2 Ocena koĹ„cowa
+### 8.2 Ocena końcowa
 
-**MV-DESIGN-PRO Element Inspector â‰Ą benchmark Inspector â‰Ą benchmark Element Dialog** âś…
+**MV-DESIGN-PRO Element Inspector ≥ benchmark Inspector ≥ benchmark Element Dialog** ✅
 
 ---
 
@@ -320,14 +320,14 @@ Element Inspector MUSI reagować na zmiany Global Focus:
 ```
 USER: Klika Bus_007 na SLD
 SYSTEM: Element Inspector otwiera się z Bus_007
-USER: Przechodzi do zakĹ‚adki Results
+USER: Przechodzi do zakładki Results
 SYSTEM: Multi-Case View pokazuje wyniki dla wszystkich Cases
 USER: Klika "SC_VARIANT_A" jako Compare target
 SYSTEM: Kolumna Delta pojawia się z % zmian
 USER: Eksportuje tabelę do PDF
 ```
 
-### 9.2 Scenariusz: Edycja parametrĂłw (Designer)
+### 9.2 Scenariusz: Edycja parametrów (Designer)
 
 ```
 USER: W Designer Mode klika Line_001 na SLD
@@ -346,53 +346,53 @@ SYSTEM: Model zaktualizowany, Results → OUTDATED
 
 **FORBIDDEN:**
 ```
-âťŚ Operator moĹĽe edytować parametry (np. R, X linii)
+❌ Operator może edytować parametry (np. R, X linii)
 ```
 
 **CORRECT:**
 ```
-âś“ Element Inspector w READ_ONLY dla Operator/Analyst/Auditor
-âś“ Edycja tylko w Designer Mode
+✓ Element Inspector w READ_ONLY dla Operator/Analyst/Auditor
+✓ Edycja tylko w Designer Mode
 ```
 
 ### 10.2 Brak Multi-Case View
 
 **FORBIDDEN:**
 ```
-âťŚ Element Inspector pokazuje wyniki tylko dla Active Case
-âťŚ UĹĽytkownik musi przeĹ‚ączać Case, ĹĽeby zobaczyć rĂłĹĽnice
+❌ Element Inspector pokazuje wyniki tylko dla Active Case
+❌ Użytkownik musi przełączać Case, żeby zobaczyć różnice
 ```
 
 **CORRECT:**
 ```
-âś“ Multi-Case View domyĹ›lnie wĹ‚ączone
-âś“ Wszystkie Cases widoczne w jednej tabeli
-âś“ Delta column automatycznie
+✓ Multi-Case View domyślnie włączone
+✓ Wszystkie Cases widoczne w jednej tabeli
+✓ Delta column automatycznie
 ```
 
-### 10.3 Brak zakĹ‚adki Proof P11
+### 10.3 Brak zakładki Proof P11
 
 **FORBIDDEN:**
 ```
-âťŚ Element Inspector dla Bus/Protection nie ma zakĹ‚adki Proof
+❌ Element Inspector dla Bus/Protection nie ma zakładki Proof
 ```
 
 **CORRECT:**
 ```
-âś“ ZakĹ‚adka Proof (P11) dostępna dla Bus i Protection
-âś“ Link do peĹ‚nego Proof Inspector
-âś“ Eksport do PDF/LaTeX
+✓ Zakładka Proof (P11) dostępna dla Bus i Protection
+✓ Link do pełnego Proof Inspector
+✓ Eksport do PDF/LaTeX
 ```
 
 ---
 
 ## 11. Compliance Checklist
 
-**Implementacja zgodna z ELEMENT_INSPECTOR_CONTRACT.md, jeĹ›li:**
+**Implementacja zgodna z ELEMENT_INSPECTOR_CONTRACT.md, jeśli:**
 
-- [ ] Element Inspector ma 6 zakĹ‚adek (Overview, Parameters, Results, Contributions, Limits, Proof)
+- [ ] Element Inspector ma 6 zakładek (Overview, Parameters, Results, Contributions, Limits, Proof)
 - [ ] Multi-Case View implementuje tabelę z wszystkimi Cases
-- [ ] Delta Comparison z trend indicators (â–˛/â–Ľ/=)
+- [ ] Delta Comparison z trend indicators (▲/▼/=)
 - [ ] Contributions tab dla Bus (SC) i Line/Trafo (PF)
 - [ ] Limits tab z Margin % i status
 - [ ] Proof tab (P11) dla Bus i Protection

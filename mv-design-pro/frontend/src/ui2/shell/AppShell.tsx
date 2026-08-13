@@ -22,7 +22,7 @@ import { CaseBar } from './CaseBar';
 import { PanelLayout } from './PanelLayout';
 import { StatusBar } from './StatusBar';
 import { SpaceNav } from './SpaceNav';
-import { useShellStore, type BottomPanelTab } from './useShellStore';
+import { DEFAULT_LAYOUT, useShellStore, type BottomPanelTab } from './useShellStore';
 import { useThemeModeStore, applyThemeMode } from '../theme/themeMode';
 import { useShellCaseInfo, useShellStatusInfo, type BackendStatus } from './shellStatus';
 import { SPACES, type SpaceId } from './spaces';
@@ -57,10 +57,10 @@ export interface AppShellProps {
   loading?: boolean;
   /** Status połączenia z serwerem (klient health wpinany w E1.4 — TODO-KARTA). */
   backendStatus?: BackendStatus;
-  /** Etykieta ostatniego przebiegu (kontrakt świeżości E15.2 — TODO-KARTA). */
+  /** Etykieta ostatniego zakończonego przebiegu (K6/H-6 R3 — z rejestru przebiegów). */
   lastRunLabel?: string | null;
-  /** Odcisk SHA-256 wyników (kontrakt świeżości E15.2 — TODO-KARTA). */
-  resultsFingerprint?: string | null;
+  /** Odcisk SHA-256 migawki modelu — nadpisanie dla scen testowych (K6/H-6 R4). */
+  wersjaModelu?: string | null;
   /** Rewizja modelu (nadpisuje wartość z gotowości, gdy podana). */
   modelRevision?: number | null;
   onReconnect?: () => void;
@@ -81,7 +81,7 @@ export function AppShell({
   loading = false,
   backendStatus = 'connected',
   lastRunLabel = null,
-  resultsFingerprint,
+  wersjaModelu,
   modelRevision,
   onReconnect,
   onSave,
@@ -114,14 +114,17 @@ export function AppShell({
   const statusInfo = useShellStatusInfo({
     backend: backendStatus,
     lastRunLabel,
-    resultsFingerprint,
+    wersjaModelu,
     modelRevision,
   });
 
-  const leftWidth = layout?.leftWidth ?? 240;
-  const rightWidth = layout?.rightWidth ?? 320;
-  const leftCollapsed = layout?.leftCollapsed ?? false;
-  const rightCollapsed = layout?.rightCollapsed ?? false;
+  // K11-A: JEDNA prawda wartości domyślnych układu (DEFAULT_LAYOUT) — lokalne
+  // fallbacki rozjeżdżały się z magazynem (inspektor „otwarty" mimo domyślnego
+  // zwinięcia, bo brak wpisu przestrzeni omijał domyślne store'a).
+  const leftWidth = layout?.leftWidth ?? DEFAULT_LAYOUT.leftWidth;
+  const rightWidth = layout?.rightWidth ?? DEFAULT_LAYOUT.rightWidth;
+  const leftCollapsed = layout?.leftCollapsed ?? DEFAULT_LAYOUT.leftCollapsed;
+  const rightCollapsed = layout?.rightCollapsed ?? DEFAULT_LAYOUT.rightCollapsed;
 
   const [searchOpen, setSearchOpen] = useState(false);
 

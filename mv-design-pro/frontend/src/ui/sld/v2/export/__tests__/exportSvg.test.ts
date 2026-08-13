@@ -39,7 +39,8 @@ describe('normalizeSvgForExport — V12K-007', () => {
   it('throws when called with dark_scada (V12K-007 invariant)', () => {
     expect(() =>
       normalizeSvgForExport('<svg></svg>', { mode: 'dark_scada' as never }),
-    ).toThrow(/V12K-007/);
+    // K10: asercja na semantykę inwariantu (komunikat bez kodu rejestru).
+    ).toThrow(/naruszony inwariant kanonu eksportu/);
   });
 
   it('defaults to light_technical when mode unspecified', () => {

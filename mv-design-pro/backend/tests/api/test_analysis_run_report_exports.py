@@ -469,7 +469,9 @@ def test_export_run_report_json_response_returns_json_payload() -> None:
     )
 
     payload = json.loads(response.body.decode("utf-8"))
-    assert payload["report_version"] == "2.0.0"
+    # 2.1.0 (V12K-281, K13): wiersze zwarciowe raportu bez rozpływu gałęziowego
+    # (+ flaga dostępności) — kontrakt raportu podbity, intencja testu bez zmian.
+    assert payload["report_version"] == "2.1.0"
     assert payload["report_options"]["detail_level"] == "minimalny"
     assert (
         payload["analysis_case_context"]["reproducibility"]["results_contract_version"] == "V12.5"

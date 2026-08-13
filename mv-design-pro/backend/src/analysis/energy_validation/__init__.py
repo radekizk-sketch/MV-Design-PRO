@@ -1,5 +1,9 @@
 """Energy validation (physical constraints) view builder."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from analysis.energy_validation.models import (
     EnergyCheckType,
     EnergyValidationConfig,
@@ -9,6 +13,9 @@ from analysis.energy_validation.models import (
     EnergyValidationSummary,
     EnergyValidationView,
 )
+
+if TYPE_CHECKING:
+    from analysis.energy_validation.builder import EnergyValidationBuilder
 
 __all__ = [
     "EnergyCheckType",
@@ -22,7 +29,7 @@ __all__ = [
 ]
 
 
-def __getattr__(name: str):
+def __getattr__(name: str) -> type[EnergyValidationBuilder]:
     if name == "EnergyValidationBuilder":
         from analysis.energy_validation.builder import EnergyValidationBuilder
 

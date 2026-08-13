@@ -52,9 +52,15 @@ describe('results-inspector export API', () => {
 
     vi.mocked(global.fetch).mockResolvedValue(response);
 
-    await downloadAnalysisRunExport('project-1', 'run-1', 'pdf');
+    await downloadAnalysisRunExport('run-1', 'pdf');
 
-    expect(global.fetch).toHaveBeenCalledWith('/api/projects/project-1/analysis-runs/run-1/export/pdf');
+    // TRASA REALNIE SERWOWANA przez `api/analysis_runs.py`
+    // (`@router.get("/analysis-runs/{run_id}/export/report/pdf")`, router pod `/api`).
+    // Poprzednia wersja tego testu przypinala `/api/projects/{id}/analysis-runs/{id}/export/pdf`,
+    // czyli adres, ktorego backend NIGDY nie serwowal — test byl zielony, a przycisk
+    // eksportu w przegladarce wynikow konczyl sie 404. Test przypinajacy zly adres
+    // nie chroni niczego, tylko usypia czujnosc.
+    expect(global.fetch).toHaveBeenCalledWith('/api/analysis-runs/run-1/export/report/pdf');
     expect(createObjectURL).toHaveBeenCalledTimes(1);
     expect(clickMock).toHaveBeenCalledTimes(1);
     expect(revokeObjectURL).toHaveBeenCalledTimes(1);
@@ -70,7 +76,7 @@ describe('results-inspector export API', () => {
 
     vi.mocked(global.fetch).mockResolvedValue(response);
 
-    await downloadAnalysisRunReport('project-1', 'run-1', 'pdf', {
+    await downloadAnalysisRunReport('run-1', 'pdf', {
       profile: 'audytowy',
       detailLevel: 'pelny',
       scope: 'active_table',
@@ -78,8 +84,11 @@ describe('results-inspector export API', () => {
       focusTable: 'trace',
     });
 
+    // `sections` MUSI isc jako parametr POWTORZONY — backend deklaruje
+    // `sections: list[str] | None = Query(default=None)`, wiec `sections=summary,trace`
+    // dotarloby jako JEDNA sekcja o nazwie „summary,trace".
     expect(global.fetch).toHaveBeenCalledWith(
-      '/api/projects/project-1/analysis-runs/run-1/report/pdf?profile=audytowy&detail_level=pelny&scope=active_table&sections=summary%2Ctrace&focus_table=trace',
+      '/api/analysis-runs/run-1/export/report/pdf?profile=audytowy&detail_level=pelny&scope=active_table&sections=summary&sections=trace&focus_table=trace',
     );
   });
 
@@ -91,7 +100,7 @@ describe('results-inspector export API', () => {
 
     vi.mocked(global.fetch).mockResolvedValue(response);
 
-    await expect(downloadAnalysisRunExport('project-1', 'run-1', 'docx')).rejects.toThrow(
+    await expect(downloadAnalysisRunExport('run-1', 'docx')).rejects.toThrow(
       'Brak gotowego raportu.',
     );
   });

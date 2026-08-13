@@ -296,7 +296,7 @@ class AnalysisDispatchService:
             enm_hash=enm_hash,
             results_valid=True,
             deduplicated=False,
-            result_location=f"/protection-runs/{run.id}/results",
+            result_location=f"/api/protection-runs/{run.id}/results",
             error_message=run.error_message,
         )
 
@@ -378,11 +378,15 @@ class AnalysisDispatchService:
     ) -> AnalysisRunSummary:
         """Build AnalysisRunSummary from an AnalysisRun domain object."""
         results_valid = run.result_status != "OUTDATED"
+        # Adres wyniku jest ADRESEM HTTP, wiec musi byc kanoniczny (`/api/...`)
+        # juz w zrodle. Wczesniej trzy miejsca emitowaly go BEZ `/api`, a doklejal
+        # go — tylko dla zwarc — jeden konsument (`api/unified_runs.py`). Rozplyw
+        # i zabezpieczenia dostawaly adres, ktorego zaden router nie serwowal.
         result_location: str | None = None
         if analysis_kind == AnalysisKind.SHORT_CIRCUIT:
-            result_location = f"/analysis-runs/{run.id}/results"
+            result_location = f"/api/analysis-runs/{run.id}/results"
         elif analysis_kind == AnalysisKind.POWER_FLOW:
-            result_location = f"/power-flow-runs/{run.id}/results"
+            result_location = f"/api/power-flow-runs/{run.id}/results"
 
         return AnalysisRunSummary(
             run_id=str(run.id),

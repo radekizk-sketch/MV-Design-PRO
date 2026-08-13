@@ -1,5 +1,8 @@
 import { useMemo } from 'react';
-import { useReadinessLiveStore } from '../engineering-readiness/readinessLiveStore';
+import {
+  useGotowoscModelu,
+  usePodsumowanieGotowosci,
+} from '../../ui2/spaces/gotowosc/adapters/gotowoscAdapter';
 
 export type ObjectStatusDot = 'ok' | 'warning' | 'error' | 'none';
 
@@ -56,12 +59,12 @@ export function buildBlockerCountsByElement(
 }
 
 export function useBlockerCountsByElement(): Map<string, number> {
-  const issues = useReadinessLiveStore((state) => state.issues);
+  const { issues } = useGotowoscModelu();
   return useMemo(() => buildBlockerCountsByElement(issues), [issues]);
 }
 
 export function useElementIssues(elementId: string | null | undefined) {
-  const issues = useReadinessLiveStore((state) => state.issues);
+  const { issues } = useGotowoscModelu();
   return useMemo(() => {
     if (!elementId) {
       return [];
@@ -70,17 +73,33 @@ export function useElementIssues(elementId: string | null | undefined) {
   }, [elementId, issues]);
 }
 
+/**
+ * Kropka stanu elementu. `'none'` = BRAK DANEJ (kropka się nie zapala), a nie
+ * „sprawdzono, jest dobrze" — to istniejąca konwencja braku danej w tym typie,
+ * ta sama, którą zwraca brak `elementId` i trwający odczyt.
+ *
+ * DŁUG V12K-317 poz. 4 (naprawiony): gotowość NIEUSTALONA (`readiness === null`,
+ * czyli nieudany odczyt gotowości z backendu) dawała pustą listę problemów, więc
+ * ostatni `return 'ok'` malował KAŻDY element na zielono dokładnie wtedy, gdy
+ * nie wiadomo. Sygnał rozróżniający pochodzi z toru U5
+ * (`podsumujGotowosc().ustalona` nad tym samym `useSnapshotStore.readiness`) —
+ * to reużycie jedynej definicji, nie druga prawda.
+ */
 export function useElementStatusDot(
   elementId: string | null | undefined,
 ): ObjectStatusDot {
   const issues = useElementIssues(elementId);
-  const loading = useReadinessLiveStore((state) => state.loading);
+  const { loading } = useGotowoscModelu();
+  const { ustalona } = usePodsumowanieGotowosci();
 
   return useMemo(() => {
     if (!elementId) {
       return 'none';
     }
     if (loading && issues.length === 0) {
+      return 'none';
+    }
+    if (!ustalona) {
       return 'none';
     }
     if (issues.some(isBlocker)) {
@@ -90,5 +109,5 @@ export function useElementStatusDot(
       return 'warning';
     }
     return 'ok';
-  }, [elementId, issues, loading]);
+  }, [elementId, issues, loading, ustalona]);
 }

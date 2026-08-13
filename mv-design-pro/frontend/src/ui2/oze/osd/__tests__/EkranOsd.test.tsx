@@ -198,3 +198,79 @@ describe('EkranOsd — prezentacja wyniku (kryteria 2, 3, 4)', () => {
     expect(wynik).toHaveTextContent('run-osd-1');
   });
 });
+
+describe('EkranOsd — zapis trybu pracy źródła (K5-B / H-3 pkt 5)', () => {
+  beforeEach(ustawGotowyRozplyw);
+
+  async function uruchomBiegDlaZapisu() {
+    pobierzOsd.mockResolvedValue(widokOsdFixture());
+    render(<EkranOsd trybZaawansowania="basic" />);
+    fireEvent.change(screen.getByTestId('mvd-osd-zrodlo'), { target: { value: 'gen_sync' } });
+    fireEvent.click(screen.getByTestId('mvd-osd-oblicz'));
+    await screen.findByTestId('mvd-osd-wynik');
+  }
+
+  it('selektor startuje z trybu ZAPISANEGO w modelu (meta.operating_mode), nie z domyślnej', async () => {
+    // Odbiór K5-B: stały default maskowałby realny stan po powrocie na ekran.
+    const migawka = snapshotFixture();
+    (migawka.generators[0] as { meta?: Record<string, unknown> }).meta = {
+      operating_mode: 'ladowanie',
+    };
+    useSnapshotStore.setState({ snapshot: migawka });
+
+    await uruchomBiegDlaZapisu();
+
+    expect(screen.getByTestId('mvd-osd-tryb-wybor')).toHaveValue('ladowanie');
+  });
+
+  it('„Zapisz nastawy trybu pracy" woła set_source_operating_mode dla źródła z wyniku', async () => {
+    const { useAppStateStore } = await import('../../../../ui/app-state');
+    const wykonaj = vi.fn().mockResolvedValue({ error: null });
+    useAppStateStore.setState({ activeCaseId: 'case-osd' } as never);
+    useSnapshotStore.setState({ executeDomainOperation: wykonaj } as never);
+
+    await uruchomBiegDlaZapisu();
+
+    // Realna ścieżka: wybór trybu + natywny klik zapisu.
+    fireEvent.change(screen.getByTestId('mvd-osd-tryb-wybor'), {
+      target: { value: 'odstawione' },
+    });
+    fireEvent.click(screen.getByTestId('mvd-osd-tryb-zapisz'));
+
+    await vi.waitFor(() =>
+      expect(wykonaj).toHaveBeenCalledWith('case-osd', 'set_source_operating_mode', {
+        source_ref: 'gen_sync',
+        mode: 'odstawione',
+      }),
+    );
+    expect(screen.queryByTestId('mvd-osd-tryb-blad')).not.toBeInTheDocument();
+    useAppStateStore.setState({ activeCaseId: null } as never);
+  });
+
+  it('błąd operacji z backendu jest NAZWANY przy przycisku (zero udawania zapisu)', async () => {
+    const { useAppStateStore } = await import('../../../../ui/app-state');
+    const wykonaj = vi.fn().mockResolvedValue({ error: "Źródło 'gen_sync' nie znalezione." });
+    useAppStateStore.setState({ activeCaseId: 'case-osd' } as never);
+    useSnapshotStore.setState({ executeDomainOperation: wykonaj } as never);
+
+    await uruchomBiegDlaZapisu();
+    fireEvent.click(screen.getByTestId('mvd-osd-tryb-zapisz'));
+
+    expect(await screen.findByTestId('mvd-osd-tryb-blad')).toHaveTextContent(
+      "Źródło 'gen_sync' nie znalezione.",
+    );
+    useAppStateStore.setState({ activeCaseId: null } as never);
+  });
+
+  it('brak aktywnego przypadku → uczciwy powód zamiast cichej blokady', async () => {
+    const { useAppStateStore } = await import('../../../../ui/app-state');
+    useAppStateStore.setState({ activeCaseId: null } as never);
+
+    await uruchomBiegDlaZapisu();
+    fireEvent.click(screen.getByTestId('mvd-osd-tryb-zapisz'));
+
+    expect(await screen.findByTestId('mvd-osd-tryb-blad')).toHaveTextContent(
+      OSD_STRINGS.trybBrakPrzypadku,
+    );
+  });
+});

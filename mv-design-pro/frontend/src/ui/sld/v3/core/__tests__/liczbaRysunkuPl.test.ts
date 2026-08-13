@@ -70,9 +70,15 @@ describe('etykiety szyn i linii mówią jednym zapisem', () => {
     expect(stationBusbarLabelText(undefined)).toBe('Sekcja 1');
   });
 
-  it('sekcja SN i napięcie znamionowe kabla używają tej samej konwencji', () => {
-    expect(stationBusbarLabelText(15)).toBe('Sekcja 1 · 15 kV');
-    expect(formatRatedVoltageKv(20)).toBe('20 kV');
-    expect(formatRatedVoltageKv(10.5)).toBe('10,5 kV');
+  it('sekcja SN i napięcie znamionowe kabla używają tej samej konwencji ZAPISU LICZBY', () => {
+    // S9-8: opis sekcji niesie kod stacji jako człon wiodący (identyfikator
+    // stacji), a napięcie kabla — oznacznik „Un=" (rozróżnienie napięcia
+    // IZOLACJI od napięcia PRACY sieci). Intencja tego testu jest węższa i
+    // bez zmian: OBA napisy mówią tym samym zapisem LICZBY (przecinek
+    // dziesiętny, bez zer nieznaczących) — `liczbaRysunkuPl`, jedna konwencja.
+    expect(stationBusbarLabelText(15, 'S01')).toBe('S01 · Sekcja 1 · 15 kV');
+    expect(stationBusbarLabelText(10.5, 'S01')).toContain('10,5 kV');
+    expect(formatRatedVoltageKv(20)).toBe('Un=20 kV');
+    expect(formatRatedVoltageKv(10.5)).toBe('Un=10,5 kV');
   });
 });

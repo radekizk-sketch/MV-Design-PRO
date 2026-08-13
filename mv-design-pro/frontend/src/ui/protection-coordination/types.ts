@@ -451,6 +451,19 @@ export const LABELS = {
     error: 'Błąd analizy',
   },
 
+  // K5-B (H-2): nastawy urządzeń trwają w konfiguracji przypadku obliczeniowego
+  // (PUT /api/study-cases/{id}/protection-config), nie w pamięci ekranu.
+  persistence: {
+    zapisano: 'Nastawy zabezpieczeń zapisane w konfiguracji przypadku',
+    bladZapisu: 'Nie udało się zapisać nastaw w konfiguracji przypadku',
+    bladOdczytu: 'Nie udało się wczytać nastaw z konfiguracji przypadku',
+    brakPrzypadku:
+      'Brak aktywnego przypadku obliczeniowego — nastawy nie zostaną zapisane po wyjściu ze strony.',
+    wynikNieaktualny:
+      'Nastawy zmienione po ostatnim biegu — wynik koordynacji jest nieaktualny.',
+    przelicz: 'Przelicz koordynację',
+  },
+
   tabs: {
     summary: 'Podsumowanie',
     sensitivity: 'Czułość',

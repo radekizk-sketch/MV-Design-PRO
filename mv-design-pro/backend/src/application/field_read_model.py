@@ -118,7 +118,7 @@ FUNCTION_TYPE_MAP: dict[str, dict[str, Any]] = {
 
 def build_field_read_model(case_id: str, enm: EnergyNetworkModel) -> dict[str, Any]:
     branches = {branch.ref_id: branch for branch in enm.branches}
-    bays = _collect_bays(enm)
+    bays = collect_bays(enm)
     measurements = {measurement.ref_id: measurement for measurement in enm.measurements}
     measurements_by_bay = _group_measurements_by_bay(enm.measurements)
     protection_by_ref = {assignment.ref_id: assignment for assignment in enm.protection_assignments}
@@ -274,7 +274,15 @@ def build_field_read_model(case_id: str, enm: EnergyNetworkModel) -> dict[str, A
     }
 
 
-def _collect_bays(enm: EnergyNetworkModel) -> list[Bay]:
+def collect_bays(enm: EnergyNetworkModel) -> list[Bay]:
+    """Pola stacji z modelu — JEDNO źródło dla wszystkich czytelników.
+
+    Nazwa publiczna od karty KD-6: widok wytrzymałości aparatury pól
+    (``application/analyses/wytrzymalosc_aparatury_pol``) musi widzieć DOKŁADNIE
+    te same pola, co read-model pola. Druga implementacja zbierania pól
+    (Bay + ``field_specs`` stacji) rozjechałaby się przy pierwszej zmianie
+    kreatora stacji.
+    """
     bays_by_ref = {bay.ref_id: bay for bay in enm.bays}
 
     for substation in enm.substations:
@@ -433,7 +441,7 @@ def _build_primary_devices(
 ) -> list[BayPrimaryDevice]:
     # W1 (RECENZJA_L2 §12.1, V12K-145): PRYMAT DANYCH nad przeliczeniem — jeśli
     # pole niesie już zmaterializowane aparaty pierwotne (szablon kreatora,
-    # `_collect_bays`), użyj ICH (schemat = odwzorowanie konfiguracji kreatora),
+    # `collect_bays`), użyj ICH (schemat = odwzorowanie konfiguracji kreatora),
     # zamiast wnioskować z equipment. Puste = przelicz z equipment jak dotąd.
     if bay.primary_devices:
         return list(bay.primary_devices)

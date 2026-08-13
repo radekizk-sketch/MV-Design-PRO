@@ -78,13 +78,19 @@ def main() -> int:
     if not backend_root.exists():
         print("arch-guard: backend directory not found", file=sys.stderr)
         return 2
-    for path in _iter_python_files(backend_root):
+    pliki = _iter_python_files(backend_root)
+    for path in pliki:
         violation = _scan_file(path)
         if violation:
             file_path, rule = violation
             print(f"ARCH-GUARD VIOLATION: {file_path}", file=sys.stderr)
             print(f"Rule: {rule}", file=sys.stderr)
             return 1
+    # Guard konczacy sie sukcesem MUSI powiedziec, ILE obejrzal: pusty log przy
+    # RC=0 wyglada identycznie jak bramka, ktora nic nie przeskanowala (defekt H
+    # przegladu 2026-08-01: no_direct_fault_params skanowal ZERO plikow i swiecil
+    # zielono od dnia powstania). Licznik jest jedynym tanim dowodem biegu.
+    print(f"arch-guard: OK, przeskanowano {len(pliki)} plikow backendu")
     return 0
 
 

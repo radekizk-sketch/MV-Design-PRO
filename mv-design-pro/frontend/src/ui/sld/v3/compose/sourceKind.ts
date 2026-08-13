@@ -10,7 +10,7 @@
 import { GRID } from '../core/grid';
 import { labelLineHeight } from '../core/text';
 import { SYMBOL_DEFS, type SymbolId } from '../symbols/defs';
-import { HIGHLIGHT_COLOR } from '../theme/colorTokens';
+import { HIGHLIGHT_COLOR, type HighlightKey, type SldPalette } from '../theme/colorTokens';
 
 /**
  * Podzbiór `SldSourceView['kind']` (v2 adapter) reprezentowany symbolem DER
@@ -143,6 +143,18 @@ export type SourceOperationalState = 'energized' | 'standby' | 'disconnected' | 
  * geometrii ani bboxu symbolu (§13.3 wyrocznia; dowód inwariancji:
  * `sourceState.test.ts`).
  */
+export const SOURCE_STATE_HIGHLIGHT_KEY: Readonly<Record<SourceOperationalState, HighlightKey>> = {
+  energized: 'energized',
+  standby: 'standby',
+  disconnected: 'deenergized',
+  maintenance: 'maintenance',
+  fault: 'fault',
+};
+
+/**
+ * Wartości nakładki w motywie DYSPOZYTORSKIM — zachowane jako tabela
+ * (konsumenci/testy §13.3 sprawdzają jej różnowartościowość i format).
+ */
 export const SOURCE_STATE_OVERLAY_COLOR: Readonly<Record<SourceOperationalState, string>> = {
   energized: HIGHLIGHT_COLOR.energized,
   standby: HIGHLIGHT_COLOR.standby,
@@ -150,6 +162,12 @@ export const SOURCE_STATE_OVERLAY_COLOR: Readonly<Record<SourceOperationalState,
   maintenance: HIGHLIGHT_COLOR.maintenance,
   fault: HIGHLIGHT_COLOR.fault,
 };
+
+/** KD-8 poz. 1: kolor nakładki stanu źródła dla palety MOTYWU (ta sama tabela
+ *  kluczy, wartości z aktywnej palety). Czysta funkcja — zero stanu. */
+export function sourceStateOverlayColor(state: SourceOperationalState, palette: SldPalette): string {
+  return palette.highlight[SOURCE_STATE_HIGHLIGHT_KEY[state]];
+}
 
 /** F11.3 (spec §9: zero enumów w UI) — polska etykieta stanu (inspektor/
  *  legenda), NIE rysowana na scenie (§13.3: nakładka = kolor, nie tekst). */

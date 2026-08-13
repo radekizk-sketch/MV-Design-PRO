@@ -55,78 +55,22 @@ export interface ProtectionFunction {
   readonly enabled: boolean;
 }
 
-/**
- * Czas zadziałania krzywej IEC 60255-151:
- *   t = (k × β) / ((I/Ip)^α − 1) × TDS
+/*
+ * CHARAKTERYSTYKA IEC 60255-151 I SPRAWDZENIE SELEKTYWNOŚCI — USUNIĘTE (K7-B, 2026-07-31).
  *
- * Stałe per typ krzywej:
- *   SI:  k=0.14, α=0.02
- *   VI:  k=13.5, α=1.0
- *   EI:  k=80.0, α=2.0
- *   LTI: k=120,  α=1.0
+ * Stały tu `IEC_CURVE_CONSTANTS` (k, α dla SI/VI/EI/LTI + rodzina ANSI),
+ * `computeTripTime` (t = k/((I/Ip)^α − 1) · TDS) oraz `checkProtectionCoordination`
+ * (margines Δt pary nadrzędne/podrzędne). Poza własnym testem nikt ich nie wołał —
+ * kreator stacji importuje z tego pliku wyłącznie `FIELD_PROTECTION_PROFILES`.
+ * Była to trzecia równoległa implementacja tej samej normy w warstwie prezentacji
+ * (obok `station-der/selectivity-grading.ts` i `protection/ProtectionWizard.tsx`,
+ * usuniętych tą samą kartą), każda z własnym zestawem stałych.
+ *
+ * Zdolność w backendzie: `api/protection_coordination.py` — krzywe TCC
+ * (`TCCCurveResponse`, `GET /protection-coordination/{run_id}/tcc`) oraz kontrola
+ * selektywności par (`SelectivityCheck`: verdict PASS/MARGINAL/FAIL, margin_s,
+ * required_margin_s, notes_pl) z `POST /protection-coordination/projects/{id}/run`.
  */
-export const IEC_CURVE_CONSTANTS: Readonly<Record<TccCurveType,
-  { readonly k: number; readonly alpha: number }>> = {
-  IEC_SI:    { k: 0.14, alpha: 0.02 },
-  IEC_VI:    { k: 13.5, alpha: 1.0 },
-  IEC_EI:    { k: 80.0, alpha: 2.0 },
-  IEC_LTI:   { k: 120,  alpha: 1.0 },
-  ANSI_MI:   { k: 0.0515, alpha: 0.02 },
-  ANSI_VI:   { k: 19.61, alpha: 2.0 },
-  ANSI_EI:   { k: 28.2,  alpha: 2.0 },
-  DEFINITE_TIME: { k: 0, alpha: 0 },
-};
-
-/**
- * Czas zadziałania zabezpieczenia dla danego prądu (I/Ip).
- */
-export function computeTripTime(
-  func: ProtectionFunction,
-  currentMultiplier: number,
-): number {
-  if (func.curve === 'DEFINITE_TIME' || !func.curve) {
-    return func.definiteTimeSec ?? 0;
-  }
-  if (currentMultiplier <= 1.0) return Infinity;
-  const constants = IEC_CURVE_CONSTANTS[func.curve];
-  const denominator = Math.pow(currentMultiplier, constants.alpha) - 1;
-  const tds = func.tds ?? 1.0;
-  return (constants.k / denominator) * tds;
-}
-
-/**
- * Sprawdzenie selektywności (koordynacji TCC) dwóch zabezpieczeń.
- * Margines selektywności t_upstream - t_downstream ≥ 0.3 s.
- */
-export interface CoordinationCheckInput {
-  readonly downstream: ProtectionFunction;
-  readonly upstream: ProtectionFunction;
-  readonly faultCurrent: number;
-  readonly minMarginSec: number;       // typ. 0.3
-}
-
-export interface CoordinationCheckResult {
-  readonly downstreamTime: number;
-  readonly upstreamTime: number;
-  readonly margin: number;
-  readonly selective: boolean;
-}
-
-export function checkProtectionCoordination(
-  input: CoordinationCheckInput,
-): CoordinationCheckResult {
-  const downRatio = input.faultCurrent / input.downstream.pickup;
-  const upRatio = input.faultCurrent / input.upstream.pickup;
-  const tDown = computeTripTime(input.downstream, downRatio);
-  const tUp = computeTripTime(input.upstream, upRatio);
-  const margin = tUp - tDown;
-  return {
-    downstreamTime: tDown,
-    upstreamTime: tUp,
-    margin,
-    selective: margin >= input.minMarginSec,
-  };
-}
 
 /**
  * Typowe konfiguracje zabezpieczeń per typ pola.

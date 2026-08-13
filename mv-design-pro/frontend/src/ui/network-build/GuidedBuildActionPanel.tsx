@@ -20,7 +20,7 @@ function StatusDot({ ok }: { ok: boolean }) {
     <span
       className={clsx(
         'mt-1 inline-block h-2.5 w-2.5 shrink-0 rounded-full',
-        ok ? 'bg-[#00f0a8]' : 'bg-[#ffb020]',
+        ok ? 'bg-sygnal-ok' : 'bg-sygnal-uwaga',
       )}
       aria-hidden="true"
     />
@@ -208,22 +208,22 @@ export function GuidedBuildActionPanel() {
   ]);
 
   return (
-    <div className="flex h-full flex-col bg-[#07111c] text-[#d7ecff]" data-testid="guided-build-action-panel">
-      <div className="border-b border-[#17314c] px-5 py-4">
-        <p className="font-mono-eng text-[10px] font-semibold uppercase tracking-[0.24em] text-[#58d8ff]">
+    <div className="flex h-full flex-col bg-scada-bg text-sygnal-info-tusz" data-testid="guided-build-action-panel">
+      <div className="border-b border-scada-border px-5 py-4">
+        <p className="font-mono-eng text-[10px] font-semibold uppercase tracking-[0.24em] text-sygnal-info-tusz">
           Konfiguracja układu
         </p>
         <h2 className="mt-2 text-sm font-semibold text-white">{buildPhaseLabel}</h2>
       </div>
 
       <div className="flex-1 space-y-5 overflow-y-auto px-5 py-5">
-        <section className="border border-[#1f3d5c] bg-[#0b1726]">
-          <div className="border-b border-[#1f3d5c] px-4 py-3">
-            <p className="font-mono-eng text-[11px] font-semibold uppercase tracking-[0.18em] text-[#00e7ff]">
+        <section className="border border-scada-border bg-scada-bg">
+          <div className="border-b border-scada-border px-4 py-3">
+            <p className="font-mono-eng text-[11px] font-semibold uppercase tracking-[0.18em] text-sygnal-info-tusz">
               Następny krok projektowy
             </p>
             <h3 className="mt-2 text-base font-semibold text-white">{nextAction.title}</h3>
-            <p className="mt-2 text-xs leading-5 text-[#95b8d8]">{nextAction.detail}</p>
+            <p className="mt-2 text-xs leading-5 text-scada-text">{nextAction.detail}</p>
           </div>
           <div className="space-y-3 px-4 py-4">
             <button
@@ -231,8 +231,8 @@ export function GuidedBuildActionPanel() {
               className={clsx(
                 'w-full border px-4 py-3 text-left text-sm font-semibold transition-colors',
                 nextAction.enabled
-                  ? 'border-[#04d6ff] bg-[#063855] text-white hover:bg-[#074b70]'
-                  : 'cursor-not-allowed border-[#263d55] bg-[#09131f] text-[#69849f]',
+                  ? 'border-sygnal-info bg-sygnal-info-tlo text-white hover:bg-sygnal-info-tlo'
+                  : 'cursor-not-allowed border-scada-border bg-scada-bg text-scada-muted',
               )}
               onClick={handlePrimaryAction}
               disabled={!nextAction.enabled}
@@ -241,17 +241,17 @@ export function GuidedBuildActionPanel() {
               {nextAction.buttonLabel}
             </button>
             {nextAction.blockedReason && (
-              <p className="text-[11px] leading-5 text-[#ffbf5a]">{nextAction.blockedReason}</p>
+              <p className="text-[11px] leading-5 text-sygnal-uwaga-tusz">{nextAction.blockedReason}</p>
             )}
           </div>
         </section>
 
         <section
-          className="space-y-3 border border-[#1f3d5c] bg-[#081522] px-4 py-4"
+          className="space-y-3 border border-scada-border bg-scada-bg px-4 py-4"
           data-testid="sld-readiness-stack"
           aria-label="Gotowość obliczeń i struktura układu"
         >
-          <p className="font-mono-eng text-[11px] font-semibold uppercase tracking-[0.18em] text-[#7db6e8]">
+          <p className="font-mono-eng text-[11px] font-semibold uppercase tracking-[0.18em] text-sygnal-info-tusz">
             Struktura układu
           </p>
           <div className="space-y-3 text-xs">
@@ -259,14 +259,14 @@ export function GuidedBuildActionPanel() {
               <StatusDot ok={sourceCount > 0} />
               <div>
                 <p className="font-semibold text-white">Źródło zasilania GPZ</p>
-                <p className="text-[#88a9c9]">{sourceCount > 0 ? 'Gotowe' : 'Wymagane jako pierwszy krok'}</p>
+                <p className="text-scada-text">{sourceCount > 0 ? 'Gotowe' : 'Wymagane jako pierwszy krok'}</p>
               </div>
             </div>
             <div className="flex gap-3">
               <StatusDot ok={configuredGpzSnFieldCount > 0} />
               <div>
                 <p className="font-semibold text-white">Pole SN GPZ</p>
-                <p className="text-[#88a9c9]">
+                <p className="text-scada-text">
                   {configuredGpzSnFieldCount > 0 ? `${configuredGpzSnFieldCount} pole odpływowe` : 'Wymagane przed magistralą'}
                 </p>
               </div>
@@ -275,28 +275,28 @@ export function GuidedBuildActionPanel() {
               <StatusDot ok={trunkSegmentCount > 0} />
               <div>
                 <p className="font-semibold text-white">Magistrala SN</p>
-                <p className="text-[#88a9c9]">{trunkSegmentCount > 0 ? `${trunkSegmentCount} odc. SN` : 'Po skonfigurowaniu pola SN'}</p>
+                <p className="text-scada-text">{trunkSegmentCount > 0 ? `${trunkSegmentCount} odc. SN` : 'Po skonfigurowaniu pola SN'}</p>
               </div>
             </div>
             <div className="flex gap-3">
               <StatusDot ok={stationCount > 0} />
               <div>
                 <p className="font-semibold text-white">Stacje SN/nN</p>
-                <p className="text-[#88a9c9]">{stationCount > 0 ? `${stationCount} stacji` : 'Po wyprowadzeniu magistrali'}</p>
+                <p className="text-scada-text">{stationCount > 0 ? `${stationCount} stacji` : 'Po wyprowadzeniu magistrali'}</p>
               </div>
             </div>
             <div className="flex gap-3">
               <StatusDot ok={transformerCount > 0} />
               <div>
                 <p className="font-semibold text-white">Transformatory i odbiory</p>
-                <p className="text-[#88a9c9]">{transformerCount > 0 ? `${transformerCount} transformatorów` : 'Uzupełniane w kartach stacji'}</p>
+                <p className="text-scada-text">{transformerCount > 0 ? `${transformerCount} transformatorów` : 'Uzupełniane w kartach stacji'}</p>
               </div>
             </div>
           </div>
         </section>
       </div>
 
-      <div className="border-t border-[#17314c] px-5 py-3 text-[11px] text-[#88a9c9]">
+      <div className="border-t border-scada-border px-5 py-3 text-[11px] text-scada-text">
         {isReady ? 'Można wykonać obliczenia.' : 'Skonfiguruj układ techniczny przed wykonaniem obliczeń.'}
       </div>
     </div>

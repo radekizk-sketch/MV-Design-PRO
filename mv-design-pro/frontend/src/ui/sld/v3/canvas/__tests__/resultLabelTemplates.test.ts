@@ -133,8 +133,11 @@ describe('resultLabelTemplates — zwijanie wg LOD (wym. 5)', () => {
     { prefix: 'Q', text: '+0,9 Mvar' },
   ];
 
-  it('L0 ⇒ brak linii (warstwa nic nie renderuje)', () => {
-    expect(resultLabelLinesForLod(lines, 0)).toEqual([]);
+  it('S9-2: L0 ⇒ JEDNA linia (wartosc zbiorcza/stacyjna) — poziom przegladu ma pokazac wynik, nie nic', () => {
+    // ZMIANA KANONU (audyt 2026-08, W-1): dotad L0 nie renderowal ZADNEJ liczby,
+    // wiec rysunek calej sieci po biegu wygladal identycznie jak przed biegiem.
+    // Przycinanie do jednej linii zostaje — to nadal poziom PRZEGLADU.
+    expect(resultLabelLinesForLod(lines, 0)).toEqual([{ prefix: 'obc.', text: '72,5 %' }]);
   });
   it('L1 ⇒ jedna najważniejsza wartość (pierwsza w priorytecie)', () => {
     expect(resultLabelLinesForLod(lines, 1)).toEqual([{ prefix: 'obc.', text: '72,5 %' }]);

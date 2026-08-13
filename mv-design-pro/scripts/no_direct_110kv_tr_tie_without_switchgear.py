@@ -14,9 +14,7 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-GPZ_CANONICAL_RENDERER = (
-    REPO_ROOT / "frontend/src/ui/sld/v2/renderer/GpzCanonicalRenderer.tsx"
-)
+GPZ_CANONICAL_RENDERER = REPO_ROOT / "frontend/src/ui/sld/v2/renderer/GpzCanonicalRenderer.tsx"
 
 REQUIRED_MARKERS: tuple[str, ...] = (
     'data-testid="gpz-canonical-hv-bus"',

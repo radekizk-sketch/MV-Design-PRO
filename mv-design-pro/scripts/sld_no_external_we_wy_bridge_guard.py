@@ -1,6 +1,5 @@
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 RENDERER = ROOT / "frontend/src/ui/sld/v2/renderer/MiniBlockRmuRenderer.tsx"
 TEST = ROOT / "frontend/src/ui/sld/v2/renderer/__tests__/miniBlockRmu.test.tsx"

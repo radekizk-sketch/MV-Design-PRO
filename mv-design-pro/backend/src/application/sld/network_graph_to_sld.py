@@ -17,6 +17,7 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID, uuid5
 
+from domain.sld import SldDiagram
 from network_model.core.graph import NetworkGraph
 
 # Fixed namespace UUID for deterministic string -> UUID mapping.
@@ -126,7 +127,7 @@ def build_sld_from_network_graph(
     name: str = "SLD",
     x_spacing: float = 200.0,
     y_spacing: float = 150.0,
-):
+) -> SldDiagram:
     """
     High-level function: NetworkGraph -> SldDiagram in one step.
 

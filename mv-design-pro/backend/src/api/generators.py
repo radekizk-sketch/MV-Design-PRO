@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 from typing import Any, Literal
 from uuid import UUID
 
@@ -29,12 +30,15 @@ from domain.dobor_przekladnika import (
 )
 from enm.domain_operations import execute_domain_operation
 from enm.models import EnergyNetworkModel
+from enm.store import blokada_przypadku
 from enm.store import get_enm as _get_enm
 from enm.store import has_enm as _has_enm
 from enm.store import set_enm as _set_enm
 from fastapi import APIRouter, HTTPException, Request, status
 from network_model.catalog.audit2_catalogs import get_block_transformer
 from pydantic import BaseModel, Field, field_validator
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/projects", tags=["generators"])
 
@@ -96,6 +100,10 @@ class DerCatalogBindingsRequest(BaseModel):
     pominięte zostawia wiązanie w modelu bez zmian, a ``null`` je USUWA (reguła gotowości
     znów widzi brak danej). Dlatego pola nie mają wartości domyślnych podstawianych po
     cichu — o rozróżnienie dba ``model_fields_set``.
+
+    UWAGA: samo ``model_fields_set`` chroni tylko przed kasowaniem pól przez KSZTAŁT
+    żądania. Przed kasowaniem ich przez WYŚCIG (dwa równoległe żądania czytające ten
+    sam model przed zapisem) chroni dopiero blokada całego cyklu w końcówce.
     """
 
     protection_catalog_ref: str | None = None
@@ -428,16 +436,33 @@ def _build_domain_payload(
     "/{project_id}/cases/{case_id}/generators",
     status_code=status.HTTP_201_CREATED,
 )
-async def create_der_generator(
+def create_der_generator(
     project_id: str,
     case_id: str,
     req: DerGeneratorCreateRequest,
     request: Request,
 ) -> dict[str, Any]:
-    """Zapisz konfigurację DER jako generator w kanonicznym ENM."""
+    """Zapisz konfigurację DER jako generator w kanonicznym ENM.
+
+    WSPÓŁBIEŻNOŚĆ (znalezisko P5 przeglądu fali 2026-08-01). Blokada obejmuje CAŁY
+    cykl odczyt → operacja domenowa → zapis, a nie sam zapis: blokada założona
+    dopiero na `_set_enm` nie pomaga, bo stary model został odczytany wcześniej.
+    Bez niej równoległe zatwierdzenie szablonu stacji (`def`, pula wątków
+    Starlette) i ta końcówka (`async def`, pętla zdarzeń) gubiły nawzajem swoją
+    pracę przy `HTTP 200`/`HTTP 201` i zwracały identyfikatory elementów, których
+    w zapisanej migawce nie ma. Blokada jest per przypadek obliczeniowy.
+
+    Kontekst projektu/przypadku sprawdzamy PRZED wejściem pod blokadę — odrzucone
+    żądanie nie ma powodu czekać na cudzy cykl.
+    """
 
     _validate_project_case_context(request, project_id, case_id)
 
+    with blokada_przypadku(case_id):
+        return _utworz_wytworce_pod_blokada(case_id, req)
+
+
+def _utworz_wytworce_pod_blokada(case_id: str, req: DerGeneratorCreateRequest) -> dict[str, Any]:
     enm = _get_enm(case_id)
     enm_dict = enm.model_dump(mode="json")
     payload = _build_domain_payload(enm_dict, req)
@@ -473,11 +498,16 @@ async def create_der_generator(
             saved = _set_enm(case_id, EnergyNetworkModel.model_validate(result["snapshot"]))
             result["snapshot"] = saved.model_dump(mode="json")
         except Exception as exc:  # pragma: no cover - defensive validation guard
+            logger.exception("Zapis modelu ENM po konfiguracji DER nie powiódł się")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail={
                     "code": "api.snapshot_validation_failed",
-                    "message_pl": f"Błąd zapisu snapshotu ENM: {exc}",
+                    # Bez f"...{exc}" — szczegół (ścieżka FS) tylko do dziennika serwera.
+                    "message_pl": (
+                        "Nie udało się zapisać modelu sieci — model pozostał bez zmian. "
+                        "Powtórz operację; szczegóły są w dzienniku serwera."
+                    ),
                 },
             ) from exc
 
@@ -485,14 +515,21 @@ async def create_der_generator(
 
 
 @router.patch("/{project_id}/cases/{case_id}/generators/{generator_ref:path}/bindings")
-async def set_der_bindings(
+def set_der_bindings(
     project_id: str,
     case_id: str,
     generator_ref: str,
     req: DerCatalogBindingsRequest,
     request: Request,
 ) -> dict[str, Any]:
-    """Zapisz wiązania katalogowe i profile zgodności wytwórcy w kanonicznym ENM."""
+    """Zapisz wiązania katalogowe i profile zgodności wytwórcy w kanonicznym ENM.
+
+    WSPÓŁBIEŻNOŚĆ (znalezisko P5 przeglądu fali 2026-08-01). Blokada obejmuje CAŁY
+    cykl odczyt → operacja domenowa → zapis — patrz `create_der_generator`. Bez
+    niej dwa równoległe żądania edytujące RÓŻNE wiązania tego samego wytwórcy
+    kasowały się nawzajem: oba czytały model sprzed zmiany sąsiada, więc do modelu
+    trafiało tylko wiązanie tego, kto zapisał jako ostatni.
+    """
 
     _validate_project_case_context(request, project_id, case_id)
 
@@ -503,6 +540,11 @@ async def set_der_bindings(
     for pole in req.model_fields_set:
         payload[pole] = getattr(req, pole)
 
+    with blokada_przypadku(case_id):
+        return _zapisz_wiazania_pod_blokada(case_id, payload)
+
+
+def _zapisz_wiazania_pod_blokada(case_id: str, payload: dict[str, Any]) -> dict[str, Any]:
     enm = _get_enm(case_id)
     resolved_name = resolve_operation_name("set_der_catalog_bindings")
     result = execute_domain_operation(
@@ -524,11 +566,16 @@ async def set_der_bindings(
             saved = _set_enm(case_id, EnergyNetworkModel.model_validate(result["snapshot"]))
             result["snapshot"] = saved.model_dump(mode="json")
         except Exception as exc:  # pragma: no cover - defensive validation guard
+            logger.exception("Zapis modelu ENM po konfiguracji DER nie powiódł się")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail={
                     "code": "api.snapshot_validation_failed",
-                    "message_pl": f"Błąd zapisu snapshotu ENM: {exc}",
+                    # Bez f"...{exc}" — szczegół (ścieżka FS) tylko do dziennika serwera.
+                    "message_pl": (
+                        "Nie udało się zapisać modelu sieci — model pozostał bez zmian. "
+                        "Powtórz operację; szczegóły są w dzienniku serwera."
+                    ),
                 },
             ) from exc
 
@@ -613,7 +660,7 @@ def _funkcje_urzadzenia(protection_ref: str | None) -> tuple[tuple[str, ...] | N
 
 
 @router.get("/{project_id}/cases/{case_id}/generators/{generator_ref:path}/protection-functions")
-async def get_der_protection_functions(
+def get_der_protection_functions(
     project_id: str,
     case_id: str,
     generator_ref: str,
@@ -682,7 +729,7 @@ async def get_der_protection_functions(
 
 
 @router.get("/{project_id}/cases/{case_id}/generators/{generator_ref:path}/readiness")
-async def get_der_readiness(
+def get_der_readiness(
     project_id: str,
     case_id: str,
     generator_ref: str,
@@ -744,7 +791,7 @@ async def get_der_readiness(
 
 
 @router.get("/{project_id}/cases/{case_id}/generators/{generator_ref:path}/instrument-transformers")
-async def get_der_instrument_transformers(
+def get_der_instrument_transformers(
     project_id: str,
     case_id: str,
     generator_ref: str,

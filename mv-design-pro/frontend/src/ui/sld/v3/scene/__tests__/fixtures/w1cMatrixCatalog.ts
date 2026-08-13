@@ -22,7 +22,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import type { BayPrimaryDevice, BaySwitchState, EnergyNetworkModel } from '../../../../../types/enm';
+import type { BayPrimaryDevice, BaySwitchState, EnergyNetworkModel } from '../../../../../../types/enm';
 import { buildSceneV3 } from '../../buildScene';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -316,7 +316,6 @@ export function buildW1cMatrixFixture(): W1cMatrixFixture {
   const safeRefs = connectionSafeFieldRefs(baseEnm);
   const isSafe = (host: { spec: RawFieldSpec }): boolean => safeRefs.has(host.spec.field_ref ?? '');
   const safeHosts = hostFields.filter(isSafe);
-  const otherHosts = hostFields.filter((h) => !isSafe(h));
   const pathlessCases = cases.filter((c) => !c.mainPath);
   const mainPathCases = cases.filter((c) => c.mainPath);
 

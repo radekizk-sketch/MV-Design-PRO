@@ -49,6 +49,8 @@
  *      i skala ZACHOWANE, dostosowywany jest tylko punkt centrowania).
  */
 import {
+  centerOnPoint,
+  fitToView,
   initialCameraForNetwork,
   pan as panTransform,
   screenToWorld,
@@ -58,6 +60,7 @@ import {
   IDENTITY_TRANSFORM,
   type ViewportTransform,
   type BoundingBox,
+  type SafeInsets,
 } from '../../v2/viewport/ViewportController';
 import type { V3Rect } from '../core/grid';
 import type { SceneLod } from '../scene/buildScene';
@@ -96,20 +99,37 @@ export interface LodThresholds {
  *      którym pełen szczegół aparatury + parametry są uzasadnione.
  *  Środek pasma histerezy (~1,18–1,19) zaokrąglony do 1,2.
  *
- *  ── l0Max (granica L0↔L1) — brama: GLIF stacji 48 px ────────────────────
- *  L0 pokazuje stacje jako zbiorczy glif mini-RMU 48×48 px ŚWIATA
- *  (`symbols/defs.ts` `stationCollapsed`, 6×GRID). Odniesienie pomiarowe
- *  (tamże): przy dopasowaniu CAŁEJ sieci referencyjnej `sldSubstrate52s`
- *  (skala fit ≈ 0,1203) glif renderuje 5,78 px ekranu — PRÓG rozpoznawalności
- *  (16 px świata dawało 1,93 px, nieodróżnialne od kropki węzła).
- *    • wejście L0→L1 przy `l0Max·(1+margin) = 0,4·1,15 = 0,46` — ok. 3,8×
- *      skali przeglądu całej sieci (0,46/0,12), gdzie wewnętrzny detal
- *      mini-RMU (obrys enklozury + kreska szyny, cechy ~8 px świata ⇒ ~3 px
- *      ekranu każda) staje się rozróżnialny i uzasadnia sylwetkę operatorską
- *      (pola liniowe);
- *    • powrót L1→L0 przy `l0Max·(1−margin) = 0,4·0,85 = 0,34` — ok. 2,8×
- *      skali przeglądu; poniżej detal operatorski zwija się do
- *      rozpoznawalnego mini-RMU.
+ *  ── l0Max (granica L0↔L1) — brama: APARAT 16 px (K11-B) ─────────────────
+ *  L1 wnosi rozwinięte pola stacji: aparaty toru (wyłącznik/odłącznik/
+ *  rozłącznik/bezpiecznik, `symbols/defs.ts`) o NAJMNIEJSZYM gabarycie
+ *  16 px ŚWIATA. Na ekranie: `16 · refScale` px.
+ *    • wyjście L1→L0 przy `l0Max·(1−margin) = 0,6·0,85 = 0,51`
+ *      ⇒ aparat = 16·0,51 = 8,16 px ekranu — tuż nad progiem
+ *      rozpoznawalności kształtu `MIN_SYMBOL_SCREEN_PX = 8`
+ *      (`symbols/defs.ts`); poniżej przerwa styku odłącznika i prostokąt
+ *      wyłącznika zlewają się w tę samą plamkę, więc rozwinięte pole
+ *      przestaje być informacją, a staje się szumem;
+ *    • wejście L0→L1 przy `l0Max·(1+margin) = 0,6·1,15 = 0,69`
+ *      ⇒ aparat = 11,0 px ekranu — rozmiar, przy którym kształt aparatu jest
+ *      czytany bez wysiłku; ok. 5,7× skali przeglądu całej sieci
+ *      referencyjnej (0,69/0,12).
+ *
+ *  K11-B (karta K11-B §0.2, dyrektywa właściciela z oceny ekranu 2/10 —
+ *  „minimalny rozmiar renderowania symboli"; ŚWIADOMA ZMIANA PROGU
+ *  0,4 → 0,6). Poprzednie 0,4 było wyprowadzone z rozpoznawalności GLIFU
+ *  STACJI na L0 (mini-RMU 48 px, V12K-137), czyli z reprezentacji, którą L0
+ *  ZASTĘPUJE — nie z tej, którą L1 WPROWADZA. Skutek zmierzony: przy wyjściu
+ *  L1→L0 na progu 0,4·0,85 = 0,34 najmniejszy aparat pola renderował 5,44 px,
+ *  a więc L1 rysował pełne rozwinięcie 53 stacji (765 symboli) jako gąszcz
+ *  plamek poniżej progu rozpoznawalności — dokładnie objaw z oceny ekranu.
+ *  Próg 0,6 wyprowadzony ODWROTNIE, z bramy tej warstwy:
+ *  `l0Max = MIN_SYMBOL_SCREEN_PX / (najmniejszy gabaryt · (1−margin))
+ *         = 8 / (16 · 0,85) = 0,588` → zaokrąglone w GÓRĘ do 0,6.
+ *  Glif mini-RMU nie przestaje przez to być kalibrowany: 48 px świata przy
+ *  skali przeglądu 0,12 dalej daje 5,78 px (V12K-137) — L0 pozostaje
+ *  reprezentacją NAJZGRUBSZĄ, poniżej której nie ma czego przełączać.
+ *  Dowód progu: `canvas/__tests__/minSymbolSize.contract.test.ts`.
+ *
  *  Uwaga o normalizacji: glif żyje w świecie L0, a próg jest w `refScale`
  *  (świat L2); kotwica pozostaje ta sama między LOD (JEDNA KOTWICA), więc
  *  ekranowy rozmiar stacji jest CIĄGŁY w poprzek granicy (własność
@@ -122,7 +142,7 @@ export interface LodThresholds {
  * `refScale` z konstrukcji — nie może retriggerować przejścia w odwrotną
  * stronę na następnym ticku.
  */
-export const DEFAULT_LOD_THRESHOLDS: LodThresholds = { l0Max: 0.4, l1Max: 1.2 };
+export const DEFAULT_LOD_THRESHOLDS: LodThresholds = { l0Max: 0.6, l1Max: 1.2 };
 
 /**
  * Margines histerezy — daje OSOBNE progi wejścia/wyjścia wokół każdej granicy
@@ -185,6 +205,35 @@ export function lodFromScaleWithHysteresis(
     else break;
   }
   return lod;
+}
+
+/**
+ * KD-5 — WSPÓŁCZYNNIK ZOOMU do przekroczenia progu WEJŚCIA na poziom wyższy
+ * niż `fromLod`. Potrzebny dla jednej interakcji: klik/dwuklik w ZWINIĘTY blok
+ * GPZ ma go rozwinąć, a rozwinięcie jest własnością POZIOMU SZCZEGÓŁU, nie
+ * osobnego trybu — więc „rozwiń" znaczy dokładnie „zbliż do progu".
+ *
+ * Zero nowego toru: wynik podaje się istniejącej akcji `'zoom'`
+ * (`cameraReducer`), która sama przełączy LOD histerezą (`lodFromScaleWith
+ * Hysteresis`) i zmapuje skalę (`applyLodScaleMapping`). Próg czytany z TEJ
+ * SAMEJ tabeli `DEFAULT_LOD_THRESHOLDS` i marginesu `LOD_HYSTERESIS_MARGIN`,
+ * co histereza kamery — brak drugiego systemu progów (rozstrzygnięcie karty).
+ *
+ * `1` (brak zoomu) gdy: poziom najwyższy (nie ma czego rozwijać), `refScale`
+ * już powyżej progu wejścia, albo dane zdegenerowane — funkcja NIGDY nie
+ * oddala (współczynnik < 1 byłby cofnięciem, nie rozwinięciem).
+ */
+export function zoomFactorToEnterNextLod(
+  refScale: number,
+  fromLod: SceneLod,
+  thresholds: LodThresholds = DEFAULT_LOD_THRESHOLDS,
+  margin: number = LOD_HYSTERESIS_MARGIN,
+): number {
+  if (fromLod >= 2) return 1;
+  if (!Number.isFinite(refScale) || refScale <= 0) return 1;
+  const target = (fromLod === 0 ? thresholds.l0Max : thresholds.l1Max) * (1 + margin);
+  const factor = target / refScale;
+  return factor > 1 ? factor : 1;
 }
 
 /**
@@ -253,6 +302,11 @@ export interface CameraState {
 export type CameraAction =
   | { readonly type: 'zoom'; readonly cursor: { readonly x: number; readonly y: number }; readonly factor: number }
   | { readonly type: 'pan'; readonly delta: { readonly x: number; readonly y: number } }
+  /** K11-B (karta K11-B §0.1): przeniesienie kadru na WSKAZANY punkt świata —
+   *  jedyna akcja minimapy (nawigatora). CZYSTA translacja: `scale` (a więc i
+   *  `lod`) NIETKNIĘTE, geometria sceny NIETKNIĘTA — minimapa nawiguje, nie
+   *  zmienia poziomu szczegółu ani rysunku (patrz `applyCenter`). */
+  | { readonly type: 'center'; readonly worldPoint: { readonly x: number; readonly y: number } }
   /** k3: zmiana width/height PO MOUNCIE — zachowuje centrum świata i skalę,
    *  dostosowuje WYŁĄCZNIE viewport (patrz `applyResize`). */
   | { readonly type: 'resize'; readonly viewportSize: { readonly width: number; readonly height: number } }
@@ -267,6 +321,26 @@ export type CameraAction =
       /** F12-C (E15): środek bloku GPZ dla trybu „focus" kamery mobilnej —
        *  patrz `computeInitialCameraState`; brak/`null` = ścieżka „fit". */
       readonly focusPoint?: { readonly x: number; readonly y: number } | null;
+      /** S9-8: pasy kanwy zasłonięte dokami UI — kadr liczony w prostokącie
+       *  BEZPIECZNYM (patrz `SLD_CANVAS_DOCK_INSETS`, `canvas/toolbarLayout.ts`).
+       *  Brak ⇒ `ZERO_INSETS`, czyli zachowanie sprzed karty. */
+      readonly safeInsets?: SafeInsets;
+    }
+  /** B-2 (audyt §4.3): KOTWICZENIE WIDOKU NA ZMIANIE — model urósł, a kamera
+   *  ma zostać przy miejscu edycji zamiast wracać do widoku całej sieci.
+   *  `anchorByLod` to prostokąt obiektu WSKAZANEGO przez operację, osobno na
+   *  każdym poziomie szczegółu (`canvas/viewAnchor.ts`). Patrz `applyAnchor`. */
+  | {
+      readonly type: 'kotwicz';
+      readonly anchorByLod: Readonly<Record<SceneLod, BoundingBox>>;
+      readonly lodBboxes: Readonly<Record<SceneLod, BoundingBox>>;
+      readonly viewportSize: { readonly width: number; readonly height: number };
+      readonly safeInsets?: SafeInsets;
+      /** k4.1 dla kotwicy: gdy wołający WYMUSZA poziom szczegółu
+       *  (`lodOverride` — render nie pyta kamery o `lod`), kotwica musi celować
+       *  w geometrię TEGO świata i nie wolno jej przełączać poziomu. Brak =
+       *  poziom wynika z kamery (ścieżka produkcyjna bez wymuszenia). */
+      readonly wymuszonyLod?: SceneLod;
     };
 
 /**
@@ -331,9 +405,122 @@ function applyResize(
   return { ...state, transform, viewportSize: nextViewportSize };
 }
 
+/**
+ * K11-B — 'center': punkt świata `worldPoint` ląduje pod ŚRODKIEM viewportu,
+ * przy NIEZMIENIONEJ skali. Jedyna transformacja, jakiej dokonuje minimapa
+ * (klik = centrowanie, przeciąganie prostokąta kadru = ciąg centrowań):
+ * `scale` nietknięte ⇒ `refScale` nietknięte ⇒ histereza nie może zmienić
+ * `lod` (poziom szczegółu jest własnością ZOOMU, nie położenia kadru), a
+ * scena/geometria nie są w ogóle dotykane — zmienia się WYŁĄCZNIE `viewBox`.
+ */
+function applyCenter(state: CameraState, worldPoint: { readonly x: number; readonly y: number }): CameraState {
+  const { scale } = state.transform;
+  if (!Number.isFinite(scale) || scale <= 0) return state;
+  const center = { x: state.viewportSize.width / 2, y: state.viewportSize.height / 2 };
+  return {
+    ...state,
+    transform: {
+      scale,
+      translateX: center.x - worldPoint.x * scale,
+      translateY: center.y - worldPoint.y * scale,
+    },
+  };
+}
+
+/**
+ * B-2 — 'kotwicz': kamera ZOSTAJE przy obiekcie wskazanym przez operację
+ * zamiast wracać do widoku całej sieci (pełny opis defektu i pomiar:
+ * `canvas/viewAnchor.ts`).
+ *
+ * ZASADA (trzy niezmienniki, każdy przypięty testem
+ * `__tests__/kotwicaWidoku.contract.test.tsx`):
+ *  1. **Przybliżenie projektanta zostaje.** Skala NIGDY nie rośnie; maleje
+ *     wyłącznie o tyle, ile trzeba, żeby wskazany obiekt zmieścił się w kadrze
+ *     (`fitToView` na prostokącie KOTWICY, nie całej sieci) — czyli w
+ *     najgorszym razie kamera schodzi do widoku tego obiektu, nigdy do widoku
+ *     całości. Kotwica NIE może rozjechać auto-fitu: `fitToView` clampuje do
+ *     `MIN_SCALE`/`MAX_SCALE` dokładnie tak samo jak refit, a ponieważ kotwica
+ *     jest PODZBIOREM treści, jej skala dopasowania jest z konstrukcji nie
+ *     mniejsza niż skala fitu całej sieci.
+ *  2. **Obiekt ląduje w prostokącie BEZPIECZNYM**, nie pod dokami UI —
+ *     `centerOnPoint` z tymi samymi `safeInsets`, których używa refit (S9-8).
+ *  3. **Poziom szczegółu podąża za skalą przez tę samą histerezę**, co zoom
+ *     (`lodFromScaleWithHysteresis` na `refScale`) — kotwiczenie nie tworzy
+ *     drugiej polityki LOD. Gdy przejście LOD zajdzie, skala jest przeliczana
+ *     do świata nowego poziomu tą samą proporcją szerokości co
+ *     `applyLodScaleMapping`, a prostokąt kotwicy brany z TEGO poziomu (stąd
+ *     `anchorByLod`, nie jeden prostokąt) — inaczej kadr celowałby w geometrię
+ *     z innego świata. Pętla ma twardy limit 3 obrotów (0↔1↔2 to najwyżej dwa
+ *     przejścia) i jest czysto arytmetyczna — determinizm P7.
+ */
+function applyAnchor(
+  state: CameraState,
+  action: Extract<CameraAction, { type: 'kotwicz' }>,
+): CameraState {
+  const { viewportSize, lodBboxes, anchorByLod, safeInsets } = action;
+  let lod: SceneLod = action.wymuszonyLod ?? state.lod;
+  let scale = state.transform.scale;
+  if (!Number.isFinite(scale) || scale <= 0) return state;
+
+  // Poziom WYMUSZONY przez wołającego (k4.1): kotwica celuje w świat, który jest
+  // renderowany, i nie przełącza poziomu — decyzja o poziomie należy wtedy do
+  // wołającego, nie do histerezy kamery.
+  if (action.wymuszonyLod !== undefined) {
+    const box = anchorByLod[lod];
+    const skalaMieszczaca = fitToView(box, viewportSize, undefined, safeInsets).scale;
+    const skalaKoncowa = Math.min(MAX_SCALE, Math.max(MIN_SCALE, Math.min(scale, skalaMieszczaca)));
+    return {
+      transform: centerOnPoint(
+        { x: (box.minX + box.maxX) / 2, y: (box.minY + box.maxY) / 2 },
+        viewportSize,
+        skalaKoncowa,
+        safeInsets,
+      ),
+      lod: state.lod,
+      viewportSize,
+      lodBboxes,
+    };
+  }
+
+  for (let obrot = 0; obrot < 3; obrot += 1) {
+    // Skala, przy której CAŁY wskazany obiekt mieści się w prostokącie
+    // bezpiecznym (z tym samym paddingiem fitu co refit).
+    const skalaMieszczaca = fitToView(anchorByLod[lod], viewportSize, undefined, safeInsets).scale;
+    const skalaCelu = Math.min(scale, skalaMieszczaca);
+    const nastepnyLod = lodFromScaleWithHysteresis(
+      refScaleFor(skalaCelu, lod, lodBboxes),
+      lod,
+    );
+    if (nastepnyLod === lod) {
+      scale = skalaCelu;
+      break;
+    }
+    const szerokoscZ = lodBboxes[lod].maxX - lodBboxes[lod].minX;
+    const szerokoscDo = lodBboxes[nastepnyLod].maxX - lodBboxes[nastepnyLod].minX;
+    scale = szerokoscZ > 0 && szerokoscDo > 0 ? skalaCelu * (szerokoscZ / szerokoscDo) : skalaCelu;
+    lod = nastepnyLod;
+  }
+
+  const box = anchorByLod[lod];
+  const srodek = { x: (box.minX + box.maxX) / 2, y: (box.minY + box.maxY) / 2 };
+  const skalaKoncowa = Math.min(MAX_SCALE, Math.max(MIN_SCALE, scale));
+  return {
+    transform: centerOnPoint(srodek, viewportSize, skalaKoncowa, safeInsets),
+    lod,
+    viewportSize,
+    lodBboxes,
+  };
+}
+
 export function cameraReducer(state: CameraState, action: CameraAction): CameraState {
   if (action.type === 'resize') {
     return applyResize(state, action.viewportSize);
+  }
+  if (action.type === 'center') {
+    return applyCenter(state, action.worldPoint);
+  }
+  if (action.type === 'kotwicz') {
+    return applyAnchor(state, action);
   }
   if (action.type === 'refit') {
     // F12-C (E15): refit honoruje `focusPoint` tak samo jak stan początkowy
@@ -345,6 +532,7 @@ export function cameraReducer(state: CameraState, action: CameraAction): CameraS
       viewportSize: action.viewportSize,
       focusPoint: action.focusPoint ?? null,
       readableMinScale: MOBILE_PORTRAIT_READABLE_MIN_SCALE,
+      insets: action.safeInsets,
     }).transform;
     return {
       transform,
@@ -406,12 +594,16 @@ export function computeInitialCameraState(
   viewportSize: { readonly width: number; readonly height: number },
   lodBboxes?: Readonly<Record<SceneLod, BoundingBox>>,
   focusPoint?: { readonly x: number; readonly y: number } | null,
+  /** S9-8: pasy zasłonięte dokami UI — patrz `CameraAction` `'refit'`.
+   *  Brak ⇒ `ZERO_INSETS` (zachowanie sprzed karty, testy kamery bez zmian). */
+  safeInsets?: SafeInsets,
 ): CameraState {
   const transform = initialCameraForNetwork({
     bbox,
     viewportSize,
     focusPoint: focusPoint ?? null,
     readableMinScale: MOBILE_PORTRAIT_READABLE_MIN_SCALE,
+    insets: safeInsets,
   }).transform;
   return {
     transform,

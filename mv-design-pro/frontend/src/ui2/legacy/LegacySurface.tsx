@@ -19,6 +19,7 @@ import './legacy.css';
 import { SldCanvasV3Workspace } from '../../ui/sld/v3/canvas/SldCanvasV3Workspace';
 import { WorkspaceSurfaceRouter } from '../../ui/workspace';
 import type { SpaceId } from '../shell/spaces';
+import { useShellStore } from '../shell/useShellStore';
 import { MostAnalizTechnicznych } from '../wyniki/analizy';
 import { REJESTR_LEGACY } from './legacyRegistry';
 
@@ -38,7 +39,12 @@ function OprawaWarsztatu({ children }: { children: ReactNode }) {
  * przy JAWNYM wyborze przestrzeni (AppRoot.onActiveSpaceChange); montaż nie
  * może nadpisywać deep-linków (#analysis/#variants/...). */
 function LegacySld() {
-  return <SldCanvasV3Workspace />;
+  // KD-4 (luka L-1): tryb PODGLĄDU kanwy sterowany z powłoki. Do tej karty
+  // zdolność „tylko do odczytu" miała wyłącznie trasa mostu `#sld-view`
+  // (wejście: wyszukiwarka poleceń), więc z przestrzeni „Schemat" nie dało się
+  // jej włączyć. Dostawca bez zmian — istniejący prop `readOnly` kanwy.
+  const podglad = useShellStore((s) => s.podgladSchematu);
+  return <SldCanvasV3Workspace readOnly={podglad} />;
 }
 
 /** Obliczenia: konfiguracja zakresu obliczeń + historia przebiegów (study-cases). */

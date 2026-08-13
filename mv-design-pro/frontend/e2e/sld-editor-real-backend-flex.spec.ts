@@ -231,6 +231,30 @@ function findBranchCapableFieldPort(snapshot: DomainOpResponse['snapshot']): str
   return null;
 }
 
+/**
+ * NAPRAWA (karta TESTY-DRYF-E2E poz. 5, 2026-08-12; przepisanie wg zmiany
+ * kanonu — CLAUDE.md Zero-Debt): kanwa v3 ma dziś poziomy szczegółu (LOD,
+ * `docs/sld/SLD_LOD_SPEC_OPERATOR_GRADE.md`) — na widoku startowym po
+ * `reloadEditorPage` (LOD „mapa sieci", bloki kompaktowe) stacja renderuje
+ * się jako JEDEN zbiorczy symbol, bez osobnego węzła DOM dla transformatora
+ * wewnątrz niej (`g[data-element-kind="transformer"]` nie istnieje, dopóki
+ * kamera nie przybliży sceny do poziomu obiektów/pól). Tego LOD nie było,
+ * gdy `openElementInspector` powstawał (2026-07-17). Realny gest kółka
+ * (ta sama ścieżka co `zoomujAzWidoczne` w `wyspy-menu-sld.spec.ts`) —
+ * zero wymuszonego stanu kamery.
+ */
+async function zoomUntilSelectorVisible(page: Page, selector: string, deltaY: number): Promise<void> {
+  const canvas = page.locator('svg[data-testid="sld-canvas-v3"]');
+  const box = await canvas.boundingBox();
+  expect(box, 'kanwa sld-canvas-v3 bez geometrii').not.toBeNull();
+  await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2);
+  for (let i = 0; i < 30; i += 1) {
+    if ((await page.locator(selector).count()) > 0) return;
+    await page.mouse.wheel(0, deltaY);
+    await page.waitForTimeout(100);
+  }
+}
+
 async function openElementInspector(page: Page, elementRef: string): Promise<void> {
   // Adaptacja v3 (2026-07-17): kanwa v3 nie niesie `sld-symbol-*`/
   // `data-element-id` — symbol ma `data-element-kind` + `data-owner-ref`
@@ -320,6 +344,8 @@ test('real backend SLD editor flow: source -> trunk -> station -> branch -> upda
   await capture(page, testInfo, '02b-segment-catalog-reassigned');
 
   op = await executeDomainOp(request, caseId, 'insert_station_on_segment_sn', {
+    // B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+    field_apparatus_catalog_ref: 'sw-cb-abb-vd4-17kv-630a',
     segment_id: segmentRefs[1],
     station_type: 'B',
     insert_at: { value: 0.5 },
@@ -331,11 +357,14 @@ test('real backend SLD editor flow: source -> trunk -> station -> branch -> upda
   });
   const stationBus = (op.snapshot?.buses ?? []).find((bus) => bus.ref_id.includes('sn_bus'));
   expect(stationBus).toBeDefined();
-  const transformerRef = op.snapshot?.transformers?.at(-1)?.ref_id;
+  // `Array.prototype.at` pochodzi z ES2022, projekt deklaruje `lib: ES2020`.
+  const transformatory = op.snapshot?.transformers;
+  const transformerRef = transformatory?.[transformatory.length - 1]?.ref_id;
   expect(transformerRef).toBeTruthy();
   await reloadEditorPage(page);
   await capture(page, testInfo, '03-after-station');
 
+  await zoomUntilSelectorVisible(page, 'g[data-element-kind="transformer"][data-owner-ref^="stn/"]', -240);
   await openElementInspector(page, transformerRef!);
   await expect(page.getByTestId('engineering-section-typ_i_katalog')).toContainText(TRAFO_ID);
   await capture(page, testInfo, '03a-transformer-inspector');
@@ -383,7 +412,24 @@ test('real backend SLD editor flow: source -> trunk -> station -> branch -> upda
 
   await reloadEditorPage(page);
   await capture(page, testInfo, '04-after-delete-and-continue');
-  await expect(page.getByTestId('sld-readiness-stack')).toBeVisible();
+  // Przepisane (karta K1/E, 2026-07-29). DIAGNOZA: to NIE defekt hydratacji
+  // H-0 — testid `sld-readiness-stack` żyje wyłącznie w GuidedBuildActionPanel,
+  // a ten panel od migracji na powłokę ui2 NIE jest montowany NIGDZIE
+  // (świadoma decyzja, rejestr wygaszania — `ui2/legacy/LegacyInspektor.tsx`:
+  // „panel prowadzenia budowy (GuidedBuildActionPanel) nie jest mostkowany…
+  // pełne przejęcie = karty U2"). Panel nie pojawiłby się także BEZ reloadu.
+  // INTENCJA BEZ ZMIAN: po delete+continue+reloadzie powłoka pokazuje
+  // strukturę układu odzwierciedlającą realny model (nie stan zerowy).
+  // Bieżący nośnik: pasek kontekstu przepływu pracy nad kanwą
+  // (`WorkflowContextStrip` — faza budowy + metryki Szyny/Odcinki SN/Stacje).
+  const strip = page.getByTestId('workflow-context-strip');
+  await expect(strip).toBeVisible();
+  await expect(page.getByTestId('workflow-build-phase')).toBeVisible();
+  // 'Kontrola:' renderuje się TYLKO przy niepustej topologii (hasTopologyElements)
+  // — dowodzi, że po reloadzie model został odtworzony z backendu.
+  await expect(strip).toContainText('Kontrola:');
+  await expect(strip).toContainText('Odcinki SN');
+  await expect(strip).toContainText('Stacje');
 });
 
 test('real backend supports flexible operation order combinations', async ({ page, request }) => {
@@ -433,6 +479,8 @@ test('real backend supports flexible operation order combinations', async ({ pag
   const targetSegment = snapshot.snapshot?.corridors?.[0]?.ordered_segment_refs?.[1];
   expect(targetSegment).toBeTruthy();
   await executeDomainOp(request, caseId, 'insert_station_on_segment_sn', {
+    // B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+    field_apparatus_catalog_ref: 'sw-cb-abb-vd4-17kv-630a',
     segment_id: targetSegment,
     station_type: 'B',
     insert_at: { value: 0.45 },

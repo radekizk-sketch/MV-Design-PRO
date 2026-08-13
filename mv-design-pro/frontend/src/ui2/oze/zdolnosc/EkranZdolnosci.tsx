@@ -24,6 +24,7 @@ import {
   type WezelZdolnosci,
   type ZapytanieZdolnosci,
 } from '../api';
+import { PrzylaczZrodloPrzycisk } from '../PrzylaczZrodloPrzycisk';
 import { WykresZdolnosciChart } from './WykresZdolnosciChart';
 import {
   elementKryterium,
@@ -37,6 +38,8 @@ import {
   wybierzPrzebiegRozplywu,
 } from './zdolnoscModel';
 import { ZDOLNOSC_STRINGS, fmtMW } from './strings';
+import { PrzyciskAkcjiStanu } from '../../wyniki/wzorzec';
+import type { AkcjaStanuZerowego } from '../../wyniki/wzorzec';
 
 const DOMYSLNY_KROK_MW = 0.5;
 const DOMYSLNA_LICZBA_KROKOW = 40;
@@ -56,11 +59,15 @@ function StanPanel({
   opis,
   wariant,
   testid,
+  akcja,
 }: {
   komunikat: string;
   opis?: string;
   wariant: 'info' | 'blad';
   testid: string;
+  /* K6 / H-5: slot akcji stanu zerowego — realny następny krok (bieg obliczeń,
+     nawigacja, formularz operacji). Brak akcji = panel czysto informacyjny. */
+  akcja?: AkcjaStanuZerowego;
 }) {
   return (
     <div
@@ -69,6 +76,7 @@ function StanPanel({
     >
       <p className="mvd-zdol-stan-title">{komunikat}</p>
       {opis && <p className="mvd-zdol-stan-desc">{opis}</p>}
+      <PrzyciskAkcjiStanu akcja={akcja} testid={testid} />
     </div>
   );
 }
@@ -125,6 +133,16 @@ function WierszWezla({
         <td className="mvd-zdol-td-tekst">{element ?? ZDOLNOSC_STRINGS.kreska}</td>
         <td className="mvd-num">{wartosc ?? ZDOLNOSC_STRINGS.kreska}</td>
         <td className="mvd-num">{prog ?? ZDOLNOSC_STRINGS.kreska}</td>
+        <td className="mvd-zdol-td-tekst">
+          {/* K5-B (H-3 pkt 1): pętla wynik → model — formularz źródła OZE
+              z preselekcją tego węzła (bus_ref z odpowiedzi backendu). */}
+          <PrzylaczZrodloPrzycisk
+            busRef={wezel.bus_ref}
+            busName={wezel.bus_name ?? null}
+            zrodloAkcji="zdolnosc_wezel"
+            testid={`mvd-zdol-przylacz-${wezel.bus_ref}`}
+          />
+        </td>
       </tr>
       {sladWidoczny && (
         <tr className="mvd-zdol-slad-wiersz" data-testid={`mvd-zdol-slad-${wezel.bus_ref}`}>
@@ -170,7 +188,7 @@ function WynikZdolnosci({
   trybEkspercki: boolean;
 }) {
   const slupki = useMemo(() => slupkiZdolnosci(dane.nodes), [dane.nodes]);
-  const liczbaKolumn = 7;
+  const liczbaKolumn = 8;
 
   if (dane.nodes.length === 0) {
     return (
@@ -194,6 +212,7 @@ function WynikZdolnosci({
             <th>{ZDOLNOSC_STRINGS.kolElement}</th>
             <th>{ZDOLNOSC_STRINGS.kolWartosc}</th>
             <th>{ZDOLNOSC_STRINGS.kolProg}</th>
+            <th>{ZDOLNOSC_STRINGS.kolDzialania}</th>
           </tr>
         </thead>
         <tbody>

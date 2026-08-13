@@ -896,4 +896,46 @@ describe('buildCanonicalGpzProps — ADAPTER-BUSREF (bus_ref sekcji + hvBusRef)'
     const props = buildCanonicalGpzProps(enm, 'g', { x: 0, y: 0 });
     expect(props.hvBusRef ?? null).toBeNull();
   });
+
+  /* KARTA WN-WYNIK — ODMOWA ZAMIAST PODSTAWIENIA po stronie WN.
+     Kompozycja rysuje JEDEN odcinek szyny WN, więc punkt wyniku wolno mu
+     przypisać wyłącznie wtedy, gdy model ma DOKŁADNIE JEDNĄ szynę WN. GPZ 2×TR
+     ma dwie odrębne szyny 110 kV — dotąd `find(...)` cicho brał pierwszą i
+     jeden narysowany odcinek pokazywał wielkość jednego z dwóch węzłów. */
+  it('GPZ 2×TR (DWIE szyny 110 kV) ⇒ hvBusRef=null — rysunek ma JEDNĄ szynę WN, więc odmawiamy zamiast podstawiać pierwszą', () => {
+    const enm: EnmFragment = {
+      ...emptyEnm(),
+      substations: [gpz('g', {
+        bus_refs: ['bus-15', 'bus-110-tr1', 'bus-110-tr2'],
+        gpz_sections: [{ section_id: 's1', order: 1, name: 'S1', bus_ref: 'bus-15' }],
+        transformer_refs: ['tr1', 'tr2'],
+      })],
+      bays: [bay('bay-1', 'OUT', 'g', 'bus-15', { gpz_section_id: 's1' })],
+      buses: [bus('bus-15', 15), bus('bus-110-tr1', 110), bus('bus-110-tr2', 110)],
+      transformers: [
+        transformer('tr1', { hv_bus_ref: 'bus-110-tr1', lv_bus_ref: 'bus-15' }),
+        transformer('tr2', { hv_bus_ref: 'bus-110-tr2', lv_bus_ref: 'bus-15' }),
+      ],
+    };
+    const props = buildCanonicalGpzProps(enm, 'g', { x: 0, y: 0 });
+    expect(props.hvBusRef ?? null).toBeNull();
+    // Sekcja SN pozostaje jednoznaczna — odmowa dotyczy WYŁĄCZNIE strony WN.
+    expect(props.sections[0].busRef).toBe('bus-15');
+  });
+
+  it('GPZ 1×TR (JEDNA szyna 110 kV) mimo drugiej szyny WN spoza bus_refs ⇒ hvBusRef wskazuje szynę TEJ stacji', () => {
+    // Prymat danych: zbiór szyn WN liczymy z `Substation.bus_refs`, nie z całej
+    // migawki — szyna WN sąsiedniej stacji nie może uczynić tej niejednoznaczną.
+    const enm: EnmFragment = {
+      ...emptyEnm(),
+      substations: [gpz('g', {
+        bus_refs: ['bus-15', 'bus-110'],
+        gpz_sections: [{ section_id: 's1', order: 1, name: 'S1', bus_ref: 'bus-15' }],
+      })],
+      bays: [bay('bay-1', 'OUT', 'g', 'bus-15', { gpz_section_id: 's1' })],
+      buses: [bus('bus-15', 15), bus('bus-110', 110), bus('bus-110-obca', 110)],
+    };
+    const props = buildCanonicalGpzProps(enm, 'g', { x: 0, y: 0 });
+    expect(props.hvBusRef).toBe('bus-110');
+  });
 });

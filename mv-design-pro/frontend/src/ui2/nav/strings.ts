@@ -10,6 +10,11 @@ export const NAV_STRINGS = {
   brakWynikowFiltra: 'Brak elementów spełniających filtr',
   ladowanie: 'Wczytywanie…',
 
+  // K6 / H-5: akcje pustego drzewa per przestrzeń (slot `akcjaPusty` był martwy).
+  pustyModelAkcja: 'Przejdź do schematu',
+  pustyObliczeniaAkcja: 'Nowy przypadek',
+  pustyWynikiAkcja: 'Przejdź do przypadków',
+
   trybDrzewa: 'Tryb drzewa',
   trybZasilania: 'Zasilania',
   trybAdministracyjny: 'Administracyjny',

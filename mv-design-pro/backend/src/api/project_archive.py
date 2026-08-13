@@ -16,6 +16,7 @@ from api.document_store import store_generated_document
 from application.project_archive.service import ProjectArchiveService
 from domain.project_archive import ArchiveError
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Response, UploadFile
+from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/projects", tags=["project-archive"])
@@ -161,13 +162,20 @@ async def import_project(
     # Odczytaj zawartość pliku
     archive_bytes = await file.read()
 
-    with uow_factory() as uow:
-        service = ProjectArchiveService(uow.session)
-        result = service.import_project(
-            archive_bytes=archive_bytes,
-            new_project_name=new_name,
-            verify_integrity=verify_integrity,
-        )
+    # WSPÓŁBIEŻNOŚĆ: końcówka zostaje `async def`, bo czyta przesłany plik
+    # (`await file.read()`). Sam import — rozpakowanie ZIP, walidacja i zapisy
+    # do bazy przez sync SQLAlchemy — jest blokujący i idzie do puli wątków;
+    # na pętli zdarzeń wstrzymywał obsługę wszystkich pozostałych żądań.
+    def _importuj() -> Any:
+        with uow_factory() as uow:
+            service = ProjectArchiveService(uow.session)
+            return service.import_project(
+                archive_bytes=archive_bytes,
+                new_project_name=new_name,
+                verify_integrity=verify_integrity,
+            )
+
+    result = await run_in_threadpool(_importuj)
 
     return ImportResponse(
         status=result.status.value,
@@ -196,9 +204,14 @@ async def preview_archive(
     """
     archive_bytes = await file.read()
 
-    with uow_factory() as uow:
-        service = ProjectArchiveService(uow.session)
-        preview = service.preview_archive(archive_bytes)
+    # WSPÓŁBIEŻNOŚĆ: jak w `import_project` — `await` na treści pliku zostaje,
+    # rozpakowanie i odczyt zawartości archiwum idą do puli wątków.
+    def _podejrzyj() -> Any:
+        with uow_factory() as uow:
+            service = ProjectArchiveService(uow.session)
+            return service.preview_archive(archive_bytes)
+
+    preview = await run_in_threadpool(_podejrzyj)
 
     if not preview.get("valid"):
         return PreviewResponse(

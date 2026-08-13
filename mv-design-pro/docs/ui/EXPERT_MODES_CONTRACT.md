@@ -9,7 +9,7 @@
 
 ## 1. Cel dokumentu
 
-Definicja **Expert Modes** — systemu trybĂłw eksperckich dostosowujących UI do roli uĹĽytkownika **BEZ ukrywania danych**.
+Definicja **Expert Modes** — systemu trybów eksperckich dostosowujących UI do roli użytkownika **BEZ ukrywania danych**.
 
 **NO SIMPLIFICATION RULE:** Brak "basic UI" i "advanced UI". Jeden interfejs z opcjami.
 
@@ -31,7 +31,7 @@ Definicja **Expert Modes** — systemu trybĂłw eksperckich dostosowujących UI
 
 ### 2.3 Analyst Mode
 - **Focus:** Results, Comparisons, Charts
-- **Default Columns:** WSZYSTKIE (wĹ‚ącznie z X/R, Contributions)
+- **Default Columns:** WSZYSTKIE (włącznie z X/R, Contributions)
 - **Edit Rights:** READ_ONLY
 - **Proof Access:** VIEW + EXPORT
 
@@ -40,28 +40,28 @@ Definicja **Expert Modes** — systemu trybĂłw eksperckich dostosowujących UI
 - **Default Columns:** WSZYSTKIE + Metadata (Timestamp, User, Version)
 - **Edit Rights:** READ_ONLY
 - **Proof Access:** FULL (VIEW + EXPORT + VERIFY)
-- **Special:** Proof P11 domyĹ›lnie otwarty
+- **Special:** Proof P11 domyślnie otwarty
 
 ---
 
 ## 3. NO SIMPLIFICATION RULE (INVARIANT)
 
 1. NIE istnieje "Basic Mode" z okrojonym UI
-2. NIE istnieje "Advanced Mode" z peĹ‚nym UI
-3. ISTNIEJE JEDEN UI z opcjami widocznoĹ›ci
-4. Expert Modes zmieniają DOMYĹšLNE ustawienia, NIE ukrywają
-5. UĹĽytkownik ZAWSZE moĹĽe pokazać ukryte sekcje/kolumny
+2. NIE istnieje "Advanced Mode" z pełnym UI
+3. ISTNIEJE JEDEN UI z opcjami widoczności
+4. Expert Modes zmieniają DOMYŚLNE ustawienia, NIE ukrywają
+5. Użytkownik ZAWSZE może pokazać ukryte sekcje/kolumny
 
 **VIOLATION = REGRESJA wymagająca HOTFIX**
 
 ---
 
-## 4. Expert Modes â‰  Access Control
+## 4. Expert Modes ≠ Access Control
 
 | Expert Modes | Access Control |
 |--------------|----------------|
-| Zmieniają *domyĹ›lne widocznoĹ›ci* | Blokują *dostęp* |
-| UĹĽytkownik moĹĽe pokazać ukryte | UĹĽytkownik NIE moĹĽe odblokować |
+| Zmieniają *domyślne widoczności* | Blokują *dostęp* |
+| Użytkownik może pokazać ukryte | Użytkownik NIE może odblokować |
 | UX convenience | Security enforcement |
 | Frontend-only | Backend-enforced |
 
@@ -71,11 +71,11 @@ Definicja **Expert Modes** — systemu trybĂłw eksperckich dostosowujących UI
 
 | Feature | benchmark | benchmark | MV-DESIGN-PRO | Status |
 |---------|------|--------------|---------------|--------|
-| User Modes | âś— | âś— | âś“ (4 modes) | âž• SUPERIOR |
-| Mode-based Visibility | âś— | âś— | âś“ | âž• SUPERIOR |
-| NO SIMPLIFICATION RULE | N/A | N/A | âś“ | âž• SUPERIOR |
+| User Modes | ✗ | ✗ | ✓ (4 modes) | ➕ SUPERIOR |
+| Mode-based Visibility | ✗ | ✗ | ✓ | ➕ SUPERIOR |
+| NO SIMPLIFICATION RULE | N/A | N/A | ✓ | ➕ SUPERIOR |
 
-**Ocena:** MV-DESIGN-PRO Expert Modes = SUPERIOR feature âś…
+**Ocena:** MV-DESIGN-PRO Expert Modes = SUPERIOR feature ✅
 
 ---
 

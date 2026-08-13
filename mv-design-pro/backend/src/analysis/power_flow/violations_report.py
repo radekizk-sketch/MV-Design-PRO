@@ -13,6 +13,8 @@ from io import BytesIO
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from network_model.reporting.czcionki import zarejestruj_czcionki
+
 from .violations import ViolationType, VoltageViolationsResult
 
 if TYPE_CHECKING:
@@ -113,13 +115,13 @@ def add_violations_section_to_pdf(
 
     # Naglowek sekcji
     y = check_page_break(40 * mm)
-    c.setFont("Helvetica-Bold", 14)
+    c.setFont("DejaVuSans-Bold", 14)
     c.setFillColor(_COLOR_HEADER if _PDF_AVAILABLE else black)
     c.drawString(left_margin, y, "Analiza naruszen napieciowych")
     y -= line_height * 2
 
     # Podsumowanie
-    c.setFont("Helvetica", 10)
+    c.setFont("DejaVuSans", 10)
     c.setFillColor(black)
 
     summary_lines = [
@@ -140,11 +142,11 @@ def add_violations_section_to_pdf(
     y = check_page_break(line_height * 2)
     if violations_result.all_within_limits:
         c.setFillColor(_COLOR_OK if _PDF_AVAILABLE else black)
-        c.setFont("Helvetica-Bold", 11)
+        c.setFont("DejaVuSans-Bold", 11)
         c.drawString(left_margin, y, "Status: WSZYSTKIE NAPIECIA W NORMIE")
     else:
         c.setFillColor(_COLOR_UNDERVOLTAGE if _PDF_AVAILABLE else black)
-        c.setFont("Helvetica-Bold", 11)
+        c.setFont("DejaVuSans-Bold", 11)
         c.drawString(left_margin, y, "Status: WYKRYTO NARUSZENIA")
 
     c.setFillColor(black)
@@ -154,10 +156,10 @@ def add_violations_section_to_pdf(
     if violations_result.worst_undervoltage:
         y = check_page_break(line_height * 2)
         wv = violations_result.worst_undervoltage
-        c.setFont("Helvetica-Bold", 10)
+        c.setFont("DejaVuSans-Bold", 10)
         c.setFillColor(_COLOR_UNDERVOLTAGE if _PDF_AVAILABLE else black)
         c.drawString(left_margin, y, "Najgorsze niedopiecie:")
-        c.setFont("Helvetica", 10)
+        c.setFont("DejaVuSans", 10)
         c.setFillColor(black)
         y -= line_height
         c.drawString(
@@ -172,10 +174,10 @@ def add_violations_section_to_pdf(
     if violations_result.worst_overvoltage:
         y = check_page_break(line_height * 2)
         wv = violations_result.worst_overvoltage
-        c.setFont("Helvetica-Bold", 10)
+        c.setFont("DejaVuSans-Bold", 10)
         c.setFillColor(_COLOR_OVERVOLTAGE if _PDF_AVAILABLE else black)
         c.drawString(left_margin, y, "Najgorsze przepiecie:")
-        c.setFont("Helvetica", 10)
+        c.setFont("DejaVuSans", 10)
         c.setFillColor(black)
         y -= line_height
         c.drawString(
@@ -192,7 +194,7 @@ def add_violations_section_to_pdf(
     # Tabela naruszen
     if violations_result.violations:
         y = check_page_break(30 * mm)
-        c.setFont("Helvetica-Bold", 12)
+        c.setFont("DejaVuSans-Bold", 12)
         c.setFillColor(_COLOR_HEADER if _PDF_AVAILABLE else black)
         c.drawString(left_margin, y, "Szczegoly naruszen")
         y -= line_height * 1.5
@@ -201,7 +203,7 @@ def add_violations_section_to_pdf(
         col_widths = [35 * mm, 25 * mm, 25 * mm, 25 * mm, 30 * mm, 25 * mm]
         headers = ["Szyna", "U [pu]", "U_min", "U_max", "Typ", "Odchylenie"]
 
-        c.setFont("Helvetica-Bold", 9)
+        c.setFont("DejaVuSans-Bold", 9)
         c.setFillColor(black)
         current_x = left_margin
         for i, header in enumerate(headers):
@@ -223,7 +225,7 @@ def add_violations_section_to_pdf(
 
             # Kolor wiersza zalezy od typu naruszenia
             row_color = _get_violation_color(violation.violation_type)
-            c.setFont("Helvetica", 9)
+            c.setFont("DejaVuSans", 9)
             c.setFillColor(row_color if row_color else black)
 
             current_x = left_margin
@@ -258,7 +260,7 @@ def add_violations_section_to_pdf(
         # Jesli wiecej niz limit
         if len(violations_result.violations) > max_rows:
             y = check_page_break(line_height)
-            c.setFont("Helvetica-Oblique", 9)
+            c.setFont("DejaVuSans-Oblique", 9)
             c.setFillColor(black)
             c.drawString(
                 left_margin,
@@ -309,20 +311,21 @@ def export_violations_report_to_pdf(
     line_height = 5 * mm
 
     # Utworz canvas
-    c = reportlab_canvas.Canvas(str(output_path), pagesize=A4)
+    zarejestruj_czcionki()
+    c = reportlab_canvas.Canvas(str(output_path), pagesize=A4, invariant=1, pageCompression=0)
 
     y = top_margin
 
     # Tytul
     report_title = title if title else "Raport naruszen napieciowych"
-    c.setFont("Helvetica-Bold", 16)
-    title_width = c.stringWidth(report_title, "Helvetica-Bold", 16)
+    c.setFont("DejaVuSans-Bold", 16)
+    title_width = c.stringWidth(report_title, "DejaVuSans-Bold", 16)
     c.drawString((page_width - title_width) / 2, y, report_title)
     y -= 10 * mm
 
     # Metadane
     if metadata:
-        c.setFont("Helvetica", 10)
+        c.setFont("DejaVuSans", 10)
         meta_parts = []
         if metadata.get("project_name"):
             meta_parts.append(f"Projekt: {metadata['project_name']}")
@@ -388,20 +391,21 @@ def export_violations_report_to_bytes(
 
     # Utworz canvas do BytesIO
     buffer = BytesIO()
-    c = reportlab_canvas.Canvas(buffer, pagesize=A4)
+    zarejestruj_czcionki()
+    c = reportlab_canvas.Canvas(buffer, pagesize=A4, invariant=1, pageCompression=0)
 
     y = top_margin
 
     # Tytul
     report_title = title if title else "Raport naruszen napieciowych"
-    c.setFont("Helvetica-Bold", 16)
-    title_width = c.stringWidth(report_title, "Helvetica-Bold", 16)
+    c.setFont("DejaVuSans-Bold", 16)
+    title_width = c.stringWidth(report_title, "DejaVuSans-Bold", 16)
     c.drawString((page_width - title_width) / 2, y, report_title)
     y -= 10 * mm
 
     # Metadane
     if metadata:
-        c.setFont("Helvetica", 10)
+        c.setFont("DejaVuSans", 10)
         meta_parts = []
         if metadata.get("project_name"):
             meta_parts.append(f"Projekt: {metadata['project_name']}")

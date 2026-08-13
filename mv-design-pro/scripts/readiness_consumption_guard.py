@@ -155,16 +155,12 @@ def main() -> int:
     # (c) odwzorowanie bez sierot
     for kod_v, kod_k in sorted(ODWZOROWANIE_WALIDATOR_NA_KANON.items()):
         if kod_k not in READINESS_CODES:
-            naruszenia.append(
-                f"(c) odwzorowanie {kod_v} -> {kod_k}: cel nie istnieje w kanonie."
-            )
+            naruszenia.append(f"(c) odwzorowanie {kod_v} -> {kod_k}: cel nie istnieje w kanonie.")
 
     # (c2) rezerwacje bez kodu w kanonie (rejestr rezerwacji musi opisywac realne kody)
     for kod in sorted(KODY_KANONU_ZAREZERWOWANE):
         if kod not in READINESS_CODES:
-            naruszenia.append(
-                f"(c) rezerwacja opisuje kod, ktorego nie ma w kanonie: {kod}"
-            )
+            naruszenia.append(f"(c) rezerwacja opisuje kod, ktorego nie ma w kanonie: {kod}")
 
     # (c3) wpisy „bez kanonu" musza dotyczyc realnych kodow walidatora
     for kod in sorted(KODY_WALIDATORA_BEZ_KANONU):

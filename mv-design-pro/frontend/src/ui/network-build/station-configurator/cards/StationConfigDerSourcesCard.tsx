@@ -46,9 +46,9 @@ const KIND_LABEL_PL: Record<AddDerKindRequest, string> = {
 };
 
 const KIND_BADGE_COLOR: Record<AddDerKindRequest, string> = {
-  PV: 'bg-amber-900 text-amber-200',
-  BESS: 'bg-emerald-900 text-emerald-200',
-  FW: 'bg-sky-900 text-sky-200',
+  PV: 'bg-sygnal-uwaga-tlo text-sygnal-uwaga-tusz',
+  BESS: 'bg-sygnal-ok-tlo text-sygnal-ok-tusz',
+  FW: 'bg-sygnal-info-tlo text-sygnal-info-tusz',
 };
 
 const COMPLETENESS_LABEL_PL: Record<StationDerConnection['completeness'], string> = {
@@ -292,7 +292,7 @@ function RowAction({
       className={
         'rounded border px-2 py-0.5 text-[10px] font-medium '
         + (destructive
-          ? 'border-red-700 bg-red-950/30 text-red-300 hover:bg-red-900/40'
+          ? 'border-sygnal-blokada bg-sygnal-blokada-tlo text-sygnal-blokada-tusz hover:bg-red-900/40'
           : 'border-scada-border bg-scada-panel text-scada-text hover:border-scada-sn')
       }
     >

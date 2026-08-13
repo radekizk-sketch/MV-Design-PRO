@@ -201,6 +201,8 @@ def _add_trunk_station(
         "insert_station_on_segment_sn",
         {
             "segment_id": segment_ref,
+            # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+            "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
             "insert_at": {"mode": "RATIO", "value": 0.5},
             "station": {
                 "station_type": "C",
@@ -442,6 +444,8 @@ def build_sld_substrate_52s() -> dict[str, Any]:  # noqa: C901 — acceptable co
                 "insert_station_on_segment_sn",
                 {
                     "segment_id": seg_ref,
+                    # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+                    "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
                     "insert_at": {"mode": "RATIO", "value": 0.5},
                     "station": {
                         "station_type": "B",

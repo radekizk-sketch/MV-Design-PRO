@@ -10,6 +10,7 @@
 
 import { createRun, executeRun, getRunResults } from '../../../ui/study-cases/api';
 import type { KrokWywodu } from '../wzorzec';
+import { OLTC_BADANIA_STRINGS as T } from './strings';
 
 export type RodzajBadania = 'sweep' | 'annual_profile' | 'optimize';
 export type CelOptymalizacji = 'minimize_losses' | 'maintain_voltage' | 'minimize_switching';
@@ -37,17 +38,29 @@ export interface KrokProfilu {
   label: string;
   load_scale: number;
   positions: Record<string, number>;
-  switch_count: number;
+  /** `null` = pętla regulatora nie mogła zadziałać, więc liczby łączeń nie ma. */
+  switch_count: number | null;
   controlled_bus_kv: Record<string, number>;
-  within_deadband: Record<string, boolean>;
+  /**
+   * Znacznik pasma jest TRÓJSTANOWY przez obecność klucza: `true` = w paśmie,
+   * `false` = poza pasmem, BRAK KLUCZA (`undefined`) = nieustalone. Backend
+   * wpisuje klucz tylko wtedy, gdy kryterium da się zbudować z modelu, więc typ
+   * musi dopuszczać `undefined` — inaczej render dwustanowy „kompiluje się", a
+   * inżynierowi pokazuje „nie" tam, gdzie oceny nie ma (znalezisko N3).
+   */
+  within_deadband: Record<string, boolean | undefined>;
 }
 
 export interface WynikProfilu {
   steps: KrokProfilu[];
-  total_switch_count: number;
-  steps_outside_deadband: number;
+  /** `null` = liczba łączeń niedostępna (brak nastaw regulatora w modelu). */
+  total_switch_count: number | null;
+  /** `null` = choć jeden znacznik pasma nieustalony, więc licznik nie istnieje. */
+  steps_outside_deadband: number | null;
   /** Wywód dyplomowy {tekst, latex} z backendu (zasada KaTeX 2026-07-22); addytywny. */
   wywod?: KrokWywodu[];
+  /** Kody gotowości badania — treść bierzemy z kanonicznego rejestru, nie z UI. */
+  readiness_codes?: string[];
 }
 
 export interface KandydatOptymalizacji {
@@ -57,7 +70,24 @@ export interface KandydatOptymalizacji {
   controlled_bus_kv: number | null;
   voltage_deviation_kv: number | null;
   objective_value: number;
-  feasible: boolean;
+  /** `null` = kryterium nie da się ocenić dla tej pozycji (to NIE jest „dopuszczalna"). */
+  feasible: boolean | null;
+}
+
+/**
+ * Kryterium dopuszczalności pozycji zaczepu — wartość + źródło, liczone w backendzie
+ * (`OptimizationResult.feasibility_criterion`). Ekran je tylko pokazuje: o werdykcie
+ * „pozycja optymalna" decyduje wyłącznie zbiór pozycji uznanych za dopuszczalne, więc
+ * inżynier musi widzieć, jakie kryterium o tym zdecydowało i skąd pochodzi.
+ */
+export interface KryteriumDopuszczalnosci {
+  kind: 'convergence' | 'voltage_deviation' | 'voltage_deadband' | string;
+  available: boolean;
+  source?: string;
+  target_kv?: number;
+  band_kv?: number;
+  half_band_kv?: number;
+  readiness_codes?: string[];
 }
 
 export interface WynikOptymalizacji {
@@ -65,10 +95,15 @@ export interface WynikOptymalizacji {
   objective: string;
   best_position: number | null;
   initial_position: number;
-  switch_count: number;
+  /** `null` razem z `best_position = null` — bez pozycji nie ma liczby przełączeń. */
+  switch_count: number | null;
   candidates: KandydatOptymalizacji[];
   /** Wywód dyplomowy {tekst, latex} z backendu (zasada KaTeX 2026-07-22); addytywny. */
   wywod?: KrokWywodu[];
+  /** Kryterium dopuszczalności użyte przez solver (addytywne). */
+  feasibility_criterion?: KryteriumDopuszczalnosci;
+  /** Kody gotowości badania — treść bierzemy z kanonicznego rejestru, nie z UI. */
+  readiness_codes?: string[];
 }
 
 export interface KrokProfiluWejscie {
@@ -177,4 +212,49 @@ export function fmtMw(value: number | null | undefined): string {
 export function fmtPozycja(value: number | null | undefined): string {
   if (typeof value !== 'number' || !Number.isFinite(value)) return '—';
   return value > 0 ? `+${value}` : String(value);
+}
+
+export function fmtLiczbaPrzelaczen(value: number | null | undefined): string {
+  return typeof value === 'number' && Number.isFinite(value) ? String(value) : '—';
+}
+
+/**
+ * Znacznik trójstanowy: tak / nie / brak oceny. JEDNA konwencja uczciwego stanu
+ * zerowego dla wszystkich kolumn logicznych ekranu — pole opcjonalne w kontrakcie
+ * backendu nie może być renderowane dwustanowo (brak danej to nie „nie").
+ */
+export function fmtZnacznikTrojstanowy(value: boolean | null | undefined): string {
+  if (value === true) return T.tak;
+  if (value === false) return T.nie;
+  return '—';
+}
+
+export function fmtDopuszczalna(value: boolean | null | undefined): string {
+  return fmtZnacznikTrojstanowy(value);
+}
+
+/**
+ * Zdanie o kryterium dopuszczalności + jego źródło. Wyłącznie formatowanie wartości
+ * policzonych w backendzie (ZERO fizyki w UI — połowa pasma przychodzi gotowa).
+ */
+export function opisKryterium(
+  kryterium: KryteriumDopuszczalnosci | undefined,
+): { tresc: string; zrodlo: string | null } {
+  if (!kryterium || !kryterium.available) {
+    return { tresc: T.kryteriumNiedostepne, zrodlo: null };
+  }
+  if (kryterium.kind === 'voltage_deadband') {
+    return {
+      tresc: T.kryteriumPasmo(
+        fmtKv(kryterium.target_kv),
+        fmtKv(kryterium.half_band_kv),
+        fmtKv(kryterium.band_kv),
+      ),
+      zrodlo: T.zrodloPasmo,
+    };
+  }
+  if (kryterium.kind === 'voltage_deviation') {
+    return { tresc: T.kryteriumOdchylka(fmtKv(kryterium.target_kv)), zrodlo: T.zrodloOdchylka };
+  }
+  return { tresc: T.kryteriumZbieznosc, zrodlo: T.zrodloZbieznosc };
 }

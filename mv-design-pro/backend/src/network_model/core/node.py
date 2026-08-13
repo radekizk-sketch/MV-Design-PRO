@@ -68,6 +68,14 @@ class Node:
     # Computed by map_enm_to_network_graph from per-load materialized_params;
     # not serialized (the canonical path rebuilds the graph from the ENM).
     zip_coeffs: ZipCoeffs | None = field(default=None)
+    # Defect D1 (audit 2026-08-01): the ODBIOROWA (load-only) part of the bus
+    # power, same GENERATION convention as active_power/reactive_power (a pure
+    # load is negative). The ZIP polynomial above applies to THIS part only; the
+    # rest of the bus power (generation) is constant. Set by
+    # map_enm_to_network_graph together with zip_coeffs; None => no ZIP bus (the
+    # whole bus power is the base). Not serialized, like zip_coeffs.
+    zip_load_active_power: float | None = field(default=None)
+    zip_load_reactive_power: float | None = field(default=None)
 
     def __post_init__(self) -> None:
         """

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 
 import {
   applyStationTemplate,
+  fetchStationTemplate,
   fetchStationTemplates,
   type StationTemplateSummary,
 } from './api';
@@ -19,7 +20,12 @@ export interface StationBatchPlanRow {
   readonly targetSegmentRef: string | null;
   readonly medium: BatchMedium;
   readonly lengthM: number | null;
-  readonly catalogProfile: string;
+  /**
+   * Profil dostawcy dla kaskady katalogowej. `null` = bez profilu (backend
+   * przyjmuje `catalog_profile: null`). Wartość pochodzi z DANYCH szablonu
+   * (`schema.manufacturer_profile_default`), nigdy z listy zaszytej w UI.
+   */
+  readonly catalogProfile: string | null;
   readonly status: BatchRowStatus;
   readonly missingFields: readonly string[];
 }
@@ -39,12 +45,21 @@ const CATEGORY_PRIORITY = [
   'hybrydowa',
 ] as const;
 
-const CATALOG_PROFILES = [
-  'ZPUE_WLOSZCZOWA',
-  'ELEKTROMETAL',
-  'ABB',
-  'SIEMENS',
-] as const;
+/*
+ * KARTA REF-PAKIET — usunięta zaszyta lista profili dostawców.
+ *
+ * Do 2026-08-07 planer trzymał własną, czterotelementową kopię listy
+ * producentów i przypisywał je wierszom rotacyjnie (`index % length`). Pomiar
+ * pokazał DWA skutki: (1) kopia rozjechała się ze źródłem — backend
+ * (`station_templates/schema.py`) wymienia PIĘĆ profili, więc SCHNEIDER był
+ * dla projektanta nieosiągalny mimo obsługi po stronie backendu;
+ * (2) rotacja po indeksie FABRYKOWAŁA decyzję inżynierską (producent wiersza
+ * wynikał z jego numeru, nie z niczego rzeczywistego).
+ *
+ * Teraz: opcje i wartość domyślna pochodzą ze schematu szablonu
+ * (`sn_switchgear_manufacturers` / `manufacturer_profile_default`), a do czasu
+ * ich pobrania wiersz nie ma profilu (`null` — backend przyjmuje brak profilu).
+ */
 
 function stationRoleFromCategory(category: string, index: number): string {
   if (category.includes('pv') || category === 'farma_pv' || category === 'prosument_pv') return 'stacja z PV';
@@ -113,7 +128,7 @@ function rowStatus(
 export interface BatchRowOverride {
   readonly lengthM?: number | null;
   readonly medium?: BatchMedium;
-  readonly catalogProfile?: string;
+  readonly catalogProfile?: string | null;
 }
 
 /**
@@ -150,7 +165,10 @@ export function applyRowOverrides(
       ...row,
       lengthM,
       medium: override.medium ?? row.medium,
-      catalogProfile: override.catalogProfile ?? row.catalogProfile,
+      // `undefined` = brak edycji (zostaje wartość planu); `null` = jawny
+      // wybór projektanta „bez profilu" — te dwa przypadki NIE mogą się zlewać.
+      catalogProfile:
+        override.catalogProfile !== undefined ? override.catalogProfile : row.catalogProfile,
       status: statusInfo.status,
       missingFields: statusInfo.missingFields,
     };
@@ -161,6 +179,8 @@ export function buildStationBatchPlan(
   templates: readonly StationTemplateSummary[],
   segmentRefs: readonly string[],
   targetCount = 50,
+  /** Profil domyślny ze schematu szablonu; `null` dopóki schemat nie dotarł. */
+  domyslnyProfil: string | null = null,
 ): StationBatchPlanRow[] {
   const selectedTemplates = selectTemplatesForBatch(templates, targetCount);
   return selectedTemplates.map((template, index) => {
@@ -179,7 +199,7 @@ export function buildStationBatchPlan(
       targetSegmentRef,
       medium,
       lengthM,
-      catalogProfile: CATALOG_PROFILES[index % CATALOG_PROFILES.length],
+      catalogProfile: domyslnyProfil,
       status: statusInfo.status,
       missingFields: statusInfo.missingFields,
     };
@@ -219,6 +239,10 @@ export function StationBatchPlanner({
   onApplied,
 }: StationBatchPlannerProps) {
   const [templates, setTemplates] = useState<readonly StationTemplateSummary[]>([]);
+  const [profileDostawcow, setProfileDostawcow] = useState<{
+    readonly opcje: readonly string[];
+    readonly domyslny: string;
+  } | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [rows, setRows] = useState<StationBatchPlanRow[]>([]);
@@ -253,9 +277,47 @@ export function StationBatchPlanner({
   // moze zaczac uzupelniac dlugosci, a spoznione `setTemplates` przestawialo wtedy caly
   // plan od zera — jego wpisy przepadaly BEZ SLOWA. Nadpisania trzymamy osobno i
   // nakladamy na swiezo zbudowany plan.
+  // Profile dostawcy pochodzą ze SCHEMATU szablonu (jedno źródło danych), a nie
+  // z listy zaszytej w UI. Wystarczy jeden szablon: `sn_switchgear_manufacturers`
+  // i `manufacturer_profile_default` są wspólnym słownikiem kaskady katalogowej.
   useEffect(() => {
-    setRows(applyRowOverrides(buildStationBatchPlan(templates, segmentRefs, targetCount), overrides));
-  }, [segmentRefs, targetCount, templates, overrides]);
+    const pierwszyId = templates[0]?.id;
+    if (!pierwszyId) {
+      setProfileDostawcow(null);
+      return;
+    }
+    let cancelled = false;
+    fetchStationTemplate(pierwszyId)
+      .then((pelny) => {
+        if (cancelled) return;
+        setProfileDostawcow({
+          opcje: pelny.schema.sn_switchgear_manufacturers,
+          domyslny: pelny.schema.manufacturer_profile_default,
+        });
+      })
+      .catch(() => {
+        // Brak schematu ⇒ brak listy profili. Wiersze idą bez profilu — UI nie
+        // zgaduje producenta (backend przyjmuje `catalog_profile: null`).
+        if (!cancelled) setProfileDostawcow(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [templates]);
+
+  useEffect(() => {
+    setRows(
+      applyRowOverrides(
+        buildStationBatchPlan(
+          templates,
+          segmentRefs,
+          targetCount,
+          profileDostawcow?.domyslny ?? null,
+        ),
+        overrides,
+      ),
+    );
+  }, [segmentRefs, targetCount, templates, overrides, profileDostawcow]);
 
   const readyRows = rows.filter((row) => row.status === 'gotowe');
   const missingRows = rows.length - readyRows.length;
@@ -280,7 +342,7 @@ export function StationBatchPlanner({
     setOverrides((current) => ({ ...current, [rowId]: { ...current[rowId], medium } }));
   };
 
-  const updateCatalogProfile = (rowId: string, catalogProfile: string) => {
+  const updateCatalogProfile = (rowId: string, catalogProfile: string | null) => {
     setOverrides((current) => ({ ...current, [rowId]: { ...current[rowId], catalogProfile } }));
   };
 
@@ -426,12 +488,18 @@ export function StationBatchPlanner({
                 </td>
                 <td className="px-3 py-2">
                   <select
-                    value={row.catalogProfile}
-                    onChange={(event) => updateCatalogProfile(row.rowId, event.target.value)}
+                    value={row.catalogProfile ?? ''}
+                    onChange={(event) =>
+                      updateCatalogProfile(
+                        row.rowId,
+                        event.target.value === '' ? null : event.target.value,
+                      )
+                    }
                     className="rounded border border-slate-200 bg-white px-2 py-1 text-xs"
                     aria-label={`Profil katalogowy wiersza ${row.index}`}
                   >
-                    {CATALOG_PROFILES.map((profile) => (
+                    <option value="">bez profilu</option>
+                    {(profileDostawcow?.opcje ?? []).map((profile) => (
                       <option key={profile} value={profile}>{profile}</option>
                     ))}
                   </select>

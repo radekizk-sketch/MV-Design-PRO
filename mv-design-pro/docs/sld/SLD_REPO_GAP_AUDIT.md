@@ -168,39 +168,39 @@ Kazda luka ma przypisany PR do realizacji (3A-02, 3A-03 lub przyszly 3B+).
 
 ```
 PR-3A-02 (kontrakt + adapter):
-  â”śâ”€ G-01: VisualGraphV1 contract (typy zamrozone)
-  â”śâ”€ G-02: NodeTypeV1 enum z PV/BESS/stacje
-  â”śâ”€ G-03: EdgeTypeV1 enum z trunk/branch/secondary
-  â”śâ”€ G-04: PortRoleV1 enum (minimalny)
-  â”śâ”€ G-05: Canonical serializer
-  â”śâ”€ G-06: Dokumentacja stabilnosci id
-  â”śâ”€ S-01..S-03: Segmentacja w EdgeTypeV1
-  â”śâ”€ ST-01..ST-04: Typologia stacji w NodeTypeV1
-  â”śâ”€ OZE-01..02: GENERATOR_PV / GENERATOR_BESS w NodeTypeV1
-  â””â”€ Testy: bijekcja, sortowanie, brak PCC, typologia
+  ├─ G-01: VisualGraphV1 contract (typy zamrozone)
+  ├─ G-02: NodeTypeV1 enum z PV/BESS/stacje
+  ├─ G-03: EdgeTypeV1 enum z trunk/branch/secondary
+  ├─ G-04: PortRoleV1 enum (minimalny)
+  ├─ G-05: Canonical serializer
+  ├─ G-06: Dokumentacja stabilnosci id
+  ├─ S-01..S-03: Segmentacja w EdgeTypeV1
+  ├─ ST-01..ST-04: Typologia stacji w NodeTypeV1
+  ├─ OZE-01..02: GENERATOR_PV / GENERATOR_BESS w NodeTypeV1
+  └─ Testy: bijekcja, sortowanie, brak PCC, typologia
 
 PR-3A-03 (determinism + guards):
-  â”śâ”€ DET-01: Hash stability (100 runs)
-  â”śâ”€ DET-02: Permutation invariance (50 permutacji)
-  â”śâ”€ DET-03: Collision guard jako CI gate
-  â”śâ”€ DET-04: crossing_trunk_without_node invariant
-  â”śâ”€ DET-05: Golden networks frontend + CI artefakty
-  â”śâ”€ CAM-02: Camera no-reflow test
-  â”śâ”€ ENG-01: Single engine guard
-  â”śâ”€ ENG-02: Layout feature flag guard
-  â”śâ”€ OV-02: Overlay import guard
-  â”śâ”€ CI-01: CI artefakty renderu
-  â””â”€ DOC-04: Macierz testow (minimalna)
+  ├─ DET-01: Hash stability (100 runs)
+  ├─ DET-02: Permutation invariance (50 permutacji)
+  ├─ DET-03: Collision guard jako CI gate
+  ├─ DET-04: crossing_trunk_without_node invariant
+  ├─ DET-05: Golden networks frontend + CI artefakty
+  ├─ CAM-02: Camera no-reflow test
+  ├─ ENG-01: Single engine guard
+  ├─ ENG-02: Layout feature flag guard
+  ├─ OV-02: Overlay import guard
+  ├─ CI-01: CI artefakty renderu
+  └─ DOC-04: Macierz testow (minimalna)
 
 3B (embedded blocks + pelna segmentacja):
-  â”śâ”€ ST-05: StationBoundingBox jako NO_ROUTE_RECT
-  â”śâ”€ G-04: Pelne porty semantyczne
-  â”śâ”€ OZE-03: Porty OZE w stacji wielofunkcyjnej
-  â”śâ”€ ENG-01: Unified layout orchestrator
-  â”śâ”€ DOC-01..03,05: Konsolidacja dokumentow
+  ├─ ST-05: StationBoundingBox jako NO_ROUTE_RECT
+  ├─ G-04: Pelne porty semantyczne
+  ├─ OZE-03: Porty OZE w stacji wielofunkcyjnej
+  ├─ ENG-01: Unified layout orchestrator
+  ├─ DOC-01..03,05: Konsolidacja dokumentow
 
 3D (export E2E + perf):
-  â”śâ”€ CI-02: Hash snapshot artefaktow
-  â””â”€ Perf budgets jako nightly gate
+  ├─ CI-02: Hash snapshot artefaktow
+  └─ Perf budgets jako nightly gate
 ```
 

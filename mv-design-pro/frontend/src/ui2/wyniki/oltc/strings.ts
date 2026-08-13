@@ -58,8 +58,11 @@ export const OLTC_BADANIA_STRINGS = {
   profilOsX: 'Krok',
   profilPozycja: 'Pozycja zaczepu',
   profilNapiecie: 'U sterowanej szyny',
-  profilPrzelaczenia: (n: number) => `Łączne przełączenia: ${n}`,
-  profilPozaPasmem: (n: number) => `Kroki poza pasmem nieczułości: ${n}`,
+  // Podsumowanie profilu przyjmuje SFORMATOWANY tekst (liczba albo kreska), bo
+  // przy braku nastaw regulatora obu wielkości po prostu nie ma — „0" byłoby
+  // werdyktem o kryterium, którego nikt nie zadeklarował.
+  profilPrzelaczenia: (n: string) => `Łączne przełączenia: ${n}`,
+  profilPozaPasmem: (n: string) => `Kroki poza pasmem nieczułości: ${n}`,
   profilTabelaKrok: 'Krok',
   profilTabelaSkala: 'Obciążenie',
   profilTabelaPozycja: 'Pozycja',
@@ -71,6 +74,22 @@ export const OLTC_BADANIA_STRINGS = {
   optimNajlepsza: 'Pozycja optymalna',
   optimStart: 'Pozycja startowa',
   optimPrzelaczenia: 'Wymagane przełączenia',
+
+  // Kryterium dopuszczalności — o werdykcie decyduje wyłącznie to, które pozycje
+  // uznano za dopuszczalne, więc kryterium stoi obok werdyktu razem ze źródłem.
+  kryteriumTytul: 'Kryterium dopuszczalności pozycji',
+  kryteriumZrodlo: 'Skąd kryterium',
+  kryteriumNiedostepne: 'Nieustalone — badanie nie wskazuje pozycji ani liczby przełączeń',
+  kryteriumPasmo: (celKv: string, polowaKv: string, pasmoKv: string) =>
+    `Napięcie szyny nie odbiega od ${celKv} więcej niż o ${polowaKv} `
+    + `(połowa pasma nieczułości regulatora ${pasmoKv})`,
+  kryteriumOdchylka: (celKv: string) =>
+    `Najmniejsza odchyłka napięcia szyny od ${celKv} (bez dodatkowego pasma)`,
+  kryteriumZbieznosc: 'Pozycja, dla której rozpływ mocy ma rozwiązanie',
+  zrodloPasmo: 'pasmo nieczułości przełącznika zaczepów z modelu + napięcie docelowe badania',
+  zrodloOdchylka: 'napięcie docelowe podane w badaniu',
+  zrodloZbieznosc: 'wynik rozpływu mocy',
+  optimBrakPozycji: 'nie wskazano',
   optimTabelaPozycja: 'Pozycja',
   optimTabelaStraty: 'Straty',
   optimTabelaU: 'U szyny',

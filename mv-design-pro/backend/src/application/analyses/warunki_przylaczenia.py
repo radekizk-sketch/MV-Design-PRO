@@ -112,13 +112,17 @@ class OcenaWarunkowPrzylaczenia:
     cos_phi: float | None
     kierunek: str | None
     pozycje: tuple[PozycjaOceny, ...]
-    formula_ref: str = "cosφ = |P| / √(P² + Q²);  kryterium mocy: |P| ≤ P_limit"
+    # Matematyka wyłącznie LaTeX w delimiterach $...$ (konwencja Proof Engine).
+    formula_ref: str = (
+        r"$\cos\varphi = \dfrac{|P|}{\sqrt{P^{2} + Q^{2}}}$;  "
+        r"kryterium mocy: $|P| \le P_{\text{limit}}$"
+    )
     zalozenia: tuple[str, ...] = field(
         default_factory=lambda: (
             "Wielkosci z wezla bilansujacego biegu rozplywu (punkt przylaczenia do sieci OSD).",
             "P > 0 = pobor z sieci, P < 0 = oddawanie do sieci.",
             "Limit mocy przylaczeniowej dotyczy MODULU mocy czynnej (oba kierunki).",
-            "cosfi liczone z mocy czynnej i biernej w punkcie, bez korekty kierunku.",
+            "cosφ liczone z mocy czynnej i biernej w punkcie, bez korekty kierunku.",
             "Brak danej = NIESPRAWDZONE z kodem gotowosci, nigdy wartosc zastepcza.",
         )
     )
@@ -288,7 +292,7 @@ def ocen_warunki_przylaczenia(
             _pozycja_niedostepna(
                 KRYTERIUM_COS_PHI,
                 "-",
-                "Nie mozna ocenic cosfi w punkcie przylaczenia — brak danych wejsciowych.",
+                "Nie mozna ocenic cosφ w punkcie przylaczenia — brak danych wejsciowych.",
                 braki_cos,
             )
         )
@@ -305,7 +309,7 @@ def ocen_warunki_przylaczenia(
                 wymagana=_round6(cos_phi_wymagany),
                 jednostka="-",
                 opis_pl=(
-                    f"cosfi w punkcie {cos_phi:.4f} wobec wymaganego {cos_phi_wymagany:.4f}"
+                    f"cosφ w punkcie {cos_phi:.4f} wobec wymaganego {cos_phi_wymagany:.4f}"
                     f" ({'NIEDOTRZYMANY' if naruszony else 'dotrzymany'})."
                 ),
             )

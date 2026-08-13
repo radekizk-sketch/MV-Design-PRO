@@ -150,7 +150,7 @@ export function EngineeringProjectExplorer(): JSX.Element {
         <button
           type="button"
           data-testid="explorer-add-element"
-          className="rounded border border-[#00d4ff50] bg-[#00d4ff10] px-2 py-0.5 text-[10px] font-medium text-[#00d4ff] hover:bg-[#00d4ff20]"
+          className="rounded border border-sygnal-info/31 bg-sygnal-info-tlo/6 px-2 py-0.5 text-[10px] font-medium text-sygnal-info-tusz hover:bg-sygnal-info-tlo/13"
         >
           + Dodaj układ
         </button>
@@ -179,7 +179,7 @@ function TreeBranch(props: {
         className={clsx(
           'flex items-center gap-1 rounded px-1 py-0.5 text-[11px] transition-colors',
           isSelected
-            ? 'bg-[#00d4ff20] text-[#00d4ff]'
+            ? 'bg-sygnal-info-tlo/13 text-sygnal-info-tusz'
             : 'text-scada-text hover:bg-scada-bg-hover',
         )}
         style={{ paddingLeft: 4 + depth * 12 }}

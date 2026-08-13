@@ -104,7 +104,6 @@ import {
 import { buildCanonicalGpzProps } from '../../v2/canvas/enmToCanonicalGpzAdapter';
 import type { GpzCanonicalRendererProps } from '../../v2/renderer/GpzCanonicalRenderer';
 import type { StationOnRunRendererProps } from '../../v2/renderer/StationOnRunRenderer';
-import type { MiniBlockBayDescriptor } from '../../v2/renderer/MiniBlockRmuRenderer';
 
 import { GRID, snapToGrid, snapUp, rectsOverlap, type V3Rect } from '../core/grid';
 import { labelLineHeight, measureLabelWidth } from '../core/text';
@@ -118,8 +117,10 @@ import {
   type RouteVertex,
 } from '../layout/route';
 import { LATERAL_APPARATUS_SYMBOLS, symbolIdForPrimaryDeviceKind } from '../compose/apparatusSequence';
+import { createUnikalnyTestId } from '../compose/unikalnyTestId';
 import {
   bayMainPathHeight,
+  findLineBayIndices,
   stationBlockHeight,
   stationBusbarLabelHeight,
   stationNameBandHeight,
@@ -128,10 +129,24 @@ import {
 } from '../layout/measure';
 import { computeBands, BUS_AXIS_BAND_HEIGHT, DESCENT_STRIP_HEIGHT, type BandsResult, type StationBandHeights } from '../layout/bands';
 import { computeColumns, insertColumnChannels, type ColumnsResult, type ColumnResult } from '../layout/columns';
-import { computeSegmentLabelSlotX, colorSegmentLabelRows, COLUMN_GAP } from '../layout/segments';
+import {
+  computeSegmentLabelSlotX,
+  colorSegmentLabelRows,
+  wysrodkujSlotNaPrzesle,
+  COLUMN_GAP,
+} from '../layout/segments';
 import { MIN_PARALLEL_CABLE_CLEARANCE, MIN_SUBTREE_CLEARANCE, TOP_LEVEL_FIELD_CLEARANCE } from '../layout/clearances';
 import {
+  planSheetRows,
+  SHEET_MAX_ASPECT,
+  SHEET_TARGET_ASPECT,
+  type SheetLateralExtent,
+  type SheetRowPlan,
+} from '../layout/sheetRows';
+import {
   resolveLabels,
+  labelReservationRect,
+  LABEL_ROLE_BY_OWNER_KIND,
   type OwnedLabel,
   type SegmentSpanOwnerInput,
   type SegmentLateralOwnerInput,
@@ -152,8 +167,6 @@ import {
 import {
   resolveStationDirectionContext,
   stationBayCaptions,
-  isLineLikeRole,
-  classifyLineBayDirection,
   classifyStationTopologicalType,
   FORBIDDEN_RAW_DIRECTION_TOKENS,
 } from '../compose/directions';
@@ -207,6 +220,13 @@ export const SCENE_LOD_LABELS_PL: Readonly<Record<SceneLod, string>> = {
   2: 'Stacje i aparatura',
 };
 
+/** S9-7: pas poziomy arkusza odpowiadający jednemu wierszowi łamania (`meta.
+ *  sheetRowBands`). `y` = górna krawędź [px świata], `height` > 0. */
+export interface SheetRowBand {
+  readonly y: number;
+  readonly height: number;
+}
+
 export interface SceneV3Meta {
   readonly lod: SceneLod;
   readonly stationCount: number;
@@ -219,7 +239,43 @@ export interface SceneV3Meta {
   readonly sections: readonly GpzSectionMeta[];
   readonly transformers: readonly GpzTransformerMeta[];
   readonly mainTrunkStationIds: readonly string[];
+  /**
+   * S9-1 (ŁAMANIE ARKUSZA, `docs/sld/DECYZJA_LAMANIE_ARKUSZA.md`): podział ciągu
+   * głównego na WIERSZE ARKUSZA — identyfikatory stacji per wiersz, w kolejności
+   * ciągu. `[[…wszystkie…]]` = arkusz niezłamany (jeden wiersz). Podział jest
+   * IDENTYCZNY na L0/L1/L2 (liczony z geometrii pełnego szczegółu), więc stacja
+   * nie zmienia wiersza przy zoomie — wyrocznia `sheetRowsMatchAcrossLods`.
+   */
+  readonly sheetRows: readonly (readonly string[])[];
+  /**
+   * S9-7 (audyt C-4 „znaczniki stref"): PASY POZIOME arkusza odpowiadające
+   * wierszom z `sheetRows` — współrzędne świata, rozłączne, POKRYWAJĄCE cały
+   * `bbox` sceny (pierwszy pas zaczyna się na górnej krawędzi arkusza,
+   * ostatni kończy na dolnej). Odgałęzienia wiersza `k` leżą MIĘDZY wierszami
+   * `k` i `k+1` (przeplot pasm, `DECYZJA_LAMANIE_ARKUSZA.md` §4), więc
+   * granicą pasa jest STROP wiersza następnego, a nie koniec pasm samej
+   * magistrali — dzięki temu litera strefy wskazuje ten sam wiersz arkusza,
+   * w którym stoi odgałęzienie tego wiersza.
+   *
+   * DLACZEGO W SCENIE, A NIE W RAMCE. Ramka arkusza (`sheet/Frame.tsx`) nie
+   * zna topologii ani podziału na wiersze — dostaje szerokość i wysokość.
+   * Gdyby liczyła pasy sama (np. dzieląc wysokość na równe części), byłaby to
+   * DRUGA reguła podziału arkusza obok `layout/sheetRows.ts` i rozjechałaby
+   * się przy pierwszej zmianie łamania (reguła KLASA §3 — predykaty parami).
+   *
+   * Pusta lista, gdy scena nie ma ciągu głównego (brak czego dzielić).
+   */
+  readonly sheetRowBands: readonly SheetRowBand[];
   readonly lateralRunIds: readonly string[];
+  /** ODG-RYSUNEK: identyfikatory stacji FAKTYCZNIE narysowanych (magistrala,
+   *  laterale, feedery GPZ) — posortowane. Dotąd scena wystawiała wyłącznie
+   *  LICZNIK (`stationCount`), więc wyrocznia pokrycia mogła powiedzieć „ile", a
+   *  nie „które". Wejście `branchPointCoverageGaps` („stacja za punktem odgałęźnym
+   *  narysowana"). */
+  readonly drawnStationIds: readonly string[];
+  /** ODG-RYSUNEK: refy PUNKTÓW ODGAŁĘŹNYCH narysowanych na torze magistrali
+   *  (symbol + rozcięcie toru) — posortowane; puste dla sieci bez punktów. */
+  readonly drawnBranchPointRefs: readonly string[];
   /** Decyzje zakresu / luki danych napotkane przy budowie TEJ sceny —
    *  widoczne w testach/CI (nie ukryty dług w komentarzu). */
   readonly stopNotes: readonly string[];
@@ -296,6 +352,26 @@ const COLLECTIVE_BOX_SIZE = SYMBOL_DEFS.stationCollapsed.width;
  *  „dwa zejścia w tej samej szczelinie" — rozsunięcie w ramach szczeliny). */
 const LATERAL_CHANNEL_STEP = GRID;
 
+/** S9-1: lewy margines arkusza dla wierszy `k > 0` (wiersz 0 zaczyna się za
+ *  blokiem GPZ). Musi być ≥ 2×GRID, bo rynna zejścia łącznika biegnie
+ *  `2×GRID` NA LEWO od kolumny 0 — przy zerowym marginesie świat wyszedłby
+ *  poza x=0, czyli pod chrom arkusza (kontrakt k5b/D2). */
+const SHEET_ROW_LEFT_MARGIN = 4 * GRID;
+
+/** S9-1: odstęp kanału powrotnego łącznika od PRAWEJ krawędzi całego pasma
+ *  (wiersz + jego odgałęzienia) — pion łącznika ma leżeć POZA treścią pasma,
+ *  nie w niej (decyzja §2 „zero nowych skrzyżowań"). */
+const SHEET_RETURN_CHANNEL_GAP = 4 * GRID;
+
+/** S9-1: połowa długości kreski znaku ciągu dalszego (marker poprzeczny). */
+const SHEET_CONTINUATION_ARROW = 2 * GRID;
+
+/** S9-1: DODATKOWE światło pionowe nad wierszem `k > 0` — korytarz, w którym
+ *  biegnie poziomy odcinek łącznika ciągu dalszego wraz z odsyłaczem
+ *  („z wiersza n"). Bez tej rezerwacji odsyłacz musiałby siąść w paśmie B1
+ *  wiersza (etykiety przęseł) i przegrywałby declutter. */
+const SHEET_LINK_CORRIDOR = 4 * GRID;
+
 // ---------------------------------------------------------------------------
 // Pomocnicze: nazewnictwo typu stacji (§9), terminale §16 z cableRun.
 // ---------------------------------------------------------------------------
@@ -326,11 +402,34 @@ function toTerminalForOwner(cableRun: SldCableRun | undefined, ownerRef: string)
   return (cableRun?.segmentPaths ?? []).find((p) => p.toTerminal?.ownerRef === ownerRef)?.toTerminal;
 }
 
-function incomingLabelText(cableRun: SldCableRun | undefined, ownerRef: string): string | null {
+/**
+ * BLOK-LATERAL-WLASNOSC (R3 „predykaty parami"): ODCINEK WCHODZĄCY do
+ * `ownerRef` — JEDNO wyszukanie zwracające i JEGO REF, i JEGO PODPIS.
+ *
+ * Dotąd były to DWIE niezależne kopie tego samego predykatu
+ * (`p.toTerminal?.ownerRef === ownerRef`): jedna w `incomingLabelText`
+ * (skąd bierze się TREŚĆ podpisu), druga w `incomingSegmentRef` (skąd bierze
+ * się WŁAŚCICIEL rysunku). Dopóki podpis nosił ref STACJI, rozjazd był
+ * niewidoczny. Gdy podpis zaczyna nosić ref ODCINKA, rozjazd stałby się
+ * fabrykacją albo cichym zniknięciem napisu, więc źródło prawdy jest JEDNO:
+ * z tego zwrotu wynika WPROST niezmiennik „`text != null` ⇒ `segmentRef`
+ * istnieje" (gałąź awaryjna nie jest martwa z przypadku, tylko NIEMOŻLIWA
+ * z konstrukcji). Przypięte testem
+ * `__tests__/wlasnoscEtykiet.contract.test.ts` §1.
+ */
+interface IncomingSegment {
+  readonly segmentRef: string;
+  readonly text: string | null;
+}
+
+function incomingSegment(
+  cableRun: SldCableRun | undefined,
+  ownerRef: string,
+): IncomingSegment | null {
   const sp = (cableRun?.segmentPaths ?? []).find((p) => p.toTerminal?.ownerRef === ownerRef);
   if (!sp) return null;
   const label = (cableRun?.segmentLabels ?? []).find((l) => l.segmentRef === sp.segmentRef);
-  if (!label) return null;
+  if (!label) return { segmentRef: sp.segmentRef, text: null };
   // W3-KABLE-ETYKIETY §7 (L2): jeśli adapter niesie STRUKTURALNE dane techniczne
   // (typ z żyły×przekrój · napięcie znamionowe · długość „l = …" · mufa), składamy
   // PEŁNY człon techniczny L2 z realnych danych (zero fabrykacji — brakująca dana
@@ -338,9 +437,13 @@ function incomingLabelText(cableRun: SldCableRun | undefined, ownerRef: string):
   // strukturalnych (żaden run bez `technical`). Span rysowany tylko na L2 (bramka
   // `lod===2` u wołających), więc wzbogacenie nie zmienia L0/L1.
   const technicalText = label.technical ? formatLineTechnicalLabel(label.technical) : null;
-  if (technicalText) return technicalText;
+  if (technicalText) return { segmentRef: sp.segmentRef, text: technicalText };
   const text = label.text?.trim();
-  return text ? text : null;
+  return { segmentRef: sp.segmentRef, text: text ? text : null };
+}
+
+function incomingLabelText(cableRun: SldCableRun | undefined, ownerRef: string): string | null {
+  return incomingSegment(cableRun, ownerRef)?.text ?? null;
 }
 
 /**
@@ -369,10 +472,12 @@ function segmentSpanTextWithEndpoints(
  * dotyka granicy). Zero zgadywania: `undefined`, gdy adapter nie ma
  * dopasowania (np. odcinek GPZ→stacja0 bez zbudowanego `cableRun`) —
  * WOŁAJĄCY zostawia `meta.ownerRef` nieustawione, NIE fabrykuje refu.
+ *
+ * BLOK-LATERAL-WLASNOSC: „TEN SAM wzorzec" przestał być deklaracją w
+ * komentarzu — obie funkcje czytają teraz JEDEN `incomingSegment` (R3).
  */
 function incomingSegmentRef(cableRun: SldCableRun | undefined, ownerRef: string): string | undefined {
-  const sp = (cableRun?.segmentPaths ?? []).find((p) => p.toTerminal?.ownerRef === ownerRef);
-  return sp?.segmentRef;
+  return incomingSegment(cableRun, ownerRef)?.segmentRef;
 }
 
 /**
@@ -578,6 +683,110 @@ function splitPolylineAtPoints(
   return pieces;
 }
 
+/**
+ * ODG-RYSUNEK: cięcie ŁAŃCUCHA przęsła w PUNKTACH ODGAŁĘŹNYCH leżących na tym
+ * przęśle. Bez tego kroku punkt stałby W ŚRODKU kawałka jednego członu, choć w
+ * modelu KOŃCZY jeden człon i ZACZYNA następny — rysunek kłamałby o tożsamości
+ * odcinków (klik/inspektor/nakładka wynikowa czytają `ownerRef` kawałka).
+ *
+ * Reguła: polilinia dzieli się NAJPIERW punktami odgałęźnymi (twarde granice z
+ * modelu), a każdy powstały pod-bieg dopiero potem na równe kawałki swojego
+ * pod-łańcucha (dotychczasowa `splitPolylineIntoPieces`). Zwraca `null`, gdy
+ * podziału nie da się wykonać dokładnie (punkt poza biegiem poziomym, degeneracja
+ * długości) — wołający wraca wtedy do zachowania sprzed karty i ZGŁASZA to,
+ * zamiast rysować cięcie w nieprawdziwym miejscu.
+ */
+interface BranchPointChainCut {
+  /** Liczba członów łańcucha PRZED punktem (1 … chain.length−1). */
+  readonly chainIndex: number;
+  readonly point: RouteVertex;
+}
+
+/** ODG-RYSUNEK: kotwica punktu odgałęźnego na torze wraz z jego tożsamością. */
+interface RowBranchAnchor {
+  readonly refId: string;
+  readonly point: RouteVertex;
+}
+
+/** ODG-RYSUNEK: kontekst cięcia torów magistrali JEDNEGO wiersza arkusza —
+ *  kotwice punktów odgałęźnych tego wiersza + piony, na których nie wolno ciąć
+ *  równych udziałów. Przekazywany też DO PRZODU (`previousSheetRow`), bo łącznik
+ *  ciągu dalszego wychodzi z wiersza `k`, a rysowany jest przy wierszu `k+1`. */
+interface TrunkChainContext {
+  readonly anchorBySegmentRef: ReadonlyMap<string, RowBranchAnchor>;
+  readonly forbiddenCutX: ReadonlySet<number>;
+}
+
+/**
+ * ODG-RYSUNEK: kawałki łańcucha JEDNEGO toru magistrali — z twardymi cięciami w
+ * punktach odgałęźnych leżących na tym torze, a w pozostałych miejscach
+ * dotychczasowym podziałem na równe udziały długości. Jedno wejście dla
+ * WSZYSTKICH torów ciągu (GPZ→S0, przęsło międzystacyjne, łącznik wierszy, ogon
+ * otwarty), żeby nie powstały cztery reguły cięcia zamiast jednej.
+ *
+ * `consumed` zbiera refy punktów, których cięcie FAKTYCZNIE wykonano — to jedyny
+ * warunek narysowania symbolu punktu (predykaty parami, reguła KLASA §3: symbol
+ * punktu istnieje wtedy i tylko wtedy, gdy tor jest w nim rozcięty; punkt bez
+ * cięcia zgłasza się jako luka pokrycia, nie wisi obok toru).
+ */
+function trunkChainPieces(
+  points: readonly RouteVertex[],
+  chain: readonly string[],
+  ctx: TrunkChainContext,
+  consumed: Set<string>,
+  stopNotes: string[],
+): readonly (readonly RouteVertex[])[] {
+  const cuts: BranchPointChainCut[] = [];
+  const refs: string[] = [];
+  chain.forEach((ref, i) => {
+    const anchor = ctx.anchorBySegmentRef.get(ref);
+    if (anchor && i + 1 <= chain.length - 1) {
+      cuts.push({ chainIndex: i + 1, point: anchor.point });
+      refs.push(anchor.refId);
+    }
+  });
+  const exact = splitChainAtBranchPoints(points, chain, cuts, ctx.forbiddenCutX);
+  if (exact) {
+    refs.forEach((r) => consumed.add(r));
+    return exact;
+  }
+  if (cuts.length > 0) {
+    stopNotes.push(
+      `Punkt odgałęźny na przęśle „${chain[0]}…${chain[chain.length - 1]}": rozcięcie toru w punkcie niewykonalne (kotwica poza biegiem poziomym albo degeneracja długości) — przęsło podzielone równymi udziałami, punkt bez symbolu.`,
+    );
+  }
+  return chain.length > 1 ? splitPolylineIntoPieces(points, chain.length, ctx.forbiddenCutX) : [points];
+}
+
+function splitChainAtBranchPoints(
+  points: readonly RouteVertex[],
+  chain: readonly string[],
+  cuts: readonly BranchPointChainCut[],
+  forbiddenCutX: ReadonlySet<number>,
+): readonly (readonly RouteVertex[])[] | null {
+  if (cuts.length === 0) return null;
+  const ordered = [...cuts].sort((a, b) => a.chainIndex - b.chainIndex);
+  for (let i = 0; i < ordered.length; i++) {
+    if (ordered[i].chainIndex < 1 || ordered[i].chainIndex > chain.length - 1) return null;
+    if (i > 0 && ordered[i].chainIndex <= ordered[i - 1].chainIndex) return null;
+  }
+  const subs = splitPolylineAtPoints(points, ordered.map((c) => c.point));
+  if (subs.length !== ordered.length + 1) return null;
+
+  const out: (readonly RouteVertex[])[] = [];
+  let from = 0;
+  for (let s = 0; s < subs.length; s++) {
+    const to = s < ordered.length ? ordered[s].chainIndex : chain.length;
+    const count = to - from;
+    if (count < 1) return null;
+    const pieces = count > 1 ? splitPolylineIntoPieces(subs[s], count, forbiddenCutX) : [subs[s]];
+    if (pieces.length !== count) return null;
+    out.push(...pieces);
+    from = to;
+  }
+  return out.length === chain.length ? out : null;
+}
+
 interface TeeJunctionResult {
   readonly segments: readonly PreviewSegment[];
   readonly dots: readonly RouteVertex[];
@@ -621,7 +830,7 @@ function resolveTeeJunctions(segments: readonly PreviewSegment[]): TeeJunctionRe
       if (pi === 0) {
         // PIERWSZY kawałek zachowuje realny `ownerRef` przęsła — `points[0]`
         // pozostaje stroną `fromTerminal` (kontrakt kierunku nakładki F-1,
-        // `overlay.ts`), a bramka `singleHopSegmentRefs`/licznik przęseł
+        // `overlay.ts`), a bramka `orientedSegmentRefs`/licznik przęseł
         // (`overlay.ts`, kawałki `seg/` bez `#`) widzą DOKŁADNIE jeden odcinek
         // na realny ref. `openTerminal` (jeśli był) należy do OSTATNIEGO
         // kawałka, więc przy podziale (>1 kawałek) zdejmujemy go z pierwszego.
@@ -654,11 +863,16 @@ function resolveTeeJunctions(segments: readonly PreviewSegment[]): TeeJunctionRe
  */
 function classifySymbolElementKind(symbolId: SymbolId): PreviewElementKind {
   if (symbolId === 'transformer2W') return 'transformer';
+  // ODG-RYSUNEK: punkt odgałęźny (ZKSN / słup rozgałęźny) — własna kategoria
+  // (obiekt sieci na torze), nie aparat pola.
+  if (symbolId === 'branchCabinet' || symbolId === 'branchPole') return 'branchPoint';
   // F9.4: `gridSource` (sieć zewnętrzna) sprawdzone PRZED `startsWith('der')`
   // — nie jest DER, ma własny elementKind `'source'` (spec §13.1/§13.2).
   if (symbolId === 'gridSource') return 'source';
   if (symbolId.startsWith('der')) return 'der';
-  if (symbolId === 'stationCollapsed') return 'station';
+  // KD-5: blok GPZ zwinięty (L0) jest STACJĄ zasilającą, nie aparatem — ta sama
+  // kategoria co `stationCollapsed` (warstwa „stacje i aparatura", selekcja).
+  if (symbolId === 'stationCollapsed' || symbolId === 'gpzCollapsed') return 'station';
   return 'apparatus';
 }
 
@@ -712,28 +926,10 @@ function buildLineRunShims(
 // (`compose/directions.ts`, wyeksportowana), zero cienia.
 // ---------------------------------------------------------------------------
 
-interface LineBayIndices {
-  readonly previousIndex: number | null;
-  readonly nextIndex: number | null;
-  readonly branchIndices: readonly number[];
-}
-
-function findLineBayIndices(snBays: readonly MiniBlockBayDescriptor[]): LineBayIndices {
-  const lineBayIdx: number[] = [];
-  snBays.forEach((bay, i) => {
-    if (isLineLikeRole(bay.fieldRole)) lineBayIdx.push(i);
-  });
-  let previousIndex: number | null = null;
-  let nextIndex: number | null = null;
-  const branchIndices: number[] = [];
-  lineBayIdx.forEach((idx, pos) => {
-    const direction = classifyLineBayDirection(snBays[idx].fieldRole, pos);
-    if (direction === 'previous') previousIndex = idx;
-    else if (direction === 'next') nextIndex = idx;
-    else if (direction === 'branch') branchIndices.push(idx);
-  });
-  return { previousIndex, nextIndex, branchIndices };
-}
+// SLOT-DRYF-PRZĘSŁA: `findLineBayIndices` przeniesione do `layout/measure.ts`
+// (importowane niżej) — TEJ SAMEJ klasyfikacji potrzebuje rezerwacja slotu
+// etykiety przęsła w `layout/segments.ts`, a `layout/` nie może importować ze
+// `scene/` (cykl). Jedna klasyfikacja, zero cienia.
 
 // ---------------------------------------------------------------------------
 // measure → bands → columns dla JEDNEGO wiersza (magistrala LUB lateral) —
@@ -809,13 +1005,30 @@ function presentedStationTopologicalType(
   return { derived, presented };
 }
 
+/**
+ * TR2W-BEZ-POLA: JEDNA prawda faktu domenowego „stacja ma transformator
+ * SN/nN". Przed tą kartą L0 (sylwetka, niżej) i L1/L2 (`hasLvSection` w
+ * `composeRowStation`) liczyły ten fakt DWOMA niezależnymi wyrażeniami
+ * (`props.hasTransformer ?? props.transformerRatedKva != null` vs
+ * `props.hasTransformer ?? false`) — predykat wejścia i wyjścia z dwóch źródeł
+ * (naruszenie reguły KLASA §3), rozjeżdżający się dokładnie wtedy, gdy
+ * `hasTransformer` jest nieustawione, a `transformerRatedKva` jest. Jedna
+ * funkcja dla WSZYSTKICH trzech konsumentów (sylwetka L0, bramka strony nN
+ * L1/L2, `StationMeasureInput.hasTransformer`).
+ */
+function stationHasTransformerFact(
+  props: Pick<StationOnRunRendererProps, 'hasTransformer' | 'transformerRatedKva'>,
+): boolean {
+  return props.hasTransformer ?? props.transformerRatedKva != null;
+}
+
 function stationCompactGlyphSummary(
   props: StationOnRunRendererProps,
   derSources: readonly StationDerSourceInput[],
   stopNotes: string[],
   terminalInRun: boolean,
 ): StationCompactGlyphSummary {
-  const hasTransformer = props.hasTransformer ?? props.transformerRatedKva != null;
+  const hasTransformer = stationHasTransformerFact(props);
   const derBehindTr = dominantDerGlyphKind(derSources, ['nn']);
   if (derBehindTr != null && !hasTransformer) {
     stopNotes.push(
@@ -920,6 +1133,12 @@ function buildMeasureInput(
     // brak (etykieta bez napięcia / jawna granica modelu).
     nnVoltageKv: props.nnVoltageKv ?? null,
     aggregatedLvLoad: props.aggregatedLvLoad ?? null,
+    // TR2W-BEZ-POLA (§0.B): fakt domenowy + jednostki transformatorowe z
+    // terminalami — `layout/measure.ts` (`stationHasLvSide`,
+    // `stationSnColumnLayout`) czyta je, żeby zarezerwować miejsce i ustawić
+    // kolumnę transformatora BEZ pola w obrębie właściwej sekcji szyn.
+    hasTransformer: stationHasTransformerFact(props),
+    transformerUnits: props.transformerUnits,
   };
 }
 
@@ -934,6 +1153,20 @@ function buildRowLayout(
   derSourcesByStationId: ReadonlyMap<string, readonly StationDerSourceInput[]>,
   firstStationEntryDescent = false,
   columnGap: number = COLUMN_GAP,
+  // S9-1 (łamanie arkusza): kod węzła, OD którego przychodzi segment wejściowy
+  // pierwszej stacji wiersza. Dla wiersza 0 ciągu (i dla lateralu, gdzie
+  // wołający i tak nadpisuje etykietę) to węzeł GPZ; dla wiersza arkusza `k>0`
+  // to KOD OSTATNIEJ STACJI wiersza `k-1` — inaczej rezerwacja slotu etykiety
+  // pierwszego przęsła wiersza mierzyłaby tekst „GPZ ↔ …", a rysowany byłby
+  // „S12 ↔ S13 …" (rozjazd measure↔draw, wzór pkt 13 recenzji NO-GO).
+  entryNodeCode: string = gpzNodeCode,
+  // S9-1 (łamanie arkusza): czy OSTATNIA stacja tej listy jest ostatnią stacją
+  // CAŁEGO ciągu. Dla wiersza arkusza `k < R-1` NIE jest — a od tego zależy
+  // prezentacja roli topologicznej („końcowa" vs „przelotowa",
+  // `presentedStationTopologicalType`, recenzja NO-GO 2026-07-17 pkt 7).
+  // Bez tego rozróżnienia złamanie arkusza KŁAMAŁOBY o topologii: stacja w
+  // środku magistrali rysowałaby się jako koniec ciągu.
+  runEndsAtLastStation = true,
 ): RowLayout {
   const stationCodeOf = (ref: string): string | null => stationById.get(ref)?.stationCode ?? null;
 
@@ -957,7 +1190,14 @@ function buildRowLayout(
       const captions = stationBayCaptions(props.snBays ?? [], context);
       // pkt 7 (recenzja NO-GO 2026-07-17): ostatnia stacja ciągu = terminalna
       // (za nią żadna stacja; ewentualny ogon ENM to wiszący koniec §16-v3).
-      return buildMeasureInput(props, measureLod, captions, derSourcesByStationId, notes, idx === stationIds.length - 1);
+      return buildMeasureInput(
+        props,
+        measureLod,
+        captions,
+        derSourcesByStationId,
+        notes,
+        runEndsAtLastStation && idx === stationIds.length - 1,
+      );
     });
     let valid = arr.filter((m): m is StationMeasureInput => m != null);
     // F6e: stacja 0 lateralu przyjmuje Z GÓRY pion zejścia w polu „poprzednik"
@@ -997,12 +1237,22 @@ function buildRowLayout(
   const incomingTexts: (string | null)[] = geometryInputs.map((m, i) =>
     segmentSpanTextWithEndpoints(
       incomingLabelText(cableRun, m.id),
-      i === 0 ? gpzNodeCode : stationCodeOf(geometryInputs[i - 1].id),
+      i === 0 ? entryNodeCode : stationCodeOf(geometryInputs[i - 1].id),
       stationCodeOf(m.id),
     ),
   );
 
-  const slotXs = computeSegmentLabelSlotX(geometryInputs, incomingTexts, columnGap);
+  // SLOT-DRYF-PRZĘSŁA: ile członów ENM ma przęsło wchodzące do stacji `i`
+  // (§16-v3 — łańcuch segmentów połączonych węzłami BEZ stacji). Podpis niesie
+  // ref członu KOŃCOWEGO, więc rezerwacja centruje się na JEGO udziale
+  // (`udzialWlasciciela`, `layout/segments.ts`), a nie na środku całego
+  // łańcucha. Liczone z `cableRun` (dane topologii), nie z geometrii — dostępne
+  // na tym etapie potoku, przed bands/columns.
+  const incomingChainLengths: (number | null)[] = geometryInputs.map((m, i) =>
+    i === 0 ? null : chainSegmentRefs(cableRun, geometryInputs[i - 1].id, m.id).length,
+  );
+
+  const slotXs = computeSegmentLabelSlotX(geometryInputs, incomingTexts, columnGap, incomingChainLengths);
   const rows = colorSegmentLabelRows(slotXs);
   const stationBandHeights: StationBandHeights[] = geometryInputs.map((m, i) => ({
     incomingSegmentLabelText: incomingTexts[i],
@@ -1021,6 +1271,7 @@ function buildRowLayout(
   const columnsResult = computeColumns({
     stations: geometryInputs,
     incomingSegmentLabelTexts: incomingTexts,
+    incomingSegmentChainLengths: incomingChainLengths,
     nameSlotBand: bandsResult.bands.B5,
     segmentSlotBand: bandsResult.bands.B1,
     columnGap,
@@ -1138,7 +1389,8 @@ function composeRowStation(
       stationNameOwner: {
         ownerRef: measureInput.id,
         nameSlot: column.nameSlot,
-        rows: [{ text: measureInput.name, labelClass: 't1' }],
+        // KD-11: nazwa stacji zwiniętej to TOŻSAMOŚĆ bloku na L0.
+        rows: [{ text: measureInput.name, labelClass: 't1', role: 'tozsamosc' }],
       },
       apparatusOwners: [],
       portCaptionOwners: [],
@@ -1151,7 +1403,9 @@ function composeRowStation(
     };
   }
 
-  const hasLvSection = props.hasTransformer ?? false;
+  // TR2W-BEZ-POLA: JEDNA prawda z sylwetką L0 i `StationMeasureInput.
+  // hasTransformer` — ta linia POMIJAŁA fallback `transformerRatedKva != null`.
+  const hasLvSection = stationHasTransformerFact(props);
   const composition: StationComposition = composeStation({
     station: measureInput,
     column: { x: column.x, width: column.width, tapX: column.tapX },
@@ -1183,6 +1437,38 @@ function composeRowStation(
   // synchroniczny WPROST na SN, przypadek 4) = tor NIEPEŁNY. Placeholder W2
   // (symbol na szynie SN) pozostaje jako UCZCIWA DEGRADACJA, ale scena niesie
   // JAWNY ślad braku (koniec cichego uproszczenia — reguła 7).
+  // TR2W-BEZ-POLA (§0.C.5/§0.C.2): transformator przyłączony do szyny SN bez
+  // skonfigurowanego pola transformatorowego (stan NIEKOMPLETNY) oraz — gdy
+  // rozdzielnica jest sekcjonowana, a terminal WN nie wskazuje żadnej z jej
+  // sekcji — nierozstrzygnięte przypisanie do sekcji. Oba WPROST w audycie
+  // sceny; rysunek niesie marker i wiersz pasma nazw, tekst diagnostyczny żyje
+  // tutaj (WHITE BOX, zero duplikacji zdania na rysunku).
+  for (const code of composition.missingData) {
+    if (code.startsWith('station.transformer.brakPolaSN:')) {
+      const trRef = code.slice('station.transformer.brakPolaSN:'.length);
+      stopNotes.push(
+        `Stacja „${measureInput.id}": transformator „${trRef}" przyłączony do szyny SN BEZ ` +
+          `skonfigurowanego pola transformatorowego — konfiguracja niekompletna. Rysunek pokazuje ` +
+          `transformator (istnieje w modelu i uczestniczy w obliczeniach) z markerem braku pola; ` +
+          `aparatura pola NIE jest dorysowywana, bo dane jej nie niosą.`,
+      );
+    }
+    if (code.startsWith('station.transformer.sectionUnresolved:')) {
+      const trRef = code.slice('station.transformer.sectionUnresolved:'.length);
+      stopNotes.push(
+        `Stacja „${measureInput.id}": terminal WN transformatora „${trRef}" nie wskazuje żadnej ` +
+          `z sekcji zadeklarowanych przez pola tej rozdzielnicy — kolumna postawiona na końcu bloku ` +
+          `jako uczciwa degradacja, przypisanie do sekcji NIEROZSTRZYGNIĘTE (zero zgadywania).`,
+      );
+    }
+  }
+  if (composition.missingData.includes('station.transformer.refMissing')) {
+    stopNotes.push(
+      `Stacja „${measureInput.id}": model deklaruje transformator SN/nN, ale migawka nie niesie ` +
+        `żadnego rekordu „Transformer" z refem — symbol NIE jest rysowany (zakaz rysunku na ` +
+        `identyfikatorze fabrykowanym), strona nN pozostaje bez zaczepu.`,
+    );
+  }
   for (const code of composition.missingData) {
     if (code.startsWith('der.sn.torNiepelny:')) {
       const sourceId = code.slice('der.sn.torNiepelny:'.length);
@@ -1275,6 +1561,12 @@ function composeRowStation(
   const entryPort = portOfBay(previousIndex) ?? { x: column.tapX, y: busAxisY };
   const exitPort = portOfBay(nextIndex) ?? { x: column.tapX, y: busAxisY };
 
+  // S9-10 (karta następcza S9-4, klasa „tożsamość obiektu z samego symbolId"):
+  // pole z DWOMA aparatami tego samego rodzaju (norma: odłącznik szynowy +
+  // liniowy) dawało DWA obiekty o JEDNEJ tożsamości `⟨bayRef⟩#⟨symbolId⟩` —
+  // wspólna fabryka (`compose/unikalnyTestId.ts`, TA SAMA reguła co GPZ po
+  // S9-4) obejmuje aparaty ORAZ adnotacje zabezpieczeń tej stacji.
+  const unikalnyTestId = createUnikalnyTestId();
   const symbols: PreviewSymbol[] = composition.symbols.map((s) => ({
     symbolId: s.symbolId,
     x: s.x,
@@ -1283,16 +1575,31 @@ function composeRowStation(
     meta: {
       // F9.4: DER nie mają `bayRef` (nie należą do żadnego pola) — `testId`/
       // `ownerRef` spadają na `sourceRef` (`SldSourceView.id`, WHITE BOX).
-      testId: s.bayRef ? `${s.bayRef}#${s.symbolId}` : s.sourceRef ? `${s.sourceRef}#${s.symbolId}` : undefined,
-      ownerRef: s.bayRef ?? s.sourceRef,
+      testId: unikalnyTestId(
+        s.bayRef
+          ? `${s.bayRef}#${s.symbolId}`
+          : s.sourceRef
+            ? `${s.sourceRef}#${s.symbolId}`
+            : s.transformerRef
+              ? `${s.transformerRef}#${s.symbolId}`
+              : undefined,
+      ),
+      ownerRef: s.bayRef ?? s.sourceRef ?? s.transformerRef,
       elementKind: classifySymbolElementKind(s.symbolId),
+      // TR2W-BEZ-POLA (§0.C.5): stan niekompletny przepisany 1:1 — glif
+      // transformatora rysuje marker „!" przy stronie WN, treść zdania żyje w
+      // paśmie nazw B5 i w `stopNotes` (WHITE BOX, zero duplikacji tekstu).
+      transformerFieldGap: s.transformerFieldGap,
       // F9.3 (spec §12.1): przepisane 1:1 z kompozycji — audytor DOM
       // (`data-apparatus-source`) i testy czytają WYŁĄCZNIE stąd, zero
       // re-derywacji. `ownerRef` NIEZMIENIONE (nadal `bayRef`, spec §16/
-      // nakładka energizacji kluczuje po refie POLA, nie per-aparat) —
-      // `deviceRef` (WHITE BOX §12.1) mieszka na `StationComposition`
-      // (`compose/station.ts`), poza zakresem propagacji do sceny w F9.3.
+      // nakładka energizacji kluczuje po refie POLA, nie per-aparat).
       apparatusSource: s.apparatusSource,
+      // S9-10 (dług `S9-4-DLUG-INSPEKTOR`): `deviceRef` (WHITE BOX §12.1)
+      // przepisany 1:1 z kompozycji — realny `BayPrimaryDevice.device_ref`
+      // WYŁĄCZNIE dla ścieżki danych; `undefined` dla konwencji (zero
+      // fabrykacji). Konsument: klik → inspektor (`SldElementClickMeta`).
+      deviceRef: s.deviceRef,
       // W1c (uwaga 10): identyfikator KONFIGURACJI pola przepisany 1:1 z
       // kompozycji — audytor DOM (`data-config-id`) i generator macierzy W1c
       // czytają WYŁĄCZNIE stąd. Render nie zgaduje wyposażenia z typu pola.
@@ -1338,7 +1645,8 @@ function composeRowStation(
     x: s.x,
     y: s.y,
     meta: {
-      testId: `${s.bayRef}#${s.symbolId}`,
+      // S9-10: TA SAMA fabryka unikalności co aparaty tej stacji wyżej.
+      testId: unikalnyTestId(`${s.bayRef}#${s.symbolId}`),
       ownerRef: s.bayRef,
       elementKind: 'protectionAnnotation',
       protectionCodes: s.protectionCodes,
@@ -1455,6 +1763,17 @@ function trunkCorridorYOf(layout: RowLayout): number {
   return stripTopYOf(layout) + GRID;
 }
 
+/**
+ * S9-1: STROP pasm wiersza we współrzędnych GLOBALNYCH. `bandsResult` jest
+ * LOKALNE (nieprzesuwane przez `shiftRowLayout`), a `blockTopY` GLOBALNE —
+ * różnica `blockTopY − B4.y` jest niezmiennicza względem przesunięcia, więc
+ * ta formuła działa dla KAŻDEGO wiersza (magistrala, wiersz arkusza, lateral),
+ * dokładnie tą samą regułą co `stripTopYOf`.
+ */
+function rowTopYOf(layout: RowLayout): number {
+  return layout.blockTopY - layout.bandsResult.bands.B4.y;
+}
+
 /** L0 (stacja zbiorczy symbol) nie ma realnych głowic — port POŁĄCZENIA
  *  leży NA osi magistrali z konstrukcji (`composeRowStation` L0), więc jog
  *  degeneruje się do prostej linii: korytarz = `busAxisY` tego wiersza. L1/L2
@@ -1484,11 +1803,109 @@ function interStationCorridorY(layout: RowLayout, lod: SceneLod): number {
 // prepassu i origin głównej pętli są zawsze zgodne (zero cienia stanu).
 // ---------------------------------------------------------------------------
 
+/**
+ * ODG-RYSUNEK (etap 3 kontraktu `docs/domain/POMIAR_ROZLICZENIOWY_SN_V1.md`):
+ * PUNKT ODGAŁĘŹNY ciągu głównego — obiekt ENM (`branch_points`: ZKSN dla odcinka
+ * kablowego, słup rozgałęźny dla napowietrznego) leżący MIĘDZY dwoma członami
+ * magistrali. Nowa KLASA WĘZŁA wiersza obok stacji: nie ma pól ani bloku, ale ma
+ * tożsamość (ref/nazwa z danych), symbol, etykietę, obszar trafienia i — przede
+ * wszystkim — jest PEŁNOPRAWNYM POCZĄTKIEM ODGAŁĘZIENIA.
+ *
+ * Wiązanie z rysunkiem jest wyprowadzone z DANYCH, bez zgadywania po nazwach:
+ *  · `upstreamSegmentRef` — człon magistrali, którego `toTerminal.busRef` RÓWNA
+ *    SIĘ `BranchPointSN.bus_ref`; to on kończy się w tym punkcie, więc cięcie
+ *    łańcucha przęsła wypada dokładnie tu (`splitChainAtBranchPoints`);
+ *  · `upstreamNodeRef` — najbliższy WCZEŚNIEJSZY węzeł ciągu z właścicielem
+ *    (stacja albo GPZ); w JEGO szczelinie kolumnowej punkt dostaje kanał zejścia,
+ *    tą samą formułą co lateral wychodzący z pola odgałęźnego stacji
+ *    (`computeLateralChannelX`) — jeden allocator, jedno źródło prawdy.
+ */
+interface TrunkBranchPoint {
+  readonly refId: string;
+  readonly name: string;
+  readonly kind: 'zksn' | 'branch_pole';
+  readonly upstreamSegmentRef: string;
+  readonly upstreamNodeRef: string;
+  /** Pozycja w `segmentPaths` ciągu głównego — porządek rysowania (od zasilania). */
+  readonly trunkIndex: number;
+}
+
+/** ODG-RYSUNEK: symbol punktu odgałęźnego wg RODZAJU Z MODELU (zero domysłu po
+ *  nazwie/katalogu — `BranchPointSN.branch_point_type` jest jedynym pisarzem). */
+function branchPointSymbolId(kind: TrunkBranchPoint['kind']): SymbolId {
+  return kind === 'zksn' ? 'branchCabinet' : 'branchPole';
+}
+
+/**
+ * ODG-RYSUNEK: punkty odgałęźne LEŻĄCE NA CIĄGU GŁÓWNYM, w kolejności od
+ * zasilania. Punkt, którego szyny nie ma w `segmentPaths` magistrali (odgałęzienie
+ * zagnieżdżone, feeder GPZ — poza zakresem F6a jak same laterale zagnieżdżone),
+ * NIE jest tu zwracany: wołający zgłasza go `stopNote`, zamiast cicho gubić.
+ */
+function collectTrunkBranchPoints(
+  snapshot: EnergyNetworkModel,
+  mainCableRun: SldCableRun | undefined,
+  stopNotes: string[],
+): readonly TrunkBranchPoint[] {
+  const points = snapshot.branch_points ?? [];
+  if (points.length === 0) return [];
+  const paths = mainCableRun?.segmentPaths ?? [];
+  const out: TrunkBranchPoint[] = [];
+  for (const bp of points) {
+    const trunkIndex = paths.findIndex((p) => p.toTerminal?.busRef === bp.bus_ref);
+    if (trunkIndex < 0) {
+      stopNotes.push(
+        `Punkt odgałęźny „${bp.name}" (${bp.ref_id}) nie leży na ciągu głównym (szyna ${bp.bus_ref} poza „segmentPaths" magistrali) — punkt i jego odgałęzienia poza rysunkiem (odgałęzienie zagnieżdżone, POZA zakresem F6a).`,
+      );
+      continue;
+    }
+    let upstreamNodeRef: string | null = null;
+    for (let i = trunkIndex; i >= 0; i--) {
+      const owner = paths[i].fromTerminal?.ownerRef ?? null;
+      if (owner != null) {
+        upstreamNodeRef = owner;
+        break;
+      }
+    }
+    if (upstreamNodeRef == null) {
+      stopNotes.push(
+        `Punkt odgałęźny „${bp.name}" (${bp.ref_id}) nie ma na ciągu żadnego węzła POPRZEDZAJĄCEGO (stacji ani GPZ) — brak szczeliny kolumnowej dla kanału zejścia, punkt poza rysunkiem.`,
+      );
+      continue;
+    }
+    out.push({
+      refId: bp.ref_id,
+      name: bp.name,
+      kind: bp.branch_point_type,
+      upstreamSegmentRef: paths[trunkIndex].segmentRef,
+      upstreamNodeRef,
+      trunkIndex,
+    });
+  }
+  return out.sort((a, b) => a.trunkIndex - b.trunkIndex);
+}
+
+/** ODG-RYSUNEK: rodzaj początku odgałęzienia. `station-bay` = pole odgałęźne
+ *  stacji ciągu (dotychczasowy, jedyny obsługiwany przypadek); `branch-point` =
+ *  punkt odgałęźny na ODCINKU (ZKSN / słup rozgałęźny). */
+type BranchOriginKind = 'station-bay' | 'branch-point';
+
 interface ResolvedBranchOrigin {
+  readonly kind: BranchOriginKind;
+  /** Węzeł, od którego liczy się etykieta przęsła zejścia i łańcuch segmentów —
+   *  stacja (pole odgałęźne) albo punkt odgałęźny. */
   readonly originOwnerRef: string;
+  /** Stacja ciągu głównego, w której SZCZELINIE kolumnowej leży kanał zejścia.
+   *  Dla `station-bay` == `originOwnerRef`; dla `branch-point` — stacja
+   *  POPRZEDZAJĄCA punkt na ciągu (`TrunkBranchPoint.upstreamNodeRef`). */
+  readonly channelOwnerRef: string;
   readonly originRow: RowStation;
   readonly branchPos: number;
-  readonly originPort: { readonly x: number; readonly y: number };
+  /** Port odgałęźny pola stacji. `null` dla punktu odgałęźnego — jego port leży
+   *  NA TORZE magistrali (kanał × korytarz międzystacyjny), więc jest znany
+   *  dopiero przy budowie wiersza (patrz `branchPointAnchorY`). */
+  readonly originPort: { readonly x: number; readonly y: number } | null;
+  readonly branchPoint: TrunkBranchPoint | null;
 }
 
 function resolveBranchOrigin(
@@ -1496,15 +1913,48 @@ function resolveBranchOrigin(
   cableRunById: ReadonlyMap<string, SldCableRun>,
   mainRowById: ReadonlyMap<string, RowStation>,
   branchOriginUsage: Map<string, number>,
+  // ODG-RYSUNEK: pozycje kanałów punktów odgałęźnych są PRZYDZIELONE osobno
+  // (`computeRowChannelPlan`, po lateralach pól tej samej stacji), więc tu
+  // punkt NIE pobiera kolejnego `branchPos` — dostaje swoją, już ustaloną.
+  branchPointByRef: ReadonlyMap<string, TrunkBranchPoint>,
+  branchPointPos: ReadonlyMap<string, number>,
 ): ResolvedBranchOrigin | null {
   const originOwnerRef = cableRunById.get(run.id)?.segmentPaths?.[0]?.fromTerminal?.ownerRef ?? null;
-  const originRow = originOwnerRef ? mainRowById.get(originOwnerRef) : undefined;
-  if (!originOwnerRef || !originRow) return null;
-  const branchPos = branchOriginUsage.get(originOwnerRef) ?? 0;
-  branchOriginUsage.set(originOwnerRef, branchPos + 1);
-  const originPort = originRow.composed.branchPort(branchPos);
-  if (!originPort) return null;
-  return { originOwnerRef, originRow, branchPos, originPort };
+  if (originOwnerRef != null) {
+    const originRow = mainRowById.get(originOwnerRef);
+    if (!originRow) return null;
+    const branchPos = branchOriginUsage.get(originOwnerRef) ?? 0;
+    branchOriginUsage.set(originOwnerRef, branchPos + 1);
+    const originPort = originRow.composed.branchPort(branchPos);
+    if (!originPort) return null;
+    return {
+      kind: 'station-bay',
+      originOwnerRef,
+      channelOwnerRef: originOwnerRef,
+      originRow,
+      branchPos,
+      originPort,
+      branchPoint: null,
+    };
+  }
+  // ODG-RYSUNEK: odgałęzienie startujące w PUNKCIE ODGAŁĘŹNYM — adapter niesie
+  // jego ref w `branchOriginStationRef` (`enmToSldAdapter.ts`), a `fromTerminal.
+  // ownerRef` jest tam z definicji pusty (szyna punktu nie należy do stacji).
+  const bpRef = run.branchOriginStationRef ?? null;
+  const bp = bpRef != null ? branchPointByRef.get(bpRef) : undefined;
+  if (!bp) return null;
+  const originRow = mainRowById.get(bp.upstreamNodeRef);
+  const branchPos = branchPointPos.get(bp.refId);
+  if (!originRow || branchPos == null) return null;
+  return {
+    kind: 'branch-point',
+    originOwnerRef: bp.refId,
+    channelOwnerRef: bp.upstreamNodeRef,
+    originRow,
+    branchPos,
+    originPort: null,
+    branchPoint: bp,
+  };
 }
 
 /**
@@ -1538,22 +1988,87 @@ function computeLateralChannelX(
  * WSZYSTKICH zejść PÓŹNIEJSZYCH w kolejności komponowania, żeby zarezerwować
  * dla nich kanały w KAŻDYM wcześniejszym wierszu, który będą przecinać.
  */
-function computeLateralChannelXById(
+/**
+ * ODG-RYSUNEK: PLAN KANAŁÓW jednego wiersza arkusza — X-y pionów zejścia dla
+ * WSZYSTKICH początków odgałęzień tego wiersza, w JEDNYM przebiegu i z JEDNEGO
+ * allocatora (`usage` per stacja-właściciel szczeliny).
+ *
+ * Kolejność przydziału jest częścią kontraktu (reguła KLASA §3 „predykaty
+ * parami"): NAJPIERW laterale wychodzące z PÓL stacji tego wiersza (kolejność
+ * `branchRuns` adaptera), DOPIERO POTEM punkty odgałęźne (kolejność ciągu). Dzięki
+ * temu sieci BEZ punktów odgałęźnych dostają dokładnie te same kanały co przed tą
+ * kartą (zero ruchu goldenów), a punkt odgałęźny nigdy nie zajmuje szczeliny
+ * lateralowi pola.
+ *
+ * Odgałęzienie startujące W PUNKCIE odgałęźnym NIE bierze własnego kanału —
+ * dziedziczy kanał SWOJEGO punktu (pion schodzi z toru magistrali dokładnie tam,
+ * gdzie stoi symbol punktu). Drugie i kolejne odgałęzienie z tego samego punktu
+ * (katalogowe `branch_ports_count > 1`) dostaje WŁASNY kanał i dojeżdża do niego
+ * sub-poziomem pod korytarzem (patrz trasa w sekcji 6).
+ */
+interface RowChannelPlan {
+  /** Kanał zejścia per `topologyRun.id` (laterale pól i odgałęzienia punktów). */
+  readonly byRunId: ReadonlyMap<string, number>;
+  /** Kanał (== X symbolu) per `TrunkBranchPoint.refId`. */
+  readonly byBranchPointRef: ReadonlyMap<string, number>;
+  /** Pozycja w szczelinie per punkt — wejście `resolveBranchOrigin`. */
+  readonly branchPosByBranchPointRef: ReadonlyMap<string, number>;
+}
+
+function computeRowChannelPlan(
   branchRuns: readonly SldTopologyRun[],
+  rowBranchPoints: readonly TrunkBranchPoint[],
   cableRunById: ReadonlyMap<string, SldCableRun>,
   mainRowById: ReadonlyMap<string, RowStation>,
+  branchPointByRef: ReadonlyMap<string, TrunkBranchPoint>,
   mainColumns: readonly ColumnResult[],
-): ReadonlyMap<string, number> {
-  const out = new Map<string, number>();
+): RowChannelPlan {
+  const byRunId = new Map<string, number>();
+  const byBranchPointRef = new Map<string, number>();
+  const branchPosByBranchPointRef = new Map<string, number>();
   const usage = new Map<string, number>();
+
+  // (1) Laterale z PÓL stacji — zachowanie sprzed karty, bit w bit.
   for (const run of branchRuns) {
-    const origin = resolveBranchOrigin(run, cableRunById, mainRowById, usage);
-    if (!origin) continue;
-    const channelX = computeLateralChannelX(mainColumns, origin.originOwnerRef, origin.branchPos);
+    const origin = resolveBranchOrigin(run, cableRunById, mainRowById, usage, branchPointByRef, new Map());
+    if (!origin || origin.kind !== 'station-bay') continue;
+    const channelX = computeLateralChannelX(mainColumns, origin.channelOwnerRef, origin.branchPos);
     if (channelX == null) continue;
-    out.set(run.id, channelX);
+    byRunId.set(run.id, channelX);
   }
-  return out;
+
+  // (2) Punkty odgałęźne tego wiersza — w kolejności ciągu, w szczelinie stacji
+  //     POPRZEDZAJĄCEJ; kolejne punkty tej samej szczeliny idą krokiem w głąb.
+  for (const bp of rowBranchPoints) {
+    const branchPos = usage.get(bp.upstreamNodeRef) ?? 0;
+    usage.set(bp.upstreamNodeRef, branchPos + 1);
+    const channelX = computeLateralChannelX(mainColumns, bp.upstreamNodeRef, branchPos);
+    if (channelX == null) continue;
+    byBranchPointRef.set(bp.refId, channelX);
+    branchPosByBranchPointRef.set(bp.refId, branchPos);
+  }
+
+  // (3) Odgałęzienia startujące w punktach — pierwsze dziedziczy kanał punktu,
+  //     kolejne z tego samego punktu dostają własny (krok w tej samej szczelinie).
+  const usedByPoint = new Map<string, number>();
+  for (const run of branchRuns) {
+    const bpRef = run.branchOriginStationRef ?? null;
+    const bp = bpRef != null ? branchPointByRef.get(bpRef) : undefined;
+    if (!bp || !byBranchPointRef.has(bp.refId)) continue;
+    if ((cableRunById.get(run.id)?.segmentPaths?.[0]?.fromTerminal?.ownerRef ?? null) != null) continue;
+    const nth = usedByPoint.get(bp.refId) ?? 0;
+    usedByPoint.set(bp.refId, nth + 1);
+    if (nth === 0) {
+      byRunId.set(run.id, byBranchPointRef.get(bp.refId)!);
+      continue;
+    }
+    const branchPos = usage.get(bp.upstreamNodeRef) ?? 0;
+    usage.set(bp.upstreamNodeRef, branchPos + 1);
+    const channelX = computeLateralChannelX(mainColumns, bp.upstreamNodeRef, branchPos);
+    if (channelX != null) byRunId.set(run.id, channelX);
+  }
+
+  return { byRunId, byBranchPointRef, branchPosByBranchPointRef };
 }
 
 /**
@@ -1726,6 +2241,29 @@ function truncateSpanAtChannels(
   return { spanStart, spanEnd: Math.max(spanStart, firstPoint - GRID) };
 }
 
+/**
+ * SLOT-DRYF-PRZĘSŁA (runda 2): zakres X KAWAŁKA, który niesie ref `ownerRef`,
+ * spośród kawałków łańcucha danego przęsła. `null`, gdy podziału na człony nie
+ * wykonano (kawałek = całe przęsło, wołający zna wtedy jego końce wprost).
+ *
+ * DLACZEGO WPROST, A NIE PROPORCJĄ. `layout/segments.ts` `udzialWlasciciela`
+ * przybliża udział członu w osi X (nie zna geometrii trasy). Tam, gdzie
+ * kawałki są JUŻ policzone — przęsła wychodzące z GPZ i z pola odpływowego
+ * GPZ — wołający ma prawdziwy zakres i nie ma powodu go przybliżać.
+ */
+function zakresKawalkaLancucha(
+  chain: readonly string[],
+  pieces: readonly (readonly RouteVertex[])[],
+  ownerRef: string,
+): { readonly startX: number; readonly endX: number } | null {
+  if (chain.length === 0 || pieces.length !== chain.length) return null;
+  const i = chain.indexOf(ownerRef);
+  if (i < 0) return null;
+  const xs = pieces[i].map((p) => p.x);
+  if (xs.length === 0) return null;
+  return { startX: Math.min(...xs), endX: Math.max(...xs) };
+}
+
 /** Odcinki MIĘDZY kolejnymi stacjami TEGO SAMEGO wiersza (magistrala lub
  *  lateral) — spec §5.4 „route między tapX kolejnych węzłów". `channelPointsX`
  *  (F6d, domyślnie puste — magistrala nie ma kanałów): patrz
@@ -1747,6 +2285,12 @@ function connectRowStations(
   // Recenzja NO-GO 2026-07-17 pkt 13: kody końców przęsła do etykiety
   // „A ↔ B — typ · dł." (`segmentSpanTextWithEndpoints`).
   codeOf?: (id: string) => string | null,
+  // ODG-RYSUNEK: kotwice punktów odgałęźnych leżących na przęsłach TEGO wiersza
+  // (ciąg główny). Puste dla lateralu/feederu — punkty odgałęźne na odgałęzieniu
+  // to zagnieżdżenie POZA zakresem F6a (zgłaszane osobno przy zbieraniu punktów).
+  branchChain?: TrunkChainContext,
+  consumedBranchAnchors?: Set<string>,
+  stopNotes?: string[],
 ): RowConnectResult {
   const connectors: PreviewSegment[] = [];
   const routeGeoms: RouteGeometry[] = [];
@@ -1775,7 +2319,11 @@ function connectRowStations(
     // `ownerRef` (dotąd: ref wyłącznie ostatniego członu, poprzedniki
     // niewidoczne w DOM). Łańcuch 1-członowy → zachowanie identyczne.
     const chain = chainSegmentRefs(cableRun, prev.id, cur.id);
-    const pieces = chain.length > 1 ? splitPolylineIntoPieces(route.points, chain.length, forbiddenCutX) : [route.points];
+    const pieces = branchChain
+      ? trunkChainPieces(route.points, chain, branchChain, consumedBranchAnchors ?? new Set(), stopNotes ?? [])
+      : chain.length > 1
+        ? splitPolylineIntoPieces(route.points, chain.length, forbiddenCutX)
+        : [route.points];
     if (chain.length > 0 && pieces.length === chain.length) {
       pieces.forEach((piecePoints, pi) => {
         connectors.push({
@@ -1792,15 +2340,19 @@ function connectRowStations(
     routeGeoms.push({ points: route.points });
     if (lod === 2) {
       const slot = layout.columnsResult.segmentLabelSlots.find((s) => s.stationIndex === i);
+      // BLOK-LATERAL-WLASNOSC (R1): podpis opisuje ODCINEK (typ · przekrój ·
+      // długość · para końców), więc nosi ref ODCINKA. Ref i treść z JEDNEGO
+      // wyszukania (`incomingSegment`) — patrz R3.
+      const wchodzacy = incomingSegment(cableRun, cur.id);
       const text = segmentSpanTextWithEndpoints(
-        incomingLabelText(cableRun, cur.id),
+        wchodzacy?.text ?? null,
         codeOf?.(prev.id),
         codeOf?.(cur.id),
       );
-      if (slot && text) {
+      if (slot && text && wchodzacy) {
         const { spanStart, spanEnd } = truncateSpanAtChannels(fromPort.x, toPort.x, channelPointsX);
         spanLabels.push({
-          ownerRef: `${cur.id}#segment-label`,
+          ownerRef: `${wchodzacy.segmentRef}#segment-label`,
           text,
           spanStart,
           spanEnd,
@@ -1915,6 +2467,231 @@ function gpzBayBottomPort(
   return { x: last.x + def.width / 2, y: last.y + def.height };
 }
 
+// ---------------------------------------------------------------------------
+// KD-5 (dług nazwany w V12K-285) — BLOK GPZ ZWINIĘTY na poziomie przeglądowym L0.
+// ---------------------------------------------------------------------------
+
+/** Minimalna długość zejścia pola odejściowego pod blokiem (aparat 16 px +
+ *  prześwit 8 px z obu stron) — patrz `composeCollapsedGpz`. */
+const GPZ_COLLAPSED_MIN_DESCENT = 4 * GRID;
+/** Odstęp między poziomami wachlarza zejść pól niemagistralnych (rozdziela
+ *  poziome biegi kolejnych pól, żeby się nie zlewały). */
+const GPZ_COLLAPSED_FAN_STEP = 2 * GRID;
+/** Prześwit między glifem sieci zewnętrznej a górną krawędzią bloku. */
+const GPZ_COLLAPSED_SOURCE_GAP = 2 * GRID;
+
+interface CollapsedGpz {
+  readonly symbols: readonly PreviewSymbol[];
+  readonly segments: readonly PreviewSegment[];
+  readonly nameBand: StationNameBandOwnerInput;
+}
+
+/**
+ * KD-5 — reprezentacja ZWINIĘTA bloku GPZ dla L0 (dyrektywa właściciela z oceny
+ * ekranu: na przeglądzie sieci GPZ ma być zwartym symbolem stacji zasilającej,
+ * nie pełnym układem wewnętrznym; dług nazwany w V12K-285).
+ *
+ * ---------------------------------------------------------------------------
+ * CO ZNIKA, A CO ZOSTAJE (i dlaczego dokładnie tak)
+ * ---------------------------------------------------------------------------
+ * ZNIKA cała GEOMETRIA WEWNĘTRZNA rozdzielni: szyna WN, pola WN, transformator
+ * z polem TR, szyny sekcji SN, punkt neutralny oraz STOSY APARATÓW pól
+ * (odłącznik/przekładnik/uziemnik/głowica) — na fixturze referencyjnej 16
+ * symboli po 16 px świata, które przy skali przeglądu ≈0,12 renderowały się po
+ * ≈1,9 px, a więc poniżej progu rozpoznawalności `MIN_SYMBOL_SCREEN_PX` (szum,
+ * nie informacja). Ich treść niesie teraz JEDEN symbol `gpzCollapsed`, którego
+ * sylwetka rysuje tę samą gramatykę w miniaturze (`GpzCollapsedGlyph`).
+ *
+ * ZOSTAJE — świadomie, nie z niedoróbki:
+ *  (a) GLIF SIECI ZEWNĘTRZNEJ (`gridSource`) — kontrakt `allSourcesVisible`
+ *      (§13.1): źródło jest widoczne na KAŻDYM LOD, bo „skąd to jest zasilane"
+ *      nie jest szczegółem, tylko treścią przeglądu;
+ *  (b) APARAT CIĄGŁOŚCI POLA ODEJŚCIOWEGO — jeden `breaker` na KAŻDE pole
+ *      liniowe SN, zakotwiczony DOKŁADNIE w porcie, w którym pole oddaje tor
+ *      sieci. To wymóg 3 karty K11-B (dyrektywa właściciela: „LOD NIGDY nie
+ *      ukrywa toru przepływu energii ANI APARATÓW CIĄGŁOŚCI elektrycznej
+ *      (odłącznik/wyłącznik w torze)") — rysunek bez łącznika kłamałby o
+ *      możliwości odcięcia magistrali. To NIE jest geometria wewnętrzna pola:
+ *      cały stos pola jest zwinięty DO swojego aparatu ciągłości, a ten stoi na
+ *      GRANICY bloku z siecią. Wyrocznia `lodPathContinuityGaps` liczy go
+ *      wprost — zwinięcie przechodzi strażnika BEZ poszerzania tolerancji.
+ *
+ * ---------------------------------------------------------------------------
+ * KOTWICA (zoom = skala szczegółu, nie przemeblowanie)
+ * ---------------------------------------------------------------------------
+ * Blok kotwiczy się OSIĄ pola magistrali (`port.x` — ten sam punkt, z którego
+ * magistrala wychodzi na L1/L2) i osią szyny SN (`busY`), a jego zejścia kończą
+ * się w PORTACH pól policzonych z kompozycji PEŁNEJ. Trasa magistrali, trasy
+ * feederów, offsety wiersza i rama strefy są więc IDENTYCZNE jak na L1/L2 —
+ * zwinięcie zmienia wyłącznie to, CO jest narysowane wewnątrz strefy GPZ
+ * (SCHEMAT-10 S1 / V12K-135, ta sama zasada co `buildRowLayout` dla stacji).
+ */
+function composeCollapsedGpz(
+  gpz: GpzComposition,
+  gpzData: GpzCanonicalRendererProps,
+  gridSources: readonly SldSourceView[],
+  stopNotes: string[],
+): CollapsedGpz {
+  const symbols: PreviewSymbol[] = [];
+  const segments: PreviewSegment[] = [];
+  const blockDef = SYMBOL_DEFS.gpzCollapsed;
+  const breakerDef = SYMBOL_DEFS.breaker;
+  const sourceDef = SYMBOL_DEFS.gridSource;
+
+  const trunkPort = findGpzTrunkBottomPort(gpz, gpzData, stopNotes);
+  const axisX = trunkPort.x;
+  const busY = findGpzPrimaryBus(gpz)?.points[0]?.y ?? snapToGrid(trunkPort.y - blockDef.height);
+  // Blok wyśrodkowany na osi pola magistrali i na osi szyny SN; gdy zejście
+  // wyszłoby krótsze niż aparat ciągłości + prześwity, blok wędruje w górę
+  // (geometria deterministyczna, bez zgadywania).
+  const blockY = Math.min(
+    snapToGrid(busY - blockDef.height / 2),
+    snapToGrid(trunkPort.y - blockDef.height - GPZ_COLLAPSED_MIN_DESCENT),
+  );
+  const blockX = snapToGrid(axisX - blockDef.width / 2);
+  const blockBottomY = blockY + blockDef.height;
+  const lineBayRefs = findGpzLineBayRefs(gpzData);
+
+  symbols.push({
+    symbolId: 'gpzCollapsed',
+    x: blockX,
+    y: blockY,
+    meta: {
+      testId: `sld-v3-l0-gpz-${gpzData.id}`,
+      // Tożsamość LOD-niezależna: TEN SAM ref, którym GPZ występuje na L1/L2
+      // (pas tytułowy `labels.stationName.ownerRef`, terminale przęseł) —
+      // selekcja/nawigacja/nakładki działają bez tłumaczenia per LOD.
+      ownerRef: gpzData.id,
+      elementKind: 'station',
+      gpzGlyph: {
+        sections: gpz.sections.length,
+        transformers: gpz.transformers.length,
+        feeders: lineBayRefs.length,
+      },
+    },
+  });
+
+  // (a) Sieć zewnętrzna NAD blokiem — glif zachowany na każdym LOD (§13.1).
+  //     Wiele źródeł: rozstawione w prawo od osi, spięte do portu N bloku
+  //     łamaną (dla pierwszego źródła degeneruje się do prostego pionu).
+  gridSources.forEach((src, i) => {
+    const srcCx = axisX + i * (3 * GRID);
+    const srcY = blockY - GPZ_COLLAPSED_SOURCE_GAP - sourceDef.height;
+    symbols.push({
+      symbolId: 'gridSource',
+      x: snapToGrid(srcCx - sourceDef.width / 2),
+      y: srcY,
+      meta: {
+        testId: `sld-v3-l0-gpz-source-${src.id}`,
+        ownerRef: src.id,
+        elementKind: 'source',
+        missingData: src.missingData,
+      },
+    });
+    const raw: RouteVertex[] = [
+      { x: srcCx, y: srcY + sourceDef.height },
+      { x: srcCx, y: blockY - GRID },
+      { x: axisX, y: blockY - GRID },
+      { x: axisX, y: blockY },
+    ];
+    segments.push({
+      points: dedupeVertices(raw),
+      meta: { kind: 'sn', ownerRef: `${src.id}#grid-source-drop`, elementKind: 'segment' },
+    });
+  });
+
+  // (b) Pola odejściowe: aparat ciągłości zakotwiczony w PORCIE pola (ten sam
+  //     punkt, w którym tor sieci wychodzi z GPZ na L1/L2 — trasy nietknięte)
+  //     + zejście od bloku do tego aparatu.
+  lineBayRefs.forEach((bayRef, i) => {
+    const port = i === 0 ? trunkPort : gpzBayBottomPort(gpz, bayRef);
+    if (!port) {
+      stopNotes.push(
+        `Blok GPZ zwinięty (L0): pole liniowe „${bayRef}" bez portu w kompozycji — aparat ciągłości pominięty (dane niepełne).`,
+      );
+      return;
+    }
+    const breakerTopY = port.y - breakerDef.height;
+    symbols.push({
+      symbolId: 'breaker',
+      x: snapToGrid(port.x - breakerDef.width / 2),
+      y: breakerTopY,
+      // Stan łącznika z KOMPOZYCJI PEŁNEJ (realny stan aparatu tego pola) —
+      // zero domysłu: brak wyłącznika w polu ⇒ stan nieokreślony.
+      state: gpz.symbols.find((s) => s.meta.bayRef === bayRef && s.symbolId === 'breaker')?.state,
+      meta: {
+        testId: `sld-v3-l0-gpz-bay-${bayRef}`,
+        ownerRef: bayRef,
+        elementKind: 'apparatus',
+      },
+    });
+    const fanY = blockBottomY + i * GPZ_COLLAPSED_FAN_STEP;
+    const raw: RouteVertex[] = [
+      { x: axisX, y: blockBottomY },
+      { x: axisX, y: fanY },
+      { x: port.x, y: fanY },
+      { x: port.x, y: breakerTopY },
+    ];
+    segments.push({
+      points: dedupeVertices(raw),
+      meta: { kind: 'sn', ownerRef: `${bayRef}#descent`, elementKind: 'segment' },
+    });
+  });
+
+  // Pas nazwy bloku: WIERSZ TYTUŁOWY REUŻYTY z kompozycji pełnej (jedna prawda
+  // tytułu „GPZ ⟨nazwa⟩ · UHV/ULV kV", D3-12) + wiersz stanu z REALNYCH liczb
+  // tego, co zostało zwinięte (zero fabrykacji — liczby z kompozycji).
+  const base = gpz.labels.stationName;
+  const wierszStanu = {
+    text: `Widok zbiorczy · sekcje SN: ${gpz.sections.length} · transformatory: ${gpz.transformers.length} · pola odejściowe: ${lineBayRefs.length}`,
+    labelClass: 't3' as const,
+    // KD-11: wiersz LICZBOWY stanu zwinięcia — dane szczegółowe (tożsamość
+    // bloku niesie wiersz tytułowy wyżej, reużyty z kompozycji pełnej).
+    role: 'dane' as const,
+  };
+  // DŁUG NAZWANY WPROST (BLOK-PUSTY, §0 R3 „brak pokrycia = dług nazwany, NIE
+  // obejście") — WIERSZ STANU NIE MIEŚCI SIĘ W BANERZE STREFY GPZ.
+  //
+  // POMIAR (fixtura referencyjna, L0): baner strefy (`compose/gpz.ts`
+  // `headerSlot`) ma 296 j.św. i jest zmierzony WYŁĄCZNIE dla wiersza
+  // tytułowego; wiersz stanu niesie 391 j.św. tuszu, więc wystaje poza własną
+  // rezerwację o 95 j.św. (≈47 na stronę, bo wiersze pasma są centrowane).
+  // Defekt jest PIERWOTNY — istniał przed tą kartą; różnica polega tylko na
+  // tym, że dopóki prostokąt etykiety BYŁ slotem, nikt tego nie widział.
+  //
+  // DLACZEGO TA KARTA GO NIE ZAMYKA. To nadmiar TUSZU nad rezerwacją, czyli
+  // ODWROTNY kierunek niż klasa BLOK-PUSTY (rezerwacja ponad tuszem), a obie
+  // naprawy, które się narzucają, łamią rzecz NIETYKALNĄ (§0 R4):
+  //  · poszerzenie slotu od lewej krawędzi przesuwa ŚRODEK pasma o 56 j.św.
+  //    między L0 a L1/L2 — kotwica bloku dryfuje przy zmianie poziomu
+  //    szczegółu (KD-5/S1 „jedna kotwica"; pada `buildScene.w2GS4b`,
+  //    `buildScene.w2cDerSnTopology`, `buildScene.test.ts`);
+  //  · poszerzenie symetryczne środek zachowuje, ale wypycha wiersz na
+  //    x = −39,5, czyli POZA lewą krawędź arkusza (pada wyrocznia D2/k5b), i
+  //    rozjeżdża szerokość arkusza między poziomami (8392 wobec 8344).
+  // Zmieszczenie wiersza wymaga rozstrzygnięcia, GDZIE podpis zwinięcia
+  // należy: do banera (wtedy trzeba go przełamać na wiersze) czy do CAŁEJ
+  // strefy (wtedy pasmo ma dwa różne środki) — to decyzja kontraktu KD-5
+  // o zwinięciu GPZ, nie tej karty. Dług pilnuje test: `layout/__tests__/
+  // blokPusty.test.ts` §1 wymaga, żeby to było JEDYNE takie miejsce rysunku
+  // i żeby nadmiar miał DOKŁADNIE zmierzoną wartość — nowy przypadek albo
+  // zmiana rozmiaru zapala się natychmiast.
+  const nameBand: StationNameBandOwnerInput = {
+    ownerRef: base.ownerRef,
+    nameSlot: base.nameSlot,
+    rows: [...base.rows, wierszStanu],
+  };
+
+  return { symbols, segments, nameBand };
+}
+
+/** Usuwa POWTÓRZONE kolejno wierzchołki łamanej (łamana degenerująca się do
+ *  prostego odcinka, gdy oś źródła/pola pokrywa się z osią bloku) — ten sam
+ *  wzorzec co objazd rynną w sekcji 5. */
+function dedupeVertices(points: readonly RouteVertex[]): readonly RouteVertex[] {
+  return points.filter((p, i) => i === 0 || p.x !== points[i - 1].x || p.y !== points[i - 1].y);
+}
+
 function gpzSegmentToPreview(seg: ComposedGpzSegment): PreviewSegment {
   // F13.1 (spec §21.2, D3-2/D3-2bis): `busbarKind` (compose/gpz.ts, szyny
   // sekcji SN GPZ) ma pierwszeństwo nad domyślnym bus/sn — `undefined` dla
@@ -1956,6 +2733,10 @@ function gpzSymbolToPreview(sym: ComposedGpzSymbolInstance): PreviewSymbol {
       // bayRef (aparat pola) preferowany, potem transformerRef/sectionId dla
       // symboli bez przypisanego pola. Zero re-derywacji z geometrii.
       ownerRef: sym.meta.sourceRef ?? sym.meta.bayRef ?? sym.meta.transformerRef ?? sym.meta.sectionId,
+      // S9-10 (dług `S9-4-DLUG-INSPEKTOR`): realny `BayPrimaryDevice.
+      // device_ref` z kompozycji GPZ (`ComposedGpzSymbolInstance.deviceRef`,
+      // WYŁĄCZNIE ścieżka danych) — ta sama reguła co aparaty stacji.
+      deviceRef: sym.deviceRef,
       elementKind: classifySymbolElementKind(sym.symbolId),
       // V12K-217: jawna klasa napięcia z kompozycji MUSI przejść do sceny.
       // Ta funkcja przepisuje meta przez listę pól, więc każde nowe pole trzeba
@@ -2003,7 +2784,15 @@ function symbolRect(sym: PreviewSymbol): V3Rect {
  *  gabaryty NIE-węzłowe. Odczyt dla par APARAT↔APARAT jest NIEZMIENIONY
  *  (kropka nie przesuwa niczego). */
 function isNodeMarkerSymbol(sym: PreviewSymbol): boolean {
-  return sym.symbolId === 'junction' || sym.symbolId === 'branchJunction';
+  // ODG-RYSUNEK: punkt odgałęźny należy do TEJ SAMEJ rodziny co kropka węzłowa —
+  // z definicji siedzi NA torze magistrali (jest jego rozcięciem), więc metryki
+  // gabarytowe symbol↔symbol, broniące czytelności APARATÓW, go nie dotyczą.
+  return (
+    sym.symbolId === 'junction' ||
+    sym.symbolId === 'branchJunction' ||
+    sym.symbolId === 'branchCabinet' ||
+    sym.symbolId === 'branchPole'
+  );
 }
 
 /** Gabaryty symboli NIE-węzłowych (aparaty/DER/etykiety-symbole) — wspólna baza
@@ -2092,6 +2881,34 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
   }
   const mainCableRun = mainTrunkRun ? cableRunById.get(mainTrunkRun.id) : undefined;
 
+  // ODG-RYSUNEK (etap 3 kontraktu pomiaru rozliczeniowego): PUNKTY ODGAŁĘŹNE
+  // ciągu głównego — jedyne miejsce, w którym scena czyta `snapshot.branch_points`.
+  // Liczone TU, PRZED planerem arkusza: odgałęzienie wychodzące z punktu należy do
+  // pasma wiersza stacji POPRZEDZAJĄCEJ punkt, więc planer musi je wliczyć do
+  // szerokości i wysokości tego pasma (predykaty parami — ten sam warunek
+  // przydziału wiersza, co przy budowie geometrii niżej).
+  const trunkBranchPoints = collectTrunkBranchPoints(snapshot, mainCableRun, stopNotes);
+  const branchPointByRef = new Map<string, TrunkBranchPoint>(trunkBranchPoints.map((bp) => [bp.refId, bp]));
+  /** ODG-RYSUNEK: stacja ciągu, w której SZCZELINIE leży kanał zejścia tego
+   *  odgałęzienia — JEDNO źródło prawdy dla planera arkusza, przydziału wiersza i
+   *  przydziału kanału. Dla odgałęzienia z pola stacji to ta stacja; dla
+   *  odgałęzienia z PUNKTU ODGAŁĘŹNEGO — stacja poprzedzająca punkt na ciągu.
+   *  Bez tego wspólnego predykatu odgałęzienie punktu byłoby dla planera
+   *  „originem poza ciągiem" (pasmo pełnej szerokości), a dla geometrii — zejściem
+   *  w szczelinie wiersza `k` (reguła KLASA §3). */
+  const branchRunChannelOwnerRef = (run: SldTopologyRun): string | null => {
+    const direct = cableRunById.get(run.id)?.segmentPaths?.[0]?.fromTerminal?.ownerRef ?? null;
+    if (direct != null) return direct;
+    const bpRef = run.branchOriginStationRef ?? null;
+    return (bpRef != null ? branchPointByRef.get(bpRef)?.upstreamNodeRef : null) ?? null;
+  };
+  /** ODG-RYSUNEK: kod końca przęsła dla etykiety „A ↔ B · …" — stacja ma
+   *  `stationCode`, punkt odgałęźny NAZWĘ Z DANYCH (`BranchPointSN.name`). Zero
+   *  fabrykacji: gdy węzeł nie jest ani stacją, ani punktem — `null`, a formatter
+   *  degraduje do samego członu technicznego. */
+  const trunkNodeCodeOfId = (id: string): string | null =>
+    stationCodeOfId(id) ?? branchPointByRef.get(id)?.name ?? null;
+
   // -- Symbole/segmenty/właściciele etykiet, akumulowane globalnie. ---------
   const allSymbols: PreviewSymbol[] = [];
   const allSegments: PreviewSegment[] = [];
@@ -2139,8 +2956,15 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       const height = labelLineHeight(labelClass);
       openTerminalLabels.push({
         ownerRef: `${lastSegmentRef}#open-terminal-label`,
-        ownerKind: 'port-caption',
+        // BLOK-LATERAL-WLASNOSC (R1): ta etykieta opisuje KONIEC ODCINKA i
+        // niesie ref ODCINKA, więc ma własny rodzaj deklarujący trafienie w
+        // odcinek. Dawne `'port-caption'` deklarowało APARAT przy refie
+        // odcinka (`hitAreas.LABEL_OWNER_ELEMENT_KIND`).
+        ownerKind: 'segment-endpoint',
         labelClass,
+        // KD-11: adnotacja zakończenia toru — dane szczegółowe (sam słupek
+        // terminalny jest rysowany zawsze, więc znak końca nie znika).
+        labelRole: LABEL_ROLE_BY_OWNER_KIND['segment-endpoint'],
         text,
         slotIndex: 1,
         // Wycentrowana POD słupkiem (ta sama konwencja co `terminationLabels`
@@ -2155,17 +2979,255 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
     }
   };
 
+  /**
+   * S9-1 (`docs/sld/DECYZJA_LAMANIE_ARKUSZA.md` §5): ZNAKI KONTYNUACJI na
+   * złamaniu arkusza — grot ▶ w kanale powrotnym (koniec wiersza `k`) i grot ▶
+   * przy podjęciu toru (początek wiersza `k+1`), każdy z odsyłaczem
+   * („dalej wiersz n" / „z wiersza n"). To WYŁĄCZNIE adnotacja czytelności:
+   * sam tor jest ciągłym przęsłem klasy `snTrunk` (obwód nieprzerwany), a grot
+   * niesie własną klasę `sheetContinuation`, żeby wyrocznie toru mocy
+   * (grubości §22.4, długość pionów §15.1) nie liczyły go jako trasy.
+   *
+   * `nextRowIndex` jest 0-indeksowany (indeks wiersza, DO którego prowadzi
+   * łącznik) — w opisie numerujemy wiersze od 1, tak jak czyta je człowiek.
+   */
+  const emitSheetContinuationMarks = (
+    outAnchor: { readonly x: number; readonly y: number },
+    inAnchor: { readonly x: number; readonly y: number },
+    nextRowIndex: number,
+    segmentRef: string,
+  ): void => {
+    const half = SHEET_CONTINUATION_ARROW;
+    // Znak = DWIE równoległe kreski POPRZECZNE do toru (konwencja „przerwanie /
+    // ciąg dalszy"). Kształt ORTOGONALNY z wyboru: scena ma kontraktowe zero
+    // odcinków nie-ortogonalnych (S2 manhattanizacja, `nonOrthogonalSegment
+    // Count`), więc grot z ukośnymi ramionami byłby regresją niezmiennika —
+    // dwie kreski niosą tę samą informację bez łamania kanonu.
+    const bars = (anchor: { readonly x: number; readonly y: number }, suffix: string): void => {
+      for (let i = 0; i < 2; i++) {
+        const y = anchor.y + (i + 1) * half;
+        allSegments.push({
+          points: [
+            { x: anchor.x - half, y },
+            { x: anchor.x + half, y },
+          ],
+          meta: { kind: 'sheetContinuation', ownerRef: `${segmentRef}#sheet-continuation-${suffix}-${i}` },
+        });
+      }
+    };
+    bars(outAnchor, 'out');
+    bars(inAnchor, 'in');
+    // Kontrakt LOD (spec §7): opisy przęseł i podpisy kierunku istnieją WYŁĄCZNIE
+    // na poziomie pełnego szczegółu — odsyłacz ciągu dalszego jest opisem tej
+    // samej klasy, więc na L0/L1 zostaje sam znak poprzeczny.
+    if (lod !== 2) return;
+    // Odsyłacze: OBOK toru (nie na nim) — na prawo od kanału powrotnego
+    // i na prawo od rynny podjęcia, w przestrzeni pustej z konstrukcji.
+    const marks: readonly { readonly ref: string; readonly text: string; readonly x: number; readonly y: number }[] = [
+      {
+        ref: `${segmentRef}#sheet-continuation-out-label`,
+        text: `dalej wiersz ${nextRowIndex + 1}`,
+        x: outAnchor.x + 2 * half,
+        y: outAnchor.y + half - Math.round(labelLineHeight('t4') / 2),
+      },
+      {
+        ref: `${segmentRef}#sheet-continuation-in-label`,
+        text: `z wiersza ${nextRowIndex}`,
+        // NAD poziomym biegiem łącznika, w korytarzu `SHEET_LINK_CORRIDOR`
+        // (pustym z konstrukcji) — nie w paśmie etykiet przęseł wiersza.
+        x: inAnchor.x + 2 * half,
+        y: inAnchor.y - 2 * half - labelLineHeight('t4') - GRID,
+      },
+    ];
+    for (const mark of marks) {
+      const width = measureLabelWidth(mark.text, 't4');
+      openTerminalLabels.push({
+        ownerRef: mark.ref,
+        // BLOK-LATERAL-WLASNOSC (R1): odsyłacz ciągu dalszego opisuje TEN
+        // ODCINEK na złamaniu arkusza i niesie jego ref — jak „koniec otwarty"
+        // wyżej, ta sama klasa własności.
+        ownerKind: 'segment-endpoint',
+        labelClass: 't4',
+        labelRole: LABEL_ROLE_BY_OWNER_KIND['segment-endpoint'],
+        text: mark.text,
+        slotIndex: 1,
+        rect: { x: mark.x, y: mark.y, width, height: labelLineHeight('t4') },
+      });
+    }
+  };
+
   // -- 1. Magistrala (main trunk) — measure→bands→columns lokalnie (0,0). ---
   // SCHEMAT-10 S7-P3/P4 (V12K-137): pas górny używa ODDZIELONEGO światła §5
   // `TOP_LEVEL_FIELD_CLEARANCE` (niezależnie strojalnego od `COLUMN_GAP`
   // lateralów). S7-P4 (recenzja §9 P0): podniesione 3×GRID→4×GRID (+33,3%),
   // egzekwowane bbox-do-bbox przez `topBandFieldClearances` (niżej).
-  let mainLayout: RowLayout | null = mainTrunkRun
-    ? buildRowLayout(mainTrunkRun.stationRefs, stationById, lineRuns, GPZ_NODE_CODE, mainCableRun, lod, stopNotes, derSourcesByStationId, false, TOP_LEVEL_FIELD_CLEARANCE)
+  //
+  // S9-1 (ŁAMANIE ARKUSZA, `docs/sld/DECYZJA_LAMANIE_ARKUSZA.md`, audyt C-1):
+  // ciąg NIE jest już jednym wierszem. `planSheetRows` dzieli listę stacji na
+  // WIERSZE ARKUSZA (podciągi kolejnych stacji — łamanie wyłącznie na przęśle,
+  // nigdy wewnątrz stacji), a każdy wiersz dostaje WŁASNY `RowLayout` z tego
+  // samego `buildRowLayout` (jedno źródło prawdy geometrii wiersza).
+  const trunkStationIds: string[] = [];
+  if (mainTrunkRun) {
+    for (const id of mainTrunkRun.stationRefs) {
+      if (stationById.has(id)) trunkStationIds.push(id);
+      else
+        stopNotes.push(
+          `Stacja „${id}" wskazana przez topologyRuns nieobecna w sldData.stations — pominięta (niespójność adaptera).`,
+        );
+    }
+  }
+  const stationCodeOfTrunk = (index: number): string =>
+    stationById.get(trunkStationIds[index])?.stationCode ?? GPZ_NODE_CODE;
+  const buildTrunkRowLayout = (
+    ids: readonly string[],
+    entryNodeCode: string,
+    entryFromAbove: boolean,
+    notes: string[],
+    runEndsAtLastStation = true,
+  ): RowLayout =>
+    buildRowLayout(
+      ids,
+      stationById,
+      lineRuns,
+      GPZ_NODE_CODE,
+      mainCableRun,
+      lod,
+      notes,
+      derSourcesByStationId,
+      entryFromAbove,
+      TOP_LEVEL_FIELD_CLEARANCE,
+      entryNodeCode,
+      runEndsAtLastStation,
+    );
+
+  // Sonda geometrii NIEZŁAMANEGO ciągu — WYŁĄCZNIE źródło szerokości kolumn dla
+  // planera (nie trafia na scenę). `buildRowLayout` liczy geometrię zawsze przy
+  // pełnym szczególe (SCHEMAT-10 S1), więc plan jest NIEZALEŻNY od LOD.
+  const trunkProbeLayout =
+    trunkStationIds.length > 0 ? buildTrunkRowLayout(trunkStationIds, GPZ_NODE_CODE, false, []) : null;
+
+  // Szerokość treści przed pierwszą stacją wiersza 0 (blok GPZ + światło) —
+  // liczona z TEJ SAMEJ kompozycji co `mainRowDx` w sekcji 2 (bbox GPZ jest
+  // niezmienniczy translacyjnie, więc sonda przy originie (0,0) daje tę samą
+  // szerokość co finalna kompozycja przesunięta o `originY`/`mainRowDy`).
+  const gpzLeadWidth = gpzData
+    ? (() => {
+        const probe = composeGpz(
+          gpzData,
+          { x: 0, y: 0 },
+          externalGridSources.map((s) => ({ id: s.id })),
+          'full',
+        );
+        return snapUp(probe.bbox.x + probe.bbox.width) + GPZ_TRUNK_GAP;
+      })()
+    : 0;
+
+  // Zasięgi odgałęzień (szerokość/wysokość wiersza lateralu + indeks stacji
+  // zaczepienia) — planer musi je znać, bo odgałęzienie zaczepione w stacji
+  // wiersza `k` leży w PASMIE tego wiersza (przeplot, decyzja §4) i współtworzy
+  // zarówno jego szerokość, jak i wysokość.
+  const trunkIndexById = new Map(trunkStationIds.map((id, i) => [id, i]));
+  const sheetLateralExtents: SheetLateralExtent[] = [];
+  if (trunkProbeLayout) {
+    for (const run of sldData.topologyRuns.filter((r) => r.kind === 'branch')) {
+      const originRef = branchRunChannelOwnerRef(run);
+      const stationIndex = originRef != null ? trunkIndexById.get(originRef) : undefined;
+      if (stationIndex == null) continue; // feeder GPZ / origin poza ciągiem — pasmo pełnej szerokości
+      const branchLayout = buildRowLayout(
+        run.stationRefs,
+        stationById,
+        lineRuns,
+        GPZ_NODE_CODE,
+        cableRunById.get(run.id),
+        lod,
+        [],
+        derSourcesByStationId,
+        true,
+      );
+      if (branchLayout.measureInputs.length === 0) continue; // bieg otwarty (bez stacji)
+      sheetLateralExtents.push({
+        stationIndex,
+        width: branchLayout.columnsResult.totalWidth,
+        height: branchLayout.bandsResult.totalHeight,
+      });
+    }
+  }
+
+  // Wysokość pasm DOWOLNEGO podciągu stacji — ta sama funkcja, która zbuduje
+  // wiersz (reguła KLASA §3: warunek planu i geometria wiersza z JEDNEGO
+  // źródła). Zapamiętywanie wyników: planer odpytuje te same podciągi przy
+  // kolejnych kandydatach liczby wierszy.
+  const bandHeightCache = new Map<string, number>();
+  const trunkRowBandHeight = (start: number, endExclusive: number): number => {
+    const key = `${start}:${endExclusive}`;
+    const cached = bandHeightCache.get(key);
+    if (cached != null) return cached;
+    const value = buildTrunkRowLayout(
+      trunkStationIds.slice(start, endExclusive),
+      start === 0 ? GPZ_NODE_CODE : stationCodeOfTrunk(start - 1),
+      start > 0,
+      [],
+      endExclusive === trunkStationIds.length,
+    ).bandsResult.totalHeight;
+    bandHeightCache.set(key, value);
+    return value;
+  };
+
+  const sheetPlan: SheetRowPlan | null = trunkProbeLayout
+    ? planSheetRows({
+        columnWidths: trunkProbeLayout.columnsResult.columns.map((c) => c.width),
+        columnGap: TOP_LEVEL_FIELD_CLEARANCE,
+        rowBandHeight: trunkRowBandHeight,
+        rowGap: ROW_VERTICAL_GAP,
+        laterals: sheetLateralExtents,
+        leadWidth: gpzLeadWidth,
+      })
     : null;
 
+  /** Wiersze arkusza ciągu głównego (≥1 gdy ciąg ma stacje). Wiersz 0 zaczyna
+   *  się za blokiem GPZ, wiersze dalsze przy lewym marginesie arkusza i
+   *  przyjmują tor Z GÓRY (jak stacja 0 lateralu — `firstStationEntryDescent`). */
+  const sheetRowLayouts: RowLayout[] = sheetPlan
+    ? sheetPlan.rows.map((range, rowIndex) =>
+        buildTrunkRowLayout(
+          trunkStationIds.slice(range.start, range.endExclusive),
+          rowIndex === 0 ? GPZ_NODE_CODE : stationCodeOfTrunk(range.start - 1),
+          rowIndex > 0,
+          stopNotes,
+          range.endExclusive === trunkStationIds.length,
+        ),
+      )
+    : mainTrunkRun
+      ? // Ciąg istnieje, ale nie ma ANI JEDNEJ stacji (świeży projekt po
+        // `continue_trunk_segment_sn`) — pusty wiersz 0 utrzymuje ścieżkę
+        // „bieg otwarty" z sekcji 5 (§16-v3) bez zmiany zachowania.
+        [buildTrunkRowLayout([], GPZ_NODE_CODE, false, stopNotes)]
+      : [];
+  if (sheetPlan && sheetPlan.rowCount > 1) {
+    stopNotes.push(
+      `Arkusz złamany na ${sheetPlan.rowCount} wierszy (proporcja przewidziana ${sheetPlan.predictedAspect.toFixed(2)} : 1, docelowa ${SHEET_TARGET_ASPECT.toFixed(2)} : 1, próg odbioru ${SHEET_MAX_ASPECT} : 1).`,
+    );
+  }
+
+  /** Wiersz 0 ciągu — kotwica wyrównania GPZ (sekcja 2) i baza offsetów świata. */
+  let mainLayout: RowLayout | null = sheetRowLayouts[0] ?? null;
+
   // -- 2. GPZ: pass1 @ (0,0) → dowiedz się bbox (X) i snBusY (Y docelowe). --
+  /** Kompozycja RENDEROWANA GPZ — `null` na L0 (KD-5: blok GPZ jest tam
+   *  ZWINIĘTY, patrz sekcja 4 niżej). */
   let gpzComposition: GpzComposition | null = null;
+  /** KD-5: kompozycja GEOMETRYCZNA GPZ — ZAWSZE pełny szczegół, NIEZALEŻNIE od
+   *  poziomu renderu. Wszystkie wyprowadzenia geometrii świata (offsety
+   *  magistrali `mainRowDx`/`mainRowDy`, port zaczepu magistrali, objazd rynną,
+   *  porty pól feederowych, rama strefy) czytają TĘ kompozycję — dzięki temu
+   *  zwinięcie bloku na L0 NIE przesuwa magistrali ani stacji („zoom = skala
+   *  szczegółu, nie przemeblowanie", SCHEMAT-10 S1 / V12K-135, ta sama zasada
+   *  co dla stacji: `buildRowLayout` liczy kolumny zawsze przy L2). Dla L1/L2
+   *  jest to DOKŁADNIE ta sama geometria co `gpzComposition` (różnica wyłącznie
+   *  w szczegółowości ADNOTACJI, która nie zmienia portów ani szyn — patrz
+   *  komentarz S1 niżej), więc przełączenie odczytów jest tam tożsamością. */
+  let gpzGeometry: GpzComposition | null = null;
   let mainRowDx = 0;
   let mainRowDy = 0;
   /** Prawa krawędź CAŁEJO bbox-a GPZ (WSZYSTKIE symbole/segmenty GPZ, nie
@@ -2230,19 +3292,33 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
     }
     gpzRightEdgeX = gpzLayout.bbox.x + gpzLayout.bbox.width;
     mainRowDx = snapUp(gpzRightEdgeX) + GPZ_TRUNK_GAP;
+    // KD-5: kompozycja GEOMETRYCZNA (pełny szczegół) jest PRAWDĄ ŚWIATA na
+    // każdym LOD — patrz deklaracja `gpzGeometry` wyżej.
+    gpzGeometry = gpzLayout;
     // Kompozycja RENDEROWANA (render-LOD) — na TYM SAMYM originie co wyrównanie.
-    gpzComposition = composeGpz(
-      gpzData,
-      { x: 0, y: originY + mainRowDy },
-      externalGridSources.map((s) => ({ id: s.id })),
-      annotationDetail,
-    );
+    // KD-5 (dług nazwany w V12K-285): na L0 blok GPZ NIE jest rysowany polami —
+    // sekcja 4 emituje zamiast tego jego reprezentację ZWINIĘTĄ (jeden symbol
+    // `gpzCollapsed` + glif źródła + aparat ciągłości pola magistrali).
+    gpzComposition =
+      lod === 0
+        ? null
+        : composeGpz(
+            gpzData,
+            { x: 0, y: originY + mainRowDy },
+            externalGridSources.map((s) => ({ id: s.id })),
+            annotationDetail,
+          );
   }
 
   // -- 3. Przesuń magistralę o (bbox GPZ + GAP) w prawo i o nawis strefy GPZ
   // nad y=0 w dół (F13.1 — patrz komentarz w sekcji 2; dy=0 gdy strefa nie
   // wystaje, czyli zachowanie sprzed F13.1 bez zmian).
-  if (mainLayout) mainLayout = shiftRowLayout(mainLayout, mainRowDx, mainRowDy);
+  if (mainLayout) {
+    mainLayout = shiftRowLayout(mainLayout, mainRowDx, mainRowDy);
+    // S9-1: wiersz 0 arkusza JEST magistralą wyrównaną do GPZ — trzymamy tę
+    // samą instancję w obu miejscach (zero cienia geometrii).
+    sheetRowLayouts[0] = mainLayout;
+  }
 
   // -- 4. Skomponuj GPZ → preview + etykiety + meta. -------------------------
   if (gpzComposition) {
@@ -2252,13 +3328,18 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
     // TERAZ możliwy (patrz `protectionSegments`/`measurementSegments` niżej) —
     // wyjątek „zawsze bez toru" ZNIESIONY, patrz docstring
     // `ComposedGpzProtectionSymbol`, `compose/gpz.ts`.
+    // S9-10 (klasa „tożsamość obiektu z samego symbolId"): dwa okręgi
+    // przekaźników jednego pola GPZ dzieliłyby testId — ta sama fabryka
+    // unikalności co aparaty stacji (aparaty GPZ dedupuje już kompozycja,
+    // `compose/gpz.ts::buildFieldStack` po S9-4).
+    const unikalnyTestIdGpzAdnotacji = createUnikalnyTestId();
     allSymbols.push(
       ...gpzComposition.protectionSymbols.map((s): PreviewSymbol => ({
         symbolId: s.symbolId,
         x: s.x,
         y: s.y,
         meta: {
-          testId: `${s.bayRef}#${s.symbolId}`,
+          testId: unikalnyTestIdGpzAdnotacji(`${s.bayRef}#${s.symbolId}`),
           ownerRef: s.bayRef,
           elementKind: 'protectionAnnotation',
           protectionCodes: s.protectionCodes,
@@ -2297,6 +3378,12 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
         'f6-1 NIEROZWIĄZANE: GPZ ma >1 sekcję — kolorowanie wierszy fieldCaptions jest PER SEKCJA (composeGpz, F5b zamrożony); F6a nie dowodzi rozłączności między sekcjami globalnie.',
       );
     }
+  } else if (gpzGeometry && gpzData) {
+    // KD-5: L0 — blok GPZ ZWINIĘTY (patrz `composeCollapsedGpz`).
+    const collapsed = composeCollapsedGpz(gpzGeometry, gpzData, externalGridSources, stopNotes);
+    allSymbols.push(...collapsed.symbols);
+    allSegments.push(...collapsed.segments);
+    stationNameBands.push(collapsed.nameBand);
   }
 
   // -- 5. Skomponuj stacje magistrali + routing GPZ→S0→S1→...→S11. ---------
@@ -2304,13 +3391,90 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
   // (uzupełniane też w sekcji 6, laterale) — patrz sprawdzenie po sekcji 6
   // niżej („DER, którego connectionRef nie rozwiązuje się do stacji sceny").
   const drawnStationIds = new Set<string>();
+  /** WSZYSTKIE stacje ciągu głównego, w kolejności ciągu — sklejone ze
+   *  wszystkich wierszy arkusza (S9-1). Konsumenci poza sekcją 5/6 (meta,
+   *  pokrycie DER, wyrocznie) widzą dokładnie to, co przed łamaniem. */
   const mainRow: RowStation[] = [];
-  if (mainLayout) {
-    mainLayout.columnsResult.columns.forEach((col, i) => {
-      const measureInput = mainLayout!.measureInputs[i];
+  const mainRowById = new Map<string, RowStation>();
+  const branchRuns = sldData.topologyRuns.filter((r) => r.kind === 'branch');
+  const lateralRunIds: string[] = [];
+  const branchOriginUsage = new Map<string, number>();
+  /** ODG-RYSUNEK: refy punktów odgałęźnych FAKTYCZNIE narysowanych (symbol na
+   *  scenie) — wejście wyroczni pokrycia `branchPointCoverageGaps`. */
+  const drawnBranchPointRefs = new Set<string>();
+  /** ODG-RYSUNEK: punkty, w których tor magistrali ZOSTAŁ rozcięty. Symbol punktu
+   *  rysuje się WYŁĄCZNIE dla nich (predykaty parami — patrz `trunkChainPieces`). */
+  const consumedBranchAnchors = new Set<string>();
+  /** ODG-RYSUNEK: punkty czekające na decyzję o symbolu — patrz sekcja 6b. */
+  const pendingBranchPointGlyphs: { readonly bp: TrunkBranchPoint; readonly anchor: RouteVertex }[] = [];
+  // Feedery z pól GPZ (2026-07-17, po odbiorze „100% klasy przemysłowej"):
+  // licznik przydziału KOLEJNYCH pól liniowych GPZ (pierwsze = magistrala).
+  let gpzFeederCount = 0;
+  // SCHEMAT-10 S7-P1 (V12K-137): packer interwałowy pasm lateralnych. S9-1:
+  // JEDEN packer na całą scenę, ale kursor jest USTAWIANY na strop pasa zejść
+  // KAŻDEGO wiersza arkusza (`setCursor`) — dzięki temu odgałęzienia stacji
+  // wiersza `k` leżą MIĘDZY wierszem `k` a `k+1` (przeplot, decyzja §4), a nie
+  // pod całym rysunkiem; pion zejścia nigdy nie przecina niższych wierszy.
+  const packer = createLateralShelfPacker(mainRowDy);
+  /** S9-1: numer wiersza arkusza, do którego PASMA należy dane odgałęzienie —
+   *  wyznaczony przez stację-origin (feeder z pola GPZ nie ma stacji-origin na
+   *  ciągu, więc trafia do pasma wiersza 0, tuż pod GPZ). */
+  const sheetRowOfBranchRun = new Map<string, number>();
+  for (const run of branchRuns) {
+    const originRef = branchRunChannelOwnerRef(run);
+    const originIndex = originRef != null ? trunkIndexById.get(originRef) : undefined;
+    sheetRowOfBranchRun.set(run.id, originIndex != null && sheetPlan ? sheetPlan.rowOfStation[originIndex] : 0);
+  }
+  /** ODG-RYSUNEK: wiersz arkusza punktu odgałęźnego — z TEGO SAMEGO predykatu
+   *  (stacja poprzedzająca), więc punkt i jego odgałęzienie zawsze lądują w tym
+   *  samym paśmie. */
+  const sheetRowOfBranchPoint = new Map<string, number>();
+  for (const bp of trunkBranchPoints) {
+    const idx = trunkIndexById.get(bp.upstreamNodeRef);
+    sheetRowOfBranchPoint.set(bp.refId, idx != null && sheetPlan ? sheetPlan.rowOfStation[idx] : 0);
+  }
+  /** Strop kolejnego wiersza arkusza (pasma stackują się w dół). */
+  let sheetCursorTopY = mainRowDy;
+  /** Ostatnia stacja i prawa krawędź PASMA poprzedniego wiersza — wejście
+   *  łącznika ciągu dalszego (decyzja §5). */
+  let previousSheetRow: {
+    readonly layout: RowLayout;
+    readonly last: RowStation;
+    readonly bandRightX: number;
+    /** ODG-RYSUNEK: kontekst cięcia toru wiersza `k` — łącznik ciągu dalszego
+     *  wychodzi z tego wiersza, a rysowany jest dopiero przy wierszu `k+1`. */
+    readonly trunkChain: TrunkChainContext;
+  } | null = null;
+
+  for (let sheetRowIndex = 0; sheetRowIndex < sheetRowLayouts.length; sheetRowIndex++) {
+    // Wiersz 0 jest już wyrównany do GPZ (sekcja 3); dalsze wiersze siadają
+    // przy lewym marginesie arkusza, pod pasmem poprzednika.
+    const rowLayout =
+      sheetRowIndex === 0
+        ? sheetRowLayouts[0]
+        : shiftRowLayout(
+            sheetRowLayouts[sheetRowIndex],
+            SHEET_ROW_LEFT_MARGIN,
+            sheetCursorTopY + SHEET_LINK_CORRIDOR,
+          );
+    sheetRowLayouts[sheetRowIndex] = rowLayout;
+    const isLastSheetRow = sheetRowIndex === sheetRowLayouts.length - 1;
+    /** Stacje TEGO wiersza arkusza (podciąg `mainRow`). */
+    const rowStations: RowStation[] = [];
+    /** Prawa krawędź wiersza magistrali (bez odgałęzień). */
+    let bandRightX = 0;
+    /** Prawa krawędź odgałęzień TEGO pasma — druga składowa kanału łącznika. */
+    let lateralBandRightX = 0;
+
+    rowLayout.columnsResult.columns.forEach((col, i) => {
+      const measureInput = rowLayout.measureInputs[i];
       const props = stationById.get(measureInput.id)!;
-      const composed = composeRowStation(measureInput, props, col, mainLayout!.busAxisY, mainLayout!.blockTopY, lod, stopNotes);
-      mainRow.push({ id: measureInput.id, composed });
+      const composed = composeRowStation(measureInput, props, col, rowLayout.busAxisY, rowLayout.blockTopY, lod, stopNotes);
+      const rowStation: RowStation = { id: measureInput.id, composed };
+      rowStations.push(rowStation);
+      mainRow.push(rowStation);
+      mainRowById.set(rowStation.id, rowStation);
+      bandRightX = Math.max(bandRightX, col.x + col.width);
       drawnStationIds.add(measureInput.id);
       allSymbols.push(...composed.symbols);
       allSegments.push(...composed.segments);
@@ -2330,13 +3494,13 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
           ownerKind: 'no-point',
           text: 'NO',
           labelClass: 't3',
-          anchor: { x: col.tapX, y: mainLayout!.busAxisY },
+          anchor: { x: col.tapX, y: rowLayout.busAxisY },
           placement: 'below',
         });
         allSymbols.push({
           symbolId: 'noPoint',
           x: snapToGrid(col.tapX - NO_POINT_SIZE / 2),
-          y: snapToGrid(mainLayout!.busAxisY - NO_POINT_SIZE / 2),
+          y: snapToGrid(rowLayout.busAxisY - NO_POINT_SIZE / 2),
           meta: { testId: `sld-v3-nop-${measureInput.id}`, ownerRef: measureInput.id, elementKind: 'apparatus' },
         });
       }
@@ -2344,31 +3508,65 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
 
     // §16-v3 (cięcia łańcucha): piony kanałów lateralnych znane PRZED
     // trasowaniem przęseł — cięcie kawałka nie może wypaść na kanale
-    // (fałszywy T-węzeł, patrz `splitPolylineIntoPieces`). TE SAME wejścia
-    // co `lateralChannelXById` w sekcji 6 (funkcja czysta i deterministyczna
-    // — wynik identyczny; sekcja 6 liczy swoją mapę per-run, tu potrzebny
-    // wyłącznie ZBIÓR wartości X).
-    const trunkForbiddenCutXs = new Set(
-      computeLateralChannelXById(
-        sldData.topologyRuns.filter((r) => r.kind === 'branch'),
-        cableRunById,
-        new Map(mainRow.map((r) => [r.id, r])),
-        mainLayout.columnsResult.columns,
-      ).values(),
+    // (fałszywy T-węzeł, patrz `splitPolylineIntoPieces`). S9-1: liczone dla
+    // odgałęzień TEGO wiersza (tylko one przecinają jego przęsła — przeplot
+    // pasm, decyzja §4); funkcja czysta, więc wynik jest ten sam, co w sekcji 6.
+    const rowBranchRuns = branchRuns.filter((run) => sheetRowOfBranchRun.get(run.id) === sheetRowIndex);
+    // ODG-RYSUNEK: punkty odgałęźne TEGO wiersza + JEDEN plan kanałów wiersza
+    // (laterale pól i punkty), liczony RAZ i używany zarówno tu (zakazane cięcia
+    // przęseł), jak i w sekcji 6 (budowa zejść) — dawniej te same wartości liczyły
+    // się dwa razy w dwóch miejscach.
+    const rowBranchPoints = trunkBranchPoints.filter(
+      (bp) => sheetRowOfBranchPoint.get(bp.refId) === sheetRowIndex,
     );
+    const channelPlan = computeRowChannelPlan(
+      rowBranchRuns,
+      rowBranchPoints,
+      cableRunById,
+      mainRowById,
+      branchPointByRef,
+      rowLayout.columnsResult.columns,
+    );
+    const lateralChannelXById = channelPlan.byRunId;
+    const trunkForbiddenCutXs = new Set<number>([
+      ...channelPlan.byRunId.values(),
+      ...channelPlan.byBranchPointRef.values(),
+    ]);
+    /** ODG-RYSUNEK: KOTWICE punktów odgałęźnych TEGO wiersza — kanał × korytarz
+     *  międzystacyjny wiersza. Kluczem jest ref członu, który w punkcie się
+     *  KOŃCZY (`upstreamSegmentRef`), bo dokładnie tam tnie się łańcuch przęsła. */
+    const branchPointCorridorY = interStationCorridorY(rowLayout, lod);
+    const rowAnchorBySegmentRef = new Map<string, RowBranchAnchor>();
+    const rowAnchorByRef = new Map<string, RouteVertex>();
+    for (const bp of rowBranchPoints) {
+      const x = channelPlan.byBranchPointRef.get(bp.refId);
+      if (x == null) {
+        stopNotes.push(
+          `Punkt odgałęźny „${bp.name}" (${bp.refId}): węzeł poprzedzający „${bp.upstreamNodeRef}" nie ma kolumny w tym wierszu — kanał zejścia niewyliczalny, punkt poza rysunkiem.`,
+        );
+        continue;
+      }
+      const point: RouteVertex = { x, y: branchPointCorridorY };
+      rowAnchorBySegmentRef.set(bp.upstreamSegmentRef, { refId: bp.refId, point });
+      rowAnchorByRef.set(bp.refId, point);
+    }
+    const rowTrunkChainContext: TrunkChainContext = {
+      anchorBySegmentRef: rowAnchorBySegmentRef,
+      forbiddenCutX: trunkForbiddenCutXs,
+    };
 
-    if (mainRow.length > 0) {
-      const first = mainRow[0];
+    if (sheetRowIndex === 0 && rowStations.length > 0) {
+      const first = rowStations[0];
       // F9.3 (FIX-1, spec §12.3): port GPZ = DOLNY PORT GŁOWICY jego pola
       // liniowego (`findGpzTrunkBottomPort`), NIE punkt zejścia na szynie WN/SN
       // GPZ (`findGpzTrunkPort`, wciąż używany WYŁĄCZNIE do WYRÓWNANIA pass1→pass2
       // w sekcji 2 — tamten port ma inne zadanie: dopasować OŚ GPZ do osi
       // magistrali, nie być celem trasy kabla).
-      const gpzPort = gpzComposition ? findGpzTrunkBottomPort(gpzComposition, gpzData!, stopNotes) : null;
+      const gpzPort = gpzGeometry ? findGpzTrunkBottomPort(gpzGeometry, gpzData!, stopNotes) : null;
       if (gpzPort) {
         const fromTerminal = fromTerminalForOwner(mainCableRun, gpzData!.id);
         const toTerminal = toTerminalForOwner(mainCableRun, first.id);
-        const corridorY = interStationCorridorY(mainLayout, lod);
+        const corridorY = interStationCorridorY(rowLayout, lod);
         // F13.3-pre (D3-4/§22.3, wykryte przy przejęciu F13.1): gdy korytarz
         // leży POWYŻEJ portu głowicy GPZ, prosty pion `connectViaCorridor`
         // (x = gpzPort.x) PRZEBIJA własną szynę sekcji GPZ (wnętrze przęsła —
@@ -2379,7 +3577,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
         // TYLKO gdy prosty pion faktycznie przecina którąś szynę GPZ
         // (deterministyczny test na segmentach kompozycji) — inaczej ścieżka
         // IDENTYCZNA jak dotychczas (zero zmiany dla przypadku zdrowego).
-        const straightRiserCrossesGpzBus = gpzComposition!.segments.some((seg) => {
+        const straightRiserCrossesGpzBus = gpzGeometry!.segments.some((seg) => {
           const kind = (seg as { meta?: { busbarKind?: string; busbarRole?: string } }).meta;
           const isBus = seg.ownerRef.includes('#bus') || kind?.busbarKind === 'busGpz' || kind?.busbarRole != null;
           if (!isBus) return false;
@@ -2410,7 +3608,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
         // poziomym biegu korytarza y=552). Ten sam objazd co §22.3 (rynna
         // za bboxem GPZ) — warunek deterministyczny na portach pól.
         const corridorLevelHitsOtherLineBayPort = findGpzLineBayRefs(gpzData!).some((bayRef) => {
-          const port = gpzBayBottomPort(gpzComposition!, bayRef);
+          const port = gpzBayBottomPort(gpzGeometry!, bayRef);
           if (!port || (port.x === gpzPort.x && port.y === gpzPort.y)) return false;
           const entryX = first.composed.entryPort.x;
           return (
@@ -2421,7 +3619,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
         });
         const route = straightRiserCrossesGpzBus || corridorLevelHitsOtherLineBayPort
           ? (() => {
-              const gpzBbox = gpzComposition!.bbox;
+              const gpzBbox = gpzGeometry!.bbox;
               // Recenzja NO-GO 2026-07-17 pkt 1: bbox GPZ OBEJMUJE ramę strefy
               // (przerywaną) — objazd o +1×GRID biegł wizualnie PO granicy
               // obiektu. Prześwit 3×GRID odsuwa magistralę czytelnie POD strefę.
@@ -2443,10 +3641,9 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
         // (`continue_trunk` ×k, stacja dopiero na k-tym segmencie) — kawałek
         // per człon z WŁASNYM `ownerRef` (jak w `connectRowStations`).
         const gpzChain = chainSegmentRefs(mainCableRun, gpzData!.id, first.id);
-        const gpzPieces =
-          gpzChain.length > 1
-            ? splitPolylineIntoPieces(route.points, gpzChain.length, trunkForbiddenCutXs)
-            : [route.points];
+        const gpzPieces = trunkChainPieces(
+          route.points, gpzChain, rowTrunkChainContext, consumedBranchAnchors, stopNotes,
+        );
         if (gpzChain.length > 0 && gpzPieces.length === gpzChain.length) {
           gpzPieces.forEach((piecePoints, pi) => {
             allSegments.push({
@@ -2463,13 +3660,16 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
         }
         allRouteGeoms.push({ points: route.points });
         if (lod === 2) {
-          const slot = mainLayout.columnsResult.segmentLabelSlots.find((s) => s.stationIndex === 0);
+          const slot = rowLayout.columnsResult.segmentLabelSlots.find((s) => s.stationIndex === 0);
+          // BLOK-LATERAL-WLASNOSC (R1/R3): ref ODCINKA i jego treść z jednego
+          // wyszukania.
+          const wchodzacy = incomingSegment(mainCableRun, first.id);
           const text = segmentSpanTextWithEndpoints(
-            incomingLabelText(mainCableRun, first.id), GPZ_NODE_CODE, stationCodeOfId(first.id),
+            wchodzacy?.text ?? null, GPZ_NODE_CODE, stationCodeOfId(first.id),
           );
-          if (slot && text) {
+          if (slot && text && wchodzacy) {
             segmentSpans.push({
-              ownerRef: `${first.id}#segment-label`,
+              ownerRef: `${wchodzacy.segmentRef}#segment-label`,
               text,
               // DECYZJA (patrz `gpzRightEdgeX` w sekcji 2): `spanStart` dla
               // ETYKIETY (nie dla trasy — `route` powyżej wciąż liczy od
@@ -2480,15 +3680,130 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
               // inne elementy GPZ.
               spanStart: Math.max(gpzPort.x, gpzRightEdgeX),
               spanEnd: first.composed.entryPort.x,
-              busAxisY: mainLayout.busAxisY,
-              primaryRect: slot.rect,
+              busAxisY: rowLayout.busAxisY,
+              // SLOT-DRYF-PRZĘSŁA: rezerwacja stacji 0 jest liczona
+              // (`computeSegmentLabelSlotX`) od krawędzi świata `0`, bo lewy
+              // koniec tego przęsła — prawa krawędź GPZ — powstaje dopiero
+              // TUTAJ. Domykamy ją TĄ SAMĄ regułą centrowania na pełnych
+              // danych; bez tego podpis „GPZ ↔ S01" mijał środek swojego
+              // kabla o 824 j.św. (pomiar `scripts/pomiar_slotu.tsx`).
+              // SLOT-DRYF-PRZĘSŁA (runda 2): centrujemy na KAWAŁKU, który
+              // niesie ref podpisu (`zakresKawalkaLancucha`) — przęsło
+              // GPZ→S0 bywa łańcuchem kilku segmentów ENM, a podpis opisuje
+              // OSTATNI z nich. Centrowanie na całym (przyciętym) przęśle
+              // odsuwało napis o 24 j.św. PONAD nieunikniony nadmiar
+              // (135 wobec 111 = szer. napisu − dł. kawałka). Fallback na
+              // przęsło przycięte do prawej krawędzi GPZ zostaje dla
+              // przypadku bez podziału na człony.
+              primaryRect: wysrodkujSlotNaPrzesle(
+                slot.rect,
+                zakresKawalkaLancucha(gpzChain, gpzPieces, wchodzacy.segmentRef)?.startX
+                  ?? Math.max(gpzPort.x, gpzRightEdgeX),
+                zakresKawalkaLancucha(gpzChain, gpzPieces, wchodzacy.segmentRef)?.endX
+                  ?? first.composed.entryPort.x,
+              ),
             });
           }
         }
       } else {
         stopNotes.push('Brak GPZ w ENM — pierwsza stacja magistrali bez połączenia wejściowego (sieć bez zasilania).');
       }
-    } else if ((mainCableRun?.segmentPaths?.length ?? 0) > 0) {
+    } else if (sheetRowIndex > 0 && rowStations.length > 0 && previousSheetRow) {
+      // S9-1 (ŁĄCZNIK CIĄGU DALSZEGO, decyzja §5): koniec wiersza `k` →
+      // początek wiersza `k+1`. To REALNY tor magistrali (przęsło istnieje w
+      // modelu i niesie swój `ownerRef`) — grot kontynuacji i odsyłacze są
+      // WYŁĄCZNIE adnotacją czytelności, obwód pozostaje ciągły.
+      //
+      // Trasa (zero skrzyżowań z konstrukcji): głowica wyjściowa ostatniej
+      // stacji wiersza `k` → sub-poziom korytarza tego wiersza → w prawo do
+      // KANAŁU POWROTNEGO (na prawo od CAŁEGO pasma `k`, czyli od wiersza i
+      // jego odgałęzień) → w dół do światła między pasmami → w lewo nad
+      // wierszem `k+1` (przestrzeń pusta z konstrukcji: `ROW_VERTICAL_GAP`) →
+      // w dół rynną przy lewej krawędzi kolumny 0 → sub-poziom pod blokiem →
+      // wejście w głowicę stacji 0 OD DOŁU (jak zejście lateralu, §22.3).
+      const prev = previousSheetRow;
+      const first = rowStations[0];
+      const entry = first.composed.entryPort;
+      const exit = prev.last.composed.exitPort;
+      const exitCorridorY = interStationCorridorY(prev.layout, lod);
+      const returnChannelX = snapUp(prev.bandRightX) + SHEET_RETURN_CHANNEL_GAP;
+      // Strop pasm TEGO wiersza w świecie: `blockTopY` jest globalne (niesie
+      // `dy`), `bandsResult` lokalne — różnica jest niezmiennicza względem
+      // przesunięcia (ta sama reguła co `stripTopYOf`).
+      const overRowY = snapToGrid(rowTopYOf(rowLayout) - 2 * GRID);
+      const col0 = rowLayout.columnsResult.columns[0];
+      const gutterX = snapToGrid(col0.x - 2 * GRID);
+      const underY = trunkCorridorYOf(rowLayout) + GRID;
+      // Ta sama łamana na KAŻDYM poziomie szczegółu (KD-5/S1 „jedna kotwica":
+      // bbox świata musi być identyczny na L0 i L2). Różni się WYŁĄCZNIE
+      // ostatnie podejście: na L1/L2 tor wchodzi w głowicę OD DOŁU (§22.3 —
+      // pion nie może przeciąć pasa szyny), na L0 stacja jest symbolem
+      // zbiorczym bez pasa szyny, więc podejście jest poziome na osi.
+      const approachY = lod === 0 ? entry.y : underY;
+      const rawLink: RouteVertex[] = [
+        { x: exit.x, y: exit.y },
+        { x: exit.x, y: exitCorridorY },
+        { x: returnChannelX, y: exitCorridorY },
+        { x: returnChannelX, y: overRowY },
+        { x: gutterX, y: overRowY },
+        { x: gutterX, y: approachY },
+        { x: entry.x, y: approachY },
+        { x: entry.x, y: entry.y },
+      ];
+      const linkPoints = rawLink.filter(
+        (p, i) => i === 0 || p.x !== rawLink[i - 1].x || p.y !== rawLink[i - 1].y,
+      );
+      const linkChain = chainSegmentRefs(mainCableRun, prev.last.id, first.id);
+      // ODG-RYSUNEK: łącznik wychodzi z wiersza `k−1`, więc punkty odgałęźne
+      // (i ich kanały) pochodzą z KONTEKSTU TAMTEGO wiersza — nie bieżącego.
+      const linkPieces = trunkChainPieces(
+        linkPoints, linkChain, prev.trunkChain, consumedBranchAnchors, stopNotes,
+      );
+      if (linkChain.length > 0 && linkPieces.length === linkChain.length) {
+        linkPieces.forEach((piecePoints, pi) => {
+          allSegments.push({
+            points: piecePoints,
+            meta: { kind: 'snTrunk', ownerRef: linkChain[pi], elementKind: 'segment' },
+          });
+        });
+      } else {
+        allSegments.push({
+          points: linkPoints,
+          meta: { kind: 'snTrunk', ownerRef: incomingSegmentRef(mainCableRun, first.id), elementKind: 'segment' },
+        });
+      }
+      allRouteGeoms.push({ points: linkPoints });
+      // Znaki kontynuacji (decyzja §5) — grot na torze + odsyłacz do wiersza.
+      emitSheetContinuationMarks(
+        { x: returnChannelX, y: snapToGrid(exitCorridorY + 2 * GRID) },
+        { x: gutterX, y: snapToGrid(overRowY + 2 * GRID) },
+        sheetRowIndex,
+        linkChain[linkChain.length - 1] ?? `${first.id}#segment`,
+      );
+      if (lod === 2) {
+        const slot = rowLayout.columnsResult.segmentLabelSlots.find((s) => s.stationIndex === 0);
+        // BLOK-LATERAL-WLASNOSC (R1/R3): ref ODCINKA i jego treść z jednego
+        // wyszukania.
+        const wchodzacy = incomingSegment(mainCableRun, first.id);
+        const text = segmentSpanTextWithEndpoints(
+          wchodzacy?.text ?? null, stationCodeOfId(prev.last.id), stationCodeOfId(first.id),
+        );
+        if (slot && text && wchodzacy) {
+          segmentSpans.push({
+            ownerRef: `${wchodzacy.segmentRef}#segment-label`,
+            text,
+            // Przęsło łącznika biegnie przez dwa pasma — środek „geometryczny"
+            // nie ma sensu kartograficznego, więc etykieta siada w SLOCIE
+            // pierwszej stacji wiersza (span celowo węższy niż tekst, żeby
+            // `resolveSegmentSpanLabel` wybrał `primaryRect`).
+            spanStart: gutterX,
+            spanEnd: entry.x,
+            busAxisY: rowLayout.busAxisY,
+            primaryRect: slot.rect,
+          });
+        }
+      }
+    } else if (sheetRowIndex === 0 && (mainCableRun?.segmentPaths?.length ?? 0) > 0) {
       // §16-v3 (REBUILD_PLAN_V3 „Dług otwarty" pkt 1): ciąg główny BEZ ŻADNEJ
       // stacji, ale z REALNYMI segmentami ENM (źródło→terminal otwarty — np.
       // świeży projekt po `continue_trunk_segment_sn`, zanim wstawiono
@@ -2501,10 +3816,10 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       // działa jak dla przęsła zwykłego). Kawałków tyle, ile segmentów w
       // `segmentPaths` (łańcuch segment→segment bez stacji dzieli bieg
       // po równych interwałach `OPEN_RUN_PIECE_SPAN` od końca).
-      const gpzPort = gpzComposition ? findGpzTrunkBottomPort(gpzComposition, gpzData!, stopNotes) : null;
+      const gpzPort = gpzGeometry ? findGpzTrunkBottomPort(gpzGeometry, gpzData!, stopNotes) : null;
       if (gpzPort) {
         const paths = mainCableRun!.segmentPaths!;
-        const gpzBbox = gpzComposition!.bbox;
+        const gpzBbox = gpzGeometry!.bbox;
         const belowY = snapUp(gpzBbox.y + gpzBbox.height) + 2 * GRID;
         const xEnd = Math.max(mainRowDx, snapUp(gpzPort.x) + paths.length * OPEN_RUN_PIECE_SPAN);
         paths.forEach((sp, i) => {
@@ -2540,7 +3855,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       }
     }
 
-    const internal = connectRowStations(mainRow, mainLayout, mainCableRun, lod, [], 'snTrunk', trunkForbiddenCutXs, stationCodeOfId);
+    const internal = connectRowStations(rowStations, rowLayout, mainCableRun, lod, [], 'snTrunk', trunkForbiddenCutXs, stationCodeOfId, rowTrunkChainContext, consumedBranchAnchors, stopNotes);
     allSegments.push(...internal.connectors);
     allRouteGeoms.push(...internal.routeGeoms);
     segmentSpans.push(...internal.spanLabels);
@@ -2549,13 +3864,22 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
     // (np. `continue_trunk_segment_sn` po wstawieniu stacji, jeszcze bez
     // następnika). Bieg od głowicy wyjściowej ostatniej stacji w prawo,
     // kawałek per człon, słupek terminalny + „koniec otwarty" (L2).
-    if (mainRow.length > 0) {
-      const lastStation = mainRow[mainRow.length - 1];
+    if (isLastSheetRow && rowStations.length > 0) {
+      const lastStation = rowStations[rowStations.length - 1];
       const tail = openTailSegmentRefs(mainCableRun, lastStation.id);
       if (tail.length > 0) {
         const exit = lastStation.composed.exitPort;
-        const tailCorridorY = interStationCorridorY(mainLayout, lod);
-        const xEnd = snapUp(exit.x) + tail.length * OPEN_RUN_PIECE_SPAN;
+        const tailCorridorY = interStationCorridorY(rowLayout, lod);
+        // ODG-RYSUNEK: ogon musi sięgać ZA ostatni punkt odgałęźny, który na nim
+        // leży — inaczej kotwica punktu wypadłaby poza biegiem i tor nie dałby
+        // się w niej rozciąć (a punkt zostałby bez symbolu).
+        const tailBranchX = tail
+          .map((ref) => rowAnchorBySegmentRef.get(ref)?.point.x)
+          .filter((x): x is number => x != null);
+        const xEnd = Math.max(
+          snapUp(exit.x) + tail.length * OPEN_RUN_PIECE_SPAN,
+          ...tailBranchX.map((x) => snapUp(x) + OPEN_RUN_PIECE_SPAN),
+        );
         const rawTail: RouteVertex[] = [
           { x: exit.x, y: exit.y },
           { x: exit.x, y: tailCorridorY },
@@ -2564,7 +3888,9 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
         const tailPoints = rawTail.filter(
           (p, pi) => pi === 0 || p.x !== rawTail[pi - 1].x || p.y !== rawTail[pi - 1].y,
         );
-        const tailPieces = tail.length > 1 ? splitPolylineIntoPieces(tailPoints, tail.length) : [tailPoints];
+        const tailPieces = trunkChainPieces(
+          tailPoints, tail, rowTrunkChainContext, consumedBranchAnchors, stopNotes,
+        );
         if (tailPieces.length === tail.length) {
           tailPieces.forEach((piecePoints, pi) => {
             allSegments.push({
@@ -2587,26 +3913,36 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
         emitOpenTerminalTick(xEnd, tailCorridorY, true, tail[tail.length - 1], lod === 2);
       }
     }
-  }
 
-  // -- 6. Laterale (branch runs) — JEDEN poziom, wiersze w dół (spec F6a). --
-  const mainRowById = new Map(mainRow.map((r) => [r.id, r]));
-  // F13.1: dół wiersza magistrali W ŚWIECIE = top wiersza (`mainRowDy`, nawis
-  // strefy GPZ nad y=0 — sekcja 2/3) + wysokość pasm; samo `totalHeight` było
-  // poprawne tylko przy dy=0 sprzed F13.1.
-  const mainRowBottom = mainLayout ? mainRowDy + mainLayout.bandsResult.totalHeight : 0;
-  const lateralRunIds: string[] = [];
-  const branchOriginUsage = new Map<string, number>();
+    // -- 5b. PUNKTY ODGAŁĘŹNE tego wiersza (ODG-RYSUNEK, etap 3 kontraktu
+    // `docs/domain/POMIAR_ROZLICZENIOWY_SN_V1.md`). Symbol siada NA TORZE
+    // magistrali, w kotwicy, w której tor został właśnie rozcięty — dzięki temu
+    // punkt jest STYKIEM KOŃCÓW dwóch członów, a nie obcym glifem leżącym na
+    // przewodzie (zero fałszywych węzłów §22.1). Etykieta nazwy idzie POD symbol,
+    // w pustą strefę rozdzielającą B4/B5 (`DESCENT_STRIP_HEIGHT`) — nad pasmem
+    // nazw stacji, w szczelinie kolumnowej, więc nie koliduje ani z blokiem, ani
+    // z nazwą stacji. Trafialność (S9-4) wynika z samego symbolu i etykiety:
+    // `canvas/hitAreas.ts` buduje obszary z `scene.symbols`/`scene.labels`, a
+    // `elementKind:'branchPoint'` daje im własny rodzaj („punkt-odgalezny").
+    // Emisja jest ODROCZONA za pętlę wierszy: rozcięcie toru w punkcie leżącym na
+    // ŁĄCZNIKU ciągu dalszego wykonuje się dopiero przy wierszu NASTĘPNYM, więc
+    // decyzja „rysować symbol?" nie może zapaść tutaj (znalezisko pomiaru: punkt
+    // między wierszami 0 i 1 raportował się jako nierozcięty, choć tor był cięty
+    // chwilę później).
+    for (const bp of rowBranchPoints) {
+      const anchor = rowAnchorByRef.get(bp.refId);
+      if (anchor) pendingBranchPointGlyphs.push({ bp, anchor });
+    }
 
-  const branchRuns = sldData.topologyRuns.filter((r) => r.kind === 'branch');
-  // F6d prepass (przypadek a, patrz nagłówek `computeLateralChannelXById`):
-  // X kanału KAŻDEGO lateralu, znane PRZED zbudowaniem geometrii
-  // jakiegokolwiek wiersza — wiersz `li` musi zarezerwować kanały dla zejść
-  // lateroli `li+1..` (leżących GŁĘBIEJ w grzebieniu, więc przecinających
-  // TEN wiersz w drodze do swojego, patrz `nextRowTopY`/kolejność poniżej).
-  const lateralChannelXById = mainLayout
-    ? computeLateralChannelXById(branchRuns, cableRunById, mainRowById, mainLayout.columnsResult.columns)
-    : new Map<string, number>();
+    // -- 6. Odgałęzienia zaczepione w stacjach TEGO wiersza (przeplot pasm,
+    // decyzja §4) — pakowane półkami POD wierszem, NAD wierszem następnym.
+    // F6d prepass (przypadek a, patrz nagłówek `computeRowChannelPlan`): X kanału
+    // KAŻDEGO odgałęzienia tego pasma jest znany PRZED zbudowaniem geometrii
+    // jakiegokolwiek wiersza lateralnego — wiersz `li` rezerwuje kanały dla zejść
+    // `li+1..` (głębszych w grzebieniu, przecinających TEN wiersz w drodze do
+    // swojego). ODG-RYSUNEK: plan policzony RAZ, wyżej (`channelPlan`).
+    // Dół wiersza W ŚWIECIE = strop wiersza + wysokość pasm.
+    const mainRowBottom = rowTopYOf(rowLayout) + rowLayout.bandsResult.totalHeight;
 
   // SCHEMAT-10 S7.6 (V12K-137, Z1 KOMPRESJA): PAS ETYKIET ZEJŚĆ pod magistralą.
   // Etykieta zejścia lateralu (obrócony `segment-lateral`, origin→stacja0) opisuje
@@ -2616,26 +3952,28 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
   // MIN_SUBTREE_CLEARANCE (realny footprint), a piony zejść skracają się WYNIKOWO.
   // `dropBandHeight` = NAJWYŻSZY korytarz etykiety zejścia (reguła OGÓLNA z realnego
   // bbox tekstu po pomiarze fontu, WYTYCZNE §2; 0 gdy brak lateralów z etykietą).
-  // Prepass deterministyczny (osobna mapa `usage`, jak `computeLateralChannelXById`
+  // Prepass deterministyczny (osobna mapa `usage`, jak `computeRowChannelPlan`
   // — ta sama kolejność `branchRuns` i warunki ⇒ identyczny origin/branchPos).
-  const dropBandHeight = ((): number => {
+    const dropBandHeight = ((): number => {
     const usage = new Map<string, number>();
     let maxCorridor = 0;
-    for (const run of branchRuns) {
+    for (const run of rowBranchRuns) {
       const cr = cableRunById.get(run.id);
       const isFeeder =
-        gpzComposition != null &&
+        gpzGeometry != null &&
         gpzData != null &&
         (cr?.segmentPaths?.[0]?.fromTerminal?.ownerRef ?? null) === gpzData.id;
       if (isFeeder) continue; // feeder ma etykietę POZIOMĄ (segmentSpans), nie zejściową
-      const origin = resolveBranchOrigin(run, cableRunById, mainRowById, usage);
+      const origin = resolveBranchOrigin(
+        run, cableRunById, mainRowById, usage, branchPointByRef, channelPlan.branchPosByBranchPointRef,
+      );
       if (!origin) continue;
       if (lateralChannelXById.get(run.id) == null) continue;
       const station0Id = run.stationRefs.find((id) => stationById.has(id));
       if (station0Id == null) continue; // bieg otwarty (bez stacji) — nie woła place()
       const incomingText = segmentSpanTextWithEndpoints(
         incomingLabelText(cr, station0Id),
-        stationCodeOfId(origin.originOwnerRef),
+        trunkNodeCodeOfId(origin.originOwnerRef),
         stationCodeOfId(station0Id),
       );
       if (incomingText == null) continue;
@@ -2643,20 +3981,14 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
     }
     return maxCorridor > 0 ? snapUp(maxCorridor) : 0;
   })();
-  // Pas zejść zajmuje [mainRowBottom, dropBandBottom]; wszystkie pasma lateralne
-  // startują poniżej (packer.topBaseline = dropBandBottom).
-  const dropBandTop = mainRowBottom;
-  const dropBandBottom = snapUp(mainRowBottom + dropBandHeight);
-  // SCHEMAT-10 S7-P1 (V12K-137): packer interwałowy zastępuje kursor `nextRowTopY`.
-  // S7.6: startuje POD pasem etykiet zejść (gap pasm = MIN_SUBTREE_CLEARANCE).
-  const packer = createLateralShelfPacker(dropBandBottom);
+    // Pas zejść zajmuje [mainRowBottom, dropBandBottom]; pasma lateralne TEGO
+    // wiersza startują poniżej (kursor packera ustawiony na `dropBandBottom`).
+    const dropBandTop = mainRowBottom;
+    const dropBandBottom = snapUp(mainRowBottom + dropBandHeight);
+    packer.setCursor(dropBandBottom);
 
-  // Feedery z pól GPZ (2026-07-17, po odbiorze „100% klasy przemysłowej"):
-  // licznik przydziału KOLEJNYCH pól liniowych GPZ (pierwsze = magistrala).
-  let gpzFeederCount = 0;
-
-  for (let li = 0; li < branchRuns.length; li++) {
-    const run = branchRuns[li];
+    for (let li = 0; li < rowBranchRuns.length; li++) {
+    const run = rowBranchRuns[li];
     const cableRun = cableRunById.get(run.id);
 
     // -- Feeder z POLA GPZ (start_branch_segment_sn z field_ref GPZ) --------
@@ -2668,7 +4000,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
     // głowicy tego pola — na lewo od wszystkich wierszy, więc bez kolizji;
     // przecięcia z korytarzem magistrali dostają mostki §22.1 automatycznie).
     const isGpzFeeder =
-      gpzComposition != null &&
+      gpzGeometry != null &&
       gpzData != null &&
       (cableRun?.segmentPaths?.[0]?.fromTerminal?.ownerRef ?? null) === gpzData.id;
     if (isGpzFeeder) {
@@ -2690,7 +4022,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
         typeof assignedFieldRef === 'string' && assignedFieldRef
           ? assignedFieldRef
           : lineBayRefs[1 + gpzFeederCount];
-      const feederPort = feederBayRef ? gpzBayBottomPort(gpzComposition!, feederBayRef) : null;
+      const feederPort = feederBayRef ? gpzBayBottomPort(gpzGeometry!, feederBayRef) : null;
       if (!feederPort) {
         stopNotes.push(
           `Feeder z pola GPZ „${run.id}": brak DEDYKOWANEGO pola liniowego GPZ (przydział=${String(assignedFieldRef ?? 'brak')}, pól liniowych=${lineBayRefs.length}) — ciąg pominięty; z jednego pola nie wolno wyprowadzić dwóch kabli.`,
@@ -2698,7 +4030,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
         continue;
       }
       gpzFeederCount += 1;
-      const gpzBottom = snapUp(gpzComposition!.bbox.y + gpzComposition!.bbox.height);
+      const gpzBottom = snapUp(gpzGeometry!.bbox.y + gpzGeometry!.bbox.height);
       let feederLayout = buildRowLayout(
         run.stationRefs, stationById, lineRuns, GPZ_NODE_CODE, cableRun, lod, stopNotes, derSourcesByStationId, true,
       );
@@ -2820,17 +4152,30 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       allRouteGeoms.push({ points: inPoints });
       if (lod === 2) {
         const slot = feederLayout.columnsResult.segmentLabelSlots.find((s) => s.stationIndex === 0);
+        // BLOK-LATERAL-WLASNOSC (R1/R3): ref ODCINKA i jego treść z jednego
+        // wyszukania.
+        const wchodzacy = incomingSegment(cableRun, first.id);
         const text = segmentSpanTextWithEndpoints(
-          incomingLabelText(cableRun, first.id), GPZ_NODE_CODE, stationCodeOfId(first.id),
+          wchodzacy?.text ?? null, GPZ_NODE_CODE, stationCodeOfId(first.id),
         );
-        if (slot && text) {
+        if (slot && text && wchodzacy) {
           segmentSpans.push({
-            ownerRef: `${first.id}#segment-label`,
+            ownerRef: `${wchodzacy.segmentRef}#segment-label`,
             text,
             spanStart: Math.max(feederPort.x, gpzRightEdgeX),
             spanEnd: first.composed.entryPort.x,
             busAxisY: feederLayout.busAxisY,
-            primaryRect: slot.rect,
+            // SLOT-DRYF-PRZĘSŁA: jak przy GPZ→S0 wyżej — lewy koniec przęsła
+            // (pole odpływowe GPZ) znany dopiero tutaj.
+            // SLOT-DRYF-PRZĘSŁA (runda 2): jak przy GPZ→S0 — kawałek
+            // niosący ref podpisu, gdy przęsło jest łańcuchem.
+            primaryRect: wysrodkujSlotNaPrzesle(
+              slot.rect,
+              zakresKawalkaLancucha(feederChain, feederPieces, wchodzacy.segmentRef)?.startX
+                ?? Math.max(feederPort.x, gpzRightEdgeX),
+              zakresKawalkaLancucha(feederChain, feederPieces, wchodzacy.segmentRef)?.endX
+                ?? first.composed.entryPort.x,
+            ),
           });
         }
       }
@@ -2879,21 +4224,63 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       continue;
     }
 
-    const origin = resolveBranchOrigin(run, cableRunById, mainRowById, branchOriginUsage);
+    const origin = resolveBranchOrigin(
+      run, cableRunById, mainRowById, branchOriginUsage, branchPointByRef, channelPlan.branchPosByBranchPointRef,
+    );
     if (!origin) {
       stopNotes.push(
-        `Lateral „${run.id}": stacja-origin nie leży na magistrali głównej (odgałęzienie zagnieżdżone, POZA zakresem F6a) lub nie ma pola odgałęźnego dla tego branchPos — ciąg pominięty.`,
+        `Lateral „${run.id}": początek odgałęzienia nie leży na magistrali głównej (odgałęzienie zagnieżdżone, POZA zakresem F6a), nie ma pola odgałęźnego dla tego branchPos, albo punkt odgałęźny nie trafił na rysunek — ciąg pominięty.`,
       );
       continue;
     }
-    const { originOwnerRef, originPort } = origin;
+    const { originOwnerRef } = origin;
     const channelX = lateralChannelXById.get(run.id);
     if (channelX == null) {
       stopNotes.push(
-        `Lateral „${run.id}": nie znaleziono kolumny stacji-origin „${originOwnerRef}" na magistrali głównej — kanał zejścia (F6d) nie mógł być wyliczony, ciąg pominięty.`,
+        `Lateral „${run.id}": nie znaleziono kolumny węzła-origin „${origin.channelOwnerRef}" na magistrali głównej — kanał zejścia (F6d) nie mógł być wyliczony, ciąg pominięty.`,
       );
       continue;
     }
+    // ODG-RYSUNEK: początkiem odgałęzienia jest ALBO port pola odgałęźnego stacji
+    // (dotychczas), ALBO PUNKT ODGAŁĘŹNY na torze — wtedy „port" leży dokładnie w
+    // kotwicy punktu (kanał × korytarz międzystacyjny), czyli tam, gdzie stoi jego
+    // symbol i gdzie tor jest rozcięty. Jedno źródło prawdy: kotwica z sekcji 5b.
+    const branchPointAnchor = origin.branchPoint ? rowAnchorByRef.get(origin.branchPoint.refId) : undefined;
+    if (origin.kind === 'branch-point' && !branchPointAnchor) {
+      stopNotes.push(
+        `Lateral „${run.id}": punkt odgałęźny „${origin.originOwnerRef}" nie ma kotwicy na torze tego wiersza — ciąg pominięty.`,
+      );
+      continue;
+    }
+    const originPort = origin.originPort ?? branchPointAnchor!;
+    /**
+     * ODG-RYSUNEK: GŁOWICA ZEJŚCIA — pierwsze wierzchołki trasy odgałęzienia,
+     * od jego początku do pionu kanału. Dwa przypadki, jedna reguła:
+     *  · POLE ODGAŁĘŹNE STACJI — port leży WEWNĄTRZ bloku, więc trasa schodzi do
+     *    stropu strefy rozdzielającej B4/B5 (`stripTopY`) i dopiero tam jedzie do
+     *    kanału (dotychczasowe zachowanie, bit w bit);
+     *  · PUNKT ODGAŁĘŹNY — początek leży JUŻ NA TORZE, w kanale, więc trasa
+     *    startuje wprost w kotwicy punktu (zero jogu; jog w górę do `stripTopY`
+     *    byłby zawróceniem po własnym śladzie). Drugie i kolejne odgałęzienie z
+     *    TEGO SAMEGO punktu ma własny kanał — dojeżdża do niego sub-poziomem
+     *    `GRID` PONIŻEJ korytarza (kolejny wolny poziom strefy B4/B5, ta sama
+     *    zasada rozdzielania sub-poziomów co `trunkCorridorYOf`).
+     */
+    const descentHead = (stripTopY: number): readonly RouteVertex[] => {
+      if (origin.kind !== 'branch-point') {
+        return [
+          { x: originPort.x, y: originPort.y },
+          { x: originPort.x, y: stripTopY },
+          { x: channelX, y: stripTopY },
+        ];
+      }
+      if (originPort.x === channelX) return [{ x: channelX, y: originPort.y }];
+      return [
+        { x: originPort.x, y: originPort.y },
+        { x: originPort.x, y: originPort.y + GRID },
+        { x: channelX, y: originPort.y + GRID },
+      ];
+    };
 
     let layout = buildRowLayout(run.stationRefs, stationById, lineRuns, GPZ_NODE_CODE, cableRun, lod, stopNotes, derSourcesByStationId, true);
     if (layout.measureInputs.length === 0) {
@@ -2906,7 +4293,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       // terminalnym + etykietą „koniec otwarty" (L2).
       const openPaths = cableRun?.segmentPaths ?? [];
       if (openPaths.length > 0) {
-        const stripTopY = stripTopYOf(mainLayout!);
+        const stripTopY = stripTopYOf(rowLayout);
         const yEnd = Math.max(
           snapUp(packer.nextTop()) + 2 * GRID,
           snapUp(stripTopY) + openPaths.length * OPEN_RUN_PIECE_SPAN,
@@ -2916,9 +4303,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
           const raw: RouteVertex[] =
             i === 0
               ? [
-                  { x: originPort.x, y: originPort.y },
-                  { x: originPort.x, y: stripTopY },
-                  { x: channelX, y: stripTopY },
+                  ...descentHead(stripTopY),
                   { x: channelX, y: to },
                 ]
               : [
@@ -2978,7 +4363,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
     // pasa na L0/L1 jest nieszkodliwa i utrzymuje wspólną kotwicę.
     const incomingText = segmentSpanTextWithEndpoints(
       incomingLabelText(cableRun, layout.measureInputs[0].id),
-      stationCodeOfId(originOwnerRef ?? ''),
+      trunkNodeCodeOfId(originOwnerRef ?? ''),
       stationCodeOfId(layout.measureInputs[0].id),
     );
     const requiredCorridorHeight = incomingText != null ? measureLabelWidth(incomingText, 't2') + 2 * GRID : 0;
@@ -2991,11 +4376,18 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
     // w kolejności komponowania (`li+1..`, głębszych w grzebieniu) — rezerwowane
     // teraz, przy przesunięciu wyłącznie w X (współrzędne globalne z prepassu).
     layout = shiftRowLayout(layout, dx, 0);
-    const laterChannelXs = branchRuns
+    const laterChannelXs = rowBranchRuns
       .slice(li + 1)
       .map((laterRun) => lateralChannelXById.get(laterRun.id))
       .filter((x): x is number => x != null);
-    const channels = insertColumnChannels(layout.columnsResult, laterChannelXs, `Lateral „${run.id}"`);
+    const channels = insertColumnChannels(
+      layout.columnsResult,
+      laterChannelXs,
+      `Lateral „${run.id}"`,
+      // SLOT-DRYF-PRZĘSŁA: etykieta przęsła ustępuje kanałowi WZDŁUŻ własnego
+      // kabla (geometria stacji tego wiersza), zamiast rozpychać kolumny.
+      layout.geometryInputs,
+    );
     stopNotes.push(...channels.stopNotes);
     layout = { ...layout, columnsResult: channels.result };
 
@@ -3016,6 +4408,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
     // SCHEMAT-10 S7.6: gap pasa = MIN_SUBTREE_CLEARANCE; `requiredCorridorHeight`
     // (korytarz etykiety zejścia) przekazany WYŁĄCZNIE do audytu (rekord packera),
     // etykieta emitowana w PASIE ZEJŚĆ pod magistralą (patrz `dropBandTop`).
+    lateralBandRightX = Math.max(lateralBandRightX, footprintRight);
     const placement = packer.place(
       run.id,
       footprintLeft,
@@ -3079,7 +4472,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       // przypadek zerowy, ORAZ zawsze między ostatnimi dwoma punktami po
       // FIX-1 — patrz DECYZJA przy `rawJogPoints` niżej) są usuwane, żeby nie
       // emitować zdegenerowanych odcinków.
-      const stripTopY = stripTopYOf(mainLayout!);
+      const stripTopY = stripTopYOf(rowLayout);
 
       // F9.3 (spec §14.4 „jawne rozgałęzienia"): akcent węzła rozgałęzienia —
       // NIE na `originPort` (port dolny pola odgałęźnego — TAM już stoi JEGO
@@ -3151,9 +4544,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       const rawJogPoints: RouteVertex[] = (() => {
         if (lod === 0) {
           return [
-            { x: originPort.x, y: originPort.y },
-            { x: originPort.x, y: stripTopY },
-            { x: channelX, y: stripTopY },
+            ...descentHead(stripTopY),
             { x: channelX, y: entry.y },
             { x: entry.x, y: entry.y },
           ];
@@ -3162,9 +4553,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
         const gutterX = snapToGrid(col0.x - 2 * GRID);
         const underY = trunkCorridorYOf(layout) + GRID;
         return [
-          { x: originPort.x, y: originPort.y },
-          { x: originPort.x, y: stripTopY },
-          { x: channelX, y: stripTopY },
+          ...descentHead(stripTopY),
           { x: channelX, y: dy },
           { x: gutterX, y: dy },
           { x: gutterX, y: underY },
@@ -3177,7 +4566,12 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       );
       // §16-v3 (tożsamość łańcucha): zejście origin→stacja0 lateralu bywa
       // wieloczłonowe — kawałek per człon (jak GPZ→S0 / `connectRowStations`).
-      const lateralChain = chainSegmentRefs(cableRun, originOwnerRef, first.id);
+      // ODG-RYSUNEK: odgałęzienie z PUNKTU zaczyna się na pierwszym członie
+      // `segmentPaths` (szyna punktu nie ma właściciela-stacji, więc dopasowanie
+      // po `fromTerminal.ownerRef` nie istnieje) — `null` znaczy „od początku ciągu".
+      const lateralChain = chainSegmentRefs(
+        cableRun, origin.kind === 'branch-point' ? null : originOwnerRef, first.id,
+      );
       const lateralPieces =
         lateralChain.length > 1 ? splitPolylineIntoPieces(jogPoints, lateralChain.length) : [jogPoints];
       if (lateralChain.length > 0 && lateralPieces.length === lateralChain.length) {
@@ -3196,12 +4590,18 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       allRouteGeoms.push({ points: jogPoints });
       if (lod === 2) {
         // pkt 13 (recenzja NO-GO 2026-07-17): para końców origin↔stacja0.
+        // BLOK-LATERAL-WLASNOSC (R1): ten podpis opisuje ODCINEK ZEJŚCIA
+        // (kabel schodzący z magistrali do stacji 0 lateralu) — jego treść to
+        // typ·przekrój·napięcie·długość TEGO kabla — więc nosi ref TEGO
+        // ODCINKA, nie stacji, przy której kiedyś stała ramka. Ref i treść z
+        // JEDNEGO wyszukania (`incomingSegment`) — patrz R3 przy definicji.
+        const wchodzacy = incomingSegment(cableRun, first.id);
         const text = segmentSpanTextWithEndpoints(
-          incomingLabelText(cableRun, first.id),
-          stationCodeOfId(originOwnerRef ?? '') ?? null,
+          wchodzacy?.text ?? null,
+          trunkNodeCodeOfId(originOwnerRef ?? '') ?? null,
           stationCodeOfId(first.id),
         );
-        if (text) {
+        if (text && wchodzacy) {
           // SCHEMAT-10 S7.6 (V12K-137, Z1 KOMPRESJA): etykieta zejścia kotwiczona
           // do PASA ZEJŚĆ tuż pod magistralą (`dropBandTop`..`dropBandBottom`),
           // przy channelX PUNKTU ODEJŚCIA — NIE do gapu nad odległą stacją
@@ -3212,7 +4612,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
           // `dropBandBottom−dropBandTop == dropBandHeight ≥ alongLine+2×GRID` z
           // konstrukcji (prepass max), więc `fitsLength` zawsze spełnione.
           segmentLaterals.push({
-            ownerRef: `${first.id}#lateral-label`,
+            ownerRef: `${wchodzacy.segmentRef}#lateral-label`,
             text,
             lineX: channelX,
             lineYStart: dropBandTop,
@@ -3269,6 +4669,62 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
         allRouteGeoms.push({ points: tailPoints });
         emitOpenTerminalTick(xEnd, tailCorridorY, true, tail[tail.length - 1], lod === 2);
       }
+    }
+    } // koniec pętli odgałęzień TEGO wiersza arkusza
+
+    // Strop następnego wiersza arkusza = pod całym pasmem tego wiersza
+    // (wiersz + jego odgałęzienia), z zachowaniem światła `ROW_VERTICAL_GAP`.
+    sheetCursorTopY = snapUp(packer.nextTop());
+    if (rowStations.length > 0) {
+      previousSheetRow = {
+        layout: rowLayout,
+        last: rowStations[rowStations.length - 1],
+        bandRightX: Math.max(bandRightX, lateralBandRightX),
+        trunkChain: rowTrunkChainContext,
+      };
+    }
+  } // koniec pętli wierszy arkusza
+
+  // -- 6b. SYMBOLE PUNKTÓW ODGAŁĘŹNYCH (ODG-RYSUNEK). Rysowane PO wszystkich
+  // wierszach, bo dopiero wtedy wiadomo, w których punktach tor magistrali
+  // faktycznie został rozcięty (`consumedBranchAnchors`) — łącznik ciągu dalszego
+  // wiersza `k` powstaje w iteracji wiersza `k+1`.
+  for (const { bp, anchor } of pendingBranchPointGlyphs) {
+    if (!consumedBranchAnchors.has(bp.refId)) {
+      stopNotes.push(
+        `Punkt odgałęźny „${bp.name}" (${bp.refId}): tor magistrali nie został w nim rozcięty (kotwica poza narysowanym biegiem członu „${bp.upstreamSegmentRef}") — punkt bez symbolu na rysunku.`,
+      );
+      continue;
+    }
+    const symbolId = branchPointSymbolId(bp.kind);
+    const def = SYMBOL_DEFS[symbolId];
+    allSymbols.push({
+      symbolId,
+      x: snapToGrid(anchor.x - def.width / 2),
+      y: snapToGrid(anchor.y - def.height / 2),
+      meta: {
+        testId: `sld-v3-punkt-odgalezny-${bp.refId}`,
+        ownerRef: bp.refId,
+        elementKind: 'branchPoint',
+      },
+    });
+    drawnBranchPointRefs.add(bp.refId);
+    if (lod !== 0) {
+      // Etykieta OBOK pionu zejścia, nie pod nim: wprost pod symbolem biegnie
+      // kabel odgałęzienia (pomiar: 2 kolizje etykieta↔przewód), a nad nim tor
+      // magistrali. Wolne miejsce to prawa strona kanału, w strefie rozdzielającej
+      // B4/B5 poniżej obu sub-poziomów jogu (`trunkCorridorYOf` i `+GRID`), nad
+      // pasmem nazw stacji (`B5.y == stripTopY + DESCENT_STRIP_HEIGHT`).
+      const nameWidth = measureLabelWidth(bp.name, 't3');
+      simpleAnchored.push({
+        ownerRef: `${bp.refId}#name`,
+        ownerKind: 'branch-point',
+        text: bp.name,
+        labelClass: 't3',
+        anchor: { x: snapToGrid(anchor.x + GRID + nameWidth / 2), y: anchor.y },
+        placement: 'below',
+        clearance: 2 * GRID,
+      });
     }
   }
 
@@ -3353,7 +4809,22 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
     for (const head of allSymbols) {
       if (head.symbolId !== 'cableHead') continue;
       if (endpointSet.has(`${head.x + portDx},${head.y + portDy}`)) continue;
-      const ownerRef = head.meta?.ownerRef ?? 'nieznane-pole';
+      // BLOK-LATERAL-WLASNOSC (reguła KLASA §5 „uczciwość w obrębie jednego
+      // pliku"): dawny zapas `?? 'nieznane-pole'` FABRYKOWAŁ ref właściciela —
+      // etykieta zakończenia toru dostawała `nieznane-pole#termination`, czyli
+      // ref, którego model nie zna i którego klik nie ma jak rozwiązać. Karta
+      // zakazuje zmyślonych refów właściciela, więc zakaz obowiązuje też w
+      // sąsiedniej funkcji tego samego pliku. Bez właściciela nie ma podpisu, a
+      // brak jest POLICZONY w `stopNotes` (KD-11/S9-7: tożsamość nie znika po
+      // cichu), nie przemilczany.
+      const ownerRef = head.meta?.ownerRef;
+      if (!ownerRef) {
+        stopNotes.push(
+          'Głowica kablowa bez właściciela na rysunku — podpis zakończenia toru pominięty '
+            + '(ref zakończenia musi pochodzić z pola, nie może być zmyślony).',
+        );
+        continue;
+      }
       const text = captionByOwnerPrefix.get(ownerRef) ?? 'koniec toru';
       const labelClass = 't4' as const;
       const width = measureLabelWidth(text, labelClass);
@@ -3362,6 +4833,8 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
         ownerRef: `${ownerRef}#termination`,
         ownerKind: 'port-caption',
         labelClass,
+        // KD-11: adnotacja zakończenia toru — dane szczegółowe (jak wyżej).
+        labelRole: LABEL_ROLE_BY_OWNER_KIND['port-caption'],
         text,
         slotIndex: 1,
         // Wycentrowana POD głowicą (pas zejść, po F9.10 wysoki 6×GRID —
@@ -3482,10 +4955,18 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
   const bbox = unionRects([
     ...allSymbols.map(symbolRect),
     ...allSegments.map(segmentRect),
-    ...labels.map((l) => l.rect),
+    // BLOK-PUSTY: arkusz obejmuje REZERWACJĘ etykiety, nie sam jej tusz —
+    // rezerwacja pochodzi z geometrii pełnego szczegółu (S1 „jedna kotwica"),
+    // więc rozmiar arkusza NIE zależy od tego, jaki tekst niesie dany poziom
+    // (na L0 wiersz pasma nazw ma kod stacji, na L2 nazwę). Patrz
+    // `layout/labels.ts` `labelReservationRect` — tam wyprowadzenie i pomiar.
+    ...labels.map(labelReservationRect),
     // F13.1: rama strefy GPZ to dekoracja (nie symbol/segment/etykieta) — bbox
     // sceny musi ją objąć jawnie, inaczej kamera/arkusz przycinają jej krawędzie.
-    ...(gpzComposition?.zone ? [gpzComposition.zone] : []),
+    // KD-5: rama strefy jest własnością ŚWIATA (nie renderu) — czytana z
+    // kompozycji GEOMETRYCZNEJ, więc obszar GPZ i bbox sceny są takie same na
+    // każdym LOD (zwinięcie nie przesuwa arkusza ani kamery).
+    ...(gpzGeometry?.zone ? [gpzGeometry.zone] : []),
   ]);
 
   // Feedery z pól GPZ (2026-07-17): licznik = stacje FAKTYCZNIE narysowane
@@ -3494,6 +4975,18 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
   // magistrali) nie widziała wierszy feederów GPZ i po ich dorysowaniu
   // raportowała zaniżoną liczbę (pomiar: 1 zamiast 2 na `gpzFeeder.enm.json`).
   const stationCount = drawnStationIds.size;
+
+  // S9-7: pasy stref = wiersze arkusza rozciągnięte na CAŁY bbox. Granica
+  // między pasem `k` i `k+1` to STROP wiersza `k+1` (patrz `SheetRowBand`);
+  // skrajne granice to krawędzie arkusza, żeby siatka odniesienia pokrywała go
+  // bez dziur — element leżący nad pierwszym wierszem (blok GPZ) należy do
+  // strefy A, a nie do „żadnej".
+  const sheetRowBands: SheetRowBand[] = sheetRowLayouts.map((layout, index) => {
+    const y = index === 0 ? bbox.y : rowTopYOf(layout);
+    const nastepny = sheetRowLayouts[index + 1];
+    const dol = nastepny ? rowTopYOf(nastepny) : bbox.y + bbox.height;
+    return { y, height: Math.max(0, dol - y) };
+  });
 
   return {
     symbols: allSymbols,
@@ -3506,16 +4999,27 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       lod,
       stationCount,
       gpzId: gpzData?.id ?? null,
+      // KD-5: `parityKeys` opisuje ELEMENTY FAKTYCZNIE NARYSOWANE — na L0 blok
+      // jest zwinięty, więc kluczy pól GPZ na scenie nie ma (uczciwie puste).
+      // Reszta meta GPZ (braki danych, sekcje, transformatory, strefa, nota
+      // punktu neutralnego) opisuje MODEL, nie render — czytana z kompozycji
+      // geometrycznej, identyczna na każdym LOD.
       parityKeys: gpzComposition ? [...gpzComposition.parityKeys] : [],
-      missingData: gpzComposition ? [...gpzComposition.missingData] : [],
-      sections: gpzComposition?.sections ?? [],
-      transformers: gpzComposition?.transformers ?? [],
+      missingData: gpzGeometry ? [...gpzGeometry.missingData] : [],
+      sections: gpzGeometry?.sections ?? [],
+      transformers: gpzGeometry?.transformers ?? [],
       mainTrunkStationIds: mainRow.map((r) => r.id),
+      sheetRows: sheetPlan
+        ? sheetPlan.rows.map((range) => trunkStationIds.slice(range.start, range.endExclusive))
+        : [],
+      sheetRowBands,
       lateralRunIds,
+      drawnStationIds: [...drawnStationIds].sort(),
+      drawnBranchPointRefs: [...drawnBranchPointRefs].sort(),
       stopNotes,
       sources: allSources,
-      gpzZone: gpzComposition?.zone ?? null,
-      neutralEarthingNotePl: gpzComposition?.neutralEarthingNotePl ?? null,
+      gpzZone: gpzGeometry?.zone ?? null,
+      neutralEarthingNotePl: gpzGeometry?.neutralEarthingNotePl ?? null,
       lateralShelves: packer.records(),
     },
   };
@@ -3786,7 +5290,24 @@ export function noBranchWithoutAccent(scene: SceneV3): boolean {
 // Napięcie w zapisie POLSKIM (przecinek dziesiętny — `liczbaRysunkuPl`, core/text.ts).
 // Kropka była tu przepuszczana, dopóki etykiety szyn wstawiały liczbę surowo (V12K-235):
 // wzorzec legalizował zapis niezgodny z resztą rysunku, zamiast go wyłapać.
-const BUSBAR_LABEL_TEXT_PATTERN = /^(?:Sekcja \d+|Szyna WN)(?: · \d+(?:,\d+)? kV)?$/;
+// S9-8 (audyt, „identyfikator stacji w opisie sekcji"): dopuszczony CZŁON
+// WIODĄCY = kod stacji z danych (`stationBusbarLabelText`, `layout/measure.ts`).
+// Człon jest OPCJONALNY (GPZ i stacje bez kodu zachowują formę sprzed karty) i
+// ograniczony do JEDNEGO tokenu bez separatora — dowolna fraza w tym miejscu
+// osłabiłaby wyrocznię do „cokolwiek · Sekcja N". Wartość tokenu pozostaje
+// DANĄ (kod stacji może wyglądać różnie u różnych operatorów), więc wyrocznia
+// pilnuje jego KSZTAŁTU, a nie treści; że jest to REALNY kod tej stacji,
+// dowodzi osobno `scripts/sld_v3_acceptance.mjs` (porównanie z ENM).
+const BUSBAR_LABEL_TEXT_PATTERN =
+  /^(?:[^\s·]{1,16} · )?(?:Sekcja \d+|Szyna WN)(?: · \d+(?:,\d+)? kV)?$/;
+
+// S9-12 (klasa C-8): zamknięta gramatyka etykiety szyny nN PRODUCENTA DER
+// (`compose/station.ts` `composeDerSnChain` → `stationLvBusbarLabelText`,
+// `layout/measure.ts` — TA SAMA formuła co wiersz nN pasma nazw stacji).
+// Osobny wzorzec, bo szyna producenta NIE jest sekcją stacji — dawny tekst
+// „Sekcja 1 · 0,4 kV" był semantycznie fałszywy i nierozróżnialny między
+// dwoma torami DER w jednym kadrze.
+const PRODUCER_BUS_LABEL_TEXT_PATTERN = /^Szyna nN(?: · \d+(?:,\d+)? kV)?$/;
 
 export interface BusbarLabelGap {
   readonly reason: 'bus-without-label' | 'label-without-bus' | 'malformed-text';
@@ -3836,10 +5357,28 @@ export function busbarLabelGaps(scene: SceneV3): readonly BusbarLabelGap[] {
     }
   }
 
-  for (const [ownerRef] of busbarLabelsByOwnerRef) {
-    if (!matchedLabelRefs.has(ownerRef)) {
-      gaps.push({ reason: 'label-without-bus', ownerRef, detail: 'etykieta busbar-voltage bez odpowiadającego odcinka szyny na scenie' });
+  // S9-12 (klasa C-8, predykaty parami): szyna nN PRODUCENTA DER — etykieta
+  // `#producer-bus-voltage` (`compose/station.ts` `composeDerSnChain`) paruje
+  // się z odcinkiem `#lv-bus` TEGO SAMEGO ref-u szyny producenta (wariant
+  // `integrated-skid` nie rysuje ani kreski, ani etykiety — parowanie
+  // spójne). Przed tą kartą wyrocznia fałszywie flagowała każdą taką
+  // etykietę jako `label-without-bus` — producent emitował etykietę spoza
+  // słownika wyroczni (dwa niezależne predykaty tej samej pary).
+  const segmentRefs = new Set(
+    scene.segments.map((s) => s.meta?.ownerRef).filter((r): r is string => r != null),
+  );
+  for (const [ownerRef, label] of busbarLabelsByOwnerRef) {
+    if (matchedLabelRefs.has(ownerRef)) continue;
+    if (ownerRef.endsWith('#producer-bus-voltage')) {
+      const busRef = ownerRef.replace(/#producer-bus-voltage$/, '#lv-bus');
+      if (!segmentRefs.has(busRef)) {
+        gaps.push({ reason: 'label-without-bus', ownerRef, detail: `oczekiwany odcinek szyny producenta „${busRef}" nieobecny` });
+      } else if (!PRODUCER_BUS_LABEL_TEXT_PATTERN.test(label.text)) {
+        gaps.push({ reason: 'malformed-text', ownerRef, detail: `tekst „${label.text}" niezgodny z „Szyna nN"/„Szyna nN · V kV" (szyna producenta nie jest sekcją stacji)` });
+      }
+      continue;
     }
+    gaps.push({ reason: 'label-without-bus', ownerRef, detail: 'etykieta busbar-voltage bez odpowiadającego odcinka szyny na scenie' });
   }
 
   return gaps;
@@ -4049,19 +5588,24 @@ export function allSwitchSymbolsUnambiguous(scene: SceneV3): boolean {
 // F10.2 (spec §19.1, V12K-035) — apparatus_identifier_probe: „«Q» identyfikuje
 // APARAT, nie pole" — (a) oznaczenie pola (`ownerKind:'field-role'`) NIGDY
 // nie jest surowym „Q\d+"/„T\d+"; (b) każdy aparat toru z identyfikatorem
-// (breaker/disconnector/fuseSwitch/earthSwitch/transformer2W) niesie
-// znacznik `designationSource` i ma dokładnie JEDNĄ etykietę
-// `ownerKind:'apparatus'` odpowiadającą; (c) aparaty z konwencji mają
-// znacznik źródła; (d) tekst identyfikatora: DANE (`designationSource==='dane'`)
-// — dowolny NIEPUSTY tekst identyfikowalny aparatu (prymat danych §12.1, Z3:
-// producenckie „F1"/„TR" są pełnoprawne); KONWENCJA — wzorzec Q\d+/QE\d+/T\d+
-// (+ opcjonalny sufiks kolizji „·k").
+// (breaker/disconnector/fuseSwitch/earthSwitch/transformer2W/
+// voltageTransformer/surgeArrester) niesie znacznik `designationSource` i ma
+// dokładnie JEDNĄ etykietę `ownerKind:'apparatus'` odpowiadającą; (c) aparaty
+// z konwencji mają znacznik źródła; (d) tekst identyfikatora: DANE
+// (`designationSource==='dane'`) — dowolny NIEPUSTY tekst identyfikowalny
+// aparatu (prymat danych §12.1, Z3: producenckie „Z1"/„TR" są pełnoprawne);
+// KONWENCJA — wzorzec Q\d+/QE\d+/T\d+/TV\d+/F\d+ (+ opcjonalny sufiks
+// kolizji „·k").
 // ---------------------------------------------------------------------------
 
-/** Symbole, które spec §19.1 wymienia WPROST jako nośniki identyfikatora
- *  per-aparat (wyłącznik/rozłącznik/odłącznik → Q, uziemnik → QE,
- *  transformator → T) — TA SAMA lista co `apparatusSequence.ts`
- *  `Q_IDENTIFIER_SYMBOLS`+`earthSwitch`+`transformer2W`, powtórzona tu (bez
+/** Symbole — nośniki identyfikatora per-aparat (wyłącznik/rozłącznik/
+ *  odłącznik → Q, uziemnik → QE, transformator → T wg spec §19.1; przekładnik
+ *  napięciowy → TV wg klasy przekładników PN-EN 81346-2, dyrektywa
+ *  właściciela 2026-08-06 — anonimowy VT pola pomiarowego czytał się jak
+ *  transformator mocy; ogranicznik przepięć → F wg klasy ochronników
+ *  PN-EN 81346-2, decyzja właściciela 2026-08-07, V12K-335 pkt 3) — TA SAMA
+ *  lista co `apparatusSequence.ts` `Q_IDENTIFIER_SYMBOLS`+`earthSwitch`+
+ *  `transformer2W`+`voltageTransformer`+`surgeArrester`, powtórzona tu (bez
  *  importu prywatnej stałej) do niezależnej weryfikacji sceny. */
 const IDENTIFIER_ELIGIBLE_SYMBOLS: ReadonlySet<SymbolId> = new Set<SymbolId>([
   'breaker',
@@ -4070,15 +5614,21 @@ const IDENTIFIER_ELIGIBLE_SYMBOLS: ReadonlySet<SymbolId> = new Set<SymbolId>([
   'fuseSwitch',
   'earthSwitch',
   'transformer2W',
+  'voltageTransformer',
+  'surgeArrester',
 ]);
 
 const RAW_FIELD_LABEL_PATTERN = /^Q\d+$|^T\d+$/;
-// Z3 (spec §19.1/§0.3): wzorzec identyfikatora KONWENCJI Q\d+/QE\d+/T\d+ z
-// opcjonalnym deterministycznym sufiksem kolizji „·k" (`apparatusSequence.ts`
-// `apparatusIdentifiers`, disambiguacja powtórzonej DANEJ w polu). DANE
-// producenckie/kreatora (np. „F1"/„TR") NIE muszą pasować do tego wzorca —
-// rozpoznaje je `designationSource==='dane'` niżej (prymat danych §12.1).
-const APPARATUS_IDENTIFIER_PATTERN = /^(Q\d+|QE\d+|T\d+)(·\d+)?$/;
+// Z3 (spec §19.1/§0.3): wzorzec identyfikatora KONWENCJI Q\d+/QE\d+/T\d+/
+// TV\d+/F\d+ z opcjonalnym deterministycznym sufiksem kolizji „·k"
+// (`apparatusSequence.ts` `apparatusIdentifiers`, disambiguacja powtórzonej
+// DANEJ w polu; TV — przekładnik napięciowy, dyrektywa właściciela
+// 2026-08-06; F — ogranicznik przepięć wg PN-EN 81346-2, decyzja właściciela
+// 2026-08-07, V12K-335 pkt 3). DANE producenckie/kreatora (np. „Z1"/„TR") NIE
+// muszą pasować do tego wzorca — rozpoznaje je `designationSource==='dane'`
+// niżej (prymat danych §12.1).
+// Kolejność alternatywy: TV przed T, żeby „TV1" nie dopasowało się połowicznie.
+const APPARATUS_IDENTIFIER_PATTERN = /^(QE\d+|Q\d+|TV\d+|T\d+|F\d+)(·\d+)?$/;
 
 export interface ApparatusIdentifierGap {
   readonly ownerRef: string | undefined;
@@ -4167,7 +5717,7 @@ export function apparatusIdentifierGaps(scene: SceneV3): readonly ApparatusIdent
       gaps.push({
         ownerRef: l.ownerRef,
         symbolId: 'apparatus-label',
-        reason: `tekst identyfikatora „${l.text}" (fallback konwencji) niezgodny z Q\\d+/QE\\d+/T\\d+`,
+        reason: `tekst identyfikatora „${l.text}" (fallback konwencji) niezgodny z Q\\d+/QE\\d+/T\\d+/TV\\d+/F\\d+`,
       });
     }
   }
@@ -4204,16 +5754,94 @@ export function lineBayCaptionGaps(scene: SceneV3): readonly LineBayCaptionGap[]
     // „koniec toru" (spec §18.6 „uczciwe stwierdzenie faktu") — POZA
         // zakresem formatu „kier./odg." §19.2, własna wyrocznia §18.6.
     .filter((l) => !(l.ownerRef.endsWith('#termination') && l.text === 'koniec toru'))
-    // §16-v3: etykieta biegu OTWARTEGO („koniec otwarty", `#open-terminal-label`)
-    // — ta sama kategoria uczciwego stwierdzenia faktu co „koniec toru" wyżej,
-    // własna wyrocznia `openTerminalGaps`; poza formatem „kier./odg." §19.2.
-    .filter((l) => !(l.ownerRef.endsWith('#open-terminal-label') && l.text === 'koniec otwarty'))
+    // BLOK-LATERAL-WLASNOSC (runda poprawkowa 2026-08-08): stały tu jeszcze DWA
+    // wyłączenia — „koniec otwarty" (`#open-terminal-label`, §16-v3) i odsyłacze
+    // ciągu dalszego (`#sheet-continuation-{out,in}-label`, S9-1). Obie grupy
+    // niosą ref ODCINKA, a nie pola, więc dostały WŁASNY `ownerKind:
+    // 'segment-endpoint'` i nie przechodzą już przez filtr `'port-caption'`
+    // wyżej. Wyłączenia byłyby od tej chwili MARTWE, więc zostały usunięte, a
+    // nie zostawione „na wszelki wypadek" — pilnują ich własne wyrocznie
+    // (`openTerminalGaps`, `sheetContinuationLabelGaps`), co jest wprost
+    // przypięte testem `__tests__/wlasnoscEtykiet.contract.test.ts` §6b.
+    // `#termination` ZOSTAJE: jego ref to ref POLA (`cableHead.meta.ownerRef`,
+    // zweryfikowane pomiarem), więc słusznie jest podpisem portu aparatu.
     .filter((l) => !LINE_BAY_CAPTION_PATTERN.test(l.text))
     .map((l) => ({ ownerRef: l.ownerRef, text: l.text }));
 }
 
 export function allLineBayCaptionsValid(scene: SceneV3): boolean {
   return lineBayCaptionGaps(scene).length === 0;
+}
+
+// ---------------------------------------------------------------------------
+// S9-1 (ŁAMANIE ARKUSZA, `docs/sld/DECYZJA_LAMANIE_ARKUSZA.md` §5) — ODSYŁACZE
+// CIĄGU DALSZEGO. Znak złamania arkusza (kreski poprzeczne) niesie sens tylko
+// wtedy, gdy mówi DOKĄD tor idzie i SKĄD przychodzi; ta wyrocznia pilnuje, że
+// para odsyłaczy istnieje przy każdym złamaniu i że numeracja jest zgodna z
+// wierszami sceny (1-indeksowana, tak jak czyta je człowiek).
+// ---------------------------------------------------------------------------
+
+/** `ownerRef` odsyłacza ciągu dalszego (sufiks kompozytu `#…`). */
+const SHEET_CONTINUATION_LABEL_REF = /#sheet-continuation-(out|in)-label$/;
+
+/** Treść odsyłacza: „dalej wiersz N" (koniec wiersza) / „z wiersza N" (podjęcie). */
+const SHEET_CONTINUATION_OUT_TEXT = /^dalej wiersz (\d+)$/u;
+const SHEET_CONTINUATION_IN_TEXT = /^z wiersza (\d+)$/u;
+
+export interface SheetContinuationGap {
+  readonly ownerRef: string;
+  readonly powod: string;
+}
+
+/**
+ * Luki znaku ciągu dalszego. Sprawdza (a) że KAŻDE złamanie arkusza ma parę
+ * kresek poprzecznych, (b) że na poziomie pełnego szczegółu ma parę odsyłaczy,
+ * (c) że numery w odsyłaczach wskazują istniejące wiersze i są spójne
+ * („dalej wiersz k+2" po wierszu k+1 ⇔ „z wiersza k+1").
+ */
+export function sheetContinuationGaps(scene: SceneV3): readonly SheetContinuationGap[] {
+  const gaps: SheetContinuationGap[] = [];
+  const rowCount = sheetRowStationIds(scene).length;
+  const breaks = Math.max(0, rowCount - 1);
+  const marks = scene.segments.filter((s) => s.meta?.kind === 'sheetContinuation');
+  // Dwie kreski na znak, dwa znaki (koniec + podjęcie) na złamanie.
+  if (marks.length !== breaks * 4) {
+    gaps.push({
+      ownerRef: '(scena)',
+      powod: `złamań arkusza ${breaks}, a kresek znaku ciągu dalszego ${marks.length} (oczekiwane ${breaks * 4})`,
+    });
+  }
+  const labels = scene.labels.filter((l) => SHEET_CONTINUATION_LABEL_REF.test(l.ownerRef));
+  if (scene.meta.lod !== 2) {
+    // Kontrakt LOD (spec §7): opisy wyłącznie na pełnym szczególe.
+    if (labels.length > 0) {
+      gaps.push({ ownerRef: '(scena)', powod: `odsyłacze ciągu dalszego na LOD ${scene.meta.lod} (dozwolone tylko na L2)` });
+    }
+    return gaps;
+  }
+  if (labels.length !== breaks * 2) {
+    gaps.push({
+      ownerRef: '(scena)',
+      powod: `złamań arkusza ${breaks}, a odsyłaczy ${labels.length} (oczekiwane ${breaks * 2})`,
+    });
+  }
+  for (const l of labels) {
+    const isOut = l.ownerRef.endsWith('-out-label');
+    const m = (isOut ? SHEET_CONTINUATION_OUT_TEXT : SHEET_CONTINUATION_IN_TEXT).exec(l.text);
+    if (!m) {
+      gaps.push({ ownerRef: l.ownerRef, powod: `treść „${l.text}" poza konwencją odsyłacza` });
+      continue;
+    }
+    const n = Number(m[1]);
+    if (!Number.isInteger(n) || n < 1 || n > rowCount) {
+      gaps.push({ ownerRef: l.ownerRef, powod: `odsyłacz wskazuje wiersz ${n}, a arkusz ma ${rowCount}` });
+    }
+  }
+  return gaps;
+}
+
+export function allSheetContinuationsMarked(scene: SceneV3): boolean {
+  return sheetContinuationGaps(scene).length === 0;
 }
 
 // ---------------------------------------------------------------------------
@@ -4393,6 +6021,9 @@ function isBusbarLikeSegment(seg: PreviewSegment): boolean {
   // (`pointTouchesSegment` niżej); zwykły wolny koniec dalej daje lukę
   // (test negatywny w `buildScene.openTerminal.test.ts`).
   if (seg.meta?.kind === 'openTerminal') return true;
+  // S9-1: kreski znaku ciągu dalszego (złamanie arkusza) — jak słupek
+  // terminalny: ich WŁASNE końce są krańcami rysowanej kreski, nie portami.
+  if (seg.meta?.kind === 'sheetContinuation') return true;
   const ref = seg.meta?.ownerRef;
   return ref != null && (ref.endsWith('#lv-bus') || ref.endsWith('#source-bus-extension') || ref.endsWith('#hv-bus-source-extension'));
 }
@@ -4416,7 +6047,7 @@ function isBusbarLikeSegment(seg: PreviewSegment): boolean {
  * (dowolnego, nie tylko szynowego) sprowadziło resztę do 0 — WSZYSTKIE
  * pozostałe klasy (`#der-row-bus`/`#der-row-trunk`/`#grid-source-drop`) to
  * legalne zakotwiczenia (te same refy kompozytowe, które `overlay.ts`
- * `singleHopSegmentRefs` już dokumentuje jako „nie gałęzie solvera, ale
+ * `orientedSegmentRefs` już dokumentuje jako „nie gałęzie solvera, ale
  * realne odcinki rysunkowe"), a `isBusbarLikeSegment` domknęła OSTATNIE
  * dwa przypadki busopodobne z niehistorycznym `kind`. Zero fałszywych
  * alarmów po korekcie (zweryfikowane na fixturze).
@@ -4663,6 +6294,9 @@ function verticalCauseOfRole(
 ): Exclude<VerticalCause, 'nieuzasadniony'> | null {
   const r = (ownerRef ?? '').replace(/#tee-\d+$/, '');
   if (kind === 'openTerminal' || r.endsWith('#open-terminal')) return 'slupek-terminalny';
+  // S9-1: kreski znaku ciągu dalszego są POZIOME (zero pionów) — klasyfikacja
+  // dla kompletności audytu, gdyby marker kiedyś zmienił orientację.
+  if (kind === 'sheetContinuation') return 'slupek-terminalny';
   // Dołączenia nN / DER / źródło sieci — obrys pola nN pod stacją.
   if (kind === 'lv' || r.includes('#lv-') || r.includes('#der-row') || r.endsWith('#grid-source-drop')) return 'footprint';
   // Kolumna GPZ (pola WN-SN, transformator, kotwica pola, mostki WN).
@@ -5067,7 +6701,12 @@ function topBandFieldRect(scene: SceneV3, stationBase: string): V3Rect | null {
   for (const l of scene.labels) {
     if (!owns(l.ownerRef)) continue;
     if (l.ownerKind === 'segment-span' || l.ownerKind === 'segment-lateral') continue;
-    rects.push(l.rect);
+    // BLOK-PUSTY: obrys POLA to obrys UKŁADU (kolumna), nie sam tusz napisu —
+    // światło bbox-do-bbox mierzy rozstaw kolumn (S7-P4 §9 P0 pkt 1), a ten
+    // jest z definicji niezależny od długości nazwy stacji. Mierzenie tuszem
+    // dawałoby „światło" 827,5 j.św. tam, gdzie kolumny stykają się na
+    // kontraktowych 32 j.św. — miara przestałaby cokolwiek egzekwować.
+    rects.push(labelReservationRect(l));
   }
   if (rects.length === 0) return null;
   return unionRects(rects);
@@ -5077,21 +6716,57 @@ function topBandFieldRect(scene: SceneV3, stationBase: string): V3Rect | null {
  *  w kolejności rosnącego X (deterministyczne). Pola bez narysowanych elementów
  *  pominięte (np. stacja poza zakresem kompozycji). */
 export function topBandFieldClearances(scene: SceneV3): readonly TopBandFieldClearance[] {
-  const fields = scene.meta.mainTrunkStationIds
-    .map((id) => ({ id, rect: topBandFieldRect(scene, id.replace(/\/station$/, '')) }))
-    .filter((f): f is { id: string; rect: V3Rect } => f.rect !== null)
-    .sort((a, b) => a.rect.x - b.rect.x || (a.id < b.id ? -1 : 1));
   const out: TopBandFieldClearance[] = [];
-  for (let i = 0; i + 1 < fields.length; i++) {
-    const left = fields[i];
-    const right = fields[i + 1];
-    out.push({
-      leftStationId: left.id,
-      rightStationId: right.id,
-      gap: right.rect.x - (left.rect.x + left.rect.width),
-    });
+  // S9-1: światło mierzone WEWNĄTRZ wiersza arkusza. Po złamaniu (C-1) pola z
+  // RÓŻNYCH wierszy mają nakładające się zakresy X (każdy wiersz zaczyna się od
+  // lewego marginesu), więc sortowanie po X w poprzek całego ciągu porównywałoby
+  // sąsiadów, którzy nigdy nie leżą obok siebie na rysunku.
+  for (const row of sheetRowStationIds(scene)) {
+    const fields = row
+      .map((id) => ({ id, rect: topBandFieldRect(scene, id.replace(/\/station$/, '')) }))
+      .filter((f): f is { id: string; rect: V3Rect } => f.rect !== null)
+      .sort((a, b) => a.rect.x - b.rect.x || (a.id < b.id ? -1 : 1));
+    for (let i = 0; i + 1 < fields.length; i++) {
+      const left = fields[i];
+      const right = fields[i + 1];
+      out.push({
+        leftStationId: left.id,
+        rightStationId: right.id,
+        gap: right.rect.x - (left.rect.x + left.rect.width),
+      });
+    }
   }
   return out;
+}
+
+/** S9-1: wiersze arkusza sceny (id stacji per wiersz). Sceny sprzed łamania i
+ *  sceny bez ciągu głównego zwracają JEDEN wiersz z całym ciągiem — dzięki temu
+ *  wołający nie musi rozróżniać przypadków. */
+export function sheetRowStationIds(scene: SceneV3): readonly (readonly string[])[] {
+  const rows = scene.meta.sheetRows;
+  if (rows.length > 0) return rows;
+  return scene.meta.mainTrunkStationIds.length > 0 ? [scene.meta.mainTrunkStationIds] : [];
+}
+
+/**
+ * S9-7: pasy poziome stref arkusza (`meta.sheetRowBands`) z tym samym
+ * dopełnieniem, co `sheetRowStationIds` — scena bez ciągu głównego dostaje
+ * JEDEN pas obejmujący cały bbox, żeby wołający (ramka arkusza) nie musiał
+ * rozróżniać przypadków ani wymyślać własnego podziału.
+ */
+export function sheetRowBandsOf(scene: SceneV3): readonly SheetRowBand[] {
+  const bands = scene.meta.sheetRowBands;
+  if (bands.length > 0) return bands;
+  return scene.bbox.height > 0 ? [{ y: scene.bbox.y, height: scene.bbox.height }] : [];
+}
+
+/**
+ * S9-1 (kryterium odbioru): proporcja bboxa arkusza `szerokość / wysokość`.
+ * `0` dla sceny pustej. Wyrocznia progu — patrz `SHEET_MAX_ASPECT`
+ * (`layout/sheetRows.ts`) i bramka `sheet_aspect_probe` w skrypcie odbioru.
+ */
+export function sheetAspectRatio(scene: SceneV3): number {
+  return scene.bbox.height > 0 ? scene.bbox.width / scene.bbox.height : 0;
 }
 
 /** Recenzja P1 (pkt „odstęp stacji z footprintu") — EKSTENTY poziome pól pasa
@@ -5103,11 +6778,15 @@ export function topBandFieldClearances(scene: SceneV3): readonly TopBandFieldCle
 export function topBandFieldExtents(
   scene: SceneV3,
 ): readonly { readonly stationId: string; readonly left: number; readonly width: number }[] {
-  return scene.meta.mainTrunkStationIds
-    .map((id) => ({ id, rect: topBandFieldRect(scene, id.replace(/\/station$/, '')) }))
-    .filter((f): f is { id: string; rect: V3Rect } => f.rect !== null)
-    .sort((a, b) => a.rect.x - b.rect.x || (a.id < b.id ? -1 : 1))
-    .map((f) => ({ stationId: f.id, left: f.rect.x, width: f.rect.width }));
+  // S9-1: ekstenty raportowane wierszami arkusza (kolejność: wiersz, potem X) —
+  // ta sama reguła przynależności co `topBandFieldClearances`.
+  return sheetRowStationIds(scene).flatMap((row) =>
+    row
+      .map((id) => ({ id, rect: topBandFieldRect(scene, id.replace(/\/station$/, '')) }))
+      .filter((f): f is { id: string; rect: V3Rect } => f.rect !== null)
+      .sort((a, b) => a.rect.x - b.rect.x || (a.id < b.id ? -1 : 1))
+      .map((f) => ({ stationId: f.id, left: f.rect.x, width: f.rect.width })),
+  );
 }
 
 /** Pola pasa górnego, których światło bbox-do-bbox jest MNIEJSZE niż kontrakt
@@ -5448,6 +7127,107 @@ export function noLabelWireCollisions(scene: SceneV3): boolean {
   return labelWireCollisions(scene).length === 0;
 }
 
+/**
+ * KD-11: PRZESZKODY RYSUNKU dla planu etykiet warstwy renderu
+ * (`canvas/labelLegibility.ts`) — bboxy symboli ORAZ odcinki toru w tej samej
+ * postaci prostokątów, której używa wyrocznia `labelWireCollisions` wyżej
+ * (z `WIRE_PROBE_HALF_THICKNESS`). Jedna prawda o tym, „czego etykieta nie
+ * może zasłonić": powiększone pismo tożsamości omija DOKŁADNIE to samo, co
+ * declutter sceny i wyrocznie odbioru.
+ */
+export function sceneObstacleRects(scene: SceneV3): readonly V3Rect[] {
+  const rects: V3Rect[] = scene.symbols.map(symbolRect);
+  for (const segment of scene.segments) {
+    const pts = segment.points;
+    for (let i = 1; i < pts.length; i++) {
+      const a = pts[i - 1];
+      const b = pts[i];
+      rects.push({
+        x: Math.min(a.x, b.x) - WIRE_PROBE_HALF_THICKNESS,
+        y: Math.min(a.y, b.y) - WIRE_PROBE_HALF_THICKNESS,
+        width: Math.abs(b.x - a.x) + 2 * WIRE_PROBE_HALF_THICKNESS,
+        height: Math.abs(b.y - a.y) + 2 * WIRE_PROBE_HALF_THICKNESS,
+      });
+    }
+  }
+  return rects;
+}
+
+// ---------------------------------------------------------------------------
+// KD-8 poz. 5 — WYROCZNIA PRZEŚWITU etykiet zakotwiczonych na TORZE.
+//
+// `labelWireCollisions` wyżej łapie PRZECIĘCIE (tekst przez linię). Defekt z
+// oceny właściciela był o klasę subtelniejszy: podpis „Sekcja 1 · 15 kV" nie
+// przecinał szyny, tylko STYKAŁ się z nią — 7 px świata prześwitu, przy skali
+// przeglądowej ~3,5 px ekranu. Wyrocznia przecięć była zielona, a rysunek
+// nieczytelny. Ta wyrocznia mierzy PRZEŚWIT, nie przecięcie, i dotyczy etykiet
+// napięcia szyny (jedyna klasa zakotwiczona wprost na torze mocy).
+// ---------------------------------------------------------------------------
+
+export interface LabelPathClearanceGap {
+  readonly ownerRef: string;
+  readonly text: string;
+  /** Zmierzony prześwit [px świata] do najbliższego odcinka toru mocy. */
+  readonly clearance: number;
+  readonly segmentOwnerRef: string | undefined;
+}
+
+/** Rodzaje odcinków POZA torem mocy — adnotacje wolno prowadzić blisko tekstu. */
+const ANNOTATION_KINDS_FOR_CLEARANCE = new Set(['leader', 'protectionTrip', 'measurementLink']);
+
+/** Odległość prostokąta od odcinka ortogonalnego (0 = styk/przecięcie). */
+function rectSegmentClearance(
+  rect: V3Rect,
+  a: { readonly x: number; readonly y: number },
+  b: { readonly x: number; readonly y: number },
+): number {
+  const dx = Math.max(Math.min(a.x, b.x) - (rect.x + rect.width), rect.x - Math.max(a.x, b.x), 0);
+  const dy = Math.max(Math.min(a.y, b.y) - (rect.y + rect.height), rect.y - Math.max(a.y, b.y), 0);
+  return Math.hypot(dx, dy);
+}
+
+/**
+ * busbar_label_clearance_probe (KD-8 poz. 5): każda etykieta `busbar-voltage`
+ * trzyma od toru mocy prześwit ≥ `minClearance`. Czysta geometria sceny —
+ * zero zależności od kamery i motywu.
+ */
+export function busbarLabelPathClearanceGaps(
+  scene: SceneV3,
+  minClearance: number,
+): readonly LabelPathClearanceGap[] {
+  const gaps: LabelPathClearanceGap[] = [];
+  for (const label of scene.labels) {
+    if (label.ownerKind !== 'busbar-voltage') continue;
+    let najmniejszy = Number.POSITIVE_INFINITY;
+    let winny: string | undefined;
+    for (const segment of scene.segments) {
+      if (segment.meta?.kind && ANNOTATION_KINDS_FOR_CLEARANCE.has(segment.meta.kind)) continue;
+      const pts = segment.points;
+      for (let i = 1; i < pts.length; i++) {
+        const d = rectSegmentClearance(label.rect, pts[i - 1], pts[i]);
+        if (d < najmniejszy) {
+          najmniejszy = d;
+          winny = segment.meta?.ownerRef;
+        }
+      }
+    }
+    if (Number.isFinite(najmniejszy) && najmniejszy < minClearance) {
+      gaps.push({
+        ownerRef: label.ownerRef,
+        text: label.text,
+        clearance: Number(najmniejszy.toFixed(3)),
+        segmentOwnerRef: winny,
+      });
+    }
+  }
+  return gaps;
+}
+
+/** BRAMKA KD-8 poz. 5: żadna etykieta szyny nie siada na torze. */
+export function allBusbarLabelsClearOfPath(scene: SceneV3, minClearance: number): boolean {
+  return busbarLabelPathClearanceGaps(scene, minClearance).length === 0;
+}
+
 // ---------------------------------------------------------------------------
 // SCHEMAT-10 S2 (V12K-135, audyt §1 D2 + §3 wiersz „Etykiety"): WYROCZNIA
 // ZERO-KOLIZJI tekst↔tekst i tekst↔symbol na CAŁEJ scenie. `overlapProbe`
@@ -5607,6 +7387,66 @@ export function sourceCoverageGaps(scene: SceneV3): readonly SourceCoverageGap[]
 
 export function allSourcesVisible(scene: SceneV3): boolean {
   return sourceCoverageGaps(scene).length === 0;
+}
+
+// ---------------------------------------------------------------------------
+// ODG-RYSUNEK — branch_point_coverage_probe (etap 3 kontraktu
+// `docs/domain/POMIAR_ROZLICZENIOWY_SN_V1.md` §4).
+// ---------------------------------------------------------------------------
+
+export interface BranchPointCoverageGap {
+  readonly branchPointRef: string;
+  readonly reason: 'punkt-nienarysowany' | 'stacja-za-punktem-nienarysowana';
+  /** Ref stacji, gdy luką jest brak stacji ZA punktem. */
+  readonly stationRef?: string;
+}
+
+/**
+ * WYROCZNIA POKRYCIA PUNKTÓW ODGAŁĘŹNYCH: dla KAŻDEGO `branch_point` w modelu
+ * (a) punkt ma symbol na scenie i (b) KAŻDA stacja stojąca za tym punktem
+ * (na odgałęzieniu z niego wychodzącym) jest FAKTYCZNIE narysowana.
+ *
+ * DLACZEGO OSOBNO OD `stationCount`. Licznik stacji mówi „ile", a nie „które":
+ * scena z pominiętym odgałęzieniem klienta miała licznik zgodny z liczbą stacji
+ * ciągu i wyglądała na kompletną (dokładnie tak wyglądał dług etapu 3 — stacja
+ * klienta była w modelu i NIE była na rysunku). Ta wyrocznia porównuje model z
+ * rysunkiem po TOŻSAMOŚCI.
+ *
+ * Odgałęzienia rozpoznaje adapter (`branchOriginStationRef` == ref punktu) —
+ * przeliczany tu NIEZALEŻNIE od przebiegu, który zbudował scenę, żeby test nie
+ * był samopoświadczeniem sceny.
+ */
+export function branchPointCoverageGaps(
+  scene: SceneV3,
+  snapshot: EnergyNetworkModel,
+): readonly BranchPointCoverageGap[] {
+  const points = snapshot.branch_points ?? [];
+  if (points.length === 0) return [];
+  const drawnPoints = new Set(scene.meta.drawnBranchPointRefs);
+  const drawnStations = new Set(scene.meta.drawnStationIds);
+  const sldData = buildSldDataFromSnapshot(snapshot, snapshot.logical_views ?? null, null);
+  const gaps: BranchPointCoverageGap[] = [];
+  for (const bp of points) {
+    if (!drawnPoints.has(bp.ref_id)) {
+      gaps.push({ branchPointRef: bp.ref_id, reason: 'punkt-nienarysowany' });
+    }
+    for (const run of sldData.topologyRuns) {
+      if (run.branchOriginStationRef !== bp.ref_id) continue;
+      for (const stationRef of run.stationRefs) {
+        if (drawnStations.has(stationRef)) continue;
+        gaps.push({
+          branchPointRef: bp.ref_id,
+          reason: 'stacja-za-punktem-nienarysowana',
+          stationRef,
+        });
+      }
+    }
+  }
+  return gaps;
+}
+
+export function allBranchPointsDrawn(scene: SceneV3, snapshot: EnergyNetworkModel): boolean {
+  return branchPointCoverageGaps(scene, snapshot).length === 0;
 }
 
 // ---------------------------------------------------------------------------
@@ -5821,13 +7661,26 @@ export interface SourceConnectivityGap {
  * render), zmierzone <0.5s dla całej fixtury referencyjnej na WSZYSTKICH
  * LOD łącznie.
  */
-export function sourceConnectivityGaps(scene: SceneV3): readonly SourceConnectivityGap[] {
-  const sourceIndices: number[] = [];
-  scene.symbols.forEach((s, i) => {
-    if (s.meta?.elementKind === 'der' || s.meta?.elementKind === 'source') sourceIndices.push(i);
-  });
-  if (sourceIndices.length === 0) return [];
+/**
+ * Indeks SPÓJNOŚCI ELEKTRYCZNEJ sceny — składowe spójności odcinków i symboli
+ * wg reguł 1-3 opisanych przy `sourceConnectivityGaps` niżej.
+ *
+ * WYDZIELONY (K11-B) z `sourceConnectivityGaps` BEZ ZMIANY SEMANTYKI, żeby
+ * druga wyrocznia ciągłości (`scene/lodContinuity.ts` — „na KAŻDYM LOD tor od
+ * źródła do każdej stacji jest wyrysowany") liczyła spójność DOKŁADNIE tak
+ * samo, zamiast powielać reguły dotyku/portów/stosu pola (dyrektywa
+ * właściciela 7 „reużycie zamiast duplikacji"). Równoważność wydzielenia
+ * pilnują istniejące testy `source_connectivity_probe` (w tym negatywny test
+ * toru wyzwalania).
+ */
+export interface SceneConnectivityIndex {
+  /** Korzeń składowej spójności odcinka `scene.segments[i]`. */
+  segmentRoot(i: number): number;
+  /** Korzeń składowej spójności symbolu `scene.symbols[i]`. */
+  symbolRoot(i: number): number;
+}
 
+export function sceneConnectivityIndex(scene: SceneV3): SceneConnectivityIndex {
   const segCount = scene.segments.length;
   const symCount = scene.symbols.length;
   const dsu = new SceneDisjointSet(segCount + symCount);
@@ -5876,14 +7729,50 @@ export function sourceConnectivityGaps(scene: SceneV3): readonly SourceConnectiv
     for (let k = 1; k < indices.length; k++) dsu.union(symNode(indices[0]), symNode(indices[k]));
   });
 
+  return {
+    segmentRoot: (i: number) => dsu.find(segNode(i)),
+    symbolRoot: (i: number) => dsu.find(symNode(i)),
+  };
+}
+
+/**
+ * KD-5: symbole ZWINIĘTE, których glif rysuje WŁASNĄ szynę zbiorczą
+ * (`MINI_RMU.bus` / `MINI_GPZ.szynaSn`). Deklaracja JAWNA — dopisanie tu
+ * symbolu, który szyny nie rysuje, byłoby cichym osłabieniem wymogu §14.1.
+ */
+const COLLAPSED_BUSBAR_CARRIER_SYMBOLS: ReadonlySet<SymbolId> = new Set<SymbolId>([
+  'stationCollapsed',
+  'gpzCollapsed',
+]);
+
+export function sourceConnectivityGaps(scene: SceneV3): readonly SourceConnectivityGap[] {
+  const sourceIndices: number[] = [];
+  scene.symbols.forEach((s, i) => {
+    if (s.meta?.elementKind === 'der' || s.meta?.elementKind === 'source') sourceIndices.push(i);
+  });
+  if (sourceIndices.length === 0) return [];
+
+  const connectivity = sceneConnectivityIndex(scene);
+
   const busRoots = new Set<number>();
   scene.segments.forEach((seg, si) => {
-    if (seg.meta?.kind === 'bus' || seg.meta?.kind === 'busGpz') busRoots.add(dsu.find(segNode(si)));
+    if (seg.meta?.kind === 'bus' || seg.meta?.kind === 'busGpz') busRoots.add(connectivity.segmentRoot(si));
+  });
+  // KD-5: na L0 szyna zbiorcza NIE jest osobnym odcinkiem sceny — niesie ją
+  // SYLWETKA symbolu zwiniętego (`MINI_RMU.bus` dla stacji, `MINI_GPZ.szynaSn`
+  // dla bloku GPZ; ta sama zasada, dla której L0 w ogóle istnieje: zwijamy
+  // reprezentację, nie treść). Wymóg §14.1 „źródło ma trasę do co najmniej
+  // jednej szyny" jest więc spełniony, gdy źródło dochodzi do symbolu, który
+  // szynę RYSUJE — inaczej wyrocznia karałaby za samo zwinięcie, mimo że tor
+  // źródło→szyna jest na rysunku widoczny. Zbiór JAWNY i zamknięty: wolno tu
+  // stać wyłącznie symbolom, których glif niesie szynę w swojej geometrii.
+  scene.symbols.forEach((sym, mi) => {
+    if (COLLAPSED_BUSBAR_CARRIER_SYMBOLS.has(sym.symbolId)) busRoots.add(connectivity.symbolRoot(mi));
   });
 
   const gaps: SourceConnectivityGap[] = [];
   sourceIndices.forEach((mi) => {
-    if (!busRoots.has(dsu.find(symNode(mi)))) {
+    if (!busRoots.has(connectivity.symbolRoot(mi))) {
       gaps.push({ sourceId: scene.symbols[mi].meta?.ownerRef ?? `#symbol-${mi}` });
     }
   });
@@ -6320,7 +8209,7 @@ export function trunkThicknessGaps(scene: SceneV3): readonly string[] {
     // §16-v3: słupek terminalny (`kind==='openTerminal'`) to MARKER końca
     // biegu, nie trasa — nosi ownerRef biegu (sufiks `#open-terminal`) dla
     // tożsamości, ale nie podlega hierarchii grubości tras §22.4.
-    if (s.meta?.kind === 'openTerminal') continue;
+    if (s.meta?.kind === 'openTerminal' || s.meta?.kind === 'sheetContinuation') continue;
     if (owner.includes('branch_segment') && s.meta?.kind !== 'sn') {
       gaps.push(`Trasa odgałęźna z klasą inną niż sn: ownerRef=${owner} kind=${String(s.meta?.kind)}`);
     }
@@ -6401,6 +8290,26 @@ export function lod0ReadabilityGaps(scene: SceneV3): readonly Lod0ReadabilityGap
   //     liczbie źródeł podlegających temu LOD, external_grid zawsze).
   if (!allSourcesVisible(scene)) {
     gaps.push({ element: 'źródło', reason: `źródła sieci niewidoczne na L0: ${sourceCoverageGaps(scene).length} luk` });
+  }
+
+  // (5) KD-5: BLOK GPZ ZWINIĘTY — tożsamość i sylwetka. Ta sama dyscyplina co
+  //     dla stacji w punkcie (2)/(4): zwinięcie wolno robić tylko wtedy, gdy
+  //     zwinięty obiekt DALEJ mówi, czym jest (etykieta tożsamości) i jak jest
+  //     zbudowany (sylwetka z realnych liczb sekcji/TR/pól). Blok bez etykiety
+  //     albo bez podsumowania byłby anonimowym prostokątem — dokładnie tym,
+  //     czego zwinięcie NIE ma prawa wprowadzić.
+  for (const sym of scene.symbols) {
+    if (sym.symbolId !== 'gpzCollapsed') continue;
+    const ref = (sym.meta?.ownerRef ?? '').replace(/#.*$/, '');
+    if (!nameOwners.has(ref)) {
+      gaps.push({ element: 'tożsamość GPZ', reason: `zwinięty blok GPZ ${ref} bez etykiety tożsamości na L0` });
+    }
+    if (!sym.meta?.gpzGlyph) {
+      gaps.push({
+        element: 'sylwetka GPZ',
+        reason: `zwinięty blok GPZ ${ref} bez podsumowania sekcje/TR/pola (meta.gpzGlyph) — układ nierozpoznawalny na L0`,
+      });
+    }
   }
 
   return gaps;

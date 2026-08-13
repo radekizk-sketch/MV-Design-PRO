@@ -418,3 +418,36 @@
 .mvd-ref-check-msg {
   color: var(--mvd-ink);
 }
+
+/* Sekcje „Pokrycie analizami" i „Granica sieci" (ROUTERY-4A) — na wspólnych
+   klasach mvd-ref-* sekcji referencyjnej; poniżej wyłącznie różnice. */
+.mvd-pokrycie-wynik {
+  margin: 0 0 6px;
+  font-size: 13px;
+  color: var(--mvd-ink);
+}
+.mvd-pokrycie-podtytul {
+  margin: 8px 0 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--mvd-ink);
+}
+.mvd-granica-dane {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.mvd-granica-para {
+  display: flex;
+  gap: 8px;
+  font-size: 12px;
+}
+.mvd-granica-para dt {
+  min-width: 160px;
+  color: var(--mvd-muted);
+}
+.mvd-granica-para dd {
+  margin: 0;
+  color: var(--mvd-ink);
+}

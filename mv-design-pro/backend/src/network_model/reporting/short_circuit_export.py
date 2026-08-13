@@ -67,7 +67,7 @@ def export_short_circuit_result_to_json(
             sort_keys=True,
         )
     except (TypeError, ValueError) as e:
-        raise ValueError(f"Failed to serialize ShortCircuitResult to JSON: {e}") from e
+        raise ValueError(f"Serializacja wyniku zwarciowego do JSON nie powiodła się: {e}") from e
 
     # Write to file with UTF-8 encoding
     output_path.write_text(json_content, encoding="utf-8")
@@ -120,7 +120,7 @@ def export_short_circuit_results_to_jsonl(
             json_line = json.dumps(data, ensure_ascii=False, sort_keys=True)
         except (TypeError, ValueError) as e:
             raise ValueError(
-                f"Record {idx}: Failed to serialize ShortCircuitResult to JSON: {e}"
+                f"Rekord {idx}: serializacja wyniku zwarciowego do JSON nie powiodła się: {e}"
             ) from e
 
         lines.append(json_line)

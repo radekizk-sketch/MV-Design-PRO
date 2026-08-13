@@ -1,0 +1,156 @@
+{
+  "$id": "pole_transformatorowe_parytet_v1",
+  "tytul": "Parytet MARKER (rysunek) <-> OSTRZEZENIE (gotowosc) dla pola transformatorowego SN",
+  "karta": "KOMPLETNOSC-POLA-TR",
+  "opis_pl": [
+    "WSPOLNA tablica decyzyjna dwoch niezaleznych implementacji tego samego faktu domenowego:",
+    "  * BACKEND  — enm/pole_transformatorowe.py::transformatory_bez_pola_sn (ostrzezenie W041 + brama dokumentacji),",
+    "  * FRONTEND — ui/sld/v3/layout/measure.ts::implicitStationTransformers (marker '!' przy stronie WN).",
+    "Kazdy wiersz opisuje KSZTALT MODELU i JEDEN oczekiwany werdykt. Backend buduje z niego migawke ENM,",
+    "front buduje z niego wejscie sceny (snBays + transformerUnits + hasTransformer). Rozjazd predykatow",
+    "wywraca test po OBU stronach — dlatego tablica jest jedna, a nie dwie kopie w dwoch jezykach.",
+    "Iloczyn cech wymagany karta (§0 pkt 4): {pole TR jest, pola TR nie ma, transformatora brak} x {ostrzezenie, marker}."
+  ],
+  "wiersze": [
+    {
+      "id": "tr-z-polem",
+      "opis_pl": "Stacja SN/nN z transformatorem i jawnym polem roli TR — konfiguracja kompletna.",
+      "cecha_pole_tr": "jest",
+      "cecha_transformator": "jest",
+      "stacja": {
+        "sn_bus_kv": 15.0,
+        "nn_bus_kv": 0.4,
+        "role_pol": ["IN", "OUT", "TR"],
+        "deklaruje_transformator": true
+      },
+      "transformator": { "hv": "sn", "lv": "nn" },
+      "oczekiwane_znalezisko": false
+    },
+    {
+      "id": "tr-bez-pola",
+      "opis_pl": "Stacja SN/nN z transformatorem, ale BEZ pola roli TR — stan niekompletny (rdzen karty).",
+      "cecha_pole_tr": "brak",
+      "cecha_transformator": "jest",
+      "stacja": {
+        "sn_bus_kv": 15.0,
+        "nn_bus_kv": 0.4,
+        "role_pol": ["IN", "OUT", "FEEDER"],
+        "deklaruje_transformator": true
+      },
+      "transformator": { "hv": "sn", "lv": "nn" },
+      "oczekiwane_znalezisko": true
+    },
+    {
+      "id": "brak-transformatora-z-polem-tr",
+      "opis_pl": "Rozdzielnia z polem TR, ale bez rekordu transformatora — nie ma czego zglaszac ani rysowac.",
+      "cecha_pole_tr": "jest",
+      "cecha_transformator": "brak",
+      "stacja": {
+        "sn_bus_kv": 15.0,
+        "nn_bus_kv": null,
+        "role_pol": ["IN", "OUT", "TR"],
+        "deklaruje_transformator": false
+      },
+      "transformator": null,
+      "oczekiwane_znalezisko": false
+    },
+    {
+      "id": "brak-transformatora-bez-pola-tr",
+      "opis_pl": "Stacja rozdzielcza (bez transformatora i bez pola TR) — poprawny, kompletny model.",
+      "cecha_pole_tr": "brak",
+      "cecha_transformator": "brak",
+      "stacja": {
+        "sn_bus_kv": 15.0,
+        "nn_bus_kv": null,
+        "role_pol": ["IN", "OUT", "FEEDER"],
+        "deklaruje_transformator": false
+      },
+      "transformator": null,
+      "oczekiwane_znalezisko": false
+    },
+    {
+      "id": "tr-bez-pola-stacja-terminalna",
+      "opis_pl": "Stacja koncowa (jedno pole liniowe) z transformatorem bez pola TR — ta sama luka, inna topologia.",
+      "cecha_pole_tr": "brak",
+      "cecha_transformator": "jest",
+      "stacja": {
+        "sn_bus_kv": 20.0,
+        "nn_bus_kv": 0.4,
+        "role_pol": ["IN"],
+        "deklaruje_transformator": true
+      },
+      "transformator": { "hv": "sn", "lv": "nn" },
+      "oczekiwane_znalezisko": true
+    },
+    {
+      "id": "tr-bez-pola-pusta-rozdzielnia",
+      "opis_pl": "Transformator na szynie SN stacji bez ZADNEGO pola — brak pola TR to brak pola TR.",
+      "cecha_pole_tr": "brak",
+      "cecha_transformator": "jest",
+      "stacja": {
+        "sn_bus_kv": 15.0,
+        "nn_bus_kv": 0.4,
+        "role_pol": [],
+        "deklaruje_transformator": true
+      },
+      "transformator": { "hv": "sn", "lv": "nn" },
+      "oczekiwane_znalezisko": true
+    },
+    {
+      "id": "tr-z-polem-tr-i-pomiarem",
+      "opis_pl": "Stacja abonencka [IN, MEASUREMENT, TR] — pole TR obecne mimo innej kolejnosci rol.",
+      "cecha_pole_tr": "jest",
+      "cecha_transformator": "jest",
+      "stacja": {
+        "sn_bus_kv": 15.0,
+        "nn_bus_kv": 0.4,
+        "role_pol": ["IN", "MEASUREMENT", "TR"],
+        "deklaruje_transformator": true
+      },
+      "transformator": { "hv": "sn", "lv": "nn" },
+      "oczekiwane_znalezisko": false
+    },
+    {
+      "id": "tr-blokowy-der-poza-stacja",
+      "opis_pl": "Transformator blokowy toru DER (strona gorna na wlasnej szynie przylaczeniowej, poza szynami stacji) — nie jest transformatorem stacji, wiec nie jest brakiem pola stacji.",
+      "cecha_pole_tr": "brak",
+      "cecha_transformator": "jest",
+      "stacja": {
+        "sn_bus_kv": 15.0,
+        "nn_bus_kv": null,
+        "role_pol": ["IN", "OUT", "OZE"],
+        "deklaruje_transformator": false
+      },
+      "transformator": { "hv": "obca", "lv": "obca", "blokowy_der": true },
+      "oczekiwane_znalezisko": false
+    },
+    {
+      "id": "tr-stacji-z-der-na-nn",
+      "opis_pl": "ZNANA GRANICA REGULY (zmierzona, nie cichy wyjatek). Transformator STACJI, na ktorego szynie nN stoi PV wskazujace go przez blocking_transformer_ref, bez pola TR. W danych ten ksztalt jest IDENTYCZNY z transformatorem blokowym toru DER (wiersz 'tr-blokowy-der-poza-stacja'): ten sam ref w blocking_transformer_ref, ten sam generator na szynie dolnej. Rozroznienie wymagaloby jawnej ROLI transformatora w modelu; zgadywanie po nazwie albo po liczbie transformatorow byloby heurystyka. Dlatego OBIE strony parytetu stosuja te sama, wezsza regule — wskazanie po stronie zrodla wyklucza — i luka pola TR pozostaje tu NIEWYKRYTA (brak ostrzezenia, brak markera). Zniesienie granicy = osobna karta wprowadzajaca role transformatora.",
+      "cecha_pole_tr": "brak",
+      "cecha_transformator": "jest",
+      "stacja": {
+        "sn_bus_kv": 15.0,
+        "nn_bus_kv": 0.4,
+        "role_pol": ["IN", "OUT"],
+        "deklaruje_transformator": true
+      },
+      "transformator": { "hv": "sn", "lv": "nn", "blokowy_der": true },
+      "oczekiwane_znalezisko": false
+    },
+    {
+      "id": "tr-hv-poza-pasmem-sn",
+      "opis_pl": "Transformator, ktorego strona gorna lezy na szynie WN stacji (110 kV) — pole rozdzielni SN go nie dotyczy.",
+      "cecha_pole_tr": "brak",
+      "cecha_transformator": "jest",
+      "stacja": {
+        "sn_bus_kv": 110.0,
+        "nn_bus_kv": 15.0,
+        "role_pol": ["IN", "OUT"],
+        "deklaruje_transformator": true
+      },
+      "transformator": { "hv": "sn", "lv": "nn" },
+      "oczekiwane_znalezisko": false
+    }
+  ]
+}

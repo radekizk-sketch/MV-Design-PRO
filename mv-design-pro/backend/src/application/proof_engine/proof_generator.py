@@ -518,7 +518,7 @@ class ProofGenerator:
         return ProofDocument.create(
             artifact_id=artifact_id,
             proof_type=ProofType.LOAD_FLOW_VOLTAGE,
-            title_pl="Dowód: Load Flow i spadki napięć (P32)",
+            title_pl="Dowód: rozpływ mocy i spadki napięć",
             header=header,
             steps=steps,
             summary=summary,
@@ -2096,8 +2096,9 @@ class ProofGenerator:
         3. Składowa czynna ΔU_R
         4. Składowa bierna ΔU_X
         5. Spadek na odcinku ΔU
-        6. Suma spadków ΔU_total
-        7. Napięcie w punkcie U
+        6. Suma spadków ΔU_total (%)
+        7. Napięcie w punkcie U = U_source − ΔU_total (kV, karta PODSTAWA-VDROP:
+           odjęcie w kV, nie mnożenie przez ułamek odniesiony do U_n)
 
         Args:
             data: Dane wejściowe VDROPInput
@@ -2123,7 +2124,15 @@ class ProofGenerator:
         delta_u = delta_u_r + delta_u_x
         segment_drops = [delta_u]
         delta_u_total = sum(segment_drops)
-        u_kv = data.u_source_kv * (1 - delta_u_total / 100)
+
+        # Karta PODSTAWA-VDROP: ΔU_total w kV to SUMA spadków odcinkowych w
+        # jednostkach bezwzględnych — każdy odcinek przeliczony przez WŁASNE
+        # U_n (ten sam U_n, który stoi w mianowniku EQ_VDROP_003/004 tego
+        # odcinka). Źródło to łańcuch EQ_VDROP_001..006 TEGO SAMEGO dowodu,
+        # NIGDY wynik biegu — inaczej krok końcowy dowodziłby cyrkularnie.
+        segment_drops_kv = [delta_u / 100.0 * segment.u_n_kv]
+        delta_u_total_kv = sum(segment_drops_kv)
+        u_kv = data.u_source_kv - delta_u_total_kv
 
         step_builders = {
             "EQ_VDROP_001": lambda step_number: cls._create_vdrop_step_r(
@@ -2172,6 +2181,8 @@ class ProofGenerator:
                 step_number,
                 data.u_source_kv,
                 delta_u_total,
+                segment.u_n_kv,
+                delta_u_total_kv,
                 u_kv,
             ),
         }
@@ -2186,6 +2197,11 @@ class ProofGenerator:
         key_results = {
             "delta_u_total_percent": ProofValue.create(
                 "\\Delta U_{total}", delta_u_total, "%", "delta_u_total_percent"
+            ),
+            # Addytywne (karta PODSTAWA-VDROP): forma bezwzględna ΔU_total,
+            # która faktycznie zasila krok EQ_VDROP_007 (patrz niżej).
+            "delta_u_total_kv": ProofValue.create(
+                "\\Delta U_{total}^{kV}", delta_u_total_kv, "kV", "delta_u_total_kv"
             ),
             "u_kv": ProofValue.create("U", u_kv, "kV", "u_kv"),
         }
@@ -2484,19 +2500,31 @@ class ProofGenerator:
         cls,
         step_number: int,
         u_source_kv: float,
-        delta_u_total: float,
+        delta_u_total_percent: float,
+        u_n_kv: float,
+        delta_u_total_kv: float,
         u_kv: float,
     ) -> ProofStep:
-        """Napięcie w punkcie po uwzględnieniu spadku."""
+        """Napięcie w punkcie po uwzględnieniu spadku (odjęcie w kV).
+
+        Karta PODSTAWA-VDROP: obie strony równania — U_source i ΔU_total —
+        muszą stać na TEJ SAMEJ podstawie (kV), inaczej wynik miesza dwie różne
+        skale, gdy U_source ≠ U_n (dowód w docstringu EQ_VDROP_007). Podstawienie
+        pokazuje jawnie skąd bierze się ΔU_total w kV: z sumy spadków
+        odcinkowych EQ_VDROP_001..006 przeliczonych przez U_n odcinka — NIE z
+        wyniku biegu.
+        """
         equation = EQ_VDROP_007
 
         input_values = (
             ProofValue.create("U_{source}", u_source_kv, "kV", "u_source_kv"),
-            ProofValue.create("\\Delta U_{total}", delta_u_total, "%", "delta_u_total_percent"),
+            ProofValue.create("\\Delta U_{total}^{kV}", delta_u_total_kv, "kV", "delta_u_total_kv"),
         )
 
         substitution = (
-            f"U = {u_source_kv:.4f} \\cdot \\left(1 - \\frac{{{delta_u_total:.4f}}}{{100}}\\right) = "
+            f"\\Delta U_{{total}}^{{kV}} = \\frac{{{delta_u_total_percent:.4f}}}{{100}} "
+            f"\\cdot {u_n_kv:.4f} = {delta_u_total_kv:.4f}\\,\\text{{kV}} \\\\ "
+            f"U = {u_source_kv:.4f} - {delta_u_total_kv:.4f} = "
             f"{u_kv:.4f}\\,\\text{{kV}}"
         )
 
@@ -2504,7 +2532,7 @@ class ProofGenerator:
 
         unit_check = UnitVerifier.verify_equation(
             equation.equation_id,
-            {"U_{source}": "kV", "ΔU_{total}": "%"},
+            {"U_{source}": "kV", "ΔU_{total}^{kV}": "kV"},
             "kV",
         )
 
@@ -2519,7 +2547,7 @@ class ProofGenerator:
             unit_check=unit_check,
             source_keys={
                 "U_{source}": "u_source_kv",
-                "ΔU_{total}": "delta_u_total_percent",
+                "ΔU_{total}^{kV}": "delta_u_total_kv",
                 "U": "u_kv",
             },
         )
@@ -3113,7 +3141,7 @@ class ProofGenerator:
         return ProofDocument.create(
             artifact_id=artifact_id,
             proof_type=ProofType.PROTECTION_OVERCURRENT,
-            title_pl="Dowód: Zabezpieczenia nadprądowe i selektywność (P18)",
+            title_pl="Dowód: zabezpieczenia nadprądowe i selektywność",
             header=header,
             steps=steps,
             summary=summary,
@@ -3236,7 +3264,7 @@ class ProofGenerator:
         return ProofDocument.create(
             artifact_id=artifact_id,
             proof_type=ProofType.EARTHING_GROUND_FAULT_SN,
-            title_pl="Dowód: Doziemienia / uziemienia SN (P19)",
+            title_pl="Dowód: doziemienia i uziemienia SN",
             header=header,
             steps=steps,
             summary=summary,
@@ -3977,7 +4005,7 @@ class ProofGenerator:
         return ProofDocument.create(
             artifact_id=artifact_id,
             proof_type=ProofType.LOAD_CURRENTS_OVERLOAD,
-            title_pl="Dowód porównawczy (counterfactual) P15: A vs B",
+            title_pl="Dowód porównawczy: wariant A wobec wariantu B",
             header=header,
             steps=steps,
             summary=summary,

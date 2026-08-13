@@ -75,6 +75,8 @@ async function build() {
     const o = await op(caseId, 'insert_station_on_segment_sn', {
       segment_id: segmentId, station_type: 'B', insert_at: { value: pos },
       station: { sn_voltage_kv: 15, nn_voltage_kv: 0.4 }, sn_fields: ['IN', 'OUT', 'FEEDER'],
+      // B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+      field_apparatus_catalog_ref: 'sw-cb-abb-vd4-17kv-630a',
       transformer: { create: true, catalog_binding: bind('TRAFO_SN_NN', TRAFO_ID) },
     });
     if (!o.error) counts.station++;

@@ -50,7 +50,9 @@ SEARCH_ROOTS = [
 
 DOCS_ROOTS = [
     Path("docs"),
-    Path("."),  # mv-design-pro/*.md (SYSTEM_SPEC, ARCHITECTURE, PLANS, AGENTS, POWERFACTORY_COMPLIANCE)
+    Path(
+        "."
+    ),  # mv-design-pro/*.md (SYSTEM_SPEC, ARCHITECTURE, PLANS, AGENTS, POWERFACTORY_COMPLIANCE)
 ]
 
 # Tolerancja dla deklaracji "N+" — actual nie może być więcej niż TOLERANCE_X * N

@@ -6,7 +6,7 @@
  *   • AC_LV  — AC-coupled: falowniki PV + PCS BESS na WSPÓLNEJ szynie nN za JEDNYM trafem.
  * Both sources are IBG (PV inverters + bidirectional BESS PCS, IEC 60909-0:2016 §6.7); the
  * SC share = their SUM. Metering = CT/VT on the SN busbar (POLE Pomiarowe) = boundary. No
- * ⊟, no PCC. Readouts bound to the solver (klik węzeł → White Box). Voltage labels derive
+ * ⊟, no PCC. Readouts bound to the solver (klik węzeł → pełna jawność obliczeń). Voltage labels derive
  * from the companion (ENEA-valid, no 30 kV).
  */
 import {
@@ -162,7 +162,7 @@ export function SldCanonPresetG4({ companion }: { companion: SldOzeArchetypeComp
       {/* ── header ── */}
       <text x={900} y={42} textAnchor="middle" fill="#F4F6F8" fontFamily={SANS} fontSize={22} fontWeight={800}>{title}</text>
       <text x={900} y={70} textAnchor="middle" fill={AMBER} fontFamily={SANS} fontSize={13} fontWeight={700}>{subtitle}</text>
-      <text x={1540} y={112} textAnchor="end" fill={CYAN} fontFamily={SANS} fontSize={11} fontWeight={700}>WYNIKI w węzłach — ze solwera (czas rzecz.) · klik węzeł → White Box</text>
+      <text x={1540} y={112} textAnchor="end" fill={CYAN} fontFamily={SANS} fontSize={11} fontWeight={700}>WYNIKI w węzłach — ze solwera (czas rzecz.) · klik węzeł → pełna jawność obliczeń</text>
 
       {/* ── SN busbar ── */}
       <line x1={snX1} y1={snBusY} x2={snX2} y2={snBusY} stroke={SN_BUS} strokeWidth={5} strokeLinecap="round" />

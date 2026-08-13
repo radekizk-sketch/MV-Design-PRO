@@ -48,10 +48,14 @@ export const STRINGS = {
 /** Etykiety PL kategorii katalogu. */
 export const ETYKIETY_KATEGORII: Readonly<Record<KategoriaId, string>> = {
   LINIA: 'Linie napowietrzne',
-  KABEL: 'Kable',
+  KABEL: 'Kable SN',
   TRANSFORMATOR: 'Transformatory',
-  APARAT: 'Aparaty łączeniowe',
+  APARAT: 'Aparaty łączeniowe SN',
   FALOWNIK: 'Falowniki (OZE)',
+  CT: 'Przekładniki prądowe',
+  VT: 'Przekładniki napięciowe',
+  KABEL_NN: 'Kable nN',
+  APARAT_NN: 'Aparaty nN',
 };
 
 /** Etykiety PL rodzajów aparatu łączeniowego (pole `equipment_kind`). */

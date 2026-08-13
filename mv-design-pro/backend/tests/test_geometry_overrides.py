@@ -10,7 +10,7 @@ Covers:
 - 50× determinism
 """
 
-from src.domain.geometry_overrides import (
+from domain.geometry_overrides import (
     OVERRIDES_VERSION,
     GeometryFixCode,
     GeometryOverrideItemV1,

@@ -27,7 +27,8 @@
  * FAKTYCZNIE wystąpi (regresja rezerwacji albo gęstsza sieć).
  */
 
-import { rectsOverlap, type V3Rect } from '../core/grid';
+import { type V3Rect } from '../core/grid';
+import { buildRectIndex, createRectIndex } from '../core/rectIndex';
 import type { OwnedLabel, OwnerKind } from './labels';
 
 /**
@@ -45,11 +46,16 @@ export const LABEL_PRIORITY: Readonly<Record<OwnerKind, number>> = {
   'station-name': 100, // tożsamość: S-id (L0) / nazwa stacji (L1+)
   'busbar-voltage': 95, // tożsamość szyny (napięcie/sekcja)
   'no-point': 90, // marker stanu łączeniowego (NOP) — operacyjny
+  'branch-point': 88, // ODG-RYSUNEK: nazwa punktu odgałęźnego — tożsamość obiektu ENM na torze
   protection: 85, // numer urządzenia zabezpieczeniowego (ANSI 52)
   der: 70, // MOC źródła (audyt §3 „moc")
   apparatus: 60, // identyfikator aparatu (Q/QE/T)
   'field-role': 55, // rola pola (pole liniowe/…)
   'port-caption': 40, // podpis kierunku (kier./odg.)
+  // BLOK-LATERAL-WLASNOSC: TA SAMA waga co `port-caption`, którą ten rodzaj
+  // dotąd pożyczał — rozdział dotyczy celu kliknięcia, nie pierwszeństwa w
+  // odgruzowywaniu, więc wynik declutteru zostaje CO DO BAJTU ten sam.
+  'segment-endpoint': 40, // „koniec otwarty" / odsyłacz ciągu dalszego
   'segment-span': 30, // PARAMETRY przęsła poziomego (typ·przekrój·długość)
   'segment-lateral': 30, // PARAMETRY przęsła pionowego
   'lv-load': 25, // odbiór zagregowany nN / granica modelu
@@ -60,18 +66,34 @@ export function labelPriority(label: OwnedLabel): number {
   return LABEL_PRIORITY[label.ownerKind];
 }
 
+/** Pozycja rozstrzygania: priorytet + geometria + tożsamość właściciela.
+ *  Wyodrębnione z `resolutionOrder`, żeby warstwa renderu (KD-11,
+ *  `canvas/labelLegibility.ts`) rozstrzygała kolizje etykiet POWIĘKSZONYCH
+ *  DOKŁADNIE tym samym porządkiem — jedna reguła pierwszeństwa w systemie,
+ *  nie dwie. */
+export interface LabelResolutionKey {
+  readonly priority: number;
+  readonly rect: V3Rect;
+  readonly ownerRef: string;
+}
+
 /**
  * Deterministyczny klucz sortowania rozstrzygania: priorytet malejąco, potem
  * geometria (y, x) i `ownerRef` rosnąco — pełny porządek liniowy (brak remisów
  * zależnych od kolejności wejścia), warunek determinizmu.
  */
-function resolutionOrder(a: OwnedLabel, b: OwnedLabel): number {
-  const pa = labelPriority(a);
-  const pb = labelPriority(b);
-  if (pa !== pb) return pb - pa; // wyższy priorytet pierwszy
+export function labelResolutionOrder(a: LabelResolutionKey, b: LabelResolutionKey): number {
+  if (a.priority !== b.priority) return b.priority - a.priority; // wyższy priorytet pierwszy
   if (a.rect.y !== b.rect.y) return a.rect.y - b.rect.y;
   if (a.rect.x !== b.rect.x) return a.rect.x - b.rect.x;
   return a.ownerRef < b.ownerRef ? -1 : a.ownerRef > b.ownerRef ? 1 : 0;
+}
+
+function resolutionOrder(a: OwnedLabel, b: OwnedLabel): number {
+  return labelResolutionOrder(
+    { priority: labelPriority(a), rect: a.rect, ownerRef: a.ownerRef },
+    { priority: labelPriority(b), rect: b.rect, ownerRef: b.ownerRef },
+  );
 }
 
 export interface DeclutterResult {
@@ -94,18 +116,24 @@ export function declutterLabels(
   symbolRects: readonly V3Rect[],
 ): DeclutterResult {
   const ordered = [...labels].sort(resolutionOrder);
-  const keptRects: V3Rect[] = [];
+  // S9-9: predykat „zachodzi na cokolwiek" liczony indeksem przestrzennym
+  // (`core/rectIndex.ts`) zamiast przeglądem liniowym — WYNIK identyczny
+  // (indeks jest filtrem kandydatów, rozstrzyga ten sam `rectsOverlap`),
+  // koszt z O(n²) na O(n). Kolejność rozstrzygania (`resolutionOrder`) i tym
+  // samym zbiór ocalałych — bez zmian.
+  const symbolIndex = buildRectIndex(symbolRects);
+  const keptIndex = createRectIndex();
   const keptSet = new Set<OwnedLabel>();
   const dropped: OwnedLabel[] = [];
 
   for (const label of ordered) {
-    const hitsSymbol = symbolRects.some((r) => rectsOverlap(label.rect, r));
-    const hitsKept = keptRects.some((r) => rectsOverlap(label.rect, r));
+    const hitsSymbol = symbolIndex.anyOverlap(label.rect);
+    const hitsKept = keptIndex.anyOverlap(label.rect);
     if (hitsSymbol || hitsKept) {
       dropped.push(label);
       continue;
     }
-    keptRects.push(label.rect);
+    keptIndex.add(label.rect);
     keptSet.add(label);
   }
 

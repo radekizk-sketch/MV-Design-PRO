@@ -16,15 +16,20 @@
  * przechwyci to na etapie kompilacji zamiast cichego rozjazdu kopii.
  */
 
-import { GRID, snapUp } from '../core/grid';
-import { MIN_FIELD_CLEARANCE, MIN_GLYPH_CLEARANCE, MIN_LABEL_CLEARANCE } from './clearances';
+import { GRID, snapToGrid, snapUp } from '../core/grid';
+import {
+  BUSBAR_LABEL_PATH_CLEARANCE,
+  MIN_FIELD_CLEARANCE,
+  MIN_GLYPH_CLEARANCE,
+  MIN_LABEL_CLEARANCE,
+} from './clearances';
 import { labelLineHeight, liczbaRysunkuPl, measureLabelWidth } from '../core/text';
 import type { MiniBlockBayDescriptor } from '../../v2/renderer/MiniBlockRmuRenderer';
 import {
   formatTransformerRatedPower,
   type StationOnRunRendererProps,
 } from '../../v2/renderer/StationOnRunRenderer';
-import { fieldFunctionalDesignation } from '../compose/directions';
+import { classifyLineBayDirection, fieldCaptionAt, isLineLikeRole } from '../compose/directions';
 import {
   apparatusIdentifiers,
   bayApparatusPlanFootprint,
@@ -35,6 +40,7 @@ import { protectionAnnotationColumnWidth } from '../compose/protectionMarking';
 import { derLabelText, derSnChainExtraHeight, derSymbolSize, type StationDerSourceInput } from '../compose/sourceKind';
 import type { StationCompactGlyphSummary } from '../compose/preview';
 import type { FieldRole } from '../../v2/domain/apparatusContracts';
+import type { StationTransformerUnit } from '../../../network-build/stationTransformerSelection';
 
 const LABEL_LINE_HEIGHT_T1 = labelLineHeight('t1');
 const LABEL_LINE_HEIGHT_T2 = labelLineHeight('t2');
@@ -94,6 +100,20 @@ export interface StationMeasureInput
    *  IGNORUJE (render-only). `composeRowStation` przenosi je na `meta.
    *  stationGlyph` symbolu `stationCollapsed`. */
   readonly compactGlyph?: StationCompactGlyphSummary;
+  /** TR2W-BEZ-POLA (§0.B „SLD MUSI być projekcją rzeczywistej topologii
+   *  obliczeniowej ENM"): fakt DOMENOWY „stacja ma transformator SN/nN"
+   *  (`scene/buildScene.ts` `stationHasTransformerFact` — JEDNA prawda z
+   *  sylwetką L0 i bramką strony nN L1/L2). NIEZALEŻNY od obecności pola roli
+   *  TR w `snBays`: model domenowy (rekord `Transformer` zawieszony na
+   *  szynach stacji) jest źródłem prawdy o istnieniu transformatora, pole
+   *  rozdzielni opisuje wyłącznie SPOSÓB jego przyłączenia. */
+  readonly hasTransformer?: boolean;
+  /** TR2W-BEZ-POLA (§0.C.2/§0.C.3): jednostki transformatorowe stacji z
+   *  terminalami (`Transformer.hv_bus_ref`/`lv_bus_ref`), 0..N. Terminal WN
+   *  wskazuje SEKCJĘ szyn SN, w obrębie której `stationSnColumnLayout` (niżej)
+   *  stawia kolumnę transformatora — to jest kotwica TOPOLOGICZNA, nie
+   *  pozycyjna. Adapter v2 (`enmToSldAdapter.ts`) jedyny pisarz. */
+  readonly transformerUnits?: readonly StationTransformerUnit[];
 }
 
 /** FIX-2 (recenzja F2): re-eksport formatera mocy TR z `StationOnRunRenderer`
@@ -118,8 +138,48 @@ export { formatTransformerRatedPower } from '../../v2/renderer/StationOnRunRende
  * rezerwacja szerokości (`requiredStationWidth` niżej) i realny tekst nie
  * mogą się rozjechać (wzór F6b-1).
  */
-export function stationBusbarLabelText(busVoltageKv: number | null | undefined): string {
-  return busVoltageKv != null ? `Sekcja 1 · ${liczbaRysunkuPl(busVoltageKv)} kV` : 'Sekcja 1';
+export function stationBusbarLabelText(
+  busVoltageKv: number | null | undefined,
+  /**
+   * S9-8 (audyt, „identyfikator stacji w opisie sekcji"): KOD STACJI z danych
+   * (`StationOnRunRendererProps.stationCode`). Bez niego 55 sekcji na sieci
+   * referencyjnej nosi ten sam napis „Sekcja 1 · 15 kV" — po skopiowaniu
+   * fragmentu rysunku albo po odesłaniu do strefy arkusza nie da się
+   * powiedzieć, KTÓREJ stacji sekcja to jest. Kod jest daną realną, więc
+   * dopisujemy go jako PIERWSZY człon (człon rozróżniający — patrz
+   * `shortenPreservingIdentity`, `core/text.ts`: przy skracaniu odpadają
+   * człony od końca, więc identyfikator stacji przeżywa najdłużej).
+   *
+   * Brak kodu ⇒ napis DOKŁADNIE jak przed kartą (degradacja, zero fabrykacji
+   * — nie wymyślamy identyfikatora ze `station.id`, który jest hashem).
+   */
+  stationCode?: string | null,
+): string {
+  const sekcja = busVoltageKv != null ? `Sekcja 1 · ${liczbaRysunkuPl(busVoltageKv)} kV` : 'Sekcja 1';
+  const kod = stationCode?.trim();
+  return kod ? `${kod} · ${sekcja}` : sekcja;
+}
+
+/**
+ * PROPORCJE (zgłoszenie właściciela 2026-08-07 pkt 3) — CZY OPIS SEKCJI NIESIE
+ * KOD STACJI, a więc czy pasmo nazw ma o nim MILCZEĆ.
+ *
+ * JEDEN PREDYKAT, DWA KOŃCE (reguła KLASA §3). Kod stacji ma paść w bloku
+ * dokładnie RAZ. Rozstrzygnięcie: niesie go OPIS SEKCJI (`stationBusbarLabelText`
+ * wyżej), bo stoi przy elemencie, o którym mówi, i musi rozróżniać dziesiątki
+ * sekcji w jednym kadrze (S9-8, wyrocznia S9-12). Pasmo nazw pokazuje wtedy
+ * NAZWĘ stacji. Blok BEZ szyny SN (zero pól) opisu sekcji nie ma — wtedy kod
+ * MUSI zostać w paśmie, inaczej zniknąłby z rysunku zupełnie.
+ *
+ * Funkcja jest CZYSTA względem wejścia pomiarowego, więc REZERWACJA wysokości
+ * pasma (`stationNameBandHeight`) i REALNA lista wierszy (`compose/station.ts`)
+ * pochodzą z tego samego zdania — dwa niezależne warunki, które „dziś się
+ * zgadzają", są defektem czekającym na dane brzegowe.
+ */
+export function stationSectionLabelCarriesCode(
+  station: Pick<StationMeasureInput, 'stationCode' | 'snBays'>,
+): boolean {
+  return !!station.stationCode?.trim() && station.snBays.length > 0;
 }
 
 /** F10.3 (spec §18.4): odstęp między wierszem etykiety szyny SN (nowy, ten
@@ -128,7 +188,13 @@ export function stationBusbarLabelText(busVoltageKv: number | null | undefined):
  *  gdy nieobecny) — TA SAMA wartość co `PORT_CAPTION_BUS_CLEARANCE`, oba są
  *  światłem etykiety §5 `MIN_LABEL_CLEARANCE` (`layout/clearances.ts`, `GRID`);
  *  nazwana osobno dla czytelności (§4 „prześwit" per para etykiet). */
-export const STATION_BUSBAR_LABEL_GAP = MIN_LABEL_CLEARANCE;
+/** KD-8 poz. 5: prześwit etykiety szyny URÓSŁ do `BUSBAR_LABEL_PATH_CLEARANCE`
+ *  (etykieta stoi nad TOREM, nie nad symbolem — patrz `layout/clearances.ts`),
+ *  więc REZERWACJA musi urosnąć razem z nim. Rozjazd measure↔compose oznaczałby
+ *  etykietę wystającą z własnego pasma w pasmo sąsiada (i przegraną w
+ *  declutterze — dokładnie to zmierzył test przęseł GPZ↔S01 przy pierwszym
+ *  podejściu do tej karty). */
+export const STATION_BUSBAR_LABEL_GAP = BUSBAR_LABEL_PATH_CLEARANCE;
 
 /** F10.3 (spec §18.4): wysokość DODATKOWA pasma B2 na wiersz etykiety szyny
  *  SN (t2, `stationBusbarLabelText`) — jeden wiersz t2 + prześwit, NAD
@@ -154,9 +220,15 @@ export function stationBusbarLabelHeight(station: Pick<StationMeasureInput, 'snB
  *  poza kolumnę (zero kolizji z sąsiadem, `overlap_probe`). Zero, gdy stacja
  *  bez pól SN (zgodnie z `stationBusbarLabelHeight` wyżej).
  */
-function stationBusbarLabelWidth(station: Pick<StationMeasureInput, 'snBays' | 'busVoltageKv'>): number {
+function stationBusbarLabelWidth(
+  station: Pick<StationMeasureInput, 'snBays' | 'busVoltageKv' | 'stationCode'>,
+): number {
   if (station.snBays.length === 0) return 0;
-  return measureLabelWidth(stationBusbarLabelText(station.busVoltageKv), 't2');
+  // S9-8: rezerwacja liczona z TEGO SAMEGO tekstu, który rysuje
+  // `compose/station.ts` — łącznie z identyfikatorem stacji (jedna prawda
+  // measure↔compose, wzór F6b-1; rozjazd oznaczałby etykietę wystającą poza
+  // własną kolumnę).
+  return measureLabelWidth(stationBusbarLabelText(station.busVoltageKv, station.stationCode), 't2');
 }
 
 // ---------------------------------------------------------------------------
@@ -187,13 +259,250 @@ export function stationLvLoadLabelText(load: NonNullable<StationMeasureInput['ag
  *  stacja ma stronę nN, ale ZERO rekordów `Load`. */
 export const LV_MODEL_BOUNDARY_TEXT = 'granica modelu — bez odbiorów nN';
 
-/** Czy stacja rysuje stronę nN (pole transformatorowe ⇒ `compose/station.ts`
- *  zbiera porty LV i rysuje `#lv-bus`) — TEN SAM predykat co `hasLvSection`
- *  adaptera (`enmToSldAdapter.ts`: `snBays.some(TR-rola)`). */
-export function stationHasLvSide(station: Pick<StationMeasureInput, 'snBays'>): boolean {
-  return station.snBays.some(
+/** Czy `snBays` niesie JAWNE pole roli TR (`TRANSFORMER`/`RMU_TRANSFORMER`) —
+ *  predykat WYŁĄCZNIE polowy. Odróżnia „transformator jest CZĘŚCIĄ stosu pola"
+ *  (ścieżka dzisiejsza, zero zmian od TR2W-BEZ-POLA) od „transformator wisi na
+ *  szynie bez skonfigurowanego pola" (`implicitStationTransformers` niżej). */
+function stationHasExplicitTrBay(snBays: readonly MiniBlockBayDescriptor[]): boolean {
+  return snBays.some(
     (bay) => bay.fieldRole === 'TRANSFORMER' || bay.fieldRole === 'RMU_TRANSFORMER',
   );
+}
+
+/**
+ * Czy stacja rysuje stronę nN (`compose/station.ts` zbiera porty LV i rysuje
+ * `#lv-bus`) — JEDNA bramka dla OBU ścieżek transformatora: polowej
+ * (`snBays.some(TR-rola)`) i bezpolowej (`hasTransformer` — fakt domenowy,
+ * TR2W-BEZ-POLA §0.B).
+ *
+ * Przed tą kartą predykat czytał WYŁĄCZNIE pole, więc stacja o
+ * `sn_fields:['IN','OUT','FEEDER']` z policzonym w ENM transformatorem
+ * zwracała `false` — `nnSideBelowBusHeight`/`lvSideNameRowWidths`/
+ * `stationNameBandHeight` nie rezerwowały miejsca na stronę nN, mimo że
+ * domena ją niosła (defekt bliźniaczy z `lvPorts` w kompozycji: ta sama
+ * klasa, dwa końce).
+ */
+export function stationHasLvSide(
+  station: Pick<StationMeasureInput, 'snBays' | 'hasTransformer'>,
+): boolean {
+  return station.hasTransformer === true || stationHasExplicitTrBay(station.snBays);
+}
+
+// ---------------------------------------------------------------------------
+// TR2W-BEZ-POLA — KOLUMNA TRANSFORMATORA BEZ POLA ROLI TR.
+// ---------------------------------------------------------------------------
+
+/** Gabaryt symbolu `transformer2W` (`symbols/defs.ts` — 32×40, port `hv`
+ *  górny / `lv` dolny). `measure.ts` celowo NIE importuje `SYMBOL_DEFS`
+ *  (patrz `LV_LOAD_ARROW_HEIGHT`), więc literały są zsynchronizowane TESTEM
+ *  spójności measure↔compose, nie importem. */
+export const IMPLICIT_TR_SYMBOL_WIDTH = 32;
+export const IMPLICIT_TR_SYMBOL_HEIGHT = 40;
+
+/**
+ * TR2W-BEZ-POLA §0.C.5 — JAWNY STAN NIEKOMPLETNY. Transformator przyłączony
+ * do szyny SN bez skonfigurowanego pola transformatorowego to konfiguracja
+ * NIEKOMPLETNA (odejścia od szyn realizuje się polami), a nie równoprawny
+ * wariant — rysunek ma ją pokazać JAKO niekompletną, nie zamilczeć i nie
+ * dorysować pola, którego dane nie niosą.
+ *
+ * GDZIE ŻYJE TEN TEKST — i dlaczego NIE na rysunku (pomiar, nie preferencja).
+ * Pierwsza wersja tej karty stawiała zdanie jako wiersz pasma nazw B5.
+ * Pomiar: `measureLabelWidth(…, 't4') = 239` j.św., czyli WIĘCEJ niż
+ * najszerszy dotychczasowy wiersz bloku (odbiór zagregowany: 184; nazwa
+ * stacji t1: 146) — a `requiredStationWidth` bierze `max()` po wierszach, więc
+ * JEDNO zdanie adnotacji dyktowałoby szerokość kolumny KAŻDEJ stacji bez pola
+ * TR (+30%). Skutek zmierzony na pełnej suicie e2e: arkusz szerszy ⇒ mniejsza
+ * skala „Dopasuj widok" ⇒ podpis tożsamości GPZ skracany do „GPZ…15 kV"
+ * (bramka KD-11) i wypełnienie osi 0,728 < 0,75 (bramka K11-A). Adnotacja
+ * pogarszała czytelność rysunku, o którym mówi.
+ *
+ * Dlatego, zgodnie z regułą, którą ten sam kod stosuje do ostrzeżeń
+ * topologicznych zabezpieczeń (spec §20.3 — „warstwa zwarta, nie zasłania
+ * toru": glif niesie WYŁĄCZNIE sygnał obecności, treść żyje w
+ * `missingData`/inspektorze): rysunek niesie MARKER przy symbolu
+ * (`symbols/glyphs.tsx`, badge „!" po stronie WN), a to zdanie trafia do
+ * PODPOWIEDZI obiektu (warstwa trafień, `canvas/hitAreas.ts` → `<title>`) i do
+ * `stopNotes` sceny. Zero rezerwacji szerokości, zero wpływu na proporcje.
+ */
+export const STATION_TR_FIELD_GAP_TEXT = 'Brak skonfigurowanego pola transformatorowego SN';
+
+/**
+ * TR2W-BEZ-POLA (§0.C.1 „widoczność z `Transformer.ref_id`, nie z warunku
+ * `exists(sn_field role=='TR')`"): jednostki transformatorowe, które muszą
+ * dostać WŁASNĄ kolumnę na rysunku, bo dane nie niosą dla nich pola
+ * rozdzielni.
+ *
+ * Pusto, gdy: (a) domena nie niesie transformatora (`hasTransformer`), albo
+ * (b) `snBays` niesie już jawne pole roli TR — wtedy transformator jest
+ * elementem stosu tego pola i ścieżka dzisiejsza pozostaje BEZ ZMIAN (§0.C.7,
+ * zero regresu geometrii).
+ *
+ * Gdy domena mówi „mam transformator", a lista jednostek jest pusta (rekord
+ * `Transformer` nieobecny w migawce), zwracamy pustą listę — kompozycja
+ * degraduje wtedy JAWNIE (`station.transformer.refMissing`), bo §0.C.4
+ * zabrania rysowania symbolu na fabrykowanym identyfikatorze.
+ */
+export function implicitStationTransformers(
+  station: Pick<StationMeasureInput, 'snBays' | 'hasTransformer' | 'transformerUnits'>,
+): readonly StationTransformerUnit[] {
+  if (!stationHasLvSide(station)) return [];
+  if (stationHasExplicitTrBay(station.snBays)) return [];
+  return (station.transformerUnits ?? []).filter(
+    (unit) => !stronaGornaPozaPasmemSn(unit.hvVoltageKv),
+  );
+}
+
+/** Górna granica pasma SN [kV] — lustro `PASMO_SN_MAX_KV` bramki gotowości
+ *  (`backend/src/enm/pole_transformatorowe.py`). Parytet pilnuje wspólna
+ *  tablica decyzyjna `pole_transformatorowe_parytet_v1.json`. */
+const PASMO_SN_MAX_KV = 60.0;
+/** Dolna granica pasma SN [kV] (włącznie) — lustro `PASMO_NN_MAX_KV`. */
+const PASMO_NN_MAX_KV = 1.0;
+
+/**
+ * KOMPLETNOSC-POLA-TR (parytet): czy strona GÓRNA transformatora NA PEWNO leży
+ * poza pasmem SN. Reguła bramki gotowości brzmi „Transformer.exists AND
+ * HV_side_connected_to_SN AND NOT valid_transformer_bay_configuration", więc
+ * marker musi stosować DOKŁADNIE ten sam warunek pasma — inaczej transformator
+ * 110/15 kV (strona górna WN) dostawałby na rysunku marker braku pola SN, o
+ * którym bramka słusznie milczy.
+ *
+ * Brak napięcia (`null`) NIE dyskwalifikuje — ta sama tolerancja po obu
+ * stronach: scena bywa budowana z danych bez napięcia szyny, a marker jest tam
+ * potrzebny najbardziej.
+ */
+function stronaGornaPozaPasmemSn(hvVoltageKv: number | null | undefined): boolean {
+  if (hvVoltageKv == null) return false;
+  return hvVoltageKv < PASMO_NN_MAX_KV || hvVoltageKv > PASMO_SN_MAX_KV;
+}
+
+/** Jedna kolumna bloku SN stacji — pole rozdzielni ALBO transformator bez
+ *  pola. `leftX`/`centerX` policzone jedną sumą prefiksową, więc rezerwacja
+ *  miejsca (measure) i rysunek (compose) NIE MOGĄ się rozjechać. */
+export interface StationSnColumnPlacement {
+  readonly kind: 'bay' | 'transformer';
+  /** Indeks w `snBays` — WYŁĄCZNIE dla `kind==='bay'`. */
+  readonly bayIndex: number | null;
+  /** REALNY `Transformer.ref_id` — WYŁĄCZNIE dla `kind==='transformer'`. */
+  readonly transformerRef: string | null;
+  /** TR2W-BEZ-POLA (§0.C.2): czy sekcja przyłączenia została ROZSTRZYGNIĘTA z
+   *  danych (terminal WN transformatora dopasowany do sekcji pól), czy kolumna
+   *  siadła na końcu bloku jako uczciwa degradacja. `true` także wtedy, gdy
+   *  rozdzielnica jest z danych JEDNOSEKCYJNA (żadne pole nie deklaruje
+   *  `busRef`) — nie ma wtedy czego rozstrzygać, cały blok to jedna sekcja.
+   *  WYŁĄCZNIE dla `kind==='transformer'`. */
+  readonly sectionResolved: boolean;
+  readonly leftX: number;
+  readonly width: number;
+  /** Oś pionu tej kolumny: dla pola — oś stosu aparatów, dla transformatora —
+   *  oś symbolu `transformer2W`. To jest X zaczepu na szynie SN. */
+  readonly centerX: number;
+}
+
+type StationColumnsInput = Pick<
+  StationMeasureInput,
+  'snBays' | 'bayDirectionCaptions' | 'entryDescentBayIndex' | 'hasTransformer' | 'transformerUnits'
+>;
+
+/**
+ * TR2W-BEZ-POLA §0.C.2 — KOTWICA TOPOLOGICZNA. Kolejność kolumn bloku SN:
+ * pola w kolejności z danych, a KAŻDY transformator bez pola wstawiony ZA
+ * OSTATNIM POLEM SWOJEJ SEKCJI (`Transformer.hv_bus_ref` == `bay.busRef`).
+ *
+ * Dlaczego nie „za ostatnim polem rozdzielnicy": reguła pozycyjna
+ * (`transformer_slot = last_field + 1`) daje ten sam wynik WYŁĄCZNIE dla
+ * rozdzielnicy jednosekcyjnej. Na rozdzielnicy sekcjonowanej (dwa systemy
+ * szyn, sprzęgło, TR1 na sekcji A i TR2 na sekcji B) stawia oba
+ * transformatory na końcu bloku, czyli KŁAMIE o tym, z której sekcji zasilany
+ * jest który transformator — a to jest informacja ruchowa, nie kosmetyka.
+ * Miejsce wynika więc z terminala WN, a slot graficzny wybierany jest dopiero
+ * W OBRĘBIE ustalonej sekcji.
+ *
+ * Degradacja bez zgadywania: gdy pola deklarują sekcje, a terminal WN
+ * transformatora nie pasuje do żadnej z nich (albo dana terminala jest pusta),
+ * kolumna siada na końcu bloku z `sectionResolved:false` — kompozycja zgłasza
+ * to jako `station.transformer.sectionUnresolved`, zamiast wybrać sekcję
+ * „na oko".
+ */
+export function stationSnColumnLayout(
+  station: StationColumnsInput,
+  columnX: number,
+): readonly StationSnColumnPlacement[] {
+  const bays = station.snBays;
+  const implicitTr = implicitStationTransformers(station);
+  // Sekcje ZADEKLAROWANE przez pola. Pusty zbiór = rozdzielnica jest z danych
+  // jednosekcyjna (rysunek i tak prowadzi JEDNĄ ciągłą szynę `#sn-bus`), więc
+  // nie ma sekcji do rozstrzygnięcia — nie zgłaszamy wtedy luki.
+  const declaredSections = new Set<string>();
+  bays.forEach((bay) => {
+    if (bay.busRef) declaredSections.add(bay.busRef);
+  });
+  // Ostatnie pole KAŻDEJ sekcji — punkt, ZA którym siada kolumna
+  // transformatora tej sekcji.
+  const lastBayOfSection = new Map<string, number>();
+  bays.forEach((bay, index) => {
+    if (bay.busRef) lastBayOfSection.set(bay.busRef, index);
+  });
+
+  // Transformatory przypięte do konkretnego pola-granicy sekcji (…) oraz te
+  // bez rozstrzygniętej sekcji (na koniec bloku).
+  const afterBayIndex = new Map<number, StationTransformerUnit[]>();
+  const unresolved: StationTransformerUnit[] = [];
+  const resolvedRefs = new Set<string>();
+  implicitTr.forEach((unit) => {
+    const anchorBay = unit.hvBusRef != null ? lastBayOfSection.get(unit.hvBusRef) : undefined;
+    if (anchorBay != null) {
+      const bucket = afterBayIndex.get(anchorBay);
+      if (bucket) bucket.push(unit);
+      else afterBayIndex.set(anchorBay, [unit]);
+      resolvedRefs.add(unit.ref);
+      return;
+    }
+    unresolved.push(unit);
+  });
+
+  const out: StationSnColumnPlacement[] = [];
+  let bx = columnX + GRID;
+  const pushTransformer = (unit: StationTransformerUnit): void => {
+    const centerX = snapToGrid(bx + IMPLICIT_TR_SYMBOL_WIDTH / 2);
+    out.push({
+      kind: 'transformer',
+      bayIndex: null,
+      transformerRef: unit.ref,
+      // Rozdzielnica bez zadeklarowanych sekcji = jedna sekcja z konstrukcji
+      // rysunku: kolumna na końcu bloku JEST kolumną własnej sekcji.
+      sectionResolved: resolvedRefs.has(unit.ref) || declaredSections.size === 0,
+      leftX: bx,
+      width: IMPLICIT_TR_SYMBOL_WIDTH,
+      centerX,
+    });
+    bx += IMPLICIT_TR_SYMBOL_WIDTH + MIN_GLYPH_CLEARANCE;
+  };
+
+  bays.forEach((bay, index) => {
+    const width = bayColumnRequiredWidth(
+      bays,
+      index,
+      station.bayDirectionCaptions,
+      station.entryDescentBayIndex,
+    );
+    const mainStackWidth = bayApparatusPlanFootprint(planBayApparatus(bay)).mainStack.width;
+    out.push({
+      kind: 'bay',
+      bayIndex: index,
+      transformerRef: null,
+      sectionResolved: true,
+      leftX: bx,
+      width,
+      centerX: snapToGrid(bx + apparatusIdentifierLeftReserve(bay) + mainStackWidth / 2),
+    });
+    bx += width + MIN_GLYPH_CLEARANCE;
+    (afterBayIndex.get(index) ?? []).forEach(pushTransformer);
+  });
+  unresolved.forEach(pushTransformer);
+
+  return out;
 }
 
 const LV_LABEL_GAP = GRID;
@@ -208,16 +517,44 @@ export const LV_LOAD_ARROW_HEIGHT = 16;
  *  żyją w paśmie nazw B5 (`stationNameBandHeight` niżej) — luźne etykiety
  *  pod szyną kolidowały z pionem trunku DER (pomiar k6 na fixturze). */
 export function lvSideExtraHeight(
-  station: Pick<StationMeasureInput, 'snBays' | 'aggregatedLvLoad'>,
+  station: Pick<StationMeasureInput, 'snBays' | 'aggregatedLvLoad' | 'hasTransformer'>,
 ): number {
   if (!stationHasLvSide(station) || !station.aggregatedLvLoad) return 0;
   return LV_LABEL_GAP + LV_LOAD_ARROW_HEIGHT + LV_LABEL_GAP;
 }
 
+/**
+ * BLOK-PUSTY (zgłoszenie właściciela 2026-08-07 pkt 6): CAŁA głębokość, na jaką
+ * treść strony nN zwisa POD szyną nN — jedno zdanie dla obu zwisów.
+ *
+ * DEFEKT NAPRAWIONY TĄ FUNKCJĄ. `stationBlockHeight` sumowało dotąd
+ * `derExtra + lvExtra`, jakby rząd DER stał POD strzałką odbioru. Kompozycja
+ * (`compose/station.ts`) wiesza OBA na TEJ SAMEJ szynie nN i rozsuwa je w
+ * POZIOMIE: strzałka odbioru na LEWYM końcu szyny (`arrowY = busY + GRID`,
+ * `#lv-load-drop`), rząd DER ze ŚRODKA szyny (`derRowY = attach.y +
+ * DER_ROW_TOP_CLEARANCE`, `#der-row-trunk`) — szyna jest właśnie po to
+ * przedłużana w lewo o `3×GRID`, żeby oba zwisy się nie zetknęły. Rezerwacja
+ * SZEREGOWA przy rysunku RÓWNOLEGŁYM zostawiała pod blokiem pusty pas.
+ * Zmierzone na fixturze 53 stacji: **32 j.św.** martwej rezerwacji w każdym
+ * bloku, który ma jednocześnie odbiór nN i DER na nN.
+ *
+ * PREDYKAT JEDEN, KOŃCE DWA (reguła KLASA §3): obie składowe są liczone od
+ * TEGO SAMEGO punktu odniesienia (szyna nN), więc łączy je `max`, nie suma —
+ * i to samo zdanie egzekwuje test spójności measure↔compose
+ * (`layout/__tests__/blokPusty.test.ts` §4), który buduje REALNĄ kompozycję,
+ * mierzy jej zwis pod `#lv-bus` i porównuje z tą liczbą na ILOCZYNIE
+ * {brak / odbiór / DER / odbiór+DER} × {1 pole / kilka / maksimum z fixtury}.
+ */
+export function nnSideBelowBusHeight(
+  station: Pick<StationMeasureInput, 'snBays' | 'aggregatedLvLoad' | 'derSources' | 'hasTransformer'>,
+): number {
+  return Math.max(lvSideExtraHeight(station), derRowExtraHeight(nnSideSources(station.derSources ?? [])));
+}
+
 /** Szerokości tekstów strony nN — kandydaci pasma nazw B5 (do
  *  `requiredStationWidth`, ta sama pula co nazwa/kod/kVA/typ). */
 function lvSideNameRowWidths(
-  station: Pick<StationMeasureInput, 'snBays' | 'nnVoltageKv' | 'aggregatedLvLoad'>,
+  station: Pick<StationMeasureInput, 'snBays' | 'nnVoltageKv' | 'aggregatedLvLoad' | 'hasTransformer'>,
 ): number[] {
   if (!stationHasLvSide(station)) return [];
   return [
@@ -334,7 +671,10 @@ export function bayColumnRequiredWidth(
 ): number {
   const bay = snBays[index];
   const footprint = bayColumnFootprint(bay);
-  const fieldRoleLabel = fieldFunctionalDesignation(bay.fieldRole);
+  // PROPORCJE: rezerwacja liczona z REALNEGO podpisu pola („F01 · pole
+  // liniowe") — jedno źródło z `compose/station.ts` (`fieldCaptionAt`),
+  // inaczej sidecar wchodziłby w kolumnę sąsiada o różnicę oznacznika.
+  const fieldRoleLabel = fieldCaptionAt(snBays, index);
   // Zmierzone OD LEWEJ KRAWĘDZI STOSU (nie kolumny) — `leftReserve` doliczany
   // OSOBNO poniżej, jedna prawda z `compose/station.ts` (`stackLeftX = bx +
   // leftReserve`).
@@ -532,19 +872,19 @@ function snSourceFieldHeight(sources: readonly StationDerSourceInput[]): number 
  * środek BLOKU KOLUMN PÓL, nie środek całej, być może szerszej, kolumny) i
  * `compose/station.ts` (lewa krawędź bloku = `tapX - blockWidth/2`) MUSZĄ
  * używać dokładnie TEJ SAMEJ liczby — jedno źródło prawdy geometrii bloku. */
-export function stationBlockWidth(
-  snBays: readonly MiniBlockBayDescriptor[],
-  bayDirectionCaptions: readonly (string | null)[] | undefined,
-  entryDescentBayIndex?: number | null,
-): number {
-  if (snBays.length === 0) return 0;
-  const columnsWidth = snBays.reduce(
-    (sum, _bay, index) => sum + bayColumnRequiredWidth(snBays, index, bayDirectionCaptions, entryDescentBayIndex),
-    0,
-  );
+export function stationBlockWidth(station: StationColumnsInput): number {
+  // TR2W-BEZ-POLA: suma po PLANIE kolumn (pola + kolumny transformatorów bez
+  // pola), nie po samej tablicy pól — inaczej blok, w którym compose rysuje
+  // dodatkową kolumnę, miałby zaniżoną bazę centrowania `tapX` i wysunąłby się
+  // poza własną kolumnę arkusza. Plan i rysunek to TA SAMA suma prefiksowa.
   // SCHEMAT-10 S7-P3 (V12K-137): światło między sąsiednimi glifami pól = §5
   // `MIN_GLYPH_CLEARANCE` (`layout/clearances.ts`, wartość bazowa `GRID`).
-  return columnsWidth + MIN_GLYPH_CLEARANCE * Math.max(snBays.length - 1, 0);
+  const plan = stationSnColumnLayout(station, 0);
+  if (plan.length === 0) return 0;
+  const last = plan[plan.length - 1];
+  // `stationSnColumnLayout(…, 0)` zaczyna pierwszą kolumnę na `0 + GRID`
+  // (`blockLeftX` kompozycji) — szerokość SAMEGO bloku liczymy od tej krawędzi.
+  return last.leftX + last.width - GRID;
 }
 
 /** Wysokość bloku stacji (B4, spec §5.2): kolumny stoją OBOK siebie, więc
@@ -552,17 +892,22 @@ export function stationBlockWidth(
  *  (0, gdy stacja bez DER — zero zmian geometrii). */
 export function stationBlockHeight(station: StationMeasureInput): number {
   const allDer = station.derSources ?? [];
-  // W2 (GS-4b): rząd nN rezerwuje wysokość TYLKO dla źródeł strony nN —
-  // źródła SN mają własne pole źródłowe (pas kolumn, `snSourceFieldHeight`).
-  const derExtra = derRowExtraHeight(nnSideSources(allDer));
-  // Recenzja NO-GO 2026-07-17 pkt 6: strona nN (etykieta szyny + odbiór/
-  // granica modelu) rezerwuje własną wysokość POD szyną nN.
-  const lvExtra = lvSideExtraHeight(station);
+  // BLOK-PUSTY: JEDNA głębokość zwisu strony nN — rząd DER (W2/GS-4b: tylko
+  // źródła strony nN; źródła SN mają własne pole źródłowe, `snSourceFieldHeight`)
+  // i strzałka odbioru (recenzja NO-GO 2026-07-17 pkt 6) wiszą RÓWNOLEGLE na
+  // tej samej szynie nN, więc łączy je `max`, nie suma (patrz
+  // `nnSideBelowBusHeight` — tam wyprowadzenie i pomiar).
+  const nnExtra = nnSideBelowBusHeight(station);
   // W2: pole źródłowe SN zajmuje pas pionowy kolumn (od `blockTopY` w dół) —
   // kandydat do `max()` z najwyższą kolumną pola (0, gdy zero źródeł SN).
   const snFieldHeight = snSourceFieldHeight(allDer);
+  // TR2W-BEZ-POLA: kolumna transformatora bez pola zajmuje TEN SAM pas pionowy
+  // (od `blockTopY` w dół) co kolumny pól — kandydat do `max()`. `0` gdy pole
+  // TR obecne LUB stacja bez transformatora (zero zmian geometrii).
+  const implicitTrHeight =
+    implicitStationTransformers(station).length > 0 ? IMPLICIT_TR_SYMBOL_HEIGHT : 0;
   if (station.snBays.length === 0) {
-    return snFieldHeight + STATION_BLOCK_BUS_CLEARANCE + derExtra + lvExtra;
+    return Math.max(snFieldHeight, implicitTrHeight) + STATION_BLOCK_BUS_CLEARANCE + nnExtra;
   }
   // W2c (POLECENIE_DER_SN_TOPOLOGIA_2026-07): tor DER-SN zwisa POD DOLNYM
   // portem głowicy pola źródłowego (bay_role `OZE`) — wydłuża KOLUMNĘ tego
@@ -585,8 +930,8 @@ export function stationBlockHeight(station: StationMeasureInput): number {
     // max(pełny gabaryt, dno głowicy + tor).
     return Math.max(base, bayMainPathHeight(bay) + chainExtra2);
   });
-  const tallest = Math.max(...columnHeights, snFieldHeight);
-  return tallest + STATION_BLOCK_BUS_CLEARANCE + derExtra + lvExtra;
+  const tallest = Math.max(...columnHeights, snFieldHeight, implicitTrHeight);
+  return tallest + STATION_BLOCK_BUS_CLEARANCE + nnExtra;
 }
 
 /**
@@ -601,7 +946,12 @@ export function stationNameBandHeight(station: StationMeasureInput): number {
   // wysokości wierszy zamiast mnożyć przez jedną klasę, żeby pasmo miało
   // dokładnie tyle miejsca ile potrzebują wszystkie obecne wiersze.
   let height = LABEL_LINE_HEIGHT_T1; // nazwa (zawsze obecna)
-  if (station.stationCode) height += LABEL_LINE_HEIGHT_T1;
+  // PROPORCJE: wiersz z GOŁYM kodem stacji istnieje TYLKO wtedy, gdy kodu nie
+  // niesie opis sekcji (`stationSectionLabelCarriesCode` — jedna prawda z
+  // `compose/station.ts`). Rezerwowanie wiersza, którego kompozycja nie
+  // rysuje, zostawiałoby w paśmie pustą linię — a pusty tusz w bloku to
+  // pkt 6 tego samego zgłoszenia właściciela.
+  if (station.stationCode && !stationSectionLabelCarriesCode(station)) height += LABEL_LINE_HEIGHT_T1;
   if (station.transformerRatedKva != null) height += LABEL_LINE_HEIGHT_T2;
   if (station.stationTypeLabel) height += LABEL_LINE_HEIGHT_T4;
   // pkt 6 (recenzja NO-GO 2026-07-17): dwa wiersze strony nN (szyna nN +
@@ -621,11 +971,7 @@ export function requiredStationWidth(station: StationMeasureInput): number {
   // `compose/station.ts` rysuje rząd flush-right od `bx` za ostatnią
   // kolumną) — wchodzi WYŁĄCZNIE do rezerwacji szerokości KOLUMNY stacji
   // (żeby DER nie nachodził na sąsiada), NIE do bazy centrowania `tapX`.
-  const baysWidth = stationBlockWidth(
-    station.snBays,
-    station.bayDirectionCaptions,
-    station.entryDescentBayIndex,
-  );
+  const baysWidth = stationBlockWidth(station);
   // W2 (GS-4b): EKSTENT poziomy = kolumny pól + pola źródłowe SN (dodatkowe
   // kolumny NA szynie SN, `compose/station.ts` rysuje je flush-right za polami)
   // + rząd nN (TYLKO źródła strony nN). Trzy człony dopisane PO PRAWEJ, każdy
@@ -663,6 +1009,81 @@ export function requiredStationWidth(station: StationMeasureInput): number {
  */
 export function requiredSegmentLabelWidth(text: string): number {
   return measureLabelWidth(text, 't2') + 2 * GRID;
+}
+
+// ---------------------------------------------------------------------------
+// SLOT-DRYF-PRZĘSŁA: OŚ X KOLUMNY POLA — JEDNO ŹRÓDŁO PRAWDY.
+// ---------------------------------------------------------------------------
+
+/**
+ * SLOT-DRYF-PRZĘSŁA: X osi stosu aparatów pola `bayIndex` w kolumnie stacji
+ * zaczepionej lewą krawędzią w `columnX`. To jest DOKŁADNIE ten sam punkt, w
+ * którym `compose/station.ts` stawia stos pola i z którego wyprowadza pion
+ * zejścia `⟨bayRef⟩#descent`, a `scene/buildScene.ts` (`portOfBay`) czyta X
+ * portu połączenia kabla — czyli miejsce, GDZIE FAKTYCZNIE zaczyna się i
+ * kończy narysowany kabel międzystacyjny.
+ *
+ * DLACZEGO TU, A NIE W COMPOSE. Rezerwacja slotu etykiety przęsła
+ * (`layout/segments.ts` `computeSegmentLabelSlotX`) musi znać końce
+ * rysowanego kabla ZANIM cokolwiek zostanie skomponowane (potok measure →
+ * bands → columns → compose): bez tego slot centrował się na odcinku
+ * tap-do-tap (ŚRODKACH bloków), a kabel biegnie od głowicy do głowicy —
+ * różnica na fixturze referencyjnej sięgała 756 j.św., czyli 46% długości
+ * opisywanego kabla. `compose/station.ts` woła TĘ SAMĄ funkcję zamiast
+ * własnej arytmetyki (reguła KLASA §3 — predykat wejścia i wyjścia z jednego
+ * źródła prawdy), więc rezerwacja i rysunek nie mogą się rozjechać.
+ *
+ * Zwraca `null`, gdy `bayIndex` nie wskazuje istniejącego pola — wołający
+ * spada wtedy na `tapX` (środek bloku), tak jak `portOfBay(...) ?? {x: tapX}`
+ * w `scene/buildScene.ts`.
+ */
+export function bayStackCenterX(
+  station: StationColumnsInput,
+  bayIndex: number | null,
+  columnX: number,
+): number | null {
+  if (bayIndex == null || bayIndex < 0 || bayIndex >= station.snBays.length) return null;
+  // TR2W-BEZ-POLA: sam odczyt z PLANU kolumn (`stationSnColumnLayout`) —
+  // dawniej ta funkcja odtwarzała sumę prefiksową własną pętlą, więc kolumna
+  // transformatora wstawiona MIĘDZY pola (kotwica sekcji) przesunęłaby rysunek,
+  // a rezerwacja slotu etykiety przęsła została na starych osiach. Jedna suma,
+  // jeden wynik — dla wszystkich trzech konsumentów (compose, segments, taps).
+  return (
+    stationSnColumnLayout(station, columnX).find(
+      (placement) => placement.kind === 'bay' && placement.bayIndex === bayIndex,
+    )?.centerX ?? null
+  );
+}
+
+/** Klasyfikacja pól liniowych (§9): które pole jest portem WEJŚCIA
+ *  („poprzednik"), które WYJŚCIA („następnik"), a które odgałęzieniem.
+ *
+ *  SLOT-DRYF-PRZĘSŁA: przeniesione z `scene/buildScene.ts` (gdzie było
+ *  prywatne) do `layout/`, bo TEJ SAMEJ klasyfikacji potrzebuje rezerwacja
+ *  slotu etykiety przęsła (`layout/segments.ts`), a `layout/` nie może
+ *  importować ze `scene/` (cykl). `buildScene.ts` woła stąd — jedna
+ *  klasyfikacja, zero cienia (ta sama zasada co `fieldCaptionAt`). */
+export interface LineBayIndices {
+  readonly previousIndex: number | null;
+  readonly nextIndex: number | null;
+  readonly branchIndices: readonly number[];
+}
+
+export function findLineBayIndices(snBays: readonly MiniBlockBayDescriptor[]): LineBayIndices {
+  const lineBayIdx: number[] = [];
+  snBays.forEach((bay, i) => {
+    if (isLineLikeRole(bay.fieldRole)) lineBayIdx.push(i);
+  });
+  let previousIndex: number | null = null;
+  let nextIndex: number | null = null;
+  const branchIndices: number[] = [];
+  lineBayIdx.forEach((idx, pos) => {
+    const direction = classifyLineBayDirection(snBays[idx].fieldRole, pos);
+    if (direction === 'previous') previousIndex = idx;
+    else if (direction === 'next') nextIndex = idx;
+    else if (direction === 'branch') branchIndices.push(idx);
+  });
+  return { previousIndex, nextIndex, branchIndices };
 }
 
 /**

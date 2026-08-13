@@ -165,7 +165,7 @@ export function DerComplianceBadge({
               <span className="text-scada-muted">cosφ:</span>
               <span
                 data-testid={`der-compliance-badge-${id}-cos-phi`}
-                className="text-[#88BBDD]"
+                className="text-scada-text"
               >
                 {cosPhi.toFixed(2)}
               </span>

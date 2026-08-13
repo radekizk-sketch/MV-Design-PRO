@@ -10,6 +10,8 @@ from network_model.core.branch import Branch, LineBranch, TransformerBranch
 from network_model.core.graph import NetworkGraph
 from network_model.solvers.power_flow_inverter import (
     InverterControl,
+    InverterShaping,
+    inverter_effective_spec,
     qu_dq_dv,
     qu_q,
 )
@@ -22,6 +24,7 @@ from network_model.solvers.power_flow_types import (
 )
 from network_model.solvers.power_flow_zip import (
     ZipCoeffs,
+    zip_effective_spec,
     zip_factor,
     zip_factor_derivative,
 )
@@ -135,7 +138,11 @@ def _apply_zip_jacobian_v2(
 
     Block layout: top=[j11(n_p x n_p), j12(n_p x n_q)], bottom=[j21, j22(n_q x n_q)].
     A ZIP bus is a PQ load, so it appears in non_slack_indices (P eq) and active_pq
-    (Q eq). Same reduce-to-NR property: a=b=0 => derivative 0 => no change."""
+    (Q eq). Same reduce-to-NR property: a=b=0 => derivative 0 => no change.
+
+    Defect D1: p_spec/q_spec here are the ZIP BASE (the load part, after
+    split_zip_constant_part), so the derivative is taken over the load alone —
+    the constant part (generation) contributes zero, as physics requires."""
     n_p = len(non_slack_indices)
     v_mag = np.abs(v)
     for z_idx, z_c in zip_table.items():
@@ -147,6 +154,152 @@ def _apply_zip_jacobian_v2(
         dq_dv = q_spec[z_idx] * zip_factor_derivative(z_c.a_q, z_c.b_q, v_mag[z_idx], z_c.v0_pu)
         jacobian[row_p, n_p + col_q] -= dp_dv
         jacobian[n_p + col_q, n_p + col_q] -= dq_dv
+
+
+def pv_calculated_injections(
+    pv_specs: Iterable[PVSpec],
+    node_index_map: dict[str, int],
+    p_calc: np.ndarray,
+    q_calc: np.ndarray,
+) -> tuple[dict[str, float], dict[str, float]]:
+    """What a voltage-controlled bus actually injected, at the converged state.
+
+    On a PV bus the reactive power is NOT specified — it is the RESULT: it is the
+    quantity that holds the requested voltage magnitude. The solver already knows
+    it, because the very same nodal equation (S_i = V_i * conj(sum_k Y_ik V_k))
+    yields the slack power a few lines above; up to this function it was published
+    for the slack ONLY. Measured gap (debt W2-D1, V12K-318): the report showed
+    0.000000 Mvar for a PV bus where an independent nodal balance gives
+    0.405463 Mvar — the bus looked reactively idle while it was regulating.
+
+    NO new physics: the same `p_calc`/`q_calc` arrays the slack is read from.
+    INJECTION convention, pu on base_mva — identical to `effective_pq_injections`,
+    so a consumer merging both dictionaries keeps ONE sign convention.
+
+    P is published too. On a PV bus it equals the specification, but reading it
+    from the same nodal equation keeps a single source of "what was injected" and
+    makes the pair (P, Q) close the balance by construction.
+    """
+    p_out: dict[str, float] = {}
+    q_out: dict[str, float] = {}
+    for spec in pv_specs:
+        idx = node_index_map.get(spec.node_id)
+        if idx is None:
+            continue
+        p_out[spec.node_id] = float(p_calc[idx])
+        q_out[spec.node_id] = float(q_calc[idx])
+    return p_out, q_out
+
+
+def effective_pq_injections(
+    pq_specs: Iterable[PQSpec],
+    node_index_map: dict[str, int],
+    p_spec: np.ndarray,
+    q_spec: np.ndarray,
+    v: np.ndarray,
+    zip_table: dict[int, ZipCoeffs] | None,
+    inv_table: dict[int, InverterControl] | None,
+    zip_const: tuple[np.ndarray, np.ndarray] | None,
+) -> tuple[dict[str, float], dict[str, float]]:
+    """Defect D1: the injection each PQ bus actually got, at the converged |V|.
+
+    Same evaluation the solvers use for their final mismatch: the ZIP polynomial
+    applied to the load base plus the constant part, and the volt-var Q(U) value
+    at inverter buses. At a classic constant-power bus it returns the untouched
+    p_spec/q_spec, so the reported value there is unchanged. Shared by NR/GS/FD
+    (one truth about 'what was injected'); the result table reports THIS instead
+    of the pre-polynomial request, otherwise the nodal balance does not close.
+    Injection convention, pu on base_mva."""
+    p_eff, q_eff = zip_effective_spec(p_spec, q_spec, v, zip_table, zip_const)
+    q_eff = inverter_effective_spec(q_eff, v, inv_table)
+    p_out: dict[str, float] = {}
+    q_out: dict[str, float] = {}
+    for spec in pq_specs:
+        idx = node_index_map.get(spec.node_id)
+        if idx is None:
+            continue
+        p_out[spec.node_id] = float(p_eff[idx])
+        q_out[spec.node_id] = float(q_eff[idx])
+    return p_out, q_out
+
+
+def _zip_loads_trace(
+    zip_table: dict[int, ZipCoeffs],
+    node_index_to_id: dict[int, str],
+    p_spec: np.ndarray,
+    q_spec: np.ndarray,
+    p_spec_eff: np.ndarray,
+    q_spec_eff: np.ndarray,
+    zip_const: tuple[np.ndarray, np.ndarray] | None,
+) -> dict[str, dict[str, float]]:
+    """WHITE BOX (Rule #2) view of the ZIP buses for the trace.
+
+    Reports the effective injection together with its two components, so an
+    auditor reproduces the multiplier from the numbers alone:
+
+        p_spec_pu = p_base_pu * f_ZIP(|V|) + p_const_pu
+
+    ``*_base_pu`` is the load part the polynomial scales, ``*_const_pu`` the
+    constant part of the bus (generation) — zero when the bus is load-only."""
+    out: dict[str, dict[str, float]] = {}
+    for z_idx in sorted(zip_table):
+        node_id = node_index_to_id.get(z_idx, str(z_idx))
+        out[node_id] = {
+            "p_spec_pu": float(p_spec_eff[z_idx]),
+            "q_spec_pu": float(q_spec_eff[z_idx]),
+            "p_base_pu": float(p_spec[z_idx]),
+            "q_base_pu": float(q_spec[z_idx]),
+            "p_const_pu": float(zip_const[0][z_idx]) if zip_const is not None else 0.0,
+            "q_const_pu": float(zip_const[1][z_idx]) if zip_const is not None else 0.0,
+        }
+    return out
+
+
+def _inverter_sources_trace(
+    inv_table: dict[int, InverterControl] | None,
+    inv_shaping: dict[int, InverterShaping] | None,
+    node_index_to_id: dict[int, str],
+    v: np.ndarray,
+    p_spec_eff: np.ndarray,
+    q_spec_eff: np.ndarray,
+) -> dict[str, dict[str, float | str]]:
+    """WHITE BOX (Rule #2) view of the controlled sources for the trace (defect B).
+
+    The audit that missed defect B could not have caught it from this trace: it
+    reported only the BUS injection, so a cosφ source deriving its reactive power
+    from the LOAD's active power looked exactly like a correct one. The record now
+    carries the shaping INPUT and its RESULT, so the rachunek is reproducible from
+    the numbers alone:
+
+        p_shaped_pu   = p_source_pu * lfsm_factor
+        q_shaped_pu   = q_over_p * |p_shaped_pu|      (cosφ modes)
+        q_volt_var_pu = qu_q(|V|)                     (Q(U) mode, per iteration)
+        q_spec_pu     = (bus power without this source) + q_shaped/q_volt_var
+
+    Covers every shaped source, not only the voltage-dependent ones — a cosφ or
+    P(f) source is shaped too and was invisible here before."""
+    v_mag = np.abs(v)
+    records = inv_shaping or {}
+    controls = inv_table or {}
+    out: dict[str, dict[str, float | str]] = {}
+    for i_idx in sorted(set(records) | set(controls)):
+        entry: dict[str, float | str] = {
+            "p_spec_pu": float(p_spec_eff[i_idx]),
+            "q_spec_pu": float(q_spec_eff[i_idx]),
+        }
+        sh = records.get(i_idx)
+        if sh is not None:
+            entry["p_source_pu"] = sh.p_source_pu
+            entry["q_source_pu"] = sh.q_source_pu
+            entry["p_shaped_pu"] = sh.p_shaped_pu
+            entry["q_shaped_pu"] = sh.q_shaped_pu
+            entry["lfsm_factor"] = sh.lfsm_factor
+        c = controls.get(i_idx)
+        if c is not None:
+            entry["q_volt_var_pu"] = float(qu_q(c, v_mag[i_idx]))
+        entry["mode"] = (c.mode if c is not None else sh.mode).value  # type: ignore[union-attr]
+        out[node_index_to_id.get(i_idx, str(i_idx))] = entry
+    return out
 
 
 def _apply_inverter_jacobian_v2(
@@ -507,6 +660,8 @@ def newton_raphson_solve_v2(
     node_index_to_id: dict[int, str],
     zip_table: dict[int, ZipCoeffs] | None = None,
     inv_table: dict[int, InverterControl] | None = None,
+    zip_const: tuple[np.ndarray, np.ndarray] | None = None,
+    inv_shaping: dict[int, InverterShaping] | None = None,
 ) -> tuple[
     np.ndarray,
     bool,
@@ -519,6 +674,14 @@ def newton_raphson_solve_v2(
 
     P20a: When options.trace_level == "full", generates complete white-box trace
     including per-bus mismatch, Jacobian, delta_state, and state_next.
+
+    Defect D1: with ``zip_const`` (from split_zip_constant_part) p_spec/q_spec are
+    the ZIP BASE (load part) and the constant part (generation on the same bus) is
+    added back after the polynomial. None => no split => historical path.
+
+    Defect B: ``inv_shaping`` is the WHITE BOX record of the one-time source
+    shaping (from ``apply_inverter_setpoint``) — trace-only, so the auditor can
+    reproduce the source's Q from the source's own P.
     """
     v = v0.copy()
     trace: list[dict[str, Any]] = []
@@ -582,11 +745,21 @@ def newton_raphson_solve_v2(
                     q_spec_eff[z_idx] = q_spec[z_idx] * zip_factor(
                         z_c.a_q, z_c.b_q, z_c.c_q, v_mag_now[z_idx], z_c.v0_pu
                     )
+                    if zip_const is not None:
+                        # Defect D1: generation on a ZIP bus is constant power —
+                        # it is added AFTER the load polynomial, never scaled by it.
+                        p_spec_eff[z_idx] += zip_const[0][z_idx]
+                        q_spec_eff[z_idx] += zip_const[1][z_idx]
             if inv_table:
                 # ADR-011 §5b: Q(U) volt-var sources recompute Q from |V| each
                 # iteration (P is frequency-, not voltage-dependent → unchanged).
+                # Defect B: ADDED to the bus power, not assigned over it — the
+                # source's own declared Q was already taken out of the base by
+                # apply_inverter_setpoint, so what remains is the (ZIP-scaled)
+                # load of a prosumer bus. Assigning deleted that load's reactive
+                # demand. Source-only bus => base is exactly 0.0 => unchanged.
                 for i_idx, i_c in inv_table.items():
-                    q_spec_eff[i_idx] = qu_q(i_c, v_mag_now[i_idx])
+                    q_spec_eff[i_idx] += qu_q(i_c, v_mag_now[i_idx])
         else:
             p_spec_eff = p_spec
             q_spec_eff = q_spec
@@ -643,22 +816,19 @@ def newton_raphson_solve_v2(
                     trace_entry["mismatch_per_bus"] = mismatch_per_bus
                 trace_entry["state_next"] = _build_state_dict(v, node_index_to_id)
                 if zip_table:
-                    trace_entry["zip_loads"] = {
-                        node_index_to_id.get(z_idx, str(z_idx)): {
-                            "p_spec_pu": float(p_spec_eff[z_idx]),
-                            "q_spec_pu": float(q_spec_eff[z_idx]),
-                        }
-                        for z_idx in sorted(zip_table)
-                    }
-                if inv_table:
-                    trace_entry["inverter_sources"] = {
-                        node_index_to_id.get(i_idx, str(i_idx)): {
-                            "p_spec_pu": float(p_spec_eff[i_idx]),
-                            "q_spec_pu": float(q_spec_eff[i_idx]),
-                            "mode": inv_table[i_idx].mode.value,
-                        }
-                        for i_idx in sorted(inv_table)
-                    }
+                    trace_entry["zip_loads"] = _zip_loads_trace(
+                        zip_table,
+                        node_index_to_id,
+                        p_spec,
+                        q_spec,
+                        p_spec_eff,
+                        q_spec_eff,
+                        zip_const,
+                    )
+                if inv_table or inv_shaping:
+                    trace_entry["inverter_sources"] = _inverter_sources_trace(
+                        inv_table, inv_shaping, node_index_to_id, v, p_spec_eff, q_spec_eff
+                    )
             trace.append(trace_entry)
             break
 
@@ -740,22 +910,19 @@ def newton_raphson_solve_v2(
             n_q = len(active_pq)
             trace_entry["jacobian"] = _serialize_jacobian_blocks_v2(jacobian, n_p, n_q)
             if zip_table:
-                trace_entry["zip_loads"] = {
-                    node_index_to_id.get(z_idx, str(z_idx)): {
-                        "p_spec_pu": float(p_spec_eff[z_idx]),
-                        "q_spec_pu": float(q_spec_eff[z_idx]),
-                    }
-                    for z_idx in sorted(zip_table)
-                }
-            if inv_table:
-                trace_entry["inverter_sources"] = {
-                    node_index_to_id.get(i_idx, str(i_idx)): {
-                        "p_spec_pu": float(p_spec_eff[i_idx]),
-                        "q_spec_pu": float(q_spec_eff[i_idx]),
-                        "mode": inv_table[i_idx].mode.value,
-                    }
-                    for i_idx in sorted(inv_table)
-                }
+                trace_entry["zip_loads"] = _zip_loads_trace(
+                    zip_table,
+                    node_index_to_id,
+                    p_spec,
+                    q_spec,
+                    p_spec_eff,
+                    q_spec_eff,
+                    zip_const,
+                )
+            if inv_table or inv_shaping:
+                trace_entry["inverter_sources"] = _inverter_sources_trace(
+                    inv_table, inv_shaping, node_index_to_id, v, p_spec_eff, q_spec_eff
+                )
 
         trace.append(trace_entry)
 

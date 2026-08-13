@@ -11,9 +11,8 @@ import {
 } from '../../../../ui/power-flow-comparison/api';
 import { useStudyCasesStore } from '../../../../ui/study-cases/store';
 import { useSelectionStore } from '../../../../ui/selection/store';
-import { useShellStore } from '../../../shell/useShellStore';
 import type { StudyCaseListItem } from '../../../../ui/study-cases/types';
-import { comparisonFixture, runsFixture } from './fixtures';
+import { busDiffFixture, comparisonFixture, runsFixture } from './fixtures';
 
 function przypadekFixture(over: Partial<StudyCaseListItem> = {}): StudyCaseListItem {
   return {
@@ -194,6 +193,20 @@ describe('EkranPorownania — prezentacja wyniku backendu', () => {
     expect(tabela.getByText('+0,700')).toBeInTheDocument();
   });
 
+  it('L-13: kolumna Δ% z wartością backendu (szyny i gałęzie)', async () => {
+    render(<EkranPorownania {...props()} />);
+    await wykonajPorownanie();
+    const szyny = within(screen.getByTestId('mvd-wyn-tabela'));
+    // Dwie kolumny względne w tabeli szyn (napięcie, kąt) — jednostka w nagłówku.
+    expect(szyny.getAllByText(`[${POROWNANIE_STRINGS.jednProcent}]`)).toHaveLength(2);
+    // Wartość z payloadu (`delta_v_percent`), nie liczona w prezentacji
+    // (obie szyny fixture'u niosą tę samą różnicę względną).
+    expect(szyny.getAllByText('-5,39').length).toBeGreaterThanOrEqual(1);
+    fireEvent.click(screen.getByTestId('mvd-por-tab-galezie'));
+    const galezie = within(screen.getByTestId('mvd-wyn-tabela'));
+    expect(galezie.getByText('+50,00')).toBeInTheDocument();
+  });
+
   it('zakładka Ranking: problemy z wagą PL i rodzajem PL', async () => {
     render(<EkranPorownania {...props()} />);
     await wykonajPorownanie();
@@ -260,8 +273,11 @@ describe('EkranPorownania — dowody kolumn A/B (R3-C)', () => {
   it('kolumny Δ bez akcji dowodu (różnica nie ma pojedynczego wywodu WHITE BOX)', async () => {
     render(<EkranPorownania {...props()} />);
     await wykonajPorownanie();
-    // W wierszu tylko 4 przyciski (vA, vB, katA, katB) — delty nie są przyciskami.
-    expect(przyciskiPierwszegoWiersza()).toHaveLength(4);
+    // W wierszu przyciski TYLKO na kolumnach źródłowych A/B
+    // (vA, vB, katA, katB, qA, qB — moc bierna dołożona w KD-1/L-12);
+    // kolumny Δ nie są przyciskami. Intencja bez zmian: różnica nie ma
+    // pojedynczego wywodu WHITE BOX, więc nie otwiera dowodu.
+    expect(przyciskiPierwszegoWiersza()).toHaveLength(6);
     expect(screen.getByText('-0,0550').closest('button')).toBeNull();
   });
 
@@ -270,9 +286,10 @@ describe('EkranPorownania — dowody kolumn A/B (R3-C)', () => {
     await wykonajPorownanie();
     fireEvent.click(screen.getByTestId('mvd-por-tab-galezie'));
     const wiersz = screen.getAllByTestId('mvd-wyn-wiersz')[0];
-    // Kolejność kolumn: [stratyA, stratyB, mocA, mocB].
+    // Kolejność kolumn źródłowych: [stratyA, stratyB, mocA, mocB, qA, qB]
+    // (dwie ostatnie = moc bierna gałęzi dołożona w KD-1/L-12).
     const przyciski = within(wiersz).getAllByRole('button', { name: WZORZEC_STRINGS.pokazDowod });
-    expect(przyciski).toHaveLength(4);
+    expect(przyciski).toHaveLength(6);
     fireEvent.doubleClick(przyciski[1]); // stratyB
     expect(useShellStore.getState().wynikiTab).toBe('dowod');
     expect(useShellStore.getState().wynikiTabElement).toBe('run-b');
@@ -338,5 +355,66 @@ describe('EkranPorownania — wskazanie elementu (F-K4, znalezisko Z4)', () => {
       name: 'LINIA-GPZ-ST1',
     });
     expect(useShellStore.getState().activeSpace).toBe('schemat');
+  });
+});
+
+describe('EkranPorownania — filtr „pokaż tylko różnice" (KD-1 / L-14)', () => {
+  it('domyślnie pokazuje wszystkie wiersze, po zaznaczeniu ukrywa wiersze bez różnic', async () => {
+    mockCompare.mockResolvedValue(
+      comparisonFixture({
+        bus_diffs: [
+          busDiffFixture({ bus_id: 'SZYNA-ROZNA' }),
+          busDiffFixture({
+            bus_id: 'SZYNA-IDENTYCZNA',
+            delta_v_pu: 0,
+            delta_angle_deg: 0,
+            delta_p_mw: 0,
+            delta_q_mvar: 0,
+          }),
+        ],
+      }),
+    );
+    render(<EkranPorownania {...props()} />);
+    await wykonajPorownanie();
+
+    expect(screen.getAllByTestId('mvd-wyn-wiersz')).toHaveLength(2);
+
+    fireEvent.click(screen.getByTestId('mvd-por-filtr-roznice'));
+
+    const wiersze = screen.getAllByTestId('mvd-wyn-wiersz');
+    expect(wiersze).toHaveLength(1);
+    expect(wiersze[0]).toHaveTextContent('SZYNA-ROZNA');
+  });
+
+  it('brak jakichkolwiek różnic → uczciwy stan zerowy filtru (nie „brak danych")', async () => {
+    mockCompare.mockResolvedValue(
+      comparisonFixture({
+        bus_diffs: [
+          busDiffFixture({
+            bus_id: 'SZYNA-IDENTYCZNA',
+            delta_v_pu: 0,
+            delta_angle_deg: 0,
+            delta_p_mw: 0,
+            delta_q_mvar: 0,
+          }),
+        ],
+      }),
+    );
+    render(<EkranPorownania {...props()} />);
+    await wykonajPorownanie();
+    fireEvent.click(screen.getByTestId('mvd-por-filtr-roznice'));
+
+    expect(screen.getByTestId('mvd-por-szyny-puste')).toHaveTextContent(
+      POROWNANIE_STRINGS.filtrPusto,
+    );
+  });
+
+  it('zakładka Ranking nie ma filtru różnic (ranking to problemy, nie wiersze A/B)', async () => {
+    render(<EkranPorownania {...props()} />);
+    await wykonajPorownanie();
+    expect(screen.getByTestId('mvd-por-filtr')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('mvd-por-tab-ranking'));
+    expect(screen.queryByTestId('mvd-por-filtr')).toBeNull();
   });
 });

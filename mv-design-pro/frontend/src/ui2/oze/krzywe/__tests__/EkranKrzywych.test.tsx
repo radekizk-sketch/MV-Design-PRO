@@ -182,3 +182,97 @@ describe('EkranKrzywych — tryb ekspercki (identyfikatory)', () => {
     expect(eksp).toHaveTextContent('pse');
   });
 });
+
+// Granica modułu klienta persystencji DER (K5-B) — PATCH mockowany, klasa błędu
+// zachowana (komponent robi `instanceof` przy uczciwym komunikacie). `vi.mock`
+// jest hoistowany na szczyt modułu, więc rejestracja MUSI żyć na poziomie pliku.
+const patchBindings = vi.fn();
+vi.mock('../../../../ui/sld/v2/canvas/derPersistenceApi', () => {
+  class DerPersistenceApiError extends Error {}
+  return {
+    DerPersistenceApiError,
+    patchDerCatalogBindings: (...args: unknown[]) => patchBindings(...args),
+  };
+});
+
+describe('EkranKrzywych — przypisanie krzywych do modułu DER (K5-B / H-3 pkt 2)', () => {
+  async function przygotujModulIWynik() {
+    const { useStationDerStore } = await import('../../../../ui/network-build/station-der');
+    const { useAppStateStore } = await import('../../../../ui/app-state');
+    useStationDerStore.getState().reset();
+    useStationDerStore.getState().attachDer({
+      id: 'der-1',
+      project_id: 'proj-1',
+      station_id: 'st-1',
+      der_kind: 'PV',
+      name: 'PV Stacja 1',
+      connection_side: 'nN',
+    });
+    useAppStateStore.setState({ activeProjectId: 'proj-1', activeCaseId: 'case-1' } as never);
+
+    pobierzPokrycie.mockResolvedValue(widokPokryteFixture());
+    await wczytajISkonfiguruj();
+    fireEvent.click(screen.getByTestId('mvd-krzywe-oblicz'));
+    await screen.findByTestId('mvd-krzywe-wynik');
+    return { useStationDerStore, useAppStateStore };
+  }
+
+  it('zapis wysyła WYŁĄCZNIE wybrane krzywe (pominięcie ≠ null) i aktualizuje profil modułu', async () => {
+    const { useStationDerStore, useAppStateStore } = await przygotujModulIWynik();
+    patchBindings.mockResolvedValue({});
+
+    // Realna ścieżka: wybór modułu, wybór krzywej LVRT, natywny klik zapisu.
+    fireEvent.change(screen.getByTestId('mvd-krzywe-wiazania-modul'), {
+      target: { value: 'der-1' },
+    });
+    fireEvent.change(screen.getByTestId('mvd-krzywe-wiazania-lvrt'), {
+      target: { value: 'lvrt_pse_b' },
+    });
+    fireEvent.click(screen.getByTestId('mvd-krzywe-wiazania-zapisz'));
+
+    await vi.waitFor(() =>
+      expect(patchBindings).toHaveBeenCalledWith('proj-1', 'case-1', 'der-1', {
+        lvrt_curve_ref: 'lvrt_pse_b',
+      }),
+    );
+    // Rekord warsztatu zsynchronizowany — reguła gotowości widzi krzywą od razu.
+    // (waitFor: synchronizacja następuje PO rozstrzygnięciu promisa PATCH.)
+    await vi.waitFor(() =>
+      expect(
+        useStationDerStore.getState().ders['der-1'].profiles.lvrt_curve_ref,
+      ).toBe('lvrt_pse_b'),
+    );
+
+    useStationDerStore.getState().reset();
+    useAppStateStore.setState({ activeProjectId: null, activeCaseId: null } as never);
+  });
+
+  it('zapis bez żadnej wybranej krzywej jest odmową z powodem (bez pustego PATCH)', async () => {
+    const { useStationDerStore, useAppStateStore } = await przygotujModulIWynik();
+
+    fireEvent.change(screen.getByTestId('mvd-krzywe-wiazania-modul'), {
+      target: { value: 'der-1' },
+    });
+    fireEvent.click(screen.getByTestId('mvd-krzywe-wiazania-zapisz'));
+
+    expect(await screen.findByTestId('mvd-krzywe-wiazania-blad')).toHaveTextContent(
+      'Wybierz przynajmniej jedną krzywą',
+    );
+    expect(patchBindings).not.toHaveBeenCalled();
+
+    useStationDerStore.getState().reset();
+    useAppStateStore.setState({ activeProjectId: null, activeCaseId: null } as never);
+  });
+
+  it('bez modułów w modelu sekcja pokazuje uczciwy stan zamiast pickera', async () => {
+    const { useStationDerStore } = await import('../../../../ui/network-build/station-der');
+    useStationDerStore.getState().reset();
+    pobierzPokrycie.mockResolvedValue(widokPokryteFixture());
+    await wczytajISkonfiguruj();
+    fireEvent.click(screen.getByTestId('mvd-krzywe-oblicz'));
+    await screen.findByTestId('mvd-krzywe-wynik');
+
+    expect(screen.getByTestId('mvd-krzywe-wiazania-brak-modulow')).toBeInTheDocument();
+    expect(screen.queryByTestId('mvd-krzywe-wiazania-modul')).not.toBeInTheDocument();
+  });
+});

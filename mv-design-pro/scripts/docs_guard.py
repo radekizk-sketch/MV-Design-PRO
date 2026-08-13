@@ -16,7 +16,6 @@ import re
 import sys
 from pathlib import Path
 
-
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 REPO_ROOT = PROJECT_ROOT.parent
 
@@ -223,9 +222,7 @@ def check_canonical_index() -> list[str]:
     violations: list[str] = []
     for rel_path in CANONICAL_INDEX_REQUIRED_REFERENCES:
         if rel_path not in linked_targets:
-            violations.append(
-                f"  docs/INDEX_KANONICZNY.md missing binding reference -> {rel_path}"
-            )
+            violations.append(f"  docs/INDEX_KANONICZNY.md missing binding reference -> {rel_path}")
 
     lowered = content.lower()
     for phrase in CANONICAL_INDEX_FORBIDDEN_PHRASES:
@@ -253,11 +250,15 @@ def _looks_like_repo_reference(candidate: str) -> bool:
     return True
 
 
-def _check_doc_reference_target(base_dir: Path, display: str, line_number: int, target: str) -> str | None:
+def _check_doc_reference_target(
+    base_dir: Path, display: str, line_number: int, target: str
+) -> str | None:
     link_path = target.split("#", 1)[0].strip()
     if not _looks_like_repo_reference(link_path):
         return None
-    resolved = (REPO_ROOT / link_path) if link_path.startswith(".github/") else (PROJECT_ROOT / link_path)
+    resolved = (
+        (REPO_ROOT / link_path) if link_path.startswith(".github/") else (PROJECT_ROOT / link_path)
+    )
     if resolved.exists():
         return None
     return f"  {display}:{line_number}: missing repo reference -> {link_path}"
@@ -279,13 +280,69 @@ def check_stage_doc_file_references(project_root: Path | None = None) -> list[st
 
         for line_number, line in enumerate(content.splitlines(), start=1):
             for match in INLINE_CODE_PATTERN.finditer(line):
-                violation = _check_doc_reference_target(path.parent, display, line_number, match.group(1))
+                violation = _check_doc_reference_target(
+                    path.parent, display, line_number, match.group(1)
+                )
                 if violation:
                     violations.append(violation)
             for match in MD_LINK_PATTERN.finditer(line):
-                violation = _check_doc_reference_target(path.parent, display, line_number, match.group(2))
+                violation = _check_doc_reference_target(
+                    path.parent, display, line_number, match.group(2)
+                )
                 if violation:
                     violations.append(violation)
+
+    return violations
+
+
+#: Audyt jakości SLD — wiersz znaleziska bez statusu jest ZAKAZANY.
+#:
+#: DLACZEGO MECHANICZNIE: „100% uruchomienia" (pkt 3 dokumentu przekazania)
+#: deklaruje, że żaden wiersz audytu nie zostaje bez statusu. Do 2026-08-07 była
+#: to deklaracja bez sprawdzenia — pomiar znalazł DZIEWIĘĆ wierszy bez znacznika.
+#: Wszystkie okazały się obserwacjami pozytywnymi (nie było czego zamykać), ale
+#: czytający nie miał jak ich odróżnić od znalezisk porzuconych, a przy 46
+#: wierszach nikt tego nie przejdzie ręcznie drugi raz. Deklaracja bez strażnika
+#: jest groźniejsza od samego braku, bo wyłącza czujność (reguła KLASA §4).
+SLD_AUDIT_DOC = "docs/sld/AUDYT_JAKOSCI_SLD_2026-08.md"
+#: Wiersz tabeli otwierany identyfikatorem znaleziska: `| C-14 |`, `| W-1 |`.
+SLD_AUDIT_ROW_PATTERN = re.compile(r"^\|\s*([A-Z]{1,3}-\d+)\s*\|")
+#: Statusy DOZWOLONE. Lista zamknięta świadomie: każdy nowy status to decyzja,
+#: która ma przejść przez ten plik, a nie wejść bokiem w treści wiersza.
+SLD_AUDIT_STATUSES = ("ZAMKNIĘTE", "CZĘŚCIOWO", "OTWARTE", "OBSERWACJA POZYTYWNA")
+#: Zapadka na strażnika, który przestał widzieć tabelę (zmiana formatu, podział
+#: pliku): pusty skan musi być błędem, nie ciszą. Audyt ma 46 wierszy.
+SLD_AUDIT_MIN_ROWS = 40
+
+
+def check_sld_audit_row_status(project_root: Path | None = None) -> list[str]:
+    """Każdy wiersz znaleziska audytu SLD niesie status z listy zamkniętej."""
+    root = project_root or PROJECT_ROOT
+    path = root / SLD_AUDIT_DOC
+    content = _read_text(path)
+    if content is None:
+        return [f"{SLD_AUDIT_DOC}: nie da się odczytać dokumentu audytu"]
+
+    violations: list[str] = []
+    wierszy = 0
+    for line_number, line in enumerate(content.splitlines(), start=1):
+        match = SLD_AUDIT_ROW_PATTERN.match(line)
+        if not match:
+            continue
+        wierszy += 1
+        opis = line.split("|")[2] if line.count("|") > 2 else ""
+        if not any(status in opis for status in SLD_AUDIT_STATUSES):
+            violations.append(
+                f"{SLD_AUDIT_DOC}:{line_number}: wiersz {match.group(1)} bez statusu "
+                f"(dozwolone: {', '.join(SLD_AUDIT_STATUSES)})"
+            )
+
+    if wierszy < SLD_AUDIT_MIN_ROWS:
+        violations.append(
+            f"{SLD_AUDIT_DOC}: skan znalazł {wierszy} wierszy znalezisk "
+            f"(oczekiwane co najmniej {SLD_AUDIT_MIN_ROWS}) — format tabeli się zmienił "
+            f"i strażnik przestał cokolwiek sprawdzać"
+        )
 
     return violations
 
@@ -331,7 +388,18 @@ def main() -> int:
 
     stage_ref_violations = check_stage_doc_file_references()
     if stage_ref_violations:
-        _print_block("DOCS GUARD: STAGE DOCS CONTAIN MISSING REPO REFERENCES", stage_ref_violations)
+        _print_block(
+            "DOCS GUARD: STAGE DOCS CONTAIN MISSING REPO REFERENCES",
+            stage_ref_violations,
+        )
+        all_ok = False
+
+    sld_audit_violations = check_sld_audit_row_status()
+    if sld_audit_violations:
+        _print_block(
+            "DOCS GUARD: WIERSZE AUDYTU SLD BEZ STATUSU",
+            sld_audit_violations,
+        )
         all_ok = False
 
     if all_ok:

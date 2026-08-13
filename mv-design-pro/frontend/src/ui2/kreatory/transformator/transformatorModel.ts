@@ -14,7 +14,7 @@ import type { TransformerType } from '../../../ui/catalog/types';
 
 export type RegulationType = 'NONE' | 'DETC' | 'OLTC';
 export type RegulatedWinding = 'HV' | 'LV';
-export type ControlMode = 'MANUAL' | 'AUTO';
+export type ControlMode = 'MANUAL' | 'AUTOMATIC';
 
 export interface TransformatorFormData {
   hv_bus_ref: string;
@@ -72,7 +72,7 @@ export function walidujFormularz(data: TransformatorFormData): BladPola[] {
     if (data.tap_step_percent <= 0) {
       errors.push({ field: 'tap_step_percent', message: 'Krok zaczepu musi być dodatni.' });
     }
-    if (data.regulation_type === 'OLTC' && data.control_mode === 'AUTO') {
+    if (data.regulation_type === 'OLTC' && data.control_mode === 'AUTOMATIC') {
       if (!(typeof data.voltage_setpoint_kv === 'number' && data.voltage_setpoint_kv > 0)) {
         errors.push({ field: 'voltage_setpoint_kv', message: 'Regulacja automatyczna wymaga napięcia zadanego.' });
       }
@@ -167,7 +167,7 @@ export function zbudujPayload(
     payload.transformer_tap_max_position = data.tap_max_position;
     payload.transformer_tap_step_percent = data.tap_step_percent;
     payload.transformer_control_mode = data.control_mode;
-    if (data.regulation_type === 'OLTC' && data.control_mode === 'AUTO') {
+    if (data.regulation_type === 'OLTC' && data.control_mode === 'AUTOMATIC') {
       if (typeof data.voltage_setpoint_kv === 'number') {
         payload.transformer_voltage_setpoint_kv = data.voltage_setpoint_kv;
       }

@@ -8,6 +8,7 @@ GET  /projects/{project_id}/export/history     — historia eksportów (timestam
 
 from __future__ import annotations
 
+import threading
 from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
@@ -31,6 +32,7 @@ from domain.project_archive import (
     archive_to_dict,
 )
 from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile
+from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/projects", tags=["incremental-archive"])
@@ -45,6 +47,43 @@ router = APIRouter(prefix="/projects", tags=["incremental-archive"])
 _export_history: dict[str, list[ExportHistoryEntry]] = {}  # type: ignore[name-defined]
 _last_fingerprints: dict[str, ArchiveFingerprints] = {}
 _last_full_archive: dict[str, ProjectArchive] = {}
+
+# Blokady stanu przyrostowego — JEDNA na projekt.
+_blokady_projektow: dict[str, threading.RLock] = {}
+_rejestr_blokad = threading.Lock()
+
+
+def _blokada_projektu(project_id: str) -> threading.RLock:
+    """Blokada CALEGO cyklu odczyt→przeliczenie→zapis stanu przyrostowego projektu.
+
+    DLUG, KTORY TO ZAMYKA (os wspolbieznosci 10x, 2026-08-05). Eksport i import
+    przyrostowy prowadza ten sam cykl na trzech slownikach modulu
+    (`_last_fingerprints`, `_last_full_archive`, `_export_history`): czytaja stan
+    POPRZEDNIEGO eksportu, licza wzgledem niego delte i nadpisuja stan nowym
+    archiwum. Sekwencja nie byla niczym serializowana.
+
+    WYSCIG ISTNIAL JUZ PRZED TA KARTA — `POST /export/incremental` jest
+    zdefiniowany jako `def`, wiec Starlette od zawsze oddaje go do PULI WATKOW.
+    Dwa rownolegle eksporty tego samego projektu czytaly te sama baze i liczyly
+    delte wzgledem niej; wygrywal ten, ktory zapisal jako ostatni, a delta
+    drugiego opisywala zmiany wzgledem bazy, ktorej juz nie ma w stanie. Kolejny
+    eksport liczyl sie wtedy wzgledem zlego punktu odniesienia — czyli delta
+    MILCZALA o sekcjach, ktore naprawde sie zmienily. Offload importu (ta karta)
+    dokłada drugiego mutujacego, wiec wyscig przestaje byc teoretyczny.
+
+    `threading.RLock`, nie `asyncio.Lock`: obie koncowki wykonuja sie w watkach
+    puli, a nie na petli zdarzen. Reentrantny, bo cykl importu wola
+    `_get_project_archive_via_service`, ktore moze siegnac po ten sam stan.
+    ZAKRES: ochrona W PROCESIE — ten magazyn i tak jest adapterem lokalnym
+    („w produkcji: tabela w PostgreSQL / MongoDB"), wiec blokada
+    miedzyprocesowa nalezy do tamtej decyzji, nie do tej.
+    """
+    with _rejestr_blokad:
+        blokada = _blokady_projektow.get(project_id)
+        if blokada is None:
+            blokada = threading.RLock()
+            _blokady_projektow[project_id] = blokada
+        return blokada
 
 
 # ============================================================================
@@ -215,46 +254,51 @@ def export_incremental(
     """
     pid = str(project_id)
 
-    current_archive = _get_project_archive_via_service(project_id, uow_factory)
+    # CALY cykl odczyt→przeliczenie→zapis pod blokada projektu: delta liczona
+    # wzgledem `base_fp` musi trafic do stanu ZANIM inny eksport odczyta baze,
+    # inaczej kolejna delta powstanie wzgledem punktu odniesienia, ktory nigdy
+    # nie zostal zapisany (patrz `_blokada_projektu`).
+    with _blokada_projektu(pid):
+        current_archive = _get_project_archive_via_service(project_id, uow_factory)
 
-    # Pobierz fingerprints z ostatniego eksportu
-    base_fp = _last_fingerprints.get(pid)
+        # Pobierz fingerprints z ostatniego eksportu
+        base_fp = _last_fingerprints.get(pid)
 
-    if base_fp is None:
-        # Pierwszy eksport — ustaw bazę i zwróć pustą deltę
-        base_fp = current_archive.fingerprints
+        if base_fp is None:
+            # Pierwszy eksport — ustaw bazę i zwróć pustą deltę
+            base_fp = current_archive.fingerprints
 
-    # Zbuduj archiwum przyrostowe
-    now_ts = datetime.now(UTC).isoformat()
-    incremental = build_incremental_archive(base_fp, current_archive, base_timestamp=now_ts)
+        # Zbuduj archiwum przyrostowe
+        now_ts = datetime.now(UTC).isoformat()
+        incremental = build_incremental_archive(base_fp, current_archive, base_timestamp=now_ts)
 
-    # Serializuj
-    delta_bytes = serialize_incremental(incremental)
+        # Serializuj
+        delta_bytes = serialize_incremental(incremental)
 
-    # Serializuj pełne archiwum dla porównania rozmiaru
-    import io
-    import json
-    import zipfile
+        # Serializuj pełne archiwum dla porównania rozmiaru
+        import io
+        import json
+        import zipfile
 
-    full_json = json.dumps(archive_to_dict(current_archive), sort_keys=True, indent=2)
-    full_buf = io.BytesIO()
-    with zipfile.ZipFile(full_buf, "w", zipfile.ZIP_DEFLATED) as zf:
-        zf.writestr("archive.json", full_json)
-    full_bytes = full_buf.getvalue()
+        full_json = json.dumps(archive_to_dict(current_archive), sort_keys=True, indent=2)
+        full_buf = io.BytesIO()
+        with zipfile.ZipFile(full_buf, "w", zipfile.ZIP_DEFLATED) as zf:
+            zf.writestr("archive.json", full_json)
+        full_bytes = full_buf.getvalue()
 
-    export_result = compute_export_result(current_archive, incremental, full_bytes, delta_bytes)
+        export_result = compute_export_result(current_archive, incremental, full_bytes, delta_bytes)
 
-    # Aktualizuj stan
-    _last_fingerprints[pid] = current_archive.fingerprints
-    _last_full_archive[pid] = current_archive
+        # Aktualizuj stan
+        _last_fingerprints[pid] = current_archive.fingerprints
+        _last_full_archive[pid] = current_archive
 
-    # Zapisz historię
-    _record_export(
-        pid,
-        current_archive.fingerprints.archive_hash,
-        incremental.export_type.value,
-        export_result.sections_changed,
-    )
+        # Zapisz historię
+        _record_export(
+            pid,
+            current_archive.fingerprints.archive_hash,
+            incremental.export_type.value,
+            export_result.sections_changed,
+        )
 
     # Zwróć plik ZIP
     return Response(
@@ -290,6 +334,12 @@ async def import_incremental(
 
     Returns:
         Status importu z informacjami o nałożonych zmianach.
+
+    WSPÓŁBIEŻNOŚĆ: końcówka zostaje `async def`, bo czyta przesłany plik
+    (`await file.read()`). Wszystko po odczycie — rozpakowanie delty, pobranie
+    archiwum bazowego (zapytania do bazy) i nałożenie zmian — jest blokujące i
+    idzie do puli wątków; na pętli zdarzeń wstrzymywało obsługę WSZYSTKICH
+    pozostałych żądań na czas importu.
     """
     pid = str(project_id)
 
@@ -305,41 +355,49 @@ async def import_incremental(
     # Odczytaj zawartość
     delta_bytes = await file.read()
 
-    # Deserializuj deltę
-    try:
-        incremental = deserialize_incremental(delta_bytes)
-    except IncrementalStructureError as e:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Nieprawidłowa struktura archiwum przyrostowego: {e}",
+    def _naloz_delte() -> tuple[Any, int]:
+        # Deserializuj deltę
+        try:
+            incremental = deserialize_incremental(delta_bytes)
+        except IncrementalStructureError as e:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Nieprawidłowa struktura archiwum przyrostowego: {e}",
+            )
+        except IncrementalArchiveError as e:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Błąd archiwum przyrostowego: {e}",
+            )
+
+        # CALY cykl odczyt→nałożenie→zapis pod blokadą projektu: archiwum bazowe
+        # i zapis wyniku muszą być jedną sekcją krytyczną, inaczej równoległy
+        # eksport odczyta bazę sprzed importu i policzy deltę wobec stanu,
+        # którego już nie ma (patrz `_blokada_projektu`).
+        with _blokada_projektu(pid):
+            # Pobierz bazowe archiwum
+            base_archive = _last_full_archive.get(pid)
+            if base_archive is None:
+                base_archive = _get_project_archive_via_service(project_id, uow_factory)
+
+            # Nałóż deltę
+            try:
+                result_archive = apply_incremental_archive(base_archive, incremental)
+            except BaseHashMismatchError as e:
+                raise HTTPException(
+                    status_code=409,
+                    detail=f"Niezgodność hash bazowego archiwum: {e}",
+                )
+
+            # Aktualizuj stan
+            _last_fingerprints[pid] = result_archive.fingerprints
+            _last_full_archive[pid] = result_archive
+
+        return result_archive, sum(
+            1 for d in incremental.deltas if d.status != SectionChangeStatus.UNCHANGED
         )
-    except IncrementalArchiveError as e:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Błąd archiwum przyrostowego: {e}",
-        )
 
-    # Pobierz bazowe archiwum
-    base_archive = _last_full_archive.get(pid)
-    if base_archive is None:
-        base_archive = _get_project_archive_via_service(project_id, uow_factory)
-
-    # Nałóż deltę
-    try:
-        result_archive = apply_incremental_archive(base_archive, incremental)
-    except BaseHashMismatchError as e:
-        raise HTTPException(
-            status_code=409,
-            detail=f"Niezgodność hash bazowego archiwum: {e}",
-        )
-
-    # Aktualizuj stan
-    _last_fingerprints[pid] = result_archive.fingerprints
-    _last_full_archive[pid] = result_archive
-
-    sections_applied = sum(
-        1 for d in incremental.deltas if d.status != SectionChangeStatus.UNCHANGED
-    )
+    result_archive, sections_applied = await run_in_threadpool(_naloz_delte)
 
     return IncrementalImportResponse(
         status="SUCCESS",

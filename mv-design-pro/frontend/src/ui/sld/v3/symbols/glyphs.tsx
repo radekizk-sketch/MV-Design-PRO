@@ -9,7 +9,7 @@
 
 import { SYMBOL_DEFS, type SymbolId } from './defs';
 import { BASE_STROKE } from '../theme/colorTokens';
-import { MINI_RMU, DER_MARKER_SHAPE, type MiniRmuLineTopology, type StationDerGlyphKind } from './miniRmuGrammar';
+import { MINI_RMU, MINI_GPZ, DER_MARKER_SHAPE, type MiniRmuLineTopology, type StationDerGlyphKind } from './miniRmuGrammar';
 
 /** SCHEMAT-10 S3 (V12K-135): wartość TERAZ z `theme/colorTokens.ts`
  *  (`BASE_STROKE`) — JEDNO źródło prawdy, ta sama wartość co dotąd, zero
@@ -29,6 +29,25 @@ export interface GlyphProps {
   readonly x: number;
   readonly y: number;
   readonly state?: SwitchState;
+  /**
+   * PROPORCJE (zgłoszenie właściciela 2026-08-07 „brak proporcji, grubości")
+   * — MNOŻNIK WAGI KRESKI glifu, ten sam, którym S9-8 wzmacnia tory
+   * (`compose/preview.tsx` `strokeScaleFactor`). Brak ⇒ 1, czyli rysunek
+   * DOKŁADNIE jak przed kartą (harness kompozycji, miniatury paneli,
+   * eksport bez kamery).
+   *
+   * DLACZEGO GLIF GO PRZYJMUJE, A NIE LICZY. Kompensacja zależy od SKALI
+   * KAMERY, której glif nie zna i znać nie powinien (ta sama granica, dla
+   * której plan etykiet mieszka w warstwie renderu, a nie w scenie). Kanwa
+   * podaje gotową liczbę; dwie kopie formuły — jedna dla torów, druga dla
+   * glifów — rozjechałyby się przy pierwszej zmianie progu (reguła KLASA §3).
+   *
+   * PRZED tą kartą glify rysowały się stałą ŚWIATA bez żadnej kompensacji,
+   * więc przy kadrze „Dopasuj widok" (skala 0,133) szyna miała na ekranie
+   * 2,50 px, a kreska aparatu 0,16 px — stosunek 15,70× zamiast projektowych
+   * 3,33× (pomiar `scripts/pomiar_proporcje.tsx`).
+   */
+  readonly strokeScale?: number;
   /** Rodzaj uziemienia punktu neutralnego (V12K-219) — WYŁĄCZNIE dla glifu
    *  `neutralEarthing`; pozostałe glify go ignorują (wspólny `GlyphProps`). */
   readonly earthingKind?: 'resistor' | 'coil' | 'direct' | 'isolated';
@@ -48,6 +67,16 @@ export interface GlyphProps {
    *  ostrzeżenia (np. „67N: brak VT") żyje w `missingData`/inspektorze, NIE
    *  na scenie jako tekst — glif niesie WYŁĄCZNIE sygnał obecności. */
   readonly hasTopologyWarning?: boolean;
+  /** TR2W-BEZ-POLA (§0.C.5): `true` gdy transformator SN/nN wisi na szynie SN
+   *  BEZ skonfigurowanego pola transformatorowego — WYŁĄCZNIE
+   *  `Transformer2WGlyph` czyta to pole (jak `labelLines`/`hasTopologyWarning`
+   *  dla przekaźnika). Rysuje MAŁY marker „!" w narożniku strony WN (geometria
+   *  WEWNĄTRZ bboxa 32×40, w polu wolnym od okręgów uzwojeń — zero nowej
+   *  rezerwacji width/height w `layout/measure.ts`). Symbol transformatora
+   *  POZOSTAJE symbolem transformatora: marker jest ADNOTACJĄ stanu danych, nie
+   *  podmianą na symbol błędu. Pełne zdanie („Brak skonfigurowanego pola
+   *  transformatorowego SN") niesie pasmo nazw stacji i `stopNotes` sceny. */
+  readonly hasFieldGapWarning?: boolean;
   /** Recenzja NO-GO 2026-07-17 pkt 11: litera mierzonej WIELKOŚCI miernika
    *  (A = prąd z CT, V = napięcie z VT) — WYŁĄCZNIE `MeterGlyph` czyta to
    *  pole (wzorzec `labelLines`). Brak danych ⇒ fallback „M" (rozstrzygany
@@ -87,6 +116,15 @@ export interface GlyphProps {
    *  odgałęzienia na szynie (kabel zejścia rysuje scena; pełne pole
    *  odgałęźne od L1 — uzasadnienie przestrzenne w `miniRmuGrammar.ts`). */
   readonly stationLineTopology?: MiniRmuLineTopology;
+  /** KD-5: liczba SEKCJI szyn SN bloku GPZ — WYŁĄCZNIE `GpzCollapsedGlyph`
+   *  (wzór `stationSectioned`). >1 ⇒ sprzęgło sekcyjne w sylwetce. */
+  readonly gpzSections?: number;
+  /** KD-5: liczba transformatorów WN/SN bloku GPZ — 0 ⇒ sylwetka bez uzwojeń
+   *  (uczciwy obraz danych: GPZ bez TR w modelu nie dostaje fantomowego TR). */
+  readonly gpzTransformers?: number;
+  /** KD-5: liczba PÓL ODEJŚCIOWYCH (liniowych) SN bloku GPZ — rysowanych do
+   *  `MINI_GPZ.polaOdejsciowe.xs.length` (uzasadnienie limitu tamże). */
+  readonly gpzFeeders?: number;
 }
 
 function glyphGroupProps(id: SymbolId, props: GlyphProps) {
@@ -101,6 +139,30 @@ function stroke(props: GlyphProps): string {
   return props.stroke ?? V3_STROKE_BASE;
 }
 
+/**
+ * PROPORCJE — WAGA KRESKI glifu [px ŚWIATA] po kompensacji ekranowej.
+ * JEDYNE wejście po `strokeWidth` w tym pliku: KAŻDA kreska glifu (obrys
+ * aparatu, kreski wnętrza sylwetek, znaki DER) przechodzi przez tę funkcję,
+ * żeby wzmocnienie było JEDNORODNE — obrys wzmocniony przy nietkniętym
+ * wnętrzu dałby glif rozjeżdżający się przy oddaleniu (reguła KLASA §5:
+ * ten sam wzorzec w sąsiedniej funkcji tego samego pliku to ten sam defekt).
+ */
+function grubosc(props: GlyphProps, base: number): number {
+  const k = props.strokeScale;
+  return Number.isFinite(k) && (k as number) > 0 ? base * (k as number) : base;
+}
+
+/** PROPORCJE — ten sam mnożnik nałożony na CAŁY rekord wag sylwetki zwiniętej
+ *  (`MINI_RMU.stroke` / `MINI_GPZ.stroke`: tor, szyna, marker, obrys).
+ *  Jednorodnie, jednym przebiegiem — wzmocnienie samego toru przy nietkniętym
+ *  obrysie zmieniłoby WEWNĘTRZNE proporcje sylwetki, a nie tylko jej wagę
+ *  wobec reszty rysunku. */
+function skalujWagi<T extends Readonly<Record<string, number>>>(props: GlyphProps, wagi: T): T {
+  const wynik: Record<string, number> = {};
+  for (const klucz of Object.keys(wagi)) wynik[klucz] = grubosc(props, wagi[klucz]);
+  return wynik as unknown as T;
+}
+
 export function BreakerGlyph(props: GlyphProps): JSX.Element {
   const state = props.state ?? 'unknown';
   return (
@@ -110,10 +172,10 @@ export function BreakerGlyph(props: GlyphProps): JSX.Element {
         fill={state === 'closed' ? stroke(props) : 'none'}
         fillOpacity={state === 'unknown' ? 0.35 : 1}
         stroke={stroke(props)}
-        strokeWidth={V3_STROKE_APPARATUS}
+        strokeWidth={grubosc(props, V3_STROKE_APPARATUS)}
       />
-      <line x1={8} y1={0} x2={8} y2={2} stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
-      <line x1={8} y1={14} x2={8} y2={16} stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
+      <line x1={8} y1={0} x2={8} y2={2} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
+      <line x1={8} y1={14} x2={8} y2={16} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
     </g>
   );
 }
@@ -124,14 +186,14 @@ export function DisconnectorGlyph(props: GlyphProps): JSX.Element {
   const bladeEnd = state === 'open' ? { x: 15, y: 12 } : { x: 8, y: 18 };
   return (
     <g {...glyphGroupProps('disconnector', props)}>
-      <line x1={8} y1={0} x2={8} y2={6} stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
+      <line x1={8} y1={0} x2={8} y2={6} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
       <line
         x1={8} y1={6} x2={bladeEnd.x} y2={bladeEnd.y}
-        stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS}
+        stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)}
         strokeDasharray={state === 'unknown' ? '3 2' : undefined}
       />
-      <line x1={4} y1={18} x2={12} y2={18} stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
-      <line x1={8} y1={18} x2={8} y2={24} stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
+      <line x1={4} y1={18} x2={12} y2={18} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
+      <line x1={8} y1={18} x2={8} y2={24} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
     </g>
   );
 }
@@ -145,21 +207,21 @@ export function LoadBreakSwitchGlyph(props: GlyphProps): JSX.Element {
   const bladeEnd = state === 'open' ? { x: 15, y: 12 } : { x: 8, y: 18 };
   return (
     <g {...glyphGroupProps('loadBreakSwitch', props)}>
-      <line x1={8} y1={0} x2={8} y2={6} stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
+      <line x1={8} y1={0} x2={8} y2={6} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
       {/* Poprzeczka rozłącznika: krótka kreska PROSTOPADŁA do noża na jego
           swobodnym końcu (IEC 60617 S00504) — obraca się razem z nożem. */}
       {state === 'open' ? (
-        <line x1={13} y1={9} x2={17} y2={15} stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
+        <line x1={13} y1={9} x2={17} y2={15} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
       ) : (
-        <line x1={4} y1={14} x2={12} y2={14} stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
+        <line x1={4} y1={14} x2={12} y2={14} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
       )}
       <line
         x1={8} y1={6} x2={bladeEnd.x} y2={bladeEnd.y}
-        stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS}
+        stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)}
         strokeDasharray={state === 'unknown' ? '3 2' : undefined}
       />
-      <line x1={4} y1={18} x2={12} y2={18} stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
-      <line x1={8} y1={18} x2={8} y2={24} stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
+      <line x1={4} y1={18} x2={12} y2={18} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
+      <line x1={8} y1={18} x2={8} y2={24} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
     </g>
   );
 }
@@ -169,7 +231,7 @@ export function LoadBreakSwitchGlyph(props: GlyphProps): JSX.Element {
 export function LoadArrowGlyph(props: GlyphProps): JSX.Element {
   return (
     <g {...glyphGroupProps('loadArrow', props)}>
-      <line x1={8} y1={0} x2={8} y2={10} stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
+      <line x1={8} y1={0} x2={8} y2={10} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
       <path d="M 3 10 L 13 10 L 8 16 Z" fill={stroke(props)} stroke="none" />
     </g>
   );
@@ -180,13 +242,13 @@ export function EarthSwitchGlyph(props: GlyphProps): JSX.Element {
   const bladeEnd = state === 'open' ? { x: 15, y: 10 } : { x: 8, y: 14 };
   return (
     <g {...glyphGroupProps('earthSwitch', props)}>
-      <line x1={8} y1={0} x2={8} y2={4} stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
-      <line x1={8} y1={4} x2={bladeEnd.x} y2={bladeEnd.y} stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
-      <line x1={8} y1={14} x2={8} y2={17} stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
+      <line x1={8} y1={0} x2={8} y2={4} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
+      <line x1={8} y1={4} x2={bladeEnd.x} y2={bladeEnd.y} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
+      <line x1={8} y1={14} x2={8} y2={17} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
       {/* ⏚ IEC: trzy malejące kreski */}
-      <line x1={2} y1={17} x2={14} y2={17} stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
-      <line x1={4} y1={20} x2={12} y2={20} stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
-      <line x1={6} y1={23} x2={10} y2={23} stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
+      <line x1={2} y1={17} x2={14} y2={17} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
+      <line x1={4} y1={20} x2={12} y2={20} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
+      <line x1={6} y1={23} x2={10} y2={23} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
     </g>
   );
 }
@@ -221,7 +283,7 @@ export function NeutralEarthingGlyph(props: GlyphProps): JSX.Element {
         x2={8}
         y2={izolowana ? 5 : 8}
         stroke={stroke(props)}
-        strokeWidth={V3_STROKE_APPARATUS}
+        strokeWidth={grubosc(props, V3_STROKE_APPARATUS)}
       />
       {kind === 'resistor' && (
         <rect
@@ -231,7 +293,7 @@ export function NeutralEarthingGlyph(props: GlyphProps): JSX.Element {
           height={10}
           fill="none"
           stroke={stroke(props)}
-          strokeWidth={V3_STROKE_APPARATUS}
+          strokeWidth={grubosc(props, V3_STROKE_APPARATUS)}
         />
       )}
       {kind === 'coil' && (
@@ -239,15 +301,15 @@ export function NeutralEarthingGlyph(props: GlyphProps): JSX.Element {
           d="M 8 8 q 5 2.5 0 5 q -5 2.5 0 5"
           fill="none"
           stroke={stroke(props)}
-          strokeWidth={V3_STROKE_APPARATUS}
+          strokeWidth={grubosc(props, V3_STROKE_APPARATUS)}
         />
       )}
       {!izolowana && (
-        <line x1={8} y1={18} x2={8} y2={21} stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
+        <line x1={8} y1={18} x2={8} y2={21} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
       )}
-      <line x1={2} y1={21} x2={14} y2={21} stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
-      <line x1={4} y1={25} x2={12} y2={25} stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
-      <line x1={6} y1={29} x2={10} y2={29} stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
+      <line x1={2} y1={21} x2={14} y2={21} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
+      <line x1={4} y1={25} x2={12} y2={25} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
+      <line x1={6} y1={29} x2={10} y2={29} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
     </g>
   );
 }
@@ -256,14 +318,14 @@ export function FuseSwitchGlyph(props: GlyphProps): JSX.Element {
   const state = props.state ?? 'closed';
   return (
     <g {...glyphGroupProps('fuseSwitch', props)}>
-      <line x1={8} y1={0} x2={8} y2={6} stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
+      <line x1={8} y1={0} x2={8} y2={6} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
       {state === 'open'
-        ? <line x1={8} y1={6} x2={15} y2={12} stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
-        : <line x1={8} y1={6} x2={8} y2={10} stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />}
+        ? <line x1={8} y1={6} x2={15} y2={12} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
+        : <line x1={8} y1={6} x2={8} y2={10} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />}
       {/* wkładka bezpiecznikowa: prostokąt z żyłą */}
-      <rect x={5} y={10} width={6} height={12} fill="none" stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
-      <line x1={8} y1={10} x2={8} y2={22} stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
-      <line x1={8} y1={22} x2={8} y2={32} stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
+      <rect x={5} y={10} width={6} height={12} fill="none" stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
+      <line x1={8} y1={10} x2={8} y2={22} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
+      <line x1={8} y1={22} x2={8} y2={32} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
     </g>
   );
 }
@@ -271,10 +333,28 @@ export function FuseSwitchGlyph(props: GlyphProps): JSX.Element {
 export function Transformer2WGlyph(props: GlyphProps): JSX.Element {
   return (
     <g {...glyphGroupProps('transformer2W', props)}>
-      <line x1={16} y1={0} x2={16} y2={2} stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
-      <circle cx={16} cy={13} r={11} fill="none" stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
-      <circle cx={16} cy={27} r={11} fill="none" stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
-      <line x1={16} y1={38} x2={16} y2={40} stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
+      <line x1={16} y1={0} x2={16} y2={2} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
+      <circle cx={16} cy={13} r={11} fill="none" stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
+      <circle cx={16} cy={27} r={11} fill="none" stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
+      <line x1={16} y1={38} x2={16} y2={40} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
+      {/* TR2W-BEZ-POLA (§0.C.5): marker stanu NIEKOMPLETNEGO — transformator
+       *  przyłączony do szyny SN bez pola transformatorowego. Narożnik strony
+       *  WN (u góry, przy punkcie przyłączenia — tam wchodzi pion z szyny),
+       *  poza obrysem uzwojeń (okrąg r=11 wokół (16,13): odległość środka
+       *  markera od środka uzwojenia to 15,0 > 11+3,6), więc nie zasłania
+       *  symbolu i nie wymaga ani jednego piksela nowej rezerwacji.
+       *  Mono jak reszta glifu bazowego — kolor nie koduje tu stanu fizycznego. */}
+      {props.hasFieldGapWarning && (
+        <g data-field-gap-warning="true">
+          <circle cx={28} cy={4} r={3.6} fill="none" stroke={stroke(props)} strokeWidth={grubosc(props, 0.9)} />
+          <text
+            x={28} y={6.2} textAnchor="middle"
+            fill={stroke(props)} fontFamily="sans-serif" fontSize={6} fontWeight={700}
+          >
+            !
+          </text>
+        </g>
+      )}
     </g>
   );
 }
@@ -282,8 +362,8 @@ export function Transformer2WGlyph(props: GlyphProps): JSX.Element {
 export function CableHeadGlyph(props: GlyphProps): JSX.Element {
   return (
     <g {...glyphGroupProps('cableHead', props)}>
-      <path d="M2,14 L14,14 L8,2 Z" fill="none" stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
-      <line x1={8} y1={14} x2={8} y2={16} stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
+      <path d="M2,14 L14,14 L8,2 Z" fill="none" stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
+      <line x1={8} y1={14} x2={8} y2={16} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
     </g>
   );
 }
@@ -291,9 +371,9 @@ export function CableHeadGlyph(props: GlyphProps): JSX.Element {
 export function JointSleeveGlyph(props: GlyphProps): JSX.Element {
   return (
     <g {...glyphGroupProps('jointSleeve', props)}>
-      <line x1={0} y1={8} x2={3} y2={8} stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
-      <rect x={3} y={5} width={10} height={6} fill={stroke(props)} fillOpacity={0.85} stroke={stroke(props)} strokeWidth={0.8} />
-      <line x1={13} y1={8} x2={16} y2={8} stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
+      <line x1={0} y1={8} x2={3} y2={8} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
+      <rect x={3} y={5} width={10} height={6} fill={stroke(props)} fillOpacity={0.85} stroke={stroke(props)} strokeWidth={grubosc(props, 0.8)} />
+      <line x1={13} y1={8} x2={16} y2={8} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
     </g>
   );
 }
@@ -302,9 +382,9 @@ export function NoPointGlyph(props: GlyphProps): JSX.Element {
   return (
     <g {...glyphGroupProps('noPoint', props)}>
       {/* jawna PRZERWA toru + okrąg łącznika otwartego */}
-      <line x1={0} y1={8} x2={4} y2={8} stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
-      <line x1={12} y1={8} x2={16} y2={8} stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
-      <circle cx={8} cy={8} r={3.5} fill="none" stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
+      <line x1={0} y1={8} x2={4} y2={8} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
+      <line x1={12} y1={8} x2={16} y2={8} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
+      <circle cx={8} cy={8} r={3.5} fill="none" stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
     </g>
   );
 }
@@ -329,11 +409,42 @@ export function BranchJunctionGlyph(props: GlyphProps): JSX.Element {
   );
 }
 
+/**
+ * ODG-RYSUNEK: ZŁĄCZE KABLOWE SN (ZKSN) jako punkt odgałęźny na odcinku
+ * magistrali. Obudowa aparatu (prostokąt IEC 60617) z węzłem toru w środku:
+ * tor magistrali wchodzi z lewej (port `w`), wychodzi w prawo (port `e`),
+ * odgałęzienie schodzi w dół (port `s`). Odróżnialny od zwykłego węzła trasy
+ * (`junction` — sama kropka) OBUDOWĄ, nie rozmiarem (patrz `symbols/defs.ts`).
+ */
+export function BranchCabinetGlyph(props: GlyphProps): JSX.Element {
+  return (
+    <g {...glyphGroupProps('branchCabinet', props)}>
+      <rect x={3} y={3} width={10} height={10} fill="none" stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
+      <circle cx={8} cy={8} r={2.5} fill={stroke(props)} />
+    </g>
+  );
+}
+
+/**
+ * ODG-RYSUNEK: SŁUP ROZGAŁĘŹNY linii napowietrznej SN jako punkt odgałęźny.
+ * Węzeł toru (kropka) z sylwetką słupa (trzon w górę + poprzeczka) — ten sam
+ * układ portów co `branchCabinet`, inny obiekt terenowy, więc inny glif.
+ */
+export function BranchPoleGlyph(props: GlyphProps): JSX.Element {
+  return (
+    <g {...glyphGroupProps('branchPole', props)}>
+      <line x1={8} y1={2} x2={8} y2={8} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
+      <line x1={3} y1={2} x2={13} y2={2} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
+      <circle cx={8} cy={8} r={2.5} fill={stroke(props)} />
+    </g>
+  );
+}
+
 export function CurrentTransformerGlyph(props: GlyphProps): JSX.Element {
   return (
     <g {...glyphGroupProps('currentTransformer', props)}>
-      <line x1={8} y1={0} x2={8} y2={24} stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
-      <circle cx={8} cy={12} r={6} fill="none" stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
+      <line x1={8} y1={0} x2={8} y2={24} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
+      <circle cx={8} cy={12} r={6} fill="none" stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
     </g>
   );
 }
@@ -341,9 +452,9 @@ export function CurrentTransformerGlyph(props: GlyphProps): JSX.Element {
 export function VoltageTransformerGlyph(props: GlyphProps): JSX.Element {
   return (
     <g {...glyphGroupProps('voltageTransformer', props)}>
-      <line x1={8} y1={0} x2={8} y2={5} stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
-      <circle cx={8} cy={11} r={5.5} fill="none" stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
-      <circle cx={8} cy={17} r={5.5} fill="none" stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
+      <line x1={8} y1={0} x2={8} y2={5} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
+      <circle cx={8} cy={11} r={5.5} fill="none" stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
+      <circle cx={8} cy={17} r={5.5} fill="none" stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
     </g>
   );
 }
@@ -351,12 +462,12 @@ export function VoltageTransformerGlyph(props: GlyphProps): JSX.Element {
 export function SurgeArresterGlyph(props: GlyphProps): JSX.Element {
   return (
     <g {...glyphGroupProps('surgeArrester', props)}>
-      <line x1={8} y1={0} x2={8} y2={4} stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
-      <rect x={4} y={4} width={8} height={14} fill="none" stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
+      <line x1={8} y1={0} x2={8} y2={4} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
+      <rect x={4} y={4} width={8} height={14} fill="none" stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
       {/* strzałka udaru w dół */}
-      <path d="M8,6 L8,13 M8,13 L5.5,10.5 M8,13 L10.5,10.5" fill="none" stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
-      <line x1={8} y1={18} x2={8} y2={21} stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
-      <line x1={4} y1={21} x2={12} y2={21} stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
+      <path d="M8,6 L8,13 M8,13 L5.5,10.5 M8,13 L10.5,10.5" fill="none" stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
+      <line x1={8} y1={18} x2={8} y2={21} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
+      <line x1={4} y1={21} x2={12} y2={21} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
     </g>
   );
 }
@@ -364,8 +475,8 @@ export function SurgeArresterGlyph(props: GlyphProps): JSX.Element {
 function derFrame(props: GlyphProps, id: SymbolId, children: JSX.Element): JSX.Element {
   return (
     <g {...glyphGroupProps(id, props)}>
-      <line x1={16} y1={0} x2={16} y2={2} stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
-      <rect x={2} y={2} width={28} height={28} rx={2} fill="none" stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
+      <line x1={16} y1={0} x2={16} y2={2} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
+      <rect x={2} y={2} width={28} height={28} rx={2} fill="none" stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
       {children}
     </g>
   );
@@ -375,9 +486,9 @@ export function DerPvGlyph(props: GlyphProps): JSX.Element {
   // Falownik PV (IEC): przekątna DC/AC, po stronie DC panel, po AC sinusoida.
   return derFrame(props, 'derPv', (
     <g>
-      <line x1={2} y1={30} x2={30} y2={2} stroke={stroke(props)} strokeWidth={1} />
-      <path d="M6,8 h8 M6,11 h8 M6,14 h8" stroke={stroke(props)} strokeWidth={1} fill="none" />
-      <path d="M18,23 q3,-5 6,0 q3,5 6,0" stroke={stroke(props)} strokeWidth={1.2} fill="none" transform="translate(-4,0)" />
+      <line x1={2} y1={30} x2={30} y2={2} stroke={stroke(props)} strokeWidth={grubosc(props, 1)} />
+      <path d="M6,8 h8 M6,11 h8 M6,14 h8" stroke={stroke(props)} strokeWidth={grubosc(props, 1)} fill="none" />
+      <path d="M18,23 q3,-5 6,0 q3,5 6,0" stroke={stroke(props)} strokeWidth={grubosc(props, 1.2)} fill="none" transform="translate(-4,0)" />
     </g>
   ));
 }
@@ -386,10 +497,10 @@ export function DerBessGlyph(props: GlyphProps): JSX.Element {
   return derFrame(props, 'derBess', (
     <g>
       {/* ogniwo: długa i krótka płyta ×2 */}
-      <line x1={10} y1={10} x2={22} y2={10} stroke={stroke(props)} strokeWidth={1.6} />
-      <line x1={13} y1={14} x2={19} y2={14} stroke={stroke(props)} strokeWidth={1.6} />
-      <line x1={10} y1={18} x2={22} y2={18} stroke={stroke(props)} strokeWidth={1.6} />
-      <line x1={13} y1={22} x2={19} y2={22} stroke={stroke(props)} strokeWidth={1.6} />
+      <line x1={10} y1={10} x2={22} y2={10} stroke={stroke(props)} strokeWidth={grubosc(props, 1.6)} />
+      <line x1={13} y1={14} x2={19} y2={14} stroke={stroke(props)} strokeWidth={grubosc(props, 1.6)} />
+      <line x1={10} y1={18} x2={22} y2={18} stroke={stroke(props)} strokeWidth={grubosc(props, 1.6)} />
+      <line x1={13} y1={22} x2={19} y2={22} stroke={stroke(props)} strokeWidth={grubosc(props, 1.6)} />
     </g>
   ));
 }
@@ -397,8 +508,8 @@ export function DerBessGlyph(props: GlyphProps): JSX.Element {
 export function DerGeneratorGlyph(props: GlyphProps): JSX.Element {
   return (
     <g {...glyphGroupProps('derGenerator', props)}>
-      <line x1={16} y1={0} x2={16} y2={4} stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
-      <circle cx={16} cy={18} r={13} fill="none" stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
+      <line x1={16} y1={0} x2={16} y2={4} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
+      <circle cx={16} cy={18} r={13} fill="none" stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
       <text
         x={16} y={22} textAnchor="middle"
         fill={stroke(props)} fontFamily="sans-serif" fontSize={12} fontWeight={700}
@@ -418,11 +529,11 @@ export function DerGeneratorGlyph(props: GlyphProps): JSX.Element {
 export function DerWindGlyph(props: GlyphProps): JSX.Element {
   return derFrame(props, 'derWind', (
     <g>
-      <line x1={16} y1={26} x2={16} y2={11} stroke={stroke(props)} strokeWidth={1.4} />
+      <line x1={16} y1={26} x2={16} y2={11} stroke={stroke(props)} strokeWidth={grubosc(props, 1.4)} />
       <circle cx={16} cy={11} r={1.6} fill={stroke(props)} />
-      <line x1={16} y1={11} x2={16} y2={3} stroke={stroke(props)} strokeWidth={1.2} />
-      <line x1={16} y1={11} x2={22.9} y2={14.9} stroke={stroke(props)} strokeWidth={1.2} />
-      <line x1={16} y1={11} x2={9.1} y2={14.9} stroke={stroke(props)} strokeWidth={1.2} />
+      <line x1={16} y1={11} x2={16} y2={3} stroke={stroke(props)} strokeWidth={grubosc(props, 1.2)} />
+      <line x1={16} y1={11} x2={22.9} y2={14.9} stroke={stroke(props)} strokeWidth={grubosc(props, 1.2)} />
+      <line x1={16} y1={11} x2={9.1} y2={14.9} stroke={stroke(props)} strokeWidth={grubosc(props, 1.2)} />
     </g>
   ));
 }
@@ -436,9 +547,9 @@ export function DerWindGlyph(props: GlyphProps): JSX.Element {
 export function GridSourceGlyph(props: GlyphProps): JSX.Element {
   return (
     <g {...glyphGroupProps('gridSource', props)}>
-      <line x1={8} y1={0} x2={8} y2={8} stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
-      <path d="M4,8 L12,8 L8,16 Z" fill={stroke(props)} stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
-      <line x1={8} y1={16} x2={8} y2={24} stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
+      <line x1={8} y1={0} x2={8} y2={8} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
+      <path d="M4,8 L12,8 L8,16 Z" fill={stroke(props)} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
+      <line x1={8} y1={16} x2={8} y2={24} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
     </g>
   );
 }
@@ -448,8 +559,8 @@ export function GridSourceGlyph(props: GlyphProps): JSX.Element {
  *  kotwica (cx,cy,h) parametryzowana — TEN SAM kształt rodzaju w polu DER na
  *  SN (`poleDer`) i za TR na nN (`poleTr.derNn`); różni się WYŁĄCZNIE miejsce
  *  przyłączenia (topologia), nigdy notacja rodzaju. */
-function derMiniMarker(kind: StationDerGlyphKind, s: string, cx: number, cy: number, h: number): JSX.Element {
-  const w = MINI_RMU.stroke.marker;
+function derMiniMarker(props: GlyphProps, kind: StationDerGlyphKind, s: string, cx: number, cy: number, h: number): JSX.Element {
+  const w = grubosc(props, MINI_RMU.stroke.marker);
   const shape = DER_MARKER_SHAPE[kind];
   if (shape === 'diamond') {
     return <path d={`M${cx},${cy - h} L${cx + h},${cy} L${cx},${cy + h} L${cx - h},${cy} Z`} fill="none" stroke={s} strokeWidth={w} />;
@@ -499,7 +610,8 @@ function glowica(xBase: number, xTip: number, y: number, halfH: number, s: strin
  */
 export function StationCollapsedGlyph(props: GlyphProps): JSX.Element {
   const s = stroke(props);
-  const { enclosure: e, bus, linia: L, poleTr: tr, poleDer: der, sprzeglo: sp, odgalezienie: od, stroke: sw } = MINI_RMU;
+  const { enclosure: e, bus, linia: L, poleTr: tr, poleDer: der, sprzeglo: sp, odgalezienie: od, stroke: swBazowe } = MINI_RMU;
+  const sw = skalujWagi(props, swBazowe);
   const y = L.y;
   const busBroken = props.stationNoOpen === true;
   // GS-5: topologia pól liniowych z roli stacji w ciągu; brak danych =
@@ -573,7 +685,7 @@ export function StationCollapsedGlyph(props: GlyphProps): JSX.Element {
           {props.stationDerBehindTr && (
             <g data-station-der-nn={props.stationDerBehindTr}>
               <line x1={tr.x} y1={tr.derNn.stub.y1} x2={tr.x} y2={tr.derNn.stub.y2} stroke={s} strokeWidth={sw.path} />
-              {derMiniMarker(props.stationDerBehindTr, s, tr.x, tr.derNn.markerCY, tr.derNn.markerHalf)}
+              {derMiniMarker(props, props.stationDerBehindTr, s, tr.x, tr.derNn.markerCY, tr.derNn.markerHalf)}
             </g>
           )}
         </g>
@@ -584,9 +696,84 @@ export function StationCollapsedGlyph(props: GlyphProps): JSX.Element {
           <line x1={der.x} y1={der.stub1.y1} x2={der.x} y2={der.stub1.y2} stroke={s} strokeWidth={sw.path} />
           <rect x={der.x - der.aparat.size / 2} y={der.aparat.y} width={der.aparat.size} height={der.aparat.size} fill="none" stroke={s} strokeWidth={sw.path} data-station-aparat="DER" />
           <line x1={der.x} y1={der.stub2.y1} x2={der.x} y2={der.stub2.y2} stroke={s} strokeWidth={sw.path} />
-          {derMiniMarker(props.stationDerOnMv, s, der.x, der.markerCY, der.markerHalf)}
+          {derMiniMarker(props, props.stationDerOnMv, s, der.x, der.markerCY, der.markerHalf)}
         </g>
       )}
+    </g>
+  );
+}
+
+/**
+ * KD-5 (dług nazwany w V12K-285): BLOK GPZ ZWINIĘTY na L0 — miniatura
+ * gramatyki GPZ (spec §3), nie plakietka. Rysunek WYŁĄCZNIE z `MINI_GPZ`
+ * (`miniRmuGrammar.ts`, reguła 13: zero literałów geometrii w rendererze).
+ *
+ * Tor czytany z kształtu, z góry na dół: zejście od sieci zewnętrznej → SZYNA
+ * WN → pole WN (aparat) → TRANSFORMATOR → pole TR (aparat) → SZYNA SN → POLA
+ * ODEJŚCIOWE; pole magistrali schodzi portem S do toru magistrali sceny.
+ * Liczby sekcji/transformatorów/pól pochodzą z REALNEJ kompozycji GPZ
+ * (`meta.gpzGlyph`, `scene/buildScene.ts`) — brak danych ⇒ element nie jest
+ * rysowany (zero fantomu), a nie rysowany „domyślnie".
+ */
+export function GpzCollapsedGlyph(props: GlyphProps): JSX.Element {
+  const s = stroke(props);
+  const { enclosure: e, zrodlo, szynaWn, poleWn, transformator: tr, poleTr, szynaSn, polaOdejsciowe: po, sprzeglo: sp, stroke: swBazowe } = MINI_GPZ;
+  const sw = skalujWagi(props, swBazowe);
+  const sections = props.gpzSections ?? 1;
+  const transformers = props.gpzTransformers ?? 0;
+  const feeders = props.gpzFeeders ?? 0;
+  const drawnFeeders = po.xs.slice(0, Math.max(0, Math.min(feeders, po.xs.length)));
+  const sectioned = sections > 1;
+  const aparat = (x: number, y: number, size: number, testId: string): JSX.Element => (
+    <rect x={x - size / 2} y={y} width={size} height={size} fill="none" stroke={s} strokeWidth={sw.path} data-gpz-aparat={testId} />
+  );
+  return (
+    <g {...glyphGroupProps('gpzCollapsed', props)} data-gpz-silhouette="mini-gpz" data-gpz-sections={sections}>
+      {/* Obrys rozdzielni — WTÓRNY (K7). */}
+      <rect x={e.x} y={e.y} width={e.width} height={e.height} rx={e.rx} fill="none" stroke={s} strokeWidth={sw.outline} data-gpz-outline="true" />
+      {/* Zejście od sieci zewnętrznej (port N) do szyny WN. */}
+      <line x1={MINI_GPZ.axis} y1={zrodlo.stub.y1} x2={MINI_GPZ.axis} y2={zrodlo.stub.y2} stroke={s} strokeWidth={sw.path} />
+      {/* SZYNA WN. */}
+      <line x1={szynaWn.x1} y1={szynaWn.y} x2={szynaWn.x2} y2={szynaWn.y} stroke={s} strokeWidth={sw.bus} data-gpz-bus="wn" />
+      {/* Pole WN transformatora (aparat w torze). */}
+      {transformers > 0 && (
+        <g data-gpz-transformer="true">
+          <line x1={poleWn.x} y1={poleWn.stub1.y1} x2={poleWn.x} y2={poleWn.stub1.y2} stroke={s} strokeWidth={sw.path} />
+          {aparat(poleWn.x, poleWn.aparat.y, poleWn.aparat.size, 'WN')}
+          <line x1={poleWn.x} y1={poleWn.stub2.y1} x2={poleWn.x} y2={poleWn.stub2.y2} stroke={s} strokeWidth={sw.path} />
+          {/* TRANSFORMATOR — dwa uzwojenia (ta sama notacja co pole TR mini-RMU). */}
+          <circle cx={tr.x} cy={tr.circle1Y} r={tr.circleR} fill="none" stroke={s} strokeWidth={sw.marker} />
+          <circle cx={tr.x} cy={tr.circle2Y} r={tr.circleR} fill="none" stroke={s} strokeWidth={sw.marker} />
+          {/* Pole TR po stronie SN (aparat w torze). */}
+          <line x1={poleTr.x} y1={poleTr.stub1.y1} x2={poleTr.x} y2={poleTr.stub1.y2} stroke={s} strokeWidth={sw.path} />
+          {aparat(poleTr.x, poleTr.aparat.y, poleTr.aparat.size, 'TR')}
+          <line x1={poleTr.x} y1={poleTr.stub2.y1} x2={poleTr.x} y2={poleTr.stub2.y2} stroke={s} strokeWidth={sw.path} />
+        </g>
+      )}
+      {/* SZYNA SN — przy >1 sekcji realna PRZERWA + styki sprzęgła (wzór K6). */}
+      {sectioned ? (
+        <g data-gpz-sectioned="true">
+          <line x1={szynaSn.x1} y1={szynaSn.y} x2={sp.x - sp.gapHalf} y2={szynaSn.y} stroke={s} strokeWidth={sw.bus} data-gpz-bus="sn" />
+          <line x1={sp.x + sp.gapHalf} y1={szynaSn.y} x2={szynaSn.x2} y2={szynaSn.y} stroke={s} strokeWidth={sw.bus} />
+          <line x1={sp.x - sp.gapHalf} y1={szynaSn.y - 3} x2={sp.x - sp.gapHalf} y2={szynaSn.y + 3} stroke={s} strokeWidth={sw.path} />
+          <line x1={sp.x + sp.gapHalf} y1={szynaSn.y - 3} x2={sp.x + sp.gapHalf} y2={szynaSn.y + 3} stroke={s} strokeWidth={sw.path} />
+        </g>
+      ) : (
+        <line x1={szynaSn.x1} y1={szynaSn.y} x2={szynaSn.x2} y2={szynaSn.y} stroke={s} strokeWidth={sw.bus} data-gpz-bus="sn" />
+      )}
+      {/* POLA ODEJŚCIOWE: pierwsze (na osi) schodzi na wylot do magistrali. */}
+      {drawnFeeders.map((x, i) => (
+        <g key={`pole-${x}`} data-gpz-feeder={i === 0 ? 'magistrala' : 'liniowe'}>
+          <line x1={x} y1={po.stub1.y1} x2={x} y2={po.stub1.y2} stroke={s} strokeWidth={sw.path} />
+          {aparat(x, po.aparat.y, po.aparat.size, i === 0 ? 'POLE-MAGISTRALA' : 'POLE')}
+          <line x1={x} y1={po.stub2.y1} x2={x} y2={po.stub2.y2} stroke={s} strokeWidth={sw.path} />
+          {i === 0 ? (
+            <line x1={x} y1={po.wyjscie.y1} x2={x} y2={po.wyjscie.y2} stroke={s} strokeWidth={sw.path} />
+          ) : (
+            <line x1={x} y1={po.stubKoncowy.y1} x2={x} y2={po.stubKoncowy.y2} stroke={s} strokeWidth={sw.path} />
+          )}
+        </g>
+      ))}
     </g>
   );
 }
@@ -604,7 +791,7 @@ export function ProtectionRelayGlyph(props: GlyphProps): JSX.Element {
   const ty = lines.length > 1 ? [9, 17] : [13.5];
   return (
     <g {...glyphGroupProps('protectionRelay', props)}>
-      <circle cx={12} cy={12} r={11} fill="none" stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
+      <circle cx={12} cy={12} r={11} fill="none" stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
       {lines.slice(0, 2).map((line, i) => (
         <text
           key={line}
@@ -621,7 +808,7 @@ export function ProtectionRelayGlyph(props: GlyphProps): JSX.Element {
        *  glifu bazowego, P5 — kolor NIE koduje tu stanu fizycznego). */}
       {props.hasTopologyWarning && (
         <g data-topology-warning="true">
-          <circle cx={19.5} cy={4.5} r={3.6} fill="none" stroke={stroke(props)} strokeWidth={0.9} />
+          <circle cx={19.5} cy={4.5} r={3.6} fill="none" stroke={stroke(props)} strokeWidth={grubosc(props, 0.9)} />
           <text
             x={19.5} y={6.7} textAnchor="middle"
             fill={stroke(props)} fontFamily="sans-serif" fontSize={6} fontWeight={700}
@@ -643,7 +830,7 @@ export function ProtectionRelayGlyph(props: GlyphProps): JSX.Element {
 export function MeterGlyph(props: GlyphProps): JSX.Element {
   return (
     <g {...glyphGroupProps('meter', props)}>
-      <circle cx={12} cy={12} r={11} fill="none" stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
+      <circle cx={12} cy={12} r={11} fill="none" stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
       <text
         x={12} y={16} textAnchor="middle"
         fill={stroke(props)} fontFamily="sans-serif" fontSize={12} fontWeight={700}
@@ -670,6 +857,8 @@ export const SYMBOL_GLYPHS: Readonly<Record<SymbolId, (props: GlyphProps) => JSX
   noPoint: NoPointGlyph,
   junction: JunctionGlyph,
   branchJunction: BranchJunctionGlyph,
+  branchCabinet: BranchCabinetGlyph,
+  branchPole: BranchPoleGlyph,
   currentTransformer: CurrentTransformerGlyph,
   voltageTransformer: VoltageTransformerGlyph,
   surgeArrester: SurgeArresterGlyph,
@@ -679,6 +868,7 @@ export const SYMBOL_GLYPHS: Readonly<Record<SymbolId, (props: GlyphProps) => JSX
   derWind: DerWindGlyph,
   gridSource: GridSourceGlyph,
   stationCollapsed: StationCollapsedGlyph,
+  gpzCollapsed: GpzCollapsedGlyph,
   protectionRelay: ProtectionRelayGlyph,
   meter: MeterGlyph,
 };

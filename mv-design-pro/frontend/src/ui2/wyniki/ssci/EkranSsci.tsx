@@ -3,7 +3,7 @@
  * B1 audytu: analiza SSCI (kryterium impedancyjne Nyquista, Sun 2011 / Wen 2016)
  * miała backend bez UI. Ekran dobiera przebieg SSCI przez utworzenie przebiegu
  * `ssci_impedance` na committed ENM aktywnego przypadku (wzór doboru z
- * `V126AcademicSurface`), a następnie pobiera werdykt:
+ * `ui2/wyniki/akademickie`), a następnie pobiera werdykt:
  *   `POST /api/cases/{case_id}/runs/v126/ssci_impedance` → `run_id`
  *   `GET  /api/analysis-runs/{run_id}/results/v126/ssci_impedance/stability`
  * i prezentuje:
@@ -30,7 +30,7 @@ import {
   type WidokStabilnosciSsci,
 } from './api';
 import { etykietaWerdyktu, istotnoscWerdyktu, naMetryki } from './model';
-import { akcjaNaprawcza, usePoprawWModelu } from '../wzorzec';
+import { akcjaNaprawcza, useAkcjaPrzejdzDoPrzypadkow, usePoprawWModelu } from '../wzorzec';
 import { SSCI_STRINGS as S, fmtGain, fmtStopnie, type IstotnoscStanu } from './strings';
 
 // ---------------------------------------------------------------------------
@@ -44,17 +44,23 @@ function Tag({ tekst, istotnosc, testid }: { tekst: string; istotnosc: Istotnosc
     </span>
   );
 }
+import { PrzyciskAkcjiStanu } from '../wzorzec';
+import type { AkcjaStanuZerowego } from '../wzorzec';
 
 function StanPanel({
   komunikat,
   opis,
   wariant,
   testid,
+  akcja,
 }: {
   komunikat: string;
   opis?: string;
   wariant: 'info' | 'blad';
   testid: string;
+  /* K6 / H-5: slot akcji stanu zerowego — realny następny krok (bieg obliczeń,
+     nawigacja, formularz operacji). Brak akcji = panel czysto informacyjny. */
+  akcja?: AkcjaStanuZerowego;
 }) {
   return (
     <div
@@ -63,6 +69,7 @@ function StanPanel({
     >
       <p className="mvd-ssci-stan-title">{komunikat}</p>
       {opis && <p className="mvd-ssci-stan-desc">{opis}</p>}
+      <PrzyciskAkcjiStanu akcja={akcja} testid={testid} />
     </div>
   );
 }
@@ -312,6 +319,8 @@ export interface EkranSsciProps {
 
 export function EkranSsci({ trybZaawansowania }: EkranSsciProps) {
   const activeCaseId = useAppStateStore((s) => s.activeCaseId);
+  // K6 / H-5: bez aktywnego zakresu obliczeń jedyny sensowny krok to jego wybór.
+  const akcjaPrzypadki = useAkcjaPrzejdzDoPrzypadkow();
   const trybEkspercki = trybZaawansowania === 'expert';
 
   const [stan, setStan] = useState<StanWerdyktu>({ rodzaj: 'idle' });
@@ -348,6 +357,7 @@ export function EkranSsci({ trybZaawansowania }: EkranSsciProps) {
           opis={S.brakPrzypadkuOpis}
           wariant="info"
           testid="mvd-ssci-brak-przypadku"
+          akcja={akcjaPrzypadki}
         />
       </div>
     );

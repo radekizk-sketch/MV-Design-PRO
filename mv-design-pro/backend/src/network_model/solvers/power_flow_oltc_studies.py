@@ -24,6 +24,13 @@ from network_model.solvers.power_flow_types import PowerFlowInput
 
 SolveOnce = Callable[[PowerFlowInput], Any]
 
+#: Kody gotowosci badan zaczepowych — kanon: `domain.canonical_operations`.
+#: Emitowane, gdy kryterium (dopuszczalnosci pozycji w §17, pasma nieczulosci w §8)
+#: nie da sie ZBUDOWAC Z DANYCH. Nigdy nie zastepujemy brakujacej danej domyslem
+#: (WHITE BOX, zakaz heurystyk).
+KOD_BRAK_PASMA_REGULATORA = "oltc.deadband_missing"
+KOD_BRAK_NAPIECIA_DOCELOWEGO = "oltc.target_voltage_missing"
+
 
 def _krok(tekst: str, latex: str | None = None) -> dict[str, Any]:
     """Krok wywodu WHITE BOX: tekst (ASCII-PL, deterministyczny) + opcjonalny LaTeX.
@@ -237,8 +244,13 @@ class AnnualProfileStep:
     label: str
     load_scale: float
     positions: dict[str, int]
-    switch_count: int
+    #: ``None`` = petla regulatora nie mogla zadzialac (brak nastawy albo pasma w
+    #: modelu), wiec liczba laczen tego kroku NIE ISTNIEJE. Zero byloby werdyktem
+    #: „zaczep nie musial sie ruszyc" — konwencja jak ``OptimizationResult``.
+    switch_count: int | None
     controlled_bus_kv: dict[str, float]
+    #: Znacznik pasma jest TROJSTANOWY przez OBECNOSC klucza: True = w pasmie,
+    #: False = poza pasmem, BRAK KLUCZA = nieustalone (nie ma z czego ocenic).
     within_deadband: dict[str, bool]
 
     def to_dict(self) -> dict[str, Any]:
@@ -256,18 +268,27 @@ class AnnualProfileStep:
 @dataclass(frozen=True)
 class AnnualProfileResult:
     steps: list[AnnualProfileStep]
-    total_switch_count: int
-    steps_outside_deadband: int
+    #: ``None`` gdy petla regulatora nie mogla zadzialac — patrz ``AnnualProfileStep``.
+    total_switch_count: int | None
+    #: ``None`` gdy choc jeden znacznik pasma jest nieustalony: „0 krokow poza
+    #: pasmem" bylby wtedy werdyktem o kryterium, ktorego nie ma.
+    steps_outside_deadband: int | None
     # Wywod dyplomowy {tekst, latex} — addytywny (zasada wywodow KaTeX 2026-07-22).
     wywod: list[dict[str, Any]] = field(default_factory=list)
+    #: Kody gotowosci badania — czego brakuje w modelu, by ocena pasma i liczba
+    #: laczen byly w ogole mozliwe (kanon: `domain.canonical_operations`).
+    readiness_codes: tuple[str, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        result: dict[str, Any] = {
             "steps": [s.to_dict() for s in self.steps],
             "total_switch_count": self.total_switch_count,
             "steps_outside_deadband": self.steps_outside_deadband,
             "wywod": list(self.wywod),
         }
+        if self.readiness_codes:
+            result["readiness_codes"] = list(self.readiness_codes)
+        return result
 
 
 @dataclass(frozen=True)
@@ -283,6 +304,41 @@ def _scaled_pq(pf_input: PowerFlowInput, scale: float) -> PowerFlowInput:
     return replace(pf_input, pq=scaled)
 
 
+def _kody_gotowosci_profilu(regulators: list[TransformerBranch]) -> tuple[str, ...]:
+    """Czego brakuje w modelu, by profil mogl w ogole ocenic pasmo regulatora.
+
+    Kolejnosc STALA (najpierw nastawa, potem pasmo) — jak w
+    ``_kryterium_dopuszczalnosci`` badania §17; determinizm wyniku.
+    """
+    brak_nastawy = any(
+        reg.tap_changer is not None and reg.tap_changer.voltage_setpoint_kv is None
+        for reg in regulators
+    )
+    brak_pasma = any(
+        reg.tap_changer is not None and reg.tap_changer.deadband_kv is None for reg in regulators
+    )
+    kody: list[str] = []
+    if brak_nastawy:
+        kody.append(KOD_BRAK_NAPIECIA_DOCELOWEGO)
+    if brak_pasma:
+        kody.append(KOD_BRAK_PASMA_REGULATORA)
+    return tuple(kody)
+
+
+def _petla_moze_dzialac(regulators: list[TransformerBranch]) -> bool:
+    """Czy KAZDY regulator automatyczny ma komplet nastaw do pracy petli.
+
+    Regulator bez nastawy albo bez pasma nie jest przez petle ruszany, wiec jego
+    udzial w liczbie laczen jest NIEZNANY — a nie zerowy. Regulator nieautomatyczny
+    po prostu nie laczy: to fakt przebiegu, nie brak danej.
+    """
+    return all(
+        tc.voltage_setpoint_kv is not None and tc.deadband_kv is not None
+        for tc in (reg.tap_changer for reg in regulators)
+        if tc is not None and tc.is_automatic()
+    )
+
+
 def run_annual_oltc_profile(
     pf_input: PowerFlowInput,
     solve_once: SolveOnce,
@@ -294,6 +350,11 @@ def run_annual_oltc_profile(
     OLTC loop; the converged positions carry over to the next step (as a real
     regulator would), and per-step switch counts / dead-band status are recorded.
     The transformer tap state is restored afterwards.
+
+    Kryterium pasma pochodzi WYLACZNIE z modelu (``TapChanger``): brak nastawy albo
+    brak pasma => znacznik NIEUSTALONY (klucz nieobecny) i kod gotowosci, nigdy
+    werdykt „poza pasmem" z podstawionego pasma zerowego. Gdy petla nie mogla
+    zadzialac, liczba laczen jest NIEDOSTEPNA (``None``), bo zero byloby werdyktem.
     """
     graph = pf_input.typed_graph()
     regulators = [
@@ -302,10 +363,12 @@ def run_annual_oltc_profile(
         if isinstance(b, TransformerBranch) and b.tap_changer is not None
     ]
     saved = {reg.id: reg.tap_changer for reg in regulators}
+    kody = _kody_gotowosci_profilu(regulators)
+    licz_laczenia = _petla_moze_dzialac(regulators)
 
     steps: list[AnnualProfileStep] = []
-    total_switches = 0
-    outside = 0
+    total_switches: int | None = 0 if licz_laczenia else None
+    outside: int | None = 0
     try:
         for index, point in enumerate(profile):
             step_input = _scaled_pq(pf_input, point.load_scale)
@@ -315,19 +378,31 @@ def run_annual_oltc_profile(
             v_map = getattr(solution, "node_voltage_kv", {}) or {}
             controlled_kv: dict[str, float] = {}
             within: dict[str, bool] = {}
-            step_switches = int(trace["total_switch_count"]) if trace else 0
+            step_switches = (
+                (int(trace["total_switch_count"]) if trace else 0) if licz_laczenia else None
+            )
             for reg in regulators:
                 tc = reg.tap_changer
                 bus = tc.controlled_bus_id or reg.to_node_id
                 v = v_map.get(bus)
                 if v is not None:
                     controlled_kv[reg.id] = v
-                    if tc.voltage_setpoint_kv is not None:
-                        half = (tc.deadband_kv or 0.0) / 2.0
-                        within[reg.id] = abs(v - tc.voltage_setpoint_kv) <= half
+                # Znacznik TYLKO z kompletnych danych: napiecie szyny + nastawa +
+                # pasmo z modelu. Polowa pasma 1:1 z petla regulatora.
+                if (
+                    v is not None
+                    and tc.voltage_setpoint_kv is not None
+                    and tc.deadband_kv is not None
+                ):
+                    within[reg.id] = abs(v - tc.voltage_setpoint_kv) <= tc.deadband_kv / 2.0
 
-            total_switches += step_switches
-            if within and not all(within.values()):
+            if total_switches is not None and step_switches is not None:
+                total_switches += step_switches
+            if len(within) < len(regulators):
+                # Choc jeden regulator bez oceny => licznik krokow poza pasmem nie
+                # istnieje (0 znaczyloby „wszystkie kroki w pasmie").
+                outside = None
+            elif outside is not None and within and not all(within.values()):
                 outside += 1
             steps.append(
                 AnnualProfileStep(
@@ -353,20 +428,25 @@ def run_annual_oltc_profile(
         steps=steps,
         total_switch_count=total_switches,
         steps_outside_deadband=outside,
-        wywod=_wywod_profilu(steps, total_switches, outside, nastawy),
+        wywod=_wywod_profilu(steps, total_switches, outside, nastawy, kody),
+        readiness_codes=kody,
     )
 
 
 def _wywod_profilu(
     steps: list[AnnualProfileStep],
-    total_switches: int,
-    outside: int,
+    total_switches: int | None,
+    outside: int | None,
     nastawy: dict[str, tuple[float | None, float | None]],
+    kody: tuple[str, ...],
 ) -> list[dict[str, Any]]:
     """Wywod dyplomowy profilu rocznego: skalowanie -> warunek pasma -> suma.
 
     Czysty formatter — liczby WYLACZNIE z krokow badania (U regulowane, pozycje,
     przelaczenia) i z nastaw regulatorow (U_zad, pasmo). Formaty stale, ASCII-PL.
+
+    Brak nastawy albo pasma w modelu NIE jest tu podstawiany zadna wartoscia:
+    zamiast podstawienia z progiem 0,000 kV wywod nazywa brakujaca dana.
     """
     kroki = [
         _krok(
@@ -383,39 +463,129 @@ def _wywod_profilu(
             r"\left|U - U_{zad}\right| \le \frac{\Delta U_{db}}{2}",
         ),
     ]
+    if kody:
+        kroki.append(_krok_brakow_profilu(kody))
     for step in steps:
         for reg_id in sorted(step.positions):
             pos = step.positions[reg_id]
             v = step.controlled_bus_kv.get(reg_id)
             setpoint, deadband = nastawy.get(reg_id, (None, None))
+            laczenia = "nieustalone" if step.switch_count is None else str(step.switch_count)
             tekst = (
                 f"Krok '{step.label}' (s = {step.load_scale:.2f}), transformator {reg_id}: "
-                f"pozycja koncowa n = {pos}, przelaczenia w kroku = {step.switch_count}."
+                f"pozycja koncowa n = {pos}, przelaczenia w kroku = {laczenia}."
             )
             latex: str | None = None
-            if v is not None and setpoint is not None:
-                half = (deadband or 0.0) / 2.0
+            if v is not None and setpoint is not None and deadband is not None:
+                half = deadband / 2.0
                 dev = abs(v - setpoint)
                 znak = r"\le" if step.within_deadband.get(reg_id, False) else ">"
                 latex = (
                     rf"\left|{v:.3f} - {setpoint:.3f}\right| = {dev:.3f}"
                     rf" {znak} {half:.3f}\ \text{{kV}}"
                 )
+            elif v is not None and setpoint is not None:
+                # Odchylka jest ZMIERZONA, ale nie ma jej do czego porownac —
+                # pokazujemy sama odchylke, bez progu i bez werdyktu.
+                tekst += (
+                    " Polozenie wzgledem pasma: NIEUSTALONE (brak pasma nieczulosci"
+                    " regulatora w modelu)."
+                )
+                latex = (
+                    rf"\left|{v:.3f} - {setpoint:.3f}\right| = {abs(v - setpoint):.3f}"
+                    rf"\ \text{{kV}},\quad \Delta U_{{db}} = \text{{brak}}"
+                )
+            elif v is not None:
+                tekst += (
+                    " Polozenie wzgledem pasma: NIEUSTALONE (brak napiecia zadanego"
+                    " regulatora w modelu)."
+                )
             kroki.append(_krok(tekst, latex))
+    if total_switches is None:
+        kroki.append(
+            _krok(
+                "Suma przelaczen zaczepow: NIEDOSTEPNA — petla regulatora nie miala "
+                "kompletu nastaw, wiec liczby laczen nie ma z czego policzyc "
+                f"(kroki poza pasmem nieczulosci: {_licznik_lub_brak(outside)} z {len(steps)})."
+            )
+        )
+        return kroki
     suma_czlony = " + ".join(str(s.switch_count) for s in steps) if steps else "0"
     kroki.append(
         _krok(
             f"Suma przelaczen zaczepow: N = {total_switches} "
-            f"(kroki poza pasmem nieczulosci: {outside} z {len(steps)}).",
+            f"(kroki poza pasmem nieczulosci: {_licznik_lub_brak(outside)} z {len(steps)}).",
             rf"N_{{prz}} = \sum_{{i}} n_{{i}} = {suma_czlony} = {total_switches}",
         )
     )
     return kroki
 
 
+def _licznik_lub_brak(wartosc: int | None) -> str:
+    return "nieustalone" if wartosc is None else str(wartosc)
+
+
+def _krok_brakow_profilu(kody: tuple[str, ...]) -> dict[str, Any]:
+    """Krok wywodu nazywajacy BRAKUJACE dane modelu (zamiast werdyktu z domyslu)."""
+    braki: list[str] = []
+    if KOD_BRAK_NAPIECIA_DOCELOWEGO in kody:
+        braki.append("napiecia zadanego regulatora U_zad (model, przelacznik zaczepow)")
+    if KOD_BRAK_PASMA_REGULATORA in kody:
+        braki.append("pasma nieczulosci regulatora dU_db (model, przelacznik zaczepow)")
+    return _krok(
+        "Kryterium pasma: NIEUSTALONE dla co najmniej jednego regulatora — brakuje "
+        f"{' oraz '.join(braki)}. Brakujacej danej NIE zastepujemy zadna wartoscia "
+        "domyslna, wiec znacznik 'w pasmie' pozostaje nieustalony (kod gotowosci w wyniku)."
+    )
+
+
 # ---------------------------------------------------------------------------
 # §17 — OLTC optimization (tap position as a decision variable)
 # ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class FeasibilityCriterion:
+    """Kryterium dopuszczalnosci pozycji zaczepu — JAWNE, z wartoscia i zrodlem.
+
+    Bez tego obiektu werdykt optymalizacji jest nieweryfikowalny: o wyniku celu
+    „jak najmniej przelaczen" decyduje WYLACZNIE to, ktore pozycje uznano za
+    dopuszczalne, wiec kryterium jest rownoprawna dana wyniku (WHITE BOX).
+
+    ``kind``:
+      - ``convergence``       — dopuszczalna, gdy rozplyw zbiegl (cel: straty),
+      - ``voltage_deviation`` — dopuszczalna, gdy zbiezna i ZMIERZONA odchylka od
+        U_cel (cel: trzymaj napiecie — minimalizujemy sama odchylke),
+      - ``voltage_deadband``  — dopuszczalna, gdy |U(n) - U_cel| <= dU_db / 2;
+        pasmo dU_db pochodzi z MODELU (``TapChanger.deadband_kv``), polowa pasma
+        wg tej samej konwencji, co petla regulatora (``power_flow_oltc``).
+
+    ``available = False`` oznacza: kryterium nie da sie zbudowac z danych. Wtedy
+    wynik jest NIEDOSTEPNY (bez n*), a ``readiness_codes`` mowia, czego brakuje.
+    Znane skladniki (np. samo U_cel) zostaja w polach — inzynier widzi, co juz jest.
+    """
+
+    kind: str
+    available: bool
+    source: str | None = None
+    target_kv: float | None = None
+    band_kv: float | None = None
+    half_band_kv: float | None = None
+    readiness_codes: tuple[str, ...] = ()
+
+    def to_dict(self) -> dict[str, Any]:
+        result: dict[str, Any] = {"kind": self.kind, "available": self.available}
+        if self.source is not None:
+            result["source"] = self.source
+        if self.target_kv is not None:
+            result["target_kv"] = self.target_kv
+        if self.band_kv is not None:
+            result["band_kv"] = self.band_kv
+        if self.half_band_kv is not None:
+            result["half_band_kv"] = self.half_band_kv
+        if self.readiness_codes:
+            result["readiness_codes"] = list(self.readiness_codes)
+        return result
 
 
 @dataclass(frozen=True)
@@ -426,7 +596,9 @@ class OptimizationCandidate:
     controlled_bus_kv: float | None
     voltage_deviation_kv: float | None
     objective_value: float
-    feasible: bool
+    #: ``None`` = kryterium nie da sie ocenic dla tej pozycji (brak kryterium albo
+    #: brak napiecia szyny regulowanej). NIE jest to „dopuszczalna".
+    feasible: bool | None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -446,13 +618,18 @@ class OptimizationResult:
     objective: str
     best_position: int | None
     initial_position: int
-    switch_count: int
+    #: ``None`` razem z ``best_position = None`` — bez wybranej pozycji liczba
+    #: przelaczen nie istnieje (zero byloby werdyktem „nie ruszaj zaczepu").
+    switch_count: int | None
     candidates: list[OptimizationCandidate] = field(default_factory=list)
     # Wywod dyplomowy {tekst, latex} — addytywny (zasada wywodow KaTeX 2026-07-22).
     wywod: list[dict[str, Any]] = field(default_factory=list)
+    # Kryterium dopuszczalnosci (wartosc + zrodlo) i kody gotowosci — addytywne.
+    feasibility_criterion: FeasibilityCriterion | None = None
+    readiness_codes: tuple[str, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        result: dict[str, Any] = {
             "branch_id": self.branch_id,
             "objective": self.objective,
             "best_position": self.best_position,
@@ -461,6 +638,94 @@ class OptimizationResult:
             "candidates": [c.to_dict() for c in self.candidates],
             "wywod": list(self.wywod),
         }
+        if self.feasibility_criterion is not None:
+            result["feasibility_criterion"] = self.feasibility_criterion.to_dict()
+        if self.readiness_codes:
+            result["readiness_codes"] = list(self.readiness_codes)
+        return result
+
+
+def _kryterium_dopuszczalnosci(
+    objective: str,
+    trafo: TransformerBranch,
+    target_kv: float | None,
+) -> FeasibilityCriterion:
+    """Zbuduj kryterium dopuszczalnosci Z DANYCH — albo zglos, czego brakuje.
+
+    Zaden literal progu: pasmo akceptacji celu „jak najmniej przelaczen" pochodzi
+    wylacznie z pasma nieczulosci regulatora w modelu (``TapChanger.deadband_kv``),
+    napiecie docelowe wylacznie z parametru badania. Brak ktorejkolwiek danej =>
+    kryterium NIEDOSTEPNE + kod gotowosci (nie domysl, nie „wszystko dopuszczalne").
+    """
+    if objective == "maintain_voltage":
+        if target_kv is None:
+            return FeasibilityCriterion(
+                kind="voltage_deviation",
+                available=False,
+                readiness_codes=(KOD_BRAK_NAPIECIA_DOCELOWEGO,),
+            )
+        return FeasibilityCriterion(
+            kind="voltage_deviation",
+            available=True,
+            source="study_target_kv",
+            target_kv=float(target_kv),
+        )
+
+    if objective == "minimize_switching":
+        band_kv = trafo.tap_changer.deadband_kv if trafo.tap_changer is not None else None
+        braki: list[str] = []
+        if target_kv is None:
+            braki.append(KOD_BRAK_NAPIECIA_DOCELOWEGO)
+        if band_kv is None:
+            braki.append(KOD_BRAK_PASMA_REGULATORA)
+        if braki:
+            return FeasibilityCriterion(
+                kind="voltage_deadband",
+                available=False,
+                target_kv=None if target_kv is None else float(target_kv),
+                band_kv=None if band_kv is None else float(band_kv),
+                half_band_kv=None if band_kv is None else float(band_kv) / 2.0,
+                readiness_codes=tuple(braki),
+            )
+        return FeasibilityCriterion(
+            kind="voltage_deadband",
+            available=True,
+            source="tap_changer_deadband",
+            target_kv=float(target_kv) if target_kv is not None else None,
+            band_kv=float(band_kv) if band_kv is not None else None,
+            half_band_kv=float(band_kv) / 2.0 if band_kv is not None else None,
+        )
+
+    return FeasibilityCriterion(
+        kind="convergence",
+        available=True,
+        source="power_flow_convergence",
+    )
+
+
+def _czy_dopuszczalna(
+    criterion: FeasibilityCriterion,
+    converged: bool,
+    deviation: float | None,
+) -> bool | None:
+    """Ocen pozycje kryterium: True/False, albo None gdy oceny NIE DA SIE wydac."""
+    if not criterion.available:
+        return None
+    if criterion.kind == "convergence":
+        return converged
+    if not converged:
+        return False
+    if deviation is None:
+        # Kryterium istnieje, ale ta pozycja nie ma napiecia szyny regulowanej —
+        # „nie wiadomo" nie jest „dopuszczalna".
+        return None
+    if criterion.kind == "voltage_deviation":
+        return True
+    half_band_kv = criterion.half_band_kv
+    if half_band_kv is None:
+        return None
+    # Konwencja polowy pasma 1:1 z petla regulatora (power_flow_oltc): bez domieszek.
+    return deviation <= half_band_kv
 
 
 def optimize_tap_positions(
@@ -480,7 +745,13 @@ def optimize_tap_positions(
     exhaustive enumeration is exact (not a heuristic). Objectives:
       - ``minimize_losses``  — least active losses (optionally + switching penalty),
       - ``maintain_voltage`` — controlled-bus voltage closest to ``target_kv``,
-      - ``minimize_switching`` — fewest tap moves that keep V within the target band.
+      - ``minimize_switching`` — fewest tap moves that keep the controlled-bus
+        voltage inside the regulator dead band declared in the MODEL.
+
+    The acceptance criterion is explicit data of the result
+    (``feasibility_criterion``): value + source travel with the verdict and with
+    the derivation. When it cannot be built from the input the study reports NO
+    position and carries readiness codes — never a guessed band.
 
     The transformer tap state is restored afterwards.
     """
@@ -495,6 +766,8 @@ def optimize_tap_positions(
     candidates_positions = (
         list(positions) if positions is not None else default_sweep_positions(trafo)
     )
+
+    criterion = _kryterium_dopuszczalnosci(objective, trafo, target_kv)
 
     original_tc = trafo.tap_changer
     original_pos = trafo.tap_position
@@ -511,16 +784,10 @@ def optimize_tap_positions(
 
             if objective == "maintain_voltage":
                 obj = deviation if deviation is not None else float("inf")
-                feasible = converged and deviation is not None
             elif objective == "minimize_switching":
                 obj = float(abs(position - initial))
-                # Feasible only if voltage stays acceptable near the target.
-                feasible = converged and (
-                    deviation is None or target_kv is None or deviation <= 1e-9 + 0.05 * target_kv
-                )
             else:  # minimize_losses (default)
                 obj = losses + switch_penalty_mw_per_step * abs(position - initial)
-                feasible = converged
 
             candidates.append(
                 OptimizationCandidate(
@@ -530,15 +797,17 @@ def optimize_tap_positions(
                     controlled_bus_kv=v_ctrl,
                     voltage_deviation_kv=deviation,
                     objective_value=float(obj),
-                    feasible=feasible,
+                    feasible=_czy_dopuszczalna(criterion, converged, deviation),
                 )
             )
     finally:
         trafo.tap_changer = original_tc
         trafo.tap_position = original_pos
 
-    feasible = [c for c in candidates if c.feasible]
-    pool = feasible if feasible else [c for c in candidates if c.converged]
+    # Wybieramy WYLACZNIE sposrod pozycji spelniajacych kryterium. Dawny odwrot do
+    # puli „samych zbieznych" robil z pozycji POZA kryterium „najlepsza z gorszych"
+    # i nazywal ja optymalna — brak pozycji dopuszczalnej to uczciwy brak wyniku.
+    pool = [c for c in candidates if c.feasible is True]
     # Deterministic tie-break: lowest objective, then position closest to initial,
     # then lowest position.
     best = min(
@@ -552,25 +821,78 @@ def optimize_tap_positions(
         objective=objective,
         best_position=best_pos,
         initial_position=initial,
-        switch_count=abs(best_pos - initial) if best_pos is not None else 0,
+        switch_count=abs(best_pos - initial) if best_pos is not None else None,
         candidates=candidates,
-        wywod=_wywod_optymalizacji(objective, initial, target_kv, switch_penalty_mw_per_step, best),
+        wywod=_wywod_optymalizacji(objective, initial, criterion, switch_penalty_mw_per_step, best),
+        feasibility_criterion=criterion,
+        readiness_codes=criterion.readiness_codes,
+    )
+
+
+def _krok_kryterium(criterion: FeasibilityCriterion) -> dict[str, Any]:
+    """Krok wywodu z KRYTERIUM dopuszczalnosci: wartosc + skad pochodzi.
+
+    O werdykcie decyduje to, ktore pozycje uznano za dopuszczalne — kryterium musi
+    wiec stac w wywodzie tak samo jawnie jak funkcja celu.
+    """
+    if criterion.kind == "convergence":
+        return _krok(
+            "Kryterium dopuszczalnosci pozycji: rozplyw mocy dla tej pozycji ma "
+            "rozwiazanie (zbieznosc solvera FROZEN); zrodlo: wynik rozplywu."
+        )
+    if criterion.kind == "voltage_deviation":
+        if not criterion.available:
+            return _krok(
+                "Kryterium dopuszczalnosci pozycji: NIEDOSTEPNE — badanie nie ma "
+                "napiecia docelowego U_cel, wiec odchylki nie ma od czego liczyc."
+            )
+        cel = criterion.target_kv if criterion.target_kv is not None else float("nan")
+        return _krok(
+            "Kryterium dopuszczalnosci pozycji: rozplyw zbiezny i ZMIERZONA odchylka "
+            f"od U_cel = {cel:.3f} kV (zrodlo: parametr badania); pozycje ocenia "
+            "sama odchylka J(n), bez dodatkowego pasma.",
+            r"J(n) = \left|U(n) - U_{cel}\right|",
+        )
+    # voltage_deadband
+    if not criterion.available:
+        braki: list[str] = []
+        if KOD_BRAK_NAPIECIA_DOCELOWEGO in criterion.readiness_codes:
+            braki.append("napiecia docelowego U_cel (parametr badania)")
+        if KOD_BRAK_PASMA_REGULATORA in criterion.readiness_codes:
+            braki.append("pasma nieczulosci regulatora dU_db (model, przelacznik zaczepow)")
+        return _krok(
+            "Kryterium dopuszczalnosci pozycji: NIEDOSTEPNE — brakuje "
+            f"{' oraz '.join(braki)}. Pasma akceptacji NIE zastepujemy zadna wartoscia "
+            "domyslna, wiec badanie nie wskazuje pozycji (kod gotowosci w wyniku)."
+        )
+    cel = criterion.target_kv if criterion.target_kv is not None else float("nan")
+    pasmo = criterion.band_kv if criterion.band_kv is not None else float("nan")
+    polowa = criterion.half_band_kv if criterion.half_band_kv is not None else float("nan")
+    return _krok(
+        "Kryterium dopuszczalnosci pozycji: napiecie szyny regulowanej miesci sie w "
+        f"pasmie nieczulosci regulatora dU_db = {pasmo:.3f} kV (zrodlo: przelacznik "
+        f"zaczepow w modelu) wokol U_cel = {cel:.3f} kV (zrodlo: parametr badania), "
+        f"czyli |U(n) - U_cel| <= {polowa:.3f} kV. Konwencja polowy pasma jak w petli "
+        "regulatora.",
+        rf"\left|U(n) - {cel:.3f}\right| \le \frac{{{pasmo:.3f}}}{{2}}"
+        rf" = {polowa:.3f}\ \text{{kV}}",
     )
 
 
 def _wywod_optymalizacji(
     objective: str,
     initial: int,
-    target_kv: float | None,
+    criterion: FeasibilityCriterion,
     switch_penalty_mw_per_step: float,
     best: OptimizationCandidate | None,
 ) -> list[dict[str, Any]]:
-    """Wywod dyplomowy optymalizacji: funkcja celu -> podstawienie -> wynik.
+    """Wywod dyplomowy optymalizacji: funkcja celu -> kryterium -> podstawienie -> wynik.
 
-    Czysty formatter — liczby WYLACZNIE z parametrow badania i z najlepszego
-    kandydata (straty, odchylka, wartosc kryterium juz policzone w przegladzie).
-    Formaty stale (determinizm), tekst ASCII-PL.
+    Czysty formatter — liczby WYLACZNIE z parametrow badania, z kryterium
+    dopuszczalnosci i z najlepszego kandydata (straty, odchylka, wartosc kryterium
+    juz policzone w przegladzie). Formaty stale (determinizm), tekst ASCII-PL.
     """
+    target_kv = criterion.target_kv
     kroki = [
         _krok(
             "Badanie: optymalizacja pozycji zaczepu przez pelny przeglad pozycji "
@@ -631,6 +953,7 @@ def _wywod_optymalizacji(
                     rf" = {best.objective_value:.6f}\ \text{{MW}}",
                 )
             )
+    kroki.append(_krok_kryterium(criterion))
     if best is not None:
         kroki.append(
             _krok(
@@ -639,11 +962,18 @@ def _wywod_optymalizacji(
                 rf"n^{{*}} = \arg\min_{{n}} J(n) = {best.position}",
             )
         )
+    elif not criterion.available:
+        kroki.append(
+            _krok(
+                "Wynik: NIEDOSTEPNY — bez kryterium dopuszczalnosci badanie nie "
+                "wskazuje pozycji ani liczby przelaczen (uczciwy brak, bez fabrykacji)."
+            )
+        )
     else:
         kroki.append(
             _krok(
-                "Wynik: brak pozycji dopuszczalnej i zbieznej — nie wybrano n* "
-                "(uczciwy brak, bez fabrykacji)."
+                "Wynik: zadna pozycja nie spelnia kryterium dopuszczalnosci — nie "
+                "wybrano n* (uczciwy brak, bez fabrykacji)."
             )
         )
     kroki.append(

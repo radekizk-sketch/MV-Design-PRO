@@ -11,29 +11,29 @@
 ## 1. Dependency Graph (ASCII)
 
 ```
-PR-LF-05 (Governance & CI Guards) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ GATES ALL MERGES
-    â”‚                                                    â”‚
-    â”‚ (can start in parallel with PR-LF-01)              â”‚
-    â”‚                                                    â”‚
-PR-LF-01 (Domain + Validation + Execution Wiring) â”€â”€â”€â”€â”€â”€â”¤
-    â”‚                                                    â”‚
-    â”śâ”€â”€â–¸ PR-LF-02 (ResultSet Mapping v1 + Persistence)   â”‚
-    â”‚        â”‚                                           â”‚
-    â”‚        â”śâ”€â”€â–¸ PR-LF-03 (Workspace UI + Results PL)   â”‚
-    â”‚        â”‚                                           â”‚
-    â”‚        â””â”€â”€â–¸ PR-LF-04 (SLD Overlay token-only)      â”‚
-    â”‚                                                    â”‚
-    â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+PR-LF-05 (Governance & CI Guards) ─────────────── GATES ALL MERGES
+    │                                                    │
+    │ (can start in parallel with PR-LF-01)              │
+    │                                                    │
+PR-LF-01 (Domain + Validation + Execution Wiring) ──────┤
+    │                                                    │
+    ├──▸ PR-LF-02 (ResultSet Mapping v1 + Persistence)   │
+    │        │                                           │
+    │        ├──▸ PR-LF-03 (Workspace UI + Results PL)   │
+    │        │                                           │
+    │        └──▸ PR-LF-04 (SLD Overlay token-only)      │
+    │                                                    │
+    └────────────────────────────────────────────────────┘
 ```
 
 Simplified flow:
 
 ```
-PR-LF-01 â”€â”€â”¬â”€â”€â–¸ PR-LF-02 â”€â”€â”¬â”€â”€â–¸ PR-LF-03
-            â”‚                â”‚
-            â”‚                â””â”€â”€â–¸ PR-LF-04
-            â”‚
-            â””â”€â”€â–¸ PR-LF-05 (can start early, gates ALL)
+PR-LF-01 ──┬──▸ PR-LF-02 ──┬──▸ PR-LF-03
+            │                │
+            │                └──▸ PR-LF-04
+            │
+            └──▸ PR-LF-05 (can start early, gates ALL)
 ```
 
 ---

@@ -17,6 +17,7 @@
  */
 
 import { test, expect, type ConsoleMessage, type Page } from '@playwright/test';
+import { pustaOdpowiedzDomainOps } from './fixtures/emptyDomainOpsResponse';
 
 interface ConsoleGuards {
   errors: string[];
@@ -156,6 +157,20 @@ async function mockDesignerBackend(page: Page): Promise<void> {
       return;
     }
 
+    // Naprawa (dryf kontraktu mocka, audyt E2E-MOCK-BEZ-CI): shell woła
+    // refresh_snapshot NATYCHMIAST po zamontowaniu case'a (store.ts:
+    // refreshFromBackend na mount) — bez tego handlera trafiał w default
+    // '{}' bez kształtu DomainOpResponseV1, `hasModel` nigdy nie stawał się
+    // `true`, a kanwa SLD/`sld-empty-state` utykały w „Ładowanie układu sieci".
+    if (method === 'POST' && pathname === '/api/cases/case-demo-flow/enm/domain-ops') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(pustaOdpowiedzDomainOps('case-demo-flow')),
+      });
+      return;
+    }
+
     // Default — pusty obiekt
     await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
   });
@@ -193,11 +208,15 @@ test.describe('Designer flow — empty-state CTA (audit 2026-05-19 wymaganie #1)
     await expect(ctaSecondary).toBeVisible();
     await expect(ctaSecondary).toHaveText(/Przeglądaj katalogi techniczne/);
 
-    // Klik primary CTA → empty state pozostaje (bo brak GPZ w snapshocie),
-    // ale operacja zostaje propagowana. Test sprawdza brak crash + brak
-    // błędów konsoli (deterministyczność flow).
+    // Klik primary CTA → operacja `add_grid_source_sn` zostaje propagowana.
+    // INTENCJA BEZ ZMIAN (audit 2026-05-19 §7.2 pakiet A): CTA prowadzi do
+    // formularza tej operacji. Bieżący flow (karta K1/B, 2026-07-29): zamiast
+    // dawnego `add-grid-source-form` otwiera się pełnoekranowy kreator ui2
+    // `KreatorZrodloZasilania` (operationFormRegistry → mvd-kreator-zrodlo),
+    // który ZASTĘPUJE widok kanwy — empty state nie jest już widoczny.
+    // Test nadal sprawdza brak crash + brak błędów konsoli (determinizm flow).
     await ctaPrimary.click();
-    await expect(page.getByTestId('sld-empty-state')).toBeVisible();
+    await expect(page.getByTestId('mvd-kreator-zrodlo')).toBeVisible();
 
     // Brak błędów konsoli i nieobsłużonych wyjątków.
     expect(guards.pageErrors, `pageerror: ${guards.pageErrors.join('\n')}`).toEqual([]);

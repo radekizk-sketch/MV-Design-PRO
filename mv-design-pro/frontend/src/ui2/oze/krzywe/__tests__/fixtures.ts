@@ -155,10 +155,14 @@ export function widokPokryciaFixture(): WidokPokryciaPQ {
         + 'najwiekszy deficyt 0.4095 Mvar przy p=3.15 MW.',
     },
     slad_whitebox: {
+      // K10: wzór śladu z backendu jest czystym LaTeX-em (konwencja Proof Engine).
       wzor:
-        'punkt pokryty  <=>  q_min_prod <= q_wym_min  AND  q_max_prod >= q_wym_max; '
-        + 'margines = min(q_wym_min - q_min_prod, q_max_prod - q_wym_max); '
-        + 'q_wym_min = udzial_min * Pn, q_wym_max = udzial_max * Pn',
+        '\\text{punkt pokryty} \\iff q_{\\min,\\text{prod}} \\le q_{\\text{wym,min}} '
+        + '\\;\\wedge\\; q_{\\max,\\text{prod}} \\ge q_{\\text{wym,max}};\\quad '
+        + '\\text{margines} = \\min(q_{\\text{wym,min}} - q_{\\min,\\text{prod}},\\; '
+        + 'q_{\\max,\\text{prod}} - q_{\\text{wym,max}});\\quad '
+        + 'q_{\\text{wym,min}} = u_{\\min} \\cdot P_{n},\\; '
+        + 'q_{\\text{wym,max}} = u_{\\max} \\cdot P_{n}',
       dane: {
         pn_mw: 3.15,
         udzial_q_min_pct_pn: -0.33,

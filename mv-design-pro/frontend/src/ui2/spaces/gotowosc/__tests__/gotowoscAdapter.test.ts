@@ -3,6 +3,8 @@ import { renderHook } from '@testing-library/react';
 import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
 import type { EnergyNetworkModel } from '../../../../types/enm';
 import {
+  czyGotowoscUstalona,
+  podsumujGotowosc,
   polaczGotowosc,
   useProblemyGotowosci,
   useStanGotowosci,
@@ -92,6 +94,53 @@ describe('useStanGotowosci', () => {
     useSnapshotStore.setState({ snapshot: snapshotFixture(), readiness: readinessInfoZBlokadami() });
     const { result } = renderHook(() => useStanGotowosci());
     expect(result.current).toBe('lista');
+  });
+
+  it('snapshot + readiness=null -> nieustalona (NIE wszystko-gotowe) — V12K-309 poz. 1', () => {
+    useSnapshotStore.setState({ snapshot: snapshotFixture(), readiness: null });
+    const { result } = renderHook(() => useStanGotowosci());
+    expect(result.current).toBe('nieustalona');
+    expect(result.current).not.toBe('wszystko-gotowe');
+  });
+
+  it('ILOCZYN CECH: nieustalona gotowość × ładowanie/błąd — brak projektu wygrywa nad „nie wiadomo"', () => {
+    // Bez migawki nie ma czego oceniać: to nadal brak-projektu/ladowanie/blad,
+    // a nie „nieustalona" (inaczej pusty ekran startowy straszyłby awarią).
+    useSnapshotStore.setState({ snapshot: null, readiness: null, loading: true });
+    expect(renderHook(() => useStanGotowosci()).result.current).toBe('ladowanie');
+
+    useSnapshotStore.setState({ snapshot: null, readiness: null, loading: false, error: 'awaria' });
+    expect(renderHook(() => useStanGotowosci()).result.current).toBe('blad');
+
+    // Z migawką i BEZ gotowości „nie wiadomo" wygrywa, także gdy store nie
+    // pamięta już żadnego błędu (nieudany odczyt gotowości go nie zapisuje).
+    useSnapshotStore.setState({
+      snapshot: snapshotFixture(),
+      readiness: null,
+      loading: false,
+      error: null,
+    });
+    expect(renderHook(() => useStanGotowosci()).result.current).toBe('nieustalona');
+  });
+});
+
+describe('czyGotowoscUstalona — jedno źródło predykatu „wiadomo / nie wiadomo"', () => {
+  it('null -> nieustalona; każda odpowiedź domenowa (także pusta) -> ustalona', () => {
+    expect(czyGotowoscUstalona(null)).toBe(false);
+    expect(czyGotowoscUstalona(readinessInfoFixture())).toBe(true);
+    expect(czyGotowoscUstalona(readinessInfoZBlokadami())).toBe(true);
+  });
+
+  it('ten sam predykat rządzi stanem panelu i podsumowaniem chromu (bez dwóch warunków)', () => {
+    // Predykaty parami: stan przestrzeni i liczby chromu MUSZĄ zgadzać się co do
+    // tego, czy gotowość w ogóle policzono — inaczej panel i pasek się rozjadą.
+    useSnapshotStore.setState({ snapshot: snapshotFixture(), readiness: null });
+    expect(renderHook(() => useStanGotowosci()).result.current).toBe('nieustalona');
+    expect(podsumujGotowosc(null).ustalona).toBe(false);
+
+    useSnapshotStore.setState({ snapshot: snapshotFixture(), readiness: readinessInfoFixture() });
+    expect(renderHook(() => useStanGotowosci()).result.current).toBe('wszystko-gotowe');
+    expect(podsumujGotowosc(readinessInfoFixture()).ustalona).toBe(true);
   });
 });
 

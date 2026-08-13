@@ -18,20 +18,13 @@ import {
   navigateToAnalysis,
   navigateToCaseConfig,
   navigateToCatalog,
-  navigateToCompare,
   navigateToNetworkBuild,
-  navigateToProof,
   navigateToReport,
-  navigateToResultsProtection,
-  navigateToSwitchgear,
   navigateToVariants,
 } from '../../ui/navigation';
 import { useNetworkBuildStore } from '../../ui/network-build/networkBuildStore';
-import {
-  ANALYSIS_SURFACE_SCREEN_CODE,
-  ANALYSIS_ROUTE_DEFAULT_TAB,
-  REPORT_SURFACE_SCREEN_CODE,
-} from '../../ui/workspace/types';
+import { useShellStore } from '../shell/useShellStore';
+import { REPORT_SURFACE_SCREEN_CODE } from '../../ui/workspace/types';
 
 function openSldOverlayFromCurrentContext(): void {
   if (typeof window === 'undefined') {
@@ -57,7 +50,6 @@ export const POZYCJE_MENU_LEGACY: readonly PozycjaMenuLegacy[] = [
   { akcjaId: 'sld', etykietaPL: 'Budowa sieci (schemat)' },
   { akcjaId: 'sld-view', etykietaPL: 'Podgląd schematu (tylko odczyt)' },
   { akcjaId: 'overlay', etykietaPL: 'Nakładka wyników na schemacie' },
-  { akcjaId: 'switchgear', etykietaPL: 'Kreator rozdzielnicy' },
   { akcjaId: 'case-manager', etykietaPL: 'Konfiguracja zakresu obliczeń' },
   { akcjaId: 'catalog', etykietaPL: 'Katalogi techniczne' },
   { akcjaId: 'analysis', etykietaPL: 'Analizy techniczne' },
@@ -79,6 +71,10 @@ export function useLegacyMenuActions(handleCalculate: () => Promise<void>) {
   const activeRunId = useAppStateStore((state) => state.activeRunId);
   const executionActiveRunId = useExecutionRunsStore((state) => state.activeRunId);
   const openRouteSurface = useNetworkBuildStore((state) => state.openRouteSurface);
+  // K3-A2: akcje z zakładkowym dostawcą ui2 (wyniki/porównanie/dowód) prowadzą
+  // do warsztatu przestrzeni „Wyniki" zamiast powierzchni trasowych mostu.
+  const setActiveSpace = useShellStore((state) => state.setActiveSpace);
+  const setWynikiTab = useShellStore((state) => state.setWynikiTab);
   const effectiveRunId = activeRunId ?? executionActiveRunId;
 
   return useCallback((actionId: string) => {
@@ -92,9 +88,6 @@ export function useLegacyMenuActions(handleCalculate: () => Promise<void>) {
       case 'overlay':
         setActiveArea('SCHEMAT_TOPOLOGIA');
         openSldOverlayFromCurrentContext();
-        break;
-      case 'switchgear':
-        navigateToSwitchgear({ caseId: activeCaseId });
         break;
       case 'power-distribution':
         navigateToNetworkBuild();
@@ -110,23 +103,17 @@ export function useLegacyMenuActions(handleCalculate: () => Promise<void>) {
         break;
       case 'results':
       case 'analysis':
-        openRouteSurface(ANALYSIS_SURFACE_SCREEN_CODE, {
-          titlePl: 'Analizy techniczne',
-          tabId: ANALYSIS_ROUTE_DEFAULT_TAB,
-          entityRef: getCurrentSearchParams().get('sel'),
-          subjectKind: 'analysis_run',
-          subjectRef: effectiveRunId,
-          payload: {
-            runId: effectiveRunId,
-            legacyRoute: ROUTES.ANALYSIS.hash,
-            selectedName: getCurrentSearchParams().get('name'),
-            selectedType: getCurrentSearchParams().get('type'),
-          },
-        });
+        // K3-A2: lądowisko = warsztat ui2 (activeSpace 'wyniki'); trasa
+        // #analysis pozostaje (deep-link + powierzchnia mostu w zakładce
+        // „Pozostałe analizy" — otwiera ją orkiestrator z hasha, bez
+        // dublowania openRouteSurface tutaj).
+        setActiveSpace('wyniki');
         navigateToAnalysis({ runId: effectiveRunId });
         break;
       case 'compare':
-        navigateToCompare({ runId: effectiveRunId });
+        // K3-A2: zakładka ui2 „Porównanie A/B" zamiast trasy mostu #compare.
+        setWynikiTab('porownanie');
+        setActiveSpace('wyniki');
         break;
       case 'report':
       case 'export':
@@ -161,10 +148,18 @@ export function useLegacyMenuActions(handleCalculate: () => Promise<void>) {
         break;
       case 'proof':
       case 'whitebox':
-        navigateToProof({ runId: effectiveRunId });
+        // K3-A2: zakładka ui2 „Dowód obliczeń" (kontekst = aktywny przebieg,
+        // gdy jest) zamiast trasy mostu #proof.
+        setWynikiTab('dowod', effectiveRunId);
+        setActiveSpace('wyniki');
         break;
       case 'protection':
-        navigateToResultsProtection({ runId: effectiveRunId });
+        // K8 (domknięcie długu K3 §A pkt 4): warsztat Wyników ma zakładkę
+        // „Koordynacja zabezpieczeń" (EkranKoordynacji — dostawca ui2 ekranu
+        // E-28), więc akcja prowadzi do niej zamiast do wygaszonej trasy
+        // mostu #protection-results (ta renderowała generyczną tabelę E-35).
+        setWynikiTab('koordynacja');
+        setActiveSpace('wyniki');
         break;
       case 'run-sc-3f':
       case 'run-sc-1f':
@@ -186,5 +181,7 @@ export function useLegacyMenuActions(handleCalculate: () => Promise<void>) {
     effectiveRunId,
     openRouteSurface,
     setActiveArea,
+    setActiveSpace,
+    setWynikiTab,
   ]);
 }

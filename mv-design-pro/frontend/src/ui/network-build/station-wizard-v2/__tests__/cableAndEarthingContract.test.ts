@@ -97,14 +97,6 @@ beforeEach(() => {
 afterEach(() => {
   vi.unstubAllGlobals();
 });
-import {
-  computeEarthingFaultCurrent,
-  computeFaultDuration,
-  permittedFaultVoltageVfromDurationS,
-  computeEarthingRequirement,
-  computeRingEarthingResistance,
-  computeVerticalRodResistance,
-} from '../earthingResistanceContract';
 
 // ============================================================================
 // Cable selection — MT880 v3 reference
@@ -271,123 +263,20 @@ describe('checkCableShortCircuit — żyły robocze + powrotne (1s, XLPE Al)', (
 // Earthing — MT880 v3 reference
 // ============================================================================
 
-describe('computeEarthingFaultCurrent — prąd doziemienia IK1', () => {
-  it('Excel MT880: IcsA=146.4, IcsB=134.10, AWSCz=20×2 → IK1≈320.5 A', () => {
-    const r = computeEarthingFaultCurrent({
-      icsSectionA_A: 146.4,
-      icsSectionB_A: 134.10,
-      awsczCurrentA: 20,
-      awsczCount: 2,
-    });
-    expect(r.icsTotal_A).toBeCloseTo(280.5, 1);
-    expect(r.awsczTotal_A).toBe(40);
-    expect(r.ik1_A).toBeCloseTo(320.5, 1);
-  });
-
-  it('Brak AWSCz (n=0) → IK1 = suma Ics', () => {
-    const r = computeEarthingFaultCurrent({
-      icsSectionA_A: 100, icsSectionB_A: 50, awsczCurrentA: 0, awsczCount: 0,
-    });
-    expect(r.ik1_A).toBe(150);
-  });
-});
-
-describe('computeFaultDuration — czas trwania doziemienia tF', () => {
-  it('Linia bez SPZ: 1.0 + 1.0 + 0.05 = 2.05 s', () => {
-    const tF = computeFaultDuration({
-      awsczDelaySec: 1.0, protectionTimeSec: 1.0, cbOpenTimeSec: 0.05,
-      spzCycles: 0, spzDeadTimeSec: 0,
-    });
-    expect(tF).toBeCloseTo(2.05, 2);
-  });
-
-  it('Linia z SPZ (1 cykl, dead 3s): >3 s — Excel MT880 podaje 3.1 s', () => {
-    const tF = computeFaultDuration({
-      awsczDelaySec: 1.0, protectionTimeSec: 1.0, cbOpenTimeSec: 0.05,
-      spzCycles: 0, spzDeadTimeSec: 0,
-    });
-    // Excel MT880 sums to 3.10 s — może uwzględniać dodatkowe cykle SPZ.
-    // Funkcja bazowa zwraca 2.05; SPZ to dodatkowy parametr.
-    expect(tF).toBeGreaterThan(2.0);
-    expect(tF).toBeLessThan(3.5);
-  });
-});
-
-describe('permittedFaultVoltageVfromDurationS — UF z krzywej PN-EN 50522', () => {
-  it('tF=3.1s → UF ≈ 87V (per Excel MT880)', () => {
-    const uf = permittedFaultVoltageVfromDurationS(3.1);
-    // Tablica zwraca interpolowane wartości; dla 3.0s = 89V, 5.0s = 80V.
-    // 3.1s leży tuż za 3.0, więc UF ≈ 89 - (89-80) × 0.05 = ~88.5 V.
-    expect(uf).toBeGreaterThan(85);
-    expect(uf).toBeLessThan(90);
-  });
-
-  it('Krótki czas tF=0.1s → wysokie UF (500V)', () => {
-    const uf = permittedFaultVoltageVfromDurationS(0.1);
-    expect(uf).toBe(500);
-  });
-
-  it('Bardzo długi czas tF=10s → niskie UF (75V)', () => {
-    const uf = permittedFaultVoltageVfromDurationS(10);
-    expect(uf).toBe(75);
-  });
-
-  it('Wartości graniczne: tF=0.01 → UF=700V, tF=100 → UF=75V', () => {
-    expect(permittedFaultVoltageVfromDurationS(0.01)).toBe(700);
-    expect(permittedFaultVoltageVfromDurationS(100)).toBe(75);
-  });
-});
-
-describe('computeEarthingRequirement — max RB', () => {
-  it('Excel MT880: UF=87V, IK1=48.85A → RB ≤ 1.78 Ω', () => {
-    const r = computeEarthingRequirement({
-      uF_V: 87,
-      ik1_A: 48.85,
-    });
-    expect(r.rb_max_uf_method_ohm).toBeCloseTo(1.78, 2);
-    expect(r.rb_max_resulting_ohm).toBeCloseTo(1.78, 2);
-    expect(r.rb_max_re_method_ohm).toBeNull();
-  });
-
-  it('Z metodą RE: U0=230, Un=400, RE=10 → RB ≤ 13.5 Ω', () => {
-    const r = computeEarthingRequirement({
-      uF_V: 87, ik1_A: 48.85, reMinOhm: 10, u0_V: 230, un_V: 400,
-    });
-    expect(r.rb_max_re_method_ohm).not.toBeNull();
-    expect(r.rb_max_re_method_ohm).toBeCloseTo(13.53, 1);
-    // Wynikowe = min z dwóch metod = 1.78.
-    expect(r.rb_max_resulting_ohm).toBeCloseTo(1.78, 2);
-  });
-
-  it('Bardzo wysoki IK1 → bardzo niskie RB', () => {
-    const r = computeEarthingRequirement({ uF_V: 100, ik1_A: 1000 });
-    expect(r.rb_max_uf_method_ohm).toBeCloseTo(0.1, 2);
-  });
-});
-
-describe('computeRingEarthingResistance + computeVerticalRodResistance', () => {
-  it('Uziom otokowy R=9.5m, ρ=60.6 Ω·m → R ≈ 1 Ω', () => {
-    const r = computeRingEarthingResistance(60.6, 9.5);
-    // ρ / (2π × 9.5) = 60.6 / 59.69 ≈ 1.015 Ω.
-    expect(r).toBeCloseTo(1.015, 1);
-  });
-
-  it('Uziom pionowy 4.45m, średnica 0.025m, ρ=30.3 Ω·m', () => {
-    const r = computeVerticalRodResistance(30.3, 4.45, 0.025);
-    // R = (30.3 / (2π × 4.45)) × ln(4 × 4.45 / 0.025) ≈ 1.083 × ln(712) ≈ 7.13 Ω.
-    expect(r).toBeGreaterThan(5);
-    expect(r).toBeLessThan(10);
-  });
-
-  it('Większa rezystywność gruntu → wyższa rezystancja uziomu', () => {
-    const r1 = computeRingEarthingResistance(30, 5);
-    const r2 = computeRingEarthingResistance(60, 5);
-    expect(r2).toBeCloseTo(r1 * 2, 2);
-  });
-
-  it('Większy promień otoku → niższa rezystancja', () => {
-    const r1 = computeRingEarthingResistance(50, 5);
-    const r2 = computeRingEarthingResistance(50, 10);
-    expect(r2).toBeLessThan(r1);
-  });
-});
+// ============================================================================
+// UZIEMIENIE — RACHUNKI USUNIĘTE (K7-B, 2026-07-31)
+// ============================================================================
+//
+// Stały tu asercje na cały moduł `earthingResistanceContract.ts`:
+// `computeEarthingFaultCurrent` (IK1 z prądów pojemnościowych sekcji i AWSCz),
+// `computeFaultDuration`, `permittedFaultVoltageVfromDurationS` (krzywa UF(tF)
+// PN-EN 50522), `computeEarthingRequirement` (RB_max = UF/IK1),
+// `computeRingEarthingResistance` oraz `computeVerticalRodResistance` (wzór
+// Dwighta z logarytmem). Moduł nie miał konsumenta produkcyjnego — poza testami
+// nikt go nie importował. Jest to ta sama klasa fizyki, którą R3 (2026-07-18)
+// usunęło jako `earthingFaultCurrent.ts` i `earthingSystemHelper.ts`; tamta karta
+// nie sięgnęła do kreatora stacji.
+//
+// Zdolność w backendzie: pętla zwarcia IEC 60364 (`api/fault_loop.py`) oraz pakiet
+// dowodowy Earthing / Ground Fault SN
+// (`application/proof_engine/packs/earthing_ground_fault_sn.py`).

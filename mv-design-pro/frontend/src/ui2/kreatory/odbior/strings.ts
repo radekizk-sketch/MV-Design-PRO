@@ -33,6 +33,33 @@ export const ODBIOR_STRINGS = {
     { id: 'JEDNOFAZOWY', etykieta: 'Jednofazowy' },
   ],
 
+  // Model obciążenia (ZIP) — współczynniki czytane przez rozpływ mocy.
+  zipTytul: 'Model obciążenia (ZIP)',
+  zipNota: 'a + b + c = 1 osobno dla P i dla Q',
+  zipPomoc:
+    'Model określa, jak pobór zmienia się z napięciem: udział stałoimpedancyjny (a) '
+    + 'maleje z kwadratem napięcia, stałoprądowy (b) liniowo, stałomocowy (c) jest od '
+    + 'napięcia niezależny. Domyślnie odbiór jest stałomocowy (c = 1) — tak liczył '
+    + 'rozpływ do tej pory. Wybór typu z katalogu wypełnia model wartościami pozycji.',
+  zipNaglowekP: 'Moc czynna P',
+  zipNaglowekQ: 'Moc bierna Q',
+  zipAP: 'Udział stałoimpedancyjny P (a_P)',
+  zipBP: 'Udział stałoprądowy P (b_P)',
+  zipCP: 'Udział stałomocowy P (c_P)',
+  zipAQ: 'Udział stałoimpedancyjny Q (a_Q)',
+  zipBQ: 'Udział stałoprądowy Q (b_Q)',
+  zipCQ: 'Udział stałomocowy Q (c_Q)',
+  zipKPf: 'Wrażliwość częstotliwościowa P (k_pf)',
+  zipKQf: 'Wrażliwość częstotliwościowa Q (k_qf)',
+  zipKPomoc:
+    'Względna zmiana poboru na jednostkę względnej zmiany częstotliwości '
+    + '(0 = pobór niezależny od częstotliwości).',
+  zipSumaP: 'Suma udziałów P',
+  zipSumaQ: 'Suma udziałów Q',
+  zipWierszModel: 'Model obciążenia',
+  zipModelStalaMoc: 'Stała moc (c = 1)',
+  zipModelWlasny: 'Własny model ZIP',
+
   // Podgląd (R1).
   podgladTytul: 'Podgląd odbioru (backend)',
   podgladI: 'Prąd odbioru',

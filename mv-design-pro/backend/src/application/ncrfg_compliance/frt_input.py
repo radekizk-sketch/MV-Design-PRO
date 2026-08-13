@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from src.network_model.solvers.frt_hvrt import FrtHvrtSolverInput, FrtScenario
+from network_model.solvers.frt_hvrt import FrtHvrtSolverInput, FrtScenario
 
 # Parametry scenariusza testowego NC RfG (Brief 2 §16) — stałe testbenchu.
 NCRFG_ENM_REF = "ncrfg_test"

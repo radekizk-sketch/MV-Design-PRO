@@ -97,6 +97,17 @@ def _build_power_flow_input(enm: EnergyNetworkModel) -> tuple[PowerFlowInput, st
             p_mw=-float(node.active_power or 0.0),
             q_mvar=-float(node.reactive_power or 0.0),
             zip_coeffs=node.zip_coeffs,
+            # Defect D1 (audit 2026-08-01): the ZIP polynomial scales the LOAD
+            # part only; generation on the same bus is constant power. Mirrors
+            # `enm.canonical_analysis._execute_power_flow` (same twin builder).
+            zip_base_p_mw=(
+                None if node.zip_load_active_power is None else -float(node.zip_load_active_power)
+            ),
+            zip_base_q_mvar=(
+                None
+                if node.zip_load_reactive_power is None
+                else -float(node.zip_load_reactive_power)
+            ),
         )
         for node_id, node in sorted(graph.nodes.items())
         if node.node_type == NodeType.PQ and node_id != slack_node_id

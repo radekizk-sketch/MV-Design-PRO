@@ -4,8 +4,8 @@ NIE ze stałej. Przed naprawą `_build_source_endpoint` wpisywał "gotowosc"
 dla KAŻDEGO generatora, ignorując zapisaną daną (fabrykacja jednolitego
 stanu — znalezisko F10.6, luka 7)."""
 
-from src.application.field_read_model import _generator_operating_mode
-from src.enm.models import Generator
+from application.field_read_model import _generator_operating_mode
+from enm.models import Generator
 
 
 def _make_generator(meta: dict | None) -> Generator:

@@ -176,8 +176,17 @@ export function useUrlSelectionSync(): void {
     if (!canonicalSelection) {
       selectElement(null);
       updateUrlWithSelection(null);
-      clearRouteManagedSurface();
-      collapseSurfaceStackTo(null);
+      // K9-A (naprawa u źródła): porządkowanie NIEUDANEJ selekcji nie może niszczyć
+      // powierzchni edycji w toku. Otwarty formularz operacji (kreator) nie jest
+      // powierzchnią „dla tej selekcji" — składanie stosu zamykało kreator zaraz po
+      // zapisie (wskazanie niekanoniczne), więc podsumowanie po zapisie nigdy nie
+      // było widoczne w żywej aplikacji.
+      const aktywnyDelegat = useNetworkBuildStore.getState().activeSurface?.routeState.payload
+        ?.delegate;
+      if (aktywnyDelegat !== 'operation_form') {
+        clearRouteManagedSurface();
+        collapseSurfaceStackTo(null);
+      }
       return;
     }
     if (sameSelection(canonicalSelection, selectedElement)) {

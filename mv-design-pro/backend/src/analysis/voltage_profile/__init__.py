@@ -1,5 +1,9 @@
 """Voltage profile (BUS-centric) view builder (P21)."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from analysis.voltage_profile.models import (
     VoltageProfileContext,
     VoltageProfileRow,
@@ -7,6 +11,9 @@ from analysis.voltage_profile.models import (
     VoltageProfileSummary,
     VoltageProfileView,
 )
+
+if TYPE_CHECKING:
+    from analysis.voltage_profile.builder import VoltageProfileBuilder
 
 __all__ = [
     "VoltageProfileBuilder",
@@ -18,7 +25,7 @@ __all__ = [
 ]
 
 
-def __getattr__(name: str):
+def __getattr__(name: str) -> type[VoltageProfileBuilder]:
     if name == "VoltageProfileBuilder":
         from analysis.voltage_profile.builder import VoltageProfileBuilder
 

@@ -1,6 +1,9 @@
 # PLAN PRZEBUDOWY DO KLASY 10x — MV-DESIGN-PRO (2026-07)
 
-Status: PROPOZYCJA (wymaga decyzji właściciela — patrz §9)
+Status: ZATWIERDZONY DO REALIZACJI W ZAKRESIE ZAWĘŻONYM (2026-08-05; decyzje §9:
+poz. 1–2 rozstrzygnięte DECYZJĄ WŁAŚCICIELA — oś wdrażalności i ekspozycja
+sieciowa WYCOFANE, system pozostaje na localhost; poz. 3–5 rozstrzygnięte przez
+architekta na mocy pełnomocnictwa — szczegóły pod każdą decyzją w §9)
 Autor: sesja inżynierska Claude, na bazie audytu principal-level 2026-06 (ocena B−, 30 findingów z file:line)
 Zakres: odpowiedź na zlecenie „Rebuild our entire codebase from scratch. The old version is your spec.
 Turn it into a development plan for building a 10x better version. Write tests that capture everything
@@ -197,11 +200,38 @@ Jeśli kiedyś wejdzie: startować od §4 (charakteryzacja) i §3 (osie), nigdy 
 
 ---
 
-## 9. Decyzje właściciela (blokują start)
+## 9. Decyzje właściciela (blokują start) — ROZSTRZYGNIĘTE 2026-08-05
+
+Pełnomocnictwo: dyrektywa właściciela 2026-08-05 („ty jesteś architektem i master
+developerem projektu, podejmuj decyzje w zgodzie z wiedzą inżyniera energetyka").
+Rozstrzygnięcia architekta:
 
 1. **Ranking osi 10x** z §3 (co jest pierwsze: współbieżność? wdrażalność? velocity rdzenia?).
+   **DECYZJA WŁAŚCICIELA (2026-08-05, nadpisuje wcześniejsze rozstrzygnięcie
+   architekta): oś WDRAŻALNOŚCI (auth, sekrety poza repo, DEBUG off, perymetr)
+   WYCOFANA Z ZAKRESU PROGRAMU — „nie robimy tego".** Obowiązujący ranking
+   pozostałych osi: (1) współbieżność (odciążenie event-loopu — responsywność
+   i ochrona determinizmu przy równoległych biegach analiz w jednej sesji),
+   (2) velocity rdzenia (god-file, import-linter, mypy — praca ciągła w tle,
+   nie brama).
 2. **Ekspozycja sieciowa API** — czy wychodzimy poza localhost (zakres F1.1)?
+   **DECYZJA WŁAŚCICIELA (2026-08-05): NIE — nie wychodzimy poza localhost.**
+   System pozostaje narzędziem jednostanowiskowym; zakres F1.1 (auth/perymetr)
+   NIE wchodzi do realizacji. Zadania F0/F1 dotyczące auth, sekretów i ekspozycji
+   są poza programem do odwołania przez właściciela.
 3. **Zgoda na program strangler F0→F4 zamiast big-bang** (rekomendacja tego planu) — albo świadome
    uruchomienie §8 z akceptacją wyceny.
+   **DECYZJA: STRANGLER F0→F4.** Big-bang odrzucony: przepisanie od zera ryzykuje
+   regresję zweryfikowanej fizyki (IEC 60909/60255, rozpływy, dowody) — dokładnie
+   tego, co stanowi wartość systemu. Spójne z całą praktyką repo (zapadki, guardy,
+   kontrakty FROZEN).
 4. Timeline konsolidacji SLD v1→v2 (wpływa na F3).
+   **DECYZJA: konsolidacja SLD wchodzi PO domknięciu audytu bramek U2–U5 (karta
+   U-AUDYT), jako warunek wejścia w F3; fazy F0–F2 startują niezależnie i nie
+   czekają na SLD.** Program SLD S1–S8 jest zamknięty w rejestrze, więc konsolidacja
+   to porządkowanie toru renderowania, nie przebudowa funkcji.
 5. Polityka długu mypy: freeze (F0.1) + burn-down hotspotów (F2.4) — potwierdzić budżet.
+   **DECYZJA: POTWIERDZONA — freeze już obowiązuje (zapadka mypy_ratchet_guard,
+   próg 20 błędów / 14 plików, wzrost = czerwona bramka); burn-down wyłącznie
+   regułą zero-debt (plik dotknięty w karcie schodzi z listy błędów) plus
+   pojedyncze karty hotspotów przy okazji fal F2 — bez odrębnego sprintu typowania.**

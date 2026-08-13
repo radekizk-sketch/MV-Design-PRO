@@ -17,9 +17,10 @@ DETERMINISTIC: same (step, enm, payload) → identical result.
 
 from __future__ import annotations
 
-import copy
 from dataclasses import dataclass, field
 from typing import Any
+
+from enm.kopia_graniczna import kopia_graniczna_enm
 
 from .schema import (
     IssueSeverity,
@@ -455,7 +456,7 @@ def apply_step(
         )
 
     # 2. Apply on deep copy (copy-on-write)
-    enm_copy = copy.deepcopy(enm)
+    enm_copy = kopia_graniczna_enm(enm)
     apply_fn = _APPLY.get(step_id, _apply_noop)
     mutated_enm = apply_fn(enm_copy, data)
 

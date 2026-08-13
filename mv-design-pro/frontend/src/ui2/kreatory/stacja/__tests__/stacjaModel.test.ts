@@ -18,6 +18,8 @@ import {
   namespaceZrodlaNn,
   nazwaOperacji,
   normalizujTypStacji,
+  blokZaczepow,
+  nowyWpisWyposazenia,
   ogranicznikOdplywow,
   parametryZKatalogu,
   rodzajFalownika,
@@ -27,9 +29,12 @@ import {
   walidujFormularz,
   wymaganeNapiecieNn,
   wyznaczTryb,
+  czyAparaturaKompletna,
   zabezpieczenieZrodla,
   zbudujPayload,
   zbudujPolaSn,
+  zbudujPolaSnZWpisow,
+  zbudujWyposazeniePolaDoPayloadu,
   type KontekstStacji,
   type StacjaFormData,
   type WyborRozdzielnicy,
@@ -59,6 +64,15 @@ const SZABLONY_KOMPLET: CompleteMvBayTemplateSummary[] = [
   szablon({ template_ref: 'tpl-coupler', bay_kind: 'sprzeglowe_poprzeczne', bay_role: 'COUPLER' }),
 ];
 
+/** Aparat pola per rola (B-12) — jawne wskazanie z katalogu APARAT_SN. */
+const APARATY_ROL = {
+  LINIA_IN: 'sw-cb-abb-vd4-17kv-630a',
+  LINIA_OUT: 'sw-cb-abb-vd4-17kv-630a',
+  LINIA_ODG: 'sw-cb-abb-vd4-17kv-630a',
+  TRANSFORMATOROWE: 'sw-cb-abb-vd4-17kv-630a',
+  SPRZEGLO: 'sw-cb-abb-vd4-17kv-630a',
+} as const;
+
 function rozdzielnica(stationType: StacjaFormData['station_type'] = 'branch'): WyborRozdzielnicy {
   const byRole = szablonyPerRola(SZABLONY_KOMPLET, stationType, {});
   return {
@@ -66,10 +80,16 @@ function rozdzielnica(stationType: StacjaFormData['station_type'] = 'branch'): W
     manufacturerName: 'ZPUE Włoszczowa',
     familyRef: 'ZPUE_ROTOBLOK',
     familyName: 'Rotoblok',
-    snFields: zbudujPolaSn(stationType, byRole, {
-      manufacturerRef: 'ZPUE_WLOSZCZOWA',
-      switchgearFamilyRef: 'ZPUE_ROTOBLOK',
-    }),
+    snFields: zbudujPolaSn(
+      stationType,
+      byRole,
+      {
+        manufacturerRef: 'ZPUE_WLOSZCZOWA',
+        switchgearFamilyRef: 'ZPUE_ROTOBLOK',
+      },
+      // B-12: aparat pola wskazany jawnie dla każdej roli.
+      APARATY_ROL,
+    ),
   };
 }
 
@@ -229,6 +249,33 @@ describe('stacjaModel — walidacja', () => {
     ).toBe(false);
   });
 
+  it('blokuje zapis, gdy pole nie ma wskazanego aparatu (B-12)', () => {
+    // Intencja: operacja domenowa NIE dobiera aparatu pola (usunięty fallback),
+    // więc kreator musi wymusić jawne wskazanie z katalogu APARAT_SN.
+    const byRole = szablonyPerRola(SZABLONY_KOMPLET, 'branch', {});
+    const bezAparatu = zbudujPolaSn('branch', byRole, {
+      manufacturerRef: 'ZPUE_WLOSZCZOWA',
+      switchgearFamilyRef: 'ZPUE_ROTOBLOK',
+    });
+    expect(czyAparaturaKompletna(bezAparatu)).toBe(false);
+    expect(
+      walidujFormularz(dane(), bezAparatu).some((e) => e.field === 'sn_field_apparatus_refs'),
+    ).toBe(true);
+    expect(czyAparaturaKompletna(rozdzielnica('branch').snFields)).toBe(true);
+    expect(
+      walidujFormularz(dane(), rozdzielnica('branch').snFields).some(
+        (e) => e.field === 'sn_field_apparatus_refs',
+      ),
+    ).toBe(false);
+  });
+
+  it('payload niesie jawny aparat per pole (B-12)', () => {
+    const payload = zbudujPayload(dane(), kontekst(), rozdzielnica('branch'));
+    const snFields = payload.sn_fields as Array<{ apparatus_catalog_ref: string | null }>;
+    expect(snFields.length).toBeGreaterThan(0);
+    expect(snFields.every((f) => f.apparatus_catalog_ref === 'sw-cb-abb-vd4-17kv-630a')).toBe(true);
+  });
+
   it('ogranicza liczbę odpływów do zakresu', () => {
     expect(ogranicznikOdplywow(0)).toBe(1);
     expect(ogranicznikOdplywow(99)).toBe(8);
@@ -281,10 +328,14 @@ describe('stacjaModel — payload', () => {
         }),
       }),
       nn_block: expect.objectContaining({ nn_configuration: 'LOAD_NN', outgoing_feeders_nn_count: 2 }),
-      options: expect.objectContaining({ create_transformer_field: true, create_nn_bus: true }),
     });
     expect(payload).not.toHaveProperty('segment_id');
     expect(payload).not.toHaveProperty('insert_at');
+    // KOMPLETNOSC-POLA-TR: blok `options` USUNIĘTY z kontraktu — jego trzy flagi
+    // (`create_transformer_field`/`create_default_fields`/`create_nn_bus`) nie były
+    // przez operację CZYTANE, więc opisywały sterowanie, którego nie było (phantom).
+    // Obecność pola transformatorowego rozstrzyga wyłącznie lista `sn_fields`.
+    expect(payload).not.toHaveProperty('options');
   });
 
   it('wariant podział → insert z segment_id/insert_at RATIO', () => {
@@ -656,5 +707,113 @@ describe('stacjaModel — formatery', () => {
     expect(fmtKv(0.4)).toBe('0.400 kV');
     expect(fmtMva(0.63)).toBe('0.63 MVA');
     expect(fmtMva(null)).toBe('—');
+  });
+});
+
+
+describe('B-3 — wyposażenie pola w payloadzie operacji stacyjnej', () => {
+  const CT = [{ id: 'ct-400-5', ratio_primary_a: 400, ratio_secondary_a: 5 }];
+  const VT = [{ id: 'vt-15-100', ratio_primary_v: 15000, ratio_secondary_v: 100 }];
+
+  it('brak wskazań = brak klucza wyposażenia (tor sekwencyjny bez zmian)', () => {
+    expect(zbudujWyposazeniePolaDoPayloadu(undefined, CT, VT)).toBeNull();
+    expect(
+      zbudujWyposazeniePolaDoPayloadu(
+        nowyWpisWyposazenia(),
+        CT,
+        VT,
+      ),
+    ).toBeNull();
+  });
+
+  it('przekładnie CT/VT pochodzą z POZYCJI KATALOGOWEJ (zero fizyki w UI)', () => {
+    const wyposazenie = zbudujWyposazeniePolaDoPayloadu(
+      nowyWpisWyposazenia({
+        ct_catalog_ref: 'ct-400-5',
+        vt_catalog_ref: 'vt-15-100',
+        relay_catalog_ref: 'relay-1',
+        relay_type: 'ZIEMNOZWARCIOWY',
+      }),
+      CT,
+      VT,
+    );
+    expect(wyposazenie?.ct).toMatchObject({
+      catalog_ref: 'ct-400-5',
+      ratio_primary_a: 400,
+      ratio_secondary_a: 5,
+    });
+    expect(wyposazenie?.vt).toMatchObject({ ratio_primary_v: 15000, ratio_secondary_v: 100 });
+    expect(wyposazenie?.relay).toMatchObject({
+      catalog_ref: 'relay-1',
+      relay_type: 'ZIEMNOZWARCIOWY',
+    });
+  });
+
+  it('pozycja spoza katalogu nie tworzy przekładnika (zero fabrykacji przekładni)', () => {
+    const wyposazenie = zbudujWyposazeniePolaDoPayloadu(
+      nowyWpisWyposazenia({ ct_catalog_ref: 'ct-nieznany' }),
+      CT,
+      VT,
+    );
+    expect(wyposazenie).toBeNull();
+  });
+
+  it('wyposażenie trafia do WŁAŚCIWEGO wpisu pola (dopasowanie po identyfikatorze)', () => {
+    const pola = zbudujPolaSnZWpisow(
+      [
+        { id: 'pole-1', field_role: 'LINIA_ODG', bay_template_ref: null, apparatus_catalog_ref: 'ap-1' },
+        { id: 'pole-2', field_role: 'LINIA_ODG', bay_template_ref: null, apparatus_catalog_ref: 'ap-1' },
+      ],
+      { manufacturerRef: 'ZPUE_WLOSZCZOWA', switchgearFamilyRef: null },
+      [],
+      { 'pole-2': { ct: { catalog_ref: 'ct-400-5' } } },
+    );
+    // Dwa pola TEJ SAMEJ roli — wyposażenie nie może „przeskoczyć" na pierwsze.
+    expect(pola[0].equipment).toBeUndefined();
+    expect(pola[1].equipment).toEqual({ ct: { catalog_ref: 'ct-400-5' } });
+  });
+});
+
+
+describe('B-2 — zaczepy transformatora w payloadzie operacji stacyjnej', () => {
+  it('bez regulacji blok jest pusty (zgodność wsteczna co do bitu)', () => {
+    expect(blokZaczepow(dane())).toEqual({});
+    const payload = zbudujPayload(dane(), kontekst(), rozdzielnica('branch'));
+    const transformer = payload.transformer as Record<string, unknown>;
+    expect(transformer).not.toHaveProperty('transformer_regulation_type');
+  });
+
+  it('regulacja włączona → klucze KONTRAKTU operacji (parytet z transformatorem GPZ)', () => {
+    const dane_z_regulacja = dane({
+      transformer_regulation_type: 'DETC',
+      transformer_regulated_winding: 'HV',
+      transformer_tap_neutral_position: 0,
+      transformer_tap_current_position: -1,
+      transformer_tap_min_position: -2,
+      transformer_tap_max_position: 2,
+      transformer_tap_step_percent: 2.5,
+    });
+    const payload = zbudujPayload(dane_z_regulacja, kontekst(), rozdzielnica('branch'));
+    expect(payload.transformer).toMatchObject({
+      transformer_regulation_type: 'DETC',
+      transformer_regulated_winding: 'HV',
+      transformer_tap_neutral_position: 0,
+      transformer_tap_current_position: -1,
+      transformer_tap_min_position: -2,
+      transformer_tap_max_position: 2,
+      transformer_tap_step_percent: 2.5,
+    });
+  });
+
+  it('zaczepy jadą W BLOKU transformatora — nie osobną operacją po zapisie', () => {
+    const payload = zbudujPayload(
+      dane({ transformer_regulation_type: 'OLTC', transformer_tap_current_position: 1 }),
+      kontekst(),
+      rozdzielnica('branch'),
+    );
+    // Cały payload to JEDNA operacja stacyjna: brak osobnego klucza „operacji
+    // następnej" ani listy kroków do wykonania po zapisie.
+    expect(Object.keys(payload)).not.toContain('operations');
+    expect((payload.transformer as Record<string, unknown>).transformer_tap_current_position).toBe(1);
   });
 });

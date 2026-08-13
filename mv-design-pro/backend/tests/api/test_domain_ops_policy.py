@@ -180,7 +180,11 @@ def test_validate_catalog_binding_rejects_unknown_branch_point_catalog_ref():
     )
 
     assert error is not None
-    assert error.code == "catalog.materialization_failed"
+    # PARYTET KODU (karta U1): nieistniejąca pozycja daje `catalog.item_not_found`
+    # niezależnie od kategorii katalogu. Punkt pośredni SN był jedynym miejscem bramy
+    # meldującym `catalog.materialization_failed` — a to nie awaria materializacji,
+    # tylko brak pozycji, dokładnie jak w każdej innej przestrzeni.
+    assert error.code == "catalog.item_not_found"
 
 
 def test_insert_station_payload_accepts_topological_station_type():

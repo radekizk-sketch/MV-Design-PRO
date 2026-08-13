@@ -24,6 +24,7 @@ import {
 } from './strings';
 
 import '../macierz/macierz.css';
+import { PrzyciskAkcjiStanu, useAkcjaDodajZrodloOze } from '../../wyniki/wzorzec';
 import './pulpit.css';
 
 export interface PulpitOzeProps {
@@ -37,6 +38,8 @@ export function PulpitOze({ trybZaawansowania, onNawiguj }: PulpitOzeProps): JSX
   const ders = useStationDerStore((state) => selectAllDers(state));
   const opisy = useMemo(() => zbudujModuly(ders), [ders]);
   const derPoId = useMemo(() => new Map(ders.map((d) => [d.id, d])), [ders]);
+  // K6 / H-5: stan zerowy strumienia OZE prowadzi do dodania modulu wytworczego.
+  const akcjaZrodlo = useAkcjaDodajZrodloOze();
 
   const katalog = useNcRfgStore((s) => s.katalog);
   const bladKatalogu = useNcRfgStore((s) => s.bladKatalogu);
@@ -155,6 +158,8 @@ export function PulpitOze({ trybZaawansowania, onNawiguj }: PulpitOzeProps): JSX
         <section className="mvd-oze-info" data-testid="mvd-oze-pulpit-pusty">
           <h4>{PULPIT_STRINGS.brakModulow}</h4>
           <p>{PULPIT_STRINGS.brakModulowOpis}</p>
+          {/* K6 / H-5: stan zerowy prowadzi do dodania modułu wytwórczego. */}
+          <PrzyciskAkcjiStanu akcja={akcjaZrodlo} testid="mvd-oze-pulpit-pusty" />
         </section>
       ) : (
         <div className="mvd-oze-pulpit-uklad">

@@ -350,11 +350,43 @@ class SNFieldSpec(_FrozenBase):
         "LINIA_ODG",
         "TRANSFORMATOROWE",
         "SPRZEGLO",
+        "POMIAROWE",
     ]
-    """Rola pola SN w rozdzielnicy."""
+    """Rola pola SN w rozdzielnicy.
+
+    `POMIAROWE` (pole układu pomiarowo-rozliczeniowego) było w kontrakcie
+    pominięte, choć `Bay.bay_role` i read-model pola znały je od dawna —
+    dokumentowany kontrakt zaprzeczał modelowi.
+    """
+
+    funkcja_pomiaru: Literal["UKLAD_ENERGII", "NAPIECIA_SZYN"] | None = None
+    """Funkcja pola pomiarowego (kontrakt POMIAR_ROZLICZENIOWY_SN_V1 §5,
+    V12K-336 pkt 4) — addytywnie, wyłącznie dla `field_role='POMIAROWE'`:
+
+    - `UKLAD_ENERGII` — układ pomiarowy energii elektrycznej ([E-UP] pkt 3;
+      granica stron); podlega bramie pomiaru w torze tranzytu i niesie
+      `rodzaj_pomiaru`,
+    - `NAPIECIA_SZYN` — pole pomiaru napięcia szyn rozdzielni (przekładniki
+      napięciowe sekcji); wolne na każdej drodze, bez rodzaju rozliczenia.
+
+    Brak deklaracji na drodze budowy stacji ⇒ UKLAD_ENERGII (deklaracja stacji
+    z polem POMIAROWYM opisuje przyłącze klienta, §3 reguła 1)."""
+
+    rodzaj_pomiaru: Literal["PODSTAWOWY", "REZERWOWY", "ROWNOWAZNY", "KONTROLNY"] | None = None
+    """Rodzaj układu pomiarowego energii — lista ZAMKNIĘTA ze standardu [E-UP]
+    pkt 3 (zgodna z IRiESD): układ pomiarowo-rozliczeniowy podstawowy,
+    rezerwowy, równoważny lub układ pomiarowo-kontrolny. Wyłącznie dla
+    `funkcja_pomiaru='UKLAD_ENERGII'`; brak deklaracji przy funkcji układu ⇒
+    PODSTAWOWY (obowiązkowy układ punktu rozliczeniowego). Deklaracja na polu
+    innej roli ⇒ błąd `sn.pomiar_poza_polem_pomiarowym`."""
 
     catalog_bindings: CatalogBindings | None = None
     """Opcjonalne powiązania katalogowe aparatury."""
+
+    apparatus_catalog_ref: str | None = None
+    """Aparat pola z katalogu APARAT_SN (B-12) — wskazanie WYMAGANE przez operację
+    (albo wspólne `field_apparatus_catalog_ref` payloadu). Operacja nie dobiera
+    aparatu samodzielnie: brak wskazania kończy się błędem walidacji."""
 
     cell_type: (
         Literal[
@@ -374,6 +406,17 @@ class SNFieldSpec(_FrozenBase):
     """Typ pola ABB UniSwitch (katalog §4 „Rodzaje pól"). Opcjonalny i addytywny —
     domyślnie None, więc jest wykluczany z deterministycznego odcisku ENM
     (exclude_none). Nie wypełniać na istniejących fixture'ach."""
+
+    equipment: dict[str, Any] | None = None
+    """Wyposażenie pomiarowo-zabezpieczeniowe pola (B-3) — addytywne i opcjonalne.
+
+    Klucze `ct`, `vt`, `relay` niosą DOKŁADNIE payload operacji `add_ct`/`add_vt`/
+    `add_relay` (bez `bay_ref` — operacja stacyjna dopina referencję utworzonego
+    pola). Wskazanie wyposażenia sprawia, że powstaje ono w TEJ SAMEJ operacji i
+    migawce co stacja: błąd któregokolwiek elementu kończy całą operację (koniec
+    stanu połowicznego „stacja zapisana, wyposażenie częściowe"). Pominięcie pola
+    zachowuje dotychczasowe zachowanie — wyposażenie zakładane osobnymi
+    operacjami."""
 
 
 class TransformerSpec(_FrozenBase):
@@ -616,22 +659,6 @@ class SourceNN(_FrozenBase):
     in_service: bool = True
 
 
-class StationOptions(_FrozenBase):
-    """Opcje tworzenia stacji SN/nN.
-
-    Flagi sterujące automatycznym tworzeniem elementów stacji.
-    """
-
-    create_transformer_field: bool = True
-    """Czy utworzyć pole transformatorowe."""
-
-    create_default_fields: bool = True
-    """Czy utworzyć domyślne pola SN."""
-
-    create_nn_bus: bool = True
-    """Czy utworzyć szynę nN."""
-
-
 # ===========================================================================
 # 5. Operation-specific payloads — payloady operacji domenowych
 # ===========================================================================
@@ -730,6 +757,14 @@ class StationSpec(_FrozenBase):
     station_name: str | None = None
     """Opcjonalna nazwa stacji."""
 
+    designation: str | None = None
+    """Oznaczenie stacji na dokumentacji, np. „ST-15/0,4-01" (B-4). Addytywne."""
+
+    construction_type: (
+        Literal["wnetrzowa", "kontenerowa", "slupowa", "prefabrykowana", "inna"] | None
+    ) = None
+    """Typ konstrukcji stacji (B-5) — parytet z `enm.models.Substation`. Addytywny."""
+
     sn_voltage_kv: float
     """Napięcie strony SN [kV]."""
 
@@ -771,16 +806,28 @@ class InsertStationOnSegmentSNPayload(_FrozenBase):
     """Specyfikacja tworzonej stacji."""
 
     sn_fields: list[SNFieldSpec]
-    """Lista pól SN rozdzielnicy."""
+    """Lista pól SN rozdzielnicy.
+
+    KOMPLETNOSC-POLA-TR: to JEDYNE miejsce, w którym rozstrzyga się obecność pola
+    transformatorowego. Do tej karty payload niósł dodatkowo blok `options` z
+    flagami `create_transformer_field` / `create_default_fields` / `create_nn_bus`
+    — operacja NIE CZYTAŁA żadnej z nich (grep: zero odczytów poza definicją), więc
+    wołający mógł wysłać `create_transformer_field: false` i dostać dokładnie ten sam
+    model. Kontrolka bez pokrycia w backendzie jest zakazana (phantom rule), a
+    „naprawa przez uhonorowanie" byłaby gorsza: automatyczne dołożenie pola TR
+    wymagałoby DOBRANIA jego aparatu przez operację, czego zakazuje B-12 (aparat pola
+    wskazuje projektant, operacja nie fabrykuje decyzji projektowej). Flagi usunięte
+    — decyzja o polu transformatorowym jest w tej liście, jawnie."""
+
+    field_apparatus_catalog_ref: str | None = None
+    """Wspólny aparat pól SN z katalogu APARAT_SN (B-12) — używany, gdy pole nie
+    ma własnego `apparatus_catalog_ref`."""
 
     transformer: TransformerSpec
     """Specyfikacja transformatora SN/nN."""
 
     nn_block: NNBlockSpec
     """Specyfikacja bloku nN."""
-
-    options: StationOptions
-    """Opcje tworzenia stacji."""
 
     trunk_ref: TrunkRef | None = None
     """Opcjonalna referencja do magistrali."""
@@ -941,6 +988,21 @@ class AddSnBayPayload(_FrozenBase):
 
     bay_role: Literal["IN", "OUT", "FEEDER", "TR", "COUPLER", "MEASUREMENT", "OZE"] = "FEEDER"
     """Rola pola w kontrakcie ENM."""
+
+    funkcja_pomiaru: Literal["UKLAD_ENERGII", "NAPIECIA_SZYN"] | None = None
+    """Funkcja pola pomiarowego — wyłącznie dla `bay_role='MEASUREMENT'`
+    (kontrakt POMIAR_ROZLICZENIOWY_SN_V1 §5, V12K-336 pkt 4). Dokładanie
+    pojedynczego pola nie deklaruje przyłącza klienta, więc brak deklaracji ⇒
+    NAPIECIA_SZYN (pole pomiaru napięcia szyn rozdzielni); układ pomiarowy
+    ENERGII wymaga deklaracji JAWNEJ (funkcji albo rodzaju układu) i podlega
+    bramie `sn.pomiar_w_torze_tranzytu`."""
+
+    rodzaj_pomiaru: Literal["PODSTAWOWY", "REZERWOWY", "ROWNOWAZNY", "KONTROLNY"] | None = None
+    """Rodzaj układu pomiarowego energii ([E-UP] pkt 3, lista zamknięta,
+    IRiESD) — wyłącznie dla układu pomiarowego energii; deklaracja rodzaju
+    implikuje `funkcja_pomiaru='UKLAD_ENERGII'`. Deklaracja na polu innej
+    roli ⇒ błąd `sn.pomiar_poza_polem_pomiarowym`; rodzaj przy funkcji
+    NAPIECIA_SZYN ⇒ błąd `sn.rodzaj_pomiaru_poza_ukladem_energii`."""
 
     field_name: str | None = None
     """Opcjonalna nazwa pola."""

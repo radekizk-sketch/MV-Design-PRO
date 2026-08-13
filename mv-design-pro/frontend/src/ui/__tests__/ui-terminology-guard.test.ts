@@ -66,7 +66,8 @@ function extractUiStrings(content: string): { line: number; text: string }[] {
   return results;
 }
 
-const FORBIDDEN_UI_TERMS = [
+// `skipUi2` — wyjątek zakresu ui2 (każdy z uzasadnieniem w komentarzu obok).
+const FORBIDDEN_UI_TERMS: { term: RegExp; replacement: string; skipUi2?: boolean }[] = [
   // Pre-existing tokeny techniczne (DRIFT/BLOCKER/etc.)
   { term: /\bmaterializacj/i, replacement: 'Wczytanie parametrow z katalogu' },
   { term: /\brematerializuj/i, replacement: 'Odswiez parametry z katalogu' },
@@ -87,13 +88,23 @@ const FORBIDDEN_UI_TERMS = [
   { term: /\bbranch\b/i, replacement: 'gałąź / odgałęzienie' },
   { term: /\bcase\b/i, replacement: 'zakres obliczeń' },
   { term: /\bwizard\b/i, replacement: 'konfiguracja' },
-  { term: /\bkreator\b/i, replacement: 'konfiguracja' },
+  // WYJĄTEK ui2 (K10): „Kreator" to ugruntowana nazwa własna modułów kreatorów
+  // ui2 (`ui2/kreatory/**` — „Kreator studium…", „kreator prowadzi krok po
+  // kroku") potwierdzona w konwencji nazewniczej strings tych modułów; w starym
+  // src/ui token pozostaje zakazany (tam kanonem jest „konfiguracja").
+  { term: /\bkreator\b/i, replacement: 'konfiguracja', skipUi2: true },
   { term: /\bfallback\b/i, replacement: 'rozwiązanie zapasowe / brak danych' },
   { term: /\blegacy\b/i, replacement: 'archiwalny' },
+  // K10 (dyrektywa 2026-07-29): anglicyzmy techniczne w treści dla inżyniera.
+  { term: /\bhash\b/i, replacement: 'skrót / odcisk' },
+  { term: /\bwhite\s?box\b/i, replacement: 'pełna jawność obliczeń' },
 ];
 
 const ALLOW_PROGRAMMATIC_PATTERNS = [
   /\$\{[^}]*\.(?:branch|run|snapshot|case|proof|wizard)[^}]*\}/i,  // template literal var refs
+  // K10: odwołania do ZMIENNYCH w template literals (`${run.id}`, `${hash.slice(...)}`,
+  // `${binding.observed_value}`) to kod, nie treść dla inżyniera.
+  /\$\{[^}]*\b(?:run|hash|binding)\b[^}]*\}/i,
   /\bstate\.(?:branch|run|snapshot|case|proof|wizard)\b/i,
   /\bNormativeLabels\.terms\.\w+/i,
   /^[a-z0-9_-]+$/i,  // pojedyncze identyfikatory
@@ -102,31 +113,45 @@ const ALLOW_PROGRAMMATIC_PATTERNS = [
 ];
 
 describe('UI Terminology Guard - public UI strings', () => {
+  // K10: skan obejmuje oba drzewa UI — stare src/ui i przemysłowe src/ui2.
   const uiDir = join(__dirname, '..');
-  const uiFiles = collectUiSourceFiles(uiDir);
+  const ui2Dir = join(__dirname, '../../ui2');
+  const scanRoots: { dir: string; isUi2: boolean }[] = [
+    { dir: uiDir, isUi2: false },
+    { dir: ui2Dir, isUi2: true },
+  ];
 
   it('found UI source files to check', () => {
-    expect(uiFiles.length).toBeGreaterThan(0);
+    for (const { dir } of scanRoots) {
+      expect(collectUiSourceFiles(dir).length).toBeGreaterThan(0);
+    }
   });
 
   it('no forbidden English implementation terms in UI-visible strings', () => {
     const violations: string[] = [];
 
-    for (const filePath of uiFiles) {
-      const content = readFileSync(filePath, 'utf-8');
-      const uiStrings = extractUiStrings(content);
+    for (const { dir, isUi2 } of scanRoots) {
+      for (const filePath of collectUiSourceFiles(dir)) {
+        const content = readFileSync(filePath, 'utf-8');
+        const uiStrings = extractUiStrings(content);
 
-      for (const { line, text } of uiStrings) {
-        // Pomijamy programmatic references (np. ${branch.name} w error messages)
-        if (ALLOW_PROGRAMMATIC_PATTERNS.some((p) => p.test(text))) {
-          continue;
-        }
-        // Pomijamy linie oznaczone `// ui-terminology-ignore`
-        // (sprawdzane na poziomie line content przez Python guard, tutaj duplikujemy)
-        for (const { term, replacement } of FORBIDDEN_UI_TERMS) {
-          if (term.test(text)) {
-            const relPath = relative(uiDir, filePath);
-            violations.push(`${relPath}:${line} - "${text}" contains ${term}. Use: "${replacement}"`);
+        for (const { line, text } of uiStrings) {
+          // Pomijamy programmatic references (np. ${branch.name} w error messages)
+          if (ALLOW_PROGRAMMATIC_PATTERNS.some((p) => p.test(text))) {
+            continue;
+          }
+          // Pomijamy linie oznaczone `// ui-terminology-ignore`
+          // (sprawdzane na poziomie line content przez Python guard, tutaj duplikujemy)
+          for (const { term, replacement, skipUi2 } of FORBIDDEN_UI_TERMS) {
+            if (skipUi2 && isUi2) {
+              continue;
+            }
+            if (term.test(text)) {
+              const relPath = relative(dir, filePath);
+              violations.push(
+                `${isUi2 ? 'ui2/' : ''}${relPath}:${line} - "${text}" contains ${term}. Use: "${replacement}"`,
+              );
+            }
           }
         }
       }

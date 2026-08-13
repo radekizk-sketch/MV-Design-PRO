@@ -192,7 +192,7 @@ def _build_entry_for_bus(
     if not element_list:
         missing.append("element_data")
 
-    if missing:
+    if missing or warn is None or fail is None or u_nom_kv is None:
         return LFSensitivityEntry(
             bus_id=row_bus_id,
             base_delta_pct=base_delta_pct,
@@ -208,13 +208,13 @@ def _build_entry_for_bus(
     total_delta_u = 0.0
 
     for element in element_list:
-        if None in (
-            element.r_ohm,
-            element.x_ohm,
-            element.p_mw,
-            element.q_mvar,
-            element.delta_u_r_kv,
-            element.delta_u_x_kv,
+        if (
+            element.r_ohm is None
+            or element.x_ohm is None
+            or element.p_mw is None
+            or element.q_mvar is None
+            or element.delta_u_r_kv is None
+            or element.delta_u_x_kv is None
         ):
             continue
         total_delta_u_r += float(element.delta_u_r_kv)
@@ -303,7 +303,12 @@ def _drivers_for_element(
                 warn=warn,
                 fail=fail,
             )
-            why = "Wpływ parametru z modelu P32; " f"margines względem progu {margin_ref}."
+            # PL bez kodenamów (CLAUDE.md §8): why_pl trafia wprost do interfejsu
+            # (zakładka „Wrażliwość"), więc nazwa progu i źródło danych po polsku.
+            why = (
+                "Wpływ parametru z dowodu spadków napięć rozpływu; "
+                f"margines względem progu: {_etykieta_progu(margin_ref)}."
+            )
             drivers.append(
                 LFSensitivityDriver(
                     bus_id=bus_id,
@@ -345,7 +350,10 @@ def _drivers_for_u_nom(
             warn=warn,
             fail=fail,
         )
-        why = "Wpływ napięcia znamionowego z modelu P32; " f"margines względem progu {margin_ref}."
+        why = (
+            "Wpływ napięcia znamionowego z dowodu spadków napięć rozpływu; "
+            f"margines względem progu: {_etykieta_progu(margin_ref)}."
+        )
         drivers.append(
             LFSensitivityDriver(
                 bus_id=bus_id,
@@ -358,6 +366,11 @@ def _drivers_for_u_nom(
         )
 
     return drivers
+
+
+def _etykieta_progu(margin_ref: str) -> str:
+    """Polska etykieta progu odniesienia marginesu (token wewnętrzny → PL)."""
+    return "ostrzeżenie" if margin_ref == "warning" else "przekroczenie"
 
 
 def _format_perturbation(delta_pct: float) -> str:

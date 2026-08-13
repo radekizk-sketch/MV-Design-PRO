@@ -240,11 +240,11 @@ WHITE BOX (zwracają wszystkie ocenione punkty), a badania przywracają stan zac
 |-------|--------|----------|--------------|
 | **G1** | §9 wrażliwość | `power_flow_oltc_studies.sweep_tap_positions` | LF przy każdej stałej pozycji (min..max/pełny zakres); per pozycja: przekładnia, U sterowanej szyny, min/max U, straty [MW]; przywraca stan |
 | **G2** | §8 profile roczne | `power_flow_oltc_studies.run_annual_oltc_profile` | Pętla OLTC per krok czasowy (skalowanie obciążeń); per krok: pozycje, liczba przełączeń, U szyny, czy w paśmie nieczułości; sumy przełączeń i kroków poza deadband |
-| **G3** | §17 optymalizacja | `power_flow_oltc_studies.optimize_tap_positions` | OLTC jako całkowitoliczbowa zmienna decyzyjna — enumeracja EXACT po zakresie (przestrzeń mała), cele: `minimize_losses` / `maintain_voltage` / `minimize_switching`; deterministyczne rozstrzyganie remisów; brak solvera zewnętrznego nie jest potrzebny |
+| **G3** | §17 optymalizacja | `power_flow_oltc_studies.optimize_tap_positions` | OLTC jako całkowitoliczbowa zmienna decyzyjna — enumeracja EXACT po zakresie (przestrzeń mała), cele: `minimize_losses` / `maintain_voltage` / `minimize_switching`; deterministyczne rozstrzyganie remisów; brak solvera zewnętrznego nie jest potrzebny. **Kryterium dopuszczalności pozycji jest daną wyniku** (`feasibility_criterion`: rodzaj, wartość, źródło): dla `minimize_switching` to pasmo nieczułości regulatora z MODELU (`TapChanger.deadband_kv`, połowa pasma jak w pętli AVR) wokół napięcia docelowego badania; brak którejkolwiek danej ⇒ wynik NIEDOSTĘPNY (`best_position`/`switch_count` = `null`) + kody gotowości `oltc.deadband_missing` / `oltc.target_voltage_missing`. Żadnego progu zaszytego w kodzie (D6, karta D) |
 | **G4** | §14 raporty | `analysis/reporting/oltc_report.py` | Sekcja OLTC raportu PF (JSON/tekst PL/LaTeX) READ-ONLY z `oltc_control`: pozycje pocz./końc., przełączenia, U przed/po |
 | **G5** | §13 glif SLD | `docs/uiux/KARTA_KOORDYNACJI_SLD_02_OLTC_GLIF.md` | Karta koordynacyjna do wątku SLD (V12K-060) — kontrakt danych READ-ONLY + specyfikacja glifu; BEZ edycji `ui/sld/**` (kolizja plików zabroniona) |
 
-Testy: `tests/network_model/solvers/test_power_flow_oltc_studies.py` (9),
+Testy: `tests/network_model/solvers/test_power_flow_oltc_studies.py` (27),
 `tests/analysis/test_oltc_report.py` (5). Wszystkie deterministyczne.
 
 ### 8.1 H1 — osiągalność silników przez run API (2026-07-19)
