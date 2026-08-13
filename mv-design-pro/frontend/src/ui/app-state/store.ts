@@ -29,19 +29,12 @@ import {
   type RuntimeOperatingMode,
 } from '../operatingMode';
 import { useSnapshotStore } from '../topology/snapshotStore';
-import {
-  normalizeAreaId,
-  type AreaId,
-  type LegacyAreaCode,
-} from '../navigation/areaRegistry';
 import type { EnergyNetworkModel } from '../../types/enm';
 import { useExecutionRunsStore } from '../study-cases/runStore';
 
 // =============================================================================
-// V12 — Area and Work-mode types
+// V12 — Work-mode types
 // =============================================================================
-
-export type AreaCode = AreaId;
 
 /**
  * V12 SLD work-mode codes.
@@ -104,8 +97,7 @@ interface AppState {
   // UI_INTEGRATION_E2E: Analysis type context
   activeAnalysisType: AnalysisType;
 
-  // V12: Area and work-mode
-  activeArea: AreaId;
+  // V12: work-mode
   activeWorkMode: WorkMode;
   activeVariantId: string | null;
   activeVariantName: string | null;
@@ -133,7 +125,6 @@ interface AppState {
   toggleIssuePanel: (open?: boolean) => void; // P30d
 
   // V12 actions
-  setActiveArea: (area: AreaId | LegacyAreaCode | string) => void;
   setActiveWorkMode: (mode: WorkMode) => void;
   setActiveVariant: (variantId: string | null, variantName?: string | null) => void;
   setEnmHashChain: (chain: EnmHashChainState | null) => void;
@@ -165,7 +156,6 @@ const initialState = {
   activeAnalysisType: null as AnalysisType, // UI_INTEGRATION_E2E
   issuePanelOpen: false, // P30d
   // V12
-  activeArea: 'MODEL_SIECI' as AreaId,
   activeWorkMode: 'TE' as WorkMode,
   activeVariantId: null as string | null,
   activeVariantName: null as string | null,
@@ -196,6 +186,22 @@ function getCalculationStructuralBlocker(snapshot: EnergyNetworkModel | null): s
 /**
  * Zustand store for global application state.
  */
+/**
+ * Klucze stanu przenoszone miedzy sesjami (localStorage). JEDNO zrodlo prawdy
+ * dla zapisu (`partialize`) i odczytu (`migrate`): pole spoza tej listy nie
+ * zostanie zapisane ANI odtworzone.
+ */
+const KLUCZE_UTRWALANE = [
+  'activeProjectId',
+  'activeProjectName',
+  'activeCaseId',
+  'activeCaseName',
+  'activeCaseKind',
+  'activeSnapshotId',
+  'activeVariantId',
+  'activeVariantName',
+] as const;
+
 export const useAppStateStore = create<AppState>()(
   persist(
     (set, get) => ({
@@ -301,10 +307,6 @@ export const useAppStateStore = create<AppState>()(
 
       // V12 actions
 
-      setActiveArea: (area) => {
-        set({ activeArea: normalizeAreaId(area) });
-      },
-
       setActiveWorkMode: (mode) => {
         set({ activeWorkMode: mode });
         // Sync legacy activeMode
@@ -381,29 +383,30 @@ export const useAppStateStore = create<AppState>()(
     }),
     {
       name: 'mv-design-app-state',
-      version: 2,
+      // D1 (kanon nawigacji): wersja 3 zrzuca z utrwalonego stanu klucz drugiej
+      // nawigacji. Migracja NIE wymienia go z nazwy — zostawia WYLACZNIE klucze
+      // z `KLUCZE_UTRWALANE`, wiec kazde pole wycofane w przyszlosci znika tak
+      // samo, bez dopisywania kolejnej galezi migracji. Warunek zapisu i warunek
+      // odczytu pochodza z JEDNEJ listy (regula KLASA-NIE-INSTANCJA §3).
+      version: 3,
       migrate: (persistedState: unknown, _version) => {
         if (!persistedState || typeof persistedState !== 'object') {
           return persistedState as AppState;
         }
-        const state = persistedState as Partial<AppState> & { activeArea?: unknown };
-        return {
-          ...state,
-          activeArea: normalizeAreaId(state.activeArea),
-        } as AppState;
+        const zapisany = persistedState as Record<string, unknown>;
+        const zachowane: Record<string, unknown> = {};
+        for (const klucz of KLUCZE_UTRWALANE) {
+          if (klucz in zapisany) {
+            zachowane[klucz] = zapisany[klucz];
+          }
+        }
+        return zachowane as unknown as AppState;
       },
       // Only persist project and case IDs, not transient state
-      partialize: (state) => ({
-        activeProjectId: state.activeProjectId,
-        activeProjectName: state.activeProjectName,
-        activeCaseId: state.activeCaseId,
-        activeCaseName: state.activeCaseName,
-        activeCaseKind: state.activeCaseKind,
-        activeSnapshotId: state.activeSnapshotId, // UI_INTEGRATION_E2E
-        activeArea: state.activeArea,
-        activeVariantId: state.activeVariantId,
-        activeVariantName: state.activeVariantName,
-      }),
+      partialize: (state) =>
+        Object.fromEntries(
+          KLUCZE_UTRWALANE.map((klucz) => [klucz, state[klucz]]),
+        ) as Pick<AppState, (typeof KLUCZE_UTRWALANE)[number]>,
     }
   )
 );

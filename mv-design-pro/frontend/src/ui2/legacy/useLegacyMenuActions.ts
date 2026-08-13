@@ -66,7 +66,6 @@ export const POZYCJE_MENU_LEGACY: readonly PozycjaMenuLegacy[] = [
  * `App.handleMenuAction(actionId)`.
  */
 export function useLegacyMenuActions(handleCalculate: () => Promise<void>) {
-  const setActiveArea = useAppStateStore((state) => state.setActiveArea);
   const activeCaseId = useAppStateStore((state) => state.activeCaseId);
   const activeRunId = useAppStateStore((state) => state.activeRunId);
   const executionActiveRunId = useExecutionRunsStore((state) => state.activeRunId);
@@ -86,7 +85,8 @@ export function useLegacyMenuActions(handleCalculate: () => Promise<void>) {
         navigateToNetworkBuild();
         break;
       case 'overlay':
-        setActiveArea('SCHEMAT_TOPOLOGIA');
+        // D1: `setActiveArea('SCHEMAT_TOPOLOGIA')` bylo REDUNDANTNE — ta sama
+        // wartosc wynika z trasy `#sld` ustawianej linijke nizej (most obszarow).
         openSldOverlayFromCurrentContext();
         break;
       case 'power-distribution':
@@ -117,7 +117,8 @@ export function useLegacyMenuActions(handleCalculate: () => Promise<void>) {
         break;
       case 'report':
       case 'export':
-        setActiveArea('RAPORTY_UZASADNIENIA');
+        // D1: obszar RAPORTY_UZASADNIENIA wynika z trasy `#report` (most obszarow),
+        // ktora ustawia `navigateToReport` na koncu tej galezi.
         openRouteSurface(REPORT_SURFACE_SCREEN_CODE, {
           entityRef: getCurrentSearchParams().get('sel'),
           subjectKind: 'report',
@@ -135,7 +136,7 @@ export function useLegacyMenuActions(handleCalculate: () => Promise<void>) {
         break;
       case 'readiness':
       case 'show-readiness':
-        setActiveArea('WYNIKI_ANALIZY');
+        // D1: obszar WYNIKI_ANALIZY wynika z trasy `#analysis` (most obszarow).
         openRouteSurface('E-04', {
           titlePl: 'Konfiguracja techniczna układu',
           tabId: 'kontrola',
@@ -180,7 +181,6 @@ export function useLegacyMenuActions(handleCalculate: () => Promise<void>) {
     handleCalculate,
     effectiveRunId,
     openRouteSurface,
-    setActiveArea,
     setActiveSpace,
     setWynikiTab,
   ]);

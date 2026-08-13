@@ -1,5 +1,4 @@
-import type { AreaId } from '../../navigation/areaRegistry';
-import { normalizeAreaId } from '../../navigation/areaRegistry';
+import type { ObszarKontekstu } from '../../../ui2/legacy/mostObszarow';
 import { MoContextPanel } from './MoContextPanel';
 import { AnContextPanel } from './AnContextPanel';
 import { SchematContextPanel } from './SchematContextPanel';
@@ -10,13 +9,18 @@ import { RaContextPanel } from './RaContextPanel';
 import { AdContextPanel } from './AdContextPanel';
 import { HiContextPanel } from './HiContextPanel';
 
+/**
+ * Panel kontekstu lewego doku. D1: klucz `obszar` jest WYPROWADZANY Z TRASY
+ * przez `ui2/legacy/mostObszarow.obszarDlaTrasy` — nie ma juz rownoleglego
+ * stanu `activeArea` ani normalizacji nierozpoznanych napisow (typ zamkniety,
+ * wiec `default` nie moze wystapic i gałąź „nieznany obszar" znika).
+ */
 interface AreaContextPanelProps {
-  areaCode: AreaId | string;
+  obszar: ObszarKontekstu;
 }
 
-export function AreaContextPanel({ areaCode }: AreaContextPanelProps) {
-  const normalizedArea = normalizeAreaId(areaCode);
-  switch (normalizedArea) {
+export function AreaContextPanel({ obszar }: AreaContextPanelProps) {
+  switch (obszar) {
     case 'MODEL_SIECI':
       return <MoContextPanel />;
     case 'SCHEMAT_TOPOLOGIA':
@@ -35,14 +39,5 @@ export function AreaContextPanel({ areaCode }: AreaContextPanelProps) {
       return <AdContextPanel />;
     case 'HISTORIA_AUDYT':
       return <HiContextPanel />;
-    default:
-      return (
-        <div
-          data-testid="unknown-context-panel"
-          className="flex h-full items-center justify-center bg-scada-panel p-4 text-[11px] text-scada-muted"
-        >
-          Nie można rozpoznać obszaru roboczego. Wróć do obszaru Budowa sieci.
-        </div>
-      );
   }
 }

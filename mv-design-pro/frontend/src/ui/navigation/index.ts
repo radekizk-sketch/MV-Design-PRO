@@ -3,6 +3,7 @@
  */
 export {
   ROUTES,
+  ALIAS_ROUTES,
   ANALYSIS_ROUTE_ALIASES,
   getCurrentRoute,
   getRouteByHash,

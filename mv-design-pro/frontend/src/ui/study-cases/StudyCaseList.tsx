@@ -144,15 +144,19 @@ export function StudyCaseList({
           Zakresy obliczeń ({cases.length})
         </span>
         {createProjectId && !createDisabled ? (
-          <a
-            href="#case-config?createCase=1"
-            role="button"
+          // D1: dawniej kotwica `href="#case-config?createCase=1"` — adres
+          // NAWIGOWAŁ obok `handleCreate` (brak `preventDefault`), więc obok
+          // dialogu tworzenia leciała jeszcze zmiana trasy z parametrem
+          // `createCase`, którego NIKT nie czyta. Zdolność bez zmian: dialog
+          // otwiera `handleCreate`; adresu nie ruszamy.
+          <button
+            type="button"
             onClick={handleCreate}
             className="text-xs text-blue-600 hover:text-blue-800 hover:underline"
             title="Utwórz nowy zakres obliczeń"
           >
             + Nowy
-          </a>
+          </button>
         ) : (
           <button
             type="button"

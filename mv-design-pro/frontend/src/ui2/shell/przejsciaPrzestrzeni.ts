@@ -1,82 +1,77 @@
 /*
- * Przejścia między przestrzeniami powłoki (karta K4) — WSPÓLNA prawda mostu
- * tras (wyniesiona 1:1 z `AppRoot.mostTrasyPrzestrzeni`, E1.7c), aby przejścia
- * „następnego kroku" (np. Schemat → Gotowość, K4-E2) używały tej samej ścieżki
- * co jawny wybór przestrzeni w AppShell — zero drugiej logiki nawigacji.
+ * Przejścia między przestrzeniami powłoki — WSPÓLNA prawda nawigacji: jawny
+ * wybór przestrzeni w `AppShell`, przejścia „następnego kroku" (Schemat →
+ * Gotowość) i akcje paneli kontekstu idą TĄ SAMĄ ścieżką. Zero drugiej logiki.
  *
- * K4-E2 (naprawa u źródła — Zero-Debt): trasy legacy z listy `TRASY_NADRZEDNE`
- * NADPISUJĄ zawartość przestrzeni w `LegacyWarsztat.TrasaLubPrzestrzen`
- * (np. `#sld` renderuje kanwę SLD niezależnie od przestrzeni). Przestrzenie
- * sterowane store'ami (gotowość / projekt / dokumentacja) nie ustawiają
- * własnej trasy, więc wybór np. „Gotowość" przy trasie `#sld` zostawiał na
- * ekranie kanwę SLD — łańcuch E2→E3 był zerwany. Przy przejściu do takiej
- * przestrzeni czyścimy trasę nadrzędną (hash pusty = zawartość wg przestrzeni,
- * jak przy zimnym starcie `/`). Zero fizyki, zero mutacji modelu.
+ * D1 (kanon nawigacji): kierunek przestrzeń → trasa jest ODWROTNOŚCIĄ tabeli
+ * `ui2/legacy/mostObszarow.TRASY_KANONICZNE`, która niesie kierunek trasa →
+ * przestrzeń. Oba warunki pochodzą z JEDNEGO wiersza (reguła KLASA-NIE-INSTANCJA
+ * §3 „predykaty parami"): wcześniej lista tras do wyczyszczenia była osobnym,
+ * ręcznie utrzymywanym zbiorem pięciu napisów, więc każda trasa spoza tej listy
+ * (np. `#report`) potrafiła po wyborze innej przestrzeni ODBIĆ użytkownika z
+ * powrotem — trasa wymuszała swoją przestrzeń, a powłoka jej nie czyściła.
+ *
+ * Zero fizyki, zero mutacji modelu.
  */
 
 import { useAppStateStore } from '../../ui/app-state';
 import {
   getCurrentHashRoute,
+  getCurrentSearchParams,
   navigateToAnalysis,
   navigateToCaseConfig,
   navigateToNetworkBuild,
 } from '../../ui/navigation';
+import { przestrzenDlaTrasy } from '../legacy/mostObszarow';
 import type { SpaceId } from './spaces';
 import { useShellStore } from './useShellStore';
 
 /**
- * Trasy legacy renderowane w `TrasaLubPrzestrzen` PRZED zawartością
- * przestrzeni (LegacyWarsztat.tsx) — muszą zostać wyczyszczone, aby
- * przestrzeń bez własnej trasy mogła pokazać swoją zawartość.
+ * Czyści TRASĘ zachowując kontekst adresu. Deep-link (`?case&run&sel&snapshot`)
+ * żyje w części zapytania hasha, więc `window.location.hash = ''` gubił go w
+ * całości — a to jedyny nośnik kontekstu po odświeżeniu strony. Zostawiamy sam
+ * kontekst (`#?run=…`), co `getCurrentHashRoute` czyta jako „brak trasy".
  */
-const TRASY_NADRZEDNE: ReadonlySet<string> = new Set([
-  '#sld',
-  '#sld-view',
-  '#dashboard',
-  '#fault-scenarios',
-  '#enm-inspector',
-]);
+function wyczyscTraseZachowujacKontekst(): void {
+  const zapytanie = getCurrentSearchParams().toString();
+  window.location.hash = zapytanie ? `?${zapytanie}` : '';
+}
 
 /**
- * Most tras (E1.7c): JAWNY wybór przestrzeni ustawia trasę legacy — jedna
- * prawda nawigacji (orkiestrator otwiera powierzchnie). Montaż zawartości
- * NIE nawiguje, aby nie nadpisywać deep-linków (#analysis?run=..., itd.).
+ * Most tras: JAWNY wybór przestrzeni ustawia trasę legacy — jedna prawda
+ * nawigacji (orkiestrator otwiera powierzchnie). Montaż zawartości NIE nawiguje,
+ * aby nie nadpisywać deep-linków (#analysis?run=…, itd.).
  */
 export function mostTrasyPrzestrzeni(space: SpaceId): void {
   const stan = useAppStateStore.getState();
   switch (space) {
     case 'schemat':
       navigateToNetworkBuild();
-      break;
+      return;
     case 'obliczenia':
       navigateToCaseConfig({ caseId: stan.activeCaseId });
-      break;
+      return;
     case 'wyniki':
       navigateToAnalysis({ runId: stan.activeRunId });
-      break;
+      return;
     case 'model':
     case 'dokumentacja':
     case 'gotowosc':
     case 'projekt':
-      // Zawartość sterowana store'ami/przestrzenią — bez własnej trasy.
-      // F-E8.1: „Dokumentacja" ląduje na hubie prowadzącym (MostDokumentacji);
-      // dostawcy raportu/dowodu (E-37/E-36) otwierają karty huba przez
-      // openRouteSurface, nie auto-nawigacja do legacy generatora.
-      // K4-E2: trasa nadrzędna (np. '#sld') nadpisałaby zawartość przestrzeni —
-      // czyścimy ją, aby przestrzeń wygrała.
-      //
-      // KD-3 (Zero-Debt, naprawa u źródła): „Model sieci" NALEŻY do tej grupy.
-      // Wcześniej dzielił gałąź ze „Schematem" i ustawiał trasę `#sld`, a ta w
-      // `LegacyWarsztat.TrasaLubPrzestrzen` jest rozpatrywana PRZED zawartością
-      // przestrzeni — więc jawny wybór „Model sieci" z nawigacji pokazywał kanwę
-      // schematu, a WARSZTAT MODELU (właściwości · szablony · KATALOG) był
-      // nieosiągalny kliknięciem. Widać go było wyłącznie przy zimnym starcie z
-      // pustym hashem, dlatego defekt przetrwał: testy montowały `ModelWarsztat`
-      // bezpośrednio, zamiast wchodzić realną ścieżką nawigacji.
-      if (typeof window !== 'undefined' && TRASY_NADRZEDNE.has(getCurrentHashRoute())) {
-        window.location.hash = '';
+      // Przestrzenie sterowane store'ami/zawartością — bez własnej trasy.
+      // Trasa, która należy do INNEJ przestrzeni, musi zniknąć: w
+      // `LegacyWarsztat` trasa nadrzędna nadpisuje zawartość przestrzeni, a
+      // orkiestrator wymusza przestrzeń trasy — bez czyszczenia wybór „Model
+      // sieci" przy trasie `#sld` (albo „Gotowość" przy `#report`) wracał na
+      // poprzedni ekran. Trasę należącą do TEJ przestrzeni (np. `#catalog` w
+      // „Model sieci", `#report` w „Dokumentacji") zostawiamy — niesie kontekst.
+      if (typeof window === 'undefined') {
+        return;
       }
-      break;
+      if (przestrzenDlaTrasy(getCurrentHashRoute()) !== space) {
+        wyczyscTraseZachowujacKontekst();
+      }
+      return;
   }
 }
 

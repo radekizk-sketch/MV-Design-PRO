@@ -1,10 +1,30 @@
 import type { TechnicalIconName } from '../icons/technicalIconRegistry';
-import type { AreaId } from '../navigation/areaRegistry';
+
 import type {
   SurfaceSubjectKind,
   WorkspaceSurfaceKind,
   WorkspaceSurfaceSizeClass,
 } from './types';
+
+/**
+ * Dziedzina projektowa ekranu — METADANA rejestru ekranów, nie nawigacja.
+ * D1 skasował rejestr `ui/navigation/areaRegistry` (9 obszarów z etykietami,
+ * ikonami i skrótami Ctrl+1–9) jako drugą nawigację; te same dziewięć kodów
+ * zostaje TU, bo opisują, do jakiej dziedziny należy ekran E-XX, i są czytane
+ * wyłącznie przez `getScreensByArea` oraz macierz pokrycia. Rozdzielenie jest
+ * celowe: nawigacja żyje w siedmiu przestrzeniach ui2, klasyfikacja ekranów w
+ * rejestrze ekranów.
+ */
+export type KodDziedzinyEkranu =
+  | 'MODEL_SIECI'
+  | 'SCHEMAT_TOPOLOGIA'
+  | 'STUDIA_OBLICZENIOWE'
+  | 'WYNIKI_ANALIZY'
+  | 'ZABEZPIECZENIA_AUTOMATYKA'
+  | 'ZRODLA_PRZYLACZENIA'
+  | 'KATALOGI_TECHNICZNE'
+  | 'RAPORTY_UZASADNIENIA'
+  | 'HISTORIA_AUDYT';
 
 export type CanonScreenId =
   | 'E-00' | 'E-01' | 'E-02' | 'E-03' | 'E-04' | 'E-05' | 'E-06' | 'E-07' | 'E-08' | 'E-09'
@@ -22,8 +42,8 @@ export interface ScreenCanonDefinition {
   labelFull: string;
   labelShort: string;
   label: string;
-  areaId: AreaId;
-  area: AreaId;
+  areaId: KodDziedzinyEkranu;
+  area: KodDziedzinyEkranu;
   icon: TechnicalIconName;
   canonicalRoute: string;
   legacyAliases: string[];
@@ -1288,7 +1308,7 @@ export function resolveScreenByRoute(route: string | null | undefined): ScreenCa
   );
 }
 
-export function getScreensByArea(areaId: AreaId): ScreenCanonDefinition[] {
+export function getScreensByArea(areaId: KodDziedzinyEkranu): ScreenCanonDefinition[] {
   return CANONICAL_SCREEN_CODES
     .map((screenId) => getScreenDefinition(screenId))
     .filter((definition) => definition.areaId === areaId);

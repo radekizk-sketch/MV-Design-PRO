@@ -105,7 +105,7 @@ export interface LegacyWarsztatProps {
 
 function TrasaLubPrzestrzen({ route, space, pulpit, gotowosc, model, obliczenia, wyniki, dokumentacja }: LegacyWarsztatProps) {
   // Trasy dedykowane starego wejścia (przeniesiony przełącznik App.tsx).
-  if (route === '#enm-inspector' && featureFlags.ENM_INSPECTOR_VISIBLE) {
+  if (route === ROUTES.ENM_INSPECTOR.hash && featureFlags.ENM_INSPECTOR_VISIBLE) {
     return <EnmInspectorPage />;
   }
   // KD-1: trasa `#kreator-stacji-v2` USUNIĘTA razem z podzespołem kreatora
@@ -113,19 +113,19 @@ function TrasaLubPrzestrzen({ route, space, pulpit, gotowosc, model, obliczenia,
   // kreatorem stacji jest `ui2/kreatory/stacja/KreatorStacjiSnNn` wpięty przez
   // `operationFormRegistry` (operacje `insert_station_on_segment_sn` /
   // `append_station_on_endpoint`). Nieznany hash → zachowanie domyślne.
-  if (route === '#fault-scenarios') {
+  if (route === ROUTES.FAULT_SCENARIOS.hash) {
     return <ScenariuszeZwarcioweTrasa />;
   }
   // Pulpit projektów legacy (lista projektów + nowy projekt) — trasa #dashboard;
   // przestrzeń „Projekt" nowej powłoki kieruje tu akcją „Otwórz projekt".
-  if (route === '#dashboard') {
+  if (route === ROUTES.DASHBOARD.hash) {
     return (
       <div data-testid="workspace-surface-main" className="mvd-legacy-host">
         <ProjectDashboardSurface />
       </div>
     );
   }
-  if (route === '#sld-view') {
+  if (route === ROUTES.SLD_VIEW.hash) {
     return (
       <div data-testid="workspace-surface-main" className="mvd-legacy-host">
         <SldCanvasV3Workspace readOnly />

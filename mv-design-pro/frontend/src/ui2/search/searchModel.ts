@@ -13,11 +13,19 @@
  */
 
 /** Grupa wyniku wyszukiwania — stała kolejność nagłówków (karta §4). */
-export type GrupaWyszukiwania = 'przestrzenie' | 'polecenia' | 'obiekty' | 'przyklady' | 'pomoc';
+export type GrupaWyszukiwania =
+  | 'przestrzenie'
+  /** D4: okna E-XX — zdolność przeniesiona z drugiej, skasowanej palety. */
+  | 'ekrany'
+  | 'polecenia'
+  | 'obiekty'
+  | 'przyklady'
+  | 'pomoc';
 
 /** Kolejność grup w wynikach i nagłówkach (karta §4: Przestrzenie, Polecenia, Obiekty, Gotowe przykłady, Pomoc). */
 export const KOLEJNOSC_GRUP: readonly GrupaWyszukiwania[] = [
   'przestrzenie',
+  'ekrany',
   'polecenia',
   'obiekty',
   'przyklady',
@@ -34,6 +42,12 @@ export interface PozycjaWyszukiwania {
   grupa: GrupaWyszukiwania;
   /** Minimalny tryb zaawansowania wymagany do wykonania (brak = dostępne zawsze). */
   trybMin?: TrybZaawansowania;
+  /**
+   * Dodatkowe słowa, po których pozycja ma być odnajdywana, choć nie widać ich
+   * w etykiecie (D4, parytet ze skasowaną paletą `ui/network-build`: okno E-XX
+   * było wyszukiwalne po kodzie ekranu i nazwie skróconej, nie tylko po pełnej).
+   */
+  slowaKluczowe?: string;
   /**
    * Rzeczywista akcja pozycji. Wołana przez warstwę integrującą (karta
    * zarządcy) — sam dialog `CommandPalette` NIE wywołuje `akcja` bezpośrednio,

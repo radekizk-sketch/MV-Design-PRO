@@ -6,14 +6,18 @@
  * są w e2e/sld-canvas-routing.spec.ts.
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { fireEvent, screen } from '@testing-library/react';
 import { renderWithQueryClient as render } from '../../test/queryClientTestUtils';
 
 import { useAppStateStore } from '../app-state';
 import { useNetworkBuildStore } from '../network-build/networkBuildStore';
 import { useSnapshotStore } from '../topology/snapshotStore';
-import { CommandPalette } from '../network-build/CommandPalette';
+// D4: kanonem palety komend jest `ui2/search` — duplikat z `ui/network-build`
+// skasowany, a jego jedyna unikalna zdolność (otwieranie okien E-XX) przeniesiona
+// do indeksu wyszukiwarki. Test ćwiczy JĄ, na kanonicznym komponencie.
+import { CommandPalette } from '../../ui2/search/CommandPalette';
+import { zbudujIndeksWyszukiwania } from '../../ui2/search/searchIndex';
 import { SldCanvasV3Workspace } from '../sld/v3/canvas/SldCanvasV3Workspace';
 import { ProjectDashboardSurface } from '../workspace/surfaces/ProjectDashboardSurface';
 import { GpzConfiguratorSurface } from '../workspace/surfaces/GpzConfiguratorSurface';
@@ -132,13 +136,41 @@ describe('Etap 10 — Testy akceptacyjne workflow inżyniera E2E', () => {
     expect(screen.getByTestId('fw-surface')).toBeInTheDocument();
   });
 
-  // === Test I: Command Palette ===
-  it('I. Command palette filtruje komendy po fuzzy search', () => {
-    render(<CommandPalette isOpen onClose={() => {}} />);
-    const input = screen.getByTestId('command-palette-input') as HTMLInputElement;
+  // Atrapa dostawców akcji indeksu — test bada FILTROWANIE, nie skutki komend.
+  // (pole `otworzEkran` nadpisywane w przypadku testowym, żeby dało się je
+  // sprawdzić, gdyby kiedyś doszła asercja wykonania).
+// === Test I: Command Palette ===
+  it('I. Paleta komend filtruje pozycje po fuzzy search i znajduje okno GPZ', () => {
+    const otworzEkran = vi.fn();
+    const pozycje = zbudujIndeksWyszukiwania({
+      akcje: {
+        przejdzDoPrzestrzeni: vi.fn(),
+        wybierzObiekt: vi.fn(),
+        otworzEkran,
+        przelicz: vi.fn(),
+        otworzProjekt: vi.fn(),
+        przywrocUklad: vi.fn(),
+        polaczPonownie: vi.fn(),
+      },
+    });
+    render(
+      <CommandPalette
+        otwarta
+        onZamknij={() => {}}
+        pozycje={pozycje}
+        trybAktualny="expert"
+        onWykonaj={(pozycja) => pozycja.akcja()}
+        onPrzelaczTryb={() => {}}
+      />,
+    );
+    const input = screen.getByTestId('mvd-cmdk-input') as HTMLInputElement;
     fireEvent.change(input, { target: { value: 'GPZ' } });
-    const results = screen.getByTestId('command-palette-results');
-    expect(results.textContent).toContain('GPZ');
+    // Fraza „GPZ" trafia w SŁOWA KLUCZOWE pozycji (kod ekranu + nazwa
+    // skrócona) — parytet ze skasowaną paletą, która szukała po tych samych
+    // danych. Na liście widać etykietę pełną okna E-10.
+    const wyniki = screen.getByTestId('mvd-cmdk-listbox');
+    expect(wyniki.textContent).toContain('Główny Punkt Zasilający');
+    expect(screen.getByTestId('mvd-cmdk-opcja-ekran:E-10')).toBeInTheDocument();
   });
 
   // === Test J: Brak placeholderów / TODO produkcyjnych ===

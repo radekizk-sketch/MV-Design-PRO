@@ -146,7 +146,7 @@ describe('useLegacyOrchestrator (E1.7a — ekstrakcja 1:1 z App.tsx)', () => {
     expect(useAppStateStore.getState().activeCaseName).toBe('Wariant zwarciowy');
   });
 
-  it('?run=<uuid> na trasie SLD: aktywne obliczenie w obu store\'ach + obszar schematu', async () => {
+  it('?run=<uuid> na trasie SLD: aktywne obliczenie w obu store\'ach + przestrzeń schematu', async () => {
     window.location.hash = `#sld?run=${RUN_ID}`;
 
     render(<Probe />);
@@ -157,10 +157,12 @@ describe('useLegacyOrchestrator (E1.7a — ekstrakcja 1:1 z App.tsx)', () => {
     await waitFor(() => {
       expect(useExecutionRunsStore.getState().activeRunId).toBe(RUN_ID);
     });
-    expect(useAppStateStore.getState().activeArea).toBe('SCHEMAT_TOPOLOGIA');
+    // D1: obszar panelu kontekstu nie jest już osobnym stanem — trasa `#sld`
+    // ląduje w przestrzeni „Schemat", a panel wynika z tej samej tabeli.
+    expect(useShellStore.getState().activeSpace).toBe('schemat');
   });
 
-  it('#analysis: powierzchnia E-24 z zakładką wyników, tryb RESULT_VIEW, obszar wyników', async () => {
+  it('#analysis: powierzchnia E-24 z zakładką wyników, tryb RESULT_VIEW, przestrzeń wyników', async () => {
     window.location.hash = '#analysis';
 
     render(<Probe />);
@@ -174,7 +176,7 @@ describe('useLegacyOrchestrator (E1.7a — ekstrakcja 1:1 z App.tsx)', () => {
     await waitFor(() => {
       expect(useAppStateStore.getState().activeMode).toBe('RESULT_VIEW');
     });
-    expect(useAppStateStore.getState().activeArea).toBe('WYNIKI_ANALIZY');
+    expect(useShellStore.getState().activeSpace).toBe('wyniki');
     expect(lastApi?.route).toBe('#analysis');
   });
 
@@ -215,7 +217,12 @@ describe('useLegacyOrchestrator (E1.7a — ekstrakcja 1:1 z App.tsx)', () => {
     });
   });
 
-  it('#sld NIE zmienia przestrzeni (zakres K3-A1 celowo wąski — bez pętli mostu tras)', async () => {
+  // D1 (zmiana kanonu, intencja zachowana): dawniej trasa `#sld` CELOWO nie
+  // ruszała przestrzeni — zakres K3-A1 obejmował tylko wyniki. Skutek: wejście
+  // adresem schematu zostawiało pasek nawigacji na poprzednim etapie (tu:
+  // „Projekt"), czyli treść mówiła co innego niż nawigacja. Kanon D1: KAŻDA
+  // trasa ląduje w swojej przestrzeni — jedna tabela `mostObszarow`.
+  it('#sld ląduje w przestrzeni „Schemat" (kanon D1: każda trasa ma przestrzeń)', async () => {
     window.location.hash = '#sld';
 
     render(<Probe />);
@@ -223,7 +230,9 @@ describe('useLegacyOrchestrator (E1.7a — ekstrakcja 1:1 z App.tsx)', () => {
     await waitFor(() => {
       expect(lastApi?.route).toBe('#sld');
     });
-    expect(useShellStore.getState().activeSpace).toBe('projekt');
+    await waitFor(() => {
+      expect(useShellStore.getState().activeSpace).toBe('schemat');
+    });
   });
 
   // INTENCJA (K3-A1, zachowana): trasa wyników zabezpieczeń ma mieć JEDNO,
