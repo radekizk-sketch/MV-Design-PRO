@@ -68,9 +68,13 @@ import {
   DER_ROW_TOP_CLEARANCE,
   derColumnRequiredWidth,
   entryDescentCaptionInset,
+  flattenedNnFeeders,
   formatTransformerRatedPower,
   implicitStationTransformers,
   LV_MODEL_BOUNDARY_TEXT,
+  nnFeederColumnRequiredWidth,
+  nnFeederLabelText,
+  nnFeederRowFootprint,
   stationSnColumnLayout,
   type StationSnColumnPlacement,
   PORT_CAPTION_BUS_CLEARANCE,
@@ -1581,13 +1585,31 @@ export function composeStation(input: ComposeStationInput): StationComposition {
     const minX = Math.min(...lvPorts.map((p) => p.x));
     const maxX = Math.max(...lvPorts.map((p) => p.x));
     const busY = snapToGrid(Math.max(...lvPorts.map((p) => p.y)) + GRID);
+    // P0.8 nN (H_PLAN_IMPLEMENTACJI_NN §P0.8): odpływy RZECZYWISTE (dane
+    // strukturalne P0.1) — gdy obecne, ZASTĘPUJĄ pojedynczą strzałkę
+    // zagregowanego odbioru (precyzyjny obraz nie dubluje agregatu, karta
+    // P0.8 §0.6 substrat). `[]` dla stacji bez danych strukturalnych
+    // (WIĘKSZOŚĆ dzisiejszych sieci) — zero zmian geometrii.
+    const nnFeeders = flattenedNnFeeders(station.nnBoard);
+    const nnFeederRowWidth = nnFeederRowFootprint(nnFeeders).width;
     // pkt 6 (recenzja NO-GO 2026-07-17): stacja z odbiorem ORAZ DER —
-    // szyna nN przedłużona w LEWO o 3×GRID, żeby strzałka odbioru na jej
-    // lewym końcu miała prześwit od pionu trunku DER (`#der-row-trunk`
+    // szyna nN przedłużona w LEWO, żeby strzałka odbioru / rząd odpływów na
+    // jej lewym końcu miały prześwit od pionu trunku DER (`#der-row-trunk`
     // schodzi ze środka szyny; pomiar: na wąskiej szynie 2×GRID gabaryt
-    // strzałki DOTYKAŁ trunku — symbolWireCollisions 24 na fixturze).
+    // strzałki DOTYKAŁ trunku — symbolWireCollisions 24 na fixturze). Rząd
+    // odpływów (szerszy niż jedna strzałka) rezerwuje SWOJĄ szerokość
+    // zamiast stałej `3×GRID` — TA SAMA rezerwacja co `requiredStationWidth`
+    // (jedna prawda measure↔compose, wzór F6b-1).
+    // `snapUp` (nie surowa szerokość): `nnFeederRowWidth` niesie szerokość
+    // TEKSTU etykiety (`measureLabelWidth`, ciągła funkcja, NIE wielokrotność
+    // GRID) — bez zaokrąglenia w górę `busLeft` wypadałby POZA siatką (wzorzec
+    // `apparatusIdentifierLeftReserve`: „snapUp gwarantuje ZERO utraty miejsca").
     const lvBusExtendLeft =
-      station.aggregatedLvLoad != null && nnDerSources.length > 0 ? 3 * GRID : 0;
+      nnFeeders.length > 0
+        ? snapUp(nnFeederRowWidth) + (nnDerSources.length > 0 ? GRID : 0)
+        : station.aggregatedLvLoad != null && nnDerSources.length > 0
+          ? 3 * GRID
+          : 0;
     const busLeft = (minX === maxX ? minX - GRID : minX) - lvBusExtendLeft;
     const busRight = minX === maxX ? maxX + GRID : maxX;
 
@@ -1620,7 +1642,100 @@ export function composeStation(input: ComposeStationInput): StationComposition {
     // (kolizyjnie bezpieczne z konstrukcji — rezerwacja
     // `stationNameBandHeight`/`requiredStationWidth`), nie jako luźne
     // etykiety pod szyną (pomiar: kolidowały z pionem trunku DER).
-    if (station.aggregatedLvLoad != null) {
+    if (nnFeeders.length > 0) {
+      // P0.8 nN (seam A8 §9.2.1, wzorzec DER-row): rząd odpływów RZECZYWISTYCH
+      // — jeden slot na odpływ (`nnFeederColumnRequiredWidth`, JEDNA prawda z
+      // measure.ts), flush-left od `busLeft` (symetria z DER-row flush-right
+      // od `bx`: dwa rzędy rosną OD SIEBIE, nigdy się nie spotykają).
+      let slotX = busLeft;
+      nnFeeders.forEach((feeder) => {
+        const slotWidth = nnFeederColumnRequiredWidth(feeder);
+        const dropX = snapToGrid(slotX + slotWidth / 2);
+        let cursorY = busY;
+
+        // Zejście z szyny do pierwszego symbolu (albo do końca gołego kabla
+        // bez aparatu — tor jest widoczny, nawet gdy nic na nim nie stoi).
+        const stubEndY = cursorY + GRID;
+        segments.push({
+          ownerRef: feeder.branchRef,
+          points: [
+            { x: dropX, y: cursorY },
+            { x: dropX, y: stubEndY },
+          ],
+        });
+        cursorY = stubEndY;
+
+        // Aparat odpływu — WYŁĄCZNIE gdy rozpoznany (MCB/rozłącznik
+        // bezpiecznikowy). `'UNRESOLVED'` (aparat niesiony przez model, ale
+        // katalog nie rozpoznaje rodzaju) i `null` (goły kabel) NIE rysują
+        // symbolu — pusty tor, komunikat błędu niesie etykieta niżej (karta
+        // P0.8 §0.2, zero podstawionego wyłącznika domyślnego).
+        if (feeder.apparatusKind === 'MCB' || feeder.apparatusKind === 'FUSE_SWITCH') {
+          const apparatusSymbolId = feeder.apparatusKind === 'MCB' ? 'nnBreaker' : 'nnFuseSwitch';
+          const def = SYMBOL_DEFS[apparatusSymbolId];
+          const symX = snapToGrid(dropX - def.width / 2);
+          symbols.push({
+            symbolId: apparatusSymbolId,
+            // ownerRef = realny ref ENM gałęzi aparatu (karta P0.8 §0.2) —
+            // klik otwiera rekord, wzorzec `sourceRef` DER (`bayRef ?? sourceRef
+            // ?? transformerRef`, `scene/buildScene.ts`).
+            sourceRef: feeder.apparatusRef ?? undefined,
+            x: symX,
+            y: cursorY,
+            ports: portsInWorld(def, symX, cursorY),
+          });
+          cursorY += def.height;
+        }
+
+        // Liść rozdzielnicy nN — WYŁĄCZNIE gdy cel odpływu to podrozdzielnica
+        // (`destinationKind==='board'`, wzorzec DER: kontener z szyną, jeden
+        // port). Nie rekurencja: WŁASNE odpływy tej podrozdzielnicy rysuje
+        // JEJ WŁASNA kompozycja, gdy stacja trafi na własny wiersz sieci.
+        if (feeder.destinationKind === 'board') {
+          const boardDef = SYMBOL_DEFS.nnDistributionBoard;
+          const boardTopY = cursorY + GRID;
+          segments.push({
+            ownerRef: `${feeder.branchRef}#board-descent`,
+            points: [
+              { x: dropX, y: cursorY },
+              { x: dropX, y: boardTopY },
+            ],
+          });
+          const boardX = snapToGrid(dropX - boardDef.width / 2);
+          symbols.push({
+            symbolId: 'nnDistributionBoard',
+            sourceRef: feeder.destinationRef ?? undefined,
+            x: boardX,
+            y: boardTopY,
+            ports: portsInWorld(boardDef, boardX, boardTopY),
+          });
+          cursorY = boardTopY + boardDef.height;
+        }
+
+        // Etykieta JEDNOWIERSZOWA (aparat + odbiorca połączone, `measure.ts`
+        // `nnFeederLabelText` — jedna prawda measure↔compose).
+        apparatusLabels.push({
+          ownerRef: `${feeder.branchRef}#nn-feeder-label`,
+          ownerKind: 'apparatus',
+          text: nnFeederLabelText(feeder),
+          labelClass: 't4',
+          anchor: { x: dropX, y: cursorY },
+          placement: 'below',
+        });
+
+        // Kod KRÓTKI z payloadem (wzorzec `station.transformer.brakPolaSN:` —
+        // `scene/buildScene.ts` tłumaczy kod na zdanie stopNote, kontrolowane
+        // słownictwo WHITE BOX, zero wolnego tekstu w `missingData`).
+        if (feeder.apparatusKind === 'UNRESOLVED') {
+          missingData.push(`station.nnFeeder.apparatusUnresolved:${feeder.branchRef}`);
+        }
+        if (feeder.destinationKind === 'unknown') {
+          missingData.push(`station.nnFeeder.destinationUnknown:${feeder.branchRef}`);
+        }
+
+        slotX += slotWidth + GRID;
+      });
+    } else if (station.aggregatedLvLoad != null) {
       const arrowDef = SYMBOL_DEFS.loadArrow;
       const arrowDropX = nnDerSources.length > 0 ? busLeft : nnBusPoint.x;
       const arrowX = snapToGrid(arrowDropX - arrowDef.width / 2);

@@ -1133,6 +1133,10 @@ function buildMeasureInput(
     // brak (etykieta bez napięcia / jawna granica modelu).
     nnVoltageKv: props.nnVoltageKv ?? null,
     aggregatedLvLoad: props.aggregatedLvLoad ?? null,
+    // P0.8 nN (seam A8 §9.2.1): sekcje/odpływy RZECZYWISTE — przepisane 1:1
+    // z adaptera (`enmToSldAdapter.ts` `buildStationMiniBlockDetails`), zero
+    // re-derywacji w buildScene (ta sama zasada co `derSources`/`aggregatedLvLoad`).
+    nnBoard: props.nnBoard ?? undefined,
     // TR2W-BEZ-POLA (§0.B): fakt domenowy + jednostki transformatorowe z
     // terminalami — `layout/measure.ts` (`stationHasLvSide`,
     // `stationSnColumnLayout`) czyta je, żeby zarezerwować miejsce i ustawić
@@ -1468,6 +1472,27 @@ function composeRowStation(
         `żadnego rekordu „Transformer" z refem — symbol NIE jest rysowany (zakaz rysunku na ` +
         `identyfikatorze fabrykowanym), strona nN pozostaje bez zaczepu.`,
     );
+  }
+  // P0.8 nN (H_PLAN_IMPLEMENTACJI_NN §P0.8): odpływ rzeczywisty z aparatem
+  // NIEROZPOZNANYM przez katalog (pusty tor + komunikat błędu — zero
+  // podstawionego wyłącznika, karta §0.2) albo bez rozpoznanego odbiorcy
+  // (jawna granica modelu) — wzorzec `station.transformer.brakPolaSN:`.
+  for (const code of composition.missingData) {
+    if (code.startsWith('station.nnFeeder.apparatusUnresolved:')) {
+      const branchRef = code.slice('station.nnFeeder.apparatusUnresolved:'.length);
+      stopNotes.push(
+        `Stacja „${measureInput.id}": odpływ nN „${branchRef}" niesie aparat łączeniowy, ale katalog ` +
+          `nie rozpoznaje jego rodzaju — rysunek pokazuje pusty tor + komunikat błędu, ` +
+          `BEZ podstawienia domyślnego wyłącznika (karta P0.8 §0.2).`,
+      );
+    }
+    if (code.startsWith('station.nnFeeder.destinationUnknown:')) {
+      const branchRef = code.slice('station.nnFeeder.destinationUnknown:'.length);
+      stopNotes.push(
+        `Stacja „${measureInput.id}": odpływ nN „${branchRef}" kończy się bez rozpoznanego odbiorcy ` +
+          `(Load/Generator/rozdzielnica nN) — jawna granica modelu, zero fabrykacji odbioru.`,
+      );
+    }
   }
   for (const code of composition.missingData) {
     if (code.startsWith('der.sn.torNiepelny:')) {

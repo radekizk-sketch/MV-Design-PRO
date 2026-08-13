@@ -460,8 +460,34 @@ export interface GPZSection {
   right_coupler_ref?: string | null;
 }
 
+/**
+ * P0.1 nN (C §2.1): sekcja szyny rozdzielnicy nN (RGnN) — mirror backendowego
+ * `enm/models.py::NnSection`. Analogia do `GPZSection`. `incoming_refs` niesie
+ * refy gałęzi ZASILAJĄCYCH tę sekcję (adapter SLD wyklucza je z listy odpływów
+ * — pozostałe gałęzie dotykające `bus_ref` to odpływy, jedna prawda zamiast
+ * heurystyki kierunku).
+ */
+export interface NnSection {
+  section_id: string;
+  order: number;
+  bus_ref: string;
+  coupler_ref?: string | null;
+  incoming_refs?: string[] | null;
+}
+
 export interface Substation extends ENMElement {
-  station_type: 'gpz' | 'mv_lv' | 'switching' | 'customer' | 'inline' | 'branch' | 'terminal' | 'sectional';
+  station_type:
+    | 'gpz'
+    | 'mv_lv'
+    | 'switching'
+    | 'customer'
+    | 'inline'
+    | 'branch'
+    | 'terminal'
+    | 'sectional'
+    // P0.1 nN (C §2.1): wolnostojąca rozdzielnica/podrozdzielnica nN (RGnN) —
+    // kontener logiczny bez fizyki, tak samo jak pozostałe station_type.
+    | 'rozdzielnica_nn';
   bus_refs: string[];
   transformer_refs: string[];
   entry_point_ref?: string | null;
@@ -477,6 +503,11 @@ export interface Substation extends ENMElement {
   external_ports?: Port[] | null;
   /** Poziomy napiec nN obslugiwane przez stacje [kV]. */
   nn_voltage_levels?: number[] | null;
+  /** P0.1 nN (C §2.1, analogia `gpz_sections`): sekcje szyn rozdzielnicy nN
+   *  (RGnN) — jawny rejestr domenowy. Pusta/nieobecna lista = rozdzielnica
+   *  jednosekcyjna ALBO stacja bez rozdzielnicy nN (`station_type` inny niż
+   *  `rozdzielnica_nn`). Mirror backendowego `Substation.nn_sections`. */
+  nn_sections?: NnSection[] | null;
 }
 
 // ---------------------------------------------------------------------------

@@ -879,6 +879,110 @@ export function MeterGlyph(props: GlyphProps): JSX.Element {
   );
 }
 
+/**
+ * P0.8 nN (H_PLAN_IMPLEMENTACJI_NN §P0.8, kanon symboli): rodzina aparatów
+ * ODPŁYWU nN — wyłącznik/MCB, rozłącznik bezpiecznikowy, licznik, oraz
+ * kontener rozdzielnicy nN jako liść odpływu (wzorzec DER). Gabaryty i porty:
+ * `symbols/defs.ts`. Rysunek ODRĘBNY od odpowiedników SN (`breaker`/
+ * `fuseSwitch`/`meter`) — precedens `recloser`: nowy device_kind ⇒ nowy
+ * glif, zero recyklingu istniejącego rysunku (kanon symboli, karta P0.8 §0.3).
+ */
+
+/**
+ * Wyłącznik nN / MCB (IEC 60898-1) — korpus JAK `BreakerGlyph` (ten sam wzór
+ * stanu geometrią: wypełnienie = zamknięty), ale MNIEJSZY (aparat modułowy)
+ * i z DŹWIGNIĄ przełącznika nad korpusem (poprzeczna kreska na przewodzie
+ * górnym) — cecha, której `BreakerGlyph` (aparat pierwotny SN) nie niesie.
+ */
+export function NnBreakerGlyph(props: GlyphProps): JSX.Element {
+  const state = props.state ?? 'unknown';
+  const w = grubosc(props, V3_STROKE_APPARATUS);
+  return (
+    <g {...glyphGroupProps('nnBreaker', props)}>
+      <line x1={8} y1={0} x2={8} y2={3} stroke={stroke(props)} strokeWidth={w} />
+      {/* dźwignia modułowa MCB — poprzeczka NA przewodzie górnym, cecha
+          odróżniająca od `BreakerGlyph` (sam prostokąt bez dźwigni). */}
+      <line x1={5.5} y1={1.5} x2={10.5} y2={1.5} stroke={stroke(props)} strokeWidth={w} data-nn-breaker-toggle="true" />
+      <rect
+        x={3} y={3} width={10} height={10}
+        fill={state === 'closed' ? stroke(props) : 'none'}
+        fillOpacity={state === 'unknown' ? 0.35 : 1}
+        stroke={stroke(props)}
+        strokeWidth={w}
+      />
+      <line x1={8} y1={13} x2={8} y2={16} stroke={stroke(props)} strokeWidth={w} />
+    </g>
+  );
+}
+
+/**
+ * Rozłącznik bezpiecznikowy nN — kaseta wkładki SZEŚCIOKĄTNA (podstawa
+ * bezpiecznikowa modułowa nN, np. wkładka NH w rozłączniku listwowym), w
+ * odróżnieniu od PROSTOKĄTNEJ wkładki SN (`FuseSwitchGlyph`, obwiednia
+ * rozłącznika z nożem otwierającym nad wkładką — nN nie niesie noża, sama
+ * podstawa jest łącznikiem).
+ */
+export function NnFuseSwitchGlyph(props: GlyphProps): JSX.Element {
+  const w = grubosc(props, V3_STROKE_APPARATUS);
+  return (
+    <g {...glyphGroupProps('nnFuseSwitch', props)}>
+      <line x1={8} y1={0} x2={8} y2={6} stroke={stroke(props)} strokeWidth={w} />
+      <path
+        d="M8,6 L12,9 L12,17 L8,20 L4,17 L4,9 Z"
+        fill="none" stroke={stroke(props)} strokeWidth={w}
+        data-nn-fuseswitch-cartridge="true"
+      />
+      <line x1={8} y1={9} x2={8} y2={17} stroke={stroke(props)} strokeWidth={w} />
+      <line x1={8} y1={20} x2={8} y2={24} stroke={stroke(props)} strokeWidth={w} />
+    </g>
+  );
+}
+
+/**
+ * Licznik nN — miernik ENERGII w torze odpływu (KORPUS KWADRATOWY, w
+ * odróżnieniu od OKRĘGU `MeterGlyph`/`ProtectionRelayGlyph` — licznik nN nie
+ * jest adnotacją przy CT/VT, tylko aparatem W CIĄGŁOŚCI toru odpływu, spec
+ * §17.1 vs nN STUDIO §5). Napis „Wh" BAKED (notacja stała, jak litera „G"
+ * generatora — treść nie jest daną zmienną).
+ */
+export function NnMeterGlyph(props: GlyphProps): JSX.Element {
+  const w = grubosc(props, V3_STROKE_APPARATUS);
+  return (
+    <g {...glyphGroupProps('nnMeter', props)}>
+      <line x1={8} y1={0} x2={8} y2={6} stroke={stroke(props)} strokeWidth={w} />
+      <rect x={2} y={6} width={12} height={12} fill="none" stroke={stroke(props)} strokeWidth={w} data-nn-meter-body="true" />
+      <text x={8} y={15.5} textAnchor="middle" fill={stroke(props)} fontFamily="sans-serif" fontSize={7} fontWeight={700}>
+        Wh
+      </text>
+      <line x1={8} y1={18} x2={8} y2={24} stroke={stroke(props)} strokeWidth={w} />
+    </g>
+  );
+}
+
+/**
+ * Rozdzielnica nN (RGnN) — symbol LIŚĆ zamykający odpływ, gdy jego celem jest
+ * podrozdzielnica nN (`compose/station.ts`, wzorzec DER: jeden port `top`,
+ * symbol zawieszony POD odpływem). Enklozura (obwiednia BEZ wypełnienia, P5)
+ * + szyna wewnętrzna (kreska pozioma) + trzy stuby odpływów — SYGNAŁ
+ * „rozdzielnica z odpływami", nie licznik rzeczywistych odpływów (te rysuje
+ * WŁASNA kompozycja podrozdzielnicy, gdy stacja trafi na własny wiersz sieci
+ * — poza zakresem TEGO liścia). Odróżnialna od `stationCollapsed` (48×48,
+ * 4 porty, sylwetka mini-RMU sieciowa) gabarytem, liczbą portów I markupem.
+ */
+export function NnDistributionBoardGlyph(props: GlyphProps): JSX.Element {
+  const w = grubosc(props, V3_STROKE_APPARATUS);
+  return (
+    <g {...glyphGroupProps('nnDistributionBoard', props)}>
+      <line x1={16} y1={0} x2={16} y2={5} stroke={stroke(props)} strokeWidth={w} />
+      <rect x={4} y={5} width={24} height={25} fill="none" stroke={stroke(props)} strokeWidth={w} data-nn-board-enclosure="true" />
+      <line x1={8} y1={14} x2={24} y2={14} stroke={stroke(props)} strokeWidth={grubosc(props, 1.6)} data-nn-board-bus="true" />
+      <line x1={10} y1={14} x2={10} y2={20} stroke={stroke(props)} strokeWidth={grubosc(props, 1)} />
+      <line x1={16} y1={14} x2={16} y2={20} stroke={stroke(props)} strokeWidth={grubosc(props, 1)} />
+      <line x1={22} y1={14} x2={22} y2={20} stroke={stroke(props)} strokeWidth={grubosc(props, 1)} />
+    </g>
+  );
+}
+
 export const SYMBOL_GLYPHS: Readonly<Record<SymbolId, (props: GlyphProps) => JSX.Element>> = {
   breaker: BreakerGlyph,
   recloser: RecloserGlyph,
@@ -908,6 +1012,10 @@ export const SYMBOL_GLYPHS: Readonly<Record<SymbolId, (props: GlyphProps) => JSX
   gpzCollapsed: GpzCollapsedGlyph,
   protectionRelay: ProtectionRelayGlyph,
   meter: MeterGlyph,
+  nnDistributionBoard: NnDistributionBoardGlyph,
+  nnBreaker: NnBreakerGlyph,
+  nnFuseSwitch: NnFuseSwitchGlyph,
+  nnMeter: NnMeterGlyph,
 };
 
 /** Sanity: każdy glif ma definicję i odwrotnie (spójność biblioteki). */

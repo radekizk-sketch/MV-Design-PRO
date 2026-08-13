@@ -283,6 +283,109 @@ export interface SldV3Overlay {
      *  czasu (uczciwy brak, zero fabrykacji czasu we froncie). */
     readonly completedAtLabel?: string;
   };
+  /**
+   * P0.8 nN (H_PLAN_IMPLEMENTACJI_NN §P0.8 pkt 5, karta P0.6/G-22): werdykt
+   * SWZ (samoczynne wyłączenie zasilania, IEC 60364-4-41) per APARAT odpływu
+   * nN — NOWA metryka w nakładce, ADDYTYWNA (zero zmian kanałów U/ΔU/I/
+   * loading/Ik wyżej). Klucz = `ownerRef` aparatu odpływu (ENM `ref_id`
+   * gałęzi switch/fuse — TA SAMA przestrzeń refów co `nnBreaker`/
+   * `nnFuseSwitch` na scenie, `compose/station.ts` `sourceRef`). Źródło:
+   * endpoint SWZ per obwód (`GET /{case_id}/enm/swz`, P0.6/G-22) —
+   * `buildSwzOverlayFromResponses` niżej WYŁĄCZNIE przepisuje gotowy werdykt
+   * 3-stanowy (ZERO fizyki w UI, mapper FROZEN backendu nietknięty). Brak
+   * wpisu = brak werdyktu dla tego aparatu (§14.2 „overlay wyłączony bez
+   * wyniku") — kanwa NIE rysuje badge'a, nie fabrykuje statusu.
+   */
+  readonly swzByOwnerRef?: Readonly<Record<string, SwzOverlayEntry>>;
+}
+
+// ---------------------------------------------------------------------------
+// P0.8 nN (H_PLAN_IMPLEMENTACJI_NN §P0.8 pkt 5) — nakładka SWZ: budowniczy
+// CZYSTY (§14.2, wzorzec `buildFlowOverlayFromScene`) z odpowiedzi endpointu
+// SWZ per obwód (karta P0.6/G-22, `application/analyses/swz/service.py`
+// `build_swz_view`) → prezentacja werdyktu 3-stanowego. ZERO fizyki w UI:
+// wartości przepisane 1:1 z odpowiedzi backendu, żadna nie jest przeliczana.
+// ---------------------------------------------------------------------------
+
+/** Werdykt 3-stanowy SWZ (`network_model/solvers` przez `analyses/swz/
+ *  werdykt.py::SwzStatus`, mirror łańcuchów wartości) — trzeci stan
+ *  (`'nierozstrzygalne'`) jest OBOWIĄZKOWY (karta P0.6 §0.3): fail-closed,
+ *  nigdy „spełnia" bez dowodu liczbowego. */
+export type SwzVerdictStatus = 'spełnia' | 'nie spełnia' | 'nierozstrzygalne';
+
+/** Wpis nakładki SWZ jednego aparatu odpływu — WYŁĄCZNIE odczyt z
+ *  odpowiedzi endpointu (`SwzApiResponse.swz`), formatowanie dozwolone
+ *  (§10), fizyka nie. */
+export interface SwzOverlayEntry {
+  readonly ownerRef: string;
+  readonly status: SwzVerdictStatus;
+  readonly przyczynaPl: string;
+  readonly ik1MinA: number;
+  readonly iaWymaganeA: number | null;
+  readonly tWymaganyS: number | null;
+  readonly margines: number | null;
+}
+
+/**
+ * Kształt odpowiedzi `GET /{case_id}/enm/swz?station_ref&bus_ref&breaker_ref`
+ * (karta P0.6/G-22, `build_swz_view`) — WYŁĄCZNIE pola czytane przez
+ * budowniczy niżej (envelope pełny niesie też `fault_loop_min_scenario`/
+ * `missing_data`/`reason_pl`, nieużywane tutaj — warstwa prezentacji SLD
+ * potrzebuje wyłącznie gotowego werdyktu, nie śladu solvera pętli zwarcia).
+ */
+export interface SwzApiResponse {
+  readonly status: 'OK' | 'brak danych' | 'nie dotyczy';
+  readonly breaker_ref: string;
+  readonly swz?: {
+    readonly status: SwzVerdictStatus;
+    readonly przyczyna_pl: string;
+    readonly ik1_min_a: number;
+    readonly ia_wymagane_a: number | null;
+    readonly t_wymagany_s: number | null;
+    readonly margines: number | null;
+  };
+}
+
+/**
+ * Zbuduj nakładkę SWZ z odpowiedzi endpointu per obwód (karta P0.6/G-22,
+ * §14.2 „overlay wyłącznie z wyniku"). `status !== 'OK'` (envelope: „brak
+ * danych" — solver nie mógł policzyć pętli / „nie dotyczy" — układ nie-TN)
+ * ⇒ WPIS POMINIĘTY, uczciwy brak, zero fabrykacji werdyktu bez dowodu.
+ * Deterministyczna: to samo wejście ⇒ identyczny wynik (zero DOM/losowości/
+ * Date, wzorzec `buildFlowOverlayFromScene`).
+ */
+export function buildSwzOverlayFromResponses(
+  responses: readonly SwzApiResponse[],
+): Readonly<Record<string, SwzOverlayEntry>> {
+  const out: Record<string, SwzOverlayEntry> = {};
+  for (const r of responses) {
+    if (r.status !== 'OK' || !r.swz) continue;
+    out[r.breaker_ref] = {
+      ownerRef: r.breaker_ref,
+      status: r.swz.status,
+      przyczynaPl: r.swz.przyczyna_pl,
+      ik1MinA: r.swz.ik1_min_a,
+      iaWymaganeA: r.swz.ia_wymagane_a,
+      tWymaganyS: r.swz.t_wymagany_s,
+      margines: r.swz.margines,
+    };
+  }
+  return out;
+}
+
+/**
+ * Ton prezentacji werdyktu SWZ — CZYSTA klasyfikacja STATUSU na jedną z
+ * trzech klas renderu (`ok`/`fail`/`unknown`; kolor/ikonę dobiera renderer,
+ * ta funkcja WYŁĄCZNIE nazywa klasę). Zero progów liczonych w UI —
+ * klasyfikacja WPROST z gotowego, 3-stanowego werdyktu backendu (§0.3 karty
+ * P0.6: `'nierozstrzygalne'` fail-closed, nigdy cichy fallback na `'ok'`).
+ */
+export type SwzPresentationTone = 'ok' | 'fail' | 'unknown';
+
+export function swzPresentationTone(status: SwzVerdictStatus): SwzPresentationTone {
+  if (status === 'spełnia') return 'ok';
+  if (status === 'nie spełnia') return 'fail';
+  return 'unknown';
 }
 
 /** Pojedyncza wartość liczbowa z wyniku solvera + jednostka — WYŁĄCZNIE
