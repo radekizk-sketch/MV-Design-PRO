@@ -159,7 +159,14 @@ def _inwentarz_elementow(snapshot: dict[str, Any]) -> list[_Element]:
                 kind=str(galaz["type"]),
                 name=galaz.get("name"),
                 kolekcja="branches",
-                wylaczony_w_bazie=str(galaz.get("status") or "closed") == "open",
+                # PREDYKAT PARZYSTY z regułą ruchu mostu ENM→graf: gałąź pracuje
+                # wtedy i tylko wtedy, gdy jej stan to „closed" (most ustawia
+                # ``in_service=(status == "closed")``). Zapis „== open" byłby
+                # DRUGIM, niezależnym warunkiem — dziś zgodnym, bo dziedzina pola
+                # jest dwuwartościowa, i rozjeżdżającym się przy pierwszej jej
+                # zmianie. Warunek wejścia (co pracuje) i wyjścia (co wykluczamy
+                # z enumeracji) pochodzi więc z jednego zdania.
+                wylaczony_w_bazie=str(galaz.get("status") or "closed") != "closed",
             )
         )
     for trafo in snapshot.get("transformers") or []:
@@ -281,7 +288,24 @@ def _zasilanie(snapshot: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _pozycja_naruszenia(item: dict[str, Any]) -> dict[str, Any]:
+def _indeks_ref(snapshot: dict[str, Any]) -> dict[str, str]:
+    """Odwzorowanie identyfikatora grafu na ``ref_id`` modelu.
+
+    Pozycje walidacji energetycznej wskazują elementy identyfikatorem GRAFU
+    (UUID wyprowadzony z ``ref_id``). Konsument macierzy N-1 pracuje na ``ref_id``
+    — bez tego ogniwa naruszenie nie dałoby się związać z elementem modelu (a to
+    jest cel widoku: pokazać, KTÓRY element projektu jest przeciążony).
+    """
+    indeks: dict[str, str] = {}
+    for klucz in ("buses", "branches", "transformers"):
+        for pozycja in snapshot.get(klucz) or []:
+            ref = pozycja.get("ref_id")
+            if ref:
+                indeks[ref_to_graph_id(str(ref))] = str(ref)
+    return indeks
+
+
+def _pozycja_naruszenia(item: dict[str, Any], indeks: dict[str, str]) -> dict[str, Any]:
     """Pozycja naruszenia z pozycji walidacji energetycznej (D2) — 1:1 z buildera.
 
     ``slad_kryterium`` to ślad WHITE BOX policzony przez builder D2 (wzór →
@@ -290,6 +314,7 @@ def _pozycja_naruszenia(item: dict[str, Any]) -> dict[str, Any]:
     """
     return {
         "check_type": item["check_type"],
+        "element_ref": indeks.get(str(item["target_id"])),
         "element_id": item["target_id"],
         "element_name": item["target_name"],
         "wartosc": _round4(item["observed_value"]),
@@ -300,9 +325,10 @@ def _pozycja_naruszenia(item: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _pozycja_pominieta(item: dict[str, Any]) -> dict[str, Any]:
+def _pozycja_pominieta(item: dict[str, Any], indeks: dict[str, str]) -> dict[str, Any]:
     return {
         "check_type": item["check_type"],
+        "element_ref": indeks.get(str(item["target_id"])),
         "element_id": item["target_id"],
         "element_name": item["target_name"],
         "powod_pl": item["why_pl"],
@@ -313,7 +339,7 @@ def _klucz_pozycji(pozycja: dict[str, Any]) -> tuple[str, str]:
     return (str(pozycja["check_type"]), str(pozycja["element_id"]))
 
 
-def _skutki_z_walidacji(widok: dict[str, Any]) -> dict[str, Any]:
+def _skutki_z_walidacji(widok: dict[str, Any], indeks: dict[str, str]) -> dict[str, Any]:
     """Rozdziel pozycje walidacji energetycznej na skutki kontyngencji.
 
     Predykaty są PARAMI z jednego źródła: pozycja o statusie ``FAIL`` jest
@@ -330,11 +356,11 @@ def _skutki_z_walidacji(widok: dict[str, Any]) -> dict[str, Any]:
             continue
         if item["status"] == "FAIL":
             if check_type in _TYPY_PRZECIAZENIA:
-                przeciazenia.append(_pozycja_naruszenia(item))
+                przeciazenia.append(_pozycja_naruszenia(item, indeks))
             else:
-                naruszenia_napiecia.append(_pozycja_naruszenia(item))
+                naruszenia_napiecia.append(_pozycja_naruszenia(item, indeks))
         elif item["status"] == "NOT_COMPUTED":
-            kryteria_pominiete.append(_pozycja_pominieta(item))
+            kryteria_pominiete.append(_pozycja_pominieta(item, indeks))
     return {
         "przeciazenia": sorted(przeciazenia, key=_klucz_pozycji),
         "naruszenia_napiecia": sorted(naruszenia_napiecia, key=_klucz_pozycji),
@@ -450,7 +476,11 @@ def _kontyngencja(bazowy: CanonicalRun, element: _Element) -> dict[str, Any]:
 
     dane_biegu = _pusty_bieg() if blad is not None else _dane_biegu(bieg)
     zbiegl = bool(dane_biegu["zbieznosc"])
-    skutki = _skutki_z_walidacji(build_energy_validation_view(bieg)) if zbiegl else None
+    skutki = (
+        _skutki_z_walidacji(build_energy_validation_view(bieg), _indeks_ref(wariant))
+        if zbiegl
+        else None
+    )
 
     if zbiegl:
         powod = "Bieg rozpływu zbieżny — skutki policzone."
@@ -514,7 +544,11 @@ def _przypadek_bazowy(bazowy: CanonicalRun) -> dict[str, Any]:
         blad = f"{type(exc).__name__}: {exc}"
     dane_biegu = _pusty_bieg() if blad is not None else _dane_biegu(bieg)
     zbiegl = bool(dane_biegu["zbieznosc"])
-    skutki = _skutki_z_walidacji(build_energy_validation_view(bieg)) if zbiegl else None
+    skutki = (
+        _skutki_z_walidacji(build_energy_validation_view(bieg), _indeks_ref(bazowy.snapshot or {}))
+        if zbiegl
+        else None
+    )
     zasilanie = _zasilanie(bazowy.snapshot or {})
     return {
         "status": "zbiegl" if zbiegl else "niezbiegl",
@@ -580,6 +614,16 @@ def _kryteria(config: EnergyValidationConfig) -> dict[str, Any]:
                 "poza wyspą jest pozbawiony zasilania."
             ),
         },
+        # Zakres kryteriów jest ZAMKNIĘTY i jawny — czytelnik ma wiedzieć nie tylko,
+        # co oceniono, ale też czego świadomie nie oceniano (pozycja pinowana testem
+        # kontraktu; deklaracja bez testu byłaby fałszywą pewnością).
+        "ocenione_kategorie": sorted(_TYPY_KRYTERIOW),
+        "poza_zakresem_pl": (
+            "Budżet strat sieciowych i bilans mocy biernej węzła bilansującego są "
+            "kontrolami CAŁEJ SIECI (jedna pozycja na model), a nie kryteriami "
+            "elementu — nie wchodzą do skutków kontyngencji ani do dotkliwości. "
+            "Aparaty łączeniowe i źródła nie są kontyngencjami tej analizy."
+        ),
         "ranking": {
             "definicja_pl": (
                 "Dotkliwość = krotka liczników (odbiory bez zasilania, przeciążenia, "
