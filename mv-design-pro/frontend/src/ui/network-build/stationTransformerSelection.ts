@@ -88,29 +88,39 @@ export function selectStationDistributionTransformers(
   const blockTransformerRefs = collectDerBlockTransformerRefs(snapshot);
 
   return (snapshot.transformers ?? []).filter((transformer) => {
+    // KOMPLETNOSC-POLA-TR — GRANICA TEJ REGUŁY, ZMIERZONA I NAZWANA.
+    // Wskazanie `Generator.blocking_transformer_ref` wyklucza transformator ze
+    // zbioru transformatorów rozdzielczych stacji — TAKŻE wtedy, gdy stacja
+    // deklaruje go w `transformer_refs` (operacja DER dopisuje tam transformator
+    // blokowy toru źródłowego, `Etap3Configurators` mierzy to na stacji PV z
+    // DWOMA transformatorami: rozdzielczym 250 kVA i blokowym 1250 kVA).
+    //
+    // Pierwsza wersja tej karty odwracała tę kolejność, żeby uratować przypadek
+    // odwrotny (PV na szynie nN wskazuje JEDYNY transformator stacji przez
+    // auto-resolve V12K-022 — `domain_operations_v2.py`). Pomiar pokazał, że
+    // OBA kształty są w danych IDENTYCZNE: transformator, na którego szynie
+    // dolnej stoi generator deklarujący go jako blokowy. Danych nie da się więc
+    // rozstrzygnąć bez nowego pola w modelu — a zgadywanie po nazwie/liczbie
+    // transformatorów byłoby heurystyką, nie regułą.
+    //
+    // Dlatego OBIE strony parytetu (rysunek tutaj i bramka gotowości
+    // `enm/pole_transformatorowe.py`) stosują TĘ SAMĄ, węższą regułę: wskazanie
+    // po stronie źródła wyklucza. Skutek jest jawny i przypięty wierszem
+    // tablicy `pole_transformatorowe_parytet_v1.json` (`tr-stacji-z-der-na-nn`):
+    // stacja, której jedyny transformator jest zarazem transformatorem blokowym
+    // źródła, NIE dostaje ani markera, ani ostrzeżenia — brak pola TR pozostaje
+    // wtedy niewykryty. To jest ZNANA GRANICA, nie cichy wyjątek; jej zniesienie
+    // wymaga jawnej roli transformatora w modelu (osobna karta).
+    if (!isStationDistributionTransformer(transformer, blockTransformerRefs)) {
+      return false;
+    }
+
     const refs = transformerRefs(transformer);
-    // KOMPLETNOSC-POLA-TR: DEKLARACJA STACJI JEST MOCNIEJSZA od wskazania po
-    // stronie źródła. Do tej karty kolejność była odwrotna i gubiła
-    // transformator KAŻDEJ stacji, na której szynie nN stoi PV/BESS:
-    // `add_converter_source` w wariancie `block_transformer` ustawia
-    // `Generator.blocking_transformer_ref` na JEDYNY transformator stacji
-    // (`domain_operations_v2.py` — auto-resolve V12K-022), więc
-    // `collectDerBlockTransformerRefs` wykluczał go jako „blokowy DER".
-    // Skutek: stacja z fotowoltaiką za transformatorem rysowała się BEZ
-    // transformatora, a bramka gotowości (backend, `enm/pole_transformatorowe.py`)
-    // widziała go dalej — dokładnie ten rozjazd predykatów, którego zakazuje
-    // reguła KLASA §3. Transformator, który stacja DEKLARUJE jako swój, jest
-    // jej transformatorem rozdzielczym niezależnie od tego, że dodatkowo pełni
-    // rolę transformatora blokowego dla źródła na jego szynie nN.
     if (refs.some((ref) => explicitRefs.has(ref))) {
       return true;
     }
 
     if (explicitRefs.size > 0) {
-      return false;
-    }
-
-    if (!isStationDistributionTransformer(transformer, blockTransformerRefs)) {
       return false;
     }
 

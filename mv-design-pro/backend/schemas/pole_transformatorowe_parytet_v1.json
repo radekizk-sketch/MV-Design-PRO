@@ -126,7 +126,7 @@
     },
     {
       "id": "tr-stacji-z-der-na-nn",
-      "opis_pl": "Transformator STACJI, na ktorego szynie nN stoi PV (zrodlo wskazuje go jako blocking_transformer_ref), bez pola TR. Deklaracja stacji jest mocniejsza od wskazania zrodla — luka pola JEST zglaszana i JEST rysowana.",
+      "opis_pl": "ZNANA GRANICA REGULY (zmierzona, nie cichy wyjatek). Transformator STACJI, na ktorego szynie nN stoi PV wskazujace go przez blocking_transformer_ref, bez pola TR. W danych ten ksztalt jest IDENTYCZNY z transformatorem blokowym toru DER (wiersz 'tr-blokowy-der-poza-stacja'): ten sam ref w blocking_transformer_ref, ten sam generator na szynie dolnej. Rozroznienie wymagaloby jawnej ROLI transformatora w modelu; zgadywanie po nazwie albo po liczbie transformatorow byloby heurystyka. Dlatego OBIE strony parytetu stosuja te sama, wezsza regule — wskazanie po stronie zrodla wyklucza — i luka pola TR pozostaje tu NIEWYKRYTA (brak ostrzezenia, brak markera). Zniesienie granicy = osobna karta wprowadzajaca role transformatora.",
       "cecha_pole_tr": "brak",
       "cecha_transformator": "jest",
       "stacja": {
@@ -136,7 +136,7 @@
         "deklaruje_transformator": true
       },
       "transformator": { "hv": "sn", "lv": "nn", "blokowy_der": true },
-      "oczekiwane_znalezisko": true
+      "oczekiwane_znalezisko": false
     },
     {
       "id": "tr-hv-poza-pasmem-sn",

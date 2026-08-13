@@ -41,11 +41,10 @@ CZEGO PREDYKAT NIE ROBI (zero zgadywania):
     `Substation.transformer_refs`, a dopiero przy jej BRAKU schodzi do
     dopasowania po szynach stacji (dokładnie ta sama kolejność, co
     `selectStationDistributionTransformers` w rysunku);
-  * nie orzeka o transformatorach blokowych toru DER — te mają własny ref w
-    `Generator.blocking_transformer_ref` i wchodzą do wykluczenia WYŁĄCZNIE na
-    ścieżce bez deklaracji stacji (deklaracja stacji jest mocniejsza od
-    wskazania po stronie źródła: transformator stacji, za którym stoi PV na
-    szynie nN, pozostaje transformatorem STACJI);
+  * nie orzeka o transformatorach blokowych toru DER — wskazanie
+    `Generator.blocking_transformer_ref` wyklucza transformator z obu ścieżek
+    (patrz `_transformatory_stacji`: to jest ZMIERZONA GRANICA reguły, nie
+    cichy wyjątek);
   * nie zgłasza niczego dla transformatora, którego strona górna nie leży na
     szynie SN tej stacji — bo wtedy nie ma mowy o polu rozdzielni SN.
 """
@@ -225,23 +224,37 @@ def _transformatory_stacji(
     refy_szyn_stacji: set[str],
     refy_blokowe: set[str],
 ) -> list[ElementEnm]:
-    """Transformatory NALEŻĄCE do stacji — deklaracja stacji przed dopasowaniem.
+    """Transformatory NALEŻĄCE do stacji — lustrzane wobec rysunku.
 
-    Kolejność jest istotna i lustrzana wobec rysunku
-    (`selectStationDistributionTransformers`): gdy stacja DEKLARUJE
-    `transformer_refs`, to ona rozstrzyga. Wskazanie `blocking_transformer_ref`
-    po stronie źródła NIE odbiera wtedy transformatorowi roli transformatora
-    stacji — operacja `add_converter_source` w wariancie `block_transformer`
-    ustawia je na JEDYNY transformator stacji, więc odwrotna kolejność gubiłaby
-    transformator każdej stacji z PV/BESS na szynie nN.
+    Reguła jest DOKŁADNIE ta sama, co w
+    `frontend/src/ui/network-build/stationTransformerSelection.ts::
+    selectStationDistributionTransformers` (predykaty parami z jednego źródła,
+    reguła KLASA §3):
+
+      1. wskazanie `Generator.blocking_transformer_ref` WYKLUCZA transformator —
+         także wtedy, gdy stacja deklaruje go w `transformer_refs`;
+      2. dalej rozstrzyga deklaracja stacji (`transformer_refs`);
+      3. przy BRAKU deklaracji schodzimy do dopasowania po szynach stacji.
+
+    GRANICA TEJ REGUŁY, ZMIERZONA I NAZWANA. Krok 1 jest szerszy, niż chciałby
+    tego przypadek odwrotny: PV na szynie nN wskazuje przez auto-resolve
+    (V12K-022, `domain_operations_v2.py`) JEDYNY transformator stacji jako swój
+    blokowy. Pomiar pokazał, że OBA kształty są w danych IDENTYCZNE —
+    transformator, na którego szynie dolnej stoi generator deklarujący go jako
+    blokowy. Rozstrzygnięcie wymagałoby NOWEGO pola roli transformatora w
+    modelu; zgadywanie po nazwie albo po liczbie transformatorów byłoby
+    heurystyką, nie regułą. Skutek jest jawny i przypięty wierszem tablicy
+    `pole_transformatorowe_parytet_v1.json` (`tr-stacji-z-der-na-nn`): stacja,
+    której jedyny transformator jest zarazem transformatorem blokowym źródła,
+    NIE dostaje ani ostrzeżenia, ani markera. To ZNANA GRANICA (osobna karta
+    zniesie ją jawną rolą transformatora), nie cichy wyjątek.
     """
+    kandydaci = [t for t in transformers if _ref(t) not in refy_blokowe]
     zadeklarowane = set(_teksty(_lista(stacja, "transformer_refs")))
     if zadeklarowane:
-        return [t for t in transformers if _ref(t) in zadeklarowane]
+        return [t for t in kandydaci if _ref(t) in zadeklarowane]
     dopasowane: list[ElementEnm] = []
-    for transformator in transformers:
-        if _ref(transformator) in refy_blokowe:
-            continue
+    for transformator in kandydaci:
         hv = _tekst(transformator, "hv_bus_ref")
         lv = _tekst(transformator, "lv_bus_ref")
         if hv in refy_szyn_stacji or lv in refy_szyn_stacji:

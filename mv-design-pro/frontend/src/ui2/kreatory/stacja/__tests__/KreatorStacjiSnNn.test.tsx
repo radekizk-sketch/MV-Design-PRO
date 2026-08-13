@@ -87,6 +87,14 @@ const SZABLONY = [
   szablon({ template_ref: 'tpl-coupler', bay_kind: 'sprzeglowe_poprzeczne', bay_role: 'COUPLER' }),
 ];
 
+/**
+ * KOMPLETNOSC-POLA-TR: przełącznik dostępności readoutu zawężenia ról
+ * (`/api/catalog/bay-apparatus-kinds`). Ustawiany PRZED renderem — pozwala
+ * sprawdzić degradację, gdy backend tej końcówki nie ma (starsza wersja,
+ * chwilowy błąd sieci).
+ */
+let zawezenieRolNiedostepne = false;
+
 vi.mock('../../../../ui/catalog/api', () => ({
   getCatalogErrorMessage: () => 'błąd katalogu',
   fetchTransformerTypes: () =>
@@ -207,15 +215,17 @@ vi.mock('../../../../ui/catalog/api', () => ({
   // KOMPLETNOSC-POLA-TR: rodzaje aparatu głównego dopuszczalne per rola pola
   // (readout `/api/catalog/bay-apparatus-kinds` — jedno źródło prawdy backendu).
   fetchBayApparatusKinds: () =>
-    Promise.resolve({
-      IN: ['WYLACZNIK', 'ROZLACZNIK', 'REKLOZER'],
-      OUT: ['WYLACZNIK', 'ROZLACZNIK', 'REKLOZER'],
-      FEEDER: ['WYLACZNIK', 'ROZLACZNIK', 'REKLOZER'],
-      TR: ['ROZLACZNIK_BEZPIECZNIKOWY', 'WYLACZNIK'],
-      COUPLER: ['WYLACZNIK', 'ROZLACZNIK'],
-      MEASUREMENT: ['ODLACZNIK'],
-      OZE: ['WYLACZNIK', 'ROZLACZNIK'],
-    }),
+    zawezenieRolNiedostepne
+      ? Promise.reject(new Error('HTTP 404'))
+      : Promise.resolve({
+          IN: ['WYLACZNIK', 'ROZLACZNIK', 'REKLOZER'],
+          OUT: ['WYLACZNIK', 'ROZLACZNIK', 'REKLOZER'],
+          FEEDER: ['WYLACZNIK', 'ROZLACZNIK', 'REKLOZER'],
+          TR: ['ROZLACZNIK_BEZPIECZNIKOWY', 'WYLACZNIK'],
+          COUPLER: ['WYLACZNIK', 'ROZLACZNIK'],
+          MEASUREMENT: ['ODLACZNIK'],
+          OZE: ['WYLACZNIK', 'ROZLACZNIK'],
+        }),
 }));
 
 // B-8 (karta KD-3): klient szablonów UŻYTKOWNIKA — osobny zbiór od wbudowanych.
@@ -997,6 +1007,41 @@ describe('KreatorStacjiSnNn — pole transformatorowe (KOMPLETNOSC-POLA-TR)', ()
     const payload = executeDomainOperationMock.mock.calls[0]?.[2] as Record<string, unknown>;
     const role = (payload.sn_fields as Array<{ field_role: string }>).map((f) => f.field_role);
     expect(role).not.toContain('TRANSFORMATOROWE');
+  });
+
+  it('brak readoutu zawężenia ról NIE kasuje katalogu aparatów (degradacja proporcjonalna)', async () => {
+    // Backend bez końcówki `/bay-apparatus-kinds` (starsza wersja, błąd sieci):
+    // kreator traci ZAWĘŻENIE, nie listę. Pierwsza wersja tej karty pobierała
+    // obie dane jednym `Promise.all`, więc porażka dodatku kasowała dobór —
+    // krok pól stawał się pusty i stacji nie dawało się zapisać.
+    zawezenieRolNiedostepne = true;
+    try {
+      executeDomainOperationMock.mockResolvedValue({ error: null });
+      render(<KreatorStacjiSnNn />);
+
+      await przejdzDoTransformatora();
+      await wybierzTyp();
+      await przejdzIWybierzRozdzielnice();
+
+      const aparatTr = screen.getByTestId('mvd-kreator-stacja-aparat-4') as HTMLSelectElement;
+      const opcje = [...aparatTr.querySelectorAll('option')].map((o) => o.value).filter(Boolean);
+      // Pełny katalog (bez zawężenia) — łącznie z odłącznikiem, którego przy
+      // działającym readoucie w tym polu nie ma.
+      expect(opcje).toContain('sw-cb-abb-vd4-17kv-630a');
+      expect(opcje).toContain('sw-ds-abb-ojs-17kv-630a');
+      expect(opcje.length).toBeGreaterThan(0);
+
+      // Zapis nadal możliwy — pole TR jedzie z aparatem.
+      await userEvent.click(screen.getByTestId('mvd-kreator-stacja-zapisz'));
+      await waitFor(() => expect(executeDomainOperationMock).toHaveBeenCalled());
+      const payload = executeDomainOperationMock.mock.calls[0]?.[2] as Record<string, unknown>;
+      const tr = (payload.sn_fields as Array<{ field_role: string; apparatus_catalog_ref: string }>)
+        .filter((f) => f.field_role === 'TRANSFORMATOROWE');
+      expect(tr).toHaveLength(1);
+      expect(tr[0].apparatus_catalog_ref).toBeTruthy();
+    } finally {
+      zawezenieRolNiedostepne = false;
+    }
   });
 
   it('panel kontroli niesie stan pola TR — widoczny z KAŻDEGO kroku, nie tylko z listy pól', async () => {
