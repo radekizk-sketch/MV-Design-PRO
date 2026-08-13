@@ -15,7 +15,12 @@ Domykają cztery zdolności rejestru z gotowym modułem analizy i brakiem router
   kabel, transformator) wariant wejścia bez tego elementu + bieg ISTNIEJĄCEGO
   solvera rozpływu, a w wyniku przeciążenia, odchylenia napięć, odbiory bez
   zasilania i ranking dotkliwości. ``element_refs`` (wielokrotny) zawęża
-  enumerację; bez niego liczone są wszystkie kwalifikowane elementy modelu.
+  enumerację; bez niego liczone są wszystkie kwalifikowane elementy modelu,
+- ``GET /api/insights/n-1-contingency/scope?run_id=`` — ZAPOWIEDŹ zakresu tej
+  enumeracji: lista kwalifikowanych elementów do wyboru zakresu i koszt biegu
+  wyrażony liczbą kontyngencji i liczbą biegów solvera. Czyta wyłącznie migawkę
+  (zero biegów solvera), więc odpowiada natychmiast — po to, żeby inżynier
+  decydował o kosztownym biegu N-1 ZNAJĄC jego rozmiar.
 
 Warstwa PREZENTACJI/API: ładuje przebieg (404 gdy brak), deleguje mapowanie
 i serializację do serwisów aplikacyjnych (ZERO fizyki) i zwraca zserializowany
@@ -30,7 +35,10 @@ from typing import Any
 from uuid import UUID
 
 from application.analyses.granice_sieci import build_granice_view
-from application.analyses.kontyngencje_n1 import build_kontyngencje_n1_view
+from application.analyses.kontyngencje_n1 import (
+    build_kontyngencje_n1_view,
+    build_kontyngencje_n1_zakres_view,
+)
 from application.analyses.pokrycie_analiz import build_pokrycie_view
 from application.analyses.wrazliwosc_rozplywu import build_wrazliwosc_view
 from enm.canonical_analysis import CanonicalRun
@@ -77,6 +85,18 @@ def get_analysis_coverage(case_id: str = Query(...)) -> dict[str, Any]:
 def get_network_boundary(case_id: str = Query(...)) -> dict[str, Any]:
     try:
         return build_granice_view(case_id)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+
+
+@router.get("/api/insights/n-1-contingency/scope")
+def get_n_1_contingency_scope(run_id: UUID = Query(...)) -> dict[str, Any]:
+    run = _require_run(run_id)
+    try:
+        return build_kontyngencje_n1_zakres_view(run)
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,

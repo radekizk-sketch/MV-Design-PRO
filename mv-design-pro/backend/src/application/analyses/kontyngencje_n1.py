@@ -74,11 +74,23 @@ WYDAJNOŚĆ (pomiar wykonany kartą N-1-BACKEND na substracie referencyjnym
     czas łączny: 374,7 s
     czas na kontyngencję: 2,64 s
 Bieg jest sekwencyjny Z ZAŁOŻENIA (determinizm) — zrównoleglenie NIE wchodzi w
-zakres tej karty. Dla sieci tej wielkości komplet N-1 zajmuje ~6 minut, co jest
-poza progiem interaktywnym: ekran musi albo zawęzić listę (parametr
-``element_refs``), albo uruchomić enumerację jako zadanie w tle. To DŁUG NAZWANY
-(nie ukryty) — jego domknięcie należy do karty ekranu N-1 (fala 12 wg D8),
-a rozwiązaniem NIE może być heurystyczne skracanie listy kontyngencji.
+zakres tej karty. Dla sieci tej wielkości komplet N-1 zajmuje ~6 minut, czyli
+poza progiem interaktywnym.
+
+ODPOWIEDŹ NA TEN KOSZT (karta ekranu N-1, fala 12 wg D8) — dwie drogi, obie
+sterowane przez inżyniera, ŻADNA nie skracająca listy heurystyką:
+1. ZAWĘŻENIE zakresu: parametr ``element_refs`` liczy wyłącznie wskazane
+   elementy. Listę do wyboru podaje ``build_kontyngencje_n1_zakres_view`` — z
+   modelu, tą samą regułą kwalifikacji co enumeracja, więc wybór jest wyborem z
+   modelu, a nie zgadywaniem klienta;
+2. BIEG PEŁNY ze ZNANYM kosztem: ta sama zapowiedź podaje przed startem, ile
+   pozycji stanie w macierzy i ile razy uruchomi się solver. Kosztu NIE
+   wyrażamy czasem — pomiar 2,64 s pochodzi z INNEGO substratu, a przeliczenie
+   go na bieżącą sieć byłoby liczbą zmyśloną (kontrakt nie niesie pomiaru czasu
+   z tego modelu).
+Skracanie listy kontyngencji heurystyką (np. „licz tylko elementy podejrzane")
+pozostaje ZAKAZANE: kontyngencja pominięta bez decyzji inżyniera to naruszenie
+nieznalezione, o którym nikt nie wie.
 
 ROZGRANICZENIE WZGLĘDEM ``reliability_contingency`` (solver V12.6 akademicki,
 ``network_model/solvers/v126_academic.py::_reliability``): tamta zdolność liczy
@@ -112,6 +124,16 @@ from network_model.solvers.power_flow_newton_internal import build_slack_island
 #: sieci), a nie ubytek elementu przesyłowego. Źródła również nie — decyzja §0
 #: karty N-1-BACKEND (osobna zdolność, osobna karta).
 KWALIFIKOWANE_TYPY_GALEZI: frozenset[str] = frozenset({"line_overhead", "cable"})
+
+#: Powód wykluczenia elementu już wyłączonego w modelu bazowym — JEDNO zdanie dla
+#: obu konsumentów kontraktu: enumeracji (``_kontyngencja``) i zapowiedzi zakresu
+#: (``build_kontyngencje_n1_zakres_view``). Dwie kopie tego samego uzasadnienia
+#: rozjechałyby się przy pierwszej zmianie brzmienia, a inżynier zobaczyłby dwa
+#: różne powody tego samego rozstrzygnięcia (równość przypięta testem).
+POWOD_WYKLUCZENIA_PL = (
+    "Element jest już wyłączony w modelu bazowym (status open), "
+    "więc jego wyłączenie nie jest kontyngencją."
+)
 
 #: Rodzaje kontroli walidacji energetycznej (D2) czytane jako PRZECIĄŻENIE.
 _TYPY_PRZECIAZENIA: frozenset[str] = frozenset({"BRANCH_LOADING", "TRANSFORMER_LOADING"})
@@ -442,10 +464,7 @@ def _kontyngencja(bazowy: CanonicalRun, element: _Element) -> dict[str, Any]:
         return {
             **wspolne,
             "status": "wykluczony",
-            "powod_pl": (
-                "Element jest już wyłączony w modelu bazowym (status open), "
-                "więc jego wyłączenie nie jest kontyngencją."
-            ),
+            "powod_pl": POWOD_WYKLUCZENIA_PL,
             "przeciazenia": [],
             "naruszenia_napiecia": [],
             "kryteria_pominiete": [],
@@ -640,6 +659,95 @@ def _kryteria(config: EnergyValidationConfig) -> dict[str, Any]:
     }
 
 
+def _wymagaj_inwentarza(run: CanonicalRun) -> list[_Element]:
+    """Warunek wejścia WSPÓLNY dla enumeracji i dla zapowiedzi zakresu.
+
+    Zapowiedź zakresu (``build_kontyngencje_n1_zakres_view``) i sama enumeracja
+    (``build_kontyngencje_n1_view``) muszą przyjmować DOKŁADNIE te same przebiegi:
+    ekran, który zapowiada listę kontyngencji, a po naciśnięciu „policz" dostaje
+    odmowę (albo odwrotnie), kłamałby o wykonalności biegu. Dlatego oba wejścia
+    czytają JEDEN warunek, a nie dwa „dziś zgodne" (przypięte testem parzystości).
+    """
+    if run.analysis_type != "PF":
+        raise ValueError(
+            "Enumeracja N-1 wymaga przebiegu rozpływu mocy; "
+            f"otrzymano rodzaj analizy: {run.analysis_type}."
+        )
+    if run.status != "FINISHED":
+        raise ValueError(
+            f"Przebieg {run.id} nie jest zakończony (status={run.status}); "
+            "wynik rozpływu mocy nie jest dostępny."
+        )
+    wszystkie = _inwentarz_elementow(run.snapshot or {})
+    if not wszystkie:
+        raise ValueError(
+            "Model nie zawiera żadnego kwalifikowanego elementu N-1 "
+            "(linia napowietrzna, kabel, transformator)."
+        )
+    return wszystkie
+
+
+def build_kontyngencje_n1_zakres_view(run: CanonicalRun) -> dict[str, Any]:
+    """Zakres enumeracji N-1: CO da się policzyć i ILE to kosztuje — BEZ liczenia.
+
+    Zapowiedź przed biegiem (decyzja D8, domknięcie długu wydajności nazwanego
+    kartą N-1-BACKEND: 2,64 s na kontyngencję). Konsument (ekran „Kontyngencje
+    N-1") dostaje stąd DWIE rzeczy, których inaczej nie mógłby mieć uczciwie:
+
+    1. LISTĘ kwalifikowanych elementów do wyboru zakresu — wprost z modelu, tą
+       SAMĄ funkcją (``_inwentarz_elementow``), którą enumeracja wybiera elementy
+       do policzenia. Gdyby listę składał klient, filtrując migawkę po rodzaju
+       elementu, reguła kwalifikacji (``KWALIFIKOWANE_TYPY_GALEZI``) istniałaby w
+       dwóch miejscach — a zawężenie zakresu jest wtedy zgadywaniem, nie wyborem
+       z modelu;
+    2. KOSZT biegu wyrażony LICZBĄ, nie czasem: ``kontyngencji`` (ile pozycji
+       stanie w macierzy) i ``biegow_rozplywu`` (ile razy uruchomi się solver —
+       element już wyłączony w bazie jest rozstrzygany bez biegu). Czasu tu NIE MA
+       i nie może być: kontrakt nie niesie pomiaru z TEGO modelu, a przeliczanie
+       cudzego pomiaru (2,64 s zmierzone na innym substracie) na tę sieć byłoby
+       liczbą zmyśloną. Lepiej podać uczciwą liczbę biegów niż zmyślony czas.
+
+    Ta końcówka NIE uruchamia solvera ani walidacji energetycznej — czyta wyłącznie
+    migawkę zakończonego przebiegu, więc jest tania niezależnie od wielkości sieci.
+
+    Args:
+        run: zakończony przebieg rozpływu (``PF``) — jego migawka jest modelem
+            bazowym enumeracji (ten sam warunek wejścia co enumeracja).
+
+    Returns:
+        Zakres: lista kwalifikowanych elementów (posortowana po ``element_ref``,
+        z jawnym oznaczeniem tych wykluczonych) i podsumowanie kosztu.
+
+    Raises:
+        ValueError: gdy przebieg nie jest zakończonym rozpływem albo model nie ma
+            ani jednego kwalifikowanego elementu — komunikaty po polsku.
+    """
+    wszystkie = _wymagaj_inwentarza(run)
+    elementy = [
+        {
+            "element_ref": element.ref,
+            "element_name": element.name,
+            "element_kind": element.kind,
+            "wykluczony": element.wylaczony_w_bazie,
+            # Powód pokazujemy WYŁĄCZNIE tam, gdzie jest czego dowodzić — element
+            # kwalifikowany nie potrzebuje uzasadnienia, że nie jest wykluczony.
+            "powod_pl": POWOD_WYKLUCZENIA_PL if element.wylaczony_w_bazie else None,
+        }
+        for element in wszystkie
+    ]
+    biegow = sum(1 for element in wszystkie if not element.wylaczony_w_bazie)
+    return {
+        "analysis": "kontyngencje_n1_zakres",
+        "context": zbuduj_kontekst_widoku(run, ze_znacznikiem_czasu=False),
+        "elementy": elementy,
+        "podsumowanie": {
+            "kontyngencji": len(elementy),
+            "biegow_rozplywu": biegow,
+            "wykluczonych": len(elementy) - biegow,
+        },
+    }
+
+
 def _input_hash(bazowy: CanonicalRun, element_refs: list[str], kryteria: dict[str, Any]) -> str:
     payload = {
         "snapshot_hash": bazowy.snapshot_hash,
@@ -664,7 +772,13 @@ def build_kontyngencje_n1_view(
             (``enm.canonical_analysis.create_run``: ``ENMValidator`` + dostępność
             analizy rozpływu), więc nie powtarzamy jej tutaj drugim zestawem reguł.
         element_refs: opcjonalne zawężenie enumeracji do wskazanych elementów.
-            ``None`` = wszystkie kwalifikowane elementy modelu.
+            ``None`` (parametr POMINIĘTY) = wszystkie kwalifikowane elementy
+            modelu — to jedyny sposób zamówienia biegu pełnego. Lista PUSTA jest
+            BŁĘDEM, a nie synonimem biegu pełnego: „nie policz nic" i „policz
+            wszystko" to przeciwne zamówienia, a milcząca zamiana pierwszego na
+            drugie kosztowałaby najdroższy bieg dokładnie tam, gdzie zamawiający
+            zakres wyczyścił (rozstrzygnięcie przypięte testem po obu stronach —
+            serwis i końcówka).
 
     Returns:
         Widok macierzy N-1: stan bazowy, lista kontyngencji (po sortowanym
@@ -675,24 +789,7 @@ def build_kontyngencje_n1_view(
             zakończony, gdy model nie ma ani jednego kwalifikowanego elementu albo
             gdy wskazany ``element_refs`` nie istnieje w modelu — komunikaty po polsku.
     """
-    if run.analysis_type != "PF":
-        raise ValueError(
-            "Enumeracja N-1 wymaga przebiegu rozpływu mocy; "
-            f"otrzymano rodzaj analizy: {run.analysis_type}."
-        )
-    if run.status != "FINISHED":
-        raise ValueError(
-            f"Przebieg {run.id} nie jest zakończony (status={run.status}); "
-            "wynik rozpływu mocy nie jest dostępny."
-        )
-
-    snapshot = run.snapshot or {}
-    wszystkie = _inwentarz_elementow(snapshot)
-    if not wszystkie:
-        raise ValueError(
-            "Model nie zawiera żadnego kwalifikowanego elementu N-1 "
-            "(linia napowietrzna, kabel, transformator)."
-        )
+    wszystkie = _wymagaj_inwentarza(run)
 
     if element_refs is None:
         elementy = wszystkie
