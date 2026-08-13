@@ -28,6 +28,11 @@ def get_all_lv_cable_types() -> list[dict]:
                 "insulation_type": "PVC",
                 "cross_section_mm2": 16.0,
                 "number_of_cores": 4,
+                "core_functions": "3L+PEN",
+                "max_temperature_c": 70.0,
+                "short_circuit_temperature_c": 160.0,
+                "jth_1s_a_per_mm2": 76.09,
+                "standard": "IEC 60502-1",
                 "manufacturer": "Tele-Fonika Kable",
                 "source_reference": "Tele-Fonika Kable / IEC 60502-1 / dane referencyjne",
             },
@@ -44,6 +49,11 @@ def get_all_lv_cable_types() -> list[dict]:
                 "insulation_type": "PVC",
                 "cross_section_mm2": 25.0,
                 "number_of_cores": 4,
+                "core_functions": "3L+PEN",
+                "max_temperature_c": 70.0,
+                "short_circuit_temperature_c": 160.0,
+                "jth_1s_a_per_mm2": 76.09,
+                "standard": "IEC 60502-1",
                 "manufacturer": "Tele-Fonika Kable",
                 "source_reference": "Tele-Fonika Kable / IEC 60502-1 / dane referencyjne",
             },
@@ -60,6 +70,11 @@ def get_all_lv_cable_types() -> list[dict]:
                 "insulation_type": "PVC",
                 "cross_section_mm2": 35.0,
                 "number_of_cores": 4,
+                "core_functions": "3L+PEN",
+                "max_temperature_c": 70.0,
+                "short_circuit_temperature_c": 160.0,
+                "jth_1s_a_per_mm2": 76.09,
+                "standard": "IEC 60502-1",
                 "manufacturer": "Tele-Fonika Kable",
                 "source_reference": "Tele-Fonika Kable / IEC 60502-1 / dane referencyjne",
             },
@@ -76,6 +91,11 @@ def get_all_lv_cable_types() -> list[dict]:
                 "insulation_type": "PVC",
                 "cross_section_mm2": 50.0,
                 "number_of_cores": 4,
+                "core_functions": "3L+PEN",
+                "max_temperature_c": 70.0,
+                "short_circuit_temperature_c": 160.0,
+                "jth_1s_a_per_mm2": 76.09,
+                "standard": "IEC 60502-1",
                 "manufacturer": "Tele-Fonika Kable",
                 "source_reference": "Tele-Fonika Kable / IEC 60502-1 / dane referencyjne",
             },
@@ -92,6 +112,11 @@ def get_all_lv_cable_types() -> list[dict]:
                 "insulation_type": "PVC",
                 "cross_section_mm2": 70.0,
                 "number_of_cores": 4,
+                "core_functions": "3L+PEN",
+                "max_temperature_c": 70.0,
+                "short_circuit_temperature_c": 160.0,
+                "jth_1s_a_per_mm2": 76.09,
+                "standard": "IEC 60502-1",
                 "manufacturer": "Tele-Fonika",
                 "source_reference": "Tele-Fonika Kable / IEC 60502-1 / dane referencyjne",
             },
@@ -108,6 +133,11 @@ def get_all_lv_cable_types() -> list[dict]:
                 "insulation_type": "PVC",
                 "cross_section_mm2": 95.0,
                 "number_of_cores": 4,
+                "core_functions": "3L+PEN",
+                "max_temperature_c": 70.0,
+                "short_circuit_temperature_c": 160.0,
+                "jth_1s_a_per_mm2": 76.09,
+                "standard": "IEC 60502-1",
                 "manufacturer": "Tele-Fonika Kable",
                 "source_reference": "Tele-Fonika Kable / IEC 60502-1 / dane referencyjne",
             },
@@ -124,6 +154,11 @@ def get_all_lv_cable_types() -> list[dict]:
                 "insulation_type": "PVC",
                 "cross_section_mm2": 120.0,
                 "number_of_cores": 4,
+                "core_functions": "3L+PEN",
+                "max_temperature_c": 70.0,
+                "short_circuit_temperature_c": 160.0,
+                "jth_1s_a_per_mm2": 76.09,
+                "standard": "IEC 60502-1",
                 "manufacturer": "Tele-Fonika",
                 "source_reference": "Tele-Fonika Kable / IEC 60502-1 / dane referencyjne",
             },
@@ -140,6 +175,11 @@ def get_all_lv_cable_types() -> list[dict]:
                 "insulation_type": "PVC",
                 "cross_section_mm2": 150.0,
                 "number_of_cores": 4,
+                "core_functions": "3L+PEN",
+                "max_temperature_c": 70.0,
+                "short_circuit_temperature_c": 160.0,
+                "jth_1s_a_per_mm2": 76.09,
+                "standard": "IEC 60502-1",
                 "manufacturer": "Tele-Fonika Kable",
                 "source_reference": "Tele-Fonika Kable / IEC 60502-1 / dane referencyjne",
             },
@@ -156,6 +196,11 @@ def get_all_lv_cable_types() -> list[dict]:
                 "insulation_type": "PVC",
                 "cross_section_mm2": 185.0,
                 "number_of_cores": 4,
+                "core_functions": "3L+PEN",
+                "max_temperature_c": 70.0,
+                "short_circuit_temperature_c": 160.0,
+                "jth_1s_a_per_mm2": 76.09,
+                "standard": "IEC 60502-1",
                 "manufacturer": "Tele-Fonika Kable",
                 "source_reference": "Tele-Fonika Kable / IEC 60502-1 / dane referencyjne",
             },
@@ -172,6 +217,11 @@ def get_all_lv_cable_types() -> list[dict]:
                 "insulation_type": "PVC",
                 "cross_section_mm2": 240.0,
                 "number_of_cores": 4,
+                "core_functions": "3L+PEN",
+                "max_temperature_c": 70.0,
+                "short_circuit_temperature_c": 160.0,
+                "jth_1s_a_per_mm2": 76.09,
+                "standard": "IEC 60502-1",
                 "manufacturer": "Tele-Fonika Kable",
                 "source_reference": "Tele-Fonika Kable / IEC 60502-1 / dane referencyjne",
             },
@@ -191,6 +241,11 @@ def get_all_lv_cable_types() -> list[dict]:
                 "insulation_type": "PVC",
                 "cross_section_mm2": 35.0,
                 "number_of_cores": 5,
+                "core_functions": "3L+N+PE",
+                "max_temperature_c": 70.0,
+                "short_circuit_temperature_c": 160.0,
+                "jth_1s_a_per_mm2": 114.84,
+                "standard": "IEC 60502-1",
                 "manufacturer": "NKT",
                 "source_reference": "NKT Cables / IEC 60502-1 / dane referencyjne",
             },
@@ -207,6 +262,11 @@ def get_all_lv_cable_types() -> list[dict]:
                 "insulation_type": "PVC",
                 "cross_section_mm2": 50.0,
                 "number_of_cores": 4,
+                "core_functions": "3L+PEN",
+                "max_temperature_c": 70.0,
+                "short_circuit_temperature_c": 160.0,
+                "jth_1s_a_per_mm2": 114.84,
+                "standard": "IEC 60502-1",
                 "manufacturer": "NKT",
                 "source_reference": "NKT Cables / IEC 60502-1 / dane referencyjne",
             },
@@ -223,6 +283,11 @@ def get_all_lv_cable_types() -> list[dict]:
                 "insulation_type": "PVC",
                 "cross_section_mm2": 70.0,
                 "number_of_cores": 4,
+                "core_functions": "3L+PEN",
+                "max_temperature_c": 70.0,
+                "short_circuit_temperature_c": 160.0,
+                "jth_1s_a_per_mm2": 114.84,
+                "standard": "IEC 60502-1",
                 "manufacturer": "NKT",
                 "source_reference": "NKT Cables / IEC 60502-1 / dane referencyjne",
             },
@@ -239,6 +304,11 @@ def get_all_lv_cable_types() -> list[dict]:
                 "insulation_type": "PVC",
                 "cross_section_mm2": 95.0,
                 "number_of_cores": 4,
+                "core_functions": "3L+PEN",
+                "max_temperature_c": 70.0,
+                "short_circuit_temperature_c": 160.0,
+                "jth_1s_a_per_mm2": 114.84,
+                "standard": "IEC 60502-1",
                 "manufacturer": "NKT",
                 "source_reference": "NKT Cables / IEC 60502-1 / dane referencyjne",
             },
@@ -255,6 +325,11 @@ def get_all_lv_cable_types() -> list[dict]:
                 "insulation_type": "PVC",
                 "cross_section_mm2": 120.0,
                 "number_of_cores": 4,
+                "core_functions": "3L+PEN",
+                "max_temperature_c": 70.0,
+                "short_circuit_temperature_c": 160.0,
+                "jth_1s_a_per_mm2": 114.84,
+                "standard": "IEC 60502-1",
                 "manufacturer": "NKT",
                 "source_reference": "NKT Cables / IEC 60502-1 / dane referencyjne",
             },
@@ -274,6 +349,11 @@ def get_all_lv_cable_types() -> list[dict]:
                 "insulation_type": "XLPE",
                 "cross_section_mm2": 35.0,
                 "number_of_cores": 4,
+                "core_functions": "3L+PEN",
+                "max_temperature_c": 90.0,
+                "short_circuit_temperature_c": 250.0,
+                "jth_1s_a_per_mm2": 142.87,
+                "standard": "IEC 60502-1",
                 "manufacturer": "Tele-Fonika Kable",
                 "source_reference": "Tele-Fonika Kable / IEC 60502-1 / dane referencyjne",
             },
@@ -290,6 +370,11 @@ def get_all_lv_cable_types() -> list[dict]:
                 "insulation_type": "XLPE",
                 "cross_section_mm2": 70.0,
                 "number_of_cores": 4,
+                "core_functions": "3L+PEN",
+                "max_temperature_c": 90.0,
+                "short_circuit_temperature_c": 250.0,
+                "jth_1s_a_per_mm2": 142.87,
+                "standard": "IEC 60502-1",
                 "manufacturer": "Tele-Fonika Kable",
                 "source_reference": "Tele-Fonika Kable / IEC 60502-1 / dane referencyjne",
             },
@@ -603,6 +688,107 @@ def get_all_lv_apparatus_types() -> list[dict]:
             },
         },
     ]
+
+
+# Znamionowe pradowe wg IEC 60898-1 Tabela 2 (In 6...63 A, seria E6/E12
+# stosowana w wylacznikach nadmiarowo-pradowych domowych i podobnych, WT-1).
+_MCB_IN_A: tuple[float, ...] = (6.0, 10.0, 13.0, 16.0, 20.0, 25.0, 32.0, 40.0, 50.0, 63.0)
+# Klasy charakterystyki wyzwalania (IEC 60898-1 Tabela 3): B (3-5*In), C
+# (5-10*In), D (10-20*In) — progi magnetyczne sa fizyka aparatu, nie danymi tej
+# tabeli (patrz protection_lv_curves.py, faza P0.7 planu H).
+_MCB_CURVE_CLASSES: tuple[str, ...] = ("B", "C", "D")
+# Znamionowa zdolnosc zwarciowa Icn dla rodziny generycznej domowej/podobnej
+# (IEC 60898-1 §4.4, wartosc normatywna najczesciej spotykana w tej klasie
+# wyrobu — 6 kA). Rodzina jest REFERENCYJNA (brak wiazania z konkretnym
+# producentem), wiec Icn jest jednolite dla calej serii.
+_MCB_ICN_KA: float = 6.0
+
+
+def get_all_lv_breaker_mcb_types() -> list[dict]:
+    """Zwraca generyczna rodzine wylacznikow nadmiarowo-pradowych (MCB) nN.
+
+    Karta P0.2 (docs/nn/H_PLAN_IMPLEMENTACJI_NN.md §P0.2). 10 pradow
+    znamionowych x 3 klasy charakterystyki (B/C/D) = 30 rekordow.
+
+    ZERO FABRYKACJI: wszystkie wartosci sa znamionowe normatywne wg
+    IEC 60898-1 (nie sa to dane zadnego konkretnego producenta) — rekordy
+    maja verification_status=REFERENCYJNY, catalog_status=REFERENCYJNY_V1.
+    """
+    records: list[dict] = []
+    for in_a in _MCB_IN_A:
+        for curve_class in _MCB_CURVE_CLASSES:
+            in_label = int(in_a) if in_a == int(in_a) else in_a
+            records.append(
+                {
+                    "id": f"mcb_nn_{curve_class.lower()}{int(in_a)}a",
+                    "name": f"MCB {curve_class}{in_label}",
+                    "params": {
+                        "u_n_kv": 0.4,
+                        "in_a": in_a,
+                        "curve_class": curve_class,
+                        "icn_ka": _MCB_ICN_KA,
+                        "poles": None,
+                        "verification_status": "REFERENCYJNY",
+                        "catalog_status": "REFERENCYJNY_V1",
+                        "source_reference": "IEC 60898-1 (wartosci znamionowe normatywne)",
+                        "contract_version": "2.0",
+                    },
+                }
+            )
+    return records
+
+
+# Wielkosci fizyczne wkladek topikowych nN wg IEC 60269-2/DIN 43620 (NH00, NH1,
+# NH2 — rodzina najpowszechniej stosowana w rozdzielnicach nN).
+_FUSE_SIZES: tuple[str, ...] = ("NH00", "NH1", "NH2")
+# Znamionowe pradowe wkladek gG wg IEC 60269-1 Tabela IV (seria znormalizowana).
+_FUSE_IN_A: tuple[float, ...] = (
+    25.0,
+    35.0,
+    50.0,
+    63.0,
+    80.0,
+    100.0,
+    125.0,
+    160.0,
+    200.0,
+    250.0,
+)
+
+
+def get_all_lv_fuse_link_types() -> list[dict]:
+    """Zwraca generyczna rodzine wkladek topikowych gG nN wg IEC 60269-1.
+
+    Karta P0.2 (docs/nn/H_PLAN_IMPLEMENTACJI_NN.md §P0.2). 3 wielkosci
+    (NH00/NH1/NH2) x 10 pradow znamionowych = 30 rekordow.
+
+    G-D2 (docs/nn/G_MACIERZ_LUK_BACKENDU_NN.md): bramki czasowo-pradowe I-t
+    (pre-arcing/total clearing) NIE SA fabrykowane — `i2t_prearc_a2s` zostaje
+    `None` do czasu zasilenia tablicami bramek IEC 60269-1 z proweniencja.
+    Konsument (SWZ/selektywnosc) MUSI odczytac brak danej jako "dane
+    niekompletne", nigdy PASS.
+    """
+    records: list[dict] = []
+    for size in _FUSE_SIZES:
+        for in_a in _FUSE_IN_A:
+            records.append(
+                {
+                    "id": f"fuse_nn_gg_{size.lower()}_{int(in_a)}a",
+                    "name": f"gG {size} {int(in_a)}A",
+                    "params": {
+                        "u_n_kv": 0.4,
+                        "in_a": in_a,
+                        "fuse_class": "gG",
+                        "size": size,
+                        "i2t_prearc_a2s": None,
+                        "verification_status": "REFERENCYJNY",
+                        "catalog_status": "REFERENCYJNY_V1",
+                        "source_reference": "IEC 60269-1 (wartosci znamionowe normatywne)",
+                        "contract_version": "2.0",
+                    },
+                }
+            )
+    return records
 
 
 def get_all_ct_types() -> list[dict]:

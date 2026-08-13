@@ -48,6 +48,12 @@ class CatalogNamespace(Enum):
     APARAT_SN = "APARAT_SN"
     APARAT_NN = "APARAT_NN"
     KABEL_NN = "KABEL_NN"
+    # P0.2 katalog nN (karta P0.2): aparatura wyzwalana prądowo bezpośrednio wg
+    # IEC 60898-1 (MCB) i wkładki topikowe wg IEC 60269-1 (gG) — namespace'y
+    # ODDZIELNE od APARAT_NN, bo niosą inny kontrakt materializacji (klasa
+    # wyzwolenia/krzywa topikowa zamiast breaking_capacity_ka ogólnego aparatu).
+    APARAT_NN_MCB = "APARAT_NN_MCB"
+    WKLADKA_NN = "WKLADKA_NN"
     CT = "CT"
     VT = "VT"
     OGRANICZNIK_SN = "OGRANICZNIK_SN"
@@ -369,6 +375,41 @@ def _pq_curve_from_raw(
     if raw is None:
         return None
     return tuple(tuple(float(v) for v in point) for point in raw)  # type: ignore[misc]
+
+
+# =============================================================================
+# NASTAWIALNOSC APARATU nN ("capability-driven UI") — para (min, max) dla pol
+# nastaw wyprowadzanych z aparatu (Ir/Isd/Ii/tr/tsd). Optional/None-default —
+# istniejace opublikowane rekordy katalogu round-tripuja bez zmian.
+# =============================================================================
+
+
+def _float_range_to_list(value: tuple[float, float] | None) -> list[float] | None:
+    """Serialize an optional (min, max) range to a JSON-stable 2-element list."""
+    if value is None:
+        return None
+    lo, hi = value
+    return [float(lo), float(hi)]
+
+
+def _float_range_from_raw(raw: Any) -> tuple[float, float] | None:
+    """Parse an optional (min, max) range from a dict value (round-trips the list form)."""
+    if raw is None:
+        return None
+    lo, hi = raw
+    return (float(lo), float(hi))
+
+
+def _validate_float_range(field_name: str, value: tuple[float, float] | None) -> None:
+    """Reject an inverted (min > max) nastawialnosc range — fail-closed, no silent swap."""
+    if value is None:
+        return
+    lo, hi = value
+    if lo > hi:
+        raise ValueError(
+            f"Zakres nastawialnosci {field_name} wymaga min <= max, "
+            f"otrzymano min={lo} > max={hi}."
+        )
 
 
 # =============================================================================
@@ -1911,6 +1952,22 @@ class LVCableType:
         insulation_type: Insulation type (e.g., "PVC", "XLPE").
         cross_section_mm2: Conductor cross-section [mm²].
         number_of_cores: Number of cores (3, 4, or 5).
+        r0_ohm_per_km: Zero-sequence resistance per km [Ω/km] (optional, P0.2).
+        x0_ohm_per_km: Zero-sequence reactance per km [Ω/km] (optional, P0.2).
+        ith_1s_a: Short-time thermal current for 1s [A] (optional, P0.2).
+        jth_1s_a_per_mm2: Short-time current density for 1s [A/mm²] — IEC 60949
+            k coefficient (optional, P0.2).
+        max_temperature_c: Maximum operating (working) temperature [°C] wg
+            typu izolacji, np. PVC=70, XLPE=90 (optional, P0.2).
+        short_circuit_temperature_c: Limit temperature at short-circuit [°C]
+            wg typu izolacji, np. PVC=160, XLPE=250 (optional, P0.2).
+        core_functions: Core-function designation, e.g. "3L+N+PE" (5-core) or
+            "3L+PEN" (4-core) — wyprowadzone z number_of_cores (optional, P0.2).
+        return_conductor_cross_section_mm2: Return conductor (PE/PEN) cross-
+            section [mm²] (optional, P0.2; brak danych producenta = None).
+        return_conductor_r_ohm_per_km_20c: Return conductor (PE/PEN) resistance
+            per km at 20°C [Ω/km] (optional, P0.2; brak danych producenta = None).
+        standard: Standard designation, e.g. "IEC 60502-1" (optional, P0.2).
     """
 
     id: str
@@ -1924,6 +1981,19 @@ class LVCableType:
     insulation_type: str | None = None
     cross_section_mm2: float = 0.0
     number_of_cores: int = 4
+    # P0.2 katalog nN (karta P0.2, docs/nn/C_PLAN_ROZSZERZENIA_MODELU_NN.md §2.2):
+    # pola addytywne, wszystkie Optional/None-default — istniejace opublikowane
+    # rekordy round-tripuja bez zmian tam, gdzie nie sa jawnie uzupelnione.
+    r0_ohm_per_km: float | None = None
+    x0_ohm_per_km: float | None = None
+    ith_1s_a: float | None = None
+    jth_1s_a_per_mm2: float | None = None
+    max_temperature_c: float | None = None
+    short_circuit_temperature_c: float | None = None
+    core_functions: str | None = None
+    return_conductor_cross_section_mm2: float | None = None
+    return_conductor_r_ohm_per_km_20c: float | None = None
+    standard: str | None = None
     verification_status: str = CatalogVerificationStatus.REFERENCYJNY.value
     source_reference: str = "Katalog kabli nN MV-DESIGN-PRO"
     catalog_status: str = CatalogStatus.REFERENCYJNY_V1.value
@@ -1943,6 +2013,16 @@ class LVCableType:
             "insulation_type": self.insulation_type,
             "cross_section_mm2": self.cross_section_mm2,
             "number_of_cores": self.number_of_cores,
+            "r0_ohm_per_km": self.r0_ohm_per_km,
+            "x0_ohm_per_km": self.x0_ohm_per_km,
+            "ith_1s_a": self.ith_1s_a,
+            "jth_1s_a_per_mm2": self.jth_1s_a_per_mm2,
+            "max_temperature_c": self.max_temperature_c,
+            "short_circuit_temperature_c": self.short_circuit_temperature_c,
+            "core_functions": self.core_functions,
+            "return_conductor_cross_section_mm2": self.return_conductor_cross_section_mm2,
+            "return_conductor_r_ohm_per_km_20c": self.return_conductor_r_ohm_per_km_20c,
+            "standard": self.standard,
             **_catalog_metadata_to_dict(
                 verification_status=self.verification_status,
                 source_reference=self.source_reference,
@@ -1966,6 +2046,40 @@ class LVCableType:
             insulation_type=data.get("insulation_type"),
             cross_section_mm2=float(data.get("cross_section_mm2", 0.0)),
             number_of_cores=int(data.get("number_of_cores", 4)),
+            r0_ohm_per_km=(
+                float(data["r0_ohm_per_km"]) if data.get("r0_ohm_per_km") is not None else None
+            ),
+            x0_ohm_per_km=(
+                float(data["x0_ohm_per_km"]) if data.get("x0_ohm_per_km") is not None else None
+            ),
+            ith_1s_a=(float(data["ith_1s_a"]) if data.get("ith_1s_a") is not None else None),
+            jth_1s_a_per_mm2=(
+                float(data["jth_1s_a_per_mm2"])
+                if data.get("jth_1s_a_per_mm2") is not None
+                else None
+            ),
+            max_temperature_c=(
+                float(data["max_temperature_c"])
+                if data.get("max_temperature_c") is not None
+                else None
+            ),
+            short_circuit_temperature_c=(
+                float(data["short_circuit_temperature_c"])
+                if data.get("short_circuit_temperature_c") is not None
+                else None
+            ),
+            core_functions=data.get("core_functions"),
+            return_conductor_cross_section_mm2=(
+                float(data["return_conductor_cross_section_mm2"])
+                if data.get("return_conductor_cross_section_mm2") is not None
+                else None
+            ),
+            return_conductor_r_ohm_per_km_20c=(
+                float(data["return_conductor_r_ohm_per_km_20c"])
+                if data.get("return_conductor_r_ohm_per_km_20c") is not None
+                else None
+            ),
+            standard=data.get("standard"),
             **_catalog_metadata_kwargs(
                 data,
                 default_source_reference="Katalog kabli nN MV-DESIGN-PRO / dane referencyjne",
@@ -2370,6 +2484,19 @@ class LVApparatusType:
             warunkowy prad zwarciowy z wkladka NH — aparat MA zdolnosc
             wylaczania dzieki bezpiecznikowi, wiec pole jest wypelnione (nie
             "nie dotyczy").
+        ics_ka: Service breaking capacity Ics [kA] (optional, P0.2).
+        icw_ka: Short-time withstand current Icw [kA] (optional, P0.2).
+        poles: Number of poles (optional, P0.2).
+        trip_unit: Trip-unit kind — "TM" (thermal-magnetic) | "ELECTRONIC" |
+            "NONE" (optional, P0.2).
+        curve_ref: Reference to a ProtectionCurve.id (optional, P0.2).
+        ir_range: (min, max) setting range for Ir [xIn] — capability-driven UI
+            reads settable ranges from here, never fabricates them (optional,
+            P0.2).
+        isd_range: (min, max) setting range for Isd [xIr] (optional, P0.2).
+        ii_range: (min, max) setting range for Ii [xIn] (optional, P0.2).
+        tr_range: (min, max) setting range for tr [s] (optional, P0.2).
+        tsd_range: (min, max) setting range for tsd [s] (optional, P0.2).
     """
 
     id: str
@@ -2381,11 +2508,32 @@ class LVApparatusType:
     manufacturer: str | None = None
     u_m_kv: float | None = None
     i_cu_ka: float | None = None
+    # P0.2 katalog nN (karta P0.2, docs/nn/C_PLAN_ROZSZERZENIA_MODELU_NN.md §2.2):
+    # pola addytywne, wszystkie Optional/None-default — istniejace opublikowane
+    # rekordy round-tripuja bez zmian tam, gdzie nie sa jawnie uzupelnione.
+    ics_ka: float | None = None
+    icw_ka: float | None = None
+    poles: int | None = None
+    trip_unit: str | None = None
+    curve_ref: str | None = None
+    ir_range: tuple[float, float] | None = None
+    isd_range: tuple[float, float] | None = None
+    ii_range: tuple[float, float] | None = None
+    tr_range: tuple[float, float] | None = None
+    tsd_range: tuple[float, float] | None = None
     verification_status: str = CatalogVerificationStatus.REFERENCYJNY.value
     source_reference: str = "Katalog aparatury nN MV-DESIGN-PRO"
     catalog_status: str = CatalogStatus.REFERENCYJNY_V1.value
     contract_version: str = CATALOG_CONTRACT_VERSION
     verification_note: str | None = None
+
+    def __post_init__(self) -> None:
+        """Validate optional additive nastawialnosc ranges (P0.2)."""
+        _validate_float_range("ir_range", self.ir_range)
+        _validate_float_range("isd_range", self.isd_range)
+        _validate_float_range("ii_range", self.ii_range)
+        _validate_float_range("tr_range", self.tr_range)
+        _validate_float_range("tsd_range", self.tsd_range)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -2398,6 +2546,16 @@ class LVApparatusType:
             "manufacturer": self.manufacturer,
             "u_m_kv": self.u_m_kv,
             "i_cu_ka": self.i_cu_ka,
+            "ics_ka": self.ics_ka,
+            "icw_ka": self.icw_ka,
+            "poles": self.poles,
+            "trip_unit": self.trip_unit,
+            "curve_ref": self.curve_ref,
+            "ir_range": _float_range_to_list(self.ir_range),
+            "isd_range": _float_range_to_list(self.isd_range),
+            "ii_range": _float_range_to_list(self.ii_range),
+            "tr_range": _float_range_to_list(self.tr_range),
+            "tsd_range": _float_range_to_list(self.tsd_range),
             **_catalog_metadata_to_dict(
                 verification_status=self.verification_status,
                 source_reference=self.source_reference,
@@ -2423,9 +2581,184 @@ class LVApparatusType:
             manufacturer=data.get("manufacturer"),
             u_m_kv=(float(data["u_m_kv"]) if data.get("u_m_kv") is not None else None),
             i_cu_ka=(float(data["i_cu_ka"]) if data.get("i_cu_ka") is not None else None),
+            ics_ka=(float(data["ics_ka"]) if data.get("ics_ka") is not None else None),
+            icw_ka=(float(data["icw_ka"]) if data.get("icw_ka") is not None else None),
+            poles=(int(data["poles"]) if data.get("poles") is not None else None),
+            trip_unit=data.get("trip_unit"),
+            curve_ref=data.get("curve_ref"),
+            ir_range=_float_range_from_raw(data.get("ir_range")),
+            isd_range=_float_range_from_raw(data.get("isd_range")),
+            ii_range=_float_range_from_raw(data.get("ii_range")),
+            tr_range=_float_range_from_raw(data.get("tr_range")),
+            tsd_range=_float_range_from_raw(data.get("tsd_range")),
             **_catalog_metadata_kwargs(
                 data,
                 default_source_reference="Katalog aparatury nN MV-DESIGN-PRO / dane referencyjne",
+                default_verification_status=CatalogVerificationStatus.REFERENCYJNY,
+                default_catalog_status=CatalogStatus.REFERENCYJNY_V1,
+            ),
+        )
+
+
+# =============================================================================
+# LV BREAKER MCB TYPE (APARAT_NN_MCB) — wylaczniki nadmiarowo-pradowe nN
+# wg IEC 60898-1 (karta P0.2, docs/nn/H_PLAN_IMPLEMENTACJI_NN.md §P0.2)
+# =============================================================================
+
+
+@dataclass(frozen=True)
+class LVBreakerMcbType:
+    """Immutable LV miniature circuit breaker (MCB) type wg IEC 60898-1.
+
+    Namespace ODDZIELONY od APARAT_NN (LVApparatusType): MCB niesie klase
+    wyzwolenia (B/C/D) i znamionowa zdolnosc zwarciowa Icn — inny kontrakt
+    materializacji niz ogolny aparat nN.
+
+    Attributes:
+        id: Unique identifier.
+        name: Type name (e.g., "MCB B16").
+        in_a: Rated current In [A].
+        curve_class: Trip-curve class — "B" | "C" | "D" (IEC 60898-1 Tabela 3).
+        icn_ka: Rated short-circuit breaking capacity Icn [kA] (IEC 60898-1).
+        poles: Number of poles (optional).
+        u_n_kv: Rated voltage [kV] (typically 0.4).
+        manufacturer: Manufacturer (optional).
+    """
+
+    id: str
+    name: str
+    in_a: float
+    curve_class: str
+    icn_ka: float
+    poles: int | None = None
+    u_n_kv: float = 0.4
+    manufacturer: str | None = None
+    verification_status: str = CatalogVerificationStatus.REFERENCYJNY.value
+    source_reference: str = "IEC 60898-1 (wartosci znamionowe normatywne)"
+    catalog_status: str = CatalogStatus.REFERENCYJNY_V1.value
+    contract_version: str = CATALOG_CONTRACT_VERSION
+    verification_note: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "name": self.name,
+            "in_a": self.in_a,
+            "curve_class": self.curve_class,
+            "icn_ka": self.icn_ka,
+            "poles": self.poles,
+            "u_n_kv": self.u_n_kv,
+            "manufacturer": self.manufacturer,
+            **_catalog_metadata_to_dict(
+                verification_status=self.verification_status,
+                source_reference=self.source_reference,
+                catalog_status=self.catalog_status,
+                contract_version=self.contract_version,
+                verification_note=self.verification_note,
+            ),
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "LVBreakerMcbType":
+        return cls(
+            id=str(data.get("id", str(uuid4()))),
+            name=str(data.get("name", "")),
+            in_a=float(data.get("in_a", 0.0)),
+            curve_class=str(data.get("curve_class", "")),
+            icn_ka=float(data.get("icn_ka", 0.0)),
+            poles=(int(data["poles"]) if data.get("poles") is not None else None),
+            u_n_kv=float(data.get("u_n_kv", 0.4)),
+            manufacturer=data.get("manufacturer"),
+            **_catalog_metadata_kwargs(
+                data,
+                default_source_reference="IEC 60898-1 (wartosci znamionowe normatywne)",
+                default_verification_status=CatalogVerificationStatus.REFERENCYJNY,
+                default_catalog_status=CatalogStatus.REFERENCYJNY_V1,
+            ),
+        )
+
+
+# =============================================================================
+# LV FUSE LINK TYPE (WKLADKA_NN) — wkladki topikowe nN wg IEC 60269-1
+# (karta P0.2, docs/nn/H_PLAN_IMPLEMENTACJI_NN.md §P0.2)
+# =============================================================================
+
+
+@dataclass(frozen=True)
+class LVFuseLinkType:
+    """Immutable LV fuse-link type wg IEC 60269-1 (gG/gM/aM).
+
+    Namespace ODDZIELONY od APARAT_NN: wkladka topikowa niesie klase
+    charakterystyki (gG/gM/aM) i wielkosc (NH00/NH1/NH2...) — inny kontrakt
+    materializacji niz aparat wylaczajacy.
+
+    ZERO FABRYKACJI (G-D2, docs/nn/G_MACIERZ_LUK_BACKENDU_NN.md): bramki
+    czasowo-pradowe I-t wkladki (pre-arcing/total clearing) NIE SA tu
+    fabrykowane — `i2t_prearc_a2s` pozostaje `None` do czasu zasilenia
+    danymi normatywnymi z proweniencja (tablice bramek IEC 60269-1).
+
+    Attributes:
+        id: Unique identifier.
+        name: Type name (e.g., "gG NH00 63A").
+        in_a: Rated current In [A].
+        fuse_class: Fuse characteristic class — "gG" | "gM" | "aM"
+            (IEC 60269-1/-2).
+        size: Physical fuse-link size designation, e.g. "NH00", "NH1", "NH2".
+        i2t_prearc_a2s: Pre-arcing I²t [A²s] — G-D2, `None` bez tablicy normy
+            z proweniencja.
+        u_n_kv: Rated voltage [kV] (typically 0.4).
+        manufacturer: Manufacturer (optional).
+    """
+
+    id: str
+    name: str
+    in_a: float
+    fuse_class: str
+    size: str
+    i2t_prearc_a2s: float | None = None
+    u_n_kv: float = 0.4
+    manufacturer: str | None = None
+    verification_status: str = CatalogVerificationStatus.REFERENCYJNY.value
+    source_reference: str = "IEC 60269-1 (wartosci znamionowe normatywne)"
+    catalog_status: str = CatalogStatus.REFERENCYJNY_V1.value
+    contract_version: str = CATALOG_CONTRACT_VERSION
+    verification_note: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "name": self.name,
+            "in_a": self.in_a,
+            "fuse_class": self.fuse_class,
+            "size": self.size,
+            "i2t_prearc_a2s": self.i2t_prearc_a2s,
+            "u_n_kv": self.u_n_kv,
+            "manufacturer": self.manufacturer,
+            **_catalog_metadata_to_dict(
+                verification_status=self.verification_status,
+                source_reference=self.source_reference,
+                catalog_status=self.catalog_status,
+                contract_version=self.contract_version,
+                verification_note=self.verification_note,
+            ),
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "LVFuseLinkType":
+        return cls(
+            id=str(data.get("id", str(uuid4()))),
+            name=str(data.get("name", "")),
+            in_a=float(data.get("in_a", 0.0)),
+            fuse_class=str(data.get("fuse_class", "")),
+            size=str(data.get("size", "")),
+            i2t_prearc_a2s=(
+                float(data["i2t_prearc_a2s"]) if data.get("i2t_prearc_a2s") is not None else None
+            ),
+            u_n_kv=float(data.get("u_n_kv", 0.4)),
+            manufacturer=data.get("manufacturer"),
+            **_catalog_metadata_kwargs(
+                data,
+                default_source_reference="IEC 60269-1 (wartosci znamionowe normatywne)",
                 default_verification_status=CatalogVerificationStatus.REFERENCYJNY,
                 default_catalog_status=CatalogStatus.REFERENCYJNY_V1,
             ),
@@ -3237,6 +3570,24 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
             ("x_ohm_per_km", "X [Ω/km]", "Ω/km"),
             ("i_max_a", "Imax [A]", "A"),
             ("cross_section_mm2", "Przekrój", "mm²"),
+        ),
+    ),
+    CatalogNamespace.APARAT_NN_MCB.value: MaterializationContract(
+        namespace=CatalogNamespace.APARAT_NN_MCB.value,
+        solver_fields=("u_n_kv", "in_a", "curve_class", "icn_ka"),
+        ui_fields=(
+            ("in_a", "In [A]", "A"),
+            ("curve_class", "Klasa", ""),
+            ("icn_ka", "Icn [kA]", "kA"),
+        ),
+    ),
+    CatalogNamespace.WKLADKA_NN.value: MaterializationContract(
+        namespace=CatalogNamespace.WKLADKA_NN.value,
+        solver_fields=("u_n_kv", "in_a", "fuse_class"),
+        ui_fields=(
+            ("in_a", "In [A]", "A"),
+            ("fuse_class", "Klasa", ""),
+            ("size", "Wielkość", ""),
         ),
     ),
     CatalogNamespace.CT.value: MaterializationContract(

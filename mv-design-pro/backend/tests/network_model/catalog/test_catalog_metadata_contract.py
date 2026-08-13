@@ -16,6 +16,8 @@ def _catalog_groups() -> dict[str, list[object]]:
         "KABEL_NN": repo.list_lv_cable_types(),
         "OBCIAZENIE": repo.list_load_types(),
         "APARAT_NN": repo.list_lv_apparatus_types(),
+        "APARAT_NN_MCB": repo.list_lv_breaker_mcb_types(),
+        "WKLADKA_NN": repo.list_lv_fuse_link_types(),
         "CT": repo.list_ct_types(),
         "VT": repo.list_vt_types(),
         "ZRODLO_SN": repo.list_source_system_types(),

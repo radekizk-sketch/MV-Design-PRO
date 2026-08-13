@@ -94,6 +94,8 @@ _NAMESPACE_ACCESSOR: dict[str, str] = {
     CatalogNamespace.APARAT_SN.value: "get_mv_apparatus_type",
     CatalogNamespace.APARAT_NN.value: "get_lv_apparatus_type",
     CatalogNamespace.KABEL_NN.value: "get_lv_cable_type",
+    CatalogNamespace.APARAT_NN_MCB.value: "get_lv_breaker_mcb_type",
+    CatalogNamespace.WKLADKA_NN.value: "get_lv_fuse_link_type",
     CatalogNamespace.CT.value: "get_ct_type",
     CatalogNamespace.VT.value: "get_vt_type",
     CatalogNamespace.OGRANICZNIK_SN.value: "get_surge_arrester_type",
