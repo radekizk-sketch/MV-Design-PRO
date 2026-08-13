@@ -27,7 +27,7 @@ import type {
   ProtectionDevice,
   SelectivityCheck,
 } from './types';
-import { LABELS, VERDICT_STYLES } from './types';
+import { LABELS, VERDICT_STYLES, maPodstawePrzekaznikowa } from './types';
 
 // =============================================================================
 // Types
@@ -323,6 +323,7 @@ function Legend({ curves, selectedDeviceId, onDeviceClick, devices }: LegendProp
         <button
           key={curve.device_id}
           onClick={() => onDeviceClick?.(curve.device_id)}
+          title={curve.powod_pl ?? undefined}
           className={`flex items-center gap-2 rounded px-2 py-1 text-sm transition-colors ${
             selectedDeviceId === curve.device_id
               ? 'bg-slate-100 ring-2 ring-blue-500'
@@ -337,7 +338,9 @@ function Legend({ curves, selectedDeviceId, onDeviceClick, devices }: LegendProp
             {getDeviceName(curve.device_id, curve.device_name)}
           </span>
           <span className="text-xs text-slate-400">
-            ({curve.curve_type})
+            ({maPodstawePrzekaznikowa(curve)
+              ? curve.curve_type
+              : LABELS.brakCharakterystyki})
           </span>
         </button>
       ))}
@@ -430,9 +433,14 @@ export function TccChart({
     height,
   });
 
-  // Convert TCC curves to chart format
+  // Convert TCC curves to chart format.
+  // Karta N-D5-FUSE: pozycja BEZ podstawy przekaznikowej (bezpiecznik topikowy
+  // bez pasma z karty katalogowej) nie trafia na wykres — nie ma czego rysowac.
+  // Wczesniej `curve_type.startsWith('IEC') ? 'IEC' : 'IEEE'` przypisalby jej
+  // po cichu norme IEEE. Pozycja nie znika jednak z ekranu: legenda pokazuje ja
+  // jawnie z powodem braku (patrz `Legend`).
   const chartCurves: ProtectionCurve[] = useMemo(() => {
-    return curves.map((curve) => ({
+    return curves.filter(maPodstawePrzekaznikowa).map((curve) => ({
       id: curve.device_id,
       name_pl: devices?.find((d) => d.id === curve.device_id)?.name ?? curve.device_name,
       standard: (curve.curve_type.startsWith('IEC') ? 'IEC' : 'IEEE') as 'IEC' | 'IEEE',

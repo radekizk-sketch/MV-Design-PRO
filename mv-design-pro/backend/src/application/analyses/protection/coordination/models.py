@@ -168,11 +168,19 @@ class TCCCurve:
 
     device_id: str
     device_name: str
-    curve_type: str  # e.g., "IEC_SI", "IEEE_VI"
+    curve_type: str  # e.g., "IEC_SI", "IEEE_VI", "BRAK_CHARAKTERYSTYKI"
     pickup_current_a: float
     time_multiplier: float
     points: tuple[TCCPoint, ...]
     color: str = "#2563eb"
+    #: Skad wzieta jest krzywa (karta N-D5-FUSE). `KRZYWA_PRZEKAZNIKOWA` znaczy
+    #: wzor IDMT IEC 60255 / IEEE C37.112. `BRAK_PASMA_BEZPIECZNIKA` znaczy, ze
+    #: to bezpiecznik topikowy, ktorego pasma (IEC 60282-1) katalog nie niesie —
+    #: wtedy `points` jest PUSTE i nie wolno niczego narysowac. Pole dodane
+    #: addytywnie: istniejace ladunki przekaznikowe zachowuja wartosc domyslna.
+    podstawa_kod: str = "KRZYWA_PRZEKAZNIKOWA"
+    #: Uczciwe zdanie po polsku, gdy `podstawa_kod` mowi o braku podstawy.
+    powod_pl: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to dictionary."""
@@ -184,6 +192,8 @@ class TCCCurve:
             "time_multiplier": self.time_multiplier,
             "points": [p.to_dict() for p in self.points],
             "color": self.color,
+            "podstawa_kod": self.podstawa_kod,
+            "powod_pl": self.powod_pl,
         }
 
 

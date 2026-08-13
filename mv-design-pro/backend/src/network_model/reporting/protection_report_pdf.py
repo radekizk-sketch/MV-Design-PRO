@@ -18,10 +18,16 @@ CANONICAL ALIGNMENT:
 
 from __future__ import annotations
 
+import textwrap
 from pathlib import Path
 from typing import Any
 
 from network_model.reporting.czcionki import zarejestruj_czcionki
+from network_model.reporting.protection_tcc_presentation import (
+    etykieta_tms,
+    etykieta_typu_krzywej_pl,
+    powod_braku_pl,
+)
 
 # Check for reportlab availability at import time
 try:
@@ -437,13 +443,23 @@ def export_protection_coordination_to_pdf(
             draw_table_row(
                 [
                     curve.get("device_name", "—")[:20],
-                    curve.get("curve_type", "—"),
+                    etykieta_typu_krzywej_pl(curve),
                     _format_value(curve.get("pickup_current_a")),
-                    _format_value(curve.get("time_multiplier")),
+                    etykieta_tms(curve, _format_value(curve.get("time_multiplier"))),
                 ],
                 tcc_cols,
                 left_margin,
             )
+            # Pozycja bez podstawy (np. bezpiecznik bez pasma topikowego) niesie
+            # PELNE zdanie po polsku — sama etykieta w komorce nie tlumaczy,
+            # dlaczego krzywej nie ma (karta N-D5-FUSE).
+            powod = powod_braku_pl(curve)
+            if powod:
+                for fragment in textwrap.wrap(powod, width=110):
+                    y = check_page_break(line_height)
+                    c.setFont("DejaVuSans-Oblique", 8)
+                    c.drawString(left_margin + 4 * mm, y, fragment)
+                    y -= line_height
 
         y -= 3 * mm
         c.setFont("DejaVuSans-Oblique", 9)
