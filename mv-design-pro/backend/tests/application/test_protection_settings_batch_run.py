@@ -331,3 +331,31 @@ def test_nastepna_szyna_bez_zwarcia_odmawia() -> None:
     ]
     with pytest.raises(BrakDanychNastawError, match="nie zawiera prądu zwarcia 3F"):
         zbuduj_wejscie_nastaw(kotwica, line_id="ln1", next_bus_id="b_b", c_min=1.0)
+
+
+def test_kazdy_wariant_niesie_snapshot_hash_kotwicy_pin_spojnosci() -> None:
+    """Pin deklaracji architektonicznej karty PACK-NASTAWY (dopisany w odbiorze).
+
+    Znalezisko nadzoru (2026-08-14, czwarta instancja klasy deklaracja-bez-testu
+    w tej fali): docstring i meldunek twierdza, ze trzy warianty sa GWARANTOWANIE
+    spojne z ta sama migawka kotwicy (ten sam snapshot_hash), ale podmiana hasha
+    wariantu na obcy nie czerwienila ZADNEGO z 25 testow. Ten pin przypina
+    spojnosc WPROST na konstruktorach wariantow — kazdy wariant musi niesc
+    snapshot_hash i input_hash kotwicy oraz kopie (nie referencje) jej migawki.
+    """
+    from application.protection_settings.batch_run import (
+        _wariant_rozplywu,
+        _wariant_zwarciowy,
+    )
+
+    kotwica = _kotwica(_siec_promieniowa())
+    warianty = [
+        _wariant_zwarciowy(kotwica, fault_type="LLL", c_factor=0.95),
+        _wariant_zwarciowy(kotwica, fault_type="LL", c_factor=0.95),
+        _wariant_rozplywu(kotwica),
+    ]
+    for wariant in warianty:
+        assert wariant.snapshot_hash == kotwica.snapshot_hash
+        assert wariant.input_hash == kotwica.input_hash
+        assert wariant.snapshot == kotwica.snapshot
+        assert wariant.snapshot is not kotwica.snapshot
