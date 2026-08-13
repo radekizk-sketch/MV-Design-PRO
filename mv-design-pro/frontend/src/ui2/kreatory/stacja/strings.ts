@@ -37,6 +37,8 @@ export const STACJA_STRINGS = {
   szablonBrakWyboru: 'Bez szablonu (praca od zera)',
   szablonBlad: 'Nie udało się pobrać biblioteki szablonów stacji.',
   szablonPusty: 'Ta kategoria nie zawiera szablonów.',
+  /** Stan ładowania listy — oddzielony od pustego, żeby „nie ma" nie padało przed odpowiedzią. */
+  szablonLaduje: 'Pobieranie szablonów wybranej kategorii…',
   szablonZastosowany: 'Formularz wypełniony z szablonu — wszystkie pola pozostają edytowalne.',
   szablonLiczbaPol: 'Pola SN z szablonu',
   szablonTransformator: 'Transformator z szablonu',
