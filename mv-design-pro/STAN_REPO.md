@@ -250,9 +250,31 @@ wpięcie c per pasmo + scenariusz MIN w głównej ścieżce użytkownika), P0.5�
   własne `breaking_capacity_ka` wg IEC 60269-1, NIGDY NIE_DOTYCZY; rozłącznik
   bezpiecznikowy: `conditional_sc_current_ka` kombinacji; MCB: `icn_ka` — pola wchodzą
   RAZEM z konsumentem w P0.6/P0.7).
-W biegu (wykonawcy w worktree): P0.5a (Iz′ wg PN-HD 60364-5-52, unifikacja dwóch ścieżek
-korekt, zasilenie G-D1 z podwójną weryfikacją źródeł), P0.5b (dowód VDROP multi-segment
-na kanonie kV, likwidacja N-D6).
+**Aktualizacja 2026-08-13 (ta sama sesja): P0.5 WYKONANE (obie połówki).**
+- P0.5a (`1a7583b7`): Iz′ nN wg PN-HD 60364-5-52. Wykonawca naprawił CZTERY instancje
+  klasy (inwentarz): (1)+(2) dwie równoległe implementacje mnożenia współczynników →
+  jedna ścieżka fizyki w `cable_ampacity_derating.py` (moduł katalogowy = czysty nośnik
+  danych, przypięte testem); (3) parser SN błędnie walidował warunki ułożenia nN →
+  dedykowany parser fail-closed na G-D1; (4) kontrakt materializacji KABEL_NN gubił pola
+  cieplne → kryterium cieplne realnie liczy dla kabli nN. G-D1 zasilony 5 tablicami
+  (B.52.14/15/16/17/18), KAŻDA zweryfikowana w 2 niezależnych źródłach (LAPP/DIN VDE
+  0298-4, SEP, ecalpro); wartości bez podwójnego potwierdzenia jawnie POZA rejestrem.
+  Odbiór: 5169 testów, iniekcja nadzoru (usunięcie pola cieplnego z kontraktu → czerwień
+  na predykacie „dane docierają do grafu", sha-identyczne odtworzenie).
+- P0.5b (`5266ddc2`): dowód VDROP multi-segment na kanonie kV (U4). Nowe EQ_VDROP_010
+  (granica TR jako JAWNY krok zmiany podstawy — lekcja PODSTAWA-VDROP), pętla
+  multi-segment w `proof_generator` (limit 1 odcinka zniesiony), kompozycja
+  `vdrop_chain_binding.py` = reuse dekompozycji P0.4 (topologia) + `voltage_drop_binding`
+  (fizyka odcinka). Inwentarz N-D6 (6 miejsc ΔU): 1 naprawione, 2 reużyte, 1 świadomie
+  osobne (podgląd doboru kabla przed siecią), 1 inna klasa fizyki (LF Voltage kV z węzła),
+  1 czysty konsument. Iniekcja wykonawcy I2 wykryła podwójne niezależne liczenie delty —
+  naprawione u źródła. Pre-existing czerwony `test_no_any_in_domain_types` naprawiony.
+  Odbiór na drzewie ŁĄCZONYM P0.5a+P0.5b (kombinacja niewidziana przez wykonawców):
+  pełny pytest **9275 passed / 13 skipped**, frontend tsc+lint+vitest ui2 267 plików /
+  3005 testów; iniekcja nadzoru (ciche pominięcie granicy TR w pętli łańcucha → 5 testów
+  czerwonych, w tym piny dowód↔bieg z PODSTAWA-VDROP; sha-identyczne odtworzenie).
+Następne: P0.6 (pętla zwarcia z grafu + SWZ — serce modułu), P0.7 (krzywe nN + pola
+zdolności wyłączania wg rozstrzygnięcia rundy 3), P0.8–P0.10.
 
 -----
 
