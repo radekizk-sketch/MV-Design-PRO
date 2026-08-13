@@ -27,8 +27,8 @@ początku, końcu odcinka i na sąsiedniej szynie (te trzy pola JUŻ miały dost
 kotwica liczy zwarcie na WSZYSTKICH szynach jednym biegiem). Gałąź c_min i rozpływ
 to WARIANTY WEJŚCIA na kopii migawki kotwicy (`copy.deepcopy` — model w magazynie
 nietknięty), uruchamiane ISTNIEJĄCYM solverem przez ISTNIEJĄCĄ ścieżkę wykonania
-(`enm.canonical_analysis._execute_short_circuit` / `_execute_power_flow` — te same
-funkcje, których używa bieg kanoniczny), W PAMIĘCI, bez persystencji — dokładnie jak
+(`enm.canonical_analysis.wykonaj_bieg_w_pamieci` — ta sama dyspozycja, której
+używa bieg kanoniczny `execute_run`), W PAMIĘCI, bez persystencji — dokładnie jak
 warianty N-1/hosting-capacity/PQ. Wybór „w pamięci" (a nie trzy osobne persystowane
 biegi) jest ŚWIADOMY: pakiet dowodowy czyta wyniki read-only z JEDNEGO wywołania tej
 warstwy, więc trzy warianty spójne z TĄ SAMĄ migawką kotwicy (ten sam `snapshot_hash`)
@@ -43,8 +43,10 @@ kompletu danych katalogowych (przekrój, materiał, prąd znamionowy), NIE JEST 
 nie zbiega / solver podnosi wyjątek, kończy się `BrakDanychNastawError` z powodem po
 polsku — nigdy cichym podstawieniem.
 
-NOT-A-SOLVER: ten moduł nie liczy fizyki. Woła WYŁĄCZNIE `_execute_short_circuit` /
-`_execute_power_flow` (solver IEC 60909 / Newton-Raphson przez istniejącą ścieżkę) i
+NOT-A-SOLVER: ten moduł nie liczy fizyki. Woła WYŁĄCZNIE
+`wykonaj_bieg_w_pamieci` (solver IEC 60909 / Newton-Raphson przez kanoniczną
+dyspozycję `enm.canonical_analysis` — surowe parametry zwarcia nie opuszczają
+tamtej warstwy, inwariant `no_direct_fault_params_guard`) i
 `ProtectionSettingsEngine.calculate` (interpretacja istniejących wyników — metoda
 Hoppela, sama deklaruje się jako NIE-solver). Ten moduł wyłącznie zestawia ich wejścia
 i odczytuje wyjścia.
@@ -64,7 +66,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from application.protection_settings.engine import ProtectionSettingsInput
-from enm.canonical_analysis import CanonicalRun, _execute_power_flow, _execute_short_circuit
+from enm.canonical_analysis import CanonicalRun, wykonaj_bieg_w_pamieci
 from enm.mapping import ref_to_graph_id
 
 #: Rodzaje gałęzi ENM kwalifikowane jako "linia chroniona" — mają impedancję
@@ -338,7 +340,7 @@ def zbuduj_wejscie_nastaw(
 
     wariant_3f_cmin = _wariant_zwarciowy(kotwica, fault_type="3F", c_factor=c_min)
     try:
-        _execute_short_circuit(wariant_3f_cmin)
+        wykonaj_bieg_w_pamieci(wariant_3f_cmin)
     except Exception as exc:  # noqa: BLE001 — niezbieznosc/blad solvera = odmowa z powodem
         raise BrakDanychNastawError(
             f"Wariant zwarcia trójfazowego przy c_min={c_min} przerwany błędem "
@@ -354,7 +356,7 @@ def zbuduj_wejscie_nastaw(
 
     wariant_2f_cmin = _wariant_zwarciowy(kotwica, fault_type="2F", c_factor=c_min)
     try:
-        _execute_short_circuit(wariant_2f_cmin)
+        wykonaj_bieg_w_pamieci(wariant_2f_cmin)
     except Exception as exc:  # noqa: BLE001 — jak wyzej
         raise BrakDanychNastawError(
             f"Wariant zwarcia dwufazowego przy c_min={c_min} przerwany błędem "
@@ -369,7 +371,7 @@ def zbuduj_wejscie_nastaw(
 
     wariant_pf = _wariant_rozplywu(kotwica)
     try:
-        _execute_power_flow(wariant_pf)
+        wykonaj_bieg_w_pamieci(wariant_pf)
     except Exception as exc:  # noqa: BLE001 — niezbieznosc rozplywu = odmowa z powodem
         raise BrakDanychNastawError(
             f"Wariant rozpływu mocy migawki kotwicy przerwany błędem solvera: "
