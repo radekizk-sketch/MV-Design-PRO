@@ -3564,12 +3564,35 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
     ),
     CatalogNamespace.KABEL_NN.value: MaterializationContract(
         namespace=CatalogNamespace.KABEL_NN.value,
-        solver_fields=("r_ohm_per_km", "x_ohm_per_km", "i_max_a", "u_n_kv"),
+        solver_fields=(
+            "r_ohm_per_km",
+            "x_ohm_per_km",
+            "i_max_a",
+            "u_n_kv",
+            "cross_section_mm2",
+            "number_of_cores",
+            "conductor_material",
+            "r0_ohm_per_km",
+            "x0_ohm_per_km",
+            # Karta P0.5a (G-08/G-09): dane cieplne ZYLY FAZOWEJ (IEC 60949) — bez nich
+            # `wytrzymalosc_cieplna_przewodow` (I2t vs k2S2) i Iz' (metoda instalacji)
+            # dostawaly UNAVAILABLE dla KAZDEGO kabla nN, mimo ze P0.2 juz uzupelnil te
+            # pola w `LVCableType` — kontrakt materializacji ich po prostu nie kopiowal
+            # do galezi (jedyny gap w lancuchu katalog -> graf, `enm/mapping.py` byl juz
+            # generyczny dla kabli/linii dowolnego napiecia).
+            "jth_1s_a_per_mm2",
+            "ith_1s_a",
+            "insulation_type",
+            "max_temperature_c",
+            "short_circuit_temperature_c",
+            "source_reference",
+        ),
         ui_fields=(
             ("r_ohm_per_km", "R [Ω/km]", "Ω/km"),
             ("x_ohm_per_km", "X [Ω/km]", "Ω/km"),
             ("i_max_a", "Imax [A]", "A"),
             ("cross_section_mm2", "Przekrój", "mm²"),
+            ("jth_1s_a_per_mm2", "Jth(1 s)", "A·√s/mm²"),
         ),
     ),
     CatalogNamespace.APARAT_NN_MCB.value: MaterializationContract(

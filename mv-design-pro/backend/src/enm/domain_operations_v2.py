@@ -22,7 +22,7 @@ import copy
 import json
 import math
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, cast
 
 from network_model.catalog.materialization import materialize_catalog_binding
 from network_model.catalog.mv_ptpiree_catalog import annotate_with_ptpiree_status
@@ -2703,7 +2703,7 @@ def _add_nn_cable_segment_internal(
         return _blad_pozycji_katalogu(materialization, "Kabel nN")
     binding_payload, materialized_params = materialization
 
-    laying_conditions, laying_error = _der_cable_laying_conditions(payload)
+    laying_conditions, laying_error = _nn_cable_laying_conditions(payload)
     if laying_error is not None:
         return _error_response(laying_error, "nn.cable_laying_conditions_invalid")
 
@@ -3467,10 +3467,13 @@ def merge_nn_segments(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str,
 
 
 def set_nn_cable_laying_conditions(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
-    """P0.1 nN (C §4.1): warunki ułożenia odcinka kabla nN (meta, bez fizyki).
+    """P0.1/P0.5a nN (C §4.1; G-08/G-D1): warunki ułożenia odcinka kabla nN (meta, bez fizyki).
 
-    Wzorzec DER (`_der_cable_laying_conditions`): opis trafia do meta gałęzi,
-    solver (obciążalność skorygowana) czyta stamtąd, model nie liczy fizyki.
+    Parser dedykowany nN (`_nn_cable_laying_conditions`, karta P0.5a — do tej karty
+    błędnie delegował do `_der_cable_laying_conditions` SN): opis trafia do meta
+    gałęzi jako surowy wybór (środowisko/izolacja/temperatura/obwody/rezystywność
+    gruntu), solver (`cable_derating.wspolczynniki_nn` + `obciazalnosc_skorygowana`)
+    czyta stamtąd i składa Iz' z tablic PN-HD 60364-5-52 — model nie liczy fizyki.
     """
     segment_ref = payload.get("segment_ref")
     if not isinstance(segment_ref, str) or not segment_ref.strip():
@@ -3500,7 +3503,7 @@ def set_nn_cable_laying_conditions(enm: dict[str, Any], payload: dict[str, Any])
             "Brak warunków ułożenia do zapisania (cable_laying_conditions).",
             "nn.laying_conditions_missing",
         )
-    laying_conditions, laying_error = _der_cable_laying_conditions(payload)
+    laying_conditions, laying_error = _nn_cable_laying_conditions(payload)
     if laying_error is not None:
         return _error_response(laying_error, "nn.cable_laying_conditions_invalid")
 
@@ -4486,6 +4489,89 @@ def _der_cable_laying_conditions(
         opis["f_wiazka"] = wspolczynniki.f_wiazka
         opis["f_grupa"] = wspolczynniki.f_grupa
         opis["opis_pl"] = wspolczynniki.etykieta_pl
+    return opis, None
+
+
+def _nn_cable_laying_conditions(
+    config: dict[str, Any],
+) -> tuple[dict[str, Any] | None, str | None]:
+    """Warunki ULOZENIA kabla nN (karta P0.5a, luka G-08/G-D1).
+
+    Regula KLASA NIE INSTANCJA (przeglad 2026-08-01): do karty P0.5a
+    `set_nn_cable_laying_conditions`/`add_nn_cable_segment` bledie delegowaly
+    do `_der_cable_laying_conditions` (SN) — parser rozpoznawal WYLACZNIE
+    nazwane zestawy SN (`warunki_katalogowe`, `ziemia_3_kable_warstwa_200mm`,
+    `wlasne` z polami f_grunt/f_wiazka/f_grupa), ktore nie maja sensu dla
+    kabla nN. Ten parser jest DEDYKOWANY nN: sklada Iz' z NIEZALEZNYCH tablic
+    normy PN-HD 60364-5-52 (srodowisko, izolacja, temperatura, rezystywnosc
+    gruntu, liczba obwodow) przez `cable_derating.wspolczynniki_nn` — JEDNO
+    miejsce skladania (solver), walidowane TU, przy wejsciu do modelu, zeby
+    nieznana kombinacja (poza zweryfikowanym rejestrem G-D1) nie mogla
+    zamilknac i wrocic jako „warunki katalogowe" (fail-closed).
+
+    Opis trafia do meta jako SUROWY WYBOR (environment/insulation/temperatura/
+    liczba obwodow/rezystywnosc), NIE jako policzone wspolczynniki — solver
+    sklada je na nowo przy kazdym odczycie z JEDNEGO zrodla prawdy (rejestrow
+    tablic), analogicznie do przechowywania `set_name` w SN.
+    """
+    raw = config.get("cable_laying_conditions")
+    if raw is None:
+        return None, None
+    if isinstance(raw, str):
+        set_name = raw.strip()
+        if not set_name or set_name == cable_derating.NAZWA_WARUNKI_KATALOGOWE:
+            # Warunki katalogowe = brak korekty; nie zaśmiecamy modelu domyślną
+            # wartością (determinizm seedów, zachowanie dotychczasowe co do bitu).
+            return None, None
+        return None, (
+            f"Nieznany zestaw warunków ułożenia nN: '{set_name}'. Warunki ułożenia "
+            "kabla nN podaje się jako obiekt opisu (environment, insulation, "
+            "ambient_temperature_c, circuit_count, opcjonalnie "
+            "soil_thermal_resistivity_km_w dla gruntu) albo napis "
+            f"'{cable_derating.NAZWA_WARUNKI_KATALOGOWE}'."
+        )
+    if not isinstance(raw, dict):
+        return None, "Warunki ułożenia kabla nN muszą być obiektem opisu albo napisem."
+
+    environment = raw.get("environment")
+    if not isinstance(environment, str) or not environment.strip():
+        return None, "Brak środowiska ułożenia kabla nN (environment: powietrze|grunt)."
+    insulation = raw.get("insulation")
+    if not isinstance(insulation, str) or not insulation.strip():
+        return None, "Brak typu izolacji kabla nN (insulation: PVC|XLPE)."
+    ambient_temperature_c = _as_float(raw.get("ambient_temperature_c"))
+    if ambient_temperature_c is None:
+        return None, (
+            "Brak temperatury otoczenia (ambient_temperature_c) dla warunków ułożenia nN."
+        )
+    circuit_count_raw = raw.get("circuit_count")
+    try:
+        circuit_count = int(circuit_count_raw)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return None, (
+            "Liczba obwodów (circuit_count) dla warunków ułożenia nN musi być liczbą całkowitą."
+        )
+    soil_resistivity = _as_float(raw.get("soil_thermal_resistivity_km_w"))
+
+    try:
+        wspolczynniki = cable_derating.wspolczynniki_nn(
+            srodowisko=cast("cable_derating.Srodowisko", environment.strip()),
+            izolacja=cast("cable_derating.Izolacja", insulation.strip()),
+            temperatura_c=ambient_temperature_c,
+            liczba_obwodow=circuit_count,
+            rezystywnosc_gruntu_km_w=soil_resistivity,
+        )
+    except ValueError as exc:
+        return None, str(exc)
+
+    opis: dict[str, Any] = {
+        "environment": wspolczynniki.srodowisko,
+        "insulation": wspolczynniki.izolacja,
+        "ambient_temperature_c": wspolczynniki.temperatura_c,
+        "circuit_count": wspolczynniki.liczba_obwodow,
+    }
+    if wspolczynniki.rezystywnosc_gruntu_km_w is not None:
+        opis["soil_thermal_resistivity_km_w"] = wspolczynniki.rezystywnosc_gruntu_km_w
     return opis, None
 
 

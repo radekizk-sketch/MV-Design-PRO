@@ -17,11 +17,46 @@ regula braku fabrykacji.
 Domyslnie obowiazuje zestaw „warunki katalogowe" (iloczyn 1,0), wiec dolozenie tego
 modulu NIE zmienia zadnego dotychczasowego wyniku; zmienia sie tylko to, ze zalozenie
 jest od teraz JAWNE w sladzie WHITE BOX.
+
+---
+
+KARTA P0.5a (nN, docs/nn/H_PLAN_IMPLEMENTACJI_NN.md P0.5, luka G-08/G-D1).
+REGULA KLASA, NIE INSTANCJA: do tej karty istnialy DWIE rownolegle struktury
+liczace obciazalnosc skorygowana — ten modul (SN) i
+`network_model.catalog.lv_ampacity_iec60364_5_52` (nN, P0.2, rejestr G-D1
+byl wtedy PUSTY). Rozstrzygniecie: fizyka (skladanie wspolczynnikow, mnozenie,
+Iz' = Iz * iloczyn) zyje WYLACZNIE tutaj — dla SN (ta sekcja, bez zmian) i dla
+nN (sekcja ponizej). Modul katalogowy zostal PRZEPISANY na czysty nosnik DANYCH
+tablic normy PN-HD 60364-5-52 (rejestry `TABLICA_*`) — nie eksportuje zadnej
+funkcji liczacej. `obciazalnosc_skorygowana` ponizej jest JEDYNYM miejscem
+mnozenia Iz * wspolczynniki.iloczyn w calym repozytorium (SN i nN dziela ta
+sama funkcje przez strukturalne typowanie — patrz `WspolczynnikiKorekcyjne`).
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Literal, Protocol
+
+from network_model.catalog import lv_ampacity_iec60364_5_52 as _tablice_nn
+
+# ---------------------------------------------------------------------------
+# Wspolny "ksztalt" wspolczynnikow korekcyjnych (SN i nN) — JEDNO miejsce
+# mnozenia Iz * iloczyn w calym repozytorium (patrz `obciazalnosc_skorygowana`
+# nizej). SN (`WspolczynnikiObciazalnosci`) i nN (`WspolczynnikiObciazalnosciNN`)
+# spelniaja ten protokol strukturalnie — nie ma dziedziczenia, bo maja rozne
+# pola zrodlowe (SN: trzy wspolczynniki nazwanego scenariusza; nN: trzy
+# wspolczynniki skladane z niezaleznych tablic normy), ale IDENTYCZNY sposob
+# uzycia w rachunku Iz'.
+# ---------------------------------------------------------------------------
+
+
+class WspolczynnikiKorekcyjne(Protocol):
+    """Cokolwiek niesie gotowy iloczyn wspolczynnikow korekcyjnych obciazalnosci."""
+
+    @property
+    def iloczyn(self) -> float: ...
+
 
 # ---------------------------------------------------------------------------
 # Wspolczynniki korekcyjne
@@ -167,9 +202,17 @@ def wspolczynniki_wlasne(
 
 
 def obciazalnosc_skorygowana(
-    obciazalnosc_katalogowa_a: float, wspolczynniki: WspolczynnikiObciazalnosci
+    obciazalnosc_katalogowa_a: float, wspolczynniki: WspolczynnikiKorekcyjne
 ) -> float:
-    """I'z = Iz · f_grunt · f_wiazka · f_grupa."""
+    """I'z = Iz · iloczyn wspolczynnikow korekcyjnych.
+
+    JEDYNE miejsce mnozenia obciazalnosci katalogowej przez wspolczynniki
+    korekcyjne w calym repozytorium (karta P0.5a, regula KLASA NIE INSTANCJA).
+    Dziala zarowno dla SN (`WspolczynnikiObciazalnosci`), jak i nN
+    (`WspolczynnikiObciazalnosciNN`) — obie klasy spelniaja strukturalnie
+    `WspolczynnikiKorekcyjne` (maja `.iloczyn`), wiec nie ma drugiej
+    implementacji tego samego mnozenia gdziekolwiek indziej.
+    """
     if obciazalnosc_katalogowa_a <= 0.0:
         raise ValueError("Obciążalność katalogowa musi być dodatnia.")
     return obciazalnosc_katalogowa_a * wspolczynniki.iloczyn
@@ -234,3 +277,216 @@ def widok_zestawow() -> dict[str, object]:
         "default_name": NAZWA_WARUNKI_KATALOGOWE,
         "limitation_pl": OGRANICZENIE_ZESTAWOW_PL,
     }
+
+
+# ---------------------------------------------------------------------------
+# nN: Iz' wg PN-HD 60364-5-52 (karta P0.5a, luka G-08/G-D1)
+# ---------------------------------------------------------------------------
+#
+# Rozniki wobec SN powyzej: SN uzywa nazwanych ZESTAWOW (caly przypadek ulozenia
+# ma jedna nazwe i trzy stale wspolczynniki z jednego dokumentu projektowego).
+# nN sklada Iz' z NIEZALEZNYCH tablic normy PN-HD 60364-5-52 — temperatura,
+# rezystywnosc gruntu i grupowanie dobierane sa OSOBNO, bo tak dziala norma
+# (projektant wybiera srodowisko, izolacje, temperature, liczbe obwodow —
+# kazdy wybor trafia do INNEJ tablicy). Zloto sklada `wspolczynniki_nn` (jedno
+# miejsce skladania, wzorzec `wspolczynniki_z_opisu` dla SN); mnozenie i tak
+# idzie przez WSPOLNA `obciazalnosc_skorygowana` powyzej.
+
+Srodowisko = Literal["powietrze", "grunt"]
+Izolacja = Literal["PVC", "XLPE"]
+
+_SRODOWISKA_NN: tuple[Srodowisko, ...] = ("powietrze", "grunt")
+_IZOLACJE_NN: tuple[Izolacja, ...] = ("PVC", "XLPE")
+
+
+@dataclass(frozen=True)
+class WspolczynnikiObciazalnosciNN:
+    """Zestaw wspolczynnikow korekcyjnych Iz' kabla nN, zlozony z tablic normy.
+
+    Zgodnie z PN-HD 60364-5-52: Iz' = Iz_katalogowe * f_temperatura *
+    f_rezystywnosc_gruntu * f_grupowanie. `f_rezystywnosc_gruntu` = 1,0
+    (neutralne, brak korekty) dla ulozenia w powietrzu — rezystywnosc gruntu
+    nie dotyczy tego srodowiska, co jest INFORMACJA, nie brakiem danej.
+    """
+
+    srodowisko: Srodowisko
+    izolacja: Izolacja
+    temperatura_c: float
+    liczba_obwodow: int
+    rezystywnosc_gruntu_km_w: float | None
+    f_temperatura: float
+    f_rezystywnosc_gruntu: float
+    f_grupowanie: float
+    podstawa_temperatura: str
+    podstawa_rezystywnosc: str | None
+    podstawa_grupowanie: str
+
+    def __post_init__(self) -> None:
+        for pole, wartosc in (
+            ("f_temperatura", self.f_temperatura),
+            ("f_rezystywnosc_gruntu", self.f_rezystywnosc_gruntu),
+            ("f_grupowanie", self.f_grupowanie),
+        ):
+            if not 0.0 < wartosc <= 1.3:
+                raise ValueError(
+                    f"Współczynnik {pole} musi leżeć w zakresie (0; 1,3] — otrzymano {wartosc}."
+                )
+
+    @property
+    def iloczyn(self) -> float:
+        """Sumaryczny wspolczynnik korekcyjny obciazalnosci Iz'/Iz."""
+        return self.f_temperatura * self.f_rezystywnosc_gruntu * self.f_grupowanie
+
+    @property
+    def bez_korekty(self) -> bool:
+        """Czy zlozenie odpowiada warunkom odniesienia normy (brak korekty)."""
+        return (
+            self.f_temperatura == 1.0
+            and self.f_rezystywnosc_gruntu == 1.0
+            and self.f_grupowanie == 1.0
+        )
+
+    def zalozenie_pl(self) -> str:
+        """Jedno zdanie do sladu WHITE BOX — co przyjeto i skad (nN)."""
+        if self.bez_korekty:
+            return (
+                "Obciążalność Iz przyjęta dla WARUNKÓW ODNIESIENIA normy "
+                "PN-HD 60364-5-52 (bez korekty); w rzeczywistej instalacji może być mniejsza."
+            )
+        opis_srodowiska = (
+            f"powietrze {self.temperatura_c:g}°C"
+            if self.srodowisko == "powietrze"
+            else (
+                f"grunt {self.temperatura_c:g}°C, rezystywność "
+                f"{self.rezystywnosc_gruntu_km_w:g} K·m/W"
+            )
+        )
+        return (
+            f"Obciążalność Iz' skorygowana dla: {opis_srodowiska}, izolacja "
+            f"{self.izolacja}, {self.liczba_obwodow} obwód(ów); "
+            f"f_temperatura = {self.f_temperatura:g}, "
+            f"f_rezystywność_gruntu = {self.f_rezystywnosc_gruntu:g}, "
+            f"f_grupowanie = {self.f_grupowanie:g}, iloczyn = {self.iloczyn:.4f}."
+        )
+
+
+def _wpis_tablicy_temperatury_nn(
+    *, srodowisko: Srodowisko, izolacja: Izolacja, temperatura_c: float
+) -> _tablice_nn.WpisNormyNN:
+    """Wpis tablicy korekty temperatury (powietrze albo grunt). Fail-closed."""
+    klucz_temp = int(round(temperatura_c))
+    tablica = (
+        _tablice_nn.TABLICA_TEMPERATURY_POWIETRZE_NN
+        if srodowisko == "powietrze"
+        else _tablice_nn.TABLICA_TEMPERATURY_GRUNTU_NN
+    )
+    wpis = tablica.get((izolacja, klucz_temp))
+    if wpis is None:
+        dostepne = sorted(temp for (iz, temp) in tablica if iz == izolacja)
+        raise ValueError(
+            f"Brak zweryfikowanej korekty temperatury dla środowiska '{srodowisko}', "
+            f"izolacji {izolacja}, {temperatura_c:g}°C w rejestrze G-D1. "
+            f"Dostępne temperatury dla {izolacja} ({srodowisko}): {dostepne}. "
+            f"{_tablice_nn.OGRANICZENIE_TABLIC_PL}"
+        )
+    return wpis
+
+
+def _wpis_tablicy_rezystywnosci_gruntu_nn(rezystywnosc_km_w: float) -> _tablice_nn.WpisNormyNN:
+    """Wpis tablicy korekty rezystywności cieplnej gruntu. Fail-closed."""
+    klucz = round(rezystywnosc_km_w, 1)
+    wpis = _tablice_nn.TABLICA_REZYSTYWNOSCI_GRUNTU_NN.get(klucz)
+    if wpis is None:
+        dostepne = sorted(_tablice_nn.TABLICA_REZYSTYWNOSCI_GRUNTU_NN)
+        raise ValueError(
+            f"Brak zweryfikowanej korekty rezystywności cieplnej gruntu dla "
+            f"{rezystywnosc_km_w:g} K·m/W w rejestrze G-D1. Dostępne wartości: {dostepne}. "
+            f"{_tablice_nn.OGRANICZENIE_TABLIC_PL}"
+        )
+    return wpis
+
+
+def _wpis_tablicy_grupowania_nn(
+    *, srodowisko: Srodowisko, liczba_obwodow: int
+) -> _tablice_nn.WpisNormyNN:
+    """Wpis tablicy korekty grupowania obwodów (powietrze albo grunt). Fail-closed."""
+    tablica = (
+        _tablice_nn.TABLICA_GRUPOWANIA_POWIETRZE_NN
+        if srodowisko == "powietrze"
+        else _tablice_nn.TABLICA_GRUPOWANIA_GRUNTU_NN
+    )
+    wpis = tablica.get(liczba_obwodow)
+    if wpis is None:
+        dostepne = sorted(tablica)
+        raise ValueError(
+            f"Brak zweryfikowanej korekty grupowania dla środowiska '{srodowisko}' i "
+            f"{liczba_obwodow} obwodów w rejestrze G-D1. Dostępne liczby obwodów: {dostepne}. "
+            f"{_tablice_nn.OGRANICZENIE_TABLIC_PL}"
+        )
+    return wpis
+
+
+def wspolczynniki_nn(
+    *,
+    srodowisko: Srodowisko,
+    izolacja: Izolacja,
+    temperatura_c: float,
+    liczba_obwodow: int,
+    rezystywnosc_gruntu_km_w: float | None = None,
+) -> WspolczynnikiObciazalnosciNN:
+    """Zloz wspolczynniki Iz' nN z tablic PN-HD 60364-5-52 (G-D1).
+
+    JEDNO miejsce skladania — wzorzec `wspolczynniki_z_opisu` (SN). Warstwy
+    wyzsze (operacja domenowa `set_nn_cable_laying_conditions`, analiza doboru
+    nN) NIE odtwarzaja tej reguly osobno, tylko wywoluja te funkcje.
+
+    Fail-closed: nieznana kombinacja (temperatura/rezystywnosc/liczba obwodow
+    spoza zweryfikowanego rejestru G-D1) podnosi ``ValueError`` z lista
+    dostepnych wartosci — nigdy cichej interpolacji ani przyblizenia.
+    """
+    if srodowisko not in _SRODOWISKA_NN:
+        raise ValueError(
+            f"Nieznane środowisko ułożenia: {srodowisko!r}. Dozwolone: {_SRODOWISKA_NN}."
+        )
+    if izolacja not in _IZOLACJE_NN:
+        raise ValueError(f"Nieznany typ izolacji: {izolacja!r}. Dozwolone: {_IZOLACJE_NN}.")
+    if liczba_obwodow < 1:
+        raise ValueError("Liczba obwodów musi być >= 1.")
+    if srodowisko == "grunt" and rezystywnosc_gruntu_km_w is None:
+        raise ValueError(
+            "Ułożenie w gruncie wymaga rezystywności cieplnej gruntu "
+            "(rezystywnosc_gruntu_km_w, K·m/W)."
+        )
+    if srodowisko == "powietrze" and rezystywnosc_gruntu_km_w is not None:
+        raise ValueError(
+            "Rezystywność cieplna gruntu nie dotyczy ułożenia w powietrzu "
+            "(rezystywnosc_gruntu_km_w musi być None)."
+        )
+
+    wpis_temp = _wpis_tablicy_temperatury_nn(
+        srodowisko=srodowisko, izolacja=izolacja, temperatura_c=temperatura_c
+    )
+    wpis_grupa = _wpis_tablicy_grupowania_nn(srodowisko=srodowisko, liczba_obwodow=liczba_obwodow)
+
+    if srodowisko == "grunt":
+        assert rezystywnosc_gruntu_km_w is not None  # walidacja wyzej
+        wpis_rezyst = _wpis_tablicy_rezystywnosci_gruntu_nn(rezystywnosc_gruntu_km_w)
+        f_rezyst = wpis_rezyst.wartosc
+        podstawa_rezyst: str | None = wpis_rezyst.podstawa
+    else:
+        f_rezyst = 1.0
+        podstawa_rezyst = None
+
+    return WspolczynnikiObciazalnosciNN(
+        srodowisko=srodowisko,
+        izolacja=izolacja,
+        temperatura_c=temperatura_c,
+        liczba_obwodow=liczba_obwodow,
+        rezystywnosc_gruntu_km_w=rezystywnosc_gruntu_km_w,
+        f_temperatura=wpis_temp.wartosc,
+        f_rezystywnosc_gruntu=f_rezyst,
+        f_grupowanie=wpis_grupa.wartosc,
+        podstawa_temperatura=wpis_temp.podstawa,
+        podstawa_rezystywnosc=podstawa_rezyst,
+        podstawa_grupowanie=wpis_grupa.podstawa,
+    )

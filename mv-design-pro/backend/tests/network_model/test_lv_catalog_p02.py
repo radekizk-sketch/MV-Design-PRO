@@ -12,8 +12,10 @@ Zakres:
    jth_1s_a_per_mm2 krzyzowo zweryfikowany wobec derive_k_iec60949 (±0,6%).
 5. API routes /lv-breaker-mcb-types i /lv-fuse-link-types zwracają rekordy.
 6. Determinizm — podwojne wywolanie get_default_mv_catalog() daje identyczne dane.
-7. Struktura korekt Iz' nN (lv_ampacity_iec60364_5_52) — zestaw katalogowy dostepny
-   od razu, rejestr G-D1 jawnie pusty poza nim.
+7. Rejestry tablic korekt Iz' nN (lv_ampacity_iec60364_5_52) — DANE zasilone kartą
+   P0.5a (G-08/G-D1). Modul jest od P0.5a WYLACZNIE nosnikiem danych (fizyka —
+   `cable_ampacity_derating` — testowana osobno w
+   `tests/network_model/solvers/test_cable_ampacity_derating.py`).
 """
 
 from __future__ import annotations
@@ -30,12 +32,12 @@ from network_model.catalog import (
     get_default_mv_catalog,
 )
 from network_model.catalog.lv_ampacity_iec60364_5_52 import (
-    ID_WARUNKI_KATALOGOWE,
-    ZESTAWY_KOREKT_IZ_NN,
-    ZestawKorektIz,
-    obciazalnosc_skorygowana,
-    widok_zestawow,
-    zestaw_korekt,
+    TABLICA_GRUPOWANIA_GRUNTU_NN,
+    TABLICA_GRUPOWANIA_POWIETRZE_NN,
+    TABLICA_REZYSTYWNOSCI_GRUNTU_NN,
+    TABLICA_TEMPERATURY_GRUNTU_NN,
+    TABLICA_TEMPERATURY_POWIETRZE_NN,
+    WpisNormyNN,
 )
 from network_model.solvers.conductor_thermal_withstand import derive_k_iec60949
 
@@ -432,42 +434,59 @@ class TestDeterminism:
 
 
 # ---------------------------------------------------------------------------
-# 7. Struktura korekt Iz' nN (G-08/G-D1)
+# 7. Rejestry tablic korekt Iz' nN (G-08/G-D1) — modul jest CZYSTYM nosnikiem
+#    DANYCH od karty P0.5a (regula KLASA NIE INSTANCJA — patrz docstring modulu
+#    `lv_ampacity_iec60364_5_52`); fizyka (mnozenie, sklad) zyje WYLACZNIE w
+#    `network_model.solvers.cable_ampacity_derating`, testowana osobno.
 # ---------------------------------------------------------------------------
 
 
-class TestLvAmpacityStructure:
-    def test_warunki_katalogowe_has_no_correction(self) -> None:
-        zestaw = zestaw_korekt(ID_WARUNKI_KATALOGOWE)
-        assert zestaw.bez_korekty is True
-        assert zestaw.iloczyn == 1.0
+class TestLvAmpacityRejestryDanych:
+    _WSZYSTKIE_TABLICE = (
+        TABLICA_TEMPERATURY_POWIETRZE_NN,
+        TABLICA_TEMPERATURY_GRUNTU_NN,
+        TABLICA_REZYSTYWNOSCI_GRUNTU_NN,
+        TABLICA_GRUPOWANIA_POWIETRZE_NN,
+        TABLICA_GRUPOWANIA_GRUNTU_NN,
+    )
 
-    def test_obciazalnosc_skorygowana_no_correction_is_noop(self) -> None:
-        zestaw = zestaw_korekt(ID_WARUNKI_KATALOGOWE)
-        assert obciazalnosc_skorygowana(240.0, zestaw) == 240.0
+    def test_rejestry_zasilone_kartaP0_5a(self) -> None:
+        """G-D1: karta P0.5a zasiliła rejestry wartościami zweryfikowanymi w 2 źródłach."""
+        assert len(TABLICA_TEMPERATURY_POWIETRZE_NN) == 10  # PVC(4) + XLPE(6)
+        assert len(TABLICA_TEMPERATURY_GRUNTU_NN) == 10  # PVC(5) + XLPE(5)
+        assert len(TABLICA_REZYSTYWNOSCI_GRUNTU_NN) == 7
+        assert len(TABLICA_GRUPOWANIA_POWIETRZE_NN) == 5  # n=1,2,3,4,6 (n=5 poza zakresem)
+        assert len(TABLICA_GRUPOWANIA_GRUNTU_NN) == 4  # n=1,2,3,4 (n=5,6 poza zakresem)
 
-    def test_g_d1_registry_only_has_reference_set(self) -> None:
-        """G-D1: tablice PN-HD 60364-5-52 nie sa jeszcze zasilone — struktura gotowa."""
-        assert set(ZESTAWY_KOREKT_IZ_NN) == {ID_WARUNKI_KATALOGOWE}
+    def test_kazdy_wpis_jest_wpisnormynn_z_wartoscia_i_podstawa(self) -> None:
+        for tablica in self._WSZYSTKIE_TABLICE:
+            for wpis in tablica.values():
+                assert isinstance(wpis, WpisNormyNN)
+                assert 0.0 < wpis.wartosc <= 1.3
+                assert "PN-HD 60364-5-52" in wpis.podstawa
 
-    def test_unknown_set_raises(self) -> None:
-        with pytest.raises(ValueError):
-            zestaw_korekt("metoda_c_nieistniejaca")
+    def test_referencje_normy_dają_wspolczynnik_1_0(self) -> None:
+        assert TABLICA_TEMPERATURY_POWIETRZE_NN[("PVC", 30)].wartosc == 1.0
+        assert TABLICA_TEMPERATURY_POWIETRZE_NN[("XLPE", 30)].wartosc == 1.0
+        assert TABLICA_TEMPERATURY_GRUNTU_NN[("PVC", 20)].wartosc == 1.0
+        assert TABLICA_TEMPERATURY_GRUNTU_NN[("XLPE", 20)].wartosc == 1.0
+        assert TABLICA_REZYSTYWNOSCI_GRUNTU_NN[2.5].wartosc == 1.0
+        assert TABLICA_GRUPOWANIA_POWIETRZE_NN[1].wartosc == 1.0
+        assert TABLICA_GRUPOWANIA_GRUNTU_NN[1].wartosc == 1.0
 
-    def test_widok_zestawow_structure(self) -> None:
-        widok = widok_zestawow()
-        assert widok["default_id"] == ID_WARUNKI_KATALOGOWE
-        assert widok["limitation_pl"]
-        assert len(widok["sets"]) == 1
+    def test_wpis_poza_zakresem_odrzucony(self) -> None:
+        with pytest.raises(ValueError, match="zakresie"):
+            WpisNormyNN(wartosc=1.31, podstawa="test")
 
-    def test_invalid_factor_range_rejected(self) -> None:
-        with pytest.raises(ValueError):
-            ZestawKorektIz(
-                id="zle",
-                opis="zle",
-                metoda_instalacji="X",
-                f_temperatura=2.0,
-                f_grupowanie=1.0,
-                f_grunt=1.0,
-                podstawa_dokumentowa="test",
-            )
+    def test_wpis_bez_podstawy_odrzucony(self) -> None:
+        with pytest.raises(ValueError, match="podstawy"):
+            WpisNormyNN(wartosc=1.0, podstawa="")
+
+    def test_modul_nie_ma_wlasnej_implementacji_liczacej(self) -> None:
+        """Regula KLASA NIE INSTANCJA: modul danych nie eksportuje `obciazalnosc_skorygowana`
+        ani `iloczyn` — mnożenie żyje wyłącznie w warstwie solvera (cable_ampacity_derating)."""
+        import network_model.catalog.lv_ampacity_iec60364_5_52 as modul_danych
+
+        assert not hasattr(modul_danych, "obciazalnosc_skorygowana")
+        assert not hasattr(modul_danych, "iloczyn")
+        assert not hasattr(WpisNormyNN, "iloczyn")

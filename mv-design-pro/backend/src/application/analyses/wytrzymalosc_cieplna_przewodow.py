@@ -1,7 +1,16 @@
 """
-Analiza: wytrzymalosc cieplna przewodow (linie/kable SN) na model po biegu zwarciowym.
+Analiza: wytrzymalosc cieplna przewodow (linie/kable) na model po biegu zwarciowym.
 
 KARTA F-K1 FAZA 2 - sprawdzenie wytrzymalosci zwarciowej przewodow NA MODELU.
+
+ZAKRES NAPIECIOWY (karta P0.5a, G-09): funkcja jest generyczna wobec napiecia —
+`build_conductor_thermal_withstand_view` iteruje po WSZYSTKICH galeziach
+Line/Cable grafu niezaleznie od `voltage_level` wezlow, wiec obejmuje kable SN
+I kable nN (KABEL_NN) w TYM SAMYM modelu (MV+LV, patrz `enm/mapping.py`). Do
+karty P0.5a kable nN dostawaly UNAVAILABLE — nie z powodu tej funkcji, tylko
+dlatego, ze kontrakt materializacji KABEL_NN nie kopiowal `jth_1s_a_per_mm2`/
+`ith_1s_a`/temperatur/izolacji do galezi (`network_model/catalog/types.py`,
+`MATERIALIZATION_CONTRACTS[KABEL_NN]`) — luka naprawiona w P0.5a, addytywnie.
 
 WARSTWA: APPLICATION/ANALYSES - interpretacja gotowego wyniku solvera IEC 60909
 (``network_model.solvers.short_circuit_iec60909``) oraz gotowego kryterium

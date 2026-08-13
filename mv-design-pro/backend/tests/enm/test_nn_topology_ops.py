@@ -611,6 +611,12 @@ def test_merge_nn_segments_odrzuca_rozne_pozycje_katalogowe() -> None:
 
 
 def test_set_nn_cable_laying_conditions_zapisuje_i_czysci_meta() -> None:
+    """Karta P0.5a (G-08/G-D1): payload nN jest TABLICOWY (środowisko/izolacja/
+    temperatura/obwody/rezystywność), nie nazwanym zestawem SN (`wlasne` +
+    f_grunt/f_wiazka/f_grupa) — do karty P0.5a operacja błędnie delegowała do
+    walidatora SN (regula KLASA NIE INSTANCJA). Intencja testu bez zmian: zapis
+    trafia do meta, jawny powrót do warunków katalogowych czyści meta.
+    """
     snap = _board()
     bus1 = _stacja(snap)["bus_refs"][0]
     wynik = _wykonaj(
@@ -627,17 +633,21 @@ def test_set_nn_cable_laying_conditions_zapisuje_i_czysci_meta() -> None:
         {
             "segment_ref": segment_ref,
             "cable_laying_conditions": {
-                "set_name": "wlasne",
-                "f_grunt": 0.9,
-                "f_wiazka": 0.8,
-                "f_grupa": 1.0,
-                "opis_pl": "Ziemia, rząd 2 wiązek, głębokość 0,7 m",
+                "environment": "grunt",
+                "insulation": "XLPE",
+                "ambient_temperature_c": 20.0,
+                "circuit_count": 2,
+                "soil_thermal_resistivity_km_w": 1.5,
             },
         },
     )
     snap = wynik["snapshot"]
     kabel = next(b for b in snap["branches"] if b["ref_id"] == segment_ref)
-    assert kabel["meta"]["cable_laying_conditions"]["set_name"] == "wlasne"
+    warunki = kabel["meta"]["cable_laying_conditions"]
+    assert warunki["environment"] == "grunt"
+    assert warunki["insulation"] == "XLPE"
+    assert warunki["circuit_count"] == 2
+    assert warunki["soil_thermal_resistivity_km_w"] == 1.5
 
     # Jawny powrót do warunków katalogowych czyści meta.
     wynik = _wykonaj(
@@ -663,6 +673,65 @@ def test_set_nn_cable_laying_conditions_wymaga_pola_w_payloadzie() -> None:
 
     wynik = _blad(snap, "set_nn_cable_laying_conditions", {"segment_ref": segment_ref})
     assert wynik["error_code"] == "nn.laying_conditions_missing"
+
+
+def test_set_nn_cable_laying_conditions_odrzuca_nieznana_kombinacje() -> None:
+    """Fail-closed: kombinacja spoza zweryfikowanego rejestru G-D1 (np. 5 obwodów w
+    powietrzu — poza kartą P0.5a) jest odrzucona, nie cicho przyjęta jako katalogowa."""
+    snap = _board()
+    bus1 = _stacja(snap)["bus_refs"][0]
+    wynik = _wykonaj(
+        snap,
+        "add_nn_cable_segment",
+        {"from_bus_ref": bus1, "length_m": 20.0, "catalog_ref": REF_KABEL_NN},
+    )
+    snap = wynik["snapshot"]
+    segment_ref = snap["branches"][-1]["ref_id"]
+
+    wynik = _blad(
+        snap,
+        "set_nn_cable_laying_conditions",
+        {
+            "segment_ref": segment_ref,
+            "cable_laying_conditions": {
+                "environment": "powietrze",
+                "insulation": "PVC",
+                "ambient_temperature_c": 30.0,
+                "circuit_count": 5,
+            },
+        },
+    )
+    assert wynik["error_code"] == "nn.cable_laying_conditions_invalid"
+
+
+def test_set_nn_cable_laying_conditions_odrzuca_stara_skladnie_sn() -> None:
+    """Nazwany zestaw SN (`wlasne`) nie jest juz rozpoznawany dla kabla nN — payload
+    SN-owy trafia w gałąź string/nieznana-nazwa, nie w obiekt opisu tablicowego."""
+    snap = _board()
+    bus1 = _stacja(snap)["bus_refs"][0]
+    wynik = _wykonaj(
+        snap,
+        "add_nn_cable_segment",
+        {"from_bus_ref": bus1, "length_m": 20.0, "catalog_ref": REF_KABEL_NN},
+    )
+    snap = wynik["snapshot"]
+    segment_ref = snap["branches"][-1]["ref_id"]
+
+    wynik = _blad(
+        snap,
+        "set_nn_cable_laying_conditions",
+        {
+            "segment_ref": segment_ref,
+            "cable_laying_conditions": {
+                "set_name": "wlasne",
+                "f_grunt": 0.9,
+                "f_wiazka": 0.8,
+                "f_grupa": 1.0,
+                "opis_pl": "Ziemia, rząd 2 wiązek, głębokość 0,7 m",
+            },
+        },
+    )
+    assert wynik["error_code"] == "nn.cable_laying_conditions_invalid"
 
 
 # ---------------------------------------------------------------------------
