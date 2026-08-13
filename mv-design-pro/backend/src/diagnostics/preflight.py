@@ -12,7 +12,6 @@ from typing import TYPE_CHECKING, Any
 
 from .engine import DiagnosticEngine
 from .models import (
-    AnalysisAvailability,
     AnalysisType,
     DiagnosticReport,
     DiagnosticStatus,
@@ -114,8 +113,6 @@ def _build_preflight_from_report(report: DiagnosticReport) -> PreflightReport:
                 blocking_codes=entry.blocking_codes,
             )
         )
-
-    any(c.status == AnalysisAvailability.BLOCKED.value for c in checks)
 
     return PreflightReport(
         ready=report.status != DiagnosticStatus.FAIL,
