@@ -293,6 +293,33 @@ class TestRunDispatch:
         assert data["results"][0]["proof_binding"]["z0_source"] == "ENM_COMMITTED"
         assert data["results"][0]["dopuszczalnosc_raportowa"] is True
 
+    def test_run_dispatch_scenario_min_przechodzi_whitelist_opcji(self, client):
+        """Pin whitelisty opcji ``scenario`` (karta P0.3b, odbiór nadzoru).
+
+        Deklaracja bez testu = fałszywa pewność (KLASA-NIE-INSTANCJA §4):
+        testy silnika wołają ``_execute_short_circuit`` bezpośrednio, więc
+        usunięcie ``"scenario"`` z whitelisty endpointu zostawiłoby je zielone,
+        a API po cichu gubiłoby opcję (phantom). Ten test jedzie PEŁNĄ ścieżką
+        HTTP i przypina skutek obserwowalny: c_min=1,00 dla sieci SN (>1 kV,
+        IEC 60909 Tab. 1) zamiast domyślnego c_max=1,10.
+        """
+        case_id = "test-case-run-sc-scenario-min"
+        _seed_enm(case_id, _valid_enm_payload("Committed ENM scenariusz"))
+
+        response_max = client.post(f"/api/cases/{case_id}/runs/short-circuit")
+        assert response_max.status_code == 200
+        rows_max = response_max.json()["results"]
+        assert rows_max and all(row["c_factor"] == 1.10 for row in rows_max)
+
+        response_min = client.post(
+            f"/api/cases/{case_id}/runs/short-circuit",
+            json={"scenario": "min"},
+        )
+        assert response_min.status_code == 200
+        rows_min = response_min.json()["results"]
+        assert rows_min and all(row["c_factor"] == 1.00 for row in rows_min)
+        assert rows_min[0]["ikss_a"] < rows_max[0]["ikss_a"]
+
     def test_run_response_rows_without_inline_branch_flows(self, client):
         """V12K-284: świeży bieg zwraca wiersze BEZ rozpływu inline + flagę.
 
