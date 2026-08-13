@@ -307,6 +307,18 @@ export const STACJA_STRINGS = {
   wierszPoleTrJest: 'W rozdzielnicy',
   wierszPoleTrBrak: 'Brak — konfiguracja niekompletna',
   podgladTytul: 'Podgląd pól rozdzielnicy SN',
+  // MINI-RMU-CAD — opisy schematu jednokreskowego rozdzielnicy w kroku pól.
+  podgladOpisRysunku:
+    'Schemat jednokreskowy rozdzielnicy rysowany symbolami normowymi z konfiguracji poniżej: '
+    + 'każde pole dostaje symbol aparatu, który w nim wskazałeś. Rysunek pokazuje wyłącznie '
+    + 'elementy wynikające z wyboru (aparat pola, transformator stacji, wskazane przekładniki '
+    + 'i przekaźnik) — nie uzupełnia składu pola o aparaty, których szablon nie deklaruje.',
+  podgladSzyna: (kv: string) => `Szyna SN ${kv} kV`,
+  podgladSzynaBezNapiecia: 'Szyna SN',
+  podgladBrakAparatu: 'aparat pola niewskazany',
+  podgladBrakTransformatora: 'transformator — typ niewskazany',
+  podgladBrakSzablonu: 'brak szablonu pola',
+  podgladPole: (numer: number) => `Pole ${numer}`,
   brakProducenta: 'Wybierz producenta rozdzielnicy SN, aby dobrać pola stacji.',
   brakRodzin: 'Producent nie udostępnia rodzin dla napięcia SN szyny — użyty pakiet standardowy.',
   brakSzablonow:

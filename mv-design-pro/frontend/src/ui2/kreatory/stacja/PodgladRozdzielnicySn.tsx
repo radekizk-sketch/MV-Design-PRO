@@ -1,105 +1,239 @@
 /**
- * Podgląd pól rozdzielnicy SN (Audyt D, faza D3) — schemat jednokreskowy szyny
- * SN i pól stacji. WYŁĄCZNIE prezentacja: rysuje role pól i status szablonu
- * dobranego z katalogu (ZERO fizyki, ZERO obliczeń — geometria to układ rysunku).
- * Motywy z automatu przez tokeny --mvd-* i currentColor.
+ * Podgląd pól rozdzielnicy SN — SCHEMAT JEDNOKRESKOWY kroku „Pola rozdzielnicy"
+ * kreatora stacji (karta MINI-RMU-CAD; werdykt właściciela 2026-08-13: poprzedni
+ * rysunek — identyczny kwadrat na każde pole — 0/10).
+ *
+ * WYŁĄCZNIE PREZENTACJA: układ liczy `podgladRozdzielnicy.ts` (czysta funkcja),
+ * symbole rysuje KANON SLD v3 (`ui/sld/v3/symbols/glyphs`), a ten plik zamienia
+ * opis rysunku na SVG. Zero fizyki, zero obliczeń — geometria to układ rysunku.
+ *
+ * BUDOWA (wzorzec: schemat E1 rozdzielnicy ROTOBLOK i schemat RGSN 15 kV):
+ *   · tabela pól nad szyną — numer pola + nazwa funkcji (jak w tabeli funkcji
+ *     schematu wykonawczego); szerokość kolumny wynika z jej treści, więc
+ *     etykiety sąsiednich pól nie mogą się stykać (defekt sprzed karty),
+ *   · szyna zbiorcza z napięciem, przerwana w polu sprzęgłowym,
+ *   · pola: tor z symbolem NORMOWYM aparatu wskazanego w formularzu, zejście do
+ *     transformatora w polu transformatorowym, przekładniki i przekaźnik tam,
+ *     gdzie projektant je wskazał,
+ *   · opisy pod polami — nazwa katalogowa aparatu i jego znamiona.
+ *
+ * Motywy z automatu: kolory z tokenów `--mvd-*`, glify rysowane `currentColor`.
  */
 
-import {
-  FIELD_ROLE_LABELS,
-  SOURCE_STATUS_LABEL_PL,
-  bayKindLabel,
-  isCompleteSourceStatus,
-} from '../../../ui/network-build/forms/InsertStationFormHelpers';
+import { SYMBOL_GLYPHS } from '../../../ui/sld/v3/symbols/glyphs';
+import { LABEL_TYPOGRAPHY } from '../../../ui/sld/v3/core/text';
+import type { MVApparatusCatalogType, TransformerType } from '../../../ui/catalog/types';
 import type { StationSnFieldTemplate } from './stacjaModel';
-
-const WYSOKOSC = 168;
-const SZYNA_Y = 40;
-const SLUP_DOL = 132;
+import {
+  GRUBOSC_SZYNY,
+  GRUBOSC_TORU,
+  KLASA_APARATU,
+  KLASA_ROLI,
+  ODSTEP_TABELA_SZYNA,
+  SKALA_SYMBOLU,
+  WYS_WIERSZA_APARATU,
+  WYS_WIERSZA_ROLI,
+  zbudujPodglad,
+} from './podgladRozdzielnicy';
+import { STACJA_STRINGS as T } from './strings';
 
 export interface PodgladRozdzielnicySnProps {
   snFields: readonly StationSnFieldTemplate[];
+  /** Katalog APARAT_SN — źródło rodzaju aparatu (symbol) i jego znamion (opis). */
+  aparaty?: readonly MVApparatusCatalogType[];
+  /** Katalog TRAFO_SN_NN + wskazany typ — opis transformatora pola TR. */
+  transformatory?: readonly TransformerType[];
+  transformatorRef?: string | null;
+  /** Napięcie szyny SN z kontekstu operacji [kV]. */
+  snVoltageKv?: number;
   testid?: string;
 }
 
-export function PodgladRozdzielnicySn({ snFields, testid }: PodgladRozdzielnicySnProps) {
-  const liczba = Math.max(snFields.length, 1);
-  const szerokosc = Math.max(360, 60 + liczba * 96);
-  const skok = (szerokosc - 80) / liczba;
-  const start = 40 + skok / 2;
+export function PodgladRozdzielnicySn({
+  snFields,
+  aparaty = [],
+  transformatory = [],
+  transformatorRef = null,
+  snVoltageKv = 0,
+  testid,
+}: PodgladRozdzielnicySnProps) {
+  const rysunek = zbudujPodglad({
+    snFields,
+    aparaty,
+    transformatory,
+    transformatorRef,
+    snVoltageKv,
+  });
+  const { szerokosc, wysokosc, szynaY } = rysunek;
+
+  // Kreski tabel arkusza: obramowanie + pionowe przegrody na granicach slotów.
+  // Granica jest ZAWSZE krawędzią slotu policzoną w modelu — tabela funkcji nad
+  // rysunkiem, tabela aparatury pod rysunkiem i sam rysunek nie mogą mieć trzech
+  // różnych podziałów na kolumny (reguła KLASA §3: jedno źródło podziału).
+  const tabela = (gora: number, dol: number): [number, number, number, number][] => {
+    if (rysunek.sloty.length === 0) return [];
+    const lewaPierwszego = rysunek.sloty[0].x - rysunek.sloty[0].szerokosc / 2;
+    const ostatni = rysunek.sloty[rysunek.sloty.length - 1];
+    const prawaOstatniego = ostatni.x + ostatni.szerokosc / 2;
+    const kreski: [number, number, number, number][] = [
+      [lewaPierwszego, gora, prawaOstatniego, gora],
+      [lewaPierwszego, dol, prawaOstatniego, dol],
+      [prawaOstatniego, gora, prawaOstatniego, dol],
+    ];
+    for (const slot of rysunek.sloty) {
+      const lewa = slot.x - slot.szerokosc / 2;
+      kreski.push([lewa, gora, lewa, dol]);
+    }
+    return kreski;
+  };
+  const naglowekGora = rysunek.naglowekY - LABEL_TYPOGRAPHY[KLASA_ROLI].fontSize - 4;
+  // Dolna krawędź tabeli funkcji zostawia pas na opis szyny (napięcie) NAD
+  // szyną — bez tego prześwitu napis wchodził w ostatni wiersz nazwy pola.
+  const naglowekDol = szynaY - ODSTEP_TABELA_SZYNA + 4;
+  const opisyGora = rysunek.opisyY - LABEL_TYPOGRAPHY[KLASA_APARATU].fontSize - 5;
+  const opisyDol = rysunek.opisyY + (rysunek.wierszyOpisu - 1) * WYS_WIERSZA_APARATU + 6;
+  const kreskiTabeli = [...tabela(naglowekGora, naglowekDol), ...tabela(opisyGora, opisyDol)];
 
   return (
     <div className="mvd-podglad-rozdzielnica" data-testid={testid}>
       <svg
-        viewBox={`0 0 ${szerokosc} ${WYSOKOSC}`}
+        viewBox={`0 0 ${szerokosc} ${wysokosc}`}
         role="img"
-        aria-label="Podgląd rozdzielnicy SN stacji"
+        aria-label={T.podgladTytul}
         style={{ width: '100%', height: 'auto', color: 'var(--mvd-ink)' }}
       >
-        <line
-          x1={28}
-          y1={SZYNA_Y}
-          x2={szerokosc - 28}
-          y2={SZYNA_Y}
-          stroke="var(--mvd-accent)"
-          strokeWidth={4}
-        />
-        <text x={32} y={SZYNA_Y - 10} fill="var(--mvd-muted)" fontSize={10}>
-          SZYNA SN
-        </text>
-        {snFields.map((field, index) => {
-          const x = start + index * skok;
-          const kompletne = isCompleteSourceStatus(field.source_status);
-          const label = (FIELD_ROLE_LABELS[field.field_role] ?? field.field_role).replace('Pole ', '');
-          const rodzaj = field.bay_template_ref ? bayKindLabel(field.bay_kind) : 'brak szablonu';
+        {/* --- Tabela pól (numer + funkcja), jak w schemacie wykonawczym --- */}
+        {kreskiTabeli.map(([x1, y1, x2, y2], i) => (
+          <line
+            key={`tabela-${i}`}
+            x1={x1}
+            y1={y1}
+            x2={x2}
+            y2={y2}
+            stroke="var(--mvd-line)"
+            strokeWidth={0.8}
+          />
+        ))}
+        {rysunek.sloty.map((slot) => {
           return (
-            <g key={`${field.field_role}-${index}`} data-testid={`mvd-podglad-pole-${field.field_role}`}>
-              <rect
-                x={x - 30}
-                y={SZYNA_Y + 8}
-                width={60}
-                height={SLUP_DOL - SZYNA_Y - 4}
-                fill="var(--mvd-panel-2)"
-                stroke="var(--mvd-line)"
-                strokeWidth={1}
-                rx={4}
-              />
-              <line
-                x1={x}
-                y1={SZYNA_Y}
-                x2={x}
-                y2={SLUP_DOL}
-                stroke="currentColor"
-                strokeWidth={1.6}
-              />
-              <rect
-                x={x - 8}
-                y={SZYNA_Y + 30}
-                width={16}
-                height={16}
-                fill="none"
-                stroke={kompletne ? 'var(--mvd-accent)' : 'var(--mvd-err)'}
-                strokeWidth={1.6}
-              />
-              <text x={x} y={24} textAnchor="middle" fill="var(--mvd-muted)" fontSize={11} fontWeight={700}>
-                {index + 1}
-              </text>
-              <text x={x} y={SLUP_DOL + 16} textAnchor="middle" fill="currentColor" fontSize={9} fontWeight={700}>
-                {label}
-              </text>
+            <g key={`naglowek-${slot.klucz}`}>
               <text
-                x={x}
-                y={SLUP_DOL + 28}
+                x={slot.x}
+                y={rysunek.naglowekY}
                 textAnchor="middle"
-                fill={kompletne ? 'var(--mvd-muted)' : 'var(--mvd-err)'}
-                fontSize={8}
+                fill="var(--mvd-muted)"
+                fontSize={LABEL_TYPOGRAPHY[KLASA_ROLI].fontSize}
+                fontWeight={LABEL_TYPOGRAPHY[KLASA_ROLI].fontWeight}
               >
-                {field.bay_template_ref ? SOURCE_STATUS_LABEL_PL[field.source_status] : rodzaj}
+                {T.podgladPole(slot.numer)}
               </text>
+              {slot.wierszeRoli.map((wiersz, i) => (
+                <text
+                  key={`rola-${slot.klucz}-${i}`}
+                  x={slot.x}
+                  y={rysunek.naglowekY + (i + 1) * WYS_WIERSZA_ROLI}
+                  textAnchor="middle"
+                  fill="currentColor"
+                  fontSize={LABEL_TYPOGRAPHY[KLASA_ROLI].fontSize}
+                  fontWeight={LABEL_TYPOGRAPHY[KLASA_ROLI].fontWeight}
+                >
+                  {wiersz}
+                </text>
+              ))}
             </g>
           );
         })}
+
+        {/* --- Szyna zbiorcza (przerwana w polu sprzęgłowym) --- */}
+        {rysunek.odcinkiSzyny.map(([x1, x2], i) => (
+          <line
+            key={`szyna-${i}`}
+            x1={x1}
+            y1={szynaY}
+            x2={x2}
+            y2={szynaY}
+            stroke="var(--mvd-accent)"
+            strokeWidth={GRUBOSC_SZYNY}
+            strokeLinecap="square"
+            data-testid={`mvd-podglad-szyna-${i}`}
+          />
+        ))}
+        <text
+          x={10}
+          y={szynaY - 7}
+          fill="var(--mvd-muted)"
+          fontSize={LABEL_TYPOGRAPHY[KLASA_APARATU].fontSize}
+          fontWeight={LABEL_TYPOGRAPHY[KLASA_APARATU].fontWeight}
+        >
+          {rysunek.etykietaSzyny}
+        </text>
+
+        {/* --- Pola: tor + symbole kanoniczne + opisy --- */}
+        {rysunek.sloty.map((slot) => (
+          <g
+            key={slot.klucz}
+            data-testid={`mvd-podglad-pole-${slot.rola}`}
+            data-pole-numer={slot.numer}
+          >
+            {slot.tor.map(([x1, y1, x2, y2], i) => (
+              <line
+                key={`tor-${slot.klucz}-${i}`}
+                x1={x1}
+                y1={y1}
+                x2={x2}
+                y2={y2}
+                stroke="currentColor"
+                strokeWidth={GRUBOSC_TORU}
+              />
+            ))}
+            {slot.symbole.map((symbol, i) => {
+              const Glyph = SYMBOL_GLYPHS[symbol.id];
+              // Powiększenie symbolu (SKALA_SYMBOLU) nakładane transformacją
+              // grupy — glif kanonu rysuje się we WŁASNYCH współrzędnych, więc
+              // żadna geometria biblioteki nie jest tu kopiowana.
+              //
+              // BEZ `state`: kreator konfiguruje SKŁAD rozdzielnicy, a nie
+              // położenie łączników — podanie „closed" byłoby narysowaniem
+              // stanu, którego formularz nie niesie. Glify kanonu mają dla
+              // braku stanu własną, jawną reprezentację (§ „stan wyrażony
+              // geometrią"), więc rysunek mówi „aparat jest", a nie „aparat
+              // jest zamknięty".
+              return (
+                <g
+                  key={`symbol-${slot.klucz}-${i}`}
+                  data-symbol-pola={symbol.id}
+                  transform={`translate(${symbol.x}, ${symbol.y}) scale(${SKALA_SYMBOLU})`}
+                >
+                  <Glyph x={0} y={0} stroke="currentColor" />
+                </g>
+              );
+            })}
+            {slot.wierszeOpisu.map((wiersz, i) => {
+              const nazwa = i < slot.wierszyNazwy;
+              return (
+                <text
+                  key={`opis-${slot.klucz}-${i}`}
+                  x={slot.x}
+                  y={rysunek.opisyY + i * WYS_WIERSZA_APARATU}
+                  textAnchor="middle"
+                  fill={
+                    slot.brakAparatu && nazwa
+                      ? 'var(--mvd-err)'
+                      : nazwa
+                        ? 'currentColor'
+                        : 'var(--mvd-muted)'
+                  }
+                  fontSize={LABEL_TYPOGRAPHY[KLASA_APARATU].fontSize}
+                  fontWeight={nazwa ? 700 : LABEL_TYPOGRAPHY[KLASA_APARATU].fontWeight}
+                >
+                  {wiersz}
+                </text>
+              );
+            })}
+          </g>
+        ))}
       </svg>
+      <p className="mvd-podglad-rozdzielnica-opis">{T.podgladOpisRysunku}</p>
     </div>
   );
 }
