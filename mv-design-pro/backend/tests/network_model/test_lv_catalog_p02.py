@@ -92,9 +92,11 @@ class TestLVFuseLinkTypeSchema:
         assert t.fuse_class == "gG"
         assert t.size == "NH00"
         assert t.i2t_prearc_a2s is None
+        assert t.breaking_capacity_ka is None  # default — karta P0.7
 
         d = t.to_dict()
         assert d["i2t_prearc_a2s"] is None
+        assert d["breaking_capacity_ka"] is None
         restored = LVFuseLinkType.from_dict(d)
         assert restored.to_dict() == d
 
@@ -102,6 +104,23 @@ class TestLVFuseLinkTypeSchema:
         t = LVFuseLinkType(id="a", name="a", in_a=25.0, fuse_class="gG", size="NH00")
         with pytest.raises(AttributeError):
             t.size = "NH1"  # type: ignore[misc]
+
+    def test_breaking_capacity_ka_round_trip(self) -> None:
+        """Karta P0.7 — pole NOWE (zdolność wyłączania wkładki, IEC 60269-1/-2)."""
+        t = LVFuseLinkType(
+            id="fuse_test_bc",
+            name="gG NH00 63A",
+            in_a=63.0,
+            fuse_class="gG",
+            size="NH00",
+            breaking_capacity_ka=120.0,
+        )
+        assert t.breaking_capacity_ka == 120.0
+        d = t.to_dict()
+        assert d["breaking_capacity_ka"] == 120.0
+        restored = LVFuseLinkType.from_dict(d)
+        assert restored.breaking_capacity_ka == 120.0
+        assert restored.to_dict() == d
 
 
 class TestLVCableTypeAdditiveFields:
@@ -182,6 +201,7 @@ class TestLVApparatusTypeAdditiveFields:
         assert t.ii_range is None
         assert t.tr_range is None
         assert t.tsd_range is None
+        assert t.conditional_sc_current_ka is None  # default — karta P0.7
 
     def test_round_trip_with_ranges(self) -> None:
         from network_model.catalog.types import LVApparatusType
@@ -209,6 +229,28 @@ class TestLVApparatusTypeAdditiveFields:
 
         with pytest.raises(ValueError):
             LVApparatusType(id="x", name="x", ir_range=(1.0, 0.4))
+
+    def test_conditional_sc_current_ka_round_trip(self) -> None:
+        """Karta P0.7, „Stanowisko nN runda 3" — warunkowy prąd zwarciowy
+        KOMBINACJI rozłącznik+wkładka, osobne od `i_cu_ka`."""
+        from network_model.catalog.types import LVApparatusType
+
+        t = LVApparatusType(
+            id="rb_test",
+            name="Rozłącznik bezpiecznikowy test",
+            device_kind="ROZLACZNIK_BEZPIECZNIKOWY",
+            i_cu_ka=None,
+            conditional_sc_current_ka=50.0,
+        )
+        assert t.i_cu_ka is None
+        assert t.conditional_sc_current_ka == 50.0
+        d = t.to_dict()
+        assert d["conditional_sc_current_ka"] == 50.0
+        assert d["i_cu_ka"] is None
+        restored = LVApparatusType.from_dict(d)
+        assert restored.conditional_sc_current_ka == 50.0
+        assert restored.i_cu_ka is None
+        assert restored.to_dict() == d
 
 
 # ---------------------------------------------------------------------------
@@ -368,6 +410,24 @@ class TestSeedsLoadThroughRepository:
         assert all(item.fuse_class == "gG" for item in items)
         # G-D2: zero fabrykacji bramek I-t — pole zostaje jawnie puste.
         assert all(item.i2t_prearc_a2s is None for item in items)
+        # Karta P0.7 — flip-to-verified: zdolność wyłączania ZASILONA (120 kA,
+        # dwa niezależne źródła — patrz mv_auxiliary_catalog.py).
+        assert all(item.breaking_capacity_ka == 120.0 for item in items)
+
+    def test_rozlacznik_bezpiecznikowy_seed_uses_conditional_sc_current(self) -> None:
+        """Karta P0.7 runda 3 — i_cu_ka „nie dotyczy" (rozłącznik SAM nie ma
+        zdolności wyłączania), conditional_sc_current_ka niesie wartość
+        KOMBINACJI (Jean Muller NH, 50 kA)."""
+        repo = get_default_mv_catalog()
+        rozlaczniki = [
+            a
+            for a in repo.list_lv_apparatus_types()
+            if a.device_kind == "ROZLACZNIK_BEZPIECZNIKOWY"
+        ]
+        assert len(rozlaczniki) == 3
+        for a in rozlaczniki:
+            assert a.i_cu_ka is None
+            assert a.conditional_sc_current_ka == 50.0
 
     def test_seed_records_are_referencyjny(self) -> None:
         repo = get_default_mv_catalog()

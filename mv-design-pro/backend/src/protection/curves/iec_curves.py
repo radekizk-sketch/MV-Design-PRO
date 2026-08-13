@@ -13,12 +13,26 @@ where:
     M   = I/Is (current multiple, ratio of fault current to pickup current)
 
 WHITE BOX: All intermediate values are exposed for auditability.
+
+N-D4 (karta P0.7, docs/nn/H_PLAN_IMPLEMENTACJI_NN.md §P0.7): ten modul jest
+CIENKIM ADAPTEREM — petla obliczeniowa (M^B, guard, TMS-skalowanie) zyje
+WYLACZNIE w `network_model.solvers.protection_iec60255.compute_idmt_generic`
+(JEDYNA implementacja formuly IEC w repozytorium). Publiczna powierzchnia
+tego modulu (nazwy, sygnatury, ksztalt `IECTrippingResult`) NIE ZMIENIA SIE —
+konsumenci (w tym `protection.curves.curve_calculator`, uzywany przez
+`application.analyses.protection.coordination`) dzialaja bez edycji.
+Post-processing specyficzny dla tego adaptera (clamp do zakresu skonczonego,
+``inf`` dla braku wyzwolenia, DT jako osobny parametr ``definite_time_s``)
+ZOSTAJE tutaj — to reprezentacja wyniku dla tego konsumenta, nie druga
+fizyka.
 """
 
 import math
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any
+
+from network_model.solvers.protection_iec60255 import compute_idmt_generic
 
 # Numeric guard for inverse-time results, NOT a protection setting.
 # The IEC 60255 inverse curves diverge as M -> 1 (e.g. LTI at M=1.1, TMS=1 gives
@@ -218,23 +232,26 @@ def calculate_iec_tripping_time(
             clamp_applied=False,
         )
 
-    # Calculate intermediate values (WHITE BOX)
-    M = current_multiple
-    A = curve_params.a
-    B = curve_params.b
-    C = curve_params.c
-    TMS = time_multiplier
-
-    m_power_b = math.pow(M, B)
-    denominator = m_power_b - 1.0
-
-    # Protect against division by very small numbers near M=1
-    if denominator < 1e-10:
-        denominator = 1e-10
-
-    numerator = A
-    base_time_s = numerator / denominator
-    unclamped_trip_time = TMS * base_time_s + C
+    # N-D4: petla obliczeniowa (M^B, guard, TMS-skalowanie) deleguje do
+    # generycznego silnika `protection_iec60255.compute_idmt_generic` —
+    # JEDYNA implementacja tego wzoru w repozytorium. ``denom_guard=1e-10``
+    # zachowuje dotychczasowy epsilon TEGO adaptera (bez zmiany wynikow
+    # istniejacych wolajacych — `curve_calculator`, `coordination/**`).
+    numerator = curve_params.a
+    generic = compute_idmt_generic(
+        i_fault_a=fault_current_a,
+        is_pickup_a=pickup_current_a,
+        time_multiplier=time_multiplier,
+        a=curve_params.a,
+        b=curve_params.b,
+        c_additive=curve_params.c,
+        denom_guard=1e-10,
+    )
+    m_power_b = generic.m_power_b
+    denominator = generic.denominator
+    base_time_s = generic.base_time_s
+    assert generic.trip_time_s is not None  # will_trip=True powyzej gwarantuje wartosc
+    unclamped_trip_time = generic.trip_time_s
 
     # Numeric guard to a finite, JSON-safe range. WHITE BOX: keep the raw value
     # and flag when the cap actually altered the result, so the correction is

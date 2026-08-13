@@ -2492,10 +2492,21 @@ class LVApparatusType:
             NH) katalogi producentow podaja Ue = 690 V (0,69 kV) jako
             znamionowe napiecie robocze niezaleznie od napiecia sieci 0,4 kV.
         i_cu_ka: Znamionowa zdolnosc wylaczalna I_cu [kA] przy Ue z karty
-            katalogowej. Dla ROZLACZNIK_BEZPIECZNIKOWY (Jean Muller NH) jest to
-            warunkowy prad zwarciowy z wkladka NH — aparat MA zdolnosc
-            wylaczania dzieki bezpiecznikowi, wiec pole jest wypelnione (nie
-            "nie dotyczy").
+            katalogowej. Dla ROZLACZNIK_BEZPIECZNIKOWY pole jest "nie dotyczy"
+            (`None`) — sam rozlacznik (bez wkladki) NIE MA wlasnej zdolnosci
+            wylaczania zwarcia (KOREKTA karty P0.7, „Stanowisko nN runda 3" —
+            docs/nn/UZGODNIENIA_WATKOW_2026-08-13.md; przed ta karta pole bylo
+            uzywane blednie do przenoszenia warunkowego pradu KOMBINACJI —
+            patrz `conditional_sc_current_ka` ponizej, ktore przejelo te
+            role). Dla WYLACZNIK_GLOWNY/WYLACZNIK_ODPLYWOWY (Emax2/Tmax XT)
+            pole niesie realna, samodzielna zdolnosc wylaczalna aparatu.
+        conditional_sc_current_ka: Warunkowy prad zwarciowy KOMBINACJI
+            rozlacznik+wkladka [kA] (IEC 60947-3) — WYLACZNIE dla
+            ROZLACZNIK_BEZPIECZNIKOWY, wazny TYLKO z wkladka topikowa
+            zamontowana (karta P0.7, docs/nn/UZGODNIENIA_WATKOW_2026-08-13.md
+            „Stanowisko nN runda 3"). Konsument: kryterium doboru
+            Icu≥Ik″max (`application/analyses/nn_device_selection.py`).
+            `None` dla aparatow innego `device_kind` (pole nie dotyczy).
         ics_ka: Service breaking capacity Ics [kA] (optional, P0.2).
         icw_ka: Short-time withstand current Icw [kA] (optional, P0.2).
         poles: Number of poles (optional, P0.2).
@@ -2520,6 +2531,10 @@ class LVApparatusType:
     manufacturer: str | None = None
     u_m_kv: float | None = None
     i_cu_ka: float | None = None
+    # Karta P0.7 (nN, „Stanowisko nN runda 3" — docs/nn/UZGODNIENIA_WATKOW_2026-08-13.md):
+    # warunkowy prad zwarciowy KOMBINACJI rozlacznik+wkladka — WYLACZNIE dla
+    # ROZLACZNIK_BEZPIECZNIKOWY, patrz docstring klasy powyzej.
+    conditional_sc_current_ka: float | None = None
     # P0.2 katalog nN (karta P0.2, docs/nn/C_PLAN_ROZSZERZENIA_MODELU_NN.md §2.2):
     # pola addytywne, wszystkie Optional/None-default — istniejace opublikowane
     # rekordy round-tripuja bez zmian tam, gdzie nie sa jawnie uzupelnione.
@@ -2558,6 +2573,7 @@ class LVApparatusType:
             "manufacturer": self.manufacturer,
             "u_m_kv": self.u_m_kv,
             "i_cu_ka": self.i_cu_ka,
+            "conditional_sc_current_ka": self.conditional_sc_current_ka,
             "ics_ka": self.ics_ka,
             "icw_ka": self.icw_ka,
             "poles": self.poles,
@@ -2593,6 +2609,11 @@ class LVApparatusType:
             manufacturer=data.get("manufacturer"),
             u_m_kv=(float(data["u_m_kv"]) if data.get("u_m_kv") is not None else None),
             i_cu_ka=(float(data["i_cu_ka"]) if data.get("i_cu_ka") is not None else None),
+            conditional_sc_current_ka=(
+                float(data["conditional_sc_current_ka"])
+                if data.get("conditional_sc_current_ka") is not None
+                else None
+            ),
             ics_ka=(float(data["ics_ka"]) if data.get("ics_ka") is not None else None),
             icw_ka=(float(data["icw_ka"]) if data.get("icw_ka") is not None else None),
             poles=(int(data["poles"]) if data.get("poles") is not None else None),
@@ -2718,6 +2739,16 @@ class LVFuseLinkType:
         size: Physical fuse-link size designation, e.g. "NH00", "NH1", "NH2".
         i2t_prearc_a2s: Pre-arcing I²t [A²s] — G-D2, `None` bez tablicy normy
             z proweniencja.
+        breaking_capacity_ka: Znamionowa zdolność wyłączania wkładki I_1 [kA]
+            wg IEC 60269-1/-2 (karta P0.7, „Stanowisko nN runda 3" —
+            docs/nn/UZGODNIENIA_WATKOW_2026-08-13.md). Wkładka topikowa
+            ZAWSZE ma zdolność wyłączania (w odróżnieniu od rozłącznika
+            bezpiecznikowego SAMEGO, patrz `LVApparatusType.
+            conditional_sc_current_ka`) — `None` tu jest BŁĘDEM danych, nie
+            degradacją "nie dotyczy". Dla wkładek NH gG wartość normatywna
+            120 kA AC @ 500 V, potwierdzona podwójnie (Socomec, EFEN, ETI
+            Group, Mersen, Eaton Bussmann — katalogi producentów NH gG
+            500 VAC, wszystkie zgodnie 120 kA wg IEC 60269-1/-2).
         u_n_kv: Rated voltage [kV] (typically 0.4).
         manufacturer: Manufacturer (optional).
     """
@@ -2728,6 +2759,7 @@ class LVFuseLinkType:
     fuse_class: str
     size: str
     i2t_prearc_a2s: float | None = None
+    breaking_capacity_ka: float | None = None
     u_n_kv: float = 0.4
     manufacturer: str | None = None
     verification_status: str = CatalogVerificationStatus.REFERENCYJNY.value
@@ -2744,6 +2776,7 @@ class LVFuseLinkType:
             "fuse_class": self.fuse_class,
             "size": self.size,
             "i2t_prearc_a2s": self.i2t_prearc_a2s,
+            "breaking_capacity_ka": self.breaking_capacity_ka,
             "u_n_kv": self.u_n_kv,
             "manufacturer": self.manufacturer,
             **_catalog_metadata_to_dict(
@@ -2765,6 +2798,11 @@ class LVFuseLinkType:
             size=str(data.get("size", "")),
             i2t_prearc_a2s=(
                 float(data["i2t_prearc_a2s"]) if data.get("i2t_prearc_a2s") is not None else None
+            ),
+            breaking_capacity_ka=(
+                float(data["breaking_capacity_ka"])
+                if data.get("breaking_capacity_ka") is not None
+                else None
             ),
             u_n_kv=float(data.get("u_n_kv", 0.4)),
             manufacturer=data.get("manufacturer"),

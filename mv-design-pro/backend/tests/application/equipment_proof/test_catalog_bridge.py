@@ -100,9 +100,15 @@ def test_wylacznik_nn_odplywowy_z_pelnymi_danymi() -> None:
 
 def test_rozlacznik_bezpiecznikowy_nn_ma_icu_wypelnione_nie_nie_dotyczy() -> None:
     """Karta 2c: w odroznieniu od rozlacznika SN, rozlacznik bezpiecznikowy nN
-    MA zdolnosc wylaczania (dzieki wkladce NH) — I_cu jest wypelnione, nie
-    NIE_DOTYCZY. To rozroznienie klasy pomiedzy katalogiem SN i nN dla tej
-    samej nazwy "rozlacznik" jest kluczowym testem KLASA-NIE-INSTANCJA.
+    MA zdolnosc wylaczania (dzieki wkladce NH) — I_cu w WYNIKU MOSTU jest
+    wypelnione, nie NIE_DOTYCZY. To rozroznienie klasy pomiedzy katalogiem SN
+    i nN dla tej samej nazwy "rozlacznik" jest kluczowym testem KLASA-NIE-INSTANCJA.
+
+    KOREKTA (karta P0.7, runda 3): od tej karty katalog SAM niesie
+    `i_cu_ka=None` dla tego rodzaju (poprawnie — rozlacznik SAM nie ma
+    zdolnosci) — most (`resolve_um_icu_from_catalog`) czyta w takim razie
+    `conditional_sc_current_ka` (wartosc KOMBINACJI z wkladka) jako fallback,
+    wiec WYNIK obserwowany tutaj jest identyczny co do bitu jak przed karta.
     """
     wynik = resolve_um_icu_from_catalog("rb_nn_100a")
     assert wynik.u_m_kv == 0.69
@@ -224,13 +230,33 @@ def test_kazdy_wpis_nn_ma_pelne_u_m_kv_i_i_cu_ka() -> None:
     """Katalog nN (14 pozycji) nie ma zadnego znanego dlugu — wszystkie
     rodzaje aparatury (WYLACZNIK_GLOWNY/ODPLYWOWY/ROZLACZNIK_BEZPIECZNIKOWY)
     maja zdolnosc wylaczania i pelne dane po weryfikacji kart producentow.
+
+    KOREKTA (karta P0.7, „Stanowisko nN runda 3" —
+    docs/nn/UZGODNIENIA_WATKOW_2026-08-13.md): pole NIOSACE ta zdolnosc jest
+    RÓŻNE per device_kind — WYLACZNIK_GLOWNY/ODPLYWOWY maja WLASNA zdolnosc
+    (`i_cu_ka`); ROZLACZNIK_BEZPIECZNIKOWY nie ma jej SAM (`i_cu_ka=None` z
+    definicji — pole poprawnie "nie dotyczy"), tylko w KOMBINACJI z wkladka
+    (`conditional_sc_current_ka`). Test sprawdza INTENCJE oryginalnej karty
+    (zaden rodzaj aparatury nie ma cichej dziury) przez WLASCIWE pole per
+    rodzaj — patrz `resolve_um_icu_from_catalog` (`catalog_bridge.py`), ktore
+    stosuje ten sam fallback dla konsumenta dowodu wytrzymalosci.
     """
     zbadane_rodzaje: set[str] = set()
     for record in get_all_lv_apparatus_types():
         params = record["params"]
-        zbadane_rodzaje.add(str(params["device_kind"]))
+        device_kind = str(params["device_kind"])
+        zbadane_rodzaje.add(device_kind)
         assert params.get("u_m_kv") == 0.69, record["id"]
-        assert params.get("i_cu_ka") is not None, record["id"]
+        if device_kind == "ROZLACZNIK_BEZPIECZNIKOWY":
+            assert params.get("i_cu_ka") is None, (
+                f"{record['id']}: i_cu_ka powinno byc None (rozlacznik SAM nie ma "
+                "zdolnosci wylaczania — wartosc kombinacji jedzie osobnym polem)"
+            )
+            assert (
+                params.get("conditional_sc_current_ka") is not None
+            ), f"{record['id']}: conditional_sc_current_ka=None — dziura w katalogu"
+        else:
+            assert params.get("i_cu_ka") is not None, record["id"]
     assert zbadane_rodzaje == {
         "WYLACZNIK_GLOWNY",
         "WYLACZNIK_ODPLYWOWY",

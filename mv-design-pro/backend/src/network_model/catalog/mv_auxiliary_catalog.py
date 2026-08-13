@@ -440,10 +440,15 @@ def get_all_lv_apparatus_types() -> list[dict]:
 
     U_m / I_cu (IEC 60947-2/-3, karta UM-ICU-KATALOG): u_m_kv = 0,69 kV
     (znamionowe napiecie laczeniowe Ue producenta) dla WSZYSTKICH pozycji
-    ponizej; i_cu_ka = zdolnosc wylaczalna I_cu przy Ue — dla
-    ROZLACZNIK_BEZPIECZNIKOWY jest to WARUNKOWY prad zwarciowy z wkladka NH
-    (aparat MA zdolnosc wylaczania dzieki bezpiecznikowi, wiec pole jest
-    wypelnione, nie "nie dotyczy").
+    ponizej; i_cu_ka = zdolnosc wylaczalna I_cu przy Ue.
+
+    KOREKTA (karta P0.7, „Stanowisko nN runda 3" —
+    docs/nn/UZGODNIENIA_WATKOW_2026-08-13.md): dla ROZLACZNIK_BEZPIECZNIKOWY
+    i_cu_ka jest teraz "nie dotyczy" (None) — sam rozlacznik (bez wkladki) NIE
+    MA wlasnej zdolnosci wylaczania zwarcia. Warunkowy prad zwarciowy
+    KOMBINACJI rozlacznik+wkladka NH (Jean Muller NH Fuse-Switch-Disconnectors
+    katalog, Ue=AC690V) niesie teraz osobne pole `conditional_sc_current_ka`
+    (poprzednio blednie zapisywany w i_cu_ka — przeniesione, nie zdublowane).
     """
     return [
         # --- WYLACZNIK_GLOWNY: ABB SACE Emax2 ---
@@ -645,7 +650,8 @@ def get_all_lv_apparatus_types() -> list[dict]:
                 "i_n_a": 100.0,
                 "breaking_capacity_ka": 50.0,
                 "u_m_kv": 0.69,
-                "i_cu_ka": 50.0,
+                "i_cu_ka": None,
+                "conditional_sc_current_ka": 50.0,
                 "manufacturer": "Jean Muller",
                 "verification_status": "ZWERYFIKOWANY",
                 "catalog_status": "PRODUKCYJNY_V1",
@@ -662,7 +668,8 @@ def get_all_lv_apparatus_types() -> list[dict]:
                 "i_n_a": 160.0,
                 "breaking_capacity_ka": 50.0,
                 "u_m_kv": 0.69,
-                "i_cu_ka": 50.0,
+                "i_cu_ka": None,
+                "conditional_sc_current_ka": 50.0,
                 "manufacturer": "Jean Muller",
                 "verification_status": "ZWERYFIKOWANY",
                 "catalog_status": "PRODUKCYJNY_V1",
@@ -679,7 +686,8 @@ def get_all_lv_apparatus_types() -> list[dict]:
                 "i_n_a": 250.0,
                 "breaking_capacity_ka": 50.0,
                 "u_m_kv": 0.69,
-                "i_cu_ka": 50.0,
+                "i_cu_ka": None,
+                "conditional_sc_current_ka": 50.0,
                 "manufacturer": "Jean Muller",
                 "verification_status": "ZWERYFIKOWANY",
                 "catalog_status": "PRODUKCYJNY_V1",
@@ -756,6 +764,17 @@ _FUSE_IN_A: tuple[float, ...] = (
 )
 
 
+_FUSE_GG_BREAKING_CAPACITY_KA: float = 120.0
+_FUSE_GG_BREAKING_CAPACITY_SOURCE: str = (
+    "IEC 60269-1 (wartosci znamionowe normatywne) — I_1=120 kA AC @ 500 V dla wkladek NH gG, "
+    "potwierdzone podwojnie w katalogach producenckich niezaleznych od siebie: "
+    "Socomec (emea.socomec.com/en/p/knife-edge-fuses-nh-gg-type), "
+    "EFEN (katalog.efen.sk/en/c/nh-fuse-links/nh-fuse-links-ac-500-v-gg), "
+    "ETI Group (etigroup.eu, seria NH gG 500V), Mersen (DS-NH-fuse-links-gG-500VAC), "
+    "Eaton Bussmann (bus-iec-ds-10164-nh500voltsfuselinks.pdf) — wszystkie zgodnie 120 kA."
+)
+
+
 def get_all_lv_fuse_link_types() -> list[dict]:
     """Zwraca generyczna rodzine wkladek topikowych gG nN wg IEC 60269-1.
 
@@ -767,6 +786,13 @@ def get_all_lv_fuse_link_types() -> list[dict]:
     `None` do czasu zasilenia tablicami bramek IEC 60269-1 z proweniencja.
     Konsument (SWZ/selektywnosc) MUSI odczytac brak danej jako "dane
     niekompletne", nigdy PASS.
+
+    FLIP-TO-VERIFIED (karta P0.7): `breaking_capacity_ka` jest teraz
+    zasilone — 120 kA AC @ 500 V, wartosc jednolita dla calej rodziny NH gG
+    (analogicznie do `_MCB_ICN_KA` — normatywna, nie zalezna od In), z
+    proweniencja podwojna (patrz `_FUSE_GG_BREAKING_CAPACITY_SOURCE`).
+    Konsument: kryterium doboru Icu≥Ik″max
+    (`application/analyses/nn_device_selection.py`, karta P0.7).
     """
     records: list[dict] = []
     for size in _FUSE_SIZES:
@@ -781,10 +807,12 @@ def get_all_lv_fuse_link_types() -> list[dict]:
                         "fuse_class": "gG",
                         "size": size,
                         "i2t_prearc_a2s": None,
+                        "breaking_capacity_ka": _FUSE_GG_BREAKING_CAPACITY_KA,
                         "verification_status": "REFERENCYJNY",
                         "catalog_status": "REFERENCYJNY_V1",
                         "source_reference": "IEC 60269-1 (wartosci znamionowe normatywne)",
                         "contract_version": "2.0",
+                        "verification_note": _FUSE_GG_BREAKING_CAPACITY_SOURCE,
                     },
                 }
             )

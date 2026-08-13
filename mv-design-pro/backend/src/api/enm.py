@@ -28,6 +28,7 @@ from application.analyses.fault_loop.service import (
     build_feeder_fault_loop_view,
     build_station_fault_loop_view,
 )
+from application.analyses.nn_device_selection import wybierz_aparat_dla_obwodu_nn
 from application.analyses.protection.czas_wylaczenia_pola import (
     czasy_wylaczenia_pol_stacji,
 )
@@ -347,6 +348,37 @@ def get_swz(case_id: str, station_ref: str, bus_ref: str, breaker_ref: str) -> d
     """
     enm = _get_enm(case_id)
     return build_swz_view(enm, station_ref, bus_ref, breaker_ref)
+
+
+@router.get("/{case_id}/enm/nn-device-selection")
+def get_nn_device_selection(
+    case_id: str,
+    station_ref: str,
+    bus_ref: str,
+    ib_a: float,
+    iz_prime_a: float,
+    ik_max_ka: float | None = None,
+) -> dict[str, Any]:
+    """Dobór aparatu zabezpieczającego nN dla obwodu (karta P0.7, §0.5).
+
+    Cztery kryteria normatywne (Ib<=In<=Iz′, I2<=1,45·Iz′, zdolność wyłączania
+    >= Ik″max, SWZ przy Ik_min) ocenione dla WSZYSTKICH kandydatów z katalogu
+    (MCB/rozłącznik bezpiecznikowy+wkładka/wyłącznik nN); ranking
+    deterministyczny (najmniejszy spełniający In). Ib/Iz′/Ik″max są
+    parametrami wejściowymi (Ib z definicji normy jest wielkością projektową,
+    Iz′ i Ik″max pochodzą z osobnych, już istniejących biegów/analiz — ten
+    endpoint ich nie przelicza). Read-only; analiza interpretuje gotowe
+    wyniki solverów i katalog.
+    """
+    enm = _get_enm(case_id)
+    return wybierz_aparat_dla_obwodu_nn(
+        enm=enm,
+        station_ref=station_ref,
+        bus_ref=bus_ref,
+        ib_a=ib_a,
+        iz_prime_a=iz_prime_a,
+        ik_max_ka=ik_max_ka,
+    )
 
 
 class WytrzymaloscAparaturyRequestModel(BaseModel):
