@@ -249,6 +249,47 @@ async function openSldWithActiveCase(
 test.describe('Transformator SN/nN na rysunku BEZ pola roli TR', () => {
   test.setTimeout(120000);
 
+  test('bramka gotowosci widzi ten sam brak co rysunek i zamyka droge do dokumentacji wykonawczej', async ({
+    request,
+  }) => {
+    // KOMPLETNOSC-POLA-TR: ta sama siec (klasa B — CELOWO bez pola TR) przechodzi
+    // przez DRUGI konsument predykatu: bramke gotowosci inzynierskiej. Reszta
+    // tego specu dowodzi, ze RYSUNEK pokazuje brak; ten test dowodzi, ze
+    // GOTOWOSC go zglasza — parytet marker<->ostrzezenie na ZYWYM backendzie,
+    // nie tylko w tablicy decyzyjnej testow jednostkowych.
+    const seed = await createProjectAndCase(request);
+    const { transformerRef } = await buildStationNetworkBezPolaTr(request, seed.caseId);
+
+    const odpowiedz = await request.get(
+      `${BACKEND_BASE}/api/cases/${seed.caseId}/engineering-readiness`,
+    );
+    expect(odpowiedz.ok(), 'endpoint gotowosci inzynierskiej').toBeTruthy();
+    const dane = (await odpowiedz.json()) as {
+      ready?: boolean;
+      issues?: Array<{
+        code?: string;
+        severity?: string;
+        element_refs?: string[];
+        canonical_code?: string;
+        canonical_level?: string;
+        message_pl?: string;
+      }>;
+    };
+
+    const zgloszenie = (dane.issues ?? []).find((i) => i.code === 'W041');
+    expect(zgloszenie, 'ostrzezenie o braku pola transformatorowego').toBeTruthy();
+    expect(zgloszenie!.canonical_code).toBe('transformer.bay_missing');
+    expect(zgloszenie!.canonical_level).toBe('WARNING');
+    expect(zgloszenie!.element_refs).toContain(transformerRef);
+    expect(zgloszenie!.message_pl).toContain('pola transformatorowego');
+
+    // NIE blokuje obliczen: poziom IMPORTANT, nie BLOCKER — model pozostaje
+    // policzalny (karta: „NIE blokuje pracy koncepcyjnej, NIE blokuje obliczen").
+    expect(zgloszenie!.severity).toBe('IMPORTANT');
+    const blokery = (dane.issues ?? []).filter((i) => i.severity === 'BLOCKER');
+    expect(blokery.map((i) => i.code)).not.toContain('W041');
+  });
+
   test('(a)(b)(c) symbol widoczny, kluczowany realnym refem, oznaczony jako stan niekompletny, bez fabrykowanej aparatury', async ({
     page,
     request,

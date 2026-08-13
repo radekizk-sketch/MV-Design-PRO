@@ -393,23 +393,38 @@ export function KreatorStacjiSnNn() {
   }, []);
 
   // Katalog aparatury SN (APARAT_SN) — aparat pola wskazuje projektant (B-12).
-  // Razem z nim rodzaje aparatu dopuszczalne per rola pola: obie dane opisują
-  // TEN SAM wybór, więc jedno pobranie (rozjazd „katalog jest, zawężenia nie ma"
-  // pokazywałby przez chwilę pozycje, których backend dla roli nie przyjmie).
   useEffect(() => {
     let cancelled = false;
     setBladAparatow(null);
-    Promise.all([fetchMvApparatusTypes(), fetchBayApparatusKinds()])
-      .then(([a, rodzaje]) => {
-        if (cancelled) return;
-        setAparaty(Array.isArray(a) ? a : []);
-        setRodzajeAparatuRoli(rodzaje ?? {});
+    fetchMvApparatusTypes()
+      .then((a) => {
+        if (!cancelled) setAparaty(Array.isArray(a) ? a : []);
       })
       .catch((e: unknown) => {
         if (cancelled) return;
         setAparaty([]);
-        setRodzajeAparatuRoli({});
         setBladAparatow(getCatalogErrorMessage(e));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Zawężenie rodzaju aparatu per rola pola — POBIERANE OSOBNO od katalogu.
+  // Pierwsza wersja tej karty łączyła oba pobrania w jedno `Promise.all`, więc
+  // niedostępność samego zawężenia (backend bez tej końcówki, chwilowy błąd
+  // sieci) kasowała RÓWNIEŻ listę aparatów i krok pól stawał się pusty —
+  // dodatek do doboru wywracał dobór. Degradacja jest teraz proporcjonalna:
+  // brak zawężenia = pełna lista katalogowa (zachowanie sprzed karty), a nie
+  // brak listy.
+  useEffect(() => {
+    let cancelled = false;
+    fetchBayApparatusKinds()
+      .then((rodzaje) => {
+        if (!cancelled) setRodzajeAparatuRoli(rodzaje ?? {});
+      })
+      .catch(() => {
+        if (!cancelled) setRodzajeAparatuRoli({});
       });
     return () => {
       cancelled = true;

@@ -151,6 +151,11 @@ const CATALOG_FIXTURES: Record<string, unknown> = {
     // przechodziloby na zielono, a bramka pilnowalaby tylko szczesliwej sciezki.
     { switchgear_family_ref: 'zpue_rotoblok', family_name: 'Rotoblok SVS', manufacturer_ref: 'ZPUE', voltage_levels: [15, 20] },
     { switchgear_family_ref: 'abb_unigear', family_name: 'UniGear ZS1', manufacturer_ref: 'ABB' },
+    // KOMPLETNOSC-POLA-TR: rodzina POD REF PRODUCENTA z `/api/catalog/manufacturers`
+    // — kreator stacji wiąże pole z szablonem producenta, więc refy muszą się
+    // zgadzać w trzech miejscach (producent ↔ rodzina ↔ szablon pola). Wcześniejsze
+    // dwa rekordy zostają nietknięte (scena „pole" ich używa).
+    { switchgear_family_ref: 'zpue_wloszczowa_rotoblok', family_name: 'Rotoblok SVS (ZPUE Włoszczowa)', manufacturer_ref: 'ZPUE_WLOSZCZOWA', voltage_levels: [15, 20], status: 'verified', source_refs: ['https://zpue.pl'], insulation_type: 'sf6', construction_type: 'RMU', series_name: null, notes_pl: null },
   ],
   '/api/catalog/lv-apparatus-types': [
     { id: 'lv-1', name: 'Wyłącznik nN 630A', u_n_kv: 0.4, i_n_a: 630 },
@@ -1937,7 +1942,7 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
       bay_kind: kind,
       bay_role: kind === 'transformatorowe' ? 'TR' : 'OUT',
       manufacturer_ref: 'ZPUE_WLOSZCZOWA',
-      switchgear_family_ref: 'zpue_rotoblok',
+      switchgear_family_ref: 'zpue_wloszczowa_rotoblok',
       source_status: 'repo_verified',
       source_refs: ['https://zpue.pl'],
       name_pl: nazwa,

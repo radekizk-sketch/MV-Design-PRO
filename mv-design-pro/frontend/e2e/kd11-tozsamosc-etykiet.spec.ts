@@ -199,6 +199,21 @@ async function otworzSchemat(page: Page, seed: Seed): Promise<void> {
  * Rdzeń krótszy niż 2 znaki nie jest dowodem tożsamości.
  */
 function odpowiadaTekstowi(podpis: string, oczekiwany: string): boolean {
+  // (c) skrócenie W ŚRODKU wyrazu z zachowaniem OGONA ROZRÓŻNIAJĄCEGO —
+  // kanoniczna reguła 3 z `sld/v3/core/text.ts` („Stacja SN-01" → „S…SN-01",
+  // „GPZ Referencyjny 15 kV" → „GPZ…15 kV"). Ta forma istniała w rendererze od
+  // karty KD-11, ale helper znał WYŁĄCZNIE wielokropek na końcu, więc uznawał
+  // ją za brak podpisu. Defekt był niewidoczny, dopóki wszystkie nazwy mieściły
+  // się w kadrze w całości; ujawnił się, gdy rysunek stał się szerszy (stacje z
+  // pełnym polem transformatorowym, karta KOMPLETNOSC-POLA-TR). Intencja bramki
+  // BEZ ZMIAN: podpis ma pozwolić rozpoznać TĘ stację — przy skróceniu
+  // środkowym rozpoznajemy ją po głowie ORAZ po ogonie.
+  const srodkowy = podpis.indexOf('…');
+  if (srodkowy > 0 && srodkowy < podpis.length - 1) {
+    const glowa = podpis.slice(0, srodkowy);
+    const ogon = podpis.slice(srodkowy + 1);
+    return oczekiwany.startsWith(glowa) && oczekiwany.endsWith(ogon);
+  }
   const rdzen = podpis.endsWith('…') ? podpis.slice(0, -1) : podpis;
   if (rdzen.length < 2) return false;
   return rdzen.startsWith(oczekiwany) || oczekiwany.startsWith(rdzen);

@@ -54,7 +54,7 @@ test.describe('kreator stacji — pole transformatorowe', () => {
       await expect(page.getByTestId('mvd-kreator-stacja-pola')).toBeVisible({ timeout: 15000 });
       // Producent i rodzina wybrane natywnie — bez nich pola nie mają szablonów.
       await page.getByTestId('mvd-kreator-stacja-producent').selectOption('ZPUE_WLOSZCZOWA');
-      await page.getByTestId('mvd-kreator-stacja-rodzina').selectOption('zpue_rotoblok');
+      await page.getByTestId('mvd-kreator-stacja-rodzina').selectOption('zpue_wloszczowa_rotoblok');
       await page.waitForTimeout(400);
 
       // (1) Stan DOMYŚLNY: pole transformatorowe obecne, panel braku niewidoczny.
