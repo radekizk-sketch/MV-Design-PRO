@@ -5,6 +5,11 @@
 - ``GET /api/quality/energy-validation?run_id=`` — walidacja energetyczna
   (obciążenia, odchylenia napięć, budżet strat, bilans Q) na bazie przebiegu
   rozpływu (``PF``),
+- ``GET /api/quality/voltage-profile?run_id=&node_ref=&worst_nn=`` — profil
+  napięć per szyna na bazie przebiegu rozpływu (``PF``); ``node_ref``
+  (opcjonalny, ADDYTYWNY) dokłada dekompozycję ΔU per odcinek na trasie
+  źródło (SLACK)→węzeł, ``worst_nn=true`` (opcjonalny) wybiera automatycznie
+  najgorszą szynę pasma nN zamiast jawnego ``node_ref`` (karta P0.4),
 - ``GET /api/quality/flicker?run_id=`` — ocena migotania (Pst/Plt) i szybkich
   zmian napięcia źródeł falownikowych wg IEC/TR 61000-3-7 na bazie przebiegu
   zwarciowego (``short_circuit_sn``),
@@ -42,6 +47,7 @@ from application.analyses.state_estimation import (
     build_state_estimation_requirements,
     build_state_estimation_view,
 )
+from application.analyses.voltage_profile_view import build_voltage_profile_view
 from application.analyses.warunki_przylaczenia import build_warunki_przylaczenia_view
 from application.analyses.werdykt_projektowy import build_werdykt_projektowy_view
 from application.analyses.wytrzymalosc_cieplna_przewodow import (
@@ -156,6 +162,35 @@ def get_energy_validation(run_id: UUID = Query(...)) -> dict[str, Any]:
     run = _require_run(run_id)
     try:
         return build_energy_validation_view(run)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+
+
+@router.get("/api/quality/voltage-profile")
+def get_voltage_profile(
+    run_id: UUID = Query(...),
+    node_ref: str | None = Query(
+        default=None,
+        description=(
+            "ID węzła docelowego — gdy podane, odpowiedź dokłada klucz "
+            "'segmenty' z dekompozycją ΔU per odcinek na trasie "
+            "źródło (SLACK)->węzeł (karta P0.4, addytywne)."
+        ),
+    ),
+    worst_nn: bool = Query(
+        default=False,
+        description=(
+            "Gdy True i 'node_ref' pominięty: wybierz automatycznie "
+            "najgorszą (najniższe |V| pu) szynę pasma nN (karta P0.4)."
+        ),
+    ),
+) -> dict[str, Any]:
+    run = _require_run(run_id)
+    try:
+        return build_voltage_profile_view(run, node_ref=node_ref, worst_nn=worst_nn)
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
