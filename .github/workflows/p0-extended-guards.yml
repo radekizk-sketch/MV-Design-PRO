@@ -65,6 +65,17 @@ jobs:
       - name: Zależności trace guard (pydantic)
         run: pip install pydantic
 
+      # Karta N-D5-FUSE: bezpiecznik topikowy nie moze byc liczony wzorem IDMT
+      # przekaznika (IEC 60255) — jego pasmo (IEC 60282-1) pochodzi z karty
+      # katalogowej producenta. Guard sprawdza tekst, strukture I ZACHOWANIE
+      # (przepuszcza bezpiecznik przez analizator), wiec IMPORTUJE warstwe
+      # domeny. Stoi PO instalacji pydantic, bo `domain/__init__.py` ciagnie
+      # `result_set` -> `pydantic` — sprawdzone uruchomieniem na golym
+      # interpreterze, nie zalozone (pierwotnie wpiety przed tym krokiem,
+      # padal na ModuleNotFoundError).
+      - name: Protection — bezpiecznik nie liczony jak przekaznik
+        run: python scripts/protection_fuse_band_guard.py
+
       - name: Trace determinism
         run: python scripts/trace_determinism_guard.py
 
