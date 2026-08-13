@@ -11,11 +11,15 @@ ZERO nowej fizyki, ZERO mutacji modelu, ZERO równoległości, ZERO heurystyk.
 
 MECHANIZM WARIANTOWANIA (reguła Case Immutability).
 Wyłączenie elementu = USUNIĘCIE go z listy elementów w KOPII migawki, na której
-pracuje bieg wariantu (``copy.deepcopy`` + filtr po ``ref_id``). Model w magazynie
+pracuje bieg wariantu (płytka kopia słownika migawki + NOWA, przefiltrowana po
+``ref_id`` lista tej jednej kolekcji, z której element znika). Model w magazynie
 (``enm.store``) ani migawka biegu bazowego NIE są dotykane — dokładnie ten sam
 wzorzec, którego używają zdolność przyłączeniowa (``hosting_capacity.py``),
 obszar P–Q (``pq_area.py``) i odpowiedź OSD (``odpowiedz_osd.py``): wariant to
-delta migawki + ``CanonicalRun`` w pamięci (bez persystencji).
+delta migawki + ``CanonicalRun`` w pamięci (bez persystencji). Pozostałe kolekcje
+wariant WSPÓŁDZIELI z migawką bazową, bo cała ścieżka konsumująca wariant tylko
+ją czyta (patrz ``_wariant_bez_elementu``); izolacja modelu jest przypięta testami
+odcisku ENM i migawki biegu bazowego przed/po enumeracji.
 
 JEDEN mechanizm dla WSZYSTKICH rodzajów elementów (linia, kabel, transformator) —
 warunkiem wyjściowym jest zawsze to samo: w grafie wariantu NIE MA krawędzi tego
@@ -67,18 +71,36 @@ kopii migawki bazowej (kolejność elementów w migawce bez znaczenia — mapowa
 ENM→graf sortuje po ``ref_id``), zero znaczników czasu w wyniku, zaokrąglenia
 jawne (wartości obserwowane do 4 miejsc, moce do 6).
 
-WYDAJNOŚĆ (pomiar wykonany kartą N-1-BACKEND na substracie referencyjnym
-53 stacji — ``tests/reference_networks/sld_substrate_52s.py``: 315 szyn,
-260 gałęzi, 54 transformatory, 20 odbiorów; bieg sekwencyjny, jeden rdzeń):
-    kontyngencji kwalifikowanych: 142
-    czas łączny: 374,7 s
-    czas na kontyngencję: 2,64 s
-Bieg jest sekwencyjny Z ZAŁOŻENIA (determinizm) — zrównoleglenie NIE wchodzi w
-zakres tej karty. Dla sieci tej wielkości komplet N-1 zajmuje ~6 minut, co jest
-poza progiem interaktywnym: ekran musi albo zawęzić listę (parametr
-``element_refs``), albo uruchomić enumerację jako zadanie w tle. To DŁUG NAZWANY
-(nie ukryty) — jego domknięcie należy do karty ekranu N-1 (fala 12 wg D8),
-a rozwiązaniem NIE może być heurystyczne skracanie listy kontyngencji.
+WYDAJNOŚĆ (substrat referencyjny 53 stacji —
+``tests/reference_networks/sld_substrate_52s.py``: 315 szyn, 260 gałęzi,
+54 transformatory, 20 odbiorów; bieg sekwencyjny, jeden rdzeń; 142 kontyngencje
+kwalifikowane). Karta N1-WYDAJNOSC, pomiar na jednej maszynie:
+    stan wyjściowy (karta N-1-BACKEND):   365,3 s  →  2,573 s / kontyngencję
+    po optymalizacji:                      67,0 s  →  0,472 s / kontyngencję
+    przyspieszenie: 5,45×, wynik IDENTYCZNY CO DO BITU (ten sam sha256 pełnego
+    widoku kanonicznego dla wszystkich 142 kontyngencji)
+
+Źródła przyspieszenia — WYŁĄCZNIE eliminacja marnotrawstwa, zero zmian metody:
+1. blokowe składanie jakobianu Newtona-Raphsona zamiast pętli skalarnej
+   (``power_flow_newton_internal.build_jacobian_v2``) — było 76 % czasu własnego
+   całej analizy; wynik przypięty bitowo wobec postaci skalarnej,
+2. JEDNA budowa grafu wariantu zamiast dwóch przed rozpływem — ten sam obiekt
+   obsługuje odczyt topologii zasilania i bieg rozpływu (patrz ``_kontyngencja``),
+3. płytka kopia migawki wariantu zamiast głębokiej (patrz ``_wariant_bez_elementu``).
+
+GRANICA (zmierzona, nie oszacowana): po tych zmianach 83 % czasu kontyngencji to
+sam bieg rozpływu, a w nim dominuje GĘSTE rozwiązanie układu równań jakobianu
+(``numpy.linalg.solve``, ~0,10 s dla macierzy 628×628 na tej maszynie, 3 iteracje
+na bieg). Zejście niżej wymagałoby solvera RZADKIEGO albo startu z poprzedniego
+rozwiązania — jedno i drugie zmienia ostatnie cyfry wyniku, więc jest ZAKAZANE.
+Komplet 142 kontyngencji (~67 s) pozostaje więc operacją wsadową, a nie
+interaktywną; ekran zawęża zakres parametrem ``element_refs`` (kilka elementów =
+kilka sekund). Heurystyczne skracanie listy kontyngencji pozostaje ZAKAZANE.
+Zrównoleglenie per kontyngencja NIE zostało wdrożone świadomie: ścieżka biegu
+sięga zasobów niebezpiecznych wątkowo (połączenie SQLite rozszerzeń audytu jest
+związane z wątkiem, który je utworzył), więc byłaby to zamiana zmierzonego,
+deterministycznego kosztu na ryzyko niedeterminizmu — przy wyniku nadal
+nieinteraktywnym dla pełnego przeglądu.
 
 ROZGRANICZENIE WZGLĘDEM ``reliability_contingency`` (solver V12.6 akademicki,
 ``network_model/solvers/v126_academic.py::_reliability``): tamta zdolność liczy
@@ -91,7 +113,6 @@ przerw.
 
 from __future__ import annotations
 
-import copy
 import hashlib
 import json
 from dataclasses import dataclass
@@ -103,6 +124,7 @@ from application.analyses.kontekst_widoku import zbuduj_kontekst_widoku
 from enm.canonical_analysis import CanonicalRun, _execute_power_flow
 from enm.mapping import map_enm_to_network_graph, ref_to_graph_id
 from enm.models import EnergyNetworkModel
+from network_model.core.graph import NetworkGraph
 from network_model.core.node import NodeType
 from network_model.solvers.power_flow_newton_internal import build_slack_island
 
@@ -188,13 +210,26 @@ def _inwentarz_elementow(snapshot: dict[str, Any]) -> list[_Element]:
 def _wariant_bez_elementu(snapshot: dict[str, Any], element: _Element) -> dict[str, Any]:
     """Kopia migawki BEZ wskazanego elementu (wariant wejścia solvera).
 
-    Model bazowy pozostaje nietknięty — pracujemy na głębokiej kopii (reguła
-    Case Immutability: przypadek obliczeniowy nie mutuje modelu sieci).
+    Model bazowy pozostaje nietknięty (reguła Case Immutability: przypadek
+    obliczeniowy nie mutuje modelu sieci) — i to jest tu JEDYNE wymaganie.
+
+    Kopiujemy PŁYTKO słownik migawki i podmieniamy WYŁĄCZNIE tę jedną listę, z
+    której element znika; pozostałe kolekcje wariant współdzieli z migawką bazową.
+    Wolno tak, bo cała ścieżka konsumująca wariant tylko CZYTA migawkę: most
+    ENM→graf przepisuje dane do modeli pydantic (``model_validate`` nie tyka
+    wejścia), rozpływ zapisuje wynik do ``run.raw_result``, a builder walidacji
+    energetycznej czyta migawkę i wynik. Głęboka kopia całej migawki kopiowała
+    315 szyn, 260 gałęzi i 54 transformatory po to, by odrzucić z nich jeden wpis.
+
+    To założenie o WSPÓŁDZIELENIU jest przypięte testami izolacji (odcisk ENM i
+    migawki biegu bazowego przed/po enumeracji oraz porównanie głębokie migawki),
+    więc gdyby ktokolwiek na tej ścieżce zaczął pisać po migawce, pin zaświeci na
+    czerwono zamiast po cichu uszkodzić model w magazynie.
     """
-    wariant = copy.deepcopy(snapshot)
+    wariant = dict(snapshot)
     wariant[element.kolekcja] = [
         pozycja
-        for pozycja in (wariant.get(element.kolekcja) or [])
+        for pozycja in (snapshot.get(element.kolekcja) or [])
         if str(pozycja.get("ref_id")) != element.ref
     ]
     return wariant
@@ -218,16 +253,25 @@ def _bieg_wariantu(bazowy: CanonicalRun, snapshot: dict[str, Any]) -> CanonicalR
     )
 
 
-def _zasilanie(snapshot: dict[str, Any]) -> dict[str, Any]:
+def _graf_migawki(snapshot: dict[str, Any]) -> NetworkGraph:
+    """Graf sieci z migawki — TA SAMA droga, którą buduje go rozpływ (``_load_graph``)."""
+    return map_enm_to_network_graph(EnergyNetworkModel.model_validate(snapshot))
+
+
+def _zasilanie(snapshot: dict[str, Any], graf: NetworkGraph) -> dict[str, Any]:
     """Odbiory i szyny pozbawione zasilania w podanej migawce.
 
     Wyspę zasilaną wyznacza ``build_slack_island`` — TA SAMA funkcja, której
     używa solver rozpływu do ustalenia, które węzły w ogóle rozwiązuje. Kryterium
     jest topologiczne, więc jest rozstrzygalne także wtedy, gdy bieg wariantu nie
     osiągnął zbieżności.
+
+    ``graf`` musi być zbudowany z ``snapshot`` (``_graf_migawki``). Ta funkcja
+    wyłącznie CZYTA graf — nie zmienia w nim niczego — więc ten sam obiekt może
+    następnie trafić do rozpływu zamiast być budowany po raz drugi z tej samej
+    migawki. Kolejność jest tu istotna i jest częścią kontraktu: najpierw odczyt
+    topologii (stan sprzed rozpływu), potem rozpływ, który graf może zmodyfikować.
     """
-    enm = EnergyNetworkModel.model_validate(snapshot)
-    graf = map_enm_to_network_graph(enm)
     wezly_slack = sorted(
         node_id for node_id, node in graf.nodes.items() if node.node_type == NodeType.SLACK
     )
@@ -466,11 +510,16 @@ def _kontyngencja(bazowy: CanonicalRun, element: _Element) -> dict[str, Any]:
 
     snapshot_bazowy = bazowy.snapshot or {}
     wariant = _wariant_bez_elementu(snapshot_bazowy, element)
-    zasilanie = _zasilanie(wariant)
+    # JEDNA budowa grafu wariantu na dwa odczyty: najpierw topologia zasilania
+    # (stan sprzed rozpływu, wyłącznie odczyt), potem ten sam obiekt idzie do
+    # rozpływu — zamiast budować dwa razy ten sam graf z tej samej migawki.
+    # Kolejności nie wolno odwrócić: rozpływ może graf zmodyfikować (zaczepy).
+    graf_wariantu = _graf_migawki(wariant)
+    zasilanie = _zasilanie(wariant, graf_wariantu)
     bieg = _bieg_wariantu(bazowy, wariant)
     blad: str | None = None
     try:
-        _execute_power_flow(bieg)
+        _execute_power_flow(bieg, graf_wariantu)
     except Exception as exc:  # noqa: BLE001 — niezbieżność/osobliwość = STATUS, nie wyjątek
         blad = f"{type(exc).__name__}: {exc}"
 
@@ -536,10 +585,13 @@ def _przypadek_bazowy(bazowy: CanonicalRun) -> dict[str, Any]:
     Liczony TĄ SAMĄ ścieżką co kontyngencje (bieg wariantu na pełnej migawce),
     żeby porównanie „przed / po" nie zestawiało dwóch różnych sposobów liczenia.
     """
-    bieg = _bieg_wariantu(bazowy, copy.deepcopy(bazowy.snapshot or {}))
+    snapshot_bazowy = bazowy.snapshot or {}
+    graf_bazowy = _graf_migawki(snapshot_bazowy)
+    zasilanie = _zasilanie(snapshot_bazowy, graf_bazowy)
+    bieg = _bieg_wariantu(bazowy, dict(snapshot_bazowy))
     blad: str | None = None
     try:
-        _execute_power_flow(bieg)
+        _execute_power_flow(bieg, graf_bazowy)
     except Exception as exc:  # noqa: BLE001 — jak wyżej: stan bazowy to WYNIK, nie wyjątek
         blad = f"{type(exc).__name__}: {exc}"
     dane_biegu = _pusty_bieg() if blad is not None else _dane_biegu(bieg)
@@ -549,7 +601,6 @@ def _przypadek_bazowy(bazowy: CanonicalRun) -> dict[str, Any]:
         if zbiegl
         else None
     )
-    zasilanie = _zasilanie(bazowy.snapshot or {})
     return {
         "status": "zbiegl" if zbiegl else "niezbiegl",
         "powod_pl": (
