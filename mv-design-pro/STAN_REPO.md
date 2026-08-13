@@ -225,6 +225,35 @@ resultset_v1_schema, api_lifecycle) zielone.
 W kolejce: P0.3b (ścieżka SC w `enm/canonical_analysis.py` ma płaskie `c_factor=1.10` —
 wpięcie c per pasmo + scenariusz MIN w głównej ścieżce użytkownika), P0.5–P0.10 wg planu H.
 
+**Aktualizacja 2026-08-13 (ta sama sesja): scalenie fali 9 nadzoru + P0.3b + kasacja N-D3.**
+- Merge `ecc16af9`: fala 9 nadzoru (MINI-RMU-CAD, N-1-BACKEND, symbol recloser w kanonie
+  SLD v3, zapadki 1 A/NaN w mapping/energy_validation). Konflikt `enm/mapping.py`
+  rozwiązany UNIĄ: „brak obciążalności zostaje brakiem (0,0)" × skalowanie `n_parallel`
+  z P0.1 (`rated_current_a=rated_a_eff`; 0·n=0 — brak dalej się propaguje). Bramka drzewa
+  scalonego: pytest **8893 passed / 13 skipped**, vitest **864 pliki / 11378 testów**,
+  tsc+eslint czyste.
+- P0.3b (`5cc8a917` + pin `1bc9c40c`): c per pasmo IEC 60909 Tab. 1 + scenariusz MIN
+  w KANONICZNEJ ścieżce SC (`enm/canonical_analysis.py::_execute_short_circuit`) — reuse
+  `voltage_factor.c_for_node` + `build_min_scenario_graph`, jawny `c_factor` w options =
+  override płaski (wstecznie zgodny), whitelist opcji `scenario` w API. Odbiór nadzoru:
+  iniekcja wykryła NIEPRZYPIĘTĄ whitelistę (trzecia instancja klasy „deklaracja bez testu"
+  w tej fali — po N-1 i MINI-RMU) — naprawione W ODBIORZE testem pełnej ścieżki HTTP
+  (c 1,10→1,00 na scenario=min; dowód iniekcji: czerwień → sha identyczne → zieleń).
+  Weryfikacja na drzewie scalonym: 1792+19 testów, mypy/ruff, 4 guardy.
+- Kasacja N-D3 (`231e8ee2`): 31 plików `station-wizard-v2/**` usuniętych (wiersz
+  N-D3-POMIAR-U2; brak weta nadzoru, runda 2; kanon symboli recloser nietknięty);
+  piny SCADA przepisane, allowlista ui_no_physics −2, baseline 16→13 pomiarem,
+  D3 skorygowana. Bramka: pełny vitest **851 plików / 11149 testów**, tsc+lint,
+  guard + 37 testów CI + 32 testy kontraktu SCADA.
+- Koordynacja: „Stanowisko nN (runda 3)" w `docs/nn/UZGODNIENIA_WATKOW_2026-08-13.md` —
+  m.in. wiążące rozstrzygnięcie semantyki zdolności wyłączania dla nN (wkładka gG:
+  własne `breaking_capacity_ka` wg IEC 60269-1, NIGDY NIE_DOTYCZY; rozłącznik
+  bezpiecznikowy: `conditional_sc_current_ka` kombinacji; MCB: `icn_ka` — pola wchodzą
+  RAZEM z konsumentem w P0.6/P0.7).
+W biegu (wykonawcy w worktree): P0.5a (Iz′ wg PN-HD 60364-5-52, unifikacja dwóch ścieżek
+korekt, zasilenie G-D1 z podwójną weryfikacją źródeł), P0.5b (dowód VDROP multi-segment
+na kanonie kV, likwidacja N-D6).
+
 -----
 
 *Żywy rejestr stanu. Aktualizuj każdą sesją. Źródłem prawdy ostatecznej jest świeży skan repo (§5.0) — gdy ten plik się z nim rozjedzie, prawdą jest repo.*
