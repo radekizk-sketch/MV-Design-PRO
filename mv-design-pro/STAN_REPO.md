@@ -189,6 +189,42 @@ kanał koordynacji: `docs/nn/UZGODNIENIA_WATKOW_2026-08-13.md` (sekcja „Stanow
 Bramka drzewa scalonego: pytest **8666 passed / 0 failed**, vitest **863 pliki / 11297 testów**,
 tsc + eslint czyste, 16 guardów OK, FROZEN SC/PF nietknięte.
 
+**Aktualizacja 2026-08-13 (ta sama sesja): P0.1–P0.4 WYKONANE.**
+- P0.1 (`6ef48b73`): topologia obwodów nN — operacje NN_NETWORK (9 handlerów), promocja
+  `nn_field_specs` → jawne elementy ENM (migracja deterministyczna), walidator E060–E064/W060/W062,
+  `station_type="rozdzielnica_nn"`, `Cable.n_parallel` (skalowanie Z), naprawa klasowa
+  `_field_bus_ref` (po promocji nowe przyłącza celują w szynę odpływu, nie w surowe pole).
+- P0.2 (`416a000d` + `6b0034c0`): katalog nN — 30 MCB IEC 60898-1 (B/C/D), 30 wkładek gG
+  IEC 60269-1 (i2t=None do czasu danych producenta, G-D2), pola cieplne kabli (r0/x0/ith/jth),
+  struktura korekt Iz wg PN-HD 60364-5-52 (rejestr G-D1 pusty do weryfikacji danych — wzorzec
+  flip-to-verified jak Arc Flash D-01), trasy `GET /api/catalog/lv-breaker-mcb-types` i
+  `lv-fuse-link-types` zarejestrowane w macierzy API.
+- P0.3 (`8e184165` + fix-forward `26518c3a`): zwarcia nN — c per pasmo napięciowe wg IEC 60909
+  Tab. 1 (≤1 kV: 1,05/0,95; >1 kV: 1,10/1,00), scenariusz MIN z korektą temperaturową
+  R_θ = R20·[1+0,004·(θk−20)] jako dekoracja wejścia (solver FROZEN nietknięty). **Incydent
+  procesowy**: P0.3 zmodyfikował zamrożony mapper `short_circuit_to_resultset_v1.py` i push
+  wykonał się mimo FAIL guardu (pętla `for` maskująca kod wyjścia — dokładnie zakazany wzorzec);
+  naprawa w przód `26518c3a`: mapper przywrócony 1:1 do origin/main, meta bindingu przeniesione
+  do wrappera `sc_binding_meta.py` (przebudowa ResultSet, podpis liczony PO wzbogaceniu),
+  `resultset_v1_schema_guard` zielony na HEAD.
+- P0.4 (`3bd3c51c` + `40c284ea`): rozpływ nN — dowód konwergencji na sieci 0,4 kV
+  (NR: 5 iter na 20-odcinkowym feederze R/X≈10,6; NR+GS parytet ≤1,2e-11 pu na modelu
+  SN+nN z TR 15/0,4; reverse flow: p_from(TR)<0 przy generacji 50 kW > odbiór), dekompozycja
+  ΔU per odcinek (`analysis/voltage_profile/segment_decomposition.py`) + najgorsza ścieżka nN,
+  trasa `GET /api/quality/voltage-profile` (addytywna, zarejestrowana w macierzy API).
+  **ESKALACJA ARCHITEKTONICZNA (do decyzji właściciela, nie obejście):** Fast-Decoupled
+  NIE ZBIEGA na ŻADNYM kablu katalogu KABEL_NN (sweep R/X 1,89–10,6; test izolacyjny dowodzi,
+  że to właściwość metody FDLF — założenie X≫R z docstringa `FastDecoupledOptions` — a nie błąd
+  `_base_scale`). NR i GS pokrywają sieci nN poprawnie. Pytanie produktowe: czy system ma
+  otrzymać solver klasy Backward-Forward-Sweep dla sieci rozdzielczych R/X≥1 (nowy solver,
+  addytywny, poza FROZEN)? Do rozstrzygnięcia przed P1; testy dokumentują stan uczciwie
+  (bez maskowania).
+Bramka P0.4: pytest solvers+analysis+api+ci **1428 passed**, mypy/ruff/black czyste,
+7 guardów (solver_diff, solver_boundary, arch, overlay_no_physics, load_flow_no_heuristics,
+resultset_v1_schema, api_lifecycle) zielone.
+W kolejce: P0.3b (ścieżka SC w `enm/canonical_analysis.py` ma płaskie `c_factor=1.10` —
+wpięcie c per pasmo + scenariusz MIN w głównej ścieżce użytkownika), P0.5–P0.10 wg planu H.
+
 -----
 
 *Żywy rejestr stanu. Aktualizuj każdą sesją. Źródłem prawdy ostatecznej jest świeży skan repo (§5.0) — gdy ten plik się z nim rozjedzie, prawdą jest repo.*
