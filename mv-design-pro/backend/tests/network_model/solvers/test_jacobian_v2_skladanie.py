@@ -27,6 +27,8 @@ Y-bus, czyli wyrazy zerowe} × {przypadki zdegenerowane: brak węzłów PQ, jede
 
 from __future__ import annotations
 
+import json
+
 import numpy as np
 import pytest
 from network_model.solvers.power_flow_newton_internal import build_jacobian_v2
@@ -232,6 +234,114 @@ def test_galezie_nieobecne_w_ybus_daja_ten_sam_znak_zera() -> None:
         "Fikstura przestała wytwarzać -0.0 — test przestałby pilnować znaku zera; "
         "poprawić fiksturę, nie usuwać asercji."
     )
+
+
+def _artefakt_biegu(run: object) -> str:
+    """Kanoniczna postać PEŁNEGO artefaktu biegu: wynik + CAŁY ślad WHITE BOX.
+
+    Świadomie NIE ograniczamy się do końcowych napięć: gdyby zmiana składania
+    jakobianu przesunęła cokolwiek w środku iteracji (historia niedopasowań,
+    ślad Y-bus, stan początkowy, kroki dowodowe), wynik końcowy mógłby się zgodzić
+    po zaokrągleniu, a ślad — nie. Ślad jest częścią kontraktu (dowody, White Box),
+    więc podlega tej samej bitowej identyczności co wynik.
+
+    Liczby zmiennoprzecinkowe idą przez ``str``, które dla ``float``/``np.float64``
+    daje najkrótszą postać round-trip — jest ona RÓŻNOWARTOŚCIOWA, więc dwie różne
+    liczby podwójnej precyzji nigdy nie dadzą tego samego napisu.
+    """
+    artefakt = {
+        "raw_result": getattr(run, "raw_result", None),
+        "white_box_trace": getattr(run, "white_box_trace", None),
+        "power_flow_trace": getattr(run, "power_flow_trace", None),
+        "result_summary": getattr(run, "result_summary", None),
+    }
+    return json.dumps(artefakt, sort_keys=True, ensure_ascii=False, default=str)
+
+
+def _bieg_z_migawki(snapshot: dict, snapshot_hash: str) -> object:
+    """Przebieg PF o USTALONYCH identyfikatorach — inaczej ślad różniłby się run_id."""
+    from datetime import UTC, datetime
+    from uuid import UUID
+
+    from enm.canonical_analysis import CanonicalRun
+
+    return CanonicalRun(
+        id=UUID("00000000-0000-4000-8000-000000000042"),
+        case_id="case-pin-slad",
+        project_id="proj-pin-slad",
+        analysis_type="PF",
+        status="FINISHED",
+        created_at=datetime(2026, 1, 1, tzinfo=UTC),
+        snapshot_hash=snapshot_hash,
+        input_hash="pin-slad",
+        snapshot=snapshot,
+        validation={},
+        readiness={},
+        options={},
+    )
+
+
+def _siec(nazwa: str) -> dict:
+    from tests.reference_networks.builders import (
+        build_gn01_sn_promieniowa,
+        build_gn03_sn_pierscien,
+        build_gn04_sn_nn_oze,
+    )
+    from tests.reference_networks.sld_substrate_52s import build_sld_substrate_52s
+
+    budowniczy = {
+        "promieniowa": build_gn01_sn_promieniowa,
+        "pierscien": build_gn03_sn_pierscien,
+        "sn-nn-oze": build_gn04_sn_nn_oze,
+        "substrat-53-stacji": build_sld_substrate_52s,
+    }[nazwa]
+    return budowniczy()
+
+
+@pytest.mark.parametrize(
+    "siec",
+    ["promieniowa", "pierscien", "sn-nn-oze", "substrat-53-stacji"],
+)
+def test_slad_white_box_biegu_bit_w_bit_przed_i_po_zmianie_skladania(siec: str) -> None:
+    """PEŁNY artefakt biegu (wynik + ślad) identyczny dla obu postaci składania.
+
+    „Przed" jest tu odtworzone dosłownie: produkcyjna funkcja zostaje podmieniona
+    na referencyjną pętlę skalarną z tego pliku, czyli na stan sprzed karty
+    N1-WYDAJNOSC. Porównanie obejmuje topologię PROMIENIOWĄ i OCZKOWĄ (pierścień) —
+    w sieci oczkowej jakobian jest gęstszy, a iteracji zwykle więcej, więc
+    ewentualny dryf ostatnich cyfr miałby się gdzie skumulować — oraz sieć z
+    generacją rozproszoną (regulacja falownika) i substrat 53 stacji.
+    """
+    import network_model.solvers.power_flow_newton_internal as internal
+    from enm.canonical_analysis import _execute_power_flow
+
+    dane = _siec(siec)
+    snapshot = dane["enm"]
+    snapshot_hash = dane["snapshot_hash"]
+
+    bieg_po = _bieg_z_migawki(snapshot, snapshot_hash)
+    _execute_power_flow(bieg_po)
+    artefakt_po = _artefakt_biegu(bieg_po)
+
+    produkcyjny = internal.build_jacobian_v2
+    internal.build_jacobian_v2 = _jakobian_skalarny  # type: ignore[assignment]
+    try:
+        bieg_przed = _bieg_z_migawki(snapshot, snapshot_hash)
+        _execute_power_flow(bieg_przed)
+        artefakt_przed = _artefakt_biegu(bieg_przed)
+    finally:
+        internal.build_jacobian_v2 = produkcyjny  # type: ignore[assignment]
+
+    assert artefakt_przed, f"Sieć {siec}: bieg nie wytworzył artefaktu."
+    assert artefakt_po == artefakt_przed, (
+        f"Sieć {siec}: ślad WHITE BOX lub wynik biegu różni się między postacią "
+        "skalarną a blokową składania jakobianu. Zmiana składania NIE jest wtedy "
+        "neutralna i musi wrócić do pętli — nie wolno dopasowywać asercji."
+    )
+    # Kontrola samego testu: artefakt musi realnie zawierać historię iteracji,
+    # inaczej porównywalibyśmy pustkę i pin nie pilnowałby niczego.
+    slad = getattr(bieg_po, "power_flow_trace", None) or {}
+    assert slad.get("iterations"), f"Sieć {siec}: ślad biegu nie zawiera historii iteracji."
 
 
 def test_jakobian_realnego_biegu_substratu_53_stacji_bit_w_bit() -> None:
