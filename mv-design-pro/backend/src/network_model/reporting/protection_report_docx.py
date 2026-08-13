@@ -22,6 +22,11 @@ from typing import Any
 
 # Import shared determinism module
 from network_model.reporting.docx_determinism import make_docx_bytes_deterministic
+from network_model.reporting.protection_tcc_presentation import (
+    etykieta_tms,
+    etykieta_typu_krzywej_pl,
+    powod_braku_pl,
+)
 
 # Check for python-docx availability
 try:
@@ -334,6 +339,7 @@ def export_protection_coordination_to_docx(
         # Sort by device_name for deterministic order
         sorted_tcc_curves = sorted(tcc_curves, key=lambda c: c.get("device_name", ""))
 
+        _powody_bez_podstawy: list[str] = []
         tcc_table = doc.add_table(rows=1, cols=4)
         tcc_table.style = "Table Grid"
 
@@ -348,9 +354,18 @@ def export_protection_coordination_to_docx(
         for curve in sorted_tcc_curves:
             row = tcc_table.add_row().cells
             row[0].text = curve.get("device_name", "—")[:20]
-            row[1].text = curve.get("curve_type", "—")
+            row[1].text = etykieta_typu_krzywej_pl(curve)
             row[2].text = _format_value(curve.get("pickup_current_a"))
-            row[3].text = _format_value(curve.get("time_multiplier"))
+            row[3].text = etykieta_tms(curve, _format_value(curve.get("time_multiplier")))
+            # Pozycja bez podstawy (np. bezpiecznik bez pasma topikowego) niesie
+            # PELNE zdanie po polsku pod tabela — ta sama tresc co w PDF, z tego
+            # samego modulu prezentacji (karta N-D5-FUSE).
+            powod = powod_braku_pl(curve)
+            if powod:
+                _powody_bez_podstawy.append(f"{curve.get('device_name', '—')}: {powod}")
+
+        for powod in _powody_bez_podstawy:
+            doc.add_paragraph(powod, style="No Spacing")
 
         doc.add_paragraph()
         note = doc.add_paragraph()

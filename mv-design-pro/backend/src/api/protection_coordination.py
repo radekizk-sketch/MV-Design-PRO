@@ -47,6 +47,8 @@ from domain.protection_device import (
 )
 from fastapi import APIRouter, HTTPException, status
 from fastapi.responses import Response
+from protection.curves.iec_curves import IECCurveType
+from protection.curves.ieee_curves import IEEECurveType
 from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/protection-coordination", tags=["protection-coordination"])
@@ -173,6 +175,12 @@ class TCCCurveResponse(BaseModel):
     time_multiplier: float
     points: list[dict[str, float]]
     color: str
+    #: Karta N-D5-FUSE — skad pochodzi krzywa. `BRAK_PASMA_BEZPIECZNIKA` znaczy
+    #: bezpiecznik topikowy bez pasma z karty katalogowej: `points` jest puste,
+    #: a `powod_pl` niesie zdanie do pokazania uzytkownikowi. Pola addytywne z
+    #: wartosciami domyslnymi — ladunki przekaznikowe bez zmian.
+    podstawa_kod: str = "KRZYWA_PRZEKAZNIKOWA"
+    powod_pl: str | None = None
 
 
 class FaultMarkerResponse(BaseModel):
@@ -204,10 +212,40 @@ _coordination_results: dict[str, dict[str, Any]] = {}
 # =============================================================================
 
 
+#: Slowniki wariantow krzywej per norma — ROZLACZNE. IEC 60255 zna SI/VI/EI/LTI/DT,
+#: IEEE C37.112 zna MI/VI/EI/STI/DT. Zrodlo: `protection.curves.iec_curves` oraz
+#: `protection.curves.ieee_curves` (te same enumy, ktore licza punkty), wiec lista
+#: nie moze rozjechac sie z kalkulatorem. Przypiete testem
+#: `test_warianty_krzywej_zgodne_z_kalkulatorem`.
+_WARIANTY_NORMY: dict[str, tuple[str, ...]] = {
+    CurveStandard.IEC.value: tuple(w.value for w in IECCurveType),
+    CurveStandard.IEEE.value: tuple(w.value for w in IEEECurveType),
+}
+
+
 def _convert_curve_settings(req: CurveSettingsRequest | None) -> ProtectionCurveSettings | None:
-    """Convert request curve settings to domain model."""
+    """Convert request curve settings to domain model.
+
+    Waliduje PARE (norma, wariant) na granicy API. Bez tego wariant spoza
+    slownika normy leciał az do kalkulatora krzywych i konczyl sie technicznym
+    `ValueError: 'SI' is not a valid IEEECurveType` po angielsku (zmierzone:
+    HTTP 422 z komunikatem, ktorego projektant nie umie naprawic). Norma i
+    wariant sa jedna decyzja, wiec sprawdzane sa razem — nie osobno.
+    """
     if req is None:
         return None
+
+    dozwolone = _WARIANTY_NORMY.get(req.standard)
+    if dozwolone is not None and req.variant not in dozwolone:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                f"Wariant charakterystyki „{req.variant}” nie należy do normy "
+                f"{req.standard}. Dozwolone warianty tej normy: "
+                f"{', '.join(dozwolone)}."
+            ),
+        )
+
     return ProtectionCurveSettings(
         standard=CurveStandard(req.standard),
         variant=req.variant,
