@@ -87,6 +87,8 @@ Data wylaczenia dla deprecated: koniec M2, o ile wiersz nie wskazuje inaczej.
 | `GET /api/catalog/load-types` | v12xx | aktywny | 2026-04-24 | - | Katalog obciazen. | catalog tests | Administrator katalogow |
 | `GET /api/catalog/lv-apparatus-types` | v12xx | aktywny | 2026-04-24 | - | Katalog aparatow nN. | catalog tests | Administrator katalogow |
 | `GET /api/catalog/lv-cable-types` | v12xx | aktywny | 2026-04-24 | - | Katalog kabli nN. | catalog tests | Administrator katalogow |
+| `GET /api/catalog/lv-breaker-mcb-types` | v12xx | aktywny | 2026-08-13 | - | Katalog wylacznikow MCB nN (IEC 60898-1, P0.2 modul nN). | catalog tests | Administrator katalogow |
+| `GET /api/catalog/lv-fuse-link-types` | v12xx | aktywny | 2026-08-13 | - | Katalog wkladek topikowych gG/gM nN (IEC 60269-1, P0.2 modul nN). | catalog tests | Administrator katalogow |
 | `GET /api/catalog/mv-apparatus-types` | v12xx | aktywny | 2026-04-24 | - | Katalog aparatow SN. | catalog tests | Administrator katalogow |
 | `GET /api/catalog/protection/curves` | v12xx | aktywny | 2026-04-24 | - | Krzywe zabezpieczeniowe. | protection catalog tests | Projektant zabezpieczen |
 | `GET /api/catalog/protection/curves/{curve_id}` | v12xx | aktywny | 2026-04-24 | - | Rekord krzywej zabezpieczeniowej. | protection catalog tests | Projektant zabezpieczen |
