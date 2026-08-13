@@ -178,6 +178,17 @@ czasów, zero Ia↔Ik_min); (4) krzywe aparatów nN brak (FUSE=fantom cicho licz
 (N-D1, bloker P0.0). Dług napotkany N-D1…N-D12 zarejestrowany w `docs/nn/A_AUDYT_STANU_NN_2026-08.md` §2
 — naprawa w kolejce P0.0 planu H. Implementacja P0 — następna sesja/sesje wg `docs/nn/H_PLAN_IMPLEMENTACJI_NN.md`.
 
+**Aktualizacja 2026-08-13 (ta sama sesja): P0.0 WYKONANE + scalenie z nadzorem.**
+Commit `862ac163`: N-D1 (sekcja ENM w archiwum ZIP + archiwum przyrostowe, round-trip 1:1),
+N-D2 (martwe ścieżki fault-loop), N-D8 (rejestr operacji 48↔48, guard AST dwukierunkowy),
+N-D9 (forbidden_ui_terms obejmuje ui2), N-D12 (widma CLAUDE.md), U5 (typowanie importu study
+results). N-D3 wstrzymane wg uzgodnień międzywątkowych — pomiar importerów wykonany, wariant (a),
+kasacja po scaleniu karty MINI-RMU-CAD (wiersz `N-D3-POMIAR-U2` w `docs/v12xx/REJESTR_KONFLIKTOW.md`).
+Merge `4fc75c90`: gałąź nadzoru `claude/przejecie-nadzoru-fable-dtie3b` scalona (U1) przed P0.2/P0.5;
+kanał koordynacji: `docs/nn/UZGODNIENIA_WATKOW_2026-08-13.md` (sekcja „Stanowisko nN").
+Bramka drzewa scalonego: pytest **8666 passed / 0 failed**, vitest **863 pliki / 11297 testów**,
+tsc + eslint czyste, 16 guardów OK, FROZEN SC/PF nietknięte.
+
 -----
 
 *Żywy rejestr stanu. Aktualizuj każdą sesją. Źródłem prawdy ostatecznej jest świeży skan repo (§5.0) — gdy ten plik się z nim rozjedzie, prawdą jest repo.*
