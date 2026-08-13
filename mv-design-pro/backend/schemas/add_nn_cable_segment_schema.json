@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "add_nn_cable_segment_v1",
+  "title": "AddNnCableSegment",
+  "description": "Payload for add_nn_cable_segment domain operation (P0.1 nN, NN_NETWORK category) — kabel nN (KABEL_NN) od szyny/pola do nowej lub istniejącej szyny nN.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "meta": {
+      "type": "object",
+      "properties": {
+        "snapshot_in_id": { "type": "string" },
+        "idempotency_key": { "type": "string" },
+        "ui": { "type": "object" },
+        "timestamp_utc": { "type": "string", "format": "date-time" }
+      },
+      "required": ["snapshot_in_id", "idempotency_key"]
+    },
+    "from_bus_ref": {
+      "type": "string",
+      "description": "ref_id istniejącej szyny nN źródłowej. Wymagane, jeśli 'from_ref' nie podano."
+    },
+    "from_ref": {
+      "type": "string",
+      "description": "ref_id istniejącego pola/aparatu, z którego wyprowadzana jest szyna źródłowa — alternatywa dla 'from_bus_ref'."
+    },
+    "to_bus_ref": {
+      "type": "string",
+      "description": "ref_id istniejącej szyny docelowej nN (musi mieć to samo napięcie co szyna źródłowa). Gdy pominięte — operacja tworzy NOWĄ szynę."
+    },
+    "to_bus_name": {
+      "type": "string",
+      "description": "Nazwa nowej szyny docelowej (używana tylko, gdy 'to_bus_ref' nie podano)."
+    },
+    "length_m": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "description": "Długość odcinka kabla [m]."
+    },
+    "catalog_ref": {
+      "type": "string",
+      "description": "Referencja pozycji katalogu KABEL_NN. Wymagane (albo 'catalog_binding')."
+    },
+    "catalog_binding": { "$ref": "catalog_binding_schema.json" },
+    "n_parallel": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 1,
+      "description": "Liczba identycznych torów kabla ułożonych równolegle na tej samej trasie."
+    },
+    "name": { "type": "string" },
+    "cable_laying_conditions": {
+      "description": "Warunki ułożenia (nazwa zestawu albo obiekt opisu — patrz set_nn_cable_laying_conditions_schema.json).",
+      "oneOf": [
+        { "type": "string" },
+        {
+          "type": "object",
+          "properties": {
+            "set_name": { "type": "string" },
+            "f_grunt": { "type": "number" },
+            "f_wiazka": { "type": "number" },
+            "f_grupa": { "type": "number" },
+            "opis_pl": { "type": "string" }
+          }
+        }
+      ]
+    }
+  },
+  "required": ["length_m", "catalog_ref"]
+}

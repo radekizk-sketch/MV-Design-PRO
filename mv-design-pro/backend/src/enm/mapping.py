@@ -648,6 +648,20 @@ def map_enm_to_network_graph(enm: EnergyNetworkModel) -> NetworkGraph:
             if branch.rating and branch.rating.in_a:
                 rated_a = branch.rating.in_a
 
+            # P0.1 nN (karta P0.1, add_nn_cable_segment): n torow identycznych
+            # kabli na TEJ SAMEJ trasie. TA SAMA zasada co Transformer.n_parallel
+            # (Z/n, Sn*n) — n identycznych impedancji w rownoleglym polaczeniu
+            # dziela sie na n, obciazalnosc mnozy sie przez n. getattr z None
+            # obejmuje OverheadLine (pole nie istnieje na tym typie — brak zmiany
+            # zachowania linii napowietrznych). None/1 = pojedynczy tor
+            # (reduce-to-current-behavior, bajtowo identyczne dla istniejacych
+            # kabli SN i nN bez tego pola).
+            n_parallel_cable = getattr(branch, "n_parallel", None) or 1
+            r_ohm_per_km_eff = branch.r_ohm_per_km / n_parallel_cable
+            x_ohm_per_km_eff = branch.x_ohm_per_km / n_parallel_cable
+            b_us_per_km_eff = b_us_per_km * n_parallel_cable
+            rated_a_eff = rated_a * n_parallel_cable
+
             bt = BranchType.CABLE if isinstance(branch, Cable) else BranchType.LINE
             lb = LineBranch(
                 id=branch_id,
@@ -656,11 +670,11 @@ def map_enm_to_network_graph(enm: EnergyNetworkModel) -> NetworkGraph:
                 from_node_id=from_id,
                 to_node_id=to_id,
                 in_service=(branch.status == "closed"),
-                r_ohm_per_km=branch.r_ohm_per_km,
-                x_ohm_per_km=branch.x_ohm_per_km,
-                b_us_per_km=b_us_per_km,
+                r_ohm_per_km=r_ohm_per_km_eff,
+                x_ohm_per_km=x_ohm_per_km_eff,
+                b_us_per_km=b_us_per_km_eff,
                 length_km=branch.length_km,
-                rated_current_a=rated_a if rated_a > 0 else 1.0,
+                rated_current_a=rated_a_eff if rated_a_eff > 0 else 1.0,
                 # Karta F-K1 faza 3: przeniesienie danych cieplnych ZYLY FAZOWEJ do
                 # grafu. Bez tego ogniwa kryterium wytrzymalosci zwarciowej przewodu
                 # nie mialo w warstwie analizy z czego liczyc pradu dopuszczalnego

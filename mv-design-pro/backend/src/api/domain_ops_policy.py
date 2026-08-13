@@ -33,6 +33,10 @@ CATALOG_REQUIRED_OPERATIONS: frozenset[str] = frozenset(
         "add_nn_outgoing_field",
         "insert_section_switch_sn",
         "connect_secondary_ring_sn",
+        # P0.1 nN (karta P0.1, C §4.1): wiązanie katalogowe OBOWIĄZKOWE.
+        "add_nn_cable_segment",
+        "add_nn_switch_device",
+        "add_nn_section_coupler",
     }
 )
 
@@ -298,6 +302,24 @@ def extract_catalog_binding(operation: str, payload: dict[str, Any]) -> dict[str
             return candidate
 
     if operation == "add_nn_outgoing_field":
+        candidate = _extract_binding_from_container(
+            payload,
+            namespace="APARAT_NN",
+            ref_keys=("catalog_ref",),
+        )
+        if candidate is not None:
+            return candidate
+
+    if operation == "add_nn_cable_segment":
+        candidate = _extract_binding_from_container(
+            payload,
+            namespace="KABEL_NN",
+            ref_keys=("catalog_ref",),
+        )
+        if candidate is not None:
+            return candidate
+
+    if operation in {"add_nn_switch_device", "add_nn_section_coupler"}:
         candidate = _extract_binding_from_container(
             payload,
             namespace="APARAT_NN",
@@ -601,6 +623,13 @@ API_CATALOG_GATE_INVENTORY: tuple[PozycjaBramyApi, ...] = (
         "kontrakt kreatora nN), a jego istnienie sprawdza ta sama materializacja co "
         "dla aparatu pola — osłabienie byłoby regresją, nie naprawą.",
     ),
+    # --- P0.1 nN — topologia obwodów nN (karta P0.1, C §4.1) -----------------
+    PozycjaBramyApi("add_nn_cable_segment", "catalog_ref", "KABEL_NN", True),
+    PozycjaBramyApi("add_nn_cable_segment", "catalog_binding", "KABEL_NN", True),
+    PozycjaBramyApi("add_nn_switch_device", "catalog_ref", "APARAT_NN", True),
+    PozycjaBramyApi("add_nn_switch_device", "catalog_binding", "APARAT_NN", True),
+    PozycjaBramyApi("add_nn_section_coupler", "catalog_ref", "APARAT_NN", True),
+    PozycjaBramyApi("add_nn_section_coupler", "catalog_binding", "APARAT_NN", True),
     # --- Źródło przekształtnikowe: tor nN i tor DER-SN (V2) ------------------
     PozycjaBramyApi(
         "add_converter_source",

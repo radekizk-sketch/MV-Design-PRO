@@ -39,7 +39,7 @@ from enm.catalog_completion import (
 )
 from enm.domain_operations import execute_domain_operation
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
-from enm.store import reset_enm_store, set_enm
+from enm.store import get_enm, reset_enm_store, set_enm
 from network_model.catalog.repository import get_default_mv_catalog
 from network_model.catalog.types import LoadType
 
@@ -281,15 +281,31 @@ def test_rozplyw_na_sieci_referencyjnej_daje_pelny_spadek_napiecia_nn() -> None:
 
 def test_szyna_nn_pobiera_moc_bierna_odbiorow() -> None:
     completed = _model_z_odbiorami("rozplyw-moc-bierna")
-    bus_nn = _szyna_nn(completed)
     set_enm("case-d7-q", completed)
 
     run = execute_run(create_run(case_id="case-d7-q", analysis_type="PF").id)
     wyniki = {b["bus_id"]: b for b in run.raw_result["result_v1"]["bus_results"]}
-    szyna = wyniki[_graph_id_from_ref(bus_nn)]
 
-    assert float(szyna["p_injected_mw"]) == pytest.approx(-0.09, abs=1e-9)
-    assert float(szyna["q_injected_mvar"]) == pytest.approx(
+    # P0.1 nN (LV-INV-12): `create_run` czyta model przez `get_enm`, który
+    # promuje KAŻDY wpis `nn_field_specs` do WŁASNEGO aparatu odpływowego —
+    # trzy odbiory dołożone migracją katalogową (defekt D7) NIE SĄ już
+    # zagregowane na jednej szynie stacji: każdy przenosi się za SWÓJ aparat,
+    # na WŁASNĄ (nową) szynę odpływu. Sumujemy moc wstrzykiwaną na tych trzech
+    # szynach — fizyka odbiorów (P, Q z katalogowego cosφ) jest identyczna,
+    # zmieniła się WYŁĄCZNIE topologia (bus_ref odbioru), którą sprawdza
+    # `tests/enm/test_nn_field_specs_promocja.py`.
+    promowany = get_enm("case-d7-q")
+    assert (
+        len(promowany.loads) == 3
+    ), "Oczekiwano trzech odbiorów nN dołożonych migracją katalogową."
+    szyny_odbiorow_graph_id = {_graph_id_from_ref(load.bus_ref) for load in promowany.loads}
+    assert len(szyny_odbiorow_graph_id) == 3, "Odbiory powinny trafić na TRZY różne szyny odpływów."
+
+    p_calkowite = sum(float(wyniki[gid]["p_injected_mw"]) for gid in szyny_odbiorow_graph_id)
+    q_calkowite = sum(float(wyniki[gid]["q_injected_mvar"]) for gid in szyny_odbiorow_graph_id)
+
+    assert p_calkowite == pytest.approx(-0.09, abs=1e-9)
+    assert q_calkowite == pytest.approx(
         -3 * (DEFAULT_LOAD_KW / 1000.0) * math.tan(math.acos(0.92)), abs=1e-9
     )
 

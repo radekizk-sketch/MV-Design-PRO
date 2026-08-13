@@ -72,6 +72,7 @@ REF_TRAFO_BLOKOWY = "tr-sn-nn-15-04-1000kva-dyn11"
 REF_KABEL_DER = "cable-base-epr-al-1c-240"
 REF_APARAT_SN = "sw-cb-abb-vd4-17kv-630a"
 REF_APARAT_NN = "cb_nn_630a"
+REF_KABEL_NN = "kab_nn_4x120_al"
 REF_CT = "ct_400_5_5p20_15va_abb"
 REF_VT = "vt_15kv_100v_3p_abb"
 REF_PRZEKAZNIK = "ACME_REX100_v1"
@@ -594,6 +595,58 @@ INIEKCJE: tuple[IniekcjaBramy, ...] = (
         "vt_catalog_ref",
         lambda: {"generator_ref": "gen-1", "vt_catalog_ref": REF_VT},
         lambda p: _zepsuj_klucz(p, "vt_catalog_ref"),
+    ),
+    # --- P0.1 nN — topologia obwodów nN (karta P0.1, C §4.1) -----------------
+    IniekcjaBramy(
+        "add_nn_cable_segment",
+        "catalog_ref",
+        lambda: {"from_bus_ref": "bus-nn-1", "length_m": 20.0, "catalog_ref": REF_KABEL_NN},
+        lambda p: _zepsuj_klucz(p, "catalog_ref"),
+    ),
+    IniekcjaBramy(
+        "add_nn_cable_segment",
+        "catalog_binding",
+        lambda: {
+            "from_bus_ref": "bus-nn-1",
+            "length_m": 20.0,
+            "catalog_binding": _wiazanie("KABEL_NN", REF_KABEL_NN),
+        },
+        lambda p: _zepsuj_wiazanie(p),
+    ),
+    IniekcjaBramy(
+        "add_nn_switch_device",
+        "catalog_ref",
+        lambda: {
+            "from_bus_ref": "bus-nn-1",
+            "to_bus_ref": "bus-nn-2",
+            "catalog_ref": REF_APARAT_NN,
+        },
+        lambda p: _zepsuj_klucz(p, "catalog_ref"),
+    ),
+    IniekcjaBramy(
+        "add_nn_switch_device",
+        "catalog_binding",
+        lambda: {
+            "from_bus_ref": "bus-nn-1",
+            "to_bus_ref": "bus-nn-2",
+            "catalog_binding": _wiazanie("APARAT_NN", REF_APARAT_NN),
+        },
+        lambda p: _zepsuj_wiazanie(p),
+    ),
+    IniekcjaBramy(
+        "add_nn_section_coupler",
+        "catalog_ref",
+        lambda: {"station_ref": "st-nn-1", "catalog_ref": REF_APARAT_NN},
+        lambda p: _zepsuj_klucz(p, "catalog_ref"),
+    ),
+    IniekcjaBramy(
+        "add_nn_section_coupler",
+        "catalog_binding",
+        lambda: {
+            "station_ref": "st-nn-1",
+            "catalog_binding": _wiazanie("APARAT_NN", REF_APARAT_NN),
+        },
+        lambda p: _zepsuj_wiazanie(p),
     ),
 )
 

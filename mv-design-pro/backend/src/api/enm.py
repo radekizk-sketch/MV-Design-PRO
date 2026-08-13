@@ -30,10 +30,11 @@ from application.analyses.protection.czas_wylaczenia_pola import (
 from application.analyses.wytrzymalosc_aparatury_pol import (
     zbuduj_widok_wytrzymalosci_aparatury,
 )
+from application.analysis_run.result_invalidator import ResultInvalidator
 from application.eligibility_service import EligibilityService
 from application.field_read_model import build_field_read_model
 from application.protection_read_model import build_protection_read_model
-from domain.canonical_operations import resolve_operation_name
+from domain.canonical_operations import CANONICAL_OPERATIONS, resolve_operation_name
 from domain.readiness_bridge import opis_kanoniczny
 from enm.canonical_analysis import (
     run_power_flow_now,
@@ -104,6 +105,45 @@ def _resolve_project_id(case_id: str, request: Request) -> str | None:
         if study_case is not None:
             return str(study_case.project_id)
     return None
+
+
+def _invaliduj_wyniki_po_operacji(case_id: str, resolved_name: str, request: Request) -> None:
+    """Unieważnij wyniki projektu po udanej operacji MUTUJĄCEJ model (D §6.2, karta P0.1).
+
+    Dispatcher operacji domenowych (`POST /domain-ops`, JEDYNY produkcyjny tor
+    zapisu ENM — `/enm/ops`/`/enm/ops/batch` są wyłączone w
+    `_PRODUCTION_DISABLED_ROUTE_KEYS`) był drugim — obok legacy wizardu,
+    `network_wizard/service.py:1590` — miejscem mutującym model, które NIE
+    wywoływało `ResultInvalidator`. Bez tego plakietki świeżości UI
+    (`StudyCase.result_status`) kłamały po KAŻDEJ operacji domenowej — nie
+    tylko po nowej rodzinie `NN_NETWORK` (P0.1): luka była KLASĄ (dispatcher),
+    nie instancją (jedna operacja), więc naprawa siedzi na poziomie dispatchera,
+    nie w pojedynczym handlerze.
+
+    Bezskutkowe (nigdy nie podnosi wyjątku), gdy:
+    - operacja nie mutuje modelu (`mutates_model=False`, np. `refresh_snapshot`),
+    - w tym środowisku nie ma warstwy DB (`uow_factory=None` — testy jednostkowe
+      operacji domenowych wołają `execute_domain_operation` wprost, z pominięciem
+      tej końcówki API, i nie mają czego unieważniać),
+    - `case_id` nie jest UUID albo nie ma odpowiadającego `StudyCase` w DB — ENM
+      istnieje NIEZALEŻNIE od DB (`enm/store.py` tworzy domyślny model dla
+      dowolnego `case_id`), więc brak wiersza nie jest błędem tej funkcji.
+    """
+    spec = CANONICAL_OPERATIONS.get(resolved_name)
+    if spec is not None and not spec.mutates_model:
+        return
+    uow_factory = getattr(request.app.state, "uow_factory", None)
+    if uow_factory is None:
+        return
+    project_id = _resolve_project_id(case_id, request)
+    if project_id is None:
+        return
+    try:
+        parsed_project_id = UUID(project_id)
+    except ValueError:
+        return
+    with uow_factory() as uow:
+        ResultInvalidator().invalidate_project_results(uow, parsed_project_id)
 
 
 # ---------------------------------------------------------------------------
@@ -998,7 +1038,7 @@ def rozbieznosc_wobec_bramy(
 
 
 @router.post("/{case_id}/enm/domain-ops")
-def domain_ops(case_id: str, req: DomainOpEnvelopeModel) -> dict[str, Any]:
+def domain_ops(case_id: str, req: DomainOpEnvelopeModel, request: Request) -> dict[str, Any]:
     """Kanoniczny endpoint operacji domenowych V1.
 
     Wspólny kontrakt dla wszystkich operacji budowy sieci SN:
@@ -1029,10 +1069,12 @@ def domain_ops(case_id: str, req: DomainOpEnvelopeModel) -> dict[str, Any]:
     RÓŻNYCH przypadkach nadal biegną równolegle.
     """
     with blokada_przypadku(case_id):
-        return _domain_ops_pod_blokada(case_id, req)
+        return _domain_ops_pod_blokada(case_id, req, request)
 
 
-def _domain_ops_pod_blokada(case_id: str, req: DomainOpEnvelopeModel) -> dict[str, Any]:
+def _domain_ops_pod_blokada(
+    case_id: str, req: DomainOpEnvelopeModel, request: Request
+) -> dict[str, Any]:
     from enm.domain_operations import execute_domain_operation
 
     enm = _get_enm(case_id)
@@ -1119,6 +1161,19 @@ def _domain_ops_pod_blokada(case_id: str, req: DomainOpEnvelopeModel) -> dict[st
             )
             result["error_code"] = "api.snapshot_validation_failed"
             result["snapshot"] = None
+        else:
+            # D §6.2 (karta P0.1): unieważnienie wyników PO udanym zapisie —
+            # tylko wtedy model faktycznie się zmienił. Awaria unieważnienia
+            # (DB niedostępna, brak StudyCase) NIE cofa raportowanego sukcesu
+            # zapisu modelu — plakietka świeżości pozostaje wtedy nieaktualna
+            # (znany, nazwany dług tej awarii), ale model jest zapisany poprawnie.
+            try:
+                _invaliduj_wyniki_po_operacji(case_id, resolved_name, request)
+            except Exception:
+                logger.exception(
+                    "Unieważnienie wyników po operacji domenowej nie powiodło się "
+                    "(model zapisany poprawnie — plakietki świeżości mogą być nieaktualne)."
+                )
 
     return result
 

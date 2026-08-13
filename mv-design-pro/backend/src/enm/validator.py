@@ -15,6 +15,9 @@ from pydantic import BaseModel
 
 from .fix_actions import FixAction
 from .interlock_rules import earthing_interlock_violation
+from .migrations.nn_field_specs_promocja import (
+    META_KLUCZ_NN_PROMOCJA_BEZ_WIAZANIA,
+)
 from .models import (
     GEN_TYPES_PRZEKSZTALTNIKOWE,
     Cable,
@@ -117,6 +120,8 @@ class ENMValidator:
         self._check_through_station_continuity(enm, issues)
         # KOMPLETNOSC-POLA-TR: transformator na szynie SN bez pola roli TR
         self._check_transformer_sn_bay(enm, issues)
+        # P0.1 nN (karta P0.1, C §5): topologia obwodow nN — E060-E064/W060/W062
+        self._check_nn_topology(enm, issues)
 
         # Deterministic sort: severity_rank → code → first element_ref
         issues.sort(
@@ -1377,3 +1382,344 @@ class ENMValidator:
                         ),
                     )
                 )
+
+    # ------------------------------------------------------------------
+    # P0.1 nN: topologia obwodow nN (E060-E064, W060, W062)
+    # ------------------------------------------------------------------
+
+    def _check_nn_topology(self, enm: EnergyNetworkModel, issues: list[ValidationIssue]) -> None:
+        """P0.1 nN (karta P0.1; C §5; D LV-INV-01/03/11/12).
+
+        E060 - odbior/generator na szynie nN bez ciaglej sciezki (przez zamkniete
+               galezie + transformatory) do zadnego zrodla (LV-INV-01). Zrodlem
+               energizacji jest KAZDY `Source` w modelu (SN lub nN) — upstream SN
+               energizuje nN przez transformator w TYM SAMYM grafie (LV-INV-05);
+               Generator NIE jest tu zrodlem energizacji (analogicznie do
+               istniejacego E003 — Generator moze zniknac z case'u jako stan
+               laczników, Source jest siecia).
+        E061 - galaz z OBOMA koncami w pasmie nN bez wiazania katalogowego
+               KABEL_NN/APARAT_NN (catalog_ref); wyjatek: galaz z automigracji
+               promocji pol nN (meta `nn_promocja_bez_wiazania_katalogowej`,
+               `enm/migrations/nn_field_specs_promocja.py`) bez wiazania -> W061
+               (LV-INV-12, C §4.2 — dane historyczne, ktorych katalog nie widzial).
+        E062 - dwie szyny nN o ROZNYCH napieciach znamionowych polaczone galezia
+               NIE-transformatorowa. Zaostrzenie E020 WEWNATRZ pasma nN: E020
+               grupuje CALE pasmo „nN" (<1 kV) jako JEDNO pasmo (0,4 kV i 0,69 kV
+               nalezą do tego samego pasma), wiec nie wykrywa mieszania
+               poziomow WEWNATRZ pasma (LV-INV-11).
+        E063 - stacja zasilajaca odbiory nN, ktora nie deklaruje ukladu
+               uziemienia sieci nN (meta.nn_earthing_system) — wymagane dla
+               kryterium SWZ/ochrony przeciwporazeniowej (IEC 60364-4-41).
+        E064 - ProtectionAssignment.breaker_ref wskazuje galaz, ktorej NIE MA w
+               modelu (LV-INV-03 — zabezpieczenie musi byc fizycznie w torze;
+               kontrola ogolna, nie ograniczona do pasma nN — dowolna dolaczajaca
+               operacja usuwajaca galaz z przypisanym zabezpieczeniem musi albo
+               odlaczyc zabezpieczenie, albo zostawic slad wykrywalny tutaj).
+        W060 - odcinek KABLOWY nN (Cable, oba konce nN) bez meta.
+               cable_laying_conditions — obciazalnosc liczona wg zalozenia
+               katalogowego (jawne ostrzezenie, nie cichy domysl).
+        W062 - co najmniej dwa zrodla/generatory nN BEZPOSREDNIO na TEJ SAMEJ
+               szynie — rownolegla praca bez sprzegla/logiki SZR miedzy nimi.
+        """
+        bus_by_ref = {b.ref_id: b for b in enm.buses}
+
+        def _bus_w_pasmie_nn(bus_ref: str) -> bool:
+            bus = bus_by_ref.get(bus_ref)
+            if bus is None or bus.voltage_kv is None or bus.voltage_kv <= 0:
+                return False
+            return _voltage_band(bus.voltage_kv) == "nN"
+
+        # --- E060: ciaglosc zasilania odbiorow/generatorow nN ---------------
+        graf = nx.Graph()
+        for bus in enm.buses:
+            graf.add_node(bus.ref_id)
+        for branch in enm.branches:
+            if branch.status != "closed":
+                continue
+            if branch.from_bus_ref in bus_by_ref and branch.to_bus_ref in bus_by_ref:
+                graf.add_edge(branch.from_bus_ref, branch.to_bus_ref)
+        for trafo in enm.transformers:
+            if trafo.hv_bus_ref in bus_by_ref and trafo.lv_bus_ref in bus_by_ref:
+                graf.add_edge(trafo.hv_bus_ref, trafo.lv_bus_ref)
+        source_bus_refs = {s.bus_ref for s in enm.sources if s.bus_ref in bus_by_ref}
+        skladowa_wezla: dict[str, frozenset[str]] = {}
+        for skladowa in nx.connected_components(graf):
+            zamrozona = frozenset(skladowa)
+            for ref in skladowa:
+                skladowa_wezla[ref] = zamrozona
+
+        def _ma_sciezke_do_zrodla(bus_ref: str) -> bool:
+            skladowa = skladowa_wezla.get(bus_ref)
+            if skladowa is None:
+                return False
+            return bool(skladowa & source_bus_refs)
+
+        for load in enm.loads:
+            if not _bus_w_pasmie_nn(load.bus_ref):
+                continue
+            if _ma_sciezke_do_zrodla(load.bus_ref):
+                continue
+            issues.append(
+                ValidationIssue(
+                    code="E060",
+                    severity=SEVERITY_BLOCKER,
+                    message_pl=(
+                        f"Odbior nN '{load.ref_id}' na szynie '{load.bus_ref}' nie ma "
+                        f"ciaglej sciezki (przez zamkniete galezie/transformatory) "
+                        f"do zadnego zrodla zasilania."
+                    ),
+                    element_refs=[load.ref_id, load.bus_ref],
+                    wizard_step_hint="K6",
+                    suggested_fix=(
+                        "Zamknij lacznik na trasie do zrodla albo polacz odplyw z "
+                        "zasilana czescia sieci."
+                    ),
+                    fix_action=FixAction(
+                        action_type="NAVIGATE_TO_ELEMENT",
+                        element_ref=load.ref_id,
+                        modal_type="LoadModal",
+                        payload_hint={"required": "continuous_path_to_source"},
+                    ),
+                )
+            )
+
+        for gen in enm.generators:
+            if not _bus_w_pasmie_nn(gen.bus_ref):
+                continue
+            if _ma_sciezke_do_zrodla(gen.bus_ref):
+                continue
+            issues.append(
+                ValidationIssue(
+                    code="E060",
+                    severity=SEVERITY_BLOCKER,
+                    message_pl=(
+                        f"Zrodlo nN '{gen.ref_id}' na szynie '{gen.bus_ref}' nie ma "
+                        f"ciaglej sciezki (przez zamkniete galezie/transformatory) "
+                        f"do reszty sieci zasilanej."
+                    ),
+                    element_refs=[gen.ref_id, gen.bus_ref],
+                    wizard_step_hint="K6",
+                    suggested_fix=(
+                        "Zamknij lacznik na trasie do reszty sieci albo sprawdz "
+                        "przylaczenie zrodla."
+                    ),
+                    fix_action=FixAction(
+                        action_type="NAVIGATE_TO_ELEMENT",
+                        element_ref=gen.ref_id,
+                        modal_type="GeneratorModal",
+                        payload_hint={"required": "continuous_path_to_source"},
+                    ),
+                )
+            )
+
+        # --- E061/W061: wiazanie katalogowe galezi W PASMIE nN ---------------
+        for branch in enm.branches:
+            if not (_bus_w_pasmie_nn(branch.from_bus_ref) and _bus_w_pasmie_nn(branch.to_bus_ref)):
+                continue
+            if branch.catalog_ref:
+                continue
+            branch_meta = branch.meta if isinstance(branch.meta, dict) else {}
+            if branch_meta.get(META_KLUCZ_NN_PROMOCJA_BEZ_WIAZANIA):
+                issues.append(
+                    ValidationIssue(
+                        code="W061",
+                        severity=SEVERITY_IMPORTANT,
+                        message_pl=(
+                            f"Galaz nN '{branch.ref_id}' (z automigracji pol nN) nie ma "
+                            f"wiazania katalogowego KABEL_NN/APARAT_NN — dane katalogowe "
+                            f"pola zrodlowego nie byly dostepne przy migracji."
+                        ),
+                        element_refs=[branch.ref_id],
+                        wizard_step_hint="K6",
+                        suggested_fix="Przypisz element z katalogu KABEL_NN/APARAT_NN.",
+                        fix_action=FixAction(
+                            action_type="SELECT_CATALOG",
+                            element_ref=branch.ref_id,
+                            modal_type="BranchModal",
+                            payload_hint={"required": "catalog_ref"},
+                        ),
+                    )
+                )
+                continue
+            issues.append(
+                ValidationIssue(
+                    code="E061",
+                    severity=SEVERITY_BLOCKER,
+                    message_pl=(
+                        f"Galaz nN '{branch.ref_id}' nie ma wiazania katalogowego "
+                        f"KABEL_NN/APARAT_NN (catalog_ref)."
+                    ),
+                    element_refs=[branch.ref_id],
+                    wizard_step_hint="K6",
+                    suggested_fix="Przypisz element z katalogu KABEL_NN/APARAT_NN.",
+                    fix_action=FixAction(
+                        action_type="SELECT_CATALOG",
+                        element_ref=branch.ref_id,
+                        modal_type="BranchModal",
+                        payload_hint={"required": "catalog_ref"},
+                    ),
+                )
+            )
+
+        # --- E062: mieszanie poziomow napiecia WEWNATRZ pasma nN --------------
+        for branch in enm.branches:
+            from_bus = bus_by_ref.get(branch.from_bus_ref)
+            to_bus = bus_by_ref.get(branch.to_bus_ref)
+            if from_bus is None or to_bus is None:
+                continue
+            if from_bus.voltage_kv <= 0 or to_bus.voltage_kv <= 0:
+                continue
+            if (
+                _voltage_band(from_bus.voltage_kv) != "nN"
+                or _voltage_band(to_bus.voltage_kv) != "nN"
+            ):
+                continue
+            if abs(from_bus.voltage_kv - to_bus.voltage_kv) <= 1e-9:
+                continue
+            issues.append(
+                ValidationIssue(
+                    code="E062",
+                    severity=SEVERITY_BLOCKER,
+                    message_pl=(
+                        f"Galaz '{branch.ref_id}' laczy dwie szyny nN o roznych "
+                        f"napieciach znamionowych ({from_bus.voltage_kv} kV i "
+                        f"{to_bus.voltage_kv} kV) bez transformatora."
+                    ),
+                    element_refs=[branch.ref_id, from_bus.ref_id, to_bus.ref_id],
+                    wizard_step_hint="K6",
+                    suggested_fix=(
+                        "Wstaw transformator miedzy poziomami nN albo popraw "
+                        "przypisanie szyn galezi."
+                    ),
+                    fix_action=FixAction(
+                        action_type="OPEN_MODAL",
+                        element_ref=branch.ref_id,
+                        modal_type="BranchModal",
+                        payload_hint={"required": "nn_voltage_level_consistency"},
+                    ),
+                )
+            )
+
+        # --- E063: uklad uziemienia sieci nN stacji z odbiorami nN ------------
+        for sub in enm.substations:
+            bus_refs_stacji = set(sub.bus_refs)
+            ma_odbior_nn = any(
+                load.bus_ref in bus_refs_stacji and _bus_w_pasmie_nn(load.bus_ref)
+                for load in enm.loads
+            )
+            if not ma_odbior_nn:
+                continue
+            sub_meta = sub.meta if isinstance(sub.meta, dict) else {}
+            if sub_meta.get("nn_earthing_system"):
+                continue
+            issues.append(
+                ValidationIssue(
+                    code="E063",
+                    severity=SEVERITY_BLOCKER,
+                    message_pl=(
+                        f"Stacja '{sub.ref_id}' zasila odbiory nN, ale nie deklaruje "
+                        f"ukladu uziemienia sieci nN (meta.nn_earthing_system)."
+                    ),
+                    element_refs=[sub.ref_id],
+                    wizard_step_hint="K6",
+                    suggested_fix=("Wybierz uklad uziemienia sieci nN (TN-S/TN-C/TN-C-S/TT/IT)."),
+                    fix_action=FixAction(
+                        action_type="OPEN_MODAL",
+                        element_ref=sub.ref_id,
+                        modal_type="SubstationModal",
+                        payload_hint={"required": "nn_earthing_system"},
+                    ),
+                )
+            )
+
+        # --- E064: zabezpieczenie wskazujace nieistniejaca galaz --------------
+        branch_refs = {b.ref_id for b in enm.branches}
+        for pa in enm.protection_assignments:
+            if pa.breaker_ref and pa.breaker_ref not in branch_refs:
+                issues.append(
+                    ValidationIssue(
+                        code="E064",
+                        severity=SEVERITY_BLOCKER,
+                        message_pl=(
+                            f"Zabezpieczenie '{pa.ref_id}' wskazuje nieistniejaca galaz "
+                            f"'{pa.breaker_ref}' (breaker_ref)."
+                        ),
+                        element_refs=[pa.ref_id, pa.breaker_ref],
+                        wizard_step_hint="K7",
+                        suggested_fix=(
+                            "Przypisz zabezpieczenie do istniejacej galezi lacznikowej."
+                        ),
+                        fix_action=FixAction(
+                            action_type="OPEN_MODAL",
+                            element_ref=pa.ref_id,
+                            modal_type="ProtectionModal",
+                            payload_hint={"required": "breaker_ref"},
+                        ),
+                    )
+                )
+
+        # --- W060: odcinek kablowy nN bez warunkow ulozenia -------------------
+        for branch in enm.branches:
+            if not isinstance(branch, Cable):
+                continue
+            if not (_bus_w_pasmie_nn(branch.from_bus_ref) and _bus_w_pasmie_nn(branch.to_bus_ref)):
+                continue
+            branch_meta = branch.meta if isinstance(branch.meta, dict) else {}
+            if branch_meta.get("cable_laying_conditions"):
+                continue
+            issues.append(
+                ValidationIssue(
+                    code="W060",
+                    severity=SEVERITY_IMPORTANT,
+                    message_pl=(
+                        f"Kabel nN '{branch.ref_id}' nie ma zadeklarowanych warunkow "
+                        f"ulozenia — obciazalnosc liczona wg zalozenia katalogowego."
+                    ),
+                    element_refs=[branch.ref_id],
+                    wizard_step_hint="K6",
+                    suggested_fix=(
+                        "Zadeklaruj warunki ulozenia kabla (sposob, grunt, grupowanie)."
+                    ),
+                    fix_action=FixAction(
+                        action_type="OPEN_MODAL",
+                        element_ref=branch.ref_id,
+                        modal_type="BranchModal",
+                        payload_hint={"required": "cable_laying_conditions"},
+                    ),
+                )
+            )
+
+        # --- W062: rownolegle zrodla nN na jednej szynie bez sprzegla ---------
+        zrodla_na_szynie: dict[str, list[str]] = {}
+        for source in enm.sources:
+            if _bus_w_pasmie_nn(source.bus_ref):
+                zrodla_na_szynie.setdefault(source.bus_ref, []).append(source.ref_id)
+        for gen in enm.generators:
+            if _bus_w_pasmie_nn(gen.bus_ref):
+                zrodla_na_szynie.setdefault(gen.bus_ref, []).append(gen.ref_id)
+        for bus_ref, refs in zrodla_na_szynie.items():
+            if len(refs) < 2:
+                continue
+            issues.append(
+                ValidationIssue(
+                    code="W062",
+                    severity=SEVERITY_IMPORTANT,
+                    message_pl=(
+                        f"Szyna nN '{bus_ref}' ma {len(refs)} zrodla/generatory "
+                        f"({', '.join(sorted(refs))}) bezposrednio na tej samej szynie "
+                        f"— brak sprzegla/logiki SZR rozdzielajacej rownolegla prace."
+                    ),
+                    element_refs=[bus_ref, *sorted(refs)],
+                    wizard_step_hint="K6",
+                    suggested_fix=(
+                        "Rozdziel zrodla na osobne sekcje szyn ze sprzeglem albo "
+                        "wprowadz logike SZR."
+                    ),
+                    fix_action=FixAction(
+                        action_type="OPEN_MODAL",
+                        element_ref=bus_ref,
+                        modal_type="SubstationModal",
+                        payload_hint={"required": "nn_parallel_sources"},
+                    ),
+                )
+            )

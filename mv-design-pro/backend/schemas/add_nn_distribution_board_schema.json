@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "add_nn_distribution_board_v1",
+  "title": "AddNnDistributionBoard",
+  "description": "Payload for add_nn_distribution_board domain operation (P0.1 nN, NN_NETWORK category) — podrozdzielnica/rozdzielnica nN (RGnN): Substation(station_type=\"rozdzielnica_nn\") + szyna główna + nn_sections=[sekcja 1].",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "meta": {
+      "type": "object",
+      "properties": {
+        "snapshot_in_id": { "type": "string" },
+        "idempotency_key": { "type": "string" },
+        "ui": { "type": "object" },
+        "timestamp_utc": { "type": "string", "format": "date-time" }
+      },
+      "required": ["snapshot_in_id", "idempotency_key"]
+    },
+    "voltage_kv": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "maximum": 1.0,
+      "description": "Napięcie znamionowe szyny głównej rozdzielnicy nN [kV]. Jawne — brak wartości domyślnej."
+    },
+    "name": { "type": "string" },
+    "designation": {
+      "type": "string",
+      "description": "Oznaczenie rozdzielnicy na dokumentacji (np. \"RGnN-1\")."
+    },
+    "construction_type": {
+      "type": "string",
+      "enum": ["wnetrzowa", "kontenerowa", "slupowa", "prefabrykowana", "inna"]
+    },
+    "supply": {
+      "type": "object",
+      "description": "Opcjonalne zasilenie nowej rozdzielnicy — wewnętrzne wywołanie add_nn_cable_segment z 'to_bus_ref' wymuszonym na nową szynę główną (pole 'to_bus_ref' w tym obiekcie jest ignorowane).",
+      "properties": {
+        "from_bus_ref": { "type": "string" },
+        "from_ref": { "type": "string" },
+        "length_m": { "type": "number", "exclusiveMinimum": 0 },
+        "catalog_ref": { "type": "string" },
+        "catalog_binding": { "$ref": "catalog_binding_schema.json" },
+        "n_parallel": { "type": "integer", "minimum": 1, "default": 1 },
+        "name": { "type": "string" },
+        "cable_laying_conditions": {}
+      },
+      "required": ["length_m", "catalog_ref"]
+    }
+  },
+  "required": ["voltage_kv"]
+}

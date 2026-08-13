@@ -159,7 +159,22 @@ def _rownolegle(zadania: list[Any]) -> list[BaseException]:
 
 class TestWyscigZastosowaniaSzablonu:
     def test_cztery_rownolegle_zastosowania_daja_cztery_stacje(self) -> None:
-        """4 watki x `apply` na jednym przypadku: +4 stacje, rewizja +4, zero bledow."""
+        """4 watki x `apply` na jednym przypadku: +4 stacje, rewizja +8, zero bledow.
+
+        P0.1 nN (karta P0.1, LV-INV-12): `apply_template_to_case` zaczyna od
+        `get_enm`, ktory TERAZ TAKZE promuje `nn_field_specs` -> realne elementy
+        (`enm/migrations/nn_field_specs_promocja.py`), a promocja MUTUJE model i
+        podbija rewizje jak kazda inna automigracja (ten sam wzorzec co migracja
+        punktu przylaczenia — `enm/store.py::_get_enm_pod_blokada`). Szablon zawsze
+        zostawia po sobie nN-owe „field spec" do promocji, wiec kazde z 4 zastosowan
+        (poza pierwszym, ktore nie zastaje niczego do promocji) na starcie promuje
+        ODPLYWY POPRZEDNIEGO zastosowania (+1 rewizja), a WLASNE zapisuje wlasnym
+        `set_enm` (+1 rewizja) — i ostatnie zastosowanie zostawia WLASNE odplywy
+        niepromowane az do koncowego odczytu ponizej. Stad 2 rewizje na zastosowanie
+        (4 wlasne zapisy + 3 promocje miedzy watkami + 1 promocja przy koncowym
+        odczycie = 8), a NIE 1:1 — liczba STACJI (fizyczny skutek, ktory ten test
+        bramkuje wobec defektu D4) zostaje +4, bez zmian.
+        """
         szablon = get_template(SZABLON)
         assert szablon is not None
         case_id = uuid.uuid4()
@@ -199,7 +214,7 @@ class TestWyscigZastosowaniaSzablonu:
             "Rownolegle zastosowania zgubily stacje: "
             f"{len(model_po.substations)} zamiast {stacje_przed + 4}"
         )
-        assert model_po.header.revision == rewizja_przed + 4
+        assert model_po.header.revision == rewizja_przed + 2 * len(segmenty)
 
         brakujace = [
             wynik["station_ref"] for wynik in wyniki if wynik["station_ref"] not in stacje_po
@@ -213,7 +228,11 @@ class TestWyscigZastosowaniaSzablonu:
 
         Dziennik odpowiada na pytanie „ktora zmiana uniewaznila moj wynik" (V12K-264).
         Rewizja bez wpisu czyni te odpowiedz niemozliwa, wiec kazda rewizja modelu
-        musi miec dokladnie jeden wpis.
+        musi miec dokladnie jeden wpis — NIEZALEZNIE od PRZYCZYNY rewizji (wlasny
+        zapis szablonu czy automigracja promocji nN uruchomiona przy odczycie, P0.1
+        nN, patrz uzasadnienie `2 * len(segmenty)` w
+        `test_cztery_rownolegle_zastosowania_daja_cztery_stacje` wyzej): kazda z nich
+        idzie przez `set_enm`, wiec kazda dostaje wpis.
         """
         szablon = get_template(SZABLON)
         assert szablon is not None
@@ -240,7 +259,7 @@ class TestWyscigZastosowaniaSzablonu:
         assert bledy == []
 
         rewizja_po = get_enm(case_key).header.revision
-        assert rewizja_po == rewizja_przed + 3
+        assert rewizja_po == rewizja_przed + 2 * len(segmenty)
         rewizje_w_dzienniku = [wpis.rewizja for wpis in wszystkie_wpisy(case_key)]
         oczekiwane = _oczekiwane_rewizje(rewizje_przed, rewizja_przed, rewizja_po)
         assert rewizje_w_dzienniku == oczekiwane, (

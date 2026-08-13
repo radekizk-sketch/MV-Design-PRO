@@ -142,6 +142,11 @@ _SEMANTIC_INCLUDE_SUBSTATION = (
     "bus_refs",
     "transformer_refs",
     "entry_point_ref",
+    # P0.1 nN (karta P0.1 pkt 7): sekcje rozdzielnicy nN sa TOPOLOGIA (ktora szyna
+    # nalezy do ktorej sekcji, sprzeglo) — pominiecie byloby cicha dziura w
+    # inwalidacji semantycznej (zmiana sekcjonowania RGnN nie zmieniłaby
+    # semantic_hash mimo zmiany struktury sieci).
+    "nn_sections",
 )
 
 

@@ -191,6 +191,11 @@ def build_golden_enm() -> EnergyNetworkModel:
                 station_type="mv_lv",
                 bus_refs=["bus_sn_b", "bus_nn"],
                 transformer_refs=["tr_sn_nn"],
+                # P0.1 nN (karta P0.1, E063): stacja z odbiorem/generacja na szynie
+                # nN (load_nn/gen_pv) musi deklarowac uklad uziemienia sieci nN —
+                # TN-S jest zgodny z `bus_nn.grounding.type = "directly_grounded"`
+                # zadeklarowanym wyzej.
+                meta={"nn_earthing_system": "TN-S"},
             ),
             Substation(
                 ref_id="sub_gpz",

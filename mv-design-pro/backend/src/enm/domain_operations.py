@@ -2425,6 +2425,11 @@ def _copy_split_segment_fields(target: dict[str, Any], source: dict[str, Any]) -
         "operating_temperature_c",
         "short_circuit_temperature_c",
         "thermal_source_ref",
+        # P0.1 nN (karta P0.1, split_nn_segment): liczba torów rownoleglych —
+        # oba odcinki po podziale sa WCIAZ tymi samymi n rownoleglymi kablami,
+        # tylko krotszymi. Brak na SN (pole nigdy nie ustawiane) — bez zmiany
+        # zachowania istniejacych podzialow SN.
+        "n_parallel",
     ):
         if source.get(key) is not None:
             target[key] = copy.deepcopy(source[key])

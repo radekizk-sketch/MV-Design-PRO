@@ -33,6 +33,11 @@ class OperationCategory(enum.Enum):
     PROTECTION = "protection"
     STUDY_CASE = "study_case"
     UNIVERSAL = "universal"
+    # P0.1 nN (karta P0.1, C §4.1): topologia obwodow nN — sieć generyczna ENM
+    # w paśmie ≤1 kV (Bus/Cable/SwitchBranch/FuseBranch/Load istniejące), NIE
+    # nowe klasy Lv*. Osobna kategoria od STATION_NN (pole/odpływ nN wpięte w
+    # pole stacji) — te operacje budują/zmieniają TOPOLOGIĘ GRAFU nN.
+    NN_NETWORK = "nn_network"
 
 
 @dataclass(frozen=True)
@@ -527,7 +532,14 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         description_pl="Dodanie baterii kondensatorów (kompensatora bocznikowego) na szynę SN",
         target_layer="Domain / NetworkModel",
         required_fields=(),
-        optional_fields=("bus_ref", "bus_nn_ref", "catalog_ref", "catalog_binding", "status", "name"),
+        optional_fields=(
+            "bus_ref",
+            "bus_nn_ref",
+            "catalog_ref",
+            "catalog_binding",
+            "status",
+            "name",
+        ),
         creates_elements=True,
     ),
     "add_surge_arrester_sn": OperationSpec(
@@ -554,6 +566,96 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         required_fields=(),
         mutates_model=False,
         creates_elements=False,
+    ),
+    # --- nN Network (9 operations, karta P0.1, C §4.1) ---
+    "add_nn_cable_segment": OperationSpec(
+        canonical_name="add_nn_cable_segment",
+        category=OperationCategory.NN_NETWORK,
+        description_pl="Dodanie odcinka kabla nN od szyny/pola do nowej lub istniejącej szyny nN",
+        target_layer="Domain / NetworkModel",
+        required_fields=("from_bus_ref", "length_m"),
+        optional_fields=(
+            "from_ref",
+            "to_bus_ref",
+            "catalog_ref",
+            "catalog_binding",
+            "n_parallel",
+            "name",
+            "cable_laying_conditions",
+        ),
+        creates_elements=True,
+    ),
+    "add_nn_distribution_board": OperationSpec(
+        canonical_name="add_nn_distribution_board",
+        category=OperationCategory.NN_NETWORK,
+        description_pl="Dodanie podrozdzielnicy/rozdzielnicy nN (RGnN) z szyną główną",
+        target_layer="Domain / NetworkModel",
+        required_fields=("voltage_kv",),
+        optional_fields=("name", "supply", "designation", "construction_type"),
+        creates_elements=True,
+    ),
+    "add_nn_switch_device": OperationSpec(
+        canonical_name="add_nn_switch_device",
+        category=OperationCategory.NN_NETWORK,
+        description_pl="Dodanie aparatu (wyłącznik/rozłącznik/bezpiecznik) w torze nN",
+        target_layer="Domain / NetworkModel",
+        required_fields=("from_bus_ref", "to_bus_ref"),
+        optional_fields=("device_class", "catalog_ref", "catalog_binding", "name"),
+        creates_elements=True,
+    ),
+    "add_nn_section_coupler": OperationSpec(
+        canonical_name="add_nn_section_coupler",
+        category=OperationCategory.NN_NETWORK,
+        description_pl="Dodanie nowej sekcji szyn i sprzęgła w rozdzielnicy nN (RGnN)",
+        target_layer="Domain / NetworkModel",
+        required_fields=("station_ref",),
+        optional_fields=("catalog_ref", "catalog_binding", "name"),
+        creates_elements=True,
+    ),
+    "split_nn_segment": OperationSpec(
+        canonical_name="split_nn_segment",
+        category=OperationCategory.NN_NETWORK,
+        description_pl="Rozcięcie odcinka kabla nN na dwa z nową szyną pośrednią",
+        target_layer="Domain / NetworkModel",
+        required_fields=("segment_ref", "split_at_m"),
+        optional_fields=(),
+        creates_elements=True,
+    ),
+    "merge_nn_segments": OperationSpec(
+        canonical_name="merge_nn_segments",
+        category=OperationCategory.NN_NETWORK,
+        description_pl="Scalenie dwóch odcinków kabla nN tego samego typu przez szynę pośrednią",
+        target_layer="Domain / NetworkModel",
+        required_fields=("segment_a_ref", "segment_b_ref"),
+        optional_fields=(),
+        creates_elements=True,
+    ),
+    "set_nn_cable_laying_conditions": OperationSpec(
+        canonical_name="set_nn_cable_laying_conditions",
+        category=OperationCategory.NN_NETWORK,
+        description_pl="Zapis warunków ułożenia odcinka kabla nN (meta, bez fizyki)",
+        target_layer="Domain / NetworkModel",
+        required_fields=("segment_ref", "cable_laying_conditions"),
+        optional_fields=(),
+        creates_elements=False,
+    ),
+    "remove_nn_element": OperationSpec(
+        canonical_name="remove_nn_element",
+        category=OperationCategory.NN_NETWORK,
+        description_pl="Usunięcie elementu nN (kabel/aparat/szyna-liść/odbiór) z walidacją spójności",
+        target_layer="Domain / NetworkModel",
+        required_fields=("element_ref",),
+        optional_fields=(),
+        creates_elements=False,
+    ),
+    "copy_nn_feeder": OperationSpec(
+        canonical_name="copy_nn_feeder",
+        category=OperationCategory.NN_NETWORK,
+        description_pl="Kopia poddrzewa odpływu nN (od aparatu odpływowego w dół)",
+        target_layer="Domain / NetworkModel",
+        required_fields=("feeder_apparatus_ref",),
+        optional_fields=("name",),
+        creates_elements=True,
     ),
 }
 

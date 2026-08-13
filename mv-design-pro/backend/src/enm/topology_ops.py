@@ -358,6 +358,10 @@ def create_branch(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult
             "operating_temperature_c",
             "short_circuit_temperature_c",
             "thermal_source_ref",
+            # P0.1 nN (karta P0.1, add_nn_cable_segment): liczba torow kabla
+            # ulozonych rownolegle na tej samej trasie. Brak na SN — bez zmiany
+            # zachowania istniejacych torow tworzenia gałęzi SN.
+            "n_parallel",
         ):
             if key in data:
                 branch_data[key] = data[key]
