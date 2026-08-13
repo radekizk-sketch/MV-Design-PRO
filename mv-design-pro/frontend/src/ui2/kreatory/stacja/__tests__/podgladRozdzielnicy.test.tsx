@@ -552,6 +552,20 @@ describe('MINI-RMU-CAD — determinizm rysunku', () => {
     ]);
   });
 
+  it('dwa pola tej samej roli mają ROZŁĄCZNE identyfikatory (numer w testid)', () => {
+    const { container } = render(
+      <PodgladRozdzielnicySn
+        snFields={[pole('LINIA_ODG', 'ap-WYLACZNIK'), pole('LINIA_ODG', 'ap-ROZLACZNIK')]}
+        aparaty={KATALOG}
+        snVoltageKv={15}
+      />,
+    );
+    const ids = Array.from(container.querySelectorAll('[data-testid^="mvd-podglad-pole-"]')).map(
+      (el) => el.getAttribute('data-testid'),
+    );
+    expect(ids).toEqual(['mvd-podglad-pole-1-LINIA_ODG', 'mvd-podglad-pole-2-LINIA_ODG']);
+  });
+
   it('rozdzielnica bez pól nie wywraca rysunku (uczciwy stan pusty)', () => {
     const { container } = render(<PodgladRozdzielnicySn snFields={[]} aparaty={KATALOG} />);
     expect(container.querySelector('svg')).toBeTruthy();
