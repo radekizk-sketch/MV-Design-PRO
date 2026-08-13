@@ -595,8 +595,18 @@ export interface EngineeringReadinessResponse {
 
 /**
  * Analysis type for eligibility matrix.
+ *
+ * FAULT_LOOP_NN / SWZ_NN — karta G-22: pętla zwarcia nN (IEC 60364-4-41) i
+ * werdykt SWZ per obwód, dodane do macierzy eligibility (rozszerzenie
+ * addytywne backendu `application/eligibility_service.py`).
  */
-export type EligibilityAnalysisType = 'SC_3F' | 'SC_2F' | 'SC_1F' | 'LOAD_FLOW';
+export type EligibilityAnalysisType =
+  | 'SC_3F'
+  | 'SC_2F'
+  | 'SC_1F'
+  | 'LOAD_FLOW'
+  | 'FAULT_LOOP_NN'
+  | 'SWZ_NN';
 
 /**
  * Eligibility status for a given analysis type.
@@ -661,6 +671,8 @@ export const ELIGIBILITY_ANALYSIS_LABELS: Record<EligibilityAnalysisType, string
   SC_2F: 'Zwarcie dwufazowe (2F)',
   SC_1F: 'Zwarcie jednofazowe (1F)',
   LOAD_FLOW: 'Rozpływ mocy',
+  FAULT_LOOP_NN: 'Pętla zwarcia nN',
+  SWZ_NN: 'SWZ (samoczynne wyłączenie zasilania nN)',
 };
 
 /**

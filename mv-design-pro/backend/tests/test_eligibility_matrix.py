@@ -576,7 +576,8 @@ class TestEligibilityAPI:
         assert "blockers_total" in data["overall"]
 
         # Matrix entries
-        assert len(data["matrix"]) == 4  # SC_3F, SC_2F, SC_1F, LOAD_FLOW
+        # SC_3F, SC_2F, SC_1F, LOAD_FLOW, FAULT_LOOP_NN, SWZ_NN (karta G-22)
+        assert len(data["matrix"]) == 6
 
         for entry in data["matrix"]:
             assert "analysis_type" in entry
@@ -660,7 +661,14 @@ class TestEligibilityAPI:
         data = resp.json()
 
         types = {e["analysis_type"] for e in data["matrix"]}
-        assert types == {"SC_3F", "SC_2F", "SC_1F", "LOAD_FLOW"}
+        assert types == {
+            "SC_3F",
+            "SC_2F",
+            "SC_1F",
+            "LOAD_FLOW",
+            "FAULT_LOOP_NN",
+            "SWZ_NN",
+        }
 
 
 # ===========================================================================

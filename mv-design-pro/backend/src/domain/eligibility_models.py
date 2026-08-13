@@ -42,6 +42,10 @@ class AnalysisType(StrEnum):
     SC_2F = "SC_2F"
     SC_1F = "SC_1F"
     LOAD_FLOW = "LOAD_FLOW"
+    # Karta G-22: pętla zwarcia nN (IEC 60364-4-41) i werdykt SWZ per obwód
+    # (application/analyses/fault_loop, application/analyses/swz — karta P0.6).
+    FAULT_LOOP_NN = "FAULT_LOOP_NN"
+    SWZ_NN = "SWZ_NN"
 
 
 class EligibilityStatus(StrEnum):

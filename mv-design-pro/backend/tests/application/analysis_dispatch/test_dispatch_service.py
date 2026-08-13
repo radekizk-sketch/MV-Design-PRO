@@ -7,6 +7,10 @@ Test plan:
 - dispatch PF lifecycle
 - dispatch SC lifecycle
 - unified summary shape consistency
+- karta G-22: dispatch FAULT_LOOP_NN/SWZ_NN woła REALNE serwisy P0.6
+  (`application.analyses.fault_loop.service`, `application.analyses.swz.service`)
+  na modelu ENM z `enm.store` — bez mocków, ścieżka OK i uczciwa ścieżka
+  "brak danych"
 """
 
 from __future__ import annotations
@@ -37,6 +41,18 @@ from application.network_wizard.dtos import (
 )
 from domain.analysis_kind import AnalysisKind, analysis_type_to_kind, kind_to_analysis_type
 from domain.project_design_mode import ProjectDesignMode
+from enm.models import (
+    Bus,
+    Cable,
+    EnergyNetworkModel,
+    ENMDefaults,
+    ENMHeader,
+    Source,
+    Substation,
+    SwitchBranch,
+    Transformer,
+)
+from enm.store import get_enm, reset_enm_store, set_enm
 from infrastructure.persistence.db import create_engine_from_url, create_session_factory, init_db
 from infrastructure.persistence.unit_of_work import build_uow_factory
 
@@ -150,6 +166,106 @@ def _setup_sc_project(wizard):
         },
     )
     return project, case, slack_node, pq_node
+
+
+def _setup_nn_project(wizard):
+    """Projekt + JEDEN OperatingCase — bez sieci w warstwie Wizard/NetworkGraph
+    (karta G-22): model nN, na którym operuje FAULT_LOOP_NN/SWZ_NN, żyje w
+    `enm.store` kluczowanym `str(case.id)` — CAŁKOWICIE OSOBNA przestrzeń od
+    NetworkGraph budowanej przez `NetworkWizardService` (zob. docstring
+    `AnalysisDispatchService._dispatch_fault_loop_nn`). Jeden przypadek
+    tworzony tu staje się AKTYWNY automatycznie (`create_operating_case`
+    aktywuje pierwszy przypadek projektu), więc `_resolve_case_id` działa
+    bez dodatkowego wywołania `ActiveCaseService`.
+    """
+    project = wizard.create_project("NN-Dispatch")
+    case = wizard.create_operating_case(
+        project.id,
+        "Normal",
+        {"base_mva": 100.0, "project_design_mode": ProjectDesignMode.SN_NETWORK.value},
+    )
+    return project, case
+
+
+def _nn_ready_enm() -> EnergyNetworkModel:
+    """Stacja SN/nN + transformator (Dyn11, komplet danych) + trasa kablowa
+    nN z żyłą powrotną + aparat zabezpieczający (APARAT_NN_MCB) — spełnia
+    WSZYSTKIE warunki wejściowe P0.6 dla pętli zwarcia w punkcie 'b1' i SWZ
+    na odpływie chronionym aparatem 'ap1' (ten sam kształt fixture'a co
+    `tests/application/test_eligibility_service_nn.py::_ready_nn_enm`, żeby
+    dispatch i eligibility zgadzały się co do tego, czym jest "gotowy"
+    model — jedno źródło prawdy o kompletności danych, nie dwie kopie).
+    """
+    return EnergyNetworkModel(
+        header=ENMHeader(name="nN dispatch", defaults=ENMDefaults(sn_nominal_kv=15.0)),
+        buses=[
+            Bus(ref_id="sn", name="SN", voltage_kv=15.0),
+            Bus(ref_id="nn", name="nN", voltage_kv=0.4),
+            Bus(ref_id="b1", name="B1", voltage_kv=0.4),
+            Bus(ref_id="b2", name="B2", voltage_kv=0.4),
+        ],
+        sources=[
+            Source(
+                ref_id="src",
+                name="GPZ",
+                bus_ref="sn",
+                model="thevenin",
+                sk3_mva=200.0,
+                r_ohm=0.1,
+                x_ohm=0.5,
+                catalog_ref="SRC_CAT",
+            )
+        ],
+        transformers=[
+            Transformer(
+                ref_id="tr",
+                name="TR",
+                hv_bus_ref="sn",
+                lv_bus_ref="nn",
+                sn_mva=0.63,
+                uhv_kv=15.0,
+                ulv_kv=0.4,
+                uk_percent=4.0,
+                pk_kw=6.5,
+                vector_group="Dyn11",
+                catalog_ref="TR_CAT",
+            )
+        ],
+        branches=[
+            Cable(
+                ref_id="c1",
+                name="C1",
+                from_bus_ref="nn",
+                to_bus_ref="b1",
+                length_km=0.05,
+                r_ohm_per_km=0.32,
+                x_ohm_per_km=0.08,
+                catalog_ref="KABEL_NN_CAT",
+                return_conductor_r_ohm_per_km_20c=0.32,
+                return_conductor_x_ohm_per_km=0.08,
+            ),
+            SwitchBranch(
+                ref_id="ap1",
+                name="AP1",
+                type="breaker",
+                from_bus_ref="b1",
+                to_bus_ref="b2",
+                catalog_ref="MCB_C32_CAT",
+                catalog_namespace="APARAT_NN_MCB",
+                materialized_params={"in_a": 32.0, "curve_class": "C"},
+            ),
+        ],
+        substations=[
+            Substation(
+                ref_id="stn",
+                name="S",
+                station_type="mv_lv",
+                bus_refs=["sn", "nn"],
+                transformer_refs=["tr"],
+                meta={"nn_earthing_system": "TN-C-S"},
+            )
+        ],
+    )
 
 
 # =============================================================================
@@ -545,3 +661,252 @@ class TestStaleInteraction:
 
         updated = analysis_svc.get_run(run.id)
         assert updated.result_status == "OUTDATED"
+
+
+# =============================================================================
+# Karta G-22: FAULT_LOOP_NN / SWZ_NN dispatch
+# =============================================================================
+
+
+@pytest.fixture(autouse=True)
+def _reset_enm_store_for_nn_dispatch_tests():
+    """`enm.store` jest globalnym magazynem w pamięci procesu (kluczowanym
+    `case_id`) — bez resetu przypadki różnych testów w tym pliku mogłyby
+    dzielić wpisy (UUID-y `case.id` SĄ unikalne per test, więc kolizja jest
+    mało prawdopodobna, ale reset jest tani i eliminuje zależność testów od
+    kolejności uruchomienia)."""
+    reset_enm_store()
+    yield
+    reset_enm_store()
+
+
+class TestDispatchFaultLoopNn:
+    """Dispatch woła WPROST `application.analyses.fault_loop.service`
+    (import, nie kopia — §0.3 karty G-22), na modelu z `enm.store`."""
+
+    def test_point_ok(self):
+        wizard, _, dispatch_svc, _ = _build_services()
+        project, case = _setup_nn_project(wizard)
+        set_enm(str(case.id), _nn_ready_enm())
+
+        summary = dispatch_svc.dispatch(
+            analysis_kind=AnalysisKind.FAULT_LOOP_NN,
+            project_id=project.id,
+            study_case_id=case.id,
+            options={"station_ref": "stn", "bus_ref": "b1"},
+        )
+
+        assert summary.analysis_kind == "FAULT_LOOP_NN"
+        assert summary.status == "FINISHED"
+        assert summary.results_valid is True
+        assert summary.error_message is None
+        assert "fault-loop-point" in summary.result_location
+        assert f"/api/cases/{case.id}/" in summary.result_location
+
+    def test_feeders_ok_without_bus_ref(self):
+        """Bez `bus_ref` w options → widok CAŁEGO odpływu (wszystkie punkty),
+        nie widok pojedynczego punktu — inny endpoint, inna funkcja P0.6."""
+        wizard, _, dispatch_svc, _ = _build_services()
+        project, case = _setup_nn_project(wizard)
+        set_enm(str(case.id), _nn_ready_enm())
+
+        summary = dispatch_svc.dispatch(
+            analysis_kind=AnalysisKind.FAULT_LOOP_NN,
+            project_id=project.id,
+            study_case_id=case.id,
+            options={"station_ref": "stn"},
+        )
+
+        assert summary.status == "FINISHED"
+        assert "fault-loop-feeders" in summary.result_location
+
+    def test_missing_station_ref_raises(self):
+        wizard, _, dispatch_svc, _ = _build_services()
+        project, case = _setup_nn_project(wizard)
+        set_enm(str(case.id), _nn_ready_enm())
+
+        with pytest.raises(ValueError, match="station_ref"):
+            dispatch_svc.dispatch(
+                analysis_kind=AnalysisKind.FAULT_LOOP_NN,
+                project_id=project.id,
+                study_case_id=case.id,
+                options={},
+            )
+
+    def test_honest_failure_for_unknown_station(self):
+        """Dispatch NIE fabrykuje sukcesu — stacja, której nie ma w modelu,
+        daje status FAILED z uczciwym powodem PL (dowód, że serwis P0.6 jest
+        WOŁANY naprawdę, nie zaślepiony na zawsze-OK)."""
+        wizard, _, dispatch_svc, _ = _build_services()
+        project, case = _setup_nn_project(wizard)
+        set_enm(str(case.id), _nn_ready_enm())
+
+        summary = dispatch_svc.dispatch(
+            analysis_kind=AnalysisKind.FAULT_LOOP_NN,
+            project_id=project.id,
+            study_case_id=case.id,
+            options={"station_ref": "nieznana-stacja", "bus_ref": "b1"},
+        )
+
+        assert summary.status == "FAILED"
+        assert summary.results_valid is False
+        assert summary.error_message
+
+    def test_real_service_called_not_mocked(self):
+        """Dispatch i wywołanie bezpośrednie serwisu P0.6 na TYM SAMYM modelu
+        dają IDENTYCZNY wynik fizyczny — dowód, że dispatch nie duplikuje
+        logiki ani jej nie podmienia (import, nie kopia)."""
+        from application.analyses.fault_loop.service import build_fault_loop_view_at_point
+
+        wizard, _, dispatch_svc, _ = _build_services()
+        project, case = _setup_nn_project(wizard)
+        enm = _nn_ready_enm()
+        set_enm(str(case.id), enm)
+
+        summary = dispatch_svc.dispatch(
+            analysis_kind=AnalysisKind.FAULT_LOOP_NN,
+            project_id=project.id,
+            study_case_id=case.id,
+            options={"station_ref": "stn", "bus_ref": "b1"},
+        )
+        assert summary.status == "FINISHED"
+
+        direct = build_fault_loop_view_at_point(get_enm(str(case.id)), "stn", "b1")
+        assert direct["status"] == "OK"
+
+    def test_determinism_same_input_same_run_id(self):
+        wizard, _, dispatch_svc, _ = _build_services()
+        project, case = _setup_nn_project(wizard)
+        set_enm(str(case.id), _nn_ready_enm())
+
+        s1 = dispatch_svc.dispatch(
+            analysis_kind=AnalysisKind.FAULT_LOOP_NN,
+            project_id=project.id,
+            study_case_id=case.id,
+            options={"station_ref": "stn", "bus_ref": "b1"},
+        )
+        s2 = dispatch_svc.dispatch(
+            analysis_kind=AnalysisKind.FAULT_LOOP_NN,
+            project_id=project.id,
+            study_case_id=case.id,
+            options={"station_ref": "stn", "bus_ref": "b1"},
+        )
+        assert s1.run_id == s2.run_id
+        assert s1.input_hash == s2.input_hash
+
+    def test_different_bus_ref_different_run_id(self):
+        wizard, _, dispatch_svc, _ = _build_services()
+        project, case = _setup_nn_project(wizard)
+        set_enm(str(case.id), _nn_ready_enm())
+
+        s1 = dispatch_svc.dispatch(
+            analysis_kind=AnalysisKind.FAULT_LOOP_NN,
+            project_id=project.id,
+            study_case_id=case.id,
+            options={"station_ref": "stn", "bus_ref": "b1"},
+        )
+        s2 = dispatch_svc.dispatch(
+            analysis_kind=AnalysisKind.FAULT_LOOP_NN,
+            project_id=project.id,
+            study_case_id=case.id,
+            options={"station_ref": "stn", "bus_ref": "nn"},
+        )
+        assert s1.run_id != s2.run_id
+
+
+class TestDispatchSwzNn:
+    """Dispatch woła WPROST `application.analyses.swz.service.build_swz_view`
+    (P0.6), na modelu z `enm.store`."""
+
+    def test_ok(self):
+        wizard, _, dispatch_svc, _ = _build_services()
+        project, case = _setup_nn_project(wizard)
+        set_enm(str(case.id), _nn_ready_enm())
+
+        summary = dispatch_svc.dispatch(
+            analysis_kind=AnalysisKind.SWZ_NN,
+            project_id=project.id,
+            study_case_id=case.id,
+            options={"station_ref": "stn", "bus_ref": "b1", "breaker_ref": "ap1"},
+        )
+
+        assert summary.analysis_kind == "SWZ_NN"
+        assert summary.status == "FINISHED"
+        assert summary.results_valid is True
+        assert "swz" in summary.result_location
+
+    def test_missing_breaker_ref_raises(self):
+        wizard, _, dispatch_svc, _ = _build_services()
+        project, case = _setup_nn_project(wizard)
+        set_enm(str(case.id), _nn_ready_enm())
+
+        with pytest.raises(ValueError, match="breaker_ref"):
+            dispatch_svc.dispatch(
+                analysis_kind=AnalysisKind.SWZ_NN,
+                project_id=project.id,
+                study_case_id=case.id,
+                options={"station_ref": "stn", "bus_ref": "b1"},
+            )
+
+    def test_missing_bus_ref_raises(self):
+        wizard, _, dispatch_svc, _ = _build_services()
+        project, case = _setup_nn_project(wizard)
+        set_enm(str(case.id), _nn_ready_enm())
+
+        with pytest.raises(ValueError, match="bus_ref"):
+            dispatch_svc.dispatch(
+                analysis_kind=AnalysisKind.SWZ_NN,
+                project_id=project.id,
+                study_case_id=case.id,
+                options={"station_ref": "stn", "breaker_ref": "ap1"},
+            )
+
+    def test_honest_failure_for_unknown_breaker(self):
+        wizard, _, dispatch_svc, _ = _build_services()
+        project, case = _setup_nn_project(wizard)
+        set_enm(str(case.id), _nn_ready_enm())
+
+        summary = dispatch_svc.dispatch(
+            analysis_kind=AnalysisKind.SWZ_NN,
+            project_id=project.id,
+            study_case_id=case.id,
+            options={"station_ref": "stn", "bus_ref": "b1", "breaker_ref": "nieznany-aparat"},
+        )
+
+        assert summary.status == "FAILED"
+        assert summary.results_valid is False
+        assert summary.error_message
+
+    def test_determinism_same_input_same_run_id(self):
+        wizard, _, dispatch_svc, _ = _build_services()
+        project, case = _setup_nn_project(wizard)
+        set_enm(str(case.id), _nn_ready_enm())
+
+        s1 = dispatch_svc.dispatch(
+            analysis_kind=AnalysisKind.SWZ_NN,
+            project_id=project.id,
+            study_case_id=case.id,
+            options={"station_ref": "stn", "bus_ref": "b1", "breaker_ref": "ap1"},
+        )
+        s2 = dispatch_svc.dispatch(
+            analysis_kind=AnalysisKind.SWZ_NN,
+            project_id=project.id,
+            study_case_id=case.id,
+            options={"station_ref": "stn", "bus_ref": "b1", "breaker_ref": "ap1"},
+        )
+        assert s1.run_id == s2.run_id
+
+
+class TestAnalysisKindMappingNn:
+    """Karta G-22: mapowanie `AnalysisKind` ↔ `analysis_type` obejmuje też
+    FAULT_LOOP_NN/SWZ_NN — kompletność rejestru (KLASA NIE INSTANCJA: bez
+    tego testu brak wpisu byłby niewidoczny aż do pierwszego wywołania w
+    kontekście, który faktycznie woła `kind_to_analysis_type`)."""
+
+    def test_fault_loop_nn_round_trip(self):
+        analysis_type = kind_to_analysis_type(AnalysisKind.FAULT_LOOP_NN)
+        assert analysis_type_to_kind(analysis_type) == AnalysisKind.FAULT_LOOP_NN
+
+    def test_swz_nn_round_trip(self):
+        analysis_type = kind_to_analysis_type(AnalysisKind.SWZ_NN)
+        assert analysis_type_to_kind(analysis_type) == AnalysisKind.SWZ_NN
