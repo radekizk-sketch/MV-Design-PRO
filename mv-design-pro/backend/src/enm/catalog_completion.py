@@ -142,7 +142,18 @@ def _materialized_branch_point_params(
         materialized["switchgear_field_specs"] = _zksn_switchgear_field_specs(branch_ports_count)
     else:
         switch_device_kind = str(materialized.get("switch_device_kind") or "ROZLACZNIK")
-        rated_current = materialized.get("switch_rated_current_a") or 630.0
+        # Karta RATCHET-DICT-READ (2026-08-13): USUNIETA fabrykacja "or 630.0".
+        # `ApparatusSpec.rated_current_a` jest jawnie OPCJONALNE w kontrakcie
+        # (`enm/models.py`: `rated_current_a: float | None = None`), a ten sam
+        # plik kilkadziesiat linii nizej (w. 418-424) juz stosuje uczciwy wzorzec
+        # "brak danej -> None" dla TEGO SAMEGO pola na galezi. 630 A bylo
+        # zmyslona obciazalnoscia lacznika polowego, ktora wchodzila wprost do
+        # apparatus_specs uzywanych przez sprawdzenia cieplne/koordynacje —
+        # ta sama klasa co ampacity_a=630.0 naprawione w MOST-WEJSCIA-V126 dla
+        # mostu ENM->V12.6 (`solver_input/v126_contracts.py`), tu w DRUGIM
+        # moscie (materializacja katalogu branch-pointu). Brak danej -> None
+        # (uczciwy meldunek braku), nie liczba udajaca pomiar.
+        rated_current = materialized.get("switch_rated_current_a")
         materialized["object_role"] = "OVERHEAD_BRANCH_POLE"
         materialized["has_switchgear"] = False
         materialized["apparatus_specs"] = [
