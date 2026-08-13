@@ -115,14 +115,17 @@ def test_rozlacznik_bezpiecznikowy_nn_ma_icu_wypelnione_nie_nie_dotyczy() -> Non
 # ---------------------------------------------------------------------------
 
 
-def test_wylacznik_sn_z_brakiem_danych_w_karcie_zwraca_none_bez_zgadywania() -> None:
-    """Pozycja ISTNIEJE w katalogu (Siemens 3AH5 12kV 630A), ale karta
-    producenta nie ma tego prądu w linii produktowej — zero fabrykacji.
+def test_skorygowany_3ah5_ma_pelne_dane_z_realnego_wariantu() -> None:
+    """Dawne widmo „3AH5 12 kV 630 A" (prad nieistniejacy w linii HG 11.05)
+    skorygowano dyrektywa wlasciciela 2026-08-13 na realny wariant 800 A
+    z zachowana zdolnoscia 25 kA (tabela doboru str. 13) — dlug None zamkniety.
+    Intencja pierwotnego testu (zero fabrykacji przy braku danych) zyje dalej
+    w test_wpis_nieznany_w_zadnym_katalogu_daje_uczciwy_brak_podstawy.
     """
-    wynik = resolve_um_icu_from_catalog("sw-cb-siemens-3ah5-12kv-630a")
+    wynik = resolve_um_icu_from_catalog("sw-cb-siemens-3ah5-12kv-800a")
     assert wynik.found_in_catalog is True
-    assert wynik.u_m_kv is None
-    assert wynik.i_cu_ka is None
+    assert wynik.u_m_kv == 12.0
+    assert wynik.i_cu_ka == 25.0
     assert wynik.i_cu_not_applicable is False
 
 
@@ -204,18 +207,17 @@ def test_kazdy_wpis_sn_bez_zdolnosci_wylaczania_ma_i_cu_ka_none_w_katalogu() -> 
     }
 
 
-def test_kazdy_wpis_sn_ma_u_m_kv_ustawione_lub_jawnie_udokumentowany_brak() -> None:
-    """u_m_kv jest None WYLACZNIE dla wpisow z jawnie udokumentowanym brakiem
-    (3AH5 630A) — nie ma cichych dziur w katalogu.
+def test_kazdy_wpis_sn_ma_u_m_kv_ustawione() -> None:
+    """Zapadka WZMOCNIONA po korekcie widm 3AH5 (2026-08-13): zbior znanego
+    dlugu jest PUSTY — u_m_kv=None gdziekolwiek w katalogu SN to czerwien.
+    Nowy wpis bez potwierdzenia w karcie producenta musi swiadomie wrocic
+    do wzorca znanego dlugu, nie przejsc cicho.
     """
-    znany_dlug = {"sw-cb-siemens-3ah5-12kv-630a", "sw-cb-siemens-3ah5-24kv-630a"}
     for record in get_all_switch_equipment_types():
         params = record["params"]
-        if params.get("u_m_kv") is None:
-            assert record["id"] in znany_dlug, (
-                f"{record['id']}: u_m_kv=None poza znanym dlugiem — "
-                "niezamierzona dziura w katalogu"
-            )
+        assert (
+            params.get("u_m_kv") is not None
+        ), f"{record['id']}: u_m_kv=None — niezamierzona dziura w katalogu"
 
 
 def test_kazdy_wpis_nn_ma_pelne_u_m_kv_i_i_cu_ka() -> None:
