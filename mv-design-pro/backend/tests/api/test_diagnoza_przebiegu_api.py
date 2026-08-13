@@ -230,3 +230,53 @@ def test_diagnoza_biegu_wystawia_zamkniety_zestaw_pol(app_client):
         "error_message",
         "iteration_history",
     }
+
+
+# ---------------------------------------------------------------------------
+# Porównanie rewizji ENM — trzecia trasa tego samego modułu
+# ---------------------------------------------------------------------------
+#
+# Ta trasa cierpiała na TĘ SAMĄ klasę defektu co dwie powyższe: wołała
+# `uow.snapshots.get(...)`, metodę, której repozytorium nie ma (jest
+# `get_snapshot`). Naprawa bez testu byłaby fałszywą pewnością — inwentarz
+# klasy obejmuje WSZYSTKIE trzy trasy modułu, więc pin też.
+
+
+def _snapshot_dwoch_szyn(snapshot_id: str, *, napiecie_kv: float):
+    from network_model.core.graph import NetworkGraph
+    from network_model.core.node import Node, NodeType
+    from network_model.core.snapshot import create_network_snapshot
+
+    graf = NetworkGraph(network_model_id="model-diff")
+    graf.add_node(
+        Node(
+            id="bus-1",
+            name="Szyna A",
+            node_type=NodeType.SLACK,
+            voltage_level=napiecie_kv,
+            voltage_magnitude=1.0,
+            voltage_angle=0.0,
+        )
+    )
+    return create_network_snapshot(graf, snapshot_id=snapshot_id)
+
+
+def test_porownanie_rewizji_enm_zwraca_zmiany(app_client, uow_factory):
+    """Trasa diff ODPOWIADA danymi (przed naprawą: zawsze 500)."""
+    with uow_factory() as uow:
+        uow.snapshots.add_snapshot(_snapshot_dwoch_szyn("snap-a", napiecie_kv=110.0))
+        uow.snapshots.add_snapshot(_snapshot_dwoch_szyn("snap-b", napiecie_kv=15.0))
+
+    odpowiedz = app_client.get("/api/cases/c-diff/enm/diff?from=snap-a&to=snap-b")
+
+    assert odpowiedz.status_code == 200, odpowiedz.text
+    ciało = odpowiedz.json()
+    assert ciało["is_identical"] is False
+    assert ciało["changes"], "zmiana napięcia szyny musi być widoczna w porównaniu"
+
+
+def test_porownanie_rewizji_enm_melduje_brak_snapshotu(app_client):
+    """Nieznana rewizja to uczciwe 404, nie błąd serwera."""
+    odpowiedz = app_client.get("/api/cases/c-diff/enm/diff?from=nie-ma&to=tez-nie-ma")
+
+    assert odpowiedz.status_code == 404
