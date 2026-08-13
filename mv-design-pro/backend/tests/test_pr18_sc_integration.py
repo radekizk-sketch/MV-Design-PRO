@@ -28,6 +28,9 @@ from application.execution_engine.errors import (
     StudyCaseNotFoundError,
 )
 from application.execution_engine.service import ExecutionEngineService
+from application.result_mapping.sc_binding_meta import (
+    wzbogac_resultset_o_meta_bindingu,
+)
 from application.result_mapping.short_circuit_to_resultset_v1 import (
     map_short_circuit_to_resultset_v1,
 )
@@ -1111,12 +1114,17 @@ class TestResultMapper:
             fault_node_id="BUS_MV",
         )
 
-        rs = map_short_circuit_to_resultset_v1(
-            binding_result=binding_result,
-            run_id=run_id,
-            graph=graph,
-            validation_snapshot={},
-            readiness_snapshot={},
+        # Klucze P0.3 dokłada wrapper POZA zamrożonym mapperem — test ćwiczy
+        # tę samą kompozycję co ścieżka produkcyjna (execution_engine).
+        rs = wzbogac_resultset_o_meta_bindingu(
+            map_short_circuit_to_resultset_v1(
+                binding_result=binding_result,
+                run_id=run_id,
+                graph=graph,
+                validation_snapshot={},
+                readiness_snapshot={},
+            ),
+            binding_result,
         )
 
         gr = rs.global_results
@@ -1152,12 +1160,15 @@ class TestResultMapper:
             scenario="MIN",
         )
 
-        rs = map_short_circuit_to_resultset_v1(
-            binding_result=binding_result,
-            run_id=run_id,
-            graph=graph,
-            validation_snapshot={},
-            readiness_snapshot={},
+        rs = wzbogac_resultset_o_meta_bindingu(
+            map_short_circuit_to_resultset_v1(
+                binding_result=binding_result,
+                run_id=run_id,
+                graph=graph,
+                validation_snapshot={},
+                readiness_snapshot={},
+            ),
+            binding_result,
         )
 
         gr = rs.global_results

@@ -31,6 +31,9 @@ from application.execution_engine.load_flow_run_input import LoadFlowRunInput
 from application.result_mapping.load_flow_to_resultset_v1 import (
     map_power_flow_to_resultset_v1,
 )
+from application.result_mapping.sc_binding_meta import (
+    wzbogac_resultset_o_meta_bindingu,
+)
 from application.result_mapping.short_circuit_to_resultset_v1 import (
     map_short_circuit_to_resultset_v1,
 )
@@ -538,13 +541,18 @@ class ExecutionEngineService:
                 z0_bus=z0_bus,
             )
 
-            # Map to ResultSet v1
-            result_set = map_short_circuit_to_resultset_v1(
-                binding_result=binding_result,
-                run_id=run.id,
-                graph=graph,
-                validation_snapshot=validation_snapshot,
-                readiness_snapshot=readiness_snapshot,
+            # Map to ResultSet v1 (mapper ZAMROŻONY) + meta bindingu P0.3
+            # (scenariusz/c per pasmo/korekta R_θ) dokładane wrapperem POZA
+            # plikiem chronionym, z przeliczeniem podpisu.
+            result_set = wzbogac_resultset_o_meta_bindingu(
+                map_short_circuit_to_resultset_v1(
+                    binding_result=binding_result,
+                    run_id=run.id,
+                    graph=graph,
+                    validation_snapshot=validation_snapshot,
+                    readiness_snapshot=readiness_snapshot,
+                ),
+                binding_result,
             )
 
             # Store ResultSet and mark DONE
