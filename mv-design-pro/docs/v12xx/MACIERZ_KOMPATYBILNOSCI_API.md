@@ -63,8 +63,8 @@ Data wylaczenia dla deprecated: koniec M2, o ile wiersz nie wskazuje inaczej.
 | `GET /api/analysis-runs/{run_id}/trace` | v12xx | aktywny | 2026-04-24 | - | Slad wykonania uruchomienia. | trace tests | Architekt wynikow |
 | `GET /api/analysis-runs/{run_id}/trace/summary` | v12xx | aktywny | 2026-04-24 | - | Skrot sladu wykonania. | trace summary tests | Architekt wynikow |
 | `GET /api/cases/{case_id}/analysis-eligibility` | v12xx | aktywny | 2026-04-24 | - | Zdolnosc uruchomienia analiz. | eligibility tests | Architekt walidacji |
-| `GET /api/cases/{case_id}/diagnostics` | v12xx.m1 | adapter | 2026-04-24 | koniec M3 | Diagnostyka przejsciowa modelu. | diagnostics tests | Architekt API |
-| `GET /api/cases/{case_id}/diagnostics/preflight` | v12xx.m1 | adapter | 2026-04-24 | koniec M3 | Diagnostyka przed obliczeniami. | diagnostics preflight tests | Architekt walidacji |
+| `GET /api/cases/{case_id}/diagnostics` | v12xx | aktywny | 2026-04-24 | - | Diagnostyka modelu przypadku (D7: promocja z adaptera do kanonu — powierzchnia „Diagnoza przebiegu" konsumuje ja produkcyjnie). | tests/api/test_diagnoza_przebiegu_api.py | Architekt API |
+| `GET /api/cases/{case_id}/diagnostics/preflight` | v12xx | aktywny | 2026-04-24 | - | Kontrola przed obliczeniem — macierz dostepnosci analiz (D7: promocja z adaptera do kanonu). | tests/api/test_diagnoza_przebiegu_api.py | Architekt walidacji |
 | `GET /api/cases/{case_id}/engineering-readiness` | v12xx | aktywny | 2026-04-24 | - | Agregowana gotowosc inzynierska. | readiness tests | Architekt walidacji |
 | `GET /api/cases/{case_id}/enm` | v1 | adapter | 2026-04-24 | koniec M3 | Odczyt i migracja ENM v1 w M1/M2. | test migracji ENM v1->v2 | Architekt API |
 | `GET /api/cases/{case_id}/enm/diff` | v12xx.m1 | adapter | 2026-04-24 | koniec M3 | Porownanie ENM dla UI i audytu. | enm diff tests | Architekt ENM |
@@ -110,6 +110,7 @@ Data wylaczenia dla deprecated: koniec M2, o ile wiersz nie wskazuje inaczej.
 | `GET /api/execution/fault-scenarios/{scenario_id}/eligibility` | v12xx.m1 | adapter | 2026-04-24 | koniec M3 | Zdolnosc uruchomienia scenariusza zakloceniowego. | execution eligibility tests | Architekt ruchowy |
 | `GET /api/execution/fault-scenarios/{scenario_id}/sld-overlay` | v12xx.m1 | adapter | 2026-04-24 | koniec M3 | Nakladka SLD scenariusza zakloceniowego. | execution overlay tests | Architekt SLD |
 | `GET /api/execution/runs/{run_id}` | v12xx.m1 | adapter | 2026-04-24 | koniec M3 | Odczyt uruchomienia execution. | execution run tests | Architekt wynikow |
+| `GET /api/execution/runs/{run_id}/diagnostics` | v12xx | aktywny | 2026-08-13 | - | Diagnoza przebiegu (D7): dlaczego solver nie zbiegl. Interpretacja istniejacych artefaktow biegu, zero fizyki. | tests/api/test_diagnoza_przebiegu_api.py | Architekt wynikow |
 | `GET /api/execution/runs/{run_id}/results` | v12xx.m1 | adapter | 2026-04-24 | koniec M3 | Wyniki execution. | execution result tests | Architekt wynikow |
 | `GET /api/execution/runs/{run_id}/results/v1` | legacy | deprecated | 2026-04-24 | koniec M2 | Stary kontrakt wyniku execution. | legacy result tests | Architekt migracji |
 | `GET /api/execution/study-cases/{case_id}/batches` | v12xx | aktywny | 2026-08-07 | - | Lista serii przebiegow przypadku, najnowsze pierwsze; pusta lista = uczciwe zero. | test_batch_execution.py | Architekt ruchowy |
