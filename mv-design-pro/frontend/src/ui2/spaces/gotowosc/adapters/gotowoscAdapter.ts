@@ -121,7 +121,7 @@ function naReadinessIssue(
   fixActions: EnmFixAction[],
 ): ReadinessIssue {
   const trafienie = znajdzFixAction(wpis.code, wpis.element_ref, fixActions);
-  return {
+  const issue: ReadinessIssue = {
     code: wpis.code,
     severity,
     element_ref: wpis.element_ref,
@@ -131,6 +131,15 @@ function naReadinessIssue(
     suggested_fix: trafienie?.message_pl ?? null,
     fix_action: trafienie ? naFixActionUi(trafienie) : null,
   };
+  // Treść kanoniczna (kod / poziom / priorytet / obszar) przepisywana WYŁĄCZNIE
+  // wtedy, gdy backend ją przysłał. Pole niedostarczone zostaje niezdefiniowane
+  // — brak priorytetu kanonicznego jest daną („kanon tego warunku nie szereguje"),
+  // a nie luką do wypełnienia wartością zastępczą.
+  if (wpis.canonical_code !== undefined) issue.canonical_code = wpis.canonical_code;
+  if (wpis.canonical_level !== undefined) issue.canonical_level = wpis.canonical_level;
+  if (wpis.canonical_priority !== undefined) issue.canonical_priority = wpis.canonical_priority;
+  if (wpis.canonical_area !== undefined) issue.canonical_area = wpis.canonical_area;
+  return issue;
 }
 
 /**

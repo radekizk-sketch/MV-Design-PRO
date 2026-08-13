@@ -1,0 +1,201 @@
+/*
+ * Powierzchnia „Diagnoza przebiegu" (przestrzeń „Obliczenia", D7).
+ * Wyłącznie tokeny --mvd-* — parytet motywów jasny/ciemny bez osobnych reguł
+ * (ten sam wzorzec co `przebiegi.css`, `przypadki.css`).
+ */
+
+.mvd-diagnoza {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  background: var(--mvd-bg);
+  color: var(--mvd-ink);
+}
+
+.mvd-diagnoza h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+.mvd-diagnoza h3 {
+  margin: 0 0 4px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.mvd-diagnoza-naglowek {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.mvd-diagnoza-podtytul,
+.mvd-diagnoza-opis {
+  margin: 0;
+  font-size: 12px;
+  color: var(--mvd-muted);
+}
+
+.mvd-diagnoza-pusto {
+  padding: 16px;
+  border: 1px dashed var(--mvd-line);
+  border-radius: 6px;
+  color: var(--mvd-muted);
+  font-size: 12px;
+}
+.mvd-diagnoza-pusto p {
+  margin: 0 0 6px;
+}
+
+.mvd-diagnoza-sekcja {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-panel-2);
+}
+
+/* ---- werdykt ---- */
+.mvd-diagnoza-werdykt {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.mvd-diagnoza-werdykt-dopisek {
+  margin: 0;
+  font-size: 12px;
+  color: var(--mvd-muted);
+}
+
+.mvd-diagnoza-dane {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+}
+.mvd-diagnoza-wiersz {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 12px;
+}
+.mvd-diagnoza-wiersz dt {
+  min-width: 220px;
+  color: var(--mvd-muted);
+}
+.mvd-diagnoza-wiersz dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- akcja stanu zerowego / ponowienia ---- */
+.mvd-diagnoza-akcja {
+  align-self: flex-start;
+  padding: 6px 12px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--mvd-accent-ink);
+  background: var(--mvd-accent);
+  border: 1px solid var(--mvd-accent);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.mvd-diagnoza-akcja:focus-visible {
+  outline: 2px solid var(--mvd-accent);
+  outline-offset: 2px;
+}
+
+/* ---- tabele ---- */
+.mvd-diagnoza-tabela {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.mvd-diagnoza-tabela th,
+.mvd-diagnoza-tabela td {
+  padding: 5px 8px;
+  text-align: left;
+  border-bottom: 1px solid var(--mvd-line);
+  vertical-align: top;
+}
+.mvd-diagnoza-tabela th {
+  color: var(--mvd-muted);
+  font-weight: 600;
+}
+.mvd-diagnoza-tabela td {
+  font-variant-numeric: tabular-nums;
+}
+
+.mvd-diagnoza-dostepnosc {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.mvd-diagnoza-dostepnosc--available {
+  background: var(--mvd-ok-bg);
+  color: var(--mvd-ok);
+}
+.mvd-diagnoza-dostepnosc--blocked {
+  background: var(--mvd-err-bg);
+  color: var(--mvd-err);
+}
+
+.mvd-diagnoza-blokady,
+.mvd-diagnoza-wskazowki {
+  margin: 0;
+  padding-left: 16px;
+}
+
+/* ---- braki modelu ---- */
+.mvd-diagnoza-problemy {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.mvd-diagnoza-problem {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 4px;
+  background: var(--mvd-panel);
+  font-size: 12px;
+}
+.mvd-diagnoza-problem-tresc {
+  margin: 0;
+  line-height: 1.45;
+}
+.mvd-diagnoza-problem-refy {
+  margin: 0;
+  font-size: 11px;
+  color: var(--mvd-muted);
+}
+
+.mvd-diagnoza-waga {
+  align-self: flex-start;
+  padding: 1px 7px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+.mvd-diagnoza-waga--blocker {
+  background: var(--mvd-err-bg);
+  color: var(--mvd-err);
+}
+.mvd-diagnoza-waga--warn {
+  background: var(--mvd-warn-bg);
+  color: var(--mvd-warn);
+}
+.mvd-diagnoza-waga--info {
+  background: var(--mvd-panel-2);
+  color: var(--mvd-muted);
+}

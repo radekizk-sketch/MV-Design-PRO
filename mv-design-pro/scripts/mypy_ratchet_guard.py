@@ -75,8 +75,8 @@ BACKEND = ROOT / "backend"
 # `node.source_impedance` z `# type: ignore[attr-defined]` (fizyka liczona w warstwie
 # aplikacji i zapisywana poza kontraktem `Node`) — dlug zmalal razem z defektem.
 # Pomiar wlasny: 18/13 -> 17/12.
-BASELINE_ERRORS = 17
-BASELINE_FILES = 12
+BASELINE_ERRORS = 16
+BASELINE_FILES = 11
 
 WZORZEC_PODSUMOWANIA = re.compile(r"Found (\d+) errors? in (\d+) files?")
 WZORZEC_SUKCESU = re.compile(r"Success: no issues found")

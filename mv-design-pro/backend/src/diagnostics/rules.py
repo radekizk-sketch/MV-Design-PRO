@@ -5,9 +5,17 @@ Każda reguła przyjmuje NetworkGraph i zwraca listę DiagnosticIssue.
 Reguły NIE mutują grafu — są czysto odczytowe.
 
 Kody:
-    E-D01..E-D08 — BLOCKER (blokuje solwer)
-    W-D01..W-D03 — WARN (ograniczenie analiz)
+    E-D01..E-D05, E-D07 — BLOCKER (blokuje solwer)
+    E-D06, W-D01..W-D03 — WARN (ograniczenie analiz)
     I-D01..I-D02 — INFO (informacyjne)
+
+Numeracja ma lukę na E-D08 celowo. Pod tym kodem żyła ZAŚLEPKA
+(`rule_e_d08_frequency_conflict`) — deklarowała kontrolę sprzecznych
+częstotliwości, ale zwracała pustą listę ZAWSZE, bo reguły dostają
+`NetworkGraph`, który częstotliwości nie przenosi. Warunek jest realny i ma
+realnego odbiorcę (kontrakt V12.6 bierze częstotliwość bazową z pierwszej
+szyny), więc został WDROŻONY tam, gdzie leżą dane: `ENMValidator`, kod W009.
+Jeden warunek = jeden kod, dlatego kod E-D08 nie wraca.
 """
 
 from __future__ import annotations
@@ -254,13 +262,6 @@ def rule_e_d07_open_switches_isolate(graph: NetworkGraph) -> list[DiagnosticIssu
     return []
 
 
-def rule_e_d08_frequency_conflict(graph: NetworkGraph) -> list[DiagnosticIssue]:
-    """E-D08: Sprzeczne częstotliwości (placeholder — ENM nie modeluje f)."""
-    # Current ENM does not store frequency per element.
-    # This rule is a placeholder for future extension.
-    return []
-
-
 # ---------------------------------------------------------------------------
 # WARNING rules (W-Dxx)
 # ---------------------------------------------------------------------------
@@ -438,7 +439,6 @@ ALL_BLOCKER_RULES = [
     rule_e_d04_transformer_missing_sides,
     rule_e_d05_line_no_impedance,
     rule_e_d07_open_switches_isolate,
-    rule_e_d08_frequency_conflict,
 ]
 
 ALL_WARN_RULES = [

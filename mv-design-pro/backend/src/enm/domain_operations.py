@@ -18,6 +18,7 @@ import re
 from collections.abc import Iterable
 from typing import TYPE_CHECKING, Any
 
+from domain.readiness_bridge import opis_kanoniczny
 from network_model.catalog.audit2_catalogs import (
     get_tap_changer,
     tap_changer_fields_from_catalog,
@@ -1587,6 +1588,29 @@ def _resolve_initial_trunk_start_field(
     return None
 
 
+def _wzbogac_o_kanon(zgloszenia: list[dict[str, Any]]) -> None:
+    """Dokłada treść kanoniczną do zgłoszeń gotowości — W MIEJSCU, addytywnie.
+
+    Kazde zgloszenie dostaje pola `canonical_*` (kod, poziom, PRIORYTET, obszar,
+    komunikat, akcja naprawcza, nawigacja) z kanonicznego rejestru
+    `READINESS_CODES` przez most `domain/readiness_bridge.opis_kanoniczny`.
+    Zgloszenie bez rzetelnego odwzorowania na kanon NIE dostaje zadnego pola —
+    brak priorytetu jest DANA („kanon nie szereguje tego warunku"), nie luka do
+    zalatania najblizszym pasujacym kodem.
+
+    Po co to pole idzie az do przegladarki: pulpit projektu wyznacza „nastepna
+    najlepsza akcje" i musi uszeregowac blokady BEZ heurystyki po stronie UI.
+    Priorytet jest wlasnoscia kanonu, wiec jedyna uczciwa droga to przepisac go
+    z rejestru; do V12K-271 kanon docieral wylacznie do punktu koncowego
+    gotowosci inzynierskiej (`api/enm.py`), a odpowiedz operacji domenowej —
+    z ktorej czyta cala powloka ui2 — nie niosla go w ogole.
+    """
+    for zgloszenie in zgloszenia:
+        kanon = opis_kanoniczny(zgloszenie.get("code", ""))
+        if kanon is not None:
+            zgloszenie.update(kanon)
+
+
 def _build_readiness(
     enm: dict[str, Any],
 ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
@@ -1854,6 +1878,16 @@ def _build_readiness(
                         "message_pl": "Wybierz pozycję katalogową dla łącznika.",
                     }
                 )
+
+        # V12K-271 (karta PULPIT-NBA): DROGA kanonu do odpowiedzi operacji domenowej.
+        # Wzbogacenie jest ADDYTYWNE (dokladamy tylko klucze `canonical_*`, zadnego
+        # istniejacego nie zmieniamy) i wykonuje sie JEDNYM przebiegiem po CALYCH
+        # listach — swiadomie na koncu funkcji, nie w petli walidatora. Zgloszenia
+        # domenowe (PV/BESS, punkty odgalezne, laczniki) dokladane sa nizej, wiec
+        # wzbogacenie w petli walidatora pokryloby tylko czesc klasy i kazdy nowy
+        # emiter cicho wypadalby z kanonu.
+        _wzbogac_o_kanon(blockers)
+        _wzbogac_o_kanon(warnings)
 
         has_any_blocker = len(blockers) > 0
         return {

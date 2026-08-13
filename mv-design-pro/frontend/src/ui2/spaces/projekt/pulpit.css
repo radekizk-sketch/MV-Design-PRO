@@ -65,11 +65,6 @@ button.mvd-kafel {
 button.mvd-kafel:hover {
   border-color: var(--mvd-accent);
 }
-.mvd-kafel-mut {
-  background: var(--mvd-panel-2);
-  opacity: 0.85;
-}
-
 .mvd-kafel-title {
   margin: 0;
   font-size: 12px;
@@ -126,12 +121,6 @@ button.mvd-kafel:hover {
   font-family: var(--mvd-font-mono);
   font-variant-numeric: tabular-nums;
 }
-.mvd-kafel-wkrotce {
-  color: var(--mvd-muted);
-  font-size: 12px;
-  margin: 0;
-}
-
 /* Kafel „Warunki przyłączenia i bilans mocy" (E1 — B1/B2) */
 .mvd-kafel-kv-sep {
   margin-top: 6px;

@@ -32,12 +32,9 @@ export const DOK_STRINGS = {
   akcjaPodglad: 'Podgląd',
 
   // --- Q3: CO DALEJ (pasek procesu) --------------------------------------
-  procesEyebrow: 'CO DALEJ',
-  procesProjekt: 'Projekt',
-  procesObliczenia: 'Obliczenia',
-  procesDokumentacja: 'Dokumentacja',
-  procesEksport: 'Eksport',
-  procesWniosek: 'Wniosek OSD',
+  // Etykiety kroków USUNIĘTE (karta PULPIT-NBA): pasek procesu konsumuje teraz
+  // kanoniczny rejestr etapów `ui2/proces/etapy.ts` i bierze nazwy stamtąd.
+  // Trzymanie tu własnej listy kroków było drugim rejestrem etapów.
 
   powrot: '← Dokumentacja',
   powrotOpis: 'Wróć do przeglądu dokumentacji',

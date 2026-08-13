@@ -2,7 +2,11 @@
  * Wspólna powłoka kafla pulpitu (W-101). W pełni sterowana propsami. Kafel
  * klikalny (z `onKlik`) renderuje się jako `<button>` z głębokim linkiem do
  * przestrzeni (gramatyka MODEL_INTERAKCJI §2: kafel → nawigacja); bez `onKlik`
- * to statyczny kontener (np. kafel „wkrótce").
+ * to statyczny kontener (kafel prezentujący dane bez celu nawigacji).
+ *
+ * Wariant „wyszarzony" USUNIĘTY wraz z kaflem-zaślepką „wkrótce" (karta
+ * PULPIT-NBA §0.4): jedynym jego użyciem był ten kafel, a pulpit nie ma już
+ * kafli bez treści.
  */
 
 import type { ReactNode } from 'react';
@@ -10,13 +14,12 @@ import type { ReactNode } from 'react';
 interface KafelProps {
   tytul: string;
   onKlik?: () => void;
-  wyszarzony?: boolean;
   ariaLabel?: string;
   children?: ReactNode;
 }
 
-export function Kafel({ tytul, onKlik, wyszarzony, ariaLabel, children }: KafelProps) {
-  const klasa = `mvd-kafel${wyszarzony ? ' mvd-kafel-mut' : ''}`;
+export function Kafel({ tytul, onKlik, ariaLabel, children }: KafelProps) {
+  const klasa = 'mvd-kafel';
   const zawartosc = (
     <>
       <h3 className="mvd-kafel-title">{tytul}</h3>

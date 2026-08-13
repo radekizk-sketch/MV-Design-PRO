@@ -117,6 +117,7 @@ class ENMValidator:
         self._check_shunt_capacitors(enm, issues)
         # V12S-007: pasmo napieciowe + ciaglosc przez stacje przelotowa
         self._check_voltage_band_consistency(enm, issues)
+        self._check_frequency_consistency(enm, issues)
         self._check_through_station_continuity(enm, issues)
         # KOMPLETNOSC-POLA-TR: transformator na szynie SN bez pola roli TR
         self._check_transformer_sn_bay(enm, issues)
@@ -1238,6 +1239,62 @@ class ENMValidator:
     # ------------------------------------------------------------------
     # V12S-007: voltage band consistency on branch endpoints
     # ------------------------------------------------------------------
+
+    def _check_frequency_consistency(
+        self, enm: EnergyNetworkModel, issues: list[ValidationIssue]
+    ) -> None:
+        """W009: szyna deklaruje inna czestotliwosc niz czestotliwosc studium.
+
+        DLACZEGO TA KONTROLA ISTNIEJE (karta DIAGNOZA-PRZEBIEGU). Model niesie
+        czestotliwosc na DWOCH poziomach: `header.defaults.frequency_hz` (jedna
+        czestotliwosc studium, `models.py:121`) oraz opcjonalnie na szynie
+        (`Bus.frequency_hz`, `models.py:181`). Solwery rozplywu i zwarciowe
+        czytaja wylacznie poziom studium (`canonical_analysis::_study_frequency_hz`),
+        ale kontrakt V12.6 bierze czestotliwosc bazowa Z PIERWSZEJ SZYNY
+        (`solver_input/v126_contracts.py:555`: `enm.buses[0].frequency_hz or 50.0`).
+        Model z szyna 60 Hz w studium 50 Hz jest wiec wewnetrznie sprzeczny, a
+        analiza harmoniczna zostaje sparametryzowana wartoscia z DOWOLNIE
+        wybranej szyny — po cichu, bez ostrzezenia.
+
+        Waga IMPORTANT, nie BLOCKER: rozplyw i zwarcia licza sie poprawnie
+        (biora czestotliwosc studium), wiec blokowanie ich byloby nieuczciwe.
+        Sprzeczna deklaracja musi jednak byc widoczna, bo falszuje V12.6.
+
+        Ta kontrola zastapila zaslepke `rule_e_d08_frequency_conflict`
+        (`diagnostics/rules.py`), ktora deklarowala kod E-D08, ale zwracala
+        pusta liste ZAWSZE — dzialala na `NetworkGraph`, ktory czestotliwosci
+        w ogole nie przenosi. Jeden warunek ma miec jeden kod, wiec zaslepka
+        zostala usunieta, a warunek zyje TU, gdzie sa dane.
+        """
+        czestotliwosc_studium = enm.header.defaults.frequency_hz
+        for bus in enm.buses:
+            if bus.frequency_hz is None:
+                continue
+            if bus.frequency_hz == czestotliwosc_studium:
+                continue
+            issues.append(
+                ValidationIssue(
+                    code="W009",
+                    severity=SEVERITY_IMPORTANT,
+                    message_pl=(
+                        f"Szyna '{bus.ref_id}' deklaruje częstotliwość "
+                        f"{bus.frequency_hz} Hz, a studium liczone jest dla "
+                        f"{czestotliwosc_studium} Hz — model jest wewnętrznie sprzeczny."
+                    ),
+                    element_refs=[bus.ref_id],
+                    wizard_step_hint="K3",
+                    suggested_fix=(
+                        "Wyrównaj częstotliwość szyny z częstotliwością studium "
+                        "albo usuń deklarację z szyny."
+                    ),
+                    fix_action=FixAction(
+                        action_type="OPEN_MODAL",
+                        element_ref=bus.ref_id,
+                        modal_type="NodeModal",
+                        payload_hint={"required": "frequency_hz"},
+                    ),
+                )
+            )
 
     def _check_voltage_band_consistency(
         self, enm: EnergyNetworkModel, issues: list[ValidationIssue]

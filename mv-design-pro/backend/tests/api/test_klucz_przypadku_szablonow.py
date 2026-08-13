@@ -213,6 +213,12 @@ KLUCZ_Z_REKORDU = "Z_REKORDU"
 
 INWENTARZ_KLUCZA_PRZYPADKU: dict[str, str] = {
     "enm.py": KLUCZ_SUROWY,
+    # Karta DIAGNOZA-PRZEBIEGU (D7): diagnostyka i pre-flight biorą model tą samą
+    # drogą co `GET /api/cases/{case_id}/enm` — trasa deklaruje `case_id: str`
+    # i przekazuje tekst z adresu bajt w bajt do `get_enm`. To jest warunek
+    # sensowności powierzchni: diagnoza MUSI opisywać ten sam wpis magazynu,
+    # który edytuje projektant i który pójdzie do solvera.
+    "diagnostics.py": KLUCZ_SUROWY,
     "generators.py": KLUCZ_SUROWY,
     "der_sn_documents.py": KLUCZ_SUROWY,
     "oze_analysis_runs.py": KLUCZ_SUROWY,

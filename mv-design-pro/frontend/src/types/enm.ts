@@ -1494,20 +1494,41 @@ export interface LayoutInfo {
   layout_version: string;
 }
 
+/**
+ * Pojedyncze zgłoszenie gotowości w odpowiedzi operacji domenowej.
+ *
+ * Pola `canonical_*` są ADDYTYWNE i pochodzą z kanonicznego rejestru kodów
+ * gotowości (`backend/src/domain/canonical_operations.py` → most
+ * `domain/readiness_bridge.py`). Backend dokłada je TYLKO tam, gdzie
+ * odwzorowanie kodu zgłoszenia na kanon opisuje TEN SAM warunek — brak pól
+ * znaczy „ten warunek nie ma kodu kanonicznego", a nie „można podstawić
+ * najbliższy". Warstwa prezentacji nie wolno jej uzupełniać domysłem.
+ *
+ * Świadomie ALIAS TYPU, nie `interface`: zgłoszenie gotowości bywa czytane
+ * przez konsumentów defensywnie, jako `Record<string, unknown>` (np.
+ * `ui/shell/context-panels/SchematContextPanel.tsx`). Alias typu ma domyślną
+ * sygnaturę indeksu, `interface` jej nie ma — zamiana na `interface` zepsułaby
+ * tych konsumentów bez żadnego zysku.
+ */
+export type ReadinessEntry = {
+  code: string;
+  message_pl: string;
+  element_ref: string | null;
+  severity: string;
+  canonical_code?: string;
+  canonical_level?: 'BLOCKER' | 'WARNING' | 'INFO';
+  /** Priorytet kanoniczny (1 = najwyższy) — jedyna podstawa rankingu w UI. */
+  canonical_priority?: number;
+  canonical_area?: string;
+  canonical_message_pl?: string;
+  canonical_fix_action_id?: string | null;
+  canonical_fix_navigation?: Record<string, string> | null;
+};
+
 export interface ReadinessInfo {
   ready: boolean;
-  blockers: Array<{
-    code: string;
-    message_pl: string;
-    element_ref: string | null;
-    severity: string;
-  }>;
-  warnings: Array<{
-    code: string;
-    message_pl: string;
-    element_ref: string | null;
-    severity: string;
-  }>;
+  blockers: ReadinessEntry[];
+  warnings: ReadinessEntry[];
 }
 
 export interface FixAction {
