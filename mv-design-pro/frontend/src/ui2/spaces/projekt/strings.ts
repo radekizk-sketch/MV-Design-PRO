@@ -71,11 +71,6 @@ export const PULPIT_STRINGS = {
   otworzProjekt: 'Otwórz projekt',
   ladowanie: 'Wczytywanie…',
 
-  // Kafle „wkrótce" (brak źródła danych w store'ach — patrz TODO-KARTA)
-  wkrotce: 'Wkrótce — wymaga danych z kolejnych faz programu',
-  celTytul: 'Postęp wg celu',
-  bilansTytul: 'Bilans przyłączeniowy',
-
   // Kafel „Warunki przyłączenia i bilans mocy" (E1 — B1/B2)
   przylaczenieTytul: 'Warunki przyłączenia',
   przylaczenieBrakZrodla: 'Brak źródła sieciowego w modelu',

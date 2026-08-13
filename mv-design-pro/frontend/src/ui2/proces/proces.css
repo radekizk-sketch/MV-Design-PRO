@@ -1,0 +1,158 @@
+/*
+ * Style modułu procesu (mapa etapów E1–E8 + panel następnej najlepszej akcji).
+ * Kolory WYŁĄCZNIE przez tokeny --mvd-* (theme/tokens.css) — zero literałów
+ * barwnych, więc oba motywy działają bez osobnych reguł.
+ */
+
+/* ---- mapa procesu ---- */
+.mvd-proces {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.mvd-proces-lbl {
+  font: 600 10.5px/1 var(--mvd-font-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--mvd-muted);
+}
+
+.mvd-proces-tor {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: none;
+}
+
+.mvd-proces-el {
+  display: flex;
+  min-width: 0;
+}
+
+.mvd-proces-krok {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 5px 10px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-panel);
+  color: var(--mvd-muted);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.mvd-proces-krok:hover {
+  border-color: var(--mvd-accent);
+  color: var(--mvd-ink);
+}
+
+.mvd-proces-krok:focus-visible {
+  outline: 2px solid var(--mvd-focus);
+  outline-offset: 1px;
+}
+
+.mvd-proces-krok-biezacy {
+  border-color: var(--mvd-accent);
+  background: var(--mvd-sel);
+  color: var(--mvd-ink);
+  font-weight: 600;
+}
+
+.mvd-proces-krok-nr {
+  font-family: var(--mvd-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  color: var(--mvd-accent);
+}
+
+.mvd-proces-krok-nazwa {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mvd-proces-opis {
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--mvd-muted);
+}
+
+/* ---- panel następnej najlepszej akcji ---- */
+.mvd-nba {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--mvd-accent);
+  border-radius: 6px;
+  background: var(--mvd-panel);
+  box-shadow: var(--mvd-shadow);
+}
+
+.mvd-nba-tresc {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.mvd-nba-lbl {
+  font: 600 10.5px/1 var(--mvd-font-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--mvd-accent);
+}
+
+.mvd-nba-tytul {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--mvd-ink);
+}
+
+.mvd-nba-opis {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--mvd-ink);
+}
+
+.mvd-nba-etap {
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--mvd-muted);
+}
+
+.mvd-nba-akcja {
+  flex-shrink: 0;
+  min-height: 32px;
+  padding: 6px 16px;
+  border: 1px solid var(--mvd-accent);
+  border-radius: 6px;
+  background: var(--mvd-accent);
+  color: var(--mvd-accent-ink);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.mvd-nba-akcja:hover {
+  filter: brightness(1.08);
+}
+
+.mvd-nba-akcja:focus-visible {
+  outline: 2px solid var(--mvd-focus);
+  outline-offset: 1px;
+}

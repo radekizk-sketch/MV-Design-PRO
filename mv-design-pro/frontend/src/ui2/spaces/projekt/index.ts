@@ -12,7 +12,7 @@ export { KafelModelu } from './KafelModelu';
 export { KafelGotowosci } from './KafelGotowosci';
 export { KafelOstatniegoPrzebiegu } from './KafelOstatniegoPrzebiegu';
 export { KafelSpojnosci } from './KafelSpojnosci';
-export { KafelWkrotce } from './KafelWkrotce';
+// `KafelWkrotce` USUNIĘTY (karta PULPIT-NBA §0.4 — zakaz zaślepek).
 export { KafelArchiwum } from './KafelArchiwum';
 export { KafelArkusza } from './KafelArkusza';
 export { ListaPrzypadkow } from './ListaPrzypadkow';

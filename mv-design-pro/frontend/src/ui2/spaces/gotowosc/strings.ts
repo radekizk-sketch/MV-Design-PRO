@@ -36,11 +36,10 @@ export const GOTOWOSC_STRINGS = {
   wszystkoGotoweOpis:
     'Kontrola techniczna układu nie wskazuje braków — można uruchomić obliczenia.',
 
-  // Sekcja „Następny krok" (F-E3: bramka zielona → przejście do obliczeń)
-  nastepnyKrokTytul: 'Następny krok',
-  nastepnyKrokOpis:
-    'Model przeszedł bramkę gotowości — skonfiguruj wariant i uruchom obliczenie.',
-  nastepnyKrokAkcja: 'Przejdź do obliczeń',
+  // Sekcja „Następny krok" (F-E3) NIE MA już własnych tekstów: po zielonej
+  // bramce panel renderuje wspólny `PanelNastepnejAkcji` z modułu `ui2/proces`,
+  // żeby panel gotowości i pulpit projektu nie mówiły projektantowi dwóch
+  // różnych rzeczy o tym samym stanie. Teksty żyją w `ui2/proces/strings.ts`.
 
   // Podsumowanie nagłówka
   podsumowanieBlokady: 'Blokady',
