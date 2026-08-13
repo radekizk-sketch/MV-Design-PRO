@@ -167,6 +167,14 @@ export interface ProblemGotowosci {
   opisPl: string;
   cel: CelGotowosci;
   fixAction: FixAction | null;
+  /**
+   * Priorytet z kanonicznego rejestru kodów gotowości (1 = najwyższy), przepisany
+   * BEZ ZMIAN z pola `canonical_priority` kontraktu backendu. `null` znaczy
+   * dokładnie „kanon nie szereguje tego warunku" — warstwa UI nie wolno tej luki
+   * uzupełniać własną wartością (jedyny konsument, reguła następnej akcji, ma
+   * jawną zasadę: brak priorytetu nie wyprzedza kodu uszeregowanego przez kanon).
+   */
+  priorytetKanoniczny: number | null;
 }
 
 /** Grupa celu — problemy + liczniki + postęp (karta §1: „postęp per cel"). */
@@ -380,6 +388,7 @@ export function naProblemGotowosci(issue: ReadinessIssue): ProblemGotowosci {
     opisPl: issue.message_pl,
     cel: celDlaKodu(issue.code),
     fixAction: issue.fix_action,
+    priorytetKanoniczny: issue.canonical_priority ?? null,
   };
 }
 

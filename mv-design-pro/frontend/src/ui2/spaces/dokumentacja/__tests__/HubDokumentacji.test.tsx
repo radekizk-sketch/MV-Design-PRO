@@ -14,6 +14,7 @@ import { useNetworkBuildStore } from '../../../../ui/network-build/networkBuildS
 import { useExecutionRunsStore } from '../../../../ui/study-cases/runStore';
 import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
 import { useShellStore } from '../../../shell/useShellStore';
+import { ETAPY } from '../../../proces';
 import type { EnergyNetworkModel } from '../../../../types/enm';
 import { HubDokumentacji } from '../HubDokumentacji';
 import { dokumentDostepny, formatujRozmiar, maZakonczonyPrzebieg, ostatniZakonczonyPrzebieg, rekordyDlaKarty, zawartoscZPrzebiegow } from '../model';
@@ -178,12 +179,21 @@ describe('HubDokumentacji — ekran prowadzący (R2: 3 pytania inżyniera)', () 
     expect(within(raport).getByText('PDF · DOCX · JSON')).toBeTruthy();
   });
 
-  it('Q3 pasek procesu „CO DALEJ": 5 etapów, Dokumentacja aktywna', () => {
+  // INTENCJA WIERSZA BEZ ZMIAN („gdzie jestem w procesie i co dalej"), KANON
+  // ZMIENIONY: hub nie trzyma już własnej, pięcioelementowej listy kroków —
+  // konsumuje kanoniczny rejestr etapów E1–E8 (`ui2/proces/etapy.ts`), a swoją
+  // pozycję wskazuje etapem E8. Poprzednia lista była drugim rejestrem etapów.
+  it('Q3 pasek procesu: kanoniczna oś etapów, Dokumentacja (E8) jako etap bieżący', () => {
     render(<HubDokumentacji />);
     const proces = screen.getByTestId('mvd-dok-proces');
-    for (const e of ['Projekt', 'Obliczenia', 'Dokumentacja', 'Eksport', 'Wniosek OSD']) {
-      expect(within(proces).getByText(e)).toBeTruthy();
+    for (const etap of ETAPY) {
+      expect(within(proces).getByText(etap.nazwa)).toBeTruthy();
     }
+    const biezacy = within(proces)
+      .getAllByRole('button')
+      .filter((krok) => krok.getAttribute('aria-current') === 'step');
+    expect(biezacy).toHaveLength(1);
+    expect(biezacy[0]).toHaveAttribute('data-testid', 'mvd-proces-krok-E8');
   });
 });
 

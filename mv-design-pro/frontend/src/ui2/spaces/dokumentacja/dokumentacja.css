@@ -318,7 +318,10 @@
 .mvd-dok-akcja:hover { background: var(--mvd-sel); }
 .mvd-dok-akcja:focus-visible { outline: 2px solid var(--mvd-focus); outline-offset: 1px; }
 
-/* --- Q3: pasek procesu ---------------------------------------------------- */
+/* --- Q3: pasek procesu ----------------------------------------------------
+   Reguly krokow (kropka, stany, tor) USUNIETE razem z lokalnym rejestrem
+   etapow — pasek renderuje wspolna `MapaProcesu` (ui2/proces/proces.css).
+   Zostaje wylacznie ramka karty, ktora osadza mape w ukladzie huba. */
 
 .mvd-dok-proces {
   background: var(--mvd-panel);
@@ -326,61 +329,6 @@
   border-radius: 10px;
   padding: 12px 16px;
 }
-
-.mvd-dok-proces-tor {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 8px;
-  margin-top: 8px;
-}
-
-.mvd-dok-proces-el {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.mvd-dok-proces-str {
-  color: var(--mvd-muted);
-  font-size: 13px;
-}
-
-.mvd-dok-proces-krok {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  padding: 5px 12px;
-  border-radius: 999px;
-  border: 1px solid var(--mvd-line);
-  background: var(--mvd-panel-2);
-  font-size: 12.5px;
-  color: var(--mvd-muted);
-  white-space: nowrap;
-}
-
-.mvd-dok-proces-kropka {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--mvd-line);
-  flex: none;
-}
-
-.mvd-dok-proces-krok[data-stan='zrobiony'] {
-  color: var(--mvd-ok);
-  border-color: transparent;
-  background: var(--mvd-ok-bg);
-}
-.mvd-dok-proces-krok[data-stan='zrobiony'] .mvd-dok-proces-kropka { background: var(--mvd-ok); }
-
-.mvd-dok-proces-krok[data-stan='aktywny'] {
-  color: var(--mvd-accent);
-  border-color: var(--mvd-accent);
-  background: var(--mvd-sel);
-  font-weight: 650;
-}
-.mvd-dok-proces-krok[data-stan='aktywny'] .mvd-dok-proces-kropka { background: var(--mvd-accent); }
 
 /* --- Pasek powrotu (widok dostawcy dokumentu) ----------------------------- */
 

@@ -207,3 +207,27 @@ describe('grupujProblemyWgCelu — grupowanie + postęp', () => {
     expect(a).toEqual(b);
   });
 });
+
+describe('naProblemGotowosci — priorytet kanoniczny przepisany BEZ ZMIAN', () => {
+  it('przepisuje `canonical_priority` z kontraktu', () => {
+    const problem = naProblemGotowosci(
+      readinessIssue({ code: 'source.sk3_invalid', canonical_priority: 1 }),
+    );
+    expect(problem.priorytetKanoniczny).toBe(1);
+  });
+
+  it('brak priorytetu w kontrakcie → null (bez wartości zastępczej)', () => {
+    const problem = naProblemGotowosci(readinessIssue({ code: 'switch.catalog_ref_missing' }));
+    expect(problem.priorytetKanoniczny).toBeNull();
+  });
+
+  it('priorytet nie wpływa na cel — to dwa niezależne pola projekcji', () => {
+    const a = naProblemGotowosci(
+      readinessIssue({ code: 'protection.ct_required', canonical_priority: 3 }),
+    );
+    const b = naProblemGotowosci(readinessIssue({ code: 'protection.ct_required' }));
+    expect(a.cel).toBe(b.cel);
+    expect(a.priorytetKanoniczny).toBe(3);
+    expect(b.priorytetKanoniczny).toBeNull();
+  });
+});

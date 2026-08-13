@@ -28,8 +28,9 @@
 import { useMemo, useState } from 'react';
 import './gotowosc.css';
 import type { AdvancementMode } from '../../shell/modeModel';
-import { useShellStore } from '../../shell/useShellStore';
+import { przejdzDoPrzestrzeni } from '../../shell/przejsciaPrzestrzeni';
 import { useBusEvent } from '../../events';
+import { PanelNastepnejAkcji, useNastepnaAkcja } from '../../proces';
 import {
   KOLEJNOSC_CELOW,
   grupujProblemyWgCelu,
@@ -66,7 +67,7 @@ export function PanelGotowosci({
   const stan = useStanGotowosci();
   const issues = useProblemyGotowosci();
   const ponowOdczytGotowosci = usePonowOdczytGotowosci();
-  const setActiveSpace = useShellStore((s) => s.setActiveSpace);
+  const nastepnaAkcja = useNastepnaAkcja();
   const trybEkspercki = trybZaawansowania === 'expert';
 
   const grupyPelne = useMemo(() => grupujProblemyWgCelu(issues), [issues]);
@@ -201,21 +202,24 @@ export function PanelGotowosci({
         </>
       )}
 
+      {/*
+        Następny krok po zielonej bramce = TA SAMA reguła, z której korzysta
+        pulpit projektu (`ui2/proces/nastepnaAkcja.ts`). Wcześniej ta sekcja
+        miała własne, zaszyte zdanie „przejdź do Obliczeń" i mówiła je nawet
+        wtedy, gdy obliczenia były już wykonane i aktualne — dwa ekrany dawały
+        wtedy inną odpowiedź na to samo pytanie. Reguła jest jedna, więc odpowiedź
+        też jest jedna. Sekcja pokazuje się wyłącznie przy braku blokad; gdy
+        blokady są, przewodnikiem jest lista problemów powyżej.
+      */}
       {blokadyCalkowite === 0 && (
-        <section className="mvd-gotowosc-nastepny" data-testid="mvd-gotowosc-nastepny">
-          <div className="mvd-gotowosc-nastepny-tresc">
-            <span className="mvd-gotowosc-nastepny-lbl">{GOTOWOSC_STRINGS.nastepnyKrokTytul}</span>
-            <p className="mvd-gotowosc-nastepny-opis">{GOTOWOSC_STRINGS.nastepnyKrokOpis}</p>
-          </div>
-          <button
-            type="button"
-            className="mvd-gotowosc-nastepny-akcja"
-            onClick={() => setActiveSpace('obliczenia')}
-            data-testid="mvd-gotowosc-nastepny-akcja"
-          >
-            {GOTOWOSC_STRINGS.nastepnyKrokAkcja}
-          </button>
-        </section>
+        <PanelNastepnejAkcji
+          akcja={nastepnaAkcja}
+          // Kanon D1: przejście PEŁNE (powłoka + most tras), a nie samo
+          // ustawienie przestrzeni — inaczej trasa nadrzędna innej przestrzeni
+          // przykryłaby cel akcji i przycisk byłby martwy.
+          onNawiguj={przejdzDoPrzestrzeni}
+          onNaprawa={onAkcjaNaprawcza}
+        />
       )}
 
       <SekcjaZgodnosciReferencyjnej />

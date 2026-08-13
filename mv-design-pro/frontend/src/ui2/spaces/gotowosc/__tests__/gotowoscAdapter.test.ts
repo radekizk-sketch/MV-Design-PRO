@@ -156,3 +156,53 @@ describe('useProblemyGotowosci', () => {
     expect(result.current[0].fix_action).not.toBeNull();
   });
 });
+
+describe('polaczGotowosc — treść kanoniczna przepisywana BEZ ZMIAN i BEZ UZUPEŁNIANIA', () => {
+  it('przepisuje pola kanoniczne, gdy backend je przysłał', () => {
+    const issues = polaczGotowosc(
+      {
+        ready: false,
+        blockers: [
+          {
+            code: 'E001',
+            message_pl: 'Brak źródła zasilania w modelu sieci.',
+            element_ref: 'GPZ-1',
+            severity: 'BLOKUJACE',
+            canonical_code: 'source.grid_supply_missing',
+            canonical_level: 'BLOCKER',
+            canonical_priority: 1,
+            canonical_area: 'SOURCES',
+          },
+        ],
+        warnings: [],
+      },
+      [],
+    );
+    expect(issues[0].canonical_priority).toBe(1);
+    expect(issues[0].canonical_code).toBe('source.grid_supply_missing');
+    expect(issues[0].canonical_area).toBe('SOURCES');
+    // Komunikat POKAZYWANY zostaje komunikatem walidatora — kanon nie podmienia treści.
+    expect(issues[0].message_pl).toBe('Brak źródła zasilania w modelu sieci.');
+  });
+
+  it('zgłoszenie BEZ odwzorowania kanonicznego nie dostaje żadnego pola zastępczego', () => {
+    const issues = polaczGotowosc(
+      {
+        ready: false,
+        blockers: [
+          {
+            code: 'switch.catalog_ref_missing',
+            message_pl: 'Łącznik nie ma referencji katalogowej.',
+            element_ref: 'SW-1',
+            severity: 'BLOKUJACE',
+          },
+        ],
+        warnings: [],
+      },
+      [],
+    );
+    expect(issues[0].canonical_priority).toBeUndefined();
+    expect(issues[0].canonical_code).toBeUndefined();
+    expect(issues[0].canonical_area).toBeUndefined();
+  });
+});

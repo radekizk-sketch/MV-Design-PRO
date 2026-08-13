@@ -49,6 +49,7 @@ import {
   EkranImportuArkusza,
 } from './spaces/projekt';
 import { PanelGotowosci } from './spaces/gotowosc';
+import type { ProblemGotowosci } from './spaces/gotowosc/grupowanieCelow';
 import { ModelWarsztat } from './spaces/model';
 import { MenedzerPrzypadkow, PanelScenariuszy } from './spaces/obliczenia';
 import { PrzebiegiPanel } from './spaces/obliczenia/przebiegi';
@@ -294,6 +295,20 @@ export function AppRoot() {
     useAppStateStore.getState().setActiveRun(runId);
     wybierzPrzestrzen('wyniki');
   };
+  /**
+   * Wykonanie akcji naprawczej zgłoszenia gotowości — JEDNA implementacja dla
+   * WSZYSTKICH miejsc, które taką akcję oferują (panel gotowości i pulpit
+   * projektu przez następną najlepszą akcję). Formularze operacji domenowych
+   * żyją na kanwie schematu, więc akcja = selekcja elementu + przejście do
+   * przestrzeni „Schemat" — TĄ SAMĄ ścieżką nawigacji co reszta powłoki
+   * (`przejdzDoPrzestrzeni`, kanon D1), bez drugiej logiki przejścia.
+   */
+  const wykonajAkcjeNaprawcza = (problem: ProblemGotowosci) => {
+    if (problem.elementRef) {
+      emituj({ typ: 'selekcja', obiektId: problem.elementRef, zrodlo: 'panel-gotowosci' });
+    }
+    wybierzPrzestrzen('schemat');
+  };
   // D4: JEDNA ścieżka wykonania — pozycja sama niesie swoją akcję. Dawny
   // rozdzielacz po przedrostku identyfikatora obsługiwał cztery przypadki, a
   // wszystko poza nimi wpadało w `pozycja.akcja()`, czyli w pustą funkcję
@@ -362,14 +377,7 @@ export function AppRoot() {
               onSelekcja={(elementRef) =>
                 emituj({ typ: 'selekcja', obiektId: elementRef, zrodlo: 'panel-gotowosci' })
               }
-              onAkcjaNaprawcza={(problem) => {
-                // Formularze operacji domenowych żyją na kanwie schematu —
-                // selekcja elementu + przejście do przestrzeni „Schemat" (jak most E1.7c).
-                if (problem.elementRef) {
-                  emituj({ typ: 'selekcja', obiektId: problem.elementRef, zrodlo: 'panel-gotowosci' });
-                }
-                wybierzPrzestrzen('schemat');
-              }}
+              onAkcjaNaprawcza={wykonajAkcjeNaprawcza}
             />
           }
           wyniki={
@@ -408,6 +416,7 @@ export function AppRoot() {
                 onOtworzPrzypadek={() => wybierzPrzestrzen('obliczenia')}
                 onOtworzArchiwum={() => setZadanieArchiwum(true)}
                 onOtworzImportArkusza={() => setZadanieArkusza(true)}
+                onAkcjaNaprawcza={wykonajAkcjeNaprawcza}
               />
             )
           }

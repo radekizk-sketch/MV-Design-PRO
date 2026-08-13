@@ -23,11 +23,16 @@
  *   `ANALYSIS_TYPE_LABELS`/`RUN_STATUS_LABELS` — `types.ts:270-289`.
  *
  * TODO-KARTA (ograniczenia danych — brak źródła w store'ach, karta §2/§4):
- * 1. Kafel „Postęp wg celu" (audyt W-101) NIE MA źródła w store'ach read-only
- *    (brak modelu celu projektu) → renderowany jako kafel „wkrótce"
- *    (`KafelWkrotce`), bez zgadywania wartości. Kafel „Warunki przyłączenia
- *    i bilans mocy" (E1 — B1/B2) MA źródło: `sources` (Sk″/Ik″/U przyłączenia)
- *    + rollup mocy znamionowej `generators`/`loads` (patrz `mapujPrzylaczenie`).
+ * 1. Kafel „Postęp wg celu" (audyt W-101) NIE MIAŁ źródła w store'ach read-only
+ *    (brak modelu celu projektu) i był renderowany jako kafel-zaślepka
+ *    „wkrótce". Karta PULPIT-NBA §0.4 USUNĘŁA tę zaślepkę wraz z komponentem
+ *    `KafelWkrotce` (ZASADA NR 1 — zakaz zaślepek). Pytanie „gdzie jestem
+ *    w procesie i co dalej" obsługuje teraz mapa procesu na kanonicznej osi
+ *    etapów (`ui2/proces/etapy.ts`) plus panel następnej najlepszej akcji —
+ *    oba wyprowadzone z REALNEGO kontraktu gotowości, nie z modelu celu.
+ *    Kafel „Warunki przyłączenia i bilans mocy" (E1 — B1/B2) MA źródło:
+ *    `sources` (Sk″/Ik″/U przyłączenia) + rollup mocy znamionowej
+ *    `generators`/`loads` (patrz `mapujPrzylaczenie`).
  *    GAP backendu (zarejestrowany, nie fabrykowany): „moc przyłączeniowa" (limit
  *    OSD) oraz cosφ/tryb pracy przyłącza nie mają pola w modelu → nie pokazywane;
  *    dynamiczna zdolność przyłączeniowa żyje w analizie E5/E7 (hosting_capacity).
