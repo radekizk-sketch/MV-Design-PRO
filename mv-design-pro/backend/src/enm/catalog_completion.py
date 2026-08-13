@@ -64,6 +64,12 @@ def _branch_point_port_count(
         return 1
     try:
         raw = catalog_params.get("branch_ports_count")
+        if raw is None:
+            # Ta sama sciezka co ValueError/TypeError ponizej (pre-existing
+            # blad mypy na HEAD, naprawiony przy okazji karty P0.6 — `int(None)`
+            # jest niepoprawne typowo, mimo ze bylo bezpieczne w runtime dzieki
+            # temu samemu except; zero zmiany zachowania).
+            raise TypeError("branch_ports_count is None")
         value = int(raw)
     except (TypeError, ValueError):
         value = 2 if "2P" in str(catalog_ref or "").upper() else len(branch_ports) or 1
@@ -380,6 +386,9 @@ def _branch_has_materialized_values(
         "rated_current_a",
         "return_conductor_cross_section_mm2",
         "return_conductor_r_ohm_per_km_20c",
+        # Karta P0.6 (G-05): reaktancja zyly powrotnej — czesc tej samej
+        # kompletnosci co rezystancja powyzej (wykrywanie "juz zmaterializowane").
+        "return_conductor_x_ohm_per_km",
         "return_conductor_ith_1s_a",
     )
     for key in critical_keys:
@@ -428,6 +437,9 @@ def _apply_materialized_branch_values(
             "cross_section_mm2",
             "return_conductor_cross_section_mm2",
             "return_conductor_r_ohm_per_km_20c",
+            # Karta P0.6 (G-05): reaktancja zyly powrotnej — ten sam kanal
+            # zastosowania materializacji co rezystancja powyzej.
+            "return_conductor_x_ohm_per_km",
             "return_conductor_jth_1s_a_per_mm2",
             "return_conductor_ith_1s_a",
             # F-K1 faza 3: dane cieplne ZYLY FAZOWEJ.

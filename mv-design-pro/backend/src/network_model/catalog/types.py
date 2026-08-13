@@ -1993,6 +1993,12 @@ class LVCableType:
     core_functions: str | None = None
     return_conductor_cross_section_mm2: float | None = None
     return_conductor_r_ohm_per_km_20c: float | None = None
+    # Karta P0.6 (nN, docs/nn/H_PLAN_IMPLEMENTACJI_NN.md §P0.6, luka G-05):
+    # reaktancja zyly powrotnej PE/PEN, wymagana do petli zwarcia L-PE/L-PEN
+    # (IEC 60364-4-41 §0.1) — brakowalo jej tu i na `enm.models.Cable`. Pole
+    # addytywne/opcjonalne; brak (None) = dana nieznana, solver odmawia liczenia
+    # petli (fail-closed), nie zgaduje.
+    return_conductor_x_ohm_per_km: float | None = None
     standard: str | None = None
     verification_status: str = CatalogVerificationStatus.REFERENCYJNY.value
     source_reference: str = "Katalog kabli nN MV-DESIGN-PRO"
@@ -2022,6 +2028,7 @@ class LVCableType:
             "core_functions": self.core_functions,
             "return_conductor_cross_section_mm2": self.return_conductor_cross_section_mm2,
             "return_conductor_r_ohm_per_km_20c": self.return_conductor_r_ohm_per_km_20c,
+            "return_conductor_x_ohm_per_km": self.return_conductor_x_ohm_per_km,
             "standard": self.standard,
             **_catalog_metadata_to_dict(
                 verification_status=self.verification_status,
@@ -2077,6 +2084,11 @@ class LVCableType:
             return_conductor_r_ohm_per_km_20c=(
                 float(data["return_conductor_r_ohm_per_km_20c"])
                 if data.get("return_conductor_r_ohm_per_km_20c") is not None
+                else None
+            ),
+            return_conductor_x_ohm_per_km=(
+                float(data["return_conductor_x_ohm_per_km"])
+                if data.get("return_conductor_x_ohm_per_km") is not None
                 else None
             ),
             standard=data.get("standard"),
@@ -3586,6 +3598,21 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
             "max_temperature_c",
             "short_circuit_temperature_c",
             "source_reference",
+            # Karta P0.6 (G-05, nN petla zwarcia): TA SAMA klasa defektu co F-K1/P0.5a
+            # powyzej — P0.2 dodal dane ZYLY POWROTNEJ (PE/PEN) do `LVCableType`, ale
+            # ten kontrakt ich nie kopiowal do `materialized_params`, wiec kazdy kabel
+            # nN zwiazany z katalogiem KABEL_NN tracil dane zyly powrotnej po drodze
+            # (SN/`KABEL_SN` ponizej mial je od poczatku — rozjazd wykryty przy budowie
+            # buildera petli zwarcia, ktory czyta zyle powrotna WYLACZNIE z gotowego
+            # pola galezi). `return_conductor_x_ohm_per_km` to NOWE pole (karta P0.6,
+            # patrz `LVCableType`/`Cable`) — reaktancja zyly powrotnej wczesniej nie
+            # istniala nigdzie w repozytorium. BRAK `return_conductor_material` tutaj
+            # jest ZAMIERZONY: `LVCableType` (w odroznieniu od SN `CableType`) NIE MA
+            # tego pola — dodanie go do solver_fields bez pola w typie byloby martwym
+            # wpisem (zawsze None), wiec pomijamy zamiast fabrykowac fantomowe pole.
+            "return_conductor_cross_section_mm2",
+            "return_conductor_r_ohm_per_km_20c",
+            "return_conductor_x_ohm_per_km",
         ),
         ui_fields=(
             ("r_ohm_per_km", "R [Ω/km]", "Ω/km"),

@@ -118,6 +118,7 @@ class TestLVCableTypeAdditiveFields:
         assert t.core_functions is None
         assert t.return_conductor_cross_section_mm2 is None
         assert t.return_conductor_r_ohm_per_km_20c is None
+        assert t.return_conductor_x_ohm_per_km is None
         assert t.standard is None
 
     def test_round_trip_with_thermal_fields(self) -> None:
@@ -143,6 +144,27 @@ class TestLVCableTypeAdditiveFields:
         assert restored.to_dict() == d
         assert restored.core_functions == "3L+PEN"
         assert restored.jth_1s_a_per_mm2 == 114.84
+
+    def test_round_trip_with_return_conductor_reactance(self) -> None:
+        """Karta P0.6 (G-05): reaktancja żyły powrotnej — pole NOWE, brakujące
+        w całym repozytorium przed tą kartą (petla zwarcia L-PE/L-PEN)."""
+        from network_model.catalog.types import LVCableType
+
+        t = LVCableType(
+            id="x",
+            name="x",
+            u_n_kv=0.4,
+            r_ohm_per_km=0.1,
+            x_ohm_per_km=0.05,
+            return_conductor_cross_section_mm2=25.0,
+            return_conductor_r_ohm_per_km_20c=0.727,
+            return_conductor_x_ohm_per_km=0.09,
+        )
+        d = t.to_dict()
+        assert d["return_conductor_x_ohm_per_km"] == 0.09
+        restored = LVCableType.from_dict(d)
+        assert restored.to_dict() == d
+        assert restored.return_conductor_x_ohm_per_km == 0.09
 
 
 class TestLVApparatusTypeAdditiveFields:
@@ -219,6 +241,84 @@ class TestMaterializationContracts:
             CatalogNamespace.WKLADKA_NN.value
         ].solver_fields:
             assert field_name in fuse_dict
+
+    def test_kabel_nn_contract_includes_return_conductor_fields(self) -> None:
+        """Karta P0.6 (G-05) — regresja defektu KLASA NIE INSTANCJA: kontrakt
+        materializacji KABEL_SN niósł pola żyły powrotnej od karty F-K1, ale
+        KABEL_NN — ten sam rodzaj danych, ten sam kabel-z-katalogu — NIE (P0.2
+        dodał pola do `LVCableType`, ale nikt nie dopisał ich do kontraktu
+        materializacji, więc ginęły po drodze katalog → materialized_params →
+        Cable). Bez tej listy petla zwarcia P0.6 nie miałaby danych żyły
+        powrotnej dla ŻADNEGO kabla nN związanego z katalogiem."""
+        # NIE obejmuje "return_conductor_material" — `LVCableType` (w odróżnieniu
+        # od SN `CableType`) NIE MA tego pola; dodanie go do solver_fields byłoby
+        # martwym wpisem (zawsze None), patrz komentarz przy kontrakcie w
+        # network_model/catalog/types.py.
+        contract = MATERIALIZATION_CONTRACTS[CatalogNamespace.KABEL_NN.value]
+        for field_name in (
+            "return_conductor_cross_section_mm2",
+            "return_conductor_r_ohm_per_km_20c",
+            "return_conductor_x_ohm_per_km",
+        ):
+            assert field_name in contract.solver_fields, (
+                f"KABEL_NN solver_fields brakuje '{field_name}' — dane żyły "
+                "powrotnej z katalogu nie dotrą do materialized_params."
+            )
+        assert "return_conductor_material" not in contract.solver_fields
+
+    def test_kabel_nn_solver_fields_exist_on_lv_cable_type(self) -> None:
+        from network_model.catalog.types import LVCableType
+
+        t = LVCableType(
+            id="x",
+            name="x",
+            u_n_kv=0.4,
+            r_ohm_per_km=0.1,
+            x_ohm_per_km=0.05,
+            return_conductor_cross_section_mm2=25.0,
+            return_conductor_r_ohm_per_km_20c=0.727,
+            return_conductor_x_ohm_per_km=0.09,
+        )
+        t_dict = t.to_dict()
+        for field_name in MATERIALIZATION_CONTRACTS[CatalogNamespace.KABEL_NN.value].solver_fields:
+            assert field_name in t_dict
+
+    def test_kabel_nn_materialization_end_to_end_carries_return_conductor(self) -> None:
+        """Dowód end-to-end (nie tylko deklaracja kontraktu): katalog →
+        materialize_catalog_binding → materialized_params NIESIE R i X żyły
+        powrotnej. Reprodukuje ROZLIŚLIWY defekt sprzed karty P0.6 (bez
+        fix'u ten test failuje z solver_fields[...] == None mimo
+        success=True — materializacja `success` nie gwarantowała
+        KOMPLETNOŚCI pól, tylko że binding wskazuje istniejący rekord)."""
+        from network_model.catalog.materialization import materialize_catalog_binding
+        from network_model.catalog.repository import CatalogRepository
+        from network_model.catalog.types import CatalogBinding, LVCableType
+
+        item = LVCableType(
+            id="test-kabel-nn-return-conductor",
+            name="Test YKY 4x25",
+            u_n_kv=0.4,
+            r_ohm_per_km=0.727,
+            x_ohm_per_km=0.08,
+            return_conductor_cross_section_mm2=25.0,
+            return_conductor_r_ohm_per_km_20c=0.727,
+            return_conductor_x_ohm_per_km=0.08,
+        )
+        record = {"id": item.id, "name": item.name, "params": item.to_dict()}
+        repo = CatalogRepository.from_records(
+            line_types=[], cable_types=[], transformer_types=[], lv_cable_types=[record]
+        )
+        binding = CatalogBinding(
+            catalog_namespace="KABEL_NN",
+            catalog_item_id=item.id,
+            catalog_item_version="2026.01",
+            materialize=True,
+        )
+        result = materialize_catalog_binding(binding, repo)
+        assert result.success
+        assert result.solver_fields["return_conductor_cross_section_mm2"] == 25.0
+        assert result.solver_fields["return_conductor_r_ohm_per_km_20c"] == 0.727
+        assert result.solver_fields["return_conductor_x_ohm_per_km"] == 0.08
 
 
 # ---------------------------------------------------------------------------

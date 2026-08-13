@@ -344,6 +344,9 @@ def create_branch(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult
             "return_conductor_cross_section_mm2",
             "return_conductor_material",
             "return_conductor_r_ohm_per_km_20c",
+            # Karta P0.6 (G-05): reaktancja zyly powrotnej — biala lista tworzenia
+            # galezi z danych (hydratacja) musi ja przepuszczac tak samo jak R.
+            "return_conductor_x_ohm_per_km",
             "return_conductor_jth_1s_a_per_mm2",
             "return_conductor_ith_1s_a",
             "rating",

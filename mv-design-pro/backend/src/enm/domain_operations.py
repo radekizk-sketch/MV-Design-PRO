@@ -2350,6 +2350,9 @@ def _apply_materialized_branch_fields(
         "cross_section_mm2",
         "return_conductor_cross_section_mm2",
         "return_conductor_r_ohm_per_km_20c",
+        # Karta P0.6 (G-05): reaktancja zyly powrotnej PE/PEN — analogiczny gap do
+        # rezystancji powyzej (patrz komentarz przy kontrakcie materializacji KABEL_NN).
+        "return_conductor_x_ohm_per_km",
         "return_conductor_jth_1s_a_per_mm2",
         "return_conductor_ith_1s_a",
         # Karta F-K1 faza 3/6: dane cieplne ZYLY FAZOWEJ i para temperatur, ktora
@@ -2414,6 +2417,9 @@ def _copy_split_segment_fields(target: dict[str, Any], source: dict[str, Any]) -
         "return_conductor_cross_section_mm2",
         "return_conductor_material",
         "return_conductor_r_ohm_per_km_20c",
+        # Karta P0.6 (G-05): reaktancja zyly powrotnej — podzial odcinka MUSI
+        # zachowac ja tak samo jak rezystancje (ta sama trasa, ten sam kabel).
+        "return_conductor_x_ohm_per_km",
         "return_conductor_jth_1s_a_per_mm2",
         "return_conductor_ith_1s_a",
         # Karta F-K1 faza 7: dane cieplne ZYLY FAZOWEJ i para temperatur uzasadniajaca
@@ -6829,6 +6835,11 @@ def start_branch_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dic
 
     inferred_from_bus_ref = bool(not from_ref and from_bus_ref)
     if inferred_from_bus_ref:
+        # `inferred_from_bus_ref` prawdziwe ⇒ `from_bus_ref` jest prawdziwe (patrz
+        # warunek wyzej) ⇒ nie None — zawezenie typu dla mypy (pre-existing
+        # blad mypy na HEAD, naprawiony przy okazji karty P0.6, zero zmiany
+        # zachowania w runtime).
+        assert from_bus_ref is not None
         inferred_from_ref, lookup_err = _lookup_branch_from_ref_for_bus(enm, from_bus_ref)
         if lookup_err:
             return _error_response(

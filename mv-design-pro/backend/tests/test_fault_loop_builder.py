@@ -8,7 +8,11 @@ struct into FaultLoopInput object expected by compute_fault_loop().
 import pytest
 from network_model.solvers.fault_loop_builder import (
     FaultLoopBuildRequest,
+    RouteSegmentImpedance,
     build_fault_loop_input,
+    refer_upstream_impedance_to_lv_ohm,
+    sum_phase_and_return_route,
+    zero_sequence_transformer_loop_impedance_ohm,
 )
 from network_model.solvers.fault_loop_iec60364 import (
     FaultLoopInput,
@@ -156,3 +160,117 @@ class TestDeterminism:
         b = build_fault_loop_input(req)
         # Frozen dataclasses → equality works by value
         assert a == b
+
+
+# ---------------------------------------------------------------------------
+# P0.6 — RouteSegmentImpedance + sum_phase_and_return_route (ekstrakcja trasy)
+# ---------------------------------------------------------------------------
+
+
+class TestRouteSegmentImpedance:
+    def test_rejects_n_parallel_below_one(self) -> None:
+        with pytest.raises(ValueError, match="n_parallel"):
+            RouteSegmentImpedance(
+                label="x",
+                branch_ref="c1",
+                phase_total_r_ohm=0.1,
+                phase_total_x_ohm=0.1,
+                return_total_r_ohm=0.1,
+                return_total_x_ohm=0.1,
+                n_parallel=0,
+            )
+
+    def test_rejects_negative_impedance(self) -> None:
+        with pytest.raises(ValueError, match="phase_total_r_ohm"):
+            RouteSegmentImpedance(
+                label="x",
+                branch_ref="c1",
+                phase_total_r_ohm=-0.1,
+                phase_total_x_ohm=0.1,
+                return_total_r_ohm=0.1,
+                return_total_x_ohm=0.1,
+            )
+
+
+class TestSumPhaseAndReturnRoute:
+    def test_three_segment_route_hand_computed(self) -> None:
+        """3 odcinki, różne przekroje, n_parallel=2 na jednym — dokładność 1e-9."""
+        segments = [
+            RouteSegmentImpedance(
+                label="s1",
+                branch_ref="c1",
+                phase_total_r_ohm=0.32 * 0.05,  # 50 m YAKY 4x25 (0.32 Ω/km typ.)
+                phase_total_x_ohm=0.08 * 0.05,
+                return_total_r_ohm=0.32 * 0.05,
+                return_total_x_ohm=0.08 * 0.05,
+                n_parallel=1,
+            ),
+            RouteSegmentImpedance(
+                label="s2",
+                branch_ref="c2",
+                phase_total_r_ohm=0.206 * 0.03,  # 30 m YAKY 4x35, n_parallel=2
+                phase_total_x_ohm=0.075 * 0.03,
+                return_total_r_ohm=0.206 * 0.03,
+                return_total_x_ohm=0.075 * 0.03,
+                n_parallel=2,
+            ),
+            RouteSegmentImpedance(
+                label="s3",
+                branch_ref="c3",
+                phase_total_r_ohm=0.641 * 0.02,  # 20 m YAKY 4x16
+                phase_total_x_ohm=0.083 * 0.02,
+                return_total_r_ohm=0.641 * 0.02,
+                return_total_x_ohm=0.083 * 0.02,
+                n_parallel=1,
+            ),
+        ]
+        phase, ret = sum_phase_and_return_route(segments)
+
+        expected_phase_r = (0.32 * 0.05) + (0.206 * 0.03 / 2) + (0.641 * 0.02)
+        expected_phase_x = (0.08 * 0.05) + (0.075 * 0.03 / 2) + (0.083 * 0.02)
+        expected_return_r = expected_phase_r  # symetryczne dane testowe
+        expected_return_x = expected_phase_x
+
+        assert phase.r_ohm == pytest.approx(expected_phase_r, abs=1e-9)
+        assert phase.x_ohm == pytest.approx(expected_phase_x, abs=1e-9)
+        assert ret.r_ohm == pytest.approx(expected_return_r, abs=1e-9)
+        assert ret.x_ohm == pytest.approx(expected_return_x, abs=1e-9)
+
+    def test_empty_route_gives_zero_components(self) -> None:
+        """Trasa zerodługościowa (zwarcie na szynie TR) → składowe zerowe."""
+        phase, ret = sum_phase_and_return_route([])
+        assert phase.r_ohm == 0.0
+        assert phase.x_ohm == 0.0
+        assert ret.r_ohm == 0.0
+        assert ret.x_ohm == 0.0
+
+
+class TestZeroSequenceTransformerLoopImpedance:
+    def test_converts_pu_to_ohm(self) -> None:
+        # z0_pu na S_base=100 MVA, U_lv=0.4 kV -> Z_base = 0.4^2/100 = 0.0016 Ω
+        result = zero_sequence_transformer_loop_impedance_ohm(
+            z0_pu=complex(0.1, 0.5), ulv_kv=0.4, s_base_mva=100.0
+        )
+        assert result.r_ohm == pytest.approx(0.1 * 0.0016, abs=1e-12)
+        assert result.x_ohm == pytest.approx(0.5 * 0.0016, abs=1e-12)
+
+    def test_rejects_non_positive_base(self) -> None:
+        with pytest.raises(ValueError):
+            zero_sequence_transformer_loop_impedance_ohm(
+                z0_pu=complex(0.1, 0.5), ulv_kv=0.0, s_base_mva=100.0
+            )
+
+
+class TestReferUpstreamImpedanceToLv:
+    def test_turns_ratio_squared(self) -> None:
+        # Z_hv referred to LV: Z_lv = Z_hv * (Ulv/Uhv)^2
+        component = refer_upstream_impedance_to_lv_ohm(
+            z_hv_ohm=complex(0.1, 0.5), uhv_kv=15.0, ulv_kv=0.4
+        )
+        ratio_sq = (0.4 / 15.0) ** 2
+        assert component.r_ohm == pytest.approx(0.1 * ratio_sq, abs=1e-12)
+        assert component.x_ohm == pytest.approx(0.5 * ratio_sq, abs=1e-12)
+
+    def test_rejects_non_positive_voltages(self) -> None:
+        with pytest.raises(ValueError):
+            refer_upstream_impedance_to_lv_ohm(z_hv_ohm=complex(0.1, 0.5), uhv_kv=0.0, ulv_kv=0.4)

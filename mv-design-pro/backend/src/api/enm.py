@@ -23,10 +23,15 @@ from api.domain_ops_policy import (
     extract_catalog_binding,
     validate_and_materialize_catalog_binding,
 )
-from application.analyses.fault_loop.service import build_station_fault_loop_view
+from application.analyses.fault_loop.service import (
+    build_fault_loop_view_at_point,
+    build_feeder_fault_loop_view,
+    build_station_fault_loop_view,
+)
 from application.analyses.protection.czas_wylaczenia_pola import (
     czasy_wylaczenia_pol_stacji,
 )
+from application.analyses.swz.service import build_swz_view
 from application.analyses.wytrzymalosc_aparatury_pol import (
     zbuduj_widok_wytrzymalosci_aparatury,
 )
@@ -302,6 +307,46 @@ def get_station_fault_loop(case_id: str, station_ref: str) -> dict[str, Any]:
     """
     enm = _get_enm(case_id)
     return build_station_fault_loop_view(enm, station_ref)
+
+
+@router.get("/{case_id}/enm/fault-loop-point")
+def get_fault_loop_point(case_id: str, station_ref: str, bus_ref: str) -> dict[str, Any]:
+    """Pętla zwarcia w DOWOLNYM punkcie nN (karta P0.6, G-05).
+
+    Trasa REALNA z grafu (BFS od punktu do zacisków nN transformatora) — kabel
+    po kablu, z żyłą powrotną PE/PEN i n_parallel; ta sama fizyka transformatora
+    (składowa zgodna z grupą połączeń) i upstream Thevenin SN co widok „u
+    źródła". Read-only; solver liczy fizykę.
+    """
+    enm = _get_enm(case_id)
+    return build_fault_loop_view_at_point(enm, station_ref, bus_ref)
+
+
+@router.get("/{case_id}/enm/fault-loop-feeders")
+def get_fault_loop_feeders(case_id: str, station_ref: str) -> dict[str, Any]:
+    """Pętla zwarcia we WSZYSTKICH punktach nN, pogrupowana per odpływ (karta P0.6, G-05).
+
+    Kontrakt danych kompletny (każdy osiągalny punkt każdego odpływu, ze
+    wskazaniem punktu najgorszego per odpływ) — heatmapa/UI nN STUDIO w P0.9,
+    tu tylko dane. Read-only; solver liczy fizykę.
+    """
+    enm = _get_enm(case_id)
+    return build_feeder_fault_loop_view(enm, station_ref)
+
+
+@router.get("/{case_id}/enm/swz")
+def get_swz(case_id: str, station_ref: str, bus_ref: str, breaker_ref: str) -> dict[str, Any]:
+    """Werdykt SWZ (samoczynne wyłączenie zasilania, IEC 60364-4-41) per obwód
+    (karta P0.6, G-06).
+
+    Werdykt 3-stanowy (spełnia / nie spełnia / nierozstrzygalne) + dowód
+    liczbowy: Ik1_min pętli zwarcia (scenariusz MIN, R skorygowane
+    temperaturowo) vs Ia gwarantowane aparatu (breaker_ref — MCB albo wkładka
+    gG) vs t_wymagany z Tab. 41.1 IEC 60364-4-41. Read-only; solver/analiza
+    liczą fizykę i interpretację, endpoint tylko wyławia i zwraca.
+    """
+    enm = _get_enm(case_id)
+    return build_swz_view(enm, station_ref, bus_ref, breaker_ref)
 
 
 class WytrzymaloscAparaturyRequestModel(BaseModel):

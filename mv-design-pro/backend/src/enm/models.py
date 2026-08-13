@@ -248,6 +248,16 @@ class Cable(BranchBase):
     return_conductor_cross_section_mm2: float | None = None
     return_conductor_material: str | None = None
     return_conductor_r_ohm_per_km_20c: float | None = None
+    # Karta P0.6 (nN, docs/nn/H_PLAN_IMPLEMENTACJI_NN.md §P0.6, luka G-05):
+    # reaktancja zyly powrotnej PE/PEN — brakowala w CALYM repozytorium (ani ten
+    # kabel SN/nN, ani katalogowy `CableType`/`LVCableType` jej nie niosly), a
+    # petla zwarcia L-PE/L-PEN wymaga R+jX zyly powrotnej z TEJ SAMEJ trasy co
+    # zyla fazowa (§0.1 karty). Pole addytywne/opcjonalne — brak (None) NIE jest
+    # domyslnym zerem: `fault_loop_builder`/warstwa aplikacji odmawia liczenia
+    # petli bez jawnej wartosci (fail-closed, zero fabrykacji); istniejace
+    # opublikowane kable bez tego pola waliduja sie i mapuja identycznie jak
+    # przed dodaniem.
+    return_conductor_x_ohm_per_km: float | None = None
     return_conductor_jth_1s_a_per_mm2: float | None = None
     return_conductor_ith_1s_a: float | None = None
     # Karta F-K1 faza 3: wytrzymalosc cieplna zwarciowa ZYLY FAZOWEJ (IEC 60949).
