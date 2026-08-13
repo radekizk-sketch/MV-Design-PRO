@@ -48,12 +48,16 @@ def test_guard_istnieje_i_ma_zmierzony_prog() -> None:
     # `node.source_impedance` z `# type: ignore[attr-defined]` — dług typów zmalał
     # razem z defektem (fizyka w warstwie aplikacji zapisywana poza kontraktem `Node`)
     # ⇒ pomiar 18/13 → 17/12.
+    # UTRWALENIE POPRAWY (2026-08-13, `b368467e`): guard obniżył próg do 16/11, ale
+    # TEN wiersz został przy 17/12 — czyli dokładnie to, przed czym ostrzega zdanie
+    # niżej: liczba powtórzona poza guardem rozjechała się z guardem i zapadka
+    # zgłaszała czerwony test zamiast pilnować długu ⇒ wyrównanie do 16/11.
     #
     # To JEDYNE miejsce, w którym zmierzona liczba jest powtórzona poza samym guardem.
     # Test „odcina w obie strony" poniżej wyprowadza ją z modułu, więc obniżenie progu
     # wymaga świadomej zmiany dokładnie tutaj (i nigdzie indziej).
-    assert modul.BASELINE_ERRORS == 17
-    assert modul.BASELINE_FILES == 12
+    assert modul.BASELINE_ERRORS == 16
+    assert modul.BASELINE_FILES == 11
 
 
 def test_guard_jest_wpiety_do_workflow_ci() -> None:
