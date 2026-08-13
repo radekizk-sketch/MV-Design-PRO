@@ -76,6 +76,7 @@ Data wylaczenia dla deprecated: koniec M2, o ile wiersz nie wskazuje inaczej.
 | `GET /api/cases/{case_id}/wizard/can-proceed` | legacy | deprecated | 2026-04-24 | koniec M2 | Przejscie kreatora utrzymane jako adapter odczytowy; kanoniczny zapis idzie przez operacje domenowe ENM. | wizard migration tests | Architekt migracji |
 | `GET /api/cases/{case_id}/wizard/state` | legacy | deprecated | 2026-04-24 | koniec M2 | Stan kreatora; nie jest prawda domenowa. | wizard state tests | Architekt migracji |
 | `GET /api/catalog/bess-inverter-types` | v12xx | aktywny | 2026-04-24 | - | Katalog falownikow BESS. | catalog tests | Administrator katalogow |
+| `GET /api/catalog/bay-apparatus-kinds` | v12xx | aktywny | 2026-08-13 | - | Rodzaje aparatu glownego dopuszczalne dla rol pol SN (readout kreatora stacji; jedno zrodlo prawdy BAY_PRIMARY_APPARATUS_KINDS_BY_ROLE, karta KOMPLETNOSC-POLA-TR). | catalog tests | Administrator katalogow |
 | `GET /api/catalog/bay-protection-codes` | v12xx | aktywny | 2026-07-30 | - | Kanoniczne funkcje zabezpieczeniowe wymagane dla rol pol SN (readout kreatora stacji; jedno zrodlo prawdy z operacjami domenowymi, K9-B). | catalog tests | Administrator katalogow |
 | `GET /api/catalog/mv-protection-device-types` | v12xx | aktywny | 2026-07-30 | - | Zabezpieczenia z kanonicznego katalogu MV (przestrzen ZABEZPIECZENIE) - te same pozycje, ktore przyjmuje brama katalogowa `add_relay` (K9-B). | catalog tests | Administrator katalogow |
 | `GET /api/catalog/branch-point-types` | v12xx | aktywny | 2026-04-24 | - | Katalog punktow rozgaleznych. | catalog tests | Administrator katalogow |
@@ -235,6 +236,7 @@ Data wejscia statusow: 2026-05-24.
 | `GET /api/analysis-runs/{run_id}/export/proof/latex` | v12xx | aktywny | 2026-05-24 | - | Eksport uzasadnienia w LaTeX z frozen proof. | analysis run export tests | Architekt proof |
 | `GET /api/analysis-runs/{run_id}/export/proof/pdf` | v12xx | aktywny | 2026-05-24 | - | Eksport uzasadnienia PDF z frozen proof. | analysis run export tests | Architekt proof |
 | `GET /api/analysis-runs/{run_id}/export/report/docx` | v12xx | aktywny | 2026-05-24 | - | Eksport raportu DOCX z wyniku i uzasadnienia. | analysis run export tests | Architekt raportow |
+| `GET /api/analysis-runs/{run_id}/gotowosc-dokumentacji-wykonawczej` | v12xx | aktywny | 2026-08-13 | - | Werdykt bramy dokumentacji wykonawczej dla migawki biegu (ten sam, ktorym backend odmawia eksportu profilu wykonawczego) - generator raportu pokazuje stan przed kliknieciem. | analysis run export tests | Architekt raportow |
 | `GET /api/analysis-runs/{run_id}/export/report/json` | v12xx | aktywny | 2026-05-24 | - | Eksport raportu JSON z wyniku i uzasadnienia. | analysis run export tests | Architekt raportow |
 | `GET /api/analysis-runs/{run_id}/export/report/pdf` | v12xx | aktywny | 2026-05-24 | - | Eksport raportu PDF z wyniku i uzasadnienia. | analysis run export tests | Architekt raportow |
 | `GET /api/projects/{project_id}/documents` | v12xx | aktywny | 2026-07-23 | - | Lista wygenerowanych dokumentow projektu z magazynu (cykl zycia; F-E8.3/V12K-094). | document store API tests | Architekt raportow |

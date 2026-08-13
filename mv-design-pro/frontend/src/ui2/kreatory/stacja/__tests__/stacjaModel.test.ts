@@ -328,10 +328,14 @@ describe('stacjaModel — payload', () => {
         }),
       }),
       nn_block: expect.objectContaining({ nn_configuration: 'LOAD_NN', outgoing_feeders_nn_count: 2 }),
-      options: expect.objectContaining({ create_transformer_field: true, create_nn_bus: true }),
     });
     expect(payload).not.toHaveProperty('segment_id');
     expect(payload).not.toHaveProperty('insert_at');
+    // KOMPLETNOSC-POLA-TR: blok `options` USUNIĘTY z kontraktu — jego trzy flagi
+    // (`create_transformer_field`/`create_default_fields`/`create_nn_bus`) nie były
+    // przez operację CZYTANE, więc opisywały sterowanie, którego nie było (phantom).
+    // Obecność pola transformatorowego rozstrzyga wyłącznie lista `sn_fields`.
+    expect(payload).not.toHaveProperty('options');
   });
 
   it('wariant podział → insert z segment_id/insert_at RATIO', () => {

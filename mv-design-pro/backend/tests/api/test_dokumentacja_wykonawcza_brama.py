@@ -119,9 +119,7 @@ def test_pozostale_profile_nie_sa_blokowane(app_client, _bieg_z_luka, profil: st
     assert json.loads(response.content)["report_options"]["profile"] == profil
 
 
-def test_model_z_polem_tr_przepuszcza_dokumentacje_wykonawcza(
-    app_client, _bieg_kompletny
-) -> None:
+def test_model_z_polem_tr_przepuszcza_dokumentacje_wykonawcza(app_client, _bieg_kompletny) -> None:
     response = app_client.get(
         f"/api/analysis-runs/{_bieg_kompletny.id}/export/report/json?profile=wykonawczy"
     )
@@ -130,9 +128,7 @@ def test_model_z_polem_tr_przepuszcza_dokumentacje_wykonawcza(
     assert json.loads(response.content)["report_options"]["profile"] == "wykonawczy"
 
 
-def test_koncowka_gotowosci_mowi_o_blokadzie_przed_kliknieciem(
-    app_client, _bieg_z_luka
-) -> None:
+def test_koncowka_gotowosci_mowi_o_blokadzie_przed_kliknieciem(app_client, _bieg_z_luka) -> None:
     response = app_client.get(
         f"/api/analysis-runs/{_bieg_z_luka.id}/gotowosc-dokumentacji-wykonawczej"
     )

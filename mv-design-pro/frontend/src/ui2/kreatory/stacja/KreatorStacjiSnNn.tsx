@@ -20,6 +20,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { useAppStateStore } from '../../../ui/app-state';
 import {
+  fetchBayApparatusKinds,
   fetchBayProtectionCodes,
   fetchCompleteBayTemplates,
   fetchConverterTypes,
@@ -91,9 +92,11 @@ import {
   DANE_DOMYSLNE,
   RODZAJE_ZABEZPIECZEN,
   aparatyDlaPola,
+  brakujePolaTransformatorowego,
   czyAparaturaKompletna,
   czyKoniecOdcinka,
   domyslneWpisyPol,
+  etykietaRodzajuAparatu,
   nowyWpisPola,
   nowyWpisWyposazenia,
   zbudujPolaSnZWpisow,
@@ -268,6 +271,11 @@ export function KreatorStacjiSnNn() {
   const [kodyZabezpieczen, setKodyZabezpieczen] = useState<Record<string, string[]>>({});
   const [bladPomiaru, setBladPomiaru] = useState<string | null>(null);
 
+  // KOMPLETNOSC-POLA-TR: rodzaje aparatu głównego dopuszczalne per rola pola —
+  // readout z backendu (`BAY_PRIMARY_APPARATUS_KINDS_BY_ROLE`), zero tablicy
+  // wariantów zaszytej w UI. Brak odpowiedzi = brak zawężenia (pełny katalog).
+  const [rodzajeAparatuRoli, setRodzajeAparatuRoli] = useState<Record<string, string[]>>({});
+
   // Krok 7 — podgląd skutków (dry_run).
   const [podglad, setPodglad] = useState<PodgladStacji | null>(null);
   const [podgladStan, setPodgladStan] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
@@ -385,16 +393,22 @@ export function KreatorStacjiSnNn() {
   }, []);
 
   // Katalog aparatury SN (APARAT_SN) — aparat pola wskazuje projektant (B-12).
+  // Razem z nim rodzaje aparatu dopuszczalne per rola pola: obie dane opisują
+  // TEN SAM wybór, więc jedno pobranie (rozjazd „katalog jest, zawężenia nie ma"
+  // pokazywałby przez chwilę pozycje, których backend dla roli nie przyjmie).
   useEffect(() => {
     let cancelled = false;
     setBladAparatow(null);
-    fetchMvApparatusTypes()
-      .then((a) => {
-        if (!cancelled) setAparaty(Array.isArray(a) ? a : []);
+    Promise.all([fetchMvApparatusTypes(), fetchBayApparatusKinds()])
+      .then(([a, rodzaje]) => {
+        if (cancelled) return;
+        setAparaty(Array.isArray(a) ? a : []);
+        setRodzajeAparatuRoli(rodzaje ?? {});
       })
       .catch((e: unknown) => {
         if (cancelled) return;
         setAparaty([]);
+        setRodzajeAparatuRoli({});
         setBladAparatow(getCatalogErrorMessage(e));
       });
     return () => {
@@ -402,6 +416,18 @@ export function KreatorStacjiSnNn() {
     };
   }, []);
 
+  /** Aparaty zdatne DLA ROLI pola — zawężenie z backendu + zgodność napięciowa. */
+  const aparatyDlaRoli = useCallback(
+    (rola: SnFieldRole) =>
+      aparatyDlaPola(
+        aparaty,
+        kontekst.snVoltageKv,
+        rodzajeAparatuRoli[ROLA_POLA_NA_BAY_ROLE[rola]] ?? [],
+      ),
+    [aparaty, kontekst.snVoltageKv, rodzajeAparatuRoli],
+  );
+
+  /** Lista bez zawężenia rolą — domyślny aparat i stan zerowy kroku. */
   const aparatyZdatne = useMemo(
     () => aparatyDlaPola(aparaty, kontekst.snVoltageKv),
     [aparaty, kontekst.snVoltageKv],
@@ -528,6 +554,18 @@ export function KreatorStacjiSnNn() {
     [dane.switchgear_family_ref, rodzinyDobrane],
   );
   const aparatDomyslny = aparatyZdatne[0]?.id ?? null;
+  /** Domyślny aparat DLA ROLI — pierwszy zdatny z listy zawężonej rolą pola. */
+  const aparatDomyslnyRoli = useCallback(
+    (rola: SnFieldRole) => aparatyDlaRoli(rola)[0]?.id ?? aparatDomyslny,
+    [aparatDomyslny, aparatyDlaRoli],
+  );
+
+  /** Nazwy PL rozwiązań dopuszczalnych dla roli pola (wprost z kontraktu backendu). */
+  const wariantyAparatuRoli = useCallback(
+    (rola: SnFieldRole) =>
+      (rodzajeAparatuRoli[ROLA_POLA_NA_BAY_ROLE[rola]] ?? []).map(etykietaRodzajuAparatu),
+    [rodzajeAparatuRoli],
+  );
 
   // Lista pól SN startuje od ról rodzaju stacji i pozostaje EDYTOWALNA (krok 3).
   // Zmiana rodzaju stacji przebudowuje listę domyślną — projektant świadomie
@@ -538,18 +576,19 @@ export function KreatorStacjiSnNn() {
         return p;
       }
       if (p.pola.length > 0 && p.template_id) return p;
-      return { ...p, pola: domyslneWpisyPol(p.station_type, szablonyRola, aparatDomyslny) };
+      return { ...p, pola: domyslneWpisyPol(p.station_type, szablonyRola, aparatDomyslnyRoli) };
     });
-  }, [aparatDomyslny, rolePol, szablonyRola]);
+  }, [aparatDomyslnyRoli, rolePol, szablonyRola]);
 
   // Uzupełnienie brakujących wskazań w istniejących wpisach (szablon pola
-  // dobrany katalogiem, aparat z listy zdatnej) — bez nadpisywania wyborów.
+  // dobrany katalogiem, aparat z listy zdatnej DLA ROLI) — bez nadpisywania
+  // wyborów projektanta.
   useEffect(() => {
     setDane((p) => {
       let zmiana = false;
       const pola = p.pola.map((pole) => {
         const szablonRef = pole.bay_template_ref ?? szablonyRola[pole.field_role]?.template_ref ?? null;
-        const aparatRef = pole.apparatus_catalog_ref ?? aparatDomyslny;
+        const aparatRef = pole.apparatus_catalog_ref ?? aparatDomyslnyRoli(pole.field_role);
         if (szablonRef === pole.bay_template_ref && aparatRef === pole.apparatus_catalog_ref) {
           return pole;
         }
@@ -558,7 +597,7 @@ export function KreatorStacjiSnNn() {
       });
       return zmiana ? { ...p, pola } : p;
     });
-  }, [aparatDomyslny, szablonyRola]);
+  }, [aparatDomyslnyRoli, szablonyRola]);
 
   /**
    * Wyposażenie pól (krok 4) per WPIS pola — jedzie w TEJ SAMEJ operacji co
@@ -593,6 +632,10 @@ export function KreatorStacjiSnNn() {
     ],
   );
   const rozdzielnicaKompletna = czyRozdzielnicaKompletna(snFields);
+  // KOMPLETNOSC-POLA-TR: kreator stacji SN/nN ZAWSZE tworzy transformator
+  // (`transformer.create: true` w payloadzie), więc brak pola roli TR na liście
+  // to zawsze świadoma rezygnacja projektanta — i zawsze ma być nazwana wprost.
+  const brakPolaTransformatorowego = brakujePolaTransformatorowego(dane.pola, true);
   const aparaturaKompletna = czyAparaturaKompletna(snFields);
 
   const dodajPole = useCallback(() => {
@@ -605,13 +648,37 @@ export function KreatorStacjiSnNn() {
           nowyWpisPola(
             rola,
             szablonyRola[rola]?.template_ref ?? null,
-            aparatDomyslny,
+            aparatDomyslnyRoli(rola),
             p.pola.length + 1,
           ),
         ],
       };
     });
-  }, [aparatDomyslny, szablonyRola]);
+  }, [aparatDomyslnyRoli, szablonyRola]);
+
+  /**
+   * KOMPLETNOSC-POLA-TR: przywrócenie pola transformatorowego po świadomym
+   * usunięciu. Pole wchodzi z tym samym doborem, co domyślne (szablon roli +
+   * aparat dopuszczalny dla roli TR) — projektant nie musi go składać od nowa.
+   */
+  const przywrocPoleTransformatorowe = useCallback(() => {
+    setDane((p) => {
+      if (p.pola.some((pole) => pole.field_role === 'TRANSFORMATOROWE')) return p;
+      const rola: SnFieldRole = 'TRANSFORMATOROWE';
+      return {
+        ...p,
+        pola: [
+          ...p.pola,
+          nowyWpisPola(
+            rola,
+            szablonyRola[rola]?.template_ref ?? null,
+            aparatDomyslnyRoli(rola),
+            p.pola.length + 1,
+          ),
+        ],
+      };
+    });
+  }, [aparatDomyslnyRoli, szablonyRola]);
 
   const usunPole = useCallback((id: string) => {
     setDane((p) => ({
@@ -818,18 +885,21 @@ export function KreatorStacjiSnNn() {
       setSzablonZastosowany(szablon);
       setDane((p) => {
         const stationType = wypelnienie.stationType ?? p.station_type;
-        const aparatRef = wypelnienie.aparatRef ?? aparatDomyslny;
+        // Aparat z szablonu, a przy jego braku — domyślny DLA ROLI pola
+        // (szablon stacji nie musi wskazywać aparatu każdego pola).
+        const aparatRef = wypelnienie.aparatRef ?? null;
+        const aparatDlaPola = (rola: SnFieldRole) => aparatRef ?? aparatDomyslnyRoli(rola);
         const pola: PoleSnWpis[] =
           wypelnienie.pola.length > 0
             ? wypelnienie.pola.map((pole, index) =>
                 nowyWpisPola(
                   pole.field_role,
                   szablonyRola[pole.field_role]?.template_ref ?? null,
-                  pole.apparatus_catalog_ref ?? aparatRef,
+                  pole.apparatus_catalog_ref ?? aparatDlaPola(pole.field_role),
                   index + 1,
                 ),
               )
-            : domyslneWpisyPol(stationType, szablonyRola, aparatRef);
+            : domyslneWpisyPol(stationType, szablonyRola, aparatDlaPola);
         // Propozycje szablonu przyjmujemy TYLKO wtedy, gdy pozycja istnieje w
         // katalogu, który waliduje odpowiednia operacja (add_ct/add_vt/add_relay).
         // Szablony stacji wskazują zabezpieczenia z biblioteki ANALITYCZNEJ
@@ -872,7 +942,7 @@ export function KreatorStacjiSnNn() {
       setBladSzablonow(e instanceof Error ? e.message : T.szablonBlad);
     }
   }, [
-    aparatDomyslny,
+    aparatDomyslnyRoli,
     ctTypy,
     przekazniki,
     szablonyRola,
@@ -909,10 +979,10 @@ export function KreatorStacjiSnNn() {
       ...p,
       template_id: null,
       template_name: '',
-      pola: domyslneWpisyPol(p.station_type, szablonyRola, aparatDomyslny),
+      pola: domyslneWpisyPol(p.station_type, szablonyRola, aparatDomyslnyRoli),
       wyposazenie: {},
     }));
-  }, [aparatDomyslny, szablonyRola]);
+  }, [aparatDomyslnyRoli, szablonyRola]);
 
   const onZapisz = useCallback(() => {
     void zapiszStacje(dane, konwerter);
@@ -1412,6 +1482,23 @@ export function KreatorStacjiSnNn() {
             <KreatorInfo testid="mvd-kreator-stacja-brak-aparatow">{T.brakAparatow}</KreatorInfo>
           ) : null}
 
+          {brakPolaTransformatorowego ? (
+            <KreatorSekcja
+              tytul={T.polaBrakTrTytul}
+              testid="mvd-kreator-stacja-brak-pola-tr"
+            >
+              <KreatorInfo>{T.polaBrakTrOpis}</KreatorInfo>
+              <button
+                type="button"
+                className="mvd-kreator-btn mvd-kreator-btn--glowna"
+                onClick={przywrocPoleTransformatorowe}
+                data-testid="mvd-kreator-stacja-przywroc-pole-tr"
+              >
+                {T.polaPrzywrocTr}
+              </button>
+            </KreatorSekcja>
+          ) : null}
+
           {dane.pola.length === 0 ? (
             <KreatorInfo testid="mvd-kreator-stacja-pola-puste">{T.polaPuste}</KreatorInfo>
           ) : (
@@ -1450,18 +1537,23 @@ export function KreatorStacjiSnNn() {
                     etykieta={T.aparatPola}
                     wartosc={pole.apparatus_catalog_ref}
                     onZmiana={(v) => zmienPole(pole.id, { apparatus_catalog_ref: v })}
-                    opcje={aparatyZdatne.map((a) => ({
+                    opcje={aparatyDlaRoli(pole.field_role).map((a) => ({
                       id: a.id,
-                      etykieta: `${a.name} · ${fmtKv(a.u_n_kv)} · ${a.i_n_a} A`,
+                      etykieta: `${a.name} · ${etykietaRodzajuAparatu(a.device_kind)} · ${fmtKv(a.u_n_kv)} · ${a.i_n_a} A`,
                     }))}
                     status={bladAparatow ? 'error' : 'ready'}
                     placeholder={T.aparatPolaPlaceholder}
-                    pomoc={T.aparatPolaPomoc}
+                    pomoc={`${T.aparatPolaPomoc} ${T.aparatPolaWarianty(wariantyAparatuRoli(pole.field_role))}`}
                     komunikatBledu={bladAparatow ?? T.aparatBlad}
                     wymagane
                     testid={`mvd-kreator-stacja-aparat-${index + 1}`}
                   />
                 </KreatorSiatka>
+                {!bladAparatow && aparatyZdatne.length > 0 && aparatyDlaRoli(pole.field_role).length === 0 ? (
+                  <KreatorInfo testid={`mvd-kreator-stacja-brak-aparatow-roli-${index + 1}`}>
+                    {T.brakAparatowRoli}
+                  </KreatorInfo>
+                ) : null}
                 <button
                   type="button"
                   className="mvd-kreator-btn"

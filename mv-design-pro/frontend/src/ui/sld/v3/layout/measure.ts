@@ -348,7 +348,33 @@ export function implicitStationTransformers(
 ): readonly StationTransformerUnit[] {
   if (!stationHasLvSide(station)) return [];
   if (stationHasExplicitTrBay(station.snBays)) return [];
-  return station.transformerUnits ?? [];
+  return (station.transformerUnits ?? []).filter(
+    (unit) => !stronaGornaPozaPasmemSn(unit.hvVoltageKv),
+  );
+}
+
+/** Górna granica pasma SN [kV] — lustro `PASMO_SN_MAX_KV` bramki gotowości
+ *  (`backend/src/enm/pole_transformatorowe.py`). Parytet pilnuje wspólna
+ *  tablica decyzyjna `pole_transformatorowe_parytet_v1.json`. */
+const PASMO_SN_MAX_KV = 60.0;
+/** Dolna granica pasma SN [kV] (włącznie) — lustro `PASMO_NN_MAX_KV`. */
+const PASMO_NN_MAX_KV = 1.0;
+
+/**
+ * KOMPLETNOSC-POLA-TR (parytet): czy strona GÓRNA transformatora NA PEWNO leży
+ * poza pasmem SN. Reguła bramki gotowości brzmi „Transformer.exists AND
+ * HV_side_connected_to_SN AND NOT valid_transformer_bay_configuration", więc
+ * marker musi stosować DOKŁADNIE ten sam warunek pasma — inaczej transformator
+ * 110/15 kV (strona górna WN) dostawałby na rysunku marker braku pola SN, o
+ * którym bramka słusznie milczy.
+ *
+ * Brak napięcia (`null`) NIE dyskwalifikuje — ta sama tolerancja po obu
+ * stronach: scena bywa budowana z danych bez napięcia szyny, a marker jest tam
+ * potrzebny najbardziej.
+ */
+function stronaGornaPozaPasmemSn(hvVoltageKv: number | null | undefined): boolean {
+  if (hvVoltageKv == null) return false;
+  return hvVoltageKv < PASMO_NN_MAX_KV || hvVoltageKv > PASMO_SN_MAX_KV;
 }
 
 /** Jedna kolumna bloku SN stacji — pole rozdzielni ALBO transformator bez

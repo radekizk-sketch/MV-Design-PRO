@@ -26,7 +26,7 @@ import {
 } from '../../../../ui/results/reportExportApi';
 import { useExecutionRunsStore } from '../../../../ui/study-cases/runStore';
 import { useShellStore } from '../../../shell/useShellStore';
-import { useTabeleWyniku } from './api';
+import { useGotowoscDokumentacji, useTabeleWyniku } from './api';
 import {
   DOMYSLNY_POZIOM,
   DOMYSLNY_PROFIL,
@@ -81,6 +81,12 @@ export function GeneratorRaportu() {
   const [stan, setStan] = useState<StanAkcji>({ rodzaj: 'bezczynny' });
 
   const tabeleWyniku = useTabeleWyniku(runId);
+  // KOMPLETNOSC-POLA-TR §0 pkt 2: brama dokumentacji wykonawczej. Werdykt
+  // pochodzi z backendu (ten sam, którym odmawia eksportu) — ekran go POKAZUJE,
+  // niczego nie ocenia sam (zero fizyki i zero oceny modelu w UI).
+  const gotowoscPw = useGotowoscDokumentacji(runId);
+  const dokumentacjaWykonawczaZablokowana =
+    profil === 'wykonawczy' && !gotowoscPw.werdykt.gotowy;
 
   const przelaczSekcje = (sekcja: SekcjaRaportu) => {
     setSekcje((biezace) =>
@@ -252,6 +258,20 @@ export function GeneratorRaportu() {
           </span>
         </label>
 
+        {dokumentacjaWykonawczaZablokowana && (
+          <div className="mvd-gen-grupa" data-testid="mvd-generator-brama-pw">
+            <h4>{T.bramaPwTytul}</h4>
+            <p className="mvd-gen-opis">{T.bramaPwOpis}</p>
+            <ul className="mvd-gen-opis">
+              {gotowoscPw.werdykt.blokady.map((blokada) => (
+                <li key={`${blokada.code}:${blokada.element_refs.join('|')}`}>
+                  {blokada.message_pl}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         <div className="mvd-gen-grupa">
           <h4>{T.raportGrupa}</h4>
           <div className="mvd-gen-przyciski">
@@ -261,7 +281,7 @@ export function GeneratorRaportu() {
                 type="button"
                 className="mvd-gen-akcja"
                 data-testid={`mvd-generator-raport-${format}`}
-                disabled={stan.rodzaj === 'pracuje'}
+                disabled={stan.rodzaj === 'pracuje' || dokumentacjaWykonawczaZablokowana}
                 onClick={() =>
                   void wykonaj(`raport-${format}`, () =>
                     exportReport(runId, format, {

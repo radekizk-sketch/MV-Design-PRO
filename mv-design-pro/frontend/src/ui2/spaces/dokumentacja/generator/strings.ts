@@ -35,6 +35,14 @@ export const GEN_STRINGS = {
   zapiszDoMagazynu: 'Zapisz kopię w magazynie dokumentów projektu',
   zapiszOpis: 'Zapisany dokument pojawia się na liście w przeglądzie dokumentacji (z datą, rozmiarem i odciskiem).',
   pracuje: 'Generowanie…',
+
+  // --- Brama dokumentacji wykonawczej (KOMPLETNOSC-POLA-TR) ---------------
+  bramaPwTytul: 'Projekt nie jest gotowy do dokumentacji wykonawczej',
+  bramaPwOpis:
+    'Profil „Wykonawczy" opisuje, co i jak ma zostać zbudowane, więc wymaga modelu bez luk '
+    + 'konfiguracyjnych. Poniższe braki zamykają tę drogę; pozostałe profile i obliczenia '
+    + 'działają bez zmian.',
+  bramaPwPrzejdz: 'Pokaż w panelu gotowości',
   sukces: 'Wygenerowano plik',
   blad: 'Nie udało się wygenerować dokumentu',
 

@@ -141,7 +141,11 @@ async function zbudujScene(request: APIRequestContext): Promise<Scena> {
     station_type: 'B',
     insert_at: { value: 0.5 },
     station: { sn_voltage_kv: 15.0, nn_voltage_kv: 0.4 },
-    sn_fields: ['IN', 'OUT'],
+    // KOMPLETNOSC-POLA-TR (klasa A): stacja SN/nN Z transformatorem — pole roli
+    // 'TR' dopisane, bo realna rozdzielnia realizuje odejscie do transformatora
+    // polem transformatorowym. Kreator stacji tworzy je domyslnie, wiec fixture
+    // bez niego opisywal siec, ktorej kreator by nie zbudowal.
+    sn_fields: ['IN', 'OUT', 'TR'],
     transformer: { create: true, catalog_binding: catalogBinding('TRAFO_SN_NN', TRAFO_ID) },
   });
   const stacja = (op.snapshot?.substations ?? []).find((s) => s.ref_id.includes('/station'));

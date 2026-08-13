@@ -171,6 +171,11 @@ async function buildStationNetworkBezPolaTr(
     station_type: 'B',
     insert_at: { value: 0.5 },
     station: { sn_voltage_kv: 15.0, nn_voltage_kv: 0.4 },
+    // KOMPLETNOSC-POLA-TR (klasa B — CELOWY model niekompletny): TU pola roli
+    // 'TR' NIE MA i mieć nie może. Ten spec jest jedynym miejscem, w ktorym
+    // sprawdzamy uczciwy stan niekompletny: rysunek pokazuje transformator z
+    // markerem braku pola, a bramka gotowosci zglasza ostrzezenie
+    // `transformer.bay_missing`. Dopisanie 'TR' skasowaloby dowod tego zachowania.
     sn_fields: ['IN', 'OUT', 'FEEDER'],
     transformer: {
       create: true,

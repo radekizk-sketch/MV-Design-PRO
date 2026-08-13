@@ -622,14 +622,40 @@ export function czyRozdzielnicaKompletna(snFields: readonly StationSnFieldTempla
 export function domyslneWpisyPol(
   stationType: TypStacji,
   szablonyRola: Partial<Record<SnFieldRole, CompleteMvBayTemplateSummary>>,
-  aparatDomyslny: string | null,
+  aparatDomyslny: string | null | ((rola: SnFieldRole) => string | null),
 ): PoleSnWpis[] {
+  // KOMPLETNOSC-POLA-TR: aparat domyślny wyznaczany PER ROLA. Jedna wspólna
+  // pozycja dla wszystkich pól potrafiła wstawić w pole transformatorowe aparat
+  // spoza jego zbioru dopuszczalnych rodzajów (np. odłącznik) — wtedy picker,
+  // zawężony rolą, nie pokazywał własnej wartości pola.
+  const dlaRoli = (rola: SnFieldRole): string | null =>
+    typeof aparatDomyslny === 'function' ? aparatDomyslny(rola) : aparatDomyslny;
   return rolePolaStacji(stationType).map((rola, index) => ({
     id: `pole-${index + 1}-${rola}`,
     field_role: rola,
     bay_template_ref: szablonyRola[rola]?.template_ref ?? null,
-    apparatus_catalog_ref: aparatDomyslny,
+    apparatus_catalog_ref: dlaRoli(rola),
   }));
+}
+
+/**
+ * KOMPLETNOSC-POLA-TR §0 pkt 1 — czy stacja z transformatorem NIE MA pola
+ * transformatorowego.
+ *
+ * Domyślnie kreator pole TR tworzy (`buildDefaultSnFields` niesie
+ * `TRANSFORMATOROWE` dla KAŻDEGO rodzaju stacji), ale lista pól jest edytowalna
+ * i projektant może je świadomie usunąć. To jest legalny STAN ROBOCZY — nie
+ * blokujemy zapisu. Kreator ma jednak powiedzieć WPROST, co z tego wyniknie
+ * (marker niekompletności na schemacie, ostrzeżenie gotowości, zamknięta droga
+ * do dokumentacji wykonawczej), bo inaczej projektant dowiaduje się o skutku
+ * dopiero z rysunku.
+ */
+export function brakujePolaTransformatorowego(
+  pola: readonly PoleSnWpis[],
+  transformatorTworzony: boolean,
+): boolean {
+  if (!transformatorTworzony) return false;
+  return !pola.some((pole) => pole.field_role === 'TRANSFORMATOROWE');
 }
 
 /** Nowy wpis pola (dodanie pola w kroku 3). */
@@ -759,17 +785,47 @@ export function czyAparaturaKompletna(snFields: readonly StationSnFieldTemplate[
 }
 
 /**
- * Aparaty SN zdatne dla pola stacji: wyłączniki/rozłączniki/odłączniki o napięciu
+ * Aparaty SN zdatne dla pola stacji: pozycje katalogu APARAT_SN o napięciu
  * znamionowym pokrywającym napięcie szyny SN. Filtr katalogowy (porównanie napięć),
  * ZERO fizyki — parametry i tak materializuje katalog po stronie backendu.
+ *
+ * ZAWĘŻENIE PER ROLA (karta KOMPLETNOSC-POLA-TR §0 pkt 1). `rodzajeDlaRoli` to
+ * lista `device_kind` dopuszczalnych dla roli pola, pobrana z backendu
+ * (`/api/catalog/bay-apparatus-kinds` — jedno źródło prawdy
+ * `BAY_PRIMARY_APPARATUS_KINDS_BY_ROLE`). Do tej karty picker pokazywał dla
+ * KAŻDEGO pola pełne 48 pozycji katalogu, z uziemnikiem i reklozerem włącznie —
+ * projektant nie widział, że pole transformatorowe ma realnie DWA rozwiązania
+ * (rozłącznik bezpiecznikowy albo wyłącznik), bo tonęły w pozycjach, które w tym
+ * polu nie występują.
+ *
+ * Pusta/nieznana lista rodzajów = BRAK zawężenia (zachowanie sprzed karty) —
+ * kreator nie zgaduje ograniczeń, których backend nie deklaruje.
  */
 export function aparatyDlaPola(
   aparaty: readonly MVApparatusCatalogType[],
   snVoltageKv: number,
+  rodzajeDlaRoli: readonly string[] = [],
 ): MVApparatusCatalogType[] {
+  const dopuszczalne = new Set(rodzajeDlaRoli);
   return aparaty
     .filter((a) => !(snVoltageKv > 0) || a.u_n_kv + 1e-6 >= snVoltageKv)
+    .filter((a) => dopuszczalne.size === 0 || dopuszczalne.has(a.device_kind))
     .sort((a, b) => a.u_n_kv - b.u_n_kv || a.i_n_a - b.i_n_a || a.id.localeCompare(b.id));
+}
+
+/** Etykiety PL rodzajów aparatu (`device_kind` katalogu APARAT_SN) — bez kodenames. */
+export const ETYKIETY_RODZAJU_APARATU: Readonly<Record<string, string>> = {
+  WYLACZNIK: 'wyłącznik',
+  ROZLACZNIK: 'rozłącznik',
+  ROZLACZNIK_BEZPIECZNIKOWY: 'rozłącznik bezpiecznikowy',
+  ODLACZNIK: 'odłącznik',
+  REKLOZER: 'reklozer',
+  UZIEMNIK: 'uziemnik',
+};
+
+/** Nazwa rodzaju aparatu po polsku (nieznany rodzaj = jego kod z katalogu). */
+export function etykietaRodzajuAparatu(deviceKind: string): string {
+  return ETYKIETY_RODZAJU_APARATU[deviceKind] ?? deviceKind;
 }
 
 /**
@@ -990,11 +1046,6 @@ export function zbudujPayload(
       ...blokZaczepow(data),
     },
     nn_block: nnBlock,
-    options: {
-      create_transformer_field: true,
-      create_default_fields: true,
-      create_nn_bus: true,
-    },
   };
 
   if (czyKoniecOdcinka(kontekst)) {

@@ -467,6 +467,25 @@ def list_bay_protection_codes() -> dict[str, list[str]]:
     return {role: list(codes) for role, codes in BAY_PROTECTION_CODES_BY_ROLE.items()}
 
 
+@router.get("/bay-apparatus-kinds")
+def list_bay_apparatus_kinds() -> dict[str, list[str]]:
+    """Rodzaje aparatu GŁÓWNEGO dopuszczalne dla ról pól SN (readout).
+
+    Jedno źródło prawdy: `BAY_PRIMARY_APPARATUS_KINDS_BY_ROLE` — ta sama tablica,
+    którą operacje domenowe stosują przy budowie pola. Końcówka istnieje
+    dokładnie z tego powodu, co bliźniacza `/bay-protection-codes`: kreator
+    stacji ma zawęzić picker aparatu do rozwiązań, które w danym polu REALNIE
+    występują, BEZ kopiowania tablicy do frontendu (zero równoległej definicji,
+    zero listy wariantów zaszytej w UI).
+
+    Wartości to `device_kind` pozycji katalogu APARAT_SN, więc konsument filtruje
+    listę katalogową wprost — nie tłumaczy nazw.
+    """
+    from network_model.catalog.bay_templates import BAY_PRIMARY_APPARATUS_KINDS_BY_ROLE
+
+    return {role: list(kinds) for role, kinds in BAY_PRIMARY_APPARATUS_KINDS_BY_ROLE.items()}
+
+
 @router.get("/mv-protection-device-types")
 def list_mv_protection_device_types() -> list[dict[str, Any]]:
     """Zabezpieczenia z KANONICZNEGO katalogu MV (przestrzeń `ZABEZPIECZENIE`).

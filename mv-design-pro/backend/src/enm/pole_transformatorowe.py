@@ -54,7 +54,14 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any
+from typing import TypeAlias
+
+#: Element migawki ENM: słownik surowej migawki biegu ALBO obiekt modelu
+#: (`enm.models`). Świadomie `object`, nie `Any`: `object` wymusza jawne
+#: zawężenie przed użyciem (i tak robione tu `isinstance`-ami), a `Any`
+#: wyłączyłby kontrolę typów w warstwie domenowej — czego pilnuje niezmiennik
+#: `tests/test_professional_invariants.py::test_no_any_in_domain_types`.
+ElementEnm: TypeAlias = object
 
 # ---------------------------------------------------------------------------
 # Pasma napięciowe domeny — JEDNO miejsce definicji
@@ -106,7 +113,7 @@ def szyna_poza_pasmem_sn(voltage_kv: float | None) -> bool:
 # jednym akcesorem.
 
 
-def _pole(obiekt: Any, nazwa: str, domyslna: Any = None) -> Any:
+def _pole(obiekt: ElementEnm, nazwa: str, domyslna: object = None) -> object:
     if isinstance(obiekt, Mapping):
         wartosc = obiekt.get(nazwa, domyslna)
     else:
@@ -114,7 +121,7 @@ def _pole(obiekt: Any, nazwa: str, domyslna: Any = None) -> Any:
     return domyslna if wartosc is None else wartosc
 
 
-def _ref(obiekt: Any) -> str:
+def _ref(obiekt: ElementEnm) -> str:
     """Referencja elementu: `ref_id`, a przy jego braku `id` (jak w rysunku)."""
     for nazwa in ("ref_id", "id"):
         wartosc = _pole(obiekt, nazwa, "")
@@ -123,8 +130,34 @@ def _ref(obiekt: Any) -> str:
     return ""
 
 
-def _teksty(wartosci: Iterable[Any]) -> list[str]:
+def _teksty(wartosci: Iterable[object]) -> list[str]:
     return [w.strip() for w in wartosci if isinstance(w, str) and w.strip()]
+
+
+def _lista(obiekt: ElementEnm, nazwa: str) -> list[ElementEnm]:
+    """Kolekcja spod klucza — ZAWSZE lista (brak/nie-lista ⇒ pusta)."""
+    wartosc = _pole(obiekt, nazwa, [])
+    if isinstance(wartosc, list):
+        return list(wartosc)
+    if isinstance(wartosc, tuple):
+        return list(wartosc)
+    return []
+
+
+def _tekst(obiekt: ElementEnm, nazwa: str) -> str:
+    """Napis spod klucza — pusty, gdy danej nie ma albo nie jest napisem."""
+    wartosc = _pole(obiekt, nazwa, "")
+    return wartosc.strip() if isinstance(wartosc, str) else ""
+
+
+def _liczba(obiekt: ElementEnm, nazwa: str) -> float | None:
+    """Liczba spod klucza — ``None``, gdy danej nie ma (uczciwy brak, nie zero)."""
+    wartosc = _pole(obiekt, nazwa, None)
+    if isinstance(wartosc, bool):
+        return None
+    if isinstance(wartosc, int | float):
+        return float(wartosc)
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -154,21 +187,20 @@ class TransformatorBezPolaSN:
 # ---------------------------------------------------------------------------
 
 
-def _szyny_stacji(stacja: Any, buses: Sequence[Any]) -> dict[str, Any]:
+def _szyny_stacji(stacja: ElementEnm, buses: Sequence[ElementEnm]) -> dict[str, ElementEnm]:
     """Szyny stacji: z `Substation.bus_refs` ORAZ z `Bus.substation_ref`.
 
     Oba kanały, bo oba występują w danych: operacje stacyjne wypełniają
     `bus_refs`, a część importów wiąże szynę od jej strony. Rysunek
     (`collectStationBusRefs`) czyta tak samo.
     """
-    refy_stacji = set(_teksty([_pole(stacja, "ref_id", ""), _pole(stacja, "id", "")]))
-    zadeklarowane = set(_teksty(_pole(stacja, "bus_refs", []) or []))
-    wynik: dict[str, Any] = {}
+    refy_stacji = set(_teksty([_tekst(stacja, "ref_id"), _tekst(stacja, "id")]))
+    zadeklarowane = set(_teksty(_lista(stacja, "bus_refs")))
+    wynik: dict[str, ElementEnm] = {}
     for bus in buses:
-        refy_szyny = _teksty([_pole(bus, "ref_id", ""), _pole(bus, "id", "")])
+        refy_szyny = _teksty([_tekst(bus, "ref_id"), _tekst(bus, "id")])
         nalezy = bool(zadeklarowane.intersection(refy_szyny))
-        wlasciciel = _pole(bus, "substation_ref", "")
-        if isinstance(wlasciciel, str) and wlasciciel.strip() in refy_stacji:
+        if _tekst(bus, "substation_ref") in refy_stacji and _tekst(bus, "substation_ref"):
             nalezy = True
         if not nalezy:
             continue
@@ -177,22 +209,22 @@ def _szyny_stacji(stacja: Any, buses: Sequence[Any]) -> dict[str, Any]:
     return wynik
 
 
-def _refy_transformatorow_blokowych(generators: Sequence[Any]) -> set[str]:
+def _refy_transformatorow_blokowych(generators: Sequence[ElementEnm]) -> set[str]:
     """Transformatory wskazane przez źródła jako blokowe (`blocking_transformer_ref`)."""
     refy: set[str] = set()
     for generator in generators:
-        ref = _pole(generator, "blocking_transformer_ref", "")
-        if isinstance(ref, str) and ref.strip():
-            refy.add(ref.strip())
+        ref = _tekst(generator, "blocking_transformer_ref")
+        if ref:
+            refy.add(ref)
     return refy
 
 
 def _transformatory_stacji(
-    stacja: Any,
-    transformers: Sequence[Any],
+    stacja: ElementEnm,
+    transformers: Sequence[ElementEnm],
     refy_szyn_stacji: set[str],
     refy_blokowe: set[str],
-) -> list[Any]:
+) -> list[ElementEnm]:
     """Transformatory NALEŻĄCE do stacji — deklaracja stacji przed dopasowaniem.
 
     Kolejność jest istotna i lustrzana wobec rysunku
@@ -203,21 +235,21 @@ def _transformatory_stacji(
     ustawia je na JEDYNY transformator stacji, więc odwrotna kolejność gubiłaby
     transformator każdej stacji z PV/BESS na szynie nN.
     """
-    zadeklarowane = set(_teksty(_pole(stacja, "transformer_refs", []) or []))
+    zadeklarowane = set(_teksty(_lista(stacja, "transformer_refs")))
     if zadeklarowane:
-        return [t for t in transformers if zadeklarowane.intersection(_teksty([_ref(t)]))]
-    dopasowane: list[Any] = []
+        return [t for t in transformers if _ref(t) in zadeklarowane]
+    dopasowane: list[ElementEnm] = []
     for transformator in transformers:
         if _ref(transformator) in refy_blokowe:
             continue
-        hv = _pole(transformator, "hv_bus_ref", "")
-        lv = _pole(transformator, "lv_bus_ref", "")
+        hv = _tekst(transformator, "hv_bus_ref")
+        lv = _tekst(transformator, "lv_bus_ref")
         if hv in refy_szyn_stacji or lv in refy_szyn_stacji:
             dopasowane.append(transformator)
     return dopasowane
 
 
-def stacja_ma_pole_transformatorowe(stacja: Any, bays: Sequence[Any]) -> bool:
+def stacja_ma_pole_transformatorowe(stacja: ElementEnm, bays: Sequence[ElementEnm]) -> bool:
     """Czy stacja ma pole roli ``TR`` — OBA kanały danych.
 
     Kanał 1: `Substation.meta.field_specs[].bay_role` (operacje stacyjne i
@@ -225,36 +257,33 @@ def stacja_ma_pole_transformatorowe(stacja: Any, bays: Sequence[Any]) -> bool:
     (`add_sn_bay`, dane starsze). Adapter rysunku czyta oba, więc pominięcie
     jednego z nich zapaliłoby marker bez ostrzeżenia albo odwrotnie.
     """
-    meta = _pole(stacja, "meta", {}) or {}
-    specyfikacje = _pole(meta, "field_specs", []) or []
-    for spec in specyfikacje:
-        rola = _pole(spec, "bay_role", "")
-        if isinstance(rola, str) and rola.strip().upper() == "TR":
+    meta = _pole(stacja, "meta", {})
+    for spec in _lista(meta, "field_specs"):
+        if _tekst(spec, "bay_role").upper() == "TR":
             return True
 
-    refy_stacji = set(_teksty([_pole(stacja, "ref_id", ""), _pole(stacja, "id", "")]))
+    refy_stacji = set(_teksty([_tekst(stacja, "ref_id"), _tekst(stacja, "id")]))
     for bay in bays:
-        wlasciciel = _pole(bay, "substation_ref", "")
-        if not isinstance(wlasciciel, str) or wlasciciel.strip() not in refy_stacji:
+        wlasciciel = _tekst(bay, "substation_ref")
+        if not wlasciciel or wlasciciel not in refy_stacji:
             continue
-        rola = _pole(bay, "bay_role", "")
-        if isinstance(rola, str) and rola.strip().upper() == "TR":
+        if _tekst(bay, "bay_role").upper() == "TR":
             return True
     return False
 
 
-def transformatory_bez_pola_sn(enm: Any) -> list[TransformatorBezPolaSN]:
+def transformatory_bez_pola_sn(enm: ElementEnm) -> list[TransformatorBezPolaSN]:
     """Transformatory na szynie SN stacji, dla których nie ma pola roli ``TR``.
 
     Wynik uporządkowany deterministycznie (stacja, transformator) — ten sam
     model daje tę samą listę, bo kolejność zgłoszeń trafia do bramki gotowości i
     do dokumentacji.
     """
-    substations = _pole(enm, "substations", []) or []
-    transformers = _pole(enm, "transformers", []) or []
-    buses = _pole(enm, "buses", []) or []
-    bays = _pole(enm, "bays", []) or []
-    generators = _pole(enm, "generators", []) or []
+    substations = _lista(enm, "substations")
+    transformers = _lista(enm, "transformers")
+    buses = _lista(enm, "buses")
+    bays = _lista(enm, "bays")
+    generators = _lista(enm, "generators")
 
     refy_blokowe = _refy_transformatorow_blokowych(generators)
     znaleziska: list[TransformatorBezPolaSN] = []
@@ -265,18 +294,16 @@ def transformatory_bez_pola_sn(enm: Any) -> list[TransformatorBezPolaSN]:
             continue
         if stacja_ma_pole_transformatorowe(stacja, bays):
             continue
-        for transformator in _transformatory_stacji(
-            stacja, transformers, set(szyny), refy_blokowe
-        ):
-            hv = _pole(transformator, "hv_bus_ref", "")
-            if not isinstance(hv, str) or hv not in szyny:
+        for transformator in _transformatory_stacji(stacja, transformers, set(szyny), refy_blokowe):
+            hv = _tekst(transformator, "hv_bus_ref")
+            if not hv or hv not in szyny:
                 continue
-            if szyna_poza_pasmem_sn(_pole(szyny[hv], "voltage_kv", None)):
+            if szyna_poza_pasmem_sn(_liczba(szyny[hv], "voltage_kv")):
                 continue
             znaleziska.append(
                 TransformatorBezPolaSN(
                     station_ref=_ref(stacja),
-                    station_name=str(_pole(stacja, "name", "") or ""),
+                    station_name=_tekst(stacja, "name"),
                     transformer_ref=_ref(transformator),
                     hv_bus_ref=hv,
                 )

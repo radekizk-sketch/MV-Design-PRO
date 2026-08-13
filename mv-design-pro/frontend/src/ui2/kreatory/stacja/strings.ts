@@ -277,12 +277,30 @@ export const STACJA_STRINGS = {
   polePlaceholder: '— dobór automatyczny —',
   aparatPola: 'Aparat pola',
   aparatPolaPomoc:
-    'Aparat łączeniowy pola z katalogu SN (wyłącznik, rozłącznik, odłącznik). Wskazanie jest '
-    + 'wymagane — system nie dobiera aparatu za projektanta.',
+    'Aparat łączeniowy pola z katalogu SN. Lista jest zawężona do rozwiązań stosowanych w tej roli '
+    + 'pola. Wskazanie jest wymagane — system nie dobiera aparatu za projektanta.',
   aparatPolaPlaceholder: '— wskaż aparat z katalogu —',
   aparatBlad: 'Nie udało się pobrać katalogu aparatury SN.',
   brakAparatow:
     'Katalog aparatury SN nie zawiera pozycji na napięcie szyny. Uzupełnij katalog APARAT_SN.',
+  /** Rozwiązania dopuszczalne dla roli pola — wprost z katalogu (bez listy zaszytej w UI). */
+  aparatPolaWarianty: (warianty: readonly string[]) =>
+    warianty.length > 0
+      ? `Rozwiązania stosowane w tym polu: ${warianty.join(' albo ')}.`
+      : 'Katalog nie zawęża rodzaju aparatu dla tej roli pola.',
+  brakAparatowRoli:
+    'Katalog aparatury SN nie ma pozycji stosowanej w tym polu na napięcie szyny. '
+    + 'Uzupełnij katalog APARAT_SN albo zmień rolę pola.',
+
+  // KOMPLETNOSC-POLA-TR — świadoma rezygnacja z pola transformatorowego.
+  polaBrakTrTytul: 'Stacja z transformatorem bez pola transformatorowego',
+  polaBrakTrOpis:
+    'Ta stacja tworzy transformator SN/nN, a lista pól nie zawiera pola transformatorowego. '
+    + 'Odejście od szyny SN realizuje się polem, więc konfiguracja pozostanie niekompletna: '
+    + 'na schemacie transformator dostanie znacznik braku pola, panel gotowości zgłosi ostrzeżenie, '
+    + 'a projekt nie przejdzie do dokumentacji wykonawczej. Praca koncepcyjna i obliczenia '
+    + 'działają bez zmian — to legalny stan roboczy.',
+  polaPrzywrocTr: 'Dodaj pole transformatorowe',
   podgladTytul: 'Podgląd pól rozdzielnicy SN',
   brakProducenta: 'Wybierz producenta rozdzielnicy SN, aby dobrać pola stacji.',
   brakRodzin: 'Producent nie udostępnia rodzin dla napięcia SN szyny — użyty pakiet standardowy.',
