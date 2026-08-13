@@ -69,7 +69,16 @@ const SEVERITY_DOT: Record<ReadinessSeverity, string> = {
  * Deterministic: same code → same group.
  */
 export function classifyIssueGroup(issue: ReadinessIssue): ReadinessGroup {
-  const code = issue.code.toLowerCase();
+  // KOMPLETNOSC-POLA-TR: klasyfikujemy po KODZIE KANONICZNYM, gdy backend go
+  // dostarczył. Realnym dostawcą sygnału jest walidator ENM, którego kody
+  // (`E001`, `W041`, `I004`…) nie mają ŻADNEGO z prefiksów niżej — każde takie
+  // zgłoszenie wpadało więc do grupy domyślnej „Magistrala", niezależnie od
+  // tego, czego dotyczyło (stacji, źródła, pierścienia). Kanoniczny kod
+  // (`transformer.bay_missing`, `source.grid_supply_missing`, …) niesie ten
+  // podział wprost — most `domain/readiness_bridge.py` dokłada go tam, gdzie
+  // odwzorowanie jest rzetelne, więc `?? issue.code` zostaje jako uczciwy
+  // fallback dla zgłoszeń bez odpowiednika w kanonie.
+  const code = (issue.canonical_code ?? issue.code).toLowerCase();
 
   // Protection-related codes
   if (

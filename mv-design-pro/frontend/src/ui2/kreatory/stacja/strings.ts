@@ -301,6 +301,9 @@ export const STACJA_STRINGS = {
     + 'a projekt nie przejdzie do dokumentacji wykonawczej. Praca koncepcyjna i obliczenia '
     + 'działają bez zmian — to legalny stan roboczy.',
   polaPrzywrocTr: 'Dodaj pole transformatorowe',
+  wierszPoleTr: 'Pole transformatorowe',
+  wierszPoleTrJest: 'W rozdzielnicy',
+  wierszPoleTrBrak: 'Brak — konfiguracja niekompletna',
   podgladTytul: 'Podgląd pól rozdzielnicy SN',
   brakProducenta: 'Wybierz producenta rozdzielnicy SN, aby dobrać pola stacji.',
   brakRodzin: 'Producent nie udostępnia rodzin dla napięcia SN szyny — użyty pakiet standardowy.',

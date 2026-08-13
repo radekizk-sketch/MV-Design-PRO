@@ -999,6 +999,34 @@ describe('KreatorStacjiSnNn — pole transformatorowe (KOMPLETNOSC-POLA-TR)', ()
     expect(role).not.toContain('TRANSFORMATOROWE');
   });
 
+  it('panel kontroli niesie stan pola TR — widoczny z KAŻDEGO kroku, nie tylko z listy pól', async () => {
+    // Panel skutków żyje w kroku pól; projektant, który po usunięciu pola przejdzie
+    // dalej, nie zobaczyłby już nic. Wiersz kontroli jest w stałej kolumnie kreatora.
+    executeDomainOperationMock.mockResolvedValue({ error: null });
+    render(<KreatorStacjiSnNn />);
+
+    await przejdzDoTransformatora();
+    await wybierzTyp();
+    await przejdzIWybierzRozdzielnice();
+
+    const gotowosc = screen.getByTestId('mvd-kreator-stacja-gotowosc');
+    expect(gotowosc.textContent).toMatch(/Pole transformatorowe/);
+    expect(gotowosc.textContent).toMatch(/W rozdzielnicy/);
+
+    await userEvent.click(screen.getByTestId('mvd-kreator-stacja-pole-usun-4'));
+    await waitFor(() => {
+      expect(screen.getByTestId('mvd-kreator-stacja-gotowosc').textContent).toMatch(
+        /Brak — konfiguracja niekompletna/,
+      );
+    });
+
+    // Krok zmieniony na inny — stan pola TR NADAL widoczny (stała kolumna).
+    await przejdzDoKroku('Blok nN');
+    expect(screen.getByTestId('mvd-kreator-stacja-gotowosc').textContent).toMatch(
+      /Brak — konfiguracja niekompletna/,
+    );
+  });
+
   it('przywrócenie pola TR jednym kliknięciem — komunikat znika, rola wraca do operacji', async () => {
     executeDomainOperationMock.mockResolvedValue({ error: null });
     render(<KreatorStacjiSnNn />);
