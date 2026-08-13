@@ -19,6 +19,7 @@ przez warstwe API i sprawdzaja ksztalt/status odpowiedzi.
 from __future__ import annotations
 
 import hashlib
+import time
 from typing import Any
 from uuid import uuid4
 
@@ -302,8 +303,16 @@ def test_export_pdf_is_byte_deterministic_across_repeated_calls(app_client: Any)
 
 
 def test_export_docx_is_byte_deterministic_across_repeated_calls(app_client: Any) -> None:
+    """Odstep >1s MIEDZY wywolaniami jest CELOWY, nie kosmetyczny: DOCX jest ZIP-em,
+    a `zipfile` znakuje kazdy wpis biezacym czasem lokalnym z rozdzielczoscia
+    SEKUNDY — dwa wywolania w tej samej sekundzie „przechodza" nawet bez
+    normalizacji (`docx_determinism.make_docx_bytes_deterministic`), co dawaloby
+    falszywa zielen. Test musi przeciac granice sekundy, zeby cokolwiek dowodzic
+    (zweryfikowane iniekcja I2 karty ZAB-100-BACKEND: `deterministic=False` w
+    warstwie API przechodzil ten sam test BEZ odstepu czasowego)."""
     run_id = _run(app_client).json()["run_id"]
     first = app_client.get(f"/api/protection-coordination/{run_id}/export/docx")
+    time.sleep(1.1)
     second = app_client.get(f"/api/protection-coordination/{run_id}/export/docx")
     assert first.status_code == 200
     assert second.status_code == 200
