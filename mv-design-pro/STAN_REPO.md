@@ -275,6 +275,22 @@ wpięcie c per pasmo + scenariusz MIN w głównej ścieżce użytkownika), P0.5�
   czerwonych, w tym piny dowód↔bieg z PODSTAWA-VDROP; sha-identyczne odtworzenie).
 Następne: P0.6 (pętla zwarcia z grafu + SWZ — serce modułu), P0.7 (krzywe nN + pola
 zdolności wyłączania wg rozstrzygnięcia rundy 3), P0.8–P0.10.
+
+**Aktualizacja 2026-08-13 (ta sama sesja): P0.6 wykonane + fala 10 scalona.**
+P0.6 (`60f8ab76`+`eca30a12`): szczegóły wyżej w sekcji — odbiór z iniekcją
+(bezwarunkowe łagodne pasmo SWZ → 2 czerwone, sha-identyczne odtworzenie),
+pełny pytest 9344/13 na HEAD odbioru. Restart kontenera zabił wykonawców
+P0.7/G-22 PRZED zapisem (worktree czyste — zmierzone) — bez strat; okazało
+się to korzystne, bo fala 10 nadzoru (`75693a57`: NAWIGACJA-JEDEN-KANON D1/D2/D4,
+PACK-NASTAWY I>/I>>, RATCHET-DICT-READ — 3 fabrykacje wejść ENM usunięte
+u źródła) przerobiła `protection/coordination/**`, na którym stara karta P0.7
+by się wywróciła. Merge `072ee0f4` (konflikt: unia wierszy rejestru;
+`canonical_analysis.py` czysto z P0.3b), runda 4 w kanale koordynacji
+(`3489e171`): kolizja P0.7×PACK-NASTAWY zgłoszona z granicą (coordination/**
+nietykalne dla nN; powierzchnia `protection/curves` zachowana adapterami).
+Bramka drzewa scalonego: pytest **9413 passed / 13 skipped**, vitest
+**849 plików / 11163 testy**, tsc+eslint czyste. Karty P0.7 i G-22 zlecone
+ponownie na bazie `3489e171` (rozłączne zbiory plików, granice w §0).
 **Aktualizacja 2026-08-13 (ta sama sesja): P0.6 WYKONANE (`b746b6a9`) — „serce modułu".**
 - Pętla zwarcia z REALNEJ trasy grafu: `application/analyses/fault_loop/route.py`
   (NOWY) — BFS po ENM (kable/łącznik/wkładka `status=closed`), fail-closed na brak
