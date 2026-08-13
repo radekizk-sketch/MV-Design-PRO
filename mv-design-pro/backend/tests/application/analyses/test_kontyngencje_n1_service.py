@@ -571,7 +571,9 @@ def test_kontrakt_widoku_jest_kompletny() -> None:
         "przeciazenia",
         "naruszenia_napiecia",
     ]
-    assert "build_slack_island" in kryteria["zasilanie"]["zrodlo_pl"]
+    # Pochodzenie kryterium zasilania opisane SEMANTYCZNIE (bez sciezek/nazw
+    # kodu — to tresc widoczna dla inzyniera).
+    assert "wyspa węzła bilansującego" in kryteria["zasilanie"]["zrodlo_pl"].lower()
 
     kontyngencja = widok["kontyngencje"][0]
     assert set(kontyngencja) == {

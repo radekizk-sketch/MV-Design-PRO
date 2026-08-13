@@ -67,14 +67,18 @@ kopii migawki bazowej (kolejność elementów w migawce bez znaczenia — mapowa
 ENM→graf sortuje po ``ref_id``), zero znaczników czasu w wyniku, zaokrąglenia
 jawne (wartości obserwowane do 4 miejsc, moce do 6).
 
-WYDAJNOŚĆ (pomiar, karta N-1-BACKEND, substrat 53 stacji
-``tests/reference_networks/sld_substrate_52s.py``, 148 szyn / 147 gałęzi /
-53 transformatory, bieg sekwencyjny na jednym rdzeniu):
-    kontyngencji: 200 · czas łączny: 176,7 s · czas/kontyngencję: 0,88 s.
-Bieg jest z założenia sekwencyjny (determinizm) — zrównoleglenie NIE wchodzi w
-zakres tej karty. Dla sieci tej wielkości oznacza to ~3 minuty na komplet N-1;
-próg akceptowalności dla ekranu interaktywnego wymaga biegu w tle albo zawężenia
-listy (parametr ``element_refs``) i jest nazwany jako dług w meldunku karty.
+WYDAJNOŚĆ (pomiar wykonany kartą N-1-BACKEND na substracie referencyjnym
+53 stacji — ``tests/reference_networks/sld_substrate_52s.py``: 315 szyn,
+260 gałęzi, 54 transformatory, 20 odbiorów; bieg sekwencyjny, jeden rdzeń):
+    kontyngencji kwalifikowanych: 142
+    czas łączny: 374,7 s
+    czas na kontyngencję: 2,64 s
+Bieg jest sekwencyjny Z ZAŁOŻENIA (determinizm) — zrównoleglenie NIE wchodzi w
+zakres tej karty. Dla sieci tej wielkości komplet N-1 zajmuje ~6 minut, co jest
+poza progiem interaktywnym: ekran musi albo zawęzić listę (parametr
+``element_refs``), albo uruchomić enumerację jako zadanie w tle. To DŁUG NAZWANY
+(nie ukryty) — jego domknięcie należy do karty ekranu N-1 (fala 12 wg D8),
+a rozwiązaniem NIE może być heurystyczne skracanie listy kontyngencji.
 
 ROZGRANICZENIE WZGLĘDEM ``reliability_contingency`` (solver V12.6 akademicki,
 ``network_model/solvers/v126_academic.py::_reliability``): tamta zdolność liczy
@@ -534,18 +538,24 @@ def _przypadek_bazowy(bazowy: CanonicalRun) -> dict[str, Any]:
 
 
 def _kryteria(config: EnergyValidationConfig) -> dict[str, Any]:
-    """Źródła kryteriów oceny — jawnie, z podaniem miejsca w kodzie."""
+    """Źródła kryteriów oceny — jawnie, językiem inżynierskim.
+
+    Treść tych pól trafia do inżyniera (widok, raport), więc pochodzenie opisujemy
+    SEMANTYCZNIE — miejsca w kodzie są udokumentowane w nagłówku modułu, a nie w
+    tekście widocznym na ekranie.
+    """
     return {
         "obciazenie": {
             "granica_warn_pct": config.loading_warn_pct,
             "granica_fail_pct": config.loading_fail_pct,
             "zrodlo_progu_pl": (
-                "analysis/energy_validation/models.py::EnergyValidationConfig "
-                "(progi walidacji energetycznej D2)"
+                f"Progi walidacji energetycznej sieci: ostrzeżenie przy "
+                f"{config.loading_warn_pct:.0f} % obciążenia, przekroczenie przy "
+                f"{config.loading_fail_pct:.0f} %."
             ),
             "zrodlo_obciazalnosci_pl": (
-                "gałąź: BranchRating.in_a modelu ENM → LineBranch.rated_current_a; "
-                "transformator: Transformer.sn_mva → TransformerBranch.rated_power_mva. "
+                "Gałąź: obciążalność długotrwała (prąd znamionowy odcinka) z danych "
+                "elementu w modelu sieci. Transformator: moc znamionowa jednostki. "
                 "Brak wartości = kryterium pominięte jawnie (pozycja na liście "
                 "kryteria_pominiete), nigdy wartość zastępcza."
             ),
@@ -554,18 +564,20 @@ def _kryteria(config: EnergyValidationConfig) -> dict[str, Any]:
             "granica_warn_pct": config.voltage_warn_pct,
             "granica_fail_pct": config.voltage_fail_pct,
             "zrodlo_progu_pl": (
-                "analysis/energy_validation/models.py::EnergyValidationConfig "
-                "(pasmo odchylenia napięcia D2)"
+                f"Pasmo odchylenia napięcia walidacji energetycznej: ostrzeżenie "
+                f"±{config.voltage_warn_pct:.0f} %, przekroczenie "
+                f"±{config.voltage_fail_pct:.0f} % napięcia znamionowego szyny."
             ),
             "zrodlo_napiecia_pl": (
-                "napięcie węzła z wyniku rozpływu wariantu; napięcie znamionowe z "
-                "Bus.voltage_kv modelu ENM"
+                "Napięcie szyny z wyniku rozpływu wariantu; napięcie znamionowe z "
+                "danych szyny w modelu sieci."
             ),
         },
         "zasilanie": {
             "zrodlo_pl": (
-                "network_model/solvers/power_flow_newton_internal.py::build_slack_island "
-                "— ta sama funkcja wyspy węzła bilansującego, której używa solver rozpływu"
+                "Wyspa węzła bilansującego wyznaczona tą samą regułą, którą stosuje "
+                "solver rozpływu przy wyborze węzłów do rozwiązania: odbiór na szynie "
+                "poza wyspą jest pozbawiony zasilania."
             ),
         },
         "ranking": {
