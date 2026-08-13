@@ -19,7 +19,6 @@ import { describe, it, expect } from 'vitest';
 import {
   resolveContext,
   type LogicalViewsProjection,
-  type CdseResolvedContext,
 } from '../contextResolver';
 
 import {
@@ -33,10 +32,7 @@ import {
   type SldClickEvent,
 } from '../sldEventRouter';
 
-import {
-  validatePayload,
-  type DomainOpPayload,
-} from '../operationExecutor';
+import { validatePayload } from '../operationExecutor';
 
 import {
   applySelectionHint,

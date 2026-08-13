@@ -188,6 +188,7 @@ class OvercurrentCoordinationAnalyzer:
         return CoordinationAnalysisResult(
             run_id=run_id,
             project_id=project_id,
+            devices=input_data.devices,
             sensitivity_checks=tuple(sensitivity_checks),
             selectivity_checks=tuple(selectivity_checks),
             overload_checks=tuple(overload_checks),

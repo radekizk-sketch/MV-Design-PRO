@@ -52,6 +52,7 @@ vi.mock('../../../shared/generatorTypeLabels', () => ({
 }));
 
 import { useAppStateStore } from '../../../app-state/store';
+import { useShellStore } from '../../../../ui2/shell/useShellStore';
 import { useSelectionStore } from '../../../selection/store';
 import { type SnapshotState, useSnapshotStore } from '../../../topology/snapshotStore';
 import { AreaContextPanel } from '../AreaContextPanel';
@@ -63,61 +64,66 @@ describe('AreaContextPanel - routing dziewięciu obszarów', () => {
       useAppStateStore.getState().setActiveCase(null);
       useAppStateStore.getState().setActiveVariant(null);
     });
-    render(<AreaContextPanel areaCode="MODEL_SIECI" />);
+    render(<AreaContextPanel obszar="MODEL_SIECI" />);
     expect(screen.getByTestId('mo-context-panel')).toBeInTheDocument();
     expect(screen.getByTestId('mo-project-start')).toBeInTheDocument();
-    expect(screen.getByTestId('mo-create-project')).toHaveTextContent(
-      'Utwórz projekt i przejdź do GPZ',
-    );
-    expect(screen.getByText('Cel obliczeń')).toBeInTheDocument();
-    expect(screen.getByText('Stan projektu')).toBeInTheDocument();
+    expect(screen.getByTestId('mo-create-project')).toHaveTextContent('Nowy / otwórz projekt');
   });
 
-  it('Model sieci: pierwszy krok tworzy jednoznaczny projekt z domyślnymi parametrami', () => {
+  /*
+   * ZERO FABRYKACJI (naprawa u źródła + testu — „test maskujący defekt produktu
+   * = dwa defekty"). Dwa poprzednie przypadki tego pliku UTRWALAŁY defekt:
+   * sprawdzały, że klik w „Utwórz projekt" nadaje `activeProjectName`,
+   * `activeCaseId` (losowy UUID) i `activeCaseName` — czyli że aplikacja
+   * WYMYŚLA projekt i zakres obliczeń po stronie klienta, bez ani jednego
+   * wywołania API. Powstawał zakres-widmo: identyfikator, którego serwer nie
+   * zna, więc kolejna operacja domenowa i każdy bieg trafiały w pustkę.
+   * Formularz usunięty; stan zerowy prowadzi do REALNEJ ścieżki zakładania
+   * projektu (przestrzeń „Projekt", zapis przez API).
+   */
+  it('Model sieci bez projektu: stan zerowy prowadzi do przestrzeni „Projekt", nic nie wymyśla', () => {
     act(() => {
       useAppStateStore.getState().setActiveProject(null);
       useAppStateStore.getState().setActiveCase(null);
       useAppStateStore.getState().setActiveVariant(null);
     });
-    render(<AreaContextPanel areaCode="MODEL_SIECI" />);
+    render(<AreaContextPanel obszar="MODEL_SIECI" />);
 
     act(() => {
       fireEvent.click(screen.getByTestId('mo-create-project'));
     });
 
+    expect(useShellStore.getState().activeSpace).toBe('projekt');
     const state = useAppStateStore.getState();
-    expect(state.activeProjectName).toBe('Sieć SN - projekt roboczy');
-    expect(state.activeCaseId).toMatch(/^[0-9a-f-]{36}$/i);
-    expect(state.activeCaseId).toMatch(/^[0-9a-f-]{36}$/i);
-    expect(state.activeCaseName).toBe('Zwarcie maksymalne IEC 60909');
-    expect(state.activeVariantName).toBe('Stan projektowany 2026');
+    expect(state.activeProjectId).toBeNull();
+    expect(state.activeCaseId).toBeNull();
+    expect(state.activeCaseName).toBeNull();
   });
 
-  it('Model sieci: istniejący projekt dostaje zakres obliczeń bez zmiany nazwy projektu', () => {
+  it('Model sieci z projektem bez zakresu: stan zerowy prowadzi do „Obliczeń"', () => {
     act(() => {
       useAppStateStore.getState().setActiveProject('project:e2e-existing', 'E2E UIUX RESET');
       useAppStateStore.getState().setActiveCase(null);
       useAppStateStore.getState().setActiveVariant(null);
     });
-    render(<AreaContextPanel areaCode="MODEL_SIECI" />);
+    render(<AreaContextPanel obszar="MODEL_SIECI" />);
 
-    expect(screen.getByRole('heading', { name: 'Utwórz zakres obliczeń' })).toBeInTheDocument();
     expect(screen.getByTestId('mo-create-project')).toHaveTextContent(
-      'Utwórz zakres i przejdź do GPZ',
+      'Przejdź do zakresów obliczeń',
     );
 
     act(() => {
       fireEvent.click(screen.getByTestId('mo-create-project'));
     });
 
-    const state = useAppStateStore.getState();
-    expect(state.activeProjectId).toBe('project:e2e-existing');
-    expect(state.activeProjectName).toBe('E2E UIUX RESET');
-    expect(state.activeCaseName).toBe('Zwarcie maksymalne IEC 60909');
+    expect(useShellStore.getState().activeSpace).toBe('obliczenia');
+    // Projekt bez zmian, zakres NADAL nieustalony — panel nic nie wymyślił.
+    expect(useAppStateStore.getState().activeProjectId).toBe('project:e2e-existing');
+    expect(useAppStateStore.getState().activeCaseId).toBeNull();
   });
 
   it('renderuje panel Schemat i topologia', () => {
-    render(<AreaContextPanel areaCode="SCHEMAT_TOPOLOGIA" />);
+    render(<AreaContextPanel obszar="SCHEMAT_TOPOLOGIA" />);
     expect(screen.getByTestId('schemat-context-panel')).toBeInTheDocument();
     expect(screen.getByTestId('schemat-action-show-topology')).toBeInTheDocument();
   });
@@ -143,7 +149,7 @@ describe('AreaContextPanel - routing dziewięciu obszarów', () => {
       });
     });
 
-    render(<AreaContextPanel areaCode="SCHEMAT_TOPOLOGIA" />);
+    render(<AreaContextPanel obszar="SCHEMAT_TOPOLOGIA" />);
 
     expect(screen.getByText('XRUHAKXS 120/25 · 0,21 km')).toBeInTheDocument();
     expect(screen.queryByText('cable · 0,21 km')).not.toBeInTheDocument();
@@ -184,7 +190,7 @@ describe('AreaContextPanel - routing dziewięciu obszarów', () => {
       });
     });
 
-    render(<AreaContextPanel areaCode="SCHEMAT_TOPOLOGIA" />);
+    render(<AreaContextPanel obszar="SCHEMAT_TOPOLOGIA" />);
 
     expect(screen.getByText(/SN 1/)).toBeInTheDocument();
     expect(screen.getByText(/SN 2/)).toBeInTheDocument();
@@ -222,7 +228,7 @@ describe('AreaContextPanel - routing dziewięciu obszarów', () => {
       });
     });
 
-    render(<AreaContextPanel areaCode="SCHEMAT_TOPOLOGIA" />);
+    render(<AreaContextPanel obszar="SCHEMAT_TOPOLOGIA" />);
 
     expect(screen.queryByText('Aparatura SN')).not.toBeInTheDocument();
     expect(screen.queryByText('Odcinki SN')).not.toBeInTheDocument();
@@ -236,55 +242,58 @@ describe('AreaContextPanel - routing dziewięciu obszarów', () => {
   });
 
   it('renderuje panel Studia obliczeniowe', () => {
-    render(<AreaContextPanel areaCode="STUDIA_OBLICZENIOWE" />);
+    render(<AreaContextPanel obszar="STUDIA_OBLICZENIOWE" />);
     expect(screen.getByTestId('an-context-panel')).toBeInTheDocument();
     expect(screen.getByTestId('mock-study-case-list')).toBeInTheDocument();
   });
 
   it('renderuje panel Wyniki i analizy', () => {
-    render(<AreaContextPanel areaCode="WYNIKI_ANALIZY" />);
+    render(<AreaContextPanel obszar="WYNIKI_ANALIZY" />);
     expect(screen.getByTestId('wyniki-context-panel')).toBeInTheDocument();
     expect(screen.getByTestId('wyniki-action-proof')).toBeInTheDocument();
   });
 
   it('renderuje panel Zabezpieczenia i automatyka', () => {
-    render(<AreaContextPanel areaCode="ZABEZPIECZENIA_AUTOMATYKA" />);
+    render(<AreaContextPanel obszar="ZABEZPIECZENIA_AUTOMATYKA" />);
     expect(screen.getByTestId('za-context-panel')).toBeInTheDocument();
     expect(screen.getByTestId('mock-protection-library')).toBeInTheDocument();
   });
 
   it('renderuje panel Układy PV/BESS/FW', () => {
-    render(<AreaContextPanel areaCode="ZRODLA_PRZYLACZENIA" />);
+    render(<AreaContextPanel obszar="ZRODLA_PRZYLACZENIA" />);
     expect(screen.getByTestId('oz-context-panel')).toBeInTheDocument();
     expect(screen.getByTestId('oz-empty-go-model')).toBeInTheDocument();
   });
 
   it('renderuje panel Katalogi techniczne', () => {
-    render(<AreaContextPanel areaCode="KATALOGI_TECHNICZNE" />);
+    render(<AreaContextPanel obszar="KATALOGI_TECHNICZNE" />);
     expect(screen.getByTestId('ad-context-panel')).toBeInTheDocument();
     expect(screen.getByTestId('mock-type-library')).toBeInTheDocument();
   });
 
   it('renderuje panel Raporty i uzasadnienia', () => {
-    render(<AreaContextPanel areaCode="RAPORTY_UZASADNIENIA" />);
+    render(<AreaContextPanel obszar="RAPORTY_UZASADNIENIA" />);
     expect(screen.getByTestId('ra-context-panel')).toBeInTheDocument();
     expect(screen.getByTestId('ra-template-list')).toBeInTheDocument();
     expect(document.body.textContent ?? '').not.toMatch(/\[(POWER_FLOW|EQUIPMENT|EARTHING|VDROP|LOSSES|PROTECTION)\]/);
   });
 
   it('renderuje panel Historia i audyt', () => {
-    render(<AreaContextPanel areaCode="HISTORIA_AUDYT" />);
+    render(<AreaContextPanel obszar="HISTORIA_AUDYT" />);
     expect(screen.getByTestId('hi-context-panel')).toBeInTheDocument();
     expect(screen.getByTestId('mock-run-history')).toBeInTheDocument();
   });
 
-  it('mapuje stary kod obszaru do nowego identyfikatora', () => {
-    render(<AreaContextPanel areaCode="TE" />);
-    expect(screen.getByTestId('schemat-context-panel')).toBeInTheDocument();
-  });
+  // D1: aliasy dwuliterowe ('TE'/'MO'/…) i normalizacja nierozpoznanych napisów
+  // ZNIKNĘŁY razem z rejestrem `ui/navigation/areaRegistry` — `obszar` jest
+  // typem ZAMKNIĘTYM, wyprowadzanym z trasy przez `ui2/legacy/mostObszarow`,
+  // więc niepoprawna wartość nie może już dojść do panelu (błąd kompilacji,
+  // nie cicha podmiana na „Model sieci"). Intencja testu — „każdy z dziewięciu
+  // obszarów ma swoją gałąź" — żyje w pozostałych przypadkach tego pliku oraz
+  // w `ui2/legacy/__tests__/mostObszarow.test.ts` (parytet tabela ↔ gałęzie).
 
   it('Schemat: klik pokazania topologii przełącza tryb pracy bez martwego kliknięcia', () => {
-    render(<AreaContextPanel areaCode="SCHEMAT_TOPOLOGIA" />);
+    render(<AreaContextPanel obszar="SCHEMAT_TOPOLOGIA" />);
     act(() => {
       useAppStateStore.getState().setActiveWorkMode('TW');
       fireEvent.click(screen.getByTestId('schemat-action-show-topology'));
@@ -296,7 +305,7 @@ describe('AreaContextPanel - routing dziewięciu obszarów', () => {
     act(() => {
       useAppStateStore.getState().setActiveAnalysisType(null);
     });
-    render(<AreaContextPanel areaCode="STUDIA_OBLICZENIOWE" />);
+    render(<AreaContextPanel obszar="STUDIA_OBLICZENIOWE" />);
     act(() => {
       fireEvent.click(screen.getByTestId('an-analysis-SC_3F'));
     });

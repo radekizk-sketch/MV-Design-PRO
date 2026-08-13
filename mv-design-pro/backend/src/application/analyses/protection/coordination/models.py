@@ -220,18 +220,22 @@ class CoordinationAnalysisResult:
 
     run_id: str
     project_id: str
+    # Devices analyzed (karta ZAB-100-BACKEND: bez tego pola raport DOCX/PDF
+    # zawsze pokazywal "Brak urzadzen" mimo ze urzadzenia byly badane —
+    # naprawa u zrodla PRZED montazem eksportow, patrz audyt tras w karcie).
+    devices: tuple[Any, ...] = field(default_factory=tuple)  # ProtectionDevice instances
     # Verdicts per device
-    sensitivity_checks: tuple[Any, ...]  # SensitivityCheck instances
-    selectivity_checks: tuple[Any, ...]  # SelectivityCheck instances
-    overload_checks: tuple[Any, ...]  # OverloadCheck instances
+    sensitivity_checks: tuple[Any, ...] = field(default_factory=tuple)  # SensitivityCheck
+    selectivity_checks: tuple[Any, ...] = field(default_factory=tuple)  # SelectivityCheck
+    overload_checks: tuple[Any, ...] = field(default_factory=tuple)  # OverloadCheck
     # TCC data for visualization
-    tcc_curves: tuple[TCCCurve, ...]
-    fault_markers: tuple[FaultMarker, ...]
+    tcc_curves: tuple[TCCCurve, ...] = field(default_factory=tuple)
+    fault_markers: tuple[FaultMarker, ...] = field(default_factory=tuple)
     # Overall
-    overall_verdict: str  # PASS/MARGINAL/FAIL
-    summary: dict[str, Any]
+    overall_verdict: str = "ERROR"  # PASS/MARGINAL/FAIL/ERROR
+    summary: dict[str, Any] = field(default_factory=dict)
     # Trace for white-box audit
-    trace_steps: tuple[dict[str, Any], ...]
+    trace_steps: tuple[dict[str, Any], ...] = field(default_factory=tuple)
     # Metadata
     pf_run_id: str | None = None
     sc_run_id: str | None = None
@@ -242,6 +246,7 @@ class CoordinationAnalysisResult:
         return {
             "run_id": self.run_id,
             "project_id": self.project_id,
+            "devices": [d.to_dict() for d in self.devices],
             "sensitivity_checks": [c.to_dict() for c in self.sensitivity_checks],
             "selectivity_checks": [c.to_dict() for c in self.selectivity_checks],
             "overload_checks": [c.to_dict() for c in self.overload_checks],

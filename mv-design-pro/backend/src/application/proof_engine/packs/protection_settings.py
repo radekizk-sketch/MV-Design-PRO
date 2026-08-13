@@ -27,6 +27,12 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID, uuid4
 
+from application.proof_engine.proof_pack import (
+    ProofPackBuilder,
+    ProofPackContext,
+    deterministic_artifact_id,
+    dokument_deterministyczny,
+)
 from application.proof_engine.types import (
     EquationDefinition,
     ProofDocument,
@@ -422,4 +428,29 @@ class ProtectionSettingsProofPack:
         return ProtectionSettingsProofResult(
             proof=proof,
             unit_check_passed=all_passed,
+        )
+
+    #: Rozróżnik tożsamości dokumentu w pakiecie biegu zbiorczego nastaw (karta
+    #: PACK-NASTAWY) — bez niego dwie linie tej samej kotwicy dostałyby ten sam
+    #: identyfikator artefaktu.
+    ROZROZNIK = "nastawy"
+
+    @classmethod
+    def generate_zip(
+        cls,
+        data: ProtectionSettingsProofInput,
+        context: ProofPackContext,
+        artifact_id: UUID | None = None,
+    ) -> bytes:
+        """Zbuduj ZIP pakietu dowodowego nastaw (dowód, źródło, wykaz, odcisk).
+
+        Ta sama mechanika co ``P16LossesProof.generate_zip`` / ``P14PowerFlowProof.
+        generate_zip`` — REUŻYCIE ``ProofPackBuilder``, nie druga droga pakowania.
+        Bez jawnego ``artifact_id`` tożsamość artefaktu i dokumentu wyprowadzamy z
+        tożsamości pakietu wraz z ``ROZROZNIK``, a znacznik dokumentu z PRZEBIEGU —
+        inaczej dwa pobrania tego samego biegu różniłyby się bajtami.
+        """
+        proof = cls.generate(data, artifact_id or deterministic_artifact_id(context, cls.ROZROZNIK))
+        return ProofPackBuilder(context).build(
+            dokument_deterministyczny(proof.proof, context, data.run_timestamp, cls.ROZROZNIK)
         )

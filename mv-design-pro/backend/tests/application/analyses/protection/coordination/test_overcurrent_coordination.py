@@ -552,6 +552,66 @@ class TestDeterminism:
 
 
 # =============================================================================
+# DEVICES-IN-RESULT TESTS (karta ZAB-100-BACKEND)
+# =============================================================================
+
+
+class TestDevicesInResult:
+    """`CoordinationAnalysisResult.devices` musi niesc badane urzadzenia.
+
+    Znalezisko audytu ZAB-100-BACKEND: bez tego pola eksporty PDF/DOCX
+    ZAWSZE renderowaly "Brak urzadzen" w tabeli urzadzen, mimo ze analiza
+    faktycznie badala urzadzenia przekazane w zadaniu — nieuczciwy raport.
+    """
+
+    def test_analyze_carries_input_devices_into_result(
+        self,
+        default_config: CoordinationConfig,
+        sample_device: ProtectionDevice,
+        sample_upstream_device: ProtectionDevice,
+        sample_fault_current: FaultCurrentData,
+        sample_operating_current: OperatingCurrentData,
+    ) -> None:
+        analyzer = OvercurrentCoordinationAnalyzer(config=default_config)
+        input_data = CoordinationInput(
+            devices=(sample_device, sample_upstream_device),
+            fault_currents=(sample_fault_current,),
+            operating_currents=(sample_operating_current,),
+            config=default_config,
+            project_id="test-devices-in-result",
+        )
+
+        result = analyzer.analyze(input_data)
+
+        assert result.devices == (sample_device, sample_upstream_device)
+        serialized = result.to_dict()
+        assert len(serialized["devices"]) == 2
+        assert {d["name"] for d in serialized["devices"]} == {
+            sample_device.name,
+            sample_upstream_device.name,
+        }
+
+    def test_empty_devices_serializes_to_empty_list_not_missing_key(
+        self,
+        default_config: CoordinationConfig,
+    ) -> None:
+        analyzer = OvercurrentCoordinationAnalyzer(config=default_config)
+        input_data = CoordinationInput(
+            devices=(),
+            fault_currents=(),
+            operating_currents=(),
+            config=default_config,
+            project_id="test-devices-empty",
+        )
+
+        result = analyzer.analyze(input_data)
+        serialized = result.to_dict()
+
+        assert "devices" in serialized
+        assert serialized["devices"] == []
+
+
+# =============================================================================
 # OVERALL VERDICT TESTS
 # =============================================================================
 

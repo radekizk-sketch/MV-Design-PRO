@@ -14,6 +14,7 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { useAppStateStore } from '../../app-state';
 import { ProjectMetadataModal } from '../../network-build/ProjectMetadataModal';
+import { navigateToSld } from '../../navigation';
 import { notify } from '../../notifications/store';
 import {
   createProject,
@@ -99,7 +100,7 @@ export function ProjectDashboardSurface(): JSX.Element {
         // Nie blokuje nawigacji — case może być wybrany później.
         console.warn('[ProjectDashboardSurface] Failed to fetch active case', e);
       }
-      window.location.hash = '#sld';
+      navigateToSld();
       notify(`Otwarto projekt "${project.name}".`, 'success');
     },
     [setActiveProject, setActiveCase],
@@ -135,7 +136,7 @@ export function ProjectDashboardSurface(): JSX.Element {
         }
         notify(`Utworzono projekt "${created.name}" z wariantem bazowym.`, 'success');
         setCreateOpen(false);
-        window.location.hash = '#sld';
+        navigateToSld();
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Nieznany błąd tworzenia projektu.';
         notify(message, 'error');

@@ -17,10 +17,6 @@ import type {
   Cable,
   SwitchBranch,
   FuseBranch,
-  Transformer,
-  Source,
-  Load,
-  Generator,
   ValidationResult,
 } from '../enm';
 import {
@@ -65,6 +61,15 @@ function makeENM(overrides: Partial<EnergyNetworkModel> = {}): EnergyNetworkMode
     sources: [],
     loads: [],
     generators: [],
+    // Pola WYMAGANE kontraktem `EnergyNetworkModel` — bez nich atrapa nie
+    // spełniała typu, który sama deklarowała (błąd zgłaszany na całym zwrocie,
+    // po jednej brakującej kolekcji naraz).
+    substations: [],
+    bays: [],
+    junctions: [],
+    corridors: [],
+    measurements: [],
+    protection_assignments: [],
     ...overrides,
   };
 }

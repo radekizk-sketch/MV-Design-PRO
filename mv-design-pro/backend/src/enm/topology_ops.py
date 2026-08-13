@@ -472,6 +472,29 @@ def create_device(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult
             issues.append(OpIssue("OP_SN_INVALID", "BLOCKER", "Moc znamionowa Sn musi być > 0 MVA"))
         if data.get("uk_percent", 0) <= 0:
             issues.append(OpIssue("OP_UK_INVALID", "BLOCKER", "Napięcie zwarcia uk% musi być > 0"))
+        # Karta RATCHET-DICT-READ (2026-08-13): `uhv_kv`/`ulv_kv`/`pk_kw` sa polami
+        # WYMAGANYMI kontraktu `Transformer` (enm/models.py: `uhv_kv: float`,
+        # `ulv_kv: float`, `pk_kw: float` — bez domyslnej wartosci, w
+        # przeciwienstwie do OPCJONALNEGO `p0_kw: float | None = None` w tej samej
+        # klasie). Do tej naprawy brakowalo im walidacji BLOCKER, ktora dwie linie
+        # wyzej ma juz `sn_mva`/`uk_percent` — `data.get("uhv_kv", 0)` fabrykowal
+        # 0 kV napiecia znamionowego uzwojenia (przeklada sie wprost na przekladnie
+        # i baze p.u.), a `data.get("pk_kw", 0)` fabrykowal transformator bez strat
+        # obciazeniowych (R_T=0 w obwodzie zastepczym IEC 60909). Ten sam wzorzec
+        # co juz zwalidowane sn_mva/uk_percent — brak danej ma byc BLOCKER, nie
+        # liczba udajaca pomiar.
+        if data.get("uhv_kv", 0) <= 0:
+            issues.append(
+                OpIssue("OP_UHV_INVALID", "BLOCKER", "Napięcie znamionowe GN musi być > 0 kV")
+            )
+        if data.get("ulv_kv", 0) <= 0:
+            issues.append(
+                OpIssue("OP_ULV_INVALID", "BLOCKER", "Napięcie znamionowe DN musi być > 0 kV")
+            )
+        if data.get("pk_kw", 0) <= 0:
+            issues.append(
+                OpIssue("OP_PK_INVALID", "BLOCKER", "Straty obciążeniowe Pk muszą być > 0 kW")
+            )
 
         if any(i.severity == "BLOCKER" for i in issues):
             return TopologyOpResult(False, enm, "create_device", issues)
@@ -482,10 +505,10 @@ def create_device(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult
             "hv_bus_ref": hv,
             "lv_bus_ref": lv,
             "sn_mva": data["sn_mva"],
-            "uhv_kv": data.get("uhv_kv", 0),
-            "ulv_kv": data.get("ulv_kv", 0),
+            "uhv_kv": data["uhv_kv"],
+            "ulv_kv": data["ulv_kv"],
             "uk_percent": data["uk_percent"],
-            "pk_kw": data.get("pk_kw", 0),
+            "pk_kw": data["pk_kw"],
             "tags": data.get("tags", []),
             "meta": data.get("meta", {}),
         }

@@ -556,6 +556,46 @@ def create_run(
     return run
 
 
+def _wykonaj_analize_biegu(run: CanonicalRun) -> None:
+    """JEDYNY dyspozytor typu analizy do wykonania solvera dla CanonicalRun.
+
+    Wspolny dla `execute_run` (biegi persystowane) i `wykonaj_bieg_w_pamieci`
+    (warianty migawki bez persystencji). Wywolanie `_execute_short_circuit`
+    ma tu swoje JEDYNE miejsce w pliku — budzet zapadki
+    `no_direct_fault_params_guard` (`B:_execute_short_circuit: 1`) pozostaje
+    dokladnie 1:1; rozgalezianie dyspozycji w drugim miejscu byloby druga
+    sciezka tej samej fizyki.
+    """
+    if run.analysis_type == "PF":
+        _execute_power_flow(run)
+    elif run.analysis_type == "short_circuit_sn":
+        _execute_short_circuit(run)
+    elif run.analysis_type == "phase_state_sn":
+        _execute_phase_state_sn(run)
+    elif run.analysis_type == "dynamic_stability":
+        _execute_dynamic_stability(run)
+    elif run.analysis_type == "source_compliance":
+        _execute_source_compliance(run)
+    else:
+        raise ValueError(f"Unsupported analysis type: {run.analysis_type}")
+
+
+def wykonaj_bieg_w_pamieci(run: CanonicalRun) -> None:
+    """Wykonaj bieg WARIANTU w pamieci — bez persystencji i bez zmiany statusu.
+
+    Kanoniczne wejscie dla wzorca wariantow migawki (kontyngencje N-1, bieg
+    zbiorczy nastaw): wolajacy buduje `CanonicalRun` z kopia migawki kotwicy
+    i zmienionymi opcjami, a wykonanie idzie DOKLADNIE ta sama dyspozycja co
+    `execute_run` — zadnej rownoleglej sciezki fizyki, zadnych surowych
+    parametrow zwarcia poza tym modulem (inwariant
+    `no_direct_fault_params_guard`; konsolidacja tego modulu z warstwa
+    wiazania to osobny dlug architektoniczny w rejestrze, nie do zamykania
+    tutaj). Wynik trafia w pola `raw_result`/`result_summary` przekazanego
+    obiektu; magazyn biegow pozostaje nietkniety.
+    """
+    _wykonaj_analize_biegu(run)
+
+
 def execute_run(run_id: UUID) -> CanonicalRun:
     run = get_run(run_id)
     if run is None:
@@ -569,18 +609,7 @@ def execute_run(run_id: UUID) -> CanonicalRun:
     _save_run(run)
 
     try:
-        if run.analysis_type == "PF":
-            _execute_power_flow(run)
-        elif run.analysis_type == "short_circuit_sn":
-            _execute_short_circuit(run)
-        elif run.analysis_type == "phase_state_sn":
-            _execute_phase_state_sn(run)
-        elif run.analysis_type == "dynamic_stability":
-            _execute_dynamic_stability(run)
-        elif run.analysis_type == "source_compliance":
-            _execute_source_compliance(run)
-        else:
-            raise ValueError(f"Unsupported analysis type: {run.analysis_type}")
+        _wykonaj_analize_biegu(run)
         run.status = "FINISHED"
         run.finished_at = datetime.now(UTC)
         _save_run(run)
@@ -786,9 +815,23 @@ def _execute_phase_state_sn(run: CanonicalRun) -> None:
             for raw_bus in snapshot.get("buses") or []
             if isinstance(raw_bus, dict) and str(raw_bus.get("ref_id") or "") == target_bus_ref
         ),
-        {},
+        None,
     )
-    source_voltage_default = float(target_bus.get("voltage_kv") or 15.0) / math.sqrt(3.0)
+    # Karta RATCHET-DICT-READ (2026-08-13): USUNIETA fabrykacja "or 15.0". `Bus.
+    # voltage_kv` jest WYMAGANE w kontrakcie ENM (enm/models.py), a `execute_run`
+    # odrzuca "phase_state_sn" bez co najmniej jednej szyny PRZED uruchomieniem
+    # tej funkcji (`if analysis_type == "phase_state_sn" and not enm.buses: raise
+    # ValueError`), wiec auto-dobor celu (`_pick_phase_state_target`) zawsze
+    # trafia w istniejaca szyne z realnym napieciem. Jedyna droga do `target_bus
+    # is None` to JAWNIE podany `target_bus_ref`/`target_id` w opcjach przypadku,
+    # ktory nie wskazuje zadnej realnej szyny (literowka, usunieta szyna) — to
+    # blad danych wejsciowych uzytkownika, ktory nalezy zamelodowac wprost, a nie
+    # cichaczem zgadywac napiecie 15 kV rozdzielni SN.
+    if target_bus is None:
+        raise ValueError(
+            f"Stan fazowy SN: docelowa szyna '{target_bus_ref}' nie istnieje w modelu ENM"
+        )
+    source_voltage_default = float(target_bus["voltage_kv"]) / math.sqrt(3.0)
     solver_input = PhaseStateSNInput(
         source_voltage_kv=_phase_value_from_options(
             run.options,

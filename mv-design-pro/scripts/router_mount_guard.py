@@ -110,7 +110,11 @@ MIN_MODULOW_Z_ROUTEREM = 45
 #: obnizyc budzet, inaczej poprawa nie zostaje utrwalona.
 #: Pomiar 2026-08-08: protection_coordination 7 + archive_diff 2 + cloud_backup 4
 #: + incremental_archive 3 = 16.
-BUDZET_ODSTAWIONYCH_TRAS = 16
+#: POMIAR PO NAPRAWIE (karta ZAB-100-BACKEND, 2026-08-13): protection_coordination
+#: ZAMONTOWANY pod /api (7 tras zywych + 2 nowe eksporty PDF/DOCX, poza budzetem
+#: bo nie sa juz odstawione) — budzet zmalal o 7: archive_diff 2 + cloud_backup 4
+#: + incremental_archive 3 = 9.
+BUDZET_ODSTAWIONYCH_TRAS = 9
 
 # --------------------------------------------------------------------------
 # ROUTERY SWIADOMIE ODSTAWIONE (nie wpiete i nie usuniete).
@@ -125,19 +129,11 @@ BUDZET_ODSTAWIONYCH_TRAS = 16
 # zapala czerwien: `[router-nieaktualny-wpis]`.
 # --------------------------------------------------------------------------
 SWIADOMIE_ODSTAWIONE: dict[str, tuple[tuple[str, ...], str]] = {
-    "protection_coordination": (
-        ("router",),
-        "CALA ZDOLNOSC koordynacji zabezpieczen (7 koncowek: bieg, TCC, slad, "
-        "kontrole czulosci/selektywnosci/przeciazenia) + martwy klient frontu "
-        "`ui/protection-coordination/api.ts` z 10 sciezkami w rejestrze "
-        "`FRONTEND_DEAD_CLIENT_DEBT`. Zywy ekran koordynacji (E-28) to "
-        "`ui2/wyniki/koordynacja`, ktory czyta `/api/protection/overcurrent-settings` "
-        "— czyli WEZSZA zdolnosc (nastawy jednego pola, bez pary gora-dol). "
-        "Rozstrzygniecie „wpiac dostawce koordynacji czy skasowac ekran” jest "
-        "decyzja o ZAKRESIE PRODUKTU, nie o porzadku w plikach — zostaje na "
-        "osobna karte. Do tego czasu modul NIE JEST wpiety: trasa bez konsumenta "
-        "byla by fantomem.",
-    ),
+    # protection_coordination ZAMONTOWANY (karta ZAB-100-BACKEND, 2026-08-13,
+    # decyzja D10 w docs/uiux/DECYZJE_ARCHITEKTONICZNE_2026-08.md): 7 tras +
+    # 2 nowe eksporty PDF/DOCX pod /api/protection-coordination w api/main.py.
+    # Wpis USUNIETY z tej listy — zapadka [router-nieaktualny-wpis] wymuszalaby
+    # jego zdjecie, gdyby zostal (modul juz nie jest odstawiony).
     "archive_diff": (
         ("router",),
         "Roznicowanie dwoch archiwow projektu (ZIP) — zdolnosc odnotowana w "

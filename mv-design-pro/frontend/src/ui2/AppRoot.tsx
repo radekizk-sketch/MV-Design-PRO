@@ -36,7 +36,12 @@ import type { AkcjaPusty } from './nav';
 import { InspectorPanel } from './inspector';
 import { useObiektInspektora, useRewizjaModelu } from './adapters/inspectorAdapter';
 import { emituj, subskrybuj, startEventBusAdapters } from './events';
-import { CommandPalette, zbudujIndeksWyszukiwania, type PozycjaWyszukiwania } from './search';
+import {
+  CommandPalette,
+  zbudujIndeksWyszukiwania,
+  type AkcjeIndeksu,
+  type PozycjaWyszukiwania,
+} from './search';
 import {
   PulpitProjektu,
   OtworzProjektKontener,
@@ -60,14 +65,10 @@ import { useShellStore } from './shell/useShellStore';
 import { mostTrasyPrzestrzeni, przejdzDoPrzestrzeni } from './shell/przejsciaPrzestrzeni';
 import type { SpaceId } from './shell/spaces';
 import { useSnapshotStore } from '../ui/topology/snapshotStore';
+import { useNetworkBuildStore } from '../ui/network-build/networkBuildStore';
 import { useAppStateStore } from '../ui/app-state';
 import { AreaContextPanel } from '../ui/shell/context-panels';
-
-/** Panel kontekstu obszaru legacy (most E1.7c) — area-driven jak w starej ramie. */
-function PanelKontekstuObszaru() {
-  const activeArea = useAppStateStore((s) => s.activeArea);
-  return <AreaContextPanel areaCode={activeArea} />;
-}
+import { obszarDlaTrasy } from './legacy/mostObszarow';
 
 /** Prawdziwe źródło selekcji emitowane przez drzewo powłoki (decyzja E1.4 §2.1). */
 const ZRODLO_DRZEWO_KONTEKSTOWE = 'drzewo-kontekstowe';
@@ -140,6 +141,7 @@ export function AppRoot() {
   const [zmianaProjektu, setZmianaProjektu] = useState(false);
   const activeSpace = useShellStore((s) => s.activeSpace);
   const advancementMode = useShellStore((s) => s.advancementMode);
+  const panelSchematu = useShellStore((s) => s.panelSchematu);
   // Okno „Archiwum projektu (ZIP)" przestrzeni „Projekt": otwiera je kafel
   // pulpitu ALBO karta huba dokumentacji (jednorazowe żądanie powłoki).
   const zadanieArchiwum = useShellStore((s) => s.zadanieArchiwumProjektu);
@@ -226,21 +228,40 @@ export function AppRoot() {
     emituj({ typ: 'selekcja', obiektId: id, zrodlo: ZRODLO_DRZEWO_KONTEKSTOWE });
   };
 
-  // Wyszukiwarka (E1.5 → integracja E1.4+): indeks z przestrzeni/poleceń + obiekty ze snapshotu.
+  // Wyszukiwarka (E1.5 → integracja E1.4+): indeks z przestrzeni/ekranów/poleceń
+  // + obiekty ze snapshotu. D4: KAŻDA pozycja niesie realną akcję powłoki —
+  // indeks nie tworzy pozycji, dla której nie ma dostawcy.
   const snapshot = useSnapshotStore((s) => s.snapshot);
+  const openRouteSurface = useNetworkBuildStore((s) => s.openRouteSurface);
+  const setActiveSpace = useShellStore((s) => s.setActiveSpace);
+  const setAdvancementMode = useShellStore((s) => s.setAdvancementMode);
+  const akcjeWyszukiwarki = useMemo(
+    (): AkcjeIndeksu => ({
+      przejdzDoPrzestrzeni,
+      wybierzObiekt: (id) => emituj({ typ: 'selekcja', obiektId: id, zrodlo: 'wyszukiwarka' }),
+      // Zdolność przeniesiona ze skasowanej palety `ui/network-build`:
+      // otwarcie okna E-XX tym samym routerem powierzchni co dotąd.
+      otworzEkran: (kod, tytulPl) =>
+        openRouteSurface(kod, { titlePl: tytulPl, subjectKind: 'helper_context' }),
+      przelicz: () => void handleCalculate(),
+      otworzProjekt: () => otworzPulpitProjektow(),
+      przywrocUklad: () => useShellStore.getState().resetLayout(useShellStore.getState().activeSpace),
+      polaczPonownie: () => reconnect(),
+    }),
+    [handleCalculate, openRouteSurface, reconnect],
+  );
   const pozycjeWyszukiwania = useMemo(
     () =>
       zbudujIndeksWyszukiwania({
+        akcje: akcjeWyszukiwarki,
         obiekty: () =>
           (snapshot?.buses ?? []).map((szyna) => ({
             id: szyna.ref_id || szyna.id,
             nazwa: szyna.name || szyna.ref_id,
           })),
       }),
-    [snapshot],
+    [akcjeWyszukiwarki, snapshot],
   );
-  const setActiveSpace = useShellStore((s) => s.setActiveSpace);
-  const setAdvancementMode = useShellStore((s) => s.setAdvancementMode);
   // Akcje menu legacy (E1.7c) — osiągalne przez wyszukiwarkę poleceń.
   const wykonajAkcjeMenu = useLegacyMenuActions(handleCalculate);
   const pozycjeMenuLegacy = useMemo(
@@ -272,18 +293,13 @@ export function AppRoot() {
     useAppStateStore.getState().setActiveRun(runId);
     wybierzPrzestrzen('wyniki');
   };
+  // D4: JEDNA ścieżka wykonania — pozycja sama niesie swoją akcję. Dawny
+  // rozdzielacz po przedrostku identyfikatora obsługiwał cztery przypadki, a
+  // wszystko poza nimi wpadało w `pozycja.akcja()`, czyli w pustą funkcję
+  // indeksu (dziewięć martwych kliknięć). Teraz pozycja bez dostawcy nie
+  // powstaje, więc rozdzielacz jest zbędny.
   const wykonajPozycje = (pozycja: PozycjaWyszukiwania) => {
-    if (pozycja.id.startsWith('przestrzen:')) {
-      wybierzPrzestrzen(pozycja.id.slice('przestrzen:'.length) as SpaceId);
-    } else if (pozycja.id.startsWith('obiekt:')) {
-      emituj({ typ: 'selekcja', obiektId: pozycja.id.slice('obiekt:'.length), zrodlo: 'wyszukiwarka' });
-    } else if (pozycja.id === 'polecenie:przelicz') {
-      void handleCalculate();
-    } else if (pozycja.id === 'polecenie:otworz-projekt') {
-      otworzPulpitProjektow();
-    } else {
-      pozycja.akcja(); // Pozycje menu legacy mają realne akcje; reszta — kolejne karty U1/U2.
-    }
+    pozycja.akcja();
   };
 
   return (
@@ -387,10 +403,16 @@ export function AppRoot() {
       }
       contextPanel={
         activeSpace === 'schemat' ? (
-          // Most E1.7c: panel kontekstu OBSZARU (schemat/proces budowy) —
-          // przeniesiona funkcja lewego panelu starej ramy; sterowany
-          // activeArea (przełącznik „Konfiguracja" działa jak w starej ramie).
-          <PanelKontekstuObszaru />
+          // Most E1.7c: panel kontekstu lewego doku. D1 rozdzielił dwie role,
+          // które dotąd pełnił jeden stan `activeArea`:
+          //  - ADRES wyznacza obszar (projekcja trasy, `mostObszarow`),
+          //  - PRZEŁĄCZNIK powłoki wybiera panel schematu: tor pracy na
+          //    schemacie albo warsztat budowy modelu (przycisk „Konfiguracja"
+          //    w stopce panelu; dotąd gasł przy każdej zmianie adresu, bo
+          //    zapisywał się w tym samym polu co obszar trasy).
+          <AreaContextPanel
+            obszar={panelSchematu === 'model' ? 'MODEL_SIECI' : obszarDlaTrasy(route)}
+          />
         ) : (
           <DrzewoPrzestrzeni space={activeSpace} zaznaczonyId={zaznaczonyId} onZaznacz={zaznacz} />
         )

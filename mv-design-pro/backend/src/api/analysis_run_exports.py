@@ -791,6 +791,11 @@ def export_run_docx_response(
     *,
     filename_stem: str,
 ) -> Response:
+    """Deterministyczny: ten sam bieg eksportowany wielokrotnie daje identyczne
+    bajty (`docx_determinism.make_docx_bytes_deterministic` — sam python-docx
+    NIE zeruje znacznikow czasu wpisow ZIP ani docProps/core.xml, dwa kolejne
+    `Document().save()` roznia sie bajtowo, gdy wywolania przetna granice sekundy).
+    """
     try:
         from docx import Document
         from docx.enum.text import WD_ALIGN_PARAGRAPH
@@ -799,6 +804,8 @@ def export_run_docx_response(
         raise ValueError(
             "Eksport DOCX wymaga python-docx. Zainstaluj: pip install python-docx",
         ) from exc
+
+    from network_model.reporting.docx_determinism import make_docx_bytes_deterministic
 
     bundle = _require_power_flow_bundle(run)
     result = bundle["result"]
@@ -903,7 +910,7 @@ def export_run_docx_response(
     doc.save(buffer)
     buffer.seek(0)
     return Response(
-        content=buffer.getvalue(),
+        content=make_docx_bytes_deterministic(buffer.getvalue()),
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         headers={
             "Content-Disposition": f'attachment; filename="{filename_stem}_{run.id}.docx"',
@@ -1063,6 +1070,11 @@ def export_run_report_docx_response(
     filename_stem: str,
     report_options: dict[str, Any] | None = None,
 ) -> Response:
+    """Deterministyczny: ten sam bieg eksportowany wielokrotnie daje identyczne
+    bajty (`docx_determinism.make_docx_bytes_deterministic` — sam python-docx
+    NIE zeruje znacznikow czasu wpisow ZIP ani docProps/core.xml, dwa kolejne
+    `Document().save()` roznia sie bajtowo, gdy wywolania przetna granice sekundy).
+    """
     try:
         from docx import Document
         from docx.enum.text import WD_ALIGN_PARAGRAPH
@@ -1071,6 +1083,8 @@ def export_run_report_docx_response(
         raise ValueError(
             "Eksport DOCX wymaga python-docx. Zainstaluj: pip install python-docx",
         ) from exc
+
+    from network_model.reporting.docx_determinism import make_docx_bytes_deterministic
 
     payload = build_analysis_run_report_payload(run, report_options=report_options)
     options = payload["report_options"]
@@ -1284,7 +1298,7 @@ def export_run_report_docx_response(
     doc.save(buffer)
     buffer.seek(0)
     return Response(
-        content=buffer.getvalue(),
+        content=make_docx_bytes_deterministic(buffer.getvalue()),
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         headers={
             "Content-Disposition": f'attachment; filename="{filename_stem}_{run.id}.docx"',

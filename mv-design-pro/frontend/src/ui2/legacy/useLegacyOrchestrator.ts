@@ -12,10 +12,10 @@
  * - deep-linki #analysis / #proof / #report / #catalog przez
  *   openRouteSurface (WorkspaceSurfaceRouter); K8: #variants, #case-config,
  *   #power-flow-results i #protection-results są WYGASZONE — lądują w oknach
- *   ui2 wg `LADOWISKA_WYGASZONYCH_TRAS` (bez powierzchni mostu),
+ *   ui2 wg `mostObszarow.TRASY_KANONICZNE` (pole `wygaszona`) (bez powierzchni mostu),
  * - restoreAnalysisRunSnapshot + handleCalculate / handleViewResults,
  * - ładowanie nakładki wyników (raw overlay) dla ?run,
- * - synchronizacja trybu (MODEL_EDIT / RESULT_VIEW) i obszaru z trasą,
+ * - synchronizacja trybu (MODEL_EDIT / RESULT_VIEW) i przestrzeni z trasą,
  * - routing powierzchni PV/BESS/FW z selekcji na SLD,
  * - synchronizacja selekcji z URL (useUrlSelectionSync).
  *
@@ -55,7 +55,7 @@ import {
 import { useShellStore } from '../shell/useShellStore';
 import { useNetworkBuildStore } from '../../ui/network-build/networkBuildStore';
 import { useSelectionStore } from '../../ui/selection/store';
-import type { AreaId } from '../../ui/navigation/areaRegistry';
+import { przestrzenDlaTrasy, wpisTrasyWygaszonej, type WpisTrasy } from './mostObszarow';
 import type { SelectedElement } from '../../ui/types';
 import type { EnergyNetworkModel } from '../../types/enm';
 import {
@@ -127,45 +127,6 @@ function clearRunParamFromCurrentHash(routeRunId: string): boolean {
   return true;
 }
 
-/**
- * K8 (wygaszenie mostów o pełnym parytecie) — trasy mostu, których dostawcą
- * jest DZIŚ okno ui2, a nie powierzchnia trasowa. Wpis = lądowisko:
- * przestrzeń powłoki + opcjonalna zakładka warsztatu (wzorzec lądowiska K3-A1:
- * hash zostaje jedyną prawdą deep-linku, zmienia się TYLKO dostawca widoku).
- *
- * Uzasadnienie parytetu (inwentarz `docs/uiux/INWENTARZ_PARYTETU_MOSTOW_2026-07.md`):
- *  - `#power-flow-results` most renderował GENERYCZNĄ tabelę analityczną E-35
- *    (te same wiersze dla każdej zakładki) — okno „Rozpływ mocy" ui2 daje
- *    tabele szyn i gałęzi, profil napięć i wejście w dowód (nadzbiór),
- *  - `#protection-results` most też renderował generyczną tabelę (zakładka
- *    'protection' nie miała własnej gałęzi) — zakładka „Koordynacja
- *    zabezpieczeń" ui2 (EkranKoordynacji, dostawca E-28) daje realne krzywe
- *    TCC, marginesy CTI i nastawy (nadzbiór),
- *  - `#case-config` most otwierał powierzchnię E-07, dla której router NIE MA
- *    gałęzi renderu — panel prawy pokazywał sam nagłówek bez treści; przestrzeń
- *    „Obliczenia" ui2 (menedżer przypadków + przebiegi) jest jedynym realnym
- *    dostawcą tej zdolności,
- *  - `#variants` most otwierał kartę read-only E-08 (metryki przebiegów +
- *    cztery przyciski nawigacyjne); wszystkie te dane i przejścia są w
- *    przestrzeni „Obliczenia" (historia przebiegów) i w przestrzeniach
- *    docelowych przycisków (Wyniki / Dokumentacja / Gotowość).
- */
-const LADOWISKA_WYGASZONYCH_TRAS: Readonly<
-  Record<string, { przestrzen: 'wyniki' | 'obliczenia'; zakladkaWynikow?: string }>
-> = {
-  '#power-flow-results': { przestrzen: 'wyniki', zakladkaWynikow: 'rozplyw' },
-  '#protection-results': { przestrzen: 'wyniki', zakladkaWynikow: 'koordynacja' },
-  '#case-config': { przestrzen: 'obliczenia' },
-  '#variants': { przestrzen: 'obliczenia' },
-};
-
-/** Lądowisko ui2 wygaszonej trasy mostu (null = trasa nadal w moście). */
-function ladowiskoWygaszonejTrasy(
-  route: string,
-): { przestrzen: 'wyniki' | 'obliczenia'; zakladkaWynikow?: string } | null {
-  return LADOWISKA_WYGASZONYCH_TRAS[route] ?? null;
-}
-
 function isResultsRoute(route: string): boolean {
   return (
     route === ROUTES.ANALYSIS.hash ||
@@ -180,31 +141,6 @@ function resolveAnalysisSurfaceTab(route: string, params: URLSearchParams): stri
     return explicitTab;
   }
   return resolveAnalysisRouteAliasTab(route) ?? 'results';
-}
-
-function resolveRouteArea(route: string): AreaId | null {
-  if (route === '' || route === ROUTES.SLD.hash || route === ROUTES.SLD_VIEW.hash) {
-    return 'SCHEMAT_TOPOLOGIA';
-  }
-  if (route === ROUTES.ANALYSIS.hash || isAnalysisRouteAlias(route)) {
-    return 'WYNIKI_ANALIZY';
-  }
-  if (route === ROUTES.REPORT.hash) {
-    return 'RAPORTY_UZASADNIENIA';
-  }
-  if (route === ROUTES.VARIANTS.hash || route === ROUTES.CASE_CONFIG.hash) {
-    return 'STUDIA_OBLICZENIOWE';
-  }
-  if (route === ROUTES.CATALOG.hash) {
-    return 'KATALOGI_TECHNICZNE';
-  }
-  if (route === ROUTES.FAULT_SCENARIOS.hash) {
-    return 'STUDIA_OBLICZENIOWE';
-  }
-  if (route === ROUTES.ENM_INSPECTOR.hash) {
-    return 'HISTORIA_AUDYT';
-  }
-  return null;
 }
 
 function resolveRouteRunId(
@@ -371,8 +307,6 @@ export function useLegacyOrchestrator(): LegacyOrchestratorApi {
   const [hashVersion, setHashVersion] = useState(0);
 
   const setActiveMode = useAppStateStore((state) => state.setActiveMode);
-  const setActiveArea = useAppStateStore((state) => state.setActiveArea);
-  const activeArea = useAppStateStore((state) => state.activeArea);
   const activeProjectId = useAppStateStore((state) => state.activeProjectId);
   const activeCaseId = useAppStateStore((state) => state.activeCaseId);
   const activeAnalysisType = useAppStateStore((state) => state.activeAnalysisType);
@@ -505,23 +439,6 @@ export function useLegacyOrchestrator(): LegacyOrchestratorApi {
       setHashVersion((current) => current + 1);
     }
   });
-
-  useEffect(() => {
-    const routeArea = resolveRouteArea(route);
-    if (routeArea) {
-      setActiveArea(routeArea);
-    }
-  }, [hashVersion, route, setActiveArea]);
-
-  useEffect(() => {
-    if (!isSldRoute(route)) {
-      return;
-    }
-    const explicitRunId = getCurrentSearchParams().get('run')?.trim();
-    if (explicitRunId && activeArea !== 'SCHEMAT_TOPOLOGIA') {
-      setActiveArea('SCHEMAT_TOPOLOGIA');
-    }
-  }, [activeArea, hashVersion, route, setActiveArea]);
 
   useEffect(() => {
     const params = getCurrentSearchParams();
@@ -670,37 +587,37 @@ export function useLegacyOrchestrator(): LegacyOrchestratorApi {
     }
   }, [route, setActiveMode]);
 
-  // K3-A1 (jedno lądowisko wyników): warsztat przestrzeni „Wyniki" renderuje
-  // się wyłącznie przy activeSpace='wyniki' (LegacyWarsztat), a sam hash tego
-  // NIE ustawiał — zimny deep-link `#analysis?run=…` i DONE-owe
-  // `navigateToResults` lądowały w moście legacy (hub E-35).
+  // D1 (JEDEN KANON NAWIGACJI): KAŻDA trasa hash ląduje w swojej przestrzeni
+  // wg jednej tabeli `mostObszarow.TRASY_KANONICZNE`. Wcześniej przestrzeń
+  // ustawiały tylko cztery trasy wygaszone plus `#analysis`/`#results`, więc
+  // wejście starym adresem (`#report`, `#dashboard`, `#fault-scenarios`,
+  // `#enm-inspector`, `#catalog`, `#sld-view`) zostawiało nawigację powłoki na
+  // POPRZEDNIEJ przestrzeni — użytkownik widział treść jednego etapu, a pasek
+  // nawigacji podświetlał inny. Trasa bez mapowania (`''` = sam kontekst,
+  // adres spoza kanonu) przestrzeni nie rusza.
   //
-  // K8 (wygaszenie mostów): ten sam efekt obsługuje teraz WYGASZONE trasy —
-  // wpis w `LADOWISKA_WYGASZONYCH_TRAS` niesie przestrzeń i (dla wyników)
-  // zakładkę warsztatu, więc zimny deep-link starym adresem ląduje w oknie
-  // ui2 z zachowanym kontekstem (projekt/przypadek/przebieg hydratuje K2 i
-  // efekt trasowy niżej). #proof/#compare nadal mają zakładki ui2 wyłącznie
-  // przez Ctrl+K (bez pełnego parytetu trasy — patrz inwentarz K8).
+  // Zakładkę warsztatu „Wyniki" niesie ten sam wiersz tabeli (trasy wygaszone).
   // Bez pętli z mostem tras AppRoot: `mostTrasyPrzestrzeni` działa tylko przy
   // JAWNYM wyborze przestrzeni (AppShell.selectSpace), nie przy zmianie store'a,
   // a ustawienie tej samej przestrzeni po hashu jest idempotentne.
   useEffect(() => {
-    const ladowisko = ladowiskoWygaszonejTrasy(route);
-    if (ladowisko) {
-      const shell = useShellStore.getState();
-      if (shell.activeSpace !== ladowisko.przestrzen) {
-        shell.setActiveSpace(ladowisko.przestrzen);
-      }
-      if (ladowisko.zakladkaWynikow) {
-        shell.setWynikiTab(ladowisko.zakladkaWynikow);
-      }
+    const przestrzen = przestrzenDlaTrasy(route);
+    if (przestrzen == null) {
       return;
     }
-    if (route === ROUTES.ANALYSIS.hash || route === '#results') {
-      const shell = useShellStore.getState();
-      if (shell.activeSpace !== 'wyniki') {
-        shell.setActiveSpace('wyniki');
-      }
+    const shell = useShellStore.getState();
+    if (shell.activeSpace !== przestrzen) {
+      shell.setActiveSpace(przestrzen);
+    }
+    const zakladka = wpisTrasyWygaszonej(route)?.zakladkaWynikow;
+    if (zakladka) {
+      shell.setWynikiTab(zakladka);
+    }
+    // Parytet zachowania sprzed D1: panel budowy modelu w lewym doku schematu
+    // był stanem CHWILOWYM — każda zmiana adresu przywracała panel toru pracy
+    // (bo obszar był wtedy wyprowadzany z trasy). Zachowujemy to wprost.
+    if (shell.panelSchematu !== 'schemat') {
+      shell.setPanelSchematu('schemat');
     }
   }, [hashVersion, route]);
 
@@ -862,7 +779,7 @@ export function useLegacyOrchestrator(): LegacyOrchestratorApi {
     // (deep-link `?run=`/`?case=` musi działać po staremu), ale powierzchni
     // mostu NIE otwieramy: lądowiskiem jest okno ui2, a zalegająca powierzchnia
     // trasowa przykryłaby je (klasa C) albo zajęła prawy panel (klasa B).
-    const ladowisko = ladowiskoWygaszonejTrasy(route);
+    const ladowisko: WpisTrasy | null = wpisTrasyWygaszonej(route);
     if (ladowisko) {
       if (ladowisko.przestrzen === 'wyniki') {
         if (activeRunId !== routeRunId) {
@@ -938,7 +855,7 @@ export function useLegacyOrchestrator(): LegacyOrchestratorApi {
       return;
     }
     // K8: gałęzie tras #variants (E-08) i #case-config (E-07) USUNIĘTE —
-    // obie trasy są wygaszone (patrz `LADOWISKA_WYGASZONYCH_TRAS` wyżej).
+    // obie trasy są wygaszone (patrz `mostObszarow.TRASY_KANONICZNE` (pole `wygaszona`) wyżej).
     if (route === ROUTES.CATALOG.hash) {
       // Phase 0 #2: canonical code zamiast legacy alias 'catalog_admin'
       openRouteSurface('E-38', {

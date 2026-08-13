@@ -39,6 +39,11 @@ from application.proof_engine.pakiet_biegu import (
     dostepnosc_pakietu,
     zbuduj_pakiet_biegu,
 )
+from application.proof_engine.pakiet_nastaw import (
+    PakietNastawError,
+    dostepnosc_pakietu_nastaw,
+    zbuduj_pakiet_nastaw,
+)
 from enm.canonical_analysis import (
     CanonicalRun,
 )
@@ -563,6 +568,57 @@ def get_pakiet_dowodowy(run_id: UUID, punkt: str | None = Query(default=None)) -
     try:
         filename, content = zbuduj_pakiet_biegu(run, punkt=punkt)
     except PakietBieguError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
+        ) from exc
+    return Response(
+        content=content,
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.get("/analysis-runs/{run_id}/pakiet-dowodowy-nastaw/dostepnosc")
+def get_pakiet_dowodowy_nastaw_dostepnosc(run_id: UUID) -> dict[str, Any]:
+    """Czy TEN przebieg (zwarcie trójfazowe c_max) może być kotwicą pakietu nastaw.
+
+    Zwraca listę linii/kabli z kompletem danych katalogowych (przekrój, materiał,
+    prąd znamionowy) — kandydatów na chroniony odcinek — a dla każdej z nich listę
+    szyn kandydujących na „kolejną strefę" (warunek selektywności). Wybór odcinka i
+    szyny należy do inżyniera; kod niczego nie zgaduje.
+    """
+    return canonicalize_json(dostepnosc_pakietu_nastaw(_require_canonical_run(run_id)))
+
+
+@router.get("/analysis-runs/{run_id}/pakiet-dowodowy-nastaw")
+def get_pakiet_dowodowy_nastaw(
+    run_id: UUID,
+    linia: str = Query(...),
+    nastepna_szyna: str = Query(...),
+    c_min: float = Query(default=1.0),
+    delta_t_s: float = Query(default=0.3),
+    k_b: float = Query(default=1.2),
+    k_bth: float = Query(default=1.1),
+) -> Response:
+    """Pakiet dowodowy nastaw I>/I>> (ZIP: dowód, źródło LaTeX, wykaz plików, odcisk).
+
+    Serwer sam uruchamia w pamięci wariant zwarcia trójfazowego i dwufazowego przy
+    ``c_min`` oraz wariant rozpływu na migawce kotwicy (``run_id`` = zakończony bieg
+    zwarcia trójfazowego przy c_max) — klient podaje wyłącznie tożsamość kotwicy i
+    trzy wybory inżynierskie: chroniony odcinek, kolejną szynę, c_min.
+    """
+    run = _require_canonical_run(run_id)
+    try:
+        filename, content = zbuduj_pakiet_nastaw(
+            run,
+            line_id=linia,
+            next_bus_id=nastepna_szyna,
+            c_min=c_min,
+            delta_t_s=delta_t_s,
+            k_b=k_b,
+            k_bth=k_bth,
+        )
+    except PakietNastawError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
         ) from exc

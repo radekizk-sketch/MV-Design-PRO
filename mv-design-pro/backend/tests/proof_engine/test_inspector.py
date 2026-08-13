@@ -13,7 +13,9 @@ Testy:
 
 from __future__ import annotations
 
+import hashlib
 import json
+import time
 from datetime import datetime
 from uuid import uuid4
 
@@ -470,6 +472,40 @@ class TestInspectorExports:
         assert isinstance(docx_bytes, bytes)
         assert len(docx_bytes) > 0
         assert docx_bytes[:2] == b"PK"
+
+    def test_export_docx_is_byte_deterministic_across_repeated_calls(
+        self, sc3f_proof: ProofDocument
+    ):
+        """DOCX-DETERMINIZM-RESZTA: 2x eksport z odstepem >2s -> identyczne bajty.
+
+        Odstep >2s MIEDZY wywolaniami jest CELOWY, nie kosmetyczny: DOCX jest
+        ZIP-em, a `zipfile` znakuje kazdy wpis biezacym czasem lokalnym w
+        formacie DOS, ktory ma rozdzielczosc DWOCH SEKUND (pole sekund koduje
+        wartosc/2) — dwa wywolania oddalone o <=2s moga trafic w TEN SAM
+        znacznik nawet bez normalizacji
+        (`docx_determinism.make_docx_bytes_deterministic`), co dawaloby
+        falszywa zielen (lekcja karty ZAB-100-BACKEND, iniekcja I2;
+        DOCX-DETERMINIZM-RESZTA doprecyzowala granulacje na 2s empirycznym
+        pomiarem — 1.1s dawal falszywa zielen w ok. 30% powtorzen).
+        """
+        try:
+            import docx  # noqa: F401
+        except ImportError:
+            pytest.skip("python-docx not installed")
+
+        exporter = InspectorExporter(sc3f_proof)
+        first = exporter.export_docx()
+        time.sleep(2.1)
+        second = exporter.export_docx()
+
+        assert first.success and second.success
+        assert first.content[:2] == b"PK"
+        hash_1 = hashlib.sha256(first.content).hexdigest()
+        hash_2 = hashlib.sha256(second.content).hexdigest()
+        assert hash_1 == hash_2, (
+            f"DOCX export InspectorExporter nie deterministyczny\n"
+            f"Hash 1: {hash_1}\nHash 2: {hash_2}"
+        )
 
     def test_export_all_includes_docx(self, sc3f_proof: ProofDocument):
         """export_all() zwraca 4 formaty: json + tex + pdf + docx (V12K-007)."""

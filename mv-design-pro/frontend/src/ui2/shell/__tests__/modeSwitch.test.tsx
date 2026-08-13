@@ -81,7 +81,7 @@ describe('Tryb nie zmienia store danych', () => {
       activeProjectId: before.activeProjectId,
       activeCaseId: before.activeCaseId,
       activeCaseResultStatus: before.activeCaseResultStatus,
-      activeArea: before.activeArea,
+      activeVariantId: before.activeVariantId,
     };
 
     useShellStore.getState().setAdvancementMode('expert');
@@ -91,6 +91,8 @@ describe('Tryb nie zmienia store danych', () => {
     expect(after.activeProjectId).toBe(snapshot.activeProjectId);
     expect(after.activeCaseId).toBe(snapshot.activeCaseId);
     expect(after.activeCaseResultStatus).toBe(snapshot.activeCaseResultStatus);
-    expect(after.activeArea).toBe(snapshot.activeArea);
+    // D1: `activeArea` (równoległy stan nawigacji) skasowany — kontrolujemy
+    // inne utrwalane pole app-state, intencja testu bez zmian.
+    expect(after.activeVariantId).toBe(snapshot.activeVariantId);
   });
 });

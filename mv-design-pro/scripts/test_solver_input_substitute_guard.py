@@ -250,6 +250,194 @@ def test_most_wejsc_jest_w_zakresie(tmp_path, monkeypatch, capsys) -> None:
 
 
 # ---------------------------------------------------------------------------
+# FORMY SLOWNIKOWE (D/F/G) — karta RATCHET-DICT-READ (2026-08-13)
+# ---------------------------------------------------------------------------
+#
+# DLUG ZRODLOWY (rejestr, wiersz MOST-WEJSCIA-V126, odbior 2026-08-09): zapadka
+# byla SLEPA na odczyt slownikowy (`x["pole"]`, `x.get("pole", DOMYSLNA)`) —
+# 31 zywych wystapien tej formy w zakresie skanu, ZERO widocznych. Nadzorca
+# ostrzegl WPROST: „NIE rozszerzam bramki odruchowo: dokladnie te forme
+# proponowalem w rundzie QU-FABRYKACJA i wykonawca ja OBALIL POMIAREM — 73 z 79
+# trafien bylo legalnymi slownikami parametrow, nie podstawieniami za brak
+# danej". Testy nizej cwicza DYSKRYMINATOR (ten sam warunek „<pole> w fields",
+# ktory juz odsiewa `model.parameters.get(...)` w formach A/B/C), nie slepa
+# syntaktyke — kazda forma sparowana z obiema wartosciami cechy „klucz zadekla-
+# rowany / klucz spoza kontraktu" (regula KLASA §2 — iloczyn cech, nie przyklad
+# z karty).
+
+
+def test_forma_d_subskrypcja_or_jest_naruszeniem(tmp_path, monkeypatch, capsys) -> None:
+    """`slownik["pole"] or <liczba>` — forma D, wariant subskrypcja."""
+    kod, wyjscie = _uruchom(
+        tmp_path,
+        monkeypatch,
+        capsys,
+        {
+            "network_model/solvers/dslownik.py": (
+                "def licz(dane):\n" '    return dane["nominal_kv"] or 15.0\n'
+            )
+        },
+    )
+    assert kod == 1, wyjscie
+    assert "D:dictor:dane.nominal_kv" in wyjscie
+
+
+def test_forma_d_get_bez_zapasu_or_jest_naruszeniem(tmp_path, monkeypatch, capsys) -> None:
+    """`slownik.get("pole") or <liczba>` — forma D, wariant `.get` 1-argumentowy."""
+    kod, wyjscie = _uruchom(
+        tmp_path,
+        monkeypatch,
+        capsys,
+        {
+            "network_model/solvers/dget.py": (
+                "def licz(dane):\n" '    return dane.get("load_mvar") or 0.35\n'
+            )
+        },
+    )
+    assert kod == 1, wyjscie
+    assert "D:dictor:dane.load_mvar" in wyjscie
+
+
+def test_forma_f_get_z_zapasem_jest_naruszeniem(tmp_path, monkeypatch, capsys) -> None:
+    """`slownik.get("pole", <liczba>)` — forma F."""
+    kod, wyjscie = _uruchom(
+        tmp_path,
+        monkeypatch,
+        capsys,
+        {
+            "network_model/solvers/fget.py": (
+                "def licz(dane):\n" '    return float(dane.get("nominal_kv", 15.0))\n'
+            )
+        },
+    )
+    assert kod == 1, wyjscie
+    assert "F:dictget:dane.nominal_kv" in wyjscie
+
+
+def test_forma_g_ifexp_slownikowy_jest_naruszeniem(tmp_path, monkeypatch, capsys) -> None:
+    """`... slownik["pole"] ... if <warunek> else <liczba>` — forma G."""
+    kod, wyjscie = _uruchom(
+        tmp_path,
+        monkeypatch,
+        capsys,
+        {
+            "network_model/solvers/gifexp.py": (
+                "def licz(dane):\n"
+                '    return dane["load_mvar"] if "load_mvar" in dane else 0.35\n'
+            )
+        },
+    )
+    assert kod == 1, wyjscie
+    assert "G:dictifexp:dane.load_mvar" in wyjscie
+
+
+def test_dict_get_z_liczbowym_zapasem_liczy_sie_raz(tmp_path, monkeypatch, capsys) -> None:
+    """PREDYKATY PARAMI (analogon testu formy C): jedno miejsce = jedna pozycja.
+
+    `slownik.get("pole", <liczba>) or <liczba>` jest DOSLOWNIE forma F (2-argu-
+    mentowe `.get`), a nie DODATKOWO forma D — inaczej budzet rozdmuchalby sie o
+    pozycje-widmo, tak jak przy `getattr` (`test_getattr_z_liczbowym_zapasem_
+    liczy_sie_raz` wyzej — ten sam wzorzec dedupu, druga forma odczytu).
+    """
+    kod, wyjscie = _uruchom(
+        tmp_path,
+        monkeypatch,
+        capsys,
+        {
+            "solver_input/dedup.py": (
+                "def buduj(dane):\n" '    return dane.get("nominal_kv", 0.0) or 300.0\n'
+            )
+        },
+    )
+    assert kod == 1, wyjscie
+    assert wyjscie.count("nominal_kv") == 1, wyjscie
+    assert "F:dictget:dane.nominal_kv" in wyjscie
+
+
+def test_odczyt_slownikowy_klucza_spoza_kontraktu_nie_jest_naruszeniem(
+    tmp_path, monkeypatch, capsys
+) -> None:
+    """DYSKRYMINATOR, ILOCZYN CECH: forma D/F/G x klucz SPOZA `fields`.
+
+    To jest DOKLADNIE forma, ktora poprzednia (OBALONA) proba karala slepo —
+    73 z 79 trafien bylo tej klasy. `trv_tau_s` nie jest zadeklarowanym polem
+    zadnej klasy w KONTRAKT — jest kluczem surowego worka parametrow
+    projektowych (`model.parameters`), ktorego parytet z kontrolka UI pilnuje
+    OSOBNY mechanizm (patrz `test_odczyt_slownika_parametrow_nie_jest_naruszeniem`
+    dla form A/B/C — ten test jest jego odpowiednikiem dla D/F/G).
+    """
+    kod, wyjscie = _uruchom(
+        tmp_path,
+        monkeypatch,
+        capsys,
+        {
+            "network_model/solvers/worek.py": (
+                "def licz(model):\n"
+                '    a = model.parameters["trv_tau_s"] or 0.00018\n'
+                '    b = model.parameters.get("trv_tau_s", 0.00018)\n'
+                '    c = model.parameters.get("trv_tau_s") or 0.00018\n'
+                "    return a + b + c\n"
+            )
+        },
+    )
+    assert kod == 0, wyjscie
+
+
+def test_odczyt_slownikowy_z_galezia_none_nie_jest_naruszeniem(
+    tmp_path, monkeypatch, capsys
+) -> None:
+    """Forma F, ale zapas jest `None` — uczciwy meldunek braku, nie liczba."""
+    kod, wyjscie = _uruchom(
+        tmp_path,
+        monkeypatch,
+        capsys,
+        {
+            "network_model/solvers/dnone.py": (
+                "def licz(dane):\n"
+                '    return float(dane.get("nominal_kv")) if dane.get("nominal_kv", None) is not None else None\n'
+            )
+        },
+    )
+    assert kod == 0, wyjscie
+
+
+def test_odczyt_slownikowy_z_galezia_nieliczbowa_nie_jest_naruszeniem(
+    tmp_path, monkeypatch, capsys
+) -> None:
+    """Forma F, ale zapas jest napisem — nie wchodzi do arytmetyki fizyki."""
+    kod, wyjscie = _uruchom(
+        tmp_path,
+        monkeypatch,
+        capsys,
+        {
+            "network_model/solvers/dnapis.py": (
+                "def licz(dane):\n" '    return dane.get("nominal_kv", "brak")\n'
+            )
+        },
+    )
+    assert kod == 0, wyjscie
+
+
+def test_klucz_zmienna_nie_jest_analizowalny(tmp_path, monkeypatch, capsys) -> None:
+    """`slownik[zmienna]` — klucz NIE jest literalem string, wiec poza regula.
+
+    Granica nr 6 modulu (skladnia nieanalizowalna) — to samo rozroznienie, co
+    `eval`/`exec`: nie da sie ustalic, jakie pole faktycznie czyta wyrazenie.
+    """
+    kod, wyjscie = _uruchom(
+        tmp_path,
+        monkeypatch,
+        capsys,
+        {
+            "network_model/solvers/klucz_zmienna.py": (
+                "def licz(dane, klucz):\n" "    return dane[klucz] or 15.0\n"
+            )
+        },
+    )
+    assert kod == 0, wyjscie
+
+
+# ---------------------------------------------------------------------------
 # BRAMKA NIE GRYZIE — formy UCZCIWE i niefizyczne
 # ---------------------------------------------------------------------------
 
@@ -298,7 +486,11 @@ def test_odczyt_slownika_parametrow_nie_jest_naruszeniem(tmp_path, monkeypatch, 
 
     Rozroznienie jest STRUKTURALNE (klucz slownika nie jest zadeklarowanym polem),
     a nie zapisane w komentarzu. Parytet parametrow z kontrolkami pilnuje osobny,
-    istniejacy mechanizm — ta bramka go nie powtarza.
+    istniejacy mechanizm — ta bramka go nie powtarza. Oba klucze ponizej (`trv_tau_s`,
+    `hosting_monte_carlo_n`) sa CELOWO wybrane jako nazwy NIEKOLIDUJACE z polami
+    fikstury `KONTRAKT` — patrz `test_odczyt_slownikowy_koliduje_gdy_klucz_pasuje_
+    do_innego_pola` nizej, ktory dokumentuje ODWROTNY (kolizyjny) przypadek jako
+    ZNANA granice tej formy, a nie milczaco pomijany szczegol.
     """
     kod, wyjscie = _uruchom(
         tmp_path,
@@ -308,12 +500,41 @@ def test_odczyt_slownika_parametrow_nie_jest_naruszeniem(tmp_path, monkeypatch, 
             "network_model/solvers/parametry.py": (
                 "def licz(model):\n"
                 '    a = model.parameters.get("trv_tau_s", 0.00018)\n'
-                '    b = model.parameters.get("nominal_kv", 15.0)\n'
+                '    b = model.parameters.get("hosting_monte_carlo_n", 1000)\n'
                 "    return a + b\n"
             )
         },
     )
     assert kod == 0, wyjscie
+
+
+def test_odczyt_slownikowy_koliduje_gdy_klucz_pasuje_do_innego_pola(
+    tmp_path, monkeypatch, capsys
+) -> None:
+    """GRANICA DYSKRYMINATORA D/F/G, NAZWANA I PRZYPIETA TESTEM (regula KLASA §4).
+
+    Warunek „klucz w `fields`" jest rozroznieniem PO NAZWIE, nie po pochodzeniu
+    obiektu — jesli klucz worka `model.parameters` NAZWANO tak samo, jak realne
+    pole kontraktu GDZIE INDZIEJ (tu: `nominal_kv` z fikstury `KONTRAKT`), forma F
+    ZAPALA CZERWIEN, mimo ze semantycznie to wciaz odczyt parametru projektowego.
+    Pomiar na realnym drzewie (karta RATCHET-DICT-READ, 2026-08-13): TA kolizja
+    nie wystapila w zadnym z 9 kluczy `model.parameters.get(...)` faktycznie
+    czytanych w `v126_academic.py` — ale mechanizm jej NIE WYKLUCZA, wiec granica
+    musi byc nazwana testem, a nie zalozeniem w komentarzu (precedens: kolizja
+    `real`/`imag` w `stability_rms/contracts.py`, ta sama klasa co tutaj).
+    """
+    kod, wyjscie = _uruchom(
+        tmp_path,
+        monkeypatch,
+        capsys,
+        {
+            "network_model/solvers/kolizja.py": (
+                "def licz(model):\n" '    return model.parameters.get("nominal_kv", 15.0)\n'
+            )
+        },
+    )
+    assert kod == 1, wyjscie
+    assert "F:dictget:model.nominal_kv" in wyjscie
 
 
 def test_galaz_nieliczbowa_nie_jest_naruszeniem(tmp_path, monkeypatch, capsys) -> None:
