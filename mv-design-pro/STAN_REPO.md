@@ -161,4 +161,23 @@ Pierwszy run orkiestracji wg `ORKIESTRACJA_AGENTOW.md` (3 subagenty read-only: b
 
 -----
 
+## 8. PROGRAM MODUŁU nN (2026-08-13) — raport przedimplementacyjny A–I DOSTARCZONY
+
+Zlecenie właściciela: pełny moduł projektowania i obliczeń nN jako integralna część systemu
+(jeden model SN↔TR↔nN, zakaz kalkulatora obok). Wykonano wymagany raport przedimplementacyjny
+(§75 zlecenia): audyt 10 obszarów repo (agenci równolegle, dowody plik:linia) + synteza
+architektoniczna → **`docs/nn/INDEX_NN.md`** (9 wiążących dokumentów: A audyt stanu, B mapa
+reuse, C plan modelu, D kontrakt SN↔nN + LV-INV-01…12, E macierz obliczeń, F plan UI nN STUDIO,
+G macierz luk + rejestr danych normatywnych, H plan implementacji P0/P1/P2, I macierz testów).
+
+Kluczowe ustalenia audytu: (1) topologia obwodów nN nie istnieje (odpływ = metadane, odbiór na
+szynie stacji); (2) Ik_min nieosiągalny z kanonicznej ścieżki (`c_factor_min` martwe dane,
+c nie per pasmo, brak korekty temperaturowej R); (3) SWZ nie istnieje jako werdykt (zero tabeli
+czasów, zero Ia↔Ik_min); (4) krzywe aparatów nN brak (FUSE=fantom cicho liczony jak przekaźnik);
+(5) **dług repo-wide: archiwum ZIP nie serializuje ENM** — dane nN znikałyby przy eksporcie
+(N-D1, bloker P0.0). Dług napotkany N-D1…N-D12 zarejestrowany w `docs/nn/A_AUDYT_STANU_NN_2026-08.md` §2
+— naprawa w kolejce P0.0 planu H. Implementacja P0 — następna sesja/sesje wg `docs/nn/H_PLAN_IMPLEMENTACJI_NN.md`.
+
+-----
+
 *Żywy rejestr stanu. Aktualizuj każdą sesją. Źródłem prawdy ostatecznej jest świeży skan repo (§5.0) — gdy ten plik się z nim rozjedzie, prawdą jest repo.*
