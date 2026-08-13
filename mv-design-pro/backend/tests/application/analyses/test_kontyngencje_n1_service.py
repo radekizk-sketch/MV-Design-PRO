@@ -20,6 +20,7 @@ ZERO nowej fizyki w teście: rozpływ liczy istniejący solver przez istniejąc�
 from __future__ import annotations
 
 import copy
+import hashlib
 import json
 from datetime import UTC, datetime
 from uuid import UUID, uuid4
@@ -738,3 +739,78 @@ def test_remis_pelnej_dotkliwosci_rozstrzyga_element_ref_rosnaco() -> None:
     kolejnosc = [p["element_ref"] for p in sorted(pozycje, key=_klucz_rankingu)]
 
     assert kolejnosc == ["a_pierwszy", "z_ostatni"]
+
+
+# ---------------------------------------------------------------------------
+# Bitowa niezmienność wyniku wobec optymalizacji wydajności (karta N1-WYDAJNOSC)
+# ---------------------------------------------------------------------------
+
+#: Odciski SHA-256 KANONICZNEGO widoku N-1 na sieciach referencyjnych, ZMIERZONE
+#: PRZED optymalizacją wydajności (karta N1-WYDAJNOSC) i niezmienione po niej.
+#: Wartości zweryfikowane pod obiema postaciami kodu: z pętlą skalarną jakobianu
+#: (stan sprzed karty) i z postacią blokową (stan obecny) — identyczne.
+#:
+#: Ten pin istnieje po to, żeby KAŻDA przyszła optymalizacja tej ścieżki musiała
+#: udowodnić, że nie rusza wyniku. Optymalizacja zmieniająca choć jedną cyfrę nie
+#: jest optymalizacją, tylko cichą zmianą fizyki — a wynik N-1 rozstrzyga, czy
+#: projektant zobaczy przeciążenie po wyłączeniu elementu. NIE aktualizować tych
+#: wartości „bo się zmieniły": zmiana wymaga wykazania źródła różnicy i decyzji,
+#: że jest zamierzona.
+ODCISKI_WIDOKU_PRZED_OPTYMALIZACJA = {
+    "gn01_promieniowa": "bde96d6ad5c481f567eeaf5241b72cf6c749e3e9ad846abb4d091459939a5212",
+    "gn03_pierscien": "559a327fa98aae0fce7af3574d7383418ac5e5803cb964588e6f0a81af50f4a4",
+}
+
+
+def _odcisk_widoku(widok: dict) -> str:
+    kanoniczny = json.dumps(widok, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+    return hashlib.sha256(kanoniczny.encode("utf-8")).hexdigest()
+
+
+def _bieg_o_stalym_id(dane: dict) -> CanonicalRun:
+    """Przebieg o USTALONYM identyfikatorze — inaczej odcisk zmieniałby się co bieg."""
+    return CanonicalRun(
+        id=UUID("00000000-0000-4000-8000-000000000007"),
+        case_id="c",
+        project_id="p",
+        analysis_type="PF",
+        status="FINISHED",
+        created_at=datetime(2026, 1, 1, tzinfo=UTC),
+        snapshot_hash=dane["snapshot_hash"],
+        input_hash="x",
+        snapshot=dane["enm"],
+        validation={},
+        readiness={},
+        options={},
+    )
+
+
+@pytest.mark.parametrize("siec", sorted(ODCISKI_WIDOKU_PRZED_OPTYMALIZACJA))
+def test_pelny_widok_kanoniczny_nie_zmienil_sie_po_optymalizacji(siec: str) -> None:
+    """Pełny wynik (nie wyrywkowe pole) zgodny z odciskiem sprzed optymalizacji.
+
+    Pokrycie obejmuje topologię PROMIENIOWĄ i OCZKOWĄ: w pierścieniu wyłączenie
+    gałęzi przenosi przepływ na objazd (zmieniają się przeciążenia), w promieniu
+    odcina zasilanie (zmieniają się odbiory bez zasilania) — czyli obie kategorie
+    dotkliwości są realnie ćwiczone, a nie tylko obecne w kontrakcie.
+    """
+    from tests.reference_networks.builders import (
+        build_gn01_sn_promieniowa,
+        build_gn03_sn_pierscien,
+    )
+
+    dane = {
+        "gn01_promieniowa": build_gn01_sn_promieniowa,
+        "gn03_pierscien": build_gn03_sn_pierscien,
+    }[siec]()
+
+    widok = build_kontyngencje_n1_view(_bieg_o_stalym_id(dane))
+
+    assert _odcisk_widoku(widok) == ODCISKI_WIDOKU_PRZED_OPTYMALIZACJA[siec], (
+        f"Widok N-1 dla sieci {siec} różni się od stanu sprzed optymalizacji "
+        "wydajności. Optymalizacja NIE MOŻE zmieniać wyniku — najpierw ustal "
+        "przyczynę różnicy, nie aktualizuj odcisku."
+    )
+    # Kontrola samego pinu: odcisk ma pokrywać NIEPUSTĄ enumerację, inaczej
+    # pilnowałby stałej wartości pustej listy.
+    assert widok["podsumowanie"]["kontyngencji"] > 0
