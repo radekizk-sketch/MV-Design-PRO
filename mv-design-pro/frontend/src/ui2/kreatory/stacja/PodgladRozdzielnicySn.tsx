@@ -172,7 +172,10 @@ export function PodgladRozdzielnicySn({
         {rysunek.sloty.map((slot) => (
           <g
             key={slot.klucz}
-            data-testid={`mvd-podglad-pole-${slot.rola}`}
+            // Numer W identyfikatorze: dwa pola tej samej roli (np. dwa
+            // odgałęźne) miały dotąd IDENTYCZNY testid, więc każdy lokator
+            // wskazywałby dwa węzły naraz.
+            data-testid={`mvd-podglad-pole-${slot.numer}-${slot.rola}`}
             data-pole-numer={slot.numer}
           >
             {slot.tor.map(([x1, y1, x2, y2], i) => (
