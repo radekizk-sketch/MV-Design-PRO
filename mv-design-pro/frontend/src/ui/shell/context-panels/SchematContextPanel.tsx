@@ -9,6 +9,7 @@ import { formatLengthKm } from '../../shared/formatPolishValue';
 import { sanitizePublicReadinessMessage } from '../../shared/publicReadinessMessage';
 import { navigateToAnalysis } from '../../navigation/routes';
 import { przejdzDoPrzestrzeni } from '../../../ui2/shell/przejsciaPrzestrzeni';
+import { useShellStore } from '../../../ui2/shell/useShellStore';
 import type { ElementType } from '../../types';
 import {
   ANALYSIS_SURFACE_SCREEN_CODE,
@@ -84,6 +85,14 @@ export function SchematContextPanel() {
   const centerSldOnElement = useSelectionStore((s) => s.centerSldOnElement);
   const openRouteSurface = useNetworkBuildStore((s) => s.openRouteSurface);
   const clearRouteManagedSurface = useNetworkBuildStore((s) => s.clearRouteManagedSurface);
+  const setPanelSchematu = useShellStore((s) => s.setPanelSchematu);
+  /**
+   * „Konfiguracja" / „Dodaj układ" — PRZEŁĄCZENIE lewego panelu na warsztat
+   * budowy modelu (nawigator układu + panel procesu z akcjami wstawiania).
+   * To nie jest zmiana etapu pracy, tylko drugi panel TEJ SAMEJ przestrzeni
+   * „Schemat" — dlatego steruje nim stan prezentacji powłoki, a nie adres.
+   */
+  const pokazPanelModelu = () => setPanelSchematu('model');
   const openOperationForm = useNetworkBuildStore((s) => s.openOperationForm);
   const snapshot = useSnapshotStore((s) => s.snapshot);
   const readiness = useSnapshotStore((s) => s.readiness);
@@ -319,7 +328,7 @@ export function SchematContextPanel() {
 
   const openNextAction = () => {
     if (!hasNetworkTopology) {
-      przejdzDoPrzestrzeni('model');
+      pokazPanelModelu();
       return;
     }
 
@@ -534,7 +543,7 @@ export function SchematContextPanel() {
         <button
           type="button"
           data-testid="schemat-action-go-model"
-          onClick={() => przejdzDoPrzestrzeni('model')}
+          onClick={pokazPanelModelu}
           className="flex h-9 flex-1 items-center gap-2 rounded-sm border border-scada-border bg-scada-bg px-2 text-scada-muted hover:border-cyan-500/55 hover:text-scada-text"
         >
           <span className="text-lg leading-none">+</span>
@@ -545,7 +554,7 @@ export function SchematContextPanel() {
           data-testid="left-panel-mode-readiness"
           onClick={() => {
             clearRouteManagedSurface();
-            przejdzDoPrzestrzeni('model');
+            pokazPanelModelu();
           }}
           className="h-9 rounded-sm border border-scada-border bg-scada-bg px-2 text-[10px] text-cyan-300 hover:border-cyan-500/55 hover:text-scada-text"
         >

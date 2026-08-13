@@ -110,6 +110,20 @@ interface ShellState {
    * jak reszta preferencji układu.
    */
   podgladSchematu: boolean;
+  /**
+   * Który panel kontekstu wypełnia LEWY dok w przestrzeni „Schemat":
+   * `'schemat'` — tor pracy na schemacie (SchematContextPanel),
+   * `'model'` — warsztat budowy modelu (nawigator układu + panel procesu z
+   * akcjami wstawiania, MoContextPanel).
+   *
+   * D1: to jest PREZENTACJA panelu, nie nawigacja. Dotąd tym przełącznikiem
+   * (przycisk „Konfiguracja" w stopce panelu schematu) sterował równoległy stan
+   * nawigacji `activeArea` — ten sam, którym trasa ustawiała obszar. Jedno pole
+   * pełniło dwie role, więc każda zmiana adresu KASOWAŁA wybór użytkownika,
+   * a lądowanie tras nie dało się zmienić bez utraty tego przełącznika.
+   * Rozdzielone: adres wyznacza przestrzeń, ten stan wyznacza panel.
+   */
+  panelSchematu: 'schemat' | 'model';
 
   setActiveSpace: (space: SpaceId) => void;
   setAdvancementMode: (mode: AdvancementMode) => void;
@@ -118,6 +132,7 @@ interface ShellState {
   setZadanieArchiwumProjektu: (zadanie: boolean) => void;
   setZadanieImportuArkusza: (zadanie: boolean) => void;
   setPodgladSchematu: (podglad: boolean) => void;
+  setPanelSchematu: (panel: 'schemat' | 'model') => void;
 
   getLayout: (space: SpaceId) => PanelLayoutState;
   setLeftWidth: (space: SpaceId, width: number) => void;
@@ -161,6 +176,7 @@ export const useShellStore = create<ShellState>()(
       zadanieArchiwumProjektu: false,
       zadanieImportuArkusza: false,
       podgladSchematu: false,
+      panelSchematu: 'schemat' as const,
 
       setActiveSpace: (space) => set({ activeSpace: space }),
       setAdvancementMode: (mode) => set({ advancementMode: mode }),
@@ -171,6 +187,7 @@ export const useShellStore = create<ShellState>()(
       setZadanieArchiwumProjektu: (zadanie) => set({ zadanieArchiwumProjektu: zadanie }),
       setZadanieImportuArkusza: (zadanie) => set({ zadanieImportuArkusza: zadanie }),
       setPodgladSchematu: (podglad) => set({ podgladSchematu: podglad }),
+      setPanelSchematu: (panel) => set({ panelSchematu: panel }),
 
       getLayout: (space) => layoutFor(get(), space),
 

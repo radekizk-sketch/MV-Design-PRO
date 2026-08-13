@@ -613,6 +613,12 @@ export function useLegacyOrchestrator(): LegacyOrchestratorApi {
     if (zakladka) {
       shell.setWynikiTab(zakladka);
     }
+    // Parytet zachowania sprzed D1: panel budowy modelu w lewym doku schematu
+    // był stanem CHWILOWYM — każda zmiana adresu przywracała panel toru pracy
+    // (bo obszar był wtedy wyprowadzany z trasy). Zachowujemy to wprost.
+    if (shell.panelSchematu !== 'schemat') {
+      shell.setPanelSchematu('schemat');
+    }
   }, [hashVersion, route]);
 
   useEffect(() => {
