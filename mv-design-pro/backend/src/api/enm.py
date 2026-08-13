@@ -757,6 +757,10 @@ async def run_short_circuit(case_id: str, request: Request) -> dict[str, Any]:
             "short_circuit_type",
             "c_factor",
             "thermal_time_seconds",
+            # Karta P0.3b: scenariusz MAX/MIN (c per pasmo IEC 60909 Tab. 1 +
+            # korekta temperaturowa R_θ dla MIN) — addytywne, patrz
+            # enm/canonical_analysis.py::_execute_short_circuit.
+            "scenario",
         )
         if isinstance(body, dict) and key in body
     }

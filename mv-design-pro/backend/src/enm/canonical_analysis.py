@@ -18,6 +18,7 @@ from application.proof_engine.packs.phase_state_sn import (
     PhaseStateSNProofPack,
     PhaseStateSNProofPackInput,
 )
+from application.solvers.lv_temperature_correction import build_min_scenario_graph
 from application.stability.dynamic_stability import (
     FaultClearScenario,
     FaultClearSourceState,
@@ -40,6 +41,7 @@ from infrastructure.persistence.repositories.canonical_run_repository import (
 )
 from network_model.core.graph import NetworkGraph
 from network_model.core.node import NodeType
+from network_model.core.voltage_factor import Scenario, c_for_node
 from network_model.solvers.phase_state_sn import (
     OpenPhaseFlags,
     PhaseStateSNInput,
@@ -1054,10 +1056,41 @@ def _execute_short_circuit(run: CanonicalRun) -> None:
         if _short_circuit_requires_z0(short_circuit_type)
         else None
     )
-    c_factor = float(run.options.get("c_factor", 1.10))
+
+    # Karta P0.3b (docs/nn/H_PLAN_IMPLEMENTACJI_NN.md §P0.3, kontynuacja P0.3):
+    # c per pasmo napięciowe węzła zwarcia (IEC 60909 Tab. 1) + scenariusz MIN
+    # z korektą temperaturową R_θ na KOPII grafu. Reuse P0.3 1:1 — te same
+    # moduły co ścieżka execution engine (application/solvers/short_circuit_binding.py):
+    # ``network_model.core.voltage_factor.c_for_node`` i
+    # ``application.solvers.lv_temperature_correction.build_min_scenario_graph``.
+    # Zero duplikacji wzorów, solver FROZEN nietknięty.
+    scenario_raw = str(run.options.get("scenario", "max")).strip().lower()
+    if scenario_raw not in ("max", "min"):
+        raise ValueError(f"Nieznany scenariusz zwarcia: {scenario_raw!r} (oczekiwano 'max'/'min')")
+    scenario_c: Scenario = "MAX" if scenario_raw == "max" else "MIN"
+
+    # Jawny c_factor w options = OVERRIDE płaski dla wszystkich węzłów (zachowanie
+    # wsteczne dla istniejących payloadów). Brak c_factor = AUTO per węzeł z jego
+    # własnego pasma napięciowego (patrz c_for_node w pętli poniżej).
+    c_factor_explicit: Any = run.options.get("c_factor")
+    c_factor_override = c_factor_explicit is not None
+
     tk_s = float(run.options.get("thermal_time_seconds", 1.0))
     rows: list[dict[str, Any]] = []
     trace_steps: list[dict[str, Any]] = []
+
+    # Scenariusz MIN: dekoracja WEJŚCIA solvera (kopia grafu z R_θ skorygowanym
+    # dla gałęzi liniowych/kablowych) — solver FROZEN dostaje gotowy graf, bez
+    # zmiany ani jednej linii jego kodu. Oryginalny `graph` (użyty do topologii
+    # węzłów raportowalnych i do z0_bus) zostaje nietknięty.
+    solve_graph = graph
+    temperature_correction_notes: tuple[dict[str, Any], ...] = ()
+    if scenario_c == "MIN":
+        min_scenario_graph_result = build_min_scenario_graph(graph)
+        solve_graph = min_scenario_graph_result.graph
+        temperature_correction_notes = tuple(
+            note.to_dict() for note in min_scenario_graph_result.notes
+        )
 
     reportable_fault_node_ids = [
         node_id
@@ -1066,12 +1099,19 @@ def _execute_short_circuit(run: CanonicalRun) -> None:
     ]
 
     for node_id in reportable_fault_node_ids:
+        # AUTO: c z pasma napięciowego WŁASNEGO węzła zwarcia (IEC 60909 Tab. 1);
+        # OVERRIDE: wartość jawna z options, płasko dla wszystkich węzłów.
+        c_factor = (
+            float(c_factor_explicit)
+            if c_factor_override
+            else c_for_node(graph.nodes[node_id].voltage_level, scenario_c)
+        )
         # ZWARCIA-PRO F4 (karta W-C): wkłady gałęziowe FROZEN solvera są liczone
         # ZAWSZE w torze kanonicznym (opcja addytywna solvera — nie zmienia
         # żadnej istniejącej wielkości ani śladu White Box; osobna superpozycja).
         if short_circuit_type == ShortCircuitType.THREE_PHASE:
             result = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
-                graph=graph,
+                graph=solve_graph,
                 fault_node_id=node_id,
                 c_factor=c_factor,
                 tk_s=tk_s,
@@ -1079,7 +1119,7 @@ def _execute_short_circuit(run: CanonicalRun) -> None:
             )
         elif short_circuit_type == ShortCircuitType.SINGLE_PHASE_GROUND:
             result = ShortCircuitIEC60909Solver.compute_1ph_short_circuit(
-                graph=graph,
+                graph=solve_graph,
                 fault_node_id=node_id,
                 c_factor=c_factor,
                 tk_s=tk_s,
@@ -1088,7 +1128,7 @@ def _execute_short_circuit(run: CanonicalRun) -> None:
             )
         elif short_circuit_type == ShortCircuitType.TWO_PHASE:
             result = ShortCircuitIEC60909Solver.compute_2ph_short_circuit(
-                graph=graph,
+                graph=solve_graph,
                 fault_node_id=node_id,
                 c_factor=c_factor,
                 tk_s=tk_s,
@@ -1096,7 +1136,7 @@ def _execute_short_circuit(run: CanonicalRun) -> None:
             )
         else:
             result = ShortCircuitIEC60909Solver.compute_2ph_ground_short_circuit(
-                graph=graph,
+                graph=solve_graph,
                 fault_node_id=node_id,
                 c_factor=c_factor,
                 tk_s=tk_s,
@@ -1152,6 +1192,10 @@ def _execute_short_circuit(run: CanonicalRun) -> None:
                 # w `proof_binding`, gubione w wierszu kanonicznym).
                 "requires_z0": reportability["requires_z0"],
                 "z0_source": reportability["z0_source"],
+                # Karta P0.3b: c per pasmo + scenariusz MIN (addytywne, `c_factor`
+                # sam solver już raportuje wyżej w `payload` — nie duplikujemy).
+                "scenario": scenario_c,
+                "c_factor_override": c_factor_override,
             }
         )
         rows.append(payload)
@@ -1175,6 +1219,16 @@ def _execute_short_circuit(run: CanonicalRun) -> None:
         "reporting_limitations": [],
         "case_id": run.case_id,
         "enm_hash": run.snapshot_hash,
+        # Karta P0.3b: metadane bindingu c/scenariusz na poziomie biegu (addytywne,
+        # ten sam kształt co `global_results` wzbogacony przez
+        # application/result_mapping/sc_binding_meta.py dla ścieżki execution engine).
+        "scenario": scenario_c,
+        "c_factor_override": c_factor_override,
+        **(
+            {"temperature_correction_notes": list(temperature_correction_notes)}
+            if temperature_correction_notes
+            else {}
+        ),
         "results": rows,
         "graph": {
             "nodes": {
