@@ -11,7 +11,8 @@ ZRODLA DANYCH:
 - Reklozery ABB REC615: ABB product guide 1MRS756379
 - Reklozery NOJA OSP: NOJA Power OSP katalog DP-0035
 - Reklozery Schneider ADVC: Schneider ADVC U20 karta katalogowa
-- Bezpieczniki ETI VV: ETI VV topikowy katalog
+- Bezpieczniki ETI VV: katalog ETI Polam „Wkladki sredniego napiecia VV" (URL i
+  dokladny wiersz zrodla przy kazdej pozycji — patrz sekcja BEZPIECZNIKI SN)
 - Aparatura generyczna: PN-EN 62271-100:2021 / PN-EN 62271-102:2018
 
 KONWENCJE:
@@ -618,8 +619,45 @@ SWITCH_RECLOSERS: list[dict[str, Any]] = [
 
 # =============================================================================
 # BEZPIECZNIKI SN (FUSE) — ETI VV topikowe
-# Zrodlo: ETI VV topikowy katalog (12 kV i 17.5 kV)
 # =============================================================================
+#
+# ZRODLO (karta K-E-FUSE-TCC-KATALOG, pomiar 2026-08-14): publiczny katalog
+# ETI Polam „Wkladki sredniego napiecia VV" (26 stron) — `_ETI_VV_KATALOG_URL`.
+# Kazda pozycja nizej wskazuje w `source_reference` DOKLADNY wiersz zrodla:
+# oznaczenie typu, nr kodowy producenta i wymiar „e", bo od wymiaru „e" zalezy
+# znamionowa zdolnosc wylaczania (ta sama wkladka w innej dlugosci ma inna).
+#
+# KOREKTA FABRYKACJI: do 2026-08-14 wszystkie 7 pozycji nioslo
+# `ik_ka = i_cu_ka = 31,5 kA`. Zmierzono: ZADNA tabela ETI VV dla 12 kV ani
+# 17,5 kV nie podaje 31,5 kA — katalog podaje 50 kA (12 kV e=192, 17,5 kV
+# e=292) albo 63 kA (12 kV e=292/442, 17,5 kV e=367/442). Wartosc 31,5 kA
+# wystepuje w tym katalogu WYLACZNIE dla 10/24 kV e=292 i 20/36 kV e=537 —
+# czyli dla napiec, ktorych ta lista nie zawiera. Liczba byla wiec nieoparta
+# na zrodle. Przyjeto wymiar STANDARDOWY wg PN-IEC 60282-1, ktory sam katalog
+# wskazuje dla danej klasy napiecia (12 kV -> e=292 mm, 17,5 kV -> e=367 mm),
+# a dla 200 A — jedyny oferowany (e=442 mm); wszystkie te tabele daja 63 kA.
+#
+# DLUG JAWNY — FUSE-TCC-KATALOG (pasmo czasowo-pradowe) NIE zostal zdjety.
+# Katalog ETI publikuje charakterystyki t-I WYLACZNIE jako wykresy log-log
+# (osobna strona na klase napiecia; w tresci PDF nie ma ani jednego punktu
+# liczbowego pasma), a karta techniczna ETI mowi wprost: „I/t Characteristics
+# According to the curves". Tabelaryczne sa tylko: I3 (najmniejszy prad
+# wylaczalny), Rc, Pn oraz calki I2t przedlukowa/wylaczania. Z calki I2t NIE
+# wolno wyprowadzic pasma: t = I2t/I^2 obowiazuje jedynie w zakresie
+# adiabatycznym topienia, a calka wylaczania zawiera energie luku, wiec
+# odtworzony „czas" bylby fabrykacja fizyki — dokladnie ta klasa klamstwa,
+# ktora karta N-D5-FUSE usuwala. Odczyt punktow „z oka" z wykresu jest
+# zakazany przez karte. Dlatego `rozstrzygnij_podstawe_krzywej` nadal zwraca
+# dla bezpiecznika jawna pozycje bez punktow (BRAK_PASMA_BEZPIECZNIKA) —
+# stan uczciwy. Zdjecie dlugu wymaga danych, ktorych producent nie publikuje
+# liczbowo (pasmo od ETI w postaci tabelarycznej albo zmierzonej).
+
+#: Publiczna karta katalogowa ETI Polam — wkladki topikowe SN typu VV.
+_ETI_VV_KATALOG_URL = "https://www.etipolam.com.pl/images/userfiles/pl-PL/documents/Catalog/vv.pdf"
+
+#: Znamionowa zdolnosc wylaczania wkladek VV w wymiarach uzytych nizej.
+#: Wprost ze stopki „Znamionowa zdolnosc wylaczania" wlasciwej tabeli zrodla.
+_ETI_VV_ZDOLNOSC_WYLACZANIA_KA = 63.0
 
 SWITCH_FUSES: list[dict[str, Any]] = [
     {
@@ -630,14 +668,18 @@ SWITCH_FUSES: list[dict[str, Any]] = [
             "manufacturer": "ETI",
             "un_kv": 12.0,
             "in_a": 16.0,
-            "ik_ka": 31.5,
+            "ik_ka": _ETI_VV_ZDOLNOSC_WYLACZANIA_KA,
             "icw_ka": 0.0,
             "medium": None,
             "u_m_kv": 12.0,
-            "i_cu_ka": 31.5,
+            "i_cu_ka": _ETI_VV_ZDOLNOSC_WYLACZANIA_KA,
             "verification_status": "ZWERYFIKOWANY",
             "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "ETI VV topikowy katalog",
+            "source_reference": (
+                f"ETI VVC3 12kV/16A, nr kodowy 004230008, e=292 mm (wymiar standardowy "
+                f"wg PN-IEC 60282-1); tabela 6/12 kV, zdolnosc wylaczania 63 kA; "
+                f"{_ETI_VV_KATALOG_URL}"
+            ),
             "contract_version": "2.0",
         },
     },
@@ -649,14 +691,18 @@ SWITCH_FUSES: list[dict[str, Any]] = [
             "manufacturer": "ETI",
             "un_kv": 12.0,
             "in_a": 40.0,
-            "ik_ka": 31.5,
+            "ik_ka": _ETI_VV_ZDOLNOSC_WYLACZANIA_KA,
             "icw_ka": 0.0,
             "medium": None,
             "u_m_kv": 12.0,
-            "i_cu_ka": 31.5,
+            "i_cu_ka": _ETI_VV_ZDOLNOSC_WYLACZANIA_KA,
             "verification_status": "ZWERYFIKOWANY",
             "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "ETI VV topikowy katalog",
+            "source_reference": (
+                f"ETI VVC3 12kV/40A, nr kodowy 004230013, e=292 mm (wymiar standardowy "
+                f"wg PN-IEC 60282-1); tabela 6/12 kV, zdolnosc wylaczania 63 kA; "
+                f"{_ETI_VV_KATALOG_URL}"
+            ),
             "contract_version": "2.0",
         },
     },
@@ -668,14 +714,18 @@ SWITCH_FUSES: list[dict[str, Any]] = [
             "manufacturer": "ETI",
             "un_kv": 12.0,
             "in_a": 63.0,
-            "ik_ka": 31.5,
+            "ik_ka": _ETI_VV_ZDOLNOSC_WYLACZANIA_KA,
             "icw_ka": 0.0,
             "medium": None,
             "u_m_kv": 12.0,
-            "i_cu_ka": 31.5,
+            "i_cu_ka": _ETI_VV_ZDOLNOSC_WYLACZANIA_KA,
             "verification_status": "ZWERYFIKOWANY",
             "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "ETI VV topikowy katalog",
+            "source_reference": (
+                f"ETI VVC3 12kV/63A, nr kodowy 004230015, e=292 mm (wymiar standardowy "
+                f"wg PN-IEC 60282-1); tabela 6/12 kV, zdolnosc wylaczania 63 kA; "
+                f"{_ETI_VV_KATALOG_URL}"
+            ),
             "contract_version": "2.0",
         },
     },
@@ -687,14 +737,18 @@ SWITCH_FUSES: list[dict[str, Any]] = [
             "manufacturer": "ETI",
             "un_kv": 12.0,
             "in_a": 100.0,
-            "ik_ka": 31.5,
+            "ik_ka": _ETI_VV_ZDOLNOSC_WYLACZANIA_KA,
             "icw_ka": 0.0,
             "medium": None,
             "u_m_kv": 12.0,
-            "i_cu_ka": 31.5,
+            "i_cu_ka": _ETI_VV_ZDOLNOSC_WYLACZANIA_KA,
             "verification_status": "ZWERYFIKOWANY",
             "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "ETI VV topikowy katalog",
+            "source_reference": (
+                f"ETI VVC3 12kV/100A, nr kodowy 004230017, e=292 mm (wymiar standardowy "
+                f"wg PN-IEC 60282-1); tabela 6/12 kV, zdolnosc wylaczania 63 kA; "
+                f"{_ETI_VV_KATALOG_URL}"
+            ),
             "contract_version": "2.0",
         },
     },
@@ -706,14 +760,20 @@ SWITCH_FUSES: list[dict[str, Any]] = [
             "manufacturer": "ETI",
             "un_kv": 12.0,
             "in_a": 200.0,
-            "ik_ka": 31.5,
+            "ik_ka": _ETI_VV_ZDOLNOSC_WYLACZANIA_KA,
             "icw_ka": 0.0,
             "medium": None,
             "u_m_kv": 12.0,
-            "i_cu_ka": 31.5,
+            "i_cu_ka": _ETI_VV_ZDOLNOSC_WYLACZANIA_KA,
             "verification_status": "ZWERYFIKOWANY",
             "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "ETI VV topikowy katalog",
+            # 200 A NIE wystepuje w wymiarze standardowym e=292 mm (tabela 6/12 kV
+            # konczy sie na 160 A) — producent oferuje ten prad tylko w e=442/537 mm.
+            "source_reference": (
+                f"ETI VVC3 12kV/200A 442, nr kodowy 004230520, e=442 mm (prad 200 A nie "
+                f"wystepuje w wymiarze standardowym e=292 mm); tabela 6/12 kV, "
+                f"zdolnosc wylaczania 63 kA; {_ETI_VV_KATALOG_URL}"
+            ),
             "contract_version": "2.0",
         },
     },
@@ -725,14 +785,18 @@ SWITCH_FUSES: list[dict[str, Any]] = [
             "manufacturer": "ETI",
             "un_kv": 17.5,
             "in_a": 63.0,
-            "ik_ka": 31.5,
+            "ik_ka": _ETI_VV_ZDOLNOSC_WYLACZANIA_KA,
             "icw_ka": 0.0,
             "medium": None,
             "u_m_kv": 17.5,
-            "i_cu_ka": 31.5,
+            "i_cu_ka": _ETI_VV_ZDOLNOSC_WYLACZANIA_KA,
             "verification_status": "ZWERYFIKOWANY",
             "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "ETI VV topikowy katalog",
+            "source_reference": (
+                f"ETI VVC3 17,5kV/63A, nr kodowy 004240015, e=367 mm (wymiar standardowy "
+                f"wg PN-IEC 60282-1); tabela 10/17,5 kV, zdolnosc wylaczania 63 kA; "
+                f"{_ETI_VV_KATALOG_URL}"
+            ),
             "contract_version": "2.0",
         },
     },
@@ -744,14 +808,18 @@ SWITCH_FUSES: list[dict[str, Any]] = [
             "manufacturer": "ETI",
             "un_kv": 17.5,
             "in_a": 100.0,
-            "ik_ka": 31.5,
+            "ik_ka": _ETI_VV_ZDOLNOSC_WYLACZANIA_KA,
             "icw_ka": 0.0,
             "medium": None,
             "u_m_kv": 17.5,
-            "i_cu_ka": 31.5,
+            "i_cu_ka": _ETI_VV_ZDOLNOSC_WYLACZANIA_KA,
             "verification_status": "ZWERYFIKOWANY",
             "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "ETI VV topikowy katalog",
+            "source_reference": (
+                f"ETI VVC3 17,5kV/100A, nr kodowy 004240017, e=367 mm (wymiar standardowy "
+                f"wg PN-IEC 60282-1); tabela 10/17,5 kV, zdolnosc wylaczania 63 kA; "
+                f"{_ETI_VV_KATALOG_URL}"
+            ),
             "contract_version": "2.0",
         },
     },
