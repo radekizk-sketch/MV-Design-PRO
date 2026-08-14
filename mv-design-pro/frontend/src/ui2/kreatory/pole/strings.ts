@@ -89,4 +89,15 @@ export const POLE_STRINGS = {
     'Skład pola i zabezpieczenia muszą odpowiadać roli oraz normie IEC 62271; przekładniki dobiera '
     + 'się do prądu i klasy dokładności wymaganej przez zabezpieczenia i pomiary.',
   teoriaPodstawa: 'Podstawa: PN-EN 62271-200 (rozdzielnice SN), wzorce producentów, IRiESD.',
+
+  /**
+   * Rodzina o torze BLOK_RMU dostarczana jest blokami fabrycznymi o stałej
+   * sekwencji jednostek. Dokładanie pojedynczego pola do takiej rodziny opisuje
+   * wyrób inaczej, niż robi go producent — mówimy to wprost, ale NIE blokujemy:
+   * o przyjęciu konfiguracji rozstrzyga walidator backendu, nie UI.
+   */
+  rodzinaBlokowaOpis:
+    'Ta rodzina jest dostarczana jako blok fabryczny o stałej sekwencji jednostek (rozdzielnica '
+    + 'pierścieniowa nie jest zbiorem luźnych szaf). Pojedyncze pole dokładane tutaj nie opisuje '
+    + 'takiego bloku — całą rozdzielnicę RMU składa się w kreatorze stacji, wyborem bloku.',
 } as const;

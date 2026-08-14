@@ -202,8 +202,15 @@ export interface StacjaFormData {
   outgoing_feeders_nn_count: number;
   /** Producent rozdzielnicy SN (referencja katalogowa). */
   manufacturer_ref: string;
-  /** Rodzina rozdzielnicy SN wybranego producenta (opcjonalna). */
+  /** Rodzina rozdzielnicy SN wybranego producenta (wymagana — katalog-first). */
   switchgear_family_ref: string | null;
+  /**
+   * Blok fabryczny rodziny RMU (`FactoryConfiguration.configuration_ref`) —
+   * wyłącznie dla rodzin o torze `BLOK_RMU`. Blok wyznacza STAŁĄ sekwencję
+   * jednostek, więc lista pól powstaje z niego, a nie z ról rodzaju stacji.
+   * `null` dla rodzin modułowych (tam pola składa projektant).
+   */
+  factory_configuration_ref: string | null;
   /** Ręczny wybór szablonu pola per rola (nadpisuje dobór automatyczny). */
   bay_template_refs: Partial<Record<SnFieldRole, string>>;
   /**
@@ -260,6 +267,7 @@ export const DANE_DOMYSLNE: StacjaFormData = {
   outgoing_feeders_nn_count: DOMYSLNA_LICZBA_ODPLYWOW_NN,
   manufacturer_ref: '',
   switchgear_family_ref: null,
+  factory_configuration_ref: null,
   bay_template_refs: {},
   sn_field_apparatus_refs: {},
   station_auxiliary_kw: '',
@@ -749,6 +757,7 @@ export function zbudujPolaSnZWpisow(
   choice: StationSwitchgearChoice,
   szablony: readonly CompleteMvBayTemplateSummary[],
   wyposazenie: Readonly<Record<string, Record<string, unknown> | null>> = {},
+  factoryConfigurationRef: string | null = null,
 ): StationSnFieldTemplate[] {
   return wpisy.map((wpis) => {
     const szablon = wpis.bay_template_ref
@@ -772,6 +781,20 @@ export function zbudujPolaSnZWpisow(
               switchgear_family_ref: choice.switchgearFamilyRef,
               source_status: szablon.source_status,
             },
+            // Pole pochodzące z BLOKU FABRYCZNEGO niesie ref bloku: pole RMU nie
+            // jest luźną szafą, tylko jednostką konkretnego wyrobu, i ta
+            // przynależność ma zostać w modelu (operacja przenosi
+            // `catalog_bindings` do metadanych pola bez zmian). Rodziny modułowe
+            // klucza NIE dostają — brak bloku to brak wpisu, nie pusty ref.
+            ...(factoryConfigurationRef
+              ? {
+                  factory_configuration: {
+                    catalog_namespace: 'ROZDZIELNICA_SN',
+                    catalog_item_id: factoryConfigurationRef,
+                    switchgear_family_ref: choice.switchgearFamilyRef,
+                  },
+                }
+              : {}),
           }
         : null,
       ...(wyposazenie[wpis.id] ? { equipment: wyposazenie[wpis.id] as Record<string, unknown> } : {}),

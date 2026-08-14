@@ -6,7 +6,7 @@
  * ZERO fizyki w UI.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 
 import { useAppStateStore } from '../../../ui/app-state';
 import type { CompleteMvBayTemplateSummary } from '../../../ui/catalog/BayTemplatePicker';
@@ -57,6 +57,12 @@ import {
   type RolaPola,
   type WyborPomiaru,
 } from './polaSnModel';
+import {
+  BEZ_DOPOSAZENIA,
+  KartaWyposazeniaPola,
+} from '../stacja/KartaWyposazeniaPola';
+import { naglowekRodziny, torRodziny, wyposazenieSzablonu } from '../stacja/konfiguratorRozdzielnicy';
+import { STACJA_STRINGS as ST } from '../stacja/strings';
 import { POLE_STRINGS as T } from './strings';
 
 const KROKI: readonly KrokKreatora[] = [
@@ -171,6 +177,16 @@ export function KreatorPolaSn() {
         .filter((t) => t.switchgear_family_ref === dane.switchgear_family_ref)
         .map((t) => ({ id: t.template_ref, etykieta: t.notes_pl ?? `Szablon · ${t.manufacturer_ref}` })),
     [szablony, dane.switchgear_family_ref],
+  );
+
+  /** Wybrana rodzina i wskazana karta katalogowa pola — źródło nagłówka i składu. */
+  const wybranaRodzina = useMemo(
+    () => rodziny.find((r) => r.switchgear_family_ref === dane.switchgear_family_ref) ?? null,
+    [dane.switchgear_family_ref, rodziny],
+  );
+  const wybranySzablon = useMemo(
+    () => szablony.find((t) => t.template_ref === dane.bay_template_ref) ?? null,
+    [dane.bay_template_ref, szablony],
   );
 
   const zmien = useCallback(<K extends keyof PolaSnFormData>(pole: K, wartosc: PolaSnFormData[K]) => {
@@ -346,6 +362,46 @@ export function KreatorPolaSn() {
             </KreatorSiatka>
             {dane.switchgear_family_ref && opcjeSzablonow.length === 0 ? (
               <KreatorInfo>{T.szablonBrak}</KreatorInfo>
+            ) : null}
+
+            {/* KONFIGURATOR-POL-RMU (etap S3) — TEN SAM model katalogowego pola,
+                co w kreatorze stacji: nagłówek rodziny (klasy znamionowe,
+                technologia, tor konfiguracji) i PEŁNY skład pola z karty
+                producenta. Pole SN jest kompletną jednostką funkcjonalną także
+                wtedy, gdy dokłada się je pojedynczo do istniejącej rozdzielnicy. */}
+            {wybranaRodzina ? (
+              <KreatorSekcja tytul={ST.naglowekRodzinyTytul} testid="mvd-kreator-pole-naglowek-rodziny">
+                <dl className="mvd-kreator-naglowek-rodziny">
+                  {naglowekRodziny(wybranaRodzina, wybranaRodzina.manufacturer_ref).map((wiersz) => (
+                    <Fragment key={wiersz.etykieta}>
+                      <dt>{wiersz.etykieta}</dt>
+                      <dd data-brak={wiersz.wartosc === null ? 'tak' : 'nie'}>
+                        {wiersz.wartosc ?? ST.naglowekBrakDanej}
+                      </dd>
+                    </Fragment>
+                  ))}
+                </dl>
+                {/* Rodzina dostarczana blokami fabrycznymi: pojedyncze pole nie
+                    opisuje tego wyrobu. Nie blokujemy operacji (o przyjęciu
+                    rozstrzyga walidator backendu), ale mówimy to wprost. */}
+                {torRodziny(wybranaRodzina) === 'BLOK_RMU' ? (
+                  <KreatorInfo testid="mvd-kreator-pole-rodzina-blokowa">
+                    {T.rodzinaBlokowaOpis}
+                  </KreatorInfo>
+                ) : null}
+              </KreatorSekcja>
+            ) : null}
+
+            {dane.bay_template_ref ? (
+              <KartaWyposazeniaPola
+                pozycje={wyposazenieSzablonu(wybranySzablon)}
+                szablonWskazany
+                // `add_sn_bay` NIE MA w kontrakcie pola `equipment`, więc żadne
+                // doposażenie nie jest tu sterowalne — statusy są readoutem karty
+                // katalogowej, a nie przełącznikami bez skutku w modelu.
+                kluczeOperacji={BEZ_DOPOSAZENIA}
+                testid="mvd-kreator-pole-wyposazenie"
+              />
             ) : null}
             <PanelTeorii
               tytul={T.teoriaTytul}

@@ -123,8 +123,23 @@ export interface BayDeviceInstanceWire {
     | 'metering_branch'
     | 'earthing_branch'
     | 'lv_side';
-  readonly is_required?: boolean;
-  readonly is_optional?: boolean;
+  /**
+   * Status wyposażenia aparatu w polu — JEDEN predykat kontraktu
+   * (`BayDeviceInstanceTemplate.status_wyposazenia`, pole WYMAGANE po stronie
+   * pydantic, bez wartości domyślnej):
+   *  · `FABRYCZNY` — aparat wchodzi w skład katalogowego pola rodziny,
+   *  · `OPCJA` — dopuszczalne doposażenie tego pola.
+   * Aparat spoza listy pola jest NIEDOPUSZCZALNY — to brak wpisu, nie wartość.
+   *
+   * KOREKTA KONTRAKTU (karta S3): typ deklarował tu parę `is_required` /
+   * `is_optional`, którą backend USUNĄŁ przy scaleniu kanonu rozdzielnic
+   * (`switchgear/device_instance.py` — dwie niezależne flagi dopuszczały stan
+   * sprzeczny i nieokreślony). Backend tych kluczy nie wysyła od tamtej pory,
+   * więc były to pola-widma: kod czytający `is_required` dostawał zawsze
+   * `undefined`, a fixture'y testowe deklarowały wartość, której żywa odpowiedź
+   * nie ma. Deklaracja zgodna z kontraktem jest WYMAGANA, tak jak w pydantic.
+   */
+  readonly status_wyposazenia: 'FABRYCZNY' | 'OPCJA';
 }
 
 export interface CompleteMvBayTemplateSummary {

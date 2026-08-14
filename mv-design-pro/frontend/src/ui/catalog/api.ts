@@ -1,7 +1,7 @@
 import { buildCatalogBinding } from './catalogBinding';
 import type { BayKind, CompleteMvBayTemplateSummary } from './BayTemplatePicker';
 import type { Manufacturer } from './manufacturer';
-import type { SwitchgearFamily } from './SwitchgearFamilyPicker';
+import type { FactoryConfigurationWire, SwitchgearFamily } from './SwitchgearFamilyPicker';
 import { executeDomainOp } from '../topology/domainApi';
 import type {
   BranchPointCatalogType,
@@ -185,6 +185,22 @@ export async function fetchSwitchgearFamilies(
 function znormalizujRodzine(rekord: SwitchgearFamily): SwitchgearFamily {
   if (Array.isArray(rekord?.voltage_levels)) return rekord;
   return { ...rekord, voltage_levels: [] };
+}
+
+/**
+ * Konfiguracje fabryczne (bloki) rodziny RMU — subzasób rodziny rozdzielnicy.
+ *
+ * Rozdzielnica pierścieniowa nie jest zbiorem luźnych szaf: projektant wybiera
+ * BLOK o stałej sekwencji jednostek (np. L-L-T), a dopiero potem doposaża
+ * jednostki. Rodzina o torze `MODULARNY` zwraca listę PUSTĄ — to uczciwy stan
+ * zerowy kontraktu, nie błąd, więc konsument nie ma tu czego obsługiwać wyjątkiem.
+ */
+export async function fetchFactoryConfigurations(
+  switchgearFamilyRef: string,
+): Promise<FactoryConfigurationWire[]> {
+  return fetchCatalogJson<FactoryConfigurationWire[]>(
+    `/api/catalog/switchgear-families/${encodeURIComponent(switchgearFamilyRef)}/factory-configurations`,
+  );
 }
 
 /** Lista kompletnych szablonów pól SN per producent/rodzina/funkcja pola. */

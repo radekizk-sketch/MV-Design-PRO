@@ -62,16 +62,86 @@ export const STACJA_STRINGS = {
     'Rodzaj obudowy/konstrukcji stacji — spływa do modelu stacji (drzewo projektu, karta '
     + 'techniczna, dobór osprzętu).',
 
-  // Krok 3 — edytowalna lista pól SN.
+  // Krok 3 — kompletowanie rozdzielnicy SN z katalogowych pól rodziny.
   polaOpis:
-    'Lista pól rozdzielnicy SN stacji. Dodaj lub usuń pole, ustaw jego rolę, szablon producenta '
-    + 'i aparat łączeniowy z katalogu. Aparat jest wymagany dla każdego pola — system go NIE dobiera.',
+    'Skompletuj rozdzielnicę SN stacji z katalogowych pól wybranej rodziny. Pole SN jest kompletną '
+    + 'jednostką funkcjonalną wyrobu (aparat łączeniowy to tylko jeden z jej elementów), więc jego '
+    + 'wyposażenie pochodzi z karty katalogowej rodziny. Tor pracy wyznacza sama rodzina: '
+    + 'rozdzielnicę modułową składasz z pól, rozdzielnicę pierścieniową (RMU) wybierasz blokiem '
+    + 'fabrycznym o stałej sekwencji jednostek.',
   polaDodaj: 'Dodaj pole',
   polaUsun: 'Usuń pole',
   polaRola: 'Rola pola',
-  polaSzablon: 'Szablon pola (producent)',
+  polaSzablon: 'Katalogowe pole rodziny',
   polaPuste: 'Stacja nie ma żadnego pola SN — dodaj co najmniej jedno pole.',
   polaLicznik: (n: number) => `Pola SN: ${n}`,
+
+  // --- Tor konfiguracji (kanon KONFIGURATOR_ROZDZIELNIC_SN_RMU §3) ---
+  naglowekRodzinyTytul: 'Wybrana rodzina rozdzielnicy',
+  torModularnyTytul: 'Tor modułowy — rozdzielnica składana z pól',
+  torModularnyOpis:
+    'Rozdzielnicę składasz z pojedynczych katalogowych pól rodziny: dodajesz i usuwasz pola, '
+    + 'a każde z nich wchodzi z pełnym wyposażeniem swojej karty katalogowej.',
+  torBlokTytul: 'Tor blokowy (RMU) — blok fabryczny',
+  torBlokOpis:
+    'Rozdzielnica pierścieniowa nie jest zbiorem luźnych szaf: producent sprzedaje BLOK o stałej '
+    + 'sekwencji jednostek. Wybierz blok — jego jednostki są niezmienne, a doposażasz je opcjami '
+    + 'z karty katalogowej.',
+  torBrakTytul: 'Rodzina nie deklaruje konstrukcji',
+  torBrakOpis:
+    'Karta tej rodziny nie podaje konstrukcji, więc katalog nie wyznacza toru konfiguracji '
+    + '(modułowy albo blokowy RMU). Kreator nie zgaduje toru pracy — wskaż rodzinę z pełną kartą '
+    + 'albo uzupełnij katalog rodzin rozdzielnic.',
+
+  // --- Blok fabryczny RMU ---
+  blokWybor: 'Blok fabryczny',
+  blokPlaceholder: '— wskaż blok fabryczny —',
+  blokPomoc:
+    'Blok wyznacza STAŁĄ sekwencję jednostek wyrobu (np. L-L-T). Zmiana bloku przebudowuje pola '
+    + 'rozdzielnicy; pojedynczej jednostki nie da się dostawić ani usunąć — to inny wyrób.',
+  blokSekwencja: 'Sekwencja jednostek',
+  blokSzerokosc: 'Szerokość całkowita',
+  blokJednostkiTytul: 'Jednostki bloku (skład stały)',
+  blokJednostka: (pozycja: number, kod: string) => `Jednostka ${pozycja} · ${kod}`,
+  blokBrakTytul: 'Bloki tej rodziny czekają na kartę producenta',
+  blokBrakOpis:
+    'Katalog nie zawiera jeszcze skonfigurowanych bloków tej rodziny — źródła publiczne producenta '
+    + 'nie wymieniają zestawu konfiguracji. Kreator nie zmyśli sekwencji jednostek: wskaż inną '
+    + 'rodzinę RMU albo uzupełnij katalog konfiguracji fabrycznych o transkrypcję karty.',
+  blokBlad: 'Nie udało się pobrać konfiguracji fabrycznych rodziny.',
+  blokNiewybrany: 'Wskaż blok fabryczny, aby zobaczyć jego jednostki i skompletować rozdzielnicę.',
+  /**
+   * Jednostka wyrobu, której funkcji NIE DA SIĘ wyrazić rolą pola w kontrakcie
+   * operacji stacyjnej. Mówimy to wprost przy jednostce — cichy zamiennik
+   * („zapiszemy jako pole liniowe") fałszowałby skład wyrobu w modelu.
+   */
+  jednostkaBezRoli:
+    'Tej funkcji jednostki operacja budowy stacji nie zapisuje — jednostka zostaje w składzie '
+    + 'wyrobu, ale nie powstanie z niej pole rozdzielnicy.',
+
+  // --- Karta wyposażenia pola / jednostki ---
+  wyposazenieTytul: 'Wyposażenie pola z karty katalogowej',
+  wyposazeniePuste:
+    'Karta katalogowa tego pola nie wylicza wyposażenia — pokazujemy brak zamiast dorysowywać '
+    + 'aparaty, których katalog nie deklaruje.',
+  wyposazenieBrakPola: 'Wskaż katalogowe pole rodziny, aby zobaczyć jego wyposażenie.',
+  statusFabryczny: 'fabryczne',
+  statusOpcja: 'opcja',
+  statusFabrycznyPomoc: 'Wyposażenie fabryczne pola — wchodzi z kartą katalogową, bez wyboru.',
+  /**
+   * Doposażenie STEROWALNE: rodzaj aparatu ma pole w operacji stacyjnej
+   * (`equipment.ct|vt|relay`), więc wskazanie pozycji katalogowej REALNIE
+   * powstaje razem ze stacją. Kontrolka bez pokrycia w backendzie jest zakazana.
+   */
+  opcjaPomoc:
+    'Doposażenie opcjonalne — wskaż pozycję katalogową, aby powstało razem ze stacją; '
+    + 'wyczyszczenie wyboru usuwa je z konfiguracji.',
+  opcjaBezDostawcy:
+    'Doposażenie opcjonalne wg karty katalogowej. Operacja tego kreatora nie ma pola dla tego '
+    + 'rodzaju aparatu, więc kreator go nie zapisuje — świadomie nie pokazujemy przełącznika '
+    + 'bez skutku w modelu.',
+  opcjaWybrana: 'w konfiguracji',
+  opcjaNiewybrana: 'poza konfiguracją',
 
   // Krok 4 — pomiar i zabezpieczenia pól.
   pomiarOpis:
@@ -271,10 +341,18 @@ export const STACJA_STRINGS = {
     + 'szablony pól. Lista obejmuje wyłącznie producentów z konfiguracją katalogową.',
   producentPlaceholder: '— wybierz producenta —',
   rodzina: 'Rodzina rozdzielnicy',
+  /**
+   * KONFIGURATOR-POL-RMU: rodzina jest WYMAGANA. Wcześniejsze „puste — pakiet
+   * standardowy producenta" było atrapą katalogu (kanon §1): producent nie
+   * sprzedaje „rodziny standardowej", a pole SN jest kompletną jednostką
+   * funkcjonalnej KONKRETNEJ rodziny. Bez rodziny nie ma ani jej klas
+   * znamionowych, ani toru konfiguracji, ani katalogowych pól.
+   */
   rodzinaPomoc:
-    'Rodzina zawęża szablony pól do serii konstrukcyjnej zgodnej z napięciem SN szyny. '
-    + 'Puste — pakiet standardowy producenta.',
-  rodzinaPlaceholder: '— rodzina standardowa producenta —',
+    'Rodzina to konkretna seria wyrobu producenta. Wyznacza klasy znamionowe (napięcie, prąd, '
+    + 'prąd zwarciowy), technologię i TOR KONFIGURACJI: rozdzielnica składana z pól albo blok '
+    + 'fabryczny RMU. Wskazanie jest wymagane — bez rodziny nie ma katalogowych pól.',
+  rodzinaPlaceholder: '— wskaż rodzinę z katalogu —',
   poleRoliPomoc: 'Kompletny szablon pola z katalogu producenta (rozłącznik, przekładniki, zabezpieczenia).',
   polePlaceholder: '— dobór automatyczny —',
   aparatPola: 'Aparat pola',
@@ -317,6 +395,9 @@ export const STACJA_STRINGS = {
   podgladStronaNn: 'nN',
   // Nagłówek pakietu rozdzielnicy (dane rodziny + werdykt walidatora backendu).
   naglowekRodzina: 'Rodzina',
+  naglowekProducent: 'Producent',
+  naglowekIzolacja: 'Izolacja',
+  naglowekTor: 'Tor konfiguracji',
   naglowekKonstrukcja: 'Konstrukcja',
   naglowekNapiecie: 'Napięcie znamionowe',
   naglowekPradSzyn: 'Prąd znamionowy szyn',
@@ -341,7 +422,13 @@ export const STACJA_STRINGS = {
   podgladBrakSzablonu: 'brak szablonu pola',
   podgladPole: (numer: number) => `Pole ${numer}`,
   brakProducenta: 'Wybierz producenta rozdzielnicy SN, aby dobrać pola stacji.',
-  brakRodzin: 'Producent nie udostępnia rodzin dla napięcia SN szyny — użyty pakiet standardowy.',
+  /**
+   * Rodzina jest wymagana, więc brak rodzin producenta to STAN BLOKUJĄCY krok,
+   * a nie „użyjemy pakietu standardowego" (takiego wyrobu nie ma w katalogu).
+   */
+  brakRodzin:
+    'Ten producent nie ma w katalogu rodziny na napięcie szyny SN. Wybierz innego producenta '
+    + 'albo uzupełnij katalog rodzin rozdzielnic — bez rodziny nie ma katalogowych pól.',
   brakSzablonow:
     'Brak kompletnych szablonów pól dla wybranego producenta/rodziny. Wybierz inny pakiet katalogowy '
     + 'lub uzupełnij katalog rozdzielnic SN.',
