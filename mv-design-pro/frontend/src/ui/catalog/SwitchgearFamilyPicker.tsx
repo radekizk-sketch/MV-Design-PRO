@@ -58,6 +58,35 @@ export interface SwitchgearFamily {
   readonly notes_pl: string | null;
 }
 
+/**
+ * Statusy rodzin, na których backend POZWALA budować konfigurację
+ * (`switchgear/families.py: POTWIERDZONE_STATUSY_RODZINY`). Rodzina spoza tego
+ * zbioru jest w katalogu — bo nie kasujemy wiedzy o portfolio producenta — ale
+ * walidator zgodności odmówi na niej budowania twardym błędem.
+ *
+ * DLACZEGO TO TU JEST (2026-08-14). Picker renderował KAŻDĄ rodzinę z odpowiedzi
+ * jako klikalny przycisk. Dopóki katalog miał wyłącznie rodziny `repo_verified`,
+ * nikt tego nie widział; pierwsza rodzina `requires_catalog` w odpowiedzi (ABB
+ * UniSec — publiczna strona nie podaje klas prądowych i zwarciowych) zamieniłaby
+ * ten przycisk w martwy klik: UI oferuje wybór, backend go odrzuca. Wybór bez
+ * pokrycia w backendzie jest zakazany, więc taka rodzina jest pokazana jako
+ * NIEAKTYWNA z powodem, a nie ukryta i nie klikalna.
+ */
+const STATUSY_DO_BUDOWANIA: ReadonlySet<SwitchgearFamily['status']> = new Set([
+  'verified',
+  'repo_verified',
+  'user_defined',
+]);
+
+export function czyRodzinaDoBudowania(family: SwitchgearFamily): boolean {
+  return STATUSY_DO_BUDOWANIA.has(family.status);
+}
+
+const POWOD_BLOKADY_PL: Partial<Record<SwitchgearFamily['status'], string>> = {
+  requires_catalog: 'Wymaga karty katalogowej producenta — brak potwierdzonych klas znamionowych.',
+  deprecated: 'Rodzina wycofana z oferty producenta.',
+};
+
 export interface SwitchgearFamilyPickerProps {
   readonly families: readonly SwitchgearFamily[];
   readonly manufacturerRef: string | null;
@@ -103,7 +132,9 @@ export function SwitchgearFamilyPicker({
     );
   }
 
-  if (manufacturerRequiresCatalog || families.length === 0) {
+  const doBudowania = families.filter(czyRodzinaDoBudowania);
+
+  if (manufacturerRequiresCatalog || doBudowania.length === 0) {
     return (
       <div
         className={clsx(
@@ -128,18 +159,25 @@ export function SwitchgearFamilyPicker({
     >
       {families.map((family) => {
         const isSelected = family.switchgear_family_ref === selectedRef;
+        const doWyboru = czyRodzinaDoBudowania(family);
+        const powodBlokady = doWyboru ? null : (POWOD_BLOKADY_PL[family.status] ?? null);
         return (
           <li key={family.switchgear_family_ref}>
             <button
               type="button"
+              disabled={!doWyboru}
+              title={powodBlokady ?? undefined}
               onClick={() => onSelect(family.switchgear_family_ref)}
               data-testid={`switchgear-family-picker-option-${family.switchgear_family_ref}`}
               data-selected={isSelected ? 'true' : 'false'}
+              data-buildable={doWyboru ? 'true' : 'false'}
               className={clsx(
                 'flex w-full flex-col items-start rounded border p-2 text-left transition-colors',
-                isSelected
-                  ? 'border-blue-500 bg-blue-50'
-                  : 'border-gray-200 bg-white hover:bg-gray-50',
+                !doWyboru
+                  ? 'cursor-not-allowed border-gray-200 bg-gray-50 opacity-70'
+                  : isSelected
+                    ? 'border-blue-500 bg-blue-50'
+                    : 'border-gray-200 bg-white hover:bg-gray-50',
               )}
             >
               <div className="flex w-full items-center justify-between gap-2">
@@ -154,6 +192,14 @@ export function SwitchgearFamilyPicker({
               {family.voltage_levels.length > 0 && (
                 <span className="text-[11px] text-gray-500">
                   Napięcia: {family.voltage_levels.map((v) => `${v} kV`).join(', ')}
+                </span>
+              )}
+              {powodBlokady && (
+                <span
+                  className="mt-1 text-[11px] font-medium text-amber-800"
+                  data-testid={`switchgear-family-picker-blocked-${family.switchgear_family_ref}`}
+                >
+                  {powodBlokady}
                 </span>
               )}
               {family.notes_pl && (
