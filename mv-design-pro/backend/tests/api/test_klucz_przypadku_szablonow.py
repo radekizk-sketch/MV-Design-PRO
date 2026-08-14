@@ -223,6 +223,11 @@ INWENTARZ_KLUCZA_PRZYPADKU: dict[str, str] = {
     "der_sn_documents.py": KLUCZ_SUROWY,
     "oze_analysis_runs.py": KLUCZ_SUROWY,
     "reference_engine.py": KLUCZ_SUROWY,
+    # Karta P0.10 (nN): pakiet dowodowy LV_CIRCUIT_VERIFICATION i sekcje
+    # raportu nN czytają model tą samą drogą co `GET /api/cases/{case_id}/enm`
+    # — trasa deklaruje `case_id: str` (Pydantic body) i przekazuje `payload.
+    # case_id` do `get_enm` bajt w bajt, bez `UUID(...)`/`str(...)` pomiędzy.
+    "nn_proof.py": KLUCZ_SUROWY,
     "fault_scenarios.py": KLUCZ_Z_REKORDU,
     "ncrfg_ptpiree_tests.py": KLUCZ_UUID_Z_TRASY,
     "v126_academic.py": KLUCZ_UUID_Z_TRASY,

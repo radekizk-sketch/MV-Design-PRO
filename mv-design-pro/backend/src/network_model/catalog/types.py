@@ -3620,10 +3620,22 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
     ),
     CatalogNamespace.APARAT_NN.value: MaterializationContract(
         namespace=CatalogNamespace.APARAT_NN.value,
-        solver_fields=("u_n_kv", "i_n_a"),
+        # Karta P0.10 (nN, docs/nn/H_PLAN_IMPLEMENTACJI_NN.md §P0.10, luka G-21):
+        # TA SAMA klasa defektu co KABEL_NN P0.5a/P0.6 powyzej — LVApparatusType
+        # niesie device_kind/i_cu_ka/conditional_sc_current_ka od karty P0.7, ale
+        # kontrakt materializacji ich nie kopiowal do galezi, wiec kazdy aparat
+        # nN zwiazany z katalogiem APARAT_NN (MCCB/rozlacznik bezpiecznikowy)
+        # tracil rodzaj i zdolnosc wylaczania po drodze do `materialized_params`
+        # — dowod wytrzymalosci obwodu nN (pakiet LV_CIRCUIT_VERIFICATION) nie
+        # mial z czego czytac WLASNIE ZAINSTALOWANEGO aparatu (MCB/APARAT_NN_MCB
+        # mial `icn_ka` od poczatku, luka dotyczyla wylacznie APARAT_NN).
+        solver_fields=("u_n_kv", "i_n_a", "device_kind", "i_cu_ka", "conditional_sc_current_ka"),
         ui_fields=(
             ("u_n_kv", "Un [kV]", "kV"),
             ("i_n_a", "In [A]", "A"),
+            ("device_kind", "Rodzaj", ""),
+            ("i_cu_ka", "Icu [kA]", "kA"),
+            ("conditional_sc_current_ka", "Icond [kA]", "kA"),
         ),
     ),
     CatalogNamespace.KABEL_NN.value: MaterializationContract(

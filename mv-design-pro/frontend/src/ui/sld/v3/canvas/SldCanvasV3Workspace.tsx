@@ -146,6 +146,7 @@ import {
 import { SldExportFormatMenu } from '../../v2/export/SldExportFormatMenu';
 import { NetworkHierarchyTree } from '../../v2/domain/NetworkHierarchyTree';
 import { buildNetworkHierarchyFromSnapshot } from '../../shared/networkHierarchyFromSnapshot';
+import { NnCircuitProofPanel } from '../../v2/proof/NnCircuitProofPanel';
 import { ProofPacksPanel } from '../../v2/proof/ProofPacksPanel';
 import { StationInternalView } from '../../v2/canvas/StationInternalView';
 import { buildStationInternalViewData } from '../../shared/stationInternalViewData';
@@ -3095,6 +3096,13 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
         </button>
         {proofPanelOpen && (
           <ProofPacksPanel hasNetworkModel={hasNetworkModel} className="max-h-[150px] w-[216px] overflow-y-auto" />
+        )}
+        {/* Karta P0.10 (nN): pakiet LV_CIRCUIT_VERIFICATION — osobny panel od
+            `ProofPacksPanel` (8 kanonicznych paczek V12.xx, lista zamrożona),
+            bo obwód nN identyfikują parametry (stacja/punkt/aparat/odcinek),
+            nie `run_id` z istniejącego przebiegu. */}
+        {proofPanelOpen && hasNetworkModel && (
+          <NnCircuitProofPanel className="max-h-[420px] w-[320px] overflow-y-auto" />
         )}
       </div>
 

@@ -27,6 +27,7 @@ from api.grid_source_preview import router as grid_source_preview_router
 from api.health import router as health_router
 from api.middleware import RequestIdMiddleware
 from api.ncrfg_ptpiree_tests import router as ncrfg_ptpiree_tests_router
+from api.nn_proof import router as nn_proof_router
 from api.oze_analysis_runs import router as oze_analysis_runs_router
 from api.power_flow_comparisons import router as power_flow_comparisons_router
 from api.power_flow_runs import router as power_flow_runs_router
@@ -140,6 +141,7 @@ app.include_router(zwarcia_porownania_router)
 app.include_router(equipment_proof_pack_router)
 app.include_router(health_router)
 app.include_router(ncrfg_ptpiree_tests_router)
+app.include_router(nn_proof_router)
 app.include_router(oze_analysis_runs_router)
 app.include_router(power_flow_comparisons_router, prefix="/api")
 app.include_router(power_flow_runs_router, prefix="/api")

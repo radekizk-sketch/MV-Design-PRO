@@ -299,7 +299,7 @@ MV-Design-PRO/
 │   │   │   │   ├── topology/              # Drzewo topologii
 │   │   │   │   ├── voltage-profile/       # Wykresy profilu napiecia
 │   │   │   │   ├── workspace/             # Zarzadzanie przestrzenia robocza
-│   │   │   └── ui2/              # Warstwa UI programu 2026-07 — 16 modulow (tu toczy sie biezaca praca)
+│   │   │   └── ui2/              # Warstwa UI programu 2026-07 — 17 modulow (tu toczy sie biezaca praca)
 │   │   │       ├── adapters/          # Adaptery do kontraktow backendu
 │   │   │       ├── events/            # Szyna zdarzen
 │   │   │       ├── freshness/         # Znaczniki swiezosci wynikow
@@ -310,6 +310,7 @@ MV-Design-PRO/
 │   │   │       ├── model/             # Warstwa modelu ui2
 │   │   │       ├── nav/               # Nawigacja etapow E1-E8
 │   │   │       ├── oze/               # Strumien OZE (krzywe, LOM, zgodnosc NC RfG)
+│   │   │       ├── proces/            # Kanoniczna mapa procesu E1-E8 + nastepna najlepsza akcja
 │   │   │       ├── referencje/        # Referencje katalogowe
 │   │   │       ├── search/            # Wyszukiwanie
 │   │   │       ├── shell/             # Powloka ui2 (chrom, doki, store powloki)
