@@ -677,6 +677,21 @@ export const CONNECTION_VARIANT_CATALOG: ReadonlyArray<ConnectionVariantItem> = 
 //
 // Punkt uziemienia neutralnego transformatora 110/SN (lub stacji SN-SN).
 // Decyduje o impedancji Z₀ sieci SN i kształcie obliczeń SC1F/SC2FG.
+//
+// PROWENIENCJA (karta K-O, 2026-08-14) — usunięto dwa pola tej samej klasy, co
+// zmyślone pasmo wkładki SN:
+//   * `typical_ik1_a_range` — ZAKRES PRĄDU ZWARCIA DOZIEMNEGO bez źródła,
+//     pokazywany użytkownikowi na dwóch ekranach jako „I_k1 typowo 5000-25000 A".
+//     Liczba, na której projektant mógłby oprzeć dobór zabezpieczeń
+//     ziemnozwarciowych, a która nie pochodziła znikąd. Prąd I_k1 tej sieci
+//     wylicza solver SC1F z realnej impedancji Z₀ modelu — „typowy zakres"
+//     z tabeli konkurował z wynikiem obliczeń i nie miał czym tego wygrać.
+//   * `typical_operators_pl` — przypisanie praktyki ruchowej imiennie wskazanym
+//     operatorom (PGE Dystrybucja, Energa-Operator, Tauron, Enea, „PSE GPZ")
+//     bez cytatu z IRiESD. Bez konsumenta produkcyjnego.
+// Imiona operatorów usunięto też z `description_pl`. Zostaje `r_ohm`/`x_ohm` —
+// to parametr DEFINIUJĄCY wariant (widnieje w jego nazwie), czyli wybór
+// projektanta, a nie cudza zmierzona własność.
 
 export interface MvNeutralGroundingItem {
   readonly id: string;
@@ -685,14 +700,10 @@ export interface MvNeutralGroundingItem {
   readonly grounding_type: 'isolated' | 'petersen_coil' | 'resistor_grounded' | 'directly_grounded';
   readonly label_pl: string;
   readonly description_pl: string;
-  /** Typowa rezystancja uziemienia [Ω] (gdy resistor_grounded). */
+  /** Rezystancja uziemienia [Ω] definiująca wariant (gdy resistor_grounded). */
   readonly r_ohm?: number;
-  /** Typowa reaktancja uziemienia [Ω] (gdy petersen_coil — Lp = 1/(3·ω·C₀)). */
+  /** Reaktancja uziemienia [Ω] definiująca wariant (petersen_coil — Lp = 1/(3·ω·C₀)). */
   readonly x_ohm?: number;
-  /** Typowy zakres prądu zwarcia 1-fazowego doziemnego [A]. */
-  readonly typical_ik1_a_range: { min: number; max: number };
-  /** Typowa praktyka operatorów. */
-  readonly typical_operators_pl: string;
 }
 
 export const MV_NEUTRAL_GROUNDING_CATALOG: ReadonlyArray<MvNeutralGroundingItem> = Object.freeze([
@@ -704,10 +715,7 @@ export const MV_NEUTRAL_GROUNDING_CATALOG: ReadonlyArray<MvNeutralGroundingItem>
     label_pl: 'Sieć izolowana (bez uziemienia neutralnego)',
     description_pl:
       'Punkt neutralny transformatora 110/SN nie jest uziemiony. Prąd zwarcia '
-      + '1-fazowego doziemnego jest ograniczony tylko pojemnością sieci. '
-      + 'Typowe dla starych sieci 15 kV w Polsce (PGE rural, fragmenty Tauron).',
-    typical_ik1_a_range: { min: 5, max: 50 },
-    typical_operators_pl: 'PGE Dystrybucja (sieci wiejskie 15 kV)',
+      + '1-fazowego doziemnego jest ograniczony tylko pojemnością sieci.',
   },
   {
     id: 'mng_petersen',
@@ -718,9 +726,7 @@ export const MV_NEUTRAL_GROUNDING_CATALOG: ReadonlyArray<MvNeutralGroundingItem>
     description_pl:
       'Punkt neutralny uziemiony przez dławik kompensacyjny (cewkę Petersena). '
       + 'Lp = 1 / (3·ω·C₀) gdzie C₀ jest pojemnością sieci. W stanie '
-      + 'kompensacji Ik1 ≈ 0. Standard nowoczesny — większość sieci 15-30 kV.',
-    typical_ik1_a_range: { min: 1, max: 20 },
-    typical_operators_pl: 'Energa-Operator, Tauron, Enea, PGE (sieci miejskie)',
+      + 'kompensacji Ik1 ≈ 0.',
   },
   {
     id: 'mng_resistor_low',
@@ -729,12 +735,10 @@ export const MV_NEUTRAL_GROUNDING_CATALOG: ReadonlyArray<MvNeutralGroundingItem>
     grounding_type: 'resistor_grounded',
     label_pl: 'Sieć uziemiona przez rezystor — niski (R≈7 Ω, Ik1≈300 A)',
     description_pl:
-      'Punkt neutralny uziemiony przez rezystor 7 Ω. Ogranicza Ik1 do około '
-      + '300 A (skuteczne wykrycie zwarć doziemnych przez 51N). Stosowane '
+      'Punkt neutralny uziemiony przez rezystor 7 Ω — ogranicza prąd zwarcia '
+      + 'doziemnego na tyle, by pozostał wykrywalny przez 51N. Stosowane '
       + 'w sieciach kablowych miejskich.',
     r_ohm: 7,
-    typical_ik1_a_range: { min: 250, max: 350 },
-    typical_operators_pl: 'PSE GPZ, sieci kablowe miejskie 20 kV',
   },
   {
     id: 'mng_resistor_medium',
@@ -747,8 +751,6 @@ export const MV_NEUTRAL_GROUNDING_CATALOG: ReadonlyArray<MvNeutralGroundingItem>
       + 'wykrywalnością zwarć a ochroną sprzętu. Stosowane w sieciach '
       + 'mieszanych kabel/napowietrzna.',
     r_ohm: 40,
-    typical_ik1_a_range: { min: 80, max: 120 },
-    typical_operators_pl: 'OSD regionalni, sieci 15-20 kV mieszane',
   },
   {
     id: 'mng_directly',
@@ -760,8 +762,6 @@ export const MV_NEUTRAL_GROUNDING_CATALOG: ReadonlyArray<MvNeutralGroundingItem>
       'Punkt neutralny uziemiony bezpośrednio. Ik1 maksymalne (porównywalne '
       + 'z Ik3). Rzadko stosowane w SN — głównie w przemysłowych sieciach '
       + 'specjalnych. Zwiększa wymagania na zabezpieczenia i sprzęt.',
-    typical_ik1_a_range: { min: 5000, max: 25000 },
-    typical_operators_pl: 'Sieci przemysłowe specjalne, USA',
   },
 ]);
 

@@ -609,8 +609,13 @@ function StationEarthingPanel({
         {selected ? (
           <div className="mt-3 rounded border border-scada-border bg-scada-bg p-3 text-xs">
             <div className="font-semibold text-scada-text">{selected.label_pl}</div>
+            {/*
+              Karta K-O: „I_k1 typowo X-Y A" pochodziło z tabeli bez źródła i
+              konkurowało z wynikiem SC1F. Zostaje to, co wynika z samego
+              wariantu uziemienia — wymagalność zabezpieczenia kierunkowego.
+            */}
             <div className="mt-1 text-scada-muted">
-              I_k1 typowo {selected.typical_ik1_a_range.min}-{selected.typical_ik1_a_range.max} A · 67N:
+              I_k1 dla tej sieci: z obliczeń zwarcia doziemnego (SC1F) · 67N:
               {' '}{requires67N ? 'wymagane' : 'według projektu zabezpieczeń'}
             </div>
           </div>
