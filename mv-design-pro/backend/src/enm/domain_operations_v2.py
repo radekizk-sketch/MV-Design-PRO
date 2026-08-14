@@ -27,7 +27,10 @@ from typing import Any
 from network_model.catalog.materialization import materialize_catalog_binding
 from network_model.catalog.mv_ptpiree_catalog import annotate_with_ptpiree_status
 from network_model.catalog.repository import get_default_mv_catalog
-from network_model.catalog.switchgear import NiezgodnoscKonfiguracjiError
+from network_model.catalog.switchgear import (
+    NiezgodnoscKonfiguracjiError,
+    family_supports_voltage,
+)
 from network_model.catalog.types import CatalogBinding
 from network_model.solvers import cable_ampacity_derating as cable_derating
 
@@ -2374,13 +2377,23 @@ def add_sn_bay_from_catalog(enm: dict[str, Any], payload: dict[str, Any]) -> dic
     )
     if station is None:
         return _error_response("Nie znaleziono stacji dla szyny SN.", "sn.station_not_found")
-    if _bus_voltage_kv(enm, bus_ref) is None:
+    napiecie_szyny_kv = _bus_voltage_kv(enm, bus_ref)
+    if napiecie_szyny_kv is None:
         return _error_response(
             "Nie znaleziono napięcia szyny SN dla pola.", "sn.bus_voltage_missing"
         )
 
     try:
         plan = rozwiaz_plan_pola(payload, field_ref=None)
+        # BRAMA NAPIĘCIOWA (karta K-J, 2026-08-14). Do etapu S5 to sprawdzenie
+        # było celowo pominięte, bo `voltage_levels` mieszało napięcia sieci z
+        # klasami izolacji i odrzucało poprawne projekty. Po rozdzieleniu pól
+        # rodziny reguła jest jednoznaczna i mieszka w JEDNYM miejscu
+        # (`family_validation.czy_rodzina_obsluguje_napiecie`), więc pole może
+        # już powstać wyłącznie na szynie, którą karta rodziny obejmuje.
+        # Sprawdzenie idzie PO planie katalogowym, bo dopiero plan zna rodzinę
+        # (blok fabryczny wskazuje ją pośrednio, przez konfigurację).
+        family_supports_voltage(plan.switchgear_family_ref, napiecie_szyny_kv)
     except NiezgodnoscKonfiguracjiError as blad:
         return _werdykt_niezgodnosci(str(blad), dry_run=dry_run)
 

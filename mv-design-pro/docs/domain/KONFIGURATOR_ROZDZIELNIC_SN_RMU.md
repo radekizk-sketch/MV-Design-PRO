@@ -231,12 +231,38 @@ DLUG JAWNY S5 (do kolejki, patrz PLAN_DOKONCZENIA_100_2026-08-14 §3):
   nadal buduje pola producenckie bez aparatow; przepiecie wymaga
   rozstrzygniecia, czy pola GPZ moga stac na rodzinie BLOK_RMU (test referencyjny
   buduje GPZ na SafeRing — kanal zakazany dla rodzin blokowych).
-- Semantyka `SwitchgearFamily.voltage_levels` niejednorodna: Rotoblok deklaruje
-  napiecia SIECI (15/20), SafeRing i Rotoblok Air klasy izolacji Um
-  (12/17,5/24) — dlatego operacja celowo NIE wola `family_supports_voltage`
-  wobec napiecia szyny (odrzucaloby poprawne projekty). Wymaga normalizacji
-  danych rodzin (jedno pole = jedna semantyka) i dopiero potem wlaczenia
-  walidacji napieciowej.
 - Pole zrodlowe DER (`mv_source_field_primary_devices`) swiadomie poza
   resolverem: konfigurowane jawnie kontrolka-po-kontrolce, nie wybierane
   z katalogu rodziny.
+
+DLUG NAPIECIOWY S5 — ZAMKNIETY (2026-08-14, karta K-J NORMALIZACJA-NAPIEC-RODZIN).
+Pole `SwitchgearFamily.voltage_levels` USUNIETE. Rodzina deklaruje dwie rozne
+wielkosci w dwoch polach, przepisane per rodzina ZE ZRODLA (18/18 rodzin):
+`network_voltages_kv` — wiersz karty „napiecie nominalne sieci" / „napiecie
+robocze"; `um_classes_kv` — wiersz „napiecie znamionowe (Ur)" / „najwyzsze
+napiecie urzadzen (Um)" / „rated voltage". Karta Rotobloka podaje OBIE
+(siec 15/20 kV przy klasach 17,5/24 kV) — to ta para uzasadnia rozdzielenie.
+Lista pusta = karta danego wiersza nie ma (jawny brak, nigdy wartosc domyslna);
+pin klasy w `test_switchgear_families.py` trzyma warunek „kazda rodzina ma
+niepusta co najmniej jedna z dwoch list".
+
+Regula dopasowania ma JEDNO zrodlo — `family_validation.czy_rodzina_obsluguje_napiecie`:
+napiecie szyny Un pasuje, gdy Un jest na liscie napiec sieci ALBO (lista sieci
+pusta i istnieje klasa Um >= Un; podstawa: PN-EN 62271-1 — napiecie znamionowe
+urzadzenia to gorna granica napiecia sieci). Brak obu deklaracji = odmowa, nie
+cicha zgoda. Walidacja jest WLACZONA w obu kanalach produkcyjnych:
+`add_sn_bay_from_catalog` wola twarda brame `family_supports_voltage` po
+rozwiazaniu planu katalogowego (tam znana jest rodzina rowniez dla toru
+blokowego), a lista sprawdzen Reference Engine V1 (`reference_engine/compliance.py`,
+kod `family.voltage`) RAPORTUJE ten sam predykat zamiast wlasnej reguly
+„max(voltage_levels) >= napiecie". Iloczyn cech (rodzina sieciowa x klasowa x
+bez danych) x (napiecie pasujace x niepasujace x brzegowe rowne Um) x (oba
+kanaly) stoi w `tests/network_model/catalog/test_switchgear_napiecia_rodzin.py`.
+
+Znalezisko uboczne transkrypcji (do osobnej decyzji katalogowej, NIE zmieniane
+ta karta): oficjalny katalog ABB UniSec 1VFM200003 podaje komplet danych
+(rated voltage 12/17,5/24 kV, prad szyn 630/800/1250 A), ktorych brakowalo
+publicznej stronie portfolio — rodzina moglaby wyjsc ze statusu
+`requires_catalog`. Promocja wymaga rownolegle przepisania pol katalogowych
+rodziny (dzis UniSec nie ma ani jednego `CompleteMvBayTemplate`, wiec rodzina
+oferowana nie zmaterializowalaby zadnego pola).

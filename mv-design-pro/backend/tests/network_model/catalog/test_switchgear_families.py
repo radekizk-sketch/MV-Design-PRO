@@ -108,12 +108,45 @@ class TestSwitchgearFamilyRegistry:
         """Rodzina oferowana MUSI mieć komplet klas znamionowych — inaczej
         walidator zgodności nie ma czym odpowiadać na pytanie projektanta."""
         for family in list_offered_switchgear_families():
-            assert family.voltage_levels, family.switchgear_family_ref
+            # Deklaracja napięciowa: karta podaje napięcia SIECI albo klasy
+            # URZĄDZENIA (albo oba) — pusta obie strony znaczy „rodzina nie ma
+            # czym potwierdzić zgodności z żadną szyną".
+            assert family.network_voltages_kv or family.um_classes_kv, family.switchgear_family_ref
             assert family.rated_current_options, family.switchgear_family_ref
             assert family.short_time_current_options, family.switchgear_family_ref
-            assert min(family.voltage_levels) > 0, family.switchgear_family_ref
+            for napiecie in (*family.network_voltages_kv, *family.um_classes_kv):
+                assert napiecie > 0, family.switchgear_family_ref
             assert min(family.rated_current_options) > 0, family.switchgear_family_ref
             assert min(family.short_time_current_options) > 0, family.switchgear_family_ref
+
+    def test_kazda_rodzina_rejestru_deklaruje_napiecie_ktoregos_rodzaju(self):
+        """PIN KLASY (karta K-J): KAŻDA rodzina katalogu — także ta bez karty
+        katalogowej — ma niepustą co najmniej jedną z dwóch list napięciowych.
+
+        Rodzina z obiema listami pustymi nie jest „rodziną bez ograniczeń":
+        `czy_rodzina_obsluguje_napiecie` odpowie na nią „nie" dla każdej szyny,
+        więc byłaby wpisem, którego nie da się użyć nigdzie — i nikt by tego
+        nie zauważył, dopóki ktoś nie promuje jej do oferty. Pin trzyma
+        WSZYSTKIE rodziny, nie tylko oferowane."""
+        for family in SWITCHGEAR_FAMILY_REGISTRY.values():
+            assert family.network_voltages_kv or family.um_classes_kv, (
+                f"{family.switchgear_family_ref}: rodzina nie deklaruje ani napiec "
+                "sieci, ani klas napieciowych urzadzenia — brak transkrypcji z karty"
+            )
+
+    def test_napiecia_sieci_nie_przekraczaja_klas_urzadzenia(self):
+        """Predykaty parami: gdy karta podaje OBIE wielkości, napięcie sieci
+        musi się mieścić w klasie urządzenia. Wpis, w którym sieć jest wyższa
+        niż klasa izolacji, opisuje wyrób, który nie istnieje — a wyglądałby
+        na poprawny, bo każde pole z osobna jest „jakąś liczbą"."""
+        for family in SWITCHGEAR_FAMILY_REGISTRY.values():
+            if not (family.network_voltages_kv and family.um_classes_kv):
+                continue
+            assert max(family.network_voltages_kv) <= max(family.um_classes_kv), (
+                f"{family.switchgear_family_ref}: napiecie sieci "
+                f"{max(family.network_voltages_kv)} kV powyzej najwyzszej klasy "
+                f"urzadzenia {max(family.um_classes_kv)} kV"
+            )
 
     def test_all_families_have_source_refs(self):
         for family in SWITCHGEAR_FAMILY_REGISTRY.values():
@@ -153,7 +186,10 @@ class TestZpueRotoblok:
         f = ZPUE_WLOSZCZOWA__ROTOBLOK
         assert f.manufacturer_ref == "ZPUE_WLOSZCZOWA"
         assert f.family_name == "Rotoblok"
-        assert f.voltage_levels == [15.0, 20.0]
+        # Karta podaje OBIE wielkości osobno — sieć 15/20 kV przy klasach
+        # urządzenia 17,5/24 kV. To ta para uzasadniła rozdzielenie pól.
+        assert f.network_voltages_kv == [15.0, 20.0]
+        assert f.um_classes_kv == [17.5, 24.0]
         assert f.rated_current_options == [630, 1250]
         assert 16 in f.short_time_current_options
         assert f.insulation_type == "air"
@@ -177,7 +213,10 @@ class TestElektrometalE2Alpha:
     def test_basic_metadata(self):
         f = ELEKTROMETAL__E2ALPHA
         assert f.manufacturer_ref == "ELEKTROMETAL"
-        assert f.voltage_levels == [12.0, 17.5, 24.0]
+        # Karta ma wyłącznie wiersz „napięcie znamionowe rozdzielnicy" —
+        # klasy urządzenia; napięć sieci nie deklaruje.
+        assert f.um_classes_kv == [12.0, 17.5, 24.0]
+        assert f.network_voltages_kv == []
         assert 31 in f.short_time_current_options
         assert f.insulation_type == "air"
         assert "lv_control_compartment" in f.compartment_models
@@ -303,7 +342,11 @@ class TestSourceTraceability:
             (ABB__SAFEPLUS, ("abb.com",)),
             (ABB__UNISEC, ("abb.com",)),
             (SCHNEIDER__RM6, ("se.com",)),
-            (SCHNEIDER__RM_AIRSET, ("se.com",)),
+            # Schneider publikuje karty pod dwiema własnymi domenami: strona
+            # produktowa na `se.com`, pliki katalogowe na
+            # `download.schneider-electric.com`. Obie są domenami producenta —
+            # intencja testu (źródło należy do wytwórcy rodziny) bez zmian.
+            (SCHNEIDER__RM_AIRSET, ("se.com", "schneider-electric.com")),
         ]:
             assert family.source_refs, family.switchgear_family_ref
             assert family.source_document_refs, family.switchgear_family_ref
