@@ -493,3 +493,16 @@ klasy operacji stacyjnej — wyrównać do kontraktu `add_sn_bay_from_catalog`
 `ui/catalog/SwitchgearTemplateStepper.tsx` — zero konsumentów produkcyjnych
 (pomiar S3), tylko własny test. Zasada inżynierska nr 1: usunąć na amen wraz
 z testem; przed usunięciem grep po imporcie/lazy-route dla pewności.
+
+### K-O HV-FUSE-CATALOG-PROWENIENCJA (dług tej samej klasy co 31,5 kA)
+Frontendowy `ui/network-build/station-der/protection-catalogs.ts` (ok. linii 551,
+`HV_FUSE_CATALOG`) niesie 2 punkty pasma przy 6×In BEZ proweniencji — ta sama
+klasa fabrykacji, którą K-E wyczyścił z backendu. Rozstrzygnięcie wzorem K-E:
+punkt bez źródła tabelarycznego producenta NIE istnieje — usunąć punkty i
+poprowadzić konsumentów przez uczciwą jawną pozycję bez pasma (wzorzec
+`BRAK_PASMA_BEZPIECZNIKA`); jeśli konsument wymaga pasma do działania, pokazać
+stan „pasmo wymaga karty producenta". Test klasy po wszystkich pozycjach
+frontendowego katalogu bezpieczników: każda wartość liczbowa ma źródło albo
+pozycji nie ma. Granice: `frontend/src/ui/network-build/station-der/**` + testy.
+UWAGA: dług pasma ETI VV (K-E) NIE jest zamykalny dalszym szukaniem w sieci —
+nie zlecać ponownej transkrypcji bez nowych danych tabelarycznych producenta.
