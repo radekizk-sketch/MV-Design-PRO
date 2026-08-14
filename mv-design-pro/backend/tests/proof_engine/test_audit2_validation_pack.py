@@ -48,18 +48,30 @@ def test_bess_modes_proof_fails_when_pcs_lacks_4q():
     )
 
 
-def test_bess_modes_proof_fails_when_module_required_missing():
+def test_dowod_nie_zarzuca_juz_braku_trybu_wymaganego_przez_norme():
+    """Karta K-Q — obalona deklaracja normatywna.
+
+    INTENCJA POPRZEDNIEGO TESTU: pilnowal, ze dowod zglasza niezgodnosc, gdy
+    modul typu C nie ma wybranego „wymaganego" trybu (FCR-N, Q(U)). Sprawdzone
+    na tekscie rozporzadzenia 2016/631: ono nie nakazuje modulom wytworczym
+    swiadczenia FCR-N / FCR-D / aFRR / mFRR — to produkty rynku bilansujacego.
+    Dowod oglaszal wiec niezgodnosc z norma, ktorej nie ma, i szedl z tym do
+    pakietu dowodowego. Sprawdzenie ZDOLNOSCI przeksztaltnika zostalo (test
+    ponizej), bo ono wynika z definicji uslugi.
+    """
     proof = generate_bess_modes_proof(
         der_id="der_bess_003",
         pcs_four_quadrant=True,
         pcs_grid_forming=False,
         nc_rfg_module="C",
-        selected_mode_refs=[],  # Modul C wymaga FCR-N + Q(U), brak.
+        selected_mode_refs=[],
         proof_id=UUID(int=3),
         generated_at_iso="2026-04-01T00:00:00Z",
     )
-    assert proof.pass_status is False
-    assert any("Brakuje wymaganego trybu" in i for i in proof.details["issues"])
+    assert proof.pass_status is True
+    assert proof.details["issues"] == []
+    assert "required_modes_for_module" not in proof.details
+    assert not any("wymaganego trybu" in formula for formula in proof.formulas_latex)
 
 
 def test_tap_changer_plan_proof_passes_for_oltc_110sn():

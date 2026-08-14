@@ -4,8 +4,8 @@ Test integracji audit2 z prawdziwym NetworkGraph z core/graph.py (Phase 29).
 Sprawdza:
 - apply_audit2_to_network_model dziala na realnym NetworkGraph (nie mock).
 - Modyfikuje TransformerBranch.tap_position (real model field).
-- Modyfikuje InverterSource (real model class) — ustawia reserved_capacity_percent
-  + frequency_droop_percent jako dynamic attributes.
+- Modyfikuje InverterSource (real model class) — ustawia frequency_droop_percent
+  jako dynamic attribute.
 - Mapping branch.id <-> transformer_to_tap_changer.
 """
 
@@ -102,8 +102,14 @@ def test_apply_audit2_to_real_network_graph_tap_position():
     assert applied["tap_position_changes"]["tr_001"]["tap_changer_id"] == "tc_oltc_110sn_19_125"
 
 
-def test_apply_audit2_to_real_network_graph_inverter_bess_reserved():
-    """Phase 29: BESS reserved capacity ustawione na real InverterSource."""
+def test_rezerwa_magazynu_nie_dotyka_realnego_zrodla_falownikowego():
+    """Karta K-Q na REALNYM grafie (nie na atrapie).
+
+    INTENCJA POPRZEDNIEGO TESTU: pilnowal, ze rezerwa mocy z katalogu trybow
+    laduje na `InverterSource`. Procent rezerwy nie mial zrodla, a mnoznik mocy
+    byl zalozeniem „kazdy magazyn ma 1 MW" — pole usuniete z katalogu, wiec
+    zrodlo w grafie nie dostaje juz zadnego atrybutu rezerwy.
+    """
     pytest.importorskip("network_model")
     from solver_input.audit2_solver_adjuster import apply_audit2_to_network_model
 
@@ -111,19 +117,15 @@ def test_apply_audit2_to_real_network_graph_inverter_bess_reserved():
     extensions = {
         "power_flow_extensions": {
             "bess_operation_modes_per_der": [
-                {
-                    "der_id": "der_pv_001",
-                    "mode": {"mode_code": "fcr_n", "reserved_capacity_percent": 50},
-                },
+                {"der_id": "der_pv_001", "mode": {"mode_code": "fcr_n"}},
             ],
         },
     }
     applied = apply_audit2_to_network_model(graph=graph, audit2_extensions=extensions)
 
     inv = graph.inverter_sources["der_pv_001"]
-    # Phase 28: dynamic attribute na real InverterSource.
-    assert inv.reserved_capacity_percent == 50
-    assert applied["bess_reserved_changes"]["der_pv_001"]["mode_code"] == "fcr_n"
+    assert not hasattr(inv, "reserved_capacity_percent")
+    assert "bess_reserved_changes" not in applied
 
 
 def test_apply_audit2_to_real_network_graph_pf_droop():
@@ -157,25 +159,25 @@ def test_apply_audit2_to_real_network_graph_pf_droop():
     assert "der_pv_001" in applied["pf_droop_changes"]
 
 
-def test_apply_audit2_to_real_network_graph_grounding():
-    """Phase 29: grounding Z0/Z1 ratio na real NetworkGraph (jako dynamic attr)."""
+def test_etykieta_uziemienia_nie_dopisuje_z0_z1_do_realnego_grafu():
+    """Karta K-Q na REALNYM grafie — PIN KLASY po wszystkich wariantach."""
     pytest.importorskip("network_model")
     from solver_input.audit2_solver_adjuster import apply_audit2_to_network_model
 
-    graph = _make_real_graph_with_transformer_and_inverter()
-    extensions = {
-        "sc_iec60909_extensions": {
-            "mv_neutral_grounding": {"grounding_type": "petersen_coil"},
-        },
-    }
-    applied = apply_audit2_to_network_model(graph=graph, audit2_extensions=extensions)
-    assert applied["grounding_z0_z1_ratio"] == 50.0
-    # Real NetworkGraph dostaje dynamic attr.
-    assert graph.z0_z1_ratio == 50.0
+    for grounding_type in ("isolated", "petersen_coil", "resistor_grounded", "directly_grounded"):
+        graph = _make_real_graph_with_transformer_and_inverter()
+        extensions = {
+            "sc_iec60909_extensions": {
+                "mv_neutral_grounding": {"grounding_type": grounding_type},
+            },
+        }
+        applied = apply_audit2_to_network_model(graph=graph, audit2_extensions=extensions)
+        assert "grounding_z0_z1_ratio" not in applied, grounding_type
+        assert not hasattr(graph, "z0_z1_ratio"), grounding_type
 
 
 def test_apply_audit2_to_real_network_graph_full_combination():
-    """Phase 29: pelna kombinacja na real graph — wszystkie 5 typow adjustments."""
+    """Pelna kombinacja na real graph — trzy tory z pokryciem w danych."""
     pytest.importorskip("network_model")
     from solver_input.audit2_solver_adjuster import apply_audit2_to_network_model
 
@@ -186,10 +188,7 @@ def test_apply_audit2_to_real_network_graph_full_combination():
                 "tr_001": {"id": "tc1", "neutral_position": 0, "step_percent": 1.25},
             },
             "bess_operation_modes_per_der": [
-                {
-                    "der_id": "der_pv_001",
-                    "mode": {"mode_code": "voltage_support", "reserved_capacity_percent": 30},
-                },
+                {"der_id": "der_pv_001", "mode": {"mode_code": "voltage_support"}},
             ],
             "p_f_curves_per_der": [
                 {
@@ -198,7 +197,7 @@ def test_apply_audit2_to_real_network_graph_full_combination():
                         "droop_percent": 4.0,
                         "f_min_hz": 47.5,
                         "f_max_hz": 51.5,
-                        "deadband_hz": 0.15,
+                        "deadband_hz": 0.2,
                     },
                 },
             ],
@@ -209,17 +208,17 @@ def test_apply_audit2_to_real_network_graph_full_combination():
     }
     applied = apply_audit2_to_network_model(graph=graph, audit2_extensions=extensions)
 
-    # Wszystkie pola zmienione.
+    # Tory z pokryciem w danych: zaczep i P(f).
     assert graph.branches["tr_001"].tap_position == 0
     assert graph.branches["tr_001"].tap_step_percent == 1.25
-    assert graph.inverter_sources["der_pv_001"].reserved_capacity_percent == 30
     assert graph.inverter_sources["der_pv_001"].frequency_droop_percent == 4.0
-    assert graph.z0_z1_ratio == 100.0
-    # Audit trail jest pelny.
     assert applied["tap_position_changes"]
-    assert applied["bess_reserved_changes"]
     assert applied["pf_droop_changes"]
-    assert applied["grounding_z0_z1_ratio"] == 100.0
+    # Tory bez pokrycia (karta K-Q) nie zostawiaja sladu ANI na grafie.
+    assert "bess_reserved_changes" not in applied
+    assert "grounding_z0_z1_ratio" not in applied
+    assert not hasattr(graph.inverter_sources["der_pv_001"], "reserved_capacity_percent")
+    assert not hasattr(graph, "z0_z1_ratio")
 
 
 def test_apply_audit2_to_real_network_graph_determinism():

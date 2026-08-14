@@ -8,19 +8,30 @@ wynik inzynierski, choc nie widzial ich zaden solver ani slad WHITE BOX. K7-B
 przeniosla ten rachunek do backendu (reguła NOT-A-SOLVER) i podlaczyla ekran do
 `POST /api/v1/catalog/audit2/validate-device-withstand`.
 
-CZEGO PILNUJE TEN TEST. Przeniesienie nie moze zmienic ANI JEDNEJ liczby
-pokazywanej projektantowi. Wartosci ponizej sa TWARDYMI literalami wyliczonymi
-z formuly, ktora obowiazywala w UI przed przeniesieniem:
+CZEGO PILNUJE TEN TEST. Sam RACHUNEK jest zamrozony — formula i jej wyniki nie
+moga sie zmienic przy zadnym refaktorze:
 
     I_th_eff = I_th_rated * sqrt(t_rated / max(t_clearing, 0,01))
     wykorzystanie I_dyn [%] = I_peak / I_dyn_rated * 100
     wykorzystanie I_th  [%] = I_th_obl / I_th_eff * 100
 
-Nie sa liczone w tescie ta sama formula (to byloby kolem w argumentacji) —
-sa wpisane jako liczby. Zmiana implementacji backendu zapali ten test.
+Wartosci ponizej sa TWARDYMI literalami; nie sa liczone w tescie ta sama formula
+(to byloby kolem w argumentacji). Zmiana implementacji backendu zapala ten test.
 
-USUNIECIE TORU BACKENDU (bramka 3 karty) — skasowanie / zmiana
+USUNIECIE TORU BACKENDU (bramka 3 karty K7-B) — skasowanie / zmiana
 `validate_device_withstand` natychmiast czyni ten test czerwonym.
+
+AKTUALIZACJA WARTOSCI I_dyn (karta K-Q, 2026-08-14) — UCZCIWIE O ZMIANIE.
+Do karty K-Q ten plik deklarowal, ze przeniesienie rachunku „nie moze zmienic ANI
+JEDNEJ liczby pokazywanej projektantowi", i pinowal znamiona I_dyn wpisane
+recznie: 63 kA przy I_th 25 kA i 80 kA przy 31,5 kA. Zadnej z nich nie dalo sie
+wyprowadzic — ani z normy (IEC 62271-1 § 4.6: I_dyn = 2,5 * I_th dla 50 Hz, czyli
+62,5 i 78,75 kA), ani z karty jakiegokolwiek producenta, bo katalog nie opisuje
+wyrobu, tylko klase wytrzymalosci. K-Q zamienila wpisywanie na wyprowadzanie,
+wiec ZNAMIONA sie zmienily (zachowawczo w dol — nizszy limit moze werdykt tylko
+zaostrzyc, nigdy falszywie zaliczyc), a wraz z nimi wykorzystanie I_dyn w
+przypadkach ponizej. RACHUNEK zostal nietkniety: kolumny wykorzystania I_th sa
+identyczne co do ostatniej cyfry przed i po karcie.
 """
 
 from __future__ import annotations
@@ -44,7 +55,7 @@ PARITY_CASES = [
         True,
         True,
         True,
-        79.36507936507937,
+        80.0,
         80.0,
     ),
     (
@@ -56,7 +67,7 @@ PARITY_CASES = [
         False,
         False,
         True,
-        111.11111111111111,
+        112.00000000000001,
         80.0,
     ),
     (
@@ -68,7 +79,7 @@ PARITY_CASES = [
         False,
         True,
         False,
-        79.36507936507937,
+        80.0,
         240.0,
     ),
     (
@@ -80,7 +91,7 @@ PARITY_CASES = [
         True,
         True,
         True,
-        62.5,
+        63.49206349206349,
         77.76157913597392,
     ),
     (
@@ -92,7 +103,7 @@ PARITY_CASES = [
         False,
         True,
         False,
-        62.5,
+        63.49206349206349,
         190.47619047619045,
     ),
     (
@@ -116,7 +127,7 @@ PARITY_CASES = [
         True,
         True,
         True,
-        95.23809523809523,
+        96.0,
         12.0,
     ),
 ]
@@ -169,13 +180,17 @@ def test_katalog_ma_te_same_identyfikatory_co_zniesiona_kopia_w_ui() -> None:
 
 def test_dane_znamionowe_zgodne_z_kopia_z_ui() -> None:
     """Parametry katalogowe (I_dyn, I_th, t_rated) — bez nich parytet liczbowy
-    powyzej bylby przypadkiem."""
+    powyzej bylby przypadkiem.
+
+    I_dyn jest WYPROWADZONY z I_th (2,5 x, IEC 62271-1 § 4.6, karta K-Q), a nie
+    wpisany — ten pin trzyma obie liczby razem, zeby para nie mogla sie rozjechac.
+    """
     oczekiwane = {
-        "wstd_breaker_vacuum_15_25": (63.0, 25.0, 1.0),
-        "wstd_breaker_sf6_15_31_5": (80.0, 31.5, 3.0),
+        "wstd_breaker_vacuum_15_25": (62.5, 25.0, 1.0),
+        "wstd_breaker_sf6_15_31_5": (78.75, 31.5, 3.0),
         "wstd_busbar_15_2000_50": (125.0, 50.0, 1.0),
-        "wstd_busbar_15_1250_25": (63.0, 25.0, 1.0),
-        "wstd_switch_load_15_25": (63.0, 25.0, 1.0),
+        "wstd_busbar_15_1250_25": (62.5, 25.0, 1.0),
+        "wstd_switch_load_15_25": (62.5, 25.0, 1.0),
     }
     for device_id, (i_dyn, i_th, t_rated) in oczekiwane.items():
         device = get_device_withstand(device_id)
@@ -206,7 +221,7 @@ def test_komunikat_jest_po_polsku_z_diakrytykami() -> None:
         t_clearing_s=1.0,
     )["message_pl"]
     assert "wytrzymała" in ok_msg
-    assert "wykorzystanie I_dyn 79%" in ok_msg
+    assert "wykorzystanie I_dyn 80%" in ok_msg
 
     bloker_msg = validate_device_withstand(
         device_id="wstd_breaker_vacuum_15_25",
