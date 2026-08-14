@@ -138,6 +138,7 @@ import {
   type WyborRozdzielnicy,
 } from './stacjaModel';
 import { PodgladRozdzielnicySn } from './PodgladRozdzielnicySn';
+import type { StatusKonfiguracji } from './podgladRozdzielnicy';
 import { pobierzPodgladStacji, type PodgladStacji } from './stacjaPodglad';
 import { refUtworzonejStacji } from './stacjaOdpowiedz';
 import { KATEGORIE_SZABLONOW, wypelnienieZSzablonu } from './stacjaSzablony';
@@ -890,6 +891,53 @@ export function KreatorStacjiSnNn() {
     }
   }, [activeCaseId, dane, kontekst, kontekstOk, konwerter, rozdzielnica]);
 
+  /**
+   * SLD-GEN-POLA — WERDYKT KONFIGURACJI ROZDZIELNICY w nagłówku kroku pól.
+   *
+   * Nie jest liczony w UI: to stan odczytu z walidatora backendu (`dry_run` tej
+   * samej operacji domenowej, która wykona zapis), więc nagłówek pokazuje
+   * dokładnie ten werdykt, który rozstrzygnie o przyjęciu stacji. Odwzorowanie
+   * jest 1:1 i BEZ trzeciej oceny: „niesprawdzona" i „sprawdzanie" to stany
+   * odczytu, nie własna opinia UI o poprawności.
+   */
+  const statusKonfiguracji: StatusKonfiguracji =
+    podgladStan === 'ready'
+      ? 'VALID'
+      : podgladStan === 'error'
+        ? 'INVALID'
+        : podgladStan === 'loading'
+          ? 'SPRAWDZANIE'
+          : 'NIESPRAWDZONA';
+
+  /**
+   * Werdykt ma być ŚWIEŻY względem tego, co projektant właśnie skonfigurował,
+   * więc na kroku pól sprawdzenie idzie samo po każdej zmianie konfiguracji
+   * (z opóźnieniem, żeby wpisywanie w polu formularza nie wysyłało zapytania na
+   * każdy znak). Bez tego nagłówek pokazywałby werdykt sprzed edycji — czyli
+   * kłamałby dokładnie wtedy, gdy jest najbardziej potrzebny.
+   *
+   * Klucz efektu to SERIALIZOWANY PAYLOAD operacji: identyczna konfiguracja nie
+   * wywołuje ponownego zapytania, każda realna zmiana wywołuje dokładnie jedno.
+   */
+  const payloadWerdyktu = useMemo(
+    () =>
+      kontekstOk && activeCaseId
+        ? JSON.stringify(zbudujPayload(dane, kontekst, rozdzielnica, konwerter))
+        : null,
+    [activeCaseId, dane, kontekst, kontekstOk, konwerter, rozdzielnica],
+  );
+  useEffect(() => {
+    if (krok !== 'pola' || payloadWerdyktu === null) return undefined;
+    const uchwyt = setTimeout(() => {
+      void przeliczPodglad();
+    }, 400);
+    return () => clearTimeout(uchwyt);
+    // `przeliczPodglad` celowo poza zależnościami: zmienia tożsamość przy każdej
+    // zmianie `dane`, a to samo źródło zmian niesie już `payloadWerdyktu` —
+    // wpisanie go tutaj podwajałoby zapytania bez żadnej nowej informacji.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [krok, payloadWerdyktu]);
+
   /** Krok 0 — wypełnienie formularza wybranym szablonem (wszystko edytowalne). */
   const zastosujSzablon = useCallback(async () => {
     if (!wybranySzablonId) {
@@ -1628,17 +1676,24 @@ export function KreatorStacjiSnNn() {
 
           <div>
             <div className="mvd-pole-etykieta">{T.podgladTytul}</div>
-            {/* MINI-RMU-CAD: podgląd rysuje symbole normowe z REALNEJ konfiguracji
-                — rodzaj aparatu bierze z pozycji katalogu APARAT_SN wskazanej w
-                polu, opis transformatora z pozycji TRAFO_SN_NN wybranej w kroku
-                „Transformator". Bez tych katalogów rysunek nie miałby z czego
-                odróżnić wyłącznika od rozłącznika (stan sprzed karty). */}
+            {/* SLD-GEN-POLA: podgląd rysuje KOMPOZYCJĘ APARATÓW pola z kart
+                katalogowych (`szablonyPol` — te same, z których dobrane są pola
+                stacji), rodzaj aparatu głównego z pozycji katalogu APARAT_SN
+                wskazanej w polu, opis transformatora z pozycji TRAFO_SN_NN, a
+                nagłówek pakietu z rodziny rozdzielnicy. Werdykt konfiguracji
+                pochodzi z walidatora backendu (`dry_run` tej samej operacji,
+                która wykona zapis) — UI go nie liczy, tylko pokazuje. */}
             <PodgladRozdzielnicySn
               snFields={snFields}
               aparaty={aparaty}
               transformatory={typy}
               transformatorRef={dane.catalog_ref}
               snVoltageKv={kontekst.snVoltageKv}
+              szablonyPol={szablony}
+              rodzina={selectedFamily}
+              producent={selectedManufacturer?.name ?? dane.manufacturer_ref}
+              statusKonfiguracji={statusKonfiguracji}
+              komunikatStatusu={bladPodgladu}
               testid="mvd-kreator-stacja-podglad"
             />
           </div>

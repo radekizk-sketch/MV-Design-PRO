@@ -1,14 +1,19 @@
 /**
- * MINI-RMU-CAD — kontrakt PODGLĄDU pól rozdzielnicy SN (kreator stacji SN/nN).
+ * SLD-GEN-POLA — kontrakt PODGLĄDU rozdzielnicy SN (kreator stacji SN/nN).
  *
- * Werdykt właściciela 2026-08-13 (schemat CAD w ręku): „jakość wizualna mini RMU
- * 0/10". Pomiar stanu sprzed karty: cztery pola z CZTEREMA RÓŻNYMI aparatami
- * dawały rysunek bajt w bajt identyczny z rysunkiem pól bez wyboru — bo podgląd
- * rysował każde pole tym samym kwadratem, nie czytając rodzaju aparatu.
+ * Historia werdyktów właściciela: 2026-08-13 „jakość wizualna mini RMU 0/10"
+ * (każde pole tym samym kwadratem), 2026-08-14 „3/10 — cztery identyczne ikony
+ * różniące się podpisem" (rysunek czytał rolę pola i JEDEN wybrany aparat,
+ * a nie kompozycję aparatów rodziny). Ta karta wprowadza generator pola z BOM;
+ * testy poniżej pilnują OBU warstw: składania rozdzielnicy i renderu.
  *
  * Testy pokrywają ILOCZYN CECH (reguła KLASA §2), a nie przykład z karty:
  *   {5 ról pola} × {6 rodzajów aparatu katalogu + brak wyboru}
- * plus wyposażenie pola (CT/VT/przekaźnik), odstępy etykiet i determinizm.
+ *   × {z kompozycją rodziny / bez niej} × {wyposażenie pola}
+ * plus nagłówek pakietu, odstępy etykiet, zasięg slotów i determinizm.
+ *
+ * Kompozycje pól pochodzą z fikstur przepisanych 1:1 z odpowiedzi backendu
+ * (`fixturySzablonowPol.ts`), a nie z atrap wygodnych dla testu.
  */
 import { describe, expect, it } from 'vitest';
 import { render } from '@testing-library/react';
@@ -27,9 +32,22 @@ import {
   zbudujPodglad,
   znamionaAparatu,
 } from '../podgladRozdzielnicy';
+import { roznicaBomScena, symbolRodzajuAparatu } from '../generatorSldPola';
 import { SYMBOL_DEFS } from '../../../../ui/sld/v3/symbols/defs';
 import type { SnFieldRole, StationSnFieldTemplate } from '../stacjaModel';
 import type { MVApparatusCatalogType, TransformerType } from '../../../../ui/catalog/types';
+import {
+  BLOK_RMU_K_K_T,
+  RODZINA_SAFERING,
+  RODZINA_UNIGEAR,
+  SZABLON_SAFERING_LINE_IN,
+  SZABLON_SAFERING_LINE_OUT,
+  SZABLON_SAFERING_TRANSFORMER,
+  SZABLON_UNIGEAR_COUPLER,
+  SZABLON_UNIGEAR_LINE_OUT,
+  SZABLON_UNIGEAR_MEASUREMENT,
+  SZABLON_UNIGEAR_TRANSFORMER,
+} from './fixturySzablonowPol';
 
 /**
  * Oczekiwany symbol per `device_kind` — tablica NIEZALEŻNA od tablicy produktu
@@ -93,13 +111,14 @@ function pole(
   rola: SnFieldRole,
   aparatRef: string | null,
   equipment?: Record<string, unknown>,
+  szablonRef?: string,
 ): StationSnFieldTemplate {
   return {
     field_role: rola,
     bay_kind: rola === 'TRANSFORMATOROWE' ? 'transformatorowe' : 'liniowe_odplywowe',
-    manufacturer_ref: 'ZPUE_WLOSZCZOWA',
-    switchgear_family_ref: 'zpue_rotoblok',
-    bay_template_ref: 'tpl-1',
+    manufacturer_ref: 'ABB',
+    switchgear_family_ref: 'ABB__UNIGEAR_ZS1',
+    bay_template_ref: szablonRef ?? 'tpl-1',
     source_status: 'repo_verified',
     source_refs: [],
     catalog_bindings: null,
@@ -120,10 +139,13 @@ function tekstRysunku(container: HTMLElement): string {
     // Spacja nierozdzielająca (liczba↔jednostka) czyta się na rysunku jak
     // zwykła spacja — normalizujemy, żeby asercje mówiły o TREŚCI. Jej
     // obecność bramkuje osobny test niżej („jednostka nie odrywa się").
-    .replace(/\u00a0/g, ' ');
+    .replace(/ /g, ' ');
 }
 
-function symboleWRenderze(snFields: readonly StationSnFieldTemplate[]): string[] {
+function symboleWRenderze(
+  snFields: readonly StationSnFieldTemplate[],
+  szablonyPol: Parameters<typeof PodgladRozdzielnicySn>[0]['szablonyPol'] = [],
+): string[] {
   const { container } = render(
     <PodgladRozdzielnicySn
       snFields={snFields}
@@ -131,6 +153,7 @@ function symboleWRenderze(snFields: readonly StationSnFieldTemplate[]): string[]
       transformatory={TRAFO}
       transformatorRef="tr-630"
       snVoltageKv={15}
+      szablonyPol={szablonyPol}
     />,
   );
   return Array.from(container.querySelectorAll('[data-symbol-canon]')).map(
@@ -138,10 +161,13 @@ function symboleWRenderze(snFields: readonly StationSnFieldTemplate[]): string[]
   );
 }
 
-describe('MINI-RMU-CAD — iloczyn cech: rola pola × rodzaj aparatu', () => {
+describe('SLD-GEN-POLA — iloczyn cech: rola pola × rodzaj aparatu', () => {
   for (const rola of ROLE) {
     for (const kind of [...Object.keys(OCZEKIWANY_SYMBOL), 'BRAK']) {
       it(`${rola} × ${kind}: symbol z katalogu, transformator tylko w polu TR`, () => {
+        // Bez kompozycji rodziny (pole bez dobranego szablonu) rysunek pokazuje
+        // WYŁĄCZNIE to, co niesie formularz: aparat główny i transformator
+        // stacji w polu transformatorowym. Zero domysłu o składzie celki.
         const ref = kind === 'BRAK' ? null : `ap-${kind}`;
         const symbole = symboleWRenderze([pole(rola, ref)]);
         const oczekiwanyAparat = kind === 'BRAK' ? null : OCZEKIWANY_SYMBOL[kind];
@@ -154,7 +180,7 @@ describe('MINI-RMU-CAD — iloczyn cech: rola pola × rodzaj aparatu', () => {
     }
   }
 
-  it('sześć rodzajów aparatu ⇒ sześć RÓŻNYCH symboli (defekt sprzed karty: jeden kwadrat na wszystko)', () => {
+  it('sześć rodzajów aparatu ⇒ sześć RÓŻNYCH symboli (defekt: jeden kwadrat na wszystko)', () => {
     const symbole = Object.keys(OCZEKIWANY_SYMBOL).map(
       (kind) => symboleWRenderze([pole('LINIA_ODG', `ap-${kind}`)])[0],
     );
@@ -186,7 +212,229 @@ describe('MINI-RMU-CAD — iloczyn cech: rola pola × rodzaj aparatu', () => {
   });
 });
 
-describe('MINI-RMU-CAD — etykieta pola czyta dane katalogu', () => {
+describe('SLD-GEN-POLA — pole rysuje KOMPOZYCJĘ APARATÓW swojej rodziny', () => {
+  it('pole z kompozycją UniGear: pełny skład celki z oznaczeniami operatorskimi', () => {
+    const { container } = render(
+      <PodgladRozdzielnicySn
+        snFields={[pole('LINIA_OUT', 'ap-WYLACZNIK', undefined, SZABLON_UNIGEAR_LINE_OUT.template_ref)]}
+        aparaty={KATALOG}
+        snVoltageKv={15}
+        szablonyPol={[SZABLON_UNIGEAR_LINE_OUT]}
+      />,
+    );
+    const symbole = Array.from(container.querySelectorAll('[data-symbol-canon]')).map((el) =>
+      el.getAttribute('data-symbol-canon'),
+    );
+    expect(symbole).toEqual([
+      'disconnector',
+      'breaker',
+      'currentTransformer',
+      'disconnector',
+      'earthSwitch',
+      'cableHead',
+    ]);
+    // Oznaczenia operatorskie stoją przy symbolach — projektant czyta pole tak
+    // samo jak na schemacie wykonawczym.
+    const oznaczenia = Array.from(container.querySelectorAll('[data-oznaczenie]')).map((el) =>
+      el.getAttribute('data-oznaczenie'),
+    );
+    expect(oznaczenia).toEqual(['Q1', 'Q0', 'T1', 'Q2', 'Q9', 'GK']);
+    expect(tekstRysunku(container)).toContain('Q9');
+  });
+
+  it('rodzina RMU i rodzina wnętrzowa dają RÓŻNE rysunki tej samej roli pola', () => {
+    // SafeRing (RMU) nie ma w słowniku rodziny przekładnika prądowego, UniGear ma.
+    const rmu = symboleWRenderze(
+      [pole('LINIA_OUT', 'ap-ROZLACZNIK', undefined, SZABLON_SAFERING_LINE_OUT.template_ref)],
+      [SZABLON_SAFERING_LINE_OUT],
+    );
+    const wnetrzowa = symboleWRenderze(
+      [pole('LINIA_OUT', 'ap-WYLACZNIK', undefined, SZABLON_UNIGEAR_LINE_OUT.template_ref)],
+      [SZABLON_UNIGEAR_LINE_OUT],
+    );
+    expect(rmu).not.toEqual(wnetrzowa);
+    expect(rmu).not.toContain('currentTransformer');
+    expect(wnetrzowa).toContain('currentTransformer');
+  });
+
+  it('każde pole rozdzielnicy rysuje DOKŁADNIE swój BOM (wyrocznia dwustronna)', () => {
+    const podglad = zbudujPodglad({
+      snFields: [
+        pole('LINIA_IN', 'ap-ROZLACZNIK', undefined, SZABLON_SAFERING_LINE_IN.template_ref),
+        pole('LINIA_OUT', 'ap-ROZLACZNIK', undefined, SZABLON_SAFERING_LINE_OUT.template_ref),
+        pole('TRANSFORMATOROWE', 'ap-ROZLACZNIK_BEZPIECZNIKOWY', undefined, SZABLON_SAFERING_TRANSFORMER.template_ref),
+      ],
+      aparaty: KATALOG,
+      transformatory: TRAFO,
+      transformatorRef: 'tr-630',
+      snVoltageKv: 15,
+      szablonyPol: BLOK_RMU_K_K_T,
+    });
+    for (const slot of podglad.sloty) {
+      const aparat = KATALOG.find((a) => a.id === `ap-${slot.rola === 'TRANSFORMATOROWE' ? 'ROZLACZNIK_BEZPIECZNIKOWY' : 'ROZLACZNIK'}`);
+      expect(
+        roznicaBomScena(slot.bom, slot.scena, {
+          symbolAparatuGlownego: symbolRodzajuAparatu(aparat?.device_kind),
+        }),
+        `pole ${slot.numer}`,
+      ).toEqual([]);
+    }
+  });
+
+  it('przedział kablowy i kreska nN pojawiają się wyłącznie tam, gdzie mają podstawę', () => {
+    const { container } = render(
+      <PodgladRozdzielnicySn
+        snFields={[
+          pole('LINIA_IN', 'ap-ROZLACZNIK', undefined, SZABLON_SAFERING_LINE_IN.template_ref),
+          pole('TRANSFORMATOROWE', 'ap-ROZLACZNIK_BEZPIECZNIKOWY', undefined, SZABLON_SAFERING_TRANSFORMER.template_ref),
+        ]}
+        aparaty={KATALOG}
+        transformatory={TRAFO}
+        transformatorRef="tr-630"
+        snVoltageKv={15}
+        szablonyPol={BLOK_RMU_K_K_T}
+      />,
+    );
+    // Pole 1 (kablowe) ma przedział kablowy i nie ma strony nN.
+    expect(container.querySelector('[data-testid="mvd-podglad-przedzial-1"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="mvd-podglad-nn-1"]')).toBeNull();
+    // Pole 2 (transformatorowe) odwrotnie.
+    expect(container.querySelector('[data-testid="mvd-podglad-przedzial-2"]')).toBeNull();
+    expect(container.querySelector('[data-testid="mvd-podglad-nn-2"]')).toBeTruthy();
+    expect(tekstRysunku(container)).toContain('nN');
+  });
+
+  it('pole pomiarowe: tor napięciowy z boku, bez toru mocy w dół', () => {
+    const symbole = symboleWRenderze(
+      [pole('LINIA_ODG', 'ap-ODLACZNIK', undefined, SZABLON_UNIGEAR_MEASUREMENT.template_ref)],
+      [SZABLON_UNIGEAR_MEASUREMENT],
+    );
+    expect(symbole).toEqual(['disconnector', 'voltageTransformer', 'earthSwitch']);
+  });
+});
+
+describe('SLD-GEN-POLA — nagłówek pakietu rozdzielnicy', () => {
+  const snFields = [
+    pole('LINIA_IN', 'ap-ROZLACZNIK', undefined, SZABLON_SAFERING_LINE_IN.template_ref),
+    pole('LINIA_OUT', 'ap-ROZLACZNIK', undefined, SZABLON_SAFERING_LINE_OUT.template_ref),
+    pole('TRANSFORMATOROWE', 'ap-ROZLACZNIK_BEZPIECZNIKOWY', undefined, SZABLON_SAFERING_TRANSFORMER.template_ref),
+  ];
+
+  it('nagłówek czyta dane RODZINY: napięcie, prąd szyn, prąd zwarciowy, konstrukcja', () => {
+    const podglad = zbudujPodglad({
+      snFields,
+      aparaty: KATALOG,
+      transformatory: TRAFO,
+      transformatorRef: 'tr-630',
+      snVoltageKv: 15,
+      szablonyPol: BLOK_RMU_K_K_T,
+      rodzina: RODZINA_SAFERING,
+      producent: 'ABB',
+    });
+    expect(podglad.naglowek.producent).toBe('ABB');
+    expect(podglad.naglowek.rodzina).toBe('SafeRing');
+    expect(podglad.naglowek.konstrukcja).toBe('RMU');
+    expect(podglad.naglowek.klasaNapiecia).toBe('12 / 17,5 / 24 kV');
+    expect(podglad.naglowek.pradSzyn).toBe('630 A');
+    expect(podglad.naglowek.pradZwarciowy).toBe('16 / 20 / 21 kA');
+    expect(podglad.naglowek.liczbaJednostek).toBe(3);
+  });
+
+  it('inna rodzina ⇒ inne wartości nagłówka (nagłówek nie jest zaszyty)', () => {
+    const unigear = zbudujPodglad({
+      snFields,
+      aparaty: KATALOG,
+      transformatory: TRAFO,
+      transformatorRef: 'tr-630',
+      snVoltageKv: 15,
+      rodzina: RODZINA_UNIGEAR,
+    });
+    expect(unigear.naglowek.rodzina).toBe('UniGear ZS1');
+    expect(unigear.naglowek.pradSzyn).toBe('1250 / 2500 / 4000 A');
+    expect(unigear.naglowek.pradZwarciowy).toBe('25 / 31 / 50 / 63 kA');
+    expect(unigear.naglowek.konstrukcja).toBe('Wysuwna');
+  });
+
+  it('szerokość całkowita jest JAWNYM BRAKIEM — katalog nie niesie wymiaru pola', () => {
+    // Uczciwy stan zerowy zamiast liczby „typowej": wymiar wchodzi razem z
+    // encją katalogowego pola. Zmyślona szerokość trafiłaby do dokumentacji.
+    const podglad = zbudujPodglad({
+      snFields,
+      aparaty: KATALOG,
+      transformatory: TRAFO,
+      transformatorRef: 'tr-630',
+      snVoltageKv: 15,
+      rodzina: RODZINA_SAFERING,
+    });
+    expect(podglad.naglowek.szerokoscCalkowita).toBeNull();
+    const { container } = render(
+      <PodgladRozdzielnicySn
+        snFields={snFields}
+        aparaty={KATALOG}
+        snVoltageKv={15}
+        rodzina={RODZINA_SAFERING}
+      />,
+    );
+    expect(container.querySelector('[data-testid="mvd-podglad-naglowek"]')?.textContent).toContain(
+      'brak w karcie katalogowej',
+    );
+  });
+
+  it('werdykt konfiguracji pochodzi z WEJŚCIA (walidator backendu), nie z UI', () => {
+    // Cztery stany odczytu, każdy z własną prezentacją; UI nie ma trybu, w
+    // którym sam orzeka o poprawności.
+    for (const [status, tekst] of [
+      ['VALID', 'przyjęta'],
+      ['INVALID', 'odrzucona'],
+      ['NIESPRAWDZONA', 'niesprawdzona'],
+      ['SPRAWDZANIE', 'sprawdza'],
+    ] as const) {
+      const { container } = render(
+        <PodgladRozdzielnicySn
+          snFields={snFields}
+          aparaty={KATALOG}
+          snVoltageKv={15}
+          rodzina={RODZINA_SAFERING}
+          statusKonfiguracji={status}
+          komunikatStatusu={status === 'INVALID' ? 'Pole transformatorowe bez aparatu.' : null}
+        />,
+      );
+      const badge = container.querySelector('[data-testid="mvd-podglad-status"]');
+      expect(badge?.getAttribute('data-status')).toBe(status);
+      expect(badge?.textContent?.toLowerCase()).toContain(tekst);
+    }
+  });
+
+  it('komunikat odrzucenia pokazywany jest BEZ tłumaczenia w UI', () => {
+    const { container } = render(
+      <PodgladRozdzielnicySn
+        snFields={snFields}
+        aparaty={KATALOG}
+        snVoltageKv={15}
+        rodzina={RODZINA_SAFERING}
+        statusKonfiguracji="INVALID"
+        komunikatStatusu="Pole transformatorowe wymaga wskazania aparatu."
+      />,
+    );
+    expect(container.textContent).toContain('Pole transformatorowe wymaga wskazania aparatu.');
+  });
+
+  it('bez rodziny nagłówek pokazuje braki, a nie zera', () => {
+    const podglad = zbudujPodglad({
+      snFields,
+      aparaty: KATALOG,
+      transformatory: TRAFO,
+      transformatorRef: null,
+      snVoltageKv: 15,
+    });
+    expect(podglad.naglowek.rodzina).toBeNull();
+    expect(podglad.naglowek.klasaNapiecia).toBeNull();
+    expect(podglad.naglowek.pradSzyn).toBeNull();
+    expect(podglad.naglowek.pradZwarciowy).toBeNull();
+  });
+});
+
+describe('SLD-GEN-POLA — etykieta pola czyta dane katalogu', () => {
   it('opis pola = nazwa katalogowa + rodzaj + znamiona (17,5 kV · 630 A · 25 kA)', () => {
     const { container } = render(
       <PodgladRozdzielnicySn
@@ -201,6 +449,21 @@ describe('MINI-RMU-CAD — etykieta pola czyta dane katalogu', () => {
     expect(tekst).toContain('17,5 kV');
     expect(tekst).toContain('630 A');
     expect(tekst).toContain('25 kA');
+  });
+
+  it('opis pola niesie RODZINĘ i KOD KATALOGOWY pola, gdy pakiet jest dobrany', () => {
+    const { container } = render(
+      <PodgladRozdzielnicySn
+        snFields={[pole('LINIA_OUT', 'ap-ROZLACZNIK', undefined, SZABLON_SAFERING_LINE_OUT.template_ref)]}
+        aparaty={KATALOG}
+        snVoltageKv={15}
+        szablonyPol={[SZABLON_SAFERING_LINE_OUT]}
+        rodzina={RODZINA_SAFERING}
+      />,
+    );
+    const tekst = tekstRysunku(container);
+    expect(tekst).toContain('SafeRing');
+    expect(tekst).toContain('ABB__SAFERING__LINE_OUT');
   });
 
   it('zmiana pozycji katalogowej zmienia etykietę (etykieta nie jest zaszyta)', () => {
@@ -243,10 +506,10 @@ describe('MINI-RMU-CAD — etykieta pola czyta dane katalogu', () => {
   it('jednostka NIE odrywa się od liczby przy zawijaniu (spacja nierozdzielająca)', () => {
     // Zapis „…17,5" / „kV" w nowym wierszu jest w rysunku technicznym błędem
     // czytelności; pilnuje tego skleja jednostek, nie szczęśliwa długość slotu.
-    expect(sklejJednostki('Rozłącznik LBS 17,5 kV')).toBe('Rozłącznik LBS 17,5\u00a0kV');
+    expect(sklejJednostki('Rozłącznik LBS 17,5 kV')).toBe('Rozłącznik LBS 17,5 kV');
     const wiersze = zawinTekst('Rozłącznik bezpiecznikowy ETI VV 17,5 kV', 8, 60);
     expect(wiersze.some((w) => w.trim() === 'kV')).toBe(false);
-    expect(wiersze.join(' ')).toContain('17,5\u00a0kV');
+    expect(wiersze.join(' ')).toContain('17,5 kV');
   });
 
   it('znamiona pomijają wielkość, której pozycja katalogowa nie niesie (zero domysłu)', () => {
@@ -302,11 +565,15 @@ describe('MINI-RMU-CAD — etykieta pola czyta dane katalogu', () => {
     const bez = zbudujPodglad({
       snFields: [pole('LINIA_IN', null)],
       aparaty: KATALOG,
+      transformatory: [],
+      transformatorRef: null,
       snVoltageKv: 15,
     });
     const zAparatem = zbudujPodglad({
       snFields: [pole('LINIA_IN', 'ap-WYLACZNIK')],
       aparaty: KATALOG,
+      transformatory: [],
+      transformatorRef: null,
       snVoltageKv: 15,
     });
 
@@ -331,8 +598,8 @@ describe('MINI-RMU-CAD — etykieta pola czyta dane katalogu', () => {
   });
 });
 
-describe('MINI-RMU-CAD — wyposażenie pola rysowane TYLKO z danych formularza', () => {
-  it('bez wyposażenia: żadnych przekładników ani przekaźnika (zero fabrykacji)', () => {
+describe('SLD-GEN-POLA — wyposażenie pola rysowane TYLKO z danych formularza', () => {
+  it('bez wyposażenia i bez pakietu: sam aparat główny (zero fabrykacji)', () => {
     const symbole = symboleWRenderze([pole('LINIA_IN', 'ap-WYLACZNIK')]);
     expect(symbole).toEqual(['breaker']);
   });
@@ -355,7 +622,7 @@ describe('MINI-RMU-CAD — wyposażenie pola rysowane TYLKO z danych formularza'
     const symbole = symboleWRenderze([
       pole('LINIA_IN', 'ap-WYLACZNIK', { relay: { catalog_ref: 'rel-1' } }),
     ]);
-    expect(symbole).toEqual(['breaker', 'protectionRelay']);
+    expect(symbole).toEqual(['protectionRelay', 'breaker']);
   });
 
   it('pełne wyposażenie pola pomiarowego: odłącznik + VT + przekaźnik', () => {
@@ -365,7 +632,7 @@ describe('MINI-RMU-CAD — wyposażenie pola rysowane TYLKO z danych formularza'
         relay: { catalog_ref: 'rel-1' },
       }),
     ]);
-    expect(symbole).toEqual(['disconnector', 'voltageTransformer', 'protectionRelay']);
+    expect(symbole).toEqual(['protectionRelay', 'disconnector', 'voltageTransformer']);
   });
 
   it('pozycja wyposażenia bez referencji katalogowej nic nie rysuje (pusty wpis ≠ element)', () => {
@@ -374,9 +641,17 @@ describe('MINI-RMU-CAD — wyposażenie pola rysowane TYLKO z danych formularza'
     ]);
     expect(symbole).toEqual(['breaker']);
   });
+
+  it('wyposażenie NIE dubluje pozycji, którą rodzina już ma w składzie', () => {
+    const symbole = symboleWRenderze(
+      [pole('LINIA_OUT', 'ap-WYLACZNIK', { ct: { catalog_ref: 'ct-1' } }, SZABLON_UNIGEAR_LINE_OUT.template_ref)],
+      [SZABLON_UNIGEAR_LINE_OUT],
+    );
+    expect(symbole.filter((s) => s === 'currentTransformer')).toHaveLength(1);
+  });
 });
 
-describe('MINI-RMU-CAD — sprzęgło przerywa szynę (łącznik SZYN, nie odpływ)', () => {
+describe('SLD-GEN-POLA — sprzęgło przerywa szynę (łącznik SZYN, nie odpływ)', () => {
   it('stacja bez sprzęgła: szyna jednym odcinkiem', () => {
     const podglad = zbudujPodglad({
       snFields: [pole('LINIA_IN', 'ap-WYLACZNIK'), pole('TRANSFORMATOROWE', 'ap-ROZLACZNIK_BEZPIECZNIKOWY')],
@@ -393,25 +668,26 @@ describe('MINI-RMU-CAD — sprzęgło przerywa szynę (łącznik SZYN, nie odpł
     const podglad = zbudujPodglad({
       snFields: [
         pole('LINIA_IN', 'ap-WYLACZNIK'),
-        pole('SPRZEGLO', 'ap-WYLACZNIK'),
+        pole('SPRZEGLO', 'ap-WYLACZNIK', undefined, SZABLON_UNIGEAR_COUPLER.template_ref),
         pole('TRANSFORMATOROWE', 'ap-WYLACZNIK'),
       ],
       aparaty: KATALOG,
       transformatory: TRAFO,
       transformatorRef: 'tr-630',
       snVoltageKv: 15,
+      szablonyPol: [SZABLON_UNIGEAR_COUPLER],
     });
     expect(podglad.odcinkiSzyny).toHaveLength(2);
     const sprzeglo = podglad.sloty[1];
     expect(sprzeglo.przerwaSzyny).not.toBeNull();
     // Tor wraca na poziom szyny po prawej stronie przerwy (kształt „U").
-    const powrot = sprzeglo.tor.filter((t) => t[3] === podglad.szynaY && t[1] !== podglad.szynaY);
+    const powrot = sprzeglo.scena.tor.filter((t) => t[3] === podglad.szynaY && t[1] !== podglad.szynaY);
     expect(powrot.length).toBe(1);
     expect(powrot[0][2]).toBeCloseTo(sprzeglo.przerwaSzyny?.[1] ?? -1, 6);
   });
 });
 
-describe('MINI-RMU-CAD — zejścia pól liniowych w jednej linii', () => {
+describe('SLD-GEN-POLA — zejścia pól liniowych w jednej linii', () => {
   it('pola liniowe z aparatami o RÓŻNEJ wysokości symbolu kończą tor na tym samym poziomie', () => {
     // Wyłącznik 16, reklozer 24, rozłącznik bezpiecznikowy 32 px kanonu —
     // bez wyrównania dół rysunku był „strzępiasty" (trzy różne poziomy).
@@ -430,7 +706,7 @@ describe('MINI-RMU-CAD — zejścia pól liniowych w jednej linii', () => {
     expect(poziomy.size).toBe(1);
     // Wyrównanie działa przez WYDŁUŻENIE toru, nie przez przesunięcie symbolu:
     // aparat zostaje tuż pod szyną w każdym polu.
-    const gornySymbol = podglad.sloty.map((s) => s.symbole[0].y);
+    const gornySymbol = podglad.sloty.map((s) => s.scena.symbole[0].y);
     expect(new Set(gornySymbol).size).toBe(1);
   });
 
@@ -456,7 +732,7 @@ describe('MINI-RMU-CAD — zejścia pól liniowych w jednej linii', () => {
   });
 });
 
-describe('MINI-RMU-CAD — układ: etykiety nie stykają się, rysunek nie wychodzi ze slotu', () => {
+describe('SLD-GEN-POLA — układ: etykiety nie stykają się, rysunek nie wychodzi ze slotu', () => {
   const dlugieRole: readonly SnFieldRole[] = [
     'LINIA_IN',
     'LINIA_OUT',
@@ -464,38 +740,50 @@ describe('MINI-RMU-CAD — układ: etykiety nie stykają się, rysunek nie wycho
     'SPRZEGLO',
     'TRANSFORMATOROWE',
   ];
+  const SZABLONY = [
+    SZABLON_UNIGEAR_LINE_OUT,
+    SZABLON_UNIGEAR_TRANSFORMER,
+    SZABLON_UNIGEAR_COUPLER,
+    SZABLON_UNIGEAR_MEASUREMENT,
+    SZABLON_SAFERING_LINE_OUT,
+  ];
 
-  // ILOCZYN CECH układu: liczba pól × obecność wyposażenia. Wyposażenie
-  // POSZERZA slot (odgałęzienie VT, adnotacja przekaźnika), więc sam wariant
-  // „z wyposażeniem" maskowałby układ, w którym szerokość slotu nie wynika z
-  // etykiet — czyli dokładnie stan sprzed karty.
+  // ILOCZYN CECH układu: liczba pól × obecność wyposażenia × obecność
+  // kompozycji rodziny. Kompozycja POGŁĘBIA i POSZERZA rysunek (pełny skład
+  // celki + odgałęzienia + oznaczenia Q), więc wariant bez niej maskowałby
+  // układ, w którym szerokość slotu nie wynika z tego, co w nim stoi.
   for (const liczba of [3, 4, 5, 6, 7, 8]) {
     for (const zWyposazeniem of [false, true]) {
-    it(`${liczba} pól (${zWyposazeniem ? 'z wyposażeniem' : 'bez wyposażenia'}): zero kolizji etykiet i zero wyjść poza slot`, () => {
-      const wyposazenie = zWyposazeniem
-        ? {
-            ct: { catalog_ref: 'ct-1' },
-            vt: { catalog_ref: 'vt-1' },
-            relay: { catalog_ref: 'rel-1' },
-          }
-        : undefined;
-      const snFields = Array.from({ length: liczba }, (_, i) =>
-        pole(
-          dlugieRole[i % dlugieRole.length],
-          `ap-${Object.keys(OCZEKIWANY_SYMBOL)[i % 6]}`,
-          wyposazenie,
-        ),
-      );
-      const podglad = zbudujPodglad({
-        snFields,
-        aparaty: KATALOG_REALNY,
-        transformatory: TRAFO,
-        transformatorRef: 'tr-630',
-        snVoltageKv: 15,
-      });
-      expect(kolizjeEtykiet(podglad)).toEqual([]);
-      expect(wyjsciaPozaSlot(podglad)).toEqual([]);
-    });
+      for (const zKompozycja of [false, true]) {
+        it(`${liczba} pól (${zWyposazeniem ? 'z wyposażeniem' : 'bez'}, ${zKompozycja ? 'z kompozycją' : 'bez kompozycji'}): zero kolizji i zero wyjść poza slot`, () => {
+          const wyposazenie = zWyposazeniem
+            ? {
+                ct: { catalog_ref: 'ct-1' },
+                vt: { catalog_ref: 'vt-1' },
+                relay: { catalog_ref: 'rel-1' },
+              }
+            : undefined;
+          const snFields = Array.from({ length: liczba }, (_, i) =>
+            pole(
+              dlugieRole[i % dlugieRole.length],
+              `ap-${Object.keys(OCZEKIWANY_SYMBOL)[i % 6]}`,
+              wyposazenie,
+              zKompozycja ? SZABLONY[i % SZABLONY.length].template_ref : 'brak-pakietu',
+            ),
+          );
+          const podglad = zbudujPodglad({
+            snFields,
+            aparaty: KATALOG_REALNY,
+            transformatory: TRAFO,
+            transformatorRef: 'tr-630',
+            snVoltageKv: 15,
+            szablonyPol: zKompozycja ? SZABLONY : [],
+            rodzina: RODZINA_UNIGEAR,
+          });
+          expect(kolizjeEtykiet(podglad)).toEqual([]);
+          expect(wyjsciaPozaSlot(podglad)).toEqual([]);
+        });
+      }
     }
   }
 
@@ -535,15 +823,34 @@ describe('MINI-RMU-CAD — układ: etykiety nie stykają się, rysunek nie wycho
     expect(kolizjeEtykiet(scisniety).length).toBeGreaterThan(0);
     expect(bboxyEtykiet(podglad).length).toBeGreaterThan(0);
   });
+
+  it('wyrocznia zasięgu faktycznie łapie rysunek wychodzący poza slot', () => {
+    const podglad = zbudujPodglad({
+      snFields: [
+        pole('LINIA_IN', 'ap-WYLACZNIK', undefined, SZABLON_UNIGEAR_LINE_OUT.template_ref),
+        pole('LINIA_OUT', 'ap-WYLACZNIK', undefined, SZABLON_UNIGEAR_LINE_OUT.template_ref),
+      ],
+      aparaty: KATALOG,
+      transformatory: TRAFO,
+      transformatorRef: 'tr-630',
+      snVoltageKv: 15,
+      szablonyPol: [SZABLON_UNIGEAR_LINE_OUT],
+    });
+    const zwezony = {
+      ...podglad,
+      sloty: podglad.sloty.map((s) => ({ ...s, szerokosc: 4 })),
+    };
+    expect(wyjsciaPozaSlot(zwezony).length).toBeGreaterThan(0);
+  });
 });
 
-describe('MINI-RMU-CAD — determinizm rysunku', () => {
+describe('SLD-GEN-POLA — determinizm rysunku', () => {
   it('ta sama konfiguracja ⇒ bajt-identyczny SVG', () => {
     const snFields = [
-      pole('LINIA_IN', 'ap-REKLOZER'),
-      pole('LINIA_OUT', 'ap-ROZLACZNIK'),
+      pole('LINIA_IN', 'ap-REKLOZER', undefined, SZABLON_UNIGEAR_LINE_OUT.template_ref),
+      pole('LINIA_OUT', 'ap-ROZLACZNIK', undefined, SZABLON_SAFERING_LINE_OUT.template_ref),
       pole('LINIA_ODG', 'ap-WYLACZNIK'),
-      pole('TRANSFORMATOROWE', 'ap-ROZLACZNIK_BEZPIECZNIKOWY'),
+      pole('TRANSFORMATOROWE', 'ap-ROZLACZNIK_BEZPIECZNIKOWY', undefined, SZABLON_UNIGEAR_TRANSFORMER.template_ref),
     ];
     const el = (
       <PodgladRozdzielnicySn
@@ -552,12 +859,14 @@ describe('MINI-RMU-CAD — determinizm rysunku', () => {
         transformatory={TRAFO}
         transformatorRef="tr-630"
         snVoltageKv={15}
+        szablonyPol={[SZABLON_UNIGEAR_LINE_OUT, SZABLON_SAFERING_LINE_OUT, SZABLON_UNIGEAR_TRANSFORMER]}
+        rodzina={RODZINA_UNIGEAR}
       />
     );
     expect(renderToStaticMarkup(el)).toBe(renderToStaticMarkup(el));
   });
 
-  it('struktura rysunku stacji 4-polowej: symbole per pole w kolejności listy pól', () => {
+  it('struktura rysunku stacji 4-polowej BEZ pakietów: symbole per pole w kolejności listy', () => {
     // Snapshot STRUKTURY (nie pikseli): co stoi w którym polu i w jakiej kolejności.
     const podglad = zbudujPodglad({
       snFields: [
@@ -572,7 +881,7 @@ describe('MINI-RMU-CAD — determinizm rysunku', () => {
       snVoltageKv: 15,
     });
     const struktura = podglad.sloty.map(
-      (s) => `${s.numer}:${s.rola}:${s.symbole.map((sym) => sym.id).join('+')}`,
+      (s) => `${s.numer}:${s.rola}:${s.scena.symbole.map((sym) => sym.id).join('+')}`,
     );
     expect(struktura).toEqual([
       '1:LINIA_IN:recloser',
@@ -580,6 +889,38 @@ describe('MINI-RMU-CAD — determinizm rysunku', () => {
       '3:LINIA_ODG:breaker+currentTransformer',
       '4:TRANSFORMATOROWE:fuseSwitch+transformer2W',
     ]);
+  });
+
+  it('struktura rysunku stacji RMU K-K-T (blok fabryczny kabel–kabel–transformator)', () => {
+    const podglad = zbudujPodglad({
+      snFields: [
+        pole('LINIA_IN', 'ap-ROZLACZNIK', undefined, SZABLON_SAFERING_LINE_IN.template_ref),
+        pole('LINIA_OUT', 'ap-ROZLACZNIK', undefined, SZABLON_SAFERING_LINE_OUT.template_ref),
+        pole('TRANSFORMATOROWE', 'ap-ROZLACZNIK_BEZPIECZNIKOWY', undefined, SZABLON_SAFERING_TRANSFORMER.template_ref),
+      ],
+      aparaty: KATALOG_REALNY,
+      transformatory: TRAFO,
+      transformatorRef: 'tr-630',
+      snVoltageKv: 15,
+      szablonyPol: BLOK_RMU_K_K_T,
+      rodzina: RODZINA_SAFERING,
+      producent: 'ABB',
+    });
+    const struktura = podglad.sloty.map(
+      (s) =>
+        `${s.numer}:${s.rola}:${s.scena.symbole.map((sym) => `${sym.oznaczenie}=${sym.id}`).join('>')}`,
+    );
+    expect(struktura).toEqual([
+      '1:LINIA_IN:Q1=disconnector>Q0=loadBreakSwitch>Q2=disconnector>Q9=earthSwitch>GK=cableHead',
+      '2:LINIA_OUT:Q1=disconnector>Q0=loadBreakSwitch>Q2=disconnector>Q9=earthSwitch>GK=cableHead',
+      '3:TRANSFORMATOROWE:Q1=disconnector>Q0=fuseSwitch>Q2=disconnector>Q9=earthSwitch>TR=transformer2W',
+    ]);
+    // Jednostki kablowe pierścienia mają przedział kablowy, transformatorowa —
+    // stronę nN. Blok K-K-T czyta się z rysunku, nie z podpisów.
+    expect(podglad.sloty.map((s) => s.scena.strefaKablowa !== null)).toEqual([true, true, false]);
+    expect(podglad.sloty.map((s) => s.scena.kreskaNn !== null)).toEqual([false, false, true]);
+    expect(kolizjeEtykiet(podglad)).toEqual([]);
+    expect(wyjsciaPozaSlot(podglad)).toEqual([]);
   });
 
   it('struktura rysunku stacji sekcyjnej z pomiarem: sprzęgło, VT na odgałęzieniu, TR', () => {
@@ -596,9 +937,9 @@ describe('MINI-RMU-CAD — determinizm rysunku', () => {
       snVoltageKv: 15,
     });
     expect(
-      podglad.sloty.map((s) => `${s.numer}:${s.rola}:${s.symbole.map((sym) => sym.id).join('+')}`),
+      podglad.sloty.map((s) => `${s.numer}:${s.rola}:${s.scena.symbole.map((sym) => sym.id).join('+')}`),
     ).toEqual([
-      '1:LINIA_IN:breaker+currentTransformer+protectionRelay',
+      '1:LINIA_IN:protectionRelay+breaker+currentTransformer',
       '2:LINIA_ODG:disconnector+voltageTransformer',
       '3:SPRZEGLO:loadBreakSwitch',
       '4:TRANSFORMATOROWE:fuseSwitch+currentTransformer+transformer2W',
@@ -606,7 +947,6 @@ describe('MINI-RMU-CAD — determinizm rysunku', () => {
     // Szyna w dwóch sekcjach WYŁĄCZNIE z powodu sprzęgła.
     expect(podglad.odcinkiSzyny).toHaveLength(2);
     expect(kolizjeEtykiet(podglad)).toEqual([]);
-    expect(wyjsciaPozaSlot(podglad)).toEqual([]);
   });
 
   it('dwa pola tej samej roli mają ROZŁĄCZNE identyfikatory (numer w testid)', () => {
@@ -627,5 +967,6 @@ describe('MINI-RMU-CAD — determinizm rysunku', () => {
     const { container } = render(<PodgladRozdzielnicySn snFields={[]} aparaty={KATALOG} />);
     expect(container.querySelector('svg')).toBeTruthy();
     expect(container.querySelectorAll('[data-symbol-canon]').length).toBe(0);
+    expect(container.querySelector('[data-testid="mvd-podglad-naglowek"]')).toBeTruthy();
   });
 });

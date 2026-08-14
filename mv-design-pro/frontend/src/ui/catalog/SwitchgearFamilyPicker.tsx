@@ -20,6 +20,17 @@ export interface SwitchgearFamily {
   readonly family_name: string;
   readonly series_name: string | null;
   readonly voltage_levels: readonly number[];
+  /**
+   * Prądy znamionowe szyn [A] i prądy zwarciowe krótkotrwałe [kA, 1 s] rodziny —
+   * pola `rated_current_options` / `short_time_current_options` kontraktu
+   * (`switchgear/switchgear_family.py`), wystawiane trasą
+   * `GET /api/catalog/switchgear-families`. Typ ich dotąd nie deklarował, więc
+   * nagłówek rozdzielnicy nie miał czym opisać pakietu, mimo że dane przychodzą
+   * z każdą odpowiedzią. Pusta lista = rodzina wartości nie deklaruje (jawny
+   * brak), nie „zero amperów".
+   */
+  readonly rated_current_options?: readonly number[];
+  readonly short_time_current_options?: readonly number[];
   readonly insulation_type: 'air' | 'sf6' | 'vacuum' | 'mixed' | 'unknown';
   readonly construction_type:
     | 'RMU'
@@ -56,7 +67,12 @@ export interface SwitchgearFamilyPickerProps {
   readonly className?: string;
 }
 
-const CONSTRUCTION_LABELS_PL: Record<SwitchgearFamily['construction_type'], string> = {
+/**
+ * Nazwy PL konstrukcji rodziny — JEDNO źródło dla pickera i dla nagłówka
+ * rozdzielnicy w podglądzie kreatora (`ui2/kreatory/stacja`). Druga tablica tych
+ * samych nazw rozjechałaby się przy pierwszej nowej konstrukcji w kontrakcie.
+ */
+export const CONSTRUCTION_LABELS_PL: Record<SwitchgearFamily['construction_type'], string> = {
   RMU: 'RMU',
   jednoczlonowa: 'Jednoczłonowa',
   dwuczlonowa: 'Dwuczłonowa',
