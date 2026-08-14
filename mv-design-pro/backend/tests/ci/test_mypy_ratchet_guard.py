@@ -57,8 +57,10 @@ def test_guard_istnieje_i_ma_zmierzony_prog() -> None:
     # To JEDYNE miejsce, w którym zmierzona liczba jest powtórzona poza samym guardem.
     # Test „odcina w obie strony" poniżej wyprowadza ją z modułu, więc obniżenie progu
     # wymaga świadomej zmiany dokładnie tutaj (i nigdzie indziej).
-    assert modul.BASELINE_ERRORS == 15
-    assert modul.BASELINE_FILES == 10
+    # 2026-08-14 (karta K-Q): naprawa dwoch bledow assignment w
+    # solver_input/audit2_solver_adjuster.py (jedna zmienna, dwa typy) ⇒ 13/9.
+    assert modul.BASELINE_ERRORS == 13
+    assert modul.BASELINE_FILES == 9
 
 
 def test_guard_jest_wpiety_do_workflow_ci() -> None:
