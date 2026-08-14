@@ -110,7 +110,7 @@ import {
   shortenPreservingIdentity,
 } from '../core/text';
 import { labelPriority, labelResolutionOrder } from '../layout/declutter';
-import type { OwnedLabel, SimpleAnchorPlacement } from '../layout/labels';
+import { lodClassOf, type OwnedLabel, type SimpleAnchorPlacement } from '../layout/labels';
 import { rectWithinSheet, type SheetOutline } from '../sheet/outline';
 
 /** Etykieta zaplanowana do narysowania — geometria EFEKTYWNA (po ewentualnym
@@ -491,7 +491,14 @@ export function planSceneLabels(
   const kandydaci: Kandydat[] = [];
   labels.forEach((label, index) => {
     const czytelna = isLabelReadableAtScale(label.labelClass, scale);
-    if (isLabelHiddenAtScale(label.labelRole, label.labelClass, scale)) {
+    // T2-LOD (`docs/nn/PLAN_SLD_NN_TOPOLOGIA_2026-08.md` §„POLITYKA LOD nN",
+    // wyjątek bezwzględny): `unresolved` OMIJA próg czytelności wprost —
+    // etykieta elementu w stanie błędu/UNRESOLVED nigdy nie trafia do
+    // `hiddenDetail`, niezależnie od klasy LOD, którą miałaby z konstrukcji
+    // (`lodClassOf`). Reszta logiki (progi, powiększanie, kolizje) bez zmiany
+    // — od tego miejsca w dół etykieta „unresolved" idzie tą samą ścieżką co
+    // etykieta klasy `'tozsamosc'`/`'L0'` zawsze szła.
+    if (label.unresolved !== true && isLabelHiddenAtScale(label.labelRole, label.labelClass, scale)) {
       hiddenDetail.push(label);
       return;
     }
@@ -598,8 +605,16 @@ export function planSceneLabels(
   for (const kandydat of kolejnosc) {
     const dopasowanie = najlepszeDopasowanie(kandydat, zajete, obstacleIndex, sheet);
     if (!dopasowanie || dopasowanie.text.length === 0) {
-      if (kandydat.label.labelRole === 'tozsamosc') droppedIdentity.push(kandydat.label);
-      else hiddenDetail.push(kandydat.label);
+      // T2-LOD: `unresolved` idzie do `droppedIdentity`, NIGDY do
+      // `hiddenDetail` — nawet gdy przyczyną braku miejsca jest KOLIZJA (nie
+      // próg zoomu). Ten sam kubełek co `'tozsamosc'`/`'L0'`: licznik „Ukryto
+      // N opisów" liczy WYŁĄCZNIE L1/L2 (`layout/labels.ts` `lodClassOf`), w
+      // KAŻDEJ gałęzi planu, nie tylko w gałęzi progu czytelności wyżej.
+      if (kandydat.label.labelRole === 'tozsamosc' || kandydat.label.unresolved === true) {
+        droppedIdentity.push(kandydat.label);
+      } else {
+        hiddenDetail.push(kandydat.label);
+      }
       continue;
     }
     zajete.add(dopasowanie.rect);
@@ -740,4 +755,41 @@ export function plannedLabelObstacleCollisions(
   return plan.drawn
     .filter((p) => obstacles.some((r) => rectsOverlap(p.rect, r)))
     .map((p) => p.label.ownerRef);
+}
+
+/**
+ * T2-LOD (`docs/nn/PLAN_SLD_NN_TOPOLOGIA_2026-08.md` §„POLITYKA LOD nN") —
+ * WYROCZNIA POLITYKI LOD (1/2): etykiety klasy `'L0'` (`layout/labels.ts`
+ * `lodClassOf`) obecne w `hiddenDetail` — czyli policzone we wskaźniku
+ * „Ukryto N opisów". Na poprawnym planie ZAWSZE pusta, z KONSTRUKCJI:
+ * `hiddenDetail` powyżej rośnie WYŁĄCZNIE gdy `isLabelHiddenAtScale` zwróci
+ * `true`, a ta funkcja jest `true` WYŁĄCZNIE dla `labelRole==='dane'`
+ * (`core/text.ts`) — a `lodClassOf` mapuje `role==='tozsamosc'` na `'L0'`
+ * 1:1 i `unresolved===true` na `'L0'` z pominięciem `hiddenDetail` wprost.
+ * Wyrocznia istnieje po to, żeby ta własność była MIERZONA (reguła KLASA §4:
+ * „deklaracja bez testu = fałszywa pewność"), nie deklarowana w komentarzu.
+ */
+export function hiddenDetailContainsL0(plan: LabelRenderPlan): readonly string[] {
+  return plan.hiddenDetail.filter((label) => lodClassOf(label) === 'L0').map((label) => label.ownerRef);
+}
+
+/**
+ * T2-LOD — WYROCZNIA POLITYKI LOD (2/2): etykiety NARYSOWANE, których
+ * `lodClassOf` jest `'L0'`, ale które są `unresolved !== true` I nie mają
+ * `labelRole==='tozsamosc'` — czyli L0 „przez przypadek" (klasyfikacja
+ * niespójna z tabelą `LOD_CLASS_BY_OWNER_KIND`/regułą pasma nazw). Na
+ * poprawnym planie ZAWSZE pusta; strażnik przed CICHYM rozjazdem dwóch źródeł
+ * prawdy (`labelRole` vs `lodClassOf`), których param KLASA §3 zabrania mieć
+ * niezależnie — patrz `layout/labels.ts` `lodClassOf`.
+ */
+export function labelsWithInconsistentL0Classification(
+  labels: readonly OwnedLabel[],
+): readonly string[] {
+  return labels
+    .filter((label) => {
+      const lod = lodClassOf(label);
+      const oczekiwane = label.unresolved === true || label.labelRole === 'tozsamosc';
+      return (lod === 'L0') !== oczekiwane;
+    })
+    .map((label) => label.ownerRef);
 }

@@ -51,7 +51,7 @@
  */
 
 import { GRID, rectsOverlap, snapDown, snapToGrid, type V3Rect } from '../core/grid';
-import { labelLineHeight, measureLabelWidth, type LabelClass, type LabelRole } from '../core/text';
+import { labelLineHeight, measureLabelWidth, type LabelClass, type LabelRole, type LodClass } from '../core/text';
 
 /** Właściciel etykiety (spec §4, tabela slotów). */
 export type OwnerKind =
@@ -134,6 +134,45 @@ export const LABEL_ROLE_BY_OWNER_KIND: Readonly<Record<OwnerKind, LabelRole>> = 
   'segment-endpoint': 'dane',
   'lv-load': 'dane',
 };
+
+/**
+ * T2-LOD (`docs/nn/PLAN_SLD_NN_TOPOLOGIA_2026-08.md` §„POLITYKA LOD nN") —
+ * KLASA LOD z RODZAJU WŁAŚCICIELA: jedno źródło prawdy OBOK
+ * `LABEL_ROLE_BY_OWNER_KIND` powyżej, ta sama zasada wyprowadzenia (dana
+ * sceny, nigdy treść tekstu). `'station-name'` jest DOMYŚLNE — pasmo jest
+ * MIESZANE (jak dla `LabelRole`), więc rozstrzyga WIERSZ; patrz `lodClassOf`.
+ *
+ * REGUŁA WYPROWADZENIA (KLASA §1/§3 — jedno kryterium, JEDNO ŹRÓDŁO, nie
+ * druga tabela, która „dziś się zgadza" z pierwszą): `role==='tozsamosc'` ⇒
+ * zawsze `'L0'` — wyprowadzone STRUKTURALNIE Z `LABEL_ROLE_BY_OWNER_KIND`
+ * powyżej (nie przepisane ręcznie drugi raz), więc te dwie tabele fizycznie
+ * NIE MOGĄ się rozjechać — BEZ ŻADNEJ zmiany istniejącej gwarancji KD-11
+ * „tożsamość nigdy nie znika" (`canvas/labelLegibility.ts`). `role==='dane'`
+ * dzieli się na `'L1'`/`'L2'` wg KLASY TYPOGRAFICZNEJ (`DANE_LOD_TIER_BY_
+ * OWNER_KIND` niżej): `t2` (typ·przekrój·długość przęsła — dosłowny przykład
+ * L1 z planu: „przekroje/długości kabli") = `'L1'`; `t3`/`t4` (adnotacje
+ * drugorzędne: kierunek pola, koniec odcinka, nastawy zabezpieczeń, odbiór
+ * zagregowany nN) = `'L2'`. Podział NIE zmienia ŻADNEGO progu zoomu
+ * (`isLabelHiddenAtScale` w `core/text.ts` bez zmian) — `lodClass` jest dziś
+ * WYŁĄCZNIE klasyfikacją (dowód wyroczniami w `canvas/__tests__/
+ * politykaLodNn.contract.test.ts`), nie nowym mechanizmem ukrywania: zero
+ * regresji na pinach bajtowych sceny/planu (`scene/__tests__/kosztSceny.test.ts`).
+ */
+const DANE_LOD_TIER_BY_OWNER_KIND: Partial<Record<OwnerKind, 'L1' | 'L2'>> = {
+  'segment-span': 'L1',
+  'segment-lateral': 'L1',
+  'segment-endpoint': 'L2',
+  'port-caption': 'L2',
+  protection: 'L2',
+  'lv-load': 'L2',
+};
+
+export const LOD_CLASS_BY_OWNER_KIND: Readonly<Record<OwnerKind, LodClass>> = Object.fromEntries(
+  (Object.keys(LABEL_ROLE_BY_OWNER_KIND) as OwnerKind[]).map((kind) => [
+    kind,
+    LABEL_ROLE_BY_OWNER_KIND[kind] === 'tozsamosc' ? 'L0' : (DANE_LOD_TIER_BY_OWNER_KIND[kind] ?? 'L2'),
+  ]),
+) as Readonly<Record<OwnerKind, LodClass>>;
 
 export interface LabelPoint {
   readonly x: number;
@@ -220,6 +259,43 @@ export interface OwnedLabel {
    * rozstrzyganie kolizji.
    */
   readonly rezerwacjaSzerokosci?: number;
+  /**
+   * T2-LOD (`docs/nn/PLAN_SLD_NN_TOPOLOGIA_2026-08.md` §„POLITYKA LOD nN",
+   * wyjątek bezwzględny) — element w stanie błędu/UNRESOLVED (walidacja grafu
+   * elektrycznego T0/T1: aparat nierozwiązywalny na model, status SLD
+   * INVALID/MODEL INCOMPLETE). `true` wymusza `lodClassOf(label) === 'L0'`
+   * niezależnie od `ownerKind`/`labelRole` — etykieta NIGDY nie trafia do
+   * `hiddenDetail` (`canvas/labelLegibility.ts`), więc licznik „Ukryto N
+   * opisów" jej nie policzy jako zwykłej danej ukrytej progiem zoomu.
+   * Geometrycznie NEUTRALNE (nie wchodzi do `rect`).
+   *
+   * `undefined`/`false` = zachowanie BEZ ZMIANY. Domyślnie `undefined` — dziś
+   * ŻADEN wytwórca etykiety go nie ustawia (wykrywanie UNRESOLVED to zakres
+   * walidacji grafu T0/T1, poza tą kartą), więc pole jest gotowe na
+   * podłączenie bez zmiany istniejących wytwórców/testów.
+   */
+  readonly unresolved?: boolean;
+}
+
+/**
+ * T2-LOD — KLASA LOD EFEKTYWNA etykiety (jedno źródło prawdy dla warstwy
+ * renderu i dla wyroczni; patrz `LodClass` w `core/text.ts`). Kolejność
+ * rozstrzygania:
+ *  1. `unresolved === true` ⇒ zawsze `'L0'` (wyjątek bezwzględny planu —
+ *     nadpisuje WSZYSTKO poniżej);
+ *  2. `ownerKind === 'station-name'` ⇒ pasmo MIESZANE, rozstrzyga WIERSZ
+ *     (`label.labelRole`): `'tozsamosc'` → `'L0'`, `'dane'` → `'L1'`/`'L2'`
+ *     wg tej samej reguły klasy typograficznej co `LOD_CLASS_BY_OWNER_KIND`
+ *     (dokumentacja tam);
+ *  3. w pozostałych przypadkach — `LOD_CLASS_BY_OWNER_KIND[ownerKind]`.
+ */
+export function lodClassOf(label: OwnedLabel): LodClass {
+  if (label.unresolved === true) return 'L0';
+  if (label.ownerKind === 'station-name') {
+    if (label.labelRole === 'tozsamosc') return 'L0';
+    return label.labelClass === 't2' ? 'L1' : 'L2';
+  }
+  return LOD_CLASS_BY_OWNER_KIND[label.ownerKind];
 }
 
 /**
@@ -273,6 +349,9 @@ export interface SegmentSpanOwnerInput {
    *  ścieżka musi istnieć; funkcja rzuca, gdy potrzebny a nieobecny, tak jak
    *  `fallbackRect` w `resolveSegmentLateralLabel`). */
   readonly marginRect?: V3Rect;
+  /** T2-LOD passthrough 1:1 na `OwnedLabel.unresolved` — wyjątek bezwzględny
+   *  LOD dla odcinka w stanie błędu/UNRESOLVED. `undefined` = bez zmiany. */
+  readonly unresolved?: boolean;
 }
 
 function resolveSegmentSpanLabel(owner: SegmentSpanOwnerInput): OwnedLabel {
@@ -304,6 +383,7 @@ function resolveSegmentSpanLabel(owner: SegmentSpanOwnerInput): OwnedLabel {
       text: owner.text,
       slotIndex: 1,
       rect: { x, y: owner.primaryRect.y, width: labelWidth, height: owner.primaryRect.height },
+      ...(owner.unresolved !== undefined ? { unresolved: owner.unresolved } : {}),
     };
   }
 
@@ -324,6 +404,7 @@ function resolveSegmentSpanLabel(owner: SegmentSpanOwnerInput): OwnedLabel {
       text: owner.text,
       slotIndex: 1,
       rect: { x, y: owner.primaryRect.y, width: labelWidth, height: owner.primaryRect.height },
+      ...(owner.unresolved !== undefined ? { unresolved: owner.unresolved } : {}),
     };
   }
 
@@ -354,6 +435,7 @@ function resolveSegmentSpanLabel(owner: SegmentSpanOwnerInput): OwnedLabel {
       },
       to: { x: spanCenterX, y: owner.busAxisY },
     },
+    ...(owner.unresolved !== undefined ? { unresolved: owner.unresolved } : {}),
   };
 }
 
@@ -381,6 +463,9 @@ export interface SegmentLateralOwnerInput {
    *  policzyć margines korytarza z layoutu, tak jak `columns.ts` dla segmentu
    *  poziomego). */
   readonly fallbackRect?: V3Rect;
+  /** T2-LOD passthrough 1:1 na `OwnedLabel.unresolved` — wyjątek bezwzględny
+   *  LOD dla odcinka w stanie błędu/UNRESOLVED. `undefined` = bez zmiany. */
+  readonly unresolved?: boolean;
 }
 
 function resolveSegmentLateralLabel(owner: SegmentLateralOwnerInput): OwnedLabel {
@@ -406,6 +491,7 @@ function resolveSegmentLateralLabel(owner: SegmentLateralOwnerInput): OwnedLabel
       slotIndex: 1,
       rotated: true,
       rect: { x, y: centerY - alongLine / 2, width: acrossLine, height: alongLine },
+      ...(owner.unresolved !== undefined ? { unresolved: owner.unresolved } : {}),
     };
   }
 
@@ -420,6 +506,7 @@ function resolveSegmentLateralLabel(owner: SegmentLateralOwnerInput): OwnedLabel
       slotIndex: 2,
       rotated: true,
       rect: { x, y: centerY - alongLine / 2, width: acrossLine, height: alongLine },
+      ...(owner.unresolved !== undefined ? { unresolved: owner.unresolved } : {}),
     };
   }
 
@@ -448,6 +535,7 @@ function resolveSegmentLateralLabel(owner: SegmentLateralOwnerInput): OwnedLabel
       },
       to: { x: owner.lineX, y: centerY },
     },
+    ...(owner.unresolved !== undefined ? { unresolved: owner.unresolved } : {}),
   };
 }
 
@@ -468,6 +556,11 @@ export interface StationNameBandRow {
    *  tego nie rozstrzyga (nazwa źródła jest `t2`, tak jak „Yd11 · 25 MVA"),
    *  a treść tekstu nie jest dowodem — deklaruje wytwórca wiersza. */
   readonly role: LabelRole;
+  /** T2-LOD passthrough 1:1 na `OwnedLabel.unresolved` — wyjątek bezwzględny
+   *  LOD dla wiersza pasma opisującego element w stanie błędu/UNRESOLVED
+   *  (np. transformator nierozwiązywalny na model). `undefined` = bez zmiany
+   *  (klasa LOD wiersza wynika wtedy z `role`, patrz `lodClassOf`). */
+  readonly unresolved?: boolean;
 }
 
 export interface StationNameBandOwnerInput {
@@ -497,6 +590,7 @@ function resolveStationNameBand(owner: StationNameBandOwnerInput): OwnedLabel[] 
       // KD-11: pasmo nazw wisi POD swoją kotwicą (symbolem/stacją) i rośnie w
       // dół — powiększone pismo tożsamości nie może wejść w symbol nad sobą.
       placement: 'below',
+      ...(row.unresolved !== undefined ? { unresolved: row.unresolved } : {}),
     };
     y += height;
     return label;
@@ -520,6 +614,9 @@ export interface PortCaptionOwnerInput {
   readonly primaryRect: V3Rect;
   /** Slot 2 (obok, z leaderem) — wymagany, gdy podpis nie mieści się w `primaryRect`. */
   readonly fallbackRect?: V3Rect;
+  /** T2-LOD passthrough 1:1 na `OwnedLabel.unresolved` — wyjątek bezwzględny
+   *  LOD dla podpisu portu w stanie błędu/UNRESOLVED. `undefined` = bez zmiany. */
+  readonly unresolved?: boolean;
 }
 
 function resolvePortCaption(owner: PortCaptionOwnerInput): OwnedLabel {
@@ -539,6 +636,7 @@ function resolvePortCaption(owner: PortCaptionOwnerInput): OwnedLabel {
       text: owner.text,
       slotIndex: 1,
       rect: { x, y: owner.primaryRect.y, width: labelWidth, height: owner.primaryRect.height },
+      ...(owner.unresolved !== undefined ? { unresolved: owner.unresolved } : {}),
     };
   }
 
@@ -564,6 +662,7 @@ function resolvePortCaption(owner: PortCaptionOwnerInput): OwnedLabel {
       },
       to: { x: owner.anchorX, y: owner.primaryRect.y + owner.primaryRect.height },
     },
+    ...(owner.unresolved !== undefined ? { unresolved: owner.unresolved } : {}),
   };
 }
 
@@ -598,6 +697,10 @@ export interface SimpleAnchoredOwnerInput {
    *  przeglądowej to ~4 px ekranu, więc podpis „Sekcja 1 · 15 kV" siadał na
    *  szynie (pomiar zrzutu odbiorczego KD-5: prześwit 7 px świata). */
   readonly clearance?: number;
+  /** T2-LOD passthrough 1:1 na `OwnedLabel.unresolved` — wyjątek bezwzględny
+   *  LOD dla etykiety opisującej element w stanie błędu/UNRESOLVED.
+   *  `undefined` = bez zmiany. */
+  readonly unresolved?: boolean;
 }
 
 function resolveSimpleAnchoredLabel(owner: SimpleAnchoredOwnerInput): OwnedLabel {
@@ -652,6 +755,8 @@ function resolveSimpleAnchoredLabel(owner: SimpleAnchoredOwnerInput): OwnedLabel
     // W5 (§12–15/uwaga 7): passthrough przeznaczenia CT (tylko adnotacje CT
     // `ownerKind:'protection'` niosą wartość) — geometrycznie neutralny.
     ...(owner.ctPurpose !== undefined ? { ctPurpose: owner.ctPurpose } : {}),
+    // T2-LOD: passthrough wyjątku bezwzględnego LOD (błąd/UNRESOLVED).
+    ...(owner.unresolved !== undefined ? { unresolved: owner.unresolved } : {}),
   };
 }
 

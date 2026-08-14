@@ -2726,6 +2726,20 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
   // bilans „narysowane + ukryte + porzucone == etykiety sceny" dało się
   // sprawdzić bez podwójnego liczenia — komunikat jest SUMĄ tych dwóch, a nie
   // trzecią, niezależną liczbą.
+  //
+  // T2-LOD (`docs/nn/PLAN_SLD_NN_TOPOLOGIA_2026-08.md` §„POLITYKA LOD nN"):
+  // „licznik »Ukryto N opisów« liczy WYŁĄCZNIE L1/L2" dotyczy
+  // `labelPlan.hiddenDetail` (`hiddenUnreadableLabels` wyżej) — TEN zbiór, z
+  // KONSTRUKCJI, nigdy nie niesie klasy `'L0'` (`layout/labels.ts`
+  // `lodClassOf`, wyrocznia `canvas/labelLegibility.ts`
+  // `hiddenDetailContainsL0`). `labelPlan.droppedIdentity` jest ZAWSZE `'L0'`/
+  // `unresolved` (nigdy zwykłe L1/L2 — ta sama wyrocznia), więc nie jest
+  // „ukrytym opisem" w sensie polityki LOD: to sygnał T3 (kolizja layoutu, nie
+  // decyzja o ukryciu przez zoom — patrz plan §4), który S9-7 świadomie
+  // dokłada do JEDNEGO komunikatu ekranowego, żeby żaden zniknięty napis nie
+  // został niepoliczony przed użytkownikiem. Zmiana wymagałaby nowego,
+  // osobnego wskaźnika ekranowego dla kolizji layoutu — poza zakresem tej
+  // karty (T3, „dopiero po zieleni T0–T2 i re-werdykcie").
   const niewidoczneOpisy = hiddenUnreadableLabels + labelPlan.droppedIdentity.length;
 
   // RAMKA-TNIE-PODPISY (drugi objaw): DOLNY PAS CHROMU liczony JEDNĄ funkcją
