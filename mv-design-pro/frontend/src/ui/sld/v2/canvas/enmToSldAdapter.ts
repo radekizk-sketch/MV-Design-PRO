@@ -3866,7 +3866,7 @@ interface StationFieldSpec {
   readonly meta: Record<string, unknown>;
   /** W1 (RECENZJA_L2 §1/§12.1, V12K-145): aparaty PIERWOTNE pola
    *  zmaterializowane z szablonu kreatora na backendzie (`_build_field_spec`
-   *  → `template_primary_devices`). Gdy niepuste — tor pierwotny rysowany
+   *  → `aparaty_pola_z_referencji` (wspólny resolver pola)). Gdy niepuste — tor pierwotny rysowany
    *  Z DANYCH (kolejność/stan/uziemnik bocznie/głowica), a nie z jednego
    *  fallbacku konwencji §12.4. `undefined` = pole bez danych → konwencja. */
   readonly primary_devices?: readonly BayPrimaryDevice[];
@@ -3911,7 +3911,7 @@ function buildStationMiniBaysFromFieldSpecs(
         esState: states.es,
         // W1 (RECENZJA_L2 §1/§12.1, V12K-145): tor pierwotny Z DANYCH gdy pole
         // niesie zmaterializowane aparaty (szablon kreatora, backend
-        // `template_primary_devices`). Reużycie `projectBayPrimaryDevices` —
+        // `aparaty_pola_z_referencji` (wspólny resolver pola)). Reużycie `projectBayPrimaryDevices` —
         // JEDNA prawda sortowania/projekcji dla ścieżki field_specs i legacy
         // bays[]. `undefined` gdy brak danych → konwencja §12.4 (zero regresu).
         primaryDevices: projectBayPrimaryDevices({ primary_devices: spec.primary_devices }),
@@ -3956,7 +3956,7 @@ const PRIMARY_DEVICE_PLACEMENTS: ReadonlySet<string> = new Set<string>([
 /**
  * W1 (RECENZJA_L2 §1/§12.1, V12K-145): parsuje DEFENSYWNIE listę aparatów
  * pierwotnych z surowego `field_spec.primary_devices` (backend
- * `_build_field_spec`/`template_primary_devices`) na kształt `BayPrimaryDevice`.
+ * `_build_field_spec`/`aparaty_pola_z_referencji` (wspólny resolver pola)) na kształt `BayPrimaryDevice`.
  * Odrzuca wpisy bez `device_ref`/`symbol_ref`/`kind`/`placement` mapowalnych
  * na kontrakt ENM (zero domysłu — brak danych = brak aparatu). `undefined` gdy
  * pole nie niesie żadnego prawidłowego aparatu (ścieżka konwencji §12.4).
@@ -4217,7 +4217,7 @@ function bayRuntimeSwitchStates(bay: Bay): {
  * W1 (RECENZJA_L2 §1/§12.1, V12K-145) — DOMKNIĘCIE STOP-notatki F9.2. Backend
  * SERIALIZUJE dziś `primary_devices` na `Bay(ENMElement)` w
  * `EnergyNetworkModel` (`backend/src/enm/models.py:855`) — zmaterializowane z
- * szablonu kreatora (`template_primary_devices`) przez `_build_field_spec`
+ * szablonu kreatora (`aparaty_pola_z_referencji` (wspólny resolver pola)) przez `_build_field_spec`
  * (`domain_operations.py`) i przeniesione na snapshot Bay przez
  * `field_read_model._collect_bays`. Adapter czyta je z DWÓCH ścieżek snapshotu:
  *  - `snapshot.bays[]` (legacy Bay ENM) — `projectBayPrimaryDevices(bay)` niżej;

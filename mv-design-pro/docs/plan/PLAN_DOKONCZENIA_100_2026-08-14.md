@@ -454,3 +454,42 @@ pytanie do właściciela albo decyzja architekta z wpisem do rejestru): (a) GPZ
 używa wyłącznie rodzin o torze MODULARNYM (dane referencyjne do poprawy), albo
 (b) rodziny RMU dostają jawny kanał pól GPZ. Po rozstrzygnięciu: przepiąć
 7 miejsc przez resolver `pole_katalogowe`, test klasy po wszystkich 7.
+
+---
+
+## §7 UZUPEŁNIENIA (2026-08-14, po odbiorach S3 / BLOKI-RMU / K-K)
+
+Stan: karty §2.1 (S3), §2.3 (BLOKI-RMU) i §6/K-K ODEBRANE (adnotacje w rejestrze).
+Program KONFIGURATOR-POL-RMU domknięty S1–S5; ekrany na stronie oceny — STOP `[B-02]`.
+
+Pułapka środowiskowa (dopisek do §0.3): `mypy_ratchet_guard.py` woła `poetry run
+mypy`, a poetry wylicza nazwę venva ze ścieżki projektu — w WORKTREE tworzy pusty
+venv i guard pada na braku zależności. Guard uruchamiać z głównego checkoutu;
+w worktree mierzyć `$VENV -m mypy src` ręcznie i porównywać z parą próg/meta-test.
+
+### K-L PROWENIENCJA-CONFIG-ID
+`config_ref_for_template` dokleja prefiks `kanoniczny:` także referencji
+producenckiej (pole katalogowe rodziny dostaje `kanoniczny:ZPUE_WLOSZCZOWA__...`).
+Dziś bez skutku funkcjonalnego (`config_id` jest kluczem nieprzezroczystym — 
+zweryfikowane grepem konsumentów), ale identyfikator FABRYKUJE pochodzenie.
+Naprawa wg propozycji z odbioru K-K: dla pola rodziny emitować
+`producent:<manufacturer_ref>:<template_ref>` wzorem
+`reference_engine/field_configuration_catalog.py`; test klasy po obu
+nomenklaturach; sprawdzić stabilność identyfikatora w istniejących migawkach
+(zmiana wartości = wpływ na determinizm scen — jeśli tak, migracja odczytu
+starych wartości albo pin odświeżony z wykazaniem źródła).
+
+### K-M OPCJA-I-BLOK-PIERWSZEJ-KLASY (kontrakt kreator→operacje)
+Dwa długi S3 wymagające backendu: (1) aparaty OPCJONALNE poza CT/VT/przekaźnikiem
+(ogranicznik przepięć, VPIS) nie mają pola w kontrakcie operacji — kontrolka
+zakazana phantom rule, UI pokazuje status z powodem; dodać addytywne pole
+payloadu + materializację + testy. (2) `factory_configuration_ref` jedzie w
+`catalog_bindings.factory_configuration` (metadane) zamiast pola pierwszej
+klasy operacji stacyjnej — wyrównać do kontraktu `add_sn_bay_from_catalog`
+(jedno nazewnictwo pola w obu operacjach). Granice: `enm/domain_ops_models.py`,
+`enm/domain_operations*.py`, kreator stacji (odczyt pola), testy obu warstw.
+
+### K-N MARTWA-POWIERZCHNIA-STEPPER
+`ui/catalog/SwitchgearTemplateStepper.tsx` — zero konsumentów produkcyjnych
+(pomiar S3), tylko własny test. Zasada inżynierska nr 1: usunąć na amen wraz
+z testem; przed usunięciem grep po imporcie/lazy-route dla pewności.
