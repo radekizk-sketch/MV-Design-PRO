@@ -95,3 +95,45 @@ ofert kreatora). Listy NIE są zaszywane w UI — UI czyta katalog przez API.
   katalogową zamiast pary rola+aparat); migracja operacji kreatora.
 
 Werdykt wizualny każdego etapu UI: właściciel (B-02).
+
+## 8. ANEKS INTEGRACYJNY (2026-08-14, po pomiarze — decyzja nadzorcy)
+
+POMIAR PO S1 wykazal ISTNIEJACY pakiet `network_model/catalog/switchgear/`
+(1489 linii): SwitchgearFamily (pydantic; konstrukcja, izolacja, uklad szyn,
+statusy zrodel verified/repo_verified/requires_catalog z polityka
+`SLD_MV_BAY_TEMPLATE_SOURCE_POLICY.md`), Manufacturer, `CompleteMvBayTemplate`
+(kompozycja nad BayTemplate: aparaty + porty + lineage zrodla + hash),
+device_instance, apparatus_vocabulary, registry, canonical_fallback; 7 rodzin
+(Rotoblok, e2ALPHA, UniGear ZS1, SafeRing, NXAIR, 8DJH, SM6-24); konsumenci:
+`api/catalog.py` (trasa `GET /api/catalog/switchgear-families` JUZ ISTNIEJE),
+`reference_engine` (pakiety producenckie z `switchgear_family_ref`),
+`enm/domain_operations_v2`, `api/switchgear_config.py`.
+
+WNIOSEK: luka wykazana przez wlasciciela lezy w (a) KREATORZE, ktory ignoruje
+ten kanon (konsumowal atrape „rodzina standardowa"), (b) brakach kanonu:
+architektura RMU + konfiguracje fabryczne blokow, status elementow
+FABRYCZNY/OPCJA, twardy walidator familySupports, brakujace rodziny
+(ZPUE: TPM, TPM Air, Rotoblok Air, Rotoblok VCB, RELF, RELF 2S, RXD;
+ABB: SafePlus, UniSec; Schneider: RM6, RM AirSeT), (c) braku generatora
+mini-SLD z BOM.
+
+DECYZJA (KLASA, nie instancja — zakaz dwoch sciezek tej samej prawdy):
+1. Pakiet `switchgear/` jest JEDYNYM kanonem rodzin. Modul S1
+   `switchgear_families.py` zostaje WTOPIONY w pakiet i USUNIETY:
+   dane rodzin (z kartami zweryfikowanymi 2026-08-14, w tym korekta RXD na
+   izolacje powietrzna) przechodza do `families.py` w idiomie pakietu
+   (statusy zrodel wg polityki, nie rownolegla flaga), architektura i
+   `FactoryConfiguration` docho dza jako nowe elementy pakietu, walidator
+   `familySupports` jako API pakietu, testy S1 przepiete na pakiet.
+2. API: BEZ nowych rownoleglych tras rodzin — istniejaca
+   `GET /api/catalog/switchgear-families` rozszerzana ADDYTYWNIE
+   (architecture, konfiguracje fabryczne jako subzasob), macierz cyklu zycia
+   aktualizowana.
+3. Kreator (S3) konsumuje WYLACZNIE ten kanon; `CompleteMvBayTemplate` jest
+   nosnikiem katalogowego pola; generator mini-SLD (S4) czyta BOM z szablonu
+   pola; ENM (S5) przez `domain_operations_v2`.
+
+Ta lekcja idzie do rejestru: moj wlasny S1 powtorzyl blad metodyczny
+„instancja zamiast klasy" (nowy modul bez inwentarza istniejacego mechanizmu)
+— wykryty pomiarem przed scaleniem czegokolwiek do kreatora, naprawiany
+scaleniem kanonow, nie wspolistnieniem.
