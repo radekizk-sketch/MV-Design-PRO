@@ -100,5 +100,12 @@ def match_user_network(
         )
 
     # Sort by confidence descending
-    matches.sort(key=lambda m: float(m["confidence_pct"]), reverse=True)
+    matches.sort(key=_confidence_pct, reverse=True)
     return matches
+
+
+def _confidence_pct(match: dict[str, object]) -> float:
+    """Sort key: `confidence_pct` is always a float (built via `round(...)` above);
+    narrowed explicitly because the dict's value type is `object`."""
+    value = match["confidence_pct"]
+    return value if isinstance(value, int | float) else 0.0

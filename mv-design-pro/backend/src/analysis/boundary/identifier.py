@@ -235,7 +235,13 @@ class BoundaryIdentifier:
 
     @staticmethod
     def _as_float(value: object) -> float:
+        # case_params payload is untrusted/arbitrary JSON-like data (Mapping bez
+        # parametrów typu) — narrowing do typów akceptowanych przez float() zamiast
+        # zgadywania; nienumeryczne wejście (dict/list/inny obiekt) trafia do tej
+        # samej gałęzi 0.0, którą wcześniej łapał wyjątek TypeError.
+        if value is None or not isinstance(value, int | float | str):
+            return 0.0
         try:
-            return float(value) if value is not None else 0.0
-        except (TypeError, ValueError):
+            return float(value)
+        except ValueError:
             return 0.0

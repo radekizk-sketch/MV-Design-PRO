@@ -163,7 +163,18 @@ class InspectorExporter:
 
         # Kompiluj do PDF
         try:
-            pdf_content = self._compile_to_pdf(tex_result.content)
+            tex_content = tex_result.content
+            # export_tex() (wywolane wyzej, success=True) zawsze ustawia content
+            # na latex_representation (str) — ExportResult.content jest unia
+            # str | bytes dzielona z eksportem PDF (bytes), tu narrowing do str.
+            if not isinstance(tex_content, str):
+                return ExportResult(
+                    format="pdf",
+                    content=b"",
+                    success=False,
+                    error_message="LaTeX export nie zwrocil tekstu (nieoczekiwany typ).",
+                )
+            pdf_content = self._compile_to_pdf(tex_content)
             return ExportResult(
                 format="pdf",
                 content=pdf_content,
@@ -454,7 +465,12 @@ def export_to_pdf(document: ProofDocument) -> bytes:
     result = InspectorExporter(document).export_pdf()
     if not result.success:
         raise RuntimeError(f"PDF export failed: {result.error_message}")
-    return bytes(result.content)
+    content = result.content
+    # export_pdf() (success=True) zawsze ustawia content na bytes skompilowanego
+    # PDF — ExportResult.content jest unia str | bytes dzielona z eksportem tex
+    # (str), tu narrowing do bytes.
+    assert isinstance(content, bytes), "PDF export musi zwracac bytes"
+    return bytes(content)
 
 
 def export_to_docx(document: ProofDocument) -> bytes:
@@ -476,7 +492,12 @@ def export_to_docx(document: ProofDocument) -> bytes:
     result = InspectorExporter(document).export_docx()
     if not result.success:
         raise RuntimeError(f"DOCX export failed: {result.error_message}")
-    return bytes(result.content)
+    content = result.content
+    # export_docx() (success=True) zawsze ustawia content na bytes dokumentu
+    # DOCX — ExportResult.content jest unia str | bytes dzielona z eksportem tex
+    # (str), tu narrowing do bytes.
+    assert isinstance(content, bytes), "DOCX export musi zwracac bytes"
+    return bytes(content)
 
 
 def is_pdf_export_available() -> bool:

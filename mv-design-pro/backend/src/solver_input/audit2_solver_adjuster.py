@@ -20,6 +20,7 @@ Brak danych = brak adjustment (graph passes through unchanged).
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Any
 
@@ -193,6 +194,7 @@ def apply_audit2_to_network_model(
         or (graph.get("branches") if isinstance(graph, dict) else None)
         or {}
     )
+    branches_iter: Iterable[tuple[Any, Any]]
     if isinstance(branches, dict):
         branches_iter = branches.items()
     else:
@@ -296,6 +298,7 @@ def apply_audit2_to_network_model(
         or (graph.get("inverter_sources") if isinstance(graph, dict) else None)
         or {}
     )
+    inv_iter: Iterable[tuple[Any, Any]]
     if isinstance(inverter_sources, dict):
         inv_iter = inverter_sources.items()
     else:

@@ -350,7 +350,15 @@ def _sha256_hex(payload: bytes) -> str:
 
 
 def _pack_fingerprint(files: list[dict[str, object]]) -> str:
-    concatenated_hashes = "".join(file_entry["sha256"] for file_entry in files)
+    hashes: list[str] = []
+    for file_entry in files:
+        sha256_value = file_entry["sha256"]
+        # Zawsze str — pochodzi z _sha256_hex() przy budowie wpisu pliku (linie
+        # 77/150). Asercja narrowing zamiast zgadywania typu; awaria oznaczałaby
+        # regresję kontraktu wpisu manifestu, nie sytuację do cichego pominięcia.
+        assert isinstance(sha256_value, str), "wpis manifestu: 'sha256' musi być str"
+        hashes.append(sha256_value)
+    concatenated_hashes = "".join(hashes)
     return hashlib.sha256(concatenated_hashes.encode("utf-8")).hexdigest()
 
 
