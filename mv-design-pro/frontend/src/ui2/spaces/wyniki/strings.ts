@@ -9,6 +9,7 @@ export const WYNIKI_WARSZTAT_STRINGS = {
   zakladkaRozplyw: 'Rozpływ mocy',
   zakladkaRegulacjaOltc: 'Regulacja OLTC',
   zakladkaZbieznosc: 'Zbieżność rozpływu',
+  zakladkaKontyngencje: 'Kontyngencje N-1',
   zakladkaZwarcia: 'Zwarcia',
   zakladkaKoordynacja: 'Koordynacja zabezpieczeń',
   zakladkaSkladowe: 'Składowe symetryczne',
