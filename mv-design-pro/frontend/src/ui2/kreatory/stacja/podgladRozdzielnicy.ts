@@ -226,7 +226,7 @@ const JEDNOSTKI = ['kVA', 'MVA', 'kV', 'kA', 'kW', 'MW', 'Hz', 'A', 'V', 'm'];
 export function sklejJednostki(tekst: string): string {
   return tekst.replace(
     new RegExp(`(\\d) (${JEDNOSTKI.join('|')})\\b`, 'g'),
-    (_m, liczba: string, jednostka: string) => `${liczba} ${jednostka}`,
+    (_m, liczba: string, jednostka: string) => `${liczba}\u00a0${jednostka}`,
   );
 }
 

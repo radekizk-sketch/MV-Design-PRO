@@ -139,7 +139,7 @@ function tekstRysunku(container: HTMLElement): string {
     // Spacja nierozdzielająca (liczba↔jednostka) czyta się na rysunku jak
     // zwykła spacja — normalizujemy, żeby asercje mówiły o TREŚCI. Jej
     // obecność bramkuje osobny test niżej („jednostka nie odrywa się").
-    .replace(/ /g, ' ');
+    .replace(/\u00a0/g, ' ');
 }
 
 function symboleWRenderze(
@@ -506,10 +506,10 @@ describe('SLD-GEN-POLA — etykieta pola czyta dane katalogu', () => {
   it('jednostka NIE odrywa się od liczby przy zawijaniu (spacja nierozdzielająca)', () => {
     // Zapis „…17,5" / „kV" w nowym wierszu jest w rysunku technicznym błędem
     // czytelności; pilnuje tego skleja jednostek, nie szczęśliwa długość slotu.
-    expect(sklejJednostki('Rozłącznik LBS 17,5 kV')).toBe('Rozłącznik LBS 17,5 kV');
+    expect(sklejJednostki('Rozłącznik LBS 17,5 kV')).toBe('Rozłącznik LBS 17,5\u00a0kV');
     const wiersze = zawinTekst('Rozłącznik bezpiecznikowy ETI VV 17,5 kV', 8, 60);
     expect(wiersze.some((w) => w.trim() === 'kV')).toBe(false);
-    expect(wiersze.join(' ')).toContain('17,5 kV');
+    expect(wiersze.join(' ')).toContain('17,5\u00a0kV');
   });
 
   it('znamiona pomijają wielkość, której pozycja katalogowa nie niesie (zero domysłu)', () => {

@@ -935,7 +935,6 @@ export function KreatorStacjiSnNn() {
     // `przeliczPodglad` celowo poza zależnościami: zmienia tożsamość przy każdej
     // zmianie `dane`, a to samo źródło zmian niesie już `payloadWerdyktu` —
     // wpisanie go tutaj podwajałoby zapytania bez żadnej nowej informacji.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [krok, payloadWerdyktu]);
 
   /** Krok 0 — wypełnienie formularza wybranym szablonem (wszystko edytowalne). */
