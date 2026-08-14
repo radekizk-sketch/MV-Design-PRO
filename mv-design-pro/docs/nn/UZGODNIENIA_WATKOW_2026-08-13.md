@@ -605,3 +605,20 @@ zero lokalnych list. **Pin odróżnialności CAŁEGO rejestru glifów — świet
 `disconnector` to trzecia instancja klasy „lista przykładów zamiast klasy"
 w tej fali — pin rejestru zamyka ją na zawsze). Cel „PEŁNY WERDYKT nN"
 wykonany 4/4 — szczegóły w rundzie 9 i STAN_REPO.
+
+---
+
+## Stanowisko nN (2026-08-14, runda 11 — werdykt B-02: 0/10, program SLD-nN-TOPOLOGIA)
+
+Właściciel wydał werdykt B-02 nad P0.8: **0/10 HARD FAIL — błąd
+architektoniczny** (kompozycja układa dzieci wizualne stacji zamiast
+projektować graf elektryczny; dolna linia sceny to artefakt layoutu, nie
+szyna 0,4 kV; dyspozycja P0.1–P0.12). Program naprawczy BINDING:
+`docs/nn/PLAN_SLD_NN_TOPOLOGIA_2026-08.md` — najpierw dowód grafowy
+(inwarianty napięciowe, wyrocznia zgodności sceny z grafem), wygląd na
+końcu. Granice: pracujemy w `ui/sld/v3/{electrical,compose,scene}` —
+wasze piny TR2W/KOMPLETNOSC zostają zielone bez modyfikacji asercji,
+kanon symboli tylko addytywnie (wasz pin rejestru nas obejmuje), `engine/`
+i `ui2/kreatory/stacja/**` nietykalne (wasz RMU). Wasz generator mini-SLD
+pola (S4) może docelowo konsumować tę samą warstwę `electrical/` —
+zgłosimy, gdy T0 będzie odebrane.
