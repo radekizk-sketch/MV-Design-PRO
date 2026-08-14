@@ -7,7 +7,8 @@ Zakres:
 1. Schema nowych klas (LVBreakerMcbType, LVFuseLinkType) + pola addytywne
    LVCableType/LVApparatusType (round-trip to_dict/from_dict).
 2. Kontrakty materializacji APARAT_NN_MCB/WKLADKA_NN kompletne.
-3. Seedy ladują się przez CatalogRepository: MCB 30 rekordów, gG 30 rekordów.
+3. Seedy ladują się przez CatalogRepository: MCB 60 rekordów (2 rodziny Icn
+   6/10 kA, karta NAPRAWA-A §0.2.a), gG 30 rekordów.
 4. Uzupelnienia pol cieplnych 17 kabli nN — spojnosc temperatur z izolacja;
    jth_1s_a_per_mm2 krzyzowo zweryfikowany wobec derive_k_iec60949 (±0,6%).
 5. API routes /lv-breaker-mcb-types i /lv-fuse-link-types zwracają rekordy.
@@ -427,19 +428,36 @@ class TestMaterializationContracts:
 
 
 class TestSeedsLoadThroughRepository:
-    def test_mcb_seed_has_30_records(self) -> None:
+    def test_mcb_seed_has_60_records_two_icn_families(self) -> None:
+        """FLIP (karta NAPRAWA-A §0.2.a): pinowana liczba byla 30 (jedna rodzina
+        Icn=6 kA) — teraz 60 (DWIE rownolegle rodziny, Icn=6 kA i Icn=10 kA,
+        po 10 pradow x 3 klasy kazda), dodane ADDYTYWNIE (30 oryginalnych
+        rekordow `mcb_nn_{klasa}{In}a` niezmienionych, plus 30 nowych
+        `..._10ka`) — poszerza pule kandydatow zdolnych spelnic kryterium
+        Icu>=Ik''max (ZNALEZISKO BRAMKI #4)."""
         repo = get_default_mv_catalog()
         items = repo.list_lv_breaker_mcb_types()
-        assert len(items) == 30
+        assert len(items) == 60
 
     def test_mcb_seed_covers_currents_and_curves(self) -> None:
+        """FLIP (karta NAPRAWA-A §0.2.a): `icn_ka` nie jest juz jednolite dla
+        calej serii — dokladnie DWIE wartosci wspoldziela ta sama siatka
+        pradow/klas (6 kA rodzina bazowa P0.2, 10 kA rodzina dodana kartą
+        NAPRAWA-A), obie z tym samym pokryciem In/klasa."""
         repo = get_default_mv_catalog()
         items = repo.list_lv_breaker_mcb_types()
         currents = {item.in_a for item in items}
         curves = {item.curve_class for item in items}
         assert currents == {6.0, 10.0, 13.0, 16.0, 20.0, 25.0, 32.0, 40.0, 50.0, 63.0}
         assert curves == {"B", "C", "D"}
-        assert all(item.icn_ka == 6.0 for item in items)
+        assert {item.icn_ka for item in items} == {6.0, 10.0}
+        items_6ka = [item for item in items if item.icn_ka == 6.0]
+        items_10ka = [item for item in items if item.icn_ka == 10.0]
+        assert len(items_6ka) == 30
+        assert len(items_10ka) == 30
+        assert {(item.in_a, item.curve_class) for item in items_6ka} == {
+            (item.in_a, item.curve_class) for item in items_10ka
+        }, "Rodzina 10 kA musi pokrywac DOKLADNIE tę samą siatkę In x klasa co rodzina 6 kA"
         assert all(item.u_n_kv == 0.4 for item in items)
 
     def test_gg_seed_has_30_records(self) -> None:
@@ -563,14 +581,27 @@ class TestLvCableThermalFieldsConsistency:
                 item.jth_1s_a_per_mm2,
             )
 
-    def test_r0_x0_and_return_conductor_left_none(self) -> None:
-        """Brak danych producenta pozostaje jawny — zero fabrykacji (P0.2 §0.4)."""
+    def test_r0_x0_left_none_return_conductor_now_populated(self) -> None:
+        """FLIP (karta NAPRAWA-A §0.1): r0/x0 (skladowa zerowa) NADAL brak
+        danych producenta — pozostaje jawny None, zero fabrykacji (P0.2 §0.4,
+        NIEZMIENIONE przez ta karte — inna klasa danych, inny konsument).
+        Zyla powrotna PE/PEN NATOMIAST byla dawniej rowniez `None` dla
+        WSZYSTKICH 17 pozycji (blokujac fail-closed `RouteExtractionError`
+        w `application.analyses.fault_loop.route` dla kazdego punktu nN poza
+        szyna transformatora — ZNALEZISKO BRAMKI #1) — karta NAPRAWA-A
+        populuje ja dla WSZYSTKICH 17 pozycji (tozsamosc konstrukcyjna R +
+        dane producenta X, zob. `_RETURN_CONDUCTOR_NOTE_NN` w
+        `mv_auxiliary_catalog.py`)."""
         repo = get_default_mv_catalog()
         for item in repo.list_lv_cable_types():
             assert item.r0_ohm_per_km is None, item.id
             assert item.x0_ohm_per_km is None, item.id
-            assert item.return_conductor_cross_section_mm2 is None, item.id
-            assert item.return_conductor_r_ohm_per_km_20c is None, item.id
+            assert item.return_conductor_cross_section_mm2 == item.cross_section_mm2, item.id
+            assert item.return_conductor_r_ohm_per_km_20c == item.r_ohm_per_km, item.id
+            assert item.return_conductor_x_ohm_per_km == item.x_ohm_per_km, item.id
+            assert item.return_conductor_r_ohm_per_km_20c > 0.0, item.id
+            assert item.return_conductor_x_ohm_per_km > 0.0, item.id
+            assert item.return_conductor_cross_section_mm2 > 0.0, item.id
 
     def test_standard_field_populated(self) -> None:
         repo = get_default_mv_catalog()
@@ -596,12 +627,15 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
 
 class TestApiRoutes:
     def test_lv_breaker_mcb_types_route(self, client: TestClient) -> None:
+        """FLIP (karta NAPRAWA-A §0.2.a): 30 → 60 rekordow (patrz
+        `test_mcb_seed_has_60_records_two_icn_families`)."""
         response = client.get("/api/catalog/lv-breaker-mcb-types")
         assert response.status_code == 200
         payload = response.json()
         assert isinstance(payload, list)
-        assert len(payload) == 30
+        assert len(payload) == 60
         assert any(item["id"] == "mcb_nn_c16a" for item in payload)
+        assert any(item["id"] == "mcb_nn_c16a_10ka" for item in payload)
 
     def test_lv_fuse_link_types_route(self, client: TestClient) -> None:
         response = client.get("/api/catalog/lv-fuse-link-types")

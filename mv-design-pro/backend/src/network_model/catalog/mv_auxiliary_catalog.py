@@ -1,5 +1,65 @@
 from __future__ import annotations
 
+# Karta NAPRAWA-A (§0.1): dane żyły powrotnej PE/PEN dla WSZYSTKICH 17 pozycji
+# kab_nn_* — brakowały od P0.2 (`return_conductor_r_ohm_per_km_20c`/
+# `return_conductor_x_ohm_per_km` oba `None` dla każdej pozycji), blokując
+# fail-closed pętlę zwarcia/SWZ/dobór zabezpieczeń w KAŻDYM punkcie nN poza
+# szyną transformatora (`application.analyses.fault_loop.route.
+# RouteExtractionError`, zob. `tests/e2e/test_nn_full_chain.py`, ZNALEZISKO
+# BRAMKI #1/#4).
+#
+# Wszystkie 17 pozycji to konstrukcje NIEREDUKOWANE: oznaczenie "4xS" (albo
+# "5xS" dla `kab_nn_5x35_cu`) BEZ zapisu "/" redukcji, który producenci
+# stosują WYŁĄCZNIE dla żyły powrotnej zmniejszonej (np. kable SN
+# "3x120/70" w `mv_cable_line_catalog.py`) — redukcja jest zawsze jawnie
+# zapisana w oznaczeniu handlowym, jej brak oznacza, że WSZYSTKIE żyły mają
+# jednakowy przekrój. Żyła powrotna (PEN dla rekordów 4-żyłowych
+# "3L+PEN", PE dla 5-żyłowej "3L+N+PE" `kab_nn_5x35_cu`) jest zatem kolejną
+# (4./5.) żyłą kabla, O TYM SAMYM przekroju i materiale co żyły fazowe:
+#
+#   R20_powrotna = R20_fazowa — TOŻSAMOŚĆ KONSTRUKCYJNA (§0.1 karty): ten sam
+#   metal, ten sam przekrój, ta sama długość ⇒ ta sama rezystancja (IEC 60228)
+#   — żaden pomiar nie może dać innej wartości dla identycznej żyły w tym
+#   samym płaszczu kabla.
+#
+#   X_powrotna = X_fazowa — Z DANYCH PRODUCENTA (§0.1 karty, nie tożsamość):
+#   NKT i Tele-Fonika Kable publikują JEDNĄ wartość reaktancji na cały typ
+#   kabla (bez podziału faza/PEN/PE) — konsekwencja symetrycznej geometrii
+#   wiązki żył o jednakowym przekroju; ta sama opublikowana wartość dotyczy
+#   dowolnej pary żył w wiązce (nie ma osobnej kolumny "X PEN"/"X PE" w
+#   ŻADNYM z przejrzanych katalogów producenckich dla tej klasy konstrukcji).
+#
+# Zasada konstrukcji nieredukowanej (podstawa powyższego wnioskowania)
+# potwierdzona PODWÓJNIE, niezależnie od siebie: NKT YAKY/YAKYżo 0,6/1kV
+# oraz Tele-Fonika Kable YAKY 0,6/1kV (MK-22-01-2018) — obie te same firmy
+# stosują zapis "/" redukcji dla kabli SN w INNYCH swoich katalogach, a dla
+# całej serii YAKY 16-240 mm² (0,6/1kV) go NIE stosują; Eltrim Kable
+# YKXS(żo) 0,6/1kV potwierdza niezależnie ten sam wzorzec zapisu dla rodziny
+# XLPE. Ogólna zasada konstrukcyjna (żyła N/PE pełnowymiarowa, chyba że
+# jawnie zredukowana) dodatkowo opisana w materiale szkoleniowym SEP:
+# A. Rynkowski, "Kable elektroenergetyczne — znaczenie i interpretacja
+# danych". `return_conductor_material` NIE jest tu ustawiane — `LVCableType`
+# (w odróżnieniu od SN `CableType`) świadomie NIE ma tego pola (decyzja karty
+# P0.6 udokumentowana przy `MATERIALIZATION_CONTRACTS[KABEL_NN]` w
+# `network_model/catalog/types.py`) — dopisanie go do `params` byłoby martwym
+# wpisem bez konsumenta (zero fabrykacji fantomowych pól).
+_RETURN_CONDUCTOR_NOTE_NN: str = (
+    "Żyła powrotna PEN/PE = kolejna (4./5.) żyła kabla, o TYM SAMYM przekroju "
+    "i materiale co żyły fazowe (konstrukcja NIEREDUKOWANA — oznaczenie bez "
+    "zapisu '/' redukcji, w odróżnieniu od kabli z żyłą zmniejszoną). "
+    "R20 żyły powrotnej z tożsamości konstrukcyjnej (IEC 60228: ten sam "
+    "metal/przekrój/długość ⇒ ta sama rezystancja). X żyły powrotnej z "
+    "danych producenta — NKT/Tele-Fonika/Eltrim publikują JEDNĄ wartość "
+    "reaktancji na cały kabel (symetryczna geometria wiązki), stosowaną "
+    "identycznie do dowolnej pary żył. Zasada konstrukcji nieredukowanej "
+    "potwierdzona podwójnie i niezależnie: NKT YAKY/YAKYżo 0,6/1kV + "
+    "Tele-Fonika Kable YAKY 0,6/1kV (MK-22-01-2018) dla rodziny AL; Eltrim "
+    "Kable YKXS(żo) 0,6/1kV niezależnie dla rodziny XLPE. Zasada "
+    "konstrukcyjna ogólna dodatkowo w materiale szkoleniowym SEP: "
+    'A. Rynkowski, "Kable elektroenergetyczne — znaczenie i interpretacja '
+    'danych". Karta NAPRAWA-A.'
+)
+
 
 def get_all_lv_cable_types() -> list[dict]:
     """
@@ -29,12 +89,16 @@ def get_all_lv_cable_types() -> list[dict]:
                 "cross_section_mm2": 16.0,
                 "number_of_cores": 4,
                 "core_functions": "3L+PEN",
+                "return_conductor_cross_section_mm2": 16.0,
+                "return_conductor_r_ohm_per_km_20c": 1.910,
+                "return_conductor_x_ohm_per_km": 0.077,
                 "max_temperature_c": 70.0,
                 "short_circuit_temperature_c": 160.0,
                 "jth_1s_a_per_mm2": 76.09,
                 "standard": "IEC 60502-1",
                 "manufacturer": "Tele-Fonika Kable",
                 "source_reference": "Tele-Fonika Kable / IEC 60502-1 / dane referencyjne",
+                "verification_note": _RETURN_CONDUCTOR_NOTE_NN,
             },
         },
         {
@@ -50,12 +114,16 @@ def get_all_lv_cable_types() -> list[dict]:
                 "cross_section_mm2": 25.0,
                 "number_of_cores": 4,
                 "core_functions": "3L+PEN",
+                "return_conductor_cross_section_mm2": 25.0,
+                "return_conductor_r_ohm_per_km_20c": 1.200,
+                "return_conductor_x_ohm_per_km": 0.075,
                 "max_temperature_c": 70.0,
                 "short_circuit_temperature_c": 160.0,
                 "jth_1s_a_per_mm2": 76.09,
                 "standard": "IEC 60502-1",
                 "manufacturer": "Tele-Fonika Kable",
                 "source_reference": "Tele-Fonika Kable / IEC 60502-1 / dane referencyjne",
+                "verification_note": _RETURN_CONDUCTOR_NOTE_NN,
             },
         },
         {
@@ -71,12 +139,16 @@ def get_all_lv_cable_types() -> list[dict]:
                 "cross_section_mm2": 35.0,
                 "number_of_cores": 4,
                 "core_functions": "3L+PEN",
+                "return_conductor_cross_section_mm2": 35.0,
+                "return_conductor_r_ohm_per_km_20c": 0.868,
+                "return_conductor_x_ohm_per_km": 0.073,
                 "max_temperature_c": 70.0,
                 "short_circuit_temperature_c": 160.0,
                 "jth_1s_a_per_mm2": 76.09,
                 "standard": "IEC 60502-1",
                 "manufacturer": "Tele-Fonika Kable",
                 "source_reference": "Tele-Fonika Kable / IEC 60502-1 / dane referencyjne",
+                "verification_note": _RETURN_CONDUCTOR_NOTE_NN,
             },
         },
         {
@@ -92,12 +164,16 @@ def get_all_lv_cable_types() -> list[dict]:
                 "cross_section_mm2": 50.0,
                 "number_of_cores": 4,
                 "core_functions": "3L+PEN",
+                "return_conductor_cross_section_mm2": 50.0,
+                "return_conductor_r_ohm_per_km_20c": 0.641,
+                "return_conductor_x_ohm_per_km": 0.072,
                 "max_temperature_c": 70.0,
                 "short_circuit_temperature_c": 160.0,
                 "jth_1s_a_per_mm2": 76.09,
                 "standard": "IEC 60502-1",
                 "manufacturer": "Tele-Fonika Kable",
                 "source_reference": "Tele-Fonika Kable / IEC 60502-1 / dane referencyjne",
+                "verification_note": _RETURN_CONDUCTOR_NOTE_NN,
             },
         },
         {
@@ -113,12 +189,16 @@ def get_all_lv_cable_types() -> list[dict]:
                 "cross_section_mm2": 70.0,
                 "number_of_cores": 4,
                 "core_functions": "3L+PEN",
+                "return_conductor_cross_section_mm2": 70.0,
+                "return_conductor_r_ohm_per_km_20c": 0.443,
+                "return_conductor_x_ohm_per_km": 0.072,
                 "max_temperature_c": 70.0,
                 "short_circuit_temperature_c": 160.0,
                 "jth_1s_a_per_mm2": 76.09,
                 "standard": "IEC 60502-1",
                 "manufacturer": "Tele-Fonika",
                 "source_reference": "Tele-Fonika Kable / IEC 60502-1 / dane referencyjne",
+                "verification_note": _RETURN_CONDUCTOR_NOTE_NN,
             },
         },
         {
@@ -134,12 +214,16 @@ def get_all_lv_cable_types() -> list[dict]:
                 "cross_section_mm2": 95.0,
                 "number_of_cores": 4,
                 "core_functions": "3L+PEN",
+                "return_conductor_cross_section_mm2": 95.0,
+                "return_conductor_r_ohm_per_km_20c": 0.320,
+                "return_conductor_x_ohm_per_km": 0.070,
                 "max_temperature_c": 70.0,
                 "short_circuit_temperature_c": 160.0,
                 "jth_1s_a_per_mm2": 76.09,
                 "standard": "IEC 60502-1",
                 "manufacturer": "Tele-Fonika Kable",
                 "source_reference": "Tele-Fonika Kable / IEC 60502-1 / dane referencyjne",
+                "verification_note": _RETURN_CONDUCTOR_NOTE_NN,
             },
         },
         {
@@ -155,12 +239,16 @@ def get_all_lv_cable_types() -> list[dict]:
                 "cross_section_mm2": 120.0,
                 "number_of_cores": 4,
                 "core_functions": "3L+PEN",
+                "return_conductor_cross_section_mm2": 120.0,
+                "return_conductor_r_ohm_per_km_20c": 0.253,
+                "return_conductor_x_ohm_per_km": 0.069,
                 "max_temperature_c": 70.0,
                 "short_circuit_temperature_c": 160.0,
                 "jth_1s_a_per_mm2": 76.09,
                 "standard": "IEC 60502-1",
                 "manufacturer": "Tele-Fonika",
                 "source_reference": "Tele-Fonika Kable / IEC 60502-1 / dane referencyjne",
+                "verification_note": _RETURN_CONDUCTOR_NOTE_NN,
             },
         },
         {
@@ -176,12 +264,16 @@ def get_all_lv_cable_types() -> list[dict]:
                 "cross_section_mm2": 150.0,
                 "number_of_cores": 4,
                 "core_functions": "3L+PEN",
+                "return_conductor_cross_section_mm2": 150.0,
+                "return_conductor_r_ohm_per_km_20c": 0.206,
+                "return_conductor_x_ohm_per_km": 0.068,
                 "max_temperature_c": 70.0,
                 "short_circuit_temperature_c": 160.0,
                 "jth_1s_a_per_mm2": 76.09,
                 "standard": "IEC 60502-1",
                 "manufacturer": "Tele-Fonika Kable",
                 "source_reference": "Tele-Fonika Kable / IEC 60502-1 / dane referencyjne",
+                "verification_note": _RETURN_CONDUCTOR_NOTE_NN,
             },
         },
         {
@@ -197,12 +289,16 @@ def get_all_lv_cable_types() -> list[dict]:
                 "cross_section_mm2": 185.0,
                 "number_of_cores": 4,
                 "core_functions": "3L+PEN",
+                "return_conductor_cross_section_mm2": 185.0,
+                "return_conductor_r_ohm_per_km_20c": 0.164,
+                "return_conductor_x_ohm_per_km": 0.067,
                 "max_temperature_c": 70.0,
                 "short_circuit_temperature_c": 160.0,
                 "jth_1s_a_per_mm2": 76.09,
                 "standard": "IEC 60502-1",
                 "manufacturer": "Tele-Fonika Kable",
                 "source_reference": "Tele-Fonika Kable / IEC 60502-1 / dane referencyjne",
+                "verification_note": _RETURN_CONDUCTOR_NOTE_NN,
             },
         },
         {
@@ -218,12 +314,16 @@ def get_all_lv_cable_types() -> list[dict]:
                 "cross_section_mm2": 240.0,
                 "number_of_cores": 4,
                 "core_functions": "3L+PEN",
+                "return_conductor_cross_section_mm2": 240.0,
+                "return_conductor_r_ohm_per_km_20c": 0.125,
+                "return_conductor_x_ohm_per_km": 0.066,
                 "max_temperature_c": 70.0,
                 "short_circuit_temperature_c": 160.0,
                 "jth_1s_a_per_mm2": 76.09,
                 "standard": "IEC 60502-1",
                 "manufacturer": "Tele-Fonika Kable",
                 "source_reference": "Tele-Fonika Kable / IEC 60502-1 / dane referencyjne",
+                "verification_note": _RETURN_CONDUCTOR_NOTE_NN,
             },
         },
         # -----------------------------------------------------------------------
@@ -242,12 +342,19 @@ def get_all_lv_cable_types() -> list[dict]:
                 "cross_section_mm2": 35.0,
                 "number_of_cores": 5,
                 "core_functions": "3L+N+PE",
+                "return_conductor_cross_section_mm2": 35.0,
+                "return_conductor_r_ohm_per_km_20c": 0.524,
+                "return_conductor_x_ohm_per_km": 0.082,
                 "max_temperature_c": 70.0,
                 "short_circuit_temperature_c": 160.0,
                 "jth_1s_a_per_mm2": 114.84,
                 "standard": "IEC 60502-1",
                 "manufacturer": "NKT",
                 "source_reference": "NKT Cables / IEC 60502-1 / dane referencyjne",
+                "verification_note": _RETURN_CONDUCTOR_NOTE_NN
+                + " (rekord 5-żyłowy: żyła powrotna = PE, 5. żyła, NIE N — obwód "
+                "pętli zwarcia L-PE tego kontraktu czyta 'żyłę powrotną' generycznie, "
+                "niezależnie od układu TN-S/TN-C-S).",
             },
         },
         {
@@ -263,12 +370,16 @@ def get_all_lv_cable_types() -> list[dict]:
                 "cross_section_mm2": 50.0,
                 "number_of_cores": 4,
                 "core_functions": "3L+PEN",
+                "return_conductor_cross_section_mm2": 50.0,
+                "return_conductor_r_ohm_per_km_20c": 0.387,
+                "return_conductor_x_ohm_per_km": 0.079,
                 "max_temperature_c": 70.0,
                 "short_circuit_temperature_c": 160.0,
                 "jth_1s_a_per_mm2": 114.84,
                 "standard": "IEC 60502-1",
                 "manufacturer": "NKT",
                 "source_reference": "NKT Cables / IEC 60502-1 / dane referencyjne",
+                "verification_note": _RETURN_CONDUCTOR_NOTE_NN,
             },
         },
         {
@@ -284,12 +395,16 @@ def get_all_lv_cable_types() -> list[dict]:
                 "cross_section_mm2": 70.0,
                 "number_of_cores": 4,
                 "core_functions": "3L+PEN",
+                "return_conductor_cross_section_mm2": 70.0,
+                "return_conductor_r_ohm_per_km_20c": 0.268,
+                "return_conductor_x_ohm_per_km": 0.076,
                 "max_temperature_c": 70.0,
                 "short_circuit_temperature_c": 160.0,
                 "jth_1s_a_per_mm2": 114.84,
                 "standard": "IEC 60502-1",
                 "manufacturer": "NKT",
                 "source_reference": "NKT Cables / IEC 60502-1 / dane referencyjne",
+                "verification_note": _RETURN_CONDUCTOR_NOTE_NN,
             },
         },
         {
@@ -305,12 +420,16 @@ def get_all_lv_cable_types() -> list[dict]:
                 "cross_section_mm2": 95.0,
                 "number_of_cores": 4,
                 "core_functions": "3L+PEN",
+                "return_conductor_cross_section_mm2": 95.0,
+                "return_conductor_r_ohm_per_km_20c": 0.193,
+                "return_conductor_x_ohm_per_km": 0.074,
                 "max_temperature_c": 70.0,
                 "short_circuit_temperature_c": 160.0,
                 "jth_1s_a_per_mm2": 114.84,
                 "standard": "IEC 60502-1",
                 "manufacturer": "NKT",
                 "source_reference": "NKT Cables / IEC 60502-1 / dane referencyjne",
+                "verification_note": _RETURN_CONDUCTOR_NOTE_NN,
             },
         },
         {
@@ -326,12 +445,16 @@ def get_all_lv_cable_types() -> list[dict]:
                 "cross_section_mm2": 120.0,
                 "number_of_cores": 4,
                 "core_functions": "3L+PEN",
+                "return_conductor_cross_section_mm2": 120.0,
+                "return_conductor_r_ohm_per_km_20c": 0.153,
+                "return_conductor_x_ohm_per_km": 0.073,
                 "max_temperature_c": 70.0,
                 "short_circuit_temperature_c": 160.0,
                 "jth_1s_a_per_mm2": 114.84,
                 "standard": "IEC 60502-1",
                 "manufacturer": "NKT",
                 "source_reference": "NKT Cables / IEC 60502-1 / dane referencyjne",
+                "verification_note": _RETURN_CONDUCTOR_NOTE_NN,
             },
         },
         # -----------------------------------------------------------------------
@@ -350,12 +473,16 @@ def get_all_lv_cable_types() -> list[dict]:
                 "cross_section_mm2": 35.0,
                 "number_of_cores": 4,
                 "core_functions": "3L+PEN",
+                "return_conductor_cross_section_mm2": 35.0,
+                "return_conductor_r_ohm_per_km_20c": 0.524,
+                "return_conductor_x_ohm_per_km": 0.078,
                 "max_temperature_c": 90.0,
                 "short_circuit_temperature_c": 250.0,
                 "jth_1s_a_per_mm2": 142.87,
                 "standard": "IEC 60502-1",
                 "manufacturer": "Tele-Fonika Kable",
                 "source_reference": "Tele-Fonika Kable / IEC 60502-1 / dane referencyjne",
+                "verification_note": _RETURN_CONDUCTOR_NOTE_NN,
             },
         },
         {
@@ -371,12 +498,16 @@ def get_all_lv_cable_types() -> list[dict]:
                 "cross_section_mm2": 70.0,
                 "number_of_cores": 4,
                 "core_functions": "3L+PEN",
+                "return_conductor_cross_section_mm2": 70.0,
+                "return_conductor_r_ohm_per_km_20c": 0.268,
+                "return_conductor_x_ohm_per_km": 0.072,
                 "max_temperature_c": 90.0,
                 "short_circuit_temperature_c": 250.0,
                 "jth_1s_a_per_mm2": 142.87,
                 "standard": "IEC 60502-1",
                 "manufacturer": "Tele-Fonika Kable",
                 "source_reference": "Tele-Fonika Kable / IEC 60502-1 / dane referencyjne",
+                "verification_note": _RETURN_CONDUCTOR_NOTE_NN,
             },
         },
     ]
@@ -449,6 +580,31 @@ def get_all_lv_apparatus_types() -> list[dict]:
     KOMBINACJI rozlacznik+wkladka NH (Jean Muller NH Fuse-Switch-Disconnectors
     katalog, Ue=AC690V) niesie teraz osobne pole `conditional_sc_current_ka`
     (poprzednio blednie zapisywany w i_cu_ka — przeniesione, nie zdublowane).
+
+    KARTA NAPRAWA-A (§0.2.b) — SWIADOMIE NIE dodano tu nastaw wyzwalacza
+    elektronicznego MCCB (Ir/Isd/Ii/tr/tsd) dla WYLACZNIK_GLOWNY/
+    WYLACZNIK_ODPLYWOWY. Karta warunkowala populacje TYLKO jesli istnieje
+    JUZ DZIALAJACY konsument w produkcji — audyt kontraktu wykazal, ze GO
+    NIE MA:
+      1. `network_model/solvers/protection_lv_curves.py::compute_mccb_point`
+         przyjmuje skonkretyzowane skalary (ir_a/isd_a/ii_a/tr_s/tsd_s), ale
+         ma ZERO wywolan produkcyjnych poza wlasnym modulem (grep w `src/`) —
+         MCCB_ELECTRONIC (P0.7) istnieje jako RODZINA KRZYWYCH, nie jako
+         sciezka wpiecia w dobor aparatu.
+      2. `application/analyses/nn_device_selection.py::_kryterium_i2` dla
+         `KIND_MCCB` jest TWARDO zakodowane na NIEROZSTRZYGALNE — gałąź
+         `else` zwraca stały komunikat „brak rozwiazanych nastaw" NIEZALEZNIE
+         od tego, czy dane katalogowe istnieja, czy nie (nie odczytuje w
+         ogole pol Ir/Isd/Ii z kandydata).
+      3. `KandydatAparatuNn` (ta sama analiza) NIE MA pol ir_a/isd_a/ii_a —
+         nawet gdyby katalog je niosl, nie ma jak dotrzec do kryterium.
+    To jest LUKA KONSUMENTA, nie luka danych — dopisanie tu ir_range/
+    isd_range/ii_range/tr_range/tsd_range BEZ rownoczesnej zmiany (1)-(3)
+    stworzyloby rekord z polem, ktorego ZADEN kod produkcyjny nie czyta
+    (fantom, zakazany przez zasade zero-fabrykacji karty). Naprawa wymaga
+    OSOBNEJ karty, ktora zmienia `_kryterium_i2`/`KandydatAparatuNn` zeby
+    faktycznie konsumowaly nastawy — bez tego dopisanie samych danych
+    katalogowych nic by nie zmienilo w wyniku doboru aparatu.
     """
     return [
         # --- WYLACZNIK_GLOWNY: ABB SACE Emax2 ---
@@ -711,16 +867,56 @@ _MCB_CURVE_CLASSES: tuple[str, ...] = ("B", "C", "D")
 # producentem), wiec Icn jest jednolite dla calej serii.
 _MCB_ICN_KA: float = 6.0
 
+# Karta NAPRAWA-A (§0.2.a): druga, rownolegla rodzina MCB o WYZSZEJ znamionowej
+# zdolnosci zwarciowej Icn=10 kA — IEC 60898-1 §4.4 dopuszcza 10 kA jako jedna
+# ze znormalizowanych wartosci Icn (obok 4,5/6/10/15/20/25 kA), stosowana w
+# realnych wyrobach przemyslowych (nie tylko domowych 6 kA). ADDYTYWNA —
+# rekordy istniejacej rodziny 6 kA (`mcb_nn_{klasa}{In}a`) NIE sa ruszane ani
+# usuwane, nowe rekordy dostaja odrebny identyfikator (`..._10ka`), wiec zaden
+# istniejacy test/referencja katalogowa (np. `REF_MCB_K2` w
+# `tests/e2e/test_nn_full_chain.py`) sie nie zmienia. Realny konsument juz
+# istnieje bez zmian kodu: `_kryterium_zdolnosc_wylaczania`
+# (`application/analyses/nn_device_selection.py`) czyta `icn_ka` GENERYCZNIE z
+# KAZDEGO rekordu `list_lv_breaker_mcb_types()` — dodanie rekordow z wyzszym
+# Icn od razu poszerza pule kandydatow zdolnych spelnic kryterium
+# Icu>=Ik''max na obwodach o wyzszym poziomie zwarcia (ZNALEZISKO BRAMKI #4).
+_MCB_ICN_KA_10KA: float = 10.0
+_MCB_ICN_KA_10KA_SOURCE: str = (
+    "IEC 60898-1 §4.4 (Icn=10 kA jest znormalizowana wartoscia szeregu, obok "
+    "6/15/20/25 kA) — Icn=10 kA POTWIERDZONA PODWOJNIE, niezaleznie, w kartach "
+    "katalogowych realnych wyrobow przemyslowych: Hager (seria NCN2../NBN1../"
+    "NDN1.., karta techniczna np. NCN210 — Icn=10000 A, Un=230/400V) i "
+    "Schneider Electric (Acti9 iC60H, katalog Acti9 System — Icn=10 kA dla "
+    "calej serii iC60H B/C/D, In 0,5-63 A). Rodzina pozostaje REFERENCYJNA "
+    "(brak wiazania z JEDNYM konkretnym numerem katalogowym producenta — "
+    "Icn=10 kA jest wspolna dla wielu wyrobow obu producentow), analogicznie "
+    "do rodziny 6 kA."
+)
+
 
 def get_all_lv_breaker_mcb_types() -> list[dict]:
-    """Zwraca generyczna rodzine wylacznikow nadmiarowo-pradowych (MCB) nN.
+    """Zwraca generyczne rodziny wylacznikow nadmiarowo-pradowych (MCB) nN.
 
-    Karta P0.2 (docs/nn/H_PLAN_IMPLEMENTACJI_NN.md §P0.2). 10 pradow
-    znamionowych x 3 klasy charakterystyki (B/C/D) = 30 rekordow.
+    Karta P0.2 (docs/nn/H_PLAN_IMPLEMENTACJI_NN.md §P0.2): rodzina bazowa
+    Icn=6 kA, 10 pradow znamionowych x 3 klasy charakterystyki (B/C/D) =
+    30 rekordow.
 
-    ZERO FABRYKACJI: wszystkie wartosci sa znamionowe normatywne wg
-    IEC 60898-1 (nie sa to dane zadnego konkretnego producenta) — rekordy
-    maja verification_status=REFERENCYJNY, catalog_status=REFERENCYJNY_V1.
+    Karta NAPRAWA-A (§0.2.a): DRUGA, rownolegla rodzina Icn=10 kA (te same 10
+    pradow x 3 klasy = kolejne 30 rekordow, identyfikatory `..._10ka`) —
+    poszerza pule kandydatow katalogowych zdolnych spelnic kryterium
+    Icu>=Ik''max na obwodach nN o wyzszym poziomie zwarcia (ZNALEZISKO
+    BRAMKI #4, `tests/e2e/test_nn_full_chain.py::
+    test_krok_07b_dobor_zabezpieczen_w_punkcie_znalezisko_bramki`).
+
+    ZERO FABRYKACJI: wszystkie wartosci pradowe/klasy sa znamionowe
+    normatywne wg IEC 60898-1 (nie sa to dane zadnego JEDNEGO konkretnego
+    produktu) — rekordy maja verification_status=REFERENCYJNY,
+    catalog_status=REFERENCYJNY_V1. Icn=6 kA jest normatywna wartoscia
+    najpowszechniej spotykana w tej klasie wyrobu (bez potrzeby dodatkowego
+    zrodla producenckiego — `_MCB_ICN_KA` niezmienione od karty P0.2);
+    Icn=10 kA jest rowniez normatywna wartoscia szeregu IEC 60898-1, ale
+    rzadsza w produktach domowych — stad podwojne potwierdzenie producenckie
+    (`_MCB_ICN_KA_10KA_SOURCE`) dla realnego istnienia tej klasy wyrobu.
     """
     records: list[dict] = []
     for in_a in _MCB_IN_A:
@@ -740,6 +936,24 @@ def get_all_lv_breaker_mcb_types() -> list[dict]:
                         "catalog_status": "REFERENCYJNY_V1",
                         "source_reference": "IEC 60898-1 (wartosci znamionowe normatywne)",
                         "contract_version": "2.0",
+                    },
+                }
+            )
+            records.append(
+                {
+                    "id": f"mcb_nn_{curve_class.lower()}{int(in_a)}a_10ka",
+                    "name": f"MCB {curve_class}{in_label} (Icn 10 kA)",
+                    "params": {
+                        "u_n_kv": 0.4,
+                        "in_a": in_a,
+                        "curve_class": curve_class,
+                        "icn_ka": _MCB_ICN_KA_10KA,
+                        "poles": None,
+                        "verification_status": "REFERENCYJNY",
+                        "catalog_status": "REFERENCYJNY_V1",
+                        "source_reference": "IEC 60898-1 (wartosci znamionowe normatywne, Icn 10 kA)",
+                        "contract_version": "2.0",
+                        "verification_note": _MCB_ICN_KA_10KA_SOURCE,
                     },
                 }
             )
@@ -786,6 +1000,34 @@ def get_all_lv_fuse_link_types() -> list[dict]:
     `None` do czasu zasilenia tablicami bramek IEC 60269-1 z proweniencja.
     Konsument (SWZ/selektywnosc) MUSI odczytac brak danej jako "dane
     niekompletne", nigdy PASS.
+
+    KARTA NAPRAWA-A (§0.2.c) — PROBA podwojnego zrodlenia `i2t_prearc_a2s`
+    (pre-arcing I²t) PODJETA i NIEROZSTRZYGNIETA. Dwa realne zrodla
+    producenckie zweryfikowane bezposrednio (nie przez podsumowanie
+    wyszukiwarki — WebFetch+odczyt oryginalnego PDF):
+      - ETI Polam, katalog WT-NH (aspar.com.pl/katalogi/wt-nh_eti.pdf), str.
+        485, tabela „Straty mocy wkladek topikowych o charakterystykach gG —
+        KOMBI" (kolumna I²t 1 ms/pre-arcing per wielkosc/In).
+      - Eaton Bussmann, „Technical Data 10164"
+        (eaton.com, bus-iec-ds-10164-nh500voltsfuselinks.pdf), oficjalna
+        tabela „Minimum pre-arcing I²t (Amps² Seconds)" per wielkosc NH
+        (000/00/0/01/1/02/2/03/3/4) i In.
+    Dla pasujacych par (wielkosc, In) wartosci ETI sa SYSTEMATYCZNIE wyzsze
+    o ok. 30-60% od wartosci Bussmann — rozjazd nie da sie uczciwie pogodzic
+    w tej sesji (rozne definicje pomiaru/tolerancji producenta? rozne
+    warianty konstrukcyjne w ramach tej samej wielkosci NH? — nieustalone).
+    ZERO FABRYKACJI: pole zostaje `None` dla WSZYSTKICH 30 (teraz 60, po
+    dodaniu rodziny Icn=10 kA MCB — ta rodzina wkladek jest osobna,
+    niezmieniona) rekordow gG — dwa zrodla ISTNIEJA, ale NIE SA ZGODNE, wiec
+    nie spelniaja bramki „podwojnie potwierdzone" karty §0.1/§0.2.a.
+    Konsekwencja: `_kryterium_swz`/`ocen_swz` dla WKLADKA_GG pozostaje
+    NIEROZSTRZYGALNE (ten sam hardcoded branch co przed karta —
+    `application/analyses/swz/werdykt.py`, `aparat.typ == "WKLADKA_GG"`),
+    NIEZALEZNIE od tego pola — nawet gdyby jedno zrodlo zostalo przyjete
+    jednostronnie, `ocen_swz` i tak by go nie odczytalo (branch jest
+    bezwarunkowy, nie sprawdza `i2t_prearc_a2s`) — WIEC populacja tego pola
+    BEZ rownoczesnej zmiany `werdykt.py` bylaby dodatkowo fantomem (patrz
+    analogiczne uzasadnienie przy MCCB w `get_all_lv_apparatus_types`).
 
     FLIP-TO-VERIFIED (karta P0.7): `breaking_capacity_ka` jest teraz
     zasilone — 120 kA AC @ 500 V, wartosc jednolita dla calej rodziny NH gG

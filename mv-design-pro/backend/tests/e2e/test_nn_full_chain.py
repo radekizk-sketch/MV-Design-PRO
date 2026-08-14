@@ -21,76 +21,108 @@ warstwy `application/analyses/*` (te same, których używają GET-y
 `POST /api/nn-proof/circuit/pack|report`. Zero sięgania po prywatne
 `_execute_*`.
 
-ZNALEZISKO BRAMKI (dokumentowane, NIE naprawiane w tym pliku — karta zakazuje
-zmian w `src/`): katalog kabli nN (`network_model/catalog/mv_auxiliary_
-catalog.py`, WSZYSTKIE 17 pozycji `kab_nn_*`) nie ma danych żyły powrotnej
-PE/PEN (`return_conductor_r_ohm_per_km_20c` / `return_conductor_x_ohm_per_km`
-— oba `None` dla każdej pozycji, zweryfikowane pomiarem). `application.
-analyses.fault_loop.route.route_segments`/`route_segments_min_scenario` są
-fail-closed (§0.1 karty P0.6, „zero fabrykacji") i podnoszą
-`RouteExtractionError`, gdy KTÓRYKOLWIEK kabel na trasie nie ma tych dwóch pól.
-Skutek: pętla zwarcia w DOWOLNYM punkcie nN poza szyną nN transformatora
+KARTA NAPRAWA-A (2026-08-14) — FLIP tego pliku z fail-closed na pełny
+przebieg. Cztery ZNALEZISKA BRAMKI opisane niżej to STAN HISTORYCZNY (co
+było zepsute PRZED kartą) — zachowane jako uzasadnienie kontekstu dla
+czytelnika, NIE jako aktualny opis testów poniżej. Karta NAPRAWA-A:
+  (1) zasiliła żyłę powrotną PE/PEN (R z tożsamości konstrukcyjnej, X z
+      danych producenta) dla WSZYSTKICH 17 pozycji `kab_nn_*`
+      (`mv_auxiliary_catalog.py::_RETURN_CONDUCTOR_NOTE_NN`) — ZNALEZISKO #1
+      NAPRAWIONE u źródła (dane katalogowe), mechanizm fail-closed
+      NIEZMIENIONY (dalej odmówiłby liczenia bez danych — teraz po prostu MA
+      dane).
+  (2) dodała rodzinę MCB Icn=10 kA (30 rekordów, obok istniejącej 6 kA,
+      `mv_auxiliary_catalog.py::get_all_lv_breaker_mcb_types`) — poszerza
+      pulę kandydatów zdolnych spełnić kryterium zdolności wyłączania.
+  (3) NIE naprawiła (warunek karty niespełniony — LUKA KONSUMENTA, nie luka
+      danych): nastawy wyzwalacza MCCB (Ir/Isd/Ii/tr/tsd) — `_kryterium_i2`
+      dla MCCB jest twardo zakodowane na NIEROZSTRZYGALNE niezależnie od
+      danych; `i2t_prearc_a2s` wkładek gG — dwa realne źródła (ETI WT-NH,
+      Eaton Bussmann 10164) rozjechane ~30-60%, nie do uczciwego pogodzenia.
+  (4) NAPRAWA-B (osobna, wcześniejsza karta) zabiła TRZECIE ZNALEZISKO
+      (wyścig materializacji fantomowych odbiorów) U ŹRÓDŁA, znacznikiem
+      `meta.nn_field_origin` czytanym przez
+      `catalog_completion.py::_pochodzi_z_operacji_domenowej` — substrat
+      poniżej NIE WOŁA już usuwania fantomów (dawny warkaround
+      `_usun_fantomowe_odbiory_migracji`, USUNIĘTY tą kartą) i mimo to
+      Silnik M1/Odbiór K3 pojawiają się DOKŁADNIE RAZ (KROK 0) — to jest
+      DOWÓD naprawy NAPRAWA-B, nie tylko deklaracja.
+
+ZNALEZISKO BRAMKI #1 — STAN HISTORYCZNY, NAPRAWIONY (patrz wyżej, pkt 1):
+katalog kabli nN (`network_model/catalog/mv_auxiliary_catalog.py`, WSZYSTKIE
+17 pozycji `kab_nn_*`) NIE MIAŁ danych żyły powrotnej PE/PEN
+(`return_conductor_r_ohm_per_km_20c` / `return_conductor_x_ohm_per_km` —
+oba `None` dla każdej pozycji). `application.analyses.fault_loop.route.
+route_segments`/`route_segments_min_scenario` SĄ fail-closed (§0.1 karty
+P0.6, „zero fabrykacji") i podnoszą `RouteExtractionError`, gdy KTÓRYKOLWIEK
+kabel na trasie nie ma tych dwóch pól — mechanizm ten NIE ZMIENIŁ SIĘ, tylko
+dane, na których teraz operuje, są kompletne. Skutek PRZED kartą: pętla
+zwarcia w DOWOLNYM punkcie nN poza szyną nN transformatora
 (`build_fault_loop_view_at_point`, `build_feeder_fault_loop_view`), SWZ
 (`build_swz_view`) i dobór zabezpieczeń (`wybierz_aparat_dla_obwodu_nn`) —
 oraz pakiet dowodowy LV_CIRCUIT_VERIFICATION, który wewnętrznie odtwarza TĘ
-SAMĄ ścieżkę (`lv_circuit_verification_binding._petla_zwarcia_min`) — są
-zablokowane dla KAŻDEGO odbioru/aparatu za choćby jednym kablem nN. Działa
-wyłącznie wariant zerohopowy „u źródła" (`build_station_fault_loop_view`,
-fault_node_id == szyna nN transformatora, trasa bez kabla). Testy krok_05/07/10
-asertują ten HONEST stan (status „brak danych" z konkretnym powodem) jako
-POPRAWNE zachowanie fail-closed przy obecnych danych katalogowych — to dowód,
-że mechanizm działa, nie że dane są kompletne. Werdykt bramki końcowej: P0 nN
-integracja NIE JEST w pełni gotowa (plan H, sekcja „Bramka końcowa P0" — „Jeżeli
-którykolwiek krok nie działa na jednym modelu — integracja nN NIE JEST
-GOTOWA").
+SAMĄ ścieżkę (`lv_circuit_verification_binding._petla_zwarcia_min`) — były
+zablokowane dla KAŻDEGO odbioru/aparatu za choćby jednym kablem nN. PO
+karcie: KROK 5b/7b/10a/10c liczą PEŁNY wynik w tych punktach.
 
-DRUGIE ZNALEZISKO BRAMKI (dokumentowane, NIE naprawiane w tym pliku): brama
-katalogowa produkcyjnego API (`api/domain_ops_policy.py::
-CATALOG_REQUIRED_OPERATIONS`) wymaga `catalog_binding`/`catalog_ref` dla
-`add_nn_outgoing_field` i `add_nn_load`, ale realny kreator „Pole odpływowe nN"
-(`ui2/kreatory/pole-nn/KreatorPolaNn.tsx`, docstring: „kreator NIE POKAZUJE
-pickera katalogu — backend go dla tej operacji nie honoruje") NIGDY go nie
-wysyła — realne przesłanie tego formularza przez produkcyjny endpoint
-dostałoby `422 catalog.ref_required`. Test poniżej dodaje `catalog_ref`
-ręcznie (wzorem `tests/api/test_brama_katalogowa_api_inwentarz.py`), żeby w
-ogóle przejść bramę — kontrakt frontend/backend jest rozjechany.
+DRUGIE ZNALEZISKO BRAMKI (dokumentowane, NIE naprawiane w tym pliku — poza
+zakresem karty NAPRAWA-A): brama katalogowa produkcyjnego API
+(`api/domain_ops_policy.py::CATALOG_REQUIRED_OPERATIONS`) wymaga
+`catalog_binding`/`catalog_ref` dla `add_nn_outgoing_field` i `add_nn_load`,
+ale realny kreator „Pole odpływowe nN" (`ui2/kreatory/pole-nn/
+KreatorPolaNn.tsx`, docstring: „kreator NIE POKAZUJE pickera katalogu —
+backend go dla tej operacji nie honoruje") NIGDY go nie wysyła — realne
+przesłanie tego formularza przez produkcyjny endpoint dostałoby `422
+catalog.ref_required`. Test poniżej dodaje `catalog_ref` ręcznie (wzorem
+`tests/api/test_brama_katalogowa_api_inwentarz.py`), żeby w ogóle przejść
+bramę — kontrakt frontend/backend jest rozjechany.
 
-TRZECIE ZNALEZISKO BRAMKI (dokumentowane, wykryte i USUNIĘTE z substratu w
-KROK 0, żeby kroki 1-11 liczyły zamierzony model — patrz
-`_usun_fantomowe_odbiory_migracji`): `enm.catalog_completion.
-complete_station_loads_from_nn_feeders` uruchamia się na KAŻDYM odczycie
-`enm.store.get_enm` i materializuje domyślny odbiór 30 kW na KAŻDYM polu
+TRZECIE ZNALEZISKO BRAMKI — STAN HISTORYCZNY, NAPRAWIONY przez NAPRAWA-B
+(patrz wyżej, pkt 4): `enm.catalog_completion.
+complete_station_loads_from_nn_feeders` uruchamiał się na KAŻDYM odczycie
+`enm.store.get_enm` i materializował domyślny odbiór 30 kW na KAŻDYM polu
 odpływowym nN bez WŁASNEGO odbioru — W CHWILI ODCZYTU, nie po zakończeniu
-edycji użytkownika. Ponieważ jedyny możliwy w tym systemie tor tworzenia pola
-i jego odbioru to DWIE OSOBNE operacje domenowe (`add_nn_outgoing_field` →
-`add_nn_load`, dwa osobne żądania `POST /domain-ops`, każde zaczynające się od
-`_get_enm`), drugie żądanie zawsze odczytuje model PO tym, jak pierwsze już
-zmaterializowało fantom na TYM SAMYM `feeder_ref` — prawdziwy odbiór ląduje
-OBOK fantomu (podwojona moc na jednej szynie, bez żadnego ostrzeżenia).
-Zmierzone powtarzalnie (patrz reprodukcja w `_usun_fantomowe_odbiory_migracji`
-i jej wywołania w `_build_substrate`).
+edycji użytkownika. Ponieważ jedyny możliwy w tym systemie tor tworzenia
+pola i jego odbioru to DWIE OSOBNE operacje domenowe
+(`add_nn_outgoing_field` → `add_nn_load`, dwa osobne żądania
+`POST /domain-ops`, każde zaczynające się od `_get_enm`), drugie żądanie
+zawsze odczytywało model PO tym, jak pierwsze już zmaterializowało fantom na
+TYM SAMYM `feeder_ref` — prawdziwy odbiór lądował OBOK fantomu (podwojona
+moc na jednej szynie, bez żadnego ostrzeżenia). NAPRAWA-B naprawiła to U
+ŹRÓDŁA (znacznik `meta.nn_field_origin` ustawiany przez kanoniczną operację
+`add_nn_outgoing_field`, czytany przez `catalog_completion.py::
+_pochodzi_z_operacji_domenowej` — pole utworzone operacją domenową jest
+wykluczone z migracyjnej materializacji domyślnego odbioru). KROK 0 poniżej
+buduje substrat BEZ ŻADNEGO usuwania fantomów i asertuje wprost, że Silnik
+M1/Odbiór K3 pojawiają się dokładnie raz — DOWÓD naprawy, nie deklaracja.
+Poza zakresem (NIENAPRAWIALNE bez nowej operacji domenowej, nie ten sam
+defekt): stacja ST-03 dostaje WBUDOWANY domyślny „Odpływ nN 1" (starter
+kreatora, tworzony PRZEZ `insert_station_on_segment_sn`, NIE przez
+`add_nn_outgoing_field`) — to pole nigdy nie dostaje znacznika
+`nn_field_origin` (bo nie przechodzi przez operację, która go ustawia), więc
+jego fantomowy odbiór 30 kW jest TRWAŁY (regeneruje się przy każdym
+odczycie) — jeden, znany, udokumentowany artefakt, osobny od naprawionego
+wyścigu K2/K3.
 
-CZWARTE ZNALEZISKO BRAMKI (dokumentowane, NIE naprawiane w tym pliku, pełna
-reprodukcja w `test_krok_07_dobor_zabezpieczen_zerohop_mechanizm_dziala`):
-`wybierz_aparat_dla_obwodu_nn` NIE MOŻE dziś wydać pełnej rekomendacji dla
-ŻADNEGO obwodu w ŻADNEJ sieci nN zbudowanej z domyślnego katalogu — nawet
-u źródła (zero-hop, jedyny punkt gdzie Ik1_min jest w ogóle policzalny, patrz
-ZNALEZISKO #1), gdzie Ik″max jest z definicji NAJWYŻSZY w całej sieci nN
-(tu: ≈31,86 kA). Żadna z 3 rodzin katalogu nie kwalifikuje się na tym
-poziomie: MCB — zdolność wyłączania zaszyta na 6 kA (`_MCB_ICN_KA`) << 31,86 kA; MCCB —
-kryterium I2 NIEROZSTRZYGALNE (brak nastaw wyzwalacza Ir/Isd/Ii, zero
-fabrykacji, `_kryterium_i2`); wkładka gG — kryterium SWZ NIEROZSTRZYGALNE
-(brak bramek I-t wkładki, `i2t_prearc_a2s=None` dla WSZYSTKICH 30 pozycji
-`fuse_nn_gg_*`). Test asertuje mechanizm (poprawne, zróżnicowane uzasadnienie
-per rodzinę/kryterium), nie fabrykuje rekomendacji, której system dziś nie
-potrafi wydać.
+CZWARTE ZNALEZISKO BRAMKI — CZĘŚCIOWO NAPRAWIONE (patrz wyżej, pkt 2-3):
+`wybierz_aparat_dla_obwodu_nn` NIE MOGŁA PRZED kartą wydać pełnej
+rekomendacji dla ŻADNEGO obwodu w ŻADNEJ sieci nN zbudowanej z domyślnego
+katalogu — nawet u źródła (zero-hop, jedyny punkt gdzie Ik1_min był w ogóle
+policzalny, patrz ZNALEZISKO #1), gdzie Ik″max jest z definicji NAJWYŻSZY w
+całej sieci nN (tu: ≈31,86 kA). PO karcie: u RGnN (KROK 7) rekomendacja
+POZOSTAJE None — PINOWANE jako poprawna fizyka (nawet nowa rodzina MCB
+10 kA << 31,86 kA); GŁĘBIEJ w sieci, na obwodzie Silnika M1 (KROK 7b,
+Ik″max≈8,4 kA — poniżej 10 kA), rekomendacja jest PEŁNA (MCB B40, Icn 10 kA)
+— PIERWSZA w tym łańcuchu pozytywna rekomendacja aparatu dla realnego
+obwodu. MCCB (kryterium I2) i wkładka gG (kryterium SWZ) pozostają
+NIEROZSTRZYGALNE wszędzie — luka konsumenta / rozjazd źródeł, dokumentowane
+w pkt 3 wyżej, nie naprawiane tą kartą.
 """
 
 from __future__ import annotations
 
 import hashlib
 import importlib.util
-from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
@@ -206,53 +238,19 @@ def _op(client, case_id: str, name: str, payload: dict[str, Any]) -> dict[str, A
     return body
 
 
-def _usun_fantomowe_odbiory_migracji(client, case_id: str) -> list[str]:
-    """ZNALEZISKO BRAMKI (dokumentowane w raporcie końcowym, NIE naprawiane w
-    `src/` — karta zakazuje): `enm.catalog_completion.
-    complete_station_loads_from_nn_feeders` odpala się na KAŻDYM odczycie
-    `enm.store.get_enm(case_id)` i dokłada domyślny odbiór 30 kW/cosφ=0,92
-    (`meta.completion_source == "station_catalog_migration"`) do KAŻDEGO pola
-    odpływowego nN (`bay_role == "FEEDER"`) bez WŁASNEGO odbioru — W TYM
-    CHWILI ODCZYTU, nie po zakończeniu edycji. Realny, jedyny możliwy w tym
-    systemie tor użytkownika tworzy pole odpływowe i jego odbiór jako DWIE
-    OSOBNE operacje domenowe (`add_nn_outgoing_field` → `add_nn_load`, dwa
-    osobne żądania `POST /domain-ops`) — a KAŻDE żądanie zaczyna się od
-    `_get_enm(case_id)` (`api/enm.py::_domain_ops_pod_blokada`). Skutek
-    zmierzony (`tests/e2e/…/probe14_exact_substrate.py`, powtarzalny):
-    żądanie `add_nn_load` odczytuje model PO tym, jak żądanie tworzące pole
-    już wywołało pełne materializowanie fantomu na TYM SAMYM `feeder_ref` —
-    prawdziwy odbiór projektanta ląduje NA TEJ SAMEJ szynie OBOK fantomu,
-    dając DWA odbiory tam, gdzie miał być jeden (podwojona moc czynna/bierna
-    w rozpływie i zwarciu, bez ŻADNEGO ostrzeżenia). Osobno: KAŻDA stacja
-    utworzona przez `insert_station_on_segment_sn` dostaje WBUDOWANY domyślny
-    „Odpływ nN 1" (starter dla kreatora) — ten SAM mechanizm dokłada mu
-    fantomowy odbiór, zanim projektant zdąży cokolwiek na niego podpiąć.
-
-    Ta funkcja PRZYWRACA zamierzony, czysty substrat (usuwa fantomy przez
-    kanoniczną `remove_nn_element` — publiczną operację domenową, dokładnie
-    tak jak zrobiłby to inżynier po zauważeniu duplikatu), żeby kroki 1-11
-    liczyły się na modelu, który TEN test faktycznie zaprojektował. Zwraca
-    listę usuniętych `ref_id` (dowód, że fantom naprawdę wystąpił)."""
-    enm = get_enm(case_id)
-    fantomy = [
-        ld.ref_id
-        for ld in enm.loads
-        if isinstance(ld.meta, dict)
-        and ld.meta.get("completion_source") == "station_catalog_migration"
-    ]
-    for ref in fantomy:
-        _op(client, case_id, "remove_nn_element", {"element_ref": ref})
-    return fantomy
-
-
 def _build_substrate(client, case_id: str) -> dict[str, Any]:
     """Buduje GPZ→SN→ST-03(TR)→RGnN→K1→R1→{K2 silnik, K3 odbiór, K4 PV, K5 BESS}.
 
     Wyłącznie operacje domenowe kanoniczne (te same, których używają kreatory
     ui2/kreatory/*) — zero ręcznego składania ENM. Zwraca referencje potrzebne
     kolejnym krokom.
+
+    KARTA NAPRAWA-A: substrat NIE usuwa już fantomowych odbiorów migracji
+    (dawny warkaround `_usun_fantomowe_odbiory_migracji`, USUNIĘTY — NAPRAWA-B
+    zabiła TRZECIE ZNALEZISKO BRAMKI u źródła, patrz docstring modułu). Silnik
+    M1 i Odbiór K3 pojawiają się DOKŁADNIE RAZ mimo braku usuwania — dowód
+    naprawy weryfikowany wprost w `test_krok_00_substrat_buduje_sie_bez_bledow`.
     """
-    usuniete_fantomy: list[str] = []
     _op(
         client,
         case_id,
@@ -310,11 +308,14 @@ def _build_substrate(client, case_id: str) -> dict[str, Any]:
     rgnn_bus = next(
         b.ref_id for b in enm.buses if b.ref_id in station.bus_refs and b.voltage_kv == 0.4
     )
-    # ST-03 dostała wbudowany domyślny "Odpływ nN 1" (starter kreatora) —
-    # ten SAM odczyt już zmaterializował na nim fantomowy odbiór (patrz
-    # `_usun_fantomowe_odbiory_migracji`). Usuwamy od razu, zanim substrat
-    # urośnie dalej.
-    usuniete_fantomy.extend(_usun_fantomowe_odbiory_migracji(client, case_id))
+    # ST-03 dostała wbudowany domyślny "Odpływ nN 1" (starter kreatora,
+    # utworzony PRZEZ `insert_station_on_segment_sn`, NIE przez
+    # `add_nn_outgoing_field`) — ten odczyt materializuje na nim TRWAŁY
+    # fantomowy odbiór 30 kW (poza zakresem NAPRAWA-B, patrz docstring
+    # modułu — pole nigdy nie dostaje znacznika `nn_field_origin`, bo nie
+    # przechodzi przez operację, która go ustawia). ŚWIADOMIE NIE usuwany —
+    # zweryfikowany wprost jako JEDYNY, trwały, udokumentowany artefakt w
+    # `test_krok_00_substrat_buduje_sie_bez_bledow`.
 
     # RGnN → K1 → R1 (podrozdzielnica)
     _op(
@@ -437,12 +438,14 @@ def _build_substrate(client, case_id: str) -> dict[str, Any]:
         },
     )
     silnik_load_ref = r_load_k2["changes"]["created_element_ids"][0]
-    # ZNALEZISKO (patrz `_usun_fantomowe_odbiory_migracji`): `add_nn_load`
-    # powyżej odczytał model PRZEZ `_get_enm`, który w MIĘDZYCZASIE (od
-    # utworzenia pola K2 do teraz) już zmaterializował fantomowy odbiór 30 kW
-    # na TYM SAMYM `feeder_k2` — usuwamy go, żeby Silnik M1 został jedynym
-    # odbiorem na tym odpływie (dokładnie jak intencja tego kroku budowy).
-    usuniete_fantomy.extend(_usun_fantomowe_odbiory_migracji(client, case_id))
+    # KARTA NAPRAWA-A: PRZED naprawą NAPRAWA-B, `add_nn_load` powyżej
+    # odczytywał model PRZEZ `_get_enm`, który w MIĘDZYCZASIE (od utworzenia
+    # pola K2 do teraz) już materializował fantomowy odbiór 30 kW na TYM
+    # SAMYM `feeder_k2` (podwójny odbiór na jednej szynie) — NAPRAWA-B
+    # naprawiła to znacznikiem `nn_field_origin` u źródła (patrz docstring
+    # modułu), więc TU już nic nie trzeba usuwać. `test_krok_00_substrat_
+    # buduje_sie_bez_bledow` weryfikuje wprost, że Silnik M1 jest JEDYNYM
+    # odbiorem na `feeder_k2`.
 
     # K3: R1 → kabel K3 → Odbiór K3 (odbiór prosty, bez aparatu dedykowanego —
     # obwód pomocniczy dowodzący, że model obsługuje WIELE jednorodnych
@@ -479,7 +482,6 @@ def _build_substrate(client, case_id: str) -> dict[str, Any]:
             "catalog_ref": "load_uslugi_30kw",  # patrz komentarz przy K2 (ZNALEZISKO bramy)
         },
     )
-    usuniete_fantomy.extend(_usun_fantomowe_odbiory_migracji(client, case_id))
 
     # K4: RGnN → kabel K4 → PV. add_converter_source(connection_variant=nn_side)
     # wymaga, żeby STATION_REF miał WŁASNY transformator w bus_refs
@@ -549,7 +551,6 @@ def _build_substrate(client, case_id: str) -> dict[str, Any]:
         "leaf_odbior_bus": leaf_odbior_bus,
         "leaf_pv_bus": leaf_pv_bus,
         "leaf_bess_bus": leaf_bess_bus,
-        "usuniete_fantomy_migracji": usuniete_fantomy,
     }
 
 
@@ -625,34 +626,54 @@ class TestNnFullChain:
 
     def test_krok_00_substrat_buduje_sie_bez_bledow(self, app_client) -> None:
         """Cały substrat (GPZ→SN→ST-03→RGnN→K1→R1→K2/K3/K4/K5) buduje się bez
-        błędu, WYŁĄCZNIE operacjami domenowymi przez produkcyjny endpoint."""
+        błędu, WYŁĄCZNIE operacjami domenowymi przez produkcyjny endpoint.
+
+        FLIP (karta NAPRAWA-A): dawniej ten test wywoływał
+        `_usun_fantomowe_odbiory_migracji` (usuwaną teraz funkcję) PO każdym
+        kroku budowy, żeby posprzątać po wyścigu `add_nn_outgoing_field` →
+        `add_nn_load` (TRZECIE ZNALEZISKO BRAMKI). NAPRAWA-B (osobna,
+        wcześniejsza karta) zabiła ten wyścig U ŹRÓDŁA — `_build_substrate`
+        poniżej NIE usuwa już NICZEGO, a mimo to Silnik M1 i Odbiór K3
+        pojawiają się DOKŁADNIE RAZ na swoich odpływach. To jest DOWÓD
+        naprawy (nie deklaracja): gdyby NAPRAWA-B regresowała, poniższe
+        asercje `count(...) == 1` pękłyby natychmiast z konkretną, czytelną
+        przyczyną (duplikat na feeder_k2/feeder_k3)."""
         reset_enm_store()
         refs = _build_substrate(app_client, _CASE_ID)
         _REFS.update(refs)
 
-        # ZNALEZISKO BRAMKI (patrz docstring `_usun_fantomowe_odbiory_migracji`):
-        # dowód, że fantomowa podwójna materializacja odbiorów NAPRAWDĘ
-        # wystąpiła podczas budowy tego substratu (mechanizm nie jest
-        # teoretyczny). Substrat po oczyszczeniu ma zamierzone Silnik M1 +
-        # Odbiór K3 BEZ duplikatów NA ICH WŁASNYCH odpływach — ale domyślny
-        # starter „Odpływ nN 1" na RGnN (auto-tworzony przez
-        # `insert_station_on_segment_sn`, nieużywany przez ten substrat celowo)
-        # NIE MA kanonicznej operacji usuwającej sam wpis pola (`remove_nn_element`
-        # kasuje tylko gałąź/szynę/odbiór — nie wpis `nn_field_specs`), więc jego
-        # fantomowy odbiór ODRADZA SIĘ przy KAŻDYM kolejnym odczycie modelu
-        # (włącznie z odczytem dwie linijki niżej) — trzeci, TRWAŁY objaw tego
-        # samego znaleziska. Substrat świadomie go NIE zwalcza (regenerowałby
-        # się w nieskończoność) — akceptuje go jako REALNY, deterministyczny
-        # (stały seed z `station_ref`+`feeder_ref`), ale NIEZAMIERZONY element.
-        fantomy = refs["usuniete_fantomy_migracji"]
-        assert fantomy, (
-            "Oczekiwano co najmniej jednego fantomowego odbioru wykrytego i usuniętego "
-            "podczas budowy (ST-03 domyślny odpływ + wyścig pole→odbiór na K2) — brak "
-            "fantomów oznacza, że mechanizm migracji przestał się uruchamiać na odczycie "
-            "(regresja tego znaleziska, do zweryfikowania) ALBO że budowa się zmieniła."
-        )
-
         enm = get_enm(_CASE_ID)
+
+        # DOWÓD NAPRAWY NAPRAWA-B: Silnik M1 i Odbiór K3 pojawiają się
+        # DOKŁADNIE RAZ, mimo że substrat NIE wywołał żadnego usuwania —
+        # przed NAPRAWA-B każdy z nich miałby OBOK siebie fantomowy odbiór
+        # 30 kW/cosφ=0,92 na TYM SAMYM `feeder_ref` (ten sam wyścig
+        # `add_nn_outgoing_field`→`add_nn_load`, dwa osobne żądania
+        # `POST /domain-ops`, dwa niezależne odczyty `_get_enm`).
+        silniki_m1 = [ld for ld in enm.loads if ld.name == "Silnik M1 (odbiór, P0 uproszczenie)"]
+        odbiory_k3 = [ld for ld in enm.loads if ld.name == "Odbiór K3"]
+        assert len(silniki_m1) == 1, (
+            f"NAPRAWA-B regresja: oczekiwano DOKŁADNIE 1 Silnika M1 na feeder_k2, "
+            f"jest {len(silniki_m1)} — wyścig add_nn_outgoing_field→add_nn_load wrócił"
+        )
+        assert len(odbiory_k3) == 1, (
+            f"NAPRAWA-B regresja: oczekiwano DOKŁADNIE 1 Odbioru K3 na feeder_k3, "
+            f"jest {len(odbiory_k3)} — wyścig add_nn_outgoing_field→add_nn_load wrócił"
+        )
+        assert not (
+            isinstance(silniki_m1[0].meta, dict)
+            and silniki_m1[0].meta.get("completion_source") == "station_catalog_migration"
+        ), "Silnik M1 NIE MOŻE sam być fantomem migracji — to zaprojektowany odbiór"
+
+        # JEDYNY, TRWAŁY, udokumentowany artefakt POZA zakresem NAPRAWA-B:
+        # domyślny starter „Odpływ nN 1" na RGnN (auto-tworzony przez
+        # `insert_station_on_segment_sn`, NIE przez `add_nn_outgoing_field` —
+        # więc nigdy nie dostaje znacznika `nn_field_origin`, który NAPRAWA-B
+        # czyta) — jego fantomowy odbiór regeneruje się przy KAŻDYM odczycie
+        # modelu, niezależnie od NAPRAWA-B. Deterministyczny (stały seed z
+        # `station_ref`+`feeder_ref`), ale NIEZAMIERZONY — inny defekt,
+        # inna przyczyna źródłowa, inne miejsce w kodzie (brak operacji
+        # usuwającej sam wpis `nn_field_specs`), poza zakresem tej karty.
         odbiory_migracji = [
             ld
             for ld in enm.loads
@@ -660,11 +681,14 @@ class TestNnFullChain:
             and ld.meta.get("completion_source") == "station_catalog_migration"
         ]
         assert len(odbiory_migracji) == 1 and odbiory_migracji[0].name == "Odbiór nN 1 - ST-03", (
-            f"Oczekiwano DOKŁADNIE jednego trwałego fantomu (ST-03, nieusuwalny — patrz "
-            f"wyżej), jest: {[ld.name for ld in odbiory_migracji]}"
+            f"Oczekiwano DOKŁADNIE jednego trwałego fantomu (ST-03, poza zakresem "
+            f"NAPRAWA-B — patrz wyżej), jest: {[ld.name for ld in odbiory_migracji]}"
         )
-        assert any(ld.name == "Silnik M1 (odbiór, P0 uproszczenie)" for ld in enm.loads)
-        assert any(ld.name == "Odbiór K3" for ld in enm.loads)
+
+        # SAMA fizyczna inwariant końcowa jest NIEZMIENIONA względem stanu
+        # PRZED kartą (3 odbiory: Silnik M1 + Odbiór K3 + trwały fantom
+        # ST-03) — ale teraz osiągnięta BEZ usuwania niczego w trakcie
+        # budowy, nie usunięciem duplikatów po fakcie.
         assert len(enm.buses) >= 10, f"Za mało szyn po budowie: {len(enm.buses)}"
         assert len(enm.branches) >= 7, f"Za mało gałęzi po budowie: {len(enm.branches)}"
         assert len(enm.transformers) == 2, "Oczekiwano 2 transformatorów (GPZ WN/SN + TR SN/nN)"
@@ -908,43 +932,70 @@ class TestNnFullChain:
         assert "ia_wymagane_a" in swz["swz"] or "margines" in swz["swz"]
         _STAN["swz_zerohop"] = swz
 
-    def test_krok_05b_petla_zwarcia_w_dowolnym_punkcie_znalezisko_bramki(self) -> None:
-        """ZNALEZISKO BRAMKI (dokumentowane, patrz docstring modułu): pętla
-        zwarcia w DOWOLNYM punkcie nN poza szyną transformatora (tu: Silnik M1,
-        za K1+aparat+K2) jest zablokowana, bo WSZYSTKIE 17 pozycji katalogu
-        kabli nN (`kab_nn_*`) nie mają danych żyły powrotnej PE/PEN
-        (`return_conductor_r_ohm_per_km_20c`/`return_conductor_x_ohm_per_km`).
-        Asercja poniżej potwierdza, że mechanizm fail-closed (§0.1 karty P0.6)
-        DZIAŁA POPRAWNIE — zwraca uczciwy status „brak danych" z konkretnym
-        powodem, NIE fabrykuje wyniku. To NIE jest błąd testu — to dowód
-        readiness-gate: P0 nN NIE jest w pełni gotowe end-to-end."""
+    def test_krok_05b_petla_zwarcia_w_dowolnym_punkcie_pelny_przebieg(self) -> None:
+        """FLIP (karta NAPRAWA-A §0.3.3): DAWNE ZNALEZISKO BRAMKI #1 (patrz
+        docstring modułu, wersja historyczna zachowana tam do kontekstu) —
+        pętla zwarcia w DOWOLNYM punkcie nN poza szyną transformatora (tu:
+        Silnik M1, za K1+aparat K2+K2) była zablokowana fail-closed, bo
+        WSZYSTKIE 17 pozycji katalogu kabli nN (`kab_nn_*`) nie miały danych
+        żyły powrotnej PE/PEN. Karta NAPRAWA-A zasiliła WSZYSTKIE 17 pozycji
+        (`return_conductor_r_ohm_per_km_20c`/`return_conductor_x_ohm_per_km`/
+        `return_conductor_cross_section_mm2` — tożsamość konstrukcyjna R +
+        dane producenta X, patrz `_RETURN_CONDUCTOR_NOTE_NN` w
+        `mv_auxiliary_catalog.py`) — mechanizm fail-closed NIE zmienił się
+        (dalej odmówiłby liczenia bez danych, co jest udowodnione w drugą
+        stronę: teraz liczy PEŁNY wynik, bo dane są kompletne). BYŁO:
+        `view["status"] == "brak danych"` (fail-closed, żyła powrotna brak).
+        JEST: `view["status"] == "OK"` z pełnym śladem White Box."""
         model = get_enm(_CASE_ID)
         view = build_fault_loop_view_at_point(model, _REFS["station_ref"], _REFS["leaf_silnik_bus"])
-        assert (
-            view["status"] == "brak danych"
-        ), f"Oczekiwano fail-closed 'brak danych' (katalog bez żyły powrotnej), otrzymano: {view}"
-        assert view["missing_data"] == ["route"]
-        assert "żyły powrotnej" in (view.get("reason_pl") or ""), view.get("reason_pl")
+        assert view["status"] == "OK", view
+        assert view["hop_count"] == 3, "Trasa Silnik M1 = K1 + aparat K2 (0 Ω) + K2 = 3 hopy"
+        fl = view["fault_loop"]
+        assert fl["ik_min_a"] > 0.0
+        assert fl["ik_max_a"] >= fl["ik_min_a"]
+        assert fl["white_box_trace"], "Brak White Box śladu pętli zwarcia w punkcie"
 
+        # Pętla w punkcie DALSZYM od źródła (3 hopy) musi mieć WIĘKSZĄ
+        # impedancję (dłuższa trasa kablowa) niż pętla u źródła (KROK 5,
+        # trasa zerodługościowa) → NIŻSZY prąd zwarcia — ta sama fizyka
+        # promieniowej sieci co sanity KROK 4 dla Ikss 3-fazowego.
+        view_zero_hop = build_station_fault_loop_view(model, _REFS["station_ref"])
+        assert view_zero_hop["status"] == "OK"
+        assert fl["ik_max_a"] < view_zero_hop["fault_loop"]["ik_max_a"], (
+            "Ik pętli w punkcie dalszym od źródła (Silnik M1) musi być NIŻSZY niż "
+            "u źródła (impedancja trasy rośnie z odległością)"
+        )
+
+        # BYŁO: co najmniej jeden punkt "brak danych" na dowolnym odpływie.
+        # JEST: WSZYSTKIE odpływy (K2/K3/K4/K5, wszystkie kable REF_KABEL_NN)
+        # zwracają WSZYSTKIE punkty OK — żaden kabel substratu nie ma już
+        # brakującej żyły powrotnej.
         feeders = build_feeder_fault_loop_view(model, _REFS["station_ref"])
-        assert feeders["status"] == "OK"  # widok się buduje...
-        # ...ale KAŻDY punkt poza zerohop raportuje "brak danych" — sprawdzamy,
-        # że co najmniej jeden odpływ ma punkt niepoliczalny (nie cichą pustkę).
-        any_missing_route = False
-        for feeder in feeders.get("feeders", []):
-            for point in feeder.get("points", []):
-                if point.get("status") == "brak danych":
-                    any_missing_route = True
-        assert (
-            any_missing_route
-        ), "Oczekiwano co najmniej jednego punktu 'brak danych' (żyła powrotna)"
+        assert feeders["status"] == "OK"
+        all_points = [p for feeder in feeders["feeders"] for p in feeder["points"]]
+        assert len(all_points) >= 4, f"Za mało punktów w widoku odpływów: {len(all_points)}"
+        brak_danych_points = [p for p in all_points if p["status"] != "OK"]
+        assert not brak_danych_points, (
+            f"Oczekiwano WSZYSTKICH punktów OK po zasileniu danych żyły powrotnej, "
+            f"pozostały punkty 'brak danych': {brak_danych_points}"
+        )
 
+        # SWZ w punkcie Silnik M1, chroniony aparatem K2 (MCB C25) — BYŁO:
+        # "brak danych" (trasa niepoliczalna). JEST: werdykt DECYZYJNY
+        # (MCB ma kompletne dane In/klasa — `ocen_swz` nigdy nie zwraca
+        # "nierozstrzygalne" dla MCB z kompletnymi danymi, patrz
+        # `application/analyses/swz/werdykt.py`).
         swz = build_swz_view(
             model, _REFS["station_ref"], _REFS["leaf_silnik_bus"], _REFS["aparat_k2_ref"]
         )
-        assert swz["status"] == "brak danych"
-        assert swz["missing_data"] == ["route"]
-        _STAN["gate_finding_return_conductor"] = True
+        assert swz["status"] == "OK", swz
+        assert swz["swz"]["status"] in ("spełnia", "nie spełnia"), (
+            f"Oczekiwano werdyktu DECYZYJNEGO (MCB C25 ma kompletne In/klasa), "
+            f"otrzymano: {swz['swz']}"
+        )
+        assert swz["swz"]["ia_wymagane_a"] is not None
+        assert swz["swz"]["ik1_min_a"] > 0.0
 
     # -- KROK 6: dobór kabli (Iz′ z korektami) -----------------------------
 
@@ -999,29 +1050,40 @@ class TestNnFullChain:
 
     # -- KROK 7: dobór zabezpieczeń -----------------------------------------
 
-    def test_krok_07_dobor_zabezpieczen_zerohop_mechanizm_dziala(self) -> None:
-        """Dobór aparatu nN (`wybierz_aparat_dla_obwodu_nn`) — mechanizm ORZEKA
-        u źródła (zero-hop, jedyny punkt gdzie Ik1_min jest dziś policzalny —
-        patrz ZNALEZISKO #1) dla WSZYSTKICH 113 kandydatów z katalogu, z pełnym
-        uzasadnieniem per kryterium.
+    def test_krok_07_dobor_zabezpieczen_zerohop_rgnn_puste_pinowane(self) -> None:
+        """Dobór aparatu nN (`wybierz_aparat_dla_obwodu_nn`) u źródła (RGnN,
+        zero-hop) — mechanizm ORZEKA dla WSZYSTKICH 143 kandydatów z katalogu
+        (60 MCB po karcie NAPRAWA-A: 30×Icn 6 kA + 30×Icn 10 kA, + kombinacje
+        rozłącznik+wkładka gG, + MCCB), z pełnym uzasadnieniem per kryterium.
 
-        CZWARTE ZNALEZISKO BRAMKI (dokumentowane, NIE naprawiane tu):
-        u szyny nN transformatora Ik″max jest z definicji NAJWYŻSZY w całej
-        sieci nN (najbliżej źródła, najmniejsza impedancja) — tu
-        Ik″max≈31,86 kA. ŻADNA z 3 rodzin katalogu nie daje pełnej
-        kwalifikacji na TYM konkretnym poziomie: MCB (zdolność wyłączania
-        6 kA, `_MCB_ICN_KA`) << 31,86 kA — realnie za mało dla obwodu tak
-        blisko transformatora; MCCB — kryterium I2
-        NIEROZSTRZYGALNE (brak nastaw wyzwalacza Ir/Isd/Ii, zero fabrykacji,
-        `_kryterium_i2`); wkładka gG — kryterium SWZ NIEROZSTRZYGALNE (brak
-        bramek I-t wkładki, G-D2, `i2t_prearc_a2s=None` dla WSZYSTKICH 30
-        pozycji `fuse_nn_gg_*`). Złożenie z ZNALEZISKIEM #1 (Ik1_min policzalny
-        WYŁĄCZNIE u źródła): `wybierz_aparat_dla_obwodu_nn` NIE MOŻE dziś
-        wydać pełnej rekomendacji („rekomendacja" != None) dla ŻADNEGO obwodu
-        w ŻADNEJ sieci nN zbudowanej z domyślnego katalogu — ani u źródła
-        (rodzina niekompletna), ani dalej (trasa niepoliczalna). Ten test
-        asertuje MECHANIZM (poprawne, zróżnicowane uzasadnienie per rodzinę),
-        nie fabrykuje sukcesu, którego system dziś nie potrafi wydać."""
+        PRZYPIĘTE JAKO POPRAWNA FIZYKA (karta NAPRAWA-A §0.3, dawne CZWARTE
+        ZNALEZISKO BRAMKI — zachowane tu jako uzasadnienie stanu, nie jako
+        dług): u szyny nN transformatora Ik″max jest z definicji NAJWYŻSZY w
+        całej sieci nN (najbliżej źródła, najmniejsza impedancja) — tu
+        Ik″max≈31,86 kA. Karta NAPRAWA-A DODAŁA rodzinę MCB Icn=10 kA (obok
+        istniejącej 6 kA) — ale NAWET 10 kA << 31,86 kA, więc kryterium
+        zdolności wyłączania dla MCB pozostaje NIESPEŁNIONE na TYM konkretnym
+        poziomie zwarcia (fizycznie poprawne: żaden MCB — wyrób do 10 kA z
+        definicji klasy produktu IEC 60898-1 — nie jest przeznaczony do pracy
+        tak blisko transformatora SN/nN; obwód wymagałby MCCB/wyłącznika
+        kompaktowego z odpowiednio wysokim Icu, nie MCB). MCCB — kryterium I2
+        NIEROZSTRZYGALNE: to LUKA KONSUMENTA, nie luka danych (`_kryterium_i2`
+        dla `KIND_MCCB` jest twardo zakodowane na NIEROZSTRZYGALNE
+        NIEZALEŻNIE od jakichkolwiek danych katalogowych — `KandydatAparatuNn`
+        nie ma nawet pól Ir/Isd/Ii do przeniesienia takich danych — naprawa
+        wymaga OSOBNEJ karty zmieniającej sam kod kryterium, nie tylko dane).
+        Wkładka gG — kryterium SWZ NIEROZSTRZYGALNE: karta NAPRAWA-A podjęła
+        próbę podwójnego zasilenia `i2t_prearc_a2s` (ETI WT-NH vs Eaton
+        Bussmann 10164) i znalazła rozjazd ~30-60% między dwoma realnymi
+        źródłami — nie do uczciwego pogodzenia, pole zostaje `None` (patrz
+        `get_all_lv_fuse_link_types` w `mv_auxiliary_catalog.py`). Złożenie:
+        `wybierz_aparat_dla_obwodu_nn` u RGnN NIE MOŻE wydać pełnej
+        rekomendacji („rekomendacja" != None) — TRZECI, poprawny fizycznie
+        stan (nie fail-closed z braku danych trasy jak przed kartą — dane
+        trasy SĄ kompletne od KROK 5b — tylko żaden kandydat katalogu NIE
+        KWALIFIKUJE SIĘ na tym konkretnym, bardzo wysokim poziomie zwarcia).
+        Pełna, pozytywna rekomendacja jest teraz osiągalna GŁĘBIEJ w sieci
+        (Ik″max niższy) — patrz KROK 7b (Silnik M1, Ik″max≈8,4 kA)."""
         model = get_enm(_CASE_ID)
         wynik = wybierz_aparat_dla_obwodu_nn(
             enm=model,
@@ -1033,7 +1095,15 @@ class TestNnFullChain:
         )
         assert wynik["status"] == "OK", wynik
         dobor = wynik["dobor"]
-        assert len(dobor["kandydaci"]) >= 100, f"Za mało kandydatów: {len(dobor['kandydaci'])}"
+        assert len(dobor["kandydaci"]) >= 140, f"Za mało kandydatów: {len(dobor['kandydaci'])}"
+        assert {
+            k["kandydat"]["zdolnosc_wylaczania_ka"]
+            for k in dobor["kandydaci"]
+            if k["kandydat"]["kind"] == "MCB"
+        } == {
+            6.0,
+            10.0,
+        }, "Oczekiwano OBU rodzin MCB (Icn 6 kA i 10 kA, karta NAPRAWA-A) wśród kandydatów"
 
         mcb_falls_on_icu = [
             k
@@ -1046,9 +1116,16 @@ class TestNnFullChain:
                 for kr in k["kryteria"]
             )
         ]
-        assert (
-            mcb_falls_on_icu
-        ), "Oczekiwano MCB w zakresie In odrzuconych na kryterium zdolności wyłączania"
+        assert mcb_falls_on_icu, (
+            "Oczekiwano MCB (obu rodzin Icn) w zakresie In odrzuconych na kryterium "
+            "zdolności wyłączania — Ik″max u RGnN (~31,9 kA) przekracza NAWET nową "
+            "rodzinę 10 kA"
+        )
+        assert any(k["kandydat"]["zdolnosc_wylaczania_ka"] == 10.0 for k in mcb_falls_on_icu), (
+            "Oczekiwano, że NAWET rodzina MCB 10 kA (karta NAPRAWA-A) odpada na "
+            "kryterium zdolności wyłączania u RGnN — dowód, że pusta rekomendacja "
+            "tu jest fizyką, nie brakiem danych katalogowych"
+        )
 
         mccb_nierozstrzygalne = [
             k
@@ -1059,9 +1136,10 @@ class TestNnFullChain:
                 for kr in k["kryteria"]
             )
         ]
-        assert (
-            mccb_nierozstrzygalne
-        ), "Oczekiwano MCCB z kryterium I2 nierozstrzygalnym (brak nastaw)"
+        assert mccb_nierozstrzygalne, (
+            "Oczekiwano MCCB z kryterium I2 nierozstrzygalnym — LUKA KONSUMENTA "
+            "(`_kryterium_i2` dla MCCB, nie luka danych katalogowych, karta NAPRAWA-A §0.2.b)"
+        )
 
         fuse_nierozstrzygalne = [
             k
@@ -1072,20 +1150,33 @@ class TestNnFullChain:
                 for kr in k["kryteria"]
             )
         ]
-        assert (
-            fuse_nierozstrzygalne
-        ), "Oczekiwano wkładek gG z kryterium SWZ nierozstrzygalnym (brak I-t, G-D2)"
+        assert fuse_nierozstrzygalne, (
+            "Oczekiwano wkładek gG z kryterium SWZ nierozstrzygalnym — G-D2 podjęte "
+            "podwójnie (ETI vs Bussmann), rozjazd ~30-60% nie do pogodzenia, karta "
+            "NAPRAWA-A §0.2.c"
+        )
 
         assert dobor["rekomendacja"] is None, (
-            "ZNALEZISKO #4: żaden kandydat katalogu nie powinien dziś w pełni "
-            f"kwalifikować się na tym poziomie zwarcia; rekomendacja={dobor['rekomendacja']}"
+            "PINOWANE JAKO POPRAWNA FIZYKA (karta NAPRAWA-A §0.3): u RGnN "
+            "(Ik″max≈31,9 kA) żaden kandydat katalogu — WŁĄCZNIE z nową rodziną "
+            f"MCB 10 kA — nie kwalifikuje się w pełni; rekomendacja={dobor['rekomendacja']}"
         )
         _STAN["dobor_zerohop"] = dobor
 
-    def test_krok_07b_dobor_zabezpieczen_w_punkcie_znalezisko_bramki(self) -> None:
-        """SAMO ZNALEZISKO co KROK 5b (ta sama fizyka Ik1_min, REUSE — patrz
-        docstring `nn_device_selection.py`): dobór dla obwodu Silnika M1 (za
-        kablem) jest zablokowany tą samą przyczyną (brak żyły powrotnej)."""
+    def test_krok_07b_dobor_zabezpieczen_w_punkcie_pelna_rekomendacja(self) -> None:
+        """FLIP (karta NAPRAWA-A §0.3): SAMO ZNALEZISKO co dawne KROK 5b (ta
+        sama fizyka Ik1_min, REUSE — patrz docstring `nn_device_selection.py`)
+        — dobór dla obwodu Silnika M1 był zablokowany tą samą przyczyną
+        (brak żyły powrotnej). Karta NAPRAWA-A naprawia OBA warunki
+        jednocześnie na TYM konkretnym obwodzie:
+          (1) trasa Ik1_min policzalna (żyła powrotna zasilona, jak KROK 5b);
+          (2) Ik″max tu (≈8,4 kA, KROK 4 — znacznie niższy niż u RGnN,
+              impedancja rośnie z odległością od źródła) jest PONIŻEJ nowej
+              rodziny MCB Icn=10 kA (karta NAPRAWA-A §0.2.a) — więc kryterium
+              zdolności wyłączania STAJE SIĘ SPEŁNIALNE tu, w odróżnieniu od
+              RGnN (KROK 7, Ik″max≈31,9 kA — nawet 10 kA nie wystarcza).
+        Wynik: PIERWSZA w tym łańcuchu PEŁNA, pozytywna rekomendacja aparatu
+        dla realnego obwodu (silnikowego) — dowód end-to-end §80 karty."""
         model = get_enm(_CASE_ID)
         wynik = wybierz_aparat_dla_obwodu_nn(
             enm=model,
@@ -1095,8 +1186,38 @@ class TestNnFullChain:
             iz_prime_a=_STAN["iz_prime_a_k2"],
             ik_max_ka=_STAN["ik_max_ka_leaf_silnik"],
         )
-        assert wynik["status"] == "brak danych"
-        assert wynik["missing_data"] == ["route"]
+        assert wynik["status"] == "OK", wynik
+        assert (
+            _STAN["ik_max_ka_leaf_silnik"] < 10.0
+        ), "Przesłanka flipu: Ik″max Silnika M1 musi być < Icn nowej rodziny MCB (10 kA)"
+        dobor = wynik["dobor"]
+        kwalifikujacy = [k for k in dobor["kandydaci"] if k["kwalifikuje_sie"]]
+        assert kwalifikujacy, "Oczekiwano co najmniej jednego W PEŁNI kwalifikującego kandydata"
+        assert all(
+            all(kr["status"] == "spełnia" for kr in k["kryteria"]) for k in kwalifikujacy
+        ), "Kandydat kwalifikujący się musi mieć WSZYSTKIE 4 kryteria 'spełnia'"
+
+        rekomendacja = dobor["rekomendacja"]
+        assert rekomendacja is not None, (
+            "ZNALEZISKO BRAMKI #4 naprawione na tym obwodzie: oczekiwano PEŁNEJ "
+            f"rekomendacji (nie None). dobor={dobor}"
+        )
+        # Ranking jest deterministyczny (`ocen_kandydatow_nn`: najmniejsze In,
+        # tie-break id) — Ib=40 A wymusza In>=40 A (kryterium 1), więc
+        # zwycięzcą jest NAJMNIEJSZY kwalifikujący się In=40 A; wśród
+        # kandydatów In=40 A tie-break alfabetyczny id daje klasę B przed C/D
+        # ("mcb_nn_b40a_10ka" < "mcb_nn_c40a_10ka" leksykograficznie) —
+        # PRZYPIĘTA, deterministyczna, odtwarzalna wartość (nie przypadkowa
+        # obserwacja jednego przebiegu).
+        assert rekomendacja["kind"] == "MCB"
+        assert rekomendacja["id"] == "mcb_nn_b40a_10ka"
+        assert rekomendacja["in_a"] == 40.0
+        assert rekomendacja["klasa_mcb"] == "B"
+        assert rekomendacja["zdolnosc_wylaczania_ka"] == 10.0, (
+            "Rekomendacja MUSI pochodzić z NOWEJ rodziny Icn=10 kA (karta NAPRAWA-A) — "
+            "rodzina 6 kA nie kwalifikuje się na tym obwodzie"
+        )
+        _STAN["dobor_silnik_m1"] = dobor
 
     # -- KROK 8: zmiana kabla → detekcja nieświeżości → przeliczenie -------
 
@@ -1202,12 +1323,17 @@ class TestNnFullChain:
 
     # -- KROK 10: pakiet dowodowy + raport -----------------------------------
 
-    def test_krok_10a_pakiet_dowodowy_obwod_silnika_znalezisko_bramki(self, app_client) -> None:
-        """Pakiet LV_CIRCUIT_VERIFICATION dla obwodu Silnika M1: 422 z uczciwym
-        powodem (SAMO ZNALEZISKO co KROK 5b/7b — pakiet wewnętrznie odtwarza
-        TĘ SAMĄ ścieżkę Ik1_min/route przez `lv_circuit_verification_binding.
-        _petla_zwarcia_min`). Wzorzec kontraktu: `tests/api/test_nn_proof_api.py
-        ::test_pack_brak_danych_daje_422_z_powodem_pl`."""
+    def test_krok_10a_pakiet_dowodowy_obwod_silnika_pelny_przebieg(self, app_client) -> None:
+        """FLIP (karta NAPRAWA-A §0.3.10, „pakiet dowodowy dla obwodu
+        silnika"): pakiet LV_CIRCUIT_VERIFICATION dla obwodu Silnika M1 był
+        422 z uczciwym powodem (SAMO ZNALEZISKO co dawne KROK 5b/7b — pakiet
+        wewnętrznie odtwarza TĘ SAMĄ ścieżkę Ik1_min/route przez
+        `lv_circuit_verification_binding._petla_zwarcia_min`). Karta
+        NAPRAWA-A zasiliła żyłę powrotną PE/PEN dla WSZYSTKICH kabli trasy —
+        pakiet teraz DZIAŁA W PEŁNI dla REALNEGO obwodu silnikowego (nie
+        tylko u źródła jak KROK 10b), z ZIP w 10 krokach, deterministyczny,
+        zawierający sekcję doboru z PEŁNĄ rekomendacją (MCB B40, Icn 10 kA,
+        KROK 7b)."""
         payload = {
             "project_id": "proj-nn-e2e",
             "case_id": _CASE_ID,
@@ -1215,7 +1341,7 @@ class TestNnFullChain:
             "snapshot_id": "snap-krok10",
             "project_name": "MV-Design-PRO — bramka nN P0",
             "case_name": "Bramka końcowa P0 nN",
-            "run_timestamp": datetime.now(UTC).isoformat(),
+            "run_timestamp": "2026-08-14T12:00:00Z",
             "station_ref": _REFS["station_ref"],
             "bus_ref": _REFS["leaf_silnik_bus"],
             "breaker_ref": _REFS["aparat_k2_ref"],
@@ -1233,19 +1359,43 @@ class TestNnFullChain:
             "vdrop_u_source_kv": _STAN["u_source_kv_silnik"],
             "vdrop_delta_u_total_kv": _STAN["delta_u_total_kv_silnik"],
         }
-        resp = app_client.post("/api/nn-proof/circuit/pack", json=payload)
-        assert (
-            resp.status_code == 422
-        ), f"Oczekiwano 422 (brak danych), jest {resp.status_code}: {resp.text[:500]}"
-        assert (
-            "żyły powrotnej" in resp.text
-            or "route" in resp.text.lower()
-            or resp.json().get("detail")
-        )
-
         preview_resp = app_client.post("/api/nn-proof/circuit/preview", json=payload)
         assert preview_resp.status_code == 200
-        assert preview_resp.json()["status"] == "brak danych"
+        preview_body = preview_resp.json()
+        # Sukces (`wynik["status"] == "OK"` wewnątrz endpointu) zwraca
+        # DOKUMENT dowodu (`serialize_lv_circuit_verification_pack`), nie
+        # kopertę `{"status": ...}` — ta koperta istnieje WYŁĄCZNIE na
+        # ścieżce błędu (`api/nn_proof.py::preview_lv_circuit_verification_
+        # pack`, `if wynik["status"] != "OK": return wynik`). Brak klucza
+        # "status" na najwyższym poziomie JEST dowodem sukcesu.
+        assert "status" not in preview_body, preview_body
+        assert preview_body["pack_type"] == "LV_CIRCUIT_VERIFICATION"
+        assert preview_body["summary"]["proof_type"] == "LV_CIRCUIT_VERIFICATION"
+        assert preview_body["summary"]["total_steps"] == 10
+
+        resp1 = app_client.post("/api/nn-proof/circuit/pack", json=payload)
+        assert resp1.status_code == 200, resp1.text[:1000]
+        assert resp1.headers["content-type"] == "application/zip"
+        import io
+        from zipfile import ZipFile
+
+        with ZipFile(io.BytesIO(resp1.content)) as zf:
+            names = set(zf.namelist())
+            assert "proof_pack/proof.json" in names
+            proof_json = zf.read("proof_pack/proof.json").decode("utf-8")
+        assert '"proof_type": "LV_CIRCUIT_VERIFICATION"' in proof_json
+        assert '"step_number": 10' in proof_json
+        # Dowód, że pakiet REALNIE liczy trasę Silnika M1 (nie u źródła jak
+        # KROK 10b) — nagłówek dokumentu wskazuje kabel K2 jako element trasy.
+        assert _REFS["k2_cable_ref"] in proof_json
+
+        # Determinizm — dwa pobrania dają identyczny ZIP bajt-w-bajt (ten sam
+        # dowód co KROK 10b, teraz na REALNYM obwodzie z kablem na trasie).
+        resp2 = app_client.post("/api/nn-proof/circuit/pack", json=payload)
+        assert resp2.status_code == 200
+        assert (
+            hashlib.sha256(resp1.content).hexdigest() == hashlib.sha256(resp2.content).hexdigest()
+        ), "Pakiet dowodowy obwodu Silnika M1 nie jest deterministyczny (2 pobrania różne)"
 
     def test_krok_10b_pakiet_dowodowy_u_zrodla_dziala_i_deterministyczny(self, app_client) -> None:
         """Dowód pozytywny: pakiet LV_CIRCUIT_VERIFICATION DZIAŁA w pełni (ZIP,
@@ -1298,13 +1448,16 @@ class TestNnFullChain:
         ), "Pakiet dowodowy nie jest deterministyczny (2 pobrania dają różny ZIP)"
 
     def test_krok_10c_raport_json_sekcje_nn(self, app_client) -> None:
-        """Sekcje raportu nN (`POST /api/nn-proof/circuit/report`) — SAMO
-        ZNALEZISKO #1 dla obwodu Silnika M1 (raport wewnętrznie wymaga TEJ
-        SAMEJ trasy Ik1_min co krok 5b/7b/10a — cały raport, nie tylko SWZ,
-        wraca `status: brak danych`), więc dowód „wszystkie sekcje obecne"
-        prowadzimy u źródła (zero-hop, jak krok 10b) — mechanizm sam w sobie
-        sprawny."""
-        resp_blocked = app_client.post(
+        """FLIP (karta NAPRAWA-A §0.3.10): raport nN (`POST /api/nn-proof/
+        circuit/report`) dla obwodu Silnika M1 dawniej zwracał `status: brak
+        danych` (SAMO ZNALEZISKO #1 — raport wewnętrznie wymaga TEJ SAMEJ
+        trasy Ik1_min co dawne KROK 5b/7b/10a). Karta NAPRAWA-A naprawia to u
+        źródła (dane żyły powrotnej) — WSZYSTKIE sekcje raportu (włącznie z
+        `dobor`, niosącą PEŁNĄ rekomendację z KROK 7b) są teraz obecne
+        RÓWNIEŻ dla obwodu Silnika M1, nie tylko u źródła transformatora
+        (RGnN, dowód pozostaje jako drugi punkt porównawczy — sekcja `dobor`
+        tam ma `rekomendacja: None`, PINOWANE jako poprawna fizyka, KROK 7)."""
+        resp_silnik = app_client.post(
             "/api/nn-proof/circuit/report",
             json={
                 "case_id": _CASE_ID,
@@ -1321,8 +1474,9 @@ class TestNnFullChain:
                 "vdrop_delta_u_total_kv": _STAN["delta_u_total_kv_silnik"],
             },
         )
-        assert resp_blocked.status_code == 200
-        assert resp_blocked.json()["status"] == "brak danych"
+        assert resp_silnik.status_code == 200, resp_silnik.text[:1000]
+        body_silnik = resp_silnik.json()
+        assert body_silnik["status"] == "OK", body_silnik
 
         resp = app_client.post(
             "/api/nn-proof/circuit/report",
@@ -1344,17 +1498,40 @@ class TestNnFullChain:
         assert resp.status_code == 200, resp.text[:1000]
         body = resp.json()
         assert body["status"] == "OK"
-        for sekcja in (
-            "dane_zrodlowe",
-            "transformator",
-            "odcinki",
-            "delta_u",
-            "zwarcia",
-            "swz",
-            "dobor",
-        ):
-            assert sekcja in body, f"Brak sekcji '{sekcja}' w raporcie nN"
-        assert "status" in body["swz"]
+
+        for body_do_sprawdzenia in (body_silnik, body):
+            for sekcja in (
+                "dane_zrodlowe",
+                "transformator",
+                "odcinki",
+                "delta_u",
+                "zwarcia",
+                "swz",
+                "dobor",
+            ):
+                assert sekcja in body_do_sprawdzenia, f"Brak sekcji '{sekcja}' w raporcie nN"
+            # `swz` sekcja raportu = `{**build_swz_view(...), "provenance": ...}` —
+            # koperta zewnętrzna ("status": "OK"/"brak danych") NIE jest werdyktem;
+            # werdykt 3-stanowy jest zagnieżdżony pod `swz["swz"]["status"]`
+            # (`application/analyses/swz/service.py::build_swz_view`).
+            assert "status" in body_do_sprawdzenia["swz"]
+            # `dobor` sekcja raportu = `{**wybierz_aparat_dla_obwodu_nn(...), "provenance": ...}`
+            # — sam `wybierz_aparat_dla_obwodu_nn` zwraca `{"status", ..., "dobor": {...}}`,
+            # więc rekomendacja jest zagnieżdżona DWA poziomy głębiej:
+            # sekcja["dobor"]["dobor"]["rekomendacja"] (`api/analysis_run_exports.py`).
+            assert body_do_sprawdzenia["dobor"]["status"] == "OK"
+            assert "rekomendacja" in body_do_sprawdzenia["dobor"]["dobor"]
+
+        # Obwód Silnika M1 (KROK 7b): rekomendacja PEŁNA, decyzyjny werdykt SWZ.
+        rekomendacja_silnik = body_silnik["dobor"]["dobor"]["rekomendacja"]
+        assert rekomendacja_silnik is not None
+        assert rekomendacja_silnik["id"] == "mcb_nn_b40a_10ka"
+        assert body_silnik["swz"]["status"] == "OK"
+        assert body_silnik["swz"]["swz"]["status"] in ("spełnia", "nie spełnia")
+
+        # U źródła RGnN (KROK 7): rekomendacja None PINOWANA jako poprawna
+        # fizyka — Ik″max tam przekracza NAWET nową rodzinę MCB 10 kA.
+        assert body["dobor"]["dobor"]["rekomendacja"] is None
 
     # -- Determinizm całego łańcucha (2×) -------------------------------------
 
