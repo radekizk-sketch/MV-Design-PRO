@@ -6875,7 +6875,7 @@ def start_branch_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dic
 
     inferred_from_bus_ref = bool(not from_ref and from_bus_ref)
     if inferred_from_bus_ref:
-        inferred_from_ref, lookup_err = _lookup_branch_from_ref_for_bus(enm, from_bus_ref)
+        inferred_from_ref, lookup_err = _lookup_branch_from_ref_for_bus(enm, str(from_bus_ref))
         if lookup_err:
             return _error_response(
                 "Pole from_bus_ref bez from_ref jest niedozwolone dla źródła "

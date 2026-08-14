@@ -208,3 +208,35 @@ DLUG JAWNY (przypiety testami, nie odlozony w ciszy):
   `voltage_indicator`. Uzupelnienie slownika szablonow zmienia rysunek pol na
   SLD, wiec — jak glowica kablowa pola TR — wymaga werdyktu wizualnego
   wlasciciela (B-02). Zgloszone, nie wykonane samowolnie.
+
+## 10. STAN PO S5 (2026-08-14, karta S5-ENM-POLA — odbior niezalezny)
+
+ZROBIONE. Operacja `add_sn_bay_from_catalog` (`enm/domain_operations_v2.py`,
+resolver `enm/pole_katalogowe.py`): materializacja pola stacji z katalogu —
+tor MODULARNY przez `complete_bay_template_ref`, tor BLOK_RMU przez
+`factory_configuration_ref` + `factory_unit_index` (numer 1-based, nie litera —
+blok LLT ma dwie jednostki L). Aparatura toru glownego jednostki bloku
+ZASTEPUJE lacznik glowny katalogowego pola i niesie referencje JEDNOSTKI
+(np. `ABB__SAFERING__CCF__U3__fuse_set`), nie zastapionego slotu — CCF i CCV
+to rozne wyroby (pin regresji, potwierdzony iniekcja odbiorcza). `dry_run`
+zwraca werdykt VALID/INVALID + podglad BOM bez mutacji; wykonanie deleguje do
+istniejacej sciezki pisania `add_sn_bay` (jedna sciezka pisania). Dolozony
+wpis `OperationSpec` w `domain/canonical_operations.py` (rejestr 42 operacji).
+Domkniety dlug zastany: `bay_template_ref` wskazujace katalogowe pole rodziny
+dawalo po cichu PUSTA liste aparatow — obie nomenklatury wchodza jednym
+wejsciem z pelna walidacja rodziny (test regresji).
+
+DLUG JAWNY S5 (do kolejki, patrz PLAN_DOKONCZENIA_100_2026-08-14 §3):
+- V1 `_build_field_spec` (7 miejsc wywolan: GPZ, wstawianie stacji, sekcje)
+  nadal buduje pola producenckie bez aparatow; przepiecie wymaga
+  rozstrzygniecia, czy pola GPZ moga stac na rodzinie BLOK_RMU (test referencyjny
+  buduje GPZ na SafeRing — kanal zakazany dla rodzin blokowych).
+- Semantyka `SwitchgearFamily.voltage_levels` niejednorodna: Rotoblok deklaruje
+  napiecia SIECI (15/20), SafeRing i Rotoblok Air klasy izolacji Um
+  (12/17,5/24) — dlatego operacja celowo NIE wola `family_supports_voltage`
+  wobec napiecia szyny (odrzucaloby poprawne projekty). Wymaga normalizacji
+  danych rodzin (jedno pole = jedna semantyka) i dopiero potem wlaczenia
+  walidacji napieciowej.
+- Pole zrodlowe DER (`mv_source_field_primary_devices`) swiadomie poza
+  resolverem: konfigurowane jawnie kontrolka-po-kontrolce, nie wybierane
+  z katalogu rodziny.

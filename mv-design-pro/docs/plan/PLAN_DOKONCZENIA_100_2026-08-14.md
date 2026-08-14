@@ -52,7 +52,8 @@ Wszystko inne: działać do końca autonomicznie.
 - Porty zajęte: `fuser -k 5173/tcp 8000/tcp`.
 - Zapadki dwustronne (para pin↔próg aktualizowana RAZEM w jednym commicie):
   `tsconfig_gate_guard` (budżet błędów poza bramką: 531 — wolno tylko obniżać),
-  `mypy_ratchet_guard` (16/11 + meta-test), listy imienne długu w testach.
+  `mypy_ratchet_guard` (para próg↔meta-test; AKTUALNE liczby w guardzie i jego
+  meta-teście, nie w tym planie), listy imienne długu w testach.
 
 ### 0.4 Konwencje commitów
 - Autor: `git -c user.name="Claude" -c user.email="noreply@anthropic.com"`
@@ -423,3 +424,33 @@ Wszystkie poniższe PRAWDZIWE jednocześnie:
    pozycja ma w rejestrze uzasadnienie „źródło publiczne nie istnieje".
 6. Pełna bateria §0.5 zielona na main po ostatnim merge; strona oceny ma
    sekcje wszystkich ekranów objętych werdyktami.
+
+---
+
+## §6 UZUPEŁNIENIA KOLEJKI (2026-08-14, po odbiorze S5)
+
+Stan: karta §2.2 (S5-ENM-POLA) ODEBRANA (cherry `06ac2901`, adnotacja w wierszu
+KONFIGURATOR-POL-RMU rejestru). Dwie nowe karty kolejki z długów S5:
+
+### K-J NORMALIZACJA-NAPIEC-RODZIN
+`SwitchgearFamily.voltage_levels` ma niejednorodną semantykę (Rotoblok: napięcia
+SIECI 15/20; SafeRing/Rotoblok Air: klasy izolacji Um 12/17,5/24). Karta:
+(1) rozdzielić na dwa jawne pola (np. `network_voltages_kv` i `um_classes_kv`)
+z transkrypcją per rodzina ZE ŹRÓDŁA (karta producenta — zero zgadywania,
+rodzina bez danych = None z komentarzem); (2) przepisać `family_supports_voltage`
+na jednoznaczną semantykę; (3) WŁĄCZYĆ walidację napięciową w
+`add_sn_bay_from_catalog` (dziś celowo wyłączona — sekcja 10 dokumentu
+konfiguratora); (4) testy iloczynu (rodzina sieciowa × klasowa × brak danych).
+Granice: `network_model/catalog/switchgear/**`, `enm/pole_katalogowe.py`,
+testy. UWAGA: nie zlecać równolegle z BLOKI-RMU-5-RODZIN (te same pliki) —
+dopiero po jej scaleniu.
+
+### K-K POLA-V1-PRZEZ-RESOLVER `[wymaga rozstrzygnięcia inżynierskiego]`
+V1 `_build_field_spec` (7 miejsc: GPZ, wstawianie stacji, sekcje) buduje pola
+producenckie BEZ aparatów. Blokada: test referencyjny buduje pola GPZ na
+rodzinie SafeRing (BLOK_RMU) z pojedynczej referencji szablonu — kanał zakazany
+dla rodzin blokowych. Rozstrzygnięcie do podjęcia PRZED implementacją (STOP —
+pytanie do właściciela albo decyzja architekta z wpisem do rejestru): (a) GPZ
+używa wyłącznie rodzin o torze MODULARNYM (dane referencyjne do poprawy), albo
+(b) rodziny RMU dostają jawny kanał pól GPZ. Po rozstrzygnięciu: przepiąć
+7 miejsc przez resolver `pole_katalogowe`, test klasy po wszystkich 7.
