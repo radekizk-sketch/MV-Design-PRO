@@ -1420,6 +1420,17 @@ describe('KreatorStacjiSnNn — tory konfiguracji rozdzielnicy (S3)', () => {
     expect(screen.queryByTestId('mvd-kreator-stacja-pole-wiersz-1')).toBeNull();
     // Bez pól nie ma czego zapisać — bramka zapisu trzyma.
     expect(screen.getByTestId('mvd-kreator-stacja-zapisz')).toBeDisabled();
+    // STOPKA NAZYWA REALNY POWÓD (naprawa 2026-08-14). Defekt zastany: mówiła
+    // „Brak kompletnych szablonów pól … wybierz inny pakiet katalogowy", choć
+    // katalog miał komplet szablonów, a brakowało WYŁĄCZNIE wskazania rodziny —
+    // komunikat wysyłał projektanta do zmiany pakietu zamiast do jedynej akcji,
+    // która odblokowuje zapis (i tak samo mylił diagnozę specu e2e).
+    expect(screen.getByTestId('mvd-kreator-walidacja')).toHaveTextContent(
+      /Wskaż rodzinę rozdzielnicy/i,
+    );
+    expect(screen.getByTestId('mvd-kreator-walidacja')).not.toHaveTextContent(
+      /Brak kompletnych szablonów pól/i,
+    );
 
     // Wskazanie rodziny domyka krok: pola rodzaju stacji wchodzą z jej pakietu.
     await userEvent.selectOptions(screen.getByTestId('mvd-kreator-stacja-rodzina'), 'ZPUE_ROTOBLOK');
