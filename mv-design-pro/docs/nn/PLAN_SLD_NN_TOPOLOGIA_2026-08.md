@@ -164,3 +164,47 @@ SCREENSHOT (jeśli wizualny)`. „Testy zielone" NIE wystarcza dla wizualnych.
 **T5c: HOLD** do zielonego B-02 T5b-2; potem kontrakt `DomainViewState`
 (domainType/rootStationId/scenarioId/runId/overlay/selection/camera{zoom,pan}/
 returnContext).
+
+---
+
+## KOREKTA WERDYKTU B-02 (2026-08-14): T5b-2 = REJECT WIZUALNY 0/10
+
+ARCHITEKTURA: może być zaakceptowana. TOPOLOGIA: po dowodach testowych.
+WIZUALIZACJA: 0/10 — „debug view grafu", nie profesjonalny SLD. Testy dowodzą
+poprawności modelu, NIE dowodzą jakości schematu. NIE SCALAĆ jako zakończonego L2.
+
+18 punktów korekty (skrót; pełna treść = werdykt właściciela w sesji):
+P0.1 FIT-TO-ELECTRICAL-CONTENT (60–80% viewportu, nie 10–20%; „użytkownik może
+przybliżyć" ODRZUCONE) · P0.2 dedykowany layout elektroenergetyczny RANK 0–6
+(SN→TR→incomer→sekcje→odpływy→podrozdzielnice→odbiory), nie generyczny graf ·
+P0.3 magistrale DOMINUJĄCE (grubość, styl BUS, nazwa+napięcie+sekcja) ·
+P0.4 sprzęgło: sylwetka OPEN/CLOSED widoczna natychmiast, nie warianty pikselowe ·
+P0.5 transformatory duże, centrum toru, blok danych (kVA/przekładnia/grupa/uk) ·
+P0.6 aparaty czytelne JAKO aparaty (geometria+oznaczenie+funkcja) · P0.7 odpływy
+w ORTOGONALNYM rastrze z szyny (ukośne = wyjątek) · P0.8 podrozdzielnica jako
+wizualny podukład (nazwa+szyna+aparaty+odpływy zgrupowane) · P0.9 PV jako TOR
+(źródło→aparat→tor→PCC), nie ikona przy kresce · P0.10 boundary zakotwiczone
+w terminalu toru (chip nie zastępuje toru) · P0.11 rozróżnialne style linii
+BUS/CABLE/CONNECTION/BOUNDARY/LOGICAL · P0.12 typografia 3 poziomy
+(PRIMARY/SECONDARY/TERTIARY), PRIMARY nigdy poniżej czytelności ekranowej;
+ocena przy DOMYŚLNYM wejściu, nie na cropie · P0.13 sekcja jako layout
+container (incomer/feeders/coupler/DER/boundary), nie obiekty luzem ·
+P0.14 wizualny podział SEKCJA A ↔ QBC ↔ SEKCJA B (T1→A, T2→B czytelne od razu) ·
+P0.15 dominujący kierunek TOP→DOWN · P0.16 SWZ markery NA TORACH per aparat
+(PASS/FAIL/N-A + rozwinięcie Ikmin/Zs/Ia/ta/runId), nie sam przycisk ·
+P0.17 overlay UKŁAD SIECIOWY/PE/PEN/punkt rozdziału/uziemienie (osobna
+nakładka, nie stale) · P0.18 z referencji CAD przejąć JĘZYK elektryczny
+(dominujące szyny, raster, rytm), nie piksele.
+
+MANDAT T5b-3 — VISUAL SLD REBUILD (warstwa prezentacji L2; ENM/solver/
+nawigacja BEZ zmian bez potrzeby): dedykowany LV SLD layout engine; hierarchy
+ranks; sekcje dominujące; ortogonalny raster; realne symbole; jednoznaczne
+OPEN/CLOSED; większe TR i etykiety; screen-stable sizing; fit-to-content;
+grupowanie sekcyjne; rozróżnienie source/load/DER; realne zakończenie
+boundary; SWZ badges na torach; etykiety bez kolizji; overlay układu
+sieciowego; zrzuty regresji wizualnej przy 100% viewport.
+
+KRYTERIUM ODBIORU: następny zrzut ma być INNYM POZIOMEM JAKOŚCI (nie „to samo
+większe"). Projektant w 2–3 s bez zoomu rozpoznaje: liczbę TR, sekcje, kto
+zasila którą, stan sprzęgła, PV, odpływy, podrozdzielnicę, boundary, tor
+każdego odpływu. WYKONANIE: Fable osobiście (dyrektywa właściciela).
