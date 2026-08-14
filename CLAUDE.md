@@ -310,7 +310,7 @@ MV-Design-PRO/
 │   │   │       ├── model/             # Warstwa modelu ui2
 │   │   │       ├── nav/               # Nawigacja etapow E1-E8
 │   │   │       ├── oze/               # Strumien OZE (krzywe, LOM, zgodnosc NC RfG)
-│   │   │       ├── proces/            # Kanoniczna mapa procesu E1-E8 + nastepna najlepsza akcja
+│   │   │       ├── proces/            # Kanon etapow E1-E8: mapa procesu + nastepna najlepsza akcja
 │   │   │       ├── referencje/        # Referencje katalogowe
 │   │   │       ├── search/            # Wyszukiwanie
 │   │   │       ├── shell/             # Powloka ui2 (chrom, doki, store powloki)

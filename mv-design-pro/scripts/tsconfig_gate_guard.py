@@ -155,11 +155,11 @@ POMIJANE_KATALOGI = {
 # STAN W CHWILI ZAŁOŻENIA: 133 błędy poza bramką zdjęte U ŹRÓDŁA (kasacja
 # martwej wyspy SLD, naprawy w `scripts/`, fiksturach sceny i `e2e/`), zostaje
 # WYŁĄCZNIE dług testów jednostkowych:
-#   * `src/**/__tests__` + `*.test.ts(x)`: 552 błędy w 161 plikach
+#   * `src/**/__tests__` + `*.test.ts(x)`: 532 błędy (pomiar 2026-08-14 po karcie PULPIT-NBA; wcześniej 552 w 161 plikach)
 #     (z tego 106 w `src/ui2/**` — obszar równoległej przebudowy).
 # `e2e/` i `playwright.config.ts` weszły DO bramki (0 błędów) — nie są już
 # długiem, tylko zasięgiem.
-BUDZET_BLEDOW_POZA_BRAMKA = 552
+BUDZET_BLEDOW_POZA_BRAMKA = 532
 
 #: Jawne wyciszenia błędów typu. Zamrożone, żeby nie dało się „obniżyć progu”
 #: przez dopisanie komentarza zamiast naprawy. Pomiar 2026-08-08: 35 wystąpień,

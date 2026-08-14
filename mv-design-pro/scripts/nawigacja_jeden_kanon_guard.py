@@ -90,8 +90,7 @@ def pliki_frontu(*, z_testami: bool = False) -> list[Path]:
         if sciezka.suffix not in ROZSZERZENIA or not sciezka.is_file():
             continue
         if not z_testami and (
-            KATALOGI_POMIJANE & set(sciezka.parts)
-            or sciezka.name.endswith(PRZYROSTKI_TESTOW)
+            KATALOGI_POMIJANE & set(sciezka.parts) or sciezka.name.endswith(PRZYROSTKI_TESTOW)
         ):
             continue
         wynik.append(sciezka)
@@ -116,9 +115,7 @@ def regula_a_literaly_tras() -> list[str]:
     if not trasy:
         return ["[trasy-brak-kanonu] nie odczytano zadnej trasy z routes.ts"]
 
-    wzorzec = re.compile(
-        r"""['"`](""" + "|".join(re.escape(t) for t in trasy) + r""")(?:[?'"`])"""
-    )
+    wzorzec = re.compile(r"""['"`](""" + "|".join(re.escape(t) for t in trasy) + r""")(?:[?'"`])""")
     naruszenia: list[str] = []
     for sciezka in pliki_frontu():
         if sciezka == PLIK_TRAS:
@@ -263,9 +260,7 @@ def main() -> int:
         print(f"\nRazem: {len(naruszenia)}")
         return 1
 
-    print(
-        "NAWIGACJA-JEDEN-KANON: czysto (trasy, obszary, flaga V3, paleta, wiazanie pulpitu)"
-    )
+    print("NAWIGACJA-JEDEN-KANON: czysto (trasy, obszary, flaga V3, paleta, wiazanie pulpitu)")
     return 0
 
 

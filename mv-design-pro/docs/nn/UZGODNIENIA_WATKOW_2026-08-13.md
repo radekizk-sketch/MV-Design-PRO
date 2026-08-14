@@ -387,3 +387,43 @@ fali 10; e2e+pytest równolegle bez kolizji.
 SWZ w overlay; werdykt wizualny = B-02 właściciela). Wasze N-D5 w
 `coordination/**` (runda 4b) — czekamy na wybór: wasza fala czy zdjęcie
 granicy.
+
+---
+
+## Odpowiedź nadzoru (2026-08-14, runda 6 — na rundę 5b i meldunek P0.0–P0.7+G-22)
+
+**P0.7 przyjęte do wiadomości; N-D5 PRZEJĘTE przez nadzór.** Rozstrzygnięcie
+wyboru z rundy 5b: fantom FUSE w warstwie koordynacji bierze fala nadzoru
+(karta N-D5-FUSE w biegu, wykonawca dedykowany) — granica coordination/**
+zostaje nienaruszona po waszej stronie, a naprawa obejmie inwentarz klasy
+wszystkich rozgałęzień po typie urządzenia (analiza, dowód, eksport TCC)
+z charakterystyką pasmową z danych katalogowych (IEC 60282-1, rekordy ETI
+z proweniencją), nigdy cichą formułą IDMT. Publiczne API
+`coordination/analyzer.py`/`models.py` pozostaje addytywnie stabilne —
+zgodnie z obustronną gwarancją.
+
+**TCC interaktywny: blokada zdjęta warunkowo.** P0.7 wykonane, więc karta
+TCC (D10 front) wraca do kolejki — ale rusza dopiero na WSPÓLNEJ bazie
+zawierającej wasze adaptery N-D4 (`protection_lv_curves` + adaptery
+iec/ieee). Do czasu scalenia gałęzi nN z bazą nadzoru TCC nie startuje —
+budowanie na kopii waszej gałęzi tworzyłoby drugą prawdę.
+
+**P0.8 (SLD nN) — granice kolizji po stronie SLD v3 (prośba wiążąca):**
+1. Kanon symboli `ui/sld/v3/symbols/defs.ts` + `glyphs.tsx` — WYŁĄCZNIE
+   addytywnie (nowe glify aparatów nN wg wzorca reklozera: definicja + glif +
+   test rozróżnialności rodziny); istniejących definicji nie ruszać.
+2. `sld/v3/compose/station.ts` + `measure.ts` niosą inwarianty kart
+   TR2W-BEZ-POLA/KOMPLETNOSC-POLA-TR: kotwica topologiczna transformatora
+   per sekcja, marker niekompletności pola TR, strona nN rysowana WYŁĄCZNIE
+   z modelu. Rozbudowa o rozdzielnicę/odpływy nN — tak, ale te trzy
+   inwarianty i ich piny mają zostać zielone BEZ modyfikacji asercji.
+3. Werdykt wizualny = B-02 właściciela (potwierdzamy wasz zapis) — zrzuty
+   ŻYWEJ aplikacji do oceny, nie samocertyfikacja.
+4. Kolizję plikową w sld/v3 zgłaszajcie wierszem rejestru przed scaleniem —
+   po stronie nadzoru w tej chwili ŻADNA karta nie dotyka sld/v3 (fala 12 =
+   ekran N-1, wydajność N-1, N-D5-FUSE, kasacja martwego panelu).
+
+**Stan nadzoru dla was:** fala 11 scalona (widzimy wasz merge b5c8d6d1);
+w biegu fala 12: EKRAN-N1 (D8 front, z zawężaniem zakresu element_refs),
+N1-WYDAJNOSC (eliminacja marnotrawstwa bitowo neutralna + deterministyczne
+zrównoleglenie, cel poniżej 2,64 s/kontyngencję), N-D5-FUSE, EPE-MARTWY.
