@@ -402,6 +402,32 @@ tylko SN `cable-ampacity-derating-preview`) — kreator pokazuje Iz katalogowe;
 odcinek" — per-odpływ w zakładkach; (c) zrzuty B-02 NIEWYKONALNE w sandboxie
 (brak demona Docker) — werdykt wizualny właściciela po `docker-compose up`.
 OSTATNIA POZYCJA P0: bramka końcowa E2E §80 (test_nn_full_chain).
+
+**Aktualizacja 2026-08-14: BRAMKA KOŃCOWA E2E §80 WYKONANA — werdykt uczciwy.**
+Bramka (`3292eb26` + `e637b7f0`): `tests/e2e/test_nn_full_chain.py` (16 testów) —
+substrat GPZ→SN→ST-03→TR 15/0,4→RGnN→K1→R1→K2·silnik→K3·odbiór→K4·PV→K5·BESS
+zbudowany WYŁĄCZNIE operacjami domenowymi (realna ścieżka użytkownika; BESS
+z realnej pozycji `conv-bess-nn-0p5mw-0p4kv`, przyłączony do RGnN — kontrakt
+`add_converter_source` wymaga stacji z TR). 10 kroków + determinizm: rozpływ
+SN+nN (NR zbiega, weryfikacja krzyżowa 2% — regulacja Q(U) falowników
+nazwana), profil U, ΔU (suma teleskopowa), Ik max/min (RGnN 31,86/28,98 kA;
+liść 8,40/5,37 kA — fizyka promieniowa), Iz′ (240→283,2 A), stale detection
+(hash+freshness+GENUINE inny wynik po zmianie kabla 120→95 mm²), trace,
+pakiet ZIP deterministyczny, raport JSON. Pełna suita na HEAD: **9742/13**.
+**WERDYKT: mechanizmy działają w pełni na jednym modelu; integracja NIE JEST
+w pełni gotowa — 4 luki danych/kontraktu** (znaleziska bramki, NIE maskowane):
+(#1) 17/17 kabli `kab_nn_*` bez danych żyły PE/PEN → pętla/SWZ/pakiet tylko
+zero-hop (fail-closed działa poprawnie); (#2) bramka `CATALOG_REQUIRED_
+OPERATIONS` wymaga catalog_ref dla add_nn_outgoing_field/add_nn_load, kreator
+go nie wysyła; (#3) `complete_station_loads_from_nn_feeders` materializuje
+fantomowy odbiór 30 kW NA ODCZYCIE między żądaniami kreatora (predykaty
+parami złamane — kryterium „legacy" = „bez odbioru"); (#4) dobór aparatu bez
+pełnej rekomendacji dla żadnego obwodu (pochodna #1 + MCB 6 kA jedyne +
+MCCB bez nastaw + gG bez bramek I²t). NAPRAWY W BIEGU (Zero-Debt, nie
+odłożone): karta NAPRAWA-A (dane katalogu: PE/PEN×17 podwójnie źródłowane,
+MCB 10 kA, nastawy MCCB, dokończenie G-D2 + flip kroków 5/7/10 na pełny
+PASS) i NAPRAWA-B (fantom u źródła + spójność kontraktu catalog_ref) —
+wykonawcy równolegle w worktree.
 **Aktualizacja 2026-08-13 (ta sama sesja): P0.6 WYKONANE (`b746b6a9`) — „serce modułu".**
 - Pętla zwarcia z REALNEJ trasy grafu: `application/analyses/fault_loop/route.py`
   (NOWY) — BFS po ENM (kable/łącznik/wkładka `status=closed`), fail-closed na brak
