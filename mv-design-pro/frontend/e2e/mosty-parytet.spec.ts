@@ -197,6 +197,12 @@ test.describe('K8 — wygaszone trasy mostu lądują w ui2 z zachowanym kontekst
       await zimneWejscie(strona, kontekst, `#variants?case=${kontekst.caseId}`);
 
       await expect(strona.getByTestId('mvd-przypadki')).toBeVisible({ timeout: 20000 });
+      // Trasa `#variants` prowadziła do PORÓWNANIA wariantów pracy, więc parytet
+      // wymaga OBU okien przestrzeni „Obliczenia": menedżera przypadków ORAZ
+      // historii przebiegów. Historia była drugą instancją tego samego defektu
+      // zapadania panelu (`.mvd-przebiegi`, zmierzone rect 1045x0) — pin trzyma
+      // teraz obie, żeby naprawa nie cofnęła się połowicznie.
+      await expect(strona.getByTestId('mvd-przebiegi')).toBeVisible({ timeout: 20000 });
       await expect(strona.getByTestId('variants-engineering-surface')).toHaveCount(0);
       await oczekujZachowanyKontekst(strona, kontekst);
     } finally {
