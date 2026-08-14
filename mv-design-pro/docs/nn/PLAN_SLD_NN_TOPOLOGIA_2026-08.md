@@ -208,3 +208,83 @@ KRYTERIUM ODBIORU: następny zrzut ma być INNYM POZIOMEM JAKOŚCI (nie „to sa
 większe"). Projektant w 2–3 s bez zoomu rozpoznaje: liczbę TR, sekcje, kto
 zasila którą, stan sprzęgła, PV, odpływy, podrozdzielnicę, boundary, tor
 każdego odpływu. WYKONANIE: Fable osobiście (dyrektywa właściciela).
+
+---
+
+## WERDYKT B-02 dla T5b-3 (właściciel, 2026-08-15) — 6/10, mandat T5b-4
+
+**OCENA: 6/10. STATUS: DUŻY POSTĘP, JESZCZE NIE PROFESSIONAL-GRADE.**
+Wcześniejsze 0/10 wycofane. Widoczna realna poprawa: hierarchy SN→TR→incomer→
+BUS→feeder, magistrale jako główne elementy kompozycji, uporządkowany raster
+odpływów, większa waga TR, jawne sprzęgło z opisem OPEN/CLOSED,
+podrozdzielnica z własną magistralą. Problem NIE brzmi już „graph view";
+brzmi: „surowy renderer inżynierski po pierwszym dobrym layoucie, nie dojrzała
+powierzchnia projektowa".
+
+Oceny cząstkowe właściciela: topologia wizualna 8/10 · hierarchia elektryczna
+8/10 · magistrale 7/10 · TR 7/10 · aparaty 5/10 · sprzęgło 6/10 · odpływy 7/10
+· podrozdzielnice 6/10 · DER/PV 6/10 · boundary 6/10 · typografia 5/10 ·
+fit/viewport 4/10 · symbol grammar 4/10 · engineering polish 5/10.
+
+DECYZJA: NIE cofać architektury, NIE wracać do T5b-2, NIE ruszać ENM/solvera,
+NIE przebudowywać podstaw hierarchy layout.
+
+### MANDAT T5b-4 — PROFESSIONAL VISUAL GRAMMAR & ENGINEERING POLISH
+
+- **P0-V1 FIT/OCCUPANCY REALNY**: mała fixtura ma zajmować 60–75% szerokości
+  i 55–75% wysokości viewportu; minimum sensible occupancy + minimum readable
+  zoom + clamp skali z minimalnej typografii; osobne ograniczenia X/Y; zakaz
+  pomniejszania małego schematu „bo canvas duży"; ocena w SCREEN SPACE.
+- **P0-V2 SCREEN-STABLE TYPOGRAPHY**: PRIMARY i SECONDARY clamped w pikselach
+  EKRANU (nie world); TERTIARY może podlegać LOD. Zakaz „14 px world × scale
+  0,55 = 7,7 px na ekranie".
+- **P0-V3 PROFESSIONAL APPARATUS SYMBOLS**: symbol grammar — wyłącznik,
+  rozłącznik, rozłącznik bezpiecznikowy, odłącznik, sprzęgło, ATS, stycznik
+  mają RÓŻNE sylwetki; funkcja rozpoznawalna PRZED przeczytaniem napisu; nie
+  powiększać jednego uniwersalnego kwadratu.
+- **P0-V4 FEEDER-SLOT ALIGNMENT**: każdy odpływ = pionowa kolumna (SLOT):
+  BUS TAP → APPARATUS → CABLE → DESTINATION; DEVICE BASELINE — aparaty,
+  zaciski, początki kabli i etykiety odpływów na JEDNEJ wysokości.
+- **P0-V5 HIERARCHIA MAGISTRAL**: MAIN LV BUS (największy ciężar) ≠
+  SUBDISTRIBUTION BUS ≠ local/PCC — rozpoznawalne bez czytania etykiety.
+- **P0-V6 QBC CZYTELNIEJSZE**: większa geometria sprzęgła, symbol mówi
+  PIERWSZY (jednoznaczna przerwa OPEN / zwarcie toru CLOSED, kontrast stanu),
+  tekst stanu tylko jako secondary confirmation.
+- **P0-V7 BEZ DEBUGOWYCH NAZW TERMINALI w normalnym SLD**: „QF-01 zacisk
+  wyjściowy", „T1 zacisk nN", „zacisk PCC-LV" → tryb AUDYT/hover/inspektor;
+  na kanwie ENGINEERING tylko: T1, QF-01, K-01, PV1, RGN-2. DWA TRYBY
+  ETYKIET: ENGINEERING (domyślny) i AUDYT/TOPOLOGY.
+- **P0-V8 BOUNDARY BEZ WYGLĄDU BUTTONA**: terminal elektryczny + referencja
+  (●────→ STACJA OBCA · 0,4 kV); affordance dopiero na hover/click; w spoczynku
+  wygląda jak schemat, nie jak toolbar.
+- **P0-V9 DER SOURCE IDENTITY**: silniejsza sylweta źródła, wyraźny label
+  PV1 + Pn, jasny PCC; semantyczny kontrast ŹRÓDŁO≠ODBIÓR (bez dekoracyjnej
+  grafiki panelu).
+- **P0-V10 VISUAL COMPOSITION / CENTERING**: mały schemat CENTROWANY w
+  viewporcie (nie przyklejony do lewej); współosiowość TR → zacisk → QF
+  incomer → środek sekcji BUS; kompozycja świadoma, nie techniczna.
+
+Dodatkowe korekty z werdyktu (część gramatyki, nie osobne karty): blok TR w
+hierarchii (TR1 + 630 kVA jako PRIMARY, „15/0,4 kV · Dyn11" + „uk = 4%" jako
+SECONDARY — nie 5 równorzędnych mikrolinii); chip SN upstream = KOTWICA, nie
+dominanta (mniejszy ciężar wizualny); mocniejszy kontrast klas linii
+BUS/CONNECTION/CABLE/BOUNDARY/LOGICAL (bez choinki); kolor konsekwentnie
+semantyczny (stan na SYMBOLU pierwszy, tekst drugi — nie odwrotnie); sekcje
+A/B czytelne przez heading+odstępy+alignment TR do środka własnej sekcji (bez
+ramek); redukcja informacji (SLD selekcjonuje, nie przenosi całego ENM);
+docelowy VISUAL DENSITY TARGET; kontrakt „SLD Visual Grammar" (12 elementów:
+bus/device hierarchy, feeder slot, transformer column, section composition,
+typography, status/line/DER/boundary/results/selection grammar) — jeden język,
+nie suma komponentów. Warstwa „energized path" jako OPCJONALNA nakładka —
+kandydat na osobną kartę po T5b-4.
+
+ZAKAZ: kolejnego mechanicznego powiększania (TR 1,9→2,4, font 14→17). Skok ma
+pochodzić z KOMPOZYCJI i spójnego języka graficznego.
+
+**WARUNEK 8/10**: następny zrzut w 2 s odpowiada bez zoomu: gdzie źródło,
+który TR zasila którą sekcję, gdzie główna RGNN, gdzie odpływy, jaki aparat na
+każdym odpływie, gdzie PV, gdzie podrozdzielnica, stan QBC, gdzie kończy się
+domena — bez czytania nazw terminali, bez domyślania się znaczenia
+prostokątów. Trzy najważniejsze: realny fit/occupancy, screen-stable
+typografia, porządna biblioteka symboli aparatów.
+WYKONANIE: Fable osobiście.
