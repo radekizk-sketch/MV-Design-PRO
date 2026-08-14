@@ -19,7 +19,11 @@ from enm.interlock_rules import (
     earthing_interlock_violation,
 )
 from enm.models import Bay, BayPrimaryDevice, EnergyNetworkModel, Substation
-from network_model.catalog.switchgear import SwitchgearFamily
+from network_model.catalog.switchgear import (
+    SwitchgearFamily,
+    czy_rodzina_obsluguje_napiecie,
+    opis_napiec_rodziny_pl,
+)
 from network_model.catalog.switchgear.apparatus_vocabulary import (
     FAMILY_APPARATUS_FOR_ENM_KIND,
 )
@@ -343,20 +347,22 @@ def _family_checks_for_bay(
             )
 
     voltage = buses_voltage_kv.get(bay.bus_ref)
-    if voltage is not None and voltage > 0 and family.voltage_levels:
-        # Reguła doboru: napięcie znamionowe rozdzielnicy ≥ napięcie sieci
-        # (np. sieć 15 kV ⇒ rozdzielnica 17,5 kV) — spec §7.
-        ok = max(family.voltage_levels) >= voltage - 1e-9
+    if voltage is not None and voltage > 0 and (family.network_voltages_kv or family.um_classes_kv):
+        # Reguła doboru napięciowego ma JEDNO źródło prawdy w katalogu
+        # (`family_validation.czy_rodzina_obsluguje_napiecie`) — ta lista
+        # sprawdzeń tylko RAPORTUJE jej wynik. Własny warunek „max(...) >=
+        # napięcie" rozjeżdżałby się z bramą operacji domenowej, gdy karta
+        # rodziny wymienia napięcia sieci (karta K-J, 2026-08-14).
+        ok = czy_rodzina_obsluguje_napiecie(family, voltage)
         add(
             "family.voltage",
             ok,
             (
-                f"Napięcie sieci {voltage:g} kV mieści się w poziomach rodziny "
-                f"{family.family_name} (do {max(family.voltage_levels):g} kV)."
+                f"Napięcie sieci {voltage:g} kV jest objęte deklaracją rodziny "
+                f"{family.family_name} ({opis_napiec_rodziny_pl(family)})."
                 if ok
-                else f"Napięcie sieci {voltage:g} kV przekracza najwyższe napięcie "
-                f"znamionowe rodziny {family.family_name} "
-                f"({max(family.voltage_levels):g} kV)."
+                else f"Napięcie sieci {voltage:g} kV jest poza deklaracją rodziny "
+                f"{family.family_name} ({opis_napiec_rodziny_pl(family)})."
             ),
         )
 

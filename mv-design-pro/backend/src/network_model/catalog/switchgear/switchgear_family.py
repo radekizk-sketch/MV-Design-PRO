@@ -8,6 +8,16 @@ Goal §11A.2: rodzina to konkretna seria produktów producenta (np. "Rotoblok",
 - listę dopuszczonych napięć i prądów,
 - listę dopuszczonych typów pól (`allowed_bay_kinds`).
 
+DWA POLA NAPIĘCIOWE, DWIE RÓŻNE WIELKOŚCI (karta K-J, 2026-08-14). Rodzina
+deklaruje osobno `network_voltages_kv` (napięcia SIECI, dla których producent
+oferuje wyrób) i `um_classes_kv` (klasy napięciowe URZĄDZENIA — napięcie
+znamionowe / najwyższe napięcie urządzenia wg PN-EN 62271-1). To NIE są
+synonimy: karta Rotobloka podaje sieć 15/20 kV przy klasach 17,5/24 kV.
+Jedno pole `voltage_levels` mieszało obie wielkości, więc porównanie
+„napięcie szyny ∈ lista" raz znaczyło zgodność z siecią, a raz z izolacją —
+i dlatego walidacja napięciowa musiała być wyłączona. Reguła dopasowania
+jest JEDNA i mieszka w `family_validation.czy_rodzina_obsluguje_napiecie`.
+
 Reguła: rodzina jest pełnoprawna TYLKO gdy producent ma `status='verified'`
 i podpięte oficjalne `source_refs`. Inaczej rodzina jest `requires_catalog`.
 """
@@ -103,7 +113,14 @@ class SwitchgearFamily(BaseModel):
         manufacturer_ref: ref do `Manufacturer`.
         family_name: nazwa wyświetlana (np. "Rotoblok", "UniGear ZS1").
         series_name: krótszy kod serii (opcjonalny).
-        voltage_levels: dopuszczone napięcia znamionowe [kV].
+        network_voltages_kv: napięcia SIECI [kV], dla których karta producenta
+            deklaruje wyrób (wiersz „napięcie nominalne sieci" / „napięcie
+            robocze"). Pusta lista = karta takiego wiersza NIE ma; to jawny
+            brak danych, nie „żadna sieć nie pasuje".
+        um_classes_kv: klasy napięciowe URZĄDZENIA [kV] — wiersz „napięcie
+            znamionowe (Ur)" albo „najwyższe napięcie urządzeń (Um)" karty.
+            Um wyznacza górną granicę napięcia sieci, w której wolno pracować
+            (PN-EN 62271-1). Pusta lista = jawny brak danych w karcie.
         rated_current_options: dopuszczone prądy znamionowe szyny [A].
         short_time_current_options: dopuszczone prądy zwarciowe [kA, 1s].
         insulation_type, construction_type, busbar_system: kanon §11A.2.
@@ -118,7 +135,8 @@ class SwitchgearFamily(BaseModel):
     family_name: str
     series_name: str | None = None
     product_line_code: str | None = None
-    voltage_levels: list[float] = Field(default_factory=list)
+    network_voltages_kv: list[float] = Field(default_factory=list)
+    um_classes_kv: list[float] = Field(default_factory=list)
     rated_current_options: list[int] = Field(default_factory=list)
     short_time_current_options: list[int] = Field(default_factory=list)
     insulation_type: InsulationType = "unknown"

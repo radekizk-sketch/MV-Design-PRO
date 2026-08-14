@@ -24,7 +24,12 @@ def test_rodziny_niosa_tor_konfiguracji_bez_utraty_dotychczasowych_pol(app_clien
             "switchgear_family_ref",
             "manufacturer_ref",
             "family_name",
-            "voltage_levels",
+            # Rozdzielenie napięć rodziny (karta K-J): kontrakt wystawia DWIE
+            # wielkości zamiast jednej mieszanej listy `voltage_levels`.
+            # Konsument nie może już wziąć „napięcia rodziny" i nie wiedzieć,
+            # czy trzyma napięcie sieci, czy klasę izolacji.
+            "network_voltages_kv",
+            "um_classes_kv",
             "rated_current_options",
             "short_time_current_options",
             "insulation_type",
