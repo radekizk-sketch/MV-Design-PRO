@@ -28,6 +28,16 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useForm, type FieldError, type FieldErrors, type Resolver, type UseFormReturn } from 'react-hook-form';
 import { z } from 'zod';
 
+// T2-WYNIKI (PLAN_SLD_NN_TOPOLOGIA_2026-08 §T2): panel wyników odpływu nN —
+// kontrakt + prezentacja żyją w `v3/canvas/` (jedyna kanwa produkcyjna, v2
+// canvas usunięty — ten plik jest DZIŚ „drawer współdzielony" wołany
+// wyłącznie przez v3, patrz `overlay.ts` v3→v2 import `enmToSldAdapter` dla
+// PRECEDENSU odwrotnego kierunku między tymi katalogami). Import celowo
+// TYPU + komponentu prezentacyjnego (zero logiki fetch tutaj — panel
+// dostaje gotowy `NnCircuitResultsSpec` z Workspace).
+import { NnCircuitResultsPanel } from '../../v3/canvas/NnCircuitResultsPanel';
+import type { NnCircuitResultsSpec } from '../../v3/canvas/nnCircuitResults';
+
 export type SldDetailKind =
   | 'station'
   | 'bay'
@@ -156,6 +166,17 @@ export interface SldDetailDrawerData {
     readonly catalogRef: string | null;
     readonly blockers: readonly string[];
   } | null;
+  /** T2-WYNIKI (PLAN_SLD_NN_TOPOLOGIA_2026-08 §T2, §0 pkt 1): komplet 8
+   *  sekcji wyników odpływu nN (Ib/In/Iz′/ΔU/Ik″max/Ik1_min/SWZ/I²t + dobór).
+   *  Ustawiany WYŁĄCZNIE dla `kind==='apparatus'` rozwiązanego jako obwód nN
+   *  (`SldCanvasV3Workspace.tsx`, `resolveNnCircuitRef`) — `null`/nieobecny
+   *  dla aparatury SN (uczciwy brak zakresu, zero fabrykacji zakładki). */
+  readonly nnCircuitResultsSpec?: NnCircuitResultsSpec | null;
+  /** Id przebiegu rozpływu mocy AKTUALNIE załadowanego w overlay — panel ΔU
+   *  pobiera na żądanie z tym id (`null` gdy załadowany przebieg nie jest
+   *  rozpływem mocy). Towarzyszy `nnCircuitResultsSpec`, ten sam warunek
+   *  ustawienia (aparat rozwiązany jako obwód nN). */
+  readonly nnCircuitResultsLoadFlowRunId?: string | null;
 }
 
 export type SldDerKind = 'PV' | 'BESS' | 'FW';
@@ -220,6 +241,12 @@ const APPARATUS_TABS = [
   { id: 'state', label: 'Stan + telemetria' },
   { id: 'settings', label: 'Nastawy' },
 ] as const;
+
+/** T2-WYNIKI: zakładka DODATKOWA, doklejana wyłącznie gdy `SldDetailDrawerData
+ *  .nnCircuitResultsSpec` jest ustawiony (aparat rozwiązany jako obwód nN) —
+ *  `APPARATUS_TABS` bazowe zostaje NIETKNIĘTE (aparatura SN nie zyskuje pustej
+ *  zakładki). */
+const APPARATUS_TABS_WITH_NN_RESULTS = [...APPARATUS_TABS, { id: 'wyniki-nn', label: 'Wyniki odpływu nN' }] as const;
 
 const TRANSFORMER_TABS = [
   { id: 'karta', label: 'Karta techniczna' },
@@ -381,10 +408,11 @@ const sldDerConfigResolver: Resolver<SldDerConfigFormValues> = async (values) =>
   };
 };
 
-function tabsForKind(kind: SldDetailKind): readonly { id: string; label: string }[] {
+function tabsForKind(data: SldDetailDrawerData | null): readonly { id: string; label: string }[] {
+  const kind = data?.kind ?? null;
   if (kind === 'station') return STATION_TABS;
   if (kind === 'bay') return BAY_TABS;
-  if (kind === 'apparatus') return APPARATUS_TABS;
+  if (kind === 'apparatus') return data?.nnCircuitResultsSpec ? APPARATUS_TABS_WITH_NN_RESULTS : APPARATUS_TABS;
   if (kind === 'transformer') return TRANSFORMER_TABS;
   if (kind === 'der') return DER_TABS;
   if (kind === 'cable_run') return CABLE_RUN_TABS;
@@ -471,7 +499,7 @@ export function SldDetailDrawer(props: SldDetailDrawerProps): JSX.Element | null
     onOpenConfiguration,
     actions = [],
   } = props;
-  const tabs = tabsForKind(data?.kind ?? null);
+  const tabs = tabsForKind(data);
   const [activeTab, setActiveTab] = useState<string>(tabs[0]?.id ?? '');
   const derForm = useForm<SldDerConfigFormValues>({
     resolver: sldDerConfigResolver,
@@ -964,6 +992,8 @@ function TabContent({ kind, tab, data, derForm, onOpenConfiguration }: TabConten
         cableRunSpec={data.cableRunSpec ?? null}
         nodeSpec={data.nodeSpec ?? null}
         apparatusState={data.apparatusState ?? null}
+        nnCircuitResultsSpec={data.nnCircuitResultsSpec ?? null}
+        nnCircuitResultsLoadFlowRunId={data.nnCircuitResultsLoadFlowRunId ?? null}
         derForm={derForm}
         onOpenConfiguration={onOpenConfiguration}
       />
@@ -1328,6 +1358,8 @@ function PlaceholderTabBody({
   cableRunSpec,
   nodeSpec,
   apparatusState,
+  nnCircuitResultsSpec,
+  nnCircuitResultsLoadFlowRunId,
   derForm,
   onOpenConfiguration,
 }: {
@@ -1381,6 +1413,8 @@ function PlaceholderTabBody({
     readonly interlockBlocked: boolean | null;
     readonly lastChangeAt: string | null;
   } | null;
+  nnCircuitResultsSpec?: NnCircuitResultsSpec | null;
+  nnCircuitResultsLoadFlowRunId?: string | null;
   derForm: UseFormReturn<SldDerConfigFormValues>;
   onOpenConfiguration?: () => void;
 }): JSX.Element {
@@ -1820,6 +1854,16 @@ function PlaceholderTabBody({
         </dl>
       </div>
     );
+  }
+  if (kind === 'apparatus' && tab === 'wyniki-nn') {
+    if (!nnCircuitResultsSpec) {
+      return (
+        <div data-testid="drawer-apparatus-wyniki-nn-empty" style={{ fontSize: 10, color: 'rgb(var(--scada-muted))', fontStyle: 'italic' }}>
+          Brak referencji obwodu nN dla tego aparatu.
+        </div>
+      );
+    }
+    return <NnCircuitResultsPanel spec={nnCircuitResultsSpec} loadFlowRunId={nnCircuitResultsLoadFlowRunId ?? null} />;
   }
   if (kind === 'apparatus' && tab === 'settings') {
     return (

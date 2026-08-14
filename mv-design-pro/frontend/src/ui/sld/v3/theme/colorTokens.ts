@@ -251,7 +251,10 @@ export type HighlightKey =
   | 'faultOk'
   | 'resultLabel'
   | 'resultStale'
-  | 'selection';
+  | 'selection'
+  | 'swzOk'
+  | 'swzFail'
+  | 'swzUnknown';
 
 export const HIGHLIGHT_COLOR: Readonly<Record<HighlightKey, string>> = {
   /** Energizacja (spec §6 P5) — dawne `OVERLAY_ENERGIZED_STROKE`
@@ -301,6 +304,20 @@ export const HIGHLIGHT_COLOR: Readonly<Record<HighlightKey, string>> = {
    *  nakładki na kanwie, dziś poza zakresem S3 — nowa funkcja renderu, nie
    *  tokenizacja istniejącej). Wartość zgodna z v2 `COLOR_SELECTION`. */
   selection: '#35C7FF',
+  /** T2-WYNIKI (PLAN_SLD_NN_TOPOLOGIA_2026-08 §T2, §0 pkt 2) — odznaka SWZ
+   *  (samoczynne wyłączenie zasilania, IEC 60364-4-41) przy aparacie odpływu
+   *  nN: WERDYKT 3-tonowy, token ODRĘBNY od `energized`/`fault`/`standby` —
+   *  ten sam wymiar wizualny (zielony=dobrze/czerwony=źle/bursztyn=nie wiadomo,
+   *  konwencja uniwersalna), ale INNY WYMIAR TREŚCI (werdykt SWZ, nie stan
+   *  napięcia/awaria rozpływu/gotowość DER) — osobny klucz, żeby zmiana
+   *  jednego tokenu w przyszłości NIE poruszała pozostałych trzech. Wartości
+   *  ODRĘBNE hex (nie identyczne z `energized`/`fault`/`standby`) — testowy
+   *  niezmiennik D8 (`colorTokens.test.ts` „każda wartość WŁASNEGO wymiaru
+   *  jest unikalna") wymaga, żeby jeden odcień = jedno znaczenie wyniku. */
+  swzOk: '#27AE60',
+  swzFail: '#E63939',
+  /** „nierozstrzygalne" (fail-closed, P0.6 §0.3: NIGDY cichy fallback na „ok"). */
+  swzUnknown: '#E67E22',
 };
 
 /**

@@ -214,8 +214,14 @@ import {
   type SegmentFaultFlowOverlay,
   type SegmentFlowOverlay,
   type SldV3Overlay,
+  type SwzApiResponse,
   type TransformerOltcOverlay,
 } from './overlay';
+// T2-WYNIKI (PLAN_SLD_NN_TOPOLOGIA_2026-08 §T2): panel wyników odpływu nN +
+// odznaka SWZ — kontrakt/budowniczy CZYSTY (`nnCircuitResults.ts`) i hook
+// fetch WSPÓLNY dla obu prezentacji (`useSwzOverlay.ts`).
+import { buildNnCircuitResultsSections, resolveNnCircuitRef } from './nnCircuitResults';
+import { useSwzOverlay } from './useSwzOverlay';
 import {
   applyResultLabelFilter,
   buildResultLabelsFromScene,
@@ -537,13 +543,57 @@ function resolveTransformerRefForOwnerRef(snapshot: EnergyNetworkModel | null, o
  * `stationRefForBayOwner` nagłówek) — UDOKUMENTOWANA LUKA, drawer się mimo
  * to otwiera (nie crash, `label` poprawny).
  */
+/**
+ * T2-WYNIKI (PLAN_SLD_NN_TOPOLOGIA_2026-08 §T2, §0 pkt 1): kontekst SWZ
+ * gotowy do złożenia panelu wyników odpływu nN — dostarczony przez
+ * `useSwzOverlay` (JEDEN fetch stacja+odpływy, dzielony z odznaką kanwy,
+ * werdykt „ONE SOURCE OF TRUTH"). Osobny typ (nie import całego hooka tutaj)
+ * — ta funkcja zostaje CZYSTA (bierze gotowe dane, nie fetch'uje).
+ */
+interface NnResultsWiringContext {
+  readonly swzResponseByBreakerRef: Readonly<Record<string, SwzApiResponse>>;
+  readonly resultsStale: boolean;
+}
+
+/**
+ * T2-WYNIKI: gdy aparat rozwiązuje się jako obwód nN (`resolveNnCircuitRef`),
+ * dokłada `nnCircuitResultsSpec`/`nnCircuitResultsLoadFlowRunId` do danych
+ * drawera już zbudowanych dla `kind==='apparatus'` — WYŁĄCZNIE dla nN
+ * (aparatura SN zwraca dane bez zmian, `resolveNnCircuitRef` daje `null`).
+ */
+function enrichApparatusDrawerDataWithNnResults(
+  data: SldDetailDrawerData,
+  snapshot: EnergyNetworkModel | null,
+  breakerRef: string,
+  overlayPayload: RawOverlayPayload | null,
+  nnContext: NnResultsWiringContext,
+): SldDetailDrawerData {
+  const ref = resolveNnCircuitRef(snapshot, breakerRef);
+  if (!ref) return data;
+  const branch = (snapshot?.branches ?? []).find((b) => b.ref_id === breakerRef || b.id === breakerRef);
+  if (!branch) return data;
+  const nnCircuitResultsSpec = buildNnCircuitResultsSections({
+    ref,
+    branch,
+    overlayPayload,
+    swzResponse: nnContext.swzResponseByBreakerRef[breakerRef],
+    voltageProfileRow: undefined,
+    resultsStale: nnContext.resultsStale,
+  });
+  const loadFlowRunId = (overlayPayload?.analysis_type ?? '').toLowerCase() === 'load_flow'
+    ? overlayPayload?.run_id ?? null
+    : null;
+  return { ...data, nnCircuitResultsSpec, nnCircuitResultsLoadFlowRunId: loadFlowRunId };
+}
+
 function buildDetailDrawerDataForElementKind(
   snapshot: EnergyNetworkModel | null,
   sldData: SldDataPayload,
   overlayPayload: RawOverlayPayload | null,
   elementKind: PreviewElementKind | undefined,
   id: string,
-  deviceRef?: string,
+  deviceRef: string | undefined,
+  nnContext: NnResultsWiringContext,
 ): SldDetailDrawerData | null {
   if (elementKind === 'station') {
     return buildStationDetailDrawerData(snapshot, sldData, overlayPayload, id);
@@ -559,13 +609,20 @@ function buildDetailDrawerDataForElementKind(
     // dwa aparaty jednego pola przestają dzielić jedną treść inspektora.
     // Korekta stacji-właściciela liczy się nadal z refu POLA (`id`), bo
     // relacja `Bay.substation_ref` jest zakotwiczona w polu.
-    const apparatusDrawerData = buildDetailDrawerDataForKind('apparatus', deviceRef ?? id, { snapshot, sldData, overlayPayload });
+    const apparatusRef = deviceRef ?? id;
+    const apparatusDrawerData = buildDetailDrawerDataForKind('apparatus', apparatusRef, { snapshot, sldData, overlayPayload });
     if (!apparatusDrawerData) return null;
     const stationRef = stationRefForBayOwner(snapshot, id);
     const correctedStationCode = stationRef
       ? sldData.stations.find((s) => s.id === stationRef)?.stationCode ?? apparatusDrawerData.stationCode
       : apparatusDrawerData.stationCode;
-    return { ...apparatusDrawerData, stationCode: correctedStationCode };
+    return enrichApparatusDrawerDataWithNnResults(
+      { ...apparatusDrawerData, stationCode: correctedStationCode },
+      snapshot,
+      apparatusRef,
+      overlayPayload,
+      nnContext,
+    );
   }
   const drawerKind = elementKindForDrawer(elementKind);
   if (!drawerKind) return null;
@@ -1687,9 +1744,22 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
           : undefined,
     [nakladkaRoznic, rawOverlayPayload],
   );
+  // T2-WYNIKI (PLAN_SLD_NN_TOPOLOGIA_2026-08 §T2, §0 pkt 2): odznaka SWZ —
+  // JEDEN fetch (stacja+odpływy, `useSwzOverlay`) dzielony z panelem wyników
+  // odpływu nN klikniętego aparatu (`enrichApparatusDrawerDataWithNnResults`
+  // niżej, `nnResultsContext`) — werdykt „ONE SOURCE OF TRUTH": ta sama
+  // odpowiedź backendu zasila ZARÓWNO odznakę na kanwie, JAK I panel.
+  // `activeCaseId` przeniesiony tu (był deklarowany niżej, jedyny konsument
+  // do tej karty) — zero duplikatu deklaracji.
+  const activeCaseId = useAppStateStore((state) => state.activeCaseId);
+  const { swzByOwnerRef, swzResponseByBreakerRef } = useSwzOverlay(snapshot, activeCaseId);
+  const nnResultsContext = useMemo<NnResultsWiringContext>(
+    () => ({ swzResponseByBreakerRef, resultsStale }),
+    [swzResponseByBreakerRef, resultsStale],
+  );
   const overlay = useMemo<SldV3Overlay>(
-    () => ({ ...energizationOverlay, flowByOwnerRef, oltcByOwnerRef, faultFlowByOwnerRef, faultPointMarkerRef, faultPointMarkerRefs, resultLabelsByOwnerRef: filteredResultLabels, resultsStale, provenance }),
-    [energizationOverlay, flowByOwnerRef, oltcByOwnerRef, faultFlowByOwnerRef, faultPointMarkerRef, faultPointMarkerRefs, filteredResultLabels, resultsStale, provenance],
+    () => ({ ...energizationOverlay, flowByOwnerRef, oltcByOwnerRef, faultFlowByOwnerRef, faultPointMarkerRef, faultPointMarkerRefs, resultLabelsByOwnerRef: filteredResultLabels, resultsStale, provenance, swzByOwnerRef }),
+    [energizationOverlay, flowByOwnerRef, oltcByOwnerRef, faultFlowByOwnerRef, faultPointMarkerRef, faultPointMarkerRefs, filteredResultLabels, resultsStale, provenance, swzByOwnerRef],
   );
 
   // F8c pkt 2: `SldDataPayload` — TEN SAM adapter co v2 (`enmToSldAdapter.ts`,
@@ -1726,7 +1796,8 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [detailDrawerData]);
   const activeProjectId = useAppStateStore((state) => state.activeProjectId);
-  const activeCaseId = useAppStateStore((state) => state.activeCaseId);
+  // T2-WYNIKI: `activeCaseId` deklarowany WYŻEJ (obok `useSwzOverlay`) — zero
+  // duplikatu.
   // S9-6: nazwa projektu i przypadku do tabliczki rysunkowej oraz do nazwy
   // pliku — REALNE dane powłoki (`app-state`), nie parametry wołającego.
   const activeProjectName = useAppStateStore((state) => state.activeProjectName);
@@ -2619,7 +2690,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
       // = drawer się NIE otwiera (uczciwy brak, bez crasha, bez zgadywania) —
       // jeśli już otwarty dla innego elementu, zostaje (spójne z v2:
       // `handleSelectElement` też nie zamyka drawera na niezmapowany `kind`).
-      let drawerData = buildDetailDrawerDataForElementKind(snapshot, sldData, rawOverlayPayload, elementKind, id, meta?.deviceRef);
+      let drawerData = buildDetailDrawerDataForElementKind(snapshot, sldData, rawOverlayPayload, elementKind, id, meta?.deviceRef, nnResultsContext);
       // S9-10 (dług `S9-4-DLUG-INSPEKTOR`, ogniwo etykiet): ref KOMPOZYTOWY
       // (`…#sn-bus` itd.) nie rozwiązuje się w budowniczych — panel się nie
       // otwierał. Kotwicę modelu rozstrzyga TEN SAM moduł, który robi to dla
@@ -2648,12 +2719,13 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
             ELEMENT_KIND_KOTWICY[wynik.temat.kotwica],
             wynik.temat.modelRef,
             meta?.deviceRef,
+            nnResultsContext,
           );
         }
       }
       if (drawerData) setDetailDrawerData(drawerData);
     },
-    [derDrag, modelIndex, rawOverlayPayload, selectElement, sldData, snapshot],
+    [derDrag, modelIndex, nnResultsContext, rawOverlayPayload, selectElement, sldData, snapshot],
   );
 
   /**

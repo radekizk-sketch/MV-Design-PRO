@@ -71,6 +71,14 @@ export const LIGHT_TECHNICAL_SLD_PALETTE: SldPalette = {
     resultLabel: '#6A3FB5',
     resultStale: '#6E6182',
     selection: '#0066CC',
+    /** T2-WYNIKI (§0 pkt 2) — odznaka SWZ, para z `colorTokens.ts`
+     *  `HIGHLIGHT_COLOR.swzOk/swzFail/swzUnknown` (kontrast tekstu ≥ 4,5:1 na
+     *  bieli — patrz `palette.test.ts`), wartości ODRĘBNE od `energized`/
+     *  `fault`/`standby` (ta sama para dark/light, sam powód co w
+     *  `colorTokens.ts` — jeden odcień = jedno znaczenie wyniku). */
+    swzOk: '#1E8449',
+    swzFail: '#A93226',
+    swzUnknown: '#8C4400',
   },
 };
 

@@ -85,7 +85,9 @@ function allTokens(p: SldPalette): ReadonlyArray<readonly [string, string]> {
 
 /** Tokeny renderowane jako TEKST (etykiety, liczby wynikowe, badge). */
 const TEXT_TOKENS = ['baseStroke', 'highlight.resultLabel', 'highlight.resultStale', 'highlight.flow',
-  'highlight.oltc', 'highlight.fault', 'highlight.standby'] as const;
+  'highlight.oltc', 'highlight.fault', 'highlight.standby',
+  // T2-WYNIKI (§0 pkt 2): litera odznaki SWZ (✓/✗/?) renderowana jako TEKST.
+  'highlight.swzOk', 'highlight.swzFail', 'highlight.swzUnknown'] as const;
 
 describe('paleta rysunku — parytet motywów', () => {
   it('oba motywy definiują identyczny zbiór kluczy', () => {
