@@ -91,17 +91,56 @@ test.describe('Audit2 Backend Integration (A-P)', () => {
     expect(types.has('busbar_15_2000')).toBeTruthy();
   });
 
-  test('F. PF curves: PSE B/C/D z roznymi droopami', async ({ request }) => {
+  test('F. PF curves: warianty statyzmu w przedziale nastawialnym NC RfG', async ({ request }) => {
+    // INTENCJA (bez zmian): katalog P(f) oferuje WIELE roznych wariantow
+    // statyzmu, a nie jedna zaszyta krzywa — projektant wybiera nastaw.
+    //
+    // KANON PO KARCIE K-Q (2026-08-14): z katalogu usunieto `operator_code`
+    // i `module_type`, bo przypisanie statyzmu do TYPU MODULU (PSE B = 5 %,
+    // PSE D = 3 %) bylo zgadniete — rozporzadzenie (UE) 2016/631 art. 13
+    // ust. 2 daje statyzm NASTAWIALNY 2-12 %, a nie wartosc per typ modulu.
+    // Identyfikatory niosa dzis sam nastaw (`pf_droop_5`, `pf_droop_3`, ...),
+    // wiec test pinuje KLASE: komplet pol + granice normatywne + roznorodnosc
+    // wariantow, a nie nieistniejaca tabelke operator x typ modulu.
     const res = await request.get(`${BACKEND_BASE}/api/v1/catalog/audit2/pf-curves`);
-    const body = await res.json();
-    const pseB = body.find((c: { operator_code: string; module_type: string }) =>
-      c.operator_code === 'PSE' && c.module_type === 'B',
-    );
-    const pseD = body.find((c: { operator_code: string; module_type: string }) =>
-      c.operator_code === 'PSE' && c.module_type === 'D',
-    );
-    expect(pseB.droop_percent).toBe(5.0);
-    expect(pseD.droop_percent).toBe(3.0);
+    expect(res.ok()).toBeTruthy();
+    const body = (await res.json()) as Array<{
+      id: string;
+      droop_percent: number;
+      deadband_hz: number;
+      f_ref_hz: number;
+      f_min_hz: number;
+      f_max_hz: number;
+      zrodlo_pl: string;
+    }>;
+    expect(body.length).toBeGreaterThanOrEqual(2);
+
+    // Zadna pozycja nie niesie juz imienia operatora ani typu modulu.
+    for (const curve of body) {
+      expect(curve).not.toHaveProperty('operator_code');
+      expect(curve).not.toHaveProperty('module_type');
+    }
+
+    const droops = body.map((c) => c.droop_percent);
+    // Roznorodnosc: co najmniej dwa rozne nastawy statyzmu w katalogu.
+    expect(new Set(droops).size).toBeGreaterThanOrEqual(2);
+
+    for (const curve of body) {
+      // Identyfikator wyprowadzony z nastawu — pin kanonu nazewnictwa.
+      expect(curve.id).toBe(`pf_droop_${curve.droop_percent}`);
+      // Art. 13 ust. 2: statyzm nastawialny 2-12 %.
+      expect(curve.droop_percent).toBeGreaterThanOrEqual(2.0);
+      expect(curve.droop_percent).toBeLessThanOrEqual(12.0);
+      // Art. 13 ust. 2: prog 50,2-50,5 Hz → strefa nieczulosci 0,2-0,5 Hz.
+      expect(curve.deadband_hz).toBeGreaterThanOrEqual(0.2);
+      expect(curve.deadband_hz).toBeLessThanOrEqual(0.5);
+      // Zalacznik II tab. 2 (Europa kontynentalna): zakres pracy 47,5-51,5 Hz.
+      expect(curve.f_ref_hz).toBe(50.0);
+      expect(curve.f_min_hz).toBe(47.5);
+      expect(curve.f_max_hz).toBe(51.5);
+      // Proweniencja jest OBOWIAZKOWA — to ona zastapila zgadniete tabelki.
+      expect(curve.zrodlo_pl).toContain('2016/631');
+    }
   });
 
   test('G. block-transformers: SN/SN dla turbinowni FW', async ({ request }) => {
@@ -313,10 +352,20 @@ test.describe('Audit2 Backend Integration (A-P)', () => {
     expect(body.solver_attempted).toBe(true);
     // audit2_extensions populated z DB.
     expect(body.audit2_extensions_keys).toContain('power_flow_extensions');
-    // Audit trail zawiera 5 klucz (tap, block_z, grounding, BESS, P(f)).
+    // INTENCJA (bez zmian): wrapper FAKTYCZNIE zadzialal — slad `audit2_applied`
+    // niesie komplet kanalow, ktore modul realnie mapuje na model przed
+    // wywolaniem solvera (tap, statyzm P(f), impedancja transformatora blokowego).
     expect(body.audit2_applied).toHaveProperty('tap_position_changes');
-    expect(body.audit2_applied).toHaveProperty('grounding_z0_z1_ratio');
-    // Grounding z petersen_coil → Z0/Z1 = 50.0
-    expect(body.audit2_applied.grounding_z0_z1_ratio).toBe(50.0);
+    expect(body.audit2_applied).toHaveProperty('pf_droop_changes');
+    expect(body.audit2_applied).toHaveProperty('block_transformer_z_changes');
+    // KANON PO KARCIE K-Q (2026-08-14): ze sladu ZNIKNAL `grounding_z0_z1_ratio`.
+    // Modul mapowal ETYKIETE uziemienia na drabinke stalych (izolowana 100,
+    // skompensowana 50, przez rezystor 5, bezposrednia 1) i meldowal ja jako
+    // „zastosowana" — zadna z tych liczb nie miala zrodla. Fizycznie Z0/Z1 zalezy
+    // od pojemnosci doziemnej sieci, nastrojenia dlawika/rezystora i impedancji
+    // petli; niesie je model (`Source.z0_z1_ratio` / `r0_ohm` / `x0_ohm`), z ktorego
+    // liczy SC1F. Asercja NEGATYWNA jest bramka regresji — drabinka stalych nie
+    // moze wrocic bocznymi drzwiami mimo `mv_neutral_grounding_ref` w konfiguracji.
+    expect(body.audit2_applied).not.toHaveProperty('grounding_z0_z1_ratio');
   });
 });
