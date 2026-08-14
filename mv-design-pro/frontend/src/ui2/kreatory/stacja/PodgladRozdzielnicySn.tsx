@@ -1,39 +1,51 @@
 /**
- * Podgląd pól rozdzielnicy SN — SCHEMAT JEDNOKRESKOWY kroku „Pola rozdzielnicy"
- * kreatora stacji (karta MINI-RMU-CAD; werdykt właściciela 2026-08-13: poprzedni
- * rysunek — identyczny kwadrat na każde pole — 0/10).
+ * Podgląd rozdzielnicy SN — SCHEMAT JEDNOKRESKOWY kroku „Pola rozdzielnicy"
+ * kreatora stacji (karta SLD-GEN-POLA; werdykt właściciela 2026-08-13: rysunek
+ * pokazujący cztery jednakowe ikony różniące się podpisem — 3/10, ODRZUCONY).
  *
- * WYŁĄCZNIE PREZENTACJA: układ liczy `podgladRozdzielnicy.ts` (czysta funkcja),
- * symbole rysuje KANON SLD v3 (`ui/sld/v3/symbols/glyphs`), a ten plik zamienia
- * opis rysunku na SVG. Zero fizyki, zero obliczeń — geometria to układ rysunku.
+ * WYŁĄCZNIE PREZENTACJA. Rysunek pola generuje `generatorSldPola.ts` z
+ * RZECZYWISTEJ kompozycji aparatów (BOM szablonu rodziny), rozdzielnicę składa
+ * `podgladRozdzielnicy.ts`, symbole rysuje KANON SLD v3
+ * (`ui/sld/v3/symbols/glyphs`), a ten plik zamienia gotową scenę na SVG.
+ * Zero fizyki, zero obliczeń — geometria to układ rysunku.
  *
  * BUDOWA (wzorzec: schemat E1 rozdzielnicy ROTOBLOK i schemat RGSN 15 kV):
+ *   · nagłówek pakietu — producent i rodzina, klasa napięciowa, prąd szyn,
+ *     prąd zwarciowy, liczba jednostek, szerokość, werdykt konfiguracji
+ *     (werdykt pochodzi z walidatora backendu, NIE jest liczony w UI),
  *   · tabela pól nad szyną — numer pola + nazwa funkcji (jak w tabeli funkcji
- *     schematu wykonawczego); szerokość kolumny wynika z jej treści, więc
- *     etykiety sąsiednich pól nie mogą się stykać (defekt sprzed karty),
+ *     schematu wykonawczego); szerokość kolumny wynika z jej treści,
  *   · szyna zbiorcza z napięciem, przerwana w polu sprzęgłowym,
- *   · pola: tor z symbolem NORMOWYM aparatu wskazanego w formularzu, zejście do
- *     transformatora w polu transformatorowym, przekładniki i przekaźnik tam,
- *     gdzie projektant je wskazał,
- *   · opisy pod polami — nazwa katalogowa aparatu i jego znamiona.
+ *   · pola: PEŁNY tor pionowy w kolejności pozycji aparatów kompozycji —
+ *     odłącznik szynowy, aparat główny, przekładnik, odłącznik liniowy,
+ *     uziemnik na odgałęzieniu do ziemi, tor pomiarowy z boku, przedział
+ *     kablowy z głowicą, transformator i kreska strony nN; każdy aparat z
+ *     własnym oznaczeniem operatorskim (Q1/Q0/T1/Q2/Q9/GK/TR),
+ *   · opisy pod polami — nazwa katalogowa aparatu, jego znamiona, pakiet pola.
  *
  * Motywy z automatu: kolory z tokenów `--mvd-*`, glify rysowane `currentColor`.
  */
 
 import { SYMBOL_GLYPHS } from '../../../ui/sld/v3/symbols/glyphs';
 import { LABEL_TYPOGRAPHY } from '../../../ui/sld/v3/core/text';
+import type { SwitchgearFamily } from '../../../ui/catalog/SwitchgearFamilyPicker';
+import type { CompleteMvBayTemplateSummary } from '../../../ui/catalog/BayTemplatePicker';
 import type { MVApparatusCatalogType, TransformerType } from '../../../ui/catalog/types';
 import type { StationSnFieldTemplate } from './stacjaModel';
 import {
   GRUBOSC_SZYNY,
   GRUBOSC_TORU,
   KLASA_APARATU,
+  KLASA_OZNACZENIA,
   KLASA_ROLI,
   ODSTEP_TABELA_SZYNA,
   SKALA_SYMBOLU,
   WYS_WIERSZA_APARATU,
   WYS_WIERSZA_ROLI,
+  pozycjaOznaczenia,
   zbudujPodglad,
+  type NaglowekRozdzielnicy,
+  type StatusKonfiguracji,
 } from './podgladRozdzielnicy';
 import { STACJA_STRINGS as T } from './strings';
 
@@ -46,7 +58,70 @@ export interface PodgladRozdzielnicySnProps {
   transformatorRef?: string | null;
   /** Napięcie szyny SN z kontekstu operacji [kV]. */
   snVoltageKv?: number;
+  /** Kompletne szablony pól — nośnik KOMPOZYCJI APARATÓW rysowanych w polach. */
+  szablonyPol?: readonly CompleteMvBayTemplateSummary[];
+  /** Rodzina rozdzielnicy (nagłówek pakietu: Un, In szyn, Ik, konstrukcja). */
+  rodzina?: SwitchgearFamily | null;
+  producent?: string | null;
+  /** Werdykt walidatora backendu dla bieżącej konfiguracji. */
+  statusKonfiguracji?: StatusKonfiguracji;
+  komunikatStatusu?: string | null;
   testid?: string;
+}
+
+/** Nazwa PL werdyktu konfiguracji + token koloru statusu. */
+const STATUS_PREZENTACJA: Readonly<
+  Record<StatusKonfiguracji, { etykieta: string; token: string }>
+> = {
+  VALID: { etykieta: T.statusKonfiguracjiValid, token: 'var(--mvd-ok)' },
+  INVALID: { etykieta: T.statusKonfiguracjiInvalid, token: 'var(--mvd-err)' },
+  NIESPRAWDZONA: { etykieta: T.statusKonfiguracjiNiesprawdzona, token: 'var(--mvd-muted)' },
+  SPRAWDZANIE: { etykieta: T.statusKonfiguracjiSprawdzanie, token: 'var(--mvd-muted)' },
+};
+
+/**
+ * Nagłówek pakietu rozdzielnicy. Pozycja bez danych katalogowych pokazuje jawny
+ * brak (kreskę), nigdy wartości domyślnej — projektant ma widzieć, czego karta
+ * katalogowa nie niesie.
+ */
+function NaglowekPakietu({ naglowek }: { naglowek: NaglowekRozdzielnicy }) {
+  const status = STATUS_PREZENTACJA[naglowek.status];
+  const pozycje: readonly { etykieta: string; wartosc: string | null }[] = [
+    { etykieta: T.naglowekRodzina, wartosc: naglowek.rodzina },
+    { etykieta: T.naglowekKonstrukcja, wartosc: naglowek.konstrukcja },
+    { etykieta: T.naglowekNapiecie, wartosc: naglowek.klasaNapiecia },
+    { etykieta: T.naglowekPradSzyn, wartosc: naglowek.pradSzyn },
+    { etykieta: T.naglowekPradZwarciowy, wartosc: naglowek.pradZwarciowy },
+    { etykieta: T.naglowekJednostki, wartosc: String(naglowek.liczbaJednostek) },
+    { etykieta: T.naglowekSzerokosc, wartosc: naglowek.szerokoscCalkowita },
+  ];
+  return (
+    <div className="mvd-podglad-naglowek" data-testid="mvd-podglad-naglowek">
+      <div className="mvd-podglad-naglowek-tytul">
+        <strong>{naglowek.producent ?? T.naglowekBrakProducenta}</strong>
+        <span
+          className="mvd-podglad-naglowek-status"
+          data-testid="mvd-podglad-status"
+          data-status={naglowek.status}
+          style={{ color: status.token }}
+          title={naglowek.komunikatStatusu ?? undefined}
+        >
+          {status.etykieta}
+        </span>
+      </div>
+      <dl className="mvd-podglad-naglowek-dane">
+        {pozycje.map((p) => (
+          <div key={p.etykieta} className="mvd-podglad-naglowek-pozycja">
+            <dt>{p.etykieta}</dt>
+            <dd>{p.wartosc ?? T.naglowekBrakDanej}</dd>
+          </div>
+        ))}
+      </dl>
+      {naglowek.status === 'INVALID' && naglowek.komunikatStatusu ? (
+        <p className="mvd-podglad-naglowek-komunikat">{naglowek.komunikatStatusu}</p>
+      ) : null}
+    </div>
+  );
 }
 
 export function PodgladRozdzielnicySn({
@@ -55,6 +130,11 @@ export function PodgladRozdzielnicySn({
   transformatory = [],
   transformatorRef = null,
   snVoltageKv = 0,
+  szablonyPol = [],
+  rodzina = null,
+  producent = null,
+  statusKonfiguracji = 'NIESPRAWDZONA',
+  komunikatStatusu = null,
   testid,
 }: PodgladRozdzielnicySnProps) {
   const rysunek = zbudujPodglad({
@@ -63,6 +143,11 @@ export function PodgladRozdzielnicySn({
     transformatory,
     transformatorRef,
     snVoltageKv,
+    szablonyPol,
+    rodzina,
+    producent,
+    statusKonfiguracji,
+    komunikatStatusu,
   });
   const { szerokosc, wysokosc, szynaY } = rysunek;
 
@@ -96,6 +181,7 @@ export function PodgladRozdzielnicySn({
 
   return (
     <div className="mvd-podglad-rozdzielnica" data-testid={testid}>
+      <NaglowekPakietu naglowek={rysunek.naglowek} />
       <svg
         viewBox={`0 0 ${szerokosc} ${wysokosc}`}
         role="img"
@@ -168,7 +254,7 @@ export function PodgladRozdzielnicySn({
           {rysunek.etykietaSzyny}
         </text>
 
-        {/* --- Pola: tor + symbole kanoniczne + opisy --- */}
+        {/* --- Pola: tor + symbole kanoniczne + oznaczenia + opisy --- */}
         {rysunek.sloty.map((slot) => (
           <g
             key={slot.klucz}
@@ -178,7 +264,7 @@ export function PodgladRozdzielnicySn({
             data-testid={`mvd-podglad-pole-${slot.numer}-${slot.rola}`}
             data-pole-numer={slot.numer}
           >
-            {slot.tor.map(([x1, y1, x2, y2], i) => (
+            {slot.scena.tor.map(([x1, y1, x2, y2], i) => (
               <line
                 key={`tor-${slot.klucz}-${i}`}
                 x1={x1}
@@ -189,8 +275,48 @@ export function PodgladRozdzielnicySn({
                 strokeWidth={GRUBOSC_TORU}
               />
             ))}
-            {slot.symbole.map((symbol, i) => {
+            {/* Przedział kablowy — obwiednia strefy zakończenia kablowego pola.
+                Kreska przerywana, bo to GRANICA PRZEDZIAŁU rozdzielnicy, a nie
+                element toru prądowego. */}
+            {slot.scena.strefaKablowa ? (
+              <rect
+                data-testid={`mvd-podglad-przedzial-${slot.numer}`}
+                x={slot.scena.strefaKablowa.x}
+                y={slot.scena.strefaKablowa.y}
+                width={slot.scena.strefaKablowa.szerokosc}
+                height={slot.scena.strefaKablowa.wysokosc}
+                fill="none"
+                stroke="var(--mvd-line)"
+                strokeWidth={0.8}
+                strokeDasharray="3 2"
+              />
+            ) : null}
+            {/* Kreska strony nN pod transformatorem — wyprowadzenie 0,4 kV. */}
+            {slot.scena.kreskaNn ? (
+              <g data-testid={`mvd-podglad-nn-${slot.numer}`}>
+                <line
+                  x1={slot.scena.kreskaNn[0]}
+                  y1={slot.scena.kreskaNn[2]}
+                  x2={slot.scena.kreskaNn[1]}
+                  y2={slot.scena.kreskaNn[2]}
+                  stroke="currentColor"
+                  strokeWidth={GRUBOSC_SZYNY * 0.6}
+                  strokeLinecap="square"
+                />
+                <text
+                  x={slot.scena.kreskaNn[1] + 3}
+                  y={slot.scena.kreskaNn[2] + LABEL_TYPOGRAPHY[KLASA_OZNACZENIA].fontSize / 3}
+                  fill="var(--mvd-muted)"
+                  fontSize={LABEL_TYPOGRAPHY[KLASA_OZNACZENIA].fontSize}
+                  fontWeight={LABEL_TYPOGRAPHY[KLASA_OZNACZENIA].fontWeight}
+                >
+                  {T.podgladStronaNn}
+                </text>
+              </g>
+            ) : null}
+            {slot.scena.symbole.map((symbol, i) => {
               const Glyph = SYMBOL_GLYPHS[symbol.id];
+              const oznaczenie = pozycjaOznaczenia(symbol);
               // Powiększenie symbolu (SKALA_SYMBOLU) nakładane transformacją
               // grupy — glif kanonu rysuje się we WŁASNYCH współrzędnych, więc
               // żadna geometria biblioteki nie jest tu kopiowana.
@@ -202,12 +328,26 @@ export function PodgladRozdzielnicySn({
               // geometrią"), więc rysunek mówi „aparat jest", a nie „aparat
               // jest zamknięty".
               return (
-                <g
-                  key={`symbol-${slot.klucz}-${i}`}
-                  data-symbol-pola={symbol.id}
-                  transform={`translate(${symbol.x}, ${symbol.y}) scale(${SKALA_SYMBOLU})`}
-                >
-                  <Glyph x={0} y={0} stroke="currentColor" />
+                <g key={`symbol-${slot.klucz}-${i}`}>
+                  <g
+                    data-symbol-pola={symbol.id}
+                    data-oznaczenie={symbol.oznaczenie}
+                    transform={`translate(${symbol.x}, ${symbol.y}) scale(${SKALA_SYMBOLU})`}
+                  >
+                    <Glyph x={0} y={0} stroke="currentColor" />
+                  </g>
+                  {symbol.oznaczenie !== '' ? (
+                    <text
+                      x={oznaczenie.x}
+                      y={oznaczenie.y}
+                      textAnchor={oznaczenie.kotwica}
+                      fill="var(--mvd-muted)"
+                      fontSize={LABEL_TYPOGRAPHY[KLASA_OZNACZENIA].fontSize}
+                      fontWeight={LABEL_TYPOGRAPHY[KLASA_OZNACZENIA].fontWeight}
+                    >
+                      {symbol.oznaczenie}
+                    </text>
+                  ) : null}
                 </g>
               );
             })}

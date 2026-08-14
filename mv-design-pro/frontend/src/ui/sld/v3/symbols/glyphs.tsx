@@ -366,6 +366,42 @@ export function FuseSwitchGlyph(props: GlyphProps): JSX.Element {
   );
 }
 
+/**
+ * SLD-GEN-POLA — BEZPIECZNIK SAM (IEC 60617 S00289): prostokątna wkładka z żyłą
+ * przechodzącą na wylot. Bez styku ruchomego — to odróżnia go od `fuseSwitch`
+ * (rozłącznik Z bezpiecznikiem), który ma nad wkładką styk otwierany.
+ * `state` NIE zmienia rysunku: bezpiecznik nie jest łącznikiem sterowanym —
+ * przepalenie wkładki to zdarzenie eksploatacyjne, nie stan łącznika. Milczące
+ * przyjęcie „closed" narysowałoby stan, którego ten aparat nie ma.
+ */
+export function FuseGlyph(props: GlyphProps): JSX.Element {
+  return (
+    <g {...glyphGroupProps('fuse', props)}>
+      <line x1={8} y1={0} x2={8} y2={4} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
+      <rect x={4} y={4} width={8} height={16} fill="none" stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
+      <line x1={8} y1={4} x2={8} y2={20} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
+      <line x1={8} y1={20} x2={8} y2={24} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
+    </g>
+  );
+}
+
+/**
+ * SLD-GEN-POLA — WSKAŹNIK OBECNOŚCI NAPIĘCIA (VPIS): trzy lampki sygnalizacyjne
+ * (po jednej na fazę) na wspólnym zaczepie. Sygnalizacja, nie aparat toru mocy —
+ * dlatego rysunek kończy się na lampkach (jeden port, brak wyjścia w dół).
+ */
+export function VoltageIndicatorGlyph(props: GlyphProps): JSX.Element {
+  return (
+    <g {...glyphGroupProps('voltageIndicator', props)}>
+      <line x1={8} y1={0} x2={8} y2={5} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
+      <line x1={2} y1={5} x2={14} y2={5} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
+      <circle cx={3} cy={9} r={2.6} fill="none" stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
+      <circle cx={8} cy={9} r={2.6} fill="none" stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
+      <circle cx={13} cy={9} r={2.6} fill="none" stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
+    </g>
+  );
+}
+
 export function Transformer2WGlyph(props: GlyphProps): JSX.Element {
   return (
     <g {...glyphGroupProps('transformer2W', props)}>
@@ -888,6 +924,8 @@ export const SYMBOL_GLYPHS: Readonly<Record<SymbolId, (props: GlyphProps) => JSX
   earthSwitch: EarthSwitchGlyph,
   neutralEarthing: NeutralEarthingGlyph,
   fuseSwitch: FuseSwitchGlyph,
+  fuse: FuseGlyph,
+  voltageIndicator: VoltageIndicatorGlyph,
   transformer2W: Transformer2WGlyph,
   cableHead: CableHeadGlyph,
   jointSleeve: JointSleeveGlyph,

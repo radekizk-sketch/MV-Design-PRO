@@ -307,12 +307,33 @@ export const STACJA_STRINGS = {
   wierszPoleTrJest: 'W rozdzielnicy',
   wierszPoleTrBrak: 'Brak — konfiguracja niekompletna',
   podgladTytul: 'Podgląd pól rozdzielnicy SN',
-  // MINI-RMU-CAD — opisy schematu jednokreskowego rozdzielnicy w kroku pól.
+  // SLD-GEN-POLA — opisy schematu jednokreskowego rozdzielnicy w kroku pól.
   podgladOpisRysunku:
-    'Schemat jednokreskowy rozdzielnicy rysowany symbolami normowymi z konfiguracji pól powyżej: '
-    + 'każde pole dostaje symbol aparatu, który w nim wskazałeś. Rysunek pokazuje wyłącznie '
-    + 'elementy wynikające z wyboru (aparat pola, transformator stacji, wskazane przekładniki '
-    + 'i przekaźnik) — nie uzupełnia składu pola o aparaty, których szablon nie deklaruje.',
+    'Schemat jednokreskowy rozdzielnicy rysowany symbolami normowymi z RZECZYWISTEJ kompozycji '
+    + 'aparatów pola: skład każdego pola pochodzi z karty katalogowej rodziny (odłączniki, aparat '
+    + 'główny, przekładniki, uziemnik, głowica kablowa, transformator), a oznaczenia przy symbolach '
+    + 'to oznaczenia operatorskie z tej samej karty. Rysunek nie dodaje aparatu spoza kompozycji '
+    + 'ani nie pomija aparatu, który w niej jest.',
+  podgladStronaNn: 'nN',
+  // Nagłówek pakietu rozdzielnicy (dane rodziny + werdykt walidatora backendu).
+  naglowekRodzina: 'Rodzina',
+  naglowekKonstrukcja: 'Konstrukcja',
+  naglowekNapiecie: 'Napięcie znamionowe',
+  naglowekPradSzyn: 'Prąd znamionowy szyn',
+  naglowekPradZwarciowy: 'Prąd zwarciowy 1 s',
+  naglowekJednostki: 'Liczba jednostek',
+  naglowekSzerokosc: 'Szerokość całkowita',
+  naglowekBrakProducenta: 'Producent niewskazany',
+  /**
+   * Jawny brak danej katalogowej. Dotyczy m.in. szerokości pola: kontrakt
+   * katalogu rozdzielnic nie niesie wymiaru, więc pokazujemy brak zamiast
+   * liczby „typowej" — zmyślony wymiar wszedłby do dokumentacji wykonawczej.
+   */
+  naglowekBrakDanej: 'brak w karcie katalogowej',
+  statusKonfiguracjiValid: 'Konfiguracja przyjęta przez walidator',
+  statusKonfiguracjiInvalid: 'Konfiguracja odrzucona przez walidator',
+  statusKonfiguracjiNiesprawdzona: 'Konfiguracja niesprawdzona',
+  statusKonfiguracjiSprawdzanie: 'Walidator sprawdza konfigurację…',
   podgladSzyna: (kv: string) => `Szyna SN ${kv} kV`,
   podgladSzynaBezNapiecia: 'Szyna SN',
   podgladBrakAparatu: 'aparat pola niewskazany',
