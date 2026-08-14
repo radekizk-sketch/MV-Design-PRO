@@ -75,3 +75,55 @@ z modelu/biegów ze świeżością. Umieszczenie korytarzowe rozdzielnicy nN
    (widok „grupy stacji"), czy ściśle jedną stację? (proponuję: jedną;
    grupa = P2).
 4. Plakietka L0: który werdykt jest „najgorszy" — priorytet SWZ > Iz′ > ΔU?
+
+---
+
+## WERDYKT WŁAŚCICIELA (2026-08-14): 8,5/10 → 9,5/10 po korektach — BINDING
+
+**ZASADA FUNDAMENTALNA (ZASTĘPUJE „granica wizualna = granica obliczeniowa"):**
+GRANICA WIZUALNA = GRANICA DOMENY NAPIĘCIOWEJ I PROJEKCJI.
+Nie oznacza ona przerwania zależności obliczeniowej.
+Każda domena niższego napięcia otrzymuje jawny, wersjonowany
+upstream electrical equivalent wynikający z tego samego ENM,
+scenariusza i stanu łączeniowego.
+Transformer pozostaje komponentem łączącym obie domeny
+i jedyną legalną granicą 15 kV ↔ 0,4 kV w tej części modelu.
+
+**Rozstrzygnięcia pytań:**
+1. Wejście L2: klik stacji=zaznaczenie; przycisk „Wejdź do nN"=przejście;
+   Enter=skrót; dwuklik=skrót ekspercki. ZAKAZ wejścia samym zoomem.
+2. Budżet kikutów: ADAPTACYJNY (szerokość/sekcje/pitch), nie stała N=8.
+   Agregacja PER SEKCJA SZYN (nigdy globalna przez sprzęgło). Agregat
+   dziedziczy najgorszy status ukrytych. NIGDY w agregacie: incomer,
+   sprzęgło, DER, agregat prądotwórczy, UPS, odpływ HARD FAIL, odbiór
+   krytyczny.
+3. L2 = `LvDomainView(rootStationId, scenarioId)` — granica z GRAFU domeny
+   0,4 kV (nie containment); połączenie do innej stacji = boundary/link
+   chip. WIELOŹRÓDŁOWOŚĆ jawna (2×TR+sprzęgło, PV/BESS/G1, ATS) — domena
+   napięciowa, NIE szablon TR→RGnN→odpływy. Grupa stacji = P2.
+4. Plakietka: najpierw POZIOM naruszenia (INVALID/HARD FAIL/FAIL/WARNING/
+   PASS), przy remisie typ: SWZ → obciążalność/termika → napięcie.
+   Freshness ma pierwszeństwo przed zielonym PASS.
+
+**Korekty treści:**
+- L0 plakietka: kierunek przepływu zamiast surowej ΣP:
+  `630 kVA · nN · 6 odpł. · ↓145 kW · TR 42% · ●` (↑ przy eksporcie).
+  Makroskopowo — bez Q/cosφ/U/Ik w chipie.
+- L1: TOR TRANSFORMACJI ZAWSZE WIDOCZNY: SN → pole FT → symbol TR → QF-IN →
+  szyna RGnN (sekcje+sprzęgło) → kikuty. Symbol TR w torze elektrycznym L1
+  — tabliczka bogata dopiero w L2, ale symbol NIE znika z L1.
+- L2 kotwica: kompaktowy chip na ekranie, pod nim PEŁNY immutable
+  `UpstreamEquivalentSnapshot` (sourceNodeId, voltageLevelId, Uth, Sk″,
+  Z1/R1/X1, Z0 jeśli wymagane, R/X, scenarioId, operatingStateId,
+  calculationRunId, modelRevision/hash) — używany przez solver.
+- L2 wyniki: przełączalne OVERLAYE inżynierskie (Obciążenia/Spadki U/
+  Zwarcia/SWZ/Termika/Selektywność) — nie 10 liczb naraz; domyślny SLD czysty.
+- MECHANIZMY ROZDZIELONE: L0↔L1 = semantic zoom (histereza); L1→L2 =
+  DOMAIN NAVIGATION (VIEW DOMAIN i kamera to OSOBNE stany; zoom dowolny
+  w każdej domenie).
+- T5c: pamięć kontekstu powrotu (stacja, zoom, pan, scenario, warstwa
+  wyników, zaznaczenie) — nigdy fitAll().
+
+**Decyzja: T5a ZLECIĆ · T5b ZLECIĆ (priorytet) · T5c ZLECIĆ po zmianie na
+explicit domain navigation. Kierunek „zmniejszyć RGnN pod stacją SN" —
+ZAMKNIĘTY.**
