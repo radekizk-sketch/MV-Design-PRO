@@ -549,6 +549,10 @@ inwentarza — commit odbiorczy 2026-08-14). Poniżej pozostałe karty — kolej
 zlecania wg wagi. Każda karta podlega KONTRAKTOWI §0 (w tym §0.7 odbiór).
 
 ### K-Q AUDIT2-KATALOGI-BEZ-PROWENIENCJI `[backend + mirror frontu]`
+**STATUS: WYKONANA (2026-08-14, wykonawca Opus, galaz `kopia/K-Q-AUDIT2`).**
+Wpis rozliczeniowy: wiersz `K-Q-AUDIT2-KATALOGI-BEZ-PROWENIENCJI` w
+`docs/v12xx/REJESTR_KONFLIKTOW.md`.
+
 `backend/src/api/audit2_catalogs.py` niesie TĘ SAMĄ klasę fabrykacji, którą
 K-O usunął z frontu (identyczne id pozycji, te same liczby, ci sami zmyśleni
 producenci) i serwuje ją przez `/api/v1/catalog/audit2`. Autorytet danych leży
