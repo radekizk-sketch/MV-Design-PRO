@@ -124,8 +124,8 @@ BESS_OPERATION_MODE_CATALOG: tuple[BessOperationModeItem, ...] = (
         catalog_version=AUDIT2_CATALOG_VERSION,
         label_pl="Peak shaving (redukcja szczytu)",
         description_pl=(
-            "Wyladowanie BESS podczas szczytow obciazenia odbiorcy w celu redukcji "
-            "mocy szczytowej i oplat dystrybucyjnych (taryfa BD/CD)."
+            "Wyładowanie magazynu w szczytach obciążenia odbiorcy, żeby obniżyć "
+            "moc szczytową i opłaty dystrybucyjne."
         ),
         mode_code="peak_shaving",
         requires_four_quadrant=False,
@@ -135,11 +135,11 @@ BESS_OPERATION_MODE_CATALOG: tuple[BessOperationModeItem, ...] = (
         id="mode_arbitrage",
         catalog_namespace="bess_operation_mode",
         catalog_version=AUDIT2_CATALOG_VERSION,
-        label_pl="Arbitraz cenowy (energy time-shift)",
+        label_pl="Arbitraż cenowy (przesunięcie energii w czasie)",
         description_pl=(
-            "Ladowanie w godzinach niskich cen energii, wyladowanie w godzinach "
-            "wysokich. Oplacalnosc zalezy od cennika rynku, ktory nie jest dana "
-            "katalogowa."
+            "Ładowanie w godzinach niskich cen energii, wyładowanie w godzinach "
+            "wysokich. Opłacalność zależy od cennika rynku, który nie jest daną "
+            "katalogową."
         ),
         mode_code="arbitrage",
         requires_four_quadrant=False,
@@ -149,12 +149,12 @@ BESS_OPERATION_MODE_CATALOG: tuple[BessOperationModeItem, ...] = (
         id="mode_fcr_n",
         catalog_namespace="bess_operation_mode",
         catalog_version=AUDIT2_CATALOG_VERSION,
-        label_pl="FCR-N (rezerwa pierwotna normalna)",
+        label_pl="FCR-N (rezerwa pierwotna symetryczna)",
         description_pl=(
-            "Symetryczna rezerwa pierwotna: magazyn zmienia moc czynna w obie "
-            "strony wokol czestotliwosci znamionowej. Wymagany czas reakcji, "
-            "wielkosc rezerwy i statyzm okresla regulamin rynku bilansujacego "
-            "operatora systemu przesylowego — nie ten katalog."
+            "Symetryczna rezerwa pierwotna: magazyn zmienia moc czynną w obie "
+            "strony wokół częstotliwości znamionowej. Wymagany czas reakcji, "
+            "wielkość rezerwy i statyzm określa regulamin rynku bilansującego "
+            "operatora systemu przesyłowego — nie ten katalog."
         ),
         mode_code="fcr_n",
         requires_four_quadrant=True,
@@ -164,11 +164,11 @@ BESS_OPERATION_MODE_CATALOG: tuple[BessOperationModeItem, ...] = (
         id="mode_fcr_d_up",
         catalog_namespace="bess_operation_mode",
         catalog_version=AUDIT2_CATALOG_VERSION,
-        label_pl="FCR-D (rezerwa awaryjna w gore)",
+        label_pl="FCR-D (rezerwa awaryjna w górę)",
         description_pl=(
-            "Rezerwa pierwotna asymetryczna w gore, uruchamiana przy zaklocenu "
-            "podczestotliwosciowym. Prog uruchomienia i profil narastania mocy "
-            "okresla regulamin rynku bilansujacego, nie ten katalog."
+            "Rezerwa pierwotna asymetryczna w górę, uruchamiana przy zakłóceniu "
+            "podczęstotliwościowym. Próg uruchomienia i profil narastania mocy "
+            "określa regulamin rynku bilansującego, nie ten katalog."
         ),
         mode_code="fcr_d_up",
         requires_four_quadrant=True,
@@ -178,11 +178,11 @@ BESS_OPERATION_MODE_CATALOG: tuple[BessOperationModeItem, ...] = (
         id="mode_afrr",
         catalog_namespace="bess_operation_mode",
         catalog_version=AUDIT2_CATALOG_VERSION,
-        label_pl="aFRR (rezerwa wtorna automatyczna)",
+        label_pl="aFRR (rezerwa wtórna automatyczna)",
         description_pl=(
-            "Rezerwa wtorna sterowana automatycznie sygnalem operatora systemu "
-            "przesylowego, symetryczna w obie strony. Czasy aktywacji okresla "
-            "regulamin rynku bilansujacego, nie ten katalog."
+            "Rezerwa wtórna sterowana automatycznie sygnałem operatora systemu "
+            "przesyłowego, symetryczna w obie strony. Czasy aktywacji określa "
+            "regulamin rynku bilansującego, nie ten katalog."
         ),
         mode_code="afrr",
         requires_four_quadrant=True,
@@ -192,11 +192,11 @@ BESS_OPERATION_MODE_CATALOG: tuple[BessOperationModeItem, ...] = (
         id="mode_mfrr",
         catalog_namespace="bess_operation_mode",
         catalog_version=AUDIT2_CATALOG_VERSION,
-        label_pl="mFRR (rezerwa wtorna reczna)",
+        label_pl="mFRR (rezerwa wtórna ręczna)",
         description_pl=(
-            "Rezerwa uruchamiana recznie komenda dyspozytora operatora systemu "
-            "przesylowego. Czas aktywacji i wymagany czas podtrzymania okresla "
-            "regulamin rynku bilansujacego, nie ten katalog."
+            "Rezerwa uruchamiana ręcznie komendą dyspozytora operatora systemu "
+            "przesyłowego. Czas aktywacji i wymagany czas podtrzymania określa "
+            "regulamin rynku bilansującego, nie ten katalog."
         ),
         mode_code="mfrr",
         requires_four_quadrant=False,
@@ -206,12 +206,12 @@ BESS_OPERATION_MODE_CATALOG: tuple[BessOperationModeItem, ...] = (
         id="mode_voltage_support",
         catalog_namespace="bess_operation_mode",
         catalog_version=AUDIT2_CATALOG_VERSION,
-        label_pl="Wsparcie napieciowe Q(U)",
+        label_pl="Wsparcie napięciowe Q(U)",
         description_pl=(
-            "Regulacja mocy biernej w funkcji napiecia w punkcie przylaczenia "
-            "(charakterystyka Q(U)). Wymaga przeksztaltnika pracujacego w czterech "
-            "cwiartkach; zakres regulacji wynika z karty przeksztaltnika i z "
-            "warunkow przylaczenia, nie z tego katalogu."
+            "Regulacja mocy biernej w funkcji napięcia w punkcie przyłączenia "
+            "(charakterystyka Q(U)). Wymaga przekształtnika pracującego w czterech "
+            "ćwiartkach; zakres regulacji wynika z karty przekształtnika i z "
+            "warunków przyłączenia, nie z tego katalogu."
         ),
         mode_code="voltage_support",
         requires_four_quadrant=True,
@@ -221,10 +221,11 @@ BESS_OPERATION_MODE_CATALOG: tuple[BessOperationModeItem, ...] = (
         id="mode_island_backup",
         catalog_namespace="bess_operation_mode",
         catalog_version=AUDIT2_CATALOG_VERSION,
-        label_pl="Tryb wyspowy (grid-forming backup)",
+        label_pl="Praca wyspowa (przekształtnik tworzący napięcie)",
         description_pl=(
-            "Tworzenie napiecia po awarii zasilania. Wymaga grid-forming PCS. "
-            "Synchronizacja z siecia po powrocie zasilania (synchrocheck 25)."
+            "Tworzenie napięcia po zaniku zasilania. Wymaga przekształtnika "
+            "tworzącego napięcie (grid-forming). Powrót do pracy równoległej przez "
+            "kontrolę synchronizmu (funkcja 25)."
         ),
         mode_code="island_backup",
         requires_four_quadrant=True,
@@ -234,10 +235,10 @@ BESS_OPERATION_MODE_CATALOG: tuple[BessOperationModeItem, ...] = (
         id="mode_self_consumption",
         catalog_namespace="bess_operation_mode",
         catalog_version=AUDIT2_CATALOG_VERSION,
-        label_pl="Autokonsumpcja PV+BESS (self-consumption)",
+        label_pl="Autokonsumpcja PV z magazynem",
         description_pl=(
-            "Maksymalizacja autokonsumpcji PV. Ladowanie nadwyzek dziennej generacji, "
-            "wyladowanie wieczorne. Typowe dla DER po nN."
+            "Maksymalizacja autokonsumpcji instalacji PV: ładowanie nadwyżek "
+            "generacji dziennej, wyładowanie wieczorne."
         ),
         mode_code="self_consumption",
         requires_four_quadrant=False,

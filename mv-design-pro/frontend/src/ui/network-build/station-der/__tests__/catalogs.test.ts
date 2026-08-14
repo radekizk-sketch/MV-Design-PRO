@@ -176,11 +176,15 @@ describe('Device catalogs (PV/BESS/FW)', () => {
     expect(BESS_BATTERY_CATALOG.length).toBeGreaterThanOrEqual(2);
   });
 
-  it('Wind turbine catalog ma ≥3 pozycje (PMSG, DFIG, SCIG)', () => {
+  it('Wind turbine catalog ma ≥3 pozycje z mocą znamionową', () => {
+    // Karta K-Q: `generator_type` (PMSG/DFIG) znikł razem z danymi mechanicznymi
+    // turbiny — backend go nie niesie, karty producenta w repo nie ma, a w UI nie
+    // miał konsumenta. Pozycja opisuje to, co mirroruje z backendu: wyrób i moc.
     expect(WIND_TURBINE_CATALOG.length).toBeGreaterThanOrEqual(3);
-    const types = WIND_TURBINE_CATALOG.map((w) => w.generator_type);
-    expect(types).toContain('PMSG');
-    expect(types).toContain('DFIG');
+    for (const wt of WIND_TURBINE_CATALOG) {
+      expect(wt.nominal_power_kw).toBeGreaterThan(0);
+      expect(wt.model_code.length).toBeGreaterThan(0);
+    }
   });
 
   it('selectPvInvertersForVoltage filtruje po napięciu', () => {

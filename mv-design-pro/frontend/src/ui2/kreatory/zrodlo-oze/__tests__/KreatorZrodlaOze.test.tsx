@@ -392,7 +392,7 @@ describe('KreatorZrodlaOze — realna ścieżka', () => {
     await userEvent.selectOptions(screen.getByTestId('mvd-kreator-oze-zgodnosc-profil'), 'ncrfg_pse');
     await userEvent.selectOptions(screen.getByTestId('mvd-kreator-oze-zgodnosc-lvrt'), 'lvrt_pse_b');
     await userEvent.selectOptions(screen.getByTestId('mvd-kreator-oze-zgodnosc-hvrt'), 'hvrt_pse_b');
-    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-oze-zgodnosc-pf'), 'pf_pse_b');
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-oze-zgodnosc-pf'), 'pf_droop_5');
     // regulacja: tryb pracy + limity Q.
     await userEvent.click(screen.getByTestId('mvd-kreator-oze-dalej'));
     await waitFor(() => expect(screen.getByTestId('mvd-kreator-oze-tryb-pracy')).toBeInTheDocument());
@@ -415,7 +415,7 @@ describe('KreatorZrodlaOze — realna ścieżka', () => {
         nc_rfg_profile_ref: 'ncrfg_pse',
         lvrt_curve_ref: 'lvrt_pse_b',
         hvrt_curve_ref: 'hvrt_pse_b',
-        pf_curve_ref: 'pf_pse_b',
+        pf_curve_ref: 'pf_droop_5',
       });
     });
     // Tryb pracy — osobna operacja domenowa.

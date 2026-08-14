@@ -16,6 +16,8 @@
  * Zasada (K-O): każda wartość liczbowa ma źródło albo pozycji/pola nie ma.
  */
 
+import { AUDIT2_CATALOG_VERSION } from './catalogs';
+
 // =============================================================================
 // 1. ProtectionFunctionCatalog (ANSI/IEEE C37.2)
 // =============================================================================
@@ -57,7 +59,7 @@ export const PROTECTION_FUNCTION_CATALOG: ReadonlyArray<ProtectionFunctionItem> 
   {
     id: 'pf_50',
     catalog_namespace: 'protection_function',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     ansi_code: '50',
     label_pl: '50 — Zabezpieczenie nadprądowe natychmiastowe',
     description_pl:
@@ -70,7 +72,7 @@ export const PROTECTION_FUNCTION_CATALOG: ReadonlyArray<ProtectionFunctionItem> 
   {
     id: 'pf_51',
     catalog_namespace: 'protection_function',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     ansi_code: '51',
     label_pl: '51 — Zabezpieczenie nadprądowe czasowo-zwłoczne (IDMT)',
     description_pl:
@@ -83,7 +85,7 @@ export const PROTECTION_FUNCTION_CATALOG: ReadonlyArray<ProtectionFunctionItem> 
   {
     id: 'pf_50n',
     catalog_namespace: 'protection_function',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     ansi_code: '50N',
     label_pl: '50N — Zabezpieczenie ziemnozwarciowe natychmiastowe',
     description_pl:
@@ -96,7 +98,7 @@ export const PROTECTION_FUNCTION_CATALOG: ReadonlyArray<ProtectionFunctionItem> 
   {
     id: 'pf_51n',
     catalog_namespace: 'protection_function',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     ansi_code: '51N',
     label_pl: '51N — Zabezpieczenie ziemnozwarciowe czasowo-zwłoczne',
     description_pl:
@@ -109,7 +111,7 @@ export const PROTECTION_FUNCTION_CATALOG: ReadonlyArray<ProtectionFunctionItem> 
   {
     id: 'pf_67',
     catalog_namespace: 'protection_function',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     ansi_code: '67',
     label_pl: '67 — Zabezpieczenie nadprądowe kierunkowe',
     description_pl:
@@ -121,7 +123,7 @@ export const PROTECTION_FUNCTION_CATALOG: ReadonlyArray<ProtectionFunctionItem> 
   {
     id: 'pf_67n',
     catalog_namespace: 'protection_function',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     ansi_code: '67N',
     label_pl: '67N — Zabezpieczenie ziemnozwarciowe kierunkowe',
     description_pl:
@@ -134,7 +136,7 @@ export const PROTECTION_FUNCTION_CATALOG: ReadonlyArray<ProtectionFunctionItem> 
   {
     id: 'pf_87t',
     catalog_namespace: 'protection_function',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     ansi_code: '87T',
     label_pl: '87T — Zabezpieczenie różnicowe transformatora',
     description_pl:
@@ -147,7 +149,7 @@ export const PROTECTION_FUNCTION_CATALOG: ReadonlyArray<ProtectionFunctionItem> 
   {
     id: 'pf_27',
     catalog_namespace: 'protection_function',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     ansi_code: '27',
     label_pl: '27 — Zabezpieczenie podnapięciowe',
     description_pl:
@@ -159,7 +161,7 @@ export const PROTECTION_FUNCTION_CATALOG: ReadonlyArray<ProtectionFunctionItem> 
   {
     id: 'pf_59',
     catalog_namespace: 'protection_function',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     ansi_code: '59',
     label_pl: '59 — Zabezpieczenie nadnapięciowe',
     description_pl:
@@ -171,7 +173,7 @@ export const PROTECTION_FUNCTION_CATALOG: ReadonlyArray<ProtectionFunctionItem> 
   {
     id: 'pf_81u',
     catalog_namespace: 'protection_function',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     ansi_code: '81U',
     label_pl: '81U — Zabezpieczenie podczęstotliwościowe',
     description_pl:
@@ -183,7 +185,7 @@ export const PROTECTION_FUNCTION_CATALOG: ReadonlyArray<ProtectionFunctionItem> 
   {
     id: 'pf_81o',
     catalog_namespace: 'protection_function',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     ansi_code: '81O',
     label_pl: '81O — Zabezpieczenie nadczęstotliwościowe',
     description_pl:
@@ -195,7 +197,7 @@ export const PROTECTION_FUNCTION_CATALOG: ReadonlyArray<ProtectionFunctionItem> 
   {
     id: 'pf_79',
     catalog_namespace: 'protection_function',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     ansi_code: '79',
     label_pl: '79 — SPZ (samoczynne ponowne załączenie)',
     description_pl:
@@ -207,7 +209,7 @@ export const PROTECTION_FUNCTION_CATALOG: ReadonlyArray<ProtectionFunctionItem> 
   {
     id: 'pf_86',
     catalog_namespace: 'protection_function',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     ansi_code: '86',
     label_pl: '86 — Blokada (lockout)',
     description_pl:
@@ -220,7 +222,7 @@ export const PROTECTION_FUNCTION_CATALOG: ReadonlyArray<ProtectionFunctionItem> 
   {
     id: 'pf_25',
     catalog_namespace: 'protection_function',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     ansi_code: '25',
     label_pl: '25 — Synchrocheck (kontrola synchronizmu)',
     description_pl:
@@ -232,7 +234,7 @@ export const PROTECTION_FUNCTION_CATALOG: ReadonlyArray<ProtectionFunctionItem> 
   {
     id: 'pf_32',
     catalog_namespace: 'protection_function',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     ansi_code: '32',
     label_pl: '32 — Zabezpieczenie kierunkowe mocy (reverse-power)',
     description_pl:
@@ -244,7 +246,7 @@ export const PROTECTION_FUNCTION_CATALOG: ReadonlyArray<ProtectionFunctionItem> 
   {
     id: 'pf_46',
     catalog_namespace: 'protection_function',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     ansi_code: '46',
     label_pl: '46 — Zabezpieczenie nadprądowe kolejności ujemnej',
     description_pl:
@@ -256,7 +258,7 @@ export const PROTECTION_FUNCTION_CATALOG: ReadonlyArray<ProtectionFunctionItem> 
   {
     id: 'pf_49',
     catalog_namespace: 'protection_function',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     ansi_code: '49',
     label_pl: '49 — Zabezpieczenie termiczne (thermal overload)',
     description_pl:
@@ -268,7 +270,7 @@ export const PROTECTION_FUNCTION_CATALOG: ReadonlyArray<ProtectionFunctionItem> 
   {
     id: 'pf_21',
     catalog_namespace: 'protection_function',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     ansi_code: '21',
     label_pl: '21 — Zabezpieczenie dystansowe (impedancyjne)',
     description_pl:
@@ -282,7 +284,7 @@ export const PROTECTION_FUNCTION_CATALOG: ReadonlyArray<ProtectionFunctionItem> 
   {
     id: 'pf_50g',
     catalog_namespace: 'protection_function',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     ansi_code: '50G',
     label_pl: '50G — Zabezpieczenie nadprądowe natychmiastowe generatora',
     description_pl:
@@ -294,7 +296,7 @@ export const PROTECTION_FUNCTION_CATALOG: ReadonlyArray<ProtectionFunctionItem> 
   {
     id: 'pf_51g',
     catalog_namespace: 'protection_function',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     ansi_code: '51G',
     label_pl: '51G — Zabezpieczenie nadprądowe czasowo-zwłoczne generatora',
     description_pl:
@@ -306,7 +308,7 @@ export const PROTECTION_FUNCTION_CATALOG: ReadonlyArray<ProtectionFunctionItem> 
   {
     id: 'pf_78',
     catalog_namespace: 'protection_function',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     ansi_code: '78',
     label_pl: '78 — Out-of-step (utrata synchronizmu)',
     description_pl:
@@ -319,7 +321,7 @@ export const PROTECTION_FUNCTION_CATALOG: ReadonlyArray<ProtectionFunctionItem> 
   {
     id: 'pf_87l',
     catalog_namespace: 'protection_function',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     ansi_code: '87L',
     label_pl: '87L — Zabezpieczenie różnicowe linii',
     description_pl:
@@ -396,7 +398,7 @@ export const SPZ_CATALOG: ReadonlyArray<SpzCatalogItem> = Object.freeze([
   {
     id: 'spz_1cycle_fast',
     catalog_namespace: 'spz',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     label_pl: 'SPZ 1-cykl szybki (300 ms)',
     cycles: 1,
     first_dead_time_ms: 300,
@@ -407,7 +409,7 @@ export const SPZ_CATALOG: ReadonlyArray<SpzCatalogItem> = Object.freeze([
   {
     id: 'spz_2cycle',
     catalog_namespace: 'spz',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     label_pl: 'SPZ 2-cykle (300 ms / 30 s)',
     cycles: 2,
     first_dead_time_ms: 300,
@@ -419,7 +421,7 @@ export const SPZ_CATALOG: ReadonlyArray<SpzCatalogItem> = Object.freeze([
   {
     id: 'spz_3cycle',
     catalog_namespace: 'spz',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     label_pl: 'SPZ 3-cykle (300 ms / 30 s / 60 s)',
     cycles: 3,
     first_dead_time_ms: 300,
@@ -452,7 +454,7 @@ export const SZR_CATALOG: ReadonlyArray<SzrCatalogItem> = Object.freeze([
   {
     id: 'szr_fast',
     catalog_namespace: 'szr',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     label_pl: 'SZR szybki (break-before-make, 50 ms)',
     switching_time_ms: 50,
     mode: 'fast_break_before_make',
@@ -461,7 +463,7 @@ export const SZR_CATALOG: ReadonlyArray<SzrCatalogItem> = Object.freeze([
   {
     id: 'szr_synchrocheck',
     catalog_namespace: 'szr',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     label_pl: 'SZR z kontrolą synchronizmu (200 ms)',
     switching_time_ms: 200,
     mode: 'slow_with_synchrocheck',
@@ -470,7 +472,7 @@ export const SZR_CATALOG: ReadonlyArray<SzrCatalogItem> = Object.freeze([
   {
     id: 'szr_live_transfer',
     catalog_namespace: 'szr',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     label_pl: 'SZR bezprzerwowy (live-transfer, <10 ms)',
     switching_time_ms: 10,
     mode: 'live_transfer',
@@ -595,7 +597,7 @@ export const HV_FUSE_CATALOG: ReadonlyArray<HvFuseItem> = Object.freeze([
   {
     id: 'fuse_15kv_50a_full',
     catalog_namespace: 'hv_fuse',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     label_pl: 'Bezpiecznik SN 15 kV / 50 A · full-range · pole transformatorowe',
     nominal_voltage_kv: 15,
     nominal_current_a: 50,
@@ -606,7 +608,7 @@ export const HV_FUSE_CATALOG: ReadonlyArray<HvFuseItem> = Object.freeze([
   {
     id: 'fuse_15kv_100a_full',
     catalog_namespace: 'hv_fuse',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     label_pl: 'Bezpiecznik SN 15 kV / 100 A · full-range · pole transformatorowe',
     nominal_voltage_kv: 15,
     nominal_current_a: 100,
@@ -617,7 +619,7 @@ export const HV_FUSE_CATALOG: ReadonlyArray<HvFuseItem> = Object.freeze([
   {
     id: 'fuse_20kv_25a_gp',
     catalog_namespace: 'hv_fuse',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     label_pl: 'Bezpiecznik SN 20 kV / 25 A · general-purpose · pole odpływowe',
     nominal_voltage_kv: 20,
     nominal_current_a: 25,
@@ -628,7 +630,7 @@ export const HV_FUSE_CATALOG: ReadonlyArray<HvFuseItem> = Object.freeze([
   {
     id: 'fuse_15kv_160a_backup',
     catalog_namespace: 'hv_fuse',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     label_pl: 'Bezpiecznik SN 15 kV / 160 A · back-up · bateria kondensatorów',
     nominal_voltage_kv: 15,
     nominal_current_a: 160,

@@ -195,19 +195,18 @@ export function KrokZgodnosc({ dane, zmien, testid = 'mvd-kreator-oze-zgodnosc' 
       ).map((c) => ({ id: c.id, etykieta: c.label_pl })),
     [dane.nc_rfg_profile_ref],
   );
+  // Warianty nastawy P(f) nie zależą od operatora (karta K-Q): rozporządzenie
+  // (UE) 2016/631 art. 13 ust. 2 podaje statyzm jako nastawialny w przedziale
+  // 2-12%, a nie jako wartość „dla PSE / Energi / Tauronu". Lista jest pełna.
   const opcjePf = useMemo(
-    () =>
-      PF_CURVE_CATALOG.filter((c) => !profil || c.operator_code === profil.operator_code).map(
-        (c) => ({ id: c.id, etykieta: c.label_pl }),
-      ),
-    [profil],
+    () => PF_CURVE_CATALOG.map((c) => ({ id: c.id, etykieta: c.label_pl })),
+    [],
   );
 
   // Zmiana profilu zawęża krzywe do operatora — wybory spoza nowego profilu czyścimy,
   // żeby do modelu nie trafiła krzywa niespójna z profilem.
   const wybierzProfil = (ref: string | null) => {
     zmien('nc_rfg_profile_ref', ref);
-    const nowy = ref ? getNcRfgProfile(ref) : null;
     if (
       dane.lvrt_curve_ref
       && !(ref ? selectLvrtCurvesForProfile(ref) : []).some((c) => c.id === dane.lvrt_curve_ref)
@@ -220,14 +219,8 @@ export function KrokZgodnosc({ dane, zmien, testid = 'mvd-kreator-oze-zgodnosc' 
     ) {
       zmien('hvrt_curve_ref', null);
     }
-    if (
-      dane.pf_curve_ref
-      && !PF_CURVE_CATALOG.some(
-        (c) => c.id === dane.pf_curve_ref && (!nowy || c.operator_code === nowy.operator_code),
-      )
-    ) {
-      zmien('pf_curve_ref', null);
-    }
+    // Nastawa P(f) NIE jest zawężana profilem operatora — patrz nota nad
+    // `opcjePf`. Zmiana profilu nie czyści więc tego wyboru.
   };
 
   return (

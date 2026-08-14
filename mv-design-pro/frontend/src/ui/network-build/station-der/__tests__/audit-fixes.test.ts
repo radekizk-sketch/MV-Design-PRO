@@ -139,26 +139,60 @@ describe('Naprawa A.3 — kappa (peak SC factor IEC 60909)', () => {
   });
 });
 
-describe('Naprawa A.4 — fault_current_capability_pu w BESS i FW', () => {
-  it('BESS PCS ma fault_current_capability_pu', async () => {
-    const { BESS_PCS_CATALOG } = await import('../catalogs');
-    for (const pcs of BESS_PCS_CATALOG) {
-      expect(pcs.fault_current_capability_pu).toBeGreaterThan(1.0);
-      expect(pcs.fault_current_capability_pu).toBeLessThan(1.5);
+describe('Karta K-Q — graniczny prąd zwarciowy nie jest już daną katalogową', () => {
+  // INTENCJA POPRZEDNICH TESTÓW (Naprawa A.4): pilnowały, że każda pozycja PCS
+  // i turbiny NIESIE `fault_current_capability_pu` w przedziale 1,0-1,5 oraz że
+  // DFIG niesie `transient_short_circuit_pu` ≥ 4. Utrwalały więc liczby wpisane
+  // z ręki: taki limit podaje wyłącznie karta katalogowa konkretnego wyrobu,
+  // backend go nie ma, a kreator dokładał własną fabrykację (BESS → 1,2).
+  // Nowe piny idą po WSZYSTKICH pozycjach WSZYSTKICH czterech katalogów.
+
+  it('żadna pozycja urządzenia nie deklaruje granicznego prądu zwarciowego', async () => {
+    const {
+      PV_INVERTER_CATALOG,
+      BESS_PCS_CATALOG,
+      BESS_BATTERY_CATALOG,
+      WIND_TURBINE_CATALOG,
+      DER_FAULT_CURRENT_DATA_CATALOG,
+    } = await import('../catalogs');
+    const wszystkie: ReadonlyArray<Record<string, unknown>> = [
+      ...PV_INVERTER_CATALOG,
+      ...BESS_PCS_CATALOG,
+      ...BESS_BATTERY_CATALOG,
+      ...WIND_TURBINE_CATALOG,
+      ...DER_FAULT_CURRENT_DATA_CATALOG,
+    ] as ReadonlyArray<Record<string, unknown>>;
+    expect(wszystkie.length).toBeGreaterThanOrEqual(18);
+    for (const pozycja of wszystkie) {
+      expect(pozycja).not.toHaveProperty('fault_current_capability_pu');
+      expect(pozycja).not.toHaveProperty('transient_short_circuit_pu');
     }
   });
 
-  it('Wind turbines mają fault_current_capability_pu', async () => {
+  it('żadna pozycja turbiny nie deklaruje danych mechanicznych bez karty producenta', async () => {
     const { WIND_TURBINE_CATALOG } = await import('../catalogs');
-    for (const wt of WIND_TURBINE_CATALOG) {
-      expect(wt.fault_current_capability_pu).toBeGreaterThan(1.0);
+    for (const wt of WIND_TURBINE_CATALOG as ReadonlyArray<Record<string, unknown>>) {
+      expect(wt).not.toHaveProperty('hub_height_m');
+      expect(wt).not.toHaveProperty('rotor_diameter_m');
+      expect(wt).not.toHaveProperty('generator_type');
     }
   });
 
-  it('DFIG (Siemens SWT) ma transient_short_circuit_pu', async () => {
-    const { WIND_TURBINE_CATALOG } = await import('../catalogs');
-    const dfig = WIND_TURBINE_CATALOG.find((wt) => wt.generator_type === 'DFIG');
-    expect(dfig?.transient_short_circuit_pu).toBeGreaterThanOrEqual(4);
+  it('żadna pozycja baterii nie przypisuje danych imiennemu producentowi', async () => {
+    const { BESS_BATTERY_CATALOG } = await import('../catalogs');
+    for (const bat of BESS_BATTERY_CATALOG as ReadonlyArray<Record<string, unknown>>) {
+      expect(bat).not.toHaveProperty('manufacturer');
+      expect(bat).not.toHaveProperty('cycle_life');
+      expect(String(bat.label_pl)).not.toMatch(/BYD|CATL/);
+    }
+  });
+
+  it('pozycje mirrorowane z backendu niosą jego status i źródło', async () => {
+    const { PV_INVERTER_CATALOG, BESS_PCS_CATALOG, WIND_TURBINE_CATALOG } = await import('../catalogs');
+    for (const item of [...PV_INVERTER_CATALOG, ...BESS_PCS_CATALOG, ...WIND_TURBINE_CATALOG]) {
+      expect(item.verification_status).toBe('REFERENCYJNY');
+      expect(item.source_reference).toContain('MV-DESIGN-PRO');
+    }
   });
 });
 

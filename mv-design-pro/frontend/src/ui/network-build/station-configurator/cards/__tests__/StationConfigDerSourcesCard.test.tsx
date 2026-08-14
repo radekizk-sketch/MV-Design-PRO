@@ -99,7 +99,7 @@ describe('StationConfigDerSourcesCard — Karta 7 "Układy PV/BESS/FW"', () => {
 
     expect(screen.getByTestId('der-voltage-der_1').textContent).toBe('15/0,69 kV');
     expect(screen.getByTestId('der-block-transformer-der_1').textContent).toContain(
-      'TR blokowy 1250 kVA Dyn5',
+      'TR blokowy 1250 kVA Dyn11',
     );
   });
 
