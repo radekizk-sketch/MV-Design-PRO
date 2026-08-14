@@ -92,11 +92,18 @@ describe('composeLvDomainScene — wieloźródłowość (2×TR + sprzęgło + PV
     expect(otherStationNode).toBeUndefined();
   });
 
-  it('boundary chip wisi NA KRAWĘDZI szyny źródłowej (ta sama wysokość co nn_b, przesunięty w bok)', () => {
+  it('boundary: terminal PIONOWO pod kikutem szyny, chip poziomo od terminala (T5b-3)', () => {
+    // FLIP (T5b-3, werdykt B-02 P0.10): poprzednia geometria (chip na
+    // wysokości szyny) była pinem WYGLĄDU T5b-2; mandat T5b-3 wymaga
+    // zakończenia TORU — kabel schodzi pionowo z kikuta do ● terminala,
+    // chip obcej domeny wisi POZIOMO od terminala. INTENCJA pinu bez zmian:
+    // chip nie zastępuje toru i jest zakotwiczony w terminalu.
     const nnB = scene.nodes.find((n) => n.ref === 'nn_b')!;
+    const terminal = scene.nodes.find((n) => n.kind === 'boundaryTerminal')!;
     const boundaryChip = scene.nodes.find((n) => n.kind === 'boundaryChip')!;
-    expect(boundaryChip.y).toBe(nnB.y);
-    expect(boundaryChip.x).toBeGreaterThan(nnB.x);
+    expect(terminal.y).toBeGreaterThan(nnB.y);
+    expect(boundaryChip.y).toBe(terminal.y);
+    expect(boundaryChip.x).toBeGreaterThan(terminal.x);
   });
 
   it('determinizm: dwa wywołania na tych samych danych dają identyczną scenę', () => {

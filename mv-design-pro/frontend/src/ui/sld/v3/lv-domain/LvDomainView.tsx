@@ -55,12 +55,37 @@ const TONE_OK = '#5FE0A0';
 const TONE_FAIL = '#E0615F';
 const TONE_UNKNOWN = '#D8B45C';
 
-/** P0.13 "minimalne engineering sizes (…etykiety…) — fit() nie schodzi
- *  poniżej progu czytelności" — fonty STAŁE (SCREEN-STABLE), niezależne od
- *  geometrii świata (zasada WORLD-SCALED vs SCREEN-STABLE, T5a werdykt). */
-const FONT_LABEL_PX = 9;
-const FONT_HEADER_PX = 13;
-const FONT_BADGE_PX = 9;
+/** T5b-3 (P0.12) — TRZY POZIOMY TYPOGRAFII, SCREEN-STABLE (zasada
+ *  WORLD-SCALED vs SCREEN-STABLE, werdykt T5a): PRIMARY = identyfikatory
+ *  (T1/RGnN-A/QF-01) — nigdy poniżej czytelności ekranowej; SECONDARY =
+ *  parametry znamionowe; TERTIARY = szczegóły/wyniki. */
+const FONT_PRIMARY_PX = 14;
+const FONT_SECONDARY_PX = 11;
+const FONT_TERTIARY_PX = 9.5;
+const FONT_HEADER_PX = 15;
+const FONT_BADGE_PX = 10;
+
+/** T5b-3 (P0.5/P0.6) — glify kanonu (16–32 px) skalowane na kanwie L2 do
+ *  rozmiaru APARATU/URZĄDZENIA czytelnego bez zoomu; transformator jest
+ *  wizualnym centrum toru zasilania (skala większa niż aparat). */
+const SCALE_APPARATUS = 1.6;
+const SCALE_TRANSFORMER = 1.9;
+const SCALE_GENERATOR = 1.5;
+const SCALE_COUPLER = 1.9;
+
+function scaledGlyph(node: LvDomainSceneNode, scale: number, state?: SwitchState): JSX.Element | null {
+  if (!node.symbolId) return null;
+  const Glyph = SYMBOL_GLYPHS[node.symbolId];
+  const bbox = symbolBBox(node.symbolId);
+  const originX = node.x - bbox.width / 2;
+  const originY = node.y - bbox.height / 2;
+  const stroke = node.meta?.status === 'open' ? STROKE_OPEN : STROKE_BASE;
+  return (
+    <g transform={`translate(${node.x} ${node.y}) scale(${scale}) translate(${-node.x} ${-node.y})`}>
+      <Glyph x={originX} y={originY} stroke={stroke} state={state} />
+    </g>
+  );
+}
 
 /** Rejestr etykiet PL overlay (werdykt: przełączalne overlaye inżynierskie).
  *  ZAMKNIĘTY na `LvDomainOverlayId` — dopisanie klucza tu bez realnego
@@ -123,14 +148,17 @@ function switchStateOf(node: LvDomainSceneNode): SwitchState {
   return 'unknown';
 }
 
+/** Skala glifu per rodzaj węzła (T5b-3: aparat/TR/DER czytelne JAKO
+ *  urządzenia — P0.5/P0.6/P0.9). */
+function glyphScaleFor(node: LvDomainSceneNode): number {
+  if (node.kind === 'transformer') return SCALE_TRANSFORMER;
+  if (node.kind === 'generator') return SCALE_GENERATOR;
+  if (node.kind === 'apparatus') return node.meta?.role === 'coupler' ? SCALE_COUPLER : SCALE_APPARATUS;
+  return 1;
+}
+
 function SceneNodeGlyph({ node }: { readonly node: LvDomainSceneNode }): JSX.Element | null {
-  if (!node.symbolId) return null;
-  const Glyph = SYMBOL_GLYPHS[node.symbolId];
-  const bbox = symbolBBox(node.symbolId);
-  const originX = node.x - bbox.width / 2;
-  const originY = node.y - bbox.height / 2;
-  const stroke = node.meta?.status === 'open' ? STROKE_OPEN : STROKE_BASE;
-  return <Glyph x={originX} y={originY} stroke={stroke} state={node.kind === 'apparatus' ? switchStateOf(node) : undefined} />;
+  return scaledGlyph(node, glyphScaleFor(node), node.kind === 'apparatus' ? switchStateOf(node) : undefined);
 }
 
 /** P0.1 — sekcja szyn REALNA: kreska magistrali (nie ikonka). Grubość
@@ -153,23 +181,32 @@ function BusBarNode({
   const half = node.busBarHalfWidth ?? 0;
   return (
     <g data-testid={`lv-domain-node-${node.ref}`} data-node-kind={node.kind} data-owner-ref={node.ref}>
+      {/* T5b-3 (P0.3): MAGISTRALA DOMINUJĄCA — gruba kreska + etykieta
+          PRIMARY z napięciem przy LEWEJ krawędzi (nad kreską, poza pionami
+          kikutów źródeł, które trzymają się rastru wokół środka). */}
       <line
         x1={node.x - half}
         y1={node.y}
         x2={node.x + half}
         y2={node.y}
         stroke={STROKE_BUSBAR}
-        strokeWidth={4}
+        strokeWidth={8}
         strokeLinecap="square"
       />
-      {/* F2 (dowód wizualny, T5b-2): etykieta PONIŻEJ kreski — POWYŻEJ
-          schodzi tor incomera (zacisk+aparat, `INCOMER_ROW_OFFSET`), więc
-          etykieta nad kreską regularnie nachodziła na ten łańcuch (zrzut
-          `lv_domain_station_c_dark.png`). Poniżej kreski koliduje wyłącznie
-          z pierwszym rzędem odpływów, który ma własny odstęp (feeder→child
-          o pełny `ROW_HEIGHT`, patrz `tapPointOn`/`boardCenterOf`). */}
-      <text x={node.x} y={node.y + 16} textAnchor="middle" fontSize={FONT_LABEL_PX} fill={STROKE_MUTED}>
+      <text
+        x={node.x - half}
+        y={node.y - 12}
+        textAnchor="start"
+        fontSize={FONT_PRIMARY_PX}
+        fontWeight={700}
+        fill={STROKE_BASE}
+      >
         {node.label}
+        {node.meta?.voltageKv != null ? (
+          <tspan fontSize={FONT_SECONDARY_PX} fontWeight={400} fill={STROKE_MUTED}>
+            {`  ·  ${node.meta.voltageKv} kV`}
+          </tspan>
+        ) : null}
       </text>
       {activeOverlay === 'loads' || activeOverlay === 'shortCircuit' ? (
         <ResultBadge node={node} overlay={activeOverlay} payload={resultOverlayPayload} />
@@ -219,11 +256,17 @@ function ChipNode({ node }: { readonly node: LvDomainSceneNode }): JSX.Element {
   );
 }
 
+/** T5b-3 (P0.11) — rozróżnialne STYLE linii: kabel (gruby, kolor kabla),
+ *  połączenie wewnętrzne (średnie), tor źródła (średnie), sprzęgło (grube,
+ *  na poziomie szyn), boundary (przerywane, kolor granicy); OPEN zawsze
+ *  przerywane + wygaszone. */
 function SceneEdgeLine({ edge }: { readonly edge: LvDomainSceneEdge }): JSX.Element {
   const isCable = edge.kind === 'cable';
   const stroke =
     edge.kind === 'boundaryLink' ? STROKE_BOUNDARY : isCable ? STROKE_CABLE : edge.status === 'open' ? STROKE_OPEN : STROKE_BASE;
-  const dash = edge.kind === 'boundaryLink' || edge.status === 'open' ? '4 3' : isCable ? '1 2' : undefined;
+  const dash = edge.kind === 'boundaryLink' ? '6 4' : edge.status === 'open' ? '5 4' : undefined;
+  const width =
+    edge.kind === 'coupler' ? 3 : isCable ? 2.6 : edge.kind === 'branch' ? 2.2 : edge.kind === 'sourceDrop' ? 2 : 1.4;
   return (
     <line
       data-testid={`lv-domain-edge-${edge.ref}`}
@@ -234,7 +277,7 @@ function SceneEdgeLine({ edge }: { readonly edge: LvDomainSceneEdge }): JSX.Elem
       x2={edge.x2}
       y2={edge.y2}
       stroke={stroke}
-      strokeWidth={edge.kind === 'branch' ? 1.6 : isCable ? 1.4 : 1}
+      strokeWidth={width}
       strokeDasharray={dash}
       strokeLinecap={isCable ? 'round' : undefined}
     >
@@ -399,15 +442,7 @@ export function LvDomainView(props: LvDomainViewProps): JSX.Element {
             return (
               <g key={node.ref} data-testid={`lv-domain-node-${node.ref}`} data-node-kind={node.kind} data-owner-ref={node.ref}>
                 <SceneNodeGlyph node={node} />
-                <text
-                  x={node.x}
-                  y={node.y + symbolBBox(node.symbolId).height / 2 + 12}
-                  textAnchor="middle"
-                  fontSize={FONT_LABEL_PX}
-                  fill={STROKE_MUTED}
-                >
-                  {node.label}
-                </text>
+                <NodeLabel node={node} />
                 {node.kind === 'apparatus' && activeOverlay === 'swz' ? (
                   <SwzBadge node={node} entry={swzByFeederRef[node.ref]} />
                 ) : null}
@@ -420,6 +455,89 @@ export function LvDomainView(props: LvDomainViewProps): JSX.Element {
         </g>
       </svg>
     </div>
+  );
+}
+
+/**
+ * T5b-3 — etykiety per rodzaj węzła, trzy poziomy typografii (P0.5/P0.6/
+ * P0.12): TR = oznaczenie PRIMARY + blok danych SECONDARY obok symbolu
+ * (Sn/przekładnia/grupa/uk w osobnych liniach — transformator jest centrum
+ * toru); aparat = oznaczenie PRIMARY-small PO PRAWEJ glifu (tor pionowy nie
+ * koliduje); sprzęgło dodatkowo STAN słownie w kolorze tonu (P0.4 —
+ * sylwetka + jednoznaczny podpis); generator/odbiór = nazwa + wartość
+ * dwupoziomowo; zacisk = TERTIARY dyskretnie.
+ */
+function NodeLabel({ node }: { readonly node: LvDomainSceneNode }): JSX.Element {
+  const half = symbolBBox(node.symbolId).height / 2;
+  if (node.kind === 'transformer') {
+    const lines = node.label.split(' · ');
+    const xText = node.x + symbolBBox(node.symbolId).width * SCALE_TRANSFORMER * 0.5 + 10;
+    return (
+      <g>
+        <text x={xText} y={node.y - 8} textAnchor="start" fontSize={FONT_PRIMARY_PX} fontWeight={700} fill={STROKE_BASE}>
+          {node.ref.toUpperCase()}
+        </text>
+        {lines.map((line, i) => (
+          <text key={line} x={xText} y={node.y + 6 + i * 12} textAnchor="start" fontSize={FONT_SECONDARY_PX} fill={STROKE_MUTED}>
+            {line}
+          </text>
+        ))}
+      </g>
+    );
+  }
+  if (node.kind === 'apparatus') {
+    const isCoupler = node.meta?.role === 'coupler';
+    const open = node.meta?.status === 'open';
+    const xText = node.x + symbolBBox(node.symbolId).width * glyphScaleFor(node) * 0.5 + 8;
+    return (
+      <g>
+        {/* Sprzęgło: nazwa NAD glifem (podpis w osi kreski kolidowałby z
+            etykietą sąsiedniej szyny — zmierzone na zrzucie multi-source). */}
+        <text
+          x={isCoupler ? node.x : xText}
+          y={isCoupler ? node.y - half * SCALE_COUPLER - 8 : node.y + 4}
+          textAnchor={isCoupler ? 'middle' : 'start'}
+          fontSize={FONT_SECONDARY_PX + 1}
+          fontWeight={600}
+          fill={STROKE_BASE}
+        >
+          {node.label}
+        </text>
+        {isCoupler ? (
+          <text
+            x={node.x}
+            y={node.y + half * SCALE_COUPLER + 16}
+            textAnchor="middle"
+            fontSize={FONT_SECONDARY_PX}
+            fontWeight={700}
+            fill={open ? TONE_UNKNOWN : TONE_OK}
+          >
+            {open ? 'OTWARTE' : 'ZAMKNIĘTE'}
+          </text>
+        ) : null}
+      </g>
+    );
+  }
+  if (node.kind === 'generator' || node.kind === 'load') {
+    const [name, value] = node.label.split(' · ');
+    const yBase = node.y + half * glyphScaleFor(node) + 16;
+    return (
+      <g>
+        <text x={node.x} y={yBase} textAnchor="middle" fontSize={FONT_SECONDARY_PX + 1} fontWeight={600} fill={STROKE_BASE}>
+          {name}
+        </text>
+        {value ? (
+          <text x={node.x} y={yBase + 13} textAnchor="middle" fontSize={FONT_SECONDARY_PX} fill={STROKE_MUTED}>
+            {value}
+          </text>
+        ) : null}
+      </g>
+    );
+  }
+  return (
+    <text x={node.x + 8} y={node.y + 4} textAnchor="start" fontSize={FONT_TERTIARY_PX} fill={STROKE_MUTED}>
+      {node.label}
+    </text>
   );
 }
 
