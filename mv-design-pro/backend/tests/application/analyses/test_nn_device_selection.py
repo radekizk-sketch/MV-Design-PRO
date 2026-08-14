@@ -331,6 +331,51 @@ class TestKryteriumI2MccbKartaD1:
             k.status == KryteriumStatus.NIEROZSTRZYGALNE
         ), "Usunięcie nastawy z rekordu katalogu MUSI dać trzeci stan, nie błąd/fabrykację"
 
+    def test_iniekcja_usuniecie_ii_range_daje_trzeci_stan_swz(self) -> None:
+        """Iniekcja end-to-end (katalog → `zbierz_kandydatow_z_katalogu` →
+        kryterium SWZ): rekord katalogu BEZ `ii_range` daje kandydata z
+        `ii_a is None` → kryterium SWZ wraca do NIEROZSTRZYGALNE — druga
+        połowa łańcucha D1 (Ii → Ia SWZ), niezależna od I2/Ir powyżej."""
+        from dataclasses import replace
+
+        from network_model.catalog.repository import CatalogRepository
+
+        catalog = get_default_mv_catalog()
+        oryginal = catalog.get_lv_apparatus_type("cb_nn_400a")
+        assert oryginal is not None
+        assert (
+            oryginal.ii_range is not None
+        ), "Przesłanka testu: rekord MA ii_range przed usunięciem"
+
+        bez_ii = replace(oryginal, ii_range=None)
+        repo_bez_ii = CatalogRepository.from_records(
+            line_types=[],
+            cable_types=[],
+            transformer_types=[],
+            lv_apparatus_types=[{"id": bez_ii.id, "name": bez_ii.name, "params": bez_ii.to_dict()}],
+        )
+
+        kandydaci = zbierz_kandydatow_z_katalogu(repo_bez_ii)
+        kandydat = next(k for k in kandydaci if k.id == "cb_nn_400a")
+        assert kandydat.ii_a is None, "Iniekcja: rekord bez ii_range MUSI dać ii_a=None"
+        # I2 (Ir) NIETKNIĘTE przez usunięcie ii_range — dwie ścieżki niezależne.
+        assert (
+            kandydat.ir_a is not None
+        ), "ii_range i ir_range to NIEZALEŻNE zakresy — usunięcie jednego nie kasuje drugiego"
+
+        wynik = oceniaj_kandydata(
+            kandydat=kandydat,
+            ib_a=10.0,
+            iz_prime_a=1000.0,
+            ik_max_ka=6.0,
+            ik1_min_a=1000.0,
+            u0_v=230.0,
+        )
+        k = next(k for k in wynik.kryteria if k.nazwa == "SWZ przy Ik_min")
+        assert (
+            k.status == KryteriumStatus.NIEROZSTRZYGALNE
+        ), "Usunięcie ii_range z rekordu katalogu MUSI dać trzeci stan SWZ, nie błąd/fabrykację"
+
 
 # =============================================================================
 # KRYTERIUM (iii) zdolność wyłączania >= Ik″max
