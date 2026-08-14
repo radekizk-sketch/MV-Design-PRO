@@ -133,6 +133,18 @@ nohup npm run dev > /tmp/vite.log 2>&1 &     # port 5173, proxy /api -> 8000
 
 ---
 
+**Lekcja infrastruktury (2026-08-14, incydent wspoldzielonego drzewa):**
+kazdy wykonawca karty MUSI dostac WLASNY worktree od pierwszego polecenia
+(`git worktree add <katalog> -B kopia/<KARTA> origin/<galaz-nadzoru>`), a
+nadzorca operacje na galezi nadzoru prowadzi z osobnego worktree, gdy
+jakikolwiek wykonawca zyje. Trzech wykonawcow zleconych bez tej klauzuli
+pracowalo w glownym katalogu repo jednoczesnie — przelaczali sobie galezie
+pod biegami testow (pomiar: cudzy commit na galezi kopia/K-S-FRESH, brudne
+pliki trzeciej karty w glownym drzewie). Pomiary z drzewa wspoldzielonego sa
+NIEWAZNE i musza byc powtorzone w izolacji. Frontend w worktree: symlink
+node_modules z glownego katalogu wystarcza do vitest/tsc; backend: wolac
+$VENV bezposrednio (poetry w worktree tworzy pusty venv).
+
 ## §1 GOTOWE DO MERGE (stan HEAD `3f367743`)
 
 > **NOTA AKTUALNOŚCI (2026-08-14, po południu):** stany §1.1 i §2 opisują
@@ -593,7 +605,7 @@ OUTDATED gdy hasz różny. Test iloczynu cech: {bieg zakończony, brak biegu} ×
 asercją statusu; ścieżka natywna (mutacja modelu operacją kanoniczną, nie
 podmiana pola).
 
-### K-T FIELD-SPEC-JEDEN-BUILDER `[resztka klasy K-M]`
+### K-T FIELD-SPEC-JEDEN-BUILDER `[resztka klasy K-M]` — **WYKONANA I ODEBRANA (2026-08-14; wiersz K-T-FIELD-SPEC-JEDEN-BUILDER w rejestrze; dlugi jawne przeniesione do kart K-X/K-Y/K-Z ponizej)**
 `insert_station_on_segment_sn` cicho gubi klucze pól SN `source_status`,
 `source_refs`, `bay_kind` (K-M naprawił wyłącznie kanał bloku fabrycznego;
 `catalog_bindings` usunięte na amen), a `append_station_on_endpoint` składa
@@ -649,6 +661,36 @@ zakwalifikowaniem duplikatu kadrów jako fabrykacji sprawdź, czy identyczność
 nie jest przypiętym niezmiennikiem danego materiału (incydent konfiguratora
 dotyczył ekranów APLIKACJI, które motywom podlegają; kanwa techniczna SLD —
 nie).
+
+### K-X KASACJA-CATALOG-BINDINGS `[dlug K-T]`
+`catalog_bindings.switchgear_template` w specyfikacji pola nie ma ANI JEDNEGO
+czytelnika (grep backend + frontend, pomiar K-T) — martwy duplikat danych,
+ktore obie drogi niosa jako klucze pierwszej klasy. Kasacja na amen: przestac
+ZAPISYWAC klucz w nowych migawkach (koniec ciagu) i usunac emisje po stronie
+kreatora; istniejace migawki pozostaja nietkniete (czytelnika nie ma, wiec
+stary klucz w starych migawkach jest bezpiecznie ignorowany). Testy: pin
+nieobecnosci klucza w NOWYCH specyfikacjach obu drog + pin, ze stare migawki
+z kluczem dalej sie wczytuja. Granice: `enm/domain_operations.py`,
+`ui2/kreatory/stacja/**`, `types/domainOps.ts` + testy.
+
+### K-Y PROWENIENCJA-W-INSPEKTORZE `[dlug K-T]`
+Metadane pochodzenia pola (source_status, source_refs, bay_kind) sa po K-T w
+modelu obiema drogami, ale inspektor pola ich NIE pokazuje — proweniencja
+widoczna tylko w pickerze szablonow przed zapisem. Wpiac do inspektora pola
+sekcje pochodzenia danych szablonu (status zrodla po polsku, lista referencji
+zrodlowych klikalna, rodzaj pola) — uczciwy stan zerowy gdy metadanych brak
+(stare migawki). Zero fizyki; wylacznie prezentacja danych modelu. Testy
+sciezka natywna: pole z metadanymi pokazuje komplet, pole bez metadanych
+pokazuje jawny brak.
+
+### K-Z TYP-SNFIELDSPEC-FRONT `[dlug K-T]`
+Frontowy typ kontraktu `SNFieldSpec` w `types/domainOps.ts` deklaruje tylko
+`field_role` + `catalog_bindings`, a kreator wysyla 12 kluczy (pomiar K-T) —
+typ klamie o drucie. Uzupelnic typ do stanu faktycznego emisji (backendowy
+odpowiednik juz uzupelniony przez K-T o 8 kluczy realnie czytanych),
+skoordynowac z K-X (po kasacji catalog_bindings typ nie moze go deklarowac).
+Bramka: type-check RC=0; pin zgodnosci kluczy typu z kluczami emisji
+zbudujPolaSnZWpisow (test czyta oba zbiory i porownuje).
 
 ### Sygnały PLAUSIBLE (zmierzyć przy zleceniu — NIE są potwierdzone)
 Z surowej listy 35 znalezisk audytu weryfikację adwersaryjną przeszło 12;
