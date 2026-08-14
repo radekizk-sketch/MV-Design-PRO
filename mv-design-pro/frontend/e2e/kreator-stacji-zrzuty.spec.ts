@@ -21,9 +21,14 @@ const CABLE_ID = 'cable-tfk-yakxs-3x120';
 const SOURCE_ID = 'src-gpz-15kv-250mva-rx010';
 const CATALOG_VERSION = '2024.1';
 
+// Wartości trybu MUSZĄ być literałami kanonu motywu (`themeMode.ts`):
+// 'dark'/'light' nie istnieją w unii ThemeMode, więc porównanie
+// `mode === 'dark_scada'` dawało dla obu wartości motyw jasny i kadry
+// „dark" były bajtowymi kopiami „light" (incydent audytu 2026-08-14 —
+// fałszywy dowód wizualny). Bramka pary na końcu pliku pilnuje klasy.
 const THEMES = [
-  { plik: 'dark', tryb: 'dark' },
-  { plik: 'light', tryb: 'light' },
+  { plik: 'dark', tryb: 'dark_scada' },
+  { plik: 'light', tryb: 'light_technical' },
 ] as const;
 
 let opCounter = 0;
@@ -196,5 +201,17 @@ test.describe('kreator stacji: zrzuty dokumentacyjne', () => {
       await page.waitForTimeout(400);
       await page.screenshot({ path: path.join(OUTPUT_DIR, `kreator-stacji-podglad-${plik}.png`) });
     });
+  }
+});
+
+// BRAMKA KLASY (incydent audytu 2026-08-14): kadr ciemny bajtowo równy
+// jasnemu = jeden z dwóch przebiegów motywu nie nastąpił — zestaw zrzutów
+// jest wtedy dowodem nieprawdziwym i musi upaść tu, a nie na oględzinach.
+test('kazda para kadrow dark/light rozni sie bajtowo', () => {
+  const kadry = ['kreator-stacji-szablon', 'kreator-stacji-pola', 'kreator-stacji-podglad'];
+  for (const kadr of kadry) {
+    const dark = fs.readFileSync(path.join(OUTPUT_DIR, `${kadr}-dark.png`));
+    const light = fs.readFileSync(path.join(OUTPUT_DIR, `${kadr}-light.png`));
+    expect(dark.equals(light), `${kadr}: kadr dark jest bajtowa kopia light`).toBe(false);
   }
 });
