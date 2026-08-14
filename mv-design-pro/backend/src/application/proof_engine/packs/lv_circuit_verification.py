@@ -131,6 +131,17 @@ class UrzadzenieOchronneNn:
             (wkładka ZAWSZE ją ma, runda 5b), nie wchodzi do żadnego z dwóch
             zdań kroku 6 (te dotyczą kombinacji i gołego aparatu, nie samej
             wkładki z osobna).
+        ii_a: Nastawa zwarciowa/bezzwłoczna Ii [A] wyzwalacza elektronicznego
+            (karta D2, nN „runda 8", 2026-08-14) — WYŁĄCZNIE dla
+            ``KIND_MCCB``, resolwowana z zakresu regulacji katalogu
+            (``ir_range``/``isd_range``/``ii_range``, REUSE
+            `network_model.catalog.lv_mccb_settings_iec60947_2.
+            resolwuj_nastawy_mccb`). Konsument: krok 10 SWZ
+            (``ocen_swz``, wymaga ``ii_a`` do rozstrzygnięcia typ="MCCB" —
+            bez niej werdykt SWZ dla KAŻDEGO zainstalowanego MCCB był
+            bezwarunkowo NIEROZSTRZYGALNY mimo istniejącej gałęzi karty D1,
+            defekt naprawiony kartą D2). ``None`` dla pozostałych ``kind``
+            albo gdy katalog nie niesie zakresu ``ii_range``.
     """
 
     kind: str
@@ -141,6 +152,7 @@ class UrzadzenieOchronneNn:
     wlasna_zdolnosc_ka: float | None = None
     conditional_sc_current_ka: float | None = None
     fuse_breaking_capacity_ka: float | None = None
+    ii_a: float | None = None
 
     def __post_init__(self) -> None:
         if self.kind not in _KINDY_DOZWOLONE:
@@ -162,6 +174,7 @@ class UrzadzenieOchronneNn:
             "wlasna_zdolnosc_ka": self.wlasna_zdolnosc_ka,
             "conditional_sc_current_ka": self.conditional_sc_current_ka,
             "fuse_breaking_capacity_ka": self.fuse_breaking_capacity_ka,
+            "ii_a": self.ii_a,
         }
 
 

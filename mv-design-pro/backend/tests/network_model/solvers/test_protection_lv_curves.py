@@ -10,10 +10,12 @@ from __future__ import annotations
 
 import pytest
 from network_model.catalog.lv_mcb_bands_iec60898 import PASMA_MAGNETYCZNE
+from network_model.solvers import protection_lv_curves
 from network_model.solvers.protection_lv_curves import (
     FUSE_GG_IF_MULTIPLIER,
     FUSE_GG_INF_MULTIPLIER,
     GwarancjaNormy,
+    bramka_t_wymagany_gg_a,
     compute_fuse_gg_gate,
     compute_mcb_magnetic_point,
     compute_mcb_thermal_point,
@@ -219,3 +221,42 @@ class TestMccbElectronic:
             i_query_a=500.0, ir_a=100.0, isd_a=None, ii_a=None, tr_s=10.0, tsd_s=None
         )
         assert r.stopien == "dlugozwloczny"
+
+
+# =============================================================================
+# FUSE_GG — bramka przy t_wymagany dokładnym (karta D2, G-06 rozszerzenie)
+# =============================================================================
+
+
+class TestFuseGgBramkaTWymagany:
+    def test_default_registry_empty_returns_none(self) -> None:
+        """Rejestr domyślnie PUSTY (karta D2 §0 pkt 1b/1c — brak podwójnie
+        zweryfikowanego źródła) — zero fabrykacji, nigdy zgadnięta wartość."""
+        assert protection_lv_curves.FUSE_GG_BRAMKA_T_WYMAGANY_MULTIPLIER == {}
+        assert bramka_t_wymagany_gg_a(t_wymagany_s=0.4, in_a=25.0) is None
+        assert bramka_t_wymagany_gg_a(t_wymagany_s=5.0, in_a=100.0) is None
+
+    def test_injected_entry_resolves_absolute_current(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setitem(protection_lv_curves.FUSE_GG_BRAMKA_T_WYMAGANY_MULTIPLIER, 5.0, 2.5)
+        assert bramka_t_wymagany_gg_a(t_wymagany_s=5.0, in_a=100.0) == pytest.approx(250.0)
+        # Inny czas, bez wpisu, wciąż None — bramka jest PER t_wymagany, nie
+        # globalna dla wszystkich czasów naraz.
+        assert bramka_t_wymagany_gg_a(t_wymagany_s=0.4, in_a=100.0) is None
+
+    def test_removed_entry_reverts_to_none(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setitem(protection_lv_curves.FUSE_GG_BRAMKA_T_WYMAGANY_MULTIPLIER, 5.0, 2.5)
+        assert bramka_t_wymagany_gg_a(t_wymagany_s=5.0, in_a=100.0) is not None
+        monkeypatch.delitem(protection_lv_curves.FUSE_GG_BRAMKA_T_WYMAGANY_MULTIPLIER, 5.0)
+        assert bramka_t_wymagany_gg_a(t_wymagany_s=5.0, in_a=100.0) is None
+
+    def test_in_a_must_be_positive(self) -> None:
+        with pytest.raises(ValueError):
+            bramka_t_wymagany_gg_a(t_wymagany_s=5.0, in_a=0.0)
+
+    def test_determinism(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setitem(protection_lv_curves.FUSE_GG_BRAMKA_T_WYMAGANY_MULTIPLIER, 5.0, 2.5)
+        a = bramka_t_wymagany_gg_a(t_wymagany_s=5.0, in_a=100.0)
+        b = bramka_t_wymagany_gg_a(t_wymagany_s=5.0, in_a=100.0)
+        assert a == b

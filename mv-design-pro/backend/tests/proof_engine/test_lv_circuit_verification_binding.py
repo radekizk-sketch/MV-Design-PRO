@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
+import pytest
 from application.proof_engine.lv_circuit_verification_binding import (
     resolve_urzadzenie_ochronne,
     zbuduj_wejscie_dowodu_obwodu_nn,
@@ -294,6 +295,36 @@ def test_mccb_rozwiazuje_sie_z_i_cu_ka() -> None:
     assert urzadzenie.kind == KIND_MCCB
     assert urzadzenie.wlasna_zdolnosc_ka == 50.0
     assert urzadzenie.conditional_sc_current_ka is None
+    assert (
+        urzadzenie.ii_a is None
+    ), "Bez ii_range w materialized_params — brak nastawy, nie fabrykacja"
+
+
+def test_mccb_z_zakresem_nastaw_rozwiazuje_ii_a() -> None:
+    """Karta D2 (nN, „runda 8", 2026-08-14): Ii resolwowany z ii_range
+    materializacji (górny kraniec, worst-case — REUSE
+    `lv_mccb_settings_iec60947_2.resolwuj_nastawy_mccb`). Bez tego krok 10
+    SWZ pakietu dostawał `ii_a=None` dla KAŻDEGO zainstalowanego MCCB."""
+    branch = SwitchBranch(
+        ref_id="ap1",
+        name="AP1",
+        type="breaker",
+        from_bus_ref="b1",
+        to_bus_ref="b2",
+        catalog_namespace="APARAT_NN",
+        materialized_params={
+            "i_n_a": 400.0,
+            "device_kind": "WYLACZNIK_GLOWNY",
+            "i_cu_ka": 50.0,
+            "ir_range": [0.4, 1.0],
+            "isd_range": [1.5, 10.0],
+            "ii_range": [1.5, 15.0],
+        },
+    )
+    urzadzenie, powod = resolve_urzadzenie_ochronne(branch)
+    assert urzadzenie is not None and powod is None
+    assert urzadzenie.kind == KIND_MCCB
+    assert urzadzenie.ii_a == 6000.0, "Ii = ii_range[górny]×In = 15,0×400 = 6000 A"
 
 
 def test_brak_materialized_params_jest_uczciwie_odrzucany() -> None:
@@ -351,6 +382,42 @@ def test_orkiestracja_ok_daje_pelne_wejscie_pakietu() -> None:
     assert wynik["wejscie"].urzadzenie.kind == KIND_MCB
     assert wynik["wejscie"].fault_loop.ik_min_a > 0
     assert wynik["wejscie"].swz_status in ("spełnia", "nie spełnia", "nierozstrzygalne")
+
+
+def _mccb_branch() -> SwitchBranch:
+    return SwitchBranch(
+        ref_id="ap1",
+        name="AP1",
+        type="breaker",
+        from_bus_ref="b1",
+        to_bus_ref="b2",
+        catalog_namespace="APARAT_NN",
+        materialized_params={
+            "i_n_a": 25.0,
+            "device_kind": "WYLACZNIK_GLOWNY",
+            "i_cu_ka": 25.0,
+            "ir_range": [1.0, 1.0],
+            "ii_range": [2.0, 3.0],
+        },
+    )
+
+
+def test_orkiestracja_mccb_zainstalowany_daje_swz_decyzyjny_karta_d2() -> None:
+    """Karta D2 (nN, „runda 8", 2026-08-14): MCCB zainstalowany (namespace
+    APARAT_NN, device_kind WYLACZNIK_GLOWNY) z ii_range w materializacji →
+    krok 10 SWZ pakietu jest DECYZYJNY (spełnia/nie spełnia), NIE
+    bezwarunkowo nierozstrzygalny — dowód end-to-end łańcucha materializacji
+    → resolve_urzadzenie_ochronne → ocen_swz."""
+    enm = _enm(branches_extra=[_mccb_branch()])
+    wynik = _wywolaj(enm)
+    assert wynik["status"] == "OK"
+    assert wynik["wejscie"].urzadzenie.kind == KIND_MCCB
+    assert wynik["wejscie"].urzadzenie.ii_a == 75.0  # 3,0×25 A (górny kraniec ii_range)
+    assert wynik["wejscie"].swz_status in ("spełnia", "nie spełnia"), (
+        "Ii resolwowany z ii_range MUSI dać werdykt SWZ decyzyjny na krótkim "
+        f"obwodzie (50 m) — otrzymano: {wynik['wejscie'].swz_status}"
+    )
+    assert wynik["wejscie"].swz_ia_wymagane_a == pytest.approx(75.0)
 
 
 def test_orkiestracja_nieznany_breaker_jest_uczciwa() -> None:

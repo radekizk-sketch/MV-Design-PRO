@@ -4,9 +4,8 @@ Warstwa ANALIZA (interpretacja — porównanie Ik1_min policzonego przez solver
 pętli zwarcia z Ia aparatu, odczyt tabeli czasów Tab. 41.1). NIE solver — nie
 liczy impedancji ani prądu, tylko interpretuje gotowe wyniki + dane
 normatywne (G-D3/G-D4). Werdykt 3-STANOWY (§0.3 karty P0.6): spełnia / nie
-spełnia / NIEROZSTRZYGALNE — trzeci stan jest OBOWIĄZKOWY dla wkładek gG
-(G-D2 puste, brak bramek I-t) i dla dowolnego aparatu bez wystarczających
-danych — NIGDY „spełnia" bez dowodu liczbowego.
+spełnia / NIEROZSTRZYGALNE — trzeci stan jest OBOWIĄZKOWY dla dowolnego
+aparatu bez wystarczających danych — NIGDY „spełnia" bez dowodu liczbowego.
 
 Zakres (§0.3): wyłącznie TN (fault_loop solver nie obsługuje TT/IT — MVP
 scope, ``fault_loop_iec60364.py``). Ia liczone WYŁĄCZNIE z gwarantowanej
@@ -20,6 +19,20 @@ pasma), ale bez interpolacji pasma normatywnego: Ii JEST już KONKRETNĄ
 nastawą (nie normatywnym przedziałem klasy B/C/D), więc Ia = Ii wprost.
 Istniejące werdykty MCB/WKLADKA_GG NIETKNIĘTE (żadna gałąź powyżej nie
 zmieniona).
+
+Karta D2 (nN, „runda 8", 2026-08-14): ``typ="WKLADKA_GG"`` przestaje być
+bezwarunkowo NIEROZSTRZYGALNY — P0.7 zasilił bramki KONWENCJONALNE gG
+(Inf=1,25×In/If=1,6×In, `protection_lv_curves.compute_fuse_gg_gate`,
+podwójnie zweryfikowane). Werdykt „NIE SPEŁNIA" jest ROZSTRZYGALNY z tych
+bramek: Ik1_min<=Inf ⇒ norma gwarantuje brak stopienia NAWET w (dłuższym)
+czasie umownym normy (1-4h) ⇒ a fortiori nie stopi się w KRÓTSZYM
+t_wymagany SWZ (monotoniczność charakterystyki t-I). Werdykt „SPEŁNIA"
+wymaga OSOBNEJ bramki I-t przy t_wymagany dokładnym (0,1-5 s, inny czas niż
+umowny normy) — rejestr `protection_lv_curves.
+FUSE_GG_BRAMKA_T_WYMAGANY_MULTIPLIER` jest PUSTY (próba pozyskania podwójnie
+zweryfikowanych wartości podjęta i udokumentowana w tamtym module, bez
+potwierdzenia źródłowego) — więc „spełnia" pozostaje NIEOSIĄGALNE do czasu
+uzupełnienia rejestru (mechanizm gotowy, zero fabrykacji tymczasem).
 """
 
 from __future__ import annotations
@@ -34,6 +47,13 @@ from network_model.catalog.lv_disconnection_times_iec60364_4_41 import (
     pasmo_dla_u0,
 )
 from network_model.catalog.lv_mcb_bands_iec60898 import ia_gwarantowane_a
+from network_model.solvers.protection_lv_curves import (
+    FUSE_GG_BRAMKA_T_WYMAGANY_STATUS_PL,
+    FUSE_GG_GATE_SOURCE_PL,
+    GwarancjaNormy,
+    bramka_t_wymagany_gg_a,
+    compute_fuse_gg_gate,
+)
 
 # Próg prądu znamionowego obwodu odbiorczego wg §411.3.2.2 normy — karta P0.6
 # upraszcza do JEDNEGO progu 63 A (patrz docstring
@@ -57,9 +77,13 @@ class AparatZabezpieczajacy:
     """Dane wejściowe aparatu zabezpieczającego obwód — dla werdyktu SWZ.
 
     ``typ="MCB"``: wymaga ``in_a`` i ``klasa_mcb`` (B/C/D) — Ia z G-D4.
-    ``typ="WKLADKA_GG"``: bramki I-t (G-D2) są PUSTE w rejestrze — werdykt
-    zawsze NIEROZSTRZYGALNY, niezależnie od ``in_a`` (fail-closed, nigdy PASS
-    bez danych — G-D2 „wkładka bez krzywej → SWZ dane niekompletne").
+    ``typ="WKLADKA_GG"`` (karta D2): wymaga ``in_a`` (> 16 A — jedyny
+    zweryfikowany zakres G-D2). Bramki KONWENCJONALNE Inf/If (IEC 60269-1)
+    rozstrzygają „nie spełnia" wprost (Ik1_min<=Inf); „spełnia" wymaga
+    dodatkowo bramki przy t_wymagany dokładnym — pusta do czasu potwierdzenia
+    źródłowego (zob. docstring modułu i `protection_lv_curves.
+    FUSE_GG_BRAMKA_T_WYMAGANY_MULTIPLIER`), więc pośredni zakres prądów daje
+    NIEROZSTRZYGALNE (fail-closed, nigdy PASS bez dowodu przy t_wymagany).
     ``typ="MCCB"`` (karta D1): wymaga ``ii_a`` (nastawa zwarciowa/magnetyczna
     Ii, RESOLWOWANA — wartość absolutna [A], nie zakres) — Ia = ``ii_a``
     wprost (bez interpolacji, Ii jest już konkretną nastawą, nie normatywnym
@@ -163,20 +187,199 @@ def ocen_swz(
     )
 
     if aparat.typ == "WKLADKA_GG":
+        if aparat.in_a is None:
+            trace.append(
+                {
+                    "step": "aparat_wkladka_gg_brak_in",
+                    "method": "G-D2 — bramki I-t gG wymagają In wkładki",
+                    "result": "NIEROZSTRZYGALNE",
+                }
+            )
+            return SwzResult(
+                status=SwzStatus.NIEROZSTRZYGALNE,
+                przyczyna_pl=(
+                    "Wkładka topikowa gG bez prądu znamionowego In — bramki I-t (G-D2, "
+                    "IEC 60269-1) nie do wyznaczenia bez In. Werdykt SWZ NIEROZSTRZYGALNY."
+                ),
+                ik1_min_a=ik1_min_a,
+                ia_wymagane_a=None,
+                t_wymagany_s=t_wymagany,
+                margines=None,
+                rodzaj_obwodu=rodzaj,
+                pasmo_u0=pasmo,
+                white_box_trace=tuple(trace),
+            )
+
+        if aparat.in_a <= 16.0:
+            trace.append(
+                {
+                    "step": "aparat_wkladka_gg_poza_zakresem",
+                    "method": "G-D2 — mnożniki bramek dla In<=16A NIE zaimplementowane",
+                    "in_a": aparat.in_a,
+                    "result": "NIEROZSTRZYGALNE",
+                }
+            )
+            return SwzResult(
+                status=SwzStatus.NIEROZSTRZYGALNE,
+                przyczyna_pl=(
+                    f"Wkładka topikowa gG In={aparat.in_a:g} A <= 16 A — poza zweryfikowanym "
+                    "zakresem G-D2 (mnożniki bramek Inf/If dla In<=16A różnią się od "
+                    "In>16A wg IEC 60269-1 i nie mają w tej karcie podwójnej weryfikacji "
+                    "źródłowej — patrz `protection_lv_curves._czas_umowny_fuse_gg_s`). "
+                    "Werdykt SWZ NIEROZSTRZYGALNY, nie fabrykacja mnożnika."
+                ),
+                ik1_min_a=ik1_min_a,
+                ia_wymagane_a=None,
+                t_wymagany_s=t_wymagany,
+                margines=None,
+                rodzaj_obwodu=rodzaj,
+                pasmo_u0=pasmo,
+                white_box_trace=tuple(trace),
+            )
+
+        # Karta D2 (nN, „runda 8"): bramki konwencjonalne Inf/If (G-D2,
+        # podwójnie zweryfikowane, IEC 60269-1) — REUSE `compute_fuse_gg_gate`
+        # (solver), zero drugiej fizyki (zakaz duplikowania Inf=1,25×In /
+        # If=1,6×In w tej warstwie interpretacji).
+        bramka_konwencjonalna = compute_fuse_gg_gate(i_query_a=ik1_min_a, in_a=aparat.in_a)
         trace.append(
             {
-                "step": "aparat_wkladka_gg_brak_bramek",
-                "method": "G-D2 rejestr — bramki I-t wkładek gG PUSTE",
-                "result": "NIEROZSTRZYGALNE",
+                "step": "aparat_wkladka_gg_bramka_konwencjonalna",
+                "solver_trace": bramka_konwencjonalna.white_box_trace,
+            }
+        )
+
+        if bramka_konwencjonalna.gwarancja == GwarancjaNormy.BRAK_WYZWOLENIA_GWARANTOWANY:
+            # §0 pkt 1a karty D2: Ik1_min <= Inf ⇒ norma GWARANTUJE brak
+            # stopienia NAWET w (dłuższym) czasie umownym (1-4h) — a fortiori
+            # nie stopi się w KRÓTSZYM t_wymagany (0,1-5 s) SWZ. Charakterystyka
+            # t-I jest monotoniczna (mniejszy prąd ⇒ dłuższy/nieskończony czas
+            # stopienia), więc ten wniosek NIE wymaga bramki przy t_wymagany —
+            # rozstrzygalny wprost z Inf, bez ekstrapolacji.
+            margines = (
+                ik1_min_a / bramka_konwencjonalna.inf_a
+                if bramka_konwencjonalna.inf_a > 0
+                else float("inf")
+            )
+            trace.append(
+                {
+                    "step": "werdykt_gg_nie_spelnia",
+                    "method": (
+                        "Ik1_min <= Inf ⇒ brak stopienia gwarantowany NAWET w czasie "
+                        "umownym normy (dłuższym niż t_wymagany SWZ) — monotoniczność "
+                        "charakterystyki t-I gG (mniejszy prąd nigdy nie topi szybciej)"
+                    ),
+                    "ik1_min_a": ik1_min_a,
+                    "inf_a": bramka_konwencjonalna.inf_a,
+                    "t_wymagany_s": t_wymagany,
+                    "result": SwzStatus.NIE_SPELNIA.value,
+                }
+            )
+            przyczyna = (
+                f"Ik1_min={ik1_min_a:.1f} A <= Inf={bramka_konwencjonalna.inf_a:.1f} A "
+                f"(wkładka gG {aparat.in_a:g} A, IEC 60269-1, {FUSE_GG_GATE_SOURCE_PL}) — "
+                "norma gwarantuje BRAK stopienia nawet w (dłuższym) czasie umownym normy "
+                f"({bramka_konwencjonalna.t_umowny_s:g} s), więc a fortiori wkładka NIE "
+                f"stopi się w krótszym t_wymagany={t_wymagany:g} s SWZ ({rodzaj}, pasmo U0 "
+                f"{pasmo}) — charakterystyka t-I gG jest monotoniczna. NIE SPEŁNIA."
+            )
+            return SwzResult(
+                status=SwzStatus.NIE_SPELNIA,
+                przyczyna_pl=przyczyna,
+                ik1_min_a=ik1_min_a,
+                ia_wymagane_a=bramka_konwencjonalna.inf_a,
+                t_wymagany_s=t_wymagany,
+                margines=margines,
+                rodzaj_obwodu=rodzaj,
+                pasmo_u0=pasmo,
+                white_box_trace=tuple(trace),
+            )
+
+        # §0 pkt 1b/1c karty D2: „spełnia" wymaga bramki I-t PRZY t_wymagany
+        # dokładnym (0,1-5 s) — Inf/If gwarantują zachowanie WYŁĄCZNIE w
+        # czasie umownym normy (1-4h), fizycznie INNYM pytaniu. SPRÓBUJ
+        # zasilić bramkę podwójnie zweryfikowaną (rejestr
+        # `FUSE_GG_BRAMKA_T_WYMAGANY_MULTIPLIER` — patrz status badania w
+        # `protection_lv_curves.py`); gdy brak — warunkowe NIEROZSTRZYGALNE,
+        # NIGDY fabrykowane „spełnia".
+        bramka_t_wym_a = bramka_t_wymagany_gg_a(t_wymagany_s=t_wymagany, in_a=aparat.in_a)
+        trace.append(
+            {
+                "step": "aparat_wkladka_gg_bramka_t_wymagany",
+                "t_wymagany_s": t_wymagany,
+                "bramka_t_wymagany_a": bramka_t_wym_a,
+                "status_zrodel": (
+                    "potwierdzona podwójnie"
+                    if bramka_t_wym_a is not None
+                    else FUSE_GG_BRAMKA_T_WYMAGANY_STATUS_PL
+                ),
+            }
+        )
+
+        if bramka_t_wym_a is not None and ik1_min_a >= bramka_t_wym_a:
+            margines = ik1_min_a / bramka_t_wym_a if bramka_t_wym_a > 0 else float("inf")
+            trace.append(
+                {
+                    "step": "werdykt_gg_spelnia",
+                    "ik1_min_a": ik1_min_a,
+                    "bramka_t_wymagany_a": bramka_t_wym_a,
+                    "t_wymagany_s": t_wymagany,
+                    "result": SwzStatus.SPELNIA.value,
+                }
+            )
+            przyczyna = (
+                f"Ik1_min={ik1_min_a:.1f} A >= bramka(t_wymagany={t_wymagany:g} s)="
+                f"{bramka_t_wym_a:.1f} A (wkładka gG {aparat.in_a:g} A) — norma gwarantuje "
+                f"stopienie w t_wymagany={t_wymagany:g} s ({rodzaj}, pasmo U0 {pasmo}). "
+                "SPEŁNIA."
+            )
+            return SwzResult(
+                status=SwzStatus.SPELNIA,
+                przyczyna_pl=przyczyna,
+                ik1_min_a=ik1_min_a,
+                ia_wymagane_a=bramka_t_wym_a,
+                t_wymagany_s=t_wymagany,
+                margines=margines,
+                rodzaj_obwodu=rodzaj,
+                pasmo_u0=pasmo,
+                white_box_trace=tuple(trace),
+            )
+
+        if bramka_t_wym_a is None:
+            przyczyna = (
+                f"Ik1_min={ik1_min_a:.1f} A > Inf={bramka_konwencjonalna.inf_a:.1f} A "
+                f"(wkładka gG {aparat.in_a:g} A) — norma NIE gwarantuje braku stopienia, ale "
+                f"brak PODWÓJNIE zweryfikowanej bramki czasowo-prądowej przy "
+                f"t_wymagany={t_wymagany:g} s SWZ ({rodzaj}, pasmo U0 {pasmo}) w rejestrze "
+                f"({FUSE_GG_BRAMKA_T_WYMAGANY_STATUS_PL}). Bramki Inf/If (G-D2) gwarantują "
+                f"WYŁĄCZNIE zachowanie w czasie umownym normy "
+                f"({bramka_konwencjonalna.t_umowny_s:g} s), NIE w t_wymagany SWZ — nie da "
+                "się wyprowadzić werdyktu 'spełnia' bez ekstrapolacji (zakaz §0.2 karty "
+                "P0.7). NIEROZSTRZYGALNE (warunkowe)."
+            )
+        else:
+            przyczyna = (
+                f"Ik1_min={ik1_min_a:.1f} A < bramka(t_wymagany={t_wymagany:g} s)="
+                f"{bramka_t_wym_a:.1f} A (wkładka gG {aparat.in_a:g} A) — Ik1_min powyżej "
+                f"Inf, ale poniżej bramki gwarantującej stopienie w t_wymagany={t_wymagany:g} "
+                f"s ({rodzaj}, pasmo U0 {pasmo}) — norma nie gwarantuje ani braku, ani "
+                "wystąpienia stopienia w tym przedziale (zakaz interpolacji, §0.2 karty "
+                "P0.7). NIEROZSTRZYGALNE (warunkowe)."
+            )
+        trace.append(
+            {
+                "step": "werdykt_gg_nierozstrzygalne",
+                "ik1_min_a": ik1_min_a,
+                "inf_a": bramka_konwencjonalna.inf_a,
+                "if_a": bramka_konwencjonalna.if_a,
+                "bramka_t_wymagany_a": bramka_t_wym_a,
+                "t_wymagany_s": t_wymagany,
+                "result": SwzStatus.NIEROZSTRZYGALNE.value,
             }
         )
         return SwzResult(
             status=SwzStatus.NIEROZSTRZYGALNE,
-            przyczyna_pl=(
-                "Wkładka topikowa gG: brak bramek czasowo-prądowych I-t w rejestrze "
-                "(G-D2, IEC 60269-1) — Ia nie da się wyznaczyć bez fabrykacji danych. "
-                "Werdykt SWZ dla tego obwodu jest NIEROZSTRZYGALNY, nigdy PASS bez dowodu."
-            ),
+            przyczyna_pl=przyczyna,
             ik1_min_a=ik1_min_a,
             ia_wymagane_a=None,
             t_wymagany_s=t_wymagany,

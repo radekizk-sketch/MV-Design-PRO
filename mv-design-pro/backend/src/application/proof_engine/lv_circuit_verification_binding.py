@@ -31,7 +31,14 @@ REZOLUCJA URZĄDZENIA CHRONIĄCEGO OBWÓD (branch → `UrzadzenieOchronneNn`):
     SAMEJ gałęzi (własność typu rozłącznika, karta P0.10 fix materializacji
     APARAT_NN — zob. `network_model/catalog/types.py` MATERIALIZATION_CONTRACTS).
   - ``APARAT_NN``, ``device_kind`` inny (WYLACZNIK_GLOWNY/WYLACZNIK_ODPLYWOWY):
-    MCCB — in_a=i_n_a, wlasna_zdolnosc_ka=i_cu_ka.
+    MCCB — in_a=i_n_a, wlasna_zdolnosc_ka=i_cu_ka, ii_a resolwowany z
+    ir_range/isd_range/ii_range materializacji (karta D2, nN „runda 8",
+    2026-08-14 — REUSE `network_model.catalog.lv_mccb_settings_iec60947_2.
+    resolwuj_nastawy_mccb`, TA SAMA formuła co dobór kandydata w
+    `nn_device_selection.py` i weryfikacja w `application.analyses.swz.
+    service._aparat_from_branch`; bez tego krok 10 SWZ dostawał `ii_a=None`
+    dla KAŻDEGO zainstalowanego MCCB — NIEROZSTRZYGALNE mimo istniejącej
+    gałęzi typ="MCCB" karty D1).
 
 ZERO FABRYKACJI: brak kompletu danych katalogowych na gałęzi → ``(None, powod_pl)``,
 NIGDY domyślna/zgadnięta wartość.
@@ -68,6 +75,7 @@ from application.proof_engine.packs.lv_circuit_verification import (
     UrzadzenieOchronneNn,
 )
 from enm.models import EnergyNetworkModel, FuseBranch, SwitchBranch
+from network_model.catalog.lv_mccb_settings_iec60947_2 import resolwuj_nastawy_mccb
 from network_model.solvers.cable_ampacity_derating import WspolczynnikiObciazalnosciNN
 from network_model.solvers.conductor_thermal_withstand import ConductorThermalResult
 from network_model.solvers.fault_loop_builder import (
@@ -177,6 +185,19 @@ def resolve_urzadzenie_ochronne(
                 ),
                 None,
             )
+        # Karta D2 (nN, „runda 8", 2026-08-14): Ii resolwowany z zakresu
+        # regulacji materializacji (REUSE — JEDNO miejsce z doborem kandydata
+        # w `nn_device_selection.py` i weryfikacją SWZ w `swz/service.py`,
+        # zob. docstring `resolwuj_nastawy_mccb`) — bez tego krok 10 SWZ
+        # (`ocen_swz`, typ="MCCB") dostawał `ii_a=None` dla KAŻDEGO
+        # zainstalowanego MCCB, więc był bezwarunkowo NIEROZSTRZYGALNY mimo
+        # istniejącej gałęzi karty D1.
+        _, _, ii_a, _, _ = resolwuj_nastawy_mccb(
+            i_n_a=float(in_a),
+            ir_range=params.get("ir_range"),
+            isd_range=params.get("isd_range"),
+            ii_range=params.get("ii_range"),
+        )
         return (
             UrzadzenieOchronneNn(
                 kind=KIND_MCCB,
@@ -186,6 +207,7 @@ def resolve_urzadzenie_ochronne(
                 wlasna_zdolnosc_ka=(
                     float(params["i_cu_ka"]) if params.get("i_cu_ka") is not None else None
                 ),
+                ii_a=ii_a,
             ),
             None,
         )
@@ -326,6 +348,11 @@ def zbuduj_wejscie_dowodu_obwodu_nn(
         ),
         in_a=urzadzenie.in_a,
         klasa_mcb=urzadzenie.klasa_mcb,
+        # Karta D2 (nN, „runda 8", 2026-08-14): bez tego SWZ dla typ="MCCB"
+        # (urzadzenie.kind == KIND_MCCB, string "MCCB" — zbieżne z ocen_swz)
+        # dostawał zawsze `ii_a=None` → NIEROZSTRZYGALNE mimo rozwiązanej
+        # nastawy w `urzadzenie.ii_a` (patrz `resolve_urzadzenie_ochronne`).
+        ii_a=urzadzenie.ii_a if urzadzenie.kind == KIND_MCCB else None,
     )
     swz = ocen_swz(ik1_min_a=petla.fault_loop.ik_min_a, u0_v=petla.u0_v, aparat=aparat_swz)
 

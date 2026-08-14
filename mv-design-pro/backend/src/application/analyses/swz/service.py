@@ -35,6 +35,7 @@ from application.analyses.fault_loop.service import (
     _upstream_thevenin_lv_component,
 )
 from enm.models import EnergyNetworkModel, FuseBranch, SwitchBranch
+from network_model.catalog.lv_mccb_settings_iec60947_2 import resolwuj_nastawy_mccb
 from network_model.solvers.fault_loop_builder import (
     FaultLoopBuildRequest,
     build_fault_loop_input,
@@ -56,8 +57,28 @@ def _aparat_from_branch(
     branch: SwitchBranch | FuseBranch,
 ) -> tuple[AparatZabezpieczajacy | None, str | None]:
     """Wyławia dane aparatu z ``materialized_params`` (katalog KABEL_NN-style
-    materializacja — solver_fields ``APARAT_NN_MCB``/``WKLADKA_NN``, zob.
-    ``network_model/catalog/types.py::MATERIALIZATION_CONTRACTS``).
+    materializacja — solver_fields ``APARAT_NN_MCB``/``WKLADKA_NN``/
+    ``APARAT_NN``, zob. ``network_model/catalog/types.py::
+    MATERIALIZATION_CONTRACTS``).
+
+    Karta D2 (nN, „runda 8", 2026-08-14): dopina namespace ``APARAT_NN``
+    (aparat pola nN — rozłącznik/wyłącznik, zob. `LVApparatusType`), którego
+    wcześniej brakowało — każdy zainstalowany aparat tego namespace'u trafiał
+    do gałęzi fallback (``typ=namespace``), NIEOBSŁUGIWANEJ przez
+    ``ocen_swz`` (``_TYPY_APARATU_DOZWOLONE`` nie zna surowej nazwy
+    namespace'u), więc dawał NIEROZSTRZYGALNE mimo istniejącej gałęzi
+    ``typ="MCCB"`` (karta D1). Rezolucja wg ``device_kind``:
+      - ``ROZLACZNIK_BEZPIECZNIKOWY`` bez wskazanej osobnej gałęzi wkładki
+        (ta metoda dostaje WYŁĄCZNIE ``breaker_ref`` — korpus rozłącznika
+        sam w sobie NIE MA charakterystyki I-t) → ``(None, "brak wkładki")``,
+        uczciwe zero fabrykacji (jak inne gałęzie braku danych powyżej).
+      - ``WYLACZNIK_GLOWNY``/``WYLACZNIK_ODPLYWOWY`` → ``typ="MCCB"``, Ii
+        resolwowany z ``ir_range``/``isd_range``/``ii_range`` materializacji
+        (REUSE `network_model.catalog.lv_mccb_settings_iec60947_2.
+        resolwuj_nastawy_mccb` — JEDNO miejsce z doborem kandydata w
+        `nn_device_selection.py`, nie druga fizyka). Brak zakresu w
+        materializacji → ``ii_a=None`` → `ocen_swz` daje NIEROZSTRZYGALNE
+        (zero fabrykacji domyślnej nastawy), NIE crash.
 
     Zwraca ``(None, reason_pl)`` gdy aparat nie ma katalogowego wiązania —
     zero fabrykacji (nie zgaduje typu/klasy).
@@ -80,6 +101,25 @@ def _aparat_from_branch(
         )
     if namespace == "WKLADKA_NN":
         return AparatZabezpieczajacy(typ="WKLADKA_GG", in_a=params.get("in_a")), None
+    if namespace == "APARAT_NN":
+        in_a = params.get("i_n_a")
+        if in_a is None:
+            return None, f"Aparat '{branch.ref_id}' bez i_n_a w materialized_params."
+        device_kind = params.get("device_kind")
+        if device_kind == "ROZLACZNIK_BEZPIECZNIKOWY":
+            return None, (
+                f"Rozłącznik bezpiecznikowy '{branch.ref_id}' (namespace APARAT_NN) bez "
+                "zainstalowanej wkładki (osobna gałąź WKLADKA_NN nie wskazana jako "
+                "breaker_ref dla SWZ) — korpus rozłącznika sam w sobie NIE MA "
+                "charakterystyki czasowo-prądowej I-t. SWZ 'brak wkładki'."
+            )
+        _, _, ii_a, _, _ = resolwuj_nastawy_mccb(
+            i_n_a=float(in_a),
+            ir_range=params.get("ir_range"),
+            isd_range=params.get("isd_range"),
+            ii_range=params.get("ii_range"),
+        )
+        return AparatZabezpieczajacy(typ="MCCB", in_a=float(in_a), ii_a=ii_a), None
     return AparatZabezpieczajacy(typ=namespace or "NIEZNANY"), None
 
 

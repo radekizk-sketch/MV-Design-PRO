@@ -421,6 +421,34 @@ class TestMaterializationContracts:
         assert result.solver_fields["i_cu_ka"] is None
         assert result.solver_fields["conditional_sc_current_ka"] == 50.0
 
+    def test_aparat_nn_materialization_carries_mccb_trip_setting_ranges(self) -> None:
+        """Karta D2 (nN, „runda 8", 2026-08-14) — TA SAMA klasa defektu co pin
+        powyżej: `ir_range`/`isd_range`/`ii_range`/`tr_range`/`tsd_range` są na
+        `LVApparatusType` od karty P0.2, ale kontrakt materializacji ich nie
+        kopiował do `materialized_params`, więc SWZ dla FAKTYCZNIE
+        ZAINSTALOWANEGO MCCB (`application.analyses.swz.service.
+        _aparat_from_branch`) nie miał skąd czytać nastawy Ii — dawał
+        NIEROZSTRZYGALNE mimo istniejącej gałęzi karty D1. Pin na realnym
+        katalogu domyślnym (cb_nn_400a — WYLACZNIK_GLOWNY, ABB SACE Emax2)."""
+        from network_model.catalog.materialization import materialize_catalog_binding
+        from network_model.catalog.types import CatalogBinding
+
+        repo = get_default_mv_catalog()
+        binding = CatalogBinding(
+            catalog_namespace="APARAT_NN",
+            catalog_item_id="cb_nn_400a",
+            catalog_item_version="2.0",
+            materialize=True,
+        )
+        result = materialize_catalog_binding(binding, repo)
+        assert result.success
+        assert result.solver_fields["device_kind"] == "WYLACZNIK_GLOWNY"
+        assert result.solver_fields["ir_range"] == [0.4, 1.0]
+        assert result.solver_fields["isd_range"] == [1.5, 10.0]
+        assert result.solver_fields["ii_range"] == [1.5, 15.0]
+        assert result.solver_fields["tr_range"] == [3.0, 144.0]
+        assert result.solver_fields["tsd_range"] == [0.05, 0.8]
+
 
 # ---------------------------------------------------------------------------
 # 3. Seedy przez repository

@@ -76,6 +76,9 @@ from application.analyses.swz.werdykt import (
 )
 from enm.models import EnergyNetworkModel
 from network_model.catalog.lv_mcb_bands_iec60898 import PROG_CIEPLNY_WYZWALA_X_IN
+from network_model.catalog.lv_mccb_settings_iec60947_2 import (
+    resolwuj_nastawy_mccb as resolwuj_nastawy_mccb_z_zakresow,
+)
 from network_model.catalog.repository import CatalogRepository, get_default_mv_catalog
 from network_model.catalog.types import LVApparatusType
 from network_model.solvers.fault_loop_builder import (
@@ -568,25 +571,25 @@ def _resolwuj_nastawy_mccb(
     Karta D1 (nN, „runda 8 — PEŁNY WERDYKT nN"). Katalog niesie
     ``LVApparatusType.ir_range``/``isd_range``/``ii_range``/``tr_range``/
     ``tsd_range`` jako ZAKRESY nastawialności (xIn/xIr/[s]) — DOBÓR wymaga
-    KONKRETNEJ wartości (kontrakt `compute_mccb_point`). ZAŁOŻENIE NAZWANE
-    WPROST (nie fabrykacja): każda nastawa resolwowana do GÓRNEGO krańca
-    swojego zakresu regulacji — kandydat z nastawialnym wyzwalaczem musi
-    spełniać kryteria doboru NAWET przy najbardziej wymagającej dozwolonej
-    nastawie fabrycznej (Ir max → najwyższe I2; Ii max → najwyższe wymagane
-    Ia dla SWZ). Brak KTÓREGOKOLWIEK zakresu w rekordzie katalogu → `None`
-    dla zależnej wartości (i wszystkiego, co od niej zależy) — trzeci stan
-    w kryteriach (ii)/(iv), nigdy cicha fabrykacja.
+    KONKRETNEJ wartości (kontrakt `compute_mccb_point`). Cienki wrapper —
+    formuła rozwiązywania (górny kraniec zakresu, worst-case) żyje w
+    ``network_model.catalog.lv_mccb_settings_iec60947_2`` (karta D2, REUSE —
+    JEDNO miejsce dla doboru KANDYDATA tutaj i weryfikacji aparatu JUŻ
+    ZAINSTALOWANEGO w ``application.analyses.swz.service``/
+    ``application.proof_engine.lv_circuit_verification_binding``, zamiast
+    dwóch równoległych kopii tej samej fizyki — patrz docstring tamtego
+    modułu).
 
     Zwraca ``(ir_a, isd_a, ii_a, tr_s, tsd_s)``.
     """
-    ir_a = aparat.ir_range[1] * aparat.i_n_a if aparat.ir_range is not None else None
-    isd_a = (
-        aparat.isd_range[1] * ir_a if aparat.isd_range is not None and ir_a is not None else None
+    return resolwuj_nastawy_mccb_z_zakresow(
+        i_n_a=aparat.i_n_a,
+        ir_range=aparat.ir_range,
+        isd_range=aparat.isd_range,
+        ii_range=aparat.ii_range,
+        tr_range=aparat.tr_range,
+        tsd_range=aparat.tsd_range,
     )
-    ii_a = aparat.ii_range[1] * aparat.i_n_a if aparat.ii_range is not None else None
-    tr_s = aparat.tr_range[1] if aparat.tr_range is not None else None
-    tsd_s = aparat.tsd_range[1] if aparat.tsd_range is not None else None
-    return ir_a, isd_a, ii_a, tr_s, tsd_s
 
 
 def zbierz_kandydatow_z_katalogu(

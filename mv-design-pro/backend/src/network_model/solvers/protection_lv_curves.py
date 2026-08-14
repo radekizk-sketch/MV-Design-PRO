@@ -700,3 +700,97 @@ def compute_fuse_gg_gate(*, i_query_a: float, in_a: float) -> FuseGgGateResult:
         podstawa_pl=opis,
         white_box_trace=trace,
     )
+
+
+# =============================================================================
+# FUSE_GG — BRAMKA PRZY t_wymagany DOKŁADNYM (KARTA D2, G-06 rozszerzenie SWZ)
+# =============================================================================
+#
+# Inf/If powyżej gwarantują zachowanie WYŁĄCZNIE w czasie umownym normy
+# (1-4h, wg zakresu In) — SWZ (IEC 60364-4-41, Tab. 41.1) wymaga zadziałania
+# w t_wymagany RZĘDU UŁAMKA SEKUNDY (0,1-5 s, patrz `application.analyses.
+# swz.werdykt` / `network_model.catalog.lv_disconnection_times_iec60364_4_41`)
+# — CZAS INNY NIŻ czas umowny normy IEC 60269-1. Werdykt „spełnia w
+# t_wymagany" wymaga osobnej bramki I-t przy TYM konkretnym czasie (nie da
+# się jej wyprowadzić z Inf/If bez interpolacji, zakaz §0.2 karty P0.7).
+#
+# STATUS BADANIA (karta D2, 2026-08-14 — §0 pkt 1b/1c rozstrzygnięcia karty):
+# PRÓBA PODJĘTA (WebSearch + WebFetch, wielokrotnie), BRAK PODWÓJNEGO
+# POTWIERDZENIA ŹRÓDŁOWEGO liczbowej bramki I(t) dla t<1h. Sprawdzono:
+#   (1) IEC 60269-1/2 — podglądy iTeh Standards (próbki PDF normy) POTWIERDZAJĄ
+#       istnienie w indeksie normy tabel „gates for specified pre-arcing (and
+#       operating) times" (numeracja tabeli różni się między wzmiankami:
+#       Table 102/701/702 wg różnych wydań/cytowań wtórnych) DLA In>16A — ale
+#       treść LICZBOWA tych tabel jest zamknięta za paywallem (próbki iTeh
+#       udostępniają wyłącznie strony tytułowe/spis treści, nie treść
+#       normatywną) — NIE odczytana w tej sesji.
+#   (2) Musiał E. (Politechnika Gdańska, Katedra Elektroenergetyki),
+#       „Bezpieczniki w nowoczesnych układach zabezpieczeń urządzeń niskiego
+#       napięcia" (materiały szkolenia ENERGO-EKO-TECH, Poznań 2001) —
+#       POTWIERDZA STRUKTURALNIE, że pełna charakterystyka czasowo-prądowa t-I
+#       poniżej progu czasu umownego jest PASMOWA i SPECYFICZNA DLA
+#       PRODUCENTA (rys. 2: przykładowe krzywe ETI-POLAM, cytat: „charakterystyki
+#       czasowo-prądowe urywa się od dołu na ogół na poziomie 0,1 s") — norma
+#       NIE publikuje jednej uniwersalnej wartości I(5s)/I(0,4s) wspólnej dla
+#       wszystkich wytwórców; to spójne z rozjazdem I²t przedłukowego ETI vs
+#       Bussmann 30-60% już odnotowanym w karcie P0.7 (ten sam mechanizm
+#       rozbieżności — krzywa krótkoczasowa poniżej t_umowny jest własnością
+#       KONSTRUKCJI topika konkretnego wytwórcy, nie samej normy).
+#   (3) Katalogi manufacturera (Bussmann/Eaton, Mersen, ETI-POLAM, Schneider
+#       Electric) sprawdzone przez WebFetch — publikują WYŁĄCZNIE krzywe
+#       GRAFICZNE (obraz), nie tabele liczbowe ekstrahowalne — odczyt punktu
+#       z wykresu byłby interpolacją/estymacją niepewną (zakaz §0.2 karty
+#       P0.7), nie „podwójnym potwierdzeniem źródłowym" w rozumieniu karty D2.
+#
+# WNIOSEK (§0 pkt 1b/1c karty D2): rejestr poniżej PUSTY — brak wpisu = SWZ
+# dla gG przy t_wymagany pozostaje NIEROZSTRZYGALNY (warunkowo), NIGDY
+# „spełnia" bez potwierdzonej bramki. Mechanizm jest GOTOWY na przyszłe
+# uzupełnienie (Reguła KLASA NIE INSTANCJA — dodanie wpisu tutaj automatycznie
+# odblokowuje rozstrzygalny werdykt SWZ dla wszystkich konsumentów, bez zmian
+# w `werdykt.py`), gdy właściciel dostarczy zakupioną normę IEC 60269-2 albo
+# DWA zgodne katalogi producentów z jawną tabelą liczbową (nie tylko
+# wykresem) dla danego t_wymagany.
+FUSE_GG_BRAMKA_T_WYMAGANY_MULTIPLIER: dict[float, float] = {}
+
+FUSE_GG_BRAMKA_T_WYMAGANY_STATUS_PL = (
+    "Brak podwójnie zweryfikowanej bramki I-t gG przy t_wymagany (patrz karta D2, "
+    "2026-08-14, §0 pkt 1b/1c) — próba WebSearch/WebFetch podjęta (IEC 60269-1/2 "
+    "podglądy iTeh Standards, Musiał E./Politechnika Gdańska, katalogi Bussmann/Eaton/"
+    "Mersen/ETI-POLAM/Schneider Electric), bez dwóch zgodnych źródeł liczbowych — "
+    "norma publikuje WYŁĄCZNIE bramki konwencjonalne Inf/If przy czasie umownym (1-4h), "
+    "poniżej tego czasu charakterystyka jest pasmowa i specyficzna dla producenta "
+    "(rozjazd analogiczny do I²t ETI vs Bussmann 30-60% z karty P0.7). Rejestr PUSTY "
+    "do czasu pozyskania normy IEC 60269-2 (Tabela gates for specified pre-arcing "
+    "times) albo dwóch zgodnych katalogów producentów z jawną tabelą liczbową."
+)
+
+
+def bramka_t_wymagany_gg_a(*, t_wymagany_s: float, in_a: float) -> float | None:
+    """Prąd gwarantowanego stopienia wkładki gG w CZASIE DOKŁADNYM t_wymagany.
+
+    W odróżnieniu od ``compute_fuse_gg_gate`` (bramki Inf/If przy czasie
+    UMOWNYM normy 1-4h), ta funkcja pyta o bramkę przy czasie WYMAGANYM przez
+    SWZ (IEC 60364-4-41, ułamek sekundy) — DANE INNE niż Inf/If, ZERO
+    ekstrapolacji/interpolacji między nimi (zakaz §0.2 karty P0.7).
+
+    Args:
+        t_wymagany_s: Dokładny czas wymagany [s] (np. 0,4 albo 5,0 —
+            ``application.analyses.swz.werdykt.ocen_swz`` t_wymagany_s).
+        in_a: Prąd znamionowy wkładki [A].
+
+    Returns:
+        Prąd [A] gwarantujący stopienie w ``t_wymagany_s`` — WYŁĄCZNIE gdy
+        ``t_wymagany_s`` ma potwierdzony wpis w
+        ``FUSE_GG_BRAMKA_T_WYMAGANY_MULTIPLIER`` (podwójnie zweryfikowany
+        źródłowo, patrz status modułu powyżej) — inaczej ``None`` (zero
+        fabrykacji, brak ekstrapolacji z Inf/If).
+
+    Raises:
+        ValueError: ``in_a <= 0``.
+    """
+    if in_a <= 0:
+        raise ValueError(f"in_a musi być dodatnie, otrzymano {in_a}.")
+    mnoznik = FUSE_GG_BRAMKA_T_WYMAGANY_MULTIPLIER.get(t_wymagany_s)
+    if mnoznik is None:
+        return None
+    return mnoznik * in_a

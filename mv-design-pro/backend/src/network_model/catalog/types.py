@@ -3629,7 +3629,31 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
         # — dowod wytrzymalosci obwodu nN (pakiet LV_CIRCUIT_VERIFICATION) nie
         # mial z czego czytac WLASNIE ZAINSTALOWANEGO aparatu (MCB/APARAT_NN_MCB
         # mial `icn_ka` od poczatku, luka dotyczyla wylacznie APARAT_NN).
-        solver_fields=("u_n_kv", "i_n_a", "device_kind", "i_cu_ka", "conditional_sc_current_ka"),
+        #
+        # Karta D2 (nN, „runda 8", 2026-08-14): TA SAMA klasa defektu ponownie —
+        # `ir_range`/`isd_range`/`ii_range`/`tr_range`/`tsd_range` (nastawy
+        # regulacyjne wyzwalacza elektronicznego, P0.2) sa na `LVApparatusType`
+        # od poczatku, ale kontrakt materializacji ich nie kopiowal do galezi,
+        # wiec SWZ dla FAKTYCZNIE ZAINSTALOWANEGO MCCB (namespace APARAT_NN,
+        # device_kind WYLACZNIK_GLOWNY/WYLACZNIK_ODPLYWOWY) nie mial skad
+        # odczytac nastawy Ii (`application.analyses.swz.service.
+        # _aparat_from_branch`/`application.proof_engine.
+        # lv_circuit_verification_binding.resolve_urzadzenie_ochronne`) — dobor
+        # KANDYDATA (`nn_device_selection.zbierz_kandydatow_z_katalogu`) czytal
+        # zakresy WPROST z `LVApparatusType`, nie z materializacji, wiec luka
+        # dotyczyla wylacznie sciezki aparatu JUZ ZAINSTALOWANEGO.
+        solver_fields=(
+            "u_n_kv",
+            "i_n_a",
+            "device_kind",
+            "i_cu_ka",
+            "conditional_sc_current_ka",
+            "ir_range",
+            "isd_range",
+            "ii_range",
+            "tr_range",
+            "tsd_range",
+        ),
         ui_fields=(
             ("u_n_kv", "Un [kV]", "kV"),
             ("i_n_a", "In [A]", "A"),
