@@ -57,6 +57,7 @@ from .domain_operations import (
 from .kopia_graniczna import kopia_graniczna_enm
 from .load_zip_model import KOD_BLEDU_ZIP, zip_odbioru_z_payloadu
 from .pole_katalogowe import (
+    KOD_BLEDU_POLA_KATALOGOWEGO,
     PlanPolaKatalogowego,
     czy_wybor_katalogowy,
     rozwiaz_aparaty_pola,
@@ -1763,10 +1764,11 @@ def _normalize_nn_source_field_kind(payload: dict[str, Any]) -> str:
 
 
 #: Kod błędu niezgodności katalogowej pola SN — JEDEN dla wszystkich ścieżek,
-#: które materializują pole z katalogu rodzin rozdzielnic (operacja katalogowa
-#: i dokładanie pola z referencją producencką). Osobne kody dla tej samej klasy
-#: niezgodności rozjechałyby obsługę po stronie kreatora.
-_KOD_BLEDU_POLA_KATALOGOWEGO = "sn.pole_katalogowe_niezgodne"
+#: które materializują pole z katalogu rodzin rozdzielnic (operacja katalogowa,
+#: blok fabryczny RMU, pole GPZ/stacyjne z referencją producencką). Stała mieszka
+#: w module resolvera (`pole_katalogowe`), bo to on tę niezgodność rozpoznaje —
+#: tutaj wyłącznie alias, żeby nie było dwóch kopii tego samego kodu.
+_KOD_BLEDU_POLA_KATALOGOWEGO = KOD_BLEDU_POLA_KATALOGOWEGO
 
 
 def _normalize_sn_bay_role(payload: dict[str, Any]) -> str:
