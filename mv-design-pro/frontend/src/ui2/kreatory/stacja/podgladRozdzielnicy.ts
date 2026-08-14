@@ -1,10 +1,16 @@
 /**
- * Kreator stacji SN/nN — MODEL PODGLĄDU pól rozdzielnicy SN (karta MINI-RMU-CAD).
+ * Kreator stacji SN/nN — MODEL PODGLĄDU rozdzielnicy SN (karta SLD-GEN-POLA).
+ *
+ * Ten moduł SKŁADA ROZDZIELNICĘ: nagłówek pakietu katalogowego, szyna zbiorcza,
+ * rozstawienie pól, tabele funkcji i aparatury, wyrocznie układu. Rysunek
+ * POJEDYNCZEGO POLA powstaje w `generatorSldPola.ts` z RZECZYWISTEJ kompozycji
+ * aparatów (BOM szablonu rodziny) — tu nie ma ani jednej decyzji „co stoi w
+ * polu", bo taka decyzja podjęta drugi raz rozjechałaby się z pierwszą.
  *
  * Czysta funkcja: konfiguracja formularza + odczyty katalogu → OPIS RYSUNKU
- * (sloty pól, symbole kanoniczne, etykiety, geometria). Zero fizyki, zero
- * obliczeń sieciowych — geometria to układ rysunku, a wszystkie liczby w
- * etykietach pochodzą 1:1 z pozycji katalogowych wskazanych w formularzu.
+ * (sloty pól, sceny pól, etykiety, geometria). Zero fizyki, zero obliczeń
+ * sieciowych — geometria to układ rysunku, a wszystkie liczby w etykietach
+ * pochodzą 1:1 z pozycji katalogowych wskazanych w formularzu.
  *
  * DLACZEGO OSOBNY MODUŁ, A NIE RYSUNEK W KOMPONENCIE. Układ (szerokości slotów,
  * zawijanie etykiet, głębokości torów) jest TESTOWALNY tylko wtedy, gdy powstaje
@@ -14,34 +20,35 @@
  * w komponencie — niezależna od długości tekstu, który w tym slocie stoi.
  *
  * SZEROKOŚĆ SLOTU WYNIKA Z TEGO, CO W NIM STOI (reguła KLASA §3 — warunek
- * wejścia i wyjścia z jednego źródła). Rysunek pola powstaje NAJPIERW we
- * współrzędnych względem osi slotu, a szerokość slotu liczy się z ZASIĘGU TEGO
- * SAMEGO rysunku i z pomiaru TYCH SAMYCH etykiet, które zostaną narysowane.
- * Dwa niezależne wzory (jeden „ile miejsca zajmie", drugi „co narysować")
- * rozjechałyby się przy pierwszym nowym symbolu w polu.
+ * wejścia i wyjścia z jednego źródła). Scena pola powstaje NAJPIERW we
+ * współrzędnych względem osi slotu, a szerokość slotu liczy się z ZASIĘGU TEJ
+ * SAMEJ sceny (`zasiegSceny`) i z pomiaru TYCH SAMYCH etykiet, które zostaną
+ * narysowane. Dwa niezależne wzory (jeden „ile miejsca zajmie", drugi „co
+ * narysować") rozjechałyby się przy pierwszym nowym symbolu w polu.
  *
- * REUŻYCIE (zakaz równoległej biblioteki symboli — §0 pkt 4 karty):
+ * REUŻYCIE (zakaz równoległej biblioteki symboli):
  *  · symbole: `ui/sld/v3/symbols` (`SYMBOL_DEFS` + `SYMBOL_GLYPHS`) — ten sam
- *    kanon IEC 60617, który rysuje kanwa SLD; brakujący glif reklozera
- *    dorobiony W KANONIE (nie tutaj),
+ *    kanon IEC 60617, który rysuje kanwa SLD; brakujące glify (bezpiecznik sam,
+ *    wskaźnik obecności napięcia) dorobione W KANONIE, nie tutaj,
  *  · pomiar tekstu: `ui/sld/v3/core/text` (`measureTextWidth`, deterministyczna
  *    formuła bez DOM — jedna prawda dla renderu i dla testów),
  *  · zapis liczb: `liczbaRysunkuPl` z tego samego kanonu (przecinek dziesiętny).
  *
- * GRANICE DANYCH (nazwane, nie zgadywane — §0 pkt 3 karty). Podsumowanie
- * szablonu pola, którym dysponuje kreator (`CompleteMvBayTemplateSummary`),
- * niesie WYŁĄCZNIE `template_ref`/`bay_kind`/`bay_role`/`source_status`/
- * `source_refs`/`version`/`hash`. NIE niesie składu aparatury pola
- * (`BayTemplate.devices` backendu: DS_BUS/CB/CT/DS_LINE/ES wraz z oznaczeniami
- * Q0/Q1/Q2/Q9), więc podgląd NIE rysuje odłączników szynowych, uziemników ani
- * oznaczeń literowo-cyfrowych aparatów — rysowanie ich „bo zwykle są" byłoby
- * fabrykacją. Rysowane jest wyłącznie to, co projektant realnie wskazał: aparat
- * główny pola (katalog APARAT_SN), transformator stacji (katalog TRAFO_SN_NN)
- * oraz wyposażenie pola z kroku „Pomiar i zabezpieczenia" (CT/VT/przekaźnik).
+ * GRANICE DANYCH (nazwane, nie zgadywane). Kompozycję aparatów pola niesie
+ * `base_template.devices` szablonu (a gdy szablon niesie kompozycję producenta —
+ * `device_instances`). Czego kontrakt katalogu NIE niesie na dziś: SZEROKOŚCI
+ * pola i rozdzielnicy [mm] — nie ma jej ani w `SwitchgearFamily`, ani w
+ * `CompleteMvBayTemplate`. Nagłówek pokazuje więc jawny brak zamiast liczby;
+ * szerokość wejdzie razem z encją katalogowego pola (`CatalogFunctionalUnit`,
+ * §3 kanonu konfiguratora), której dostarcza scalenie kanonu rodzin.
  */
 
-import { LABEL_TYPOGRAPHY, liczbaRysunkuPl, measureTextWidth } from '../../../ui/sld/v3/core/text';
-import { SYMBOL_DEFS, type SymbolId } from '../../../ui/sld/v3/symbols/defs';
+import { liczbaRysunkuPl, measureTextWidth } from '../../../ui/sld/v3/core/text';
+import {
+  CONSTRUCTION_LABELS_PL,
+  type SwitchgearFamily,
+} from '../../../ui/catalog/SwitchgearFamilyPicker';
+import type { CompleteMvBayTemplateSummary } from '../../../ui/catalog/BayTemplatePicker';
 import {
   FIELD_ROLE_LABELS,
   SOURCE_STATUS_LABEL_PL,
@@ -49,46 +56,42 @@ import {
   type StationSnFieldTemplate,
 } from '../../../ui/network-build/forms/InsertStationFormHelpers';
 import type { MVApparatusCatalogType, TransformerType } from '../../../ui/catalog/types';
-import { ETYKIETY_RODZAJU_APARATU, etykietaRodzajuAparatu } from './stacjaModel';
+import {
+  FONT_APARATU,
+  FONT_ROLI,
+  ODSTEP_TABELA_SZYNA,
+  przesunScene,
+  symbolRodzajuAparatu,
+  wymiarSymbolu,
+  zasiegSceny,
+  zbudujBomPola,
+  zbudujScenePola,
+  type PozycjaBom,
+  type ScenaPola,
+} from './generatorSldPola';
+import { etykietaRodzajuAparatu } from './stacjaModel';
 import { STACJA_STRINGS as T } from './strings';
 
-/**
- * `device_kind` katalogu APARAT_SN → symbol kanoniczny biblioteki v3.
- *
- * Tablica jest ZAMKNIĘTA względem słownika rodzajów aparatu kreatora
- * (`ETYKIETY_RODZAJU_APARATU` w `stacjaModel.ts`) — pilnuje tego test
- * kontraktowy: każdy rodzaj, który kreator umie NAZWAĆ w pickerze, musi mieć
- * symbol, inaczej projektant zobaczyłby pusty tor dla aparatu, który wybrał.
- * Rodzaj spoza słownika (nowa pozycja katalogu bez etykiety) daje `null` = tor
- * bez symbolu — uczciwy brak, nigdy podstawiony wyłącznik.
- */
-export const SYMBOL_RODZAJU_APARATU: Readonly<Record<string, SymbolId>> = {
-  WYLACZNIK: 'breaker',
-  REKLOZER: 'recloser',
-  ROZLACZNIK: 'loadBreakSwitch',
-  ROZLACZNIK_BEZPIECZNIKOWY: 'fuseSwitch',
-  ODLACZNIK: 'disconnector',
-  UZIEMNIK: 'earthSwitch',
-};
+export {
+  GRUBOSC_SZYNY,
+  GRUBOSC_TORU,
+  KLASA_APARATU,
+  KLASA_OZNACZENIA,
+  KLASA_ROLI,
+  ODSTEP_TABELA_SZYNA,
+  SKALA_SYMBOLU,
+  RODZAJE_APARATU_KREATORA,
+  SYMBOL_RODZAJU_APARATU,
+  pozycjaOznaczenia,
+  symbolRodzajuAparatu,
+  wymiarSymbolu,
+} from './generatorSldPola';
+export type { OdcinekToru, ScenaPola, SymbolSceny } from './generatorSldPola';
 
-export function symbolRodzajuAparatu(deviceKind: string | null | undefined): SymbolId | null {
-  if (!deviceKind) return null;
-  return SYMBOL_RODZAJU_APARATU[deviceKind] ?? null;
-}
-
-/** Rodzaje aparatu, które kreator umie nazwać — wejście testu kompletności. */
-export const RODZAJE_APARATU_KREATORA: readonly string[] = Object.keys(ETYKIETY_RODZAJU_APARATU);
-
-// --- Stałe rysunku (px świata; viewBox skaluje się do szerokości panelu) ---
-
-/** Klasy typograficzne kanonu użyte w podglądzie (hierarchia: rola > aparat). */
-export const KLASA_ROLI = 't3' as const;
-export const KLASA_APARATU = 't4' as const;
-
-const FONT_ROLI = LABEL_TYPOGRAPHY[KLASA_ROLI].fontSize;
-const FONT_APARATU = LABEL_TYPOGRAPHY[KLASA_APARATU].fontSize;
-export const WYS_WIERSZA_ROLI = FONT_ROLI + 4;
-export const WYS_WIERSZA_APARATU = FONT_APARATU + 4;
+const WYS_WIERSZA_ROLI_ = FONT_ROLI + 4;
+const WYS_WIERSZA_APARATU_ = FONT_APARATU + 4;
+export const WYS_WIERSZA_ROLI = WYS_WIERSZA_ROLI_;
+export const WYS_WIERSZA_APARATU = WYS_WIERSZA_APARATU_;
 
 /** Marginesy rysunku i szerokości slotu pola. */
 const MARGINES = 10;
@@ -96,44 +99,16 @@ const MAKS_TEKST = 104;
 const MIN_SLOT = 92;
 const ODDECH_SLOTU = 16;
 
-/**
- * POWIĘKSZENIE SYMBOLU względem gabarytu kanonicznego.
- *
- * Kanon v3 dobiera gabaryty (16/24/32 px świata) do kanwy CAŁEJ sieci, gdzie w
- * kadrze stoją dziesiątki stacji. Tu w kadrze stoi JEDNA rozdzielnica na całą
- * szerokość panelu, a szerokość slotu dyktuje TEKST (nazwa katalogowa aparatu
- * ma ~100 px świata) — przy skali 1:1 wyłącznik 16 px byłby plamką obok
- * własnego podpisu, czyli dokładnie tą proporcją, którą właściciel ocenił na
- * 0/10. Mnożnik 1,8 daje korpus wyłącznika ~29 px świata wobec slotu ~110 px:
- * symbol czyta się jako główny element pola, a nie jako ozdobnik podpisu.
- *
- * Skalowanie jest JEDNORODNE (rysunek i miejsce, które zajmuje, liczone przez
- * `wymiarSymbolu`) — glify zostają nietknięte, żadnej kopii geometrii kanonu.
- */
-export const SKALA_SYMBOLU = 1.8;
-
-/** Gabaryt symbolu W TYM rysunku (kanon × powiększenie) — jedna prawda. */
-export function wymiarSymbolu(id: SymbolId): { szerokosc: number; wysokosc: number } {
-  const def = SYMBOL_DEFS[id];
-  return { szerokosc: def.width * SKALA_SYMBOLU, wysokosc: def.height * SKALA_SYMBOLU };
-}
-
-/** Pionowa budowa pola: zejście od szyny, odstępy między aparatami. */
-const ZEJSCIE_OD_SZYNY = 18;
-const ODSTEP_APARATOW = 10;
-const ZEJSCIE_KONCOWE = 16;
-/** Prześwit między dolną krawędzią tabeli pól a szyną (miejsce na opis szyny). */
-export const ODSTEP_TABELA_SZYNA = 20;
-/** Rozstaw nóg sprzęgła (przerwa szyny) — połowa szerokości „U" łącznika szyn. */
-const POLOWA_SPRZEGLA = 22;
-/** Odsunięcie odgałęzień bocznych (VT) i adnotacji (przekaźnik) od osi toru. */
-const ODSUNIECIE_BOCZNE = 26;
-
-/** Grubości kresek (hierarchia rysunku wykonawczego: szyna > tor > aparat). */
-export const GRUBOSC_SZYNY = 3.2;
-export const GRUBOSC_TORU = 1.4;
-
 // --- Wejście / wyjście modelu -------------------------------------------
+
+/**
+ * Werdykt konfiguracji rozdzielnicy. NIE jest liczony w UI: pochodzi z operacji
+ * domenowej backendu uruchomionej w trybie `dry_run` (ta sama, która wykona
+ * zapis), więc nagłówek pokazuje dokładnie ten stan, który rozstrzygnie o
+ * przyjęciu stacji. `NIESPRAWDZONA`/`SPRAWDZANIE` to uczciwe stany odczytu, nie
+ * trzecia i czwarta ocena poprawności.
+ */
+export type StatusKonfiguracji = 'VALID' | 'INVALID' | 'NIESPRAWDZONA' | 'SPRAWDZANIE';
 
 export interface WejsciePodgladu {
   readonly snFields: readonly StationSnFieldTemplate[];
@@ -145,18 +120,21 @@ export interface WejsciePodgladu {
   readonly transformatorRef: string | null;
   /** Napięcie szyny SN z kontekstu operacji [kV]; 0 = nieznane. */
   readonly snVoltageKv: number;
+  /**
+   * Kompletne szablony pól (`/api/catalog/complete-bay-templates`) — NOŚNIK
+   * KOMPOZYCJI APARATÓW. Bez nich pole ma wyłącznie aparat główny wskazany w
+   * formularzu; z nimi rysunek pokazuje realny skład pola rodziny.
+   */
+  readonly szablonyPol?: readonly CompleteMvBayTemplateSummary[];
+  /** Rodzina rozdzielnicy wybrana w kroku pól — dane nagłówka pakietu. */
+  readonly rodzina?: SwitchgearFamily | null;
+  /** Nazwa producenta do nagłówka (readout katalogu producentów). */
+  readonly producent?: string | null;
+  /** Werdykt walidatora backendu; domyślnie „niesprawdzona". */
+  readonly statusKonfiguracji?: StatusKonfiguracji;
+  /** Komunikat backendu przy werdykcie `INVALID` (bez tłumaczenia w UI). */
+  readonly komunikatStatusu?: string | null;
 }
-
-/** Symbol rysowany w polu wraz z pozycją (origin = lewy górny róg bboxa). */
-export interface SymbolNaTorze {
-  readonly id: SymbolId;
-  readonly x: number;
-  readonly y: number;
-  /** `true` = symbol poza torem głównym (odgałęzienie VT, adnotacja przekaźnika). */
-  readonly boczny: boolean;
-}
-
-export type OdcinekToru = readonly [number, number, number, number];
 
 export interface SlotPodgladu {
   readonly klucz: string;
@@ -167,7 +145,7 @@ export interface SlotPodgladu {
   readonly szerokosc: number;
   /** Wiersze nagłówka tabeli pól (nazwa roli, zawinięta). */
   readonly wierszeRoli: readonly string[];
-  /** Wiersze opisu pod polem (aparat, transformator, status pakietu). */
+  /** Wiersze opisu pod polem (rodzina, kod katalogowy, aparat, transformator). */
   readonly wierszeOpisu: readonly string[];
   /**
    * Ile pierwszych wierszy opisu to NAZWA KATALOGOWA aparatu (klasa
@@ -178,13 +156,41 @@ export interface SlotPodgladu {
   readonly wierszyNazwy: number;
   /** `true` gdy pole nie ma wskazanego aparatu (uczciwy brak, nie domysł). */
   readonly brakAparatu: boolean;
-  readonly symbole: readonly SymbolNaTorze[];
-  /** Odcinki toru pola — rysowane pod symbolami. */
-  readonly tor: readonly OdcinekToru[];
+  /** Kompozycja aparatów pola — wejście wyroczni dwustronnej BOM ↔ scena. */
+  readonly bom: readonly PozycjaBom[];
+  /** Scena pola przesunięta na oś slotu (symbole, tor, strefy). */
+  readonly scena: ScenaPola;
   /** Dolna krawędź rysunku pola [px świata]. */
   readonly dol: number;
   /** Przerwa szyny wymuszona przez pole sprzęgłowe (para x) albo `null`. */
   readonly przerwaSzyny: readonly [number, number] | null;
+}
+
+/**
+ * Nagłówek pakietu rozdzielnicy — czyta pakiet katalogowy, nie formularz.
+ * Wartość `null` znaczy „katalog tego nie niesie" i ma być pokazana jako jawny
+ * brak; nigdy nie wolno jej zastąpić liczbą domyślną.
+ */
+export interface NaglowekRozdzielnicy {
+  readonly producent: string | null;
+  readonly rodzina: string | null;
+  readonly konstrukcja: string | null;
+  /** Klasa napięciowa rodziny, np. „12 / 17,5 / 24 kV". */
+  readonly klasaNapiecia: string | null;
+  /** Prąd znamionowy szyn rodziny, np. „630 A". */
+  readonly pradSzyn: string | null;
+  /** Prąd zwarciowy krótkotrwały rodziny, np. „16 / 20 / 21 kA". */
+  readonly pradZwarciowy: string | null;
+  readonly liczbaJednostek: number;
+  /**
+   * Szerokość całkowita rozdzielnicy. Dziś ZAWSZE `null`: ani `SwitchgearFamily`,
+   * ani `CompleteMvBayTemplate` nie niosą wymiaru pola — wejdzie z encją
+   * katalogowego pola (`CatalogFunctionalUnit`, §3 kanonu konfiguratora).
+   * Zmyślenie „bo typowe pole ma 750 mm" byłoby fabrykacją danej wykonawczej.
+   */
+  readonly szerokoscCalkowita: string | null;
+  readonly status: StatusKonfiguracji;
+  readonly komunikatStatusu: string | null;
 }
 
 export interface PodgladRozdzielnicy {
@@ -202,6 +208,7 @@ export interface PodgladRozdzielnicy {
   /** Najwięcej wierszy opisu w polu — wysokość tabeli aparatury pod rysunkiem. */
   readonly wierszyOpisu: number;
   readonly sloty: readonly SlotPodgladu[];
+  readonly naglowek: NaglowekRozdzielnicy;
 }
 
 // --- Pomocnicze (czyste) -------------------------------------------------
@@ -330,108 +337,14 @@ function refWyposazenia(
   return typeof ref === 'string' && ref.trim() !== '' ? ref : null;
 }
 
-/** Rysunek pola we współrzędnych WZGLĘDEM osi slotu (dx) — przed rozstawieniem. */
-interface PlanPola {
-  readonly symbole: readonly SymbolNaTorze[];
-  readonly tor: readonly OdcinekToru[];
-  readonly dol: number;
-  readonly przerwa: readonly [number, number] | null;
-  /** `true` = tor kończy się wyprowadzeniem (pole liniowe/odgałęźne) — podlega
-   *  wyrównaniu zejść. Pole transformatorowe i sprzęgłowe mają zakończenie z
-   *  topologii (transformator / powrót na szynę) i wyrównaniu NIE podlegają. */
-  readonly zejscieOtwarte: boolean;
-}
-
 /**
- * Rysunek JEDNEGO pola względem jego osi. Jedno miejsce, w którym rozstrzyga
- * się, co w polu stoi — zasięg poziomy tego rysunku (`zasiegPlanu`) jest potem
- * WYPROWADZANY z niego, a nie liczony drugim wzorem.
+ * Lista wartości katalogowych rodziny w konwencji rysunku: „12 / 17,5 / 24 kV".
+ * Pusta lista daje `null` — rodzina bez zadeklarowanych wartości pokazuje brak,
+ * nie „0".
  */
-function zaplanujPole(
-  pole: StationSnFieldTemplate,
-  aparat: MVApparatusCatalogType | null,
-  szynaY: number,
-): PlanPola {
-  const sprzeglo = pole.field_role === 'SPRZEGLO';
-  const os = sprzeglo ? -POLOWA_SPRZEGLA : 0;
-  const symbole: SymbolNaTorze[] = [];
-  const tor: OdcinekToru[] = [];
-  let y = szynaY;
-
-  const dolacz = (id: SymbolId, dx: number, boczny = false): number => {
-    const wym = wymiarSymbolu(id);
-    symbole.push({ id, x: dx - wym.szerokosc / 2, y, boczny });
-    return wym.wysokosc;
-  };
-
-  tor.push([os, y, os, y + ZEJSCIE_OD_SZYNY]);
-  y += ZEJSCIE_OD_SZYNY;
-
-  const symbolAparatu = symbolRodzajuAparatu(aparat?.device_kind);
-  if (symbolAparatu) {
-    y += dolacz(symbolAparatu, os);
-  } else {
-    // Brak wskazanego aparatu: sam tor przez wysokość aparatu — miejsce
-    // zostaje puste, żeby brak był widoczny, a nie zamaskowany domysłem.
-    const pustyOdcinek = wymiarSymbolu('breaker').wysokosc;
-    tor.push([os, y, os, y + pustyOdcinek]);
-    y += pustyOdcinek;
-  }
-
-  // Wyposażenie pola wskazane w kroku „Pomiar i zabezpieczenia" (B-3).
-  const equipment = pole.equipment;
-  if (refWyposazenia(equipment, 'ct')) {
-    tor.push([os, y, os, y + ODSTEP_APARATOW]);
-    y += ODSTEP_APARATOW;
-    y += dolacz('currentTransformer', os);
-  }
-  if (refWyposazenia(equipment, 'vt')) {
-    // Tor pomiarowy napięciowy = odgałęzienie BOCZNE (VT nie stoi w torze mocy).
-    const dxVt = os + ODSUNIECIE_BOCZNE;
-    tor.push([os, y + ODSTEP_APARATOW, dxVt, y + ODSTEP_APARATOW]);
-    y += ODSTEP_APARATOW;
-    const wysokoscVt = dolacz('voltageTransformer', dxVt, true);
-    y += wysokoscVt;
-  }
-  if (refWyposazenia(equipment, 'relay')) {
-    // Przekaźnik = ADNOTACJA obok toru (nie uczestniczy w ciągłości elektrycznej
-    // — ta sama zasada, co w kanonie SLD v3 §17.1).
-    const wym = wymiarSymbolu('protectionRelay');
-    symbole.push({
-      id: 'protectionRelay',
-      x: os - ODSUNIECIE_BOCZNE - wym.szerokosc / 2,
-      y: szynaY + ZEJSCIE_OD_SZYNY,
-      boczny: true,
-    });
-  }
-
-  if (pole.field_role === 'TRANSFORMATOROWE') {
-    tor.push([os, y, os, y + ODSTEP_APARATOW]);
-    y += ODSTEP_APARATOW;
-    y += dolacz('transformer2W', os);
-    tor.push([os, y, os, y + ZEJSCIE_KONCOWE]);
-    y += ZEJSCIE_KONCOWE;
-  } else if (sprzeglo) {
-    // Sprzęgło = łącznik SZYN: tor schodzi z lewej sekcji, przechodzi przez
-    // aparat i wraca do prawej sekcji. Przerwa szyny nad polem jest częścią
-    // symbolu — bez niej sprzęgło rysowałoby się jak zwykły odpływ.
-    const prawa = POLOWA_SPRZEGLA;
-    tor.push([os, y, os, y + ZEJSCIE_KONCOWE]);
-    tor.push([os, y + ZEJSCIE_KONCOWE, prawa, y + ZEJSCIE_KONCOWE]);
-    tor.push([prawa, y + ZEJSCIE_KONCOWE, prawa, szynaY]);
-    y += ZEJSCIE_KONCOWE;
-  } else {
-    tor.push([os, y, os, y + ZEJSCIE_KONCOWE]);
-    y += ZEJSCIE_KONCOWE;
-  }
-
-  return {
-    symbole,
-    tor,
-    dol: y,
-    przerwa: sprzeglo ? [-POLOWA_SPRZEGLA, POLOWA_SPRZEGLA] : null,
-    zejscieOtwarte: !sprzeglo && pole.field_role !== 'TRANSFORMATOROWE',
-  };
+function listaZnamion(wartosci: readonly number[] | undefined, jednostka: string): string | null {
+  if (!wartosci || wartosci.length === 0) return null;
+  return `${wartosci.map((w) => liczbaRysunkuPl(w)).join(' / ')} ${jednostka}`;
 }
 
 /**
@@ -439,49 +352,24 @@ function zaplanujPole(
  * do wspólnego poziomu.
  *
  * Symbole kanonu mają różne wysokości (wyłącznik 16, reklozer 24, rozłącznik
- * bezpiecznikowy 32 px), więc tory kończyły się na różnych poziomach — na
- * rysunku wykonawczym wyprowadzenia z rozdzielnicy leżą w jednej linii, a
- * „strzępiasty" dół czyta się jak błąd rysunku. Pola z własnym zakończeniem
- * (transformatorowe — zejście do transformatora; sprzęgłowe — powrót na szynę)
- * NIE są wyrównywane: ich dół wynika z topologii, nie z długości toru.
+ * bezpiecznikowy 32 px), a pola różnią się liczbą aparatów w kompozycji, więc
+ * tory kończyły się na różnych poziomach — na rysunku wykonawczym wyprowadzenia
+ * z rozdzielnicy leżą w jednej linii, a „strzępiasty" dół czyta się jak błąd
+ * rysunku. Pola z własnym zakończeniem (transformatorowe — zejście do
+ * transformatora i strona nN; sprzęgłowe — powrót na szynę) NIE są wyrównywane:
+ * ich dół wynika z topologii, nie z długości toru.
  */
-function wyrownajZejscia(plany: readonly PlanPola[]): PlanPola[] {
-  const doWyrownania = plany.filter((p) => p.zejscieOtwarte);
-  if (doWyrownania.length === 0) return [...plany];
-  const poziom = Math.max(...doWyrownania.map((p) => p.dol));
-  return plany.map((plan) => {
-    if (!plan.zejscieOtwarte || plan.dol === poziom) return plan;
-    const tor = plan.tor.slice();
+function wyrownajZejscia(sceny: readonly ScenaPola[]): ScenaPola[] {
+  const doWyrownania = sceny.filter((s) => s.zejscieOtwarte);
+  if (doWyrownania.length === 0) return [...sceny];
+  const poziom = Math.max(...doWyrownania.map((s) => s.dol));
+  return sceny.map((scena) => {
+    if (!scena.zejscieOtwarte || scena.dol === poziom) return scena;
+    const tor = scena.tor.slice();
     const ostatni = tor[tor.length - 1];
-    tor[tor.length - 1] = [ostatni[0], ostatni[1], ostatni[2], poziom] as OdcinekToru;
-    return { ...plan, tor, dol: poziom };
+    tor[tor.length - 1] = [ostatni[0], ostatni[1], ostatni[2], poziom] as const;
+    return { ...scena, tor, dol: poziom };
   });
-}
-
-/** Zasięg poziomy rysunku pola [dxMin, dxMax] — liczony Z TEGO rysunku. */
-function zasiegPlanu(plan: PlanPola): readonly [number, number] {
-  let min = 0;
-  let max = 0;
-  for (const s of plan.symbole) {
-    min = Math.min(min, s.x);
-    max = Math.max(max, s.x + wymiarSymbolu(s.id).szerokosc);
-  }
-  for (const [x1, , x2] of plan.tor) {
-    min = Math.min(min, x1, x2);
-    max = Math.max(max, x1, x2);
-  }
-  if (plan.przerwa) {
-    min = Math.min(min, plan.przerwa[0]);
-    max = Math.max(max, plan.przerwa[1]);
-  }
-  return [min, max];
-}
-
-function przesunPlan(plan: PlanPola, x: number): Pick<PlanPola, 'symbole' | 'tor'> {
-  return {
-    symbole: plan.symbole.map((s) => ({ ...s, x: s.x + x })),
-    tor: plan.tor.map(([x1, y1, x2, y2]) => [x1 + x, y1, x2 + x, y2] as OdcinekToru),
-  };
 }
 
 // --- Budowa opisu rysunku ------------------------------------------------
@@ -494,7 +382,18 @@ function przesunPlan(plan: PlanPola, x: number): Pick<PlanPola, 'symbole' | 'tor
  * po swojemu, bo numer pola na rysunku ma zgadzać się z numerem wiersza.
  */
 export function zbudujPodglad(wejscie: WejsciePodgladu): PodgladRozdzielnicy {
-  const { snFields, aparaty, transformatory, transformatorRef, snVoltageKv } = wejscie;
+  const {
+    snFields,
+    aparaty,
+    transformatory,
+    transformatorRef,
+    snVoltageKv,
+    szablonyPol = [],
+    rodzina = null,
+    producent = null,
+    statusKonfiguracji = 'NIESPRAWDZONA',
+    komunikatStatusu = null,
+  } = wejscie;
   const transformator = transformatorRef
     ? transformatory.find((t) => t.id === transformatorRef) ?? null
     : null;
@@ -503,6 +402,21 @@ export function zbudujPodglad(wejscie: WejsciePodgladu): PodgladRozdzielnicy {
     const aparat = pole.apparatus_catalog_ref
       ? aparaty.find((a) => a.id === pole.apparatus_catalog_ref) ?? null
       : null;
+    const szablon = pole.bay_template_ref
+      ? szablonyPol.find((s) => s.template_ref === pole.bay_template_ref) ?? null
+      : null;
+    const bom = zbudujBomPola({
+      szablon,
+      // Wskazany aparat główny jest pozycją BOM pola — także wtedy, gdy pole nie
+      // ma jeszcze dobranego pakietu katalogowego (wtedy jest jedyną znaną).
+      maAparatGlowny: aparat !== null,
+      maCt: refWyposazenia(pole.equipment, 'ct') !== null,
+      maVt: refWyposazenia(pole.equipment, 'vt') !== null,
+      maPrzekaznik: refWyposazenia(pole.equipment, 'relay') !== null,
+      // Transformator stacji przyłącza się polem transformatorowym — to dana
+      // projektu (stacja SN/nN go tworzy), a nie opcja karty katalogowej.
+      maTransformator: pole.field_role === 'TRANSFORMATOROWE',
+    });
     const wierszeRoli = zawinTekst(
       FIELD_ROLE_LABELS[pole.field_role] ?? pole.field_role,
       FONT_ROLI,
@@ -533,26 +447,53 @@ export function zbudujPodglad(wejscie: WejsciePodgladu): PodgladRozdzielnicy {
             ]
           : zawinTekst(T.podgladBrakTransformatora, FONT_APARATU, MAKS_TEKST)
         : [];
-    // Status pakietu szablonu — ten sam słownik, co w pickerze szablonu pola
-    // (jedno źródło nazw statusów katalogowych).
+    // Pakiet katalogowy pola: rodzina + KOD KATALOGOWY pola (to on identyfikuje
+    // jednostkę funkcjonalną w ofercie producenta) + status pakietu — ten sam
+    // słownik statusów, co w pickerze szablonu pola (jedno źródło nazw).
+    const opisPakietu = szablon
+      ? zawinCzesci(
+          [
+            rodzina?.family_name ?? szablon.switchgear_family_ref ?? '',
+            szablon.template_code ?? szablon.template_ref,
+          ],
+          FONT_APARATU,
+          MAKS_TEKST,
+        )
+      : [];
     const status = pole.bay_template_ref
       ? SOURCE_STATUS_LABEL_PL[pole.source_status]
       : T.podgladBrakSzablonu;
-    const wierszeOpisu = [...opisAparatu, ...opisTransformatora, status];
-    return { pole, index, aparat, wierszeRoli, wierszeOpisu, wierszyNazwy: wierszeNazwy.length };
+    const wierszeOpisu = [...opisAparatu, ...opisTransformatora, ...opisPakietu, status];
+    return {
+      pole,
+      index,
+      aparat,
+      bom,
+      wierszeRoli,
+      wierszeOpisu,
+      wierszyNazwy: wierszeNazwy.length,
+    };
   });
 
   const naglowekY = MARGINES + FONT_ROLI;
   const wierszyNaglowka = Math.max(1, ...wstepne.map((w) => w.wierszeRoli.length));
-  const szynaY = naglowekY + (wierszyNaglowka + 1) * WYS_WIERSZA_ROLI + ODSTEP_TABELA_SZYNA;
+  const szynaY = naglowekY + (wierszyNaglowka + 1) * WYS_WIERSZA_ROLI_ + ODSTEP_TABELA_SZYNA;
 
-  // Rysunki pól powstają PRZED rozstawieniem — szerokość slotu wynika z nich.
-  const plany = wyrownajZejscia(wstepne.map((w) => zaplanujPole(w.pole, w.aparat, szynaY)));
+  // Sceny pól powstają PRZED rozstawieniem — szerokość slotu wynika z nich.
+  const sceny = wyrownajZejscia(
+    wstepne.map((w) =>
+      zbudujScenePola(w.bom, {
+        szynaY,
+        symbolAparatuGlownego: symbolRodzajuAparatu(w.aparat?.device_kind),
+        sprzeglo: w.pole.field_role === 'SPRZEGLO',
+      }),
+    ),
+  );
 
   let kursorX = MARGINES;
   const sloty: SlotPodgladu[] = wstepne.map((w, i) => {
-    const plan = plany[i];
-    const [dxMin, dxMax] = zasiegPlanu(plan);
+    const scena = sceny[i];
+    const [dxMin, dxMax] = zasiegSceny(scena);
     const szerokoscTekstu = Math.max(
       najszerszy(w.wierszeRoli, FONT_ROLI),
       najszerszy(w.wierszeOpisu, FONT_APARATU),
@@ -567,7 +508,7 @@ export function zbudujPodglad(wejscie: WejsciePodgladu): PodgladRozdzielnicy {
     );
     const x = kursorX + szerokosc / 2;
     kursorX += szerokosc;
-    const przesuniety = przesunPlan(plan, x);
+    const przesunieta = przesunScene(scena, x);
     return {
       klucz: `${w.pole.field_role}-${w.index}`,
       numer: w.index + 1,
@@ -578,17 +519,17 @@ export function zbudujPodglad(wejscie: WejsciePodgladu): PodgladRozdzielnicy {
       wierszeOpisu: w.wierszeOpisu,
       wierszyNazwy: w.wierszyNazwy,
       brakAparatu: w.aparat === null,
-      symbole: przesuniety.symbole,
-      tor: przesuniety.tor,
-      dol: plan.dol,
-      przerwaSzyny: plan.przerwa ? [plan.przerwa[0] + x, plan.przerwa[1] + x] : null,
+      bom: w.bom,
+      scena: przesunieta,
+      dol: przesunieta.dol,
+      przerwaSzyny: przesunieta.przerwa,
     };
   });
 
   const szerokosc = Math.max(kursorX + MARGINES, MIN_SLOT + 2 * MARGINES);
-  const opisyY = Math.max(szynaY + 60, ...sloty.map((s) => s.dol)) + 2 * WYS_WIERSZA_APARATU;
+  const opisyY = Math.max(szynaY + 60, ...sloty.map((s) => s.dol)) + 2 * WYS_WIERSZA_APARATU_;
   const wierszyOpisu = Math.max(1, ...sloty.map((s) => s.wierszeOpisu.length));
-  const wysokosc = opisyY + wierszyOpisu * WYS_WIERSZA_APARATU + MARGINES;
+  const wysokosc = opisyY + wierszyOpisu * WYS_WIERSZA_APARATU_ + MARGINES;
 
   // Odcinki szyny: pełna belka minus przerwy pól sprzęgłowych.
   const przerwy = sloty
@@ -615,6 +556,19 @@ export function zbudujPodglad(wejscie: WejsciePodgladu): PodgladRozdzielnicy {
     naglowekY,
     opisyY,
     sloty,
+    naglowek: {
+      producent: producent ?? rodzina?.manufacturer_ref ?? null,
+      rodzina: rodzina?.family_name ?? null,
+      konstrukcja: rodzina ? CONSTRUCTION_LABELS_PL[rodzina.construction_type] : null,
+      klasaNapiecia: listaZnamion(rodzina?.voltage_levels, 'kV'),
+      pradSzyn: listaZnamion(rodzina?.rated_current_options, 'A'),
+      pradZwarciowy: listaZnamion(rodzina?.short_time_current_options, 'kA'),
+      liczbaJednostek: snFields.length,
+      // Kontrakt katalogu nie niesie wymiaru pola — patrz nagłówek modułu.
+      szerokoscCalkowita: null,
+      status: statusKonfiguracji,
+      komunikatStatusu,
+    },
   };
 }
 
@@ -654,7 +608,7 @@ export function bboxyEtykiet(podglad: PodgladRozdzielnicy): BboxEtykiety[] {
         wiersz,
         x1: slot.x - w / 2,
         x2: slot.x + w / 2,
-        y: podglad.naglowekY + (i + 1) * WYS_WIERSZA_ROLI,
+        y: podglad.naglowekY + (i + 1) * WYS_WIERSZA_ROLI_,
       });
     });
     slot.wierszeOpisu.forEach((wiersz, i) => {
@@ -664,7 +618,7 @@ export function bboxyEtykiet(podglad: PodgladRozdzielnicy): BboxEtykiety[] {
         wiersz,
         x1: slot.x - w / 2,
         x2: slot.x + w / 2,
-        y: podglad.opisyY + i * WYS_WIERSZA_APARATU,
+        y: podglad.opisyY + i * WYS_WIERSZA_APARATU_,
       });
     });
   }
@@ -700,19 +654,24 @@ export function kolizjeEtykiet(podglad: PodgladRozdzielnicy): string[] {
 /**
  * Wyrocznia zasięgu: elementy rysunku pola, które wychodzą poza własny slot.
  * Wyjście poza slot = wejście w rysunek sąsiada (ta sama klasa defektu co
- * kolizja etykiet, tylko po stronie geometrii).
+ * kolizja etykiet, tylko po stronie geometrii). Obejmuje symbole WRAZ Z
+ * OZNACZENIAMI (zasięg sceny), tor, strefę kablową i kreskę strony nN.
  */
 export function wyjsciaPozaSlot(podglad: PodgladRozdzielnicy): string[] {
   const bledy: string[] = [];
   for (const slot of podglad.sloty) {
     const lewa = slot.x - slot.szerokosc / 2;
     const prawa = slot.x + slot.szerokosc / 2;
-    for (const s of slot.symbole) {
+    const [dxMin, dxMax] = zasiegSceny(slot.scena, slot.x);
+    if (dxMin < lewa || dxMax > prawa) {
+      bledy.push(`rysunek pola ${slot.numer} wychodzi poza slot`);
+    }
+    for (const s of slot.scena.symbole) {
       if (s.x < lewa || s.x + wymiarSymbolu(s.id).szerokosc > prawa) {
         bledy.push(`symbol ${s.id} pola ${slot.numer} poza slotem`);
       }
     }
-    for (const [x1, , x2] of slot.tor) {
+    for (const [x1, , x2] of slot.scena.tor) {
       if (Math.min(x1, x2) < lewa || Math.max(x1, x2) > prawa) {
         bledy.push(`tor pola ${slot.numer} poza slotem`);
       }

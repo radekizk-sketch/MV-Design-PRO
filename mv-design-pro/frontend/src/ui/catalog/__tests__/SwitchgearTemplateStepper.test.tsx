@@ -41,6 +41,18 @@ const VERIFIED_FAMILY: SwitchgearFamily = {
 
 const CANONICAL_TEMPLATE: CompleteMvBayTemplateSummary = {
   template_ref: 'CANONICAL_FALLBACK__LINE_OUT',
+  // Kompozycja aparatów pola — pole WYMAGANE kontraktu (`base_template.devices`).
+    base_template: {
+      template_id: 'bay_template_line_out',
+      name: 'Pole liniowe wyjściowe',
+      bay_role: 'OUT',
+      devices: [
+        { kind: 'DS_BUS', designation_q: 'Q1', position: 0, placement: 'UPSTREAM' },
+        { kind: 'CB', designation_q: 'Q0', position: 1, placement: 'MIDSTREAM' },
+        { kind: 'ES', designation_q: 'Q9', position: 4, placement: 'GROUND_BRANCH' },
+        { kind: 'CABLE_HEAD', designation_q: 'GK', position: 5, placement: 'DOWNSTREAM' },
+      ],
+    },
   manufacturer_ref: null,
   switchgear_family_ref: null,
   bay_kind: 'liniowe_odplywowe',

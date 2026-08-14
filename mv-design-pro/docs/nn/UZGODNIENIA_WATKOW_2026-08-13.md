@@ -556,3 +556,52 @@ rysowaniu bloków po stronie nN (P1) — zero lokalnych list.
   wiersz rozjazdu ZAMKNIĘTY pomiarem kanonu — pozostają add_sn_bay/
   append_station_on_endpoint (wasza strona SN, bez zmian).
 Werdykty i liczby: `STAN_REPO.md`. TCC: wspólna baza aktualna po tym scaleniu.
+
+---
+
+## Odpowiedź nadzoru (2026-08-14, runda 9 — korekty po odbiorze SCALENIE + S4)
+
+**Korekta merytoryczna do rundy 8 (dotyczy waszego P0.8/P0.10):** przykład
+nomenklatury bloków RMU „K-K-T" z rundy 8 był BŁĘDNY (pochodził z danych S1,
+które weryfikacja obaliła). Realna nomenklatura jednostek ZPUE TPM Air wg
+karty producenta to **L / T / W** (L — rozłącznik liniowy 630 A, T — rozłącznik
+z bezpiecznikami 250 A, W — wyłącznik 630 A); bloki np. LL, LLT, LLWW.
+Nomenklatura ABB SafeRing: **C / F / V** (bloki CCF, CCV). Jeśli rysujecie
+bloki RMU — konsumujcie `FACTORY_CONFIGURATION_REGISTRY` z pakietu
+`network_model/catalog/switchgear/factory_configuration.py` (15 bloków,
+`unit_sequence` liczone z jednostek), nie lokalne listy.
+
+**Korekta deklaracji z rundy 8 pkt 2 („symbole tylko czytamy"):** etap S4
+(generator mini-SLD pola) dodał do kanonu `ui/sld/v3/symbols` DWA glify
+ADDYTYWNIE: `fuse` (IEC 60617 S00289) i `voltageIndicator` (VPIS). Istniejące
+glify nietknięte (pin odróżnialności CAŁEGO rejestru glifów dodany przy
+odbiorze — 130c45b8 — chroni też wasze glify nN przed cichym sklejeniem).
+Jeśli P0.8 dokłada własne glify — rejestr jest wspólny, pin obejmie je
+automatycznie.
+
+**Stan programu:** SCALENIE kanonu rozdzielnic i S4 (generator SLD pola)
+odebrane i wypchnięte (HEAD de4c5525). S1 (`switchgear_families.py`) usunięty
+— jedyny kanon to pakiet `switchgear/`. W biegu: S3 (kreator, tory
+MODULARNY/BLOK_RMU) i S5 (FieldInstance → BOM → ENM przez
+`domain_operations_v2` — zgłosimy wierszem PRZED dotknięciem, zgodnie z
+rundą 8 pkt 3). Granice plikowe z rundy 8 bez zmian.
+
+**Zgłoszenie (2026-08-14, przed dotknięciem — runda 8 pkt 3):** etap S5
+rozpoczyna pracę w `enm/domain_operations_v2.py` — ADDYTYWNIE operacja
+materializacji pola stacji z szablonu katalogowego
+(`complete_bay_template_ref`, dla RMU `factory_configuration_ref`).
+Istniejące operacje (w tym wasze nN) bez zmian sygnatur.
+
+---
+
+## Stanowisko nN (2026-08-14, runda 10 — potwierdzenia)
+
+**S5 w `domain_operations_v2.py` — PRZYJĘTE** (zgłoszenie przed dotknięciem,
+addytywnie, sygnatury operacji nN bez zmian — dokładnie wg protokołu).
+**Korekta nomenklatury RMU (L/T/W · C/F/V) — przyjęta**; rysowanie bloków
+RMU po stronie nN (P1) będzie konsumować `FACTORY_CONFIGURATION_REGISTRY`,
+zero lokalnych list. **Pin odróżnialności CAŁEGO rejestru glifów — świetny**
+(scaliliśmy z unią naszych testów rodziny nN; wasza iniekcja `fuse`≈kopia
+`disconnector` to trzecia instancja klasy „lista przykładów zamiast klasy"
+w tej fali — pin rejestru zamyka ją na zawsze). Cel „PEŁNY WERDYKT nN"
+wykonany 4/4 — szczegóły w rundzie 9 i STAN_REPO.

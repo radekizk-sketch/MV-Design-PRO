@@ -17,6 +17,20 @@ producenta z weryfikacją wersji katalogu.
 Aby promować rodzinę do `verified` (status="verified" + `verified_at`), wymaga
 zatwierdzenia w PR przez catalog admin z linkiem do oficjalnej karty produktu
 PDF (zgodnie z `SLD_MV_BAY_TEMPLATE_SOURCE_POLICY.md`).
+
+TRANSZA 2026-08-14 (scalenie kanonu rozdzielnic — `docs/domain/
+KONFIGURATOR_ROZDZIELNIC_SN_RMU.md` §8): rodziny z równoległego modułu
+`switchgear_families.py` (etap S1) zostały WTOPIONE tutaj, a tamten moduł
+usunięty — jeden kanon rodzin, zero dwóch ścieżek tej samej prawdy.
+
+KONWENCJA `voltage_levels` DLA TRANSZY 2026-08-14: wartości przepisane
+DOSŁOWNIE z karty producenta (to, co karta nazywa napięciem znamionowym), a
+pełne zdanie źródłowe — łącznie z napięciem najwyższym urządzenia — siedzi w
+`notes_pl`. Zero interpretacji: gdy karta podaje jedną klasę („do 24 kV"),
+deklarujemy jedną klasę, a nie domyśloną serię IEC. Rodzina, której klas
+prądowych/zwarciowych karta publiczna NIE podaje, zostaje przy
+`status="requires_catalog"` (nie jest oferowana konfiguratorowi) zamiast
+dostać zmyślone liczby.
 """
 
 from __future__ import annotations
@@ -459,17 +473,666 @@ SCHNEIDER__SM6_24 = SwitchgearFamily(
 )
 
 # =============================================================================
+# ZPUE Włoszczowa — TPM (RMU w izolacji SF6/próżnia)
+# =============================================================================
+
+ZPUE_WLOSZCZOWA__TPM = SwitchgearFamily(
+    switchgear_family_ref="ZPUE_WLOSZCZOWA__TPM",
+    manufacturer_ref="ZPUE_WLOSZCZOWA",
+    family_name="TPM",
+    series_name="TPM",
+    product_line_code="TPM",
+    voltage_levels=[25.0],
+    rated_current_options=[630],
+    short_time_current_options=[16, 20, 25],  # kA / 3 s wg karty
+    insulation_type="sf6",
+    construction_type="RMU",
+    busbar_system="ring_main",
+    compartment_models=["cable_compartment"],
+    allowed_bay_kinds=[
+        "liniowe_doplywowe",
+        "liniowe_odplywowe",
+        "transformatorowe",
+    ],
+    allowed_apparatus_kinds=[
+        "switch_disconnector",
+        "circuit_breaker",
+        "earthing_switch",
+        "fuse_set",
+        "voltage_indicator",
+        "cable_head",
+    ],
+    allowed_interlocks=["earthing_only_when_open"],
+    supported_lod_profiles=["LOD0", "LOD1", "LOD2", "LOD3"],
+    cad_footprint_ref=None,
+    source_document_refs=[
+        "https://www.elektro.info.pl/produkt/rozdzielnice-sn/109580,rozdzielnica-sn-tpm-rmu",
+        "https://zpue.pl/rozdzielnice-sn",
+    ],
+    source_version="public-product-card-2026-08-14",
+    verified_at=None,
+    lifecycle_status="current",
+    status="repo_verified",
+    source_refs=[
+        "https://www.elektro.info.pl/produkt/rozdzielnice-sn/109580,rozdzielnica-sn-tpm-rmu"
+    ],
+    notes_pl=(
+        "TPM — rozdzielnica pierścieniowa (RMU) ZPUE w izolacji SF6/próżnia. "
+        "Karta (odczyt 2026-08-14): napięcie znamionowe 25 kV, prąd znamionowy "
+        "szyn zbiorczych 630 A, prąd znamionowy pola transformatorowego 125 A, "
+        "dopuszczalny prąd zwarciowy 25*/20/16 kA (3 s), prąd szczytowy 50 kA, "
+        "odporność na łuk elektryczny 20 kA. Status repo_verified — dane z "
+        "publicznej karty produktu, NIE official_catalog (wymaga oficjalnego "
+        "PDF od producenta)."
+    ),
+)
+
+# =============================================================================
+# ZPUE Włoszczowa — TPM Air (RMU bez SF6, suche powietrze + próżnia)
+# =============================================================================
+
+ZPUE_WLOSZCZOWA__TPM_AIR = SwitchgearFamily(
+    switchgear_family_ref="ZPUE_WLOSZCZOWA__TPM_AIR",
+    manufacturer_ref="ZPUE_WLOSZCZOWA",
+    family_name="TPM Air",
+    series_name="TPM Air",
+    product_line_code="TPM_AIR",
+    voltage_levels=[24.0],
+    rated_current_options=[630],
+    short_time_current_options=[16, 20],  # kA / 1 s wg karty
+    insulation_type="mixed",  # suche powietrze pod nadciśnieniem + aparatura próżniowa
+    construction_type="RMU",
+    busbar_system="ring_main",
+    compartment_models=["cable_compartment", "metering_compartment"],
+    allowed_bay_kinds=[
+        "liniowe_doplywowe",
+        "liniowe_odplywowe",
+        "transformatorowe",
+        "sprzeglowe_poprzeczne",
+        "pomiarowe",
+    ],
+    allowed_apparatus_kinds=[
+        "switch_disconnector",
+        "circuit_breaker",
+        "earthing_switch",
+        "fuse_set",
+        "current_transformer",
+        "voltage_transformer",
+        "voltage_indicator",
+        "cable_head",
+    ],
+    allowed_interlocks=["earthing_only_when_open"],
+    supported_lod_profiles=["LOD0", "LOD1", "LOD2", "LOD3"],
+    cad_footprint_ref=None,
+    source_document_refs=["https://zpue.pl/rozdzielnice-sn/tpm-air"],
+    source_version="public-product-page-2026-08-14",
+    verified_at=None,
+    lifecycle_status="current",
+    status="repo_verified",
+    source_refs=["https://zpue.pl/rozdzielnice-sn/tpm-air"],
+    notes_pl=(
+        "TPM Air — rozdzielnica pierścieniowa (RMU) ZPUE bez SF6: izolacja "
+        "suchym powietrzem pod nadciśnieniem + aparatura próżniowa, łącznik "
+        "trójpozycyjny (zamknij-otwórz-uziem). Karta (odczyt 2026-08-14): "
+        "napięcie znamionowe 24 kV, prąd znamionowy szyn 630 A, prąd zwarciowy "
+        "16 kA lub 20 kA (1 s), prąd szczytowy 40/50 kA, IAC AFLR (20 kA, 1 s), "
+        "kable do 630 mm². Jednostki funkcjonalne karty: L (rozłącznik liniowy "
+        "630 A), T (rozłącznik z bezpiecznikami 250 A), W (wyłącznik 630 A), "
+        "S (sprzęgło), M840 (pomiar z przekładnikami prądowymi i napięciowymi). "
+        "Status repo_verified."
+    ),
+)
+
+# =============================================================================
+# ZPUE Włoszczowa — Rotoblok Air (AIS bez SF6)
+# =============================================================================
+
+ZPUE_WLOSZCZOWA__ROTOBLOK_AIR = SwitchgearFamily(
+    switchgear_family_ref="ZPUE_WLOSZCZOWA__ROTOBLOK_AIR",
+    manufacturer_ref="ZPUE_WLOSZCZOWA",
+    family_name="Rotoblok Air",
+    series_name="Rotoblok Air",
+    product_line_code="ROTOBLOK_AIR",
+    voltage_levels=[24.0],
+    rated_current_options=[630],
+    short_time_current_options=[16],  # kA / 1 s wg karty
+    insulation_type="air",
+    construction_type="wnetrzowa",
+    busbar_system="single",
+    compartment_models=["busbar_compartment", "cable_compartment"],
+    allowed_bay_kinds=[
+        "liniowe_doplywowe",
+        "liniowe_odplywowe",
+        "transformatorowe",
+        "pomiarowe",
+        "sprzeglowe_poprzeczne",
+        "odgromnikowe",
+        "potrzeb_wlasnych",
+    ],
+    allowed_apparatus_kinds=[
+        "circuit_breaker",
+        "switch_disconnector",
+        "earthing_switch",
+        "fuse_set",
+        "current_transformer",
+        "voltage_transformer",
+        "surge_arrester",
+        "cable_head",
+    ],
+    allowed_interlocks=["earthing_only_when_open"],
+    supported_lod_profiles=["LOD0", "LOD1", "LOD2", "LOD3"],
+    cad_footprint_ref=None,
+    source_document_refs=["https://zpue.pl/rozdzielnice-sn/rotoblok-air"],
+    source_version="public-product-page-2026-08-14",
+    verified_at=None,
+    lifecycle_status="current",
+    status="repo_verified",
+    source_refs=["https://zpue.pl/rozdzielnice-sn/rotoblok-air"],
+    notes_pl=(
+        "Rotoblok Air — rozdzielnica wnętrzowa SN ZPUE bez SF6, konektory w "
+        "izolacji suchym powietrzem, dwuprzedziałowa (przedział szyn + "
+        "przedział kablowy), pojedynczy system szyn. Karta (odczyt "
+        "2026-08-14): napięcie znamionowe 24 kV (najwyższe napięcie urządzenia "
+        "25 kV), prąd znamionowy szyn 630 A, prąd zwarciowy do 16 kA (1 s), "
+        "prąd szczytowy do 50 kA, IAC 16 kA (1 s), napięcie udarowe 125/145 kV, "
+        "IP3X. Status repo_verified."
+    ),
+)
+
+# =============================================================================
+# ZPUE Włoszczowa — Rotoblok VCB (AIS, aparat trójfunkcyjny TGI)
+# =============================================================================
+
+ZPUE_WLOSZCZOWA__ROTOBLOK_VCB = SwitchgearFamily(
+    switchgear_family_ref="ZPUE_WLOSZCZOWA__ROTOBLOK_VCB",
+    manufacturer_ref="ZPUE_WLOSZCZOWA",
+    family_name="Rotoblok VCB",
+    series_name="Rotoblok VCB",
+    product_line_code="ROTOBLOK_VCB",
+    voltage_levels=[20.0],
+    rated_current_options=[630],
+    short_time_current_options=[16, 20],  # 16 kA / 3 s, 20 kA / 1 s wg karty
+    insulation_type="air",
+    construction_type="wnetrzowa",
+    busbar_system="single",
+    compartment_models=["busbar_compartment", "cable_compartment"],
+    allowed_bay_kinds=[
+        "liniowe_doplywowe",
+        "liniowe_odplywowe",
+        "transformatorowe",
+        "pomiarowe",
+        "sprzeglowe_poprzeczne",
+        "odgromnikowe",
+        "potrzeb_wlasnych",
+    ],
+    allowed_apparatus_kinds=[
+        "circuit_breaker",
+        "switch_disconnector",
+        "earthing_switch",
+        "fuse_set",
+        "current_transformer",
+        "voltage_transformer",
+        "surge_arrester",
+        "cable_head",
+    ],
+    allowed_interlocks=["earthing_only_when_open"],
+    supported_lod_profiles=["LOD0", "LOD1", "LOD2", "LOD3"],
+    cad_footprint_ref=None,
+    source_document_refs=["https://zpue.pl/rozdzielnice-sn/rotoblok-vcb"],
+    source_version="public-product-page-2026-08-14",
+    verified_at=None,
+    lifecycle_status="current",
+    status="repo_verified",
+    source_refs=["https://zpue.pl/rozdzielnice-sn/rotoblok-vcb"],
+    notes_pl=(
+        "Rotoblok VCB — rozdzielnica wnętrzowa SN ZPUE, dwuprzedziałowa, "
+        "pojedynczy system szyn, aparat trójfunkcyjny TGI (wyłącznik + "
+        "odłącznik + uziemnik w jednym), wykonanie stacjonarne (nie wysuwne). "
+        "Karta (odczyt 2026-08-14): napięcie znamionowe 20 kV (najwyższe "
+        "napięcie urządzenia 25 kV), prąd znamionowy szyn 630 A, prąd "
+        "zwarciowy do 16 kA (3 s) / do 20 kA (1 s), prąd szczytowy do 50 kA, "
+        "IAC AFLR do 16 kA (1 s). Status repo_verified."
+    ),
+)
+
+# =============================================================================
+# ZPUE Włoszczowa — RELF (rozdzielnica dwuczłonowa rozdziału pierwotnego)
+# =============================================================================
+
+ZPUE_WLOSZCZOWA__RELF = SwitchgearFamily(
+    switchgear_family_ref="ZPUE_WLOSZCZOWA__RELF",
+    manufacturer_ref="ZPUE_WLOSZCZOWA",
+    family_name="RELF",
+    series_name="RELF",
+    product_line_code="RELF",
+    voltage_levels=[12.0, 17.5, 24.0, 36.0],
+    rated_current_options=[630, 1250, 1600, 2000, 2500, 4000],
+    short_time_current_options=[31, 40],  # 31,5 kA / 3 s; 40 kA / 3 s w wariancie 12 kV
+    insulation_type="air",
+    construction_type="dwuczlonowa",
+    busbar_system="single",
+    compartment_models=[
+        "busbar_compartment",
+        "cable_compartment",
+        "apparatus_compartment",
+        "lv_control_compartment",
+    ],
+    allowed_bay_kinds=[
+        "liniowe_doplywowe",
+        "liniowe_odplywowe",
+        "transformatorowe",
+        "pomiarowe",
+        "sprzeglowe_poprzeczne",
+        "sprzeglowe_podluzne",
+        "sekcyjne",
+        "odgromnikowe",
+        "potrzeb_wlasnych",
+    ],
+    allowed_apparatus_kinds=[
+        "circuit_breaker",
+        "switch_disconnector",
+        "earthing_switch",
+        "fuse_set",
+        "current_transformer",
+        "voltage_transformer",
+        "surge_arrester",
+        "cable_head",
+    ],
+    allowed_interlocks=[
+        "earthing_only_when_open",
+        "racking_only_when_open",
+    ],
+    supported_lod_profiles=["LOD0", "LOD1", "LOD2", "LOD3", "LOD4"],
+    cad_footprint_ref=None,
+    source_document_refs=["https://zpue.pl/rozdzielnice-sn/relf"],
+    source_version="public-product-page-2026-08-14",
+    verified_at=None,
+    lifecycle_status="current",
+    status="repo_verified",
+    source_refs=["https://zpue.pl/rozdzielnice-sn/relf"],
+    notes_pl=(
+        "RELF — rozdzielnica SN ZPUE rozdziału pierwotnego, dwuczłonowa "
+        "(człon wysuwny), izolacja powietrzna, IP4X, klasa łuku IAC AFLR, "
+        "LSC2B (LSC2 dla 36 kV). Karta (odczyt 2026-08-14): napięcia do 36 kV, "
+        "prądy szyn do 4000 A, prąd zwarciowy 31,5 kA / 3 s, w wariancie 12 kV "
+        "do 40 kA / 3 s. Normy PN-EN 62271-1, PN-EN 62271-200. Status "
+        "repo_verified."
+    ),
+)
+
+# =============================================================================
+# ZPUE Włoszczowa — RELF 2S (dwa systemy szyn zbiorczych)
+# =============================================================================
+
+ZPUE_WLOSZCZOWA__RELF_2S = SwitchgearFamily(
+    switchgear_family_ref="ZPUE_WLOSZCZOWA__RELF_2S",
+    manufacturer_ref="ZPUE_WLOSZCZOWA",
+    family_name="RELF 2S",
+    series_name="RELF 2S",
+    product_line_code="RELF_2S",
+    voltage_levels=[12.0],
+    rated_current_options=[630, 1250, 1600, 2000, 2500],
+    short_time_current_options=[31],  # 31,5 kA / 3 s
+    insulation_type="air",
+    construction_type="dwuczlonowa",
+    busbar_system="double",
+    compartment_models=[
+        "busbar_compartment",
+        "cable_compartment",
+        "apparatus_compartment",
+        "lv_control_compartment",
+    ],
+    allowed_bay_kinds=[
+        "liniowe_doplywowe",
+        "liniowe_odplywowe",
+        "transformatorowe",
+        "pomiarowe",
+        "sprzeglowe_poprzeczne",
+        "sprzeglowe_podluzne",
+        "sekcyjne",
+        "potrzeb_wlasnych",
+    ],
+    allowed_apparatus_kinds=[
+        "circuit_breaker",
+        "switch_disconnector",
+        "earthing_switch",
+        "fuse_set",
+        "current_transformer",
+        "voltage_transformer",
+        "surge_arrester",
+        "cable_head",
+    ],
+    allowed_interlocks=[
+        "earthing_only_when_open",
+        "racking_only_when_open",
+    ],
+    supported_lod_profiles=["LOD0", "LOD1", "LOD2", "LOD3", "LOD4"],
+    cad_footprint_ref=None,
+    source_document_refs=["https://zpue.pl/rozdzielnice-sn/relf-2s"],
+    source_version="public-product-page-2026-08-14",
+    verified_at=None,
+    lifecycle_status="current",
+    status="repo_verified",
+    source_refs=["https://zpue.pl/rozdzielnice-sn/relf-2s"],
+    notes_pl=(
+        "RELF 2S — rozdzielnica SN ZPUE dwusystemowa (dwa systemy szyn "
+        "zbiorczych), dwuczłonowa, izolacja powietrzna, IP4X. Człon wysuwny: "
+        "wyłącznik, stycznik, rozłącznik, zespół przekładników albo blok "
+        "bezpiecznikowy. Karta (odczyt 2026-08-14): napięcie 12 kV, prądy szyn "
+        "630-2500 A, prąd zwarciowy 31,5 kA / 3 s, prąd szczytowy 80 kA, "
+        "IAC AFLR 31,5 kA / 1 s. Norma PN-EN 62271-200. Status repo_verified."
+    ),
+)
+
+# =============================================================================
+# ZPUE Włoszczowa — RXD (dwuczłonowa, izolacja POWIETRZNA)
+# =============================================================================
+
+ZPUE_WLOSZCZOWA__RXD = SwitchgearFamily(
+    switchgear_family_ref="ZPUE_WLOSZCZOWA__RXD",
+    manufacturer_ref="ZPUE_WLOSZCZOWA",
+    family_name="RXD",
+    series_name="RXD",
+    product_line_code="RXD",
+    voltage_levels=[12.0, 36.0],
+    rated_current_options=[630, 1250],
+    short_time_current_options=[25],  # kA / 3 s
+    # KOREKTA klasyfikacji (weryfikacja karty 2026-08-14): RXD jest
+    # rozdzielnicą dwuczłonową w izolacji POWIETRZNEJ (metal-enclosed), a nie
+    # gazową — wcześniejsza klasyfikacja GIS była błędna.
+    insulation_type="air",
+    construction_type="dwuczlonowa",
+    busbar_system="single",
+    compartment_models=[
+        "busbar_compartment",
+        "cable_compartment",
+        "apparatus_compartment",
+    ],
+    allowed_bay_kinds=[
+        "liniowe_doplywowe",
+        "liniowe_odplywowe",
+        "transformatorowe",
+        "pomiarowe",
+        "sprzeglowe_poprzeczne",
+        "potrzeb_wlasnych",
+    ],
+    allowed_apparatus_kinds=[
+        "circuit_breaker",
+        "switch_disconnector",
+        "earthing_switch",
+        "fuse_set",
+        "current_transformer",
+        "voltage_transformer",
+        "surge_arrester",
+        "cable_head",
+    ],
+    allowed_interlocks=[
+        "earthing_only_when_open",
+        "racking_only_when_open",
+    ],
+    supported_lod_profiles=["LOD0", "LOD1", "LOD2", "LOD3"],
+    cad_footprint_ref=None,
+    source_document_refs=[
+        "https://www.elektro.info.pl/produkt/rozdzielnice-sn/109592",
+        "https://zpue.pl/rozdzielnice-sn",
+    ],
+    source_version="public-product-card-2026-08-14",
+    verified_at=None,
+    lifecycle_status="current",
+    status="repo_verified",
+    source_refs=["https://www.elektro.info.pl/produkt/rozdzielnice-sn/109592"],
+    notes_pl=(
+        "RXD — rozdzielnica SN ZPUE dwuczłonowa w izolacji POWIETRZNEJ "
+        "(metal-enclosed), jeden system szyn, manipulacja członem przez "
+        "zamknięte drzwi. Karta (odczyt 2026-08-14): napięcia 12/36 kV, prądy "
+        "szyn 630/1250 A, prąd zwarciowy 25 kA / 3 s, prąd szczytowy 63 kA, "
+        "IAC AFLR 25 kA / 1 s (wariant 12 kV) oraz 20 kA / 1 s (wariant "
+        "36 kV). Normy PN-EN 62271-1, PN-EN 62271-200. Status repo_verified."
+    ),
+)
+
+# =============================================================================
+# ABB — SafePlus (RMU rozszerzalne)
+# =============================================================================
+
+ABB__SAFEPLUS = SwitchgearFamily(
+    switchgear_family_ref="ABB__SAFEPLUS",
+    manufacturer_ref="ABB",
+    family_name="SafePlus",
+    series_name="SafePlus",
+    product_line_code="SAFEPLUS",
+    voltage_levels=[12.0, 24.0],
+    rated_current_options=[630, 1250],
+    short_time_current_options=[20, 25],  # 25 kA / 1 s, 20 kA / 3 s
+    insulation_type="sf6",
+    construction_type="RMU",
+    busbar_system="ring_main",
+    compartment_models=["cable_compartment"],
+    allowed_bay_kinds=[
+        "liniowe_doplywowe",
+        "liniowe_odplywowe",
+        "transformatorowe",
+        "sprzeglowe_poprzeczne",
+    ],
+    allowed_apparatus_kinds=[
+        "switch_disconnector",
+        "circuit_breaker",
+        "earthing_switch",
+        "fuse_set",
+        "voltage_indicator",
+        "cable_head",
+    ],
+    allowed_interlocks=["earthing_only_when_open"],
+    supported_lod_profiles=["LOD0", "LOD1", "LOD2", "LOD3"],
+    cad_footprint_ref=None,
+    source_document_refs=[
+        "https://www.abb.com/global/en/areas/electrification/medium-voltage/switchgear/gas-insulated/safering-safeplus",
+        "https://library.e.abb.com/public/7b100e1800ed475b83e5e60be8ff4e1b/1VDD006001%20GB%20SafePlus%20Flyer%2005.2018.pdf",
+    ],
+    source_version="public-product-page-2026-08-14",
+    verified_at=None,
+    lifecycle_status="current",
+    status="repo_verified",
+    source_refs=[
+        "https://www.abb.com/global/en/areas/electrification/medium-voltage/switchgear/gas-insulated/safering-safeplus"
+    ],
+    notes_pl=(
+        "SafePlus — kompaktowa rozdzielnica ABB dystrybucji wtórnej w izolacji "
+        "SF6 (sealed-for-life), ROZSZERZALNA: łączy konfiguracje w pełni "
+        "modułowe i półmodułowe, czym różni się od bloków SafeRing. Materiały "
+        "producenta (odczyt 2026-08-14): 12-24 kV, 630/1250 A, prąd zwarciowy "
+        "25 kA / 1 s oraz 20 kA / 3 s. Status repo_verified — dane z publicznej "
+        "strony produktowej i ulotki, NIE official_catalog."
+    ),
+)
+
+# =============================================================================
+# ABB — UniSec (AIS dystrybucji wtórnej) — WYMAGA KARTY KATALOGOWEJ
+# =============================================================================
+
+ABB__UNISEC = SwitchgearFamily(
+    switchgear_family_ref="ABB__UNISEC",
+    manufacturer_ref="ABB",
+    family_name="UniSec",
+    series_name="UniSec",
+    product_line_code="UNISEC",
+    # ZERO FABRYKACJI: publiczna strona portfolio podaje wyłącznie klasę
+    # napięciową rodziny („do 24 kV"). Prądy znamionowe i zwarciowe całego
+    # portfela NIE są tam podane (podane są tylko dla wariantu UniSec Air:
+    # 630 A, 20 kA) — dlatego listy zostają PUSTE, a rodzina ma status
+    # `requires_catalog` i NIE wchodzi do ofert konfiguratora do czasu
+    # podpięcia oficjalnej karty katalogowej ABB.
+    voltage_levels=[24.0],
+    rated_current_options=[],
+    short_time_current_options=[],
+    insulation_type="air",
+    construction_type="wnetrzowa",
+    busbar_system="single",
+    compartment_models=["busbar_compartment", "cable_compartment"],
+    allowed_bay_kinds=[
+        "liniowe_doplywowe",
+        "liniowe_odplywowe",
+        "transformatorowe",
+        "pomiarowe",
+        "sprzeglowe_poprzeczne",
+    ],
+    allowed_apparatus_kinds=[
+        "circuit_breaker",
+        "switch_disconnector",
+        "earthing_switch",
+        "fuse_set",
+        "current_transformer",
+        "voltage_transformer",
+        "cable_head",
+    ],
+    allowed_interlocks=["earthing_only_when_open"],
+    supported_lod_profiles=["LOD0", "LOD1", "LOD2", "LOD3"],
+    cad_footprint_ref=None,
+    source_document_refs=[
+        "https://new.abb.com/medium-voltage/switchgear/air-insulated/iec-and-other-standards/iec-indoor-secondary-distribution-ais-unisec"
+    ],
+    source_version="public-product-page-2026-08-14",
+    verified_at=None,
+    lifecycle_status="current",
+    status="requires_catalog",
+    source_refs=[
+        "https://new.abb.com/medium-voltage/switchgear/air-insulated/iec-and-other-standards/iec-indoor-secondary-distribution-ais-unisec"
+    ],
+    notes_pl=(
+        "UniSec — rozdzielnica wnętrzowa ABB w izolacji powietrznej dla "
+        "dystrybucji wtórnej, szerokie portfolio jednostek funkcjonalnych; "
+        "wariant UniSec Air jest bez SF6 (aparat GSec Air, suche powietrze). "
+        "Strona produktowa (odczyt 2026-08-14) deklaruje klasę do 24 kV, a "
+        "parametry prądowe i zwarciowe podaje wyłącznie dla wariantu UniSec "
+        "Air (630 A, 20 kA). Status requires_catalog — rodzina NIE jest "
+        "oferowana w konfiguratorze do czasu podpięcia oficjalnej karty "
+        "katalogowej z kompletem klas prądowych i zwarciowych; brak danych "
+        "jest zadeklarowany wprost (puste listy), nigdy zgadywany."
+    ),
+)
+
+# =============================================================================
+# Schneider Electric — RM6 (RMU w izolacji SF6)
+# =============================================================================
+
+SCHNEIDER__RM6 = SwitchgearFamily(
+    switchgear_family_ref="SCHNEIDER__RM6",
+    manufacturer_ref="SCHNEIDER_ELECTRIC",
+    family_name="RM6",
+    series_name="RM6",
+    product_line_code="RM6",
+    voltage_levels=[24.0],
+    rated_current_options=[630],
+    short_time_current_options=[20, 21],  # kA / 1 s (IAC AFLR do 20 kA)
+    insulation_type="sf6",
+    construction_type="RMU",
+    busbar_system="ring_main",
+    compartment_models=["cable_compartment"],
+    allowed_bay_kinds=[
+        "liniowe_doplywowe",
+        "liniowe_odplywowe",
+        "transformatorowe",
+    ],
+    allowed_apparatus_kinds=[
+        "switch_disconnector",
+        "circuit_breaker",
+        "earthing_switch",
+        "fuse_set",
+        "voltage_indicator",
+        "cable_head",
+    ],
+    allowed_interlocks=["earthing_only_when_open"],
+    supported_lod_profiles=["LOD0", "LOD1", "LOD2", "LOD3"],
+    cad_footprint_ref=None,
+    source_document_refs=["https://www.se.com/ww/en/product-range/967-rm6/"],
+    source_version="public-product-page-2026-08-14",
+    verified_at=None,
+    lifecycle_status="current",
+    status="repo_verified",
+    source_refs=["https://www.se.com/ww/en/product-range/967-rm6/"],
+    notes_pl=(
+        "RM6 — kompaktowa rozdzielnica pierścieniowa (RMU) Schneider Electric "
+        "w izolacji SF6 dla sieci rozdzielczych SN, sieci otwartego pierścienia "
+        "i promieniowe. Strona produktowa (odczyt 2026-08-14): do 24 kV, 630 A, "
+        "prąd zwarciowy do 21 kA, odporność na łuk wewnętrzny do 20 kA AFLR. "
+        "Status repo_verified — dane z publicznej strony produktowej, NIE "
+        "official_catalog."
+    ),
+)
+
+# =============================================================================
+# Schneider Electric — RM AirSeT (RMU bez SF6)
+# =============================================================================
+
+SCHNEIDER__RM_AIRSET = SwitchgearFamily(
+    switchgear_family_ref="SCHNEIDER__RM_AIRSET",
+    manufacturer_ref="SCHNEIDER_ELECTRIC",
+    family_name="RM AirSeT",
+    series_name="RM AirSeT",
+    product_line_code="RM_AIRSET",
+    voltage_levels=[24.0],
+    rated_current_options=[630],
+    short_time_current_options=[20],  # 20 kA / 1 s (także warianty 20 kA / 3 s)
+    insulation_type="mixed",  # czyste powietrze + aparatura próżniowa
+    construction_type="RMU",
+    busbar_system="ring_main",
+    compartment_models=["cable_compartment"],
+    allowed_bay_kinds=[
+        "liniowe_doplywowe",
+        "liniowe_odplywowe",
+        "transformatorowe",
+    ],
+    allowed_apparatus_kinds=[
+        "switch_disconnector",
+        "circuit_breaker",
+        "earthing_switch",
+        "fuse_set",
+        "voltage_indicator",
+        "cable_head",
+    ],
+    allowed_interlocks=["earthing_only_when_open"],
+    supported_lod_profiles=["LOD0", "LOD1", "LOD2", "LOD3"],
+    cad_footprint_ref=None,
+    source_document_refs=["https://www.se.com/ww/en/product-range/21830554-rm-airset/"],
+    source_version="public-product-page-2026-08-14",
+    verified_at=None,
+    lifecycle_status="current",
+    status="repo_verified",
+    source_refs=["https://www.se.com/ww/en/product-range/21830554-rm-airset/"],
+    notes_pl=(
+        "RM AirSeT — rozdzielnica pierścieniowa (RMU) Schneider Electric bez "
+        "SF6: izolacja czystym powietrzem + technika próżniowa, odpowiednik "
+        "funkcjonalny RM6. Karty produktowe (odczyt 2026-08-14): 24 kV, 630 A, "
+        "20 kA / 1 s (warianty również 20 kA / 3 s), jednostki funkcjonalne "
+        "I (rozłącznik), B/Q (rozłącznik z bezpiecznikami), konfiguracje 3- i "
+        "4-funkcyjne. Status repo_verified — dane z publicznych stron "
+        "produktowych, NIE official_catalog."
+    ),
+)
+
+# =============================================================================
 # Registry
 # =============================================================================
 
 _FAMILIES: tuple[SwitchgearFamily, ...] = (
     ZPUE_WLOSZCZOWA__ROTOBLOK,
+    ZPUE_WLOSZCZOWA__ROTOBLOK_AIR,
+    ZPUE_WLOSZCZOWA__ROTOBLOK_VCB,
+    ZPUE_WLOSZCZOWA__RELF,
+    ZPUE_WLOSZCZOWA__RELF_2S,
+    ZPUE_WLOSZCZOWA__RXD,
+    ZPUE_WLOSZCZOWA__TPM,
+    ZPUE_WLOSZCZOWA__TPM_AIR,
     ELEKTROMETAL__E2ALPHA,
     ABB__UNIGEAR_ZS1,
     ABB__SAFERING,
+    ABB__SAFEPLUS,
+    ABB__UNISEC,
     SIEMENS__NXAIR,
     SIEMENS__8DJH,
     SCHNEIDER__SM6_24,
+    SCHNEIDER__RM6,
+    SCHNEIDER__RM_AIRSET,
 )
 
 SWITCHGEAR_FAMILY_REGISTRY: dict[str, SwitchgearFamily] = {
@@ -491,6 +1154,24 @@ def list_families_for_manufacturer(manufacturer_ref: str) -> list[SwitchgearFami
         (f for f in SWITCHGEAR_FAMILY_REGISTRY.values() if f.manufacturer_ref == manufacturer_ref),
         key=lambda f: f.switchgear_family_ref,
     )
+
+
+#: Statusy rodziny, przy których katalog uznaje dane za potwierdzone źródłem
+#: i pozwala BUDOWAĆ na rodzinie konfigurację (polityka
+#: `SLD_MV_BAY_TEMPLATE_SOURCE_POLICY.md`). `requires_catalog` i `deprecated`
+#: są poza tym zbiorem — rodzina istnieje w katalogu (nie niszczymy wiedzy o
+#: realnym portfolio producenta), ale konfigurator jej NIE oferuje.
+POTWIERDZONE_STATUSY_RODZINY: frozenset[str] = frozenset({"verified", "repo_verified"})
+
+
+def list_offered_switchgear_families() -> list[SwitchgearFamily]:
+    """Rodziny oferowane w konfiguratorze — z potwierdzonymi danymi źródłowymi.
+
+    JEDNO źródło prawdy dla pytania „czy na tej rodzinie wolno budować":
+    używa go zarówno walidator zgodności, jak i ścieżka szablonów pól, żeby
+    rodzina bez karty katalogowej nie mogła wejść do oferty bocznymi drzwiami.
+    """
+    return [f for f in list_switchgear_families() if f.status in POTWIERDZONE_STATUSY_RODZINY]
 
 
 def get_switchgear_family(switchgear_family_ref: str) -> SwitchgearFamily:

@@ -18,6 +18,8 @@ export type SymbolId =
   | 'loadBreakSwitch'  // rozłącznik (łącznik obciążeniowy, spec §12.5 — recenzja NO-GO pkt 5)
   | 'earthSwitch'      // uziemnik (ES)
   | 'fuseSwitch'       // rozłącznik z bezpiecznikiem
+  | 'fuse'             // bezpiecznik SAM (bez łącznika) — kind `FUSE` szablonu pola
+  | 'voltageIndicator' // wskaźnik obecności napięcia (VPIS) — sygnalizacja pola
   | 'transformer2W'    // transformator dwuuzwojeniowy
   | 'cableHead'        // głowica kablowa
   | 'jointSleeve'      // mufa kablowa
@@ -121,6 +123,25 @@ export const SYMBOL_DEFS: Readonly<Record<SymbolId, SymbolDef>> = {
     { name: 'top', x: 8, y: 0, dir: 'N' },
     { name: 'bottom', x: 8, y: 32, dir: 'S' },
   ], 'Rozłącznik z bezpiecznikiem'),
+  // SLD-GEN-POLA: BEZPIECZNIK SAM — pozycja `FUSE` kompozycji aparatów pola
+  // (`BayDeviceTemplate.kind`, np. pole potrzeb własnych: DS_BUS + FUSE + ES).
+  // Biblioteka miała dotąd wyłącznie `fuseSwitch` (rozłącznik Z bezpiecznikiem),
+  // więc generator pola musiałby albo pominąć aparat obecny w kompozycji, albo
+  // dorysować łącznik, którego w niej nie ma — oba zakazane. Gabaryt 16×24
+  // (3×GRID): korpus bezpiecznika krótszy niż zestaw rozłącznik+wkładka (32),
+  // dłuższy niż wyłącznik (16) — sylwetka rozróżnialna bez czytania etykiety.
+  fuse: def('fuse', 16, 24, [
+    { name: 'top', x: 8, y: 0, dir: 'N' },
+    { name: 'bottom', x: 8, y: 24, dir: 'S' },
+  ], 'Bezpiecznik'),
+  // SLD-GEN-POLA: WSKAŹNIK OBECNOŚCI NAPIĘCIA (VPIS) — `apparatus_kind`
+  // `voltage_indicator` kompozycji producenta (`BayDeviceInstanceTemplate`),
+  // wymieniony w kanonie konfiguratora (`KONFIGURATOR_ROZDZIELNIC_SN_RMU.md` §3
+  // „+ VPIS jako sygnalizacja"). To SYGNALIZACJA, nie aparat toru mocy: jeden
+  // port (N) — wisi na odgałęzieniu bocznym, tak jak przekładnik napięciowy.
+  voltageIndicator: def('voltageIndicator', 16, 16, [
+    { name: 'top', x: 8, y: 0, dir: 'N' },
+  ], 'Wskaźnik obecności napięcia (VPIS)'),
   transformer2W: def('transformer2W', 32, 40, [
     { name: 'hv', x: 16, y: 0, dir: 'N' },
     { name: 'lv', x: 16, y: 40, dir: 'S' },

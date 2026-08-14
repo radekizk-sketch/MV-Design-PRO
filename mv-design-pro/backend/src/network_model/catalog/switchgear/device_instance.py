@@ -9,6 +9,23 @@ Reguła architektoniczna: aparaty kanoniczne mają stałe oznaczenia
 bezpiecznik=pionowy, CT/VT, transformator). Producent może mieć swoje
 warianty tych symboli (np. ZPUE Rotoblok ma uziemnik z innym anchorem niż
 ABB UniGear) — wtedy `symbol_ref` wskazuje konkretny katalog wizualny.
+
+STATUS WYPOSAŻENIA — JEDEN predykat, nie para (scalenie kanonu 2026-08-14).
+Do tej pory aparat niósł DWIE niezależne flagi `is_required` / `is_optional`,
+które dopuszczały stan sprzeczny (obie prawdziwe) i stan nieokreślony (obie
+fałszywe — w dodatku domyślny). To jest dokładnie defekt „predykaty parami"
+z reguły KLASA, NIE INSTANCJA: dwa warunki, które „dziś się zgadzają", czekają
+na dane brzegowe. Zastąpiła je JEDNA wartość `status_wyposazenia`:
+
+* `FABRYCZNY` — aparat wchodzi w skład katalogowego pola rodziny,
+* `OPCJA` — aparat jest dopuszczalnym doposażeniem tego pola,
+* wszystko, czego NIE MA na liście aparatów pola, jest NIEDOPUSZCZALNE
+  (status niedopuszczalności nie jest wartością pola, tylko brakiem wpisu —
+  pilnuje go walidator `family_validation.bay_template_supports_apparatus`).
+
+Pole jest WYMAGANE (brak wartości domyślnej): katalog producenta rozstrzyga,
+czy aparat jest fabryczny, czy opcjonalny — zgadywanie któregokolwiek
+domyślnego statusu byłoby fabrykacją danych katalogowych.
 """
 
 from __future__ import annotations
@@ -47,6 +64,8 @@ ElectricalSide = Literal[
     "lv_side",
 ]
 
+StatusWyposazenia = Literal["FABRYCZNY", "OPCJA"]
+
 
 class BayDeviceInstanceTemplate(BaseModel):
     """Aparat w szablonie pola SN producenta.
@@ -65,10 +84,10 @@ class BayDeviceInstanceTemplate(BaseModel):
             `side`, `earth`).
         electrical_side: po której stronie pola się znajduje (szynowa /
             liniowa / transformatorowa / pomiarowa / uziemiająca / nN).
-        is_required: True gdy aparat jest obowiązkowy w polu (np. CB w polu
-            transformatorowym).
-        is_optional: True gdy aparat jest opcjonalny (np. dodatkowy CT
-            pomiarowy).
+        status_wyposazenia: FABRYCZNY (aparat wchodzi w skład katalogowego
+            pola, np. CB w polu transformatorowym) albo OPCJA (dopuszczalne
+            doposażenie, np. ogranicznik przepięć). Aparat spoza listy pola
+            jest NIEDOPUSZCZALNY — patrz nagłówek modułu.
         catalog_ref_required: True gdy operator MUSI wskazać konkretną pozycję
             katalogową (np. CB konkretnego producenta z parametrami).
         protection_dependency: ref do `protection_requirements` w szablonie
@@ -87,8 +106,7 @@ class BayDeviceInstanceTemplate(BaseModel):
     position_in_bay: int = 1
     anchor_refs: list[str] = Field(default_factory=list)
     electrical_side: ElectricalSide = "line_side"
-    is_required: bool = False
-    is_optional: bool = False
+    status_wyposazenia: StatusWyposazenia
     catalog_ref_required: bool = True
     protection_dependency: str | None = None
     measurement_dependency: str | None = None
