@@ -197,7 +197,16 @@ export const OZE_STRINGS = {
     + 'listę krzywych granicznych do wymagań tego operatora.',
   zgodnoscLvrt: 'Krzywa graniczna LVRT (zanik napięcia)',
   zgodnoscHvrt: 'Krzywa graniczna HVRT (przepięcie)',
-  zgodnoscPf: 'Charakterystyka P(f) operatora',
+  // NIE „operatora" (karta K-Q): katalog nastaw P(f) przestał być listą wariantów
+  // przypisanych operatorom, bo rozporządzenie (UE) 2016/631 art. 13 ust. 2 podaje
+  // statyzm jako nastawialny w przedziale 2–12% wspólnie dla wszystkich. Etykieta
+  // obiecująca wybór „operatora" opisywałaby listę, której już nie ma, i rozjeżdżała
+  // się z tą samą wielkością na karcie wytwórcy („Charakterystyka P(f)").
+  zgodnoscPf: 'Charakterystyka P(f)',
+  zgodnoscPfPomoc:
+    'Statyzm i strefa nieczułości odpowiedzi mocowo-częstotliwościowej. Zakres nastawy '
+    + 'wynika z rozporządzenia (UE) 2016/631 art. 13 ust. 2 (2–12%), więc lista NIE zawęża '
+    + 'się profilem operatora — inaczej niż obwiednie LVRT/HVRT.',
   zgodnoscKrzywaPlaceholder: '— wybierz krzywą —',
   zgodnoscKrzywePomoc:
     'Obwiednie graniczne napięcie–czas oraz charakterystyka mocowo-częstotliwościowa '

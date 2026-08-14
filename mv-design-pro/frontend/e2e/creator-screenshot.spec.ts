@@ -114,12 +114,19 @@ test.describe('kreatory:screenshot', () => {
       await shot(3);
 
       // Krok 4 — zgodność przyłączeniowa (K9-A): profile NC RfG/LVRT/HVRT/PF.
+      // NASTAWA P(f) NIE JEST PROFILEM OPERATORA (karta K-Q, oczyszczenie danych
+      // bez proweniencji): pozycja `pf_pse_b` została z katalogu USUNIĘTA, bo
+      // rozporządzenie (UE) 2016/631 art. 13 ust. 2 podaje statyzm jako
+      // nastawialny w przedziale 2–12%, a nie jako wartość „dla PSE". Katalog
+      // niesie dziś warianty statyzmu (`pf_droop_*`) wspólne dla operatorów —
+      // kadr idzie po statyzmie 5%, czyli po tej samej wartości, którą krok 5
+      // wpisuje w polu „statyzm".
       await page.getByTestId('mvd-kreator-oze-dalej').click();
       await expect(page.getByTestId('mvd-kreator-oze-zgodnosc')).toBeVisible();
       await page.getByTestId('mvd-kreator-oze-zgodnosc-profil').selectOption('ncrfg_pse');
       await page.getByTestId('mvd-kreator-oze-zgodnosc-lvrt').selectOption('lvrt_pse_b');
       await page.getByTestId('mvd-kreator-oze-zgodnosc-hvrt').selectOption('hvrt_pse_b');
-      await page.getByTestId('mvd-kreator-oze-zgodnosc-pf').selectOption('pf_pse_b');
+      await page.getByTestId('mvd-kreator-oze-zgodnosc-pf').selectOption('pf_droop_5');
       await shot(4);
 
       // Krok 5 — regulacja mocy biernej i czynnej (wartości rządzące + P(f)/LFSM

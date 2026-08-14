@@ -546,6 +546,50 @@
   color: var(--mvd-muted);
 }
 
+/* TABLICZKA ARKUSZA (nagłówek rysunku): tożsamość pakietu + werdykt walidatora,
+   pod nimi wartości znamionowe rodziny.
+
+   KLASY ISTNIAŁY W KOMPONENCIE BEZ ANI JEDNEJ REGUŁY. Skutek był widoczny na
+   każdym zrzucie kroku pól: nazwa producenta i status sklejały się w jeden ciąg
+   („ZPUE WłoszczowaWalidator sprawdza konfigurację…"), a tabliczka znamionowa
+   spływała jako lista jednokolumnowa, w której etykieta i wartość stały w
+   osobnych wierszach. Konwencja jest TA SAMA, co w nagłówku rodziny w kroku pól
+   (`.mvd-kreator-naglowek-rodziny`) — te same dane nie mogą mieć na jednym
+   ekranie dwóch różnych układów. */
+.mvd-podglad-naglowek {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.mvd-podglad-naglowek-tytul {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  font-size: 12.5px;
+  color: var(--mvd-ink);
+}
+.mvd-podglad-naglowek-status { font-size: 11.5px; }
+.mvd-podglad-naglowek-dane {
+  margin: 0;
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 2px 12px;
+  font-size: 12px;
+  color: var(--mvd-ink);
+}
+/* Wiersz pozycji istnieje w DOM po to, by dt i dd trzymały się razem; w siatce
+   ma zniknąć, żeby obie kolumny wyrównały się przez CAŁĄ tabliczkę. */
+.mvd-podglad-naglowek-pozycja { display: contents; }
+.mvd-podglad-naglowek-dane dt { color: var(--mvd-muted); }
+.mvd-podglad-naglowek-dane dd { margin: 0; font-variant-numeric: tabular-nums; }
+.mvd-podglad-naglowek-komunikat {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--mvd-err);
+}
+
 /* KONFIGURATOR-POL-RMU (etap S3): nagłówek wybranej rodziny rozdzielnicy i
    karta wyposażenia katalogowego pola. Nagłówek czyta pakiet katalogowy, więc
    jawny brak danej ma WYGLĄDAĆ na brak, a nie na wartość. */

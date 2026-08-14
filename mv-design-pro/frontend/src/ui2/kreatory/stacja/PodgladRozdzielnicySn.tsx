@@ -182,11 +182,22 @@ export function PodgladRozdzielnicySn({
   return (
     <div className="mvd-podglad-rozdzielnica" data-testid={testid}>
       <NaglowekPakietu naglowek={rysunek.naglowek} />
+      {/* SKALA ARKUSZA: rysunek WOLNO zmniejszyć do szerokości panelu, ale nie
+          wolno go POWIĘKSZAĆ ponad rozmiar własny. Bez tego ograniczenia wąski
+          rysunek rozciągał się na całą szerokość panelu razem z wysokością:
+          rozdzielnica BEZ PÓL (rodzina RMU przed wskazaniem bloku) dawała ~130 px
+          rysunku rozdmuchane do ~850 px pustego pola pod nagłówkiem. Arkusz
+          rysunkowy nie zmienia skali dlatego, że ktoś poszerzył okno. */}
       <svg
         viewBox={`0 0 ${szerokosc} ${wysokosc}`}
         role="img"
         aria-label={T.podgladTytul}
-        style={{ width: '100%', height: 'auto', color: 'var(--mvd-ink)' }}
+        style={{
+          width: '100%',
+          maxWidth: `${szerokosc}px`,
+          height: 'auto',
+          color: 'var(--mvd-ink)',
+        }}
       >
         {/* --- Tabela pól (numer + funkcja), jak w schemacie wykonawczym --- */}
         {kreskiTabeli.map(([x1, y1, x2, y2], i) => (
