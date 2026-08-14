@@ -76,8 +76,8 @@ reprodukcja w `test_krok_07_dobor_zabezpieczen_zerohop_mechanizm_dziala`):
 ŻADNEGO obwodu w ŻADNEJ sieci nN zbudowanej z domyślnego katalogu — nawet
 u źródła (zero-hop, jedyny punkt gdzie Ik1_min jest w ogóle policzalny, patrz
 ZNALEZISKO #1), gdzie Ik″max jest z definicji NAJWYŻSZY w całej sieci nN
-(tu: 8,395 kA). Żadna z 3 rodzin katalogu nie kwalifikuje się na tym poziomie:
-MCB — zdolność wyłączania zaszyta na 6 kA (`_MCB_ICN_KA`) < 8,395 kA; MCCB —
+(tu: ≈31,86 kA). Żadna z 3 rodzin katalogu nie kwalifikuje się na tym
+poziomie: MCB — zdolność wyłączania zaszyta na 6 kA (`_MCB_ICN_KA`) << 31,86 kA; MCCB —
 kryterium I2 NIEROZSTRZYGALNE (brak nastaw wyzwalacza Ir/Isd/Ii, zero
 fabrykacji, `_kryterium_i2`); wkładka gG — kryterium SWZ NIEROZSTRZYGALNE
 (brak bramek I-t wkładki, `i2t_prearc_a2s=None` dla WSZYSTKICH 30 pozycji
@@ -850,6 +850,8 @@ class TestNnFullChain:
         leaf_silnik_graph_id = ref_to_graph_id(_REFS["leaf_silnik_bus"])
         row_max = rows_max[leaf_silnik_graph_id]
         row_min = rows_min[leaf_silnik_graph_id]
+        rgnn_graph_id = ref_to_graph_id(_REFS["rgnn_bus"])
+        row_max_rgnn = rows_max[rgnn_graph_id]
 
         assert row_max["c_factor"] == pytest.approx(
             1.05
@@ -861,6 +863,13 @@ class TestNnFullChain:
             row_max["ikss_a"] > row_min["ikss_a"] > 0.0
         ), f"Oczekiwano Ik''max({row_max['ikss_a']}) > Ik''min({row_min['ikss_a']}) > 0"
         assert row_max["ikss_a"] == row_max["ib_a"] == row_max["ik_total_a"]
+        # RGnN (szyna nN transformatora, zero-hop) jest NAJBLIŻEJ źródła w
+        # całej sieci nN → z definicji ma NAJWYŻSZY Ik''max (najmniejsza
+        # impedancja od źródła). Sanity potwierdzająca fizykę promieniowej
+        # sieci (impedancja rośnie z odległością → prąd zwarciowy maleje).
+        assert (
+            row_max_rgnn["ikss_a"] > row_max["ikss_a"]
+        ), "Ik''max u RGnN (zero-hop) musi być > Ik''max na liściu Silnik M1 (dalej od źródła)"
 
         # Sanity: MAX/MIN na WSZYSTKICH szynach — Ik''max >= Ik''min wszędzie.
         for node_id, r_max in rows_max.items():
@@ -873,6 +882,11 @@ class TestNnFullChain:
         _STAN["sc_min_run"] = sc_min
         _STAN["ikss_a_leaf_silnik_before"] = row_max["ikss_a"]
         _STAN["ik_max_ka_leaf_silnik"] = row_max["ikss_a"] / 1000.0
+        # Ik''max W PUNKCIE ZABUDOWY aparatu (RGnN, zero-hop) — zgodnie z
+        # kontraktem `wybierz_aparat_dla_obwodu_nn` ("Ik″max pochodzi z biegu
+        # zwarciowego IEC 60909 W PUNKCIE ZABUDOWY"), NIE wartość z liścia
+        # Silnik M1 (dalej od źródła, więc niższa — patrz sanity wyżej).
+        _STAN["ik_max_ka_rgnn"] = row_max_rgnn["ikss_a"] / 1000.0
 
     # -- KROK 5: pętla zwarcia + SWZ ---------------------------------------
 
@@ -993,10 +1007,11 @@ class TestNnFullChain:
 
         CZWARTE ZNALEZISKO BRAMKI (dokumentowane, NIE naprawiane tu):
         u szyny nN transformatora Ik″max jest z definicji NAJWYŻSZY w całej
-        sieci nN (najbliżej źródła) — tu Ik″max=8,395 kA. ŻADNA z 3 rodzin
-        katalogu nie daje pełnej kwalifikacji na TYM konkretnym poziomie:
-        MCB (zdolność wyłączania 6 kA, `_MCB_ICN_KA`) < 8,395 kA — realnie za
-        mało dla obwodu tak blisko transformatora; MCCB — kryterium I2
+        sieci nN (najbliżej źródła, najmniejsza impedancja) — tu
+        Ik″max≈31,86 kA. ŻADNA z 3 rodzin katalogu nie daje pełnej
+        kwalifikacji na TYM konkretnym poziomie: MCB (zdolność wyłączania
+        6 kA, `_MCB_ICN_KA`) << 31,86 kA — realnie za mało dla obwodu tak
+        blisko transformatora; MCCB — kryterium I2
         NIEROZSTRZYGALNE (brak nastaw wyzwalacza Ir/Isd/Ii, zero fabrykacji,
         `_kryterium_i2`); wkładka gG — kryterium SWZ NIEROZSTRZYGALNE (brak
         bramek I-t wkładki, G-D2, `i2t_prearc_a2s=None` dla WSZYSTKICH 30
@@ -1014,7 +1029,7 @@ class TestNnFullChain:
             bus_ref=_REFS["rgnn_bus"],
             ib_a=40.0,
             iz_prime_a=_STAN["iz_prime_a_k2"],
-            ik_max_ka=_STAN["ik_max_ka_leaf_silnik"],
+            ik_max_ka=_STAN["ik_max_ka_rgnn"],
         )
         assert wynik["status"] == "OK", wynik
         dobor = wynik["dobor"]
@@ -1259,7 +1274,7 @@ class TestNnFullChain:
             "temperatura_c": 20.0,
             "liczba_obwodow": 1,
             "rezystywnosc_gruntu_km_w": 1.0,
-            "ik_max_ka": _STAN["ik_max_ka_leaf_silnik"],
+            "ik_max_ka": _STAN["ik_max_ka_rgnn"],
             "vdrop_u_source_kv": _STAN["u_source_kv_silnik"],
             "vdrop_delta_u_total_kv": _STAN["delta_u_total_kv_silnik"],
         }
@@ -1321,7 +1336,7 @@ class TestNnFullChain:
                 "przypadek_decydujacy": "TR",
                 "ib_a": 40.0,
                 "iz_prime_a": _STAN["iz_prime_a_k2"],
-                "ik_max_ka": _STAN["ik_max_ka_leaf_silnik"],
+                "ik_max_ka": _STAN["ik_max_ka_rgnn"],
                 "vdrop_u_source_kv": _STAN["u_source_kv_silnik"],
                 "vdrop_delta_u_total_kv": _STAN["delta_u_total_kv_silnik"],
             },
