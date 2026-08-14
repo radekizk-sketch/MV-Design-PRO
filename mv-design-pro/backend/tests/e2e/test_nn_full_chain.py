@@ -48,6 +48,32 @@ czytelnika, NIE jako aktualny opis testów poniżej. Karta NAPRAWA-A:
       Silnik M1/Odbiór K3 pojawiają się DOKŁADNIE RAZ (KROK 0) — to jest
       DOWÓD naprawy NAPRAWA-B, nie tylko deklaracja.
 
+KARTA D3 (2026-08-14) — FLIP DRUGI: zabity trwały fantom odbioru ST-03, który
+NAPRAWA-A świadomie zostawiła poza zakresem (patrz stan historyczny niżej,
+TRZECIE ZNALEZISKO BRAMKI). Diagnoza pomiarem krok-po-kroku substratu
+(zrzut `enm.loads`/`substation.meta.nn_field_specs` po KAŻDEJ operacji
+domenowej) wykazała: fantom materializował się natychmiast PO
+`insert_station_on_segment_sn`, na WBUDOWANYM starterze „Odpływ nN 1" — nie
+przez wyścig NAPRAWA-B (ten dowodnie zabity, patrz pkt 4), tylko przez
+`enm.domain_operations._build_nn_field_specs` (wspólny builder
+`insert_station_on_segment_sn`/`append_station_on_endpoint`), który
+FABRYKOWAŁ jeden nieproszony odpływ (`max(1, len(feeders))`) nawet wtedy, gdy
+wołający NIE dotknął `nn_block` w ogóle. Taki wpis, bez własnego odbioru i
+bez znacznika `nn_field_origin` (marker zapisują WYŁĄCZNIE
+`add_nn_outgoing_field`/`_append_nn_source_meta_field`), był dla migracji
+katalogowej NIEODRÓŻNIALNY od prawdziwego legacy odpływu — migracja SŁUSZNIE
+wg WŁASNEGO kryterium materializowała mu odbiór przy KAŻDYM odczycie modelu.
+Naprawa u źródła (`_build_nn_field_specs`): brak klucza
+`outgoing_feeders_nn_count` w `nn_block` daje TERAZ zero odpływów (nie floor
+„co najmniej 1") — jawny count (nawet 1) tworzy tyle odpływów i ZOSTAJE
+legalnym kandydatem migracji (NAPRAWA-B pin, `tests/enm/
+test_catalog_completion_cosphi.py::
+test_sekwencja_kreatora_p01_nie_zostawia_fantomu_a_legacy_dalej_migruje`,
+zielony bez modyfikacji). Realny „Kreator stacji" (`ui2/kreatory/stacja/
+stacjaModel.ts`) ZAWSZE wysyła `outgoing_feeders_nn_count` jawnie — floor nie
+był potrzebny żadnemu realnemu wywołaniu z UI. KROK 0 poniżej asertuje TERAZ
+ZERO fantomów (nie jeden trwały) — dowód pomiarem, nie deklaracja.
+
 ZNALEZISKO BRAMKI #1 — STAN HISTORYCZNY, NAPRAWIONY (patrz wyżej, pkt 1):
 katalog kabli nN (`network_model/catalog/mv_auxiliary_catalog.py`, WSZYSTKIE
 17 pozycji `kab_nn_*`) NIE MIAŁ danych żyły powrotnej PE/PEN
@@ -95,14 +121,17 @@ _pochodzi_z_operacji_domenowej` — pole utworzone operacją domenową jest
 wykluczone z migracyjnej materializacji domyślnego odbioru). KROK 0 poniżej
 buduje substrat BEZ ŻADNEGO usuwania fantomów i asertuje wprost, że Silnik
 M1/Odbiór K3 pojawiają się dokładnie raz — DOWÓD naprawy, nie deklaracja.
-Poza zakresem (NIENAPRAWIALNE bez nowej operacji domenowej, nie ten sam
-defekt): stacja ST-03 dostaje WBUDOWANY domyślny „Odpływ nN 1" (starter
+NAPRAWA-B zostawiła świadomie poza zakresem (INNA przyczyna źródłowa, nie ten
+sam defekt): stacja ST-03 dostawała WBUDOWANY domyślny „Odpływ nN 1" (starter
 kreatora, tworzony PRZEZ `insert_station_on_segment_sn`, NIE przez
-`add_nn_outgoing_field`) — to pole nigdy nie dostaje znacznika
-`nn_field_origin` (bo nie przechodzi przez operację, która go ustawia), więc
-jego fantomowy odbiór 30 kW jest TRWAŁY (regeneruje się przy każdym
+`add_nn_outgoing_field`) — to pole nigdy nie dostawało znacznika
+`nn_field_origin` (bo nie przechodziło przez operację, która go ustawia),
+więc jego fantomowy odbiór 30 kW był TRWAŁY (regenerował się przy każdym
 odczycie) — jeden, znany, udokumentowany artefakt, osobny od naprawionego
-wyścigu K2/K3.
+wyścigu K2/K3. KARTA D3 zabiła TEN fantom u JEGO źródła (patrz wyżej) —
+`_build_nn_field_specs` przestała FABRYKOWAĆ ten starter, gdy wołający nie
+zażądał żadnego odpływu (`nn_block` bez `outgoing_feeders_nn_count`) — KROK 0
+asertuje dziś ZERO fantomów, nie jeden trwały.
 
 CZWARTE ZNALEZISKO BRAMKI — CZĘŚCIOWO NAPRAWIONE (patrz wyżej, pkt 2-3):
 `wybierz_aparat_dla_obwodu_nn` NIE MOGŁA PRZED kartą wydać pełnej
@@ -308,13 +337,12 @@ def _build_substrate(client, case_id: str) -> dict[str, Any]:
     rgnn_bus = next(
         b.ref_id for b in enm.buses if b.ref_id in station.bus_refs and b.voltage_kv == 0.4
     )
-    # ST-03 dostała wbudowany domyślny "Odpływ nN 1" (starter kreatora,
-    # utworzony PRZEZ `insert_station_on_segment_sn`, NIE przez
-    # `add_nn_outgoing_field`) — ten odczyt materializuje na nim TRWAŁY
-    # fantomowy odbiór 30 kW (poza zakresem NAPRAWA-B, patrz docstring
-    # modułu — pole nigdy nie dostaje znacznika `nn_field_origin`, bo nie
-    # przechodzi przez operację, która go ustawia). ŚWIADOMIE NIE usuwany —
-    # zweryfikowany wprost jako JEDYNY, trwały, udokumentowany artefakt w
+    # KARTA D3: ST-03 NIE dostaje żadnego wbudowanego domyślnego "Odpływu
+    # nN 1" — payload powyżej świadomie NIE niesie `nn_block`, więc
+    # `_build_nn_field_specs` (naprawiona tą kartą) nie fabrykuje nieproszonego
+    # startera i migracja katalogowa nie ma czego materializować na ST-03
+    # (dawny trwały fantom, poza zakresem NAPRAWA-B — patrz docstring modułu,
+    # sekcja "KARTA D3"). Zweryfikowane wprost jako ZERO fantomów w
     # `test_krok_00_substrat_buduje_sie_bez_bledow`.
 
     # RGnN → K1 → R1 (podrozdzielnica)
@@ -637,7 +665,20 @@ class TestNnFullChain:
         pojawiają się DOKŁADNIE RAZ na swoich odpływach. To jest DOWÓD
         naprawy (nie deklaracja): gdyby NAPRAWA-B regresowała, poniższe
         asercje `count(...) == 1` pękłyby natychmiast z konkretną, czytelną
-        przyczyną (duplikat na feeder_k2/feeder_k3)."""
+        przyczyną (duplikat na feeder_k2/feeder_k3).
+
+        FLIP DRUGI (karta D3): dawniej ten test asertował DOKŁADNIE JEDEN
+        trwały fantom (ST-03, „Odpływ nN 1", starter wbudowany przez
+        `insert_station_on_segment_sn` — poza zakresem NAPRAWA-B, INNA
+        przyczyna źródłowa). Karta D3 zabiła TEN fantom u JEGO źródła
+        (`enm.domain_operations._build_nn_field_specs` przestała FABRYKOWAĆ
+        nieproszony starter, gdy `nn_block` nie niesie jawnego
+        `outgoing_feeders_nn_count` — patrz docstring modułu, sekcja „KARTA
+        D3") — substrat poniżej NIE wysyła `nn_block` w ogóle przy
+        `insert_station_on_segment_sn`, więc ST-03 dostaje ZERO domyślnych
+        odpływów nN (tylko wyłącznik główny). Poniższa asercja `count == 0`
+        jest DOWODEM pomiarem, nie deklaracją: gdyby fabrykacja startera
+        wróciła, pękłaby natychmiast z konkretną, czytelną przyczyną."""
         reset_enm_store()
         refs = _build_substrate(app_client, _CASE_ID)
         _REFS.update(refs)
@@ -665,35 +706,39 @@ class TestNnFullChain:
             and silniki_m1[0].meta.get("completion_source") == "station_catalog_migration"
         ), "Silnik M1 NIE MOŻE sam być fantomem migracji — to zaprojektowany odbiór"
 
-        # JEDYNY, TRWAŁY, udokumentowany artefakt POZA zakresem NAPRAWA-B:
-        # domyślny starter „Odpływ nN 1" na RGnN (auto-tworzony przez
-        # `insert_station_on_segment_sn`, NIE przez `add_nn_outgoing_field` —
-        # więc nigdy nie dostaje znacznika `nn_field_origin`, który NAPRAWA-B
-        # czyta) — jego fantomowy odbiór regeneruje się przy KAŻDYM odczycie
-        # modelu, niezależnie od NAPRAWA-B. Deterministyczny (stały seed z
-        # `station_ref`+`feeder_ref`), ale NIEZAMIERZONY — inny defekt,
-        # inna przyczyna źródłowa, inne miejsce w kodzie (brak operacji
-        # usuwającej sam wpis `nn_field_specs`), poza zakresem tej karty.
+        # DOWÓD NAPRAWY D3: KARTA D3 zabiła u źródła fantom ST-03, który
+        # NAPRAWA-B świadomie zostawiła poza zakresem (`_build_nn_field_specs`
+        # przestała fabrykować nieproszony starter „Odpływ nN 1" gdy
+        # `insert_station_on_segment_sn`/`append_station_on_endpoint` dostają
+        # `nn_block` bez jawnego `outgoing_feeders_nn_count` — patrz docstring
+        # modułu, sekcja „KARTA D3"). ZERO odbiorów migracji katalogowej w
+        # CAŁYM modelu — count DOKŁADNY, per stacja (jedyna stacja SN/nN
+        # substratu to ST-03, więc "w modelu" i "per stacja" to tu ten sam
+        # zbiór): gdyby fabrykacja startera wróciła (regresja tej karty),
+        # asercja pęknie NATYCHMIAST z konkretną nazwą fantomu.
         odbiory_migracji = [
             ld
             for ld in enm.loads
             if isinstance(ld.meta, dict)
             and ld.meta.get("completion_source") == "station_catalog_migration"
         ]
-        assert len(odbiory_migracji) == 1 and odbiory_migracji[0].name == "Odbiór nN 1 - ST-03", (
-            f"Oczekiwano DOKŁADNIE jednego trwałego fantomu (ST-03, poza zakresem "
-            f"NAPRAWA-B — patrz wyżej), jest: {[ld.name for ld in odbiory_migracji]}"
+        assert odbiory_migracji == [], (
+            f"Oczekiwano ZERO fantomów migracji katalogowej (karta D3 zabiła "
+            f"ostatni, ST-03 — patrz docstring modułu), jest: "
+            f"{[ld.name for ld in odbiory_migracji]}"
         )
 
-        # SAMA fizyczna inwariant końcowa jest NIEZMIENIONA względem stanu
-        # PRZED kartą (3 odbiory: Silnik M1 + Odbiór K3 + trwały fantom
-        # ST-03) — ale teraz osiągnięta BEZ usuwania niczego w trakcie
-        # budowy, nie usunięciem duplikatów po fakcie.
-        assert len(enm.buses) >= 10, f"Za mało szyn po budowie: {len(enm.buses)}"
-        assert len(enm.branches) >= 7, f"Za mało gałęzi po budowie: {len(enm.branches)}"
+        # Fizyczna inwariant końcowa PO karcie D3: 2 odbiory (Silnik M1 +
+        # Odbiór K3) — bez trwałego fantomu ST-03, który dawniej podnosił
+        # liczbę do 3. ST-03 traci swój domyślny starterowy odpływ (i jego
+        # promowaną szynę/aparat), więc progi liczby szyn/gałęzi schodzą o
+        # jeden element każdy względem stanu sprzed karty D3 — nadal `>=`,
+        # bo substrat ma DUŻO więcej elementów niż ten jeden brakujący.
+        assert len(enm.buses) >= 9, f"Za mało szyn po budowie: {len(enm.buses)}"
+        assert len(enm.branches) >= 6, f"Za mało gałęzi po budowie: {len(enm.branches)}"
         assert len(enm.transformers) == 2, "Oczekiwano 2 transformatorów (GPZ WN/SN + TR SN/nN)"
-        assert len(enm.loads) == 3, (
-            f"Oczekiwano 3 odbiorów (Silnik M1 + Odbiór K3 + trwały fantom ST-03), "
+        assert len(enm.loads) == 2, (
+            f"Oczekiwano 2 odbiorów (Silnik M1 + Odbiór K3, ZERO fantomów po karcie D3), "
             f"jest {len(enm.loads)}: {[ld.name for ld in enm.loads]}"
         )
         assert (
