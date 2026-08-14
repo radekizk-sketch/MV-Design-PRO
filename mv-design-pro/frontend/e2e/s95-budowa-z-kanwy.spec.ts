@@ -369,6 +369,60 @@ async function zapiszMagistrale(page: Page): Promise<void> {
  * realnym przyciskiem ostatniego kroku. Karta S9-5 mierzy WEJŚCIE z kanwy, nie
  * zawartość kreatora (tę pilnuje karta K9-B).
  */
+/**
+ * WSKAZANIE ROZDZIELNICY SN — krok „Pola rozdzielnicy SN" kreatora stacji.
+ *
+ * AKTUALIZACJA KONTRAKTU OPERACJI (karta S3, 2026-08-14): pole SN jest
+ * jednostką funkcjonalną KONKRETNEJ rodziny wyrobu, więc kreator NIE dobiera
+ * już pól „z pakietu producenta" bez wskazanej rodziny — wcześniej rozdzielnica
+ * mogła powstać z kart dwóch różnych serii naraz. Bez rodziny krok świadomie
+ * nie komponuje pól, `czyRozdzielnicaKompletna` jest fałszem i zapis (słusznie)
+ * odmawia. Ten helper przechodzi więc REALNĄ ścieżką projektanta: wskazuje
+ * rodzinę, a dla rodzin o torze blokowym (RMU) także blok fabryczny, z którego
+ * wynika sekwencja jednostek.
+ *
+ * Bez zaszywania referencji wyrobu: bierzemy PIERWSZĄ WYBIERALNĄ pozycję listy
+ * (rodziny bez potwierdzonej karty katalogowej są widoczne, ale wyłączone),
+ * więc kolejna transza katalogu nie łamie specu. Ta sama metoda co w
+ * `e2e/kreator-stacji-max.spec.ts`.
+ */
+async function wskazRozdzielnice(page: Page): Promise<void> {
+  await page.getByRole('button', { name: 'Pola rozdzielnicy SN', exact: false }).first().click();
+
+  const producent = page.getByTestId('mvd-kreator-stacja-producent');
+  await expect(producent.locator('option')).not.toHaveCount(1, { timeout: 30000 });
+
+  const rodzina = page.getByTestId('mvd-kreator-stacja-rodzina');
+  await expect(rodzina.locator('option')).not.toHaveCount(1, { timeout: 30000 });
+  const rodzinaRef = await rodzina
+    .locator('option:not([disabled]):not([value=""])')
+    .first()
+    .getAttribute('value');
+  expect(rodzinaRef, 'katalog musi mieć rodzinę, na której wolno zbudować rozdzielnicę').toBeTruthy();
+  await rodzina.selectOption(rodzinaRef!);
+  await expect(rodzina).toHaveValue(rodzinaRef!);
+
+  // TOR BLOKOWY (RMU): pola wynikają z bloku fabrycznego, nie ze złożenia
+  // pojedynczych pól — bez bloku krok pozostaje niedomknięty. Tor modułowy nie
+  // ma tego pola, więc gałąź jest warunkowa, a nie „na wszelki wypadek".
+  const blok = page.getByTestId('mvd-kreator-stacja-blok');
+  if (await blok.isVisible({ timeout: 5000 }).catch(() => false)) {
+    await expect(blok.locator('option')).not.toHaveCount(1, { timeout: 30000 });
+    const blokRef = await blok
+      .locator('option:not([disabled]):not([value=""])')
+      .first()
+      .getAttribute('value');
+    expect(blokRef, 'rodzina RMU musi mieć w katalogu blok fabryczny').toBeTruthy();
+    await blok.selectOption(blokRef!);
+    await expect(blok).toHaveValue(blokRef!);
+  }
+
+  // Dowód, że wskazanie realnie skomponowało rozdzielnicę: pierwszy wiersz pola.
+  await expect(page.getByTestId('mvd-kreator-stacja-pole-wiersz-1')).toBeVisible({
+    timeout: 30000,
+  });
+}
+
 async function zapiszStacje(page: Page, numer: number): Promise<void> {
   const kreator = page.getByTestId('mvd-kreator-stacja');
   await expect(kreator).toBeVisible({ timeout: 30000 });
@@ -392,6 +446,8 @@ async function zapiszStacje(page: Page, numer: number): Promise<void> {
   if (await nazwa.isVisible({ timeout: 5000 }).catch(() => false)) {
     await nazwa.fill(`Stacja z kanwy ${String(numer).padStart(2, '0')}`);
   }
+
+  await wskazRozdzielnice(page);
 
   // Przejście do ostatniego kroku realnym przyciskiem „Dalej".
   const dalej = page.getByTestId('mvd-kreator-stacja-dalej');
