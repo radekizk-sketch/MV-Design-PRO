@@ -8899,6 +8899,18 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
         )
         if aparaty_pola:
             field_spec_entry["primary_devices"] = aparaty_pola
+        # W1c: tożsamość KONFIGURACJI pola — ten sam klucz i ten sam producent
+        # identyfikatora, co we wspólnym builderze (`_build_field_spec`).
+        # Ta ścieżka składa `field_spec` RĘCZNIE, więc do domknięcia tego długu
+        # NIE zapisywała `config_id` w ogóle: pole stacji dokładanej na końcu
+        # ciągu niosło referencję szablonu i komplet aparatów, ale adapter SLD
+        # nie miał tożsamości konfiguracji do meta sceny. O prefiksie (kanon vs
+        # producent) rozstrzyga katalog wewnątrz `config_ref_for_template` —
+        # tutaj nie ma drugiej reguły nazewnictwa.
+        if field_bay_template_ref:
+            from network_model.catalog.bay_templates import config_ref_for_template
+
+            field_spec_entry["config_id"] = config_ref_for_template(field_bay_template_ref)
         field_specs.append(field_spec_entry)
 
     def _field_spec_for_role(role: str) -> dict[str, Any] | None:
