@@ -173,7 +173,9 @@ pakiet `switchgear/` jest jedynym kanonem. Rejestr rodzin: 18 (7 dotychczasowych
 + 11 z transzy S1). Dolozone w pakiecie: tor konfiguracji wyliczany z
 konstrukcji, `status_wyposazenia` (jeden predykat zamiast pary
 `is_required`/`is_optional`), materializacja wyposazenia pola z kanonicznego
-szablonu, `FactoryConfiguration` + rejestr 15 blokow, walidator
+szablonu, `FactoryConfiguration` + rejestr 95 blokow (Siemens 8DJH 30,
+ABB SafeRing 19, ZPUE TPM 18, Schneider RM6 15, ZPUE TPM Air 13 — rozbicie
+z pomiaru rejestru, karta BLOKI-RMU-5-RODZIN 2026-08-14), walidator
 `family_validation`, subzasob API `factory-configurations` i addytywne
 `tor_konfiguracji` w `GET /api/catalog/switchgear-families`.
 
@@ -187,14 +189,21 @@ KOREKTY DANYCH WYKRYTE POMIAREM ZRODEL (zero fabrykacji):
   strona portfolio nie podaje klas pradowych/zwarciowych rodziny.
 
 DLUG JAWNY (przypiety testami, nie odlozony w ciszy):
-- Rodziny o torze BLOK_RMU bez transkrybowanych blokow: ZPUE TPM, ABB SafePlus,
-  Schneider RM6 i RM AirSeT, Siemens 8DJH. Zrodla publiczne tych rodzin nie
-  wymieniaja zestawu konfiguracji; lista stoi w
-  `tests/network_model/catalog/test_switchgear_factory_configurations.py` i
-  kazde jej uzupelnienie wymusza aktualizacje pinu.
-- Szerokosci jednostek blokow nie sa podane w zrodlach publicznych, wiec
-  `total_width_mm` realnych blokow to `null` (mechanizm sumowania jest
-  przetestowany na jednostkach z zadeklarowana szerokoscia).
+- Rodziny o torze BLOK_RMU bez transkrybowanych blokow: WYLACZNIE ABB SafePlus
+  i Schneider RM AirSeT (stan po karcie BLOKI-RMU-5-RODZIN: TPM 18, RM6 15 i
+  8DJH 30 maja pelne rejestry z kart producentow). Uzasadnienie zrodlowe stoi
+  w komentarzu pinu `RMU_BEZ_TRANSKRYBOWANYCH_BLOKOW`
+  (`tests/network_model/catalog/test_switchgear_factory_configurations.py`):
+  katalog ABB 1YVA000022 opisuje SafePlus modulowo, a karta RM AirSeT
+  NRJCAT20014EN podaje wylacznie listy przykladowe z wielokropkiem — to nie
+  jest zamkniety zestaw. Kazde uzupelnienie listy wymusza aktualizacje pinu
+  ORAZ tego bulleta.
+- Szerokosci jednostek blokow: REGULA (nie stan danych) — komplet szerokosci
+  jednostek bloku daje `total_width_mm` jako sume (pin dwustronny: suma
+  jednostek = szerokosc bloku z karty), brak chocby jednej szerokosci daje
+  jawny `null`. Stan danych: 30 blokow 8DJH ma szerokosci z karty HA 40.2;
+  TPM, TPM Air, RM6 i SafeRing pozostaja bez szerokosci jednostek w zrodlach
+  publicznych.
 - Kanoniczny szablon pola transformatorowego (`BAY_TEMPLATE_TRANSFORMER`) NIE
   ma glowicy kablowej, choc maja ja szablony liniowe. Uzupelnienie zmienia
   rysunek KAZDEGO pola transformatorowego na SLD, wiec wymaga werdyktu

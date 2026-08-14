@@ -50,6 +50,17 @@ Wszystko inne: działać do końca autonomicznie.
 - Po rewercie kontenera znika `@types/jsdom` → `npm i -D @types/jsdom --no-save`
   w `mv-design-pro/frontend`, inaczej type-check RC=2.
 - Porty zajęte: `fuser -k 5173/tcp 8000/tcp`.
+- **Uvicorn serwuje STARY kod po cherry-picku backendu** (proces trzyma
+  załadowane moduły): po KAŻDYM cherry-picku dotykającym `backend/src/**`
+  obowiązkowy restart (`fuser -k 8000/tcp` + ponowne uruchomienie), inaczej
+  weryfikacja wizualna/API mierzy kod sprzed zmiany (incydent 2026-08-14:
+  „wszystkie rodziny wyłączone" było artefaktem stęchłego serwera, nie regresją).
+- **Literały motywu `mvd-theme-mode`: WYŁĄCZNIE `dark_scada` i
+  `light_technical`.** Zapis `light`/`dark` jest niepoprawny i NIE przełącza
+  motywu (porównanie `=== 'dark_scada'` daje false → zawsze jasny). Skrypty
+  zrzutów mapują nazwę sceny na kanoniczny literał; bramka pary dark/light w
+  `e2e/kreator-stacji-zrzuty.spec.ts` wymusza bajtową różność każdej pary
+  kadrów (incydent AUDYT-KOMPLETNOSCI-2026-08-14 w rejestrze).
 - Zapadki dwustronne (para pin↔próg aktualizowana RAZEM w jednym commicie):
   `tsconfig_gate_guard` (budżet błędów poza bramką: 531 — wolno tylko obniżać),
   `mypy_ratchet_guard` (para próg↔meta-test; AKTUALNE liczby w guardzie i jego
@@ -123,6 +134,14 @@ nohup npm run dev > /tmp/vite.log 2>&1 &     # port 5173, proxy /api -> 8000
 ---
 
 ## §1 GOTOWE DO MERGE (stan HEAD `3f367743`)
+
+> **NOTA AKTUALNOŚCI (2026-08-14, po południu):** stany §1.1 i §2 opisują
+> chwilę spisania planu. Od tego czasu odebrano i scalono na gałąź nadzoru
+> także: S3, S5, BLOKI-RMU, K-K, K-N, K-E (częściowy uczciwy), K-J, K-L,
+> K-M, K-O oraz naprawę incydentu kadrów. Bieżący stan kart: §6–§8 + rejestr
+> (wiersze z adnotacją ODBIOR NIEZALEZNY). Procedura merge §1.2 pozostaje
+> obowiązująca — zmienia się tylko SHA szczytu (mierzyć `git log` przy
+> wykonaniu, nie przepisywać z tego dokumentu).
 
 ### 1.1 Zawartość (odebrane fale — wszystkie z adnotacją w rejestrze)
 Fale K1–K14, KD, TOPO-COPY, PREFIKSY, TOP-5, fale 2–3 i 7–12, w tym ostatnio:
@@ -515,3 +534,121 @@ transkrypcja danych rodziny ZE ŹRÓDŁA + przepisanie co najmniej jednego
 kompletnego pola katalogowego (`CompleteMvBayTemplate`) z karty — promocja bez
 pól nie zmaterializuje żadnego pola w kreatorze (fałszywa oferta). Granice:
 `network_model/catalog/switchgear/**` + testy; wzorzec: karty RELF 2S/RXD.
+
+---
+
+## §8 KOLEJKA Z AUDYTU KOMPLETNOŚCI (2026-08-14; wiersz
+`AUDYT-KOMPLETNOSCI-2026-08-14` w rejestrze)
+
+Źródło: równoległy audyt (6 soczewek × weryfikacja adwersaryjna; 12 znalezisk
+POTWIERDZONYCH). Z tej dwunastki DOMKNIĘTE przed spisaniem kolejki: incydent
+ciemnych kadrów (naprawa + bramka pary — patrz §0.3), fabrykacje katalogowe
+frontu (karta K-O, odebrana), blok RMU bez drogi zapisu (karta K-M, odebrana),
+korekty dokumentów (§9 dokumentu konfiguratora, licznik końcówek i wiersze
+inwentarza — commit odbiorczy 2026-08-14). Poniżej pozostałe karty — kolejność
+zlecania wg wagi. Każda karta podlega KONTRAKTOWI §0 (w tym §0.7 odbiór).
+
+### K-Q AUDIT2-KATALOGI-BEZ-PROWENIENCJI `[backend + mirror frontu]`
+`backend/src/api/audit2_catalogs.py` niesie TĘ SAMĄ klasę fabrykacji, którą
+K-O usunął z frontu (identyczne id pozycji, te same liczby, ci sami zmyśleni
+producenci) i serwuje ją przez `/api/v1/catalog/audit2`. Autorytet danych leży
+w backendzie — naprawa u źródła TAM, a 21 pozycji `catalogs.ts` z imiennym
+producentem (SMA, Huawei, FIMER, Vestas, CATL, BYD…, id potwierdzone w
+`mv_converter_catalog.py`) oraz `fault_current_capability_pu` wyrównać do
+stanu backendu PO naprawie (strip tylko po stronie frontu = rozjazd, nie
+naprawa). Reguła jak w K-O: każda wartość liczbowa ma źródło http(s)
+producenta albo pozycji nie ma; brak danych = jawny brak. Przy okazji:
+`catalog_version: '2024.1'` bez źródła — zastąpić wersją mierzalną (data
+transkrypcji źródła), nie wymyślonym numerem. Granice: `backend/src/api/
+audit2_catalogs.py`, `backend/src/network_model/catalog/**` (właściwe moduły
+danych), `frontend/src/ui/network-build/station-der/catalogs.ts` + testy obu
+warstw. Bramki: piny klasy po WSZYSTKICH pozycjach (wzorzec
+`test_kazda_konfiguracja_ma_zrodlo_producenta`), kontrakt API bez zmian
+łamiących (pola addytywne/usuwane świadomie), pełny pytest + vitest celowane.
+
+### K-R NCRFG-NO-MODULE `[zaślepki z kodami produkcyjnymi]`
+`backend/src/application/ncrfg_compliance/checker.py:248-254`: sześć testów
+zgodności (T8/T10/T11/T16/T17/T18) zwraca werdykt-zaślepkę `no_module`, a
+komunikat dla użytkownika (l. 76-80) zawiera kod produkcyjny `PR-16-impl` i
+nazwę klasy — złamane ZASADA NR 1 (zakaz `no_module`) i zakaz kodenamów w UI.
+Wykonanie MAX: zaimplementować brakujące testy dynamiczne wg właściwej normy
+(NC RfG / PTPiREE) na istniejącym silniku RMS + FRT/HVRT — solver + kontrakt +
+White Box + sanity-bounds + wpięcie w checker, API i ekran `ncrfg-tests`;
+usunąć `no_module` z `ComplianceVerdict` (l. 17) razem z `no_module_count`
+i wszystkimi konsumentami UI. Granice: `application/ncrfg_compliance/**`,
+właściwe solvery RMS/FRT (rozszerzenie addytywne, FROZEN nietknięte),
+`frontend/src/ui/ncrfg-tests/**`. To karta duża — jeśli którykolwiek test
+normy wymaga danych, których nie ma w modelu, brak danych meldować jawnym
+kodem gotowości (readiness), nigdy werdyktem-zaślepką.
+
+### K-S PROTECTION-FRESH-NA-SZTYWNO
+`backend/src/api/protection_runs.py:379-380`: nakładka zabezpieczeń ZAWSZE
+melduje `result_status = "FRESH"` — obietnica FRESH/OUTDATED/NONE bez
+implementacji. Naprawa: status z porównania hasza snapshotu zapisanego przy
+biegu z haszem bieżącego snapshotu modelu (mechanizm istnieje dla przypadków
+obliczeniowych: `frontend/src/ui/study-cases/store.ts:360`,
+`StudyCaseEditor.tsx:113-115` obsługuje OUTDATED). NONE gdy brak wyniku,
+OUTDATED gdy hasz różny. Test iloczynu cech: {bieg zakończony, brak biegu} ×
+{model niezmieniony, model zmieniony po biegu} — 4 kombinacje, każda z
+asercją statusu; ścieżka natywna (mutacja modelu operacją kanoniczną, nie
+podmiana pola).
+
+### K-T FIELD-SPEC-JEDEN-BUILDER `[resztka klasy K-M]`
+`insert_station_on_segment_sn` cicho gubi klucze pól SN `source_status`,
+`source_refs`, `bay_kind` (K-M naprawił wyłącznie kanał bloku fabrycznego;
+`catalog_bindings` usunięte na amen), a `append_station_on_endpoint` składa
+`field_spec` ręcznie zamiast przez `_build_field_spec` — dwie drogi, jedno
+źródło rozjazdu. Naprawa klasy: dołożyć brakujące klucze do sygnatury
+`_build_field_spec` (addytywnie, exclude gdy None) i OBIE operacje stacyjne
+przestawić na ten builder. Test iloczynu cech: {insert, append} × {każdy klucz
+niesiony osobno i wszystkie razem} × {tor MODULARNY, tor BLOK_RMU}. Granice:
+`backend/src/enm/domain_operations.py` + testy enm. Migawki istniejące bajtowo
+niezmienione (exclude_none).
+
+### K-U CT-VT-WERDYKT-BRAMKUJE
+`frontend/src/ui2/kryteria/SekcjaBilansuCtVt.tsx`: werdykt bilansu CT/VT
+(PASS/FAIL) jest ozdobą — nie wraca do kreatora i niczego nie bramkuje przed
+zapisem stacji. Naprawa: callback werdyktu per pole w
+`SekcjaBilansuCtVtProps`, zbiór werdyktów w kreatorze, bramka kroku 4:
+FAIL = blokada zapisu z komunikatem i wskazaniem pola; UNAVAILABLE =
+ostrzeżenie z kodem gotowości. Test ścieżką natywną: pole z CT dającym FAIL →
+przycisk zapisu niedostępny (bez wymuszania stanu store). Zero fizyki w UI —
+werdykt liczy backend, UI tylko go egzekwuje.
+
+### K-V MARTWE-WYSPY-UI `[klasa K-N — precedens c4669cea]`
+Inwentarz zmierzony audytem: (1) `ui/catalog/CatalogMaterializationDialog.tsx`
+— 337 linii, zero referencji w repo, bez własnego testu; (2)
+`ui/catalog/ManufacturerPicker.tsx` + predykaty statusu producenta — martwa
+wyspa, przy czym żywy kreator stacji milcząco gubi status producenta; (3) po
+K-O: `SPZ_CATALOG`, `SZR_CATALOG`, `PROTECTION_FUNCTION_CATALOG`,
+`selectHvFusesForRating` w `station-der/**` — zero konsumentów produkcyjnych.
+Rozstrzygnięcia (bez interpretacji): (1) PRZED kasacją zmierzyć, czy podgląd
+materializacji katalogowej jest dostarczany gdziekolwiek indziej — jeśli NIE,
+kasacja + osobna karta luki funkcjonalnej do planu; (2) status producenta MA
+być widoczny (kontrakt backendu niesie pole `status`) — wpiąć
+`describeManufacturerStatusPl` jako plakietkę producenta w
+`KreatorStacjiSnNn.tsx` (okolice l. 1767-1780) i skasować pickera z testem i
+nieużywanymi predykatami; (3) kasacja na amen — funkcje SPZ/SZR mają kanał
+katalogowy w backendzie, resztki frontowe bez konsumenta to duplikat klasy
+K-Q. Po każdej kasacji: type-check, lint, vulture_guard, dead_click_guard.
+
+### K-W SLD-AUDYT-POLARYZACJA-MOTYWOW `[resztka incydentu kadrów]`
+3 stare pary zrzutów `docs/audit/visual/sld_audyt/` mają ODWRÓCONĄ
+polaryzację motywów (kadr podpisany jasny jest ciemny i odwrotnie) — ta sama
+klasa co incydent konfiguratora, inna postać (zamiana, nie duplikacja).
+Regeneracja poprawnymi literałami kanonu (§0.3) na żywym stosie, oględziny
+każdego kadru, bramka pary bajtowej analogiczna do
+`kreator-stacji-zrzuty.spec.ts` dla tego zestawu. Granice: skrypty zrzutów +
+`docs/audit/visual/sld_audyt/**`.
+
+### Sygnały PLAUSIBLE (zmierzyć przy zleceniu — NIE są potwierdzone)
+Z surowej listy 35 znalezisk audytu weryfikację adwersaryjną przeszło 12;
+poniższe sygnały weryfikacji nie przeszły albo nie zostały do niej
+skierowane. Przy zlecaniu kart z tej sekcji NAJPIERW pomiar, potem praca —
+sygnał niepotwierdzony nie jest długiem: przeznaczenie uzwojeń VT
+(winding purpose) niezapisywane; persystencja obwodów wtórnych CT/VT;
+kontrolka EN bez pokrycia w backendzie (phantom); puste zakładki inspektora
+bez uczciwego stanu zerowego; `i_from_ka`/`i_to_ka` w wynikach zwarciowych;
+kasacja `cell_type`; `SHELL_EVENT_CONTRACT` i beczka eksportów bez
+konsumentów; zapis konfiguracji zabezpieczeń ufa frontendowi (walidacja
+po stronie backendu do zmierzenia).
