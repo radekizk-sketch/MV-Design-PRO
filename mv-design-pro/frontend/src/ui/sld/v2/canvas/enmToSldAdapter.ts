@@ -3874,7 +3874,12 @@ interface StationFieldSpec {
    *  KONFIGURACJI pola (backend `_build_field_spec` → `config_ref_for_template`).
    *  Stabilny, deterministyczny — niesiony do meta sceny, żeby render nie
    *  zgadywał wyposażenia z typu/roli pola (tożsamość konfiguracji jest DANĄ).
-   *  `undefined` gdy pole bez szablonu kanonicznego. */
+   *  Prefiks niesie POCHODZENIE konfiguracji: `kanoniczny:<ref>` dla szablonu
+   *  kanonicznego, `producent:<manufacturer_ref>:<template_ref>` dla
+   *  katalogowego pola rodziny producenta (karta K-L). Dla frontendu wartość
+   *  jest KLUCZEM NIEPRZEZROCZYSTYM — przepisujemy ją 1:1, nigdy nie parsując
+   *  prefiksu (pin: `enmToSldAdapter.configIdOpaque.test.ts`).
+   *  `undefined` gdy pole nie wskazuje żadnego szablonu. */
   readonly config_id?: string;
 }
 

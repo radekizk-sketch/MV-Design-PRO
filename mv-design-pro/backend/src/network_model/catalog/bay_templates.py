@@ -574,13 +574,76 @@ def functional_group_for_role(bay_role: str) -> str:
     return _FUNCTIONAL_GROUP_BY_ROLE.get(bay_role, "specjalne")
 
 
-def config_ref_for_template(template_id: str) -> str:
-    """Stabilny identyfikator konfiguracji KANONICZNEJ (uwaga 10) — deterministyczny,
-    wyprowadzony z ref szablonu. Prefiks `kanoniczny:` odróżnia od mostu
-    producenckiego (`producent:<pack>:<cell>`). NIE zależy od stanu aparatu —
-    wariant stanu (zamknięty/otwarty) dokłada konsument (`<config_ref>::<stan>`).
+#: Rejestr katalogowych pól rodzin producentów (`template_ref` →
+#: `manufacturer_ref`), budowany leniwie i raz. Klucz i wartość pochodzą z
+#: JEDNEGO źródła — `list_switchgear_solution_templates_for_manufacturer(None)`,
+#: czyli dokładnie z tego wywołania, którym resolver pola (`enm/pole_katalogowe`
+#: `pole_katalogowe`) rozstrzyga nomenklaturę referencji. Dzięki temu prefiks
+#: identyfikatora konfiguracji i ścieżka materializacji aparatów NIE mogą się
+#: rozjechać (predykaty parami).
+_REJESTR_POL_RODZIN: dict[str, str] | None = None
+
+
+def _producent_pola_rodziny(template_ref: str) -> str | None:
+    """`manufacturer_ref` producenta KATALOGOWEGO POLA RODZINY (`None`, gdy to nie ono).
+
+    Import katalogu rodzin jest LENIWY (wewnątrz funkcji): pakiet `switchgear`
+    importuje ten moduł (`BayTemplate` jest bazą kompozycji
+    `CompleteMvBayTemplate`), więc import na poziomie modułu byłby cyklem.
+    Wywołanie następuje w czasie działania, gdy oba moduły są już wczytane.
     """
-    return f"kanoniczny:{template_id}"
+    global _REJESTR_POL_RODZIN
+    if _REJESTR_POL_RODZIN is None:
+        from .switchgear import list_switchgear_solution_templates_for_manufacturer
+
+        rejestr: dict[str, str] = {}
+        for szablon in list_switchgear_solution_templates_for_manufacturer(None):
+            if not szablon.manufacturer_ref:
+                # Katalogowe pole rodziny BEZ producenta jest niespójnością
+                # katalogu (rodzina ma `manufacturer_ref` wymagany), a nie
+                # przypadkiem do cichego pominięcia: pominięte pole dostałoby
+                # prefiks `kanoniczny:`, czyli dokładnie tę fabrykację
+                # pochodzenia, którą ta funkcja usuwa.
+                raise ValueError(
+                    "Katalogowe pole rodziny bez producenta — niespójność katalogu "
+                    f"rozdzielnic: {szablon.template_ref}"
+                )
+            rejestr[szablon.template_ref] = szablon.manufacturer_ref
+        _REJESTR_POL_RODZIN = rejestr
+    return _REJESTR_POL_RODZIN.get(template_ref)
+
+
+def config_ref_for_template(template_ref: str) -> str:
+    """Stabilny identyfikator konfiguracji pola (uwaga 10) — deterministyczny,
+    wyprowadzony z referencji szablonu; NIE zależy od stanu aparatu (wariant
+    stanu zamknięty/otwarty dokłada konsument: `<config_ref>::<stan>`).
+
+    PREFIKS NIESIE POCHODZENIE, WIĘC NIE MOŻE GO FABRYKOWAĆ. W danych krążą dwie
+    nomenklatury referencji pola (opis: `enm/pole_katalogowe`):
+
+    * kanoniczny szablon pola (`bay_template_line_out`) → `kanoniczny:<ref>`,
+    * katalogowe pole rodziny producenta (`ZPUE_WLOSZCZOWA__RELF__LINE_OUT`,
+      `CompleteMvBayTemplate`) → `producent:<manufacturer_ref>:<template_ref>`
+      wzorem mostu celek producenckich z `reference_engine.
+      field_configuration_catalog` (tam drugi człon to ref pakietu
+      referencyjnego, tu ref producenta z katalogu rodzin — oba człony są
+      DANĄ KATALOGOWĄ, nie parsowaniem nazwy).
+
+    Do naprawy tego długu (karta K-L) każda referencja dostawała prefiks
+    `kanoniczny:`, więc pole wybrane z katalogu producenta niosło identyfikator
+    twierdzący, że pochodzi z kanonu — pochodzenie było zmyślone.
+
+    O nomenklaturze rozstrzyga KATALOG, nie wołający, i to tym samym zapytaniem
+    (`list_switchgear_solution_templates_for_manufacturer`), którym resolver
+    aparatów pola wybiera ścieżkę materializacji. Referencja, której katalog
+    rodzin nie zna (kanoniczny szablon, kanoniczny fallback
+    `CANONICAL_FALLBACK__*`, referencja nieznana), idzie ścieżką kanoniczną w
+    OBU miejscach — identyfikator mówi więc, którą ścieżką pole realnie powstało.
+    """
+    manufacturer_ref = _producent_pola_rodziny(template_ref)
+    if manufacturer_ref is not None:
+        return f"producent:{manufacturer_ref}:{template_ref}"
+    return f"kanoniczny:{template_ref}"
 
 
 def config_ref_for_mv_source(switching_device: str) -> str:
