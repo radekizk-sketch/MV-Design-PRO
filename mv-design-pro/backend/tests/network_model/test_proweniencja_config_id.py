@@ -28,19 +28,19 @@ gdyby ktoś dorobił drugi, niezależny warunek („referencja z podkreśleniami
 producent"), identyfikator zacząłby kłamać na pierwszej danej brzegowej —
 dokładnie tak, jak kłamał przed tą kartą.
 
-STAN ZMIERZONY POZA GRANICĄ TEJ KARTY (2026-08-14, do meldunku odbioru).
+BRAK ZGŁOSZONY PRZEZ TĘ KARTĘ, DOMKNIĘTY W K-M (2026-08-14).
 `append_station_on_endpoint` (stacja dokładana na KOŃCU ciągu) składa
 `field_spec` RĘCZNIE, z pominięciem wspólnego buildera `_build_field_spec`, więc
-NIE zapisuje klucza `config_id` w ogóle — pole niesie referencję szablonu i
-komplet aparatów, ale bez tożsamości konfiguracji (pomiar: 11. miejsce klasy
-z odbioru K-K). To brak, nie fabrykacja, i leży w `enm/domain_operations.py` —
-pliku, który ta karta ma wyłącznie do odczytu (równoległa karta K-M), więc
-zgłoszony jest do meldunku odbioru zamiast naprawiony tutaj. Dlatego lista
-`TORY_Z_CONFIG_ID` niżej wymienia DWA tory, a nie trzy: po dopisaniu
-`config_id` w `append_station_on_endpoint` dokłada się do niej `koniec_ciagu`
-i testy realnej ścieżki obejmują trzeci tor bez żadnej innej zmiany. Testu
-utrwalającego dzisiejszy brak świadomie NIE MA — przypięcie defektu jako
-oczekiwania jest gorsze niż defekt.
+NIE zapisywał klucza `config_id` w ogóle — pole niosło referencję szablonu
+i komplet aparatów, ale bez tożsamości konfiguracji (pomiar: 11. miejsce klasy
+z odbioru K-K). Brak leżał w `enm/domain_operations.py`, pliku, który TA karta
+miała wyłącznie do odczytu, więc został zgłoszony zamiast naprawiony tutaj;
+domknęła go równoległa karta K-M tym samym producentem identyfikatora
+(`config_ref_for_template`), bez drugiej reguły nazewnictwa. Lista
+`TORY_Z_CONFIG_ID` niżej wymienia od tego momentu TRZY tory i testy realnej
+ścieżki obejmują tor końca ciągu bez żadnej innej zmiany — dokładnie tak, jak
+zapowiadał punkt wpięcia. Testu utrwalającego ówczesny brak świadomie NIE BYŁO:
+przypięcie defektu jako oczekiwania jest gorsze niż defekt.
 """
 
 from __future__ import annotations
@@ -286,6 +286,30 @@ def _uruchom(tor: str, pole_ref: str, rodzina_ref: str | None) -> dict[str, Any]
                 "transformer": {"create": True, "transformer_catalog_ref": CATALOG_TRAFO},
             },
         )
+    if tor == "koniec_ciagu":
+        # Trzeci tor: stacja dokładana na KOŃCU ciągu. Składa `field_spec`
+        # RĘCZNIE (z pominięciem `_build_field_spec`), więc to on gubił
+        # `config_id` — tożsamość konfiguracji musi tu wyjść ta sama, co
+        # w torze wspólnego buildera dla tego samego wskazania katalogowego.
+        pole_konca: dict[str, Any] = {"field_role": "LINIA_OUT", "bay_template_ref": pole_ref}
+        if rodzina_ref:
+            pole_konca["switchgear_family_ref"] = rodzina_ref
+        return execute_domain_operation(
+            _enm_z_odcinkiem(),
+            "append_station_on_endpoint",
+            {
+                "endpoint_bus_ref": "bus-b",
+                "station": {
+                    "name": "Stacja konca ciagu",
+                    "station_type": "terminal",
+                    "sn_voltage_kv": 15.0,
+                    "nn_voltage_kv": 0.4,
+                },
+                "sn_fields": [pole_konca],
+                "field_apparatus_catalog_ref": CATALOG_APARAT_SN,
+                "transformer": {"create": True, "transformer_catalog_ref": CATALOG_TRAFO},
+            },
+        )
     raise AssertionError(f"Nieznany tor budowy pola: {tor}")
 
 
@@ -303,7 +327,10 @@ def _specs_z_referencja(odpowiedz: dict[str, Any], pole_ref: str) -> list[dict[s
 
 #: Tory budowy pola, w których referencja katalogowa jest osiągalna z payloadu
 #: użytkownika I które zapisują `config_id` (inwentarz z odbioru K-K).
-TORY_Z_CONFIG_ID = ["gpz", "wciecie"]
+#: `koniec_ciagu` dołożony po domknięciu braku w `append_station_on_endpoint`
+#: (karta K-M) — trzeci tor przechodzi te same testy realnej ścieżki, bez
+#: żadnej innej zmiany, dokładnie jak zapowiadał punkt wpięcia K-L.
+TORY_Z_CONFIG_ID = ["gpz", "wciecie", "koniec_ciagu"]
 
 
 @pytest.mark.parametrize("tor", TORY_Z_CONFIG_ID)
