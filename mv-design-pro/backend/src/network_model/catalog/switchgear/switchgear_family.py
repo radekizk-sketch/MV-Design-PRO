@@ -14,9 +14,9 @@ i podpięte oficjalne `source_refs`. Inaczej rodzina jest `requires_catalog`.
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Literal, get_args
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, computed_field
 
 InsulationType = Literal["air", "sf6", "vacuum", "mixed", "unknown"]
 ConstructionType = Literal[
@@ -55,6 +55,43 @@ CompartmentModel = Literal[
     "lv_control_compartment",
     "metering_compartment",
 ]
+
+TorKonfiguracji = Literal["MODULARNY", "BLOK_RMU"]
+
+#: Tor konfiguracji rodziny WYPROWADZONY z `construction_type` — bez osobnego
+#: pola „architektura" (dwa pola o tej samej treści to dwie ścieżki tej samej
+#: prawdy; `docs/domain/KONFIGURATOR_ROZDZIELNIC_SN_RMU.md` §8).
+#:
+#: * `MODULARNY` — użytkownik SKŁADA rozdzielnicę z pojedynczych pól
+#:   (rozdzielnice wnętrzowe, dwuczłonowe, wysuwne, GIS rozdziału pierwotnego);
+#: * `BLOK_RMU` — użytkownik wybiera KONFIGURACJĘ FABRYCZNĄ bloku (np. L-L-T),
+#:   a dopiero potem doposaża jednostki; RMU nie jest zbiorem luźnych szaf.
+#:
+#: `None` oznacza rodzinę, która nie zadeklarowała konstrukcji — jawny brak,
+#: nigdy domyślny tor. Mapa pokrywa KOMPLET wartości `ConstructionType`
+#: (test dwustronny w `test_switchgear_families.py`), więc nowa wartość
+#: konstrukcji nie przejdzie po cichu z domyślnym torem.
+TOR_KONFIGURACJI_WG_KONSTRUKCJI: dict[str, TorKonfiguracji | None] = {
+    "RMU": "BLOK_RMU",
+    "jednoczlonowa": "MODULARNY",
+    "dwuczlonowa": "MODULARNY",
+    "wysuwna": "MODULARNY",
+    "GIS_SF6": "MODULARNY",
+    "wnetrzowa": "MODULARNY",
+    "kontenerowa": "MODULARNY",
+    "prefabrykowana": "MODULARNY",
+    "unknown": None,
+}
+
+assert set(TOR_KONFIGURACJI_WG_KONSTRUKCJI) == set(get_args(ConstructionType)), (
+    "TOR_KONFIGURACJI_WG_KONSTRUKCJI musi pokrywać komplet wartości "
+    "ConstructionType — brak wpisu oznaczałby cichy domyślny tor konfiguracji."
+)
+
+
+def tor_konfiguracji_dla_konstrukcji(construction_type: str) -> TorKonfiguracji | None:
+    """Tor konfiguracji dla typu konstrukcji (jedyne miejsce tego odwzorowania)."""
+    return TOR_KONFIGURACJI_WG_KONSTRUKCJI[construction_type]
 
 
 class SwitchgearFamily(BaseModel):
@@ -100,3 +137,15 @@ class SwitchgearFamily(BaseModel):
     status: SwitchgearFamilyStatus = "requires_catalog"
     source_refs: list[str] = Field(default_factory=list)
     notes_pl: str | None = None
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def tor_konfiguracji(self) -> TorKonfiguracji | None:
+        """Tor konfiguracji (MODULARNY / BLOK_RMU) wyprowadzony z konstrukcji.
+
+        Pole WYLICZANE, nie przechowywane: rodzina ma jedno miejsce, w którym
+        deklaruje konstrukcję (`construction_type`), a kreator i API czytają
+        stąd tor pracy. Rodzina bez zadeklarowanej konstrukcji zwraca `None`
+        (jawny brak) — walidator odmawia budowania na takiej rodzinie.
+        """
+        return tor_konfiguracji_dla_konstrukcji(self.construction_type)
