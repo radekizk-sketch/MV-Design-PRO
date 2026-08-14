@@ -394,6 +394,32 @@ class TestMaterializationContracts:
         assert result.solver_fields["return_conductor_r_ohm_per_km_20c"] == 0.727
         assert result.solver_fields["return_conductor_x_ohm_per_km"] == 0.08
 
+    def test_aparat_nn_materialization_end_to_end_carries_breaking_fields(self) -> None:
+        """Pin odbiorczy P0.10 (ta sama klasa co pin żyły powrotnej wyżej):
+        katalog → materialize_catalog_binding → materialized_params NIESIE
+        device_kind i conditional_sc_current_ka rozłącznika bezpiecznikowego.
+        Iniekcja odbiorcza wykazała, że kontrakt APARAT_NN był konsumowany
+        (lv_circuit_verification_binding czyta materialized_params), ale testy
+        wstrzykiwały parametry ręcznie — usunięcie pola z kontraktu zostawało
+        ZIELONE. Ten test przypina pierwszą połowę łańcucha na realnym
+        katalogu domyślnym (rb_nn_100a po migracji P0.7: i_cu_ka=None,
+        conditional_sc_current_ka=50.0)."""
+        from network_model.catalog.materialization import materialize_catalog_binding
+        from network_model.catalog.types import CatalogBinding
+
+        repo = get_default_mv_catalog()
+        binding = CatalogBinding(
+            catalog_namespace="APARAT_NN",
+            catalog_item_id="rb_nn_100a",
+            catalog_item_version="2026.01",
+            materialize=True,
+        )
+        result = materialize_catalog_binding(binding, repo)
+        assert result.success
+        assert result.solver_fields["device_kind"] == "ROZLACZNIK_BEZPIECZNIKOWY"
+        assert result.solver_fields["i_cu_ka"] is None
+        assert result.solver_fields["conditional_sc_current_ka"] == 50.0
+
 
 # ---------------------------------------------------------------------------
 # 3. Seedy przez repository

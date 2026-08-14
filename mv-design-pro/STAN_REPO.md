@@ -354,6 +354,29 @@ bramka E2E §80 planu H.
   karta (precedens OLTC V12K-092), naturalnie wchodzi w P0.9. **B-02: zrzuty
   (oba motywy, deterministyczne, `docs/audit/visual/nn_board_demo_*.png`)
   przekazane właścicielowi — werdykt wizualny OCZEKUJE.**
+
+**Aktualizacja 2026-08-14: P0.10 WYKONANE.**
+P0.10 (`4720530b` + pin odbiorczy): pakiet dowodowy `LV_CIRCUIT_VERIFICATION` —
+10 kroków (EQ_LVCV_001..007 addytywnie + reuse EQ_LC/EQ_VDROP), każdy krok
+konsumuje wynik ISTNIEJĄCEGO dostawcy (mapowanie 10/10 w meldunku; zero
+trzeciej fizyki), dwa zdania zdolności wyłączania wg rundy 5b (6-wariantowy
+iloczyn cech), SWZ trzeci stan, determinizm ZIP; API `/api/nn-proof/circuit/
+{pack,preview,report}` (3 wiersze macierzy); sekcje nN raportu w kontrakcie
+JSON z provenance (runId+revisionId+przypadek). Pomiar ProofPacksPanel:
+zamontowany ale inertny dla 8 paczek (mount bez callbacków) — dla nN osobny
+działający `NnCircuitProofPanel`. Wykonawca naprawił dług nazwany #3 z P0.7
+(materializacja APARAT_NN: device_kind/i_cu_ka/conditional_sc_current_ka) —
+Z konsumentem (binding czyta materialized_params). Odbiór: pełny pytest
+**9725 passed / 13 skipped**, frontend tsc+lint+43 testy panelu; INIEKCJA
+ODBIORCZA WYKRYŁA brak pinu łańcucha katalog→kontrakt→materializacja (testy
+wstrzykiwały parametry ręcznie — usunięcie pola z kontraktu zostawało
+zielone); pin dodany W ODBIORZE (rb_nn_100a end-to-end), re-iniekcja czerwona,
+sha-identyczne odtworzenie. DŁUGI NAZWANE: (a) sekcje nN raportu bez rendererów
+PDF/DOCX (renderery operują na CanonicalRun; analizy nN świadomie
+niepersystowane — wpięcie po decyzji o moście ENM→AnalysisRun, razem z G-22);
+(b) callbacki 8 paczek kanonicznych — pre-existing, osobna integracja;
+(c) pełny spis §63 raportu = P1 (z karty).
+W biegu: P0.9 (nN STUDIO UI). Po nim: bramka końcowa E2E §80.
 **Aktualizacja 2026-08-13 (ta sama sesja): P0.6 WYKONANE (`b746b6a9`) — „serce modułu".**
 - Pętla zwarcia z REALNEJ trasy grafu: `application/analyses/fault_loop/route.py`
   (NOWY) — BFS po ENM (kable/łącznik/wkładka `status=closed`), fail-closed na brak
