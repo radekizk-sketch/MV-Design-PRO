@@ -1512,6 +1512,12 @@ describe('KreatorStacjiSnNn — tory konfiguracji rozdzielnicy (S3)', () => {
     // Żaden tor się nie włącza — ani składanie z pól, ani wybór bloku.
     expect(screen.queryByTestId('mvd-kreator-stacja-tor-modularny')).toBeNull();
     expect(screen.queryByTestId('mvd-kreator-stacja-tor-blok')).toBeNull();
+    // …i NIC nie powstaje: ekran, który mówi „nie zgaduję toru", a mimo to
+    // składa listę pól, zaprzeczałby sam sobie.
+    await waitFor(() =>
+      expect(screen.queryByTestId('mvd-kreator-stacja-pole-wiersz-1')).toBeNull(),
+    );
+    expect(screen.getByTestId('mvd-kreator-stacja-zapisz')).toBeDisabled();
     // Nagłówek pokazuje brak danej, a nie wartość domyślną.
     const naglowek = screen.getByTestId('mvd-kreator-stacja-naglowek-rodziny');
     expect(naglowek).toHaveTextContent('brak w karcie katalogowej');
