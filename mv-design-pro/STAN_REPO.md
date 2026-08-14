@@ -583,3 +583,16 @@ Dockera) — harness gotowy po T3.
 - Reset kontenera #3 obsłużony bez strat (push-po-odbiorze); T3 (layout
   kompaktowy) wznowiony świeżym wykonawcą — w biegu.
 
+
+**Aktualizacja 2026-08-14: T5b-2 SCALONA — czeka na odbiór 18/18 właściciela + B-02.**
+T5b-2 (`b9330038`→`4792e0e2` z falą nadzoru): kanwa L2 przepisana na TORY
+ELEKTRYCZNE (sekcje=kreski magistrali, sprzęgło=aparat w szczelinie ze stanem
+w GEOMETRII glifu, incomer topologicznie, odpływ=aparat+kabel oddzielnie,
+boundary 4-ogniwowe, connectivity wyłącznie z grafu). Tabela 18×P0 w formacie
+właściciela (18 PASS, 4 z gwiazdką — rezydua w danych backendu), 5 twardych
+sprawdzeń z dowodami, 5 LUK MODELU nazwanych z propozycjami kontraktów
+(LvDomainBranch bez length/cross_section; pole źródłowe PV nieeksponowane
+w /enm/lv-domain; LvDomainBoundaryLink bez typu; polityka pracy równoległej
+2×TR bez kanału backendu; SwzApiResponse bez ta). Bramka: vitest sld 267
+plików/4874, accept 395 PASS, 7/7 zrzutów e2e. T5a ACCEPT 8,5/10 (werdykt
+właściciela, zamknięta); T5c HOLD do zielonego B-02 T5b-2.
