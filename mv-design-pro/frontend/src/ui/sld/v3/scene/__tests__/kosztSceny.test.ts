@@ -216,12 +216,36 @@ interface OdciskiLod {
  * mieści się w slotach). Gdyby zmieniły się wszystkie 42, byłby to sygnał,
  * że naprawa sięga dalej, niż opisuje.
  *
+ * AKTUALIZACJA ŚWIADOMA (SLD-nN-TOPOLOGIA karta T1, 2026-08-14) — przeliczone
+ * WYŁĄCZNIE odciski SCENY (6 z 6, referencyjna+podwojona × L0/L1/L2).
+ * Odciski DECLUTTERU i PLANU są BAJTOWO NIETKNIĘTE (6 z 6 i 42 z 42) — karta
+ * rusza WYŁĄCZNIE klasyfikację odcinków (`meta.kind`/`meta.elementKind`),
+ * zero zmian `scene.labels`, więc silnik etykiet (który czyta wyłącznie
+ * `labels`, nie `segments`) nie ma prawa drgnąć, i wyrocznia to potwierdza.
+ *
+ * CO SIĘ ZMIENIŁO (jeden mechanizm, `scene/buildScene.ts`
+ * `classifyStationSegmentKind`, plan §0 pkt 2(b)): szyna nN kolektorowa
+ * (`#lv-bus`) dostaje TERAZ `kind:'bus'`/`elementKind:'bus'` — SYMETRYCZNIE
+ * z `#sn-bus` (obie są odcinki, do których dotykają porty WIELU pól/aparatów
+ * tej samej stacji; dotąd `#lv-bus` dostawała `kind:'lv'`/`elementKind:
+ * 'segment'`, jak zwykły przewód — werdykt B-02, defekt (b)). Dodatkowo:
+ * krawędzie LITERALNE nN (aparaty/kable odpływów) dostają `kind:'lv'` z
+ * DOMENY GRAFU zamiast domyślnego `'sn'` (defekt (a)) — na TEJ fixturze
+ * (`sldSubstrate52s.enm.json`, ZERO danych strukturalnych P0.1 nN — żaden
+ * transformator nie ma osobnego terminala LV odrębnego od szyny nN stacji)
+ * ten drugi mechanizm nie ma czego zmienić (zero aparatów/kabli odpływów w
+ * modelu), więc CAŁA różnica sceny to WYŁĄCZNIE 53 segmenty `#lv-bus`
+ * (dowód: `git stash` + diff tablic `symbols`/`segments`/`labels`/`bbox`
+ * przed/po, meldunek karty T1 — 53 diffy, wszystkie identycznego kształtu
+ * `kind:'lv'→'bus'`/`elementKind:'segment'→'bus'`, WSPÓŁRZĘDNE i WSZYSTKO
+ * inne bajtowo identyczne; zero diffów symboli, zero diffu bbox).
+ *
  * Kolejność `plany` odpowiada `SKALE`.
  */
 const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly OdciskiLod[]>> = {
   referencyjna: [
     {
-      scena: 'f62459da362bd642ee1c0c4e3de898cf',
+      scena: 'a7bf27057fac658dd3e3d83a68ab8077',
       declutter: 'e9a5595fa2275cc62ec211444d0089c4',
       plany: [
         'd1d791097538d20dfc39304316b19d9f',
@@ -234,7 +258,7 @@ const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly Odc
       ],
     },
     {
-      scena: '667e565c34e0ca86c98461c6a5d15f14',
+      scena: '1cce10c10dd43b5892b09f0dd79015e5',
       declutter: 'cf410bbe7722c159c06499a06f0c6327',
       plany: [
         '429caf349602fa110d225921fa057213',
@@ -247,7 +271,7 @@ const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly Odc
       ],
     },
     {
-      scena: 'e2f107a56e6ab4c789c49620a9b742ab',
+      scena: 'b2a6e666289bff44ed26420471eb1df5',
       declutter: '03f819f4f473de1e2335c5702fc10da5',
       plany: [
         '5bd341c5c57e19380d32d1db9bc2e9ed',
@@ -262,7 +286,7 @@ const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly Odc
   ],
   podwojona: [
     {
-      scena: 'a57799885d6d537388814ba13bc4f26d',
+      scena: '7755f978c5ff1e81e1e2db1270a48e56',
       declutter: 'ebb4683a7bedaf71c969fbfae8034952',
       plany: [
         'd3fda9b40499a6a03b05bbbee6aaae69',
@@ -275,7 +299,7 @@ const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly Odc
       ],
     },
     {
-      scena: '67ed7c8e61fa2c3532e89dc6e45f2638',
+      scena: '90e0904a3fb4c17b08b962104edcbd8f',
       declutter: 'b7b648203cb1ce8e337ce6923ac1db34',
       plany: [
         '76e4ed44be4c3679544ecae10458ebd1',
@@ -288,7 +312,7 @@ const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly Odc
       ],
     },
     {
-      scena: 'd2808caaa3eaac558c25de8164796f52',
+      scena: 'ede39bede9cfd57097bdffc78f77d2c7',
       declutter: 'a818b29235142839af2812550fce4da7',
       plany: [
         'e53dae522da7f3cc612f0d8436092e0f',

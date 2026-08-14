@@ -47,6 +47,7 @@ function feeder(overrides: Partial<SldNnFeeder>): SldNnFeeder {
     destinationKind: 'unknown',
     destinationRef: null,
     destinationLabel: null,
+    cableRefs: [],
     ...overrides,
   };
 }
@@ -130,7 +131,7 @@ describe('P0.8 nN — odpływy RZECZYWISTE zastępują strzałkę zagregowanego 
   });
 
   const sections: readonly SldNnBoardSection[] = [
-    { sectionId: 'sec1', busRef: 'bus/nn', feeders: [mcbFeeder, fuseFeeder, bareCableFeeder, unresolvedFeeder] },
+    { sectionId: 'sec1', busRef: 'bus/nn', incomer: null, feeders: [mcbFeeder, fuseFeeder, bareCableFeeder, unresolvedFeeder] },
   ];
 
   const station = makeStation('s-nn', {
@@ -218,7 +219,7 @@ describe('P0.8 nN — substrat: stacja BEZ danych strukturalnych zachowuje zacho
 
   it('sekcja BEZ odpływów (feeders=[]): traktowana jak nnBoard=[] — loadArrow zachowany', () => {
     const stacjaPustaSekcja = makeStation('s-empty-section', {
-      nnBoard: [{ sectionId: 'sec1', busRef: 'bus/nn', feeders: [] }],
+      nnBoard: [{ sectionId: 'sec1', busRef: 'bus/nn', incomer: null, feeders: [] }],
       aggregatedLvLoad: { pMw: 0.05, qMvar: 0.01, count: 4 },
     });
     const c = compose(stacjaPustaSekcja);
@@ -229,11 +230,11 @@ describe('P0.8 nN — substrat: stacja BEZ danych strukturalnych zachowuje zacho
 describe('P0.8 nN — rezerwacja szerokości (measure↔compose, wzorzec DER-row)', () => {
   it('N odpływów: rezerwacja szerokości ROŚNIE z liczbą odpływów, rysunek mieści się w rezerwacji', () => {
     const jedenOdplyw: readonly SldNnBoardSection[] = [
-      { sectionId: 'sec1', busRef: 'bus/nn', feeders: [feeder({ branchRef: 'brc/1', apparatusKind: 'MCB', apparatusRef: 'brc/1', apparatusLabel: 'MCB B16', destinationKind: 'load', destinationLabel: 'Odbiór A' })] },
+      { sectionId: 'sec1', busRef: 'bus/nn', incomer: null, feeders: [feeder({ branchRef: 'brc/1', apparatusKind: 'MCB', apparatusRef: 'brc/1', apparatusLabel: 'MCB B16', destinationKind: 'load', destinationLabel: 'Odbiór A' })] },
     ];
     const pieciOdplywow: readonly SldNnBoardSection[] = [
       {
-        sectionId: 'sec1', busRef: 'bus/nn',
+        sectionId: 'sec1', busRef: 'bus/nn', incomer: null,
         feeders: Array.from({ length: 5 }, (_, i) =>
           feeder({
             branchRef: `brc/${i}`,

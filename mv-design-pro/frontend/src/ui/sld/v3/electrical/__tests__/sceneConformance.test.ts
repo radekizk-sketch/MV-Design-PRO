@@ -1,5 +1,5 @@
 /**
- * SLD-nN-TOPOLOGIA T0 (`docs/nn/PLAN_SLD_NN_TOPOLOGIA_2026-08.md` §0.4) —
+ * SLD-nN-TOPOLOGIA T0→T1 (`docs/nn/PLAN_SLD_NN_TOPOLOGIA_2026-08.md` §0.4) —
  * WYROCZNIA ZGODNOŚCI SCENY. Buduje scenę Stacji B DZISIEJSZYM pipeline
  * (`buildSceneV3` — ENM → scena, TA SAMA funkcja co
  * `scene/__tests__/buildScene.nnBoard.test.ts`), wyekstrahowuje krawędzie
@@ -14,18 +14,22 @@
  * `buildSceneV3` na fixturze Stacja B i odczytem `scene.segments` —
  * dowód/metoda opisane w meldunku karty T0.
  *
- * NA DZISIEJSZEJ kompozycji część wyroczni MA PRAWO BYĆ CZERWONA — to jest
- * DOWÓD DEFEKTU zgodny z werdyktem B-02 („dolna linia to artefakt layoutu,
- * nie szyna 0,4 kV"). Testy czerwone są oznaczone `it.fails(...)` z
- * komentarzem „DOWÓD DEFEKTU B-02 — flip na zielone w T1, wtedy
- * it.fails→it". Gdyby wyrocznia okazała się NIESPODZIEWANIE zielona, trzeba
- * by się zatrzymać i sprawdzić, czy naprawdę mierzy przewodzenie (pusta
- * lista = pusta wyrocznia = fałszywa zieleń) — po zmierzeniu na REALNEJ
- * scenie (25 krawędzi przewodzących, patrz Check B) wyrocznia NIE jest pusta.
+ * FLIP T1 (karta T1, §0 pkt 4): NA T0 część wyroczni BYŁA czerwona — DOWÓD
+ * DEFEKTU zgodny z werdyktem B-02 („dolna linia to artefakt layoutu, nie
+ * szyna 0,4 kV"), oznaczony `it.fails(...)`. Po T1 (`scene/buildScene.ts`
+ * `classifyStationSegmentKind` czyta domenę Z GRAFU zamiast heurystyki
+ * pozycji — patrz `docs/nn/PLAN_SLD_NN_TOPOLOGIA_2026-08.md` §0 pkt 2) obie
+ * asercje są ZIELONE Z KONSTRUKCJI — `it.fails`→`it`, ZAPADKA: żadna
+ * przyszła zmiana `compose/`/`scene/` nie może już cofnąć tego dowodu bez
+ * czerwonego CI. Gdyby wyrocznia okazała się NIESPODZIEWANIE zielona bez
+ * powodu, trzeba by się zatrzymać i sprawdzić, czy naprawdę mierzy
+ * przewodzenie (pusta lista = pusta wyrocznia = fałszywa zieleń) — po
+ * zmierzeniu na REALNEJ scenie (25 krawędzi przewodzących, patrz Check B)
+ * wyrocznia NIE jest pusta.
  */
 import { describe, expect, it } from 'vitest';
 
-import { buildSceneV3, type PreviewSegment, type SceneV3 } from '../../scene/buildScene';
+import { buildSceneV3, sceneConnectivityIndex, type PreviewSegment, type SceneV3 } from '../../scene/buildScene';
 import { buildTerminalGraph } from '../terminalGraph';
 import { buildStacjaBFixture, STACJA_B_REFS } from './fixtures/stacjaB';
 
@@ -91,7 +95,7 @@ describe('Check A — DOWÓD DEFEKTU B-02: krawędzie sceny z DOSŁOWNYM ref ga�
     expect(literalEdgeSegments.length).toBeGreaterThanOrEqual(3);
   });
 
-  it.fails('DOWÓD DEFEKTU B-02 — flip na zielone w T1, wtedy it.fails→it: KAŻDY taki segment ma kind zgodny z domeną grafu (dziś: QF-TR1/QF-01/QF-02/QF-03 dostają kind="sn" mimo domeny nN)', () => {
+  it('FLIP T1 (dowód defektu B-02 naprawiony — ZAPADKA): KAŻDY taki segment ma kind zgodny z domeną grafu (QF-TR1/QF-01/QF-02/QF-03 dostają kind="lv", zgodnie z domeną nN)', () => {
     for (const { segment, edge } of literalEdgeSegments) {
       const fromNode = graph.nodes.get(edge.fromBusRef)!;
       const edgeIsLv = fromNode.voltageKv <= 1;
@@ -126,24 +130,19 @@ describe('Check A2 — DOWÓD DEFEKTU B-02: DWIE strukturalnie identyczne szyny 
     expect(found.size).toBe(BUSBAR_OWNER_REF_SUFFIXES.length);
   });
 
-  it.fails('DOWÓD DEFEKTU B-02 — flip na zielone w T1, wtedy it.fails→it: KAŻDY segment szynowy ma elementKind="bus" (dziś: #lv-bus dostaje elementKind="segment", jak zwykły przewód)', () => {
+  it('FLIP T1 (dowód defektu B-02 naprawiony — ZAPADKA): KAŻDY segment szynowy ma elementKind="bus" (#lv-bus dostaje TERAZ elementKind="bus", symetrycznie z #sn-bus/#hv-bus/#bus-primary)', () => {
     for (const segment of busbarSegments()) {
       expect(segment.meta?.elementKind, `${segment.meta?.ownerRef} ma elementKind="${segment.meta?.elementKind}"`).toBe('bus');
     }
   });
 
-  it('DOWÓD BEZPOŚREDNI (bez pętli, dla czytelności meldunku): #sn-bus stacji jest kind="bus", #lv-bus TEJ SAMEJ stacji jest kind="lv" (nie "bus") — asymetria zmierzona', () => {
+  it('DOWÓD BEZPOŚREDNI (bez pętli, dla czytelności meldunku): #sn-bus I #lv-bus TEJ SAMEJ stacji są OBIE kind="bus"/elementKind="bus" — symetria naprawiona T1 (przed T1: #lv-bus miała kind="lv"/elementKind="segment", asymetria zmierzona w T0)', () => {
     const snBusSeg = scene.segments.find((s) => s.meta?.ownerRef === `${STACJA_B_REFS.stationRef}#sn-bus`);
     const lvBusSeg = scene.segments.find((s) => s.meta?.ownerRef === `${STACJA_B_REFS.stationRef}#lv-bus`);
     expect(snBusSeg?.meta?.kind).toBe('bus');
     expect(snBusSeg?.meta?.elementKind).toBe('bus');
-    // Poniższe DWIE asercje dokumentują DOKŁADNY dzisiejszy stan (nie
-    // oczekiwany) — to jest pomiar, nie wymaganie; stąd zwykłe `it` (zielone
-    // dziś I po naprawie T1 tylko jeśli T1 zachowa `kind`/`elementKind`
-    // literały — jeśli T1 zmieni je na 'bus', te dwie asercje trzeba
-    // przepisać RAZEM z flipem it.fails→it wyżej, co jest oczekiwane).
-    expect(lvBusSeg?.meta?.kind).toBe('lv');
-    expect(lvBusSeg?.meta?.elementKind).toBe('segment');
+    expect(lvBusSeg?.meta?.kind).toBe('bus');
+    expect(lvBusSeg?.meta?.elementKind).toBe('bus');
   });
 });
 
@@ -227,5 +226,61 @@ describe('Check B — KOMPLETNOŚĆ: każda krawędź przewodząca sceny jest (a
     expect(counts['literal-edge']).toBeGreaterThanOrEqual(3);
     expect(counts.busbar).toBe(4);
     expect(counts.decorative).toBeGreaterThanOrEqual(10);
+  });
+});
+
+describe('Check C — T1 (karta T1, §0 pkt 4 „odstępstwo #4 z T0"): sceneConnectivityIndex SPÓJNA z domenami grafu dla WSZYSTKICH elementów nN', () => {
+  // Odstępstwo #4 z T0 (karta T0 „USTALENIA T0", defekt (d)): „kable
+  // odpływów (nn_qf01_cable itd.) NIE mają żadnej reprezentacji w scenie —
+  // kompozycja rysuje tylko pierwszy aparat odpływu". Check A/B (wyżej)
+  // dowodzą TYLKO, że segmenty, które ISTNIEJĄ, mają poprawny `kind`/
+  // klasyfikację — NIE dowodzą, że kable FAKTYCZNIE dotykają reszty toru
+  // (można by narysować segment z poprawnym `kind`, który przez błąd
+  // współrzędnych WISI w powietrzu, niepołączony). Check C zamyka TĘ lukę:
+  // `sceneConnectivityIndex` (Union-Find po DOTYKU geometrycznym,
+  // `scene/buildScene.ts`) musi umieścić szynę nN, aparat główny (incomer)
+  // i KAŻDY kabel odpływu w JEDNEJ składowej spójności — to jest dowód
+  // GEOMETRYCZNY (nie tylko etykietowy) ciągłości toru T1→…→odbiór.
+  const connectivity = sceneConnectivityIndex(scene);
+
+  function segmentIndexByOwnerRef(ownerRef: string): number {
+    const idx = scene.segments.findIndex((s) => s.meta?.ownerRef === ownerRef);
+    if (idx < 0) throw new Error(`segment „${ownerRef}" nie istnieje na scenie Stacji B — pomiar błędny`);
+    return idx;
+  }
+
+  const lvBusOwnerRef = `${STACJA_B_REFS.stationRef}#lv-bus`;
+
+  it('kontrola: szyna nN (#lv-bus) i szyna SN (#sn-bus) ISTNIEJĄ na scenie jako odrębne segmenty (wyrocznia mierzy coś realnego)', () => {
+    expect(() => segmentIndexByOwnerRef(lvBusOwnerRef)).not.toThrow();
+    expect(() => segmentIndexByOwnerRef(`${STACJA_B_REFS.stationRef}#sn-bus`)).not.toThrow();
+  });
+
+  it('szyna nN i KAŻDY kabel odpływu (QF-01/QF-02/QF-03) są w JEDNEJ składowej spójności sceny — dowód GEOMETRYCZNY, że kable naprawdę dotykają toru (odstępstwo #4 z T0 naprawione, nie tylko etykietowo)', () => {
+    const lvBusRoot = connectivity.segmentRoot(segmentIndexByOwnerRef(lvBusOwnerRef));
+    for (const cableRef of [STACJA_B_REFS.cableQf01Ref, STACJA_B_REFS.cableQf02Ref, STACJA_B_REFS.cableQf03Ref]) {
+      const cableRoot = connectivity.segmentRoot(segmentIndexByOwnerRef(cableRef));
+      expect(cableRoot, `kabel „${cableRef}" NIE jest w tej samej składowej spójności co szyna nN — geometria nie dotyka`).toBe(lvBusRoot);
+    }
+  });
+
+  it('szyna nN i aparat GŁÓWNY (QF-TR1, incomer) są w JEDNEJ składowej spójności — incomer naprawdę łączy transformator z szyną, nie tylko wisi obok niej', () => {
+    const lvBusRoot = connectivity.segmentRoot(segmentIndexByOwnerRef(lvBusOwnerRef));
+    const incomerRoot = connectivity.segmentRoot(segmentIndexByOwnerRef(STACJA_B_REFS.qfTr1Ref));
+    expect(incomerRoot).toBe(lvBusRoot);
+  });
+
+  it('szyna nN i KAŻDY aparat odpływu (QF-01/QF-02/QF-03) są w JEDNEJ składowej spójności', () => {
+    const lvBusRoot = connectivity.segmentRoot(segmentIndexByOwnerRef(lvBusOwnerRef));
+    for (const feederRef of [STACJA_B_REFS.qf01Ref, STACJA_B_REFS.qf02Ref, STACJA_B_REFS.qf03Ref]) {
+      const feederRoot = connectivity.segmentRoot(segmentIndexByOwnerRef(feederRef));
+      expect(feederRoot, `aparat odpływu „${feederRef}" NIE jest w tej samej składowej spójności co szyna nN`).toBe(lvBusRoot);
+    }
+  });
+
+  it('szyna nN i szyna SN SĄ w jednej składowej sceny (transformator FIZYCZNIE łączy obie strony przez port symbolu) — dowód, że Check C mierzy realną spójność sceny, nie odizolowane wysepki per domena', () => {
+    const lvBusRoot = connectivity.segmentRoot(segmentIndexByOwnerRef(lvBusOwnerRef));
+    const snBusRoot = connectivity.segmentRoot(segmentIndexByOwnerRef(`${STACJA_B_REFS.stationRef}#sn-bus`));
+    expect(snBusRoot).toBe(lvBusRoot);
   });
 });

@@ -48,7 +48,17 @@ import type {
   SldNnBoardSection,
   SldNnFeeder,
   SldNnFeederDestinationKind,
+  SldNnIncomer,
 } from '../../shared/nnBoardTypes';
+// T1 (SLD-nN-TOPOLOGIA, `docs/nn/PLAN_SLD_NN_TOPOLOGIA_2026-08.md` §0.1,
+// „Nasze pliki: … adapter ENM"): granica transformator↔szyna nN jest
+// WYŁĄCZNIE danym grafu elektrycznego (`v3/electrical/`), nie heurystyką
+// pozycyjną tego adaptera — importu v2→v3/electrical jest BEZPIECZNY (kierunek
+// odwrotny niż zakazany): `v3/electrical/` nie zależy od `v2/` ani `v3/compose`
+// (`terminalGraph.ts`/`invariants.ts` docstring), więc żadnego cyklu importu
+// nie tworzy.
+import { buildTerminalGraph, type TerminalGraph } from '../../v3/electrical/terminalGraph';
+import { findLvIncomerEdgeForStationTransformers } from '../../v3/electrical/viewModel';
 import type { GpzRendererProps } from '../renderer/GpzRenderer';
 import type { SectionRendererProps } from '../renderer/SectionRenderer';
 import {
@@ -3613,6 +3623,25 @@ function countNnFeedersFromMeta(
  *  przekroczenie limitu degraduje do `'unknown'`, NIE zapętla się. */
 const NN_FEEDER_CHAIN_MAX_HOPS = 8;
 
+/**
+ * T1 (§0.1): graf elektryczny zbudowany RAZ per `snapshot` (WeakMap —
+ * `buildStationMiniBlockDetails` woła to per stacja, `buildTerminalGraph` jest
+ * O(elementów modelu), więc bez pamięci podręcznej koszt rósłby liniowo z
+ * liczbą stacji × wielkością modelu). Klucz to referencja obiektu (WeakMap),
+ * NIE treść — bezpieczne, bo `buildSldDataFromSnapshot` dostaje JEDEN,
+ * niemutowany `snapshot` na całe wywołanie (czysta funkcja, zero mutacji
+ * wejścia, zgodnie z nagłówkiem pliku).
+ */
+const terminalGraphCache = new WeakMap<EnergyNetworkModel, TerminalGraph>();
+
+function terminalGraphFor(snapshot: EnergyNetworkModel): TerminalGraph {
+  const cached = terminalGraphCache.get(snapshot);
+  if (cached) return cached;
+  const graph = buildTerminalGraph(snapshot);
+  terminalGraphCache.set(snapshot, graph);
+  return graph;
+}
+
 function otherBusRef(branch: Pick<Branch, 'from_bus_ref' | 'to_bus_ref'>, busRef: string): string | null {
   if (branch.from_bus_ref === busRef) return branch.to_bus_ref;
   if (branch.to_bus_ref === busRef) return branch.from_bus_ref;
@@ -3678,7 +3707,15 @@ function resolveNnFeederDestination(
   snapshot: EnergyNetworkModel,
   startBusRef: string,
   cameFromBranchRef: string,
-): { readonly kind: SldNnFeederDestinationKind; readonly ref: string | null; readonly label: string | null } {
+): {
+  readonly kind: SldNnFeederDestinationKind;
+  readonly ref: string | null;
+  readonly label: string | null;
+  /** T1 (§0.1, defekt (d)): refy ENM odcinków kabla przemierzonych PO
+   *  `cameFromBranchRef` aż do odbiorcy/granicy — patrz `SldNnFeeder.
+   *  cableRefs` (kontrakt, `shared/nnBoardTypes.ts`). */
+  readonly cableRefs: readonly string[];
+} {
   const loadsByBus = new Map<string, Load>();
   for (const l of snapshot.loads ?? []) if (!loadsByBus.has(l.bus_ref)) loadsByBus.set(l.bus_ref, l);
   const gensByBus = new Map<string, Generator>();
@@ -3689,28 +3726,30 @@ function resolveNnFeederDestination(
     for (const busRef of s.bus_refs ?? []) boardByBus.set(busRef, s);
   }
 
+  const cableRefs: string[] = [];
   let currentBus = startBusRef;
   let cameFrom = cameFromBranchRef;
   for (let hop = 0; hop <= NN_FEEDER_CHAIN_MAX_HOPS; hop++) {
     const load = loadsByBus.get(currentBus);
-    if (load) return { kind: 'load', ref: load.ref_id, label: load.name?.trim() || 'Odbiór' };
+    if (load) return { kind: 'load', ref: load.ref_id, label: load.name?.trim() || 'Odbiór', cableRefs };
     const gen = gensByBus.get(currentBus);
-    if (gen) return { kind: 'der', ref: gen.ref_id, label: gen.name?.trim() || 'Źródło' };
+    if (gen) return { kind: 'der', ref: gen.ref_id, label: gen.name?.trim() || 'Źródło', cableRefs };
     const board = boardByBus.get(currentBus);
-    if (board) return { kind: 'board', ref: board.ref_id, label: board.name?.trim() || 'Rozdzielnica nN' };
+    if (board) return { kind: 'board', ref: board.ref_id, label: board.name?.trim() || 'Rozdzielnica nN', cableRefs };
 
     const touching = (snapshot.branches ?? []).filter(
       (b) => b.ref_id !== cameFrom && (b.from_bus_ref === currentBus || b.to_bus_ref === currentBus),
     );
     if (touching.length !== 1 || touching[0].type !== 'cable') {
-      return { kind: 'unknown', ref: null, label: null };
+      return { kind: 'unknown', ref: null, label: null, cableRefs };
     }
     const next = otherBusRef(touching[0], currentBus);
-    if (!next) return { kind: 'unknown', ref: null, label: null };
+    if (!next) return { kind: 'unknown', ref: null, label: null, cableRefs };
+    cableRefs.push(touching[0].ref_id);
     cameFrom = touching[0].ref_id;
     currentBus = next;
   }
-  return { kind: 'unknown', ref: null, label: null };
+  return { kind: 'unknown', ref: null, label: null, cableRefs };
 }
 
 /**
@@ -3749,9 +3788,37 @@ export function buildNnBoardFeeders(
       destinationKind: destination.kind,
       destinationRef: destination.ref,
       destinationLabel: destination.label,
+      cableRefs: destination.cableRefs,
     });
   }
   return feeders;
+}
+
+/**
+ * T1 (§0.1 „RGnN jako OBIEKT: incomer/…"): rekord aparatu GŁÓWNEGO sekcji z
+ * refu gałęzi ENM (jawny `NnSection.incoming_refs[0]` LUB krawędź znaleziona
+ * przez `findLvIncomerEdgeForStationTransformers` na grafie) — `null`, gdy
+ * gałąź o tym refie nie istnieje w migawce (dana niekompletna, zero
+ * fabrykacji aparatu z refu, którego nie da się rozwiązać). Rozpoznanie
+ * rodzaju/etykiety przez TĘ SAMĄ funkcję co odpływy (`resolveNnFeederApparatus`
+ * — jedna prawda, reguła KLASA §3: aparat główny i aparat odpływu to ta sama
+ * KLASA obiektu, różni się wyłącznie ROLA w kompozycji, nie klasyfikacja).
+ */
+function buildIncomerRecord(
+  snapshot: EnergyNetworkModel,
+  branchRef: string,
+  sectionBusRef: string,
+): SldNnIncomer | null {
+  const branch = (snapshot.branches ?? []).find((b) => b.ref_id === branchRef);
+  if (!branch) return null;
+  const apparatus = resolveNnFeederApparatus(branch);
+  return {
+    branchRef,
+    apparatusKind: apparatus?.kind ?? null,
+    apparatusRef: apparatus?.ref ?? null,
+    apparatusLabel: apparatus?.label ?? null,
+    fromBusRef: otherBusRef(branch, sectionBusRef) ?? sectionBusRef,
+  };
 }
 
 /**
@@ -3763,11 +3830,22 @@ export function buildNnBoardFeeders(
  * domyślna, `models.py` docstring `NnSection`). `nnBusRef===null` (stacja
  * bez szyny nN / remis dwóch szyn tego samego napięcia) ⇒ `[]` — uczciwy
  * brak, zero fabrykacji sekcji bez szyny.
+ *
+ * T1 (§0.1, §0.2): `graph` (opcjonalny — DOMYŚLNIE `undefined`, zachowanie
+ * IDENTYCZNE sprzed karty, testy jednostkowe `enmToSldAdapter.nnBoard.test.ts`
+ * wołają bez niego) włącza wykrycie aparatu GŁÓWNEGO (incomera) sekcji
+ * DOMYŚLNEJ (bez jawnego `NnSection`) po GRAFIE elektrycznym: krawędź na
+ * ścieżce transformator→szyna nN (`findLvIncomerEdgeForStationTransformers`)
+ * jest WYKLUCZONA z listy odpływów i wystawiona jako `incomer` — bez `graph`
+ * (albo gdy transformator podłączony WPROST do `nnBusRef`, zero pośredniego
+ * łącznika) zachowanie sprzed karty: WSZYSTKIE gałęzie dotykające szyny są
+ * odpływami, `incomer: null`.
  */
 export function buildNnBoardSections(
   snapshot: EnergyNetworkModel,
   station: Substation,
   nnBusRef: string | null,
+  graph?: TerminalGraph,
 ): readonly SldNnBoardSection[] {
   const explicitSections = (station.nn_sections ?? []).filter((s) => s.bus_ref);
   if (explicitSections.length > 0) {
@@ -3776,19 +3854,28 @@ export function buildNnBoardSections(
       .map((section) => {
         const exclude = new Set<string>(section.incoming_refs ?? []);
         if (section.coupler_ref) exclude.add(section.coupler_ref);
+        const incomingRef = (section.incoming_refs ?? [])[0] ?? null;
+        const incomer = incomingRef ? buildIncomerRecord(snapshot, incomingRef, section.bus_ref) : null;
         return {
           sectionId: section.section_id,
           busRef: section.bus_ref,
+          incomer,
           feeders: buildNnBoardFeeders(snapshot, section.bus_ref, exclude),
         };
       });
   }
   if (!nnBusRef) return [];
+  const incomerEdge = graph
+    ? findLvIncomerEdgeForStationTransformers(graph, station.transformer_refs ?? [], nnBusRef)
+    : null;
+  const exclude = incomerEdge ? new Set([incomerEdge.ref]) : new Set<string>();
+  const incomer = incomerEdge ? buildIncomerRecord(snapshot, incomerEdge.ref, nnBusRef) : null;
   return [
     {
       sectionId: `${station.ref_id}#nn-section-default`,
       busRef: nnBusRef,
-      feeders: buildNnBoardFeeders(snapshot, nnBusRef, new Set()),
+      incomer,
+      feeders: buildNnBoardFeeders(snapshot, nnBusRef, exclude),
     },
   ];
 }
@@ -3878,7 +3965,12 @@ function buildStationMiniBlockDetails(
   // P0.8 nN (seam A8 §9.2.1): sekcje/odpływy RZECZYWISTE z modelu — `ambiguous`
   // (remis dwóch szyn nN tego samego napięcia) degraduje do `[]`, jak
   // `nnVoltageKv`/`mainBusVoltageKv` wyżej (jedna reguła, `pickStationBus`).
-  const nnBoard = buildNnBoardSections(snapshot, station, nnBusPick.ambiguous ? null : nnBusPick.ref);
+  const nnBoard = buildNnBoardSections(
+    snapshot,
+    station,
+    nnBusPick.ambiguous ? null : nnBusPick.ref,
+    terminalGraphFor(snapshot),
+  );
 
   return {
     footprintType,

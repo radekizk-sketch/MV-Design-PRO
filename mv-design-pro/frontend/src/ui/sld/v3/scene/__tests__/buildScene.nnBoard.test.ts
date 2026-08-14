@@ -36,6 +36,15 @@ function loadFixture(name: string): EnergyNetworkModel {
   return raw.enm;
 }
 
+/** T1 (§0.5): fixtura referencyjna WIELOSTACYJNA (`layoutEngine.substrate.
+ *  test.ts`), poza `fixtures/` lokalnym tego katalogu — WYŁĄCZNY odczyt. */
+function loadCrossDirFixture(relativePath: string): EnergyNetworkModel {
+  const raw = JSON.parse(readFileSync(resolve(here, relativePath), 'utf8')) as
+    | { readonly enm: EnergyNetworkModel }
+    | EnergyNetworkModel;
+  return 'enm' in raw ? raw.enm : raw;
+}
+
 const clone = (enm: EnergyNetworkModel): EnergyNetworkModel =>
   JSON.parse(JSON.stringify(enm)) as EnergyNetworkModel;
 
@@ -211,5 +220,53 @@ describe('P0.8 nN — substrat: stacja BEZ odpływów strukturalnych (fixtura BA
     const a = shaOf(buildSceneV3(enmBazowy, 2));
     const b = shaOf(buildSceneV3(clone(enmBazowy), 2));
     expect(a).toBe(b);
+  });
+});
+
+describe('SLD-nN-TOPOLOGIA T1 (`docs/nn/PLAN_SLD_NN_TOPOLOGIA_2026-08.md` §0.5) — substrat SZEROKI (52 stacje, sldSubstrate52s.enm.json): zakres zmiany klasyfikacji dowiedziony na fixturze referencyjnej, nie tylko na Stacji B', () => {
+  // Fixtura referencyjna WIELOSTACYJNA (52 stacje SN/nN, `layoutEngine.
+  // substrate.test.ts`) — WYŁĄCZNIE odczyt, ZERO mutacji (karta §Zakazy).
+  // Ta fixtura NIE niesie żadnych danych strukturalnych P0.1 (odpływy
+  // rzeczywiste/`nn_sections`) — dokładnie „WIĘKSZOŚĆ dzisiejszych sieci"
+  // (`layout/measure.ts` nagłówek P0.8). Pomiar PRZED/PO T1 (opisany w
+  // meldunku karty T1, metoda `git stash`): jedyna różnica na TEJ fixturze —
+  // 53 segmenty `#lv-bus` zmieniają `kind`/`elementKind` z `'lv'`/`'segment'`
+  // na `'bus'`/`'bus'` (fix defektu (b) B-02, plan §0 pkt 2) — ZERO zmian
+  // pozycji/liczby symboli/bbox/etykiet. Ten test zamyka dowód jako STAŁĄ
+  // regresję (nie tylko jednorazowy pomiar w meldunku).
+  const enmSubstrate = loadCrossDirFixture('../../../v2/geometry/__tests__/fixtures/sldSubstrate52s.enm.json');
+
+  it('ZERO symboli nN P0.8 (nnBreaker/nnFuseSwitch/nnDistributionBoard) — fixtura bez danych strukturalnych, zero fabrykacji', () => {
+    for (const lod of [0, 1, 2] as SceneLod[]) {
+      const scene = buildSceneV3(enmSubstrate, lod);
+      expect(nnFeederSymbols(scene), `LOD${lod}`).toHaveLength(0);
+    }
+  });
+
+  it('KAŻDY segment `#lv-bus` (szyna nN kolektorowa) dostaje elementKind="bus" — fix T1 §0.2(b) obowiązuje na CAŁYM substracie, nie tylko fixturze Stacja B', () => {
+    for (const lod of [1, 2] as SceneLod[]) {
+      const scene = buildSceneV3(enmSubstrate, lod);
+      const lvBusSegments = scene.segments.filter((s) => s.meta?.ownerRef?.endsWith('#lv-bus'));
+      expect(lvBusSegments.length, `LOD${lod}: brak segmentów #lv-bus — pomiar błędny`).toBeGreaterThan(0);
+      for (const seg of lvBusSegments) {
+        expect(seg.meta?.kind, `LOD${lod} ${seg.meta?.ownerRef}`).toBe('bus');
+        expect(seg.meta?.elementKind, `LOD${lod} ${seg.meta?.ownerRef}`).toBe('bus');
+      }
+    }
+  });
+
+  it('status walidacji grafu elektrycznego SLD_VALID (fixtura referencyjna bez naruszeń inwariantów)', () => {
+    const scene = buildSceneV3(enmSubstrate, 2);
+    expect(scene.meta.electricalGraphStatus).toBe('SLD_VALID');
+    expect(scene.meta.electricalGraphViolations).toEqual([]);
+  });
+
+  it('liczba symboli/segmentów i bbox NIEZMIENIONE między biegami (determinizm — substrat szeroki)', () => {
+    const a = buildSceneV3(enmSubstrate, 2);
+    const b = buildSceneV3(clone(enmSubstrate), 2);
+    expect(a.symbols.length).toBe(b.symbols.length);
+    expect(a.segments.length).toBe(b.segments.length);
+    expect(a.bbox).toEqual(b.bbox);
+    expect(JSON.stringify(a)).toBe(JSON.stringify(b));
   });
 });

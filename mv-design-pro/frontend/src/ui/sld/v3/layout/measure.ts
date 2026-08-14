@@ -41,7 +41,7 @@ import { derLabelText, derSnChainExtraHeight, derSymbolSize, type StationDerSour
 import type { StationCompactGlyphSummary } from '../compose/preview';
 import type { FieldRole } from '../../v2/domain/apparatusContracts';
 import type { StationTransformerUnit } from '../../../network-build/stationTransformerSelection';
-import type { SldNnBoardSection, SldNnFeeder } from '../../shared/nnBoardTypes';
+import type { SldNnBoardSection, SldNnFeeder, SldNnIncomer } from '../../shared/nnBoardTypes';
 
 const LABEL_LINE_HEIGHT_T1 = labelLineHeight('t1');
 const LABEL_LINE_HEIGHT_T2 = labelLineHeight('t2');
@@ -288,6 +288,13 @@ const NN_FEEDER_STUB_HEIGHT = GRID;
 const NN_FEEDER_STACK_GAP = GRID;
 const NN_FEEDER_LABEL_GAP = GRID;
 const NN_FEEDER_COLUMN_GAP = GRID;
+/** T1 (SLD-nN-TOPOLOGIA §0.1, defekt (d)): odcinek SCHEMATYCZNY (NIE do
+ *  skali — jak `DER_SN_CABLE_LEN` dla toru DER-SN, `compose/sourceKind.ts`)
+ *  reprezentujący JEDEN przeskok kablowy `SldNnFeeder.cableRefs[i]` między
+ *  aparatem odpływu (albo szyną, dla gołego kabla) a kolejnym węzłem toru —
+ *  jedna prawda measure↔compose: `compose/station.ts` rysuje DOKŁADNIE tyle
+ *  odcinków tej wysokości, ile `cableRefs` niesie. */
+const NN_FEEDER_CABLE_DROP_HEIGHT = GRID;
 
 /** `true`, gdy odpływ niesie aparat ROZPOZNANY (glif MCB/rozłącznik
  *  bezpiecznikowy) — `'UNRESOLVED'` (dane niekompletne) i `null` (goły kabel,
@@ -339,19 +346,46 @@ export function nnFeederLabelText(odplyw: SldNnFeeder): string {
   return apparatusLine ? `${apparatusLine} · ${destinationLine}` : destinationLine;
 }
 
+/** T1 (§0.3 „UNRESOLVED = HARD VALIDATION ERROR … tor przerwany jawnie"):
+ *  `true` gdy aparat odpływu NIESIE gałąź (switch/breaker), ale katalog nie
+ *  rozpoznaje jej rodzaju — kompozycja NIE kontynuuje toru za takim aparatem
+ *  (zero kabli, zero liścia rozdzielnicy narysowanych ZA nierozpoznanym
+ *  aparatem — inaczej rysunek udawałby pełną wiedzę o torze, którego dane
+ *  nie potwierdzają). Reużyte przez `nnFeederSymbolStackHeight` (rezerwacja)
+ *  i `compose/station.ts` (rysunek) — jedna prawda measure↔compose. */
+export function nnFeederPathBroken(odplyw: SldNnFeeder): boolean {
+  return odplyw.apparatusKind === 'UNRESOLVED';
+}
+
 /** Wysokość CAŁEGO stosu symboli jednego odpływu (zejście z szyny + aparat,
- *  gdy rozpoznany + liść rozdzielnicy nN, gdy cel to podrozdzielnica) — BEZ
- *  etykiety (doliczanej osobno, `nnFeederColumnRequiredHeight` niżej). Goły
- *  kabel bez rozpoznanego aparatu i bez celu-rozdzielnicy: sam zejście (stub)
- *  — tor jest widoczny, ale nie niesie żadnego symbolu (uczciwy rysunek: nic
- *  do narysowania oprócz przewodu, karta P0.8 §0.2). */
+ *  gdy rozpoznany + kable pośrednie (T1 §0.1) + liść rozdzielnicy nN, gdy cel
+ *  to podrozdzielnica) — BEZ etykiety (doliczanej osobno,
+ *  `nnFeederColumnRequiredHeight` niżej). Goły kabel bez rozpoznanego aparatu
+ *  i bez celu-rozdzielnicy: sam zejście (stub) — tor jest widoczny, ale nie
+ *  niesie żadnego symbolu (uczciwy rysunek: nic do narysowania oprócz
+ *  przewodu, karta P0.8 §0.2). Aparat `'UNRESOLVED'`: TYLKO zejście (stub) —
+ *  kable/liść ZA nim NIE są rezerwowane (§0.3 „tor przerwany").
+ *
+ * FIX (T1, naprawa NAPOTKANA przy dodawaniu kabli — Zero-Debt §1): odstęp
+ * PRZED liściem rozdzielnicy (`NN_FEEDER_STACK_GAP`) był rezerwowany
+ * WYŁĄCZNIE gdy `hasApparatus`, ale `compose/station.ts` rysuje `boardTopY =
+ * cursorY + GRID` BEZWARUNKOWO (zawsze, apparatus lub nie) — na gołym kablu
+ * z celem-rozdzielnicą (fixtura `zOdplywamiNn` f3_cable→RGnN-2,
+ * `scene/__tests__/buildScene.nnBoard.test.ts`) rezerwacja była o
+ * `NN_FEEDER_STACK_GAP` (8 j.św.) NIŻSZA niż rysunek. Bez kolizji na TEJ
+ * fixturze (luz w sąsiedniej kolumnie ją wchłaniał) — ale to był rozjazd
+ * measure↔compose z konstrukcji, nie z przypadku. Naprawione: gap
+ * BEZWARUNKOWY przy `hasBoard`, zgodnie z rysunkiem. */
 function nnFeederSymbolStackHeight(odplyw: SldNnFeeder): number {
   const hasApparatus = nnFeederHasResolvedApparatus(odplyw);
-  const hasBoard = odplyw.destinationKind === 'board';
+  const pathBroken = nnFeederPathBroken(odplyw);
+  const hasBoard = !pathBroken && odplyw.destinationKind === 'board';
+  const cableHops = pathBroken ? 0 : odplyw.cableRefs.length;
   let h = NN_FEEDER_STUB_HEIGHT;
   if (hasApparatus) h += NN_FEEDER_APPARATUS_HEIGHT;
+  h += cableHops * NN_FEEDER_CABLE_DROP_HEIGHT;
   if (hasBoard) {
-    if (hasApparatus) h += NN_FEEDER_STACK_GAP;
+    h += NN_FEEDER_STACK_GAP;
     h += NN_FEEDER_BOARD_HEIGHT;
   }
   return h;
@@ -394,6 +428,30 @@ export function nnFeederRowFootprint(
 export function flattenedNnFeeders(nnBoard: readonly SldNnBoardSection[] | undefined): readonly SldNnFeeder[] {
   if (!nnBoard) return [];
   return nnBoard.flatMap((section) => section.feeders);
+}
+
+/**
+ * T1 (SLD-nN-TOPOLOGIA, §0.1): aparat GŁÓWNY (incomer) DOMYŚLNEJ/PIERWSZEJ
+ * sekcji szyny nN — jedna prawda measure↔compose (`compose/station.ts` czyta
+ * DOKŁADNIE to samo, żeby wysokość zarezerwowana i narysowana się zgadzały).
+ * `null`, gdy stacja bez `nnBoard`/sekcji bez incomera (WIĘKSZOŚĆ dzisiejszych
+ * sieci — transformator podłączony wprost do szyny nN, zero zmian geometrii).
+ */
+export function primaryNnIncomer(nnBoard: readonly SldNnBoardSection[] | undefined): SldNnIncomer | null {
+  return nnBoard?.[0]?.incomer ?? null;
+}
+
+/** Gabaryty aparatu GŁÓWNEGO — TE SAME glify (`nnBreaker`/`nnFuseSwitch`) co
+ *  aparat odpływu, więc TA SAMA rezerwacja pionowa (`NN_FEEDER_APPARATUS_
+ *  HEIGHT`). Zejście z portu LV transformatora do aparatu głównego i od
+ *  aparatu do szyny — DWA odcinki `NN_FEEDER_STUB_HEIGHT`-podobne (wzorzec
+ *  `nnFeederSymbolStackHeight`: stub + aparat, tu BEZ liścia rozdzielnicy —
+ *  za aparatem głównym stoi ZAWSZE szyna, nigdy liść). */
+export function nnIncomerExtraHeight(incomer: SldNnIncomer | null): number {
+  if (!incomer) return 0;
+  const hasApparatus = incomer.apparatusKind === 'MCB' || incomer.apparatusKind === 'FUSE_SWITCH';
+  if (!hasApparatus) return 0;
+  return NN_FEEDER_STUB_HEIGHT + NN_FEEDER_APPARATUS_HEIGHT + NN_FEEDER_STACK_GAP;
 }
 
 /** Wysokość DODATKOWA na rząd odpływów nN (0, gdy stacja bez odpływów —
@@ -1053,6 +1111,12 @@ export function stationBlockHeight(station: StationMeasureInput): number {
   // tej samej szynie nN, więc łączy je `max`, nie suma (patrz
   // `nnSideBelowBusHeight` — tam wyprowadzenie i pomiar).
   const nnExtra = nnSideBelowBusHeight(station);
+  // T1 (SLD-nN-TOPOLOGIA §0.1): aparat GŁÓWNY (incomer) rezerwuje przestrzeń
+  // NAD szyną nN (między portem LV transformatora i osią szyny) — `0` gdy
+  // stacja bez incomera rozpoznanego (WIĘKSZOŚĆ sieci, substrat nietknięty,
+  // karta §0.5). JEDNA prawda measure↔compose: `compose/station.ts` liczy
+  // `busY` DOKŁADNIE tym samym wywołaniem.
+  const nnIncomerExtra = nnIncomerExtraHeight(primaryNnIncomer(station.nnBoard));
   // W2: pole źródłowe SN zajmuje pas pionowy kolumn (od `blockTopY` w dół) —
   // kandydat do `max()` z najwyższą kolumną pola (0, gdy zero źródeł SN).
   const snFieldHeight = snSourceFieldHeight(allDer);
@@ -1062,7 +1126,7 @@ export function stationBlockHeight(station: StationMeasureInput): number {
   const implicitTrHeight =
     implicitStationTransformers(station).length > 0 ? IMPLICIT_TR_SYMBOL_HEIGHT : 0;
   if (station.snBays.length === 0) {
-    return Math.max(snFieldHeight, implicitTrHeight) + STATION_BLOCK_BUS_CLEARANCE + nnExtra;
+    return Math.max(snFieldHeight, implicitTrHeight) + STATION_BLOCK_BUS_CLEARANCE + nnIncomerExtra + nnExtra;
   }
   // W2c (POLECENIE_DER_SN_TOPOLOGIA_2026-07): tor DER-SN zwisa POD DOLNYM
   // portem głowicy pola źródłowego (bay_role `OZE`) — wydłuża KOLUMNĘ tego
@@ -1086,7 +1150,7 @@ export function stationBlockHeight(station: StationMeasureInput): number {
     return Math.max(base, bayMainPathHeight(bay) + chainExtra2);
   });
   const tallest = Math.max(...columnHeights, snFieldHeight, implicitTrHeight);
-  return tallest + STATION_BLOCK_BUS_CLEARANCE + nnExtra;
+  return tallest + STATION_BLOCK_BUS_CLEARANCE + nnIncomerExtra + nnExtra;
 }
 
 /**

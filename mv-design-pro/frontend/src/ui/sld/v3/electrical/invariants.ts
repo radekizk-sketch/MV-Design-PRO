@@ -262,9 +262,18 @@ function crossVoltageConductorViolations(graph: TerminalGraph): InvariantViolati
 // jest AKTYWNA (`status==='closed'` — w torze), to HARD ERROR (plan: „nigdy
 // element w aktywnym torze").
 // ---------------------------------------------------------------------------
-type NnApparatusResolution = 'MCB' | 'FUSE_SWITCH' | 'UNRESOLVED' | null;
+export type NnApparatusResolution = 'MCB' | 'FUSE_SWITCH' | 'UNRESOLVED' | null;
 
-function resolveNnApparatusKind(edge: ConductingEdge): NnApparatusResolution {
+/**
+ * T1 (`docs/nn/PLAN_SLD_NN_TOPOLOGIA_2026-08.md` §0.3): EXPORTOWANA (T0 była
+ * prywatna) — jedyne źródło prawdy „jaki rodzaj aparatu nN niesie ta
+ * krawędź", współdzielone teraz między WALIDACJĄ (inwariant 7 niżej) i
+ * KOMPOZYCJĄ sceny nN (`compose/station.ts`, przez `viewModel.ts`), żeby
+ * aparat oznaczony tu jako `'UNRESOLVED'` (SLD_INVALID) był TYM SAMYM
+ * aparatem, którego kompozycja rysuje jako pusty tor + ostrzeżenie (reguła
+ * KLASA §3 — predykaty parami z jednego źródła).
+ */
+export function resolveNnApparatusKind(edge: ConductingEdge): NnApparatusResolution {
   if (edge.kind === 'fuse') return 'FUSE_SWITCH'; // fakt domenowy z typu gałęzi (jak w v2).
   if (edge.kind !== 'switch' && edge.kind !== 'breaker') return null; // nie jest "aparatem odpływu" w tym sensie (np. kabel/linia).
   if (edge.catalogNamespace === 'APARAT_NN_MCB') return 'MCB';

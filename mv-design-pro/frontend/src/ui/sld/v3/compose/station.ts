@@ -74,7 +74,10 @@ import {
   LV_MODEL_BOUNDARY_TEXT,
   nnFeederColumnRequiredWidth,
   nnFeederLabelText,
+  nnFeederPathBroken,
   nnFeederRowFootprint,
+  nnIncomerExtraHeight,
+  primaryNnIncomer,
   stationSnColumnLayout,
   type StationSnColumnPlacement,
   PORT_CAPTION_BUS_CLEARANCE,
@@ -1584,7 +1587,17 @@ export function composeStation(input: ComposeStationInput): StationComposition {
   if (hasLvSection && lvPorts.length > 0) {
     const minX = Math.min(...lvPorts.map((p) => p.x));
     const maxX = Math.max(...lvPorts.map((p) => p.x));
-    const busY = snapToGrid(Math.max(...lvPorts.map((p) => p.y)) + GRID);
+    // T1 (SLD-nN-TOPOLOGIA §0.1 „T1→LV terminal→aparat głowny (QF-TR1/
+    // incomer)→SZYNA RGnN"): punkt, do którego schodzą WSZYSTKIE porty LV
+    // transformatorów tej stacji, NIM ewentualny aparat GŁÓWNY (incomer) —
+    // `midY` przy braku incomera JEST szyną (zachowanie sprzed karty,
+    // `nnIncomerExtraHeight(null)===0`, substrat bez nN bajtowo nietknięty,
+    // karta §0.5). `incomer` jest JEDNĄ prawdą measure↔compose z
+    // `layout/measure.ts::primaryNnIncomer` (ten sam odczyt `station.nnBoard`).
+    const midY = snapToGrid(Math.max(...lvPorts.map((p) => p.y)) + GRID);
+    const incomer = primaryNnIncomer(station.nnBoard);
+    const incomerExtra = nnIncomerExtraHeight(incomer);
+    const busY = snapToGrid(midY + incomerExtra);
     // P0.8 nN (H_PLAN_IMPLEMENTACJI_NN §P0.8): odpływy RZECZYWISTE (dane
     // strukturalne P0.1) — gdy obecne, ZASTĘPUJĄ pojedynczą strzałkę
     // zagregowanego odbioru (precyzyjny obraz nie dubluje agregatu, karta
@@ -1625,10 +1638,65 @@ export function composeStation(input: ComposeStationInput): StationComposition {
         ownerRef: `${station.id}#lv-drop-${index}`,
         points: [
           { x: p.x, y: p.y },
-          { x: p.x, y: busY },
+          { x: p.x, y: midY },
         ],
       });
     });
+    // T1 (§0.1): aparat GŁÓWNY (incomer) — WYŁĄCZNIE gdy rozpoznany
+    // (MCB/rozłącznik bezpiecznikowy, `incomerExtra > 0` z konstrukcji
+    // `nnIncomerExtraHeight`); rysowany PRZED szyną, między zejściem
+    // wspólnym `midY` (gdzie schodzą WSZYSTKIE porty LV transformatorów) i
+    // szyną `busY`, wycentrowany na osi kolumny TR. Aparat NIEROZPOZNANY
+    // (`incomer?.apparatusKind==='UNRESOLVED'`) LUB incomer bez aparatu
+    // (kabel goły, `apparatusKind===null`) NIE dostają symbolu — `busY===
+    // midY` wtedy (zero zmian geometrii, plan §0.5), a rekord aparatu
+    // pozostaje NIEROZWIĄZANY w audycie (`missingData` niżej).
+    if (incomer && incomerExtra > 0) {
+      const incomerX = snapToGrid((minX + maxX) / 2);
+      const apparatusSymbolId = incomer.apparatusKind === 'MCB' ? 'nnBreaker' : 'nnFuseSwitch';
+      const def = SYMBOL_DEFS[apparatusSymbolId];
+      const stubEndY = midY + GRID;
+      segments.push({
+        ownerRef: incomer.branchRef,
+        points: [
+          { x: incomerX, y: midY },
+          { x: incomerX, y: stubEndY },
+        ],
+      });
+      const symX = snapToGrid(incomerX - def.width / 2);
+      symbols.push({
+        symbolId: apparatusSymbolId,
+        sourceRef: incomer.apparatusRef ?? undefined,
+        x: symX,
+        y: stubEndY,
+        ports: portsInWorld(def, symX, stubEndY),
+      });
+      const apparatusBottomY = stubEndY + def.height;
+      // Zejście aparatu głównego DO szyny — TA SAMA klasa wzorca co
+      // `#lv-drop-N` (dekoracja portu, `sceneConformance.test.ts`
+      // DECORATIVE_OWNER_REF_PATTERNS `#lv-drop-`), zero nowego wzorca.
+      segments.push({
+        ownerRef: `${station.id}#lv-drop-incomer`,
+        points: [
+          { x: incomerX, y: apparatusBottomY },
+          { x: incomerX, y: busY },
+        ],
+      });
+      apparatusLabels.push({
+        ownerRef: `${incomer.branchRef}#nn-incomer-label`,
+        ownerKind: 'apparatus',
+        text: incomer.apparatusLabel ?? 'Aparat główny nN',
+        labelClass: 't4',
+        anchor: { x: incomerX, y: stubEndY },
+        placement: 'left',
+      });
+    } else if (incomer && incomer.apparatusKind === 'UNRESOLVED') {
+      // §0.3 „UNRESOLVED = HARD VALIDATION ERROR": aparat główny nierozpoznany
+      // — zero symbolu podstawionego, komunikat błędu w audycie (WHITE BOX,
+      // wzorzec `station.nnFeeder.apparatusUnresolved:`, `scene/buildScene.ts`
+      // tłumaczy kod właściwy incomerowi na zdanie).
+      missingData.push(`station.nnIncomer.apparatusUnresolved:${incomer.branchRef}`);
+    }
     // Środek TREŚCIWEJ części szyny (bez przedłużki pod strzałkę) — punkt
     // zaczepu DER/etykiet NIE przesuwa się, gdy `lvBusExtendLeft` > 0.
     nnBusPoint = { x: snapToGrid((busLeft + lvBusExtendLeft + busRight) / 2), y: busY };
@@ -1687,11 +1755,36 @@ export function composeStation(input: ComposeStationInput): StationComposition {
           cursorY += def.height;
         }
 
+        // T1 (§0.1, defekt (d) B-02 „kable odpływów NIE mają żadnej
+        // reprezentacji w scenie"): jeden odcinek SCHEMATYCZNY na KAŻDY
+        // przeskok kablowy `feeder.cableRefs` (chodzenie po grafie do
+        // liścia/podrozdzielnicy — `enmToSldAdapter.ts::
+        // resolveNnFeederDestination`, jedna prawda z `layout/measure.ts::
+        // nnFeederSymbolStackHeight`). §0.3 „tor przerwany": aparat
+        // NIEROZPOZNANY (`nnFeederPathBroken`) NIE kontynuuje kablami —
+        // pusty tor kończy się na stubie/aparacie, zero fabrykacji dalszego
+        // toru, którego dane nie potwierdzają.
+        const pathBroken = nnFeederPathBroken(feeder);
+        if (!pathBroken) {
+          for (const cableRef of feeder.cableRefs) {
+            const cableEndY = cursorY + GRID;
+            segments.push({
+              ownerRef: cableRef,
+              points: [
+                { x: dropX, y: cursorY },
+                { x: dropX, y: cableEndY },
+              ],
+            });
+            cursorY = cableEndY;
+          }
+        }
+
         // Liść rozdzielnicy nN — WYŁĄCZNIE gdy cel odpływu to podrozdzielnica
         // (`destinationKind==='board'`, wzorzec DER: kontener z szyną, jeden
-        // port). Nie rekurencja: WŁASNE odpływy tej podrozdzielnicy rysuje
-        // JEJ WŁASNA kompozycja, gdy stacja trafi na własny wiersz sieci.
-        if (feeder.destinationKind === 'board') {
+        // port) I tor NIE jest przerwany (§0.3). Nie rekurencja: WŁASNE
+        // odpływy tej podrozdzielnicy rysuje JEJ WŁASNA kompozycja, gdy
+        // stacja trafi na własny wiersz sieci.
+        if (!pathBroken && feeder.destinationKind === 'board') {
           const boardDef = SYMBOL_DEFS.nnDistributionBoard;
           const boardTopY = cursorY + GRID;
           segments.push({
@@ -1729,7 +1822,10 @@ export function composeStation(input: ComposeStationInput): StationComposition {
         if (feeder.apparatusKind === 'UNRESOLVED') {
           missingData.push(`station.nnFeeder.apparatusUnresolved:${feeder.branchRef}`);
         }
-        if (feeder.destinationKind === 'unknown') {
+        // §0.3 „tor przerwany": gdy aparat nierozpoznany, granica modelu za
+        // nim NIE jest zgłaszana osobno — przyczyna przerwania toru już
+        // jest w komunikacie wyżej (zero podwójnego, mylącego komunikatu).
+        if (!pathBroken && feeder.destinationKind === 'unknown') {
           missingData.push(`station.nnFeeder.destinationUnknown:${feeder.branchRef}`);
         }
 

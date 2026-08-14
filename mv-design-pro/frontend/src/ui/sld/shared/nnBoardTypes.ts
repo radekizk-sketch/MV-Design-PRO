@@ -41,10 +41,48 @@ export interface SldNnFeeder {
    *  dla `'unknown'`. */
   readonly destinationRef: string | null;
   readonly destinationLabel: string | null;
+  /**
+   * T1 (SLD-nN-TOPOLOGIA, `docs/nn/PLAN_SLD_NN_TOPOLOGIA_2026-08.md` §0.1,
+   * defekt (d)): refy ENM odcinków kabla POMIĘDZY `branchRef` (aparat/pierwsza
+   * gałąź) i odbiorcą końcowym — WYŁĄCZNIE dalsze przeskoki
+   * `resolveNnFeederDestination` chodzącej po torze (jeśli `branchRef` sam
+   * jest kablem, TEN kabel NIE jest tu powtórzony — jego reprezentacja to
+   * `branchRef` samo w sobie). `[]`, gdy odbiorca siedzi BEZPOŚREDNIO na
+   * dalszej szynie aparatu (zero przeskoków kablowych) — uczciwie pusta
+   * lista, nie brak danych. Kompozycja (`compose/station.ts`) rysuje KAŻDY
+   * ref jako WŁASNY odcinek sceny (`ownerRef=cableRefs[i]`, `kind:'lv'`) —
+   * przed T1 kable odpływów NIE miały żadnej reprezentacji na scenie
+   * (dowód defektu B-02, `sceneConformance.test.ts` Check B).
+   */
+  readonly cableRefs: readonly string[];
+}
+
+/**
+ * T1 (§0.1 „RGnN jako OBIEKT: incomer/sekcje/sprzęgło/odpływy"): aparat
+ * GŁÓWNY (incomer) sekcji szyny nN — krawędź na ścieżce transformator→szyna
+ * (WYŁĄCZNIE gdy szyna nN jest ODDZIELNA od terminala LV transformatora,
+ * `electrical/viewModel.ts::findLvIncomerEdge`). Rysowany PRZED szyną
+ * (`compose/station.ts`), NIGDY jako pozycja w liście odpływów — inaczej
+ * kompozycja przedstawiałaby aparat główny jako kolejny odpływ równorzędny
+ * QF-01/QF-02/… (defekt zmierzony na fixturze „Stacja B", karta T1).
+ */
+export interface SldNnIncomer {
+  readonly branchRef: string;
+  readonly apparatusKind: SldNnApparatusKind | null;
+  readonly apparatusRef: string | null;
+  readonly apparatusLabel: string | null;
+  /** Szyna PO STRONIE transformatora (np. zacisk nN T1) — `fromBusRef`
+   *  semantyczny (kierunek zasilania), NIE geometryczny. */
+  readonly fromBusRef: string;
 }
 
 export interface SldNnBoardSection {
   readonly sectionId: string;
   readonly busRef: string;
+  /** T1: aparat główny sekcji — `null`, gdy sekcja NIE ma osobnego incomera
+   *  (transformator podłączony wprost do tej szyny, ALBO — dla sekcji z
+   *  jawnym `NnSection` — `incoming_refs` puste/nierozwiązywalne). Uczciwy
+   *  brak, zero fabrykacji aparatu. */
+  readonly incomer: SldNnIncomer | null;
   readonly feeders: readonly SldNnFeeder[];
 }
