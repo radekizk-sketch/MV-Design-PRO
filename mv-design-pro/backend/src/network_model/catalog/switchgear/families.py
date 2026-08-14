@@ -375,6 +375,14 @@ SIEMENS__8DJH = SwitchgearFamily(
         "liniowe_doplywowe",
         "liniowe_odplywowe",
         "transformatorowe",
+        # ROZSZERZENIE ADDYTYWNE 2026-08-14 (transkrypcja bloków 8DJH):
+        # legenda katalogu Siemens HA 40.2 wymienia pola sprzęgłowe wprost —
+        # „S = Bus sectionalizer panel with switch-disconnector”, „H = Bus
+        # sectionalizer panel with switch-fuse combination” — a tabela mas
+        # transportowych podaje bloki, które je zawierają (RS, RH, RRS, RRH,
+        # RRRS, RRRH). Bez tej pozycji te sześć bloków nie weszłoby do
+        # rejestru, choć karta je nazywa.
+        "sprzeglowe_poprzeczne",
     ],
     allowed_apparatus_kinds=[
         "switch_disconnector",
@@ -392,6 +400,7 @@ SIEMENS__8DJH = SwitchgearFamily(
     source_document_refs=[
         "https://www.siemens.com/en-us/products/energy/medium-voltage/medium-voltage-switchgear/8djh-36.html",
         "https://assets.new.siemens.com/siemens/assets/api/uuid:40fab88c-6711-4fad-9e26-7d54849af7e7/500-83849.pdf",
+        "https://assets.new.siemens.com/siemens/assets/api/uuid:a154c8cc-b58e-42b9-963d-28d73019016f/8djhcompact-en-cataloge.pdf",
     ],
     source_version="public-product-page-2026-05",
     verified_at=None,
@@ -405,7 +414,13 @@ SIEMENS__8DJH = SwitchgearFamily(
         "(metal-enclosed). Napięcia 12-24 kV, prąd znamionowy 630 A (busbar + "
         "feeder), krótkotrwały do 25 kA/1s (variant 17.5 kV) lub 20 kA/1s "
         "(variant 24 kV), making current do 50 kA. Standard IEC 62271-200. "
-        "Status repo_verified."
+        "Katalog HA 40.2 (2017) wymienia pola K (kablowe), K(E) (kablowe z "
+        "uziemnikiem zwarciowym), R (liniowe pierścieniowe), T "
+        "(transformatorowe), L (wyłącznikowe) oraz sprzęgłowe S i H, a także "
+        "zestawienie bloków fabrycznych z szerokościami — bloki są "
+        "przepisane do rejestru konfiguracji fabrycznych. Odmiana 8DJH "
+        "Compact (bloki bez rozszerzenia szyn) jest osobnym wyrobem i NIE "
+        "wchodzi do tej rodziny. Status repo_verified."
     ),
 )
 
