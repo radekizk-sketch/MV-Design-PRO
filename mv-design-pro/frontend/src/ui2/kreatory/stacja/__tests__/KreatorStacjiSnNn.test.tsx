@@ -1389,6 +1389,65 @@ describe('KreatorStacjiSnNn — tory konfiguracji rozdzielnicy (S3)', () => {
     await userEvent.selectOptions(screen.getByTestId('mvd-kreator-stacja-rodzina'), familyRef);
   }
 
+  /**
+   * KATALOG-FIRST. Krok komponował wcześniej pola z pakietu producenta BEZ
+   * względu na rodzinę, więc rozdzielnica mogła powstać z kart dwóch różnych
+   * wyrobów naraz — ta sama atrapa, co usunięta „rodzina standardowa
+   * producenta", tylko niewidoczna dla projektanta.
+   */
+  it('bez wskazanej rodziny NIE komponuje pól — mówi, jaki jest następny krok', async () => {
+    render(<KreatorStacjiSnNn />);
+    await przejdzDoTransformatora();
+    await wybierzTyp();
+    await przejdzDoKroku('Pola rozdzielnicy SN');
+    await waitFor(() => {
+      const producent = screen.getByTestId('mvd-kreator-stacja-producent') as HTMLSelectElement;
+      expect(producent.querySelector('option[value="ZPUE_WLOSZCZOWA"]')).not.toBeNull();
+    });
+    await userEvent.selectOptions(
+      screen.getByTestId('mvd-kreator-stacja-producent'),
+      'ZPUE_WLOSZCZOWA',
+    );
+
+    // Producent wybrany, rodzina NIE — pól nie ma i ekran nazywa następny krok.
+    expect(await screen.findByTestId('mvd-kreator-stacja-pola-puste')).toHaveTextContent(
+      /Wskaż rodzinę rozdzielnicy/i,
+    );
+    expect(screen.queryByTestId('mvd-kreator-stacja-pole-wiersz-1')).toBeNull();
+    // Bez pól nie ma czego zapisać — bramka zapisu trzyma.
+    expect(screen.getByTestId('mvd-kreator-stacja-zapisz')).toBeDisabled();
+
+    // Wskazanie rodziny domyka krok: pola rodzaju stacji wchodzą z jej pakietu.
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-stacja-rodzina'), 'ZPUE_ROTOBLOK');
+    await waitFor(() =>
+      expect(screen.getByTestId('mvd-kreator-stacja-pole-wiersz-1')).toBeInTheDocument(),
+    );
+    await waitFor(() => expect(screen.getByTestId('mvd-kreator-stacja-zapisz')).not.toBeDisabled());
+  });
+
+  it('rodziny NIEDOSTĘPNE są WIDOCZNE i wyłączone — z jawnym powodem', async () => {
+    render(<KreatorStacjiSnNn />);
+    await przejdzDoTransformatora();
+    await wybierzTyp();
+    await przejdzDoKroku('Pola rozdzielnicy SN');
+    await waitFor(() => {
+      const producent = screen.getByTestId('mvd-kreator-stacja-producent') as HTMLSelectElement;
+      expect(producent.querySelector('option[value="ZPUE_WLOSZCZOWA"]')).not.toBeNull();
+    });
+    await userEvent.selectOptions(
+      screen.getByTestId('mvd-kreator-stacja-producent'),
+      'ZPUE_WLOSZCZOWA',
+    );
+
+    const rodzina = (await screen.findByTestId(
+      'mvd-kreator-stacja-rodzina',
+    )) as HTMLSelectElement;
+    // Wszystkie cztery rodziny producenta są na liście (portfolio, nie wycinek).
+    for (const ref of ['ZPUE_ROTOBLOK', 'ZPUE_TPM_AIR', 'SCHNEIDER_RM6', 'BEZ_KONSTRUKCJI']) {
+      expect(rodzina.querySelector(`option[value="${ref}"]`)).not.toBeNull();
+    }
+  });
+
   it('nagłówek rodziny podaje klasy znamionowe, technologię i TOR KONFIGURACJI', async () => {
     render(<KreatorStacjiSnNn />);
     await wybierzRodzine('ZPUE_TPM_AIR');

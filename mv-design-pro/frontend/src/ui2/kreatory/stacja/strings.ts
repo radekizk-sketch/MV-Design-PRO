@@ -74,6 +74,13 @@ export const STACJA_STRINGS = {
   polaRola: 'Rola pola',
   polaSzablon: 'Katalogowe pole rodziny',
   polaPuste: 'Stacja nie ma żadnego pola SN — dodaj co najmniej jedno pole.',
+  /**
+   * Jawny NASTĘPNY KROK zamiast pustej listy: pole SN jest jednostką konkretnej
+   * rodziny, więc bez wskazania rodziny nie ma z czego go złożyć.
+   */
+  rodzinaNiewybrana:
+    'Wskaż rodzinę rozdzielnicy, aby skompletować pola — katalogowe pole zawsze należy do '
+    + 'konkretnego wyrobu, a jego wyposażenie pochodzi z karty tej rodziny.',
   polaLicznik: (n: number) => `Pola SN: ${n}`,
 
   /**

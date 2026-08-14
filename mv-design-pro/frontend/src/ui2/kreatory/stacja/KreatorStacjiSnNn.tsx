@@ -743,8 +743,14 @@ export function KreatorStacjiSnNn() {
   // (efekt niżej), a nie role rodzaju stacji. Gdyby oba mechanizmy pisały do tej
   // samej listy, sekwencja jednostek wyrobu byłaby nadpisywana rolami stacji —
   // czyli kreator opisywałby blok, którego producent nie robi.
+  //
+  // KATALOG-FIRST: bez WSKAZANEJ RODZINY pól nie ma z czego złożyć. Wcześniej
+  // krok komponował je z pakietu producenta bez względu na rodzinę, więc
+  // rozdzielnica mogła powstać z kart DWÓCH RÓŻNYCH WYROBÓW naraz — ta sama
+  // atrapa, co usunięta „rodzina standardowa producenta", tylko niewidoczna.
   useEffect(() => {
     if (torKonfiguracji === 'BLOK_RMU') return;
+    if (selectedFamily === null) return;
     setDane((p) => {
       if (p.pola.length > 0 && p.pola.every((pole) => rolePol.includes(pole.field_role))) {
         return p;
@@ -752,7 +758,18 @@ export function KreatorStacjiSnNn() {
       if (p.pola.length > 0 && p.template_id) return p;
       return { ...p, pola: domyslneWpisyPol(p.station_type, szablonyRola, aparatDomyslnyRoli) };
     });
-  }, [aparatDomyslnyRoli, rolePol, szablonyRola, torKonfiguracji]);
+  }, [aparatDomyslnyRoli, rolePol, selectedFamily, szablonyRola, torKonfiguracji]);
+
+  /**
+   * Rodzina odznaczona (powrót do stanu „nie wskazano") zwalnia pola razem
+   * z ich wyposażeniem — tak samo jak opuszczenie toru blokowego zwalnia
+   * jednostki bloku. Pola zostawione po rodzinie, której już nie ma w
+   * formularzu, niosłyby karty katalogowe bez wyrobu.
+   */
+  useEffect(() => {
+    if (selectedFamily !== null) return;
+    setDane((p) => (p.pola.length === 0 ? p : { ...p, pola: [], wyposazenie: {} }));
+  }, [selectedFamily]);
 
   /**
    * TOR BLOK_RMU — pola rozdzielnicy WYNIKAJĄ z wybranego bloku fabrycznego.
@@ -1915,7 +1932,11 @@ export function KreatorStacjiSnNn() {
               przycisku, którego świadomie nie ma. */}
           {dane.pola.length === 0 ? (
             <KreatorInfo testid="mvd-kreator-stacja-pola-puste">
-              {torKonfiguracji === 'BLOK_RMU' ? T.blokNiewybrany : T.polaPuste}
+              {selectedFamily === null
+                ? T.rodzinaNiewybrana
+                : torKonfiguracji === 'BLOK_RMU'
+                  ? T.blokNiewybrany
+                  : T.polaPuste}
             </KreatorInfo>
           ) : (
             dane.pola.map((pole, index) => (

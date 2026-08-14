@@ -229,6 +229,27 @@ async function przejdzDoKroku(page: Page, tytul: string): Promise<void> {
   await page.getByRole('button', { name: tytul, exact: false }).first().click();
 }
 
+/**
+ * Wybiera PIERWSZĄ WYBIERALNĄ rodzinę rozdzielnicy wybranego producenta.
+ *
+ * Lista pokazuje CAŁE portfolio producenta, a rodziny bez potwierdzonej karty
+ * katalogowej są widoczne i wyłączone — spec nie może więc brać „opcji nr 1",
+ * bo trafiłby w pozycję niewybieralną albo w placeholder. Zamiast zaszywać ref
+ * konkretnego wyrobu (który zmieni się z każdą transzą katalogu) pytamy DOM
+ * o pierwszą pozycję, której katalog nie zablokował.
+ */
+async function wybierzPierwszaDostepnaRodzine(page: Page): Promise<void> {
+  const rodzina = page.getByTestId('mvd-kreator-stacja-rodzina');
+  await expect(rodzina.locator('option')).not.toHaveCount(1, { timeout: 20000 });
+  const ref = await rodzina
+    .locator('option:not([disabled]):not([value=""])')
+    .first()
+    .getAttribute('value');
+  expect(ref, 'katalog musi mieć choć jedną rodzinę do zbudowania rozdzielnicy').toBeTruthy();
+  await rodzina.selectOption(ref!);
+  await expect(rodzina).toHaveValue(ref!);
+}
+
 test('K9-B: kreator stacji MAX — szablon → pola → CT/VT/przekaźnik → podgląd → zapis (bramka 1)', async ({
   page,
   request,
@@ -279,9 +300,14 @@ test('K9-B: kreator stacji MAX — szablon → pola → CT/VT/przekaźnik → po
   // ---------------------------------------------------------------- krok 3
   // Edytowalna lista pól: zmiana aparatu pierwszego pola z pickera katalogowego.
   await przejdzDoKroku(page, 'Pola rozdzielnicy SN');
-  await expect(page.getByTestId('mvd-kreator-stacja-pole-wiersz-1')).toBeVisible({ timeout: 20000 });
   const producent = page.getByTestId('mvd-kreator-stacja-producent');
   await expect(producent.locator('option')).not.toHaveCount(1, { timeout: 20000 });
+  // KATALOG-FIRST (S3): pole SN należy do KONKRETNEJ rodziny, więc rodzinę
+  // wskazujemy natywnie — bez niej krok nie ma z czego złożyć pól. Wybieramy
+  // pierwszą pozycję WYBIERALNĄ (rodziny bez potwierdzonej karty katalogowej są
+  // widoczne, ale wyłączone), żeby spec nie zależał od zawartości katalogu.
+  await wybierzPierwszaDostepnaRodzine(page);
+  await expect(page.getByTestId('mvd-kreator-stacja-pole-wiersz-1')).toBeVisible({ timeout: 20000 });
   const aparat1 = page.getByTestId('mvd-kreator-stacja-aparat-1');
   await expect(aparat1.locator(`option[value="${APARAT_ZMIENIONY}"]`)).toHaveCount(1, {
     timeout: 20000,
@@ -498,8 +524,13 @@ test('K9-B: ścieżka „od zera" (bez szablonu) przechodzi do zapisu (bramka 1)
   const trafoId = await katalogTrafo.locator('option').nth(1).getAttribute('value');
   await katalogTrafo.selectOption(trafoId!);
 
-  // Krok 3: domyślne pola rodzaju stacji z aparatem z katalogu (bez szablonu).
+  // Krok 3: domyślne pola rodzaju stacji z aparatem z katalogu (bez szablonu
+  // startowego, ale ZAWSZE z wskazaną rodziną — pole należy do wyrobu).
   await przejdzDoKroku(page, 'Pola rozdzielnicy SN');
+  await expect(
+    page.getByTestId('mvd-kreator-stacja-producent').locator('option'),
+  ).not.toHaveCount(1, { timeout: 20000 });
+  await wybierzPierwszaDostepnaRodzine(page);
   await expect(page.getByTestId('mvd-kreator-stacja-pole-wiersz-1')).toBeVisible({ timeout: 20000 });
   const aparat1 = page.getByTestId('mvd-kreator-stacja-aparat-1');
   await expect(aparat1).not.toHaveValue('');
