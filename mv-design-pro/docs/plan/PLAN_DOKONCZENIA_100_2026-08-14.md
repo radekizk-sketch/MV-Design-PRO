@@ -593,7 +593,7 @@ właściwe solvery RMS/FRT (rozszerzenie addytywne, FROZEN nietknięte),
 normy wymaga danych, których nie ma w modelu, brak danych meldować jawnym
 kodem gotowości (readiness), nigdy werdyktem-zaślepką.
 
-### K-S PROTECTION-FRESH-NA-SZTYWNO
+### K-S PROTECTION-FRESH-NA-SZTYWNO — **WYKONANA I ODEBRANA (2026-08-14; wiersz K-S-PROTECTION-FRESH-NA-SZTYWNO w rejestrze; dlug jawny w karcie K-S2 ponizej)**
 `backend/src/api/protection_runs.py:379-380`: nakładka zabezpieczeń ZAWSZE
 melduje `result_status = "FRESH"` — obietnica FRESH/OUTDATED/NONE bez
 implementacji. Naprawa: status z porównania hasza snapshotu zapisanego przy
@@ -634,7 +634,7 @@ Inwentarz zmierzony audytem: (1) `ui/catalog/CatalogMaterializationDialog.tsx`
 wyspa, przy czym żywy kreator stacji milcząco gubi status producenta; (3) po
 K-O: `SPZ_CATALOG`, `SZR_CATALOG`, `PROTECTION_FUNCTION_CATALOG`,
 `selectHvFusesForRating` w `station-der/**` — zero konsumentów produkcyjnych.
-Rozstrzygnięcia (bez interpretacji): (1) PRZED kasacją zmierzyć, czy podgląd
+Z pomiaru K-S dochodzi do inwentarza: (4) martwe konstrukcje statusu bez konsumenta produkcyjnego — `application/sld/overlay_builder.py` (domyslne FRESH), stale NONE w `application/analysis_run/service.py` i `export_service.py`; (5) komponenty nakladek `ui/**` bez punktu montazu (`SldOverlay`, `PowerFlowSldOverlay`, `ProtectionZoneMarker`, `ProtectionRunButton`) — decyzja kasacja-czy-wpiecie SPOJNA z karta K-S2. Rozstrzygnięcia (bez interpretacji): (1) PRZED kasacją zmierzyć, czy podgląd
 materializacji katalogowej jest dostarczany gdziekolwiek indziej — jeśli NIE,
 kasacja + osobna karta luki funkcjonalnej do planu; (2) status producenta MA
 być widoczny (kontrakt backendu niesie pole `status`) — wpiąć
@@ -661,6 +661,21 @@ zakwalifikowaniem duplikatu kadrów jako fabrykacji sprawdź, czy identyczność
 nie jest przypiętym niezmiennikiem danego materiału (incydent konfiguratora
 dotyczył ekranów APLIKACJI, które motywom podlegają; kanwa techniczna SLD —
 nie).
+
+### K-S2 SWIEZOSC-ZYWEJ-KANWY-SLD `[dlug K-S]` `[B-02 — STOP przed scaleniem]`
+K-S naprawil status swiezosci w koncowkach nakladek, ale ZYWA powierzchnia
+wynikow na kanwie SLD v3 (ui2/legacy/useLegacyOrchestrator ->
+GET /api/execution/runs/{id}/results/v1 -> rawResultOverlayStore) nie niesie
+odcisku modelu ani statusu swiezosci — ResultSetV1 ma tylko
+solver_input_hash. Wpiecie swiezosci w zywa kanwe wymaga: (1) pola
+addytywnego w schemacie ResultSetV1 (schemat pinowany guardem
+resultset_v1_schema — aktualizacja pary schemat+guard RAZEM), (2) werdyktu z
+result_freshness.py (ta sama para predykatow co K-S, zero nowej drogi),
+(3) WIDOCZNEJ zmiany na SLD (baner/znacznik nieaktualnosci) — i to jest
+werdykt wizualny wlasciciela: STOP B-02 przed scaleniem. Osobno: martwe
+nakladki ui/** bez punktu montazu (SldOverlay, PowerFlowSldOverlay,
+ProtectionZoneMarker, ProtectionRunButton) sa w inwentarzu K-V — decyzja
+kasacja-czy-wpiecie zapada tam, spójnie z ta karta.
 
 ### K-X KASACJA-CATALOG-BINDINGS `[dlug K-T]`
 `catalog_bindings.switchgear_template` w specyfikacji pola nie ma ANI JEDNEGO
