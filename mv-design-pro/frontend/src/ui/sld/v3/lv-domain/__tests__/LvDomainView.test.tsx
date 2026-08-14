@@ -57,7 +57,11 @@ describe('LvDomainView — render fixtury wieloźródłowej', () => {
     );
     const tr1Node = screen.getByTestId('lv-domain-node-tr1');
     expect(tr1Node.textContent).toContain('Dyn11');
-    expect(tr1Node.textContent).toContain('uk=4%');
+    // T5b-4 (werdykt pkt 4): blok TR w hierarchii — „uk = 4%" (format
+    // właściciela) jako linia SECONDARY; intencja pinu bez zmian (uk
+    // widoczne na węźle TR, nie w nagłówku).
+    expect(tr1Node.textContent).toContain('uk = 4%');
+    expect(tr1Node.textContent).toContain('630 kVA');
   });
 
   it('OBIE kotwice SN (2×TR) i boundary chip są w DOM', () => {

@@ -596,3 +596,37 @@ w /enm/lv-domain; LvDomainBoundaryLink bez typu; polityka pracy równoległej
 2×TR bez kanału backendu; SwzApiResponse bez ta). Bramka: vitest sld 267
 plików/4874, accept 395 PASS, 7/7 zrzutów e2e. T5a ACCEPT 8,5/10 (werdykt
 właściciela, zamknięta); T5c HOLD do zielonego B-02 T5b-2.
+
+**Aktualizacja 2026-08-15: T5b-3 odebrana 6/10 → T5b-4 PROFESSIONAL VISUAL
+GRAMMAR wykonana (Fable osobiście).**
+- Werdykt B-02 dla T5b-3: **6/10** (z 0/10) — „duży postęp, jeszcze nie
+  professional-grade"; architektura/topologia/ENM NIETYKANE; mandat T5b-4
+  P0-V1..V10 dopisany do `docs/nn/PLAN_SLD_NN_TOPOLOGIA_2026-08.md`
+  (`ae2452f1`); T5b-3 scommitowana z kompletem bramek (suita SLD 267
+  plików/4875, accept ALL PASS, lint 0, 5 guardów 0) — `a14a66ae`.
+- T5b-4 (ta praca): nowy moduł `lv-domain/visualGrammar.ts` — JEDEN język
+  wizualny L2 (kontrakt pkt 25 werdyktu): polityka occupancy/fit+centrowanie
+  (P0-V1/V10), typografia i kreski SCREEN-STABLE w px ekranu (P0-V2), cele
+  ekranowe symboli (TR 84/sprzęgło 44/aparat 34/DER 54), hierarchia magistral
+  MAIN 9 px / SUB 5,5 px (P0-V5), gramatyka linii, halo etykiet (maska CAD —
+  kreska toru nigdy nie przechodzi przez pismo). Kompozytor: oś TR == środek
+  sekcji (P0-V10/pkt 18), pas generatora ZA pasem TR (300 j.św.), FEEDER
+  SLOT — szerokość slotu odpływu = szerokość CAŁEGO poddrzewa rekurencyjnie
+  przez łańcuchy zacisków (P0-V4; ubita klasa „kreska sekcji-dziecka wjeżdża
+  w kolumnę sąsiada — fałszywe connectivity"), DEVICE BASELINE (boundary na
+  randze aparatów), sylwetka ZA FUNKCJĄ: switch→loadBreakSwitch,
+  disconnector→disconnector, fuse→nnFuseSwitch (P0-V3 — wada była w
+  mapowaniu, biblioteka glifów IEC istniała). Renderer: fit-to-viewport
+  z centrowaniem, dwa tryby etykiet ENGINEERING/AUDYT (P0-V7 — nazwy
+  zacisków tylko w audycie, hover niesie pełną nazwę), boundary bez wyglądu
+  przycisku (●──→ nazwa + napięcie, strzałka; P0-V8), kotwica SN
+  zdegradowana do opisu (pkt 12), blok TR w hierarchii „TR1/630 kVA" PRIMARY
+  + przekładnia·grupa/uk SECONDARY (pkt 4), sprzęgło: symbol mówi pierwszy
+  (wypełnienie/kolor/przerwa toru), słowo stanu muted (P0-V6/pkt 14).
+- FLIPy pinów (intencje zachowane, komentarze w plikach): P0.12 „svg==scena"
+  → occupancy+centrowanie; „QF-01 symbolId=nnBreaker" → loadBreakSwitch;
+  „uk=4%" → „uk = 4%"+„630 kVA". Nowe testy: `visualGrammar.test.tsx`
+  (25 — iloczyn cech: 2 fixtury × 2 viewporty × tryby × stany QBC + clampy).
+- Bramki cząstkowe: lv-domain 95/95, tsc 0, zrzuty 7/7 (regenerowane,
+  samoocena 9 pytań kryterium 8/10: OK na obu fixturach). Pełna suita SLD +
+  accept + lint + guardy w biegu — wynik przed pushem.

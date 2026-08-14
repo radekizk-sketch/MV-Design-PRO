@@ -77,8 +77,15 @@ describe('P0.11 — werdykt SWZ trzeci stan (nierozstrzygalne) renderuje się ho
   });
 });
 
-describe('P0.12 — Auto-layout: gabaryt WYŚWIETLANIA domyślnie = gabaryt TREŚCI (zero pustej kanwy po Fit)', () => {
-  it('bez width/height podanych, <svg> ma dokładnie wymiary scene.width/scene.height (nie stały fixed rozmiar)', () => {
+describe('P0.12/P0-V1 — kanwa wypełnia VIEWPORT, treść fitowana do pasma occupancy i CENTROWANA', () => {
+  // FLIP (T5b-4, werdykt B-02 6/10 pkt 1): poprzedni pin („<svg> == gabaryt
+  // sceny") przybijał kanon, który właściciel odrzucił — „boundingBox →
+  // viewport" nie daje optymalnej skali roboczej; schemat siedział jako mały
+  // blok w czarnej przestrzeni. INTENCJA pinu bez zmian (zero pustej kanwy,
+  // zero stałego rozmiaru oderwanego od treści) — nowa forma: SVG wypełnia
+  // viewport, a TREŚĆ jest skalowana do pasma occupancy (60–75% osi
+  // wiążącej) i CENTROWANA (`visualGrammar.ts::fitSceneToViewport`).
+  it('<svg> = viewport (1400×1000 minus nagłówek); occupancy osi wiążącej 55–80%; treść wyśrodkowana', () => {
     const scene = composeLvDomainScene(STATION_BOARD_DOMAIN_VIEW, STATION_BOARD_UPSTREAM_EQUIVALENTS);
     render(
       <LvDomainView
@@ -86,12 +93,35 @@ describe('P0.12 — Auto-layout: gabaryt WYŚWIETLANIA domyślnie = gabaryt TRE�
         scenarioId="s"
         view={STATION_BOARD_DOMAIN_VIEW}
         upstreamEquivalents={STATION_BOARD_UPSTREAM_EQUIVALENTS}
+        width={1400}
+        height={1000}
       />,
     );
     const svg = screen.getByTestId('lv-domain-svg');
-    expect(svg.getAttribute('width')).toBe(String(scene.width));
-    expect(svg.getAttribute('height')).toBe(String(scene.height));
-    expect(svg.getAttribute('viewBox')).toBe(`0 0 ${scene.width} ${scene.height}`);
+    const vw = Number(svg.getAttribute('width'));
+    const vh = Number(svg.getAttribute('height'));
+    expect(vw).toBe(1400);
+    expect(vh).toBeGreaterThan(800); // viewport minus pasek nagłówka, nie gabaryt sceny
+    const s = Number(svg.getAttribute('data-fit-scale'));
+    expect(s).toBeGreaterThan(0);
+    const occupancyX = (s * scene.width) / vw;
+    const occupancyY = (s * scene.height) / vh;
+    // Oś WIĄŻĄCA trzyma pasmo occupancy (0,70/0,66). Druga oś wynika z
+    // PROPORCJI treści: Stacja C to jedna wąska kolumna sekcji — przy
+    // jednolitej skali (L2 bez kamery/pan) nie może wypełnić 70% szerokości
+    // i to jest UCZCIWE (kompozycja = centrowanie, nie rozciąganie).
+    expect(Math.max(occupancyX, occupancyY)).toBeGreaterThanOrEqual(0.55);
+    expect(Math.max(occupancyX, occupancyY)).toBeLessThanOrEqual(0.8);
+    // Centrowanie (werdykt pkt 17 — koniec z przyklejaniem do lewej).
+    const world = screen.getByTestId('lv-domain-world');
+    const transform = world.getAttribute('transform') ?? '';
+    const match = /translate\(([-\d.]+) ([-\d.]+)\) scale\(([\d.]+)\)/.exec(transform);
+    expect(match).not.toBeNull();
+    const tx = Number(match![1]);
+    const ty = Number(match![2]);
+    expect(tx).toBeCloseTo((vw - s * scene.width) / 2, 5);
+    expect(ty).toBeCloseTo((vh - s * scene.height) / 2, 5);
+    expect(tx).toBeGreaterThan(0);
   });
 });
 

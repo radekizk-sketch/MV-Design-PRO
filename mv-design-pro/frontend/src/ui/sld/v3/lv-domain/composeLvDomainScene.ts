@@ -51,7 +51,10 @@ const MARGIN_Y = 48;
  *  aparat incomera → szyna; każdy człon dostaje własny, czytelny odcinek. */
 const ANCHOR_TO_TR = 96;
 const TR_TO_TERMINAL = 88;
-const TERMINAL_TO_BUS = 84;
+/** T5b-4: tor incomera dostaje REALNY pion (zmierzona klasa kolizji: przy 84
+ *  jednostkach etykieta aparatu incomera i etykieta PRIMARY magistrali
+ *  (długa nazwa modelowa) lądowały w tym samym pasie tekstu). */
+const TERMINAL_TO_BUS = 150;
 /** Sekcja → aparat odpływu (pion) i dalej do celu odpływu. */
 const BUS_TO_APPARATUS = 64;
 const APPARATUS_TO_CHILD = 120;
@@ -61,12 +64,19 @@ const BUS_TO_LOAD = 96;
 const BUS_TO_BOUNDARY_TERMINAL = 110;
 const BOUNDARY_CHIP_OFFSET_X = 120;
 
-/** Raster kikutów ODPŁYWÓW na szynie (P0.7 — rytm rozdzielnicy). Szeroki na
- *  etykiety aparatów (PRIMARY-small 11-12px) obok glifu 22px. */
-const TAP_PITCH = 96;
+/** Raster kikutów ODPŁYWÓW na szynie (P0.7 — rytm rozdzielnicy). T5b-4:
+ *  poszerzony pod typografię SCREEN-STABLE (etykieta „QF-xx" 12,5 px ekranu
+ *  obok glifu 34 px NIE może dotykać kikuta sąsiada przy skali fitu ~0,65 —
+ *  zmierzone na zrzucie Stacji C). */
+const TAP_PITCH = 120;
 /** Raster kikutów ŹRÓDEŁ nad szyną — tabliczka TR (blok 4 linii) jest
  *  szeroka; PV/BESS obok TR potrzebują własnego pasa. */
 const SOURCE_TAP_PITCH = 220;
+/** T5b-4: pas generatora ZA pasem TR — szerszy niż raster TR, bo blok
+ *  tabliczki TR (PRIMARY 630 kVA + przekładnia·grupa) sięga ~150 j.św. w
+ *  prawo od osi TR (zmierzona kolizja „· Dyn11" × glif PV na zrzucie
+ *  multi-source przy 220). */
+const GEN_AFTER_TR_PITCH = 300;
 /** Margines wewnętrzny kreski magistrali (P0.3 — szyna wystaje poza skrajne
  *  kikuty, czytelna jako MAGISTRALA, nie odcinek między punktami). */
 const TAP_MARGIN = 52;
@@ -161,13 +171,24 @@ export function computeElectricalComponents(view: LvDomainGraphView): ReadonlyMa
   return componentOf;
 }
 
+/**
+ * T5b-4 (P0-V3 SYMBOL GRAMMAR, werdykt pkt 5: „projektant rozpoznaje
+ * funkcję urządzenia PRZED przeczytaniem napisu … nie powiększać jednego
+ * uniwersalnego kwadratu"): sylwetka ZA FUNKCJĄ z `branch.type` — poprzednie
+ * mapowanie zlewało switch/disconnector/breaker w jeden glif `nnBreaker`
+ * (dokładnie wada nazwana w werdykcie). Rozłącznik → nóż z poprzeczką
+ * (IEC 60617 S00504), odłącznik → nóż bez poprzeczki, wyłącznik → korpus
+ * MCB, bezpiecznik → kaseta wkładki. Biblioteka glifów (`symbols/glyphs.tsx`)
+ * niesie te sylwetki od dawna — wada była w mapowaniu, nie w bibliotece.
+ */
 function apparatusSymbolFor(branchType: LvDomainBranch['type']): SymbolId | undefined {
   switch (branchType) {
     case 'breaker':
       return 'nnBreaker';
     case 'switch':
+      return 'loadBreakSwitch';
     case 'disconnector':
-      return 'nnBreaker';
+      return 'disconnector';
     case 'fuse':
       return 'nnFuseSwitch';
     case 'bus_coupler':
@@ -280,6 +301,18 @@ interface SectionPlan {
   readonly busRef: string;
   readonly above: readonly AboveItem[];
   readonly below: readonly BelowItem[];
+  /** T5b-4 (P0-V10, werdykt pkt 18 „centralna oś TR→incomer→BUS"): offset X
+   *  źródła od OSI sekcji — transformator(y) CENTROWANE na osi (pojedynczy
+   *  TR = dokładnie środek kreski), generatory (PV/BESS) na kolejnych
+   *  slotach NA PRAWO od pasa TR (kreska pozostaje symetryczna wokół osi,
+   *  więc oś TR == geometryczny środek magistrali). */
+  readonly aboveOffsetByRef: ReadonlyMap<string, number>;
+  /** T5b-4 (P0-V4 FEEDER SLOT): offset X kikuta odpływu od osi sekcji —
+   *  każdy odpływ dostaje SLOT o szerokości swojego PODDRZEWA (sekcja-
+   *  dziecko szersza niż raster NIE wjeżdża w kolumnę sąsiada; zmierzona
+   *  klasa: kreska RGN-2 kończyła się dokładnie w kolumnie PV/PCC, co
+   *  sugerowało nieistniejące połączenie). */
+  readonly belowOffsetByRef: ReadonlyMap<string, number>;
   /** Szerokość CAŁEGO kontenera sekcji (kreska + poddrzewa dzieci). */
   width: number;
   /** Połowa długości samej kreski magistrali. */
@@ -378,27 +411,65 @@ export function composeLvDomainScene(
 
   // --- Plan sekcji (kontener): szerokość rekurencyjnie z zawartości.
   const planByBus = new Map<string, SectionPlan>();
+
+  /** Szerokość poddrzewa wiszącego pod szyną `busRef` (P0-V4): sekcja =
+   *  pełny kontener + odstęp; zacisk pośredni = suma poddrzew jego dzieci
+   *  (fan wielodzieciowy junctiona), liść = raster. Graf odpływów jest
+   *  drzewem (parentOfChild przypisuje rodzica raz), więc rekurencja
+   *  terminuje. */
+  function subtreeWidth(busRef: string): number {
+    if (isBoardBus(busRef)) return planSection(busRef).width + SECTION_GAP;
+    const children = (belowByBus.get(busRef) ?? []).filter((i) => i.kind === 'branch' && i.childBusRef);
+    if (children.length === 0) return TAP_PITCH;
+    return Math.max(
+      TAP_PITCH,
+      children.reduce((acc, child) => acc + subtreeWidth(child.childBusRef!), 0),
+    );
+  }
   function planSection(busRef: string): SectionPlan {
     const existing = planByBus.get(busRef);
     if (existing) return existing;
     const above = aboveByBus.get(busRef) ?? [];
     const below = belowByBus.get(busRef) ?? [];
-    const aboveSpan = above.length > 0 ? (above.length - 1) * SOURCE_TAP_PITCH : 0;
-    const belowSpan = below.length > 0 ? (below.length - 1) * TAP_PITCH : 0;
-    const barHalfWidth = Math.max(MIN_BOARD_HALF_WIDTH, Math.max(aboveSpan, belowSpan) / 2 + TAP_MARGIN);
-    // Szerokość kontenera: poddrzewa dzieci mogą być szersze niż raster —
-    // suma szerokości dzieci wyznacza minimalną szerokość kolumnową.
-    let childrenWidth = 0;
-    for (const item of below) {
-      if (item.kind === 'branch' && item.childBusRef && isBoardBus(item.childBusRef)) {
-        childrenWidth += planSection(item.childBusRef).width + SECTION_GAP;
-      }
+    // T5b-4 (P0-V10/pkt 18): TR-y symetrycznie WOKÓŁ OSI sekcji (1×TR =
+    // dokładnie oś == środek kreski); generatory na slotach NA PRAWO od
+    // pasa TR (a bez TR — symetrycznie, jak dotąd).
+    const aboveOffsetByRef = new Map<string, number>();
+    const aboveTrs = above.filter((i) => i.kind === 'transformer');
+    const aboveGens = above.filter((i) => i.kind === 'generator');
+    aboveTrs.forEach((item, i) => aboveOffsetByRef.set(item.ref, (i - (aboveTrs.length - 1) / 2) * SOURCE_TAP_PITCH));
+    if (aboveTrs.length > 0) {
+      const trRightEdge = ((aboveTrs.length - 1) / 2) * SOURCE_TAP_PITCH;
+      aboveGens.forEach((item, j) => aboveOffsetByRef.set(item.ref, trRightEdge + (j + 1) * GEN_AFTER_TR_PITCH));
+    } else {
+      aboveGens.forEach((item, j) => aboveOffsetByRef.set(item.ref, (j - (aboveGens.length - 1) / 2) * SOURCE_TAP_PITCH));
     }
+    const aboveSpanHalf = Math.max(0, ...[...aboveOffsetByRef.values()].map((v) => Math.abs(v)));
+    // P0-V4 FEEDER SLOT: szerokość slotu odpływu = szerokość CAŁEGO
+    // PODDRZEWA za kikutem (sekcja-dziecko może wisieć ZA łańcuchem
+    // zacisków — rekurencja `subtreeWidth` schodzi przez junctiony, nie
+    // tylko jeden poziom). Kikuty na ŚRODKACH slotów ⇒ żadna kolumna
+    // (w tym kreska sekcji-dziecka) nie wjeżdża w kolumnę sąsiada.
+    const belowSlots = below.map((item) => ({
+      ref: item.ref,
+      width: item.kind === 'branch' && item.childBusRef ? subtreeWidth(item.childBusRef) : TAP_PITCH,
+    }));
+    const belowTotal = belowSlots.reduce((acc, slot) => acc + slot.width, 0);
+    const belowOffsetByRef = new Map<string, number>();
+    let slotCursor = -belowTotal / 2;
+    for (const slot of belowSlots) {
+      belowOffsetByRef.set(slot.ref, slotCursor + slot.width / 2);
+      slotCursor += slot.width;
+    }
+    const belowSpanHalf = Math.max(0, ...[...belowOffsetByRef.values()].map((v) => Math.abs(v)));
+    const barHalfWidth = Math.max(MIN_BOARD_HALF_WIDTH, aboveSpanHalf + TAP_MARGIN, belowSpanHalf + TAP_MARGIN);
     const plan: SectionPlan = {
       busRef,
       above,
       below,
-      width: Math.max(barHalfWidth * 2, childrenWidth > 0 ? childrenWidth - SECTION_GAP : 0),
+      aboveOffsetByRef,
+      belowOffsetByRef,
+      width: Math.max(barHalfWidth * 2, belowTotal),
       barHalfWidth,
       centerX: 0,
       busY: 0,
@@ -430,11 +501,10 @@ export function composeLvDomainScene(
 
   // --- Pozycjonowanie rekurencyjne dzieci: dziecko CENTROWANE pod kikutem.
   function tapXFor(plan: SectionPlan, side: 'above' | 'below', ref: string): number {
-    const items = side === 'above' ? plan.above : plan.below;
-    const pitch = side === 'above' ? SOURCE_TAP_PITCH : TAP_PITCH;
-    const idx = items.findIndex((i) => i.ref === ref);
-    const span = items.length > 0 ? (items.length - 1) * pitch : 0;
-    return plan.centerX - span / 2 + Math.max(0, idx) * pitch;
+    // P0-V10 (above: oś TR = oś sekcji) / P0-V4 (below: środek SLOTU
+    // odpływu) — oba offsety policzone w planie sekcji, JEDNO źródło prawdy.
+    const offsets = side === 'above' ? plan.aboveOffsetByRef : plan.belowOffsetByRef;
+    return plan.centerX + (offsets.get(ref) ?? 0);
   }
 
   // BFS po CAŁYM drzewie odpływów (P0.7 — tor pionowy): każdy bus siatki
@@ -490,6 +560,9 @@ export function composeLvDomainScene(
       voltageLevelId: bus.voltage_level_id,
       hopsFromRoot: bus.hops_from_root,
       electricalComponentId: electricalComponents.get(bus.ref_id),
+      // T5b-4 (P0-V5): hierarchia magistral — MAIN (sekcje korzeniowe RGnN)
+      // vs SUB (podrozdzielnice) rozpoznawalna bez czytania etykiety.
+      busTier: bus.hops_from_root === 0 ? 'main' : 'sub',
     };
     if (isBoardBus(bus.ref_id)) {
       const plan = planByBus.get(bus.ref_id)!;
@@ -573,7 +646,21 @@ export function composeLvDomainScene(
       y: trafoPos.y,
       label: transformerNameplateLabel(trafo),
       symbolId: 'transformer2W',
-      meta: { hvBusRef: trafo.hv_bus_ref, lvBusRef: trafo.lv_bus_ref, boardBusRef, hasExplicitIncomer: !!incomerBranch },
+      meta: {
+        hvBusRef: trafo.hv_bus_ref,
+        lvBusRef: trafo.lv_bus_ref,
+        boardBusRef,
+        hasExplicitIncomer: !!incomerBranch,
+        // T5b-4 (werdykt pkt 4 — blok TR w hierarchii, nie 5 mikrolinii):
+        // renderer buduje blok z DANYCH modelu, nie z parsowania etykiety
+        // (predykaty parami — etykieta i blok z JEDNEGO źródła: modelu).
+        name: trafo.name,
+        snMva: trafo.sn_mva,
+        uhvKv: trafo.uhv_kv,
+        ulvKv: trafo.ulv_kv,
+        vectorGroup: trafo.vector_group ?? null,
+        ukPercent: trafo.uk_percent,
+      },
     });
     edges.push({
       ref: `${trafo.ref_id}#source-drop`,
@@ -612,7 +699,10 @@ export function composeLvDomainScene(
     const tapX = plan && directOnBoard ? tapXFor(plan, 'above', gen.ref_id) : busPos.x;
     // Generator na zacisku toru (pełne pole źródłowe): symbol na PIONIE toru,
     // nad zaciskiem. Generator wprost na sekcji: nad własnym kikutem.
-    const genPos = { x: tapX, y: busPos.y - (directOnBoard ? TR_TO_TERMINAL : 72) };
+    // T5b-4: 104 j.św. nad zaciskiem — glif źródła (54 px ekranu) i jego
+    // etykieta nie wchodzą w pas etykiety szyny podrzędnej obok (zmierzona
+    // kolizja PV1 × „Szyna RGN-2" na zrzucie Stacji C).
+    const genPos = { x: tapX, y: busPos.y - (directOnBoard ? TR_TO_TERMINAL : 104) };
     nodes.push({
       kind: 'generator',
       ref: gen.ref_id,
@@ -758,7 +848,9 @@ export function composeLvDomainScene(
 
     let cableFrom = { x: tapX, y: busPos.y };
     if (symbolId && knownBranch) {
-      const appY = busPos.y + BUS_TO_APPARATUS / 2 + 8;
+      // T5b-4 (P0-V4 DEVICE BASELINE): aparat granicy na TEJ SAMEJ randze co
+      // aparaty odpływów (BUS_TO_APPARATUS), nie na własnej wysokości.
+      const appY = busPos.y + BUS_TO_APPARATUS;
       nodes.push({
         kind: 'apparatus',
         ref: link.branch_ref,
@@ -802,7 +894,14 @@ export function composeLvDomainScene(
       x: chipPos.x,
       y: chipPos.y,
       label: `→ ${link.target_station_name}`,
-      meta: { targetStationRef: link.target_station_ref, branchRef: link.branch_ref },
+      meta: {
+        targetStationRef: link.target_station_ref,
+        branchRef: link.branch_ref,
+        // T5b-4 (P0-V8): napięcie zacisku granicznego z modelu (szyna
+        // źródłowa linku) — renderer pokazuje „terminal + referencja",
+        // nie przycisk; napięcie jest częścią referencji elektrycznej.
+        voltageKv: busByRef.get(link.from_bus_ref)?.voltage_kv,
+      },
     });
     edges.push({
       ref: `boundary:${link.branch_ref}#link`,

@@ -49,7 +49,12 @@ describe('P0.5/P0.6 — każdy odpływ: BUS → zabezpieczenie → kabel → cel
   it('QF-01: aparat na kikucie RGNN-1, kabel ODDZIELNY (kind=cable) do zacisku Odbiór-1', () => {
     const apparatusNode = scene.nodes.find((n) => n.ref === refs.qf01Ref);
     expect(apparatusNode?.kind).toBe('apparatus');
-    expect(apparatusNode?.symbolId).toBe('nnBreaker');
+    // FLIP (T5b-4, P0-V3 symbol grammar): `type:'switch'` dostaje sylwetkę
+    // ROZŁĄCZNIKA (nóż z poprzeczką, IEC 60617 S00504), nie glif wyłącznika
+    // — poprzedni pin przybijał zlewanie switch/breaker w jeden kwadrat
+    // (dokładnie wada nazwana w werdykcie pkt 5). INTENCJA bez zmian:
+    // aparat MA symbol i stoi na kikucie.
+    expect(apparatusNode?.symbolId).toBe('loadBreakSwitch');
     const cableEdge = scene.edges.find((e) => e.ref === refs.cableQf01Ref);
     expect(cableEdge?.kind).toBe('cable');
     expect(cableEdge?.meta?.catalogRef).toBe('KABEL_NN/YKY_4x25');

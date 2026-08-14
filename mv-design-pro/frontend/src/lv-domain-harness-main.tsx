@@ -72,6 +72,11 @@ function HarnessRoot(): JSX.Element {
         view={view}
         upstreamEquivalents={upstreamEquivalents}
         initialOverlay={readOverlayOverride()}
+        /* T5b-4 (P0-V1): REALNY viewport przeglądarki — occupancy/centrowanie
+           liczy się względem prawdziwego ekranu (Playwright ustawia stały
+           viewport, więc zrzuty pozostają deterministyczne). */
+        width={window.innerWidth}
+        height={window.innerHeight}
       />
     </div>
   );
