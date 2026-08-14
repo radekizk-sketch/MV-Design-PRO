@@ -23,7 +23,6 @@ import {
   isCompleteSourceStatus,
   isStationNnSourceConverter,
   isUsableManufacturer,
-  isUsableSwitchgearFamily,
   orderManufacturers,
   sourceFeederRole,
   sourceProtectionIntent,
@@ -45,7 +44,6 @@ import type {
   MVApparatusCatalogType,
 } from '../../../ui/catalog/types';
 import type { Manufacturer } from '../../../ui/catalog/manufacturer';
-import type { SwitchgearFamily } from '../../../ui/catalog/SwitchgearFamilyPicker';
 import type { TransformerType } from '../../../ui/catalog/types';
 
 export type { SnFieldRole, StationSnFieldTemplate } from '../../../ui/network-build/forms/InsertStationFormHelpers';
@@ -878,26 +876,11 @@ export function producenciUzywalni(
   );
 }
 
-/** Rodziny rozdzielnicy zgodne z producentem i napięciem SN szyny (parytet legacy). */
-export function rodzinyDlaProducenta(
-  families: readonly SwitchgearFamily[],
-  manufacturerRef: string,
-  snVoltageKv: number,
-): SwitchgearFamily[] {
-  return families
-    .filter((f) => f.manufacturer_ref === manufacturerRef)
-    .filter(isUsableSwitchgearFamily)
-    .filter(
-      (f) =>
-        f.voltage_levels.length === 0
-        || f.voltage_levels.some((v) => voltageMatches(v, snVoltageKv, 0.5)),
-    )
-    .sort(
-      (a, b) =>
-        a.family_name.localeCompare(b.family_name, 'pl-PL')
-        || a.switchgear_family_ref.localeCompare(b.switchgear_family_ref),
-    );
-}
+// USUNIĘTE: `rodzinyDlaProducenta` (zawężenie listy rodzin do „używalnych").
+// Zastąpiła je `ofertaRodzinProducenta` z `konfiguratorRozdzielnicy.ts`, która
+// pokazuje CAŁE portfolio producenta z jawnym powodem niedostępności zamiast
+// ukrywać rodziny bez potwierdzonej karty katalogowej. Dwie ścieżki tej samej
+// decyzji („które rodziny widać") nie mogą współistnieć, więc stara odchodzi.
 
 /** Wybór rozdzielnicy przekazywany do payloadu (referencje + nazwy + pola). */
 export interface WyborRozdzielnicy {

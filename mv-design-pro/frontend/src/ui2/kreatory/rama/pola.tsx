@@ -185,7 +185,7 @@ export function PoleWyboru({
         onChange={(e) => onZmiana(e.target.value)}
       >
         {opcje.map((o) => (
-          <option key={o.id} value={o.id}>{o.etykieta}</option>
+          <option key={o.id} value={o.id} disabled={o.wylaczona}>{o.etykieta}</option>
         ))}
       </select>
     </Polakoszulka>
