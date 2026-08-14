@@ -9052,6 +9052,12 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
             protection_codes=_resolve_bay_template_protection_codes(
                 field_manufacturer_ref, field_bay_template_ref, bay_role
             ),
+            # Zabezpieczenie WSKAZANE na wpisie pola. Kontrakt payloadu niesie
+            # ten klucz i wcięcie stacji w odcinek honoruje go od dawna — ta
+            # droga IGNOROWAŁA go po cichu, czyli ta sama klasa rozjazdu dróg,
+            # co metadane pochodzenia, tylko w drugą stronę. Klucz warunkowy:
+            # payload bez wskazania zostawia migawkę bajtowo niezmienioną.
+            protection_ref=field.get("protection_ref"),
             apparatus_catalog_ref=(
                 field_apparatus_ref.strip()
                 if isinstance(field_apparatus_ref, str) and field_apparatus_ref.strip()
