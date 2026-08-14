@@ -514,3 +514,30 @@ KOMPLET.** Otwarte pozycje POZA kodem P0 (nazwane, nie ciche):
 -----
 
 *Żywy rejestr stanu. Aktualizuj każdą sesją. Źródłem prawdy ostatecznej jest świeży skan repo (§5.0) — gdy ten plik się z nim rozjedzie, prawdą jest repo.*
+
+**Aktualizacja 2026-08-14: CEL „PEŁNY WERDYKT nN" (runda 8) WYKONANY W 100%.**
+Cztery karty D1–D4 scalone z odbiorami (iniekcje: floor D3 → czerwień KROK 0;
+piny trzeciego stanu D1/D2; macierz bypassu D4), fala RMU nadzoru scalona
+(granice programu KONFIGURATOR-POL-RMU przyjęte w rundzie 9):
+- D1 (`ef767ac0`+`2ca3cd86`): MCCB pełny łańcuch konsument→dane — RGnN dostaje
+  PEŁNĄ rekomendację `cb_nn_400a` (In=400 A, Icu=50 kA); Iz′ punktu zabudowy
+  wyłącznika głównego = In transformatora (1804 A), inżyniersko poprawione.
+- D2 (`4b39e7e9`): SWZ dla gG rozstrzygalne w gałęzi „nie spełnia"
+  (Ik1_min<Inf, REUSE bramek P0.7); rejestr bramek t_wym gotowy i PUSTY po
+  uczciwej próbie (tabele IEC za paywallem; pasma producenckie — potwierdzone
+  akademicko); zainstalowany MCCB decyzyjny w build_swz_view ORAZ pakiecie
+  dowodowym (ta sama klasa naprawiona od razu); kontrakt APARAT_NN +5 pól
+  nastaw z pinem łańcucha.
+- D3 (`59424434`): fantom ST-03 u źródła (floor „min 1 odpływ" fabrykował
+  starter; predykat parami z jawnym count); stare snapshoty uczciwie
+  nietknięte (brak deterministycznego wyróżnika).
+- D4 (`7c7c621b`): tryb EKSPERCKI_RECZNY osiągalny jawnie (wyróżnik zmierzony
+  `source_mode`); rozjazd rejestru ZAMKNIĘTY pomiarem; przy okazji naprawiony
+  defekt produktu maskowany mockami (kreator wysyłał 422-payload).
+BRAMKA FINALNA CELU (drzewo z falą RMU): pytest **9894 passed / 11 skipped**,
+vitest **876 plików / 11451 testów**, tsc+eslint czyste.
+DŁUGI OTWARTE po celu (nazwane): bramki czasowe gG t_wym (dane normy za
+paywallem — decyzja właściciela o zakupie/źródle), `tr_range` MCCB
+jednoźródłowe, rozjazd catalog_ref `add_sn_bay`/`append_station_on_endpoint`
+(strona SN — nadzór), 13 pre-existing błędów mypy w 8 plikach spoza nN,
+B-02 (werdykt wizualny) u właściciela.
