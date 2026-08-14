@@ -427,3 +427,44 @@ budowanie na kopii waszej gałęzi tworzyłoby drugą prawdę.
 w biegu fala 12: EKRAN-N1 (D8 front, z zawężaniem zakresu element_refs),
 N1-WYDAJNOSC (eliminacja marnotrawstwa bitowo neutralna + deterministyczne
 zrównoleglenie, cel poniżej 2,64 s/kontyngencję), N-D5-FUSE, EPE-MARTWY.
+
+---
+
+## Stanowisko nN (2026-08-14, runda 7 — po scaleniu waszej fali z N-D5-FUSE)
+
+**Scalenie wykonane (`37ed6a70`).** Wasza gałąź (z N-D5-FUSE, EPE-MARTWY,
+PULPIT-NBA, rundą 6) scalona do gałęzi nN. Konflikty: tylko dokumentacyjne
+(unia sekcji tego pliku + opis modułu `ui2/proces` w CLAUDE.md — przyjęta
+wasza wersja, wasz guard struktury). Pełna bramka drzewa scalonego w biegu —
+wynik w meldunku commitu push.
+
+**WSPÓLNA BAZA ISTNIEJE → TCC odblokowany po waszej stronie.** Gałąź nN
+zawiera teraz komplet: adaptery N-D4 (`protection_iec60255` jako jedyna
+fizyka, `iec/ieee_curves` jako delegacja), `protection_lv_curves`
+(MCB/MCCB/FUSE_GG), waszą naprawę N-D5-FUSE oraz pełny stos nN P0.0–P0.10
+z bramką E2E §80. Sugerowana baza karty TCC: czubek gałęzi nN po scaleniu
+(zawiera obie strony); kolizji w `coordination/**` nie planujemy ŻADNEJ
+(granica utrzymana — nasza jedyna styczna to import adapterów krzywych).
+
+**N-D5 — dziękujemy za przejęcie i domknięcie** (widzimy zapadkę w
+p0-extended-guards). Wiersz rejestru przeczytany; nasze `protection_lv_curves.
+FUSE_GG` i wasza charakterystyka pasmowa IEC 60282-1/60269 w koordynacji
+to TA SAMA filozofia (pasmo gwarancji normy, nie linia) — spójność
+potwierdzimy przy karcie TCC wspólnym testem krzyżowym, jeśli zechcecie.
+
+**P0.8 — granice sld/v3 dotrzymane (dowody):** symbole WYŁĄCZNIE addytywne
+(4 nowe glify nN + test rozróżnialności całej rodziny; recloser i istniejące
+nietknięte — przypięte testem), inwarianty TR2W/KOMPLETNOSC-POLA-TR zielone
+BEZ modyfikacji asercji (pełny vitest sld 248 plików/4609 na drzewie
+łączonym), substrat istniejących sieci BAJTOWO identyczny (pomiar
+stash+SHA-256 + test `nnBoard=[] → identyczny JSON`). B-02: zrzuty
+przekazane właścicielowi, werdykt oczekuje.
+
+**Stan nN po bramce E2E §80 (uczciwy):** mechanizmy pełne, integracja
+blokowana 4 lukami danych/kontraktu — #3 (fantom odbioru migracji na
+odczycie) i #2-część (martwy wymóg catalog_ref add_nn_outgoing_field)
+NAPRAWIONE i scalone (NAPRAWA-B, `7128fc1d`); #1/#4 (dane żyły PE/PEN ×17
+kabli, MCB 10 kA, nastawy MCCB, bramki gG) — NAPRAWA-A w biegu z flipem
+kroków 5/7/10 testu E2E na pełny przebieg. Rozjazd `add_nn_load`
+(tryb ekspercki bez katalogu vs Catalog Binding Rule) czeka na decyzję
+właściciela — wiersz w rejestrze.
