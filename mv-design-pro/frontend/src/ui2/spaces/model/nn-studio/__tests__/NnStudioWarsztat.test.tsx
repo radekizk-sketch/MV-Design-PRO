@@ -40,6 +40,7 @@ vi.mock('../nnSiteApi', () => ({
   fetchVoltageProfile: () => new Promise(() => {}),
   fetchSwz: () => new Promise(() => {}),
   fetchDeviceSelection: () => new Promise(() => {}),
+  fetchNnCircuitSheet: () => new Promise(() => {}),
 }));
 
 describe('NnStudioWarsztat — realna ścieżka', () => {
@@ -77,5 +78,13 @@ describe('NnStudioWarsztat — realna ścieżka', () => {
     render(<NnStudioWarsztat />);
     await userEvent.selectOptions(screen.getByTestId('mvd-nn-studio-stacja'), 'st-rgnn');
     expect(screen.getByTestId('mvd-nn-studio-stacja')).toHaveValue('st-rgnn');
+  });
+
+  it('klik NATYWNY na zakładce ARKUSZ przełącza widoczną treść', async () => {
+    render(<NnStudioWarsztat />);
+    await userEvent.click(screen.getByTestId('mvd-nn-studio-zakladka-arkusz'));
+    expect(screen.getByTestId('mvd-nn-studio-zakladka-arkusz')).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByTestId('mvd-nn-studio-arkusz')).toBeInTheDocument();
+    expect(screen.queryByTestId('mvd-nn-studio-topologia')).not.toBeInTheDocument();
   });
 });

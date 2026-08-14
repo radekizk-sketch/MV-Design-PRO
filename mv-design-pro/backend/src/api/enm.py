@@ -28,6 +28,7 @@ from application.analyses.fault_loop.service import (
     build_feeder_fault_loop_view,
     build_station_fault_loop_view,
 )
+from application.analyses.nn_circuit_sheet import build_nn_circuit_sheet
 from application.analyses.nn_device_selection import wybierz_aparat_dla_obwodu_nn
 from application.analyses.protection.czas_wylaczenia_pola import (
     czasy_wylaczenia_pol_stacji,
@@ -42,6 +43,9 @@ from application.field_read_model import build_field_read_model
 from application.protection_read_model import build_protection_read_model
 from domain.canonical_operations import CANONICAL_OPERATIONS, resolve_operation_name
 from domain.readiness_bridge import opis_kanoniczny
+from enm.canonical_analysis import (
+    get_run as _get_canonical_run,
+)
 from enm.canonical_analysis import (
     run_power_flow_now,
     run_short_circuit_now,
@@ -378,6 +382,92 @@ def get_nn_device_selection(
         ib_a=ib_a,
         iz_prime_a=iz_prime_a,
         ik_max_ka=ik_max_ka,
+    )
+
+
+def _resolve_run_for_sheet(
+    *, case_id: str, run_id: str | None, param_name: str, expected_analysis_type: str
+) -> Any | None:
+    """Waliduj+rozwiąż bieg OPCJONALNY dla arkusza nN — wzorzec `quality_
+    analysis_runs._require_run` (parsowanie UUID, przynależność do case,
+    status FINISHED, rodzaj analizy), ale ``None`` (nie 404) gdy parametr
+    pominięty — arkusz działa BEZ biegu (Ib „z tabliczki", reszta kolumn
+    zależnych od biegu w trzecim stanie „brak danych")."""
+    if run_id is None:
+        return None
+    try:
+        parsed = UUID(run_id)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=422, detail=f"{param_name} musi być poprawnym UUID."
+        ) from exc
+    run = _get_canonical_run(parsed)
+    if run is None:
+        raise HTTPException(status_code=404, detail=f"Bieg {run_id} ({param_name}) nie istnieje.")
+    if run.case_id != case_id:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Bieg {run_id} ({param_name}) należy do innego przypadku obliczeniowego.",
+        )
+    if run.status != "FINISHED":
+        raise HTTPException(
+            status_code=409,
+            detail=f"Bieg {run_id} ({param_name}) nie jest zakończony (status={run.status}).",
+        )
+    if run.analysis_type != expected_analysis_type:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"Bieg {run_id} ({param_name}) ma rodzaj analizy '{run.analysis_type}', "
+                f"oczekiwano '{expected_analysis_type}'."
+            ),
+        )
+    return run
+
+
+@router.get("/{case_id}/enm/nn-circuit-sheet")
+def get_nn_circuit_sheet(
+    case_id: str,
+    station_ref: str,
+    load_flow_run_id: str | None = None,
+    short_circuit_run_id: str | None = None,
+    fault_duration_s: float | None = None,
+) -> dict[str, Any]:
+    """Arkusz obliczeń obwodów nN klasy projektu wykonawczego (karta ARKUSZ-NN,
+    docs/nn/ARKUSZ_OBLICZEN_NN_2026-08.md).
+
+    Jeden wiersz PER ODPŁYW rozdzielnicy/stacji nN: Ib (z biegu rozpływu, gdy
+    ``load_flow_run_id`` podany i biegu ma wynik dla obwodu, inaczej „z
+    tabliczki" — źródło nazwane jawnie w wierszu), aparat/nastawy/zapas,
+    Iz′ skorygowane, k2/I2, przewód/przekrój/γ, kryteria (i)/(ii),
+    długość, ΔU odcinkowy/całkowity, Ik″max (``short_circuit_run_id``)/
+    Ik1_min, SWZ, I²t (wymaga ``short_circuit_run_id`` I ``fault_duration_s``),
+    status doboru — PROVENANCE per wiersz. Read-only; kompozycja gotowych
+    dostawców (zero fizyki tutaj).
+
+    ``load_flow_run_id``/``short_circuit_run_id`` OPCJONALNE — bez nich
+    kolumny zależne od biegu dostają uczciwy trzeci stan „brak danych" z
+    akcją naprawczą po stronie UI („uruchom bieg"), nie fabrykowaną liczbę.
+    """
+    enm = _get_enm(case_id)
+    load_flow_run = _resolve_run_for_sheet(
+        case_id=case_id,
+        run_id=load_flow_run_id,
+        param_name="load_flow_run_id",
+        expected_analysis_type="PF",
+    )
+    short_circuit_run = _resolve_run_for_sheet(
+        case_id=case_id,
+        run_id=short_circuit_run_id,
+        param_name="short_circuit_run_id",
+        expected_analysis_type="short_circuit_sn",
+    )
+    return build_nn_circuit_sheet(
+        enm=enm,
+        station_ref=station_ref,
+        load_flow_run=load_flow_run,
+        short_circuit_run=short_circuit_run,
+        fault_duration_s=fault_duration_s,
     )
 
 

@@ -109,6 +109,7 @@ def test_wszystkie_wymagane_sekcje_obecne() -> None:
         "zwarcia",
         "swz",
         "dobor",
+        "arkusz",
     ):
         assert sekcja in wynik, f"brak sekcji {sekcja}"
 
@@ -116,10 +117,46 @@ def test_wszystkie_wymagane_sekcje_obecne() -> None:
 def test_provenance_na_kazdej_sekcji() -> None:
     wynik = _wywolaj(_enm(), ib_a=10.0, iz_prime_a=100.0, ik_max_ka=5.0)
     oczekiwane = {"run_id": "r1", "revision_id": "rev1", "przypadek_decydujacy": "TR"}
-    for sekcja in ("dane_zrodlowe", "transformator", "delta_u", "zwarcia", "swz", "dobor"):
+    for sekcja in (
+        "dane_zrodlowe",
+        "transformator",
+        "delta_u",
+        "zwarcia",
+        "swz",
+        "dobor",
+        "arkusz",
+    ):
         assert wynik[sekcja]["provenance"] == oczekiwane
     assert all(odc["provenance"] == oczekiwane for odc in wynik["odcinki"])
     assert wynik["provenance"] == oczekiwane
+
+
+def test_arkusz_niesie_wiersz_dla_obwodu_bus_ref_breaker_ref() -> None:
+    """Karta ARKUSZ-NN §0 pkt 4: sekcja arkusza — REUSE `nn_circuit_sheet.
+    build_nn_circuit_sheet_row_for_breaker`, jeden wiersz dla DOKŁADNIE tego
+    obwodu (bus_ref='b1', breaker_ref='ap1' z fixture), bez obiektów biegu —
+    Ib „z tabliczki" (uczciwe, brak Load na fixture -> S=0 -> Ib=0)."""
+    wynik = _wywolaj(_enm(), ib_a=10.0, iz_prime_a=100.0, ik_max_ka=5.0)
+    arkusz = wynik["arkusz"]
+    assert arkusz["status"] == "OK"
+    assert arkusz["feeder_root_branch_ref"] == "ap1"
+    assert arkusz["worst_point_bus_ref"] == "b1"
+    assert arkusz["zrodlo_ib"] == "tabliczka"
+    assert arkusz["aparat"]["status"] == "OK"
+    assert arkusz["aparat"]["wartosc"]["kind"] == "MCB"
+
+
+def test_arkusz_brak_stacji_jest_uczciwy() -> None:
+    wynik = build_nn_circuit_report_section(
+        enm=_enm(),
+        station_ref="nieistniejaca",
+        bus_ref="b1",
+        breaker_ref="ap1",
+        run_id="r1",
+        revision_id="rev1",
+        przypadek_decydujacy="TR",
+    )
+    assert wynik["status"] == "brak danych"
 
 
 def test_odcinki_niosa_katalog_i_dlugosc() -> None:

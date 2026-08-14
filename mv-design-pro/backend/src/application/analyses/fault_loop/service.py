@@ -53,7 +53,7 @@ from network_model.solvers.short_circuit_core import build_zbus
 from .route import (
     RouteExtractionError,
     bfs_paths_from,
-    feeder_root_branch_ref,
+    group_bus_refs_by_feeder,
     path_to_bus,
     route_segments,
 )
@@ -469,13 +469,9 @@ def build_feeder_fault_loop_view(enm: EnergyNetworkModel, station_ref: str) -> d
     u_phase_v = trafo.ulv_kv * 1000.0 / math.sqrt(3.0)
 
     paths = bfs_paths_from(enm, trafo.lv_bus_ref)
-    # Grupowanie per odpływ = pierwsza gałąź trasy od szyny TR (§0.2 karty).
-    feeder_bus_refs: dict[str, list[str]] = {}
-    for bus_ref, path in sorted(paths.items()):
-        root = feeder_root_branch_ref(path)
-        if root is None:  # sama szyna TR — nie jest punktem odpływu
-            continue
-        feeder_bus_refs.setdefault(root, []).append(bus_ref)
+    # Grupowanie per odpływ = pierwsza gałąź trasy od szyny TR (§0.2 karty),
+    # REUSE `route.group_bus_refs_by_feeder` (karta ARKUSZ-NN, 2026-08-14).
+    feeder_bus_refs = group_bus_refs_by_feeder(paths)
 
     feeders: list[dict[str, Any]] = []
     for root_branch_ref in sorted(feeder_bus_refs):

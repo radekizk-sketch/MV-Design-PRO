@@ -194,3 +194,157 @@ export async function fetchVoltageProfile(
   if (!r.ok) throw new Error(`Zapytanie o profil napięć nie powiodło się: ${r.status}`);
   return r.json() as Promise<WidokProfiluNapiec>;
 }
+
+// --- Arkusz obliczeń obwodów nN (`GET /enm/nn-circuit-sheet`, karta ARKUSZ-NN) ---
+
+/**
+ * Stan CZTEROWARTOŚCIOWY jednej wielkości wiersza arkusza — kształt 1:1 z
+ * backendu (`application/analyses/nn_circuit_sheet.py::_wartosc/_brak/
+ * _nie_dotyczy/_nierozstrzygalne`). Puste komórki nie istnieją: każde pole
+ * niesie ALBO `wartosc` (status='OK') ALBO `reason_pl` (pozostałe statusy).
+ */
+export interface ArkuszWartosc<T> {
+  readonly status: 'OK' | 'brak danych' | 'nie dotyczy' | 'nierozstrzygalne';
+  readonly wartosc: T | null;
+  readonly zrodlo_pl: string | null;
+  readonly reason_pl: string | null;
+}
+
+export interface ArkuszObciazenie {
+  readonly p_mw: number;
+  readonly q_mvar: number;
+  readonly s_mva: number;
+  readonly cos_phi: number | null;
+  readonly fazy: number;
+  readonly liczba_odbiorow: number;
+}
+
+export interface ArkuszAparat {
+  readonly kind: 'MCB' | 'FUSE_SWITCH' | 'MCCB';
+  readonly nazwa: string;
+  readonly in_a: number;
+  readonly klasa_mcb: string | null;
+  readonly nastawa_n: number | null;
+  readonly ir_a: number | null;
+}
+
+export interface ArkuszIz {
+  readonly iz_prime_a: number;
+  readonly iz_katalogowe_a: number;
+  readonly rozklad: Record<string, number> | null;
+  readonly branch_ref_decydujacy: string;
+  readonly segmenty: readonly {
+    readonly branch_ref: string;
+    readonly iz_katalogowe_a: number | null;
+    readonly iz_prime_a: number | null;
+    readonly status: string;
+    readonly reason_pl: string | null;
+  }[];
+}
+
+export interface ArkuszPrzewod {
+  readonly branch_ref: string;
+  readonly nazwa: string;
+  readonly catalog_ref: string | null;
+  readonly material: string | null;
+  readonly przekroj_mm2: number | null;
+  readonly gamma_ms_m: number | null;
+}
+
+export interface ArkuszKryterium {
+  readonly status: 'spełnia' | 'nie spełnia' | 'nierozstrzygalne';
+  readonly wartosci: Record<string, unknown>;
+}
+
+export interface ArkuszDeltaUOdcinek {
+  readonly branch_ref: string;
+  readonly delta_u_kv: number | null;
+  readonly delta_u_percent: number | null;
+}
+
+export interface ArkuszDeltaU {
+  readonly odcinkowe: readonly ArkuszDeltaUOdcinek[];
+  readonly calkowity_kv: number;
+  readonly calkowity_procent: number;
+}
+
+export interface ArkuszI2t {
+  readonly wytrzymuje: boolean;
+  readonly i2t_a2s: number | null;
+  readonly i2t_dopuszczalne_a2s: number | null;
+  readonly margines_procent: number | null;
+  readonly prad_dopuszczalny_a: number | null;
+}
+
+export interface ArkuszStatusDoboru {
+  readonly kwalifikuje_sie: boolean;
+  readonly kryteria: readonly { readonly nazwa: string; readonly status: string; readonly uzasadnienie_pl: string }[];
+}
+
+export interface ArkuszWiersz {
+  readonly nr: number;
+  readonly wyszczegolnienie: string;
+  readonly feeder_root_branch_ref: string;
+  readonly worst_point_bus_ref: string;
+  readonly worst_point_zrodlo: string;
+  readonly obciazenie: ArkuszObciazenie;
+  readonly ib: ArkuszWartosc<number>;
+  readonly zrodlo_ib: 'rozpływ' | 'tabliczka';
+  readonly aparat: ArkuszWartosc<ArkuszAparat>;
+  readonly zapas_zabezpieczenia_procent: ArkuszWartosc<number>;
+  readonly iz: ArkuszWartosc<ArkuszIz>;
+  readonly k2_i2: ArkuszWartosc<{ readonly k2: number | null; readonly i2_a: number | null }>;
+  readonly przewod: ArkuszWartosc<ArkuszPrzewod>;
+  readonly kryterium_i_ib_in_iz: ArkuszWartosc<ArkuszKryterium>;
+  readonly kryterium_ii_i2_iz: ArkuszWartosc<ArkuszKryterium>;
+  readonly dlugosc_m: ArkuszWartosc<number>;
+  readonly delta_u: ArkuszWartosc<ArkuszDeltaU>;
+  readonly ik_max: ArkuszWartosc<number>;
+  readonly ik_min: ArkuszWartosc<number>;
+  readonly swz: ArkuszWartosc<ArkuszKryterium>;
+  readonly i2t: ArkuszWartosc<ArkuszI2t>;
+  readonly status_doboru: ArkuszWartosc<ArkuszStatusDoboru>;
+  /** Provenance TEGO wiersza (identyczna z `WidokArkuszaNn.provenance` — karta
+   *  ARKUSZ-NN wymaga wpisu PER WIERSZ, nie tylko raz na cały arkusz). */
+  readonly provenance: ArkuszProvenance;
+}
+
+export interface ArkuszProvenance {
+  readonly load_flow_run_id: string | null;
+  readonly short_circuit_run_id: string | null;
+  readonly fault_duration_s: number | null;
+  readonly rewizja_modelu: string;
+  readonly swiezosc: {
+    readonly load_flow_aktualny: boolean | null;
+    readonly short_circuit_aktualny: boolean | null;
+  };
+}
+
+export interface WidokArkuszaNn {
+  readonly status: 'OK' | 'brak danych';
+  readonly station_ref?: string;
+  readonly station_name?: string;
+  readonly network_system?: string;
+  readonly wiersze: readonly ArkuszWiersz[];
+  readonly missing_data?: readonly string[];
+  readonly reason_pl?: string | null;
+  readonly provenance?: ArkuszProvenance;
+}
+
+export async function fetchNnCircuitSheet(
+  caseId: string,
+  stationRef: string,
+  opts: { loadFlowRunId?: string; shortCircuitRunId?: string; faultDurationS?: number } = {},
+): Promise<WidokArkuszaNn> {
+  const params = new URLSearchParams({ station_ref: stationRef });
+  if (opts.loadFlowRunId) params.set('load_flow_run_id', opts.loadFlowRunId);
+  if (opts.shortCircuitRunId) params.set('short_circuit_run_id', opts.shortCircuitRunId);
+  if (opts.faultDurationS !== undefined) params.set('fault_duration_s', String(opts.faultDurationS));
+  const url = `/api/cases/${encodeURIComponent(caseId)}/enm/nn-circuit-sheet?${params.toString()}`;
+  const r = await fetch(url);
+  if (!r.ok) {
+    const detail = await r.json().catch(() => null) as { detail?: string } | null;
+    throw new Error(detail?.detail || `Zapytanie o arkusz obliczeń nie powiodło się: ${r.status}`);
+  }
+  return r.json() as Promise<WidokArkuszaNn>;
+}

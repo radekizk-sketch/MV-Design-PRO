@@ -192,11 +192,19 @@ def resolve_urzadzenie_ochronne(
         # (`ocen_swz`, typ="MCCB") dostawał `ii_a=None` dla KAŻDEGO
         # zainstalowanego MCCB, więc był bezwarunkowo NIEROZSTRZYGALNY mimo
         # istniejącej gałęzi karty D1.
-        _, _, ii_a, _, _ = resolwuj_nastawy_mccb(
+        # Karta ARKUSZ-NN (nN „runda 9", 2026-08-14): TO SAMO wywołanie niesie
+        # też `ir_a`/`isd_a`/`tr_s`/`tsd_s` (dotąd odrzucane przez `_, _, ii_a,
+        # _, _`) — `application.analyses.nn_circuit_sheet` potrzebuje ir_a/tr_s
+        # do oceny kryterium (ii) I2<=1,45·Iz′ zainstalowanego MCCB (REUSE
+        # `nn_device_selection._kryterium_i2`, który dla MCCB wymaga ir_a/tr_s,
+        # nie tylko ii_a) — jedna materializacja, jedno miejsce rozwiązania.
+        ir_a, isd_a, ii_a, tr_s, tsd_s = resolwuj_nastawy_mccb(
             i_n_a=float(in_a),
             ir_range=params.get("ir_range"),
             isd_range=params.get("isd_range"),
             ii_range=params.get("ii_range"),
+            tr_range=params.get("tr_range"),
+            tsd_range=params.get("tsd_range"),
         )
         return (
             UrzadzenieOchronneNn(
@@ -208,6 +216,10 @@ def resolve_urzadzenie_ochronne(
                     float(params["i_cu_ka"]) if params.get("i_cu_ka") is not None else None
                 ),
                 ii_a=ii_a,
+                ir_a=ir_a,
+                isd_a=isd_a,
+                tr_s=tr_s,
+                tsd_s=tsd_s,
             ),
             None,
         )

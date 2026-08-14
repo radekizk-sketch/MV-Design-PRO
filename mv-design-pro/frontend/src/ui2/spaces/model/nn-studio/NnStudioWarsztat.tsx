@@ -10,6 +10,7 @@
 import { useMemo, useState } from 'react';
 
 import { useStacjeNn } from '../../../nav/adapters/nnStudioTreeAdapter';
+import { EkranArkuszaNn } from './EkranArkuszaNn';
 import { EkranDoboruNn } from './EkranDoboruNn';
 import { EkranNapiecNn } from './EkranNapiecNn';
 import { EkranSwzNn } from './EkranSwzNn';
@@ -26,6 +27,7 @@ const ZAKLADKI = [
   { id: 'zwarcia', etykieta: T.zakladkaZwarcia },
   { id: 'swz', etykieta: T.zakladkaSwz },
   { id: 'dobor', etykieta: T.zakladkaDobor },
+  { id: 'arkusz', etykieta: T.zakladkaArkusz },
 ] as const;
 
 type ZakladkaId = (typeof ZAKLADKI)[number]['id'];
@@ -105,6 +107,7 @@ export function NnStudioWarsztat() {
         {zakladka === 'zwarcia' && <EkranZwarcNn stationRef={stacjaAktywna} />}
         {zakladka === 'swz' && <EkranSwzNn stationRef={stacjaAktywna} />}
         {zakladka === 'dobor' && <EkranDoboruNn stationRef={stacjaAktywna} />}
+        {zakladka === 'arkusz' && <EkranArkuszaNn stationRef={stacjaAktywna} />}
       </div>
     </div>
   );

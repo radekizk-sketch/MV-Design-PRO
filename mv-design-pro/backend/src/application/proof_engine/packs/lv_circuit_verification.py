@@ -142,6 +142,17 @@ class UrzadzenieOchronneNn:
             bezwarunkowo NIEROZSTRZYGALNY mimo istniejącej gałęzi karty D1,
             defekt naprawiony kartą D2). ``None`` dla pozostałych ``kind``
             albo gdy katalog nie niesie zakresu ``ii_range``.
+        ir_a, isd_a, tr_s, tsd_s: Nastawy długo-/krótkozwłoczne wyzwalacza
+            elektronicznego (karta ARKUSZ-NN, nN „runda 9", 2026-08-14) —
+            WYŁĄCZNIE dla ``KIND_MCCB``, resolwowane z TEGO SAMEGO wywołania
+            `resolwuj_nastawy_mccb` co ``ii_a`` powyżej (jeden odczyt, pięć pól
+            — bez tego agregator arkusza obliczeń (`application.analyses.
+            nn_circuit_sheet`) nie miałby z czego ocenić kryterium (ii)
+            I2<=1,45·Iz′ dla zainstalowanego MCCB: `ir_a`/`tr_s` są tam
+            WYMAGANE przez `nn_device_selection._kryterium_i2`, nie tylko
+            `ii_a` (który służy WYŁĄCZNIE SWZ, krok 10). ``None`` dla
+            pozostałych ``kind`` albo gdy katalog nie niesie odpowiedniego
+            zakresu.
     """
 
     kind: str
@@ -153,6 +164,10 @@ class UrzadzenieOchronneNn:
     conditional_sc_current_ka: float | None = None
     fuse_breaking_capacity_ka: float | None = None
     ii_a: float | None = None
+    ir_a: float | None = None
+    isd_a: float | None = None
+    tr_s: float | None = None
+    tsd_s: float | None = None
 
     def __post_init__(self) -> None:
         if self.kind not in _KINDY_DOZWOLONE:
@@ -175,6 +190,10 @@ class UrzadzenieOchronneNn:
             "conditional_sc_current_ka": self.conditional_sc_current_ka,
             "fuse_breaking_capacity_ka": self.fuse_breaking_capacity_ka,
             "ii_a": self.ii_a,
+            "ir_a": self.ir_a,
+            "isd_a": self.isd_a,
+            "tr_s": self.tr_s,
+            "tsd_s": self.tsd_s,
         }
 
 

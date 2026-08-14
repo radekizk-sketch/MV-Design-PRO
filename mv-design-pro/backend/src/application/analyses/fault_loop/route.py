@@ -254,3 +254,26 @@ def feeder_root_branch_ref(path: LvBusPath) -> str | None:
     if not path.branches:
         return None
     return path.branches[0].ref_id
+
+
+def group_bus_refs_by_feeder(paths: dict[str, LvBusPath]) -> dict[str, list[str]]:
+    """Grupuj referencje szyn wg odpływu (pierwsza gałąź trasy od korzenia).
+
+    Czysto TOPOLOGICZNE (BFS) — niezależne od tego, czy fizyka pętli zwarcia
+    TN ma zastosowanie dla stacji. REUSE point dla ``fault_loop.service.
+    build_feeder_fault_loop_view`` (bez zmiany zachowania — ten sam wynik co
+    wcześniejsza pętla inline) ORAZ ``application.analyses.nn_circuit_sheet``
+    (karta ARKUSZ-NN, 2026-08-14): arkusz obliczeń musi enumerować odpływy dla
+    KAŻDEGO układu sieci nN (TN/TT/IT) — tylko kolumny zależne od pętli TN
+    (SWZ, Ik1_min) są bramkowane układem, nie istnienie samego wiersza.
+    Wydzielenie tej pętli z ``build_feeder_fault_loop_view`` unika DRUGIEJ,
+    nieznacznie innej pętli grupującej w agregatorze arkusza (KLASA NIE
+    INSTANCJA — przegląd 2026-08-01).
+    """
+    feeder_bus_refs: dict[str, list[str]] = {}
+    for bus_ref, path in sorted(paths.items()):
+        root = feeder_root_branch_ref(path)
+        if root is None:  # sama szyna TR — nie jest punktem odpływu
+            continue
+        feeder_bus_refs.setdefault(root, []).append(bus_ref)
+    return feeder_bus_refs

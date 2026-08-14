@@ -1815,6 +1815,22 @@ def build_nn_circuit_report_section(
             "provenance": provenance,
         }
 
+    # Karta ARKUSZ-NN (nN „runda 9", 2026-08-14, §0 pkt 4): sekcja arkusza —
+    # ADDYTYWNA, REUSE `nn_circuit_sheet.build_nn_circuit_sheet_row_for_breaker`
+    # (ten sam budowniczy wiersza co endpoint `GET /enm/nn-circuit-sheet`, dla
+    # DOKŁADNIE tego obwodu bus_ref+breaker_ref) — zero drugiej fizyki/drugiego
+    # kompletu kolumn. Bez obiektów biegu (ta funkcja ich nie dostaje — patrz
+    # docstring modułu powyżej): Ib „z tabliczki", ΔU/Ik″max/I²t w trzecim
+    # stanie honest „brak danych", jawnie nazwanym w wierszu (zrodlo_pl).
+    from application.analyses.nn_circuit_sheet import build_nn_circuit_sheet_row_for_breaker
+
+    arkusz = {
+        **build_nn_circuit_sheet_row_for_breaker(
+            enm=enm, station_ref=station_ref, bus_ref=bus_ref, breaker_ref=breaker_ref
+        ),
+        "provenance": provenance,
+    }
+
     return {
         "status": "OK",
         "dane_zrodlowe": dane_zrodlowe,
@@ -1824,5 +1840,6 @@ def build_nn_circuit_report_section(
         "zwarcia": zwarcia,
         "swz": swz,
         "dobor": dobor,
+        "arkusz": arkusz,
         "provenance": provenance,
     }

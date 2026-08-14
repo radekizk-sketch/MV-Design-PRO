@@ -19,3 +19,12 @@
 .mvd-nn-studio-heatmapa tr.mvd-swz-nie-spelnia { background: color-mix(in srgb, var(--mvd-danger, #c0392b) 14%, transparent); }
 .mvd-nn-studio-heatmapa tr.mvd-swz-nierozstrzygalne { background: color-mix(in srgb, var(--mvd-muted) 12%, transparent); }
 tr.mvd-dobor-rekomendacja { background: color-mix(in srgb, var(--mvd-accent) 12%, transparent); font-weight: 600; }
+.mvd-nn-studio-arkusz-akcje { display: flex; gap: 8px; margin: 10px 0; }
+.mvd-nn-studio-arkusz-akcje button { border: 1px solid var(--mvd-line); background: var(--mvd-panel); color: var(--mvd-ink); border-radius: 6px; padding: 6px 12px; cursor: pointer; font: inherit; }
+.mvd-nn-studio-arkusz-akcje button:disabled { opacity: 0.5; cursor: not-allowed; }
+.mvd-nn-studio-arkusz-szczegoly { margin-top: 16px; padding: 12px 14px; border: 1px solid var(--mvd-line); border-radius: 8px; background: var(--mvd-panel-2); }
+.mvd-nn-studio-arkusz-szczegoly-naglowek { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.mvd-nn-studio-arkusz-szczegoly-naglowek h3 { margin: 0; font-size: 14px; }
+.mvd-nn-studio-arkusz-szczegoly h4 { font-size: 13px; margin: 14px 0 4px; color: var(--mvd-muted); }
+.mvd-nn-studio-arkusz-dowody { list-style: none; margin: 0; padding: 0; font-size: 13px; }
+.mvd-nn-studio-arkusz-dowody li { padding: 4px 0; border-bottom: 1px solid var(--mvd-line); }
