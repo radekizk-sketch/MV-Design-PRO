@@ -327,6 +327,33 @@ granicą rundy 4 (własność nadzoru), zgłoszone nadzorowi w UZGODNIENIA runda
 z konsumentem); (4) czasy umowne gG — drugie źródło do domknięcia flip-to-verified.
 Zostają: P0.8 (SLD nN), P0.9 (nN STUDIO UI), P0.10 (pakiet dowodowy + raport),
 bramka E2E §80 planu H.
+
+**Aktualizacja 2026-08-14: runda 5 nadzoru obsłużona + P0.8 WYKONANE.**
+- Runda 5 nadzoru (fala 11): zgoda WPROST na semantykę pól zdolności wyłączania;
+  żądana zapadka DOSTARCZONA (`49486895`): `LVFuseLinkType.__post_init__` —
+  wkładka bez `breaking_capacity_ka` (None/≤0) = ValueError strukturalny + pin
+  całego katalogu; fala 11 scalona (`b5c8d6d1`), bramki drzewa: backend
+  **9667/13**, frontend **857 plików / 11276 testów**. Runda 5b: stabilność API
+  coordination do fali 12 przyjęta; `wykonaj_bieg_w_pamieci` = kanoniczne
+  wejście wariantów; rozróżnienie werdyktów kombinacja/goły aparat wiążące dla
+  P0.10.
+- P0.8 (`14550dda`): SLD nN end-to-end — adapter per-szyna/per-odpływ (seam A8;
+  aparat z katalogu wg `device_kind`, UNRESOLVED = pusty tor + komunikat błędu,
+  zero fabrykacji; odbiorca chain-walk przez kable), kompozycja wzorcem DER
+  (ownerRef = realny ref ENM), 4 nowe symbole w kanonie (rozdzielnica nN, MCB,
+  rozłącznik bezp., licznik) z testem rozróżnialności rodziny, rezerwacje
+  szerokości N odpływów, kontrakt SWZ w overlay (addytywny, fail-closed
+  `nierozstrzygalne`→`unknown`). Substrat istniejących sieci BAJTOWO identyczny
+  (pomiar stash+SHA + test). Pre-existing dług naprawiony: `types/enm.ts` bez
+  `rozdzielnica_nn`/`nn_sections` od P0.1. Bramka odbiorcza na drzewie łączonym
+  z falą 11: vitest SLD **248 plików / 4609 testów**, accept:sld-v3, 4 guardy,
+  tsc+lint; iniekcja nadzoru (nierozstrzygalne→ok po cichu → 1 test czerwony,
+  sha-identyczne odtworzenie). ODSTĘPSTWA JAWNE wykonawcy: (a) rozdzielnica nN
+  jako liść odpływu wg litery karty (węzeł korytarzowy = osobna duża funkcja);
+  (b) odznaka SWZ na kanwie NIE wdrożona — kontrakt tak, renderer = osobna
+  karta (precedens OLTC V12K-092), naturalnie wchodzi w P0.9. **B-02: zrzuty
+  (oba motywy, deterministyczne, `docs/audit/visual/nn_board_demo_*.png`)
+  przekazane właścicielowi — werdykt wizualny OCZEKUJE.**
 **Aktualizacja 2026-08-13 (ta sama sesja): P0.6 WYKONANE (`b746b6a9`) — „serce modułu".**
 - Pętla zwarcia z REALNEJ trasy grafu: `application/analyses/fault_loop/route.py`
   (NOWY) — BFS po ENM (kable/łącznik/wkładka `status=closed`), fail-closed na brak
