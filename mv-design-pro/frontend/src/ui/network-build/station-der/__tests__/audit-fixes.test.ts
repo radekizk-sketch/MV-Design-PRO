@@ -269,6 +269,20 @@ describe('Naprawa B.1 — uziemienie neutralne (4 typy)', () => {
       }
     }
   });
+
+  // Pole widoczne w rozwijanej liście — usunięcie liczby z `typical_ik1_a_range`
+  // nic nie daje, jeśli ta sama liczba zostaje w nazwie wariantu (dokładnie ten
+  // błąd popełniono przy pierwszym podejściu do tej karty).
+  it('KLASA: nazwa ani opis wariantu nie podaje wartości I_k1 (liczy ją SC1F)', () => {
+    for (const g of MV_NEUTRAL_GROUNDING_CATALOG) {
+      const tekst = `${g.label_pl} ${g.description_pl}`;
+      expect(
+        /I\s*k?1?\s*[≈~=]\s*\d/i.test(tekst) || /Ik1\s*[≈~=]?\s*\d/i.test(tekst),
+        `Wariant ${g.id} podaje liczbowy I_k1 w tekscie: "${tekst}". `
+          + 'Prad zwarcia doziemnego tej sieci wylicza solver SC1F.',
+      ).toBe(false);
+    }
+  });
 });
 
 describe('Naprawa B.2 — connection variants (rozszerzony)', () => {
