@@ -447,6 +447,38 @@ dotrzymane z dowodami). Bramka drzewa scalonego: pytest **9804 passed /
 11 skipped**, vitest **876 plików / 11444 testy**, tsc+eslint czyste.
 W biegu: NAPRAWA-A (restart; dane żyły PE/PEN ×17, MCB 10 kA, nastawy MCCB,
 bramki gG + flip kroków 5/7/10 E2E na pełny przebieg).
+
+**Aktualizacja 2026-08-14: NAPRAWA-A WYKONANA — PROGRAM P0 MODUŁU nN DOMKNIĘTY.**
+NAPRAWA-A (`c3b624b1`, odbiór z iniekcją: R żyły powrotnej=0 → czerwień pinu
+parametryzowanego, sha-identyczne odtworzenie): 17/17 kabli nN z danymi żyły
+PE/PEN (tożsamość konstrukcyjna 4xS/5xS bez redukcji + NKT/Tele-Fonika/Eltrim
+podwójnie), nowa addytywna rodzina 30 MCB Icn=10 kA (Hager NCN/Schneider iC60H;
+60 rekordów MCB łącznie). FLIP E2E: krok 5b pełny White Box pętli (Silnik M1:
+hop=3, Ik_min=3881 A, Ik_max=4289 A, SWZ decyzyjne), krok 7b PEŁNA REKOMENDACJA
+(MCB B40 10 kA przy Ik″max=8,395 kA), krok 7-RGnN pusta rekomendacja PINOWANA
+jako poprawna fizyka (31,86 kA > 10 kA), krok 10 pakiet ZIP 200/deterministyczny
++ raport 7 sekcji; obejście fantomu USUNIĘTE z KROK 0 (dowód NAPRAWY-B bez
+obejścia: count==1 wprost). Scalona też fala nadzoru (`163e02d7`: jakobian NR
+blokowo po B-01 właściciela z pinem bitowym śladu; N1-WYDAJNOSC 5,5–6×).
+BRAMKA FINALNA drzewa łączonego: pytest **9829 passed / 11 skipped**, guardy
+solver_diff/trace_determinism/resultset/arch/catalog×2/load_flow zielone, tsc
+zielony (frontend bez zmian od bramki 876/11444).
+
+**P0 DoD: MODEL→WALIDACJA→SOLVER→WYNIK→TRACE→SLD→REWIZJA→DOKUMENT→TEST —
+KOMPLET.** Otwarte pozycje POZA kodem P0 (nazwane, nie ciche):
+1. B-02 (werdykt wizualny SLD nN) — zrzuty u właściciela, oczekuje.
+2. Decyzja właściciela: rozjazd `add_nn_load` (tryb ekspercki bez katalogu
+   vs Catalog Binding Rule) — wiersz w rejestrze konfliktów.
+3. Dług konsumenta MCCB: `_kryterium_i2` hardcoded NIEROZSTRZYGALNE +
+   `KandydatAparatuNn` bez pól nastaw — osobna karta (dane bez tej zmiany
+   byłyby fantomem; OSTRZEŻENIE: nie „naprawiać" samymi danymi).
+4. gG I²t: rozjazd źródeł ETI vs Bussmann 30–60% — None do rozstrzygnięcia
+   źródłem normatywnym; `ocen_swz` dla wkładek ma i tak jawny branch
+   NIEROZSTRZYGALNE (spójny consumer-gap z pkt 3 w `werdykt.py`).
+5. Trwały fantom odbioru ST-03 (inna przyczyna źródłowa niż naprawiony
+   fantom migracji) — nazwany w KROK 0 testu E2E, osobna diagnoza.
+6. P1 planu H (agregat+SZR+TCC w E2E, pełny spis §63 raportu, sekcje nN
+   w rendererach PDF/DOCX po decyzji o moście ENM→AnalysisRun).
 **Aktualizacja 2026-08-13 (ta sama sesja): P0.6 WYKONANE (`b746b6a9`) — „serce modułu".**
 - Pętla zwarcia z REALNEJ trasy grafu: `application/analyses/fault_loop/route.py`
   (NOWY) — BFS po ENM (kable/łącznik/wkładka `status=closed`), fail-closed na brak
