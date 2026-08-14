@@ -726,14 +726,14 @@ export const MV_NEUTRAL_GROUNDING_CATALOG: ReadonlyArray<MvNeutralGroundingItem>
     description_pl:
       'Punkt neutralny uziemiony przez dławik kompensacyjny (cewkę Petersena). '
       + 'Lp = 1 / (3·ω·C₀) gdzie C₀ jest pojemnością sieci. W stanie '
-      + 'kompensacji Ik1 ≈ 0.',
+      + 'kompensacji prąd zwarcia doziemnego jest bliski zeru.',
   },
   {
     id: 'mng_resistor_low',
     catalog_namespace: 'mv_neutral_grounding',
     catalog_version: '2024.1',
     grounding_type: 'resistor_grounded',
-    label_pl: 'Sieć uziemiona przez rezystor — niski (R≈7 Ω, Ik1≈300 A)',
+    label_pl: 'Sieć uziemiona przez rezystor — niski (R≈7 Ω)',
     description_pl:
       'Punkt neutralny uziemiony przez rezystor 7 Ω — ogranicza prąd zwarcia '
       + 'doziemnego na tyle, by pozostał wykrywalny przez 51N. Stosowane '
@@ -745,7 +745,7 @@ export const MV_NEUTRAL_GROUNDING_CATALOG: ReadonlyArray<MvNeutralGroundingItem>
     catalog_namespace: 'mv_neutral_grounding',
     catalog_version: '2024.1',
     grounding_type: 'resistor_grounded',
-    label_pl: 'Sieć uziemiona przez rezystor — średni (R≈40 Ω, Ik1≈100 A)',
+    label_pl: 'Sieć uziemiona przez rezystor — średni (R≈40 Ω)',
     description_pl:
       'Punkt neutralny uziemiony przez rezystor 40 Ω. Kompromis między '
       + 'wykrywalnością zwarć a ochroną sprzętu. Stosowane w sieciach '
