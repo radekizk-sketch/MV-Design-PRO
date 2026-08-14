@@ -913,6 +913,73 @@ def wybor_bloku_fabrycznego(zrodlo: dict[str, Any]) -> dict[str, Any]:
     return wybor
 
 
+# ---------------------------------------------------------------------------
+# METADANE POCHODZENIA POLA — jedno nazewnictwo obu stron kontraktu
+# ---------------------------------------------------------------------------
+
+#: Nazwa pola payloadu z FUNKCJĄ JEDNOSTKI pola w kanonie katalogu rozdzielnic
+#: (`BayKind`: liniowe_doplywowe, liniowe_odplywowe, transformatorowe,
+#: sprzeglowe_poprzeczne, pomiarowe). Kreator stacji wysyła ją na KAŻDYM wpisie
+#: `sn_fields[]`; do domknięcia tego długu operacja wcięcia w odcinek gubiła ją
+#: bez śladu, a operacja końca ciągu przenosiła — dwie drogi, jeden kreator.
+POLE_RODZAJU_POLA = "bay_kind"
+
+#: Nazwa pola payloadu ze STATUSEM ŹRÓDŁA danych szablonu pola
+#: (`catalog_solution` — rozwiązanie katalogowe producenta, `canonical_fallback`
+#: — układ kanoniczny pakietu, `requires_catalog` — brak karty producenta).
+#: To deklaracja PROWENIENCJI: model musi wiedzieć, czy pole stoi na danych
+#: wyrobu, czy na układzie zastępczym (klasa K-E/K-O — dana bez źródła).
+POLE_STATUSU_ZRODLA = "source_status"
+
+#: Nazwa pola payloadu z REFERENCJAMI ŹRÓDŁOWYMI szablonu pola (adresy kart
+#: katalogowych producenta). Bez nich status źródła jest gołym słowem —
+#: proweniencja ma prowadzić do dokumentu, nie do etykiety.
+POLE_ZRODEL_DANYCH = "source_refs"
+
+#: Nazwa pola payloadu z POWIĄZANIAMI KATALOGOWYMI wpisu pola. Kreator wysyła
+#: tu `switchgear_template` — POWIELENIE referencji szablonu, producenta,
+#: rodziny i statusu źródła, czyli dokładnie tych danych, które obie operacje
+#: stacyjne niosą już jako klucze pierwszej klasy. To NIE jest metadana
+#: pochodzenia pola, tylko druga kopia tej samej prawdy: dlatego klucz ma
+#: własny, jawny parametr buildera i JEDNO miejsce zapisu (stacja na końcu
+#: ciągu, gdzie kształt migawki niesie go od dawna). Wcięcie stacji w odcinek
+#: go NIE przenosi — dokładanie drugiej kopii do drugiej drogi rozmnożyłoby
+#: kanał, który poprzednia karta (blok fabryczny) wycięła właśnie za to, że
+#: rozjechał się z prawdą pierwszej klasy.
+POLE_POWIAZAN_KATALOGOWYCH = "catalog_bindings"
+
+
+def metadane_pochodzenia_pola(zrodlo: dict[str, Any]) -> dict[str, Any]:
+    """Metadane POCHODZENIA pola z wpisu `sn_fields[i]` operacji stacyjnej.
+
+    JEDNA droga odczytu dla OBU operacji stacyjnych (wcięcie w odcinek, stacja
+    na końcu ciągu) — dokładnie ten sam wzorzec, co `wybor_bloku_fabrycznego`:
+    nazwy kluczy pochodzą ze STAŁYCH modułu, więc „co kreator wysyła" i „co
+    operacja zapisuje" nie mogą się rozjechać na drugiej kopii literału.
+
+    Zwraca słownik z WYŁĄCZNIE obecnymi kluczami (pusty, gdy wpis metadanych nie
+    niesie), bo payload bez nich ma zostawić migawkę bajtowo niezmienioną.
+    Wartość pusta albo niewłaściwego typu to BRAK deklaracji, nie deklaracja
+    pustki: pusty status źródła nie jest statusem, a lista referencji bez ani
+    jednego adresu nie jest proweniencją.
+    """
+    metadane: dict[str, Any] = {}
+    rodzaj = zrodlo.get(POLE_RODZAJU_POLA)
+    if isinstance(rodzaj, str) and rodzaj.strip():
+        metadane[POLE_RODZAJU_POLA] = rodzaj.strip()
+    status = zrodlo.get(POLE_STATUSU_ZRODLA)
+    if isinstance(status, str) and status.strip():
+        metadane[POLE_STATUSU_ZRODLA] = status.strip()
+    zrodla = zrodlo.get(POLE_ZRODEL_DANYCH)
+    if isinstance(zrodla, list):
+        adresy = [
+            pozycja.strip() for pozycja in zrodla if isinstance(pozycja, str) and pozycja.strip()
+        ]
+        if adresy:
+            metadane[POLE_ZRODEL_DANYCH] = adresy
+    return metadane
+
+
 def _aparaty_pola_z_wyboru(
     *,
     field_ref: str,
@@ -947,12 +1014,84 @@ def _aparaty_pola_z_wyboru(
     )
 
 
+#: Klucze, które specyfikacja pola niesie BEZWARUNKOWO — także wtedy, gdy
+#: wartość jest pusta. To KSZTAŁT ZAPISU dróg budujących pole bez wpisu
+#: `sn_fields` albo z własną tożsamością pola: wcięcie stacji w odcinek, pola
+#: liniowe GPZ, pola nN, operacja katalogowa pola. Klucz obecny z wartością
+#: `None`/`[]`/`{}` znaczy „ta droga pole deklaruje, wartości nie ma"; brak
+#: klucza znaczy „ta droga tego pola nie zna". Rozróżnienie jest realne —
+#: bez niego nie da się przestawić obu operacji stacyjnych na JEDEN builder
+#: bez ruszania bajtów istniejących migawek.
+KLUCZE_BEZWARUNKOWE_POLA: frozenset[str] = frozenset(
+    {
+        "field_ref",
+        "name",
+        "bay_role",
+        "bus_ref",
+        "equipment_refs",
+        "protection_ref",
+        "tags",
+        "meta",
+    }
+)
+
+#: Kształt zapisu pola stacji dokładanej na KOŃCU CIĄGU
+#: (`append_station_on_endpoint`). Ta droga składała `field_spec` RĘCZNIE, więc
+#: jej kształt różni się od pozostałych: niesie tożsamość pola rozdzielnicy
+#: (`bay_ref`, `field_role`) i komplet metadanych pochodzenia nawet wtedy, gdy
+#: payload ich nie podał, a nie niesie nazwy pola ani znaczników.
+KLUCZE_BEZWARUNKOWE_POLA_KONCA_CIAGU: frozenset[str] = frozenset(
+    {
+        "field_ref",
+        "bay_ref",
+        "field_role",
+        "bay_role",
+        "bus_ref",
+        "equipment_refs",
+        "meta",
+        "protection_codes",
+        "bay_template_ref",
+        "switchgear_family_ref",
+        "manufacturer_ref",
+        POLE_RODZAJU_POLA,
+        POLE_STATUSU_ZRODLA,
+        POLE_ZRODEL_DANYCH,
+        POLE_POWIAZAN_KATALOGOWYCH,
+    }
+)
+
+#: Kształt pola DOMYKANEGO przez operację końca ciągu (pole dopływowe albo
+#: transformatorowe, którego payload nie zadeklarował). Bez `protection_codes`:
+#: pole domykane nie ma szablonu producenta, więc nie ma źródła wymagań
+#: zabezpieczeniowych, a pusta lista twierdziłaby, że pole nie wymaga ŻADNEJ
+#: funkcji — to fabrykacja. Brak klucza mówi prawdę: nie ma z czego wyprowadzić.
+KLUCZE_BEZWARUNKOWE_POLA_DOMYKANEGO: frozenset[str] = KLUCZE_BEZWARUNKOWE_POLA_KONCA_CIAGU - {
+    "protection_codes"
+}
+
+
+def _wartosc_obecna(wartosc: Any) -> bool:
+    """Czy wartość jest OBECNA, czyli czy klucz warunkowy ma co zapisać.
+
+    Pusty łańcuch, pusta lista i pusty słownik to BRAK deklaracji, nie
+    deklaracja pustki — dokładnie ta reguła („exclude gdy None/puste") trzymała
+    dotąd bajtową niezmienność migawek przy każdym dokładanym kluczu.
+    """
+    if wartosc is None:
+        return False
+    if isinstance(wartosc, str | list | dict | tuple | set):
+        return bool(wartosc)
+    return True
+
+
 def _build_field_spec(
     *,
     field_ref: str,
-    name: str,
     bay_role: str,
     bus_ref: str,
+    name: str | None = None,
+    bay_ref: str | None = None,
+    field_role: str | None = None,
     gpz_section_id: str | None = None,
     equipment_refs: list[str] | None = None,
     protection_ref: str | None = None,
@@ -960,49 +1099,86 @@ def _build_field_spec(
     bay_template_ref: str | None = None,
     switchgear_family_ref: str | None = None,
     manufacturer_ref: str | None = None,
+    apparatus_catalog_ref: str | None = None,
+    catalog_bindings: Any = None,
     primary_devices: list[dict[str, Any]] | None = None,
     tags: list[str] | None = None,
     meta: dict[str, Any] | None = None,
     funkcja_pomiaru: str | None = None,
     rodzaj_pomiaru: str | None = None,
     wybor_bloku: dict[str, Any] | None = None,
+    metadane_pochodzenia: dict[str, Any] | None = None,
+    klucze_bezwarunkowe: frozenset[str] = KLUCZE_BEZWARUNKOWE_POLA,
 ) -> dict[str, Any]:
+    """JEDYNY builder specyfikacji pola stacji — wszystkie drogi budowy pola.
+
+    Wołają go: wcięcie stacji w odcinek, stacja na końcu ciągu (obie drogi
+    budowy stacji z wpisów `sn_fields` kreatora), pola liniowe GPZ, pola nN
+    i operacja katalogowa pola. Kształt zapisu KONKRETNEJ drogi opisuje
+    `klucze_bezwarunkowe` — zbiór kluczy zapisywanych także z wartością pustą.
+
+    Metadane pochodzenia pola (`bay_kind`, `source_status`, `source_refs`,
+    `catalog_bindings`) wchodzą JEDNYM parametrem ze stałych modułu
+    (`metadane_pochodzenia_pola`), a nie osobnymi literałami per operacja —
+    do domknięcia tego długu operacja wcięcia w odcinek gubiła je wszystkie
+    bez śladu, a operacja końca ciągu składała specyfikację ręcznie, więc każdy
+    nowy klucz kontraktu trzeba było dokładać w dwóch miejscach naraz (i za
+    każdym razem jedno z nich zostawało w tyle).
+    """
+    pochodzenie = metadane_pochodzenia or {}
+    # KOLEJNOŚĆ KLUCZY dróg dotychczas wołających builder jest tu zachowana co
+    # do pozycji (klucze nowe są warunkowe i dla tych dróg nieobecne). Kolejność
+    # nie wchodzi do żadnego odcisku — kanoniczny JSON modelu sortuje klucze
+    # (`enm/hash.py::_canonical_sha256`, `sort_keys=True`) — ale dbałość o nią
+    # trzyma diff migawek czytelnym dla człowieka.
+    kandydaci: list[tuple[str, Any]] = [
+        ("field_ref", field_ref),
+        ("bay_ref", bay_ref),
+        ("field_role", field_role),
+        ("name", name),
+        ("bay_role", bay_role),
+        ("bus_ref", bus_ref),
+        ("equipment_refs", list(equipment_refs or [])),
+        ("protection_ref", protection_ref),
+        ("tags", list(tags or [])),
+        ("meta", copy.deepcopy(meta or {})),
+        ("gpz_section_id", gpz_section_id),
+        # Pomiar pola POMIAROWEGO (kontrakt POMIAR_ROZLICZENIOWY_SN_V1 §5,
+        # V12K-336): `funkcja_pomiaru` (układ energii vs pomiar napięcia szyn)
+        # oraz `rodzaj_pomiaru` (rodzaj układu pomiarowego energii, [E-UP]
+        # pkt 3). Klucze WYŁĄCZNIE dla pola pomiarowego — pola innych ról nie
+        # niosą atrybutów, więc istniejące migawki są bajtowo niezmienione.
+        ("funkcja_pomiaru", funkcja_pomiaru),
+        ("rodzaj_pomiaru", rodzaj_pomiaru),
+        # Wymagane funkcje zabezpieczeniowe pola (ANSI/IEC, np. 50/51/67, 87T) —
+        # projekcja na Bay.protection_codes (read-model + glify SLD).
+        # Wyprowadzane z szablonu pola producenta (protection_requirements) albo
+        # z roli pola.
+        ("protection_codes", list(protection_codes or [])),
+        # Powiązania producenckie jako klucze TOP-LEVEL field_spec (konwencja
+        # kreatora stacji) — spójne źródło dla read-modelu pola i projekcji do
+        # Bay. Bez rodziny brak kluczy.
+        ("bay_template_ref", bay_template_ref),
+        ("switchgear_family_ref", switchgear_family_ref),
+        ("manufacturer_ref", manufacturer_ref),
+        # METADANE POCHODZENIA pola — nazwy kluczy ze stałych modułu, ta sama
+        # nazwa po stronie odczytu payloadu i zapisu migawki.
+        (POLE_RODZAJU_POLA, pochodzenie.get(POLE_RODZAJU_POLA)),
+        (POLE_STATUSU_ZRODLA, pochodzenie.get(POLE_STATUSU_ZRODLA)),
+        (POLE_ZRODEL_DANYCH, list(pochodzenie.get(POLE_ZRODEL_DANYCH) or [])),
+        # Druga kopia prawdy pierwszej klasy — parametr jawny i JEDEN wołający
+        # (patrz `POLE_POWIAZAN_KATALOGOWYCH`), żeby kanał był widoczny i dał
+        # się wyciąć jednym cięciem, kiedy migawki wolno będzie przestawić.
+        (POLE_POWIAZAN_KATALOGOWYCH, catalog_bindings),
+        # Aparat pola wskazany JAWNIE na wpisie pola (B-12) — wskazanie
+        # projektanta zostaje w specyfikacji, nie tylko w utworzonej gałęzi.
+        ("apparatus_catalog_ref", apparatus_catalog_ref),
+    ]
     spec: dict[str, Any] = {
-        "field_ref": field_ref,
-        "name": name,
-        "bay_role": bay_role,
-        "bus_ref": bus_ref,
-        "equipment_refs": list(equipment_refs or []),
-        "protection_ref": protection_ref,
-        "tags": list(tags or []),
-        "meta": copy.deepcopy(meta or {}),
+        klucz: wartosc
+        for klucz, wartosc in kandydaci
+        if klucz in klucze_bezwarunkowe or _wartosc_obecna(wartosc)
     }
-    if gpz_section_id:
-        spec["gpz_section_id"] = gpz_section_id
-    # Pomiar pola POMIAROWEGO (kontrakt POMIAR_ROZLICZENIOWY_SN_V1 §5,
-    # V12K-336): `funkcja_pomiaru` (układ energii vs pomiar napięcia szyn)
-    # oraz `rodzaj_pomiaru` (rodzaj układu pomiarowego energii, [E-UP] pkt 3).
-    # Klucze WYŁĄCZNIE dla pola pomiarowego (addytywnie, exclude gdy None) —
-    # pola innych ról nie niosą atrybutów, więc istniejące migawki są bajtowo
-    # niezmienione.
-    if funkcja_pomiaru:
-        spec["funkcja_pomiaru"] = funkcja_pomiaru
-    if rodzaj_pomiaru:
-        spec["rodzaj_pomiaru"] = rodzaj_pomiaru
-    # Wymagane funkcje zabezpieczeniowe pola (ANSI/IEC, np. 50/51/67, 87T) — projekcja
-    # na Bay.protection_codes (read-model + glify SLD). Wyprowadzane z szablonu pola
-    # producenta (protection_requirements) albo z roli pola. exclude puste.
-    if protection_codes:
-        spec["protection_codes"] = list(protection_codes)
-    # Powiązania producenckie jako klucze TOP-LEVEL field_spec (konwencja kreatora
-    # stacji, `append_station_on_endpoint`) — spójne źródło dla read-modelu pola
-    # i przyszłej projekcji do Bay. exclude_none: bez rodziny brak kluczy.
-    if bay_template_ref:
-        spec["bay_template_ref"] = bay_template_ref
-    if switchgear_family_ref:
-        spec["switchgear_family_ref"] = switchgear_family_ref
-    if manufacturer_ref:
-        spec["manufacturer_ref"] = manufacturer_ref
     # Wybór BLOKU FABRYCZNEGO jako klucze TOP-LEVEL field_spec, pod TĄ SAMĄ
     # nazwą, którą niesie payload operacji (`POLE_BLOKU_FABRYCZNEGO`,
     # `POLE_JEDNOSTKI_BLOKU`). Pole rodziny RMU nie jest luźną szafą, tylko
@@ -6036,6 +6212,14 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
         # Wybór bloku fabrycznego wpisu pola — TA SAMA droga odczytu, co
         # w operacji katalogowej pola.
         field_wybor_bloku = wybor_bloku_fabrycznego(field_spec)
+        # Metadane POCHODZENIA pola (rodzaj jednostki, status i referencje
+        # źródła) — TA SAMA droga odczytu, co w stacji na końcu ciągu. Do
+        # domknięcia tego długu wcięcie w odcinek gubiło je wszystkie bez
+        # śladu: kreator wysyłał `bay_kind`, `source_status` i `source_refs` na
+        # KAŻDYM wpisie pola, a stacja wstawiona w odcinek zapisywała się bez
+        # ani jednego z nich — model nie wiedział, czy pole stoi na karcie
+        # producenta, czy na układzie zastępczym pakietu.
+        field_metadane = metadane_pochodzenia_pola(field_spec)
         field_protection_ref = field_spec.get("protection_ref")
         field_protection_codes = _resolve_bay_template_protection_codes(
             field_manufacturer_ref, field_bay_template_ref, bay_role
@@ -6146,6 +6330,7 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
                 switchgear_family_ref=field_family_ref,
                 manufacturer_ref=field_manufacturer_ref,
                 wybor_bloku=field_wybor_bloku,
+                metadane_pochodzenia=field_metadane,
                 tags=["station_sn_field"],
                 meta={
                     "field_role": field_role,
@@ -8834,83 +9019,64 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
         # Wybór bloku fabrycznego wpisu pola — TA SAMA droga odczytu, co
         # w operacji katalogowej pola i we wcięciu stacji w odcinek.
         field_wybor_bloku = wybor_bloku_fabrycznego(field)
+        # Metadane POCHODZENIA pola — TA SAMA droga odczytu, co we wcięciu
+        # stacji w odcinek (stałe modułu, jeden reader).
+        field_metadane = metadane_pochodzenia_pola(field)
         wyposazenie_pola = _wyposazenie_pola_z_wpisu(field)
         if wyposazenie_pola:
             wyposazenie_pol.append((f"field/{seed}/{index}", field_role, wyposazenie_pola))
-        field_spec_entry: dict[str, Any] = {
-            "field_ref": f"field/{seed}/{index}",
-            "bay_ref": bay_ref,
-            "field_role": field_role,
-            "bay_role": bay_role,
-            "bus_ref": endpoint_bus_ref,
-            "bay_kind": field.get("bay_kind"),
-            "manufacturer_ref": field_manufacturer_ref,
-            "switchgear_family_ref": field.get("switchgear_family_ref"),
-            "bay_template_ref": field_bay_template_ref,
-            "protection_codes": _resolve_bay_template_protection_codes(
+        # B-12/defekt F: aparat WSKAZANY NA POLU — wskazanie projektanta zostaje
+        # w specyfikacji (`_materialize_sn_field_apparatus` czyta je stąd, obok
+        # wspólnego `field_apparatus_catalog_ref` payloadu). Klucz powstaje
+        # wyłącznie gdy podany, więc payloady bez wskazania per pole mają
+        # migawkę bajtowo niezmienioną.
+        field_apparatus_ref = field.get("apparatus_catalog_ref")
+        # Ta droga budowy stacji składała `field_spec` RĘCZNIE — poza wspólnym
+        # builderem — więc każdy klucz kontraktu pola trzeba było dokładać
+        # DWUKROTNIE (`config_id` i aparaty pierwotne wracały tu osobnymi
+        # naprawami, bo pierwsza dotknęła wyłącznie buildera). Teraz obie drogi
+        # budowy stacji mają JEDNO źródło kształtu, a różnicę kształtu tej drogi
+        # nazywa jawny zbiór kluczy bezwarunkowych.
+        field_spec_entry = _build_field_spec(
+            field_ref=f"field/{seed}/{index}",
+            bay_ref=bay_ref,
+            field_role=field_role,
+            bay_role=bay_role,
+            bus_ref=endpoint_bus_ref,
+            manufacturer_ref=field_manufacturer_ref,
+            switchgear_family_ref=field.get("switchgear_family_ref"),
+            bay_template_ref=field_bay_template_ref,
+            protection_codes=_resolve_bay_template_protection_codes(
                 field_manufacturer_ref, field_bay_template_ref, bay_role
             ),
-            "source_status": field.get("source_status"),
-            "source_refs": list(field.get("source_refs") or []),
-            "catalog_bindings": field.get("catalog_bindings"),
-            **field_wybor_bloku,
-            "equipment_refs": [
+            apparatus_catalog_ref=(
+                field_apparatus_ref.strip()
+                if isinstance(field_apparatus_ref, str) and field_apparatus_ref.strip()
+                else None
+            ),
+            equipment_refs=[
                 ref
                 for ref in field.get("equipment_refs", [])
                 if isinstance(ref, str) and ref.strip()
             ],
-            "meta": {
+            # Powiązania katalogowe wpisu — druga kopia prawdy pierwszej klasy,
+            # przenoszona WYŁĄCZNIE tutaj (kształt migawki tej drogi); kopia
+            # głęboka, żeby payload wołającego nie współdzielił obiektu
+            # z zapisaną migawką.
+            catalog_bindings=copy.deepcopy(field.get(POLE_POWIAZAN_KATALOGOWYCH)),
+            # Pomiar pola POMIAROWEGO (kontrakt §5, V12K-336) — klucze wyłącznie
+            # dla pola pomiarowego (rozstrzygnięte wyżej przez
+            # `rozstrzygnij_pomiary_pol`); pola innych ról atrybutów nie niosą.
+            funkcja_pomiaru=field.get("funkcja_pomiaru") if field_role == "POMIAROWE" else None,
+            rodzaj_pomiaru=field.get("rodzaj_pomiaru") if field_role == "POMIAROWE" else None,
+            wybor_bloku=field_wybor_bloku,
+            metadane_pochodzenia=field_metadane,
+            meta={
                 "created_by": "append_station_on_endpoint",
                 "terminal_bus_ref": endpoint_bus_ref,
             },
-        }
-        # Pomiar pola POMIAROWEGO (kontrakt §5, V12K-336) — klucze wyłącznie
-        # dla pola pomiarowego (rozstrzygnięte wyżej), addytywnie: pola innych
-        # ról nie niosą atrybutów, więc istniejące migawki są bajtowo
-        # niezmienione. Rodzaj układu tylko dla układu pomiarowego energii.
-        if field_role == "POMIAROWE":
-            field_spec_entry["funkcja_pomiaru"] = field.get("funkcja_pomiaru")
-            if field.get("rodzaj_pomiaru") is not None:
-                field_spec_entry["rodzaj_pomiaru"] = field.get("rodzaj_pomiaru")
-        # B-12/defekt F: aparat WSKAZANY NA POLU. Bez tego klucza specyfikacja
-        # gubiła wybór projektanta, a `_materialize_sn_field_apparatus` widziało
-        # wyłącznie wspólny `field_apparatus_catalog_ref` payloadu — kreator stacji
-        # ui2 wysyła aparat per pole, więc stacja na końcu ciągu kończyła się
-        # błędem „pole bez wskazanego aparatu". Klucz DOPISUJEMY tylko gdy podany,
-        # żeby payloady bez wskazania per pole zachowały identyczną migawkę.
-        field_apparatus_ref = field.get("apparatus_catalog_ref")
-        if isinstance(field_apparatus_ref, str) and field_apparatus_ref.strip():
-            field_spec_entry["apparatus_catalog_ref"] = field_apparatus_ref.strip()
-        # Aparaty pierwotne pola — TEN SAM resolver, co `_build_field_spec`.
-        # Ta operacja składa `field_spec` RĘCZNIE (nie przez wspólny builder),
-        # więc do domknięcia tego długu stacja dokładana na końcu ciągu NIGDY nie
-        # zapisywała wyposażenia pola: ani z katalogowego pola rodziny, ani
-        # z kanonicznego szablonu. Pole niosło samą referencję szablonu, a SLD
-        # i read-model pola nie miały z czego rysować toru — dokładnie ta sama
-        # klasa braku, co w polach GPZ/wcięcia, tylko w drugiej ścieżce.
-        # Addytywnie: klucz powstaje wyłącznie gdy referencja faktycznie daje
-        # aparaty, więc payloady bez szablonu (albo z referencją spoza katalogu)
-        # mają migawkę bajtowo niezmienioną.
-        aparaty_pola = _aparaty_pola_z_wyboru(
-            field_ref=field_spec_entry["field_ref"],
-            bay_template_ref=field_bay_template_ref,
-            switchgear_family_ref=field.get("switchgear_family_ref"),
-            wybor_bloku=field_wybor_bloku,
+            klucze_bezwarunkowe=KLUCZE_BEZWARUNKOWE_POLA_KONCA_CIAGU,
         )
-        if aparaty_pola:
-            field_spec_entry["primary_devices"] = aparaty_pola
-        # W1c: tożsamość KONFIGURACJI pola — ten sam klucz i ten sam producent
-        # identyfikatora, co we wspólnym builderze (`_build_field_spec`).
-        # Ta ścieżka składa `field_spec` RĘCZNIE, więc do domknięcia tego długu
-        # NIE zapisywała `config_id` w ogóle: pole stacji dokładanej na końcu
-        # ciągu niosło referencję szablonu i komplet aparatów, ale adapter SLD
-        # nie miał tożsamości konfiguracji do meta sceny. O prefiksie (kanon vs
-        # producent) rozstrzyga katalog wewnątrz `config_ref_for_template` —
-        # tutaj nie ma drugiej reguły nazewnictwa.
-        if field_bay_template_ref:
-            from network_model.catalog.bay_templates import config_ref_for_template
-
-            field_spec_entry["config_id"] = config_ref_for_template(field_bay_template_ref)
         field_specs.append(field_spec_entry)
 
     def _field_spec_for_role(role: str) -> dict[str, Any] | None:
@@ -8941,27 +9107,32 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
         # materializować aparatów: to ścieżka konwencji rysunku pola, ta sama
         # co przed domknięciem długu. Referencja pojawi się dopiero, gdy
         # projektant wskaże pole katalogowe — wtedy idzie gałęzią wyżej.
-        spec = {
-            "field_ref": field_ref,
-            "bay_ref": bay_ref,
-            "field_role": field_role,
-            "bay_role": bay_role,
-            "bay_kind": bay_kind,
-            "manufacturer_ref": station_payload.get("switchgear", {}).get("manufacturer_ref"),
-            "switchgear_family_ref": station_payload.get("switchgear", {}).get(
+        #
+        # TEN SAM builder, co pole zadeklarowane w payloadzie — inny jest
+        # wyłącznie KSZTAŁT (bez `protection_codes`, bo bez szablonu nie ma
+        # źródła wymagań zabezpieczeniowych) i źródło metadanych: rodzaj
+        # jednostki i status źródła zna sama operacja, nie wpis kreatora.
+        spec = _build_field_spec(
+            field_ref=field_ref,
+            bay_ref=bay_ref,
+            field_role=field_role,
+            bay_role=bay_role,
+            bus_ref=endpoint_bus_ref,
+            manufacturer_ref=station_payload.get("switchgear", {}).get("manufacturer_ref"),
+            switchgear_family_ref=station_payload.get("switchgear", {}).get(
                 "switchgear_family_ref"
             ),
-            "bay_template_ref": None,
-            "source_status": "catalog_solution",
-            "source_refs": [],
-            "catalog_bindings": None,
-            "bus_ref": endpoint_bus_ref,
-            "equipment_refs": [],
-            "meta": {
+            bay_template_ref=None,
+            metadane_pochodzenia={
+                POLE_RODZAJU_POLA: bay_kind,
+                POLE_STATUSU_ZRODLA: "catalog_solution",
+            },
+            meta={
                 "created_by": "append_station_on_endpoint",
                 "terminal_bus_ref": endpoint_bus_ref,
             },
-        }
+            klucze_bezwarunkowe=KLUCZE_BEZWARUNKOWE_POLA_DOMYKANEGO,
+        )
         field_specs.append(spec)
         return spec
 

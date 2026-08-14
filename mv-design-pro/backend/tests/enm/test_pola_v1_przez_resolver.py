@@ -456,16 +456,25 @@ def test_kazde_pole_kazdej_rodziny_modularnej_materializuje_aparaty() -> None:
 #: aparaty (resolver katalogu vs jawny argument), więc świadomie dopisać się tu.
 #: Bez tego pinu kolejna ścieżka po cichu powtórzyłaby dług tej karty —
 #: dokładnie tak powstała ręczna budowa pola w `append_station_on_endpoint`.
+#:
+#: KOREKTA (karta jednego buildera pola): zbiór „reczne" jest PUSTY. Stacja na
+#: końcu ciągu składała specyfikację własnym literałem słownika, przez co każdy
+#: klucz kontraktu pola trzeba było dokładać dwukrotnie — i za każdym razem
+#: jedno z dwóch miejsc zostawało w tyle (`config_id` i aparaty pierwotne
+#: wracały tu osobnymi naprawami, metadane pochodzenia pola gubiło wcięcie
+#: w odcinek). Obie drogi budowy stacji wołają teraz JEDEN builder.
 MIEJSCA_BUDOWY_POLA: dict[str, set[str]] = {
-    # wywołania wspólnego buildera `_build_field_spec` (5 wywołań w 4 funkcjach)
+    # wywołania wspólnego buildera `_build_field_spec` (7 wywołań w 6 funkcjach)
     "_build_field_spec": {
         "_allocate_gpz_line_field_for_branch",  # pole liniowe GPZ dla wyprowadzenia
         "add_grid_source_sn",  # pola sekcji GPZ
         "_build_nn_field_specs",  # wyłącznik główny nN + odpływy nN (2 wywołania)
         "insert_station_on_segment_sn",  # pola stacji wciętej w odcinek
+        "append_station_on_endpoint",  # pola stacji na końcu ciągu (z payloadu)
+        "_ensure_field_spec",  # pole domykane stacji końca ciągu (bez payloadu)
     },
-    # ręczna budowa `field_spec` (poza wspólnym builderem)
-    "reczne": {"append_station_on_endpoint"},
+    # ręczna budowa `field_spec` (poza wspólnym builderem) — ZBIÓR PUSTY
+    "reczne": set(),
 }
 
 
@@ -509,13 +518,55 @@ def test_inwentarz_miejsc_budowy_pola_jest_zamkniety() -> None:
     )
 
 
-def test_reczna_budowa_pola_takze_materializuje_aparaty_przez_resolver() -> None:
-    """Ścieżka budująca `field_spec` RĘCZNIE nie może omijać resolvera.
+def test_zadna_operacja_nie_sklada_specyfikacji_pola_recznie() -> None:
+    """W `domain_operations*.py` NIE MA ręcznego literału specyfikacji pola.
 
-    `append_station_on_endpoint` składa specyfikację pola własnym literałem
+    Pin inwentarza wyżej łapie wyłącznie WYWOŁANIA wspólnego buildera — ścieżka
+    składająca `field_spec` własnym słownikiem jest dla niego niewidzialna,
+    a to właśnie ona niosła dług: stacja na końcu ciągu przez lata gubiła po
+    kolei `config_id`, aparaty pierwotne i metadane pochodzenia, bo każda
+    naprawa dotykała buildera, nie drugiego literału. Zbiór ręcznych miejsc jest
+    ZAMKNIĘTY I PUSTY — deklaracja przypięta testem, nie samym docstringiem.
+
+    Rozpoznanie po parze kluczy `field_ref` + `bus_ref`: specyfikacja pola
+    ZAWSZE niesie obie (przynależność do pola i do szyny), a metadane tworzonych
+    gałęzi/zacisków — nigdy (mają `field_ref`, ale zamiast szyny `station_ref`
+    i znaczniki rysunku).
+    """
+    znalezione: list[str] = []
+    for nazwa_pliku in ("domain_operations.py", "domain_operations_v2.py"):
+        zrodlo = Path(__file__).resolve().parents[2] / "src" / "enm" / nazwa_pliku
+        drzewo = ast.parse(zrodlo.read_text(encoding="utf-8"))
+        for wezel in ast.walk(drzewo):
+            if not isinstance(wezel, ast.Dict):
+                continue
+            klucze = {
+                klucz.value
+                for klucz in wezel.keys
+                if isinstance(klucz, ast.Constant) and isinstance(klucz.value, str)
+            }
+            if {"field_ref", "bus_ref"} <= klucze:
+                znalezione.append(
+                    f"{nazwa_pliku}:{wezel.lineno} w {_funkcja_otaczajaca(drzewo, wezel)}"
+                )
+
+    assert znalezione == [], (
+        "Wrocila reczna budowa specyfikacji pola poza wspolnym builderem "
+        f"(_build_field_spec): {znalezione}. Kazdy klucz kontraktu pola trzeba "
+        "wtedy dokladac w dwoch miejscach naraz — dokladnie stad wzial sie dlug "
+        "gubionych metadanych pochodzenia pola."
+    )
+    assert MIEJSCA_BUDOWY_POLA["reczne"] == set()
+
+
+def test_obie_drogi_budowy_stacji_materializuja_aparaty_przez_resolver() -> None:
+    """Obie drogi budowy stacji dają ten sam efekt dla tego samego wskazania.
+
+    `append_station_on_endpoint` składała specyfikację pola własnym literałem
     słownika (nie przez `_build_field_spec`), więc sam pin inwentarza by jej nie
-    złapał — do tej karty NIGDY nie zapisywała aparatów pola. Ten test pilnuje,
-    że obie ścieżki budowy pola dają ten sam efekt dla tego samego wskazania.
+    złapał — do karty K-K NIGDY nie zapisywała aparatów pola. Ręczna droga
+    została zlikwidowana (obie wołają wspólny builder), ale test zostaje: pilnuje
+    RÓWNOŚCI WYNIKU obu dróg, czyli tego, po co je scalono.
     """
     odpowiedz = _uruchom("koniec_ciagu", POLE_MODULARNE, RODZINA_MODULARNA)
     assert odpowiedz.get("error") in (None, ""), odpowiedz

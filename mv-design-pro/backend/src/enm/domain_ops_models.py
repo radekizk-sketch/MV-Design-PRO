@@ -395,6 +395,49 @@ class SNFieldSpec(_FrozenBase):
     (albo wspólne `field_apparatus_catalog_ref` payloadu). Operacja nie dobiera
     aparatu samodzielnie: brak wskazania kończy się błędem walidacji."""
 
+    manufacturer_ref: str | None = None
+    """Producent rozdzielnicy tego pola. Wpis pola ma pierwszeństwo przed
+    wyborem rozdzielnicy stacji (`station.switchgear.manufacturer_ref`) —
+    stacja może mieszać wyroby, więc deklaracja per pole jest ostrzejsza."""
+
+    switchgear_family_ref: str | None = None
+    """Rodzina rozdzielnicy tego pola (`SwitchgearFamily.family_ref`). Rozstrzyga
+    TOR konfiguracji: rodzina modułowa buduje pole z pojedynczej celki, rodzina
+    BLOK_RMU wyłącznie z jednostki bloku fabrycznego."""
+
+    bay_template_ref: str | None = None
+    """Szablon pola — katalogowe pole rodziny producenta albo kanoniczny szablon
+    pakietu. Z niego materializują się aparaty pierwotne pola i identyfikator
+    konfiguracji (`config_id`) czytany przez adapter SLD."""
+
+    bay_kind: str | None = None
+    """Funkcja jednostki pola w kanonie katalogu rozdzielnic (`BayKind`:
+    liniowe_doplywowe, liniowe_odplywowe, transformatorowe, sprzeglowe_poprzeczne,
+    pomiarowe). Kreator stacji wysyła ją na KAŻDYM wpisie pola; obie operacje
+    stacyjne zapisują ją w specyfikacji pola pod tą samą nazwą."""
+
+    source_status: str | None = None
+    """Status ŹRÓDŁA danych szablonu pola: `catalog_solution` (rozwiązanie
+    katalogowe producenta), `canonical_fallback` (układ kanoniczny pakietu),
+    `requires_catalog` (brak karty producenta). Deklaracja proweniencji —
+    model musi wiedzieć, czy pole stoi na danych wyrobu, czy na układzie
+    zastępczym; wartość pusta znaczy BRAK deklaracji, nie „nieznany status"."""
+
+    source_refs: list[str] | None = None
+    """Adresy kart katalogowych, z których pochodzą dane szablonu pola. Bez nich
+    status źródła jest gołym słowem — proweniencja ma prowadzić do dokumentu."""
+
+    protection_ref: str | None = None
+    """Referencja zabezpieczenia przypisanego do pola (czytana przez wcięcie
+    stacji w odcinek). Wymagane FUNKCJE zabezpieczeniowe pola to osobna dana —
+    wyprowadza je z szablonu producenta wspólny resolver operacji."""
+
+    equipment_refs: list[str] | None = None
+    """Referencje elementów już istniejących w modelu, które należą do tego pola
+    (czytane przez operację stacji na końcu ciągu). Aparat pola tworzony przez
+    samą operację dopisuje się do tej listy — wskazanie z payloadu jej nie
+    zastępuje."""
+
     factory_configuration_ref: str | None = None
     """Blok fabryczny rodziny RMU (`FactoryConfiguration.configuration_ref`),
     z którego pochodzi to pole — TA SAMA nazwa pola, co w kontrakcie operacji
