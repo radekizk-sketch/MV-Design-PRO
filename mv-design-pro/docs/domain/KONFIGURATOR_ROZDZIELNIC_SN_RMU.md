@@ -200,3 +200,11 @@ DLUG JAWNY (przypiety testami, nie odlozony w ciszy):
 - Zaden kanoniczny szablon nie deklaruje dzis aparatu OPCJONALNEGO, wiec status
   OPCJA nie ma pokrycia w danych (mechanizm jest realny i przetestowany).
   Uzupelnienie wymaga kart katalogowych z lista wyposazenia opcjonalnego.
+- Slownik `BayDeviceTemplate.kind` (10 rodzajow) NIE zna ROZLACZNIKA jako
+  osobnego aparatu ani sygnalizacji obecnosci napiecia (VPIS). Etap S1 dokladal
+  je jako LBS i VPIS. Skutek: pole jednostki RMU generowane z kanonu rysuje
+  wylacznik albo odlacznik, nigdy rozlacznik, a VPIS nie istnieje na schemacie —
+  choc slownik rodzin i `ApparatusKind` maja juz `switch_disconnector` i
+  `voltage_indicator`. Uzupelnienie slownika szablonow zmienia rysunek pol na
+  SLD, wiec — jak glowica kablowa pola TR — wymaga werdyktu wizualnego
+  wlasciciela (B-02). Zgloszone, nie wykonane samowolnie.
