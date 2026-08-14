@@ -109,8 +109,15 @@ export function ProtectionRunButton({
       if (!execRes.ok) {
         throw new Error(`Błąd wykonania: HTTP ${execRes.status}`);
       }
+      // Slownik statusu MUSI byc slownikiem backendu. Koncowka
+      // `POST /api/protection-runs/{id}/execute` oddaje `ProtectionRunStatus`
+      // (CREATED/RUNNING/FINISHED/FAILED) — porownanie z 'DONE' (slownik biegow
+      // wykonawczych, inna koncowka) NIGDY nie bylo prawdziwe, wiec kazde UDANE
+      // obliczenie konczylo sie tu komunikatem bledu. Defekt byl niewidoczny,
+      // bo test mockowal `status: 'DONE'`, czyli odpowiedz, ktorej ten backend
+      // nie wysyla (test maskujacy defekt produktu = dwa defekty).
       const execJson = await execRes.json();
-      if (execJson.status !== 'DONE') {
+      if (execJson.status !== 'FINISHED') {
         throw new Error(
           execJson.error_message ?? `Status: ${execJson.status}`,
         );

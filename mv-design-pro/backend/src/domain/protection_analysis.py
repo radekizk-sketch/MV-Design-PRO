@@ -354,6 +354,18 @@ class ProtectionAnalysisRun:
         created_at: Creation timestamp
         started_at: Execution start timestamp
         finished_at: Completion timestamp
+        network_snapshot_hash: KOTWICA swiezosci — odcisk modelu przypadku
+            zabezpieczen w chwili utworzenia biegu (K-S). `None` dla biegow
+            zapisanych zanim odcisk zaczal byc utrwalany oraz dla przypadku bez
+            materializowanego modelu; taki bieg NIE MOZE meldowac sie jako
+            aktualny (patrz `application/result_freshness.py`).
+        sc_network_snapshot_hash: KOTWICA swiezysci wejscia — odcisk modelu, na
+            ktorym policzono bieg zwarciowy bedacy zrodlem wynikow. `None`, gdy
+            bieg zwarciowy nie niesie odcisku (kanal inny niz kanoniczny).
+
+    Pola kotwic sa ADDYTYWNE: nie wchodza do `input_hash` (tozsamosc wejscia
+    pinuje juz `sc_run_id` + konfiguracja przypadku), wiec odciski istniejacych
+    biegow pozostaja bajtowo takie same.
     """
 
     id: UUID
@@ -369,6 +381,8 @@ class ProtectionAnalysisRun:
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     started_at: datetime | None = None
     finished_at: datetime | None = None
+    network_snapshot_hash: str | None = None
+    sc_network_snapshot_hash: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to JSON-compatible dict."""
@@ -386,11 +400,17 @@ class ProtectionAnalysisRun:
             "created_at": self.created_at.isoformat(),
             "started_at": self.started_at.isoformat() if self.started_at else None,
             "finished_at": self.finished_at.isoformat() if self.finished_at else None,
+            "network_snapshot_hash": self.network_snapshot_hash,
+            "sc_network_snapshot_hash": self.sc_network_snapshot_hash,
         }
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> ProtectionAnalysisRun:
-        """Deserialize from dict."""
+        """Deserialize from dict.
+
+        Brak kluczy kotwic (bieg zapisany przed K-S) daje `None` — uczciwy brak
+        wiedzy o modelu, NIE domniemana aktualnosc.
+        """
         return cls(
             id=UUID(data["id"]),
             project_id=UUID(data["project_id"]),
@@ -413,6 +433,8 @@ class ProtectionAnalysisRun:
             finished_at=(
                 datetime.fromisoformat(data["finished_at"]) if data.get("finished_at") else None
             ),
+            network_snapshot_hash=data.get("network_snapshot_hash"),
+            sc_network_snapshot_hash=data.get("sc_network_snapshot_hash"),
         )
 
 
@@ -423,6 +445,8 @@ def new_protection_analysis_run(
     protection_case_id: UUID,
     input_snapshot: dict[str, Any],
     input_hash: str,
+    network_snapshot_hash: str | None = None,
+    sc_network_snapshot_hash: str | None = None,
 ) -> ProtectionAnalysisRun:
     """
     Factory function to create a new ProtectionAnalysisRun.
@@ -433,6 +457,8 @@ def new_protection_analysis_run(
         protection_case_id: ID of the protection case (StudyCase)
         input_snapshot: Canonical input data for determinism
         input_hash: SHA-256 hash of input for deduplication
+        network_snapshot_hash: Odcisk modelu przypadku w chwili utworzenia biegu
+        sc_network_snapshot_hash: Odcisk modelu biegu zwarciowego (zrodla wynikow)
 
     Returns:
         New ProtectionAnalysisRun in CREATED status
@@ -445,6 +471,8 @@ def new_protection_analysis_run(
         status=ProtectionRunStatus.CREATED,
         input_hash=input_hash,
         input_snapshot=input_snapshot,
+        network_snapshot_hash=network_snapshot_hash,
+        sc_network_snapshot_hash=sc_network_snapshot_hash,
     )
 
 
