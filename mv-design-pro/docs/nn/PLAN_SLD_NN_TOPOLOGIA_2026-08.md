@@ -83,3 +83,30 @@ nN + wyrocznia), `scene/`, adapter ENM. NIE dotykamy: kanonu symboli poza
 addytywnymi glifami (pin rejestru), `engine/` i `ui2/kreatory/stacja/**`
 (program RMU nadzoru), `coordination/**`. Backend: bez zmian solverów;
 ewentualne braki view-modelu → addytywne endpointy.
+
+## T4 — WIDOK CAD ROZDZIELNICY nN (referencja właściciela, 2026-08-14)
+
+Właściciel dostarczył referencyjny schemat CAD rozdzielnicy nN z odpływami
+NSL („do tego ma dążyć schemat nN") — poziom projektu wykonawczego.
+Wzorzec architektury: `PodgladRozdzielnicySn` nadzoru (MINI-RMU-CAD) —
+symbole z kanonu, tabele funkcji/aparatury, zero lokalnej biblioteki.
+
+Mapowanie cech referencji → model (co mamy / luki JAWNE):
+| Cecha referencji | Stan |
+|---|---|
+| Odpływ = pełny tor z aparatem (NSL: prąd wkładki/podstawy, np. 500A/630A) | MAMY: LVApparatusType (rozłącznik, i_n_a) + LVFuseLinkType (in_a) — para wkładka/podstawa z kombinacji |
+| Przekładniki prądowe z danymi (400/5 5VA kl.0,5S) | MAMY: measurements/CT w ENM (add_ct) — render w torze do zrobienia |
+| SPD (DEHNventil TN-C) | CZĘŚCIOWO: SPD w liście obiektu LVSwitchboard (P0.4) — typ katalogowy SPD = LUKA katalogu |
+| Osobne magistrale N i PE + zejścia per odpływ | MAMY semantykę: nn_earthing_system, żyła powrotna; render magistral = T4 |
+| Punkt rozdziału PEN + uziemienie (R≤ wymóg) | CZĘŚCIOWO: układ TN-C-S w meta; wymóg R uziemienia = LUKA modelu (pole stacji) |
+| Wymiary szyn zbiorczych (3xP120x10, 1xP60x10) | LUKA katalogu: typ SZYNA_NN (płaskownik: wymiar, ilość na fazę, materiał) |
+| Wcinka generatora (G1 z kablem 4x YKXS 1x300 + PE) | MAMY: add_converter_source nn_side + katalog kabli; kable jednożyłowe wiązkami = sprawdzić katalog |
+| Odpływy REZERWA rysowane w pełni | MAMY: odpływ bez odbioru legalny (D3) — render jako pełny tor z etykietą „Rezerwa" |
+| Cele odpływów z kablem i przekrojem („Zasilanie RS, YKYżo 5x25") | MAMY: chain-walk P0.8 + katalog; etykieta celu z danymi kabla |
+| PWP (przycisk ppoż wyłącznika) | LUKA modelu: element PWP — decyzja produktowa czy modelować w P1 |
+
+Kolejność: T4 rusza PO odbiorze T3 (wspólny obszar sld/v3) — najpierw luki
+katalogowe/modelu (SZYNA_NN, SPD, R uziemienia — osobna karta danych z
+podwójną weryfikacją), potem widok (detail view stacji nN wzorcem
+StationInternalView/PodgladRozdzielnicy: symbole z kanonu + wymiarowane
+szyny + magistrale N/PE + tory odpływów + tabela aparatury).
