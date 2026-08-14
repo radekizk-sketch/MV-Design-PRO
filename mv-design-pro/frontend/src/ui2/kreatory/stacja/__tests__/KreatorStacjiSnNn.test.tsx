@@ -1556,6 +1556,54 @@ describe('KreatorStacjiSnNn — tory konfiguracji rozdzielnicy (S3)', () => {
     expect(pola.map((f) => f.field_role)).toEqual(['LINIA_OUT', 'LINIA_OUT']);
   });
 
+  /**
+   * PRZEJŚCIE MIĘDZY TORAMI — wejście i wyjście ze zbioru „pola z bloku" muszą
+   * mieć JEDNO źródło. Projektant, który obejrzy blok RMU i wróci do rodziny
+   * modułowej, nie może zostać z pustą rozdzielnicą (jednostki bloku odeszły
+   * razem z wyrobem, a domyślne pola rodzaju stacji już nie wrócą) ani z polami
+   * poprzedniego bloku (opisywałyby wyrób, którego nie wybrano).
+   */
+  it('powrót z toru BLOKOWEGO do MODUŁOWEGO odbudowuje pola rodzaju stacji', async () => {
+    render(<KreatorStacjiSnNn />);
+    await wybierzRodzine('ZPUE_TPM_AIR');
+    await userEvent.selectOptions(
+      await screen.findByTestId('mvd-kreator-stacja-blok'),
+      'ZPUE_TPM_AIR__LLT',
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId('mvd-kreator-stacja-blok-jednostka-3')).toBeInTheDocument(),
+    );
+
+    await userEvent.selectOptions(
+      screen.getByTestId('mvd-kreator-stacja-rodzina'),
+      'ZPUE_ROTOBLOK',
+    );
+
+    // Tor modułowy wraca razem z edytowalną listą pól rodzaju stacji.
+    await screen.findByTestId('mvd-kreator-stacja-tor-modularny');
+    expect(await screen.findByTestId('mvd-kreator-stacja-pole-dodaj')).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByTestId('mvd-kreator-stacja-pole-wiersz-4')).toBeInTheDocument(),
+    );
+    expect(screen.queryByTestId('mvd-kreator-stacja-tor-blok')).toBeNull();
+
+    await waitFor(() => expect(screen.getByTestId('mvd-kreator-stacja-zapisz')).not.toBeDisabled());
+    await userEvent.click(screen.getByTestId('mvd-kreator-stacja-zapisz'));
+    await waitFor(() => expect(executeDomainOperationMock).toHaveBeenCalled());
+
+    const payload = executeDomainOperationMock.mock.calls[0]?.[2] as Record<string, unknown>;
+    const pola = payload.sn_fields as Array<{
+      bay_template_ref: string | null;
+      catalog_bindings: Record<string, unknown> | null;
+    }>;
+    // Pola należą do rodziny modułowej, a przynależność do bloku znika razem
+    // z wyborem wyrobu (klucz jest nieobecny, nie pusty).
+    expect(pola.every((f) => f.bay_template_ref?.startsWith('tpl-tpm') !== true)).toBe(true);
+    for (const pole of pola) {
+      expect(pole.catalog_bindings).not.toHaveProperty('factory_configuration');
+    }
+  });
+
   it('tor BLOKOWY RMU × rodzina z DŁUGIEM DANYCH: uczciwy stan zerowy, zero fabrykacji', async () => {
     render(<KreatorStacjiSnNn />);
     await wybierzRodzine('SCHNEIDER_RM6');
