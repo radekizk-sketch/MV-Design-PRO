@@ -1660,8 +1660,21 @@ def _build_converter_control_by_node(
     return out
 
 
-def _execute_power_flow(run: CanonicalRun) -> None:
-    graph = _load_graph(run)
+def _execute_power_flow(run: CanonicalRun, graph: NetworkGraph | None = None) -> None:
+    """Wykonaj rozpływ mocy dla przebiegu.
+
+    Args:
+        run: przebieg z migawką ENM.
+        graph: opcjonalny GOTOWY graf ZBUDOWANY Z TEJ SAMEJ MIGAWKI (``run.snapshot``).
+            ``map_enm_to_network_graph`` jest funkcją migawki, więc podanie grafu
+            zbudowanego wcześniej to wyłącznie oszczędzenie POWTÓRNEJ budowy tego
+            samego obiektu, a nie podmiana wejścia — wynik jest ten sam co do bitu.
+            Wywołujący ODDAJE graf na własność: rozpływ może go zmodyfikować
+            (pętla regulatora zaczepowego przestawia pozycje zaczepów), więc grafu
+            NIE wolno po tym wywołaniu czytać jako „stanu sprzed rozpływu".
+            ``None`` = zbuduj graf z migawki (ścieżka kanoniczna).
+    """
+    graph = _load_graph(run) if graph is None else graph
     graph_element_context = _build_snapshot_graph_element_context(run.snapshot or {})
     graph_nodes = graph_element_context.get("nodes", {})
     graph_branches = graph_element_context.get("branches", {})
