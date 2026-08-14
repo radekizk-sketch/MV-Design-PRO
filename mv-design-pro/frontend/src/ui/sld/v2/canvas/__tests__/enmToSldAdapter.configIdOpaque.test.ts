@@ -122,8 +122,20 @@ function stacjaZPolami(configIds: readonly (string | undefined)[]) {
   return stacja!;
 }
 
+/**
+ * Pola SN stacji z fikstury. `snBays` jest w kontrakcie widoku OPCJONALNE, więc
+ * jego brak to nieudana fikstura, a nie pusty wynik — mówimy o tym wprost,
+ * zamiast czytać z `?? []` i porównywać puste listy (test przechodziłby wtedy
+ * nie ćwicząc adaptera).
+ */
+function polaStacji(configIds: readonly (string | undefined)[]) {
+  const pola = stacjaZPolami(configIds).snBays;
+  expect(pola, 'adapter nie zbudowal pol SN stacji z fikstury').toBeTruthy();
+  return pola!;
+}
+
 function configIdyPol(configIds: readonly (string | undefined)[]): (string | undefined)[] {
-  return stacjaZPolami(configIds).snBays.map((bay) => bay.configId);
+  return polaStacji(configIds).map((bay) => bay.configId);
 }
 
 describe('K-L — config_id jako klucz nieprzezroczysty adaptera ENM → SLD', () => {
@@ -145,8 +157,8 @@ describe('K-L — config_id jako klucz nieprzezroczysty adaptera ENM → SLD', (
   });
 
   it('render nie rozróżnia pochodzenia: pola różniące się WYŁĄCZNIE nomenklaturą config_id dają identyczny opis bloku', () => {
-    const [kanoniczne] = stacjaZPolami([CONFIG_ID_KANONICZNY]).snBays;
-    const [producenckie] = stacjaZPolami([CONFIG_ID_PRODUCENCKI]).snBays;
+    const [kanoniczne] = polaStacji([CONFIG_ID_KANONICZNY]);
+    const [producenckie] = polaStacji([CONFIG_ID_PRODUCENCKI]);
     expect({ ...kanoniczne, configId: null }).toEqual({ ...producenckie, configId: null });
   });
 });
