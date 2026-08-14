@@ -761,9 +761,18 @@ def test_remis_pelnej_dotkliwosci_rozstrzyga_element_ref_rosnaco() -> None:
 #: projektant zobaczy przeciążenie po wyłączeniu elementu. NIE aktualizować tych
 #: wartości „bo się zmieniły": zmiana wymaga wykazania źródła różnicy i decyzji,
 #: że jest zamierzona.
+#:
+#: ODŚWIEŻENIE 2026-08-14 (zamierzona zmiana SEMANTYCZNA, nie optymalizacja):
+#: połówki dzielonego odcinka dziedziczą nazwę rodzica zamiast nosić surowy
+#: ref (`_nazwa_polowki_odcinka`, defekt zmierzony na żywym ekranie N-1).
+#: Widok kanoniczny niesie `element_name`, więc odcisk MUSIAŁ się zmienić;
+#: zmiana w `domain_operations.py` dotyczy WYŁĄCZNIE pól "name" (4 linie),
+#: żadna wielkość liczbowa nie ma prawa się różnić — potwierdzone zielenią
+#: wszystkich pozostałych testów enumeracji przy czerwieni wyłącznie tych
+#: dwóch odcisków.
 ODCISKI_WIDOKU_PRZED_OPTYMALIZACJA = {
-    "gn01_promieniowa": "bde96d6ad5c481f567eeaf5241b72cf6c749e3e9ad846abb4d091459939a5212",
-    "gn03_pierscien": "559a327fa98aae0fce7af3574d7383418ac5e5803cb964588e6f0a81af50f4a4",
+    "gn01_promieniowa": "fbf4ccd6d49375fdb9a43ccf5cd97ab9f1de34fa39e4fb28f730717060f34125",
+    "gn03_pierscien": "b4639a3b1347f4b9e5df80b5eb2e26aec214f252d1a41682fb9e04091d94e22b",
 }
 
 

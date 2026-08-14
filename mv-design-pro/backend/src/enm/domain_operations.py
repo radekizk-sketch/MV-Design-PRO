@@ -5447,6 +5447,23 @@ def blad_pomiaru_w_torze_tranzytu(
     return None
 
 
+def _nazwa_polowki_odcinka(segment: dict[str, Any], ref_id: str, numer: int) -> str:
+    """Nazwa połówki dzielonego odcinka DZIEDZICZY nazwę rodzica.
+
+    Defekt zmierzony na żywym ekranie kontyngencji N-1 (2026-08-14): połówki
+    nosiły surowy identyfikator (`Odcinek seg/<hash>/segment_L`), bo nazwa była
+    sklejana z ref-u, a nie z nazwy rodzica — inżynier dostawał w tabelach
+    wyników identyfikator techniczny zamiast nazwy z projektu. Ta sama klasa
+    dotyczyła obu operacji tnących odcinek (wstawienie stacji i wstawienie
+    łącznika sekcyjnego). Rodzic bez nazwy zachowuje wariant zapasowy z ref-em
+    (jawny brak, nie zmyślona nazwa).
+    """
+    nazwa_rodzica = str(segment.get("name") or "").strip()
+    if not nazwa_rodzica:
+        return f"Odcinek {ref_id}"
+    return f"{nazwa_rodzica} ({numer})"
+
+
 def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     """Wstaw stację SN/nN w odcinek — operacja krytyczna.
 
@@ -5797,7 +5814,7 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
     # Create left segment
     left_data: dict[str, Any] = {
         "ref_id": seg_left_id,
-        "name": f"Odcinek {seg_left_id}",
+        "name": _nazwa_polowki_odcinka(segment, seg_left_id, 1),
         "type": seg_type,
         "from_bus_ref": from_bus_ref,
         "to_bus_ref": sn_bus_id,
@@ -5835,7 +5852,7 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
     # Create right segment
     right_data: dict[str, Any] = {
         "ref_id": seg_right_id,
-        "name": f"Odcinek {seg_right_id}",
+        "name": _nazwa_polowki_odcinka(segment, seg_right_id, 2),
         "type": seg_type,
         "from_bus_ref": right_from_bus_id,
         "to_bus_ref": to_bus_ref,
@@ -7191,7 +7208,7 @@ def insert_section_switch_sn(enm: dict[str, Any], payload: dict[str, Any]) -> di
         new_enm,
         {
             "ref_id": seg_left_id,
-            "name": f"Odcinek {seg_left_id}",
+            "name": _nazwa_polowki_odcinka(segment, seg_left_id, 1),
             "type": seg_type,
             "from_bus_ref": from_bus_ref,
             "to_bus_ref": switch_bus_ref,
@@ -7264,7 +7281,7 @@ def insert_section_switch_sn(enm: dict[str, Any], payload: dict[str, Any]) -> di
         new_enm,
         {
             "ref_id": seg_right_id,
-            "name": f"Odcinek {seg_right_id}",
+            "name": _nazwa_polowki_odcinka(segment, seg_right_id, 2),
             "type": seg_type,
             "from_bus_ref": switch_bus2_ref,
             "to_bus_ref": to_bus_ref,
