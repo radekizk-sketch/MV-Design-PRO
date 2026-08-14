@@ -263,7 +263,7 @@ describe('eng.10 — BessOperationModeCatalog', () => {
     const fcrN = BESS_OPERATION_MODE_CATALOG.find((m) => m.mode_code === 'fcr_n');
     expect(fcrN).toBeDefined();
     expect(fcrN!.requires_four_quadrant).toBe(true);
-    for (const mode of BESS_OPERATION_MODE_CATALOG as ReadonlyArray<Record<string, unknown>>) {
+    for (const mode of BESS_OPERATION_MODE_CATALOG as unknown as ReadonlyArray<Record<string, unknown>>) {
       expect(mode).not.toHaveProperty('response_time_s');
       expect(mode).not.toHaveProperty('max_duration_h');
       expect(mode).not.toHaveProperty('reserved_capacity_percent');
@@ -333,7 +333,7 @@ describe('eng.13 — TapChangerCatalog', () => {
     // Karta K-Q: czas przełączenia i resurs między przeglądami to dane wyrobu
     // bez źródła — usunięte po obu stronach. O tym, że DETC przełącza się bez
     // obciążenia, mówi jego typ i nazwa, a nie zgadnięta liczba sekund.
-    for (const tc of TAP_CHANGER_CATALOG as ReadonlyArray<Record<string, unknown>>) {
+    for (const tc of TAP_CHANGER_CATALOG as unknown as ReadonlyArray<Record<string, unknown>>) {
       expect(tc).not.toHaveProperty('switching_time_s');
       expect(tc).not.toHaveProperty('operations_before_maintenance_thousand');
     }

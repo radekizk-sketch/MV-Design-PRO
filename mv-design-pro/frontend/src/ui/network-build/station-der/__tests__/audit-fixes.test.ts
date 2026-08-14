@@ -161,7 +161,7 @@ describe('Karta K-Q — graniczny prąd zwarciowy nie jest już daną katalogow�
       ...BESS_BATTERY_CATALOG,
       ...WIND_TURBINE_CATALOG,
       ...DER_FAULT_CURRENT_DATA_CATALOG,
-    ] as ReadonlyArray<Record<string, unknown>>;
+    ] as unknown as ReadonlyArray<Record<string, unknown>>;
     expect(wszystkie.length).toBeGreaterThanOrEqual(18);
     for (const pozycja of wszystkie) {
       expect(pozycja).not.toHaveProperty('fault_current_capability_pu');
@@ -171,7 +171,7 @@ describe('Karta K-Q — graniczny prąd zwarciowy nie jest już daną katalogow�
 
   it('żadna pozycja turbiny nie deklaruje danych mechanicznych bez karty producenta', async () => {
     const { WIND_TURBINE_CATALOG } = await import('../catalogs');
-    for (const wt of WIND_TURBINE_CATALOG as ReadonlyArray<Record<string, unknown>>) {
+    for (const wt of WIND_TURBINE_CATALOG as unknown as ReadonlyArray<Record<string, unknown>>) {
       expect(wt).not.toHaveProperty('hub_height_m');
       expect(wt).not.toHaveProperty('rotor_diameter_m');
       expect(wt).not.toHaveProperty('generator_type');
@@ -180,7 +180,7 @@ describe('Karta K-Q — graniczny prąd zwarciowy nie jest już daną katalogow�
 
   it('żadna pozycja baterii nie przypisuje danych imiennemu producentowi', async () => {
     const { BESS_BATTERY_CATALOG } = await import('../catalogs');
-    for (const bat of BESS_BATTERY_CATALOG as ReadonlyArray<Record<string, unknown>>) {
+    for (const bat of BESS_BATTERY_CATALOG as unknown as ReadonlyArray<Record<string, unknown>>) {
       expect(bat).not.toHaveProperty('manufacturer');
       expect(bat).not.toHaveProperty('cycle_life');
       expect(String(bat.label_pl)).not.toMatch(/BYD|CATL/);
