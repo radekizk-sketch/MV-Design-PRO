@@ -33,10 +33,33 @@ from ..bay_templates import (
     BAY_TEMPLATE_TRANSFORMER,
     BayTemplate,
 )
-from .apparatus_vocabulary import FAMILY_APPARATUS_FOR_TEMPLATE_KIND
-from .complete_mv_bay_template import BayKind, CompleteMvBayTemplate
-from .families import list_families_for_manufacturer, list_switchgear_families
+from .apparatus_vocabulary import (
+    FAMILY_APPARATUS_FOR_TEMPLATE_KIND,
+    instancje_aparatow_z_szablonu,
+)
+from .complete_mv_bay_template import BayKind, CompleteMvBayTemplate, SourceStatus
+from .families import (
+    POTWIERDZONE_STATUSY_RODZINY,
+    list_families_for_manufacturer,
+    list_offered_switchgear_families,
+)
 from .switchgear_family import SwitchgearFamily
+
+#: Status źródła szablonu WYPROWADZONY ze statusu rodziny — szablon nie może
+#: deklarować lepszej proweniencji niż rodzina, z której powstał (przed
+#: scaleniem kanonu 2026-08-14 builder wpisywał `repo_verified` na sztywno,
+#: więc rodzina bez karty katalogowej wyprodukowałaby „zweryfikowane" pola).
+#: Klucze = dokładnie statusy rodzin dopuszczonych do oferty; rodzina spoza
+#: tego zbioru nie trafia do buildera (filtr `list_offered_switchgear_families`).
+_SOURCE_STATUS_WG_STATUSU_RODZINY: dict[str, SourceStatus] = {
+    "verified": "official_catalog",
+    "repo_verified": "repo_verified",
+}
+
+assert set(_SOURCE_STATUS_WG_STATUSU_RODZINY) == set(POTWIERDZONE_STATUSY_RODZINY), (
+    "Status źródła szablonu i dopuszczenie rodziny do oferty MUSZĄ pochodzić "
+    "z jednego zbioru statusów — inaczej rozjadą się przy pierwszym nowym statusie."
+)
 
 # Mapowanie: (base_template, bay_kind, polski_template_ref_suffix)
 _CANONICAL_FALLBACK_MAPPING: list[tuple[BayTemplate, BayKind, str]] = [
@@ -66,6 +89,7 @@ def _build_canonical_template(
         bay_role=base.bay_role,
         source_status="canonical_fallback",
         source_refs=[],
+        device_instances=instancje_aparatow_z_szablonu(base, template_ref),
         version="1.0",
         notes_pl=(
             "Szablon kanoniczny ogólny (fallback) — nie pochodzi z katalogu "
@@ -105,15 +129,18 @@ def _build_family_template(
     suffix: str,
     family: SwitchgearFamily,
 ) -> CompleteMvBayTemplate:
+    template_ref = f"{family.switchgear_family_ref}__{suffix.upper()}"
+    filtered_base = _family_filtered_base(base, family)
     template = CompleteMvBayTemplate(
-        template_ref=f"{family.switchgear_family_ref}__{suffix.upper()}",
-        base_template=_family_filtered_base(base, family),
+        template_ref=template_ref,
+        base_template=filtered_base,
         manufacturer_ref=family.manufacturer_ref,
         switchgear_family_ref=family.switchgear_family_ref,
         bay_kind=bay_kind,
         bay_role=base.bay_role,
-        source_status="repo_verified",
+        source_status=_SOURCE_STATUS_WG_STATUSU_RODZINY[family.status],
         source_refs=family.source_refs or family.source_document_refs,
+        device_instances=instancje_aparatow_z_szablonu(filtered_base, template_ref),
         version=family.source_version or "repo-verified",
         notes_pl=(
             f"{family.family_name}: kompletne pole SN z układem aparatury, portami "
@@ -184,12 +211,22 @@ def list_switchgear_solution_templates_for_manufacturer(
     This is the product-facing catalog path. If a UI exposes a switchgear
     family, the endpoint must return complete family-bound bay packages instead
     of surfacing missing-catalog states to the designer.
+
+    Rodzina o statusie `requires_catalog` NIE wchodzi do tej ścieżki (polityka
+    danych z `docs/domain/KONFIGURATOR_ROZDZIELNIC_SN_RMU.md` §6): pola
+    zbudowane na rodzinie bez potwierdzonej karty byłyby ofertą katalogową bez
+    pokrycia. Filtr i status źródła szablonu czerpią z jednego zbioru statusów.
     """
-    families = (
-        list_families_for_manufacturer(manufacturer_ref)
-        if manufacturer_ref is not None
-        else list_switchgear_families()
-    )
+    oferowane = {f.switchgear_family_ref for f in list_offered_switchgear_families()}
+    families = [
+        family
+        for family in (
+            list_families_for_manufacturer(manufacturer_ref)
+            if manufacturer_ref is not None
+            else list_offered_switchgear_families()
+        )
+        if family.switchgear_family_ref in oferowane
+    ]
     templates: list[CompleteMvBayTemplate] = []
     for family in families:
         allowed_kinds = set(family.allowed_bay_kinds)
