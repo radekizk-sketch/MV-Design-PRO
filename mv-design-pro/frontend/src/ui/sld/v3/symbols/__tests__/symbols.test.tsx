@@ -113,6 +113,22 @@ describe('V3 symbols — rejestr glifów i stany', () => {
     expect(new Set(markup).size).toBe(laczniki.length);
   });
 
+  it('CALY rejestr glifow: kazdy rysuje sie inaczej niz kazdy inny (KLASA, nie lista przykladow)', () => {
+    // Odbior SLD-GEN-POLA (2026-08-14): iniekcja nadzoru — glif `fuse` podmieniony
+    // na kopie rysunku `disconnector` — przeszla 368 testow, bo pin rozroznialnosci
+    // obejmowal tylko piec lacznikow z karty MINI-RMU. Nowe glify dochodza do
+    // kanonu czesciej niz nowe listy do testow, wiec pin obejmuje CALY rejestr:
+    // identyczny markup (po zdjeciu znacznika id) dwoch roznych glifow = na
+    // rysunku ta sama plamka i inzynier nie odroznia aparatow.
+    const idki = Object.keys(SYMBOL_GLYPHS) as (keyof typeof SYMBOL_GLYPHS)[];
+    const markup = idki.map((id) =>
+      renderToStaticMarkup(<svg>{SYMBOL_GLYPHS[id]({ x: 0, y: 0, state: 'closed' })}</svg>)
+        .replace(/ data-symbol-canon="[^"]*"/, ''),
+    );
+    const duplikaty = idki.filter((_, i) => markup.indexOf(markup[i]) !== i);
+    expect(duplikaty).toEqual([]);
+  });
+
   it('odłącznik: nóż otwarty odchylony (inna geometria linii)', () => {
     const Glyph = SYMBOL_GLYPHS.disconnector;
     const closed = render(<svg><Glyph x={0} y={0} state="closed" /></svg>);
