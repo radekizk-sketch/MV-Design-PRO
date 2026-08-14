@@ -428,6 +428,25 @@ odłożone): karta NAPRAWA-A (dane katalogu: PE/PEN×17 podwójnie źródłowane
 MCB 10 kA, nastawy MCCB, dokończenie G-D2 + flip kroków 5/7/10 na pełny
 PASS) i NAPRAWA-B (fantom u źródła + spójność kontraktu catalog_ref) —
 wykonawcy równolegle w worktree.
+
+**Aktualizacja 2026-08-14 (c.d.): NAPRAWA-B scalona + fala nadzoru z N-D5-FUSE.**
+NAPRAWA-B (`7128fc1d`, odbiór z iniekcją filtra markera — czerwień na pinie
+sekwencji, sha-identyczne odtworzenie): fantom odbioru zabity u źródła
+(marker pochodzenia `nn_field_origin`; legacy dalej migruje — utrwalone
+snapshoty uzdrawiane), martwy wymóg catalog_ref `add_nn_outgoing_field`
+usunięty z bramki po pomiarze; rozjazd `add_nn_load` (tryb ekspercki bez
+katalogu vs Catalog Binding Rule) = DECYZJA WŁAŚCICIELA, wiersz w rejestrze.
+INCYDENT INFRA: kontener odtworzony ze świeżego klona (lokalna gałąź cofnięta
+do początku sesji, worktree NAPRAWA-A zabity przed commitem, puste venv) —
+zero strat dzięki dyscyplinie push-po-odbiorze; stan odtworzony, zależności
+zainstalowane. Scalenie fali nadzoru (`37ed6a70`: N-D5-FUSE — fantom
+bezpiecznika w coordination/** zabity PO ICH STRONIE zgodnie z rundą 6 +
+zapadka w p0-extended-guards; EPE-MARTWY; PULPIT-NBA) + runda 7 w kanale
+(`46cb67ff`: wspólna baza istnieje → TCC odblokowany; granice P0.8 w sld/v3
+dotrzymane z dowodami). Bramka drzewa scalonego: pytest **9804 passed /
+11 skipped**, vitest **876 plików / 11444 testy**, tsc+eslint czyste.
+W biegu: NAPRAWA-A (restart; dane żyły PE/PEN ×17, MCB 10 kA, nastawy MCCB,
+bramki gG + flip kroków 5/7/10 E2E na pełny przebieg).
 **Aktualizacja 2026-08-13 (ta sama sesja): P0.6 WYKONANE (`b746b6a9`) — „serce modułu".**
 - Pętla zwarcia z REALNEJ trasy grafu: `application/analyses/fault_loop/route.py`
   (NOWY) — BFS po ENM (kable/łącznik/wkładka `status=closed`), fail-closed na brak
