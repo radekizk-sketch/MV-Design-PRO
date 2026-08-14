@@ -76,6 +76,17 @@ export const STACJA_STRINGS = {
   polaPuste: 'Stacja nie ma żadnego pola SN — dodaj co najmniej jedno pole.',
   polaLicznik: (n: number) => `Pola SN: ${n}`,
 
+  /**
+   * Powód, dla którego rodzina katalogu jest WIDOCZNA, ale niewybieralna.
+   * Ukrycie takiej pozycji kasowałoby wiedzę o portfolio producenta i mówiło
+   * „nie ma czego wybierać" zamiast „czego brakuje, żeby użyć".
+   */
+  powodNiedostepnosci: {
+    WYMAGA_KARTY: 'wymaga karty katalogowej producenta',
+    WYCOFANA: 'wycofana z portfolio',
+    INNA_KLASA_NAPIECIOWA: 'inna klasa napięciowa niż szyna SN',
+  } as const,
+
   // --- Tor konfiguracji (kanon KONFIGURATOR_ROZDZIELNIC_SN_RMU §3) ---
   naglowekRodzinyTytul: 'Wybrana rodzina rozdzielnicy',
   torModularnyTytul: 'Tor modułowy — rozdzielnica składana z pól',

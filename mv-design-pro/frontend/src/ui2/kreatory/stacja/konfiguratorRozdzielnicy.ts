@@ -72,6 +72,88 @@ export function torRodziny(rodzina: SwitchgearFamily | null | undefined): TorKon
   return rodzina?.tor_konfiguracji ?? null;
 }
 
+// --------------------------------------- Oferta rodzin producenta (widok)
+
+/**
+ * Statusy rodziny, przy których katalog POZWALA budować konfigurację —
+ * odwzorowanie `POTWIERDZONE_STATUSY_RODZINY` z pakietu katalogu
+ * (`switchgear/families.py`, polityka `SLD_MV_BAY_TEMPLATE_SOURCE_POLICY.md`).
+ * `requires_catalog` i `deprecated` są POZA tym zbiorem.
+ */
+const STATUSY_POZWALAJACE_BUDOWAC: ReadonlySet<SwitchgearFamily['status']> = new Set([
+  'verified',
+  'repo_verified',
+  'user_defined',
+]);
+
+/** Powód, dla którego rodziny katalogu NIE MOŻNA dziś użyć (albo `null`). */
+export type PowodNiedostepnosci = 'WYMAGA_KARTY' | 'WYCOFANA' | 'INNA_KLASA_NAPIECIOWA';
+
+export interface PozycjaOfertyRodzin {
+  readonly rodzina: SwitchgearFamily;
+  /** `null` = rodzinę wolno wybrać; inaczej powód niedostępności (jawny). */
+  readonly powod: PowodNiedostepnosci | null;
+}
+
+/**
+ * Czy klasa napięciowa rodziny obejmuje napięcie szyny SN. Porównanie
+ * KATALOGOWE (wartość znamionowa do wartości znamionowej), nie fizyka.
+ * Rodzina bez zadeklarowanych napięć nie jest odrzucana — brak deklaracji to
+ * brak przeciwwskazania, a nie niezgodność.
+ */
+function klasaNapieciowaObejmuje(rodzina: SwitchgearFamily, snVoltageKv: number): boolean {
+  if (!(snVoltageKv > 0) || rodzina.voltage_levels.length === 0) return true;
+  return rodzina.voltage_levels.some((poziom) => poziom + 0.5 >= snVoltageKv);
+}
+
+/**
+ * OFERTA RODZIN PRODUCENTA — WSZYSTKIE rodziny producenta z katalogu, każda
+ * z jawnym powodem ewentualnej niedostępności.
+ *
+ * DLACZEGO NIE FILTR. Krok pokazywał wcześniej wyłącznie rodziny „używalne",
+ * więc producent z jedną potwierdzoną kartą wyglądał na producenta z jedną
+ * rodziną — a katalog niesie ich osiemnaście. Ukrycie pozycji kasuje wiedzę
+ * o realnym portfolio i podsuwa fałszywy wniosek („nie ma czego wybierać")
+ * zamiast informacji, czego brakuje do użycia rodziny (karty katalogowej).
+ * Predykat „wolno budować" pozostaje JEDEN i pochodzi z katalogu — widoczność
+ * i wybieralność to dwie różne rzeczy.
+ */
+export function ofertaRodzinProducenta(
+  rodziny: readonly SwitchgearFamily[],
+  manufacturerRef: string,
+  snVoltageKv: number,
+): PozycjaOfertyRodzin[] {
+  return rodziny
+    .filter((f) => f.manufacturer_ref === manufacturerRef)
+    .map((rodzina) => ({ rodzina, powod: powodNiedostepnosci(rodzina, snVoltageKv) }))
+    .sort(
+      (a, b) =>
+        a.rodzina.family_name.localeCompare(b.rodzina.family_name, 'pl-PL')
+        || a.rodzina.switchgear_family_ref.localeCompare(b.rodzina.switchgear_family_ref),
+    );
+}
+
+/** Powód niedostępności rodziny — kolejność od najbardziej rozstrzygającego. */
+function powodNiedostepnosci(
+  rodzina: SwitchgearFamily,
+  snVoltageKv: number,
+): PowodNiedostepnosci | null {
+  if (rodzina.status === 'deprecated') return 'WYCOFANA';
+  if (!STATUSY_POZWALAJACE_BUDOWAC.has(rodzina.status)) return 'WYMAGA_KARTY';
+  // Status potwierdzony bez ANI JEDNEGO źródła to ta sama luka danych, co brak
+  // karty — polityka źródeł wymaga proweniencji, nie samej etykiety statusu.
+  if (rodzina.status !== 'user_defined' && rodzina.source_refs.length === 0) return 'WYMAGA_KARTY';
+  if (!klasaNapieciowaObejmuje(rodzina, snVoltageKv)) return 'INNA_KLASA_NAPIECIOWA';
+  return null;
+}
+
+/** Etykieta pozycji oferty: nazwa rodziny + jawny powód niedostępności. */
+export function etykietaOfertyRodziny(pozycja: PozycjaOfertyRodzin): string {
+  const nazwa = pozycja.rodzina.family_name;
+  if (pozycja.powod === null) return nazwa;
+  return `${nazwa} — ${T.powodNiedostepnosci[pozycja.powod]}`;
+}
+
 // ------------------------------------------------ Funkcja pola → rola pola
 
 /**

@@ -119,7 +119,6 @@ import {
   opcjeSzablonowRoli,
   parametryZKatalogu,
   producenciUzywalni,
-  rodzinyDlaProducenta,
   rolePolaStacji,
   szablonyDlaWyboru,
   szablonyPerRola,
@@ -140,7 +139,9 @@ import {
 } from './stacjaModel';
 import {
   aparaturaJednostkiPl,
+  etykietaOfertyRodziny,
   naglowekRodziny,
+  ofertaRodzinProducenta,
   polaZBloku,
   rozlozBlok,
   szerokoscBlokuPl,
@@ -555,9 +556,21 @@ export function KreatorStacjiSnNn() {
     () => producenciUzywalni(producenci, szablony),
     [producenci, szablony],
   );
-  const rodzinyDobrane = useMemo(
-    () => rodzinyDlaProducenta(rodziny, dane.manufacturer_ref, kontekst.snVoltageKv),
+  /**
+   * OFERTA RODZIN producenta — WSZYSTKIE rodziny z katalogu, z jawnym powodem
+   * niedostępności przy tych, na których katalog nie pozwala budować. Lista
+   * zawężona do „używalnych" pokazywała producenta z jedną rodziną, choć katalog
+   * niesie ich osiemnaście; projektant nie dowiadywał się, że reszta portfolio
+   * czeka na kartę katalogową.
+   */
+  const ofertaRodzin = useMemo(
+    () => ofertaRodzinProducenta(rodziny, dane.manufacturer_ref, kontekst.snVoltageKv),
     [dane.manufacturer_ref, kontekst.snVoltageKv, rodziny],
+  );
+  /** Rodziny, które WOLNO wybrać — jedno źródło dla resetu i dla walidacji. */
+  const rodzinyDobrane = useMemo(
+    () => ofertaRodzin.filter((p) => p.powod === null).map((p) => p.rodzina),
+    [ofertaRodzin],
   );
 
   // Kompletne szablony pól — WSZYSTKICH producentów, raz. Lista producentów
@@ -1714,7 +1727,13 @@ export function KreatorStacjiSnNn() {
               onZmiana={(v) => zmien('switchgear_family_ref', v || null)}
               opcje={[
                 { id: '', etykieta: T.rodzinaPlaceholder },
-                ...rodzinyDobrane.map((f) => ({ id: f.switchgear_family_ref, etykieta: f.family_name })),
+                ...ofertaRodzin.map((pozycja) => ({
+                  id: pozycja.rodzina.switchgear_family_ref,
+                  etykieta: etykietaOfertyRodziny(pozycja),
+                  // Widoczna, ale niewybieralna: katalog nie pozwala na niej
+                  // budować, a powód stoi w etykiecie.
+                  wylaczona: pozycja.powod !== null,
+                })),
               ]}
               pomoc={T.rodzinaPomoc}
               wylaczone={!dane.manufacturer_ref}

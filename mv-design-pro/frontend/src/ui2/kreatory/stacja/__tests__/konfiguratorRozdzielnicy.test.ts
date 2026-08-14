@@ -24,8 +24,10 @@ import {
   NAZWY_TORU_PL,
   ROLA_Z_FUNKCJI_POLA,
   aparaturaJednostkiPl,
+  etykietaOfertyRodziny,
   listaZnamionRodziny,
   naglowekRodziny,
+  ofertaRodzinProducenta,
   polaZBloku,
   rozlozBlok,
   szerokoscBlokuPl,
@@ -138,6 +140,101 @@ describe('tor konfiguracji rodziny', () => {
     // nigdy „modułowy, bo tak najczęściej".
     const { tor_konfiguracji: _pominiete, ...bezPola } = RODZINA_MODULOWA;
     expect(torRodziny(bezPola as SwitchgearFamily)).toBeNull();
+  });
+});
+
+describe('oferta rodzin producenta', () => {
+  const WYMAGA_KARTY: SwitchgearFamily = {
+    ...RODZINA_MODULOWA,
+    switchgear_family_ref: 'ABB__UNISEC',
+    family_name: 'UniSec',
+    voltage_levels: [],
+    status: 'requires_catalog',
+    source_refs: [],
+  };
+  const WYCOFANA: SwitchgearFamily = {
+    ...RODZINA_MODULOWA,
+    switchgear_family_ref: 'ZPUE__STARA',
+    family_name: 'Seria wycofana',
+    status: 'deprecated',
+  };
+  /**
+   * Rodzina o klasie NIŻSZEJ niż szyna — jedyny przypadek, w którym klasa
+   * napięciowa realnie dyskwalifikuje wyrób. Klasa WYŻSZA (np. 24 kV na szynie
+   * 15 kV) pokrywa napięcie szyny i pozostaje do wyboru — to ta sama zasada
+   * „znamionowe pokrywa robocze", którą stosuje picker aparatu pola.
+   */
+  const INNA_KLASA: SwitchgearFamily = {
+    ...RODZINA_MODULOWA,
+    switchgear_family_ref: 'ZPUE__NA_6KV',
+    family_name: 'Seria 6 kV',
+    voltage_levels: [6],
+  };
+  const WYZSZA_KLASA: SwitchgearFamily = {
+    ...RODZINA_MODULOWA,
+    switchgear_family_ref: 'ZPUE__NA_24KV',
+    family_name: 'Seria 24 kV',
+    voltage_levels: [24],
+  };
+  const OBCY_PRODUCENT: SwitchgearFamily = {
+    ...RODZINA_MODULOWA,
+    switchgear_family_ref: 'SIEMENS__8DJH',
+    family_name: '8DJH',
+    manufacturer_ref: 'SIEMENS',
+  };
+
+  const KATALOG = [
+    RODZINA_MODULOWA,
+    RODZINA_RMU,
+    WYMAGA_KARTY,
+    WYCOFANA,
+    INNA_KLASA,
+    WYZSZA_KLASA,
+    OBCY_PRODUCENT,
+  ];
+
+  it('pokazuje CAŁE portfolio producenta, nie tylko rodziny gotowe do użycia', () => {
+    const oferta = ofertaRodzinProducenta(KATALOG, 'ZPUE_WLOSZCZOWA', 15);
+    // Sześć rodzin producenta; rodzina innego producenta poza listą.
+    expect(oferta).toHaveLength(6);
+    expect(oferta.map((p) => p.rodzina.switchgear_family_ref)).not.toContain('SIEMENS__8DJH');
+  });
+
+  it('nazywa POWÓD niedostępności zamiast ukrywać rodzinę', () => {
+    const oferta = ofertaRodzinProducenta(KATALOG, 'ZPUE_WLOSZCZOWA', 15);
+    const wgRefu = Object.fromEntries(oferta.map((p) => [p.rodzina.switchgear_family_ref, p.powod]));
+
+    expect(wgRefu['ZPUE_WLOSZCZOWA__ROTOBLOK']).toBeNull();
+    expect(wgRefu['ZPUE_WLOSZCZOWA__TPM_AIR']).toBeNull();
+    expect(wgRefu['ABB__UNISEC']).toBe('WYMAGA_KARTY');
+    expect(wgRefu['ZPUE__STARA']).toBe('WYCOFANA');
+    expect(wgRefu['ZPUE__NA_6KV']).toBe('INNA_KLASA_NAPIECIOWA');
+    // Klasa wyższa POKRYWA napięcie szyny — zostaje do wyboru.
+    expect(wgRefu['ZPUE__NA_24KV']).toBeNull();
+  });
+
+  it('status potwierdzony BEZ źródeł to nadal brak karty (polityka proweniencji)', () => {
+    const bezZrodel: SwitchgearFamily = { ...RODZINA_MODULOWA, source_refs: [] };
+    const [pozycja] = ofertaRodzinProducenta([bezZrodel], 'ZPUE_WLOSZCZOWA', 15);
+    expect(pozycja.powod).toBe('WYMAGA_KARTY');
+  });
+
+  it('rodzina bez zadeklarowanych napięć NIE jest odrzucana klasą napięciową', () => {
+    // Brak deklaracji to brak przeciwwskazania — inaczej rodzina z niepełną
+    // kartą znikałaby z listy z powodu, którego katalog nie stwierdza.
+    const bezNapiec: SwitchgearFamily = { ...RODZINA_MODULOWA, voltage_levels: [] };
+    const [pozycja] = ofertaRodzinProducenta([bezNapiec], 'ZPUE_WLOSZCZOWA', 15);
+    expect(pozycja.powod).toBeNull();
+  });
+
+  it('etykieta pozycji niedostępnej niesie powód, dostępnej — samą nazwę', () => {
+    const oferta = ofertaRodzinProducenta(KATALOG, 'ZPUE_WLOSZCZOWA', 15);
+    const wgRefu = Object.fromEntries(
+      oferta.map((p) => [p.rodzina.switchgear_family_ref, etykietaOfertyRodziny(p)]),
+    );
+    expect(wgRefu['ZPUE_WLOSZCZOWA__ROTOBLOK']).toBe('Rotoblok');
+    expect(wgRefu['ABB__UNISEC']).toContain('wymaga karty katalogowej');
+    expect(wgRefu['ZPUE__NA_6KV']).toContain('inna klasa napięciowa');
   });
 });
 
@@ -385,6 +482,9 @@ describe('nagłówek rodziny', () => {
     const wgEtykiety = Object.fromEntries(wiersze.map((w) => [w.etykieta, w.wartosc]));
     const naglowekRysunku = zbudujPodglad({
       snFields: [],
+      aparaty: [],
+      transformatory: [],
+      transformatorRef: null,
       snVoltageKv: 15,
       rodzina: RODZINA_MODULOWA,
       producent: 'ZPUE Włoszczowa',
