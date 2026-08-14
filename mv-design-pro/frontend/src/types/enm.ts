@@ -234,6 +234,15 @@ export interface Cable extends BranchBase {
   thermal_source_ref?: string | null;
   /** Mufy kablowe na odcinku — punkty bez podziału topologii (brief 1 §4 pkt 4). */
   cable_joints?: CableJoint[] | null;
+  /**
+   * P0.1 nN (karta P0.1, C §4.1 `add_nn_cable_segment`): liczba identycznych
+   * torów kabla ułożonych równolegle na tej samej trasie (typowe dla przyłączy
+   * nN o dużym prądzie). `null`/`undefined`/`1` = pojedynczy tor. Lustro
+   * backendowego `Cable.n_parallel` (`enm/models.py`) — karta P0.9 (nN STUDIO)
+   * potrzebowała pola, którego lustro NIE MIAŁO (ten sam rozjazd co
+   * `LVApparatusType.i_cu_ka` obok).
+   */
+  n_parallel?: number | null;
 }
 
 /**

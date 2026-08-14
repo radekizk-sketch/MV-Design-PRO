@@ -89,6 +89,13 @@ Stan początkowy (seed, wg przestrzeni N1–N7 z Programu §4):
 | W-208 | Drzewo topologii | N2 | E5 | topology |
 | W-209 | Inspektor ENM | N2 | E5 | enm-inspector |
 | W-210 | Import XLSX | N2 | E13 | xlsx (rozproszone) |
+| W-623 | nN STUDIO — powłoka (wybór stacji/rozdzielnicy + zakładki) | N2 | E3 | BRAK (nowe — P0.9, `docs/nn/F_PLAN_UI_NN_STUDIO.md`) |
+| W-624 | nN STUDIO — ZWARCIA (Ik1(l) pętla zwarcia per odpływ, IEC 60364-4-41) | N2 | E5 | W-612 (szczątkowe ◐) — pętla zwarciowa nn, SKONSUMOWANE |
+| W-625 | nN STUDIO — TOPOLOGIA (drzewo nN + kreatory odcinek/rozdzielnica/aparat) | N2 | E3 | BRAK (nowe — P0.9) |
+| W-626 | nN STUDIO — ODCINKI (tabela edytowalna odcinków kablowych nN) | N2 | E3 | BRAK (nowe — P0.9) |
+| W-627 | nN STUDIO — NAPIĘCIA (profil napięcia wzdłuż trasy nN, ΔU per odcinek) | N2 | E5 | BRAK (nowe — P0.9) |
+| W-628 | nN STUDIO — SWZ (heatmapa obwodów + margines samoczynnego wyłączenia) | N2 | E5 | BRAK (nowe — P0.9) |
+| W-629 | nN STUDIO — DOBÓR (dobór aparatu zabezpieczającego + wykres koordynacji) | N2 | E5 | BRAK (nowe — P0.9) |
 | W-301 | Widok SLD w powłoce (osadzenie) | N3 | E14 | WŁASNOŚĆ WĄTKU SLD — tylko rama |
 | W-401 | Panel gotowości (readiness + fix-actions) | N4 | E6 | engineering-readiness |
 | W-402 | Panel problemów walidacji | N4 | E6 | issue-panel |

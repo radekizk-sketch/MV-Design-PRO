@@ -93,6 +93,40 @@ export interface SelekcjaFallback {
 }
 
 /**
+ * Wariant BEZ nawigacji na schemat (karta P0.9, nN STUDIO) — identyczna reguła
+ * selekcji (ref kanoniczny → zaznaczenie + wycentrowanie), ale kreator ZOSTAJE
+ * w bieżącej przestrzeni (nN STUDIO buduje ciąg odcinków/aparatów krok po
+ * kroku, jak builder `KreatorMagistralaSn`; `navigateToSld()` przełączałby
+ * użytkownika na przestrzeń „Schemat" po KAŻDYM zapisie, przerywając pracę).
+ * Selekcja globalna nadal synchronizuje inspektor/drzewo/SLD — tylko widoczna
+ * przestrzeń się nie zmienia.
+ */
+export function useSelekcjaPoOperacjiBezNawigacji(): (
+  response: DomainOpResponseV1 | null,
+  fallback: SelekcjaFallback,
+) => void {
+  const selectElement = useSelectionStore((s) => s.selectElement);
+  const centerSldOnElement = useSelectionStore((s) => s.centerSldOnElement);
+
+  return useCallback(
+    (response: DomainOpResponseV1 | null, fallback: SelekcjaFallback) => {
+      const ref = kanonicznyRefZOperacji(response);
+      if (!ref) return;
+      const typZeWskazania =
+        ref === response?.selection_hint?.element_id
+          ? response?.selection_hint?.element_type
+          : null;
+      const typ = mapujTypElementu(typZeWskazania, fallback.type);
+      selectElement({ id: ref, type: typ, name: fallback.name });
+      if (response?.selection_hint?.zoom_to !== false) {
+        centerSldOnElement(ref);
+      }
+    },
+    [centerSldOnElement, selectElement],
+  );
+}
+
+/**
  * Hook wiążący kreator ze schematem po zapisie. Zwraca funkcję, którą kreator
  * wywołuje w miejsce samego `navigateToSld()` po sukcesie operacji domenowej.
  */

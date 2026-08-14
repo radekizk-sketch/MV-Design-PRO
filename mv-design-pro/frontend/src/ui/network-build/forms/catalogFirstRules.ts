@@ -136,6 +136,13 @@ const REQUIRED_CATALOG_MESSAGE: Record<string, string> = {
   add_ct: 'Wybierz przekładnik prądowy z katalogu przed dodaniem go do pola SN.',
   add_vt: 'Wybierz przekładnik napięciowy z katalogu przed dodaniem go do pola SN.',
   add_relay: 'Wybierz zabezpieczenie z katalogu przed dodaniem go do pola SN.',
+  // P0.9 (nN STUDIO): kreatory odcinek-nn/aparat-nn/rozdzielnica-nn (sekcja+sprzęgło)
+  // — te same trzy operacje niosą `catalog_ref`/`catalog_binding` co odpowiedniki SN
+  // powyżej, więc dostają IDENTYCZNĄ walidację (reguła KLASA NIE INSTANCJA — brak
+  // wpisu tutaj czynił by catalog-first sprawdzanym tylko dla SN, nie dla nN).
+  add_nn_cable_segment: 'Wybierz typ kabla nN z katalogu przed utworzeniem odcinka.',
+  add_nn_switch_device: 'Wybierz aparat nN z katalogu przed dodaniem go do toru.',
+  add_nn_section_coupler: 'Wybierz aparat nN (sprzęgło) z katalogu przed dodaniem sekcji.',
 };
 
 function normalizeCatalogFirstOperation(op: string): string {
@@ -184,6 +191,12 @@ export function validateCatalogFirst(op: string, payload: Payload): string | nul
         : REQUIRED_CATALOG_MESSAGE[normalizedOp];
     case 'add_relay':
       return hasRelayCatalog(payload) ? null : REQUIRED_CATALOG_MESSAGE[normalizedOp];
+    case 'add_nn_cable_segment':
+    case 'add_nn_switch_device':
+    case 'add_nn_section_coupler':
+      return hasCatalogBinding(payload.catalog_binding) || isNonEmptyString(payload.catalog_ref)
+        ? null
+        : REQUIRED_CATALOG_MESSAGE[normalizedOp];
     default:
       return null;
   }

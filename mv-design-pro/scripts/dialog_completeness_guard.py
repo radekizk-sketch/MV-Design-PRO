@@ -110,6 +110,11 @@ OPERATION_TO_MODAL: dict[str, list[str]] = {
     "add_vt": ["Measurement", "VTModal"],
     "add_relay": ["Protection", "RelayModal"],
     "update_relay_settings": ["Protection", "RelaySettings"],
+    # P0.9 (nN STUDIO): odcinek/rozdzielnica/aparat/sekcja nN.
+    "add_nn_cable_segment": ["KreatorOdcinkaNn", "OdcinekNn"],
+    "add_nn_distribution_board": ["KreatorRozdzielnicyNn", "RozdzielnicaNn"],
+    "add_nn_switch_device": ["KreatorAparatuNn", "AparatNn"],
+    "add_nn_section_coupler": ["KreatorRozdzielnicyNn", "RozdzielnicaNn"],
 }
 
 # Operations that don't need a dedicated modal
@@ -132,6 +137,10 @@ NO_MODAL_NEEDED = {
     "set_case_normal_state",
     "set_case_source_mode",
     "set_case_time_profile",
+    # P0.9 (nN STUDIO): edycja warunków ułożenia odcinka nN jest edycją INLINE
+    # w tabeli ODCINKI, tak jak `update_element_parameters` powyżej — bez
+    # osobnego formularza modalnego.
+    "set_nn_cable_laying_conditions",
 }
 
 

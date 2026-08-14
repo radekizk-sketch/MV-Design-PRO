@@ -1,0 +1,13 @@
+.mvd-edyt-tabela-wrap { overflow-x: auto; }
+.mvd-edyt-tabela { width: 100%; border-collapse: collapse; font-size: 13px; }
+.mvd-edyt-tabela thead th { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--mvd-line); color: var(--mvd-muted); white-space: nowrap; }
+.mvd-edyt-tabela-th-prawo { text-align: right; }
+.mvd-edyt-tabela-th-btn { background: none; border: 0; font: inherit; color: inherit; cursor: pointer; padding: 0; display: inline-flex; gap: 4px; align-items: center; }
+.mvd-edyt-tabela-th-unit { color: var(--mvd-muted); font-weight: 400; margin-left: 2px; }
+.mvd-edyt-tabela tbody td { padding: 4px 10px; border-bottom: 1px solid var(--mvd-line); vertical-align: middle; }
+.mvd-edyt-tabela-td-prawo { text-align: right; }
+.mvd-edyt-tabela-input, .mvd-edyt-tabela-select { width: 100%; min-width: 72px; padding: 3px 6px; border: 1px solid var(--mvd-line); border-radius: 4px; background: var(--mvd-panel); color: var(--mvd-ink); font: inherit; }
+.mvd-edyt-tabela-akcja-btn { background: none; border: 1px dashed var(--mvd-line); border-radius: 4px; padding: 2px 8px; cursor: pointer; color: var(--mvd-accent); font: inherit; }
+.mvd-edyt-tabela-stan { margin-left: 6px; font-size: 11px; color: var(--mvd-muted); }
+.mvd-edyt-tabela-stan-blad { color: var(--mvd-danger, #c0392b); }
+.mvd-edyt-tabela-pusta { padding: 16px; color: var(--mvd-muted); }

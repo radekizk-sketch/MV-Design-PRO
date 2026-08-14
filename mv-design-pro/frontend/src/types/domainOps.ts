@@ -48,6 +48,14 @@ export const CANONICAL_OPERATION_NAMES = [
   'add_shunt_compensator_sn',
   'add_surge_arrester_sn',
   'add_nn_load',
+  // P0.9 (nN STUDIO, karta F §3): odcinek/rozdzielnica/aparat/sekcja nN — operacje
+  // ISTNIEJĄ w backendzie od P0.1 (enm/domain_operations_v2.py), brak wpisu tutaj
+  // czynił je niewywoływalnymi z UI (assertCanonicalOpName), tak jak K5-B poniżej.
+  'add_nn_cable_segment',
+  'add_nn_distribution_board',
+  'add_nn_switch_device',
+  'add_nn_section_coupler',
+  'set_nn_cable_laying_conditions',
   // K5-B (H-3): nastawy trybu pracy źródła i profil dynamiczny — obie operacje
   // ISTNIEJĄ w backendzie (V2_CANONICAL_OPS, enm/domain_operations_v2.py);
   // brak wpisu tutaj czynił je niewywoływalnymi z UI (assertCanonicalOpName).
@@ -298,6 +306,73 @@ export interface NNBlockSpec {
   main_breaker_nn: true;
   outgoing_feeders_nn_count: number;
   outgoing_feeders_nn: NNFeederSpec[];
+}
+
+// =============================================================================
+// P0.9 (nN STUDIO): odcinek/rozdzielnica/aparat/sekcja nN — lustro
+// enm/domain_operations_v2.py (add_nn_cable_segment, add_nn_distribution_board,
+// add_nn_switch_device, add_nn_section_coupler, set_nn_cable_laying_conditions).
+// =============================================================================
+
+/** Warunki ułożenia odcinka nN (PN-HD 60364-5-52, karta P0.5a/G-D1) — obiekt
+ *  opisu SUROWEGO wyboru (solver składa współczynniki na nowo z tablic przy
+ *  każdym odczycie); alternatywnie napis „warunki katalogowe" = brak korekty. */
+export interface NNCableLayingConditionsDescription {
+  environment: 'powietrze' | 'grunt';
+  insulation: 'PVC' | 'XLPE';
+  ambient_temperature_c: number;
+  circuit_count: number;
+  /** Wymagane WYŁĄCZNIE dla `environment: 'grunt'`. */
+  soil_thermal_resistivity_km_w?: number | null;
+}
+
+export type NNCableLayingConditionsPayload = NNCableLayingConditionsDescription | 'warunki katalogowe';
+
+export interface AddNNCableSegmentPayload {
+  from_bus_ref?: string | null;
+  from_ref?: string | null;
+  to_bus_ref?: string | null;
+  to_bus_name?: string | null;
+  length_m: number;
+  n_parallel?: number;
+  catalog_binding?: CatalogBindingPayload | null;
+  catalog_ref?: string | null;
+  cable_laying_conditions?: NNCableLayingConditionsPayload | null;
+  name?: string | null;
+}
+
+export interface AddNNDistributionBoardPayload {
+  voltage_kv: number;
+  name?: string | null;
+  designation?: string | null;
+  construction_type?: string | null;
+  /** Zasilenie nowej rozdzielnicy — wewnętrzne wywołanie `add_nn_cable_segment`
+   *  z `to_bus_ref` wymuszonym na nową szynę główną (`to_bus_ref` w tym obiekcie
+   *  jest ignorowany przez backend i nadpisywany). */
+  supply?: Omit<AddNNCableSegmentPayload, 'to_bus_ref' | 'to_bus_name'> | null;
+}
+
+export type NNSwitchDeviceClass = 'switch' | 'fuse';
+
+export interface AddNNSwitchDevicePayload {
+  from_bus_ref: string;
+  to_bus_ref: string;
+  device_class?: NNSwitchDeviceClass;
+  catalog_binding?: CatalogBindingPayload | null;
+  catalog_ref?: string | null;
+  name?: string | null;
+}
+
+export interface AddNNSectionCouplerPayload {
+  station_ref: string;
+  catalog_binding?: CatalogBindingPayload | null;
+  catalog_ref?: string | null;
+  name?: string | null;
+}
+
+export interface SetNNCableLayingConditionsPayload {
+  segment_ref: string;
+  cable_laying_conditions: NNCableLayingConditionsPayload;
 }
 
 // --- SourceNN Types (FAZA 5: model danych źródeł nN) ---

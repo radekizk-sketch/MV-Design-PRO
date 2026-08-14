@@ -536,6 +536,25 @@ export function listNnBusOptions(
     .sort((left, right) => left.name.localeCompare(right.name));
 }
 
+/**
+ * WSZYSTKIE szyny nN modelu (niezależnie od stacji) — dla operacji, które
+ * łączą DWIE ISTNIEJĄCE szyny (`add_nn_switch_device`), gdzie szyna docelowa
+ * bywa poza `station.bus_refs` (np. szyna utworzona przez `add_nn_cable_segment`
+ * jako `to_bus_ref` nie jest dopisywana do rejestru stacji — P0.1). Lista
+ * płaska jest UCZCIWA (każdy wpis to realna szyna modelu), nie ograniczona
+ * przez rejestr, którego operacja i tak nie sprawdza.
+ */
+export function listAllNnBusOptions(
+  snapshot: EnergyNetworkModel | null,
+  wyklucz?: string | null,
+): ResolvedBusOption[] {
+  if (!snapshot) return [];
+  return snapshot.buses
+    .filter((bus): bus is LegacyBus => isLowVoltageBus(bus) && bus.ref_id !== wyklucz)
+    .map((bus) => ({ ref_id: bus.ref_id, name: bus.name, voltage_kv: bus.voltage_kv }))
+    .sort((left, right) => left.name.localeCompare(right.name));
+}
+
 export function listSnBusOptions(
   snapshot: EnergyNetworkModel | null,
   stationRef: string | null | undefined,
