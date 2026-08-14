@@ -103,6 +103,52 @@ describe('Pakiet G — wiring katalogów do UI cards', () => {
       expect(fuseCell.textContent?.toLowerCase()).toContain('full-range');
     });
 
+    // Karta K-O: pozycja bez pasma topikowego pokazuje UCZCIWY STAN, a nie pustkę
+    // ani liczby wzięte z głowy. Wzorzec backendowy `BRAK_PASMA_BEZPIECZNIKA`.
+    it('pokazuje jawny stan "pasmo wymaga karty producenta" dla wybranej wkładki', () => {
+      render(
+        <StationConfigBaysCard
+          bays={[
+            {
+              bayId: 'b1',
+              designation: 'POLE-01',
+              bayTypePl: 'transformatorowe',
+              hasEquipment: true,
+              hasProtection: true,
+              hasMeasurements: true,
+              statusPl: 'kompletne',
+              hvFuseCatalogRef: 'fuse_15kv_50a_full',
+            },
+          ]}
+        />,
+      );
+
+      const stan = screen.getByTestId('bay-fuse-brak-pasma-b1');
+      expect(stan.textContent).toBe('pasmo wymaga karty producenta');
+      // Powód po polsku jest dostępny bez zgadywania (tooltip), z odesłaniem do normy.
+      expect(stan.getAttribute('title')).toContain('IEC 60282-1');
+    });
+
+    it('nie pokazuje stanu braku pasma, gdy pole nie ma wkładki', () => {
+      render(
+        <StationConfigBaysCard
+          bays={[
+            {
+              bayId: 'b9',
+              designation: 'POLE-09',
+              bayTypePl: 'liniowe wejściowe',
+              hasEquipment: true,
+              hasProtection: true,
+              hasMeasurements: true,
+              statusPl: 'kompletne',
+              hvFuseCatalogRef: null,
+            },
+          ]}
+        />,
+      );
+      expect(screen.queryByTestId('bay-fuse-brak-pasma-b9')).toBeNull();
+    });
+
     it('pokazuje dash gdy brak fuse w polu', () => {
       render(
         <StationConfigBaysCard
