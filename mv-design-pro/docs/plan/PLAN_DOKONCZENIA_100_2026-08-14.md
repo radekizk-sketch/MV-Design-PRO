@@ -11,6 +11,60 @@ właściciela, stoi jawny STOP `[B-01]` / `[B-02]` — niczego nie zgadywać.
 
 ---
 
+## PROMPT STARTOWY DLA NASTĘPNEGO WYKONAWCY (Codex/Claude/inny — wklej dosłownie)
+
+```
+Jesteś wykonawcą planu dokończenia MV-Design-PRO (repo
+radekizk-sketch/MV-Design-PRO). Całość pracy i meldunki PO POLSKU.
+
+1. Przeczytaj W CAŁOŚCI przed pierwszą zmianą:
+   - mv-design-pro/docs/plan/PLAN_DOKONCZENIA_100_2026-08-14.md — §0 to twój
+     KONTRAKT (środowisko, pułapki, bramki, konwencje commitów); treść karty,
+     którą bierzesz, wykonujesz DOSŁOWNIE;
+   - CLAUDE.md w korzeniu repo (reguły nadrzędne: Zero-Debt, KLASA-NIE-
+     INSTANCJA, zero fabrykacji, FROZEN, fizyka tylko w solverach);
+   - docs/v12xx/REJESTR_KONFLIKTOW.md — wiersze kart już zamkniętych
+     (kontekst i wzorzec meldunku).
+
+2. KOLEJKA — bierz PIERWSZĄ niezablokowaną kartę z listy, jedna karta na raz:
+   1) K-U  CT-VT-WERDYKT-BRAMKUJE            (§8)
+   2) K-V  MARTWE-WYSPY-UI                    (§8)
+   3) K-X  KASACJA-CATALOG-BINDINGS           (§8)
+   4) K-Y  PROWENIENCJA-W-INSPEKTORZE         (§8)
+   5) K-Z  TYP-SNFIELDSPEC-FRONT              (§8; wykonuj PO K-X)
+   6) K-Q2 NAZEWNICTWO-NAPIECIA-WYTRZYMALOSCI (§8)
+   7) K-P  PROMOCJA-UNISEC                    (§7)
+   8) K-R  NCRFG-NO-MODULE                    (§8; DUŻA — dopiero gdy 1-7
+      zamknięte, albo na osobne zlecenie właściciela)
+   ZABLOKOWANE — NIE RUSZAJ bez jawnej decyzji właściciela:
+   - K-A, K-S2, K-F, K-G — wymagają werdyktu wizualnego B-02;
+   - K-B, K-C, K-D — po merge wątku nN (§4.3); K-H — po T0 wątku nN.
+
+3. Infrastruktura pracy nad kartą (obowiązkowo):
+   - gałąź `kopia/<KARTA>` utworzona z AKTUALNEGO `origin/main`;
+   - WŁASNY worktree od pierwszego polecenia:
+     `git worktree add <katalog> -B kopia/<KARTA> origin/main`
+     (frontend: symlink node_modules z głównego katalogu; backend: wołaj
+     $VENV z §0.3 bezpośrednio, nie `poetry run`);
+   - push na `origin kopia/<KARTA>` po KAŻDYM commicie; na `main` ani gałęzie
+     nadzoru NIE pushujesz NIGDY; żadnych biegów w tle.
+
+4. Wykonanie karty = treść jej sekcji + §0, zero interpretacji:
+   - czego nie ma w karcie ani §0 — ZMIERZ w kodzie (grep/test), nie zgaduj;
+   - decyzja produktowa/architektoniczna nie rozstrzygnięta w karcie — STOP,
+     pytanie do właściciela (nie wybieraj po cichu);
+   - każdy napotkany błąd (także zastany) naprawiasz u źródła w tej samej
+     kolejce (Zero-Debt); inwentarz KLASY przed naprawą.
+
+5. Po każdej karcie MELDUNEK zawierający: inwentarz klasy, co zmienione i
+   dlaczego, iniekcje własne (min. 2, różne mechanizmy, pary
+   czerwony/zielony, restore sha256 z dowodem), WSZYSTKIE RC dosłownie
+   (bramki karty + minimum §0.5), sha256 dotkniętych plików, długi jawne
+   z pomiarem. Meldunek bez zmierzonych RC = karta niewykonana.
+```
+
+---
+
 ## §0 KONTRAKT WYKONANIA (obowiązuje każdą kartę tego planu)
 
 ### 0.1 Reguły nadrzędne (skrót — pełny kanon w `CLAUDE.md` repo)
@@ -147,13 +201,15 @@ $VENV bezposrednio (poetry w worktree tworzy pusty venv).
 
 ## §1 GOTOWE DO MERGE (stan HEAD `3f367743`)
 
-> **NOTA AKTUALNOŚCI (2026-08-14, po południu):** stany §1.1 i §2 opisują
-> chwilę spisania planu. Od tego czasu odebrano i scalono na gałąź nadzoru
-> także: S3, S5, BLOKI-RMU, K-K, K-N, K-E (częściowy uczciwy), K-J, K-L,
-> K-M, K-O oraz naprawę incydentu kadrów. Bieżący stan kart: §6–§8 + rejestr
-> (wiersze z adnotacją ODBIOR NIEZALEZNY). Procedura merge §1.2 pozostaje
-> obowiązująca — zmienia się tylko SHA szczytu (mierzyć `git log` przy
-> wykonaniu, nie przepisywać z tego dokumentu).
+> **NOTA AKTUALNOŚCI (2026-08-14, wieczór):** stany §1.1 i §2 opisują chwilę
+> spisania planu — WSZYSTKIE karty w biegu i fale zostały od tego czasu
+> odebrane i scalone na gałąź nadzoru: S3, S5, BLOKI-RMU, K-K, K-N, K-E
+> (częściowy uczciwy), K-J, K-L, K-M, K-O, incydent kadrów, oraz fala §8:
+> K-T, K-S, K-Q (bateria fali: pytest 9614 RC=0, vitest 877 plików/11726
+> RC=0, mypy 13/9, tsconfig 531/531). K-W wycofana (znalezisko obalone).
+> MERGE PR #470 ZLECONY dyspozycją właściciela 2026-08-14 wg §1.2.
+> Po merge obowiązuje kolejka z PROMPTU STARTOWEGO na górze dokumentu —
+> karty biorą gałęzie z aktualnego `origin/main`.
 
 ### 1.1 Zawartość (odebrane fale — wszystkie z adnotacją w rejestrze)
 Fale K1–K14, KD, TOPO-COPY, PREFIKSY, TOP-5, fale 2–3 i 7–12, w tym ostatnio:
