@@ -1169,7 +1169,10 @@ def _build_field_spec(
         # Druga kopia prawdy pierwszej klasy — parametr jawny i JEDEN wołający
         # (patrz `POLE_POWIAZAN_KATALOGOWYCH`), żeby kanał był widoczny i dał
         # się wyciąć jednym cięciem, kiedy migawki wolno będzie przestawić.
-        (POLE_POWIAZAN_KATALOGOWYCH, catalog_bindings),
+        # Kopia GŁĘBOKA, jak `meta`: builder jest właścicielem każdej struktury
+        # zagnieżdżonej, którą zapisuje — wołający nie trzyma uchwytu do wnętrza
+        # migawki (i odwrotnie), więc nikt nie zmieni modelu przez swój payload.
+        (POLE_POWIAZAN_KATALOGOWYCH, copy.deepcopy(catalog_bindings)),
         # Aparat pola wskazany JAWNIE na wpisie pola (B-12) — wskazanie
         # projektanta zostaje w specyfikacji, nie tylko w utworzonej gałęzi.
         ("apparatus_catalog_ref", apparatus_catalog_ref),
@@ -9060,10 +9063,9 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
                 if isinstance(ref, str) and ref.strip()
             ],
             # Powiązania katalogowe wpisu — druga kopia prawdy pierwszej klasy,
-            # przenoszona WYŁĄCZNIE tutaj (kształt migawki tej drogi); kopia
-            # głęboka, żeby payload wołającego nie współdzielił obiektu
-            # z zapisaną migawką.
-            catalog_bindings=copy.deepcopy(field.get(POLE_POWIAZAN_KATALOGOWYCH)),
+            # przenoszona WYŁĄCZNIE tutaj (kształt migawki tej drogi). Kopię
+            # zagnieżdżonej struktury robi builder, jak dla `meta`.
+            catalog_bindings=field.get(POLE_POWIAZAN_KATALOGOWYCH),
             # Pomiar pola POMIAROWEGO (kontrakt §5, V12K-336) — klucze wyłącznie
             # dla pola pomiarowego (rozstrzygnięte wyżej przez
             # `rozstrzygnij_pomiary_pol`); pola innych ról atrybutów nie niosą.
