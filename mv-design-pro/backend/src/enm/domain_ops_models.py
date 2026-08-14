@@ -381,12 +381,32 @@ class SNFieldSpec(_FrozenBase):
     innej roli ⇒ błąd `sn.pomiar_poza_polem_pomiarowym`."""
 
     catalog_bindings: CatalogBindings | None = None
-    """Opcjonalne powiązania katalogowe aparatury."""
+    """Opcjonalne powiązania katalogowe aparatury.
+
+    NIE JEST kanałem wyboru bloku fabrycznego RMU: blok ma własne pola
+    pierwszej klasy (`factory_configuration_ref` + `factory_unit_index`)
+    o nazwach WSPÓLNYCH z operacją `add_sn_bay_from_catalog`. Metadana
+    `catalog_bindings.factory_configuration`, którą kreator stacji wysyłał
+    zamiast nich, została usunięta — była drugim nazewnictwem tej samej prawdy,
+    którego żadna operacja stacyjna nie czytała."""
 
     apparatus_catalog_ref: str | None = None
     """Aparat pola z katalogu APARAT_SN (B-12) — wskazanie WYMAGANE przez operację
     (albo wspólne `field_apparatus_catalog_ref` payloadu). Operacja nie dobiera
     aparatu samodzielnie: brak wskazania kończy się błędem walidacji."""
+
+    factory_configuration_ref: str | None = None
+    """Blok fabryczny rodziny RMU (`FactoryConfiguration.configuration_ref`),
+    z którego pochodzi to pole — TA SAMA nazwa pola, co w kontrakcie operacji
+    `add_sn_bay_from_catalog`. Pole rodziny o torze BLOK_RMU nie jest luźną
+    szafą: bez wskazania bloku operacja stacyjna odrzuca je twardym błędem
+    katalogowym, bo pojedyncza celka nie opisuje tego wyrobu."""
+
+    factory_unit_index: int | None = None
+    """Numer jednostki bloku (1-based). Numer, a nie litera: blok powtarza
+    litery jednostek (LLT ma dwie jednostki „L"). Jedzie wyłącznie razem
+    z `factory_configuration_ref`; blok bez numeru kończy się twardym błędem
+    resolvera katalogu."""
 
     cell_type: (
         Literal[

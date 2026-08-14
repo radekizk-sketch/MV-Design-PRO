@@ -37,6 +37,8 @@ from network_model.solvers import cable_ampacity_derating as cable_derating
 from . import der_sn_validation as der_val
 from .domain_operations import (
     FUNKCJA_POMIARU_DOMYSLNA_POLA_DOKLADANEGO,
+    POLE_BLOKU_FABRYCZNEGO,
+    POLE_JEDNOSTKI_BLOKU,
     _apply_catalog_metadata,
     _apply_materialized_branch_fields,
     _apply_materialized_transformer_fields,
@@ -56,6 +58,7 @@ from .domain_operations import (
     blad_pomiaru_w_torze_tranzytu,
     rozstrzygnij_pomiar_pola,
     szyna_prowadzi_tranzyt_sn,
+    wybor_bloku_fabrycznego,
 )
 from .kopia_graniczna import kopia_graniczna_enm
 from .load_zip_model import KOD_BLEDU_ZIP, zip_odbioru_z_payloadu
@@ -2011,6 +2014,13 @@ def add_sn_bay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     bay_template_ref = _clean_ref(payload.get("bay_template_ref"))
     manufacturer_ref = _clean_ref(payload.get("manufacturer_ref"))
     protection_ref = _clean_ref(payload.get("protection_ref"))
+    # Wybór BLOKU FABRYCZNEGO RMU (`factory_configuration_ref` + numer jednostki)
+    # — TA SAMA droga odczytu i TE SAME nazwy kluczy, co w operacjach stacyjnych.
+    # Do domknięcia tego długu operacja katalogowa pola rozstrzygała blok, ale go
+    # NIE ZAPISYWAŁA: jednostka bloku lądowała w ENM jako pole rodziny bez śladu
+    # wyrobu, z którego pochodzi (blok widać było wyłącznie w podglądzie trybu
+    # próby, czyli w odpowiedzi, która niczego nie utrwala).
+    wybor_bloku = wybor_bloku_fabrycznego(payload)
     # Tylko podane refy (bez clobber istniejących wartości na None przy re-konfiguracji).
     producer_refs: dict[str, Any] = {
         key: value
@@ -2022,6 +2032,7 @@ def add_sn_bay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
         }.items()
         if value
     }
+    producer_refs.update(wybor_bloku)
     # V12K-059 (audyt B): materializacja wymaganych funkcji zabezpieczeniowych pola z
     # wybranego szablonu producenta (protection_requirements) → Bay.protection_codes.
     # Domyka ogniwo „szablon pola → koordynacja/LoM/glify SLD" (G-POLE-R związał tylko
@@ -2252,6 +2263,7 @@ def add_sn_bay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
             bay_template_ref=bay_template_ref,
             switchgear_family_ref=switchgear_family_ref,
             manufacturer_ref=manufacturer_ref,
+            wybor_bloku=wybor_bloku,
             primary_devices=primary_devices_spec or None,
             tags=list(payload.get("tags") or []),
             funkcja_pomiaru=funkcja_pomiaru if bay_role == "MEASUREMENT" else None,
@@ -2436,6 +2448,12 @@ def add_sn_bay_from_catalog(enm: dict[str, Any], payload: dict[str, Any]) -> dic
     }
     if plan.manufacturer_ref:
         payload_pola["manufacturer_ref"] = plan.manufacturer_ref
+    # Blok i numer jednostki z ROZSTRZYGNIĘTEGO planu, nie z surowego payloadu:
+    # to plan zna wynik walidacji rodziny, więc model zapisuje wybór w postaci,
+    # którą katalog potwierdził — tak samo jak rolę pola i rodzinę wyżej.
+    if plan.factory_configuration_ref:
+        payload_pola[POLE_BLOKU_FABRYCZNEGO] = plan.factory_configuration_ref
+        payload_pola[POLE_JEDNOSTKI_BLOKU] = plan.factory_unit_index
     if wariant_aparatu:
         payload_pola["apparatus_kind"] = wariant_aparatu
     return add_sn_bay(enm, payload_pola)

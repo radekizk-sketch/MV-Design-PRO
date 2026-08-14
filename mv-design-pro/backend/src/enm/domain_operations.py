@@ -37,6 +37,7 @@ from .pole_katalogowe import (
     KOD_BLEDU_POLA_KATALOGOWEGO,
     NiezgodnoscKonfiguracjiError,
     aparaty_pola_z_referencji,
+    rozwiaz_aparaty_pola,
 )
 from .topology_ops import (
     create_branch,
@@ -865,6 +866,87 @@ def _error_legacy_field_write_disabled(ref_id: str, collection: str) -> dict[str
     )
 
 
+# ---------------------------------------------------------------------------
+# Wybór BLOKU FABRYCZNEGO RMU — jedno nazewnictwo dla wszystkich operacji
+# ---------------------------------------------------------------------------
+
+#: Nazwa pola payloadu niosącego wybór BLOKU FABRYCZNEGO rodziny RMU.
+#: JEDNO ŹRÓDŁO PRAWDY dla obu stron kontraktu: kreator wysyła dokładnie ten
+#: klucz, a każda operacja materializująca pole stacji czyta dokładnie ten sam.
+#: Wcześniej wybór bloku jechał z kreatora stacji jako metadana
+#: `catalog_bindings.factory_configuration`, a operacja katalogowa pola miała go
+#: jako pole pierwszej klasy — dwa nazewnictwa jednej prawdy, przez co żadna
+#: operacja stacyjna bloku NIE CZYTAŁA (wcięcie gubiło go bez śladu, koniec
+#: ciągu zapisywał jako martwą metadaną) i rodzina blokowa kończyła się twardym
+#: błędem „uzyj add_sn_bay_from_catalog" bez drogi wyjścia z kreatora.
+POLE_BLOKU_FABRYCZNEGO = "factory_configuration_ref"
+
+#: Nazwa pola payloadu z NUMEREM JEDNOSTKI bloku (1-based). Numer, a nie litera:
+#: blok powtarza litery jednostek (LLT ma dwie jednostki „L"), więc bez numeru
+#: nie wiadomo, które pole bloku powstaje. Jedzie ZAWSZE razem z referencją
+#: bloku — resolver katalogu odrzuca blok bez numeru twardym błędem.
+POLE_JEDNOSTKI_BLOKU = "factory_unit_index"
+
+
+def wybor_bloku_fabrycznego(zrodlo: dict[str, Any]) -> dict[str, Any]:
+    """Wybór bloku fabrycznego z payloadu operacji albo z wpisu pola stacji.
+
+    JEDNA droga odczytu dla obu kształtów wejścia (payload `add_sn_bay*`,
+    wpis `sn_fields[i]` operacji stacyjnych) — nazwy kluczy pochodzą ze stałych
+    modułu, więc „co kreator wysyła" i „co operacja czyta" nie mogą się
+    rozjechać na drugiej kopii literału.
+
+    Zwraca słownik z WYŁĄCZNIE obecnymi kluczami (pusty, gdy wyboru nie ma), bo
+    payload bez bloku ma zostawić migawkę bajtowo niezmienioną. Numer jednostki
+    bez referencji bloku nie jest wyborem bloku — nie ma czego numerować, więc
+    nie jedzie sam.
+    """
+    ref = zrodlo.get(POLE_BLOKU_FABRYCZNEGO)
+    if not isinstance(ref, str) or not ref.strip():
+        return {}
+    wybor: dict[str, Any] = {POLE_BLOKU_FABRYCZNEGO: ref.strip()}
+    numer = zrodlo.get(POLE_JEDNOSTKI_BLOKU)
+    # `bool` jest podklasą `int` — numer jednostki „True" byłby jednostką nr 1
+    # z domysłu, a nie ze wskazania projektanta.
+    if isinstance(numer, int) and not isinstance(numer, bool):
+        wybor[POLE_JEDNOSTKI_BLOKU] = numer
+    return wybor
+
+
+def _aparaty_pola_z_wyboru(
+    *,
+    field_ref: str,
+    bay_template_ref: str | None,
+    switchgear_family_ref: str | None,
+    wybor_bloku: dict[str, Any],
+) -> list[dict[str, Any]]:
+    """Aparaty pierwotne pola z wyboru katalogowego — z blokiem albo bez niego.
+
+    Obie gałęzie wchodzą do TEGO SAMEGO resolvera katalogu (`pole_katalogowe`),
+    więc tor blokowy i modułowy rozstrzyga jeden warunek — `tor_konfiguracji`
+    rodziny. Bez wyboru bloku idzie wejście referencyjne (wynik bajtowo bez
+    zmian dla wszystkich dotychczasowych payloadów); z wyborem bloku idzie
+    wejście payloadowe, które jako jedyne zna jednostkę bloku.
+    """
+    if not wybor_bloku:
+        return aparaty_pola_z_referencji(
+            field_ref=field_ref,
+            bay_template_ref=bay_template_ref,
+            switchgear_family_ref=switchgear_family_ref,
+        )
+    payload: dict[str, Any] = dict(wybor_bloku)
+    if bay_template_ref:
+        payload["bay_template_ref"] = bay_template_ref
+    if switchgear_family_ref:
+        payload["switchgear_family_ref"] = switchgear_family_ref
+    return rozwiaz_aparaty_pola(
+        payload,
+        field_ref=field_ref,
+        bay_template_ref=bay_template_ref,
+        main_apparatus_kind=None,
+    )
+
+
 def _build_field_spec(
     *,
     field_ref: str,
@@ -883,6 +965,7 @@ def _build_field_spec(
     meta: dict[str, Any] | None = None,
     funkcja_pomiaru: str | None = None,
     rodzaj_pomiaru: str | None = None,
+    wybor_bloku: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     spec: dict[str, Any] = {
         "field_ref": field_ref,
@@ -920,6 +1003,14 @@ def _build_field_spec(
         spec["switchgear_family_ref"] = switchgear_family_ref
     if manufacturer_ref:
         spec["manufacturer_ref"] = manufacturer_ref
+    # Wybór BLOKU FABRYCZNEGO jako klucze TOP-LEVEL field_spec, pod TĄ SAMĄ
+    # nazwą, którą niesie payload operacji (`POLE_BLOKU_FABRYCZNEGO`,
+    # `POLE_JEDNOSTKI_BLOKU`). Pole rodziny RMU nie jest luźną szafą, tylko
+    # jednostką konkretnego wyrobu — ta przynależność ma zostać w modelu, i to
+    # pod nazwą, której szuka czytający. exclude gdy brak: pola rodzin
+    # modułowych nie niosą kluczy, więc istniejące migawki są bajtowo
+    # niezmienione.
+    spec.update(wybor_bloku or {})
     # W1 (RECENZJA_L2 §1/§12.1, V12K-145): aparaty PIERWOTNE pola zmaterializowane
     # z szablonu kreatora — czytane przez adapter SLD (`buildStationMiniBaysFrom
     # FieldSpecs` → `projectBayPrimaryDevices`) i read-model pola. exclude puste
@@ -933,18 +1024,22 @@ def _build_field_spec(
     # BEZ ani jednego aparatu. JEDNA prawda dla WSZYSTKICH call-site
     # (GPZ + insert_station + sekcje + pola nN), zero duplikacji.
     #
-    # Rodzina o torze BLOK_RMU jest tu TWARDYM błędem (rozdzielnica wtórna nie
-    # składa się z pojedynczych celek): rozstrzyga `rozwiaz_plan_pola` po
-    # `tor_konfiguracji` rodziny — tym samym predykatem, którym kanał blokowy
-    # pole przyjmuje. Wyjątek `NiezgodnoscKonfiguracjiError` przechwytuje
+    # Rodzina o torze BLOK_RMU wskazana POJEDYNCZĄ CELKĄ (bez `wybor_bloku`)
+    # jest tu TWARDYM błędem — rozdzielnica wtórna nie składa się z luźnych
+    # celek. Wskazana BLOKIEM I NUMEREM JEDNOSTKI przechodzi, bo to jest jej
+    # jedyny poprawny opis. O obu stronach rozstrzyga `rozwiaz_plan_pola` po
+    # `tor_konfiguracji` rodziny — TYM SAMYM predykatem, którym kanał blokowy
+    # pole przyjmuje, więc odrzucenie i przyjęcie nie mogą się rozjechać na
+    # danych brzegowych. Wyjątek `NiezgodnoscKonfiguracjiError` przechwytuje
     # dyspozytor operacji i zamienia na błąd dziedziny z kodem klasy.
     if primary_devices:
         spec["primary_devices"] = list(primary_devices)
-    elif bay_template_ref:
-        materialized = aparaty_pola_z_referencji(
+    elif bay_template_ref or wybor_bloku:
+        materialized = _aparaty_pola_z_wyboru(
             field_ref=field_ref,
             bay_template_ref=bay_template_ref,
             switchgear_family_ref=switchgear_family_ref,
+            wybor_bloku=wybor_bloku or {},
         )
         if materialized:
             spec["primary_devices"] = materialized
@@ -5938,6 +6033,9 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
             "switchgear_family_ref"
         )
         field_bay_template_ref = field_spec.get("bay_template_ref")
+        # Wybór bloku fabrycznego wpisu pola — TA SAMA droga odczytu, co
+        # w operacji katalogowej pola.
+        field_wybor_bloku = wybor_bloku_fabrycznego(field_spec)
         field_protection_ref = field_spec.get("protection_ref")
         field_protection_codes = _resolve_bay_template_protection_codes(
             field_manufacturer_ref, field_bay_template_ref, bay_role
@@ -6047,6 +6145,7 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
                 bay_template_ref=field_bay_template_ref,
                 switchgear_family_ref=field_family_ref,
                 manufacturer_ref=field_manufacturer_ref,
+                wybor_bloku=field_wybor_bloku,
                 tags=["station_sn_field"],
                 meta={
                     "field_role": field_role,
@@ -8732,6 +8831,9 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
             bay_ref = f"bay/{seed}/{field_role.lower()}_{role_index}"
         field_manufacturer_ref = field.get("manufacturer_ref")
         field_bay_template_ref = field.get("bay_template_ref")
+        # Wybór bloku fabrycznego wpisu pola — TA SAMA droga odczytu, co
+        # w operacji katalogowej pola i we wcięciu stacji w odcinek.
+        field_wybor_bloku = wybor_bloku_fabrycznego(field)
         wyposazenie_pola = _wyposazenie_pola_z_wpisu(field)
         if wyposazenie_pola:
             wyposazenie_pol.append((f"field/{seed}/{index}", field_role, wyposazenie_pola))
@@ -8751,6 +8853,7 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
             "source_status": field.get("source_status"),
             "source_refs": list(field.get("source_refs") or []),
             "catalog_bindings": field.get("catalog_bindings"),
+            **field_wybor_bloku,
             "equipment_refs": [
                 ref
                 for ref in field.get("equipment_refs", [])
@@ -8788,10 +8891,11 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
         # Addytywnie: klucz powstaje wyłącznie gdy referencja faktycznie daje
         # aparaty, więc payloady bez szablonu (albo z referencją spoza katalogu)
         # mają migawkę bajtowo niezmienioną.
-        aparaty_pola = aparaty_pola_z_referencji(
+        aparaty_pola = _aparaty_pola_z_wyboru(
             field_ref=field_spec_entry["field_ref"],
             bay_template_ref=field_bay_template_ref,
             switchgear_family_ref=field.get("switchgear_family_ref"),
+            wybor_bloku=field_wybor_bloku,
         )
         if aparaty_pola:
             field_spec_entry["primary_devices"] = aparaty_pola

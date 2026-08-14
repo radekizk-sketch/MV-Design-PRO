@@ -1630,6 +1630,8 @@ describe('KreatorStacjiSnNn — tory konfiguracji rozdzielnicy (S3)', () => {
       field_role: string;
       bay_template_ref: string | null;
       catalog_bindings: Record<string, { catalog_item_id?: string }> | null;
+      factory_configuration_ref?: string;
+      factory_unit_index?: number;
     }>;
     expect(pola.map((f) => f.field_role)).toEqual([
       'LINIA_OUT',
@@ -1639,11 +1641,16 @@ describe('KreatorStacjiSnNn — tory konfiguracji rozdzielnicy (S3)', () => {
     // Pola biorą karty katalogowe WYBRANEJ rodziny (nie cudzego pakietu).
     expect(pola.map((f) => f.bay_template_ref)).toEqual(['tpl-tpm-l', 'tpl-tpm-l', 'tpl-tpm-t']);
     // Przynależność do bloku zostaje w modelu — pole RMU nie jest luźną szafą.
+    // POLEM PIERWSZEJ KLASY payloadu, tą samą nazwą, którą czyta operacja
+    // (dawna metadana `catalog_bindings.factory_configuration` była drugim
+    // nazewnictwem tej samej prawdy i żadna operacja stacyjna jej nie czytała).
     for (const pole of pola) {
-      expect(pole.catalog_bindings?.factory_configuration?.catalog_item_id).toBe(
-        'ZPUE_TPM_AIR__LLT',
-      );
+      expect(pole.factory_configuration_ref).toBe('ZPUE_TPM_AIR__LLT');
+      expect(pole.catalog_bindings).not.toHaveProperty('factory_configuration');
     }
+    // Numer jednostki ODRÓŻNIA pola bloku: blok LLT ma DWIE jednostki „L",
+    // więc bez numeru nie wiadomo, które pole bloku powstaje.
+    expect(pola.map((f) => f.factory_unit_index)).toEqual([1, 2, 3]);
   });
 
   it('tor BLOKOWY RMU: zmiana bloku PRZEBUDOWUJE pola (LLT → LL)', async () => {
@@ -1711,9 +1718,12 @@ describe('KreatorStacjiSnNn — tory konfiguracji rozdzielnicy (S3)', () => {
       catalog_bindings: Record<string, unknown> | null;
     }>;
     // Pola należą do rodziny modułowej, a przynależność do bloku znika razem
-    // z wyborem wyrobu (klucz jest nieobecny, nie pusty).
+    // z wyborem wyrobu (klucz jest nieobecny, nie pusty) — w OBU nazewnictwach:
+    // ani jako pole pierwszej klasy, ani jako dawna metadana wiązań.
     expect(pola.every((f) => f.bay_template_ref?.startsWith('tpl-tpm') !== true)).toBe(true);
     for (const pole of pola) {
+      expect(pole).not.toHaveProperty('factory_configuration_ref');
+      expect(pole).not.toHaveProperty('factory_unit_index');
       expect(pole.catalog_bindings).not.toHaveProperty('factory_configuration');
     }
   });

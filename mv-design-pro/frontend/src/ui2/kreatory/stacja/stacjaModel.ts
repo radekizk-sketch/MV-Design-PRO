@@ -109,6 +109,14 @@ export interface PoleSnWpis {
   field_role: SnFieldRole;
   bay_template_ref: string | null;
   apparatus_catalog_ref: string | null;
+  /**
+   * Blok fabryczny i numer jednostki (1-based) — WYŁĄCZNIE dla wpisów
+   * zbudowanych z bloku RMU (`polaZBloku`). Przynależność do wyrobu jest cechą
+   * KONKRETNEGO wpisu pola, nie całego kroku kreatora: jednostki żyją i giną
+   * razem z wyborem bloku, więc ich tożsamość jedzie tam, gdzie one.
+   */
+  factory_configuration_ref?: string;
+  factory_unit_index?: number;
 }
 
 /** Wyposażenie pomiarowo-zabezpieczeniowe pola (krok „Pomiar i zabezpieczenia"). */
@@ -749,13 +757,19 @@ export function zbudujWyposazeniePolaDoPayloadu(
  * B-3: wyposażenie pola (krok 4) jedzie W TYM SAMYM wpisie pola — dopasowanie
  * po identyfikatorze wpisu, nie po roli (dwa pola tej samej roli dostają swoje
  * wyposażenie, bez zgadywania kolejności).
+ *
+ * BLOK FABRYCZNY RMU jedzie POLAMI PIERWSZEJ KLASY payloadu
+ * (`factory_configuration_ref` + `factory_unit_index`) — dokładnie tymi samymi
+ * nazwami, których używa kontrakt operacji `add_sn_bay_from_catalog`. Dawna
+ * droga (metadana `catalog_bindings.factory_configuration`) została usunięta:
+ * była drugim nazewnictwem tej samej prawdy, którego żadna operacja stacyjna
+ * nie czytała, więc rodzina blokowa kończyła zapis twardym błędem katalogowym.
  */
 export function zbudujPolaSnZWpisow(
   wpisy: readonly PoleSnWpis[],
   choice: StationSwitchgearChoice,
   szablony: readonly CompleteMvBayTemplateSummary[],
   wyposazenie: Readonly<Record<string, Record<string, unknown> | null>> = {},
-  factoryConfigurationRef: string | null = null,
 ): StationSnFieldTemplate[] {
   return wpisy.map((wpis) => {
     const szablon = wpis.bay_template_ref
@@ -779,22 +793,18 @@ export function zbudujPolaSnZWpisow(
               switchgear_family_ref: choice.switchgearFamilyRef,
               source_status: szablon.source_status,
             },
-            // Pole pochodzące z BLOKU FABRYCZNEGO niesie ref bloku: pole RMU nie
-            // jest luźną szafą, tylko jednostką konkretnego wyrobu, i ta
-            // przynależność ma zostać w modelu (operacja przenosi
-            // `catalog_bindings` do metadanych pola bez zmian). Rodziny modułowe
-            // klucza NIE dostają — brak bloku to brak wpisu, nie pusty ref.
-            ...(factoryConfigurationRef
-              ? {
-                  factory_configuration: {
-                    catalog_namespace: 'ROZDZIELNICA_SN',
-                    catalog_item_id: factoryConfigurationRef,
-                    switchgear_family_ref: choice.switchgearFamilyRef,
-                  },
-                }
-              : {}),
           }
         : null,
+      // Rodziny modułowe kluczy bloku NIE dostają — brak bloku to brak wpisu,
+      // nie pusty ref. Blok i numer jednostki idą PARĄ z tego samego wpisu:
+      // referencja bez numeru nie mówi, które pole bloku powstaje.
+      ...(wpis.factory_configuration_ref !== undefined
+      && wpis.factory_unit_index !== undefined
+        ? {
+            factory_configuration_ref: wpis.factory_configuration_ref,
+            factory_unit_index: wpis.factory_unit_index,
+          }
+        : {}),
       ...(wyposazenie[wpis.id] ? { equipment: wyposazenie[wpis.id] as Record<string, unknown> } : {}),
     };
   });

@@ -772,6 +772,72 @@ describe('B-3 — wyposażenie pola w payloadzie operacji stacyjnej', () => {
     expect(pola[0].equipment).toBeUndefined();
     expect(pola[1].equipment).toEqual({ ct: { catalog_ref: 'ct-400-5' } });
   });
+
+  /**
+   * BLOK FABRYCZNY — pola pierwszej klasy payloadu, nie metadana wiązań.
+   * Nazwy kluczy są TE SAME, których używa kontrakt operacji
+   * `add_sn_bay_from_catalog` i które czytają obie operacje stacyjne; dawna
+   * droga (`catalog_bindings.factory_configuration`) została usunięta na amen.
+   */
+  it('wpis z bloku daje POLA PIERWSZEJ KLASY, a wiązania nie niosą już bloku', () => {
+    const pola = zbudujPolaSnZWpisow(
+      [
+        {
+          id: 'blok-1',
+          field_role: 'LINIA_OUT',
+          bay_template_ref: null,
+          apparatus_catalog_ref: 'ap-1',
+          factory_configuration_ref: 'ZPUE_TPM_AIR__LLT',
+          factory_unit_index: 2,
+        },
+      ],
+      { manufacturerRef: 'ZPUE_WLOSZCZOWA', switchgearFamilyRef: 'ZPUE_TPM_AIR' },
+      [],
+    );
+    expect(pola[0].factory_configuration_ref).toBe('ZPUE_TPM_AIR__LLT');
+    expect(pola[0].factory_unit_index).toBe(2);
+    expect(pola[0].catalog_bindings ?? {}).not.toHaveProperty('factory_configuration');
+  });
+
+  it('wpis BEZ bloku nie dostaje ani jednego klucza bloku (brak ≠ pusty ref)', () => {
+    const pola = zbudujPolaSnZWpisow(
+      [
+        {
+          id: 'pole-1',
+          field_role: 'LINIA_ODG',
+          bay_template_ref: null,
+          apparatus_catalog_ref: 'ap-1',
+        },
+      ],
+      { manufacturerRef: 'ZPUE_WLOSZCZOWA', switchgearFamilyRef: null },
+      [],
+    );
+    expect(pola[0]).not.toHaveProperty('factory_configuration_ref');
+    expect(pola[0]).not.toHaveProperty('factory_unit_index');
+  });
+
+  /**
+   * PREDYKATY PARAMI: referencja bloku i numer jednostki jadą RAZEM albo wcale.
+   * Wpis z samą referencją opisywałby „jakieś pole tego wyrobu" — operacja
+   * odrzuca taki payload twardym błędem, więc kreator nie ma go wysyłać.
+   */
+  it('wpis z blokiem BEZ numeru jednostki nie wysyła połowy pary', () => {
+    const pola = zbudujPolaSnZWpisow(
+      [
+        {
+          id: 'blok-1',
+          field_role: 'LINIA_OUT',
+          bay_template_ref: null,
+          apparatus_catalog_ref: 'ap-1',
+          factory_configuration_ref: 'ZPUE_TPM_AIR__LLT',
+        },
+      ],
+      { manufacturerRef: 'ZPUE_WLOSZCZOWA', switchgearFamilyRef: 'ZPUE_TPM_AIR' },
+      [],
+    );
+    expect(pola[0]).not.toHaveProperty('factory_configuration_ref');
+    expect(pola[0]).not.toHaveProperty('factory_unit_index');
+  });
 });
 
 
