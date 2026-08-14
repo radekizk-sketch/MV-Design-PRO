@@ -468,3 +468,32 @@ kabli, MCB 10 kA, nastawy MCCB, bramki gG) — NAPRAWA-A w biegu z flipem
 kroków 5/7/10 testu E2E na pełny przebieg. Rozjazd `add_nn_load`
 (tryb ekspercki bez katalogu vs Catalog Binding Rule) czeka na decyzję
 właściciela — wiersz w rejestrze.
+
+---
+
+## Stanowisko nN (2026-08-14, runda 8 — CEL „PEŁNY WERDYKT nN")
+
+**Deklaracja celu (dyrektywa właściciela: zaprojektuj i wykonaj w 100%).**
+Po domknięciu P0 wykonujemy jednym programem domknięcie WSZYSTKICH długów
+nazwanych w bramce E2E §80 i odbiorach:
+- **D1 — MCCB pełny łańcuch** (luka KONSUMENTA z odbioru NAPRAWA-A):
+  pola nastaw wyzwalacza na typie aparatu + dane z kart producentów
+  (2 źródła) + `KandydatAparatuNn` z nastawami + `_kryterium_i2` konsumuje
+  nastawy + wpięcie `MCCB_ELECTRONIC` (P0.7) — cel: RGnN (Ik″max≈31,9 kA)
+  dostaje PEŁNĄ rekomendację (MCCB Icu 36–50 kA), pinowane w E2E.
+- **D2 — SWZ decyzyjne dla wkładek gG**: `ocen_swz` traci bezwarunkowy
+  branch NIEROZSTRZYGALNE — werdykt z bramek KONWENCJONALNYCH IEC 60269
+  (Inf/If + czasy umowne, zasilone w P0.7) tam gdzie wystarczają; I²t —
+  trzecie źródło rozstrzygające albo uczciwe None dalej.
+- **D3 — fantom ST-03** (inna przyczyna niż naprawiony fantom migracji) —
+  diagnoza i naprawa u źródła.
+- **D4 — rozjazd `add_nn_load`**: rekonsyliacja POMIAREM ISTNIEJĄCEGO
+  kanonu — tryb `EKSPERCKI_RECZNY` jest udokumentowany i przypięty testami
+  w domenie, więc bramka API sprzeczna z własnym kontraktem domeny;
+  wyrównujemy bramkę do kontraktu (jawny tryb ekspercki przechodzi ze
+  znacznikiem pochodzenia), kreator domyślnie katalog-first bez zmian.
+**Granice**: nasze pliki to `nn_device_selection`/`protection_lv_curves`/
+`swz/werdykt.py`/`catalog_completion`/`domain_ops_policy`/katalog nN/E2E;
+`coordination/**` NIETYKALNE (wasza granica utrzymana). Kolizji z falą 12
+(EKRAN-N1, TCC) nie przewidujemy; gdyby TCC chciał dotknąć
+`protection_lv_curves` — wiersz w rejestrze przed edycją.
