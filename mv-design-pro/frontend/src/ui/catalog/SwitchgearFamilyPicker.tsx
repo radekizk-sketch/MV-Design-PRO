@@ -14,6 +14,8 @@
 
 import { clsx } from 'clsx';
 
+import type { BayDeviceInstanceWire, BayKind } from './BayTemplatePicker';
+
 export interface SwitchgearFamily {
   readonly switchgear_family_ref: string;
   readonly manufacturer_ref: string;
@@ -43,6 +45,17 @@ export interface SwitchgearFamily {
     | 'prefabrykowana'
     | 'unknown';
   /**
+   * TOR KONFIGURACJI rodziny — pole WYLICZANE przez backend z
+   * `construction_type` (`switchgear_family.py`, `TOR_KONFIGURACJI_WG_KONSTRUKCJI`)
+   * i wystawiane addytywnie przez `GET /api/catalog/switchgear-families`:
+   *  · `MODULARNY` — rozdzielnicę SKŁADA się z pojedynczych katalogowych pól,
+   *  · `BLOK_RMU` — najpierw BLOK fabryczny o stałej sekwencji jednostek
+   *    (RMU nie jest zbiorem luźnych szaf), potem doposażenie jednostek.
+   * `null`/brak = rodzina nie zadeklarowała konstrukcji — jawny brak, NIGDY
+   * domyślny tor (konfigurator odmawia wtedy budowania na tej rodzinie).
+   */
+  readonly tor_konfiguracji?: 'MODULARNY' | 'BLOK_RMU' | null;
+  /**
    * Status weryfikacji rodziny. `repo_verified` = dane z publicznej strony
    * produktowej producenta zweryfikowane w repozytorium katalogu — TAKI status
    * wystawia katalog referencyjny dla wszystkich rodzin (`switchgear/families.py`),
@@ -54,6 +67,42 @@ export interface SwitchgearFamily {
     | 'user_defined'
     | 'requires_catalog'
     | 'deprecated';
+  readonly source_refs: readonly string[];
+  readonly notes_pl: string | null;
+}
+
+/**
+ * Jednostka funkcjonalna bloku fabrycznego RMU — kontrakt
+ * `FactoryConfigurationUnit` (`switchgear/factory_configuration.py`), wystawiany
+ * subzasobem `GET /api/catalog/switchgear-families/{ref}/factory-configurations`.
+ *
+ * `unit_code` to litera KATALOGOWA producenta (L/T/W dla ZPUE TPM Air, C/F/V dla
+ * ABB SafeRing) — nomenklatura wyrobu, nie kod wewnętrzny. `apparatus_kinds` to
+ * aparaty toru głównego, które ODRÓŻNIAJĄ jednostkę (SafeRing CCF vs CCV to dwa
+ * różne wyroby właśnie tą pozycją). `width_mm === null` = karta jej nie podaje.
+ */
+export interface FactoryConfigurationUnitWire {
+  readonly unit_code: string;
+  readonly unit_name_pl: string;
+  readonly bay_kind: BayKind;
+  readonly apparatus_kinds: readonly BayDeviceInstanceWire['apparatus_kind'][];
+  readonly width_mm: number | null;
+}
+
+/**
+ * Blok fabryczny rodziny RMU — kontrakt `FactoryConfiguration`. `unit_sequence`
+ * i `total_width_mm` są po stronie backendu polami WYLICZANYMI (sekwencja liter;
+ * suma szerokości jednostek). `total_width_mm === null` znaczy „choć jedna
+ * jednostka nie ma szerokości w karcie", nigdy „zero milimetrów".
+ */
+export interface FactoryConfigurationWire {
+  readonly configuration_ref: string;
+  readonly switchgear_family_ref: string;
+  readonly code: string;
+  readonly name_pl: string;
+  readonly units: readonly FactoryConfigurationUnitWire[];
+  readonly unit_sequence: string;
+  readonly total_width_mm: number | null;
   readonly source_refs: readonly string[];
   readonly notes_pl: string | null;
 }

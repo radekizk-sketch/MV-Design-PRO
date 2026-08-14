@@ -16,7 +16,7 @@
  * atomowa i kreator uczciwie raportuje krok, który zawiódł.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 
 import { useAppStateStore } from '../../../ui/app-state';
 import {
@@ -25,6 +25,7 @@ import {
   fetchCompleteBayTemplates,
   fetchConverterTypes,
   fetchCtTypes,
+  fetchFactoryConfigurations,
   fetchManufacturers,
   fetchMvApparatusTypes,
   fetchMvProtectionDeviceTypes,
@@ -137,6 +138,17 @@ import {
   type TypStacji,
   type WyborRozdzielnicy,
 } from './stacjaModel';
+import {
+  aparaturaJednostkiPl,
+  naglowekRodziny,
+  polaZBloku,
+  rozlozBlok,
+  szerokoscBlokuPl,
+  torRodziny,
+  wyposazenieSzablonu,
+  type BlokFabryczny,
+} from './konfiguratorRozdzielnicy';
+import { KLUCZE_OPERACJI_STACYJNEJ, KartaWyposazeniaPola } from './KartaWyposazeniaPola';
 import { PodgladRozdzielnicySn } from './PodgladRozdzielnicySn';
 import type { StatusKonfiguracji } from './podgladRozdzielnicy';
 import { pobierzPodgladStacji, type PodgladStacji } from './stacjaPodglad';
@@ -252,6 +264,14 @@ export function KreatorStacjiSnNn() {
   const [bladRozdzielnicy, setBladRozdzielnicy] = useState<string | null>(null);
   const [aparaty, setAparaty] = useState<MVApparatusCatalogType[]>([]);
   const [bladAparatow, setBladAparatow] = useState<string | null>(null);
+
+  // Tor BLOK_RMU — konfiguracje fabryczne WYBRANEJ rodziny (subzasób katalogu).
+  // Stan pobrania jest jawny, bo „ta rodzina nie ma bloków w katalogu" i „bloki
+  // jeszcze się nie pobrały" to dwa różne komunikaty: pierwszy jest werdyktem o
+  // katalogu, drugi tylko chwilą oczekiwania.
+  const [bloki, setBloki] = useState<BlokFabryczny[]>([]);
+  const [blokiStan, setBlokiStan] = useState<'laduje' | 'gotowe'>('gotowe');
+  const [bladBlokow, setBladBlokow] = useState<string | null>(null);
 
   // Krok 0 — biblioteka szablonów stacji.
   const [kategoriaSzablonu, setKategoriaSzablonu] = useState<string>(KATEGORIE_SZABLONOW[0]);
@@ -590,6 +610,66 @@ export function KreatorStacjiSnNn() {
     () => rodzinyDobrane.find((f) => f.switchgear_family_ref === dane.switchgear_family_ref) ?? null,
     [dane.switchgear_family_ref, rodzinyDobrane],
   );
+  /**
+   * TOR KONFIGURACJI wybranej rodziny — czytany z katalogu, nie z formularza
+   * (kanon §3: pole WYLICZANE przez backend z konstrukcji rodziny). `null` =
+   * rodzina niewybrana albo bez zadeklarowanej konstrukcji; kreator nie zgaduje
+   * wtedy toru pracy, tylko nazywa brak.
+   */
+  const torKonfiguracji = useMemo(() => torRodziny(selectedFamily), [selectedFamily]);
+
+  // Konfiguracje fabryczne rodziny RMU — subzasób WYBRANEJ rodziny. Lista jest
+  // czyszczona na wejściu: bloki poprzedniej rodziny wyglądają dokładnie jak
+  // prawdziwe, a opisują inny wyrób.
+  useEffect(() => {
+    const rodzinaRef = selectedFamily?.switchgear_family_ref ?? null;
+    setBloki([]);
+    setBladBlokow(null);
+    if (rodzinaRef === null || torKonfiguracji !== 'BLOK_RMU') {
+      setBlokiStan('gotowe');
+      return undefined;
+    }
+    let cancelled = false;
+    setBlokiStan('laduje');
+    fetchFactoryConfigurations(rodzinaRef)
+      .then((odp) => {
+        if (cancelled) return;
+        setBloki(Array.isArray(odp) ? odp : []);
+        setBlokiStan('gotowe');
+      })
+      .catch((e: unknown) => {
+        if (cancelled) return;
+        setBloki([]);
+        setBlokiStan('gotowe');
+        setBladBlokow(getCatalogErrorMessage(e));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedFamily, torKonfiguracji]);
+
+  const wybranyBlok = useMemo<BlokFabryczny | null>(
+    () => bloki.find((b) => b.configuration_ref === dane.factory_configuration_ref) ?? null,
+    [bloki, dane.factory_configuration_ref],
+  );
+
+  /** Jednostki wybranego bloku z rolami kontraktu — readout składu wyrobu. */
+  const jednostkiBloku = useMemo(() => rozlozBlok(wybranyBlok), [wybranyBlok]);
+
+  /** Nagłówek rodziny — producent, klasy znamionowe, technologia, tor pracy. */
+  const wierszeNaglowkaRodziny = useMemo(
+    () => naglowekRodziny(selectedFamily, selectedManufacturer?.name ?? dane.manufacturer_ref),
+    [dane.manufacturer_ref, selectedFamily, selectedManufacturer],
+  );
+
+  // Blok spoza listy bieżącej rodziny → wyczyszczenie wyboru (zmiana rodziny
+  // zmienia wyrób, więc blok poprzedniej rodziny przestaje istnieć).
+  useEffect(() => {
+    if (!dane.factory_configuration_ref) return;
+    if (bloki.some((b) => b.configuration_ref === dane.factory_configuration_ref)) return;
+    setDane((p) => ({ ...p, factory_configuration_ref: null }));
+  }, [bloki, dane.factory_configuration_ref]);
+
   const aparatDomyslny = aparatyZdatne[0]?.id ?? null;
   /** Domyślny aparat DLA ROLI — pierwszy zdatny z listy zawężonej rolą pola. */
   const aparatDomyslnyRoli = useCallback(
@@ -604,10 +684,37 @@ export function KreatorStacjiSnNn() {
     [rodzajeAparatuRoli],
   );
 
+  /** Katalogowe pole rodziny dla roli — dobór z pakietu wybranej rodziny. */
+  const szablonDlaRoli = useCallback(
+    (rola: SnFieldRole) => szablonyRola[rola]?.template_ref ?? null,
+    [szablonyRola],
+  );
+
+  /**
+   * Karta katalogowa WSKAZANA w polu — źródło składu pola na karcie wyposażenia.
+   * Szukamy w pełnym zbiorze szablonów, nie w zawężonym do bieżącego wyboru:
+   * gdy projektant zmieni rodzinę, pole przez chwilę wskazuje kartę poprzedniej
+   * i lepiej pokazać jej prawdziwy skład niż pusty stan sugerujący pole bez
+   * wyposażenia.
+   */
+  const szablonPolaWpisu = useCallback(
+    (pole: PoleSnWpis) =>
+      pole.bay_template_ref
+        ? szablony.find((t) => t.template_ref === pole.bay_template_ref) ?? null
+        : null,
+    [szablony],
+  );
+
   // Lista pól SN startuje od ról rodzaju stacji i pozostaje EDYTOWALNA (krok 3).
   // Zmiana rodzaju stacji przebudowuje listę domyślną — projektant świadomie
   // wybiera układ pól, więc zmiana rodzaju jest decyzją, nie przypadkiem.
+  //
+  // TOR BLOK_RMU jest z tego wyłączony: tam listę pól wyznacza BLOK FABRYCZNY
+  // (efekt niżej), a nie role rodzaju stacji. Gdyby oba mechanizmy pisały do tej
+  // samej listy, sekwencja jednostek wyrobu byłaby nadpisywana rolami stacji —
+  // czyli kreator opisywałby blok, którego producent nie robi.
   useEffect(() => {
+    if (torKonfiguracji === 'BLOK_RMU') return;
     setDane((p) => {
       if (p.pola.length > 0 && p.pola.every((pole) => rolePol.includes(pole.field_role))) {
         return p;
@@ -615,16 +722,62 @@ export function KreatorStacjiSnNn() {
       if (p.pola.length > 0 && p.template_id) return p;
       return { ...p, pola: domyslneWpisyPol(p.station_type, szablonyRola, aparatDomyslnyRoli) };
     });
-  }, [aparatDomyslnyRoli, rolePol, szablonyRola]);
+  }, [aparatDomyslnyRoli, rolePol, szablonyRola, torKonfiguracji]);
 
-  // Uzupełnienie brakujących wskazań w istniejących wpisach (szablon pola
-  // dobrany katalogiem, aparat z listy zdatnej DLA ROLI) — bez nadpisywania
-  // wyborów projektanta.
+  /**
+   * TOR BLOK_RMU — pola rozdzielnicy WYNIKAJĄ z wybranego bloku fabrycznego.
+   * Sekwencja jednostek jest stałą cechą wyrobu, więc lista pól przebudowuje się
+   * przy każdej zmianie bloku; wyposażenie poprzedniego bloku odchodzi razem
+   * z jego wpisami (klucze wyposażenia są per wpis pola).
+   *
+   * Brak wybranego bloku = ZERO pól: rodzina RMU bez bloku nie jest „pustą
+   * rozdzielnicą do złożenia z pól", tylko wyborem, którego jeszcze nie ma.
+   */
+  useEffect(() => {
+    if (torKonfiguracji !== 'BLOK_RMU') return;
+    const polaBloku = polaZBloku(wybranyBlok, szablonDlaRoli, aparatDomyslnyRoli);
+    setDane((p) => {
+      const bezZmian =
+        p.pola.length === polaBloku.length
+        && p.pola.every((pole, index) => pole.id === polaBloku[index]?.id);
+      if (bezZmian) return p;
+      return {
+        ...p,
+        pola: polaBloku,
+        wyposazenie: Object.fromEntries(
+          Object.entries(p.wyposazenie).filter(([klucz]) =>
+            polaBloku.some((pole) => pole.id === klucz),
+          ),
+        ),
+      };
+    });
+  }, [aparatDomyslnyRoli, szablonDlaRoli, torKonfiguracji, wybranyBlok]);
+
+  /**
+   * Uzupełnienie wskazań w istniejących wpisach: katalogowe pole z pakietu
+   * WYBRANEJ rodziny, aparat z listy zdatnej DLA ROLI — bez nadpisywania
+   * świadomych wyborów projektanta.
+   *
+   * ZBIÓR OFERTY I ZBIÓR ZACHOWANIA TO JEDEN ZBIÓR (`szablonyWyboru`). Wcześniej
+   * warunek brzmiał „zostaw, cokolwiek pole ma" (`pole.bay_template_ref ?? …`),
+   * więc pole zachowywało KARTĘ KATALOGOWĄ INNEGO WYROBU po zmianie producenta
+   * albo rodziny: picker jej już nie oferował, ale wpis ją trzymał. Skutek był
+   * cichy i dotkliwy — szablon spoza pakietu nie odnajdywał się przy budowie
+   * pól, więc pole szło do operacji ze statusem „wymaga katalogu", zapis
+   * zostawał zablokowany, a ekran nie mówił, dlaczego. Dwa niezależne warunki,
+   * które „dziś się zgadzają" (bo cały katalog testowy miał jedną rodzinę),
+   * czekały na dane brzegowe: drugą rodzinę w katalogu.
+   */
   useEffect(() => {
     setDane((p) => {
       let zmiana = false;
       const pola = p.pola.map((pole) => {
-        const szablonRef = pole.bay_template_ref ?? szablonyRola[pole.field_role]?.template_ref ?? null;
+        const wskazanieAktualne =
+          pole.bay_template_ref !== null
+          && szablonyWyboru.some((t) => t.template_ref === pole.bay_template_ref);
+        const szablonRef = wskazanieAktualne
+          ? pole.bay_template_ref
+          : szablonyRola[pole.field_role]?.template_ref ?? null;
         const aparatRef = pole.apparatus_catalog_ref ?? aparatDomyslnyRoli(pole.field_role);
         if (szablonRef === pole.bay_template_ref && aparatRef === pole.apparatus_catalog_ref) {
           return pole;
@@ -634,7 +787,7 @@ export function KreatorStacjiSnNn() {
       });
       return zmiana ? { ...p, pola } : p;
     });
-  }, [aparatDomyslnyRoli, szablonyRola]);
+  }, [aparatDomyslnyRoli, szablonyRola, szablonyWyboru]);
 
   /**
    * Wyposażenie pól (krok 4) per WPIS pola — jedzie w TEJ SAMEJ operacji co
@@ -659,8 +812,10 @@ export function KreatorStacjiSnNn() {
         },
         szablonyWyboru,
         wyposazenieDoPayloadu,
+        dane.factory_configuration_ref,
       ),
     [
+      dane.factory_configuration_ref,
       dane.manufacturer_ref,
       dane.pola,
       dane.switchgear_family_ref,
@@ -1567,6 +1722,124 @@ export function KreatorStacjiSnNn() {
             />
           </KreatorSiatka>
 
+          {/* NAGŁÓWEK WYBRANEJ RODZINY (kanon §3) — klasy znamionowe, technologia
+              i TOR KONFIGURACJI. Wyłącznie readout katalogu: brak danej pokazujemy
+              jako brak, bo zmyślony milimetr czy amper wchodzi do dokumentacji. */}
+          {selectedFamily ? (
+            <KreatorSekcja
+              tytul={T.naglowekRodzinyTytul}
+              testid="mvd-kreator-stacja-naglowek-rodziny"
+            >
+              <dl className="mvd-kreator-naglowek-rodziny">
+                {wierszeNaglowkaRodziny.map((wiersz) => (
+                  <Fragment key={wiersz.etykieta}>
+                    <dt>{wiersz.etykieta}</dt>
+                    <dd data-brak={wiersz.wartosc === null ? 'tak' : 'nie'}>
+                      {wiersz.wartosc ?? T.naglowekBrakDanej}
+                    </dd>
+                  </Fragment>
+                ))}
+              </dl>
+            </KreatorSekcja>
+          ) : null}
+
+          {/* Rodzina bez zadeklarowanej konstrukcji — katalog nie wyznacza toru
+              pracy, a kreator go nie zgaduje (kanon §3: jawny brak, nigdy tor
+              domyślny). */}
+          {selectedFamily && torKonfiguracji === null ? (
+            <KreatorSekcja tytul={T.torBrakTytul} testid="mvd-kreator-stacja-tor-brak">
+              <KreatorInfo>{T.torBrakOpis}</KreatorInfo>
+            </KreatorSekcja>
+          ) : null}
+
+          {/* TOR MODUŁOWY — rozdzielnica składana z katalogowych pól rodziny. */}
+          {torKonfiguracji === 'MODULARNY' ? (
+            <KreatorSekcja tytul={T.torModularnyTytul} testid="mvd-kreator-stacja-tor-modularny">
+              <KreatorInfo>{T.torModularnyOpis}</KreatorInfo>
+            </KreatorSekcja>
+          ) : null}
+
+          {/* TOR BLOKOWY (RMU) — najpierw BLOK fabryczny, potem doposażenie
+              jednostek. Sekwencja jednostek jest cechą wyrobu, więc pól nie da
+              się tu dostawiać ani usuwać. */}
+          {torKonfiguracji === 'BLOK_RMU' ? (
+            <KreatorSekcja tytul={T.torBlokTytul} testid="mvd-kreator-stacja-tor-blok">
+              <KreatorInfo>{T.torBlokOpis}</KreatorInfo>
+
+              {bladBlokow ? (
+                <KreatorInfo testid="mvd-kreator-stacja-blok-blad">{bladBlokow}</KreatorInfo>
+              ) : null}
+
+              {/* UCZCIWY STAN ZEROWY: rodzina RMU bez transkrybowanych bloków.
+                  Rozróżniamy „katalog ich nie ma" od „jeszcze się nie pobrały". */}
+              {!bladBlokow && blokiStan === 'gotowe' && bloki.length === 0 ? (
+                <KreatorSekcja tytul={T.blokBrakTytul} testid="mvd-kreator-stacja-blok-brak">
+                  <KreatorInfo>{T.blokBrakOpis}</KreatorInfo>
+                </KreatorSekcja>
+              ) : null}
+
+              {bloki.length > 0 ? (
+                <PoleKatalogu
+                  etykieta={T.blokWybor}
+                  wartosc={dane.factory_configuration_ref}
+                  onZmiana={(v) => zmien('factory_configuration_ref', v)}
+                  opcje={bloki.map((blok) => ({
+                    id: blok.configuration_ref,
+                    etykieta: `${blok.code} · ${blok.name_pl} · ${blok.unit_sequence}`,
+                  }))}
+                  status={blokiStan === 'laduje' ? 'loading' : 'ready'}
+                  placeholder={T.blokPlaceholder}
+                  pomoc={T.blokPomoc}
+                  wymagane
+                  testid="mvd-kreator-stacja-blok"
+                />
+              ) : null}
+
+              {wybranyBlok ? (
+                <>
+                  <RzadWartosci
+                    etykieta={T.blokSekwencja}
+                    wartosc={wybranyBlok.unit_sequence}
+                    testid="mvd-kreator-stacja-blok-sekwencja"
+                  />
+                  <RzadWartosci
+                    etykieta={T.blokSzerokosc}
+                    wartosc={szerokoscBlokuPl(wybranyBlok) ?? T.naglowekBrakDanej}
+                    testid="mvd-kreator-stacja-blok-szerokosc"
+                  />
+                  <div className="mvd-pole-etykieta">{T.blokJednostkiTytul}</div>
+                  <ul className="mvd-kreator-jednostki-bloku">
+                    {jednostkiBloku.map((wpis) => (
+                      <li
+                        key={`${wpis.pozycja}-${wpis.jednostka.unit_code}`}
+                        data-testid={`mvd-kreator-stacja-blok-jednostka-${wpis.pozycja}`}
+                      >
+                        <span className="mvd-kreator-kod-jednostki">
+                          {T.blokJednostka(wpis.pozycja, wpis.jednostka.unit_code)}
+                        </span>
+                        <span className="mvd-kreator-nazwa-aparatu">
+                          {`${wpis.jednostka.unit_name_pl} · ${aparaturaJednostkiPl(wpis.jednostka)}`}
+                        </span>
+                        {wpis.rola === null ? (
+                          <span
+                            className="mvd-kreator-podpowiedz"
+                            data-testid={`mvd-kreator-stacja-blok-jednostka-bez-roli-${wpis.pozycja}`}
+                          >
+                            {T.jednostkaBezRoli}
+                          </span>
+                        ) : null}
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              ) : bloki.length > 0 ? (
+                <KreatorInfo testid="mvd-kreator-stacja-blok-niewybrany">
+                  {T.blokNiewybrany}
+                </KreatorInfo>
+              ) : null}
+            </KreatorSekcja>
+          ) : null}
+
           {dane.manufacturer_ref && rodzinyDobrane.length === 0 ? (
             <KreatorInfo testid="mvd-kreator-stacja-brak-rodzin">{T.brakRodzin}</KreatorInfo>
           ) : null}
@@ -1583,19 +1856,31 @@ export function KreatorStacjiSnNn() {
               testid="mvd-kreator-stacja-brak-pola-tr"
             >
               <KreatorInfo>{T.polaBrakTrOpis}</KreatorInfo>
-              <button
-                type="button"
-                className="mvd-kreator-btn mvd-kreator-btn--glowna"
-                onClick={przywrocPoleTransformatorowe}
-                data-testid="mvd-kreator-stacja-przywroc-pole-tr"
-              >
-                {T.polaPrzywrocTr}
-              </button>
+              {/* Przywrócenie pola TR dokłada pole do listy — w torze blokowym
+                  byłoby to dostawienie jednostki do bloku fabrycznego, czyli opis
+                  wyrobu, którego producent nie robi. Tam drogą jest wybór bloku
+                  z jednostką transformatorową (np. L-L-T), więc przycisku nie ma. */}
+              {torKonfiguracji === 'BLOK_RMU' ? null : (
+                <button
+                  type="button"
+                  className="mvd-kreator-btn mvd-kreator-btn--glowna"
+                  onClick={przywrocPoleTransformatorowe}
+                  data-testid="mvd-kreator-stacja-przywroc-pole-tr"
+                >
+                  {T.polaPrzywrocTr}
+                </button>
+              )}
             </KreatorSekcja>
           ) : null}
 
+          {/* Pusta lista pól znaczy co innego w każdym torze: w modułowym „dodaj
+              pole", w blokowym „wskaż blok" (jednostek nie dodaje się ręcznie).
+              Jeden komunikat na oba tory kazałby projektantowi RMU szukać
+              przycisku, którego świadomie nie ma. */}
           {dane.pola.length === 0 ? (
-            <KreatorInfo testid="mvd-kreator-stacja-pola-puste">{T.polaPuste}</KreatorInfo>
+            <KreatorInfo testid="mvd-kreator-stacja-pola-puste">
+              {torKonfiguracji === 'BLOK_RMU' ? T.blokNiewybrany : T.polaPuste}
+            </KreatorInfo>
           ) : (
             dane.pola.map((pole, index) => (
               <KreatorSekcja
@@ -1604,16 +1889,28 @@ export function KreatorStacjiSnNn() {
                 testid={`mvd-kreator-stacja-pole-wiersz-${index + 1}`}
               >
                 <KreatorSiatka kolumny={3}>
-                  <PoleWyboru
-                    etykieta={T.polaRola}
-                    wartosc={pole.field_role}
-                    onZmiana={(v) => zmienPole(pole.id, { field_role: v as SnFieldRole })}
-                    opcje={ROLE_POL.map((rola) => ({
-                      id: rola,
-                      etykieta: FIELD_ROLE_LABELS[rola] ?? rola,
-                    }))}
-                    testid={`mvd-kreator-stacja-pole-rola-${index + 1}`}
-                  />
+                  {/* Rola pola w torze blokowym jest cechą JEDNOSTKI WYROBU (blok
+                      L-L-T ma dwie jednostki liniowe i transformatorową), więc
+                      pochodzi z bloku i jest readoutem — zmiana roli oznaczałaby
+                      inny blok, wybierany wyżej. */}
+                  {torKonfiguracji === 'BLOK_RMU' ? (
+                    <RzadWartosci
+                      etykieta={T.polaRola}
+                      wartosc={FIELD_ROLE_LABELS[pole.field_role] ?? pole.field_role}
+                      testid={`mvd-kreator-stacja-pole-rola-${index + 1}`}
+                    />
+                  ) : (
+                    <PoleWyboru
+                      etykieta={T.polaRola}
+                      wartosc={pole.field_role}
+                      onZmiana={(v) => zmienPole(pole.id, { field_role: v as SnFieldRole })}
+                      opcje={ROLE_POL.map((rola) => ({
+                        id: rola,
+                        etykieta: FIELD_ROLE_LABELS[rola] ?? rola,
+                      }))}
+                      testid={`mvd-kreator-stacja-pole-rola-${index + 1}`}
+                    />
+                  )}
                   <PoleKatalogu
                     etykieta={T.polaSzablon}
                     wartosc={pole.bay_template_ref}
@@ -1649,27 +1946,51 @@ export function KreatorStacjiSnNn() {
                     {T.brakAparatowRoli}
                   </KreatorInfo>
                 ) : null}
-                <button
-                  type="button"
-                  className="mvd-kreator-btn"
-                  onClick={() => usunPole(pole.id)}
-                  data-testid={`mvd-kreator-stacja-pole-usun-${index + 1}`}
-                >
-                  {T.polaUsun}
-                </button>
+
+                {/* SKŁAD KATALOGOWEGO POLA — pełne wyposażenie z karty rodziny
+                    (oznaczenia operatorskie, status FABRYCZNY/OPCJA). To właśnie
+                    ta różnica odróżnia pola między sobą: pole switch-fuse RMU i
+                    pole wyłącznikowe z przekładnikami nie są tym samym polem
+                    o innym podpisie. */}
+                <KartaWyposazeniaPola
+                  pozycje={wyposazenieSzablonu(szablonPolaWpisu(pole))}
+                  szablonWskazany={Boolean(pole.bay_template_ref)}
+                  kluczeOperacji={KLUCZE_OPERACJI_STACYJNEJ}
+                  wyposazenie={dane.wyposazenie[pole.id]}
+                  ctTypy={ctTypy}
+                  vtTypy={vtTypy}
+                  przekazniki={przekazniki}
+                  onZmianaWyposazenia={(zmiana) => zmienWyposazenie(pole.id, zmiana)}
+                  testid={`mvd-kreator-stacja-wyposazenie-${index + 1}`}
+                />
+
+                {/* Jednostki bloku fabrycznego są STAŁE — usunięcie jednostki
+                    opisywałoby wyrób, którego producent nie robi. */}
+                {torKonfiguracji === 'BLOK_RMU' ? null : (
+                  <button
+                    type="button"
+                    className="mvd-kreator-btn"
+                    onClick={() => usunPole(pole.id)}
+                    data-testid={`mvd-kreator-stacja-pole-usun-${index + 1}`}
+                  >
+                    {T.polaUsun}
+                  </button>
+                )}
               </KreatorSekcja>
             ))
           )}
 
           <div className="mvd-kreator-stopka-nawigacja">
-            <button
-              type="button"
-              className="mvd-kreator-btn mvd-kreator-btn--glowna"
-              onClick={dodajPole}
-              data-testid="mvd-kreator-stacja-pole-dodaj"
-            >
-              {T.polaDodaj}
-            </button>
+            {torKonfiguracji === 'BLOK_RMU' ? null : (
+              <button
+                type="button"
+                className="mvd-kreator-btn mvd-kreator-btn--glowna"
+                onClick={dodajPole}
+                data-testid="mvd-kreator-stacja-pole-dodaj"
+              >
+                {T.polaDodaj}
+              </button>
+            )}
             <span className="mvd-kreator-stopka-licznik">{T.polaLicznik(dane.pola.length)}</span>
           </div>
 

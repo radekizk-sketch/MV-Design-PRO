@@ -242,7 +242,7 @@ export const KOMPOZYCJA_PRODUCENTA_VPIS: readonly BayDeviceInstanceWire[] = [
     label: 'Q0',
     position_in_bay: 1,
     electrical_side: 'busbar_side',
-    is_required: true,
+    status_wyposazenia: 'FABRYCZNY',
   },
   {
     device_template_ref: 'ABB__SAFERING__LINE_OUT__ES__001',
@@ -250,7 +250,7 @@ export const KOMPOZYCJA_PRODUCENTA_VPIS: readonly BayDeviceInstanceWire[] = [
     label: 'Q9',
     position_in_bay: 2,
     electrical_side: 'earthing_branch',
-    is_required: true,
+    status_wyposazenia: 'FABRYCZNY',
   },
   {
     device_template_ref: 'ABB__SAFERING__LINE_OUT__VPIS__001',
@@ -258,7 +258,7 @@ export const KOMPOZYCJA_PRODUCENTA_VPIS: readonly BayDeviceInstanceWire[] = [
     label: 'VPIS',
     position_in_bay: 3,
     electrical_side: 'metering_branch',
-    is_optional: true,
+    status_wyposazenia: 'OPCJA',
   },
   {
     device_template_ref: 'ABB__SAFERING__LINE_OUT__CH__001',
@@ -266,7 +266,7 @@ export const KOMPOZYCJA_PRODUCENTA_VPIS: readonly BayDeviceInstanceWire[] = [
     label: 'GK',
     position_in_bay: 4,
     electrical_side: 'line_side',
-    is_required: true,
+    status_wyposazenia: 'FABRYCZNY',
   },
   {
     device_template_ref: 'ABB__SAFERING__LINE_OUT__INTERLOCK__001',
@@ -274,6 +274,7 @@ export const KOMPOZYCJA_PRODUCENTA_VPIS: readonly BayDeviceInstanceWire[] = [
     label: 'BLK',
     position_in_bay: 5,
     electrical_side: 'line_side',
+    status_wyposazenia: 'FABRYCZNY',
   },
 ];
 

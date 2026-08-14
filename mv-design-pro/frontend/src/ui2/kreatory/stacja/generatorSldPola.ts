@@ -368,7 +368,15 @@ function pozycjeSzablonu(szablon: CompleteMvBayTemplateSummary): PozycjaBom[] {
         oznaczenie: instancja.label,
         pozycja: instancja.position_in_bay ?? 0,
         umiejscowienie: umiejscowienie(rodzaj, UMIEJSCOWIENIE_Z_STRONY[strona]),
-        opcjonalny: instancja.is_optional === true,
+        // Status wyposażenia wg JEDNEGO predykatu kontraktu. Czytaliśmy tu
+        // `is_optional` — klucz, którego backend NIE WYSYŁA od scalenia kanonu
+        // rozdzielnic (parę `is_required`/`is_optional` zastąpił
+        // `status_wyposazenia`), więc każda pozycja kompozycji producenta
+        // wychodziła z BOM jako nieopcjonalna niezależnie od karty katalogowej.
+        // Rysunek tego nie ujawniał, bo `opcjonalny` jest metadaną BOM, a nie
+        // wejściem geometrii — dokładnie taki defekt czeka na pierwsze dane
+        // brzegowe (pierwszy szablon z aparatem OPCJONALNYM).
+        opcjonalny: instancja.status_wyposazenia === 'OPCJA',
         zrodlo: 'producent',
       });
     }
