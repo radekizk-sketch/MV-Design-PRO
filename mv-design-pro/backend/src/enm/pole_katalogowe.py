@@ -98,6 +98,13 @@ RODZAJ_ENM_DLA_APARATU_KATALOGU["switch_disconnector"] = "LOAD_SWITCH"
 #: aparatem odłączającym (Q1/Q2), nie łącznikiem głównym — dlatego nie tutaj.
 _RODZAJE_LACZNIKA_GLOWNEGO: frozenset[str] = frozenset({"CB", "LOAD_SWITCH"})
 
+#: Kod błędu niezgodności katalogowej pola — JEDEN dla WSZYSTKICH kanałów, które
+#: materializują pole z katalogu rodzin rozdzielnic (operacja katalogowa, blok
+#: fabryczny RMU, pole GPZ/stacyjne z referencją producencką). Mieszka w module
+#: resolvera, bo to on tę niezgodność rozpoznaje — kod trzymany osobno po stronie
+#: każdego wołającego rozjechałby obsługę tej samej klasy błędu po kreatorze.
+KOD_BLEDU_POLA_KATALOGOWEGO = "sn.pole_katalogowe_niezgodne"
+
 
 def _oznaczenia_kanoniczne() -> dict[str, str]:
     """Kanoniczne oznaczenie operatorskie aparatu (Q0, Q9, T1, F1, GK, TR).
@@ -553,7 +560,9 @@ def rozwiaz_plan_pola(payload: dict[str, Any], *, field_ref: str | None) -> Plan
         raise NiezgodnoscKonfiguracjiError(
             f"Rodzina {rodzina.family_name} jest rozdzielnica pierscieniowa "
             "skladana z BLOKOW fabrycznych — pole powstaje przez wskazanie bloku "
-            "i jednostki, a nie pojedynczej celki."
+            "i jednostki, a nie pojedynczej celki. Uzyj operacji "
+            "add_sn_bay_from_catalog z factory_configuration_ref i "
+            "factory_unit_index."
         )
     aparaty, rodzaj_glownego = _aparaty_z_pola_katalogowego(szablon, field_ref=field_ref)
     return PlanPolaKatalogowego(
@@ -603,3 +612,45 @@ def rozwiaz_aparaty_pola(
         field_ref=field_ref,
         main_apparatus_kind=main_apparatus_kind,
     )
+
+
+def aparaty_pola_z_referencji(
+    *,
+    field_ref: str,
+    bay_template_ref: str | None,
+    switchgear_family_ref: str | None = None,
+) -> list[dict[str, Any]]:
+    """Aparaty pierwotne pola z SAMYCH REFERENCJI pola (bez payloadu operacji).
+
+    Drugie wejście tego samego resolvera — dla ścieżek, które nie mają payloadu
+    kreatora, tylko rozstrzygnięte już referencje wpisywane do `field_spec`
+    (`_build_field_spec`: pola GPZ, pola stacji wstawianej na odcinku, pola
+    sekcji, pola nN). Do tej pory te ścieżki wołały WYŁĄCZNIE
+    `template_primary_devices`, który zna jedną nomenklaturę: referencja
+    katalogowego pola rodziny dawała po cichu PUSTĄ listę aparatów, więc pole
+    GPZ/stacyjne wybrane z katalogu producenta lądowało w ENM bez ani jednego
+    aparatu (dług wykryty przy odbiorze S5 — tam domknięty tylko dla
+    `add_sn_bay`).
+
+    NOMENKLATURĘ ROZSTRZYGA KATALOG, NIE WOŁAJĄCY. Referencja, którą zna rejestr
+    rodzin, idzie przez pełny resolver (walidacja rodziny, zgodność
+    rodzina↔pole, tor konfiguracji, BOM z referencjami katalogowymi); każda inna
+    — dotychczasową ścieżką kanoniczną, bajtowo bez zmian. Dzięki temu ta sama
+    referencja nie znaczy „pełne pole" w jednym miejscu i „brak danych" w drugim.
+
+    RODZINA BLOKOWA (BLOK_RMU) KOŃCZY SIĘ TWARDYM BŁĘDEM. Rozstrzyga o tym
+    `rozwiaz_plan_pola` na `tor_konfiguracji` rodziny — DOKŁADNIE tym samym
+    predykatem, którym kanał blokowy (`add_sn_bay_from_catalog` z
+    `factory_configuration_ref`) pole PRZYJMUJE. Jedno źródło prawdy dla obu
+    kierunków: rodzina, której nie da się złożyć z pojedynczych celek, nie
+    zostanie przyjęta tutaj ani odrzucona tam wskutek drugiego, niezależnego
+    warunku.
+    """
+    if not bay_template_ref:
+        return []
+    if pole_katalogowe(bay_template_ref) is None:
+        return template_primary_devices(bay_template_ref, field_ref=field_ref)
+    payload: dict[str, Any] = {"bay_template_ref": bay_template_ref}
+    if switchgear_family_ref:
+        payload["switchgear_family_ref"] = switchgear_family_ref
+    return list(rozwiaz_plan_pola(payload, field_ref=field_ref).aparaty)

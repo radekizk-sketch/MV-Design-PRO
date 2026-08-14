@@ -268,7 +268,20 @@ def test_add_sn_bay_updates_existing_gpz_field_instead_of_appending_new_field():
 
 def test_add_grid_source_sn_wiaze_rodzine_szablon_i_zabezpieczenie_pola():
     """Globalna integracja: rodzina rozdzielnicy + szablon pola + zabezpieczenie
-    spływają na field_specs (widok pola / SLD / ocena zgodności / E-27)."""
+    spływają na field_specs (widok pola / SLD / ocena zgodności / E-27).
+
+    INTENCJA (zachowana): sprawdzić WIĄZANIE rodzina ↔ szablon pola ↔
+    zabezpieczenie na polach GPZ — nie konkretną markę rozdzielnicy.
+
+    KOREKTA DANYCH REFERENCYJNYCH: test budował pola GPZ na rodzinie SafeRing,
+    czyli na rozdzielnicy PIERŚCIENIOWEJ (RMU) składanej z bloków fabrycznych.
+    Jako rozdzielnica GPZ (110/SN, punkt zasilania) jest to błąd inżynierski:
+    GPZ używa wyłącznie rodzin o torze MODULARNYM (rozdzielnice pierwotne).
+    Rodziny blokowe mają własny kanał — `add_sn_bay_from_catalog` z
+    `factory_configuration_ref` — i kanał pól GPZ odrzuca je twardym błędem
+    (patrz `test_pola_v1_przez_resolver.py`). Dane poprawiono na ZPUE RELF
+    (tor MODULARNY), zachowując wszystkie sprawdzane wiązania.
+    """
     result = execute_domain_operation(
         enm_dict=_empty_enm(),
         op_name="add_grid_source_sn",
@@ -277,8 +290,8 @@ def test_add_grid_source_sn_wiaze_rodzine_szablon_i_zabezpieczenie_pola():
             "voltage_kv": 15.0,
             "catalog_ref": CATALOG_ZRODLO_SN,
             "sections_count": 1,
-            "switchgear_family_ref": "ABB__SAFERING",
-            "manufacturer_ref": "ABB",
+            "switchgear_family_ref": "ZPUE_WLOSZCZOWA__RELF",
+            "manufacturer_ref": "ZPUE_WLOSZCZOWA",
             "gpz_sections": [
                 {
                     "order": 0,
@@ -287,13 +300,13 @@ def test_add_grid_source_sn_wiaze_rodzine_szablon_i_zabezpieczenie_pola():
                         {
                             "name": "Pole odpływowe 1",
                             "bay_role": "LINIA_ODG",
-                            "bay_template_ref": "ABB__SAFERING__LINE_OUT",
+                            "bay_template_ref": "ZPUE_WLOSZCZOWA__RELF__LINE_OUT",
                             "protection_ref": "prot/pole/1",
                         },
                         {
                             "name": "Pole odpływowe 2",
                             "bay_role": "LINIA_ODG",
-                            "bay_template_ref": "ABB__SAFERING__LINE_OUT",
+                            "bay_template_ref": "ZPUE_WLOSZCZOWA__RELF__LINE_OUT",
                         },
                     ],
                 },
@@ -306,20 +319,24 @@ def test_add_grid_source_sn_wiaze_rodzine_szablon_i_zabezpieczenie_pola():
     snapshot = result["snapshot"]
     substation = snapshot["substations"][0]
     # Rodzina/producent na stacji.
-    assert substation["meta"]["switchgear_family_ref"] == "ABB__SAFERING"
-    assert substation["meta"]["manufacturer_ref"] == "ABB"
+    assert substation["meta"]["switchgear_family_ref"] == "ZPUE_WLOSZCZOWA__RELF"
+    assert substation["meta"]["manufacturer_ref"] == "ZPUE_WLOSZCZOWA"
 
     specs = substation["meta"]["field_specs"]
     assert len(specs) == 2  # bays[] wyznacza liczbę pól
     first, second = specs
     # Szablon producenta + rodzina jako klucze TOP-LEVEL field_spec (konwencja
     # kreatora stacji) — spójne źródło dla read-modelu pola i projekcji do Bay.
-    assert first["bay_template_ref"] == "ABB__SAFERING__LINE_OUT"
-    assert first["switchgear_family_ref"] == "ABB__SAFERING"
-    assert first["manufacturer_ref"] == "ABB"
+    assert first["bay_template_ref"] == "ZPUE_WLOSZCZOWA__RELF__LINE_OUT"
+    assert first["switchgear_family_ref"] == "ZPUE_WLOSZCZOWA__RELF"
+    assert first["manufacturer_ref"] == "ZPUE_WLOSZCZOWA"
     assert first["bay_role"] == "LINIA_ODG"
     # Powiązanie z zabezpieczeniem polowym.
     assert first["protection_ref"] == "prot/pole/1"
+    # Domknięcie długu V1: pole z rodziny katalogowej NIESIE wyposażenie z BOM-u
+    # katalogowego pola (przedtem referencja producencka dawała pustą listę).
+    assert len(first["primary_devices"]) == 6
+    assert all(aparat["catalog_ref"] for aparat in first["primary_devices"])
     assert second["protection_ref"] is None
 
 

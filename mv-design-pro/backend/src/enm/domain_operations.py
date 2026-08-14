@@ -33,6 +33,11 @@ from network_model.catalog.types import CatalogBinding
 from .kopia_graniczna import kopia_graniczna_enm
 from .load_zip_model import KOD_BLEDU_ZIP, zip_odbioru_z_parametrow_materializacji
 from .models import GEN_TYPES_PRZEKSZTALTNIKOWE, EnergyNetworkModel
+from .pole_katalogowe import (
+    KOD_BLEDU_POLA_KATALOGOWEGO,
+    NiezgodnoscKonfiguracjiError,
+    aparaty_pola_z_referencji,
+)
 from .topology_ops import (
     create_branch,
     create_device,
@@ -920,14 +925,27 @@ def _build_field_spec(
     # FieldSpecs` → `projectBayPrimaryDevices`) i read-model pola. exclude puste
     # (pole bez szablonu/danych → ścieżka konwencji §12.4, zero regresu).
     # Prymat jawnego argumentu (add_sn_bay: override aparatu głównego wg kreatora);
-    # inaczej auto-materializacja z kanonicznego `bay_template_ref` — JEDNA prawda
-    # dla WSZYSTKICH call-site (add_sn_bay + insert_station...), zero duplikacji.
+    # inaczej auto-materializacja z `bay_template_ref` przez RESOLVER pola, który
+    # zna OBIE nomenklatury referencji — kanoniczny szablon pola i katalogowe pole
+    # rodziny producenta. Do domknięcia tego długu referencja producencka dawała
+    # tu po cichu pustą listę (`template_primary_devices` zna tylko nomenklaturę
+    # kanoniczną), więc pole GPZ/stacyjne wybrane z katalogu rodziny zapisywało się
+    # BEZ ani jednego aparatu. JEDNA prawda dla WSZYSTKICH call-site
+    # (GPZ + insert_station + sekcje + pola nN), zero duplikacji.
+    #
+    # Rodzina o torze BLOK_RMU jest tu TWARDYM błędem (rozdzielnica wtórna nie
+    # składa się z pojedynczych celek): rozstrzyga `rozwiaz_plan_pola` po
+    # `tor_konfiguracji` rodziny — tym samym predykatem, którym kanał blokowy
+    # pole przyjmuje. Wyjątek `NiezgodnoscKonfiguracjiError` przechwytuje
+    # dyspozytor operacji i zamienia na błąd dziedziny z kodem klasy.
     if primary_devices:
         spec["primary_devices"] = list(primary_devices)
     elif bay_template_ref:
-        from network_model.catalog.bay_templates import template_primary_devices
-
-        materialized = template_primary_devices(bay_template_ref, field_ref=field_ref)
+        materialized = aparaty_pola_z_referencji(
+            field_ref=field_ref,
+            bay_template_ref=bay_template_ref,
+            switchgear_family_ref=switchgear_family_ref,
+        )
         if materialized:
             spec["primary_devices"] = materialized
     # W1c (RECENZJA_MACIERZ_WYPOSAZENIA_2026-07 uwaga 10): identyfikator
@@ -8760,6 +8778,23 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
         field_apparatus_ref = field.get("apparatus_catalog_ref")
         if isinstance(field_apparatus_ref, str) and field_apparatus_ref.strip():
             field_spec_entry["apparatus_catalog_ref"] = field_apparatus_ref.strip()
+        # Aparaty pierwotne pola — TEN SAM resolver, co `_build_field_spec`.
+        # Ta operacja składa `field_spec` RĘCZNIE (nie przez wspólny builder),
+        # więc do domknięcia tego długu stacja dokładana na końcu ciągu NIGDY nie
+        # zapisywała wyposażenia pola: ani z katalogowego pola rodziny, ani
+        # z kanonicznego szablonu. Pole niosło samą referencję szablonu, a SLD
+        # i read-model pola nie miały z czego rysować toru — dokładnie ta sama
+        # klasa braku, co w polach GPZ/wcięcia, tylko w drugiej ścieżce.
+        # Addytywnie: klucz powstaje wyłącznie gdy referencja faktycznie daje
+        # aparaty, więc payloady bez szablonu (albo z referencją spoza katalogu)
+        # mają migawkę bajtowo niezmienioną.
+        aparaty_pola = aparaty_pola_z_referencji(
+            field_ref=field_spec_entry["field_ref"],
+            bay_template_ref=field_bay_template_ref,
+            switchgear_family_ref=field.get("switchgear_family_ref"),
+        )
+        if aparaty_pola:
+            field_spec_entry["primary_devices"] = aparaty_pola
         field_specs.append(field_spec_entry)
 
     def _field_spec_for_role(role: str) -> dict[str, Any] | None:
@@ -8785,6 +8820,11 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
         existing = _field_spec_for_role(field_role)
         if existing:
             return existing
+        # Pole DOMYKANE (nie zadeklarowane w payloadzie) nie ma szablonu —
+        # `bay_template_ref` jest tu jawnym None, więc nie ma z czego
+        # materializować aparatów: to ścieżka konwencji rysunku pola, ta sama
+        # co przed domknięciem długu. Referencja pojawi się dopiero, gdy
+        # projektant wskaże pole katalogowe — wtedy idzie gałęzią wyżej.
         spec = {
             "field_ref": field_ref,
             "bay_ref": bay_ref,
@@ -9439,6 +9479,14 @@ def execute_domain_operation(
 
     try:
         result = handler(enm_dict, payload)
+    except NiezgodnoscKonfiguracjiError as blad:
+        # Niezgodność katalogowa pola to BŁĄD DZIEDZINY, nie awaria operacji:
+        # projektant wskazał wyrób, którego producent nie robi (np. pole GPZ na
+        # rodzinie blokowej RMU). Kod klasy jest ten sam, którym odpowiada kanał
+        # katalogowy — kreator czyta tę niezgodność jednakowo NIEZALEŻNIE od
+        # operacji, która ją wykryła. Bez tego przejścia wyjątek wpadłby niżej
+        # i wrócił jako bezradne „nieobsłużony wyjątek".
+        return _error_response(str(blad), KOD_BLEDU_POLA_KATALOGOWEGO)
     except Exception as exc:
         return _error_response(
             f"Nieobsłużony wyjątek w operacji '{canonical_name}': {exc}",
