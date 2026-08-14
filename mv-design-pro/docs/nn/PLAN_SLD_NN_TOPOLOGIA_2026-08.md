@@ -113,3 +113,54 @@ szyny + magistrale N/PE + tory odpływów + tabela aparatury).
 
 ---
 
+
+---
+
+## WERDYKT WŁAŚCICIELA (2026-08-14): T5a = ACCEPT 8,5/10 — ZAMKNIĘTA
+
+T5a nie wraca do przebudowy. PASS: plakietka strukturalna L0, tor transformacji
+L1, sekcje+sprzęgło (architektonicznie), agregacja per sekcja, budżet
+adaptacyjny, neverAggregate, pełna geometria dopiero w L2. Hierarchia
+L0=„co w sieci SN" / L1=„co elektrycznie zawiera stacja" / L2=„pełna sieć nN".
+
+**Dług 1 — sufiks wynikowy plakietki (DEBT, oczekiwany):** wymaga
+scenarioId+runId+modelRevision. Docelowa logika (BINDING):
+BRAK BIEGU → `nN · 12 odpł.` · AKTUALNY → `nN · 12 odpł. · 186 kW · PASS` ·
+NIEAKTUALNY → `… · STALE`. NIGDY stary zielony PASS po zmianie modelu —
+freshness jest częścią wyniku.
+
+**Dług 2 — krytyczność odbioru (ENM GAP, nie blocker):** ZAKAZ lokalnego
+`critical: true` w komponencie LOD. Powstanie model domenowy
+`LoadCriticality` (NORMAL/IMPORTANT/CRITICAL/SAFETY/LIFE_SAFETY lub
+klasyfikacja inżynierska docelowego zakresu); renderer tylko konsumuje.
+
+**Nowa twarda zasada LOD (dla T5c i dalej):** dwie klasy geometrii —
+WORLD-SCALED (długości linii, odległości stacji, pozycja topologiczna) vs
+SCREEN-STABLE/CLAMPED (symbole aparatów, statusy, nazwa stacji, plakietka nN,
+znaczniki OPEN/CLOSED, warning/fail — minimalny rozmiar ekranowy, zakaz
+skalowania w nieskończoność z kamerą). Szczególnie ważne dla L0.
+
+## PROCEDURA ODBIORU T5b-2 (dyspozycja właściciela — BINDING)
+
+18 punktów P0 bez zmian. Werdykt B-02 = TRZY warstwy dowodowe:
+A. MODEL/TOPOLOGY (ENM → terminals → connectivity → scenario),
+B. PROJECTION (ten sam graf → LvDomainView → SLD),
+C. VISUAL (projektant widzi poprawny tor).
+Raport per punkt: `P0.xx · STATUS PASS/FAIL · IMPLEMENTACJA (plik/funkcja/typ)
+· TEST (nazwa) · FIXTURE (przypadek) · DOWÓD (oczekiwany rezultat) ·
+SCREENSHOT (jeśli wizualny)`. „Testy zielone" NIE wystarcza dla wizualnych.
+
+**Pięć twardych sprawdzeń właściciela:**
+1. Sprzęgło: QBC OPEN→CLOSED zmienia rysunek ORAZ connectivity ORAZ wyniki
+   zwarciowe (nie animacja symbolu).
+2. 2×TR: QBC OPEN → dwa obszary zasilania; CLOSED → solver wie, czy praca
+   równoległa dopuszczona/niedopuszczona/warunkowa — NIE renderer.
+3. PV: DER → switching/protection → conductor → PCC → BUS (nie ikona→RGnN).
+4. SWZ: overlay na konkretnym torze; displayedValue ==
+   solverResult(feederId, scenarioId, runId).
+5. Boundary: BUS → feeder → protection → cable → boundary terminal →
+   foreign-domain chip (nie BUS → Stacja OBCA).
+
+**T5c: HOLD** do zielonego B-02 T5b-2; potem kontrakt `DomainViewState`
+(domainType/rootStationId/scenarioId/runId/overlay/selection/camera{zoom,pan}/
+returnContext).
