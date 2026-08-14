@@ -287,3 +287,9 @@ odebrane i wypchnięte (HEAD de4c5525). S1 (`switchgear_families.py`) usunięty
 MODULARNY/BLOK_RMU) i S5 (FieldInstance → BOM → ENM przez
 `domain_operations_v2` — zgłosimy wierszem PRZED dotknięciem, zgodnie z
 rundą 8 pkt 3). Granice plikowe z rundy 8 bez zmian.
+
+**Zgłoszenie (2026-08-14, przed dotknięciem — runda 8 pkt 3):** etap S5
+rozpoczyna pracę w `enm/domain_operations_v2.py` — ADDYTYWNIE operacja
+materializacji pola stacji z szablonu katalogowego
+(`complete_bay_template_ref`, dla RMU `factory_configuration_ref`).
+Istniejące operacje (w tym wasze nN) bez zmian sygnatur.
