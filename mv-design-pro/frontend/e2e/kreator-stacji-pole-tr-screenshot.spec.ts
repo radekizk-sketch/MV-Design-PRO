@@ -61,7 +61,9 @@ test.describe('kreator stacji — pole transformatorowe', () => {
       await expect(page.getByTestId('mvd-kreator-stacja-pola')).toBeVisible({ timeout: 15000 });
       // Producent i rodzina wybrane natywnie — bez nich pola nie mają szablonów.
       await page.getByTestId('mvd-kreator-stacja-producent').selectOption('ZPUE_WLOSZCZOWA');
-      await page.getByTestId('mvd-kreator-stacja-rodzina').selectOption('zpue_wloszczowa_rotoblok');
+      // Ref rodziny 1:1 z kanonem (`switchgear/families.py`) — atrapa harnessu
+      // serwuje ten sam kształt, co `GET /api/catalog/switchgear-families`.
+      await page.getByTestId('mvd-kreator-stacja-rodzina').selectOption('ZPUE_WLOSZCZOWA__ROTOBLOK');
       await page.waitForTimeout(400);
 
       // (1) Stan DOMYŚLNY: pole transformatorowe obecne, panel braku niewidoczny.

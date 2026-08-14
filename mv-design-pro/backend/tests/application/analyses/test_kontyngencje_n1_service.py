@@ -26,7 +26,12 @@ from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
 import pytest
-from application.analyses.kontyngencje_n1 import _klucz_rankingu, build_kontyngencje_n1_view
+from application.analyses.kontyngencje_n1 import (
+    POWOD_WYKLUCZENIA_PL,
+    _klucz_rankingu,
+    build_kontyngencje_n1_view,
+    build_kontyngencje_n1_zakres_view,
+)
 from enm.canonical_analysis import (
     CanonicalRun,
     create_run,
@@ -756,9 +761,18 @@ def test_remis_pelnej_dotkliwosci_rozstrzyga_element_ref_rosnaco() -> None:
 #: projektant zobaczy przeciążenie po wyłączeniu elementu. NIE aktualizować tych
 #: wartości „bo się zmieniły": zmiana wymaga wykazania źródła różnicy i decyzji,
 #: że jest zamierzona.
+#:
+#: ODŚWIEŻENIE 2026-08-14 (zamierzona zmiana SEMANTYCZNA, nie optymalizacja):
+#: połówki dzielonego odcinka dziedziczą nazwę rodzica zamiast nosić surowy
+#: ref (`_nazwa_polowki_odcinka`, defekt zmierzony na żywym ekranie N-1).
+#: Widok kanoniczny niesie `element_name`, więc odcisk MUSIAŁ się zmienić;
+#: zmiana w `domain_operations.py` dotyczy WYŁĄCZNIE pól "name" (4 linie),
+#: żadna wielkość liczbowa nie ma prawa się różnić — potwierdzone zielenią
+#: wszystkich pozostałych testów enumeracji przy czerwieni wyłącznie tych
+#: dwóch odcisków.
 ODCISKI_WIDOKU_PRZED_OPTYMALIZACJA = {
-    "gn01_promieniowa": "bde96d6ad5c481f567eeaf5241b72cf6c749e3e9ad846abb4d091459939a5212",
-    "gn03_pierscien": "559a327fa98aae0fce7af3574d7383418ac5e5803cb964588e6f0a81af50f4a4",
+    "gn01_promieniowa": "fbf4ccd6d49375fdb9a43ccf5cd97ab9f1de34fa39e4fb28f730717060f34125",
+    "gn03_pierscien": "b4639a3b1347f4b9e5df80b5eb2e26aec214f252d1a41682fb9e04091d94e22b",
 }
 
 
@@ -814,3 +828,170 @@ def test_pelny_widok_kanoniczny_nie_zmienil_sie_po_optymalizacji(siec: str) -> N
     # Kontrola samego pinu: odcisk ma pokrywać NIEPUSTĄ enumerację, inaczej
     # pilnowałby stałej wartości pustej listy.
     assert widok["podsumowanie"]["kontyngencji"] > 0
+
+
+# Zapowiedź zakresu (koszt przed biegiem) — karta ekranu N-1
+# ---------------------------------------------------------------------------
+
+
+def test_zakres_wymienia_kwalifikowane_elementy_z_kosztem_biegu() -> None:
+    """Zakres = lista do wyboru + koszt wyrażony LICZBĄ (nie czasem).
+
+    Iloczyn cech: element kwalifikowany × element wykluczony w bazie — bo to
+    właśnie ta para rozdziela „ile pozycji stanie w macierzy" od „ile razy
+    uruchomi się solver", czyli od realnego kosztu biegu.
+    """
+    zakres = build_kontyngencje_n1_zakres_view(_bieg(_promien_z_transformatorem()))
+
+    assert zakres["analysis"] == "kontyngencje_n1_zakres"
+    assert set(zakres) == {"analysis", "context", "elementy", "podsumowanie"}
+    assert set(zakres["elementy"][0]) == {
+        "element_ref",
+        "element_name",
+        "element_kind",
+        "wykluczony",
+        "powod_pl",
+    }
+    # Kolejność po element_ref (ta sama, którą enumeracja wypisuje kontyngencje).
+    assert [e["element_ref"] for e in zakres["elementy"]] == [
+        "ka_magistrala",
+        "ln_odg",
+        "ln_wyl",
+        "tr_sn_nn",
+    ]
+    wykluczony = next(e for e in zakres["elementy"] if e["element_ref"] == "ln_wyl")
+    assert wykluczony["wykluczony"] is True
+    assert wykluczony["powod_pl"] == POWOD_WYKLUCZENIA_PL
+    kwalifikowany = next(e for e in zakres["elementy"] if e["element_ref"] == "tr_sn_nn")
+    assert kwalifikowany["wykluczony"] is False
+    # Brak powodu tam, gdzie nie ma czego uzasadniać (zero pustej treści w UI).
+    assert kwalifikowany["powod_pl"] is None
+    assert zakres["podsumowanie"] == {
+        "kontyngencji": 4,
+        "biegow_rozplywu": 3,
+        "wykluczonych": 1,
+    }
+
+
+def test_zakres_nie_zapowiada_czasu_bo_kontrakt_go_nie_niesie() -> None:
+    """Kosztu NIE wolno wyrazić czasem — pomiar pochodzi z innego substratu.
+
+    Deklaracja z nagłówka modułu („kosztu nie wyrażamy czasem") ma tu PRZYPIĘCIE:
+    gdyby ktoś dołożył do zapowiedzi pole z sekundami wyliczonymi z cudzego
+    pomiaru, inżynier zobaczyłby liczbę zmyśloną i planował nią swoją pracę.
+    """
+    zakres = build_kontyngencje_n1_zakres_view(_bieg(_pierscien()))
+
+    def klucze(wezel: object) -> list[str]:
+        if isinstance(wezel, dict):
+            return [
+                *wezel.keys(),
+                *(k for wartosc in wezel.values() for k in klucze(wartosc)),
+            ]
+        if isinstance(wezel, list):
+            return [k for pozycja in wezel for k in klucze(pozycja)]
+        return []
+
+    czasowe = ("czas", "sekund", "minut", "_s", "szacun", "trwan", "predykcj")
+    for klucz in klucze(zakres):
+        assert not any(token in klucz.lower() for token in czasowe), (
+            f"Zapowiedź zakresu nie może nieść czasu — pole `{klucz}`. "
+            "Pomiar 2,64 s pochodzi z INNEGO substratu; przeliczony na tę sieć "
+            "byłby liczbą zmyśloną."
+        )
+    tresc = " ".join(
+        str(wartosc)
+        for element in zakres["elementy"]
+        for wartosc in element.values()
+        if wartosc is not None
+    ).lower()
+    assert "sekund" not in tresc and "minut" not in tresc
+
+
+def test_zakres_oglasza_DOKLADNIE_ten_zbior_ktory_enumeracja_liczy() -> None:
+    """Predykaty PARAMI: zbiór ogłoszony = zbiór policzony.
+
+    Zapowiedź i enumeracja to dwa wyjścia tej samej reguły kwalifikacji. Gdyby
+    rozjechały się choćby o jeden element, ekran oferowałby zakres, którego bieg
+    nie policzy (albo policzyłby element, którego nikt nie zapowiedział) — dokładnie
+    ta klasa defektu, którą przegląd fali nazwał „inny zbiór niż powinien".
+    """
+    for enm in (_pierscien(), _promien_z_transformatorem(), build_golden_enm()):
+        bieg = _bieg(enm)
+        ogloszone = [e["element_ref"] for e in build_kontyngencje_n1_zakres_view(bieg)["elementy"]]
+        widok = build_kontyngencje_n1_view(bieg)
+
+        assert ogloszone == [k["element_ref"] for k in widok["kontyngencje"]]
+        assert ogloszone == widok["parameters"]["element_refs"]
+
+
+def test_zakres_wyklucza_te_same_elementy_co_enumeracja() -> None:
+    """Ten sam element = ten sam werdykt i to samo uzasadnienie w obu wyjściach."""
+    bieg = _bieg(_promien_z_transformatorem())
+    zakres = build_kontyngencje_n1_zakres_view(bieg)
+    widok = build_kontyngencje_n1_view(bieg)
+
+    wykluczone_zakres = {e["element_ref"] for e in zakres["elementy"] if e["wykluczony"]}
+    wykluczone_bieg = {
+        k["element_ref"] for k in widok["kontyngencje"] if k["status"] == "wykluczony"
+    }
+
+    assert wykluczone_zakres == wykluczone_bieg
+    assert _po_ref(widok, "ln_wyl")["powod_pl"] == POWOD_WYKLUCZENIA_PL
+
+
+def test_zakres_odrzuca_dokladnie_te_same_przebiegi_co_enumeracja() -> None:
+    """Warunek wejścia jest JEDEN (parzystość zapowiedzi i biegu).
+
+    Ekran, który zapowiada zakres dla przebiegu, a przy starcie dostaje odmowę,
+    kłamałby o wykonalności biegu — i odwrotnie. Test sprawdza obie strony na
+    komplecie odrzuceń: zły rodzaj analizy, przebieg niezakończony, model bez
+    kwalifikowanego elementu.
+    """
+    sama_szyna = EnergyNetworkModel(
+        header=ENMHeader(name="Sama szyna"),
+        buses=[Bus(ref_id="b_src", name="GPZ SN", voltage_kv=15.0)],
+        sources=[_zrodlo()],
+    )
+    odrzucane = [
+        (_bieg(_pierscien(), analysis_type="short_circuit_sn"), "wymaga przebiegu rozpływu"),
+        (_bieg(_pierscien(), status="RUNNING"), "nie jest zakończony"),
+        (_bieg(sama_szyna), "kwalifikowanego elementu"),
+    ]
+
+    for bieg, komunikat in odrzucane:
+        with pytest.raises(ValueError, match=komunikat):
+            build_kontyngencje_n1_zakres_view(bieg)
+        with pytest.raises(ValueError, match=komunikat):
+            build_kontyngencje_n1_view(bieg)
+
+
+def test_zakres_nie_uruchamia_solvera() -> None:
+    """Zapowiedź musi być TANIA — inaczej nie ma czego zapowiadać.
+
+    Gdyby zapowiedź liczyła cokolwiek rozpływem, ekran płaciłby pełny koszt N-1
+    zanim inżynier zdecydował o biegu — czyli dokładnie ten koszt, przed którym
+    ma go chronić. Pin: podmieniona ścieżka wykonania rozpływu nie może zostać
+    wywołana ani razu.
+    """
+    import application.analyses.kontyngencje_n1 as modul
+
+    wywolania: list[object] = []
+    oryginal = modul._execute_power_flow
+    modul._execute_power_flow = lambda bieg: wywolania.append(bieg)  # type: ignore[assignment]
+    try:
+        build_kontyngencje_n1_zakres_view(_bieg(_pierscien()))
+    finally:
+        modul._execute_power_flow = oryginal  # type: ignore[assignment]
+
+    assert wywolania == []
+
+
+def test_zakres_nie_mutuje_migawki_biegu() -> None:
+    """Odczyt migawki nie może jej dotknąć (reguła Case Immutability)."""
+    bieg = _bieg(_promien_z_transformatorem())
+    przed = json.dumps(bieg.snapshot, sort_keys=True, ensure_ascii=False)
+
+    build_kontyngencje_n1_zakres_view(bieg)
+
+    assert json.dumps(bieg.snapshot, sort_keys=True, ensure_ascii=False) == przed

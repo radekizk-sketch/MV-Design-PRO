@@ -146,6 +146,27 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
             "catalog_binding",
         ),
     ),
+    "add_sn_bay_from_catalog": OperationSpec(
+        canonical_name="add_sn_bay_from_catalog",
+        category=OperationCategory.SN_NETWORK,
+        description_pl=(
+            "Dodanie pola SN z katalogu rozdzielnic: kompletne pole rodziny "
+            "modułowej albo jednostka bloku fabrycznego RMU"
+        ),
+        target_layer="Domain / NetworkModel",
+        required_fields=("bus_ref",),
+        optional_fields=(
+            "station_ref",
+            "complete_bay_template_ref",
+            "factory_configuration_ref",
+            "factory_unit_index",
+            "switchgear_family_ref",
+            "field_name",
+            "gpz_section_id",
+            "catalog_binding",
+            "protection_ref",
+        ),
+    ),
     # --- Station & nN (6 operations) ---
     "add_transformer_sn_nn": OperationSpec(
         canonical_name="add_transformer_sn_nn",

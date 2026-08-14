@@ -25,6 +25,7 @@ import {
 import {
   // Pakiet F
   HV_FUSE_CATALOG,
+  SPZ_CATALOG,
   selectHvFusesForRating,
 } from '../protection-catalogs';
 import type { StationDerConnection } from '../types';
@@ -407,9 +408,80 @@ describe('eng.17 — HvFuseCatalog', () => {
     expect(fuses_15kv.every((f) => f.nominal_current_a >= 50)).toBe(true);
   });
 
-  it('Pre-arcing time przy 6×In jest mniejszy niż total clearing time', () => {
+  // ===========================================================================
+  // KARTA K-O — PINY KLASY: wartość bez źródła NIE ISTNIEJE
+  // ===========================================================================
+  //
+  // Poprzednik tych pinów sprawdzał, że „pre-arcing < total clearing" — czyli
+  // WEWNĘTRZNĄ SPÓJNOŚĆ dwóch WYMYŚLONYCH liczb. Test przechodził i przez to
+  // uwiarygadniał fabrykację. Piny poniżej pytają o proweniencję, nie o spójność,
+  // i chodzą po WSZYSTKICH pozycjach (klasa), nie po przykładzie z karty.
+
+  /** Zbiór ZAMKNIĘTY: każde pole spoza listy = pole bez proweniencji. */
+  const DOZWOLONE_POLA_POZYCJI = new Set([
+    'id',
+    'catalog_namespace',
+    'catalog_version',
+    'label_pl',
+    'nominal_voltage_kv',
+    'nominal_current_a',
+    'class',
+    'pasmo_tcc',
+    'application',
+  ]);
+
+  it('KLASA: żadna pozycja nie niesie pola wyrobu bez źródła (lista zamknięta)', () => {
     for (const f of HV_FUSE_CATALOG) {
-      expect(f.pre_arcing_time_at_6in_ms).toBeLessThan(f.total_clearing_time_at_6in_ms);
+      for (const pole of Object.keys(f)) {
+        expect(
+          DOZWOLONE_POLA_POZYCJI.has(pole),
+          `Pozycja ${f.id} niesie pole "${pole}" bez proweniencji. `
+            + 'Dane wyrobu (producent, prądy przerywania, I²t, punkty pasma) wolno '
+            + 'dodać WYŁĄCZNIE razem z adresem tabeli producenta.',
+        ).toBe(true);
+      }
+    }
+  });
+
+  it('KLASA: żadna pozycja nie przypisuje wkładki imiennemu producentowi bez źródła', () => {
+    for (const f of HV_FUSE_CATALOG) {
+      expect(f).not.toHaveProperty('manufacturer');
+    }
+  });
+
+  it('KLASA: żadna pozycja nie niesie punktów pasma przy 6×In (fabrykacja K-O)', () => {
+    for (const f of HV_FUSE_CATALOG) {
+      expect(f).not.toHaveProperty('pre_arcing_time_at_6in_ms');
+      expect(f).not.toHaveProperty('total_clearing_time_at_6in_ms');
+      expect(f).not.toHaveProperty('i2t_total_a2s');
+      expect(f).not.toHaveProperty('i_min_breaking_a');
+      expect(f).not.toHaveProperty('i_max_breaking_ka');
+    }
+  });
+
+  it('PARA PREDYKATÓW: pasmo istnieje wyłącznie razem z URL tabeli producenta', () => {
+    for (const f of HV_FUSE_CATALOG) {
+      if (f.pasmo_tcc === null) continue;
+      // Gdy ktoś kiedyś dopisze pasmo — musi przyjść z adresem i z punktami.
+      expect(f.pasmo_tcc.zrodlo_url).toMatch(/^https?:\/\//);
+      expect(f.pasmo_tcc.punkty.length).toBeGreaterThan(0);
+      for (const p of f.pasmo_tcc.punkty) {
+        expect(Number.isFinite(p.prad_a)).toBe(true);
+        expect(Number.isFinite(p.czas_s)).toBe(true);
+      }
+    }
+  });
+
+  it('Stan faktyczny: KAŻDA pozycja deklaruje brak pasma (brak kart producenta)', () => {
+    expect(HV_FUSE_CATALOG.length).toBeGreaterThan(0);
+    for (const f of HV_FUSE_CATALOG) {
+      expect(f.pasmo_tcc).toBeNull();
+    }
+  });
+
+  it('KLASA: SPZ nie przypisuje praktyki ruchowej imiennym operatorom bez źródła', () => {
+    for (const s of SPZ_CATALOG) {
+      expect(s).not.toHaveProperty('typical_operators_pl');
     }
   });
 });

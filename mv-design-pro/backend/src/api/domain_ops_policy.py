@@ -38,6 +38,7 @@ CATALOG_REQUIRED_OPERATIONS: frozenset[str] = frozenset(
     {
         "add_grid_source_sn",
         "add_sn_bay",
+        "add_sn_bay_from_catalog",
         "continue_trunk_segment_sn",
         "insert_branch_pole_on_segment_sn",
         "start_branch_segment_sn",
@@ -270,7 +271,11 @@ def extract_catalog_binding(operation: str, payload: dict[str, Any]) -> dict[str
         if candidate is not None:
             return candidate
 
-    if operation == "add_sn_bay":
+    # Aparat glowny pola SN: ta sama pozycja katalogu dla obu drog dokladania
+    # pola (deklaracja rola+aparat oraz materializacja z katalogu rodzin). Brama
+    # kluczujaca po nazwie operacji musi znac OBIE, inaczej ta sama literowka
+    # daje raz 422, a raz `HTTP 200` z kodem bledu w tresci.
+    if operation in {"add_sn_bay", "add_sn_bay_from_catalog"}:
         candidate = _extract_binding_from_container(
             payload,
             namespace="APARAT_SN",
@@ -647,6 +652,7 @@ API_CATALOG_GATE_INVENTORY: tuple[PozycjaBramyApi, ...] = (
     PozycjaBramyApi("add_relay", "catalog_ref", "ZABEZPIECZENIE", True),
     PozycjaBramyApi("add_relay", "protection.catalog_item_id", "ZABEZPIECZENIE", True),
     PozycjaBramyApi("add_sn_bay", "catalog_binding", "APARAT_SN", True),
+    PozycjaBramyApi("add_sn_bay_from_catalog", "catalog_binding", "APARAT_SN", True),
     PozycjaBramyApi("add_nn_load", "catalog_binding", "OBCIAZENIE", True),
     # `add_nn_outgoing_field` NIE MA tu pozycji (karta NAPRAWA-B, znalezisko #2 —
     # naprawiony rozjazd kontraktu). Poprzedni wpis twierdził „brama SUROWSZA od
@@ -1269,6 +1275,25 @@ def _append_station_tworzy_transformator(payload: dict[str, Any]) -> bool:
     return bool(transformer.get("transformer_catalog_ref") or transformer.get("catalog_ref"))
 
 
+def _proba_konfiguracji_pola_bez_zapisu(operation: str, payload: dict[str, Any]) -> bool:
+    """Próba konfiguracji pola katalogowego, która NICZEGO nie tworzy.
+
+    Wymóg wiązania katalogowego chroni ELEMENT, który operacja zapisuje do
+    modelu. `add_sn_bay_from_catalog` w trybie próby nie zapisuje niczego —
+    zwraca werdykt zgodności konfiguracji katalogowej (rodzina · pole · blok ·
+    jednostka), czyli rozstrzyga krok, który w konfiguratorze POPRZEDZA wybór
+    konkretnej pozycji aparatu. Żądanie pozycji aparatu do werdyktu o niczym
+    zablokowałoby dokładnie ten krok.
+
+    Wyjątek dotyczy WYŁĄCZNIE braku wiązania: próba, która wiązanie PODAJE,
+    przechodzi pełną walidację i materializację jak każde inne żądanie —
+    nieistniejąca pozycja kończy się kodem 422 również w trybie próby. To ten
+    sam kształt, co wyjątek `append_station_on_endpoint` bez transformatora:
+    brama pilnuje elementów, które naprawdę powstają.
+    """
+    return operation == "add_sn_bay_from_catalog" and bool(payload.get("dry_run"))
+
+
 def validate_and_materialize_catalog_binding(
     operation: str,
     payload: dict[str, Any],
@@ -1352,6 +1377,8 @@ def validate_and_materialize_catalog_binding(
 
     binding_data = extract_catalog_binding(operation, payload)
     if binding_data is None:
+        if _proba_konfiguracji_pola_bez_zapisu(operation, payload):
+            return None, {}
         return (
             CatalogPolicyError(
                 code="catalog.ref_required",

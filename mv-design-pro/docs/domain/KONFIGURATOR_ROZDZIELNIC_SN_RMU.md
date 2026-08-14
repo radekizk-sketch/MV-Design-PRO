@@ -41,8 +41,10 @@ Nazwy z pierwotnego szkicu (`SwitchgearArchitecture`, `CatalogFunctionalUnit`)
 drugi byt o tej samej treści byłby drugą ścieżką tej samej prawdy.
 
 - `SwitchgearFamily` (pydantic): producent (`manufacturer_ref`), ref i nazwa
-  rodziny, `insulation_type`, `construction_type`, `busbar_system`, klasy
-  `voltage_levels` [kV], `rated_current_options` [A],
+  rodziny, `insulation_type`, `construction_type`, `busbar_system`, napięcia
+  SIECI z karty `network_voltages_kv` [kV] i klasy napięciowe URZĄDZENIA
+  `um_classes_kv` [kV] (dwie RÓŻNE wielkości, §10), klasy
+  `rated_current_options` [A],
   `short_time_current_options` [kA], słowniki `allowed_bay_kinds` /
   `allowed_apparatus_kinds` / `allowed_interlocks`, proweniencja
   (`source_refs`, `source_document_refs`, `source_version`) i `status` wg
@@ -171,7 +173,9 @@ pakiet `switchgear/` jest jedynym kanonem. Rejestr rodzin: 18 (7 dotychczasowych
 + 11 z transzy S1). Dolozone w pakiecie: tor konfiguracji wyliczany z
 konstrukcji, `status_wyposazenia` (jeden predykat zamiast pary
 `is_required`/`is_optional`), materializacja wyposazenia pola z kanonicznego
-szablonu, `FactoryConfiguration` + rejestr 15 blokow, walidator
+szablonu, `FactoryConfiguration` + rejestr 95 blokow (Siemens 8DJH 30,
+ABB SafeRing 19, ZPUE TPM 18, Schneider RM6 15, ZPUE TPM Air 13 — rozbicie
+z pomiaru rejestru, karta BLOKI-RMU-5-RODZIN 2026-08-14), walidator
 `family_validation`, subzasob API `factory-configurations` i addytywne
 `tor_konfiguracji` w `GET /api/catalog/switchgear-families`.
 
@@ -185,14 +189,21 @@ KOREKTY DANYCH WYKRYTE POMIAREM ZRODEL (zero fabrykacji):
   strona portfolio nie podaje klas pradowych/zwarciowych rodziny.
 
 DLUG JAWNY (przypiety testami, nie odlozony w ciszy):
-- Rodziny o torze BLOK_RMU bez transkrybowanych blokow: ZPUE TPM, ABB SafePlus,
-  Schneider RM6 i RM AirSeT, Siemens 8DJH. Zrodla publiczne tych rodzin nie
-  wymieniaja zestawu konfiguracji; lista stoi w
-  `tests/network_model/catalog/test_switchgear_factory_configurations.py` i
-  kazde jej uzupelnienie wymusza aktualizacje pinu.
-- Szerokosci jednostek blokow nie sa podane w zrodlach publicznych, wiec
-  `total_width_mm` realnych blokow to `null` (mechanizm sumowania jest
-  przetestowany na jednostkach z zadeklarowana szerokoscia).
+- Rodziny o torze BLOK_RMU bez transkrybowanych blokow: WYLACZNIE ABB SafePlus
+  i Schneider RM AirSeT (stan po karcie BLOKI-RMU-5-RODZIN: TPM 18, RM6 15 i
+  8DJH 30 maja pelne rejestry z kart producentow). Uzasadnienie zrodlowe stoi
+  w komentarzu pinu `RMU_BEZ_TRANSKRYBOWANYCH_BLOKOW`
+  (`tests/network_model/catalog/test_switchgear_factory_configurations.py`):
+  katalog ABB 1YVA000022 opisuje SafePlus modulowo, a karta RM AirSeT
+  NRJCAT20014EN podaje wylacznie listy przykladowe z wielokropkiem — to nie
+  jest zamkniety zestaw. Kazde uzupelnienie listy wymusza aktualizacje pinu
+  ORAZ tego bulleta.
+- Szerokosci jednostek blokow: REGULA (nie stan danych) — komplet szerokosci
+  jednostek bloku daje `total_width_mm` jako sume (pin dwustronny: suma
+  jednostek = szerokosc bloku z karty), brak chocby jednej szerokosci daje
+  jawny `null`. Stan danych: 30 blokow 8DJH ma szerokosci z karty HA 40.2;
+  TPM, TPM Air, RM6 i SafeRing pozostaja bez szerokosci jednostek w zrodlach
+  publicznych.
 - Kanoniczny szablon pola transformatorowego (`BAY_TEMPLATE_TRANSFORMER`) NIE
   ma glowicy kablowej, choc maja ja szablony liniowe. Uzupelnienie zmienia
   rysunek KAZDEGO pola transformatorowego na SLD, wiec wymaga werdyktu
@@ -208,3 +219,61 @@ DLUG JAWNY (przypiety testami, nie odlozony w ciszy):
   `voltage_indicator`. Uzupelnienie slownika szablonow zmienia rysunek pol na
   SLD, wiec — jak glowica kablowa pola TR — wymaga werdyktu wizualnego
   wlasciciela (B-02). Zgloszone, nie wykonane samowolnie.
+
+## 10. STAN PO S5 (2026-08-14, karta S5-ENM-POLA — odbior niezalezny)
+
+ZROBIONE. Operacja `add_sn_bay_from_catalog` (`enm/domain_operations_v2.py`,
+resolver `enm/pole_katalogowe.py`): materializacja pola stacji z katalogu —
+tor MODULARNY przez `complete_bay_template_ref`, tor BLOK_RMU przez
+`factory_configuration_ref` + `factory_unit_index` (numer 1-based, nie litera —
+blok LLT ma dwie jednostki L). Aparatura toru glownego jednostki bloku
+ZASTEPUJE lacznik glowny katalogowego pola i niesie referencje JEDNOSTKI
+(np. `ABB__SAFERING__CCF__U3__fuse_set`), nie zastapionego slotu — CCF i CCV
+to rozne wyroby (pin regresji, potwierdzony iniekcja odbiorcza). `dry_run`
+zwraca werdykt VALID/INVALID + podglad BOM bez mutacji; wykonanie deleguje do
+istniejacej sciezki pisania `add_sn_bay` (jedna sciezka pisania). Dolozony
+wpis `OperationSpec` w `domain/canonical_operations.py` (rejestr 42 operacji).
+Domkniety dlug zastany: `bay_template_ref` wskazujace katalogowe pole rodziny
+dawalo po cichu PUSTA liste aparatow — obie nomenklatury wchodza jednym
+wejsciem z pelna walidacja rodziny (test regresji).
+
+DLUG JAWNY S5 (do kolejki, patrz PLAN_DOKONCZENIA_100_2026-08-14 §3):
+- V1 `_build_field_spec` (7 miejsc wywolan: GPZ, wstawianie stacji, sekcje)
+  nadal buduje pola producenckie bez aparatow; przepiecie wymaga
+  rozstrzygniecia, czy pola GPZ moga stac na rodzinie BLOK_RMU (test referencyjny
+  buduje GPZ na SafeRing — kanal zakazany dla rodzin blokowych).
+- Pole zrodlowe DER (`mv_source_field_primary_devices`) swiadomie poza
+  resolverem: konfigurowane jawnie kontrolka-po-kontrolce, nie wybierane
+  z katalogu rodziny.
+
+DLUG NAPIECIOWY S5 — ZAMKNIETY (2026-08-14, karta K-J NORMALIZACJA-NAPIEC-RODZIN).
+Pole `SwitchgearFamily.voltage_levels` USUNIETE. Rodzina deklaruje dwie rozne
+wielkosci w dwoch polach, przepisane per rodzina ZE ZRODLA (18/18 rodzin):
+`network_voltages_kv` — wiersz karty „napiecie nominalne sieci" / „napiecie
+robocze"; `um_classes_kv` — wiersz „napiecie znamionowe (Ur)" / „najwyzsze
+napiecie urzadzen (Um)" / „rated voltage". Karta Rotobloka podaje OBIE
+(siec 15/20 kV przy klasach 17,5/24 kV) — to ta para uzasadnia rozdzielenie.
+Lista pusta = karta danego wiersza nie ma (jawny brak, nigdy wartosc domyslna);
+pin klasy w `test_switchgear_families.py` trzyma warunek „kazda rodzina ma
+niepusta co najmniej jedna z dwoch list".
+
+Regula dopasowania ma JEDNO zrodlo — `family_validation.czy_rodzina_obsluguje_napiecie`:
+napiecie szyny Un pasuje, gdy Un jest na liscie napiec sieci ALBO (lista sieci
+pusta i istnieje klasa Um >= Un; podstawa: PN-EN 62271-1 — napiecie znamionowe
+urzadzenia to gorna granica napiecia sieci). Brak obu deklaracji = odmowa, nie
+cicha zgoda. Walidacja jest WLACZONA w obu kanalach produkcyjnych:
+`add_sn_bay_from_catalog` wola twarda brame `family_supports_voltage` po
+rozwiazaniu planu katalogowego (tam znana jest rodzina rowniez dla toru
+blokowego), a lista sprawdzen Reference Engine V1 (`reference_engine/compliance.py`,
+kod `family.voltage`) RAPORTUJE ten sam predykat zamiast wlasnej reguly
+„max(voltage_levels) >= napiecie". Iloczyn cech (rodzina sieciowa x klasowa x
+bez danych) x (napiecie pasujace x niepasujace x brzegowe rowne Um) x (oba
+kanaly) stoi w `tests/network_model/catalog/test_switchgear_napiecia_rodzin.py`.
+
+Znalezisko uboczne transkrypcji (do osobnej decyzji katalogowej, NIE zmieniane
+ta karta): oficjalny katalog ABB UniSec 1VFM200003 podaje komplet danych
+(rated voltage 12/17,5/24 kV, prad szyn 630/800/1250 A), ktorych brakowalo
+publicznej stronie portfolio — rodzina moglaby wyjsc ze statusu
+`requires_catalog`. Promocja wymaga rownolegle przepisania pol katalogowych
+rodziny (dzis UniSec nie ma ani jednego `CompleteMvBayTemplate`, wiec rodzina
+oferowana nie zmaterializowalaby zadnego pola).

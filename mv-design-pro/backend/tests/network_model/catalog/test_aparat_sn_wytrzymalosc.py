@@ -92,8 +92,11 @@ def test_pozycja_bez_wytrzymalosci_krotkotrwalej_zostaje_bez_znamion() -> None:
     assert zapis["i_dyn_ka"] is None
     assert zapis["i_th_pochodzenie"] is None
     assert zapis["i_dyn_pochodzenie"] is None
-    # Prąd łączeniowy ISTNIEJE (31,5 kA) i NIE stał się wytrzymałością cieplną.
-    assert pozycja.breaking_capacity_ka == 31.5
+    # Prąd łączeniowy ISTNIEJE i NIE stał się wytrzymałością cieplną.
+    # Wartość 63 kA pochodzi ze stopki tabeli 6/12 kV katalogu ETI Polam
+    # (karta K-E-FUSE-TCC-KATALOG); wcześniejsze 31,5 kA nie miało pokrycia
+    # w żadnej tabeli ETI VV dla 12 kV ani 17,5 kV.
+    assert pozycja.breaking_capacity_ka == 63.0
 
 
 def test_pozycja_generyczna_ma_pochodzenie_referencyjne_nie_producenckie() -> None:

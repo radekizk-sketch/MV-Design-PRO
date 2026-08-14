@@ -11,7 +11,7 @@ producenta z weryfikacją wersji katalogu.
 - ABB UniGear ZS1: https://new.abb.com/medium-voltage/switchgear/air-insulated/iec-and-other-standards/unigear-zs1-portfolio
 - ABB SafeRing: https://electrification.us.abb.com/products/switchgear/safering-gas-insulated-ring-main-unit
 - Siemens NXAIR: https://www.siemens.com/en-us/products/energy-systems/nxair/
-- Siemens 8DJH: https://www.siemens.com/en-us/products/energy/medium-voltage/medium-voltage-switchgear/8djh-36.html
+- Siemens 8DJH: https://www.siemens.com/global/en/products/energy/medium-voltage/systems/8djh.html
 - Schneider SM6-24 (deep search 2026-07, Reference Engine V1): https://www.se.com/ww/en/product-range/933-sm6-24/
 
 Aby promować rodzinę do `verified` (status="verified" + `verified_at`), wymaga
@@ -23,14 +23,29 @@ KONFIGURATOR_ROZDZIELNIC_SN_RMU.md` §8): rodziny z równoległego modułu
 `switchgear_families.py` (etap S1) zostały WTOPIONE tutaj, a tamten moduł
 usunięty — jeden kanon rodzin, zero dwóch ścieżek tej samej prawdy.
 
-KONWENCJA `voltage_levels` DLA TRANSZY 2026-08-14: wartości przepisane
-DOSŁOWNIE z karty producenta (to, co karta nazywa napięciem znamionowym), a
-pełne zdanie źródłowe — łącznie z napięciem najwyższym urządzenia — siedzi w
-`notes_pl`. Zero interpretacji: gdy karta podaje jedną klasę („do 24 kV"),
-deklarujemy jedną klasę, a nie domyśloną serię IEC. Rodzina, której klas
-prądowych/zwarciowych karta publiczna NIE podaje, zostaje przy
-`status="requires_catalog"` (nie jest oferowana konfiguratorowi) zamiast
-dostać zmyślone liczby.
+KONWENCJA NAPIĘĆ (karta K-J, transkrypcja 2026-08-14 ze źródeł). Rodzina
+deklaruje DWIE różne wielkości w DWÓCH polach, bo karty producentów podają je
+osobno i mylenie ich odrzucało poprawne projekty:
+
+* `network_voltages_kv` — wiersz karty nazwany „napięcie nominalne sieci"
+  albo „napięcie robocze". To sieci, dla których producent oferuje wyrób.
+* `um_classes_kv` — wiersz „napięcie znamionowe (Ur)" / „napięcie znamionowe
+  rozdzielnicy" / „najwyższe napięcie urządzeń (Um)" / „rated voltage".
+  To klasa URZĄDZENIA: górna granica napięcia sieci wg PN-EN 62271-1.
+
+Gdy karta podaje OBA wiersze urządzenia (znamionowe Ur ORAZ wyższe od niego
+najwyższe napięcie urządzeń Um), do `um_classes_kv` wchodzi wartość ZNAMIONOWA
+— to ona jest klasą wyrobu, a nadwyżka Um bywa zapasem konstrukcyjnym; pełne
+zdanie karty zostaje w `notes_pl`. Praca powyżej napięcia znamionowego nie jest
+dopuszczona, więc wiążąca jest niższa wartość z pary.
+
+Lista PUSTA znaczy „karta tego wiersza NIE ma" — jawny brak, nigdy wartość
+domyślona ani seria IEC dopisana z głowy. Rodzina musi mieć co najmniej jedną
+z dwóch list niepustą albo komentarz przy polach mówiący, czego karta nie
+podaje (pin klasy: `test_switchgear_families.py`). Pozostałe wielkości bez
+zmian: rodzina, której klas prądowych/zwarciowych karta publiczna NIE podaje,
+zostaje przy `status="requires_catalog"` (nie jest oferowana konfiguratorowi)
+zamiast dostać zmyślone liczby.
 """
 
 from __future__ import annotations
@@ -47,7 +62,11 @@ ZPUE_WLOSZCZOWA__ROTOBLOK = SwitchgearFamily(
     family_name="Rotoblok",
     series_name="Rotoblok",
     product_line_code="ROTOBLOK",
-    voltage_levels=[15.0, 20.0],
+    # Karta zpue.pl/rozdzielnice-sn/rotoblok (odczyt 2026-08-14) ma OBA wiersze:
+    # „Napięcie nominalne sieci | 15 kV | 20 kV" oraz
+    # „Najwyższe napięcie urządzeń | 17,5 kV | 24 kV".
+    network_voltages_kv=[15.0, 20.0],
+    um_classes_kv=[17.5, 24.0],
     rated_current_options=[630, 1250],
     short_time_current_options=[16],  # kA / 1s
     insulation_type="air",
@@ -87,7 +106,9 @@ ZPUE_WLOSZCZOWA__ROTOBLOK = SwitchgearFamily(
     source_refs=["https://zpue.pl/rozdzielnice-sn/rotoblok"],
     notes_pl=(
         "Rotoblok — rozdzielnica wnętrzowa SN, dwuprzedziałowa, izolacja "
-        "powietrzna, pojedynczy system szyn. Napięcie 15/20 kV, prąd "
+        "powietrzna, pojedynczy system szyn. Karta (odczyt 2026-08-14) podaje "
+        "napięcie nominalne sieci 15/20 kV przy najwyższym napięciu urządzeń "
+        "17,5/24 kV — dwa różne parametry, przepisane do dwóch pól. Prąd "
         "znamionowy 630/1250 A, krótkotrwały 16 kA/1s, szczytowy 40 kA. "
         "Certyfikat IEL. Typowe pola: liniowe (RL1, RL4), transformatorowe "
         "(RT1, RWT, RWT3, RWTp14), sprzęgłowe (RS1L, RS4), pomiarowe (RP1), "
@@ -107,7 +128,11 @@ ELEKTROMETAL__E2ALPHA = SwitchgearFamily(
     family_name="e²ALPHA",
     series_name="e²ALPHA",
     product_line_code="E2ALPHA",
-    voltage_levels=[12.0, 17.5, 24.0],
+    # Karta elektrometal-energetyka.pl (odczyt 2026-08-14), wiersz tabeli
+    # „Napięcie znamionowe rozdzielnicy | 12kV | 17,5kV | 24kV" — to klasy
+    # URZĄDZENIA. Wiersza o napięciu sieci karta nie ma.
+    network_voltages_kv=[],
+    um_classes_kv=[12.0, 17.5, 24.0],
     rated_current_options=[630, 1250, 2000],
     short_time_current_options=[25, 31],  # kA / 1s (24 kV → 25, niższe napięcia → do 31.5)
     insulation_type="air",
@@ -173,7 +198,11 @@ ABB__UNIGEAR_ZS1 = SwitchgearFamily(
     family_name="UniGear ZS1",
     series_name="UniGear ZS1",
     product_line_code="UNIGEAR_ZS1",
-    voltage_levels=[12.0, 17.5, 24.0],
+    # Katalog techniczny UniGear ZS1 (odczyt 2026-08-14), wiersz
+    # „Rated voltage [kV] 7.2 12 17.5 24" — klasy URZĄDZENIA. Karta nie podaje
+    # napięć sieci. Klasa 7,2 kV była dotąd pominięta mimo obecności w karcie.
+    network_voltages_kv=[],
+    um_classes_kv=[7.2, 12.0, 17.5, 24.0],
     rated_current_options=[1250, 2500, 4000],
     short_time_current_options=[25, 31, 50, 63],  # kA / 1s
     insulation_type="air",
@@ -217,6 +246,10 @@ ABB__UNIGEAR_ZS1 = SwitchgearFamily(
     source_document_refs=[
         "https://new.abb.com/medium-voltage/switchgear/air-insulated/iec-and-other-standards/unigear-zs1-portfolio",
         "https://library.e.abb.com/public/4d24e323305341eac1256acc002f63f0/M23724E-.pdf",
+        # Katalog techniczny UniGear ZS1, ABB 1VCP000138 REV I — dokument, z
+        # ktorego przepisano wiersz „Rated voltage [kV] 7.2 12 17.5 24"
+        # (instrukcja M23724E- obejmuje tylko warianty 12/17,5 kV).
+        "https://library.abb.com/r?cid=9AAC30400788",
     ],
     source_version="public-product-page-2026-05",
     verified_at=None,
@@ -227,7 +260,8 @@ ABB__UNIGEAR_ZS1 = SwitchgearFamily(
     ],
     notes_pl=(
         "UniGear ZS1 — rozdzielnica wnętrzowa SN ABB, izolacja powietrzna, "
-        "wysuwna (withdrawable), arc-proof. Napięcia 12/17.5/24 kV, prąd "
+        "wysuwna (withdrawable), arc-proof. Katalog 1VCP000138 REV I (odczyt "
+        "2026-08-14): rated voltage 7,2/12/17,5/24 kV — klasy urządzenia, prąd "
         "znamionowy do 4000 A, krótkotrwały do 63 kA. Konfiguracje single/double "
         "busbar/double level. Standardy IEC, GB/DL, CSA, GOST. Status "
         "repo_verified — dane z portfolio page; pełne parametry techniczne "
@@ -245,7 +279,11 @@ ABB__SAFERING = SwitchgearFamily(
     family_name="SafeRing",
     series_name="SafeRing",
     product_line_code="SAFERING",
-    voltage_levels=[12.0, 17.5, 24.0],
+    # Katalog SafeRing/SafePlus 12-24 kV (1VDD006104, odczyt 2026-08-14),
+    # wiersz „Rated voltage kV 12/17,5/24" — klasy URZĄDZENIA. Karta nie podaje
+    # napięć sieci.
+    network_voltages_kv=[],
+    um_classes_kv=[12.0, 17.5, 24.0],
     rated_current_options=[630],
     short_time_current_options=[16, 20, 21],  # kA / 1s
     insulation_type="sf6",
@@ -272,6 +310,9 @@ ABB__SAFERING = SwitchgearFamily(
     cad_footprint_ref=None,
     source_document_refs=[
         "https://electrification.us.abb.com/products/switchgear/safering-gas-insulated-ring-main-unit",
+        # Katalog SafeRing/SafePlus 12-24 kV, ABB 1VDD006104 — dokument, z
+        # ktorego przepisano wiersz „Rated voltage kV 12/17,5/24".
+        "https://library.e.abb.com/public/7075063153004dee9da0fe0a5305d799/SafeRing_SafePlus%2012_24kV%20Catalogue1VDD006104%20GB%20rev_1_%20February%202016.pdf",
     ],
     source_version="public-product-page-2026-05",
     verified_at=None,
@@ -298,7 +339,12 @@ SIEMENS__NXAIR = SwitchgearFamily(
     family_name="NXAIR",
     series_name="NXAIR",
     product_line_code="NXAIR",
-    voltage_levels=[12.0, 17.5, 24.0],
+    # Katalog NXAIR (odczyt 2026-08-14): wiersz „Rated voltage kV 7.2 12 17.5"
+    # dla NXAIR oraz „Rated voltage kV 24" dla odmiany NXAIR M — klasy
+    # URZĄDZENIA. Strona produktowa Siemensa wprost odpowiada NOT GIVEN na
+    # pytanie o napięcie sieci. Klasa 7,2 kV była dotąd pominięta.
+    network_voltages_kv=[],
+    um_classes_kv=[7.2, 12.0, 17.5, 24.0],
     rated_current_options=[1250, 2500, 4000],
     short_time_current_options=[25, 31, 40],  # kA / 1s
     insulation_type="air",
@@ -348,7 +394,8 @@ SIEMENS__NXAIR = SwitchgearFamily(
     source_refs=["https://www.siemens.com/en-us/products/energy-systems/nxair/"],
     notes_pl=(
         "NXAIR — rozdzielnica wnętrzowa SN Siemens, izolacja powietrzna, "
-        "wysuwna. Napięcia 12/17.5/24 kV, prąd znamionowy do 4000 A, "
+        "wysuwna. Katalog (odczyt 2026-08-14): rated voltage 7,2/12/17,5 kV "
+        "(NXAIR) oraz 24 kV (NXAIR M) — klasy urządzenia. Prąd znamionowy do 4000 A, "
         "krótkotrwały do 40 kA (NXAIR), 25 kA (NXAIR M dla 24 kV). Klasyfikacja "
         "IAC A FLR + LSC 2B + PM. Standard IEC 62271-200. Status repo_verified."
     ),
@@ -364,7 +411,12 @@ SIEMENS__8DJH = SwitchgearFamily(
     family_name="8DJH",
     series_name="8DJH",
     product_line_code="8DJH",
-    voltage_levels=[12.0, 17.5, 24.0],
+    # Katalog „Medium-Voltage Switchgear Type 8DJH Up to 24 kV, Gas-Insulated"
+    # (Siemens 500-83849, odczyt 2026-08-14), wiersz
+    # „Rated voltage Ur kV 7.2 12 15 17.5 24" — klasy URZĄDZENIA (klasa 15 kV
+    # jest w karcie wprost, obok 12 i 17,5). Karta nie podaje napięć sieci.
+    network_voltages_kv=[],
+    um_classes_kv=[7.2, 12.0, 15.0, 17.5, 24.0],
     rated_current_options=[630],
     short_time_current_options=[20, 21, 25],  # kA / 1s
     insulation_type="sf6",
@@ -375,6 +427,14 @@ SIEMENS__8DJH = SwitchgearFamily(
         "liniowe_doplywowe",
         "liniowe_odplywowe",
         "transformatorowe",
+        # ROZSZERZENIE ADDYTYWNE 2026-08-14 (transkrypcja bloków 8DJH):
+        # legenda katalogu Siemens HA 40.2 wymienia pola sprzęgłowe wprost —
+        # „S = Bus sectionalizer panel with switch-disconnector”, „H = Bus
+        # sectionalizer panel with switch-fuse combination” — a tabela mas
+        # transportowych podaje bloki, które je zawierają (RS, RH, RRS, RRH,
+        # RRRS, RRRH). Bez tej pozycji te sześć bloków nie weszłoby do
+        # rejestru, choć karta je nazywa.
+        "sprzeglowe_poprzeczne",
     ],
     allowed_apparatus_kinds=[
         "switch_disconnector",
@@ -390,22 +450,32 @@ SIEMENS__8DJH = SwitchgearFamily(
     supported_lod_profiles=["LOD0", "LOD1", "LOD2", "LOD3"],
     cad_footprint_ref=None,
     source_document_refs=[
-        "https://www.siemens.com/en-us/products/energy/medium-voltage/medium-voltage-switchgear/8djh-36.html",
+        # KOREKTA odnosnika 2026-08-14: poprzedni adres (8djh-36.html) zwracal
+        # 404; zywa strona produktowa rodziny 8DJH stoi pod adresem ponizej.
+        "https://www.siemens.com/global/en/products/energy/medium-voltage/systems/8djh.html",
         "https://assets.new.siemens.com/siemens/assets/api/uuid:40fab88c-6711-4fad-9e26-7d54849af7e7/500-83849.pdf",
+        "https://assets.new.siemens.com/siemens/assets/api/uuid:a154c8cc-b58e-42b9-963d-28d73019016f/8djhcompact-en-cataloge.pdf",
     ],
     source_version="public-product-page-2026-05",
     verified_at=None,
     lifecycle_status="current",
     status="repo_verified",
     source_refs=[
-        "https://www.siemens.com/en-us/products/energy/medium-voltage/medium-voltage-switchgear/8djh-36.html"
+        "https://www.siemens.com/global/en/products/energy/medium-voltage/systems/8djh.html"
     ],
     notes_pl=(
         "8DJH — Ring Main Unit (RMU) Siemens, izolacja SF6, sealed-for-life "
-        "(metal-enclosed). Napięcia 12-24 kV, prąd znamionowy 630 A (busbar + "
+        "(metal-enclosed). Katalog 500-83849 (odczyt 2026-08-14): rated "
+        "voltage Ur 7,2/12/15/17,5/24 kV — klasy urządzenia. Prąd znamionowy 630 A (busbar + "
         "feeder), krótkotrwały do 25 kA/1s (variant 17.5 kV) lub 20 kA/1s "
         "(variant 24 kV), making current do 50 kA. Standard IEC 62271-200. "
-        "Status repo_verified."
+        "Katalog HA 40.2 (2017) wymienia pola K (kablowe), K(E) (kablowe z "
+        "uziemnikiem zwarciowym), R (liniowe pierścieniowe), T "
+        "(transformatorowe), L (wyłącznikowe) oraz sprzęgłowe S i H, a także "
+        "zestawienie bloków fabrycznych z szerokościami — bloki są "
+        "przepisane do rejestru konfiguracji fabrycznych. Odmiana 8DJH "
+        "Compact (bloki bez rozszerzenia szyn) jest osobnym wyrobem i NIE "
+        "wchodzi do tej rodziny. Status repo_verified."
     ),
 )
 
@@ -419,7 +489,14 @@ SCHNEIDER__SM6_24 = SwitchgearFamily(
     family_name="SM6-24",
     series_name="SM6",
     product_line_code="SM6_24",
-    voltage_levels=[12.0, 17.5, 24.0],
+    # Katalog SM6 (odczyt 2026-08-14) opisuje nazewnictwo serii wprost:
+    # „the rated voltage: 7.2 - 12 - 17.5 - 24 kV" oraz „24 indicates the rated
+    # voltage is 24 kV". Ta rodzina to wariant SM6-24, więc jej klasą urządzenia
+    # jest 24 kV — nie cała seria SM6. Karta nie podaje napięć sieci.
+    # KOREKTA: poprzednio deklarowane 12/17,5/24 były klasami całej serii SM6,
+    # a nie tego wyrobu.
+    network_voltages_kv=[],
+    um_classes_kv=[24.0],
     rated_current_options=[400, 630, 1250],
     short_time_current_options=[16, 20, 25],  # kA / 1s (zależnie od celki)
     insulation_type="mixed",  # szyny w powietrzu, aparaty łączeniowe w SF6/próżni
@@ -455,7 +532,13 @@ SCHNEIDER__SM6_24 = SwitchgearFamily(
     ],
     supported_lod_profiles=["LOD0", "LOD1", "LOD2", "LOD3"],
     cad_footprint_ref=None,
-    source_document_refs=["https://www.se.com/ww/en/product-range/933-sm6-24/"],
+    source_document_refs=[
+        "https://www.se.com/ww/en/product-range/933-sm6-24/",
+        # Katalog serii SM6 (Schneider AMTED398078EN) — dokument, z ktorego
+        # przepisano regule nazewnictwa „24 indicates the rated voltage is
+        # 24 kV" i klasy calej serii (7,2 / 12 / 17,5 / 24 kV).
+        "https://www.se.com/ww/en/download/document/AMTED398078EN/",
+    ],
     source_version="public-product-page-2026-07",
     verified_at=None,
     lifecycle_status="current",
@@ -464,7 +547,10 @@ SCHNEIDER__SM6_24 = SwitchgearFamily(
     notes_pl=(
         "SM6-24 — modułowa rozdzielnica wnętrzowa SN Schneider Electric do "
         "24 kV: celki rozłącznikowe (typ IM), rozłącznik z bezpiecznikami "
-        "(QM), wyłącznikowe (DM), pomiarowe (CM/GBC). Szyny w izolacji "
+        "(QM), wyłącznikowe (DM), pomiarowe (CM/GBC). Katalog AMTED398078EN "
+        "(odczyt 2026-08-14) nazywa serię wprost — sufiks 24 oznacza napięcie "
+        "znamionowe 24 kV — więc klasą urządzenia tego wyrobu jest 24 kV, choć "
+        "cała seria SM6 obejmuje 7,2/12/17,5/24 kV. Szyny w izolacji "
         "powietrznej, aparaty łączeniowe SF6/próżnia. Prąd znamionowy "
         "400–1250 A, krótkotrwały do 25 kA/1s. Dodana w programie Reference "
         "Engine V1. Status repo_verified — dane z publicznej strony "
@@ -482,7 +568,10 @@ ZPUE_WLOSZCZOWA__TPM = SwitchgearFamily(
     family_name="TPM",
     series_name="TPM",
     product_line_code="TPM",
-    voltage_levels=[25.0],
+    # Karta elektro.info (odczyt 2026-08-14) podaje OBA wiersze osobno:
+    # „Napięcie znamionowe, w [kV]: 25" oraz „Napięcie robocze, w [kV]: 20".
+    network_voltages_kv=[20.0],
+    um_classes_kv=[25.0],
     rated_current_options=[630],
     short_time_current_options=[16, 20, 25],  # kA / 3 s wg karty
     insulation_type="sf6",
@@ -518,7 +607,8 @@ ZPUE_WLOSZCZOWA__TPM = SwitchgearFamily(
     ],
     notes_pl=(
         "TPM — rozdzielnica pierścieniowa (RMU) ZPUE w izolacji SF6/próżnia. "
-        "Karta (odczyt 2026-08-14): napięcie znamionowe 25 kV, prąd znamionowy "
+        "Karta (odczyt 2026-08-14): napięcie znamionowe 25 kV przy napięciu "
+        "roboczym 20 kV (dwa różne parametry, dwa pola), prąd znamionowy "
         "szyn zbiorczych 630 A, prąd znamionowy pola transformatorowego 125 A, "
         "dopuszczalny prąd zwarciowy 25*/20/16 kA (3 s), prąd szczytowy 50 kA, "
         "odporność na łuk elektryczny 20 kA. Status repo_verified — dane z "
@@ -537,7 +627,11 @@ ZPUE_WLOSZCZOWA__TPM_AIR = SwitchgearFamily(
     family_name="TPM Air",
     series_name="TPM Air",
     product_line_code="TPM_AIR",
-    voltage_levels=[24.0],
+    # Karta zpue.pl/rozdzielnice-sn/tpm-air (odczyt 2026-08-14), wiersz
+    # „Napięcie znamionowe SN | Ur | 24 kV" — klasa URZĄDZENIA. Karta nie ma
+    # wiersza o napięciu sieci ani o najwyższym napięciu urządzeń.
+    network_voltages_kv=[],
+    um_classes_kv=[24.0],
     rated_current_options=[630],
     short_time_current_options=[16, 20],  # kA / 1 s wg karty
     insulation_type="mixed",  # suche powietrze pod nadciśnieniem + aparatura próżniowa
@@ -593,7 +687,12 @@ ZPUE_WLOSZCZOWA__ROTOBLOK_AIR = SwitchgearFamily(
     family_name="Rotoblok Air",
     series_name="Rotoblok Air",
     product_line_code="ROTOBLOK_AIR",
-    voltage_levels=[24.0],
+    # Karta zpue.pl/rozdzielnice-sn/rotoblok-air (odczyt 2026-08-14) podaje dwa
+    # wiersze URZĄDZENIA: „Napięcie znamionowe | 24 kV" oraz „Najwyższe
+    # napięcie urządzeń | 25 kV". Klasą wyrobu jest 24 kV (wartość znamionowa);
+    # zapas 25 kV zostaje w notes_pl. Wiersza o napięciu sieci karta nie ma.
+    network_voltages_kv=[],
+    um_classes_kv=[24.0],
     rated_current_options=[630],
     short_time_current_options=[16],  # kA / 1 s wg karty
     insulation_type="air",
@@ -649,7 +748,12 @@ ZPUE_WLOSZCZOWA__ROTOBLOK_VCB = SwitchgearFamily(
     family_name="Rotoblok VCB",
     series_name="Rotoblok VCB",
     product_line_code="ROTOBLOK_VCB",
-    voltage_levels=[20.0],
+    # Karta zpue.pl/rozdzielnice-sn/rotoblok-vcb (odczyt 2026-08-14):
+    # „Napięcie nominalne sieci | 20 kV" oraz „Najwyższe napięcie urządzeń |
+    # 25 kV". Karta nie ma wiersza „napięcie znamionowe", więc klasą urządzenia
+    # jest podany Um.
+    network_voltages_kv=[20.0],
+    um_classes_kv=[25.0],
     rated_current_options=[630],
     short_time_current_options=[16, 20],  # 16 kA / 3 s, 20 kA / 1 s wg karty
     insulation_type="air",
@@ -688,8 +792,8 @@ ZPUE_WLOSZCZOWA__ROTOBLOK_VCB = SwitchgearFamily(
         "Rotoblok VCB — rozdzielnica wnętrzowa SN ZPUE, dwuprzedziałowa, "
         "pojedynczy system szyn, aparat trójfunkcyjny TGI (wyłącznik + "
         "odłącznik + uziemnik w jednym), wykonanie stacjonarne (nie wysuwne). "
-        "Karta (odczyt 2026-08-14): napięcie znamionowe 20 kV (najwyższe "
-        "napięcie urządzenia 25 kV), prąd znamionowy szyn 630 A, prąd "
+        "Karta (odczyt 2026-08-14): napięcie nominalne sieci 20 kV, najwyższe "
+        "napięcie urządzeń 25 kV, prąd znamionowy szyn 630 A, prąd "
         "zwarciowy do 16 kA (3 s) / do 20 kA (1 s), prąd szczytowy do 50 kA, "
         "IAC AFLR do 16 kA (1 s). Status repo_verified."
     ),
@@ -705,7 +809,12 @@ ZPUE_WLOSZCZOWA__RELF = SwitchgearFamily(
     family_name="RELF",
     series_name="RELF",
     product_line_code="RELF",
-    voltage_levels=[12.0, 17.5, 24.0, 36.0],
+    # Karta zpue.pl/rozdzielnice-sn/relf (odczyt 2026-08-14), tabela „Dane
+    # elektryczne" dla wariantów RELF standard / kompakt / RELF 24 / RELF-S36:
+    # „Napięcie znamionowe | [kV] | 12 | 17,5 | 24 | 36" — klasy URZĄDZENIA.
+    # Karta nie podaje napięć sieci.
+    network_voltages_kv=[],
+    um_classes_kv=[12.0, 17.5, 24.0, 36.0],
     rated_current_options=[630, 1250, 1600, 2000, 2500, 4000],
     short_time_current_options=[31, 40],  # 31,5 kA / 3 s; 40 kA / 3 s w wariancie 12 kV
     insulation_type="air",
@@ -770,7 +879,11 @@ ZPUE_WLOSZCZOWA__RELF_2S = SwitchgearFamily(
     family_name="RELF 2S",
     series_name="RELF 2S",
     product_line_code="RELF_2S",
-    voltage_levels=[12.0],
+    # Karta zpue.pl/rozdzielnice-sn/relf-2s (odczyt 2026-08-14):
+    # „Napięcie znamionowe | [kV] | 12" — klasa URZĄDZENIA. Karta nie podaje
+    # napięcia sieci.
+    network_voltages_kv=[],
+    um_classes_kv=[12.0],
     rated_current_options=[630, 1250, 1600, 2000, 2500],
     short_time_current_options=[31],  # 31,5 kA / 3 s
     insulation_type="air",
@@ -834,7 +947,12 @@ ZPUE_WLOSZCZOWA__RXD = SwitchgearFamily(
     family_name="RXD",
     series_name="RXD",
     product_line_code="RXD",
-    voltage_levels=[12.0, 36.0],
+    # Karta elektro.info (odczyt 2026-08-14) podaje OBA wiersze:
+    # „Napięcie robocze, w [kV]: 6(10)/30" — sieci 6, 10 i 30 kV (wariant 12 kV
+    # obsługuje 6 i 10 kV, wariant 36 kV sieć 30 kV) — oraz
+    # „Napięcie znamionowe, w [kV]: 12/36" — klasy URZĄDZENIA.
+    network_voltages_kv=[6.0, 10.0, 30.0],
+    um_classes_kv=[12.0, 36.0],
     rated_current_options=[630, 1250],
     short_time_current_options=[25],  # kA / 3 s
     # KOREKTA klasyfikacji (weryfikacja karty 2026-08-14): RXD jest
@@ -873,18 +991,22 @@ ZPUE_WLOSZCZOWA__RXD = SwitchgearFamily(
     supported_lod_profiles=["LOD0", "LOD1", "LOD2", "LOD3"],
     cad_footprint_ref=None,
     source_document_refs=[
-        "https://www.elektro.info.pl/produkt/rozdzielnice-sn/109592",
+        # KOREKTA odnosnika 2026-08-14: adres bez slugu zwracal 404 (karta
+        # zyje pod pelnym adresem). Osobna strona produktowa RXD na zpue.pl
+        # juz nie istnieje — przekierowuje na RELF, wiec nie jest zrodlem RXD.
+        "https://www.elektro.info.pl/produkt/rozdzielnice-sn/109592,rozdzielnica-sn-rxd",
         "https://zpue.pl/rozdzielnice-sn",
     ],
     source_version="public-product-card-2026-08-14",
     verified_at=None,
     lifecycle_status="current",
     status="repo_verified",
-    source_refs=["https://www.elektro.info.pl/produkt/rozdzielnice-sn/109592"],
+    source_refs=["https://www.elektro.info.pl/produkt/rozdzielnice-sn/109592,rozdzielnica-sn-rxd"],
     notes_pl=(
         "RXD — rozdzielnica SN ZPUE dwuczłonowa w izolacji POWIETRZNEJ "
         "(metal-enclosed), jeden system szyn, manipulacja członem przez "
-        "zamknięte drzwi. Karta (odczyt 2026-08-14): napięcia 12/36 kV, prądy "
+        "zamknięte drzwi. Karta (odczyt 2026-08-14): napięcie znamionowe "
+        "12/36 kV przy napięciu roboczym 6(10)/30 kV, prądy "
         "szyn 630/1250 A, prąd zwarciowy 25 kA / 3 s, prąd szczytowy 63 kA, "
         "IAC AFLR 25 kA / 1 s (wariant 12 kV) oraz 20 kA / 1 s (wariant "
         "36 kV). Normy PN-EN 62271-1, PN-EN 62271-200. Status repo_verified."
@@ -901,7 +1023,13 @@ ABB__SAFEPLUS = SwitchgearFamily(
     family_name="SafePlus",
     series_name="SafePlus",
     product_line_code="SAFEPLUS",
-    voltage_levels=[12.0, 24.0],
+    # Ulotka SafePlus (ABB 1VDD006001, odczyt 2026-08-14), wiersz
+    # „Rated voltage kV 12/17,5/24" dla modułów rozłącznikowych,
+    # bezpiecznikowych i wyłącznikowych (dwa moduły skrajne: 12/24) — klasy
+    # URZĄDZENIA. Karta nie podaje napięć sieci. KOREKTA: poprzednie 12/24
+    # pomijało klasę 17,5 kV obecną w karcie.
+    network_voltages_kv=[],
+    um_classes_kv=[12.0, 17.5, 24.0],
     rated_current_options=[630, 1250],
     short_time_current_options=[20, 25],  # 25 kA / 1 s, 20 kA / 3 s
     insulation_type="sf6",
@@ -939,8 +1067,9 @@ ABB__SAFEPLUS = SwitchgearFamily(
     notes_pl=(
         "SafePlus — kompaktowa rozdzielnica ABB dystrybucji wtórnej w izolacji "
         "SF6 (sealed-for-life), ROZSZERZALNA: łączy konfiguracje w pełni "
-        "modułowe i półmodułowe, czym różni się od bloków SafeRing. Materiały "
-        "producenta (odczyt 2026-08-14): 12-24 kV, 630/1250 A, prąd zwarciowy "
+        "modułowe i półmodułowe, czym różni się od bloków SafeRing. Ulotka "
+        "1VDD006001 (odczyt 2026-08-14): rated voltage 12/17,5/24 kV — klasy "
+        "urządzenia, 630/1250 A, prąd zwarciowy "
         "25 kA / 1 s oraz 20 kA / 3 s. Status repo_verified — dane z publicznej "
         "strony produktowej i ulotki, NIE official_catalog."
     ),
@@ -962,7 +1091,10 @@ ABB__UNISEC = SwitchgearFamily(
     # 630 A, 20 kA) — dlatego listy zostają PUSTE, a rodzina ma status
     # `requires_catalog` i NIE wchodzi do ofert konfiguratora do czasu
     # podpięcia oficjalnej karty katalogowej ABB.
-    voltage_levels=[24.0],
+    # Ta jedna klasa napięciowa („do 24 kV") jest wielkością URZĄDZENIA; strona
+    # portfolio nie podaje napięć sieci.
+    network_voltages_kv=[],
+    um_classes_kv=[24.0],
     rated_current_options=[],
     short_time_current_options=[],
     insulation_type="air",
@@ -1021,7 +1153,12 @@ SCHNEIDER__RM6 = SwitchgearFamily(
     family_name="RM6",
     series_name="RM6",
     product_line_code="RM6",
-    voltage_levels=[24.0],
+    # Katalog RM6 „Gas Insulated Ring Main Unit Up to 24 kV" (odczyt
+    # 2026-08-14), wiersz „Rated voltage Ur (kV) 12 17.5 24" — klasy
+    # URZĄDZENIA. Karta nie podaje napięć sieci. KOREKTA: poprzednie [24]
+    # brało tylko górną klasę z nagłówka „up to 24 kV".
+    network_voltages_kv=[],
+    um_classes_kv=[12.0, 17.5, 24.0],
     rated_current_options=[630],
     short_time_current_options=[20, 21],  # kA / 1 s (IAC AFLR do 20 kA)
     insulation_type="sf6",
@@ -1044,7 +1181,12 @@ SCHNEIDER__RM6 = SwitchgearFamily(
     allowed_interlocks=["earthing_only_when_open"],
     supported_lod_profiles=["LOD0", "LOD1", "LOD2", "LOD3"],
     cad_footprint_ref=None,
-    source_document_refs=["https://www.se.com/ww/en/product-range/967-rm6/"],
+    source_document_refs=[
+        "https://www.se.com/ww/en/product-range/967-rm6/",
+        # Katalog RM6 (Schneider AMTED398032EN) — dokument, z ktorego
+        # przepisano wiersz „Rated voltage Ur (kV) 12 17.5 24".
+        "https://www.se.com/ww/en/download/document/AMTED398032EN/",
+    ],
     source_version="public-product-page-2026-08-14",
     verified_at=None,
     lifecycle_status="current",
@@ -1053,7 +1195,8 @@ SCHNEIDER__RM6 = SwitchgearFamily(
     notes_pl=(
         "RM6 — kompaktowa rozdzielnica pierścieniowa (RMU) Schneider Electric "
         "w izolacji SF6 dla sieci rozdzielczych SN, sieci otwartego pierścienia "
-        "i promieniowe. Strona produktowa (odczyt 2026-08-14): do 24 kV, 630 A, "
+        "i promieniowe. Katalog AMTED398032EN (odczyt 2026-08-14): rated "
+        "voltage Ur 12/17,5/24 kV — klasy urządzenia, 630 A, "
         "prąd zwarciowy do 21 kA, odporność na łuk wewnętrzny do 20 kA AFLR. "
         "Status repo_verified — dane z publicznej strony produktowej, NIE "
         "official_catalog."
@@ -1070,7 +1213,11 @@ SCHNEIDER__RM_AIRSET = SwitchgearFamily(
     family_name="RM AirSeT",
     series_name="RM AirSeT",
     product_line_code="RM_AIRSET",
-    voltage_levels=[24.0],
+    # Katalog RM AirSeT IEC (Schneider NRJCAT20014EN, odczyt 2026-08-14),
+    # wiersz „Rated voltage Ur kV 12 24" — klasy URZĄDZENIA. Karta nie podaje
+    # napięć sieci. KOREKTA: poprzednie [24] pomijało klasę 12 kV z karty.
+    network_voltages_kv=[],
+    um_classes_kv=[12.0, 24.0],
     rated_current_options=[630],
     short_time_current_options=[20],  # 20 kA / 1 s (także warianty 20 kA / 3 s)
     insulation_type="mixed",  # czyste powietrze + aparatura próżniowa
@@ -1093,7 +1240,12 @@ SCHNEIDER__RM_AIRSET = SwitchgearFamily(
     allowed_interlocks=["earthing_only_when_open"],
     supported_lod_profiles=["LOD0", "LOD1", "LOD2", "LOD3"],
     cad_footprint_ref=None,
-    source_document_refs=["https://www.se.com/ww/en/product-range/21830554-rm-airset/"],
+    source_document_refs=[
+        "https://www.se.com/ww/en/product-range/21830554-rm-airset/",
+        # Katalog RM AirSeT IEC (Schneider NRJCAT20014EN) — dokument, z ktorego
+        # przepisano wiersz „Rated voltage Ur kV 12 24".
+        "https://download.schneider-electric.com/files?p_Doc_Ref=NRJCAT20014EN&p_enDocType=Catalog&p_File_Name=NRJCAT20014EN.pdf",
+    ],
     source_version="public-product-page-2026-08-14",
     verified_at=None,
     lifecycle_status="current",
@@ -1102,7 +1254,8 @@ SCHNEIDER__RM_AIRSET = SwitchgearFamily(
     notes_pl=(
         "RM AirSeT — rozdzielnica pierścieniowa (RMU) Schneider Electric bez "
         "SF6: izolacja czystym powietrzem + technika próżniowa, odpowiednik "
-        "funkcjonalny RM6. Karty produktowe (odczyt 2026-08-14): 24 kV, 630 A, "
+        "funkcjonalny RM6. Katalog NRJCAT20014EN (odczyt 2026-08-14): rated "
+        "voltage Ur 12/24 kV — klasy urządzenia, 630 A, "
         "20 kA / 1 s (warianty również 20 kA / 3 s), jednostki funkcjonalne "
         "I (rozłącznik), B/Q (rozłącznik z bezpiecznikami), konfiguracje 3- i "
         "4-funkcyjne. Status repo_verified — dane z publicznych stron "

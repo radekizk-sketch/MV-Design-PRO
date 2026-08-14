@@ -63,6 +63,7 @@ from .families import (
 )
 from .family_validation import (
     bay_template_supports_apparatus,
+    czy_rodzina_obsluguje_napiecie,
     family_supports_apparatus,
     family_supports_bay_kind,
     family_supports_bay_template,
@@ -71,6 +72,7 @@ from .family_validation import (
     family_supports_short_circuit,
     family_supports_voltage,
     get_family_or_raise,
+    opis_napiec_rodziny_pl,
     wymagaj_rodziny_oferowanej,
 )
 from .manufacturer import Manufacturer, ManufacturerStatus
@@ -154,6 +156,7 @@ __all__ = [
     "ZPUE_WLOSZCZOWA__TPM",
     "ZPUE_WLOSZCZOWA__TPM_AIR",
     "bay_template_supports_apparatus",
+    "czy_rodzina_obsluguje_napiecie",
     "family_supports_apparatus",
     "family_supports_bay_kind",
     "family_supports_bay_template",
@@ -176,6 +179,7 @@ __all__ = [
     "list_switchgear_solution_templates_for_manufacturer",
     "list_switchgear_families",
     "manufacturers_requiring_catalog",
+    "opis_napiec_rodziny_pl",
     "tor_konfiguracji_dla_konstrukcji",
     "verified_manufacturers",
     "wymagaj_rodziny_oferowanej",

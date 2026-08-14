@@ -41,7 +41,7 @@
 Aby promować do `verified` (oficjalny katalog ZPUE), procedura:
 1. Pobrać oficjalny katalog ZPUE (np. Rotoblok, Safevap — jeśli takie są aktualne).
 2. Utworzyć `SwitchgearFamily` z `status="verified"`, `source_document_refs=["catalog:zpue_<family>_<year>.pdf"]`, `source_version`, `verified_at`.
-3. Wypełnić `voltage_levels`, `rated_current_options`, `short_time_current_options`, `insulation_type`, `construction_type`, `busbar_system`.
+3. Wypełnić `network_voltages_kv`/`um_classes_kv` (dawniej `network_voltages_kv/um_classes_kv`, karta K-J 2026-08-14), `rated_current_options`, `short_time_current_options`, `insulation_type`, `construction_type`, `busbar_system`.
 4. Pull request z linkiem do źródła + zatwierdzenie przez catalog admin.
 
 ## 5. Jakie typy pól wdrożono

@@ -480,6 +480,16 @@ INIEKCJE: tuple[IniekcjaBramy, ...] = (
         lambda p: _zepsuj_wiazanie(p),
     ),
     IniekcjaBramy(
+        "add_sn_bay_from_catalog",
+        "catalog_binding",
+        lambda: {
+            "bus_ref": "bus-1",
+            "complete_bay_template_ref": "ZPUE_WLOSZCZOWA__ROTOBLOK__TRANSFORMER",
+            "catalog_binding": _wiazanie("APARAT_SN", REF_APARAT_SN),
+        },
+        lambda p: _zepsuj_wiazanie(p),
+    ),
+    IniekcjaBramy(
         "add_nn_load",
         "catalog_binding",
         lambda: {"feeder_ref": "nn-1", "catalog_binding": _wiazanie("OBCIAZENIE", REF_ODBIOR)},

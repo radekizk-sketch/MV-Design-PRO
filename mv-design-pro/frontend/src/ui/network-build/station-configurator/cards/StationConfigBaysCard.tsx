@@ -4,7 +4,11 @@
  * Naprawa eng.17: bezpieczniki HV z katalogu (HV_FUSE_CATALOG).
  */
 
-import { HV_FUSE_CATALOG } from '../../station-der/protection-catalogs';
+import {
+  ETYKIETA_BRAK_PASMA_BEZPIECZNIKA_PL,
+  HV_FUSE_CATALOG,
+  POWOD_BRAK_PASMA_BEZPIECZNIKA_PL,
+} from '../../station-der/protection-catalogs';
 
 export type BayTypePl =
   | 'liniowe wejściowe'
@@ -118,8 +122,24 @@ export function StationConfigBaysCard(props: StationConfigBaysCardProps): JSX.El
                   ) : b.hvFuseCatalogRef ? (() => {
                     const fuse = HV_FUSE_CATALOG.find((f) => f.id === b.hvFuseCatalogRef);
                     return fuse ? (
-                      <span className="font-mono text-scada-text" title={fuse.label_pl}>
-                        {fuse.nominal_voltage_kv}kV/{fuse.nominal_current_a}A · {fuse.class.replace('_', '-')}
+                      <span className="flex flex-col" title={fuse.label_pl}>
+                        <span className="font-mono text-scada-text">
+                          {fuse.nominal_voltage_kv}kV/{fuse.nominal_current_a}A · {fuse.class.replace('_', '-')}
+                        </span>
+                        {/*
+                          Karta K-O: pozycja bez pasma topikowego NIE znika i NIE
+                          udaje kompletnej — mówi wprost, czego brakuje. Wzorzec
+                          backendowy `BRAK_PASMA_BEZPIECZNIKA` (karta N-D5-FUSE).
+                        */}
+                        {fuse.pasmo_tcc === null && (
+                          <span
+                            data-testid={`bay-fuse-brak-pasma-${b.bayId}`}
+                            className="text-status-warn"
+                            title={POWOD_BRAK_PASMA_BEZPIECZNIKA_PL}
+                          >
+                            {ETYKIETA_BRAK_PASMA_BEZPIECZNIKA_PL}
+                          </span>
+                        )}
                       </span>
                     ) : (
                       <span className="text-status-error">nieznany</span>

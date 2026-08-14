@@ -78,9 +78,12 @@ def test_reklozer_sn_ma_icu_wypelnione_mimo_automatycznego_dzialania() -> None:
 
 
 def test_bezpiecznik_sn_ma_icu_wypelnione() -> None:
+    # 63 kA ze stopki tabeli 6/12 kV katalogu ETI Polam (karta
+    # K-E-FUSE-TCC-KATALOG). Intencja testu: bezpiecznik MA wypełnione I_cu
+    # i nie trafia na listę „nie dotyczy" — nie sama wartość liczbowa.
     wynik = resolve_um_icu_from_catalog("sw-fuse-eti-vv-12kv-16a")
     assert wynik.u_m_kv == 12.0
-    assert wynik.i_cu_ka == 31.5
+    assert wynik.i_cu_ka == 63.0
     assert wynik.i_cu_not_applicable is False
 
 

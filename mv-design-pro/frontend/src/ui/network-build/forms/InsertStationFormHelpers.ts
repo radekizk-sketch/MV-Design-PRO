@@ -601,6 +601,18 @@ export interface StationSnFieldTemplate {
    * pominięcie pola zachowuje dotychczasowy tor (operacje osobne).
    */
   equipment?: Record<string, unknown>;
+  /**
+   * Blok fabryczny rodziny RMU, z którego pochodzi to pole — POLE PIERWSZEJ
+   * KLASY payloadu operacji stacyjnej, o tej samej nazwie, co w kontrakcie
+   * `add_sn_bay_from_catalog`. Wcześniej wybór bloku jechał jako metadana
+   * `catalog_bindings.factory_configuration`, której żadna operacja stacyjna
+   * nie czytała — pole rodziny blokowej kończyło zapis twardym błędem
+   * katalogowym. Pole rodziny MODUŁOWEJ klucza nie niesie (brak bloku to brak
+   * wpisu, nie pusty ref).
+   */
+  factory_configuration_ref?: string;
+  /** Numer jednostki bloku (1-based) — jedzie wyłącznie razem z blokiem. */
+  factory_unit_index?: number;
 }
 
 export function buildStationSnFields(

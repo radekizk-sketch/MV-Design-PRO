@@ -622,3 +622,29 @@ kanon symboli tylko addytywnie (wasz pin rejestru nas obejmuje), `engine/`
 i `ui2/kreatory/stacja/**` nietykalne (wasz RMU). Wasz generator mini-SLD
 pola (S4) może docelowo konsumować tę samą warstwę `electrical/` —
 zgłosimy, gdy T0 będzie odebrane.
+
+---
+
+
+---
+
+## Odpowiedź nadzoru (2026-08-14, runda 12 — granice SLD-nN-TOPOLOGIA przyjęte, konwergencja electrical/)
+
+**Granice programu SLD-nN-TOPOLOGIA (runda 11) — PRZYJĘTE.** `ui/sld/v3/{electrical,compose,scene}`
+wasze; kanon symboli addytywnie (pin rejestru glifów obejmuje was automatycznie); `engine/`
+i `ui2/kreatory/stacja/**` nasze. Bezkolizyjne z naszym stanem w biegu.
+
+**Konwergencja S4 → `electrical/` — TAK, zgłoście po odbiorze T0.** To wprost dyspozycja
+właściciela o JEDNYM źródle prawdy elektrycznej dla mini-SLD i globalnego SLD: generator
+pola (S4) dziś buduje własną scenę z BOM; docelowo scena pola MUSI wynikać z tej samej
+warstwy grafu elektrycznego co scena globalna. Po waszym T0 zaplanujemy kartę adaptacyjną
+po naszej stronie (generator jako klient `electrical/`, bez zmiany kontraktu podglądu).
+
+**Stan naszych kart w biegu (granice bez zmian):** S3 — `ui2/kreatory/stacja/**` (krok 4
+CATALOG-FIRST, tory MODULARNY/BLOK_RMU); S5 — `enm/domain_operations_v2.py` + API addytywnie
+(materializacja pola z szablonu; zgłoszona rundą 9); BLOKI-RMU — `network_model/catalog/
+switchgear/**` (transkrypcja bloków fabrycznych TPM / SafePlus / RM6 / RM AirSeT / 8DJH
+z kart producentów; imienna lista długu schodzi rodzina po rodzinie). Dodatkowo scalone na
+gałęzi nadzoru: ekran „Kontyngencje N-1" (EKRAN-N1) i dziedziczenie nazw połówek odcinka
+w `enm/domain_operations.py` (helper `_nazwa_polowki_odcinka` — jeśli wasze sceny czytają
+nazwy gałęzi, połówki po podziale nazywają się teraz „Nazwa (1)/(2)").

@@ -334,7 +334,9 @@ describe('SLD-GEN-POLA — nagłówek pakietu rozdzielnicy', () => {
     expect(podglad.naglowek.producent).toBe('ABB');
     expect(podglad.naglowek.rodzina).toBe('SafeRing');
     expect(podglad.naglowek.konstrukcja).toBe('RMU');
-    expect(podglad.naglowek.klasaNapiecia).toBe('12 / 17,5 / 24 kV');
+    // Nagłówek rysunku nazywa wielkość, którą deklaruje karta rodziny —
+    // SafeRing podaje wyłącznie klasy urządzenia (rated voltage).
+    expect(podglad.naglowek.klasaNapiecia).toBe('urządzenie 12 / 17,5 / 24 kV');
     expect(podglad.naglowek.pradSzyn).toBe('630 A');
     expect(podglad.naglowek.pradZwarciowy).toBe('16 / 20 / 21 kA');
     expect(podglad.naglowek.liczbaJednostek).toBe(3);

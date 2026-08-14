@@ -53,7 +53,7 @@ Aby promować rodzinę do `verified` (oficjalny katalog ABB), procedura:
    - `source_version="<rev>"`,
    - `verified_at="<iso8601>"`,
    - `product_line_code="UNIGEAR_ZS1"` (lub odpowiedni),
-   - `voltage_levels` (np. [12, 17.5, 24]),
+   - `network_voltages_kv`/`um_classes_kv` (dawniej `network_voltages_kv/um_classes_kv`, karta K-J 2026-08-14) (np. [12, 17.5, 24]),
    - `rated_current_options` (np. [1250, 2500, 4000]),
    - `short_time_current_options` (np. [25, 31, 50]),
    - `insulation_type="air"`,

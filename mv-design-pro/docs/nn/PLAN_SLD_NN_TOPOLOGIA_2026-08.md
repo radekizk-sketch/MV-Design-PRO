@@ -110,3 +110,6 @@ katalogowe/modelu (SZYNA_NN, SPD, R uziemienia — osobna karta danych z
 podwójną weryfikacją), potem widok (detail view stacji nN wzorcem
 StationInternalView/PodgladRozdzielnicy: symbole z kanonu + wymiarowane
 szyny + magistrale N/PE + tory odpływów + tabela aparatury).
+
+---
+

@@ -14,12 +14,30 @@
 
 import { clsx } from 'clsx';
 
+import type { BayDeviceInstanceWire, BayKind } from './BayTemplatePicker';
+
 export interface SwitchgearFamily {
   readonly switchgear_family_ref: string;
   readonly manufacturer_ref: string;
   readonly family_name: string;
   readonly series_name: string | null;
-  readonly voltage_levels: readonly number[];
+  /**
+   * DWIE RÓŻNE WIELKOŚCI NAPIĘCIOWE, DWA POLA (kontrakt
+   * `switchgear/switchgear_family.py`, karta K-J):
+   *
+   * · `network_voltages_kv` — napięcia SIECI, dla których karta producenta
+   *   oferuje wyrób (wiersz „napięcie nominalne sieci" / „napięcie robocze");
+   * · `um_classes_kv` — klasy URZĄDZENIA (wiersz „napięcie znamionowe (Ur)" /
+   *   „najwyższe napięcie urządzeń (Um)"), czyli górna granica napięcia sieci
+   *   wg PN-EN 62271-1.
+   *
+   * Karta ZPUE Rotoblok podaje OBIE (sieć 15/20 kV przy klasach 17,5/24 kV) —
+   * jedno wspólne pole `voltage_levels` mieszało je i nie dało się na nim
+   * oprzeć żadnego uczciwego porównania. Pusta lista = karta danego wiersza NIE
+   * ma (jawny brak), nie „zero kilowoltów".
+   */
+  readonly network_voltages_kv: readonly number[];
+  readonly um_classes_kv: readonly number[];
   /**
    * Prądy znamionowe szyn [A] i prądy zwarciowe krótkotrwałe [kA, 1 s] rodziny —
    * pola `rated_current_options` / `short_time_current_options` kontraktu
@@ -43,6 +61,17 @@ export interface SwitchgearFamily {
     | 'prefabrykowana'
     | 'unknown';
   /**
+   * TOR KONFIGURACJI rodziny — pole WYLICZANE przez backend z
+   * `construction_type` (`switchgear_family.py`, `TOR_KONFIGURACJI_WG_KONSTRUKCJI`)
+   * i wystawiane addytywnie przez `GET /api/catalog/switchgear-families`:
+   *  · `MODULARNY` — rozdzielnicę SKŁADA się z pojedynczych katalogowych pól,
+   *  · `BLOK_RMU` — najpierw BLOK fabryczny o stałej sekwencji jednostek
+   *    (RMU nie jest zbiorem luźnych szaf), potem doposażenie jednostek.
+   * `null`/brak = rodzina nie zadeklarowała konstrukcji — jawny brak, NIGDY
+   * domyślny tor (konfigurator odmawia wtedy budowania na tej rodzinie).
+   */
+  readonly tor_konfiguracji?: 'MODULARNY' | 'BLOK_RMU' | null;
+  /**
    * Status weryfikacji rodziny. `repo_verified` = dane z publicznej strony
    * produktowej producenta zweryfikowane w repozytorium katalogu — TAKI status
    * wystawia katalog referencyjny dla wszystkich rodzin (`switchgear/families.py`),
@@ -54,6 +83,42 @@ export interface SwitchgearFamily {
     | 'user_defined'
     | 'requires_catalog'
     | 'deprecated';
+  readonly source_refs: readonly string[];
+  readonly notes_pl: string | null;
+}
+
+/**
+ * Jednostka funkcjonalna bloku fabrycznego RMU — kontrakt
+ * `FactoryConfigurationUnit` (`switchgear/factory_configuration.py`), wystawiany
+ * subzasobem `GET /api/catalog/switchgear-families/{ref}/factory-configurations`.
+ *
+ * `unit_code` to litera KATALOGOWA producenta (L/T/W dla ZPUE TPM Air, C/F/V dla
+ * ABB SafeRing) — nomenklatura wyrobu, nie kod wewnętrzny. `apparatus_kinds` to
+ * aparaty toru głównego, które ODRÓŻNIAJĄ jednostkę (SafeRing CCF vs CCV to dwa
+ * różne wyroby właśnie tą pozycją). `width_mm === null` = karta jej nie podaje.
+ */
+export interface FactoryConfigurationUnitWire {
+  readonly unit_code: string;
+  readonly unit_name_pl: string;
+  readonly bay_kind: BayKind;
+  readonly apparatus_kinds: readonly BayDeviceInstanceWire['apparatus_kind'][];
+  readonly width_mm: number | null;
+}
+
+/**
+ * Blok fabryczny rodziny RMU — kontrakt `FactoryConfiguration`. `unit_sequence`
+ * i `total_width_mm` są po stronie backendu polami WYLICZANYMI (sekwencja liter;
+ * suma szerokości jednostek). `total_width_mm === null` znaczy „choć jedna
+ * jednostka nie ma szerokości w karcie", nigdy „zero milimetrów".
+ */
+export interface FactoryConfigurationWire {
+  readonly configuration_ref: string;
+  readonly switchgear_family_ref: string;
+  readonly code: string;
+  readonly name_pl: string;
+  readonly units: readonly FactoryConfigurationUnitWire[];
+  readonly unit_sequence: string;
+  readonly total_width_mm: number | null;
   readonly source_refs: readonly string[];
   readonly notes_pl: string | null;
 }
@@ -189,9 +254,14 @@ export function SwitchgearFamilyPicker({
               {family.series_name && (
                 <span className="text-[11px] text-gray-500">Seria: {family.series_name}</span>
               )}
-              {family.voltage_levels.length > 0 && (
+              {family.network_voltages_kv.length > 0 && (
                 <span className="text-[11px] text-gray-500">
-                  Napięcia: {family.voltage_levels.map((v) => `${v} kV`).join(', ')}
+                  Napięcia sieci: {family.network_voltages_kv.map((v) => `${v} kV`).join(', ')}
+                </span>
+              )}
+              {family.um_classes_kv.length > 0 && (
+                <span className="text-[11px] text-gray-500">
+                  Klasy urządzenia: {family.um_classes_kv.map((v) => `${v} kV`).join(', ')}
                 </span>
               )}
               {powodBlokady && (

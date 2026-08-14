@@ -27,11 +27,21 @@ const HARNESS_URL = 'http://127.0.0.1:5173/creator-harness.html';
 const OUTPUT_DIR = path.resolve(_dirname, '../../docs/audit/visual/kreatory');
 const THEMES = ['light', 'dark'] as const;
 
-/** Pozycje katalogu z fikstury harnessu (`creator-harness-main.tsx`). */
+/**
+ * REALNE pozycje katalogu APARAT_SN (`mv_switch_catalog.py`), serwowane przez
+ * fiksturę harnessu. Zrzut z pozycjami spoza katalogu byłby dowodem pozornym:
+ * rysunek wygląda poprawnie, a walidator backendu odrzuca każdą taką
+ * konfigurację, więc widoczny na zrzucie werdykt nic nie znaczy.
+ */
 const REKLOZER = 'sw-rec-abb-rec615-17kv-630a';
-const ROZLACZNIK = 'ap-2';
-const WYLACZNIK = 'ap-1';
-const ROZLACZNIK_BEZPIECZNIKOWY = 'ap-3';
+const ROZLACZNIK = 'sw-ls-schneider-rm6-17kv-400a';
+const WYLACZNIK = 'sw-cb-abb-vd4-17kv-630a';
+const ROZLACZNIK_BEZPIECZNIKOWY = 'sw-fuse-eti-vv-17kv-63a';
+
+/** Rodziny kanonu (refy 1:1 z `switchgear/families.py`). */
+const RODZINA_MODULOWA = 'ZPUE_WLOSZCZOWA__ROTOBLOK';
+const RODZINA_RMU = 'ZPUE_WLOSZCZOWA__TPM_AIR';
+const BLOK_RMU = 'ZPUE_WLOSZCZOWA__TPM_AIR__LLT';
 
 test.describe('kreator stacji — podgląd pól rozdzielnicy SN', () => {
   test.beforeAll(() => {
@@ -60,7 +70,7 @@ test.describe('kreator stacji — podgląd pól rozdzielnicy SN', () => {
       await page.getByRole('button', { name: /Pola rozdzielnicy SN/ }).click();
       await expect(page.getByTestId('mvd-kreator-stacja-pola')).toBeVisible({ timeout: 15000 });
       await page.getByTestId('mvd-kreator-stacja-producent').selectOption('ZPUE_WLOSZCZOWA');
-      await page.getByTestId('mvd-kreator-stacja-rodzina').selectOption('zpue_wloszczowa_rotoblok');
+      await page.getByTestId('mvd-kreator-stacja-rodzina').selectOption(RODZINA_MODULOWA);
       await page.waitForTimeout(400);
 
       const podglad = page.getByTestId('mvd-kreator-stacja-podglad');
@@ -93,6 +103,28 @@ test.describe('kreator stacji — podgląd pól rozdzielnicy SN', () => {
       await podglad.scrollIntoViewIfNeeded();
       await podglad.screenshot({
         path: path.join(OUTPUT_DIR, `kreator_stacja_podglad_sprzeglo_${theme}.png`),
+      });
+
+      // (4) TOR BLOKOWY RMU (etap S3) — rodzina dostarczana blokiem fabrycznym.
+      // Zrzut obejmuje CAŁY krok, nie sam rysunek: dowodem jest tor pracy
+      // (nagłówek rodziny z torem konfiguracji, wybór bloku, stały skład
+      // jednostek), a nie wyłącznie schemat.
+      await page.getByTestId('mvd-kreator-stacja-rodzina').selectOption(RODZINA_RMU);
+      await expect(page.getByTestId('mvd-kreator-stacja-tor-blok')).toBeVisible();
+      await page.getByTestId('mvd-kreator-stacja-blok').selectOption(BLOK_RMU);
+      await expect(page.getByTestId('mvd-kreator-stacja-blok-jednostka-3')).toBeVisible();
+      await page.waitForTimeout(600);
+      await page.getByTestId('mvd-kreator-stacja-pola').screenshot({
+        path: path.join(OUTPUT_DIR, `kreator_stacja_tor_blok_rmu_${theme}.png`),
+      });
+
+      // (5) UCZCIWY STAN ZEROWY — rodzina RMU bez transkrybowanych bloków.
+      // Ekran ma powiedzieć, czego brakuje, zamiast pokazać wymyśloną ofertę.
+      await page.getByTestId('mvd-kreator-stacja-rodzina').selectOption('ZPUE_WLOSZCZOWA__TPM');
+      await expect(page.getByTestId('mvd-kreator-stacja-blok-brak')).toBeVisible();
+      await page.waitForTimeout(300);
+      await page.getByTestId('mvd-kreator-stacja-pola').screenshot({
+        path: path.join(OUTPUT_DIR, `kreator_stacja_blok_brak_danych_${theme}.png`),
       });
 
       if (bledy.length > 0) console.log(`[podglad/${theme}] errors:\n${bledy.join('\n')}`);

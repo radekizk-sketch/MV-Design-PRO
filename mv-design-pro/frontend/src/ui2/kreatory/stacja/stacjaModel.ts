@@ -23,7 +23,6 @@ import {
   isCompleteSourceStatus,
   isStationNnSourceConverter,
   isUsableManufacturer,
-  isUsableSwitchgearFamily,
   orderManufacturers,
   sourceFeederRole,
   sourceProtectionIntent,
@@ -45,7 +44,6 @@ import type {
   MVApparatusCatalogType,
 } from '../../../ui/catalog/types';
 import type { Manufacturer } from '../../../ui/catalog/manufacturer';
-import type { SwitchgearFamily } from '../../../ui/catalog/SwitchgearFamilyPicker';
 import type { TransformerType } from '../../../ui/catalog/types';
 
 export type { SnFieldRole, StationSnFieldTemplate } from '../../../ui/network-build/forms/InsertStationFormHelpers';
@@ -111,6 +109,14 @@ export interface PoleSnWpis {
   field_role: SnFieldRole;
   bay_template_ref: string | null;
   apparatus_catalog_ref: string | null;
+  /**
+   * Blok fabryczny i numer jednostki (1-based) — WYŁĄCZNIE dla wpisów
+   * zbudowanych z bloku RMU (`polaZBloku`). Przynależność do wyrobu jest cechą
+   * KONKRETNEGO wpisu pola, nie całego kroku kreatora: jednostki żyją i giną
+   * razem z wyborem bloku, więc ich tożsamość jedzie tam, gdzie one.
+   */
+  factory_configuration_ref?: string;
+  factory_unit_index?: number;
 }
 
 /** Wyposażenie pomiarowo-zabezpieczeniowe pola (krok „Pomiar i zabezpieczenia"). */
@@ -202,8 +208,15 @@ export interface StacjaFormData {
   outgoing_feeders_nn_count: number;
   /** Producent rozdzielnicy SN (referencja katalogowa). */
   manufacturer_ref: string;
-  /** Rodzina rozdzielnicy SN wybranego producenta (opcjonalna). */
+  /** Rodzina rozdzielnicy SN wybranego producenta (wymagana — katalog-first). */
   switchgear_family_ref: string | null;
+  /**
+   * Blok fabryczny rodziny RMU (`FactoryConfiguration.configuration_ref`) —
+   * wyłącznie dla rodzin o torze `BLOK_RMU`. Blok wyznacza STAŁĄ sekwencję
+   * jednostek, więc lista pól powstaje z niego, a nie z ról rodzaju stacji.
+   * `null` dla rodzin modułowych (tam pola składa projektant).
+   */
+  factory_configuration_ref: string | null;
   /** Ręczny wybór szablonu pola per rola (nadpisuje dobór automatyczny). */
   bay_template_refs: Partial<Record<SnFieldRole, string>>;
   /**
@@ -260,6 +273,7 @@ export const DANE_DOMYSLNE: StacjaFormData = {
   outgoing_feeders_nn_count: DOMYSLNA_LICZBA_ODPLYWOW_NN,
   manufacturer_ref: '',
   switchgear_family_ref: null,
+  factory_configuration_ref: null,
   bay_template_refs: {},
   sn_field_apparatus_refs: {},
   station_auxiliary_kw: '',
@@ -743,6 +757,13 @@ export function zbudujWyposazeniePolaDoPayloadu(
  * B-3: wyposażenie pola (krok 4) jedzie W TYM SAMYM wpisie pola — dopasowanie
  * po identyfikatorze wpisu, nie po roli (dwa pola tej samej roli dostają swoje
  * wyposażenie, bez zgadywania kolejności).
+ *
+ * BLOK FABRYCZNY RMU jedzie POLAMI PIERWSZEJ KLASY payloadu
+ * (`factory_configuration_ref` + `factory_unit_index`) — dokładnie tymi samymi
+ * nazwami, których używa kontrakt operacji `add_sn_bay_from_catalog`. Dawna
+ * droga (metadana `catalog_bindings.factory_configuration`) została usunięta:
+ * była drugim nazewnictwem tej samej prawdy, którego żadna operacja stacyjna
+ * nie czytała, więc rodzina blokowa kończyła zapis twardym błędem katalogowym.
  */
 export function zbudujPolaSnZWpisow(
   wpisy: readonly PoleSnWpis[],
@@ -774,6 +795,16 @@ export function zbudujPolaSnZWpisow(
             },
           }
         : null,
+      // Rodziny modułowe kluczy bloku NIE dostają — brak bloku to brak wpisu,
+      // nie pusty ref. Blok i numer jednostki idą PARĄ z tego samego wpisu:
+      // referencja bez numeru nie mówi, które pole bloku powstaje.
+      ...(wpis.factory_configuration_ref !== undefined
+      && wpis.factory_unit_index !== undefined
+        ? {
+            factory_configuration_ref: wpis.factory_configuration_ref,
+            factory_unit_index: wpis.factory_unit_index,
+          }
+        : {}),
       ...(wyposazenie[wpis.id] ? { equipment: wyposazenie[wpis.id] as Record<string, unknown> } : {}),
     };
   });
@@ -855,26 +886,11 @@ export function producenciUzywalni(
   );
 }
 
-/** Rodziny rozdzielnicy zgodne z producentem i napięciem SN szyny (parytet legacy). */
-export function rodzinyDlaProducenta(
-  families: readonly SwitchgearFamily[],
-  manufacturerRef: string,
-  snVoltageKv: number,
-): SwitchgearFamily[] {
-  return families
-    .filter((f) => f.manufacturer_ref === manufacturerRef)
-    .filter(isUsableSwitchgearFamily)
-    .filter(
-      (f) =>
-        f.voltage_levels.length === 0
-        || f.voltage_levels.some((v) => voltageMatches(v, snVoltageKv, 0.5)),
-    )
-    .sort(
-      (a, b) =>
-        a.family_name.localeCompare(b.family_name, 'pl-PL')
-        || a.switchgear_family_ref.localeCompare(b.switchgear_family_ref),
-    );
-}
+// USUNIĘTE: `rodzinyDlaProducenta` (zawężenie listy rodzin do „używalnych").
+// Zastąpiła je `ofertaRodzinProducenta` z `konfiguratorRozdzielnicy.ts`, która
+// pokazuje CAŁE portfolio producenta z jawnym powodem niedostępności zamiast
+// ukrywać rodziny bez potwierdzonej karty katalogowej. Dwie ścieżki tej samej
+// decyzji („które rodziny widać") nie mogą współistnieć, więc stara odchodzi.
 
 /** Wybór rozdzielnicy przekazywany do payloadu (referencje + nazwy + pola). */
 export interface WyborRozdzielnicy {

@@ -594,3 +594,31 @@ describe('WynikiWarsztat — kontekst przebiegu zakładki „Dowód obliczeń" (
     expect(useShellStore.getState().wynikiTabElement).toBeNull();
   });
 });
+
+// EKRAN-N1, odbiór niezależny (2026-08-14): iniekcja nadzoru — zakładka
+// „Kontyngencje N-1" ogłoszona w pasku, ale BEZ dostawcy treści (panel pusty
+// po kliknięciu) — przetrwała 110 testów, bo każdy dotychczasowy pin zakładki
+// był INSTANCJĄ (konkretna zakładka, konkretny testid). Ten test przypina
+// KLASĘ: każda ogłoszona zakładka renderuje treść — uczciwy stan zerowy TEŻ
+// jest treścią, a pusta przestrzeń po kliknięciu to martwa zakładka.
+describe('WynikiWarsztat — KLASA: każda ogłoszona zakładka ma dostawcę treści', () => {
+  it('klik w każdą zakładkę (tryb expert = komplet paska) renderuje niepusty panel', async () => {
+    const { container } = render(<WynikiWarsztat {...props({ trybZaawansowania: 'expert' })} />);
+    const zakladki = screen.getAllByRole('tab');
+    // Sanity: pasek nie skurczył się cicho (32 zakładki w chwili przypięcia;
+    // celowe usunięcie zakładki obniża próg razem z tą liczbą).
+    expect(zakladki.length).toBeGreaterThanOrEqual(32);
+    for (const zakladka of zakladki) {
+      fireEvent.click(zakladka);
+      expect(zakladka).toHaveAttribute('aria-selected', 'true');
+      const panel = container.querySelector('[role="tabpanel"]');
+      expect(panel, `brak panelu treści po kliknięciu „${zakladka.textContent}"`).not.toBeNull();
+      await waitFor(() => {
+        expect(
+          (panel as HTMLElement).children.length,
+          `martwa zakładka: „${zakladka.textContent}" nie renderuje żadnej treści`,
+        ).toBeGreaterThan(0);
+      });
+    }
+  });
+});

@@ -1,15 +1,19 @@
 /**
  * Katalogi zabezpieczeń (Naprawa C — audyt specjalisty zabezpieczeń).
  *
- * Zawiera:
- *   - ProtectionFunctionCatalog (Naprawa C.1): ANSI/IEEE C37.2 + IEC 60255
- *   - CtCatalog (Naprawa C.6): klasa, burden VA, ratio, accuracy
- *   - VtCatalog (Naprawa C.6): klasa, burden VA, ratio, U_th
- *   - SpzCatalog (Naprawa C.3): typy SPZ/auto-reclosing 79
- *   - SzrCatalog (Naprawa C.4): SZR (automatic source switchover)
- *   - TransformerDifferentialCatalog (Naprawa C.5): 87T dla transformatorów
+ * Zawiera (stan zmierzony 2026-08-14, karta K-O — poprzedni nagłówek zapowiadał
+ * trzy katalogi, których w pliku NIE MA: VtCatalog usunięty w V12K-257, dane
+ * burden/ratio CT nigdy tu nie mieszkały, a TransformerDifferentialCatalog nie
+ * powstał; nagłówek obiecujący nieistniejącą zawartość to ten sam rodzaj
+ * nieprawdy, co dana bez źródła):
+ *   - PROTECTION_FUNCTION_CATALOG (C.1): ANSI/IEEE C37.2 + IEC 60255
+ *   - CtClass (C.6): unia klas dokładności CT wg IEC 61869-2 (sam typ + predykaty)
+ *   - SPZ_CATALOG (C.3): typy SPZ/auto-reclosing 79
+ *   - SZR_CATALOG (C.4): SZR (automatic source switchover)
+ *   - HV_FUSE_CATALOG (eng.17): oznaczenia znamionowe wkładek SN wg IEC 60282-1
  *
  * Zasada: każdy ANSI code ma polski opis + dziedzinę zastosowania.
+ * Zasada (K-O): każda wartość liczbowa ma źródło albo pozycji/pola nie ma.
  */
 
 // =============================================================================
@@ -363,6 +367,14 @@ export type CtClass = '0.2' | '0.5' | '1.0' | '5P10' | '5P20' | '10P10' | '10P20
 // =============================================================================
 // 4. SpzCatalog (Auto-reclosing 79 — Naprawa C.3)
 // =============================================================================
+//
+// PROWENIENCJA (karta K-O, 2026-08-14): pozycje niosły pole `typical_operators_pl`
+// przypisujące konkretną praktykę SPZ IMIENNIE WSKAZANYM operatorom (Energa-Operator,
+// Tauron Dystrybucja, PGE Dystrybucja) BEZ ŹRÓDŁA — ani IRiESD, ani żadnej instrukcji
+// ruchu w repozytorium. To ta sama klasa fabrykacji co producent wkładki wpisany
+// „z głowy": zdanie o cudzej praktyce ruchowej, na którym projektant mógłby oprzeć
+// dobór. Pole usunięto (żaden konsument produkcyjny go nie czytał — pomiar w karcie).
+// Przywrócenie wymaga cytatu z IRiESD właściwego OSD.
 
 export interface SpzCatalogItem {
   readonly id: string;
@@ -374,8 +386,6 @@ export interface SpzCatalogItem {
   readonly second_dead_time_ms?: number;
   readonly third_dead_time_ms?: number;
   readonly reclaim_time_s: number;
-  /** Operatorzy preferujący ten cykl. */
-  readonly typical_operators_pl: ReadonlyArray<string>;
   /** Wymagane synchrocheck (25). */
   readonly requires_synchrocheck: boolean;
   /** Compatible z DER (anti-islanding). */
@@ -391,7 +401,6 @@ export const SPZ_CATALOG: ReadonlyArray<SpzCatalogItem> = Object.freeze([
     cycles: 1,
     first_dead_time_ms: 300,
     reclaim_time_s: 10,
-    typical_operators_pl: ['Energa-Operator'],
     requires_synchrocheck: false,
     compatible_with_der: true,
   },
@@ -404,7 +413,6 @@ export const SPZ_CATALOG: ReadonlyArray<SpzCatalogItem> = Object.freeze([
     first_dead_time_ms: 300,
     second_dead_time_ms: 30000,
     reclaim_time_s: 60,
-    typical_operators_pl: ['Tauron Dystrybucja', 'PGE Dystrybucja'],
     requires_synchrocheck: true,
     compatible_with_der: true,
   },
@@ -418,7 +426,6 @@ export const SPZ_CATALOG: ReadonlyArray<SpzCatalogItem> = Object.freeze([
     second_dead_time_ms: 30000,
     third_dead_time_ms: 60000,
     reclaim_time_s: 120,
-    typical_operators_pl: ['Tauron Dystrybucja (sieci wiejskie)'],
     requires_synchrocheck: true,
     compatible_with_der: false,
   },
@@ -523,27 +530,63 @@ export function isCtClassValidForMetering(ctClass: CtClass): boolean {
 //
 // IEC 60282-1 (HV fuses): klasy I (general purpose), full-range, back-up.
 // Polish standard PN-EN 60282-1 dla SN.
+//
+// PROWENIENCJA (karta K-O, 2026-08-14) — pozycje tego katalogu niosły komplet
+// danych wyrobu (producent ABB/Siemens/Schneider, prądy przerywania, całka I²t
+// oraz DWA punkty pasma przy 6×In) BEZ JAKIEGOKOLWIEK ŹRÓDŁA. Był to ten sam
+// rodzaj fabrykacji, który karta K-E usunęła z katalogu backendu: producenci
+// publikują charakterystyki t-I wkładek SN WYŁĄCZNIE jako wykresy log-log
+// (karta ETI VV THERMO mówi wprost „I/t Characteristics According to the
+// curves"), więc punkt pasma odczytany „z głowy" nie istnieje. Wyprowadzenie
+// czasu z całki I²t też odpada — zależność t = I²t/I² obowiązuje wyłącznie w
+// adiabatycznym zakresie topienia, a całka wyłączania zawiera energię łuku.
+//
+// Rozstrzygnięcie: WARTOŚĆ BEZ ŹRÓDŁA NIE ISTNIEJE. Pola wyrobu usunięto (żaden
+// konsument produkcyjny ich nie czytał — pomiar w meldunku karty), a pozycja
+// została tym, czym naprawdę jest: OZNACZENIEM ZNAMIONOWYM wg IEC 60282-1
+// (napięcie / prąd / klasa / zastosowanie), które projektant wybiera do pola.
+// Pasmo jest jawnym brakiem (`pasmo_tcc: null`) — wzorem backendowego
+// `BRAK_PASMA_BEZPIECZNIKA`: pozycja NIE znika z ekranu (ciche zniknięcie to
+// inne kłamstwo), tylko mówi wprost, czego brakuje i skąd to wziąć.
+
+/**
+ * Pasmo czasowo-prądowe wkładki. Typ WYMUSZA parę: punkty istnieją wyłącznie
+ * razem z adresem tabeli producenta, z której je przepisano. Dzięki temu nie da
+ * się dopisać punktów bez proweniencji, nie zmieniając typu.
+ */
+export interface HvFusePasmoTcc {
+  /** URL tabeli producenta z punktami pasma (obowiązkowy razem z punktami). */
+  readonly zrodlo_url: string;
+  readonly punkty: ReadonlyArray<{ readonly prad_a: number; readonly czas_s: number }>;
+}
+
+/**
+ * Powód braku pasma — język wzorowany na backendowym `BRAK_PASMA_BEZPIECZNIKA`
+ * (karta N-D5-FUSE, `application/analyses/protection/coordination/analyzer.py`).
+ */
+export const POWOD_BRAK_PASMA_BEZPIECZNIKA_PL =
+  'Pasmo topikowe (krzywa przedłukowa i krzywa wyłączania) odczytuje się z karty '
+  + 'katalogowej producenta wg IEC 60282-1. Ta pozycja katalogowa nie niesie punktów '
+  + 'pasma, więc czasu zadziałania nie wyznaczono — nie zastąpiono go żadnym '
+  + 'przybliżeniem.';
+
+/** Krótka etykieta stanu do tabel i kart. */
+export const ETYKIETA_BRAK_PASMA_BEZPIECZNIKA_PL = 'pasmo wymaga karty producenta';
 
 export interface HvFuseItem {
   readonly id: string;
   readonly catalog_namespace: 'hv_fuse';
   readonly catalog_version: string;
   readonly label_pl: string;
-  readonly manufacturer: string;
   readonly nominal_voltage_kv: number;
   readonly nominal_current_a: number;
   /** Klasa wg IEC 60282-1: 'general_purpose', 'full_range', 'back_up'. */
   readonly class: 'general_purpose' | 'full_range' | 'back_up';
-  /** Prąd minimalny przerywania [A]. */
-  readonly i_min_breaking_a: number;
-  /** Prąd maksymalny przerywania [kA]. */
-  readonly i_max_breaking_ka: number;
-  /** I²t (Joule integral) — ważne dla koordynacji z transformatorem [A²s]. */
-  readonly i2t_total_a2s: number;
-  /** Czas pre-arcing przy 6×In [ms]. */
-  readonly pre_arcing_time_at_6in_ms: number;
-  /** Czas total clearing przy 6×In [ms]. */
-  readonly total_clearing_time_at_6in_ms: number;
+  /**
+   * Pasmo czasowo-prądowe albo `null`, gdy pozycja go nie niesie. Dziś KAŻDA
+   * pozycja ma `null` — patrz nota proweniencji powyżej.
+   */
+  readonly pasmo_tcc: HvFusePasmoTcc | null;
   /** Stosowanie. */
   readonly application: 'transformer' | 'feeder' | 'motor' | 'capacitor';
 }
@@ -553,32 +596,22 @@ export const HV_FUSE_CATALOG: ReadonlyArray<HvFuseItem> = Object.freeze([
     id: 'fuse_15kv_50a_full',
     catalog_namespace: 'hv_fuse',
     catalog_version: '2024.1',
-    label_pl: 'Bezpiecznik SN 15 kV / 50 A · full-range · TRAFO 630 kVA',
-    manufacturer: 'ABB',
+    label_pl: 'Bezpiecznik SN 15 kV / 50 A · full-range · pole transformatorowe',
     nominal_voltage_kv: 15,
     nominal_current_a: 50,
     class: 'full_range',
-    i_min_breaking_a: 200,
-    i_max_breaking_ka: 50,
-    i2t_total_a2s: 14000,
-    pre_arcing_time_at_6in_ms: 30,
-    total_clearing_time_at_6in_ms: 50,
+    pasmo_tcc: null,
     application: 'transformer',
   },
   {
     id: 'fuse_15kv_100a_full',
     catalog_namespace: 'hv_fuse',
     catalog_version: '2024.1',
-    label_pl: 'Bezpiecznik SN 15 kV / 100 A · full-range · TRAFO 1250 kVA',
-    manufacturer: 'Siemens',
+    label_pl: 'Bezpiecznik SN 15 kV / 100 A · full-range · pole transformatorowe',
     nominal_voltage_kv: 15,
     nominal_current_a: 100,
     class: 'full_range',
-    i_min_breaking_a: 400,
-    i_max_breaking_ka: 50,
-    i2t_total_a2s: 56000,
-    pre_arcing_time_at_6in_ms: 25,
-    total_clearing_time_at_6in_ms: 45,
+    pasmo_tcc: null,
     application: 'transformer',
   },
   {
@@ -586,31 +619,21 @@ export const HV_FUSE_CATALOG: ReadonlyArray<HvFuseItem> = Object.freeze([
     catalog_namespace: 'hv_fuse',
     catalog_version: '2024.1',
     label_pl: 'Bezpiecznik SN 20 kV / 25 A · general-purpose · pole odpływowe',
-    manufacturer: 'Schneider',
     nominal_voltage_kv: 20,
     nominal_current_a: 25,
     class: 'general_purpose',
-    i_min_breaking_a: 75,
-    i_max_breaking_ka: 25,
-    i2t_total_a2s: 3500,
-    pre_arcing_time_at_6in_ms: 35,
-    total_clearing_time_at_6in_ms: 60,
+    pasmo_tcc: null,
     application: 'feeder',
   },
   {
     id: 'fuse_15kv_160a_backup',
     catalog_namespace: 'hv_fuse',
     catalog_version: '2024.1',
-    label_pl: 'Bezpiecznik SN 15 kV / 160 A · back-up (kondensator)',
-    manufacturer: 'ABB',
+    label_pl: 'Bezpiecznik SN 15 kV / 160 A · back-up · bateria kondensatorów',
     nominal_voltage_kv: 15,
     nominal_current_a: 160,
     class: 'back_up',
-    i_min_breaking_a: 1000,
-    i_max_breaking_ka: 50,
-    i2t_total_a2s: 145000,
-    pre_arcing_time_at_6in_ms: 20,
-    total_clearing_time_at_6in_ms: 40,
+    pasmo_tcc: null,
     application: 'capacitor',
   },
 ]);

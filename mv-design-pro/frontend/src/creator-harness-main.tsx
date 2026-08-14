@@ -116,10 +116,16 @@ const CATALOG_FIXTURES: Record<string, unknown> = {
   // zwraca — zrzut pokazywałby wtedy inne dane niż aplikacja, a zawężenie pickera
   // rolą pola (readout `/bay-apparatus-kinds`) nie miałoby czego dopasować.
   '/api/catalog/mv-apparatus-types': [
-    { id: 'ap-1', name: 'Wyłącznik próżniowy VD4 17,5 kV', device_kind: 'WYLACZNIK', u_n_kv: 17.5, i_n_a: 630, breaking_capacity_ka: 25 },
-    { id: 'ap-2', name: 'Rozłącznik LBS 17,5 kV', device_kind: 'ROZLACZNIK', u_n_kv: 17.5, i_n_a: 630, breaking_capacity_ka: 20 },
-    { id: 'ap-3', name: 'Rozłącznik bezpiecznikowy ETI VV 17,5 kV', device_kind: 'ROZLACZNIK_BEZPIECZNIKOWY', u_n_kv: 17.5, i_n_a: 63 },
-    { id: 'ap-4', name: 'Odłącznik OJS 17,5 kV', device_kind: 'ODLACZNIK', u_n_kv: 17.5, i_n_a: 630 },
+    // REALNE pozycje katalogu APARAT_SN (`mv_switch_catalog.py`) — identyfikatory,
+    // nazwy i znamiona 1:1 z kartami producentów. Wcześniej scena serwowała
+    // wymyślone `ap-1`…`ap-4`: zrzut wyglądał poprawnie, ale walidator backendu
+    // odrzucał każdą taką konfigurację (pozycja spoza katalogu), więc werdykt na
+    // zrzucie dowodowym nie znaczył nic. Atrapa ma odwzorowywać katalog, nie go
+    // udawać.
+    { id: 'sw-cb-abb-vd4-17kv-630a', name: 'ABB VD4 17.5 kV 630 A', device_kind: 'WYLACZNIK', u_n_kv: 17.5, i_n_a: 630, breaking_capacity_ka: 20 },
+    { id: 'sw-ls-schneider-rm6-17kv-400a', name: 'Schneider RM6 17.5 kV 400 A', device_kind: 'ROZLACZNIK', u_n_kv: 17.5, i_n_a: 400, breaking_capacity_ka: 20 },
+    { id: 'sw-fuse-eti-vv-17kv-63a', name: 'ETI VV 17.5 kV 63 A', device_kind: 'ROZLACZNIK_BEZPIECZNIKOWY', u_n_kv: 17.5, i_n_a: 63 },
+    { id: 'sw-ds-abb-ojs-17kv-630a', name: 'ABB OJS 17.5 kV 630 A', device_kind: 'ODLACZNIK', u_n_kv: 17.5, i_n_a: 630 },
     // MINI-RMU-CAD: REKLOZER — rodzaj dopuszczony przez backend dla pól liniowych
     // (`BAY_PRIMARY_APPARATUS_KINDS_BY_ROLE`: IN/OUT/FEEDER), którego scena NIE
     // serwowała: zawężenie roli je przepuszczało, ale lista była pusta z tego
@@ -156,19 +162,65 @@ const CATALOG_FIXTURES: Record<string, unknown> = {
     { id: 'tr-sn-nn-15-04-400kva-dyn11', name: 'Transformator 400 kVA 15/0,4 kV Dyn11', rated_power_mva: 0.4, voltage_hv_kv: 15, voltage_lv_kv: 0.4, uk_percent: 4.0, pk_kw: 4.6, vector_group: 'Dyn11' },
   ],
   '/api/catalog/switchgear-families': [
-    // DWA REKORDY CELOWO ROZNE (V12K-259). Pierwszy niesie `voltage_levels`, wiec scena
-    // cwiczy REALNY filtr napiec. Drugi go NIE MA — i to jest przypadek GRANICZNY, ktory
-    // wywracal caly kreator bialym ekranem (`voltage_levels.length` na `undefined`).
-    // Gdyby oba rekordy byly kompletne, usuniecie normalizacji w kliencie katalogu
-    // przechodziloby na zielono, a bramka pilnowalaby tylko szczesliwej sciezki.
-    { switchgear_family_ref: 'zpue_rotoblok', family_name: 'Rotoblok SVS', manufacturer_ref: 'ZPUE', voltage_levels: [15, 20] },
+    // DWA REKORDY CELOWO NIEKOMPLETNE (V12K-259, rozszerzone karta K-J). Rekord
+    // ponizej niesie TYLKO napiecia sieci — brakuje mu drugiego pola napieciowego;
+    // kolejny nie niesie ZADNEGO. To sa przypadki GRANICZNE, ktore wywracaly caly
+    // kreator bialym ekranem (`.length` na `undefined`). Po rozdzieleniu pola na
+    // dwa scena musi cwiczyc OBIE polowy normalizacji osobno — inaczej usuniecie
+    // domkniecia jednego pola przechodziloby na zielono.
+    { switchgear_family_ref: 'zpue_rotoblok', family_name: 'Rotoblok SVS', manufacturer_ref: 'ZPUE', network_voltages_kv: [15, 20] },
     { switchgear_family_ref: 'abb_unigear', family_name: 'UniGear ZS1', manufacturer_ref: 'ABB' },
-    // KOMPLETNOSC-POLA-TR: rodzina POD REF PRODUCENTA z `/api/catalog/manufacturers`
-    // — kreator stacji wiąże pole z szablonem producenta, więc refy muszą się
-    // zgadzać w trzech miejscach (producent ↔ rodzina ↔ szablon pola). Wcześniejsze
-    // dwa rekordy zostają nietknięte (scena „pole" ich używa).
-    { switchgear_family_ref: 'zpue_wloszczowa_rotoblok', family_name: 'Rotoblok SVS (ZPUE Włoszczowa)', manufacturer_ref: 'ZPUE_WLOSZCZOWA', voltage_levels: [15, 20], status: 'verified', source_refs: ['https://zpue.pl'], insulation_type: 'sf6', construction_type: 'RMU', series_name: null, notes_pl: null },
+    // KONFIGURATOR-POL-RMU (S3): rodziny producenta w KSZTAŁCIE REALNEJ ODPOWIEDZI
+    // `GET /api/catalog/switchgear-families` — refy kanonu (`ZPUE_WLOSZCZOWA__*`),
+    // klasy znamionowe z kart producenta i WYLICZANY `tor_konfiguracji`. Atrapa
+    // musi nieść to pole, bo krok pól rozgałęzia się właśnie na nim; poprzedni
+    // rekord opisywał Rotoblok jako RMU w izolacji SF₆ (karta ZPUE mówi:
+    // rozdzielnica wnętrzowa, izolacja powietrzna), więc scena ćwiczyła tor,
+    // którego ta rodzina nie ma.
+    { switchgear_family_ref: 'ZPUE_WLOSZCZOWA__ROTOBLOK', family_name: 'Rotoblok', manufacturer_ref: 'ZPUE_WLOSZCZOWA', network_voltages_kv: [15, 20], um_classes_kv: [17.5, 24], rated_current_options: [630], short_time_current_options: [16], status: 'repo_verified', source_refs: ['https://zpue.pl/rozdzielnice-sn/rotoblok'], insulation_type: 'air', construction_type: 'wnetrzowa', tor_konfiguracji: 'MODULARNY', series_name: null, notes_pl: null },
+    { switchgear_family_ref: 'ZPUE_WLOSZCZOWA__TPM_AIR', family_name: 'TPM Air', manufacturer_ref: 'ZPUE_WLOSZCZOWA', network_voltages_kv: [], um_classes_kv: [24], rated_current_options: [630], short_time_current_options: [20], status: 'repo_verified', source_refs: ['https://zpue.pl/rozdzielnice-sn/tpm-air'], insulation_type: 'air', construction_type: 'RMU', tor_konfiguracji: 'BLOK_RMU', series_name: null, notes_pl: null },
+    // Rodzina RMU BEZ transkrybowanych bloków (jawny dług danych kanonu §9) —
+    // scena ma pokazywać uczciwy stan zerowy, a nie wymyśloną ofertę.
+    { switchgear_family_ref: 'ZPUE_WLOSZCZOWA__TPM', family_name: 'TPM', manufacturer_ref: 'ZPUE_WLOSZCZOWA', network_voltages_kv: [20], um_classes_kv: [25], rated_current_options: [630], short_time_current_options: [20], status: 'repo_verified', source_refs: ['https://zpue.pl/rozdzielnice-sn/tpm'], insulation_type: 'sf6', construction_type: 'RMU', tor_konfiguracji: 'BLOK_RMU', series_name: null, notes_pl: null },
+    // Rodzina bez potwierdzonej karty — WIDOCZNA, ale niewybieralna.
+    { switchgear_family_ref: 'ABB__UNISEC', family_name: 'UniSec', manufacturer_ref: 'ZPUE_WLOSZCZOWA', network_voltages_kv: [], um_classes_kv: [24], rated_current_options: [], short_time_current_options: [], status: 'requires_catalog', source_refs: [], insulation_type: 'air', construction_type: 'wnetrzowa', tor_konfiguracji: 'MODULARNY', series_name: null, notes_pl: null },
   ],
+  // Subzasób konfiguracji fabrycznych: bloki ZPUE TPM Air w nomenklaturze
+  // PRODUCENTA (L — rozłącznik liniowy 630 A, T — rozłącznik z bezpiecznikami
+  // 250 A, W — wyłącznik 630 A). Szerokości nie ma na stronie produktowej, więc
+  // `total_width_mm` zostaje `null` — atrapa nie zmyśla milimetra.
+  '/api/catalog/switchgear-families/ZPUE_WLOSZCZOWA__TPM_AIR/factory-configurations': [
+    {
+      configuration_ref: 'ZPUE_WLOSZCZOWA__TPM_AIR__LLT',
+      switchgear_family_ref: 'ZPUE_WLOSZCZOWA__TPM_AIR',
+      code: 'LLT',
+      name_pl: 'Blok kabel-kabel-transformator',
+      units: [
+        { unit_code: 'L', unit_name_pl: 'Jednostka liniowa (rozłącznik 630 A)', bay_kind: 'liniowe_odplywowe', apparatus_kinds: ['switch_disconnector'], width_mm: null },
+        { unit_code: 'L', unit_name_pl: 'Jednostka liniowa (rozłącznik 630 A)', bay_kind: 'liniowe_odplywowe', apparatus_kinds: ['switch_disconnector'], width_mm: null },
+        { unit_code: 'T', unit_name_pl: 'Jednostka transformatorowa (rozłącznik z bezpiecznikami 250 A)', bay_kind: 'transformatorowe', apparatus_kinds: ['switch_disconnector', 'fuse_set'], width_mm: null },
+      ],
+      unit_sequence: 'L-L-T',
+      total_width_mm: null,
+      source_refs: ['https://zpue.pl/rozdzielnice-sn/tpm-air'],
+      notes_pl: null,
+    },
+    {
+      configuration_ref: 'ZPUE_WLOSZCZOWA__TPM_AIR__LL',
+      switchgear_family_ref: 'ZPUE_WLOSZCZOWA__TPM_AIR',
+      code: 'LL',
+      name_pl: 'Blok kabel-kabel',
+      units: [
+        { unit_code: 'L', unit_name_pl: 'Jednostka liniowa (rozłącznik 630 A)', bay_kind: 'liniowe_odplywowe', apparatus_kinds: ['switch_disconnector'], width_mm: null },
+        { unit_code: 'L', unit_name_pl: 'Jednostka liniowa (rozłącznik 630 A)', bay_kind: 'liniowe_odplywowe', apparatus_kinds: ['switch_disconnector'], width_mm: null },
+      ],
+      unit_sequence: 'L-L',
+      total_width_mm: null,
+      source_refs: ['https://zpue.pl/rozdzielnice-sn/tpm-air'],
+      notes_pl: null,
+    },
+  ],
+  '/api/catalog/switchgear-families/ZPUE_WLOSZCZOWA__TPM/factory-configurations': [],
   '/api/catalog/lv-apparatus-types': [
     { id: 'lv-1', name: 'Wyłącznik nN 630A', u_n_kv: 0.4, i_n_a: 630 },
   ],
@@ -1087,10 +1139,17 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     });
   }
 
-  for (const [key, body] of Object.entries(CATALOG_FIXTURES)) {
-    if (url.includes(key)) {
-      return new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } });
-    }
+  // Dopasowanie NAJDŁUŻSZYM pasującym kluczem, nie pierwszym z brzegu.
+  // Trasa i jej SUBZASÓB dzielą prefiks (`/switchgear-families` vs
+  // `/switchgear-families/{ref}/factory-configurations`), więc kolejność wpisów
+  // decydowałaby o tym, którą odpowiedź dostaje ekran — subzasób byłby
+  // przesłonięty listą rodzin i scena pokazywałaby bloki, których nie ma.
+  const dopasowane = Object.entries(CATALOG_FIXTURES)
+    .filter(([key]) => url.includes(key))
+    .sort(([a], [b]) => b.length - a.length);
+  if (dopasowane.length > 0) {
+    const [, body] = dopasowane[0];
+    return new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } });
   }
   if (url.includes('/api/quality/energy-validation')) {
     // Scena „walidacja" (R2-D): odpowiedz 1:1 z kontraktem backendu, w tym
@@ -1949,22 +2008,70 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     // KOMPLETNOSC-POLA-TR: kompletne szablony pól producenta — bez nich krok
     // „Pola rozdzielnicy SN" nie ma czego pokazać (pusta lista = ekran, którego
     // projektant nigdy nie zobaczy). Kształt 1:1 z `CompleteMvBayTemplateSummary`.
-    const szablon = (ref: string, kind: string, nazwa: string) => ({
+    // KONFIGURATOR-POL-RMU (S3): szablon niesie KOMPOZYCJĘ APARATÓW
+    // (`device_instances` ze `status_wyposazenia`), bo karta pola i mini-SLD
+    // rysują pole właśnie z niej. Szablon bez składu pokazywałby pole puste,
+    // czyli scenę, której projektant w żywej aplikacji nie zobaczy.
+    const aparat = (
+      ref: string,
+      kind: string,
+      label: string,
+      pozycja: number,
+      strona: string,
+      status: 'FABRYCZNY' | 'OPCJA' = 'FABRYCZNY',
+    ) => ({
+      device_template_ref: ref,
+      apparatus_kind: kind,
+      label,
+      position_in_bay: pozycja,
+      electrical_side: strona,
+      status_wyposazenia: status,
+    });
+    const szablon = (
+      ref: string,
+      kind: string,
+      nazwa: string,
+      rodzina: string,
+      instancje: ReturnType<typeof aparat>[],
+    ) => ({
       template_ref: ref,
       bay_kind: kind,
       bay_role: kind === 'transformatorowe' ? 'TR' : 'OUT',
       manufacturer_ref: 'ZPUE_WLOSZCZOWA',
-      switchgear_family_ref: 'zpue_wloszczowa_rotoblok',
+      switchgear_family_ref: rodzina,
       source_status: 'repo_verified',
       source_refs: ['https://zpue.pl'],
       name_pl: nazwa,
+      template_name_pl: nazwa,
+      device_instances: instancje,
     });
+    const polePolaczeniowe = (prefiks: string) => [
+      aparat(`${prefiks}__DS`, 'switch_disconnector', 'Q1', 1, 'busbar_side'),
+      aparat(`${prefiks}__ES`, 'earthing_switch', 'Q9 (E)', 2, 'earthing_branch'),
+      aparat(`${prefiks}__CH`, 'cable_head', 'GK', 3, 'line_side'),
+    ];
+    const poleTransformatorowe = (prefiks: string) => [
+      aparat(`${prefiks}__DS`, 'switch_disconnector', 'Q1', 1, 'busbar_side'),
+      aparat(`${prefiks}__FUSE`, 'fuse_set', 'F1', 2, 'transformer_side'),
+      aparat(`${prefiks}__ES`, 'earthing_switch', 'Q9 (E)', 3, 'earthing_branch'),
+    ];
     return new Response(
       JSON.stringify([
-        szablon('ZPUE__ROTOBLOK__LINE_IN', 'liniowe_doplywowe', 'Pole liniowe dopływowe'),
-        szablon('ZPUE__ROTOBLOK__LINE_OUT', 'liniowe_odplywowe', 'Pole liniowe odpływowe'),
-        szablon('ZPUE__ROTOBLOK__TRANSFORMER', 'transformatorowe', 'Pole transformatorowe'),
-        szablon('ZPUE__ROTOBLOK__COUPLER', 'sprzeglowe_poprzeczne', 'Pole sprzęgłowe'),
+        szablon('ZPUE__ROTOBLOK__LINE_IN', 'liniowe_doplywowe', 'Pole liniowe dopływowe', 'ZPUE_WLOSZCZOWA__ROTOBLOK', [
+          aparat('ZPUE__ROTOBLOK__LINE_IN__DS', 'disconnector_busbar', 'Q1', 1, 'busbar_side'),
+          aparat('ZPUE__ROTOBLOK__LINE_IN__CB', 'circuit_breaker', 'Q0', 2, 'line_side'),
+          aparat('ZPUE__ROTOBLOK__LINE_IN__CT', 'current_transformer', 'T1', 3, 'line_side'),
+          aparat('ZPUE__ROTOBLOK__LINE_IN__ES', 'earthing_switch', 'Q9 (E)', 4, 'earthing_branch'),
+          aparat('ZPUE__ROTOBLOK__LINE_IN__CH', 'cable_head', 'GK', 5, 'line_side'),
+        ]),
+        szablon('ZPUE__ROTOBLOK__LINE_OUT', 'liniowe_odplywowe', 'Pole liniowe odpływowe', 'ZPUE_WLOSZCZOWA__ROTOBLOK', polePolaczeniowe('ZPUE__ROTOBLOK__LINE_OUT')),
+        szablon('ZPUE__ROTOBLOK__TRANSFORMER', 'transformatorowe', 'Pole transformatorowe', 'ZPUE_WLOSZCZOWA__ROTOBLOK', poleTransformatorowe('ZPUE__ROTOBLOK__TRANSFORMER')),
+        szablon('ZPUE__ROTOBLOK__COUPLER', 'sprzeglowe_poprzeczne', 'Pole sprzęgłowe', 'ZPUE_WLOSZCZOWA__ROTOBLOK', [
+          aparat('ZPUE__ROTOBLOK__COUPLER__CB', 'circuit_breaker', 'Q0', 1, 'busbar_side'),
+        ]),
+        // Pakiet rodziny RMU — jednostki bloku dobierają z niego swoje karty.
+        szablon('ZPUE__TPM_AIR__LINE_OUT', 'liniowe_odplywowe', 'Jednostka liniowa L', 'ZPUE_WLOSZCZOWA__TPM_AIR', polePolaczeniowe('ZPUE__TPM_AIR__LINE_OUT')),
+        szablon('ZPUE__TPM_AIR__TRANSFORMER', 'transformatorowe', 'Jednostka transformatorowa T', 'ZPUE_WLOSZCZOWA__TPM_AIR', poleTransformatorowe('ZPUE__TPM_AIR__TRANSFORMER')),
       ]),
       { status: 200, headers: { 'Content-Type': 'application/json' } },
     );

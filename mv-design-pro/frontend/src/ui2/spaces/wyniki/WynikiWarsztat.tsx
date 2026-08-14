@@ -44,6 +44,7 @@ import {
   PulpitOze,
 } from '../../oze';
 import { EkranJakosci } from '../../wyniki/jakosc';
+import { EkranKontyngencji } from '../../wyniki/kontyngencje';
 import { EkranWrazliwosci } from '../../wyniki/wrazliwosc';
 import { EkranKoordynacji } from '../../wyniki/koordynacja';
 import { EkranEstymacji } from '../../wyniki/estymacja';
@@ -66,6 +67,7 @@ const ZAKLADKI = [
   { id: 'rozplyw', etykieta: T.zakladkaRozplyw },
   { id: 'regulacja-oltc', etykieta: T.zakladkaRegulacjaOltc },
   { id: 'zbieznosc', etykieta: T.zakladkaZbieznosc },
+  { id: 'kontyngencje', etykieta: T.zakladkaKontyngencje },
   { id: 'zwarcia', etykieta: T.zakladkaZwarcia },
   { id: 'koordynacja', etykieta: T.zakladkaKoordynacja },
   { id: 'skladowe', etykieta: T.zakladkaSkladowe },
@@ -124,6 +126,7 @@ const GRUPY_ZAKLADEK: readonly { etykieta: string; zakladki: readonly ZakladkaId
       'rozplyw',
       'regulacja-oltc',
       'zbieznosc',
+      'kontyngencje',
       'zwarcia',
       'koordynacja',
       'skladowe',
@@ -362,6 +365,11 @@ export function WynikiWarsztat({
         {/* K3-A3: zakładkowi dostawcy kart huba E-29…E-32 (parytet E-33/E-34) —
             ekrany ui2 czytają store'y same (bez propsów, uczciwe stany zerowe). */}
         {zakladka === 'zbieznosc' && <EkranZbieznosci />}
+        {/* EKRAN-N1 (D8): powierzchnia zdolności enumeracji kontyngencji N-1 —
+            zakres wybiera inżynier, bieg startuje jawnym przyciskiem. */}
+        {zakladka === 'kontyngencje' && (
+          <EkranKontyngencji trybZaawansowania={trybZaawansowania} />
+        )}
         {zakladka === 'skladowe' && <EkranSkladowych />}
         {zakladka === 'stan-fazowy' && <EkranStanuFazowego />}
         {zakladka === 'stabilnosc' && <EkranStabilnosci />}

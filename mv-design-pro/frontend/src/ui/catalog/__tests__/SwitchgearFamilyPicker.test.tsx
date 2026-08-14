@@ -12,7 +12,8 @@ function makeFamily(overrides: Partial<SwitchgearFamily> = {}): SwitchgearFamily
     manufacturer_ref: 'DEMO',
     family_name: 'Demo Family',
     series_name: null,
-    voltage_levels: [15],
+    network_voltages_kv: [15],
+    um_classes_kv: [17.5],
     insulation_type: 'sf6',
     construction_type: 'RMU',
     status: 'verified',
@@ -64,7 +65,8 @@ describe('SwitchgearFamilyPicker', () => {
         switchgear_family_ref: 'DEMO__B',
         family_name: 'Family B',
         construction_type: 'wysuwna',
-        voltage_levels: [15, 20],
+        network_voltages_kv: [15, 20],
+        um_classes_kv: [17.5, 24],
       }),
     ];
     const { container } = render(

@@ -545,3 +545,41 @@
   line-height: 1.45;
   color: var(--mvd-muted);
 }
+
+/* KONFIGURATOR-POL-RMU (etap S3): nagłówek wybranej rodziny rozdzielnicy i
+   karta wyposażenia katalogowego pola. Nagłówek czyta pakiet katalogowy, więc
+   jawny brak danej ma WYGLĄDAĆ na brak, a nie na wartość. */
+.mvd-kreator-naglowek-rodziny {
+  margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 2px 12px;
+  font-size: 12px; color: var(--mvd-ink);
+}
+.mvd-kreator-naglowek-rodziny dt { color: var(--mvd-muted); }
+.mvd-kreator-naglowek-rodziny dd { margin: 0; font-variant-numeric: tabular-nums; }
+.mvd-kreator-naglowek-rodziny dd[data-brak="tak"] { color: var(--mvd-muted); font-style: italic; }
+
+/* Skład pola: oznaczenie operatorskie (Q…) mono, żeby kolumna oznaczeń czytała
+   się jak na schemacie; status wyposażenia obok nazwy aparatu. */
+.mvd-kreator-lista-wyposazenia,
+.mvd-kreator-jednostki-bloku {
+  margin: 4px 0 0; padding: 0; list-style: none;
+  display: flex; flex-direction: column; gap: 4px; font-size: 12.5px;
+}
+.mvd-kreator-lista-wyposazenia li,
+.mvd-kreator-jednostki-bloku li {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px;
+}
+.mvd-kreator-oznaczenie,
+.mvd-kreator-kod-jednostki {
+  font: 600 11.5px/1.4 var(--mvd-font-mono); color: var(--mvd-accent); min-width: 40px;
+}
+.mvd-kreator-nazwa-aparatu { color: var(--mvd-ink); }
+.mvd-kreator-status {
+  font-size: 10.5px; letter-spacing: .02em; text-transform: uppercase;
+  padding: 1px 6px; border-radius: 999px; border: 1px solid var(--mvd-line);
+  color: var(--mvd-muted);
+}
+.mvd-kreator-status--fabryczny { color: var(--mvd-ok); border-color: currentColor; }
+.mvd-kreator-status--opcja { color: var(--mvd-accent); border-color: currentColor; }
+.mvd-kreator-podpowiedz {
+  flex-basis: 100%; font-size: 11px; line-height: 1.45; color: var(--mvd-muted);
+}

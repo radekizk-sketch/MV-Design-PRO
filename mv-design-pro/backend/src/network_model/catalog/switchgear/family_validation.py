@@ -80,13 +80,82 @@ def family_supports_apparatus(switchgear_family_ref: str, apparatus_kind: str) -
         )
 
 
+#: Tolerancja porównania napięć [kV]. Napięcia katalogowe i napięcia szyn są
+#: wartościami ZNAMIONOWYMI zapisanymi jako `float` (15.0, 17.5, 24.0), więc
+#: jedyne czego tu potrzeba, to odporność na reprezentację binarną — NIE jest
+#: to margines inżynierski i nie wolno go do tego użyć.
+_TOLERANCJA_NAPIECIA_KV = 1e-9
+
+
+def czy_rodzina_obsluguje_napiecie(family: SwitchgearFamily, voltage_kv: float) -> bool:
+    """Czy rodzina pasuje do szyny o napięciu znamionowym `voltage_kv`.
+
+    JEDNO ŹRÓDŁO PRAWDY dla pytania „czy ta rozdzielnica może stać na tej
+    szynie". Zarówno twarda walidacja operacji domenowej
+    (`family_supports_voltage`), jak i lista sprawdzeń Reference Engine V1
+    (`reference_engine/compliance.py`) czytają TĘ funkcję — dwa niezależne
+    warunki, które „dziś się zgadzają", byłyby defektem czekającym na dane
+    brzegowe.
+
+    REGUŁA (karta K-J, 2026-08-14):
+
+    1. Gdy karta producenta wymienia napięcia SIECI (`network_voltages_kv`) —
+       rozstrzyga ta lista: `voltage_kv` musi być jednym z wymienionych napięć.
+       Producent nazwał sieci, dla których robi wyrób, i katalog rozstrzyga
+       (§4 `KONFIGURATOR_ROZDZIELNIC_SN_RMU.md`), a nie domysł o zapasie
+       izolacji. Rotoblok VCB deklarowany na sieć 20 kV nie wchodzi do sieci
+       15 kV, choć jego izolacja by to wytrzymała — bo karta go tam nie oferuje.
+    2. Gdy karta napięć sieci NIE podaje (lista pusta), rozstrzyga klasa
+       urządzenia: wystarczy JEDNA klasa `Um >= voltage_kv`. Podstawa normowa:
+       PN-EN 62271-1 definiuje napięcie znamionowe urządzenia jako GÓRNĄ
+       granicę najwyższego napięcia sieci, dla której urządzenie zaprojektowano
+       — więc aparat klasy 24 kV pracuje w sieci 15 i 20 kV, ale nie w 30 kV.
+    3. Gdy karta nie podaje ŻADNEJ z dwóch wielkości, rodzina nie ma czym
+       potwierdzić zgodności — odpowiedź brzmi „nie", a nie „może". Cicha zgoda
+       przy braku danych to fabrykacja zgodności.
+
+    Napięcie niedodatnie nie jest napięciem szyny — zwraca `False`, żeby brak
+    danych o szynie nie przechodził jako zgodność.
+    """
+    if not voltage_kv > 0:
+        return False
+    if family.network_voltages_kv:
+        return any(
+            abs(napiecie_sieci - voltage_kv) <= _TOLERANCJA_NAPIECIA_KV
+            for napiecie_sieci in family.network_voltages_kv
+        )
+    return any(
+        klasa_um + _TOLERANCJA_NAPIECIA_KV >= voltage_kv for klasa_um in family.um_classes_kv
+    )
+
+
+def opis_napiec_rodziny_pl(family: SwitchgearFamily) -> str:
+    """Polskie zdanie o tym, co karta rodziny deklaruje w sprawie napięcia.
+
+    Używane w komunikacie błędu i w liście sprawdzeń V1, żeby projektant
+    czytał POWÓD odrzucenia (co katalog deklaruje), a nie samą odmowę.
+    """
+    if family.network_voltages_kv:
+        wartosci = ", ".join(f"{napiecie:g}" for napiecie in family.network_voltages_kv)
+        return f"karta deklaruje napiecia sieci: {wartosci} kV"
+    if family.um_classes_kv:
+        wartosci = ", ".join(f"{klasa:g}" for klasa in family.um_classes_kv)
+        return f"karta deklaruje klasy napieciowe urzadzenia (Um): {wartosci} kV"
+    return "karta nie deklaruje ani napiec sieci, ani klas napieciowych urzadzenia"
+
+
 def family_supports_voltage(switchgear_family_ref: str, voltage_kv: float) -> None:
-    """Napięcie mieści się w klasach katalogowych rodziny."""
+    """Napięcie szyny mieści się w deklaracji napięciowej rodziny (albo błąd).
+
+    Twarda brama operacji domenowych. Reguła — jej uzasadnienie normowe i
+    zachowanie przy braku danych — siedzi w `czy_rodzina_obsluguje_napiecie`;
+    tutaj jest tylko zamiana odpowiedzi `False` na twardy błąd po polsku.
+    """
     family = wymagaj_rodziny_oferowanej(switchgear_family_ref)
-    if voltage_kv not in family.voltage_levels:
+    if not czy_rodzina_obsluguje_napiecie(family, voltage_kv):
         raise NiezgodnoscKonfiguracjiError(
-            f"Rodzina {family.family_name} nie obsluguje napiecia {voltage_kv} kV "
-            f"(klasy katalogowe: {list(family.voltage_levels)})."
+            f"Rodzina {family.family_name} nie obsluguje napiecia {voltage_kv:g} kV "
+            f"({opis_napiec_rodziny_pl(family)})."
         )
 
 
