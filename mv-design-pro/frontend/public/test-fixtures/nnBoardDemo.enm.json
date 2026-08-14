@@ -226,6 +226,141 @@
         "name": "Odpływ 4",
         "voltage_kv": 0.4,
         "phase_system": "3ph"
+      },
+      {
+        "id": "stn/test/nn/section2_bus",
+        "ref_id": "stn/test/nn/section2_bus",
+        "tags": [],
+        "meta": {},
+        "name": "Sekcja 2 RGnN",
+        "voltage_kv": 0.4,
+        "phase_system": "3ph"
+      },
+      {
+        "id": "stn/test/nn/g1_bus",
+        "ref_id": "stn/test/nn/g1_bus",
+        "tags": [],
+        "meta": {},
+        "name": "Odpływ S2-1",
+        "voltage_kv": 0.4,
+        "phase_system": "3ph"
+      },
+      {
+        "id": "stn/test/nn/g2_bus",
+        "ref_id": "stn/test/nn/g2_bus",
+        "tags": [],
+        "meta": {},
+        "name": "Odpływ S2-2",
+        "voltage_kv": 0.4,
+        "phase_system": "3ph"
+      },
+      {
+        "id": "stn/test/nn/g3_bus",
+        "ref_id": "stn/test/nn/g3_bus",
+        "tags": [],
+        "meta": {},
+        "name": "Odpływ S2-3",
+        "voltage_kv": 0.4,
+        "phase_system": "3ph"
+      },
+      {
+        "id": "stn/test/nn/g4_bus",
+        "ref_id": "stn/test/nn/g4_bus",
+        "tags": [],
+        "meta": {},
+        "name": "Odpływ S2-4 (nierozpoznany)",
+        "voltage_kv": 0.4,
+        "phase_system": "3ph"
+      },
+      {
+        "id": "stn/test/nn/g5_bus",
+        "ref_id": "stn/test/nn/g5_bus",
+        "tags": [],
+        "meta": {},
+        "name": "Odpływ S2-5",
+        "voltage_kv": 0.4,
+        "phase_system": "3ph"
+      },
+      {
+        "id": "stn/test/nn/g6_bus",
+        "ref_id": "stn/test/nn/g6_bus",
+        "tags": [],
+        "meta": {},
+        "name": "Odpływ S2-6 (DER)",
+        "voltage_kv": 0.4,
+        "phase_system": "3ph"
+      },
+      {
+        "id": "stn/test/nn/g7_bus",
+        "ref_id": "stn/test/nn/g7_bus",
+        "tags": [],
+        "meta": {},
+        "name": "Odpływ S2-7",
+        "voltage_kv": 0.4,
+        "phase_system": "3ph"
+      },
+      {
+        "id": "stn/test/nn/g8_bus",
+        "ref_id": "stn/test/nn/g8_bus",
+        "tags": [],
+        "meta": {},
+        "name": "Odpływ S2-8",
+        "voltage_kv": 0.4,
+        "phase_system": "3ph"
+      },
+      {
+        "id": "stn/test/nn/g9_bus",
+        "ref_id": "stn/test/nn/g9_bus",
+        "tags": [],
+        "meta": {},
+        "name": "Odpływ S2-9",
+        "voltage_kv": 0.4,
+        "phase_system": "3ph"
+      },
+      {
+        "id": "stn/test/nn/g10_bus",
+        "ref_id": "stn/test/nn/g10_bus",
+        "tags": [],
+        "meta": {},
+        "name": "Odpływ S2-10",
+        "voltage_kv": 0.4,
+        "phase_system": "3ph"
+      },
+      {
+        "id": "stn/test/nn/g11_bus",
+        "ref_id": "stn/test/nn/g11_bus",
+        "tags": [],
+        "meta": {},
+        "name": "Odpływ S2-11",
+        "voltage_kv": 0.4,
+        "phase_system": "3ph"
+      },
+      {
+        "id": "stn/test/nn/g12_bus",
+        "ref_id": "stn/test/nn/g12_bus",
+        "tags": [],
+        "meta": {},
+        "name": "Odpływ S2-12",
+        "voltage_kv": 0.4,
+        "phase_system": "3ph"
+      },
+      {
+        "id": "stn/test/nn/g13_bus",
+        "ref_id": "stn/test/nn/g13_bus",
+        "tags": [],
+        "meta": {},
+        "name": "Odpływ S2-13",
+        "voltage_kv": 0.4,
+        "phase_system": "3ph"
+      },
+      {
+        "id": "stn/test/nn/g14_bus",
+        "ref_id": "stn/test/nn/g14_bus",
+        "tags": [],
+        "meta": {},
+        "name": "Odpływ S2-14",
+        "voltage_kv": 0.4,
+        "phase_system": "3ph"
       }
     ],
     "branches": [
@@ -570,6 +705,217 @@
         "to_bus_ref": "stn/test/nn/f4_bus",
         "status": "closed",
         "materialized_params": {}
+      },
+      {
+        "id": "stn/test/nn/section_coupler",
+        "ref_id": "stn/test/nn/section_coupler",
+        "tags": [],
+        "meta": {},
+        "name": "Sprzęgło sekcyjne RGnN",
+        "type": "bus_coupler",
+        "from_bus_ref": "stn/ed91b18ec60d43a0fb4cb92e778fa53e/nn_bus",
+        "to_bus_ref": "stn/test/nn/section2_bus",
+        "status": "closed",
+        "catalog_namespace": "APARAT_NN_MCB",
+        "materialized_params": {
+          "curve_class": "C",
+          "in_a": 63
+        }
+      },
+      {
+        "id": "stn/test/nn/g1_mcb",
+        "ref_id": "stn/test/nn/g1_mcb",
+        "tags": [],
+        "meta": {},
+        "name": "MCB odpływu S2-1",
+        "type": "switch",
+        "from_bus_ref": "stn/test/nn/section2_bus",
+        "to_bus_ref": "stn/test/nn/g1_bus",
+        "status": "closed",
+        "catalog_namespace": "APARAT_NN_MCB",
+        "materialized_params": {
+          "curve_class": "B",
+          "in_a": 10
+        }
+      },
+      {
+        "id": "stn/test/nn/g2_mcb",
+        "ref_id": "stn/test/nn/g2_mcb",
+        "tags": [],
+        "meta": {},
+        "name": "MCB odpływu S2-2",
+        "type": "switch",
+        "from_bus_ref": "stn/test/nn/section2_bus",
+        "to_bus_ref": "stn/test/nn/g2_bus",
+        "status": "closed",
+        "catalog_namespace": "APARAT_NN_MCB",
+        "materialized_params": {
+          "curve_class": "B",
+          "in_a": 16
+        }
+      },
+      {
+        "id": "stn/test/nn/g3_fuse",
+        "ref_id": "stn/test/nn/g3_fuse",
+        "tags": [],
+        "meta": {},
+        "name": "Rozłącznik bezp. odpływu S2-3",
+        "type": "fuse",
+        "from_bus_ref": "stn/test/nn/section2_bus",
+        "to_bus_ref": "stn/test/nn/g3_bus",
+        "status": "closed",
+        "materialized_params": {
+          "fuse_class": "gG",
+          "size": "NH00"
+        }
+      },
+      {
+        "id": "stn/test/nn/g4_unresolved",
+        "ref_id": "stn/test/nn/g4_unresolved",
+        "tags": [],
+        "meta": {},
+        "name": "Aparat odpływu S2-4",
+        "type": "switch",
+        "from_bus_ref": "stn/test/nn/section2_bus",
+        "to_bus_ref": "stn/test/nn/g4_bus",
+        "status": "closed",
+        "materialized_params": {}
+      },
+      {
+        "id": "stn/test/nn/g5_mcb",
+        "ref_id": "stn/test/nn/g5_mcb",
+        "tags": [],
+        "meta": {},
+        "name": "MCB odpływu S2-5",
+        "type": "switch",
+        "from_bus_ref": "stn/test/nn/section2_bus",
+        "to_bus_ref": "stn/test/nn/g5_bus",
+        "status": "closed",
+        "catalog_namespace": "APARAT_NN_MCB",
+        "materialized_params": {
+          "curve_class": "C",
+          "in_a": 20
+        }
+      },
+      {
+        "id": "stn/test/nn/g6_mcb",
+        "ref_id": "stn/test/nn/g6_mcb",
+        "tags": [],
+        "meta": {},
+        "name": "MCB odpływu S2-6 (DER)",
+        "type": "switch",
+        "from_bus_ref": "stn/test/nn/section2_bus",
+        "to_bus_ref": "stn/test/nn/g6_bus",
+        "status": "closed",
+        "catalog_namespace": "APARAT_NN_MCB",
+        "materialized_params": {
+          "curve_class": "C",
+          "in_a": 32
+        }
+      },
+      {
+        "id": "stn/test/nn/g7_mcb",
+        "ref_id": "stn/test/nn/g7_mcb",
+        "tags": [],
+        "meta": {},
+        "name": "MCB odpływu S2-7",
+        "type": "switch",
+        "from_bus_ref": "stn/test/nn/section2_bus",
+        "to_bus_ref": "stn/test/nn/g7_bus",
+        "status": "closed",
+        "catalog_namespace": "APARAT_NN_MCB",
+        "materialized_params": { "curve_class": "B", "in_a": 10 }
+      },
+      {
+        "id": "stn/test/nn/g8_mcb",
+        "ref_id": "stn/test/nn/g8_mcb",
+        "tags": [],
+        "meta": {},
+        "name": "MCB odpływu S2-8",
+        "type": "switch",
+        "from_bus_ref": "stn/test/nn/section2_bus",
+        "to_bus_ref": "stn/test/nn/g8_bus",
+        "status": "closed",
+        "catalog_namespace": "APARAT_NN_MCB",
+        "materialized_params": { "curve_class": "B", "in_a": 10 }
+      },
+      {
+        "id": "stn/test/nn/g9_mcb",
+        "ref_id": "stn/test/nn/g9_mcb",
+        "tags": [],
+        "meta": {},
+        "name": "MCB odpływu S2-9",
+        "type": "switch",
+        "from_bus_ref": "stn/test/nn/section2_bus",
+        "to_bus_ref": "stn/test/nn/g9_bus",
+        "status": "closed",
+        "catalog_namespace": "APARAT_NN_MCB",
+        "materialized_params": { "curve_class": "B", "in_a": 16 }
+      },
+      {
+        "id": "stn/test/nn/g10_mcb",
+        "ref_id": "stn/test/nn/g10_mcb",
+        "tags": [],
+        "meta": {},
+        "name": "MCB odpływu S2-10",
+        "type": "switch",
+        "from_bus_ref": "stn/test/nn/section2_bus",
+        "to_bus_ref": "stn/test/nn/g10_bus",
+        "status": "closed",
+        "catalog_namespace": "APARAT_NN_MCB",
+        "materialized_params": { "curve_class": "B", "in_a": 16 }
+      },
+      {
+        "id": "stn/test/nn/g11_mcb",
+        "ref_id": "stn/test/nn/g11_mcb",
+        "tags": [],
+        "meta": {},
+        "name": "MCB odpływu S2-11",
+        "type": "switch",
+        "from_bus_ref": "stn/test/nn/section2_bus",
+        "to_bus_ref": "stn/test/nn/g11_bus",
+        "status": "closed",
+        "catalog_namespace": "APARAT_NN_MCB",
+        "materialized_params": { "curve_class": "C", "in_a": 20 }
+      },
+      {
+        "id": "stn/test/nn/g12_mcb",
+        "ref_id": "stn/test/nn/g12_mcb",
+        "tags": [],
+        "meta": {},
+        "name": "MCB odpływu S2-12",
+        "type": "switch",
+        "from_bus_ref": "stn/test/nn/section2_bus",
+        "to_bus_ref": "stn/test/nn/g12_bus",
+        "status": "closed",
+        "catalog_namespace": "APARAT_NN_MCB",
+        "materialized_params": { "curve_class": "C", "in_a": 20 }
+      },
+      {
+        "id": "stn/test/nn/g13_mcb",
+        "ref_id": "stn/test/nn/g13_mcb",
+        "tags": [],
+        "meta": {},
+        "name": "MCB odpływu S2-13",
+        "type": "switch",
+        "from_bus_ref": "stn/test/nn/section2_bus",
+        "to_bus_ref": "stn/test/nn/g13_bus",
+        "status": "closed",
+        "catalog_namespace": "APARAT_NN_MCB",
+        "materialized_params": { "curve_class": "B", "in_a": 10 }
+      },
+      {
+        "id": "stn/test/nn/g14_mcb",
+        "ref_id": "stn/test/nn/g14_mcb",
+        "tags": [],
+        "meta": {},
+        "name": "MCB odpływu S2-14",
+        "type": "switch",
+        "from_bus_ref": "stn/test/nn/section2_bus",
+        "to_bus_ref": "stn/test/nn/g14_bus",
+        "status": "closed",
+        "catalog_namespace": "APARAT_NN_MCB",
+        "materialized_params": { "curve_class": "B", "in_a": 16 }
       }
     ],
     "transformers": [
@@ -780,7 +1126,20 @@
         "model": "pq"
       }
     ],
-    "generators": [],
+    "generators": [
+      {
+        "id": "stn/test/nn/g6_der",
+        "ref_id": "stn/test/nn/g6_der",
+        "tags": [],
+        "meta": {},
+        "name": "PV S2-6",
+        "bus_ref": "stn/test/nn/g6_bus",
+        "p_mw": 0.02,
+        "q_mvar": 0,
+        "gen_type": "pv_inverter",
+        "connection_variant": "nn_side"
+      }
+    ],
     "shunt_capacitors": [],
     "substations": [
       {
@@ -977,7 +1336,23 @@
         "gpz_hv_sections": [],
         "external_ports": [],
         "nn_voltage_levels": [],
-        "construction_type": null
+        "construction_type": null,
+        "nn_sections": [
+          {
+            "section_id": "stn/test/nn/section1",
+            "order": 1,
+            "bus_ref": "stn/ed91b18ec60d43a0fb4cb92e778fa53e/nn_bus",
+            "coupler_ref": null,
+            "incoming_refs": []
+          },
+          {
+            "section_id": "stn/test/nn/section2",
+            "order": 2,
+            "bus_ref": "stn/test/nn/section2_bus",
+            "coupler_ref": "stn/test/nn/section_coupler",
+            "incoming_refs": []
+          }
+        ]
       },
       {
         "id": "stn/test/nn/rgnn2",

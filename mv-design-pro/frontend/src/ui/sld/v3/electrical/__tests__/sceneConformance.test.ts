@@ -191,6 +191,10 @@ describe('Check B — KOMPLETNOŚĆ: każda krawędź przewodząca sceny jest (a
       match: (r) => r.endsWith('#board-descent'),
       justification: 'łącznik APARATU odpływu z liściem podrozdzielnicy (nnDistributionBoard) — geometria portu, gałąź RZECZYWISTA (aparat) jest już policzona osobno jako dosłowny ref (Check A).',
     },
+    {
+      match: (r) => r.endsWith('#nn-aggregate'),
+      justification: 'T5a (KONCEPCJA_LOD_NN_2026-08 §L1): zejście do znacznika AGREGATU kikutów — reprezentuje WIELE odpływów jednocześnie (`hiddenBranchRefs`, budżet adaptacyjny `layout/measure.ts::nnSectionAggregationPlan`), więc NIE odpowiada jednej gałęzi ENM z konstrukcji (żaden pojedynczy ref nie byłby uczciwy) — compose/station.ts drawNnSlot.',
+    },
   ];
 
   interface Classification {

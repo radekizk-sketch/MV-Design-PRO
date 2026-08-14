@@ -127,10 +127,12 @@ import { createUnikalnyTestId } from '../compose/unikalnyTestId';
 import {
   bayMainPathHeight,
   findLineBayIndices,
+  flattenedNnFeeders,
   stationBlockHeight,
   stationBusbarLabelHeight,
   stationNameBandHeight,
   stationPortCaptionHeight,
+  nnPlaqueStructuralText,
   type StationMeasureInput,
 } from '../layout/measure';
 import { computeBands, BUS_AXIS_BAND_HEIGHT, DESCENT_STRIP_HEIGHT, type BandsResult, type StationBandHeights } from '../layout/bands';
@@ -157,6 +159,7 @@ import {
   type SegmentSpanOwnerInput,
   type SegmentLateralOwnerInput,
   type StationNameBandOwnerInput,
+  type StationNameBandRow,
   type PortCaptionOwnerInput,
   type SimpleAnchoredOwnerInput,
 } from '../layout/labels';
@@ -1096,11 +1099,22 @@ function buildMeasureInput(
     // DER/NO z TYPU elementów (spec §19.3). `snBays: []` (measure L0 nie
     // rezerwuje miejsca na pola — geometria z L2), ale `compactGlyph` niesie
     // cechy rozpoznawcze rysowane WEWNĄTRZ glifu (zero zmiany geometrii).
+    // T5a (KONCEPCJA_LOD_NN_2026-08 §L0, FLIP świadomy): `nnBoard` DOPISANE
+    // do obiektu L0 — PRZED tą kartą L0 w ogóle nie niosło rozdzielnicy nN
+    // (geometria nN była nieosiągalna na L0 z konstrukcji, zero potrzeby),
+    // więc żadne pole go nie czytało; `composeRowStation` (L0) teraz liczy
+    // `flattenedNnFeeders(measureInput.nnBoard).length` do PLAKIETKI
+    // strukturalnej (werdykt §0 pkt 1) — bez tego wiersz `nN · N odpł.`
+    // NIGDY by się nie pojawił (dowód: `layout/measure.ts` nie zmienia
+    // geometrii L0, `snBays: []` zostaje). Stacje BEZ `nnBoard`
+    // (WIĘKSZOŚĆ dzisiejszych sieci): `props.nnBoard===undefined` ⇒ pole
+    // zostaje `undefined` ⇒ zero zmian względem stanu przed kartą.
     return {
       id: props.id,
       name: props.stationCode ?? props.name,
       snBays: [],
       compactGlyph: stationCompactGlyphSummary(props, derSourcesByStationId.get(props.id) ?? [], stopNotes, terminalInRun),
+      nnBoard: props.nnBoard ?? undefined,
     };
   }
   const includeCableAndPorts = lod === 2;
@@ -1422,6 +1436,33 @@ function composeRowStation(
   if (lod === 0) {
     const boxX = snapToGrid(column.tapX - COLLECTIVE_BOX_SIZE / 2);
     const boxY = snapToGrid(busAxisY - COLLECTIVE_BOX_SIZE / 2);
+    // T5a (KONCEPCJA_LOD_NN_2026-08 §L0, werdykt §0 pkt 1): PLAKIETKA nN —
+    // CAŁA geometria nN (szyna/odpływy/TR) znika na L0 (`composeStation` nie
+    // jest tu wołane, sekcja `lod===0` jest EARLY-RETURN sprzed karty, bez
+    // zmian), zastąpiona JEDNYM wierszem STRUKTURALNYM `nN · {n} odpł.` —
+    // WYŁĄCZNIE gdy stacja niesie realną rozdzielnicę nN (`flattenedNnFeeders`,
+    // ta sama funkcja co L1/L2 — jedna prawda liczby odpływów). `0`/brak
+    // `nnBoard` (WIĘKSZOŚĆ dzisiejszych stacji) ⇒ WIERSZ NIEOBECNY, zero zmian
+    // treści pasma nazw L0 względem stanu przed kartą (Zakazy §karty: substrat
+    // SN bez danych nN bajtowo nietknięty). Kierunek/moc/TR%/kropka werdyktu
+    // (`↓145 kW · TR 42% · ●`) NIE żyją tutaj — WYŁĄCZNIE z wyników biegu,
+    // dokładane przez warstwę OVERLAY (`canvas/overlay.ts::
+    // buildNnPlaqueOverlayFromScene`, zero fizyki w scenie/UI,
+    // `overlay_no_physics_guard`) jako ZNACZNIK OBOK tego wiersza — struktura
+    // i wynik pozostają DWIEMA warstwami (spec §14.2 „overlay wyłącznie z
+    // wyniku"), tak jak odznaka SWZ i strzałki przepływu na L1/L2.
+    const nnFeederCount = flattenedNnFeeders(measureInput.nnBoard).length;
+    const nameRows: StationNameBandRow[] = [{ text: measureInput.name, labelClass: 't1', role: 'tozsamosc' }];
+    if (nnFeederCount > 0) {
+      // KD-11/T2-LOD (`layout/labels.ts::lodClassOf`, „MIESZANE"): wiersz
+      // `station-name` z rolą `tozsamosc` jest ZAWSZE L0 (niezależnie od
+      // `labelClass`) — plakietka MUSI być widoczna DOKŁADNIE przy zoomie
+      // przeglądu, gdzie żyje L0 sceny (rola `dane`/t4 degradowałaby do L2,
+      // ukrywaną poniżej progu 1,125 — sprzeczność z celem karty). Struktura
+      // (liczba odpływów) jest tu TRAKTOWANA jako tożsamość minimalna stacji
+      // na L0 — świadoma decyzja, nie pomyłka klasy.
+      nameRows.push({ text: nnPlaqueStructuralText(nnFeederCount), labelClass: 't4', role: 'tozsamosc' });
+    }
     return {
       symbols: [
         {
@@ -1441,8 +1482,9 @@ function composeRowStation(
       stationNameOwner: {
         ownerRef: measureInput.id,
         nameSlot: column.nameSlot,
-        // KD-11: nazwa stacji zwiniętej to TOŻSAMOŚĆ bloku na L0.
-        rows: [{ text: measureInput.name, labelClass: 't1', role: 'tozsamosc' }],
+        // KD-11: nazwa stacji zwiniętej to TOŻSAMOŚĆ bloku na L0 (wiersz 1);
+        // T5a: plakietka nN strukturalna (wiersz 2, WYŁĄCZNIE gdy obecna).
+        rows: nameRows,
       },
       apparatusOwners: [],
       portCaptionOwners: [],
@@ -1708,6 +1750,11 @@ function composeRowStation(
       // `SldSourceView.kind`) — konsument to menu kontekstowe podtypu na v3
       // (`SldCanvasV3Workspace.elementKindForMenu`). `undefined` dla nie-DER.
       derKind: s.derKind,
+      // T5a (KONCEPCJA_LOD_NN_2026-08 §L1): przepisane 1:1 — WYŁĄCZNIE dla
+      // `symbolId==='nnAggregate'` (`NnAggregateGlyph` czyta `nnAggregateCount`
+      // z `GlyphProps`; `nnAggregateHiddenRefs` konsumuje warstwa overlay).
+      nnAggregateCount: s.nnAggregateCount,
+      nnAggregateHiddenRefs: s.nnAggregateHiddenRefs,
     },
   }));
   const segments: PreviewSegment[] = composition.segments.map((s) => {

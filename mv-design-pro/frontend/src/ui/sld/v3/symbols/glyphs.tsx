@@ -125,6 +125,11 @@ export interface GlyphProps {
   /** KD-5: liczba PÓL ODEJŚCIOWYCH (liniowych) SN bloku GPZ — rysowanych do
    *  `MINI_GPZ.polaOdejsciowe.xs.length` (uzasadnienie limitu tamże). */
   readonly gpzFeeders?: number;
+  /** T5a (KONCEPCJA_LOD_NN_2026-08 §L1): liczba odpływów UKRYTYCH pod jednym
+   *  znacznikiem agregatu — WYŁĄCZNIE `NnAggregateGlyph` czyta to pole (wzorzec
+   *  `meterQuantity`). Treść „+N" jest DANĄ (liczbą realnych odpływów
+   *  ukrytych), nie notacją stałą. */
+  readonly nnAggregateCount?: number;
 }
 
 function glyphGroupProps(id: SymbolId, props: GlyphProps) {
@@ -1019,6 +1024,26 @@ export function NnDistributionBoardGlyph(props: GlyphProps): JSX.Element {
   );
 }
 
+/**
+ * T5a (KONCEPCJA_LOD_NN_2026-08 §L1, werdykt §0 pkt 2): znacznik AGREGATU —
+ * kwadrat wypełniony (odróżnialny od PUSTYCH obwiedni aparatów/liści — to nie
+ * jest urządzenie łączeniowe, jest adnotacją liczbową) z tekstem „+N" liczby
+ * odpływów ukrytych. Jeden port `top` (jak liście DER/rozdzielnicy nN) — wisi
+ * POD szyną, nie stoi W CIĄGU toru dalej.
+ */
+export function NnAggregateGlyph(props: GlyphProps): JSX.Element {
+  const w = grubosc(props, V3_STROKE_APPARATUS);
+  return (
+    <g {...glyphGroupProps('nnAggregate', props)}>
+      <line x1={8} y1={0} x2={8} y2={4} stroke={stroke(props)} strokeWidth={w} />
+      <rect x={1} y={4} width={14} height={12} rx={2} fill="none" stroke={stroke(props)} strokeWidth={w} data-nn-aggregate-marker="true" />
+      <text x={8} y={13.5} textAnchor="middle" fill={stroke(props)} fontFamily="sans-serif" fontSize={7} fontWeight={700}>
+        {`+${props.nnAggregateCount ?? 0}`}
+      </text>
+    </g>
+  );
+}
+
 export const SYMBOL_GLYPHS: Readonly<Record<SymbolId, (props: GlyphProps) => JSX.Element>> = {
   breaker: BreakerGlyph,
   recloser: RecloserGlyph,
@@ -1054,6 +1079,7 @@ export const SYMBOL_GLYPHS: Readonly<Record<SymbolId, (props: GlyphProps) => JSX
   nnBreaker: NnBreakerGlyph,
   nnFuseSwitch: NnFuseSwitchGlyph,
   nnMeter: NnMeterGlyph,
+  nnAggregate: NnAggregateGlyph,
 };
 
 /** Sanity: każdy glif ma definicję i odwrotnie (spójność biblioteki). */

@@ -430,8 +430,11 @@ export function nnFeederColumnRequiredWidth(odplyw: SldNnFeeder): number {
 }
 
 /** Wysokość WYMAGANA jednej kolumny odpływu — stos symboli + prześwit +
- *  JEDNA linia etykiety (t4, jak pozostałe teksty strony nN). */
-function nnFeederColumnRequiredHeight(odplyw: SldNnFeeder): number {
+ *  JEDNA linia etykiety (t4, jak pozostałe teksty strony nN). Eksportowana
+ *  (T5a): `nnSlotColumnRequiredHeight` (agregacja per sekcja) potrzebuje TEJ
+ *  SAMEJ formuły dla slotów `kind==='feeder'` — jedna prawda measure↔measure,
+ *  zero drugiej kopii. */
+export function nnFeederColumnRequiredHeight(odplyw: SldNnFeeder): number {
   return nnFeederSymbolStackHeight(odplyw) + NN_FEEDER_LABEL_GAP + LABEL_LINE_HEIGHT_T4;
 }
 
@@ -458,6 +461,270 @@ export function flattenedNnFeeders(nnBoard: readonly SldNnBoardSection[] | undef
   return nnBoard.flatMap((section) => section.feeders);
 }
 
+// ---------------------------------------------------------------------------
+// T5a (KONCEPCJA_LOD_NN_2026-08.md §L1, werdykt właściciela §0 pkt 2/3) —
+// RENDEROWANIE PER SEKCJA + AGREGACJA KIKUTÓW z budżetem ADAPTACYJNYM. Do
+// karty T5a: szyna RGnN pojedynczej sekcji rysowana jest osobno na sekcję
+// (nie spłaszczona jak `flattenedNnFeeders` wyżej — TA funkcja zostaje bez
+// zmian, konsumowana tam, gdzie spłaszczenie jest właściwe: liczniki
+// strukturalne plakietki L0, `stationHasLvSide`).
+// ---------------------------------------------------------------------------
+
+/** Pitch minimalny JEDNEGO kikutu (aparat + odstęp kolumnowy) — PODŁOGA
+ *  budżetu, niezależna od treści etykiety (etykiety mogą być szersze niż
+ *  pitch — `nnFeederColumnRequiredWidth` — ale budżet patrzy na PITCH, żeby
+ *  liczba kikutów była policzalna zanim treść etykiet jest znana; werdykt §0
+ *  pkt 2 „adaptacyjny … z minimalnego pitchu"). */
+export const NN_SECTION_MIN_FEEDER_PITCH = NN_FEEDER_APPARATUS_WIDTH + NN_FEEDER_COLUMN_GAP; // 24
+
+/** Podłoga budżetu — sekcja NIGDY nie dostaje budżetu 0 (przynajmniej JEDEN
+ *  slot jawny, zanim agregat przejmie resztę; agregat sam zajmuje KOLEJNY
+ *  slot budżetu — patrz `nnSectionAggregationPlan`). */
+export const NN_SECTION_MIN_BUDGET = 1;
+
+/**
+ * T5a (werdykt §0 pkt 2 „ADAPTACYJNY (szerokość/sekcje/pitch), nie stała
+ * N=8"): budżet kikutów jednej sekcji, zanim agregat przejmuje resztę.
+ * FORMUŁA: szerokość, którą reszta stacji JUŻ rezerwuje niezależnie od rzędu
+ * odpływów nN (`envelopeWidth` — pola SN + ewentualne pola źródłowe SN + rząd
+ * DER strony nN, czyli `requiredStationWidth` BEZ członu `nnFeederWidth`;
+ * wołający — `composeRowStation`/`buildScene.ts` — dostarcza tę wartość, więc
+ * MODUŁ TEN nie zależy cyklicznie od szerokości rzędu, którą sam ogranicza),
+ * podzielona równo między `sectionCount` sekcji szyn, podzielona przez pitch
+ * minimalny (`NN_SECTION_MIN_FEEDER_PITCH`), zaokrąglona w dół, z podłogą
+ * `NN_SECTION_MIN_BUDGET`. Stacja z szeroką kolumną SN (dużo pól) dostaje
+ * więcej miejsca na odpływy nN jawne, zanim zacznie agregować — stacja wąska
+ * agreguje wcześniej. Czysta arytmetyka, deterministyczna.
+ */
+export function nnSectionFeederBudget(envelopeWidth: number, sectionCount: number): number {
+  if (sectionCount <= 0) return NN_SECTION_MIN_BUDGET;
+  const perSection = Math.max(0, envelopeWidth) / sectionCount;
+  return Math.max(NN_SECTION_MIN_BUDGET, Math.floor(perSection / NN_SECTION_MIN_FEEDER_PITCH));
+}
+
+/**
+ * T5a (werdykt §0 pkt 3 „NIGDY w agregacie: incomer, sprzęgło, DER, agregat
+ * prądotwórczy, UPS, odpływ HARD FAIL, odbiór krytyczny"): predykat
+ * WYŁĄCZNIE dla odpływów (`SldNnFeeder`) — incomer/sprzęgło NIE są elementami
+ * `feeders` (osobne pola `SldNnBoardSection.incomer`/`coupler`), więc są
+ * strukturalnie ZAWSZE jawne, poza zasięgiem agregacji z konstrukcji (nigdy
+ * nie trafiają do listy kandydatów w `nnSectionAggregationPlan`).
+ *
+ * DER / agregat prądotwórczy / UPS: model ENM (`Generator`, `backend/src/
+ * enm/models.py`) NIE rozróżnia DZIŚ rodzaju maszyny za odpływem poza
+ * `gen_type` (pv_inverter/wind_inverter/bess/synchronous/…) — KAŻDA z nich
+ * trafia do ENM jako rekord `Generator`, więc odpływ prowadzący do
+ * dowolnego z nich ma `destinationKind==='der'` (adapter
+ * `resolveNnFeederDestination`). Agregat prądotwórczy (maszyna synchroniczna)
+ * i UPS (magazyn `bess` pracujący buforowo) są DZIŚ nierozróżnialne od DER
+ * odnawialnego na poziomie kontraktu SLD — ten JEDEN predykat pokrywa
+ * WSZYSTKIE TRZY pozycje werdyktu przez `destinationKind==='der'`
+ * (udokumentowana równoważność, nie domysł — gdy model kiedyś dostanie pole
+ * rozróżniające rodzaj maszyny, predykat rozdzieli się bez zmiany reguły
+ * „nigdy w agregacie").
+ *
+ * Odbiór krytyczny: `Load` (`backend/src/enm/models.py`) NIE niesie DZIŚ
+ * żadnej flagi krytyczności/priorytetu — dana NIE ISTNIEJE w modelu, więc
+ * `isNnFeederCriticalLoad` zwraca zawsze `false` (uczciwy brak, zero
+ * fabrykowanej heurystyki z nazwy/mocy odbioru). Luka nazwana wprost w
+ * raporcie karty T5a — gdy model dostanie pole krytyczności, TA funkcja jest
+ * jedynym miejscem rozszerzenia (jedna prawda predykatu agregacji).
+ */
+export function isNnFeederAlwaysExplicit(feeder: SldNnFeeder): boolean {
+  if (feeder.apparatusKind === 'UNRESOLVED') return true; // HARD FAIL strukturalny (T1 §0.3 „UNRESOLVED = HARD VALIDATION ERROR")
+  if (feeder.destinationKind === 'der') return true; // DER / agregat prądotwórczy / UPS (patrz docstring)
+  return isNnFeederCriticalLoad(feeder);
+}
+
+/** Odbiór krytyczny — LUKA MODELU (patrz `isNnFeederAlwaysExplicit`
+ *  docstring): zawsze `false` dziś, wydzielone do WŁASNEJ funkcji, żeby
+ *  rozszerzenie (gdy model dostanie pole krytyczności) było jednym miejscem
+ *  zmiany zamiast przeszukiwania wywołań. */
+export function isNnFeederCriticalLoad(_feeder: SldNnFeeder): boolean {
+  return false;
+}
+
+/** Jeden slot rzędu odpływów PO agregacji — albo odpływ RZECZYWISTY (jawny),
+ *  albo AGREGAT jednego lub więcej odpływów ukrytych (dziedziczy ich refy —
+ *  konsument (`overlay`) rolluje z nich najgorszy status wyników, scena SAMA
+ *  fizyki nie liczy). */
+export type NnAggregatedFeederSlot =
+  | { readonly kind: 'feeder'; readonly feeder: SldNnFeeder }
+  | { readonly kind: 'aggregate'; readonly hidden: readonly SldNnFeeder[] };
+
+/**
+ * T5a (werdykt §0 pkt 2/3): plan RENDEROWALNY jednej sekcji — kikuty jawne +
+ * (najwyżej JEDEN) agregat na końcu rzędu, gdy liczba odpływów AGREGOWALNYCH
+ * (`!isNnFeederAlwaysExplicit`) przekracza budżet dostępny PO odjęciu odpływów
+ * ZAWSZE jawnych. Kolejność ZACHOWANA (ten sam porządek co `feeders`
+ * wejściowe — deterministyczne, stabilne): odpływy zawsze-jawne i PIERWSZE
+ * (w oryginalnej kolejności) odpływy agregowalne, które mieszczą się w
+ * budżecie, zostają jawne; NADMIAR agregowalny (końcówka rzędu) trafia do
+ * JEDNEGO agregatu dopisanego na KONIEC listy slotów. Budżet, który odpływy
+ * zawsze-jawne SAME przekraczają, jest LEGALNIE przekroczony — reguła „nigdy
+ * w agregacie" ma pierwszeństwo przed liczbą (werdykt, priorytet bezwzględny).
+ * `budget<=0` traktowany jak wyczerpany natychmiast (wszystko agregowalne do
+ * jednego stubu) — funkcja NIE waliduje budżetu, to `nnSectionFeederBudget`
+ * gwarantuje podłogę.
+ */
+export function nnSectionAggregationPlan(
+  feeders: readonly SldNnFeeder[],
+  budget: number,
+): readonly NnAggregatedFeederSlot[] {
+  const alwaysExplicitCount = feeders.reduce((n, f) => n + (isNnFeederAlwaysExplicit(f) ? 1 : 0), 0);
+  const aggregatableCount = feeders.length - alwaysExplicitCount;
+  const budgetForAggregatable = Math.max(0, budget - alwaysExplicitCount);
+  const needsAggregate = aggregatableCount > budgetForAggregatable;
+  // Agregat SAM zajmuje jeden slot budżetu (jest kikutem na rysunku) —
+  // rezerwowany WYŁĄCZNIE gdy agregacja faktycznie zajdzie (inaczej: budżet
+  // dokładnie wystarczający zostałby fałszywie zmniejszony o 1, tworząc
+  // agregat-z-jednego-odpływu tam, gdzie WSZYSTKO się mieściło).
+  const explicitAggregatableBudget = needsAggregate
+    ? Math.max(0, budgetForAggregatable - 1)
+    : aggregatableCount;
+
+  const slots: NnAggregatedFeederSlot[] = [];
+  const hidden: SldNnFeeder[] = [];
+  let keptAggregatable = 0;
+  for (const feeder of feeders) {
+    const mustExplicit = isNnFeederAlwaysExplicit(feeder);
+    if (mustExplicit || keptAggregatable < explicitAggregatableBudget) {
+      if (!mustExplicit) keptAggregatable += 1;
+      slots.push({ kind: 'feeder', feeder });
+    } else {
+      hidden.push(feeder);
+    }
+  }
+  if (hidden.length > 0) slots.push({ kind: 'aggregate', hidden });
+  return slots;
+}
+
+/** Gabaryt kwadratowy znacznika agregatu — MNIEJSZY niż aparat odpływu
+ *  (`nnFeederApparatus`, 16×24 najwyższy wariant): agregat nie jest aparatem
+ *  łączeniowym, jest ADNOTACJĄ liczbową — glif `nnAggregate`, `symbols/
+ *  defs.ts`, 16×16. */
+const NN_AGGREGATE_MARKER_SIZE = 16;
+
+/** Tekst etykiety agregatu — `+N odpł.` (spójny z liczbą odpływów plakietki
+ *  L0, `nnPlaqueStructuralText`, ten sam skrót „odpł."). */
+export function nnAggregateSlotLabelText(hiddenCount: number): string {
+  return `+${hiddenCount} odpł.`;
+}
+
+/**
+ * T5a (KONCEPCJA_LOD_NN_2026-08 §L0, werdykt §0 pkt 1/korekta „L0 plakietka"):
+ * treść STRUKTURALNA plakietki L0 — WYŁĄCZNIE liczba odpływów rzeczywistych
+ * (`flattenedNnFeeders(station.nnBoard).length`, ta sama liczba co L1/L2,
+ * zero drugiego licznika). „bez świeżego biegu: tylko struktura, zero
+ * wymyślonego statusu" (werdykt dosłownie) — kierunek/moc/TR%/kropka
+ * WYŁĄCZNIE z warstwy overlay (`canvas/overlay.ts::
+ * buildNnPlaqueOverlayFromScene`), dopisywane OBOK tego tekstu, nigdy tutaj.
+ */
+export function nnPlaqueStructuralText(feederCount: number): string {
+  return `nN · ${feederCount} odpł.`;
+}
+
+/** Eksportowana (T5a): `compose/station.ts` rysuje sloty TĄ SAMĄ szerokością,
+ *  którą tu rezerwuje measure — jedna prawda measure↔compose (wzorzec
+ *  `nnFeederColumnRequiredWidth`). */
+export function nnSlotColumnRequiredWidth(slot: NnAggregatedFeederSlot): number {
+  if (slot.kind === 'feeder') return nnFeederColumnRequiredWidth(slot.feeder);
+  return Math.max(NN_AGGREGATE_MARKER_SIZE, measureLabelWidth(nnAggregateSlotLabelText(slot.hidden.length), 't4'));
+}
+
+/** Eksportowana (T5a) — patrz `nnSlotColumnRequiredWidth`. */
+export function nnSlotColumnRequiredHeight(slot: NnAggregatedFeederSlot): number {
+  if (slot.kind === 'feeder') return nnFeederColumnRequiredHeight(slot.feeder);
+  return NN_FEEDER_STUB_HEIGHT + NN_AGGREGATE_MARKER_SIZE + NN_FEEDER_LABEL_GAP + LABEL_LINE_HEIGHT_T4;
+}
+
+/** Gabaryt rzędu PO agregacji (wzorzec `nnFeederRowFootprint`, ale nad
+ *  slotami — feeder JAWNY albo agregat). `{0,0}` dla pustej listy slotów. */
+export function nnSectionRowFootprint(
+  slots: readonly NnAggregatedFeederSlot[],
+): { readonly width: number; readonly height: number } {
+  if (slots.length === 0) return { width: 0, height: 0 };
+  const width =
+    slots.reduce((sum, s) => sum + nnSlotColumnRequiredWidth(s), 0)
+    + NN_FEEDER_COLUMN_GAP * Math.max(slots.length - 1, 0);
+  const height = Math.max(...slots.map(nnSlotColumnRequiredHeight));
+  return { width, height };
+}
+
+/**
+ * T5a: „szerokość obwiedni" nN dla `nnSectionFeederBudget` — CAŁA reszta
+ * kolumny stacji NIEZALEŻNA od rzędu odpływów nN (pola SN + ewentualne pola
+ * źródłowe SN + rząd DER strony nN). Lustro DOKŁADNE `requiredStationWidth`
+ * (`blockWidth` przed doliczeniem `nnFeederWidth`) — jedna prawda, zero
+ * drugiej formuły; `requiredStationWidth` samo importuje tę funkcję zamiast
+ * powtarzać wzór (patrz wywołanie niżej).
+ */
+export function nnBoardWidthEnvelope(station: StationColumnsInput): number {
+  const baysWidth = stationBlockWidth(station);
+  const allDer = (station as Pick<StationMeasureInput, 'derSources'>).derSources ?? [];
+  const snFieldsWidth = snSourceFieldsRowWidth(allDer);
+  const nnDerWidth = derRowFootprint(nnSideSources(allDer)).width;
+  let blockWidth = baysWidth;
+  if (snFieldsWidth > 0) blockWidth += GRID + snFieldsWidth;
+  if (nnDerWidth > 0) blockWidth += GRID + nnDerWidth;
+  return blockWidth;
+}
+
+/**
+ * T5a: plan RENDEROWALNY per sekcja dla CAŁEJ rozdzielnicy nN stacji —
+ * `nnSectionFeederBudget` policzony RAZ ze wspólnej obwiedni (`nnBoardWidth
+ * Envelope`) i liczby sekcji, zastosowany do KAŻDEJ sekcji z osobna (agregacja
+ * PER SEKCJA SZYN, werdykt §0 pkt 2 „nigdy globalna przez sprzęgło"). `[]` dla
+ * stacji bez `nnBoard` (zero zmian względem stanu przed kartą).
+ */
+export function nnBoardSectionPlans(
+  station: StationColumnsInput & Pick<StationMeasureInput, 'derSources'>,
+): readonly NnSectionPlan[] {
+  const nnBoard = station.nnBoard ?? [];
+  if (nnBoard.length === 0) return [];
+  const envelope = nnBoardWidthEnvelope(station);
+  const budget = nnSectionFeederBudget(envelope, nnBoard.length);
+  return nnBoard.map((section) => ({
+    section,
+    slots: nnSectionAggregationPlan(section.feeders, budget),
+  }));
+}
+
+export interface NnSectionPlan {
+  readonly section: SldNnBoardSection;
+  readonly slots: readonly NnAggregatedFeederSlot[];
+}
+
+/** Odstęp poziomy zarezerwowany na SPRZĘGŁO między dwiema sekcjami sąsiednimi
+ *  (aparat 16 j.św. + prześwit GRID z każdej strony — TA SAMA logika co
+ *  `NN_FEEDER_APPARATUS_WIDTH`, sprzęgło stoi NA torze poziomym szyny, nie w
+ *  pionie odpływu, więc gabaryt jest własny, nie `nnFeederColumnRequiredWidth`). */
+export const NN_SECTION_COUPLER_GAP = NN_FEEDER_APPARATUS_WIDTH + 2 * GRID;
+
+/**
+ * T5a: gabaryt CAŁEGO rzędu odpływów nN PO agregacji, sumowany po WSZYSTKICH
+ * sekcjach rozdzielnicy (sekcje stoją W RZĘDZIE poziomym, rozdzielone
+ * sprzęgłem, gdy sekcja niesie `coupler` — werdykt §0 pkt 2 „szyna RGnN z
+ * sekcjami i sprzęgłem"). `{0,0}` dla listy pustej (stacja bez `nnBoard`,
+ * zero zmian geometrii).
+ */
+export function nnBoardTotalRowFootprint(
+  sectionPlans: readonly NnSectionPlan[],
+): { readonly width: number; readonly height: number } {
+  if (sectionPlans.length === 0) return { width: 0, height: 0 };
+  let width = 0;
+  let height = 0;
+  sectionPlans.forEach((plan, index) => {
+    const footprint = nnSectionRowFootprint(plan.slots);
+    if (index > 0) {
+      width += plan.section.coupler ? NN_SECTION_COUPLER_GAP : NN_FEEDER_COLUMN_GAP;
+    }
+    width += footprint.width;
+    height = Math.max(height, footprint.height);
+  });
+  return { width, height };
+}
+
 /**
  * T1 (SLD-nN-TOPOLOGIA, §0.1): aparat GŁÓWNY (incomer) DOMYŚLNEJ/PIERWSZEJ
  * sekcji szyny nN — jedna prawda measure↔compose (`compose/station.ts` czyta
@@ -482,15 +749,6 @@ export function nnIncomerExtraHeight(incomer: SldNnIncomer | null): number {
   return NN_FEEDER_STUB_HEIGHT + NN_FEEDER_APPARATUS_HEIGHT + NN_FEEDER_STACK_GAP;
 }
 
-/** Wysokość DODATKOWA na rząd odpływów nN (0, gdy stacja bez odpływów —
- *  zero zmian geometrii). Wzorzec `derRowExtraHeight`: prześwit górny +
- *  wysokość rzędu + prześwit + JEDNA etykieta legendy sekcji poniżej rzędu
- *  pominięta (etykiety WŁASNE każdego odpływu już wliczone w
- *  `nnFeederColumnRequiredHeight`). */
-function nnFeederRowExtraHeight(feeders: readonly SldNnFeeder[]): number {
-  if (feeders.length === 0) return 0;
-  return NN_FEEDER_STUB_HEIGHT + nnFeederRowFootprint(feeders).height + NN_FEEDER_LABEL_GAP;
-}
 
 /** Czy `snBays` niesie JAWNE pole roli TR (`TRANSFORMER`/`RMU_TRANSFORMER`) —
  *  predykat WYŁĄCZNIE polowy. Odróżnia „transformator jest CZĘŚCIĄ stosu pola"
@@ -904,7 +1162,17 @@ export function lvSideExtraHeight(
  * {brak / odbiór / DER / odbiór+DER} × {1 pole / kilka / maksimum z fixtury}.
  */
 export function nnSideBelowBusHeight(
-  station: Pick<StationMeasureInput, 'snBays' | 'aggregatedLvLoad' | 'derSources' | 'hasTransformer' | 'nnBoard'>,
+  station: Pick<
+    StationMeasureInput,
+    | 'snBays'
+    | 'aggregatedLvLoad'
+    | 'derSources'
+    | 'hasTransformer'
+    | 'nnBoard'
+    | 'bayDirectionCaptions'
+    | 'entryDescentBayIndex'
+    | 'transformerUnits'
+  >,
 ): number {
   // P0.8 nN: rząd odpływów RZECZYWISTYCH ZASTĘPUJE strzałkę zagregowanego
   // odbioru, gdy stacja niesie dane strukturalne P0.1 (`feeders.length>0`) —
@@ -912,9 +1180,38 @@ export function nnSideBelowBusHeight(
   // Stacja bez danych strukturalnych (`nnBoard` niedostarczone/puste sekcje,
   // WIĘKSZOŚĆ dzisiejszych sieci): `feeders===[]` ⇒ gałąź `lvSideExtraHeight`
   // niezmieniona, substrat bajtowo identyczny (karta P0.8 §0.6).
-  const feeders = flattenedNnFeeders(station.nnBoard);
-  const nnSideExtra = feeders.length > 0 ? nnFeederRowExtraHeight(feeders) : lvSideExtraHeight(station);
+  //
+  // NAPRAWA T5a (Zero-Debt §1, błąd NAPOTKANY przy budowie tej karty):
+  // bramka NIE MOŻE testować `nnBoardSectionPlans(station).length>0` — sekcja
+  // DOMYŚLNA (`buildNnBoardSections` w adapterze) istnieje ZAWSZE, gdy stacja
+  // ma rozwiązywalną szynę nN, NAWET z `feeders===[]` (np. szyna nN bez
+  // ŻADNEGO odpływu strukturalnego, ale z odbiorem WYŁĄCZNIE zagregowanym z
+  // `Load`). Bramka na LICZBIE SEKCJI myliła „sekcja istnieje" z „sekcja ma
+  // treść" — POMIAR na fixturze referencyjnej (`sldSubstrate52s`, 53/54
+  // stacji z rozwiązywalną szyną nN, ZERO z realnymi odpływami P0.1): strzałka
+  // odbioru zagregowanego (`lvSideExtraHeight`) PRZESTAWAŁA się rysować dla
+  // KAŻDEJ takiej stacji (fałszywe przejście na gałąź „sekcje bez treści"),
+  // regres zmierzony `symbolWireCollisions` 0→6 i zmiana `totalVerticalSegment
+  // Length` na fixturze SN-bez-danych-nN — DOKŁADNIE zakazana klasa defektu
+  // (Zakazy karty: „substrat SN bez danych nN bajtowo nietknięty"). Bramka
+  // poprawna: LICZBA ODPŁYWÓW rzeczywistych (`flattenedNnFeeders`, TA SAMA
+  // funkcja i próg co przed kartą T5a) — jedno źródło prawdy z `compose/
+  // station.ts` (gałąź `if (nnFeeders.length > 0)`, NIEZMIENIONA tą kartą).
+  const nnFeeders = flattenedNnFeeders(station.nnBoard);
+  const sectionPlans = nnBoardSectionPlans(station);
+  const nnSideExtra =
+    nnFeeders.length > 0 ? nnBoardRowExtraHeight(sectionPlans) : lvSideExtraHeight(station);
   return Math.max(nnSideExtra, derRowExtraHeight(nnSideSources(station.derSources ?? [])));
+}
+
+/** Wysokość DODATKOWA na rząd odpływów nN PO agregacji (wzorzec
+ *  `nnFeederRowExtraHeight`, ale nad sekcjami — `nnBoardTotalRowFootprint`
+ *  bierze `max` wysokości sekcji, bo sekcje stoją OBOK siebie w rzędzie, nie
+ *  jedna pod drugą). `0`, gdy `sectionPlans` puste. */
+function nnBoardRowExtraHeight(sectionPlans: readonly NnSectionPlan[]): number {
+  const footprint = nnBoardTotalRowFootprint(sectionPlans);
+  if (footprint.height === 0) return 0;
+  return NN_FEEDER_STUB_HEIGHT + footprint.height + NN_FEEDER_LABEL_GAP;
 }
 
 /** Szerokości tekstów strony nN — kandydaci pasma nazw B5 (do
@@ -1354,22 +1651,18 @@ export function requiredStationWidth(station: StationMeasureInput): number {
   // `compose/station.ts` rysuje rząd flush-right od `bx` za ostatnią
   // kolumną) — wchodzi WYŁĄCZNIE do rezerwacji szerokości KOLUMNY stacji
   // (żeby DER nie nachodził na sąsiada), NIE do bazy centrowania `tapX`.
-  const baysWidth = stationBlockWidth(station);
-  // W2 (GS-4b): EKSTENT poziomy = kolumny pól + pola źródłowe SN (dodatkowe
-  // kolumny NA szynie SN, `compose/station.ts` rysuje je flush-right za polami)
-  // + rząd nN (TYLKO źródła strony nN). Trzy człony dopisane PO PRAWEJ, każdy
-  // z odstępem GRID; sieć referencyjna (0 źródeł SN) ⇒ `snFieldsWidth==0` ⇒
-  // formuła identyczna jak przed W2 (zero zmian szerokości kolumny).
-  const allDer = station.derSources ?? [];
-  const snFieldsWidth = snSourceFieldsRowWidth(allDer);
-  const nnDerWidth = derRowFootprint(nnSideSources(allDer)).width;
-  let blockWidth = baysWidth;
-  if (snFieldsWidth > 0) blockWidth += GRID + snFieldsWidth;
-  if (nnDerWidth > 0) blockWidth += GRID + nnDerWidth;
-  // P0.8 nN (wzorzec DER-row): rząd odpływów rzeczywistych dopisany PO
-  // PRAWEJ, jak rząd DER — `0`, gdy stacja bez danych strukturalnych P0.1
-  // (zero zmian szerokości kolumny, karta P0.8 §0.6).
-  const nnFeederWidth = nnFeederRowFootprint(flattenedNnFeeders(station.nnBoard)).width;
+  // T5a: `nnBoardWidthEnvelope` jest LUSTREM DOKŁADNYM tych trzech linii
+  // (`baysWidth`/`snFieldsWidth`/`nnDerWidth`) — jedna prawda, bo TA SAMA
+  // wartość jest teraz też budżetem adaptacyjnym agregacji kikutów
+  // (`nnSectionFeederBudget`, `layout/measure.ts`). Zero zmian liczbowych
+  // względem stanu przed kartą — sam wzór przeniesiony, nie przeliczony.
+  let blockWidth = nnBoardWidthEnvelope(station);
+  // P0.8 nN (wzorzec DER-row) → T5a (agregacja PER SEKCJA, werdykt §0 pkt 2):
+  // rząd odpływów rzeczywistych PO agregacji, dopisany PO PRAWEJ, jak rząd
+  // DER — `0`, gdy stacja bez danych strukturalnych P0.1 (zero zmian
+  // szerokości kolumny, karta P0.8 §0.6 zachowana). Sekcje ≥2 rysowane W
+  // RZĘDZIE (sprzęgło między nimi) — `nnBoardTotalRowFootprint` sumuje.
+  const nnFeederWidth = nnBoardTotalRowFootprint(nnBoardSectionPlans(station)).width;
   if (nnFeederWidth > 0) blockWidth += GRID + nnFeederWidth;
 
   const nameWidths: number[] = [measureLabelWidth(station.name, 't1')];

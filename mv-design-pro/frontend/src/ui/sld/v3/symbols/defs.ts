@@ -55,7 +55,12 @@ export type SymbolId =
                         // + device_kind WYLACZNIK_GLOWNY/WYLACZNIK_ODPLYWOWY)
   | 'nnFuseSwitch'      // rozłącznik bezpiecznikowy nN (device_kind
                         // ROZLACZNIK_BEZPIECZNIKOWY / namespace WKLADKA_NN)
-  | 'nnMeter';          // licznik nN (miernik energii, W-620+ nN STUDIO)
+  | 'nnMeter'           // licznik nN (miernik energii, W-620+ nN STUDIO)
+  // T5a (KONCEPCJA_LOD_NN_2026-08 §L1, werdykt §0 pkt 2): znacznik AGREGATU
+  // kikutów odpływów nN ukrytych za budżetem adaptacyjnym — ADNOTACJA
+  // liczbowa „+N", NIE aparat łączeniowy (kanon symboli: nowy glif addytywny,
+  // wzorzec `recloser`/`fuse`/`voltageIndicator` — istniejące glify nietknięte).
+  | 'nnAggregate';
 
 export interface SymbolDef {
   readonly id: SymbolId;
@@ -340,6 +345,12 @@ export const SYMBOL_DEFS: Readonly<Record<SymbolId, SymbolDef>> = {
     { name: 'top', x: 8, y: 0, dir: 'N' },
     { name: 'bottom', x: 8, y: 24, dir: 'S' },
   ], 'Licznik nN'),
+  // T5a: znacznik agregatu kikutów — gabaryt 16×16, JEDEN port `top` (jak
+  // liście DER/rozdzielnicy nN) — adnotacja liczbowa wisi POD szyną, nie stoi
+  // W CIĄGU toru (nie jest aparatem, nie ma portu `bottom`/dalszego toru).
+  nnAggregate: def('nnAggregate', 16, 16, [
+    { name: 'top', x: 8, y: 0, dir: 'N' },
+  ], 'Agregat odpływów nN'),
 };
 
 /**

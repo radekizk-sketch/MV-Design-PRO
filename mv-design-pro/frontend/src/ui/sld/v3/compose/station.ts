@@ -73,12 +73,17 @@ import {
   implicitStationTransformers,
   implicitTransformerNameplateText,
   LV_MODEL_BOUNDARY_TEXT,
-  nnFeederColumnRequiredWidth,
+  nnAggregateSlotLabelText,
+  nnBoardSectionPlans,
+  nnBoardTotalRowFootprint,
   nnFeederLabelText,
   nnFeederPathBroken,
-  nnFeederRowFootprint,
   nnIncomerExtraHeight,
+  NN_SECTION_COUPLER_GAP,
+  nnSectionRowFootprint,
+  nnSlotColumnRequiredWidth,
   primaryNnIncomer,
+  type NnAggregatedFeederSlot,
   stationDrawsImplicitTrNameplate,
   stationSnColumnLayout,
   type StationSnColumnPlacement,
@@ -342,6 +347,13 @@ export interface ComposedSymbolInstance {
    *  Render podąża za DANYMI, nie za rolą pola — configId świadczy o tożsamości
    *  konfiguracji (uwaga 10). `undefined` dla DER i pól bez szablonu. */
   readonly configId?: string;
+  /** T5a (KONCEPCJA_LOD_NN_2026-08 §L1): liczba odpływów UKRYTYCH pod tym
+   *  znacznikiem agregatu — WYŁĄCZNIE dla `symbolId==='nnAggregate'`. */
+  readonly nnAggregateCount?: number;
+  /** T5a: refy `branchRef` odpływów ukrytych — patrz `PreviewElementMeta.
+   *  nnAggregateHiddenRefs` (`compose/preview.tsx`) dla pełny kontrakt
+   *  (konsument: warstwa overlay, „najgorszy status ukrytych"). */
+  readonly nnAggregateHiddenRefs?: readonly string[];
   readonly x: number;
   readonly y: number;
   readonly state?: SwitchState;
@@ -1642,8 +1654,16 @@ export function composeStation(input: ComposeStationInput): StationComposition {
     // zagregowanego odbioru (precyzyjny obraz nie dubluje agregatu, karta
     // P0.8 §0.6 substrat). `[]` dla stacji bez danych strukturalnych
     // (WIĘKSZOŚĆ dzisiejszych sieci) — zero zmian geometrii.
+    // T5a (KONCEPCJA_LOD_NN_2026-08 §L1, werdykt §0 pkt 2): `sectionPlans`
+    // niesie KAŻDĄ sekcję rozdzielnicy nN Z WŁASNYM planem agregacji kikutów
+    // (budżet adaptacyjny liczony RAZ dla całej rozdzielnicy — jedna prawda
+    // measure↔compose, `layout/measure.ts::nnBoardSectionPlans`). `nnFeeders`
+    // (spłaszczone, PRZED agregacją) zostaje WYŁĄCZNIE dla bramek
+    // strukturalnych poniżej („czy stacja ma jakiekolwiek odpływy w ogóle"),
+    // niezależnych od tego, ile z nich jest jawnie narysowanych.
+    const sectionPlans = nnBoardSectionPlans(station);
     const nnFeeders = flattenedNnFeeders(station.nnBoard);
-    const nnFeederRowWidth = nnFeederRowFootprint(nnFeeders).width;
+    const nnFeederRowWidth = nnBoardTotalRowFootprint(sectionPlans).width;
     // pkt 6 (recenzja NO-GO 2026-07-17): stacja z odbiorem ORAZ DER —
     // szyna nN przedłużona w LEWO, żeby strzałka odbioru / rząd odpływów na
     // jej lewym końcu miały prześwit od pionu trunku DER (`#der-row-trunk`
@@ -1750,15 +1770,62 @@ export function composeStation(input: ComposeStationInput): StationComposition {
     // `stationNameBandHeight`/`requiredStationWidth`), nie jako luźne
     // etykiety pod szyną (pomiar: kolidowały z pionem trunku DER).
     if (nnFeeders.length > 0) {
-      // P0.8 nN (seam A8 §9.2.1, wzorzec DER-row): rząd odpływów RZECZYWISTYCH
-      // — jeden slot na odpływ (`nnFeederColumnRequiredWidth`, JEDNA prawda z
-      // measure.ts), flush-left od `busLeft` (symetria z DER-row flush-right
-      // od `bx`: dwa rzędy rosną OD SIEBIE, nigdy się nie spotykają).
-      let slotX = busLeft;
-      nnFeeders.forEach((feeder) => {
-        const slotWidth = nnFeederColumnRequiredWidth(feeder);
-        const dropX = snapToGrid(slotX + slotWidth / 2);
+      // T5a (KONCEPCJA_LOD_NN_2026-08 §L1, werdykt §0 pkt 2 „szyna RGnN z
+      // sekcjami i sprzęgłem"): rząd odpływów RZECZYWISTYCH rysowany PER
+      // SEKCJA (`sectionPlans`, `layout/measure.ts::nnBoardSectionPlans`) —
+      // sekcja 0 wisi na SZYNIE JUŻ POŁOŻONEJ (`busLeft..busRight`, zero zmian
+      // geometrii pierwszej sekcji względem stanu przed kartą, gdy agregacja
+      // się nie uruchamia — patrz `nnSlotColumnRequiredWidth` docstring: jest
+      // LUSTREM `nnFeederColumnRequiredWidth` dla slotów `kind==='feeder'`).
+      // Sekcje DODATKOWE dostają WŁASNĄ szynę doklejoną sprzęgłem na prawo od
+      // rzędu poprzedniej (`drawNnCoupler` niżej) — jeden slot na odpływ
+      // (`nnSlotColumnRequiredWidth`, JEDNA prawda z measure.ts), flush-left
+      // od lewej krawędzi WŁASNEJ szyny (symetria z DER-row flush-right od
+      // `bx`: rzędy rosną OD SIEBIE, nigdy się nie spotykają).
+      const drawNnSlot = (slot: NnAggregatedFeederSlot, dropX: number): void => {
         let cursorY = busY;
+        if (slot.kind === 'aggregate') {
+          // T5a: znacznik AGREGATU — zejście + symbol `nnAggregate` + etykieta
+          // „+N odpł.". Refy ukrytych odpływów NIE są refami sceny (agregat
+          // ma WŁASNY, syntetyczny `ownerRef` stabilny w obrębie sekcji) —
+          // konsument wyników (overlay) rolluje status z `hiddenBranchRefs` w
+          // meta, scena SAMA fizyki nie liczy (`overlay_no_physics_guard`).
+          const stubEndY = cursorY + GRID;
+          const aggregateOwnerRef = `${slot.hidden[0]?.branchRef ?? station.id}#nn-aggregate`;
+          segments.push({
+            ownerRef: aggregateOwnerRef,
+            points: [
+              { x: dropX, y: cursorY },
+              { x: dropX, y: stubEndY },
+            ],
+          });
+          const def = SYMBOL_DEFS.nnAggregate;
+          const symX = snapToGrid(dropX - def.width / 2);
+          symbols.push({
+            symbolId: 'nnAggregate',
+            // Tożsamość SYNTETYCZNA (§ dokumentacja `SldNnCoupler` — brak
+            // pojedynczego refu ENM dla agregatu wielu odpływów): `sourceRef`
+            // niesie ją do `ownerRef`/`testId` sceny (wzorzec DER, `scene/
+            // buildScene.ts::composeRowStation`, `s.sourceRef` w mapowaniu).
+            sourceRef: aggregateOwnerRef,
+            nnAggregateCount: slot.hidden.length,
+            nnAggregateHiddenRefs: slot.hidden.map((f) => f.branchRef),
+            x: symX,
+            y: stubEndY,
+            ports: portsInWorld(def, symX, stubEndY),
+          });
+          cursorY = stubEndY + def.height;
+          apparatusLabels.push({
+            ownerRef: `${aggregateOwnerRef}#label`,
+            ownerKind: 'apparatus',
+            text: nnAggregateSlotLabelText(slot.hidden.length),
+            labelClass: 't4',
+            anchor: { x: dropX, y: cursorY },
+            placement: 'below',
+          });
+          return;
+        }
+        const feeder = slot.feeder;
 
         // Zejście z szyny do pierwszego symbolu (albo do końca gołego kabla
         // bez aparatu — tor jest widoczny, nawet gdy nic na nim nie stoi).
@@ -1871,9 +1938,103 @@ export function composeStation(input: ComposeStationInput): StationComposition {
         if (!pathBroken && feeder.destinationKind === 'unknown') {
           missingData.push(`station.nnFeeder.destinationUnknown:${feeder.branchRef}`);
         }
+      };
 
-        slotX += slotWidth + GRID;
-      });
+      const drawNnSectionRow = (slots: readonly NnAggregatedFeederSlot[], startX: number): number => {
+        let slotX = startX;
+        for (const slot of slots) {
+          const slotWidth = nnSlotColumnRequiredWidth(slot);
+          const dropX = snapToGrid(slotX + slotWidth / 2);
+          drawNnSlot(slot, dropX);
+          slotX += slotWidth + GRID;
+        }
+        return slotX;
+      };
+
+      // Sekcja 0: kikuty PRZED sprzęgłem, flush-left od `busLeft` (bez zmian
+      // geometrii względem stanu przed kartą, gdy agregacja się nie
+      // uruchamia — dowód: raport karty, pomiar substratu).
+      let rowEndX = drawNnSectionRow(sectionPlans[0]?.slots ?? [], busLeft);
+      let previousSectionRightX = Math.max(busRight, rowEndX);
+
+      // T5a (werdykt §0 pkt 2): sekcje DODATKOWE — KAŻDA dostaje WŁASNĄ szynę
+      // (`${section.busRef}#lv-bus`, ref REALNY z modelu — TERAZ osobna
+      // krawędź sceny, nie kontynuacja `${station.id}#lv-bus`), doklejoną
+      // SPRZĘGŁEM (`section.coupler` — realna gałąź ENM, `NnSection.
+      // coupler_ref`), na wprost prawej krawędzi rzędu sekcji poprzedniej.
+      for (let sectionIndex = 1; sectionIndex < sectionPlans.length; sectionIndex += 1) {
+        const plan = sectionPlans[sectionIndex];
+        const coupler = plan.section.coupler;
+        let sectionBusStartX = previousSectionRightX + GRID;
+        if (coupler) {
+          // Sprzęgło (werdykt §0 pkt 2 „szyna RGnN z sekcjami i sprzęgłem"):
+          // odcinek ŁĄCZĄCY dwie szyny sekcji jest LITERALNĄ gałęzią ENM
+          // (`coupler.branchRef` — `NnSection.coupler_ref`, `type=
+          // "bus_coupler"`) — ciągłość wizualna szyny między sekcjami JEST
+          // realnym połączeniem, nie dekoracją (wyrocznia zgodności sceny z
+          // grafem, `sceneConformance.test.ts`, klasyfikuje ten ref jako
+          // `literal-edge`). Aparat sprzęgła wisi POD tym odcinkiem, jak
+          // aparat odpływu (`apparatusKind` z modelu — TA SAMA rodzina glifów
+          // co odpływ/incomer, jedna prawda klasyfikacji
+          // `resolveNnFeederApparatus` w adapterze); glify tej rodziny mają
+          // WYŁĄCZNIE porty N/S (pionowe) — brak rotacji w bibliotece symboli
+          // (`symbols/defs.ts`), więc aparat NIE stoi „w poprzek" odcinka.
+          // CAŁA szerokość `NN_SECTION_COUPLER_GAP` — zero martwej strefy
+          // między odcinkiem-łącznikiem a szyną sekcji następnej.
+          sectionBusStartX = previousSectionRightX + NN_SECTION_COUPLER_GAP;
+          segments.push({
+            ownerRef: coupler.branchRef,
+            points: [
+              { x: previousSectionRightX, y: busY },
+              { x: sectionBusStartX, y: busY },
+            ],
+          });
+          const couplerX = snapToGrid((previousSectionRightX + sectionBusStartX) / 2);
+          let labelAnchorY = busY;
+          if (coupler.apparatusKind === 'MCB' || coupler.apparatusKind === 'FUSE_SWITCH') {
+            const couplerSymbolId = coupler.apparatusKind === 'MCB' ? 'nnBreaker' : 'nnFuseSwitch';
+            const def = SYMBOL_DEFS[couplerSymbolId];
+            const stubEndY = busY + GRID;
+            segments.push({
+              ownerRef: `${coupler.branchRef}#nn-coupler-drop`,
+              points: [
+                { x: couplerX, y: busY },
+                { x: couplerX, y: stubEndY },
+              ],
+            });
+            const symX = snapToGrid(couplerX - def.width / 2);
+            symbols.push({
+              symbolId: couplerSymbolId,
+              sourceRef: coupler.apparatusRef ?? undefined,
+              x: symX,
+              y: stubEndY,
+              ports: portsInWorld(def, symX, stubEndY),
+            });
+            labelAnchorY = stubEndY + def.height;
+          } else if (coupler.apparatusKind === 'UNRESOLVED') {
+            missingData.push(`station.nnCoupler.apparatusUnresolved:${coupler.branchRef}`);
+          }
+          apparatusLabels.push({
+            ownerRef: `${coupler.branchRef}#nn-coupler-label`,
+            ownerKind: 'apparatus',
+            text: coupler.apparatusLabel ?? 'Sprzęgło sekcyjne nN',
+            labelClass: 't4',
+            anchor: { x: couplerX, y: labelAnchorY },
+            placement: 'below',
+          });
+        }
+        const sectionFootprint = nnSectionRowFootprint(plan.slots);
+        const sectionBusEndX = Math.max(sectionBusStartX, sectionBusStartX + sectionFootprint.width);
+        segments.push({
+          ownerRef: `${plan.section.busRef}#lv-bus`,
+          points: [
+            { x: sectionBusStartX, y: busY },
+            { x: sectionBusEndX, y: busY },
+          ],
+        });
+        rowEndX = drawNnSectionRow(plan.slots, sectionBusStartX);
+        previousSectionRightX = Math.max(sectionBusEndX, rowEndX);
+      }
     } else if (station.aggregatedLvLoad != null) {
       const arrowDef = SYMBOL_DEFS.loadArrow;
       const arrowDropX = nnDerSources.length > 0 ? busLeft : nnBusPoint.x;

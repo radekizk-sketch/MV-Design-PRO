@@ -37,6 +37,7 @@ import type {
   Load,
   Bay,
   GPZSection,
+  NnSection,
   Transformer,
   ProtectionAssignment,
   Measurement,
@@ -46,6 +47,7 @@ import { pickStationBus, STATION_LV_VOLTAGE_LIMIT_KV } from '../../shared/statio
 import type {
   SldNnApparatusKind,
   SldNnBoardSection,
+  SldNnCoupler,
   SldNnFeeder,
   SldNnFeederDestinationKind,
   SldNnIncomer,
@@ -3659,17 +3661,34 @@ function readMaterializedNumber(branch: Pick<Branch, 'materialized_params'>, key
 }
 
 /**
- * Rozpoznaj aparat odpływu z gałęzi 'switch'/'fuse' (karta P0.8 §0.2,
- * mapowanie namespace/device_kind katalogu → rodzaj glifu). ZERO zgadywania:
- * namespace nieznany/niekompletny ⇒ `'UNRESOLVED'` (pusty tor + komunikat
- * błędu w kompozycji), nie podstawienie domyślnego wyłącznika.
+ * Rozpoznaj aparat odpływu z gałęzi 'switch'/'fuse'/'bus_coupler' (karta
+ * P0.8 §0.2, mapowanie namespace/device_kind katalogu → rodzaj glifu). ZERO
+ * zgadywania: namespace nieznany/niekompletny ⇒ `'UNRESOLVED'` (pusty tor +
+ * komunikat błędu w kompozycji), nie podstawienie domyślnego wyłącznika.
+ *
+ * T5a (KONCEPCJA_LOD_NN_2026-08 §L1): `'bus_coupler'` DOŁĄCZONY do bramki
+ * typu — sprzęgło sekcyjne nN (`NnSection.coupler_ref`, backend
+ * `add_nn_section_coupler`) jest DOKŁADNIE tym typem gałęzi (jak sprzęgło SN,
+ * `enmToSldAdapter.ts` linia ~4462 „'disconnector' / 'bus_coupler' → DS" —
+ * TA SAMA rodzina fizyczna, inna strona napięciowa). Bez tego dopisku
+ * `buildCouplerRecord` (T5a) dostawałby zawsze `apparatusKind: null` dla
+ * KAŻDEGO realnego sprzęgła nN — aparat rozpoznany przez model, ale funkcja
+ * klasyfikacji go odrzucała na bramce typu (luka NAPOTKANA przy tej karcie,
+ * naprawiona u źródła, Zero-Debt §1).
  */
 function resolveNnFeederApparatus(
   branch: Pick<Branch, 'ref_id' | 'type' | 'catalog_namespace' | 'materialized_params'>,
 ): { readonly kind: SldNnApparatusKind; readonly ref: string; readonly label: string } | null {
-  if (branch.type !== 'switch' && branch.type !== 'breaker' && branch.type !== 'fuse') return null;
+  if (
+    branch.type !== 'switch'
+    && branch.type !== 'breaker'
+    && branch.type !== 'fuse'
+    && branch.type !== 'bus_coupler'
+  ) {
+    return null;
+  }
   const namespace = branch.catalog_namespace ?? null;
-  if (namespace === 'APARAT_NN_MCB' || branch.type === 'switch' || branch.type === 'breaker') {
+  if (namespace === 'APARAT_NN_MCB' || branch.type === 'switch' || branch.type === 'breaker' || branch.type === 'bus_coupler') {
     const curveClass = readMaterializedString(branch, 'curve_class');
     const inA = readMaterializedNumber(branch, 'in_a');
     if (namespace === 'APARAT_NN_MCB') {
@@ -3841,6 +3860,39 @@ function buildIncomerRecord(
  * łącznika) zachowanie sprzed karty: WSZYSTKIE gałęzie dotykające szyny są
  * odpływami, `incomer: null`.
  */
+/**
+ * T5a (KONCEPCJA_LOD_NN_2026-08 §L1): sprzęgło TEJ sekcji — `null`, gdy sekcja
+ * nie niesie `coupler_ref` (WIĘKSZOŚĆ sekcji, patrz `SldNnCoupler` docstring).
+ * `leftSectionId`/`rightSectionId` WYPROWADZONE z pary `from_bus_ref`/
+ * `to_bus_ref` gałęzi dopasowanej do `busRef` sekcji z tej samej rozdzielnicy
+ * (backend `add_nn_section_coupler`: `from_bus_ref` = sekcja o mniejszym
+ * `order`, `to_bus_ref` = TA sekcja) — zero zgadywania, dopasowanie po
+ * realnej referencji szyny. Gałąź nierozwiązywalna/druga strona bez
+ * dopasowanej sekcji ⇒ `null` (uczciwy brak, jak `buildIncomerRecord`).
+ */
+function buildCouplerRecord(
+  snapshot: EnergyNetworkModel,
+  couplerRef: string,
+  thisSection: NnSection,
+  allSections: readonly NnSection[],
+): SldNnCoupler | null {
+  const branch = (snapshot.branches ?? []).find((b) => b.ref_id === couplerRef);
+  if (!branch) return null;
+  const farBusRef = otherBusRef(branch, thisSection.bus_ref);
+  if (!farBusRef) return null;
+  const leftSection = allSections.find((s) => s.bus_ref === farBusRef);
+  if (!leftSection) return null;
+  const apparatus = resolveNnFeederApparatus(branch);
+  return {
+    branchRef: couplerRef,
+    apparatusKind: apparatus?.kind ?? null,
+    apparatusRef: apparatus?.ref ?? null,
+    apparatusLabel: apparatus?.label ?? null,
+    leftSectionId: leftSection.section_id,
+    rightSectionId: thisSection.section_id,
+  };
+}
+
 export function buildNnBoardSections(
   snapshot: EnergyNetworkModel,
   station: Substation,
@@ -3849,20 +3901,42 @@ export function buildNnBoardSections(
 ): readonly SldNnBoardSection[] {
   const explicitSections = (station.nn_sections ?? []).filter((s) => s.bus_ref);
   if (explicitSections.length > 0) {
-    return [...explicitSections]
-      .sort((a, b) => a.order - b.order)
-      .map((section) => {
-        const exclude = new Set<string>(section.incoming_refs ?? []);
-        if (section.coupler_ref) exclude.add(section.coupler_ref);
-        const incomingRef = (section.incoming_refs ?? [])[0] ?? null;
-        const incomer = incomingRef ? buildIncomerRecord(snapshot, incomingRef, section.bus_ref) : null;
-        return {
-          sectionId: section.section_id,
-          busRef: section.bus_ref,
-          incomer,
-          feeders: buildNnBoardFeeders(snapshot, section.bus_ref, exclude),
-        };
-      });
+    const sorted = [...explicitSections].sort((a, b) => a.order - b.order);
+    // NAPRAWA T5a (błąd NAPOTKANY przy budowie tej karty, Zero-Debt §1):
+    // `coupler_ref` jest zapisywany WYŁĄCZNIE na sekcji PRAWEJ (wyższy
+    // `order`, backend `add_nn_section_coupler` — patrz `SldNnCoupler`
+    // docstring), więc wykluczenie liczone WYŁĄCZNIE z `section.coupler_ref`
+    // TEJ sekcji pomijało sprzęgło z listy odpływów sekcji LEWEJ (branża
+    // sprzęgła DOTYKA obu szyn, ale tylko jedna z nich „wie" o niej z modelu).
+    // Skutek zmierzony na fixturze `nnBoardDemo` (2 sekcje + sprzęgło): sekcja
+    // LEWA (bez `coupler_ref`) klasyfikowała sprzęgło jako SWÓJ odpływ (piąty
+    // aparat MCB, `resolveNnFeederApparatus` je teraz rozpoznaje — patrz
+    // dopisek T5a wyżej), więc sprzęgło rysowało się PODWÓJNIE: raz jako
+    // (błędny) odpływ sekcji lewej, raz jako (poprawny) sprzęgło sekcji
+    // prawej — dwa symbole/segmenty pod TYM SAMYM refem gałęzi, w dwóch
+    // zupełnie różnych miejscach rysunku. Wykluczenie musi być GLOBALNE
+    // (zbiór WSZYSTKICH `coupler_ref` całej rozdzielnicy), stosowane
+    // JEDNOLICIE do KAŻDEJ sekcji — jedna prawda predykatu wykluczenia
+    // (reguła KLASA §3: „predykat WEJŚCIA i WYJŚCIA z JEDNEGO źródła prawdy").
+    const allCouplerRefs = new Set<string>(
+      sorted.map((s) => s.coupler_ref).filter((ref): ref is string => !!ref),
+    );
+    return sorted.map((section) => {
+      const exclude = new Set<string>(section.incoming_refs ?? []);
+      for (const ref of allCouplerRefs) exclude.add(ref);
+      const incomingRef = (section.incoming_refs ?? [])[0] ?? null;
+      const incomer = incomingRef ? buildIncomerRecord(snapshot, incomingRef, section.bus_ref) : null;
+      const coupler = section.coupler_ref
+        ? buildCouplerRecord(snapshot, section.coupler_ref, section, sorted)
+        : null;
+      return {
+        sectionId: section.section_id,
+        busRef: section.bus_ref,
+        incomer,
+        coupler,
+        feeders: buildNnBoardFeeders(snapshot, section.bus_ref, exclude),
+      };
+    });
   }
   if (!nnBusRef) return [];
   const incomerEdge = graph
@@ -3875,6 +3949,7 @@ export function buildNnBoardSections(
       sectionId: `${station.ref_id}#nn-section-default`,
       busRef: nnBusRef,
       incomer,
+      coupler: null,
       feeders: buildNnBoardFeeders(snapshot, nnBusRef, exclude),
     },
   ];

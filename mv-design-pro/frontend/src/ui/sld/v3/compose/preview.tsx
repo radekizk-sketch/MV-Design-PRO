@@ -344,6 +344,17 @@ export interface PreviewElementMeta {
    *  (A/V z `Measurement.measurement_type`) — WYŁĄCZNIE dla symboli
    *  `meter`; `MeterGlyph` pokazuje ją zamiast mylącego „M". */
   readonly meterQuantity?: 'A' | 'V';
+  /** T5a (KONCEPCJA_LOD_NN_2026-08 §L1): liczba odpływów ukrytych pod
+   *  znacznikiem agregatu — WYŁĄCZNIE dla symboli `nnAggregate`, przekazane
+   *  1:1 do `GlyphProps` (wzór `meterQuantity`). */
+  readonly nnAggregateCount?: number;
+  /** T5a: refy ENM (`SldNnFeeder.branchRef`) odpływów UKRYTYCH pod znacznikiem
+   *  agregatu — NIE renderowane (glif czyta wyłącznie `nnAggregateCount`),
+   *  konsumowane przez warstwę OVERLAY (wyniki), żeby zrolować „najgorszy
+   *  status ukrytych" (werdykt §0 pkt 2) bez liczenia fizyki w scenie
+   *  (`overlay_no_physics_guard`) — scena niesie WYŁĄCZNIE refy, zero
+   *  wartości wynikowej. */
+  readonly nnAggregateHiddenRefs?: readonly string[];
   /** TR2W-BEZ-POLA (§0.C.5): `true` dla symbolu `transformer2W` stacji, który
    *  wisi na szynie SN BEZ skonfigurowanego pola transformatorowego —
    *  konfiguracja NIEKOMPLETNA. Steruje markerem „!" przy stronie WN
@@ -500,6 +511,7 @@ function PreviewSymbolNode(props: { readonly symbol: PreviewSymbol; readonly str
         hasTopologyWarning={(symbol.meta?.topologyGaps?.length ?? 0) > 0}
         hasFieldGapWarning={symbol.meta?.transformerFieldGap === true}
         meterQuantity={symbol.meta?.meterQuantity}
+        nnAggregateCount={symbol.meta?.nnAggregateCount}
         stationSectioned={symbol.meta?.stationGlyph?.sectioned}
         stationLineTopology={symbol.meta?.stationGlyph?.lineTopology}
         stationHasTransformer={symbol.meta?.stationGlyph?.hasTransformer}

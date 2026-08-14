@@ -76,6 +76,25 @@ export interface SldNnIncomer {
   readonly fromBusRef: string;
 }
 
+/**
+ * T5a (KONCEPCJA_LOD_NN_2026-08 §L1, werdykt pkt 2 „szyna RGnN z sekcjami i
+ * SPRZĘGŁEM"): sprzęgło międzysekcyjne — realna gałąź ENM
+ * (`NnSection.coupler_ref`, `type="bus_coupler"`, `backend/src/enm/
+ * domain_operations_v2.py::add_nn_section_coupler`), NIGDY fabrykowane.
+ * Backend zapisuje `coupler_ref` WYŁĄCZNIE na sekcji PRAWEJ (wyższy `order`,
+ * nowo dodanej) — `leftSectionId`/`rightSectionId` tu są WYPROWADZONE z pary
+ * `from_bus_ref`/`to_bus_ref` gałęzi dopasowanej do `busRef` sąsiednich
+ * sekcji (adapter, zero zgadywania kierunku).
+ */
+export interface SldNnCoupler {
+  readonly branchRef: string;
+  readonly apparatusKind: SldNnApparatusKind | null;
+  readonly apparatusRef: string | null;
+  readonly apparatusLabel: string | null;
+  readonly leftSectionId: string;
+  readonly rightSectionId: string;
+}
+
 export interface SldNnBoardSection {
   readonly sectionId: string;
   readonly busRef: string;
@@ -84,5 +103,10 @@ export interface SldNnBoardSection {
    *  jawnym `NnSection` — `incoming_refs` puste/nierozwiązywalne). Uczciwy
    *  brak, zero fabrykacji aparatu. */
   readonly incomer: SldNnIncomer | null;
+  /** T5a: sprzęgło do sekcji SĄSIEDNIEJ — `null`, gdy ta sekcja nie niesie
+   *  `NnSection.coupler_ref` (WIĘKSZOŚĆ sekcji: rozdzielnica jednosekcyjna
+   *  ALBO sekcja LEWA pary sprzęglonej — sprzęgło rysowane RAZ, na sekcji
+   *  prawej, `compose/station.ts`). */
+  readonly coupler: SldNnCoupler | null;
   readonly feeders: readonly SldNnFeeder[];
 }
