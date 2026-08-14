@@ -44,12 +44,14 @@ from typing import Any
 
 import pytest
 from enm.domain_operations import (
+    KLUCZE_BEZWARUNKOWE_POLA_KONCA_CIAGU,
     POLE_BLOKU_FABRYCZNEGO,
     POLE_JEDNOSTKI_BLOKU,
     POLE_POWIAZAN_KATALOGOWYCH,
     POLE_RODZAJU_POLA,
     POLE_STATUSU_ZRODLA,
     POLE_ZRODEL_DANYCH,
+    _build_field_spec,
     execute_domain_operation,
 )
 from network_model.catalog.switchgear import (
@@ -369,25 +371,38 @@ def test_brak_metadanych_w_payloadzie_nie_daje_zadnej_wartosci(tor: str) -> None
         assert spec.get(POLE_ZRODEL_DANYCH) == []
 
 
-@pytest.mark.parametrize("operacja", OPERACJE_STACYJNE)
-def test_wartosc_pusta_nie_jest_deklaracja_metadanej(operacja: str) -> None:
+def test_wartosc_pusta_nie_jest_deklaracja_metadanej() -> None:
     """Pusty status i pusta lista źródeł to BRAK deklaracji, nie deklaracja.
 
     Pusty łańcuch nie jest statusem źródła, a lista bez ani jednego adresu nie
     jest proweniencją — zapisanie ich udawałoby daną tam, gdzie jej nie ma.
+    Asercja jest OSTRA (brak klucza albo `None`), bo pusty łańcuch jest fałszywy
+    w Pythonie: łagodne `assert not spec.get(...)` przepuściłoby zapis `""`
+    i deklaracja żyłaby wyłącznie w docstringu.
     """
     wpisy = _z_metadanymi(_wpisy_toru("MODULARNY"), ())
     for wpis in wpisy:
         wpis[POLE_RODZAJU_POLA] = "   "
         wpis[POLE_STATUSU_ZRODLA] = ""
-        wpis[POLE_ZRODEL_DANYCH] = []
+        wpis[POLE_ZRODEL_DANYCH] = ["  ", ""]
 
-    odpowiedz = _uruchom(operacja, wpisy)
-    assert odpowiedz.get("error") in (None, ""), odpowiedz
-    for spec in _pola_z_payloadu(odpowiedz, wpisy):
-        assert not spec.get(POLE_RODZAJU_POLA)
-        assert not spec.get(POLE_STATUSU_ZRODLA)
-        assert not spec.get(POLE_ZRODEL_DANYCH)
+    odpowiedz_wciecie = _uruchom("wciecie", wpisy)
+    assert odpowiedz_wciecie.get("error") in (None, ""), odpowiedz_wciecie
+    for spec in _pola_z_payloadu(odpowiedz_wciecie, wpisy):
+        for klucz in (POLE_RODZAJU_POLA, POLE_STATUSU_ZRODLA, POLE_ZRODEL_DANYCH):
+            assert klucz not in spec, (
+                f"wciecie: pusta wartosc klucza {klucz} zapisana jako deklaracja "
+                f"(jest {spec.get(klucz)!r})"
+            )
+
+    # Stacja końca ciągu deklaruje te klucze KSZTAŁTEM migawki, więc znakiem
+    # braku jest tu `None`/`[]` — nigdy pusty łańcuch przepisany z payloadu.
+    odpowiedz_koniec = _uruchom("koniec_ciagu", wpisy)
+    assert odpowiedz_koniec.get("error") in (None, ""), odpowiedz_koniec
+    for spec in _pola_z_payloadu(odpowiedz_koniec, wpisy):
+        assert spec.get(POLE_RODZAJU_POLA) is None, spec.get(POLE_RODZAJU_POLA)
+        assert spec.get(POLE_STATUSU_ZRODLA) is None, spec.get(POLE_STATUSU_ZRODLA)
+        assert spec.get(POLE_ZRODEL_DANYCH) == [], spec.get(POLE_ZRODEL_DANYCH)
 
 
 def test_pole_domykane_konca_ciagu_niesie_rodzaj_i_status_bez_kodow_zabezpieczen() -> None:
@@ -448,23 +463,37 @@ def test_powiazania_katalogowe_niesie_wylacznie_droga_konca_ciagu(tor: str) -> N
         assert spec.get(POLE_POWIAZAN_KATALOGOWYCH) == wpis[POLE_POWIAZAN_KATALOGOWYCH]
 
 
-def test_powiazania_katalogowe_nie_wracaja_do_payloadu_przez_referencje() -> None:
-    """Zapisana kopia powiązań jest WŁASNA — mutacja payloadu nie rusza migawki.
+@pytest.mark.parametrize(
+    ("nazwa_argumentu", "klucz_migawki"),
+    [("meta", "meta"), ("catalog_bindings", POLE_POWIAZAN_KATALOGOWYCH)],
+)
+def test_builder_jest_wlascicielem_struktur_zagniezdzonych(
+    nazwa_argumentu: str, klucz_migawki: str
+) -> None:
+    """Builder KOPIUJE każdą strukturę zagnieżdżoną, którą zapisuje w polu.
 
-    Operacja przepisywała słownik payloadu do migawki PRZEZ REFERENCJĘ: wołający
-    trzymał uchwyt do struktury zapisanej w modelu. To ta sama klasa, co
-    współdzielenie wpisów katalogu — model ma być odporny na to, co wołający
-    zrobi ze swoim payloadem po zapisie.
+    Iloczyn cech po WSZYSTKICH zagnieżdżonych wejściach buildera (`meta`
+    i `catalog_bindings`) — jedna reguła, nie wyjątek dla jednego argumentu.
+    Wołający nie ma trzymać uchwytu do wnętrza zapisanej specyfikacji: inaczej
+    zmiana jego słownika po zapisie po cichu zmieniałaby model.
+
+    Test celuje w BUILDER, a nie w ścieżkę operacji, świadomie: operacje budują
+    model kopiami (`create_node`/`create_branch` zwracają nowy ENM), więc przez
+    ścieżkę natywną ten defekt jest NIEWIDOCZNY — zmierzone. Test „natywny" na
+    tę deklarację byłby zielony niezależnie od kodu, czyli fałszywą pewnością.
     """
-    wpisy = _z_metadanymi(_wpisy_toru("MODULARNY"), ())
-    for wpis in wpisy:
-        wpis[POLE_POWIAZAN_KATALOGOWYCH] = {"switchgear_template": {"catalog_item_id": "przed"}}
+    zagniezdzone = {"poziom": {"wartosc": "przed"}}
+    spec = _build_field_spec(
+        field_ref="field/test/1",
+        bay_role="IN",
+        bus_ref="bus-a",
+        **{nazwa_argumentu: zagniezdzone},
+        klucze_bezwarunkowe=KLUCZE_BEZWARUNKOWE_POLA_KONCA_CIAGU,
+    )
+    zagniezdzone["poziom"]["wartosc"] = "po"
 
-    odpowiedz = _uruchom("koniec_ciagu", wpisy)
-    assert odpowiedz.get("error") in (None, ""), odpowiedz
-    for wpis in wpisy:
-        wpis[POLE_POWIAZAN_KATALOGOWYCH]["switchgear_template"]["catalog_item_id"] = "po"
-
-    for spec in _pola_z_payloadu(odpowiedz, wpisy):
-        powiazania = spec.get(POLE_POWIAZAN_KATALOGOWYCH) or {}
-        assert powiazania["switchgear_template"]["catalog_item_id"] == "przed"
+    zapisane = spec.get(klucz_migawki) or {}
+    assert zapisane["poziom"]["wartosc"] == "przed", (
+        f"builder zapisal argument {nazwa_argumentu} PRZEZ REFERENCJE — "
+        "wolajacy trzyma uchwyt do wnetrza migawki modelu"
+    )
