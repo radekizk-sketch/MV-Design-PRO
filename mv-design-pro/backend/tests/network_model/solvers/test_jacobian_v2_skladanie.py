@@ -64,7 +64,7 @@ def _jakobian_skalarny(
     (wektor vs skalar ≤ 1 ULP) ma własny pin niżej w tym pliku — razem pokrywają
     to samo, co pin pierwotny, ale każdy mierzy JEDNĄ rzecz.
     """
-    from network_model.solvers.power_flow_newton_internal import trig_bloku
+    from network_model.solvers.power_flow_newton_internal import trig_bloku, wyrazy_przekatne
 
     g = ybus.real
     b = ybus.imag
@@ -85,11 +85,18 @@ def _jakobian_skalarny(
     sin_12, cos_12 = trig_bloku(va_ns, va_pq)
     sin_21, cos_21 = trig_bloku(va_pq, va_ns)
     sin_22, cos_22 = trig_bloku(va_pq, va_pq)
+    # Wyrazy przekatniowe — rowniez z JEDNEGO zrodla wspolnego z produkcja
+    # (numpy potrafi liczyc `vm ** 2` inna droga dla tablicy niz dla skalara).
+    idx_ns = np.asarray(non_slack_indices, dtype=np.intp)
+    idx_pq = np.asarray(pq_indices, dtype=np.intp)
+    przek_11, przek_12, przek_21, przek_22 = wyrazy_przekatne(
+        g, b, v_mag[idx_ns], v_mag[idx_pq], p_calc, q_calc, idx_ns, idx_pq
+    )
 
     for row, i in enumerate(non_slack_indices):
         for col, k in enumerate(non_slack_indices):
             if i == k:
-                j11[row, col] = -q_calc[i] - b[i, i] * v_mag[i] ** 2
+                j11[row, col] = przek_11[row]
             else:
                 sin_t = sin_11[row, col]
                 cos_t = cos_11[row, col]
@@ -98,7 +105,7 @@ def _jakobian_skalarny(
     for row, i in enumerate(non_slack_indices):
         for col, k in enumerate(pq_indices):
             if i == k:
-                j12[row, col] = p_calc[i] / v_mag[i] + g[i, i] * v_mag[i]
+                j12[row, col] = przek_12[row]
             else:
                 sin_t = sin_12[row, col]
                 cos_t = cos_12[row, col]
@@ -107,7 +114,7 @@ def _jakobian_skalarny(
     for row, i in enumerate(pq_indices):
         for col, k in enumerate(non_slack_indices):
             if i == k:
-                j21[row, col] = p_calc[i] - g[i, i] * v_mag[i] ** 2
+                j21[row, col] = przek_21[row]
             else:
                 sin_t = sin_21[row, col]
                 cos_t = cos_21[row, col]
@@ -116,7 +123,7 @@ def _jakobian_skalarny(
     for row, i in enumerate(pq_indices):
         for col, k in enumerate(pq_indices):
             if i == k:
-                j22[row, col] = q_calc[i] / v_mag[i] - b[i, i] * v_mag[i]
+                j22[row, col] = przek_22[row]
             else:
                 sin_t = sin_22[row, col]
                 cos_t = cos_22[row, col]
@@ -461,7 +468,33 @@ def test_jakobian_realnego_biegu_substratu_53_stacji_bit_w_bit() -> None:
     for numer, (ybus, v, non_slack, pq, p_calc, q_calc) in enumerate(przechwycone):
         oczekiwany = _jakobian_skalarny(ybus, v, non_slack, pq, p_calc, q_calc)
         otrzymany = build_jacobian_v2(ybus, v, non_slack, pq, p_calc, q_calc)
-        assert _rowne_bitowo(otrzymany, oczekiwany), (
-            f"Jakobian iteracji {numer} biegu substratu 53 stacji różni się bitowo "
-            "od postaci skalarnej."
-        )
+        # Komunikat MUSI nazwać miejsce: czerwień tego pinu na innym procesorze raz
+        # kosztowała pełny przebieg CI zgadywany „na oko" (2026-08-14). Diagnostyka
+        # liczona dopiero po wykryciu różnicy, więc nie obciąża zielonego biegu.
+        if not _rowne_bitowo(otrzymany, oczekiwany):
+            rozne = np.argwhere(otrzymany.view(np.uint64) != oczekiwany.view(np.uint64))
+            n_p = len(non_slack)
+            opis = []
+            for w, k in rozne[:5]:
+                blok_nazwa = (
+                    "J11"
+                    if (w < n_p and k < n_p)
+                    else "J12" if w < n_p else "J21" if k < n_p else "J22"
+                )
+                przekatna = (
+                    "PRZEKĄTNA"
+                    if non_slack[w % n_p] == (non_slack[k] if k < n_p else pq[k - n_p])
+                    else "poza przekątną"
+                )
+                opis.append(
+                    f"{blok_nazwa}[{w},{k}] ({przekatna}): blok={otrzymany[w, k]!r} "
+                    f"vs skalar={oczekiwany[w, k]!r}"
+                )
+            raise AssertionError(
+                f"Jakobian iteracji {numer} biegu substratu 53 stacji różni się bitowo "
+                f"od postaci skalarnej w {len(rozne)} z {otrzymany.size} wyrazów. "
+                f"Pierwsze różnice: {'; '.join(opis)}. "
+                "Wejście trygonometryczne i wyrazy przekątniowe pochodzą z jednego "
+                "źródła (trig_bloku, wyrazy_przekatne), więc różnica oznacza realną "
+                "zmianę SPOSOBU SKŁADANIA — nie wolno dopasowywać asercji."
+            )

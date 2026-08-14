@@ -578,6 +578,33 @@ def trig_bloku(va_w: np.ndarray, va_k: np.ndarray) -> tuple[np.ndarray, np.ndarr
     return np.sin(theta), np.cos(theta)
 
 
+def wyrazy_przekatne(
+    g: np.ndarray,
+    b: np.ndarray,
+    vm_ns: np.ndarray,
+    vm_pq: np.ndarray,
+    p_calc: np.ndarray,
+    q_calc: np.ndarray,
+    ns: np.ndarray,
+    pq: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Wyrazy przekątniowe czterech bloków — JEDNO źródło dla produkcji i pinu składania.
+
+    Wydzielone z tego samego powodu, co ``trig_bloku`` (2026-08-14): po ujednoliceniu
+    trygonometrii runner CI DALEJ meldował różnicę bitową, a jedynym miejscem, w którym
+    produkcja liczyła WEKTOROWO, a pętla skalarnie, były wyrazy przekątniowe — w
+    szczególności ``vm ** 2``, dla którego numpy może wybrać inną drogę dla tablicy
+    (mnożenie) niż dla skalara (``pow`` z libm). To znowu własność biblioteki, a nie
+    sposobu składania, więc pin składania nie może o nią zahaczać.
+    """
+    return (
+        -q_calc[ns] - b[ns, ns] * vm_ns**2,
+        p_calc[ns] / vm_ns + g[ns, ns] * vm_ns,
+        p_calc[pq] - g[pq, pq] * vm_pq**2,
+        q_calc[pq] / vm_pq - b[pq, pq] * vm_pq,
+    )
+
+
 def build_jacobian_v2(
     ybus: np.ndarray,
     v: np.ndarray,
@@ -656,6 +683,10 @@ def build_jacobian_v2(
         wartosci = poza_przekatna(g[wybor], b[wybor], sin_t, cos_t, vm_w)
         return np.where(np.equal.outer(wiersze, kolumny), przekatna[:, None], wartosci)
 
+    przek_11, przek_12, przek_21, przek_22 = wyrazy_przekatne(
+        g, b, vm_ns, vm_pq, p_calc, q_calc, ns, pq
+    )
+
     j11 = _blok(
         ns,
         ns,
@@ -665,7 +696,7 @@ def build_jacobian_v2(
         lambda g_ik, b_ik, sin_t, cos_t, vm_i: vm_i[:, None]
         * vm_ns[None, :]
         * (g_ik * sin_t - b_ik * cos_t),
-        -q_calc[ns] - b[ns, ns] * vm_ns**2,
+        przek_11,
     )
     j12 = _blok(
         ns,
@@ -674,7 +705,7 @@ def build_jacobian_v2(
         va_ns,
         va_pq,
         lambda g_ik, b_ik, sin_t, cos_t, vm_i: vm_i[:, None] * (g_ik * cos_t + b_ik * sin_t),
-        p_calc[ns] / vm_ns + g[ns, ns] * vm_ns,
+        przek_12,
     )
     j21 = _blok(
         pq,
@@ -685,7 +716,7 @@ def build_jacobian_v2(
         lambda g_ik, b_ik, sin_t, cos_t, vm_i: -vm_i[:, None]
         * vm_ns[None, :]
         * (g_ik * cos_t + b_ik * sin_t),
-        p_calc[pq] - g[pq, pq] * vm_pq**2,
+        przek_21,
     )
     j22 = _blok(
         pq,
@@ -694,7 +725,7 @@ def build_jacobian_v2(
         va_pq,
         va_pq,
         lambda g_ik, b_ik, sin_t, cos_t, vm_i: vm_i[:, None] * (g_ik * sin_t - b_ik * cos_t),
-        q_calc[pq] / vm_pq - b[pq, pq] * vm_pq,
+        przek_22,
     )
 
     top = np.hstack([j11, j12])
