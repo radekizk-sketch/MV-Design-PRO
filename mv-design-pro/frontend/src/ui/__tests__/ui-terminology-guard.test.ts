@@ -59,6 +59,16 @@ function extractUiStrings(content: string): { line: number; text: string }[] {
 
     const publicFallbackMatches = line.matchAll(/(?:return|const\s+\w+\s*=)\s*['"`]([^'"`]+)['"`]/g);
     for (const match of publicFallbackMatches) {
+      // Literały tras backendu ("/api/...") nie są napisami widocznymi dla
+      // użytkownika — pythonowy strażnik terminologii (scripts/
+      // ui_terminology_guard.py) już je pomija; ten skaner musi trzymać TĘ
+      // SAMĄ semantykę (dwa strażniki, jedna intencja: terminologia UI, nie
+      // nazwy zasobów API). Odbiór P0.9/P0.10: bez tego wyjątku stała
+      // API_BASE='/api/nn-proof' czerwieniła test, choć nic z niej nie trafia
+      // na ekran.
+      if (match[1].startsWith('/api/')) {
+        continue;
+      }
       results.push({ line: i + 1, text: match[1] });
     }
   }

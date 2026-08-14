@@ -293,17 +293,17 @@ const NN_FEEDER_COLUMN_GAP = GRID;
  *  bezpiecznikowy) — `'UNRESOLVED'` (dane niekompletne) i `null` (goły kabel,
  *  przypadek oczekiwany) NIE rysują symbolu aparatu (pusty tor + komunikat,
  *  karta P0.8 §0.2). */
-function nnFeederHasResolvedApparatus(feeder: SldNnFeeder): boolean {
-  return feeder.apparatusKind === 'MCB' || feeder.apparatusKind === 'FUSE_SWITCH';
+function nnFeederHasResolvedApparatus(odplyw: SldNnFeeder): boolean {
+  return odplyw.apparatusKind === 'MCB' || odplyw.apparatusKind === 'FUSE_SWITCH';
 }
 
 /** Tekst linii aparatu (etykieta rozpoznanego aparatu ALBO komunikat błędu
  *  dla `'UNRESOLVED'`) — `null` dla gołego kabla (`apparatusKind===null`,
  *  brak linii, nie pusta linia). JEDNA prawda measure↔compose (wzór
  *  `stationLvLoadLabelText`) — `compose/station.ts` rysuje DOKŁADNIE ten tekst. */
-export function nnFeederApparatusLineText(feeder: SldNnFeeder): string | null {
-  if (feeder.apparatusKind == null) return null;
-  return feeder.apparatusLabel ?? 'Aparat nN';
+export function nnFeederApparatusLineText(odplyw: SldNnFeeder): string | null {
+  if (odplyw.apparatusKind == null) return null;
+  return odplyw.apparatusLabel ?? 'Aparat nN';
 }
 
 /** Tekst linii odbiorcy — `'board'` niesie WŁASNĄ etykietę pod glifem
@@ -312,14 +312,14 @@ export function nnFeederApparatusLineText(feeder: SldNnFeeder): string | null {
  *  patrz `nnFeederLabelLines` niżej). Pozostałe rodzaje: strzałka tekstowa do
  *  odbiorcy albo jawna granica modelu (`LV_MODEL_BOUNDARY_TEXT`, TA SAMA
  *  fraza co odbiór zagregowany — spójny język „koniec toru bez odbiorcy"). */
-export function nnFeederDestinationLineText(feeder: SldNnFeeder): string {
-  switch (feeder.destinationKind) {
+export function nnFeederDestinationLineText(odplyw: SldNnFeeder): string {
+  switch (odplyw.destinationKind) {
     case 'load':
-      return `→ ${feeder.destinationLabel ?? 'Odbiór'}`;
+      return `→ ${odplyw.destinationLabel ?? 'Odbiór'}`;
     case 'der':
-      return `→ ${feeder.destinationLabel ?? 'Źródło'}`;
+      return `→ ${odplyw.destinationLabel ?? 'Źródło'}`;
     case 'board':
-      return feeder.destinationLabel ?? 'Rozdzielnica nN';
+      return odplyw.destinationLabel ?? 'Rozdzielnica nN';
     case 'unknown':
     default:
       return LV_MODEL_BOUNDARY_TEXT;
@@ -333,9 +333,9 @@ export function nnFeederDestinationLineText(feeder: SldNnFeeder): string {
  *  dwóch niezależnych właścicieli etykiety pod tym samym symbolem. Eksport:
  *  `compose/station.ts` rysuje DOKŁADNIE ten tekst (jedna prawda
  *  measure↔compose). */
-export function nnFeederLabelText(feeder: SldNnFeeder): string {
-  const apparatusLine = nnFeederApparatusLineText(feeder);
-  const destinationLine = nnFeederDestinationLineText(feeder);
+export function nnFeederLabelText(odplyw: SldNnFeeder): string {
+  const apparatusLine = nnFeederApparatusLineText(odplyw);
+  const destinationLine = nnFeederDestinationLineText(odplyw);
   return apparatusLine ? `${apparatusLine} · ${destinationLine}` : destinationLine;
 }
 
@@ -345,9 +345,9 @@ export function nnFeederLabelText(feeder: SldNnFeeder): string {
  *  kabel bez rozpoznanego aparatu i bez celu-rozdzielnicy: sam zejście (stub)
  *  — tor jest widoczny, ale nie niesie żadnego symbolu (uczciwy rysunek: nic
  *  do narysowania oprócz przewodu, karta P0.8 §0.2). */
-function nnFeederSymbolStackHeight(feeder: SldNnFeeder): number {
-  const hasApparatus = nnFeederHasResolvedApparatus(feeder);
-  const hasBoard = feeder.destinationKind === 'board';
+function nnFeederSymbolStackHeight(odplyw: SldNnFeeder): number {
+  const hasApparatus = nnFeederHasResolvedApparatus(odplyw);
+  const hasBoard = odplyw.destinationKind === 'board';
   let h = NN_FEEDER_STUB_HEIGHT;
   if (hasApparatus) h += NN_FEEDER_APPARATUS_HEIGHT;
   if (hasBoard) {
@@ -362,15 +362,15 @@ function nnFeederSymbolStackHeight(feeder: SldNnFeeder): number {
  *  symbolu = szerokość liścia rozdzielnicy nN (32, DOMINUJE nad aparatem 16),
  *  gdy `destinationKind==='board'`; inaczej szerokość aparatu (16) — nawet
  *  gdy aparat nierozpoznany/brak (rezerwacja pod komunikat błędu/goły tor). */
-export function nnFeederColumnRequiredWidth(feeder: SldNnFeeder): number {
-  const symbolWidth = feeder.destinationKind === 'board' ? NN_FEEDER_BOARD_WIDTH : NN_FEEDER_APPARATUS_WIDTH;
-  return Math.max(symbolWidth, measureLabelWidth(nnFeederLabelText(feeder), 't4'));
+export function nnFeederColumnRequiredWidth(odplyw: SldNnFeeder): number {
+  const symbolWidth = odplyw.destinationKind === 'board' ? NN_FEEDER_BOARD_WIDTH : NN_FEEDER_APPARATUS_WIDTH;
+  return Math.max(symbolWidth, measureLabelWidth(nnFeederLabelText(odplyw), 't4'));
 }
 
 /** Wysokość WYMAGANA jednej kolumny odpływu — stos symboli + prześwit +
  *  JEDNA linia etykiety (t4, jak pozostałe teksty strony nN). */
-function nnFeederColumnRequiredHeight(feeder: SldNnFeeder): number {
-  return nnFeederSymbolStackHeight(feeder) + NN_FEEDER_LABEL_GAP + LABEL_LINE_HEIGHT_T4;
+function nnFeederColumnRequiredHeight(odplyw: SldNnFeeder): number {
+  return nnFeederSymbolStackHeight(odplyw) + NN_FEEDER_LABEL_GAP + LABEL_LINE_HEIGHT_T4;
 }
 
 /** Gabaryt rzędu odpływów JEDNEJ sekcji rozdzielnicy nN (wzorzec
