@@ -371,6 +371,31 @@ def test_brak_metadanych_w_payloadzie_nie_daje_zadnej_wartosci(tor: str) -> None
         assert spec.get(POLE_ZRODEL_DANYCH) == []
 
 
+@pytest.mark.parametrize("tor", TORY_RODZIN)
+def test_obie_operacje_zapisuja_wskazane_zabezpieczenie_pola(tor: str) -> None:
+    """Zabezpieczenie wskazane na wpisie pola honorują OBIE drogi budowy stacji.
+
+    Ta sama klasa rozjazdu, co metadane pochodzenia, tylko w drugą stronę:
+    kontrakt payloadu niesie `protection_ref`, wcięcie w odcinek zapisywało go
+    od dawna, a stacja końca ciągu IGNOROWAŁA go po cichu — wołający dostawał
+    zapis bez śladu po swoim wskazaniu i bez jednego słowa błędu.
+    """
+    wpisy = _z_metadanymi(_wpisy_toru(tor), ())
+    for numer, wpis in enumerate(wpisy, start=1):
+        wpis["protection_ref"] = f"rel/test/{numer}"
+
+    for operacja in OPERACJE_STACYJNE:
+        odpowiedz = _uruchom(operacja, wpisy)
+        assert odpowiedz.get("error") in (None, ""), odpowiedz
+        pola = _pola_z_payloadu(odpowiedz, wpisy)
+        assert len(pola) == len(wpisy)
+        for spec, wpis in zip(pola, wpisy, strict=True):
+            assert spec.get("protection_ref") == wpis["protection_ref"], (
+                f"{operacja}/{tor}: wskazane zabezpieczenie pola nie dojechalo "
+                f"do migawki (jest {spec.get('protection_ref')!r})"
+            )
+
+
 def test_wartosc_pusta_nie_jest_deklaracja_metadanej() -> None:
     """Pusty status i pusta lista źródeł to BRAK deklaracji, nie deklaracja.
 
