@@ -27,6 +27,7 @@ from typing import Any
 from network_model.catalog.materialization import materialize_catalog_binding
 from network_model.catalog.mv_ptpiree_catalog import annotate_with_ptpiree_status
 from network_model.catalog.repository import get_default_mv_catalog
+from network_model.catalog.switchgear import NiezgodnoscKonfiguracjiError
 from network_model.catalog.types import CatalogBinding
 from network_model.solvers import cable_ampacity_derating as cable_derating
 
@@ -55,6 +56,12 @@ from .domain_operations import (
 )
 from .kopia_graniczna import kopia_graniczna_enm
 from .load_zip_model import KOD_BLEDU_ZIP, zip_odbioru_z_payloadu
+from .pole_katalogowe import (
+    PlanPolaKatalogowego,
+    czy_wybor_katalogowy,
+    rozwiaz_aparaty_pola,
+    rozwiaz_plan_pola,
+)
 from .topology_ops import attach_protection, create_branch, create_measurement, create_node
 
 # ---------------------------------------------------------------------------
@@ -1755,6 +1762,13 @@ def _normalize_nn_source_field_kind(payload: dict[str, Any]) -> str:
     return "PV"
 
 
+#: Kod błędu niezgodności katalogowej pola SN — JEDEN dla wszystkich ścieżek,
+#: które materializują pole z katalogu rodzin rozdzielnic (operacja katalogowa
+#: i dokładanie pola z referencją producencką). Osobne kody dla tej samej klasy
+#: niezgodności rozjechałyby obsługę po stronie kreatora.
+_KOD_BLEDU_POLA_KATALOGOWEGO = "sn.pole_katalogowe_niezgodne"
+
+
 def _normalize_sn_bay_role(payload: dict[str, Any]) -> str:
     raw_role = payload.get("bay_role")
     if isinstance(raw_role, str):
@@ -2018,13 +2032,22 @@ def add_sn_bay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     # rysowany Z DANYCH (kolejność/stan/uziemnik bocznie/głowica), a nie z jednego
     # szablonu §12.4. Wybór aparatu głównego (apparatus_kind) różnicuje pola
     # wyłącznikowe/rozłącznikowe. Bez szablonu: brak primary_devices (konwencja).
-    from network_model.catalog.bay_templates import template_primary_devices
-
-    primary_devices_spec = template_primary_devices(
-        bay_template_ref,
-        field_ref=field_ref,
-        main_apparatus_kind=apparatus_kind if isinstance(apparatus_kind, str) else None,
-    )
+    #
+    # S5 (KONFIGURATOR_ROZDZIELNIC_SN_RMU §7): materializacja idzie przez JEDNO
+    # wejście (`rozwiaz_aparaty_pola`), które zna obie nomenklatury referencji
+    # pola — kanoniczny szablon ORAZ katalogowe pole rodziny / jednostkę bloku
+    # RMU. Referencja producencka dawała tu dotąd po cichu pustą listę aparatów;
+    # wybór katalogowy przechodzi teraz pełną walidację rodziny (twarde błędy),
+    # więc ta sama referencja nie znaczy „pełne pole" i „brak danych" naraz.
+    try:
+        primary_devices_spec = rozwiaz_aparaty_pola(
+            payload,
+            field_ref=field_ref,
+            bay_template_ref=bay_template_ref,
+            main_apparatus_kind=apparatus_kind if isinstance(apparatus_kind, str) else None,
+        )
+    except NiezgodnoscKonfiguracjiError as blad:
+        return _error_response(str(blad), _KOD_BLEDU_POLA_KATALOGOWEGO)
     if primary_devices_spec:
         producer_refs["primary_devices"] = primary_devices_spec
 
@@ -2260,6 +2283,147 @@ def add_sn_bay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
             {"event_seq": 3, "event_type": "FIELDS_CREATED_SN", "element_id": field_ref},
         ],
     )
+
+
+#: Rodzaj aparatu głównego pola (`BayPrimaryDevice.kind`) → wariant aparatu
+#: w kontrakcie payloadu pola SN (`AddSnBayPayload.apparatus_kind`). Rodzaj bez
+#: wpisu (uziemnik, przekładnik, głowica) nie jest aparatem głównym pola i nigdy
+#: nie trafia na wejście tej tablicy.
+_WARIANT_APARATU_POLA: dict[str, str] = {
+    "CB": "BREAKER",
+    "LOAD_SWITCH": "LOAD_SWITCH",
+    "DS": "DISCONNECTOR",
+}
+
+
+def _podglad_planu_pola(plan: PlanPolaKatalogowego, protection_codes: list[str]) -> dict[str, Any]:
+    """Podgląd konfiguracji pola dla kreatora (werdykt VALID + BOM)."""
+    return {
+        "werdykt": "VALID",
+        "bay_template_ref": plan.bay_template_ref,
+        "switchgear_family_ref": plan.switchgear_family_ref,
+        "manufacturer_ref": plan.manufacturer_ref,
+        "bay_kind": plan.bay_kind,
+        "bay_role": plan.bay_role,
+        "factory_configuration_ref": plan.factory_configuration_ref,
+        "factory_unit_index": plan.factory_unit_index,
+        "zrodlo_opis_pl": plan.zrodlo_opis_pl,
+        "protection_codes": list(protection_codes),
+        "aparaty": [copy.deepcopy(aparat) for aparat in plan.aparaty],
+    }
+
+
+def _werdykt_niezgodnosci(komunikat: str, *, dry_run: bool) -> dict[str, Any]:
+    """Odpowiedź na niezgodność katalogową — INVALID w trybie próby.
+
+    Ten sam kształt w obu trybach (`error` + `error_code`), żeby kreator nie
+    musiał czytać niezgodności inaczej niż każdego innego błędu operacji;
+    w trybie próby dochodzi jawny werdykt dla ekranu konfiguratora.
+    """
+    odpowiedz = _error_response(komunikat, _KOD_BLEDU_POLA_KATALOGOWEGO)
+    if dry_run:
+        odpowiedz["dry_run"] = True
+        odpowiedz["preview"] = {"werdykt": "INVALID", "komunikat_pl": komunikat}
+    return odpowiedz
+
+
+def add_sn_bay_from_catalog(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
+    """Materializacja pola stacji z KATALOGU rozdzielnic (S5: FieldInstance → BOM → ENM).
+
+    Kanon: `docs/domain/KONFIGURATOR_ROZDZIELNIC_SN_RMU.md` §2–§5, §7 etap S5.
+    Pole SN jest KOMPLETNĄ JEDNOSTKĄ FUNKCJONALNĄ konkretnej rodziny
+    rozdzielnicy, a nie parą „rola + pojedynczy aparat". Projektant wskazuje:
+
+    * `complete_bay_template_ref` — katalogowe pole rodziny MODUŁOWEJ, albo
+    * `factory_configuration_ref` + `factory_unit_index` — jednostkę BLOKU
+      fabrycznego rodziny RMU (blok jest wyrobem: CCF z rozłącznikiem
+      bezpiecznikowym i CCV z wyłącznikiem to różne wyroby).
+
+    Rola pola, funkcja, producent, rodzina i całe wyposażenie pochodzą
+    z KATALOGU — payload ich nie deklaruje. Kombinacja spoza katalogu kończy się
+    twardym błędem walidatora rodziny po polsku, nigdy cichym przycięciem.
+
+    `dry_run` (kontrakt kreatora, etap S3): pełna walidacja i podgląd BOM-u BEZ
+    mutacji modelu — odpowiedź nie niesie migawki, więc nic się nie zapisuje.
+    Podgląd nie nadaje aparatom identyfikatorów: tożsamość aparatu powstaje
+    razem z polem, przy wykonaniu.
+
+    Zapis do ENM idzie tą samą drogą, co `add_sn_bay` (zacisk pola + aparat
+    główny + specyfikacja pola) — jedna ścieżka pisania, dwa źródła planu pola.
+    """
+    dry_run = bool(payload.get("dry_run", False))
+
+    if not czy_wybor_katalogowy(payload):
+        return _werdykt_niezgodnosci(
+            "Operacja materializuje pole z katalogu rozdzielnic: wskaz katalogowe "
+            "pole rodziny (complete_bay_template_ref) albo blok fabryczny RMU "
+            "(factory_configuration_ref) z numerem jednostki.",
+            dry_run=dry_run,
+        )
+
+    # Adresowanie pola sprawdzamy PRZED planem katalogowym: werdykt „konfiguracja
+    # poprawna" dla szyny, której nie ma, byłby werdyktem o niczym.
+    bus_ref = payload.get("bus_ref")
+    if not isinstance(bus_ref, str) or not bus_ref.strip():
+        return _error_response("Brak szyny SN (bus_ref).", "sn.bus_missing")
+    bus_ref = bus_ref.strip()
+    station = _resolve_station_for_field_write(
+        enm, station_ref=payload.get("station_ref"), bus_ref=bus_ref
+    )
+    if station is None:
+        return _error_response("Nie znaleziono stacji dla szyny SN.", "sn.station_not_found")
+    if _bus_voltage_kv(enm, bus_ref) is None:
+        return _error_response(
+            "Nie znaleziono napięcia szyny SN dla pola.", "sn.bus_voltage_missing"
+        )
+
+    try:
+        plan = rozwiaz_plan_pola(payload, field_ref=None)
+    except NiezgodnoscKonfiguracjiError as blad:
+        return _werdykt_niezgodnosci(str(blad), dry_run=dry_run)
+
+    zadeklarowana_rola = payload.get("bay_role")
+    if isinstance(zadeklarowana_rola, str) and zadeklarowana_rola.strip():
+        # Rola pola jest DANĄ KATALOGOWĄ (funkcja katalogowego pola), więc
+        # deklaracja niezgodna z katalogiem nie może zostać cicho nadpisana.
+        if zadeklarowana_rola.strip().upper() != plan.bay_role:
+            return _werdykt_niezgodnosci(
+                f"Katalogowe pole {plan.bay_template_ref} jest polem o roli "
+                f"{plan.bay_role}, a operacja dostala role "
+                f"{zadeklarowana_rola.strip().upper()} — rola pola wynika "
+                "z katalogu rodziny.",
+                dry_run=dry_run,
+            )
+
+    protection_codes = _resolve_bay_template_protection_codes(
+        plan.manufacturer_ref, plan.bay_template_ref, plan.bay_role
+    )
+
+    if dry_run:
+        odpowiedz = _response(enm, created=[])
+        odpowiedz["dry_run"] = True
+        odpowiedz["preview"] = _podglad_planu_pola(plan, protection_codes)
+        # Brak migawki = brak zapisu (konwencja trybu próby operacji domenowych).
+        odpowiedz.pop("snapshot", None)
+        return odpowiedz
+
+    wariant_aparatu = (
+        _WARIANT_APARATU_POLA.get(plan.rodzaj_aparatu_glownego)
+        if plan.rodzaj_aparatu_glownego
+        else None
+    )
+    payload_pola = {
+        **payload,
+        "bus_ref": bus_ref,
+        "bay_role": plan.bay_role,
+        "bay_template_ref": plan.bay_template_ref,
+        "switchgear_family_ref": plan.switchgear_family_ref,
+    }
+    if plan.manufacturer_ref:
+        payload_pola["manufacturer_ref"] = plan.manufacturer_ref
+    if wariant_aparatu:
+        payload_pola["apparatus_kind"] = wariant_aparatu
+    return add_sn_bay(enm, payload_pola)
 
 
 def _add_nn_outgoing_field_internal(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
@@ -4786,6 +4950,13 @@ V2_CATALOG_GATE_INVENTORY: tuple[PozycjaBramyKatalogowejV2, ...] = (
         "kontrakt kreatora pola — rozwiązywany do tego samego wiązania",
     ),
     PozycjaBramyKatalogowejV2("add_sn_bay", "catalog_binding", "APARAT_SN", True),
+    PozycjaBramyKatalogowejV2(
+        "add_sn_bay_from_catalog",
+        "catalog_binding",
+        "APARAT_SN",
+        True,
+        "materializacja pola z katalogu rodzin — aparat glowny wskazywany tak samo",
+    ),
     PozycjaBramyKatalogowejV2("add_nn_load", "catalog_binding", "OBCIAZENIE", True),
     PozycjaBramyKatalogowejV2(
         "add_converter_source", "catalog_ref", "ZRODLO_NN_PV|ZRODLO_NN_BESS|CONVERTER", True
@@ -4908,6 +5079,7 @@ V2_CANONICAL_OPS = frozenset(
         "compare_study_cases",
         # nN
         "add_sn_bay",
+        "add_sn_bay_from_catalog",
         "add_nn_outgoing_field",
         "add_converter_source",
         "add_nn_load",
@@ -4943,6 +5115,7 @@ ALL_V2_HANDLERS: dict[str, Any] = {
     "run_time_series_power_flow": run_time_series_power_flow,
     "compare_study_cases": compare_study_cases,
     "add_sn_bay": add_sn_bay,
+    "add_sn_bay_from_catalog": add_sn_bay_from_catalog,
     "add_nn_outgoing_field": add_nn_outgoing_field,
     "add_converter_source": add_converter_source,
     "add_nn_load": add_nn_load,

@@ -1032,6 +1032,52 @@ class AddSnBayPayload(_FrozenBase):
     """Referencja zabezpieczenia polowego (gdy jawnie wskazana)."""
 
 
+class AddSnBayFromCatalogPayload(_FrozenBase):
+    """Payload: add_sn_bay_from_catalog — pole stacji z KATALOGU rozdzielnic.
+
+    Kanon: `docs/domain/KONFIGURATOR_ROZDZIELNIC_SN_RMU.md` §2–§5, etap S5.
+    Rola pola, funkcja, rodzina, producent i całe wyposażenie pochodzą
+    z katalogu — payload wskazuje WYBÓR, a nie parametry.
+    """
+
+    bus_ref: str
+    """Referencja szyny SN, do której przypinane jest pole."""
+
+    station_ref: str | None = None
+    """Opcjonalna referencja stacji/GPZ/ZKSN zawierającej szynę."""
+
+    complete_bay_template_ref: str | None = None
+    """Katalogowe pole rodziny MODUŁOWEJ (`CompleteMvBayTemplate.template_ref`).
+    Wyklucza się z `factory_configuration_ref`."""
+
+    factory_configuration_ref: str | None = None
+    """Blok fabryczny rodziny RMU (`FactoryConfiguration.configuration_ref`)."""
+
+    factory_unit_index: int | None = None
+    """Numer jednostki bloku (1-based). Numer, a nie litera: blok powtarza
+    litery jednostek (LLT ma dwie jednostki „L")."""
+
+    switchgear_family_ref: str | None = None
+    """Rodzina rozdzielnicy — gdy podana, MUSI zgadzać się z rodziną wybranego
+    pola/bloku (rozjazd = twardy błąd, nie ciche nadpisanie)."""
+
+    field_name: str | None = None
+    """Opcjonalna nazwa pola."""
+
+    gpz_section_id: str | None = None
+    """Sekcja GPZ, jeśli pole dotyczy konkretnej sekcji."""
+
+    catalog_binding: dict[str, Any] | None = None
+    """Kanoniczne powiązanie katalogowe aparatu głównego pola (APARAT_SN)."""
+
+    protection_ref: str | None = None
+    """Referencja zabezpieczenia polowego (gdy jawnie wskazana)."""
+
+    dry_run: bool = False
+    """Tryb próby: pełna walidacja i podgląd BOM bez mutacji modelu.
+    Źródło werdyktu VALID/INVALID dla konfiguratora pól SN."""
+
+
 class ConverterSourceFieldPayload(_FrozenBase):
     """Minimalny kontrakt pola źródłowego dla kanonicznego add_converter_source."""
 
@@ -1231,6 +1277,7 @@ CANONICAL_OPS: set[str] = {
     # V1 — budowa SN
     "add_grid_source_sn",
     "add_sn_bay",
+    "add_sn_bay_from_catalog",
     "continue_trunk_segment_sn",
     "insert_station_on_segment_sn",
     "start_branch_segment_sn",

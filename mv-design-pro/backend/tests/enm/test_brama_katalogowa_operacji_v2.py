@@ -308,6 +308,20 @@ def _payload_sn_bay(snapshot: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+#: Katalogowe pole rodziny MODULOWEJ obslugujacej 15 kV (fikstura jest siecia
+#: 15 kV) — materializacja pola stacji z katalogu rozdzielnic (etap S5).
+POLE_KATALOGOWE_SN = "ZPUE_WLOSZCZOWA__ROTOBLOK__TRANSFORMER"
+
+
+def _payload_sn_bay_z_katalogu(snapshot: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "station_ref": _stacja_ref(snapshot),
+        "bus_ref": _szyna_sn_ref(snapshot),
+        "complete_bay_template_ref": POLE_KATALOGOWE_SN,
+        "catalog_ref": REF_APARAT_SN,
+    }
+
+
 def _payload_nn_load(snapshot: dict[str, Any]) -> dict[str, Any]:
     return {
         "feeder_ref": _pole_nn_ref(snapshot),
@@ -481,6 +495,12 @@ INIEKCJE: tuple[PrzypadekIniekcji, ...] = (
     ),
     PrzypadekIniekcji(
         "catalog_binding", "add_sn_bay", _payload_sn_bay, lambda p: _zepsuj_klucz(p, "catalog_ref")
+    ),
+    PrzypadekIniekcji(
+        "catalog_binding",
+        "add_sn_bay_from_catalog",
+        _payload_sn_bay_z_katalogu,
+        lambda p: _zepsuj_klucz(p, "catalog_ref"),
     ),
     PrzypadekIniekcji(
         "catalog_binding",
