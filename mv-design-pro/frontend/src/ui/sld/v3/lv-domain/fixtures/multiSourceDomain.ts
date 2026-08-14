@@ -36,14 +36,20 @@ export const MULTI_SOURCE_DOMAIN_VIEW: LvDomainGraphView = {
       to_bus_ref: 'sub_bus',
       status: 'closed',
     },
-    {
-      ref_id: 'tie_to_other',
-      name: 'tie_to_other',
-      type: 'disconnector',
-      from_bus_ref: 'nn_b',
-      to_bus_ref: 'nn_other',
-      status: 'open',
-    },
+    // `tie_to_other` NIE jest tu wpisany celowo (naprawiony rozjazd z
+    // backendem, karta T5b-2 zero-debt): `build_lv_domain_view` (backend)
+    // `continue`-uje PRZED dopisaniem gałęzi granicznej do `domain_branches`
+    // (patrz `graph_view.py` — stacja docelowa ma WŁASNY transformator, więc
+    // to `boundary_link`, nie zwykła gałąź domeny) — realna odpowiedź API
+    // NIGDY nie niesie tej gałęzi w `branches`, WYŁĄCZNIE w `boundary_links`
+    // (dowód: `backend/tests/application/analyses/lv_domain/test_graph_view.py`
+    // `test_coupler_and_both_sections_in_domain` sprawdza `branch_refs`==
+    // {"coupler"} bez `tie_to_other`). Poprzednia wersja tej fikstury
+    // dublowała ją w OBU tablicach jednocześnie — myląco sugerowało, że L2
+    // zawsze zna `type`/aparat gałęzi granicznej, czego realny kontrakt NIE
+    // gwarantuje (`LvDomainBoundaryLink` nie niesie `type` — luka modelu,
+    // patrz raport karty T5b-2 P0.6/P0.8). Kompozytor L2 renderuje boundary
+    // honestly BEZ znanego aparatu w tym kształcie danych.
   ],
   transformers: [
     {

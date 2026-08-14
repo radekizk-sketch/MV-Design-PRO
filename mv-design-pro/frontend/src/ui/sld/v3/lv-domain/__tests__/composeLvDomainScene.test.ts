@@ -38,17 +38,44 @@ describe('composeLvDomainScene — wieloźródłowość (2×TR + sprzęgło + PV
     }
   });
 
-  it('sprzęgło (bus_coupler) MIĘDZY sekcjami tej samej głębokości jest krawędzią coupler, NIE apparatus', () => {
+  // T5b-2 (werdykt B-02 T5b, P0.2 BINDING): kanon ZMIENIONY — "kreska między
+  // sekcjami bez aparatu ZAKAZANA (zmienia znaczenie zwarciowe)". Poprzednia
+  // wersja tego testu WYMAGAŁA braku węzła aparatu na sprzęgle — to była
+  // asercja dokładnie tego defektu, który właściciel odrzucił 0/10 (test
+  // maskujący defekt produktu = dwa defekty, CLAUDE.md „Zero-Debt" pkt 5).
+  // Naprawiony test: sprzęgło MA węzeł `apparatus` NA krawędzi `coupler`,
+  // ze stanem łączeniowym w `meta.status` (P0.2/P0.9).
+  it('sprzęgło (bus_coupler) MIĘDZY sekcjami tej samej głębokości jest krawędzią coupler Z JAWNYM węzłem aparatu (P0.2)', () => {
     const couplerEdge = scene.edges.find((e) => e.ref === 'coupler');
     expect(couplerEdge?.kind).toBe('coupler');
     const couplerNode = scene.nodes.find((n) => n.ref === 'coupler');
-    expect(couplerNode).toBeUndefined();
+    expect(couplerNode?.kind).toBe('apparatus');
+    expect(couplerNode?.symbolId).toBe('nnBreaker');
+    expect(couplerNode?.meta?.status).toBe('closed');
   });
 
-  it('podrozdzielnica wchłonięta (sub_bus) dostaje glif rozdzielnicy (kontener realny)', () => {
+  it('sprzęgło OTWARTE zmienia meta.status węzła aparatu (dowód stanu łączeniowego, nie samego rysunku) — hard-check #1', () => {
+    const openView: LvDomainGraphView = {
+      ...MULTI_SOURCE_DOMAIN_VIEW,
+      branches: MULTI_SOURCE_DOMAIN_VIEW.branches.map((b) => (b.ref_id === 'coupler' ? { ...b, status: 'open' } : b)),
+    };
+    const openScene = composeLvDomainScene(openView, MULTI_SOURCE_UPSTREAM_EQUIVALENTS);
+    const couplerNode = openScene.nodes.find((n) => n.ref === 'coupler');
+    expect(couplerNode?.meta?.status).toBe('open');
+    const couplerEdge = openScene.edges.find((e) => e.ref === 'coupler');
+    expect(couplerEdge?.status).toBe('open');
+  });
+
+  // T5b-2 (P0.1 BINDING): "RGnN-A/B = prawdziwe SEKCJE SZYN (kreska
+  // magistrali), nie ikonki-kwadraty" — węzeł sekcji NIE niesie już glifu
+  // ikonki (`nnDistributionBoard`); zamiast tego niesie `busBarHalfWidth`
+  // (renderer rysuje kreskę magistrali tej długości). Asercja poprzedniego
+  // kanonu (symbolId==='nnDistributionBoard') przepisana do kanonu P0.1.
+  it('podrozdzielnica wchłonięta (sub_bus) dostaje sekcję REALNĄ (kreska magistrali, nie ikonka)', () => {
     const subBusNode = scene.nodes.find((n) => n.ref === 'sub_bus');
     expect(subBusNode?.kind).toBe('bus');
-    expect(subBusNode?.symbolId).toBe('nnDistributionBoard');
+    expect(subBusNode?.symbolId).toBeUndefined();
+    expect(subBusNode?.busBarHalfWidth).toBeGreaterThan(0);
   });
 
   it('podrozdzielnica jest JEDEN wiersz poniżej sekcji rodzica (głębokość z grafu, nie szablon)', () => {
