@@ -497,3 +497,62 @@ nazwanych w bramce E2E §80 i odbiorach:
 `coordination/**` NIETYKALNE (wasza granica utrzymana). Kolizji z falą 12
 (EKRAN-N1, TCC) nie przewidujemy; gdyby TCC chciał dotknąć
 `protection_lv_curves` — wiersz w rejestrze przed edycją.
+
+---
+
+## Odpowiedź nadzoru (2026-08-14, runda 8 — program KONFIGURATOR-POL-RMU)
+
+**Nowy program po dyspozycji właściciela (ekran „Pola rozdzielnicy SN"
+odrzucony 3/10):** przebudowa konfiguratora pól SN/RMU na CATALOG-FIRST.
+Dokument BINDING: `docs/domain/KONFIGURATOR_ROZDZIELNIC_SN_RMU.md` (z aneksem
+integracyjnym). Kanonem rodzin jest ISTNIEJĄCY pakiet
+`network_model/catalog/switchgear/` — mój tymczasowy moduł S1
+(`switchgear_families.py`) zostaje wtopiony i usunięty (żadnych dwóch ścieżek
+tej samej prawdy; lekcja „instancja zamiast klasy" odnotowana w rejestrze).
+
+**Granice na czas programu (prośba wiążąca, lustrzana do waszej z U3):**
+1. Pliki w biegu po stronie nadzoru — prosimy nie dotykać do odbioru:
+   `network_model/catalog/switchgear/**`, `api/catalog.py` (trasa
+   switchgear-families + nowy subzasób konfiguracji fabrycznych),
+   `ui2/kreatory/stacja/**` (krok 4 + podgląd → generator mini-SLD z BOM),
+   `frontend/src/engine/` (nowy generator pola).
+2. Kanon symboli `ui/sld/v3/symbols` — my TYLKO czytamy (mapowanie
+   aparat→symbol); wasze addytywne glify nN z P0.8 bezkolizyjne.
+3. `enm/domain_operations_v2.py` (konsument pakietu switchgear) wejdzie w S5
+   — zgłosimy wierszem przed dotknięciem; wasze operacje nN bez zmian.
+
+**Dla waszego P0.8/P0.10:** architektura RMU + konfiguracje fabryczne bloków
+(K-K-T itd.) i status elementów FABRYCZNY/OPCJA wchodzą do kanonu pakietu —
+jeśli strona nN będzie rysować bloki RMU stacji, konsumujcie te same
+struktury (żadnych lokalnych list bloków).
+
+**TCC:** bez zmian ustaleń z rundy 7 — startuje po scaleniu wspólnej bazy;
+program konfiguratora go nie blokuje (inne pliki).
+
+---
+
+## Stanowisko nN (2026-08-14, runda 9 — cel „PEŁNY WERDYKT nN" WYKONANY + granice RMU przyjęte)
+
+**Granice programu KONFIGURATOR-POL-RMU — PRZYJĘTE w całości**: nie dotykamy
+`catalog/switchgear/**`, `api/catalog.py`, `ui2/kreatory/stacja/**`,
+`frontend/src/engine/` do waszego odbioru; kanon bloków RMU (konfiguracje
+fabryczne, statusy FABRYCZNY/OPCJA) będziemy KONSUMOWAĆ z pakietu przy
+rysowaniu bloków po stronie nN (P1) — zero lokalnych list.
+
+**Cel „PEŁNY WERDYKT nN" (runda 8) — WYKONANY, 4/4 kart scalone:**
+- D1: pełny łańcuch MCCB (nastawy konsumowane w doborze i SWZ; RGnN dostaje
+  pełną rekomendację cb_nn_400a Icu=50 kA, pinowane w E2E).
+- D2: SWZ dla gG rozstrzygalne w gałęzi „nie spełnia" (Ik1_min<Inf) z bramek
+  konwencjonalnych IEC 60269 (REUSE P0.7); „spełnia przy t_wym" — rejestr
+  bramek czasowych gotowy, PUSTY po uczciwej próbie dwuźródłowej (tabele IEC
+  za paywallem, pasma poniżej czasu umownego specyficzne producencko —
+  potwierdzone akademicko); zainstalowany MCCB mapowany w build_swz_view
+  ORAZ w ścieżce pakietu dowodowego (ta sama klasa, naprawiona od razu).
+- D3: fantom ST-03 zabity u źródła (floor „co najmniej 1 odpływ" w
+  _build_nn_field_specs fabrykował nieproszony starter; teraz predykat
+  parami z jawnym outgoing_feeders_nn_count).
+- D4: tryb EKSPERCKI_RECZNY add_nn_load osiągalny JAWNIE przez API
+  (wyróżnik zmierzony: source_mode, lustrzany do add_grid_source_sn);
+  wiersz rozjazdu ZAMKNIĘTY pomiarem kanonu — pozostają add_sn_bay/
+  append_station_on_endpoint (wasza strona SN, bez zmian).
+Werdykty i liczby: `STAN_REPO.md`. TCC: wspólna baza aktualna po tym scaleniu.
