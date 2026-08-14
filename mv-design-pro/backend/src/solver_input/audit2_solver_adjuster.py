@@ -169,10 +169,13 @@ def apply_audit2_to_network_model(
         or (graph.get("branches") if isinstance(graph, dict) else None)
         or {}
     )
+    # Jedna lista par (id, obiekt) dla obu ksztaltow grafu — slownika i sekwencji.
+    # Wczesniej gałąź slownikowa zostawiala `dict_items`, a sekwencyjna liste par,
+    # wiec zmienna miala dwa niezgodne typy (dwa bledy mypy w tym pliku).
+    branches_iter: list[tuple[Any, Any]]
     if isinstance(branches, dict):
-        branches_iter = branches.items()
+        branches_iter = list(branches.items())
     else:
-        # Sometimes graph.branches is a list — try to extract by id.
         branches_iter = [
             (getattr(b, "id", None) or getattr(b, "ref_id", None), b) for b in branches
         ]
@@ -250,8 +253,9 @@ def apply_audit2_to_network_model(
         or (graph.get("inverter_sources") if isinstance(graph, dict) else None)
         or {}
     )
+    inv_iter: list[tuple[Any, Any]]
     if isinstance(inverter_sources, dict):
-        inv_iter = inverter_sources.items()
+        inv_iter = list(inverter_sources.items())
     else:
         inv_iter = [(getattr(s, "id", None), s) for s in inverter_sources]
 

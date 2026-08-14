@@ -75,8 +75,13 @@ BACKEND = ROOT / "backend"
 # `node.source_impedance` z `# type: ignore[attr-defined]` (fizyka liczona w warstwie
 # aplikacji i zapisywana poza kontraktem `Node`) — dlug zmalal razem z defektem.
 # Pomiar wlasny: 18/13 -> 17/12.
-BASELINE_ERRORS = 15
-BASELINE_FILES = 10
+# KARTA K-Q (2026-08-14, katalogi audytu 2 bez proweniencji): w `solver_input/
+# audit2_solver_adjuster.py` ta sama zmienna dostawala raz `dict_items`, raz liste
+# par — dwa niezgodne typy pod jedna nazwa, dwa realne bledy. Naprawa u zrodla
+# (jedna lista par dla obu ksztaltow grafu) przy okazji przepisywania tego pliku.
+# Pomiar wlasny: 15/10 -> 13/9.
+BASELINE_ERRORS = 13
+BASELINE_FILES = 9
 
 WZORZEC_PODSUMOWANIA = re.compile(r"Found (\d+) errors? in (\d+) files?")
 WZORZEC_SUKCESU = re.compile(r"Success: no issues found")
