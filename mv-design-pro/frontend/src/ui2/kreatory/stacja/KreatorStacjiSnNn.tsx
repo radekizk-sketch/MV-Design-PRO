@@ -675,13 +675,30 @@ export function KreatorStacjiSnNn() {
     [dane.manufacturer_ref, selectedFamily, selectedManufacturer],
   );
 
-  // Blok spoza listy bieżącej rodziny → wyczyszczenie wyboru (zmiana rodziny
-  // zmienia wyrób, więc blok poprzedniej rodziny przestaje istnieć).
+  /**
+   * WYBÓR BLOKU I POLA Z NIEGO ZBUDOWANE ŻYJĄ I GINĄ RAZEM.
+   *
+   * Blok przestaje obowiązywać, gdy rodzina zmienia się na inną (jego wyrób
+   * znika z katalogu bieżącej rodziny) albo gdy nowa rodzina w ogóle nie chodzi
+   * torem blokowym. W obu przypadkach odchodzą TAKŻE pola z niego zbudowane —
+   * inaczej jednostki poprzedniego wyrobu zostawały na liście jako „pola
+   * projektanta": tor modułowy widział komplet ról rodzaju stacji i nie
+   * odbudowywał domyślnej listy, więc rozdzielnica cicho dziedziczyła skład
+   * bloku, którego projektant już nie wybrał. Warunek WEJŚCIA (co zbudowało
+   * pola) i WYJŚCIA (co je zwalnia) ma tu jedno źródło.
+   *
+   * Trwające pobranie bloków NIE kasuje wyboru: pusta lista w trakcie ładowania
+   * znaczy „jeszcze nie wiem", a nie „tego bloku nie ma".
+   */
   useEffect(() => {
     if (!dane.factory_configuration_ref) return;
-    if (bloki.some((b) => b.configuration_ref === dane.factory_configuration_ref)) return;
-    setDane((p) => ({ ...p, factory_configuration_ref: null }));
-  }, [bloki, dane.factory_configuration_ref]);
+    if (blokiStan === 'laduje') return;
+    const blokNadalWybieralny =
+      torKonfiguracji === 'BLOK_RMU'
+      && bloki.some((b) => b.configuration_ref === dane.factory_configuration_ref);
+    if (blokNadalWybieralny) return;
+    setDane((p) => ({ ...p, factory_configuration_ref: null, pola: [], wyposazenie: {} }));
+  }, [blokiStan, bloki, dane.factory_configuration_ref, torKonfiguracji]);
 
   const aparatDomyslny = aparatyZdatne[0]?.id ?? null;
   /** Domyślny aparat DLA ROLI — pierwszy zdatny z listy zawężonej rolą pola. */
