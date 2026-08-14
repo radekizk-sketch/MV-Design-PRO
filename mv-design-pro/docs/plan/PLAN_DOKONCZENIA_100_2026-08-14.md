@@ -681,6 +681,17 @@ nakladki ui/** bez punktu montazu (SldOverlay, PowerFlowSldOverlay,
 ProtectionZoneMarker, ProtectionRunButton) sa w inwentarzu K-V — decyzja
 kasacja-czy-wpiecie zapada tam, spójnie z ta karta.
 
+### K-Q2 NAZEWNICTWO-NAPIECIA-WYTRZYMALOSCI `[dlug K-Q]`
+`nominal_voltage_kv = 15` w katalogu wytrzymalosci aparatury to napiecie
+SIECI, nie znamionowe aparatu (szereg IEC 62271-1 zna 17,5 kV) — nie jest to
+fabrykacja danych, ale nazwa pola klamie o semantyce i przy kolejnym czytaniu
+zostanie wzieta za napiecie znamionowe wyrobu. Rozstrzygniecie: zmienic nazwe
+pola na oddajaca semantyke (np. `network_voltage_kv`) ALBO przepisac wartosci
+na znamionowe aparatu z szeregu normy — decyzja wynika z tego, czym pole jest
+DLA KONSUMENTOW (inwentarz konsumentow przed zmiana; zmiana nazwy = kontrakt,
+konsumenci w tej samej kolejce). Wzorzec: karta K-J (network_voltages_kv vs
+um_classes_kv rodzin rozdzielnic — dokladnie ta sama para pojec).
+
 ### K-X KASACJA-CATALOG-BINDINGS `[dlug K-T]`
 `catalog_bindings.switchgear_template` w specyfikacji pola nie ma ANI JEDNEGO
 czytelnika (grep backend + frontend, pomiar K-T) — martwy duplikat danych,
