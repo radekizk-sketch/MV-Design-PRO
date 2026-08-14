@@ -1425,6 +1425,49 @@ describe('KreatorStacjiSnNn — tory konfiguracji rozdzielnicy (S3)', () => {
     await waitFor(() => expect(screen.getByTestId('mvd-kreator-stacja-zapisz')).not.toBeDisabled());
   });
 
+  /**
+   * SZABLON STARTOWY × BRAK RODZINY. Lista pól z szablonu jest decyzją
+   * projektanta z kroku 0 (role i aparaty przyszły z szablonu), więc bramka
+   * katalog-first NIE MOŻE jej skasować — ma poczekać na wskazanie rodziny.
+   * To jest właśnie ten iloczyn cech, w którym „wyczyść pola bez rodziny"
+   * cicho wyrzuciłoby pracę projektanta.
+   */
+  it('pola z SZABLONU STARTOWEGO przeżywają brak rodziny i czekają na jej wskazanie', async () => {
+    render(<KreatorStacjiSnNn />);
+    const wybor = (await screen.findByTestId(
+      'mvd-kreator-stacja-szablon-wybor',
+    )) as HTMLSelectElement;
+    await waitFor(() => {
+      expect(wybor.querySelector('option[value="tpl_typowa_400"]')).not.toBeNull();
+    });
+    await userEvent.selectOptions(wybor, 'tpl_typowa_400');
+    await userEvent.click(screen.getByTestId('mvd-kreator-stacja-szablon-zastosuj'));
+    await screen.findByTestId('mvd-kreator-stacja-szablon-zastosowany');
+
+    await przejdzDoKroku('Pola rozdzielnicy SN');
+    // Pola szablonu są na liście, choć rodziny jeszcze nie wskazano.
+    expect(await screen.findByTestId('mvd-kreator-stacja-pole-wiersz-1')).toBeInTheDocument();
+    // Karty katalogowej nie ma — nie dobieramy jej z pakietu producenta, bo
+    // mieszałaby wyroby; krok pozostaje jawnie niedomknięty.
+    const szablonPola = screen.getByTestId(
+      'mvd-kreator-stacja-pole-szablon-1',
+    ) as HTMLSelectElement;
+    expect(szablonPola.value).toBe('');
+    expect(screen.getByTestId('mvd-kreator-stacja-zapisz')).toBeDisabled();
+
+    // Wskazanie rodziny domyka krok: pola dostają karty JEJ pakietu.
+    await userEvent.selectOptions(
+      screen.getByTestId('mvd-kreator-stacja-producent'),
+      'ZPUE_WLOSZCZOWA',
+    );
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-stacja-rodzina'), 'ZPUE_ROTOBLOK');
+    await waitFor(() => {
+      expect(
+        (screen.getByTestId('mvd-kreator-stacja-pole-szablon-1') as HTMLSelectElement).value,
+      ).not.toBe('');
+    });
+  });
+
   it('rodziny NIEDOSTĘPNE są WIDOCZNE i wyłączone — z jawnym powodem', async () => {
     render(<KreatorStacjiSnNn />);
     await przejdzDoTransformatora();
