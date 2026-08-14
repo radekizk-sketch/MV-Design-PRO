@@ -327,7 +327,7 @@ export interface SwzOverlayEntry {
 }
 
 /**
- * Kształt odpowiedzi `GET /{case_id}/enm/swz?station_ref&bus_ref&breaker_ref`
+ * Kształt odpowiedzi `GET /{case_id}/enm/swz?station_ref=…&bus_ref=…&breaker_ref=…`
  * (karta P0.6/G-22, `build_swz_view`) — WYŁĄCZNIE pola czytane przez
  * budowniczy niżej (envelope pełny niesie też `fault_loop_min_scenario`/
  * `missing_data`/`reason_pl`, nieużywane tutaj — warstwa prezentacji SLD

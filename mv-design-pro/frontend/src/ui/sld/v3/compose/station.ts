@@ -71,6 +71,7 @@ import {
   flattenedNnFeeders,
   formatTransformerRatedPower,
   implicitStationTransformers,
+  implicitTransformerNameplateText,
   LV_MODEL_BOUNDARY_TEXT,
   nnFeederColumnRequiredWidth,
   nnFeederLabelText,
@@ -78,6 +79,7 @@ import {
   nnFeederRowFootprint,
   nnIncomerExtraHeight,
   primaryNnIncomer,
+  stationDrawsImplicitTrNameplate,
   stationSnColumnLayout,
   type StationSnColumnPlacement,
   PORT_CAPTION_BUS_CLEARANCE,
@@ -88,6 +90,7 @@ import {
   stationPortCaptionHeight,
   type StationMeasureInput,
 } from '../layout/measure';
+import type { StationTransformerUnit } from '../../../network-build/stationTransformerSelection';
 import {
   DER_SN_CABLE_LEN,
   DER_SN_LV_DROP,
@@ -856,17 +859,26 @@ function composeDerSnChain(
  * w `missingData`; wiersz pasma nazw ze zdaniem `STATION_TR_FIELD_GAP_TEXT`
  * dokłada `composeStation`. Symbol transformatora POZOSTAJE symbolem
  * transformatora — nie zamieniamy go na symbol błędu (§0.C.5).
+ *
+ * T3 (tabliczka TR przy symbolu — bramka `stationDrawsImplicitTrNameplate`,
+ * wołający przekazuje `nameplateUnit` WYŁĄCZNIE gdy bramka jest `true`, jedna
+ * prawda measure↔compose z `layout/measure.ts` `pushTransformer`, który tą
+ * SAMĄ bramką rezerwuje szerokość kolumny): `implicitTransformerNameplateText`
+ * (Sn/przekładnia/grupa/uk% POŁĄCZONE w JEDNĄ etykietę, wzorzec
+ * `nnFeederLabelText`) zaczepiona PO PRAWEJ symbolu.
  */
 function composeImplicitTransformerColumn(
   placement: StationSnColumnPlacement,
   busAxisY: number,
   blockTopY: number,
+  nameplateUnit: StationTransformerUnit | null,
   sink: {
     readonly symbols: ComposedSymbolInstance[];
     readonly segments: ComposedSegment[];
     readonly busTapXs: number[];
     readonly lvPorts: RoutePort[];
     readonly missingData: string[];
+    readonly apparatusLabels: SimpleAnchoredOwnerInput[];
   },
 ): void {
   const ref = placement.transformerRef!;
@@ -893,6 +905,20 @@ function composeImplicitTransformerColumn(
   sink.lvPorts.push(ports.lv);
   // §0.C.5: stan niekompletny JAWNY — nie cichy wariant rysunku.
   sink.missingData.push(`station.transformer.brakPolaSN:${ref}`);
+  const nameplateText = nameplateUnit ? implicitTransformerNameplateText(nameplateUnit) : null;
+  if (nameplateText != null) {
+    // JEDNA etykieta połączona (wzorzec `nnFeederLabelText`) — próba stosu
+    // wielowierszowego COFNIĘTA po dowodzie wizualnym, patrz uzasadnienie
+    // POMIAREM przy `implicitTransformerNameplateText` (`layout/measure.ts`).
+    sink.apparatusLabels.push({
+      ownerRef: `${ref}#nameplate`,
+      ownerKind: 'apparatus',
+      text: nameplateText,
+      labelClass: 't3',
+      anchor: { x: trX + def.width, y: trY + def.height / 2 },
+      placement: 'right',
+    });
+  }
   if (!placement.sectionResolved) {
     // §0.C.2: pola deklarują sekcje, ale terminal WN transformatora nie pasuje
     // do żadnej z nich (albo dana terminala jest pusta) — kolumna siadła na
@@ -990,14 +1016,27 @@ export function composeStation(input: ComposeStationInput): StationComposition {
   // bloku (`stationBlockWidth`) i wskazuje oś przęsła (`bayStackCenterX`), więc
   // rezerwacja, rysunek i trasowanie nie mogą się rozjechać.
   const columnPlan = stationSnColumnLayout(station, column.x);
+  // T3 (tabliczka TR — bramka JEDNA prawda z `layout/measure.ts`
+  // `pushTransformer`, który TĄ SAMĄ bramką rezerwuje szerokość kolumny):
+  // `false` na substracie referencyjnym SN (54/54 stacji bez danych P0.8) ⇒
+  // `nameplateUnit` przekazany niżej jest zawsze `null` ⇒ zero wierszy
+  // tabliczki, zero zmiany geometrii (patrz uzasadnienie POMIAREM przy
+  // `stationDrawsImplicitTrNameplate`).
+  const drawsTrNameplate = stationDrawsImplicitTrNameplate(station);
+  const transformerUnitByRef = new Map<string, StationTransformerUnit>(
+    (station.transformerUnits ?? []).map((unit) => [unit.ref, unit]),
+  );
   columnPlan.forEach((placement) => {
     if (placement.kind === 'transformer') {
-      composeImplicitTransformerColumn(placement, busAxisY, blockTopY, {
+      const nameplateUnit =
+        drawsTrNameplate ? transformerUnitByRef.get(placement.transformerRef!) ?? null : null;
+      composeImplicitTransformerColumn(placement, busAxisY, blockTopY, nameplateUnit, {
         symbols,
         segments,
         busTapXs,
         lvPorts,
         missingData,
+        apparatusLabels,
       });
       return;
     }
@@ -1806,7 +1845,11 @@ export function composeStation(input: ComposeStationInput): StationComposition {
         }
 
         // Etykieta JEDNOWIERSZOWA (aparat + odbiorca połączone, `measure.ts`
-        // `nnFeederLabelText` — jedna prawda measure↔compose).
+        // `nnFeederLabelText` — jedna prawda measure↔compose). T3 (łamanie
+        // 2-liniowe) próbowane i COFNIĘTE w tej karcie — patrz uzasadnienie
+        // POMIAREM (dowód na żywej stronie) przy `nnFeederLabelText` w
+        // `layout/measure.ts`: druga linia znikała całkowicie pod
+        // powiększeniem awaryjnym (`droppedIdentity`), gorzej niż wielokropek.
         apparatusLabels.push({
           ownerRef: `${feeder.branchRef}#nn-feeder-label`,
           ownerKind: 'apparatus',

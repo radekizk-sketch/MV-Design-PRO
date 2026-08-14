@@ -23,7 +23,7 @@ import {
   MIN_GLYPH_CLEARANCE,
   MIN_LABEL_CLEARANCE,
 } from './clearances';
-import { labelLineHeight, liczbaRysunkuPl, measureLabelWidth } from '../core/text';
+import { labelLineHeight, liczbaRysunkuPl, measureLabelWidth, type LabelClass } from '../core/text';
 import type { MiniBlockBayDescriptor } from '../../v2/renderer/MiniBlockRmuRenderer';
 import {
   formatTransformerRatedPower,
@@ -316,7 +316,7 @@ export function nnFeederApparatusLineText(odplyw: SldNnFeeder): string | null {
 /** Tekst linii odbiorcy — `'board'` niesie WŁASNĄ etykietę pod glifem
  *  `nnDistributionBoard` (nazwa rozdzielnicy, wzorzec `derLabelText`), więc
  *  NIE dubluje się tu jako „→ …" (kompozycja pomija tę linię dla `'board'`,
- *  patrz `nnFeederLabelLines` niżej). Pozostałe rodzaje: strzałka tekstowa do
+ *  patrz `nnFeederLabelText` niżej). Pozostałe rodzaje: strzałka tekstowa do
  *  odbiorcy albo jawna granica modelu (`LV_MODEL_BOUNDARY_TEXT`, TA SAMA
  *  fraza co odbiór zagregowany — spójny język „koniec toru bez odbiorcy"). */
 export function nnFeederDestinationLineText(odplyw: SldNnFeeder): string {
@@ -333,13 +333,41 @@ export function nnFeederDestinationLineText(odplyw: SldNnFeeder): string {
   }
 }
 
-/** JEDNA etykieta odpływu (aparat + odbiorca połączone, wzorzec
- *  `stationLvLoadLabelText`/`stationBusbarLabelText` — kombinacja „·"): brak
- *  DRUGIEGO wiersza upraszcza geometrię (jeden slot tekstu, jak DER —
- *  `derLabelText` też jest jednowierszowa) i eliminuje ryzyko kolizji stosu
- *  dwóch niezależnych właścicieli etykiety pod tym samym symbolem. Eksport:
- *  `compose/station.ts` rysuje DOKŁADNIE ten tekst (jedna prawda
- *  measure↔compose). */
+/**
+ * T3 (SLD-nN-TOPOLOGIA §„layout i wygląd" — BINDING: „etykiety bez elips
+ * (łamanie 2-liniowe)") — PRÓBA I COFNIĘCIE, ZMIERZONE (Zero-Debt §4: dług
+ * WPISANY, nie cichy). Ta karta próbowała łamania 2-liniowego (aparat +
+ * odbiorca jako DWIE osobne etykiety `ownerKind:'apparatus'`, stos jak
+ * pasmo nazw). Dowód wizualny na ŻYWEJ stronie (nie tylko test jednostkowy —
+ * zasada nr 2 CLAUDE.md „dowodem jest render, nie kod") wykrył REGRESJĘ
+ * GORSZĄ niż wielokropek: przy skali harnessu nN (`nnBoardDemo`, ~0,853 —
+ * poniżej progu czytelności t4, `MIN_READABLE_LABEL_SCREEN_PX=9`) OBA
+ * wiersze wchodzą w powiększenie awaryjne (`enlargedFontSizeWithinProportion`)
+ * RÓWNOCZEŚNIE, a odstęp między nimi był policzony na wysokości NATURALNEJ
+ * (`LABEL_LINE_HEIGHT_T4`) — powiększone wiersze WCHODZĄ NA SIEBIE, więc
+ * `canvas/labelLegibility.ts` (`najlepszeDopasowanie`) drugi wiersz (`→
+ * Odbiór N") ODRZUCA CAŁKOWICIE (`droppedIdentity`), nie skraca. Zmierzone na
+ * `inspect_live.mjs` (żywa strona, `screenshot-harness.html?fixture=
+ * nnBoardDemo&lod=2`): „→ Odbiór 1/2/4" ZNIKAJĄ z rysunku, gorsze niż
+ * wielokropek pierwszej wersji (info ginie całkowicie, nie częściowo).
+ *
+ * PRZYCZYNA ŹRÓDŁOWA (nie naprawiona w tej karcie — dług WPISANY). Restack
+ * „od góry pasma z powiększonymi wysokościami" (`layout/labels.ts`
+ * `przestawPasma`, mechanizm (b) KD-11) istnieje WYŁĄCZNIE dla
+ * `ownerKind==='station-name'` — grupy wielowierszowe innego rodzaju
+ * właściciela (jak stos odpływu nN) NIE mają analogicznego mechanizmu.
+ * Bezpieczna naprawa wymaga rozszerzenia `przestawPasma` na grupy
+ * `apparatus` powiązane wspólnym prefiksem `ownerRef` (albo nowego pola
+ * grupującego w `OwnedLabel`) — zmiana we WSPÓLNYM silniku kolizji, używanym
+ * przez WSZYSTKIE etykiety aparatu w całym SLD (nie tylko nN), więc wymaga
+ * pełnej regresji CAŁEGO `accept:sld-v3` + krytycznych kontraktów CI, nie
+ * tylko fixtury nN — przekracza rozsądny zakres JEDNEJ karty restartowej.
+ * Zapisane jako dług do osobnej karty (nie cicho — ten docstring + raport
+ * karty T3). Do czasu naprawy: JEDNA etykieta połączona (wzorzec
+ * `derLabelText`) — TA SAMA klasa ryzyka co reszta rysunku (skracanie z
+ * wielokropkiem jest gorsze niż nic, ale NIE gorsze niż PRZED tą kartą —
+ * zero regresji względem stanu wyjściowego).
+ */
 export function nnFeederLabelText(odplyw: SldNnFeeder): string {
   const apparatusLine = nnFeederApparatusLineText(odplyw);
   const destinationLine = nnFeederDestinationLineText(odplyw);
@@ -558,6 +586,115 @@ export function implicitStationTransformers(
   );
 }
 
+// ---------------------------------------------------------------------------
+// T3 (SLD-nN-TOPOLOGIA §„layout i wygląd" — BINDING „dane TR przy symbolu
+// T1 … wzorzec pasma nazw stacji"): TABLICZKA transformatora BEZ POLA (TR2W-
+// BEZ-POLA), przy symbolu — JEDNA etykieta połączona (bezpieczny wzorzec
+// `nnFeederLabelText`/`derLabelText`, patrz `implicitTransformerNameplateText`
+// niżej dla pełnego wywodu), niosąca CZTERY człony rosnącego szczegółu, treść
+// wzorowana na tabliczce transformatora GPZ (`compose/gpz.ts` `trRows`):
+// TOŻSAMOŚĆ (oznaczenie) → moc+grupa → przekładnia → uk%. Dane WYŁĄCZNIE z
+// ENM (`StationTransformerUnit`, wyprowadzone WPROST z rekordu `Transformer` —
+// `network-build/stationTransformerSelection.ts`), zero fizyki/wyliczeń w UI.
+// ---------------------------------------------------------------------------
+
+export interface ImplicitTransformerNameplateRow {
+  readonly text: string;
+  readonly labelClass: LabelClass;
+}
+
+/** Wiersze tabliczki — WYŁĄCZNIE te, dla których ENM niesie dane (uczciwy
+ *  brak: żaden literał zastępczy, wzorzec `trRows` GPZ). Pusta lista, gdy
+ *  migawka nie niesie ŻADNEGO pola tabliczki (ścieżka awaryjna
+ *  `selectStationTransformerUnits` — rekord `Transformer` nieobecny). */
+export function implicitTransformerNameplateRows(
+  unit: StationTransformerUnit,
+): readonly ImplicitTransformerNameplateRow[] {
+  const rows: ImplicitTransformerNameplateRow[] = [];
+  if (unit.designation) rows.push({ text: unit.designation, labelClass: 't2' });
+  if (unit.snMva != null) {
+    const ratingText = unit.vectorGroup
+      ? `${unit.vectorGroup} · ${liczbaRysunkuPl(unit.snMva)} MVA`
+      : `${liczbaRysunkuPl(unit.snMva)} MVA`;
+    rows.push({ text: ratingText, labelClass: 't3' });
+  }
+  if (unit.uhvKv != null && unit.ulvKv != null) {
+    rows.push({
+      text: `${liczbaRysunkuPl(unit.uhvKv)}/${liczbaRysunkuPl(unit.ulvKv)} kV`,
+      labelClass: 't3',
+    });
+  }
+  if (unit.ukPercent != null) {
+    rows.push({ text: `uk ${liczbaRysunkuPl(unit.ukPercent)}%`, labelClass: 't4' });
+  }
+  return rows;
+}
+
+/**
+ * Tabliczka jako JEDNA etykieta połączona (wzorzec `nnFeederLabelText`/
+ * `derLabelText`) — NIE stos wierszy oddzielnych. Próba stosu (osobna
+ * etykieta na wiersz, zaczepiona PO PRAWEJ symbolu) była w tej karcie
+ * COFNIĘTA po dowodzie wizualnym na żywej stronie: powiększenie awaryjne
+ * (`canvas/labelLegibility.ts`, próg czytelności t3/t4 poniżej skali ~0,85 na
+ * fixturze `nnBoardDemo`) traktuje KAŻDY wiersz osobno, a odstęp między nimi
+ * liczony na wysokości NATURALNEJ nie chroni przed nachodzeniem wierszy
+ * POWIĘKSZONYCH — silnik kolizji odrzuca wtedy CAŁE wiersze (`droppedIdentity`),
+ * nie skraca ich, więc dane („15/0,4 kV", „uk 5%") znikały z rysunku
+ * CAŁKOWICIE, gorzej niż wielokropek. Restack „od góry pasma z powiększonymi
+ * wysokościami" (`layout/labels.ts` `przestawPasma`) istnieje WYŁĄCZNIE dla
+ * `ownerKind==='station-name'` — rozszerzenie na `apparatus` to zmiana we
+ * WSPÓLNYM silniku kolizji (dług zapisany, patrz `nnFeederLabelText`
+ * dokładnie ten sam wywód). Jedna etykieta połączona ma TĘ SAMĄ klasę ryzyka
+ * (skracanie zamiast znikania), co reszta rysunku — zero regresji.
+ */
+export function implicitTransformerNameplateText(unit: StationTransformerUnit): string | null {
+  const rows = implicitTransformerNameplateRows(unit);
+  if (rows.length === 0) return null;
+  return rows.map((row) => row.text).join(' · ');
+}
+
+/** Szerokość WYMAGANA tabliczki (tekst połączony) — `0`, gdy migawka nie
+ *  niesie żadnego pola (zero rezerwacji, zero zmiany geometrii). */
+export function implicitTransformerNameplateWidth(unit: StationTransformerUnit): number {
+  const text = implicitTransformerNameplateText(unit);
+  return text == null ? 0 : measureLabelWidth(text, 't3');
+}
+
+/** Wysokość WYMAGANA tabliczki — JEDNA linia (t3, jak reszta adnotacji
+ *  strony nN), `0` gdy migawka nie niesie żadnego pola tabliczki. */
+export function implicitTransformerNameplateHeight(unit: StationTransformerUnit): number {
+  return implicitTransformerNameplateText(unit) == null ? 0 : labelLineHeight('t3');
+}
+
+/**
+ * BRAMKA WIDOCZNOŚCI (POMIAR, nie preferencja — Zero-Debt §1, dług
+ * NAPOTKANY naprawiony u źródła, nie odłożony). Tabliczka rysowana WYŁĄCZNIE
+ * dla stacji z RZECZYWISTYMI danymi strukturalnymi strony nN (P0.8,
+ * `flattenedNnFeeders(station.nnBoard).length > 0`) — NIE dla każdej stacji z
+ * transformatorem bez pola.
+ *
+ * DLACZEGO. Substrat referencyjny SN (`v2/geometry/__tests__/fixtures/
+ * sldSubstrate52s.enm.json`, karta §0.5 „substrat SN bajtowo nietknięty") ma
+ * WSZYSTKIE 54/54 stacje na ścieżce TR2W-BEZ-POLA (transformator bez
+ * skonfigurowanego pola SN) — bramka bez tego warunku dorysowałaby tabliczkę
+ * na KAŻDEJ z nich, zmieniając szerokość/wysokość bloku KAŻDEJ stacji
+ * substratu i naruszając zakaz karty wprost (precedens ZMIERZONY już raz na
+ * tym pliku: `STATION_TR_FIELD_GAP_TEXT` jako wiersz pasma nazw B5 poszerzał
+ * KAŻDĄ stację bez pola TR o ~30%, degradując wypełnienie osi „Dopasuj
+ * widok" poniżej bramki K11-A — dokładnie ta klasa regresji). ŻADNA z 54
+ * stacji substratu nie niesie danych strukturalnych P0.8
+ * (`nn_board`/gałęzie odpływów), więc bramka poniżej jest `false` na
+ * WSZYSTKICH — substrat pozostaje bajtowo nietknięty z konstrukcji, nie z
+ * przypadku. Tabliczka aktywuje się dokładnie tam, gdzie reszta programu
+ * SLD-nN-TOPOLOGIA już rysuje strukturalną stronę nN (fixtura referencyjna
+ * Stacja B, `nnBoardDemo.enm.json`).
+ */
+export function stationDrawsImplicitTrNameplate(
+  station: Pick<StationMeasureInput, 'nnBoard'>,
+): boolean {
+  return flattenedNnFeeders(station.nnBoard).length > 0;
+}
+
 /** Górna granica pasma SN [kV] — lustro `PASMO_SN_MAX_KV` bramki gotowości
  *  (`backend/src/enm/pole_transformatorowe.py`). Parytet pilnuje wspólna
  *  tablica decyzyjna `pole_transformatorowe_parytet_v1.json`. */
@@ -607,7 +744,12 @@ export interface StationSnColumnPlacement {
 
 type StationColumnsInput = Pick<
   StationMeasureInput,
-  'snBays' | 'bayDirectionCaptions' | 'entryDescentBayIndex' | 'hasTransformer' | 'transformerUnits'
+  | 'snBays'
+  | 'bayDirectionCaptions'
+  | 'entryDescentBayIndex'
+  | 'hasTransformer'
+  | 'transformerUnits'
+  | 'nnBoard'
 >;
 
 /**
@@ -667,10 +809,21 @@ export function stationSnColumnLayout(
     unresolved.push(unit);
   });
 
+  // T3 (tabliczka TR przy symbolu T1 — bramka widoczności, patrz uzasadnienie
+  // POMIAREM przy `stationDrawsImplicitTrNameplate`): `false` na substracie
+  // referencyjnym SN (54/54 stacji bez danych P0.8) — `nameplateWidth` jest
+  // wtedy `0` na KAŻDYM `unit`, więc `columnWidth` niżej wraca do
+  // `IMPLICIT_TR_SYMBOL_WIDTH` bajtowo (zero zmiany geometrii z konstrukcji).
+  const drawsNameplate = stationDrawsImplicitTrNameplate(station);
   const out: StationSnColumnPlacement[] = [];
   let bx = columnX + GRID;
   const pushTransformer = (unit: StationTransformerUnit): void => {
     const centerX = snapToGrid(bx + IMPLICIT_TR_SYMBOL_WIDTH / 2);
+    const nameplateWidth = drawsNameplate ? implicitTransformerNameplateWidth(unit) : 0;
+    const columnWidth =
+      nameplateWidth > 0
+        ? IMPLICIT_TR_SYMBOL_WIDTH + GRID + nameplateWidth
+        : IMPLICIT_TR_SYMBOL_WIDTH;
     out.push({
       kind: 'transformer',
       bayIndex: null,
@@ -679,10 +832,10 @@ export function stationSnColumnLayout(
       // rysunku: kolumna na końcu bloku JEST kolumną własnej sekcji.
       sectionResolved: resolvedRefs.has(unit.ref) || declaredSections.size === 0,
       leftX: bx,
-      width: IMPLICIT_TR_SYMBOL_WIDTH,
+      width: columnWidth,
       centerX,
     });
-    bx += IMPLICIT_TR_SYMBOL_WIDTH + MIN_GLYPH_CLEARANCE;
+    bx += columnWidth + MIN_GLYPH_CLEARANCE;
   };
 
   bays.forEach((bay, index) => {
@@ -1123,8 +1276,19 @@ export function stationBlockHeight(station: StationMeasureInput): number {
   // TR2W-BEZ-POLA: kolumna transformatora bez pola zajmuje TEN SAM pas pionowy
   // (od `blockTopY` w dół) co kolumny pól — kandydat do `max()`. `0` gdy pole
   // TR obecne LUB stacja bez transformatora (zero zmian geometrii).
+  // T3 (tabliczka TR — bramka `stationDrawsImplicitTrNameplate`, `false` na
+  // substracie referencyjnym ⇒ wyrażenie wraca do `IMPLICIT_TR_SYMBOL_HEIGHT`
+  // bajtowo, jak przed kartą): symbol jest zawsze WYSOKI na `IMPLICIT_TR_
+  // SYMBOL_HEIGHT`; tabliczka obok niego bywa WYŻSZA (cztery wiersze tekstu) —
+  // `max()` po obu, żeby wyższy z dwóch (symbol/tabliczka) wyznaczał pas.
+  const implicitTrUnits = implicitStationTransformers(station);
+  const nameplateHeights = stationDrawsImplicitTrNameplate(station)
+    ? implicitTrUnits.map(implicitTransformerNameplateHeight)
+    : [];
   const implicitTrHeight =
-    implicitStationTransformers(station).length > 0 ? IMPLICIT_TR_SYMBOL_HEIGHT : 0;
+    implicitTrUnits.length > 0
+      ? Math.max(IMPLICIT_TR_SYMBOL_HEIGHT, ...nameplateHeights)
+      : 0;
   if (station.snBays.length === 0) {
     return Math.max(snFieldHeight, implicitTrHeight) + STATION_BLOCK_BUS_CLEARANCE + nnIncomerExtra + nnExtra;
   }

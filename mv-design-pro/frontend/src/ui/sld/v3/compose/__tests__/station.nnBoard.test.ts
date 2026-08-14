@@ -262,3 +262,64 @@ describe('P0.8 nN — rezerwacja szerokości (measure↔compose, wzorzec DER-row
     expect(requiredStationWidth(stacjaBezNnBoard)).toBe(requiredStationWidth(stacjaJawniePusta));
   });
 });
+
+describe('T3 (SLD-nN-TOPOLOGIA §„layout i wygląd") — tabliczka TR przy symbolu T1 (TR2W-BEZ-POLA)', () => {
+  const odplywy: readonly SldNnBoardSection[] = [
+    { sectionId: 'sec1', busRef: 'bus/nn', incomer: null, feeders: [feeder({ branchRef: 'brc/1', apparatusKind: 'MCB', apparatusRef: 'brc/1', apparatusLabel: 'MCB B16', destinationKind: 'load', destinationLabel: 'Odbiór A' })] },
+  ];
+
+  it('stacja BEZ pola SN (implicit) z danymi strukturalnymi nN: tabliczka Sn/przekładnia/grupa/uk% narysowana', () => {
+    const stacja = makeStation('s-tr', {
+      snBays: [],
+      hasTransformer: true,
+      nnBoard: odplywy,
+      transformerUnits: [
+        {
+          ref: 'tr/1',
+          hvBusRef: null,
+          lvBusRef: 'bus/nn',
+          hvVoltageKv: null,
+          designation: 'T1',
+          snMva: 0.63,
+          uhvKv: 15,
+          ulvKv: 0.4,
+          ukPercent: 5,
+          vectorGroup: 'Dyn11',
+        },
+      ],
+    });
+    const c = compose(stacja);
+    const nameplate = c.labels.apparatus.find((l) => l.ownerRef === 'tr/1#nameplate');
+    expect(nameplate).toBeDefined();
+    expect(nameplate?.text).toBe('T1 · Dyn11 · 0,63 MVA · 15/0,4 kV · uk 5%');
+    expect(noCompositionSymbolOverlaps(c)).toBe(true);
+    expect(allCompositionSymbolsOnGrid(c)).toBe(true);
+  });
+
+  it('stacja BEZ pola SN, BEZ danych strukturalnych nN (substrat): zero tabliczki mimo pełnych danych ENM, rezerwacja NIEZMIENIONA', () => {
+    const pelneDaneTabliczki: StationMeasureInput = makeStation('s-tr-substrat', {
+      snBays: [],
+      hasTransformer: true,
+      transformerUnits: [
+        { ref: 'tr/1', hvBusRef: null, lvBusRef: 'bus/nn', hvVoltageKv: null, designation: 'T1', snMva: 0.63, uhvKv: 15, ulvKv: 0.4, ukPercent: 5, vectorGroup: 'Dyn11' },
+      ],
+    });
+    const c = compose(pelneDaneTabliczki);
+    // Bramka `stationDrawsImplicitTrNameplate`: `false` (brak `nnBoard`) ⇒
+    // ZERO wiersza tabliczki mimo że ENM niesie pełne dane — dokładnie
+    // zachowanie substratu referencyjnego (54/54 stacji tej klasy).
+    expect(c.labels.apparatus.some((l) => l.ownerRef.includes('#nameplate'))).toBe(false);
+
+    const brakDanychTabliczki: StationMeasureInput = makeStation('s-tr-substrat', {
+      snBays: [],
+      hasTransformer: true,
+      transformerUnits: [
+        { ref: 'tr/1', hvBusRef: null, lvBusRef: 'bus/nn', hvVoltageKv: null, designation: null, snMva: null, uhvKv: null, ulvKv: null, ukPercent: null, vectorGroup: null },
+      ],
+    });
+    // Rezerwacja szerokości bloku identyczna niezależnie od tego, czy ENM
+    // niesie dane tabliczki, dopóki bramka nnBoard jest wyłączona — dowód
+    // „substrat bajtowo nietknięty" na poziomie measure, nie tylko compose.
+    expect(requiredStationWidth(pelneDaneTabliczki)).toBe(requiredStationWidth(brakDanychTabliczki));
+  });
+});
