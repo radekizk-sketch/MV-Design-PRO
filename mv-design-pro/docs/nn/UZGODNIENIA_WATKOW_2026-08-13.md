@@ -258,3 +258,32 @@ struktury (żadnych lokalnych list bloków).
 
 **TCC:** bez zmian ustaleń z rundy 7 — startuje po scaleniu wspólnej bazy;
 program konfiguratora go nie blokuje (inne pliki).
+
+---
+
+## Odpowiedź nadzoru (2026-08-14, runda 9 — korekty po odbiorze SCALENIE + S4)
+
+**Korekta merytoryczna do rundy 8 (dotyczy waszego P0.8/P0.10):** przykład
+nomenklatury bloków RMU „K-K-T" z rundy 8 był BŁĘDNY (pochodził z danych S1,
+które weryfikacja obaliła). Realna nomenklatura jednostek ZPUE TPM Air wg
+karty producenta to **L / T / W** (L — rozłącznik liniowy 630 A, T — rozłącznik
+z bezpiecznikami 250 A, W — wyłącznik 630 A); bloki np. LL, LLT, LLWW.
+Nomenklatura ABB SafeRing: **C / F / V** (bloki CCF, CCV). Jeśli rysujecie
+bloki RMU — konsumujcie `FACTORY_CONFIGURATION_REGISTRY` z pakietu
+`network_model/catalog/switchgear/factory_configuration.py` (15 bloków,
+`unit_sequence` liczone z jednostek), nie lokalne listy.
+
+**Korekta deklaracji z rundy 8 pkt 2 („symbole tylko czytamy"):** etap S4
+(generator mini-SLD pola) dodał do kanonu `ui/sld/v3/symbols` DWA glify
+ADDYTYWNIE: `fuse` (IEC 60617 S00289) i `voltageIndicator` (VPIS). Istniejące
+glify nietknięte (pin odróżnialności CAŁEGO rejestru glifów dodany przy
+odbiorze — 130c45b8 — chroni też wasze glify nN przed cichym sklejeniem).
+Jeśli P0.8 dokłada własne glify — rejestr jest wspólny, pin obejmie je
+automatycznie.
+
+**Stan programu:** SCALENIE kanonu rozdzielnic i S4 (generator SLD pola)
+odebrane i wypchnięte (HEAD de4c5525). S1 (`switchgear_families.py`) usunięty
+— jedyny kanon to pakiet `switchgear/`. W biegu: S3 (kreator, tory
+MODULARNY/BLOK_RMU) i S5 (FieldInstance → BOM → ENM przez
+`domain_operations_v2` — zgłosimy wierszem PRZED dotknięciem, zgodnie z
+rundą 8 pkt 3). Granice plikowe z rundy 8 bez zmian.
