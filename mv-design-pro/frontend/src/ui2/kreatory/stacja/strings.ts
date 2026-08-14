@@ -417,7 +417,11 @@ export const STACJA_STRINGS = {
   naglowekIzolacja: 'Izolacja',
   naglowekTor: 'Tor konfiguracji',
   naglowekKonstrukcja: 'Konstrukcja',
-  naglowekNapiecie: 'Napięcie znamionowe',
+  naglowekNapiecie: 'Napięcia katalogowe',
+  // Karta rodziny podaje dwie RÓŻNE wielkości; nagłówek nazywa każdą z nich,
+  // żeby liczba w komórce nie była zagadką „sieć czy izolacja".
+  napiecieSieci: 'sieć',
+  napiecieUrzadzenia: 'urządzenie',
   naglowekPradSzyn: 'Prąd znamionowy szyn',
   naglowekPradZwarciowy: 'Prąd zwarciowy 1 s',
   naglowekJednostki: 'Liczba jednostek',

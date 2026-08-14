@@ -162,12 +162,13 @@ const CATALOG_FIXTURES: Record<string, unknown> = {
     { id: 'tr-sn-nn-15-04-400kva-dyn11', name: 'Transformator 400 kVA 15/0,4 kV Dyn11', rated_power_mva: 0.4, voltage_hv_kv: 15, voltage_lv_kv: 0.4, uk_percent: 4.0, pk_kw: 4.6, vector_group: 'Dyn11' },
   ],
   '/api/catalog/switchgear-families': [
-    // DWA REKORDY CELOWO ROZNE (V12K-259). Pierwszy niesie `voltage_levels`, wiec scena
-    // cwiczy REALNY filtr napiec. Drugi go NIE MA — i to jest przypadek GRANICZNY, ktory
-    // wywracal caly kreator bialym ekranem (`voltage_levels.length` na `undefined`).
-    // Gdyby oba rekordy byly kompletne, usuniecie normalizacji w kliencie katalogu
-    // przechodziloby na zielono, a bramka pilnowalaby tylko szczesliwej sciezki.
-    { switchgear_family_ref: 'zpue_rotoblok', family_name: 'Rotoblok SVS', manufacturer_ref: 'ZPUE', voltage_levels: [15, 20] },
+    // DWA REKORDY CELOWO NIEKOMPLETNE (V12K-259, rozszerzone karta K-J). Rekord
+    // ponizej niesie TYLKO napiecia sieci — brakuje mu drugiego pola napieciowego;
+    // kolejny nie niesie ZADNEGO. To sa przypadki GRANICZNE, ktore wywracaly caly
+    // kreator bialym ekranem (`.length` na `undefined`). Po rozdzieleniu pola na
+    // dwa scena musi cwiczyc OBIE polowy normalizacji osobno — inaczej usuniecie
+    // domkniecia jednego pola przechodziloby na zielono.
+    { switchgear_family_ref: 'zpue_rotoblok', family_name: 'Rotoblok SVS', manufacturer_ref: 'ZPUE', network_voltages_kv: [15, 20] },
     { switchgear_family_ref: 'abb_unigear', family_name: 'UniGear ZS1', manufacturer_ref: 'ABB' },
     // KONFIGURATOR-POL-RMU (S3): rodziny producenta w KSZTAŁCIE REALNEJ ODPOWIEDZI
     // `GET /api/catalog/switchgear-families` — refy kanonu (`ZPUE_WLOSZCZOWA__*`),
@@ -176,13 +177,13 @@ const CATALOG_FIXTURES: Record<string, unknown> = {
     // rekord opisywał Rotoblok jako RMU w izolacji SF₆ (karta ZPUE mówi:
     // rozdzielnica wnętrzowa, izolacja powietrzna), więc scena ćwiczyła tor,
     // którego ta rodzina nie ma.
-    { switchgear_family_ref: 'ZPUE_WLOSZCZOWA__ROTOBLOK', family_name: 'Rotoblok', manufacturer_ref: 'ZPUE_WLOSZCZOWA', voltage_levels: [15, 20], rated_current_options: [630], short_time_current_options: [16], status: 'repo_verified', source_refs: ['https://zpue.pl/rozdzielnice-sn/rotoblok'], insulation_type: 'air', construction_type: 'wnetrzowa', tor_konfiguracji: 'MODULARNY', series_name: null, notes_pl: null },
-    { switchgear_family_ref: 'ZPUE_WLOSZCZOWA__TPM_AIR', family_name: 'TPM Air', manufacturer_ref: 'ZPUE_WLOSZCZOWA', voltage_levels: [15, 20], rated_current_options: [630], short_time_current_options: [20], status: 'repo_verified', source_refs: ['https://zpue.pl/rozdzielnice-sn/tpm-air'], insulation_type: 'air', construction_type: 'RMU', tor_konfiguracji: 'BLOK_RMU', series_name: null, notes_pl: null },
+    { switchgear_family_ref: 'ZPUE_WLOSZCZOWA__ROTOBLOK', family_name: 'Rotoblok', manufacturer_ref: 'ZPUE_WLOSZCZOWA', network_voltages_kv: [15, 20], um_classes_kv: [17.5, 24], rated_current_options: [630], short_time_current_options: [16], status: 'repo_verified', source_refs: ['https://zpue.pl/rozdzielnice-sn/rotoblok'], insulation_type: 'air', construction_type: 'wnetrzowa', tor_konfiguracji: 'MODULARNY', series_name: null, notes_pl: null },
+    { switchgear_family_ref: 'ZPUE_WLOSZCZOWA__TPM_AIR', family_name: 'TPM Air', manufacturer_ref: 'ZPUE_WLOSZCZOWA', network_voltages_kv: [], um_classes_kv: [24], rated_current_options: [630], short_time_current_options: [20], status: 'repo_verified', source_refs: ['https://zpue.pl/rozdzielnice-sn/tpm-air'], insulation_type: 'air', construction_type: 'RMU', tor_konfiguracji: 'BLOK_RMU', series_name: null, notes_pl: null },
     // Rodzina RMU BEZ transkrybowanych bloków (jawny dług danych kanonu §9) —
     // scena ma pokazywać uczciwy stan zerowy, a nie wymyśloną ofertę.
-    { switchgear_family_ref: 'ZPUE_WLOSZCZOWA__TPM', family_name: 'TPM', manufacturer_ref: 'ZPUE_WLOSZCZOWA', voltage_levels: [15, 20], rated_current_options: [630], short_time_current_options: [20], status: 'repo_verified', source_refs: ['https://zpue.pl/rozdzielnice-sn/tpm'], insulation_type: 'sf6', construction_type: 'RMU', tor_konfiguracji: 'BLOK_RMU', series_name: null, notes_pl: null },
+    { switchgear_family_ref: 'ZPUE_WLOSZCZOWA__TPM', family_name: 'TPM', manufacturer_ref: 'ZPUE_WLOSZCZOWA', network_voltages_kv: [20], um_classes_kv: [25], rated_current_options: [630], short_time_current_options: [20], status: 'repo_verified', source_refs: ['https://zpue.pl/rozdzielnice-sn/tpm'], insulation_type: 'sf6', construction_type: 'RMU', tor_konfiguracji: 'BLOK_RMU', series_name: null, notes_pl: null },
     // Rodzina bez potwierdzonej karty — WIDOCZNA, ale niewybieralna.
-    { switchgear_family_ref: 'ABB__UNISEC', family_name: 'UniSec', manufacturer_ref: 'ZPUE_WLOSZCZOWA', voltage_levels: [], rated_current_options: [], short_time_current_options: [], status: 'requires_catalog', source_refs: [], insulation_type: 'air', construction_type: 'wnetrzowa', tor_konfiguracji: 'MODULARNY', series_name: null, notes_pl: null },
+    { switchgear_family_ref: 'ABB__UNISEC', family_name: 'UniSec', manufacturer_ref: 'ZPUE_WLOSZCZOWA', network_voltages_kv: [], um_classes_kv: [24], rated_current_options: [], short_time_current_options: [], status: 'requires_catalog', source_refs: [], insulation_type: 'air', construction_type: 'wnetrzowa', tor_konfiguracji: 'MODULARNY', series_name: null, notes_pl: null },
   ],
   // Subzasób konfiguracji fabrycznych: bloki ZPUE TPM Air w nomenklaturze
   // PRODUCENTA (L — rozłącznik liniowy 630 A, T — rozłącznik z bezpiecznikami

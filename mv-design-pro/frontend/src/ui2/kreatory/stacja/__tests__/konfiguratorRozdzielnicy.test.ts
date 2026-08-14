@@ -28,7 +28,9 @@ import {
   listaZnamionRodziny,
   naglowekRodziny,
   ofertaRodzinProducenta,
+  opisNapiecRodziny,
   polaZBloku,
+  rodzinaObslugujeNapiecie,
   rozlozBlok,
   szerokoscBlokuPl,
   torRodziny,
@@ -64,7 +66,10 @@ const RODZINA_MODULOWA: SwitchgearFamily = {
   manufacturer_ref: 'ZPUE_WLOSZCZOWA',
   family_name: 'Rotoblok',
   series_name: null,
-  voltage_levels: [15, 20],
+  // Karta Rotobloka podaje OBIE wielkości osobno: sieci 15/20 kV przy klasach
+  // urządzenia 17,5/24 kV (to ta para wymusiła rozdzielenie pól kontraktu).
+  network_voltages_kv: [15, 20],
+  um_classes_kv: [17.5, 24],
   rated_current_options: [630],
   short_time_current_options: [16],
   insulation_type: 'air',
@@ -79,7 +84,9 @@ const RODZINA_RMU: SwitchgearFamily = {
   ...RODZINA_MODULOWA,
   switchgear_family_ref: 'ZPUE_WLOSZCZOWA__TPM_AIR',
   family_name: 'TPM Air',
-  voltage_levels: [15, 20],
+  // Karta TPM Air podaje wyłącznie napięcie znamionowe SN (klasa urządzenia).
+  network_voltages_kv: [],
+  um_classes_kv: [24],
   short_time_current_options: [20],
   construction_type: 'RMU',
   tor_konfiguracji: 'BLOK_RMU',
@@ -90,7 +97,8 @@ const RODZINA_BEZ_KONSTRUKCJI: SwitchgearFamily = {
   ...RODZINA_MODULOWA,
   switchgear_family_ref: 'BEZ_KONSTRUKCJI',
   family_name: 'Rodzina bez karty',
-  voltage_levels: [],
+  network_voltages_kv: [],
+  um_classes_kv: [],
   rated_current_options: [],
   short_time_current_options: [],
   insulation_type: 'unknown',
@@ -143,12 +151,68 @@ describe('tor konfiguracji rodziny', () => {
   });
 });
 
+describe('dobór rodziny do napięcia szyny — iloczyn cech (lustro reguły katalogu)', () => {
+  /**
+   * ILOCZYN CECH: (rodzaj deklaracji rodziny) × (napięcie szyny). Ta sama
+   * tablica przypadków co w backendzie (`test_switchgear_napiecia_rodzin.py`),
+   * bo UI ma UPRZEDZAĆ werdykt walidatora, a nie proponować własny. Rozjazd
+   * którejkolwiek komórki znaczy, że kreator pokaże rodzinę, którą backend
+   * odrzuci (albo ukryje tę, którą przyjmie).
+   */
+  const PRZYPADKI: ReadonlyArray<
+    readonly [string, readonly number[], readonly number[], number, boolean]
+  > = [
+    // rodzina SIECIOWA — rozstrzyga lista sieci, nie zapas izolacji
+    ['sieciowa: szyna z listy', [15, 20], [17.5, 24], 15, true],
+    ['sieciowa: szyna z listy (górna)', [15, 20], [17.5, 24], 20, true],
+    ['sieciowa: szyna pod klasą, ale spoza listy sieci', [15, 20], [17.5, 24], 12, false],
+    ['sieciowa: szyna równa najwyższej klasie Um', [15, 20], [17.5, 24], 24, false],
+    ['sieciowa: szyna ponad wszystkim', [15, 20], [17.5, 24], 30, false],
+    // rodzina KLASOWA — wystarczy klasa Um >= napięcie szyny
+    ['klasowa: szyna pod klasą', [], [12, 24], 6, true],
+    ['klasowa: szyna między klasami', [], [12, 24], 17.5, true],
+    ['klasowa: szyna równa klasie', [], [12, 24], 24, true],
+    ['klasowa: szyna ponad najwyższą klasą', [], [12, 24], 25, false],
+    // rodzina BEZ DANYCH — brak deklaracji to nie jest zgoda
+    ['bez danych: szyna typowa', [], [], 15, false],
+    // szyna bez napięcia — nie ma czego porównać
+    ['szyna bez napięcia', [15, 20], [17.5, 24], 0, true],
+  ];
+
+  it.each(PRZYPADKI)('%s', (_nazwa, siec, um, napiecieSzyny, oczekiwane) => {
+    const rodzina: SwitchgearFamily = {
+      ...RODZINA_MODULOWA,
+      network_voltages_kv: siec,
+      um_classes_kv: um,
+    };
+    expect(rodzinaObslugujeNapiecie(rodzina, napiecieSzyny)).toBe(oczekiwane);
+  });
+
+  it('opis napięć nazywa KAŻDĄ wielkość, którą karta deklaruje', () => {
+    expect(opisNapiecRodziny({ ...RODZINA_MODULOWA })).toBe(
+      'sieć 15 / 20 kV · urządzenie 17,5 / 24 kV',
+    );
+    expect(
+      opisNapiecRodziny({ ...RODZINA_MODULOWA, network_voltages_kv: [], um_classes_kv: [24] }),
+    ).toBe('urządzenie 24 kV');
+    expect(
+      opisNapiecRodziny({ ...RODZINA_MODULOWA, network_voltages_kv: [20], um_classes_kv: [] }),
+    ).toBe('sieć 20 kV');
+    // Rodzina bez deklaracji daje JAWNY BRAK, nie pusty łańcuch ani „0 kV".
+    expect(
+      opisNapiecRodziny({ ...RODZINA_MODULOWA, network_voltages_kv: [], um_classes_kv: [] }),
+    ).toBeNull();
+    expect(opisNapiecRodziny(null)).toBeNull();
+  });
+});
+
 describe('oferta rodzin producenta', () => {
   const WYMAGA_KARTY: SwitchgearFamily = {
     ...RODZINA_MODULOWA,
     switchgear_family_ref: 'ABB__UNISEC',
     family_name: 'UniSec',
-    voltage_levels: [],
+    network_voltages_kv: [],
+    um_classes_kv: [24],
     status: 'requires_catalog',
     source_refs: [],
   };
@@ -168,13 +232,15 @@ describe('oferta rodzin producenta', () => {
     ...RODZINA_MODULOWA,
     switchgear_family_ref: 'ZPUE__NA_6KV',
     family_name: 'Seria 6 kV',
-    voltage_levels: [6],
+    network_voltages_kv: [],
+    um_classes_kv: [6],
   };
   const WYZSZA_KLASA: SwitchgearFamily = {
     ...RODZINA_MODULOWA,
     switchgear_family_ref: 'ZPUE__NA_24KV',
     family_name: 'Seria 24 kV',
-    voltage_levels: [24],
+    network_voltages_kv: [],
+    um_classes_kv: [24],
   };
   const OBCY_PRODUCENT: SwitchgearFamily = {
     ...RODZINA_MODULOWA,
@@ -219,12 +285,36 @@ describe('oferta rodzin producenta', () => {
     expect(pozycja.powod).toBe('WYMAGA_KARTY');
   });
 
-  it('rodzina bez zadeklarowanych napięć NIE jest odrzucana klasą napięciową', () => {
-    // Brak deklaracji to brak przeciwwskazania — inaczej rodzina z niepełną
-    // kartą znikałaby z listy z powodu, którego katalog nie stwierdza.
-    const bezNapiec: SwitchgearFamily = { ...RODZINA_MODULOWA, voltage_levels: [] };
+  it('rodzina bez ŻADNEJ deklaracji napięciowej jest niedostępna z jawnym powodem', () => {
+    // ZMIANA KANONU (karta K-J). Wcześniej brak deklaracji znaczył „brak
+    // przeciwwskazania" i rodzina zostawała wybieralna. Backend po włączeniu
+    // walidacji odrzuca taką rodzinę twardym błędem (nie ma czym potwierdzić
+    // zgodności z żadną szyną), więc pokazanie jej jako wybieralnej byłoby
+    // zielonym światłem do ściany. Intencja pierwotna — „nie usuwaj rodziny
+    // z listy po cichu" — zostaje spełniona inaczej i MOCNIEJ: pozycja jest
+    // widoczna, tylko z jawnym powodem niedostępności.
+    const bezNapiec: SwitchgearFamily = {
+      ...RODZINA_MODULOWA,
+      network_voltages_kv: [],
+      um_classes_kv: [],
+    };
     const [pozycja] = ofertaRodzinProducenta([bezNapiec], 'ZPUE_WLOSZCZOWA', 15);
+    expect(pozycja.powod).toBe('INNA_KLASA_NAPIECIOWA');
+  });
+
+  it('napięcie szyny NIEZNANE nie odrzuca żadnej rodziny', () => {
+    // Dopóki napięcie szyny nie jest znane, nie ma czego porównać — brak danych
+    // o szynie nie może udawać niezgodności rodziny.
+    const [pozycja] = ofertaRodzinProducenta([RODZINA_MODULOWA], 'ZPUE_WLOSZCZOWA', 0);
     expect(pozycja.powod).toBeNull();
+  });
+
+  it('rodzina z napięciami SIECI odrzuca szynę spoza listy, choć klasa Um by ją objęła', () => {
+    // Komórka dyskryminująca reguły: Rotoblok deklaruje sieci 15/20 kV przy
+    // klasach 17,5/24 kV. Szyna 12 kV mieści się pod klasą 17,5 kV, ale karta
+    // producenta nie oferuje wyrobu do sieci 12 kV — i to karta rozstrzyga.
+    const [pozycja] = ofertaRodzinProducenta([RODZINA_MODULOWA], 'ZPUE_WLOSZCZOWA', 12);
+    expect(pozycja.powod).toBe('INNA_KLASA_NAPIECIOWA');
   });
 
   it('etykieta pozycji niedostępnej niesie powód, dostępnej — samą nazwę', () => {
@@ -448,7 +538,10 @@ describe('nagłówek rodziny', () => {
     const wiersze = naglowekRodziny(RODZINA_RMU, 'ZPUE Włoszczowa');
     const wgEtykiety = Object.fromEntries(wiersze.map((w) => [w.etykieta, w.wartosc]));
     expect(wgEtykiety.Producent).toBe('ZPUE Włoszczowa');
-    expect(wgEtykiety['Napięcie znamionowe']).toBe('15 / 20 kV');
+    // Nagłówek NAZYWA obie wielkości karty — sama liczba nie mówiłaby, czy to
+    // napięcie sieci, czy klasa izolacji urządzenia.
+    // Rodzina RMU (TPM Air) — karta podaje wyłącznie klasę urządzenia.
+    expect(wgEtykiety['Napięcia katalogowe']).toBe('urządzenie 24 kV');
     expect(wgEtykiety['Prąd znamionowy szyn']).toBe('630 A');
     expect(wgEtykiety['Prąd zwarciowy 1 s']).toBe('20 kA');
     expect(wgEtykiety.Izolacja).toBe('powietrzna');
@@ -459,7 +552,7 @@ describe('nagłówek rodziny', () => {
   it('dana, której katalog nie niesie, zostaje JAWNYM BRAKIEM', () => {
     const wiersze = naglowekRodziny(RODZINA_BEZ_KONSTRUKCJI, 'ZPUE Włoszczowa');
     const wgEtykiety = Object.fromEntries(wiersze.map((w) => [w.etykieta, w.wartosc]));
-    expect(wgEtykiety['Napięcie znamionowe']).toBeNull();
+    expect(wgEtykiety['Napięcia katalogowe']).toBeNull();
     expect(wgEtykiety['Prąd znamionowy szyn']).toBeNull();
     expect(wgEtykiety['Prąd zwarciowy 1 s']).toBeNull();
     expect(wgEtykiety['Tor konfiguracji']).toBeNull();
@@ -490,7 +583,7 @@ describe('nagłówek rodziny', () => {
       producent: 'ZPUE Włoszczowa',
     }).naglowek;
 
-    expect(wgEtykiety['Napięcie znamionowe']).toBe(naglowekRysunku.klasaNapiecia);
+    expect(wgEtykiety['Napięcia katalogowe']).toBe(naglowekRysunku.klasaNapiecia);
     expect(wgEtykiety['Prąd znamionowy szyn']).toBe(naglowekRysunku.pradSzyn);
     expect(wgEtykiety['Prąd zwarciowy 1 s']).toBe(naglowekRysunku.pradZwarciowy);
     expect(wgEtykiety.Konstrukcja).toBe(naglowekRysunku.konstrukcja);

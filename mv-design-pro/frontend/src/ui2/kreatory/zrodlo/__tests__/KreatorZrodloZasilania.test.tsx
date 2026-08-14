@@ -62,7 +62,7 @@ vi.mock('../../../../ui/catalog/api', () => ({
     ]),
   fetchSwitchgearFamilies: () =>
     Promise.resolve([
-      { switchgear_family_ref: 'ABB__SAFERING', manufacturer_ref: 'ABB', family_name: 'SafeRing', series_name: 'SafeRing', voltage_levels: [15, 17.5], insulation_type: 'sf6', construction_type: 'RMU', status: 'verified', source_refs: [] },
+      { switchgear_family_ref: 'ABB__SAFERING', manufacturer_ref: 'ABB', family_name: 'SafeRing', series_name: 'SafeRing', network_voltages_kv: [], um_classes_kv: [12, 17.5, 24], insulation_type: 'sf6', construction_type: 'RMU', status: 'verified', source_refs: [] },
     ]),
   fetchCompleteBayTemplates: () =>
     Promise.resolve([

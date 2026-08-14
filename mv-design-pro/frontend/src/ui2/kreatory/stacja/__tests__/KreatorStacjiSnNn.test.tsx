@@ -272,7 +272,8 @@ vi.mock('../../../../ui/catalog/api', () => ({
         manufacturer_ref: 'ZPUE_WLOSZCZOWA',
         family_name: 'Rotoblok',
         series_name: null,
-        voltage_levels: [15, 20],
+        network_voltages_kv: [15, 20],
+        um_classes_kv: [17.5, 24],
         rated_current_options: [630],
         short_time_current_options: [16],
         insulation_type: 'air',
@@ -287,7 +288,8 @@ vi.mock('../../../../ui/catalog/api', () => ({
         manufacturer_ref: 'ZPUE_WLOSZCZOWA',
         family_name: 'TPM Air',
         series_name: null,
-        voltage_levels: [15],
+        network_voltages_kv: [],
+        um_classes_kv: [17.5],
         rated_current_options: [630],
         short_time_current_options: [20],
         insulation_type: 'air',
@@ -302,7 +304,8 @@ vi.mock('../../../../ui/catalog/api', () => ({
         manufacturer_ref: 'ZPUE_WLOSZCZOWA',
         family_name: 'RM6 (bez transkrypcji bloków)',
         series_name: null,
-        voltage_levels: [15],
+        network_voltages_kv: [],
+        um_classes_kv: [17.5],
         rated_current_options: [],
         short_time_current_options: [],
         insulation_type: 'sf6',
@@ -317,7 +320,8 @@ vi.mock('../../../../ui/catalog/api', () => ({
         manufacturer_ref: 'ZPUE_WLOSZCZOWA',
         family_name: 'Rodzina bez karty konstrukcji',
         series_name: null,
-        voltage_levels: [15],
+        network_voltages_kv: [],
+        um_classes_kv: [17.5],
         rated_current_options: [],
         short_time_current_options: [],
         insulation_type: 'unknown',
@@ -1496,7 +1500,9 @@ describe('KreatorStacjiSnNn — tory konfiguracji rozdzielnicy (S3)', () => {
     await wybierzRodzine('ZPUE_TPM_AIR');
 
     const naglowek = await screen.findByTestId('mvd-kreator-stacja-naglowek-rodziny');
-    expect(naglowek).toHaveTextContent('15 kV');
+    // Fikstura TPM_AIR deklaruje klasę urządzenia 17,5 kV; nagłówek nazywa
+    // wielkość, więc projektant nie zgaduje, czy czyta sieć, czy izolację.
+    expect(naglowek).toHaveTextContent('urządzenie 17,5 kV');
     expect(naglowek).toHaveTextContent('630 A');
     expect(naglowek).toHaveTextContent('20 kA');
     expect(naglowek).toHaveTextContent('powietrzna');
