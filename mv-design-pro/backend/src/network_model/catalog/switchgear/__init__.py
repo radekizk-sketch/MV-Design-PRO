@@ -24,6 +24,16 @@ from .device_instance import (
     ApparatusKind,
     BayDeviceInstanceTemplate,
     ElectricalSide,
+    StatusWyposazenia,
+)
+from .errors import NiezgodnoscKonfiguracjiError
+from .factory_configuration import (
+    FACTORY_CONFIGURATION_REGISTRY,
+    FactoryConfiguration,
+    FactoryConfigurationUnit,
+    get_factory_configuration,
+    list_factory_configurations,
+    list_factory_configurations_for_family,
 )
 from .families import (
     ABB__SAFEPLUS,
@@ -50,6 +60,18 @@ from .families import (
     list_families_for_manufacturer,
     list_offered_switchgear_families,
     list_switchgear_families,
+)
+from .family_validation import (
+    bay_template_supports_apparatus,
+    family_supports_apparatus,
+    family_supports_bay_kind,
+    family_supports_bay_template,
+    family_supports_current,
+    family_supports_factory_configuration,
+    family_supports_short_circuit,
+    family_supports_voltage,
+    get_family_or_raise,
+    wymagaj_rodziny_oferowanej,
 )
 from .manufacturer import Manufacturer, ManufacturerStatus
 from .port_definition import (
@@ -97,10 +119,14 @@ __all__ = [
     "ELEKTROMETAL",
     "ELEKTROMETAL__E2ALPHA",
     "ElectricalSide",
+    "FACTORY_CONFIGURATION_REGISTRY",
+    "FactoryConfiguration",
+    "FactoryConfigurationUnit",
     "InsulationType",
     "MANUFACTURER_REGISTRY",
     "Manufacturer",
     "ManufacturerStatus",
+    "NiezgodnoscKonfiguracjiError",
     "POTWIERDZONE_STATUSY_RODZINY",
     "PortDefinitionTemplate",
     "PortKind",
@@ -113,6 +139,7 @@ __all__ = [
     "SIEMENS__NXAIR",
     "SWITCHGEAR_FAMILY_REGISTRY",
     "SourceStatus",
+    "StatusWyposazenia",
     "SwitchgearFamily",
     "SwitchgearFamilyStatus",
     "TOR_KONFIGURACJI_WG_KONSTRUKCJI",
@@ -126,11 +153,23 @@ __all__ = [
     "ZPUE_WLOSZCZOWA__RXD",
     "ZPUE_WLOSZCZOWA__TPM",
     "ZPUE_WLOSZCZOWA__TPM_AIR",
+    "bay_template_supports_apparatus",
+    "family_supports_apparatus",
+    "family_supports_bay_kind",
+    "family_supports_bay_template",
+    "family_supports_current",
+    "family_supports_factory_configuration",
+    "family_supports_short_circuit",
+    "family_supports_voltage",
     "get_canonical_fallback_for_bay_kind",
+    "get_factory_configuration",
+    "get_family_or_raise",
     "get_manufacturer",
     "get_switchgear_family",
     "list_canonical_fallback_for_manufacturer",
     "list_canonical_fallback_templates",
+    "list_factory_configurations",
+    "list_factory_configurations_for_family",
     "list_families_for_manufacturer",
     "list_manufacturers",
     "list_offered_switchgear_families",
@@ -139,4 +178,5 @@ __all__ = [
     "manufacturers_requiring_catalog",
     "tor_konfiguracji_dla_konstrukcji",
     "verified_manufacturers",
+    "wymagaj_rodziny_oferowanej",
 ]
