@@ -565,3 +565,21 @@ Bramka kombinacji: vitest sld **258 plików / 4765 testów**, accept:sld-v3,
 tsc+lint, 6 guardów. W biegu: T3 (layout kompaktowy, etykiety bez elips, dane
 TR przy T1). Zrzuty do re-werdyktu B-02 wymagają żywego stosu (sandbox bez
 Dockera) — harness gotowy po T3.
+
+**Aktualizacja 2026-08-14 (c.d.): ARKUSZ-NN + scalenie S5 nadzoru.**
+- ARKUSZ-NN (`b85e4bc7`): arkusz obliczeń obwodów nN klasy projektu
+  wykonawczego — zakładka ARKUSZ w nN STUDIO (25 kolumn wzorca właściciela +
+  Ik/SWZ/I²t/provenance), agregator `nn_circuit_sheet.py` (zero nowej fizyki,
+  testy anty-cyrkularne), CSV deterministyczny, sekcja raportu; kryteria na
+  aparacie ZAINSTALOWANYM. Test referencyjny uczciwie pokazuje defekt
+  projektowy (MCB B16 przy Ib=32 A → „nie spełnia").
+- Scalenie S5 nadzoru (`6f7db8c8`, 44 commity): 5 konfliktów rozwiązanych
+  (typ-narrowing assertem zamiast ich str() — maskowałby None; unia importów
+  v2; golden sldNetwork53 ZREGENEROWANY generatorem na scalonych źródłach;
+  unie dokumentów). Bramka: **10194 passed / 1 failed / 11 skipped** — jedyna
+  czerwień to PIN PARAMI z odbioru D4, który złapał `add_sn_bay_from_catalog`
+  (S5) w bramce API bez lustra we frontendzie (klasa KD-1); lustro dodane
+  (`b39df3ba`), pin zielony. Czwarty dowód wartości pinów odbiorczych w sesji.
+- Reset kontenera #3 obsłużony bez strat (push-po-odbiorze); T3 (layout
+  kompaktowy) wznowiony świeżym wykonawcą — w biegu.
+
