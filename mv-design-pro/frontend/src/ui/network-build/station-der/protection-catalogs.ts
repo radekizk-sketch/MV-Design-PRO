@@ -1,15 +1,19 @@
 /**
  * Katalogi zabezpieczeń (Naprawa C — audyt specjalisty zabezpieczeń).
  *
- * Zawiera:
- *   - ProtectionFunctionCatalog (Naprawa C.1): ANSI/IEEE C37.2 + IEC 60255
- *   - CtCatalog (Naprawa C.6): klasa, burden VA, ratio, accuracy
- *   - VtCatalog (Naprawa C.6): klasa, burden VA, ratio, U_th
- *   - SpzCatalog (Naprawa C.3): typy SPZ/auto-reclosing 79
- *   - SzrCatalog (Naprawa C.4): SZR (automatic source switchover)
- *   - TransformerDifferentialCatalog (Naprawa C.5): 87T dla transformatorów
+ * Zawiera (stan zmierzony 2026-08-14, karta K-O — poprzedni nagłówek zapowiadał
+ * trzy katalogi, których w pliku NIE MA: VtCatalog usunięty w V12K-257, dane
+ * burden/ratio CT nigdy tu nie mieszkały, a TransformerDifferentialCatalog nie
+ * powstał; nagłówek obiecujący nieistniejącą zawartość to ten sam rodzaj
+ * nieprawdy, co dana bez źródła):
+ *   - PROTECTION_FUNCTION_CATALOG (C.1): ANSI/IEEE C37.2 + IEC 60255
+ *   - CtClass (C.6): unia klas dokładności CT wg IEC 61869-2 (sam typ + predykaty)
+ *   - SPZ_CATALOG (C.3): typy SPZ/auto-reclosing 79
+ *   - SZR_CATALOG (C.4): SZR (automatic source switchover)
+ *   - HV_FUSE_CATALOG (eng.17): oznaczenia znamionowe wkładek SN wg IEC 60282-1
  *
  * Zasada: każdy ANSI code ma polski opis + dziedzinę zastosowania.
+ * Zasada (K-O): każda wartość liczbowa ma źródło albo pozycji/pola nie ma.
  */
 
 // =============================================================================
