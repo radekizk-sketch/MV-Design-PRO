@@ -82,7 +82,7 @@ describe('Wizard → Store integration (Pakiet H/G end-to-end)', () => {
     fireEvent.change(screen.getByTestId('add-der-ncrfg'), { target: { value: 'ncrfg_pse' } });
     fireEvent.change(screen.getByTestId('add-der-lvrt'), { target: { value: 'lvrt_pse_b' } });
     fireEvent.change(screen.getByTestId('add-der-hvrt'), { target: { value: 'hvrt_pse_b' } });
-    fireEvent.change(screen.getByTestId('add-der-pf-curve'), { target: { value: 'pf_pse_b' } });
+    fireEvent.change(screen.getByTestId('add-der-pf-curve'), { target: { value: 'pf_droop_5' } });
     fireEvent.click(screen.getByTestId('add-der-next'));
 
     // Krok 5: review + Utwórz.
@@ -93,8 +93,15 @@ describe('Wizard → Store integration (Pakiet H/G end-to-end)', () => {
     const ders = selectAllDers(useStationDerStore.getState());
 
     const der = ders[0];
-    expect(der.catalogs.block_transformer_catalog_ref).toBe('btr_pv_15_069_2500');
-    expect(der.profiles.pf_curve_ref).toBe('pf_pse_b');
+    // Karta K-Q — ZMIANA OCZEKIWANIA JEST NAPRAWA, NIE REGRESJA.
+    // Poprzednio test oczekiwal 2500 kVA pod falownikiem 2500 kW. Automatyczny
+    // dobor liczy wymagana moc pozorna przy cos phi 0,90 (2500 / 0,90 = 2778 kVA)
+    // i wybiera najmniejszy typoszereg, ktory ja przenosi. Do tej karty katalog
+    // KONCZYL SIE na 2500 kVA, wiec zaden kandydat nie spelnial warunku, dobor
+    // zwracal null i kreator przyjmowal recznie wskazany, ZA MALY transformator.
+    // Typoszereg oparty na realnym katalogu ma 4 MVA — i to jest teraz wynik.
+    expect(der.catalogs.block_transformer_catalog_ref).toBe('btr_der_15_069_4000');
+    expect(der.profiles.pf_curve_ref).toBe('pf_droop_5');
     // BESS modes nie powinny byc dla PV.
     expect(der.profiles.bess_operation_mode_refs).toEqual([]);
   });

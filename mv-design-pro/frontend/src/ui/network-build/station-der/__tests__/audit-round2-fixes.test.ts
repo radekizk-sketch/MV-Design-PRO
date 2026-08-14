@@ -16,7 +16,6 @@ import {
   // Pakiet D
   BESS_OPERATION_MODE_CATALOG,
   selectBessModesForPcs,
-  selectRequiredBessModesForModule,
   TAP_CHANGER_CATALOG,
   selectTapChangersForTransformer,
   getTapChanger,
@@ -256,11 +255,20 @@ describe('eng.10 — BessOperationModeCatalog', () => {
     expect(codes).toContain('self_consumption');
   });
 
-  it('FCR-N ma reaction time 30s i wymaga 4Q', () => {
+  it('FCR-N wymaga 4Q, a katalog nie deklaruje czasu reakcji bez źródła', () => {
+    // INTENCJA POPRZEDNIEGO TESTU: pilnował pary „czas reakcji ≤ 30 s + 4Q".
+    // Czas reakcji określa regulamin rynku bilansującego operatora systemu
+    // przesyłowego, a nie ten katalog — pole usunięto w karcie K-Q (backend jest
+    // autorytetem). Zostaje ta część, która wynika z definicji usługi.
     const fcrN = BESS_OPERATION_MODE_CATALOG.find((m) => m.mode_code === 'fcr_n');
     expect(fcrN).toBeDefined();
-    expect(fcrN!.response_time_s).toBeLessThanOrEqual(30);
     expect(fcrN!.requires_four_quadrant).toBe(true);
+    for (const mode of BESS_OPERATION_MODE_CATALOG as ReadonlyArray<Record<string, unknown>>) {
+      expect(mode).not.toHaveProperty('response_time_s');
+      expect(mode).not.toHaveProperty('max_duration_h');
+      expect(mode).not.toHaveProperty('reserved_capacity_percent');
+      expect(mode).not.toHaveProperty('required_for_nc_rfg_modules');
+    }
   });
 
   it('Island backup wymaga grid-forming PCS', () => {
@@ -285,11 +293,13 @@ describe('eng.10 — BessOperationModeCatalog', () => {
     expect(grid_following_only.find((m) => m.mode_code === 'island_backup')).toBeUndefined();
   });
 
-  it('selectRequiredBessModesForModule zwraca FCR-N i voltage_support dla modułu C', () => {
-    const required = selectRequiredBessModesForModule('C');
-    const codes = required.map((m) => m.mode_code);
-    expect(codes).toContain('fcr_n');
-    expect(codes).toContain('voltage_support');
+  it('nie ma już selektora trybów rzekomo wymaganych przez NC RfG', async () => {
+    // INTENCJA POPRZEDNIEGO TESTU: pilnował, że moduł C „wymaga" FCR-N i Q(U).
+    // Sprawdzone na tekście rozporządzenia (UE) 2016/631: ono nie nakazuje
+    // modułom wytwórczym świadczenia FCR-N / FCR-D / aFRR / mFRR — to produkty
+    // rynku bilansującego. Selektor i pole zniknęły po obu stronach (karta K-Q).
+    const katalogi = await import('../catalogs');
+    expect(katalogi).not.toHaveProperty('selectRequiredBessModesForModule');
   });
 });
 
@@ -320,7 +330,13 @@ describe('eng.13 — TapChangerCatalog', () => {
     const detc = TAP_CHANGER_CATALOG.find((tc) => tc.type === 'detc');
     expect(detc).toBeDefined();
     expect(detc!.supports_avr).toBe(false);
-    expect(detc!.switching_time_s).toBe(0); // off-load
+    // Karta K-Q: czas przełączenia i resurs między przeglądami to dane wyrobu
+    // bez źródła — usunięte po obu stronach. O tym, że DETC przełącza się bez
+    // obciążenia, mówi jego typ i nazwa, a nie zgadnięta liczba sekund.
+    for (const tc of TAP_CHANGER_CATALOG as ReadonlyArray<Record<string, unknown>>) {
+      expect(tc).not.toHaveProperty('switching_time_s');
+      expect(tc).not.toHaveProperty('operations_before_maintenance_thousand');
+    }
   });
 
   it('selectTapChangersForTransformer filtruje po typie', () => {

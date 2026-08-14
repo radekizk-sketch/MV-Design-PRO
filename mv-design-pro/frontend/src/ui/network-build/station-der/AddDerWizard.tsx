@@ -98,7 +98,6 @@ type DerDeviceCatalogItem = {
   readonly source_reference?: string | null;
   readonly verification_status?: string | null;
   readonly catalog_status?: string | null;
-  readonly fault_current_capability_pu?: number;
   readonly applicable_module_types?: readonly ('A' | 'B' | 'C' | 'D')[];
   readonly four_quadrant?: boolean;
   readonly grid_forming_capable?: boolean;
@@ -439,7 +438,6 @@ function mapBackendConverterToDerDevice(item: ConverterType): DerDeviceCatalogIt
     source_reference: item.source_reference ?? null,
     verification_status: item.verification_status ?? null,
     catalog_status: item.catalog_status ?? null,
-    fault_current_capability_pu: item.kind === 'BESS' ? 1.2 : item.kind === 'WIND' ? 1.1 : 1.1,
     applicable_module_types: deriveModuleTypesForPowerKw(nominalPowerKw),
     four_quadrant: item.kind === 'BESS',
     grid_forming_capable: item.control_mode === 'GRID_FORMING',
@@ -1784,7 +1782,6 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
                       value={resolvePtpireeDocument(selectedDevice, selectedDevicePtpireeCertificate)}
                     />
                     <CatalogMetric label="Model EMT/RMS" value={selectedDevice.dynamic_profile_id ?? '-'} />
-                    <CatalogMetric label="Ik pu" value={selectedDevice.fault_current_capability_pu?.toFixed(2) ?? '-'} />
                     <CatalogMetric label="WOS/WiPWC" value={[selectedDevice.ptpiree_wos_version, selectedDevice.ptpiree_wipwc_version].filter(Boolean).join(' / ') || '-'} />
                     <CatalogMetric label="Źródło" value={selectedDevice.source_reference ?? selectedDevice.verification_status ?? '-'} />
                   </div>
@@ -1835,7 +1832,7 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
                           <div className="flex-1">
                             <div className="font-medium text-scada-text">{m.label_pl}</div>
                             <div className="text-[10px] text-scada-muted">
-                              t_resp ≤ {m.response_time_s}s · max {m.max_duration_h}h · rezerwa {m.reserved_capacity_percent}%
+                              {m.description_pl}
                             </div>
                           </div>
                         </label>
@@ -1871,10 +1868,10 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
                     ncRfgProfileRef: v || null,
                     lvrtCurveRef: v ? selectLvrtCurvesForProfile(v)[0]?.id ?? null : null,
                     hvrtCurveRef: v ? selectHvrtCurvesForProfile(v)[0]?.id ?? null : null,
-                    pfCurveRef: PF_CURVE_CATALOG.filter((c) => {
-                      const profile = NC_RFG_PROFILE_CATALOG.find((p) => p.id === v);
-                      return profile ? c.operator_code === profile.operator_code : false;
-                    })[0]?.id ?? null,
+                    // Warianty nastawy P(f) nie zależą od operatora (karta K-Q):
+                    // rozporządzenie 2016/631 podaje przedział nastawialny, a nie
+                    // wartość „dla PSE / Energi". Wybór zostaje projektantowi.
+                    pfCurveRef: s.pfCurveRef,
                   }))
                 }
                 options={[
@@ -1909,19 +1906,12 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
               />
               {/* Pakiet H: P(f) krzywa regulacji częstotliwości (NC RfG Art. 13/15). */}
               <Select
-                label="Krzywa P(f) — regulacja częstotliwości (NC RfG Art. 13/15)"
-                disabled={!selections.ncRfgProfileRef}
+                label="Nastawa P(f) — statyzm regulacji częstotliwości (NC RfG art. 13 ust. 2)"
                 value={selections.pfCurveRef ?? ''}
                 onChange={(v) => setSelections((s) => ({ ...s, pfCurveRef: v || null }))}
                 options={[
                   { id: '', label: '— wybierz (opcjonalnie) —' },
-                  ...PF_CURVE_CATALOG.filter((c) => {
-                    const profile = NC_RFG_PROFILE_CATALOG.find(
-                      (p) => p.id === selections.ncRfgProfileRef,
-                    );
-                    if (!profile) return false;
-                    return c.operator_code === profile.operator_code;
-                  }).map((c) => ({ id: c.id, label: c.label_pl })),
+                  ...PF_CURVE_CATALOG.map((c) => ({ id: c.id, label: c.label_pl })),
                 ]}
                 testId="add-der-pf-curve"
               />
