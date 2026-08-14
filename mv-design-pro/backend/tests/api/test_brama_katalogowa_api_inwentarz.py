@@ -39,6 +39,7 @@ from __future__ import annotations
 import ast
 import copy
 import inspect
+import re
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
@@ -49,6 +50,7 @@ from api.domain_ops_policy import (
     API_CATALOG_BINDING_KEYS,
     API_CATALOG_GATE_INVENTORY,
     API_CATALOG_REF_PAYLOAD_KEYS,
+    CATALOG_REQUIRED_OPERATIONS,
     STATION_CATALOG_REF_INVENTORY,
     validate_and_materialize_catalog_binding,
 )
@@ -483,12 +485,11 @@ INIEKCJE: tuple[IniekcjaBramy, ...] = (
         lambda: {"feeder_ref": "nn-1", "catalog_binding": _wiazanie("OBCIAZENIE", REF_ODBIOR)},
         lambda p: _zepsuj_wiazanie(p),
     ),
-    IniekcjaBramy(
-        "add_nn_outgoing_field",
-        "catalog_ref",
-        lambda: {"bus_nn_ref": "nn-bus-1", "catalog_ref": REF_APARAT_NN},
-        lambda p: _zepsuj_klucz(p, "catalog_ref"),
-    ),
+    # `add_nn_outgoing_field` NIE MA tu iniekcji — karta NAPRAWA-B, znalezisko #2:
+    # usunięta z `API_CATALOG_GATE_INVENTORY` (operacja nie czyta `catalog_ref`
+    # w żadnej gałęzi; dawna pozycja bramkowała referencję, której materializacja
+    # nigdzie nie trafiała). Parytet pinuje
+    # `test_add_nn_outgoing_field_bez_catalog_ref_przechodzi_brame` niżej.
     # --- Źródło przekształtnikowe: tor nN i tor DER-SN -----------------------
     IniekcjaBramy(
         "add_converter_source",
@@ -1004,3 +1005,153 @@ def test_predykat_wiazan_der_jest_ten_sam_co_w_warstwie_domenowej() -> None:
     # Operacja odrzuca z powodu BRAKU wytwórcy w modelu, nie z powodu katalogu —
     # to dowód, że predykat katalogowy przepuścił tę samą referencję.
     assert wynik.get("error_code") == "der_bindings.generator_not_found", wynik
+
+
+# ---------------------------------------------------------------------------
+# Karta NAPRAWA-B, znalezisko #2 — rozjazd kontraktu catalog_ref
+# `add_nn_outgoing_field`. Pomiar: operacja domenowa nie czyta
+# `catalog_ref`/`catalog_binding` z payloadu w ŻADNEJ gałęzi (FEEDER ani
+# SOURCE) — usunięta z `CATALOG_REQUIRED_OPERATIONS` i z
+# `API_CATALOG_GATE_INVENTORY`. Testy niżej pinują naprawę I pilnują, żeby
+# WHOLE rejestr (`CATALOG_REQUIRED_OPERATIONS` × frontendowy odpowiednik
+# `catalogFirstRules.ts`) nie rozjechał się po cichu w przyszłości.
+# ---------------------------------------------------------------------------
+
+
+def test_add_nn_outgoing_field_poza_wymaganymi_operacjami_katalogowymi() -> None:
+    """Pin rejestru: operacja, która nie konsumuje catalog_ref, nie może go wymagać."""
+    assert "add_nn_outgoing_field" not in CATALOG_REQUIRED_OPERATIONS
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        pytest.param(
+            {
+                "station_ref": "st-1",
+                "bus_nn_ref": "nn-bus-1",
+                "field_role": "FEEDER",
+                "field_name": "Odpływ nN",
+            },
+            id="FEEDER",
+        ),
+        pytest.param(
+            {
+                "station_ref": "st-1",
+                "bus_nn_ref": "nn-bus-1",
+                "field_role": "SOURCE",
+                "source_field_kind": "PV",
+                "field_name": "Pole przyłączeniowe nN",
+            },
+            id="SOURCE",
+        ),
+    ],
+)
+def test_add_nn_outgoing_field_bez_catalog_ref_przechodzi_brame(payload: dict[str, Any]) -> None:
+    """Dokładny payload PRODUKCYJNEGO kreatora (`KreatorPolaNn.tsx`) — bez `catalog_ref`,
+    bo formularz świadomie go nie pokazuje. Przed naprawą: `422 catalog.ref_required`
+    na KAŻDE żądanie (dla obu ról, FEEDER i SOURCE). Iloczyn cech: rola pola ×
+    obecność/brak `catalog_ref` — nie tylko przykład z karty.
+    """
+    blad, pola = validate_and_materialize_catalog_binding("add_nn_outgoing_field", payload)
+    assert blad is None, f"Kreator 'Pole odpływowe nN' zostałby odrzucony bramą: {blad}"
+    assert pola == {}
+
+    # Payload z JAWNIE podanym (niepoprawnym) catalog_ref też przechodzi bramę —
+    # operacja go i tak nie czyta, więc bramkowanie byłoby fikcją kontroli.
+    z_bledna_referencja = {**payload, "catalog_ref": "nie-istnieje-w-katalogu"}
+    blad2, _ = validate_and_materialize_catalog_binding(
+        "add_nn_outgoing_field", z_bledna_referencja
+    )
+    assert blad2 is None, f"Nieużywana referencja nie powinna nic bramkować: {blad2}"
+
+
+def _frontend_catalog_first_operations() -> set[str]:
+    """Operacje wymagające katalogu wg FRONTENDOWEGO odpowiednika bramy
+    (`frontend/src/ui/network-build/forms/catalogFirstRules.ts`) — czytane
+    WPROST z `case`'ów `switch` w `validateCatalogFirst` (predykat REALNIE
+    wykonywany przy zapisie), nie z komentarzy ani z klucza słownika komunikatów.
+    """
+    plik = (
+        Path(__file__).resolve().parents[3]
+        / "frontend"
+        / "src"
+        / "ui"
+        / "network-build"
+        / "forms"
+        / "catalogFirstRules.ts"
+    )
+    assert plik.is_file(), f"catalogFirstRules.ts nie znaleziony pod {plik}"
+    tresc = plik.read_text(encoding="utf-8")
+    dopasowanie = re.search(r"export function validateCatalogFirst\b.*?\n\}\n", tresc, re.DOTALL)
+    assert dopasowanie, "Nie znaleziono funkcji validateCatalogFirst w catalogFirstRules.ts"
+    return set(re.findall(r"case '([a-zA-Z_]+)':", dopasowanie.group(0)))
+
+
+#: Operacje, dla których `CATALOG_REQUIRED_OPERATIONS` (backend) wymaga katalogu,
+#: ale `catalogFirstRules.ts` (frontend) go NIE wymaga — lista ZAMKNIĘTA i JAWNA,
+#: każda pozycja z osobnym pomiarem (nowa pozycja wymaga TEGO SAMEGO pomiaru, nie
+#: ciszy):
+#:
+#: * `add_nn_load` — rozjazd tej samej KLASY co znalezisko #2, zmierzony przy tej
+#:   naprawie i ŚWIADOMIE NIE naprawiony w tej karcie (wymaga decyzji produktowej:
+#:   czy manualny odbiór nN bez pozycji katalogowej — kanoniczny `EKSPERCKI_RECZNY`
+#:   w `enm.domain_operations_v2.add_nn_load`, patrz `tests/enm/
+#:   test_znacznik_pochodzenia_katalogowego_v2.py` — ma być osiągalny z
+#:   produkcyjnego API, tak jak jest z domeny). Trzy niezależne miejsca po stronie
+#:   frontendu zgadzają się z tym pominięciem: `KreatorOdbioruNn`/`odbiorModel.ts`
+#:   (komentarz „Katalog OBCIAZENIE opcjonalny", picker BEZ `wymagane`) i
+#:   nieobecność `add_nn_load` w tym switchu — inaczej niż `add_nn_outgoing_field`
+#:   (naprawione), to NIE jest martwy wymóg: operacja GO konsumuje, gdy jest podany.
+#: * `add_sn_bay`, `append_station_on_endpoint` — POZA zakresem tej karty (SN, nie
+#:   nN; ZAKAZY §"Frontend: tylko kreatory nN"). Zmierzone: OBA kreatory
+#:   (`ui2/kreatory/pole/KreatorPolaSn.tsx`+`polaSnModel.ts`,
+#:   `ui2/kreatory/stacja/stacjaModel.ts`) i tak wysyłają katalog przez WŁASNĄ
+#:   lokalną walidację formularza (`polaSnModel.ts` linia ~159: „Wybierz aparat
+#:   pola z katalogu SN.") — to luka w SPOLECZONYM, drugorzędnym helperze
+#:   pre-flight (`catalogFirstRules.ts` przestał być aktualizowany dla tych dwóch
+#:   operacji), NIE martwa/złamana ścieżka kreatora jak przy #2. `append_station_
+#:   on_endpoint` ma DODATKOWO warunek („transformator OPCJONALNY" —
+#:   `_append_station_tworzy_transformator` w `domain_ops_policy.py`), którego
+#:   naiwne dopisanie do switcha bez powtórzenia TEGO SAMEGO warunku zrobiłoby
+#:   frontend SUROWSZY od backendu (nowy defekt, nie naprawa) — zgłoszone do
+#:   osobnej karty, nie naprawiane tu bez pełnego pomiaru tego warunku.
+ROZJAZD_WYMOGU_KATALOGU_ZNANY: frozenset[str] = frozenset(
+    {"add_nn_load", "add_sn_bay", "append_station_on_endpoint"}
+)
+
+
+def test_bramka_i_frontend_zgadzaja_sie_co_do_wymogu_katalogu() -> None:
+    """Iloczyn cech: KAŻDA operacja z `CATALOG_REQUIRED_OPERATIONS` ma frontendowy
+    odpowiednik w `catalogFirstRules.ts` ALBO jest na jawnej, uzasadnionej liście
+    wyjątków (`ROZJAZD_WYMOGU_KATALOGU_ZNANY`) — nigdy cicho. Odwrotny kierunek też:
+    frontend nie może wymagać katalogu dla operacji spoza rejestru backendu.
+    """
+    frontend = _frontend_catalog_first_operations()
+    assert frontend, "Skan catalogFirstRules.ts stracił kotwicę — brak case'ów switcha"
+
+    backend_bez_frontendu = CATALOG_REQUIRED_OPERATIONS - frontend
+    nieudokumentowane = backend_bez_frontendu - ROZJAZD_WYMOGU_KATALOGU_ZNANY
+    assert not nieudokumentowane, (
+        "Operacje wymagające katalogu w API, ale nie w catalogFirstRules.ts, bez "
+        f"udokumentowanego uzasadnienia: {sorted(nieudokumentowane)}"
+    )
+
+    juz_niepotrzebne = ROZJAZD_WYMOGU_KATALOGU_ZNANY - backend_bez_frontendu
+    assert not juz_niepotrzebne, (
+        "Wpisy na liście wyjątków, które przestały być rozjazdem (rozjazd naprawiony "
+        f"po obu stronach — usuń z listy): {sorted(juz_niepotrzebne)}"
+    )
+
+    frontend_bez_backendu = frontend - CATALOG_REQUIRED_OPERATIONS
+    assert not frontend_bez_backendu, (
+        "catalogFirstRules.ts wymaga katalogu dla operacji spoza "
+        f"CATALOG_REQUIRED_OPERATIONS (frontend surowszy od backendu): "
+        f"{sorted(frontend_bez_backendu)}"
+    )
+
+    # `add_nn_outgoing_field`: NIE MA w żadnym z dwóch zbiorów (naprawa #2) — pin
+    # jawny, żeby regresja (przywrócenie do CATALOG_REQUIRED_OPERATIONS bez
+    # równoczesnej naprawy operacji/frontu) zapaliła ten test od razu.
+    assert "add_nn_outgoing_field" not in CATALOG_REQUIRED_OPERATIONS
+    assert "add_nn_outgoing_field" not in frontend

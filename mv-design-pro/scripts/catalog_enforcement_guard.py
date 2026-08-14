@@ -34,7 +34,14 @@ REQUIRED_CATALOG_REQUIRED_OPERATIONS = frozenset(
         "insert_zksn_on_segment_sn",
         "insert_station_on_segment_sn",
         "add_transformer_sn_nn",
-        "add_nn_outgoing_field",
+        # `add_nn_outgoing_field` USUNIĘTA stąd (karta NAPRAWA-B, znalezisko #2,
+        # 2026-08): operacja domenowa nie czyta `catalog_ref`/`catalog_binding` z
+        # payloadu w ŻADNEJ gałęzi (`enm.domain_operations_v2.
+        # _add_nn_outgoing_field_internal`, `_append_nn_source_meta_field`), więc
+        # wymóg bramy był martwy — realny kreator (`ui2/kreatory/pole-nn/
+        # KreatorPolaNn.tsx`) go świadomie nie wysyłał i dostawał `422
+        # catalog.ref_required` na każde żądanie przez produkcyjny endpoint.
+        # Dowód: `backend/tests/api/test_brama_katalogowa_api_inwentarz.py`.
         "add_nn_load",
         "add_converter_source",
         "insert_section_switch_sn",

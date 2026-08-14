@@ -31,6 +31,7 @@ from network_model.catalog.types import CatalogBinding
 from network_model.solvers import cable_ampacity_derating as cable_derating
 
 from . import der_sn_validation as der_val
+from .catalog_completion import NN_FIELD_ORIGIN_OPERACJA_DOMENOWA
 from .domain_operations import (
     FUNKCJA_POMIARU_DOMYSLNA_POLA_DOKLADANEGO,
     _apply_catalog_metadata,
@@ -2365,7 +2366,15 @@ def _add_nn_outgoing_field_internal(enm: dict[str, Any], payload: dict[str, Any]
         bay_role="FEEDER",
         bus_ref=bus_nn_ref,
         tags=list(payload.get("tags") or []),
-        meta={"feeder_role": payload.get("feeder_role", "ODPLYW_NN")},
+        meta={
+            "feeder_role": payload.get("feeder_role", "ODPLYW_NN"),
+            # Karta NAPRAWA-B, znalezisko #3: znacznik pochodzenia — TO SAMO
+            # pole czyta `enm.catalog_completion._pochodzi_z_operacji_domenowej`,
+            # żeby migracja legacy nigdy nie dokładała fantomowego odbioru
+            # świeżo utworzonemu odpływowi (PREDYKATY PARAMI: jedno źródło
+            # prawdy dla „kto utworzył ten wpis").
+            "nn_field_origin": NN_FIELD_ORIGIN_OPERACJA_DOMENOWA,
+        },
     )
 
     new_enm = kopia_graniczna_enm(enm)
@@ -2424,7 +2433,13 @@ def _append_nn_source_meta_field(enm: dict[str, Any], payload: dict[str, Any]) -
         bay_role="OZE",
         bus_ref=bus_nn_ref,
         tags=["nn_source_field"],
-        meta={"source_field_kind": kind},
+        meta={
+            "source_field_kind": kind,
+            # Karta NAPRAWA-B, znalezisko #3 — patrz komentarz w
+            # `_add_nn_outgoing_field_internal` (ten sam znacznik, ten sam
+            # powód: pole źródłowe też powstaje operacją, nie legacy szablonem).
+            "nn_field_origin": NN_FIELD_ORIGIN_OPERACJA_DOMENOWA,
+        },
     )
 
     new_enm = kopia_graniczna_enm(enm)

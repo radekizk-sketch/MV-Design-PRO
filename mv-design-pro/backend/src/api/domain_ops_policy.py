@@ -14,6 +14,26 @@ from network_model.catalog.types import CatalogBinding
 DEFAULT_CATALOG_VERSION = "2024.1"
 
 # Operations that require catalog binding in their payload
+#
+# `add_nn_outgoing_field` NIE JEST tu wpisana (karta NAPRAWA-B, znalezisko #2 —
+# rozjazd kontraktu catalog_ref). Zmierzone: `enm.domain_operations_v2.
+# _add_nn_outgoing_field_internal` i `_append_nn_source_meta_field` NIE czytają
+# `payload["catalog_ref"]`/`payload["catalog_binding"]` w ŻADNEJ gałęzi — ani
+# FEEDER, ani SOURCE. Domenowy inwentarz bramy katalogowej
+# (`enm.domain_operations_v2.V2_CATALOG_GATE_INVENTORY`) tej operacji też nie
+# zna, z tego samego powodu. Realny kreator „Pole odpływowe nN"
+# (`ui2/kreatory/pole-nn/KreatorPolaNn.tsx`) świadomie NIE pokazuje pickera
+# katalogu (własny docstring: „backend go dla tej operacji nie honoruje") —
+# przed tą naprawą KAŻDE żądanie tego kreatora przez produkcyjny endpoint
+# (`POST .../enm/domain-ops`) dostawało `422 catalog.ref_required`, bo brama
+# API była SUROWSZA od operacji i od formularza jednocześnie: trzy niezależne
+# przekonania o tym samym kontrakcie, z których żadne dwa się nie zgadzały.
+# Naprawa PREDYKATY PARAMI: wymóg bramy wynika teraz z tego samego pomiaru co
+# konsumpcja operacji — brak konsumpcji ⇒ brak wymogu. Referencję katalogową
+# aparatu odpływowego materializuje `enm.migrations.nn_field_specs_promocja`
+# PRZY PROMOCJI wpisu (`meta.catalog_binding`/`meta.catalog_bindings`, gdy są),
+# nie ta operacja — to inny etap łańcucha, z własnym kontraktem (fail-open:
+# brak wiązania przy promocji legacy daje W061, nie blokadę).
 CATALOG_REQUIRED_OPERATIONS: frozenset[str] = frozenset(
     {
         "add_grid_source_sn",
@@ -30,7 +50,6 @@ CATALOG_REQUIRED_OPERATIONS: frozenset[str] = frozenset(
         "add_relay",
         "add_ct",
         "add_vt",
-        "add_nn_outgoing_field",
         "insert_section_switch_sn",
         "connect_secondary_ring_sn",
         # P0.1 nN (karta P0.1, C §4.1): wiązanie katalogowe OBOWIĄZKOWE.
@@ -613,16 +632,18 @@ API_CATALOG_GATE_INVENTORY: tuple[PozycjaBramyApi, ...] = (
     PozycjaBramyApi("add_relay", "protection.catalog_item_id", "ZABEZPIECZENIE", True),
     PozycjaBramyApi("add_sn_bay", "catalog_binding", "APARAT_SN", True),
     PozycjaBramyApi("add_nn_load", "catalog_binding", "OBCIAZENIE", True),
-    PozycjaBramyApi(
-        "add_nn_outgoing_field",
-        "catalog_ref",
-        "APARAT_NN",
-        True,
-        "brama jest tu SUROWSZA od operacji: odpływ/pole źródłowe nN zapisuje samą "
-        "specyfikację pola i katalogu nie czyta. Wymóg wiązania zostaje (fail-closed, "
-        "kontrakt kreatora nN), a jego istnienie sprawdza ta sama materializacja co "
-        "dla aparatu pola — osłabienie byłoby regresją, nie naprawą.",
-    ),
+    # `add_nn_outgoing_field` NIE MA tu pozycji (karta NAPRAWA-B, znalezisko #2 —
+    # naprawiony rozjazd kontraktu). Poprzedni wpis twierdził „brama SUROWSZA od
+    # operacji, fail-closed z rozmysłem" — pomiar tej karty pokazał, że to
+    # nieprawda: operacja (`_add_nn_outgoing_field_internal`,
+    # `_append_nn_source_meta_field`) nie czyta `catalog_ref`/`catalog_binding` w
+    # ŻADNEJ gałęzi, więc dawny wpis bramkował referencję, której materializacja
+    # i tak nigdzie nie trafiała — realny kreator (`ui2/kreatory/pole-nn/
+    # KreatorPolaNn.tsx`) nigdy jej nie wysyłał i dostawał `422
+    # catalog.ref_required` na KAŻDE żądanie. Inwentarz tej bramy dokumentuje
+    # WYŁĄCZNIE referencje faktycznie czytane z payloadu (nagłówek modułu) — ta
+    # operacja żadnej nie czyta, więc nie ma tu czego wpisać (nie „niebramkowana
+    # pozycja z uzasadnieniem", bo nie ma pozycji).
     # --- P0.1 nN — topologia obwodów nN (karta P0.1, C §4.1) -----------------
     PozycjaBramyApi("add_nn_cable_segment", "catalog_ref", "KABEL_NN", True),
     PozycjaBramyApi("add_nn_cable_segment", "catalog_binding", "KABEL_NN", True),

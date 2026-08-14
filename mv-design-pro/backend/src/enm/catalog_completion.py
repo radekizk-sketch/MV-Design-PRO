@@ -474,7 +474,7 @@ def _apply_materialized_branch_values(
 def complete_station_loads_from_nn_feeders(
     enm: EnergyNetworkModel,
 ) -> tuple[EnergyNetworkModel, bool]:
-    """Materialize catalog loads for legacy station feeders without loads.
+    """Materialize catalog loads for LEGACY station feeders without loads.
 
     Older station templates could create nN outgoing feeders without ENM load
     elements. The product contract is catalog-complete station materialization,
@@ -483,6 +483,32 @@ def complete_station_loads_from_nn_feeders(
     Tabliczka dokładanego odbioru (P oraz Q/cosφ) pochodzi WYŁĄCZNIE z pozycji
     katalogowej — patrz `_catalog_load_reactive_power`. Gdy katalog nie
     rozstrzyga mocy biernej, odbiór nie powstaje w ogóle.
+
+    PREDYKATY PARAMI (karta NAPRAWA-B, znalezisko #3). Ta migracja jest
+    czysto ODCZYTOWĄ pętlą — biegnie na KAŻDYM `enm.store.get_enm`/`set_enm`
+    (`complete_catalog_defaults`), a nie tylko raz przy tworzeniu stacji z
+    LEGACY szablonu. Kreator „Pole odpływowe nN" (P0.1, `add_nn_outgoing_field`)
+    zapisuje SPECYFIKACJĘ odpływu do TEGO SAMEGO worka meta
+    (`Substation.meta.nn_field_specs`), co LEGACY builder szablonu
+    (`domain_operations._build_nn_field_specs`) — bez rozróżnienia pochodzenia
+    sekwencja kreatora `add_nn_outgoing_field` → [odczyt modelu, np. odświeżenie
+    UI] → `add_nn_load` widziała po pierwszym żądaniu odpływ BEZ odbioru i
+    materializowała fantom 30 kW na TYM SAMYM `field_ref`, zanim drugie żądanie
+    zdążyło dopisać prawdziwy odbiór — realny odbiór lądował OBOK fantomu
+    (podwojona moc, bez ostrzeżenia).
+
+    Naprawa: warunek WEJŚCIA migracji (czy wpis jest kandydatem) czyta TEN SAM
+    znacznik pochodzenia, który zapisuje operacja tworząca wpis — `meta.
+    nn_field_origin` (patrz `NN_FIELD_ORIGIN_OPERACJA_DOMENOWA`,
+    `enm.domain_operations_v2._add_nn_outgoing_field_internal` i
+    `_append_nn_source_meta_field`). Wpisy z tym znacznikiem NIGDY nie są
+    migrowane — czekają na jawną decyzję projektanta (`add_nn_load` albo
+    pozostanie bez odbioru, oba są poprawnym stanem końcowym). Wpisy BEZ
+    znacznika (LEGACY builder go nigdy nie zapisywał — ani stary kod, ani nowy,
+    bo szablon ma dokładać odbiór SYNCHRONICZNIE w `apply.py`, nie liczyć na tę
+    migrację) zachowują dotychczasowe zachowanie: migracja dokłada im domyślny
+    odbiór, dokładnie jak przed tą naprawą. Widoczne w `_nn_feeder_specs`
+    poniżej.
     """
     existing_feeder_refs = {
         feeder_ref for load in enm.loads for feeder_ref in [_load_feeder_ref(load)] if feeder_ref
@@ -579,7 +605,33 @@ def _load_feeder_ref(load: Load) -> str | None:
     return feeder_ref if isinstance(feeder_ref, str) and feeder_ref.strip() else None
 
 
+#: Znacznik `meta.nn_field_origin` zapisywany WYŁĄCZNIE przez operację domenową
+#: `add_nn_outgoing_field` (`enm.domain_operations_v2._add_nn_outgoing_field_internal`,
+#: `_append_nn_source_meta_field`) — JEDNO źródło prawdy dzielone z tą migracją
+#: (karta NAPRAWA-B, znalezisko #3, reguła PREDYKATY PARAMI). LEGACY builder
+#: szablonu stacji (`domain_operations._build_nn_field_specs`) tego znacznika
+#: NIGDY nie zapisuje — jego wpisy zostają migrowalne, zachowując zachowanie
+#: sprzed tej naprawy.
+NN_FIELD_ORIGIN_OPERACJA_DOMENOWA = "operacja_add_nn_outgoing_field"
+
+
+def _pochodzi_z_operacji_domenowej(spec: dict[str, Any]) -> bool:
+    """Czy wpis `nn_field_specs` powstał operacją `add_nn_outgoing_field` (P0.1).
+
+    Takie wpisy NIE są kandydatem migracji — projektant dopiero co utworzył
+    odpływ świadomą, pojedynczą operacją i albo zaraz doda do niego prawdziwy
+    odbiór (`add_nn_load`), albo świadomie zostawi go bez odbioru. Oba są
+    poprawnym stanem końcowym; dopisanie fantomu w międzyczasie (przy odczycie
+    modelu między dwoma żądaniami kreatora) byłoby zgadywaniem za projektanta.
+    """
+    meta = spec.get("meta")
+    return (
+        isinstance(meta, dict) and meta.get("nn_field_origin") == NN_FIELD_ORIGIN_OPERACJA_DOMENOWA
+    )
+
+
 def _nn_feeder_specs(meta: dict[str, Any]) -> list[dict[str, Any]]:
+    """Wpisy `nn_field_specs` — WYŁĄCZNIE kandydaci migracji LEGACY (patrz wyżej)."""
     raw_specs = meta.get("nn_field_specs") if isinstance(meta, dict) else None
     if not isinstance(raw_specs, list):
         return []
@@ -589,6 +641,7 @@ def _nn_feeder_specs(meta: dict[str, Any]) -> list[dict[str, Any]]:
         if isinstance(spec, dict)
         and spec.get("bay_role") == "FEEDER"
         and isinstance(spec.get("field_ref"), str)
+        and not _pochodzi_z_operacji_domenowej(spec)
     ]
 
 
