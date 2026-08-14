@@ -67,6 +67,23 @@ def test_rodziny_rmu_bez_transkrybowanych_blokow_sa_jawnie_wypisane() -> None:
     assert bez_blokow == RMU_BEZ_TRANSKRYBOWANYCH_BLOKOW
 
 
+def test_kazda_konfiguracja_ma_zrodlo_producenta() -> None:
+    """Zero fabrykacji przypięte dla BLOKÓW, nie tylko rodzin (KLASA, nie
+    instancja). Rodziny mają pin `test_all_families_have_source_refs`, ale tę
+    samą deklarację („każdy wpis katalogu wskazuje publiczne źródło") składa
+    też rejestr bloków — a deklaracja bez testu to fałszywa pewność. Iniekcja
+    odbioru 2026-08-14: zmyślony blok z pustym `source_refs` przeszedł cały
+    pakiet i upadł dopiero na imiennej liście długu, czyli mechanizmie o INNYM
+    przeznaczeniu. Ten pin łapie fabrykację wprost."""
+    for configuration in list_factory_configurations():
+        assert configuration.source_refs, configuration.configuration_ref
+        for ref in configuration.source_refs:
+            assert ref.startswith(("http://", "https://")), (
+                configuration.configuration_ref,
+                ref,
+            )
+
+
 def test_rodzina_modulowa_nie_ma_blokow_fabrycznych() -> None:
     for family in list_switchgear_families():
         if family.tor_konfiguracji == "MODULARNY":
