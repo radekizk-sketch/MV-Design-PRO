@@ -1070,7 +1070,7 @@ KLUCZE_BEZWARUNKOWE_POLA_DOMYKANEGO: frozenset[str] = KLUCZE_BEZWARUNKOWE_POLA_K
 }
 
 
-def _wartosc_obecna(wartosc: Any) -> bool:
+def _wartosc_obecna(wartosc: object) -> bool:
     """Czy wartość jest OBECNA, czyli czy klucz warunkowy ma co zapisać.
 
     Pusty łańcuch, pusta lista i pusty słownik to BRAK deklaracji, nie
@@ -1100,7 +1100,7 @@ def _build_field_spec(
     switchgear_family_ref: str | None = None,
     manufacturer_ref: str | None = None,
     apparatus_catalog_ref: str | None = None,
-    catalog_bindings: Any = None,
+    catalog_bindings: dict[str, Any] | None = None,
     primary_devices: list[dict[str, Any]] | None = None,
     tags: list[str] | None = None,
     meta: dict[str, Any] | None = None,
