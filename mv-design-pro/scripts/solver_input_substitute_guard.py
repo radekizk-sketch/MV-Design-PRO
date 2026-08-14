@@ -698,12 +698,18 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
     # `enm/mapping.py`, wiec zostaje jako dlug nazwany, nie naprawa w tej
     # karcie (zmiana zachowania regulacji P(f) bez dedykowanych testow
     # wykracza poza dyskryminator zapadki).
+    #
+    # (c) KARTA K-Q (2026-08-14): pozycja `mode.reserved_capacity_percent`
+    # (budzet 2) ZNIKA z zapadki, bo znikl caly dlug — pole „rezerwa mocy
+    # magazynu" nie istnieje juz w katalogu trybow (nie mialo zrodla, a byla to
+    # decyzja projektowa konkretnego projektu, nie wlasnosc trybu pracy), wiec
+    # nie ma czego podstawiac. Razem z nim zniknal wzor `reserved_pct * 10`
+    # zakladajacy, ze KAZDY magazyn ma 1 MW. Obnizenie budzetu utrwala poprawe.
     "solver_input/audit2_solver_adjuster.py": {
         "F:dictget:curve.deadband_hz": 1,
         "F:dictget:curve.droop_percent": 1,
         "F:dictget:curve.f_max_hz": 1,
         "F:dictget:curve.f_min_hz": 1,
-        "F:dictget:mode.reserved_capacity_percent": 2,
         "F:dictget:tc_dict.neutral_position": 1,
         "F:dictget:tc_dict.step_percent": 1,
     },
