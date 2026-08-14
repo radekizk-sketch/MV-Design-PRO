@@ -34,31 +34,57 @@ SLD renderują TEN SAM model (zakaz osobnej rekonstrukcji).
 
 ## 3. Encje (warstwa katalogowa, immutable)
 
-- `SwitchgearArchitecture`: MODULAR_AIS | MODULAR_GIS | COMPACT_RMU | BLOCK_RMU.
-- `SwitchgearFamily`: producent, kod rodziny, nazwa, architektura, medium
-  izolacyjne/technologia, klasy Un [kV], In szyn [A], Ik [kA]/Ith/tk, klasa
-  łuku (IAC), proweniencja (`source_reference` = katalog producenta),
-  `parametry_potwierdzone: bool` — rodzina bez potwierdzonych parametrów NIE
-  jest oferowana w kreatorze (jawny status, nigdy zgadywanie).
-- `CatalogFunctionalUnit`: rodzina (ref), kod katalogowy, rola funkcjonalna
-  (INCOMING/OUTGOING/RING/TRANSFORMER/COUPLER/SECTIONALIZER/METERING/
-  AUXILIARY/GENERATOR_DER), kompozycja aparatów w kanonicznym słowniku
-  `BayDeviceTemplate.kind` (REUŻYCIE `bay_templates.py`: CB, DS_*, ES, CT, VT,
-  FUSE, SURGE_ARRESTER, CABLE_HEAD, TRANSFORMER_DEVICE + VPIS jako
-  sygnalizacja), status każdego elementu: FABRYCZNY | OPCJA | NIEDOPUSZCZALNY,
-  parametry znamionowe pola, szerokość [mm], przedział kablowy/typ przyłącza.
-- `FactoryConfiguration` (dla COMPACT_RMU/BLOCK_RMU): rodzina, kod bloku,
-  sekwencja jednostek (np. K-K-T), szerokość całkowita. RMU ≠ zbiór luźnych
-  szaf — konfigurator RMU wybiera BLOK, potem doposaża jednostki.
-- `FieldInstance` (warstwa projektu, NIE katalog): ref jednostki katalogowej +
+STAN ZREALIZOWANY po scaleniu kanonu (2026-08-14) — sekcja opisuje encje
+PAKIETU `network_model/catalog/switchgear/`, bo to jedyny kanon rodzin (§8).
+Nazwy z pierwotnego szkicu (`SwitchgearArchitecture`, `CatalogFunctionalUnit`)
+świadomie NIE powstały jako osobne byty: ich treść niosą już encje pakietu, a
+drugi byt o tej samej treści byłby drugą ścieżką tej samej prawdy.
+
+- `SwitchgearFamily` (pydantic): producent (`manufacturer_ref`), ref i nazwa
+  rodziny, `insulation_type`, `construction_type`, `busbar_system`, klasy
+  `voltage_levels` [kV], `rated_current_options` [A],
+  `short_time_current_options` [kA], słowniki `allowed_bay_kinds` /
+  `allowed_apparatus_kinds` / `allowed_interlocks`, proweniencja
+  (`source_refs`, `source_document_refs`, `source_version`) i `status` wg
+  polityki `SLD_MV_BAY_TEMPLATE_SOURCE_POLICY.md`. Rodzina bez potwierdzonych
+  parametrów ma `status='requires_catalog'` i NIE jest oferowana w
+  konfiguratorze — predykat „wolno budować" ma jedno źródło
+  (`list_offered_switchgear_families()`).
+- TOR KONFIGURACJI zamiast osobnej architektury: `tor_konfiguracji`
+  (`MODULARNY` | `BLOK_RMU` | `null`) jest polem WYLICZANYM z
+  `construction_type` — jedno odwzorowanie `TOR_KONFIGURACJI_WG_KONSTRUKCJI`,
+  pokrywające komplet wartości konstrukcji (test dwustronny). Rozróżnienie
+  COMPACT/BLOCK RMU nie zmienia toru pracy projektanta, więc nie jest bytem.
+- `CompleteMvBayTemplate` jest NOŚNIKIEM KATALOGOWEGO POLA (kompozycja nad
+  `BayTemplate`): rodzina, funkcja pola (`BayKind`), rola, porty, wymagania
+  zabezpieczeniowe i pomiarowe, lineage źródła, hash. Wyposażenie pola to
+  `device_instances: list[BayDeviceInstanceTemplate]` — materializowane z
+  kanonicznego szablonu PO filtrze słownika rodziny, więc pole nie ma dwóch
+  list aparatów do rozjechania.
+- `BayDeviceInstanceTemplate.status_wyposazenia`: FABRYCZNY | OPCJA. Aparat
+  spoza listy pola jest NIEDOPUSZCZALNY — to brak wpisu, nie wartość statusu
+  (pilnuje walidator). Pole jest WYMAGANE: domyślny status byłby zgadywaniem
+  karty producenta.
+- `FactoryConfiguration` + `FactoryConfigurationUnit` (dla rodzin o torze
+  `BLOK_RMU`): rodzina, kod bloku, sekwencja jednostek (np. `L-L-T`), a dla
+  jednostki — litera katalogowa, funkcja pola (`BayKind`) i aparatura
+  (`ApparatusKind`), bo bloki różniące się wyłącznie aparatem jednostki (ABB
+  SafeRing CCF vs CCV) to różne wyroby. Szerokość całkowita jest WYLICZANA z
+  szerokości jednostek; gdy karta jej nie podaje, wynikiem jest jawny brak
+  (`null`), nigdy zmyślony milimetr. RMU ≠ zbiór luźnych szaf — konfigurator
+  RMU wybiera BLOK, potem doposaża jednostki.
+- `FieldInstance` (warstwa projektu, NIE katalog): ref pola katalogowego +
   wybrane opcje → `zbuduj_bom()`. Instancja NIE dubluje parametrów katalogu.
 
 ## 4. Walidator rodziny (twarde błędy)
 
-`familySupports(family, ...)` — jedno źródło prawdy zgodności:
-rola pola, aparat, napięcie, prąd, zwarcie, ochrona, przyłącze kablowe,
-napęd silnikowy, zdalne sterowanie. Kombinacja spoza katalogu = HARD ERROR
-z polskim zdaniem (nigdy ciche przycięcie ani dowolny dropdown).
+`family_validation` (API pakietu) — jedno źródło prawdy zgodności:
+funkcja pola, aparat, napięcie, prąd, zwarcie, przynależność pola do rodziny,
+blok fabryczny. Kombinacja spoza katalogu = HARD ERROR
+(`NiezgodnoscKonfiguracjiError`) z polskim zdaniem — nigdy ciche przycięcie
+ani dowolny dropdown. Każde sprawdzenie przechodzi przez wspólny predykat
+`wymagaj_rodziny_oferowanej`, więc rodzina bez karty katalogowej nie wchodzi
+bocznymi drzwiami przez pojedyncze wywołanie.
 Aparat OEM innego producenta jest dopuszczalny wyłącznie przez jawną macierz
 zgodności jednostki (nie przez ogólną listę aparatów).
 
@@ -137,3 +163,40 @@ Ta lekcja idzie do rejestru: moj wlasny S1 powtorzyl blad metodyczny
 „instancja zamiast klasy" (nowy modul bez inwentarza istniejacego mechanizmu)
 — wykryty pomiarem przed scaleniem czegokolwiek do kreatora, naprawiany
 scaleniem kanonow, nie wspolistnieniem.
+
+## 9. STAN PO SCALENIU (2026-08-14, karta SCALENIE-KANONU-ROZDZIELNIC)
+
+ZROBIONE. Modul S1 `network_model/catalog/switchgear_families.py` USUNIETY;
+pakiet `switchgear/` jest jedynym kanonem. Rejestr rodzin: 18 (7 dotychczasowych
++ 11 z transzy S1). Dolozone w pakiecie: tor konfiguracji wyliczany z
+konstrukcji, `status_wyposazenia` (jeden predykat zamiast pary
+`is_required`/`is_optional`), materializacja wyposazenia pola z kanonicznego
+szablonu, `FactoryConfiguration` + rejestr 15 blokow, walidator
+`family_validation`, subzasob API `factory-configurations` i addytywne
+`tor_konfiguracji` w `GET /api/catalog/switchgear-families`.
+
+KOREKTY DANYCH WYKRYTE POMIAREM ZRODEL (zero fabrykacji):
+- Rotoblok NIE zostal nadpisany parametrami z S1 (12/17,5/24 kV, 20 kA) — karta
+  ZPUE potwierdza 15/20 kV i 16 kA/1 s; karta S1 byla szersza, ale NIEzweryfikowana.
+- Konfiguracje TPM Air noszą nomenklature PRODUCENTA (L/T/W: LLT, LLL, ...),
+  a nie wymyslone w S1 litery K.
+- RXD pozostaje w izolacji powietrznej (korekta z GIS).
+- ABB UniSec wchodzi jako `requires_catalog` z pustymi listami klas — publiczna
+  strona portfolio nie podaje klas pradowych/zwarciowych rodziny.
+
+DLUG JAWNY (przypiety testami, nie odlozony w ciszy):
+- Rodziny o torze BLOK_RMU bez transkrybowanych blokow: ZPUE TPM, ABB SafePlus,
+  Schneider RM6 i RM AirSeT, Siemens 8DJH. Zrodla publiczne tych rodzin nie
+  wymieniaja zestawu konfiguracji; lista stoi w
+  `tests/network_model/catalog/test_switchgear_factory_configurations.py` i
+  kazde jej uzupelnienie wymusza aktualizacje pinu.
+- Szerokosci jednostek blokow nie sa podane w zrodlach publicznych, wiec
+  `total_width_mm` realnych blokow to `null` (mechanizm sumowania jest
+  przetestowany na jednostkach z zadeklarowana szerokoscia).
+- Kanoniczny szablon pola transformatorowego (`BAY_TEMPLATE_TRANSFORMER`) NIE
+  ma glowicy kablowej, choc maja ja szablony liniowe. Uzupelnienie zmienia
+  rysunek KAZDEGO pola transformatorowego na SLD, wiec wymaga werdyktu
+  wizualnego wlasciciela (B-02) — zgloszone, nie wykonane samowolnie.
+- Zaden kanoniczny szablon nie deklaruje dzis aparatu OPCJONALNEGO, wiec status
+  OPCJA nie ma pokrycia w danych (mechanizm jest realny i przetestowany).
+  Uzupelnienie wymaga kart katalogowych z lista wyposazenia opcjonalnego.

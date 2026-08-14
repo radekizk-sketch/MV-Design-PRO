@@ -32,6 +32,8 @@ from network_model.catalog.mv_branch_point_catalog import get_all_branch_point_t
 from network_model.catalog.mv_ptpiree_catalog import get_ptpiree_catalog_manifest
 from network_model.catalog.repository import get_default_mv_catalog
 from network_model.catalog.switchgear import (
+    SWITCHGEAR_FAMILY_REGISTRY,
+    list_factory_configurations_for_family,
     list_families_for_manufacturer,
     list_switchgear_families,
     list_switchgear_solution_templates_for_manufacturer,
@@ -410,13 +412,18 @@ def list_switchgear_families_endpoint(
     """Lista rodzin rozdzielnic SN (goal §11A.3).
 
     Z `manufacturer_ref` zwęża do rodzin danego producenta (np.
-    `?manufacturer_ref=ABB` → UniGear ZS1, SafeRing).
+    `?manufacturer_ref=ABB` → UniGear ZS1, SafeRing, SafePlus, UniSec).
 
-    Bez parametru zwraca wszystkie zweryfikowane rodziny (6 startowych):
-    - ZPUE_WLOSZCZOWA__ROTOBLOK
-    - ELEKTROMETAL__E2ALPHA
-    - ABB__UNIGEAR_ZS1, ABB__SAFERING
-    - SIEMENS__NXAIR, SIEMENS__8DJH
+    Bez parametru zwraca wszystkie rodziny rejestru (ZPUE, Elektrometal, ABB,
+    Siemens, Schneider Electric).
+
+    ROZSZERZENIE ADDYTYWNE 2026-08-14 (scalenie kanonu rozdzielnic): każdy
+    rekord niesie `tor_konfiguracji` — `MODULARNY` (rozdzielnica składana z
+    pojedynczych pól) albo `BLOK_RMU` (najpierw blok fabryczny, potem
+    doposażenie jednostek). To pole WYLICZANE z `construction_type`, nie druga
+    deklaracja architektury; `null` znaczy „rodzina nie zadeklarowała
+    konstrukcji". Konfiguracje fabryczne rodziny RMU wystawia subzasób
+    `/switchgear-families/{ref}/factory-configurations`.
     """
     families = (
         list_families_for_manufacturer(manufacturer_ref)
@@ -424,6 +431,30 @@ def list_switchgear_families_endpoint(
         else list_switchgear_families()
     )
     return [f.model_dump(mode="json") for f in families]
+
+
+@router.get("/switchgear-families/{switchgear_family_ref}/factory-configurations")
+def list_factory_configurations_endpoint(
+    switchgear_family_ref: str,
+) -> list[dict[str, Any]]:
+    """Konfiguracje fabryczne (bloki) rodziny RMU.
+
+    Rozdzielnica pierścieniowa nie jest zbiorem luźnych szaf: projektant
+    wybiera BLOK o stałej sekwencji jednostek (np. `L-L-T`), a dopiero potem
+    doposaża jednostki. Rodzina o torze `MODULARNY` zwraca pustą listę —
+    uczciwy stan zerowy, nie błąd. Nieznana rodzina kończy się 404 z polskim
+    zdaniem, bo pytanie o bloki wyrobu spoza katalogu nie ma odpowiedzi.
+    """
+    if switchgear_family_ref not in SWITCHGEAR_FAMILY_REGISTRY:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=(
+                f"Rodzina rozdzielnicy '{switchgear_family_ref}' nie istnieje w "
+                "katalogu — brak konfiguracji fabrycznych do pokazania."
+            ),
+        )
+    configurations = list_factory_configurations_for_family(switchgear_family_ref)
+    return [c.model_dump(mode="json") for c in configurations]
 
 
 @router.get("/manufacturers")
