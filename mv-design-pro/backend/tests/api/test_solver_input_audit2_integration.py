@@ -158,8 +158,6 @@ def test_audit2_power_flow_endpoint_no_config_returns_empty_apply(app_client):
         {
             "tap_position_changes": {},
             "block_transformer_z_changes": {},
-            "grounding_z0_z1_ratio": None,
-            "bess_reserved_changes": {},
             "pf_droop_changes": {},
         },
     )
@@ -186,7 +184,7 @@ def test_audit2_power_flow_endpoint_full_apply_trail(app_client):
         pid,
         "station-trail",
         {
-            "mv_neutral_grounding_ref": "mng_isolated",  # -> Z0/Z1 = 100
+            "mv_neutral_grounding_ref": "mng_isolated",
             "tap_changer_refs": [],
             "der_specs": [],
             "transformer_tap_changers": {},
@@ -203,8 +201,21 @@ def test_audit2_power_flow_endpoint_full_apply_trail(app_client):
     )
     assert res.status_code == 200
     body = res.json()
-    # Audit trail ma grounding Z0/Z1 = 100 (isolated).
-    assert body["audit2_applied"].get("grounding_z0_z1_ratio") == 100.0
+    # Karta K-Q — INTENCJA POPRZEDNIEGO TESTU ODWROCONA SWIADOMIE. Pinowal on
+    # slad „grounding_z0_z1_ratio = 100 dla sieci izolowanej": drabinke stalych
+    # (100 / 50 / 5 / 1) przypisanych ETYKIECIE wariantu uziemienia, bez zadnego
+    # zrodla. Fizycznie stosunek Z0/Z1 zalezy od pojemnosci doziemnej sieci,
+    # nastrojenia dlawika albo rezystora RAZEM z impedancja petli — impedancje
+    # kolejnosci zerowej niesie model (`Source.z0_z1_ratio` / `r0_ohm` /
+    # `x0_ohm`), i tylko z nich liczy SC1F. Slad nie melduje juz liczby, ktorej
+    # nikt nie policzyl.
+    assert "grounding_z0_z1_ratio" not in body["audit2_applied"]
+    assert "bess_reserved_changes" not in body["audit2_applied"]
+    assert set(body["audit2_applied"]) == {
+        "tap_position_changes",
+        "block_transformer_z_changes",
+        "pf_droop_changes",
+    }
 
 
 def test_get_solver_input_with_audit2_query_params_populates_extensions(app_client):
