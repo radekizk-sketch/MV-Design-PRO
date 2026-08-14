@@ -190,6 +190,22 @@ def _manual_grid_source_equivalent_complete(payload: dict[str, Any]) -> bool:
     )
 
 
+def _uses_manual_nn_load(payload: dict[str, Any]) -> bool:
+    """Deklaracja jawna trybu eksperckiego `add_nn_load` (karta D4, rekonsyliacja
+    rozjazdu `ROZJAZD_WYMOGU_KATALOGU_ZNANY`).
+
+    WYRÓŻNIK ZMIERZONY, nie wymyślony: `enm.domain_operations_v2.add_nn_load`
+    już dziś znakuje odbiór bez pozycji katalogowej `"source_mode":
+    "EKSPERCKI_RECZNY"` w migawce (przypięte testem `tests/enm/
+    test_znacznik_pochodzenia_katalogowego_v2.py::
+    test_odbior_ekspercki_nie_deklaruje_kategorii_katalogu`), a `add_grid_source_sn`
+    (patrz `_uses_manual_grid_source_equivalent` powyżej) już rozpoznaje ręczny
+    ekwiwalent PRZEZ TO SAMO pole `source_mode` w payloadzie. Brama pyta o
+    DOKŁADNIE tę samą nazwę i wartość — zero drugiego, niezależnego wyróżnika.
+    """
+    return payload.get("source_mode") == "EKSPERCKI_RECZNY"
+
+
 def extract_catalog_binding(operation: str, payload: dict[str, Any]) -> dict[str, Any] | None:
     """Extract catalog_binding from payload, preferring canonical nested contracts."""
 
@@ -1312,6 +1328,27 @@ def validate_and_materialize_catalog_binding(
             ),
             {},
         )
+
+    if (
+        operation == "add_nn_load"
+        and _uses_manual_nn_load(payload)
+        and extract_catalog_binding(operation, payload) is None
+    ):
+        # Deklaracja jawna `source_mode: EKSPERCKI_RECZNY` BEZ żadnej referencji
+        # katalogowej w payloadzie — brama przepuszcza, tak jak domena
+        # (`add_nn_load`) i tak wytworzy odbiór w trybie EKSPERCKI_RECZNY.
+        #
+        # Warunek TRZECI (`extract_catalog_binding(...) is None`) jest
+        # PREDYKATEM PARZYSTYM z priorytetem domeny: `add_nn_load` rozstrzyga
+        # tryb z OBECNOŚCI `catalog_ref`/`catalog_binding`, nie z deklarowanego
+        # `source_mode` (patrz `enm.domain_operations_v2.add_nn_load`:
+        # `"source_mode": "KATALOG" if catalog_ref else "EKSPERCKI_RECZNY"` —
+        # deklaracja wejściowa jest IGNOROWANA, gdy referencja jest podana).
+        # Payload z OBIEMA rzeczami naraz (deklaracja + referencja, poprawna
+        # albo zepsuta) musi więc nadal przejść pełną walidację niżej —
+        # inaczej deklaracja stałaby się furtką omijającą bramę dla
+        # dowolnej (także nieistniejącej) pozycji katalogu.
+        return None, {}
 
     binding_data = extract_catalog_binding(operation, payload)
     if binding_data is None:

@@ -12,7 +12,10 @@ import { validateCatalogFirst } from '../catalogFirstRules';
  */
 describe('validateCatalogFirst', () => {
   it('nie blokuje operacji spoza tabeli (zachowanie domyślne switch)', () => {
-    expect(validateCatalogFirst('add_nn_load', {})).toBeNull();
+    // `add_nn_load` NIE JEST już przykładem „spoza tabeli" — karta D4 dopisała
+    // dla niej case (patrz opisany niżej blok `add_nn_load`). Przykład zastąpiony
+    // nazwą operacji celowo nieistniejącą w switchu.
+    expect(validateCatalogFirst('nieznana_operacja_xyz', {})).toBeNull();
   });
 
   it('pilnuje istniejącej operacji SN (add_relay) — dowód, że rozszerzenie nie zepsuło przełącznika', () => {
@@ -50,5 +53,27 @@ describe('validateCatalogFirst', () => {
 
   it('NIE waliduje add_nn_distribution_board (payload własny nie niesie catalog_ref — sprawdzenie żyje w zagnieżdżonym `supply`, poza tym walidatorem)', () => {
     expect(validateCatalogFirst('add_nn_distribution_board', { voltage_kv: 0.4 })).toBeNull();
+  });
+
+  describe('add_nn_load (karta D4 — rekonsyliacja rozjazdu wymogu katalogu)', () => {
+    it('blokuje bez catalog_ref, bez catalog_binding i bez deklaracji trybu eksperckiego (katalog-first domyślne)', () => {
+      expect(validateCatalogFirst('add_nn_load', {})).toEqual(expect.stringContaining('katalog'));
+    });
+
+    it('przepuszcza z catalog_binding.catalog_item_id', () => {
+      expect(
+        validateCatalogFirst('add_nn_load', { catalog_binding: { catalog_item_id: 'load-1' } }),
+      ).toBeNull();
+    });
+
+    it('przepuszcza z jawną deklaracją trybu eksperckiego (source_mode: EKSPERCKI_RECZNY) — TEN SAM '
+      + 'wyróżnik, którym operacja domenowa add_nn_load i bramka API rozpoznają tryb ekspercki', () => {
+      expect(validateCatalogFirst('add_nn_load', { source_mode: 'EKSPERCKI_RECZNY' })).toBeNull();
+    });
+
+    it('nie przepuszcza żadnej innej wartości source_mode — tylko EKSPERCKI_RECZNY zwalnia z katalogu', () => {
+      expect(validateCatalogFirst('add_nn_load', { source_mode: 'KATALOG' })).not.toBeNull();
+      expect(validateCatalogFirst('add_nn_load', { source_mode: 'inny' })).not.toBeNull();
+    });
   });
 });

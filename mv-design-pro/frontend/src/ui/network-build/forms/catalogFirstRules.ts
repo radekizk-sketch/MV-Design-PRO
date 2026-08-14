@@ -109,6 +109,10 @@ function hasConverterCatalog(payload: Payload): boolean {
   );
 }
 
+function hasManualNnLoad(payload: Payload): boolean {
+  return payload.source_mode === 'EKSPERCKI_RECZNY';
+}
+
 function hasRelayCatalog(payload: Payload): boolean {
   const protection = asPayload(payload.protection);
   return (
@@ -143,6 +147,11 @@ const REQUIRED_CATALOG_MESSAGE: Record<string, string> = {
   add_nn_cable_segment: 'Wybierz typ kabla nN z katalogu przed utworzeniem odcinka.',
   add_nn_switch_device: 'Wybierz aparat nN z katalogu przed dodaniem go do toru.',
   add_nn_section_coupler: 'Wybierz aparat nN (sprzęgło) z katalogu przed dodaniem sekcji.',
+  // Karta D4 — rekonsyliacja rozjazdu `ROZJAZD_WYMOGU_KATALOGU_ZNANY`
+  // (`add_nn_load`): katalog-first domyślne, jak dla `add_grid_source_sn`
+  // (`hasCatalogBinding(...) || hasManualNnLoad(...)` — TEN SAM wzorzec
+  // jawnej deklaracji trybu eksperckiego przez `source_mode`).
+  add_nn_load: 'Wybierz typ odbioru z katalogu albo przełącz kreator na tryb ręczny (ekspercki).',
 };
 
 function normalizeCatalogFirstOperation(op: string): string {
@@ -195,6 +204,10 @@ export function validateCatalogFirst(op: string, payload: Payload): string | nul
     case 'add_nn_switch_device':
     case 'add_nn_section_coupler':
       return hasCatalogBinding(payload.catalog_binding) || isNonEmptyString(payload.catalog_ref)
+        ? null
+        : REQUIRED_CATALOG_MESSAGE[normalizedOp];
+    case 'add_nn_load':
+      return hasCatalogBinding(payload.catalog_binding) || hasManualNnLoad(payload)
         ? null
         : REQUIRED_CATALOG_MESSAGE[normalizedOp];
     default:

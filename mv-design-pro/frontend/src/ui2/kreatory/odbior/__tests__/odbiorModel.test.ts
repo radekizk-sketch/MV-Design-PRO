@@ -50,7 +50,13 @@ describe('odbiorModel — walidacja', () => {
   it('wymaga dodatniej mocy i poprawnego cosφ', () => {
     expect(walidujFormularz(dane({ active_power_kw: 0 })).some((e) => e.field === 'active_power_kw')).toBe(true);
     expect(walidujFormularz(dane({ cos_phi: 1.5 })).some((e) => e.field === 'cos_phi')).toBe(true);
-    expect(walidujFormularz(dane()).length).toBe(0);
+    // Dane z DANE_DOMYSLNE mają `catalog_ref: null` i `manual_mode: false`
+    // (katalog-first domyślne) — bez wybranego typu formularz jest niekompletny
+    // (karta D4). Kompletność dowodzi się jawną pozycją katalogową ALBO trybem
+    // ręcznym, nie samymi wartościami domyślnymi.
+    expect(walidujFormularz(dane({ catalog_ref: 'load-1' })).length).toBe(0);
+    expect(walidujFormularz(dane({ manual_mode: true })).length).toBe(0);
+    expect(walidujFormularz(dane()).some((e) => e.field === 'catalog_ref')).toBe(true);
   });
 });
 
@@ -168,6 +174,18 @@ describe('odbiorModel — payload', () => {
   it('dołącza catalog_binding gdy wybrano typ', () => {
     const payload = zbudujPayload(dane({ catalog_ref: 'L1' }), { feeder_ref: 'f1' });
     expect(payload.catalog_binding).toMatchObject({ catalog_namespace: 'OBCIAZENIE', catalog_item_id: 'L1' });
+    expect(payload).not.toHaveProperty('source_mode');
+  });
+
+  it('tryb ręczny (karta D4): wysyła source_mode EKSPERCKI_RECZNY, pomija catalog_binding nawet gdy catalog_ref ustawiony', () => {
+    // TEN SAM wyróżnik, którym operacja domenowa add_nn_load i bramka API
+    // (api/domain_ops_policy.py::_uses_manual_nn_load) rozpoznają tryb
+    // ekspercki. `catalog_ref` w danych formularza jest tu CELOWO ustawiony
+    // (np. reliktowo po przełączeniu trybu) — payload ma go mimo to pominąć,
+    // bo tryb ręczny wygrywa nad stanem pola katalogu w UI.
+    const payload = zbudujPayload(dane({ manual_mode: true, catalog_ref: 'L1' }), { feeder_ref: 'f1' });
+    expect(payload).toMatchObject({ feeder_ref: 'f1', source_mode: 'EKSPERCKI_RECZNY' });
+    expect(payload).not.toHaveProperty('catalog_binding');
   });
 
   it('niesie komplet współczynników modelu ZIP gdy projektant go zmienił', () => {

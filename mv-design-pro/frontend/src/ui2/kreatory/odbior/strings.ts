@@ -5,14 +5,27 @@ export const ODBIOR_STRINGS = {
   cel:
     'Dodaj odbiór na odpływie nN. Podajesz moc czynną i współczynnik mocy cosφ; '
     + 'prąd i moc pozorną liczy backend, a moc bierną Q operacja wyprowadza z cosφ. '
-    + 'Typ odbioru możesz wziąć z katalogu albo wpisać ręcznie.',
+    + 'Typ odbioru dobierasz z katalogu; tryb ręczny (ekspercki) pozwala pominąć katalog.',
   odznaka: 'Nowy odbiór nN',
 
   krokDane: 'Dane odbioru',
   krokZapis: 'Podsumowanie i zapis',
 
-  typKatalog: 'Typ odbioru z katalogu (opcjonalnie)',
-  typKatalogPlaceholder: '— odbiór ręczny (bez katalogu) —',
+  // Tryb doboru odbioru (katalog-first domyślnie; ten sam wzorzec przełącznika
+  // co kreator źródła zasilania — karta D4).
+  trybOdbioruTytul: 'Tryb doboru odbioru',
+  trybKatalog: 'Z katalogu',
+  trybReczny: 'Ręczny (ekspercki)',
+  trybRecznyInfo:
+    'Tryb ekspercki: dane odbioru wprowadzasz ręcznie, bez pozycji katalogowej. '
+    + 'Migawka modelu znakuje taki odbiór jako pochodzenia „EKSPERCKI_RECZNY" — '
+    + 'bez wpływu na kategorię katalogu w raportach i kontekście analiz.',
+  pochodzenieDanychTytul: 'Pochodzenie danych',
+  pochodzenieKatalog: 'Z katalogu',
+  pochodzenieReczne: 'Ręczne (ekspercki, bez katalogu)',
+
+  typKatalog: 'Typ odbioru z katalogu',
+  typKatalogPlaceholder: '— wybierz typ odbioru —',
   typBlad: 'Nie udało się pobrać katalogu odbiorów.',
   typPomoc: 'Wybór typu wypełnia moc i cosφ z katalogu — możesz je potem skorygować.',
 

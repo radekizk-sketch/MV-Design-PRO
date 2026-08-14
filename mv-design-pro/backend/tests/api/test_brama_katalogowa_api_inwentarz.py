@@ -60,7 +60,7 @@ from enm.domain_operations import execute_domain_operation
 from enm.domain_operations_v2 import V2_CATALOG_GATE_INVENTORY
 from enm.dziennik_zmian import wyczysc_dziennik
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
-from enm.store import reset_enm_store
+from enm.store import reset_enm_store, set_enm
 from fastapi.testclient import TestClient
 
 # Pozycje katalogowe RZECZYWISTE (test bramy nie może opierać się na wymyślonych
@@ -1093,16 +1093,24 @@ def _frontend_catalog_first_operations() -> set[str]:
 #: każda pozycja z osobnym pomiarem (nowa pozycja wymaga TEGO SAMEGO pomiaru, nie
 #: ciszy):
 #:
-#: * `add_nn_load` — rozjazd tej samej KLASY co znalezisko #2, zmierzony przy tej
-#:   naprawie i ŚWIADOMIE NIE naprawiony w tej karcie (wymaga decyzji produktowej:
-#:   czy manualny odbiór nN bez pozycji katalogowej — kanoniczny `EKSPERCKI_RECZNY`
-#:   w `enm.domain_operations_v2.add_nn_load`, patrz `tests/enm/
-#:   test_znacznik_pochodzenia_katalogowego_v2.py` — ma być osiągalny z
-#:   produkcyjnego API, tak jak jest z domeny). Trzy niezależne miejsca po stronie
-#:   frontendu zgadzają się z tym pominięciem: `KreatorOdbioruNn`/`odbiorModel.ts`
-#:   (komentarz „Katalog OBCIAZENIE opcjonalny", picker BEZ `wymagane`) i
-#:   nieobecność `add_nn_load` w tym switchu — inaczej niż `add_nn_outgoing_field`
-#:   (naprawione), to NIE jest martwy wymóg: operacja GO konsumuje, gdy jest podany.
+#: * `add_nn_load` — NAPRAWIONE (karta D4, rekonsyliacja rozjazdu). Manualny
+#:   odbiór nN bez pozycji katalogowej — kanoniczny `EKSPERCKI_RECZNY` w
+#:   `enm.domain_operations_v2.add_nn_load`, patrz `tests/enm/
+#:   test_znacznik_pochodzenia_katalogowego_v2.py::
+#:   test_odbior_ekspercki_nie_deklaruje_kategorii_katalogu` — jest teraz
+#:   osiągalny z produkcyjnego API, JAWNIE, przez deklarację
+#:   `source_mode: "EKSPERCKI_RECZNY"` w payloadzie (`_uses_manual_nn_load` w
+#:   `api/domain_ops_policy.py`) — DOKŁADNIE ten sam wyróżnik, którym operacja
+#:   domenowa już znakuje odbiór w migawce i którym `add_grid_source_sn` już
+#:   rozpoznaje ręczny ekwiwalent (`_uses_manual_grid_source_equivalent`). Brak
+#:   deklaracji i brak katalogu nadal daje 422 (katalog-first pozostaje
+#:   domyślne) — pin: `test_add_nn_load_ekspercki_reczny_wymaga_jawnej_deklaracji`
+#:   i `test_add_nn_load_bez_deklaracji_i_bez_katalogu_daje_422` niżej.
+#:   `catalogFirstRules.ts` dostał LUSTRZANY case (`hasManualNnLoad` —
+#:   `payload.source_mode === 'EKSPERCKI_RECZNY'`), więc pozycja NIE jest już w
+#:   tym zbiorze; kreator (`KreatorOdbioruNn.tsx`/`odbiorModel.ts`) ma teraz
+#:   JAWNY przełącznik trybu (katalog / ręczny), ten sam wzorzec co
+#:   `KreatorZrodloZasilania.tsx`.
 #: * `add_sn_bay`, `append_station_on_endpoint` — POZA zakresem tej karty (SN, nie
 #:   nN; ZAKAZY §"Frontend: tylko kreatory nN"). Zmierzone: OBA kreatory
 #:   (`ui2/kreatory/pole/KreatorPolaSn.tsx`+`polaSnModel.ts`,
@@ -1117,7 +1125,7 @@ def _frontend_catalog_first_operations() -> set[str]:
 #:   frontend SUROWSZY od backendu (nowy defekt, nie naprawa) — zgłoszone do
 #:   osobnej karty, nie naprawiane tu bez pełnego pomiaru tego warunku.
 ROZJAZD_WYMOGU_KATALOGU_ZNANY: frozenset[str] = frozenset(
-    {"add_nn_load", "add_sn_bay", "append_station_on_endpoint"}
+    {"add_sn_bay", "append_station_on_endpoint"}
 )
 
 
@@ -1155,3 +1163,178 @@ def test_bramka_i_frontend_zgadzaja_sie_co_do_wymogu_katalogu() -> None:
     # równoczesnej naprawy operacji/frontu) zapaliła ten test od razu.
     assert "add_nn_outgoing_field" not in CATALOG_REQUIRED_OPERATIONS
     assert "add_nn_outgoing_field" not in frontend
+
+
+# ---------------------------------------------------------------------------
+# Karta D4 — rekonsyliacja rozjazdu `add_nn_load`. Domena już gwarantuje tryb
+# EKSPERCKI_RECZNY bez katalogu (`enm.domain_operations_v2.add_nn_load`,
+# przypięte `tests/enm/test_znacznik_pochodzenia_katalogowego_v2.py::
+# test_odbior_ekspercki_nie_deklaruje_kategorii_katalogu`). Testy niżej
+# pilnują, że brama API (`_uses_manual_nn_load` w `api/domain_ops_policy.py`)
+# przepuszcza TEN SAM przypadek — JAWNIE zadeklarowany, nigdy po cichu.
+# ---------------------------------------------------------------------------
+
+
+def _enm_z_odplywem_nn() -> tuple[dict[str, Any], str]:
+    """Minimalny model ze stacją, szyną nN i odpływem (feeder) — TEN SAM
+    przepis co `tests/enm/test_add_nn_load_cosphi.py::_enm_with_feeder`,
+    z dopisanym `header`/`station_type`, których wymaga walidacja Pydantic
+    (`EnergyNetworkModel`) przy zapisie do store'a — `execute_domain_operation`
+    ich nie wymaga, ale `set_enm` przyjmuje wyłącznie zwalidowany model.
+
+    Zwraca (migawka, feeder_ref) — `feeder_ref` pochodzi z `selection_hint`
+    operacji, TAK SAMO jak w `_enm_with_feeder`, bo miejsce przechowania pola
+    w migawce (`bays` czy `substations[].meta.nn_field_specs`) jest szczegółem
+    implementacyjnym `_field_ref_exists`, nie kontraktem tego testu.
+    """
+    enm: dict[str, Any] = {
+        "header": {"name": "brama-api-nn-load"},
+        "buses": [{"ref_id": "bus-nn", "name": "Szyna nN", "voltage_kv": 0.4}],
+        "substations": [
+            {
+                "ref_id": "st-1",
+                "name": "ST-1",
+                "station_type": "mv_lv",
+                "bus_refs": ["bus-nn"],
+                "field_specs": [],
+            }
+        ],
+    }
+    feeder = execute_domain_operation(
+        enm, "add_nn_outgoing_field", {"station_ref": "st-1", "bus_nn_ref": "bus-nn"}
+    )
+    assert not feeder.get("error"), feeder
+    return feeder["snapshot"], str(feeder["selection_hint"]["element_id"])
+
+
+def _zasiej_odplyw_nn(case_id: str) -> str:
+    """Zapisuje w store model z odpływem nN i zwraca jego `feeder_ref` —
+    przygotowanie stanu POZA drogą HTTP (setup, nie przedmiot testu), żeby
+    dalsze wywołanie `add_nn_load` w teście szło PRODUKCYJNĄ drogą zapisu
+    (`POST .../enm/domain-ops`), a nie bezpośrednim `execute_domain_operation`.
+    """
+    snapshot, feeder_ref = _enm_z_odplywem_nn()
+    model = EnergyNetworkModel.model_validate(snapshot)
+    set_enm(case_id, model)
+    return feeder_ref
+
+
+def test_add_nn_load_ekspercki_reczny_wymaga_jawnej_deklaracji() -> None:
+    """Iloczyn cech bramy (karta D4): katalog obecny × deklaracja obecna × żadne
+    z nich, oraz OBIE naraz (poprawna/zepsuta referencja) — nie tylko przykład
+    z karty. Deklaracja jest furtką WYŁĄCZNIE dla braku referencji, nigdy dla
+    referencji, która akurat nie istnieje (predykat parzysty z priorytetem
+    domeny — patrz komentarz przy bypassie w `api/domain_ops_policy.py`).
+    """
+    bazowy: dict[str, Any] = {"feeder_ref": "nn-1", "active_power_kw": 12.0}
+
+    # (1) katalog obecny, brak deklaracji -> przechodzi (zachowanie sprzed karty).
+    z_katalogiem = {**bazowy, "catalog_binding": _wiazanie("OBCIAZENIE", REF_ODBIOR)}
+    blad, _ = validate_and_materialize_catalog_binding("add_nn_load", z_katalogiem)
+    assert blad is None, blad
+
+    # (2) deklaracja obecna, brak katalogu -> przechodzi (NAPRAWA karty D4).
+    z_deklaracja = {**bazowy, "source_mode": "EKSPERCKI_RECZNY"}
+    blad2, pola2 = validate_and_materialize_catalog_binding("add_nn_load", z_deklaracja)
+    assert blad2 is None, blad2
+    assert pola2 == {}
+
+    # (3) INIEKCJA — ani katalog, ani deklaracja: 422 (katalog-first domyślne).
+    # Ten przypadek jest dowodem, że bypass NIE jest bezwarunkowy: gdyby ktoś
+    # usunął `_uses_manual_nn_load(...)` z warunku bramy (albo zrobił go zawsze
+    # `True`), ten test zaczerwieniłby się jako pierwszy.
+    blad3, _ = validate_and_materialize_catalog_binding("add_nn_load", bazowy)
+    assert blad3 is not None, "brama przepuściła add_nn_load BEZ katalogu i BEZ deklaracji"
+    assert blad3.code == "catalog.ref_required", blad3
+
+    # (4) deklaracja + katalog ISTNIEJĄCY naraz -> nadal przechodzi (deklaracja
+    # nie blokuje poprawnej pozycji, gdy klient poda obie rzeczy naraz).
+    oba_poprawne = {
+        **bazowy,
+        "source_mode": "EKSPERCKI_RECZNY",
+        "catalog_binding": _wiazanie("OBCIAZENIE", REF_ODBIOR),
+    }
+    blad4, _ = validate_and_materialize_catalog_binding("add_nn_load", oba_poprawne)
+    assert blad4 is None, blad4
+
+    # (5) deklaracja + katalog ZEPSUTY naraz -> WCIĄŻ 422. Priorytet domeny:
+    # `add_nn_load` rozstrzyga tryb z OBECNOŚCI referencji, nie z deklarowanego
+    # `source_mode` — deklaracja NIE jest furtką omijającą walidację istniejącej,
+    # ale błędnej pozycji katalogu.
+    oba_zepsute = {
+        **bazowy,
+        "source_mode": "EKSPERCKI_RECZNY",
+        "catalog_binding": _wiazanie("OBCIAZENIE", REF_ODBIOR + LITEROWKA),
+    }
+    blad5, _ = validate_and_materialize_catalog_binding("add_nn_load", oba_zepsute)
+    assert blad5 is not None, "deklaracja trybu eksperckiego omija walidację zepsutej referencji"
+    assert blad5.code == "catalog.item_not_found", blad5
+
+    # (6) deklaracja z INNĄ wartością niż dokładnie „EKSPERCKI_RECZNY" nie zwalnia
+    # z katalogu — zero drugiego, niezależnego wyróżnika.
+    for inna_wartosc in ("KATALOG", "MIGRACJA", "ekspercki_reczny", ""):
+        blad6, _ = validate_and_materialize_catalog_binding(
+            "add_nn_load", {**bazowy, "source_mode": inna_wartosc}
+        )
+        assert blad6 is not None, f"source_mode={inna_wartosc!r} nie powinno zwalniać z katalogu"
+        assert blad6.code == "catalog.ref_required", blad6
+
+
+def test_add_nn_load_ekspercki_reczny_znacznik_przez_pelne_api(klient: TestClient) -> None:
+    """Znacznik pochodzenia w modelu PO ścieżce eksperckiej, PRZEZ PEŁNE API
+    (`POST /api/cases/{id}/enm/domain-ops`) — nie tylko przez bezpośrednie
+    wywołanie `execute_domain_operation`, jak w `tests/enm/
+    test_znacznik_pochodzenia_katalogowego_v2.py`. Dowód, że ścieżka ekspercka
+    jest osiągalna z produkcyjnej drogi zapisu, tak jak jest z domeny.
+    """
+    case_id = "brama-api-nn-load-ekspercki-ok"
+    feeder_ref = _zasiej_odplyw_nn(case_id)
+
+    odpowiedz = klient.post(
+        f"/api/cases/{case_id}/enm/domain-ops",
+        json={
+            "operation": {
+                "name": "add_nn_load",
+                "payload": {
+                    "feeder_ref": feeder_ref,
+                    "active_power_kw": 12.0,
+                    "source_mode": "EKSPERCKI_RECZNY",
+                },
+            }
+        },
+    )
+
+    assert odpowiedz.status_code == 200, odpowiedz.text
+    tresc = odpowiedz.json()
+    assert tresc.get("error") is None, tresc.get("error")
+    odbior = tresc["snapshot"]["loads"][-1]
+    assert odbior.get("catalog_ref") is None
+    assert odbior.get("catalog_namespace") is None
+    assert odbior.get("source_mode") == "EKSPERCKI_RECZNY"
+
+
+def test_add_nn_load_bez_deklaracji_i_bez_katalogu_daje_422(klient: TestClient) -> None:
+    """PARYTET KONTRAKTU HTTP: bez katalogu i bez jawnej deklaracji — `422
+    catalog.ref_required`, NIE `HTTP 200` z kodem błędu w treści, model bez
+    zmian. Katalog-first pozostaje domyślne (§0 karty D4) — to jest ta sama
+    iniekcja co przypadek (3) w teście funkcyjnym powyżej, przeprowadzona
+    PRODUKCYJNĄ drogą zapisu.
+    """
+    case_id = "brama-api-nn-load-422"
+    feeder_ref = _zasiej_odplyw_nn(case_id)
+    hash_przed = klient.get(f"/api/cases/{case_id}/enm").json()["header"]["hash_sha256"]
+
+    odpowiedz = klient.post(
+        f"/api/cases/{case_id}/enm/domain-ops",
+        json={
+            "operation": {
+                "name": "add_nn_load",
+                "payload": {"feeder_ref": feeder_ref, "active_power_kw": 12.0},
+            }
+        },
+    )
+
+    assert odpowiedz.status_code == 422, odpowiedz.text
+    szczegol = odpowiedz.json()["detail"]
+    assert szczegol["code"] == "catalog.ref_required", szczegol
+    assert klient.get(f"/api/cases/{case_id}/enm").json()["header"]["hash_sha256"] == hash_przed

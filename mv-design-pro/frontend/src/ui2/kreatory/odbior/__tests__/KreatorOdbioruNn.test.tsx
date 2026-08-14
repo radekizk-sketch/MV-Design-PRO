@@ -91,10 +91,56 @@ describe('KreatorOdbioruNn — realna ścieżka', () => {
 
   afterEach(() => cleanup());
 
-  it('tworzy odbiór z P + cosφ (Q wyprowadzi backend)', async () => {
+  it('domyślna ścieżka (katalog-first): bez wyboru typu zapis jest zablokowany', async () => {
+    // Karta D4: katalog-first pozostaje domyślne — kreator nie wysyła żądania
+    // bez pozycji katalogowej ANI bez jawnej deklaracji trybu eksperckiego
+    // (dawniej payload leciał bez żadnego z nich i backend odrzucał go 422 —
+    // ślepy zaułek, bo UI nie mówiło, czego brakuje).
+    render(<KreatorOdbioruNn />);
+    await fill();
+
+    await userEvent.click(screen.getByTestId('mvd-kreator-odbior-zapisz'));
+
+    expect(await screen.findByText(/Wybierz typ odbioru z katalogu/i)).toBeInTheDocument();
+    expect(executeDomainOperationMock).not.toHaveBeenCalled();
+  });
+
+  it('domyślna ścieżka (katalog-first): wybór typu z katalogu wysyła catalog_binding, bez source_mode', async () => {
     executeDomainOperationMock.mockResolvedValue({ error: null });
     render(<KreatorOdbioruNn />);
     await fill();
+
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-odbior-katalog'), 'L1');
+    await userEvent.click(screen.getByTestId('mvd-kreator-odbior-zapisz'));
+
+    await waitFor(() => {
+      expect(executeDomainOperationMock).toHaveBeenCalledWith(
+        'case-1',
+        'add_nn_load',
+        expect.objectContaining({
+          feeder_ref: 'feeder-1',
+          bus_nn_ref: 'bus-nn',
+          load_kind: 'SKUPIONY',
+          catalog_binding: expect.objectContaining({ catalog_item_id: 'L1' }),
+        }),
+      );
+    });
+    const payload = executeDomainOperationMock.mock.calls[0]?.[2] as Record<string, unknown>;
+    expect(payload).not.toHaveProperty('source_mode');
+    expect(closeFormMock).toHaveBeenCalled();
+  });
+
+  it('tryb ręczny (ekspercki): przełącznik wysyła source_mode EKSPERCKI_RECZNY, bez katalogu', async () => {
+    // Ścieżka ekspercka JAWNIE dostępna przez przełącznik (karta D4) — nie przez
+    // ciche pozostawienie pola katalogu pustym. Ten sam wyróżnik, którym operacja
+    // domenowa add_nn_load i bramka API rozpoznają tryb bez pozycji katalogowej.
+    executeDomainOperationMock.mockResolvedValue({ error: null });
+    render(<KreatorOdbioruNn />);
+    await fill();
+
+    await userEvent.click(screen.getByTestId('mvd-kreator-odbior-tryb-przel-reczny'));
+    expect(screen.getByText(/Tryb ekspercki/i)).toBeInTheDocument();
+    expect(screen.queryByTestId('mvd-kreator-odbior-katalog')).toBeNull();
 
     await userEvent.click(screen.getByTestId('mvd-kreator-odbior-zapisz'));
 
@@ -108,11 +154,13 @@ describe('KreatorOdbioruNn — realna ścieżka', () => {
           active_power_kw: 50,
           cos_phi: 0.93,
           load_kind: 'SKUPIONY',
+          source_mode: 'EKSPERCKI_RECZNY',
         }),
       );
     });
     const payload = executeDomainOperationMock.mock.calls[0]?.[2] as Record<string, unknown>;
     expect(payload).not.toHaveProperty('reactive_power_kvar');
+    expect(payload).not.toHaveProperty('catalog_binding');
     expect(closeFormMock).toHaveBeenCalled();
   });
 
@@ -172,6 +220,9 @@ describe('KreatorOdbioruNn — realna ścieżka', () => {
     executeDomainOperationMock.mockResolvedValue({ error: null });
     render(<KreatorOdbioruNn />);
     await fill();
+    // Test dotyczy modelu ZIP, nie doboru katalogu — tryb ręczny omija wymóg
+    // katalogu (karta D4), żeby test pozostał skupiony na jednej rzeczy.
+    await userEvent.click(screen.getByTestId('mvd-kreator-odbior-tryb-przel-reczny'));
 
     // Odbiór stałoimpedancyjny: a = 1, c = 0 dla P i dla Q.
     await userEvent.clear(screen.getByTestId('mvd-kreator-odbior-zip-cp'));
