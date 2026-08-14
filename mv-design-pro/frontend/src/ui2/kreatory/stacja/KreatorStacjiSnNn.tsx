@@ -761,14 +761,20 @@ export function KreatorStacjiSnNn() {
   }, [aparatDomyslnyRoli, rolePol, selectedFamily, szablonyRola, torKonfiguracji]);
 
   /**
-   * Rodzina odznaczona (powrót do stanu „nie wskazano") zwalnia pola razem
-   * z ich wyposażeniem — tak samo jak opuszczenie toru blokowego zwalnia
-   * jednostki bloku. Pola zostawione po rodzinie, której już nie ma w
-   * formularzu, niosłyby karty katalogowe bez wyrobu.
+   * Rodzina odznaczona zwalnia pola, które KREATOR sam skomponował z jej
+   * pakietu — tak samo jak opuszczenie toru blokowego zwalnia jednostki bloku.
+   *
+   * WYJĄTEK: lista pochodząca z SZABLONU STARTOWEGO zostaje. To decyzja
+   * projektanta z kroku 0 (role pól i aparaty przyszły z szablonu, nie z
+   * rodziny), więc skasowanie jej przy zmianie rodziny byłoby cichym
+   * wyrzuceniem jego pracy. Takie pola czekają na wskazanie rodziny z pustą
+   * kartą katalogową — krok pozostaje wtedy jawnie niedomknięty.
    */
   useEffect(() => {
     if (selectedFamily !== null) return;
-    setDane((p) => (p.pola.length === 0 ? p : { ...p, pola: [], wyposazenie: {} }));
+    setDane((p) =>
+      p.pola.length === 0 || p.template_id !== null ? p : { ...p, pola: [], wyposazenie: {} },
+    );
   }, [selectedFamily]);
 
   /**
@@ -822,9 +828,14 @@ export function KreatorStacjiSnNn() {
         const wskazanieAktualne =
           pole.bay_template_ref !== null
           && szablonyWyboru.some((t) => t.template_ref === pole.bay_template_ref);
+        // Kartę katalogową dobieramy WYŁĄCZNIE z pakietu wskazanej rodziny.
+        // Bez rodziny pole zostaje bez karty (krok jawnie niedomknięty) —
+        // dobór z pakietu producenta mieszałby karty różnych wyrobów.
         const szablonRef = wskazanieAktualne
           ? pole.bay_template_ref
-          : szablonyRola[pole.field_role]?.template_ref ?? null;
+          : selectedFamily === null
+            ? null
+            : szablonyRola[pole.field_role]?.template_ref ?? null;
         const aparatRef = pole.apparatus_catalog_ref ?? aparatDomyslnyRoli(pole.field_role);
         if (szablonRef === pole.bay_template_ref && aparatRef === pole.apparatus_catalog_ref) {
           return pole;
@@ -834,7 +845,7 @@ export function KreatorStacjiSnNn() {
       });
       return zmiana ? { ...p, pola } : p;
     });
-  }, [aparatDomyslnyRoli, szablonyRola, szablonyWyboru]);
+  }, [aparatDomyslnyRoli, selectedFamily, szablonyRola, szablonyWyboru]);
 
   /**
    * Wyposażenie pól (krok 4) per WPIS pola — jedzie w TEJ SAMEJ operacji co
@@ -1174,12 +1185,18 @@ export function KreatorStacjiSnNn() {
         // (szablon stacji nie musi wskazywać aparatu każdego pola).
         const aparatRef = wypelnienie.aparatRef ?? null;
         const aparatDlaPola = (rola: SnFieldRole) => aparatRef ?? aparatDomyslnyRoli(rola);
+        // Karta katalogowa pola pochodzi z pakietu WSKAZANEJ rodziny; szablon
+        // stacji rodziny nie deklaruje (niesie role pól i aparat), więc dopóki
+        // jej nie ma, pole zostaje bez karty. Dobór z pakietu producenta
+        // mieszałby karty różnych wyrobów w jednej rozdzielnicy.
+        const kartaDlaRoli = (rola: SnFieldRole) =>
+          selectedFamily === null ? null : szablonyRola[rola]?.template_ref ?? null;
         const pola: PoleSnWpis[] =
           wypelnienie.pola.length > 0
             ? wypelnienie.pola.map((pole, index) =>
                 nowyWpisPola(
                   pole.field_role,
-                  szablonyRola[pole.field_role]?.template_ref ?? null,
+                  kartaDlaRoli(pole.field_role),
                   pole.apparatus_catalog_ref ?? aparatDlaPola(pole.field_role),
                   index + 1,
                 ),
