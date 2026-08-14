@@ -12,6 +12,14 @@ Zakres (§0.3): wyłącznie TN (fault_loop solver nie obsługuje TT/IT — MVP
 scope, ``fault_loop_iec60364.py``). Ia liczone WYŁĄCZNIE z gwarantowanej
 górnej granicy pasma magnetycznego MCB (IEC 60898-1, G-D4) — dolna granica
 NIE jest gwarancją zadziałania.
+
+Karta D1 (nN, „runda 8 — PEŁNY WERDYKT nN", 2026-08-14): rozszerza ŹRÓDŁO Ia
+o ``typ="MCCB"`` (wyłącznik z wyzwalaczem elektronicznym) — Ia z nastawy Ii
+(magnetycznej/bezzwłocznej), analogicznie do MCB (gwarantowana górna granica
+pasma), ale bez interpolacji pasma normatywnego: Ii JEST już KONKRETNĄ
+nastawą (nie normatywnym przedziałem klasy B/C/D), więc Ia = Ii wprost.
+Istniejące werdykty MCB/WKLADKA_GG NIETKNIĘTE (żadna gałąź powyżej nie
+zmieniona).
 """
 
 from __future__ import annotations
@@ -35,7 +43,7 @@ from network_model.catalog.lv_mcb_bands_iec60898 import ia_gwarantowane_a
 # ``rodzaj_obwodu`` jawnie podany.
 PROG_PRADU_OBWODU_ODBIORCZEGO_A = 63.0
 
-_TYPY_APARATU_DOZWOLONE = ("MCB", "WKLADKA_GG")
+_TYPY_APARATU_DOZWOLONE = ("MCB", "WKLADKA_GG", "MCCB")
 
 
 class SwzStatus(StrEnum):
@@ -52,13 +60,18 @@ class AparatZabezpieczajacy:
     ``typ="WKLADKA_GG"``: bramki I-t (G-D2) są PUSTE w rejestrze — werdykt
     zawsze NIEROZSTRZYGALNY, niezależnie od ``in_a`` (fail-closed, nigdy PASS
     bez danych — G-D2 „wkładka bez krzywej → SWZ dane niekompletne").
-    Inny ``typ`` (np. MCCB elektroniczny) → NIEROZSTRZYGALNY (poza zakresem
-    P0.6 — brak modelu Ia w tej karcie, nie fabrykacja).
+    ``typ="MCCB"`` (karta D1): wymaga ``ii_a`` (nastawa zwarciowa/magnetyczna
+    Ii, RESOLWOWANA — wartość absolutna [A], nie zakres) — Ia = ``ii_a``
+    wprost (bez interpolacji, Ii jest już konkretną nastawą, nie normatywnym
+    przedziałem). Brak ``ii_a`` → NIEROZSTRZYGALNY (zero fabrykacji).
+    Inny ``typ`` (nieobsłużony) → NIEROZSTRZYGALNY (brak modelu Ia, nie
+    fabrykacja).
     """
 
     typ: str
     in_a: float | None = None
     klasa_mcb: str | None = None
+    ii_a: float | None = None
 
 
 @dataclass(frozen=True)
@@ -168,6 +181,82 @@ def ocen_swz(
             ia_wymagane_a=None,
             t_wymagany_s=t_wymagany,
             margines=None,
+            rodzaj_obwodu=rodzaj,
+            pasmo_u0=pasmo,
+            white_box_trace=tuple(trace),
+        )
+
+    if aparat.typ == "MCCB":
+        if aparat.ii_a is None:
+            trace.append(
+                {
+                    "step": "aparat_mccb_brak_nastawy_ii",
+                    "method": "Karta D1 — Ia z nastawy Ii (magnetycznej/bezzwłocznej)",
+                    "result": "NIEROZSTRZYGALNE",
+                }
+            )
+            return SwzResult(
+                status=SwzStatus.NIEROZSTRZYGALNE,
+                przyczyna_pl=(
+                    "Wyłącznik z wyzwalaczem elektronicznym (MCCB) bez rozwiązanej nastawy "
+                    "zwarciowej Ii w katalogu — Ia nie do wyznaczenia bez fabrykacji danych."
+                ),
+                ik1_min_a=ik1_min_a,
+                ia_wymagane_a=None,
+                t_wymagany_s=t_wymagany,
+                margines=None,
+                rodzaj_obwodu=rodzaj,
+                pasmo_u0=pasmo,
+                white_box_trace=tuple(trace),
+            )
+
+        ia = aparat.ii_a
+        margines = ik1_min_a / ia if ia > 0 else float("inf")
+        spelnia = ik1_min_a >= ia
+
+        trace.append(
+            {
+                "step": "ia_z_nastawy_ii_mccb",
+                "method": "Ia = Ii (nastawa zwarciowa/bezzwłoczna wyzwalacza elektronicznego, "
+                "IEC 60947-2) — karta D1, bez interpolacji pasma (Ii jest KONKRETNĄ nastawą)",
+                "ii_a": aparat.ii_a,
+                "ia_a": ia,
+            }
+        )
+        trace.append(
+            {
+                "step": "werdykt",
+                "method": "Ik1_min ≥ Ia ⇒ wyzwolenie zwarciowe (natychmiastowe) gwarantowane "
+                "(<0,1 s < t_wymagany z Tab. 41.1)",
+                "ik1_min_a": ik1_min_a,
+                "ia_a": ia,
+                "margines": margines,
+                "result": SwzStatus.SPELNIA.value if spelnia else SwzStatus.NIE_SPELNIA.value,
+            }
+        )
+
+        przyczyna = (
+            f"Ik1_min={ik1_min_a:.1f} A {'≥' if spelnia else '<'} Ia={ia:.1f} A "
+            f"(MCCB, nastawa Ii={aparat.ii_a:.1f} A — wyzwolenie zwarciowe natychmiastowe, "
+            f"<0,1 s, IEC 60947-2). Czas wyzwolenia jest poniżej t_wymagany={t_wymagany:g} s "
+            f"z Tab. 41.1 ({rodzaj}, pasmo U0 {pasmo}), więc kryterium czasowe jest spełnione "
+            "automatycznie po spełnieniu kryterium prądowego."
+            if spelnia
+            else (
+                f"Ik1_min={ik1_min_a:.1f} A < Ia={ia:.1f} A (MCCB, nastawa Ii="
+                f"{aparat.ii_a:.1f} A) — wyzwolenie zwarciowe NIE jest gwarantowane przy tej "
+                f"nastawie; aparat może nie wyłączyć w czasie t_wymagany={t_wymagany:g} s "
+                f"z Tab. 41.1 ({rodzaj}, pasmo U0 {pasmo})."
+            )
+        )
+
+        return SwzResult(
+            status=SwzStatus.SPELNIA if spelnia else SwzStatus.NIE_SPELNIA,
+            przyczyna_pl=przyczyna,
+            ik1_min_a=ik1_min_a,
+            ia_wymagane_a=ia,
+            t_wymagany_s=t_wymagany,
+            margines=margines,
             rodzaj_obwodu=rodzaj,
             pasmo_u0=pasmo,
             white_box_trace=tuple(trace),

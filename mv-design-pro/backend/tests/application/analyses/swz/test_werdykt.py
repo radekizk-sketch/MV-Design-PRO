@@ -66,6 +66,60 @@ class TestOcenSwzNierozstrzygalne:
         )
         assert result.status == SwzStatus.NIEROZSTRZYGALNE
 
+    def test_mccb_missing_ii_undecided(self) -> None:
+        """Karta D1: typ='MCCB' bez `ii_a` (nastawa nierozwiązana) — trzeci
+        stan, NIE fabrykacja domyślnej nastawy."""
+        result = ocen_swz(
+            ik1_min_a=500.0,
+            u0_v=230.0,
+            aparat=AparatZabezpieczajacy(typ="MCCB", in_a=100.0),
+        )
+        assert result.status == SwzStatus.NIEROZSTRZYGALNE
+        assert result.ia_wymagane_a is None
+
+
+class TestOcenSwzMccbKartaD1:
+    """Karta D1 (nN, „runda 8 — PEŁNY WERDYKT nN"): `typ="MCCB"`, Ia z
+    nastawy Ii (magnetycznej/bezzwłocznej) — bez interpolacji pasma (Ii jest
+    KONKRETNĄ nastawą, nie normatywnym przedziałem klasy B/C/D)."""
+
+    def test_spelnia(self) -> None:
+        result = ocen_swz(
+            ik1_min_a=7000.0,
+            u0_v=230.0,
+            aparat=AparatZabezpieczajacy(typ="MCCB", in_a=400.0, ii_a=6000.0),
+        )
+        assert result.status == SwzStatus.SPELNIA
+        assert result.ia_wymagane_a == pytest.approx(6000.0)
+        assert result.margines == pytest.approx(7000.0 / 6000.0)
+
+    def test_nie_spelnia(self) -> None:
+        result = ocen_swz(
+            ik1_min_a=500.0,
+            u0_v=230.0,
+            aparat=AparatZabezpieczajacy(typ="MCCB", in_a=400.0, ii_a=6000.0),
+        )
+        assert result.status == SwzStatus.NIE_SPELNIA
+        assert result.ia_wymagane_a == pytest.approx(6000.0)
+
+    def test_istniejace_werdykty_mcb_gg_nietkniete(self) -> None:
+        """Zakaz karty D1: MCB/WKLADKA_GG werdykty NIEZMIENIONE (piny zielone
+        bez modyfikacji asercji) — dowód, że nowa gałąź MCCB nic nie zmienia
+        w istniejących ścieżkach."""
+        mcb = ocen_swz(
+            ik1_min_a=500.0,
+            u0_v=230.0,
+            aparat=AparatZabezpieczajacy(typ="MCB", in_a=16.0, klasa_mcb="B"),
+        )
+        assert mcb.status == SwzStatus.SPELNIA
+        assert mcb.ia_wymagane_a == pytest.approx(80.0)
+        gg = ocen_swz(
+            ik1_min_a=99999.0,
+            u0_v=230.0,
+            aparat=AparatZabezpieczajacy(typ="WKLADKA_GG", in_a=25.0),
+        )
+        assert gg.status == SwzStatus.NIEROZSTRZYGALNE
+
 
 class TestPasmoIRodzajObwodu:
     def test_final_circuit_band_120_230(self) -> None:

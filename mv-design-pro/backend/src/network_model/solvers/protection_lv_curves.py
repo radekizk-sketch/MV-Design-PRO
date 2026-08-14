@@ -505,6 +505,33 @@ def compute_mccb_point(
     )
 
 
+# Karta D1 (nN, „runda 8 — PEŁNY WERDYKT nN"): prąd umowny zadziałania
+# (conventional tripping current) wyzwalacza ELEKTRONICZNEGO wg IEC 60947-2 —
+# I2 = 1,3×Ir (w czasie umownym: <=630 A → 2h; >630 A → 4h). Konsument:
+# `application/analyses/nn_device_selection.py::_kryterium_i2` (kryterium ii,
+# IEC 60364-4-43 §433.1.1) dla kandydatów KIND_MCCB — WYŁĄCZNIE gdy nastawa
+# Ir jest resolwowana (katalog niesie `ir_range`); brak nastawy → trzeci stan
+# (NIEROZSTRZYGALNE), zero fabrykacji domyślnego Ir.
+#
+# Źródła (dwa, niezależne):
+#   (1) ABB SACE Emax2/Tmax XT — przewodnik doboru nastaw wyzwalacza Ekip
+#       (stoklink.com/blogs/technical/select-ekip-trip-unit-abb-emax-2-guide):
+#       „Conventional tripping time: 1.3 × Ir within 2 hours (currents below
+#       630 A) or 4 hours (above 630 A)".
+#   (2) VIOX, „MCCB Trip Unit Settings Guide" (viox.com/mccb-trip-unit-
+#       settings-ir-isd-ii-explained) — ten sam mnożnik 1,3×Ir jako prąd
+#       umowny zadziałania długozwłocznego dla wyzwalaczy elektronicznych.
+MCCB_I2_MULTIPLIER = 1.3
+MCCB_I2_SOURCE_PL = (
+    "IEC 60947-2 — prąd umowny zadziałania (conventional tripping current) wyzwalacza "
+    "elektronicznego I2=1,3×Ir (czas umowny: <=630 A → 2h, >630 A → 4h) — zweryfikowane "
+    "podwójnie, niezależnie: (1) ABB Emax2/Tmax XT Ekip — przewodnik doboru nastaw "
+    "(stoklink.com/blogs/technical/select-ekip-trip-unit-abb-emax-2-guide); "
+    "(2) VIOX „MCCB Trip Unit Settings Guide” "
+    "(viox.com/mccb-trip-unit-settings-ir-isd-ii-explained)."
+)
+
+
 # =============================================================================
 # FUSE_GG — BRAMKI CZASOWO-PRĄDOWE (G-D2)
 # =============================================================================

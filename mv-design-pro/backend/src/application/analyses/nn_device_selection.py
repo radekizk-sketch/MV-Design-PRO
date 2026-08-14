@@ -77,6 +77,7 @@ from application.analyses.swz.werdykt import (
 from enm.models import EnergyNetworkModel
 from network_model.catalog.lv_mcb_bands_iec60898 import PROG_CIEPLNY_WYZWALA_X_IN
 from network_model.catalog.repository import CatalogRepository, get_default_mv_catalog
+from network_model.catalog.types import LVApparatusType
 from network_model.solvers.fault_loop_builder import (
     FaultLoopBuildRequest,
     build_fault_loop_input,
@@ -85,9 +86,11 @@ from network_model.solvers.fault_loop_builder import (
 from network_model.solvers.fault_loop_iec60364 import compute_fault_loop
 from network_model.solvers.protection_lv_curves import (
     FUSE_GG_IF_MULTIPLIER,
+    MCCB_I2_MULTIPLIER,
     GwarancjaNormy,
     compute_fuse_gg_gate,
     compute_mcb_thermal_point,
+    compute_mccb_point,
 )
 
 # =============================================================================
@@ -134,6 +137,18 @@ class KandydatAparatuNn:
             fizycznie NIE MOŻE przekroczyć zdolności samej wkładki (walidacja
             w `zbierz_kandydatow_z_katalogu`).
         manufacturer: Producent (opcjonalnie, do prezentacji).
+        ir_a, isd_a, ii_a, tr_s, tsd_s: Karta D1 (nN, „runda 8") — WYŁĄCZNIE
+            dla ``kind=KIND_MCCB``. Nastawy wyzwalacza elektronicznego
+            RESOLWOWANE (nie zakres nastawialności) do absolutnych jednostek
+            [A]/[s], konsumowane 1:1 przez `protection_lv_curves.
+            compute_mccb_point` (ten sam kontrakt parametrów). Resolucja z
+            `LVApparatusType.ir_range/isd_range/ii_range/tr_range/tsd_range`
+            do GÓRNEGO krańca zakresu regulacji — ZAŁOŻENIE NAZWANE WPROST
+            (nie fabrykacja): kandydat z nastawialnym wyzwalaczem musi
+            spełniać kryteria doboru NAWET przy najbardziej wymagającej
+            dozwolonej nastawie fabrycznej (`zbierz_kandydatow_z_katalogu`).
+            ``None`` gdy katalog nie niesie odpowiedniego zakresu — kryterium
+            (ii)/(iv) dają wtedy NIEROZSTRZYGALNE, nigdy fabrykowaną wartość.
     """
 
     id: str
@@ -144,6 +159,11 @@ class KandydatAparatuNn:
     klasa_mcb: str | None = None
     fuse_breaking_capacity_ka: float | None = None
     manufacturer: str | None = None
+    ir_a: float | None = None
+    isd_a: float | None = None
+    ii_a: float | None = None
+    tr_s: float | None = None
+    tsd_s: float | None = None
 
     def __post_init__(self) -> None:
         if self.kind not in _KINDY_DOZWOLONE:
@@ -177,6 +197,11 @@ class KandydatAparatuNn:
             "klasa_mcb": self.klasa_mcb,
             "fuse_breaking_capacity_ka": self.fuse_breaking_capacity_ka,
             "manufacturer": self.manufacturer,
+            "ir_a": self.ir_a,
+            "isd_a": self.isd_a,
+            "ii_a": self.ii_a,
+            "tr_s": self.tr_s,
+            "tsd_s": self.tsd_s,
         }
 
 
@@ -272,8 +297,12 @@ def _kryterium_i2(*, kandydat: KandydatAparatuNn, iz_prime_a: float) -> Kryteriu
         przez `compute_mcb_thermal_point`.
       FUSE_SWITCH: 1,6×In wkładki (`FUSE_GG_IF_MULTIPLIER`, G-D2),
         zweryfikowany przez `compute_fuse_gg_gate`.
-      MCCB: brak normatywnego pojedynczego mnożnika bez nastaw wyzwalacza w
-        tej karcie (ZERO FABRYKACJI) — NIEROZSTRZYGALNE.
+      MCCB: 1,3×Ir (REUSE `MCCB_I2_MULTIPLIER`, IEC 60947-2, karta D1),
+        WYŁĄCZNIE gdy `kandydat.ir_a`/`tr_s` są rozwiązane (katalog niesie
+        `ir_range`/`tr_range`) — zweryfikowany przez `compute_mccb_point`
+        (musi klasyfikować I2 W lub POWYŻEJ progu długozwłocznego — I2>Ir
+        z definicji mnożnika >1). Brak nastawy → NIEROZSTRZYGALNE
+        (WARUNKOWO — zależne od danych katalogowych, nie zaszyte na stałe).
     """
     limit = 1.45 * iz_prime_a
     if kandydat.kind == KIND_MCB:
@@ -306,15 +335,51 @@ def _kryterium_i2(*, kandydat: KandydatAparatuNn, iz_prime_a: float) -> Kryteriu
             uzasadnienie_pl=uzasadnienie,
             wartosci={"i2_a": i2, "limit_a": limit, "zrodlo": "IEC 60269-1 (If=1,6×In)"},
         )
+    # KIND_MCCB — karta D1: I2 = MCCB_I2_MULTIPLIER×Ir (IEC 60947-2), gdy
+    # nastawa długozwłoczna jest rozwiązana; w przeciwnym razie trzeci stan,
+    # WARUNKOWO zależny od tego, czy TEN KONKRETNY rekord katalogu niesie
+    # `ir_range`/`tr_range` (nie zaszyty na stałe niezależnie od danych).
+    if kandydat.ir_a is None or kandydat.tr_s is None:
+        return KryteriumWynik(
+            nazwa="I2<=1,45·Iz′",
+            status=KryteriumStatus.NIEROZSTRZYGALNE,
+            uzasadnienie_pl=(
+                "Wyłącznik z wyzwalaczem elektronicznym (MCCB) bez rozwiązanej nastawy "
+                "długozwłocznej Ir/tr w katalogu — I2 nie do wyznaczenia bez fabrykacji "
+                "(ten rekord katalogu nie niesie `ir_range`/`tr_range`)."
+            ),
+            wartosci={"limit_a": limit},
+        )
+    i2 = MCCB_I2_MULTIPLIER * kandydat.ir_a
+    gate = compute_mccb_point(
+        i_query_a=i2,
+        ir_a=kandydat.ir_a,
+        isd_a=kandydat.isd_a,
+        ii_a=kandydat.ii_a,
+        tr_s=kandydat.tr_s,
+        tsd_s=kandydat.tsd_s,
+    )
+    # I2=1,3×Ir > Ir z definicji mnożnika (>1) — punkt NIGDY nie klasyfikuje
+    # się jako "brak" (poniżej progu długozwłocznego); solver to potwierdza
+    # (reuse, nie druga fizyka).
+    assert gate.stopien != "brak"
+    spelnia = i2 <= limit
+    uzasadnienie = (
+        f"I2={i2:g} A (={MCCB_I2_MULTIPLIER:g}×Ir={kandydat.ir_a:g} A, wyzwalacz "
+        f"elektroniczny, IEC 60947-2 — stopień klasyfikacji '{gate.stopien}') "
+        f"{'<=' if spelnia else '>'} 1,45·Iz′={limit:g} A."
+    )
     return KryteriumWynik(
         nazwa="I2<=1,45·Iz′",
-        status=KryteriumStatus.NIEROZSTRZYGALNE,
-        uzasadnienie_pl=(
-            "Wyłącznik z wyzwalaczem elektronicznym (MCCB) bez rozwiązanych nastaw "
-            "Ir/Isd/Ii w tym doborze — brak normatywnego pojedynczego mnożnika I2 "
-            "niezależnego od producenta (zero fabrykacji)."
-        ),
-        wartosci={"limit_a": limit},
+        status=KryteriumStatus.SPELNIA if spelnia else KryteriumStatus.NIE_SPELNIA,
+        uzasadnienie_pl=uzasadnienie,
+        wartosci={
+            "i2_a": i2,
+            "limit_a": limit,
+            "zrodlo": "IEC 60947-2 (1,3×Ir, wyzwalacz elektroniczny)",
+            "ir_a": kandydat.ir_a,
+            "mccb_stopien": gate.stopien,
+        },
     )
 
 
@@ -368,14 +433,24 @@ _SWZ_STATUS_MAP: dict[SwzStatus, KryteriumStatus] = {
 
 
 def _kryterium_swz(*, kandydat: KandydatAparatuNn, ik1_min_a: float, u0_v: float) -> KryteriumWynik:
-    """(iv) SWZ przy Ik_min — REUSE `application.analyses.swz.werdykt.ocen_swz`."""
+    """(iv) SWZ przy Ik_min — REUSE `application.analyses.swz.werdykt.ocen_swz`.
+
+    Karta D1: `typ="MCCB"` ma teraz galaz w `ocen_swz` (Ia z nastawy Ii
+    magnetycznej/bezzwłocznej, `kandydat.ii_a` — patrz docstring
+    `KandydatAparatuNn`) — WARUNKOWO NIEROZSTRZYGALNA, gdy `ii_a is None`.
+    """
     typ = {
         KIND_MCB: "MCB",
         KIND_FUSE_SWITCH: "WKLADKA_GG",
     }.get(
         kandydat.kind, kandydat.kind
-    )  # MCCB -> "MCCB" (nieobsłużony typ w ocen_swz -> NIEROZSTRZYGALNE)
-    aparat = AparatZabezpieczajacy(typ=typ, in_a=kandydat.in_a, klasa_mcb=kandydat.klasa_mcb)
+    )  # MCCB -> "MCCB"
+    aparat = AparatZabezpieczajacy(
+        typ=typ,
+        in_a=kandydat.in_a,
+        klasa_mcb=kandydat.klasa_mcb,
+        ii_a=kandydat.ii_a if kandydat.kind == KIND_MCCB else None,
+    )
     wynik = ocen_swz(ik1_min_a=ik1_min_a, u0_v=u0_v, aparat=aparat)
     return KryteriumWynik(
         nazwa="SWZ przy Ik_min",
@@ -485,6 +560,35 @@ def ocen_kandydatow_nn(
 # =============================================================================
 
 
+def _resolwuj_nastawy_mccb(
+    aparat: LVApparatusType,
+) -> tuple[float | None, float | None, float | None, float | None, float | None]:
+    """Resolwuj nastawy wyzwalacza elektronicznego MCCB do wartości absolutnych.
+
+    Karta D1 (nN, „runda 8 — PEŁNY WERDYKT nN"). Katalog niesie
+    ``LVApparatusType.ir_range``/``isd_range``/``ii_range``/``tr_range``/
+    ``tsd_range`` jako ZAKRESY nastawialności (xIn/xIr/[s]) — DOBÓR wymaga
+    KONKRETNEJ wartości (kontrakt `compute_mccb_point`). ZAŁOŻENIE NAZWANE
+    WPROST (nie fabrykacja): każda nastawa resolwowana do GÓRNEGO krańca
+    swojego zakresu regulacji — kandydat z nastawialnym wyzwalaczem musi
+    spełniać kryteria doboru NAWET przy najbardziej wymagającej dozwolonej
+    nastawie fabrycznej (Ir max → najwyższe I2; Ii max → najwyższe wymagane
+    Ia dla SWZ). Brak KTÓREGOKOLWIEK zakresu w rekordzie katalogu → `None`
+    dla zależnej wartości (i wszystkiego, co od niej zależy) — trzeci stan
+    w kryteriach (ii)/(iv), nigdy cicha fabrykacja.
+
+    Zwraca ``(ir_a, isd_a, ii_a, tr_s, tsd_s)``.
+    """
+    ir_a = aparat.ir_range[1] * aparat.i_n_a if aparat.ir_range is not None else None
+    isd_a = (
+        aparat.isd_range[1] * ir_a if aparat.isd_range is not None and ir_a is not None else None
+    )
+    ii_a = aparat.ii_range[1] * aparat.i_n_a if aparat.ii_range is not None else None
+    tr_s = aparat.tr_range[1] if aparat.tr_range is not None else None
+    tsd_s = aparat.tsd_range[1] if aparat.tsd_range is not None else None
+    return ir_a, isd_a, ii_a, tr_s, tsd_s
+
+
 def zbierz_kandydatow_z_katalogu(
     catalog: CatalogRepository | None = None,
 ) -> tuple[KandydatAparatuNn, ...]:
@@ -539,6 +643,7 @@ def zbierz_kandydatow_z_katalogu(
     for aparat in repo.list_lv_apparatus_types():
         if aparat.device_kind not in ("WYLACZNIK_GLOWNY", "WYLACZNIK_ODPLYWOWY"):
             continue
+        ir_a, isd_a, ii_a, tr_s, tsd_s = _resolwuj_nastawy_mccb(aparat)
         kandydaci.append(
             KandydatAparatuNn(
                 id=aparat.id,
@@ -547,6 +652,11 @@ def zbierz_kandydatow_z_katalogu(
                 in_a=aparat.i_n_a,
                 zdolnosc_wylaczania_ka=aparat.i_cu_ka,
                 manufacturer=aparat.manufacturer,
+                ir_a=ir_a,
+                isd_a=isd_a,
+                ii_a=ii_a,
+                tr_s=tr_s,
+                tsd_s=tsd_s,
             )
         )
 

@@ -62,13 +62,29 @@ def _fuse_switch(in_a: float = 63.0, conditional_ka: float | None = 50.0) -> Kan
     )
 
 
-def _mccb(in_a: float = 400.0, i_cu_ka: float | None = 50.0) -> KandydatAparatuNn:
+def _mccb(
+    in_a: float = 400.0,
+    i_cu_ka: float | None = 50.0,
+    *,
+    ir_a: float | None = None,
+    isd_a: float | None = None,
+    ii_a: float | None = None,
+    tr_s: float | None = None,
+    tsd_s: float | None = None,
+) -> KandydatAparatuNn:
+    """Karta D1: nastawy (`ir_a`/`isd_a`/`ii_a`/`tr_s`/`tsd_s`) domyślnie
+    `None` (brak nastawy — pinuje istniejące testy "nierozstrzygalne")."""
     return KandydatAparatuNn(
         id=f"mccb_{int(in_a)}",
         nazwa=f"Wyłącznik {int(in_a)}A",
         kind=KIND_MCCB,
         in_a=in_a,
         zdolnosc_wylaczania_ka=i_cu_ka,
+        ir_a=ir_a,
+        isd_a=isd_a,
+        ii_a=ii_a,
+        tr_s=tr_s,
+        tsd_s=tsd_s,
     )
 
 
@@ -220,6 +236,103 @@ class TestKryteriumI2:
 
 
 # =============================================================================
+# KRYTERIUM (ii) I2 — MCCB z nastawami (karta D1, „runda 8 — PEŁNY WERDYKT nN")
+# =============================================================================
+
+
+class TestKryteriumI2MccbKartaD1:
+    """MCCB z rozwiązanymi nastawami — kryterium I2 DECYZYJNE (nie zaszyte na
+    stałe NIEROZSTRZYGALNE), WARUNKOWO zależne od danych kandydata."""
+
+    def test_spelnia(self) -> None:
+        # Ir=400 A (=In, górny kraniec ir_range katalogu D1) -> I2=1.3*400=520 A;
+        # limit=1.45*1000=1450 A -> spelnia.
+        wynik = oceniaj_kandydata(
+            kandydat=_mccb(in_a=400.0, ir_a=400.0, tr_s=144.0),
+            ib_a=10.0,
+            iz_prime_a=1000.0,
+            ik_max_ka=6.0,
+            ik1_min_a=1000.0,
+            u0_v=230.0,
+        )
+        k = next(k for k in wynik.kryteria if k.nazwa == "I2<=1,45·Iz′")
+        assert k.status == KryteriumStatus.SPELNIA
+        assert k.wartosci["i2_a"] == pytest.approx(1.3 * 400.0)
+        assert k.wartosci["ir_a"] == pytest.approx(400.0)
+        assert k.wartosci["mccb_stopien"] == "dlugozwloczny"
+
+    def test_nie_spelnia(self) -> None:
+        # Ir=400 A -> I2=520 A; limit=1.45*300=435 A -> nie spelnia.
+        wynik = oceniaj_kandydata(
+            kandydat=_mccb(in_a=400.0, ir_a=400.0, tr_s=144.0),
+            ib_a=10.0,
+            iz_prime_a=300.0,
+            ik_max_ka=6.0,
+            ik1_min_a=1000.0,
+            u0_v=230.0,
+        )
+        k = next(k for k in wynik.kryteria if k.nazwa == "I2<=1,45·Iz′")
+        assert k.status == KryteriumStatus.NIE_SPELNIA
+
+    def test_nierozstrzygalne_brak_tr_mimo_ir(self) -> None:
+        """Ir rozwiązane, ale tr NIE — nadal trzeci stan (compute_mccb_point
+        wymaga OBU, nie tylko Ir)."""
+        wynik = oceniaj_kandydata(
+            kandydat=_mccb(in_a=400.0, ir_a=400.0, tr_s=None),
+            ib_a=10.0,
+            iz_prime_a=1000.0,
+            ik_max_ka=6.0,
+            ik1_min_a=1000.0,
+            u0_v=230.0,
+        )
+        k = next(k for k in wynik.kryteria if k.nazwa == "I2<=1,45·Iz′")
+        assert k.status == KryteriumStatus.NIEROZSTRZYGALNE
+
+    def test_iniekcja_usuniecie_nastawy_z_rekordu_katalogu_daje_trzeci_stan(self) -> None:
+        """Iniekcja end-to-end (katalog → `zbierz_kandydatow_z_katalogu` →
+        kryterium): rekord katalogu BEZ `ir_range` daje kandydata z `ir_a is
+        None` → kryterium I2 wraca do NIEROZSTRZYGALNE — NIE wyjątek, NIE
+        cicha fabrykacja domyślnej nastawy."""
+        from dataclasses import replace
+
+        from network_model.catalog.repository import CatalogRepository
+
+        catalog = get_default_mv_catalog()
+        oryginal = catalog.get_lv_apparatus_type("cb_nn_400a")
+        assert oryginal is not None
+        assert (
+            oryginal.ir_range is not None
+        ), "Przesłanka testu: rekord MA ir_range przed usunięciem"
+
+        bez_nastawy = replace(oryginal, ir_range=None, isd_range=None, tr_range=None)
+        repo_bez_nastawy = CatalogRepository.from_records(
+            line_types=[],
+            cable_types=[],
+            transformer_types=[],
+            lv_apparatus_types=[
+                {"id": bez_nastawy.id, "name": bez_nastawy.name, "params": bez_nastawy.to_dict()}
+            ],
+        )
+
+        kandydaci = zbierz_kandydatow_z_katalogu(repo_bez_nastawy)
+        kandydat = next(k for k in kandydaci if k.id == "cb_nn_400a")
+        assert kandydat.ir_a is None, "Iniekcja: rekord bez ir_range MUSI dać ir_a=None"
+
+        wynik = oceniaj_kandydata(
+            kandydat=kandydat,
+            ib_a=10.0,
+            iz_prime_a=1000.0,
+            ik_max_ka=6.0,
+            ik1_min_a=1000.0,
+            u0_v=230.0,
+        )
+        k = next(k for k in wynik.kryteria if k.nazwa == "I2<=1,45·Iz′")
+        assert (
+            k.status == KryteriumStatus.NIEROZSTRZYGALNE
+        ), "Usunięcie nastawy z rekordu katalogu MUSI dać trzeci stan, nie błąd/fabrykację"
+
+
+# =============================================================================
 # KRYTERIUM (iii) zdolność wyłączania >= Ik″max
 # =============================================================================
 
@@ -320,6 +433,7 @@ class TestKryteriumSwz:
         assert k.status == KryteriumStatus.NIEROZSTRZYGALNE
 
     def test_mccb_nierozstrzygalne(self) -> None:
+        """MCCB bez nastawy Ii — trzeci stan (brak nastawy, nie luka kryterium)."""
         wynik = oceniaj_kandydata(
             kandydat=_mccb(in_a=100.0),
             ib_a=10.0,
@@ -330,6 +444,33 @@ class TestKryteriumSwz:
         )
         k = next(k for k in wynik.kryteria if k.nazwa == "SWZ przy Ik_min")
         assert k.status == KryteriumStatus.NIEROZSTRZYGALNE
+
+    def test_mccb_spelnia_karta_d1(self) -> None:
+        """Karta D1: Ia = Ii wprost — Ik1_min >= Ii -> spełnia."""
+        wynik = oceniaj_kandydata(
+            kandydat=_mccb(in_a=400.0, ii_a=6000.0),
+            ib_a=10.0,
+            iz_prime_a=1000.0,
+            ik_max_ka=6.0,
+            ik1_min_a=7000.0,  # >= Ii=6000 A
+            u0_v=230.0,
+        )
+        k = next(k for k in wynik.kryteria if k.nazwa == "SWZ przy Ik_min")
+        assert k.status == KryteriumStatus.SPELNIA
+        assert k.wartosci["ia_wymagane_a"] == pytest.approx(6000.0)
+
+    def test_mccb_nie_spelnia_karta_d1(self) -> None:
+        """Karta D1: Ik1_min < Ii -> nie spełnia (nastawa zbyt wysoka wobec Ik1_min trasy)."""
+        wynik = oceniaj_kandydata(
+            kandydat=_mccb(in_a=400.0, ii_a=6000.0),
+            ib_a=10.0,
+            iz_prime_a=1000.0,
+            ik_max_ka=6.0,
+            ik1_min_a=500.0,  # << Ii=6000 A
+            u0_v=230.0,
+        )
+        k = next(k for k in wynik.kryteria if k.nazwa == "SWZ przy Ik_min")
+        assert k.status == KryteriumStatus.NIE_SPELNIA
 
 
 # =============================================================================
@@ -522,6 +663,32 @@ class TestRankingDeterminizm:
                 kandydaci=(),
             )
 
+    def test_determinizm_dobor_mccb_z_nastawami_karta_d1(self) -> None:
+        """Karta D1: dobór z pełną pulą katalogu (nastawy MCCB resolwowane)
+        deterministyczny — dwa niezależne biegi na TYM SAMYM katalogu dają
+        identyczny podpis i identyczną rekomendację."""
+        kandydaci = zbierz_kandydatow_z_katalogu()
+        w1 = ocen_kandydatow_nn(
+            ib_a=40.0,
+            iz_prime_a=1804.2,
+            ik_max_ka=31.86,
+            ik1_min_a=10000.0,  # >= Ii=6000 A (cb_nn_400a) dla SPELNIA na SWZ
+            u0_v=230.0,
+            kandydaci=kandydaci,
+        )
+        w2 = ocen_kandydatow_nn(
+            ib_a=40.0,
+            iz_prime_a=1804.2,
+            ik_max_ka=31.86,
+            ik1_min_a=10000.0,
+            u0_v=230.0,
+            kandydaci=kandydaci,
+        )
+        assert w1.deterministic_signature == w2.deterministic_signature
+        assert w1.rekomendacja is not None
+        assert w1.rekomendacja.kind == KIND_MCCB
+        assert w1.rekomendacja.to_dict() == w2.rekomendacja.to_dict()
+
 
 # =============================================================================
 # KANDYDACI Z KATALOGU (P0.2/P0.7 runda 3 — pola nowe)
@@ -575,6 +742,23 @@ class TestZbierzKandydatowZKatalogu:
             if k.kind != KIND_MCB:
                 continue
             assert k.zdolnosc_wylaczania_ka == mcb_typy[k.id].icn_ka
+
+    def test_mccb_nastawy_resolwowane_z_katalogu_karta_d1(self) -> None:
+        """Karta D1: WSZYSTKIE 11 rekordów MCCB (WYLACZNIK_GLOWNY/ODPLYWOWY)
+        niosą nastawy resolwowane do GÓRNEGO krańca zakresu regulacji —
+        `ir_a=1,0×In` (górny kraniec `ir_range`), `ii_a=15×In`."""
+        catalog = get_default_mv_catalog()
+        aparaty = {t.id: t for t in catalog.list_lv_apparatus_types()}
+        mccb = [k for k in zbierz_kandydatow_z_katalogu(catalog) if k.kind == KIND_MCCB]
+        assert len(mccb) == 11, f"Oczekiwano 11 kandydatów MCCB, jest {len(mccb)}"
+        for k in mccb:
+            aparat = aparaty[k.id]
+            assert aparat.ir_range is not None, f"{k.id}: brak ir_range w katalogu (regresja D1)"
+            assert k.ir_a == pytest.approx(aparat.ir_range[1] * aparat.i_n_a)
+            assert k.isd_a == pytest.approx(aparat.isd_range[1] * k.ir_a)
+            assert k.ii_a == pytest.approx(aparat.ii_range[1] * aparat.i_n_a)
+            assert k.tr_s == pytest.approx(aparat.tr_range[1])
+            assert k.tsd_s == pytest.approx(aparat.tsd_range[1])
 
 
 # =============================================================================

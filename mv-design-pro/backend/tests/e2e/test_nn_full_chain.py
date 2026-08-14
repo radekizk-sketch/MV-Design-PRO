@@ -74,6 +74,19 @@ stacjaModel.ts`) ZAWSZE wysyła `outgoing_feeders_nn_count` jawnie — floor nie
 był potrzebny żadnemu realnemu wywołaniu z UI. KROK 0 poniżej asertuje TERAZ
 ZERO fantomów (nie jeden trwały) — dowód pomiarem, nie deklaracja.
 
+KARTA D1 (nN, „runda 8 — PEŁNY WERDYKT nN", 2026-08-14) — NAPRAWIA punkt (3)
+powyżej dla MCCB (część „nastawy wyzwalacza MCCB"): `LVApparatusType.
+ir_range/isd_range/ii_range/tr_range/tsd_range` zasilone dla WSZYSTKICH 11
+rekordów WYLACZNIK_GLOWNY/WYLACZNIK_ODPLYWOWY (ABB SACE Emax2/Tmax XT, dwa
+niezależne źródła — `mv_auxiliary_catalog.py`), `KandydatAparatuNn` niesie
+teraz `ir_a/isd_a/ii_a/tr_s/tsd_s` (RESOLWOWANE, nie zakres — górny kraniec
+regulacji, konserwatywne), `_kryterium_i2` woła `protection_lv_curves.
+compute_mccb_point` dla MCCB (REUSE, było twardo NIEROZSTRZYGALNE), `swz/
+werdykt.py::ocen_swz` ma nową gałąź `typ="MCCB"` (Ia z nastawy Ii). Wkładka
+gG (`i2t_prearc_a2s`, druga połowa punktu (3)) NIE naprawiona tą kartą —
+poza zakresem D1 (cel D2, osobna karta). Zobacz FLIP w `test_krok_07_*`
+poniżej dla pełnego uzasadnienia i dowodu numerycznego.
+
 ZNALEZISKO BRAMKI #1 — STAN HISTORYCZNY, NAPRAWIONY (patrz wyżej, pkt 1):
 katalog kabli nN (`network_model/catalog/mv_auxiliary_catalog.py`, WSZYSTKIE
 17 pozycji `kab_nn_*`) NIE MIAŁ danych żyły powrotnej PE/PEN
@@ -133,25 +146,30 @@ wyścigu K2/K3. KARTA D3 zabiła TEN fantom u JEGO źródła (patrz wyżej) —
 zażądał żadnego odpływu (`nn_block` bez `outgoing_feeders_nn_count`) — KROK 0
 asertuje dziś ZERO fantomów, nie jeden trwały.
 
-CZWARTE ZNALEZISKO BRAMKI — CZĘŚCIOWO NAPRAWIONE (patrz wyżej, pkt 2-3):
-`wybierz_aparat_dla_obwodu_nn` NIE MOGŁA PRZED kartą wydać pełnej
-rekomendacji dla ŻADNEGO obwodu w ŻADNEJ sieci nN zbudowanej z domyślnego
-katalogu — nawet u źródła (zero-hop, jedyny punkt gdzie Ik1_min był w ogóle
-policzalny, patrz ZNALEZISKO #1), gdzie Ik″max jest z definicji NAJWYŻSZY w
-całej sieci nN (tu: ≈31,86 kA). PO karcie: u RGnN (KROK 7) rekomendacja
-POZOSTAJE None — PINOWANE jako poprawna fizyka (nawet nowa rodzina MCB
-10 kA << 31,86 kA); GŁĘBIEJ w sieci, na obwodzie Silnika M1 (KROK 7b,
-Ik″max≈8,4 kA — poniżej 10 kA), rekomendacja jest PEŁNA (MCB B40, Icn 10 kA)
-— PIERWSZA w tym łańcuchu pozytywna rekomendacja aparatu dla realnego
-obwodu. MCCB (kryterium I2) i wkładka gG (kryterium SWZ) pozostają
-NIEROZSTRZYGALNE wszędzie — luka konsumenta / rozjazd źródeł, dokumentowane
-w pkt 3 wyżej, nie naprawiane tą kartą.
+CZWARTE ZNALEZISKO BRAMKI — STAN HISTORYCZNY sprzed karty NAPRAWA-A, NAPRAWIONE
+DALEJ przez kartę D1 (patrz wyżej): `wybierz_aparat_dla_obwodu_nn` NIE MOGŁA
+PRZED NAPRAWA-A wydać pełnej rekomendacji dla ŻADNEGO obwodu w ŻADNEJ sieci nN
+zbudowanej z domyślnego katalogu — nawet u źródła (zero-hop, jedyny punkt
+gdzie Ik1_min był w ogóle policzalny, patrz ZNALEZISKO #1), gdzie Ik″max jest
+z definicji NAJWYŻSZY w całej sieci nN (tu: ≈31,86 kA). PO NAPRAWA-A: u RGnN
+(KROK 7) rekomendacja POZOSTAWAŁA None (nawet nowa rodzina MCB 10 kA
+<< 31,86 kA — MCCB blokowany LUKĄ KONSUMENTA, nie fizyką); GŁĘBIEJ w sieci,
+na obwodzie Silnika M1 (KROK 7b, Ik″max≈8,4 kA — poniżej 10 kA), rekomendacja
+BYŁA już PEŁNA (MCB B40, Icn 10 kA) — PIERWSZA w tym łańcuchu pozytywna
+rekomendacja aparatu dla realnego obwodu, NIEZMIENIONA przez kartę D1
+(zweryfikowane wprost w `test_krok_07b_*`). PO KARCIE D1: u RGnN (KROK 7,
+FLIP) rekomendacja jest TERAZ PEŁNA (MCCB `cb_nn_400a`, Icu 50 kA) — MCCB
+(kryterium I2) jest teraz DECYZYJNE wszędzie w katalogu (WSZYSTKIE 11
+rekordów niosą nastawy). Wkładka gG (kryterium SWZ) POZOSTAJE
+NIEROZSTRZYGALNA wszędzie — rozjazd źródeł `i2t_prearc_a2s`, poza zakresem
+karty D1 (cel D2, osobna karta).
 """
 
 from __future__ import annotations
 
 import hashlib
 import importlib.util
+import math
 from typing import Any
 from uuid import uuid4
 
@@ -1095,47 +1113,66 @@ class TestNnFullChain:
 
     # -- KROK 7: dobór zabezpieczeń -----------------------------------------
 
-    def test_krok_07_dobor_zabezpieczen_zerohop_rgnn_puste_pinowane(self) -> None:
+    def test_krok_07_dobor_zabezpieczen_zerohop_rgnn_pelna_rekomendacja(self) -> None:
         """Dobór aparatu nN (`wybierz_aparat_dla_obwodu_nn`) u źródła (RGnN,
         zero-hop) — mechanizm ORZEKA dla WSZYSTKICH 143 kandydatów z katalogu
-        (60 MCB po karcie NAPRAWA-A: 30×Icn 6 kA + 30×Icn 10 kA, + kombinacje
-        rozłącznik+wkładka gG, + MCCB), z pełnym uzasadnieniem per kryterium.
+        (60 MCB: 30×Icn 6 kA + 30×Icn 10 kA, + kombinacje rozłącznik+wkładka
+        gG, + 11 MCCB), z pełnym uzasadnieniem per kryterium.
 
-        PRZYPIĘTE JAKO POPRAWNA FIZYKA (karta NAPRAWA-A §0.3, dawne CZWARTE
-        ZNALEZISKO BRAMKI — zachowane tu jako uzasadnienie stanu, nie jako
-        dług): u szyny nN transformatora Ik″max jest z definicji NAJWYŻSZY w
-        całej sieci nN (najbliżej źródła, najmniejsza impedancja) — tu
-        Ik″max≈31,86 kA. Karta NAPRAWA-A DODAŁA rodzinę MCB Icn=10 kA (obok
-        istniejącej 6 kA) — ale NAWET 10 kA << 31,86 kA, więc kryterium
-        zdolności wyłączania dla MCB pozostaje NIESPEŁNIONE na TYM konkretnym
-        poziomie zwarcia (fizycznie poprawne: żaden MCB — wyrób do 10 kA z
-        definicji klasy produktu IEC 60898-1 — nie jest przeznaczony do pracy
-        tak blisko transformatora SN/nN; obwód wymagałby MCCB/wyłącznika
-        kompaktowego z odpowiednio wysokim Icu, nie MCB). MCCB — kryterium I2
-        NIEROZSTRZYGALNE: to LUKA KONSUMENTA, nie luka danych (`_kryterium_i2`
-        dla `KIND_MCCB` jest twardo zakodowane na NIEROZSTRZYGALNE
-        NIEZALEŻNIE od jakichkolwiek danych katalogowych — `KandydatAparatuNn`
-        nie ma nawet pól Ir/Isd/Ii do przeniesienia takich danych — naprawa
-        wymaga OSOBNEJ karty zmieniającej sam kod kryterium, nie tylko dane).
-        Wkładka gG — kryterium SWZ NIEROZSTRZYGALNE: karta NAPRAWA-A podjęła
-        próbę podwójnego zasilenia `i2t_prearc_a2s` (ETI WT-NH vs Eaton
-        Bussmann 10164) i znalazła rozjazd ~30-60% między dwoma realnymi
-        źródłami — nie do uczciwego pogodzenia, pole zostaje `None` (patrz
-        `get_all_lv_fuse_link_types` w `mv_auxiliary_catalog.py`). Złożenie:
-        `wybierz_aparat_dla_obwodu_nn` u RGnN NIE MOŻE wydać pełnej
-        rekomendacji („rekomendacja" != None) — TRZECI, poprawny fizycznie
-        stan (nie fail-closed z braku danych trasy jak przed kartą — dane
-        trasy SĄ kompletne od KROK 5b — tylko żaden kandydat katalogu NIE
-        KWALIFIKUJE SIĘ na tym konkretnym, bardzo wysokim poziomie zwarcia).
-        Pełna, pozytywna rekomendacja jest teraz osiągalna GŁĘBIEJ w sieci
-        (Ik″max niższy) — patrz KROK 7b (Silnik M1, Ik″max≈8,4 kA)."""
+        FLIP (karta D1, nN „runda 8 — PEŁNY WERDYKT nN", 2026-08-14):
+        odbiór NAPRAWA-A nazwał to LUKĄ KONSUMENTA (nie luką danych) —
+        `_kryterium_i2` dla `KIND_MCCB` był twardo zakodowany na
+        NIEROZSTRZYGALNE NIEZALEŻNIE od danych katalogowych, a
+        `KandydatAparatuNn` nie miał pól Ir/Isd/Ii do przeniesienia nastaw
+        wyzwalacza elektronicznego. Karta D1 naprawia konsumenta i dane
+        RAZEM: `LVApparatusType.ir_range/isd_range/ii_range/tr_range/
+        tsd_range` zasilone (11 rekordów WYLACZNIK_GLOWNY/ODPLYWOWY, ABB
+        SACE Emax2/Tmax XT Ekip, 2 źródła — `mv_auxiliary_catalog.py`),
+        `KandydatAparatuNn` niesie teraz `ir_a/isd_a/ii_a/tr_s/tsd_s`
+        (RESOLWOWANE do górnego krańca zakresu regulacji), `_kryterium_i2`
+        woła `protection_lv_curves.compute_mccb_point` (REUSE, nie druga
+        fizyka), `swz/werdykt.py::ocen_swz` ma nową gałąź `typ="MCCB"` (Ia z
+        nastawy Ii).
+
+        DRUGA POŁOWA FLIPU — Iz′ u RGnN: KROK 6 liczy Iz′ dla kabla K2
+        (60 m, 120 mm² Al, obwód Silnika M1) — 283,2 A. Reużycie TEJ
+        wartości do oceny aparatu u RGnN (jak w poprzedniej wersji tego
+        testu) modeluje „gdyby obwód K2 chroniono aparatem zabudowanym
+        wyżej" — fizycznie poprawne, ale ogranicza In<=283,2 A, gdzie
+        WSZYSTKIE MCCB o Icu wystarczającym (>=31,9 kA — rodzina 36/50 kA,
+        In>=400 A) są odrzucane na kryterium (i) zanim w ogóle dojdzie do
+        oceny nastaw. RGnN to jednak fizycznie SZYNA GŁÓWNA nN transformatora
+        — właściwym Iz′ dla aparatu GŁÓWNEGO na tej szynie jest zdolność
+        prądowa szyn/rozdzielnicy, która z zasady projektowej >= prąd
+        znamionowy transformatora (rozdzielnica dobierana POD transformator,
+        nie odwrotnie) — TU: In_transformatora = Sn/(√3·Ulv) ≈ 1804,2 A
+        (Sn=1,25 MVA, Ulv=0,4 kV, transformator ST-03). Iz′ u RGnN liczone
+        TU z tej wielkości (nie z K2) — Ib=40 A (jak dotychczas, wielkość
+        WEJŚCIOWA §0.5 modułu, niezmieniona) pozostaje znacznie poniżej obu
+        Iz′, więc kryterium (i) nie jest tu wąskim gardłem.
+
+        WYNIK: NAJMNIEJSZY In wśród kandydatów spełniających WSZYSTKIE 4
+        kryteria to 400 A (Icu 36–50 kA, oba >= Ik″max≈31,9 kA) — tie-break
+        po id daje `cb_nn_400a` (Icu 50 kA, WYLACZNIK_GLOWNY) przed
+        `cb_nn_400a_odp` (Icu 36 kA) — PIERWSZA PEŁNA rekomendacja u RGnN w
+        tym łańcuchu. MCB (obie rodziny Icn) NADAL odpada na kryterium (iii)
+        — Ik″max u RGnń przekracza NAWET nową rodzinę 10 kA (NAPRAWA-A) —
+        ten wniosek fizyczny jest NIEZMIENIONY względem stanu przed kartą D1
+        (nie jest artefaktem zmiany Iz′: Icu nie zależy od Iz′)."""
         model = get_enm(_CASE_ID)
+        trafo = next(t for t in model.transformers if t.lv_bus_ref == _REFS["rgnn_bus"])
+        iz_prime_a_rgnn = trafo.sn_mva * 1000.0 / (math.sqrt(3.0) * trafo.ulv_kv)
+        assert iz_prime_a_rgnn == pytest.approx(
+            1804.2, abs=0.1
+        ), f"Iz′ RGnN (In transformatora ST-03) oczekiwane ≈1804,2 A, jest {iz_prime_a_rgnn:g} A"
+        _STAN["iz_prime_a_rgnn"] = iz_prime_a_rgnn
+
         wynik = wybierz_aparat_dla_obwodu_nn(
             enm=model,
             station_ref=_REFS["station_ref"],
             bus_ref=_REFS["rgnn_bus"],
             ib_a=40.0,
-            iz_prime_a=_STAN["iz_prime_a_k2"],
+            iz_prime_a=iz_prime_a_rgnn,
             ik_max_ka=_STAN["ik_max_ka_rgnn"],
         )
         assert wynik["status"] == "OK", wynik
@@ -1148,13 +1185,16 @@ class TestNnFullChain:
         } == {
             6.0,
             10.0,
-        }, "Oczekiwano OBU rodzin MCB (Icn 6 kA i 10 kA, karta NAPRAWA-A) wśród kandydatów"
+        }, "Oczekiwano OBU rodzin MCB (Icn 6 kA i 10 kA) wśród kandydatów"
 
+        # MCB (OBIE rodziny Icn) odpada na kryterium zdolności wyłączania —
+        # Icu nie zależy od Iz′, więc ten wniosek fizyczny NIE JEST artefaktem
+        # zmiany Iz′ powyżej (patrz uzasadnienie w docstringu).
         mcb_falls_on_icu = [
             k
             for k in dobor["kandydaci"]
             if k["kandydat"]["kind"] == "MCB"
-            and 40.0 <= k["kandydat"]["in_a"] <= _STAN["iz_prime_a_k2"]
+            and 40.0 <= k["kandydat"]["in_a"] <= iz_prime_a_rgnn
             and not k["kwalifikuje_sie"]
             and any(
                 kr["nazwa"] == "Zdolność wyłączania >= Ik″max" and kr["status"] == "nie spełnia"
@@ -1162,30 +1202,39 @@ class TestNnFullChain:
             )
         ]
         assert mcb_falls_on_icu, (
-            "Oczekiwano MCB (obu rodzin Icn) w zakresie In odrzuconych na kryterium "
-            "zdolności wyłączania — Ik″max u RGnN (~31,9 kA) przekracza NAWET nową "
-            "rodzinę 10 kA"
+            "Oczekiwano MCB (obu rodzin Icn) odrzuconych na kryterium zdolności "
+            "wyłączania — Ik″max u RGnN (~31,9 kA) przekracza NAWET rodzinę 10 kA"
         )
         assert any(k["kandydat"]["zdolnosc_wylaczania_ka"] == 10.0 for k in mcb_falls_on_icu), (
-            "Oczekiwano, że NAWET rodzina MCB 10 kA (karta NAPRAWA-A) odpada na "
-            "kryterium zdolności wyłączania u RGnN — dowód, że pusta rekomendacja "
-            "tu jest fizyką, nie brakiem danych katalogowych"
+            "Oczekiwano, że NAWET rodzina MCB 10 kA odpada na kryterium zdolności "
+            "wyłączania u RGnN"
         )
 
-        mccb_nierozstrzygalne = [
+        # FLIP: MCCB ma teraz kryterium I2 DECYZYJNE (spełnia/nie spełnia) —
+        # WSZYSTKIE 11 rekordów niosą ir_range/tr_range (katalog D1), więc
+        # ŻADEN MCCB tego katalogu nie jest już nierozstrzygalny na I2.
+        mccb_decyzyjne = [
             k
             for k in dobor["kandydaci"]
             if k["kandydat"]["kind"] == "MCCB"
-            and any(
-                kr["nazwa"] == "I2<=1,45·Iz′" and kr["status"] == "nierozstrzygalne"
+            and any(kr["nazwa"] == "I2<=1,45·Iz′" for kr in k["kryteria"])
+        ]
+        assert mccb_decyzyjne, "Brak kandydatów MCCB w wyniku doboru"
+        assert all(
+            any(
+                kr["nazwa"] == "I2<=1,45·Iz′" and kr["status"] in ("spełnia", "nie spełnia")
                 for kr in k["kryteria"]
             )
-        ]
-        assert mccb_nierozstrzygalne, (
-            "Oczekiwano MCCB z kryterium I2 nierozstrzygalnym — LUKA KONSUMENTA "
-            "(`_kryterium_i2` dla MCCB, nie luka danych katalogowych, karta NAPRAWA-A §0.2.b)"
+            for k in mccb_decyzyjne
+        ), (
+            "FLIP karty D1: WSZYSTKIE MCCB tego katalogu mają teraz nastawy "
+            "(ir_range/tr_range) — kryterium I2 musi być DECYZYJNE (spełnia/nie "
+            "spełnia), nigdy nierozstrzygalne, dla żadnego z 11 rekordów"
         )
 
+        # gG — kryterium SWZ NADAL nierozstrzygalne (poza zakresem karty D1 —
+        # D1 dotyczy WYŁĄCZNIE luki konsumenta MCCB, nie rozjazdu i2t_prearc_a2s
+        # wkładek gG, dokumentowanego osobno jako cel D2).
         fuse_nierozstrzygalne = [
             k
             for k in dobor["kandydaci"]
@@ -1196,15 +1245,28 @@ class TestNnFullChain:
             )
         ]
         assert fuse_nierozstrzygalne, (
-            "Oczekiwano wkładek gG z kryterium SWZ nierozstrzygalnym — G-D2 podjęte "
-            "podwójnie (ETI vs Bussmann), rozjazd ~30-60% nie do pogodzenia, karta "
-            "NAPRAWA-A §0.2.c"
+            "Oczekiwano wkładek gG z kryterium SWZ nierozstrzygalnym — G-D2 (poza "
+            "zakresem karty D1, cel D2)"
         )
 
-        assert dobor["rekomendacja"] is None, (
-            "PINOWANE JAKO POPRAWNA FIZYKA (karta NAPRAWA-A §0.3): u RGnN "
-            "(Ik″max≈31,9 kA) żaden kandydat katalogu — WŁĄCZNIE z nową rodziną "
-            f"MCB 10 kA — nie kwalifikuje się w pełni; rekomendacja={dobor['rekomendacja']}"
+        rekomendacja = dobor["rekomendacja"]
+        assert rekomendacja is not None, (
+            "FLIP karty D1: RGnN (Ik″max≈31,9 kA) MUSI dostać PEŁNĄ rekomendację "
+            f"teraz, że MCCB konsumuje nastawy — dobor={dobor}"
+        )
+        assert rekomendacja["kind"] == "MCCB"
+        assert rekomendacja["in_a"] == 400.0, (
+            "Najmniejszy In wśród MCCB spełniających Icu>=Ik″max(~31,9 kA) to 400 A "
+            f"(rodzina 36/50 kA) — rekomendacja={rekomendacja}"
+        )
+        assert rekomendacja["zdolnosc_wylaczania_ka"] in (36.0, 50.0), (
+            "Rekomendacja MUSI pochodzić z rodziny Icu>=Ik″max (36 lub 50 kA) — "
+            f"rekomendacja={rekomendacja}"
+        )
+        assert rekomendacja["id"] == "cb_nn_400a", (
+            "Ranking deterministyczny (najmniejsze In, tie-break id): "
+            "'cb_nn_400a' < 'cb_nn_400a_odp' leksykograficznie (oba In=400, oba "
+            f"kwalifikują się) — rekomendacja={rekomendacja}"
         )
         _STAN["dobor_zerohop"] = dobor
 
@@ -1221,7 +1283,14 @@ class TestNnFullChain:
               zdolności wyłączania STAJE SIĘ SPEŁNIALNE tu, w odróżnieniu od
               RGnN (KROK 7, Ik″max≈31,9 kA — nawet 10 kA nie wystarcza).
         Wynik: PIERWSZA w tym łańcuchu PEŁNA, pozytywna rekomendacja aparatu
-        dla realnego obwodu (silnikowego) — dowód end-to-end §80 karty."""
+        dla realnego obwodu (silnikowego) — dowód end-to-end §80 karty.
+
+        KARTA D1 (nN, „runda 8"): ten pin ZWERYFIKOWANY jako NIEZMIENIONY po
+        naprawie luki konsumenta MCCB (`_kryterium_i2`/SWZ teraz decyzyjne
+        dla MCCB) — najmniejszy MCCB katalogu ma In=100 A > 40 A, więc MCB
+        B40 (In=40 A) WYGRYWA ranking (najmniejsze In wśród kwalifikujących
+        się) niezależnie od tego, czy MCCB też się kwalifikuje na tym
+        obwodzie."""
         model = get_enm(_CASE_ID)
         wynik = wybierz_aparat_dla_obwodu_nn(
             enm=model,
@@ -1499,9 +1568,15 @@ class TestNnFullChain:
         trasy Ik1_min co dawne KROK 5b/7b/10a). Karta NAPRAWA-A naprawia to u
         źródła (dane żyły powrotnej) — WSZYSTKIE sekcje raportu (włącznie z
         `dobor`, niosącą PEŁNĄ rekomendację z KROK 7b) są teraz obecne
-        RÓWNIEŻ dla obwodu Silnika M1, nie tylko u źródła transformatora
-        (RGnN, dowód pozostaje jako drugi punkt porównawczy — sekcja `dobor`
-        tam ma `rekomendacja: None`, PINOWANE jako poprawna fizyka, KROK 7)."""
+        RÓWNIEŻ dla obwodu Silnika M1, nie tylko u źródła transformatora.
+
+        FLIP DRUGI (karta D1, „runda 8"): sekcja `dobor` u RGnN niosła
+        `rekomendacja: None` (PINOWANE jako poprawna fizyka przy Iz′
+        reużytym z K2 — KROK 7, stan sprzed D1). Po naprawie luki konsumenta
+        MCCB (patrz docstring KROK 7) i skorygowaniu Iz′ u RGnN do In
+        transformatora ST-03 (`_STAN["iz_prime_a_rgnn"]`, ustawione w
+        KROK 7) — RGnN dostaje TERAZ tę samą PEŁNĄ rekomendację
+        (`cb_nn_400a`) co bezpośrednie wywołanie w KROK 7."""
         resp_silnik = app_client.post(
             "/api/nn-proof/circuit/report",
             json={
@@ -1534,7 +1609,7 @@ class TestNnFullChain:
                 "revision_id": str(get_enm(_CASE_ID).header.revision),
                 "przypadek_decydujacy": "TR",
                 "ib_a": 40.0,
-                "iz_prime_a": _STAN["iz_prime_a_k2"],
+                "iz_prime_a": _STAN["iz_prime_a_rgnn"],
                 "ik_max_ka": _STAN["ik_max_ka_rgnn"],
                 "vdrop_u_source_kv": _STAN["u_source_kv_silnik"],
                 "vdrop_delta_u_total_kv": _STAN["delta_u_total_kv_silnik"],
@@ -1574,9 +1649,16 @@ class TestNnFullChain:
         assert body_silnik["swz"]["status"] == "OK"
         assert body_silnik["swz"]["swz"]["status"] in ("spełnia", "nie spełnia")
 
-        # U źródła RGnN (KROK 7): rekomendacja None PINOWANA jako poprawna
-        # fizyka — Ik″max tam przekracza NAWET nową rodzinę MCB 10 kA.
-        assert body["dobor"]["dobor"]["rekomendacja"] is None
+        # U źródła RGnN (KROK 7, FLIP karty D1): rekomendacja PEŁNA, ta sama
+        # co bezpośrednie wywołanie `wybierz_aparat_dla_obwodu_nn` w KROK 7.
+        rekomendacja_rgnn = body["dobor"]["dobor"]["rekomendacja"]
+        assert (
+            rekomendacja_rgnn is not None
+        ), f"FLIP karty D1: RGnN musi dostać PEŁNĄ rekomendację w raporcie JSON — {body['dobor']}"
+        assert rekomendacja_rgnn["id"] == "cb_nn_400a"
+        assert rekomendacja_rgnn["kind"] == "MCCB"
+        assert body["swz"]["status"] == "OK"
+        assert body["swz"]["swz"]["status"] in ("spełnia", "nie spełnia")
 
     # -- Determinizm całego łańcucha (2×) -------------------------------------
 

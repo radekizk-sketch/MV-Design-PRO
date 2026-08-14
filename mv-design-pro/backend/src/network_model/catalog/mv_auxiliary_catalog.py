@@ -552,6 +552,48 @@ def get_all_load_types() -> list[dict]:
     ]
 
 
+# Karta D1 (nN, „runda 8 — PEŁNY WERDYKT nN"): nastawialnosc wyzwalacza
+# elektronicznego Ekip — WSPOLNA platforma wyzwalaczy ABB SACE Emax2
+# (WYLACZNIK_GLOWNY) i Tmax XT (WYLACZNIK_ODPLYWOWY), potwierdzona wspolnym
+# dokumentem producenta „Sace Tmax XT + Emax 2 with Touch trip units"
+# (ABB 1SPC801398B0201). Zakresy GENERYCZNE dla calej platformy — NIE
+# zweryfikowane osobno per rama (E1.2/E2.2/E4.2/E6.2 wzgl. XT1/XT3/XT5),
+# jawnie w `_MCCB_TRIP_SETTINGS_SOURCE_PL` ponizej (uczciwe raportowanie,
+# wzorem `_MCB_ICN_KA_10KA_SOURCE`/`FUSE_GG_TIME_BAND_SOURCE_PL`).
+#
+# Zrodla (dwa, niezalezne):
+#   (1) ABB Ekip — przewodnik doboru nastaw wyzwalacza (Emax2):
+#       stoklink.com/blogs/technical/select-ekip-trip-unit-abb-emax-2-guide
+#       + stoklink.com/blogs/technical/abb-emax-2-ekip-hi-touch-protection-functions-settings
+#       — Ir 0,4-1,0×In (krok 0,01), Ii 1,5-15×In, tsd 0,05-0,8s,
+#       tr 3-144s@6×Ir (JEDNO zrodlo numeryczne dla tr — NIE podwojnie
+#       potwierdzone, patrz nizej).
+#   (2) VIOX, „MCCB Trip Unit Settings Guide":
+#       viox.com/mccb-trip-unit-settings-ir-isd-ii-explained
+#       — Ir 0,4-1,0×In (zgodnie z (1)), Isd (1,5-10)×Ir (rozstrzyga
+#       jednostke Isd jako ×Ir — (1) podaje ten sam zakres liczbowy z
+#       niejednoznaczna jednostka), tsd 0,05-0,5s (rzad wielkosci zgodny
+#       z (1), gorny kraniec nizszy — przyjeto SZERSZY zakres (1) jako
+#       konserwatywny dla nastawialnosci, tsd_s uzyty w kryteriach doboru
+#       jest wylacznie informacyjny, nie wplywa na wynik pass/fail).
+_MCCB_IR_RANGE_X_IN: tuple[float, float] = (0.4, 1.0)
+_MCCB_ISD_RANGE_X_IR: tuple[float, float] = (1.5, 10.0)
+_MCCB_II_RANGE_X_IN: tuple[float, float] = (1.5, 15.0)
+_MCCB_TR_RANGE_S: tuple[float, float] = (3.0, 144.0)  # @ 6xIr
+_MCCB_TSD_RANGE_S: tuple[float, float] = (0.05, 0.8)
+_MCCB_TRIP_SETTINGS_SOURCE_PL = (
+    "Nastawy wyzwalacza elektronicznego Ekip (wspolna platforma ABB SACE Emax2/Tmax XT, "
+    "ABB 1SPC801398B0201) — zakresy regulacji GENERYCZNE dla platformy, NIE zweryfikowane "
+    "osobno per rama (E1.2/E2.2/E4.2/E6.2 wzgl. XT1/XT3/XT5). Zweryfikowane podwojnie, "
+    "niezaleznie: (1) stoklink.com/blogs/technical/select-ekip-trip-unit-abb-emax-2-guide "
+    "+ stoklink.com/blogs/technical/abb-emax-2-ekip-hi-touch-protection-functions-settings "
+    "(Ir 0,4-1,0×In; Ii 1,5-15×In; tsd 0,05-0,8s; tr 3-144s@6×Ir — JEDNO zrodlo numeryczne "
+    "dla tr, NIE podwojnie potwierdzone); (2) VIOX viox.com/mccb-trip-unit-settings-ir-isd-ii-"
+    "explained (Ir 0,4-1,0×In; Isd 1,5-10×Ir — rozstrzyga jednostke Isd jako ×Ir; tsd "
+    "0,05-0,5s)."
+)
+
+
 def get_all_lv_apparatus_types() -> list[dict]:
     """Zwraca aparature laczeniowa nN — 14 rekordow.
 
@@ -581,30 +623,26 @@ def get_all_lv_apparatus_types() -> list[dict]:
     katalog, Ue=AC690V) niesie teraz osobne pole `conditional_sc_current_ka`
     (poprzednio blednie zapisywany w i_cu_ka — przeniesione, nie zdublowane).
 
-    KARTA NAPRAWA-A (§0.2.b) — SWIADOMIE NIE dodano tu nastaw wyzwalacza
+    KARTA NAPRAWA-A (§0.2.b) — SWIADOMIE NIE dodala tu nastaw wyzwalacza
     elektronicznego MCCB (Ir/Isd/Ii/tr/tsd) dla WYLACZNIK_GLOWNY/
-    WYLACZNIK_ODPLYWOWY. Karta warunkowala populacje TYLKO jesli istnieje
-    JUZ DZIALAJACY konsument w produkcji — audyt kontraktu wykazal, ze GO
-    NIE MA:
+    WYLACZNIK_ODPLYWOWY, bo audyt kontraktu wykazal brak dzialajacego
+    konsumenta w produkcji (dopisanie samych danych bez zmiany konsumenta
+    byloby fantomem — zob. historia w git blame tej funkcji / raport
+    NAPRAWA-A). KARTA D1 (nN, „runda 8 — PEŁNY WERDYKT nN", 2026-08-14)
+    NAPRAWIA LUKĘ KONSUMENTA rownoczesnie z danymi (kolejnosc: konsument→dane,
+    §0 karty):
       1. `network_model/solvers/protection_lv_curves.py::compute_mccb_point`
-         przyjmuje skonkretyzowane skalary (ir_a/isd_a/ii_a/tr_s/tsd_s), ale
-         ma ZERO wywolan produkcyjnych poza wlasnym modulem (grep w `src/`) —
-         MCCB_ELECTRONIC (P0.7) istnieje jako RODZINA KRZYWYCH, nie jako
-         sciezka wpiecia w dobor aparatu.
-      2. `application/analyses/nn_device_selection.py::_kryterium_i2` dla
-         `KIND_MCCB` jest TWARDO zakodowane na NIEROZSTRZYGALNE — gałąź
-         `else` zwraca stały komunikat „brak rozwiazanych nastaw" NIEZALEZNIE
-         od tego, czy dane katalogowe istnieja, czy nie (nie odczytuje w
-         ogole pol Ir/Isd/Ii z kandydata).
-      3. `KandydatAparatuNn` (ta sama analiza) NIE MA pol ir_a/isd_a/ii_a —
-         nawet gdyby katalog je niosl, nie ma jak dotrzec do kryterium.
-    To jest LUKA KONSUMENTA, nie luka danych — dopisanie tu ir_range/
-    isd_range/ii_range/tr_range/tsd_range BEZ rownoczesnej zmiany (1)-(3)
-    stworzyloby rekord z polem, ktorego ZADEN kod produkcyjny nie czyta
-    (fantom, zakazany przez zasade zero-fabrykacji karty). Naprawa wymaga
-    OSOBNEJ karty, ktora zmienia `_kryterium_i2`/`KandydatAparatuNn` zeby
-    faktycznie konsumowaly nastawy — bez tego dopisanie samych danych
-    katalogowych nic by nie zmienilo w wyniku doboru aparatu.
+         (P0.7) jest teraz WPIETY w `_kryterium_i2`
+         (`application/analyses/nn_device_selection.py`) dla `KIND_MCCB`.
+      2. `KandydatAparatuNn` niesie teraz `ir_a/isd_a/ii_a/tr_s/tsd_s`
+         (RESOLWOWANE nastawy — gorny kraniec zakresu regulacji ponizej,
+         konserwatywne dla kryteriow doboru), wypelniane w
+         `zbierz_kandydatow_z_katalogu` z pol `ir_range/isd_range/ii_range/
+         tr_range/tsd_range` ponizej.
+      3. `application/analyses/swz/werdykt.py::ocen_swz` ma teraz galaz
+         `typ="MCCB"` (Ia z nastawy Ii — magnetycznej/bezzwlocznej).
+    Brak nastawy w KTORYMKOLWIEK rekordzie → kandydat wraca do trzeciego
+    stanu (NIEROZSTRZYGALNE), nigdy blad ani cicha fabrykacja.
     """
     return [
         # --- WYLACZNIK_GLOWNY: ABB SACE Emax2 ---
@@ -623,6 +661,12 @@ def get_all_lv_apparatus_types() -> list[dict]:
                 "catalog_status": "PRODUKCYJNY_V1",
                 "source_reference": "ABB SACE Emax2 katalog 1SDA073513R1 / ABB Tmax XT5 karta techniczna 1SXU210259D0201 (rama XT5S 400A, Icu 480V=50kA; KOREKTA atrybucji zrodlowej: rama E1.2 Emax2 zaczyna sie od 630A, wiec 400A/50kA nie moze byc Emax2 — pasuje do Tmax XT5S)",
                 "contract_version": "2.0",
+                "ir_range": _MCCB_IR_RANGE_X_IN,
+                "isd_range": _MCCB_ISD_RANGE_X_IR,
+                "ii_range": _MCCB_II_RANGE_X_IN,
+                "tr_range": _MCCB_TR_RANGE_S,
+                "tsd_range": _MCCB_TSD_RANGE_S,
+                "verification_note": _MCCB_TRIP_SETTINGS_SOURCE_PL,
             },
         },
         {
@@ -640,6 +684,12 @@ def get_all_lv_apparatus_types() -> list[dict]:
                 "catalog_status": "PRODUKCYJNY_V1",
                 "source_reference": "ABB SACE Emax2 katalog 1SDA073513R1 / ABB SACE Emax2 katalog 1SDC200023D0203 str.2/2 (rama E1.2 wersja C, Icu 440V=50kA @ 630A)",
                 "contract_version": "2.0",
+                "ir_range": _MCCB_IR_RANGE_X_IN,
+                "isd_range": _MCCB_ISD_RANGE_X_IR,
+                "ii_range": _MCCB_II_RANGE_X_IN,
+                "tr_range": _MCCB_TR_RANGE_S,
+                "tsd_range": _MCCB_TSD_RANGE_S,
+                "verification_note": _MCCB_TRIP_SETTINGS_SOURCE_PL,
             },
         },
         {
@@ -657,6 +707,12 @@ def get_all_lv_apparatus_types() -> list[dict]:
                 "catalog_status": "PRODUKCYJNY_V1",
                 "source_reference": "ABB SACE Emax2 katalog 1SDA073513R1 / ABB SACE Emax2 katalog 1SDC200023D0203 str.2/2 (rama E1.2 wersja C, Icu 440V=50kA @ 800A)",
                 "contract_version": "2.0",
+                "ir_range": _MCCB_IR_RANGE_X_IN,
+                "isd_range": _MCCB_ISD_RANGE_X_IR,
+                "ii_range": _MCCB_II_RANGE_X_IN,
+                "tr_range": _MCCB_TR_RANGE_S,
+                "tsd_range": _MCCB_TSD_RANGE_S,
+                "verification_note": _MCCB_TRIP_SETTINGS_SOURCE_PL,
             },
         },
         {
@@ -674,6 +730,12 @@ def get_all_lv_apparatus_types() -> list[dict]:
                 "catalog_status": "PRODUKCYJNY_V1",
                 "source_reference": "ABB SACE Emax2 katalog 1SDA073513R1 / ABB SACE Emax2 katalog 1SDC200023D0203 str.2/2 (rama E1.2 wersja C, Icu 440V=50kA @ 1000A)",
                 "contract_version": "2.0",
+                "ir_range": _MCCB_IR_RANGE_X_IN,
+                "isd_range": _MCCB_ISD_RANGE_X_IR,
+                "ii_range": _MCCB_II_RANGE_X_IN,
+                "tr_range": _MCCB_TR_RANGE_S,
+                "tsd_range": _MCCB_TSD_RANGE_S,
+                "verification_note": _MCCB_TRIP_SETTINGS_SOURCE_PL,
             },
         },
         {
@@ -691,6 +753,12 @@ def get_all_lv_apparatus_types() -> list[dict]:
                 "catalog_status": "PRODUKCYJNY_V1",
                 "source_reference": "ABB SACE Emax2 katalog 1SDA073513R1 / ABB SACE Emax2 katalog 1SDC200023D0203 str.2/2 (rama E1.2 wersja C, Icu 440V=50kA @ 1250A)",
                 "contract_version": "2.0",
+                "ir_range": _MCCB_IR_RANGE_X_IN,
+                "isd_range": _MCCB_ISD_RANGE_X_IR,
+                "ii_range": _MCCB_II_RANGE_X_IN,
+                "tr_range": _MCCB_TR_RANGE_S,
+                "tsd_range": _MCCB_TSD_RANGE_S,
+                "verification_note": _MCCB_TRIP_SETTINGS_SOURCE_PL,
             },
         },
         {
@@ -708,6 +776,12 @@ def get_all_lv_apparatus_types() -> list[dict]:
                 "catalog_status": "PRODUKCYJNY_V1",
                 "source_reference": "ABB SACE Emax2 katalog 1SDA073513R1 / ABB SACE Emax2 katalog 1SDC200023D0203 str.2/2 (rama E1.2 wersja C, Icu 440V=50kA @ 1600A)",
                 "contract_version": "2.0",
+                "ir_range": _MCCB_IR_RANGE_X_IN,
+                "isd_range": _MCCB_ISD_RANGE_X_IR,
+                "ii_range": _MCCB_II_RANGE_X_IN,
+                "tr_range": _MCCB_TR_RANGE_S,
+                "tsd_range": _MCCB_TSD_RANGE_S,
+                "verification_note": _MCCB_TRIP_SETTINGS_SOURCE_PL,
             },
         },
         # --- WYLACZNIK_ODPLYWOWY: ABB SACE Tmax XT ---
@@ -726,6 +800,12 @@ def get_all_lv_apparatus_types() -> list[dict]:
                 "catalog_status": "PRODUKCYJNY_V1",
                 "source_reference": "ABB Tmax XT katalog 1SDA066835R1 / ABB Tmax XT katalog 1SDC210064D0201 str.6 (rama XT1C 160, Icu 415V=25kA @ In=100A)",
                 "contract_version": "2.0",
+                "ir_range": _MCCB_IR_RANGE_X_IN,
+                "isd_range": _MCCB_ISD_RANGE_X_IR,
+                "ii_range": _MCCB_II_RANGE_X_IN,
+                "tr_range": _MCCB_TR_RANGE_S,
+                "tsd_range": _MCCB_TSD_RANGE_S,
+                "verification_note": _MCCB_TRIP_SETTINGS_SOURCE_PL,
             },
         },
         {
@@ -743,6 +823,12 @@ def get_all_lv_apparatus_types() -> list[dict]:
                 "catalog_status": "PRODUKCYJNY_V1",
                 "source_reference": "ABB Tmax XT katalog 1SDA066835R1 / ABB Tmax XT katalog 1SDC210064D0201 str.6 (rama XT1C 160, Icu 415V=25kA @ In=150A/160A)",
                 "contract_version": "2.0",
+                "ir_range": _MCCB_IR_RANGE_X_IN,
+                "isd_range": _MCCB_ISD_RANGE_X_IR,
+                "ii_range": _MCCB_II_RANGE_X_IN,
+                "tr_range": _MCCB_TR_RANGE_S,
+                "tsd_range": _MCCB_TSD_RANGE_S,
+                "verification_note": _MCCB_TRIP_SETTINGS_SOURCE_PL,
             },
         },
         {
@@ -760,6 +846,12 @@ def get_all_lv_apparatus_types() -> list[dict]:
                 "catalog_status": "PRODUKCYJNY_V1",
                 "source_reference": "ABB Tmax XT katalog 1SDA066835R1 / ABB Tmax XT katalog 1SDC210064D0201 str.7 (rama XT3C 250, Icu 415V=25kA @ In=250A)",
                 "contract_version": "2.0",
+                "ir_range": _MCCB_IR_RANGE_X_IN,
+                "isd_range": _MCCB_ISD_RANGE_X_IR,
+                "ii_range": _MCCB_II_RANGE_X_IN,
+                "tr_range": _MCCB_TR_RANGE_S,
+                "tsd_range": _MCCB_TSD_RANGE_S,
+                "verification_note": _MCCB_TRIP_SETTINGS_SOURCE_PL,
             },
         },
         {
@@ -777,6 +869,12 @@ def get_all_lv_apparatus_types() -> list[dict]:
                 "catalog_status": "PRODUKCYJNY_V1",
                 "source_reference": "ABB Tmax XT katalog 1SDA066835R1 (rama XT5N 400A, Icu 415V=36kA; zweryfikowano posrednio kartą techniczną XT5 1SXU210259D0201 — Icu 480V N=35kA, ten sam wariant N — pelna tabela IEC przekroczyla limit rozmiaru pobierania w tej sesji)",
                 "contract_version": "2.0",
+                "ir_range": _MCCB_IR_RANGE_X_IN,
+                "isd_range": _MCCB_ISD_RANGE_X_IR,
+                "ii_range": _MCCB_II_RANGE_X_IN,
+                "tr_range": _MCCB_TR_RANGE_S,
+                "tsd_range": _MCCB_TSD_RANGE_S,
+                "verification_note": _MCCB_TRIP_SETTINGS_SOURCE_PL,
             },
         },
         {
@@ -794,6 +892,12 @@ def get_all_lv_apparatus_types() -> list[dict]:
                 "catalog_status": "PRODUKCYJNY_V1",
                 "source_reference": "ABB Tmax XT katalog 1SDA066835R1 (rama XT5S 630A, Icu 415V=50kA; zgodnosc z karta techniczna XT5 1SXU210259D0201 — Icu 480V S=50kA, dokladne dopasowanie)",
                 "contract_version": "2.0",
+                "ir_range": _MCCB_IR_RANGE_X_IN,
+                "isd_range": _MCCB_ISD_RANGE_X_IR,
+                "ii_range": _MCCB_II_RANGE_X_IN,
+                "tr_range": _MCCB_TR_RANGE_S,
+                "tsd_range": _MCCB_TSD_RANGE_S,
+                "verification_note": _MCCB_TRIP_SETTINGS_SOURCE_PL,
             },
         },
         # --- ROZLACZNIK_BEZPIECZNIKOWY: Jean Muller NHR ---
