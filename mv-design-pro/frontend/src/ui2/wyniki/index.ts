@@ -11,7 +11,10 @@
  * + okno „Estymacja stanu (WLS)" (`estymacja` — estymacja stanu metodą ważonych
  *   najmniejszych kwadratów z pomiarów telemetrycznych na przebiegu rozpływu)
  * + okno „Werdykt projektowy" (`werdykt`, karta F-K3 / etap E7 — rejestr kryteriów
- *   projektu z trzema stanami, jawnym zakresem i drogą do przyczyny).
+ *   projektu z trzema stanami, jawnym zakresem i drogą do przyczyny)
+ * + okno „Kontyngencje N-1" (`kontyngencje`, karta EKRAN-N1 / decyzja D8 —
+ *   zakres biegu wybierany przez inżyniera, przypadek bazowy N-0 nad rankingiem
+ *   dotkliwości, szczegóły skutków per wyłączenie).
  */
 
 export * from './wzorzec';
@@ -20,6 +23,7 @@ export * from './zwarcia';
 export * from './dowod';
 export * from './porownanie';
 export * from './jakosc';
+export * from './kontyngencje';
 export * from './odbior';
 export * from './estymacja';
 export * from './werdykt';
