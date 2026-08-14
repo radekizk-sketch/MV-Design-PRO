@@ -33,7 +33,7 @@ Wymaga **wszystkich poniższych**:
 2. ustawienie `source_version` (np. `"2026.1"`),
 3. ustawienie `verified_at` (ISO-8601 timestamp),
 4. ustawienie `lifecycle_status="current"` lub `"legacy"`,
-5. pełne wypełnienie `voltage_levels`, `rated_current_options`, `short_time_current_options`,
+5. pełne wypełnienie `network_voltages_kv`/`um_classes_kv` (dawniej `network_voltages_kv/um_classes_kv`, karta K-J 2026-08-14), `rated_current_options`, `short_time_current_options`,
 6. lista `allowed_bay_kinds` i `allowed_apparatus_kinds` zweryfikowana ze źródłem.
 
 ### `requires_catalog` → `repo_verified`

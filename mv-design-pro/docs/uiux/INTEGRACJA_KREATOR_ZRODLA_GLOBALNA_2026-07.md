@@ -21,7 +21,7 @@ To marnuje istniejącą infrastrukturę i zrywa łańcuch danych do dalszych eta
 **Dane (Reference Engine + katalog switchgear):**
 - 7 rodzin rozdzielnic: ABB SafeRing/UniGear, Siemens 8DJH, Schneider SM6,
   Elektrometal e2ALPHA … (`GET /api/catalog/switchgear-families`): pola
-  `switchgear_family_ref`, `manufacturer_ref`, `voltage_levels`, `allowed_bay_kinds`,
+  `switchgear_family_ref`, `manufacturer_ref`, `network_voltages_kv`/`um_classes_kv` (dawniej `network_voltages_kv/um_classes_kv`, karta K-J 2026-08-14), `allowed_bay_kinds`,
   `allowed_apparatus_kinds`, `construction_type`, `busbar_system`.
 - 36 kompletnych szablonów pól (`GET /api/catalog/complete-bay-templates`):
   `template_ref` (np. `ABB__SAFERING__LINE_IN`), `base_template.bay_role`

@@ -506,3 +506,12 @@ frontendowego katalogu bezpieczników: każda wartość liczbowa ma źródło al
 pozycji nie ma. Granice: `frontend/src/ui/network-build/station-der/**` + testy.
 UWAGA: dług pasma ETI VV (K-E) NIE jest zamykalny dalszym szukaniem w sieci —
 nie zlecać ponownej transkrypcji bez nowych danych tabelarycznych producenta.
+
+### K-P PROMOCJA-UNISEC (znalezisko K-J)
+Oficjalny katalog ABB UniSec 1VFM200003 podaje komplet danych rodziny (rated
+voltage 12/17,5/24 kV, prąd szyn 630/800/1250 A), których brakowało stronie
+portfolio — rodzina może wyjść ze statusu `requires_catalog`. Warunek pełny:
+transkrypcja danych rodziny ZE ŹRÓDŁA + przepisanie co najmniej jednego
+kompletnego pola katalogowego (`CompleteMvBayTemplate`) z karty — promocja bez
+pól nie zmaterializuje żadnego pola w kreatorze (fałszywa oferta). Granice:
+`network_model/catalog/switchgear/**` + testy; wzorzec: karty RELF 2S/RXD.
