@@ -30,6 +30,7 @@ export const OPERATION_SUCCESS_MESSAGES: Record<string, string> = {
   set_normal_open_point: 'Ustawiono punkt normalnie otwarty (NOP)',
   // Bays / transformers / fields
   add_sn_bay: 'Dodano pole SN',
+  add_sn_bay_from_catalog: 'Dodano pole SN z katalogu rozdzielnicy',
   edit_bay: 'Zaktualizowano pole SN',
   add_transformer_sn_nn: 'Dodano transformator SN/nN',
   add_nn_outgoing_field: 'Dodano pole nN',
