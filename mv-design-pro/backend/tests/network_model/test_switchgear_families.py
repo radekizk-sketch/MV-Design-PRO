@@ -31,16 +31,52 @@ def test_rodzina_potwierdzona_ma_komplet_parametrow_klasowych() -> None:
         assert family.short_circuit_ik_ka > 0 and family.short_circuit_tk_s > 0, family.id
 
 
-def test_rodzina_niepotwierdzona_nie_jest_oferowana_w_konfiguratorze() -> None:
-    # Deklaracja dokumentu BINDING par. 6 przypieta testem: rodzina bez karty
-    # katalogowej istnieje w portfolio, ale konfigurator jej nie oferuje.
-    niepotwierdzone = {f.id for f in sf.SWITCHGEAR_FAMILIES if not f.parametry_potwierdzone}
-    assert niepotwierdzone, "transza S1 celowo zawiera rodziny bez karty (RELF 2S, RXD)"
-    oferowane = {f.id for f in sf.rodziny_oferowane()}
-    assert not (niepotwierdzone & oferowane)
-    for family_id in niepotwierdzone:
-        with pytest.raises(sf.NiezgodnoscKonfiguracjiError):
-            sf.family_supports_voltage(family_id, 15.0)
+def test_wszystkie_rodziny_transzy_potwierdzone_karta_katalogowa() -> None:
+    # Dyspozycja wlasciciela 2026-08-14 („szukaj w internecie i implementuj
+    # karty katalogowe"): RELF 2S i RXD dostaly karty (zpue.pl / elektro.info,
+    # odczyt 2026-08-14) — caly zbior transzy jest potwierdzony i oferowany.
+    assert all(f.parametry_potwierdzone for f in sf.SWITCHGEAR_FAMILIES)
+    assert {f.id for f in sf.rodziny_oferowane()} == {f.id for f in sf.SWITCHGEAR_FAMILIES}
+
+
+def test_rodzina_niepotwierdzona_nie_jest_oferowana_w_konfiguratorze(monkeypatch) -> None:
+    # Mechanizm zapadki przypiety na rodzinie SYNTETYCZNEJ (KLASA, nie stan
+    # zbioru): rodzina bez karty istnieje w katalogu, ale konfigurator jej
+    # nie oferuje, a walidator odmawia twardym bledem.
+    widmo = sf.SwitchgearFamily(
+        id="test_widmo_bez_karty",
+        manufacturer="Producent testowy",
+        name="Widmo",
+        architecture=sf.SwitchgearArchitecture.MODULAR_AIS,
+        technology="",
+        rated_voltages_kv=(),
+        rated_busbar_currents_a=(),
+        short_circuit_ik_ka=0.0,
+        short_circuit_tk_s=0.0,
+        arc_classification="",
+        source_reference="portfolio bez karty katalogowej (fikstura testowa)",
+        parametry_potwierdzone=False,
+    )
+    monkeypatch.setattr(sf, "SWITCHGEAR_FAMILIES", sf.SWITCHGEAR_FAMILIES + (widmo,))
+    monkeypatch.setitem(sf._FAMILIES_BY_ID, widmo.id, widmo)
+
+    jednostka_widma = sf.CatalogFunctionalUnit(
+        id="test_widmo_jednostka",
+        family_id=widmo.id,
+        catalog_code="W1",
+        name="Jednostka widma",
+        role=sf.FunctionalRole.RING,
+        components=(sf.ComponentSpec(kind="LBS", status=sf.ComponentStatus.FABRYCZNY, position=0),),
+        rated_current_a=630,
+        width_mm=500,
+    )
+    monkeypatch.setitem(sf._UNITS_BY_ID, jednostka_widma.id, jednostka_widma)
+
+    assert widmo.id not in {f.id for f in sf.rodziny_oferowane()}
+    with pytest.raises(sf.NiezgodnoscKonfiguracjiError):
+        sf.family_supports_voltage(widmo.id, 15.0)
+    with pytest.raises(sf.NiezgodnoscKonfiguracjiError, match="nie ma potwierdzonych"):
+        sf.family_supports_unit(widmo.id, jednostka_widma.id)
 
 
 def test_producent_zpue_nie_jest_jednym_wpisem() -> None:

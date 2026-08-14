@@ -273,13 +273,19 @@ SWITCHGEAR_FAMILIES: tuple[SwitchgearFamily, ...] = (
         manufacturer="ZPUE",
         name="RELF",
         architecture=SwitchgearArchitecture.MODULAR_AIS,
-        technology="rozdzielnica dwuczlonowa w izolacji powietrznej",
-        rated_voltages_kv=(12.0, 17.5, 24.0),
-        rated_busbar_currents_a=(630, 1250, 1600, 2500),
+        technology=(
+            "rozdzielnica dwuczlonowa w izolacji powietrznej, IP4X, LSC2B "
+            "(LSC2 dla 36 kV); do 40 kA/3 s w wariancie 12 kV"
+        ),
+        rated_voltages_kv=(12.0, 17.5, 24.0, 36.0),
+        rated_busbar_currents_a=(630, 1250, 1600, 2000, 2500, 4000),
         short_circuit_ik_ka=31.5,
         short_circuit_tk_s=3.0,
-        arc_classification="AFLR wg katalogu ZPUE",
-        source_reference="Katalog ZPUE — rozdzielnice SN RELF",
+        arc_classification="IAC AFLR; prad szczytowy do 80-100 kA wg wariantu",
+        source_reference=(
+            "Karta katalogowa ZPUE — RELF (zpue.pl/rozdzielnice-sn, odczyt "
+            "2026-08-14; PN-EN 62271-1, PN-EN 62271-200)"
+        ),
     ),
     SwitchgearFamily(
         id="zpue_tpm",
@@ -325,28 +331,43 @@ SWITCHGEAR_FAMILIES: tuple[SwitchgearFamily, ...] = (
         manufacturer="ZPUE",
         name="RELF 2S",
         architecture=SwitchgearArchitecture.MODULAR_AIS,
-        technology="rozdzielnica dwusystemowa w izolacji powietrznej",
-        rated_voltages_kv=(),
-        rated_busbar_currents_a=(),
-        short_circuit_ik_ka=0.0,
-        short_circuit_tk_s=0.0,
-        arc_classification="",
-        source_reference="Portfolio ZPUE (dyspozycja wlasciciela 2026-08-14); parametry wymagaja karty katalogowej",
-        parametry_potwierdzone=False,
+        technology=(
+            "rozdzielnica dwusystemowa (dwa systemy szyn zbiorczych), dwuczlonowa, "
+            "izolacja powietrzna, IP4X, czlon wysuwny: wylacznik/stycznik/rozlacznik/"
+            "zespol przekladnikow/blok bezpiecznikowy"
+        ),
+        rated_voltages_kv=(12.0,),
+        rated_busbar_currents_a=(630, 1250, 1600, 2000, 2500),
+        short_circuit_ik_ka=31.5,
+        short_circuit_tk_s=3.0,
+        arc_classification="IAC AFLR 31,5 kA 1 s; prad szczytowy 80 kA",
+        source_reference=(
+            "Karta katalogowa ZPUE — RELF 2S (zpue.pl/rozdzielnice-sn/relf-2s, "
+            "odczyt 2026-08-14; PN-EN 62271-200)"
+        ),
     ),
     SwitchgearFamily(
         id="zpue_rxd",
         manufacturer="ZPUE",
         name="RXD",
-        architecture=SwitchgearArchitecture.MODULAR_GIS,
-        technology="rozdzielnica w izolacji gazowej",
-        rated_voltages_kv=(),
-        rated_busbar_currents_a=(),
-        short_circuit_ik_ka=0.0,
-        short_circuit_tk_s=0.0,
-        arc_classification="",
-        source_reference="Portfolio ZPUE (dyspozycja wlasciciela 2026-08-14); parametry wymagaja karty katalogowej",
-        parametry_potwierdzone=False,
+        # KOREKTA po weryfikacji karty (2026-08-14): RXD to rozdzielnica
+        # dwuczlonowa w izolacji POWIETRZNEJ (metal-enclosed), nie gazowej —
+        # wstepna klasyfikacja GIS z transzy S1 byla bledna.
+        architecture=SwitchgearArchitecture.MODULAR_AIS,
+        technology=(
+            "rozdzielnica dwuczlonowa w izolacji powietrznej (metal-enclosed), "
+            "jeden system szyn, manipulacja czlonem przez zamkniete drzwi"
+        ),
+        rated_voltages_kv=(12.0, 36.0),
+        rated_busbar_currents_a=(630, 1250),
+        short_circuit_ik_ka=25.0,
+        short_circuit_tk_s=3.0,
+        arc_classification="IAC AFLR 25 kA 1 s (wariant 12 kV) / 20 kA 1 s (wariant 36 kV); prad szczytowy 63 kA",
+        source_reference=(
+            "Karta produktu RXD — dane producenta ZPUE za elektro.info "
+            "(elektro.info.pl/produkt/rozdzielnice-sn/109592, odczyt 2026-08-14; "
+            "PN-EN 62271-1, PN-EN 62271-200)"
+        ),
     ),
     # --- ABB -------------------------------------------------------------
     SwitchgearFamily(
