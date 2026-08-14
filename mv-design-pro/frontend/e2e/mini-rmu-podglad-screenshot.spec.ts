@@ -120,8 +120,23 @@ test.describe('kreator stacji — podgląd pól rozdzielnicy SN', () => {
 
       // (5) UCZCIWY STAN ZEROWY — rodzina RMU bez transkrybowanych bloków.
       // Ekran ma powiedzieć, czego brakuje, zamiast pokazać wymyśloną ofertę.
-      await page.getByTestId('mvd-kreator-stacja-rodzina').selectOption('ZPUE_WLOSZCZOWA__TPM');
+      //
+      // RODZINA ZMIENIONA (2026-08-14) ZA ZMIANĄ KATALOGU, NIE DLA WYGODY SPECA.
+      // Stała tu ZPUE TPM, ale katalog niesie dla niej dziś 18 bloków fabrycznych
+      // (karta S3), a karta rodziny deklaruje sieć 20 kV, więc na szynie 15 kV tej
+      // sceny TPM jest widoczna i NIEWYBIERALNA („inna klasa napięciowa") — spec
+      // czekał na wybór, którego katalog słusznie zabrania. Rodziną BEZ ANI JEDNEGO
+      // bloku jest ABB SafePlus (0 konfiguracji w katalogu), a jej klasy Um
+      // 12/17,5/24 kV obejmują 15 kV. Producent zmienia się razem z rodziną, bo
+      // SafePlus jest wyrobem ABB — wskazanie go pod ZPUE byłoby fałszywą ofertą.
+      await page.getByTestId('mvd-kreator-stacja-producent').selectOption('ABB');
+      await page.getByTestId('mvd-kreator-stacja-rodzina').selectOption('ABB__SAFEPLUS');
+      await expect(page.getByTestId('mvd-kreator-stacja-tor-blok')).toBeVisible();
       await expect(page.getByTestId('mvd-kreator-stacja-blok-brak')).toBeVisible();
+      // Uczciwy stan zerowy = BRAK oferty, nie „oferta pusta obok listy wyboru":
+      // gdyby lista bloków się pojawiła, komunikat o braku byłby sprzeczny z
+      // ekranem, a kadr dowodziłby czegoś odwrotnego niż jego nazwa.
+      await expect(page.getByTestId('mvd-kreator-stacja-blok')).toHaveCount(0);
       await page.waitForTimeout(300);
       await page.getByTestId('mvd-kreator-stacja-pola').screenshot({
         path: path.join(OUTPUT_DIR, `kreator_stacja_blok_brak_danych_${theme}.png`),

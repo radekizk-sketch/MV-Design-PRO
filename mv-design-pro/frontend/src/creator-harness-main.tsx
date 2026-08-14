@@ -153,6 +153,11 @@ const CATALOG_FIXTURES: Record<string, unknown> = {
   },
   '/api/catalog/manufacturers': [
     { manufacturer_ref: 'ZPUE_WLOSZCZOWA', name: 'ZPUE Włoszczowa', country: 'PL', status: 'verified', source_refs: ['katalog'], notes_pl: null },
+    // ABB — producent z kanonu katalogu (`switchgear/manufacturer.py`), status
+    // `requires_catalog`. W ŻYWEJ aplikacji jest wybieralny, bo ma kompletne
+    // szablony pól (13 rekordów), a nie dzięki statusowi producenta; atrapa niżej
+    // niesie dwa z nich, żeby scena zachowywała się jak aplikacja.
+    { manufacturer_ref: 'ABB', name: 'ABB Ltd.', country: 'CH', status: 'requires_catalog', source_refs: [], notes_pl: null },
   ],
   '/api/catalog/mv-protection-device-types': [
     { id: 'rel-mv-1', name: 'Zabezpieczenie nadprądowe SN', vendor: 'ABB' },
@@ -179,11 +184,20 @@ const CATALOG_FIXTURES: Record<string, unknown> = {
     // którego ta rodzina nie ma.
     { switchgear_family_ref: 'ZPUE_WLOSZCZOWA__ROTOBLOK', family_name: 'Rotoblok', manufacturer_ref: 'ZPUE_WLOSZCZOWA', network_voltages_kv: [15, 20], um_classes_kv: [17.5, 24], rated_current_options: [630], short_time_current_options: [16], status: 'repo_verified', source_refs: ['https://zpue.pl/rozdzielnice-sn/rotoblok'], insulation_type: 'air', construction_type: 'wnetrzowa', tor_konfiguracji: 'MODULARNY', series_name: null, notes_pl: null },
     { switchgear_family_ref: 'ZPUE_WLOSZCZOWA__TPM_AIR', family_name: 'TPM Air', manufacturer_ref: 'ZPUE_WLOSZCZOWA', network_voltages_kv: [], um_classes_kv: [24], rated_current_options: [630], short_time_current_options: [20], status: 'repo_verified', source_refs: ['https://zpue.pl/rozdzielnice-sn/tpm-air'], insulation_type: 'air', construction_type: 'RMU', tor_konfiguracji: 'BLOK_RMU', series_name: null, notes_pl: null },
-    // Rodzina RMU BEZ transkrybowanych bloków (jawny dług danych kanonu §9) —
-    // scena ma pokazywać uczciwy stan zerowy, a nie wymyśloną ofertę.
-    { switchgear_family_ref: 'ZPUE_WLOSZCZOWA__TPM', family_name: 'TPM', manufacturer_ref: 'ZPUE_WLOSZCZOWA', network_voltages_kv: [20], um_classes_kv: [25], rated_current_options: [630], short_time_current_options: [20], status: 'repo_verified', source_refs: ['https://zpue.pl/rozdzielnice-sn/tpm'], insulation_type: 'sf6', construction_type: 'RMU', tor_konfiguracji: 'BLOK_RMU', series_name: null, notes_pl: null },
-    // Rodzina bez potwierdzonej karty — WIDOCZNA, ale niewybieralna.
-    { switchgear_family_ref: 'ABB__UNISEC', family_name: 'UniSec', manufacturer_ref: 'ZPUE_WLOSZCZOWA', network_voltages_kv: [], um_classes_kv: [24], rated_current_options: [], short_time_current_options: [], status: 'requires_catalog', source_refs: [], insulation_type: 'air', construction_type: 'wnetrzowa', tor_konfiguracji: 'MODULARNY', series_name: null, notes_pl: null },
+    // Rodzina RMU BEZ transkrybowanych bloków — UCZCIWY STAN ZEROWY oferty.
+    //
+    // BYŁA TU RODZINA ZPUE TPM z pustym subzasobem konfiguracji. To przestało być
+    // prawdą: katalog niesie dla TPM 18 bloków fabrycznych (karta S3), a jej karta
+    // deklaruje napięcie sieci 20 kV, więc na szynie 15 kV tej sceny rodzina jest
+    // widoczna, ale NIEWYBIERALNA — scena „stanu zerowego" opierała się na rodzinie,
+    // której nie da się wskazać, i na nieistniejącym braku danych.
+    // ABB SafePlus to rodzina, dla której katalog REALNIE nie ma ani jednego bloku
+    // (0 konfiguracji), a jej klasy Um 12/17,5/24 kV obejmują szynę 15 kV.
+    { switchgear_family_ref: 'ABB__SAFEPLUS', family_name: 'SafePlus', manufacturer_ref: 'ABB', network_voltages_kv: [], um_classes_kv: [12, 17.5, 24], rated_current_options: [630, 1250], short_time_current_options: [20, 25], status: 'repo_verified', source_refs: ['https://www.abb.com/global/en/areas/electrification/medium-voltage/switchgear/gas-insulated/safering-safeplus'], insulation_type: 'sf6', construction_type: 'RMU', tor_konfiguracji: 'BLOK_RMU', series_name: 'SafePlus', notes_pl: null },
+    // Rodzina bez potwierdzonej karty — WIDOCZNA, ale niewybieralna. Producentem
+    // UniSec jest ABB (kanon `families.py`), nie ZPUE: atrapa przypisywała wyrób
+    // jednego producenta drugiemu, czyli podawała na ekranie nieprawdziwą ofertę.
+    { switchgear_family_ref: 'ABB__UNISEC', family_name: 'UniSec', manufacturer_ref: 'ABB', network_voltages_kv: [], um_classes_kv: [24], rated_current_options: [], short_time_current_options: [], status: 'requires_catalog', source_refs: [], insulation_type: 'air', construction_type: 'wnetrzowa', tor_konfiguracji: 'MODULARNY', series_name: null, notes_pl: null },
   ],
   // Subzasób konfiguracji fabrycznych: bloki ZPUE TPM Air w nomenklaturze
   // PRODUCENTA (L — rozłącznik liniowy 630 A, T — rozłącznik z bezpiecznikami
@@ -220,7 +234,10 @@ const CATALOG_FIXTURES: Record<string, unknown> = {
       notes_pl: null,
     },
   ],
-  '/api/catalog/switchgear-families/ZPUE_WLOSZCZOWA__TPM/factory-configurations': [],
+  // Rodzina RMU, dla której katalog NIE MA ANI JEDNEGO bloku — pusta lista jest tu
+  // odwzorowaniem stanu katalogu (`GET .../ABB__SAFEPLUS/factory-configurations`
+  // zwraca 0 pozycji), a nie wygodą sceny.
+  '/api/catalog/switchgear-families/ABB__SAFEPLUS/factory-configurations': [],
   '/api/catalog/lv-apparatus-types': [
     { id: 'lv-1', name: 'Wyłącznik nN 630A', u_n_kv: 0.4, i_n_a: 630 },
   ],
@@ -2027,20 +2044,26 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
       electrical_side: strona,
       status_wyposazenia: status,
     });
+    // PRODUCENT JEST PARAMETREM, nie stałą: lista producentów kroku pól wynika
+    // z dostępności KOMPLETNYCH szablonów (`producenciUzywalni`), więc szablon
+    // przypisany na sztywno jednemu producentowi przesądzał, kogo w ogóle widać
+    // na ekranie — i zamykał scenę na jedną firmę, choć katalog niesie pięć.
     const szablon = (
       ref: string,
       kind: string,
       nazwa: string,
       rodzina: string,
       instancje: ReturnType<typeof aparat>[],
+      producent = 'ZPUE_WLOSZCZOWA',
+      zrodla: string[] = ['https://zpue.pl'],
     ) => ({
       template_ref: ref,
       bay_kind: kind,
       bay_role: kind === 'transformatorowe' ? 'TR' : 'OUT',
-      manufacturer_ref: 'ZPUE_WLOSZCZOWA',
+      manufacturer_ref: producent,
       switchgear_family_ref: rodzina,
       source_status: 'repo_verified',
-      source_refs: ['https://zpue.pl'],
+      source_refs: zrodla,
       name_pl: nazwa,
       template_name_pl: nazwa,
       device_instances: instancje,
@@ -2072,6 +2095,25 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
         // Pakiet rodziny RMU — jednostki bloku dobierają z niego swoje karty.
         szablon('ZPUE__TPM_AIR__LINE_OUT', 'liniowe_odplywowe', 'Jednostka liniowa L', 'ZPUE_WLOSZCZOWA__TPM_AIR', polePolaczeniowe('ZPUE__TPM_AIR__LINE_OUT')),
         szablon('ZPUE__TPM_AIR__TRANSFORMER', 'transformatorowe', 'Jednostka transformatorowa T', 'ZPUE_WLOSZCZOWA__TPM_AIR', poleTransformatorowe('ZPUE__TPM_AIR__TRANSFORMER')),
+        // ABB SafePlus — dwa z trzynastu kompletnych szablonów ABB w katalogu,
+        // przepisane ze składu rekordu (`ABB__SAFEPLUS__{LINE_OUT,TRANSFORMER}`).
+        // W żywej aplikacji to WŁAŚNIE one czynią ABB producentem wybieralnym
+        // (status producenta to `requires_catalog`), więc bez nich scena RMU nie
+        // dawałaby dojść do rodziny bez bloków fabrycznych.
+        szablon('ABB__SAFEPLUS__LINE_OUT', 'liniowe_odplywowe', 'Pole liniowe odpływowe', 'ABB__SAFEPLUS', [
+          aparat('ABB__SAFEPLUS__LINE_OUT__DS_BUS__00', 'disconnector_busbar', 'Q1', 1, 'busbar_side'),
+          aparat('ABB__SAFEPLUS__LINE_OUT__CB__01', 'circuit_breaker', 'Q0', 2, 'line_side'),
+          aparat('ABB__SAFEPLUS__LINE_OUT__DS_LINE__03', 'disconnector_line', 'Q2', 4, 'line_side'),
+          aparat('ABB__SAFEPLUS__LINE_OUT__ES__04', 'earthing_switch', 'Q9', 5, 'earthing_branch'),
+          aparat('ABB__SAFEPLUS__LINE_OUT__CABLE_HEAD__05', 'cable_head', 'GK', 6, 'line_side'),
+        ], 'ABB', ['https://www.abb.com/global/en/areas/electrification/medium-voltage/switchgear/gas-insulated/safering-safeplus']),
+        szablon('ABB__SAFEPLUS__TRANSFORMER', 'transformatorowe', 'Pole transformatorowe', 'ABB__SAFEPLUS', [
+          aparat('ABB__SAFEPLUS__TRANSFORMER__DS_BUS__00', 'disconnector_busbar', 'Q1', 1, 'busbar_side'),
+          aparat('ABB__SAFEPLUS__TRANSFORMER__CB__01', 'circuit_breaker', 'Q0', 2, 'line_side'),
+          aparat('ABB__SAFEPLUS__TRANSFORMER__DS_LINE__03', 'disconnector_line', 'Q2', 4, 'line_side'),
+          aparat('ABB__SAFEPLUS__TRANSFORMER__ES__04', 'earthing_switch', 'Q9', 5, 'earthing_branch'),
+          aparat('ABB__SAFEPLUS__TRANSFORMER__TRANSFORMER_DEVICE__05', 'transformer', 'TR', 6, 'transformer_side'),
+        ], 'ABB', ['https://www.abb.com/global/en/areas/electrification/medium-voltage/switchgear/gas-insulated/safering-safeplus']),
       ]),
       { status: 200, headers: { 'Content-Type': 'application/json' } },
     );
