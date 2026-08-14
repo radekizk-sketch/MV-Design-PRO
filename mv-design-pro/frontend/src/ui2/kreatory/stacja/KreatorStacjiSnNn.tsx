@@ -865,6 +865,10 @@ export function KreatorStacjiSnNn() {
     return mapa;
   }, [ctTypy, dane.pola, dane.wyposazenie, vtTypy]);
 
+  // Blok fabryczny NIE jest tu osobnym argumentem: tożsamość wyrobu siedzi na
+  // WPISIE pola (`polaZBloku` nadaje ref bloku i numer jednostki), więc lista
+  // pól i ich przynależność do bloku pochodzą z jednego źródła — nie da się
+  // wysłać pola z bloku, którego ten wpis nie ma.
   const snFields = useMemo(
     () =>
       zbudujPolaSnZWpisow(
@@ -875,10 +879,8 @@ export function KreatorStacjiSnNn() {
         },
         szablonyWyboru,
         wyposazenieDoPayloadu,
-        dane.factory_configuration_ref,
       ),
     [
-      dane.factory_configuration_ref,
       dane.manufacturer_ref,
       dane.pola,
       dane.switchgear_family_ref,

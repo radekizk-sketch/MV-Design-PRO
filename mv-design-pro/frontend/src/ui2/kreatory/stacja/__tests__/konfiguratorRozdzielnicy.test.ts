@@ -504,6 +504,41 @@ describe('blok fabryczny RMU → pola stacji', () => {
     ]);
   });
 
+  /**
+   * Tożsamość WYROBU jedzie na wpisie pola, nie obok listy. Blok L-L-T ma dwie
+   * jednostki „L" nierozróżnialne po roli ani po karcie katalogowej — dopiero
+   * numer jednostki mówi, które pole bloku powstaje. Bez tej pary (ref bloku +
+   * numer) operacja stacyjna odrzuca pole rodziny blokowej twardym błędem.
+   */
+  it('wpis pola niesie blok fabryczny I numer jednostki (1-based, kolejność wyrobu)', () => {
+    const pola = polaZBloku(BLOK_LLT, () => 'tpl', () => 'apar');
+    expect(pola.map((p) => p.factory_configuration_ref)).toEqual([
+      BLOK_LLT.configuration_ref,
+      BLOK_LLT.configuration_ref,
+      BLOK_LLT.configuration_ref,
+    ]);
+    expect(pola.map((p) => p.factory_unit_index)).toEqual([1, 2, 3]);
+  });
+
+  it('numer jednostki pomija jednostki BEZ roli, ale nie przenumerowuje wyrobu', () => {
+    // Jednostka pomiarowa stoi PRZED transformatorową: gdyby numer liczył pola
+    // (a nie jednostki bloku), pole TR dostałoby numer 3 i wskazywałoby cudzą
+    // jednostkę wyrobu.
+    const blokZPomiarem: BlokFabryczny = {
+      ...BLOK_LLT,
+      units: [
+        BLOK_LLT.units[0],
+        BLOK_LLT.units[1],
+        jednostka('M', 'pomiarowe', ['voltage_transformer']),
+        BLOK_LLT.units[2],
+      ],
+      unit_sequence: 'L-L-M-T',
+    };
+    const pola = polaZBloku(blokZPomiarem, () => 'tpl', () => 'apar');
+    expect(pola.map((p) => p.field_role)).toEqual(['LINIA_OUT', 'LINIA_OUT', 'TRANSFORMATOROWE']);
+    expect(pola.map((p) => p.factory_unit_index)).toEqual([1, 2, 4]);
+  });
+
   it('jednostka bez roli w kontrakcie ZOSTAJE w składzie, ale NIE daje pola', () => {
     const blokZPomiarem: BlokFabryczny = {
       ...BLOK_LLT,

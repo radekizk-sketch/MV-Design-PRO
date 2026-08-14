@@ -473,6 +473,12 @@ export function polaZBloku(
       field_role: wpis.rola,
       bay_template_ref: szablonDlaRoli(wpis.rola),
       apparatus_catalog_ref: aparatDlaRoli(wpis.rola),
+      // Tożsamość wyrobu jedzie NA WPISIE pola, nie obok listy: operacja
+      // stacyjna materializuje pole z JEDNOSTKI bloku (blok CCF z rozłącznikiem
+      // bezpiecznikowym i CCV z wyłącznikiem to różne wyroby), więc bez numeru
+      // jednostki nie wiadomo, które pole bloku powstaje.
+      factory_configuration_ref: blok?.configuration_ref,
+      factory_unit_index: wpis.pozycja,
     }));
 }
 
