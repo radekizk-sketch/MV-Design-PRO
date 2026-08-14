@@ -127,3 +127,46 @@ i jedyną legalną granicą 15 kV ↔ 0,4 kV w tej części modelu.
 **Decyzja: T5a ZLECIĆ · T5b ZLECIĆ (priorytet) · T5c ZLECIĆ po zmianie na
 explicit domain navigation. Kierunek „zmniejszyć RGnN pod stacją SN" —
 ZAMKNIĘTY.**
+
+---
+
+## WERDYKT B-02 dla T5b (2026-08-14): REJECT 0/10 wykonania — koncepcja L2 potwierdzona 10/10
+
+Zdanie kluczowe właściciela: „Zmiana domeny rozwiązała problem przestrzeni,
+ale nie problem JĘZYKA SLD. L2 nadal przedstawia graf encji. Następna
+iteracja ma zamienić RGnN/TR/PV/odpływ/podrozdzielnicę na rzeczywiste tory
+elektryczne BUS → APPARATUS → CONDUCTOR → TERMINAL → DEVICE."
+
+### P0 przed następnym werdyktem (BINDING, komplet 18 punktów)
+1. RGnN-A/B = prawdziwe SEKCJE SZYN (kreska magistrali), nie ikonki-kwadraty.
+2. Jawny aparat sprzęgła QF-BC między sekcjami + stan OPEN/CLOSED — kreska
+   między sekcjami bez aparatu ZAKAZANA (zmienia znaczenie zwarciowe).
+3. LV incomer każdego TR pokazany (ACB/MCCB/rozłącznik z modelu).
+4. Jawny tor: TR → incomer → BUS (zakaz skracania TR→ikonka rozdzielnicy).
+5. Każdy odpływ: BUS → zabezpieczenie → kabel → przeznaczenie (bez tej
+   struktury overlay SWZ nie ma się do czego przypiąć).
+6. Podrozdzielnica = downstream node PO rzeczywistym odpływie (QF + kabel
+   z przekrojem/długością), nie kwadrat z podpisem.
+7. PV = jawny tor DER: źródło → INV → QF → kabel → ● PCC-LV → szyna.
+8. Boundary = odpływ → kabel (impedancja NALEŻY do modelu — nie wolno jej
+   uciąć geometrią!) → ● terminal granicy → chip obcej domeny (klik =
+   „Otwórz domenę Stacji OBCEJ").
+9. Stany łączeniowe aparatów pokazane symbolem (QF-T1/T2/BC/PV).
+10. Overlay SWZ = ZWIZUALIZOWANY na torach (plakietki per odpływ:
+    `SWZ ✓ 0.12/0.40 s`, przy FAIL Ikmin/Ia), nie sam zielony przycisk.
+11. PASS/WARN/FAIL + Ikmin/Zs/ta/tmax przynajmniej po interakcji.
+12. Auto-layout: sensowna część viewportu po Fit (nie 15–20% kanwy).
+13. Minimalne engineering sizes (oznaczenia/etykiety/symbole/pitch) —
+    fit() nie schodzi poniżej progu czytelności.
+14. Nagłówek OPISUJE DOMENĘ (`0,4 kV · 2×TR · 2 sekcje · PV · 1 boundary`);
+    parametry Sn/uk/grupa przy T1/T2, nie w nagłówku widoku.
+15. Hierarchia pionowa warstw: SN anchor → TR → LV incomers → MAIN BUS →
+    feeders/DER → subdistribution → loads (rozpoznawalna w 0,5 s).
+16. Test 2×TR: QBC OPEN = brak równoległości; QBC CLOSED = topologia i SC
+    się zmieniają.
+17. Test overlay: wartość na L2 = wynik solvera dla dokładnie tego
+    feederId/runId/scenarioId.
+18. Zakaz inferencji connectivity z geometrii.
+Upstream chipy: rozróżnialne per węzeł SN (`↑ SN / S01` vs `S02`; ten sam
+węzeł = jawnie ten sam); klik chipu = dowód (pełny snapshot). Docelowo
+(może osobno): `[⚡ Fault at end]` na końcu kabla → Zs/Ik1min/Ia/ta/werdykt.
