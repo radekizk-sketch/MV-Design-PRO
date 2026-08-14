@@ -95,6 +95,76 @@ def _station_transformer(enm: EnergyNetworkModel, station: Substation) -> Transf
     return next((t for t in enm.transformers if t.ref_id in refs), None)
 
 
+@dataclass(frozen=True)
+class UpstreamHvThevenin:
+    """Impedancja Thevenina sieci SN w WĘŹLE HV transformatora — Ω w napięciu
+    HV, NIE referowana do strony nN (karta T5b, docs/nn/KONCEPCJA_LOD_NN_2026-08.md,
+    werdykt właściciela: ``UpstreamEquivalentSnapshot``).
+
+    JEDNA ŚCIEŻKA FIZYKI (klasa nie instancja): dzielona podstawa dla
+    ``_upstream_thevenin_lv_component`` (referuje TĘ SAMĄ wartość do strony nN
+    kwadratem przekładni dla pętli zwarcia P0.6) i dla
+    ``application.analyses.lv_domain.upstream_equivalent`` (kotwica SN domeny
+    nN, T5b) — bez tego rozdzielenia druga ścieżka musiałaby powielić budowę
+    grafu + odczyt Z-bus, dokładnie ten defekt, którego zakazuje CLAUDE.md §3.
+    """
+
+    hv_bus_ref: str
+    z_hv_ohm: complex
+    source_label: str
+
+
+def compute_upstream_hv_thevenin(
+    enm: EnergyNetworkModel, trafo: Transformer
+) -> tuple[UpstreamHvThevenin | None, list[str]]:
+    """Impedancja Thevenina sieci SN w węźle HV transformatora (Ω, NIE referowana).
+
+    Reuse — zero własnej redukcji sieci: buduje TEN SAM graf i Z-bus co solver
+    zwarciowy (``short_circuit_core.build_zbus``) i czyta Z_kk w węźle HV
+    transformatora (impedancja widziana z zacisków HV, BEZ samego
+    transformatora — gałąź TR prowadzi do sieci nN „w dół", nie z powrotem do
+    źródła, więc nie ma podwójnego liczenia).
+
+    Zwraca ``(None, missing)`` gdy zacisk HV nie jest częścią rozwiązywalnej
+    sieci (brak zadeklarowanej szyny HV, sieć niepołączona z żadnym źródłem
+    SN, model topologicznie niepoprawny — np. dwa węzły SLACK) —
+    fail-closed, nigdy nie podstawia „silnego źródła" (nieskończonego)
+    domyślnie ANI nie wywala się wyjątkiem na niepoprawnym modelu (endpoint
+    MUSI zwrócić uczciwy stan, nie 500).
+    """
+    try:
+        graph = map_enm_to_network_graph(enm)
+    except ValueError:
+        return None, ["upstream_network_topology_invalid"]
+
+    hv_node_id = ref_to_graph_id(trafo.hv_bus_ref)
+    if hv_node_id not in graph.nodes:
+        return None, ["upstream_hv_bus"]
+
+    try:
+        builder, z_bus = build_zbus(graph)
+    except (ValueError, ZeroDivisionError):
+        return None, ["upstream_network_singular"]
+
+    node_index = builder.node_id_to_index.get(hv_node_id)
+    if node_index is None:
+        return None, ["upstream_hv_bus"]
+
+    z_base_ohm = builder.get_zbase_ohm(hv_node_id)
+    z_kk_hv_ohm = complex(z_bus[node_index, node_index]) * z_base_ohm
+    if z_kk_hv_ohm == 0:
+        return None, ["upstream_network_source"]
+
+    return (
+        UpstreamHvThevenin(
+            hv_bus_ref=hv_node_id,
+            z_hv_ohm=z_kk_hv_ohm,
+            source_label="Sieć SN (upstream Thevenin)",
+        ),
+        [],
+    )
+
+
 def _transformer_loop_impedance(
     trafo: Transformer,
 ) -> tuple[TransformerLoopImpedance | None, list[str]]:
@@ -156,32 +226,17 @@ def _upstream_thevenin_lv_component(
     fail-closed, nigdy nie podstawia „silnego źródła" (nieskończonego)
     domyślnie ANI nie wywala się wyjątkiem na niepoprawnym modelu (endpoint
     MUSI zwrócić uczciwy stan, nie 500).
+
+    DELEGUJE do ``compute_upstream_hv_thevenin`` (Z1 SN w Ω HV, NIE referowana)
+    i referuje WYNIK do strony nN — jedna ścieżka fizyki dzielona z kotwicą SN
+    domeny nN (karta T5b), zero drugiej redukcji sieci.
     """
-    try:
-        graph = map_enm_to_network_graph(enm)
-    except ValueError:
-        return None, ["upstream_network_topology_invalid"]
-
-    hv_node_id = ref_to_graph_id(trafo.hv_bus_ref)
-    if hv_node_id not in graph.nodes:
-        return None, ["upstream_hv_bus"]
-
-    try:
-        builder, z_bus = build_zbus(graph)
-    except (ValueError, ZeroDivisionError):
-        return None, ["upstream_network_singular"]
-
-    node_index = builder.node_id_to_index.get(hv_node_id)
-    if node_index is None:
-        return None, ["upstream_hv_bus"]
-
-    z_base_ohm = builder.get_zbase_ohm(hv_node_id)
-    z_kk_hv_ohm = complex(z_bus[node_index, node_index]) * z_base_ohm
-    if z_kk_hv_ohm == 0:
-        return None, ["upstream_network_source"]
+    hv_equiv, missing = compute_upstream_hv_thevenin(enm, trafo)
+    if hv_equiv is None:
+        return None, missing
 
     component = refer_upstream_impedance_to_lv_ohm(
-        z_hv_ohm=z_kk_hv_ohm,
+        z_hv_ohm=hv_equiv.z_hv_ohm,
         uhv_kv=trafo.uhv_kv,
         ulv_kv=trafo.ulv_kv,
     )

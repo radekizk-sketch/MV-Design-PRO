@@ -11,6 +11,10 @@ Routes:
   POST /api/cases/{case_id}/enm/ops          → Topology operations (atomic graph CRUD)
   POST /api/cases/{case_id}/runs/short-circuit → dispatch SC run via ENM
   POST /api/cases/{case_id}/runs/power-flow    → dispatch PF run via ENM
+  GET  /api/cases/{case_id}/enm/lv-domain/{station_ref}
+                                              → graf domeny nN (LOD L2, karta T5b)
+  GET  /api/cases/{case_id}/enm/lv-domain/{station_ref}/upstream-equivalent
+                                              → UpstreamEquivalentSnapshot (kotwica SN, karta T5b)
 """
 
 from __future__ import annotations
@@ -27,6 +31,13 @@ from application.analyses.fault_loop.service import (
     build_fault_loop_view_at_point,
     build_feeder_fault_loop_view,
     build_station_fault_loop_view,
+)
+from application.analyses.lv_domain.graph_view import build_lv_domain_view
+from application.analyses.lv_domain.upstream_equivalent import (
+    Scenario as UpstreamEquivalentScenario,
+)
+from application.analyses.lv_domain.upstream_equivalent import (
+    build_upstream_equivalent_snapshot,
 )
 from application.analyses.nn_circuit_sheet import build_nn_circuit_sheet
 from application.analyses.nn_device_selection import wybierz_aparat_dla_obwodu_nn
@@ -337,6 +348,54 @@ def get_fault_loop_feeders(case_id: str, station_ref: str) -> dict[str, Any]:
     """
     enm = _get_enm(case_id)
     return build_feeder_fault_loop_view(enm, station_ref)
+
+
+@router.get("/{case_id}/enm/lv-domain/{station_ref}")
+def get_lv_domain_view(case_id: str, station_ref: str) -> dict[str, Any]:
+    """Graf domeny nN stacji — spójna składowa 0,4 kV wyprowadzona Z GRAFU
+    (karta T5b, docs/nn/KONCEPCJA_LOD_NN_2026-08.md §0 rozstrzygnięcie 2).
+
+    Granica domeny = GRANICA NAPIĘCIOWA I PROJEKCJI (werdykt): transformator
+    jest jedyną legalną granicą 15 kV/0,4 kV; przejście do INNEJ stacji z
+    WŁASNYM transformatorem zatrzymuje spacer i wraca jako `boundary_links`
+    (ref stacji docelowej), NIE wciąga jej elementów. Podrozdzielnice bez
+    własnego transformatora (rozdzielnica_nn) są WCHŁONIĘTE — to ta sama
+    domena elektryczna. Read-only; zero fizyki (topologia, nie solver).
+    """
+    enm = _get_enm(case_id)
+    return build_lv_domain_view(enm, station_ref)
+
+
+@router.get("/{case_id}/enm/lv-domain/{station_ref}/upstream-equivalent")
+def get_lv_domain_upstream_equivalent(
+    case_id: str,
+    station_ref: str,
+    scenario: UpstreamEquivalentScenario = "MAX",
+    transformer_ref: str | None = None,
+) -> dict[str, Any]:
+    """`UpstreamEquivalentSnapshot` — kotwica SN domeny nN (L2), karta T5b
+    §0 rozstrzygnięcie 1 (docs/nn/KONCEPCJA_LOD_NN_2026-08.md, werdykt
+    właściciela).
+
+    Immutable, deterministyczny (ten sam ENM + scenariusz + stan łączeniowy
+    → identyczny snapshot, w tym `calculation_run_id`). ZERO nowej fizyki —
+    Z1/Sk″/Ik″ w węźle HV transformatora liczone TĄ SAMĄ maszynerią co
+    pętla zwarcia nN (`application.analyses.fault_loop.service.
+    compute_upstream_hv_thevenin` + solver IEC 60909 `compute_ikss`).
+    `scenario` wybiera współczynnik napięciowy c wg IEC 60909-0 Tab.1
+    (MAX/MIN, ten sam wybór co bieg zwarciowy); `transformer_ref` opcjonalny
+    dla stacji wielotransformatorowych (domyślnie pierwszy transformator
+    stacji posortowany po ref_id — determinizm). Read-only; solver liczy
+    fizykę, ten endpoint tylko wyławia i zwraca.
+    """
+    enm = _get_enm(case_id)
+    return build_upstream_equivalent_snapshot(
+        enm,
+        case_id,
+        station_ref,
+        scenario=scenario,
+        transformer_ref=transformer_ref,
+    )
 
 
 @router.get("/{case_id}/enm/swz")
