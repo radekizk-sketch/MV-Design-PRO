@@ -541,3 +541,27 @@ paywallem — decyzja właściciela o zakupie/źródle), `tr_range` MCCB
 jednoźródłowe, rozjazd catalog_ref `add_sn_bay`/`append_station_on_endpoint`
 (strona SN — nadzór), 13 pre-existing błędów mypy w 8 plikach spoza nN,
 B-02 (werdykt wizualny) u właściciela.
+
+**Aktualizacja 2026-08-14: SLD-nN-TOPOLOGIA — swarm T0/T1/T2×2 SCALONY.**
+Werdykt B-02 właściciela nad P0.8: 0/10 HARD FAIL (architektura: scena z dzieci
+wizualnych, nie z grafu). Program BINDING `docs/nn/PLAN_SLD_NN_TOPOLOGIA_2026-08.md`.
+Wykonane swarmem i scalone (`eb5b17a9`):
+- T0: warstwa `sld/v3/electrical/` (graf terminali z ENM — Transformer ma jawne
+  hv/lv_bus_ref; 9 inwariantów napięciowych; wyrocznia zgodności sceny z grafem
+  CZERWONA jako dowód defektu: 4 krawędzie nN kind='sn', szyna nN jako 'segment').
+- T1: kompozycja nN Z GRAFU (szyna RGnN elementKind='bus' + busRoots, incomer,
+  kable odpływów W SCENIE, UNRESOLVED = HARD ERROR przerywający tor, walidacja
+  inwariantów przed kompozycją) — WYROCZNIA FLIPNIĘTA NA ZIELEŃ + Check C;
+  substrat SN: jedyna zmiana to 53 segmenty #lv-bus→'bus' (świadomy FLIP pinu
+  kosztSceny z uzasadnieniem); piny nadzoru bez modyfikacji asercji.
+- T2-LOD: LodClass L0/L1/L2 NAD LabelRole (wyprowadzenie strukturalne),
+  UNRESOLVED pełna etykieta zawsze, licznik „Ukryto N" = tylko L1/L2 + wyrocznie.
+- T2-WYNIKI: klik odpływu → zakładka wyników w istniejącym drawerze (Ib/In/ΔU/
+  Ik″max/Ik1_min/SWZ z realnych biegów; Iz′/I²t/selektywność = uczciwy
+  brak_wynikow — bez dostawcy per-odpływ); odznaka SWZ na kanwie (wzorzec OLTC,
+  fail-closed). ZNALEZISKO: phantom nastaw SN w SldDetailDrawer (zaszyte 50/51/67)
+  — osobna karta.
+Bramka kombinacji: vitest sld **258 plików / 4765 testów**, accept:sld-v3,
+tsc+lint, 6 guardów. W biegu: T3 (layout kompaktowy, etykiety bez elips, dane
+TR przy T1). Zrzuty do re-werdyktu B-02 wymagają żywego stosu (sandbox bez
+Dockera) — harness gotowy po T3.
