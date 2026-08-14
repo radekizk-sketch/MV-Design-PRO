@@ -136,6 +136,20 @@ export async function fetchCurrentCaseSnapshot(caseId: string): Promise<EnergyNe
   return response.json();
 }
 
+/**
+ * Nakladka wynikowa SLD dla uruchomienia.
+ *
+ * STATUS SWIEZOSCI POCHODZI Z SERWERA (K-S). Wczesniej stalo tu
+ * `result_status: 'VALID'` WPISANE Z PALCA — bo koncowka statusu nie oddawala
+ * (budowala go i wyrzucala). Skutek: baner „Wyniki nieaktualne" w `SldOverlay`
+ * porownuje status z `'OUTDATED'`, wiec przy stalej `'VALID'` nie mogl zapalic
+ * sie NIGDY, a wynik policzony przed edycja modelu wygladal na aktualny.
+ * Backend liczy status z porownania odciskow modelu i oddaje go razem z
+ * przyczyna; klient go tylko PRZEPISUJE — zero wlasnych domyslow.
+ *
+ * Brak pola w odpowiedzi (serwer starszy niz ta naprawa) daje `'NONE'`:
+ * uczciwy brak wiedzy o swiezosci, nie domniemana waznosc.
+ */
 export async function fetchSldOverlay(
   _projectId: string,
   diagramId: string,
@@ -156,7 +170,13 @@ export async function fetchSldOverlay(
   return {
     diagram_id: diagramId,
     run_id: runId,
-    result_status: 'VALID',
+    result_status: typeof payload.result_status === 'string' ? payload.result_status : 'NONE',
+    result_status_reason:
+      typeof payload.result_status_reason === 'string' ? payload.result_status_reason : undefined,
+    result_status_reason_pl:
+      typeof payload.result_status_reason_pl === 'string'
+        ? payload.result_status_reason_pl
+        : undefined,
     nodes,
     buses: nodes,
     branches,

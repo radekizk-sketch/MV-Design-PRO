@@ -172,10 +172,17 @@ def get_analysis_run_overlay(
         diagram_id=diagram_id,
         sld_payload=diagram.get("payload", {}),
     )
+    # Status swiezosci WCHODZI do odpowiedzi (K-S). Wczesniej byl tu budowany i
+    # WYRZUCANY, wiec klient (`ui/results-inspector/api.ts`) dopisywal sobie
+    # `result_status: 'VALID'` z palca — baner „Wyniki nieaktualne" w
+    # `SldOverlay.tsx` nie mogl zapalic sie nigdy.
     return canonicalize_json(
         {
             "bus_overlays": overlay.get("nodes", []),
             "branch_overlays": overlay.get("branches", []),
+            "result_status": overlay["result_status"],
+            "result_status_reason": overlay["result_status_reason"],
+            "result_status_reason_pl": overlay["result_status_reason_pl"],
         }
     )
 

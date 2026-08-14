@@ -478,7 +478,12 @@ export interface SldOverlayBranch {
 export interface SldResultOverlay {
   diagram_id: string;
   run_id: string;
+  /** Swiezosc wyniku wzgledem modelu: NONE | FRESH | OUTDATED (liczy backend). */
   result_status: string;
+  /** Kod przyczyny statusu z backendu (np. `model-zmieniony`). */
+  result_status_reason?: string;
+  /** Zdanie po polsku wyjasniajace przyczyne statusu — prosto z backendu. */
+  result_status_reason_pl?: string;
   /** Node overlay data (primary field used by overlay_builder and SLD components) */
   nodes: SldOverlayBus[];
   /** @deprecated Use nodes instead */
