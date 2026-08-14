@@ -125,21 +125,126 @@ test.describe('Real-backend: utworzenie projektu i przejście do SLD', () => {
     }
   });
 
-  test('API /api/catalog/switchgear-families zwraca 7 zweryfikowanych rodzin', async ({
+  test('API /api/catalog/switchgear-families — każda rodzina z kompletem pól i uczciwym statusem źródła', async ({
     page,
   }) => {
-    // 7. rodzina SCHNEIDER__SM6_24 dodana w programie Reference Engine V1
-    // (pakiet schneider_sm6, repo_verified, publiczna strona se.com).
+    // INTENCJA (bez zmian): endpoint wystawia rodziny rozdzielnic SN, a KAŻDA
+    // z nich nadaje się do użycia przez konfigurator — ma komplet pól i jawną,
+    // udokumentowaną proweniencję (nigdy dane z głowy).
+    //
+    // DLACZEGO NIE „length === 7" (poprawka 2026-08-14): poprzednia wersja
+    // zamrażała LICZBĘ i IMIENNĄ listę siedmiu rodzin. Po scaleniu kanonu
+    // rozdzielnic rejestr ma ich 18 (dołączyły ZPUE TPM/TPM Air/Rotoblok
+    // Air/Rotoblok VCB/RELF/RELF 2S/RXD, ABB SafePlus/UniSec, Schneider
+    // RM6/RM AirSeT). Dokładny skład rejestru jest już PRZYPIĘTY po stronie
+    // backendu (`tests/network_model/catalog/test_switchgear_families.py`
+    // → `test_registry_has_all_known_families`); powielanie tej liczby tutaj
+    // tworzyło DRUGIE źródło prawdy, które gniło przy każdym poszerzeniu
+    // katalogu. E2E pinuje więc KLASĘ kontraktu API, a nie licznik.
     const response = await page.request.get('/api/catalog/switchgear-families');
     expect(response.ok()).toBe(true);
     const body = (await response.json()) as Array<{
       switchgear_family_ref: string;
+      manufacturer_ref: string;
+      family_name: string;
       status: string;
       source_refs: string[];
+      source_document_refs: string[];
+      notes_pl: string;
+      network_voltages_kv: number[];
+      um_classes_kv: number[];
+      rated_current_options: number[];
+      short_time_current_options: number[];
+      allowed_bay_kinds: string[];
+      tor_konfiguracji: string | null;
     }>;
-    expect(body.length).toBe(7);
-    const refs = body.map((f) => f.switchgear_family_ref).sort();
-    expect(refs).toEqual([
+    expect(body.length).toBeGreaterThan(0);
+
+    // Wiązanie z rejestrem producentów — na tym stoi łańcuch UI
+    // „wybierz producenta → wybierz rodzinę". `manufacturer_ref` rodziny musi
+    // istnieć w `/api/catalog/manufacturers`, inaczej filtr producenta w
+    // kreatorze pokaże pustkę bez żadnego komunikatu.
+    const producenciResponse = await page.request.get('/api/catalog/manufacturers');
+    expect(producenciResponse.ok()).toBe(true);
+    const znaniProducenci = new Set(
+      ((await producenciResponse.json()) as Array<{ manufacturer_ref: string }>).map(
+        (m) => m.manufacturer_ref,
+      ),
+    );
+
+    // Determinizm kolejności: rejestr jest sortowany po `switchgear_family_ref`.
+    const refs = body.map((f) => f.switchgear_family_ref);
+    expect(refs).toEqual([...refs].sort());
+    // Brak duplikatów — ref jest kluczem rejestru.
+    expect(new Set(refs).size).toBe(refs.length);
+
+    for (const f of body) {
+      const gdzie = f.switchgear_family_ref;
+      // Tożsamość rodziny: ref w postaci kanonicznej `PRODUCENT__LINIA`
+      // (człon producenta bywa skrótem handlowym — ZPUE_WLOSZCZOWA vs
+      // SCHNEIDER dla SCHNEIDER_ELECTRIC — więc wiążące jest osobne pole
+      // `manufacturer_ref`, sprawdzane niżej wobec rejestru producentów).
+      expect(gdzie, gdzie).toMatch(/^[A-Z0-9_]+__[A-Z0-9_]+$/);
+      expect(znaniProducenci.has(f.manufacturer_ref), `${gdzie} → ${f.manufacturer_ref}`).toBe(
+        true,
+      );
+      expect(f.family_name.length, gdzie).toBeGreaterThan(0);
+      expect(f.notes_pl.length, gdzie).toBeGreaterThan(0);
+
+      // Proweniencja OBOWIĄZKOWA — publiczne adresy https, nigdy dane z głowy.
+      expect(f.source_refs.length, gdzie).toBeGreaterThan(0);
+      expect(f.source_document_refs.length, gdzie).toBeGreaterThan(0);
+      for (const ref of [...f.source_refs, ...f.source_document_refs]) {
+        expect(ref, gdzie).toMatch(/^https:\/\//);
+      }
+
+      // Status ze zbioru UCZCIWEGO: `repo_verified` = publiczna karta
+      // producenta; `requires_catalog` = karta nie podaje kompletu klas.
+      // `official_catalog` wymagałby zatwierdzonego PDF od producenta —
+      // żadna rodzina nie może go dziś deklarować.
+      expect(['repo_verified', 'requires_catalog'], gdzie).toContain(f.status);
+
+      // Deklaracja napięciowa: karta podaje napięcia SIECI albo klasy
+      // URZĄDZENIA (albo oba). Obie listy puste = rodzina, której nie da się
+      // dopasować do żadnej szyny.
+      expect(f.network_voltages_kv.length + f.um_classes_kv.length, gdzie).toBeGreaterThan(0);
+      for (const napiecie of [...f.network_voltages_kv, ...f.um_classes_kv]) {
+        expect(napiecie, gdzie).toBeGreaterThan(0);
+      }
+
+      if (f.status === 'requires_catalog') {
+        // Zapadka polityki danych: brak karty deklarowany PUSTYMI listami,
+        // nigdy zerami ani zmyślonymi klasami.
+        expect(f.rated_current_options, gdzie).toEqual([]);
+        expect(f.short_time_current_options, gdzie).toEqual([]);
+      } else {
+        // Rodzina oferowana MUSI mieć komplet klas znamionowych — inaczej
+        // walidator zgodności nie ma czym odpowiedzieć projektantowi.
+        expect(f.rated_current_options.length, gdzie).toBeGreaterThan(0);
+        expect(f.short_time_current_options.length, gdzie).toBeGreaterThan(0);
+        expect(Math.min(...f.rated_current_options), gdzie).toBeGreaterThan(0);
+        expect(Math.min(...f.short_time_current_options), gdzie).toBeGreaterThan(0);
+        expect(f.allowed_bay_kinds.length, gdzie).toBeGreaterThan(0);
+      }
+
+      // Tor konfiguracji jest WYLICZANY z konstrukcji — rodzina z zadeklarowaną
+      // konstrukcją musi trafić do jednego z dwóch torów kreatora.
+      expect([null, 'MODULARNY', 'BLOK_RMU'], gdzie).toContain(f.tor_konfiguracji);
+    }
+  });
+
+  test('API /api/catalog/switchgear-families — rodziny, na których stoi kreator, są obecne', async ({
+    page,
+  }) => {
+    // INTENCJA poprzedniej listy imiennej ZACHOWANA: rodziny, do których
+    // odwołują się szablony pól i ścieżki kreatora, nie mogą zniknąć z
+    // katalogu. Asercja jest PODZBIOREM (nie równością), więc poszerzenie
+    // katalogu jej nie łamie, a usunięcie którejkolwiek — łamie.
+    const response = await page.request.get('/api/catalog/switchgear-families');
+    expect(response.ok()).toBe(true);
+    const body = (await response.json()) as Array<{ switchgear_family_ref: string }>;
+    const refs = new Set(body.map((f) => f.switchgear_family_ref));
+    for (const wymagana of [
       'ABB__SAFERING',
       'ABB__UNIGEAR_ZS1',
       'ELEKTROMETAL__E2ALPHA',
@@ -147,33 +252,55 @@ test.describe('Real-backend: utworzenie projektu i przejście do SLD', () => {
       'SIEMENS__8DJH',
       'SIEMENS__NXAIR',
       'ZPUE_WLOSZCZOWA__ROTOBLOK',
-    ]);
-    for (const f of body) {
-      expect(f.status).toBe('repo_verified');
-      expect(f.source_refs.length).toBeGreaterThan(0);
-      for (const ref of f.source_refs) {
-        expect(ref).toMatch(/^https:\/\//);
-      }
+    ]) {
+      expect(refs.has(wymagana), wymagana).toBe(true);
     }
   });
 
-  test('API ?manufacturer_ref=ABB → 2 rodziny (UniGear ZS1 + SafeRing)', async ({ page }) => {
-    const response = await page.request.get(
-      '/api/catalog/switchgear-families?manufacturer_ref=ABB',
-    );
-    expect(response.ok()).toBe(true);
-    const body = (await response.json()) as Array<{ family_name: string }>;
-    expect(body.length).toBe(2);
-    expect(body.map((f) => f.family_name).sort()).toEqual(['SafeRing', 'UniGear ZS1']);
-  });
+  test('API ?manufacturer_ref=… → dokładna projekcja pełnej listy dla KAŻDEGO producenta', async ({
+    page,
+  }) => {
+    // INTENCJA (bez zmian): filtr producenta zwraca rodziny tego producenta.
+    //
+    // POPRAWKA KLASY (2026-08-14): poprzednio były dwa testy z zamrożonymi
+    // listami — ABB → [SafeRing, UniGear ZS1] i SIEMENS → [8DJH, NXAIR].
+    // ABB ma dziś cztery rodziny (doszły SafePlus i UniSec), więc pierwsza
+    // lista zgniła; druga zgnije przy następnym poszerzeniu. Zamiast dwóch
+    // instancji pinujemy KLASĘ: dla KAŻDEGO producenta obecnego w pełnej
+    // liście filtr musi zwrócić DOKŁADNIE jego podzbiór — nic nie ginie i nic
+    // się nie dokleja. To mocniejsze niż obie zamrożone listy razem.
+    const pelna = await page.request.get('/api/catalog/switchgear-families');
+    expect(pelna.ok()).toBe(true);
+    const wszystkie = (await pelna.json()) as Array<{
+      switchgear_family_ref: string;
+      manufacturer_ref: string;
+    }>;
+    const producenci = [...new Set(wszystkie.map((f) => f.manufacturer_ref))].sort();
+    expect(producenci.length).toBeGreaterThan(1);
 
-  test('API ?manufacturer_ref=SIEMENS → 2 rodziny (NXAIR + 8DJH)', async ({ page }) => {
-    const response = await page.request.get(
-      '/api/catalog/switchgear-families?manufacturer_ref=SIEMENS',
+    for (const producent of producenci) {
+      const odpowiedz = await page.request.get(
+        `/api/catalog/switchgear-families?manufacturer_ref=${encodeURIComponent(producent)}`,
+      );
+      expect(odpowiedz.ok(), producent).toBe(true);
+      const podzbior = (await odpowiedz.json()) as Array<{
+        switchgear_family_ref: string;
+        manufacturer_ref: string;
+      }>;
+      const oczekiwane = wszystkie
+        .filter((f) => f.manufacturer_ref === producent)
+        .map((f) => f.switchgear_family_ref);
+      expect(podzbior.map((f) => f.switchgear_family_ref), producent).toEqual(oczekiwane);
+      for (const f of podzbior) {
+        expect(f.manufacturer_ref, producent).toBe(producent);
+      }
+    }
+
+    // Producent nieistniejący → pusta lista (nie błąd, nie pełna lista).
+    const pusty = await page.request.get(
+      '/api/catalog/switchgear-families?manufacturer_ref=NIEISTNIEJACY_PRODUCENT',
     );
-    expect(response.ok()).toBe(true);
-    const body = (await response.json()) as Array<{ family_name: string }>;
-    expect(body.length).toBe(2);
-    expect(body.map((f) => f.family_name).sort()).toEqual(['8DJH', 'NXAIR']);
+    expect(pusty.ok()).toBe(true);
+    expect(await pusty.json()).toEqual([]);
   });
 });
