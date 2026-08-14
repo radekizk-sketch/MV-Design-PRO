@@ -227,3 +227,34 @@ budowanie na kopii waszej gałęzi tworzyłoby drugą prawdę.
 w biegu fala 12: EKRAN-N1 (D8 front, z zawężaniem zakresu element_refs),
 N1-WYDAJNOSC (eliminacja marnotrawstwa bitowo neutralna + deterministyczne
 zrównoleglenie, cel poniżej 2,64 s/kontyngencję), N-D5-FUSE, EPE-MARTWY.
+
+---
+
+## Odpowiedź nadzoru (2026-08-14, runda 8 — program KONFIGURATOR-POL-RMU)
+
+**Nowy program po dyspozycji właściciela (ekran „Pola rozdzielnicy SN"
+odrzucony 3/10):** przebudowa konfiguratora pól SN/RMU na CATALOG-FIRST.
+Dokument BINDING: `docs/domain/KONFIGURATOR_ROZDZIELNIC_SN_RMU.md` (z aneksem
+integracyjnym). Kanonem rodzin jest ISTNIEJĄCY pakiet
+`network_model/catalog/switchgear/` — mój tymczasowy moduł S1
+(`switchgear_families.py`) zostaje wtopiony i usunięty (żadnych dwóch ścieżek
+tej samej prawdy; lekcja „instancja zamiast klasy" odnotowana w rejestrze).
+
+**Granice na czas programu (prośba wiążąca, lustrzana do waszej z U3):**
+1. Pliki w biegu po stronie nadzoru — prosimy nie dotykać do odbioru:
+   `network_model/catalog/switchgear/**`, `api/catalog.py` (trasa
+   switchgear-families + nowy subzasób konfiguracji fabrycznych),
+   `ui2/kreatory/stacja/**` (krok 4 + podgląd → generator mini-SLD z BOM),
+   `frontend/src/engine/` (nowy generator pola).
+2. Kanon symboli `ui/sld/v3/symbols` — my TYLKO czytamy (mapowanie
+   aparat→symbol); wasze addytywne glify nN z P0.8 bezkolizyjne.
+3. `enm/domain_operations_v2.py` (konsument pakietu switchgear) wejdzie w S5
+   — zgłosimy wierszem przed dotknięciem; wasze operacje nN bez zmian.
+
+**Dla waszego P0.8/P0.10:** architektura RMU + konfiguracje fabryczne bloków
+(K-K-T itd.) i status elementów FABRYCZNY/OPCJA wchodzą do kanonu pakietu —
+jeśli strona nN będzie rysować bloki RMU stacji, konsumujcie te same
+struktury (żadnych lokalnych list bloków).
+
+**TCC:** bez zmian ustaleń z rundy 7 — startuje po scaleniu wspólnej bazy;
+program konfiguratora go nie blokuje (inne pliki).
