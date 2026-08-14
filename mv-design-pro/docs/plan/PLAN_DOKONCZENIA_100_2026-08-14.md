@@ -632,14 +632,23 @@ nieużywanymi predykatami; (3) kasacja na amen — funkcje SPZ/SZR mają kanał
 katalogowy w backendzie, resztki frontowe bez konsumenta to duplikat klasy
 K-Q. Po każdej kasacji: type-check, lint, vulture_guard, dead_click_guard.
 
-### K-W SLD-AUDYT-POLARYZACJA-MOTYWOW `[resztka incydentu kadrów]`
-3 stare pary zrzutów `docs/audit/visual/sld_audyt/` mają ODWRÓCONĄ
-polaryzację motywów (kadr podpisany jasny jest ciemny i odwrotnie) — ta sama
-klasa co incydent konfiguratora, inna postać (zamiana, nie duplikacja).
-Regeneracja poprawnymi literałami kanonu (§0.3) na żywym stosie, oględziny
-każdego kadru, bramka pary bajtowej analogiczna do
-`kreator-stacji-zrzuty.spec.ts` dla tego zestawu. Granice: skrypty zrzutów +
-`docs/audit/visual/sld_audyt/**`.
+### K-W SLD-AUDYT-POLARYZACJA-MOTYWOW — **WYCOFANA (znalezisko OBALONE
+pomiarem, 2026-08-14)**
+Diagnoza wstępna („odwrócona polaryzacja motywów") była błędna DWUKROTNIE:
+pomiar sha256 pokazuje, że pary L0/L1/L2 w `docs/audit/visual/sld_audyt/` są
+bajtowo IDENTYCZNE (obie strony ciemne), a to jest **przypięty testem
+niezmiennik, nie defekt**: kanwa v3 ma STAŁE tło techniczne
+(`CANVAS_BACKGROUND = '#0B0F14'` w `sld/v3/theme/colorTokens.ts`) — rysunek
+techniczny świadomie NIE reaguje na motyw interfejsu. Test
+`niezmiennik: kanwa techniczna jest NIEZALEZNA od motywu` w
+`e2e/sld-audyt-powykonawczy-screenshot.spec.ts` (który wprost ostrzega, że
+identyczność par raz już błędnie zdiagnozowano jako defekt renderu) wymusza
+decyzję przy każdej zmianie tego zachowania. ŻADNEJ akcji — regeneracja
+„naprawiająca" pary złamałaby przypięty niezmiennik. Lekcja: przed
+zakwalifikowaniem duplikatu kadrów jako fabrykacji sprawdź, czy identyczność
+nie jest przypiętym niezmiennikiem danego materiału (incydent konfiguratora
+dotyczył ekranów APLIKACJI, które motywom podlegają; kanwa techniczna SLD —
+nie).
 
 ### Sygnały PLAUSIBLE (zmierzyć przy zleceniu — NIE są potwierdzone)
 Z surowej listy 35 znalezisk audytu weryfikację adwersaryjną przeszło 12;
