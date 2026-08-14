@@ -377,6 +377,31 @@ niepersystowane — wpięcie po decyzji o moście ENM→AnalysisRun, razem z G-2
 (b) callbacki 8 paczek kanonicznych — pre-existing, osobna integracja;
 (c) pełny spis §63 raportu = P1 (z karty).
 W biegu: P0.9 (nN STUDIO UI). Po nim: bramka końcowa E2E §80.
+
+**Aktualizacja 2026-08-14: P0.9 WYKONANE — komplet kart implementacyjnych P0 scalony.**
+P0.9 (`3d89e5d4` + fix-forward `df9e9140`): nN STUDIO — adapter drzewa
+(TR→RGnN→odpływy→podrozdzielnice), 6 zakładek, 3 kreatory na operacjach
+domenowych P0.1 (zarejestrowane w guardzie dialogów: 13 modali / 24 operacje),
+generyczna `EdytowalnaTabela` w ui2/shared + tabela ODCINKI (edycja inline →
+update_element_parameters / assign_catalog_to_element), 4 ekrany wynikowe
+(Ik1(l), ΔU, heatmapa SWZ z marginesem, ranking doboru), okna W-623…W-629.
+Dowód zero-phantom w meldunku (każda kontrolka → realny endpoint; zero zmian
+backendu). Wykonawca naprawił pre-existing: lustra typów LVApparatusType/Cable,
+validateCatalogFirst dla operacji nN, zbyt szeroka reguła repo_hygiene_guard
+(zawężenie oknem kontekstu ZWERYFIKOWANE w odbiorze iniekcją: kontrakt backendu
+realnie przyjmuje from_bus_ref — linia 2593 domain_operations_v2; reguła nadal
+łapie klasę poza oknem — dowód czerwień/sha/zieleń). Odbiór na drzewie
+łączonym P0.9×P0.10: pełny vitest wykrył 3 trafienia terminologii
+(ui-terminology-guard.test.ts poza zasięgiem celowanych bramek kart) —
+naprawa w przód `df9e9140` (zmienna `feeder`→`odplyw`; wyjątek literałów
+'/api/' w skanerze testowym z parytetem do pythonowego guarda). Recertyfikacja:
+**876 plików / 11445 testów** + testy CI + 9 guardów. LUKI API NAZWANE przez
+wykonawcę (nie fabrykowane): (a) brak endpointu podglądu Iz′ nN (istnieje
+tylko SN `cable-ampacity-derating-preview`) — kreator pokazuje Iz katalogowe;
+(b) Ib/Iz′/SWZ per wiersz tabeli wymaga algorytmu „który aparat chroni
+odcinek" — per-odpływ w zakładkach; (c) zrzuty B-02 NIEWYKONALNE w sandboxie
+(brak demona Docker) — werdykt wizualny właściciela po `docker-compose up`.
+OSTATNIA POZYCJA P0: bramka końcowa E2E §80 (test_nn_full_chain).
 **Aktualizacja 2026-08-13 (ta sama sesja): P0.6 WYKONANE (`b746b6a9`) — „serce modułu".**
 - Pętla zwarcia z REALNEJ trasy grafu: `application/analyses/fault_loop/route.py`
   (NOWY) — BFS po ENM (kable/łącznik/wkładka `status=closed`), fail-closed na brak
