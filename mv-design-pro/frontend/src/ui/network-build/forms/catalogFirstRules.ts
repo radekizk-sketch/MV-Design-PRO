@@ -136,6 +136,9 @@ const REQUIRED_CATALOG_MESSAGE: Record<string, string> = {
   insert_section_switch_sn: 'Wybierz aparat z katalogu przed wstawieniem łącznika.',
   connect_secondary_ring_sn: 'Wybierz typ kabla lub linii pierścienia z katalogu przed domknięciem pętli.',
   add_grid_source_sn: 'Wybierz źródło systemowe z katalogu przed utworzeniem zasilania GPZ.',
+  // Lustro S5 (KONFIGURATOR-POL-RMU): operacja z definicji katalogowa —
+  // pin parami bramka<->frontend złapał brak lustra na scalonym czubku.
+  add_sn_bay_from_catalog: 'Wybierz szablon pola z katalogu przed materializacją pola stacji.',
   add_converter_source: 'Wybierz układ PV/BESS/FW z katalogu przed dodaniem do stacji.',
   add_ct: 'Wybierz przekładnik prądowy z katalogu przed dodaniem go do pola SN.',
   add_vt: 'Wybierz przekładnik napięciowy z katalogu przed dodaniem go do pola SN.',
@@ -178,6 +181,10 @@ export function validateCatalogFirst(op: string, payload: Payload): string | nul
     case 'insert_branch_pole_on_segment_sn':
     case 'insert_zksn_on_segment_sn':
     case 'insert_section_switch_sn':
+      return hasCatalogBinding(payload.catalog_binding)
+        ? null
+        : REQUIRED_CATALOG_MESSAGE[normalizedOp];
+    case 'add_sn_bay_from_catalog':
       return hasCatalogBinding(payload.catalog_binding)
         ? null
         : REQUIRED_CATALOG_MESSAGE[normalizedOp];
