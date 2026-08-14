@@ -748,8 +748,13 @@ export function KreatorStacjiSnNn() {
   // krok komponował je z pakietu producenta bez względu na rodzinę, więc
   // rozdzielnica mogła powstać z kart DWÓCH RÓŻNYCH WYROBÓW naraz — ta sama
   // atrapa, co usunięta „rodzina standardowa producenta", tylko niewidoczna.
+  //
+  // Warunkiem jest TOR ZNANY I MODUŁOWY, nie „byle nie blokowy": rodzina, która
+  // nie zadeklarowała konstrukcji, nie wyznacza toru pracy, więc kreator na niej
+  // nie buduje (kanon §3). Inaczej ekran mówiłby „nie zgaduję toru", a listę pól
+  // i tak by złożył.
   useEffect(() => {
-    if (torKonfiguracji === 'BLOK_RMU') return;
+    if (torKonfiguracji !== 'MODULARNY') return;
     if (selectedFamily === null) return;
     setDane((p) => {
       if (p.pola.length > 0 && p.pola.every((pole) => rolePol.includes(pole.field_role))) {
@@ -771,11 +776,11 @@ export function KreatorStacjiSnNn() {
    * kartą katalogową — krok pozostaje wtedy jawnie niedomknięty.
    */
   useEffect(() => {
-    if (selectedFamily !== null) return;
+    if (selectedFamily !== null && torKonfiguracji !== null) return;
     setDane((p) =>
       p.pola.length === 0 || p.template_id !== null ? p : { ...p, pola: [], wyposazenie: {} },
     );
-  }, [selectedFamily]);
+  }, [selectedFamily, torKonfiguracji]);
 
   /**
    * TOR BLOK_RMU — pola rozdzielnicy WYNIKAJĄ z wybranego bloku fabrycznego.
