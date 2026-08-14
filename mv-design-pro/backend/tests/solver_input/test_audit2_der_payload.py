@@ -16,7 +16,7 @@ def test_build_der_payload_pv_with_block_trafo_and_pf_curve():
         der_id="der_pv_001",
         der_kind="PV",
         block_transformer_catalog_ref="btr_pv_15_069_2500",
-        pf_curve_ref="pf_pse_b",
+        pf_curve_ref="pf_droop_5",
     )
     assert payload.der_id == "der_pv_001"
     assert payload.der_kind == "PV"
@@ -66,15 +66,32 @@ def test_build_der_payload_unknown_block_trafo_emits_issue():
     assert any("Nieznany block-trafo" in i for i in payload.issues)
 
 
+def test_zaden_transformator_dedykowany_nie_wyklucza_rodzaju_zrodla() -> None:
+    """PIN KLASY po WSZYSTKICH pozycjach (karta K-Q).
+
+    INTENCJA POPRZEDNIEGO TESTU: pilnowal, ze pozycja przeznaczona dla farmy
+    wiatrowej nie da sie podpiac pod PV. Wykluczenie bralo sie jednak z recznie
+    wpisanej listy `applicable_der_kinds`, ktora nie miala zadnego uzasadnienia:
+    o tym, czy transformator pasuje, decyduje napiecie i moc, a nie rodzaj
+    zrodla po stronie dolnej. Typoszereg w katalogu transformatorow sam nosi
+    nazwe „Dyn11 PV/BESS/FW". Pozycje deklaruja wiec wszystkie trzy rodzaje —
+    a doborem rzadzi filtr napiec i mocy.
+    """
+    from network_model.catalog.audit2_catalogs import BLOCK_TRANSFORMER_CATALOG
+
+    for item in BLOCK_TRANSFORMER_CATALOG:
+        assert set(item.applicable_der_kinds) == {"PV", "BESS", "FW"}, item.id
+
+
 def test_build_der_payload_block_trafo_kind_mismatch_emits_issue():
-    # FW block-trafo SN/SN nie jest dla PV.
+    """Bramka rodzaju zrodla nadal dziala — na rodzaju spoza kontraktu."""
     payload = build_der_audit2_payload(
         der_id="der_001",
-        der_kind="PV",
-        block_transformer_catalog_ref="btr_fw_30_15_30000",
+        der_kind="WIATRAK",
+        block_transformer_catalog_ref="btr_pv_15_069_2500",
     )
     assert payload.block_transformer is None
-    assert any("nie jest przeznaczony dla DER PV" in i for i in payload.issues)
+    assert any("nie jest przeznaczony dla DER WIATRAK" in i for i in payload.issues)
 
 
 def test_build_station_payload_with_grounding_and_tap_changers():
@@ -102,7 +119,7 @@ def test_build_station_payload_with_ders():
                 "der_id": "der_pv_001",
                 "der_kind": "PV",
                 "block_transformer_catalog_ref": "btr_pv_15_04_1000",
-                "pf_curve_ref": "pf_pse_b",
+                "pf_curve_ref": "pf_droop_5",
             },
             {
                 "der_id": "der_bess_001",
@@ -152,7 +169,7 @@ def test_extract_solver_extensions_power_flow():
                 "der_id": "der_bess_001",
                 "der_kind": "BESS",
                 "bess_operation_mode_refs": ["mode_fcr_n"],
-                "pf_curve_ref": "pf_pse_b",
+                "pf_curve_ref": "pf_droop_5",
             }
         ],
     )
@@ -171,7 +188,7 @@ def test_extract_solver_extensions_protection():
             {
                 "der_id": "der_001",
                 "der_kind": "PV",
-                "pf_curve_ref": "pf_pse_b",
+                "pf_curve_ref": "pf_droop_5",
             }
         ],
     )
@@ -194,7 +211,7 @@ def test_determinism_same_input_same_output():
                     "mode_voltage_support",
                     "mode_fcr_n",
                 ],  # nieuporzadkowane
-                "pf_curve_ref": "pf_pse_b",
+                "pf_curve_ref": "pf_droop_5",
             }
         ],
     }

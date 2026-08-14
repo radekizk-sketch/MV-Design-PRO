@@ -95,20 +95,19 @@ def generate_bess_modes_proof(
             )
         selected_modes.append(mode.to_dict())
 
-    # Wymagane tryby dla modulu NC RfG.
-    from network_model.catalog.audit2_catalogs import select_required_bess_modes_for_module
-
-    required = select_required_bess_modes_for_module(nc_rfg_module)  # type: ignore[arg-type]
-    selected_codes = {m["mode_code"] for m in selected_modes}
-    missing_required = [r for r in required if r.mode_code not in selected_codes]
-    for missing in missing_required:
-        issues.append(
-            f"Brakuje wymaganego trybu dla modulu NC RfG {nc_rfg_module}: '{missing.label_pl}'."
-        )
+    # LISTY TRYBOW WYMAGANYCH PRZEZ NC RfG NIE MA (karta K-Q, 2026-08-14).
+    # Do tej karty dowod dokladal tu niezgodnosc „brakuje wymaganego trybu dla
+    # modulu NC RfG X" na podstawie katalogowego pola `required_for_nc_rfg_modules`.
+    # Rozporzadzenie 2016/631 sprawdzone na tekscie zrodlowym: nie nakazuje
+    # modulom wytworczym swiadczenia FCR-N / FCR-D / aFRR / mFRR — to produkty
+    # rynku bilansujacego, a nie warunek przylaczenia. Dowod oglaszal wiec
+    # niezgodnosc z norma, ktorej nie ma; pole i selektor usuniete u zrodla.
+    # Dowod sprawdza teraz WYLACZNIE to, co da sie sprawdzic: czy przeksztaltnik
+    # ma zdolnosci, ktorych wymaga sama definicja wybranej uslugi.
 
     pass_status = len(issues) == 0
     summary = (
-        f"OK: DER {der_id} ma {len(selected_modes)} tryby zgodne z PCS i NC RfG modulem {nc_rfg_module}."
+        f"OK: DER {der_id} ma {len(selected_modes)} trybow zgodnych ze zdolnosciami PCS."
         if pass_status
         else f"BLOKER: DER {der_id} — {len(issues)} problemow z trybami BESS."
     )
@@ -124,13 +123,11 @@ def generate_bess_modes_proof(
             "pcs_grid_forming": pcs_grid_forming,
             "nc_rfg_module": nc_rfg_module,
             "selected_modes": selected_modes,
-            "required_modes_for_module": [r.to_dict() for r in required],
             "issues": issues,
         },
         formulas_latex=[
             r"$$\text{Mode}_{\text{compatible}} \iff (\text{4Q required} \implies \text{PCS}_{\text{4Q}}) "
             r"\land (\text{GFM required} \implies \text{PCS}_{\text{GFM}})$$",
-            r"$$\text{Module}_{\text{compliant}} \iff \forall m \in \text{required}(M_{NC RfG}): m \in \text{selected}$$",
         ],
         generated_at=generated_at_iso,
     )

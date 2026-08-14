@@ -27,6 +27,11 @@ from application.protection_analysis.engine import (
     build_device_from_template,
     build_fault_from_sc_result,
 )
+from application.result_freshness import (
+    FreshnessVerdict,
+    current_model_hash,
+    evaluate_result_freshness,
+)
 from domain.protection_analysis import (
     ProtectionAnalysisRun,
     ProtectionResult,
@@ -134,13 +139,18 @@ class ProtectionAnalysisService:
             if existing_run is not None:
                 return existing_run
 
-            # Create new run
+            # Create new run — z KOTWICAMI swiezosci (K-S): odcisk modelu
+            # przypadku oraz odcisk modelu, na ktorym policzono bieg zwarciowy.
+            # Odciski sa zapisywane w CHWILI utworzenia biegu i sluza pozniej
+            # do porownania z modelem biezacym (`application/result_freshness`).
             run = new_protection_analysis_run(
                 project_id=project_id,
                 sc_run_id=sc_run_id,
                 protection_case_id=protection_case_id,
                 input_snapshot=snapshot,
                 input_hash=input_hash,
+                network_snapshot_hash=current_model_hash(str(protection_case_id)),
+                sc_network_snapshot_hash=sc_run_data.get("network_snapshot_hash"),
             )
 
             # Store run (use results repository with analysis type)
@@ -250,6 +260,25 @@ class ProtectionAnalysisService:
                     return ProtectionResult.from_dict(result.get("payload", {}))
         return None
 
+    def result_freshness(self, run: ProtectionAnalysisRun) -> FreshnessVerdict:
+        """Swiezosc wyniku biegu zabezpieczen wzgledem BIEZACEGO modelu (K-S).
+
+        Wynik jest AKTUALNY tylko wtedy, gdy bieg jest zakonczony, ma zapisany
+        wynik, a KAZDA znana kotwica odcisku modelu (odcisk przypadku z chwili
+        utworzenia biegu oraz odcisk modelu biegu zwarciowego) rowna sie
+        odciskowi modelu biezacego. Porownanie i odczyt odcisku biezacego ida
+        przez `application/result_freshness` — to samo miejsce, ktore zapisalo
+        odcisk przy tworzeniu biegu.
+        """
+        has_result = (
+            run.status == ProtectionRunStatus.FINISHED and self.get_result(run.id) is not None
+        )
+        return evaluate_result_freshness(
+            has_result=has_result,
+            run_model_hashes=(run.network_snapshot_hash, run.sc_network_snapshot_hash),
+            current_hash=current_model_hash(str(run.protection_case_id)),
+        )
+
     def get_trace(self, run_id: UUID) -> ProtectionTrace | None:
         """
         Get the trace of a protection analysis run.
@@ -304,6 +333,12 @@ class ProtectionAnalysisService:
     def _get_sc_run_data(self, uow: UnitOfWork, sc_run_id: str) -> dict | None:
         """
         Get short-circuit run data.
+
+        Klucz `network_snapshot_hash` niesie odcisk modelu, na ktorym policzono
+        bieg zwarciowy — JAWNIE i tylko z pola, ktore go faktycznie zawiera
+        (`CanonicalRun.snapshot_hash`). Kanaly, ktore odcisku nie przechowuja,
+        oddaja go jako `None`: brak wiedzy zostaje brakiem wiedzy, zamiast byc
+        zgadywany z sasiednich pol.
         """
         # Try analysis runs index first
         entry = uow.analysis_runs_index.get(sc_run_id)
@@ -313,6 +348,7 @@ class ProtectionAnalysisService:
                 "analysis_type": entry.analysis_type,
                 "status": entry.status,
                 "meta_json": entry.meta_json,
+                "network_snapshot_hash": None,
             }
 
         # Try UUID-based run
@@ -326,6 +362,7 @@ class ProtectionAnalysisService:
                     "status": run.status,
                     "result_summary": run.result_summary,
                     "input_snapshot": run.input_snapshot,
+                    "network_snapshot_hash": None,
                 }
         except ValueError:
             pass
@@ -343,6 +380,7 @@ class ProtectionAnalysisService:
                 "status": canonical_run.status,
                 "result_summary": canonical_run.raw_result,
                 "input_snapshot": canonical_run.snapshot,
+                "network_snapshot_hash": canonical_run.snapshot_hash,
             }
 
         return None
@@ -431,6 +469,13 @@ class ProtectionAnalysisService:
             created_at=run.created_at,
             started_at=started_at or run.started_at,
             finished_at=finished_at or run.finished_at,
+            # Kotwice swiezosci przenosza sie PRZEZ kazda zmiane statusu: odcisk
+            # opisuje model z chwili UTWORZENIA biegu i nie wolno go zgubic przy
+            # przejsciu CREATED -> RUNNING -> FINISHED (bieg bez kotwicy nie
+            # moze meldowac sie jako aktualny, wiec zgubienie jej = falszywe
+            # „nie da sie potwierdzic" na kazdym policzonym biegu).
+            network_snapshot_hash=run.network_snapshot_hash,
+            sc_network_snapshot_hash=run.sc_network_snapshot_hash,
         )
 
         # Update stored run

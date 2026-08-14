@@ -9,6 +9,8 @@ Endpoints:
 - GET /protection-runs/{run_id} — Get run metadata
 - GET /protection-runs/{run_id}/results — Get ProtectionResult
 - GET /protection-runs/{run_id}/trace — Get ProtectionTrace
+- GET /projects/{project_id}/sld/{diagram_id}/protection-overlay — Nakladka SLD
+  wynikow zabezpieczen ze statusem swiezosci (NONE/FRESH/OUTDATED)
 """
 
 from __future__ import annotations
@@ -322,11 +324,30 @@ def get_protection_sld_overlay(
 
     Overlay contains:
     - elements: List of protection elements with trip_state, t_trip_s, margin_percent
-    - result_status: FRESH/OUTDATED/NONE to indicate result validity
+    - result_status: FRESH/OUTDATED/NONE — swiezosc wyniku wzgledem modelu
+    - result_status_reason (+ _pl): PRZYCZYNA statusu, nigdy domysl
+
+    STATUS Z POROWNANIA ODCISKOW (K-S). Do 2026-08-14 ta koncowka meldowala
+    `"FRESH"` LITERALEM („For now, assume FRESH if run is FINISHED") — wynik
+    policzony przed edycja modelu wygladal na aktualny. Teraz status pochodzi z
+    porownania odciskow modelu zapisanych przy biegu z odciskiem modelu
+    biezacego (`application/result_freshness`), a bieg bez zapisanego odcisku
+    NIE MOZE zameldowac sie jako aktualny.
+
+    BRAK WYNIKU TO NIE BLAD. Przebieg istniejacy, ale niezakonczony albo bez
+    zapisanego wyniku, oddaje `result_status = NONE` z pusta lista elementow —
+    dokladnie to, o co pyta warstwa rysujaca („czy jest co nalozyc"). Bledem
+    (404) pozostaje wylacznie przebieg NIEISTNIEJACY, a niezgodnosc projektu
+    dalej konczy sie 400.
+
+    PRZESTRZEN REFOW. `symbol_id` == `element_id` == `protected_element_ref`,
+    bo kanaly nakladek tego systemu adresuja symbole refami elementow modelu
+    (ENM `ref_id`) — patrz naglowek `ui/sld/v3/canvas/resultLabels.ts`. Wczesniej
+    stal tu znacznik „TODO: Map to actual symbol" sugerujacy osobna przestrzen
+    identyfikatorow symboli; taka przestrzen w tym systemie nie istnieje.
     """
     service = _build_service(uow_factory)
 
-    # First check run exists and is FINISHED
     try:
         run = service.get_run(run_id)
     except ValueError as exc:
@@ -335,12 +356,6 @@ def get_protection_sld_overlay(
             detail=str(exc),
         ) from exc
 
-    if run.status != ProtectionRunStatus.FINISHED:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Przebieg nie jest zakończony (status: {run.status.value})",
-        )
-
     # Verify project ID matches
     if run.project_id != project_id:
         raise HTTPException(
@@ -348,22 +363,15 @@ def get_protection_sld_overlay(
             detail="Przebieg nie należy do tego projektu",
         )
 
-    # Get protection results
-    result = service.get_result(run_id)
-    if result is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Wynik analizy zabezpieczeń nie znaleziony",
-        )
+    result = service.get_result(run_id) if run.status == ProtectionRunStatus.FINISHED else None
+    verdict = service.result_freshness(run)
 
-    # Build overlay (simple version - maps evaluations to elements)
-    # TODO: In full implementation, map protected_element_ref to SLD symbol_id
-    # For now, return evaluations directly with element_id = protected_element_ref
+    # Build overlay (maps evaluations to elements)
     elements = []
-    for evaluation in result.evaluations:
+    for evaluation in result.evaluations if result is not None else ():
         elements.append(
             {
-                "symbol_id": evaluation.protected_element_ref,  # TODO: Map to actual symbol
+                "symbol_id": evaluation.protected_element_ref,
                 "element_id": evaluation.protected_element_ref,
                 "trip_state": evaluation.trip_state.value,
                 "t_trip_s": evaluation.t_trip_s,
@@ -374,15 +382,10 @@ def get_protection_sld_overlay(
     # Sort deterministically by element_id
     elements.sort(key=lambda x: x["element_id"])
 
-    # Determine result status (FRESH/OUTDATED/NONE)
-    # For now, assume FRESH if run is FINISHED
-    # TODO: Check if snapshot changed since run
-    result_status = "FRESH"
-
     return {
         "diagram_id": str(diagram_id),
         "run_id": str(run_id),
-        "result_status": result_status,
+        **verdict.to_overlay_fields(),
         "elements": elements,
     }
 

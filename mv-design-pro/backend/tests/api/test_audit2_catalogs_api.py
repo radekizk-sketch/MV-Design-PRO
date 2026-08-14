@@ -58,17 +58,28 @@ def test_list_device_withstand(app_client):
 
 
 def test_list_pf_curves(app_client):
+    """Warianty nastawy P(f) — bez imienia operatora i bez typu modulu.
+
+    INTENCJA POPRZEDNIEGO TESTU: pilnowal, ze koncowka zwraca krzywe „PSE modul
+    B / C / D" z konkretnym statyzmem. Karta K-Q zmierzyla to na tekscie
+    rozporzadzenia 2016/631: ono NIE przypisuje statyzmu ani operatorowi, ani
+    typowi modulu — podaje przedzial nastawialny 2-12 %. Pin utrwalal wiec
+    fabrykacje normatywna. Teraz pozycja jest wariantem nastawy nazwanym swoim
+    statyzmem, a test pilnuje granic z rozporzadzenia PO WSZYSTKICH pozycjach.
+    """
     res = app_client.get("/api/v1/catalog/audit2/pf-curves")
     assert res.status_code == 200
     body = res.json()
-    assert len(body) >= 5
-    operators = {item["operator_code"] for item in body}
-    assert "PSE" in operators
-    # PSE modul B ma droop 5%, modul D ma droop 3%
-    pse_b = next(c for c in body if c["operator_code"] == "PSE" and c["module_type"] == "B")
-    assert pse_b["droop_percent"] == 5.0
-    pse_d = next(c for c in body if c["operator_code"] == "PSE" and c["module_type"] == "D")
-    assert pse_d["droop_percent"] == 3.0
+    assert len(body) >= 3
+    for item in body:
+        assert "operator_code" not in item, item["id"]
+        assert "module_type" not in item, item["id"]
+        assert 2.0 <= item["droop_percent"] <= 12.0, item["id"]
+        assert 0.2 <= item["deadband_hz"] <= 0.5, item["id"]
+        assert (item["f_min_hz"], item["f_max_hz"]) == (47.5, 51.5), item["id"]
+        assert "eur-lex.europa.eu" in item["zrodlo_pl"], item["id"]
+    statyzmy = {item["droop_percent"] for item in body}
+    assert {2.0, 3.0, 4.0, 5.0, 12.0} <= statyzmy
 
 
 def test_list_block_transformers(app_client):

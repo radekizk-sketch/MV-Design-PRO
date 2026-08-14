@@ -11,6 +11,60 @@ właściciela, stoi jawny STOP `[B-01]` / `[B-02]` — niczego nie zgadywać.
 
 ---
 
+## PROMPT STARTOWY DLA NASTĘPNEGO WYKONAWCY (Codex/Claude/inny — wklej dosłownie)
+
+```
+Jesteś wykonawcą planu dokończenia MV-Design-PRO (repo
+radekizk-sketch/MV-Design-PRO). Całość pracy i meldunki PO POLSKU.
+
+1. Przeczytaj W CAŁOŚCI przed pierwszą zmianą:
+   - mv-design-pro/docs/plan/PLAN_DOKONCZENIA_100_2026-08-14.md — §0 to twój
+     KONTRAKT (środowisko, pułapki, bramki, konwencje commitów); treść karty,
+     którą bierzesz, wykonujesz DOSŁOWNIE;
+   - CLAUDE.md w korzeniu repo (reguły nadrzędne: Zero-Debt, KLASA-NIE-
+     INSTANCJA, zero fabrykacji, FROZEN, fizyka tylko w solverach);
+   - docs/v12xx/REJESTR_KONFLIKTOW.md — wiersze kart już zamkniętych
+     (kontekst i wzorzec meldunku).
+
+2. KOLEJKA — bierz PIERWSZĄ niezablokowaną kartę z listy, jedna karta na raz:
+   1) K-U  CT-VT-WERDYKT-BRAMKUJE            (§8)
+   2) K-V  MARTWE-WYSPY-UI                    (§8)
+   3) K-X  KASACJA-CATALOG-BINDINGS           (§8)
+   4) K-Y  PROWENIENCJA-W-INSPEKTORZE         (§8)
+   5) K-Z  TYP-SNFIELDSPEC-FRONT              (§8; wykonuj PO K-X)
+   6) K-Q2 NAZEWNICTWO-NAPIECIA-WYTRZYMALOSCI (§8)
+   7) K-P  PROMOCJA-UNISEC                    (§7)
+   8) K-R  NCRFG-NO-MODULE                    (§8; DUŻA — dopiero gdy 1-7
+      zamknięte, albo na osobne zlecenie właściciela)
+   ZABLOKOWANE — NIE RUSZAJ bez jawnej decyzji właściciela:
+   - K-A, K-S2, K-F, K-G — wymagają werdyktu wizualnego B-02;
+   - K-B, K-C, K-D — po merge wątku nN (§4.3); K-H — po T0 wątku nN.
+
+3. Infrastruktura pracy nad kartą (obowiązkowo):
+   - gałąź `kopia/<KARTA>` utworzona z AKTUALNEGO `origin/main`;
+   - WŁASNY worktree od pierwszego polecenia:
+     `git worktree add <katalog> -B kopia/<KARTA> origin/main`
+     (frontend: symlink node_modules z głównego katalogu; backend: wołaj
+     $VENV z §0.3 bezpośrednio, nie `poetry run`);
+   - push na `origin kopia/<KARTA>` po KAŻDYM commicie; na `main` ani gałęzie
+     nadzoru NIE pushujesz NIGDY; żadnych biegów w tle.
+
+4. Wykonanie karty = treść jej sekcji + §0, zero interpretacji:
+   - czego nie ma w karcie ani §0 — ZMIERZ w kodzie (grep/test), nie zgaduj;
+   - decyzja produktowa/architektoniczna nie rozstrzygnięta w karcie — STOP,
+     pytanie do właściciela (nie wybieraj po cichu);
+   - każdy napotkany błąd (także zastany) naprawiasz u źródła w tej samej
+     kolejce (Zero-Debt); inwentarz KLASY przed naprawą.
+
+5. Po każdej karcie MELDUNEK zawierający: inwentarz klasy, co zmienione i
+   dlaczego, iniekcje własne (min. 2, różne mechanizmy, pary
+   czerwony/zielony, restore sha256 z dowodem), WSZYSTKIE RC dosłownie
+   (bramki karty + minimum §0.5), sha256 dotkniętych plików, długi jawne
+   z pomiarem. Meldunek bez zmierzonych RC = karta niewykonana.
+```
+
+---
+
 ## §0 KONTRAKT WYKONANIA (obowiązuje każdą kartę tego planu)
 
 ### 0.1 Reguły nadrzędne (skrót — pełny kanon w `CLAUDE.md` repo)
@@ -133,15 +187,29 @@ nohup npm run dev > /tmp/vite.log 2>&1 &     # port 5173, proxy /api -> 8000
 
 ---
 
+**Lekcja infrastruktury (2026-08-14, incydent wspoldzielonego drzewa):**
+kazdy wykonawca karty MUSI dostac WLASNY worktree od pierwszego polecenia
+(`git worktree add <katalog> -B kopia/<KARTA> origin/<galaz-nadzoru>`), a
+nadzorca operacje na galezi nadzoru prowadzi z osobnego worktree, gdy
+jakikolwiek wykonawca zyje. Trzech wykonawcow zleconych bez tej klauzuli
+pracowalo w glownym katalogu repo jednoczesnie — przelaczali sobie galezie
+pod biegami testow (pomiar: cudzy commit na galezi kopia/K-S-FRESH, brudne
+pliki trzeciej karty w glownym drzewie). Pomiary z drzewa wspoldzielonego sa
+NIEWAZNE i musza byc powtorzone w izolacji. Frontend w worktree: symlink
+node_modules z glownego katalogu wystarcza do vitest/tsc; backend: wolac
+$VENV bezposrednio (poetry w worktree tworzy pusty venv).
+
 ## §1 GOTOWE DO MERGE (stan HEAD `3f367743`)
 
-> **NOTA AKTUALNOŚCI (2026-08-14, po południu):** stany §1.1 i §2 opisują
-> chwilę spisania planu. Od tego czasu odebrano i scalono na gałąź nadzoru
-> także: S3, S5, BLOKI-RMU, K-K, K-N, K-E (częściowy uczciwy), K-J, K-L,
-> K-M, K-O oraz naprawę incydentu kadrów. Bieżący stan kart: §6–§8 + rejestr
-> (wiersze z adnotacją ODBIOR NIEZALEZNY). Procedura merge §1.2 pozostaje
-> obowiązująca — zmienia się tylko SHA szczytu (mierzyć `git log` przy
-> wykonaniu, nie przepisywać z tego dokumentu).
+> **NOTA AKTUALNOŚCI (2026-08-14, wieczór):** stany §1.1 i §2 opisują chwilę
+> spisania planu — WSZYSTKIE karty w biegu i fale zostały od tego czasu
+> odebrane i scalone na gałąź nadzoru: S3, S5, BLOKI-RMU, K-K, K-N, K-E
+> (częściowy uczciwy), K-J, K-L, K-M, K-O, incydent kadrów, oraz fala §8:
+> K-T, K-S, K-Q (bateria fali: pytest 9614 RC=0, vitest 877 plików/11726
+> RC=0, mypy 13/9, tsconfig 531/531). K-W wycofana (znalezisko obalone).
+> MERGE PR #470 ZLECONY dyspozycją właściciela 2026-08-14 wg §1.2.
+> Po merge obowiązuje kolejka z PROMPTU STARTOWEGO na górze dokumentu —
+> karty biorą gałęzie z aktualnego `origin/main`.
 
 ### 1.1 Zawartość (odebrane fale — wszystkie z adnotacją w rejestrze)
 Fale K1–K14, KD, TOPO-COPY, PREFIKSY, TOP-5, fale 2–3 i 7–12, w tym ostatnio:
@@ -549,6 +617,10 @@ inwentarza — commit odbiorczy 2026-08-14). Poniżej pozostałe karty — kolej
 zlecania wg wagi. Każda karta podlega KONTRAKTOWI §0 (w tym §0.7 odbiór).
 
 ### K-Q AUDIT2-KATALOGI-BEZ-PROWENIENCJI `[backend + mirror frontu]`
+**STATUS: WYKONANA (2026-08-14, wykonawca Opus, galaz `kopia/K-Q-AUDIT2`).**
+Wpis rozliczeniowy: wiersz `K-Q-AUDIT2-KATALOGI-BEZ-PROWENIENCJI` w
+`docs/v12xx/REJESTR_KONFLIKTOW.md`.
+
 `backend/src/api/audit2_catalogs.py` niesie TĘ SAMĄ klasę fabrykacji, którą
 K-O usunął z frontu (identyczne id pozycji, te same liczby, ci sami zmyśleni
 producenci) i serwuje ją przez `/api/v1/catalog/audit2`. Autorytet danych leży
@@ -581,7 +653,7 @@ właściwe solvery RMS/FRT (rozszerzenie addytywne, FROZEN nietknięte),
 normy wymaga danych, których nie ma w modelu, brak danych meldować jawnym
 kodem gotowości (readiness), nigdy werdyktem-zaślepką.
 
-### K-S PROTECTION-FRESH-NA-SZTYWNO
+### K-S PROTECTION-FRESH-NA-SZTYWNO — **WYKONANA I ODEBRANA (2026-08-14; wiersz K-S-PROTECTION-FRESH-NA-SZTYWNO w rejestrze; dlug jawny w karcie K-S2 ponizej)**
 `backend/src/api/protection_runs.py:379-380`: nakładka zabezpieczeń ZAWSZE
 melduje `result_status = "FRESH"` — obietnica FRESH/OUTDATED/NONE bez
 implementacji. Naprawa: status z porównania hasza snapshotu zapisanego przy
@@ -593,7 +665,7 @@ OUTDATED gdy hasz różny. Test iloczynu cech: {bieg zakończony, brak biegu} ×
 asercją statusu; ścieżka natywna (mutacja modelu operacją kanoniczną, nie
 podmiana pola).
 
-### K-T FIELD-SPEC-JEDEN-BUILDER `[resztka klasy K-M]`
+### K-T FIELD-SPEC-JEDEN-BUILDER `[resztka klasy K-M]` — **WYKONANA I ODEBRANA (2026-08-14; wiersz K-T-FIELD-SPEC-JEDEN-BUILDER w rejestrze; dlugi jawne przeniesione do kart K-X/K-Y/K-Z ponizej)**
 `insert_station_on_segment_sn` cicho gubi klucze pól SN `source_status`,
 `source_refs`, `bay_kind` (K-M naprawił wyłącznie kanał bloku fabrycznego;
 `catalog_bindings` usunięte na amen), a `append_station_on_endpoint` składa
@@ -622,7 +694,7 @@ Inwentarz zmierzony audytem: (1) `ui/catalog/CatalogMaterializationDialog.tsx`
 wyspa, przy czym żywy kreator stacji milcząco gubi status producenta; (3) po
 K-O: `SPZ_CATALOG`, `SZR_CATALOG`, `PROTECTION_FUNCTION_CATALOG`,
 `selectHvFusesForRating` w `station-der/**` — zero konsumentów produkcyjnych.
-Rozstrzygnięcia (bez interpretacji): (1) PRZED kasacją zmierzyć, czy podgląd
+Z pomiaru K-S dochodzi do inwentarza: (4) martwe konstrukcje statusu bez konsumenta produkcyjnego — `application/sld/overlay_builder.py` (domyslne FRESH), stale NONE w `application/analysis_run/service.py` i `export_service.py`; (5) komponenty nakladek `ui/**` bez punktu montazu (`SldOverlay`, `PowerFlowSldOverlay`, `ProtectionZoneMarker`, `ProtectionRunButton`) — decyzja kasacja-czy-wpiecie SPOJNA z karta K-S2. Rozstrzygnięcia (bez interpretacji): (1) PRZED kasacją zmierzyć, czy podgląd
 materializacji katalogowej jest dostarczany gdziekolwiek indziej — jeśli NIE,
 kasacja + osobna karta luki funkcjonalnej do planu; (2) status producenta MA
 być widoczny (kontrakt backendu niesie pole `status`) — wpiąć
@@ -632,14 +704,79 @@ nieużywanymi predykatami; (3) kasacja na amen — funkcje SPZ/SZR mają kanał
 katalogowy w backendzie, resztki frontowe bez konsumenta to duplikat klasy
 K-Q. Po każdej kasacji: type-check, lint, vulture_guard, dead_click_guard.
 
-### K-W SLD-AUDYT-POLARYZACJA-MOTYWOW `[resztka incydentu kadrów]`
-3 stare pary zrzutów `docs/audit/visual/sld_audyt/` mają ODWRÓCONĄ
-polaryzację motywów (kadr podpisany jasny jest ciemny i odwrotnie) — ta sama
-klasa co incydent konfiguratora, inna postać (zamiana, nie duplikacja).
-Regeneracja poprawnymi literałami kanonu (§0.3) na żywym stosie, oględziny
-każdego kadru, bramka pary bajtowej analogiczna do
-`kreator-stacji-zrzuty.spec.ts` dla tego zestawu. Granice: skrypty zrzutów +
-`docs/audit/visual/sld_audyt/**`.
+### K-W SLD-AUDYT-POLARYZACJA-MOTYWOW — **WYCOFANA (znalezisko OBALONE
+pomiarem, 2026-08-14)**
+Diagnoza wstępna („odwrócona polaryzacja motywów") była błędna DWUKROTNIE:
+pomiar sha256 pokazuje, że pary L0/L1/L2 w `docs/audit/visual/sld_audyt/` są
+bajtowo IDENTYCZNE (obie strony ciemne), a to jest **przypięty testem
+niezmiennik, nie defekt**: kanwa v3 ma STAŁE tło techniczne
+(`CANVAS_BACKGROUND = '#0B0F14'` w `sld/v3/theme/colorTokens.ts`) — rysunek
+techniczny świadomie NIE reaguje na motyw interfejsu. Test
+`niezmiennik: kanwa techniczna jest NIEZALEZNA od motywu` w
+`e2e/sld-audyt-powykonawczy-screenshot.spec.ts` (który wprost ostrzega, że
+identyczność par raz już błędnie zdiagnozowano jako defekt renderu) wymusza
+decyzję przy każdej zmianie tego zachowania. ŻADNEJ akcji — regeneracja
+„naprawiająca" pary złamałaby przypięty niezmiennik. Lekcja: przed
+zakwalifikowaniem duplikatu kadrów jako fabrykacji sprawdź, czy identyczność
+nie jest przypiętym niezmiennikiem danego materiału (incydent konfiguratora
+dotyczył ekranów APLIKACJI, które motywom podlegają; kanwa techniczna SLD —
+nie).
+
+### K-S2 SWIEZOSC-ZYWEJ-KANWY-SLD `[dlug K-S]` `[B-02 — STOP przed scaleniem]`
+K-S naprawil status swiezosci w koncowkach nakladek, ale ZYWA powierzchnia
+wynikow na kanwie SLD v3 (ui2/legacy/useLegacyOrchestrator ->
+GET /api/execution/runs/{id}/results/v1 -> rawResultOverlayStore) nie niesie
+odcisku modelu ani statusu swiezosci — ResultSetV1 ma tylko
+solver_input_hash. Wpiecie swiezosci w zywa kanwe wymaga: (1) pola
+addytywnego w schemacie ResultSetV1 (schemat pinowany guardem
+resultset_v1_schema — aktualizacja pary schemat+guard RAZEM), (2) werdyktu z
+result_freshness.py (ta sama para predykatow co K-S, zero nowej drogi),
+(3) WIDOCZNEJ zmiany na SLD (baner/znacznik nieaktualnosci) — i to jest
+werdykt wizualny wlasciciela: STOP B-02 przed scaleniem. Osobno: martwe
+nakladki ui/** bez punktu montazu (SldOverlay, PowerFlowSldOverlay,
+ProtectionZoneMarker, ProtectionRunButton) sa w inwentarzu K-V — decyzja
+kasacja-czy-wpiecie zapada tam, spójnie z ta karta.
+
+### K-Q2 NAZEWNICTWO-NAPIECIA-WYTRZYMALOSCI `[dlug K-Q]`
+`nominal_voltage_kv = 15` w katalogu wytrzymalosci aparatury to napiecie
+SIECI, nie znamionowe aparatu (szereg IEC 62271-1 zna 17,5 kV) — nie jest to
+fabrykacja danych, ale nazwa pola klamie o semantyce i przy kolejnym czytaniu
+zostanie wzieta za napiecie znamionowe wyrobu. Rozstrzygniecie: zmienic nazwe
+pola na oddajaca semantyke (np. `network_voltage_kv`) ALBO przepisac wartosci
+na znamionowe aparatu z szeregu normy — decyzja wynika z tego, czym pole jest
+DLA KONSUMENTOW (inwentarz konsumentow przed zmiana; zmiana nazwy = kontrakt,
+konsumenci w tej samej kolejce). Wzorzec: karta K-J (network_voltages_kv vs
+um_classes_kv rodzin rozdzielnic — dokladnie ta sama para pojec).
+
+### K-X KASACJA-CATALOG-BINDINGS `[dlug K-T]`
+`catalog_bindings.switchgear_template` w specyfikacji pola nie ma ANI JEDNEGO
+czytelnika (grep backend + frontend, pomiar K-T) — martwy duplikat danych,
+ktore obie drogi niosa jako klucze pierwszej klasy. Kasacja na amen: przestac
+ZAPISYWAC klucz w nowych migawkach (koniec ciagu) i usunac emisje po stronie
+kreatora; istniejace migawki pozostaja nietkniete (czytelnika nie ma, wiec
+stary klucz w starych migawkach jest bezpiecznie ignorowany). Testy: pin
+nieobecnosci klucza w NOWYCH specyfikacjach obu drog + pin, ze stare migawki
+z kluczem dalej sie wczytuja. Granice: `enm/domain_operations.py`,
+`ui2/kreatory/stacja/**`, `types/domainOps.ts` + testy.
+
+### K-Y PROWENIENCJA-W-INSPEKTORZE `[dlug K-T]`
+Metadane pochodzenia pola (source_status, source_refs, bay_kind) sa po K-T w
+modelu obiema drogami, ale inspektor pola ich NIE pokazuje — proweniencja
+widoczna tylko w pickerze szablonow przed zapisem. Wpiac do inspektora pola
+sekcje pochodzenia danych szablonu (status zrodla po polsku, lista referencji
+zrodlowych klikalna, rodzaj pola) — uczciwy stan zerowy gdy metadanych brak
+(stare migawki). Zero fizyki; wylacznie prezentacja danych modelu. Testy
+sciezka natywna: pole z metadanymi pokazuje komplet, pole bez metadanych
+pokazuje jawny brak.
+
+### K-Z TYP-SNFIELDSPEC-FRONT `[dlug K-T]`
+Frontowy typ kontraktu `SNFieldSpec` w `types/domainOps.ts` deklaruje tylko
+`field_role` + `catalog_bindings`, a kreator wysyla 12 kluczy (pomiar K-T) —
+typ klamie o drucie. Uzupelnic typ do stanu faktycznego emisji (backendowy
+odpowiednik juz uzupelniony przez K-T o 8 kluczy realnie czytanych),
+skoordynowac z K-X (po kasacji catalog_bindings typ nie moze go deklarowac).
+Bramka: type-check RC=0; pin zgodnosci kluczy typu z kluczami emisji
+zbudujPolaSnZWpisow (test czyta oba zbiory i porownuje).
 
 ### Sygnały PLAUSIBLE (zmierzyć przy zleceniu — NIE są potwierdzone)
 Z surowej listy 35 znalezisk audytu weryfikację adwersaryjną przeszło 12;

@@ -538,6 +538,13 @@ function dynamicModelLabel(der: StationDerConnection): string {
   return selected ? cleanCatalogText(selected.label_pl) : 'model dynamiczny z wariantu katalogowego';
 }
 
+/**
+ * Stan braku granicznego prądu zwarciowego falownika (karta K-Q, 2026-08-14).
+ * Wzorzec `BRAK_PASMA_BEZPIECZNIKA`: pole nie znika z karty (ciche zniknięcie to
+ * inne kłamstwo), tylko mówi wprost, czego brakuje i skąd to wziąć.
+ */
+const BRAK_PRADU_ZWARCIOWEGO_FALOWNIKA_PL = 'wymaga karty katalogowej wyrobu (wynik zwarciowy: SC3F/SC1F)';
+
 function faultCurrentLabel(der: StationDerConnection): string {
   const selected = DER_FAULT_CURRENT_DATA_CATALOG.find((item) => item.id === der.catalogs.fault_current_data_ref)
     ?? DER_FAULT_CURRENT_DATA_CATALOG.find((item) =>
@@ -683,9 +690,12 @@ function buildDerCards(
     : null;
   const inverter = findPvInverter(der);
   const ptpireeCertificate = getPtpireeCertifiedInverter(der.catalogs.ptpiree_certificate_ref);
-  const faultCurrent = inverter?.fault_current_capability_pu
-    ? `${inverter.fault_current_capability_pu.toFixed(2)} × In`
-    : MISSING_DASH;
+  // Graniczny prąd zwarciowy falownika (karta K-Q): katalog mirrorowy NIE niesie
+  // już tej liczby, bo podaje ją wyłącznie karta katalogowa konkretnego wyrobu,
+  // a wcześniejsza wartość była wpisana z ręki. Udział źródła w prądzie zwarcia
+  // liczy solver ze składowych symetrycznych modelu — ekran mówi, skąd to wziąć,
+  // zamiast pokazywać liczbę bez pokrycia.
+  const faultCurrent = BRAK_PRADU_ZWARCIOWEGO_FALOWNIKA_PL;
   const isDedicatedTransformer = der.connection_side === 'dedicated_transformer';
 
   return {

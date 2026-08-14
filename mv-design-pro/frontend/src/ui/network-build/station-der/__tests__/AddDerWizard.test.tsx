@@ -386,7 +386,14 @@ describe('AddDerWizard — 5-krokowy guided flow', () => {
 
     expect((screen.getByTestId('add-der-lvrt') as HTMLSelectElement).value).toBe('lvrt_enea_b');
     expect((screen.getByTestId('add-der-hvrt') as HTMLSelectElement).value).toBe('hvrt_enea_b');
-    expect((screen.getByTestId('add-der-pf-curve') as HTMLSelectElement).value).toBe('pf_enea_b');
+    // Karta K-Q: nastawa P(f) NIE jest juz przypisana operatorowi (rozporzadzenie
+    // 2016/631 art. 13 ust. 2 podaje przedzial nastawialny, a nie wartosc „dla
+    // Enei"), wiec wybor profilu jej nie podstawia i nie zaweza listy wariantow.
+    const pf = screen.getByTestId('add-der-pf-curve') as HTMLSelectElement;
+    expect(pf.value).toBe('');
+    const wariantyPf = Array.from(pf.options).map((o) => o.value).filter(Boolean);
+    expect(wariantyPf).toContain('pf_droop_5');
+    expect(wariantyPf).toContain('pf_droop_12');
     expect((screen.getByTestId('add-der-next') as HTMLButtonElement).disabled).toBe(false);
   });
 
