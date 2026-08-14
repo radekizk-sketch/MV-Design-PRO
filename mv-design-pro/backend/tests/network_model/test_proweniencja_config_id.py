@@ -350,3 +350,35 @@ def test_prefiks_w_migawce_zgadza_sie_z_katalogiem(tor: str, pole_ref: str) -> N
     for spec in specs:
         assert spec["config_id"].startswith("producent:") == katalogowe
         assert spec["config_id"] == config_ref_for_template(pole_ref)
+
+
+def test_pole_rodziny_bez_producenta_to_twardy_blad_nie_cichy_prefiks(monkeypatch) -> None:
+    """Zapadka niespójności katalogu jest PRZYPIĘTA, nie tylko zadeklarowana.
+
+    Docstring rejestru pól rodzin obiecuje twardy ``ValueError`` dla pola bez
+    producenta — dzisiejsze dane nigdy tej gałęzi nie uruchamiają, więc bez
+    tego testu ciche pominięcie (powrót do prefiksu ``kanoniczny:``, czyli
+    dokładnie usuwanej fabrykacji) byłoby niewykrywalne. Iniekcja odbioru
+    2026-08-14: podmiana ``raise`` na ``continue`` przeszła cały plik na
+    zielono — deklaracja bez testu. Pin buduje rejestr na syntetycznej
+    enumeracji z polem bez producenta i wymaga twardego błędu.
+    """
+    import types
+
+    import network_model.catalog.bay_templates as modul
+    from network_model.catalog import switchgear as pakiet_switchgear
+
+    sierota = types.SimpleNamespace(
+        template_ref="TEST__RODZINA__POLE_BEZ_PRODUCENTA", manufacturer_ref=None
+    )
+    monkeypatch.setattr(
+        pakiet_switchgear,
+        "list_switchgear_solution_templates_for_manufacturer",
+        lambda _ref: [sierota],
+    )
+    monkeypatch.setattr(modul, "_REJESTR_POL_RODZIN", None)
+    try:
+        with pytest.raises(ValueError, match="bez producenta"):
+            config_ref_for_template("TEST__RODZINA__POLE_BEZ_PRODUCENTA")
+    finally:
+        modul._REJESTR_POL_RODZIN = None
