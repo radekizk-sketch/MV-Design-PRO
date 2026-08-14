@@ -9,6 +9,8 @@ Endpoints:
 - GET /protection-runs/{run_id} — Get run metadata
 - GET /protection-runs/{run_id}/results — Get ProtectionResult
 - GET /protection-runs/{run_id}/trace — Get ProtectionTrace
+- GET /projects/{project_id}/sld/{diagram_id}/protection-overlay — Nakladka SLD
+  wynikow zabezpieczen ze statusem swiezosci (NONE/FRESH/OUTDATED)
 """
 
 from __future__ import annotations
