@@ -96,14 +96,34 @@ export interface PozycjaOfertyRodzin {
 }
 
 /**
- * Czy klasa napięciowa rodziny obejmuje napięcie szyny SN. Porównanie
- * KATALOGOWE (wartość znamionowa do wartości znamionowej), nie fizyka.
- * Rodzina bez zadeklarowanych napięć nie jest odrzucana — brak deklaracji to
- * brak przeciwwskazania, a nie niezgodność.
+ * Czy deklaracja napięciowa rodziny obejmuje napięcie szyny SN.
+ *
+ * JEDNO MIEJSCE TEJ REGUŁY W UI (używa jej także krok źródła zasilania), będące
+ * LUSTREM reguły katalogu — `family_validation.czy_rodzina_obsluguje_napiecie`
+ * w backendzie. Porównanie KATALOGOWE (wartość znamionowa do wartości
+ * znamionowej), nie fizyka: UI tylko uprzedza projektanta, którą rodzinę
+ * walidator odrzuci, a werdykt i tak wystawia backend.
+ *
+ * Reguła (karta K-J):
+ *  1. karta wymienia napięcia SIECI ⇒ napięcie szyny musi być na tej liście
+ *     (producent nazwał sieci, dla których robi wyrób);
+ *  2. karta napięć sieci nie podaje ⇒ wystarczy klasa urządzenia Um ≥ napięcie
+ *     szyny (PN-EN 62271-1: Um to górna granica napięcia sieci);
+ *  3. karta nie podaje żadnej z dwóch wielkości ⇒ rodzina nie ma czym
+ *     potwierdzić zgodności, więc odpowiedź brzmi „nie".
+ *
+ * Szyna bez napięcia (brak danych, nie zero woltów) nie jest przeciwwskazaniem
+ * do POKAZANIA rodziny — dopóki napięcie nie jest znane, nie ma czego porównać.
  */
-function klasaNapieciowaObejmuje(rodzina: SwitchgearFamily, snVoltageKv: number): boolean {
-  if (!(snVoltageKv > 0) || rodzina.voltage_levels.length === 0) return true;
-  return rodzina.voltage_levels.some((poziom) => poziom + 0.5 >= snVoltageKv);
+export function rodzinaObslugujeNapiecie(
+  rodzina: SwitchgearFamily,
+  snVoltageKv: number,
+): boolean {
+  if (!(snVoltageKv > 0)) return true;
+  if (rodzina.network_voltages_kv.length > 0) {
+    return rodzina.network_voltages_kv.some((napiecie) => Math.abs(napiecie - snVoltageKv) <= 1e-9);
+  }
+  return rodzina.um_classes_kv.some((klasaUm) => klasaUm + 1e-9 >= snVoltageKv);
 }
 
 /**
@@ -143,7 +163,7 @@ function powodNiedostepnosci(
   // Status potwierdzony bez ANI JEDNEGO źródła to ta sama luka danych, co brak
   // karty — polityka źródeł wymaga proweniencji, nie samej etykiety statusu.
   if (rodzina.status !== 'user_defined' && rodzina.source_refs.length === 0) return 'WYMAGA_KARTY';
-  if (!klasaNapieciowaObejmuje(rodzina, snVoltageKv)) return 'INNA_KLASA_NAPIECIOWA';
+  if (!rodzinaObslugujeNapiecie(rodzina, snVoltageKv)) return 'INNA_KLASA_NAPIECIOWA';
   return null;
 }
 
@@ -329,6 +349,29 @@ export function listaZnamionRodziny(
   return `${wartosci.map((w) => String(w).replace('.', ',')).join(' / ')} ${jednostka}`;
 }
 
+/**
+ * Napięcia katalogowe rodziny jako JEDNO zdanie nagłówka, z nazwaniem wielkości.
+ *
+ * Nagłówek ma jedną komórkę na napięcie, a rodzina deklaruje DWIE różne
+ * wielkości (napięcia sieci z karty i klasy urządzenia). Wypisanie samych liczb
+ * kazałoby projektantowi zgadywać, którą z nich czyta — a to jest dokładnie
+ * pomyłka, którą karta K-J usuwała w danych. Rodzina bez żadnej deklaracji daje
+ * `null` (jawny brak), nie pusty łańcuch.
+ *
+ * JEDNO ŹRÓDŁO dla obu nagłówków: czyta stąd i panel kroku, i nagłówek RYSUNKU
+ * (`podgladRozdzielnicy.ts`), więc nie da się ich rozjechać.
+ */
+export function opisNapiecRodziny(rodzina: SwitchgearFamily | null | undefined): string | null {
+  const siec = listaZnamionRodziny(rodzina?.network_voltages_kv, 'kV');
+  const urzadzenie = listaZnamionRodziny(rodzina?.um_classes_kv, 'kV');
+  if (siec && urzadzenie) {
+    return `${T.napiecieSieci} ${siec} · ${T.napiecieUrzadzenia} ${urzadzenie}`;
+  }
+  if (siec) return `${T.napiecieSieci} ${siec}`;
+  if (urzadzenie) return `${T.napiecieUrzadzenia} ${urzadzenie}`;
+  return null;
+}
+
 /** Nazwy PL izolacji rodziny — komplet słownika kontraktu (test dwustronny). */
 export const NAZWY_IZOLACJI_PL: Readonly<Record<SwitchgearFamily['insulation_type'], string>> = {
   air: 'powietrzna',
@@ -357,7 +400,7 @@ export function naglowekRodziny(
     { etykieta: T.naglowekProducent, wartosc: producent ?? rodzina?.manufacturer_ref ?? null },
     {
       etykieta: T.naglowekNapiecie,
-      wartosc: listaZnamionRodziny(rodzina?.voltage_levels, 'kV'),
+      wartosc: opisNapiecRodziny(rodzina),
     },
     {
       etykieta: T.naglowekPradSzyn,

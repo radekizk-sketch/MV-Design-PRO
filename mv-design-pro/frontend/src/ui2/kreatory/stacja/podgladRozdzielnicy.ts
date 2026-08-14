@@ -69,6 +69,7 @@ import {
   type PozycjaBom,
   type ScenaPola,
 } from './generatorSldPola';
+import { opisNapiecRodziny } from './konfiguratorRozdzielnicy';
 import { etykietaRodzajuAparatu } from './stacjaModel';
 import { STACJA_STRINGS as T } from './strings';
 
@@ -175,7 +176,12 @@ export interface NaglowekRozdzielnicy {
   readonly producent: string | null;
   readonly rodzina: string | null;
   readonly konstrukcja: string | null;
-  /** Klasa napięciowa rodziny, np. „12 / 17,5 / 24 kV". */
+  /**
+   * Napięcia katalogowe rodziny z nazwaniem wielkości, np. „sieć 15 / 20 kV ·
+   * urządzenie 17,5 / 24 kV". Karta producenta podaje DWIE różne wielkości
+   * (napięcia sieci i klasy urządzenia) — sama liczba nie mówiłaby, którą z
+   * nich czyta projektant.
+   */
   readonly klasaNapiecia: string | null;
   /** Prąd znamionowy szyn rodziny, np. „630 A". */
   readonly pradSzyn: string | null;
@@ -560,7 +566,10 @@ export function zbudujPodglad(wejscie: WejsciePodgladu): PodgladRozdzielnicy {
       producent: producent ?? rodzina?.manufacturer_ref ?? null,
       rodzina: rodzina?.family_name ?? null,
       konstrukcja: rodzina ? CONSTRUCTION_LABELS_PL[rodzina.construction_type] : null,
-      klasaNapiecia: listaZnamion(rodzina?.voltage_levels, 'kV'),
+      // JEDNO źródło opisu napięć rodziny (nazywa obie wielkości karty),
+      // wspólne z nagłówkiem panelu kroku — dwa niezależne zestawienia tego
+      // samego faktu rozjechałyby się przy pierwszej zmianie kontraktu.
+      klasaNapiecia: opisNapiecRodziny(rodzina),
       pradSzyn: listaZnamion(rodzina?.rated_current_options, 'A'),
       pradZwarciowy: listaZnamion(rodzina?.short_time_current_options, 'kA'),
       liczbaJednostek: snFields.length,

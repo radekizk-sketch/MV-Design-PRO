@@ -21,7 +21,23 @@ export interface SwitchgearFamily {
   readonly manufacturer_ref: string;
   readonly family_name: string;
   readonly series_name: string | null;
-  readonly voltage_levels: readonly number[];
+  /**
+   * DWIE RÓŻNE WIELKOŚCI NAPIĘCIOWE, DWA POLA (kontrakt
+   * `switchgear/switchgear_family.py`, karta K-J):
+   *
+   * · `network_voltages_kv` — napięcia SIECI, dla których karta producenta
+   *   oferuje wyrób (wiersz „napięcie nominalne sieci" / „napięcie robocze");
+   * · `um_classes_kv` — klasy URZĄDZENIA (wiersz „napięcie znamionowe (Ur)" /
+   *   „najwyższe napięcie urządzeń (Um)"), czyli górna granica napięcia sieci
+   *   wg PN-EN 62271-1.
+   *
+   * Karta ZPUE Rotoblok podaje OBIE (sieć 15/20 kV przy klasach 17,5/24 kV) —
+   * jedno wspólne pole `voltage_levels` mieszało je i nie dało się na nim
+   * oprzeć żadnego uczciwego porównania. Pusta lista = karta danego wiersza NIE
+   * ma (jawny brak), nie „zero kilowoltów".
+   */
+  readonly network_voltages_kv: readonly number[];
+  readonly um_classes_kv: readonly number[];
   /**
    * Prądy znamionowe szyn [A] i prądy zwarciowe krótkotrwałe [kA, 1 s] rodziny —
    * pola `rated_current_options` / `short_time_current_options` kontraktu
@@ -238,9 +254,14 @@ export function SwitchgearFamilyPicker({
               {family.series_name && (
                 <span className="text-[11px] text-gray-500">Seria: {family.series_name}</span>
               )}
-              {family.voltage_levels.length > 0 && (
+              {family.network_voltages_kv.length > 0 && (
                 <span className="text-[11px] text-gray-500">
-                  Napięcia: {family.voltage_levels.map((v) => `${v} kV`).join(', ')}
+                  Napięcia sieci: {family.network_voltages_kv.map((v) => `${v} kV`).join(', ')}
+                </span>
+              )}
+              {family.um_classes_kv.length > 0 && (
+                <span className="text-[11px] text-gray-500">
+                  Klasy urządzenia: {family.um_classes_kv.map((v) => `${v} kV`).join(', ')}
                 </span>
               )}
               {powodBlokady && (

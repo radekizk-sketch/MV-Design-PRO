@@ -41,8 +41,10 @@ Nazwy z pierwotnego szkicu (`SwitchgearArchitecture`, `CatalogFunctionalUnit`)
 drugi byt o tej samej treści byłby drugą ścieżką tej samej prawdy.
 
 - `SwitchgearFamily` (pydantic): producent (`manufacturer_ref`), ref i nazwa
-  rodziny, `insulation_type`, `construction_type`, `busbar_system`, klasy
-  `voltage_levels` [kV], `rated_current_options` [A],
+  rodziny, `insulation_type`, `construction_type`, `busbar_system`, napięcia
+  SIECI z karty `network_voltages_kv` [kV] i klasy napięciowe URZĄDZENIA
+  `um_classes_kv` [kV] (dwie RÓŻNE wielkości, §10), klasy
+  `rated_current_options` [A],
   `short_time_current_options` [kA], słowniki `allowed_bay_kinds` /
   `allowed_apparatus_kinds` / `allowed_interlocks`, proweniencja
   (`source_refs`, `source_document_refs`, `source_version`) i `status` wg

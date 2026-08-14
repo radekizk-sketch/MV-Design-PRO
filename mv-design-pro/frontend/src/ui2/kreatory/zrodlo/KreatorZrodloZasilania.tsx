@@ -26,6 +26,7 @@ import {
 } from '../../../ui/catalog/api';
 import type { CompleteMvBayTemplateSummary } from '../../../ui/catalog/BayTemplatePicker';
 import type { SwitchgearFamily } from '../../../ui/catalog/SwitchgearFamilyPicker';
+import { rodzinaObslugujeNapiecie } from '../stacja/konfiguratorRozdzielnicy';
 import type {
   MVApparatusType,
   SourceSystemCatalogType,
@@ -329,9 +330,14 @@ export function KreatorZrodloZasilania() {
       };
     });
   }, [tapChangery]);
+  // Dobór rodziny do napięcia szyny idzie regułą KATALOGU (wspólny predykat
+  // `rodzinaObslugujeNapiecie` — lustro walidatora backendu), a nie dawnym
+  // oknem „±6 kV". Tamten próg był zmyślony w UI: przepuszczał rodzinę 12 kV do
+  // sieci 17,5 kV i odcinał rodzinę 24 kV od sieci 30 kV bez żadnej podstawy
+  // katalogowej ani normowej.
   const opcjeRodzin = useMemo(
     () => rodziny
-      .filter((r) => !napiecieSn || r.voltage_levels.length === 0 || r.voltage_levels.some((v) => Math.abs(v - napiecieSn) <= 6))
+      .filter((r) => rodzinaObslugujeNapiecie(r, napiecieSn))
       .map((r) => ({ id: r.switchgear_family_ref, etykieta: `${r.family_name} · ${r.manufacturer_ref}` })),
     [rodziny, napiecieSn],
   );
