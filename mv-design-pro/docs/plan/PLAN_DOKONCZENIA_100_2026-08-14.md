@@ -737,6 +737,33 @@ nakladki ui/** bez punktu montazu (SldOverlay, PowerFlowSldOverlay,
 ProtectionZoneMarker, ProtectionRunButton) sa w inwentarzu K-V — decyzja
 kasacja-czy-wpiecie zapada tam, spójnie z ta karta.
 
+### K-A2 OGLEDZINY-MINI-RMU-PO-NAPRAWIE `[wejscie do B-02, karta K-A]`
+Oględziny nadzorcy 2026-08-14 na kadrach WYGENEROWANYCH OSOBIŚCIE (spec
+`mini-rmu-podglad-screenshot`, oba motywy) po naprawach karty E2E-ZRZUTY.
+Naprawy potwierdzam: tabliczka rodziny czyta się poprawnie (producent, rodzina,
+konstrukcja, napięcia katalogowe, prąd szyn, prąd zwarciowy, liczba jednostek,
+szerokość jako uczciwe „brak w karcie katalogowej"), cztery różne aparaty dają
+CZTERY różne symbole, tor BLOK_RMU pokazuje sekwencję jednostek i skład stały.
+Zostają TRZY rzeczy zmierzone wzrokiem, do domknięcia przed werdyktem
+właściciela:
+
+1. **Kolizja etykiety z symbolem.** Oznaczenia `Q9 (E)` i `GK` nachodzą na
+   symbol uziemnika (widoczne w polach liniowych obu motywów) — dwa napisy i
+   grafika w tym samym miejscu, nieczytelne przy skali kadru. Naprawa w
+   generatorze pola (`generatorSldPola`/scena mini-SLD): rozsunięcie etykiet
+   albo odsunięcie ich od symbolu, z pinem na brak zachodzenia obwiedni.
+2. **Surowe identyfikatory katalogowe w karcie pola.** Tabliczki pokazują
+   `ZPUE__TPM_AIR__LINE_OUT`, `ZPUE__ROTOBLOK__TRANSFORMER` itd. — to klucz
+   techniczny, nie nazwa dla projektanta (repo ma nawet guard
+   `no_raw_ids_in_ui_guard`, który tego miejsca nie obejmuje). Pokazywać nazwę
+   polską pola katalogowego, identyfikator co najwyżej w podpowiedzi.
+3. **Odmowa walidatora bez wskazania elementu.** Podgląd toru BLOK_RMU melduje
+   „Konfiguracja odrzucona przez walidator" + „Element techniczny wymaga
+   powiązania z katalogiem" — bez nazwy elementu. Projektant nie wie, co
+   poprawić. Ustalić, czy w scenie harnessu brak wyboru transformatora (wtedy
+   fikstura), czy realna ścieżka też tak kończy (wtedy defekt produktu), i
+   nazwać element w komunikacie u źródła (kontrakt walidatora operacji).
+
 ### K-Q2 NAZEWNICTWO-NAPIECIA-WYTRZYMALOSCI `[dlug K-Q]`
 `nominal_voltage_kv = 15` w katalogu wytrzymalosci aparatury to napiecie
 SIECI, nie znamionowe aparatu (szereg IEC 62271-1 zna 17,5 kV) — nie jest to
