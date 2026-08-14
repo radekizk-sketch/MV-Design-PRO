@@ -10,10 +10,8 @@ Zachowuje:
 
 Logika:
 1. Tap-changer: ustawia transformer.tap_position zgodnie z extensions.
-2. BESS modes: rezerwuje moc P na podstawie reserved_capacity_percent
-   (modyfikacja P max generatora).
-3. P(f) curve: dolacza droop_percent do source.frequency_droop.
-4. MV grounding: ustawia grounding type w stacji (wplywa na Z0 dla SC1F).
+2. P(f) curve: dolacza droop_percent do source.frequency_droop.
+3. Block-trafo: ustawia parametry transformatora dedykowanego DER.
 
 Brak danych = brak adjustment (graph passes through unchanged).
 """
@@ -29,33 +27,42 @@ from network_model.catalog.audit2_catalogs import (
     get_tap_changer,
 )
 
+# CZEGO TU JUZ NIE MA (karta K-Q, 2026-08-14) — dwie liczby bez zrodla, ktore
+# ten modul wstawial do modelu przed wywolaniem solvera:
+#
+#   * REZERWA MOCY MAGAZYNU. Modul czytal `reserved_capacity_percent` z katalogu
+#     trybow BESS i wyliczal rezerwe wzorem `reserved_pct * 10` z komentarzem
+#     „10 = 1000kW * 1%", czyli PRZYJMOWAL, ze kazdy magazyn ma 1 MW. Zgadnieta
+#     byla i rezerwa (pole usuniete u zrodla — patrz `audit2_catalogs`), i moc.
+#   * STOSUNEK Z0/Z1 Z ETYKIETY UZIEMIENIA. Modul mapowal typ uziemienia na
+#     stala (izolowana 100, skompensowana 50, przez rezystor 5, bezposrednia 1) i
+#     meldowal ja w sladzie jako „zastosowana". Zadna z tych liczb nie miala
+#     zrodla, a fizycznie stosunek Z0/Z1 zalezy od pojemnosci doziemnej sieci,
+#     nastrojenia dlawika albo rezystora RAZEM z impedancja petli — nie od nazwy
+#     wariantu. Impedancje kolejnosci zerowej niesie model: `Source.z0_z1_ratio`
+#     / `r0_ohm` / `x0_ohm` w ENM, i to z nich liczy SC1F.
+
 
 @dataclass(frozen=True)
 class Audit2Adjustments:
     """Diff applied to network model based on audit2 extensions."""
 
     tap_position_changes: dict[str, int]  # transformer_id -> tap position
-    bess_p_reserved_changes: dict[str, float]  # der_id -> reserved kW
     pf_droop_changes: dict[str, float]  # der_id -> droop_percent
     block_transformer_z_pu: dict[str, dict[str, float]]  # der_id -> {r_pu, x_pu}
-    grounding_z0_z1_ratio: float | None  # global per station
 
     def is_empty(self) -> bool:
         return (
             not self.tap_position_changes
-            and not self.bess_p_reserved_changes
             and not self.pf_droop_changes
             and not self.block_transformer_z_pu
-            and self.grounding_z0_z1_ratio is None
         )
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "tap_position_changes": dict(self.tap_position_changes),
-            "bess_p_reserved_changes": dict(self.bess_p_reserved_changes),
             "pf_droop_changes": dict(self.pf_droop_changes),
             "block_transformer_z_pu": {k: dict(v) for k, v in self.block_transformer_z_pu.items()},
-            "grounding_z0_z1_ratio": self.grounding_z0_z1_ratio,
         }
 
 
@@ -68,10 +75,8 @@ def compute_audit2_adjustments(audit2_extensions: dict[str, Any] | None) -> Audi
     if audit2_extensions is None:
         return Audit2Adjustments(
             tap_position_changes={},
-            bess_p_reserved_changes={},
             pf_droop_changes={},
             block_transformer_z_pu={},
-            grounding_z0_z1_ratio=None,
         )
 
     # 1. Tap-changers: ustaw transformer.tap_position na pozycje neutralna.
@@ -89,19 +94,7 @@ def compute_audit2_adjustments(audit2_extensions: dict[str, Any] | None) -> Audi
                 # Pozycja neutralna (nie dotykamy transformera bezposrednio bez map)
                 tap_changes[str(tc_id)] = int(tc.neutral_position)
 
-    # 2. BESS modes: rezerwacja P (P_max - P_reserved) per DER.
-    bess_p_reserved: dict[str, float] = {}
-    for entry in pf_ext.get("bess_operation_modes_per_der", []):
-        der_id = str(entry.get("der_id", ""))
-        mode = entry.get("mode") or {}
-        reserved_pct = float(mode.get("reserved_capacity_percent", 0))
-        # Kwota rezerwy zalezy od mocy DER — przy 1MW i 50% rezerwy = 500kW.
-        # Uzywamy mediany 1MW (deterministic; real wartosc dolaczana w innym kontekscie).
-        bess_p_reserved[der_id] = (
-            bess_p_reserved.get(der_id, 0) + reserved_pct * 10
-        )  # 10 = 1000kW * 1%
-
-    # 3. P(f) droop per DER (NC RfG Art. 13/15).
+    # 2. P(f) droop per DER (NC RfG Art. 13/15).
     pf_droops: dict[str, float] = {}
     for entry in pf_ext.get("p_f_curves_per_der", []):
         der_id = str(entry.get("der_id", ""))
@@ -114,7 +107,7 @@ def compute_audit2_adjustments(audit2_extensions: dict[str, Any] | None) -> Audi
             if c:
                 pf_droops[der_id] = c.droop_percent
 
-    # 4. Block-transformer Z (R/X pu) per DER — wplywa na fault current contribution.
+    # 3. Block-transformer Z (R/X pu) per DER — wplywa na fault current contribution.
     block_z: dict[str, dict[str, float]] = {}
     sc_ext = audit2_extensions.get("sc_iec60909_extensions") or {}
     for entry in sc_ext.get("block_transformers", []):
@@ -135,25 +128,10 @@ def compute_audit2_adjustments(audit2_extensions: dict[str, Any] | None) -> Audi
                     "x_pu": u_x_pct / 100,
                 }
 
-    # 5. MV grounding -> Z0/Z1 ratio.
-    grounding_z0_z1: float | None = None
-    grounding = sc_ext.get("mv_neutral_grounding") or {}
-    grounding_type = grounding.get("grounding_type") if isinstance(grounding, dict) else None
-    if grounding_type == "isolated":
-        grounding_z0_z1 = 100.0  # bardzo wysoka impedancja zerowa
-    elif grounding_type == "petersen_coil":
-        grounding_z0_z1 = 50.0  # skompensowana
-    elif grounding_type == "resistor_grounded":
-        grounding_z0_z1 = 5.0  # R-grounded
-    elif grounding_type == "directly_grounded":
-        grounding_z0_z1 = 1.0  # bezposrednio uziemiona
-
     return Audit2Adjustments(
         tap_position_changes=tap_changes,
-        bess_p_reserved_changes=bess_p_reserved,
         pf_droop_changes=pf_droops,
         block_transformer_z_pu=block_z,
-        grounding_z0_z1_ratio=grounding_z0_z1,
     )
 
 
@@ -175,8 +153,6 @@ def apply_audit2_to_network_model(
     applied: dict[str, Any] = {
         "tap_position_changes": {},
         "block_transformer_z_changes": {},
-        "grounding_z0_z1_ratio": None,
-        "bess_reserved_changes": {},
         "pf_droop_changes": {},
     }
 
@@ -268,29 +244,7 @@ def apply_audit2_to_network_model(
             "pk_kw": trafo.get("pk_kw"),
         }
 
-    # 3. MV grounding -> Z0/Z1 ratio (audit trail).
-    grounding = sc_ext.get("mv_neutral_grounding") or {}
-    grounding_type = grounding.get("grounding_type") if isinstance(grounding, dict) else None
-    grounding_z0_z1_map = {
-        "isolated": 100.0,
-        "petersen_coil": 50.0,
-        "resistor_grounded": 5.0,
-        "directly_grounded": 1.0,
-    }
-    if grounding_type in grounding_z0_z1_map:
-        z0_z1_value = grounding_z0_z1_map[grounding_type]
-        applied["grounding_z0_z1_ratio"] = z0_z1_value
-        # Apply to graph: dict get []=, real obiekt setattr (dynamic attr).
-        if isinstance(graph, dict):
-            graph["z0_z1_ratio"] = z0_z1_value
-        else:
-            try:
-                graph.z0_z1_ratio = z0_z1_value
-            except (AttributeError, TypeError):
-                pass  # frozen dataclass / immutable — skip silently
-
-    # 4. Phase 28: BESS reserved capacity per DER -> inverter_source.reserved_capacity_kw.
-    applied["bess_reserved_changes"] = {}
+    # 3. Zrodla falownikowe — mapa do kroku P(f) ponizej.
     inverter_sources = (
         getattr(graph, "inverter_sources", None)
         or (graph.get("inverter_sources") if isinstance(graph, dict) else None)
@@ -301,24 +255,7 @@ def apply_audit2_to_network_model(
     else:
         inv_iter = [(getattr(s, "id", None), s) for s in inverter_sources]
 
-    for entry in pf_ext.get("bess_operation_modes_per_der", []):
-        der_id = str(entry.get("der_id", ""))
-        mode = entry.get("mode") or {}
-        reserved_pct = float(mode.get("reserved_capacity_percent", 0))
-        # Znajdz inverter source z id == der_id.
-        for inv_id, inv in inv_iter:
-            if inv_id == der_id or getattr(inv, "id", None) == der_id:
-                # Ustaw reserved_capacity_kw (nowe pole — solvery moga je czytac
-                # gdy obsluguja BESS modes; brak konfliktu z istniejacymi solverami).
-                if hasattr(inv, "__dict__"):
-                    inv.reserved_capacity_percent = reserved_pct
-                applied["bess_reserved_changes"][der_id] = {
-                    "reserved_capacity_percent": reserved_pct,
-                    "mode_code": mode.get("mode_code"),
-                }
-                break
-
-    # 5. Phase 28: P(f) droop per DER -> inverter_source.frequency_droop_percent.
+    # 4. P(f) droop per DER -> inverter_source.frequency_droop_percent.
     applied["pf_droop_changes"] = {}
     for entry in pf_ext.get("p_f_curves_per_der", []):
         der_id = str(entry.get("der_id", ""))
