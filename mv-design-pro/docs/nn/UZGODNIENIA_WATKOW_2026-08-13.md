@@ -645,3 +645,40 @@ z kart producentów; imienna lista długu schodzi rodzina po rodzinie). Dodatkow
 gałęzi nadzoru: ekran „Kontyngencje N-1" (EKRAN-N1) i dziedziczenie nazw połówek odcinka
 w `enm/domain_operations.py` (helper `_nazwa_polowki_odcinka` — jeśli wasze sceny czytają
 nazwy gałęzi, połówki po podziale nazywają się teraz „Nazwa (1)/(2)").
+
+---
+
+## Komunikat nadzoru (2026-08-14, runda 13 — GAŁĄŹ NADZORU SCALONA DO `main`)
+
+**PR #470 scalony** (merge commit `2031fc75`) po komplecie 18 zielonych bramek CI
+(pytest, pełny vitest, pełny e2e na realnym backendzie, wszystkie guardy). Od tej chwili
+`origin/main` zawiera całość fali: konfigurator CATALOG-FIRST (S1–S5 + BLOKI-RMU),
+proweniencję katalogów (K-E, K-O, K-Q — usunięte dane wyrobu bez źródła, także w
+backendowym `audit2_catalogs.py`), normalizację napięć rodzin (K-J: `network_voltages_kv`
+i `um_classes_kv`, pole `voltage_levels` USUNIĘTE), `config_id` bez fabrykowanego
+pochodzenia (K-L), blok fabryczny RMU jako pole pierwszej klasy operacji (K-M), pola V1
+przez resolver katalogu (K-K), świeżość nakładek wynikowych z odcisków modelu (K-S),
+jeden builder specyfikacji pola (K-T) oraz kasację martwej powierzchni (K-N).
+
+**CO TO ZNACZY DLA WAS — przebazujcie się na `origin/main`.** Zmiany, które mogą Was
+dotknąć bezpośrednio:
+1. **Katalog rodzin rozdzielnic**: 18 rodzin, 95 konfiguracji fabrycznych; rodzina niesie
+   `network_voltages_kv` (napięcia sieci) i `um_classes_kv` (klasy Um) — jeśli czytacie
+   rodziny, stare pole `voltage_levels` już NIE ISTNIEJE.
+2. **Kanon glifów**: doszły `fuse` (IEC 60617 S00289) i `voltageIndicator` (VPIS),
+   addytywnie; pin odróżnialności całego rejestru obejmuje je automatycznie.
+3. **Świeżość wyników**: końcówki nakładek zwracają teraz LICZONY status
+   `FRESH/OUTDATED/NONE` z przyczyną po polsku (`result_status_reason_pl`), a nie literał.
+   Jeśli Wasza kanwa czyta status z `/api/execution/runs/{id}/results/v1` — uwaga: ten
+   schemat `ResultSetV1` świeżości NIE niesie (karta K-S2 planu, STOP B-02 u właściciela).
+4. **Nazwy połówek odcinka** po podziale: „Nazwa (1)/(2)" (helper `_nazwa_polowki_odcinka`).
+5. **Layout przestrzeni „Obliczenia"**: naprawiony defekt zapadania paneli do zera
+   wysokości (reguła na stosie `.mvd-obliczenia-warsztat > *`) — jeśli macie własne panele
+   w tym warsztacie, dziedziczą naprawę.
+
+**Konwergencja S4 → `electrical/` stoi w mocy** — czekamy na Wasz sygnał po odbiorze T0;
+karta adaptacyjna po naszej stronie (generator pola jako klient warstwy grafu
+elektrycznego, bez zmiany kontraktu podglądu) rusza wtedy natychmiast.
+
+**Granice bez zmian:** `ui/sld/v3/{electrical,compose,scene}` Wasze; `engine/`,
+`ui2/kreatory/stacja/**`, `network_model/catalog/switchgear/**` nasze.

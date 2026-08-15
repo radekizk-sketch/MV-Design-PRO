@@ -201,6 +201,14 @@ $VENV bezposrednio (poetry w worktree tworzy pusty venv).
 
 ## §1 GOTOWE DO MERGE (stan HEAD `3f367743`)
 
+> **STAN: GAŁĄŹ SCALONA DO `main` (2026-08-14, merge commit `2031fc75`).**
+> PR #470 zamknięty po komplecie 18 zielonych bramek CI (pytest, pełny vitest,
+> pełny e2e na realnym backendzie, wszystkie guardy). Karty bierze się teraz z
+> `origin/main` wg PROMPTU STARTOWEGO na górze dokumentu. Wątek nN dostał
+> komunikat rundy 13 (`docs/nn/UZGODNIENIA_WATKOW_2026-08-13.md`) z listą zmian
+> kontraktu, które go dotyczą — §4.3 (przebazowanie nN) jest ODBLOKOWANE, więc
+> karty K-B/K-C/K-D czekają już tylko na ich merge.
+>
 > **NOTA AKTUALNOŚCI (2026-08-14, wieczór):** stany §1.1 i §2 opisują chwilę
 > spisania planu — WSZYSTKIE karty w biegu i fale zostały od tego czasu
 > odebrane i scalone na gałąź nadzoru: S3, S5, BLOKI-RMU, K-K, K-N, K-E
