@@ -288,3 +288,81 @@ domena — bez czytania nazw terminali, bez domyślania się znaczenia
 prostokątów. Trzy najważniejsze: realny fit/occupancy, screen-stable
 typografia, porządna biblioteka symboli aparatów.
 WYKONANIE: Fable osobiście.
+
+---
+
+## WERDYKT B-02 dla T5b-4 (właściciel, 2026-08-15) — technika 7/10, wizual 6,5/10, mandat T5b-5
+
+**STATUS: KIERUNEK DOBRY.** NIE cofać: architektury L2, domain switching, ENM,
+solverów, rankowego layoutu, sekcji szyn, feeder-slotów, trybów
+projektowy/audyt. Problem przesunął się na: „SLD poprawnie zorganizowane, ale
+bez jakości profesjonalnego schematu". Kolejna iteracja = POLEROWANIE JĘZYKA
+SLD + DOMKNIĘCIE REPREZENTACJI TECHNICZNEJ (jakość CAD).
+
+### MANDAT T5b-5 (priorytety właściciela)
+
+- **P0-1 SYMBOL TRANSFORMATORA**: docelowy symbol w SYMBOL REGISTRY (nie
+  „dwa przypadkowo nałożone okręgi"); jawne HV TERMINAL i LV TERMINAL;
+  geometria czytelna SN→TR→nN; większy od QF, ale nie 3–4× cięższy optycznie;
+  NIE skalowany od Sn (250/630/1000/1600 kVA = ta sama geometria, różnice w
+  parametrach); screen-stable; współpracuje z LOD; label nie nachodzi na
+  symbol; hierarchia bloku: T1 (PRIMARY) · 630 kVA (PRIMARY/SECONDARY) ·
+  15/0,4 kV · Dyn11 (SECONDARY) · uk = 4% (TERTIARY); wspólna geometria w
+  CAŁYM systemie, nie per-fixtura; wariant funkcjonalny z typu domenowego/
+  rejestru, nie z lokalnego `if` w komponencie React. TR = wizualna granica
+  poziomów napięcia (15 kV ↓ T1 ↓ 0,4 kV); upstream chip lekki, TR = punkt
+  przejścia, szyna RGNN = dominanta domeny nN.
+- **P0-2 JEDEN SYMBOL REGISTRY APARATÓW**: symbol z `device.type` +
+  `device.function` + `operatingState` (NIE z oznaczenia „QF"); typy:
+  CircuitBreaker/SwitchDisconnector/Disconnector/FuseSwitch/Contactor/ATS/
+  CouplerBreaker/MCB/MCCB/ACB; jedna bazowa geometria per typ, OPEN/CLOSED
+  jako wariant tej geometrii, ten sam symbol w każdym miejscu systemu.
+- **P0-3 ROOT: JAWNE INCOMERY TR**: jeżeli QF-T1/QF-T2 istnieją w ENM —
+  renderer MUSI je pokazać; jeżeli nie istnieją — NIE wymyślać, ale oznaczyć
+  tor jako NIEKOMPLETNY: TR ↓ [brak skonfigurowanego aparatu głównego] ↓ BUS
+  + ENGINEERING WARNING. Zakaz przedstawiania konfiguracji niekompletnej
+  identycznie jak kompletnej.
+- **P0-4 ROOT: PEŁNY FEEDER PV**: jeden kontrakt DER: SOURCE/CONVERTER →
+  SWITCHING/PROTECTION → CABLE/CONNECTION → PCC → BUS; brakujące ogniwo =
+  jawne CONFIGURATION INCOMPLETE (bez fikcyjnych urządzeń).
+- **P0-5 PEŁNY TOR BOUNDARY**: jeżeli przed granicą istnieją QF+kabel — MUSZĄ
+  być pokazane (BUS→QF→K-xx→●→STACJA OBCA); boundary odcina OBCĄ geometrię,
+  nie elementy elektryczne własnej domeny.
+- **P0-6 GEOMETRIA QBC**: sprzęgło nie może być „klockiem UI"; OPEN =
+  geometria pokazuje FIZYCZNĄ przerwę, CLOSED = ciągłość toru; tekst
+  OTWARTE/ZAMKNIĘTE wyłącznie potwierdzeniem.
+- **P0-7 STATE ≠ VERDICT**: OPERATING STATE ≠ ENGINEERING VERDICT; QBC CLOSED
+  może być poprawne/niezalecane/zabronione/warunkowe (przekładnie, zaczepy,
+  grupy połączeń, przesunięcie fazowe, uk, napięcia wtórne, warunki pracy
+  równoległej); walidacja czerwona ⇒ stan pozostaje CLOSED, a SLD pokazuje
+  OSOBNO INVALID/WARNING; zakaz zielonego jako automatycznego „dobrze" za sam
+  fakt zamknięcia aparatu.
+- **P0-8 KABEL JAKO JAWNY ELEMENT TORU**: kabel z ENM (element solvera) nie
+  może znikać jako „zwykła linia" — rozpoznawalne oznaczenie (K-01) w clean
+  SLD; parametry (typ/przekrój/długość/Iz) po kliknięciu/overlay.
+- **P0-9 CZYSTKA ETYKIET TRYBU PROJEKTOWEGO**: zero „zacisk wyjściowy"/
+  „zacisk PCC-LV"/„T1 zacisk nN"/portId/terminalId w trybie projektowym
+  (należą do AUDYTU TOPOLOGII — funkcję audytu rozwijać); redukcja
+  redundancji: „RGNN-1 · 0,4 kV" albo „RGNN-1 / Rozdzielnica główna ·
+  0,4 kV", nie „RGNN-1 (rozdzielnica nN 0,4 kV) · 0,4 kV" — pełna
+  klasyfikacja w inspektorze; SLD nie jest tabelą bazy danych.
+- **P0-10 WYNIKOWA NAKŁADKA SWZ**: dowód po REALNYM biegu: QF-01 SWZ PASS,
+  QF-02 SWZ FAIL, po rozwinięciu Zs/Ikmin/Ia/ta/tlim/scenarioId/runId/
+  modelRevision; marker przypięty do konkretnego toru.
+
+P1 (w tle iteracji): subtelna 3-poziomowa hierarchia szyn (MAIN/SUB/
+LOCAL-PCC); DER grammar (PV/BESS/GENSET/UPS/WIND jednoznaczne funkcjonalnie,
+kierunek P w overlay Load Flow: ↑ export / ↓ import); fit — dopracować
+vertical centering, rozsądny max scale, równowagę whitespace, centrowanie
+małych fixtur (bez mechanicznego powiększania); overlay UKŁAD SIECIOWY/
+OCHRONA (TN-C/TN-S/TN-C-S/TT/IT, punkt neutralny, PEN/PE/N, miejsce
+rozdziału, uziemienie) — kolejny engineering overlay.
+
+**KRYTERIUM ODBIORU**: bez żadnego tekstu użytkownik rozpoznaje:
+TRANSFORMATOR, WYŁĄCZNIK, ROZŁĄCZNIK, SPRZĘGŁO, KABEL, DER, BUS, BOUNDARY.
+„Jeżeli do rozpoznania elementu nadal potrzebny jest napis obok symbolu,
+warstwa SLD nie jest jeszcze zakończona."
+
+DECYZJA: nie przebudowywać ponownie layoutu; nie zmieniać ENM dla wyglądu;
+nie wymyślać aparatów; nie ukrywać aparatów istniejących. Największy brak
+wizualny: SYMBOL GRAMMAR (najbardziej widoczny przykład: transformator).
