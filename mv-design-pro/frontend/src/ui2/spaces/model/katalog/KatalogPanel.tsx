@@ -12,6 +12,8 @@
 import { useEffect, useMemo, useState } from 'react';
 
 import './katalog.css';
+import '../../../kryteria/kryteria.css';
+import { SekcjaStarzeniaKabla, SekcjaStratTransformatora } from '../../../kryteria';
 import {
   KATEGORIE,
   filtrujPozycje,
@@ -49,6 +51,11 @@ export function KatalogPanel({
   const [fraza, setFraza] = useState('');
   const [producent, setProducent] = useState<string | null>(null);
   const [wybranyId, setWybranyId] = useState<string | null>(null);
+  // KD-3 poz. 6: dane wejściowe kryteriów liczonych przez backend dla WYBRANEGO
+  // typu. Trzymane w panelu, bo dotyczą pytania „jak ten typ zachowa się w moim
+  // przypadku", a nie samej pozycji katalogowej (katalog pozostaje niezmienny).
+  const [temperaturaPracyC, setTemperaturaPracyC] = useState<number | null>(null);
+  const [beta, setBeta] = useState<number | null>(null);
 
   useEffect(() => {
     let aktywne = true;
@@ -160,6 +167,25 @@ export function KatalogPanel({
               kategoria={kategoria}
               poleParametrow={metadanaKategorii(kategoria).poleParametrow}
             />
+            {/* Kryteria właściwe TYPOWI (KD-3 poz. 6): starzenie izolacji i straty
+                to pytania zadawane PRZY WYBORZE typu, więc odpowiedź stoi tam,
+                gdzie projektant widzi komplet danych znamionowych. Liczy backend. */}
+            {kategoria === 'KABEL' ? (
+              <SekcjaStarzeniaKabla
+                key={wybrany.id}
+                typId={wybrany.id}
+                temperaturaPracyC={temperaturaPracyC}
+                onZmianaTemperatury={setTemperaturaPracyC}
+              />
+            ) : null}
+            {kategoria === 'TRANSFORMATOR' ? (
+              <SekcjaStratTransformatora
+                key={wybrany.id}
+                typId={wybrany.id}
+                beta={beta}
+                onZmianaBety={setBeta}
+              />
+            ) : null}
             <GdzieUzyty
               typId={wybrany.id}
               uzycia={uzyciaSnapshot}

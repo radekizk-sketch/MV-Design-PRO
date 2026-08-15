@@ -1,16 +1,37 @@
 """
-Katalogi audytu 2 (mirror frontendowych katalogow z `frontend/src/ui/network-build/station-der/`).
+Katalogi audytu 2 — pozycje, ktore projektant wybiera w konfiguracji stacji.
 
 7 katalogow:
   - BESS_OPERATION_MODES (eng.10): tryby pracy magazynu (peak shaving / FCR / aFRR / etc.)
   - TAP_CHANGERS (eng.13): przelaczniki zaczepow OLTC/DETC
-  - HV_FUSES (eng.17): bezpieczniki HV/SN
-  - DEVICE_WITHSTAND (eng.18): wytrzymalosc aparatury I_dyn / I_th (IEC 60909)
-  - PF_CURVES (eng.9): krzywe P(f) regulacja czestotliwosci (NC RfG)
-  - BLOCK_TRANSFORMERS (B.5): block-trafo dla DER (PV/BESS/FW)
-  - MV_NEUTRAL_GROUNDINGS (B.1): typy uziemienia neutralnego SN
+  - HV_FUSES (eng.17): wkladki topikowe SN
+  - DEVICE_WITHSTAND (eng.18): wytrzymalosc zwarciowa aparatury (IEC 62271-1 / IEC 60909)
+  - PF_CURVES (eng.9): nastawy trybu czestotliwosciowego LFSM-O / FSM (NC RfG)
+  - BLOCK_TRANSFORMERS (B.5): transformatory dedykowane DER (PV/BESS/FW)
+  - MV_NEUTRAL_GROUNDINGS (B.1): warianty uziemienia punktu neutralnego SN
 
-Zasada: identyczna struktura jak frontend, deterministyczne dane (frozen dataclass).
+AUTORYTET DANYCH I PROWENIENCJA (karta K-Q, 2026-08-14) — REGULA TEGO PLIKU
+==========================================================================
+Ten modul jest ZRODLEM danych dla `/api/v1/catalog/audit2` i dla mirrorow we
+frontendzie, wiec obowiazuje go ostrzejsza regula niz warstwe prezentacji:
+
+1. LICZBA BEZ ZRODLA NIE ISTNIEJE. Kazda wartosc liczbowa jest albo (a)
+   parametrem DEFINIUJACYM wariant, ktory projektant wybiera i ktory widnieje
+   w nazwie pozycji (jak R rezystora uziemiajacego), albo (b) danina z
+   nazwanego zrodla: normy z podanym artykulem/tablica albo karty producenta z
+   adresem http(s). Wartosc, ktora nie jest ani jednym, ani drugim, zostaje
+   USUNIETA — nigdy zastapiona przyblizeniem.
+2. BRAK JEST JAWNY. Usunieta dana zostawia jawny stan braku z powodem po polsku
+   (wzorzec `BRAK_PASMA_BEZPIECZNIKA` z karty N-D5-FUSE), a nie ciche zero i nie
+   zniknieta pozycja — ciche zniknieciu to inne klamstwo niz zmyslona liczba.
+3. ZERO CUDZEJ TOZSAMOSCI. Do wlasnych liczb nie doklejamy cudzego nazwiska:
+   ani producenta (ABB / Siemens / Schneider), ani operatora (PSE / Energa /
+   Tauron), ani wymagania normy, ktorego nie da sie wskazac w jej tekscie.
+
+Historia: karta K-O usunela te sama klase fabrykacji z frontendu
+(`frontend/src/ui/network-build/station-der/`), a karta K-E z katalogu wkladek
+SN. Ten plik niosl ja dalej — z tymi samymi identyfikatorami pozycji i tymi
+samymi liczbami — i serwowal ja przez API.
 """
 
 from __future__ import annotations
@@ -18,9 +39,45 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Literal
 
+#: Wersja katalogow audytu 2 = DATA PRZEGLADU PROWENIENCJI (ISO-8601).
+#:
+#: Do karty K-Q pozycje deklarowaly `catalog_version = "2024.1"` — numer, ktory
+#: nie odpowiadal zadnemu wydaniu zadnego zrodla i ktorego nie dalo sie z niczym
+#: skonfrontowac. Wersja jest teraz MIERZALNA: to dzien, w ktorym kazda pozycja
+#: zostala zestawiona ze swoim zrodlem (albo z niego usunieta). Kolejna zmiana
+#: danych podnosi te date razem z wpisem, skad dana pochodzi.
+AUDIT2_CATALOG_VERSION = "2026-08-14"
+
 # =============================================================================
 # 1. BESS Operation Mode Catalog (eng.10)
 # =============================================================================
+#
+# PROWENIENCJA (karta K-Q, 2026-08-14). Pozycja tego katalogu opisuje USLUGE,
+# ktora magazyn ma swiadczyc — jej nazwe, sens i wymagania wobec przeksztaltnika.
+# To sa dane definicyjne i one zostaja. USUNIETE zostaly cztery pola, ktore
+# udawaly dane, a byly zgadniete:
+#
+#   * `reserved_capacity_percent` — ile mocy magazyn trzyma w rezerwie. To
+#     DECYZJA PROJEKTOWA konkretnego projektu (i przedmiot umowy rynkowej), a nie
+#     wlasnosc trybu pracy. Liczba wchodzila do modelu: warstwa `solver_input`
+#     ustawiala z niej `inverter_source.reserved_capacity_percent` przed
+#     rozplywem — czyli zgadniete 30 % / 50 % / 100 % zmienialo wynik obliczen.
+#   * `max_duration_h` — czas podtrzymania (0,25-8 h) wynika z POJEMNOSCI
+#     konkretnego magazynu, nie z nazwy uslugi.
+#   * `response_time_s` — czas reakcji dla uslug bilansujacych okresla regulamin
+#     rynku operatora systemu przesylowego; dla „peak shaving" czy autokonsumpcji
+#     nikt go nie okresla wcale. Zadnego z tych dokumentow nie dalo sie wskazac
+#     przy zadnej z pozycji, wiec wszystkie wartosci byly wpisane z reki.
+#   * `required_for_nc_rfg_modules` — deklaracja, ze rozporzadzenie NC RfG WYMAGA
+#     danej uslugi od modulu typu C / D. Sprawdzone na tekscie rozporzadzenia
+#     2016/631: ono nie nakazuje modulom wytworczym swiadczenia FCR-N, FCR-D,
+#     aFRR ani mFRR — to produkty rynku bilansujacego, a nie wymagania przylaczenia.
+#     Fabrykacja normatywna: werdykt „brakuje wymaganego trybu dla modulu D"
+#     trafial do PAKIETU DOWODOWEGO jako niezgodnosc z norma, ktorej nie ma.
+#
+# Zostaja `requires_four_quadrant` / `requires_grid_forming`: to nie cudza dana,
+# tylko wlasnosc samej uslugi (rezerwa symetryczna wymaga pracy w czterech
+# cwiartkach; praca wyspowa wymaga przeksztaltnika tworzacego napiecie).
 
 BessModeCode = Literal[
     "peak_shaving",
@@ -44,10 +101,6 @@ class BessOperationModeItem:
     label_pl: str
     description_pl: str
     mode_code: BessModeCode
-    reserved_capacity_percent: float
-    response_time_s: float
-    max_duration_h: float
-    required_for_nc_rfg_modules: tuple[str, ...]
     requires_four_quadrant: bool
     requires_grid_forming: bool
 
@@ -59,10 +112,6 @@ class BessOperationModeItem:
             "label_pl": self.label_pl,
             "description_pl": self.description_pl,
             "mode_code": self.mode_code,
-            "reserved_capacity_percent": self.reserved_capacity_percent,
-            "response_time_s": self.response_time_s,
-            "max_duration_h": self.max_duration_h,
-            "required_for_nc_rfg_modules": list(self.required_for_nc_rfg_modules),
             "requires_four_quadrant": self.requires_four_quadrant,
             "requires_grid_forming": self.requires_grid_forming,
         }
@@ -72,153 +121,126 @@ BESS_OPERATION_MODE_CATALOG: tuple[BessOperationModeItem, ...] = (
     BessOperationModeItem(
         id="mode_peak_shaving",
         catalog_namespace="bess_operation_mode",
-        catalog_version="2024.1",
+        catalog_version=AUDIT2_CATALOG_VERSION,
         label_pl="Peak shaving (redukcja szczytu)",
         description_pl=(
-            "Wyladowanie BESS podczas szczytow obciazenia odbiorcy w celu redukcji "
-            "mocy szczytowej i oplat dystrybucyjnych (taryfa BD/CD)."
+            "Wyładowanie magazynu w szczytach obciążenia odbiorcy, żeby obniżyć "
+            "moc szczytową i opłaty dystrybucyjne."
         ),
         mode_code="peak_shaving",
-        reserved_capacity_percent=30,
-        response_time_s=60,
-        max_duration_h=4,
-        required_for_nc_rfg_modules=(),
         requires_four_quadrant=False,
         requires_grid_forming=False,
     ),
     BessOperationModeItem(
         id="mode_arbitrage",
         catalog_namespace="bess_operation_mode",
-        catalog_version="2024.1",
-        label_pl="Arbitraz cenowy (energy time-shift)",
+        catalog_version=AUDIT2_CATALOG_VERSION,
+        label_pl="Arbitraż cenowy (przesunięcie energii w czasie)",
         description_pl=(
-            "Ladowanie w godzinach niskich cen, wyladowanie w godzinach drogich. "
-            "Wymaga TGE / RB cennika spot."
+            "Ładowanie w godzinach niskich cen energii, wyładowanie w godzinach "
+            "wysokich. Opłacalność zależy od cennika rynku, który nie jest daną "
+            "katalogową."
         ),
         mode_code="arbitrage",
-        reserved_capacity_percent=0,
-        response_time_s=300,
-        max_duration_h=8,
-        required_for_nc_rfg_modules=(),
         requires_four_quadrant=False,
         requires_grid_forming=False,
     ),
     BessOperationModeItem(
         id="mode_fcr_n",
         catalog_namespace="bess_operation_mode",
-        catalog_version="2024.1",
-        label_pl="FCR-N (rezerwa pierwotna normalna)",
+        catalog_version=AUDIT2_CATALOG_VERSION,
+        label_pl="FCR-N (rezerwa pierwotna symetryczna)",
         description_pl=(
-            "Symetryczna rezerwa pierwotna +/-50 mHz, droop 5%. NC RfG Art. 13. "
-            "Reakcja w pelni w 30 s."
+            "Symetryczna rezerwa pierwotna: magazyn zmienia moc czynną w obie "
+            "strony wokół częstotliwości znamionowej. Wymagany czas reakcji, "
+            "wielkość rezerwy i statyzm określa regulamin rynku bilansującego "
+            "operatora systemu przesyłowego — nie ten katalog."
         ),
         mode_code="fcr_n",
-        reserved_capacity_percent=50,
-        response_time_s=30,
-        max_duration_h=0.5,
-        required_for_nc_rfg_modules=("C", "D"),
         requires_four_quadrant=True,
         requires_grid_forming=False,
     ),
     BessOperationModeItem(
         id="mode_fcr_d_up",
         catalog_namespace="bess_operation_mode",
-        catalog_version="2024.1",
-        label_pl="FCR-D (rezerwa awaryjna w gore)",
+        catalog_version=AUDIT2_CATALOG_VERSION,
+        label_pl="FCR-D (rezerwa awaryjna w górę)",
         description_pl=(
-            "Rezerwa pierwotna asymetryczna w gore dla podczestotliwosciowych "
-            "zaklocen (f<49.5 Hz). 50% w 5 s, 100% w 30 s."
+            "Rezerwa pierwotna asymetryczna w górę, uruchamiana przy zakłóceniu "
+            "podczęstotliwościowym. Próg uruchomienia i profil narastania mocy "
+            "określa regulamin rynku bilansującego, nie ten katalog."
         ),
         mode_code="fcr_d_up",
-        reserved_capacity_percent=100,
-        response_time_s=5,
-        max_duration_h=0.25,
-        required_for_nc_rfg_modules=("D",),
         requires_four_quadrant=True,
         requires_grid_forming=False,
     ),
     BessOperationModeItem(
         id="mode_afrr",
         catalog_namespace="bess_operation_mode",
-        catalog_version="2024.1",
-        label_pl="aFRR (rezerwa wtorna automatyczna)",
+        catalog_version=AUDIT2_CATALOG_VERSION,
+        label_pl="aFRR (rezerwa wtórna automatyczna)",
         description_pl=(
-            "Rezerwa wtorna sterowana sygnalem ACE od PSE. Reakcja w 5 min, "
-            "pelna w 15 min. Symetryczna +/-. NC RfG Art. 15."
+            "Rezerwa wtórna sterowana automatycznie sygnałem operatora systemu "
+            "przesyłowego, symetryczna w obie strony. Czasy aktywacji określa "
+            "regulamin rynku bilansującego, nie ten katalog."
         ),
         mode_code="afrr",
-        reserved_capacity_percent=70,
-        response_time_s=300,
-        max_duration_h=1,
-        required_for_nc_rfg_modules=("D",),
         requires_four_quadrant=True,
         requires_grid_forming=False,
     ),
     BessOperationModeItem(
         id="mode_mfrr",
         catalog_namespace="bess_operation_mode",
-        catalog_version="2024.1",
-        label_pl="mFRR (rezerwa wtorna reczna)",
+        catalog_version=AUDIT2_CATALOG_VERSION,
+        label_pl="mFRR (rezerwa wtórna ręczna)",
         description_pl=(
-            "Rezerwa reczna uruchamiana komenda dyspozytora PSE. Pelna aktywacja "
-            "w 12.5 min. Czas trwania >= 4h."
+            "Rezerwa uruchamiana ręcznie komendą dyspozytora operatora systemu "
+            "przesyłowego. Czas aktywacji i wymagany czas podtrzymania określa "
+            "regulamin rynku bilansującego, nie ten katalog."
         ),
         mode_code="mfrr",
-        reserved_capacity_percent=100,
-        response_time_s=750,
-        max_duration_h=4,
-        required_for_nc_rfg_modules=(),
         requires_four_quadrant=False,
         requires_grid_forming=False,
     ),
     BessOperationModeItem(
         id="mode_voltage_support",
         catalog_namespace="bess_operation_mode",
-        catalog_version="2024.1",
-        label_pl="Wsparcie napieciowe Q(U)",
+        catalog_version=AUDIT2_CATALOG_VERSION,
+        label_pl="Wsparcie napięciowe Q(U)",
         description_pl=(
-            "Regulacja mocy biernej w funkcji napiecia (Q(U) static). NC RfG Art. 21. "
-            "Wymaga 4-quadrant, regulacja +/-0.33 S_n."
+            "Regulacja mocy biernej w funkcji napięcia w punkcie przyłączenia "
+            "(charakterystyka Q(U)). Wymaga przekształtnika pracującego w czterech "
+            "ćwiartkach; zakres regulacji wynika z karty przekształtnika i z "
+            "warunków przyłączenia, nie z tego katalogu."
         ),
         mode_code="voltage_support",
-        reserved_capacity_percent=0,
-        response_time_s=1,
-        max_duration_h=24,
-        required_for_nc_rfg_modules=("B", "C", "D"),
         requires_four_quadrant=True,
         requires_grid_forming=False,
     ),
     BessOperationModeItem(
         id="mode_island_backup",
         catalog_namespace="bess_operation_mode",
-        catalog_version="2024.1",
-        label_pl="Tryb wyspowy (grid-forming backup)",
+        catalog_version=AUDIT2_CATALOG_VERSION,
+        label_pl="Praca wyspowa (przekształtnik tworzący napięcie)",
         description_pl=(
-            "Tworzenie napiecia po awarii zasilania. Wymaga grid-forming PCS. "
-            "Synchronizacja z siecia po powrocie zasilania (synchrocheck 25)."
+            "Tworzenie napięcia po zaniku zasilania. Wymaga przekształtnika "
+            "tworzącego napięcie (grid-forming). Powrót do pracy równoległej przez "
+            "kontrolę synchronizmu (funkcja 25)."
         ),
         mode_code="island_backup",
-        reserved_capacity_percent=80,
-        response_time_s=0.05,
-        max_duration_h=4,
-        required_for_nc_rfg_modules=(),
         requires_four_quadrant=True,
         requires_grid_forming=True,
     ),
     BessOperationModeItem(
         id="mode_self_consumption",
         catalog_namespace="bess_operation_mode",
-        catalog_version="2024.1",
-        label_pl="Autokonsumpcja PV+BESS (self-consumption)",
+        catalog_version=AUDIT2_CATALOG_VERSION,
+        label_pl="Autokonsumpcja PV z magazynem",
         description_pl=(
-            "Maksymalizacja autokonsumpcji PV. Ladowanie nadwyzek dziennej generacji, "
-            "wyladowanie wieczorne. Typowe dla DER po nN."
+            "Maksymalizacja autokonsumpcji instalacji PV: ładowanie nadwyżek "
+            "generacji dziennej, wyładowanie wieczorne."
         ),
         mode_code="self_consumption",
-        reserved_capacity_percent=0,
-        response_time_s=30,
-        max_duration_h=8,
-        required_for_nc_rfg_modules=(),
         requires_four_quadrant=False,
         requires_grid_forming=False,
     ),
@@ -232,6 +254,21 @@ def get_bess_operation_mode(mode_id: str) -> BessOperationModeItem | None:
 # =============================================================================
 # 2. Tap Changer Catalog (eng.13)
 # =============================================================================
+#
+# PROWENIENCJA (karta K-Q, 2026-08-14). Pozycja przelacznika zaczepow jest
+# WARIANTEM REGULACJI, ktory projektant zadaje: liczba zaczepow, skok i zakres
+# widnieja w jej nazwie i sa ze soba spojne (zakres = (liczba-1)/2 * skok — pin
+# w `tests/network_model/test_tap_changer_model.py`). To parametry definiujace,
+# nie cudza zmierzona wlasnosc, wiec zostaja.
+#
+# USUNIETE jako dane eksploatacyjne KONKRETNEGO WYROBU bez zadnego zrodla:
+#   * `switching_time_s` — czas przelaczenia (5 / 4 / 3 s) podaje karta
+#     przelacznika (np. mechanizm napedowy producenta), nie wariant regulacji;
+#   * `operations_before_maintenance_thousand` — resurs miedzy przegladami
+#     (100 / 80 / 50 tys. operacji) to gwarancja producenta, a nie liczba, ktora
+#     wolno zgadnac. Zaden konsument produkcyjny jej nie czytal (pomiar karty:
+#     `tap_changer_fields_from_catalog` bierze tylko typ, liczbe zaczepow,
+#     pozycje neutralna, skok, strone regulacji i obsluge AVR).
 
 
 @dataclass(frozen=True)
@@ -246,8 +283,6 @@ class TapChangerItem:
     step_percent: float
     range_percent: float
     regulated_side: Literal["hv", "lv"]
-    switching_time_s: float
-    operations_before_maintenance_thousand: int
     supports_avr: bool
     applicable_to: tuple[str, ...]
 
@@ -263,8 +298,6 @@ class TapChangerItem:
             "step_percent": self.step_percent,
             "range_percent": self.range_percent,
             "regulated_side": self.regulated_side,
-            "switching_time_s": self.switching_time_s,
-            "operations_before_maintenance_thousand": self.operations_before_maintenance_thousand,
             "supports_avr": self.supports_avr,
             "applicable_to": list(self.applicable_to),
         }
@@ -274,64 +307,56 @@ TAP_CHANGER_CATALOG: tuple[TapChangerItem, ...] = (
     TapChangerItem(
         id="tc_oltc_110sn_19_125",
         catalog_namespace="tap_changer",
-        catalog_version="2024.1",
-        label_pl="OLTC 110/SN * 19 zaczepow * +/-11.25% * AVR",
+        catalog_version=AUDIT2_CATALOG_VERSION,
+        label_pl="OLTC 110/SN · 19 zaczepów · ±11,25% · AVR",
         type="oltc",
         neutral_position=0,
         tap_count=19,
         step_percent=1.25,
         range_percent=11.25,
         regulated_side="hv",
-        switching_time_s=5,
-        operations_before_maintenance_thousand=100,
         supports_avr=True,
         applicable_to=("transformer_110_15", "transformer_110_20"),
     ),
     TapChangerItem(
         id="tc_oltc_110sn_17_125",
         catalog_namespace="tap_changer",
-        catalog_version="2024.1",
-        label_pl="OLTC 110/SN * 17 zaczepow * +/-10% * AVR",
+        catalog_version=AUDIT2_CATALOG_VERSION,
+        label_pl="OLTC 110/SN · 17 zaczepów · ±10% · AVR",
         type="oltc",
         neutral_position=0,
         tap_count=17,
         step_percent=1.25,
         range_percent=10.0,
         regulated_side="hv",
-        switching_time_s=4,
-        operations_before_maintenance_thousand=80,
         supports_avr=True,
         applicable_to=("transformer_110_15", "transformer_110_20"),
     ),
     TapChangerItem(
         id="tc_detc_snnn_5_25",
         catalog_namespace="tap_changer",
-        catalog_version="2024.1",
-        label_pl="DETC SN/nN * 5 zaczepow * +/-5% (off-load)",
+        catalog_version=AUDIT2_CATALOG_VERSION,
+        label_pl="DETC SN/nN · 5 zaczepów · ±5% (off-load)",
         type="detc",
         neutral_position=0,
         tap_count=5,
         step_percent=2.5,
         range_percent=5.0,
         regulated_side="hv",
-        switching_time_s=0,
-        operations_before_maintenance_thousand=1,
         supports_avr=False,
         applicable_to=("transformer_15_04", "block_transformer"),
     ),
     TapChangerItem(
         id="tc_oltc_snnn_9_15",
         catalog_namespace="tap_changer",
-        catalog_version="2024.1",
-        label_pl="OLTC SN/nN * 9 zaczepow * +/-6% * AVR (przemyslowe)",
+        catalog_version=AUDIT2_CATALOG_VERSION,
+        label_pl="OLTC SN/nN · 9 zaczepów · ±6% · AVR (przemysłowe)",
         type="oltc",
         neutral_position=0,
         tap_count=9,
         step_percent=1.5,
         range_percent=6.0,
         regulated_side="hv",
-        switching_time_s=3,
-        operations_before_maintenance_thousand=50,
         supports_avr=True,
         applicable_to=("transformer_15_04", "block_transformer"),
     ),
@@ -372,6 +397,65 @@ def tap_changer_fields_from_catalog(
 # =============================================================================
 # 3. HV Fuse Catalog (eng.17)
 # =============================================================================
+#
+# PROWENIENCJA (karta K-Q, 2026-08-14) — domkniecie klasy po stronie autorytetu.
+# Pozycje tego katalogu nioslly komplet danych wyrobu BEZ ZADNEGO zrodla:
+# producenta (ABB / Siemens / Schneider), prad najmniejszy i najwiekszy
+# wylaczalny, calke I2t oraz DWA punkty pasma czasowo-pradowego przy 6xIn.
+# Karta K-E zmierzyla to na zrodle: producenci publikuja charakterystyki t-I
+# wkladek SN WYLACZNIE jako wykresy log-log (karta ETI VV THERMO mowi wprost
+# „I/t Characteristics According to the curves"), wiec punkt pasma spisany
+# „z glowy" nie istnieje. Wyprowadzenie czasu z calki I2t tez odpada: zaleznosc
+# t = I2t/I^2 obowiazuje wylacznie w adiabatycznym zakresie topienia, a calka
+# wylaczania zawiera energie luku — odtworzony czas bylby fabrykacja fizyki.
+#
+# Rozstrzygniecie identyczne jak w karcie K-O na froncie: WARTOSC BEZ ZRODLA NIE
+# ISTNIEJE. Pola wyrobu usuniete, pozycja zostala tym, czym naprawde jest —
+# OZNACZENIEM ZNAMIONOWYM wg IEC 60282-1 (napiecie / prad / klasa /
+# zastosowanie), ktore projektant wybiera do pola. Pasmo jest jawnym brakiem
+# (`pasmo_tcc = None`) wzorem `BRAK_PASMA_BEZPIECZNIKA`: pozycja NIE znika z
+# katalogu (ciche zniknieciu to inne klamstwo), tylko mowi wprost, czego brakuje
+# i skad to wziac. Wkladki z realna proweniencja zyja osobno — `SWITCH_FUSES`
+# w `mv_switch_catalog.py` (ETI VV, nr kodowy + wymiar e + adres karty).
+
+#: Powod braku pasma — jezyk wspolny z `BRAK_PASMA_BEZPIECZNIKA` warstwy analizy
+#: (`application/analyses/protection/coordination/analyzer.py`, karta N-D5-FUSE).
+POWOD_BRAK_PASMA_WKLADKI_PL = (
+    "Pasmo topikowe (krzywa przedłukowa i krzywa wyłączania) odczytuje się z karty "
+    "katalogowej producenta wg IEC 60282-1. Ta pozycja katalogowa nie niesie punktów "
+    "pasma, więc czasu zadziałania nie wyznaczono — nie zastąpiono go żadnym "
+    "przybliżeniem."
+)
+
+#: Krotka etykieta stanu do tabel i kart.
+ETYKIETA_BRAK_PASMA_WKLADKI_PL = "pasmo wymaga karty producenta"
+
+
+@dataclass(frozen=True)
+class HvFusePasmoTcc:
+    """Pasmo czasowo-pradowe wkladki.
+
+    Typ WYMUSZA pare: punkty istnieja wylacznie razem z adresem tabeli
+    producenta, z ktorej je przepisano. Dzieki temu nie da sie dopisac punktow
+    bez proweniencji, nie zmieniajac typu.
+    """
+
+    #: Adres (http/https) tabeli producenta z punktami pasma.
+    zrodlo_url: str
+    #: Pary (prad [A], czas [s]) przepisane z tej tabeli.
+    punkty: tuple[tuple[float, float], ...]
+
+    def __post_init__(self) -> None:
+        if not self.zrodlo_url.startswith(("http://", "https://")):
+            raise ValueError("Pasmo wkladki wymaga adresu http(s) tabeli producenta.")
+        if not self.punkty:
+            raise ValueError("Pasmo bez punktow nie jest pasmem — uzyj `pasmo_tcc = None`.")
+
+    def to_dict(self) -> dict:
+        return {
+            "zrodlo_url": self.zrodlo_url,
+            "punkty": [{"prad_a": p, "czas_s": t} for p, t in self.punkty],
+        }
 
 
 @dataclass(frozen=True)
@@ -380,16 +464,13 @@ class HvFuseItem:
     catalog_namespace: str
     catalog_version: str
     label_pl: str
-    manufacturer: str
     nominal_voltage_kv: float
     nominal_current_a: float
     fuse_class: Literal["general_purpose", "full_range", "back_up"]
-    i_min_breaking_a: float
-    i_max_breaking_ka: float
-    i2t_total_a2s: float
-    pre_arcing_time_at_6in_ms: float
-    total_clearing_time_at_6in_ms: float
     application: Literal["transformer", "feeder", "motor", "capacitor"]
+    #: Pasmo t-I albo `None`, gdy pozycja go nie niesie. Dzis KAZDA pozycja ma
+    #: `None` — patrz nota proweniencji powyzej.
+    pasmo_tcc: HvFusePasmoTcc | None = None
 
     def to_dict(self) -> dict:
         return {
@@ -397,16 +478,17 @@ class HvFuseItem:
             "catalog_namespace": self.catalog_namespace,
             "catalog_version": self.catalog_version,
             "label_pl": self.label_pl,
-            "manufacturer": self.manufacturer,
             "nominal_voltage_kv": self.nominal_voltage_kv,
             "nominal_current_a": self.nominal_current_a,
             "class": self.fuse_class,
-            "i_min_breaking_a": self.i_min_breaking_a,
-            "i_max_breaking_ka": self.i_max_breaking_ka,
-            "i2t_total_a2s": self.i2t_total_a2s,
-            "pre_arcing_time_at_6in_ms": self.pre_arcing_time_at_6in_ms,
-            "total_clearing_time_at_6in_ms": self.total_clearing_time_at_6in_ms,
             "application": self.application,
+            "pasmo_tcc": self.pasmo_tcc.to_dict() if self.pasmo_tcc is not None else None,
+            "pasmo_brak_powod_pl": (
+                None if self.pasmo_tcc is not None else POWOD_BRAK_PASMA_WKLADKI_PL
+            ),
+            "pasmo_brak_etykieta_pl": (
+                None if self.pasmo_tcc is not None else ETYKIETA_BRAK_PASMA_WKLADKI_PL
+            ),
         }
 
 
@@ -414,65 +496,41 @@ HV_FUSE_CATALOG: tuple[HvFuseItem, ...] = (
     HvFuseItem(
         id="fuse_15kv_50a_full",
         catalog_namespace="hv_fuse",
-        catalog_version="2024.1",
-        label_pl="Bezpiecznik SN 15 kV / 50 A * full-range * TRAFO 630 kVA",
-        manufacturer="ABB",
+        catalog_version=AUDIT2_CATALOG_VERSION,
+        label_pl="Bezpiecznik SN 15 kV / 50 A · full-range · pole transformatorowe",
         nominal_voltage_kv=15,
         nominal_current_a=50,
         fuse_class="full_range",
-        i_min_breaking_a=200,
-        i_max_breaking_ka=50,
-        i2t_total_a2s=14000,
-        pre_arcing_time_at_6in_ms=30,
-        total_clearing_time_at_6in_ms=50,
         application="transformer",
     ),
     HvFuseItem(
         id="fuse_15kv_100a_full",
         catalog_namespace="hv_fuse",
-        catalog_version="2024.1",
-        label_pl="Bezpiecznik SN 15 kV / 100 A * full-range * TRAFO 1250 kVA",
-        manufacturer="Siemens",
+        catalog_version=AUDIT2_CATALOG_VERSION,
+        label_pl="Bezpiecznik SN 15 kV / 100 A · full-range · pole transformatorowe",
         nominal_voltage_kv=15,
         nominal_current_a=100,
         fuse_class="full_range",
-        i_min_breaking_a=400,
-        i_max_breaking_ka=50,
-        i2t_total_a2s=56000,
-        pre_arcing_time_at_6in_ms=25,
-        total_clearing_time_at_6in_ms=45,
         application="transformer",
     ),
     HvFuseItem(
         id="fuse_20kv_25a_gp",
         catalog_namespace="hv_fuse",
-        catalog_version="2024.1",
-        label_pl="Bezpiecznik SN 20 kV / 25 A * general-purpose * pole odplywowe",
-        manufacturer="Schneider",
+        catalog_version=AUDIT2_CATALOG_VERSION,
+        label_pl="Bezpiecznik SN 20 kV / 25 A · general-purpose · pole odpływowe",
         nominal_voltage_kv=20,
         nominal_current_a=25,
         fuse_class="general_purpose",
-        i_min_breaking_a=75,
-        i_max_breaking_ka=25,
-        i2t_total_a2s=3500,
-        pre_arcing_time_at_6in_ms=35,
-        total_clearing_time_at_6in_ms=60,
         application="feeder",
     ),
     HvFuseItem(
         id="fuse_15kv_160a_backup",
         catalog_namespace="hv_fuse",
-        catalog_version="2024.1",
-        label_pl="Bezpiecznik SN 15 kV / 160 A * back-up (kondensator)",
-        manufacturer="ABB",
+        catalog_version=AUDIT2_CATALOG_VERSION,
+        label_pl="Bezpiecznik SN 15 kV / 160 A · back-up · bateria kondensatorów",
         nominal_voltage_kv=15,
         nominal_current_a=160,
         fuse_class="back_up",
-        i_min_breaking_a=1000,
-        i_max_breaking_ka=50,
-        i2t_total_a2s=145000,
-        pre_arcing_time_at_6in_ms=20,
-        total_clearing_time_at_6in_ms=40,
         application="capacitor",
     ),
 )
@@ -485,6 +543,52 @@ def get_hv_fuse(fuse_id: str) -> HvFuseItem | None:
 # =============================================================================
 # 4. Device Withstand Catalog (eng.18)
 # =============================================================================
+#
+# PROWENIENCJA (karta K-Q, 2026-08-14). Ten katalog NIE opisuje wyrobu zadnego
+# producenta — opisuje KLASE WYTRZYMALOSCI, ktora projektant zadaje aparaturze
+# pola, i dlatego jego liczby maja zrodlo normatywne, a nie karte katalogowa:
+#
+#   * `i_th_ka` — znamionowy prad krotkotrwaly wytrzymywany, WYLACZNIE z
+#     znormalizowanego szeregu (6,3 - 8 - 10 - 12,5 - 16 - 20 - 25 - 31,5 - 40 -
+#     50 - 63 kA);
+#   * `i_th_duration_s` — znamionowy czas trwania zwarcia: wartosc standardowa
+#     1 s, wartosci zalecane 0,5 / 2 / 3 s;
+#   * `i_dyn_ka` — NIE JEST WPISYWANY RECZNIE. Wynika ze szczytowej wartosci
+#     pradu krotkotrwalego: I_dyn = 2,5 * I_th dla 50 Hz (IEC 62271-1 § 4.6).
+#     Jedno zrodlo prawdy: `_i_dyn_z_i_th()`. Do tej karty pozycje nioslly
+#     wartosci wpisane z reki (63 kA przy 25 kA, 80 kA przy 31,5 kA), ktorych
+#     nie dawalo sie wyprowadzic ani z normy (62,5 i 78,75 kA), ani z karty
+#     zadnego producenta — a werdykt „aparatura wytrzymala" trafia z nich do
+#     PAKIETU DOWODOWEGO. Wartosc normatywna jest przy tym ZACHOWAWCZA: nizszy
+#     limit moze werdykt tylko zaostrzyc, nigdy falszywie zaliczyc.
+#
+# Zrodlo publiczne, na ktorym zmierzono obie reguly (§ 4.6 i § 4.7 IEC 62271-1
+# zacytowane wprost, wraz z szeregiem znormalizowanym): Schneider Electric,
+# „Medium Voltage technical guide" AMTED300014EN, s. 50 —
+# https://www.cablejoints.co.uk/upload/Schneider--Medium-Voltage-Equipment-Design-Guide.pdf
+
+#: Adres publicznego przewodnika, na ktorym zweryfikowano regule 2,5 x I_th.
+IEC_62271_1_PRZEWODNIK_URL = (
+    "https://www.cablejoints.co.uk/upload/Schneider--Medium-Voltage-Equipment-Design-Guide.pdf"
+)
+
+#: Znormalizowany szereg znamionowych pradow krotkotrwalych wytrzymywanych [kA].
+IEC_62271_1_SZEREG_I_TH_KA = (6.3, 8.0, 10.0, 12.5, 16.0, 20.0, 25.0, 31.5, 40.0, 50.0, 63.0)
+
+#: Znormalizowane czasy trwania zwarcia [s]: 1 s standardowy, reszta zalecana.
+IEC_62271_1_CZASY_ZWARCIA_S = (0.5, 1.0, 2.0, 3.0)
+
+#: Mnoznik szczytu wg IEC 62271-1 § 4.6 dla czestotliwosci znamionowej 50 Hz.
+IEC_62271_1_MNOZNIK_SZCZYTU_50HZ = 2.5
+
+
+def _i_dyn_z_i_th(i_th_ka: float) -> float:
+    """Znamionowy prad szczytowy wytrzymywany z pradu krotkotrwalego (50 Hz).
+
+    JEDNO ZRODLO PRAWDY dla wszystkich pozycji katalogu — para (I_th, I_dyn) nie
+    moze rozjechac sie na jednej pozycji, bo obie liczby powstaja tutaj.
+    """
+    return round(i_th_ka * IEC_62271_1_MNOZNIK_SZCZYTU_50HZ, 3)
 
 
 @dataclass(frozen=True)
@@ -496,9 +600,27 @@ class DeviceWithstandItem:
     device_type: str
     nominal_voltage_kv: float
     nominal_current_a: float
-    i_dyn_ka: float
+    #: Znamionowy prad krotkotrwaly wytrzymywany [kA] — z szeregu normatywnego.
     i_th_1s_ka: float
+    #: Znamionowy czas trwania zwarcia [s] — z szeregu normatywnego.
     i_th_duration_s: float
+
+    def __post_init__(self) -> None:
+        if self.i_th_1s_ka not in IEC_62271_1_SZEREG_I_TH_KA:
+            raise ValueError(
+                f"{self.id}: I_th = {self.i_th_1s_ka} kA jest spoza znormalizowanego "
+                f"szeregu IEC 62271-1 {IEC_62271_1_SZEREG_I_TH_KA}."
+            )
+        if self.i_th_duration_s not in IEC_62271_1_CZASY_ZWARCIA_S:
+            raise ValueError(
+                f"{self.id}: czas trwania zwarcia {self.i_th_duration_s} s jest spoza "
+                f"znormalizowanego szeregu IEC 62271-1 {IEC_62271_1_CZASY_ZWARCIA_S}."
+            )
+
+    @property
+    def i_dyn_ka(self) -> float:
+        """Znamionowy prad szczytowy wytrzymywany [kA] — wyprowadzony, nie wpisany."""
+        return _i_dyn_z_i_th(self.i_th_1s_ka)
 
     def to_dict(self) -> dict:
         return {
@@ -512,6 +634,10 @@ class DeviceWithstandItem:
             "i_dyn_ka": self.i_dyn_ka,
             "i_th_1s_ka": self.i_th_1s_ka,
             "i_th_duration_s": self.i_th_duration_s,
+            "zrodlo_pl": (
+                "IEC 62271-1 § 4.6 (I_dyn = 2,5 · I_th dla 50 Hz) i § 4.7 "
+                f"(czas trwania zwarcia); {IEC_62271_1_PRZEWODNIK_URL}"
+            ),
         }
 
 
@@ -519,60 +645,55 @@ DEVICE_WITHSTAND_CATALOG: tuple[DeviceWithstandItem, ...] = (
     DeviceWithstandItem(
         id="wstd_breaker_vacuum_15_25",
         catalog_namespace="device_withstand",
-        catalog_version="2024.1",
-        label_pl="Wylacznik prozniowy 15 kV * I_dyn=63 kA * I_th=25 kA/1s",
+        catalog_version=AUDIT2_CATALOG_VERSION,
+        label_pl="Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA",
         device_type="breaker_vacuum_15",
         nominal_voltage_kv=15,
         nominal_current_a=1250,
-        i_dyn_ka=63,
         i_th_1s_ka=25,
         i_th_duration_s=1,
     ),
     DeviceWithstandItem(
         id="wstd_breaker_sf6_15_31_5",
         catalog_namespace="device_withstand",
-        catalog_version="2024.1",
-        label_pl="Wylacznik SF6 15 kV * I_dyn=80 kA * I_th=31,5 kA/3s",
+        catalog_version=AUDIT2_CATALOG_VERSION,
+        label_pl="Wyłącznik SF6 15 kV · I_th=31,5 kA/3s · I_dyn=78,75 kA",
         device_type="breaker_sf6_15",
         nominal_voltage_kv=15,
         nominal_current_a=1250,
-        i_dyn_ka=80,
         i_th_1s_ka=31.5,
         i_th_duration_s=3,
     ),
     DeviceWithstandItem(
         id="wstd_busbar_15_2000_50",
         catalog_namespace="device_withstand",
-        catalog_version="2024.1",
-        label_pl="Szyna SN 15 kV * 2000 A * I_dyn=125 kA * I_th=50 kA/1s",
+        catalog_version=AUDIT2_CATALOG_VERSION,
+        label_pl="Szyna SN 15 kV · 2000 A · I_th=50 kA/1s · I_dyn=125 kA",
         device_type="busbar_15_2000",
         nominal_voltage_kv=15,
         nominal_current_a=2000,
-        i_dyn_ka=125,
         i_th_1s_ka=50,
         i_th_duration_s=1,
     ),
     DeviceWithstandItem(
         id="wstd_busbar_15_1250_25",
         catalog_namespace="device_withstand",
-        catalog_version="2024.1",
-        label_pl="Szyna SN 15 kV * 1250 A * I_dyn=63 kA * I_th=25 kA/1s",
+        catalog_version=AUDIT2_CATALOG_VERSION,
+        label_pl="Szyna SN 15 kV · 1250 A · I_th=25 kA/1s · I_dyn=62,5 kA",
         device_type="busbar_15_1250",
         nominal_voltage_kv=15,
         nominal_current_a=1250,
-        i_dyn_ka=63,
         i_th_1s_ka=25,
         i_th_duration_s=1,
     ),
     DeviceWithstandItem(
         id="wstd_switch_load_15_25",
         catalog_namespace="device_withstand",
-        catalog_version="2024.1",
-        label_pl="Rozlacznik z bezpiecznikami 15 kV * I_dyn=63 kA * I_th=25 kA/1s",
+        catalog_version=AUDIT2_CATALOG_VERSION,
+        label_pl="Rozłącznik z bezpiecznikami 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA",
         device_type="switch_load_15",
         nominal_voltage_kv=15,
         nominal_current_a=630,
-        i_dyn_ka=63,
         i_th_1s_ka=25,
         i_th_duration_s=1,
     ),
@@ -588,20 +709,79 @@ def get_device_withstand(device_id: str) -> DeviceWithstandItem | None:
 # =============================================================================
 
 
+#
+# PROWENIENCJA (karta K-Q, 2026-08-14) — co zostalo zmierzone w zrodle.
+# Pozycje tego katalogu przypisywaly KONKRETNE NASTAWY imiennie wskazanym
+# operatorom i typom modulu NC RfG: „PSE NC RfG, modul B (droop 5%)",
+# „Energa-Operator, modul B", „Tauron Dystrybucja, modul B". Rozporzadzenie
+# 2016/631 (NC RfG) sprawdzono na tekscie zrodlowym i ono TAKICH NASTAW NIE
+# PRZYPISUJE:
+#   * art. 13 ust. 2 podaje statyzm jako NASTAWIALNY W PRZEDZIALE 2-12 % oraz
+#     prog czestotliwosci nastawialny miedzy 50,2 Hz a 50,5 Hz — zadnej wartosci
+#     „dla modulu B / C / D" tam nie ma;
+#   * zalacznik II tab. 2 (obszar Europy kontynentalnej) podaje zakres pracy
+#     47,5-51,5 Hz — i to jest jedyna liczba z tej piatki, ktora naprawde
+#     pochodzila ze wskazanego zrodla.
+# Nastawy 4 % i 3 % „dla modulu C i D" byly zgadniete, a strefy nieczulosci
+# 0,15 Hz i 0,10 Hz byly PONIZEJ normatywnego minimum (prog 50,2 Hz = 0,2 Hz),
+# czyli sprzeczne z norma, na ktora pozycja sie powolywala. Dwie pozycje
+# operatorskie (`pf_energa_b`, `pf_tauron_b`) nie roznily sie od trzeciej ANI
+# JEDNA liczba — istnialy wylacznie po to, zeby niesc cudze imie; usuniete.
+#
+# Stan po naprawie: pozycja jest WARIANTEM NASTAWY, ktory projektant wybiera
+# (statyzm widnieje w jej nazwie — jak R rezystora uziemiajacego), a granice
+# dopuszczalnosci pochodzia z rozporzadzenia i sa EGZEKWOWANE w `__post_init__`.
+# Identyfikatory nazywaja teraz parametr definiujacy, a nie operatora.
+#
+# Zrodlo (zweryfikowane na tekscie): rozporzadzenie Komisji (UE) 2016/631 —
+# https://eur-lex.europa.eu/legal-content/EN/TXT/HTML/?uri=CELEX:32016R0631
+
+#: Adres tekstu rozporzadzenia NC RfG, na ktorym zweryfikowano ponizsze zakresy.
+NC_RFG_URL = "https://eur-lex.europa.eu/legal-content/EN/TXT/HTML/?uri=CELEX:32016R0631"
+
+#: Art. 13 ust. 2: statyzm nastawialny w przedziale 2-12 %.
+NC_RFG_STATYZM_ZAKRES_PROCENT = (2.0, 12.0)
+
+#: Art. 13 ust. 2: prog czestotliwosci nastawialny miedzy 50,2 a 50,5 Hz, czyli
+#: strefa nieczulosci od 0,2 do 0,5 Hz wzgledem 50 Hz.
+NC_RFG_STREFA_NIECZULOSCI_ZAKRES_HZ = (0.2, 0.5)
+
+#: Zalacznik II tab. 2, obszar Europy kontynentalnej: zakres pracy 47,5-51,5 Hz.
+NC_RFG_ZAKRES_PRACY_HZ = (47.5, 51.5)
+
+
 @dataclass(frozen=True)
 class PfCurveItem:
     id: str
     catalog_namespace: str
     catalog_version: str
     label_pl: str
-    operator_code: Literal["PSE", "Energa", "Tauron", "Enea", "PGE"]
-    module_type: Literal["A", "B", "C", "D"]
     f_ref_hz: float
+    #: Statyzm [%] — parametr DEFINIUJACY wariant, w granicach art. 13 ust. 2.
     droop_percent: float
     f_min_hz: float
     f_max_hz: float
+    #: Strefa nieczulosci [Hz] — w granicach progu z art. 13 ust. 2.
     deadband_hz: float
-    source: Literal["NC_RfG_Annex_II", "IRiESD"]
+
+    def __post_init__(self) -> None:
+        statyzm_min, statyzm_max = NC_RFG_STATYZM_ZAKRES_PROCENT
+        if not statyzm_min <= self.droop_percent <= statyzm_max:
+            raise ValueError(
+                f"{self.id}: statyzm {self.droop_percent} % jest poza przedzialem "
+                f"nastawialnym {statyzm_min}-{statyzm_max} % (NC RfG art. 13 ust. 2)."
+            )
+        strefa_min, strefa_max = NC_RFG_STREFA_NIECZULOSCI_ZAKRES_HZ
+        if not strefa_min <= self.deadband_hz <= strefa_max:
+            raise ValueError(
+                f"{self.id}: strefa nieczulosci {self.deadband_hz} Hz jest poza "
+                f"przedzialem {strefa_min}-{strefa_max} Hz (NC RfG art. 13 ust. 2)."
+            )
+        if (self.f_min_hz, self.f_max_hz) != NC_RFG_ZAKRES_PRACY_HZ:
+            raise ValueError(
+                f"{self.id}: zakres pracy {self.f_min_hz}-{self.f_max_hz} Hz nie jest "
+                f"zakresem z zalacznika II tab. 2 {NC_RFG_ZAKRES_PRACY_HZ}."
+            )
 
     def to_dict(self) -> dict:
         return {
@@ -609,87 +789,76 @@ class PfCurveItem:
             "catalog_namespace": self.catalog_namespace,
             "catalog_version": self.catalog_version,
             "label_pl": self.label_pl,
-            "operator_code": self.operator_code,
-            "module_type": self.module_type,
             "f_ref_hz": self.f_ref_hz,
             "droop_percent": self.droop_percent,
             "f_min_hz": self.f_min_hz,
             "f_max_hz": self.f_max_hz,
             "deadband_hz": self.deadband_hz,
-            "source": self.source,
+            "zrodlo_pl": (
+                "Rozporzadzenie (UE) 2016/631 (NC RfG): art. 13 ust. 2 (statyzm "
+                "nastawialny 2-12 %, prog 50,2-50,5 Hz) oraz zalacznik II tab. 2 "
+                f"(zakres pracy 47,5-51,5 Hz); {NC_RFG_URL}"
+            ),
         }
 
 
+_ZAKRES_MIN_HZ, _ZAKRES_MAX_HZ = NC_RFG_ZAKRES_PRACY_HZ
+
 PF_CURVE_CATALOG: tuple[PfCurveItem, ...] = (
     PfCurveItem(
-        id="pf_pse_b",
+        id="pf_droop_5",
         catalog_namespace="p_f_curve",
-        catalog_version="2024.1",
-        label_pl="P(f) * PSE NC RfG, modul B (droop 5%)",
-        operator_code="PSE",
-        module_type="B",
+        catalog_version=AUDIT2_CATALOG_VERSION,
+        label_pl="P(f) · statyzm 5% · strefa nieczułości 0,2 Hz",
         f_ref_hz=50.0,
         droop_percent=5.0,
-        f_min_hz=47.5,
-        f_max_hz=51.5,
+        f_min_hz=_ZAKRES_MIN_HZ,
+        f_max_hz=_ZAKRES_MAX_HZ,
         deadband_hz=0.2,
-        source="NC_RfG_Annex_II",
     ),
     PfCurveItem(
-        id="pf_pse_c",
+        id="pf_droop_4",
         catalog_namespace="p_f_curve",
-        catalog_version="2024.1",
-        label_pl="P(f) * PSE NC RfG, modul C (droop 4%)",
-        operator_code="PSE",
-        module_type="C",
+        catalog_version=AUDIT2_CATALOG_VERSION,
+        label_pl="P(f) · statyzm 4% · strefa nieczułości 0,2 Hz",
         f_ref_hz=50.0,
         droop_percent=4.0,
-        f_min_hz=47.5,
-        f_max_hz=51.5,
-        deadband_hz=0.15,
-        source="NC_RfG_Annex_II",
+        f_min_hz=_ZAKRES_MIN_HZ,
+        f_max_hz=_ZAKRES_MAX_HZ,
+        deadband_hz=0.2,
     ),
     PfCurveItem(
-        id="pf_pse_d",
+        id="pf_droop_3",
         catalog_namespace="p_f_curve",
-        catalog_version="2024.1",
-        label_pl="P(f) * PSE NC RfG, modul D (droop 3%, FCR-N capable)",
-        operator_code="PSE",
-        module_type="D",
+        catalog_version=AUDIT2_CATALOG_VERSION,
+        label_pl="P(f) · statyzm 3% · strefa nieczułości 0,2 Hz",
         f_ref_hz=50.0,
         droop_percent=3.0,
-        f_min_hz=47.5,
-        f_max_hz=51.5,
-        deadband_hz=0.10,
-        source="NC_RfG_Annex_II",
+        f_min_hz=_ZAKRES_MIN_HZ,
+        f_max_hz=_ZAKRES_MAX_HZ,
+        deadband_hz=0.2,
     ),
     PfCurveItem(
-        id="pf_energa_b",
+        id="pf_droop_2",
         catalog_namespace="p_f_curve",
-        catalog_version="2024.1",
-        label_pl="P(f) * Energa-Operator, modul B",
-        operator_code="Energa",
-        module_type="B",
+        catalog_version=AUDIT2_CATALOG_VERSION,
+        label_pl="P(f) · statyzm 2% · strefa nieczułości 0,2 Hz (najostrzejszy nastawialny)",
         f_ref_hz=50.0,
-        droop_percent=5.0,
-        f_min_hz=47.5,
-        f_max_hz=51.5,
-        deadband_hz=0.20,
-        source="IRiESD",
+        droop_percent=2.0,
+        f_min_hz=_ZAKRES_MIN_HZ,
+        f_max_hz=_ZAKRES_MAX_HZ,
+        deadband_hz=0.2,
     ),
     PfCurveItem(
-        id="pf_tauron_b",
+        id="pf_droop_12",
         catalog_namespace="p_f_curve",
-        catalog_version="2024.1",
-        label_pl="P(f) * Tauron Dystrybucja, modul B",
-        operator_code="Tauron",
-        module_type="B",
+        catalog_version=AUDIT2_CATALOG_VERSION,
+        label_pl="P(f) · statyzm 12% · strefa nieczułości 0,5 Hz (najłagodniejszy nastawialny)",
         f_ref_hz=50.0,
-        droop_percent=5.0,
-        f_min_hz=47.5,
-        f_max_hz=51.5,
-        deadband_hz=0.20,
-        source="IRiESD",
+        droop_percent=12.0,
+        f_min_hz=_ZAKRES_MIN_HZ,
+        f_max_hz=_ZAKRES_MAX_HZ,
+        deadband_hz=0.5,
     ),
 )
 
@@ -701,26 +870,120 @@ def get_pf_curve(curve_id: str) -> PfCurveItem | None:
 # =============================================================================
 # 6. Block Transformer Catalog (B.5)
 # =============================================================================
+#
+# PROWENIENCJA (karta K-Q, 2026-08-14) — naprawa przez USUNIECIE DRUGIEJ KOPII.
+# Pozycje tego katalogu nioslly wlasny komplet danych elektrycznych transformatora
+# (uk %, straty obciazeniowe i jalowe, prad biegu jalowego, grupa polaczen) oraz
+# imie producenta (ABB / Siemens / Schneider) doklejone do liczb, ktorych zadna
+# karta katalogowa nie potwierdzala. Byla to DRUGA KOPIA danych transformatora w
+# systemie — obok `mv_transformer_catalog.py`, ktory jest zrodlem prawdy o
+# transformatorach i ktory kazda pozycje opisuje z proweniencja
+# (`source_reference`, `verification_status`, `catalog_status`).
+#
+# Rozstrzygniecie: transformator dedykowany DER przestaje byc osobna dana i staje
+# sie WYBOREM POZYCJI z katalogu transformatorow. `BlockTransformerItem` niesie
+# `transformer_type_ref`, a wszystkie liczby czyta z tej pozycji — jedno zrodlo
+# prawdy, zero miejsca na rozjazd. Identyfikatory pozycji zostaly bez zmian, wiec
+# zapisane konfiguracje stacji wskazuja dalej to samo.
+#
+# USUNIETE POZYCJE (nie mialy odpowiednika z proweniencja):
+#   * `btr_fw_15_069_3450` — 3450 kVA; katalog transformatorow ma 3,15 MVA i
+#     4,0 MVA, a podstawienie sasiedniej mocy byloby falszowaniem znamionu;
+#   * `btr_fw_30_15_30000` — 30/15 kV 30 MVA; katalog nie ma zadnego typu na
+#     napiecie 30 kV.
+# W ich miejsce wchodza pozycje SN/SN i wiekszych mocy oparte na REALNYCH typach
+# (patrz nizej), wiec farma wiatrowa nie traci ani transformatora blokowego, ani
+# wariantu SN/SN — traci tylko dwie pozycje bez pokrycia.
 
 
 @dataclass(frozen=True)
 class BlockTransformerItem:
+    """Transformator dedykowany DER = WYBOR POZYCJI z katalogu transformatorow.
+
+    Ta klasa nie przechowuje ANI JEDNEJ liczby elektrycznej — wszystkie czyta z
+    typu wskazanego przez `transformer_type_ref` (`mv_transformer_catalog.py`).
+    Dzieki temu para (katalog audytu 2, katalog transformatorow) nie moze sie
+    rozjechac: nie ma czego rozjezdzac.
+    """
+
     id: str
     catalog_namespace: str
     catalog_version: str
     label_pl: str
-    manufacturer: str
-    sn_kva: float
-    hv_kv: float
-    lv_kv: float
-    uk_percent: float
-    pk_kw: float
-    p0_kw: float
-    i0_percent: float
-    vector_group: str
-    is_mv_to_mv: bool
+    #: Identyfikator typu w `mv_transformer_catalog` — JEDYNE zrodlo danych.
+    transformer_type_ref: str
     applicable_der_kinds: tuple[str, ...]
-    galvanic_isolation: bool
+
+    def _typ(self) -> dict:
+        from network_model.catalog.mv_transformer_catalog import get_all_transformer_types
+
+        for record in get_all_transformer_types():
+            if record["id"] == self.transformer_type_ref:
+                return record
+        raise KeyError(
+            f"{self.id}: typ '{self.transformer_type_ref}' nie istnieje w katalogu "
+            "transformatorow — pozycja transformatora dedykowanego bez pokrycia."
+        )
+
+    @property
+    def _params(self) -> dict:
+        return self._typ()["params"]
+
+    @property
+    def sn_kva(self) -> float:
+        return float(self._params["rated_power_mva"]) * 1000.0
+
+    @property
+    def hv_kv(self) -> float:
+        return float(self._params["voltage_hv_kv"])
+
+    @property
+    def lv_kv(self) -> float:
+        return float(self._params["voltage_lv_kv"])
+
+    @property
+    def uk_percent(self) -> float:
+        return float(self._params["uk_percent"])
+
+    @property
+    def pk_kw(self) -> float:
+        return float(self._params["pk_kw"])
+
+    @property
+    def p0_kw(self) -> float:
+        return float(self._params["p0_kw"])
+
+    @property
+    def i0_percent(self) -> float:
+        return float(self._params["i0_percent"])
+
+    @property
+    def vector_group(self) -> str:
+        return str(self._params["vector_group"])
+
+    @property
+    def is_mv_to_mv(self) -> bool:
+        """Transformator SN/SN — strona dolna powyzej 1 kV (a nie deklaracja)."""
+        return self.lv_kv > 1.0
+
+    @property
+    def galvanic_isolation(self) -> bool:
+        """Izolacja galwaniczna wynika z GRUPY POLACZEN, nie z osobnego pola.
+
+        Uzwojenia polaczone w gwiazde/trojkat bez punktu wspolnego (Dyn, Yd,
+        YNyn z osobnymi uzwojeniami) daja izolacje galwaniczna; autotransformator
+        (grupa zaczynajaca sie od „a") jej nie daje.
+        """
+        return not self.vector_group.lower().startswith("a")
+
+    @property
+    def source_reference(self) -> str:
+        """Proweniencja danych — wprost z pozycji katalogu transformatorow."""
+        return str(self._params["source_reference"])
+
+    @property
+    def verification_status(self) -> str:
+        return str(self._params["verification_status"])
 
     def to_dict(self) -> dict:
         return {
@@ -728,7 +991,7 @@ class BlockTransformerItem:
             "catalog_namespace": self.catalog_namespace,
             "catalog_version": self.catalog_version,
             "label_pl": self.label_pl,
-            "manufacturer": self.manufacturer,
+            "transformer_type_ref": self.transformer_type_ref,
             "sn_kva": self.sn_kva,
             "hv_kv": self.hv_kv,
             "lv_kv": self.lv_kv,
@@ -740,171 +1003,88 @@ class BlockTransformerItem:
             "is_mv_to_mv": self.is_mv_to_mv,
             "applicable_der_kinds": list(self.applicable_der_kinds),
             "galvanic_isolation": self.galvanic_isolation,
+            "source_reference": self.source_reference,
+            "verification_status": self.verification_status,
         }
 
+
+#: Typoszereg transformatorow blokowych w katalogu transformatorow nosi nazwe
+#: „TR ... Dyn11 PV/BESS/FW", czyli sam deklaruje, ze sluzy wszystkim trzem
+#: rodzajom zrodel. Ograniczanie pozycji do PV+BESS bylo wymyslone.
+_DER_WSZYSTKIE: tuple[str, ...] = ("PV", "BESS", "FW")
 
 BLOCK_TRANSFORMER_CATALOG: tuple[BlockTransformerItem, ...] = (
     BlockTransformerItem(
         id="btr_pv_15_069_800",
         catalog_namespace="block_transformer",
-        catalog_version="2024.1",
-        label_pl="PV transformator dedykowany 15/0,69 kV * 800 kVA * Dyn5",
-        manufacturer="ABB",
-        sn_kva=800,
-        hv_kv=15,
-        lv_kv=0.69,
-        uk_percent=6.0,
-        pk_kw=8.8,
-        p0_kw=1.5,
-        i0_percent=0.5,
-        vector_group="Dyn5",
-        is_mv_to_mv=False,
-        applicable_der_kinds=("PV", "BESS"),
-        galvanic_isolation=True,
+        catalog_version=AUDIT2_CATALOG_VERSION,
+        label_pl="Transformator dedykowany 15/0,69 kV · 800 kVA · Dyn11",
+        transformer_type_ref="tr-sn-nn-15-0p69-0p8mva-dyn11-inverter",
+        applicable_der_kinds=_DER_WSZYSTKIE,
     ),
     BlockTransformerItem(
         id="btr_pv_15_069_1000",
         catalog_namespace="block_transformer",
-        catalog_version="2024.1",
-        label_pl="PV transformator dedykowany 15/0,69 kV * 1000 kVA * Dyn5",
-        manufacturer="ABB",
-        sn_kva=1000,
-        hv_kv=15,
-        lv_kv=0.69,
-        uk_percent=6.0,
-        pk_kw=10.6,
-        p0_kw=1.8,
-        i0_percent=0.45,
-        vector_group="Dyn5",
-        is_mv_to_mv=False,
-        applicable_der_kinds=("PV", "BESS"),
-        galvanic_isolation=True,
+        catalog_version=AUDIT2_CATALOG_VERSION,
+        label_pl="Transformator dedykowany 15/0,69 kV · 1000 kVA · Dyn11",
+        transformer_type_ref="tr-sn-nn-15-0p69-1mva-dyn11-inverter",
+        applicable_der_kinds=_DER_WSZYSTKIE,
     ),
     BlockTransformerItem(
         id="btr_pv_15_069_1250",
         catalog_namespace="block_transformer",
-        catalog_version="2024.1",
-        label_pl="PV transformator dedykowany 15/0,69 kV * 1250 kVA * Dyn5",
-        manufacturer="ABB",
-        sn_kva=1250,
-        hv_kv=15,
-        lv_kv=0.69,
-        uk_percent=6.0,
-        pk_kw=13.2,
-        p0_kw=2.1,
-        i0_percent=0.45,
-        vector_group="Dyn5",
-        is_mv_to_mv=False,
-        applicable_der_kinds=("PV", "BESS"),
-        galvanic_isolation=True,
+        catalog_version=AUDIT2_CATALOG_VERSION,
+        label_pl="Transformator dedykowany 15/0,69 kV · 1250 kVA · Dyn11",
+        transformer_type_ref="tr-sn-nn-15-0p69-1p25mva-dyn11-inverter",
+        applicable_der_kinds=_DER_WSZYSTKIE,
     ),
     BlockTransformerItem(
         id="btr_pv_15_069_1600",
         catalog_namespace="block_transformer",
-        catalog_version="2024.1",
-        label_pl="PV transformator dedykowany 15/0,69 kV * 1600 kVA * Dyn5",
-        manufacturer="ABB",
-        sn_kva=1600,
-        hv_kv=15,
-        lv_kv=0.69,
-        uk_percent=6.0,
-        pk_kw=16.8,
-        p0_kw=2.6,
-        i0_percent=0.4,
-        vector_group="Dyn5",
-        is_mv_to_mv=False,
-        applicable_der_kinds=("PV", "BESS"),
-        galvanic_isolation=True,
+        catalog_version=AUDIT2_CATALOG_VERSION,
+        label_pl="Transformator dedykowany 15/0,69 kV · 1600 kVA · Dyn11",
+        transformer_type_ref="tr-sn-nn-15-0p69-1p6mva-dyn11-inverter",
+        applicable_der_kinds=_DER_WSZYSTKIE,
     ),
     BlockTransformerItem(
         id="btr_pv_15_069_2500",
         catalog_namespace="block_transformer",
-        catalog_version="2024.1",
-        label_pl="PV block-trafo 15/0,69 kV * 2500 kVA * Dyn5",
-        manufacturer="ABB",
-        sn_kva=2500,
-        hv_kv=15,
-        lv_kv=0.69,
-        uk_percent=6.0,
-        pk_kw=24.0,
-        p0_kw=3.5,
-        i0_percent=0.4,
-        vector_group="Dyn5",
-        is_mv_to_mv=False,
-        applicable_der_kinds=("PV", "BESS"),
-        galvanic_isolation=True,
+        catalog_version=AUDIT2_CATALOG_VERSION,
+        label_pl="Transformator dedykowany 15/0,69 kV · 2500 kVA · Dyn11",
+        transformer_type_ref="tr-sn-nn-15-0p69-2p5mva-dyn11-inverter",
+        applicable_der_kinds=_DER_WSZYSTKIE,
     ),
     BlockTransformerItem(
         id="btr_pv_15_04_1000",
         catalog_namespace="block_transformer",
-        catalog_version="2024.1",
-        label_pl="PV block-trafo 15/0,4 kV * 1000 kVA * Dyn11",
-        manufacturer="Siemens",
-        sn_kva=1000,
-        hv_kv=15,
-        lv_kv=0.4,
-        uk_percent=6.0,
-        pk_kw=11.0,
-        p0_kw=1.6,
-        i0_percent=0.6,
-        vector_group="Dyn11",
-        is_mv_to_mv=False,
-        applicable_der_kinds=("PV", "BESS"),
-        galvanic_isolation=True,
+        catalog_version=AUDIT2_CATALOG_VERSION,
+        label_pl="Transformator dedykowany 15/0,4 kV · 1000 kVA · Dyn11",
+        transformer_type_ref="tr-sn-nn-15-04-1000kva-dyn11",
+        applicable_der_kinds=_DER_WSZYSTKIE,
     ),
     BlockTransformerItem(
         id="btr_bess_15_04_1600",
         catalog_namespace="block_transformer",
-        catalog_version="2024.1",
-        label_pl="BESS block-trafo 15/0,4 kV * 1600 kVA * Dyn11 (galwaniczna izolacja)",
-        manufacturer="Schneider",
-        sn_kva=1600,
-        hv_kv=15,
-        lv_kv=0.4,
-        uk_percent=6.5,
-        pk_kw=16.5,
-        p0_kw=2.4,
-        i0_percent=0.5,
-        vector_group="Dyn11",
-        is_mv_to_mv=False,
-        applicable_der_kinds=("BESS",),
-        galvanic_isolation=True,
+        catalog_version=AUDIT2_CATALOG_VERSION,
+        label_pl="Transformator dedykowany 15/0,4 kV · 1600 kVA · Dyn11",
+        transformer_type_ref="tr-sn-nn-15-04-1600kva-dyn11",
+        applicable_der_kinds=_DER_WSZYSTKIE,
     ),
     BlockTransformerItem(
-        id="btr_fw_30_15_30000",
+        id="btr_der_15_069_4000",
         catalog_namespace="block_transformer",
-        catalog_version="2024.1",
-        label_pl="FW block-trafo 30/15 kV * 30 MVA * YNyn0 (turbinownia, SN/SN)",
-        manufacturer="ABB",
-        sn_kva=30000,
-        hv_kv=30,
-        lv_kv=15,
-        uk_percent=12.5,
-        pk_kw=220.0,
-        p0_kw=24.0,
-        i0_percent=0.3,
-        vector_group="YNyn0",
-        is_mv_to_mv=True,
-        applicable_der_kinds=("FW",),
-        galvanic_isolation=False,
+        catalog_version=AUDIT2_CATALOG_VERSION,
+        label_pl="Transformator dedykowany 15/0,69 kV · 4000 kVA · Dyn11",
+        transformer_type_ref="tr-sn-nn-15-0p69-4mva-dyn11-inverter",
+        applicable_der_kinds=_DER_WSZYSTKIE,
     ),
     BlockTransformerItem(
-        id="btr_fw_15_069_3450",
+        id="btr_der_15_063_10000",
         catalog_namespace="block_transformer",
-        catalog_version="2024.1",
-        label_pl="FW block-trafo turbinowy 15/0,69 kV * 3450 kVA * Dyn11",
-        manufacturer="Siemens",
-        sn_kva=3450,
-        hv_kv=15,
-        lv_kv=0.69,
-        uk_percent=6.0,
-        pk_kw=33.0,
-        p0_kw=4.8,
-        i0_percent=0.35,
-        vector_group="Dyn11",
-        is_mv_to_mv=False,
-        applicable_der_kinds=("FW",),
-        galvanic_isolation=True,
+        catalog_version=AUDIT2_CATALOG_VERSION,
+        label_pl="Transformator dedykowany SN/SN 15/6,3 kV · 10 MVA · Dyn11",
+        transformer_type_ref="tr-sn-nn-15-6p3-10mva-dyn11-inverter",
+        applicable_der_kinds=_DER_WSZYSTKIE,
     ),
 )
 
@@ -916,6 +1096,29 @@ def get_block_transformer(btr_id: str) -> BlockTransformerItem | None:
 # =============================================================================
 # 7. MV Neutral Grounding Catalog (B.1)
 # =============================================================================
+#
+# PROWENIENCJA (karta K-Q, 2026-08-14) — domkniecie klasy po stronie autorytetu.
+# Karta K-O usunela z frontendu dwa pola tego katalogu; backend niosl je dalej i
+# serwowal przez `/api/v1/catalog/audit2/mv-neutral-groundings`:
+#
+#   * `typical_ik1_a_range` — ZAKRES PRADU ZWARCIA DOZIEMNEGO bez zrodla.
+#     Prad I_k1 konkretnej sieci wylicza solver SC1F z realnej impedancji Z0
+#     modelu; tabela „typowych" zakresow konkurowala z wynikiem obliczen i nie
+#     miala czym wygrac. Gorzej: warstwa ENM brala z tego zakresu MEDIANE i
+#     podawala ja solverowi `phase_state_sn` jako domyslny prad zwarcia
+#     (`_phase_state_default_fault_current_from_grounding`) — zmyslona liczba
+#     wchodzila do fizyki. Usuniete razem z tym konsumentem.
+#   * `typical_operators_pl` — przypisanie praktyki ruchowej imiennie wskazanym
+#     operatorom bez cytatu z IRiESD; czesc byla wprost nieprawdziwa (PSE jest
+#     operatorem systemu przesylowego, nie prowadzi rozdzielni SN). Imiona
+#     operatorow usuniete takze z `description_pl`.
+#
+# Wartosc I_k1 znikla rowniez z `label_pl` — nazwa wariantu jest widoczna w
+# rozwijanej liscie, wiec fabrykacja w nazwie jest GORZEJ widoczna niz w polu
+# danych, nie lepiej. Zostaje `r_ohm` / `x_ohm`: to parametr DEFINIUJACY wariant
+# (widnieje w jego nazwie), czyli wybor projektanta, a nie cudza zmierzona
+# wlasnosc. Teksty sa dokladnym odpowiednikiem stanu frontendu po karcie K-O —
+# parytet obu warstw pilnuje `tests/network_model/test_audit2_katalogi_parytet.py`.
 
 
 GroundingType = Literal["isolated", "petersen_coil", "resistor_grounded", "directly_grounded"]
@@ -929,10 +1132,9 @@ class MvNeutralGroundingItem:
     grounding_type: GroundingType
     label_pl: str
     description_pl: str
-    typical_ik1_a_min: float
-    typical_ik1_a_max: float
-    typical_operators_pl: str
+    #: Rezystancja uziemienia [Ohm] definiujaca wariant (gdy resistor_grounded).
     r_ohm: float | None = None
+    #: Reaktancja uziemienia [Ohm] definiujaca wariant (petersen_coil).
     x_ohm: float | None = None
 
     def to_dict(self) -> dict:
@@ -943,11 +1145,6 @@ class MvNeutralGroundingItem:
             "grounding_type": self.grounding_type,
             "label_pl": self.label_pl,
             "description_pl": self.description_pl,
-            "typical_ik1_a_range": {
-                "min": self.typical_ik1_a_min,
-                "max": self.typical_ik1_a_max,
-            },
-            "typical_operators_pl": self.typical_operators_pl,
             "r_ohm": self.r_ohm,
             "x_ohm": self.x_ohm,
         }
@@ -957,74 +1154,64 @@ MV_NEUTRAL_GROUNDING_CATALOG: tuple[MvNeutralGroundingItem, ...] = (
     MvNeutralGroundingItem(
         id="mng_isolated",
         catalog_namespace="mv_neutral_grounding",
-        catalog_version="2024.1",
+        catalog_version=AUDIT2_CATALOG_VERSION,
         grounding_type="isolated",
-        label_pl="Siec izolowana (bez uziemienia neutralnego)",
+        label_pl="Sieć izolowana (bez uziemienia neutralnego)",
         description_pl=(
-            "Punkt neutralny niepolaczony z ziemia. Ik1 ograniczone do pojemnosciowego "
-            "pradu sieci (1-30 A). Wymaga 67N kierunkowego."
+            "Punkt neutralny transformatora 110/SN nie jest uziemiony. Prąd zwarcia "
+            "1-fazowego doziemnego jest ograniczony tylko pojemnością sieci."
         ),
-        typical_ik1_a_min=1,
-        typical_ik1_a_max=30,
-        typical_operators_pl="Sieci wiejskie (Tauron, PGE)",
     ),
     MvNeutralGroundingItem(
         id="mng_petersen",
         catalog_namespace="mv_neutral_grounding",
-        catalog_version="2024.1",
+        catalog_version=AUDIT2_CATALOG_VERSION,
         grounding_type="petersen_coil",
-        label_pl="Siec skompensowana (cewka Petersena PCK)",
+        label_pl="Sieć skompensowana (cewka Petersena PCK)",
         description_pl=(
-            "Punkt neutralny uziemiony przez dlawik kompensacyjny. Lp = 1 / (3w*C0). "
-            "W stanie kompensacji Ik1 ~ 0. Standard nowoczesny."
+            "Punkt neutralny uziemiony przez dławik kompensacyjny (cewkę Petersena). "
+            "Lp = 1 / (3·ω·C₀) gdzie C₀ jest pojemnością sieci. W stanie kompensacji "
+            "prąd zwarcia doziemnego jest bliski zeru."
         ),
-        typical_ik1_a_min=1,
-        typical_ik1_a_max=20,
-        typical_operators_pl="Energa-Operator, Tauron, Enea, PGE (sieci miejskie)",
     ),
     MvNeutralGroundingItem(
         id="mng_resistor_low",
         catalog_namespace="mv_neutral_grounding",
-        catalog_version="2024.1",
+        catalog_version=AUDIT2_CATALOG_VERSION,
         grounding_type="resistor_grounded",
-        label_pl="Siec uziemiona przez rezystor * niski (R~7 Ohm, Ik1~300 A)",
+        label_pl="Sieć uziemiona przez rezystor — niski (R≈7 Ω)",
         description_pl=(
-            "Punkt neutralny uziemiony przez rezystor 7 Ohm. Ogranicza Ik1 do ~300 A. "
-            "Stosowane w sieciach kablowych miejskich."
+            "Punkt neutralny uziemiony przez rezystor 7 Ω — ogranicza prąd zwarcia "
+            "doziemnego na tyle, by pozostał wykrywalny przez 51N. Stosowane "
+            "w sieciach kablowych miejskich."
         ),
-        typical_ik1_a_min=250,
-        typical_ik1_a_max=350,
-        typical_operators_pl="Energa-Operator (sieci kablowe miejskie), Innogy",
         r_ohm=7,
     ),
     MvNeutralGroundingItem(
         id="mng_resistor_medium",
         catalog_namespace="mv_neutral_grounding",
-        catalog_version="2024.1",
+        catalog_version=AUDIT2_CATALOG_VERSION,
         grounding_type="resistor_grounded",
-        label_pl="Siec uziemiona przez rezystor * sredni (R~40 Ohm, Ik1~100 A)",
+        label_pl="Sieć uziemiona przez rezystor — średni (R≈40 Ω)",
         description_pl=(
-            "Punkt neutralny uziemiony przez rezystor ~40 Ohm. Ogranicza Ik1 do ~100 A. "
-            "Stosowane w sieciach mieszanych."
+            "Punkt neutralny uziemiony przez rezystor 40 Ω. Kompromis między "
+            "wykrywalnością zwarć a ochroną sprzętu. Stosowane w sieciach "
+            "mieszanych kabel/napowietrzna."
         ),
-        typical_ik1_a_min=80,
-        typical_ik1_a_max=120,
-        typical_operators_pl="Tauron (sieci mieszane)",
         r_ohm=40,
     ),
     MvNeutralGroundingItem(
         id="mng_directly",
         catalog_namespace="mv_neutral_grounding",
-        catalog_version="2024.1",
+        catalog_version=AUDIT2_CATALOG_VERSION,
         grounding_type="directly_grounded",
-        label_pl="Siec uziemiona bezposrednio (Z=0)",
+        label_pl="Sieć uziemiona bezpośrednio (Z=0)",
         description_pl=(
-            "Punkt neutralny polaczony bezposrednio z ziemia. Wysoki Ik1 (>1000 A) -> "
-            "szybkie zabezpieczenia 50N/51N. Standard dla 110+ kV (HV)."
+            "Punkt neutralny uziemiony bezpośrednio. Prąd zwarcia doziemnego jest "
+            "porównywalny z prądem zwarcia 3-fazowego. Rzadko stosowane w SN — "
+            "głównie w przemysłowych sieciach specjalnych. Zwiększa wymagania na "
+            "zabezpieczenia i sprzęt."
         ),
-        typical_ik1_a_min=1000,
-        typical_ik1_a_max=20000,
-        typical_operators_pl="PSE (110+ kV), niektorzy operatorzy industrialni",
     ),
 )
 
@@ -1050,10 +1237,17 @@ def select_bess_modes_for_pcs(
     )
 
 
-def select_required_bess_modes_for_module(
-    module: Literal["A", "B", "C", "D"],
-) -> tuple[BessOperationModeItem, ...]:
-    return tuple(m for m in BESS_OPERATION_MODE_CATALOG if module in m.required_for_nc_rfg_modules)
+# USUNIETY (karta K-Q, 2026-08-14): `select_required_bess_modes_for_module`.
+#
+# Funkcja zwracala tryby pracy magazynu, ktore rzekomo SA WYMAGANE dla danego
+# typu modulu wytworczego NC RfG, na podstawie pola `required_for_nc_rfg_modules`.
+# Rozporzadzenie 2016/631 sprawdzone na tekscie zrodlowym: nie nakazuje modulom
+# wytworczym swiadczenia FCR-N, FCR-D, aFRR ani mFRR — to produkty rynku
+# bilansujacego, kupowane w aukcjach, a nie warunek przylaczenia. Generator
+# dowodu na tej podstawie oglaszal niezgodnosc („brakuje wymaganego trybu dla
+# modulu D") z norma, ktorej nie ma. Sprawdzenie ZDOLNOSCI przeksztaltnika
+# (praca w czterech cwiartkach, tworzenie napiecia) zostalo — ono wynika z samej
+# definicji uslugi i jest weryfikowalne.
 
 
 def select_block_transformers_for_der(
@@ -1114,6 +1308,106 @@ def is_vt_voltage_factor_valid_for_grounding(
     return True, ""
 
 
+def ocen_wytrzymalosc_aparatu(
+    *,
+    etykieta_pl: str,
+    i_dyn_ka: float | None,
+    i_th_ka: float | None,
+    i_th_duration_s: float | None,
+    i_peak_calculated_ka: float,
+    i_thermal_calculated_ka: float,
+    t_clearing_s: float | None,
+) -> dict:
+    """JĄDRO WERDYKTU wytrzymałości (I_dyn / I_th) — jedno na cały system.
+
+    Wydzielone z ``validate_device_withstand`` w karcie KD-6 (poz. 2), bo ten sam
+    rachunek musi obsłużyć DWA źródła znamion: pozycję katalogu wytrzymałości
+    wskazaną ręcznie w konfiguracji stacji ORAZ pozycję APARAT_SN, którą pole
+    stacji ma w MODELU. Kopiowanie porównania do warstwy aplikacji zrobiłoby
+    drugą fizykę — jest jedna, tutaj.
+
+    KRYTERIA (IEC 60909 / IEC 62271-1):
+      dynamiczne:  i_p ≤ I_dyn
+      cieplne:     I_th ≤ I_th_zn · √(t_zn / t_wyl)
+
+    BRAK DANEJ NIE JEST WERDYKTEM: nieznane znamiona albo nieznany czas
+    wyłączenia dają ``None`` przy odpowiednim kryterium (a nie ``False``) —
+    „nie da się sprawdzić" to inny stan niż „nie wytrzymuje".
+    """
+    import math
+
+    i_dyn_ok: bool | None = None
+    util_dyn: float | None = None
+    if i_dyn_ka is not None and i_dyn_ka > 0:
+        i_dyn_ok = i_dyn_ka >= i_peak_calculated_ka
+        util_dyn = (i_peak_calculated_ka / i_dyn_ka) * 100
+
+    i_th_ok: bool | None = None
+    util_th: float | None = None
+    i_th_effective: float | None = None
+    if (
+        i_th_ka is not None
+        and i_th_ka > 0
+        and i_th_duration_s is not None
+        and i_th_duration_s > 0
+        and t_clearing_s is not None
+        and t_clearing_s > 0
+    ):
+        i_th_effective = i_th_ka * math.sqrt(i_th_duration_s / max(t_clearing_s, 0.01))
+        i_th_ok = i_th_effective >= i_thermal_calculated_ka
+        util_th = (i_thermal_calculated_ka / i_th_effective) * 100
+
+    braki: list[str] = []
+    if i_dyn_ok is None:
+        braki.append("prądu dynamicznego znamionowego")
+    if i_th_ok is None:
+        if i_th_ka is None or i_th_duration_s is None:
+            braki.append("prądu cieplnego znamionowego")
+        else:
+            braki.append("czasu wyłączenia")
+
+    niezaliczone: list[str] = []
+    if i_dyn_ok is False and util_dyn is not None and i_dyn_ka is not None:
+        niezaliczone.append(
+            f"I_dyn {i_peak_calculated_ka:.1f} kA > {i_dyn_ka:.1f} kA (limit) — "
+            "przekroczenie wytrzymałości dynamicznej"
+        )
+    if i_th_ok is False and i_th_effective is not None and t_clearing_s is not None:
+        niezaliczone.append(
+            f"I_th {i_thermal_calculated_ka:.1f} kA > {i_th_effective:.1f} kA "
+            f"(limit przy t={t_clearing_s:.2f} s) — przekroczenie wytrzymałości cieplnej"
+        )
+
+    if niezaliczone:
+        message = f"BLOKER: {'; '.join(niezaliczone)}."
+    elif braki:
+        zaliczone = []
+        if i_dyn_ok is True and util_dyn is not None:
+            zaliczone.append(f"I_dyn {util_dyn:.0f}%")
+        if i_th_ok is True and util_th is not None:
+            zaliczone.append(f"I_th {util_th:.0f}%")
+        czesc_zaliczona = f" Sprawdzone: {', '.join(zaliczone)}." if zaliczone else ""
+        message = (
+            f"NIEUSTALONE: aparatura „{etykieta_pl}” — brak {', '.join(braki)}."
+            f"{czesc_zaliczona}"
+        )
+    else:
+        message = (
+            f"OK: aparatura „{etykieta_pl}” wytrzymała "
+            f"(wykorzystanie I_dyn {util_dyn:.0f}%, I_th {util_th:.0f}%)."  # type: ignore[str-format]
+        )
+
+    return {
+        "ok": i_dyn_ok is True and i_th_ok is True,
+        "i_dyn_ok": i_dyn_ok,
+        "i_th_ok": i_th_ok,
+        "message_pl": message,
+        "utilization_dyn_percent": util_dyn,
+        "utilization_th_percent": util_th,
+        "i_th_effective_ka": i_th_effective,
+    }
+
+
 def validate_device_withstand(
     *,
     device_id: str,
@@ -1121,9 +1415,22 @@ def validate_device_withstand(
     i_thermal_calculated_ka: float,
     t_clearing_s: float,
 ) -> dict:
-    """Naprawa eng.18: walidacja I_dyn / I_th aparatury (IEC 60909)."""
-    import math
+    """Naprawa eng.18: walidacja I_dyn / I_th aparatury (IEC 60909).
 
+    JEDYNE ZRODLO WERDYKTU (K7-B, 2026-07-31). Do tej karty rownolegly rachunek
+    zyl w warstwie prezentacji (`frontend/src/ui/network-build/station-der/
+    protection-catalogs.ts::validateDeviceWithstand` + wlasna kopia katalogu
+    `DEVICE_WITHSTAND_CATALOG`) i to ON zasilal karte zabezpieczen. Ekran mowil
+    „wytrzymala" na podstawie liczb, ktorych zaden solver nie widzial i ktorych
+    nie obejmowal zaden slad. Karta zabezpieczen wola teraz to wyliczenie przez
+    `POST /api/v1/catalog/audit2/validate-device-withstand`, a `message_pl` jest
+    tekstem POKAZYWANYM UZYTKOWNIKOWI — stad pelna polszczyzna z diakrytykami.
+
+    KONTRAKT ODPOWIEDZI NIEZMIENIONY (KD-6): ta koncowka zawsze dostaje komplet
+    znamion z katalogu wytrzymalosci i jawny czas wylaczenia, wiec `i_dyn_ok` /
+    `i_th_ok` pozostaja logiczne, a pola dodane przez jadro (`i_th_effective_ka`)
+    sa ADDYTYWNE.
+    """
     device = get_device_withstand(device_id)
     if device is None:
         return {
@@ -1134,38 +1441,15 @@ def validate_device_withstand(
             "utilization_dyn_percent": 0,
             "utilization_th_percent": 0,
         }
-    # I_th_eff = I_th_rated * sqrt(t_rated / t_clearing).
-    i_th_effective = device.i_th_1s_ka * math.sqrt(device.i_th_duration_s / max(t_clearing_s, 0.01))
-    i_dyn_ok = device.i_dyn_ka >= i_peak_calculated_ka
-    i_th_ok = i_th_effective >= i_thermal_calculated_ka
-    util_dyn = (i_peak_calculated_ka / device.i_dyn_ka) * 100
-    util_th = (i_thermal_calculated_ka / i_th_effective) * 100
-    if i_dyn_ok and i_th_ok:
-        message = (
-            f"OK: aparatura '{device.label_pl}' wytrzymala "
-            f"(I_dyn util {util_dyn:.0f}%, I_th util {util_th:.0f}%)."
-        )
-    else:
-        failures: list[str] = []
-        if not i_dyn_ok:
-            failures.append(
-                f"I_dyn {i_peak_calculated_ka:.1f} kA > {device.i_dyn_ka:.1f} kA (limit) -> "
-                "przekroczenie wytrzymalosci dynamicznej"
-            )
-        if not i_th_ok:
-            failures.append(
-                f"I_th {i_thermal_calculated_ka:.1f} kA > {i_th_effective:.1f} kA "
-                f"(limit przy t={t_clearing_s:.2f} s) -> przekroczenie wytrzymalosci termicznej"
-            )
-        message = f"BLOKER: {'; '.join(failures)}."
-    return {
-        "ok": i_dyn_ok and i_th_ok,
-        "i_dyn_ok": i_dyn_ok,
-        "i_th_ok": i_th_ok,
-        "message_pl": message,
-        "utilization_dyn_percent": util_dyn,
-        "utilization_th_percent": util_th,
-    }
+    return ocen_wytrzymalosc_aparatu(
+        etykieta_pl=device.label_pl,
+        i_dyn_ka=device.i_dyn_ka,
+        i_th_ka=device.i_th_1s_ka,
+        i_th_duration_s=device.i_th_duration_s,
+        i_peak_calculated_ka=i_peak_calculated_ka,
+        i_thermal_calculated_ka=i_thermal_calculated_ka,
+        t_clearing_s=t_clearing_s,
+    )
 
 
 # =============================================================================

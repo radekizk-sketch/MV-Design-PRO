@@ -28,11 +28,10 @@ import { dirname, resolve } from 'node:path';
 import { buildSceneV3 } from '../src/ui/sld/v3/scene/buildScene';
 import {
   buildResultLabelsFromScene,
-  singleHopSegmentRefs,
+  orientedSegmentRefs,
   type ResultLabelComparison,
 } from '../src/ui/sld/v3/canvas/resultLabels';
 import { layoutResultLabels } from '../src/ui/sld/v3/canvas/SldCanvasV3';
-import { formatContractValue } from '../src/ui/workspace/analysisRunContract';
 import type { EnergyNetworkModel } from '../src/types/enm';
 import type { RawOverlayElement, RawOverlayPayload } from '../src/ui/sld-overlay/rawResultOverlayStore';
 
@@ -44,7 +43,10 @@ const enmPath = resolve(here, '..', 'src', 'ui', 'sld', 'v2', 'geometry', '__tes
 const enm = (JSON.parse(readFileSync(enmPath, 'utf8')) as { readonly enm: EnergyNetworkModel }).enm;
 
 const scene = buildSceneV3(enm, 2);
-const singleHop = singleHopSegmentRefs(enm);
+// Bramka przesel: KLUCZE mapy orientacji (`orientedSegmentRefs`) — dokumentowany
+// zamiennik usunietej `singleHopSegmentRefs`, ta sama derywacja co produkcja
+// (`SldCanvasV3Workspace.buildResultLabelsForSnapshot`).
+const singleHop = new Set(orientedSegmentRefs(enm).keys());
 
 function el(refId: string, kind: string, metrics: RawOverlayElement['metrics']): RawOverlayElement {
   return { ref_id: refId, kind, badges: [], metrics, severity: 'INFO' };
@@ -122,7 +124,6 @@ const RESULT = '#B39DDB';
 const UP = '#2ECC71';
 const DOWN = '#F5A623';
 const BG = '#0E1621';
-const PANEL = '#25384A';
 const TREND_GLYPH: Record<string, string> = { up: '↑', down: '↓', flat: '→' };
 
 function escapeXml(s: string): string {

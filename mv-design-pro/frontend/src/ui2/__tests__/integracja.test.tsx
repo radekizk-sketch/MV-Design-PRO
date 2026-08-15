@@ -8,10 +8,12 @@ import { render, screen, act, fireEvent, cleanup, waitFor } from '@testing-libra
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { EnergyNetworkModel, TopologyGraphSummary } from '../../types/enm';
+import { useAppStateStore } from '../../ui/app-state';
 import { useSnapshotStore } from '../../ui/topology/snapshotStore';
 import { useTopologyStore } from '../../ui/topology/store';
 import { AppRoot } from '../AppRoot';
 import { subskrybuj, type ZdarzenieSelekcja } from '../events';
+import { OTWORZ_STRINGS } from '../spaces/projekt/otworz';
 import { useShellStore } from '../shell/useShellStore';
 
 // E1.7b: kanwa SLD (ciężki komponent canvas) jest atrapowana — testy powłoki
@@ -87,14 +89,50 @@ describe('E1.4 — integracja powłoki (shell + nav + inspector + events)', () =
     // startują z czystej trasy (mosty przestrzeni ustawiają np. '#sld').
     window.history.replaceState(null, '', '/');
     window.location.hash = '';
+    // Atrapa fetch zwraca kształty zgodne z kontraktami czytanymi przez
+    // powłokę (K4/E1a: kontener „Nowy / otwórz projekt" woła GET /api/projects,
+    // hydratacja K2 waliduje projekt/przypadek i czyta listy zakresów).
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue({ ok: true } as Response),
+      vi.fn(async (wejscie: RequestInfo | URL) => {
+        const url = String(wejscie);
+        if (url.endsWith('/api/projects')) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({ projects: [], total: 0 }),
+          } as unknown as Response;
+        }
+        if (url.includes('/enm/topology/summary')) {
+          // KD-1: drzewo topologii dostaje dane Z SERWERA (`useZasilanieDrzewaTopologii`)
+          // — scena zasila TEN endpoint zamiast wstrzykiwac store'a bezposrednio,
+          // wiec test ćwiczy realna sciezke danych powloki.
+          return { ok: true, status: 200, json: async () => summaryZGpz() } as unknown as Response;
+        }
+        if (url.includes('/api/study-cases/project/') && url.endsWith('/active')) {
+          return { ok: true, status: 204, json: async () => null } as unknown as Response;
+        }
+        if (url.includes('/api/study-cases/project/')) {
+          return { ok: true, status: 200, json: async () => [] } as unknown as Response;
+        }
+        return { ok: true, status: 200, json: async () => ({}) } as unknown as Response;
+      }),
     );
     act(() => {
-      useSnapshotStore.setState({ snapshot: snapshotZRewizja(5) });
+      useSnapshotStore.setState({ snapshot: snapshotZRewizja(5), rewizjaBiezacegoModelu: 5 });
       useTopologyStore.setState({ summary: summaryZGpz() });
       useShellStore.setState({ activeSpace: 'model' });
+      // E1a (K4): przestrzeń „Projekt" pokazuje pulpit tylko przy AKTYWNYM
+      // projekcie — testy powłoki startują z otwartym projektem (intencja
+      // testów bez zmian); scenariusz „bez projektu" ma osobny test niżej.
+      useAppStateStore.setState({
+        activeProjectId: 'projekt-testowy-id',
+        activeProjectName: 'projekt-testowy',
+        // KD-1: topologia jest danymi PRZYPADKU — bez aktywnego przypadku
+        // powloka uczciwie nie ma czego pokazac w drzewie.
+        activeCaseId: 'przypadek-testowy-id',
+        activeCaseName: 'Wariant bazowy',
+      });
     });
   });
 
@@ -102,8 +140,9 @@ describe('E1.4 — integracja powłoki (shell + nav + inspector + events)', () =
     cleanup();
     vi.unstubAllGlobals();
     act(() => {
-      useSnapshotStore.setState({ snapshot: null });
+      useSnapshotStore.setState({ snapshot: null, rewizjaBiezacegoModelu: null });
       useTopologyStore.setState({ summary: null });
+      useAppStateStore.getState().reset();
     });
   });
 
@@ -128,7 +167,7 @@ describe('E1.4 — integracja powłoki (shell + nav + inspector + events)', () =
     await renderujPowloke();
     expect(screen.getByText('Model: rew. 5')).toBeTruthy();
     act(() => {
-      useSnapshotStore.setState({ snapshot: snapshotZRewizja(6) });
+      useSnapshotStore.setState({ snapshot: snapshotZRewizja(6), rewizjaBiezacegoModelu: 6 });
     });
     expect(screen.getByText('Model: rew. 6')).toBeTruthy();
   });
@@ -138,13 +177,28 @@ describe('E1.4 — integracja powłoki (shell + nav + inspector + events)', () =
     expect(screen.queryByTestId('mvd-tree-mode')).toBeNull();
   });
 
-  it('przestrzeń „Projekt" renderuje pulpit projektu (E2.1) w warsztacie', async () => {
+  it('przestrzeń „Projekt" renderuje pulpit projektu (E2.1) w warsztacie przy aktywnym projekcie', async () => {
+    // Przestrzeń wybierana PO montażu: parytet trasy domyślnej (decyzja na
+    // montaż) przełącza 'projekt'→'schemat' przy zimnym starcie z projektem —
+    // jak w realnej pracy pulpit ogląda się wybierając przestrzeń jawnie.
+    await renderujPowloke();
     act(() => {
       useShellStore.setState({ activeSpace: 'projekt' });
     });
-    await renderujPowloke();
     expect(screen.getByText('Pulpit projektu')).toBeTruthy();
     expect(screen.getByText('Przypadki obliczeniowe')).toBeTruthy();
+  });
+
+  it('bez aktywnego projektu przestrzeń „Projekt" prowadzi ekranem „Nowy / otwórz projekt" (E1a, K4)', async () => {
+    act(() => {
+      useAppStateStore.getState().reset();
+      useShellStore.setState({ activeSpace: 'projekt' });
+    });
+    await renderujPowloke();
+    // Sekwencja pierwszego użycia: cel pracy widoczny, pulpit nie renderuje się.
+    expect(await screen.findByText(OTWORZ_STRINGS.celTytul)).toBeTruthy();
+    expect(screen.getByText(OTWORZ_STRINGS.tytul)).toBeTruthy();
+    expect(screen.queryByText('Pulpit projektu')).toBeNull();
   });
 
   it('Ctrl+K otwiera pełną wyszukiwarkę poleceń (E1.5) zamiast szkieletu', async () => {
@@ -186,11 +240,51 @@ describe('E1.4 — integracja powłoki (shell + nav + inspector + events)', () =
   });
 
   it('kontrakt e2e: przestrzeń z nową zawartością (projekt) też wystawia workspace-surface-main', async () => {
+    await renderujPowloke();
     act(() => {
       useShellStore.setState({ activeSpace: 'projekt' });
     });
-    await renderujPowloke();
     const warsztat = screen.getByTestId('workspace-surface-main');
     expect(warsztat.textContent).toContain('Pulpit projektu');
+  });
+
+  // === Łańcuch etapu przekazania projektu: hub dokumentacji → archiwum ZIP ===
+
+  it('karta „Archiwum projektu (ZIP)" huba prowadzi do DZIAŁAJĄCEJ akcji, nie do przestrzeni bez akcji', async () => {
+    await renderujPowloke();
+    act(() => {
+      useShellStore.setState({ activeSpace: 'dokumentacja' });
+    });
+
+    // Natywny klik akcji karty huba (ścieżka realnego użytkownika).
+    fireEvent.click(screen.getByRole('button', { name: 'Otwórz archiwum' }));
+
+    // Lądowanie: przestrzeń „Projekt" pokazuje okno archiwum z realną akcją.
+    expect(useShellStore.getState().activeSpace).toBe('projekt');
+    const okno = await screen.findByTestId('mvd-archiwum-projektu');
+    expect(okno.textContent).toContain('Archiwum projektu (ZIP)');
+    expect(screen.getByTestId('mvd-arch-eksport')).toBeTruthy();
+  });
+
+  it('kafel pulpitu otwiera to samo okno archiwum (wejście niezależne od huba)', async () => {
+    await renderujPowloke();
+    act(() => {
+      useShellStore.setState({ activeSpace: 'projekt' });
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Otwórz archiwum' }));
+    expect(await screen.findByTestId('mvd-archiwum-projektu')).toBeTruthy();
+  });
+
+  it('wyjście z przestrzeni „Projekt" gasi żądanie okna archiwum (brak zaległych żądań)', async () => {
+    await renderujPowloke();
+    act(() => {
+      useShellStore.getState().setZadanieArchiwumProjektu(true);
+      useShellStore.setState({ activeSpace: 'projekt' });
+    });
+    expect(await screen.findByTestId('mvd-archiwum-projektu')).toBeTruthy();
+    act(() => {
+      useShellStore.setState({ activeSpace: 'model' });
+    });
+    expect(useShellStore.getState().zadanieArchiwumProjektu).toBe(false);
   });
 });

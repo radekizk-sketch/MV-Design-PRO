@@ -603,13 +603,13 @@ class TestGoldenNetworkIntegration:
 
     @pytest.fixture()
     def golden_graph(self):
-        import sys
-        from pathlib import Path
-
-        tests_dir = str(Path(__file__).resolve().parents[1])
-        if tests_dir not in sys.path:
-            sys.path.insert(0, tests_dir)
-        from golden.golden_network_sn import build_golden_network
+        # KD-9: import przez PELNA nazwe pakietu testowego. Wczesniej ten fixture
+        # dokladal katalog `tests/` na POCZATEK `sys.path`, przez co pakiet testowy
+        # `tests/reference_engine/` przeslanial zrodlowy `src/reference_engine/` —
+        # kazdy bieg czesciowy obejmujacy ten plik konczyl sie fantomowym
+        # `ModuleNotFoundError: No module named 'reference_engine.validation'`
+        # w leniwym imporcie `enm/validator.py`.
+        from tests.golden.golden_network_sn import build_golden_network
 
         return build_golden_network()
 
@@ -888,3 +888,85 @@ class TestWhiteBoxTrace:
         a = EnergyValidationBuilder().build(pf, graph, DEFAULT_CONFIG)
         b = EnergyValidationBuilder().build(pf, graph, DEFAULT_CONFIG)
         assert [i.white_box for i in a.items] == [i.white_box for i in b.items]
+
+
+class TestZnacznikBrakuRozwiazania:
+    """Wartosc NaN z solvera = BRAK DANEJ, nigdy wynik „w normie" (karta N-1-BACKEND).
+
+    Solver rozplywu oznacza wezly SPOZA WYSPY WEZLA BILANSUJACEGO wartoscia NaN
+    (kontrakt FROZEN: `not_solved_nodes` -> NaN kV, `BusResult.status="not_solved"`).
+    Predykat `is None` tego znacznika nie lapal, wiec kazda kontrola progowa
+    „przechodzila" (porownania z NaN sa falszywe) i szyna POZBAWIONA ZASILANIA
+    dostawala PASS, a `nan` wychodzil w polu `observed_value` odpowiedzi JSON.
+    Test pokrywa KLASE, a nie jedna kontrole: napiecie, prad galezi, moc
+    transformatora, budzet strat i bilans mocy biernej.
+    """
+
+    @staticmethod
+    def _pozycje(view, check_type: EnergyCheckType):
+        return [i for i in view.items if i.check_type == check_type]
+
+    def test_napiecie_nan_jest_nieobliczone(self):
+        graph = _build_simple_graph()
+        pf = _build_pf_result(
+            node_voltage_kv={"slack": 110.0, "bus-a": float("nan"), "bus-b": float("nan")},
+            branch_current_ka={"line-1": 0.1},
+        )
+        view = EnergyValidationBuilder().build(pf, graph, DEFAULT_CONFIG)
+        pozycje = {i.target_id: i for i in self._pozycje(view, EnergyCheckType.VOLTAGE_DEVIATION)}
+        assert pozycje["bus-a"].status == EnergyValidationStatus.NOT_COMPUTED
+        assert pozycje["bus-a"].observed_value is None
+        assert pozycje["bus-a"].why_pl == "Brak danych napieciowych."
+        # Szyna Z rozwiazaniem nadal jest oceniana — predykat nie jest za szeroki.
+        assert pozycje["slack"].status == EnergyValidationStatus.PASS
+
+    def test_prad_galezi_nan_jest_nieobliczony(self):
+        graph = _build_simple_graph()
+        pf = _build_pf_result(
+            node_voltage_kv={"slack": 110.0},
+            branch_current_ka={"line-1": float("nan")},
+        )
+        view = EnergyValidationBuilder().build(pf, graph, DEFAULT_CONFIG)
+        pozycja = self._pozycje(view, EnergyCheckType.BRANCH_LOADING)[0]
+        assert pozycja.status == EnergyValidationStatus.NOT_COMPUTED
+        assert pozycja.observed_value is None
+
+    def test_moc_transformatora_nan_jest_nieobliczona(self):
+        graph = _build_simple_graph()
+        pf = _build_pf_result(
+            node_voltage_kv={"slack": 110.0},
+            branch_s_from_mva={"tr-1": complex(float("nan"), float("nan"))},
+            branch_s_to_mva={"tr-1": complex(float("nan"), float("nan"))},
+        )
+        view = EnergyValidationBuilder().build(pf, graph, DEFAULT_CONFIG)
+        pozycja = self._pozycje(view, EnergyCheckType.TRANSFORMER_LOADING)[0]
+        assert pozycja.status == EnergyValidationStatus.NOT_COMPUTED
+        assert pozycja.observed_value is None
+
+    def test_bilans_sieciowy_nan_jest_nieobliczony(self):
+        graph = _build_simple_graph()
+        pf = _build_pf_result(
+            node_voltage_kv={"slack": 110.0},
+            losses_total_pu=complex(float("nan"), float("nan")),
+            slack_power_pu=complex(float("nan"), float("nan")),
+        )
+        view = EnergyValidationBuilder().build(pf, graph, DEFAULT_CONFIG)
+        straty = self._pozycje(view, EnergyCheckType.LOSS_BUDGET)[0]
+        bilans = self._pozycje(view, EnergyCheckType.REACTIVE_BALANCE)[0]
+        assert straty.status == EnergyValidationStatus.NOT_COMPUTED
+        assert bilans.status == EnergyValidationStatus.NOT_COMPUTED
+        assert "NaN" in straty.why_pl
+        assert "NaN" in bilans.why_pl
+
+    def test_widok_z_nan_serializuje_sie_do_poprawnego_json(self):
+        graph = _build_simple_graph()
+        pf = _build_pf_result(
+            node_voltage_kv={"slack": 110.0, "bus-a": float("nan"), "bus-b": float("nan")},
+            branch_current_ka={"line-1": float("nan")},
+            branch_s_from_mva={"tr-1": complex(float("nan"), 0.0)},
+            losses_total_pu=complex(float("nan"), 0.0),
+            slack_power_pu=complex(float("nan"), 0.0),
+        )
+        view = EnergyValidationBuilder().build(pf, graph, DEFAULT_CONFIG)
+        # allow_nan=False: literal NaN jest poza RFC 8259 i nie moze wyjsc w API.
+        json.dumps(view.to_dict(), allow_nan=False)

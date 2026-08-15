@@ -55,3 +55,98 @@
   opacity: 0.5;
   cursor: default;
 }
+.mvd-otworz-projekty-akcje {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.mvd-otworz-cel-wlasna {
+  align-self: flex-start;
+  margin-top: 8px;
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--mvd-accent);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* ---- prymitywy dialogu (zestaw lokalny jak spaces/obliczenia/przypadki.css) ---- */
+.mvd-dialog-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.mvd-dialog {
+  background: var(--mvd-panel);
+  border: 1px solid var(--mvd-line);
+  border-radius: 8px;
+  box-shadow: var(--mvd-shadow);
+  width: 92%;
+  max-width: 480px;
+  max-height: 88vh;
+  overflow: auto;
+  padding: 20px;
+}
+.mvd-dialog-tytul {
+  margin: 0 0 16px;
+  font-size: 15px;
+  font-weight: 600;
+}
+.mvd-dialog-tresc {
+  margin: 0 0 10px;
+  font-size: 13px;
+}
+.mvd-dialog-tresc-uwaga {
+  color: var(--mvd-muted);
+  font-size: 12px;
+}
+.mvd-dialog-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.mvd-dialog-blad {
+  margin: 0;
+  color: var(--mvd-err);
+  font-size: 12px;
+}
+.mvd-dialog-akcje {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+.mvd-dialog-akcje .mvd-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.mvd-btn-destrukcyjny {
+  background: var(--mvd-err);
+  border-color: var(--mvd-err);
+  color: var(--mvd-accent-ink);
+}
+.mvd-pole {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.mvd-pole-etykieta {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--mvd-muted);
+}
+.mvd-input {
+  border: 1px solid var(--mvd-line);
+  background: var(--mvd-panel-2);
+  color: var(--mvd-ink);
+  border-radius: 4px;
+  padding: 6px 8px;
+  font: inherit;
+}

@@ -9,6 +9,7 @@ from application.station_templates._choices import (
     DER_BESS_SN,
     NN_CB_OPTIONS,
     PROT_FEEDER_OPTIONS,
+    SN_APPARATUS_OPTIONS,
     TR_BLOCK_BESS_OPTIONS,
     VT_OPTIONS,
 )
@@ -50,6 +51,7 @@ def _bess(
                 BayRoleSpec(role="MEASUREMENT", label_pl="Pole pomiarowe + analizator"),
             ),
             sn_bay_protection_options=PROT_FEEDER_OPTIONS,
+            sn_bay_apparatus_options=SN_APPARATUS_OPTIONS,
             nn_feeders_count=TemplateParamInt(
                 default=0, min_value=0, max_value=2, label_pl="Liczba odpływów nN"
             ),

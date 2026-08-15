@@ -76,7 +76,7 @@ def test_audit2_extensions_deterministic():
                 "der_id": "der_001",
                 "der_kind": "BESS",
                 "bess_operation_mode_refs": ["mode_fcr_n", "mode_voltage_support"],
-                "pf_curve_ref": "pf_pse_b",
+                "pf_curve_ref": "pf_droop_5",
             }
         ],
     }

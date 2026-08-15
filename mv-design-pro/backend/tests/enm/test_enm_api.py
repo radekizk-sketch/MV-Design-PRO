@@ -293,6 +293,59 @@ class TestRunDispatch:
         assert data["results"][0]["proof_binding"]["z0_source"] == "ENM_COMMITTED"
         assert data["results"][0]["dopuszczalnosc_raportowa"] is True
 
+    def test_run_response_rows_without_inline_branch_flows(self, client):
+        """V12K-284: świeży bieg zwraca wiersze BEZ rozpływu inline + flagę.
+
+        Rozpływ gałęziowy (iloczyn źródło×gałąź per punkt zwarcia) jest treścią
+        na żądanie — odpowiedź POST niesie wyłącznie informację, że istnieje.
+        """
+        case_id = "test-case-run-slim"
+        _seed_enm(case_id, _valid_enm_payload("SC slim"))
+
+        response = client.post(f"/api/cases/{case_id}/runs/short-circuit")
+
+        assert response.status_code == 200
+        wiersze = response.json()["results"]
+        assert len(wiersze) >= 1
+        for wiersz in wiersze:
+            assert "branch_contributions" not in wiersz
+            assert wiersz["branch_contributions_available"] is True
+            # Wielkości zwarciowe wiersza pozostają nietknięte.
+            assert wiersz["ikss_a"] > 0
+
+    def test_branch_flows_available_on_demand_for_fresh_run(self):
+        """Rozpływ świeżego biegu pobierany końcówką „na żądanie" (parytet treści).
+
+        Bramka trasy: to, czego POST już nie niesie, MUSI być osiągalne przez
+        istniejącą końcówkę rozpływu dla wskazanego punktu zwarcia. Obie trasy
+        w JEDNEJ aplikacji testowej — baza przebiegów jest współdzielona przez
+        jedno połączenie klienta (izolacja `_izolowana_baza_przebiegow`).
+        """
+        from api.analysis_runs import router as analysis_runs_router
+
+        case_id = "test-case-run-slim-rozplyw"
+        _seed_enm(case_id, _valid_enm_payload("SC slim rozplyw"))
+
+        test_app = FastAPI()
+        test_app.include_router(enm_router)
+        # Ten sam prefiks co w aplikacji produkcyjnej (`api/main.py`).
+        test_app.include_router(analysis_runs_router, prefix="/api")
+        klient = TestClient(test_app)
+
+        response = klient.post(f"/api/cases/{case_id}/runs/short-circuit")
+        assert response.status_code == 200
+        dane = response.json()
+        wiersz = dane["results"][0]
+        assert "branch_contributions" not in wiersz
+        assert wiersz["branch_contributions_available"] is True
+
+        rozplyw = klient.get(
+            f"/api/analysis-runs/{dane['run_id']}/results/short-circuit/rozplyw",
+            params={"target_id": wiersz["fault_node_id"]},
+        )
+        assert rozplyw.status_code == 200
+        assert rozplyw.json()["branch_contributions"] is not None
+
 
 class TestDomainOpsCatalogPolicy:
     def test_domain_ops_rejects_missing_catalog_binding_and_keeps_snapshot(self, client):

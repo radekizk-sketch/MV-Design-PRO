@@ -16,10 +16,18 @@ from pydantic import BaseModel
 from .fix_actions import FixAction
 from .interlock_rules import earthing_interlock_violation
 from .models import (
+    GEN_TYPES_PRZEKSZTALTNIKOWE,
     Cable,
     EnergyNetworkModel,
     OverheadLine,
     SwitchBranch,
+)
+from .pole_transformatorowe import (
+    PASMO_NN_MAX_KV,
+    PASMO_SN_MAX_KV,
+    komunikat_braku_pola,
+    pasmo_napieciowe,
+    transformatory_bez_pola_sn,
 )
 from .severity import (
     SEVERITY_BLOCKER,
@@ -40,17 +48,15 @@ from .severity import (
 #   nN : voltage_kv < 1.0
 #   SN : 1.0 <= voltage_kv <= 60.0
 #   WN : voltage_kv > 60.0
-_VOLTAGE_BAND_NN_MAX = 1.0
-_VOLTAGE_BAND_SN_MAX = 60.0
-
-
-def _voltage_band(voltage_kv: float) -> str:
-    """Zwroc pasmo napieciowe szyny: 'nN', 'SN' albo 'WN'."""
-    if voltage_kv < _VOLTAGE_BAND_NN_MAX:
-        return "nN"
-    if voltage_kv <= _VOLTAGE_BAND_SN_MAX:
-        return "SN"
-    return "WN"
+#
+# KOMPLETNOSC-POLA-TR: progi i funkcja pasma PRZENIESIONE do
+# `enm/pole_transformatorowe.py` — predykat pola transformatorowego pyta o to
+# samo pasmo („strona gorna na szynie SN"), a dwie kopie granicy 60 kV byłyby
+# dwoma zrodlami prawdy czekajacymi na rozjazd (regula KLASA §3). Walidator jest
+# tu KONSUMENTEM definicji, nie jej wlascicielem.
+_VOLTAGE_BAND_NN_MAX = PASMO_NN_MAX_KV
+_VOLTAGE_BAND_SN_MAX = PASMO_SN_MAX_KV
+_voltage_band = pasmo_napieciowe
 
 
 _STRICT_PORT_BINDING_ENV = "ENM_STRICT_PORT_BINDING"
@@ -108,7 +114,10 @@ class ENMValidator:
         self._check_shunt_capacitors(enm, issues)
         # V12S-007: pasmo napieciowe + ciaglosc przez stacje przelotowa
         self._check_voltage_band_consistency(enm, issues)
+        self._check_frequency_consistency(enm, issues)
         self._check_through_station_continuity(enm, issues)
+        # KOMPLETNOSC-POLA-TR: transformator na szynie SN bez pola roli TR
+        self._check_transformer_sn_bay(enm, issues)
 
         # Deterministic sort: severity_rank → code → first element_ref
         issues.sort(
@@ -313,14 +322,8 @@ class ENMValidator:
         # narysować drzewo połączeń (LV_BEHIND_STATION_TRANSFORMER vs
         # DEDICATED_MV_CONNECTION vs SOURCE_CONNECTION_STATION vs
         # nn_side / block_transformer).
-        _INVERTER_GEN_TYPES = {
-            "pv_inverter",
-            "wind_inverter",
-            "fw_pmsg",
-            "fw_dfig",
-            "fw_scig",
-            "bess",
-        }
+        # Jedno zrodlo prawdy predykatu DER: enm/models.py (obok Literalu gen_type).
+        _INVERTER_GEN_TYPES = GEN_TYPES_PRZEKSZTALTNIKOWE
         for gen in enm.generators:
             gen_type = getattr(gen, "gen_type", None)
             if gen_type not in _INVERTER_GEN_TYPES:
@@ -1001,6 +1004,49 @@ class ENMValidator:
                 )
 
     # ------------------------------------------------------------------
+    # Pole transformatorowe SN (W041)
+    # ------------------------------------------------------------------
+
+    def _check_transformer_sn_bay(
+        self, enm: EnergyNetworkModel, issues: list[ValidationIssue]
+    ) -> None:
+        """W041: transformator na szynie SN stacji BEZ pola roli TR.
+
+        Odejścia od szyn rozdzielni realizuje się POLAMI — transformator
+        przyłączony wprost do szyny SN, bez pola transformatorowego, jest
+        konfiguracją NIEKOMPLETNĄ (dyspozycja recenzenta-właściciela
+        2026-08-12 §7). Poziom IMPORTANT, nie BLOCKER: stan jest legalnym
+        stanem ROBOCZYM (projektant może świadomie zrezygnować z pola na
+        etapie koncepcji), więc nie blokuje ani pracy, ani obliczeń — blokuje
+        wyłącznie drogę do dokumentacji wykonawczej
+        (`application/dokumentacja_wykonawcza/gotowosc.py`).
+
+        Predykat pochodzi z JEDNEGO źródła (`enm/pole_transformatorowe.py`),
+        wspólnego z markerem rysunku — parytet pilnuje wspólna tablica
+        decyzyjna `backend/schemas/pole_transformatorowe_parytet_v1.json`.
+        """
+        for znalezisko in transformatory_bez_pola_sn(enm):
+            issues.append(
+                ValidationIssue(
+                    code="W041",
+                    severity=SEVERITY_IMPORTANT,
+                    message_pl=komunikat_braku_pola(znalezisko),
+                    element_refs=[znalezisko.transformer_ref, znalezisko.station_ref],
+                    wizard_step_hint="K5",
+                    suggested_fix=(
+                        "Dodaj do rozdzielni SN tej stacji pole transformatorowe "
+                        "(rola TR) i przypisz do niego transformator."
+                    ),
+                    fix_action=FixAction(
+                        action_type="OPEN_MODAL",
+                        element_ref=znalezisko.station_ref,
+                        modal_type="add_sn_bay",
+                        payload_hint={"bay_role": "TR"},
+                    ),
+                )
+            )
+
+    # ------------------------------------------------------------------
     # Shunt capacitor banks (E040-E042, W040)
     # ------------------------------------------------------------------
 
@@ -1188,6 +1234,62 @@ class ENMValidator:
     # ------------------------------------------------------------------
     # V12S-007: voltage band consistency on branch endpoints
     # ------------------------------------------------------------------
+
+    def _check_frequency_consistency(
+        self, enm: EnergyNetworkModel, issues: list[ValidationIssue]
+    ) -> None:
+        """W009: szyna deklaruje inna czestotliwosc niz czestotliwosc studium.
+
+        DLACZEGO TA KONTROLA ISTNIEJE (karta DIAGNOZA-PRZEBIEGU). Model niesie
+        czestotliwosc na DWOCH poziomach: `header.defaults.frequency_hz` (jedna
+        czestotliwosc studium, `models.py:121`) oraz opcjonalnie na szynie
+        (`Bus.frequency_hz`, `models.py:181`). Solwery rozplywu i zwarciowe
+        czytaja wylacznie poziom studium (`canonical_analysis::_study_frequency_hz`),
+        ale kontrakt V12.6 bierze czestotliwosc bazowa Z PIERWSZEJ SZYNY
+        (`solver_input/v126_contracts.py:555`: `enm.buses[0].frequency_hz or 50.0`).
+        Model z szyna 60 Hz w studium 50 Hz jest wiec wewnetrznie sprzeczny, a
+        analiza harmoniczna zostaje sparametryzowana wartoscia z DOWOLNIE
+        wybranej szyny — po cichu, bez ostrzezenia.
+
+        Waga IMPORTANT, nie BLOCKER: rozplyw i zwarcia licza sie poprawnie
+        (biora czestotliwosc studium), wiec blokowanie ich byloby nieuczciwe.
+        Sprzeczna deklaracja musi jednak byc widoczna, bo falszuje V12.6.
+
+        Ta kontrola zastapila zaslepke `rule_e_d08_frequency_conflict`
+        (`diagnostics/rules.py`), ktora deklarowala kod E-D08, ale zwracala
+        pusta liste ZAWSZE — dzialala na `NetworkGraph`, ktory czestotliwosci
+        w ogole nie przenosi. Jeden warunek ma miec jeden kod, wiec zaslepka
+        zostala usunieta, a warunek zyje TU, gdzie sa dane.
+        """
+        czestotliwosc_studium = enm.header.defaults.frequency_hz
+        for bus in enm.buses:
+            if bus.frequency_hz is None:
+                continue
+            if bus.frequency_hz == czestotliwosc_studium:
+                continue
+            issues.append(
+                ValidationIssue(
+                    code="W009",
+                    severity=SEVERITY_IMPORTANT,
+                    message_pl=(
+                        f"Szyna '{bus.ref_id}' deklaruje częstotliwość "
+                        f"{bus.frequency_hz} Hz, a studium liczone jest dla "
+                        f"{czestotliwosc_studium} Hz — model jest wewnętrznie sprzeczny."
+                    ),
+                    element_refs=[bus.ref_id],
+                    wizard_step_hint="K3",
+                    suggested_fix=(
+                        "Wyrównaj częstotliwość szyny z częstotliwością studium "
+                        "albo usuń deklarację z szyny."
+                    ),
+                    fix_action=FixAction(
+                        action_type="OPEN_MODAL",
+                        element_ref=bus.ref_id,
+                        modal_type="NodeModal",
+                        payload_hint={"required": "frequency_hz"},
+                    ),
+                )
+            )
 
     def _check_voltage_band_consistency(
         self, enm: EnergyNetworkModel, issues: list[ValidationIssue]

@@ -20,16 +20,26 @@ export const GOTOWOSC_STRINGS = {
   ladowanie: 'Wczytywanie…',
   blad: 'Błąd wczytywania gotowości',
 
+  // Stan NIEUSTALONY (dług V12K-309 poz. 1): model jest wczytany, ale gotowości
+  // nikt nie policzył — jedyna droga do tego stanu to nieudany odczyt gotowości
+  // z backendu (`snapshotStore.refreshReadinessFromBackend` zostawia wtedy
+  // `null`). Zdanie tytułowe jest tym samym, którym opisuje ten stan store
+  // („Gotowości nie udało się ustalić"); akcja reużywa istniejący napis stanu
+  // zerowego z przeglądarki szablonów („Spróbuj ponownie") — zero nowych fraz.
+  nieustalonaTytul: 'Nie udało się ustalić gotowości',
+  nieustalonaOpis:
+    'Kontroli technicznej układu nie policzono — dopóki nie wiadomo, panel nie ocenia gotowości.',
+  sprobujPonownie: 'Spróbuj ponownie',
+
   // Stan pozytywny — wszystko gotowe
   wszystkoGotowe: 'Gotowe do analiz',
   wszystkoGotoweOpis:
     'Kontrola techniczna układu nie wskazuje braków — można uruchomić obliczenia.',
 
-  // Sekcja „Następny krok" (F-E3: bramka zielona → przejście do obliczeń)
-  nastepnyKrokTytul: 'Następny krok',
-  nastepnyKrokOpis:
-    'Model przeszedł bramkę gotowości — skonfiguruj wariant i uruchom obliczenie.',
-  nastepnyKrokAkcja: 'Przejdź do obliczeń',
+  // Sekcja „Następny krok" (F-E3) NIE MA już własnych tekstów: po zielonej
+  // bramce panel renderuje wspólny `PanelNastepnejAkcji` z modułu `ui2/proces`,
+  // żeby panel gotowości i pulpit projektu nie mówiły projektantowi dwóch
+  // różnych rzeczy o tym samym stanie. Teksty żyją w `ui2/proces/strings.ts`.
 
   // Podsumowanie nagłówka
   podsumowanieBlokady: 'Blokady',
@@ -85,6 +95,37 @@ export const GOTOWOSC_STRINGS = {
   filtrSzukajPlaceholder: 'Numer lub nazwa elementu…',
   filtrWyczysc: 'Wyczyść filtry',
   filtrBrakWynikow: 'Filtr nie wskazuje braków.',
+
+  // Sekcja „Pokrycie analizami" (ROUTERY-4A — zdolność A3 macierzy pokrycia)
+  pokrycieSekcjaTytul: 'Pokrycie analizami',
+  pokrycieSekcjaOpis:
+    'Kompletność pakietu analiz przypadku: punktacja 0–100 oraz lista brakujących '
+    + 'dowodów i widoków. Punktacja rośnie wraz z wykonanymi obliczeniami.',
+  pokrycieBrakPrzypadku: 'Wybierz zakres obliczeń, aby zobaczyć pokrycie analizami.',
+  pokrycieLadowanie: 'Wczytywanie pokrycia analizami…',
+  pokrycieBlad: 'Błąd wczytywania pokrycia analizami',
+  pokrycieWynik: 'Punktacja pokrycia',
+  pokrycieBezBiegu:
+    'Przypadek nie ma jeszcze zakończonego przebiegu rozpływu — punktacja liczona od zera.',
+  pokrycieBrakiTytul: 'Czego brakuje',
+  pokrycieLukiTytul: 'Luki krytyczne',
+  pokrycieBezBrakow: 'Pakiet analiz kompletny — brak braków.',
+
+  // Sekcja „Granica sieci" (ROUTERY-4A — zdolność A2 macierzy pokrycia)
+  granicaSekcjaTytul: 'Granica sieci (węzeł przyłączenia)',
+  granicaSekcjaOpis:
+    'Interpretacja bieżącego modelu: gdzie sieć projektu styka się z siecią '
+    + 'zasilającą. Wynik z heurystyk (źródło zewnętrzne, przewaga generacji, '
+    + 'pojedynczy zasilacz, granica napięć) z poziomem ufności.',
+  granicaBrakPrzypadku: 'Wybierz zakres obliczeń, aby zobaczyć granicę sieci.',
+  granicaLadowanie: 'Wyznaczanie granicy sieci…',
+  granicaBlad: 'Błąd wyznaczania granicy sieci',
+  granicaWezel: 'Węzeł przyłączenia',
+  granicaMetoda: 'Metoda identyfikacji',
+  granicaUfnosc: 'Ufność',
+  granicaNieznaleziona: 'Nie wskazano jednoznacznego węzła przyłączenia.',
+  granicaDiagnostyka: 'Diagnostyka',
+  granicaNapiecie: 'Napięcie znamionowe',
 
   // Wiersz problemu
   napraw: 'Napraw…',

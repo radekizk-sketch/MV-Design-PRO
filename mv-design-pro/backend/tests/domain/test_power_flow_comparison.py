@@ -10,6 +10,8 @@ Tests for:
 
 from datetime import UTC, datetime
 
+import pytest
+from application.power_flow_comparison import PowerFlowComparisonService
 from domain.power_flow_comparison import (
     ANGLE_DELTA_THRESHOLD_DEG,
     ISSUE_DESCRIPTIONS_PL,
@@ -28,6 +30,7 @@ from domain.power_flow_comparison import (
     compute_pf_comparison_input_hash,
     get_ranking_thresholds,
     new_power_flow_comparison,
+    procent_roznicy,
 )
 
 
@@ -479,3 +482,168 @@ class TestDeterminismContract:
         assert sorted_issues[1].severity == PowerFlowIssueSeverity.MAJOR
         # MINOR (2) should be last
         assert sorted_issues[2].severity == PowerFlowIssueSeverity.MINOR
+
+
+class TestRoznicaWzglednaL13:
+    """L-13 — różnica procentowa per wielkość liczona w BACKENDZIE.
+
+    Intencja: warstwa prezentacji nie liczy niczego z wyników solvera; ekran
+    porównania czyta gotowe pole. Odniesieniem jest przebieg A, a brak wartości
+    (A = 0) jest jawny (None → pole pomijane w odpowiedzi), nigdy zerem.
+    """
+
+    def test_procent_liczony_wzgledem_przebiegu_a(self):
+        """(B − A)/|A| · 100 — znak zgodny ze znakiem delty."""
+        assert procent_roznicy(2.0, 3.0) == 50.0
+        assert procent_roznicy(2.0, 1.0) == -50.0
+        # Mianownik w wartości bezwzględnej: dla wartości ujemnych znak wyniku
+        # nadal pokrywa się ze znakiem delty (B − A).
+        assert procent_roznicy(-2.0, -3.0) == -50.0
+        assert procent_roznicy(-2.0, -1.0) == 50.0
+        assert procent_roznicy(1.0, 1.0) == 0.0
+
+    def test_brak_procentu_gdy_odniesienie_zerowe(self):
+        """A = 0 → różnica względna NIE ISTNIEJE (uczciwy brak, nie zero)."""
+        assert procent_roznicy(0.0, 5.0) is None
+        assert procent_roznicy(0.0, 0.0) is None
+
+    def test_wiersz_szyny_pomija_brak_procentu_w_serializacji(self):
+        """exclude_none: brak wartości nie trafia do payloadu jako null."""
+        row = PowerFlowBusDiffRow(
+            bus_id="BUS_001",
+            v_pu_a=1.0,
+            v_pu_b=0.95,
+            angle_deg_a=0.0,
+            angle_deg_b=-1.0,
+            p_injected_mw_a=0.0,
+            p_injected_mw_b=1.0,
+            q_injected_mvar_a=0.0,
+            q_injected_mvar_b=0.0,
+            delta_v_pu=-0.05,
+            delta_angle_deg=-1.0,
+            delta_p_mw=1.0,
+            delta_q_mvar=0.0,
+            delta_v_percent=-5.0,
+        )
+        data = row.to_dict()
+        assert data["delta_v_percent"] == -5.0
+        assert "delta_angle_percent" not in data
+        assert "delta_p_percent" not in data
+        assert "delta_q_percent" not in data
+        restored = PowerFlowBusDiffRow.from_dict(data)
+        assert restored.delta_v_percent == -5.0
+        assert restored.delta_angle_percent is None
+
+    def test_starszy_zapis_bez_pol_procentowych_czytany_bez_migracji(self):
+        """Zgodność wsteczna: porównanie z cache sprzed L-13 (brak kluczy)."""
+        stary_wiersz = {
+            "branch_id": "BR_1",
+            "p_from_mw_a": 1.0,
+            "p_from_mw_b": 1.5,
+            "q_from_mvar_a": 0.0,
+            "q_from_mvar_b": 0.0,
+            "p_to_mw_a": 1.0,
+            "p_to_mw_b": 1.5,
+            "q_to_mvar_a": 0.0,
+            "q_to_mvar_b": 0.0,
+            "losses_p_mw_a": 0.1,
+            "losses_p_mw_b": 0.2,
+            "losses_q_mvar_a": 0.0,
+            "losses_q_mvar_b": 0.0,
+            "delta_p_from_mw": 0.5,
+            "delta_q_from_mvar": 0.0,
+            "delta_p_to_mw": 0.5,
+            "delta_q_to_mvar": 0.0,
+            "delta_losses_p_mw": 0.1,
+            "delta_losses_q_mvar": 0.0,
+        }
+        row = PowerFlowBranchDiffRow.from_dict(stary_wiersz)
+        assert row.delta_losses_p_percent is None
+        assert row.delta_p_from_percent is None
+        assert "delta_p_from_percent" not in row.to_dict()
+
+    def test_serwis_liczy_procenty_dla_szyn_galezi_i_podsumowania(self):
+        """Ścieżka produkcyjna: te same metody, które woła `compare()`."""
+        service = PowerFlowComparisonService(lambda: None)
+
+        buses_a = [
+            {
+                "bus_id": "BUS_1",
+                "v_pu": 1.0,
+                "angle_deg": 2.0,
+                "p_injected_mw": 4.0,
+                "q_injected_mvar": 0.0,
+            }
+        ]
+        buses_b = [
+            {
+                "bus_id": "BUS_1",
+                "v_pu": 0.9,
+                "angle_deg": 1.0,
+                "p_injected_mw": 5.0,
+                "q_injected_mvar": 1.0,
+            }
+        ]
+        bus_diffs = service._compute_bus_diffs(buses_a, buses_b)
+        assert bus_diffs[0].delta_v_percent == pytest.approx(-10.0)
+        assert bus_diffs[0].delta_angle_percent == pytest.approx(-50.0)
+        assert bus_diffs[0].delta_p_percent == pytest.approx(25.0)
+        # q_a = 0 → różnica względna nie istnieje.
+        assert bus_diffs[0].delta_q_percent is None
+
+        branches_a = [
+            {
+                "branch_id": "BR_1",
+                "p_from_mw": 2.0,
+                "q_from_mvar": 1.0,
+                "p_to_mw": 2.0,
+                "q_to_mvar": 1.0,
+                "losses_p_mw": 0.2,
+                "losses_q_mvar": 0.1,
+            }
+        ]
+        branches_b = [
+            {
+                "branch_id": "BR_1",
+                "p_from_mw": 3.0,
+                "q_from_mvar": 1.5,
+                "p_to_mw": 1.0,
+                "q_to_mvar": 0.5,
+                "losses_p_mw": 0.3,
+                "losses_q_mvar": 0.2,
+            }
+        ]
+        branch_diffs = service._compute_branch_diffs(branches_a, branches_b)
+        assert branch_diffs[0].delta_p_from_percent == pytest.approx(50.0)
+        assert branch_diffs[0].delta_q_from_percent == pytest.approx(50.0)
+        assert branch_diffs[0].delta_p_to_percent == pytest.approx(-50.0)
+        assert branch_diffs[0].delta_q_to_percent == pytest.approx(-50.0)
+        assert branch_diffs[0].delta_losses_p_percent == pytest.approx(50.0)
+        assert branch_diffs[0].delta_losses_q_percent == pytest.approx(100.0)
+
+        summary = service._build_summary(
+            bus_diffs=bus_diffs,
+            branch_diffs=branch_diffs,
+            ranking=[],
+            converged_a=True,
+            converged_b=True,
+            summary_a={"total_losses_p_mw": 0.2},
+            summary_b={"total_losses_p_mw": 0.3},
+        )
+        assert summary.delta_total_losses_p_percent == pytest.approx(50.0)
+        assert summary.to_dict()["delta_total_losses_p_percent"] == pytest.approx(50.0)
+
+    def test_podsumowanie_bez_procentu_gdy_straty_a_zerowe(self):
+        """Straty A = 0 → brak różnicy względnej, pole pomijane."""
+        service = PowerFlowComparisonService(lambda: None)
+        summary = service._build_summary(
+            bus_diffs=[],
+            branch_diffs=[],
+            ranking=[],
+            converged_a=True,
+            converged_b=True,
+            summary_a={"total_losses_p_mw": 0.0},
+            summary_b={"total_losses_p_mw": 0.3},
+        )
+        assert summary.delta_total_losses_p_percent is None
+        assert "delta_total_losses_p_percent" not in summary.to_dict()

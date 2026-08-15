@@ -57,3 +57,19 @@ jobs:
       - name: Local Truth Guard
         working-directory: mv-design-pro
         run: python scripts/local_truth_guard.py
+      # Kanon nawigacji (D1+D2+D4). Miejsce: TA bramka, nie `arch-guard.yml` —
+      # guard czyta wylacznie `frontend/src` i pilnuje kontraktu warstwy
+      # prezentacji (trasy, powloka, paleta), dokladnie jak sasiednie kroki
+      # (codenames, dialog completeness, tsconfig gate). `arch-guard.yml` trzyma
+      # granice warstw i higiene repozytorium — inna klasa regul.
+      - name: Nawigacja — jeden kanon
+        working-directory: mv-design-pro
+        run: python scripts/nawigacja_jeden_kanon_guard.py
+      # Zasieg bramki typow (karta TYPY-POZA-BRAMKA). Krok „Type check" wyzej
+      # melduje zielen zgodnie z prawda — ale na zbiorze, ktory definiuje
+      # `tsconfig.json`. Ten guard pilnuje, zeby ten zbior obejmowal CALY kod
+      # frontendu, i trzyma zamrozony budzet dlugu poza bramka (zapadka w obie
+      # strony). MUSI stac po `npm ci`, bo uruchamia `npx tsc`.
+      - name: TSConfig Gate Guard
+        working-directory: mv-design-pro
+        run: python scripts/tsconfig_gate_guard.py

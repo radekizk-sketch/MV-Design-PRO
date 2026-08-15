@@ -1,10 +1,17 @@
 /**
  * Testy sekcji „Zgodność referencyjna" (REF-B, HANDOFF pkt 2.3 + 2.7).
  * Mock fetch na kontrakcie §1.1 (wymóg §3.4).
+ *
+ * REF-PAKIET: pakiet OSD nie jest już zaszyty stałą — wynika z RODZAJU
+ * (`kind === 'osd'`) w katalogu `/reference/packs`, więc mock musi ten katalog
+ * zwracać. Testy iloczynu cech (katalog pusty/jeden/wiele × wybór/domyślnie)
+ * żyją w `wyborPakietuReferencyjnego.test.tsx`.
  */
 import { render, screen, cleanup } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { useWyborPakietu } from '../../../referencje/wyborPakietu';
+import type { ReferencePackSummary } from '../../../referencje/api';
 import { ZgodnoscReferencyjna } from '../ZgodnoscReferencyjna';
 
 const RAPORT = {
@@ -78,6 +85,28 @@ const OSD_PACK = {
   ],
 };
 
+/** Katalog referencji (`GET /api/reference/packs`) — źródło rodzaju pakietu. */
+const KATALOG: ReferencePackSummary[] = [
+  {
+    pack_id: 'iec62271',
+    kind: 'norm',
+    name_pl: 'IEC 62271 — profile pól',
+    version: '1.0.0',
+    status: 'repo_verified',
+    switchgear_family_ref: null,
+    source_document_refs: [],
+  },
+  {
+    pack_id: 'osd_enea',
+    kind: 'osd',
+    name_pl: 'OSD Enea',
+    version: '1.0.0',
+    status: 'repo_verified',
+    switchgear_family_ref: null,
+    source_document_refs: [],
+  },
+];
+
 function mockFetch(opts?: { odrzuc?: boolean }) {
   vi.stubGlobal(
     'fetch',
@@ -92,14 +121,24 @@ function mockFetch(opts?: { odrzuc?: boolean }) {
       if (u.includes('/reference/packs/osd_enea')) {
         return { ok: true, json: async () => OSD_PACK } as Response;
       }
+      if (u.includes('/reference/packs')) {
+        return { ok: true, json: async () => KATALOG } as Response;
+      }
       return { ok: false, statusText: 'Not Found', json: async () => ({}) } as Response;
     }),
   );
 }
 
+beforeEach(() => {
+  localStorage.clear();
+  useWyborPakietu.setState({ pakietId: null });
+});
+
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+  useWyborPakietu.setState({ pakietId: null });
+  localStorage.clear();
 });
 
 describe('REF-B — sekcja Zgodność referencyjna w inspektorze', () => {

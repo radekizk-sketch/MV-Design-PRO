@@ -126,11 +126,15 @@ test.describe('dowody-oze:screenshot', () => {
       await expect(kontekst).toContainText('sieć słaba');
       await expect(kontekst).toContainText('2,250'); // SCR z backendu (fmt PL)
 
-      // OTWARTY ślad WHITE BOX kontekstu siły sieci (SCR = S_sc / S_n).
+      // OTWARTY ślad pełnej jawności kontekstu siły sieci. INTENCJA (K10):
+      // wzór SCR renderowany KaTeX-em (element złożony, nie surowe ASCII),
+      // a podstawienie i wynik liczbowy pozostają tekstem — to one dowodzą,
+      // że wartości płyną z backendu.
       await page.getByTestId('mvd-frt-sekw-slad-otworz').click();
       const sladKontekstu = page.getByTestId('mvd-frt-sekw-slad');
-      await expect(sladKontekstu).toContainText('SCR = S_sc / S_n');
+      await expect(sladKontekstu.locator('.katex').first()).toBeVisible();
       await expect(sladKontekstu).toContainText('SCR = 45,0 / 20,0');
+      await expect(sladKontekstu).toContainText('SCR = 2,25');
 
       await page.waitForTimeout(300);
       expect(errs, `zero błędów konsoli (frt/${theme})`).toEqual([]);

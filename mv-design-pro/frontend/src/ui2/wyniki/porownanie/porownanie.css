@@ -154,6 +154,20 @@
   font-size: 13px;
 }
 
+/* ---- różnice na schemacie (akcja po wykonanym porównaniu) ---- */
+.mvd-por-schemat {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 4px 4px;
+  border-top: 1px solid var(--mvd-line);
+}
+.mvd-por-schemat-opis {
+  margin: 0;
+  color: var(--mvd-muted);
+  font-size: 12px;
+}
+
 /* ---- przełącznik trybu (Rozpływ / Zwarcia) ---- */
 .mvd-por-tryb-host {
   display: flex;
@@ -228,4 +242,21 @@
 .mvd-por-szczegol-opis {
   flex-direction: column;
   gap: 2px;
+}
+
+/* ---- filtr „pokaż tylko różnice" (KD-1 / L-14) ---- */
+.mvd-por-filtr {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 8px 0;
+  font-size: 12px;
+  cursor: pointer;
+}
+.mvd-por-filtr-etyk {
+  font-weight: 600;
+  color: var(--mvd-ink);
+}
+.mvd-por-filtr-opis {
+  color: var(--mvd-muted);
 }

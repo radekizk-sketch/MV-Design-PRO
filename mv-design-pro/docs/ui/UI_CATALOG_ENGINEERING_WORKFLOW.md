@@ -132,7 +132,7 @@ Pelna przegladarka katalogu dostepna z menu glownego (P13a: Type Library Browser
 
 | Zakladka       | Namespace(s)                           | Kolumny                              |
 |----------------|----------------------------------------|--------------------------------------|
-| Linie          | `line_overhead`                        | Nazwa, R1, X1, B1, I_n, materiaĹ‚    |
+| Linie          | `line_overhead`                        | Nazwa, R1, X1, B1, I_n, materiał    |
 | Kable          | `cable_mv`, `cable_lv`                 | Nazwa, R1, X1, B1, I_n, przekroj    |
 | Transformatory | `transformer_2w`                       | Nazwa, S_n, U_HV/U_LV, u_k, P_Cu   |
 | Laczniki       | `switch_breaker`, `switch_disconnector`| Nazwa, I_n, I_dyn, U_n              |
@@ -203,7 +203,7 @@ NetworkValidator.validate()
 4. **Walidacja po materializacji** -- NetworkValidator sprawdza czy parametry sa
    kompletne i poprawne (np. R1 > 0, I_n > 0).
 5. **Zmiana katalogu invaluduje wyniki** -- zgodnie z Case Immutability Rule,
-   zmiana modelu uniewaĹĽnia wyniki wszystkich Study Cases.
+   zmiana modelu unieważnia wyniki wszystkich Study Cases.
 
 ---
 
@@ -224,7 +224,7 @@ Wszystkie guardy uruchamiane w CI (`python-tests.yml`) i lokalnie.
 
 | Komponent               | Status     | Uwagi                                        |
 |--------------------------|------------|----------------------------------------------|
-| elementCatalogRegistry   | KOMPLETNY  | 36 mapowaĹ„, SSOT, przetestowany              |
+| elementCatalogRegistry   | KOMPLETNY  | 36 mapowań, SSOT, przetestowany              |
 | CatalogBrowser           | KOMPLETNY  | Readonly by design, filtracja po namespace   |
 | TypeLibraryBrowser       | KOMPLETNY  | 4 zakladki, pelna przegladarka               |
 | useCatalogAssignment     | KOMPLETNY  | Hook: assign + clear + walidacja             |

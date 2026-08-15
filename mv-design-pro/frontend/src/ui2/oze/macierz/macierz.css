@@ -431,3 +431,50 @@
 .mvd-oze-cert-braki h5 { margin: 0 0 6px; font-size: 13px; }
 .mvd-oze-cert-braki ul { margin: 6px 0 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
 .mvd-oze-cert-widok { display: flex; flex-direction: column; gap: 10px; }
+
+/* K5-B: wynik walidacji FRT/HVRT przy module (kolor wg istotności werdyktu) */
+.mvd-oze-podsum-frt--ok {
+  color: var(--mvd-ok);
+}
+
+.mvd-oze-podsum-frt--warn {
+  color: var(--mvd-warn);
+}
+
+.mvd-oze-podsum-frt--err {
+  color: var(--mvd-err);
+}
+
+/* Dowód certyfikatu PTPiREE przy module (z tabliczki urządzenia w modelu) */
+.mvd-oze-podsum-dowod {
+  color: var(--mvd-ok);
+}
+
+.mvd-oze-podsum-dowod--brak {
+  color: var(--mvd-warn);
+}
+
+/* Dowód certyfikacji PTPiREE w podglądzie certyfikatu — wiersz per moduł */
+.mvd-oze-cert-dowody {
+  margin: 8px 0;
+}
+
+.mvd-oze-cert-dowody h5 {
+  margin: 0 0 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.mvd-oze-cert-dowody ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.mvd-oze-cert-dowod {
+  font-size: 12px;
+  color: var(--mvd-ok);
+}
+
+.mvd-oze-cert-dowod--brak {
+  color: var(--mvd-warn);
+}

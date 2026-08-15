@@ -80,7 +80,7 @@ export function SldCanonPresetG9({ companion }: { companion: SldOzeArchetypeComp
     <g data-testid="sld-canon-g9">
       <text x={960} y={42} textAnchor="middle" fill="#F4F6F8" fontFamily={SANS} fontSize={21} fontWeight={800}>{title}</text>
       <text x={960} y={70} textAnchor="middle" fill={AMBER} fontFamily={SANS} fontSize={12} fontWeight={700}>{subtitle}</text>
-      <text x={1880} y={112} textAnchor="end" fill={CYAN} fontFamily={SANS} fontSize={11} fontWeight={700}>WYNIKI w węzłach — ze solwera (czas rzecz.) · klik węzeł → White Box</text>
+      <text x={1880} y={112} textAnchor="end" fill={CYAN} fontFamily={SANS} fontSize={11} fontWeight={700}>WYNIKI w węzłach — ze solwera (czas rzecz.) · klik węzeł → pełna jawność obliczeń</text>
 
       {/* ── SN busbar (15 kV) ── */}
       <line x1={snX1} y1={snBusY} x2={snX2} y2={snBusY} stroke={SN_BUS} strokeWidth={5} strokeLinecap="round" />

@@ -44,6 +44,10 @@ ODWZOROWANIE_WALIDATOR_NA_KANON: dict[str, str] = {
     "E009": "catalog.binding_missing",
     # „Stacja przelotowa: pola IN/OUT" == brak wymaganego pola SN stacji.
     "E021": "station.required_field_missing",
+    # „Transformator na szynie SN bez pola roli TR" == brak konfiguracji pola
+    # transformatorowego (KOMPLETNOSC-POLA-TR — ten sam warunek, jedno zrodlo
+    # predykatu `enm/pole_transformatorowe.py`).
+    "W041": "transformer.bay_missing",
     # „Magistrala nie ma segmentow" == brak segmentu magistrali.
     "I004": "trunk.segment_missing",
     # „Magistrala pierscieniowa nie ma punktu normalnie otwartego" == wymog NOP.
@@ -88,6 +92,10 @@ KODY_WALIDATORA_BEZ_KANONU: dict[str, str] = {
     "W006": "Referencja do nieistniejacego obiektu (pole) — jak W005.",
     "W007": "Kanon nie ma kodu dla liczby galezi w wezle T.",
     "W008": "Referencja do nieistniejacego obiektu (magistrala) — jak W005.",
+    "W009": (
+        "Kanon nie ma kodu dla sprzecznej czestotliwosci szyny wobec czestotliwosci "
+        "studium — to spojnosc modelu, nie brak danych projektu."
+    ),
     "W040": "Kanon nie ma kodow baterii kondensatorow (niezgodnosc napiecia).",
     "bays.earthing_interlock_violation": (
         "Naruszenie blokady uziemnika to stan LACZENIOWY, nie brak danych projektu."
@@ -126,6 +134,41 @@ KODY_KANONU_ZAREZERWOWANE: dict[str, str] = {
     "nn.switch.catalog_ref_missing": _POWOD_NN,
     "nn.measurement.required_missing": _POWOD_NN,
     "genset.fuel_type_missing": _POWOD_NN,
+    # KARTA A audytu szczytu 2026-08-01 (V12K-305 pkt 4): jedynym „emiterem" tych
+    # szesciu kodow byl `network_model/catalog/readiness_checker.py` — modul MARTWY,
+    # ktorego nie wolal zaden modul produkcyjny (jedynymi konsumentami byly testy).
+    # Usuniecie martwego modulu odslonilo prawde: droga do projektanta nie wiodla
+    # przez ten kod juz wczesniej. Warunki SA sprawdzane — w bramach operacji
+    # domenowych i katalogowych, pod ich wlasnymi kodami bledu.
+    "source.voltage_invalid": (
+        "Brak emitera po usunieciu martwego `readiness_checker` (V12K-305 pkt 4). "
+        "Warunek pilnuje operacja `add_grid_source_sn` kodem `source.missing_voltage`."
+    ),
+    "source.sk3_invalid": (
+        "Brak emitera po usunieciu martwego `readiness_checker` (V12K-305 pkt 4). "
+        "Moc zwarciowa zrodla pochodzi z materializacji katalogu ZRODLO_SN albo z "
+        "recznego odpowiednika, ktorego kompletnosci pilnuje brama katalogowa."
+    ),
+    "station.voltage_missing": (
+        "Brak emitera po usunieciu martwego `readiness_checker` (V12K-305 pkt 4). "
+        "Warunek pilnuja operacje stacyjne kodami `station.append.voltage_missing` / "
+        "`station.insert.sn_voltage_missing` (i odpowiednikami nN)."
+    ),
+    "transformer.catalog_missing": (
+        "Brak emitera po usunieciu martwego `readiness_checker` (V12K-305 pkt 4). "
+        "Wiazanie katalogowe transformatora pilnuje brama katalogowa API "
+        "(`CATALOG_REQUIRED_OPERATIONS`) kodami `catalog.ref_required` / "
+        "`catalog.item_not_found` — dla obu torow stacyjnych."
+    ),
+    "trunk.catalog_missing": (
+        "Brak emitera po usunieciu martwego `readiness_checker` (V12K-305 pkt 4). "
+        "Wiazanie katalogowe segmentu pilnuje brama katalogowa API dla "
+        "`continue_trunk_segment_sn` / `start_branch_segment_sn`."
+    ),
+    "trunk.segment_length_missing": (
+        "Brak emitera po usunieciu martwego `readiness_checker` (V12K-305 pkt 4). "
+        "Dlugosc segmentu pilnuje operacja domenowa kodem `trunk.dlugosc_missing`."
+    ),
     # Kody starsze, ktore rejestr niesie bez emitera w kodzie produkcyjnym.
     "analysis.blocked_by_readiness": (
         "Stan zbiorczy wyliczany przez bramke analiz z pozostalych kodow — nie jest "

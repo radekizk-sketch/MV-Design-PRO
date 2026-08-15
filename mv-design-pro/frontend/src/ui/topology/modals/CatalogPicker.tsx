@@ -99,30 +99,30 @@ export function CatalogPicker({
 
   return (
     <div data-testid="catalog-picker">
-      <label className="mb-1 block font-mono-eng text-[11px] font-semibold uppercase tracking-[0.12em] text-[#8eb1cf]">
+      <label className="mb-1 block font-mono-eng text-[11px] font-semibold uppercase tracking-[0.12em] text-scada-text">
         {label}
-        {required && <span className="ml-0.5 text-[#ff5c5c]">*</span>}
+        {required && <span className="ml-0.5 text-sygnal-blokada-tusz">*</span>}
       </label>
 
       {selectedEntry ? (
-        <div className="border border-[#1f5c8a] bg-[#08213a] px-3 py-2">
+        <div className="border border-sygnal-info bg-scada-surface px-3 py-2">
           <div className="flex items-start gap-3">
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold text-white">{selectedEntry.name}</p>
-              <p className="mt-0.5 text-xs text-[#8fb3d1]">
+              <p className="mt-0.5 text-xs text-scada-text">
                 {[selectedEntry.manufacturer, formatCatalogMeta(selectedEntry)]
                   .filter(Boolean)
                   .join(' · ')}
               </p>
               {selectedEntry.summary && (
-                <p className="mt-1 text-xs text-[#6f8eaa]">{selectedEntry.summary}</p>
+                <p className="mt-1 text-xs text-scada-muted">{selectedEntry.summary}</p>
               )}
             </div>
             {!disabled && (
               <button
                 type="button"
                 onClick={handleClear}
-                className="shrink-0 border border-[#28425f] px-2 py-1 text-xs font-semibold text-[#b7d3ed] hover:border-[#04d6ff] hover:text-white"
+                className="shrink-0 border border-scada-border-strong px-2 py-1 text-xs font-semibold text-sygnal-info-tusz hover:border-sygnal-info hover:text-white"
                 title="Zmień typ katalogowy"
               >
                 Zmień
@@ -142,44 +142,44 @@ export function CatalogPicker({
             onFocus={() => setIsDropdownOpen(true)}
             disabled={disabled}
             className={`w-full border px-3 py-2 text-sm ${
-              error ? 'border-[#ff5c5c]' : 'border-[#2a4562]'
-            } bg-[#08111d] text-white outline-none placeholder:text-[#526f88] focus:border-[#04d6ff] disabled:opacity-60`}
+              error ? 'border-sygnal-blokada' : 'border-scada-border-strong'
+            } bg-scada-bg text-white outline-none placeholder:text-scada-muted focus:border-sygnal-info disabled:opacity-60`}
             placeholder={placeholder}
             data-testid="catalog-picker-search"
           />
           {isDropdownOpen && filteredEntries.length > 0 && (
-            <div className="absolute z-10 mt-1 max-h-56 w-full overflow-y-auto border border-[#2a4562] bg-[#08111d] shadow-lg shadow-black/40">
+            <div className="absolute z-10 mt-1 max-h-56 w-full overflow-y-auto border border-scada-border-strong bg-scada-bg shadow-lg shadow-black/40">
               {filteredEntries.map((entry) => (
                 <button
                   key={entry.id}
                   type="button"
                   onClick={() => handleSelect(entry.id)}
-                  className="w-full border-b border-[#17314c] px-3 py-2 text-left text-sm text-white last:border-b-0 hover:bg-[#0b2b45]"
+                  className="w-full border-b border-scada-border px-3 py-2 text-left text-sm text-white last:border-b-0 hover:bg-scada-panel-raised"
                   data-testid={`catalog-entry-${entry.id}`}
                 >
                   <span className="font-medium">{entry.name}</span>
                   {entry.manufacturer && (
-                    <span className="ml-1 text-[#7da1bf]">({entry.manufacturer})</span>
+                    <span className="ml-1 text-scada-muted">({entry.manufacturer})</span>
                   )}
-                  <span className="mt-0.5 block text-xs text-[#8fb3d1]">
+                  <span className="mt-0.5 block text-xs text-scada-text">
                     {formatCatalogMeta(entry)}
                   </span>
                   {entry.summary && (
-                    <span className="mt-0.5 block text-xs text-[#6f8eaa]">{entry.summary}</span>
+                    <span className="mt-0.5 block text-xs text-scada-muted">{entry.summary}</span>
                   )}
                 </button>
               ))}
             </div>
           )}
           {isDropdownOpen && filteredEntries.length === 0 && searchTerm && (
-            <div className="absolute z-10 mt-1 w-full border border-[#2a4562] bg-[#08111d] px-3 py-2 text-sm text-[#9fc2df] shadow-lg shadow-black/40">
+            <div className="absolute z-10 mt-1 w-full border border-scada-border-strong bg-scada-bg px-3 py-2 text-sm text-scada-text shadow-lg shadow-black/40">
               Brak pozycji katalogowych dla: {searchTerm}
             </div>
           )}
         </div>
       )}
 
-      {error && <p className="mt-1 text-xs text-[#ff9a9a]">{error}</p>}
+      {error && <p className="mt-1 text-xs text-sygnal-blokada-tusz">{error}</p>}
     </div>
   );
 }

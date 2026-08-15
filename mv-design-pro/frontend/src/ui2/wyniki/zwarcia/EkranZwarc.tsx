@@ -16,8 +16,9 @@
 import { useMemo, useState } from 'react';
 import './zwarcia.css';
 import type { AdvancementMode } from '../../shell/modeModel';
-import { EkranAnalizy } from '../wzorzec';
-import { useWkladyZwarciowe } from './api';
+import { EkranAnalizy, PrzyciskAkcjiStanu, useAkcjaUruchomObliczenie } from '../wzorzec';
+import { useRozplywZwarciowy, useWkladyZwarciowe } from './api';
+import { useOtworzKonfiguracjeStacji, WeryfikacjaAparatury } from './aparatura';
 import { BilansIEC } from './BilansIEC';
 import { usePokazZwarcieNaSchemacie } from './pokazNaSchemacie';
 import { RozplywZwarciowy } from './RozplywZwarciowy';
@@ -30,7 +31,6 @@ import {
   KOLUMNY_ZWARC,
   naWierszeZwarc,
   naZalozeniaZwarc,
-  rozplywDlaWiersza,
   useWynikZwarciowy,
   type WkladZwarciowy,
 } from './zwarciaModel';
@@ -67,6 +67,11 @@ export function EkranZwarc({
   // Karta W-C pkt 6: selekcja + centrowanie + nawigacja + overlay rozpływu
   // (reużycie wzorca V12K-073 — wspólny store selekcji, produkcyjny store overlay).
   const pokazNaSchemacie = usePokazZwarcieNaSchemacie();
+  // KD-4 (dług V12K-287): ogniwo „wynik zwarciowy → wytrzymałość aparatury".
+  const otworzKonfiguracjeStacji = useOtworzKonfiguracjeStacji();
+  // K6 / H-5: uczciwy stan zerowy Z AKCJĄ — brak wyniku zwarciowego prowadzi
+  // WPROST do uruchomienia przebiegu zwarciowego (ten sam tor co „Oblicz").
+  const akcjaBiegu = useAkcjaUruchomObliczenie('SC_3F');
 
   // Domyślnie wybrany pierwszy punkt (deterministycznie, kolejność źródłowa).
   const aktywnyPunkt = useMemo(() => {
@@ -80,12 +85,20 @@ export function EkranZwarc({
   // pierwszeństwo — wtedy hook nie pobiera (punkt=null).
   const wkladyPobrane = useWkladyZwarciowe(wklady ? null : aktywnyPunkt);
 
+  // V12K-281 (K13): rozpływ gałęziowy wybranego punktu NA ŻĄDANIE — wiersze
+  // zbiorcze nie niosą już rozpływu (odpowiedź 730 MB dla 50 stacji); dane
+  // z pola wiersza (mock/starszy pełny zapis) mają pierwszeństwo, inaczej
+  // dostawca pobiera rozpływ punktu z endpointu (cache per punkt).
+  const wierszDlaRozplywu = rows.find((r) => r.target_id === aktywnyPunkt) ?? rows[0] ?? null;
+  const rozplyw = useRozplywZwarciowy(runId, wierszDlaRozplywu);
+
   if (!wynik || rows.length === 0) {
     return (
       <div className="mvd-wyn" data-testid="mvd-zwarcia-ekran-pusty">
         <div className="mvd-zwarcia-pusty">
           <p className="mvd-zwarcia-pusty-title">{ZWARCIA_STRINGS.brakWyniku}</p>
           <p className="mvd-zwarcia-pusty-desc">{ZWARCIA_STRINGS.brakWynikuOpis}</p>
+          <PrzyciskAkcjiStanu akcja={akcjaBiegu} testid="mvd-zwarcia-pusty" />
         </div>
       </div>
     );
@@ -124,7 +137,7 @@ export function EkranZwarc({
           type="button"
           className="mvd-zwarcia-wykres-btn"
           data-testid="mvd-zwarcia-pokaz-sld"
-          onClick={() => pokazNaSchemacie(wierszAktywny, runId)}
+          onClick={() => pokazNaSchemacie(wierszAktywny, runId, rozplyw)}
         >
           {ZWARCIA_STRINGS.pokazNaSchemacie}
         </button>
@@ -132,9 +145,17 @@ export function EkranZwarc({
 
       <BilansIEC row={wierszAktywny} punktNazwa={nazwaAktywnego} />
 
+      {/* Ogniwo łańcucha: prądy TEGO punktu → końcówka walidacji wytrzymałości
+          aparatury (ta sama, którą karta K7-B wpięła w konfigurator stacji). */}
+      <WeryfikacjaAparatury
+        wiersz={wierszAktywny}
+        punktNazwa={nazwaAktywnego}
+        onOtworzKonfiguracjeStacji={otworzKonfiguracjeStacji}
+      />
+
       <RozplywZwarciowy
         punktNazwa={nazwaAktywnego}
-        flows={rozplywDlaWiersza(wierszAktywny)}
+        flows={rozplyw}
         trybZaawansowania={trybZaawansowania}
         onOtworzDowod={onOtworzDowod}
       />

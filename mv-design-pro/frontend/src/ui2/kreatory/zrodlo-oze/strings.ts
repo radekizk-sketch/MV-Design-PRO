@@ -11,6 +11,8 @@ export const OZE_STRINGS = {
 
   krokTechnologia: 'Technologia i przyłączenie',
   krokKatalog: 'Falownik i moc',
+  krokAparatura: 'Aparatura pola',
+  krokZgodnosc: 'Zgodność przyłączeniowa',
   krokRegulacja: 'Regulacja mocy biernej',
   krokZapis: 'Podsumowanie i zapis',
 
@@ -28,11 +30,32 @@ export const OZE_STRINGS = {
   umiejscowienie: 'Umiejscowienie pola',
   umiejscowienieNowe: 'Nowe pole źródłowe',
   umiejscowienieIstniejace: 'Istniejące pole odpływowe',
+  istniejacePole: 'Istniejące pole odpływowe nN',
+  istniejacePolePlaceholder: '— wybierz pole odpływowe —',
+  istniejacePoleBrak:
+    'Rozdzielnia nie ma pól odpływowych nN do wskazania — wybierz nowe pole źródłowe '
+    + 'albo dodaj wcześniej pole odpływowe.',
   nazwaNowegoPola: 'Nazwa nowego pola',
   aparatNowegoPola: 'Aparat nowego pola nN',
   aparatPlaceholder: '— wybierz aparat nN —',
   nazwa: 'Nazwa źródła',
   nazwaPlaceholder: 'np. Farma PV Wschód',
+
+  // O13: panel konsekwencji wariantu przyłączenia — opis strukturalny operacji
+  // (co powstaje w modelu), bez żadnej wielkości liczbowej.
+  konsekwencjeTytul: 'Konsekwencje wybranego wariantu',
+  konsekwencjeNn: [
+    'Falownik zostaje przyłączony do szyny nN rozdzielni.',
+    'Powstaje pole źródłowe nN (nowe z aparatem z katalogu albo wskazane istniejące pole odpływowe).',
+    'Transformator blokowy nie jest tworzony; krok doboru toru SN nie występuje.',
+    'Wkład zwarciowy i rozpływ mocy źródła liczą się na poziomie nN.',
+  ],
+  konsekwencjeBlok: [
+    'Falownik zostaje przyłączony do strony nN transformatora blokowego SN/nN.',
+    'Wymagany jest transformator blokowy stacji albo tor SN zmaterializowany w kroku doboru (transformator + kabel SN + dedykowane pole źródłowe SN).',
+    'Transformator blokowy wnosi do modelu własną impedancję i układ połączeń.',
+    'Kreator prowadzi dodatkowy krok „Dobór toru SN".',
+  ],
 
   // Krok 2
   sekcjaKatalog: 'Falownik z katalogu',
@@ -45,6 +68,9 @@ export const OZE_STRINGS = {
   paramNapiecie: 'Napięcie znamionowe',
   paramMoc: 'Moc znamionowa S',
   paramPmax: 'Moc czynna Pmax (agregat)',
+  // O7: jawna semantyka liczby jednostek — zestaw i suma mocy pozornej z tabliczki.
+  paramZestaw: 'Zestaw jednostek',
+  paramMocAgregat: 'Moc pozorna S (agregat)',
   ptpireeTytul: 'Certyfikat PTPiREE',
   ptpireeBrak: 'Falownik bez powiązanego certyfikatu PTPiREE — ocena zgodności NC RfG wymaga uzupełnienia.',
 
@@ -113,6 +139,106 @@ export const OZE_STRINGS = {
   socMax: 'SOC max',
   socPomoc: 'Stan naładowania — zakres pracy magazynu [%].',
 
+  // Krok APARATURA (K9-A O2/O3): wiązania aparaturowe wytwórcy.
+  sekcjaAparatura: 'Aparatura pola wytwórcy',
+  aparaturaPomoc:
+    'Wiązania aparaturowe zapisują się do modelu razem ze źródłem i odblokowują osie '
+    + 'gotowości analiz: zabezpieczenia, selektywność, zwarcia niesymetryczne oraz badania '
+    + 'przejścia przez zakłócenie. Typy pochodzą z realnych katalogów.',
+  aparaturaCt: 'Przekładnik prądowy (CT)',
+  aparaturaCtPomoc:
+    'Klasa rdzenia z katalogu decyduje o gotowości osi zabezpieczeń (IEC 61869-2).',
+  aparaturaVt: 'Przekładnik napięciowy (VT)',
+  aparaturaVtPomoc: 'Pomiar napięcia dla zabezpieczeń i automatyki pola wytwórcy.',
+  aparaturaZabezpieczenie: 'Zabezpieczenie pola wytwórcy',
+  aparaturaZabezpieczeniePomoc:
+    'Urządzenie zabezpieczeniowe pola — funkcje deklarowane przez typ zasilają oś '
+    + '„Zabezpieczenia" i ocenę doboru funkcji.',
+  aparaturaKatalogPlaceholder: '— wybierz typ z katalogu —',
+  aparaturaKatalogBlad: 'Nie udało się pobrać katalogu aparatury.',
+  // Dane bez katalogu w systemie — pola jawnie bez walidacji katalogowej (dług nazwany).
+  aparaturaBezKataloguTytul: 'Dane producenta bez walidacji katalogowej',
+  aparaturaBezKatalogu:
+    'System nie ma katalogu danych zwarciowych ani modeli dynamicznych falowników — poniższe '
+    + 'referencje są zapisywane bez sprawdzenia w katalogu (odpowiedzialność projektanta). '
+    + 'Źródło danych: karta katalogowa albo protokół badań producenta.',
+  aparaturaDaneZwarciowe: 'Referencja danych zwarciowych urządzenia',
+  aparaturaDaneZwarciowePomoc:
+    'Składowe symetryczne urządzenia — bez nich zwarcia niesymetryczne (1-fazowe, '
+    + '2-fazowe z ziemią) pozostają zablokowane (IEC 60909-3).',
+  aparaturaModelDynamiczny: 'Referencja modelu dynamicznego urządzenia',
+  aparaturaModelDynamicznyPomoc:
+    'Opis zachowania przekształtnika w stanach przejściowych — wymagany do badań '
+    + 'przejścia przez zapad (LVRT) i wzrost napięcia (HVRT).',
+  aparaturaRefPlaceholder: 'np. oznaczenie dokumentu producenta',
+  teoriaAparaturaTytul: 'Teoria: aparatura pola wytwórcy',
+  teoriaAparaturaOpis:
+    'Pole wytwórcy wymaga toru pomiarowego (przekładnik prądowy i napięciowy) oraz '
+    + 'zabezpieczenia. Klasa rdzenia przekładnika prądowego decyduje, czy pomiar nadaje się '
+    + 'do celów zabezpieczeniowych (rdzeń klasy P/PR wg IEC 61869-2), a funkcje urządzenia '
+    + 'zabezpieczeniowego muszą pokrywać wymagania wynikające ze sposobu pracy punktu '
+    + 'neutralnego i ścieżki zwarcia doziemnego.',
+  teoriaAparaturaWymog:
+    'Dobór funkcji zabezpieczeniowych pola wytwórcy zależy od strony przyłączenia i ścieżki '
+    + 'zwarcia doziemnego; ocenę pokrycia funkcji wykonuje system po zapisaniu wiązań.',
+  teoriaAparaturaPodstawa:
+    'Podstawa: IEC 61869-2 (przekładniki), IEC 60255 (zabezpieczenia), IRiESD OSD.',
+
+  // Krok ZGODNOŚĆ (K9-A O4): profile zgodności przyłączeniowej NC RfG.
+  sekcjaZgodnosc: 'Profile zgodności przyłączeniowej (NC RfG)',
+  zgodnoscPomoc:
+    'Profil operatora i krzywe graniczne zapisują się do modelu razem ze źródłem — zasilają '
+    + 'ocenę zgodności NC RfG, badania przejścia przez zakłócenie (LVRT/HVRT) i odpowiedź '
+    + 'częstotliwościową P(f).',
+  zgodnoscProfil: 'Profil wymagań operatora',
+  zgodnoscProfilPlaceholder: '— wybierz profil operatora —',
+  zgodnoscProfilPomoc:
+    'Zestaw wymagań ogólnego stosowania operatora (moduły A–D). Wybór profilu zawęża '
+    + 'listę krzywych granicznych do wymagań tego operatora.',
+  zgodnoscLvrt: 'Krzywa graniczna LVRT (zanik napięcia)',
+  zgodnoscHvrt: 'Krzywa graniczna HVRT (przepięcie)',
+  // NIE „operatora" (karta K-Q): katalog nastaw P(f) przestał być listą wariantów
+  // przypisanych operatorom, bo rozporządzenie (UE) 2016/631 art. 13 ust. 2 podaje
+  // statyzm jako nastawialny w przedziale 2–12% wspólnie dla wszystkich. Etykieta
+  // obiecująca wybór „operatora" opisywałaby listę, której już nie ma, i rozjeżdżała
+  // się z tą samą wielkością na karcie wytwórcy („Charakterystyka P(f)").
+  zgodnoscPf: 'Charakterystyka P(f)',
+  zgodnoscPfPomoc:
+    'Statyzm i strefa nieczułości odpowiedzi mocowo-częstotliwościowej. Zakres nastawy '
+    + 'wynika z rozporządzenia (UE) 2016/631 art. 13 ust. 2 (2–12%), więc lista NIE zawęża '
+    + 'się profilem operatora — inaczej niż obwiednie LVRT/HVRT.',
+  zgodnoscKrzywaPlaceholder: '— wybierz krzywą —',
+  zgodnoscKrzywePomoc:
+    'Obwiednie graniczne napięcie–czas oraz charakterystyka mocowo-częstotliwościowa '
+    + 'z wymagań operatora — porównanie z odpowiedzią jednostki wykonuje system.',
+  teoriaZgodnoscTytul: 'Teoria: zgodność przyłączeniowa NC RfG',
+  teoriaZgodnoscOpis:
+    'Moduł wytwarzania energii podlega wymaganiom NC RfG stosownie do typu (A–D, wg mocy '
+    + 'i napięcia przyłączenia). Profil operatora określa obwiednie graniczne przetrwania '
+    + 'zakłóceń (LVRT/HVRT), wymaganą odpowiedź częstotliwościową P(f) i zdolność do mocy '
+    + 'biernej. Krzywe wybrane tutaj są danymi wejściowymi badań zgodności w punkcie '
+    + 'przyłączenia.',
+  teoriaZgodnoscWymog:
+    'Do oceny zgodności wymagany jest profil operatora oraz krzywe LVRT i HVRT; bez nich '
+    + 'osie badań przejścia przez zakłócenie pozostają zablokowane.',
+  teoriaZgodnoscPodstawa:
+    'Podstawa: Rozporządzenie Komisji (UE) 2016/631 (NC RfG), IRiESD/IRiESP, wymagania '
+    + 'ogólnego stosowania PTPiREE.',
+
+  // Tryb pracy źródła (K9-A O5) — słownik trybów punktu pracy źródła w modelu.
+  trybPracy: 'Tryb pracy źródła',
+  trybPracyPomoc:
+    'Stan pracy źródła zapisywany w modelu — czytelny dla kart pól i odczytów rozdzielni. '
+    + 'Pozostaw „bez wskazania", aby nie zapisywać stanu (odczyt pola przyjmie gotowość).',
+  trybPracyBrak: '— bez wskazania —',
+  trybPracyOpcje: [
+    { id: 'praca_sieciowa', etykieta: 'Praca sieciowa (oddawanie mocy)' },
+    { id: 'ladowanie', etykieta: 'Ładowanie (pobór mocy — magazyn)' },
+    { id: 'rozladowanie', etykieta: 'Rozładowanie (oddawanie mocy — magazyn)' },
+    { id: 'gotowosc', etykieta: 'Gotowość (bez wymiany mocy)' },
+    { id: 'odstawione', etykieta: 'Odstawione (wyłączone z ruchu)' },
+  ],
+
   // Downstream
   downstreamTytul: 'Co to uruchamia',
   downstreamOpis:
@@ -126,7 +252,13 @@ export const OZE_STRINGS = {
   wierszTechnologia: 'Technologia',
   wierszPrzylaczenie: 'Przyłączenie',
   wierszFalownik: 'Falownik',
+  wierszAparatura: 'Aparatura pola',
+  wierszZgodnosc: 'Profile NC RfG',
   wierszRegulacja: 'Regulacja',
+  wierszTrybPracy: 'Tryb pracy',
+  aparaturaCzesciowa: (n: number, z: number) => `Wybrano ${n} z ${z}`,
+  doKonfiguracji: 'Do konfiguracji',
+  bezWskazania: 'Bez wskazania',
 
   brakStacjiTytul: 'Brak wskazania rozdzielni',
   brakStacjiOpis:
@@ -139,7 +271,41 @@ export const OZE_STRINGS = {
   zapisz: 'Zapisz źródło OZE',
   anuluj: 'Anuluj',
   brakZakresu: 'Wybierz aktywny zakres obliczeń przed zapisem źródła.',
+  brakProjektu:
+    'Wiązania aparaturowe i profile wymagają aktywnego projektu — wybierz projekt przed zapisem.',
   walidacjaStopka: 'Uzupełnij wymagane pola, aby zapisać źródło OZE.',
+
+  // Sekwencja zapisu (K9-A §0.4): każdy etap raportowany uczciwie — bez udawania
+  // atomowości, której model nie zapewnia.
+  sekwencjaTytul: 'Przebieg zapisu',
+  sekwencjaOpis:
+    'Zapis składa się z kolejnych operacji na modelu. Przy niepowodzeniu etapu poniżej '
+    + 'widać, co już zostało zapisane, a co wymaga uzupełnienia w karcie wytwórcy.',
+  sekwencjaKrokZrodlo: 'Utworzenie źródła w modelu',
+  sekwencjaKrokWiazania: 'Wiązania aparaturowe i profile zgodności',
+  sekwencjaKrokTryb: 'Tryb pracy źródła',
+  sekwencjaKrokLimity: 'Limity mocy biernej (adekwatność Q)',
+  sekwencjaZapisane: 'zapisane',
+  sekwencjaPominiete: 'pominięte (bez wyborów)',
+  sekwencjaBlad: 'błąd',
+  sekwencjaBladPodsumowanie:
+    'Część etapów zapisu nie powiodła się — źródło jest w modelu, brakujące dane uzupełnisz '
+    + 'w karcie wytwórcy (wiązania katalogowe) bez ponownego tworzenia elementu.',
+
+  // Readout osi gotowości DER (K9-A O15) — wyłącznie odczyt z modelu (bez lokalnych reguł).
+  gotowoscDerTytul: 'Gotowość analiz wytwórcy',
+  gotowoscDerOpis:
+    'Osie gotowości z modelu — status mówi, czy wytwórca ma dane potrzebne do danej analizy, '
+    + 'a powody wskazują brakującą daną i miejsce uzupełnienia.',
+  gotowoscDerLadowanie: 'Pobieranie osi gotowości wytwórcy…',
+  gotowoscDerBlad: 'Nie udało się pobrać osi gotowości wytwórcy.',
+  gotowoscDerStatus: {
+    ready: 'gotowa',
+    partial: 'częściowa',
+    blocked: 'zablokowana',
+    not_applicable: 'nie dotyczy',
+    no_module: 'brak modułu',
+  } as Record<string, string>,
 
   // Panele teorii kroków 1–2 (V12K-066: standard „must-have")
   teoriaTechTytul: 'Teoria: technologia i sposób przyłączenia',
@@ -182,6 +348,20 @@ export const OZE_STRINGS = {
   doborRezerwaTrPomoc: 'Zapas ponad moc pozorną falowników [pu], np. 0,1 = +10%.',
   doborRezerwaKabel: 'Rezerwa prądowa kabla',
   doborRezerwaKabelPomoc: 'Zapas obciążalności kabla ponad prąd TR [pu].',
+  // K9-A O8/O9/O11: pełne parametry progu doboru (konsumowane przez końcówkę doboru).
+  doborJednoczesnosc: 'Współczynnik jednoczesności',
+  doborJednoczesnoscPomoc:
+    'Współczynnik jednoczesności pracy falowników $k_j$ (0–1]. Obniża obciążenie efektywne: '
+    + '$S_{ef} = \\Sigma S \\cdot k_j$. Puste = 1,0 (pełna jednoczesność).',
+  doborObciazalnoscTr: 'Obciążalność TR',
+  doborObciazalnoscTrPomoc:
+    'Dopuszczalne obciążenie względne transformatora [pu Sn], np. 1,0 = praca do mocy '
+    + 'znamionowej. Próg doboru: $S_n \\cdot \\text{obciążalność} \\ge S_{wym}$.',
+  doborRezerwaPole: 'Rezerwa prądowa aparatu pola',
+  doborRezerwaPolePomoc: 'Zapas prądu znamionowego aparatu pola SN ponad prąd TR [pu].',
+  // uk% TR blokowego: WYŁĄCZNIE odczyt z propozycji — wartość rządzi katalog typu
+  // (materializacja nadpisuje wartość z żądania), więc kontrolka edycji byłaby pozorna.
+  doborUkTr: 'Napięcie zwarcia uk (z katalogu)',
   doborMaxDeltaU: 'Dopuszczalna zmiana napięcia',
   doborMaxDeltaUPomoc:
     'Dopuszczalna zmiana napięcia na odcinku kabla SN [%] — kryterium obejmuje MODUŁ zmiany, '

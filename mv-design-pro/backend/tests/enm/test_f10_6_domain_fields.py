@@ -8,11 +8,15 @@
 
 Wszystkie pola są ADDYTYWNE (default None/[]) — zero łamania fixture/hash
 istniejących danych (asercja determinizmu poniżej).
+
+WYWOŁANIE BEZPOŚREDNIE, BEZ `asyncio.run`. Testy wołają funkcję końcówki wprost,
+z pominięciem warstwy HTTP. Końcówka jest zdefiniowana jako `def` — jej ciało
+jest w całości blokujące, więc FastAPI wykonuje ją w PULI WĄTKÓW zamiast na
+pętli zdarzeń (oś współbieżności programu 10x). Zwraca gotowy słownik, nie
+korutynę. Intencja testów bez zmian: sprawdzają TREŚĆ modelu odczytu pól.
 """
 
 from __future__ import annotations
-
-import asyncio
 
 import pytest
 from api.enm import get_enm_field_view
@@ -233,20 +237,20 @@ class TestZeroSequenceCurrentSourceHeuristicFix:
         """Rdzeń wyczyszczenia: PRZED F10.6 KAŻDY CT dawał "suma_ct" (zgadywanie).
         PO F10.6: brak danych o układzie ⇒ "brak" (WHITE BOX, zero domysłu)."""
         _seed("f10_6-no-arrangement", _enm_with_ct(ct_arrangement=None))
-        data = asyncio.run(get_enm_field_view("f10_6-no-arrangement"))
+        data = get_enm_field_view("f10_6-no-arrangement")
         chain = data["fields"][0]["canonical_model"]["base_model"]["measurement_chain"]
         assert chain["ct_refs"] == ["ct_in_1"]
         assert chain["zero_sequence_current_source"] == "brak"
 
     def test_3xct_arrangement_gives_suma_ct(self):
         _seed("f10_6-3xct", _enm_with_ct(ct_arrangement="3xCT"))
-        data = asyncio.run(get_enm_field_view("f10_6-3xct"))
+        data = get_enm_field_view("f10_6-3xct")
         chain = data["fields"][0]["canonical_model"]["base_model"]["measurement_chain"]
         assert chain["zero_sequence_current_source"] == "suma_ct"
 
     def test_ferranti_arrangement_gives_przekladnik_ferrantiego(self):
         _seed("f10_6-ferranti", _enm_with_ct(ct_arrangement="ferranti"))
-        data = asyncio.run(get_enm_field_view("f10_6-ferranti"))
+        data = get_enm_field_view("f10_6-ferranti")
         chain = data["fields"][0]["canonical_model"]["base_model"]["measurement_chain"]
         assert chain["zero_sequence_current_source"] == "przekladnik_ferrantiego"
 
@@ -254,7 +258,7 @@ class TestZeroSequenceCurrentSourceHeuristicFix:
         """`_build_earth_fault_path` pass-through — regresja: nie duplikuje
         starej heurystyki gdzie indziej."""
         _seed("f10_6-earth-fault-path", _enm_with_ct(ct_arrangement=None))
-        data = asyncio.run(get_enm_field_view("f10_6-earth-fault-path"))
+        data = get_enm_field_view("f10_6-earth-fault-path")
         earth_fault_path = data["fields"][0]["canonical_model"]["base_model"].get(
             "earth_fault_path"
         )

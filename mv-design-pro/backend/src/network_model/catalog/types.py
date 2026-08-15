@@ -23,8 +23,9 @@ Usage:
     )
 """
 
+import re
 import unicodedata
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Literal
 from uuid import uuid4
@@ -199,6 +200,12 @@ def _uf_control_to_dict(source: Any) -> dict[str, Any]:
         else:
             payload[name] = value
     return payload
+
+
+def _opcjonalny_float(data: dict[str, Any], key: str) -> float | None:
+    """Wartosc liczbowa spod klucza albo ``None``, gdy klucza brak/jest pusty."""
+    value = data.get(key)
+    return float(value) if value is not None else None
 
 
 def _uf_control_kwargs(data: dict[str, Any]) -> dict[str, Any]:
@@ -972,6 +979,17 @@ class SwitchEquipmentType:
         ik_ka: Short-circuit breaking current [kA] (for breakers).
         icw_ka: Short-time withstand current [kA] (for disconnectors).
         medium: Quenching medium (e.g., "SF6", "VACUUM").
+        u_m_kv: Napiecie najwyzsze urzadzenia U_m [kV] wg IEC 62271-1 — karta
+            UM-ICU-KATALOG. Dla aparatury SN rownowazne Ur z karty katalogowej
+            (rodzina napieciowa "12/17.5/24 kV" JEST U_m). ``None`` = karta
+            katalogowa tej pozycji jeszcze nie wniosla tej wartosci wprost.
+        i_cu_ka: Znamionowa zdolnosc wylaczalna zwarciowa I_cu [kA] wg
+            IEC 62271-100 — WYLACZNIE dla aparatow zdolnych wylaczac prady
+            zwarciowe (wylaczniki, reklozery, bezpieczniki). Rozlaczniki i
+            odlaczniki (equipment_kind LOAD_SWITCH/DISCONNECTOR/EARTH_SWITCH)
+            NIE MAJA tej zdolnosci z definicji normy — ``None`` u nich oznacza
+            "nie dotyczy", nie brak danej. ``None`` u wylacznika oznacza brak
+            danej z karty katalogowej.
     """
 
     id: str
@@ -983,6 +1001,8 @@ class SwitchEquipmentType:
     ik_ka: float = 0.0
     icw_ka: float = 0.0
     medium: str | None = None
+    u_m_kv: float | None = None
+    i_cu_ka: float | None = None
     verification_status: str = CatalogVerificationStatus.CZESCIOWO_ZWERYFIKOWANY.value
     source_reference: str = "Katalog aparatury MV-DESIGN-PRO"
     catalog_status: str = CatalogStatus.PRODUKCYJNY_V1.value
@@ -1001,6 +1021,8 @@ class SwitchEquipmentType:
             "ik_ka": self.ik_ka,
             "icw_ka": self.icw_ka,
             "medium": self.medium,
+            "u_m_kv": self.u_m_kv,
+            "i_cu_ka": self.i_cu_ka,
             **_catalog_metadata_to_dict(
                 verification_status=self.verification_status,
                 source_reference=self.source_reference,
@@ -1023,6 +1045,8 @@ class SwitchEquipmentType:
             ik_ka=float(data.get("ik_ka", 0.0)),
             icw_ka=float(data.get("icw_ka", 0.0)),
             medium=data.get("medium"),
+            u_m_kv=(float(data["u_m_kv"]) if data.get("u_m_kv") is not None else None),
+            i_cu_ka=(float(data["i_cu_ka"]) if data.get("i_cu_ka") is not None else None),
             **_catalog_metadata_kwargs(
                 data,
                 default_source_reference="Katalog aparatury MV-DESIGN-PRO / karty katalogowe producentow",
@@ -1144,6 +1168,8 @@ class ConverterType:
     ptpiree_ppm_scope: str | None = None
     ptpiree_source_url: str | None = None
     ptpiree_publication_date: str | None = None
+    ptpiree_note: str | None = None
+    ptpiree_certificate_condition: str | None = None
     verification_status: str = CatalogVerificationStatus.REFERENCYJNY.value
     source_reference: str = "Katalog przeksztaltnikow MV-DESIGN-PRO"
     catalog_status: str = CatalogStatus.REFERENCYJNY_V1.value
@@ -1221,6 +1247,8 @@ class ConverterType:
             "ptpiree_ppm_scope": self.ptpiree_ppm_scope,
             "ptpiree_source_url": self.ptpiree_source_url,
             "ptpiree_publication_date": self.ptpiree_publication_date,
+            "ptpiree_note": self.ptpiree_note,
+            "ptpiree_certificate_condition": self.ptpiree_certificate_condition,
             **_catalog_metadata_to_dict(
                 verification_status=self.verification_status,
                 source_reference=self.source_reference,
@@ -1245,15 +1273,11 @@ class ConverterType:
             un_kv=float(data.get("un_kv", 0.0)),
             sn_mva=float(data.get("sn_mva", 0.0)),
             pmax_mw=float(data.get("pmax_mw", 0.0)),
-            qmin_mvar=(float(data.get("qmin_mvar")) if data.get("qmin_mvar") is not None else None),
-            qmax_mvar=(float(data.get("qmax_mvar")) if data.get("qmax_mvar") is not None else None),
-            cosphi_min=(
-                float(data.get("cosphi_min")) if data.get("cosphi_min") is not None else None
-            ),
-            cosphi_max=(
-                float(data.get("cosphi_max")) if data.get("cosphi_max") is not None else None
-            ),
-            e_kwh=(float(data.get("e_kwh")) if data.get("e_kwh") is not None else None),
+            qmin_mvar=_opcjonalny_float(data, "qmin_mvar"),
+            qmax_mvar=_opcjonalny_float(data, "qmax_mvar"),
+            cosphi_min=_opcjonalny_float(data, "cosphi_min"),
+            cosphi_max=_opcjonalny_float(data, "cosphi_max"),
+            e_kwh=_opcjonalny_float(data, "e_kwh"),
             manufacturer=data.get("manufacturer"),
             model=data.get("model"),
             grid_code=data.get("grid_code"),
@@ -1278,6 +1302,8 @@ class ConverterType:
             ptpiree_ppm_scope=data.get("ptpiree_ppm_scope"),
             ptpiree_source_url=data.get("ptpiree_source_url"),
             ptpiree_publication_date=data.get("ptpiree_publication_date"),
+            ptpiree_note=data.get("ptpiree_note"),
+            ptpiree_certificate_condition=data.get("ptpiree_certificate_condition"),
             **_catalog_metadata_kwargs(
                 data,
                 default_source_reference="Katalog przeksztaltnikow MV-DESIGN-PRO / profile typowe OZE i BESS",
@@ -1345,6 +1371,8 @@ class InverterType:
     ptpiree_ppm_scope: str | None = None
     ptpiree_source_url: str | None = None
     ptpiree_publication_date: str | None = None
+    ptpiree_note: str | None = None
+    ptpiree_certificate_condition: str | None = None
     verification_status: str = CatalogVerificationStatus.REFERENCYJNY.value
     source_reference: str = "Katalog falownikow MV-DESIGN-PRO"
     catalog_status: str = CatalogStatus.REFERENCYJNY_V1.value
@@ -1376,6 +1404,8 @@ class InverterType:
             "ptpiree_ppm_scope": self.ptpiree_ppm_scope,
             "ptpiree_source_url": self.ptpiree_source_url,
             "ptpiree_publication_date": self.ptpiree_publication_date,
+            "ptpiree_note": self.ptpiree_note,
+            "ptpiree_certificate_condition": self.ptpiree_certificate_condition,
             **_catalog_metadata_to_dict(
                 verification_status=self.verification_status,
                 source_reference=self.source_reference,
@@ -1394,14 +1424,10 @@ class InverterType:
             un_kv=float(data.get("un_kv", 0.0)),
             sn_mva=float(data.get("sn_mva", 0.0)),
             pmax_mw=float(data.get("pmax_mw", 0.0)),
-            qmin_mvar=(float(data.get("qmin_mvar")) if data.get("qmin_mvar") is not None else None),
-            qmax_mvar=(float(data.get("qmax_mvar")) if data.get("qmax_mvar") is not None else None),
-            cosphi_min=(
-                float(data.get("cosphi_min")) if data.get("cosphi_min") is not None else None
-            ),
-            cosphi_max=(
-                float(data.get("cosphi_max")) if data.get("cosphi_max") is not None else None
-            ),
+            qmin_mvar=_opcjonalny_float(data, "qmin_mvar"),
+            qmax_mvar=_opcjonalny_float(data, "qmax_mvar"),
+            cosphi_min=_opcjonalny_float(data, "cosphi_min"),
+            cosphi_max=_opcjonalny_float(data, "cosphi_max"),
             kind=str(data.get("kind") or data.get("inverter_kind") or "INVERTER"),
             manufacturer=data.get("manufacturer"),
             model=data.get("model"),
@@ -1416,6 +1442,8 @@ class InverterType:
             ptpiree_ppm_scope=data.get("ptpiree_ppm_scope"),
             ptpiree_source_url=data.get("ptpiree_source_url"),
             ptpiree_publication_date=data.get("ptpiree_publication_date"),
+            ptpiree_note=data.get("ptpiree_note"),
+            ptpiree_certificate_condition=data.get("ptpiree_certificate_condition"),
             **_catalog_metadata_kwargs(
                 data,
                 default_source_reference="Katalog falownikow MV-DESIGN-PRO / dane referencyjne",
@@ -1505,37 +1533,46 @@ class SurgeArresterType:
         )
 
 
-def normalize_ptpiree_key(value: Any) -> str:
-    """Stable normalization for PTPiREE manufacturer/model matching."""
+# Typ wartosci podany JAWNIE: `dict` jest niezmienniczy w wartosci, wiec literal
+# `dict[str, str]` nie pasowal do sygnatury `str.maketrans`. Tablica liczona raz,
+# przy imporcie, zamiast przy kazdym wywolaniu normalizacji.
+_PL_ZNAKI_DIAKRYTYCZNE: dict[str, str | int | None] = {
+    "\u0104": "A",
+    "\u0106": "C",
+    "\u0118": "E",
+    "\u0141": "L",
+    "\u0143": "N",
+    "\u00d3": "O",
+    "\u015a": "S",
+    "\u0179": "Z",
+    "\u017b": "Z",
+    "\u0105": "A",
+    "\u0107": "C",
+    "\u0119": "E",
+    "\u0142": "L",
+    "\u0144": "N",
+    "\u00f3": "O",
+    "\u015b": "S",
+    "\u017a": "Z",
+    "\u017c": "Z",
+}
+_PL_NA_ASCII = str.maketrans(_PL_ZNAKI_DIAKRYTYCZNE)
 
-    text = str(value or "").strip()
-    text = text.translate(
-        str.maketrans(
-            {
-                "\u0104": "A",
-                "\u0106": "C",
-                "\u0118": "E",
-                "\u0141": "L",
-                "\u0143": "N",
-                "\u00d3": "O",
-                "\u015a": "S",
-                "\u0179": "Z",
-                "\u017b": "Z",
-                "\u0105": "A",
-                "\u0107": "C",
-                "\u0119": "E",
-                "\u0142": "L",
-                "\u0144": "N",
-                "\u00f3": "O",
-                "\u015b": "S",
-                "\u017a": "Z",
-                "\u017c": "Z",
-            }
-        )
-    )
+
+def normalize_ptpiree_key(value: Any) -> str:
+    """Stable normalization for PTPiREE manufacturer/model matching.
+
+    JEDNO zrodlo prawdy normalizacji (dlug 3 z rejestru V12K-321): ta sama
+    regula, ktorej uzywa dopasowanie na pelnym wykazie w
+    ``mv_ptpiree_catalog._fold`` — kazdy znak spoza [A-Za-z0-9] staje sie
+    separatorem. Wczesniejsza, slabsza lista separatorow zostawiala '.', '+',
+    '&' itd. w kluczu eksportowym, wiec klucz eksportu mogl NIE rownac sie
+    kluczowi dopasowania dla tego samego urzadzenia.
+    """
+
+    text = str(value or "").translate(_PL_NA_ASCII)
     text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("ascii")
-    for separator in ("-", "_", "/", "\\", "(", ")", ",", ";", ":"):
-        text = text.replace(separator, " ")
+    text = re.sub(r"[^A-Za-z0-9]+", " ", text)
     return " ".join(text.upper().split())
 
 
@@ -1664,6 +1701,13 @@ class ProtectionDeviceType:
     revision: str | None = None
     rated_current_a: float | None = None
     notes_pl: str | None = None
+    #: JAWNE powiazanie z wpisem BIBLIOTEKI ANALITYCZNEJ koordynacji
+    #: (`application/analyses/protection/catalog/data/devices_v0.json` →
+    #: `device_id`), ktora niesie funkcje i krzywe czasowo-pradowe. Karta KD-3:
+    #: bez tego pola przejscie „dobrany przekaznik → jego krzywe" wymagaloby
+    #: dopasowania po nazwie w UI, czyli zgadywania. `None` znaczy, ze pozycja
+    #: NIE MA odpowiednika w bibliotece — uczciwy brak, nie powod do domyslu.
+    analytical_library_ref: str | None = None
     verification_status: str = CatalogVerificationStatus.REFERENCYJNY.value
     source_reference: str = "Katalog ochrony MV-DESIGN-PRO"
     catalog_status: str = CatalogStatus.ANALITYCZNY_V1.value
@@ -1680,6 +1724,7 @@ class ProtectionDeviceType:
             "revision": self.revision,
             "rated_current_a": self.rated_current_a,
             "notes_pl": self.notes_pl,
+            "analytical_library_ref": self.analytical_library_ref,
             **_catalog_metadata_to_dict(
                 verification_status=self.verification_status,
                 source_reference=self.source_reference,
@@ -1698,12 +1743,9 @@ class ProtectionDeviceType:
             vendor=data.get("vendor"),
             series=data.get("series"),
             revision=data.get("revision"),
-            rated_current_a=(
-                float(data.get("rated_current_a"))
-                if data.get("rated_current_a") is not None
-                else None
-            ),
+            rated_current_a=_opcjonalny_float(data, "rated_current_a"),
             notes_pl=data.get("notes_pl"),
+            analytical_library_ref=data.get("analytical_library_ref"),
             **_catalog_metadata_kwargs(
                 data,
                 default_source_reference="Katalog ochrony MV-DESIGN-PRO / dane referencyjne lub analityczne",
@@ -1733,14 +1775,14 @@ class ProtectionCurve:
     name_pl: str
     standard: str | None = None
     curve_kind: str | None = None
-    parameters: dict[str, Any] = None
+    parameters: dict[str, Any] = field(default_factory=dict)
     verification_status: str = CatalogVerificationStatus.REFERENCYJNY.value
     source_reference: str = "Katalog krzywych MV-DESIGN-PRO"
     catalog_status: str = CatalogStatus.ANALITYCZNY_V1.value
     contract_version: str = CATALOG_CONTRACT_VERSION
     verification_note: str | None = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Ensure parameters is a dict (frozen dataclass workaround)."""
         if self.parameters is None:
             object.__setattr__(self, "parameters", {})
@@ -1801,14 +1843,14 @@ class ProtectionSettingTemplate:
     name_pl: str
     device_type_ref: str | None = None
     curve_ref: str | None = None
-    setting_fields: list[dict[str, Any]] = None
+    setting_fields: list[dict[str, Any]] = field(default_factory=list)
     verification_status: str = CatalogVerificationStatus.REFERENCYJNY.value
     source_reference: str = "Szablony nastaw MV-DESIGN-PRO"
     catalog_status: str = CatalogStatus.ANALITYCZNY_V1.value
     contract_version: str = CATALOG_CONTRACT_VERSION
     verification_note: str | None = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Ensure setting_fields is a list (frozen dataclass workaround)."""
         if self.setting_fields is None:
             object.__setattr__(self, "setting_fields", [])
@@ -2124,6 +2166,35 @@ class ShuntCapacitorType:
 # MV APPARATUS TYPE (APARAT_SN) — aparaty łączeniowe SN
 # =============================================================================
 
+#: Znormalizowany stosunek prądu dynamicznego (szczytowego) do prądu
+#: wytrzymywanego krótkotrwale dla APARATURY ROZDZIELCZEJ SN przy 50 Hz:
+#: I_dyn = 2,5 · I_th (IEC 62271-1 § 4.101 / PN-EN 62271-200 — szereg
+#: wytrzymałości rozdzielnicy SN; ta sama relacja, którą katalog CT stosuje na
+#: podstawie IEC 61869-2, ale wyprowadzona z INNEJ normy i dlatego zapisana
+#: osobno — dwie liczby 2,5 o różnych podstawach normatywnych nie mogą dzielić
+#: jednej stałej, bo cytat przestałby być prawdziwy).
+#:
+#: Dzięki tej relacji I_dyn NIE JEST daną do zgadywania: pozycja bez jawnej
+#: wartości producenta dostaje wartość WYPROWADZONĄ, oznaczoną pochodzeniem
+#: ``derived_iec62271`` (KD-6 poz. 1). Brak I_th ⇒ brak I_dyn (``None``).
+WSPOLCZYNNIK_IDYN_DO_ITH_APARAT_SN: float = 2.5
+
+#: Pochodzenie danej wytrzymałościowej pozycji APARAT_SN.
+POCHODZENIE_PRODUCENT = "producent"
+POCHODZENIE_REFERENCYJNY = "referencyjny"
+POCHODZENIE_DERYWACJA_IEC62271 = "derived_iec62271"
+
+
+def idyn_aparatu_sn_z_ith(ith_ka: float | None) -> float | None:
+    """Prąd dynamiczny aparatu SN wyprowadzony z prądu wytrzymywanego krótkotrwale.
+
+    ``None`` na wejściu daje ``None`` na wyjściu: brak danej nie zamienia się
+    w wartość (ta sama zasada, co ``idyn_ct_z_ith`` dla przekładników).
+    """
+    if ith_ka is None or ith_ka <= 0:
+        return None
+    return round(ith_ka * WSPOLCZYNNIK_IDYN_DO_ITH_APARAT_SN, 3)
+
 
 @dataclass(frozen=True)
 class MVApparatusType:
@@ -2138,6 +2209,10 @@ class MVApparatusType:
         breaking_capacity_ka: Breaking capacity [kA] (optional).
         making_capacity_ka: Making capacity [kA] (optional).
         manufacturer: Manufacturer (optional).
+        i_th_ka: Prąd wytrzymywany krótkotrwale [kA] — DANA TABLICZKOWA aparatu.
+        i_th_duration_s: Czas odniesienia prądu cieplnego [s] (zwykle 1 s).
+        i_dyn_ka: Prąd dynamiczny szczytowy [kA] — jawna wartość producenta;
+            ``None`` ⇒ wyprowadzenie normowe 2,5 · I_th w ``to_dict``.
     """
 
     id: str
@@ -2148,11 +2223,48 @@ class MVApparatusType:
     breaking_capacity_ka: float | None = None
     making_capacity_ka: float | None = None
     manufacturer: str | None = None
+    #: KD-6 poz. 1 — ZNAMIONA WYTRZYMAŁOŚCI ZWARCIOWEJ aparatu. To dane
+    #: TABLICZKOWE (karta katalogowa producenta), więc ich miejscem jest pozycja
+    #: katalogu, nie konfiguracja stacji: bez nich pole z aparatem z modelu nie
+    #: dawało się sprawdzić i cały tor kończył się „nieustalone".
+    #: ``None`` znaczy „karta katalogowa tej danej nie niesie" i MUSI zostać
+    #: ``None`` — przelicznik z prądu łączeniowego (``ik_ka``) byłby zgadywaniem.
+    i_th_ka: float | None = None
+    i_th_duration_s: float | None = None
+    i_dyn_ka: float | None = None
+    #: KD-6 poz. 3 — CZAS WŁASNY aparatu [s] (rated break time, IEC 62271-100
+    #: § 3.7.145: od pobudzenia wyzwalacza do przerwania łuku we wszystkich
+    #: biegunach). Składnik czasu wyłączenia zwarcia obok członu nastawczego
+    #: zabezpieczenia. Dana WYŁĄCZNIE producencka — normy podają szereg wartości
+    #: znamionowych, ale NIE przypisują ich modelowi, więc wyprowadzić się jej
+    #: nie da. `None` = karta katalogowa tej danej jeszcze nie wniosła; wtedy
+    #: czas wyłączenia niesie sam człon nastawczy z JAWNYM założeniem.
+    break_time_s: float | None = None
     verification_status: str = CatalogVerificationStatus.CZESCIOWO_ZWERYFIKOWANY.value
     source_reference: str = "Katalog aparatury SN MV-DESIGN-PRO"
     catalog_status: str = CatalogStatus.PRODUKCYJNY_V1.value
     contract_version: str = CATALOG_CONTRACT_VERSION
     verification_note: str | None = None
+
+    def pochodzenie_i_th(self) -> str | None:
+        """Skąd pochodzi I_th tej pozycji (``None`` = danej nie ma).
+
+        Rekord z NAZWANYM producentem niesie odczyt z karty katalogowej;
+        rekord bez producenta (szereg generyczny PN-EN 62271) niesie wartość
+        REFERENCYJNĄ normy. Rozróżnienie jest odczytem metadanych pozycji, nie
+        oceną — dlatego wolno je wyprowadzić.
+        """
+        if self.i_th_ka is None:
+            return None
+        return POCHODZENIE_PRODUCENT if self.manufacturer else POCHODZENIE_REFERENCYJNY
+
+    def pochodzenie_i_dyn(self) -> str | None:
+        """Skąd pochodzi I_dyn tej pozycji (``None`` = danej nie da się ustalić)."""
+        if self.i_dyn_ka is not None:
+            return POCHODZENIE_PRODUCENT if self.manufacturer else POCHODZENIE_REFERENCYJNY
+        if idyn_aparatu_sn_z_ith(self.i_th_ka) is None:
+            return None
+        return POCHODZENIE_DERYWACJA_IEC62271
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -2164,6 +2276,17 @@ class MVApparatusType:
             "breaking_capacity_ka": self.breaking_capacity_ka,
             "making_capacity_ka": self.making_capacity_ka,
             "manufacturer": self.manufacturer,
+            # Znamiona wytrzymałości: wartość producenta ma pierwszeństwo, w jej
+            # braku wyprowadzenie normowe 2,5 · I_th (IEC 62271-1) — z JAWNYM
+            # pochodzeniem, żeby odbiorca wiedział, co czyta.
+            "i_th_ka": self.i_th_ka,
+            "i_th_duration_s": self.i_th_duration_s,
+            "i_th_pochodzenie": self.pochodzenie_i_th(),
+            "i_dyn_ka": (
+                self.i_dyn_ka if self.i_dyn_ka is not None else idyn_aparatu_sn_z_ith(self.i_th_ka)
+            ),
+            "i_dyn_pochodzenie": self.pochodzenie_i_dyn(),
+            "break_time_s": self.break_time_s,
             **_catalog_metadata_to_dict(
                 verification_status=self.verification_status,
                 source_reference=self.source_reference,
@@ -2192,6 +2315,25 @@ class MVApparatusType:
                 else None
             ),
             manufacturer=data.get("manufacturer"),
+            # KD-6 poz. 1: znamiona wytrzymałości wczytywane WPROST (bez wartości
+            # domyślnej) — dokument bez tych pól zostaje przy `None`.
+            i_th_ka=(float(data["i_th_ka"]) if data.get("i_th_ka") is not None else None),
+            i_th_duration_s=(
+                float(data["i_th_duration_s"]) if data.get("i_th_duration_s") is not None else None
+            ),
+            # Wartość WYPROWADZONA nie wraca jako wartość producenta: zapis
+            # `to_dict` niesie wynik derywacji razem z jej pochodzeniem, więc
+            # przy odczycie odrzucamy go i pozwalamy wyprowadzić się na nowo
+            # (inaczej obieg zapis→odczyt awansowałby derywację na tabliczkę).
+            i_dyn_ka=(
+                float(data["i_dyn_ka"])
+                if data.get("i_dyn_ka") is not None
+                and data.get("i_dyn_pochodzenie") != POCHODZENIE_DERYWACJA_IEC62271
+                else None
+            ),
+            break_time_s=(
+                float(data["break_time_s"]) if data.get("break_time_s") is not None else None
+            ),
             **_catalog_metadata_kwargs(
                 data,
                 default_source_reference="Katalog aparatury SN MV-DESIGN-PRO / karty katalogowe producentow",
@@ -2219,6 +2361,15 @@ class LVApparatusType:
         i_n_a: Rated current [A].
         breaking_capacity_ka: Breaking capacity [kA] (optional).
         manufacturer: Manufacturer (optional).
+        u_m_kv: Znamionowe napiecie laczeniowe Ue [kV] wg IEC 60947-2/-3 —
+            karta UM-ICU-KATALOG. Dla aparatury nN (Emax2/Tmax XT/Jean Muller
+            NH) katalogi producentow podaja Ue = 690 V (0,69 kV) jako
+            znamionowe napiecie robocze niezaleznie od napiecia sieci 0,4 kV.
+        i_cu_ka: Znamionowa zdolnosc wylaczalna I_cu [kA] przy Ue z karty
+            katalogowej. Dla ROZLACZNIK_BEZPIECZNIKOWY (Jean Muller NH) jest to
+            warunkowy prad zwarciowy z wkladka NH — aparat MA zdolnosc
+            wylaczania dzieki bezpiecznikowi, wiec pole jest wypelnione (nie
+            "nie dotyczy").
     """
 
     id: str
@@ -2228,6 +2379,8 @@ class LVApparatusType:
     i_n_a: float = 0.0
     breaking_capacity_ka: float | None = None
     manufacturer: str | None = None
+    u_m_kv: float | None = None
+    i_cu_ka: float | None = None
     verification_status: str = CatalogVerificationStatus.REFERENCYJNY.value
     source_reference: str = "Katalog aparatury nN MV-DESIGN-PRO"
     catalog_status: str = CatalogStatus.REFERENCYJNY_V1.value
@@ -2243,6 +2396,8 @@ class LVApparatusType:
             "i_n_a": self.i_n_a,
             "breaking_capacity_ka": self.breaking_capacity_ka,
             "manufacturer": self.manufacturer,
+            "u_m_kv": self.u_m_kv,
+            "i_cu_ka": self.i_cu_ka,
             **_catalog_metadata_to_dict(
                 verification_status=self.verification_status,
                 source_reference=self.source_reference,
@@ -2266,6 +2421,8 @@ class LVApparatusType:
                 else None
             ),
             manufacturer=data.get("manufacturer"),
+            u_m_kv=(float(data["u_m_kv"]) if data.get("u_m_kv") is not None else None),
+            i_cu_ka=(float(data["i_cu_ka"]) if data.get("i_cu_ka") is not None else None),
             **_catalog_metadata_kwargs(
                 data,
                 default_source_reference="Katalog aparatury nN MV-DESIGN-PRO / dane referencyjne",
@@ -2746,6 +2903,8 @@ class PVInverterType:
     ptpiree_ppm_scope: str | None = None
     ptpiree_source_url: str | None = None
     ptpiree_publication_date: str | None = None
+    ptpiree_note: str | None = None
+    ptpiree_certificate_condition: str | None = None
     """Referencja do profilu dynamicznego w `der_dynamic` (PR-15/16).
 
     Brak wartości oznacza fallback do default per kind w resolverze
@@ -2779,6 +2938,8 @@ class PVInverterType:
             "ptpiree_ppm_scope": self.ptpiree_ppm_scope,
             "ptpiree_source_url": self.ptpiree_source_url,
             "ptpiree_publication_date": self.ptpiree_publication_date,
+            "ptpiree_note": self.ptpiree_note,
+            "ptpiree_certificate_condition": self.ptpiree_certificate_condition,
             **_catalog_metadata_to_dict(
                 verification_status=self.verification_status,
                 source_reference=self.source_reference,
@@ -2815,6 +2976,8 @@ class PVInverterType:
             ptpiree_ppm_scope=data.get("ptpiree_ppm_scope"),
             ptpiree_source_url=data.get("ptpiree_source_url"),
             ptpiree_publication_date=data.get("ptpiree_publication_date"),
+            ptpiree_note=data.get("ptpiree_note"),
+            ptpiree_certificate_condition=data.get("ptpiree_certificate_condition"),
             **_catalog_metadata_kwargs(
                 data,
                 default_source_reference="Katalog falownikow PV MV-DESIGN-PRO / dane referencyjne",
@@ -2862,6 +3025,8 @@ class BESSInverterType:
     ptpiree_ppm_scope: str | None = None
     ptpiree_source_url: str | None = None
     ptpiree_publication_date: str | None = None
+    ptpiree_note: str | None = None
+    ptpiree_certificate_condition: str | None = None
     """Referencja do profilu dynamicznego w `der_dynamic` (PR-15/16).
 
     Brak wartości oznacza fallback do default per kind w resolverze
@@ -2893,6 +3058,8 @@ class BESSInverterType:
             "ptpiree_ppm_scope": self.ptpiree_ppm_scope,
             "ptpiree_source_url": self.ptpiree_source_url,
             "ptpiree_publication_date": self.ptpiree_publication_date,
+            "ptpiree_note": self.ptpiree_note,
+            "ptpiree_certificate_condition": self.ptpiree_certificate_condition,
             **_catalog_metadata_to_dict(
                 verification_status=self.verification_status,
                 source_reference=self.source_reference,
@@ -2923,6 +3090,8 @@ class BESSInverterType:
             ptpiree_ppm_scope=data.get("ptpiree_ppm_scope"),
             ptpiree_source_url=data.get("ptpiree_source_url"),
             ptpiree_publication_date=data.get("ptpiree_publication_date"),
+            ptpiree_note=data.get("ptpiree_note"),
+            ptpiree_certificate_condition=data.get("ptpiree_certificate_condition"),
             **_catalog_metadata_kwargs(
                 data,
                 default_source_reference="Katalog przeksztaltnikow BESS MV-DESIGN-PRO / dane referencyjne",
@@ -3129,10 +3298,25 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
             "k_qf",
             "f0_hz",
         ),
+        # Model ZIP JEST WIDOCZNY dla projektanta. Współczynniki wielomianu i
+        # wrażliwość częstotliwościowa są CZYTANE przez rozpływ mocy
+        # (`zip_coeffs_from_materialized_params`), więc muszą mieć powierzchnię —
+        # inaczej solver liczy modelem, którego projektant ani nie zobaczy, ani
+        # nie ustawi (brak ogniwa łańcucha, rewizja inwentarza funkcji 2026-08).
+        # `v0_pu`/`f0_hz` zostają poza tą listą świadomie: to WIELKOŚCI ODNIESIENIA
+        # układu (1,0 pu i 50 Hz), a nie udziały modelu odbioru dobierane per odbiór.
         ui_fields=(
             ("p_kw", "P [kW]", "kW"),
             ("q_kvar", "Q [kvar]", "kvar"),
             ("cos_phi", "cos φ", ""),
+            ("a_p", "Udział stałoimpedancyjny P (a_P)", ""),
+            ("b_p", "Udział stałoprądowy P (b_P)", ""),
+            ("c_p", "Udział stałomocowy P (c_P)", ""),
+            ("a_q", "Udział stałoimpedancyjny Q (a_Q)", ""),
+            ("b_q", "Udział stałoprądowy Q (b_Q)", ""),
+            ("c_q", "Udział stałomocowy Q (c_Q)", ""),
+            ("k_pf", "Wrażliwość częstotliwościowa P (k_pf)", ""),
+            ("k_qf", "Wrażliwość częstotliwościowa Q (k_qf)", ""),
         ),
     ),
     CatalogNamespace.KOMPENSATOR_SN.value: MaterializationContract(

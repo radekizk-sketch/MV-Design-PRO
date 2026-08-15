@@ -22,7 +22,7 @@ Materiał: 4 widoki sieci referencyjnej 52+ stacji (zrzuty 2026-07-22), kod
 | D8 chaos kolorów | Brak jednej tabeli semantyki koloru (napięcie × stan × wyróżnienie); zielony pełni naraz rolę energizacji, SN i „wszystkiego" | `DARK_SCADA_NEON_THEME_SPEC.md` niezaimplementowany jako tokeny kanwy |
 | D9 brak widoku operatorskiego | Mapowanie 5 nazw v2 → 3 sceny v3 gubi poziom „jednokreskowy operatorski"; L1 (v3) renderuje główki aparatury per stacja (za dużo), L0 — nic (za mało) | `LodPolicy` ↔ `SceneLod` mapping w `SldCanvasV3Workspace` |
 | D10 stos tożsamości | Etykiety S-id, nazwy, RMU, mocy i nN emitowane niezależnie, bez hierarchii typografii i budżetu miejsca per glif | `buildScene.ts` captiony stacji |
-| D11 motyw | Stałe tło `SLD_V3_BACKGROUND` (świadome, ale nierozstrzygnięte względem motywów aplikacji i wydruku) | `SldCanvasV3.tsx` |
+| D11 motyw | **ZAMKNIĘTE 2026-07-31 (KD-8 poz. 1):** stała `SLD_V3_BACKGROUND` USUNIĘTA — kanwa czyta paletę MOTYWU (`ui/sld/v3/theme/palette.ts`, warianty `dark_scada`/`light_technical` o zachowanej semantyce WN/SN/nN); paleta dokumentowa eksportu niezależna od motywu ekranu. Wcześniejsze rozstrzygnięcie „ekran zawsze SCADA-dark" (HANDOFF §2 R1) nadpisane słowem właściciela. | `SldCanvasV3.tsx`, `theme/palette.ts` |
 | D12 martwe kadry | Krok kolumny layoutu = STAŁY footprint bloku **L0** + gap — kolumny rezerwowane pod najmniejszy rysunek, więc L0 tonie w pustce, a L2 się ciśnie | `engine/sld-layout/layoutEngine.ts:132-146` |
 
 **Wniosek architektoniczny (sedno 2/10):** SPEC V3 §7/P6 zdefiniował „każdy LOD to

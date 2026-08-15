@@ -35,7 +35,10 @@ describe('routes V12.5', () => {
     expect(getRouteByHash('#results')).toBeNull();
     expect(getRouteByHash('#proof')).toBeNull();
     expect(getRouteByHash('#compare')).toBeNull();
-    expect(getRouteByHash('#switchgear')).toEqual(ROUTES.SWITCHGEAR);
+    // KD-1: trasa `#switchgear` WYCOFANA (phantom — renderowała generyczną
+    // powierzchnię analityczną, inwentarz parytetu mostów L-17). Nieznany
+    // hash nie jest definicją trasy → zachowanie domyślne aplikacji.
+    expect(getRouteByHash('#switchgear')).toBeNull();
     expect(getRouteByHash('#network-build')).toBeNull();
     expect(getRouteByHash('#case-manager')).toBeNull();
   });

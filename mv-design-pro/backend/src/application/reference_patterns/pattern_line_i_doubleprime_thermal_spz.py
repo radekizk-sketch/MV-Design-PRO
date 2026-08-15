@@ -45,8 +45,13 @@ from application.analyses.protection.line_overcurrent_setting import (
     LineOvercurrentSettingResult,
     LineOvercurrentVerdict,
     LocalGenerationConfig,
+    SelectivityCriterionResult,
+    SensitivityCriterionResult,
+    SettingWindow,
+    SPZBlockingResult,
     SPZConfig,
     SPZMode,
+    ThermalCriterionResult,
 )
 
 from .base import (
@@ -476,7 +481,7 @@ class LineIDoublePrimeReferencePattern:
 
     def _build_selectivity_check(
         self,
-        selectivity,
+        selectivity: SelectivityCriterionResult,
     ) -> dict[str, Any]:
         """Build selectivity criterion check."""
         if selectivity.verdict == LineOvercurrentVerdict.PASS:
@@ -506,7 +511,7 @@ class LineIDoublePrimeReferencePattern:
 
     def _build_sensitivity_check(
         self,
-        sensitivity,
+        sensitivity: SensitivityCriterionResult,
     ) -> dict[str, Any]:
         """Build sensitivity criterion check."""
         if sensitivity.verdict == LineOvercurrentVerdict.PASS:
@@ -536,7 +541,7 @@ class LineIDoublePrimeReferencePattern:
 
     def _build_thermal_check(
         self,
-        thermal,
+        thermal: ThermalCriterionResult,
     ) -> dict[str, Any]:
         """Build thermal criterion check."""
         if thermal.verdict == LineOvercurrentVerdict.PASS:
@@ -568,7 +573,7 @@ class LineIDoublePrimeReferencePattern:
 
     def _build_window_check(
         self,
-        window,
+        window: SettingWindow,
     ) -> dict[str, Any]:
         """Build setting window check."""
         if not window.window_valid:
@@ -614,7 +619,7 @@ class LineIDoublePrimeReferencePattern:
 
     def _build_spz_check(
         self,
-        spz_blocking,
+        spz_blocking: SPZBlockingResult | None,
     ) -> dict[str, Any]:
         """Build SPZ blocking check."""
         if spz_blocking is None:
@@ -650,11 +655,11 @@ class LineIDoublePrimeReferencePattern:
 
     def _determine_verdict(
         self,
-        selectivity,
-        sensitivity,
-        thermal,
-        window,
-        spz_blocking,
+        selectivity: SelectivityCriterionResult,
+        sensitivity: SensitivityCriterionResult,
+        thermal: ThermalCriterionResult,
+        window: SettingWindow,
+        spz_blocking: SPZBlockingResult | None,
         checks: list[dict[str, Any]],
     ) -> ReferenceVerdict:
         """
@@ -705,7 +710,7 @@ class LineIDoublePrimeReferencePattern:
     def _build_summary(
         self,
         verdict: ReferenceVerdict,
-        window,
+        window: SettingWindow,
         artifacts: dict[str, Any],
     ) -> str:
         """Build Polish summary of validation result."""

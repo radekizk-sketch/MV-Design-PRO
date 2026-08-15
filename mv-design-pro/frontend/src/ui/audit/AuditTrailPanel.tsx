@@ -67,20 +67,20 @@ function formatTimestamp(iso: string): string {
 function StatusBadge({ status }: { status: SnapshotOperationHistoryEntry['status'] }) {
   if (status === 'success') {
     return (
-      <span className="rounded bg-emerald-900/40 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-300">
+      <span className="rounded bg-sygnal-ok-tlo px-1.5 py-0.5 text-[10px] font-semibold text-sygnal-ok-tusz">
         OK
       </span>
     );
   }
   if (status === 'error') {
     return (
-      <span className="rounded bg-red-900/40 px-1.5 py-0.5 text-[10px] font-semibold text-red-300">
+      <span className="rounded bg-sygnal-blokada-tlo px-1.5 py-0.5 text-[10px] font-semibold text-sygnal-blokada-tusz">
         Błąd
       </span>
     );
   }
   return (
-    <span className="rounded bg-amber-900/40 px-1.5 py-0.5 text-[10px] font-semibold text-amber-300">
+    <span className="rounded bg-sygnal-uwaga-tlo px-1.5 py-0.5 text-[10px] font-semibold text-sygnal-uwaga-tusz">
       W toku
     </span>
   );

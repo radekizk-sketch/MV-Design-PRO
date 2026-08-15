@@ -1,6 +1,13 @@
 /**
  * SLD PDF Export — P0.7 / PLAN_SLD_REWORK F4 — Eksport PDF vector.
  *
+ * S9-6 (2026-08-06) — WSKAZANIE DROGI: realny eksport PDF schematu (pełny plik,
+ * arkusz A3 poziomy, wektorowo) mieszka od tej karty w
+ * `ui/sld/v3/export/exportPdfV3.ts` i jest podłączony do menu eksportu przez
+ * `v3/export/sldExport.ts`. TEN moduł pozostaje kontraktem/specyfikacją z F4
+ * (`PdfExportSpec` + inwariant V12K-007) i NIE generuje bajtów — nie wołaj go
+ * w nadziei na plik.
+ *
  * STATUS: SCAFFOLDING (PDFKit binding planowane w pełnym F4 sprint)
  * Reference:
  * - docs/v12xx/REJESTR_KONFLIKTOW.md V12K-007 (eksport zawsze light_technical)
@@ -155,7 +162,7 @@ export function buildPdfExportSpec(
   const mode = options.mode ?? 'light_technical';
   if (mode !== 'light_technical') {
     throw new Error(
-      `exportPdf: V12K-007 invariant violated — eksport PDF MUSI być w trybie light_technical, otrzymano '${mode}'.`,
+      `exportPdf: naruszony inwariant kanonu eksportu — eksport PDF MUSI być w trybie light_technical, otrzymano '${mode}'.`,
     );
   }
 

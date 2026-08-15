@@ -1,16 +1,22 @@
 /**
  * Katalogi zabezpieczeń (Naprawa C — audyt specjalisty zabezpieczeń).
  *
- * Zawiera:
- *   - ProtectionFunctionCatalog (Naprawa C.1): ANSI/IEEE C37.2 + IEC 60255
- *   - CtCatalog (Naprawa C.6): klasa, burden VA, ratio, accuracy
- *   - VtCatalog (Naprawa C.6): klasa, burden VA, ratio, U_th
- *   - SpzCatalog (Naprawa C.3): typy SPZ/auto-reclosing 79
- *   - SzrCatalog (Naprawa C.4): SZR (automatic source switchover)
- *   - TransformerDifferentialCatalog (Naprawa C.5): 87T dla transformatorów
+ * Zawiera (stan zmierzony 2026-08-14, karta K-O — poprzedni nagłówek zapowiadał
+ * trzy katalogi, których w pliku NIE MA: VtCatalog usunięty w V12K-257, dane
+ * burden/ratio CT nigdy tu nie mieszkały, a TransformerDifferentialCatalog nie
+ * powstał; nagłówek obiecujący nieistniejącą zawartość to ten sam rodzaj
+ * nieprawdy, co dana bez źródła):
+ *   - PROTECTION_FUNCTION_CATALOG (C.1): ANSI/IEEE C37.2 + IEC 60255
+ *   - CtClass (C.6): unia klas dokładności CT wg IEC 61869-2 (sam typ + predykaty)
+ *   - SPZ_CATALOG (C.3): typy SPZ/auto-reclosing 79
+ *   - SZR_CATALOG (C.4): SZR (automatic source switchover)
+ *   - HV_FUSE_CATALOG (eng.17): oznaczenia znamionowe wkładek SN wg IEC 60282-1
  *
  * Zasada: każdy ANSI code ma polski opis + dziedzinę zastosowania.
+ * Zasada (K-O): każda wartość liczbowa ma źródło albo pozycji/pola nie ma.
  */
+
+import { AUDIT2_CATALOG_VERSION } from './catalogs';
 
 // =============================================================================
 // 1. ProtectionFunctionCatalog (ANSI/IEEE C37.2)
@@ -53,7 +59,7 @@ export const PROTECTION_FUNCTION_CATALOG: ReadonlyArray<ProtectionFunctionItem> 
   {
     id: 'pf_50',
     catalog_namespace: 'protection_function',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     ansi_code: '50',
     label_pl: '50 — Zabezpieczenie nadprądowe natychmiastowe',
     description_pl:
@@ -66,7 +72,7 @@ export const PROTECTION_FUNCTION_CATALOG: ReadonlyArray<ProtectionFunctionItem> 
   {
     id: 'pf_51',
     catalog_namespace: 'protection_function',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     ansi_code: '51',
     label_pl: '51 — Zabezpieczenie nadprądowe czasowo-zwłoczne (IDMT)',
     description_pl:
@@ -79,7 +85,7 @@ export const PROTECTION_FUNCTION_CATALOG: ReadonlyArray<ProtectionFunctionItem> 
   {
     id: 'pf_50n',
     catalog_namespace: 'protection_function',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     ansi_code: '50N',
     label_pl: '50N — Zabezpieczenie ziemnozwarciowe natychmiastowe',
     description_pl:
@@ -92,7 +98,7 @@ export const PROTECTION_FUNCTION_CATALOG: ReadonlyArray<ProtectionFunctionItem> 
   {
     id: 'pf_51n',
     catalog_namespace: 'protection_function',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     ansi_code: '51N',
     label_pl: '51N — Zabezpieczenie ziemnozwarciowe czasowo-zwłoczne',
     description_pl:
@@ -105,7 +111,7 @@ export const PROTECTION_FUNCTION_CATALOG: ReadonlyArray<ProtectionFunctionItem> 
   {
     id: 'pf_67',
     catalog_namespace: 'protection_function',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     ansi_code: '67',
     label_pl: '67 — Zabezpieczenie nadprądowe kierunkowe',
     description_pl:
@@ -117,7 +123,7 @@ export const PROTECTION_FUNCTION_CATALOG: ReadonlyArray<ProtectionFunctionItem> 
   {
     id: 'pf_67n',
     catalog_namespace: 'protection_function',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     ansi_code: '67N',
     label_pl: '67N — Zabezpieczenie ziemnozwarciowe kierunkowe',
     description_pl:
@@ -130,7 +136,7 @@ export const PROTECTION_FUNCTION_CATALOG: ReadonlyArray<ProtectionFunctionItem> 
   {
     id: 'pf_87t',
     catalog_namespace: 'protection_function',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     ansi_code: '87T',
     label_pl: '87T — Zabezpieczenie różnicowe transformatora',
     description_pl:
@@ -143,7 +149,7 @@ export const PROTECTION_FUNCTION_CATALOG: ReadonlyArray<ProtectionFunctionItem> 
   {
     id: 'pf_27',
     catalog_namespace: 'protection_function',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     ansi_code: '27',
     label_pl: '27 — Zabezpieczenie podnapięciowe',
     description_pl:
@@ -155,7 +161,7 @@ export const PROTECTION_FUNCTION_CATALOG: ReadonlyArray<ProtectionFunctionItem> 
   {
     id: 'pf_59',
     catalog_namespace: 'protection_function',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     ansi_code: '59',
     label_pl: '59 — Zabezpieczenie nadnapięciowe',
     description_pl:
@@ -167,7 +173,7 @@ export const PROTECTION_FUNCTION_CATALOG: ReadonlyArray<ProtectionFunctionItem> 
   {
     id: 'pf_81u',
     catalog_namespace: 'protection_function',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     ansi_code: '81U',
     label_pl: '81U — Zabezpieczenie podczęstotliwościowe',
     description_pl:
@@ -179,7 +185,7 @@ export const PROTECTION_FUNCTION_CATALOG: ReadonlyArray<ProtectionFunctionItem> 
   {
     id: 'pf_81o',
     catalog_namespace: 'protection_function',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     ansi_code: '81O',
     label_pl: '81O — Zabezpieczenie nadczęstotliwościowe',
     description_pl:
@@ -191,7 +197,7 @@ export const PROTECTION_FUNCTION_CATALOG: ReadonlyArray<ProtectionFunctionItem> 
   {
     id: 'pf_79',
     catalog_namespace: 'protection_function',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     ansi_code: '79',
     label_pl: '79 — SPZ (samoczynne ponowne załączenie)',
     description_pl:
@@ -203,7 +209,7 @@ export const PROTECTION_FUNCTION_CATALOG: ReadonlyArray<ProtectionFunctionItem> 
   {
     id: 'pf_86',
     catalog_namespace: 'protection_function',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     ansi_code: '86',
     label_pl: '86 — Blokada (lockout)',
     description_pl:
@@ -216,7 +222,7 @@ export const PROTECTION_FUNCTION_CATALOG: ReadonlyArray<ProtectionFunctionItem> 
   {
     id: 'pf_25',
     catalog_namespace: 'protection_function',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     ansi_code: '25',
     label_pl: '25 — Synchrocheck (kontrola synchronizmu)',
     description_pl:
@@ -228,7 +234,7 @@ export const PROTECTION_FUNCTION_CATALOG: ReadonlyArray<ProtectionFunctionItem> 
   {
     id: 'pf_32',
     catalog_namespace: 'protection_function',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     ansi_code: '32',
     label_pl: '32 — Zabezpieczenie kierunkowe mocy (reverse-power)',
     description_pl:
@@ -240,7 +246,7 @@ export const PROTECTION_FUNCTION_CATALOG: ReadonlyArray<ProtectionFunctionItem> 
   {
     id: 'pf_46',
     catalog_namespace: 'protection_function',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     ansi_code: '46',
     label_pl: '46 — Zabezpieczenie nadprądowe kolejności ujemnej',
     description_pl:
@@ -252,7 +258,7 @@ export const PROTECTION_FUNCTION_CATALOG: ReadonlyArray<ProtectionFunctionItem> 
   {
     id: 'pf_49',
     catalog_namespace: 'protection_function',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     ansi_code: '49',
     label_pl: '49 — Zabezpieczenie termiczne (thermal overload)',
     description_pl:
@@ -264,7 +270,7 @@ export const PROTECTION_FUNCTION_CATALOG: ReadonlyArray<ProtectionFunctionItem> 
   {
     id: 'pf_21',
     catalog_namespace: 'protection_function',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     ansi_code: '21',
     label_pl: '21 — Zabezpieczenie dystansowe (impedancyjne)',
     description_pl:
@@ -278,7 +284,7 @@ export const PROTECTION_FUNCTION_CATALOG: ReadonlyArray<ProtectionFunctionItem> 
   {
     id: 'pf_50g',
     catalog_namespace: 'protection_function',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     ansi_code: '50G',
     label_pl: '50G — Zabezpieczenie nadprądowe natychmiastowe generatora',
     description_pl:
@@ -290,7 +296,7 @@ export const PROTECTION_FUNCTION_CATALOG: ReadonlyArray<ProtectionFunctionItem> 
   {
     id: 'pf_51g',
     catalog_namespace: 'protection_function',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     ansi_code: '51G',
     label_pl: '51G — Zabezpieczenie nadprądowe czasowo-zwłoczne generatora',
     description_pl:
@@ -302,7 +308,7 @@ export const PROTECTION_FUNCTION_CATALOG: ReadonlyArray<ProtectionFunctionItem> 
   {
     id: 'pf_78',
     catalog_namespace: 'protection_function',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     ansi_code: '78',
     label_pl: '78 — Out-of-step (utrata synchronizmu)',
     description_pl:
@@ -315,7 +321,7 @@ export const PROTECTION_FUNCTION_CATALOG: ReadonlyArray<ProtectionFunctionItem> 
   {
     id: 'pf_87l',
     catalog_namespace: 'protection_function',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     ansi_code: '87L',
     label_pl: '87L — Zabezpieczenie różnicowe linii',
     description_pl:
@@ -363,6 +369,14 @@ export type CtClass = '0.2' | '0.5' | '1.0' | '5P10' | '5P20' | '10P10' | '10P20
 // =============================================================================
 // 4. SpzCatalog (Auto-reclosing 79 — Naprawa C.3)
 // =============================================================================
+//
+// PROWENIENCJA (karta K-O, 2026-08-14): pozycje niosły pole `typical_operators_pl`
+// przypisujące konkretną praktykę SPZ IMIENNIE WSKAZANYM operatorom (Energa-Operator,
+// Tauron Dystrybucja, PGE Dystrybucja) BEZ ŹRÓDŁA — ani IRiESD, ani żadnej instrukcji
+// ruchu w repozytorium. To ta sama klasa fabrykacji co producent wkładki wpisany
+// „z głowy": zdanie o cudzej praktyce ruchowej, na którym projektant mógłby oprzeć
+// dobór. Pole usunięto (żaden konsument produkcyjny go nie czytał — pomiar w karcie).
+// Przywrócenie wymaga cytatu z IRiESD właściwego OSD.
 
 export interface SpzCatalogItem {
   readonly id: string;
@@ -374,8 +388,6 @@ export interface SpzCatalogItem {
   readonly second_dead_time_ms?: number;
   readonly third_dead_time_ms?: number;
   readonly reclaim_time_s: number;
-  /** Operatorzy preferujący ten cykl. */
-  readonly typical_operators_pl: ReadonlyArray<string>;
   /** Wymagane synchrocheck (25). */
   readonly requires_synchrocheck: boolean;
   /** Compatible z DER (anti-islanding). */
@@ -386,39 +398,36 @@ export const SPZ_CATALOG: ReadonlyArray<SpzCatalogItem> = Object.freeze([
   {
     id: 'spz_1cycle_fast',
     catalog_namespace: 'spz',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     label_pl: 'SPZ 1-cykl szybki (300 ms)',
     cycles: 1,
     first_dead_time_ms: 300,
     reclaim_time_s: 10,
-    typical_operators_pl: ['Energa-Operator'],
     requires_synchrocheck: false,
     compatible_with_der: true,
   },
   {
     id: 'spz_2cycle',
     catalog_namespace: 'spz',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     label_pl: 'SPZ 2-cykle (300 ms / 30 s)',
     cycles: 2,
     first_dead_time_ms: 300,
     second_dead_time_ms: 30000,
     reclaim_time_s: 60,
-    typical_operators_pl: ['Tauron Dystrybucja', 'PGE Dystrybucja'],
     requires_synchrocheck: true,
     compatible_with_der: true,
   },
   {
     id: 'spz_3cycle',
     catalog_namespace: 'spz',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     label_pl: 'SPZ 3-cykle (300 ms / 30 s / 60 s)',
     cycles: 3,
     first_dead_time_ms: 300,
     second_dead_time_ms: 30000,
     third_dead_time_ms: 60000,
     reclaim_time_s: 120,
-    typical_operators_pl: ['Tauron Dystrybucja (sieci wiejskie)'],
     requires_synchrocheck: true,
     compatible_with_der: false,
   },
@@ -445,7 +454,7 @@ export const SZR_CATALOG: ReadonlyArray<SzrCatalogItem> = Object.freeze([
   {
     id: 'szr_fast',
     catalog_namespace: 'szr',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     label_pl: 'SZR szybki (break-before-make, 50 ms)',
     switching_time_ms: 50,
     mode: 'fast_break_before_make',
@@ -454,7 +463,7 @@ export const SZR_CATALOG: ReadonlyArray<SzrCatalogItem> = Object.freeze([
   {
     id: 'szr_synchrocheck',
     catalog_namespace: 'szr',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     label_pl: 'SZR z kontrolą synchronizmu (200 ms)',
     switching_time_ms: 200,
     mode: 'slow_with_synchrocheck',
@@ -463,7 +472,7 @@ export const SZR_CATALOG: ReadonlyArray<SzrCatalogItem> = Object.freeze([
   {
     id: 'szr_live_transfer',
     catalog_namespace: 'szr',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     label_pl: 'SZR bezprzerwowy (live-transfer, <10 ms)',
     switching_time_ms: 10,
     mode: 'live_transfer',
@@ -523,27 +532,63 @@ export function isCtClassValidForMetering(ctClass: CtClass): boolean {
 //
 // IEC 60282-1 (HV fuses): klasy I (general purpose), full-range, back-up.
 // Polish standard PN-EN 60282-1 dla SN.
+//
+// PROWENIENCJA (karta K-O, 2026-08-14) — pozycje tego katalogu niosły komplet
+// danych wyrobu (producent ABB/Siemens/Schneider, prądy przerywania, całka I²t
+// oraz DWA punkty pasma przy 6×In) BEZ JAKIEGOKOLWIEK ŹRÓDŁA. Był to ten sam
+// rodzaj fabrykacji, który karta K-E usunęła z katalogu backendu: producenci
+// publikują charakterystyki t-I wkładek SN WYŁĄCZNIE jako wykresy log-log
+// (karta ETI VV THERMO mówi wprost „I/t Characteristics According to the
+// curves"), więc punkt pasma odczytany „z głowy" nie istnieje. Wyprowadzenie
+// czasu z całki I²t też odpada — zależność t = I²t/I² obowiązuje wyłącznie w
+// adiabatycznym zakresie topienia, a całka wyłączania zawiera energię łuku.
+//
+// Rozstrzygnięcie: WARTOŚĆ BEZ ŹRÓDŁA NIE ISTNIEJE. Pola wyrobu usunięto (żaden
+// konsument produkcyjny ich nie czytał — pomiar w meldunku karty), a pozycja
+// została tym, czym naprawdę jest: OZNACZENIEM ZNAMIONOWYM wg IEC 60282-1
+// (napięcie / prąd / klasa / zastosowanie), które projektant wybiera do pola.
+// Pasmo jest jawnym brakiem (`pasmo_tcc: null`) — wzorem backendowego
+// `BRAK_PASMA_BEZPIECZNIKA`: pozycja NIE znika z ekranu (ciche zniknięcie to
+// inne kłamstwo), tylko mówi wprost, czego brakuje i skąd to wziąć.
+
+/**
+ * Pasmo czasowo-prądowe wkładki. Typ WYMUSZA parę: punkty istnieją wyłącznie
+ * razem z adresem tabeli producenta, z której je przepisano. Dzięki temu nie da
+ * się dopisać punktów bez proweniencji, nie zmieniając typu.
+ */
+export interface HvFusePasmoTcc {
+  /** URL tabeli producenta z punktami pasma (obowiązkowy razem z punktami). */
+  readonly zrodlo_url: string;
+  readonly punkty: ReadonlyArray<{ readonly prad_a: number; readonly czas_s: number }>;
+}
+
+/**
+ * Powód braku pasma — język wzorowany na backendowym `BRAK_PASMA_BEZPIECZNIKA`
+ * (karta N-D5-FUSE, `application/analyses/protection/coordination/analyzer.py`).
+ */
+export const POWOD_BRAK_PASMA_BEZPIECZNIKA_PL =
+  'Pasmo topikowe (krzywa przedłukowa i krzywa wyłączania) odczytuje się z karty '
+  + 'katalogowej producenta wg IEC 60282-1. Ta pozycja katalogowa nie niesie punktów '
+  + 'pasma, więc czasu zadziałania nie wyznaczono — nie zastąpiono go żadnym '
+  + 'przybliżeniem.';
+
+/** Krótka etykieta stanu do tabel i kart. */
+export const ETYKIETA_BRAK_PASMA_BEZPIECZNIKA_PL = 'pasmo wymaga karty producenta';
 
 export interface HvFuseItem {
   readonly id: string;
   readonly catalog_namespace: 'hv_fuse';
   readonly catalog_version: string;
   readonly label_pl: string;
-  readonly manufacturer: string;
   readonly nominal_voltage_kv: number;
   readonly nominal_current_a: number;
   /** Klasa wg IEC 60282-1: 'general_purpose', 'full_range', 'back_up'. */
   readonly class: 'general_purpose' | 'full_range' | 'back_up';
-  /** Prąd minimalny przerywania [A]. */
-  readonly i_min_breaking_a: number;
-  /** Prąd maksymalny przerywania [kA]. */
-  readonly i_max_breaking_ka: number;
-  /** I²t (Joule integral) — ważne dla koordynacji z transformatorem [A²s]. */
-  readonly i2t_total_a2s: number;
-  /** Czas pre-arcing przy 6×In [ms]. */
-  readonly pre_arcing_time_at_6in_ms: number;
-  /** Czas total clearing przy 6×In [ms]. */
-  readonly total_clearing_time_at_6in_ms: number;
+  /**
+   * Pasmo czasowo-prądowe albo `null`, gdy pozycja go nie niesie. Dziś KAŻDA
+   * pozycja ma `null` — patrz nota proweniencji powyżej.
+   */
+  readonly pasmo_tcc: HvFusePasmoTcc | null;
   /** Stosowanie. */
   readonly application: 'transformer' | 'feeder' | 'motor' | 'capacitor';
 }
@@ -552,65 +597,45 @@ export const HV_FUSE_CATALOG: ReadonlyArray<HvFuseItem> = Object.freeze([
   {
     id: 'fuse_15kv_50a_full',
     catalog_namespace: 'hv_fuse',
-    catalog_version: '2024.1',
-    label_pl: 'Bezpiecznik SN 15 kV / 50 A · full-range · TRAFO 630 kVA',
-    manufacturer: 'ABB',
+    catalog_version: AUDIT2_CATALOG_VERSION,
+    label_pl: 'Bezpiecznik SN 15 kV / 50 A · full-range · pole transformatorowe',
     nominal_voltage_kv: 15,
     nominal_current_a: 50,
     class: 'full_range',
-    i_min_breaking_a: 200,
-    i_max_breaking_ka: 50,
-    i2t_total_a2s: 14000,
-    pre_arcing_time_at_6in_ms: 30,
-    total_clearing_time_at_6in_ms: 50,
+    pasmo_tcc: null,
     application: 'transformer',
   },
   {
     id: 'fuse_15kv_100a_full',
     catalog_namespace: 'hv_fuse',
-    catalog_version: '2024.1',
-    label_pl: 'Bezpiecznik SN 15 kV / 100 A · full-range · TRAFO 1250 kVA',
-    manufacturer: 'Siemens',
+    catalog_version: AUDIT2_CATALOG_VERSION,
+    label_pl: 'Bezpiecznik SN 15 kV / 100 A · full-range · pole transformatorowe',
     nominal_voltage_kv: 15,
     nominal_current_a: 100,
     class: 'full_range',
-    i_min_breaking_a: 400,
-    i_max_breaking_ka: 50,
-    i2t_total_a2s: 56000,
-    pre_arcing_time_at_6in_ms: 25,
-    total_clearing_time_at_6in_ms: 45,
+    pasmo_tcc: null,
     application: 'transformer',
   },
   {
     id: 'fuse_20kv_25a_gp',
     catalog_namespace: 'hv_fuse',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     label_pl: 'Bezpiecznik SN 20 kV / 25 A · general-purpose · pole odpływowe',
-    manufacturer: 'Schneider',
     nominal_voltage_kv: 20,
     nominal_current_a: 25,
     class: 'general_purpose',
-    i_min_breaking_a: 75,
-    i_max_breaking_ka: 25,
-    i2t_total_a2s: 3500,
-    pre_arcing_time_at_6in_ms: 35,
-    total_clearing_time_at_6in_ms: 60,
+    pasmo_tcc: null,
     application: 'feeder',
   },
   {
     id: 'fuse_15kv_160a_backup',
     catalog_namespace: 'hv_fuse',
-    catalog_version: '2024.1',
-    label_pl: 'Bezpiecznik SN 15 kV / 160 A · back-up (kondensator)',
-    manufacturer: 'ABB',
+    catalog_version: AUDIT2_CATALOG_VERSION,
+    label_pl: 'Bezpiecznik SN 15 kV / 160 A · back-up · bateria kondensatorów',
     nominal_voltage_kv: 15,
     nominal_current_a: 160,
     class: 'back_up',
-    i_min_breaking_a: 1000,
-    i_max_breaking_ka: 50,
-    i2t_total_a2s: 145000,
-    pre_arcing_time_at_6in_ms: 20,
-    total_clearing_time_at_6in_ms: 40,
+    pasmo_tcc: null,
     application: 'capacitor',
   },
 ]);
@@ -630,164 +655,19 @@ export function selectHvFusesForRating(args: {
 }
 
 // =============================================================================
-// 8. Idyn / Ith Catalog (Naprawa eng.18 — audyt zabezpieczeń)
+// 8. Wytrzymałość zwarciowa aparatury (I_dyn / I_th) — PRZENIESIONE DO BACKENDU
 // =============================================================================
 //
-// IEC 60909-0 wprowadza dwie kluczowe wartości aparatury:
-//  - I_dyn (peak short-circuit current — prąd udarowy ip) — wytrzymałość mechaniczna [kA]
-//  - I_th (thermal short-circuit current — prąd cieplny równoważny 1s) — wytrzymałość termiczna [kA]
+// Były tu TRZY rzeczy naraz: kopia katalogu aparatury (`DEVICE_WITHSTAND_CATALOG`),
+// kopia kryterium IEC 60909 (`validateDeviceWithstand`: I_th_eff = I_th_zn·√(t_zn/t_wył),
+// wykorzystanie obu kryteriów) oraz skład zdania werdyktu. Karta zabezpieczeń
+// pokazywała te liczby jako wynik inżynierski, choć nie widział ich żaden solver
+// i nie obejmował żaden ślad WHITE BOX (reguła NOT-A-SOLVER).
 //
-// Standardowe wartości dla typowej aparatury SN podane w katalogu.
-
-export interface DeviceWithstandRatings {
-  readonly id: string;
-  readonly catalog_namespace: 'device_withstand';
-  readonly catalog_version: string;
-  readonly label_pl: string;
-  readonly device_type:
-    | 'breaker_vacuum_15'
-    | 'breaker_sf6_15'
-    | 'breaker_vacuum_20'
-    | 'switch_load_15'
-    | 'disconnector_15'
-    | 'busbar_15_1250'
-    | 'busbar_15_2000';
-  readonly nominal_voltage_kv: number;
-  readonly nominal_current_a: number;
-  /** Prąd udarowy ip [kA] — wytrzymałość mechaniczna. */
-  readonly i_dyn_ka: number;
-  /** Prąd cieplny równoważny 1s I_th [kA]. */
-  readonly i_th_1s_ka: number;
-  /** Czas dla I_th — typowo 1s lub 3s. */
-  readonly i_th_duration_s: number;
-}
-
-export const DEVICE_WITHSTAND_CATALOG: ReadonlyArray<DeviceWithstandRatings> = Object.freeze([
-  {
-    id: 'wstd_breaker_vacuum_15_25',
-    catalog_namespace: 'device_withstand',
-    catalog_version: '2024.1',
-    label_pl: 'Wyłącznik próżniowy 15 kV · I_dyn=63 kA · I_th=25 kA/1s',
-    device_type: 'breaker_vacuum_15',
-    nominal_voltage_kv: 15,
-    nominal_current_a: 1250,
-    i_dyn_ka: 63,
-    i_th_1s_ka: 25,
-    i_th_duration_s: 1,
-  },
-  {
-    id: 'wstd_breaker_sf6_15_31_5',
-    catalog_namespace: 'device_withstand',
-    catalog_version: '2024.1',
-    label_pl: 'Wyłącznik SF6 15 kV · I_dyn=80 kA · I_th=31,5 kA/3s',
-    device_type: 'breaker_sf6_15',
-    nominal_voltage_kv: 15,
-    nominal_current_a: 1250,
-    i_dyn_ka: 80,
-    i_th_1s_ka: 31.5,
-    i_th_duration_s: 3,
-  },
-  {
-    id: 'wstd_busbar_15_2000_50',
-    catalog_namespace: 'device_withstand',
-    catalog_version: '2024.1',
-    label_pl: 'Szyna SN 15 kV · 2000 A · I_dyn=125 kA · I_th=50 kA/1s',
-    device_type: 'busbar_15_2000',
-    nominal_voltage_kv: 15,
-    nominal_current_a: 2000,
-    i_dyn_ka: 125,
-    i_th_1s_ka: 50,
-    i_th_duration_s: 1,
-  },
-  {
-    id: 'wstd_busbar_15_1250_25',
-    catalog_namespace: 'device_withstand',
-    catalog_version: '2024.1',
-    label_pl: 'Szyna SN 15 kV · 1250 A · I_dyn=63 kA · I_th=25 kA/1s',
-    device_type: 'busbar_15_1250',
-    nominal_voltage_kv: 15,
-    nominal_current_a: 1250,
-    i_dyn_ka: 63,
-    i_th_1s_ka: 25,
-    i_th_duration_s: 1,
-  },
-  {
-    id: 'wstd_switch_load_15_25',
-    catalog_namespace: 'device_withstand',
-    catalog_version: '2024.1',
-    label_pl: 'Rozłącznik z bezpiecznikami 15 kV · I_dyn=63 kA · I_th=25 kA/1s',
-    device_type: 'switch_load_15',
-    nominal_voltage_kv: 15,
-    nominal_current_a: 630,
-    i_dyn_ka: 63,
-    i_th_1s_ka: 25,
-    i_th_duration_s: 1,
-  },
-]);
-
-/**
- * Naprawa eng.18: walidacja wytrzymałości aparatury względem prądów obliczonych.
- * Reguła: I_dyn (peak) ≥ √2·κ·Ik″, I_th (thermal 1s) ≥ Ik″ × √(t_clearing).
- */
-export function validateDeviceWithstand(args: {
-  readonly device_id: string;
-  readonly i_peak_calculated_ka: number;
-  readonly i_thermal_calculated_ka: number;
-  readonly t_clearing_s: number;
-}): {
-  readonly ok: boolean;
-  readonly i_dyn_ok: boolean;
-  readonly i_th_ok: boolean;
-  readonly message_pl: string;
-  readonly utilization_dyn_percent: number;
-  readonly utilization_th_percent: number;
-} {
-  const device = DEVICE_WITHSTAND_CATALOG.find((d) => d.id === args.device_id);
-  if (!device) {
-    return {
-      ok: false,
-      i_dyn_ok: false,
-      i_th_ok: false,
-      message_pl: `Brak aparatury w katalogu (id=${args.device_id}).`,
-      utilization_dyn_percent: 0,
-      utilization_th_percent: 0,
-    };
-  }
-  // Skala I_th do nowej długości czasu clearing: I_th_eff = I_th_rated × √(t_rated / t_clearing).
-  const i_th_effective = device.i_th_1s_ka * Math.sqrt(device.i_th_duration_s / Math.max(args.t_clearing_s, 0.01));
-  const i_dyn_ok = device.i_dyn_ka >= args.i_peak_calculated_ka;
-  const i_th_ok = i_th_effective >= args.i_thermal_calculated_ka;
-  const utilization_dyn = (args.i_peak_calculated_ka / device.i_dyn_ka) * 100;
-  const utilization_th = (args.i_thermal_calculated_ka / i_th_effective) * 100;
-
-  let message_pl: string;
-  if (i_dyn_ok && i_th_ok) {
-    message_pl =
-      `OK: aparatura "${device.label_pl}" wytrzymała `
-      + `(I_dyn util ${utilization_dyn.toFixed(0)}%, I_th util ${utilization_th.toFixed(0)}%).`;
-  } else {
-    const failures: string[] = [];
-    if (!i_dyn_ok) {
-      failures.push(
-        `I_dyn ${args.i_peak_calculated_ka.toFixed(1)} kA > ${device.i_dyn_ka.toFixed(1)} kA (limit) — `
-        + `przekroczenie wytrzymałości dynamicznej`,
-      );
-    }
-    if (!i_th_ok) {
-      failures.push(
-        `I_th ${args.i_thermal_calculated_ka.toFixed(1)} kA > ${i_th_effective.toFixed(1)} kA `
-        + `(limit przy t=${args.t_clearing_s.toFixed(2)} s) — przekroczenie wytrzymałości termicznej`,
-      );
-    }
-    message_pl = `BLOKER: ${failures.join('; ')}.`;
-  }
-
-  return {
-    ok: i_dyn_ok && i_th_ok,
-    i_dyn_ok,
-    i_th_ok,
-    message_pl,
-    utilization_dyn_percent: utilization_dyn,
-    utilization_th_percent: utilization_th,
-  };
-}
+// Źródłem jest teraz backend: katalog `network_model/catalog/audit2_catalogs.py`
+// (`DEVICE_WITHSTAND_CATALOG` — te same identyfikatory i dane znamionowe) oraz
+// `validate_device_withstand` wystawione przez
+// `POST /api/v1/catalog/audit2/validate-device-withstand`. Klient: `audit2-api.ts`
+// (`validateDeviceWithstandApi`), prezentacja: `station-configurator/cards/`
+// `WalidacjaWytrzymalosciAparaturySekcja.tsx`. Parytetu liczbowego pilnuje
+// `backend/tests/network_model/test_device_withstand_parity.py` (karta K7-B).

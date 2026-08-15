@@ -63,7 +63,12 @@ export const OPERATION_SURFACE_REGISTRY: readonly OperationSurfaceEntry[] = [
     'E-13',
     'B',
     'manual',
-    'replace_right_panel',
+    // K9-B: kreator stacji jest dziewięciokrokowy i dwukolumnowy (kroki + oś
+    // kontroli). W wąskim panelu bocznym jego treść wychodziła poza widok —
+    // przyciski („Wypełnij formularz szablonem", „Dodaj pole") stawały się
+    // nieklikalne. Warsztat rozszerzony to jedyne miejsce, w którym kreator
+    // mieści się w całości (parytet z kreatorem magistrali i łącznika).
+    'expand_workspace',
     true,
     'typ-topologiczny',
   ),

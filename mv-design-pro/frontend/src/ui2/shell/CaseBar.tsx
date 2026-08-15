@@ -7,8 +7,8 @@
  * prowadzi do przestrzeni „Obliczenia"; „aktualne"/„brak" pozostają statyczne.
  */
 
-import type { StudyCaseResultStatus } from '../../ui/study-cases/types';
 import type { ShellCaseInfo } from './shellStatus';
+import type { StatusZnacznikaWynikow } from './znacznikSwiezosci';
 import { SHELL_STRINGS, caseCountLabel, readinessLabel } from './strings';
 
 interface CaseBarProps {
@@ -20,19 +20,27 @@ interface CaseBarProps {
   onPrzejdzDoObliczen?: () => void;
 }
 
-function resultsDotClass(status: StudyCaseResultStatus): string {
+function resultsDotClass(status: StatusZnacznikaWynikow): string {
   switch (status) {
     case 'FRESH':
       return 'mvd-dot mvd-dot-ok';
     case 'OUTDATED':
       return 'mvd-dot mvd-dot-warn';
+    // Świeżość nierozstrzygnięta wygląda tak samo jak brak wyniku: neutralnie.
+    // Kropka „ok" byłaby werdyktem, którego nikt nie policzył (V12K-309 poz. 2).
     case 'NONE':
+    case 'NIEUSTALONE':
       return 'mvd-dot mvd-dot-none';
   }
 }
 
 export function CaseBar({ info, onOpenProject, onOpenVariants, onPrzejdzDoObliczen }: CaseBarProps) {
-  const readinessOk = info.readinessBlockers === 0 && info.readinessWarnings === 0;
+  // „Zielona kropka" wyłącznie przy POLICZONEJ gotowości bez uwag — stan
+  // nieustalony nie jest stanem dobrym (V12K-309 poz. 1).
+  const readinessOk =
+    info.readinessGotowoscUstalona
+    && info.readinessBlockers === 0
+    && info.readinessWarnings === 0;
   const nazwaZakresu = info.projectPresent
     ? (info.caseName ?? SHELL_STRINGS.emptyValue)
     : SHELL_STRINGS.emptyValue;
@@ -42,9 +50,26 @@ export function CaseBar({ info, onOpenProject, onOpenVariants, onPrzejdzDoOblicz
       <span className="mvd-lbl">{SHELL_STRINGS.activeCase}</span>
 
       {info.projectPresent && info.projectName ? (
-        <span className="mvd-chip" data-testid="mvd-casebar-project">
-          {info.projectName}
-        </span>
+        onOpenProject ? (
+          /* KD-1 (parytet L-5): przy OTWARTYM projekcie chip nazwy jest jedynym
+             wejściem do zmiany projektu — dotąd „Otwórz projekt" pokazywał się
+             wyłącznie bez projektu, więc zmiana projektu w powłoce ui2 nie była
+             osiągalna klikiem. Zmiana kontekstu przechodzi przez potwierdzenie
+             w ekranie „Nowy / otwórz projekt". */
+          <button
+            type="button"
+            className="mvd-chip mvd-chip-klik"
+            data-testid="mvd-casebar-project"
+            onClick={onOpenProject}
+            title={SHELL_STRINGS.changeProjectHint}
+          >
+            {info.projectName}
+          </button>
+        ) : (
+          <span className="mvd-chip" data-testid="mvd-casebar-project">
+            {info.projectName}
+          </span>
+        )
       ) : null}
 
       {info.projectPresent && onOpenVariants ? (
@@ -72,7 +97,11 @@ export function CaseBar({ info, onOpenProject, onOpenVariants, onPrzejdzDoOblicz
 
           <span className="mvd-chip" data-testid="mvd-casebar-readiness">
             <span className={readinessOk ? 'mvd-dot mvd-dot-ok' : 'mvd-dot mvd-dot-warn'} />
-            {readinessLabel(info.readinessWarnings, info.readinessBlockers)}
+            {readinessLabel(
+              info.readinessWarnings,
+              info.readinessBlockers,
+              info.readinessGotowoscUstalona,
+            )}
           </span>
 
           {info.znacznikWynikow.klikalny && onPrzejdzDoObliczen ? (

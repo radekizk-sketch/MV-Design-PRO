@@ -14,7 +14,11 @@ from guard_diff_base import zmienione_pliki
 
 WATCHED_PATHS = [
     "backend/src/network_model/solvers/short_circuit_iec60909.py",
-    "backend/src/network_model/solvers/short_circuit_iec60909_internal.py",
+    # Wpis-widmo `short_circuit_iec60909_internal.py` (plik NIGDY nie istnial w
+    # historii repo — zmierzone `git log --all`; karta ALLOWLIST-WIDMA 2026-08-12)
+    # zastapiony REALNYMI plikami wewnetrznymi solvera SC:
+    "backend/src/network_model/solvers/short_circuit_core.py",
+    "backend/src/network_model/solvers/short_circuit_asymmetrical_quantities.py",
     "backend/src/network_model/solvers/short_circuit_contributions.py",
     "backend/src/domain/protection_engine_v1.py",
 ]
@@ -56,7 +60,25 @@ SANCTIONED_CHANGES = {
     "backend/src/network_model/solvers/power_flow_newton_internal.py": (
         "V12K-180 (SM-2): przesuniecie fazowe grupy polaczen w PF, twarde wg "
         "V12K-175, WHITE BOX + re-baseline katow goldenow z dowodem |V| "
-        "niezmienione; wpis do usuniecia po scaleniu do main."
+        "niezmienione; wpis do usuniecia po scaleniu do main. "
+        "N1-WYDAJNOSC: build_jacobian_v2 sklada jakobian BLOKOWO zamiast petla "
+        "skalarna. Zmiana WYLACZNIE sposobu skladania, ZERO zmian fizyki i ZERO "
+        "zmian wyniku: kazdy wyraz liczony tym samym wyrazeniem w tej samej "
+        "kolejnosci dzialan, zaden wyraz nie pomijany (znak zera zachowany), brak "
+        "jakiejkolwiek redukcji po osi (kolejnosc sumowania nie istnieje, wiec nie "
+        "moze sie zmienic). Powod: 76 % czasu wlasnego enumeracji N-1 na substracie "
+        "53 stacji. Dowod bitowy: tests/network_model/solvers/"
+        "test_jacobian_v2_skladanie.py — porownanie z referencyjna petla skalarna "
+        "na WZORCU BITOW oraz pelny artefakt biegu (wynik + slad WHITE BOX) "
+        "bit-w-bit na 4 sieciach (promieniowa, pierscien, SN/nN z OZE, substrat "
+        "53 stacji); dodatkowo sha256 pelnego widoku N-1 dla 142 kontyngencji "
+        "identyczny przed i po. Wpis do usuniecia po scaleniu do main."
+    ),
+    "backend/src/network_model/solvers/short_circuit_asymmetrical_quantities.py": (
+        "PACK-DOWODY: ADDYTYWNE 18 linii — stala definicyjna OPERATOR_FORTESCUE_A "
+        "(IEC 60909-0:2016) przeniesiona do warstwy solvera, zeby klient HTTP nie "
+        "niosl wielkosci fizycznej; zero zmian istniejacych sciezek. Wpis do "
+        "usuniecia po scaleniu do main."
     ),
     "backend/src/domain/protection_engine_v1.py": (
         "V12K-174: WYLACZNIE formatowanie black (parentezacja przypisan "

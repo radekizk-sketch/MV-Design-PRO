@@ -16,7 +16,6 @@ import {
   // Pakiet D
   BESS_OPERATION_MODE_CATALOG,
   selectBessModesForPcs,
-  selectRequiredBessModesForModule,
   TAP_CHANGER_CATALOG,
   selectTapChangersForTransformer,
   getTapChanger,
@@ -25,9 +24,8 @@ import {
 import {
   // Pakiet F
   HV_FUSE_CATALOG,
+  SPZ_CATALOG,
   selectHvFusesForRating,
-  DEVICE_WITHSTAND_CATALOG,
-  validateDeviceWithstand,
 } from '../protection-catalogs';
 import type { StationDerConnection } from '../types';
 
@@ -257,11 +255,20 @@ describe('eng.10 — BessOperationModeCatalog', () => {
     expect(codes).toContain('self_consumption');
   });
 
-  it('FCR-N ma reaction time 30s i wymaga 4Q', () => {
+  it('FCR-N wymaga 4Q, a katalog nie deklaruje czasu reakcji bez źródła', () => {
+    // INTENCJA POPRZEDNIEGO TESTU: pilnował pary „czas reakcji ≤ 30 s + 4Q".
+    // Czas reakcji określa regulamin rynku bilansującego operatora systemu
+    // przesyłowego, a nie ten katalog — pole usunięto w karcie K-Q (backend jest
+    // autorytetem). Zostaje ta część, która wynika z definicji usługi.
     const fcrN = BESS_OPERATION_MODE_CATALOG.find((m) => m.mode_code === 'fcr_n');
     expect(fcrN).toBeDefined();
-    expect(fcrN!.response_time_s).toBeLessThanOrEqual(30);
     expect(fcrN!.requires_four_quadrant).toBe(true);
+    for (const mode of BESS_OPERATION_MODE_CATALOG as unknown as ReadonlyArray<Record<string, unknown>>) {
+      expect(mode).not.toHaveProperty('response_time_s');
+      expect(mode).not.toHaveProperty('max_duration_h');
+      expect(mode).not.toHaveProperty('reserved_capacity_percent');
+      expect(mode).not.toHaveProperty('required_for_nc_rfg_modules');
+    }
   });
 
   it('Island backup wymaga grid-forming PCS', () => {
@@ -286,11 +293,13 @@ describe('eng.10 — BessOperationModeCatalog', () => {
     expect(grid_following_only.find((m) => m.mode_code === 'island_backup')).toBeUndefined();
   });
 
-  it('selectRequiredBessModesForModule zwraca FCR-N i voltage_support dla modułu C', () => {
-    const required = selectRequiredBessModesForModule('C');
-    const codes = required.map((m) => m.mode_code);
-    expect(codes).toContain('fcr_n');
-    expect(codes).toContain('voltage_support');
+  it('nie ma już selektora trybów rzekomo wymaganych przez NC RfG', async () => {
+    // INTENCJA POPRZEDNIEGO TESTU: pilnował, że moduł C „wymaga" FCR-N i Q(U).
+    // Sprawdzone na tekście rozporządzenia (UE) 2016/631: ono nie nakazuje
+    // modułom wytwórczym świadczenia FCR-N / FCR-D / aFRR / mFRR — to produkty
+    // rynku bilansującego. Selektor i pole zniknęły po obu stronach (karta K-Q).
+    const katalogi = await import('../catalogs');
+    expect(katalogi).not.toHaveProperty('selectRequiredBessModesForModule');
   });
 });
 
@@ -321,7 +330,13 @@ describe('eng.13 — TapChangerCatalog', () => {
     const detc = TAP_CHANGER_CATALOG.find((tc) => tc.type === 'detc');
     expect(detc).toBeDefined();
     expect(detc!.supports_avr).toBe(false);
-    expect(detc!.switching_time_s).toBe(0); // off-load
+    // Karta K-Q: czas przełączenia i resurs między przeglądami to dane wyrobu
+    // bez źródła — usunięte po obu stronach. O tym, że DETC przełącza się bez
+    // obciążenia, mówi jego typ i nazwa, a nie zgadnięta liczba sekund.
+    for (const tc of TAP_CHANGER_CATALOG as unknown as ReadonlyArray<Record<string, unknown>>) {
+      expect(tc).not.toHaveProperty('switching_time_s');
+      expect(tc).not.toHaveProperty('operations_before_maintenance_thousand');
+    }
   });
 
   it('selectTapChangersForTransformer filtruje po typie', () => {
@@ -409,93 +424,101 @@ describe('eng.17 — HvFuseCatalog', () => {
     expect(fuses_15kv.every((f) => f.nominal_current_a >= 50)).toBe(true);
   });
 
-  it('Pre-arcing time przy 6×In jest mniejszy niż total clearing time', () => {
+  // ===========================================================================
+  // KARTA K-O — PINY KLASY: wartość bez źródła NIE ISTNIEJE
+  // ===========================================================================
+  //
+  // Poprzednik tych pinów sprawdzał, że „pre-arcing < total clearing" — czyli
+  // WEWNĘTRZNĄ SPÓJNOŚĆ dwóch WYMYŚLONYCH liczb. Test przechodził i przez to
+  // uwiarygadniał fabrykację. Piny poniżej pytają o proweniencję, nie o spójność,
+  // i chodzą po WSZYSTKICH pozycjach (klasa), nie po przykładzie z karty.
+
+  /** Zbiór ZAMKNIĘTY: każde pole spoza listy = pole bez proweniencji. */
+  const DOZWOLONE_POLA_POZYCJI = new Set([
+    'id',
+    'catalog_namespace',
+    'catalog_version',
+    'label_pl',
+    'nominal_voltage_kv',
+    'nominal_current_a',
+    'class',
+    'pasmo_tcc',
+    'application',
+  ]);
+
+  it('KLASA: żadna pozycja nie niesie pola wyrobu bez źródła (lista zamknięta)', () => {
     for (const f of HV_FUSE_CATALOG) {
-      expect(f.pre_arcing_time_at_6in_ms).toBeLessThan(f.total_clearing_time_at_6in_ms);
+      for (const pole of Object.keys(f)) {
+        expect(
+          DOZWOLONE_POLA_POZYCJI.has(pole),
+          `Pozycja ${f.id} niesie pole "${pole}" bez proweniencji. `
+            + 'Dane wyrobu (producent, prądy przerywania, I²t, punkty pasma) wolno '
+            + 'dodać WYŁĄCZNIE razem z adresem tabeli producenta.',
+        ).toBe(true);
+      }
+    }
+  });
+
+  it('KLASA: żadna pozycja nie przypisuje wkładki imiennemu producentowi bez źródła', () => {
+    for (const f of HV_FUSE_CATALOG) {
+      expect(f).not.toHaveProperty('manufacturer');
+    }
+  });
+
+  it('KLASA: żadna pozycja nie niesie punktów pasma przy 6×In (fabrykacja K-O)', () => {
+    for (const f of HV_FUSE_CATALOG) {
+      expect(f).not.toHaveProperty('pre_arcing_time_at_6in_ms');
+      expect(f).not.toHaveProperty('total_clearing_time_at_6in_ms');
+      expect(f).not.toHaveProperty('i2t_total_a2s');
+      expect(f).not.toHaveProperty('i_min_breaking_a');
+      expect(f).not.toHaveProperty('i_max_breaking_ka');
+    }
+  });
+
+  it('PARA PREDYKATÓW: pasmo istnieje wyłącznie razem z URL tabeli producenta', () => {
+    for (const f of HV_FUSE_CATALOG) {
+      if (f.pasmo_tcc === null) continue;
+      // Gdy ktoś kiedyś dopisze pasmo — musi przyjść z adresem i z punktami.
+      expect(f.pasmo_tcc.zrodlo_url).toMatch(/^https?:\/\//);
+      expect(f.pasmo_tcc.punkty.length).toBeGreaterThan(0);
+      for (const p of f.pasmo_tcc.punkty) {
+        expect(Number.isFinite(p.prad_a)).toBe(true);
+        expect(Number.isFinite(p.czas_s)).toBe(true);
+      }
+    }
+  });
+
+  it('Stan faktyczny: KAŻDA pozycja deklaruje brak pasma (brak kart producenta)', () => {
+    expect(HV_FUSE_CATALOG.length).toBeGreaterThan(0);
+    for (const f of HV_FUSE_CATALOG) {
+      expect(f.pasmo_tcc).toBeNull();
+    }
+  });
+
+  it('KLASA: SPZ nie przypisuje praktyki ruchowej imiennym operatorom bez źródła', () => {
+    for (const s of SPZ_CATALOG) {
+      expect(s).not.toHaveProperty('typical_operators_pl');
     }
   });
 });
 
 // =============================================================================
-// Pakiet F — eng.18 (I_dyn / I_th withstand)
+// Pakiet F — eng.18: rachunek PRZENIESIONY DO BACKENDU (karta K7-B)
 // =============================================================================
-
-describe('eng.18 — Device withstand validation (I_dyn / I_th)', () => {
-  it('katalog ma typowe aparaty SN: wyłącznik próżniowy/SF6, szyna, rozłącznik', () => {
-    expect(DEVICE_WITHSTAND_CATALOG.length).toBeGreaterThanOrEqual(5);
-    const types = DEVICE_WITHSTAND_CATALOG.map((d) => d.device_type);
-    expect(types).toContain('breaker_vacuum_15');
-    expect(types).toContain('breaker_sf6_15');
-    expect(types).toContain('busbar_15_2000');
-  });
-
-  it('Walidacja przechodzi gdy I_dyn i I_th są w granicach', () => {
-    const result = validateDeviceWithstand({
-      device_id: 'wstd_breaker_vacuum_15_25',
-      i_peak_calculated_ka: 50, // < 63 kA limit
-      i_thermal_calculated_ka: 20, // < 25 kA / 1s
-      t_clearing_s: 1.0,
-    });
-    expect(result.ok).toBe(true);
-    expect(result.i_dyn_ok).toBe(true);
-    expect(result.i_th_ok).toBe(true);
-    expect(result.utilization_dyn_percent).toBeCloseTo(79.4, 1);
-  });
-
-  it('Walidacja blokuje gdy I_dyn przekroczone', () => {
-    const result = validateDeviceWithstand({
-      device_id: 'wstd_breaker_vacuum_15_25',
-      i_peak_calculated_ka: 70, // > 63 kA limit
-      i_thermal_calculated_ka: 20,
-      t_clearing_s: 1.0,
-    });
-    expect(result.ok).toBe(false);
-    expect(result.i_dyn_ok).toBe(false);
-    expect(result.message_pl).toContain('I_dyn');
-  });
-
-  it('Walidacja blokuje gdy I_th przekroczone (z skalowaniem czasu)', () => {
-    const result = validateDeviceWithstand({
-      device_id: 'wstd_breaker_vacuum_15_25', // I_th=25 kA / 1s
-      i_peak_calculated_ka: 50,
-      i_thermal_calculated_ka: 60, // > 25 kA przy t=1s
-      t_clearing_s: 1.0,
-    });
-    expect(result.ok).toBe(false);
-    expect(result.i_th_ok).toBe(false);
-    expect(result.message_pl).toContain('I_th');
-  });
-
-  it('I_th_eff dla SF6 (rated 31,5 kA / 3s) skaluje się z czasem clearing', () => {
-    // I_th_eff = 31.5 × √(3/0.5) = 31.5 × 2.45 ≈ 77 kA dla t=0.5s
-    const result_500ms = validateDeviceWithstand({
-      device_id: 'wstd_breaker_sf6_15_31_5',
-      i_peak_calculated_ka: 50,
-      i_thermal_calculated_ka: 60, // OK przy t=0.5s
-      t_clearing_s: 0.5,
-    });
-    expect(result_500ms.i_th_ok).toBe(true);
-    // Ten sam prąd przy t=3s (rated) — graniczne
-    const result_3s = validateDeviceWithstand({
-      device_id: 'wstd_breaker_sf6_15_31_5',
-      i_peak_calculated_ka: 50,
-      i_thermal_calculated_ka: 60, // > 31.5 kA przy t=3s
-      t_clearing_s: 3.0,
-    });
-    expect(result_3s.i_th_ok).toBe(false);
-  });
-
-  it('Nieznana aparatura zwraca ok=false z polskim komunikatem', () => {
-    const result = validateDeviceWithstand({
-      device_id: 'wstd_unknown',
-      i_peak_calculated_ka: 50,
-      i_thermal_calculated_ka: 20,
-      t_clearing_s: 1.0,
-    });
-    expect(result.ok).toBe(false);
-    expect(result.message_pl).toContain('Brak aparatury w katalogu');
-  });
-});
+//
+// Tu stał komplet asercji na `validateDeviceWithstand` i `DEVICE_WITHSTAND_CATALOG`
+// — frontowej kopii kryterium IEC 60909 (I_th_eff = I_th_zn·√(t_zn/t_wył)) wraz z
+// własną kopią katalogu aparatury. Liczby bezpieczeństwa powstawały w warstwie
+// prezentacji, poza zasięgiem solvera i śladu WHITE BOX. Rachunek został usunięty
+// z frontu; jego intencji pilnują teraz:
+//
+//   * `backend/tests/network_model/test_device_withstand_parity.py` — PARYTET
+//     liczbowy z rachunkiem, który był w UI (twarde literały: wykorzystanie I_dyn/I_th,
+//     skalowanie I_th czasem wyłączenia, ograniczenie t do 0,01 s, brak aparatu
+//     w katalogu) oraz zgodność identyfikatorów i danych znamionowych katalogu,
+//   * `backend/tests/api/test_audit2_catalogs_api.py` — końcówka HTTP,
+//   * `WalidacjaWytrzymalosciAparaturySekcja.test.tsx` — że ekran PYTA backend
+//     (i uczciwie nazywa stan, w którym odpowiedzi nie ma), zamiast liczyć sam.
 
 // =============================================================================
 // Pakiet F — eng.20: regula PRZENIESIONA DO BACKENDU (V12K-256 / V12K-257)

@@ -44,7 +44,7 @@ export const ZBIEZNOSC_STRINGS = {
   zalMocBazowa: 'Moc bazowa',
   zalSzynaBilansujaca: 'Szyna bilansująca',
   zalMaxIteracji: 'Limit iteracji',
-  zalMetodaUwaga: 'Metoda z śladu solvera przebiegu (WHITE BOX).',
+  zalMetodaUwaga: 'Metoda z śladu solvera przebiegu (pełna jawność obliczeń).',
   zalMaxIteracjiUwaga: 'Limit iteracji z śladu solvera przebiegu.',
 
   // Wartości bilansu przebiegu (summary kontraktu wyniku).
@@ -59,7 +59,7 @@ export const ZBIEZNOSC_STRINGS = {
   // Regulacja zaczepów (OLTC) — ślad pętli regulacyjnej przebiegu.
   oltcTytul: 'Regulacja zaczepów w przebiegu (OLTC)',
   oltcOpis: 'Pozycje zaczepów wyznaczone przez pętlę automatycznej regulacji solvera '
-    + '(ślad WHITE BOX przebiegu). Identyfikatory gałęzi transformatorów są '
+    + '(ślad pełnej jawności obliczeń przebiegu). Identyfikatory gałęzi transformatorów są '
     + 'oznaczeniami technicznymi modelu.',
   oltcKolTransformator: 'Gałąź transformatora',
   oltcKolStrona: 'Strona regulowana',

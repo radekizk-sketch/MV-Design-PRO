@@ -137,6 +137,20 @@ export interface TCCPoint {
   time_s: number;
 }
 
+/**
+ * Kod podstawy krzywej czasowo-prądowej (kontrakt backendu, karta N-D5-FUSE).
+ *
+ * `KRZYWA_PRZEKAZNIKOWA` — punkty policzone ze wzoru IDMT (IEC 60255 / IEEE C37.112).
+ * Pozostałe kody znaczą BRAK podstawy: `points` jest puste i nie wolno niczego
+ * narysować — bezpiecznik topikowy nie ma charakterystyki przekaźnikowej, tylko
+ * pasmo topikowe wg IEC 60282-1 z karty katalogowej producenta.
+ */
+export type PodstawaKrzywej =
+  | 'KRZYWA_PRZEKAZNIKOWA'
+  | 'BRAK_PASMA_BEZPIECZNIKA'
+  | 'NIEZNANA_NORMA_KRZYWEJ'
+  | 'BRAK_NASTAW_KRZYWEJ';
+
 export interface TCCCurve {
   device_id: string;
   device_name: string;
@@ -145,6 +159,15 @@ export interface TCCCurve {
   time_multiplier: number;
   points: TCCPoint[];
   color: string;
+  /** Skąd pochodzi krzywa. Brak pola = starszy ładunek przekaźnikowy. */
+  podstawa_kod?: PodstawaKrzywej;
+  /** Uczciwe zdanie po polsku, gdy podstawy nie ma. */
+  powod_pl?: string | null;
+}
+
+/** Czy pozycja TCC niesie krzywą policzoną ze wzoru przekaźnikowego. */
+export function maPodstawePrzekaznikowa(curve: TCCCurve): boolean {
+  return (curve.podstawa_kod ?? 'KRZYWA_PRZEKAZNIKOWA') === 'KRZYWA_PRZEKAZNIKOWA';
 }
 
 export interface FaultMarker {
@@ -419,6 +442,13 @@ export const LABELS = {
     FUSE: 'Bezpiecznik',
   },
 
+  /**
+   * Etykieta pozycji TCC bez podstawy do narysowania krzywej (karta N-D5-FUSE).
+   * Bezpiecznik topikowy bez pasma z karty katalogowej trafia tu zamiast
+   * dostawać etykietę wariantu przekaźnikowego.
+   */
+  brakCharakterystyki: 'brak charakterystyki',
+
   curveTypes: {
     SI: 'Normalna odwrotna (SI)',
     VI: 'Bardzo odwrotna (VI)',
@@ -449,6 +479,19 @@ export const LABELS = {
     running: 'Trwa analiza...',
     success: 'Analiza zakończona',
     error: 'Błąd analizy',
+  },
+
+  // K5-B (H-2): nastawy urządzeń trwają w konfiguracji przypadku obliczeniowego
+  // (PUT /api/study-cases/{id}/protection-config), nie w pamięci ekranu.
+  persistence: {
+    zapisano: 'Nastawy zabezpieczeń zapisane w konfiguracji przypadku',
+    bladZapisu: 'Nie udało się zapisać nastaw w konfiguracji przypadku',
+    bladOdczytu: 'Nie udało się wczytać nastaw z konfiguracji przypadku',
+    brakPrzypadku:
+      'Brak aktywnego przypadku obliczeniowego — nastawy nie zostaną zapisane po wyjściu ze strony.',
+    wynikNieaktualny:
+      'Nastawy zmienione po ostatnim biegu — wynik koordynacji jest nieaktualny.',
+    przelicz: 'Przelicz koordynację',
   },
 
   tabs: {
@@ -621,20 +664,22 @@ export const DEVICE_TEMPLATES: DeviceTemplate[] = [
     },
   },
   {
+    // Karta N-D5-FUSE: ten preset podawal wczesniej `standard: 'FUSE', variant:
+    // 'EI', time_multiplier: 1.0` — trzy nastawy PRZEKAZNIKA, ktorych bezpiecznik
+    // topikowy nie ma. Backend nie mial dla normy „FUSE" wzoru, wiec po cichu
+    // liczyl krzywa IDMT IEC 60255 i podpisywal ja `FUSE_EI`. Zmierzone: punkty
+    // byly identyczne co do ostatniej cyfry z przekaznikiem IEC.
+    // Bezpiecznik zglaszamy z pradem znamionowym wkladki i BEZ nastaw
+    // charakterystyki — jego pasmo topikowe (przedlukowe i wylaczania, IEC
+    // 60282-1) pochodzi wylacznie z karty katalogowej producenta, a nie ze wzoru.
     id: 'fuse-mv',
     name: 'Bezpiecznik SN',
-    description_pl: 'Bezpiecznik sredniego napiecia',
+    description_pl: 'Bezpiecznik sredniego napiecia (pasmo topikowe z karty katalogowej)',
     device_type: 'FUSE',
     settings: {
       stage_51: {
         enabled: true,
         pickup_current_a: 100,
-        curve_settings: {
-          standard: 'FUSE',
-          variant: 'EI',
-          pickup_current_a: 100,
-          time_multiplier: 1.0,
-        },
         directional: false,
       },
     },

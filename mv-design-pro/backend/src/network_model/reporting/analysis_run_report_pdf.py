@@ -12,6 +12,8 @@ from importlib.util import find_spec
 from io import BytesIO
 from typing import Any
 
+from network_model.reporting.czcionki import zarejestruj_czcionki
+
 _PDF_AVAILABLE = find_spec("reportlab") is not None
 
 if _PDF_AVAILABLE:
@@ -28,7 +30,8 @@ def export_analysis_run_to_pdf(bundle: dict[str, Any]) -> bytes:
         )
 
     output = BytesIO()
-    c = canvas.Canvas(output, pagesize=A4)
+    zarejestruj_czcionki()
+    c = canvas.Canvas(output, pagesize=A4, invariant=1, pageCompression=0)
     page_width, page_height = A4
 
     left_margin = 20 * mm
@@ -48,20 +51,20 @@ def export_analysis_run_to_pdf(bundle: dict[str, Any]) -> bytes:
 
     def draw_text(text: str, font_size: int = 10, bold: bool = False) -> None:
         nonlocal y
-        font_name = "Helvetica-Bold" if bold else "Helvetica"
+        font_name = "DejaVuSans-Bold" if bold else "DejaVuSans"
         c.setFont(font_name, font_size)
         c.drawString(left_margin, y, text)
         y -= line_height
 
     def draw_wrapped(text: str, font_size: int = 9) -> None:
         nonlocal y
-        c.setFont("Helvetica", font_size)
+        c.setFont("DejaVuSans", font_size)
         max_width = right_margin - left_margin
         words = str(text).split()
         line = ""
         for word in words:
             test_line = f"{line} {word}".strip()
-            if c.stringWidth(test_line, "Helvetica", font_size) <= max_width:
+            if c.stringWidth(test_line, "DejaVuSans", font_size) <= max_width:
                 line = test_line
             else:
                 check_page_break(line_height)
@@ -74,7 +77,7 @@ def export_analysis_run_to_pdf(bundle: dict[str, Any]) -> bytes:
             y -= line_height
 
     title = "Raport z uruchomienia AnalysisRun"
-    c.setFont("Helvetica-Bold", 14)
+    c.setFont("DejaVuSans-Bold", 14)
     c.drawString(left_margin, y, title)
     y -= section_spacing
 
@@ -177,7 +180,7 @@ def _draw_header_block(
     line_height: float,
     y: float,
 ) -> None:
-    c.setFont("Helvetica", 10)
+    c.setFont("DejaVuSans", 10)
     project = bundle.get("project", {})
     study_case = bundle.get("study_case") or bundle.get("operating_case", {})
     run = bundle.get("run", {})

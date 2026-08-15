@@ -103,6 +103,52 @@ describe('Pakiet G — wiring katalogów do UI cards', () => {
       expect(fuseCell.textContent?.toLowerCase()).toContain('full-range');
     });
 
+    // Karta K-O: pozycja bez pasma topikowego pokazuje UCZCIWY STAN, a nie pustkę
+    // ani liczby wzięte z głowy. Wzorzec backendowy `BRAK_PASMA_BEZPIECZNIKA`.
+    it('pokazuje jawny stan "pasmo wymaga karty producenta" dla wybranej wkładki', () => {
+      render(
+        <StationConfigBaysCard
+          bays={[
+            {
+              bayId: 'b1',
+              designation: 'POLE-01',
+              bayTypePl: 'transformatorowe',
+              hasEquipment: true,
+              hasProtection: true,
+              hasMeasurements: true,
+              statusPl: 'kompletne',
+              hvFuseCatalogRef: 'fuse_15kv_50a_full',
+            },
+          ]}
+        />,
+      );
+
+      const stan = screen.getByTestId('bay-fuse-brak-pasma-b1');
+      expect(stan.textContent).toBe('pasmo wymaga karty producenta');
+      // Powód po polsku jest dostępny bez zgadywania (tooltip), z odesłaniem do normy.
+      expect(stan.getAttribute('title')).toContain('IEC 60282-1');
+    });
+
+    it('nie pokazuje stanu braku pasma, gdy pole nie ma wkładki', () => {
+      render(
+        <StationConfigBaysCard
+          bays={[
+            {
+              bayId: 'b9',
+              designation: 'POLE-09',
+              bayTypePl: 'liniowe wejściowe',
+              hasEquipment: true,
+              hasProtection: true,
+              hasMeasurements: true,
+              statusPl: 'kompletne',
+              hvFuseCatalogRef: null,
+            },
+          ]}
+        />,
+      );
+      expect(screen.queryByTestId('bay-fuse-brak-pasma-b9')).toBeNull();
+    });
+
     it('pokazuje dash gdy brak fuse w polu', () => {
       render(
         <StationConfigBaysCard
@@ -160,6 +206,48 @@ describe('Pakiet G — wiring katalogów do UI cards', () => {
             }),
           } as Response;
         }
+        if (url.endsWith('/device-withstand')) {
+          // KATALOG APARATURY Z BACKENDU (K7-B) — front nie ma juz wlasnej kopii.
+          return {
+            ok: true,
+            status: 200,
+            json: async () => [
+              {
+                id: 'wstd_breaker_vacuum_15_25',
+                label_pl: 'Wyłącznik próżniowy 15 kV',
+                device_type: 'breaker_vacuum_15',
+                nominal_voltage_kv: 15,
+                nominal_current_a: 1250,
+                i_dyn_ka: 63,
+                i_th_1s_ka: 25,
+                i_th_duration_s: 1,
+              },
+            ],
+          } as Response;
+        }
+        if (url.includes('/validate-device-withstand')) {
+          // Atrapa RACHUNKU backendu (K7-B): od tej karty kryterium IEC 60909
+          // nie zyje juz we froncie — ekran pyta o werdykt.
+          const body = JSON.parse(String(init?.body ?? '{}')) as {
+            i_peak_calculated_ka?: number;
+          };
+          const iDynOk = Number(body.i_peak_calculated_ka) <= 63;
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              ok: iDynOk,
+              i_dyn_ok: iDynOk,
+              i_th_ok: true,
+              message_pl: iDynOk
+                ? 'OK: aparatura wytrzymała.'
+                : 'BLOKER: I_dyn 70,0 kA > 63,0 kA (limit) — przekroczenie '
+                  + 'wytrzymałości dynamicznej.',
+              utilization_dyn_percent: 0,
+              utilization_th_percent: 0,
+            }),
+          } as Response;
+        }
         throw new Error(`nieoczekiwane zapytanie: ${url}`);
       }) as unknown as typeof fetch;
     });
@@ -198,7 +286,7 @@ describe('Pakiet G — wiring katalogów do UI cards', () => {
       expect(validation.textContent?.toLowerCase()).toContain('petersena');
     });
 
-    it('renderuje walidację I_dyn / I_th aparatury (eng.18)', () => {
+    it('renderuje walidację I_dyn / I_th aparatury (eng.18) — werdykt z backendu', async () => {
       render(
         <StationConfigProtectionCard
           relays={[]}
@@ -216,7 +304,7 @@ describe('Pakiet G — wiring katalogów do UI cards', () => {
         />,
       );
 
-      const validation = screen.getByTestId('withstand-POLE-01');
+      const validation = await screen.findByTestId('withstand-POLE-01');
       expect(validation.getAttribute('data-withstand-ok')).toBe('false');
       expect(validation.textContent).toContain('I_dyn');
     });

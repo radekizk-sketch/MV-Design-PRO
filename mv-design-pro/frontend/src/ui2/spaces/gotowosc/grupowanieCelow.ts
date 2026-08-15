@@ -43,6 +43,14 @@
  *   jako `OSD_CARD_FIELD_BLOCKER_CODE` — bramkę pakietu OSD (dokumentacji
  *   przyłączeniowej), NIE bramkę obliczeń rozpływowych.
  *
+ *   Tą samą drogą idą `der.inverter_certificate_unlinked` oraz
+ *   `der.inverter_certificate_conditional` (karta P2, obszar rejestru
+ *   GENERATORS): emiter w `enm/domain_operations.py` czyta status i notę
+ *   certyfikatu PTPiREE z tabliczki urządzenia, a skutkiem braku powiązania
+ *   jest ryzyko odrzucenia WNIOSKU przez OSD, nie błąd rozpływu. Oba są
+ *   OSTRZEŻENIEM — manifest katalogu PTPiREE mówi wprost, że „ostateczna
+ *   akceptacja przyłączeniowa pozostaje po stronie właściwego OSD".
+ *
  * Kody dokładne spoza rejestru (znalezione grepem w `backend/src/**`,
  * potwierdzone w miejscu wywołania — patrz też
  * `docs/ui/MACIERZ_OKIEN_DIALOGOWYCH_I_AKCJI.md` linie 34-50 dla kontekstu
@@ -53,11 +61,19 @@
  *    catalog_ref_missing/switch_state_missing`, `zksn.branch_count_invalid`
  *                                    (enm/domain_operations.py:1249-1345)  -> wspolne
  *   `switch.catalog_ref_missing`     (enm/domain_operations.py:1346-1377) -> wspolne
- *   `catalog.ref_missing`            (domain/station_field_validation.py:181,
- *                                     domain/generator_validation.py:69)  -> wspolne
  *   `protection.binding_missing`     (domain/station_field_validation.py:203) -> zabezpieczenia
  *   `relay.ct_missing`               (enm/domain_operations_v2.py:676)    -> zabezpieczenia
  *   `tcc.relay_missing`              (enm/domain_operations_v2.py:818)    -> zabezpieczenia
+ *
+ * Bramy katalogowe (karta W4, dług nazwany w V12K-317): siedemnaście kodów
+ * przestrzeni `catalog.` emitowanych przez bramy (`api/domain_ops_policy.py`,
+ * `api/enm.py`, `enm/domain_operations*.py`,
+ * `network_model/catalog/materialization.py`) nie miało wpisu ani w kanonicznym
+ * rejestrze, ani tutaj — projektant dostawał goły kod bez zdania po polsku i bez
+ * nawigacji naprawczej. Od karty W4 wszystkie są w `READINESS_CODES` (stamtąd
+ * płynie opis i `fix_navigation`) oraz w `KOD_Z_REJESTRU_DO_CELU` niżej.
+ * Kompletność przypina test klasy backendu (skan AST kodu bram), który czyta
+ * OBA pliki — rejestr i tę mapę.
  *
  * Fallback PREFIKSU (część kodu przed pierwszą kropką) — użyty tylko tam,
  * gdzie WSZYSTKIE zaobserwowane kody danego prefiksu zgodnie należą do
@@ -151,6 +167,14 @@ export interface ProblemGotowosci {
   opisPl: string;
   cel: CelGotowosci;
   fixAction: FixAction | null;
+  /**
+   * Priorytet z kanonicznego rejestru kodów gotowości (1 = najwyższy), przepisany
+   * BEZ ZMIAN z pola `canonical_priority` kontraktu backendu. `null` znaczy
+   * dokładnie „kanon nie szereguje tego warunku" — warstwa UI nie wolno tej luki
+   * uzupełniać własną wartością (jedyny konsument, reguła następnej akcji, ma
+   * jawną zasadę: brak priorytetu nie wyprzedza kodu uszeregowanego przez kanon).
+   */
+  priorytetKanoniczny: number | null;
 }
 
 /** Grupa celu — problemy + liczniki + postęp (karta §1: „postęp per cel"). */
@@ -175,6 +199,14 @@ export interface GrupaCelu {
 /** Wyjątek kodu dokładnego — nadpisuje wynik fallbacku prefiksu (patrz nagłówek). */
 const KOD_DOKLADNY_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   'oze.card_field_not_accepted': 'wniosekOsd',
+  // Certyfikat PTPiREE przetwornicy DER (karta P2). Obszar rejestru to
+  // GENERATORS (czyli fallback dałby „rozpływ"), ale treść tych dwóch kodów nie
+  // jest bramką obliczeń rozpływowych — to bramka PAKIETU PRZYŁĄCZENIOWEGO:
+  // urządzenie bez powiązanego (albo powiązanego warunkowo) wpisu w wykazie
+  // PTPiREE jest ryzykiem odrzucenia wniosku przez OSD. Ten sam powód, dla
+  // którego wyjątkiem jest `oze.card_field_not_accepted` wyżej.
+  'der.inverter_certificate_unlinked': 'wniosekOsd',
+  'der.inverter_certificate_conditional': 'wniosekOsd',
 };
 
 /**
@@ -204,6 +236,29 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   'catalog.binding_version_missing': 'wspolne',
   'catalog.binding_missing': 'wspolne',
   'catalog.materialization_failed': 'wspolne',
+  // Bramy katalogowe (karta W4, dług V12K-317). Do tej karty rejestr znał tylko
+  // cztery kody przestrzeni `catalog.`, a bramy emitują ich siedemnaście więcej —
+  // z `catalog.item_not_found` na czele, bo po ujednoliceniu parytetu torów
+  // (V12K-307/315/316) jest to JEDYNY kod złej referencji katalogowej. Wpis
+  // DOKŁADNY (nie fallback prefiksu), żeby kod był tu widoczny i policzalny:
+  // fallback grupuje milcząco, więc kod spoza rejestru wyglądałby jak obsłużony.
+  'catalog.item_not_found': 'wspolne',
+  'catalog.ref_missing': 'wspolne',
+  'catalog.item_missing': 'wspolne',
+  'catalog.item_id_missing': 'wspolne',
+  'catalog.binding_required': 'wspolne',
+  'catalog.binding_invalid': 'wspolne',
+  'catalog.namespace_missing': 'wspolne',
+  'catalog.namespace_required': 'wspolne',
+  'catalog.unknown_namespace': 'wspolne',
+  'catalog.namespace_mismatch': 'wspolne',
+  'catalog.element_missing': 'wspolne',
+  'catalog.element_not_found': 'wspolne',
+  'catalog.clear_forbidden': 'wspolne',
+  'catalog.materialization_required': 'wspolne',
+  'catalog.materialization_incomplete': 'wspolne',
+  'catalog.nameplate_mismatch': 'wspolne',
+  'catalog.gate_result_mismatch': 'wspolne',
   'load.catalog_missing': 'wspolne',
   'load.power_zero': 'wspolne',
   'nn.cable_catalog_missing': 'wspolne',
@@ -258,7 +313,9 @@ const KOD_DOMENOWY_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   'branch_point.switch_state_missing': 'wspolne',
   'zksn.branch_count_invalid': 'wspolne',
   'switch.catalog_ref_missing': 'wspolne',
-  'catalog.ref_missing': 'wspolne',
+  // `catalog.ref_missing` przeniesiony do KOD_Z_REJESTRU_DO_CELU (karta W4) —
+  // od tej karty JEST w kanonicznym rejestrze `READINESS_CODES`, więc trzymanie
+  // go tutaj czyniłoby nagłówek tej mapy („kody spoza rejestru") nieprawdziwym.
   'protection.binding_missing': 'zabezpieczenia',
   'relay.ct_missing': 'zabezpieczenia',
   'tcc.relay_missing': 'zabezpieczenia',
@@ -331,6 +388,7 @@ export function naProblemGotowosci(issue: ReadinessIssue): ProblemGotowosci {
     opisPl: issue.message_pl,
     cel: celDlaKodu(issue.code),
     fixAction: issue.fix_action,
+    priorytetKanoniczny: issue.canonical_priority ?? null,
   };
 }
 

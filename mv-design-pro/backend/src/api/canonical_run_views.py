@@ -19,6 +19,11 @@ from api.v125_contracts import (
     resolve_proof_pack_ref,
 )
 from application.analysis_run import build_trace_summary
+from application.result_freshness import (
+    FreshnessVerdict,
+    current_model_hash,
+    evaluate_result_freshness,
+)
 from enm.canonical_analysis import (
     CanonicalRun,
     build_automation_trace_results,
@@ -30,6 +35,7 @@ from enm.canonical_analysis import (
     build_phase_state_results,
     build_results_index,
     build_short_circuit_results,
+    build_short_circuit_rozplyw,
     build_source_compliance_results,
 )
 
@@ -170,6 +176,23 @@ def build_result_items(run: CanonicalRun) -> dict[str, Any]:
     }
 
 
+def build_run_freshness(run: CanonicalRun) -> FreshnessVerdict:
+    """Swiezosc wyniku biegu kanonicznego wzgledem BIEZACEGO modelu przypadku.
+
+    DLUG ZAMKNIETY (K-S, klasa). Nakladka oddawala tu `run.result_status`, czyli
+    pole o wartosci domyslnej `"VALID"`, ktorego zaden kod w repo nie zmienial
+    — do tego w slowniku nieznanym konsumentowi (`SldOverlay.tsx` porownuje z
+    `'OUTDATED'`). Status jest teraz liczony z POROWNANIA odcisku modelu biegu
+    (`CanonicalRun.snapshot_hash`) z odciskiem modelu biezacego, tym samym
+    mechanizmem co nakladka zabezpieczen.
+    """
+    return evaluate_result_freshness(
+        has_result=run.status == "FINISHED" and bool(run.raw_result),
+        run_model_hashes=(run.snapshot_hash,),
+        current_hash=current_model_hash(run.case_id),
+    )
+
+
 def build_sld_overlay(
     run: CanonicalRun,
     *,
@@ -250,7 +273,7 @@ def build_sld_overlay(
     return {
         "diagram_id": str(diagram_id),
         "run_id": str(run.id),
-        "result_status": run.result_status,
+        **build_run_freshness(run).to_overlay_fields(),
         "nodes": nodes,
         "buses": nodes,
         "branches": branches,
@@ -448,6 +471,14 @@ def build_branch_results_response(run: CanonicalRun) -> dict[str, Any]:
 
 def build_short_circuit_results_response(run: CanonicalRun) -> dict[str, Any]:
     payload = build_short_circuit_results(run)
+    payload["analysis_case_context"] = build_analysis_case_context(run)
+    return payload
+
+
+def build_short_circuit_rozplyw_response(run: CanonicalRun, target_id: str) -> dict[str, Any]:
+    # V12K-281 (K13): rozpływ gałęziowy jednego punktu zwarcia na żądanie —
+    # wiersze zbiorcze nie niosą już rozpływu (raport/odpowiedź 730 MB).
+    payload = build_short_circuit_rozplyw(run, target_id)
     payload["analysis_case_context"] = build_analysis_case_context(run)
     return payload
 

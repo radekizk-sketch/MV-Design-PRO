@@ -165,9 +165,7 @@ def main() -> int:
             continue
         pola_ts = _pola_interfejsu_ts(zrodlo_ts, nazwa_ts)
         if not pola_ts:
-            naruszenia.append(
-                f"{nazwa_ts}: nie znaleziono interfejsu w lustrze {MIRROR.name}."
-            )
+            naruszenia.append(f"{nazwa_ts}: nie znaleziono interfejsu w lustrze {MIRROR.name}.")
             continue
         sprawdzone += 1
         widoczne = pola_ts | baza

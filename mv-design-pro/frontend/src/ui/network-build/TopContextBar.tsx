@@ -3,6 +3,7 @@ import { clsx } from 'clsx';
 
 import { selectFieldStationCount, useNetworkBuildDerived } from './networkBuildStore';
 import { useSnapshotStore } from '../topology/snapshotStore';
+import { GOTOWOSC_STRINGS } from '../../ui2/spaces/gotowosc/strings';
 
 export interface TopContextBarProps {
   className?: string;
@@ -58,10 +59,10 @@ function QuickActionButton({
       title={title}
       className="scada-action-btn min-w-[7.25rem] justify-start px-2.5 py-2"
     >
-      <span className="text-[#8cb7d3]">{icon}</span>
+      <span className="text-scada-text">{icon}</span>
       <span className="truncate">{label}</span>
       {shortcut ? (
-        <kbd className="ml-auto rounded border border-[#294253] bg-[#07131c] px-1.5 py-0.5 text-[10px] font-mono text-[#6f8ca4]">
+        <kbd className="ml-auto rounded border border-scada-border-strong bg-scada-bg px-1.5 py-0.5 text-[10px] font-mono text-scada-muted">
           {shortcut}
         </kbd>
       ) : null}
@@ -71,8 +72,8 @@ function QuickActionButton({
 
 function StatPill({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-full border border-[#213a4c] bg-[#091721] px-2.5 py-1 text-[10px] font-medium text-[#8ea6ba]">
-      <span className="text-[#6f8ca4]">{label}</span>
+    <div className="rounded-full border border-scada-border bg-scada-bg px-2.5 py-1 text-[10px] font-medium text-scada-text">
+      <span className="text-scada-muted">{label}</span>
       <span className="ml-1 font-semibold text-slate-100">{value}</span>
     </div>
   );
@@ -88,7 +89,11 @@ export function TopContextBar({
   onOpenProjectMetadata,
   onOpenSnapshotHistory,
 }: TopContextBarProps) {
-  const { buildPhase, buildPhaseLabel, blockersByCategory, isReady } = useNetworkBuildDerived();
+  // DŁUG V12K-318 poz. 4: `blockersByCategory.total === 0` przy gotowości
+  // NIEUSTALONEJ znaczy „nie policzono", a nie „policzono i czysto" — pasek
+  // wywieszał wtedy zieloną plakietkę. Sygnał rozróżniający z toru U5.
+  const { buildPhase, buildPhaseLabel, blockersByCategory, isReady, readinessUstalona } =
+    useNetworkBuildDerived();
   const snapshot = useSnapshotStore((state) => state.snapshot);
 
   const stats = useMemo(() => {
@@ -103,8 +108,8 @@ export function TopContextBar({
   }, [snapshot]);
 
   const phaseStyle = PHASE_STYLES[buildPhase] ?? {
-    badge: 'border-[#294153] bg-[#0d1c29] text-[#dde8f2]',
-    dot: 'bg-[#7ea7c4]',
+    badge: 'border-scada-border-strong bg-scada-surface text-scada-text',
+    dot: 'bg-scada-border-strong',
   };
 
   return (
@@ -118,7 +123,7 @@ export function TopContextBar({
       data-testid="top-context-bar"
     >
       <div className="flex min-w-0 flex-1 items-center gap-3">
-        <div className="min-w-0 rounded-[16px] border border-[#1d3446] bg-[rgba(9,22,33,0.82)] px-3 py-2 shadow-[inset_0_1px_0_rgba(148,163,184,0.06)]">
+        <div className="min-w-0 rounded-[16px] border border-scada-border bg-[rgba(9,22,33,0.82)] px-3 py-2 shadow-[inset_0_1px_0_rgba(148,163,184,0.06)]">
           <div className="scada-shell-eyebrow">Kontekst projektu</div>
           <div className="mt-1 flex min-w-0 items-center gap-2">
             {projectName ? (
@@ -135,8 +140,8 @@ export function TopContextBar({
             )}
             {caseName ? (
               <>
-                <span className="text-[#35526a]">/</span>
-                <span className="truncate text-xs font-medium text-[#9cb4c8]">{caseName}</span>
+                <span className="text-scada-muted">/</span>
+                <span className="truncate text-xs font-medium text-scada-text">{caseName}</span>
               </>
             ) : null}
           </div>
@@ -153,7 +158,14 @@ export function TopContextBar({
             <span>{buildPhaseLabel}</span>
           </div>
 
-          {blockersByCategory.total > 0 ? (
+          {!readinessUstalona ? (
+            <div
+              className="rounded-full border border-slate-500/30 bg-slate-500/10 px-3 py-1 text-[10px] font-medium text-slate-200"
+              data-testid="top-context-gotowosc-nieustalona"
+            >
+              {GOTOWOSC_STRINGS.nieustalonaTytul}
+            </div>
+          ) : blockersByCategory.total > 0 ? (
             <div className="rounded-full border border-rose-500/30 bg-rose-500/10 px-3 py-1 text-[10px] font-medium text-rose-100">
               {blockersByCategory.total} zagadnień konfiguracji
               <span className="ml-2 text-rose-200/70">

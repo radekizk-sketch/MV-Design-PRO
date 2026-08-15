@@ -35,7 +35,7 @@ import {
   buildResultLabelsFromScene,
   DEFAULT_RESULT_LABEL_FILTER,
   resultLabelsHaveExceedances,
-  singleHopSegmentRefs,
+  orientedSegmentRefs,
   type ResultLabelFilter,
 } from '../src/ui/sld/v3/canvas/resultLabels';
 import { layoutResultLabels } from '../src/ui/sld/v3/canvas/SldCanvasV3';
@@ -52,7 +52,10 @@ const enmPath = resolve(here, '..', 'src', 'ui', 'sld', 'v2', 'geometry', '__tes
 const enm = (JSON.parse(readFileSync(enmPath, 'utf8')) as { readonly enm: EnergyNetworkModel }).enm;
 
 const scene = buildSceneV3(enm, 2);
-const singleHop = singleHopSegmentRefs(enm);
+// Bramka przesel: KLUCZE mapy orientacji (`orientedSegmentRefs`) — dokumentowany
+// zamiennik usunietej `singleHopSegmentRefs`, ta sama derywacja co produkcja
+// (`SldCanvasV3Workspace.buildResultLabelsForSnapshot`).
+const singleHop = new Set(orientedSegmentRefs(enm).keys());
 
 // Payload PEŁNY na realnych kotwicach + severity KONTRAKTOWE (co N-ty element
 // dostaje przekroczenie dla dowodu mapowania koloru; INFO = poprawne).
@@ -109,8 +112,6 @@ const provText = `Moduł: ${moduleLabel} · Przebieg: ${payload.run_id}`;
 
 // Agregat do zbliżenia (panel A).
 const agg = layout.aggregates[0];
-
-const WIRE = '#8FA8BE';
 const TXT = '#E8EEF4';
 const SUB = '#9FB3C8';
 const RESULT = '#B39DDB';

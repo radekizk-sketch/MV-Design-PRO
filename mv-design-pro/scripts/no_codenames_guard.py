@@ -35,6 +35,27 @@ SCAN_DIRS = [
 
 # File extensions to check
 FILE_EXTENSIONS = {".ts", ".tsx", ".css", ".html"}
+
+#: Backend też produkuje treść WIDOCZNĄ DLA UŻYTKOWNIKA — polskie komunikaty pól
+#: `*_pl` (`message_pl`, `name_pl`, …) trafiają wprost do interfejsu, dowodów i
+#: pobieranych pakietów. Do 2026-08-07 guard skanował WYŁĄCZNIE `frontend/`, więc
+#: kodenamy w tych polach były niewidzialne: karta PACK-DOWODY zastała w
+#: `application/equipment_proof/generator.py` sześć komunikatów „P12 MVP: …"
+#: pokazywanych projektantowi w dowodzie doboru aparatury. Sama zamiana tekstu
+#: naprawiłaby INSTANCJĘ; ten skan zamyka KLASĘ (reguła KLASA-NIE-INSTANCJA).
+#:
+#: Zakres celowo WĄSKI i uzasadniony konwencją repozytorium: tylko przypisania do
+#: pól kończących się na `_pl` (jedyna konwencja tekstu użytkownika w backendzie).
+#: Kod techniczny, nazwy klas generatorów (`P14PowerFlowProof`), komentarze i
+#: dokumentacja zostają nietknięte — guard ma pilnować treści, którą CZYTA
+#: projektant, a nie słownictwa inżynierów.
+BACKEND_SCAN_DIRS = ["backend/src"]
+BACKEND_FILE_EXTENSIONS = {".py"}
+#: Marker pola tekstu użytkownika: `message_pl=`, `"name_pl":`, `opis_pl =` itd.
+#: Cudzysłów przed dwukropkiem jest opcjonalny — pola `_pl` jadą do klienta zarówno
+#: jako argumenty nazwane, jak i jako klucze słownika odpowiedzi (`{"message_pl": …}`),
+#: a klasa bez tej drugiej postaci miałaby dziurę wielkości całej warstwy API.
+BACKEND_USER_TEXT_MARKER = re.compile(r"\b\w*_pl\b[\"']?\s*[=:]")
 EXCLUDED_FILE_SUFFIXES = (
     ".generated.ts",
     ".generated.tsx",
@@ -45,7 +66,27 @@ EXCLUDED_RELATIVE_FILES = {
 
 # Regex for codenames: P1, P7, P11, P20, p14, etc.
 # Excludes P0 (technical parameter for transformer no-load losses)
-CODENAME_PATTERN = re.compile(r"\b[pP](?!0\b)\d+\b")
+#
+# DLACZEGO NIE `\b` (poprawione 2026-08-07, odbiór karty PACK-ROZPLYW).
+# Pierwotny wzorzec `\b[pP](?!0\b)\d+\b` PRZEPUSZCZAŁ kodename sąsiadujący
+# z podkreśleniem, bo `_` jest znakiem słowa, więc między `P14` a `_` NIE MA
+# granicy słowa. Zmierzone na żywym guardzie: „P14" i „P14 rozpływ" łapane,
+# ale „P14_STEP_001" i całe zdanie „Dowód P11_wynik" przechodziły na zielono.
+# Znalazł to wykonawca karty PACK-ROZPLYW, gdy jego WŁASNY pin — pisany tym
+# samym wzorcem — okazał się zielony przy naruszeniu.
+#
+# Granice liczone są teraz po ZNAKACH ALFANUMERYCZNYCH, więc `_` jest
+# separatorem, a nie częścią słowa. Warunek po prawej stronie zostaje ostry
+# (`(?![A-Za-z0-9])`), bo bez niego wzorzec zacząłby łapać nazwy handlowe
+# aparatury: `SCHNEIDER_P3M30` (przekaźnik) ma po `P3` literę `M`, więc jest
+# odsiewany Z KONSTRUKCJI, a nie białą listą.
+#
+# POMIAR PRZY ZAMKNIĘCIU DZIURY: w kodzie produkcyjnym `frontend/src` +
+# `backend/src` ZERO żywych naruszeń tej postaci — wszystkie 121 trafień
+# wstępnego skanu to `p0_kw` (straty jałowe transformatora, wykluczone niżej)
+# oraz `p95_ms` (token techniczny). Dziura była LATENTNA: nic przez nią dziś
+# nie przeszło, ale nic jej też nie pilnowało.
+CODENAME_PATTERN = re.compile(r"(?<![A-Za-z0-9])[pP](?!0(?![A-Za-z0-9]))\d+(?![A-Za-z0-9])")
 ALLOWED_TECHNICAL_TOKENS = {"p50", "p75", "p90", "p95", "p99"}
 
 # Regex for string literals (single, double, or template)
@@ -62,11 +103,11 @@ STRING_LITERAL_PATTERN = re.compile(
 
 # Comment line patterns (for lines to skip entirely)
 COMMENT_LINE_PATTERNS = [
-    re.compile(r"^\s*//"),       # // single-line comment
-    re.compile(r"^\s*\*"),       # * JSDoc/block comment continuation
-    re.compile(r"^\s*/\*"),      # /* block comment start
-    re.compile(r"^\s*\*/"),      # */ block comment end
-    re.compile(r"^\s*{/\*"),     # JSX comment {/*
+    re.compile(r"^\s*//"),  # // single-line comment
+    re.compile(r"^\s*\*"),  # * JSDoc/block comment continuation
+    re.compile(r"^\s*/\*"),  # /* block comment start
+    re.compile(r"^\s*\*/"),  # */ block comment end
+    re.compile(r"^\s*{/\*"),  # JSX comment {/*
 ]
 
 # Inline ignore pattern (add to line to suppress warning)
@@ -152,6 +193,79 @@ def scan_file(file_path: Path) -> list[Violation]:
     return violations
 
 
+def scan_backend_file(file_path: Path) -> list[Violation]:
+    """Skanuj plik backendu — WYŁĄCZNIE przypisania do pól tekstu użytkownika (`*_pl`).
+
+    Komentarz `#` i wiersz bez markera pola są pomijane: guard pilnuje treści
+    czytanej przez projektanta, nie słownictwa technicznego (patrz komentarz przy
+    `BACKEND_SCAN_DIRS`).
+    """
+    violations: list[Violation] = []
+    try:
+        content = file_path.read_text(encoding="utf-8")
+    except (UnicodeDecodeError, OSError):
+        return violations
+
+    for line_num, line in enumerate(content.split("\n"), start=1):
+        trimmed = line.strip()
+        if trimmed.startswith("#"):
+            continue
+        if not BACKEND_USER_TEXT_MARKER.search(line):
+            continue
+        for codename in find_codenames_in_strings(line):
+            violations.append(
+                Violation(
+                    file_path=format_violation_path(file_path),
+                    line_number=line_num,
+                    line_content=trimmed,
+                    match=codename,
+                )
+            )
+    return violations
+
+
+def iter_backend_files(root: Path) -> list[Path]:
+    """Pliki backendu do skanu tekstu użytkownika."""
+    files: list[Path] = []
+    for scan_dir in BACKEND_SCAN_DIRS:
+        dir_path = root / scan_dir
+        if not dir_path.exists():
+            continue
+        for ext in BACKEND_FILE_EXTENSIONS:
+            files.extend(dir_path.rglob(f"*{ext}"))
+    return sorted(set(files))
+
+
+def check_excluded_relative_files_freshness(root: Path) -> list[str]:
+    """Zapadka swiezosci EXCLUDED_RELATIVE_FILES (karta ZAPADKI-ALLOWLIST-RESZTA,
+    pozycja f, 2026-08-12).
+
+    Pelna zapadka DWUKIERUNKOWA (nie tylko istnienie pliku — tanie do policzenia,
+    bo `scan_file()` juz istnieje i nie zaglada do EXCLUDED_RELATIVE_FILES samo
+    z siebie, wiec mozna je wywolac wprost na wykluczonym pliku): kazdy wpis
+    musi wskazywac plik, ktory (a) istnieje ORAZ (b) nadal produkowalby >=1
+    trafienie `scan_file()`, gdyby nie byl wykluczony — inaczej wpis jest
+    MARTWYM WYJATKIEM, ktory po cichu poszerzylby wylaczenie na kazdy przyszly
+    plik pod ta sama sciezka.
+    """
+    violations: list[str] = []
+    for rel_path in sorted(EXCLUDED_RELATIVE_FILES):
+        full_path = root / rel_path
+        if not full_path.is_file():
+            violations.append(
+                f"[no-codenames-wykluczenie-osierocone] EXCLUDED_RELATIVE_FILES zawiera "
+                f"{rel_path!r}, ktorego juz nie ma w repo — usun ten wpis"
+            )
+            continue
+        if scan_file(full_path):
+            continue
+        violations.append(
+            f"[no-codenames-wykluczenie-osierocone] EXCLUDED_RELATIVE_FILES zawiera "
+            f"{rel_path!r}, ktory juz nie produkuje zadnego trafienia kodenamu — usun ten wpis"
+        )
+    return violations
+
+
 def iter_files(root: Path) -> list[Path]:
     """Iterate over files to scan."""
     files = []
@@ -177,6 +291,18 @@ def main() -> int:
     for file_path in iter_files(REPO_ROOT):
         file_violations = scan_file(file_path)
         violations.extend(file_violations)
+
+    for file_path in iter_backend_files(REPO_ROOT):
+        violations.extend(scan_backend_file(file_path))
+
+    freshness_violations = check_excluded_relative_files_freshness(REPO_ROOT)
+    if freshness_violations:
+        print("=" * 70, file=sys.stderr)
+        print("NO-CODENAMES GUARD: WYKLUCZENIA OSIEROCONE", file=sys.stderr)
+        print("=" * 70, file=sys.stderr)
+        for message in freshness_violations:
+            print(f"  {message}", file=sys.stderr)
+        print(file=sys.stderr)
 
     if violations:
         print("=" * 70, file=sys.stderr)
@@ -206,6 +332,8 @@ def main() -> int:
             "Napraw powyższe naruszenia, zanim kod zostanie scalony.",
             file=sys.stderr,
         )
+
+    if violations or freshness_violations:
         return 1
 
     print("no-codenames-guard: OK (brak naruszeń)", file=sys.stdout)

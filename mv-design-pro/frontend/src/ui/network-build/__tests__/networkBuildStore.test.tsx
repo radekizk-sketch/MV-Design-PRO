@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 
 import { useNetworkBuildDerived } from '../networkBuildStore';
-import { useReadinessLiveStore } from '../../engineering-readiness/readinessLiveStore';
+import { wyczyscGotowoscMigawki } from '../../../test/gotowoscTestUtils';
 import { useSnapshotStore } from '../../topology/snapshotStore';
 import type { DomainOpResponseV1, EnergyNetworkModel } from '../../../types/enm';
 
@@ -117,14 +117,14 @@ function buildResponse(): DomainOpResponseV1 {
 
 afterEach(() => {
   useSnapshotStore.getState().reset();
-  useReadinessLiveStore.getState().clear();
+  wyczyscGotowoscMigawki();
 });
 
 describe('useNetworkBuildDerived', () => {
   it('materializuje liczniki segmentów i odbiorów bez wartości nieokreślonej', () => {
     act(() => {
       useSnapshotStore.getState().setSnapshot(buildResponse());
-      useReadinessLiveStore.getState().clear();
+      wyczyscGotowoscMigawki();
     });
 
     const { result } = renderHook(() => useNetworkBuildDerived());

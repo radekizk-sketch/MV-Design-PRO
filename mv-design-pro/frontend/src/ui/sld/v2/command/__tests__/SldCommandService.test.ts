@@ -66,7 +66,13 @@ describe('SldCommandService — SLD_MENU_REGISTRY', () => {
     expect(actions.some((a) => a.id === 'insert-zksn')).toBe(true);
     expect(actions.some((a) => a.id === 'insert-pole')).toBe(false);
     expect(actions.some((a) => a.id === 'change-family-to-overhead')).toBe(true);
-    expect(actions.some((a) => a.id === 'insert-joint' && a.labelPl === 'Wstaw mufę kablową')).toBe(true);
+    // Karta S9-5 — INTENCJA ZACHOWANA, KANON ZMIENIONY: pozycja „Wstaw mufę
+    // kablową" była obietnicą bez dostawcy (brak operacji w `CANONICAL_OPS`,
+    // brak edytora `Branch.cable_joints` na jakimkolwiek ekranie), więc klik
+    // kończył się wyłącznie komunikatem „Etap 4 roadmapy". Test pilnuje TERAZ,
+    // że pozycja NIE WRACA do menu bez realnej operacji domenowej — to ta sama
+    // intencja („menu kabla przewiduje dalszy projekt"), tylko bez fikcji.
+    expect(actions.some((a) => a.id === 'insert-joint')).toBe(false);
   });
 
   it('menu linii napowietrznej ma "Wstaw słup rozgałęźny" (specyficzne dla napowietrznej)', () => {
@@ -106,12 +112,31 @@ describe('SldCommandService — getMenuActions z context', () => {
     expect(extendAction?.disabledReasonPl).toContain('wyprowadzony');
   });
 
-  it('start-branch ze stacji disabled gdy stationHasFreeBay=false', () => {
-    const actions = getMenuActions('station', { stationHasFreeBay: false });
-    const branchAction = actions.find((a) => a.id === 'start-branch');
-    expect(branchAction?.disabled).toBe(true);
-    expect(branchAction?.disabledReasonPl).toContain('Brak wolnego pola');
-  });
+  // S9-10 (intencja S9-5 zachowana, predykat WYMIENIONY): dawne
+  // `stationHasFreeBay` było bramką bez żadnego pisarza (warunek martwy) —
+  // `branchStartAvailable` liczy TEN SAM resolver co kreator odgałęzienia
+  // (`resolveBranchStartAvailability`), więc menu i formularz nie mogą się
+  // rozjechać. Bramka jest kind-agnostyczna: iloczyn {kotwyca z pozycją
+  // start-branch} × {dostępność false/true/brak pomiaru}.
+  it.each(['station', 'gpz', 'section'] as const)(
+    'start-branch na %s ZABLOKOWANE gdy branchStartAvailable=false (kreator nie miałby punktu startu)',
+    (kind) => {
+      const actions = getMenuActions(kind, { branchStartAvailable: false });
+      const branchAction = actions.find((a) => a.id === 'start-branch');
+      expect(branchAction?.disabled).toBe(true);
+      expect(branchAction?.disabledReasonPl).toContain('Brak wolnego pola');
+    },
+  );
+
+  it.each(['station', 'gpz', 'section'] as const)(
+    'start-branch na %s AKTYWNE gdy branchStartAvailable=true; brak pomiaru (undefined) nie blokuje',
+    (kind) => {
+      const dostepne = getMenuActions(kind, { branchStartAvailable: true });
+      expect(dostepne.find((a) => a.id === 'start-branch')?.disabled).not.toBe(true);
+      const bezPomiaru = getMenuActions(kind, {});
+      expect(bezPomiaru.find((a) => a.id === 'start-branch')?.disabled).not.toBe(true);
+    },
+  );
 
   it('show-results disabled gdy hasResults=false', () => {
     const actions = getMenuActions('bay', { hasResults: false });

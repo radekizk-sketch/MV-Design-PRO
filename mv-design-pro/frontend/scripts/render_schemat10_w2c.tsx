@@ -22,8 +22,10 @@ import { GRID } from '../src/ui/sld/v3/core/grid';
 import { SYMBOL_DEFS } from '../src/ui/sld/v3/symbols/defs';
 import { SYMBOL_GLYPHS } from '../src/ui/sld/v3/symbols/glyphs';
 import { FIELD_ROLE } from '../src/ui/sld/v2/domain/apparatusContracts';
-import type { BayPrimaryDevice } from '../src/types/enm';
-import type { MiniBlockBayDescriptor } from '../src/ui/sld/v2/renderer/MiniBlockRmuRenderer';
+import type {
+  BayPrimaryDeviceView,
+  MiniBlockBayDescriptor,
+} from '../src/ui/sld/v2/renderer/MiniBlockRmuRenderer';
 import { stationBlockHeight, type StationMeasureInput } from '../src/ui/sld/v3/layout/measure';
 import { computeBands } from '../src/ui/sld/v3/layout/bands';
 import { computeColumns, type ComputeColumnsInput } from '../src/ui/sld/v3/layout/columns';
@@ -38,8 +40,24 @@ import {
 const OUT = process.env.CANON_OUT ?? '/tmp/canon';
 mkdirSync(OUT, { recursive: true });
 
-function dev(ref: string, kind: BayPrimaryDevice['kind'], placement: BayPrimaryDevice['placement'], extra: Partial<BayPrimaryDevice> = {}): BayPrimaryDevice {
-  return { device_ref: ref, symbol_ref: `symbol:${kind.toLowerCase()}`, kind, placement, is_controllable: kind === 'CB' || kind === 'DS', render_variant: 'kanoniczny', ...extra };
+/**
+ * Aparat pola w kontrakcie WIDOKU (`BayPrimaryDeviceView`), a nie ENM
+ * (`BayPrimaryDevice`) — `MiniBlockBayDescriptor.primaryDevices` przyjmuje
+ * projekcję, którą w produkcji buduje `enmToSldAdapter.projectBayPrimaryDevices()`.
+ * POPRAWKA 2026-08-08 (karta TYPY-POZA-BRAMKA): skrypt budował dotąd kształt ENM
+ * (`device_ref`, `symbol_ref`, `is_controllable`, `render_variant`, `earthing_role`)
+ * i podawał go tam, gdzie widok czyta `deviceRef` — czyli KAŻDY aparat na tym
+ * artefakcie szedł do renderu z `deviceRef === undefined`, a pola spoza kontraktu
+ * widoku były martwym balastem. Błąd żył poza bramką, bo `scripts/` nie był objęty
+ * `tsconfig.json`.
+ */
+function dev(
+  ref: string,
+  kind: BayPrimaryDeviceView['kind'],
+  placement: BayPrimaryDeviceView['placement'],
+  extra: Partial<BayPrimaryDeviceView> = {},
+): BayPrimaryDeviceView {
+  return { deviceRef: ref, kind, placement, ...extra };
 }
 
 /** Pole źródłowe SN (bay_role OZE) — stos [DS,CB,CT,VT,DS,ES,SA,CABLE_HEAD]. */
@@ -55,8 +73,8 @@ function ozeBay(id: string): MiniBlockBayDescriptor {
       dev(`${id}/ct`, 'CT', 'MIDSTREAM'),
       dev(`${id}/vt`, 'VT', 'OFF_PATH'),
       dev(`${id}/ds2`, 'DS', 'MIDSTREAM', { designation: 'Q9' }),
-      dev(`${id}/es`, 'ES', 'GROUND_BRANCH', { earthing_role: 'field_earth', designation: 'QE1' }),
-      dev(`${id}/sa`, 'SURGE_ARRESTER', 'GROUND_BRANCH', { earthing_role: 'surge_ground' }),
+      dev(`${id}/es`, 'ES', 'GROUND_BRANCH', { designation: 'QE1' }),
+      dev(`${id}/sa`, 'SURGE_ARRESTER', 'GROUND_BRANCH'),
       dev(`${id}/head`, 'CABLE_HEAD', 'DOWNSTREAM'),
     ],
   };

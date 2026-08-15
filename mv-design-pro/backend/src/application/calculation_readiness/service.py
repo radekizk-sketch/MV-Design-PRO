@@ -19,9 +19,8 @@ from __future__ import annotations
 
 from typing import Literal
 
+from enm.models import EnergyNetworkModel
 from pydantic import BaseModel, Field
-
-from src.enm.models import EnergyNetworkModel
 
 CalculationType = Literal[
     "power_flow",
@@ -286,7 +285,7 @@ def _resolve_der_dynamic_for_generator(gen) -> str:  # type: ignore[no-untyped-d
         fw_pmsg     → FW full_converter (type 4)
         wind_inverter → FW full_converter (type 4) — generic
     """
-    from src.network_model.catalog.der_dynamic import resolve_der_dynamic_profile
+    from network_model.catalog.der_dynamic import resolve_der_dynamic_profile
 
     gen_type = getattr(gen, "gen_type", None)
     explicit = getattr(gen, "dynamic_profile_id", None)

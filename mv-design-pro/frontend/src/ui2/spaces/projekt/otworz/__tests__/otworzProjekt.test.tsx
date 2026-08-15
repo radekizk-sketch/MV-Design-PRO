@@ -9,10 +9,14 @@ function projekty(): ProjektWiersz[] {
 }
 
 describe('OtworzProjekt — ekran W-102 (cel → przykłady → istniejące projekty)', () => {
-  it('renderuje trzy sekcje w kolejności: cel, przykłady, istniejące projekty', () => {
+  // K4 §c (zero fabrykacji): sekcja przykładów renderuje się WYŁĄCZNIE, gdy
+  // wołający dostarcza listę (czyli ma realnego dostawcę materializacji) —
+  // testy sekcji przykładów przekazują `przyklady={PRZYKLADY}` jawnie.
+  it('renderuje trzy sekcje w kolejności: cel, przykłady, istniejące projekty (przy dostawcy przykładów)', () => {
     const { container } = render(
       <OtworzProjekt
         projekty={projekty()}
+        przyklady={PRZYKLADY}
         onOtworzProjekt={() => {}}
         onNowyProjekt={() => {}}
         onWczytajPrzyklad={() => {}}
@@ -42,10 +46,11 @@ describe('OtworzProjekt — ekran W-102 (cel → przykłady → istniejące proj
     expect(screen.getByRole('heading', { level: 2, name: OTWORZ_STRINGS.tytul })).toBeInTheDocument();
   });
 
-  it('renderuje wszystkie 5 gotowych przykładów (P-01…P-05) z opisami', () => {
+  it('renderuje wszystkie 5 gotowych przykładów (P-01…P-05) z opisami przy dostawcy', () => {
     render(
       <OtworzProjekt
         projekty={[]}
+        przyklady={PRZYKLADY}
         onOtworzProjekt={() => {}}
         onNowyProjekt={() => {}}
         onWczytajPrzyklad={() => {}}
@@ -54,6 +59,21 @@ describe('OtworzProjekt — ekran W-102 (cel → przykłady → istniejące proj
     for (const p of PRZYKLADY) {
       expect(screen.getByText(p.nazwa)).toBeInTheDocument();
       expect(screen.getByText(p.opis)).toBeInTheDocument();
+    }
+  });
+
+  it('bez dostawcy przykładów (domyślnie) sekcja przykładów NIE renderuje się — zero fabrykacji (K4 §c)', () => {
+    render(
+      <OtworzProjekt
+        projekty={[]}
+        onOtworzProjekt={() => {}}
+        onNowyProjekt={() => {}}
+        onWczytajPrzyklad={() => {}}
+      />,
+    );
+    expect(screen.queryByText(OTWORZ_STRINGS.przykladyTytul)).toBeNull();
+    for (const p of PRZYKLADY) {
+      expect(screen.queryByText(p.nazwa)).toBeNull();
     }
   });
 
@@ -76,6 +96,7 @@ describe('OtworzProjekt — ekran W-102 (cel → przykłady → istniejące proj
     render(
       <OtworzProjekt
         projekty={[]}
+        przyklady={PRZYKLADY}
         onOtworzProjekt={() => {}}
         onNowyProjekt={() => {}}
         onWczytajPrzyklad={onWczytajPrzyklad}

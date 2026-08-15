@@ -25,8 +25,9 @@ import {
   faultFlowOverlayTracesToInput,
   isFlowOverlayEmpty,
   flowOverlayValuesTraceToPayload,
-  singleHopSegmentRefs,
+  orientedSegmentRefs,
 } from '../overlay';
+import { resultRefForSegment } from '../resultLabels';
 import { useRawResultOverlayStore, type RawOverlayElement, type RawOverlayPayload } from '../../../../sld-overlay/rawResultOverlayStore';
 import { useOverlayStore } from '../../../../sld-overlay/overlayStore';
 import type {
@@ -75,6 +76,23 @@ function rawPayload(elements: Record<string, RawOverlayElement>): RawOverlayPayl
   return { run_id: 'run-test', analysis_type: 'load_flow', elements };
 }
 
+/** Karta S9-4: uchwyt trafienia obiektu sceny — węzeł warstwy
+ *  `sld-v3-trafienia`, który w przeglądarce faktycznie łapie zdarzenie
+ *  (rysunek kanwy jest bierny, `pointer-events="none"`). Adresowany tym samym
+ *  `testId`, co węzeł rysunku, więc intencja testów zostaje bez zmian. */
+function uchwytTrafienia(container: HTMLElement, testId: string): Element | null {
+  return container.querySelector(`[data-hit-for="${testId}"][data-hit-role="obrys"]`);
+}
+
+/** Uchwyt symbolu po indeksie sceny (testId ze sceny albo fallback indeksowy). */
+function uchwytSymbolu(
+  container: HTMLElement,
+  scene: { readonly symbols: readonly { readonly meta?: { readonly testId?: string } }[] },
+  index: number,
+): Element | null {
+  return uchwytTrafienia(container, scene.symbols[index]?.meta?.testId ?? `sld-v3-symbol-${index}`);
+}
+
 describe('SldCanvasV3Workspace — okablowanie danych (F8a)', () => {
   it('brak snapshot w store: nie renderuje kanwy (brak sieci = brak rysunku, nie crash)', () => {
     const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
@@ -98,7 +116,7 @@ describe('SldCanvasV3Workspace — okablowanie danych (F8a)', () => {
     const testId = firstSymbolGroup!.getAttribute('data-testid')!;
     expect(testId).toBe(scene.symbols[0].meta?.testId ?? 'sld-v3-symbol-0');
 
-    fireEvent.click(firstSymbolGroup!);
+    fireEvent.click(uchwytTrafienia(container, testId)!);
 
     const selected = useSelectionStore.getState().selectedElement;
     expect(selected).not.toBeNull();
@@ -110,7 +128,13 @@ describe('SldCanvasV3Workspace — okablowanie danych (F8a)', () => {
     expect(selected?.id).toBe(scene.symbols[0].meta?.ownerRef);
     // F8b-1 B: typ selekcji pochodzi teraz z elementKind (nie zawsze
     // 'DescriptiveElement' — patrz test dedykowany niżej).
-    expect(selected?.type).toBe('Switch');
+    // KD-5: pierwszym symbolem sceny L0 jest ZWINIĘTY BLOK GPZ
+    // (`elementKind: 'station'`), a nie aparat pola GPZ (dawniej odłącznik →
+    // 'Switch'). Intencja testu (klik → selekcja z id z `ownerRef` i typem z
+    // `elementKind`) bez zmian; oczekiwanie wyprowadzamy ze sceny, żeby test
+    // nie przybijał kolejności symboli.
+    expect(selected?.type).toBe(elementTypeForKind(scene.symbols[0].meta?.elementKind));
+    expect(selected?.type).toBe('Station');
   });
 
   describe('F8b-1 B — selekcja z realnym typem (elementKind → ElementType v2)', () => {
@@ -120,8 +144,7 @@ describe('SldCanvasV3Workspace — okablowanie danych (F8a)', () => {
       const stationIndex = scene.symbols.findIndex((s) => s.symbolId === 'stationCollapsed');
       expect(stationIndex).toBeGreaterThanOrEqual(0);
       const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
-      const stationGroup = container.querySelector('[data-testid="sld-v3-symbols"]')?.children[stationIndex];
-      fireEvent.click(stationGroup!);
+      fireEvent.click(uchwytSymbolu(container, scene, stationIndex)!);
       const selected = useSelectionStore.getState().selectedElement;
       expect(selected?.type).toBe('Station');
       expect(selected?.id).toBe(scene.symbols[stationIndex].meta?.ownerRef);
@@ -138,17 +161,41 @@ describe('SldCanvasV3Workspace — okablowanie danych (F8a)', () => {
       expect(elementTypeForKind(undefined)).toBeUndefined();
     });
 
+    it('S9-4 (audyt P-6): klik w TŁO arkusza CZYŚCI zaznaczenie — pusty arkusz nie jest obiektem', () => {
+      useSnapshotStore.setState({ snapshot: enm });
+      const scene = buildSceneV3(enm, 0);
+      const stationIndex = scene.symbols.findIndex((s) => s.symbolId === 'stationCollapsed');
+      const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
+      // Najpierw REALNE zaznaczenie (żeby było co czyścić — inaczej test
+      // przechodziłby na pustym stanie i niczego nie dowodził).
+      fireEvent.click(uchwytSymbolu(container, scene, stationIndex)!);
+      expect(useSelectionStore.getState().selectedElement).not.toBeNull();
+
+      // Klik w korzeń kanwy = tło: cały rysunek jest bierny, więc w
+      // przeglądarce każdy punkt bez uchwytu daje DOKŁADNIE ten cel zdarzenia.
+      fireEvent.click(container.querySelector('[data-testid="sld-canvas-v3"]')!);
+
+      expect(useSelectionStore.getState().selectedElement).toBeNull();
+      expect(useSelectionStore.getState().selectedElements).toEqual([]);
+    });
+
     it('F9.4 (runda korekcyjna, F-3): klik w symbol gridSource (sieć zewnętrzna, GPZ) → SelectedElement.type = "Source", id = source ref — PRZED poprawką brakowało gałęzi "source" w elementTypeForKind (spadało na "DescriptiveElement")', () => {
       useSnapshotStore.setState({ snapshot: enm });
-      const scene = buildSceneV3(enm, 1);
-      const sourceIndex = scene.symbols.findIndex((s) => s.symbolId === 'gridSource');
-      expect(sourceIndex).toBeGreaterThanOrEqual(0);
+      // Zero-Debt (dyrektywa 2026-07-17 pkt 5): test brał INDEKS ze sceny L1, a
+      // klikał w DOM renderowany na L0 — działał wyłącznie dlatego, że indeksy
+      // przypadkiem się pokrywały (KD-5 je rozjechało). Naprawa u źródła: węzeł
+      // wyszukiwany po REALNYM `data-testid` sceny, którą kanwa faktycznie
+      // rysuje — test przestaje zależeć od kolejności symboli.
+      const scene = buildSceneV3(enm, 0);
+      const source = scene.symbols.find((s) => s.symbolId === 'gridSource');
+      expect(source, 'glif sieci zewnętrznej widoczny na KAŻDYM LOD (§13.1)').toBeTruthy();
       const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
-      const sourceGroup = container.querySelector('[data-testid="sld-v3-symbols"]')?.children[sourceIndex];
+      const sourceGroup = uchwytTrafienia(container, source!.meta!.testId!);
+      expect(sourceGroup, 'symbol sieci zewnętrznej ma uchwyt trafienia').toBeTruthy();
       fireEvent.click(sourceGroup!);
       const selected = useSelectionStore.getState().selectedElement;
       expect(selected?.type).toBe('Source');
-      expect(selected?.id).toBe(scene.symbols[sourceIndex].meta?.ownerRef);
+      expect(selected?.id).toBe(source!.meta?.ownerRef);
     });
   });
 });
@@ -195,16 +242,49 @@ describe('SldCanvasV3Workspace — F8b-1 C: nakładka energizacji z realnych wyn
         if (!meta?.ownerRef || !meta.elementKind) continue;
         if (!['station', 'bus', 'segment'].includes(meta.elementKind)) continue;
         const base = meta.ownerRef.includes('#') ? meta.ownerRef.slice(0, meta.ownerRef.indexOf('#')) : meta.ownerRef;
-        expect(overlay.energizedByOwnerRef?.[meta.ownerRef]).toBe(isElementEnergized(highlight, base));
+        // WN-WYNIK: intencja bez zmian („stan wpisu = stan JEGO WŁASNEGO
+        // elementu"), zmienił się sposób wskazania tego elementu. Dla szyn GPZ
+        // element modelu niesie kanoniczny `busResultRef`; `baseRefOf` dawał tam
+        // identyfikator SEKCJI, którego `SupplyPathHighlight` nie zna — a
+        // `isElementEnergized` nie ma „nie wiem" i zwracał `false`, czyli szyna
+        // pod napięciem dostawała zdanie „beznapięciowa".
+        const elementModelu = resultRefForSegment(meta) ?? base;
+        expect(overlay.energizedByOwnerRef?.[meta.ownerRef]).toBe(isElementEnergized(highlight, elementModelu));
       }
     }
+  });
+
+  /* KARTA WN-WYNIK — PREDYKATY PARAMI: słownik energizacji jest BUDOWANY po
+     `meta.ownerRef`, a kanwa CZYTAŁA go po kanonicznym `busResultRef`. Rozjazd
+     nie dawał złego koloru, tylko cichy BRAK: szyny GPZ (jedyne niosące
+     `busResultRef`) pytały o klucz, którego w mapie nie ma. Pomiar przed
+     naprawą na tej fixturze: 4 chybienia na 110 odcinków szynowych — 100 %
+     szyn GPZ. Test idzie REALNĄ ścieżką (render kanwy), nie porównaniem
+     słowników: sprawdza kolor narysowanej szyny WN. */
+  it('WN-WYNIK: szyna WN GPZ dostaje stan energizacji na kanwie (klucz odczytu == klucz budowy słownika)', () => {
+    useSnapshotStore.setState({ snapshot: enm });
+    const { container } = render(<SldCanvasV3Workspace width={1200} height={900} lodOverride={2} />);
+    const hvBus = container.querySelector('[data-testid="gpz-canonical-hv-bus"]');
+    expect(hvBus).toBeTruthy();
+    // Nakładka wpisała stan (pod napięciem / beznapięciowo) — kolor BAZOWY
+    // poziomu napięcia oznaczałby „brak danych", czyli dokładnie stan sprzed
+    // naprawy. Sekcja SN GPZ tą samą regułą.
+    // GPZ fixtury jest zasilany ze źródła systemowego, więc obie szyny są POD
+    // NAPIĘCIEM — kolor bazowy poziomu napięcia oznaczałby „brak danych" (stan
+    // sprzed naprawy odczytu), a kolor wygaszenia byłby zdaniem NIEPRAWDZIWYM
+    // (stan pośredni: wartość liczona z identyfikatora sekcji, którego
+    // `SupplyPathHighlight` nie zna).
+    expect(hvBus!.getAttribute('stroke')).toBe('#2ECC71');
+    const snBus = container.querySelector('[data-testid^="gpz-canonical-section-"]');
+    expect(snBus).toBeTruthy();
+    expect(snBus!.getAttribute('stroke')).toBe('#2ECC71');
   });
 });
 
 describe('SldCanvasV3Workspace — F9.5: nakładka przepływu mocy (spec §14.2, ZERO fizyki)', () => {
   // F-1 (recenzja Opusa): ref MUSI być z bramki jednokawałkowej — tylko takie
   // przechodzą przez `buildFlowOverlayForSnapshot` (kierunek udowodniony).
-  const singleHop = singleHopSegmentRefs(enm);
+  const singleHop = new Set(orientedSegmentRefs(enm).keys());
   const realSegmentOwnerRef = buildSceneV3(enm, 2).segments.find(
     (s) =>
       s.meta?.elementKind === 'segment' &&
@@ -268,9 +348,10 @@ describe('SldCanvasV3Workspace — F9.5: nakładka przepływu mocy (spec §14.2,
 });
 
 describe('SldCanvasV3Workspace — karta S-B: strzałki rozpływu prądu zwarciowego (kanał useOverlayStore.faultFlow)', () => {
-  // F-1: ref z bramki jednokawałkowej (kierunek geometrycznie udowodniony) —
-  // ten sam dobór celu co blok F9.5 wyżej.
-  const singleHop = singleHopSegmentRefs(enm);
+  // S9-2: ref z mapy ORIENTACJI (zwrot udowodniony refami wezlow galezi) —
+  // ten sam dobor celu co blok F9.5 wyzej.
+  const orientation = orientedSegmentRefs(enm);
+  const singleHop = new Set(orientation.keys());
   const realSegmentOwnerRef = buildSceneV3(enm, 2).segments.find(
     (s) =>
       s.meta?.elementKind === 'segment' &&
@@ -314,7 +395,7 @@ describe('SldCanvasV3Workspace — karta S-B: strzałki rozpływu prądu zwarcio
   it('buildFaultFlowOverlayForSnapshot niesie wpis identyczny z buildFaultFlowOverlayFromScene wołanym wprost (zero rozjazdu wołający↔budowniczy) + wyrocznia PASS', () => {
     const input = faultInput('to_from');
     const merged = buildFaultFlowOverlayForSnapshot(enm, input);
-    const direct = buildFaultFlowOverlayFromScene(buildSceneV3(enm, 2), input, singleHop);
+    const direct = buildFaultFlowOverlayFromScene(buildSceneV3(enm, 2), input, orientation);
     expect(merged[realSegmentOwnerRef]).toEqual(direct[realSegmentOwnerRef]);
     expect(merged[realSegmentOwnerRef]?.forward).toBe(false);
     expect(faultFlowOverlayTracesToInput(merged, input)).toBe(true);

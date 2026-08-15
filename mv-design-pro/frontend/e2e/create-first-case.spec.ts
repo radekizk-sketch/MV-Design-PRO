@@ -1,4 +1,5 @@
 import { test, expect, type ConsoleMessage, type Page } from '@playwright/test';
+import { pustaOdpowiedzDomainOps } from './fixtures/emptyDomainOpsResponse';
 
 interface ConsoleGuards {
   errors: string[];
@@ -119,6 +120,18 @@ async function mockCaseCreationApi(page: Page): Promise<void> {
       return;
     }
 
+    // Rejestr przebiegów aktywnego przypadku (kształt 1:1 z kontraktem
+    // GET /api/execution/study-cases/{caseId}/runs — listRuns oczekuje
+    // { runs, count }; catch-all '{}' maskował kontrakt i zatruwał store).
+    if (method === 'GET' && pathname === '/api/execution/study-cases/case-001/runs') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ runs: [], count: 0 }),
+      });
+      return;
+    }
+
     if (method === 'GET' && pathname === '/api/study-cases/project/proj-001/active') {
       await route.fulfill({
         status: projectCreated && caseCreated ? 200 : 204,
@@ -137,6 +150,24 @@ async function mockCaseCreationApi(page: Page): Promise<void> {
               config: {},
             })
           : '',
+      });
+      return;
+    }
+
+    // Naprawa (dryf kontraktu mocka, znaleziony przy audycie E2E-MOCK-BEZ-CI):
+    // po utworzeniu case'a shell montuje się i natychmiast woła
+    // refresh_snapshot (store.ts: refreshFromBackend na mount) zanim
+    // operator zdąży cokolwiek zrobić. Catch-all '{}' nie ma kształtu
+    // DomainOpResponseV1 (brak `snapshot`), więc `hasModel` nigdy nie staje
+    // się `true` i pasek utyka na „Ładowanie układu sieci" (WorkflowContextStrip.tsx)
+    // — kanwa SLD i `sld-empty-state` nigdy się nie montują. Kształt
+    // odpowiedzi zweryfikowany na żywym backendzie (pusty case, operacja
+    // refresh_snapshot).
+    if (method === 'POST' && pathname === '/api/cases/case-001/enm/domain-ops') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(pustaOdpowiedzDomainOps('case-001')),
       });
       return;
     }
@@ -181,7 +212,10 @@ test('utworzenie pierwszego projektu przechodzi deterministycznie do E-01 bez fr
 
   await expect(page.getByTestId('sld-canvas-v3-workspace')).toBeVisible();
   await expect(page.locator('[data-testid="active-case-bar"]')).toContainText('Projekt 1');
-  await expect(page.locator('[data-testid="active-case-bar"]')).toContainText('do obliczenia');
+  // Intencja bez zmian: pasek komunikuje, że świeżo utworzony zakres nie ma
+  // jeszcze wyników. Dawny pasek pisał „do obliczenia"; dzisiejszy CaseBar ui2
+  // (shell/strings.ts: resultsNone) niesie ten sam sens chipem „Wyniki: brak".
+  await expect(page.locator('[data-testid="active-case-bar"]')).toContainText('Wyniki: brak');
   await expect(page.getByTestId('sld-empty-state')).toBeVisible();
 
   const uniqueWarnCount = guards.warningCounts.size;

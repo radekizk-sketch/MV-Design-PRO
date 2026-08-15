@@ -164,6 +164,8 @@ test('krytyczny DER flow: paleta PV -> stacja -> drawer -> zapis -> generator w 
   expect(segmentRef).toBeTruthy();
 
   const stationOp = await executeDomainOp(request, seed.caseId, 'insert_station_on_segment_sn', {
+    // B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+    field_apparatus_catalog_ref: 'sw-cb-abb-vd4-17kv-630a',
     segment_id: segmentRef,
     station_type: 'B',
     insert_at: { value: 0.5 },
@@ -195,6 +197,14 @@ test('krytyczny DER flow: paleta PV -> stacja -> drawer -> zapis -> generator w 
   }
   await expect(stationL0).toBeAttached({ timeout: 5000 });
 
+  // KD-8 poz. 2: pas narzędzi kanwy jest JEDNYM rzędem — przy węższej kanwie
+  // grupa „Układy PV/BESS/FW" bywa ZWINIĘTA do menu „Narzędzia" (zamiast
+  // nachodzić na sąsiadów). Użytkownik sięga po nią jednym klikiem w to menu
+  // i spec idzie DOKŁADNIE tą samą drogą.
+  if ((await page.getByTestId('der-palette-btn-PV').count()) === 0) {
+    await page.getByTestId('sld-v3-toolbar-menu-toggle').click();
+    await expect(page.getByTestId('sld-v3-toolbar-menu')).toBeVisible();
+  }
   await page.getByTestId('der-palette-btn-PV').click();
   // REALNY klik Playwright (pełna sekwencja pointer/mouse), NIE syntetyczny
   // `dispatchEvent` — syntetyczny klik MASKOWAŁ defekt martwego lewego

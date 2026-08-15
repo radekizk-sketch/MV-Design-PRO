@@ -17,7 +17,7 @@
  * - No physics calculations in frontend
  */
 
-import { useState, useCallback, useMemo, useEffect} from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import type {
   ProtectionDevice,
   CoordinationResult,
@@ -33,6 +33,12 @@ import {
   DEVICE_TEMPLATES,
 } from './types';
 import { runCoordinationAnalysis, getCoordinationResult } from './api';
+import {
+  wczytajUrzadzeniaKoordynacji,
+  zapiszUrzadzeniaKoordynacji,
+} from './nastawyPrzypadku';
+import type { ProtectionConfig } from '../study-cases/api';
+import { notify } from '../notifications/store';
 import { ProtectionSettingsEditor } from './ProtectionSettingsEditor';
 import {
   VerdictBadge,
@@ -141,8 +147,12 @@ function DeviceListPanel({
 
   return (
     <div className="rounded-lg border border-slate-200 bg-white">
-      {/* Header */}
-      <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+      {/* Header. K5-B (defekt zastany, naprawa u źródła): bez `flex-wrap`
+          wiersz tytuł+przyciski NIE ZAWIJAŁ się w wąskiej kolumnie — przycisk
+          „Dodaj urządzenie" wystawał poza panel i wjeżdżał POD panel wyników
+          (dalszy w DOM), który przechwytywał kliknięcia. Martwy klik widoczny
+          dopiero na realnej ścieżce e2e (kliki syntetyczne go nie łapały). */}
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-4 py-3">
         <h2 className="font-semibold text-slate-900">{labels.title}</h2>
         <div className="flex gap-2">
           <button
@@ -454,6 +464,22 @@ export function ProtectionCoordinationPage() {
   });
   // F-K4 faza 3b: braki danych prądowych z biegów (uczciwy stan zamiast atrapy).
   const [brakiPradowe, setBrakiPradowe] = useState<readonly BrakDanejPradowej[]>([]);
+  // K5-B (H-2): wykonawca nastaw E-28 — urządzenia i nastawy żyją w konfiguracji
+  // PRZYPADKU (`ProtectionConfig.overrides`, klucz per urządzenie), nie w useState.
+  // `ostatniaKonfiguracja` trzyma pełny ProtectionConfig z ostatniego GET/PUT —
+  // PUT nadpisuje całość, więc bez tego zapis kasowałby szablon P14c i obce
+  // nadpisania pól. Zapis do ENM protection_assignments pozostaje ZABLOKOWANY.
+  const ostatniaKonfiguracja = useRef<ProtectionConfig | null>(null);
+  // Wynik koordynacji liczony przed zmianą nastaw jest NIEAKTUALNY — stan jawny
+  // z CTA „Przelicz koordynację" (result_status przypadku bez zmian: to config).
+  const [wynikNieaktualny, setWynikNieaktualny] = useState(false);
+  // Lustro `state.result !== null` dla callbacku zapisu (bez zależności od
+  // całego stanu i bez efektów ubocznych w updaterze setState).
+  const maWynik = useRef(false);
+  maWynik.current = state.result !== null;
+  // CTA toastu „Przelicz koordynację" woła bieżącą analizę — ref, bo callback
+  // zapisu powstaje przed definicją `handleRunAnalysis` (lustro bieżącej wersji).
+  const uruchomAnalize = useRef<() => void>(() => undefined);
   // V12K-262: lista elementów, w których wolno umieścić zabezpieczenie — z MIGAWKI
   // MODELU przypadku, nie z wyobraźni ekranu. `null` = migawki jeszcze nie ma
   // (albo nie da się jej pobrać) i wtedy pole lokalizacji uczciwie o tym mówi.
@@ -485,6 +511,72 @@ export function ProtectionCoordinationPage() {
       anulowane = true;
     };
   }, [caseId]);
+
+  // K5-B (H-2): hydratacja urządzeń z konfiguracji przypadku przy wejściu —
+  // koniec `devices: []` w useState. Błąd pobrania jest NAZWANY (notyfikacja),
+  // a lista zostaje pusta zamiast udawać świeży start.
+  useEffect(() => {
+    ostatniaKonfiguracja.current = null;
+    if (!caseId) return;
+    let anulowane = false;
+    void (async () => {
+      try {
+        const { konfiguracja, urzadzenia } = await wczytajUrzadzeniaKoordynacji(caseId);
+        if (anulowane) return;
+        ostatniaKonfiguracja.current = konfiguracja;
+        if (urzadzenia.length > 0) {
+          setState((prev) => ({ ...prev, devices: urzadzenia }));
+        }
+      } catch (err) {
+        if (anulowane) return;
+        notify(
+          `${LABELS.persistence.bladOdczytu}: ${err instanceof Error ? err.message : String(err)}`,
+          'error',
+        );
+      }
+    })();
+    return () => {
+      anulowane = true;
+    };
+  }, [caseId]);
+
+  // Zapis pełnego zestawu urządzeń do konfiguracji przypadku (PUT). Sukces
+  // odświeża `ostatniaKonfiguracja` (kolejny zapis scala na aktualnej bazie)
+  // i oznacza istniejący wynik jako nieaktualny. Porażka jest NAZWANA — stan
+  // lokalny zostaje, żeby projektant nie stracił edycji, ale nic nie udaje
+  // zapisu.
+  const utrwalUrzadzenia = useCallback(
+    async (urzadzenia: readonly ProtectionDevice[]) => {
+      if (!caseId) {
+        notify(LABELS.persistence.brakPrzypadku, 'warning');
+        return;
+      }
+      try {
+        const konfiguracja = await zapiszUrzadzeniaKoordynacji(
+          caseId,
+          urzadzenia,
+          ostatniaKonfiguracja.current,
+        );
+        ostatniaKonfiguracja.current = konfiguracja;
+        if (maWynik.current) setWynikNieaktualny(true);
+        notify(LABELS.persistence.zapisano, {
+          type: 'success',
+          actions: [
+            {
+              label: LABELS.persistence.przelicz,
+              onClick: () => uruchomAnalize.current(),
+            },
+          ],
+        });
+      } catch (err) {
+        notify(
+          `${LABELS.persistence.bladZapisu}: ${err instanceof Error ? err.message : String(err)}`,
+          'error',
+        );
+      }
+    },
+    [caseId],
+  );
 
   // F-K4 faza 3b: prądy wejściowe koordynacji pochodzą WYŁĄCZNIE z zakończonych
   // biegów obliczeniowych. Klasyfikacja przypadku (maksymalny / minimalny) idzie po
@@ -625,34 +717,39 @@ export function ProtectionCoordinationPage() {
     }));
   }, []);
 
-  // Remove device
+  // Remove device. K5-B: usunięcie też idzie do konfiguracji przypadku —
+  // inaczej urządzenie „wracałoby" po powrocie na stronę (fantom z serwera).
   const handleRemoveDevice = useCallback((deviceId: string) => {
-    setState((prev) => {
-      const device = prev.devices.find((d) => d.id === deviceId);
-      if (!device) return prev;
+    const device = state.devices.find((d) => d.id === deviceId);
+    if (!device) return;
+    const noweUrzadzenia = state.devices.filter((d) => d.id !== deviceId);
 
-      return {
-        ...prev,
-        devices: prev.devices.filter((d) => d.id !== deviceId),
-        faultCurrents: prev.faultCurrents.filter(
-          (f) => f.location_id !== device.location_element_id
-        ),
-        operatingCurrents: prev.operatingCurrents.filter(
-          (o) => o.location_id !== device.location_element_id
-        ),
-        editingDeviceId: prev.editingDeviceId === deviceId ? null : prev.editingDeviceId,
-      };
-    });
-  }, []);
+    setState((prev) => ({
+      ...prev,
+      devices: prev.devices.filter((d) => d.id !== deviceId),
+      faultCurrents: prev.faultCurrents.filter(
+        (f) => f.location_id !== device.location_element_id
+      ),
+      operatingCurrents: prev.operatingCurrents.filter(
+        (o) => o.location_id !== device.location_element_id
+      ),
+      editingDeviceId: prev.editingDeviceId === deviceId ? null : prev.editingDeviceId,
+    }));
+    void utrwalUrzadzenia(noweUrzadzenia);
+  }, [state.devices, utrwalUrzadzenia]);
 
-  // Update device
+  // Update device — „Zapisz konfigurację" w edytorze. K5-B (H-2): to jest
+  // wykonawca nastaw E-28 — zmiana idzie PUT-em do konfiguracji przypadku
+  // (wcześniej żyła w useState i ginęła przy wyjściu ze strony).
   const handleDeviceChange = useCallback((device: ProtectionDevice) => {
+    const noweUrzadzenia = state.devices.map((d) => (d.id === device.id ? device : d));
     setState((prev) => ({
       ...prev,
       devices: prev.devices.map((d) => (d.id === device.id ? device : d)),
       editingDeviceId: null,
     }));
-  }, []);
+    void utrwalUrzadzenia(noweUrzadzenia);
+  }, [state.devices, utrwalUrzadzenia]);
 
   // Run analysis
   const handleRunAnalysis = useCallback(async () => {
@@ -709,6 +806,8 @@ export function ProtectionCoordinationPage() {
         status: 'SUCCESS',
         activeTab: 'summary',
       }));
+      // Świeży bieg liczy na bieżących nastawach — wynik znów aktualny.
+      setWynikNieaktualny(false);
     } catch (err) {
       setState((prev) => ({
         ...prev,
@@ -717,6 +816,7 @@ export function ProtectionCoordinationPage() {
       }));
     }
   }, [projectId, state.devices, state.faultCurrents, state.operatingCurrents]);
+  uruchomAnalize.current = () => void handleRunAnalysis();
 
   // Get editing device
   const editingDevice = useMemo(
@@ -843,6 +943,25 @@ export function ProtectionCoordinationPage() {
               />
             ) : state.result ? (
               <div className="space-y-4">
+                {/* K5-B: wynik policzony przed zapisem nowych nastaw jest
+                    nieaktualny — jawny stan z CTA zamiast cichej prezentacji
+                    starych marginesów jako obowiązujących. */}
+                {wynikNieaktualny && (
+                  <div
+                    className="flex items-center justify-between gap-4 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900"
+                    data-testid="coordination-result-stale"
+                  >
+                    <p>{LABELS.persistence.wynikNieaktualny}</p>
+                    <button
+                      onClick={handleRunAnalysis}
+                      disabled={state.status === 'RUNNING'}
+                      className="shrink-0 rounded bg-emerald-600 px-3 py-2 font-medium text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+                      data-testid="coordination-recompute-button"
+                    >
+                      {LABELS.persistence.przelicz}
+                    </button>
+                  </div>
+                )}
                 {/* Tabs */}
                 <TabNavigation
                   activeTab={state.activeTab}

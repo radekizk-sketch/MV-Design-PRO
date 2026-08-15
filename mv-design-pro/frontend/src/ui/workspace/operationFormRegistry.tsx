@@ -72,6 +72,11 @@ export const OPERATION_FORM_REGISTRY: Readonly<Record<CanonicalOpName, Component
   add_gpz_section: null,
   update_gpz_section: null,
   delete_gpz_section: null,
+  // K5-B: nastawy trybu pracy źródła zapisuje formularz inline w oknie
+  // „Odpowiedź na polecenia OSD" (ui2/oze/osd), profil dynamiczny nie ma
+  // jeszcze formularza — typy istnieją dla wywołań programowych.
+  set_source_operating_mode: null,
+  set_dynamic_profile: null,
 };
 
 /**

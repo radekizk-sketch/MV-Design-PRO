@@ -53,6 +53,7 @@ from analysis.voltage_profile.models import VoltageProfileRow, VoltageProfileVie
 from analysis.voltage_profile.serializer import STATUS_ORDER
 from application.proof_engine.proof_pack import resolve_mv_design_pro_version
 from application.proof_engine.types import ProofDocument
+from network_model.reporting.czcionki import zarejestruj_czcionki
 
 _PDF_AVAILABLE = find_spec("reportlab") is not None
 
@@ -97,6 +98,7 @@ def export_p24_plus_report_pdf(
 
     rl_config.invariant = 1
     output = BytesIO()
+    zarejestruj_czcionki()
     c = canvas.Canvas(
         output,
         pagesize=A4,
@@ -105,7 +107,7 @@ def export_p24_plus_report_pdf(
     )
     c.setCreator("MV-DESIGN-PRO PDF Renderer")
     c.setAuthor("MV-DESIGN-PRO")
-    c.setTitle("Raport P24+ (ETAP+)")
+    c.setTitle("Raport analiz sieci (audit-grade)")
     c.setSubject("Raport deterministyczny — audit-grade")
 
     page_width, page_height = A4
@@ -127,26 +129,26 @@ def export_p24_plus_report_pdf(
     def draw_heading(text: str, font_size: int = 12) -> None:
         nonlocal y
         check_page_break(14 * mm)
-        c.setFont("Helvetica-Bold", font_size)
+        c.setFont("DejaVuSans-Bold", font_size)
         c.drawString(left_margin, y, text)
         y -= line_height
 
     def draw_text(text: str, font_size: int = 10, bold: bool = False) -> None:
         nonlocal y
-        font_name = "Helvetica-Bold" if bold else "Helvetica"
+        font_name = "DejaVuSans-Bold" if bold else "DejaVuSans"
         c.setFont(font_name, font_size)
         c.drawString(left_margin, y, text)
         y -= line_height
 
     def draw_wrapped(text: str, font_size: int = 9) -> None:
         nonlocal y
-        c.setFont("Helvetica", font_size)
+        c.setFont("DejaVuSans", font_size)
         max_width = right_margin - left_margin
         words = str(text).split()
         line = ""
         for word in words:
             test_line = f"{line} {word}".strip()
-            if c.stringWidth(test_line, "Helvetica", font_size) <= max_width:
+            if c.stringWidth(test_line, "DejaVuSans", font_size) <= max_width:
                 line = test_line
             else:
                 check_page_break(line_height)
@@ -181,8 +183,8 @@ def export_p24_plus_report_pdf(
         proof_documents=proof_documents,
     )
 
-    c.setFont("Helvetica-Bold", 16)
-    c.drawString(left_margin, y, "Raport P24+ — ETAP+ (audit-grade)")
+    c.setFont("DejaVuSans-Bold", 16)
+    c.drawString(left_margin, y, "Raport analiz sieci (audit-grade)")
     y -= section_spacing
 
     draw_heading("1. Strona tytułowa")
@@ -192,7 +194,7 @@ def export_p24_plus_report_pdf(
     draw_text(f"Snapshot ID: {context.snapshot_id or '—'}")
     draw_text(f"Run ID: {context.run_id or '—'}")
     draw_text(f"Trace ID: {context.trace_id or '—'}")
-    draw_text("Zakres: P11–P33, P24+")
+    draw_text("Zakres: dowody obliczeniowe, analizy interpretacyjne i ocena normatywna")
     y -= section_spacing
 
     draw_heading("2. Executive Summary (1 strona)")
@@ -218,9 +220,9 @@ def export_p24_plus_report_pdf(
         draw_wrapped(f"- {line}")
     y -= section_spacing
 
-    draw_heading("3. Voltage Profile — BUS-centric (P21)")
+    draw_heading("3. Profil napięć — ujęcie per szyna (BUS)")
     if voltage_profile is None:
-        draw_text("Brak danych P21.")
+        draw_text("Brak danych profilu napięć.")
     else:
         draw_text("Top 5 najbardziej krytycznych BUS:", bold=True)
         for rank, row in enumerate(_top_critical_buses(voltage_profile.rows), start=1):
@@ -232,9 +234,9 @@ def export_p24_plus_report_pdf(
             draw_wrapped(_format_voltage_row(row))
     y -= section_spacing
 
-    draw_heading("4. Zabezpieczenia — decyzja inżynierska (P22a + P18 + P20)")
+    draw_heading("4. Zabezpieczenia — decyzja inżynierska")
     if protection_insight is None:
-        draw_text("Brak danych P22a.")
+        draw_text("Brak danych analizy zabezpieczeń.")
     else:
         for item in protection_insight.items:
             draw_wrapped(_format_protection_item(item))
@@ -242,7 +244,7 @@ def export_p24_plus_report_pdf(
 
     draw_heading("5. Krzywe I–t (jeśli dostępne)")
     if protection_curves_it is None:
-        draw_text("Brak danych P22 (NOT EVALUATED).")
+        draw_text("Brak danych krzywych I–t (NOT EVALUATED).")
     else:
         draw_text(
             f"Status: {protection_curves_it.normative_status.value} | "
@@ -255,35 +257,35 @@ def export_p24_plus_report_pdf(
                 draw_wrapped(f"- {entry}")
     y -= section_spacing
 
-    draw_heading("6. Ocena normatywna (P20)")
+    draw_heading("6. Ocena normatywna")
     if normative_report is None:
-        draw_text("Brak raportu P20.")
+        draw_text("Brak raportu oceny normatywnej.")
     else:
         for item in normative_report.items:
             draw_wrapped(_format_normative_item(item))
     y -= section_spacing
 
-    draw_heading("7. Analiza wrażliwości i marginesów (P25)")
+    draw_heading("7. Analiza wrażliwości i marginesów")
     if sensitivity is None:
-        draw_text("Brak analizy P25.")
+        draw_text("Brak analizy wrażliwości.")
     else:
         draw_text("Top 5 driverów wrażliwości:", bold=True)
         for driver in sensitivity.top_drivers:
             draw_wrapped(_format_sensitivity_driver(driver))
         if not sensitivity.entries:
-            draw_text("Brak wpisów w P25.")
+            draw_text("Brak wpisów analizy wrażliwości.")
         else:
             draw_text("Lista wejściowa (parametr → margines):", bold=True)
             for entry in sensitivity.entries:
                 draw_wrapped(_format_sensitivity_entry(entry))
     y -= section_spacing
 
-    draw_heading("8. Wrażliwość napięć (P33) — Top 5 driverów")
+    draw_heading("8. Wrażliwość napięć — Top 5 driverów")
     if lf_sensitivity is None:
-        draw_text("Brak danych P33 (NOT COMPUTED).")
+        draw_text("Brak danych wrażliwości napięć (NOT COMPUTED).")
     else:
         if not lf_sensitivity.top_drivers:
-            draw_text("Brak driverów P33.")
+            draw_text("Brak driverów wrażliwości napięć.")
         else:
             for driver in lf_sensitivity.top_drivers:
                 draw_wrapped(_format_lf_sensitivity_driver(driver))
@@ -292,9 +294,9 @@ def export_p24_plus_report_pdf(
                 draw_wrapped(_format_lf_sensitivity_entry(entry))
     y -= section_spacing
 
-    draw_heading("9. Rekomendacje (P26)")
+    draw_heading("9. Rekomendacje")
     if recommendations is None:
-        draw_text("Brak danych P26.")
+        draw_text("Brak danych rekomendacji.")
     else:
         if recommendations.primary is None:
             draw_text("Brak rekomendacji głównej (NOT COMPUTED).")
@@ -307,9 +309,9 @@ def export_p24_plus_report_pdf(
                 draw_wrapped(_format_recommendation_entry(entry))
     y -= section_spacing
 
-    draw_heading("10. Porównanie scenariuszy (P27)")
+    draw_heading("10. Porównanie scenariuszy")
     if scenario_comparison is None:
-        draw_text("Brak danych P27.")
+        draw_text("Brak danych porównania scenariuszy.")
     else:
         if scenario_comparison.winner_scenario_id is None:
             draw_text("Brak zwycięzcy (NOT COMPUTED).")
@@ -323,9 +325,9 @@ def export_p24_plus_report_pdf(
             draw_wrapped(f"WHY: {entry.why_pl}")
     y -= section_spacing
 
-    draw_heading("11. Kompletność analizy (P28)")
+    draw_heading("11. Kompletność analizy")
     if coverage_score is None:
-        draw_text("Brak danych P28.")
+        draw_text("Brak danych audytu kompletności.")
     else:
         draw_text(f"Wynik kompletności: {coverage_score.total_score:.1f}/100")
         if coverage_score.missing_items:
@@ -491,73 +493,73 @@ def _build_summary_lines(
 ) -> list[str]:
     lines: list[str] = []
     if normative_report is None:
-        lines.append("P20: brak raportu normatywnego.")
+        lines.append("Ocena normatywna: brak raportu.")
     else:
         counts = _count_normative(normative_report.items)
         lines.append(
-            "P20: FAIL={fail}, WARNING={warn}, NOT COMPUTED={nc}".format(
+            "Ocena normatywna: FAIL={fail}, WARNING={warn}, NOT COMPUTED={nc}".format(
                 fail=counts["fail"],
                 warn=counts["warning"],
                 nc=counts["not_computed"],
             )
         )
     if voltage_profile is None:
-        lines.append("P21: brak profilu napięciowego.")
+        lines.append("Profil napięć: brak danych.")
     else:
         summary = voltage_profile.summary
         lines.append(
-            f"P21: FAIL={summary.fail_count}, WARNING={summary.warning_count}, NOT COMPUTED={summary.not_computed_count}"
+            f"Profil napięć: FAIL={summary.fail_count}, WARNING={summary.warning_count}, NOT COMPUTED={summary.not_computed_count}"
         )
     if protection_insight is None:
-        lines.append("P22a: brak analizy zabezpieczeń.")
+        lines.append("Zabezpieczenia: brak analizy.")
     else:
         summary = protection_insight.summary
         lines.append(
-            f"P22a: FAIL={summary.count_fail}, WARNING={summary.count_warning}, NOT_EVALUATED={summary.count_not_evaluated}"
+            f"Zabezpieczenia: FAIL={summary.count_fail}, WARNING={summary.count_warning}, NOT_EVALUATED={summary.count_not_evaluated}"
         )
     if protection_curves_it is None:
-        lines.append("P22: brak krzywych I–t.")
+        lines.append("Krzywe I–t: brak danych.")
     else:
         lines.append(
-            f"P22: status={protection_curves_it.normative_status.value} | "
+            f"Krzywe I–t: status={protection_curves_it.normative_status.value} | "
             f"missing_data={len(protection_curves_it.missing_data)}"
         )
     if sensitivity is None:
-        lines.append("P25: brak analizy wrażliwości.")
+        lines.append("Wrażliwość i marginesy: brak analizy.")
     else:
         lines.append(
-            f"P25: entries={len(sensitivity.entries)}, top_drivers={len(sensitivity.top_drivers)}, not_computed={sensitivity.summary.not_computed_count}"
+            f"Wrażliwość i marginesy: entries={len(sensitivity.entries)}, top_drivers={len(sensitivity.top_drivers)}, not_computed={sensitivity.summary.not_computed_count}"
         )
     if lf_sensitivity is None:
-        lines.append("P33: brak wrażliwości napięć.")
+        lines.append("Wrażliwość napięć: brak danych.")
     else:
         lines.append(
-            f"P33: entries={len(lf_sensitivity.entries)}, top_drivers={len(lf_sensitivity.top_drivers)}, not_computed={lf_sensitivity.summary.not_computed_count}"
+            f"Wrażliwość napięć: entries={len(lf_sensitivity.entries)}, top_drivers={len(lf_sensitivity.top_drivers)}, not_computed={lf_sensitivity.summary.not_computed_count}"
         )
     if recommendations is None:
-        lines.append("P26: brak rekomendacji.")
+        lines.append("Rekomendacje: brak.")
     else:
         lines.append(
-            "P26: primary={primary}, alternatives={alt}, not_computed={nc}".format(
+            "Rekomendacje: primary={primary}, alternatives={alt}, not_computed={nc}".format(
                 primary="TAK" if recommendations.primary else "NIE",
                 alt=len(recommendations.alternatives),
                 nc=recommendations.summary.not_computed_count,
             )
         )
     if scenario_comparison is None:
-        lines.append("P27: brak porównania scenariuszy.")
+        lines.append("Porównanie scenariuszy: brak danych.")
     else:
         lines.append(
-            "P27: scenarios={count}, winner={winner}".format(
+            "Porównanie scenariuszy: scenarios={count}, winner={winner}".format(
                 count=len(scenario_comparison.scenarios),
                 winner=scenario_comparison.winner_scenario_id or "—",
             )
         )
     if coverage_score is None:
-        lines.append("P28: brak audytu kompletności.")
+        lines.append("Kompletność analizy: brak audytu.")
     else:
         lines.append(
-            f"P28: score={coverage_score.total_score:.1f}/100 | "
+            f"Kompletność analizy: score={coverage_score.total_score:.1f}/100 | "
             f"missing={len(coverage_score.missing_items)} | "
             f"gaps={len(coverage_score.critical_gaps)}"
         )
@@ -594,7 +596,7 @@ def _build_top_risks(
         if worst:
             row = worst[0]
             risks.append(
-                f"P21 BUS {row.bus_id}: Δ%={_format_percent(row.delta_pct)}"
+                f"Profil napięć — BUS {row.bus_id}: Δ%={_format_percent(row.delta_pct)}"
                 f" (status={row.status.value})"
             )
     if protection_insight is not None:
@@ -608,7 +610,9 @@ def _build_top_risks(
             key=lambda item: item.primary_device_id,
         )
         for item in critical_sorted:
-            risks.append(f"P22a {item.primary_device_id}: brak selektywności ({item.why_pl})")
+            risks.append(
+                f"Zabezpieczenie {item.primary_device_id}: brak selektywności ({item.why_pl})"
+            )
     return risks[:3]
 
 
@@ -640,7 +644,7 @@ def _format_protection_item(item: ProtectionInsightItem) -> str:
     )
     margin_str = _format_percent(margin) if margin is not None else "—"
     return (
-        f"P22a {item.primary_device_id} | Rule={item.rule_id} | "
+        f"Zabezpieczenie {item.primary_device_id} | Rule={item.rule_id} | "
         f"Decision={decision} | Margin={margin_str} | WHY: {item.why_pl}"
     )
 
@@ -650,7 +654,7 @@ def _format_sensitivity_entry(entry: SensitivityEntry) -> str:
     minus_delta = _format_percent(entry.minus.delta_margin)
     plus_delta = _format_percent(entry.plus.delta_margin)
     return (
-        f"P25 {entry.parameter_id} {entry.target_id} | Base={base_margin} | "
+        f"Wrażliwość {entry.parameter_id} {entry.target_id} | Base={base_margin} | "
         f"Δ-={minus_delta} | Δ+={plus_delta} | "
         f"Decision={entry.base_decision.value}"
     )
@@ -675,14 +679,14 @@ def _format_lf_sensitivity_driver(driver: LFSensitivityDriver) -> str:
 
 def _format_lf_sensitivity_entry(entry: LFSensitivityEntry) -> str:
     missing = ", ".join(entry.missing_data)
-    return f"P33 BUS {entry.bus_id}: NOT COMPUTED ({missing})."
+    return f"Wrażliwość napięć — BUS {entry.bus_id}: NOT COMPUTED ({missing})."
 
 
 def _format_recommendation_entry(entry: RecommendationEntry) -> str:
     current = _format_value(entry.current_value, entry.current_unit)
     delta = _format_value(entry.required_delta, entry.delta_unit)
     return (
-        f"P26 {entry.parameter_id} {entry.target_id} | "
+        f"Rekomendacja {entry.parameter_id} {entry.target_id} | "
         f"Current={current} | Required Δ={delta} | "
         f"Effect={entry.expected_effect.value} | Note: {entry.confidence_note}"
     )
@@ -691,7 +695,7 @@ def _format_recommendation_entry(entry: RecommendationEntry) -> str:
 def _format_scenario_entry(entry: ScenarioComparisonEntry) -> str:
     delta_margin = _format_percent(entry.delta_margin)
     return (
-        f"P27 {entry.scenario_id} | Risk={entry.risk_score:.2f} | "
+        f"Scenariusz {entry.scenario_id} | Risk={entry.risk_score:.2f} | "
         f"ΔMargin={delta_margin} | RankΔ={entry.delta_risk_rank}"
     )
 
@@ -716,7 +720,7 @@ def _format_normative_item(item: NormativeItem) -> str:
     limit = _format_value(item.limit_value, item.limit_unit)
     margin = _format_percent(item.margin) if item.margin is not None else "—"
     return (
-        f"P20 {item.rule_id} | Target={item.target_id} | "
+        f"Ocena normatywna {item.rule_id} | Target={item.target_id} | "
         f"Observed={observed} | Limit={limit} | Margin={margin} | "
         f"Decision={item.status.value} | WHY: {item.why_pl}"
     )
@@ -749,23 +753,25 @@ def _build_missing_data_lines(
         for item in normative_report.items:
             if item.status == NormativeStatus.NOT_COMPUTED:
                 requires = ", ".join(item.requires) if item.requires else "—"
-                lines.append(f"P20 {item.rule_id} {item.target_id}: brak danych ({requires}).")
+                lines.append(
+                    f"Ocena normatywna {item.rule_id} {item.target_id}: brak danych ({requires})."
+                )
     if voltage_profile is not None:
         for row in voltage_profile.rows:
             if row.status.value == "NOT_COMPUTED":
-                lines.append(f"P21 BUS {row.bus_id}: brak Unom/U (NOT COMPUTED).")
+                lines.append(f"Profil napięć — BUS {row.bus_id}: brak Unom/U (NOT COMPUTED).")
     if protection_insight is not None:
         for item in protection_insight.items:
             if item.selectivity_status == ProtectionSelectivityStatus.NOT_EVALUATED:
-                lines.append(f"P22a {item.primary_device_id}: brak oceny selektywności.")
+                lines.append(f"Zabezpieczenie {item.primary_device_id}: brak oceny selektywności.")
     if protection_curves_it is not None and protection_curves_it.missing_data:
         for entry in protection_curves_it.missing_data:
-            lines.append(f"P22 {protection_curves_it.primary_device_id}: {entry}.")
+            lines.append(f"Krzywe I–t {protection_curves_it.primary_device_id}: {entry}.")
     if sensitivity is not None:
         for entry in sensitivity.entries:
             if entry.base_decision == SensitivityDecision.NOT_COMPUTED:
                 lines.append(
-                    f"P25 {entry.parameter_id} {entry.target_id}: brak danych wejściowych."
+                    f"Wrażliwość {entry.parameter_id} {entry.target_id}: brak danych wejściowych."
                 )
     if lf_sensitivity is not None:
         for entry in lf_sensitivity.entries:
@@ -778,7 +784,9 @@ def _build_missing_data_lines(
         entries.extend(recommendations.alternatives)
         for entry in entries:
             if entry.expected_effect == RecommendationEffect.NOT_COMPUTED:
-                lines.append(f"P26 {entry.parameter_id} {entry.target_id}: {entry.confidence_note}")
+                lines.append(
+                    f"Rekomendacja {entry.parameter_id} {entry.target_id}: {entry.confidence_note}"
+                )
     return lines
 
 
@@ -807,11 +815,11 @@ def _format_proof_reference(doc: ProofDocument) -> str:
 _LIMITATIONS = (
     "Raport nie zawiera nowych obliczeń fizycznych (prezentacja tylko).",
     "Krzywe I–t są prezentacją danych wejściowych i normatywnych (read-only).",
-    "Decyzje PASS/WARNING/FAIL pochodzą z P20 i P22a (bez modyfikacji solverów).",
-    "Analiza P25 jest post-hoc (perturbacje bez recompute fizyki).",
-    "Analiza P33 jest post-hoc i opiera się na dowodzie P32 (bez uruchamiania solvera).",
-    "Rekomendacje P26 są estymacją post-hoc na bazie P25 (bez zmian solverów).",
-    "Porównanie scenariuszy P27 jest deterministyczne i opisowe (brak nowych obliczeń).",
-    "Kompletność P28 to audyt informacyjny (bez PASS/FAIL).",
+    "Decyzje PASS/WARNING/FAIL pochodzą z oceny normatywnej i analizy zabezpieczeń (bez modyfikacji solverów).",
+    "Analiza wrażliwości jest post-hoc (perturbacje bez recompute fizyki).",
+    "Analiza wrażliwości napięć jest post-hoc i opiera się na dowodzie rozpływu mocy (bez uruchamiania solvera).",
+    "Rekomendacje są estymacją post-hoc na bazie analizy wrażliwości (bez zmian solverów).",
+    "Porównanie scenariuszy jest deterministyczne i opisowe (brak nowych obliczeń).",
+    "Audyt kompletności analizy jest informacyjny (bez PASS/FAIL).",
     "NOT COMPUTED oznacza brak danych wejściowych, a nie negatywny wynik.",
 )

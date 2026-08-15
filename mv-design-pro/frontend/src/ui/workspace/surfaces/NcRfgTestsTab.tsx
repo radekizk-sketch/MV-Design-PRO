@@ -9,6 +9,7 @@ import {
   type NcRfgTestCatalogResponse,
   type NcRfgVerdict,
 } from '../../ncrfg-tests/api';
+import { useAppStateStore } from '../../app-state';
 import { notify } from '../../notifications/store';
 import {
   selectAllDers,
@@ -440,10 +441,15 @@ export function NcRfgTestsTab(): JSX.Element {
     setStatus('running');
     setError(null);
     try {
-      const payload = await runNcRfgPtpireeTests({
-        modules: [modulePreview],
-        procedure_version: catalog?.procedure_version ?? 'PTPiREE Procedura testowania v3.0',
-      });
+      // Aktywny przypadek → backend dopina dowód certyfikatu PTPiREE z tabliczek
+      // urządzeń modelu (bez niego certificate_evidence wraca z pustymi polami).
+      const payload = await runNcRfgPtpireeTests(
+        {
+          modules: [modulePreview],
+          procedure_version: catalog?.procedure_version ?? 'PTPiREE Procedura testowania v3.0',
+        },
+        useAppStateStore.getState().activeCaseId,
+      );
       setResult(payload);
       setStatus('ready');
     } catch (err) {
@@ -658,7 +664,7 @@ export function NcRfgTestsTab(): JSX.Element {
       {result ? (
         <section className="grid gap-4 xl:grid-cols-2">
           <div className="rounded border border-slate-200 bg-white p-4">
-            <h4 className="text-sm font-semibold">White Box</h4>
+            <h4 className="text-sm font-semibold">Pełna jawność obliczeń</h4>
             <div className="mt-3 max-h-[360px] space-y-2 overflow-auto">
               {result.white_box_trace.slice(0, 20).map((step) => (
                 <div key={step.proof_ref} className="rounded border border-slate-200 bg-slate-50 p-2">

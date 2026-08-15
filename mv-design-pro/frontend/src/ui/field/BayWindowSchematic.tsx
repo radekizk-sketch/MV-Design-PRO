@@ -158,7 +158,7 @@ export function BayWindowSchematic({ item }: BayWindowSchematicProps) {
       <svg
         data-testid="bay-svg-renderer"
         viewBox="0 0 188 220"
-        className="h-64 w-full rounded border border-slate-200 bg-[#05080d]"
+        className="h-64 w-full rounded border border-slate-200 bg-scada-bg"
         role="img"
         aria-label={`Schemat pola ${item.bay_name}`}
       >

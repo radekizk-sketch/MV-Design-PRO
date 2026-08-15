@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { KLASA_AKCJI_NIEAKTYWNEJ } from '../../../shared/akcjeStanow';
 import { fireEvent, screen } from '@testing-library/react';
 
 import { useSnapshotStore } from '../../../topology/snapshotStore';
@@ -416,6 +417,20 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
       expect(screen.getByTestId('station-start-branch')).toBeDisabled();
       expect(screen.getByTestId('station-continue-trunk-reason')).toHaveTextContent(/Brak wolnego portu wyjściowego SN/);
       expect(screen.getByTestId('station-start-branch-reason')).toHaveTextContent(/Brak wolnego pola odgałęźnego SN/);
+
+      // KD-8 poz. 4: DOKŁADNIE JEDNA akcja pierwszorzędna na panel, a każda
+      // akcja NIEAKTYWNA ma tę samą klasę — niezależnie od roli. Bez tego
+      // „Dodaj FW" wyglądał na aktywny obok nieaktywnych „Dodaj PV/BESS".
+      const panel = screen.getByTestId('station-network-actions');
+      expect(panel.querySelectorAll('[data-akcja="pierwszorzedna"]').length).toBe(1);
+      const nieaktywne = Array.from(panel.querySelectorAll('button')).filter((b) => b.disabled);
+      expect(nieaktywne.length).toBeGreaterThan(0);
+      for (const przycisk of nieaktywne) {
+        expect(przycisk.className).toBe(KLASA_AKCJI_NIEAKTYWNEJ);
+      }
+      // Akcje aktywne (PV/BESS/FW) dzielą JEDNĄ szatę — barwa nie rozróżnia rodzaju.
+      const aktywne = Array.from(panel.querySelectorAll('button')).filter((b) => !b.disabled);
+      expect(new Set(aktywne.filter((b) => b.dataset.akcja === 'drugorzedna').map((b) => b.className)).size).toBe(1);
     });
 
     it('dla stacji odgałęźnej pokazuje jedną akcję wyprowadzenia odgałęzienia z pola ODG', () => {
@@ -623,7 +638,7 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
       expect(screen.queryByText(/brief/)).not.toBeInTheDocument();
     });
 
-    it('pokazuje port OZE dla PV przyĹ‚Ä…czonego przez transformator blokowy', () => {
+    it('pokazuje port OZE dla PV przyłączonego przez transformator blokowy', () => {
       useSnapshotStore.setState({
         snapshot: {
           header: {
@@ -667,7 +682,7 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
               tags: [],
               meta: {
                 field_specs: [
-                  { field_ref: 'field-in', name: 'Pole wejĹ›ciowe', bay_role: 'IN' },
+                  { field_ref: 'field-in', name: 'Pole wejściowe', bay_role: 'IN' },
                   { field_ref: 'field-tr', name: 'Pole transformatora', bay_role: 'TR' },
                 ],
               },

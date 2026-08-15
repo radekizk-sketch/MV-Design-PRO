@@ -96,6 +96,22 @@ export function useValidateReferenceNetwork(): UseMutationResult<
   });
 }
 
+/**
+ * Bieg solvera na sieci referencyjnej (bez porównania z literaturą) —
+ * `POST /{id}/run`. Dla sieci niesymetrycznych (`is_unbalanced`) backend
+ * dobiera solver BFS per faza (S6) — jedyna produkcyjna droga do rozpływu
+ * niesymetrycznego (karta ROUTERY-4A).
+ */
+export function useRunReferenceNetwork(): UseMutationResult<
+  RunResponse,
+  Error,
+  { id: string; solverKind: string }
+> {
+  return useMutation({
+    mutationFn: ({ id, solverKind }) => runReferenceNetwork(id, solverKind),
+  });
+}
+
 export function useNcRfgCompliance(
   id: string | null,
 ): UseQueryResult<NcRfgComplianceResponse, Error> {

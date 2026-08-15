@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 from datetime import UTC, datetime
 from typing import Any
+from uuid import UUID
 
 from application.proof_engine.types import (
     EquationDefinition,
@@ -169,7 +170,7 @@ def _optional_float(value: Any) -> float | None:
         return None
 
 
-def _require_uuid(value: Any):
+def _require_uuid(value: Any) -> UUID:
     from uuid import UUID
 
     if isinstance(value, UUID):

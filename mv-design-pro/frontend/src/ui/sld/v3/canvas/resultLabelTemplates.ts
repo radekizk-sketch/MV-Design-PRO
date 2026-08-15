@@ -39,9 +39,12 @@ import { formatMagnitudeKa } from '../../../sld-overlay/FaultContributionArrow';
 export type ResultLabelKind = 'bus' | 'transformer' | 'source' | 'branch';
 
 /** Rodzina analizy (klucz rejestru). R1 wypełnia `load_flow`; `short_circuit`
- *  zachowuje odczyt węzła z W4. Kolejne rodziny (termika/ΔU) dochodzą
- *  addytywnie, bez zmiany kształtu. */
-export type ResultLabelAnalysis = 'load_flow' | 'short_circuit';
+ *  zachowuje odczyt węzła z W4; `short_circuit_delta` to NAKŁADKA RÓŻNIC A/B
+ *  (backend `application/result_mapping/zwarcia_delta_overlay_v1.py`) — osobna
+ *  rodzina, bo jej wartości są RÓŻNICAMI, a nie wielkościami, i muszą nieść
+ *  własne podpisy „Δ …" (inaczej różnica udawałaby wartość bezwzględną).
+ *  Kolejne rodziny (termika/ΔU) dochodzą addytywnie, bez zmiany kształtu. */
+export type ResultLabelAnalysis = 'load_flow' | 'short_circuit' | 'short_circuit_delta';
 
 /** Poziom szczegółu (histereza S8, `SceneLod`): L0 bez etykiet, L1 jedna
  *  najważniejsza wartość, L2 2–3 wartości. */
@@ -234,6 +237,32 @@ const SC_BUS: readonly ResultLabelLineSpec[] = [
   { code: 'SK_MVA', prefix: 'Sk', format: formatScalar },
 ];
 
+/** NAKŁADKA RÓŻNIC A/B — szyna (punkt zwarcia). Kolejność = priorytet: różnica
+ *  prądu początkowego Ik″ (L1, wielkość dobierająca aparaturę), zaraz po niej
+ *  WARTOŚĆ przebiegu B (S9-13: różnica bez wartości, której dotyczy, zmusza do
+ *  rachunku w głowie — „+0,4 kA względem czego?"), potem ta sama różnica
+ *  WZGLĘDNA (bez odniesienia „+0,4 kA" nic nie mówi), dalej ip/Ith/Sk w tym
+ *  samym rytmie (Δ, wartość B). Na L2 (limit 3 linii) etykieta niesie więc
+ *  Δ Ik″ · Ik″ (B) · Δ Ik″ % — wartość B i różnicę, jak żąda karta.
+ *  Kody `DELTA_*`/`B_*` są WŁASNE — nie kolidują z kodami wielkości
+ *  pojedynczego przebiegu (`IK_3F_A` itd.); podpisy różnic niosą „Δ", a podpis
+ *  wartości bezwzględnej „(B)", więc różnicy nie da się wziąć za wartość ani
+ *  wartości przebiegu B za wynik bieżącego biegu. Formatowanie różnic ZE
+ *  ZNAKIEM (`formatSignedScalar`): znak jest nośnikiem informacji (wzrost/
+ *  spadek); wartości B bez znaku (wielkości bezwzględne). Wartości i jednostki
+ *  1:1 z backendu — ZERO arytmetyki w tej warstwie. */
+const SC_DELTA_BUS: readonly ResultLabelLineSpec[] = [
+  { code: 'DELTA_IK_3F_KA', prefix: 'Δ Ik″', format: formatSignedScalar },
+  { code: 'B_IK_3F_KA', prefix: 'Ik″ (B)', format: formatCurrent },
+  { code: 'DELTA_IK_3F_PCT', prefix: 'Δ Ik″ %', format: formatSignedScalar },
+  { code: 'DELTA_IP_KA', prefix: 'Δ ip', format: formatSignedScalar },
+  { code: 'B_IP_KA', prefix: 'ip (B)', format: formatCurrent },
+  { code: 'DELTA_ITH_KA', prefix: 'Δ Ith', format: formatSignedScalar },
+  { code: 'B_ITH_KA', prefix: 'Ith (B)', format: formatCurrent },
+  { code: 'DELTA_SK_MVA', prefix: 'Δ Sk', format: formatSignedScalar },
+  { code: 'B_SK_MVA', prefix: 'Sk (B)', format: formatScalar },
+];
+
 /** Rejestr szablonów: `analysis → kind → specyfikacje`. Brak wpisu (analiza lub
  *  klasa nieobsłużona) ⇒ pusta lista ⇒ brak etykiety (zero atrap). */
 export const RESULT_LABEL_TEMPLATES: Readonly<
@@ -248,12 +277,23 @@ export const RESULT_LABEL_TEMPLATES: Readonly<
   short_circuit: {
     bus: SC_BUS,
   },
+  short_circuit_delta: {
+    bus: SC_DELTA_BUS,
+  },
 };
 
-/** Maksymalna liczba linii per poziom LOD (wym. 5). L0 = 0 (bez etykiet),
- *  L1 = 1 (najważniejsza wartość), L2 = 3 (2–3 wartości). */
+/** Maksymalna liczba linii per poziom LOD (wym. 5). L1 = 1 (najważniejsza
+ *  wartość), L2 = 3 (2–3 wartości).
+ *
+ *  S9-2 (AUDYT_JAKOSCI_SLD_2026-08 W-1, wymóg „na L0 wartości zbiorcze/
+ *  stacyjne"): L0 = 1. Dotąd poziom przeglądu nie pokazywał ŻADNEJ liczby, więc
+ *  po biegu rysunek całej sieci wyglądał identycznie jak przed biegiem — dokładnie
+ *  to zmierzył audyt. Na L0 stacja jest zwiniętym blokiem, a most refów
+ *  (`resultRefBridge.ts`) wiąże ten blok z punktem wyniku szyny SN stacji, więc
+ *  jedna linia = wartość STACYJNA (Ik″ punktu stacji / napięcie szyny), nie
+ *  szczegół pola. */
 export const RESULT_LABEL_MAX_LINES_BY_LOD: Readonly<Record<ResultLabelLod, number>> = {
-  0: 0,
+  0: 1,
   1: 1,
   2: 3,
 };
@@ -261,11 +301,16 @@ export const RESULT_LABEL_MAX_LINES_BY_LOD: Readonly<Record<ResultLabelLod, numb
 /**
  * Normalizuje `payload.analysis_type` (dowolna wielkość liter, aliasy) do
  * rodziny rejestru. Rozpoznane rozpływowe: load_flow/loadflow/lf/pf/
- * power_flow; zwarciowe: sc_3f/sc_1f/sc/short_circuit/shortcircuit. Nieznane ⇒
+ * power_flow; zwarciowe: sc_3f/sc_1f/sc/short_circuit/shortcircuit; różnicowe:
+ * dowolny typ z prefiksem `delta_` (kontrakt nakładki różnic). Nieznane ⇒
  * `null` (brak szablonu ⇒ brak etykiet, zero fabrykacji). */
 export function normalizeResultLabelAnalysis(analysisType: string | undefined): ResultLabelAnalysis | null {
   if (!analysisType) return null;
   const a = analysisType.toLowerCase();
+  // Różnice ROZPOZNAWANE PIERWSZE: „DELTA_SC" niesie w nazwie także człon
+  // zwarciowy, więc kolejność decyduje. Pomyłka rodziny znaczyłaby podpisy
+  // wartości bezwzględnych („Ik″") pod liczbami, które są RÓŻNICAMI.
+  if (a.startsWith('delta_')) return 'short_circuit_delta';
   if (a.includes('load_flow') || a === 'loadflow' || a === 'lf' || a === 'pf' || a.includes('power_flow')) {
     return 'load_flow';
   }

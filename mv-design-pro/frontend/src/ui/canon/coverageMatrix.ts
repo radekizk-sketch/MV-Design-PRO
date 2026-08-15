@@ -1,12 +1,11 @@
-import type { AreaId } from '../navigation/areaRegistry';
-import type { CanonicalScreenCode } from '../workspace/screenCanonRegistry';
+import type { CanonicalScreenCode, KodDziedzinyEkranu } from '../workspace/screenCanonRegistry';
 import type { TechnicalIconName } from '../icons/technicalIconRegistry';
 
 export type CoverageStatus = 'pełne pokrycie';
 
 export interface CoverageMatrixRow {
   scope: string;
-  area: AreaId;
+  area: KodDziedzinyEkranu;
   screen: CanonicalScreenCode;
   icon: TechnicalIconName;
   panel: string;

@@ -268,6 +268,13 @@ generuje dług i ryzyko regresji kanonu.
   do przestrzeni ui2 `obliczenia`/przebiegi + usunięcie tras) wymaga mostu
   nawigacji między-powłokowej (`useShellStore.setActiveSpace`) i E2E z backendem
   — osobna, kontrolowana karta.
+  **STATUS WYKONANIA (sync-doc 2026-08-05):** route-retirement E-29..E-34
+  WYKONANY dwoma kartami rejestru: `docs/v12xx/REJESTR_KONFLIKTOW.md` V12K-273
+  (2026-07-29, karta K3 — punkt A3: „karty huba E-29..E-32 → zakladki ui2 +
+  CZTERY NOWE zakladki warsztatu [skladowe/zbieznosc/stan-fazowy/stabilnosc]")
+  i V12K-288 (2026-07-31, karta K8 — OSTATNIA karta kolejki K2-K8: inwentarz
+  17 tras mostu legacy, wygaszenie wg pełnego parytetu funkcji,
+  `docs/uiux/INWENTARZ_PARYTETU_MOSTOW_2026-07.md` jako wiążący rejestr tras).
 - **W5b-2** (2026-07-17, commit lokalny `feat(ui2): wygaszenie stubu analizy
   wrażliwości w AnalysisSurface (W5b-2)`): Opcja 1, decyzja właściciela D2=A
   (§3b) — funkcja „Analiza wrażliwości" uznana za NIEDOSTARCZONĄ (stub:

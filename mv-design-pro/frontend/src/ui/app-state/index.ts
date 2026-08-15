@@ -25,7 +25,7 @@ export {
   useUIContext,
 } from './store';
 
-export type { CaseKind, AnalysisType, AreaCode, WorkMode, EnmHashChainState } from './store';
+export type { CaseKind, AnalysisType, WorkMode, EnmHashChainState } from './store';
 
 // V12S-010 — chain pięciu ortogonalnych hashy ENM
 export { useEnmHashChain, shortHash } from './useEnmHashChain';

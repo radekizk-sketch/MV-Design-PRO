@@ -68,10 +68,15 @@ export function useWpiecieWynikow(): { aktywnyRodzaj: RodzajWyniku } {
   const aktywnyRodzaj =
     activeRunId == null ? null : rodzajPrzebiegu(przebiegi.find((r) => r.id === activeRunId));
 
-  // Montaż: aktywny zakończony przebieg → załaduj (idempotentnie).
+  // Montaż + doładowanie rejestru przebiegów: aktywny zakończony przebieg →
+  // załaduj (idempotentnie). INTENCJA (K2, defekt H-0): po zimnym starcie
+  // rejestr przebiegów (`useExecutionRunsStore.runs`) hydratuje z serwera PO
+  // montażu tego hooka — zależność od `aktywnyRodzaj` (pochodna `przebiegi` +
+  // `activeRunId`) ponawia ładowanie, gdy rejestr doładuje się później; sam
+  // `activeRunId` nie wystarczał i ekran wyników zostawał w stanie zerowym.
   useEffect(() => {
     if (activeRunId) zaladujWynik(activeRunId);
-  }, [activeRunId]);
+  }, [activeRunId, aktywnyRodzaj]);
 
   // Nowe wyniki na magistrali: ładuj wg rodzaju analizy przebiegu.
   useEffect(() => subskrybuj('wyniki-gotowe', (zdarzenie) => zaladujWynik(zdarzenie.runId)), []);

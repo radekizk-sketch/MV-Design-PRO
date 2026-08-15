@@ -9,6 +9,7 @@ import { sanitizePublicReadinessMessage } from '../shared/publicReadinessMessage
 import { resolveSelectedElementFromSnapshot } from '../shared/selectionResolution';
 import { useSnapshotStore } from '../topology/snapshotStore';
 import { useNetworkBuildDerived, useNetworkBuildStore } from './networkBuildStore';
+import { GOTOWOSC_STRINGS } from '../../ui2/spaces/gotowosc/strings';
 
 type FilterCategory = 'all' | 'topologia' | 'katalogi' | 'eksploatacja' | 'analiza';
 
@@ -60,7 +61,8 @@ export interface ReadinessBarProps {
 }
 
 export function ReadinessBar({ className }: ReadinessBarProps) {
-  const { readiness, blockersByCategory, isReady, fixActions } = useNetworkBuildDerived();
+  const { readiness, blockersByCategory, isReady, fixActions, readinessUstalona } =
+    useNetworkBuildDerived();
   const openOperationForm = useNetworkBuildStore((state) => state.openOperationForm);
   const snapshot = useSnapshotStore((state) => state.snapshot);
   const selectElement = useSelectionStore((state) => state.selectElement);
@@ -99,8 +101,28 @@ export function ReadinessBar({ className }: ReadinessBarProps) {
     [centerSldOnElement, openOperationForm, selectElement, snapshot],
   );
 
-  if (!readiness) {
-    return null;
+  // DŁUG V12K-318 poz. 4 (karta X3): do naprawy pasek ZNIKAŁ przy gotowości
+  // nieustalonej — nie kłamał, ale i nie mówił nic, więc projektant nie odróżniał
+  // „nie policzono" od „nie ma czego pokazać". Brak danej jest STANEM: pokazujemy
+  // go tym samym napisem, co pozostali czytelnicy, i z tego samego sygnału
+  // (`readinessUstalona`), żeby predykat był JEDEN dla całej klasy.
+  if (!readinessUstalona || !readiness) {
+    return (
+      <div
+        className={clsx(
+          'flex items-center gap-3 border-t border-slate-200 bg-slate-50 px-4 py-1.5',
+          className,
+        )}
+        data-testid="readiness-bar"
+        data-ready="unknown"
+      >
+        <span className="inline-block h-2.5 w-2.5 rounded-full bg-slate-400" />
+        <span className="text-[11px] font-semibold text-slate-700">
+          {GOTOWOSC_STRINGS.nieustalonaTytul}
+        </span>
+        <span className="text-[10px] text-gray-500">{GOTOWOSC_STRINGS.nieustalonaOpis}</span>
+      </div>
+    );
   }
 
   if (isReady) {

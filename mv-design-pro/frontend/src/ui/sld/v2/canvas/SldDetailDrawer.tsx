@@ -446,10 +446,10 @@ function drawerActionButtonStyle(
   disabled = false,
 ): CSSProperties {
   const danger = group === 'usun';
-  const border = disabled ? '#344252' : danger ? '#F25F5F' : group === 'budowa' ? '#13C45A' : accent;
-  const color = disabled ? '#7E8790' : danger ? '#FFD1D1' : group === 'budowa' ? '#C8F8DD' : '#DDF7FF';
+  const border = disabled ? 'rgb(var(--scada-panel-raised))' : danger ? 'rgb(var(--scada-status-err))' : group === 'budowa' ? 'rgb(var(--scada-status-ok))' : accent;
+  const color = disabled ? 'rgb(var(--scada-muted))' : danger ? 'rgb(var(--scada-status-err-ink))' : group === 'budowa' ? 'rgb(var(--scada-status-ok-ink))' : 'rgb(var(--scada-text))';
   return {
-    background: disabled ? '#111821' : danger ? '#2A1114' : 'transparent',
+    background: disabled ? 'rgb(var(--scada-bg))' : danger ? 'rgb(var(--scada-bg))' : 'transparent',
     border: `1px solid ${border}`,
     color,
     padding: '4px 10px',
@@ -564,7 +564,7 @@ export function SldDetailDrawer(props: SldDetailDrawerProps): JSX.Element | null
   const showFooter = Boolean(onSave && data.kind === 'der');
   const showActionToolbar = Boolean(onOpenFullView || onOpenConfiguration || actions.length > 0);
 
-  const accent = data.accentColor ?? '#7EC8FF';
+  const accent = data.accentColor ?? 'rgb(var(--scada-status-info))';
   const visibleLabel = detailDisplayLabel(data);
 
   return (
@@ -580,13 +580,13 @@ export function SldDetailDrawer(props: SldDetailDrawerProps): JSX.Element | null
         right: 0,
         bottom: 0,
         width,
-        background: '#0A0E14',
+        background: 'rgb(var(--scada-bg))',
         borderLeft: `2px solid ${accent}`,
         boxShadow: '-4px 0 12px rgba(0,0,0,0.5)',
         zIndex: 100,
         display: 'flex',
         flexDirection: 'column',
-        color: '#DDF7FF',
+        color: 'rgb(var(--scada-text))',
         fontFamily: 'sans-serif',
       }}
     >
@@ -594,20 +594,20 @@ export function SldDetailDrawer(props: SldDetailDrawerProps): JSX.Element | null
       <div
         style={{
           padding: '12px 16px',
-          borderBottom: '1px solid #2A3441',
+          borderBottom: '1px solid rgb(var(--scada-panel-raised))',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
         }}
       >
         <div>
-          <div data-testid="sld-v2-detail-drawer-kind" style={{ fontSize: 9, color: '#7E8790', textTransform: 'uppercase', letterSpacing: 1 }}>
+          <div data-testid="sld-v2-detail-drawer-kind" style={{ fontSize: 9, color: 'rgb(var(--scada-muted))', textTransform: 'uppercase', letterSpacing: 1 }}>
             {kindLabel(data.kind)}
           </div>
           {(data.parentStationLabel || data.parentBayLabel) && (
             <div
               data-testid="sld-v2-detail-drawer-breadcrumb"
-              style={{ fontSize: 10, color: '#88BBDD', marginTop: 2, fontFamily: 'monospace' }}
+              style={{ fontSize: 10, color: 'rgb(var(--scada-muted))', marginTop: 2, fontFamily: 'monospace' }}
             >
               {[data.parentStationLabel, data.parentBayLabel].filter(Boolean).join(' › ')}
               {' › '}
@@ -620,10 +620,10 @@ export function SldDetailDrawer(props: SldDetailDrawerProps): JSX.Element | null
                 data-testid="sld-v2-detail-drawer-alarm-badge"
                 data-severity={data.alarmSeverity}
                 style={{
-                  background: data.alarmSeverity === 'critical' ? '#F25F5F'
-                    : data.alarmSeverity === 'important' ? '#FF9500'
-                    : '#FFD166',
-                  color: '#0A0E14',
+                  background: data.alarmSeverity === 'critical' ? 'rgb(var(--scada-status-err))'
+                    : data.alarmSeverity === 'important' ? 'rgb(var(--scada-status-warn))'
+                    : 'rgb(var(--scada-status-warn-ink))',
+                  color: 'rgb(var(--scada-bg))',
                   padding: '1px 6px',
                   borderRadius: 8,
                   fontSize: 9,
@@ -638,14 +638,14 @@ export function SldDetailDrawer(props: SldDetailDrawerProps): JSX.Element | null
             )}
           </div>
           {data.stationCode && data.kind !== 'station' && (
-            <div data-testid="sld-v2-detail-drawer-breadcrumb" style={{ fontSize: 10, color: '#88BBDD', marginTop: 2 }}>
+            <div data-testid="sld-v2-detail-drawer-breadcrumb" style={{ fontSize: 10, color: 'rgb(var(--scada-text))', marginTop: 2 }}>
               ↑ Stacja {data.stationCode}
             </div>
           )}
           {data.globalId && (
             <div
               data-testid="sld-v2-detail-drawer-global-id"
-              style={{ fontSize: 10, color: '#FFD166', marginTop: 2, fontFamily: 'monospace', fontWeight: 700 }}
+              style={{ fontSize: 10, color: 'rgb(var(--scada-status-warn-ink))', marginTop: 2, fontFamily: 'monospace', fontWeight: 700 }}
             >
               Identyfikator: {data.globalId}
             </div>
@@ -660,9 +660,9 @@ export function SldDetailDrawer(props: SldDetailDrawerProps): JSX.Element | null
                   key={`${m.label}-${i}`}
                   data-testid={`sld-v2-detail-drawer-metric-${m.label}`}
                   style={{
-                    background: '#171B20',
-                    border: `1px solid ${m.color ?? '#5A6878'}`,
-                    color: m.color ?? '#DDF7FF',
+                    background: 'rgb(var(--scada-surface))',
+                    border: `1px solid ${m.color ?? 'rgb(var(--scada-border))'}`,
+                    color: m.color ?? 'rgb(var(--scada-text))',
                     padding: '2px 6px',
                     borderRadius: 2,
                     fontSize: 9,
@@ -684,8 +684,8 @@ export function SldDetailDrawer(props: SldDetailDrawerProps): JSX.Element | null
           aria-label="Zamknij panel"
           style={{
             background: 'transparent',
-            border: '1px solid #5A6878',
-            color: '#DDF7FF',
+            border: '1px solid rgb(var(--scada-border))',
+            color: 'rgb(var(--scada-text))',
             width: 28,
             height: 28,
             borderRadius: 3,
@@ -708,7 +708,7 @@ export function SldDetailDrawer(props: SldDetailDrawerProps): JSX.Element | null
           flexWrap: 'wrap',
           gap: 0,
           padding: '8px 12px 0',
-          borderBottom: '1px solid #2A3441',
+          borderBottom: '1px solid rgb(var(--scada-panel-raised))',
         }}
       >
         {tabs.map((tab) => {
@@ -727,7 +727,7 @@ export function SldDetailDrawer(props: SldDetailDrawerProps): JSX.Element | null
               onClick={() => setActiveTab(tab.id)}
               style={{
                 background: isActive ? accent : 'transparent',
-                color: isActive ? '#0A0E14' : '#88BBDD',
+                color: isActive ? 'rgb(var(--scada-bg))' : 'rgb(var(--scada-text))',
                 border: 'none',
                 padding: '6px 10px',
                 cursor: 'pointer',
@@ -750,11 +750,11 @@ export function SldDetailDrawer(props: SldDetailDrawerProps): JSX.Element | null
           data-testid="sld-v2-detail-drawer-actions"
           style={{
             padding: '6px 12px',
-            borderBottom: '1px solid #2A3441',
+            borderBottom: '1px solid rgb(var(--scada-panel-raised))',
             display: 'flex',
             flexWrap: 'wrap',
             gap: 6,
-            background: '#0E1218',
+            background: 'rgb(var(--scada-bg))',
           }}
         >
           {onOpenFullView && (
@@ -834,11 +834,11 @@ export function SldDetailDrawer(props: SldDetailDrawerProps): JSX.Element | null
           data-testid="sld-v2-detail-drawer-footer"
           style={{
             padding: '10px 16px',
-            borderTop: '1px solid #2A3441',
+            borderTop: '1px solid rgb(var(--scada-panel-raised))',
             display: 'flex',
             justifyContent: 'flex-end',
             gap: 8,
-            background: '#0E1218',
+            background: 'rgb(var(--scada-bg))',
           }}
         >
           <button
@@ -847,8 +847,8 @@ export function SldDetailDrawer(props: SldDetailDrawerProps): JSX.Element | null
             onClick={onClose}
             style={{
               background: 'transparent',
-              border: '1px solid #5A6878',
-              color: '#DDF7FF',
+              border: '1px solid rgb(var(--scada-border))',
+              color: 'rgb(var(--scada-text))',
               padding: '6px 12px',
               borderRadius: 3,
               fontSize: 11,
@@ -866,7 +866,7 @@ export function SldDetailDrawer(props: SldDetailDrawerProps): JSX.Element | null
             style={{
               background: accent,
               border: `1px solid ${accent}`,
-              color: '#0A0E14',
+              color: 'rgb(var(--scada-bg))',
               padding: '6px 14px',
               borderRadius: 3,
               fontSize: 11,
@@ -882,7 +882,7 @@ export function SldDetailDrawer(props: SldDetailDrawerProps): JSX.Element | null
               data-testid="sld-v2-detail-drawer-save-error"
               style={{
                 alignSelf: 'center',
-                color: '#F25F5F',
+                color: 'rgb(var(--scada-status-err))',
                 fontSize: 10,
                 marginRight: 'auto',
               }}
@@ -948,7 +948,7 @@ interface TabContentProps {
 function TabContent({ kind, tab, data, derForm, onOpenConfiguration }: TabContentProps): JSX.Element {
   return (
     <div data-testid={`sld-v2-detail-drawer-tab-content-${tab}`}>
-      <div style={{ color: '#7E8790', fontStyle: 'italic', marginBottom: 12 }}>
+      <div style={{ color: 'rgb(var(--scada-muted))', fontStyle: 'italic', marginBottom: 12 }}>
         Układ: {detailObjectContext(data)}
       </div>
       <PlaceholderTabBody
@@ -972,7 +972,7 @@ function TabContent({ kind, tab, data, derForm, onOpenConfiguration }: TabConten
 }
 
 function transformerMissingValue(label = 'Brak danych'): JSX.Element {
-  return <span style={{ color: '#F4A261', fontStyle: 'normal' }}>{label}</span>;
+  return <span style={{ color: 'rgb(var(--scada-status-warn))', fontStyle: 'normal' }}>{label}</span>;
 }
 
 function formatTransformerKva(mva: number | null | undefined): string | null {
@@ -1016,7 +1016,7 @@ function TransformerStationPanel({
   const blockers = transformerRequiredBlockers(transformerSpec);
   const isComplete = blockers.length === 0;
   const fromSldFallback = transformerSpec?.dataQuality === 'sld_fallback';
-  const panelBorder = isComplete ? '#13C45A' : '#F4A261';
+  const panelBorder = isComplete ? 'rgb(var(--scada-status-ok))' : 'rgb(var(--scada-status-warn))';
   const ratedKva = formatTransformerKva(transformerSpec?.snMva);
   const voltageLabel = transformerVoltageLabel(transformerSpec, voltageKv);
 
@@ -1025,21 +1025,21 @@ function TransformerStationPanel({
       <section
         style={{
           border: `1px solid ${panelBorder}`,
-          background: '#101720',
+          background: 'rgb(var(--scada-bg))',
           borderRadius: 6,
           padding: 10,
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'flex-start' }}>
           <div>
-            <div style={{ color: '#7E8790', fontSize: 9, fontWeight: 800, letterSpacing: 1.2 }}>
+            <div style={{ color: 'rgb(var(--scada-muted))', fontSize: 9, fontWeight: 800, letterSpacing: 1.2 }}>
               TRANSFORMATOR SN/nN
             </div>
-            <div data-testid="drawer-tr-name" style={{ marginTop: 3, color: '#DDF7FF', fontSize: 13, fontWeight: 800 }}>
+            <div data-testid="drawer-tr-name" style={{ marginTop: 3, color: 'rgb(var(--scada-text))', fontSize: 13, fontWeight: 800 }}>
               {transformerSpec?.name ?? 'Transformator stacji'}
             </div>
             {transformerSpec?.ref && (
-              <div data-testid="drawer-tr-ref" style={{ marginTop: 2, color: '#88BBDD', fontSize: 9, fontFamily: 'monospace' }}>
+              <div data-testid="drawer-tr-ref" style={{ marginTop: 2, color: 'rgb(var(--scada-text))', fontSize: 9, fontFamily: 'monospace' }}>
                 {transformerSpec.ref}
               </div>
             )}
@@ -1061,7 +1061,7 @@ function TransformerStationPanel({
         </div>
 
         {fromSldFallback && (
-          <div data-testid="drawer-tr-sld-fallback-warning" style={{ marginTop: 8, color: '#F4A261', fontSize: 10, lineHeight: 1.35 }}>
+          <div data-testid="drawer-tr-sld-fallback-warning" style={{ marginTop: 8, color: 'rgb(var(--scada-status-warn))', fontSize: 10, lineHeight: 1.35 }}>
             Parametry odczytano z widoku SLD. Powiąż transformator z rekordem ENM/katalogiem,
             aby obliczenia i raport miały pełny ślad danych.
           </div>
@@ -1096,16 +1096,16 @@ function TransformerStationPanel({
       <section
         data-testid="drawer-tr-calculation-impact"
         style={{
-          border: '1px solid #2A3441',
+          border: '1px solid rgb(var(--scada-panel-raised))',
           borderRadius: 6,
-          background: '#0E1218',
+          background: 'rgb(var(--scada-bg))',
           padding: 10,
         }}
       >
-        <div style={{ color: '#7E8790', fontSize: 9, fontWeight: 800, letterSpacing: 1.1, marginBottom: 7 }}>
+        <div style={{ color: 'rgb(var(--scada-muted))', fontSize: 9, fontWeight: 800, letterSpacing: 1.1, marginBottom: 7 }}>
           WPŁYW NA OBLICZENIA
         </div>
-        <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 5, color: '#CFEFFF', fontSize: 10, lineHeight: 1.35 }}>
+        <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 5, color: 'rgb(var(--scada-text))', fontSize: 10, lineHeight: 1.35 }}>
           <li><b>Zwarcia:</b> wymagane są Sn, u_k%, grupa połączeń i poziomy napięć.</li>
           <li><b>Rozpływ mocy:</b> wymagane są Sn, przekładnia i straty Pk/P0 z katalogu.</li>
           <li><b>Dobór zabezpieczeń:</b> wymagane są prądy znamionowe strony SN/nN i katalog transformatora.</li>
@@ -1115,21 +1115,21 @@ function TransformerStationPanel({
       <section
         data-testid="drawer-tr-blockers"
         style={{
-          border: `1px solid ${blockers.length > 0 ? '#F4A261' : '#2A3441'}`,
+          border: `1px solid ${blockers.length > 0 ? 'rgb(var(--scada-status-warn))' : 'rgb(var(--scada-panel-raised))'}`,
           borderRadius: 6,
-          background: blockers.length > 0 ? '#1B1510' : '#0E1218',
+          background: blockers.length > 0 ? 'rgb(var(--scada-bg))' : 'rgb(var(--scada-bg))',
           padding: 10,
         }}
       >
-        <div style={{ color: blockers.length > 0 ? '#F4A261' : '#13C45A', fontSize: 10, fontWeight: 800 }}>
+        <div style={{ color: blockers.length > 0 ? 'rgb(var(--scada-status-warn))' : 'rgb(var(--scada-status-ok))', fontSize: 10, fontWeight: 800 }}>
           {blockers.length > 0 ? `Braki danych (${blockers.length})` : 'Transformator gotowy do obliczeń'}
         </div>
         {blockers.length > 0 ? (
-          <ul style={{ margin: '7px 0 0', paddingLeft: 16, color: '#F8D8B0', fontSize: 10, lineHeight: 1.45 }}>
+          <ul style={{ margin: '7px 0 0', paddingLeft: 16, color: 'rgb(var(--scada-status-warn-ink))', fontSize: 10, lineHeight: 1.45 }}>
             {blockers.map((blocker) => <li key={blocker}>{blocker}</li>)}
           </ul>
         ) : (
-          <div style={{ marginTop: 6, color: '#8BE8B4', fontSize: 10 }}>
+          <div style={{ marginTop: 6, color: 'rgb(var(--scada-status-ok-ink))', fontSize: 10 }}>
             Dane mogą być użyte przez solvery i dowód obliczeń.
           </div>
         )}
@@ -1143,9 +1143,9 @@ function TransformerStationPanel({
           disabled={!onOpenConfiguration}
           title={onOpenConfiguration ? 'Otwórz kartę Transformator w konfiguratorze stacji' : 'Brak aktywnego konfiguratora stacji'}
           style={{
-            border: '1px solid #7EC8FF',
-            background: onOpenConfiguration ? '#123047' : '#171B20',
-            color: onOpenConfiguration ? '#DDF7FF' : '#7E8790',
+            border: '1px solid rgb(var(--scada-status-info))',
+            background: onOpenConfiguration ? 'rgb(var(--scada-panel-raised))' : 'rgb(var(--scada-surface))',
+            color: onOpenConfiguration ? 'rgb(var(--scada-text))' : 'rgb(var(--scada-muted))',
             borderRadius: 4,
             padding: '8px 10px',
             fontSize: 11,
@@ -1156,7 +1156,7 @@ function TransformerStationPanel({
         >
           Skonfiguruj transformator w stacji
         </button>
-        <div style={{ color: '#7E8790', fontSize: 9, lineHeight: 1.35 }}>
+        <div style={{ color: 'rgb(var(--scada-muted))', fontSize: 9, lineHeight: 1.35 }}>
           Ta karta nie zgaduje parametrów. Braki prowadzą do konfiguratora stacji i katalogu transformatorów.
         </div>
       </div>
@@ -1176,12 +1176,12 @@ function TransformerKpi({
   readonly strong?: boolean;
 }): JSX.Element {
   return (
-    <div style={{ border: '1px solid #2A3441', background: '#0A0E14', borderRadius: 4, padding: '7px 8px', minHeight: 48 }}>
-      <div style={{ color: '#7E8790', fontSize: 9, marginBottom: 4 }}>{label}</div>
+    <div style={{ border: '1px solid rgb(var(--scada-panel-raised))', background: 'rgb(var(--scada-bg))', borderRadius: 4, padding: '7px 8px', minHeight: 48 }}>
+      <div style={{ color: 'rgb(var(--scada-muted))', fontSize: 9, marginBottom: 4 }}>{label}</div>
       <div
         data-testid={testId}
         style={{
-          color: value ? (strong ? '#FFD166' : '#DDF7FF') : '#F4A261',
+          color: value ? (strong ? 'rgb(var(--scada-status-warn-ink))' : 'rgb(var(--scada-text))') : 'rgb(var(--scada-status-warn))',
           fontFamily: 'monospace',
           fontSize: 11,
           fontWeight: strong ? 800 : 600,
@@ -1203,23 +1203,23 @@ function NodeEngineeringPanel({
 }): JSX.Element {
   const blockers = nodeSpec?.blockers ?? ['Brak danych węzła sieci SN.'];
   const isComplete = blockers.length === 0;
-  const border = isComplete ? '#13C45A' : '#F4A261';
+  const border = isComplete ? 'rgb(var(--scada-status-ok))' : 'rgb(var(--scada-status-warn))';
   return (
     <div data-testid="drawer-node-engineering-panel" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <section
         style={{
           border: `1px solid ${border}`,
-          background: '#101720',
+          background: 'rgb(var(--scada-bg))',
           borderRadius: 6,
           padding: 10,
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
           <div>
-            <div style={{ color: '#7E8790', fontSize: 9, fontWeight: 800, letterSpacing: 1.2 }}>
+            <div style={{ color: 'rgb(var(--scada-muted))', fontSize: 9, fontWeight: 800, letterSpacing: 1.2 }}>
               WĘZEŁ MAGISTRALI SN
             </div>
-            <div data-testid="drawer-node-role" style={{ color: '#DDF7FF', fontSize: 13, fontWeight: 800, marginTop: 3 }}>
+            <div data-testid="drawer-node-role" style={{ color: 'rgb(var(--scada-text))', fontSize: 13, fontWeight: 800, marginTop: 3 }}>
               {nodeSpec?.rolePl ?? 'Węzeł sieci SN'}
             </div>
           </div>
@@ -1276,12 +1276,12 @@ function NodeEngineeringPanel({
       {tab === 'operacje' && (
         <section
           data-testid="drawer-node-operation-rules"
-          style={{ border: '1px solid #2A3441', borderRadius: 6, background: '#0E1218', padding: 10 }}
+          style={{ border: '1px solid rgb(var(--scada-panel-raised))', borderRadius: 6, background: 'rgb(var(--scada-bg))', padding: 10 }}
         >
-          <div style={{ color: '#7E8790', fontSize: 9, fontWeight: 800, letterSpacing: 1.1, marginBottom: 7 }}>
+          <div style={{ color: 'rgb(var(--scada-muted))', fontSize: 9, fontWeight: 800, letterSpacing: 1.1, marginBottom: 7 }}>
             ZASADY OPERACJI
           </div>
-          <ul style={{ margin: 0, paddingLeft: 16, color: '#CFEFFF', fontSize: 10, lineHeight: 1.45 }}>
+          <ul style={{ margin: 0, paddingLeft: 16, color: 'rgb(var(--scada-text))', fontSize: 10, lineHeight: 1.45 }}>
             <li>Konfiguracja pełna otwiera kartę techniczną węzła.</li>
             <li>Usunięcie lub rozdzielenie wymaga potwierdzenia i zapisu w historii zmian.</li>
             <li>Brak katalogu blokuje obliczenia wymagające danych aparatury.</li>
@@ -1292,21 +1292,21 @@ function NodeEngineeringPanel({
       <section
         data-testid="drawer-node-blockers"
         style={{
-          border: `1px solid ${blockers.length > 0 ? '#F4A261' : '#2A3441'}`,
+          border: `1px solid ${blockers.length > 0 ? 'rgb(var(--scada-status-warn))' : 'rgb(var(--scada-panel-raised))'}`,
           borderRadius: 6,
-          background: blockers.length > 0 ? '#1B1510' : '#0E1218',
+          background: blockers.length > 0 ? 'rgb(var(--scada-bg))' : 'rgb(var(--scada-bg))',
           padding: 10,
         }}
       >
-        <div style={{ color: blockers.length > 0 ? '#F4A261' : '#13C45A', fontSize: 10, fontWeight: 800 }}>
+        <div style={{ color: blockers.length > 0 ? 'rgb(var(--scada-status-warn))' : 'rgb(var(--scada-status-ok))', fontSize: 10, fontWeight: 800 }}>
           {blockers.length > 0 ? `Braki danych (${blockers.length})` : 'Węzeł gotowy do konfiguracji'}
         </div>
         {blockers.length > 0 ? (
-          <ul style={{ margin: '7px 0 0', paddingLeft: 16, color: '#F8D8B0', fontSize: 10, lineHeight: 1.45 }}>
+          <ul style={{ margin: '7px 0 0', paddingLeft: 16, color: 'rgb(var(--scada-status-warn-ink))', fontSize: 10, lineHeight: 1.45 }}>
             {blockers.map((blocker) => <li key={blocker}>{blocker}</li>)}
           </ul>
         ) : (
-          <div style={{ marginTop: 6, color: '#8BE8B4', fontSize: 10 }}>
+          <div style={{ marginTop: 6, color: 'rgb(var(--scada-status-ok-ink))', fontSize: 10 }}>
             Dane węzła są spójne z widokiem SLD i kartą techniczną.
           </div>
         )}
@@ -1409,14 +1409,14 @@ function PlaceholderTabBody({
   if (kind === 'der' && tab === 'typ') {
     return (
       <div data-testid="drawer-der-type-selector">
-        <label style={{ display: 'block', marginBottom: 6, color: '#7E8790' }}>Typ DER</label>
+        <label style={{ display: 'block', marginBottom: 6, color: 'rgb(var(--scada-muted))' }}>Typ DER</label>
         <select
           data-testid="drawer-der-type-select"
           {...derForm.register('derKind')}
           style={{
-            background: '#171B20',
-            color: '#DDF7FF',
-            border: '1px solid #5A6878',
+            background: 'rgb(var(--scada-surface))',
+            color: 'rgb(var(--scada-text))',
+            border: '1px solid rgb(var(--scada-border))',
             padding: 6,
             borderRadius: 3,
             width: '100%',
@@ -1428,7 +1428,7 @@ function PlaceholderTabBody({
           <option value="FW">FW (farma wiatrowa)</option>
         </select>
         {derForm.formState.errors.derKind?.message && (
-          <div data-testid="drawer-der-type-error" style={{ marginTop: 6, color: '#F25F5F', fontSize: 10 }}>
+          <div data-testid="drawer-der-type-error" style={{ marginTop: 6, color: 'rgb(var(--scada-status-err))', fontSize: 10 }}>
             {derForm.formState.errors.derKind.message}
           </div>
         )}
@@ -1441,16 +1441,16 @@ function PlaceholderTabBody({
     const options = getDerCatalogOptions(currentDerKind, currentConnectionVariant);
     return (
       <div data-testid="drawer-der-inverter">
-        <label style={{ display: 'block', marginBottom: 6, color: '#7E8790', fontSize: 10, fontWeight: 700 }}>
+        <label style={{ display: 'block', marginBottom: 6, color: 'rgb(var(--scada-muted))', fontSize: 10, fontWeight: 700 }}>
           Przekształtnik z katalogu
         </label>
         <select
           data-testid="drawer-der-inverter-select"
           {...derForm.register('inverterCatalogRef')}
           style={{
-            background: '#171B20',
-            color: '#DDF7FF',
-            border: '1px solid #5A6878',
+            background: 'rgb(var(--scada-surface))',
+            color: 'rgb(var(--scada-text))',
+            border: '1px solid rgb(var(--scada-border))',
             padding: 6,
             borderRadius: 3,
             width: '100%',
@@ -1463,11 +1463,11 @@ function PlaceholderTabBody({
           ))}
         </select>
         {derForm.formState.errors.inverterCatalogRef?.message && (
-          <div data-testid="drawer-der-inverter-error" style={{ marginTop: 6, color: '#F25F5F', fontSize: 10 }}>
+          <div data-testid="drawer-der-inverter-error" style={{ marginTop: 6, color: 'rgb(var(--scada-status-err))', fontSize: 10 }}>
             {derForm.formState.errors.inverterCatalogRef.message}
           </div>
         )}
-        <div style={{ marginTop: 8, fontSize: 9, color: '#7E8790' }}>
+        <div style={{ marginTop: 8, fontSize: 9, color: 'rgb(var(--scada-muted))' }}>
           Powiązanie katalogowe dla {currentDerKind}; lista jest dopasowana do wariantu {currentConnectionVariant === 'nn_side' ? 'nN' : 'SN'}.
         </div>
       </div>
@@ -1482,7 +1482,7 @@ function PlaceholderTabBody({
       : [0.1, 0.25, 0.5, 1, 2];
     return (
       <div data-testid="drawer-der-power">
-        <label style={{ display: 'block', marginBottom: 6, color: '#7E8790', fontSize: 10, fontWeight: 700 }}>
+        <label style={{ display: 'block', marginBottom: 6, color: 'rgb(var(--scada-muted))', fontSize: 10, fontWeight: 700 }}>
           Moc czynna zadana [MW]
         </label>
         <input
@@ -1493,9 +1493,9 @@ function PlaceholderTabBody({
           data-testid="drawer-der-power-input"
           {...derForm.register('powerMw', { valueAsNumber: true })}
           style={{
-            background: '#171B20',
-            color: '#FFD166',
-            border: '1px solid #5A6878',
+            background: 'rgb(var(--scada-surface))',
+            color: 'rgb(var(--scada-status-warn-ink))',
+            border: '1px solid rgb(var(--scada-border))',
             padding: 6,
             borderRadius: 3,
             width: '100%',
@@ -1505,11 +1505,11 @@ function PlaceholderTabBody({
           }}
         />
         {derForm.formState.errors.powerMw?.message && (
-          <div data-testid="drawer-der-power-error" style={{ marginTop: 6, color: '#F25F5F', fontSize: 10 }}>
+          <div data-testid="drawer-der-power-error" style={{ marginTop: 6, color: 'rgb(var(--scada-status-err))', fontSize: 10 }}>
             {derForm.formState.errors.powerMw.message}
           </div>
         )}
-        <div style={{ marginTop: 8, fontSize: 9, color: '#7E8790' }}>Typowe rozmiary {currentDerKind}:</div>
+        <div style={{ marginTop: 8, fontSize: 9, color: 'rgb(var(--scada-muted))' }}>Typowe rozmiary {currentDerKind}:</div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
           {presets.map((mw) => (
             <button
@@ -1518,9 +1518,9 @@ function PlaceholderTabBody({
               data-testid={`drawer-der-power-preset-${Math.round(mw * 1000)}`}
               onClick={() => derForm.setValue('powerMw', mw, { shouldDirty: true, shouldValidate: true })}
               style={{
-                background: '#171B20',
-                color: '#88BBDD',
-                border: '1px solid #5A6878',
+                background: 'rgb(var(--scada-surface))',
+                color: 'rgb(var(--scada-text))',
+                border: '1px solid rgb(var(--scada-border))',
                 padding: '2px 6px',
                 borderRadius: 2,
                 fontSize: 10,
@@ -1541,14 +1541,14 @@ function PlaceholderTabBody({
     const connectionRegister = derForm.register('connectionVariant');
     return (
       <div data-testid="drawer-der-connection-variant">
-        <label style={{ display: 'block', marginBottom: 6, color: '#7E8790' }}>Punkt podłączenia</label>
+        <label style={{ display: 'block', marginBottom: 6, color: 'rgb(var(--scada-muted))' }}>Punkt podłączenia</label>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           {[
             { value: 'nn_side', label: 'Strona nN (po transformatorze SN/nN)' },
             { value: 'sn_side', label: 'Strona SN (przez dedykowane pole)' },
             { value: 'dedicated', label: 'Dedykowane przyłącze (osobna linia)' },
           ].map((opt) => (
-            <label key={opt.value} style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#DDF7FF' }}>
+            <label key={opt.value} style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'rgb(var(--scada-text))' }}>
               <input
                 type="radio"
                 name={connectionRegister.name}
@@ -1574,11 +1574,11 @@ function PlaceholderTabBody({
             </label>
           ))}
         </div>
-        <div data-testid="drawer-der-point-voltage" style={{ marginTop: 10, color: '#88BBDD', fontSize: 10, fontFamily: 'monospace' }}>
+        <div data-testid="drawer-der-point-voltage" style={{ marginTop: 10, color: 'rgb(var(--scada-text))', fontSize: 10, fontFamily: 'monospace' }}>
           Punkt przyłączenia: {pointVoltage.toFixed(3)} kV
         </div>
         {(derForm.formState.errors.connectionVariant?.message || derForm.formState.errors.pointVoltageKv?.message) && (
-          <div data-testid="drawer-der-connection-error" style={{ marginTop: 6, color: '#F25F5F', fontSize: 10 }}>
+          <div data-testid="drawer-der-connection-error" style={{ marginTop: 6, color: 'rgb(var(--scada-status-err))', fontSize: 10 }}>
             {derForm.formState.errors.connectionVariant?.message ?? derForm.formState.errors.pointVoltageKv?.message}
           </div>
         )}
@@ -1588,7 +1588,7 @@ function PlaceholderTabBody({
   if (kind === 'der' && tab === 'protection') {
     return (
       <div data-testid="drawer-der-protection">
-        <div style={{ fontSize: 10, color: '#7E8790', marginBottom: 6, fontWeight: 700 }}>
+        <div style={{ fontSize: 10, color: 'rgb(var(--scada-muted))', marginBottom: 6, fontWeight: 700 }}>
           Funkcje zabezpieczeniowe DER (PN-EN 50549-2 / IEC 60255)
         </div>
         <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 3 }}>
@@ -1604,8 +1604,8 @@ function PlaceholderTabBody({
               key={p.code}
               data-testid={`drawer-der-protection-${p.code}`}
               style={{
-                background: '#171B20',
-                border: '1px solid #2A3441',
+                background: 'rgb(var(--scada-surface))',
+                border: '1px solid rgb(var(--scada-panel-raised))',
                 borderRadius: 3,
                 padding: '5px 8px',
                 display: 'flex',
@@ -1614,12 +1614,12 @@ function PlaceholderTabBody({
                 fontSize: 10,
               }}
             >
-              <label style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#DDF7FF', cursor: 'pointer' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'rgb(var(--scada-text))', cursor: 'pointer' }}>
                 <input type="checkbox" defaultChecked={p.defaultEnabled} />
-                <span style={{ color: '#FFD166', fontFamily: 'monospace', fontWeight: 700 }}>[{p.code}]</span>
+                <span style={{ color: 'rgb(var(--scada-status-warn-ink))', fontFamily: 'monospace', fontWeight: 700 }}>[{p.code}]</span>
                 <span>{p.name}</span>
               </label>
-              <span style={{ color: '#88BBDD', fontFamily: 'monospace' }}>{p.setpoint}</span>
+              <span style={{ color: 'rgb(var(--scada-text))', fontFamily: 'monospace' }}>{p.setpoint}</span>
             </li>
           ))}
         </ul>
@@ -1631,10 +1631,10 @@ function PlaceholderTabBody({
     const rfgRegister = derForm.register('ncRfgModule');
     return (
       <div data-testid="drawer-der-rfg">
-        <label style={{ display: 'block', marginBottom: 6, color: '#7E8790' }}>NC RfG typ</label>
+        <label style={{ display: 'block', marginBottom: 6, color: 'rgb(var(--scada-muted))' }}>NC RfG typ</label>
         <div data-testid="drawer-der-rfg-types" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {['A', 'B', 'C', 'D'].map((t) => (
-            <label key={t} style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#DDF7FF' }}>
+            <label key={t} style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'rgb(var(--scada-text))' }}>
               <input
                 type="radio"
                 name={rfgRegister.name}
@@ -1651,7 +1651,7 @@ function PlaceholderTabBody({
             </label>
           ))}
         </div>
-        <div style={{ marginTop: 12, color: '#7E8790', fontSize: 10 }}>
+        <div style={{ marginTop: 12, color: 'rgb(var(--scada-muted))', fontSize: 10 }}>
           Grid code: PN-EN 50549 / IEEE 1547 / IEC 61400-21 (FW)
         </div>
       </div>
@@ -1660,7 +1660,7 @@ function PlaceholderTabBody({
   if (kind === 'bay' && tab === 'protection') {
     return (
       <div data-testid="drawer-bay-protection">
-        <div style={{ fontSize: 10, color: '#7E8790', marginBottom: 6, fontWeight: 700 }}>
+        <div style={{ fontSize: 10, color: 'rgb(var(--scada-muted))', marginBottom: 6, fontWeight: 700 }}>
           Zabezpieczenia pola (PN-EN 60255)
         </div>
         <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -1675,8 +1675,8 @@ function PlaceholderTabBody({
               key={p.code}
               data-testid={`drawer-bay-protection-${p.code.replace('/', '-')}`}
               style={{
-                background: '#171B20',
-                border: '1px solid #2A3441',
+                background: 'rgb(var(--scada-surface))',
+                border: '1px solid rgb(var(--scada-panel-raised))',
                 borderRadius: 3,
                 padding: '5px 8px',
                 display: 'flex',
@@ -1686,10 +1686,10 @@ function PlaceholderTabBody({
               }}
             >
               <div>
-                <span style={{ color: '#FFD166', fontFamily: 'monospace', fontWeight: 700 }}>[{p.code}]</span>
-                <span style={{ color: '#DDF7FF', marginLeft: 6 }}>{p.name}</span>
+                <span style={{ color: 'rgb(var(--scada-status-warn-ink))', fontFamily: 'monospace', fontWeight: 700 }}>[{p.code}]</span>
+                <span style={{ color: 'rgb(var(--scada-text))', marginLeft: 6 }}>{p.name}</span>
               </div>
-              <span style={{ color: '#88BBDD', fontFamily: 'monospace', fontSize: 9 }}>{p.tier}</span>
+              <span style={{ color: 'rgb(var(--scada-text))', fontFamily: 'monospace', fontSize: 9 }}>{p.tier}</span>
             </li>
           ))}
         </ul>
@@ -1710,24 +1710,24 @@ function PlaceholderTabBody({
     return (
       <div data-testid="drawer-cable-trasa">
         <dl style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 12px' }}>
-          <dt style={{ color: '#7E8790' }}>Typ ciągu</dt>
-          <dd data-testid="drawer-cable-run-kind" style={{ color: '#DDF7FF', fontFamily: 'monospace' }}>
+          <dt style={{ color: 'rgb(var(--scada-muted))' }}>Typ ciągu</dt>
+          <dd data-testid="drawer-cable-run-kind" style={{ color: 'rgb(var(--scada-text))', fontFamily: 'monospace' }}>
             {cableRunSpec?.runKind ? (runKindLabel[cableRunSpec.runKind] ?? cableRunSpec.runKind) : 'kablowy SN'}
           </dd>
-          <dt style={{ color: '#7E8790' }}>Wykonanie</dt>
-          <dd style={{ color: '#DDF7FF', fontFamily: 'monospace' }}>
+          <dt style={{ color: 'rgb(var(--scada-muted))' }}>Wykonanie</dt>
+          <dd style={{ color: 'rgb(var(--scada-text))', fontFamily: 'monospace' }}>
             {cableRunSpec?.segmentKind ? (segmentKindLabel[cableRunSpec.segmentKind] ?? cableRunSpec.segmentKind) : '—'}
           </dd>
-          <dt style={{ color: '#7E8790' }}>Długość</dt>
-          <dd data-testid="drawer-cable-length" style={{ color: '#FFD166', fontFamily: 'monospace' }}>
+          <dt style={{ color: 'rgb(var(--scada-muted))' }}>Długość</dt>
+          <dd data-testid="drawer-cable-length" style={{ color: 'rgb(var(--scada-status-warn-ink))', fontFamily: 'monospace' }}>
             {cableRunSpec?.lengthKm != null ? `${formatTechnicalNumberPl(cableRunSpec.lengthKm)} km` : '—'}
           </dd>
-          <dt style={{ color: '#7E8790' }}>Liczba segmentów</dt>
-          <dd data-testid="drawer-cable-segment-count" style={{ color: '#DDF7FF', fontFamily: 'monospace' }}>
+          <dt style={{ color: 'rgb(var(--scada-muted))' }}>Liczba segmentów</dt>
+          <dd data-testid="drawer-cable-segment-count" style={{ color: 'rgb(var(--scada-text))', fontFamily: 'monospace' }}>
             {cableRunSpec?.segmentCount ?? '—'}
           </dd>
-          <dt style={{ color: '#7E8790' }}>Liczba stacji</dt>
-          <dd data-testid="drawer-cable-station-count" style={{ color: '#DDF7FF', fontFamily: 'monospace' }}>
+          <dt style={{ color: 'rgb(var(--scada-muted))' }}>Liczba stacji</dt>
+          <dd data-testid="drawer-cable-station-count" style={{ color: 'rgb(var(--scada-text))', fontFamily: 'monospace' }}>
             {cableRunSpec?.stationCount ?? '—'}
           </dd>
         </dl>
@@ -1738,16 +1738,16 @@ function PlaceholderTabBody({
     return (
       <div data-testid="drawer-cable-parametry">
         <dl style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 12px' }}>
-          <dt style={{ color: '#7E8790' }}>Typ kabla</dt>
-          <dd style={{ color: '#DDF7FF', fontFamily: 'monospace' }}>XRUHKXS 1×120</dd>
-          <dt style={{ color: '#7E8790' }}>Przekrój żyły</dt>
-          <dd style={{ color: '#DDF7FF', fontFamily: 'monospace' }}>120 mm²</dd>
-          <dt style={{ color: '#7E8790' }}>Materiał</dt>
-          <dd style={{ color: '#DDF7FF', fontFamily: 'monospace' }}>Al</dd>
-          <dt style={{ color: '#7E8790' }}>Ampacity I_max</dt>
-          <dd style={{ color: '#FFD166', fontFamily: 'monospace' }}>270 A</dd>
-          <dt style={{ color: '#7E8790' }}>Norma</dt>
-          <dd style={{ color: '#88BBDD', fontFamily: 'monospace', fontSize: 10 }}>PN-HD 620 S2</dd>
+          <dt style={{ color: 'rgb(var(--scada-muted))' }}>Typ kabla</dt>
+          <dd style={{ color: 'rgb(var(--scada-text))', fontFamily: 'monospace' }}>XRUHKXS 1×120</dd>
+          <dt style={{ color: 'rgb(var(--scada-muted))' }}>Przekrój żyły</dt>
+          <dd style={{ color: 'rgb(var(--scada-text))', fontFamily: 'monospace' }}>120 mm²</dd>
+          <dt style={{ color: 'rgb(var(--scada-muted))' }}>Materiał</dt>
+          <dd style={{ color: 'rgb(var(--scada-text))', fontFamily: 'monospace' }}>Al</dd>
+          <dt style={{ color: 'rgb(var(--scada-muted))' }}>Ampacity I_max</dt>
+          <dd style={{ color: 'rgb(var(--scada-status-warn-ink))', fontFamily: 'monospace' }}>270 A</dd>
+          <dt style={{ color: 'rgb(var(--scada-muted))' }}>Norma</dt>
+          <dd style={{ color: 'rgb(var(--scada-text))', fontFamily: 'monospace', fontSize: 10 }}>PN-HD 620 S2</dd>
         </dl>
       </div>
     );
@@ -1756,33 +1756,33 @@ function PlaceholderTabBody({
     const loading = cableRunSpec?.maxLoadingPct;
     const vdrop = cableRunSpec?.maxVoltageDropPct;
     const loadingColor = loading == null
-      ? '#7E8790'
-      : loading >= 95 ? '#F25F5F'
-      : loading >= 75 ? '#FFD166'
-      : '#13C45A';
+      ? 'rgb(var(--scada-muted))'
+      : loading >= 95 ? 'rgb(var(--scada-status-err))'
+      : loading >= 75 ? 'rgb(var(--scada-status-warn-ink))'
+      : 'rgb(var(--scada-status-ok))';
     const vdropColor = vdrop == null
-      ? '#7E8790'
-      : Math.abs(vdrop) >= 8 ? '#F25F5F'
-      : Math.abs(vdrop) >= 5 ? '#FFD166'
-      : '#13C45A';
+      ? 'rgb(var(--scada-muted))'
+      : Math.abs(vdrop) >= 8 ? 'rgb(var(--scada-status-err))'
+      : Math.abs(vdrop) >= 5 ? 'rgb(var(--scada-status-warn-ink))'
+      : 'rgb(var(--scada-status-ok))';
     return (
       <div data-testid="drawer-cable-spadek">
         <dl style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 12px' }}>
-          <dt style={{ color: '#7E8790' }}>ΔU max [%]</dt>
+          <dt style={{ color: 'rgb(var(--scada-muted))' }}>ΔU max [%]</dt>
           <dd data-testid="drawer-cable-vdrop-total" style={{ color: vdropColor, fontFamily: 'monospace', fontWeight: 700 }}>
             {vdrop != null ? `${vdrop.toFixed(2)} %` : '—'}
           </dd>
-          <dt style={{ color: '#7E8790' }}>Loading max [%]</dt>
+          <dt style={{ color: 'rgb(var(--scada-muted))' }}>Loading max [%]</dt>
           <dd data-testid="drawer-cable-loading" style={{ color: loadingColor, fontFamily: 'monospace', fontWeight: 700 }}>
             {loading != null ? `${loading.toFixed(1)} %` : '—'}
           </dd>
-          <dt style={{ color: '#7E8790' }}>Klasa zgodności</dt>
-          <dd style={{ color: '#88BBDD', fontFamily: 'monospace', fontSize: 10 }}>
+          <dt style={{ color: 'rgb(var(--scada-muted))' }}>Klasa zgodności</dt>
+          <dd style={{ color: 'rgb(var(--scada-text))', fontFamily: 'monospace', fontSize: 10 }}>
             PN-EN 50160 (±10%)
           </dd>
         </dl>
         {(loading == null && vdrop == null) && (
-          <div style={{ marginTop: 8, fontSize: 9, color: '#7E8790', fontStyle: 'italic' }}>
+          <div style={{ marginTop: 8, fontSize: 9, color: 'rgb(var(--scada-muted))', fontStyle: 'italic' }}>
             Wartości z LF overlay payload (load_flow analysis). Uruchom analizę Power Flow.
           </div>
         )}
@@ -1795,26 +1795,26 @@ function PlaceholderTabBody({
       : aps?.actualState === 'open' ? 'otwarty'
       : aps?.actualState === 'unknown' ? 'nieznany'
       : 'zamknięty';
-    const stateColor = aps?.actualState === 'open' ? '#FFD166'
-      : aps?.actualState === 'unknown' ? '#7E8790'
-      : '#13C45A';
+    const stateColor = aps?.actualState === 'open' ? 'rgb(var(--scada-status-warn-ink))'
+      : aps?.actualState === 'unknown' ? 'rgb(var(--scada-muted))'
+      : 'rgb(var(--scada-status-ok))';
     return (
       <div data-testid="drawer-apparatus-state">
         <dl style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 12px' }}>
-          <dt style={{ color: '#7E8790' }}>Stan aktualny</dt>
+          <dt style={{ color: 'rgb(var(--scada-muted))' }}>Stan aktualny</dt>
           <dd data-testid="drawer-apparatus-actual-state" style={{ color: stateColor, fontFamily: 'monospace', fontWeight: 700 }}>{stateLabel}</dd>
-          <dt style={{ color: '#7E8790' }}>Tryb sterowania</dt>
-          <dd style={{ color: '#DDF7FF', fontFamily: 'monospace' }}>{aps?.controlMode ?? 'LOKALNY'}</dd>
-          <dt style={{ color: '#7E8790' }}>Komunikacja</dt>
-          <dd style={{ color: aps?.communicationOk === false ? '#F25F5F' : '#13C45A', fontFamily: 'monospace' }}>
+          <dt style={{ color: 'rgb(var(--scada-muted))' }}>Tryb sterowania</dt>
+          <dd style={{ color: 'rgb(var(--scada-text))', fontFamily: 'monospace' }}>{aps?.controlMode ?? 'LOKALNY'}</dd>
+          <dt style={{ color: 'rgb(var(--scada-muted))' }}>Komunikacja</dt>
+          <dd style={{ color: aps?.communicationOk === false ? 'rgb(var(--scada-status-err))' : 'rgb(var(--scada-status-ok))', fontFamily: 'monospace' }}>
             {aps?.communicationOk === false ? 'BŁĄD' : 'OK'}
           </dd>
-          <dt style={{ color: '#7E8790' }}>Uzależnienie operacyjne</dt>
-          <dd style={{ color: aps?.interlockBlocked ? '#F25F5F' : '#DDF7FF', fontFamily: 'monospace' }}>
+          <dt style={{ color: 'rgb(var(--scada-muted))' }}>Uzależnienie operacyjne</dt>
+          <dd style={{ color: aps?.interlockBlocked ? 'rgb(var(--scada-status-err))' : 'rgb(var(--scada-text))', fontFamily: 'monospace' }}>
             {aps?.interlockBlocked ? 'aktywne' : 'nieaktywne'}
           </dd>
-          <dt style={{ color: '#7E8790' }}>Ostatnia zmiana</dt>
-          <dd style={{ color: '#88BBDD', fontFamily: 'monospace', fontSize: 10 }}>
+          <dt style={{ color: 'rgb(var(--scada-muted))' }}>Ostatnia zmiana</dt>
+          <dd style={{ color: 'rgb(var(--scada-text))', fontFamily: 'monospace', fontSize: 10 }}>
             {aps?.lastChangeAt ?? '—'}
           </dd>
         </dl>
@@ -1824,7 +1824,7 @@ function PlaceholderTabBody({
   if (kind === 'apparatus' && tab === 'settings') {
     return (
       <div data-testid="drawer-apparatus-settings">
-        <div style={{ fontSize: 10, color: '#7E8790', marginBottom: 6, fontWeight: 700 }}>
+        <div style={{ fontSize: 10, color: 'rgb(var(--scada-muted))', marginBottom: 6, fontWeight: 700 }}>
           Nastawy (IEC 60255 / ANSI)
         </div>
         <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -1837,19 +1837,19 @@ function PlaceholderTabBody({
               key={p.code}
               data-testid={`drawer-apparatus-setting-${p.code}`}
               style={{
-                background: '#171B20',
-                border: '1px solid #2A3441',
+                background: 'rgb(var(--scada-surface))',
+                border: '1px solid rgb(var(--scada-panel-raised))',
                 borderRadius: 3,
                 padding: '6px 8px',
                 fontSize: 10,
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: '#FFD166', fontFamily: 'monospace', fontWeight: 700 }}>[{p.code}]</span>
-                <span style={{ color: '#88BBDD', fontFamily: 'monospace' }}>{p.delay}</span>
+                <span style={{ color: 'rgb(var(--scada-status-warn-ink))', fontFamily: 'monospace', fontWeight: 700 }}>[{p.code}]</span>
+                <span style={{ color: 'rgb(var(--scada-text))', fontFamily: 'monospace' }}>{p.delay}</span>
               </div>
-              <div style={{ color: '#DDF7FF', marginTop: 2 }}>{p.name}</div>
-              <div style={{ color: '#88BBDD', fontFamily: 'monospace', marginTop: 2 }}>I_set = {p.setpoint}</div>
+              <div style={{ color: 'rgb(var(--scada-text))', marginTop: 2 }}>{p.name}</div>
+              <div style={{ color: 'rgb(var(--scada-text))', fontFamily: 'monospace', marginTop: 2 }}>I_set = {p.setpoint}</div>
             </li>
           ))}
         </ul>
@@ -1863,20 +1863,20 @@ function PlaceholderTabBody({
       unknown: 'nieznany',
     };
     const stateColor: Record<string, string> = {
-      closed: '#13C45A',
-      open: '#F25F5F',
-      unknown: '#7E8790',
+      closed: 'rgb(var(--scada-status-ok))',
+      open: 'rgb(var(--scada-status-err))',
+      unknown: 'rgb(var(--scada-muted))',
     };
     if (!apparatusSpec || apparatusSpec.length === 0) {
       return (
-        <div data-testid="drawer-bay-apparatus-empty" style={{ color: '#7E8790', fontStyle: 'italic', fontSize: 10 }}>
+        <div data-testid="drawer-bay-apparatus-empty" style={{ color: 'rgb(var(--scada-muted))', fontStyle: 'italic', fontSize: 10 }}>
           Aparatura pola wynika z wariantu katalogowego rozdzielnicy.
         </div>
       );
     }
     return (
       <div data-testid="drawer-bay-apparatus">
-        <div style={{ fontSize: 10, color: '#7E8790', marginBottom: 6, fontWeight: 700 }}>
+        <div style={{ fontSize: 10, color: 'rgb(var(--scada-muted))', marginBottom: 6, fontWeight: 700 }}>
           Aparatura ({apparatusSpec.length})
         </div>
         <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -1887,8 +1887,8 @@ function PlaceholderTabBody({
                 key={app.id}
                 data-testid={`drawer-bay-app-${app.id}`}
                 style={{
-                  background: '#171B20',
-                  border: '1px solid #2A3441',
+                  background: 'rgb(var(--scada-surface))',
+                  border: '1px solid rgb(var(--scada-panel-raised))',
                   borderRadius: 3,
                   padding: '6px 8px',
                   display: 'flex',
@@ -1898,10 +1898,10 @@ function PlaceholderTabBody({
                 }}
               >
                 <div>
-                  <span style={{ color: '#FFD166', fontWeight: 700, fontFamily: 'monospace' }}>
+                  <span style={{ color: 'rgb(var(--scada-status-warn-ink))', fontWeight: 700, fontFamily: 'monospace' }}>
                     [{app.kind}]
                   </span>
-                  <span style={{ color: '#DDF7FF', marginLeft: 6 }}>{app.label}</span>
+                  <span style={{ color: 'rgb(var(--scada-text))', marginLeft: 6 }}>{app.label}</span>
                 </div>
                 <span
                   data-testid={`drawer-bay-app-${app.id}-state`}
@@ -1919,13 +1919,13 @@ function PlaceholderTabBody({
   if (kind === 'station' && tab === 'der') {
     const totalMw = (existingDers ?? []).reduce((sum, d) => sum + (d.pMw ?? 0), 0);
     const colorFor = (k: 'PV' | 'BESS' | 'FW' | null) =>
-      k === 'PV' ? '#FFD166' : k === 'BESS' ? '#7DD3FC' : k === 'FW' ? '#7EE0B5' : '#7E8790';
+      k === 'PV' ? 'rgb(var(--scada-status-warn-ink))' : k === 'BESS' ? 'rgb(var(--scada-text))' : k === 'FW' ? 'rgb(var(--scada-status-ok-ink))' : 'rgb(var(--scada-muted))';
     return (
       <div data-testid="drawer-station-der">
-        <div style={{ fontSize: 10, color: '#7E8790', marginBottom: 6, fontWeight: 700 }}>
+        <div style={{ fontSize: 10, color: 'rgb(var(--scada-muted))', marginBottom: 6, fontWeight: 700 }}>
           Układy PV/BESS/FW ({(existingDers ?? []).length})
           {totalMw > 0 && (
-            <span data-testid="drawer-station-der-total" style={{ marginLeft: 8, color: '#FFD166' }}>
+            <span data-testid="drawer-station-der-total" style={{ marginLeft: 8, color: 'rgb(var(--scada-status-warn-ink))' }}>
               Σ {formatMwPl(totalMw)}
             </span>
           )}
@@ -1937,7 +1937,7 @@ function PlaceholderTabBody({
                 key={der.id}
                 data-testid={`drawer-station-der-${der.id}`}
                 style={{
-                  background: '#171B20',
+                  background: 'rgb(var(--scada-surface))',
                   border: `1px solid ${colorFor(der.kind)}40`,
                   borderRadius: 3,
                   padding: '6px 8px',
@@ -1949,16 +1949,16 @@ function PlaceholderTabBody({
               >
                 <div>
                   <span style={{ color: colorFor(der.kind), fontWeight: 700 }}>{der.kind ?? 'DER'}</span>
-                  <span style={{ color: '#DDF7FF', marginLeft: 6 }}>{formatExistingDerName(der, derIndex)}</span>
+                  <span style={{ color: 'rgb(var(--scada-text))', marginLeft: 6 }}>{formatExistingDerName(der, derIndex)}</span>
                 </div>
-                <span style={{ color: '#88BBDD', fontFamily: 'monospace', fontSize: 10 }}>
+                <span style={{ color: 'rgb(var(--scada-text))', fontFamily: 'monospace', fontSize: 10 }}>
                   {der.pMw != null ? formatMwPl(der.pMw) : '—'}
                 </span>
               </li>
             ))}
           </ul>
         ) : (
-          <div data-testid="drawer-station-der-empty" style={{ color: '#7E8790', fontStyle: 'italic', fontSize: 10 }}>
+          <div data-testid="drawer-station-der-empty" style={{ color: 'rgb(var(--scada-muted))', fontStyle: 'italic', fontSize: 10 }}>
             Układy PV/BESS/FW dodaje się z palety jako gotowy wariant przyłączenia.
           </div>
         )}
@@ -1969,18 +1969,18 @@ function PlaceholderTabBody({
     return (
       <div data-testid="drawer-nn-side">
         <dl style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 12px', marginBottom: 12 }}>
-          <dt style={{ color: '#7E8790' }}>Szyna nN U</dt>
-          <dd data-testid="drawer-nn-bus-voltage" style={{ color: '#FFD166', fontFamily: 'monospace' }}>
+          <dt style={{ color: 'rgb(var(--scada-muted))' }}>Szyna nN U</dt>
+          <dd data-testid="drawer-nn-bus-voltage" style={{ color: 'rgb(var(--scada-status-warn-ink))', fontFamily: 'monospace' }}>
             {nnSpec?.busVoltageKv != null ? formatKvPl(nnSpec.busVoltageKv) : `${formatKvPl(0.4)} (wariant katalogowy)`}
           </dd>
-          <dt style={{ color: '#7E8790' }}>Liczba odpływów</dt>
-          <dd data-testid="drawer-nn-loads-count" style={{ color: '#DDF7FF', fontFamily: 'monospace' }}>
+          <dt style={{ color: 'rgb(var(--scada-muted))' }}>Liczba odpływów</dt>
+          <dd data-testid="drawer-nn-loads-count" style={{ color: 'rgb(var(--scada-text))', fontFamily: 'monospace' }}>
             {nnSpec?.loads?.length ?? 0}
           </dd>
         </dl>
         {nnSpec?.loads && nnSpec.loads.length > 0 ? (
           <>
-            <div style={{ fontSize: 10, color: '#7E8790', marginBottom: 6, fontWeight: 700 }}>
+            <div style={{ fontSize: 10, color: 'rgb(var(--scada-muted))', marginBottom: 6, fontWeight: 700 }}>
               Odpływy nN
             </div>
             <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -1989,8 +1989,8 @@ function PlaceholderTabBody({
                   key={load.id}
                   data-testid={`drawer-nn-load-${load.id}`}
                   style={{
-                    background: '#171B20',
-                    border: '1px solid #2A3441',
+                    background: 'rgb(var(--scada-surface))',
+                    border: '1px solid rgb(var(--scada-panel-raised))',
                     borderRadius: 3,
                     padding: '6px 8px',
                     display: 'flex',
@@ -1998,8 +1998,8 @@ function PlaceholderTabBody({
                     fontSize: 10,
                   }}
                 >
-                  <span style={{ color: '#DDF7FF' }}>{load.name ?? load.id}</span>
-                  <span style={{ color: '#88BBDD', fontFamily: 'monospace' }}>
+                  <span style={{ color: 'rgb(var(--scada-text))' }}>{load.name ?? load.id}</span>
+                  <span style={{ color: 'rgb(var(--scada-text))', fontFamily: 'monospace' }}>
                     {load.pKw != null ? formatKwPl(load.pKw) : '—'}
                     {load.qKvar != null ? ` / ${formatKvarPl(load.qKvar)}` : ''}
                   </span>
@@ -2008,7 +2008,7 @@ function PlaceholderTabBody({
             </ul>
           </>
         ) : (
-          <div data-testid="drawer-nn-no-loads" style={{ color: '#7E8790', fontStyle: 'italic', fontSize: 10 }}>
+          <div data-testid="drawer-nn-no-loads" style={{ color: 'rgb(var(--scada-muted))', fontStyle: 'italic', fontSize: 10 }}>
             Odpływy nN konfigurowane z wariantu stacji.
           </div>
         )}
@@ -2018,7 +2018,7 @@ function PlaceholderTabBody({
   if (kind === 'station' && tab === 'rozdzielnica') {
     if (!baysSpec || baysSpec.length === 0) {
       return (
-        <div data-testid="drawer-rozdzielnica-empty" style={{ color: '#7E8790', fontStyle: 'italic' }}>
+        <div data-testid="drawer-rozdzielnica-empty" style={{ color: 'rgb(var(--scada-muted))', fontStyle: 'italic' }}>
           {switchgearDescription ?? 'Rozdzielnica SN: układ pól zgodny z typem stacji.'}
         </div>
       );
@@ -2034,7 +2034,7 @@ function PlaceholderTabBody({
     };
     return (
       <div data-testid="drawer-rozdzielnica-bays">
-        <div style={{ fontSize: 10, color: '#7E8790', marginBottom: 6, fontWeight: 700 }}>
+        <div style={{ fontSize: 10, color: 'rgb(var(--scada-muted))', marginBottom: 6, fontWeight: 700 }}>
           Pola SN ({baysSpec.length})
         </div>
         <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -2043,8 +2043,8 @@ function PlaceholderTabBody({
               key={bay.id}
               data-testid={`drawer-rozdzielnica-bay-${bay.id}`}
               style={{
-                background: '#171B20',
-                border: '1px solid #2A3441',
+                background: 'rgb(var(--scada-surface))',
+                border: '1px solid rgb(var(--scada-panel-raised))',
                 borderRadius: 3,
                 padding: '6px 8px',
                 display: 'flex',
@@ -2053,15 +2053,15 @@ function PlaceholderTabBody({
               }}
             >
               <div>
-                <div style={{ color: '#DDF7FF', fontWeight: 600, fontSize: 11 }}>
+                <div style={{ color: 'rgb(var(--scada-text))', fontWeight: 600, fontSize: 11 }}>
                   {bay.bayNumber ? `Q${bay.bayNumber}` : (bay.feederShortName ?? bay.name ?? bay.id)}
                 </div>
-                <div style={{ color: '#88BBDD', fontSize: 9 }}>
+                <div style={{ color: 'rgb(var(--scada-text))', fontSize: 9 }}>
                   {bay.bayRole ? (roleLabel[bay.bayRole] ?? bay.bayRole) : 'Pole'}
                   {bay.feederShortName && bay.bayNumber ? ` · ${bay.feederShortName}` : ''}
                 </div>
               </div>
-              <div style={{ fontSize: 9, color: '#7E8790', fontFamily: 'monospace' }}>{bay.bayRole ?? '—'}</div>
+              <div style={{ fontSize: 9, color: 'rgb(var(--scada-muted))', fontFamily: 'monospace' }}>{bay.bayRole ?? '—'}</div>
             </li>
           ))}
         </ul>
@@ -2069,7 +2069,7 @@ function PlaceholderTabBody({
     );
   }
   return (
-    <div style={{ color: '#7E8790' }} data-testid={`drawer-technical-note-${kind}-${tab}`}>
+    <div style={{ color: 'rgb(var(--scada-muted))' }} data-testid={`drawer-technical-note-${kind}-${tab}`}>
       Karta techniczna obiektu. Zmiany układu wykonaj akcją kontekstową albo w pełnym widoku.
     </div>
   );

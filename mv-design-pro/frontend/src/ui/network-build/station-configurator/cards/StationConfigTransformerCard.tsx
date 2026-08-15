@@ -191,18 +191,18 @@ export function StationConfigTransformerCard(
                         type="button"
                         data-testid={`tr-catalog-apply-${tr.transformerId}`}
                         onClick={() => onChange?.(tr.transformerId, { catalogRef: recommendedCatalog.id })}
-                        className="rounded border border-emerald-400 px-2 py-1 font-semibold text-emerald-200 transition hover:bg-emerald-950/40"
+                        className="rounded border border-sygnal-ok px-2 py-1 font-semibold text-sygnal-ok-tusz transition hover:bg-sygnal-ok-tlo"
                       >
                         Zastosuj rekomendację: {recommendedCatalog.name}
                       </button>
                     ) : null}
                     {selectedCatalog && !selectedCatalog.adequatePower && (
-                      <span className="rounded border border-amber-500/50 bg-amber-950/30 px-2 py-1 text-amber-200">
+                      <span className="rounded border border-sygnal-uwaga bg-sygnal-uwaga-tlo px-2 py-1 text-sygnal-uwaga-tusz">
                         moc poniżej aktualnego zapotrzebowania
                       </span>
                     )}
                     {transformerCatalogError && (
-                      <span className="rounded border border-red-500/50 bg-red-950/30 px-2 py-1 text-red-200">
+                      <span className="rounded border border-sygnal-blokada bg-sygnal-blokada-tlo px-2 py-1 text-sygnal-blokada-tusz">
                         {transformerCatalogError}
                       </span>
                     )}

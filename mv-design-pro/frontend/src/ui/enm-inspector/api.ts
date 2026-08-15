@@ -73,11 +73,22 @@ export async function fetchEnmV2Projection(
 /**
  * Pobierz raport zgodności referencyjnej + Reference Score (Reference
  * Engine V1, spec §9).
+ *
+ * `packIds` — opcjonalne ZAWĘŻENIE oceny do wskazanych pakietów (parametr
+ * `?packs=a,b` końcówki; pominięty ⇒ backend ocenia WSZYSTKIE pakiety
+ * rejestru). Zawężenie jest wyborem projektanta („oceniam wg tego
+ * standardu"), nie domysłem UI — identyfikatory pochodzą wyłącznie z listy
+ * `GET /api/reference/packs`. Kolejność normalizowana (sort), żeby ten sam
+ * wybór dawał ten sam adres — bez tego cache/porównania zapytań rozjeżdżają
+ * się przy identycznym zbiorze w innej kolejności.
  */
 export async function fetchReferenceCompliance(
   caseId: string,
+  packIds?: readonly string[],
 ): Promise<ReferenceComplianceReport> {
-  const response = await fetch(`${API_BASE}/cases/${caseId}/reference/compliance`);
+  const zawezenie = packIds && packIds.length > 0 ? [...packIds].sort() : null;
+  const query = zawezenie ? `?packs=${encodeURIComponent(zawezenie.join(','))}` : '';
+  const response = await fetch(`${API_BASE}/cases/${caseId}/reference/compliance${query}`);
   if (!response.ok) {
     throw new Error(`Błąd pobierania zgodności referencyjnej: ${response.statusText}`);
   }

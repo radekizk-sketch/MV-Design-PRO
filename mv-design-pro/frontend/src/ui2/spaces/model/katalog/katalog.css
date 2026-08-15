@@ -29,6 +29,11 @@
   border-radius: var(--mvd-katalog-promien);
   padding: var(--mvd-katalog-odstep);
   background: var(--mvd-katalog-tlo-panel);
+  /* Kolumna siatki domyślnie ma `min-width: auto`, więc najdłuższe zdanie
+     definicji parametru rozpychało kartę POZA obszar okna: opisy norm ucinały
+     się na krawędzi, a kolumna wartości znikała z ekranu. Widać to było dopiero
+     na zrzucie żywej aplikacji (bramka 6). */
+  min-width: 0;
 }
 
 .mvd-katalog__kategoria-btn {
@@ -90,11 +95,17 @@
 
 .mvd-katalog__param {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 8px;
   align-items: baseline;
   padding: 4px 0;
   border-bottom: 1px dotted var(--mvd-katalog-obramowanie);
+}
+
+/* Opis parametru ma się ZAWIJAĆ, a nie rozpychać wiersza (patrz `min-width`
+   karty powyżej). Wartość liczbowa obok pozostaje w jednej linii. */
+.mvd-katalog__param > :first-child {
+  min-width: 0;
 }
 
 .mvd-katalog__param-symbol {
@@ -113,6 +124,21 @@
   font-family: var(--mvd-font-mono);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+}
+
+/* Pochodzenie danych bywa ZDANIEM (nota weryfikacyjna), nie liczbą: w układzie
+   „etykieta | wartość do prawej" taka wartość albo rozpychała wiersz, albo —
+   po zawinięciu — wychodziła poza swoją kolumnę i nachodziła na etykietę.
+   Wiersze tekstowe dostają więc własny podział: etykieta na swoją szerokość,
+   zdanie zawijane w reszcie wiersza. */
+.mvd-katalog__param--tekst {
+  grid-template-columns: max-content minmax(0, 1fr);
+}
+
+.mvd-katalog__param-wartosc--tekst {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: left;
 }
 
 .mvd-katalog__uzycie-btn {

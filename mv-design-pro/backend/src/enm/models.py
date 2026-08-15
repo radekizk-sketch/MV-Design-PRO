@@ -159,6 +159,17 @@ class ENMHeader(BaseModel):
     switching_snapshot_hash: str | None = None
     """Hash TYLKO stanow lacznikow."""
 
+    connection_conditions: ConnectionConditions | None = None
+    """Warunki przyłączenia OSD (karta K2 FLOW EKSPERT+; dane WEJŚCIOWE
+    projektu). NAPRAWA DEFEKTU UTRWALANIA (karta POMIAR-RODZAJ, przy okazji
+    walidacji 5 MW z V12K-336): operacja `set_connection_conditions` zapisywała
+    blok do surowego słownika nagłówka, ale pole NIE było zadeklarowane w tym
+    modelu — każda walidacja (`EnergyNetworkModel.model_validate`) po drodze
+    persystencji CICHO go gubiła. Pole jest wykluczone z odcisków ENM (jak
+    pozostałe pola zmienne nagłówka) — dane wejściowe dokumentu OSD czytane są
+    w warstwie interpretacji, nie przez solver, więc istniejące odciski
+    pozostają bajtowo niezmienione."""
+
 
 # ---------------------------------------------------------------------------
 # Bus (node)
@@ -435,6 +446,21 @@ class ShuntCapacitor(ENMElement):
 # ---------------------------------------------------------------------------
 # Generator
 # ---------------------------------------------------------------------------
+
+#: Rodzaje generatorow ENM bedace ZRODLAMI PRZEKSZTALTNIKOWYMI (DER) — dokladnie
+#: te z Literalu ``Generator.gen_type`` poza ``synchronous``. Jedno zrodlo
+#: prawdy dla predykatu "czy generator jest DER": bramy gotowosci
+#: (``enm/domain_operations.py``), walidator E028/E029 (``enm/validator.py``)
+#: i most zgodnosci NC RfG (``application/ncrfg_compliance/model_bridge.py``)
+#: musza obejmowac te sama klase urzadzen — rozjazd zbiorow oznacza urzadzenie
+#: ostrzegane, ktorego bieg nie testuje (albo odwrotnie).
+#:
+#: UWAGA — to NIE jest klasyfikacja zwarciowa z ``enm/mapping.py``
+#: (tam pelne przeksztaltniki IEC 60909; ``fw_dfig``/``fw_scig`` to maszyny
+#: wirujace). Do certyfikacji PTPiREE i bram DER naleza rowniez one.
+GEN_TYPES_PRZEKSZTALTNIKOWE: frozenset[str] = frozenset(
+    {"pv_inverter", "wind_inverter", "fw_pmsg", "fw_dfig", "fw_scig", "bess"}
+)
 
 
 class Generator(ENMElement):
@@ -845,6 +871,11 @@ class Substation(ENMElement):
     construction_type: (
         Literal["wnetrzowa", "kontenerowa", "slupowa", "prefabrykowana", "inna"] | None
     ) = None
+    # B-4: oznaczenie stacji na dokumentacji (np. "ST-15/0,4-01"). Opcjonalne i
+    # addytywne — None wykluczane z odcisku ENM (exclude_none), więc istniejące
+    # fixture'y i hashe pozostają nietknięte. Konsumenci: drzewo projektu,
+    # kreator stacji, karta techniczna.
+    designation: str | None = None
 
 
 class GPZSection(BaseModel):

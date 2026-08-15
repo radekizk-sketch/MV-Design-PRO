@@ -45,6 +45,23 @@ jobs:
         working-directory: mv-design-pro/frontend
         run: npm run test:e2e:setup:real
 
+      # Dwa łańcuchy krytyczne w JEDNYM wywołaniu Playwrighta (`test:e2e:real`):
+      #   - critical-run-flow     — projekt → model → gotowość → bieg → wyniki,
+      #   - critical-oze-evidence — kreator OZE → tabliczka PTPiREE → gotowość →
+      #     bieg NC RfG → dowód na ekranie → certyfikat zgodności (z case_id).
+      # Jedno wywołanie, a nie drugi krok workflow, bo `webServer` Playwrighta
+      # startuje backend i vite RAZ na wywołanie: osobny krok płaciłby ponownie
+      # pełny zimny rozruch (boot API + zimny transform grafu modułów), zamiast
+      # tylko czasu nowego specu.
       - name: Run real-backend E2E smoke
         working-directory: mv-design-pro/frontend
         run: npm run test:e2e:real
+
+      # KD-11: regresja użytkowa z odbioru KD-8 („Ukryto 35 opisów" — rysunek
+      # rozwiniętego GPZ bez ANI JEDNEGO podpisu). Spec mierzy na żywej
+      # aplikacji, że po rozwinięciu bloku i po „Dopasuj widok" tożsamość
+      # KAŻDEJ stacji Z MODELU jest na rysunku, nic z niej nie jest porzucone,
+      # a ukryte są wyłącznie opisy szczegółowe (i wracają po przybliżeniu).
+      - name: Run KD-11 identity labels E2E (real backend)
+        working-directory: mv-design-pro/frontend
+        run: node ./scripts/playwright-run-real.mjs e2e/kd11-tozsamosc-etykiet.spec.ts

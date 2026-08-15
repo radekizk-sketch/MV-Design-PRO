@@ -3,6 +3,7 @@
  */
 export {
   ROUTES,
+  ALIAS_ROUTES,
   ANALYSIS_ROUTE_ALIASES,
   getCurrentRoute,
   getRouteByHash,
@@ -20,7 +21,6 @@ export {
   navigateToCompare,
   navigateToNetworkBuild,
   navigateToCaseConfig,
-  navigateToSwitchgear,
   navigateToEnmInspector,
   navigateToFaultScenarios,
   navigateToCatalog,

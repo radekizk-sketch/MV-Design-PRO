@@ -215,6 +215,22 @@ describe('useExecutionRunsStore', () => {
       expect(state.isLoadingRuns).toBe(false);
     });
 
+    it('nie zatruwa store odpowiedzią bez tablicy runs (błąd protokołu → runError, runs bez zmian)', async () => {
+      // Defekt K4: payload {} (np. atrapa API bez tego endpointu) ustawiał
+      // runs=undefined i wywracał konsumentów iterujących („runs is not
+      // iterable" w drzewie przebiegów powłoki). Kontrakt pola: ExecutionRun[].
+      vi.mocked(api.listRuns).mockResolvedValue(
+        {} as unknown as Awaited<ReturnType<typeof api.listRuns>>,
+      );
+
+      await useExecutionRunsStore.getState().loadRuns('case-001');
+
+      const state = useExecutionRunsStore.getState();
+      expect(state.runs).toEqual([]);
+      expect(state.runError).toBe('Niepoprawna odpowiedź listy przebiegów (brak pola runs)');
+      expect(state.isLoadingRuns).toBe(false);
+    });
+
     it('should set loading state during API call', async () => {
       let resolvePromise: (value: unknown) => void;
       const promise = new Promise((resolve) => {

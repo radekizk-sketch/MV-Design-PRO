@@ -22,6 +22,9 @@ import { ANALYSIS_TYPE_LABELS } from '../../../ui/study-cases/types';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import { useShellStore } from '../../shell/useShellStore';
+import { przejdzDoPrzestrzeni } from '../../shell/przejsciaPrzestrzeni';
+import { useAkcjaDodajZrodloOze } from '../../wyniki/wzorzec';
+import { MapaProcesu } from '../../proces';
 import { useDokumentyMagazynu, type RekordDokumentu } from './api';
 import {
   GRUPY_DOKUMENTOW,
@@ -34,6 +37,7 @@ import {
   type CelDokumentu,
   type IkonaDokumentu,
   type KartaDokumentu,
+  type OknoDokumentacji,
 } from './model';
 import { DOK_STRINGS as T } from './strings';
 
@@ -77,15 +81,6 @@ function IkonaKarty({ rodzaj }: { rodzaj: IkonaDokumentu }) {
       <path d="M6 3h8l4 4v14H6z" />
       <path d="M14 3v4h4M9 12h6M9 16h6M9 8h2" />
     </svg>
-  );
-}
-
-function KrokProcesu({ etykieta, stan }: { etykieta: string; stan: 'zrobiony' | 'aktywny' | 'przyszly' }) {
-  return (
-    <div className="mvd-dok-proces-krok" data-stan={stan}>
-      <span className="mvd-dok-proces-kropka" aria-hidden="true" />
-      <span className="mvd-dok-proces-etyk">{etykieta}</span>
-    </div>
   );
 }
 
@@ -205,7 +200,16 @@ function Karta({
   );
 }
 
-export function HubDokumentacji() {
+export interface HubDokumentacjiProps {
+  /**
+   * Otwiera OKNO WŁASNE przestrzeni (KD-4, L-15) — dziś generator raportu ui2.
+   * Brak wołającego (montaż bez powłoki, testy jednostkowe) = karta pozostaje
+   * bez efektu zamiast prowadzić w martwe miejsce.
+   */
+  readonly onOtworzOkno?: (okno: OknoDokumentacji) => void;
+}
+
+export function HubDokumentacji({ onOtworzOkno }: HubDokumentacjiProps = {}) {
   const activeProjectName = useAppStateStore((s) => s.activeProjectName);
   const activeProjectId = useAppStateStore((s) => s.activeProjectId);
   const snapshot = useSnapshotStore((s) => s.snapshot);
@@ -213,6 +217,9 @@ export function HubDokumentacji() {
   const openRouteSurface = useNetworkBuildStore((s) => s.openRouteSurface);
   const setActiveSpace = useShellStore((s) => s.setActiveSpace);
   const setWynikiTab = useShellStore((s) => s.setWynikiTab);
+  const setZadanieArchiwumProjektu = useShellStore((s) => s.setZadanieArchiwumProjektu);
+  // Reużycie dostawcy kreatora OZE (ta sama akcja, co stany zerowe strumienia OZE).
+  const akcjaKreatoraOze = useAkcjaDodajZrodloOze();
   const magazyn = useDokumentyMagazynu(activeProjectId);
 
   const maProjekt = Boolean(activeProjectName);
@@ -224,22 +231,24 @@ export function HubDokumentacji() {
     : null;
   const wersjaUkladu = snapshot ? `rew. ${snapshot.header.revision} · ${snapshot.header.hash_sha256.slice(0, 8)}` : null;
 
-  // Q3: pasek procesu — pozycja bieżąca = Dokumentacja.
-  const procesEtapy: ReadonlyArray<{ etyk: string; stan: 'zrobiony' | 'aktywny' | 'przyszly' }> = [
-    { etyk: T.procesProjekt, stan: maProjekt ? 'zrobiony' : 'przyszly' },
-    { etyk: T.procesObliczenia, stan: ostatni ? 'zrobiony' : 'przyszly' },
-    { etyk: T.procesDokumentacja, stan: 'aktywny' },
-    { etyk: T.procesEksport, stan: 'przyszly' },
-    { etyk: T.procesWniosek, stan: 'przyszly' },
-  ];
-
   const otworzCel = (cel: CelDokumentu) => {
-    if (cel.rodzaj === 'ekran') {
+    if (cel.rodzaj === 'okno') {
+      onOtworzOkno?.(cel.okno);
+    } else if (cel.rodzaj === 'ekran') {
       openRouteSurface(cel.ekran);
     } else if (cel.rodzaj === 'wyniki-zakladka') {
       // Deep-link do istniejącego generatora w przestrzeni „Wyniki" (studium OZE).
       setWynikiTab(cel.zakladka);
       setActiveSpace('wyniki');
+    } else if (cel.rodzaj === 'okno-projektu') {
+      // Deep-link do okna archiwum: sama przestrzeń „Projekt" pokazuje pulpit
+      // BEZ akcji archiwum, więc karta niesie jednorazowe żądanie okna.
+      setZadanieArchiwumProjektu(true);
+      setActiveSpace('projekt');
+    } else if (cel.rodzaj === 'kreator-oze') {
+      // Reużycie istniejącej akcji stanu zerowego: otwiera formularz źródła
+      // przekształtnikowego NA kanwie schematu (przejście robi sama akcja).
+      akcjaKreatoraOze.onKlik();
     } else {
       setActiveSpace(cel.przestrzen);
     }
@@ -298,18 +307,24 @@ export function HubDokumentacji() {
         ))}
       </section>
 
-      {/* Q3: co dalej? */}
-      <nav className="mvd-dok-proces" aria-label={T.procesEyebrow} data-testid="mvd-dok-proces">
-        <span className="mvd-dok-lbl">{T.procesEyebrow}</span>
-        <div className="mvd-dok-proces-tor">
-          {procesEtapy.map((e, i) => (
-            <div key={e.etyk} className="mvd-dok-proces-el">
-              {i > 0 && <span className="mvd-dok-proces-str" aria-hidden="true">→</span>}
-              <KrokProcesu etykieta={e.etyk} stan={e.stan} />
-            </div>
-          ))}
-        </div>
-      </nav>
+      {/*
+        Q3: co dalej? Pasek procesu konsumuje KANONICZNY rejestr etapów
+        (`ui2/proces/etapy.ts`). Do karty PULPIT-NBA hub trzymał tu WŁASNĄ,
+        pięcioelementową listę kroków — drugi rejestr etapów o innej granulacji
+        i innej kolejności niż oś projektanta E1–E8. Sygnały, które tamte kroki
+        malowały (czy jest projekt, czy jest zakończone obliczenie), są w tym
+        ekranie pokazane wprost w sekcji stanu obliczeń wyżej, więc konsolidacja
+        nie zabrała żadnej informacji — zabrała rozjazd.
+      */}
+      <div className="mvd-dok-proces" data-testid="mvd-dok-proces">
+        {/*
+          Nawigacja mapy idzie PEŁNYM przejściem powłoki (`przejdzDoPrzestrzeni`,
+          kanon D1) — nie samym `setActiveSpace`. Hub jest adresem `#report`,
+          więc trasa nadrzędna przykryłaby wybraną przestrzeń i klik etapu byłby
+          martwy; most tras czyści trasę należącą do innej przestrzeni.
+        */}
+        <MapaProcesu etapBiezacy="E8" onWybierzEtap={przejdzDoPrzestrzeni} />
+      </div>
     </div>
   );
 }

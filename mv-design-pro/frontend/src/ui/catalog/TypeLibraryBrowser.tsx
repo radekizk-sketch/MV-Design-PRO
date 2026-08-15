@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { clsx } from 'clsx';
 import {
   exportTypeLibrary,
+  fetchPtpireeGeneratorCertificatesPage,
   fetchTypesByCategory,
   importTypeLibrary,
   type CatalogListItem,
@@ -37,6 +38,7 @@ const TAB_DEFINITIONS: readonly TabDefinition[] = [
   { id: 'BESS_INVERTER', label: 'Typy falowników magazynów energii', icon: '▣' },
   { id: 'CONVERTER', label: 'Typy konwerterów', icon: '⟲' },
   { id: 'PROTECTION_DEVICE', label: 'Typy zabezpieczeń', icon: '🛡' },
+  { id: 'PTPIREE_CERTIFICATE', label: 'Wykaz certyfikatów PTPiREE', icon: '☑' },
 ] as const;
 
 const CATEGORY_LABELS: Record<TypeCategory, string> = Object.fromEntries(
@@ -73,6 +75,12 @@ const GENERIC_FIELD_LABELS: Partial<Record<string, string>> = {
   i_n_a: 'Prąd znamionowy [A]',
   breaking_capacity_ka: 'Zdolność wyłączalna [kA]',
   making_capacity_ka: 'Zdolność załączalna [kA]',
+  i_th_ka: 'Prąd wytrzymywany krótkotrwale I_th [kA]',
+  i_th_duration_s: 'Czas odniesienia I_th [s]',
+  i_th_pochodzenie: 'Pochodzenie I_th',
+  i_dyn_ka: 'Prąd dynamiczny szczytowy I_dyn [kA]',
+  i_dyn_pochodzenie: 'Pochodzenie I_dyn',
+  break_time_s: 'Czas własny aparatu [s]',
   cross_section_mm2: 'Przekrój [mm2]',
   number_of_cores: 'Liczba żył',
   ratio_primary_a: 'Przekładnia pierwotna [A]',
@@ -110,6 +118,12 @@ const GENERIC_FIELD_ORDER = [
   'i_n_a',
   'breaking_capacity_ka',
   'making_capacity_ka',
+  'i_th_ka',
+  'i_th_duration_s',
+  'i_th_pochodzenie',
+  'i_dyn_ka',
+  'i_dyn_pochodzenie',
+  'break_time_s',
   'cross_section_mm2',
   'number_of_cores',
   'ratio_primary_a',
@@ -220,7 +234,7 @@ function getTypeSummary(type: CatalogListItem, category: TypeCategory): string {
       return `${formatDetailValue(record.voltage_rating_kv)} kV · Sk3=${formatDetailValue(record.sk3_mva)} MVA · R/X=${formatDetailValue(record.rx_ratio)}`;
     case 'MV_APPARATUS':
     case 'LV_APPARATUS':
-      return `${formatDetailValue(record.u_n_kv)} kV · ${formatDetailValue(record.i_n_a)} A · Icw=${formatDetailValue(record.breaking_capacity_ka)} kA`;
+      return `${formatDetailValue(record.u_n_kv)} kV · ${formatDetailValue(record.i_n_a)} A · Ik=${formatDetailValue(record.breaking_capacity_ka)} kA`;
     case 'LV_CABLE':
       return `${formatDetailValue(record.cross_section_mm2)} mm2 · ${formatDetailValue(record.number_of_cores)} żył · ${formatDetailValue(record.i_max_a)} A`;
     case 'LOAD':
@@ -261,6 +275,18 @@ function getGenericDetailEntries(type: CatalogListItem): Array<{ label: string; 
   }));
 }
 
+/**
+ * Kategorie z SERWEROWYM filtrem i wycinkiem (dług 5 z rejestru V12K-321):
+ * pełny wykaz certyfikatów PTPiREE ma ~6887 pozycji (~3 MB) — przeglądarka
+ * pobiera stronę z filtrem po stronie backendu zamiast całości, a filtr
+ * lokalny jest dla tych kategorii wyłączony (działałby na niepełnej liście
+ * i kłamał wynikiem).
+ */
+const KATEGORIE_SZUKANE_SERWEROWO: ReadonlySet<TypeCategory> = new Set(['PTPIREE_CERTIFICATE']);
+
+/** Rozmiar strony wykazu certyfikatów — pełna lista dostępna przez zawężenie. */
+const LIMIT_STRONY_CERTYFIKATOW = 300;
+
 export function TypeLibraryBrowser({
   onSelectType,
   initialTab = 'LINE',
@@ -273,14 +299,33 @@ export function TypeLibraryBrowser({
   const [selectedTypeId, setSelectedTypeId] = useState<string | null>(null);
   const [importReport, setImportReport] = useState<ImportReport | null>(null);
   const [showImportDialog, setShowImportDialog] = useState(false);
+  // Liczność wykazu PO serwerowym filtrze (null = kategoria bez stron serwera).
+  const [serverTotal, setServerTotal] = useState<number | null>(null);
+  // Zapytanie z opóźnieniem — strona serwera nie leci na każdą literę.
+  const [odroczoneZapytanie, setOdroczoneZapytanie] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setOdroczoneZapytanie(searchQuery), 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setError(null);
     setSearchQuery('');
+    setOdroczoneZapytanie('');
     setSelectedTypeId(null);
+
+    if (KATEGORIE_SZUKANE_SERWEROWO.has(activeTab)) {
+      // Pierwsza strona kategorii serwerowej — dalsze zapytania obsługuje
+      // efekt odroczonego zapytania poniżej.
+      return () => {
+        cancelled = true;
+      };
+    }
+    setServerTotal(null);
 
     fetchTypesByCategory(activeTab)
       .then((fetchedTypes) => {
@@ -299,7 +344,36 @@ export function TypeLibraryBrowser({
     };
   }, [activeTab]);
 
+  // Kategorie serwerowe: strona wykazu per (kategoria, odroczone zapytanie).
+  useEffect(() => {
+    if (!KATEGORIE_SZUKANE_SERWEROWO.has(activeTab)) return;
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+
+    fetchPtpireeGeneratorCertificatesPage(odroczoneZapytanie, LIMIT_STRONY_CERTYFIKATOW)
+      .then((strona) => {
+        if (cancelled) return;
+        setTypes(strona.items);
+        setServerTotal(strona.total);
+        setLoading(false);
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setError(err instanceof Error ? err.message : 'Błąd pobierania typów.');
+        setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTab, odroczoneZapytanie]);
+
   const filteredTypes = useMemo(() => {
+    if (KATEGORIE_SZUKANE_SERWEROWO.has(activeTab)) {
+      // Filtr wykonał serwer — lokalne filtrowanie strony kłamałoby wynikiem.
+      return types;
+    }
     if (!searchQuery.trim()) {
       return types;
     }
@@ -313,7 +387,7 @@ export function TypeLibraryBrowser({
         || (manufacturer != null && manufacturer.toLowerCase().includes(query))
       );
     });
-  }, [searchQuery, types]);
+  }, [activeTab, searchQuery, types]);
 
   const selectedType = useMemo(
     () => types.find((type) => type.id === selectedTypeId) ?? null,
@@ -367,8 +441,17 @@ export function TypeLibraryBrowser({
       setImportReport(report);
       setShowImportDialog(true);
 
-      const fetchedTypes = await fetchTypesByCategory(activeTab);
-      setTypes(fetchedTypes);
+      if (KATEGORIE_SZUKANE_SERWEROWO.has(activeTab)) {
+        const strona = await fetchPtpireeGeneratorCertificatesPage(
+          odroczoneZapytanie,
+          LIMIT_STRONY_CERTYFIKATOW,
+        );
+        setTypes(strona.items);
+        setServerTotal(strona.total);
+      } else {
+        const fetchedTypes = await fetchTypesByCategory(activeTab);
+        setTypes(fetchedTypes);
+      }
       setLoading(false);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Błąd importu biblioteki.');
@@ -451,6 +534,13 @@ export function TypeLibraryBrowser({
           onChange={(event) => setSearchQuery(event.target.value)}
           className="w-full rounded-md border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
+        {serverTotal !== null && serverTotal > filteredTypes.length ? (
+          <p className="mt-2 text-xs text-gray-500" data-testid="catalog-strona-serwera">
+            Pokazano {filteredTypes.length.toLocaleString('pl-PL')} z{' '}
+            {serverTotal.toLocaleString('pl-PL')} pozycji wykazu — zawęź wyszukiwanie, aby
+            zobaczyć pozostałe.
+          </p>
+        ) : null}
       </div>
 
       <div className="flex flex-1 overflow-hidden">

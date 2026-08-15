@@ -20,6 +20,7 @@ import { fetchProtectionTypesByCategory } from '../protection/api';
 import { exportProtectionLibrary } from '../protection/api';
 import type { ProtectionConfig, UpdateProtectionConfigRequest } from './api';
 import { getProtectionConfig, updateProtectionConfig } from './api';
+import { PREFIKS_URZADZENIA_KOORDYNACJI } from '../protection-coordination/nastawyPrzypadku';
 
 // =============================================================================
 // Types
@@ -77,9 +78,13 @@ export function ProtectionCaseConfigPanel({
       try {
         const data = await getProtectionConfig(caseId);
         setConfig(data);
+        // K5-B: słownik overrides jest WSPÓŁDZIELONY z wykonawcą nastaw E-28
+        // (wpisy `coordination_device:*`). PUT wysyła całość, więc panel musi
+        // trzymać pełny słownik także bez szablonu — inaczej zapis szablonu
+        // kasowałby urządzenia koordynacji.
+        setOverrides((data.overrides || {}) as Record<string, SettingFieldValue>);
         if (data.template_ref) {
           setSelectedTemplateId(data.template_ref);
-          setOverrides(data.overrides || {});
         }
       } catch (err) {
         console.error('Failed to load protection config:', err);
@@ -155,8 +160,16 @@ export function ProtectionCaseConfigPanel({
     (templateId: string) => {
       if (isReadOnly) return;
       setSelectedTemplateId(templateId);
-      // Reset overrides when template changes
-      setOverrides({});
+      // Reset nadpisań PÓL przy zmianie szablonu — wpisy urządzeń koordynacji
+      // (`coordination_device:*`, K5-B) należą do INNEGO konsumenta i muszą
+      // przetrwać (PUT wysyła cały słownik).
+      setOverrides((prev) =>
+        Object.fromEntries(
+          Object.entries(prev).filter(([klucz]) =>
+            klucz.startsWith(PREFIKS_URZADZENIA_KOORDYNACJI)
+          )
+        )
+      );
     },
     [isReadOnly]
   );

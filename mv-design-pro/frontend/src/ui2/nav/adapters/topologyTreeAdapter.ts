@@ -12,10 +12,14 @@
  *   `ui/topology/TopologyTreeView.tsx:59-122` (`buildSpineTree`/`getIsolatedNodes`)
  *   — ten sam kształt danych, inny (zagnieżdżony) układ drzewa.
  * - Liczniki {blokady, ostrzeżenia}: `ReadinessIssue.element_ref`/`element_refs`
- *   + `severity` (`ui/types.ts:548-558`), z `useReadinessLiveStore.issues`
- *   (`ui/engineering-readiness/readinessLiveStore.ts:42-46`). BLOCKER→blokady,
- *   IMPORTANT→ostrzeżenia (INFO pomijane) — ta sama konwencja co
- *   `ui2/shell/shellStatus.ts:55-56` (`bySeverity.BLOCKER`/`bySeverity.IMPORTANT`).
+ *   + `severity` (`ui/types.ts:548-558`), z JEDNEJ prawdy gotowości
+ *   (`spaces/gotowosc/adapters/gotowoscAdapter.useGotowoscModelu` nad
+ *   `useSnapshotStore.readiness`). BLOCKER→blokady, IMPORTANT→ostrzeżenia
+ *   (INFO pomijane) — ta sama konwencja co `ui2/shell/shellStatus.ts`
+ *   (`gotowosc.blokady`/`gotowosc.ostrzezenia`).
+ *   KD-1 (dług V12K-286): wcześniej źródłem był `useReadinessLiveStore.issues`,
+ *   którego `refresh` nikt nie wołał — liczniki drzewa były ZAWSZE zerowe,
+ *   mimo blokad widocznych w panelu gotowości.
  *
  * TODO-KARTA: tryby „administracyjny" (grupowanie po stacjach) i „obwodowy"
  * (grupowanie po magistralach/obwodach) z audytu W-208 NIE MAJĄ jednoznacznego
@@ -29,11 +33,52 @@
  */
 
 import { useMemo } from 'react';
-import type { AdjacencyEntry, TopologyGraphSummary } from '../../../types/enm';
+import type { AdjacencyEntry, SpineNode, TopologyGraphSummary } from '../../../types/enm';
 import type { ReadinessIssue } from '../../../ui/types';
 import { useTopologyStore } from '../../../ui/topology/store';
-import { useReadinessLiveStore } from '../../../ui/engineering-readiness/readinessLiveStore';
+import { useProblemyGotowosci } from '../../spaces/gotowosc/adapters/gotowoscAdapter';
 import { LICZNIKI_ZERO, type LicznikiWezla, type TrybDrzewaTopologii, type WezelDrzewa } from '../treeModel';
+
+/**
+ * JEDYNY odczyt kolekcji pochodzącej z odpowiedzi serwera w tym module
+ * (reguła KLASA, NIE INSTANCJA pkt 3: predykat z jednego źródła prawdy).
+ *
+ * Kontrakt `TopologyGraphSummary` deklaruje `spine`/`adjacency`/`lateral_roots`
+ * jako wymagane, ale deklaracja TypeScriptu NIE JEST gwarancją runtime — to
+ * kształt oczekiwany, nie sprawdzany. Odpowiedź bez tych pól (endpoint zwracający
+ * `{}`, starsza rewizja kontraktu, odcięty backend) przechodziła przez `if (!summary)`
+ * jako obiekt prawdziwy i wywracała CAŁY ekran przez granicę błędu
+ * (`TypeError: Cannot read properties of undefined (reading 'map')`) — pre-existing
+ * dług nazwany w V12K-317 poz. 6, mierzalny czerwonym `e2e/create-first-case`.
+ *
+ * Rozstrzygnięcie nadzorcy (karta W3 §2.1): brak pola w odpowiedzi to STAN, nie
+ * wyjątek — adapter renderuje uczciwy stan zerowy („brak danych topologii”),
+ * nigdy nie wywraca ekranu. Zero domysłu: nie ma tu zgadywania brakującej
+ * struktury, jest wyłącznie „nie przyszło ⇒ nie rysuję”.
+ */
+function kolekcja<T>(wartosc: T[] | null | undefined): T[] {
+  return Array.isArray(wartosc) ? wartosc : [];
+}
+
+/**
+ * Podsumowanie topologii sprowadzone do trzech kolekcji, na których pracuje
+ * reszta modułu. Osłona jest JEDNA i na WEJŚCIU — dzięki temu żaden odczyt
+ * poniżej nie musi (ani nie może) powtarzać sprawdzenia, a nowe pole kolekcyjne
+ * dokłada się w jednym miejscu.
+ */
+interface TopologiaZOdpowiedzi {
+  readonly spine: SpineNode[];
+  readonly lateralRoots: string[];
+  readonly adjacency: AdjacencyEntry[];
+}
+
+function odczytajTopologie(summary: TopologyGraphSummary): TopologiaZOdpowiedzi {
+  return {
+    spine: kolekcja(summary.spine),
+    lateralRoots: kolekcja(summary.lateral_roots),
+    adjacency: kolekcja(summary.adjacency),
+  };
+}
 
 function budujLicznikiZReadiness(issues: ReadinessIssue[]): Map<string, LicznikiWezla> {
   const mapa = new Map<string, LicznikiWezla>();
@@ -44,8 +89,14 @@ function budujLicznikiZReadiness(issues: ReadinessIssue[]): Map<string, Liczniki
     mapa.set(ref, wpis);
   };
   for (const issue of issues) {
-    if (issue.element_ref) dodaj(issue.element_ref, issue.severity);
-    for (const ref of issue.element_refs) dodaj(ref, issue.severity);
+    // Jeden problem = JEDEN wpis na element, nawet gdy `element_ref` powtarza
+    // się w `element_refs` (tak buduje go `gotowoscAdapter.polaczGotowosc`).
+    // Bez odsiania duplikatów licznik podwajał każdą blokadę — defekt niewidoczny,
+    // dopóki źródłem był nigdy nieodświeżany store (KD-1 / V12K-286).
+    const refy = new Set<string>();
+    if (issue.element_ref) refy.add(issue.element_ref);
+    for (const ref of kolekcja(issue.element_refs)) refy.add(ref);
+    for (const ref of refy) dodaj(ref, issue.severity);
   }
   return mapa;
 }
@@ -71,11 +122,11 @@ function odgalezienieLisc(ref: string, liczniki: Map<string, LicznikiWezla>): We
 }
 
 /** Węzły grafu bez wpisu w spine/lateral (posortowane, jak `getIsolatedNodes` w TopologyTreeView). */
-function znajdzIzolowane(summary: TopologyGraphSummary): string[] {
-  const spineSet = new Set(summary.spine.map((s) => s.bus_ref));
-  const lateralSet = new Set(summary.lateral_roots);
+function znajdzIzolowane(topologia: TopologiaZOdpowiedzi): string[] {
+  const spineSet = new Set(topologia.spine.map((s) => s.bus_ref));
+  const lateralSet = new Set(topologia.lateralRoots);
   const wszystkie = new Set<string>();
-  for (const a of summary.adjacency) {
+  for (const a of topologia.adjacency) {
     wszystkie.add(a.bus_ref);
     wszystkie.add(a.neighbor_ref);
   }
@@ -83,14 +134,14 @@ function znajdzIzolowane(summary: TopologyGraphSummary): string[] {
 }
 
 /** Drzewo zasilania (od GPZ) — hierarchia wg `children_refs`, z odgałęzieniami dopiętymi do najbliższego węzła magistrali. */
-function budujDrzewoZasilania(summary: TopologyGraphSummary, liczniki: Map<string, LicznikiWezla>): WezelDrzewa[] {
-  const byRef = new Map(summary.spine.map((s) => [s.bus_ref, s]));
+function budujDrzewoZasilania(topologia: TopologiaZOdpowiedzi, liczniki: Map<string, LicznikiWezla>): WezelDrzewa[] {
+  const byRef = new Map(topologia.spine.map((s) => [s.bus_ref, s]));
   const spineSet = new Set(byRef.keys());
 
   const lateraleWgSasiada = new Map<string, string[]>();
   const sieroty: string[] = [];
-  for (const lat of summary.lateral_roots) {
-    const sasiad = znajdzSasiadaMagistrali(summary.adjacency, lat, spineSet);
+  for (const lat of topologia.lateralRoots) {
+    const sasiad = znajdzSasiadaMagistrali(topologia.adjacency, lat, spineSet);
     if (!sasiad) {
       sieroty.push(lat);
       continue;
@@ -105,7 +156,7 @@ function budujDrzewoZasilania(summary: TopologyGraphSummary, liczniki: Map<strin
     if (odwiedzone.has(ref)) return null; // ochrona przed cyklem (has_cycles)
     odwiedzone.add(ref);
     const spine = byRef.get(ref);
-    const dzieciSpine = (spine?.children_refs ?? [])
+    const dzieciSpine = kolekcja(spine?.children_refs)
       .filter((r) => spineSet.has(r))
       .sort()
       .map(wezelDlaSpine)
@@ -123,7 +174,7 @@ function budujDrzewoZasilania(summary: TopologyGraphSummary, liczniki: Map<strin
     };
   }
 
-  const korzenie = [...summary.spine]
+  const korzenie = [...topologia.spine]
     .filter((s) => s.is_source || s.depth === 0)
     .sort((a, b) => a.bus_ref.localeCompare(b.bus_ref));
   const drzewo = korzenie.map((s) => wezelDlaSpine(s.bus_ref)).filter((w): w is WezelDrzewa => w !== null);
@@ -133,7 +184,7 @@ function budujDrzewoZasilania(summary: TopologyGraphSummary, liczniki: Map<strin
   if (sieroty.length > 0) {
     grupy.push(grupa('odgalezienia', 'Odgałęzienia', sieroty.sort().map((r) => odgalezienieLisc(r, liczniki))));
   }
-  const izolowane = znajdzIzolowane(summary);
+  const izolowane = znajdzIzolowane(topologia);
   if (izolowane.length > 0) {
     grupy.push(
       grupa(
@@ -154,14 +205,14 @@ export function mapowanieTopologiiDoDrzewa(
 ): WezelDrzewa[] {
   if (!summary) return [];
   const liczniki = budujLicznikiZReadiness(issues);
-  if (tryb === 'zasilania') return budujDrzewoZasilania(summary, liczniki);
+  if (tryb === 'zasilania') return budujDrzewoZasilania(odczytajTopologie(summary), liczniki);
   // 'administracyjny' | 'obwodowy' — TODO-KARTA (patrz komentarz nagłówkowy pliku).
   return [];
 }
 
-/** Adapter read-only: `ui/topology/store.ts` (summary) + `ui/engineering-readiness` (issues). */
+/** Adapter read-only: `ui/topology/store.ts` (summary) + `gotowoscAdapter` (problemy). */
 export function useTopologyTree(tryb: TrybDrzewaTopologii): WezelDrzewa[] {
   const summary = useTopologyStore((s) => s.summary);
-  const issues = useReadinessLiveStore((s) => s.issues);
+  const issues = useProblemyGotowosci();
   return useMemo(() => mapowanieTopologiiDoDrzewa(summary, issues, tryb), [summary, issues, tryb]);
 }

@@ -15,20 +15,54 @@
 import type { ReactNode } from 'react';
 
 import { GRID } from '../core/grid';
-import { LABEL_TYPOGRAPHY, labelLineHeight } from '../core/text';
+import { LABEL_TYPOGRAPHY, labelLineHeight, screenFixedFontSize, screenFixedLength } from '../core/text';
+import {
+  SHEET_BORDER_STROKE_SCREEN_PX,
+  SHEET_CAPTION_OFFSET_SCREEN_PX,
+  sheetLodCaptionText,
+  sheetScaleCaptionText,
+} from '../canvas/chromeLayout';
+import { SHEET_WIDTH_QUANTUM } from '../layout/sheetRows';
 import { SYMBOL_DEFS, type SymbolId } from '../symbols/defs';
 import { SYMBOL_GLYPHS } from '../symbols/glyphs';
-import { BASE_STROKE, CANVAS_BACKGROUND } from '../theme/colorTokens';
+import { useSldPalette } from '../theme/palette';
 
-/** Kolor bazowy rysunku w trybie SCADA (spec §2/§6) — nakładki koloru
- *  napięcia/energizacji są zakresem F6 (`SldCanvasV3.tsx`), nie ramki arkusza.
- *  SCHEMAT-10 S3 (V12K-135): wartości TERAZ z `theme/colorTokens.ts` — JEDNO
- *  źródło prawdy, ta sama wartość co dotąd. */
-const SHEET_STROKE = BASE_STROKE;
-const SHEET_BACKGROUND = CANVAS_BACKGROUND;
+/* Kolor bazowy rysunku (spec §2/§6) — nakładki koloru napięcia/energizacji są
+ * zakresem `SldCanvasV3.tsx`, nie ramki arkusza. KD-8 poz. 1: ramka arkusza,
+ * strefy i legenda biorą tusz/tło z palety MOTYWU (kontekst kanwy), a nie ze
+ * stałej modułu — arkusz jasny musi być realnie jasny. */
 
-/** Strefy referencyjne co 400px (spec §2). */
-const ZONE_STEP = 400;
+/**
+ * S9-7 (audyt C-4) — KROK KOLUMN STREF = FORMAT ARKUSZA.
+ *
+ * STAN PRZED: stały krok 400 px świata, niezwiązany z niczym. Na sieci dużej
+ * dawał 109 kolumn stref (audyt: „ramka arkusza ma 109 kolumn stref i 2
+ * wiersze") — indeks współrzędnych o 109 pozycjach nie jest indeksem, tylko
+ * szumem, a przy skali przeglądu każda cyfra miała 2 px.
+ *
+ * ROZSTRZYGNIĘCIE: krok kolumny = KWANT FORMATU ARKUSZA z `layout/sheetRows.ts`
+ * (`SHEET_WIDTH_QUANTUM` = 128×GRID), czyli ta sama jednostka, w której łamanie
+ * arkusza mierzy budżet szerokości wiersza. Siatka odniesienia i podział na
+ * wiersze mówią wtedy o TYM SAMYM formacie (jedno źródło prawdy — reguła KLASA
+ * §3), a liczba kolumn spada z 109 do 9 na tej samej sieci.
+ *
+ * Wiersze stref NIE mają własnego kroku: pochodzą z `meta.sheetRowBands`
+ * (`rowBands` niżej) — litera strefy wskazuje WIERSZ ARKUSZA, a nie odległość.
+ */
+const ZONE_STEP = SHEET_WIDTH_QUANTUM;
+
+/** S9-7: odsunięcie napisu strefy od ramki [px EKRANU] — kompensowane skalą
+ *  kamery razem z pismem, żeby przy oddaleniu napis nie wchodził na ramkę. */
+const ZONE_LABEL_OFFSET_SCREEN_PX = 10;
+/** S9-7: długość kreski podziału stref [px EKRANU]. */
+const ZONE_TICK_SCREEN_PX = 6;
+/** S9-7: odsunięcie liter wierszy od lewej krawędzi ramki [px EKRANU]. */
+const ZONE_ROW_LABEL_OFFSET_SCREEN_PX = 16;
+/* S9-7: odstęp podpisów dolnych (skala, poziom szczegółu) od ramki mieszka od
+ * karty RAMKA-TNIE-PODPISY w `canvas/chromeLayout.ts` — RAZEM z układem
+ * całego dolnego pasa chromu, żeby wskaźnik ekranowy „Ukryto N opisów" liczył
+ * ustąpienie z TEJ SAMEJ liczby, z której ramka liczy położenie podpisu
+ * (wcześniej: dwie prawdy, kolizja w 12 na 12 zmierzonych kadrów). */
 /** Margines ramki na oznaczenia stref (litery/cyfry) NA ZEWNĄTRZ obszaru rysunku.
  *  SCHEMAT-10 S4 (V12K-135/136, D12 reszta): eksportowany (dawniej lokalny) —
  *  `v3/export/exportFrame.ts` reużywa TĘ SAMĄ stałą dla kadru fit-do-treści
@@ -74,26 +108,36 @@ const DEFAULT_SYMBOL_LEGEND_IDS: readonly SymbolId[] = [
   'meter',
 ];
 
+/**
+ * Etykieta PL wpisu legendy dla danego symbolu — z adnotacją rozstrzygającą
+ * dla ES/miernika (patrz komentarze niżej). Wyekstrahowane (K12, KARTA_K12):
+ * `sheet/projectLegend.ts` (panel „Legenda" na żądanie kanwy v3 + eksport z
+ * legendą) reużywa TĘ SAMĄ regułę etykiet, zamiast duplikować przypadki
+ * specjalne ES/miernika.
+ */
+export function legendLabelForSymbol(id: SymbolId): string {
+  // F10.1 (spec §18.1, DEC-1): blokada logiczna uziemnika (zakaz
+  // zamknięcia ES na tor pod napięciem) = adnotacja KONWENCYJNA —
+  // konwencja dotyczy każdego ES jednakowo, więc jej miejscem jest
+  // LEGENDA arkusza (powtarzanie 120× przy każdym symbolu to szum
+  // graficzny i źródło kolizji — zweryfikowane wyroczniami; decyzja
+  // nadzorcy F10.1). F10.5 (spec §20.4): TEN SAM wzorzec dla miernika —
+  // legenda rozstrzyga jednoznaczność „M" (nie napęd silnikowy).
+  if (id === 'earthSwitch') return `${SYMBOL_DEFS[id].labelPl} (blokada zamkn. na tor pod napięciem)`;
+  if (id === 'meter') {
+    // Recenzja NO-GO 2026-07-17 pkt 11: „M" mylące — glif niesie literę
+    // mierzonej wielkości (A prąd z CT / V napięcie z VT), legenda to
+    // rozstrzyga (nie napęd silnikowy — F10.5 §20.4 zostaje w mocy).
+    return 'Miernik — litera = wielkość (A prąd / V napięcie); nie napęd silnikowy';
+  }
+  return SYMBOL_DEFS[id].labelPl;
+}
+
 export function buildDefaultLegend(): readonly SheetLegendEntry[] {
   const symbolEntries: SheetLegendEntry[] = DEFAULT_SYMBOL_LEGEND_IDS.map((id) => ({
     kind: 'symbol',
     id,
-    // F10.1 (spec §18.1, DEC-1): blokada logiczna uziemnika (zakaz
-    // zamknięcia ES na tor pod napięciem) = adnotacja KONWENCYJNA —
-    // konwencja dotyczy każdego ES jednakowo, więc jej miejscem jest
-    // LEGENDA arkusza (powtarzanie 120× przy każdym symbolu to szum
-    // graficzny i źródło kolizji — zweryfikowane wyroczniami; decyzja
-    // nadzorcy F10.1). F10.5 (spec §20.4): TEN SAM wzorzec dla miernika —
-    // legenda rozstrzyga jednoznaczność „M" (nie napęd silnikowy).
-    labelPl:
-      id === 'earthSwitch'
-        ? `${SYMBOL_DEFS[id].labelPl} (blokada zamkn. na tor pod napięciem)`
-        : id === 'meter'
-          // Recenzja NO-GO 2026-07-17 pkt 11: „M" mylące — glif niesie literę
-          // mierzonej wielkości (A prąd z CT / V napięcie z VT), legenda to
-          // rozstrzyga (nie napęd silnikowy — F10.5 §20.4 zostaje w mocy).
-          ? 'Miernik — litera = wielkość (A prąd / V napięcie); nie napęd silnikowy'
-          : SYMBOL_DEFS[id].labelPl,
+    labelPl: legendLabelForSymbol(id),
   }));
   return [
     ...symbolEntries,
@@ -119,6 +163,13 @@ function zoneLetter(index: number): string {
   return out;
 }
 
+/** S9-7: pas poziomy strefy (kształt `SheetRowBand` ze sceny — ramka NIE
+ *  importuje `scene/buildScene.ts`, żeby nie odwracać zależności warstw). */
+export interface SheetFrameRowBand {
+  readonly y: number;
+  readonly height: number;
+}
+
 export interface SheetFrameProps {
   /** Szerokość obszaru rysunku sieci (świat, px — bez marginesu ramki). */
   readonly width: number;
@@ -130,11 +181,14 @@ export interface SheetFrameProps {
    *  szczegółu z JEDNEGO słownika (`SCENE_LOD_LABELS_PL`) — pasek statusu
    *  arkusza. Brak = pasek LOD nie renderowany (zgodność wstecz). */
   readonly lodLabel?: string;
-  /** Liczba opisów ukrytych przez próg czytelności ekranu (V12K-218, karta R2-B).
-   *  Ukrycie MUSI być jawne — projektant, który nie widzi opisów, ma wiedzieć,
-   *  że są i jak je odsłonić, zamiast wnioskować, że sieć ich nie ma. 0 lub brak
-   *  = komunikat nierenderowany (zero szumu przy normalnym zoomie). */
-  readonly hiddenLabelCount?: number;
+  /* KD-11 (Zero-Debt, znalezisko uboczne): pole `hiddenLabelCount` USUNIĘTE.
+   * Komunikat „Ukryto N opisów" mieszka od V12K-222 w WARSTWIE EKRANU
+   * (`canvas/SldCanvasV3.tsx`, `data-testid="sld-v3-hidden-labels-hint"`) — na
+   * arkuszu wpadał we własną pułapkę (przy skali ukrywającej opisy sam miał
+   * ~2 px). Prop został tu jako martwa gałąź: NIKT go nie podawał, a po KD-11
+   * niósłby STARE znaczenie licznika (dziś liczy wyłącznie DANE SZCZEGÓŁOWE —
+   * tożsamość elementów nie znika). Druga, nieużywana implementacja tego samego
+   * komunikatu to gotowa rozbieżność, więc znika razem z gałęzią renderu. */
   /** Slot na title block (K30-38, `SldTitleBlock` z v2) — Frame NIE
    *  duplikuje jego zawartości, tylko pozycjonuje jako blok w rogu arkusza. */
   readonly titleBlock?: ReactNode;
@@ -145,6 +199,21 @@ export interface SheetFrameProps {
   readonly titleBlockOrigin?: { readonly x: number; readonly y: number };
   /** Legenda — domyślnie ≥6 glifów symboli + 2 typy linii (spec §2). */
   readonly legend?: readonly SheetLegendEntry[];
+  /**
+   * S9-7 (audyt C-4): SKALA KAMERY [px ekranu na jednostkę świata]. Napisy
+   * APARATU ARKUSZA (znaczniki stref, podziałka, poziom szczegółu, legenda)
+   * są nią kompensowane, żeby miały STAŁY rozmiar na ekranie niezależnie od
+   * zoomu — to oprawa rysunku (jak pasek stanu), a nie jego treść.
+   *
+   * Domyślnie `1` = brak kompensacji, czyli zachowanie IDENTYCZNE jak przed tą
+   * kartą. Dzięki temu wołający rysujący arkusz w skali 1:1 (eksport SVG/PDF,
+   * testy ramki w izolacji) nie musi nic wiedzieć o kamerze, a plik eksportu
+   * zachowuje typografię arkusza w jednostkach rysunku.
+   */
+  readonly cameraScale?: number;
+  /** S9-7: pasy wierszy arkusza (`meta.sheetRowBands`) — litery stref
+   *  wskazują WIERSZ ŁAMANIA, nie odległość. Brak ⇒ jeden pas na cały arkusz. */
+  readonly rowBands?: readonly SheetFrameRowBand[];
   /** Treść widoku sieci (SceneGraph symboli/tras/etykiet z F5/F6). */
   readonly children?: ReactNode;
 }
@@ -196,6 +265,7 @@ export function computeLegendRowLayout(entries: readonly SheetLegendEntry[]): re
 }
 
 function LegendLineSample(props: { readonly id: string; readonly centerY: number }): JSX.Element {
+  const palette = useSldPalette();
   const dash = props.id === 'overhead' ? '6 3 1 3' : undefined;
   if (props.id === 'openTerminal') {
     // Recenzja NO-GO 2026-07-17 pkt 11: próbka „koniec otwarty" = odcinek
@@ -204,8 +274,8 @@ function LegendLineSample(props: { readonly id: string; readonly centerY: number
     // legendy nie odpowiadałby glifowi na rysunku.
     return (
       <g data-testid={`sld-sheet-legend-line-${props.id}`} data-parity-key={`legend-line-${props.id}`}>
-        <line x1={0} y1={props.centerY} x2={22} y2={props.centerY} stroke={SHEET_STROKE} strokeWidth={1.6} />
-        <line x1={22} y1={props.centerY - 6} x2={22} y2={props.centerY + 6} stroke={SHEET_STROKE} strokeWidth={1.6} />
+        <line x1={0} y1={props.centerY} x2={22} y2={props.centerY} stroke={palette.baseStroke} strokeWidth={1.6} />
+        <line x1={22} y1={props.centerY - 6} x2={22} y2={props.centerY + 6} stroke={palette.baseStroke} strokeWidth={1.6} />
       </g>
     );
   }
@@ -217,17 +287,32 @@ function LegendLineSample(props: { readonly id: string; readonly centerY: number
       y1={props.centerY}
       x2={28}
       y2={props.centerY}
-      stroke={SHEET_STROKE}
+      stroke={palette.baseStroke}
       strokeWidth={1.6}
       strokeDasharray={dash}
     />
   );
 }
 
-function SheetLegend(props: {
+/**
+ * Eksportowane (K12, KARTA_K12): reużywane WPROST przez tor eksportu SVG
+ * (`SldCanvasV3Workspace.handleExportSvg`, opcja „Dołącz legendę") — markup
+ * legendy dla eksportu jest renderowany TĄ SAMĄ funkcją (`renderToStatic
+ * Markup`), zero duplikacji rysunku glifów/próbek linii między kanwą
+ * ekranową (gdzie legenda dziś NIE jest częścią sceny — `SheetFrame` wołany
+ * z `legend={[]}`) a plikiem eksportu.
+ */
+export function SheetLegend(props: {
   readonly entries: readonly SheetLegendEntry[];
   readonly sheetHeight: number;
+  /** S9-7: skala kamery — SAM OPIS wpisu legendy ma stały rozmiar ekranowy
+   *  (glify/próbki linii zostają w jednostkach rysunku, bo są jego kluczem
+   *  graficznym i muszą odpowiadać temu, co na rysunku stoi). Domyślnie `1`
+   *  (eksport/testy w skali 1:1 — zachowanie bez zmian). */
+  readonly cameraScale?: number;
 }): JSX.Element {
+  const palette = useSldPalette();
+  const cameraScale = Number.isFinite(props.cameraScale) && (props.cameraScale ?? 0) > 0 ? props.cameraScale! : 1;
   const rows = computeLegendRowLayout(props.entries);
   // D1b (F6c): legenda w DOLNYM-lewym rogu arkusza, nie górnym — górny-lewy
   // róg zajmuje GPZ (scena zaczyna się w originie arkusza; sekcja WN i
@@ -250,7 +335,15 @@ function SheetLegend(props: {
         return (
           <g key={entry.id} data-testid={`sld-sheet-legend-item-${entry.id}`} data-parity-key={`legend-item-${entry.id}`}>
             {entry.kind === 'note' ? null : Glyph ? (
-              <Glyph x={4} y={glyphY} />
+              // S9-6 (znalezisko uboczne, Zero-Debt): glif legendy MUSI dostać
+              // tusz z PALETY. Bez tego `glyphs.tsx` spadał na stałą modułu
+              // (`V3_STROKE_BASE` = tusz palety CIEMNEJ, `#E8EEF4`), więc w
+              // motywie jasnym — i w KAŻDYM arkuszu eksportowanym z tego
+              // motywu — glify legendy wychodziły prawie białe na bieli
+              // (pomiar: 61 wystąpień w pliku SVG fixtury). Próbki linii
+              // (`LegendLineSample`) i tekst brały paletę od początku, więc
+              // rozjeżdżał się WYŁĄCZNIE glif — klasyczny „ciche zero".
+              <Glyph x={4} y={glyphY} stroke={palette.baseStroke} />
             ) : (
               <LegendLineSample id={entry.id} centerY={centerY} />
             )}
@@ -260,9 +353,9 @@ function SheetLegend(props: {
               y={centerY}
               dominantBaseline="middle"
               fontFamily="sans-serif"
-              fontSize={LABEL_TYPOGRAPHY.t3.fontSize}
+              fontSize={screenFixedFontSize('t3', cameraScale)}
               fontWeight={LABEL_TYPOGRAPHY.t3.fontWeight}
-              fill={SHEET_STROKE}
+              fill={palette.baseStroke}
             >
               {entry.labelPl}
             </text>
@@ -273,11 +366,46 @@ function SheetLegend(props: {
   );
 }
 
-function ZoneMarkers(props: { readonly width: number; readonly height: number }): JSX.Element {
+/**
+ * S9-7: pasy wierszy stref — z `meta.sheetRowBands` (przekazane przez wołającego)
+ * albo, gdy wołający ich nie zna (eksport/testy ramki w izolacji), JEDEN pas na
+ * cały arkusz. Pasy są przycinane do wysokości arkusza, żeby litera nigdy nie
+ * wypadła poza ramkę. Czysta funkcja — eksportowana dla testu geometrii.
+ */
+export function zoneRowBands(
+  rowBands: readonly SheetFrameRowBand[] | undefined,
+  height: number,
+): readonly SheetFrameRowBand[] {
+  const zrodlo = rowBands && rowBands.length > 0 ? rowBands : [{ y: 0, height }];
+  return zrodlo
+    .map((b) => {
+      const y = Math.max(0, b.y);
+      const dol = Math.min(height, b.y + b.height);
+      return { y, height: dol - y };
+    })
+    .filter((b) => b.height > 0);
+}
+
+function ZoneMarkers(props: {
+  readonly width: number;
+  readonly height: number;
+  readonly cameraScale: number;
+  readonly rowBands?: readonly SheetFrameRowBand[];
+}): JSX.Element {
+  const palette = useSldPalette();
   const colCount = Math.max(1, Math.ceil(props.width / ZONE_STEP));
-  const rowCount = Math.max(1, Math.ceil(props.height / ZONE_STEP));
   const cols = Array.from({ length: colCount }, (_, i) => i);
-  const rows = Array.from({ length: rowCount }, (_, i) => i);
+  const rows = zoneRowBands(props.rowBands, props.height);
+  // S9-7 (audyt C-4): APARAT ARKUSZA ma stały rozmiar EKRANOWY — znacznik
+  // strefy jest indeksem współrzędnych, a nie treścią rysunku, więc nie wolno
+  // mu maleć razem z geometrią (audyt zmierzył 2 px na wszystkich 109
+  // znacznikach). Odsunięcia i kreski skalują się TĄ SAMĄ kompensacją, inaczej
+  // powiększone pismo weszłoby na ramkę.
+  const fontSize = screenFixedFontSize('t1', props.cameraScale);
+  const labelOffset = screenFixedLength(ZONE_LABEL_OFFSET_SCREEN_PX, props.cameraScale);
+  const rowLabelOffset = screenFixedLength(ZONE_ROW_LABEL_OFFSET_SCREEN_PX, props.cameraScale);
+  const tick = screenFixedLength(ZONE_TICK_SCREEN_PX, props.cameraScale);
+  const strokeWidth = screenFixedLength(1, props.cameraScale);
 
   return (
     <g data-testid="sld-sheet-zone-markers" data-parity-key="sheet-zone-markers">
@@ -289,39 +417,38 @@ function ZoneMarkers(props: { readonly width: number; readonly height: number })
             data-testid={`sld-sheet-zone-col-${i + 1}`}
             data-parity-key={`sheet-zone-col-${i + 1}`}
             x={xCenter}
-            y={-10}
+            y={-labelOffset}
             textAnchor="middle"
             fontFamily="sans-serif"
-            fontSize={LABEL_TYPOGRAPHY.t1.fontSize}
+            fontSize={fontSize}
             fontWeight={LABEL_TYPOGRAPHY.t1.fontWeight}
-            fill={SHEET_STROKE}
+            fill={palette.baseStroke}
           >
             {i + 1}
           </text>
         );
       })}
-      {rows.map((i) => {
-        const yCenter = Math.min(i * ZONE_STEP + ZONE_STEP / 2, props.height);
+      {rows.map((band, i) => {
         const letter = zoneLetter(i);
         return (
           <text
             key={`row-${i}`}
             data-testid={`sld-sheet-zone-row-${letter}`}
             data-parity-key={`sheet-zone-row-${letter}`}
-            x={-16}
-            y={yCenter}
+            x={-rowLabelOffset}
+            y={band.y + band.height / 2}
             textAnchor="middle"
             dominantBaseline="middle"
             fontFamily="sans-serif"
-            fontSize={LABEL_TYPOGRAPHY.t1.fontSize}
+            fontSize={fontSize}
             fontWeight={LABEL_TYPOGRAPHY.t1.fontWeight}
-            fill={SHEET_STROKE}
+            fill={palette.baseStroke}
           >
             {letter}
           </text>
         );
       })}
-      {/* Znaczniki podziału (tick marks) co ZONE_STEP na krawędziach ramki. */}
+      {/* Znaczniki podziału (tick marks) na granicach stref. */}
       {cols.slice(1).map((i) => (
         <line
           key={`col-tick-top-${i}`}
@@ -329,21 +456,21 @@ function ZoneMarkers(props: { readonly width: number; readonly height: number })
           x1={i * ZONE_STEP}
           y1={0}
           x2={i * ZONE_STEP}
-          y2={-6}
-          stroke={SHEET_STROKE}
-          strokeWidth={1}
+          y2={-tick}
+          stroke={palette.baseStroke}
+          strokeWidth={strokeWidth}
         />
       ))}
-      {rows.slice(1).map((i) => (
+      {rows.slice(1).map((band, i) => (
         <line
           key={`row-tick-left-${i}`}
-          data-parity-key={`sheet-zone-tick-row-${i}`}
+          data-parity-key={`sheet-zone-tick-row-${i + 1}`}
           x1={0}
-          y1={i * ZONE_STEP}
-          x2={-6}
-          y2={i * ZONE_STEP}
-          stroke={SHEET_STROKE}
-          strokeWidth={1}
+          y1={band.y}
+          x2={-tick}
+          y2={band.y}
+          stroke={palette.baseStroke}
+          strokeWidth={strokeWidth}
         />
       ))}
     </g>
@@ -363,24 +490,39 @@ const DEFAULT_TITLE_BLOCK_FOOTPRINT = { width: 360, height: 220 };
  * wynikiem pomiaru DOM).
  */
 export function SheetFrame(props: SheetFrameProps): JSX.Element {
-  const { width, height, scaleLabel, lodLabel, hiddenLabelCount, titleBlock, children } = props;
+  const palette = useSldPalette();
+  const { width, height, scaleLabel, lodLabel, titleBlock, children } = props;
   const legend = props.legend ?? buildDefaultLegend();
+  const cameraScale = Number.isFinite(props.cameraScale) && (props.cameraScale ?? 0) > 0 ? props.cameraScale! : 1;
   const titleBlockOrigin = props.titleBlockOrigin ?? {
     x: Math.max(width - DEFAULT_TITLE_BLOCK_FOOTPRINT.width, 0),
     y: Math.max(height - DEFAULT_TITLE_BLOCK_FOOTPRINT.height, 0),
   };
 
-  const svgWidth = width + FRAME_MARGIN * 2;
-  const svgHeight = height + FRAME_MARGIN * 2;
+  // S9-7: pas aparatu arkusza (znaczniki stref, podpisy) rośnie w jednostkach
+  // ŚWIATA przy oddaleniu, bo jego rozmiar EKRANOWY jest stały. Gdyby okno
+  // zagnieżdżonego `<svg>` zostało przy `FRAME_MARGIN`, przeglądarka obcięłaby
+  // znaczniki (zagnieżdżone `<svg>` przycina do własnego widoku). Rozszerzamy
+  // je SYMETRYCZNIE o `frameOverflow` i kompensujemy `x`/`y` elementu, więc
+  // treść rysunku ląduje w DOKŁADNIE tym samym miejscu co przed kartą —
+  // `scenePointToCameraWorld` (kamera) i `export/exportFrame.ts` liczą kadr od
+  // `FRAME_MARGIN`, a ten pozostaje NIETKNIĘTY.
+  const frameOverflow = Math.max(0, screenFixedLength(FRAME_MARGIN, cameraScale) - FRAME_MARGIN);
+  const svgWidth = width + FRAME_MARGIN * 2 + frameOverflow * 2;
+  const svgHeight = height + FRAME_MARGIN * 2 + frameOverflow * 2;
+  const captionOffset = screenFixedLength(SHEET_CAPTION_OFFSET_SCREEN_PX, cameraScale);
+  const captionFontSize = screenFixedFontSize('t2', cameraScale);
 
   return (
     <svg
       data-testid="sld-sheet-frame"
       data-parity-key="sheet-frame"
+      x={-frameOverflow}
+      y={-frameOverflow}
       width={svgWidth}
       height={svgHeight}
-      viewBox={`0 0 ${svgWidth} ${svgHeight}`}
-      style={{ background: SHEET_BACKGROUND }}
+      viewBox={`${-frameOverflow} ${-frameOverflow} ${svgWidth} ${svgHeight}`}
+      style={{ background: palette.canvasBackground }}
     >
       <g data-testid="sld-sheet-drawing-area" data-parity-key="sheet-drawing-area" transform={`translate(${FRAME_MARGIN}, ${FRAME_MARGIN})`}>
         <rect
@@ -391,55 +533,47 @@ export function SheetFrame(props: SheetFrameProps): JSX.Element {
           width={width}
           height={height}
           fill="none"
-          stroke={SHEET_STROKE}
-          strokeWidth={1.5}
+          stroke={palette.baseStroke}
+          strokeWidth={screenFixedLength(SHEET_BORDER_STROKE_SCREEN_PX, cameraScale)}
         />
-        <ZoneMarkers width={width} height={height} />
+        <ZoneMarkers width={width} height={height} cameraScale={cameraScale} rowBands={props.rowBands} />
         <text
           data-testid="sld-sheet-scale-label"
           data-parity-key="sheet-scale-label"
           x={width}
-          y={height + 20}
+          y={height + captionOffset}
           textAnchor="end"
           fontFamily="sans-serif"
-          fontSize={LABEL_TYPOGRAPHY.t2.fontSize}
+          fontSize={captionFontSize}
           fontWeight={LABEL_TYPOGRAPHY.t2.fontWeight}
-          fill={SHEET_STROKE}
+          fill={palette.baseStroke}
         >
-          {`Skala ${scaleLabel}`}
+          {sheetScaleCaptionText(scaleLabel)}
         </text>
         {lodLabel ? (
           <text
             data-testid="sld-sheet-lod-label"
             data-parity-key="sheet-lod-label"
             x={0}
-            y={height + 20}
+            y={height + captionOffset}
             textAnchor="start"
             fontFamily="sans-serif"
-            fontSize={LABEL_TYPOGRAPHY.t2.fontSize}
+            fontSize={captionFontSize}
             fontWeight={LABEL_TYPOGRAPHY.t2.fontWeight}
-            fill={SHEET_STROKE}
+            fill={palette.baseStroke}
           >
-            {`Widok: ${lodLabel}`}
+            {sheetLodCaptionText(lodLabel)}
           </text>
         ) : null}
-        {hiddenLabelCount != null && hiddenLabelCount > 0 ? (
-          <text
-            data-testid="sld-sheet-hidden-labels"
-            data-parity-key="sheet-hidden-labels"
-            data-hidden-count={hiddenLabelCount}
-            x={width}
-            y={height + 20}
-            textAnchor="end"
-            fontFamily="sans-serif"
-            fontSize={LABEL_TYPOGRAPHY.t2.fontSize}
-            fontWeight={LABEL_TYPOGRAPHY.t2.fontWeight}
-            fill={SHEET_STROKE}
-          >
-            {`Ukryto ${hiddenLabelCount} ${hiddenLabelCount === 1 ? 'opis' : 'opisów'} — przybliż, aby zobaczyć`}
-          </text>
-        ) : null}
-        <SheetLegend entries={legend} sheetHeight={height} />
+        {/* K12 (KARTA_K12, dyrektywa właściciela 2026-07-30): legenda NIE jest
+         *  już domyślną treścią arkusza — `legend` puste (wołający, `SldCanvasV3`,
+         *  przekazuje `[]` na kanwie ekranowej) renderuje ZERO grupy w DOM
+         *  (nie tylko pustą grupę), żeby nieobecność była jednoznaczna dla
+         *  wyroczni/testów DOM. Wołający z realną treścią (eksport z opcją
+         *  „Dołącz legendę", panel na żądanie przez `SheetLegend` eksportowany
+         *  wyżej, oraz WŁASNE testy `SheetFrame` bez propa `legend` — fallback
+         *  `buildDefaultLegend()`) dostają grupę jak dotąd. */}
+        {legend.length > 0 && <SheetLegend entries={legend} sheetHeight={height} cameraScale={cameraScale} />}
         <g data-testid="sld-sheet-content" data-parity-key="sheet-content">
           {children}
         </g>

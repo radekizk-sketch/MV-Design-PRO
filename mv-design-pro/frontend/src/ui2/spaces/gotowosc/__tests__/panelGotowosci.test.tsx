@@ -4,7 +4,10 @@ import userEvent from '@testing-library/user-event';
 import { PanelGotowosci } from '../PanelGotowosci';
 import { GOTOWOSC_STRINGS } from '../strings';
 import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
+import { useExecutionRunsStore } from '../../../../ui/study-cases/runStore';
+import { useStudyCasesStore } from '../../../../ui/study-cases/store';
 import { useShellStore } from '../../../shell/useShellStore';
+import { PROCES_STRINGS } from '../../../proces';
 import type { EnergyNetworkModel } from '../../../../types/enm';
 import { emituj } from '../../../events/bus';
 import { enmFixActionFixture, readinessInfoFixture, readinessInfoZBlokadami } from './fixtures';
@@ -50,6 +53,10 @@ beforeEach(() => {
     loading: false,
     error: null,
   });
+  // Panel czyta teraz także przebiegi i aktywny przypadek (wspólna reguła
+  // następnej akcji) — zerujemy je, żeby przypadki nie przeciekały między sobą.
+  useExecutionRunsStore.setState({ runs: [] });
+  useStudyCasesStore.setState({ activeCase: null });
 });
 
 describe('PanelGotowosci — stany przestrzeni', () => {
@@ -195,20 +202,26 @@ describe('PanelGotowosci — „Następny krok" przy zielonej bramce (F-E3)', ()
     useShellStore.setState({ activeSpace: 'gotowosc' });
   });
 
-  it('bramka zielona (brak braków) → sekcja „Następny krok" widoczna z opisem PL', () => {
+  // INTENCJA WIERSZY BEZ ZMIAN (po zielonej bramce ekran ma jawny następny
+  // krok), KANON ZMIENIONY: sekcja nie ma już własnego, zaszytego zdania —
+  // renderuje wspólny panel następnej najlepszej akcji (`ui2/proces`), więc
+  // panel gotowości i pulpit projektu mówią projektantowi to samo.
+  it('bramka zielona (brak braków) → panel następnej akcji widoczny z opisem PL', () => {
     useSnapshotStore.setState({ snapshot: snapshotFixture(), readiness: readinessInfoFixture() });
+    useExecutionRunsStore.setState({ runs: [] });
     render(<PanelGotowosci {...props()} />);
-    const sekcja = screen.getByTestId('mvd-gotowosc-nastepny');
-    expect(within(sekcja).getByText(GOTOWOSC_STRINGS.nastepnyKrokTytul)).toBeInTheDocument();
-    expect(within(sekcja).getByText(GOTOWOSC_STRINGS.nastepnyKrokOpis)).toBeInTheDocument();
+    const sekcja = screen.getByTestId('mvd-nba');
+    expect(within(sekcja).getByText(PROCES_STRINGS.nbaEyebrow)).toBeInTheDocument();
+    expect(within(sekcja).getByText(PROCES_STRINGS.nbaUruchomObliczeniaTytul)).toBeInTheDocument();
   });
 
   it('klik natywny „Przejdź do obliczeń" → przełącza aktywną przestrzeń na „obliczenia"', async () => {
     const user = userEvent.setup();
     useSnapshotStore.setState({ snapshot: snapshotFixture(), readiness: readinessInfoFixture() });
+    useExecutionRunsStore.setState({ runs: [] });
     render(<PanelGotowosci {...props()} />);
     expect(useShellStore.getState().activeSpace).toBe('gotowosc');
-    await user.click(screen.getByTestId('mvd-gotowosc-nastepny-akcja'));
+    await user.click(screen.getByTestId('mvd-nba-akcja'));
     expect(useShellStore.getState().activeSpace).toBe('obliczenia');
   });
 
@@ -230,13 +243,43 @@ describe('PanelGotowosci — „Następny krok" przy zielonej bramce (F-E3)', ()
     });
     render(<PanelGotowosci {...props()} />);
     expect(screen.getByTestId('mvd-gotowosc-blokady-calkowite')).toHaveTextContent('0');
-    expect(screen.getByTestId('mvd-gotowosc-nastepny')).toBeInTheDocument();
+    expect(screen.getByTestId('mvd-nba')).toBeInTheDocument();
   });
 
-  it('bramka czerwona (są blokery) → sekcji „Następny krok" nie ma', () => {
+  it('bramka czerwona (są blokery) → panelu następnej akcji nie ma (przewodnikiem jest lista)', () => {
     ustawZBlokadami();
     render(<PanelGotowosci {...props()} />);
-    expect(screen.queryByTestId('mvd-gotowosc-nastepny')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('mvd-nba')).not.toBeInTheDocument();
+  });
+
+  it('po wykonanych i aktualnych obliczeniach panel prowadzi do WYNIKÓW, nie do obliczeń', async () => {
+    // Regresja rozjazdu naprawionego tą kartą: zaszyte zdanie „przejdź do
+    // obliczeń" mówiło to samo także wtedy, gdy obliczenia były już zrobione.
+    const user = userEvent.setup();
+    useSnapshotStore.setState({ snapshot: snapshotFixture(), readiness: readinessInfoFixture() });
+    useExecutionRunsStore.setState({
+      runs: [
+        {
+          id: 'run-1',
+          study_case_id: 'K1',
+          analysis_type: 'SC_3F',
+          solver_input_hash: 'h',
+          status: 'DONE',
+          started_at: '2026-01-01T10:00:00Z',
+          finished_at: '2026-01-01T10:01:00Z',
+          error_message: null,
+        },
+      ],
+    });
+    useStudyCasesStore.setState({
+      activeCase: { id: 'K1', name: 'K1', result_status: 'FRESH', results_valid: true } as never,
+    });
+    render(<PanelGotowosci {...props()} />);
+    expect(screen.getByTestId('mvd-nba-tytul')).toHaveTextContent(
+      PROCES_STRINGS.nbaPrzejdzDoWynikowTytul,
+    );
+    await user.click(screen.getByTestId('mvd-nba-akcja'));
+    expect(useShellStore.getState().activeSpace).toBe('wyniki');
   });
 });
 

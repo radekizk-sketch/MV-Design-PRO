@@ -1,10 +1,30 @@
 import type { TechnicalIconName } from '../icons/technicalIconRegistry';
-import type { AreaId } from '../navigation/areaRegistry';
+
 import type {
   SurfaceSubjectKind,
   WorkspaceSurfaceKind,
   WorkspaceSurfaceSizeClass,
 } from './types';
+
+/**
+ * Dziedzina projektowa ekranu — METADANA rejestru ekranów, nie nawigacja.
+ * D1 skasował rejestr `ui/navigation/areaRegistry` (9 obszarów z etykietami,
+ * ikonami i skrótami Ctrl+1–9) jako drugą nawigację; te same dziewięć kodów
+ * zostaje TU, bo opisują, do jakiej dziedziny należy ekran E-XX, i są czytane
+ * wyłącznie przez `getScreensByArea` oraz macierz pokrycia. Rozdzielenie jest
+ * celowe: nawigacja żyje w siedmiu przestrzeniach ui2, klasyfikacja ekranów w
+ * rejestrze ekranów.
+ */
+export type KodDziedzinyEkranu =
+  | 'MODEL_SIECI'
+  | 'SCHEMAT_TOPOLOGIA'
+  | 'STUDIA_OBLICZENIOWE'
+  | 'WYNIKI_ANALIZY'
+  | 'ZABEZPIECZENIA_AUTOMATYKA'
+  | 'ZRODLA_PRZYLACZENIA'
+  | 'KATALOGI_TECHNICZNE'
+  | 'RAPORTY_UZASADNIENIA'
+  | 'HISTORIA_AUDYT';
 
 export type CanonScreenId =
   | 'E-00' | 'E-01' | 'E-02' | 'E-03' | 'E-04' | 'E-05' | 'E-06' | 'E-07' | 'E-08' | 'E-09'
@@ -22,8 +42,8 @@ export interface ScreenCanonDefinition {
   labelFull: string;
   labelShort: string;
   label: string;
-  areaId: AreaId;
-  area: AreaId;
+  areaId: KodDziedzinyEkranu;
+  area: KodDziedzinyEkranu;
   icon: TechnicalIconName;
   canonicalRoute: string;
   legacyAliases: string[];
@@ -988,7 +1008,7 @@ export const SCREEN_CANON_REGISTRY: Readonly<Record<CanonScreenId, ScreenCanonDe
     icon: 'ikona-ekran-rozplyw-mocy',
     canonicalRoute: '/workspace/v126/power-quality-harmonics',
     legacyAliases: ['v126_power_quality', 'power_quality_harmonics'],
-    componentKey: 'V126AcademicSurface',
+    componentKey: 'EkranAnalizAkademickich',
     testId: 'screen-E-40-v126-power-quality',
     implemented: true,
     requiresProject: true,
@@ -1011,14 +1031,22 @@ export const SCREEN_CANON_REGISTRY: Readonly<Record<CanonScreenId, ScreenCanonDe
     icon: 'ikona-ekran-stabilnosc-dynamiczna',
     canonicalRoute: '/workspace/v126/voltage-stability',
     legacyAliases: ['v126_voltage_stability', 'voltage_stability'],
-    componentKey: 'V126AcademicSurface',
+    componentKey: 'EkranAnalizAkademickich',
     testId: 'screen-E-41-v126-voltage-stability',
     implemented: true,
     requiresProject: true,
     requiresSelection: false,
     requiresStudyCase: true,
     requiresOperatingVariant: true,
-    visibleInNavigation: true,
+    // QU-FABRYKACJA (2026-08-08): solver przestał wyznaczać JAKĄKOLWIEK wielkość
+    // tej analizy — wszystkie stały na mocy zwarciowej węzła podstawianej
+    // z napięcia znamionowego (pole podane dla 1 z 315 szyn sieci odniesienia)
+    // oraz na współczynnikach bez pokrycia w danych i w normie. Ekran zostaje
+    // w kanonie (ciągłość numeracji E-00…E-50, zdolność backendu istnieje i jest
+    // pilnowana testem `test_v126_stabilnosc_bez_fabrykacji.py`), ale znika
+    // z nawigacji: pozycja „Stabilnosc U" obiecywałaby analizę, która nie ma
+    // ani jednej liczby do pokazania. Rozstrzygnięcie: docs/v12xx/REJESTR_KONFLIKTOW.md.
+    visibleInNavigation: false,
     surfaceKind: 'analityczny',
     subjectKind: 'analysis_case',
     sizeClass: 'C',
@@ -1034,7 +1062,7 @@ export const SCREEN_CANON_REGISTRY: Readonly<Record<CanonScreenId, ScreenCanonDe
     icon: 'ikona-ekran-wyniki-porownania',
     canonicalRoute: '/workspace/v126/reliability-contingency',
     legacyAliases: ['v126_reliability', 'reliability_contingency'],
-    componentKey: 'V126AcademicSurface',
+    componentKey: 'EkranAnalizAkademickich',
     testId: 'screen-E-42-v126-reliability',
     implemented: true,
     requiresProject: true,
@@ -1057,7 +1085,7 @@ export const SCREEN_CANON_REGISTRY: Readonly<Record<CanonScreenId, ScreenCanonDe
     icon: 'ikona-ekran-siec-zerowa',
     canonicalRoute: '/workspace/v126/earthing-safety',
     legacyAliases: ['v126_earthing', 'earthing_safety'],
-    componentKey: 'V126AcademicSurface',
+    componentKey: 'EkranAnalizAkademickich',
     testId: 'screen-E-43-v126-earthing',
     implemented: true,
     requiresProject: true,
@@ -1080,7 +1108,7 @@ export const SCREEN_CANON_REGISTRY: Readonly<Record<CanonScreenId, ScreenCanonDe
     icon: 'ikona-ekran-weryfikacja-cieplna-dynamiczna',
     canonicalRoute: '/workspace/v126/insulation-coordination',
     legacyAliases: ['v126_insulation', 'insulation_coordination'],
-    componentKey: 'V126AcademicSurface',
+    componentKey: 'EkranAnalizAkademickich',
     testId: 'screen-E-44-v126-insulation',
     implemented: true,
     requiresProject: true,
@@ -1103,7 +1131,7 @@ export const SCREEN_CANON_REGISTRY: Readonly<Record<CanonScreenId, ScreenCanonDe
     icon: 'ikona-ekran-stabilnosc-dynamiczna',
     canonicalRoute: '/workspace/v126/transient-trv',
     legacyAliases: ['v126_transient', 'transient_trv'],
-    componentKey: 'V126AcademicSurface',
+    componentKey: 'EkranAnalizAkademickich',
     testId: 'screen-E-45-v126-transient',
     implemented: true,
     requiresProject: true,
@@ -1126,7 +1154,7 @@ export const SCREEN_CANON_REGISTRY: Readonly<Record<CanonScreenId, ScreenCanonDe
     icon: 'ikona-ekran-obciazenie-nn',
     canonicalRoute: '/workspace/v126/motor-starting',
     legacyAliases: ['v126_motor_starting', 'motor_starting'],
-    componentKey: 'V126AcademicSurface',
+    componentKey: 'EkranAnalizAkademickich',
     testId: 'screen-E-46-v126-motor-starting',
     implemented: true,
     requiresProject: true,
@@ -1149,7 +1177,7 @@ export const SCREEN_CANON_REGISTRY: Readonly<Record<CanonScreenId, ScreenCanonDe
     icon: 'ikona-ekran-zrodlo-pv',
     canonicalRoute: '/workspace/v126/hosting-capacity',
     legacyAliases: ['v126_hosting_capacity', 'hosting_capacity'],
-    componentKey: 'V126AcademicSurface',
+    componentKey: 'EkranAnalizAkademickich',
     testId: 'screen-E-47-v126-hosting',
     implemented: true,
     requiresProject: true,
@@ -1172,7 +1200,7 @@ export const SCREEN_CANON_REGISTRY: Readonly<Record<CanonScreenId, ScreenCanonDe
     icon: 'ikona-ekran-rozplyw-mocy',
     canonicalRoute: '/workspace/v126/opf-loss-lcc',
     legacyAliases: ['v126_opf', 'opf_loss_lcc'],
-    componentKey: 'V126AcademicSurface',
+    componentKey: 'EkranAnalizAkademickich',
     testId: 'screen-E-48-v126-opf',
     implemented: true,
     requiresProject: true,
@@ -1195,14 +1223,20 @@ export const SCREEN_CANON_REGISTRY: Readonly<Record<CanonScreenId, ScreenCanonDe
     icon: 'ikona-ekran-wyniki-porownania',
     canonicalRoute: '/workspace/v126/benchmark-validation',
     legacyAliases: ['v126_benchmark_validation', 'benchmark_validation'],
-    componentKey: 'V126AcademicSurface',
+    componentKey: 'EkranAnalizAkademickich',
     testId: 'screen-E-49-v126-benchmark',
     implemented: true,
     requiresProject: true,
     requiresSelection: false,
     requiresStudyCase: true,
     requiresOperatingVariant: true,
-    visibleInNavigation: true,
+    // V126-WYGASZENIE (decyzja właściciela 2026-08-07): walidacja na sieciach
+    // odniesienia bada NARZĘDZIE, nie projekt użytkownika, więc znika z toru
+    // projektanta. Ekran zostaje w kanonie (zdolność backendu istnieje i jest
+    // pilnowana w kontroli jakości — `test_ieee_benchmark_wiring.py`), ale nie
+    // ma go w nawigacji: pozycja „Benchmarki" obiecywałaby analizę, której okno
+    // już nie oferuje. Rozstrzygnięcie: docs/v12xx/REJESTR_KONFLIKTOW.md.
+    visibleInNavigation: false,
     surfaceKind: 'analityczny',
     subjectKind: 'analysis_case',
     sizeClass: 'C',
@@ -1218,7 +1252,7 @@ export const SCREEN_CANON_REGISTRY: Readonly<Record<CanonScreenId, ScreenCanonDe
     icon: 'ikona-ekran-uzasadnienie',
     canonicalRoute: '/workspace/v126/uncertainty-sensitivity',
     legacyAliases: ['v126_uncertainty', 'uncertainty_sensitivity'],
-    componentKey: 'V126AcademicSurface',
+    componentKey: 'EkranAnalizAkademickich',
     testId: 'screen-E-50-v126-uncertainty',
     implemented: true,
     requiresProject: true,
@@ -1274,7 +1308,7 @@ export function resolveScreenByRoute(route: string | null | undefined): ScreenCa
   );
 }
 
-export function getScreensByArea(areaId: AreaId): ScreenCanonDefinition[] {
+export function getScreensByArea(areaId: KodDziedzinyEkranu): ScreenCanonDefinition[] {
   return CANONICAL_SCREEN_CODES
     .map((screenId) => getScreenDefinition(screenId))
     .filter((definition) => definition.areaId === areaId);

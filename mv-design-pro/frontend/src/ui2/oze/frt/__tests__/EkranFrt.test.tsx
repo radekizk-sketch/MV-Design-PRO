@@ -437,3 +437,50 @@ describe('EkranFrt — kontekst siły sieci sekwencji (run_id / bus_ref)', () =>
     });
   });
 });
+
+describe('EkranFrt — zapis wyniku do zgodności NC RfG (K5-B / H-3 pkt 4)', () => {
+  it('„Zapisz wynik do zgodności NC RfG" zapisuje werdykt per MODUŁ (id modułu, nie typ przekształtnika)', async () => {
+    const { useNcRfgStore } = await import('../../ncRfgStore');
+    useNcRfgStore.getState().reset();
+    pobierzTrajektorie.mockResolvedValue(widokLvrtWObwiedniFixture());
+    await wczytajISkonfiguruj();
+    fireEvent.click(screen.getByTestId('mvd-frt-oblicz'));
+    await screen.findByTestId('mvd-frt-wynik');
+
+    // Realna ścieżka: natywny klik akcji przy wyniku.
+    fireEvent.click(screen.getByTestId('mvd-frt-zapisz-wynik'));
+
+    const zapisany = useNcRfgStore.getState().wynikiFrt['der-1']?.lvrt;
+    expect(zapisany).toBeDefined();
+    expect(zapisany?.istotnosc).toBe('ok');
+    expect(zapisany?.operatorId).toBe('pse');
+    // Klucz to id MODUŁU (tożsamość kolumn macierzy), nie ref typu z katalogu.
+    expect(useNcRfgStore.getState().wynikiFrt[DER_REF]).toBeUndefined();
+    useNcRfgStore.getState().reset();
+  });
+
+  it('werdykty LVRT i HVRT trwają niezależnie (dwa rodzaje testu, jeden moduł)', async () => {
+    const { useNcRfgStore } = await import('../../ncRfgStore');
+    useNcRfgStore.getState().reset();
+    pobierzTrajektorie.mockResolvedValue(widokLvrtWObwiedniFixture());
+    await wczytajISkonfiguruj();
+    fireEvent.click(screen.getByTestId('mvd-frt-oblicz'));
+    await screen.findByTestId('mvd-frt-wynik');
+    fireEvent.click(screen.getByTestId('mvd-frt-zapisz-wynik'));
+
+    // Drugi bieg: HVRT z werdyktem „moduł wypadł" (istotność err).
+    pobierzTrajektorie.mockResolvedValue({
+      ...widokModulWypadlFixture(),
+      test_kind: 'hvrt',
+    });
+    fireEvent.change(screen.getByTestId('mvd-frt-rodzaj'), { target: { value: 'hvrt' } });
+    fireEvent.click(screen.getByTestId('mvd-frt-oblicz'));
+    await screen.findByTestId('mvd-frt-wynik');
+    fireEvent.click(screen.getByTestId('mvd-frt-zapisz-wynik'));
+
+    const wyniki = useNcRfgStore.getState().wynikiFrt['der-1'];
+    expect(wyniki?.lvrt?.istotnosc).toBe('ok');
+    expect(wyniki?.hvrt?.istotnosc).toBe('err');
+    useNcRfgStore.getState().reset();
+  });
+});

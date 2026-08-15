@@ -79,7 +79,10 @@ import type { EnergyNetworkModel } from '../../../../types/enm';
 import type { ElementType } from '../../../types';
 import { useAppStateStore } from '../../../app-state';
 import { useSelectionStore } from '../../../selection';
+import { updateUrlWithSelection } from '../../../navigation/urlState';
 import { useSnapshotStore } from '../../../topology/snapshotStore';
+import { wskazanieOperacji } from '../../../topology/wskazanieOperacji';
+import { pustoscModelu } from '../../../topology/pustoscModelu';
 import { buildSupplyPathHighlight, isElementEnergized, type SupplyPathHighlight } from '../../v2/canvas/SupplyPathHighlighter';
 import {
   previousPayloadForAnalysis,
@@ -91,6 +94,14 @@ import {
 // `loadFaultFlow` PO `loadOverlay`), czyszczony automatycznie przy podmianie
 // overlay (loadOverlay zeruje faultFlow — invariant store'a).
 import { useOverlayStore } from '../../../sld-overlay/overlayStore';
+// NAKŁADKA RÓŻNIC A/B — równoległy kanał warstwy wynikowej, zasilany przez
+// ekran porównań (tryb zwarciowy → „Pokaż różnice na schemacie"). Ma
+// PIERWSZEŃSTWO w warstwie etykiet, dopóki trwa; wyjście z trybu różnic
+// przywraca wynik pojedynczego przebiegu bez ponownego pobierania.
+import {
+  payloadEtykietRoznic,
+  useSldDeltaOverlayStore,
+} from '../../../sld-overlay/sldDeltaOverlayStore';
 import type { ShortCircuitFlowOverlayInput } from '../../../sld-overlay/ShortCircuitFlowOverlayAdapter';
 import { buildSldDataFromSnapshot, type SldDataPayload } from '../../v2/canvas/enmToSldAdapter';
 import { SldDetailDrawer, type SldDetailDrawerAction, type SldDetailDrawerData, type SldDetailDrawerSavePayload } from '../../v2/canvas/SldDetailDrawer';
@@ -101,8 +112,16 @@ import { useDerDragDrop, DerPaletteButton, type DerDragKind } from '../../v2/can
 import {
   SldContextMenuController,
   type SldContextMenuRequest,
+  type SldMenuContext,
 } from '../../../context-menu/SldContextMenuController';
 import { getMenuActions, type SldElementKindForMenu } from '../../v2/command/SldCommandService';
+import {
+  buildCanvasModelIndex,
+  resolveCanvasMenuSubject,
+  ELEMENT_KIND_KOTWICY,
+  KLASY_UCHWYTU,
+  type CanvasMenuSubject,
+} from './canvasMenuSubject';
 import { selectStationDistributionTransformers } from '../../../network-build/stationTransformerSelection';
 import { useMeasuredSize } from '../../shared/useMeasuredSize';
 import {
@@ -116,6 +135,9 @@ import {
 import {
   DRAWER_ACTION_LABEL_PL,
   parseGpzApparatusSelectionId,
+  resolveBranchStartAvailability,
+  resolveGpzTrunkStartFieldRef,
+  stationRefOfBusOrSource,
   useSldActionExecutor,
 } from '../../shared/sldActionExecutor';
 // F12-B (spec §10.1 ARCH-4, plan §F12): sześć ostatnich osiągalnych funkcji
@@ -142,21 +164,52 @@ import {
   type CanvasLayerVisibility,
   type L2SublayerId,
 } from './layers';
-import type { ViewportTransform } from './camera';
-import { buildSceneV3, type SceneLod, type SceneV3 } from '../scene/buildScene';
+import { cameraViewBox, type ViewportTransform } from './camera';
+// K11-B (karta K11-B §0.1): minimapa/nawigator — geometria w `./minimap`
+// (czyste funkcje, testowalne bez DOM), rysunek w `./SldMinimapPanel`.
+import {
+  minimapPointToWorld,
+  minimapProjectionOf,
+  minimapShapesOf,
+  parseCameraViewBox,
+  worldRectToMinimap,
+  type MinimapProjection,
+  type MinimapRect,
+  type MinimapShape,
+} from './minimap';
+import { SldMinimapPanel } from './SldMinimapPanel';
+import type { V3Rect } from '../core/grid';
+import { buildSceneV3, SCENE_LOD_LABELS_PL, type SceneLod, type SceneV3 } from '../scene/buildScene';
 import type { PreviewElementKind } from '../compose/preview';
-import type { DerSourceKind } from '../compose/sourceKind';
 import { SldCanvasV3, type SldElementClickMeta } from './SldCanvasV3';
 // SCHEMAT-10 S4 (V12K-135/136): paleta jasna + kadr fit-do-treści WYŁĄCZNIE
 // dla toru eksportu — patrz nagłówki `export/exportPalette.ts`/`exportFrame.ts`.
-import { applyContentFitFrame } from '../export/exportFrame';
+import { applyContentFitFrame, computeContentFitFrame } from '../export/exportFrame';
 import { toLightTechnicalExportSvg } from '../export/exportPalette';
+// S9-6 (audyt E-1…E-6): warstwa eksportu dokumentowego — tabliczka rysunkowa,
+// jedna konwencja nazw i JEDNA mapa formatów (`formats.ts`) wspólna dla menu
+// i dla implementacji.
+import { buildSheetTitleBlockData, SheetTitleBlock } from '../export/sheetTitleBlock';
+import { buildSldExportFile } from '../export/sldExport';
+import type { SldExportFormat } from '../export/formats';
+// KD-8 poz. 1: eksport przepisuje kolory z palety EKRANU (motyw projektanta)
+// na paletę DOKUMENTOWĄ — arkusz do dokumentacji nie zależy od motywu.
+import { SldPaletteContext, sldPaletteForTheme } from '../theme/palette';
+// KD-8 poz. 2: deterministyczny układ JEDNEJ warstwy narzędzi kanwy.
+import {
+  isToolbarGroupExpanded,
+  layoutCanvasToolbar,
+  SLD_CANVAS_DOCK_INSETS,
+  STATION_INTERNAL_PANEL_MAX_WIDTH_PX,
+  type CanvasToolbarGroupId,
+} from './toolbarLayout';
+import { useThemeModeStore } from '../../../../ui2/theme/themeMode';
 import {
   buildFaultFlowOverlayFromScene,
   buildFlowOverlayFromScene,
   buildOltcOverlayFromScene,
   multiHopFaultFlowSegmentRefs,
-  singleHopSegmentRefs,
+  orientedSegmentRefs,
   type SegmentFaultFlowOverlay,
   type SegmentFlowOverlay,
   type SldV3Overlay,
@@ -167,6 +220,8 @@ import {
   buildResultLabelsFromScene,
   DEFAULT_RESULT_LABEL_FILTER,
   resultLabelsHaveExceedances,
+  resultRefForSegment,
+  summarizeResultPointCoverage,
   type ResultLabelComparison,
   type ResultLabelComparisonMode,
   type ResultLabelEntry,
@@ -174,14 +229,66 @@ import {
   type ResultLabelKind,
   type ResultLabelQuantity,
 } from './resultLabels';
+import {
+  buildResultRefBridge,
+  resultPointsHiddenByModel,
+  type ResultPointCoverage,
+} from './resultRefBridge';
+import { normalizeResultLabelAnalysis } from './resultLabelTemplates';
+// S9-13 (audyt W-8): PORÓWNANIE A/B Z KANWY — jawne wejście w tryb różnic
+// z panelu filtrów warstwy wynikowej (wybór drugiego UKOŃCZONEGO przebiegu
+// tego samego rodzaju i przypadku; stan i powody blokady z JEDNEGO rachunku).
+import {
+  stanPorownaniaZKanwy,
+  dataPrzebiegu,
+  POWOD_WYNIKI_NIEAKTUALNE,
+  type AkcjaPorownaniaZKanwy,
+  type StanPorownaniaZKanwy,
+} from './porownanieZKanwy';
+import { useExecutionRunsStore } from '../../../study-cases/runStore';
+import { ANALYSIS_TYPE_LABELS } from '../../../study-cases/types';
+import { navigateToCaseConfig } from '../../../navigation/routes';
+// Akcja „Otwórz ekran porównań" stanu zablokowanego — TA SAMA para wywołań,
+// którą wykonuje jawny wybór przestrzeni w powłoce (przejdzDoPrzestrzeni)
+// + zakładka „Porównanie" warsztatu wyników. Kierunek importu ui→ui2 ma
+// precedens w tym pliku (`useThemeModeStore`).
+import { przejdzDoPrzestrzeni } from '../../../../ui2/shell/przejsciaPrzestrzeni';
+import { useShellStore } from '../../../../ui2/shell/useShellStore';
 import { formatContractValue } from '../../../workspace/analysisRunContract';
 import { formatDateTime } from '../../../workspace/routerDisplayHelpers';
+// K12 (KARTA_K12, dyrektywa właściciela 2026-07-30): legenda „na żądanie" —
+// panel doku widoku kanwy (`sld-v3-view-dock`) + opcja eksportu „Dołącz
+// legendę". Treść liczona z REALNEJ sceny (`computeProjectLegendEntries`,
+// zero fabrykacji), rysunek panelu reużywa `SYMBOL_GLYPHS` (te same glify co
+// scena), rysunek eksportu reużywa `SheetLegend` (`sheet/Frame.tsx`) przez
+// `renderToStaticMarkup` — JEDNO źródło renderu legendy dla arkusza/eksportu.
+import { renderToStaticMarkup } from 'react-dom/server';
+import { FRAME_MARGIN, SheetLegend, type SheetLegendEntry } from '../sheet/Frame';
+import { computeProjectLegendEntries } from '../sheet/projectLegend';
+import { SYMBOL_GLYPHS } from '../symbols/glyphs';
+import { sheetSizeFor } from '../sheet/outline';
+import type { SymbolId } from '../symbols/defs';
 
 const MIN_CANVAS_WIDTH_PX = 320;
 const MIN_CANVAS_HEIGHT_PX = 240;
 // F8c pkt 7: `useMeasuredSize` wyciągnięty do `../../shared/useMeasuredSize.ts`
 // (była tu funkcja modułowa duplikująca v2, patrz docstring modułu
 // współdzielonego dla pełnego porównania linia-po-linii).
+
+/**
+ * S9-6: dokłada gotowy markup SVG (legenda, tabliczka rysunkowa) do obszaru
+ * rysunku KLONU arkusza. Jedna funkcja dla obu dokładanych bloków — dwa
+ * niezależne kopiuj-wklej tego samego kroku były drogą do rozjazdu (jeden
+ * zaczepiony w innym węźle niż drugi).
+ */
+function appendToDrawingArea(clone: SVGSVGElement, markup: string): void {
+  const parsed = new DOMParser().parseFromString(`<svg xmlns="http://www.w3.org/2000/svg">${markup}</svg>`, 'image/svg+xml');
+  const node = parsed.documentElement.firstElementChild;
+  const drawingArea = clone.querySelector('[data-testid="sld-sheet-drawing-area"]');
+  if (node && drawingArea && clone.ownerDocument) {
+    drawingArea.appendChild(clone.ownerDocument.importNode(node, true));
+  }
+}
 
 export interface SldCanvasV3WorkspaceProps {
   /** Tryb tylko-do-odczytu — v3 nie ma jeszcze CAD-edycji (spec §10, poza
@@ -254,95 +361,25 @@ export function elementTypeForKind(kind: PreviewElementKind | undefined): Elemen
 }
 
 /**
- * F8c pkt 3 (checklista bramkująca §F8c, „Context-menu"): `PreviewElementKind`
- * v3 → `SldElementKindForMenu` (`SldCommandService`/`SLD_MENU_REGISTRY`,
- * WSPÓŁDZIELONY moduł `context-menu/`) — TA SAMA metoda co
- * `elementTypeForKind` wyżej (jawna, zamknięta tabela, `undefined` = brak
- * menu, NIE zgadywanie). Zweryfikowane względem `v2/canvas/
- * SldWorkspaceContainer.tsx::mapKindToMenuKind` (vocabulary v2 jest
- * SZERSZY — v2 rozróżnia więcej `kind` niż v3 `elementKind` — więc to NIE
- * jest reużycie tamtej funkcji, tylko ANALOGICZNA, mniejsza tabela dla
- * mniejszej unii v3):
- *  - 'station' → 'station' (dopasowanie wprost);
- *  - 'transformer' → 'apparatus' (jak w v2: kind='transformer' →
- *    menuKind='apparatus' — transformator nie ma własnej kategorii menu);
- *  - 'apparatus' → 'apparatus' (dopasowanie wprost);
- *  - 'source' → 'gpz' (sieć zewnętrzna/GPZ, jak w v2 kind='gpz' →
- *    menuKind='gpz' — v3 `elementKind='source'` to TA SAMA kategoria
- *    domenowa, inna nazwa w unii v3, patrz nagłówek pliku F9.4);
- *  - 'bus' → 'section' (szyna/sekcja rozdzielni SN — najbliższy odpowiednik
- *    v2 'section'; v3 nie rozróżnia dziś szyny GPZ od sekcji, jak
- *    `elementTypeForKind('bus') → 'Bus'` niżej nie rozróżnia ich też);
- *  - 'segment' → 'cable_segment_sn' (DOMYŚLNIE — v3 `PreviewSegment.meta.kind`
- *    niesie tylko poziom napięcia (bus/sn/lv/leader/protectionTrip/
- *    measurementLink), NIE rozróżnia kabel-vs-napowietrzna; v2 ma tę samą
- *    niepewność domyślnie na 'cable_segment_sn' gdy kind nie precyzuje
- *    'overhead_line_sn' — UDOKUMENTOWANA LUKA, nie regresja);
- *  - 'der' → kategoria PODTYPU wg `meta.derKind` (DER-MENU-V3, Karta SLD-P,
- *    GAP P-1 — LUKA ZAMKNIĘTA): scena v3 niesie TERAZ `derKind` (REALNA
- *    wartość `SldSourceView.kind` z łańcucha adaptera, `compose/station.ts` →
- *    `scene/buildScene.ts` `meta.derKind`), więc mapowanie na OSOBNE kategorie
- *    v2 działa BEZ zgadywania: `pv → 'der_pv'`, `bess → 'der_bess'`,
- *    `wind → 'der_fw'` (pełne menu podtypu: `open-*-config`/`show-frt-hvrt`/
- *    `delete-*`, `SldCommandService.ts`). `generator`/`unknown` oraz BRAK
- *    `derKind` → 'der' GENERYCZNE (uczciwa degradacja — `domain_no_guessing_
- *    guard`: v2 nie ma osobnej kategorii dla `generator`, a `unknown` to
- *    honest-unknown; menu niesie tylko akcje bez zależności od podtypu
- *    `show-ncrfg`/`show-results`). Testy (a)/(b) w
- *    `__tests__/contextMenu.test.tsx` pokrywają oba tory (derPv → menu podtypu;
- *    derGenerator → menu generyczne);
- *  - 'protectionAnnotation' → `undefined` (adnotacja graficzna, nie obiekt
- *    domenowy — brak odpowiednika w v2/SLD_MENU_REGISTRY).
+ * KARTA S9-5 — KATEGORIA MENU WYNIKA Z OBIEKTU MODELU, NIE Z KRESKI.
+ *
+ * Dawna tabela `elementKindForMenu` (`PreviewElementKind` → kategoria menu)
+ * została ZASTĄPIONA rozstrzyganiem tematu w `canvas/canvasMenuSubject.ts`.
+ * Powód jest pomiarowy, nie estetyczny (sieć referencyjna 52 stacji, LOD 0/1/2):
+ *
+ *  - 350 z 468 odcinków rysowanych jako „tor SN" NIE MA gałęzi w modelu
+ *    (zejścia pól, wyprowadzenia boczne) — dawna tabela dawała im PEŁNE menu
+ *    odcinka, a `element_ref` operacji (`…/bay/001/001#lateral-0`) nie
+ *    istniał w modelu;
+ *  - `'segment' → 'cable_segment_sn'` było DOMYŚLNE, więc wszystkie 8 linii
+ *    napowietrznych sieci referencyjnej dostawało menu KABLA (UDOKUMENTOWANA
+ *    LUKA w dawnym komentarzu — dziś zamknięta realnym `Branch.type`);
+ *  - etykieta transformatora (`ownerKind: 'station-name'`) trafiała do
+ *    kategorii `station`, czyli menu STACJI nad transformatorem.
+ *
+ * Tabela `derSubtypeMenuKind` (podtyp DER → kategoria) przeniesiona 1:1 do
+ * `canvasMenuSubject.menuKindDer` — jedno miejsce rozstrzygania kategorii.
  */
-function elementKindForMenu(
-  kind: PreviewElementKind | undefined,
-  derKind: DerSourceKind | undefined,
-): SldElementKindForMenu | undefined {
-  switch (kind) {
-    case 'station':
-      return 'station';
-    case 'transformer':
-      return 'apparatus';
-    case 'apparatus':
-      return 'apparatus';
-    case 'source':
-      return 'gpz';
-    case 'bus':
-      return 'section';
-    case 'segment':
-      return 'cable_segment_sn';
-    case 'der':
-      // DER-MENU-V3: podtyp z REALNEGO `derKind` — TYLKO trzy rozpoznane
-      // rodzaje mapują na osobne kategorie v2; `generator`/`unknown`/brak
-      // danych → 'der' generyczne (zero fabrykacji podtypu).
-      return derSubtypeMenuKind(derKind);
-    default:
-      return undefined;
-  }
-}
-
-/**
- * DER-MENU-V3 (Karta SLD-P): `DerSourceKind` (REALNA wartość łańcucha) →
- * kategoria menu v2. JAWNA, zamknięta tabela — WYŁĄCZNIE `pv`/`bess`/`wind`
- * mają osobne kategorie (`der_pv`/`der_bess`/`der_fw`, `SLD_MENU_REGISTRY`);
- * `generator` (brak kategorii v2), `unknown` (honest-unknown) i `undefined`
- * (brak danych) degradują do 'der' generycznego — NIGDY domysł podtypu
- * (`domain_no_guessing_guard`).
- */
-function derSubtypeMenuKind(derKind: DerSourceKind | undefined): SldElementKindForMenu {
-  switch (derKind) {
-    case 'pv':
-      return 'der_pv';
-    case 'bess':
-      return 'der_bess';
-    case 'wind':
-      return 'der_fw';
-    case 'generator':
-    case 'unknown':
-    case undefined:
-      return 'der';
-  }
-}
 
 /**
  * F11.4-B / ARCH-4 (spec §10.1 „pełna migracja budowniczych danych drawera"):
@@ -483,11 +520,14 @@ function resolveTransformerRefForOwnerRef(snapshot: EnergyNetworkModel | null, o
  * transformer/apparatus (rozwiązywanie refu/stacji-właściciela z `ownerRef`,
  * patrz funkcje wyżej). `null` = drawer się NIE otwiera.
  *
- * `apparatus`: scena v3 nie niesie refu POJEDYNCZEGO urządzenia (tylko
- * `bayRef`), więc `apparatusState`/`parentBayLabel` w zwróconym obiekcie
- * ZOSTAJĄ `null` (budowniczy nie znajduje dopasowania w
- * `primary_device_states`/`equipment_refs` po samym `bayRef`) —
- * UDOKUMENTOWANA LUKA, NIE fabrykowany stan. `stationCode`/
+ * `apparatus`: S9-10 (dług `S9-4-DLUG-INSPEKTOR` SPŁACONY) — scena v3 niesie
+ * TERAZ ref POJEDYNCZEGO urządzenia (`PreviewElementMeta.deviceRef`,
+ * WYŁĄCZNIE ścieżka danych `apparatusSource==='dane'`), a klik przenosi go w
+ * `SldElementClickMeta.deviceRef`. Budowniczy dostaje wtedy REF URZĄDZENIA
+ * (nie pola), więc `apparatusState`/`parentBayLabel`/`globalId` rozwiązują
+ * się per-aparat. Aparat BEZ `deviceRef` (stos konwencji §12.4) zachowuje
+ * dotychczasową ścieżkę po `bayRef` — uczciwy brak rozdzielczości, NIE
+ * fabrykowany ref. `stationCode`/
  * `parentStationLabel` w budowniczym współdzielonym spadłyby na arbitralny
  * `sldData.stations[0]` (fallback v2, tam martwy, bo `id` tam zawsze
  * rozwiązywalny — tu NIE) — KORYGOWANE tu dla aparatu STACJI, rozwiązanego
@@ -502,6 +542,7 @@ function buildDetailDrawerDataForElementKind(
   overlayPayload: RawOverlayPayload | null,
   elementKind: PreviewElementKind | undefined,
   id: string,
+  deviceRef?: string,
 ): SldDetailDrawerData | null {
   if (elementKind === 'station') {
     return buildStationDetailDrawerData(snapshot, sldData, overlayPayload, id);
@@ -512,7 +553,12 @@ function buildDetailDrawerDataForElementKind(
     return buildDetailDrawerDataForKind('transformer', transformerRef, { snapshot, sldData, overlayPayload });
   }
   if (elementKind === 'apparatus') {
-    const apparatusDrawerData = buildDetailDrawerDataForKind('apparatus', id, { snapshot, sldData, overlayPayload });
+    // S9-10 (dług `S9-4-DLUG-INSPEKTOR`): gdy klik niesie ref POJEDYNCZEGO
+    // urządzenia (ścieżka danych), budowniczy dostaje JEGO, nie ref pola —
+    // dwa aparaty jednego pola przestają dzielić jedną treść inspektora.
+    // Korekta stacji-właściciela liczy się nadal z refu POLA (`id`), bo
+    // relacja `Bay.substation_ref` jest zakotwiczona w polu.
+    const apparatusDrawerData = buildDetailDrawerDataForKind('apparatus', deviceRef ?? id, { snapshot, sldData, overlayPayload });
     if (!apparatusDrawerData) return null;
     const stationRef = stationRefForBayOwner(snapshot, id);
     const correctedStationCode = stationRef
@@ -567,7 +613,17 @@ export function buildEnergizationOverlay(snapshot: EnergyNetworkModel): SldV3Ove
     scene.segments.forEach((segment) => {
       const meta = segment.meta;
       if (!meta?.ownerRef || !meta.elementKind || !OVERLAY_ELIGIBLE_KINDS.has(meta.elementKind)) return;
-      energizedByOwnerRef[meta.ownerRef] = isElementEnergized(highlight, baseRefOf(meta.ownerRef));
+      // KARTA WN-WYNIK — KLUCZ z rysunku, WARTOŚĆ z modelu. Klucz musi być tym,
+      // czym kanwa pyta (`meta.ownerRef`), a wartość musi opisywać element
+      // MODELU, który ten rysunek przedstawia. Dla szyn GPZ te dwa refy są
+      // różne: `baseRefOf('gpz/…/section/001#bus-primary')` daje IDENTYFIKATOR
+      // SEKCJI, którego `SupplyPathHighlight` w ogóle nie zna, a
+      // `isElementEnergized` nie ma stanu „nie wiem" — zwracał `false`, czyli
+      // szyna pod napięciem dostawała zdanie „beznapięciowa". Kanoniczny
+      // `busResultRef` (gdy adapter go niesie) jest tu jedynym uczciwym
+      // źródłem stanu; pozostałe odcinki jak dotąd (`baseRefOf`).
+      const elementModelu = resultRefForSegment(meta) ?? baseRefOf(meta.ownerRef);
+      energizedByOwnerRef[meta.ownerRef] = isElementEnergized(highlight, elementModelu);
     });
   }
   return { energizedByTestId: {}, energizedByOwnerRef };
@@ -600,14 +656,13 @@ export function buildFlowOverlayForSnapshot(
   payload: RawOverlayPayload | null,
 ): Readonly<Record<string, SegmentFlowOverlay>> {
   if (!payload) return {};
-  // F-1 (recenzja Opusa): zbiór refów jednokawałkowych liczony RAZ per
-  // wywołanie (ten sam adapter co buildSceneV3) — kierunek emitowany
-  // wyłącznie dla przęseł o udowodnionej orientacji, patrz
-  // `overlay.ts::singleHopSegmentRefs`.
-  const trustedRefs = singleHopSegmentRefs(snapshot);
+  // S9-2: mapa ORIENTACJI liczona RAZ per wywołanie (ten sam adapter co
+  // buildSceneV3) — kierunek emitowany wyłącznie dla przęseł o udowodnionej
+  // tożsamości gałęzi, patrz `overlay.ts::orientedSegmentRefs`.
+  const orientation = orientedSegmentRefs(snapshot);
   const merged: Record<string, SegmentFlowOverlay> = {};
   for (const lod of ALL_SCENE_LODS) {
-    Object.assign(merged, buildFlowOverlayFromScene(buildSceneV3(snapshot, lod), payload, trustedRefs));
+    Object.assign(merged, buildFlowOverlayFromScene(buildSceneV3(snapshot, lod), payload, orientation));
   }
   return merged;
 }
@@ -658,7 +713,7 @@ function useOltcOverlay(
  * W4 (RECENZJA_L2_POLA_WYPOSAZENIE_2026-07 §8): LICZBOWE etykiety wynikowe ze
  * WSZYSTKICH trzech LOD — TEN SAM wzorzec co `buildFlowOverlayForSnapshot`
  * (ownerRef = tożsamość LOD-niezależna, scalanie neutralne). Bramka przęseł =
- * `singleHopSegmentRefs` (jednoznaczna tożsamość gałęzi, jak flow). Źródło
+ * klucze `orientedSegmentRefs` (udowodniona tożsamość gałęzi, jak flow). Źródło
  * `payload`: `useRawResultOverlayStore` (produkcyjnie z `App.tsx`). Brak
  * wyniku/metryk ⇒ `{}` (warstwa wyłączona, §8 „gdy wyniki są").
  */
@@ -668,10 +723,17 @@ export function buildResultLabelsForSnapshot(
   comparison?: ResultLabelComparison,
 ): Readonly<Record<string, ResultLabelEntry>> {
   if (!payload) return {};
-  const trustedRefs = singleHopSegmentRefs(snapshot);
+  // S9-2: TA SAMA bramka przęseł co nakładka przepływu (klucze mapy orientacji)
+  // + MOST REFÓW (szyny stacji, blok stacji L0, transformator stacji) — patrz
+  // `resultRefBridge.ts`. Obie struktury liczone RAZ per wywołanie.
+  const trustedRefs = new Set(orientedSegmentRefs(snapshot).keys());
+  const bridge = buildResultRefBridge(snapshot);
   const merged: Record<string, ResultLabelEntry> = {};
   for (const lod of ALL_SCENE_LODS) {
-    Object.assign(merged, buildResultLabelsFromScene(buildSceneV3(snapshot, lod), payload, trustedRefs, comparison));
+    Object.assign(
+      merged,
+      buildResultLabelsFromScene(buildSceneV3(snapshot, lod), payload, trustedRefs, comparison, bridge),
+    );
   }
   return merged;
 }
@@ -690,9 +752,9 @@ function useResultLabelsOverlay(
 /**
  * Karta S-B (ZWARCIA-PRO pkt 7): strzałki kierunku rozpływu prądu zwarciowego
  * ze WSZYSTKICH trzech LOD — TEN SAM wzorzec co `buildFlowOverlayForSnapshot`
- * (ownerRef = tożsamość LOD-niezależna; bramka F-1 `singleHopSegmentRefs` —
+ * (ownerRef = tożsamość LOD-niezależna; bramka `orientedSegmentRefs` —
  * kierunek emitowany wyłącznie dla przęseł o udowodnionej orientacji
- * geometrycznej). Źródło `input`: kanał `useOverlayStore.faultFlow`
+ * względem gałęzi modelu). Źródło `input`: kanał `useOverlayStore.faultFlow`
  * (wiersz kanoniczny `branch_contributions`, ekran zwarć „Pokaż na
  * schemacie"). Brak kanału ⇒ `{}` (strzałki wyłączone, §14.2).
  *
@@ -715,13 +777,20 @@ export function buildFaultFlowOverlayForSnapshot(
   input: ShortCircuitFlowOverlayInput | null,
 ): Readonly<Record<string, SegmentFaultFlowOverlay>> {
   if (!input) return {};
-  const trustedRefs = singleHopSegmentRefs(snapshot);
+  // S9-2: bramka i orientacja z JEDNEGO źródła (`orientedSegmentRefs`) — ta
+  // sama mapa, którą czyta przepływ mocy i warstwa etykiet. Przedstawiciele
+  // przęseł wielokawałkowych (V12K-121) dochodzą tak jak dotąd; gdy mapa nie
+  // zna ich orientacji, obowiązuje reguła sprzed karty (`points[0]` po stronie
+  // „from"), więc zachowanie tej gałęzi jest niezmienione.
+  const orientation = new Map(orientedSegmentRefs(snapshot));
   const richestLod = ALL_SCENE_LODS[ALL_SCENE_LODS.length - 1];
   const chainRefs = multiHopFaultFlowSegmentRefs(buildSceneV3(snapshot, richestLod), snapshot);
-  const trusted = chainRefs.size === 0 ? trustedRefs : new Set([...trustedRefs, ...chainRefs]);
+  for (const ref of chainRefs) {
+    if (!orientation.has(ref)) orientation.set(ref, true);
+  }
   const merged: Record<string, SegmentFaultFlowOverlay> = {};
   for (const lod of ALL_SCENE_LODS) {
-    Object.assign(merged, buildFaultFlowOverlayFromScene(buildSceneV3(snapshot, lod), input, trusted));
+    Object.assign(merged, buildFaultFlowOverlayFromScene(buildSceneV3(snapshot, lod), input, orientation));
   }
   return merged;
 }
@@ -876,6 +945,107 @@ function SldV3LayerTogglePanel(props: {
 }
 
 // ---------------------------------------------------------------------------
+// K12 (KARTA_K12, dyrektywa właściciela 2026-07-30) — panel LEGENDY na
+// żądanie. WZORZEC 1:1 z `SldV3LayerTogglePanel` (nakładka HTML, styl doku,
+// „panel pomocy" — §0.3 karty daje wybór między nakładką NA kanwie SVG a
+// panelem pomocy odrębnym od sceny; wybrany WARIANT PANELU: zero zmiany
+// geometrii/DOM sceny SVG przy otwarciu/zamknięciu, zero ryzyka determinizmu
+// sceny). Treść WYŁĄCZNIE z `computeProjectLegendEntries` (zero fabrykacji —
+// symbol nieobecny w projekcie nie ma tu wiersza). Wiersze symboli renderują
+// PRAWDZIWY glif (`SYMBOL_GLYPHS`, ten sam co scena) — nie ikonę zastępczą.
+// ---------------------------------------------------------------------------
+
+/** Miniatura glifu symbolu w wierszu panelu — TEN SAM komponent `SYMBOL_GLYPHS`
+ *  co scena (zero duplikacji rysunku), w małym własnym `<svg>` przyciętym do
+ *  bboxa symbolu (`SYMBOL_DEFS[id]`) + margines 2px, żeby obrys nie ucinał
+ *  krawędzi glifu (np. `earthSwitch` uziom na `y=height`). */
+function LegendPanelGlyph(props: { readonly id: SymbolId }): JSX.Element {
+  const def = SYMBOL_DEFS[props.id];
+  const Glyph = SYMBOL_GLYPHS[props.id];
+  return (
+    <svg
+      width={24}
+      height={24}
+      viewBox={`-2 -2 ${def.width + 4} ${def.height + 4}`}
+      className="shrink-0 text-scada-text"
+      aria-hidden="true"
+    >
+      {/* S9-6 (ta sama klasa co glif legendy arkusza, `sheet/Frame.tsx`):
+          `text-scada-text` deklaruje, że miniatura ma iść kolorem tekstu
+          panelu — ale bez jawnego `stroke` glif spadał na stałą palety
+          CIEMNEJ i w jasnym motywie powłoki był ledwie widoczny. */}
+      <Glyph x={0} y={0} stroke="currentColor" />
+    </svg>
+  );
+}
+
+/** Miniatura próbki linii (kabel / koniec otwarty) — reprezentacja PROSTA
+ *  (nie 1:1 z `LegendLineSample` prywatnym w `sheet/Frame.tsx`, patrz
+ *  komentarz tamtej funkcji o eksporcie): panel HTML jest podglądem
+ *  pomocniczym, autorytatywny rysunek (dla druku/eksportu) reużywa
+ *  `SheetLegend` wprost (`handleExportSvg`). */
+function LegendPanelLineSample(props: { readonly id: string }): JSX.Element {
+  return (
+    <svg width={24} height={24} viewBox="0 0 28 16" className="shrink-0 text-scada-text" aria-hidden="true">
+      <line x1={0} y1={8} x2={props.id === 'openTerminal' ? 22 : 28} y2={8} stroke="currentColor" strokeWidth={1.6} />
+      {props.id === 'openTerminal' && (
+        <line x1={22} y1={2} x2={22} y2={14} stroke="currentColor" strokeWidth={1.6} />
+      )}
+    </svg>
+  );
+}
+
+function SldV3LegendPanel(props: {
+  readonly entries: readonly SheetLegendEntry[];
+  readonly className?: string;
+}): JSX.Element {
+  const { entries, className } = props;
+  return (
+    <section
+      className={[
+        'flex max-h-[min(70vh,480px)] w-[280px] flex-col gap-1 overflow-y-auto rounded border border-scada-border bg-scada-panel/95 p-2 text-[11px] text-scada-text shadow-lg',
+        className ?? '',
+      ]
+        .filter(Boolean)
+        .join(' ')}
+      aria-label="Legenda symboli i linii obecnych w projekcie"
+      data-testid="sld-v3-legend-panel"
+    >
+      <header className="border-b border-scada-border pb-1 font-semibold uppercase tracking-wider text-scada-muted">
+        Legenda ({entries.length})
+      </header>
+      {entries.length === 0 ? (
+        // Uczciwy stan zerowy (dyrektywa właściciela: „uczciwe stany zerowe")
+        // — scena bez symboli/odcinków (projekt pusty) NIE dostaje fabrykowanej
+        // treści zastępczej.
+        <p className="py-1 text-scada-muted" data-testid="sld-v3-legend-panel-empty">
+          Brak symboli do objaśnienia — projekt jest pusty.
+        </p>
+      ) : (
+        <ul className="flex flex-col gap-1">
+          {entries.map((entry) => (
+            <li
+              key={entry.id}
+              className="flex items-center gap-2 py-0.5"
+              data-testid={`sld-v3-legend-panel-item-${entry.id}`}
+            >
+              {entry.kind === 'symbol' ? (
+                <LegendPanelGlyph id={entry.id as SymbolId} />
+              ) : entry.kind === 'line' ? (
+                <LegendPanelLineSample id={entry.id} />
+              ) : (
+                <span className="w-6 shrink-0" aria-hidden="true" />
+              )}
+              <span>{entry.labelPl}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // R3 (RECENZJA_WARSTWA_WYNIKOWA_2026-07 §wym.17) — panel FILTRÓW warstwy
 // wynikowej. WZORZEC 1:1 z `SldV3LayerTogglePanel` (checkboxy, PL, reset) —
 // osobny stan/zakres (wielkości P/Q/S/I/U/obciążenie · klasy źródła/TR/linie/
@@ -909,7 +1079,161 @@ const RESULT_COMPARISON_MODE_LABELS_PL: Readonly<Record<'off' | ResultLabelCompa
 };
 const RESULT_COMPARISON_MODE_IDS: readonly ('off' | ResultLabelComparisonMode)[] = ['off', 'delta', 'previous'];
 
+/**
+ * Podsumowanie trwającej NAKŁADKI RÓŻNIC A/B pokazywane w panelu filtrów:
+ * para przebiegów + rozkład punktów (ile zmienionych, ile identycznych, ile bez
+ * odpowiednika, ile bez porównywalnych danych) + legenda z backendu. Liczby
+ * pochodzą WPROST z odpowiedzi — panel niczego nie zlicza.
+ */
+interface SldV3RoznicePodsumowanie {
+  readonly runIdA: string;
+  readonly runIdB: string;
+  readonly zmienione: number;
+  readonly bezZmian: number;
+  readonly bezOdpowiednika: number;
+  readonly bezDanych: number;
+  readonly legenda: readonly { readonly label: string; readonly description: string }[];
+}
+
+/** S9-13 — kandydat na przebieg odniesienia (A) w selektorze sekcji
+ *  „Porównanie A/B": identyfikator + polska etykieta zbudowana w workspace
+ *  (rodzaj analizy słownikiem `ANALYSIS_TYPE_LABELS` + data istniejącym
+ *  formatterem repo). Panel niczego nie tłumaczy ani nie sortuje. */
+interface SldV3KandydatPorownania {
+  readonly id: string;
+  readonly etykieta: string;
+}
+
+/**
+ * S9-13 — sekcja „Porównanie A/B" panelu filtrów: jawne wejście w tryb różnic
+ * z poziomu SCHEMATU (audyt W-8: dotąd jedyne wejście prowadziło przez ekran
+ * porównań). Trzy stany z JEDNEGO rachunku (`stanPorownaniaZKanwy`):
+ * `nieaktywne` (trwa tryb różnic — sekcję zastępuje podsumowanie „Różnice
+ * A/B"), `zablokowane` (uczciwy powód + realna akcja naprawcza) i `gotowe`
+ * (selektor kandydatów + przycisk). Zero martwych kontrolek: selektor istnieje
+ * WYŁĄCZNIE, gdy jest z czego wybierać.
+ */
+function SldV3PorownanieABSekcja(props: {
+  readonly stan: StanPorownaniaZKanwy;
+  readonly kandydaci: readonly SldV3KandydatPorownania[];
+  readonly wybranyRunA: string;
+  readonly onWybierzRunA: (runId: string) => void;
+  readonly onPorownaj: () => void;
+  readonly onAkcja: (akcja: AkcjaPorownaniaZKanwy) => void;
+  readonly wTrakcie: boolean;
+  readonly blad: string | null;
+}): JSX.Element | null {
+  const { stan, kandydaci, wybranyRunA, onWybierzRunA, onPorownaj, onAkcja, wTrakcie, blad } = props;
+  if (stan.rodzaj === 'nieaktywne') return null;
+  return (
+    <div
+      className="mt-1 flex flex-col gap-0.5 border-t border-scada-border pt-1"
+      data-testid="sld-v3-result-ab"
+      data-ab-stan={stan.rodzaj}
+    >
+      <span className="font-semibold uppercase tracking-wider text-scada-muted">Porównanie A/B</span>
+      {stan.rodzaj === 'zablokowane' ? (
+        <>
+          <span className="text-scada-muted" data-testid="sld-v3-result-ab-blocked">
+            {stan.powod}
+          </span>
+          {stan.akcja && stan.etykietaAkcji && (
+            <button
+              type="button"
+              onClick={() => onAkcja(stan.akcja as AkcjaPorownaniaZKanwy)}
+              data-testid="sld-v3-result-ab-akcja"
+              className="self-start text-scada-muted underline hover:text-scada-text"
+            >
+              {stan.etykietaAkcji}
+            </button>
+          )}
+        </>
+      ) : (
+        <>
+          <label className="flex flex-col gap-0.5">
+            <span>Porównaj z innym przebiegiem (A — odniesienie)</span>
+            <select
+              value={wybranyRunA}
+              onChange={(event) => onWybierzRunA(event.target.value)}
+              data-testid="sld-v3-result-ab-select"
+              className="rounded border border-scada-border bg-scada-panel px-1 py-0.5 text-scada-text"
+            >
+              <option value="">— wybierz przebieg —</option>
+              {kandydaci.map((kandydat) => (
+                <option key={kandydat.id} value={kandydat.id}>
+                  {kandydat.etykieta}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button
+            type="button"
+            onClick={onPorownaj}
+            disabled={!wybranyRunA || wTrakcie}
+            data-testid="sld-v3-result-ab-pokaz"
+            className="self-start rounded border border-scada-border px-2 py-0.5 text-scada-text enabled:hover:bg-scada-hover-nav disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {wTrakcie ? 'Pobieranie różnic…' : 'Pokaż różnice'}
+          </button>
+          <span className="text-scada-muted">
+            Schemat pokaże zmiany bieżącego biegu (B) względem wybranego (A).
+          </span>
+        </>
+      )}
+      {blad && (
+        <span className="text-scada-muted" data-testid="sld-v3-result-ab-blad">
+          {blad}
+        </span>
+      )}
+    </div>
+  );
+}
+
+/**
+ * S9-2 — zdanie o POKRYCIU warstwy wynikowej: ile punktów biegu ma etykietę i
+ * co się stało z resztą. Bez tego zdania operator nie odróżnia „schemat pokazuje
+ * komplet wyniku" od „część wyniku gdzieś przepadła" — a to właśnie zgubiła
+ * poprzednia wersja warstwy (audyt W-1). Liczby WPROST z rachunku
+ * (`summarizeResultPointCoverage`), panel niczego nie zlicza.
+ */
+function SldV3ResultCoverageLine(props: {
+  readonly coverage: ResultPointCoverage;
+  /** `true` = wynik biegu jest wczytany (choćby pusty). Bez tego stan „bieg bez
+   *  punktów" byłby nieodróżnialny od „nie było biegu" — a to dwa różne
+   *  komunikaty (uczciwy stan zerowy). */
+  readonly hasRun: boolean;
+}): JSX.Element | null {
+  const { coverage, hasRun } = props;
+  if (!hasRun) return null;
+  if (coverage.total === 0) {
+    return (
+      <div className="flex flex-col gap-0.5 border-t border-scada-border pt-1" data-testid="sld-v3-result-coverage">
+        <span className="text-scada-muted" data-testid="sld-v3-result-coverage-pusty">
+          Bieg nie zwrócił punktów wyniku — na schemacie nie ma czego pokazać.
+        </span>
+      </div>
+    );
+  }
+  const niewidoczne = coverage.hiddenByModel + coverage.withoutTemplate + coverage.withoutAnchor;
+  return (
+    <div className="flex flex-col gap-0.5 border-t border-scada-border pt-1" data-testid="sld-v3-result-coverage">
+      <span data-testid="sld-v3-result-coverage-liczby">
+        {`Etykiety: ${coverage.labelled} z ${coverage.total} punktów wyniku`}
+      </span>
+      {niewidoczne > 0 && (
+        <span className="text-scada-muted" data-testid="sld-v3-result-coverage-braki">
+          {`Bez etykiety: ${coverage.hiddenByModel} nierysowanych w modelu · `
+            + `${coverage.withoutTemplate} bez wielkości dla tej analizy · `
+            + `${coverage.withoutAnchor} bez elementu na schemacie`}
+        </span>
+      )}
+    </div>
+  );
+}
+
 function SldV3ResultFilterPanel(props: {
+  readonly coverage: ResultPointCoverage;
+  readonly hasRun: boolean;
   readonly filter: ResultLabelFilter;
   readonly hasExceedances: boolean;
   readonly onToggleQuantity: (quantity: ResultLabelQuantity) => void;
@@ -920,9 +1244,23 @@ function SldV3ResultFilterPanel(props: {
   readonly comparisonAvailable: boolean;
   readonly comparisonBlockedReason: string | null;
   readonly onSetComparisonMode: (mode: 'off' | ResultLabelComparisonMode) => void;
+  /** Podsumowanie trwającej nakładki różnic A/B (`null` = tryb wyłączony). */
+  readonly roznice: SldV3RoznicePodsumowanie | null;
+  readonly onWylaczRoznice: () => void;
+  /** S9-13 — stan sekcji „Porównanie A/B" (wejście w tryb różnic z kanwy). */
+  readonly porownanieAB: StanPorownaniaZKanwy;
+  readonly kandydaciAB: readonly SldV3KandydatPorownania[];
+  readonly wybranyRunA: string;
+  readonly onWybierzRunA: (runId: string) => void;
+  readonly onPorownajAB: () => void;
+  readonly onAkcjaAB: (akcja: AkcjaPorownaniaZKanwy) => void;
+  readonly abWTrakcie: boolean;
+  readonly abBlad: string | null;
   readonly className?: string;
 }): JSX.Element {
   const {
+    coverage,
+    hasRun,
     filter,
     hasExceedances,
     onToggleQuantity,
@@ -933,6 +1271,16 @@ function SldV3ResultFilterPanel(props: {
     comparisonAvailable,
     comparisonBlockedReason,
     onSetComparisonMode,
+    roznice,
+    onWylaczRoznice,
+    porownanieAB,
+    kandydaciAB,
+    wybranyRunA,
+    onWybierzRunA,
+    onPorownajAB,
+    onAkcjaAB,
+    abWTrakcie,
+    abBlad,
     className,
   } = props;
   return (
@@ -957,6 +1305,7 @@ function SldV3ResultFilterPanel(props: {
           Reset
         </button>
       </header>
+      <SldV3ResultCoverageLine coverage={coverage} hasRun={hasRun} />
       <span className="mt-1 font-semibold uppercase tracking-wider text-scada-muted">Wielkości</span>
       <ul className="flex flex-col gap-0.5">
         {RESULT_FILTER_QUANTITY_IDS.map((quantity) => (
@@ -1053,13 +1402,84 @@ function SldV3ResultFilterPanel(props: {
           </span>
         )}
       </div>
+      {/* S9-13 — PORÓWNANIE A/B Z KANWY: jawne wejście w tryb różnic z poziomu
+        * schematu (wybór drugiego ukończonego przebiegu tego samego rodzaju
+        * i przypadku) albo uczciwy stan zablokowany z akcją naprawczą. Gdy tryb
+        * różnic trwa, sekcję zastępuje podsumowanie „Różnice A/B" niżej. */}
+      <SldV3PorownanieABSekcja
+        stan={porownanieAB}
+        kandydaci={kandydaciAB}
+        wybranyRunA={wybranyRunA}
+        onWybierzRunA={onWybierzRunA}
+        onPorownaj={onPorownajAB}
+        onAkcja={onAkcjaAB}
+        wTrakcie={abWTrakcie}
+        blad={abBlad}
+      />
+      {/* NAKŁADKA RÓŻNIC A/B — sekcja obecna WYŁĄCZNIE, gdy tryb różnic trwa
+        * (zero martwej kontrolki, gdy nie ma czego wyłączać). Włącza się go
+        * z ekranu porównań ALBO z sekcji „Porównanie A/B" wyżej (S9-13);
+        * tutaj jest jego stan, rozkład punktów i wyjście. */}
+      {roznice && (
+        <div
+          className="mt-1 flex flex-col gap-0.5 border-t border-scada-border pt-1"
+          data-testid="sld-v3-result-roznice"
+        >
+          <span className="font-semibold uppercase tracking-wider text-scada-muted">Różnice A/B</span>
+          <span data-testid="sld-v3-result-roznice-para">
+            {`A: ${roznice.runIdA} → B: ${roznice.runIdB}`}
+          </span>
+          <span data-testid="sld-v3-result-roznice-liczby">
+            {`Zmienione: ${roznice.zmienione} · bez zmian: ${roznice.bezZmian}`}
+          </span>
+          {(roznice.bezOdpowiednika > 0 || roznice.bezDanych > 0) && (
+            <span className="text-scada-muted" data-testid="sld-v3-result-roznice-braki">
+              {`Bez odpowiednika: ${roznice.bezOdpowiednika} · bez porównywalnych danych: ${roznice.bezDanych}`}
+            </span>
+          )}
+          <ul className="flex flex-col gap-0.5">
+            {roznice.legenda.map((wpis) => (
+              <li key={wpis.label} className="text-scada-muted">
+                {wpis.description ? `${wpis.label} — ${wpis.description}` : wpis.label}
+              </li>
+            ))}
+          </ul>
+          <button
+            type="button"
+            onClick={onWylaczRoznice}
+            data-testid="sld-v3-result-roznice-wylacz"
+            className="mt-0.5 self-start text-scada-muted hover:text-scada-text"
+          >
+            Wyłącz różnice
+          </button>
+        </div>
+      )}
     </section>
   );
 }
 
+/**
+ * KD-8 poz. 2 — TOŻSAMOŚĆ grup pasa narzędzi po scaleniu doków. Zachowane
+ * `data-testid` sprzed scalenia: grupa to TA SAMA jednostka funkcjonalna co
+ * dawny dok (te same kontrolki, te same akcje), zmieniło się wyłącznie jej
+ * miejsce w układzie — kontrakty testów i specy e2e nie mają powodu się ruszać.
+ */
+const TESTID_GRUPY: Readonly<Record<CanvasToolbarGroupId, string>> = {
+  drzewo: 'sld-v3-hierarchy-tree-dock',
+  uklady: 'sld-v3-der-palette',
+  widok: 'sld-v3-view-dock',
+  eksport: 'sld-v3-export-dock',
+};
+
 export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Element {
   const { width: widthOverride, height: heightOverride, lodOverride } = props;
   const containerRef = useRef<HTMLDivElement>(null);
+  // KD-8 poz. 1: paleta MOTYWU EKRANU — źródło substytucji przy eksporcie
+  // (ten sam sterownik motywu co kanwa: `useThemeModeStore`).
+  const screenPalette = sldPaletteForTheme(useThemeModeStore((state) => state.mode));
+  // KD-8 poz. 2: menu zwiniętych grup narzędzi (otwierane klikiem, jak każdy
+  // inny panel doku) — stan LOKALNY prezentacji.
+  const [toolbarMenuOpen, setToolbarMenuOpen] = useState(false);
   const size = useMeasuredSize(
     containerRef,
     1024,
@@ -1077,6 +1497,12 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   // `sldData.stations[].*` (fallbacki drawera stacji, patrz `shared/
   // detailDrawerData.ts::buildStationDetailDrawerData`).
   const logicalViews = useSnapshotStore((state) => state.logicalViews);
+  // B-2 (audyt §4.3): WSKAZANIE ostatniej operacji domenowej — kotwica widoku
+  // kamery po zmianie modelu. Oba pola ustawia store w JEDNYM zapisie razem z
+  // migawką (`ui/topology/snapshotStore.ts`), więc kotwica jest z definicji
+  // spójna z rysunkiem, który kanwa właśnie dostaje.
+  const selectionHint = useSnapshotStore((state) => state.selectionHint);
+  const lastChanges = useSnapshotStore((state) => state.lastChanges);
   const selectElement = useSelectionStore((state) => state.selectElement);
   const activeMode = useAppStateStore((state) => state.activeMode);
   const activeCaseResultStatus = useAppStateStore((state) => state.activeCaseResultStatus);
@@ -1086,6 +1512,34 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   // (patrz `overlay.ts`/`buildFlowOverlayForSnapshot` nagłówki dla pełnego
   // uzasadnienia i udokumentowanej luki backendu).
   const rawOverlayPayload = useRawResultOverlayStore((state) => state.payload);
+  // NAKŁADKA RÓŻNIC A/B (ekran porównań → „Pokaż różnice na schemacie").
+  // Wchodzi TYM SAMYM kontraktem co wynik pojedynczego przebiegu, więc warstwa
+  // etykiet rysuje różnice bez drugiego kanału renderu — inna jest wyłącznie
+  // rodzina szablonów (`DELTA_…` ⇒ podpisy „Δ Ik″"), rozpoznawana z
+  // `analysis_type` payloadu.
+  const nakladkaRoznic = useSldDeltaOverlayStore((state) => state.nakladka);
+  const wyczyscRoznice = useSldDeltaOverlayStore((state) => state.wyczyscRoznice);
+  const roznicePayload = useMemo(() => payloadEtykietRoznic(nakladkaRoznic), [nakladkaRoznic]);
+  // Podsumowanie trybu różnic dla panelu filtrów — liczby i legenda WPROST
+  // z odpowiedzi backendu (panel niczego nie zlicza i nie tłumaczy).
+  const roznicePodsumowanie = useMemo<SldV3RoznicePodsumowanie | null>(
+    () =>
+      nakladkaRoznic
+        ? {
+            runIdA: nakladkaRoznic.run_id_a,
+            runIdB: nakladkaRoznic.run_id_b,
+            zmienione: nakladkaRoznic.liczba_punktow_zmienionych,
+            bezZmian: nakladkaRoznic.liczba_punktow_bez_zmian,
+            bezOdpowiednika: nakladkaRoznic.liczba_punktow_bez_odpowiednika,
+            bezDanych: nakladkaRoznic.liczba_punktow_bez_danych,
+            legenda: nakladkaRoznic.legend.entries.map((wpis) => ({
+              label: wpis.label,
+              description: wpis.description,
+            })),
+          }
+        : null,
+    [nakladkaRoznic],
+  );
   // R4 (wym. 10/15): bufor POPRZEDNIEGO payloadu per analiza (store,
   // frontend-only) — źródło Δ/trendu trybu porównawczego.
   const previousByAnalysisType = useRawResultOverlayStore((state) => state.previousByAnalysisType);
@@ -1107,7 +1561,13 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   // SLD — czytamy gotowy status. Flaga aktywna WYŁĄCZNIE gdy overlay niesie
   // wynik (payload) I status to OUTDATED — stary wynik nie może udawać aktualnego.
   // Liczona PRZED warstwą etykiet, bo bramkuje tryb porównawczy (wym. 10).
-  const resultsStale = rawOverlayPayload != null && activeCaseResultStatus === 'OUTDATED';
+  // NAKŁADKA RÓŻNIC podlega TEJ SAMEJ regule świeżości co wynik pojedynczego
+  // przebiegu: różnica policzona na modelu sprzed edycji jest tak samo
+  // nieaktualna jak wielkości, z których powstała. Jeden status, jedno źródło
+  // prawdy — bez równoległego trackera dla różnic.
+  const resultsStale =
+    (rawOverlayPayload != null || roznicePayload != null)
+    && activeCaseResultStatus === 'OUTDATED';
   // R4 (wym. 10/15): TRYB PORÓWNAWCZY — stan LOKALNY renderu (domyślnie „off",
   // zgodność z akceptacją R2: sonda metryk przy domyślnych ustawieniach).
   const [comparisonMode, setComparisonMode] = useState<'off' | ResultLabelComparisonMode>('off');
@@ -1119,14 +1579,20 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   // R4 (§0.4): porównanie DOSTĘPNE tylko, gdy istnieje poprzedni bieg TEJ analizy
   // ORAZ wyniki NIE są nieaktualne (OUTDATED ⇒ tryb zablokowany — zero mylących
   // delt ze starego modelu). Inaczej brak obiektu porównania ⇒ warstwa bazowa.
-  const comparisonAvailable = previousPayload != null && !resultsStale;
+  // Tryb różnic A/B WYKLUCZA tryb porównawczy kolejnych biegów: etykieta niesie
+  // wtedy już różnicę, a Δ z Δ nie ma sensu inżynierskiego.
+  const comparisonAvailable = previousPayload != null && !resultsStale && roznicePayload == null;
   // R4 (§0.4): powód niedostępności trybu porównawczego — jawny komunikat
   // (OUTDATED ma pierwszeństwo nad brakiem poprzednika). `null` = dostępny.
+  // Treść powodu OUTDATED = WSPÓLNA STAŁA z sekcją „Porównanie A/B" (S9-13):
+  // oba tryby blokuje ten sam fakt, więc i komunikat jest jeden.
   const comparisonBlockedReason = resultsStale
-    ? 'Wyniki nieaktualne — porównanie zablokowane'
-    : previousPayload == null
-      ? 'Brak poprzedniego biegu do porównania'
-      : null;
+    ? POWOD_WYNIKI_NIEAKTUALNE
+    : roznicePayload != null
+      ? 'Trwa tryb różnic A/B — etykiety pokazują już różnicę'
+      : previousPayload == null
+        ? 'Brak poprzedniego biegu do porównania'
+        : null;
   const comparison = useMemo<ResultLabelComparison | undefined>(
     () =>
       comparisonMode !== 'off' && comparisonAvailable && previousPayload
@@ -1137,7 +1603,11 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   // W4 (§8): kanał liczbowych etykiet wynikowych — TEN SAM `rawOverlayPayload`
   // co flow/OLTC (jeden wynik aktywnego przebiegu), bramkowany w kanwie
   // ODRĘBNYM layerem `resultLabels`. R4: `comparison` wzbogaca linie o Δ/trend.
-  const resultLabelsByOwnerRef = useResultLabelsOverlay(snapshot, rawOverlayPayload, comparison);
+  // TRYB RÓŻNIC A/B: gdy nakładka różnic jest wczytana, warstwa etykiet czyta
+  // JĄ zamiast wyniku pojedynczego przebiegu (pozostałe kanały — rozpływ, OLTC,
+  // strzałki zwarciowe — bez zmian, bo nakładka różnic ich nie dotyczy).
+  const labelsPayload = roznicePayload ?? rawOverlayPayload;
+  const resultLabelsByOwnerRef = useResultLabelsOverlay(snapshot, labelsPayload, comparison);
   // R3 (wym. 17): FILTRY widoczności warstwy wynikowej — stan LOKALNY renderu.
   // Domyślnie WSZYSTKO widoczne (zgodność z akceptacją R2 i inwariantem
   // geometrii: filtr działa WYŁĄCZNIE na warstwie etykiet — mapa `ownerRef→
@@ -1154,6 +1624,37 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
     () => applyResultLabelFilter(resultLabelsByOwnerRef, resultFilter),
     [resultLabelsByOwnerRef, resultFilter],
   );
+  // S9-2 (W-1): UCZCIWY RACHUNEK POKRYCIA — ile punktów wyniku backendu ma
+  // etykietę, a ile nie i DLACZEGO (cztery rozłączne kategorie, suma = liczba
+  // punktów). Liczony z etykiet NIEFILTROWANYCH: filtr to wybór operatora, a
+  // rachunek odpowiada na pytanie „czy schemat pokazuje wynik biegu".
+  const resultCoverage = useMemo<ResultPointCoverage>(
+    () =>
+      summarizeResultPointCoverage(
+        labelsPayload,
+        resultLabelsByOwnerRef,
+        resultPointsHiddenByModel(snapshot),
+      ),
+    [labelsPayload, resultLabelsByOwnerRef, snapshot],
+  );
+  // S9-2: ZNACZNIKI PUNKTÓW ZWARCIA biegu — każdy element payloadu zwarciowego
+  // JEST punktem zwarcia (`build_execution_result_set` emituje jeden wiersz na
+  // policzony punkt), więc znacznik należy się każdemu z nich. Kanał
+  // `faultFlow.fault_element_ref` (akcja „Pokaż na schemacie" z ekranu zwarć)
+  // pozostaje — sumujemy oba, bo wskazują to samo pojęcie. Rodzinę rozpoznaje
+  // TA SAMA normalizacja, co warstwa etykiet (jedno źródło prawdy o tym, czy
+  // wynik jest zwarciowy).
+  const faultPointMarkerRefs = useMemo<ReadonlySet<string>>(() => {
+    const refs = new Set<string>();
+    if (faultPointMarkerRef) refs.add(faultPointMarkerRef);
+    if (normalizeResultLabelAnalysis(rawOverlayPayload?.analysis_type) === 'short_circuit') {
+      for (const ref of Object.keys(resultLabelsByOwnerRef)) {
+        const entry = resultLabelsByOwnerRef[ref];
+        if (entry.kind === 'bus') refs.add(entry.ownerRef);
+      }
+    }
+    return refs;
+  }, [faultPointMarkerRef, rawOverlayPayload?.analysis_type, resultLabelsByOwnerRef]);
   // R3 (wym. 7) + OVERLAY-TIMESTAMP: POCHODZENIE wyniku — moduł (etykieta PL z
   // `analysis_type` przez ISTNIEJĄCY słownik `formatContractValue`) + identyfikator
   // przebiegu (`run_id`) + CZAS UKOŃCZENIA BIEGU (`run_finished_at`, realny
@@ -1161,22 +1662,33 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   // (`formatDateTime`, pl-PL). Domyka dług R3 (kanon V12K-159 wym. 6-7: pochodzenie
   // musi nieść timestamp). Brak `run_finished_at` ⇒ brak wiersza czasu (uczciwy
   // brak, zero fabrykacji). Brak payloadu = brak deklaracji.
+  // TRYB RÓŻNIC A/B: pochodzenie musi wskazać OBA przebiegi — inaczej operator
+  // nie wie, wobec czego liczona jest różnica. Etykieta modułu jest tu STAŁA
+  // (nie ze słownika typów analiz), bo „DELTA_SC" nie jest rodzajem analizy,
+  // tylko postacią jej wyniku. Czasu ukończenia nie deklarujemy: różnica nie ma
+  // jednego biegu, a doklejenie czasu jednego z nich byłoby fabrykacją.
   const provenance = useMemo(
     () =>
-      rawOverlayPayload
+      nakladkaRoznic
         ? {
-            analysisTypeLabel: formatContractValue(rawOverlayPayload.analysis_type),
-            runId: rawOverlayPayload.run_id,
-            completedAtLabel: rawOverlayPayload.run_finished_at
-              ? formatDateTime(rawOverlayPayload.run_finished_at)
-              : undefined,
+            analysisTypeLabel: 'Różnice A/B (zwarcia)',
+            runId: `${nakladkaRoznic.run_id_a} → ${nakladkaRoznic.run_id_b}`,
+            completedAtLabel: undefined,
           }
-        : undefined,
-    [rawOverlayPayload],
+        : rawOverlayPayload
+          ? {
+              analysisTypeLabel: formatContractValue(rawOverlayPayload.analysis_type),
+              runId: rawOverlayPayload.run_id,
+              completedAtLabel: rawOverlayPayload.run_finished_at
+                ? formatDateTime(rawOverlayPayload.run_finished_at)
+                : undefined,
+            }
+          : undefined,
+    [nakladkaRoznic, rawOverlayPayload],
   );
   const overlay = useMemo<SldV3Overlay>(
-    () => ({ ...energizationOverlay, flowByOwnerRef, oltcByOwnerRef, faultFlowByOwnerRef, faultPointMarkerRef, resultLabelsByOwnerRef: filteredResultLabels, resultsStale, provenance }),
-    [energizationOverlay, flowByOwnerRef, oltcByOwnerRef, faultFlowByOwnerRef, faultPointMarkerRef, filteredResultLabels, resultsStale, provenance],
+    () => ({ ...energizationOverlay, flowByOwnerRef, oltcByOwnerRef, faultFlowByOwnerRef, faultPointMarkerRef, faultPointMarkerRefs, resultLabelsByOwnerRef: filteredResultLabels, resultsStale, provenance }),
+    [energizationOverlay, flowByOwnerRef, oltcByOwnerRef, faultFlowByOwnerRef, faultPointMarkerRef, faultPointMarkerRefs, filteredResultLabels, resultsStale, provenance],
   );
 
   // F8c pkt 2: `SldDataPayload` — TEN SAM adapter co v2 (`enmToSldAdapter.ts`,
@@ -1192,9 +1704,103 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   // WEWNĄTRZ `SldDetailDrawer` (K30-88, zachowanie reużyte bez zmian).
   const [detailDrawerData, setDetailDrawerData] = useState<SldDetailDrawerData | null>(null);
   const closeDetailDrawer = useCallback(() => setDetailDrawerData(null), []);
+
+  // K11-A (dyrektywa SLD-first): Escape ZDEJMUJE selekcję — kanoniczny gest
+  // odznaczenia (dotąd nie istniał ŻADEN: inspektor raz otwarty nie miał drogi
+  // powrotu do stanu „bez zaznaczenia"). Kolejność zamykania: szuflada
+  // szczegółów i menu kontekstowe mają WŁASNE obsługi Escape — tu działamy
+  // wyłącznie, gdy nic nadrzędnego nie jest otwarte. Czyszczenie MUSI objąć
+  // też URL (ta sama para co orkiestracja nawigacji) — inaczej synchronizacja
+  // adresu natychmiast przywraca selekcję z hasha.
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key !== 'Escape') return;
+      if (detailDrawerData !== null) return;
+      const store = useSelectionStore.getState();
+      if (store.selectedElements.length === 0) return;
+      store.clearSelection();
+      updateUrlWithSelection(null);
+    }
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [detailDrawerData]);
   const activeProjectId = useAppStateStore((state) => state.activeProjectId);
   const activeCaseId = useAppStateStore((state) => state.activeCaseId);
+  // S9-6: nazwa projektu i przypadku do tabliczki rysunkowej oraz do nazwy
+  // pliku — REALNE dane powłoki (`app-state`), nie parametry wołającego.
+  const activeProjectName = useAppStateStore((state) => state.activeProjectName);
+  const activeCaseName = useAppStateStore((state) => state.activeCaseName);
   const setSnapshot = useSnapshotStore((state) => state.setSnapshot);
+
+  // -------------------------------------------------------------------------
+  // S9-13 (audyt W-8): PORÓWNANIE A/B Z KANWY. Lista przebiegów z ISTNIEJĄCEGO
+  // runStore (hydratacja powłoki woła `loadRuns` dla aktywnego przypadku —
+  // zero własnego ładowania tutaj); stan sekcji i powody blokady z JEDNEGO
+  // rachunku `stanPorownaniaZKanwy` (kandydaci i blokada nie mogą się rozjechać).
+  // Świeżość: TEN SAM predykat `resultsStale`, którym kanwa bramkuje wynik
+  // pojedynczego przebiegu i tryb porównawczy (jedno źródło rewizji S9-11).
+  // -------------------------------------------------------------------------
+  const runsAktywnegoPrzypadku = useExecutionRunsStore((state) => state.runs);
+  const wczytajRoznice = useSldDeltaOverlayStore((state) => state.wczytajRoznice);
+  const nakladkaWTrakcie = useSldDeltaOverlayStore((state) => state.wTrakcie);
+  const bladNakladki = useSldDeltaOverlayStore((state) => state.blad);
+  const porownanieAB = useMemo<StanPorownaniaZKanwy>(
+    () =>
+      stanPorownaniaZKanwy({
+        payload: rawOverlayPayload,
+        nakladkaAktywna: nakladkaRoznic != null,
+        wynikiNieaktualne: resultsStale,
+        runs: runsAktywnegoPrzypadku,
+        activeCaseId,
+      }),
+    [rawOverlayPayload, nakladkaRoznic, resultsStale, runsAktywnegoPrzypadku, activeCaseId],
+  );
+  // Etykiety kandydatów: rodzaj analizy ISTNIEJĄCYM słownikiem + data biegu
+  // ISTNIEJĄCYM formatterem (pl-PL) + skrót id dla rozróżnienia biegów z tą
+  // samą datą. Sortowanie przyszło z rachunku stanu (deterministyczne).
+  const kandydaciAB = useMemo<readonly { id: string; etykieta: string }[]>(
+    () =>
+      porownanieAB.rodzaj === 'gotowe'
+        ? porownanieAB.kandydaci.map((run) => {
+            const data = dataPrzebiegu(run);
+            const czlony = [
+              ANALYSIS_TYPE_LABELS[run.analysis_type],
+              data ? formatDateTime(data) : null,
+              run.id.slice(0, 8),
+            ].filter((czlon): czlon is string => czlon != null);
+            return { id: run.id, etykieta: czlony.join(' · ') };
+          })
+        : [],
+    [porownanieAB],
+  );
+  // Wybór przebiegu odniesienia (A) — stan LOKALNY prezentacji; zerowany przy
+  // zmianie biegu na schemacie (inny bieg B = inny zbiór sensownych odniesień).
+  const [wybranyRunA, setWybranyRunA] = useState('');
+  const biezacyRunId = rawOverlayPayload?.run_id ?? null;
+  useEffect(() => {
+    setWybranyRunA('');
+  }, [biezacyRunId]);
+  const handlePorownajAB = useCallback(() => {
+    // Kierunek pary (kontrakt store'a nakładki): A = wybrane ODNIESIENIE,
+    // B = bieg pokazywany na schemacie (stan oceniany względem A).
+    if (!biezacyRunId || !wybranyRunA) return;
+    void wczytajRoznice(wybranyRunA, biezacyRunId);
+  }, [biezacyRunId, wybranyRunA, wczytajRoznice]);
+  const handleAkcjaAB = useCallback(
+    (akcja: AkcjaPorownaniaZKanwy) => {
+      if (akcja === 'obliczenia') {
+        // Przestrzeń obliczeń — tu uruchamia się bieg (`#case-config`,
+        // orkiestrator mapuje trasę na przestrzeń 'obliczenia').
+        navigateToCaseConfig({ caseId: activeCaseId });
+        return;
+      }
+      // Ekran porównań (tabela, m.in. rozpływ) — ta sama para wywołań co jawny
+      // wybór przestrzeni w powłoce + zakładka „Porównanie" warsztatu wyników.
+      przejdzDoPrzestrzeni('wyniki');
+      useShellStore.getState().setWynikiTab('porownanie');
+    },
+    [activeCaseId],
+  );
 
   // Parytet K30-87/F12-C (luka wykryta adaptacją e2e critical-der-config,
   // 2026-07-17): v3 montował drawer BEZ handlera zapisu — CTA „Zapisz" w
@@ -1272,31 +1878,99 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   }, [detailDrawerData, openRouteSurface]);
   const canOpenDetailConfiguration = detailDrawerData?.kind === 'cable_run' || detailDrawerData?.kind === 'node';
 
-  // F8c pkt 3: menu kontekstowe — stan LOKALNY, most do WSPÓŁDZIELONEGO
-  // `SldContextMenuController` (`context-menu/`, patrz mapowanie
-  // `elementKindForMenu` wyżej).
+  // F8c pkt 3 / KARTA S9-5: menu kontekstowe — stan LOKALNY trzyma ŻĄDANIE i
+  // TEMAT (`CanvasMenuSubject`) razem, bo to JEDEN predykat o obiekcie:
+  // kategoria menu, ref operacji i kontekst dostępności akcji muszą pochodzić
+  // z tego samego rozstrzygnięcia. Przed tą kartą kategoria szła z kreski, a
+  // dostępność z osobnego skanu snapshotu po `elementId` — symbol stacji i jej
+  // etykieta dawały RÓŻNE menu tego samego obiektu (reguła KLASA pkt 3).
   const [contextRequest, setContextRequest] = useState<SldContextMenuRequest | null>(null);
-  const closeContextMenu = useCallback(() => setContextRequest(null), []);
+  const [contextSubject, setContextSubject] = useState<CanvasMenuSubject | null>(null);
+  const closeContextMenu = useCallback(() => {
+    setContextRequest(null);
+    setContextSubject(null);
+  }, []);
+  /** Indeks refów modelu — jedno przejście po snapshocie, nie skan na klik. */
+  const modelIndex = useMemo(() => buildCanvasModelIndex(snapshot), [snapshot]);
   const handleElementContextMenu = useCallback(
     (testId: string, meta: SldElementClickMeta | undefined, clientX: number, clientY: number) => {
       // Tło (`sld-v3-background`, `SldCanvasV3` nagłówek onContextMenu) → menu
-      // tła; realny element → tabela `elementKindForMenu` (brak dopasowania,
-      // np. `elementKind='protectionAnnotation'` — UDOKUMENTOWANA LUKA — NIE
-      // otwiera menu, bez crasha, bez zgadywania kategorii). DER-MENU-V3:
-      // `elementKind='der'` wybiera kategorię PODTYPU wg `meta.derKind`
-      // (der_pv/der_bess/der_fw dla pv/bess/wind; generyczne `der` dla
-      // generator/unknown/braku danych), patrz `elementKindForMenu` nagłówek.
+      // tła (jedyna kategoria BEZ obiektu modelu — jej akcje dotyczą arkusza,
+      // nie elementu).
       if (testId === 'sld-v3-background') {
         setContextRequest({ kind: 'background', elementId: null, clientX, clientY });
+        setContextSubject(null);
         return;
       }
-      const menuKind = elementKindForMenu(meta?.elementKind, meta?.derKind);
-      if (!menuKind) return;
-      const id = meta?.ownerRef ?? elementIdFromTestId(testId);
-      setContextRequest({ kind: menuKind, elementId: id, clientX, clientY });
+      // Realny obiekt → TEMAT z `canvasMenuSubject.ts`: kotwica ZWERYFIKOWANA
+      // w modelu + kategoria menu z tej kotwicy. `stan: 'brak'` (adnotacja
+      // zabezpieczeń, znacznik pomocniczy bez refu, fragment rysunku bez
+      // odpowiednika w modelu) NIE otwiera menu — uczciwa odmowa zamiast
+      // operacji na refie rysunkowym.
+      const wynik = resolveCanvasMenuSubject(
+        {
+          klasa: meta?.klasa,
+          ownerRef: meta?.ownerRef,
+          elementKind: meta?.elementKind,
+          derKind: meta?.derKind,
+          busRef: meta?.busRef,
+        },
+        modelIndex,
+      );
+      if (wynik.stan === 'brak') return;
+      setContextRequest({
+        kind: wynik.temat.menuKind,
+        elementId: wynik.temat.modelRef,
+        clientX,
+        clientY,
+      });
+      setContextSubject(wynik.temat);
     },
-    [],
+    [modelIndex],
   );
+  // K5-A + S9-5: kontekst dostępności akcji menu liczony z TEMATU (jedno
+  // źródło prawdy o obiekcie), nie z ponownego dopasowania `elementId`.
+  // Dla stacji sprawdzamy realne FK `substation.bus_refs` → szyna nN
+  // (0 < U < 1 kV); bez stacji = `undefined` (brak danych, zero zgadywania).
+  const contextMenuAvailability = useMemo<SldMenuContext | undefined>(() => {
+    // Karta S9-5: wejścia budowy ciągu (GPZ / szyna sekcji) są dostępne tylko
+    // wtedy, gdy rozdzielnia ma WOLNE POLE LINIOWE — inaczej kreator otwarłby
+    // się bez punktu startu i zapis byłby w nim trwale zablokowany.
+    // S9-10 (ta sama klasa, predykaty PARAMI): „Rozpocznij odgałęzienie"
+    // bramkowane TYM SAMYM resolverem, którego użyje kreator odgałęzienia
+    // (`resolveBranchStartAvailability`) — dla KAŻDEJ kotwicy tematu, która ma
+    // tę pozycję w menu (zrodlo/szyna/stacja).
+    if (contextSubject && (contextSubject.kotwica === 'zrodlo' || contextSubject.kotwica === 'szyna')) {
+      const stationRef = stationRefOfBusOrSource(snapshot, contextSubject.modelRef);
+      return {
+        trunkStartFieldAvailable: resolveGpzTrunkStartFieldRef(snapshot, stationRef) !== null,
+        branchStartAvailable: resolveBranchStartAvailability(
+          snapshot,
+          contextSubject.menuKind,
+          contextSubject.modelRef,
+        ),
+      };
+    }
+    if (!contextSubject || contextSubject.kotwica !== 'stacja') return undefined;
+    const station = (snapshot?.substations ?? []).find(
+      (candidate) => candidate.ref_id === contextSubject.modelRef || candidate.id === contextSubject.modelRef,
+    );
+    if (!station) return undefined;
+    const hasNnBus = (station.bus_refs ?? []).some((busRef) => {
+      const bus = (snapshot?.buses ?? []).find(
+        (candidate) => candidate.ref_id === busRef || candidate.id === busRef,
+      );
+      return bus != null && bus.voltage_kv > 0 && bus.voltage_kv < 1;
+    });
+    return {
+      stationHasNnBus: hasNnBus,
+      branchStartAvailable: resolveBranchStartAvailability(
+        snapshot,
+        contextSubject.menuKind,
+        contextSubject.modelRef,
+      ),
+    };
+  }, [contextSubject, snapshot]);
   // F11.4-B / ARCH-3 (spec §10.1: „wykonawca akcji domenowych na v3: BRAMKA
   // REALNA, wdrażana"): `onAction` woła TEN SAM wykonawca co v2
   // (`useSldActionExecutor`, `shared/sldActionExecutor.ts`) — nawigacja
@@ -1326,6 +2000,9 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
     return getMenuActions(menuKind, {
       hasResults: activeCaseResultStatus === 'FRESH',
       apparatusKind,
+      // S9-10 (predykaty parami): akcje szuflady czytają TĘ SAMĄ prawdę o
+      // punkcie startu odgałęzienia co menu kanwy i kreator.
+      branchStartAvailable: resolveBranchStartAvailability(snapshot, menuKind, detailDrawerData.elementId),
     }).map((action) => ({
       id: action.id,
       labelPl: DRAWER_ACTION_LABEL_PL[action.id] ?? action.labelPl,
@@ -1333,7 +2010,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
       disabledReasonPl: action.disabled ? action.disabledReasonPl ?? 'Akcja niedostępna dla bieżącego obiektu.' : undefined,
       onClick: () => handleAction(action.id, menuKind, detailDrawerData.elementId),
     }));
-  }, [activeCaseResultStatus, detailDrawerData, handleAction]);
+  }, [activeCaseResultStatus, detailDrawerData, handleAction, snapshot]);
 
   // F8c pkt 4: paleta DER — hook + przycisk RENDER-AGNOSTYCZNE (v2
   // `useDerDragDrop`/`DerPaletteButton`, zero zmian), reużyte wprost.
@@ -1350,19 +2027,21 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   // networkHierarchyFromSnapshot.ts`, zero zmiany zachowania).
   const networkHierarchy = useMemo(() => buildNetworkHierarchyFromSnapshot(snapshot), [snapshot]);
   const [hierarchyPanelOpen, setHierarchyPanelOpen] = useState(false);
+  // K11-A: jawne „Dopasuj widok" — inkrementacja żąda refitu kamery kanwy;
+  // cel: treść sieci (domyślnie) albo cały arkusz (jawna akcja widoku).
+  const [fitSignal, setFitSignal] = useState(0);
+  const [fitTarget, setFitTarget] = useState<'tresc' | 'arkusz'>('tresc');
 
-  // F12-B pkt 3 (spec §10.1 ARCH-4, „ProofPacksPanel"): `hasNetworkModel` —
-  // TA SAMA definicja co v2 `!isEmpty` (`SldWorkspaceContainer.tsx`:
-  // `sldData.gpzs/stations/cableRuns/ders` wszystkie puste ⇒ `isEmpty`).
+  // F12-B pkt 3 (spec §10.1 ARCH-4, „ProofPacksPanel") + S9-11 / P-8: pustość
+  // MODELU z JEDNEGO źródła (`ui/topology/pustoscModelu`), nie z kategorii
+  // adaptera rysunku. Poprzednia definicja (`sldData.gpzs/stations/cableRuns/
+  // ders` puste ⇒ „brak modelu") myliła BRAK MIGAWKI (hydratacja w toku) i
+  // elementy spoza kategorii rysunku z PUSTYM modelem — akcje stanu pustego
+  // (`sld-empty-state*`) siedziały w drzewie przy sieci 16 i 51 stacji
+  // (pomiar audytu §3.3).
   const [proofPanelOpen, setProofPanelOpen] = useState(false);
-  const hasNetworkModel = useMemo(
-    () =>
-      sldData.gpzs.length > 0
-      || sldData.stations.length > 0
-      || sldData.cableRuns.length > 0
-      || sldData.ders.length > 0,
-    [sldData],
-  );
+  const pustoscModeluWerdykt = useMemo(() => pustoscModelu(snapshot), [snapshot]);
+  const hasNetworkModel = pustoscModeluWerdykt === 'niepusty';
 
   // F12-B pkt 4 (spec §10.1 ARCH-4, „LayerTogglePanel jako realny filtr"):
   // stan LOKALNY warstw v3 (`v3/canvas/layers.ts`) — brak wpisu = widoczna
@@ -1413,6 +2092,129 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
     setCameraState((prev) => (prev && prev.transform === transform && prev.lod === lod ? prev : { transform, lod }));
   }, []);
 
+  // K12 (KARTA_K12, dyrektywa właściciela 2026-07-30): legenda „na żądanie".
+  // Scena WŁASNA tej funkcji (WZORZEC 1:1 z `handleExportSvg` niżej — TA SAMA
+  // formuła rozwiązania LOD, `lodOverride ?? cameraState?.lod ?? 2` — panel i
+  // eksport-z-legendą liczą TĘ SAMĄ treść z TEGO SAMEGO poziomu szczegółu).
+  // `SldCanvasV3` nie eksponuje swojej sceny wewnętrznej (stan prywatny od
+  // F6b) — ten sam kompromis co `handleExportSvg`: przebudowa SCENY (nie
+  // modelu) z `snapshot`, czysta funkcja, tania względem repaintu kanwy.
+  //
+  // K11-B: scena AKTYWNEGO LOD jest teraz WSPÓŁDZIELONA (legenda + prostokąt
+  // kadru minimapy potrzebują dokładnie tego samego) — stąd neutralna nazwa.
+  // NAPRAWA U ŹRÓDŁA (Zero-Debt, dług znaleziony przy tej karcie): memo miało
+  // w zależnościach CAŁY `cameraState`, który zmienia się przy KAŻDEJ zmianie
+  // transformu — czyli przy każdej klatce pan/zoom przebudowywana była cała
+  // scena (765 symboli / 690 odcinków na sieci referencyjnej), choć jej treść
+  // zależy WYŁĄCZNIE od poziomu szczegółu. Zależność zawężona do rozwiązanego
+  // `activeLod`; treść memo bez zmian.
+  const activeLod: SceneLod = lodOverride ?? cameraState?.lod ?? 2;
+  const activeLodScene = useMemo<SceneV3 | null>(
+    () => (snapshot ? buildSceneV3(snapshot, activeLod) : null),
+    [snapshot, activeLod],
+  );
+  const legendEntries = useMemo<readonly SheetLegendEntry[]>(
+    () => (activeLodScene ? computeProjectLegendEntries(activeLodScene) : []),
+    [activeLodScene],
+  );
+  const [legendPanelOpen, setLegendPanelOpen] = useState(false);
+
+  // -------------------------------------------------------------------------
+  // K11-B (karta K11-B §0.1, dyrektywa właściciela z oceny ekranu 2/10):
+  // MINIMAPA (nawigator) — projekcja TEJ SAMEJ sceny, interakcja WYŁĄCZNIE na
+  // kamerze.
+  //
+  // Scena nawigatora: `buildSceneV3(snapshot, 0)` — poziom NAJZGRUBSZY (stacje
+  // jako mini-RMU + magistrala + laterale), ten sam builder co kanwa, czysty i
+  // memoizowany na `snapshot` (wzorzec `buildEnergizationOverlay` wyżej w tym
+  // pliku). Zero drugiej prawdy geometrii: nawigator nie zna ENM.
+  //
+  // Prostokąt kadru: liczony z `viewBox` kamery — DOKŁADNIE tą samą funkcją
+  // (`cameraViewBox`), której kanwa używa do narysowania siebie, na tym samym
+  // transformie (`cameraState`) i tym samym viewporcie (`size`). Nie ma tu
+  // drugiego modelu kamery: workspace odczytuje stan, nie liczy go.
+  // -------------------------------------------------------------------------
+  const [minimapOpen, setMinimapOpen] = useState(false);
+  // B-2: kotwica widoku dla kamery — wskazanie ostatniej operacji przeliczone
+  // WSPÓLNĄ regułą (`ui/topology/wskazanieOperacji.ts`), z której korzysta też
+  // selekcja/inspektor. Kanwa dostaje LISTĘ kandydatów i sama sprawdza, którego
+  // z nich rysunek naprawdę nosi (`canvas/viewAnchor.ts`) — zero zgadywania po
+  // nazwie refu.
+  const viewAnchor = useMemo(() => {
+    const wskazanie = wskazanieOperacji(selectionHint, lastChanges);
+    if (!wskazanie) return null;
+    return { kandydaci: wskazanie.kandydaci, przenosKadr: wskazanie.przenosKadr };
+  }, [selectionHint, lastChanges]);
+  // B-2 (klasa poboczna „pokaż to na schemacie"): `sldCenterOnElement` ze
+  // sklepu selekcji — kanał, którym 18 powierzchni (wyniki, bramka gotowości,
+  // drzewo danych, panel kontekstu, kreatory) wskazuje element do pokazania.
+  // Do tej karty NIKT go nie czytał (jedyny czytelnik `useSelectionSync` nie
+  // jest nigdzie montowany), więc wskazania ginęły. `seq` liczy ZMIANY
+  // wskazania; ograniczenie zastane, nazwane wprost: powtórne wskazanie TEGO
+  // SAMEGO refu nie zmienia wartości w sklepie, więc nie wywołuje ponownego
+  // kadrowania (kontrakt sklepu selekcji, nietykany tą kartą).
+  const sldCenterOnElement = useSelectionStore((state) => state.sldCenterOnElement);
+  const licznikPokazania = useRef(0);
+  const pokazElement = useMemo(() => {
+    if (!sldCenterOnElement) return null;
+    licznikPokazania.current += 1;
+    return { ref: sldCenterOnElement, seq: licznikPokazania.current };
+  }, [sldCenterOnElement]);
+  const [centerRequest, setCenterRequest] = useState<{ readonly x: number; readonly y: number; readonly seq: number } | null>(null);
+  // Scena nawigatora liczona TYLKO gdy panel jest rozwinięty — zwinięty
+  // nawigator nie kosztuje ani jednego przebiegu buildera (memo przeliczane
+  // przy zmianie sieci, nie per-klatkę).
+  const minimapScene = useMemo<SceneV3 | null>(
+    () => (snapshot && minimapOpen ? buildSceneV3(snapshot, 0) : null),
+    [snapshot, minimapOpen],
+  );
+  const minimapProjection = useMemo<MinimapProjection | null>(
+    () => (minimapScene ? minimapProjectionOf(minimapScene.bbox) : null),
+    [minimapScene],
+  );
+  const minimapShapes = useMemo<readonly MinimapShape[]>(
+    () => (minimapScene && minimapProjection ? minimapShapesOf(minimapScene, minimapProjection) : []),
+    [minimapScene, minimapProjection],
+  );
+  /** Kadr kamery w świecie AKTYWNEGO LOD — `null` przed pierwszym pomiarem
+   *  kamery/układu (uczciwy brak: nie rysujemy zgadywanego prostokąta). */
+  const cameraWorldRect = useMemo<V3Rect | null>(() => {
+    if (!cameraState || size.width <= 0 || size.height <= 0) return null;
+    return parseCameraViewBox(cameraViewBox(cameraState.transform, size));
+  }, [cameraState, size]);
+  /** KD-7: bbox świata AKTYWNEGO LOD w układzie KAMERY (scena przesunięta o
+   *  `FRAME_MARGIN` przez `SheetFrame`) — `cameraWorldRect` pochodzi z
+   *  `viewBox`, więc obie strony renormalizacji muszą być w tym samym
+   *  układzie; wcześniej minimapa mieszała świat sceny ze światem kamery i
+   *  prostokąt kadru dryfował o margines arkusza. */
+  const activeLodCameraBbox = useMemo<V3Rect | null>(
+    () =>
+      activeLodScene
+        ? { ...activeLodScene.bbox, x: activeLodScene.bbox.x + FRAME_MARGIN, y: activeLodScene.bbox.y + FRAME_MARGIN }
+        : null,
+    [activeLodScene],
+  );
+  const minimapFrame = useMemo<MinimapRect | null>(() => {
+    if (!minimapProjection || !cameraWorldRect || !activeLodCameraBbox) return null;
+    return worldRectToMinimap(cameraWorldRect, activeLodCameraBbox, minimapProjection);
+  }, [minimapProjection, cameraWorldRect, activeLodCameraBbox]);
+  /** Wskazanie w panelu → punkt świata aktywnego LOD → żądanie `'center'` do
+   *  kamery. JEDYNE wyjście minimapy: współrzędna. Skala/LOD/scena nietknięte. */
+  const handleMinimapNavigate = useCallback(
+    (point: { readonly x: number; readonly y: number }) => {
+      if (!minimapProjection || !activeLodCameraBbox) return;
+      const world = minimapPointToWorld(point, activeLodCameraBbox, minimapProjection);
+      setCenterRequest((prev) => ({ x: world.x, y: world.y, seq: (prev?.seq ?? 0) + 1 }));
+    },
+    [minimapProjection, activeLodCameraBbox],
+  );
+  // S9-6 (audyt E-4 „Legenda domyślnie wyłączona"): domyślnie WŁĄCZONA.
+  // Rysunek techniczny bez klucza symboli nie jest dokumentem — projektant,
+  // który jej NIE chce (np. wklejka do prezentacji), odznacza pole jednym
+  // klikiem. Dotąd wartość startowa była odwrotna (K12 §0.4), co dawało
+  // domyślny eksport bez legendy.
+  const [includeLegendInExport, setIncludeLegendInExport] = useState(true);
+
   // F12-B pkt 1 (spec §10.1 ARCH-4, „SldExportFormatMenu — eksport SVG/PNG"):
   // TEN SAM wzorzec co v2 `handleExportSvg` (`SldWorkspaceContainer.tsx`),
   // selektor kanwy v3 (`sld-canvas-v3` zamiast `sld-canvas-v2`).
@@ -1432,25 +2234,129 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   // `null`, gdy nie ma czego eksportować — ten sam kontrakt zwrotny co
   // `SldExportFormatMenu.onExportSvgOverride`, więc JEDNA implementacja
   // zasila OBA punkty wejścia (button + dropdown) bez duplikacji.
-  const handleExportSvg = useCallback((): string | null => {
+  //
+  // S9-6 (audyt E-1/E-2/E-3/E-6): funkcja rozdzielona na DWA kroki. Tu (niżej,
+  // `buildExportSheetMarkup`) powstaje MARKUP ARKUSZA — jedno źródło rysunku
+  // dla WSZYSTKICH formatów (SVG zapisuje go wprost, PDF i DXF tłumaczą przez
+  // `export/svgPrimitives.ts`). Zapis pliku i wybór formatu robi
+  // `handleExport` (`export/sldExport.ts`).
+  const buildExportSheetMarkup = useCallback((): string | null => {
     const svgEl = containerRef.current?.querySelector<SVGSVGElement>('svg[data-testid="sld-canvas-v3"]');
-    if (!svgEl || !snapshot) return null;
-    const lod = lodOverride ?? cameraState?.lod ?? 2;
-    const scene = buildSceneV3(snapshot, lod);
+    // K11-B: TA SAMA scena aktywnego LOD co legenda (`activeLodScene` wyżej) —
+    // dawniej ta funkcja budowała ją drugi raz TĄ SAMĄ formułą; scalone w jedno
+    // źródło (dyrektywa właściciela 7 „reużycie zamiast duplikacji").
+    const scene = activeLodScene;
+    if (!svgEl || !scene) return null;
     const clone = svgEl.cloneNode(true) as SVGSVGElement;
+    // Karta S9-4: warstwa TRAFIEŃ (`sld-v3-trafienia`) jest wyłącznie
+    // powierzchnią zdarzeń ekranu — przezroczyste kształty bez treści
+    // rysunkowej. Do dokumentu nie należy: usuwana z klonu, żeby plik SVG
+    // pozostał rysunkiem (i nie urósł o kilka tysięcy niewidocznych węzłów).
+    clone.querySelectorAll('[data-testid="sld-v3-trafienia"]').forEach((node) => node.remove());
     applyContentFitFrame(clone, scene);
+    // S9-6: dokument nie animuje — węzły SMIL (`<animate>` crossfade LOD,
+    // karta S8) są cechą KANWY, na arkuszu dawałyby plik, który po otwarciu
+    // najpierw jest przezroczysty. Usuwane z KLONU (ekran nietknięty).
+    for (const node of Array.from(clone.querySelectorAll('animate'))) node.remove();
+    // S9-6: `data-theme-mode` opisuje motyw EKRANU projektanta. Arkusz wychodzi
+    // zawsze w palecie dokumentowej, więc niesienie tego znacznika w pliku było
+    // informacją NIEPRAWDZIWĄ (i jedyną różnicą bajtów między eksportem z
+    // motywu ciemnego i jasnego — patrz test parytetu motywów).
+    clone.removeAttribute('data-theme-mode');
+    // S9-6: tło kanwy siedzi w `style` (CSS), więc podmiana palety go NIE
+    // dotyczy (patrz nagłówek `export/exportPalette.ts` — CSSOM normalizuje
+    // hex do `rgb()`), a eksport i tak wstrzykuje jawny biały prostokąt tła.
+    // Zostawione tło EKRANU było więc martwą deklaracją, która w motywie
+    // ciemnym mogła zaświecić czernią poza wstrzykniętym prostokątem — i była
+    // ostatnią różnicą bajtów między eksportem z motywu jasnego i ciemnego.
+    for (const svgNode of [clone, ...Array.from(clone.querySelectorAll('svg'))]) {
+      (svgNode as SVGSVGElement).style.removeProperty('background');
+    }
+    // K12 (KARTA_K12 §0.4): opcja „Dołącz legendę" — kanwa ekranowa NIGDY nie
+    // rysuje legendy (`SldCanvasV3` → `legend={[]}`), więc klon jest z
+    // definicji BEZ niej; gdy zaznaczone, dorysowujemy ją WYŁĄCZNIE na
+    // KLONIE (kadr eksportu), licząc treść z TEJ SAMEJ sceny/LOD co reszta
+    // eksportu (zero rozjazdu między tym, co widać w podglądzie panelu, a
+    // tym, co trafia do pliku). Reużycie `SheetLegend` (`sheet/Frame.tsx`,
+    // TA SAMA funkcja, co arkusz drukowany) przez `renderToStaticMarkup` —
+    // zero duplikacji rysunku glifów/próbek linii między torem ekranu i
+    // eksportu (dyrektywa właściciela pkt 7 „reużycie zamiast duplikacji").
+    if (includeLegendInExport) {
+      const entries = computeProjectLegendEntries(scene);
+      if (entries.length > 0) {
+        // KD-8 poz. 1: legenda dorysowana do KLONU musi powstać w palecie
+        // EKRANU (tej samej, co reszta klonu) — dopiero pełny markup jest
+        // przepisywany na paletę dokumentową jednym przebiegiem niżej.
+        appendToDrawingArea(
+          clone,
+          renderToStaticMarkup(
+            <SldPaletteContext.Provider value={screenPalette}>
+              <SheetLegend entries={entries} sheetHeight={sheetSizeFor(scene).height} />
+            </SldPaletteContext.Provider>,
+          ),
+        );
+      }
+    }
+    // S9-6 (audyt E-3 „Eksport SVG nie ma tytułówki"): tabliczka rysunkowa —
+    // TĄ SAMĄ metodą co legenda (render na KLONIE, paleta ekranu, podmiana na
+    // dokumentową jednym przebiegiem niżej), więc trafia do KAŻDEGO formatu,
+    // który czyta ten markup (SVG, PDF, DXF) — jedna implementacja metryki.
+    // Dane WYŁĄCZNIE realne: nazwy z powłoki, nagłówek migawki ENM, licznik
+    // stacji ze sceny. Brak danej ⇒ puste pole z etykietą (`BRAK_DANEJ`).
+    const contentFrame = computeContentFitFrame(scene);
+    const titleBlockData = buildSheetTitleBlockData({
+      projectName: activeProjectName,
+      caseName: activeCaseName,
+      networkName: snapshot?.header.name ?? null,
+      modelUpdatedAtIso: snapshot?.header.updated_at ?? null,
+      modelRevision: snapshot?.header.revision ?? null,
+      modelHash: snapshot?.header.hash_sha256 ?? null,
+      stationCount: scene.meta.stationCount,
+      sheetAspect: contentFrame.height > 0 ? contentFrame.width / contentFrame.height : 0,
+      lodLabelPl: SCENE_LOD_LABELS_PL[scene.meta.lod],
+    });
+    const sheetSize = sheetSizeFor(scene);
+    appendToDrawingArea(
+      clone,
+      renderToStaticMarkup(
+        <SldPaletteContext.Provider value={screenPalette}>
+          <SheetTitleBlock data={titleBlockData} sheetWidth={sheetSize.width} sheetHeight={sheetSize.height} />
+        </SldPaletteContext.Provider>,
+      ),
+    );
     const serializer = new XMLSerializer();
-    const svgStr = toLightTechnicalExportSvg(serializer.serializeToString(clone));
-    const blob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const filename = 'schemat_sld.svg';
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename;
-    link.click();
-    URL.revokeObjectURL(url);
-    return filename;
-  }, [snapshot, lodOverride, cameraState]);
+    return toLightTechnicalExportSvg(serializer.serializeToString(clone), screenPalette);
+  }, [activeCaseName, activeLodScene, activeProjectName, includeLegendInExport, screenPalette, snapshot]);
+
+  /**
+   * S9-6: jedno wyjście dla KAŻDEGO formatu z menu (`SLD_EXPORT_FORMATS`).
+   * Zwraca nazwę zapisanego pliku albo `null`, gdy nie ma czego eksportować;
+   * błąd budowy (np. bramka „rysunek bez geometrii") leci wyjątkiem do
+   * wołającego, który pokazuje komunikat — nigdy pusty plik „na sukces".
+   */
+  const handleExport = useCallback(
+    (format: SldExportFormat): string | null => {
+      const svgMarkup = buildExportSheetMarkup();
+      if (svgMarkup === null) return null;
+      const file = buildSldExportFile(format, {
+        svgMarkup,
+        snapshot,
+        projectName: activeProjectName,
+        caseName: activeCaseName,
+      });
+      const blob = new Blob([file.content], { type: `${file.mime};charset=utf-8` });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = file.filename;
+      link.click();
+      URL.revokeObjectURL(url);
+      return file.filename;
+    },
+    [activeCaseName, activeProjectName, buildExportSheetMarkup, snapshot],
+  );
+
+  const handleExportSvg = useCallback((): string | null => handleExport('svg'), [handleExport]);
 
   // F12-B pkt 5: lasso — nakładka screen-space AKTYWNA (pointer-events: auto)
   // WYŁĄCZNIE gdy Shift wciśnięty (albo trwa przeciągnięcie rozpoczęte pod
@@ -1529,6 +2435,26 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
     () => buildStationInternalViewData(snapshot, sldData, internalStationId, size),
     [snapshot, sldData, internalStationId, size],
   );
+  /**
+   * S9-8 („obszar bezpieczny pod dokami UI"): doki STAŁE kanwy plus zasłona
+   * STANOWA tego wołającego — panel boczny „wnętrze stacji" zajmuje prawą
+   * krawędź (`bottom-3 right-3 top-3`, szerokość do
+   * `min(760, 100% − 1.5rem)`). Szerokość liczona TĄ SAMĄ formułą co klasa
+   * panelu, a nie wpisana ręcznie: rozjazd oznaczałby kadr, który „prawie" nie
+   * chowa treści (reguła KLASA §3 — predykaty parami).
+   */
+  const effectiveCanvasInsets = useMemo(
+    () =>
+      internalStationData
+        ? {
+            ...SLD_CANVAS_DOCK_INSETS,
+            right:
+              SLD_CANVAS_DOCK_INSETS.right +
+              Math.min(STATION_INTERNAL_PANEL_MAX_WIDTH_PX, Math.max(0, size.width - 24)),
+          }
+        : SLD_CANVAS_DOCK_INSETS,
+    [internalStationData, size.width],
+  );
   // Wybór pola/transformatora WEWNĄTRZ wnętrza stacji otwiera drawer
   // szczegółów — TEN SAM budowniczy współdzielony co selekcja na scenie
   // głównej (`buildDetailDrawerDataForKind`, już importowany wyżej). v2 ma
@@ -1584,9 +2510,65 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
       // normalizacji klik w kawałek otwierał drawer z refem, którego API
       // nie zna (luka wykryta adaptacją e2e sld-editor-real-backend-flex).
       const rawId = meta?.ownerRef ?? elementIdFromTestId(testId);
-      const id = meta?.elementKind === 'segment'
-        ? rawId.replace(/_(?:[LR]_)*[LR]$/, '')
-        : rawId;
+
+      // KARTA KLIK-ETYKIETA-KOTWICA — RODZAJ I REF KLIKNIĘTEGO OBIEKTU Z JEDNEGO
+      // ŹRÓDŁA (kotwicy modelu), TYM SAMYM wywołaniem, którym rozstrzyga je menu.
+      //
+      // Trzy konsumenty niżej (normalizacja refu przęsła, zrzut układu OZE na
+      // stację, rozwiązanie realnego refu transformatora) pytały o rodzaj obiektu
+      // `meta.elementKind`, czyli tabelę `hitAreas.LABEL_OWNER_ELEMENT_KIND`.
+      // Dla trafienia w UCHWYT (etykieta, znacznik wyniku) ta tabela nie jest
+      // orzeczeniem o obiekcie modelu, tylko o rodzaju NAPISU — a jeden
+      // `OwnerKind:'station-name'` obsługuje wiersz nazwy STACJI, TRANSFORMATORA
+      // i ŹRÓDŁA. Zmierzone skutki na sieci referencyjnej (LOD 1/2):
+      //  * napis „TR1" transformatora GPZ deklarował `'station'`, więc (a) NIE
+      //    odpalało się rozwiązanie realnego refu transformatora — deklaracja
+      //    §16-v3 niżej („selekcja transformatora niesie REALNY ref") była
+      //    nieprawdziwa dla uchwytu — a jednocześnie (b) przy uzbrojonej palecie
+      //    OZE odpalał się `derDrag.dropOnStation()` Z REFEM TRANSFORMATORA
+      //    (`dropOnStation` nie weryfikuje niczego, a `buildDerDropDetailDrawerData`
+      //    nie znajdując stacji pokazywał jako nazwę SUFIKS RYSUNKOWY
+      //    „wn_sn#label#name-row-0");
+      //  * napis nazwy STACJI (266 etykiet) trafiał do `dropOnStation` z refem
+      //    KOMPOZYTOWYM `…/station#name-row-0`, więc szuflada OZE też pokazywała
+      //    sufiks rysunkowy zamiast kodu stacji.
+      // Dla uchwytu rodzaj i ref pochodzą więc TERAZ z kotwicy modelu; obiekty
+      // rysujące SIEBIE (symbol, kreska) zachowują dotychczasową ścieżkę — ich
+      // kategoria rysunkowa jest o nich samych i niesie informację, której kotwica
+      // nie ma (symbol transformatora stacji ma `ownerRef` = ref POLA).
+      const uchwyt = meta?.klasa !== undefined && KLASY_UCHWYTU.has(meta.klasa);
+      const tematUchwytu = uchwyt && meta?.ownerRef
+        ? resolveCanvasMenuSubject(
+            {
+              klasa: meta.klasa,
+              ownerRef: meta.ownerRef,
+              elementKind: meta.elementKind,
+              derKind: meta.derKind,
+              busRef: meta.busRef,
+            },
+            modelIndex,
+          )
+        : null;
+      const kotwicaUchwytu = tematUchwytu?.stan === 'temat' ? tematUchwytu.temat.kotwica : undefined;
+      // Rodzaj obiektu dla WSZYSTKICH konsumentów niżej. Uchwyt bez kotwicy w
+      // modelu (napis nad fragmentem rysunku bez odpowiednika) nie dostaje
+      // ŻADNEGO rodzaju — uczciwy brak, zero podstawiania rodzaju napisu.
+      const elementKind = uchwyt
+        ? kotwicaUchwytu === undefined
+          ? undefined
+          : ELEMENT_KIND_KOTWICY[kotwicaUchwytu]
+        : meta?.elementKind;
+      // Ref modelu uchwytu jest już KANONICZNY (zweryfikowany w snapshocie przez
+      // `resolveCanvasMenuSubject`), więc NIE przechodzi normalizacji sufiksu
+      // trasy: `seg/⟨id⟩/segment_L` i `seg/⟨id⟩/segment` to DWA różne, realne
+      // rekordy `Branch` w modelu — obcięcie zweryfikowanego refu byłoby podmianą
+      // obiektu. Normalizacja dotyczy wyłącznie refu RYSUNKOWEGO (ścieżka symbolu/
+      // kreski), po to powstała.
+      const id = uchwyt
+        ? (tematUchwytu?.stan === 'temat' ? tematUchwytu.temat.modelRef : rawId)
+        : elementKind === 'segment'
+          ? rawId.replace(/_(?:[LR]_)*[LR]$/, '')
+          : rawId;
 
       // F8c pkt 4: drag DER uzbrojony — klik w STACJĘ „zrzuca" (jak v2
       // K30-78: `if (kind === 'station' && derDrag.state)`); klik gdziekolwiek
@@ -1596,7 +2578,11 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
       // ŚWIADOMA, bezpieczna reguła v3, żeby użytkownik nie utknął uzbrojony —
       // patrz test (b) `derPalette.test.tsx`).
       if (derDrag.state) {
-        if (meta?.elementKind === 'station') {
+        // KARTA KLIK-ETYKIETA-KOTWICA: `elementKind`/`id` z JEDNEGO źródła wyżej —
+        // `dropOnStation` nie weryfikuje własnego argumentu (hook v2 przyjmuje
+        // dowolny łańcuch), więc uczciwa odmowa musi paść TUTAJ, w jedynym
+        // miejscu, które zna model.
+        if (elementKind === 'station') {
           const dropResult = derDrag.dropOnStation(id);
           if (dropResult) {
             // F11.4-B: `buildDerDropDetailDrawerData` — WSPÓŁDZIELONA z v2
@@ -1609,14 +2595,18 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
         return;
       }
 
-      const type = elementTypeForKind(meta?.elementKind);
+      const type = elementTypeForKind(elementKind);
       // §16-v3/adaptacja flex: selekcja TRANSFORMATORA niesie REALNY ref
       // transformatora (ta sama rozdzielczość, której używa drawer —
       // `resolveTransformerRefForOwnerRef`), nie bay-ref symbolu — inspektor
       // inżynierski (`InspectorEngineeringView`, selekcja globalna) rozwiązuje
       // element po ref_id; bay-ref pokazywałby pusty/obcy panel.
+      // KARTA KLIK-ETYKIETA-KOTWICA: obowiązuje też dla UCHWYTU transformatora
+      // (napis „TR1") — do tej karty uchwyt deklarował `'station'`, więc ta gałąź
+      // się dla niego nie wykonywała i deklaracja zdania wyżej była nieprawdziwa.
+      // Teraz PRZYPIĘTA testem (`kotwicaJednoZrodlo.contract.test.ts`).
       const selectId =
-        meta?.elementKind === 'transformer'
+        elementKind === 'transformer'
           ? resolveTransformerRefForOwnerRef(snapshot, id) ?? id
           : id;
       selectElement(type ? { id: selectId, type, name: selectId } : { id, type: 'DescriptiveElement', name: id });
@@ -1628,11 +2618,57 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
       // = drawer się NIE otwiera (uczciwy brak, bez crasha, bez zgadywania) —
       // jeśli już otwarty dla innego elementu, zostaje (spójne z v2:
       // `handleSelectElement` też nie zamyka drawera na niezmapowany `kind`).
-      const drawerData = buildDetailDrawerDataForElementKind(snapshot, sldData, rawOverlayPayload, meta?.elementKind, id);
+      let drawerData = buildDetailDrawerDataForElementKind(snapshot, sldData, rawOverlayPayload, elementKind, id, meta?.deviceRef);
+      // S9-10 (dług `S9-4-DLUG-INSPEKTOR`, ogniwo etykiet): ref KOMPOZYTOWY
+      // (`…#sn-bus` itd.) nie rozwiązuje się w budowniczych — panel się nie
+      // otwierał. Kotwicę modelu rozstrzyga TEN SAM moduł, który robi to dla
+      // menu kontekstowego (`resolveCanvasMenuSubject` — jedno źródło prawdy;
+      // ślepe zdejmowanie sufiksu byłoby fabrykacją, patrz rejestr). Ścieżka
+      // jest WYŁĄCZNIE zapasowa dla obiektów rysujących SIEBIE (kreska szyny
+      // stacji): UCHWYTY (etykieta, znacznik wyniku) mają kotwicę policzoną już
+      // na wejściu, jednym wywołaniem dla wszystkich trzech konsumentów
+      // (KARTA KLIK-ETYKIETA-KOTWICA), więc drugi raz jej nie liczymy.
+      if (!drawerData && !uchwyt && meta?.ownerRef) {
+        const wynik = resolveCanvasMenuSubject(
+          {
+            klasa: meta.klasa,
+            ownerRef: meta.ownerRef,
+            elementKind: meta.elementKind,
+            derKind: meta.derKind,
+            busRef: meta.busRef,
+          },
+          modelIndex,
+        );
+        if (wynik.stan === 'temat') {
+          drawerData = buildDetailDrawerDataForElementKind(
+            snapshot,
+            sldData,
+            rawOverlayPayload,
+            ELEMENT_KIND_KOTWICY[wynik.temat.kotwica],
+            wynik.temat.modelRef,
+            meta?.deviceRef,
+          );
+        }
+      }
       if (drawerData) setDetailDrawerData(drawerData);
     },
-    [derDrag, rawOverlayPayload, selectElement, sldData, snapshot],
+    [derDrag, modelIndex, rawOverlayPayload, selectElement, sldData, snapshot],
   );
+
+  /**
+   * Karta S9-4 (audyt §3.2, P-6 „klik w tło zaznacza obiekt"): klik w pusty
+   * arkusz CZYŚCI zaznaczenie. Ta sama para operacji, co wyjście klawiszem
+   * Escape wyżej (`clearSelection` + `updateUrlWithSelection(null)`) — inaczej
+   * synchronizacja adresu natychmiast przywróciłaby selekcję z hasha.
+   * Szuflada szczegółów ma własne wyjście (przycisk/Escape) i NIE jest tu
+   * zamykana: klik w tło to porzucenie WSKAZANIA, nie zamknięcie panelu.
+   */
+  const handleBackgroundClick = useCallback(() => {
+    const store = useSelectionStore.getState();
+    if (store.selectedElements.length === 0) return;
+    store.clearSelection();
+    updateUrlWithSelection(null);
+  }, []);
 
   // R3 (wym. 6): AKTYWACJA etykiety wynikowej — klik w blok liczbowy prowadzony
   // TĄ SAMĄ ścieżką co klik w element (`handleElementClick`: selekcja +
@@ -1649,6 +2685,162 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
     },
     [handleElementClick],
   );
+
+  /**
+   * KD-8 poz. 2 — ZAWARTOŚĆ grup pasa narzędzi. Te same kontrolki i te same
+   * uchwyty zdarzeń co przed scaleniem doków (zero nowych akcji, zero
+   * martwych klików); zmieniło się WYŁĄCZNIE miejsce, w którym są osadzone —
+   * grupa rozwinięta rysuje je w pasie, zwinięta w menu „Narzędzia".
+   */
+  // KD-8 poz. 2: układ pasa narzędzi wyliczony z REALNEJ szerokości kanwy —
+  // czysta funkcja, więc ta sama szerokość zawsze daje ten sam układ.
+  const ukladPaska = useMemo(() => layoutCanvasToolbar(size.width), [size.width]);
+
+  const zawartoscGrup: Readonly<Record<CanvasToolbarGroupId, JSX.Element>> = {
+    drzewo: (
+      <>
+        <button
+          type="button"
+          onClick={() => setHierarchyPanelOpen((prev) => !prev)}
+          data-testid="sld-v3-hierarchy-tree-toggle"
+          aria-label={hierarchyPanelOpen ? 'Zamknij drzewo układu' : 'Otwórz drzewo układu'}
+          title={hierarchyPanelOpen ? 'Zamknij drzewo układu' : 'Drzewo układu sieci'}
+          className="h-7 rounded border border-scada-border bg-scada-panel/95 px-2 font-mono-eng text-[10px] font-semibold text-scada-text shadow-lg hover:bg-scada-hover-nav"
+        >
+          {hierarchyPanelOpen ? '◂ Drzewo układu' : '▸ Drzewo układu'}
+        </button>
+        {hierarchyPanelOpen && (
+          <NetworkHierarchyTree hierarchy={networkHierarchy} className="w-[240px]" />
+        )}
+      </>
+    ),
+    uklady: (
+      <div className="flex items-center gap-1 rounded border border-scada-border bg-scada-panel/95 px-2 py-1 shadow-lg">
+        <span style={{ fontSize: 9, color: 'rgb(var(--scada-muted))', marginRight: 4, fontWeight: 700, letterSpacing: 0.5 }}>
+          UKŁADY PV/BESS/FW:
+        </span>
+        {(['PV', 'BESS', 'FW'] as DerDragKind[]).map((kind) => (
+          <DerPaletteButton
+            key={kind}
+            kind={kind}
+            onStart={derDrag.startDrag}
+            disabled={derDrag.state !== null && derDrag.state.kind !== kind}
+            active={derDrag.state?.kind === kind}
+          />
+        ))}
+        {derDrag.state && (
+          <span style={{ fontSize: 9, color: 'rgb(var(--scada-text))', marginLeft: 4 }}>
+            ▸ Wskaż stację dla {derDrag.state.kind}
+            <button
+              type="button"
+              data-testid="sld-v3-der-cancel"
+              onClick={derDrag.cancel}
+              style={{ marginLeft: 6, color: 'rgb(var(--scada-status-err))', background: 'none', border: 'none', cursor: 'pointer' }}
+            >
+              Anuluj
+            </button>
+          </span>
+        )}
+      </div>
+    ),
+    widok: (
+      <>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => {
+              setFitTarget('tresc');
+              setFitSignal((s) => s + 1);
+            }}
+            data-testid="sld-v3-fit-view"
+            title="Dopasuj widok do sieci"
+            className="h-7 rounded border border-scada-border bg-scada-panel/95 px-2 font-mono-eng text-[10px] font-semibold text-scada-text shadow-lg hover:bg-scada-hover-nav"
+          >
+            ⌖ Dopasuj widok
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setFitTarget('arkusz');
+              setFitSignal((s) => s + 1);
+            }}
+            data-testid="sld-v3-fit-sheet"
+            title="Pokaż cały arkusz rysunkowy"
+            className="h-7 rounded border border-scada-border bg-scada-panel/95 px-2 font-mono-eng text-[10px] font-semibold text-scada-text shadow-lg hover:bg-scada-hover-nav"
+          >
+            Cały arkusz
+          </button>
+          <button
+            type="button"
+            onClick={() => setLegendPanelOpen((prev) => !prev)}
+            data-testid="sld-v3-legend-toggle"
+            aria-expanded={legendPanelOpen}
+            aria-label={legendPanelOpen ? 'Zamknij legendę symboli' : `Otwórz legendę symboli (${legendEntries.length})`}
+            title={legendPanelOpen ? 'Zamknij legendę' : `Legenda symboli i linii (${legendEntries.length})`}
+            className="h-7 rounded border border-scada-border bg-scada-panel/95 px-2 font-mono-eng text-[10px] font-semibold text-scada-text shadow-lg hover:bg-scada-hover-nav"
+          >
+            {legendPanelOpen ? '▾ Legenda' : `▸ Legenda (${legendEntries.length})`}
+          </button>
+          {/* K11-B (karta K11-B §0.1): przełącznik nawigatora — TEN SAM dok
+              widoku co „Dopasuj widok"/„Cały arkusz"/„Legenda" (jedno miejsce
+              na sterowanie WIDOKIEM; panel nawigatora rozwija się w wolnym
+              dolnym-środkowym obszarze kanwy, patrz komentarz przy doku
+              nawigatora niżej). Nieaktywny, gdy sieci nie ma — uczciwie
+              wyłączony zamiast otwierać pusty panel. */}
+          <button
+            type="button"
+            onClick={() => setMinimapOpen((prev) => !prev)}
+            data-testid="sld-v3-minimap-toggle"
+            aria-expanded={minimapOpen}
+            disabled={snapshot === null}
+            aria-label={minimapOpen ? 'Zamknij nawigator schematu' : 'Otwórz nawigator schematu'}
+            title={minimapOpen ? 'Zamknij nawigator' : 'Nawigator — podgląd całej sieci z bieżącym kadrem'}
+            className="h-7 rounded border border-scada-border bg-scada-panel/95 px-2 font-mono-eng text-[10px] font-semibold text-scada-text shadow-lg hover:bg-scada-hover-nav disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {minimapOpen ? '▾ Nawigator' : '▸ Nawigator'}
+          </button>
+        </div>
+        {legendPanelOpen && <SldV3LegendPanel entries={legendEntries} />}
+      </>
+    ),
+    eksport: (
+      <div className="flex items-center gap-1">
+        <button
+          type="button"
+          onClick={handleExportSvg}
+          data-testid="sld-v3-export-svg"
+          title="Eksportuj schemat SLD jako plik SVG"
+          className="h-7 rounded border border-scada-border bg-scada-panel/95 px-2 font-mono-eng text-[10px] font-semibold text-scada-text shadow-lg hover:bg-scada-hover-nav"
+        >
+          ↓ SVG
+        </button>
+        {/* S9-6: KAŻDA pozycja menu (SVG/PDF/DXF/SCD/CIM) idzie tą samą drogą
+            — `handleExport` → `export/sldExport.ts`. Błąd budowy pliku (np.
+            bramka „rysunek bez geometrii") pokazujemy jako powiadomienie,
+            zamiast milczeć albo zapisać pusty plik. */}
+        <SldExportFormatMenu
+          onExport={handleExport}
+          onError={(message) => notify(`Eksport schematu: ${message}`, 'error')}
+        />
+        {/* K12 (KARTA_K12 §0.4): opcja „Dołącz legendę" — domyślnie WYŁĄCZONA.
+            Steruje WYŁĄCZNIE `handleExportSvg` (jedyny dziś funkcjonalny kanał
+            eksportu SVG — button + dropdown „SVG (light_technical)" powyżej
+            współdzielą TĘ SAMĄ implementację), zero wpływu na kanwę ekranową. */}
+        <label
+          className="flex h-7 cursor-pointer items-center gap-1 rounded border border-scada-border bg-scada-panel/95 px-2 font-mono-eng text-[10px] text-scada-text shadow-lg"
+          title="Dołącz legendę symboli i linii do eksportowanego pliku SVG"
+        >
+          <input
+            type="checkbox"
+            checked={includeLegendInExport}
+            onChange={(event) => setIncludeLegendInExport(event.target.checked)}
+            data-testid="sld-v3-export-include-legend"
+          />
+          Dołącz legendę
+        </label>
+      </div>
+    ),
+  };
 
   return (
     <div
@@ -1669,7 +2861,14 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
           lodOverride={lodOverride}
           layerVisibility={layerVisibility}
           onResultLabelActivate={handleResultLabelActivate}
+          onBackgroundClick={handleBackgroundClick}
           onCameraChange={handleCameraChange}
+          fitSignal={fitSignal}
+          fitTarget={fitTarget}
+          centerRequest={centerRequest}
+          viewAnchor={viewAnchor}
+          pokazElement={pokazElement}
+          safeInsets={effectiveCanvasInsets}
         />
       ) : null}
 
@@ -1699,8 +2898,10 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
           jawnym CTA GPZ i katalogami, przeniesiony 1:1 z kontenera v2
           (te same testid/etykiety PL; akcje przez WSPÓŁDZIELONY wykonawca
           `handleAction`, więc zachowanie identyczne — `insert-gpz` otwiera
-          formularz `add_grid_source_sn`, `open-catalogs` nawigację E-38). */}
-      {!hasNetworkModel && (
+          formularz `add_grid_source_sn`, `open-catalogs` nawigację E-38).
+          S9-11 / P-8: montowany WYŁĄCZNIE przy werdykcie 'pusty' — pustość
+          NIEUSTALONA (migawka nie przyszła) nie jest pustym modelem. */}
+      {pustoscModeluWerdykt === 'pusty' && (
         <div
           data-testid="sld-empty-state"
           className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center"
@@ -1742,13 +2943,13 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
               >
                 Przeglądaj katalogi techniczne
               </button>
-              <a
-                href="#kreator-stacji-v2"
-                data-testid="sld-empty-state-open-station-wizard"
-                className="pointer-events-auto rounded border border-emerald-500/50 bg-emerald-500/10 px-4 py-2 text-center text-sm font-medium text-emerald-300 hover:bg-emerald-500/20 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              >
-                Otwórz konfigurację stacji (17 kroków)
-              </a>
+              {/* KD-1: usunięto odnośnik „Otwórz konfigurację stacji (17 kroków)"
+                  do trasy `#kreator-stacji-v2`. Trasa i jej podzespół zostały
+                  skasowane (werdykt MARTWY, inwentarz parytetu mostów L-6), a
+                  w PUSTYM modelu stacji i tak nie ma na czym osadzić — realny
+                  kreator stacji (`ui2/kreatory/stacja`) otwiera się z kanwy
+                  operacją na odcinku SN dopiero po wstawieniu GPZ i magistrali
+                  (dokładnie tak, jak zapowiada akapit poniżej). */}
             </div>
             <p className="mt-3 text-xs text-scada-muted">
               Po wstawieniu GPZ karta techniczna poprowadzi przez sekcje szyn,
@@ -1770,91 +2971,111 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
       <SldContextMenuController
         request={contextRequest}
         mode={activeMode}
+        context={contextMenuAvailability}
         onAction={handleContextMenuAction}
         onClose={closeContextMenu}
       />
 
-      {/* F8c pkt 4: paleta DER — TEN SAM wygląd/przyciski co v2 (`DerPaletteButton`
-          reużyty wprost, patrz v2 `sld-v2-der-palette`), zamontowana
-          bezwarunkowo (v3 nie ma dziś odpowiednika `canPlaceDerOnStation`/
-          wyboru stacji z v2 — poza zakresem tego zadania, DODATEK czysto
-          addytywny). */}
+      {/* KD-8 poz. 2 — JEDNA WARSTWA NARZĘDZI KANWY.
+
+          Dawniej: cztery niezależne doki pozycjonowane bezwzględnie (drzewo
+          lewy-górny, paleta PV/BESS/FW środek-góra, eksport prawy-górny, widok
+          prawy-drugi-rząd). Każdy znał tylko własny róg, więc przy węższej
+          kanwie chip „↓ SVG" nachodził na „+ BESS", a trzy rzędy pływających
+          kontrolek zachodziły na siebie (ocena właściciela).
+
+          Teraz: JEDEN rząd (flex) — grupy są jego elementami, więc nachodzenie
+          jest niemożliwe z konstrukcji układu. O tym, które grupy zostają
+          rozwinięte, decyduje CZYSTA funkcja `layoutCanvasToolbar(szerokość)`
+          (`canvas/toolbarLayout.ts`); grupy, które się nie mieszczą, zwijają
+          się do menu „Narzędzia" — nigdy nie nakładają. Panele rozwijane
+          (drzewo, legenda) otwierają się POD swoją grupą, w tej samej
+          kolumnie. */}
       <div
-        className="pointer-events-auto absolute top-3 z-30 flex items-center gap-1 rounded border border-scada-border bg-scada-panel/95 px-2 py-1 shadow-lg"
-        data-testid="sld-v3-der-palette"
-        style={{ left: '50%', transform: 'translateX(-50%)' }}
+        className="pointer-events-none absolute left-3 right-3 top-3 z-30 flex items-start gap-2"
+        data-testid="sld-v3-toolbar"
+        data-toolbar-collapsed={ukladPaska.collapsed.join(',') || 'brak'}
       >
-        <span style={{ fontSize: 9, color: '#7E8790', marginRight: 4, fontWeight: 700, letterSpacing: 0.5 }}>
-          UKŁADY PV/BESS/FW:
-        </span>
-        {(['PV', 'BESS', 'FW'] as DerDragKind[]).map((kind) => (
-          <DerPaletteButton
-            key={kind}
-            kind={kind}
-            onStart={derDrag.startDrag}
-            disabled={derDrag.state !== null && derDrag.state.kind !== kind}
-            active={derDrag.state?.kind === kind}
-          />
-        ))}
-        {derDrag.state && (
-          <span style={{ fontSize: 9, color: '#B9C2CC', marginLeft: 4 }}>
-            ▸ Wskaż stację dla {derDrag.state.kind}
+        {isToolbarGroupExpanded(ukladPaska, 'drzewo') && (
+          <div className="pointer-events-auto flex flex-col items-start gap-1" data-testid={TESTID_GRUPY.drzewo} data-toolbar-group="drzewo">
+            {zawartoscGrup.drzewo}
+          </div>
+        )}
+        {isToolbarGroupExpanded(ukladPaska, 'uklady') && (
+          <div className="pointer-events-auto flex flex-col items-start gap-1" data-testid={TESTID_GRUPY.uklady} data-toolbar-group="uklady">
+            {zawartoscGrup.uklady}
+          </div>
+        )}
+        {/* Rozpychacz: grupy sterowania widokiem i eksportem trzymają się prawej
+            krawędzi kanwy, tak jak przed scaleniem doków. */}
+        <div className="flex-1" aria-hidden="true" />
+        {isToolbarGroupExpanded(ukladPaska, 'widok') && (
+          <div className="pointer-events-auto flex flex-col items-end gap-1" data-testid={TESTID_GRUPY.widok} data-toolbar-group="widok">
+            {zawartoscGrup.widok}
+          </div>
+        )}
+        {isToolbarGroupExpanded(ukladPaska, 'eksport') && (
+          <div className="pointer-events-auto flex flex-col items-end gap-1" data-testid={TESTID_GRUPY.eksport} data-toolbar-group="eksport">
+            {zawartoscGrup.eksport}
+          </div>
+        )}
+        {ukladPaska.collapsed.length > 0 && (
+          <div className="pointer-events-auto relative flex flex-col items-end gap-1" data-toolbar-group="menu">
             <button
               type="button"
-              data-testid="sld-v3-der-cancel"
-              onClick={derDrag.cancel}
-              style={{ marginLeft: 6, color: '#F25F5F', background: 'none', border: 'none', cursor: 'pointer' }}
+              onClick={() => setToolbarMenuOpen((prev) => !prev)}
+              data-testid="sld-v3-toolbar-menu-toggle"
+              aria-expanded={toolbarMenuOpen}
+              aria-label={toolbarMenuOpen ? 'Zamknij menu narzędzi kanwy' : 'Otwórz menu narzędzi kanwy'}
+              title="Narzędzia kanwy zwinięte przy tej szerokości"
+              className="h-7 rounded border border-scada-border bg-scada-panel/95 px-2 font-mono-eng text-[10px] font-semibold text-scada-text shadow-lg hover:bg-scada-hover-nav"
             >
-              Anuluj
+              {toolbarMenuOpen ? '▾ Narzędzia' : '▸ Narzędzia'}
             </button>
-          </span>
+            {toolbarMenuOpen && (
+              <div
+                className="flex flex-col items-end gap-2 rounded border border-scada-border bg-scada-panel p-2 shadow-lg"
+                data-testid="sld-v3-toolbar-menu"
+              >
+                {ukladPaska.collapsed.map((id) => (
+                  <div
+                    key={id}
+                    className="flex flex-col items-end gap-1"
+                    data-testid={TESTID_GRUPY[id]}
+                    data-toolbar-group={id}
+                    data-toolbar-group-collapsed={id}
+                  >
+                    {zawartoscGrup[id]}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         )}
       </div>
 
-      {/* F12-B pkt 1 (spec §10.1 ARCH-4, „SldExportFormatMenu — eksport
-          SVG/PNG"): dok prawy-górny — paleta DER zajmuje górny-środek, zero
-          kolizji. */}
-      <div
-        className="pointer-events-auto absolute right-3 top-3 z-30 flex items-center gap-1"
-        data-testid="sld-v3-export-dock"
-      >
-        <button
-          type="button"
-          onClick={handleExportSvg}
-          data-testid="sld-v3-export-svg"
-          title="Eksportuj schemat SLD jako plik SVG"
-          className="h-7 rounded border border-scada-border bg-scada-panel/95 px-2 font-mono-eng text-[10px] font-semibold text-scada-text shadow-lg hover:bg-scada-hover-nav"
+      {/* K11-B (karta K11-B §0.1): DOK NAWIGATORA — dolny-ŚRODEK kanwy.
+          Przegląd zajętości rogów (ten plik, doki wyżej/niżej): lewy-górny =
+          drzewo układu, prawy-górny = eksport + dok widoku, lewy-dolny =
+          dowody inżynierskie, prawy-DOLNY = warstwy i filtry wyników, górny-
+          środek = paleta PV/BESS/FW. Wolny pozostaje wyłącznie pas dolny-
+          środkowy — i tam siada nawigator (rozwijany, domyślnie zwinięty, więc
+          w stanie domyślnym nie zabiera schematowi ani piksela). z-index 20 =
+          ten sam poziom co doki narożne. */}
+      {minimapOpen && minimapProjection && minimapFrame && (
+        <div
+          className="pointer-events-auto absolute bottom-3 left-1/2 z-20 -translate-x-1/2"
+          data-testid="sld-v3-minimap-dock"
         >
-          ↓ SVG
-        </button>
-        <SldExportFormatMenu
-          svgSelector='svg[data-testid="sld-canvas-v3"]'
-          projectName={undefined}
-          caseLabel={undefined}
-          onExportSvgOverride={handleExportSvg}
-        />
-      </div>
+          <SldMinimapPanel
+            projection={minimapProjection}
+            shapes={minimapShapes}
+            frame={minimapFrame}
+            onNavigate={handleMinimapNavigate}
+          />
+        </div>
+      )}
 
-      {/* F12-B pkt 2 (spec §10.1 ARCH-4, „NetworkHierarchyTree"): dok
-          lewy-górny. */}
-      <div
-        className="pointer-events-auto absolute left-3 top-3 z-20 flex flex-col items-start gap-1"
-        data-testid="sld-v3-hierarchy-tree-dock"
-      >
-        <button
-          type="button"
-          onClick={() => setHierarchyPanelOpen((prev) => !prev)}
-          data-testid="sld-v3-hierarchy-tree-toggle"
-          aria-label={hierarchyPanelOpen ? 'Zamknij drzewo układu' : 'Otwórz drzewo układu'}
-          title={hierarchyPanelOpen ? 'Zamknij drzewo układu' : 'Drzewo układu sieci'}
-          className="h-7 rounded border border-scada-border bg-scada-panel/95 px-2 font-mono-eng text-[10px] font-semibold text-scada-text shadow-lg hover:bg-scada-hover-nav"
-        >
-          {hierarchyPanelOpen ? '◂ Drzewo układu' : '▸ Drzewo układu'}
-        </button>
-        {hierarchyPanelOpen && (
-          <NetworkHierarchyTree hierarchy={networkHierarchy} className="w-[240px]" />
-        )}
-      </div>
 
       {/* F12-B pkt 3 (spec §10.1 ARCH-4, „ProofPacksPanel"): dok lewy-dolny. */}
       <div
@@ -1895,6 +3116,8 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
             {/* R3 (wym. 17): panel filtrów warstwy wynikowej — TEN SAM dok co
               * przełącznik warstw (rozszerzenie, nie osobne miejsce). */}
             <SldV3ResultFilterPanel
+              coverage={resultCoverage}
+              hasRun={labelsPayload != null}
               filter={resultFilter}
               hasExceedances={hasExceedances}
               onToggleQuantity={handleToggleQuantity}
@@ -1905,6 +3128,16 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
               comparisonAvailable={comparisonAvailable}
               comparisonBlockedReason={comparisonBlockedReason}
               onSetComparisonMode={handleSetComparisonMode}
+              roznice={roznicePodsumowanie}
+              onWylaczRoznice={wyczyscRoznice}
+              porownanieAB={porownanieAB}
+              kandydaciAB={kandydaciAB}
+              wybranyRunA={wybranyRunA}
+              onWybierzRunA={setWybranyRunA}
+              onPorownajAB={handlePorownajAB}
+              onAkcjaAB={handleAkcjaAB}
+              abWTrakcie={nakladkaWTrakcie}
+              abBlad={bladNakladki}
               className="w-[240px]"
             />
             <SldV3LayerTogglePanel

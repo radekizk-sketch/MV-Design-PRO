@@ -2,12 +2,20 @@
  * F8c pkt 3 — testy menu kontekstowego na kanwie v3 (checklista bramkująca
  * §F8c, pozycja 3 „Context-menu"). Wzorzec fixture/setup identyczny jak
  * `sldCanvasV3Workspace.test.tsx` (F8a) — TA SAMA sieć testowa.
+ *
+ * Karta S9-5 (Zero-Debt pkt 5): kliki przeniesione z `fireEvent.contextMenu`
+ * (pojedyncze zdarzenie syntetyczne) na `userEvent` — PEŁNĄ sekwencję
+ * pointerdown → mousedown → contextmenu, czyli tę, którą wysyła przeglądarka.
+ * Pojedynczy `contextmenu` omijał `onPointerDown` kanwy, więc nie wykryłby
+ * regresji klasy „gest kamery kradnie prawy klik" (dokładny odpowiednik
+ * martwego lewego kliku z karty S9-4).
  */
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 
 import type { EnergyNetworkModel } from '../../../../../types/enm';
 import { buildSceneV3 } from '../../scene/buildScene';
@@ -55,28 +63,53 @@ function withGenType(genIndex: number, genType: unknown): { snapshot: EnergyNetw
   return { snapshot, genRef: gen!.ref_id };
 }
 
+/** Karta S9-4: uchwyt trafienia symbolu o zadanym indeksie sceny — węzeł warstwy
+ *  `sld-v3-trafienia`, w który w przeglądarce faktycznie trafia (także prawy)
+ *  przycisk myszy; rysunek kanwy jest bierny (`pointer-events="none"`). */
+function uchwytSymbolu(
+  container: HTMLElement,
+  scene: { readonly symbols: readonly { readonly meta?: { readonly testId?: string } }[] },
+  index: number,
+): Element | null {
+  const testId = scene.symbols[index]?.meta?.testId ?? `sld-v3-symbol-${index}`;
+  return container.querySelector(`[data-hit-for="${testId}"][data-hit-role="obrys"]`);
+}
+
+/** Węzeł RYSUNKU tego samego symbolu — nosi diagnostyczne `data-*` sceny
+ *  (`data-der-kind`, `data-element-kind`, `data-owner-ref`). Karta S9-4
+ *  rozdzieliła kanały: rysunek niesie tożsamość i diagnostykę, warstwa trafień
+ *  niesie geometrię celu (`data-hit-*`). */
+function wezelRysunku(
+  container: HTMLElement,
+  scene: { readonly symbols: readonly { readonly meta?: { readonly testId?: string } }[] },
+  index: number,
+): Element | null {
+  const testId = scene.symbols[index]?.meta?.testId ?? `sld-v3-symbol-${index}`;
+  return container.querySelector(`[data-testid="${testId}"]`);
+}
+
 describe('SldCanvasV3Workspace — F8c pkt 3: menu kontekstowe', () => {
-  it('(a) prawy klik w symbol stacji otwiera menu z akcjami dla stacji (SLD_MENU_REGISTRY.station)', () => {
+  it('(a) prawy klik w symbol stacji otwiera menu z akcjami dla stacji (SLD_MENU_REGISTRY.station)', async () => {
     const scene = buildSceneV3(enm, 0);
     const stationIndex = scene.symbols.findIndex((s) => s.meta?.elementKind === 'station');
     expect(stationIndex).toBeGreaterThanOrEqual(0);
 
     const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
-    const stationGroup = container.querySelector('[data-testid="sld-v3-symbols"]')?.children[stationIndex];
+    const stationGroup = uchwytSymbolu(container, scene, stationIndex);
     expect(stationGroup).toBeTruthy();
 
-    fireEvent.contextMenu(stationGroup!, { clientX: 120, clientY: 80 });
+    await userEvent.pointer({ keys: '[MouseRight]', target: stationGroup! });
 
     expect(screen.getByRole('menu')).toBeTruthy();
     expect(screen.getByTestId('sld-menu-open-station-config')).toBeTruthy();
   });
 
-  it('(b) prawy klik w tło (svg, poza symbolem/odcinkiem) otwiera menu tła (SLD_MENU_REGISTRY.background)', () => {
+  it('(b) prawy klik w tło (svg, poza symbolem/odcinkiem) otwiera menu tła (SLD_MENU_REGISTRY.background)', async () => {
     const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
     const svg = container.querySelector('[data-testid="sld-canvas-v3"]');
     expect(svg).toBeTruthy();
 
-    fireEvent.contextMenu(svg!, { clientX: 10, clientY: 10 });
+    await userEvent.pointer({ keys: '[MouseRight]', target: svg! });
 
     expect(screen.getByRole('menu')).toBeTruthy();
     expect(screen.getByTestId('sld-menu-insert-gpz')).toBeTruthy();
@@ -88,18 +121,19 @@ describe('SldCanvasV3Workspace — F8c pkt 3: menu kontekstowe', () => {
   // `der` WYŁĄCZNIE dla generator/unknown (uczciwa degradacja). LOD2 ma
   // najpełniejszą scenę (DER od L1/L2, spec §7) — `lodOverride={2}` wymusza L2.
 
-  it('(a) DER-MENU-V3: prawy klik w symbol PV otwiera menu PODTYPU der_pv (open-pv-config + show-frt-hvrt + delete-pv + show-ncrfg)', () => {
+  it('(a) DER-MENU-V3: prawy klik w symbol PV otwiera menu PODTYPU der_pv (open-pv-config + show-frt-hvrt + delete-pv + show-ncrfg)', async () => {
     const scene = buildSceneV3(enm, 2);
     const pvIndex = scene.symbols.findIndex((s) => s.meta?.elementKind === 'der' && s.meta?.derKind === 'pv');
     expect(pvIndex).toBeGreaterThanOrEqual(0);
 
     const { container } = render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
-    const pvGroup = container.querySelector('[data-testid="sld-v3-symbols"]')?.children[pvIndex];
+    const pvGroup = uchwytSymbolu(container, scene, pvIndex);
     expect(pvGroup).toBeTruthy();
-    // Sanity: atrybut DOM diagnostyczny niesie realny rodzaj (nie zgadywany).
-    expect(pvGroup!.getAttribute('data-der-kind')).toBe('pv');
+    // Sanity: atrybut DOM diagnostyczny niesie realny rodzaj (nie zgadywany) —
+    // po karcie S9-4 mieszka na węźle RYSUNKU, uchwyt niesie geometrię celu.
+    expect(wezelRysunku(container, scene, pvIndex)!.getAttribute('data-der-kind')).toBe('pv');
 
-    fireEvent.contextMenu(pvGroup!, { clientX: 50, clientY: 50 });
+    await userEvent.pointer({ keys: '[MouseRight]', target: pvGroup! });
 
     expect(screen.getByRole('menu')).toBeTruthy();
     // Pełne pozycje podtypu PV (SLD_MENU_REGISTRY.der_pv).
@@ -112,7 +146,7 @@ describe('SldCanvasV3Workspace — F8c pkt 3: menu kontekstowe', () => {
     expect(screen.queryByTestId('sld-menu-open-fw-config')).toBeNull();
   });
 
-  it('(b) DER-MENU-V3: prawy klik w DER typu generator (synchronous) otwiera menu GENERYCZNE (show-ncrfg + show-results, BEZ pozycji podtypu — uczciwa degradacja, zero zgadywania)', () => {
+  it('(b) DER-MENU-V3: prawy klik w DER typu generator (synchronous) otwiera menu GENERYCZNE (show-ncrfg + show-results, BEZ pozycji podtypu — uczciwa degradacja, zero zgadywania)', async () => {
     const { snapshot, genRef } = withGenType(0, 'synchronous');
     useSnapshotStore.setState({ snapshot });
     const scene = buildSceneV3(snapshot, 2);
@@ -123,11 +157,11 @@ describe('SldCanvasV3Workspace — F8c pkt 3: menu kontekstowe', () => {
     expect(scene.symbols[genIndex].meta?.derKind).toBe('generator');
 
     const { container } = render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
-    const genGroup = container.querySelector('[data-testid="sld-v3-symbols"]')?.children[genIndex];
+    const genGroup = uchwytSymbolu(container, scene, genIndex);
     expect(genGroup).toBeTruthy();
-    expect(genGroup!.getAttribute('data-der-kind')).toBe('generator');
+    expect(wezelRysunku(container, scene, genIndex)!.getAttribute('data-der-kind')).toBe('generator');
 
-    fireEvent.contextMenu(genGroup!, { clientX: 50, clientY: 50 });
+    await userEvent.pointer({ keys: '[MouseRight]', target: genGroup! });
 
     expect(screen.getByRole('menu')).toBeTruthy();
     expect(screen.getByTestId('sld-menu-show-ncrfg')).toBeTruthy();
@@ -141,7 +175,7 @@ describe('SldCanvasV3Workspace — F8c pkt 3: menu kontekstowe', () => {
     expect(screen.queryByTestId('sld-menu-show-frt-hvrt')).toBeNull();
   });
 
-  it('(c) DER-MENU-V3: akcja "Pokaż krzywe FRT/HVRT" z menu PV woła openRouteSurface(E-26) z preselekcją tego generatora (entityRef = ref DER)', () => {
+  it('(c) DER-MENU-V3: akcja "Pokaż krzywe FRT/HVRT" z menu PV woła openRouteSurface(E-26) z preselekcją tego generatora (entityRef = ref DER)', async () => {
     const openRouteSurface = vi.fn();
     useNetworkBuildStore.setState({ openRouteSurface } as never);
 
@@ -151,11 +185,11 @@ describe('SldCanvasV3Workspace — F8c pkt 3: menu kontekstowe', () => {
     const pvRef = scene.symbols[pvIndex].meta!.ownerRef!;
 
     const { container } = render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
-    const pvGroup = container.querySelector('[data-testid="sld-v3-symbols"]')?.children[pvIndex];
-    fireEvent.contextMenu(pvGroup!, { clientX: 50, clientY: 50 });
+    const pvGroup = uchwytSymbolu(container, scene, pvIndex);
+    await userEvent.pointer({ keys: '[MouseRight]', target: pvGroup! });
     expect(screen.getByRole('menu')).toBeTruthy();
 
-    fireEvent.click(screen.getByTestId('sld-menu-show-frt-hvrt'));
+    await userEvent.click(screen.getByTestId('sld-menu-show-frt-hvrt'));
 
     // E-26 (ACTION_TO_SCREEN['show-frt-hvrt']) z ref klikniętego DER — realna
     // preselekcja generatora, ten sam wykonawca co v2 (`useSldActionExecutor`).

@@ -876,19 +876,50 @@ def test_status_enum_is_distinct_from_field_quality() -> None:
 
 
 def test_arc_flash_does_not_import_solver_layer() -> None:
-    """arch_guard: warstwa analizy nie może importować solverów."""
+    """arch_guard: warstwa analizy nie może importować solverów.
+
+    V12K-302: test sprzed poprawki był SŁABSZY, niż wygląda — w pełnym biegu
+    moduły `analysis.arc_flash.*` były już zaimportowane przez wcześniejsze
+    testy, więc trzy `import` poniżej nic nie wykonywały i asercja przechodziła
+    trywialnie (zależnie od kolejności plików w suicie). Teraz zdejmujemy z
+    `sys.modules` OBIE strony — badane moduły analizy i warstwę solverów —
+    a po pomiarze przywracamy stan wyjściowy w `finally` (reguła z V12K-297:
+    kto zdejmuje moduły, ten je oddaje).
+    """
     import sys
 
-    for mod in list(sys.modules):
-        if mod.startswith("network_model.solvers"):
-            del sys.modules[mod]
-    import analysis.arc_flash.builder  # noqa: F401
-    import analysis.arc_flash.loader  # noqa: F401
-    import analysis.arc_flash.models  # noqa: F401
+    badane = ("analysis.arc_flash",)
+    zabroniona_warstwa = "network_model.solvers"
 
-    assert not any(
-        m.startswith("network_model.solvers") for m in sys.modules
-    ), "arc_flash nie powinien importować warstwy solverów"
+    zdjete = {
+        nazwa: modul
+        for nazwa, modul in list(sys.modules.items())
+        if nazwa.startswith(zabroniona_warstwa) or nazwa.startswith(badane)
+    }
+    for nazwa in zdjete:
+        del sys.modules[nazwa]
+
+    try:
+        import analysis.arc_flash.builder  # noqa: F401
+        import analysis.arc_flash.loader  # noqa: F401
+        import analysis.arc_flash.models  # noqa: F401
+
+        # Dowód, że import faktycznie się wykonał (inaczej pomiar jest pusty).
+        assert any(
+            m.startswith("analysis.arc_flash") for m in sys.modules
+        ), "moduły analizy nie zostały zaimportowane — pomiar byłby bezwartościowy"
+
+        assert not any(
+            m.startswith(zabroniona_warstwa) for m in sys.modules
+        ), "arc_flash nie powinien importować warstwy solverów"
+    finally:
+        # Przywrocenie MUSI byc przypisaniem, nie `setdefault`: test zdazyl
+        # zaimportowac `analysis.arc_flash.*` na nowo, wiec `setdefault` zostawilby
+        # w `sys.modules` SWIEZA tozsamosc tych modulow, a stare referencje
+        # zostalyby u tych, ktorzy zaimportowali je wczesniej — czyli dokladnie ta
+        # dwutozsamosc, ktora zamknela karta KD-10 (V12K-297).
+        for nazwa, modul in zdjete.items():
+            sys.modules[nazwa] = modul
 
 
 def test_structure_runs_end_to_end_from_short_circuit_result() -> None:

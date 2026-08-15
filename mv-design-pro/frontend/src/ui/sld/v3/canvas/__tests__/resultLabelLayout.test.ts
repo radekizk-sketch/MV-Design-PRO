@@ -17,13 +17,13 @@ import { describe, expect, it } from 'vitest';
 import type { EnergyNetworkModel } from '../../../../../types/enm';
 import type { RawOverlayElement, RawOverlayPayload } from '../../../../sld-overlay/rawResultOverlayStore';
 import { buildSceneV3 } from '../../scene/buildScene';
-import { buildResultLabelsFromScene, resultRefForSegment, singleHopSegmentRefs } from '../resultLabels';
+import { buildResultLabelsFromScene, resultRefForSegment, orientedSegmentRefs } from '../resultLabels';
 import { layoutResultLabels } from '../SldCanvasV3';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const fixturePath = resolve(here, '..', '..', '..', 'v2', 'geometry', '__tests__', 'fixtures', 'sldSubstrate52s.enm.json');
 const enm = (JSON.parse(readFileSync(fixturePath, 'utf8')) as { readonly enm: EnergyNetworkModel }).enm;
-const singleHop = singleHopSegmentRefs(enm);
+const singleHop = new Set(orientedSegmentRefs(enm).keys());
 
 /** Priorytet klasy (mniejsza = wyższy) — musi być spójny z RESULT_LABEL_PRIORITY. */
 const RANK: Record<string, number> = { source: 0, transformer: 1, branch: 2, bus: 3 };
@@ -82,13 +82,16 @@ describe('layoutResultLabels — R2 priorytety / agregacja / metryki', () => {
     expect(layout.metrics.collisionsFinal).toBe(0);
   });
 
-  it('L0 (zwinięte etykiety) ⇒ zero etykiet w warstwie', () => {
+  it('S9-2: L0 (poziom przegladu) ⇒ etykiety SA, po jednej linii, bez kolizji koncowych', () => {
+    // ZMIANA KANONU (audyt 2026-08, W-1): poziom przegladu pokazuje wartosc
+    // zbiorcza. Inwariant, ktory poprzedni test faktycznie chronil — brak
+    // nakladajacych sie liczb — jest tu sprawdzony WPROST.
     const { scene, payload } = fullPayload(0);
     const byRef = buildResultLabelsFromScene(scene, payload, singleHop);
     const layout = layoutResultLabels(scene, byRef, [], 0);
-    expect(layout.placements.length).toBe(0);
-    expect(layout.aggregates.length).toBe(0);
-    expect(layout.metrics.labelCount).toBe(0);
+    expect(layout.placements.length + layout.aggregates.length).toBeGreaterThan(0);
+    expect(layout.placements.every((placement) => placement.lines.length === 1)).toBe(true);
+    expect(layout.metrics.collisionsFinal).toBe(0);
   });
 
   it('wym.19: kolizje KOŃCOWE = 0 (warstwa nie renderuje nakładających się liczb) na L1 i L2', () => {

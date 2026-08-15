@@ -37,15 +37,24 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Sequence
 from io import BytesIO
 from typing import Any
 
+from application.analyses.dowod_certyfikatu import (
+    BRAK_URZADZEN_TYPU_PL,
+    TYTUL_DOWODU,
+    NcRfgCertificateEvidence,
+    sekcje_dowodow,
+    wiersze_dowodu_pl,
+)
 from application.analyses.hosting_capacity import build_hosting_capacity_view
 from application.analyses.pq_area import build_pq_area_view
 from application.analyses.pq_coverage import build_pq_coverage_view
 from catalog.profiles.nc_rfg.loader import NcRfgProfile
 from enm.canonical_analysis import CanonicalRun
 from network_model.catalog.types import ConverterType
+from network_model.reporting.czcionki import zarejestruj_czcionki
 from network_model.reporting.docx_determinism import make_docx_bytes_deterministic
 from pydantic import BaseModel, Field
 
@@ -335,11 +344,18 @@ def build_dokument_studium_view(
     operator_id: str,
     warianty: list[str],
     identyfikacja: DokumentStudiumIdentyfikacja,
+    dowody: Sequence[NcRfgCertificateEvidence] | None = None,
 ) -> dict[str, Any]:
     """Zbuduj widok JSON dokumentu studium przyłączeniowego.
 
     Rzuca ``DokumentStudiumBrakiError`` gdy dane wejściowe są niekompletne
     (bramka braków twardych przed generacją).
+
+    ``dowody`` (opcjonalne) to dowód certyfikacji PTPiREE urządzeń modelu
+    związanych z TYPEM katalogowym dokumentu (tożsamość urządzenia w studium to
+    typ przekształtnika, nie moduł biegu). Bez dowodów (wywołanie bez wskazanego
+    przypadku) widok jest IDENTYCZNY jak przed dodaniem sekcji — łącznie
+    z odciskiem sekcji założeń i ``input_hash``.
     """
     braki = zbierz_braki_dokumentu(
         run,
@@ -391,6 +407,14 @@ def build_dokument_studium_view(
         },
         "liczba_wariantow": len(warianty_view),
     }
+    if dowody is not None:
+        # Brak dopasowanego urządzenia to uczciwy stan zerowy dokumentu: pusta
+        # lista + jawny opis, nigdy dowód urządzenia innego typu.
+        zalozenia["dowod_certyfikatu"] = {
+            "catalog_item_id": catalog_item_id,
+            "urzadzenia": sekcje_dowodow(dowody),
+            "stan_pl": BRAK_URZADZEN_TYPU_PL if not dowody else None,
+        }
 
     zalozenia_pl = [
         "Dokument zestawia gotowe wyniki obliczeń — nie przelicza żadnej wielkości "
@@ -493,6 +517,21 @@ def render_dokument_studium_docx(view: dict) -> bytes:
         f"Przebieg bazowy (rozpływ mocy): {zal['przebieg_bazowy']['run_id']}"
         f"  |  odcisk snapshotu: {zal['przebieg_bazowy']['snapshot_hash']}"
     )
+    dowod_blok = zal.get("dowod_certyfikatu")
+    if dowod_blok is not None:
+        doc.add_heading(TYTUL_DOWODU, level=2)
+        if dowod_blok["stan_pl"]:
+            doc.add_paragraph(str(dowod_blok["stan_pl"]))
+        for dowod in dowod_blok["urzadzenia"]:
+            dow_para = doc.add_paragraph()
+            dow_para.add_run(f"{dowod['der_ref']}: ").bold = True
+            wiersze = wiersze_dowodu_pl(dowod)
+            if wiersze:
+                dow_para.add_run(
+                    "  |  ".join(f"{etykieta}: {wartosc}" for etykieta, wartosc in wiersze)
+                )
+            else:
+                dow_para.add_run(str(dowod["stan_pl"]))
 
     # Warianty.
     for i, wariant in enumerate(view["warianty"], start=1):
@@ -564,12 +603,14 @@ def render_dokument_studium_pdf(view: dict) -> bytes:
 
     Determinizm bajtowy: canvas z ``invariant=1`` (stały ``CreationDate`` i ``ID``
     dokumentu) oraz ``pageCompression=0`` — dwa wywołania na tym samym widoku dają
-    identyczne bajty. Fonty Helvetica jak istniejące raporty PDF (bez nowych zasobów).
+    identyczne bajty. Czcionki DejaVu Sans (polskie diakrytyki) rejestrowane wspólnym
+    modułem ``network_model.reporting.czcionki`` (subset TTF jest deterministyczny).
     """
     if not _PDF_AVAILABLE:  # pragma: no cover
         raise ImportError("Eksport PDF wymaga reportlab. Zainstaluj: pip install reportlab")
 
     buffer = BytesIO()
+    zarejestruj_czcionki()
     c = canvas.Canvas(buffer, pagesize=A4, invariant=1, pageCompression=0)
     page_width, page_height = A4
     left_margin = 25 * mm
@@ -593,7 +634,7 @@ def render_dokument_studium_pdf(view: dict) -> bytes:
 
     def para(text: str, *, size: int = 10, bold: bool = False, indent: float = 0.0) -> None:
         nonlocal y
-        font = "Helvetica-Bold" if bold else "Helvetica"
+        font = "DejaVuSans-Bold" if bold else "DejaVuSans"
         for line in simpleSplit(text, font, size, content_width - indent):
             ensure(line_height)
             c.setFont(font, size)
@@ -602,7 +643,7 @@ def render_dokument_studium_pdf(view: dict) -> bytes:
             y -= line_height
 
     # Tytuł (wyśrodkowany).
-    c.setFont("Helvetica-Bold", 16)
+    c.setFont("DejaVuSans-Bold", 16)
     c.drawCentredString(page_width / 2, y, str(view["tytul"]))
     y -= 10 * mm
 
@@ -630,6 +671,19 @@ def render_dokument_studium_pdf(view: dict) -> bytes:
         f"Przebieg bazowy (rozpływ mocy): {zal['przebieg_bazowy']['run_id']}"
         f"  |  odcisk snapshotu: {zal['przebieg_bazowy']['snapshot_hash']}"
     )
+    dowod_blok = zal.get("dowod_certyfikatu")
+    if dowod_blok is not None:
+        para(TYTUL_DOWODU, size=10, bold=True)
+        if dowod_blok["stan_pl"]:
+            para(str(dowod_blok["stan_pl"]), size=9, indent=4 * mm)
+        for dowod in dowod_blok["urzadzenia"]:
+            wiersze = wiersze_dowodu_pl(dowod)
+            tresc = (
+                "  |  ".join(f"{etykieta}: {wartosc}" for etykieta, wartosc in wiersze)
+                if wiersze
+                else str(dowod["stan_pl"])
+            )
+            para(f"{dowod['der_ref']}: {tresc}", size=9, indent=4 * mm)
     y -= line_height
 
     # Warianty.
@@ -675,7 +729,7 @@ def render_dokument_studium_pdf(view: dict) -> bytes:
     ]
     naglowki = ["Węzeł", "Identyfikator", "Moc [MW]", "Klasa", "Pokrycie", "Pasmo Q"]
     ensure(line_height)
-    c.setFont("Helvetica-Bold", 9)
+    c.setFont("DejaVuSans-Bold", 9)
     col_x = left_margin
     for i, label in enumerate(naglowki):
         c.drawString(col_x, y, label)
@@ -691,11 +745,11 @@ def render_dokument_studium_pdf(view: dict) -> bytes:
             wiersz["pasmo_q_pl"] if wiersz["pasmo_q_pl"] is not None else "—",
         ]
         wrapped = [
-            simpleSplit(cell, "Helvetica", 9, kolumny[i] - 2 * mm) for i, cell in enumerate(cells)
+            simpleSplit(cell, "DejaVuSans", 9, kolumny[i] - 2 * mm) for i, cell in enumerate(cells)
         ]
         row_lines = max(len(w) for w in wrapped)
         ensure(line_height * row_lines)
-        c.setFont("Helvetica", 9)
+        c.setFont("DejaVuSans", 9)
         col_x = left_margin
         for i, lines in enumerate(wrapped):
             for j, line in enumerate(lines):

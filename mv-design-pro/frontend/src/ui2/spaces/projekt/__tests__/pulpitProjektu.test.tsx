@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { PulpitProjektu } from '../PulpitProjektu';
+import { ETAPY } from '../../../proces';
 import { PULPIT_STRINGS } from '../strings';
 import { INSPECTOR_STRINGS } from '../../../inspector';
 import { useAppStateStore } from '../../../../ui/app-state';
@@ -40,6 +42,9 @@ function props() {
     onOtworzProjekt: vi.fn(),
     onZaznaczPrzypadek: vi.fn(),
     onOtworzPrzypadek: vi.fn(),
+    onOtworzArchiwum: vi.fn(),
+    onOtworzImportArkusza: vi.fn(),
+    onAkcjaNaprawcza: vi.fn(),
   };
 }
 
@@ -100,10 +105,13 @@ describe('PulpitProjektu — kafle z danymi ze store read-only', () => {
     expect(within(badge).getByText(INSPECTOR_STRINGS.aktualne)).toBeInTheDocument();
   });
 
-  it('kafel „wkrótce": tylko „Postęp wg celu" (bilans zastąpiony realnym kaflem)', () => {
+  // WIERSZ ZASTĄPIONY, INTENCJA ZACHOWANA: poprzednio sprawdzał, że na pulpicie
+  // jest DOKŁADNIE jeden kafel-zaślepka „wkrótce". Karta PULPIT-NBA usunęła
+  // zaślepkę (ZASADA NR 1), więc test pilnuje teraz, że nie wróciła.
+  it('pulpit nie ma ŻADNEJ zaślepki „wkrótce" (zakaz zaślepek)', () => {
     render(<PulpitProjektu {...props()} />);
-    expect(screen.getByText(PULPIT_STRINGS.celTytul)).toBeInTheDocument();
-    expect(screen.getAllByText(PULPIT_STRINGS.wkrotce)).toHaveLength(1);
+    expect(screen.queryByText(/wkrótce/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/w przygotowaniu/i)).not.toBeInTheDocument();
   });
 
   it('KafelPrzylaczenia: warunki przyłączenia (U/Sk″) + bilans mocy z realnego snapshotu', () => {
@@ -202,6 +210,64 @@ describe('PulpitProjektu — kafle z danymi ze store read-only', () => {
   });
 });
 
+describe('PulpitProjektu — następna najlepsza akcja i mapa procesu (karta PULPIT-NBA)', () => {
+  beforeEach(ustawGotowy);
+
+  it('pokazuje DOKŁADNIE jeden panel następnej akcji', () => {
+    render(<PulpitProjektu {...props()} />);
+    expect(screen.getAllByTestId('mvd-nba')).toHaveLength(1);
+    expect(screen.getAllByTestId('mvd-nba-akcja')).toHaveLength(1);
+  });
+
+  it('model z blokadą → akcja prowadzi do naprawy TEGO zgłoszenia (klik natywny)', async () => {
+    const user = userEvent.setup();
+    const p = props();
+    render(<PulpitProjektu {...p} />);
+
+    expect(screen.getByTestId('mvd-nba')).toHaveAttribute('data-rodzaj', 'usun-blokade');
+    await user.click(screen.getByTestId('mvd-nba-akcja'));
+
+    expect(p.onAkcjaNaprawcza).toHaveBeenCalledTimes(1);
+    expect(p.onAkcjaNaprawcza.mock.calls[0][0]).toMatchObject({
+      code: 'E010',
+      waga: 'BLOKADA',
+      elementRef: 'TR-1',
+    });
+    expect(p.onNawiguj).not.toHaveBeenCalled();
+  });
+
+  it('mapa procesu pokazuje cały kanon etapów, a bieżący zgadza się z akcją', () => {
+    render(<PulpitProjektu {...props()} />);
+    const mapa = screen.getByTestId('mvd-proces-mapa');
+    for (const etap of ETAPY) {
+      expect(within(mapa).getByText(etap.nazwa)).toBeInTheDocument();
+    }
+    // Blokada gotowości → etap bieżący E3 („Gotowość obliczeniowa").
+    expect(screen.getByTestId('mvd-proces-krok-E3')).toHaveAttribute('aria-current', 'step');
+  });
+
+  it('klik etapu mapy → nawigacja do przestrzeni tego etapu (klik natywny)', async () => {
+    const user = userEvent.setup();
+    const p = props();
+    render(<PulpitProjektu {...p} />);
+    await user.click(screen.getByTestId('mvd-proces-krok-E8'));
+    expect(p.onNawiguj).toHaveBeenCalledWith('dokumentacja');
+  });
+
+  it('bez blokad i bez przebiegów akcja prowadzi do obliczeń (etap E4)', async () => {
+    const user = userEvent.setup();
+    useSnapshotStore.setState({ readiness: { ready: true, blockers: [], warnings: [] } });
+    useExecutionRunsStore.setState({ runs: [], activeStudyCaseId: null });
+    const p = props();
+    render(<PulpitProjektu {...p} />);
+
+    expect(screen.getByTestId('mvd-nba')).toHaveAttribute('data-rodzaj', 'uruchom-obliczenia');
+    expect(screen.getByTestId('mvd-proces-krok-E4')).toHaveAttribute('aria-current', 'step');
+    await user.click(screen.getByTestId('mvd-nba-akcja'));
+    expect(p.onNawiguj).toHaveBeenCalledWith('obliczenia');
+  });
+});
+
 describe('PulpitProjektu — nawigacja i selekcja (gramatyka §2)', () => {
   beforeEach(ustawGotowy);
 
@@ -217,6 +283,13 @@ describe('PulpitProjektu — nawigacja i selekcja (gramatyka §2)', () => {
     render(<PulpitProjektu {...p} />);
     fireEvent.click(screen.getByRole('button', { name: PULPIT_STRINGS.gotowoscTytul }));
     expect(p.onNawiguj).toHaveBeenCalledWith('gotowosc');
+  });
+
+  it('klik kafla „Archiwum projektu (ZIP)" → otwarcie okna archiwum', () => {
+    const p = props();
+    render(<PulpitProjektu {...p} />);
+    fireEvent.click(screen.getByRole('button', { name: PULPIT_STRINGS.archiwumAkcja }));
+    expect(p.onOtworzArchiwum).toHaveBeenCalledTimes(1);
   });
 
   it('klik wiersza przypadku = selekcja; 2× klik = otwarcie', () => {

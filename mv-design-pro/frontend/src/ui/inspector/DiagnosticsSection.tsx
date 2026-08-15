@@ -119,7 +119,7 @@ export function DiagnosticsSection({
             ))
           ) : (
             <div className="text-xs text-gray-500 italic">
-              Brak wynik?w diagnostyki
+              Brak wyników diagnostyki
             </div>
           )}
 

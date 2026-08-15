@@ -778,7 +778,7 @@ EQ_VDROP_007 = EquationDefinition(
     equation_id="EQ_VDROP_007",
     name_pl="Napięcie w punkcie po uwzględnieniu spadku",
     standard_ref="—",
-    latex=r"U = U_{source} \cdot \left(1 - \frac{\Delta U_{total}}{100}\right)",
+    latex=r"U = U_{source} - \Delta U_{total}^{kV}",
     symbols=(
         SymbolDefinition(
             symbol="U",
@@ -789,17 +789,38 @@ EQ_VDROP_007 = EquationDefinition(
         SymbolDefinition(
             symbol="U_{source}",
             unit="kV",
-            description_pl="Napięcie źródła",
+            description_pl="Napięcie źródła (początku odcinka)",
             mapping_key="u_source_kv",
         ),
         SymbolDefinition(
-            symbol="\\Delta U_{total}",
-            unit="%",
-            description_pl="Sumaryczny spadek napięcia",
-            mapping_key="delta_u_total_percent",
+            symbol="\\Delta U_{total}^{kV}",
+            unit="kV",
+            description_pl="Sumaryczny spadek napięcia w jednostkach bezwzględnych",
+            mapping_key="delta_u_total_kv",
         ),
     ),
-    unit_derivation="kV · — = kV",
+    unit_derivation="kV − kV = kV",
+    notes=(
+        "KARTA PODSTAWA-VDROP (2026-08-12). ΔU_total^{kV} to SUMA spadków "
+        "odcinkowych w jednostkach bezwzględnych (łańcuch EQ_VDROP_001..006 "
+        "TEGO SAMEGO dowodu, każdy odcinek przeliczony przez WŁASNE U_n) — "
+        "NIE wynik biegu, bo podstawienie wyniku biegu tutaj byłoby dowodzeniem "
+        "cyrkularnym. Do 2026-08-12 równanie mnożyło U_source przez "
+        "(1 − ΔU_total%/100): ΔU_total% jest odniesione do U_n, więc gdy "
+        "U_source ≠ U_n, krok mieszał dwie różne podstawy odniesienia. ZMIERZONE "
+        "na sieci 110/15 kV (U_początku = 14,7984 kV, ΔU_total = 6,3574 %): "
+        "stara forma dawała 13,8576 kV wobec 13,8452 kV z biegu — 12,44 V "
+        "rozjazdu. Nowa forma daje 13,8448 kV — 0,375 V rozjazdu wobec biegu "
+        "(REZYDUALNE — przybliżenie ΔU = (R·P+X·Q)/U_n² pomija składową "
+        "poprzeczną, którą rozpływ zna dokładnie; ten sam rząd wielkości co pin "
+        "ΔU w tests/api/test_pakiet_dowodowy_biegu.py, bo to ALGEBRAICZNIE "
+        "TA SAMA różnica — patrz test "
+        "test_napiecie_konca_z_dowodu_zgadza_sie_z_napieciem_biegu_karta_"
+        "podstawa_vdrop). Na sieci z U_source = U_n obie formy dają identyczny "
+        "wynik (0,00 V różnicy) — patrz application/solvers/"
+        "voltage_drop_binding.py. Odejmowanie w kV usuwa mieszanie podstaw z "
+        "konstrukcji: obie strony równania są już w tej samej jednostce."
+    ),
 )
 
 

@@ -14,6 +14,7 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { useAppStateStore } from '../../app-state';
 import { ProjectMetadataModal } from '../../network-build/ProjectMetadataModal';
+import { navigateToSld } from '../../navigation';
 import { notify } from '../../notifications/store';
 import {
   createProject,
@@ -99,7 +100,7 @@ export function ProjectDashboardSurface(): JSX.Element {
         // Nie blokuje nawigacji — case może być wybrany później.
         console.warn('[ProjectDashboardSurface] Failed to fetch active case', e);
       }
-      window.location.hash = '#sld';
+      navigateToSld();
       notify(`Otwarto projekt "${project.name}".`, 'success');
     },
     [setActiveProject, setActiveCase],
@@ -135,7 +136,7 @@ export function ProjectDashboardSurface(): JSX.Element {
         }
         notify(`Utworzono projekt "${created.name}" z wariantem bazowym.`, 'success');
         setCreateOpen(false);
-        window.location.hash = '#sld';
+        navigateToSld();
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Nieznany błąd tworzenia projektu.';
         notify(message, 'error');
@@ -196,7 +197,7 @@ export function ProjectDashboardSurface(): JSX.Element {
           <button
             type="button"
             onClick={() => setCreateOpen(true)}
-            className="rounded bg-scada-sn px-4 py-1.5 text-sm font-medium text-scada-bg hover:bg-yellow-300"
+            className="rounded bg-scada-sn px-4 py-1.5 text-sm font-medium text-scada-bg hover:brightness-110"
             data-testid="dashboard-new-project"
           >
             Nowy projekt
@@ -215,14 +216,14 @@ export function ProjectDashboardSurface(): JSX.Element {
       {state.status === 'error' && (
         <div
           data-testid="dashboard-error"
-          className="rounded border border-red-700 bg-red-950/30 p-6 text-sm text-red-200"
+          className="rounded border border-sygnal-blokada bg-sygnal-blokada-tlo p-6 text-sm text-sygnal-blokada-tusz"
         >
           <div className="font-semibold">Błąd pobierania listy projektów</div>
           <div className="mt-1 text-red-300">{state.errorMessage ?? MISSING_DASH}</div>
           <button
             type="button"
             onClick={() => void refresh()}
-            className="mt-3 rounded border border-red-500 px-3 py-1 text-xs text-red-100 hover:bg-red-900/40"
+            className="mt-3 rounded border border-sygnal-blokada px-3 py-1 text-xs text-sygnal-blokada-tusz hover:bg-sygnal-blokada-tlo"
           >
             Spróbuj ponownie
           </button>
@@ -249,7 +250,7 @@ export function ProjectDashboardSurface(): JSX.Element {
             <button
               type="button"
               onClick={() => setCreateOpen(true)}
-              className="mt-4 rounded bg-scada-sn px-4 py-1.5 text-sm font-medium text-scada-bg hover:bg-yellow-300"
+              className="mt-4 rounded bg-scada-sn px-4 py-1.5 text-sm font-medium text-scada-bg hover:brightness-110"
             >
               Załóż pierwszy projekt
             </button>
@@ -301,7 +302,7 @@ export function ProjectDashboardSurface(): JSX.Element {
                 <button
                   type="button"
                   onClick={() => handleOpenProject(project)}
-                  className="flex-1 rounded bg-scada-sn px-3 py-1.5 text-sm font-medium text-scada-bg hover:bg-yellow-300"
+                  className="flex-1 rounded bg-scada-sn px-3 py-1.5 text-sm font-medium text-scada-bg hover:brightness-110"
                   data-testid={`dashboard-open-${project.id}`}
                 >
                   Otwórz
@@ -310,7 +311,7 @@ export function ProjectDashboardSurface(): JSX.Element {
                   type="button"
                   onClick={() => requestDelete(project)}
                   disabled={busyId === project.id}
-                  className="rounded border border-red-700 px-3 py-1.5 text-sm text-red-300 hover:bg-red-900/30 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded border border-sygnal-blokada px-3 py-1.5 text-sm text-sygnal-blokada-tusz hover:bg-sygnal-blokada-tlo disabled:cursor-not-allowed disabled:opacity-50"
                   data-testid={`dashboard-delete-${project.id}`}
                   title="Usuń projekt"
                 >

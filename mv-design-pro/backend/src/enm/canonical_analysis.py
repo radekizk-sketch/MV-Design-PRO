@@ -3,9 +3,10 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, cast
 from uuid import NAMESPACE_DNS, UUID, uuid4, uuid5
 
 from application.automation.trace import (
@@ -33,8 +34,11 @@ from enm.models import EnergyNetworkModel
 from enm.store import get_enm
 from enm.validator import ENMValidator
 from infrastructure.persistence.repositories.canonical_run_repository import (
+    KLUCZ_DOSTEPNOSCI_ROZPLYWU,
+    KLUCZ_ROZPLYWU,
     canonical_run_repository_scope,
 )
+from network_model.core.graph import NetworkGraph
 from network_model.core.node import NodeType
 from network_model.solvers.phase_state_sn import (
     OpenPhaseFlags,
@@ -54,7 +58,10 @@ from network_model.solvers.power_flow_inverter import (
     InverterControl,
     inverter_control_from_params,
 )
-from network_model.solvers.power_flow_newton import PowerFlowNewtonSolver
+from network_model.solvers.power_flow_newton import (
+    PowerFlowNewtonSolution,
+    PowerFlowNewtonSolver,
+)
 from network_model.solvers.power_flow_oltc import solve_with_oltc
 from network_model.solvers.power_flow_result import build_power_flow_result_v1
 from network_model.solvers.power_flow_types import (
@@ -295,6 +302,135 @@ class CanonicalRun:
         }
 
 
+#: Kolumny CIĘŻKIE biegu: artefakt wyniku, ślad White Box, ślad rozpływu mocy
+#: i snapshot modelu. Listy biegów ich nie pobierają (K14).
+KOLUMNY_CIEZKIE_BIEGU = ("snapshot", "raw_result", "white_box_trace", "power_flow_trace")
+
+#: Wartość jeszcze nie pobrana z bazy (odróżniona od pustej: `None`, `{}`, `[]`).
+_NIEZALADOWANA = object()
+
+
+class CanonicalRunZListy(CanonicalRun):
+    """Bieg z listy: kolumny ciężkie dociągane dopiero przy pierwszym dostępie.
+
+    DEFEKT, KTÓRY TO USUWA (K14, dług nazwany w V12K-281). `list_by_case` /
+    `list_by_project` pobierały PEŁNE wiersze biegów — z artefaktem wyniku,
+    śladem White Box i snapshotem modelu — choć większość konsumentów list
+    czyta wyłącznie pola lekkie (status, rodzaj analizy, znaczniki czasu).
+    Zmierzone na sieci 50 stacji: `list_by_project` przy 5 biegach = 18–27 s,
+    z czego niemal całość to deserializacja artefaktów, których nikt w tym
+    widoku nie otwierał.
+
+    KONTRAKT PUBLICZNY BEZ ZMIAN: to nadal `CanonicalRun` z tymi samymi polami
+    i tymi samymi wartościami. Zmienia się wyłącznie MOMENT odczytu kolumn
+    ciężkich — konsument, który po nie sięgnie (np. widok podsumowania biegu),
+    dostaje je dokładnie takie jak dotąd, kosztem jednego zapytania po id biegu.
+    Zapytanie pobiera WSZYSTKIE kolumny ciężkie naraz, więc kolejne dostępy są
+    darmowe.
+
+    Bieg skasowany między listowaniem a dostępem → wartości puste (`None`/`{}`/
+    `[]`): dla nieistniejącego biegu nie ma artefaktu i tak brzmi uczciwa
+    odpowiedź; nie zmyślamy treści z pamięci.
+    """
+
+    def __init__(
+        self,
+        *,
+        id: UUID,
+        case_id: str,
+        project_id: str | None,
+        analysis_type: str,
+        status: str,
+        created_at: datetime,
+        snapshot_hash: str,
+        input_hash: str,
+        validation: dict[str, Any],
+        readiness: dict[str, Any],
+        options: dict[str, Any],
+        started_at: datetime | None,
+        finished_at: datetime | None,
+        error_message: str | None,
+        result_status: str,
+    ) -> None:
+        self._leniwe: dict[str, object] = {}
+        super().__init__(
+            id=id,
+            case_id=case_id,
+            project_id=project_id,
+            analysis_type=analysis_type,
+            status=status,
+            created_at=created_at,
+            snapshot_hash=snapshot_hash,
+            input_hash=input_hash,
+            snapshot={},
+            validation=validation,
+            readiness=readiness,
+            options=options,
+            started_at=started_at,
+            finished_at=finished_at,
+            error_message=error_message,
+            result_status=result_status,
+        )
+        # Konstruktor rodzica ustawił kolumny ciężkie na wartości domyślne przez
+        # settery; oznaczamy je jako NIEZAŁADOWANE (nie „puste").
+        for nazwa in KOLUMNY_CIEZKIE_BIEGU:
+            self._leniwe[nazwa] = _NIEZALADOWANA
+
+    def _wartosc_ciezka(self, nazwa: str) -> object:
+        wartosc = self._leniwe[nazwa]
+        if wartosc is _NIEZALADOWANA:
+            self._doladuj_kolumny_ciezkie()
+            wartosc = self._leniwe[nazwa]
+        return wartosc
+
+    def _doladuj_kolumny_ciezkie(self) -> None:
+        with canonical_run_repository_scope() as repository:
+            kolumny = repository.get_heavy_columns(self.id)
+        puste: dict[str, object] = {
+            "snapshot": {},
+            "raw_result": None,
+            "white_box_trace": [],
+            "power_flow_trace": None,
+        }
+        wartosci: dict[str, object] = dict(kolumny) if kolumny is not None else puste
+        for nazwa in KOLUMNY_CIEZKIE_BIEGU:
+            # Wartość ustawiona jawnie przez konsumenta ma pierwszeństwo przed bazą.
+            if self._leniwe[nazwa] is _NIEZALADOWANA:
+                self._leniwe[nazwa] = wartosci[nazwa]
+
+    @property
+    def snapshot(self) -> dict[str, Any]:
+        return cast(dict[str, Any], self._wartosc_ciezka("snapshot"))
+
+    @snapshot.setter
+    def snapshot(self, wartosc: dict[str, Any]) -> None:
+        self._leniwe["snapshot"] = wartosc
+
+    @property
+    def raw_result(self) -> dict[str, Any] | None:
+        return cast(dict[str, Any] | None, self._wartosc_ciezka("raw_result"))
+
+    @raw_result.setter
+    def raw_result(self, wartosc: dict[str, Any] | None) -> None:
+        self._leniwe["raw_result"] = wartosc
+
+    @property
+    def white_box_trace(self) -> list[dict[str, Any]]:
+        return cast(list[dict[str, Any]], self._wartosc_ciezka("white_box_trace"))
+
+    @white_box_trace.setter
+    def white_box_trace(self, wartosc: list[dict[str, Any]]) -> None:
+        self._leniwe["white_box_trace"] = wartosc
+
+    @property
+    def power_flow_trace(self) -> dict[str, Any] | None:
+        return cast(dict[str, Any] | None, self._wartosc_ciezka("power_flow_trace"))
+
+    @power_flow_trace.setter
+    def power_flow_trace(self, wartosc: dict[str, Any] | None) -> None:
+        self._leniwe["power_flow_trace"] = wartosc
+
+
 def _save_run(run: CanonicalRun) -> None:
     with canonical_run_repository_scope() as repository:
         repository.save(run)
@@ -313,6 +449,32 @@ def has_run(run_id: UUID) -> bool:
 def get_run(run_id: UUID) -> CanonicalRun | None:
     with canonical_run_repository_scope() as repository:
         return repository.get(run_id)
+
+
+def pobierz_rozplyw_biegu(run: CanonicalRun, fault_node_id: str) -> list[dict[str, Any]] | None:
+    """Surowe wkłady gałęziowe solvera dla punktu zwarcia — JEDNA prawda dostępu.
+
+    Kolejność źródeł (pierwsze, które ma treść, wygrywa):
+    1. rozpływ INLINE w artefakcie biegu — świeżo policzony bieg trzymany w pamięci
+       ORAZ zapis sprzed rozdzielenia artefaktu (ZGODNOŚĆ WSTECZNA: stare bazy
+       czytane bez migracji danych),
+    2. osobna tabela rozpływu (zapis rozdzielony — artefakt niesie tylko znacznik
+       dostępności, treść leży obok).
+
+    Brak w obu źródłach → ``None``: uczciwy brak (solver policzony bez wkładów albo
+    nieznany punkt zwarcia), nigdy pusta lista udająca „policzono zero".
+    """
+    for item in (run.raw_result or {}).get("results", []):
+        if not isinstance(item, dict) or item.get("fault_node_id") != fault_node_id:
+            continue
+        inline = item.get(KLUCZ_ROZPLYWU)
+        if inline is not None:
+            return list(inline)
+        if not item.get(KLUCZ_DOSTEPNOSCI_ROZPLYWU):
+            return None
+        with canonical_run_repository_scope() as repository:
+            return repository.get_branch_flows(run.id, fault_node_id)
+    return None
 
 
 def list_runs_for_case(case_id: str) -> list[CanonicalRun]:
@@ -392,6 +554,46 @@ def create_run(
     return run
 
 
+def _wykonaj_analize_biegu(run: CanonicalRun) -> None:
+    """JEDYNY dyspozytor typu analizy do wykonania solvera dla CanonicalRun.
+
+    Wspolny dla `execute_run` (biegi persystowane) i `wykonaj_bieg_w_pamieci`
+    (warianty migawki bez persystencji). Wywolanie `_execute_short_circuit`
+    ma tu swoje JEDYNE miejsce w pliku — budzet zapadki
+    `no_direct_fault_params_guard` (`B:_execute_short_circuit: 1`) pozostaje
+    dokladnie 1:1; rozgalezianie dyspozycji w drugim miejscu byloby druga
+    sciezka tej samej fizyki.
+    """
+    if run.analysis_type == "PF":
+        _execute_power_flow(run)
+    elif run.analysis_type == "short_circuit_sn":
+        _execute_short_circuit(run)
+    elif run.analysis_type == "phase_state_sn":
+        _execute_phase_state_sn(run)
+    elif run.analysis_type == "dynamic_stability":
+        _execute_dynamic_stability(run)
+    elif run.analysis_type == "source_compliance":
+        _execute_source_compliance(run)
+    else:
+        raise ValueError(f"Unsupported analysis type: {run.analysis_type}")
+
+
+def wykonaj_bieg_w_pamieci(run: CanonicalRun) -> None:
+    """Wykonaj bieg WARIANTU w pamieci — bez persystencji i bez zmiany statusu.
+
+    Kanoniczne wejscie dla wzorca wariantow migawki (kontyngencje N-1, bieg
+    zbiorczy nastaw): wolajacy buduje `CanonicalRun` z kopia migawki kotwicy
+    i zmienionymi opcjami, a wykonanie idzie DOKLADNIE ta sama dyspozycja co
+    `execute_run` — zadnej rownoleglej sciezki fizyki, zadnych surowych
+    parametrow zwarcia poza tym modulem (inwariant
+    `no_direct_fault_params_guard`; konsolidacja tego modulu z warstwa
+    wiazania to osobny dlug architektoniczny w rejestrze, nie do zamykania
+    tutaj). Wynik trafia w pola `raw_result`/`result_summary` przekazanego
+    obiektu; magazyn biegow pozostaje nietkniety.
+    """
+    _wykonaj_analize_biegu(run)
+
+
 def execute_run(run_id: UUID) -> CanonicalRun:
     run = get_run(run_id)
     if run is None:
@@ -405,18 +607,7 @@ def execute_run(run_id: UUID) -> CanonicalRun:
     _save_run(run)
 
     try:
-        if run.analysis_type == "PF":
-            _execute_power_flow(run)
-        elif run.analysis_type == "short_circuit_sn":
-            _execute_short_circuit(run)
-        elif run.analysis_type == "phase_state_sn":
-            _execute_phase_state_sn(run)
-        elif run.analysis_type == "dynamic_stability":
-            _execute_dynamic_stability(run)
-        elif run.analysis_type == "source_compliance":
-            _execute_source_compliance(run)
-        else:
-            raise ValueError(f"Unsupported analysis type: {run.analysis_type}")
+        _wykonaj_analize_biegu(run)
         run.status = "FINISHED"
         run.finished_at = datetime.now(UTC)
         _save_run(run)
@@ -489,7 +680,7 @@ def run_source_compliance_now(
     return execute_run(run.id)
 
 
-def _load_graph(run: CanonicalRun):
+def _load_graph(run: CanonicalRun) -> NetworkGraph:
     enm = EnergyNetworkModel.model_validate(run.snapshot)
     return map_enm_to_network_graph(enm)
 
@@ -574,57 +765,49 @@ def _pick_compliance_source_ref(snapshot: dict[str, Any], options: dict[str, Any
     return "source-compliance"
 
 
-def _phase_state_default_fault_current_from_grounding(
-    audit2_extensions: dict[str, object] | None,
-) -> tuple[float, float, float] | None:
-    """
-    Phase 46: jesli audit2 grounding ustawione, zwraca median Ik1 z catalogu
-    jako default fault_current_a dla phase_state_sn solvera.
-
-    Zwraca None gdy nie mozna ustalic.
-    """
-    if not audit2_extensions:
-        return None
-    sc_ext = audit2_extensions.get("sc_iec60909_extensions") or {}
-    if not isinstance(sc_ext, dict):
-        return None
-    grounding = sc_ext.get("mv_neutral_grounding") or {}
-    if not isinstance(grounding, dict):
-        return None
-    ik1_range = grounding.get("typical_ik1_a_range") or {}
-    if not isinstance(ik1_range, dict):
-        return None
-    try:
-        ik1_min = float(ik1_range.get("min", 0))
-        ik1_max = float(ik1_range.get("max", 0))
-    except (TypeError, ValueError):
-        return None
-    if ik1_max <= 0:
-        return None
-    median = (ik1_min + ik1_max) / 2.0
-    # Symetryczne 1-fazowe doziemne — Ik1 na fazie A, 0 na B i C.
-    return (median, 0.0, 0.0)
+# USUNIETE (karta K-Q, 2026-08-14): `_phase_state_default_fault_current_from_grounding`.
+#
+# Funkcja brala MEDIANE zakresu `typical_ik1_a_range` z katalogu uziemienia SN i
+# podawala ja solverowi `phase_state_sn` jako domyslny prad zwarcia doziemnego.
+# Ten zakres byl zgadniety — nie mial zadnego zrodla (karta K-O usunela go z
+# frontendu, K-Q z backendu), wiec do fizyki wchodzila liczba wymyslona, a wynik
+# analizy stanu fazowego wygladal na policzony. Typ uziemienia SAM w sobie nie
+# wyznacza I_k1: zalezy on od pojemnosci doziemnej calej galezi sieci (siec
+# izolowana), od nastrojenia dlawika (siec skompensowana) albo od rezystora RAZEM
+# z impedancja petli — czyli od modelu, nie od etykiety wariantu.
+#
+# Prad zwarcia doziemnego liczy solver SC1F z realnej impedancji Z0 modelu. Gdy
+# uzytkownik nie poda `fault_current_a` w opcjach przypadku, stan fazowy liczy sie
+# bez zwarcia (0 A na kazdej fazie) — stan uczciwy, bo „nie wiem" nie jest liczba.
 
 
 def _execute_phase_state_sn(run: CanonicalRun) -> None:
     snapshot = run.snapshot or {}
     target_bus_ref = _pick_phase_state_target(snapshot, run.options)
     target_bus_id = _graph_id_from_ref(target_bus_ref)
-    # Phase 46: opt-in audit2 grounding -> default fault_current_a.
-    audit2_extensions_ps = _maybe_load_audit2_extensions(
-        project_id_str=run.options.get("audit2_project_id"),
-        station_id=run.options.get("audit2_station_id"),
-    )
-    fault_default = _phase_state_default_fault_current_from_grounding(audit2_extensions_ps)
     target_bus = next(
         (
             raw_bus
             for raw_bus in snapshot.get("buses") or []
             if isinstance(raw_bus, dict) and str(raw_bus.get("ref_id") or "") == target_bus_ref
         ),
-        {},
+        None,
     )
-    source_voltage_default = float(target_bus.get("voltage_kv") or 15.0) / math.sqrt(3.0)
+    # Karta RATCHET-DICT-READ (2026-08-13): USUNIETA fabrykacja "or 15.0". `Bus.
+    # voltage_kv` jest WYMAGANE w kontrakcie ENM (enm/models.py), a `execute_run`
+    # odrzuca "phase_state_sn" bez co najmniej jednej szyny PRZED uruchomieniem
+    # tej funkcji (`if analysis_type == "phase_state_sn" and not enm.buses: raise
+    # ValueError`), wiec auto-dobor celu (`_pick_phase_state_target`) zawsze
+    # trafia w istniejaca szyne z realnym napieciem. Jedyna droga do `target_bus
+    # is None` to JAWNIE podany `target_bus_ref`/`target_id` w opcjach przypadku,
+    # ktory nie wskazuje zadnej realnej szyny (literowka, usunieta szyna) — to
+    # blad danych wejsciowych uzytkownika, ktory nalezy zamelodowac wprost, a nie
+    # cichaczem zgadywac napiecie 15 kV rozdzielni SN.
+    if target_bus is None:
+        raise ValueError(
+            f"Stan fazowy SN: docelowa szyna '{target_bus_ref}' nie istnieje w modelu ENM"
+        )
+    source_voltage_default = float(target_bus["voltage_kv"]) / math.sqrt(3.0)
     solver_input = PhaseStateSNInput(
         source_voltage_kv=_phase_value_from_options(
             run.options,
@@ -644,9 +827,10 @@ def _execute_phase_state_sn(run: CanonicalRun) -> None:
         fault_current_a=_phase_value_from_options(
             run.options,
             "fault_current_a",
-            # Phase 46: gdy audit2 grounding ustawione, uzywamy median Ik1 z
-            # catalogu jako default. Override w run.options ma priorytet.
-            default=(fault_default if fault_default is not None else (0.0, 0.0, 0.0)),
+            # Brak jawnego pradu zwarcia w opcjach = brak zwarcia w tym stanie.
+            # Katalog uziemienia SN NIE podpowiada tu zadnej liczby — patrz nota
+            # nad `_execute_phase_state_sn` (karta K-Q).
+            default=(0.0, 0.0, 0.0),
         ),
         open_phase=_open_phase_flags_from_options(run.options),
         unbalance_alert_percent=float(run.options.get("unbalance_alert_percent", 10.0)),
@@ -1055,7 +1239,7 @@ def _solve_power_flow_with_method(
     options: PowerFlowOptions,
     run_options: dict[str, Any],
     solver_method: str,
-):
+) -> PowerFlowNewtonSolution:
     if solver_method == "newton-raphson":
         return PowerFlowNewtonSolver().solve(pf_input)
     if solver_method == "gauss-seidel":
@@ -1112,7 +1296,7 @@ def _first_oltc_branch_id(pf_input: PowerFlowInput) -> str | None:
 def _run_oltc_study(
     study: str,
     pf_input: PowerFlowInput,
-    solve_once,
+    solve_once: Callable[[PowerFlowInput], PowerFlowNewtonSolution],
     run_options: dict[str, Any],
 ) -> tuple[str, dict[str, Any]] | None:
     """Dispatch an opt-in OLTC study (V12K-046) on the current pf_input.
@@ -1292,10 +1476,26 @@ def _oze_opt_float(value: Any) -> float | None:
     return None
 
 
+@dataclass(frozen=True)
+class _ConverterBinding:
+    """Regulowane źródło przypięte do węzła: charakterystyka + WŁASNA moc źródła.
+
+    Defekt B (przegląd 2026-08-01): kształtowanie falownika MUSI dostać moc czynną
+    wytwórcy jako jawną wielkość wejściową. Odczyt mocy zadanej szyny był podwójnie
+    błędny — na szynie prosumenckiej to moc ODBIORU, a po rozdzieleniu ZIP (defekt
+    D1) to baza odbiorowa. Konwencja GENERATOROWA (>0 = wstrzyk do sieci), zgodna
+    z `Generator.p_mw`/`q_mvar` w ENM i z `PQSpec.inverter_p_mw` w solverze.
+    """
+
+    control: InverterControl
+    p_mw: float
+    q_mvar: float
+
+
 def _build_converter_control_by_node(
     snapshot: dict[str, Any], base_mva: float
-) -> dict[str, InverterControl]:
-    """G-OZE-PF (V12K-051): mapuje węzły OZE → InverterControl dla kanonicznego PF.
+) -> dict[str, _ConverterBinding]:
+    """G-OZE-PF (V12K-051): mapuje węzły OZE → regulacja + moc źródła dla kanonicznego PF.
 
     Domyka forward-phantom: dotąd kanoniczny run budował PQSpec bez inverter_control,
     więc wybór trybu regulacji (Q(U)/cosφ) nie wpływał na rozpływ mocy. Reużycie
@@ -1304,15 +1504,23 @@ def _build_converter_control_by_node(
     Determinizm: dołączamy WYŁĄCZNIE realnie aktywne regulacje (cosφ≠1 albo nachylenie
     Q(U)≠0). Źródła pasywne / unity / bez nowych pól → brak wpisu → PQSpec bez
     inverter_control → wynik bajt-w-bajt jak dotąd (istniejące snapshoty nietknięte).
+
+    JEDNA REGULACJA NA SZYNĘ (defekt B, §2.2). Kontrakt solvera ma dokładnie jedno
+    `PQSpec.inverter_control` na węzeł, więc dwa REGULOWANE źródła na jednej szynie
+    są nieprzedstawialne — dotąd ostatnie po cichu wygrywało, a moc bierna
+    pierwszego znikała z modelu. Taki przypadek jest ODRZUCANY z jawnym błędem;
+    ciche wybranie jednego źródła jest zakazane. Źródła BEZ aktywnej regulacji nie
+    kolidują — ich moc zostaje w agregacie szyny, tak jak dotąd.
     """
-    out: dict[str, InverterControl] = {}
+    out: dict[str, _ConverterBinding] = {}
     for gen in snapshot.get("generators") or []:
         if not isinstance(gen, dict):
             continue
         bus_ref = gen.get("bus_ref")
         if not isinstance(bus_ref, str) or not bus_ref.strip():
             continue
-        meta = gen.get("meta") if isinstance(gen.get("meta"), dict) else {}
+        meta_raw = gen.get("meta")
+        meta: dict[str, Any] = meta_raw if isinstance(meta_raw, dict) else {}
         mode = str(meta.get("control_mode") or gen.get("control_mode") or "").upper()
         cosphi = _oze_opt_float(meta.get("cos_phi"))
         qu_slope = _oze_opt_float(meta.get("qu_slope_pu_per_pu"))
@@ -1360,13 +1568,38 @@ def _build_converter_control_by_node(
             params["pmax_mw"] = abs(pmax)
         sn = _oze_opt_float(gen.get("sn_mva")) or _oze_opt_float(meta.get("sn_mva"))
         control = inverter_control_from_params(params, base_mva, sn)
-        if control is not None:
-            out[_graph_id_from_ref(bus_ref.strip())] = control
+        if control is None:
+            continue
+        node_id = _graph_id_from_ref(bus_ref.strip())
+        if node_id in out:
+            raise ValueError(
+                f"Szyna {bus_ref.strip()} ma wiecej niz jedno zrodlo z aktywna regulacja "
+                "falownika; kontrakt rozplywu dopuszcza jedna charakterystyke na wezel"
+            )
+        out[node_id] = _ConverterBinding(
+            control=control,
+            # Konwencja generatorowa (>0 = wstrzyk), jak Generator.p_mw w ENM.
+            p_mw=_oze_opt_float(gen.get("p_mw")) or 0.0,
+            q_mvar=_oze_opt_float(gen.get("q_mvar")) or 0.0,
+        )
     return out
 
 
-def _execute_power_flow(run: CanonicalRun) -> None:
-    graph = _load_graph(run)
+def _execute_power_flow(run: CanonicalRun, graph: NetworkGraph | None = None) -> None:
+    """Wykonaj rozpływ mocy dla przebiegu.
+
+    Args:
+        run: przebieg z migawką ENM.
+        graph: opcjonalny GOTOWY graf ZBUDOWANY Z TEJ SAMEJ MIGAWKI (``run.snapshot``).
+            ``map_enm_to_network_graph`` jest funkcją migawki, więc podanie grafu
+            zbudowanego wcześniej to wyłącznie oszczędzenie POWTÓRNEJ budowy tego
+            samego obiektu, a nie podmiana wejścia — wynik jest ten sam co do bitu.
+            Wywołujący ODDAJE graf na własność: rozpływ może go zmodyfikować
+            (pętla regulatora zaczepowego przestawia pozycje zaczepów), więc grafu
+            NIE wolno po tym wywołaniu czytać jako „stanu sprzed rozpływu".
+            ``None`` = zbuduj graf z migawki (ścieżka kanoniczna).
+    """
+    graph = _load_graph(run) if graph is None else graph
     graph_element_context = _build_snapshot_graph_element_context(run.snapshot or {})
     graph_nodes = graph_element_context.get("nodes", {})
     graph_branches = graph_element_context.get("branches", {})
@@ -1383,10 +1616,30 @@ def _execute_power_flow(run: CanonicalRun) -> None:
     base_mva = float(run.options.get("base_mva", 100.0))
     converter_control_by_node = _build_converter_control_by_node(run.snapshot or {}, base_mva)
 
+    def _converter(node_id: str) -> InverterControl | None:
+        binding = converter_control_by_node.get(node_id)
+        return None if binding is None else binding.control
+
+    def _converter_p_mw(node_id: str) -> float | None:
+        binding = converter_control_by_node.get(node_id)
+        return None if binding is None else binding.p_mw
+
+    def _converter_q_mvar(node_id: str) -> float | None:
+        binding = converter_control_by_node.get(node_id)
+        return None if binding is None else binding.q_mvar
+
     pq_specs = [
         PQSpec(
             node_id=node_id,
-            inverter_control=converter_control_by_node.get(node_id),
+            inverter_control=_converter(node_id),
+            # Defekt B (przegląd 2026-08-01): WŁASNA moc regulowanego źródła jest
+            # jawną wielkością wejściową kształtowania. Bez niej solver czytał moc
+            # zadaną szyny — czyli moc ODBIORU na szynie prosumenckiej (a po
+            # rozdzieleniu ZIP wręcz bazę odbiorową) — i z niej liczył moc bierną
+            # falownika. Konwencja generatorowa (>0 = wstrzyk), przeciwna do
+            # p_mw/q_mvar poniżej; None (brak regulacji) => pole nieużywane.
+            inverter_p_mw=_converter_p_mw(node_id),
+            inverter_q_mvar=_converter_q_mvar(node_id),
             # F9.8 WHITE BOX: `node.active_power`/`node.reactive_power` (built by
             # `enm.mapping`) use the GENERATION convention (positive = injection
             # into the bus; a pure load is negative — see mapping.py, pinned by
@@ -1402,6 +1655,18 @@ def _execute_power_flow(run: CanonicalRun) -> None:
             # ADR-011 (Z-ZIP-04): aggregated ZIP coefficients for the bus (None
             # => constant power). Solver reduces to classic PQ when None.
             zip_coeffs=node.zip_coeffs,
+            # Defect D1 (audit 2026-08-01): the ZIP polynomial is built from the
+            # bus LOADS, so it may only scale the load part. The remainder of the
+            # bus power (generation) is constant. Same gen->load conversion point
+            # as p_mw/q_mvar above; None (no ZIP bus) => whole bus power is the base.
+            zip_base_p_mw=(
+                None if node.zip_load_active_power is None else -float(node.zip_load_active_power)
+            ),
+            zip_base_q_mvar=(
+                None
+                if node.zip_load_reactive_power is None
+                else -float(node.zip_load_reactive_power)
+            ),
         )
         for node_id, node in sorted(graph.nodes.items())
         if node.node_type == NodeType.PQ and node_id != slack_node_id
@@ -1448,7 +1713,7 @@ def _execute_power_flow(run: CanonicalRun) -> None:
     # V12K-045 (OLTC F2): wrap the single-shot solve with the automatic OLTC
     # control loop. Networks without automatic OLTC regulators solve exactly
     # once (oltc_trace is None) — determinism preserved.
-    def _solve_once(pfi: PowerFlowInput):
+    def _solve_once(pfi: PowerFlowInput) -> PowerFlowNewtonSolution:
         return _solve_power_flow_with_method(
             pfi,
             options,
@@ -1468,11 +1733,31 @@ def _execute_power_flow(run: CanonicalRun) -> None:
     # ``power_flow_result.py:35``) — jak moc slacka niżej. Stąd negacja przy
     # montażu wyniku; bez niej szyny PQ miałyby znak odwrotny do slacka i do
     # udokumentowanego kontraktu (defekt ujawniony rekalibracją K3).
+    # Defect D1 (audit 2026-08-01): na szynie z modelem ZIP (albo z regulacją
+    # falownika) moc ZADANA w PQSpec to dopiero ŻĄDANIE — solver wstrzykuje moc
+    # PO wielomianie napięciowym. Tabela wyników musi pokazać moc FAKTYCZNIE
+    # wstrzykniętą (inaczej bilans węzłowy się nie domyka: było -3,0000 MW przy
+    # rzeczywistym -2,3408 MW = przepływ gałęzi). Wartość bierzemy WPROST ze
+    # solvera (ZERO fizyki w tej warstwie); dla szyny stałomocowej jest ona
+    # bitowo równa dotychczasowemu -p_mw/base_mva, więc wyniki bez ZIP/regulacji
+    # są nietknięte. Szyny spoza wyspy slacka solver pomija — zostaje żądanie.
     node_p_injected_pu = {node.node_id: 0.0 for node in pf_input.pq}
     node_q_injected_pu = {node.node_id: 0.0 for node in pf_input.pq}
+    solver_p_effective = solution.node_p_spec_effective_pu
+    solver_q_effective = solution.node_q_spec_effective_pu
     for pq in pf_input.pq:
-        node_p_injected_pu[pq.node_id] = -pq.p_mw / base_mva
-        node_q_injected_pu[pq.node_id] = -pq.q_mvar / base_mva
+        node_p_injected_pu[pq.node_id] = solver_p_effective.get(pq.node_id, -pq.p_mw / base_mva)
+        node_q_injected_pu[pq.node_id] = solver_q_effective.get(pq.node_id, -pq.q_mvar / base_mva)
+    # DŁUG W2-D1 (V12K-318): szyna o regulowanym napięciu też wstrzykuje moc — jej
+    # moc bierna jest WYNIKIEM zbieżności (to ona trzyma zadany moduł napięcia).
+    # Solver publikuje ją od karty X1 w tych samych słownikach; bez tej pętli
+    # raport podawał dla szyny PV 0,000000 Mvar. Zapas (`p_mw` z zadania) chroni
+    # szyny spoza wyspy slacka — solver ich nie liczy. `PVSpec.p_mw` jest w tej
+    # samej konwencji OBCIĄŻENIOWEJ co `PQSpec.p_mw` (`build_power_spec_v2`
+    # neguje oba), więc zapas negujemy tak samo.
+    for pv in pf_input.pv:
+        node_p_injected_pu[pv.node_id] = solver_p_effective.get(pv.node_id, -pv.p_mw / base_mva)
+        node_q_injected_pu[pv.node_id] = solver_q_effective.get(pv.node_id, 0.0)
     node_p_injected_pu[pf_input.slack.node_id] = float(solution.slack_power.real)
     node_q_injected_pu[pf_input.slack.node_id] = float(solution.slack_power.imag)
 
@@ -1524,6 +1809,12 @@ def _execute_power_flow(run: CanonicalRun) -> None:
             )
         ),
         "result_v1": result_v1.to_dict(),
+        # V12K-320: przelaczenia PV->PQ przy nasyceniu granic Q sa czescia
+        # WYNIKU, nie ciekawostka sladu — szyna, ktora utracila regulacje
+        # napiecia, pracuje na granicy mocy biernej i projektant ma to widziec
+        # bez zagladania w iteracje. Addytywnie (dict), lista z solvera w
+        # porzadku wykrycia (deterministyczna — iteracje sa deterministyczne).
+        "pv_to_pq_switches": solution.pv_to_pq_switches,
         "node_voltage_kv": solution.node_voltage_kv,
         "branch_current_ka": solution.branch_current_ka,
         "graph": {
@@ -1599,7 +1890,9 @@ def _execute_power_flow(run: CanonicalRun) -> None:
         run.power_flow_trace["oltc_control"] = oltc_trace
 
 
-def _build_power_flow_trace_steps(solution) -> list[dict[str, Any]]:
+def _build_power_flow_trace_steps(
+    solution: PowerFlowNewtonSolution,
+) -> list[dict[str, Any]]:
     steps: list[dict[str, Any]] = []
     solver_method = str(getattr(solution, "solver_method", "newton-raphson"))
     title_by_method = {
@@ -1994,8 +2287,17 @@ def _sc_pelny_bilans(item: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _wpis_grafu(mapa: dict[str, Any], klucz: object) -> dict[str, Any]:
+    """Wpis grafu przebiegu dla identyfikatora (brak albo brak identyfikatora → pusty).
+
+    Zachowanie identyczne jak `mapa.get(klucz, {})` — klucz spoza mapy (w tym
+    `None`) daje pusty wpis; jawny warunek zamiast ukrytej zgodności typów.
+    """
+    return mapa.get(klucz, {}) if isinstance(klucz, str) else {}
+
+
 def _sc_rozplyw_galeziowy(
-    item: dict[str, Any],
+    raw: list[dict[str, Any]] | None,
     graph_nodes: dict[str, Any],
     graph_branches: dict[str, Any],
 ) -> list[dict[str, Any]] | None:
@@ -2011,14 +2313,17 @@ def _sc_rozplyw_galeziowy(
     (branch_id, source_id). Starsze wyniki bez pola → None (uczciwy brak);
     pusta lista = policzono, brak wkładów w żadnej gałęzi (sieć bez źródła
     zastępczego i bez falowników niosących prąd).
+
+    K14: wejściem są SUROWE wpisy solvera podane przez `pobierz_rozplyw_biegu`
+    (jedna prawda dostępu: artefakt inline albo osobna tabela rozpływu) — ta
+    funkcja odpowiada wyłącznie za projekcję prezentacyjną.
     """
-    raw = item.get("branch_contributions")
     if raw is None:
         return None
     flows: list[dict[str, Any]] = []
     for entry in raw:
         branch_id = entry.get("branch_id")
-        branch = graph_branches.get(branch_id, {})
+        branch = _wpis_grafu(graph_branches, branch_id)
         from_id = entry.get("from_node_id")
         to_id = entry.get("to_node_id")
         flows.append(
@@ -2027,9 +2332,9 @@ def _sc_rozplyw_galeziowy(
                 "branch_name": branch.get("name") or branch_id,
                 "source_id": entry.get("source_id"),
                 "from_node_id": from_id,
-                "from_node_name": graph_nodes.get(from_id, {}).get("name") or from_id,
+                "from_node_name": _wpis_grafu(graph_nodes, from_id).get("name") or from_id,
                 "to_node_id": to_id,
-                "to_node_name": graph_nodes.get(to_id, {}).get("name") or to_id,
+                "to_node_name": _wpis_grafu(graph_nodes, to_id).get("name") or to_id,
                 "i_ka": _amps_to_ka(entry.get("i_contrib_a")),
                 "direction": entry.get("direction"),
             }
@@ -2038,7 +2343,19 @@ def _sc_rozplyw_galeziowy(
     return flows
 
 
-def build_short_circuit_results(run: CanonicalRun) -> dict[str, Any]:
+def _rozplyw_dostepny(item: dict[str, Any]) -> bool:
+    """Czy dla tego punktu zwarcia rozpływ ISTNIEJE (niezależnie od miejsca zapisu).
+
+    Dwa równoważne świadectwa: rozpływ inline (świeży bieg / zapis sprzed
+    rozdzielenia artefaktu) albo znacznik zapisu rozdzielonego (treść w osobnej
+    tabeli). Brak obu = solver policzył bez wkładów — uczciwy brak.
+    """
+    return item.get(KLUCZ_ROZPLYWU) is not None or bool(item.get(KLUCZ_DOSTEPNOSCI_ROZPLYWU))
+
+
+def build_short_circuit_results(
+    run: CanonicalRun, *, include_rozplyw: bool = False
+) -> dict[str, Any]:
     if run.analysis_type != "short_circuit_sn":
         return {"run_id": str(run.id), "rows": []}
     graph_nodes = ((run.raw_result or {}).get("graph") or {}).get("nodes", {})
@@ -2059,7 +2376,19 @@ def build_short_circuit_results(run: CanonicalRun) -> dict[str, Any]:
                 **_sc_pelny_bilans(item),
                 # ZWARCIA-PRO F4 (karta W-C): rozpływ prądu zwarciowego w gałęziach
                 # (pole addytywne — starsze wyniki bez pola → None).
-                "branch_contributions": _sc_rozplyw_galeziowy(item, graph_nodes, graph_branches),
+                # V12K-281 (K13): lista wierszy zbiorczych domyślnie BEZ rozpływu —
+                # pełny rozpływ to iloczyn źródło×gałąź per wiersz (zmierzone
+                # 104 wiersze × 11 506 wpisów = raport 730 MB). Rozpływ JEDNEGO
+                # punktu na żądanie: `build_short_circuit_rozplyw`; dostępność
+                # sygnalizuje flaga niżej (odróżnia starszy wynik bez pola).
+                "branch_contributions": (
+                    _sc_rozplyw_galeziowy(
+                        pobierz_rozplyw_biegu(run, target_id), graph_nodes, graph_branches
+                    )
+                    if include_rozplyw
+                    else None
+                ),
+                "branch_contributions_available": _rozplyw_dostepny(item),
                 "fault_type": item.get("short_circuit_type"),
                 # GAP passthrough (V12K-128): wymóg/źródło sieci zerowej Z0 przenoszone
                 # do wiersza kanonicznego (konsument read-only wie, czy Z0 dotyczy i
@@ -2087,6 +2416,71 @@ def build_short_circuit_results(run: CanonicalRun) -> dict[str, Any]:
         )
     rows.sort(key=lambda row: row["target_id"] or "")
     return {"run_id": str(run.id), "rows": rows}
+
+
+def build_short_circuit_rozplyw(run: CanonicalRun, target_id: str) -> dict[str, Any]:
+    """Rozpływ prądu zwarciowego JEDNEGO punktu zwarcia na żądanie (V12K-281, K13).
+
+    Lista wierszy zbiorczych (`build_short_circuit_results`) nie niesie już
+    rozpływu (iloczyn źródło×gałąź per wiersz dawał raport 730 MB); konsument
+    (tabela rozpływu, nakładka na schemacie) pobiera rozpływ WYBRANEGO punktu
+    tym budowniczym. Ta sama projekcja prezentacyjna co dotąd
+    (`_sc_rozplyw_galeziowy` — A→kA, nazwy z grafu przebiegu, sort
+    deterministyczny). `branch_contributions=None` = starszy wynik bez pola
+    (uczciwy brak). Nieznany punkt → KeyError (API tłumaczy na 404).
+
+    K14: treść rozpływu bierze `pobierz_rozplyw_biegu` (artefakt inline albo
+    osobna tabela) — kontrakt odpowiedzi bez zmian.
+    """
+    if run.analysis_type != "short_circuit_sn":
+        raise KeyError(f"Przebieg nie jest analiza zwarciowa: {run.id}")
+    raw_result = run.raw_result or {}
+    graph_nodes = (raw_result.get("graph") or {}).get("nodes", {})
+    graph_branches = (raw_result.get("graph") or {}).get("branches", {})
+    for item in raw_result.get("results", []):
+        if item.get("fault_node_id") == target_id:
+            return {
+                "run_id": str(run.id),
+                "target_id": target_id,
+                "branch_contributions": _sc_rozplyw_galeziowy(
+                    pobierz_rozplyw_biegu(run, target_id), graph_nodes, graph_branches
+                ),
+            }
+    raise KeyError(f"Brak punktu zwarcia {target_id} w wynikach przebiegu {run.id}")
+
+
+def wiersze_swiezego_biegu_bez_rozplywu(run: CanonicalRun) -> list[dict[str, Any]]:
+    """SUROWE wiersze świeżo policzonego biegu BEZ rozpływu inline + flaga dostępności.
+
+    V12K-284 (dług nazwany): odpowiedź `POST …/runs/short-circuit` niosła PEŁNY
+    rozpływ gałęziowy KAŻDEGO punktu zwarcia — iloczyn źródło×gałąź per wiersz
+    (zmierzone na sieci 50 stacji: 104 punkty × 11 506 wpisów), choć konsument
+    świeżego biegu czyta z wiersza prądy zwarciowe, a rozpływ potrzebuje dla
+    JEDNEGO wskazanego punktu.
+
+    TEN SAM wzorzec co V12K-281 dla wierszy kanonicznych: wiersz nie niesie
+    rozpływu, niesie FLAGĘ dostępności (`branch_contributions_available`), a treść
+    pobiera się na żądanie —
+    `GET /api/analysis-runs/{run_id}/results/short-circuit/rozplyw?target_id=…`
+    (`build_short_circuit_rozplyw`). Flaga odróżnia „rozpływ istnieje, pobierz go"
+    od „solver policzył bez wkładów" (uczciwy brak).
+
+    Rozpływ jest NIETKNIĘTY: solver liczy go jak dotąd, zapis biegu przenosi go
+    bajtowo do osobnej tabeli (K14). Zmienia się WYŁĄCZNIE treść odpowiedzi POST.
+    Wiersz nie będący słownikiem przechodzi bez zmian (zero zgadywania).
+    """
+    wiersze: list[dict[str, Any]] = []
+    for item in (run.raw_result or {}).get("results", []):
+        if not isinstance(item, dict):
+            wiersze.append(item)
+            continue
+        wiersze.append(
+            {
+                **{klucz: wartosc for klucz, wartosc in item.items() if klucz != KLUCZ_ROZPLYWU},
+                KLUCZ_DOSTEPNOSCI_ROZPLYWU: _rozplyw_dostepny(item),
+            }
+        )
+    return wiersze
 
 
 def build_phase_state_results(run: CanonicalRun) -> dict[str, Any]:
@@ -2238,7 +2632,7 @@ def build_source_compliance_results(run: CanonicalRun) -> dict[str, Any]:
     }
 
 
-def _amps_to_ka(value: object | None) -> float | None:
+def _amps_to_ka(value: float | None) -> float | None:
     if value is None:
         return None
     return float(value) / 1000.0

@@ -12,8 +12,7 @@ Sprawdza:
 from __future__ import annotations
 
 import pytest
-
-from src.enm.models import (
+from enm.models import (
     Bay,
     Bus,
     Cable,
@@ -423,7 +422,7 @@ def test_json_round_trip_with_ports() -> None:
 
 
 def test_migration_v_ports_001_idempotent() -> None:
-    from src.enm.migrations.v_ports_001 import migrate, needs_migration
+    from enm.migrations.v_ports_001 import migrate, needs_migration
 
     model = EnergyNetworkModel(
         header=_make_minimal_header(),
@@ -497,7 +496,7 @@ def test_migration_v_ports_001_idempotent() -> None:
 
 
 def test_bay_template_registry_has_10_templates() -> None:
-    from src.network_model.catalog.bay_templates import (
+    from network_model.catalog.bay_templates import (
         BAY_TEMPLATE_REGISTRY,
         list_bay_templates,
     )
@@ -519,7 +518,7 @@ def test_bay_template_registry_has_10_templates() -> None:
 
 
 def test_bay_template_line_in_canonical_devices() -> None:
-    from src.network_model.catalog.bay_templates import get_bay_template
+    from network_model.catalog.bay_templates import get_bay_template
 
     t = get_bay_template("bay_template_line_in")
     # Sekwencja: DS_BUS → CB → CT → DS_LINE → ES → CABLE_HEAD
@@ -536,7 +535,7 @@ def test_bay_template_line_in_canonical_devices() -> None:
 
 
 def test_station_template_registry_has_9_templates() -> None:
-    from src.network_model.catalog.station_templates import (
+    from network_model.catalog.station_templates import (
         STATION_TEMPLATE_REGISTRY,
         list_station_templates,
     )
@@ -552,7 +551,7 @@ def test_station_template_registry_has_9_templates() -> None:
 
 
 def test_station_template_industrial_has_multi_voltage_nn() -> None:
-    from src.network_model.catalog.station_templates import get_station_template
+    from network_model.catalog.station_templates import get_station_template
 
     t = get_station_template("station_template_industrial_custom_nn")
     # Multi-voltage nN: 6 kV + 0.4 kV

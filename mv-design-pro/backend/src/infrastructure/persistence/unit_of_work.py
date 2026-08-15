@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from contextlib import AbstractContextManager
+from types import TracebackType
+from typing import Literal
 
 from infrastructure.persistence.repositories.analysis_run_index_repository import (
     AnalysisRunIndexRepository,
@@ -68,7 +70,12 @@ class UnitOfWork(AbstractContextManager["UnitOfWork"]):
         self.design_evidence = DesignEvidenceRepository(self.session)
         return self
 
-    def __exit__(self, exc_type, exc, tb) -> bool:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        tb: TracebackType | None,
+    ) -> Literal[False]:
         if self.session is None:
             return False
         if exc_type is None:

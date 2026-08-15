@@ -114,6 +114,20 @@ test.describe('flow-ekspert:screenshot', () => {
           await page.getByTestId('mvd-por-przycisk').click();
           await expect(page.getByTestId('mvd-por-wynik')).toBeVisible();
           await expect(page.getByTestId('mvd-por-wynik')).toContainText('SZ-ST7');
+
+          // KD-1 (L-12 + L-14): kolumny mocy biernej z payloadu backendu oraz
+          // filtr "tylko roznice". Zrzut do oceny wlasciciela pokazuje OBIE
+          // zdolnosci naraz (filtr wlaczony ukrywa szyne bez roznic SZ-ST3).
+          await expect(page.getByTestId('mvd-por-wynik')).toContainText('Moc bierna A');
+          await expect(page.getByTestId('mvd-por-wynik')).toContainText('SZ-ST3');
+          await page.getByTestId('mvd-por-filtr-roznice').check();
+          await expect(page.getByTestId('mvd-por-wynik')).not.toContainText('SZ-ST3');
+          await page.waitForTimeout(200);
+          const qPath = path.join(OUTPUT_DIR, `porownanie-q-${theme}.png`);
+          await root.screenshot({ path: qPath });
+          expect(fs.existsSync(qPath)).toBe(true);
+          // Powrot do stanu bazowego sceny — zrzut zbiorczy bez zmian.
+          await page.getByTestId('mvd-por-filtr-roznice').uncheck();
         } else {
           // R2-B: pre-selekcja wezla z deep-linku widoczna w polu wyboru.
           await expect(page.getByTestId('mvd-komp-wezel')).toHaveValue('SZ-ST7');

@@ -135,7 +135,13 @@ export function generateCimRdfXml(input: CimExportInput): string {
   for (const pt of input.powerTransformers) {
     xml.push(`  <cim:PowerTransformer rdf:ID="${escapeXml(pt.mrid)}">`);
     xml.push(`    <cim:IdentifiedObject.name>${escapeXml(pt.name)}</cim:IdentifiedObject.name>`);
-    xml.push(`    <cim:PowerTransformer.Substation rdf:resource="#${escapeXml(pt.substation_mrid)}"/>`);
+    // S9-6: pusty identyfikator kontenera = model NIE zna przynależności.
+    // Referencja `rdf:resource="#"` byłaby wskaźnikiem donikąd (plik
+    // formalnie kompletny, semantycznie zepsuty), więc wiersz jest pomijany —
+    // obiekt zostaje, zmyślonego rodzica nie dorabiamy.
+    if (pt.substation_mrid) {
+      xml.push(`    <cim:PowerTransformer.Substation rdf:resource="#${escapeXml(pt.substation_mrid)}"/>`);
+    }
     xml.push(`    <cim:PowerTransformer.ratedS>${pt.ratedS_mva * 1e6}</cim:PowerTransformer.ratedS>`);
     xml.push('  </cim:PowerTransformer>');
   }
@@ -143,7 +149,11 @@ export function generateCimRdfXml(input: CimExportInput): string {
   for (const cb of input.breakers) {
     xml.push(`  <cim:Breaker rdf:ID="${escapeXml(cb.mrid)}">`);
     xml.push(`    <cim:IdentifiedObject.name>${escapeXml(cb.name)}</cim:IdentifiedObject.name>`);
-    xml.push(`    <cim:Equipment.EquipmentContainer rdf:resource="#${escapeXml(cb.bay_mrid)}"/>`);
+    // S9-6: patrz komentarz przy transformatorze — łącznik spoza pola
+    // (model bez pól SN) wychodzi BEZ kontenera, nie z pustą referencją.
+    if (cb.bay_mrid) {
+      xml.push(`    <cim:Equipment.EquipmentContainer rdf:resource="#${escapeXml(cb.bay_mrid)}"/>`);
+    }
     xml.push(`    <cim:Switch.normalOpen>${cb.normalOpen}</cim:Switch.normalOpen>`);
     xml.push('  </cim:Breaker>');
   }

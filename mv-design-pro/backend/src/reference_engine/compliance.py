@@ -19,7 +19,11 @@ from enm.interlock_rules import (
     earthing_interlock_violation,
 )
 from enm.models import Bay, BayPrimaryDevice, EnergyNetworkModel, Substation
-from network_model.catalog.switchgear import SwitchgearFamily
+from network_model.catalog.switchgear import (
+    SwitchgearFamily,
+    czy_rodzina_obsluguje_napiecie,
+    opis_napiec_rodziny_pl,
+)
 from network_model.catalog.switchgear.apparatus_vocabulary import (
     FAMILY_APPARATUS_FOR_ENM_KIND,
 )
@@ -343,20 +347,22 @@ def _family_checks_for_bay(
             )
 
     voltage = buses_voltage_kv.get(bay.bus_ref)
-    if voltage is not None and voltage > 0 and family.voltage_levels:
-        # Reguła doboru: napięcie znamionowe rozdzielnicy ≥ napięcie sieci
-        # (np. sieć 15 kV ⇒ rozdzielnica 17,5 kV) — spec §7.
-        ok = max(family.voltage_levels) >= voltage - 1e-9
+    if voltage is not None and voltage > 0 and (family.network_voltages_kv or family.um_classes_kv):
+        # Reguła doboru napięciowego ma JEDNO źródło prawdy w katalogu
+        # (`family_validation.czy_rodzina_obsluguje_napiecie`) — ta lista
+        # sprawdzeń tylko RAPORTUJE jej wynik. Własny warunek „max(...) >=
+        # napięcie" rozjeżdżałby się z bramą operacji domenowej, gdy karta
+        # rodziny wymienia napięcia sieci (karta K-J, 2026-08-14).
+        ok = czy_rodzina_obsluguje_napiecie(family, voltage)
         add(
             "family.voltage",
             ok,
             (
-                f"Napięcie sieci {voltage:g} kV mieści się w poziomach rodziny "
-                f"{family.family_name} (do {max(family.voltage_levels):g} kV)."
+                f"Napięcie sieci {voltage:g} kV jest objęte deklaracją rodziny "
+                f"{family.family_name} ({opis_napiec_rodziny_pl(family)})."
                 if ok
-                else f"Napięcie sieci {voltage:g} kV przekracza najwyższe napięcie "
-                f"znamionowe rodziny {family.family_name} "
-                f"({max(family.voltage_levels):g} kV)."
+                else f"Napięcie sieci {voltage:g} kV jest poza deklaracją rodziny "
+                f"{family.family_name} ({opis_napiec_rodziny_pl(family)})."
             ),
         )
 
@@ -553,6 +559,48 @@ def _osd_checks(pack: ReferencePack, enm: EnergyNetworkModel) -> list[Compliance
                         + " i ".join(missing)
                         + " — Telemechanika §6.4.1 s. 14: pomiar U oraz I wymagany "
                         "dla każdego pola liniowego."
+                    ),
+                )
+
+    # Układ pomiarowo-kontrolny dla obiektów o mocy > 5 MW (karta POMIAR-RODZAJ,
+    # dyrektywa właściciela V12K-336 pkt 2 w zw. z IRiESD; taksonomia [E-UP]
+    # pkt 3). WALIDACJA NORMATYWNA, nie twarda brama domenowa. Bramki danych
+    # (zero domysłu):
+    # (a) moc przyłączeniowa obiektu z `header.connection_conditions`
+    #     (dane WEJŚCIOWE dokumentu OSD, karta K2) — brak danych = reguła
+    #     nieoceniana;
+    # (b) reguła ocenia WYPOSAŻENIE układu pomiarowego energii, nie jego
+    #     istnienie — oceniana, gdy w modelu jest co najmniej jedno pole
+    #     o funkcji UKLAD_ENERGII (kontrakt POMIAR_ROZLICZENIOWY_SN_V1 §5).
+    # Strona przeciwna świadomie BEZ kodu: standard wymaga układu kontrolnego
+    # od progu, ale nie zakazuje go poniżej — układ kontrolny przy mocy
+    # ≤ 5 MW nie generuje sprawdzenia.
+    if "osd_enea.metering.control_metering_above_5mw" in implemented:
+        warunki = enm.header.connection_conditions
+        moc_mw = warunki.moc_przylaczeniowa_mw if warunki is not None else None
+        if moc_mw is not None and moc_mw > 5.0:
+            uklady_energii: list[tuple[str, str]] = []
+            for station in sorted(enm.substations, key=lambda s: s.ref_id):
+                raw_specs = (station.meta or {}).get("field_specs")
+                for spec in raw_specs if isinstance(raw_specs, list) else []:
+                    if isinstance(spec, dict) and spec.get("funkcja_pomiaru") == "UKLAD_ENERGII":
+                        uklady_energii.append(
+                            (station.ref_id, str(spec.get("rodzaj_pomiaru") or ""))
+                        )
+            if uklady_energii:
+                ma_kontrolny = any(rodzaj == "KONTROLNY" for _, rodzaj in uklady_energii)
+                add(
+                    uklady_energii[0][0],
+                    "osd_enea.metering.control_metering_above_5mw",
+                    ma_kontrolny,
+                    (
+                        f"Obiekt o mocy przyłączeniowej {moc_mw:g} MW (> 5 MW) ma "
+                        "układ pomiarowo-kontrolny ([E-UP] pkt 3, IRiESD)."
+                        if ma_kontrolny
+                        else f"Obiekt o mocy przyłączeniowej {moc_mw:g} MW (> 5 MW) "
+                        "bez układu pomiarowo-kontrolnego — standard układów "
+                        "pomiarowych ([E-UP] pkt 3) w zw. z IRiESD wymaga układu "
+                        "pomiarowo-kontrolnego dla obiektów o mocy powyżej 5 MW."
                     ),
                 )
 

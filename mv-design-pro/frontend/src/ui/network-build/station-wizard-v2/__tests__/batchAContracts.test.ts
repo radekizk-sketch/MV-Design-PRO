@@ -21,12 +21,7 @@ import {
   computeTransformerLosses,
   computeTransformerEfficiency,
 } from '../transformerContract';
-import {
-  IEC_CURVE_CONSTANTS,
-  FIELD_PROTECTION_PROFILES,
-  computeTripTime,
-  checkProtectionCoordination,
-} from '../protectionContract';
+import { FIELD_PROTECTION_PROFILES } from '../protectionContract';
 
 // ============================================================================
 // Krok 4 — Aparaty SN
@@ -278,66 +273,13 @@ describe('computeTransformerLosses + computeTransformerEfficiency', () => {
 // Krok 13 — Zabezpieczenia
 // ============================================================================
 
-describe('IEC_CURVE_CONSTANTS — krzywe time-current', () => {
-  it('IEC_SI: k=0.14, α=0.02', () => {
-    expect(IEC_CURVE_CONSTANTS.IEC_SI.k).toBe(0.14);
-    expect(IEC_CURVE_CONSTANTS.IEC_SI.alpha).toBe(0.02);
-  });
-
-  it('IEC_VI: k=13.5, α=1.0', () => {
-    expect(IEC_CURVE_CONSTANTS.IEC_VI.k).toBe(13.5);
-    expect(IEC_CURVE_CONSTANTS.IEC_VI.alpha).toBe(1.0);
-  });
-
-  it('IEC_EI: k=80.0, α=2.0', () => {
-    expect(IEC_CURVE_CONSTANTS.IEC_EI.k).toBe(80.0);
-    expect(IEC_CURVE_CONSTANTS.IEC_EI.alpha).toBe(2.0);
-  });
-});
-
-describe('computeTripTime — czas zadziałania zabezpieczenia', () => {
-  it('IEC_SI, I/Ip=2, TDS=1 → t ≈ 10 s', () => {
-    const func = FIELD_PROTECTION_PROFILES.LINE[1]; // 51 SI
-    const t = computeTripTime(func, 2.0);
-    // t = 0.14 / (2^0.02 - 1) × 0.3 = 0.14 / 0.01396 × 0.3 = 3.01 s
-    // Z TDS=0.3 → ~3 s.
-    expect(t).toBeGreaterThan(2);
-    expect(t).toBeLessThan(5);
-  });
-
-  it('Definite-time → zwraca definiteTimeSec niezależnie od prądu', () => {
-    const func = FIELD_PROTECTION_PROFILES.LINE[0]; // 50 instantaneous
-    expect(computeTripTime(func, 2.0)).toBe(0.05);
-    expect(computeTripTime(func, 5.0)).toBe(0.05);
-  });
-
-  it('I/Ip ≤ 1 → t = Infinity (nie zadziała)', () => {
-    const func = FIELD_PROTECTION_PROFILES.LINE[1];
-    expect(computeTripTime(func, 1.0)).toBe(Infinity);
-    expect(computeTripTime(func, 0.5)).toBe(Infinity);
-  });
-});
-
-describe('checkProtectionCoordination — selektywność TCC', () => {
-  it('Margin ≥ 0.3s → selective', () => {
-    const downstream = FIELD_PROTECTION_PROFILES.LINE[1];
-    const upstream = { ...downstream, tds: 0.6 }; // 2× wolniejszy
-    const result = checkProtectionCoordination({
-      downstream, upstream, faultCurrent: 1000, minMarginSec: 0.3,
-    });
-    expect(result.selective).toBe(true);
-    expect(result.margin).toBeGreaterThan(0.3);
-  });
-
-  it('Margin < 0.3s → not selective (kolizja czasowa)', () => {
-    const func = FIELD_PROTECTION_PROFILES.LINE[1];
-    const result = checkProtectionCoordination({
-      downstream: func, upstream: { ...func, tds: 0.32 }, // tylko trochę wolniejszy
-      faultCurrent: 1000, minMarginSec: 0.3,
-    });
-    expect(result.selective).toBe(false);
-  });
-});
+// CHARAKTERYSTYKA IEC 60255-151 — RACHUNEK USUNIĘTY Z FRONTU (K7-B, 2026-07-31).
+// Stały tu asercje na `IEC_CURVE_CONSTANTS` (k, α), `computeTripTime`
+// (t = k/((I/Ip)^α − 1)·TDS) i `checkProtectionCoordination` (margines Δt).
+// Żadna z tych funkcji nie miała konsumenta produkcyjnego — kreator stacji
+// importuje z tego kontraktu wyłącznie `FIELD_PROTECTION_PROFILES` (poniżej).
+// Zdolność w backendzie: `api/protection_coordination.py` — krzywe TCC
+// (`TCCCurveResponse`) i kontrola selektywności par (`SelectivityCheck`).
 
 describe('FIELD_PROTECTION_PROFILES — typowe zestawy', () => {
   it('LINE: 4 funkcje (50/51/51N/67)', () => {

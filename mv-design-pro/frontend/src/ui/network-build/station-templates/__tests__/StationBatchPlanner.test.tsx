@@ -44,6 +44,34 @@ function response(data: unknown): Response {
   } as Response;
 }
 
+/* REF-PAKIET: profile dostawcy pochodzą ze SCHEMATU szablonu. Backend
+   (`station_templates/schema.py`) wymienia PIĘĆ profili — planer miał własną
+   kopię czterech, więc SCHNEIDER był dla projektanta nieosiągalny. */
+const PROFILE_ZE_SCHEMATU = [
+  'ZPUE_WLOSZCZOWA',
+  'ELEKTROMETAL',
+  'ABB',
+  'SIEMENS',
+  'SCHNEIDER',
+] as const;
+
+/** Mock rozróżniający listę szablonów od pełnego szablonu (ze schematem). */
+function mockSzablonow() {
+  return vi.spyOn(globalThis, 'fetch').mockImplementation(async (input: RequestInfo | URL) => {
+    const url = String(input);
+    if (/\/station-templates\/[^/?]+$/.test(url)) {
+      return response({
+        ...templates[0],
+        schema: {
+          sn_switchgear_manufacturers: PROFILE_ZE_SCHEMATU,
+          manufacturer_profile_default: 'ZPUE_WLOSZCZOWA',
+        },
+      });
+    }
+    return response({ templates, total: templates.length });
+  });
+}
+
 afterEach(() => {
   vi.restoreAllMocks();
 });
@@ -169,5 +197,79 @@ describe('StationBatchPlanner', () => {
         dlugoscZPlanu,
       );
     });
+  });
+});
+
+describe('StationBatchPlanner — profil dostawcy z DANYCH (REF-PAKIET)', () => {
+  it('lista profili pochodzi ze schematu szablonu — komplet, w tym profil pomijany przez zaszytą kopię', async () => {
+    mockSzablonow();
+    render(<StationBatchPlanner caseId="case-1" segmentRefs={['seg/1']} targetCount={2} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('station-batch-row-1').textContent).toContain('Stacja SN/nN 630 kVA');
+    });
+    const select = (await screen.findByLabelText('Profil katalogowy wiersza 1')) as HTMLSelectElement;
+    await waitFor(() => {
+      expect(Array.from(select.options).map((o) => o.value)).toEqual([
+        '',
+        ...PROFILE_ZE_SCHEMATU,
+      ]);
+    });
+  });
+
+  it('wartość domyślna to `manufacturer_profile_default` — jednakowa dla wierszy (koniec rotacji po indeksie)', async () => {
+    mockSzablonow();
+    render(<StationBatchPlanner caseId="case-1" segmentRefs={['seg/1', 'seg/2']} targetCount={3} />);
+
+    await waitFor(() => {
+      const w1 = screen.getByLabelText('Profil katalogowy wiersza 1') as HTMLSelectElement;
+      expect(w1.value).toBe('ZPUE_WLOSZCZOWA');
+    });
+    const w2 = screen.getByLabelText('Profil katalogowy wiersza 2') as HTMLSelectElement;
+    const w3 = screen.getByLabelText('Profil katalogowy wiersza 3') as HTMLSelectElement;
+    // Rotacja `index % length` dawała tu trzy RÓŻNE profile bez żadnej podstawy.
+    expect([w2.value, w3.value]).toEqual(['ZPUE_WLOSZCZOWA', 'ZPUE_WLOSZCZOWA']);
+  });
+
+  it('brak schematu (błąd pobrania) ⇒ wiersz bez profilu — UI nie zgaduje producenta', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (/\/station-templates\/[^/?]+$/.test(url)) {
+        return { ok: false, statusText: 'Not Found', json: async () => ({}) } as Response;
+      }
+      return response({ templates, total: templates.length });
+    });
+    render(<StationBatchPlanner caseId="case-1" segmentRefs={['seg/1']} targetCount={1} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('station-batch-row-1').textContent).toContain('Stacja SN/nN 630 kVA');
+    });
+    const select = screen.getByLabelText('Profil katalogowy wiersza 1') as HTMLSelectElement;
+    expect(select.value).toBe('');
+    expect(Array.from(select.options).map((o) => o.textContent)).toEqual(['bez profilu']);
+  });
+
+  it('jawny wybór „bez profilu" przeżywa przebudowę planu (null ≠ brak edycji)', async () => {
+    mockSzablonow();
+    render(<StationBatchPlanner caseId="case-1" segmentRefs={['seg/1', 'seg/2']} targetCount={2} />);
+
+    const select = (await screen.findByLabelText('Profil katalogowy wiersza 1')) as HTMLSelectElement;
+    await waitFor(() => expect(select.value).toBe('ZPUE_WLOSZCZOWA'));
+
+    fireEvent.change(select, { target: { value: '' } });
+    // Przebudowa planu (zmiana długości innego wiersza) nie może przywrócić profilu.
+    fireEvent.change(screen.getByLabelText('Długość odcinka wiersza 2'), { target: { value: '120' } });
+
+    await waitFor(() => {
+      expect((screen.getByLabelText('Profil katalogowy wiersza 1') as HTMLSelectElement).value).toBe('');
+    });
+  });
+
+  it('plan zbudowany bez znanego profilu ma `catalogProfile === null` (kontrakt wiersza)', () => {
+    const plan = buildStationBatchPlan(templates, ['seg/1'], 2);
+    expect(plan.map((w) => w.catalogProfile)).toEqual([null, null]);
+
+    const zProfilem = buildStationBatchPlan(templates, ['seg/1'], 2, 'ELEKTROMETAL');
+    expect(zProfilem.map((w) => w.catalogProfile)).toEqual(['ELEKTROMETAL', 'ELEKTROMETAL']);
   });
 });

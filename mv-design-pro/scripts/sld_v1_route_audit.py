@@ -100,12 +100,14 @@ def _scan_file(path: Path, repo_root: Path) -> list[V1Reference]:
             continue
         for pat in V1_PATH_PATTERNS:
             if pat.search(line):
-                refs.append(V1Reference(
-                    file_path=path,
-                    line_number=line_no,
-                    line_content=line.strip()[:200],
-                    pattern_matched=pat.pattern,
-                ))
+                refs.append(
+                    V1Reference(
+                        file_path=path,
+                        line_number=line_no,
+                        line_content=line.strip()[:200],
+                        pattern_matched=pat.pattern,
+                    )
+                )
                 break
     return refs
 
@@ -174,10 +176,7 @@ def main() -> int:
         if not references:
             print("OK — zero V1 references. Phase 9 cleanup ready.")
             return 0
-        print(
-            f"\nNARUSZENIA: {len(references)} V1 references w "
-            f"{len(refs_by_file)} plikach:"
-        )
+        print(f"\nNARUSZENIA: {len(references)} V1 references w " f"{len(refs_by_file)} plikach:")
         for rel, refs in sorted(refs_by_file.items()):
             print(f"  {rel}: {len(refs)} ref(s)")
             if args.verbose:

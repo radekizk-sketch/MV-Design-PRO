@@ -45,13 +45,24 @@ class V126BranchInput(BaseModel):
     length_km: float = Field(default=1.0, gt=0)
     r_ohm_per_km: float = Field(default=0.18, ge=0)
     x_ohm_per_km: float = Field(default=0.12, ge=0)
-    b_siemens_per_km: float = Field(default=0.0, ge=0)
+    # Susceptancja doziemna składowej zgodnej [S/km]. `None` = model/katalog nie
+    # niesie pojemności doczepnej tej gałęzi — to NIE JEST zero (karta
+    # MOST-WEJSCIA-V126). Rozróżnienie ma skutek: decyzja o ryzyku
+    # ferrorezonansu stoi na sumie B·ℓ sieci, a suma z podstawionym zerem
+    # meldowała „brak ryzyka" tam, gdzie danych po prostu nie było.
+    b_siemens_per_km: float | None = Field(default=None, ge=0)
     # Zero-sequence (line-to-earth) shunt susceptance B0 = ω·C0 [S/km]. Source of the
     # network line-to-earth capacitance for the neutral-earthing design (Petersen/NER).
     # None when the catalog/model has no zero-sequence shunt for this branch — surfaced
     # as "dane niekompletne" (no fabrication of C0).
     b0_siemens_per_km: float | None = Field(default=None)
-    ampacity_a: float = Field(default=300.0, gt=0)
+    # Obciążalność długotrwała [A]. `None` = element NIE MA obciążalności w
+    # modelu ani w katalogu (karta MOST-WEJSCIA-V126). Do tej karty pole miało
+    # wartość domyślną 300 A, a most dokładał 630 A dla KAŻDEGO aparatu
+    # łączeniowego — obie liczby wchodziły wprost do ilorazu I/I_dop, czyli do
+    # stopnia obciążenia, dotkliwości N-1 i zdolności przyłączeniowej. Warstwa,
+    # która obciążalności potrzebuje, melduje teraz brak po polsku.
+    ampacity_a: float | None = Field(default=None, gt=0)
     failure_rate_per_year: float = Field(default=0.015, ge=0)
     mttr_h: float = Field(default=12.0, ge=0)
     is_open: bool = False
@@ -300,6 +311,87 @@ def build_v126_insulation_from_enm(enm: EnergyNetworkModel) -> list[V126Insulati
     return rows
 
 
+#: Aparat łączeniowy jest elementem SKUPIONYM: jego impedancja styku to omy, a nie
+#: omy na kilometr. Kontrakt V12.6 niesie parę (Ω/km, km) i WSZĘDZIE używa jej
+#: ILOCZYNU (`_branch_z_ohm`, stempel Y, straty), więc aparat wchodzi z długością
+#: JEDNOSTKOWĄ, a impedancja skupiona trafia wprost do pola per-km — iloczyn równa
+#: się wtedy dokładnie impedancji skupionej.
+#:
+#: PRZED TĄ KARTĄ most dawał aparatowi długość 0,001 km i wstawiał tę samą omową
+#: wartość do pola per-km, czyli DZIELIŁ realną rezystancję styku przez 1000. Błąd
+#: był niewidoczny wyłącznie dlatego, że drugi defekt (`r_ohm or 0.001`) i tak
+#: kasował każdą realną daną, w tym jawne 0,0.
+_DLUGOSC_JEDNOSTKOWA_APARATU_KM = 1.0
+
+
+def _liczba_lub_none(wartosc: Any) -> float | None:
+    """Wartość liczbowa albo `None` — bez podstawiania czegokolwiek w miejsce braku."""
+    if isinstance(wartosc, bool) or not isinstance(wartosc, int | float):
+        return None
+    return float(wartosc)
+
+
+def _obciazalnosc_dlugotrwala_a(branch: Any) -> float | None:
+    """Obciążalność długotrwała gałęzi [A] — WYŁĄCZNIE z modelu albo z katalogu.
+
+    Jedno źródło prawdy dla WSZYSTKICH rodzajów gałęzi (kabel, linia napowietrzna,
+    aparat łączeniowy), w kolejności:
+
+    1. jawna obciążalność gałęzi w modelu (``rating.in_a``);
+    2. materializacja katalogowa gałęzi — ``rated_current_a`` (kontrakt KABEL_SN /
+       LINIA_SN) albo ``i_n_a`` (kontrakt APARAT_SN, ``solver_fields=("u_n_kv",
+       "i_n_a")``). Ta sama precedencja, co w ``enm.domain_operations_v2.
+       _resolve_apparatus_rated_current_a`` — reużycie zamiast drugiej reguły,
+       która rozjedzie się przy pierwszej zmianie katalogu.
+
+    Zwraca ``None``, gdy żadne z tych źródeł nie istnieje: element NIE MA
+    obciążalności, a warstwa, która jej potrzebuje, melduje to wprost. Wartość
+    niedodatnia jest traktowana jak brak — kontrakt wymaga ``gt=0``, a „0 A"
+    obciążalnością nie jest.
+    """
+    rating = getattr(branch, "rating", None)
+    jawna = _liczba_lub_none(getattr(rating, "in_a", None))
+    if jawna is not None and jawna > 0:
+        return jawna
+    materializacja = getattr(branch, "materialized_params", None)
+    if isinstance(materializacja, dict):
+        for klucz in ("rated_current_a", "i_n_a"):
+            z_katalogu = _liczba_lub_none(materializacja.get(klucz))
+            if z_katalogu is not None and z_katalogu > 0:
+                return z_katalogu
+    return None
+
+
+def _impedancja_skupiona_aparatu_ohm(branch: Any) -> tuple[float, float]:
+    """Impedancja styku aparatu (R, X) [Ω] — z modelu, z JAWNYM zerem włącznie.
+
+    PREDYKATY PARAMI (reguła KLASA §3). Wejście i wyjście warunku pochodzą z
+    jednego źródła prawdy: rozstrzyga WYŁĄCZNIE ``is None`` (dana nieobecna),
+    nigdy prawdziwościowość liczby. Przed tą kartą most liczył
+    ``getattr(branch, "r_ohm", None) or 0.001``, więc jawnie zadeklarowane
+    ``r_ohm = 0.0`` — wartość, którą operacje domenowe nadają KAŻDEMU tworzonemu
+    aparatowi (``domain_operations``: „r_ohm": 0.0, „x_ohm": 0.0) — było
+    podmieniane na 0,001. Operator ``or`` nie odróżnia braku danej od zera, a
+    rezystancja styku aparatu łączeniowego jest fizycznie bliska zeru, więc
+    podmieniana była DANA, nie brak.
+
+    Brak danej daje impedancję zerową, i to NIE JEST podstawienie liczby: aparat
+    łączeniowy jest w kanonie modelu urządzeniem BEZ impedancji (tabela pojęć w
+    ``CLAUDE.md``; drugi most, ``enm.mapping``, mapuje ``SwitchBranch`` na
+    ``Switch`` — obiekt, który impedancji nie ma w ogóle). Pola ``r_ohm``/``x_ohm``
+    są opcjonalnym UŚCIŚLENIEM tego kanonu. Zero jest więc znaczeniem modelu, a nie
+    liczbą z powietrza — w odróżnieniu od zmyślonych 0,001 Ω.
+
+    Konsument zerowej impedancji jest po stronie solvera: gałąź zwarta o
+    impedancji zerowej to POŁĄCZENIE IDEALNE i tak ją stempluje
+    ``V126AcademicSolver._ybus`` (redukcja węzłów), zamiast — jak przed tą kartą
+    — cicho ją pomijać i rozspajać sieć.
+    """
+    r_ohm = _liczba_lub_none(getattr(branch, "r_ohm", None))
+    x_ohm = _liczba_lub_none(getattr(branch, "x_ohm", None))
+    return (r_ohm if r_ohm is not None else 0.0, x_ohm if x_ohm is not None else 0.0)
+
+
 def build_v126_input_from_enm(
     enm: EnergyNetworkModel,
     *,
@@ -309,6 +401,13 @@ def build_v126_input_from_enm(
     for load in enm.loads:
         p, q = load_by_bus.get(load.bus_ref, (0.0, 0.0))
         load_by_bus[load.bus_ref] = (p + load.p_mw, q + load.q_mvar)
+
+    # Napiecie znamionowe szyny przylaczenia — DANA MODELU. Do tej karty prad
+    # bazowy zrodla harmonicznego liczyl sie z ZASZYTYCH 15 kV, wiec kazde zrodlo
+    # spoza tego poziomu (nN 0,4 kV, SN 20 kV, 30 kV) dostawalo prad bazowy
+    # zafalszowany proporcja napiec — a ten prad wchodzi wprost do wstrzykniecia
+    # harmonicznych, czyli do THD, TDD i oceny zgodnosci.
+    napiecie_szyny_kv = {bus.ref_id: bus.voltage_kv for bus in enm.buses}
 
     gen_by_bus: dict[str, tuple[float, float]] = {}
     converters: list[V126ConverterInput] = []
@@ -350,14 +449,20 @@ def build_v126_input_from_enm(
                     q_mvar=generator.q_mvar,
                 )
             )
-            harmonic_sources.append(
-                V126HarmonicSourceInput(
-                    bus_ref=generator.bus_ref,
-                    source_ref=generator.ref_id,
-                    base_current_a=1000.0 * rated / (1.7320508075688772 * 15.0),
-                    spectrum_percent={5: 3.0, 7: 2.0, 11: 1.2, 13: 1.0},
+            # Prad bazowy z napiecia SZYNY PRZYLACZENIA (dana modelu), nie z
+            # zaszytych 15 kV. Gdy szyna generatora nie istnieje w modelu, zrodla
+            # harmonicznego NIE MA — brak wezla to brak miejsca wstrzykniecia,
+            # a nie powod do przyjecia napiecia z powietrza.
+            un_kv = napiecie_szyny_kv.get(generator.bus_ref)
+            if un_kv is not None and un_kv > 0:
+                harmonic_sources.append(
+                    V126HarmonicSourceInput(
+                        bus_ref=generator.bus_ref,
+                        source_ref=generator.ref_id,
+                        base_current_a=1000.0 * rated / (1.7320508075688772 * un_kv),
+                        spectrum_percent={5: 3.0, 7: 2.0, 11: 1.2, 13: 1.0},
+                    )
                 )
-            )
 
     buses = [
         V126BusInput(
@@ -382,9 +487,16 @@ def build_v126_input_from_enm(
         else:
             is_open = False
         if branch.type in {"line_overhead", "cable"}:
-            length_km = float(getattr(branch, "length_km", 1.0))
-            rating = getattr(branch, "rating", None)
+            # `length_km`, `r_ohm_per_km`, `x_ohm_per_km` sa polami WYMAGANYMI
+            # modeli `OverheadLine`/`Cable`, wiec czytamy je wprost. Do tej karty
+            # staly tu `getattr(..., 1.0 / 0.18 / 0.12)`; te wartosci zapasowe byly
+            # NIEOSIAGALNE (pydantic nie dopusci obiektu bez pola wymaganego), a
+            # mimo to czytalo sie je jak zadeklarowane zalozenie projektowe.
+            # Martwa wartosc zapasowa jest grozniejsza niz brak: wyglada na
+            # zabezpieczenie, wiec wylacza czujnosc.
+            length_km = float(branch.length_km)
             b0_per_km = getattr(branch, "b0_siemens_per_km", None)
+            b_per_km = getattr(branch, "b_siemens_per_km", None)
             branches.append(
                 V126BranchInput(
                     ref=branch.ref_id,
@@ -392,11 +504,11 @@ def build_v126_input_from_enm(
                     to_bus_ref=branch.to_bus_ref,
                     kind=branch.type,
                     length_km=length_km,
-                    r_ohm_per_km=float(getattr(branch, "r_ohm_per_km", 0.18)),
-                    x_ohm_per_km=float(getattr(branch, "x_ohm_per_km", 0.12)),
-                    b_siemens_per_km=float(getattr(branch, "b_siemens_per_km", 0.0) or 0.0),
+                    r_ohm_per_km=float(branch.r_ohm_per_km),
+                    x_ohm_per_km=float(branch.x_ohm_per_km),
+                    b_siemens_per_km=(float(b_per_km) if b_per_km is not None else None),
                     b0_siemens_per_km=(float(b0_per_km) if b0_per_km is not None else None),
-                    ampacity_a=float(getattr(rating, "in_a", None) or 300.0),
+                    ampacity_a=_obciazalnosc_dlugotrwala_a(branch),
                     failure_rate_per_year=(0.08 if branch.type == "line_overhead" else 0.015)
                     * length_km,
                     mttr_h=3.5 if branch.type == "line_overhead" else 12.0,
@@ -404,16 +516,19 @@ def build_v126_input_from_enm(
                 )
             )
         elif branch.type in {"switch", "breaker", "bus_coupler", "disconnector"}:
+            r_ohm, x_ohm = _impedancja_skupiona_aparatu_ohm(branch)
             branches.append(
                 V126BranchInput(
                     ref=branch.ref_id,
                     from_bus_ref=branch.from_bus_ref,
                     to_bus_ref=branch.to_bus_ref,
                     kind=branch.type,
-                    length_km=0.001,
-                    r_ohm_per_km=float(getattr(branch, "r_ohm", None) or 0.001),
-                    x_ohm_per_km=float(getattr(branch, "x_ohm", None) or 0.001),
-                    ampacity_a=630.0,
+                    # Dlugosc jednostkowa: iloczyn (Ω/km · km) rowna sie impedancji
+                    # SKUPIONEJ aparatu, bez przelicznika i bez gubienia rzedu.
+                    length_km=_DLUGOSC_JEDNOSTKOWA_APARATU_KM,
+                    r_ohm_per_km=r_ohm / _DLUGOSC_JEDNOSTKOWA_APARATU_KM,
+                    x_ohm_per_km=x_ohm / _DLUGOSC_JEDNOSTKOWA_APARATU_KM,
+                    ampacity_a=_obciazalnosc_dlugotrwala_a(branch),
                     failure_rate_per_year=0.015,
                     mttr_h=4.0,
                     is_open=is_open,

@@ -18,6 +18,12 @@ export function snapUp(value: number): number {
   return Math.ceil(value / GRID) * GRID;
 }
 
+/** Przyciągnięcie W DÓŁ do siatki — używane tam, gdzie zaokrąglenie NIE MOŻE
+ *  zjeść zadeklarowanego prześwitu (KD-8 poz. 5: slot etykiety nad torem). */
+export function snapDown(value: number): number {
+  return Math.floor(value / GRID) * GRID;
+}
+
 export function isOnGrid(value: number): boolean {
   return value % GRID === 0;
 }

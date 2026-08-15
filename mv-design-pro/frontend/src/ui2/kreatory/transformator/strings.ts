@@ -48,7 +48,7 @@ export const TRANSFORMATOR_STRINGS = {
   controlMode: 'Tryb sterowania OLTC',
   controlModeOpcje: [
     { id: 'MANUAL', etykieta: 'Ręczny' },
-    { id: 'AUTO', etykieta: 'Automatyczny (AVR)' },
+    { id: 'AUTOMATIC', etykieta: 'Automatyczny (AVR)' },
   ],
   setpoint: 'Napięcie zadane',
   deadband: 'Pasmo nieczułości',

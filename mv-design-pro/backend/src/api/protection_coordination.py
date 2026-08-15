@@ -1,5 +1,5 @@
 """
-Protection Coordination API — FIX-12
+Protection Coordination API — FIX-12 / karta ZAB-100-BACKEND (montaz pod /api)
 
 Endpoints for protection coordination analysis.
 
@@ -8,16 +8,23 @@ CANONICAL ALIGNMENT:
 - 100% Polish labels in responses
 - Deterministic output
 
-Endpoints:
-- POST /projects/{project_id}/protection-coordination — Run coordination analysis
-- GET /protection-coordination/{run_id} — Get coordination result
-- GET /protection-coordination/{run_id}/tcc — Get TCC data for visualization
-- GET /protection-coordination/{run_id}/export/pdf — Export to PDF
-- GET /protection-coordination/{run_id}/export/docx — Export to DOCX
+Endpoints (montowane pod prefiksem /api w api/main.py — pelna sciezka
+zaczyna sie od /api/protection-coordination):
+- POST /projects/{project_id}/run — Run coordination analysis
+- GET /{run_id} — Get full coordination result
+- GET /{run_id}/tcc — Get TCC data for visualization
+- GET /{run_id}/trace — Get WHITE BOX trace
+- GET /{run_id}/checks/sensitivity — Get sensitivity check results
+- GET /{run_id}/checks/selectivity — Get selectivity check results
+- GET /{run_id}/checks/overload — Get overload check results
+- GET /{run_id}/export/pdf — Export to PDF (karta ZAB-100-BACKEND)
+- GET /{run_id}/export/docx — Export to DOCX (karta ZAB-100-BACKEND)
 """
 
 from __future__ import annotations
 
+import tempfile
+from pathlib import Path
 from typing import Any
 from uuid import UUID
 
@@ -39,6 +46,9 @@ from domain.protection_device import (
     ProtectionDeviceType,
 )
 from fastapi import APIRouter, HTTPException, status
+from fastapi.responses import Response
+from protection.curves.iec_curves import IECCurveType
+from protection.curves.ieee_curves import IEEECurveType
 from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/protection-coordination", tags=["protection-coordination"])
@@ -165,6 +175,12 @@ class TCCCurveResponse(BaseModel):
     time_multiplier: float
     points: list[dict[str, float]]
     color: str
+    #: Karta N-D5-FUSE — skad pochodzi krzywa. `BRAK_PASMA_BEZPIECZNIKA` znaczy
+    #: bezpiecznik topikowy bez pasma z karty katalogowej: `points` jest puste,
+    #: a `powod_pl` niesie zdanie do pokazania uzytkownikowi. Pola addytywne z
+    #: wartosciami domyslnymi — ladunki przekaznikowe bez zmian.
+    podstawa_kod: str = "KRZYWA_PRZEKAZNIKOWA"
+    powod_pl: str | None = None
 
 
 class FaultMarkerResponse(BaseModel):
@@ -196,10 +212,40 @@ _coordination_results: dict[str, dict[str, Any]] = {}
 # =============================================================================
 
 
+#: Slowniki wariantow krzywej per norma — ROZLACZNE. IEC 60255 zna SI/VI/EI/LTI/DT,
+#: IEEE C37.112 zna MI/VI/EI/STI/DT. Zrodlo: `protection.curves.iec_curves` oraz
+#: `protection.curves.ieee_curves` (te same enumy, ktore licza punkty), wiec lista
+#: nie moze rozjechac sie z kalkulatorem. Przypiete testem
+#: `test_warianty_krzywej_zgodne_z_kalkulatorem`.
+_WARIANTY_NORMY: dict[str, tuple[str, ...]] = {
+    CurveStandard.IEC.value: tuple(w.value for w in IECCurveType),
+    CurveStandard.IEEE.value: tuple(w.value for w in IEEECurveType),
+}
+
+
 def _convert_curve_settings(req: CurveSettingsRequest | None) -> ProtectionCurveSettings | None:
-    """Convert request curve settings to domain model."""
+    """Convert request curve settings to domain model.
+
+    Waliduje PARE (norma, wariant) na granicy API. Bez tego wariant spoza
+    slownika normy leciał az do kalkulatora krzywych i konczyl sie technicznym
+    `ValueError: 'SI' is not a valid IEEECurveType` po angielsku (zmierzone:
+    HTTP 422 z komunikatem, ktorego projektant nie umie naprawic). Norma i
+    wariant sa jedna decyzja, wiec sprawdzane sa razem — nie osobno.
+    """
     if req is None:
         return None
+
+    dozwolone = _WARIANTY_NORMY.get(req.standard)
+    if dozwolone is not None and req.variant not in dozwolone:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                f"Wariant charakterystyki „{req.variant}” nie należy do normy "
+                f"{req.standard}. Dozwolone warianty tej normy: "
+                f"{', '.join(dozwolone)}."
+            ),
+        )
+
     return ProtectionCurveSettings(
         standard=CurveStandard(req.standard),
         variant=req.variant,
@@ -246,6 +292,43 @@ def _convert_device(req: DeviceRequest) -> ProtectionDevice:
     )
 
 
+def _check_run_eligibility(request: RunCoordinationRequest) -> list[str]:
+    """Bramka gotowosci przed uruchomieniem analizy koordynacji (karta ZAB-100-BACKEND).
+
+    Payload-owy odpowiednik `solver_input.eligibility.check_eligibility` dla
+    `SolverAnalysisType.PROTECTION` (blocker SI-100: brak aparatu chronionego).
+    Ten endpoint NIE trzyma NetworkGraph — dane (urzadzenia, prady zwarciowe,
+    prady robocze) przychodza w zadaniu wprost od klienta — wiec sprawdzenie
+    dziala na PAYLOADZIE, nie na modelu sieci, ale zachowuje ta sama zasade:
+    BLOCKER przed interpretacja, uczciwy komunikat PL, nigdy 500.
+
+    ZNALEZISKO AUDYTU (karta ZAB-100-BACKEND, punkt audytu tras 7): bez tej
+    bramki `POST /projects/{project_id}/run` z pusta lista `devices` zwracal
+    201 z `overall_verdict: PASS` — fabrykacja werdyktu „koordynacja
+    prawidlowa" bez zbadania ani jednego urzadzenia. Naprawione u zrodla
+    PRZED montazem routera pod /api (zgodnie z §0.3 karty).
+    """
+    blockers: list[str] = []
+    if not request.devices:
+        blockers.append(
+            "Analiza koordynacji wymaga co najmniej jednego urzadzenia "
+            "zabezpieczajacego (lista 'devices' jest pusta)."
+        )
+    if not request.fault_currents:
+        blockers.append(
+            "Analiza koordynacji wymaga danych o pradach zwarciowych "
+            "(lista 'fault_currents' jest pusta) — sprawdzenie czulosci "
+            "i selektywnosci wymaga wynikow zwarciowych IEC 60909."
+        )
+    if not request.operating_currents:
+        blockers.append(
+            "Analiza koordynacji wymaga danych o pradach roboczych "
+            "(lista 'operating_currents' jest pusta) — sprawdzenie "
+            "przeciazalnosci wymaga wynikow rozplywu mocy."
+        )
+    return blockers
+
+
 # =============================================================================
 # ENDPOINTS
 # =============================================================================
@@ -263,6 +346,11 @@ def run_coordination_analysis(
     """
     Run protection coordination analysis.
 
+    Eligibility (patrz `_check_run_eligibility`): wymaga co najmniej jednego
+    urzadzenia, jednej lokalizacji pradu zwarciowego i jednej lokalizacji
+    pradu roboczego — inaczej 400 z uczciwym komunikatem PL (nie 500, nie
+    fabrykowany PASS).
+
     Analyzes:
     - Sensitivity (will devices trip for minimum fault?)
     - Selectivity (proper time grading between devices?)
@@ -270,6 +358,13 @@ def run_coordination_analysis(
 
     Returns summary with overall PASS/MARGINAL/FAIL verdict.
     """
+    blockers = _check_run_eligibility(request)
+    if blockers:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=" ".join(blockers),
+        )
+
     # Convert request to domain models
     devices = tuple(_convert_device(d) for d in request.devices)
 
@@ -468,3 +563,128 @@ def get_overload_checks(run_id: str) -> list[dict[str, Any]]:
         )
 
     return result.get("overload_checks", [])
+
+
+# =============================================================================
+# EXPORTS (karta ZAB-100-BACKEND — reuzycie network_model/reporting/protection_report_*)
+# =============================================================================
+#
+# Reuzywa ISTNIEJACA, juz przetestowana pod katem determinizmu binarnego
+# infrastrukture eksportow koordynacji zabezpieczen (FIX-12/FIX-12C):
+#   - network_model/reporting/protection_report_pdf.py
+#       (reportlab, invariant=1 + pageCompression=0 — ta sama technika co
+#       power_flow_comparisons.py)
+#   - network_model/reporting/protection_report_docx.py
+#       (python-docx + network_model/reporting/docx_determinism.py — normalizuje
+#       znaczniki czasu wpisu ZIP i docProps/core.xml, ktorych SAM python-docx
+#       NIE zeruje: dwa kolejne Document().save() roznia sie bajtowo, gdy wywolania
+#       przetna granice sekundy, bo zipfile znakuje kazdy wpis biezacym czasem
+#       lokalnym — ta sama klasa niedeterminizmu jak w karcie 10x „czas scienny").
+#       Zamierzenie: NIE kopiowac inline wzorca `power_flow_comparisons.py`
+#       `doc.save(buffer)` bez normalizacji — ten wzorzec ma ten sam defekt
+#       (zweryfikowane empirycznie w audycie tras tej karty), poza zakresem tej
+#       karty (inny modul API), ale odnotowane w meldunku koncowym.
+#
+# Oba moduly pracuja na Path (nie na strumieniu w pamieci), wiec eksport API
+# pisze do pliku tymczasowego i odczytuje bajty z powrotem — plik znika wraz
+# z TemporaryDirectory, do odpowiedzi trafiaja tylko bajty.
+
+
+@router.get(
+    "/{run_id}/export/pdf",
+    summary="Eksportuj wynik koordynacji zabezpieczen do PDF",
+)
+def export_coordination_pdf(run_id: str) -> Response:
+    """Eksport wyniku koordynacji zabezpieczen nadprądowych do PDF.
+
+    Deterministyczny: ten sam zapisany wynik (`run_id`) eksportowany
+    wielokrotnie daje identyczne bajty (reportlab invariant mode — patrz
+    `network_model/reporting/protection_report_pdf.py`).
+    """
+    result = _coordination_results.get(run_id)
+    if result is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Coordination result not found: {run_id}",
+        )
+
+    try:
+        from network_model.reporting.protection_report_pdf import (
+            _PDF_AVAILABLE,
+            export_protection_coordination_to_pdf,
+        )
+    except ImportError:
+        _PDF_AVAILABLE = False
+
+    if not _PDF_AVAILABLE:
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail="PDF export requires reportlab. Install with: pip install reportlab",
+        )
+
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        output_path = Path(tmp_dir) / f"protection_coordination_{run_id}.pdf"
+        export_protection_coordination_to_pdf(
+            result,
+            output_path,
+            metadata={"created_at": result.get("created_at")},
+        )
+        pdf_bytes = output_path.read_bytes()
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="protection_coordination_{run_id}.pdf"'
+        },
+    )
+
+
+@router.get(
+    "/{run_id}/export/docx",
+    summary="Eksportuj wynik koordynacji zabezpieczen do DOCX",
+)
+def export_coordination_docx(run_id: str) -> Response:
+    """Eksport wyniku koordynacji zabezpieczen nadprądowych do DOCX.
+
+    Deterministyczny: ten sam zapisany wynik (`run_id`) eksportowany
+    wielokrotnie daje identyczne bajty (`docx_determinism.make_docx_bytes_deterministic`
+    — patrz `network_model/reporting/protection_report_docx.py`).
+    """
+    result = _coordination_results.get(run_id)
+    if result is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Coordination result not found: {run_id}",
+        )
+
+    try:
+        from network_model.reporting.protection_report_docx import (
+            _DOCX_AVAILABLE,
+            export_protection_coordination_to_docx,
+        )
+    except ImportError:
+        _DOCX_AVAILABLE = False
+
+    if not _DOCX_AVAILABLE:
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail="DOCX export requires python-docx. Install with: pip install python-docx",
+        )
+
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        output_path = Path(tmp_dir) / f"protection_coordination_{run_id}.docx"
+        export_protection_coordination_to_docx(
+            result,
+            output_path,
+            metadata={"created_at": result.get("created_at")},
+        )
+        docx_bytes = output_path.read_bytes()
+
+    return Response(
+        content=docx_bytes,
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={
+            "Content-Disposition": f'attachment; filename="protection_coordination_{run_id}.docx"'
+        },
+    )

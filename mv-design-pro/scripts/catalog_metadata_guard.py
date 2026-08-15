@@ -18,7 +18,6 @@ sys.path.insert(0, str(BACKEND_SRC))
 from network_model.catalog.repository import get_default_mv_catalog  # noqa: E402
 from network_model.catalog.types import CATALOG_CONTRACT_VERSION  # noqa: E402
 
-
 INDUSTRIAL_MIN_WIDTH = {
     "LINIA_SN": 25,
     "KABEL_SN": 50,
@@ -67,13 +66,9 @@ def _industrial_width_errors() -> list[str]:
         minimum = INDUSTRIAL_MIN_WIDTH.get(group)
         if minimum is None:
             continue
-        active_count = sum(
-            1 for item in items if item.to_dict().get("catalog_status") != "TESTOWY"
-        )
+        active_count = sum(1 for item in items if item.to_dict().get("catalog_status") != "TESTOWY")
         if active_count < minimum:
-            errors.append(
-                f"{group}: rekordow={active_count} < minimum={minimum}"
-            )
+            errors.append(f"{group}: rekordow={active_count} < minimum={minimum}")
     return errors
 
 
@@ -106,10 +101,7 @@ def main() -> int:
                     f"{group}: rekord {data.get('id')} jest PRODUKCYJNY_V1 i NIEWERYFIKOWANY"
                 )
 
-            if (
-                group not in analytical_groups
-                and data.get("catalog_status") == "ANALITYCZNY_V1"
-            ):
+            if group not in analytical_groups and data.get("catalog_status") == "ANALITYCZNY_V1":
                 errors.append(
                     f"{group}: rekord {data.get('id')} nie moze miec ANALITYCZNY_V1 poza grupa ochrony"
                 )

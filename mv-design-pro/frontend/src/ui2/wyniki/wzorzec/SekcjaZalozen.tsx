@@ -6,6 +6,9 @@
  */
 
 import { useState } from 'react';
+// Zasada wywodów KaTeX (dyrektywa właściciela 2026-07-29): wartości założeń
+// mogą nieść wzory inline `$...$` z backendu — renderuje je TekstZWzorami.
+import { TekstZWzorami } from '../../kreatory/rama';
 import type { WierszZalozenia } from './wzorzecModel';
 import { WZORZEC_STRINGS } from './strings';
 
@@ -48,7 +51,12 @@ export function SekcjaZalozen({ zalozenia, domyslnieRozwinieta = true }: SekcjaZ
                 >
                   <span className="mvd-wyn-zalozenie-etykieta">{z.etykieta}</span>
                   <span className="mvd-wyn-zalozenie-wartosc mvd-num">
-                    {z.wartosc}
+                    {/* Wartość liczbowa bez zmian; tekst może nieść wzory `$...$`. */}
+                    {typeof z.wartosc === 'string' ? (
+                      <TekstZWzorami tekst={z.wartosc} />
+                    ) : (
+                      z.wartosc
+                    )}
                     {z.jednostka && <span className="mvd-wyn-unit">{z.jednostka}</span>}
                   </span>
                 </div>

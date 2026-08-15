@@ -31,7 +31,7 @@ export const STUDIUM_STRINGS = {
   krok1Hint:
     'Co to jest: warianty punktu przyłączenia to szyny sieci, w których rozważasz '
     + 'przyłączenie źródła. Zakres typowy: 2–5 wariantów do porównania. Skąd wartości: '
-    + 'lista węzłów pochodzi ze snapshotu bieżącego modelu. Konsekwencja: dla każdego '
+    + 'lista węzłów pochodzi z bieżącej wersji modelu. Konsekwencja: dla każdego '
     + 'wariantu policzymy ten sam komplet analiz i zestawimy je w tabeli.',
   krok1BrakWezlow: 'Brak węzłów w bieżącym modelu — zbuduj sieć, aby wskazać warianty.',
   krok1Wybrano: 'Wybrane warianty (kolejność wyboru)',
@@ -127,7 +127,7 @@ export const STUDIUM_STRINGS = {
   szczegolZdolnosc: 'Zdolność przyłączeniowa (moc przyłączalna węzła)',
   szczegolObszar: 'Obszar bezpiecznej pracy P–Q',
   szczegolPokrycie: 'Pokrycie wymagania operatora',
-  szczegolSladObszar: 'Ślad siatki scenariuszy (WHITE BOX)',
+  szczegolSladObszar: 'Ślad siatki scenariuszy (pełna jawność obliczeń)',
   szczegolBrakDanych: 'Ta analiza nie została ukończona dla wybranego wariantu.',
   otworzWRankingu: 'Otwórz w rankingu przyłączeń',
 

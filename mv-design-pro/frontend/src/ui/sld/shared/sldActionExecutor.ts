@@ -40,6 +40,7 @@ import { useAppStateStore } from '../../app-state';
 import { useNetworkBuildStore } from '../../network-build/networkBuildStore';
 import type { NetworkBuildOperationName } from '../../network-build/internal/legacySurfaceTypes';
 import { buildOperationContext } from '../../network-build/operationContext';
+import { resolveBranchStartOperationContext } from '../../network-build/operationContextResolvers';
 import { notify } from '../../notifications/store';
 import { useSelectionStore } from '../../selection';
 import { useSnapshotStore } from '../../topology/snapshotStore';
@@ -50,6 +51,7 @@ import {
   type SldElementKindForMenu,
 } from '../v2/command/SldCommandService';
 import { useShellStore } from '../../../ui2/shell/useShellStore';
+import { STATION_LV_VOLTAGE_LIMIT_KV } from './stationBusResolution';
 
 /** Mapowanie ID akcji na ekran kanoniczny (E-XX). Etapy 1-3 obsługują E-04/24/36/38, E-10/11/13. */
 export const ACTION_TO_SCREEN: Readonly<Record<string, string>> = {
@@ -128,7 +130,8 @@ export const ACTION_ROADMAP_HINT_PL: Readonly<Record<string, string>> = {
   'insert-station': 'Wstawianie stacji transformatorowej: Etap 4 roadmapy.',
   'insert-zksn': 'Wstawianie złącza kablowego SN: Etap 4 roadmapy.',
   'insert-sectional': 'Wstawianie łącznika sekcyjnego: Etap 4 roadmapy.',
-  'insert-joint': 'Wstawianie mufy kablowej: Etap 4 roadmapy.',
+  // Karta S9-5: wpis 'insert-joint' USUNIĘTY razem z pozycją menu (mufa
+  // kablowa nie ma operacji domenowej ani edytora — patrz `SLD_MENU_REGISTRY`).
   'insert-pole': 'Wstawianie słupa rozgałęźnego: Etap 4 roadmapy.',
   'add-source': 'Wybór PV, BESS albo farmy wiatrowej odbywa się w karcie "Układy PV/BESS/FW" konfiguratora stacji.',
   'add-load': 'Dodawanie obciążenia nN: Etap 4 roadmapy.',
@@ -176,6 +179,11 @@ export const DRAWER_ACTION_LABEL_PL: Readonly<Record<string, string>> = {
   'start-branch': 'Rozpocznij odgałęzienie',
   'add-source': 'Dodaj PV/BESS/FW',
   'add-load': 'Dodaj odbiór nN',
+  // K5-A (H-4): nowe wejścia kreatorów z menu/drawera kanwy.
+  'add-compensator': 'Dodaj kompensator',
+  'add-arrester': 'Dodaj ogranicznik przepięć',
+  'add-genset': 'Dodaj agregat nN',
+  'add-ups': 'Dodaj UPS nN',
   'insert-station': 'Zakończ odcinek stacją',
   'insert-zksn': 'Zakończ odcinek w ZK SN',
   'insert-pole': 'Zakończ odcinek słupem',
@@ -210,6 +218,42 @@ interface SldOperationAction {
   readonly op: NetworkBuildOperationName;
   readonly context: Record<string, unknown>;
   readonly messagePl: string;
+}
+
+/** K5-A: kompozyt sceny `${stationRef}#sn-bus` → kanoniczny Bus ref przez
+ *  realne FK `substation.bus_refs` (szyna SN: U > 1 kV). Ref bez kompozytu
+ *  lub nierozwiązywalny wraca bez zmian (uczciwa degradacja — kreator pokaże
+ *  brak szyny albo odmowę backendu, zero fabrykowanego refu). */
+function resolveCanonicalSectionBusRef(
+  elementId: string,
+  snapshot: EnergyNetworkModel | null,
+): string {
+  const marker = elementId.indexOf('#');
+  if (marker <= 0 || elementId.slice(marker + 1) !== 'sn-bus') return elementId;
+  const stationRef = elementId.slice(0, marker);
+  const station = (snapshot?.substations ?? []).find(
+    (candidate) => candidate.ref_id === stationRef || candidate.id === stationRef,
+  );
+  if (!station) return elementId;
+  // KARTA KLIK-ETYKIETA-KOTWICA (Zero-Debt — ta sama klasa defektu, drugie
+  // wystąpienie): predykat brzmiał „PIERWSZA szyna o `voltage_kv > 1`", więc był
+  // poprawny wyłącznie PRZEZ KOLEJNOŚĆ `bus_refs` i przyjmował także szynę WN.
+  // Zmierzone na sieci referencyjnej: GPZ ma `bus_refs = [SN 15 kV, WN 110 kV]` —
+  // odwrócona kolejność wysyłałaby do operacji SN ref szyny 110 kV. Kryterium
+  // jest teraz to samo, co w `canvasMenuSubject.szynaSnStacji`: DOKŁADNIE JEDNA
+  // szyna powyżej granicy nN (`STATION_LV_VOLTAGE_LIMIT_KV`, jedna reguła stron
+  // stacji z karty S9-2). Więcej niż jedna ⇒ ref zostaje NIETKNIĘTY (uczciwy
+  // brak zamiany), nigdy wybór pierwszej z listy.
+  let snBusRef: string | null = null;
+  for (const busRef of station.bus_refs ?? []) {
+    const bus = (snapshot?.buses ?? []).find(
+      (candidate) => candidate.ref_id === busRef || candidate.id === busRef,
+    );
+    if (bus == null || !(bus.voltage_kv > STATION_LV_VOLTAGE_LIMIT_KV)) continue;
+    if (snBusRef !== null && snBusRef !== busRef) return elementId;
+    snBusRef = busRef;
+  }
+  return snBusRef ?? elementId;
 }
 
 export function elementTypeForSldKind(kind: SldElementKindForMenu): ElementType | null {
@@ -266,9 +310,134 @@ function operationOpenMessage(op: NetworkBuildOperationName, actionId: string): 
       return 'Otwieram formularz dodania obciążenia nN.';
     case 'set_normal_open_point':
       return 'Otwieram formularz punktu normalnie otwartego.';
+    // K5-A (H-4): komunikaty nowych wejść menu kanwy.
+    case 'add_shunt_compensator_sn':
+      return 'Otwieram formularz baterii kondensatorów SN.';
+    case 'add_surge_arrester_sn':
+      return 'Otwieram formularz ogranicznika przepięć SN.';
+    case 'add_genset_nn':
+      return 'Otwieram formularz agregatu prądotwórczego nN.';
+    case 'add_ups_nn':
+      return 'Otwieram formularz zasilacza UPS nN.';
     default:
       return 'Otwieram formularz operacji domenowej.';
   }
+}
+
+/**
+ * KARTA S9-5 — PUNKT STARTU CIĄGU SN Z GPZ.
+ *
+ * Kreator magistrali (`ui2/kreatory/magistrala`) wymaga PUNKTU STARTU:
+ * `maStartCiagu` przepuszcza wyłącznie kontekst z `from_terminal_id` albo
+ * `field_ref`. Pozycja menu, która otwiera kreator bez punktu startu, jest
+ * obietnicą bez pokrycia — zapis jest w niej trwale zablokowany.
+ *
+ * Wspólny resolver `resolveContinueTrunkOperationContext` NIE zwraca pola
+ * liniowego dla `Source`/`Bus` i tak ma zostać: jego niezmienniki („ciąg nie
+ * wychodzi wprost z obiektu źródła", „pole zajęte ⇒ brak punktu startu",
+ * „niejednoznaczny terminal ⇒ brak punktu startu") są przypięte testami
+ * `network-build/__tests__/operationContext.test.ts` i chronią przed
+ * fabrykowaniem startu. Dlatego rozstrzygnięcie dla MENU KANWY mieszka tutaj i
+ * jest ZAWĘŻONE do pól liniowych GPZ, rozpoznawanych po REALNYCH danych
+ * operacji `add_grid_source_sn` (znacznik `gpz_line_field` w `tags` albo
+ * `meta.gpz_line_field_index`) — nie po kształcie referencji.
+ *
+ * Zajętość liczymy PER POLE (`Branch.meta.origin_bay_ref`, ustawiane przez
+ * `continue_trunk_segment_sn`), a nie per szyna: na jednej szynie sekcyjnej GPZ
+ * stoi wiele pól liniowych i pierwszy ciąg nie może blokować pozostałych.
+ *
+ * `null` = brak wolnego pola liniowego ⇒ menu BLOKUJE pozycję z uczciwym
+ * powodem, zamiast otwierać kreator, którego nie da się zapisać.
+ */
+/**
+ * Karta S9-5: stacja-właścicielka szyny SN albo źródła — po REALNYCH FK
+ * (`substation.bus_refs`, `source.bus_ref`). Potrzebna, żeby menu GPZ/sekcji
+ * mogło znaleźć wolne pole liniowe tej rozdzielni.
+ */
+export function stationRefOfBusOrSource(
+  snapshot: EnergyNetworkModel | null,
+  elementId: string,
+): string | null {
+  if (!snapshot || !elementId) return null;
+  const source = (snapshot.sources ?? []).find(
+    (candidate) => candidate.ref_id === elementId || candidate.id === elementId,
+  );
+  const busRef = source?.bus_ref ?? elementId;
+  const station = (snapshot.substations ?? []).find((candidate) =>
+    (candidate.bus_refs ?? []).includes(busRef),
+  );
+  return station?.ref_id ?? station?.id ?? null;
+}
+
+export function resolveGpzTrunkStartFieldRef(
+  snapshot: EnergyNetworkModel | null,
+  stationRef: string | null,
+): string | null {
+  if (!snapshot || !stationRef) return null;
+  const station = (snapshot.substations ?? []).find(
+    (candidate) => candidate.ref_id === stationRef || candidate.id === stationRef,
+  );
+  const meta = station?.meta && typeof station.meta === 'object'
+    ? (station.meta as Record<string, unknown>)
+    : null;
+  const specs = Array.isArray(meta?.field_specs) ? (meta!.field_specs as unknown[]) : [];
+  const zajete = new Set(
+    (snapshot.branches ?? [])
+      .filter((branch) => branch.type === 'cable' || branch.type === 'line_overhead')
+      .map((branch) => {
+        const branchMeta = (branch as { meta?: unknown }).meta;
+        const origin = branchMeta && typeof branchMeta === 'object'
+          ? (branchMeta as Record<string, unknown>).origin_bay_ref
+          : undefined;
+        return typeof origin === 'string' ? origin.trim() : '';
+      })
+      .filter(Boolean),
+  );
+  const wolne: string[] = [];
+  for (const raw of specs) {
+    if (!raw || typeof raw !== 'object') continue;
+    const spec = raw as Record<string, unknown>;
+    const tags = Array.isArray(spec.tags) ? spec.tags : [];
+    const specMeta = spec.meta && typeof spec.meta === 'object' ? (spec.meta as Record<string, unknown>) : null;
+    const jestPolemGpz =
+      tags.some((tag) => typeof tag === 'string' && tag.trim() === 'gpz_line_field')
+      || typeof specMeta?.gpz_line_field_index === 'number';
+    if (!jestPolemGpz) continue;
+    if (!['OUT', 'FEEDER'].includes(String(spec.bay_role ?? '').toUpperCase())) continue;
+    const ref = typeof spec.field_ref === 'string' ? spec.field_ref.trim() : '';
+    if (!ref || zajete.has(ref)) continue;
+    wolne.push(ref);
+  }
+  // Wybór deterministyczny: pierwsze wolne pole w porządku leksykalnym
+  // (identyfikatory pól GPZ są numerowane, więc to porządek rozdzielni).
+  return wolne.sort((left, right) => left.localeCompare(right))[0] ?? null;
+}
+
+/**
+ * S9-10 (klasa S9-5 „pozycja budowy MUSI mieć punkt startu", predykaty
+ * PARAMI): dostępność pozycji „Rozpocznij odgałęzienie" liczona TYM SAMYM
+ * resolverem, którego użyje kreator odgałęzienia (`KreatorOdgalezienia` →
+ * `resolveBranchSourceContextFromOperation` czyta `from_ref` zbudowany przez
+ * `resolveBranchStartOperationContext`). Pomiar S9-10 (fixtury referencyjne +
+ * świeży GPZ): menu oferowało pozycję na KAŻDEJ stacji, źródle GPZ i szynie
+ * sekcji, a resolver dla WSZYSTKICH zwracał pusty `fromRef` — kreator otwierał
+ * się z „Brak wskazania źródła" i trwale zablokowanym zapisem (martwy klik
+ * opakowany w okno; bramka `stationHasFreeBay` z S9-5 ISTNIAŁA, ale żaden
+ * wołający jej nie zasilał — warunek martwy, deklaracja bez testu).
+ *
+ * `undefined` = rodzaj bez wpisu `start-branch` w menu (nie ma czego bramkować)
+ * albo brak refu/migawki (brak pomiaru nie jest dowodem — pozycja zostaje
+ * aktywna jak dotąd).
+ */
+export function resolveBranchStartAvailability(
+  snapshot: EnergyNetworkModel | null,
+  kind: SldElementKindForMenu,
+  elementId: string | null,
+): boolean | undefined {
+  if (!snapshot || !elementId) return undefined;
+  const elementType = elementTypeForSldKind(kind);
+  if (!elementType) return undefined;
+  return resolveBranchStartOperationContext(snapshot, elementId, elementType).fromRef.trim().length > 0;
 }
 
 export function buildSldOperationContext(
@@ -289,10 +458,24 @@ export function buildSldOperationContext(
   if (!elementId) return null;
 
   const apparatusSelection = kind === 'apparatus' ? parseGpzApparatusSelectionId(elementId) : null;
-  const operationElementId = apparatusSelection ? apparatusSelection.bayRef : elementId;
-  const operationKind: SldElementKindForMenu = apparatusSelection ? 'bay' : kind;
+  let operationElementId = apparatusSelection ? apparatusSelection.bayRef : elementId;
+  let operationKind: SldElementKindForMenu = apparatusSelection ? 'bay' : kind;
   if (kind === 'apparatus' && actionId === 'extend-trunk' && apparatusSelection?.apparatusKind !== 'cable_head') {
     return null;
+  }
+  // K5-A: ogranicznik z aparatu BEZ kompozytu `bayRef#kind` (scena v3 niesie
+  // w `elementId` ref POLA macierzystego — `meta.ownerRef = bayRef`,
+  // `scene/buildScene.ts`; ta sama konwencja co gałąź nawigacyjna
+  // `ACTION_TO_SCREEN` niżej) — operacja add_surge_arrester_sn dostaje
+  // kontekst pola (field_ref), nie aparatu.
+  if (actionId === 'add-arrester' && operationKind === 'apparatus') {
+    operationKind = 'bay';
+  }
+  // K5-A: szyna SN stacji na scenie v3 to kompozyt `${stationRef}#sn-bus` —
+  // rozwiązujemy kanoniczny Bus ref realnym FK `substation.bus_refs`
+  // (szyna GPZ niesie kanoniczny ref już z `meta.busRef` w Workspace).
+  if (kind === 'section' && (actionId === 'add-compensator' || actionId === 'add-arrester')) {
+    operationElementId = resolveCanonicalSectionBusRef(operationElementId, snapshot);
   }
 
   const elementType = elementTypeForSldKind(operationKind);
@@ -312,6 +495,13 @@ export function buildSldOperationContext(
     'insert-sectional': 'insert_section_switch_sn',
     'add-load': 'add_nn_load',
     'set-switch-state': 'set_normal_open_point',
+    // K5-A (H-4): trzy kreatory-wyspy dostają wejścia z żywego menu kanwy —
+    // realne operacje domenowe (operationFormRegistry + operationContext już
+    // je obsługują; brakowało WYŁĄCZNIE tych wpisów).
+    'add-compensator': 'add_shunt_compensator_sn',
+    'add-arrester': 'add_surge_arrester_sn',
+    'add-genset': 'add_genset_nn',
+    'add-ups': 'add_ups_nn',
   };
   const op = opByAction[actionId];
   if (!op) return null;
@@ -333,6 +523,19 @@ export function buildSldOperationContext(
   if (actionId === 'conscious-split-on-segment') {
     extraContext.split_mode = 'explicit_preview_required';
     extraContext.split_label = 'Świadomy podział odcinka';
+  }
+  // Karta S9-5: ciąg z GPZ / z szyny sekcji wychodzi przez WOLNE POLE LINIOWE
+  // rozdzielni — patrz `resolveGpzTrunkStartFieldRef`. Bez `field_ref` kreator
+  // magistrali nie ma punktu startu i zapis jest w nim trwale zablokowany.
+  if (actionId === 'continue-trunk' && (kind === 'gpz' || kind === 'section')) {
+    const fieldRef = resolveGpzTrunkStartFieldRef(
+      snapshot,
+      stationRefOfBusOrSource(snapshot, operationElementId),
+    );
+    // Brak wolnego pola liniowego = brak operacji (menu blokuje pozycję z
+    // uczciwym powodem, patrz `getMenuActions`), nigdy kreator bez startu.
+    if (!fieldRef) return null;
+    extraContext.field_ref = fieldRef;
   }
 
   return {

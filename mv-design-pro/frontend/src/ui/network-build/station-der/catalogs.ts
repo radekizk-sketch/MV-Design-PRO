@@ -22,6 +22,18 @@
  * tylko jako pozycja katalogowa użytkownika.
  */
 
+/**
+ * Wersja katalogów = DATA PRZEGLĄDU PROWENIENCJI (ISO-8601), nie wymyślony numer.
+ *
+ * Do karty K-Q pozycje deklarowały `catalog_version: AUDIT2_CATALOG_VERSION` — numer, który nie
+ * odpowiadał żadnemu wydaniu żadnego źródła i którego nie dało się z niczym
+ * skonfrontować. Wersja jest teraz MIERZALNA: to dzień, w którym każdą pozycję
+ * zestawiono ze źródłem (albo z niego usunięto). Wartość jest identyczna ze stałą
+ * `AUDIT2_CATALOG_VERSION` w backendzie (`network_model/catalog/audit2_catalogs.py`),
+ * bo backend jest autorytetem danych, a ten plik jego mirrorem.
+ */
+export const AUDIT2_CATALOG_VERSION = '2026-08-14';
+
 // =============================================================================
 // 1. NcRfgProfileCatalog
 // =============================================================================
@@ -94,7 +106,7 @@ export const NC_RFG_PROFILE_CATALOG: ReadonlyArray<NcRfgProfileItem> = Object.fr
   {
     id: 'ncrfg_pse',
     catalog_namespace: 'nc_rfg_profile',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     operator_code: 'PSE',
     label_pl: 'PSE — Polskie Sieci Elektroenergetyczne',
     description_pl:
@@ -111,7 +123,7 @@ export const NC_RFG_PROFILE_CATALOG: ReadonlyArray<NcRfgProfileItem> = Object.fr
   {
     id: 'ncrfg_energa',
     catalog_namespace: 'nc_rfg_profile',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     operator_code: 'Energa',
     label_pl: 'Energa-Operator',
     description_pl: 'IRiESD Energa-Operator. Lokalne wymagania NC RfG dla przyłączeń SN/nN.',
@@ -127,7 +139,7 @@ export const NC_RFG_PROFILE_CATALOG: ReadonlyArray<NcRfgProfileItem> = Object.fr
   {
     id: 'ncrfg_tauron',
     catalog_namespace: 'nc_rfg_profile',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     operator_code: 'Tauron',
     label_pl: 'Tauron Dystrybucja',
     description_pl: 'IRiESD Tauron Dystrybucja. Profil dla Polski południowej.',
@@ -143,7 +155,7 @@ export const NC_RFG_PROFILE_CATALOG: ReadonlyArray<NcRfgProfileItem> = Object.fr
   {
     id: 'ncrfg_enea',
     catalog_namespace: 'nc_rfg_profile',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     operator_code: 'Enea',
     label_pl: 'Enea Operator',
     description_pl: 'IRiESD Enea Operator. Profil dla Polski zachodniej i centralnej.',
@@ -159,7 +171,7 @@ export const NC_RFG_PROFILE_CATALOG: ReadonlyArray<NcRfgProfileItem> = Object.fr
   {
     id: 'ncrfg_pge',
     catalog_namespace: 'nc_rfg_profile',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     operator_code: 'PGE',
     label_pl: 'PGE Dystrybucja',
     description_pl: 'IRiESD PGE Dystrybucja. Profil bazowy ze zwiększonym wymogiem dla HVRT.',
@@ -235,7 +247,7 @@ export const LVRT_CURVE_CATALOG: ReadonlyArray<LvrtCurveItem> = Object.freeze([
   {
     id: 'lvrt_pse_b',
     catalog_namespace: 'lvrt_curve',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     label_pl: 'LVRT — PSE NC RfG, moduł B',
     operator_code: 'PSE',
     module_type: 'B',
@@ -245,7 +257,7 @@ export const LVRT_CURVE_CATALOG: ReadonlyArray<LvrtCurveItem> = Object.freeze([
   {
     id: 'lvrt_energa_b',
     catalog_namespace: 'lvrt_curve',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     label_pl: 'LVRT — Energa-Operator, moduł B',
     operator_code: 'Energa',
     module_type: 'B',
@@ -255,7 +267,7 @@ export const LVRT_CURVE_CATALOG: ReadonlyArray<LvrtCurveItem> = Object.freeze([
   {
     id: 'lvrt_tauron_b',
     catalog_namespace: 'lvrt_curve',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     label_pl: 'LVRT — Tauron Dystrybucja, moduł B',
     operator_code: 'Tauron',
     module_type: 'B',
@@ -265,7 +277,7 @@ export const LVRT_CURVE_CATALOG: ReadonlyArray<LvrtCurveItem> = Object.freeze([
   {
     id: 'lvrt_enea_b',
     catalog_namespace: 'lvrt_curve',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     label_pl: 'LVRT - Enea Operator, moduł B',
     operator_code: 'Enea',
     module_type: 'B',
@@ -275,7 +287,7 @@ export const LVRT_CURVE_CATALOG: ReadonlyArray<LvrtCurveItem> = Object.freeze([
   {
     id: 'lvrt_pge_b',
     catalog_namespace: 'lvrt_curve',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     label_pl: 'LVRT — PGE Dystrybucja, moduł B',
     operator_code: 'PGE',
     module_type: 'B',
@@ -286,7 +298,7 @@ export const LVRT_CURVE_CATALOG: ReadonlyArray<LvrtCurveItem> = Object.freeze([
   {
     id: 'lvrt_pse_c',
     catalog_namespace: 'lvrt_curve',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     label_pl: 'LVRT — PSE NC RfG, moduł C (10-50 MW)',
     operator_code: 'PSE',
     module_type: 'C',
@@ -303,7 +315,7 @@ export const LVRT_CURVE_CATALOG: ReadonlyArray<LvrtCurveItem> = Object.freeze([
   {
     id: 'lvrt_pse_d',
     catalog_namespace: 'lvrt_curve',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     label_pl: 'LVRT — PSE NC RfG, moduł D (>50 MW)',
     operator_code: 'PSE',
     module_type: 'D',
@@ -323,7 +335,7 @@ export const HVRT_CURVE_CATALOG: ReadonlyArray<HvrtCurveItem> = Object.freeze([
   {
     id: 'hvrt_pse_b',
     catalog_namespace: 'hvrt_curve',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     label_pl: 'HVRT — PSE NC RfG, moduł B',
     operator_code: 'PSE',
     module_type: 'B',
@@ -333,7 +345,7 @@ export const HVRT_CURVE_CATALOG: ReadonlyArray<HvrtCurveItem> = Object.freeze([
   {
     id: 'hvrt_pse_c',
     catalog_namespace: 'hvrt_curve',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     label_pl: 'HVRT — PSE NC RfG, moduł C (10-50 MW, surowsze wymagania)',
     operator_code: 'PSE',
     module_type: 'C',
@@ -344,7 +356,7 @@ export const HVRT_CURVE_CATALOG: ReadonlyArray<HvrtCurveItem> = Object.freeze([
   {
     id: 'hvrt_pse_d',
     catalog_namespace: 'hvrt_curve',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     label_pl: 'HVRT — PSE NC RfG, moduł D (>50 MW, najwyższe wymagania)',
     operator_code: 'PSE',
     module_type: 'D',
@@ -354,7 +366,7 @@ export const HVRT_CURVE_CATALOG: ReadonlyArray<HvrtCurveItem> = Object.freeze([
   {
     id: 'hvrt_energa_b',
     catalog_namespace: 'hvrt_curve',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     label_pl: 'HVRT — Energa-Operator, moduł B',
     operator_code: 'Energa',
     module_type: 'B',
@@ -364,7 +376,7 @@ export const HVRT_CURVE_CATALOG: ReadonlyArray<HvrtCurveItem> = Object.freeze([
   {
     id: 'hvrt_tauron_b',
     catalog_namespace: 'hvrt_curve',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     label_pl: 'HVRT — Tauron Dystrybucja, moduł B',
     operator_code: 'Tauron',
     module_type: 'B',
@@ -374,7 +386,7 @@ export const HVRT_CURVE_CATALOG: ReadonlyArray<HvrtCurveItem> = Object.freeze([
   {
     id: 'hvrt_enea_b',
     catalog_namespace: 'hvrt_curve',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     label_pl: 'HVRT - Enea Operator, moduł B',
     operator_code: 'Enea',
     module_type: 'B',
@@ -384,7 +396,7 @@ export const HVRT_CURVE_CATALOG: ReadonlyArray<HvrtCurveItem> = Object.freeze([
   {
     id: 'hvrt_pge_b',
     catalog_namespace: 'hvrt_curve',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     label_pl: 'HVRT — PGE Dystrybucja, moduł B',
     operator_code: 'PGE',
     module_type: 'B',
@@ -397,109 +409,92 @@ export const HVRT_CURVE_CATALOG: ReadonlyArray<HvrtCurveItem> = Object.freeze([
 // 2b. PfCurveCatalog (Naprawa eng.9 — audyt OZE: regulacja P(f))
 // =============================================================================
 //
-// NC RfG Art. 13 + 15: regulacja mocy czynnej w funkcji częstotliwości.
-// Moduły B/C/D wymagają droop'u (typowo 3-5%) i operacji w zakresie
-// [f_min, f_max] (typowo 47.5-51.5 Hz dla DER).
+// PROWENIENCJA (karta K-Q, 2026-08-14) — mirror wyrównany do stanu backendu.
+// Pozycje tego katalogu przypisywały KONKRETNE NASTAWY imiennie wskazanym
+// operatorom i typom modułu NC RfG („PSE NC RfG moduł B / C / D",
+// „Energa-Operator", „Enea Operator", „Tauron Dystrybucja"). Tekst
+// rozporządzenia (UE) 2016/631 sprawdzono u źródła i ono TAKICH NASTAW NIE
+// PRZYPISUJE: art. 13 ust. 2 podaje statyzm jako NASTAWIALNY w przedziale
+// 2-12% oraz próg częstotliwości nastawialny między 50,2 a 50,5 Hz. Statyzmy
+// 4% i 3% „dla modułu C i D" były zgadnięte, a strefy nieczułości 0,15 Hz
+// i 0,10 Hz były PONIŻEJ normatywnego minimum — czyli sprzeczne z normą, na
+// którą pozycja się powoływała. Pozycje operatorskie nie różniły się od
+// pierwszej ANI JEDNĄ liczbą; istniały wyłącznie po to, by nieść cudze imię.
+//
+// Stan po naprawie (identyczny z backendem — autorytetem danych): pozycja jest
+// WARIANTEM NASTAWY, który projektant wybiera, nazwanym swoim statyzmem.
+// Granice pochodzą z rozporządzenia i są egzekwowane po stronie backendu.
+// Źródło: https://eur-lex.europa.eu/legal-content/EN/TXT/HTML/?uri=CELEX:32016R0631
 
 export interface PfCurveItem {
   readonly id: string;
   readonly catalog_namespace: 'p_f_curve';
   readonly catalog_version: string;
   readonly label_pl: string;
-  readonly operator_code: 'PSE' | 'Energa' | 'Tauron' | 'Enea' | 'PGE';
-  readonly module_type: 'A' | 'B' | 'C' | 'D';
-  readonly f_ref_hz: number;          // 50 Hz nominal
-  readonly droop_percent: number;     // typowo 3-5%
-  readonly f_min_hz: number;          // 47.5 Hz typowo
-  readonly f_max_hz: number;          // 51.5 Hz typowo
-  readonly deadband_hz: number;       // ±0.2 Hz typowo
-  readonly source: 'NC_RfG_Annex_II' | 'IRiESD';
+  readonly f_ref_hz: number;
+  /** Statyzm [%] — parametr DEFINIUJĄCY wariant, w granicach art. 13 ust. 2 (2-12%). */
+  readonly droop_percent: number;
+  readonly f_min_hz: number;
+  readonly f_max_hz: number;
+  /** Strefa nieczułości [Hz] — próg z art. 13 ust. 2 (0,2-0,5 Hz nad 50 Hz). */
+  readonly deadband_hz: number;
 }
 
 export const PF_CURVE_CATALOG: ReadonlyArray<PfCurveItem> = Object.freeze([
   {
-    id: 'pf_pse_b',
+    id: 'pf_droop_5',
     catalog_namespace: 'p_f_curve',
-    catalog_version: '2024.1',
-    label_pl: 'P(f) — PSE NC RfG, moduł B (droop 5%)',
-    operator_code: 'PSE',
-    module_type: 'B',
+    catalog_version: AUDIT2_CATALOG_VERSION,
+    label_pl: 'P(f) · statyzm 5% · strefa nieczułości 0,2 Hz',
     f_ref_hz: 50.0,
     droop_percent: 5.0,
     f_min_hz: 47.5,
     f_max_hz: 51.5,
     deadband_hz: 0.2,
-    source: 'NC_RfG_Annex_II',
   },
   {
-    id: 'pf_pse_c',
+    id: 'pf_droop_4',
     catalog_namespace: 'p_f_curve',
-    catalog_version: '2024.1',
-    label_pl: 'P(f) — PSE NC RfG, moduł C (droop 4%)',
-    operator_code: 'PSE',
-    module_type: 'C',
+    catalog_version: AUDIT2_CATALOG_VERSION,
+    label_pl: 'P(f) · statyzm 4% · strefa nieczułości 0,2 Hz',
     f_ref_hz: 50.0,
     droop_percent: 4.0,
     f_min_hz: 47.5,
     f_max_hz: 51.5,
-    deadband_hz: 0.15,
-    source: 'NC_RfG_Annex_II',
+    deadband_hz: 0.2,
   },
   {
-    id: 'pf_pse_d',
+    id: 'pf_droop_3',
     catalog_namespace: 'p_f_curve',
-    catalog_version: '2024.1',
-    label_pl: 'P(f) — PSE NC RfG, moduł D (droop 3%, FCR-N capable)',
-    operator_code: 'PSE',
-    module_type: 'D',
+    catalog_version: AUDIT2_CATALOG_VERSION,
+    label_pl: 'P(f) · statyzm 3% · strefa nieczułości 0,2 Hz',
     f_ref_hz: 50.0,
     droop_percent: 3.0,
     f_min_hz: 47.5,
     f_max_hz: 51.5,
-    deadband_hz: 0.10,
-    source: 'NC_RfG_Annex_II',
+    deadband_hz: 0.2,
   },
   {
-    id: 'pf_energa_b',
+    id: 'pf_droop_2',
     catalog_namespace: 'p_f_curve',
-    catalog_version: '2024.1',
-    label_pl: 'P(f) — Energa-Operator, moduł B',
-    operator_code: 'Energa',
-    module_type: 'B',
+    catalog_version: AUDIT2_CATALOG_VERSION,
+    label_pl: 'P(f) · statyzm 2% · strefa nieczułości 0,2 Hz (najostrzejszy nastawialny)',
     f_ref_hz: 50.0,
-    droop_percent: 5.0,
+    droop_percent: 2.0,
     f_min_hz: 47.5,
     f_max_hz: 51.5,
-    deadband_hz: 0.20,
-    source: 'IRiESD',
+    deadband_hz: 0.2,
   },
   {
-    id: 'pf_enea_b',
+    id: 'pf_droop_12',
     catalog_namespace: 'p_f_curve',
-    catalog_version: '2024.1',
-    label_pl: 'P(f) - Enea Operator, moduł B',
-    operator_code: 'Enea',
-    module_type: 'B',
+    catalog_version: AUDIT2_CATALOG_VERSION,
+    label_pl: 'P(f) · statyzm 12% · strefa nieczułości 0,5 Hz (najłagodniejszy nastawialny)',
     f_ref_hz: 50.0,
-    droop_percent: 5.0,
+    droop_percent: 12.0,
     f_min_hz: 47.5,
     f_max_hz: 51.5,
-    deadband_hz: 0.20,
-    source: 'IRiESD',
-  },
-  {
-    id: 'pf_tauron_b',
-    catalog_namespace: 'p_f_curve',
-    catalog_version: '2024.1',
-    label_pl: 'P(f) — Tauron Dystrybucja, moduł B',
-    operator_code: 'Tauron',
-    module_type: 'B',
-    f_ref_hz: 50.0,
-    droop_percent: 5.0,
-    f_min_hz: 47.5,
-    f_max_hz: 51.5,
-    deadband_hz: 0.20,
-    source: 'IRiESD',
+    deadband_hz: 0.5,
   },
 ]);
 
@@ -520,7 +515,7 @@ export const LV_VOLTAGE_LEVEL_CATALOG: ReadonlyArray<LvVoltageLevelItem> = Objec
   {
     id: 'lv_0_23kV',
     catalog_namespace: 'lv_voltage_level',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     nominal_kv: 0.23,
     label_pl: '0,23 kV (jednofazowe nn)',
     typical_use_pl: 'Sieć jednofazowa odbiorców indywidualnych.',
@@ -528,7 +523,7 @@ export const LV_VOLTAGE_LEVEL_CATALOG: ReadonlyArray<LvVoltageLevelItem> = Objec
   {
     id: 'lv_0_4kV',
     catalog_namespace: 'lv_voltage_level',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     nominal_kv: 0.4,
     label_pl: '0,4 kV (standard nn)',
     typical_use_pl: 'Standardowe rozdzielnice odbiorcze SN/nN.',
@@ -536,7 +531,7 @@ export const LV_VOLTAGE_LEVEL_CATALOG: ReadonlyArray<LvVoltageLevelItem> = Objec
   {
     id: 'lv_0_69kV',
     catalog_namespace: 'lv_voltage_level',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     nominal_kv: 0.69,
     label_pl: '0,69 kV (przemysłowe nn)',
     typical_use_pl: 'Sieć przemysłowa, falowniki PV string-level.',
@@ -544,7 +539,7 @@ export const LV_VOLTAGE_LEVEL_CATALOG: ReadonlyArray<LvVoltageLevelItem> = Objec
   {
     id: 'lv_1kV',
     catalog_namespace: 'lv_voltage_level',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     nominal_kv: 1.0,
     label_pl: '1 kV (specjalne nn)',
     typical_use_pl: 'PV/BESS klastrowe na 1 kV.',
@@ -552,7 +547,7 @@ export const LV_VOLTAGE_LEVEL_CATALOG: ReadonlyArray<LvVoltageLevelItem> = Objec
   {
     id: 'lv_6kV',
     catalog_namespace: 'lv_voltage_level',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     nominal_kv: 6.0,
     label_pl: '6 kV (sieć przemysłowa SN dolna)',
     typical_use_pl: 'Sieć przemysłowa silnikowa 6 kV (SN dolne).',
@@ -677,6 +672,21 @@ export const CONNECTION_VARIANT_CATALOG: ReadonlyArray<ConnectionVariantItem> = 
 //
 // Punkt uziemienia neutralnego transformatora 110/SN (lub stacji SN-SN).
 // Decyduje o impedancji Z₀ sieci SN i kształcie obliczeń SC1F/SC2FG.
+//
+// PROWENIENCJA (karta K-O, 2026-08-14) — usunięto dwa pola tej samej klasy, co
+// zmyślone pasmo wkładki SN:
+//   * `typical_ik1_a_range` — ZAKRES PRĄDU ZWARCIA DOZIEMNEGO bez źródła,
+//     pokazywany użytkownikowi na dwóch ekranach jako „I_k1 typowo 5000-25000 A".
+//     Liczba, na której projektant mógłby oprzeć dobór zabezpieczeń
+//     ziemnozwarciowych, a która nie pochodziła znikąd. Prąd I_k1 tej sieci
+//     wylicza solver SC1F z realnej impedancji Z₀ modelu — „typowy zakres"
+//     z tabeli konkurował z wynikiem obliczeń i nie miał czym tego wygrać.
+//   * `typical_operators_pl` — przypisanie praktyki ruchowej imiennie wskazanym
+//     operatorom (PGE Dystrybucja, Energa-Operator, Tauron, Enea, „PSE GPZ")
+//     bez cytatu z IRiESD. Bez konsumenta produkcyjnego.
+// Imiona operatorów usunięto też z `description_pl`. Zostaje `r_ohm`/`x_ohm` —
+// to parametr DEFINIUJĄCY wariant (widnieje w jego nazwie), czyli wybór
+// projektanta, a nie cudza zmierzona własność.
 
 export interface MvNeutralGroundingItem {
   readonly id: string;
@@ -685,83 +695,68 @@ export interface MvNeutralGroundingItem {
   readonly grounding_type: 'isolated' | 'petersen_coil' | 'resistor_grounded' | 'directly_grounded';
   readonly label_pl: string;
   readonly description_pl: string;
-  /** Typowa rezystancja uziemienia [Ω] (gdy resistor_grounded). */
+  /** Rezystancja uziemienia [Ω] definiująca wariant (gdy resistor_grounded). */
   readonly r_ohm?: number;
-  /** Typowa reaktancja uziemienia [Ω] (gdy petersen_coil — Lp = 1/(3·ω·C₀)). */
+  /** Reaktancja uziemienia [Ω] definiująca wariant (petersen_coil — Lp = 1/(3·ω·C₀)). */
   readonly x_ohm?: number;
-  /** Typowy zakres prądu zwarcia 1-fazowego doziemnego [A]. */
-  readonly typical_ik1_a_range: { min: number; max: number };
-  /** Typowa praktyka operatorów. */
-  readonly typical_operators_pl: string;
 }
 
 export const MV_NEUTRAL_GROUNDING_CATALOG: ReadonlyArray<MvNeutralGroundingItem> = Object.freeze([
   {
     id: 'mng_isolated',
     catalog_namespace: 'mv_neutral_grounding',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     grounding_type: 'isolated',
     label_pl: 'Sieć izolowana (bez uziemienia neutralnego)',
     description_pl:
       'Punkt neutralny transformatora 110/SN nie jest uziemiony. Prąd zwarcia '
-      + '1-fazowego doziemnego jest ograniczony tylko pojemnością sieci. '
-      + 'Typowe dla starych sieci 15 kV w Polsce (PGE rural, fragmenty Tauron).',
-    typical_ik1_a_range: { min: 5, max: 50 },
-    typical_operators_pl: 'PGE Dystrybucja (sieci wiejskie 15 kV)',
+      + '1-fazowego doziemnego jest ograniczony tylko pojemnością sieci.',
   },
   {
     id: 'mng_petersen',
     catalog_namespace: 'mv_neutral_grounding',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     grounding_type: 'petersen_coil',
     label_pl: 'Sieć skompensowana (cewka Petersena PCK)',
     description_pl:
       'Punkt neutralny uziemiony przez dławik kompensacyjny (cewkę Petersena). '
       + 'Lp = 1 / (3·ω·C₀) gdzie C₀ jest pojemnością sieci. W stanie '
-      + 'kompensacji Ik1 ≈ 0. Standard nowoczesny — większość sieci 15-30 kV.',
-    typical_ik1_a_range: { min: 1, max: 20 },
-    typical_operators_pl: 'Energa-Operator, Tauron, Enea, PGE (sieci miejskie)',
+      + 'kompensacji prąd zwarcia doziemnego jest bliski zeru.',
   },
   {
     id: 'mng_resistor_low',
     catalog_namespace: 'mv_neutral_grounding',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     grounding_type: 'resistor_grounded',
-    label_pl: 'Sieć uziemiona przez rezystor — niski (R≈7 Ω, Ik1≈300 A)',
+    label_pl: 'Sieć uziemiona przez rezystor — niski (R≈7 Ω)',
     description_pl:
-      'Punkt neutralny uziemiony przez rezystor 7 Ω. Ogranicza Ik1 do około '
-      + '300 A (skuteczne wykrycie zwarć doziemnych przez 51N). Stosowane '
+      'Punkt neutralny uziemiony przez rezystor 7 Ω — ogranicza prąd zwarcia '
+      + 'doziemnego na tyle, by pozostał wykrywalny przez 51N. Stosowane '
       + 'w sieciach kablowych miejskich.',
     r_ohm: 7,
-    typical_ik1_a_range: { min: 250, max: 350 },
-    typical_operators_pl: 'PSE GPZ, sieci kablowe miejskie 20 kV',
   },
   {
     id: 'mng_resistor_medium',
     catalog_namespace: 'mv_neutral_grounding',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     grounding_type: 'resistor_grounded',
-    label_pl: 'Sieć uziemiona przez rezystor — średni (R≈40 Ω, Ik1≈100 A)',
+    label_pl: 'Sieć uziemiona przez rezystor — średni (R≈40 Ω)',
     description_pl:
       'Punkt neutralny uziemiony przez rezystor 40 Ω. Kompromis między '
       + 'wykrywalnością zwarć a ochroną sprzętu. Stosowane w sieciach '
       + 'mieszanych kabel/napowietrzna.',
     r_ohm: 40,
-    typical_ik1_a_range: { min: 80, max: 120 },
-    typical_operators_pl: 'OSD regionalni, sieci 15-20 kV mieszane',
   },
   {
     id: 'mng_directly',
     catalog_namespace: 'mv_neutral_grounding',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     grounding_type: 'directly_grounded',
     label_pl: 'Sieć uziemiona bezpośrednio (Z=0)',
     description_pl:
       'Punkt neutralny uziemiony bezpośrednio. Ik1 maksymalne (porównywalne '
       + 'z Ik3). Rzadko stosowane w SN — głównie w przemysłowych sieciach '
       + 'specjalnych. Zwiększa wymagania na zabezpieczenia i sprzęt.',
-    typical_ik1_a_range: { min: 5000, max: 25000 },
-    typical_operators_pl: 'Sieci przemysłowe specjalne, USA',
   },
 ]);
 
@@ -896,11 +891,37 @@ export const STATION_TEMPLATE_CATALOG: ReadonlyArray<StationTemplateItem> = Obje
 ]);
 
 // =============================================================================
-// 6. PV / BESS / FW device catalogs (frontend snapshot)
+// 6. PV / BESS / FW device catalogs (mirror backendu)
 // =============================================================================
-// Te katalogi są snapshotami backendowymi (mv_converter_catalog,
-// wind_turbines/catalog, der_dynamic). Przenoszone tu dla deterministycznych
-// dropdownów i fix actions.
+// Te katalogi są mirrorami backendowego `mv_converter_catalog.py` — z niego
+// pochodzą identyfikatory pozycji, moce znamionowe i oznaczenia wyrobu.
+//
+// PROWENIENCJA (karta K-Q, 2026-08-14). Mirror niósł pola, których backend NIE
+// MA i których nie da się nikomu przypisać:
+//   * `fault_current_capability_pu` — graniczny prąd zwarciowy falownika/turbiny
+//     w jednostkach względnych, POKAZYWANY użytkownikowi jako „1,10 × In". Taką
+//     liczbę podaje wyłącznie karta katalogowa konkretnego wyrobu; tu była
+//     wpisana z ręki (a kreator dokładał do niej własną fabrykację: „BESS → 1,2,
+//     wiatr → 1,1, reszta → 1,1"). Udział źródła w prądzie zwarcia liczy solver
+//     z danych modelu, a nie ta tabela.
+//   * `transient_short_circuit_pu` — to samo dla stanu przejściowego DFIG.
+//   * `hub_height_m`, `rotor_diameter_m`, `generator_type` — dane mechaniczne
+//     i typ generatora turbiny; backend ich nie niesie, w repo nie ma karty
+//     producenta, a w UI nie miały konsumenta.
+//   * `cycle_life` oraz imię producenta baterii — backend nie ma katalogu
+//     baterii w ogóle, więc „BYD Battery-Box Pro" i „6000 cykli" nie miały
+//     autorytetu; pozycja została tym, czym jest: oznaczeniem wariantu
+//     (chemia + pojemność + napięcie DC), które projektant wybiera.
+//
+// Pozycje niosą teraz status weryfikacji i źródło DOKŁADNIE takie, jakie ma
+// backend — czyli mówią wprost, że to profil referencyjny, a nie odczyt z karty
+// katalogowej producenta.
+
+/** Status i źródło pozycji — identyczne z `params` pozycji w backendzie. */
+const PROFIL_REFERENCYJNY = {
+  verification_status: 'REFERENCYJNY',
+  source_reference: 'Katalog przeksztaltnikow MV-DESIGN-PRO / profil przemyslowy V1',
+} as const;
 
 export interface PvInverterItem {
   readonly id: string;
@@ -910,65 +931,66 @@ export interface PvInverterItem {
   readonly manufacturer: string;
   readonly nominal_power_kw: number;
   readonly nominal_voltage_kv: number;
-  readonly fault_current_capability_pu: number;
   readonly applicable_module_types: readonly ('A' | 'B' | 'C' | 'D')[];
+  readonly verification_status: string;
+  readonly source_reference: string;
 }
 
 export const PV_INVERTER_CATALOG: ReadonlyArray<PvInverterItem> = Object.freeze([
   {
     id: 'pv_inv_catalog_50',
     catalog_namespace: 'pv_inverter',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     label_pl: 'Pakiet katalogowy PV 50 (50 kW · 0,4 kV)',
     manufacturer: 'MV-DESIGN-PRO',
     nominal_power_kw: 50,
     nominal_voltage_kv: 0.4,
-    fault_current_capability_pu: 1.05,
     applicable_module_types: ['A', 'B'],
+    ...PROFIL_REFERENCYJNY,
   },
   {
     id: 'pv_inv_sma_2500',
     catalog_namespace: 'pv_inverter',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     label_pl: 'SMA Sunny Central 2500-EV (2 500 kW · 0,69 kV)',
     manufacturer: 'SMA',
     nominal_power_kw: 2500,
     nominal_voltage_kv: 0.69,
-    fault_current_capability_pu: 1.1,
     applicable_module_types: ['B', 'C'],
+    ...PROFIL_REFERENCYJNY,
   },
   {
     id: 'pv_inv_huawei_185',
     catalog_namespace: 'pv_inverter',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     label_pl: 'Huawei SUN2000-185KTL (185 kW · 0,4 kV)',
     manufacturer: 'Huawei',
     nominal_power_kw: 185,
     nominal_voltage_kv: 0.4,
-    fault_current_capability_pu: 1.05,
     applicable_module_types: ['A', 'B'],
+    ...PROFIL_REFERENCYJNY,
   },
   {
     id: 'pv_inv_system_1000',
     catalog_namespace: 'pv_inverter',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     label_pl: 'Pakiet katalogowy PV 1000 (1 000 kW · 0,69 kV)',
     manufacturer: 'MV-DESIGN-PRO',
     nominal_power_kw: 1000,
     nominal_voltage_kv: 0.69,
-    fault_current_capability_pu: 1.10,
     applicable_module_types: ['B'],
+    ...PROFIL_REFERENCYJNY,
   },
   {
     id: 'pv_inv_fimer_3000',
     catalog_namespace: 'pv_inverter',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     label_pl: 'FIMER PVS-3000-CSE (3 000 kW · 0,69 kV)',
     manufacturer: 'FIMER',
     nominal_power_kw: 3000,
     nominal_voltage_kv: 0.69,
-    fault_current_capability_pu: 1.15,
     applicable_module_types: ['B', 'C'],
+    ...PROFIL_REFERENCYJNY,
   },
 ]);
 
@@ -982,34 +1004,34 @@ export interface BessPcsItem {
   readonly nominal_voltage_kv: number;
   readonly four_quadrant: boolean;
   readonly grid_forming_capable: boolean;
-  /** Naprawa A.4: limit prądu zwarciowego (typowo 1.05-1.20×In). */
-  readonly fault_current_capability_pu: number;
+  readonly verification_status: string;
+  readonly source_reference: string;
 }
 
 export const BESS_PCS_CATALOG: ReadonlyArray<BessPcsItem> = Object.freeze([
   {
     id: 'bess_pcs_sma_2200',
     catalog_namespace: 'bess_pcs',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     label_pl: 'SMA Sunny Central Storage 2200 (2 200 kW · 0,69 kV)',
     manufacturer: 'SMA',
     nominal_power_kw: 2200,
     nominal_voltage_kv: 0.69,
     four_quadrant: true,
     grid_forming_capable: true,
-    fault_current_capability_pu: 1.20,
+    ...PROFIL_REFERENCYJNY,
   },
   {
     id: 'bess_pcs_abb_500',
     catalog_namespace: 'bess_pcs',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     label_pl: 'ABB PCS100 ESS (500 kW · 0,4 kV)',
     manufacturer: 'ABB',
     nominal_power_kw: 500,
     nominal_voltage_kv: 0.4,
     four_quadrant: true,
     grid_forming_capable: false,
-    fault_current_capability_pu: 1.10,
+    ...PROFIL_REFERENCYJNY,
   },
 ]);
 
@@ -1018,35 +1040,29 @@ export interface BessBatteryItem {
   readonly catalog_namespace: 'bess_battery';
   readonly catalog_version: string;
   readonly label_pl: string;
-  readonly manufacturer: string;
   readonly chemistry: 'LFP' | 'NMC' | 'LTO';
   readonly capacity_kwh: number;
   readonly nominal_voltage_v: number;
-  readonly cycle_life: number;
 }
 
 export const BESS_BATTERY_CATALOG: ReadonlyArray<BessBatteryItem> = Object.freeze([
   {
     id: 'bess_bat_byd_2880',
     catalog_namespace: 'bess_battery',
-    catalog_version: '2024.1',
-    label_pl: 'BYD Battery-Box Pro LFP (2 880 kWh / 1 230 V)',
-    manufacturer: 'BYD',
+    catalog_version: AUDIT2_CATALOG_VERSION,
+    label_pl: 'Bateria LFP 2 880 kWh · 1 230 V DC',
     chemistry: 'LFP',
     capacity_kwh: 2880,
     nominal_voltage_v: 1230,
-    cycle_life: 6000,
   },
   {
     id: 'bess_bat_catl_5000',
     catalog_namespace: 'bess_battery',
-    catalog_version: '2024.1',
-    label_pl: 'CATL EnerC LFP (5 000 kWh / 1 500 V)',
-    manufacturer: 'CATL',
+    catalog_version: AUDIT2_CATALOG_VERSION,
+    label_pl: 'Bateria LFP 5 000 kWh · 1 500 V DC',
     chemistry: 'LFP',
     capacity_kwh: 5000,
     nominal_voltage_v: 1500,
-    cycle_life: 8000,
   },
 ]);
 
@@ -1058,55 +1074,40 @@ export interface WindTurbineItem {
   readonly manufacturer: string;
   readonly model_code: string;
   readonly nominal_power_kw: number;
-  readonly hub_height_m: number;
-  readonly rotor_diameter_m: number;
-  readonly generator_type: 'PMSG' | 'DFIG' | 'SCIG';
-  /** Naprawa A.4: limit prądu zwarciowego (DFIG ma transient 4-6×In). */
-  readonly fault_current_capability_pu: number;
-  /** Transient short-circuit current ratio (only for DFIG). */
-  readonly transient_short_circuit_pu?: number;
+  readonly verification_status: string;
+  readonly source_reference: string;
 }
 
 export const WIND_TURBINE_CATALOG: ReadonlyArray<WindTurbineItem> = Object.freeze([
   {
     id: 'wt_vestas_v117_3450',
     catalog_namespace: 'wind_turbine',
-    catalog_version: '2024.1',
-    label_pl: 'Vestas V117-3.45 MW (3 450 kW · PMSG)',
+    catalog_version: AUDIT2_CATALOG_VERSION,
+    label_pl: 'Vestas V117-3.45 MW (3 450 kW)',
     manufacturer: 'Vestas',
     model_code: 'V117-3450',
     nominal_power_kw: 3450,
-    hub_height_m: 116.5,
-    rotor_diameter_m: 117,
-    generator_type: 'PMSG',
-    fault_current_capability_pu: 1.10,
+    ...PROFIL_REFERENCYJNY,
   },
   {
     id: 'wt_siemens_swt_2300_113',
     catalog_namespace: 'wind_turbine',
-    catalog_version: '2024.1',
-    label_pl: 'Siemens SWT-2.3-113 (2 300 kW · DFIG)',
+    catalog_version: AUDIT2_CATALOG_VERSION,
+    label_pl: 'Siemens SWT-2.3-113 (2 300 kW)',
     manufacturer: 'Siemens',
-    model_code: 'SWT-2300-113',
+    model_code: 'SWT-2.3-113',
     nominal_power_kw: 2300,
-    hub_height_m: 99.5,
-    rotor_diameter_m: 113,
-    generator_type: 'DFIG',
-    fault_current_capability_pu: 1.10,
-    transient_short_circuit_pu: 5.0,
+    ...PROFIL_REFERENCYJNY,
   },
   {
     id: 'wt_ge_158_5500',
     catalog_namespace: 'wind_turbine',
-    catalog_version: '2024.1',
-    label_pl: 'GE Cypress 5.5-158 (5 500 kW · PMSG)',
+    catalog_version: AUDIT2_CATALOG_VERSION,
+    label_pl: 'GE Cypress 5.5-158 (5 500 kW)',
     manufacturer: 'GE Renewable',
     model_code: 'Cypress-5500-158',
     nominal_power_kw: 5500,
-    hub_height_m: 161,
-    rotor_diameter_m: 158,
-    generator_type: 'PMSG',
-    fault_current_capability_pu: 1.10,
+    ...PROFIL_REFERENCYJNY,
   },
 ]);
 
@@ -1122,6 +1123,17 @@ export const WIND_TURBINE_CATALOG: ReadonlyArray<WindTurbineItem> = Object.freez
 //
 // Pozycje w katalogu są skojarzone z konkretnym device_catalog_ref poprzez
 // pole `applicable_device_ids`.
+//
+// PROWENIENCJA (karta K-Q, 2026-08-14). Pozycje nosiły w nazwie KONKRETNY WYRÓB
+// („SMA SC2500-EV", „ABB PCS100 ESS", „Vestas V117") i deklarowały jego graniczny
+// prąd zwarciowy — a więc przypisywały imiennemu producentowi liczby, których
+// żadna karta katalogowa nie potwierdzała. Pole `fault_current_capability_pu`
+// usunięto (to ta sama dana, którą karta usunęła z katalogów urządzeń), a nazwy
+// są dziś opisem WARIANTU MODELU ZWARCIOWEGO, nazwanym swoimi parametrami.
+// Składowe symetryczne zostają jako parametry DEFINIUJĄCE wariant, który
+// projektant wybiera; do projektu wykonawczego wymagają potwierdzenia kartą
+// przekształtnika — `applicable_device_ids` jest regułą domyślnego doboru, a nie
+// deklaracją, że tak zmierzył producent.
 
 export interface DerFaultCurrentDataItem {
   readonly id: string;
@@ -1142,8 +1154,6 @@ export interface DerFaultCurrentDataItem {
   readonly z0_z1_ratio: number;
   /** Stosunek R/X w punkcie generowania prądu zwarciowego. Dla κ. */
   readonly rx_ratio_at_terminal: number;
-  /** Limit prądu zwarciowego falownika (typowo 1.05-1.20 × In). */
-  readonly fault_current_capability_pu: number;
   /** Model contribution: voltage-source-behind-Zth albo current-source-limited. */
   readonly contribution_model: 'voltage_source' | 'current_source_limited';
 }
@@ -1152,9 +1162,9 @@ export const DER_FAULT_CURRENT_DATA_CATALOG: ReadonlyArray<DerFaultCurrentDataIt
   {
     id: 'fcd_pv_inv_sma_2500',
     catalog_namespace: 'der_fault_current_data',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     applicable_device_ids: ['pv_inv_sma_2500'],
-    label_pl: 'SMA SC2500-EV — model zwarciowy (current-source 1.10×In)',
+    label_pl: 'Model zwarciowy falownika PV · źródło prądowe z ograniczeniem · Z₀/Z₁ = 2,2',
     r1_pu: 0.05,
     x1_pu: 0.18,
     r2_pu: 0.05,
@@ -1163,15 +1173,14 @@ export const DER_FAULT_CURRENT_DATA_CATALOG: ReadonlyArray<DerFaultCurrentDataIt
     x0_pu: 0.40,
     z0_z1_ratio: 2.2,
     rx_ratio_at_terminal: 0.28,
-    fault_current_capability_pu: 1.10,
     contribution_model: 'current_source_limited',
   },
   {
     id: 'fcd_pv_inv_huawei_185',
     catalog_namespace: 'der_fault_current_data',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     applicable_device_ids: ['pv_inv_huawei_185'],
-    label_pl: 'Huawei SUN2000-185KTL — model zwarciowy (current-source 1.05×In)',
+    label_pl: 'Model zwarciowy falownika PV nN · źródło prądowe z ograniczeniem · Z₀/Z₁ = 2,1',
     r1_pu: 0.04,
     x1_pu: 0.15,
     r2_pu: 0.04,
@@ -1180,15 +1189,14 @@ export const DER_FAULT_CURRENT_DATA_CATALOG: ReadonlyArray<DerFaultCurrentDataIt
     x0_pu: 0.32,
     z0_z1_ratio: 2.1,
     rx_ratio_at_terminal: 0.27,
-    fault_current_capability_pu: 1.05,
     contribution_model: 'current_source_limited',
   },
   {
     id: 'fcd_pv_inv_fimer_3000',
     catalog_namespace: 'der_fault_current_data',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     applicable_device_ids: ['pv_inv_fimer_3000'],
-    label_pl: 'FIMER PVS-3000-CSE — model zwarciowy (current-source 1.15×In)',
+    label_pl: 'Model zwarciowy falownika PV dużej mocy · źródło prądowe · Z₀/Z₁ = 2,1',
     r1_pu: 0.05,
     x1_pu: 0.20,
     r2_pu: 0.05,
@@ -1197,15 +1205,14 @@ export const DER_FAULT_CURRENT_DATA_CATALOG: ReadonlyArray<DerFaultCurrentDataIt
     x0_pu: 0.42,
     z0_z1_ratio: 2.1,
     rx_ratio_at_terminal: 0.25,
-    fault_current_capability_pu: 1.15,
     contribution_model: 'current_source_limited',
   },
   {
     id: 'fcd_bess_pcs_sma_2200',
     catalog_namespace: 'der_fault_current_data',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     applicable_device_ids: ['bess_pcs_sma_2200'],
-    label_pl: 'SMA SCS-2200 — PCS BESS (4Q + grid-forming, 1.20×In)',
+    label_pl: 'Model zwarciowy PCS magazynu · przekształtnik tworzący napięcie · Z₀/Z₁ = 2,0',
     r1_pu: 0.04,
     x1_pu: 0.16,
     r2_pu: 0.04,
@@ -1214,15 +1221,14 @@ export const DER_FAULT_CURRENT_DATA_CATALOG: ReadonlyArray<DerFaultCurrentDataIt
     x0_pu: 0.32,
     z0_z1_ratio: 2.0,
     rx_ratio_at_terminal: 0.25,
-    fault_current_capability_pu: 1.20,
     contribution_model: 'voltage_source',
   },
   {
     id: 'fcd_bess_pcs_abb_500',
     catalog_namespace: 'der_fault_current_data',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     applicable_device_ids: ['bess_pcs_abb_500'],
-    label_pl: 'ABB PCS100 ESS — PCS BESS (4Q grid-following, 1.10×In)',
+    label_pl: 'Model zwarciowy PCS magazynu · przekształtnik podążający · Z₀/Z₁ = 2,0',
     r1_pu: 0.05,
     x1_pu: 0.18,
     r2_pu: 0.05,
@@ -1231,15 +1237,14 @@ export const DER_FAULT_CURRENT_DATA_CATALOG: ReadonlyArray<DerFaultCurrentDataIt
     x0_pu: 0.36,
     z0_z1_ratio: 2.0,
     rx_ratio_at_terminal: 0.28,
-    fault_current_capability_pu: 1.10,
     contribution_model: 'current_source_limited',
   },
   {
     id: 'fcd_wt_vestas_v117_3450',
     catalog_namespace: 'der_fault_current_data',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     applicable_device_ids: ['wt_vestas_v117_3450'],
-    label_pl: 'Vestas V117 (PMSG full-converter) — 1.10×In',
+    label_pl: 'Model zwarciowy turbiny z pełnym przekształtnikiem · Z₀/Z₁ = 2,0',
     r1_pu: 0.06,
     x1_pu: 0.20,
     r2_pu: 0.06,
@@ -1248,15 +1253,14 @@ export const DER_FAULT_CURRENT_DATA_CATALOG: ReadonlyArray<DerFaultCurrentDataIt
     x0_pu: 0.40,
     z0_z1_ratio: 2.0,
     rx_ratio_at_terminal: 0.30,
-    fault_current_capability_pu: 1.10,
     contribution_model: 'current_source_limited',
   },
   {
     id: 'fcd_wt_siemens_swt_2300',
     catalog_namespace: 'der_fault_current_data',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     applicable_device_ids: ['wt_siemens_swt_2300_113'],
-    label_pl: 'Siemens SWT-2.3 (DFIG) — 4-6×In transient + 1.10×In sustained',
+    label_pl: 'Model zwarciowy turbiny dwustronnie zasilanej (DFIG) · Z₀/Z₁ = 2,0',
     r1_pu: 0.025,
     x1_pu: 0.12,
     r2_pu: 0.025,
@@ -1265,15 +1269,14 @@ export const DER_FAULT_CURRENT_DATA_CATALOG: ReadonlyArray<DerFaultCurrentDataIt
     x0_pu: 0.24,
     z0_z1_ratio: 2.0,
     rx_ratio_at_terminal: 0.21,
-    fault_current_capability_pu: 1.10,
     contribution_model: 'voltage_source',
   },
   {
     id: 'fcd_wt_ge_158_5500',
     catalog_namespace: 'der_fault_current_data',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     applicable_device_ids: ['wt_ge_158_5500'],
-    label_pl: 'GE Cypress 5.5 (PMSG full-converter) — 1.10×In',
+    label_pl: 'Model zwarciowy turbiny z pełnym przekształtnikiem, duża moc · Z₀/Z₁ = 2,0',
     r1_pu: 0.06,
     x1_pu: 0.20,
     r2_pu: 0.06,
@@ -1282,7 +1285,6 @@ export const DER_FAULT_CURRENT_DATA_CATALOG: ReadonlyArray<DerFaultCurrentDataIt
     x0_pu: 0.40,
     z0_z1_ratio: 2.0,
     rx_ratio_at_terminal: 0.30,
-    fault_current_capability_pu: 1.10,
     contribution_model: 'current_source_limited',
   },
 ]);
@@ -1291,201 +1293,228 @@ export const DER_FAULT_CURRENT_DATA_CATALOG: ReadonlyArray<DerFaultCurrentDataIt
 // 7b. BlockTransformerCatalog (Naprawa B.5 — audyt projektanta SN)
 // =============================================================================
 //
-// Transformator dedykowany dla DER. W odróżnieniu od standardowego
-// transformatora SN/nN obsługuje również przekładnie SN/SN (np. 15/3 kV dla
-// turbinowni FW) oraz dedykowane konfiguracje dla farm PV/BESS.
+// PROWENIENCJA (karta K-Q, 2026-08-14) — mirror wyrównany do stanu backendu.
+// Pozycje niosły własny komplet danych elektrycznych transformatora oraz imię
+// producenta (ABB / Siemens / Schneider) doklejone do liczb, których żadna karta
+// katalogowa nie potwierdzała. Backend naprawił to przez USUNIĘCIE DRUGIEJ KOPII:
+// pozycja wskazuje typ w katalogu transformatorów (`transformer_type_ref`) i
+// wszystkie liczby pochodzą stamtąd razem z proweniencją tego typu
+// (`source_reference` + `verification_status`, obie widoczne poniżej).
 //
-// Zastosowanie:
-//   - PV po SN: 15/0.69 kV (string-level), 15/0.4 kV (centralny)
-//   - BESS po SN: 15/0.4 kV, 15/0.69 kV
-//   - FW dedykowany: 30/15 kV (turbinownia), 15/0.69 kV (turbina)
+// Dwie pozycje bez odpowiednika z proweniencją zniknęły: 3450 kVA (katalog ma
+// 3,15 i 4,0 MVA — podstawienie sąsiedniej mocy byłoby fałszowaniem znamionu)
+// oraz 30/15 kV 30 MVA (katalog nie ma żadnego typu na 30 kV). W zamian weszły
+// dwie oparte na realnych typach: 4 MVA oraz SN/SN 15/6,3 kV 10 MVA.
+//
+// `applicable_der_kinds` obejmuje wszystkie trzy rodzaje źródeł, bo typoszereg
+// w katalogu transformatorów sam nosi nazwę „Dyn11 PV/BESS/FW"; o dopasowaniu
+// decyduje napięcie i moc, nie rodzaj źródła.
 
 export interface BlockTransformerItem {
   readonly id: string;
   readonly catalog_namespace: 'block_transformer';
   readonly catalog_version: string;
   readonly label_pl: string;
-  readonly manufacturer: string;
+  /** Typ w katalogu transformatorów — JEDYNE źródło danych elektrycznych. */
+  readonly transformer_type_ref: string;
   readonly sn_kva: number;
-  /** Napięcie strony pierwotnej [kV]. */
   readonly hv_kv: number;
-  /** Napięcie strony wtórnej [kV]. SN/SN gdy lv_kv > 1.0. */
   readonly lv_kv: number;
   readonly uk_percent: number;
   readonly pk_kw: number;
   readonly p0_kw: number;
   readonly i0_percent: number;
   readonly vector_group: string;
-  /** Czy transformator obsługuje SN/SN (block dla turbinowni FW). */
+  /** Transformator SN/SN — strona dolna powyżej 1 kV. */
   readonly is_mv_to_mv: boolean;
-  /** Dla jakich rodzajów DER. */
   readonly applicable_der_kinds: ReadonlyArray<'PV' | 'BESS' | 'FW'>;
-  /** Czy ma izolację galwaniczną (wymagana dla BESS). */
+  /** Izolacja galwaniczna wynika z grupy połączeń. */
   readonly galvanic_isolation: boolean;
+  /** Proweniencja danych — wprost z pozycji katalogu transformatorów. */
+  readonly source_reference: string;
+  readonly verification_status: string;
 }
 
 export const BLOCK_TRANSFORMER_CATALOG: ReadonlyArray<BlockTransformerItem> = Object.freeze([
   {
     id: 'btr_pv_15_069_800',
     catalog_namespace: 'block_transformer',
-    catalog_version: '2024.1',
-    label_pl: 'PV transformator dedykowany 15/0,69 kV · 800 kVA · Dyn5',
-    manufacturer: 'ABB',
+    catalog_version: AUDIT2_CATALOG_VERSION,
+    label_pl: 'Transformator dedykowany 15/0,69 kV · 800 kVA · Dyn11',
+    transformer_type_ref: 'tr-sn-nn-15-0p69-0p8mva-dyn11-inverter',
     sn_kva: 800,
     hv_kv: 15,
     lv_kv: 0.69,
-    uk_percent: 6.0,
+    uk_percent: 6,
     pk_kw: 8.8,
-    p0_kw: 1.5,
-    i0_percent: 0.5,
-    vector_group: 'Dyn5',
+    p0_kw: 1.36,
+    i0_percent: 1.2,
+    vector_group: 'Dyn11',
     is_mv_to_mv: false,
-    applicable_der_kinds: ['PV', 'BESS'],
+    applicable_der_kinds: ['PV', 'BESS', 'FW'],
     galvanic_isolation: true,
+    source_reference: 'Referencyjny typoszereg transformatorow blokowych dla falownikow PV/BESS/FW',
+    verification_status: 'REFERENCYJNY',
   },
   {
     id: 'btr_pv_15_069_1000',
     catalog_namespace: 'block_transformer',
-    catalog_version: '2024.1',
-    label_pl: 'PV transformator dedykowany 15/0,69 kV · 1000 kVA · Dyn5',
-    manufacturer: 'ABB',
+    catalog_version: AUDIT2_CATALOG_VERSION,
+    label_pl: 'Transformator dedykowany 15/0,69 kV · 1000 kVA · Dyn11',
+    transformer_type_ref: 'tr-sn-nn-15-0p69-1mva-dyn11-inverter',
     sn_kva: 1000,
     hv_kv: 15,
     lv_kv: 0.69,
-    uk_percent: 6.0,
-    pk_kw: 10.6,
-    p0_kw: 1.8,
-    i0_percent: 0.45,
-    vector_group: 'Dyn5',
+    uk_percent: 6,
+    pk_kw: 11,
+    p0_kw: 1.7,
+    i0_percent: 1.2,
+    vector_group: 'Dyn11',
     is_mv_to_mv: false,
-    applicable_der_kinds: ['PV', 'BESS'],
+    applicable_der_kinds: ['PV', 'BESS', 'FW'],
     galvanic_isolation: true,
+    source_reference: 'Referencyjny typoszereg transformatorow blokowych dla falownikow PV/BESS/FW',
+    verification_status: 'REFERENCYJNY',
   },
   {
     id: 'btr_pv_15_069_1250',
     catalog_namespace: 'block_transformer',
-    catalog_version: '2024.1',
-    label_pl: 'PV transformator dedykowany 15/0,69 kV · 1250 kVA · Dyn5',
-    manufacturer: 'ABB',
+    catalog_version: AUDIT2_CATALOG_VERSION,
+    label_pl: 'Transformator dedykowany 15/0,69 kV · 1250 kVA · Dyn11',
+    transformer_type_ref: 'tr-sn-nn-15-0p69-1p25mva-dyn11-inverter',
     sn_kva: 1250,
     hv_kv: 15,
     lv_kv: 0.69,
-    uk_percent: 6.0,
-    pk_kw: 13.2,
-    p0_kw: 2.1,
-    i0_percent: 0.45,
-    vector_group: 'Dyn5',
+    uk_percent: 6,
+    pk_kw: 13.75,
+    p0_kw: 2.12,
+    i0_percent: 1.2,
+    vector_group: 'Dyn11',
     is_mv_to_mv: false,
-    applicable_der_kinds: ['PV', 'BESS'],
+    applicable_der_kinds: ['PV', 'BESS', 'FW'],
     galvanic_isolation: true,
+    source_reference: 'Referencyjny typoszereg transformatorow blokowych dla falownikow PV/BESS/FW',
+    verification_status: 'REFERENCYJNY',
   },
   {
     id: 'btr_pv_15_069_1600',
     catalog_namespace: 'block_transformer',
-    catalog_version: '2024.1',
-    label_pl: 'PV transformator dedykowany 15/0,69 kV · 1600 kVA · Dyn5',
-    manufacturer: 'ABB',
+    catalog_version: AUDIT2_CATALOG_VERSION,
+    label_pl: 'Transformator dedykowany 15/0,69 kV · 1600 kVA · Dyn11',
+    transformer_type_ref: 'tr-sn-nn-15-0p69-1p6mva-dyn11-inverter',
     sn_kva: 1600,
     hv_kv: 15,
     lv_kv: 0.69,
-    uk_percent: 6.0,
-    pk_kw: 16.8,
-    p0_kw: 2.6,
-    i0_percent: 0.4,
-    vector_group: 'Dyn5',
+    uk_percent: 6,
+    pk_kw: 17.6,
+    p0_kw: 2.72,
+    i0_percent: 1.2,
+    vector_group: 'Dyn11',
     is_mv_to_mv: false,
-    applicable_der_kinds: ['PV', 'BESS'],
+    applicable_der_kinds: ['PV', 'BESS', 'FW'],
     galvanic_isolation: true,
+    source_reference: 'Referencyjny typoszereg transformatorow blokowych dla falownikow PV/BESS/FW',
+    verification_status: 'REFERENCYJNY',
   },
   {
     id: 'btr_pv_15_069_2500',
     catalog_namespace: 'block_transformer',
-    catalog_version: '2024.1',
-    label_pl: 'PV transformator dedykowany 15/0,69 kV · 2500 kVA · Dyn5',
-    manufacturer: 'ABB',
+    catalog_version: AUDIT2_CATALOG_VERSION,
+    label_pl: 'Transformator dedykowany 15/0,69 kV · 2500 kVA · Dyn11',
+    transformer_type_ref: 'tr-sn-nn-15-0p69-2p5mva-dyn11-inverter',
     sn_kva: 2500,
     hv_kv: 15,
     lv_kv: 0.69,
-    uk_percent: 6.0,
-    pk_kw: 24.0,
-    p0_kw: 3.5,
-    i0_percent: 0.4,
-    vector_group: 'Dyn5',
+    uk_percent: 6,
+    pk_kw: 26.25,
+    p0_kw: 3.75,
+    i0_percent: 1,
+    vector_group: 'Dyn11',
     is_mv_to_mv: false,
-    applicable_der_kinds: ['PV', 'BESS'],
+    applicable_der_kinds: ['PV', 'BESS', 'FW'],
     galvanic_isolation: true,
+    source_reference: 'Referencyjny typoszereg transformatorow blokowych dla falownikow PV/BESS/FW',
+    verification_status: 'REFERENCYJNY',
   },
   {
     id: 'btr_pv_15_04_1000',
     catalog_namespace: 'block_transformer',
-    catalog_version: '2024.1',
-    label_pl: 'PV transformator dedykowany 15/0,4 kV · 1000 kVA · Dyn11',
-    manufacturer: 'Siemens',
+    catalog_version: AUDIT2_CATALOG_VERSION,
+    label_pl: 'Transformator dedykowany 15/0,4 kV · 1000 kVA · Dyn11',
+    transformer_type_ref: 'tr-sn-nn-15-04-1000kva-dyn11',
     sn_kva: 1000,
     hv_kv: 15,
     lv_kv: 0.4,
-    uk_percent: 6.0,
-    pk_kw: 11.0,
-    p0_kw: 1.6,
-    i0_percent: 0.6,
+    uk_percent: 6,
+    pk_kw: 11,
+    p0_kw: 1.7,
+    i0_percent: 1.2,
     vector_group: 'Dyn11',
     is_mv_to_mv: false,
-    applicable_der_kinds: ['PV', 'BESS'],
+    applicable_der_kinds: ['PV', 'BESS', 'FW'],
     galvanic_isolation: true,
+    source_reference: 'PN-EN 60076-11:2004 Tabl.A / ABB RESIBLOC katalog',
+    verification_status: 'ZWERYFIKOWANY',
   },
   {
     id: 'btr_bess_15_04_1600',
     catalog_namespace: 'block_transformer',
-    catalog_version: '2024.1',
-    label_pl: 'BESS transformator dedykowany 15/0,4 kV · 1600 kVA · Dyn11 (izolacja galwaniczna)',
-    manufacturer: 'Schneider',
+    catalog_version: AUDIT2_CATALOG_VERSION,
+    label_pl: 'Transformator dedykowany 15/0,4 kV · 1600 kVA · Dyn11',
+    transformer_type_ref: 'tr-sn-nn-15-04-1600kva-dyn11',
     sn_kva: 1600,
     hv_kv: 15,
     lv_kv: 0.4,
-    uk_percent: 6.5,
-    pk_kw: 16.5,
-    p0_kw: 2.4,
-    i0_percent: 0.5,
+    uk_percent: 6,
+    pk_kw: 17,
+    p0_kw: 2.5,
+    i0_percent: 0.9,
     vector_group: 'Dyn11',
     is_mv_to_mv: false,
-    applicable_der_kinds: ['BESS'],
+    applicable_der_kinds: ['PV', 'BESS', 'FW'],
     galvanic_isolation: true,
+    source_reference: 'PN-EN 60076-11:2004 Tabl.A + UE 2019/1783 Tier 2 / ABB RESIBLOC katalog',
+    verification_status: 'ZWERYFIKOWANY',
   },
   {
-    id: 'btr_fw_30_15_30000',
+    id: 'btr_der_15_069_4000',
     catalog_namespace: 'block_transformer',
-    catalog_version: '2024.1',
-    label_pl: 'FW transformator dedykowany 30/15 kV · 30 MVA · YNyn0 (turbinownia, SN/SN)',
-    manufacturer: 'ABB',
-    sn_kva: 30000,
-    hv_kv: 30,
-    lv_kv: 15,
-    uk_percent: 12.5,
-    pk_kw: 220.0,
-    p0_kw: 24.0,
-    i0_percent: 0.3,
-    vector_group: 'YNyn0',
-    is_mv_to_mv: true,
-    applicable_der_kinds: ['FW'],
-    galvanic_isolation: false,
-  },
-  {
-    id: 'btr_fw_15_069_3450',
-    catalog_namespace: 'block_transformer',
-    catalog_version: '2024.1',
-    label_pl: 'FW transformator dedykowany turbinowy 15/0,69 kV · 3450 kVA · Dyn11',
-    manufacturer: 'Siemens',
-    sn_kva: 3450,
+    catalog_version: AUDIT2_CATALOG_VERSION,
+    label_pl: 'Transformator dedykowany 15/0,69 kV · 4000 kVA · Dyn11',
+    transformer_type_ref: 'tr-sn-nn-15-0p69-4mva-dyn11-inverter',
+    sn_kva: 4000,
     hv_kv: 15,
     lv_kv: 0.69,
-    uk_percent: 6.0,
-    pk_kw: 33.0,
+    uk_percent: 7,
+    pk_kw: 38,
     p0_kw: 4.8,
-    i0_percent: 0.35,
+    i0_percent: 0.8,
     vector_group: 'Dyn11',
     is_mv_to_mv: false,
-    applicable_der_kinds: ['FW'],
+    applicable_der_kinds: ['PV', 'BESS', 'FW'],
     galvanic_isolation: true,
+    source_reference: 'Referencyjny typoszereg transformatorow blokowych dla falownikow PV/BESS/FW',
+    verification_status: 'REFERENCYJNY',
+  },
+  {
+    id: 'btr_der_15_063_10000',
+    catalog_namespace: 'block_transformer',
+    catalog_version: AUDIT2_CATALOG_VERSION,
+    label_pl: 'Transformator dedykowany SN/SN 15/6,3 kV · 10 MVA · Dyn11',
+    transformer_type_ref: 'tr-sn-nn-15-6p3-10mva-dyn11-inverter',
+    sn_kva: 10000,
+    hv_kv: 15,
+    lv_kv: 6.3,
+    uk_percent: 8,
+    pk_kw: 88,
+    p0_kw: 10,
+    i0_percent: 0.7,
+    vector_group: 'Dyn11',
+    is_mv_to_mv: true,
+    applicable_der_kinds: ['PV', 'BESS', 'FW'],
+    galvanic_isolation: true,
+    source_reference: 'Referencyjny typoszereg transformatorow blokowych dla falownikow PV/BESS/FW',
+    verification_status: 'REFERENCYJNY',
   },
 ]);
 
@@ -1525,7 +1554,7 @@ export const DER_DYNAMIC_MODEL_CATALOG: ReadonlyArray<DerDynamicModelItem> = Obj
   {
     id: 'dyn_pv_gfl_typical',
     catalog_namespace: 'der_dynamic_model',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     applicable_device_ids: ['pv_inv_sma_2500', 'pv_inv_huawei_185', 'pv_inv_fimer_3000'],
     label_pl: 'PV grid-following typowy (NC RfG: k=2, t_resp=20ms)',
     model_type: 'pv_grid_following',
@@ -1538,7 +1567,7 @@ export const DER_DYNAMIC_MODEL_CATALOG: ReadonlyArray<DerDynamicModelItem> = Obj
   {
     id: 'dyn_bess_gfm_4q',
     catalog_namespace: 'der_dynamic_model',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     applicable_device_ids: ['bess_pcs_sma_2200'],
     label_pl: 'BESS grid-forming 4Q (k=4, t_resp=5ms)',
     model_type: 'bess_grid_forming',
@@ -1551,7 +1580,7 @@ export const DER_DYNAMIC_MODEL_CATALOG: ReadonlyArray<DerDynamicModelItem> = Obj
   {
     id: 'dyn_bess_gfl_4q',
     catalog_namespace: 'der_dynamic_model',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     applicable_device_ids: ['bess_pcs_abb_500'],
     label_pl: 'BESS grid-following 4Q (k=2.5, t_resp=15ms)',
     model_type: 'bess_grid_following',
@@ -1564,7 +1593,7 @@ export const DER_DYNAMIC_MODEL_CATALOG: ReadonlyArray<DerDynamicModelItem> = Obj
   {
     id: 'dyn_wt_pmsg_full',
     catalog_namespace: 'der_dynamic_model',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     applicable_device_ids: ['wt_vestas_v117_3450', 'wt_ge_158_5500'],
     label_pl: 'WT PMSG full-converter (k=2, t_resp=30ms)',
     model_type: 'wt_pmsg_full_converter',
@@ -1577,7 +1606,7 @@ export const DER_DYNAMIC_MODEL_CATALOG: ReadonlyArray<DerDynamicModelItem> = Obj
   {
     id: 'dyn_wt_dfig',
     catalog_namespace: 'der_dynamic_model',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     applicable_device_ids: ['wt_siemens_swt_2300_113'],
     label_pl: 'WT DFIG (transient 4-6×In, k=2.5, t_resp=20ms)',
     model_type: 'wt_dfig',
@@ -1727,9 +1756,21 @@ export function validateMinSkAtPcc(args: {
 // 10. BessOperationModeCatalog (Naprawa eng.10 — audyt OZE)
 // =============================================================================
 //
-// Tryby pracy magazynu energii BESS — wymagane dla obliczeń przepływu mocy
-// (kierunek P), strategii NC RfG (FCR/aFRR/mFRR), peak shaving i arbitrażu.
-// Każdy tryb ma deterministyczne parametry kontrolne.
+// PROWENIENCJA (karta K-Q, 2026-08-14) — mirror wyrównany do stanu backendu.
+// Pozycja opisuje USŁUGĘ, którą magazyn ma świadczyć: jej nazwę, sens i wymagania
+// wobec przekształtnika. USUNIĘTO cztery pola, które udawały dane:
+//   * `reserved_capacity_percent` — decyzja projektowa konkretnego projektu (i
+//     przedmiot umowy rynkowej), a nie własność trybu pracy; backend wstawiał tę
+//     liczbę do modelu przed rozpływem;
+//   * `max_duration_h` — wynika z pojemności konkretnego magazynu;
+//   * `response_time_s` — dla usług bilansujących określa go regulamin rynku
+//     operatora systemu przesyłowego, dla peak shavingu nikt go nie określa;
+//   * `required_for_nc_rfg_modules` — deklaracja, że NC RfG WYMAGA danej usługi
+//     od modułu typu C/D. Sprawdzone na tekście rozporządzenia (UE) 2016/631:
+//     ono nie nakazuje modułom wytwórczym świadczenia FCR-N / FCR-D / aFRR /
+//     mFRR — to produkty rynku bilansującego, a nie warunek przyłączenia.
+// Zostają `requires_four_quadrant` / `requires_grid_forming`: to nie cudza dana,
+// tylko własność samej usługi.
 
 export interface BessOperationModeItem {
   readonly id: string;
@@ -1740,25 +1781,17 @@ export interface BessOperationModeItem {
   readonly mode_code:
     | 'peak_shaving'
     | 'arbitrage'
-    | 'fcr_n'        // Frequency Containment Reserve - normal
-    | 'fcr_d_up'     // FCR-D upward
-    | 'fcr_d_down'   // FCR-D downward
-    | 'afrr'         // automatic Frequency Restoration Reserve
-    | 'mfrr'         // manual Frequency Restoration Reserve
-    | 'voltage_support' // Q(U) regulation
-    | 'island_backup'   // grid-forming po awarii
+    | 'fcr_n'
+    | 'fcr_d_up'
+    | 'fcr_d_down'
+    | 'afrr'
+    | 'mfrr'
+    | 'voltage_support'
+    | 'island_backup'
     | 'self_consumption';
-  /** Wymagana pojemność rezerwy [%]. */
-  readonly reserved_capacity_percent: number;
-  /** Czas reakcji [s]. */
-  readonly response_time_s: number;
-  /** Maksymalny czas trwania trybu [h] (FCR-D: 15 min, aFRR: 60 min, mFRR: ≥4h). */
-  readonly max_duration_h: number;
-  /** Wymagane dla NC RfG modułów (B/C/D). */
-  readonly required_for_nc_rfg_modules: ReadonlyArray<'A' | 'B' | 'C' | 'D'>;
-  /** Wymagane four-quadrant. */
+  /** Usługa wymaga przekształtnika pracującego w czterech ćwiartkach. */
   readonly requires_four_quadrant: boolean;
-  /** Wymagane grid-forming. */
+  /** Usługa wymaga przekształtnika tworzącego napięcie (grid-forming). */
   readonly requires_grid_forming: boolean;
 }
 
@@ -1766,150 +1799,96 @@ export const BESS_OPERATION_MODE_CATALOG: ReadonlyArray<BessOperationModeItem> =
   {
     id: 'mode_peak_shaving',
     catalog_namespace: 'bess_operation_mode',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     label_pl: 'Peak shaving (redukcja szczytu)',
-    description_pl:
-      'Wyładowanie BESS podczas szczytów obciążenia odbiorcy w celu redukcji '
-      + 'mocy szczytowej i opłat dystrybucyjnych (taryfa BD/CD).',
+    description_pl: 'Wyładowanie magazynu w szczytach obciążenia odbiorcy, żeby obniżyć moc szczytową i opłaty dystrybucyjne.',
     mode_code: 'peak_shaving',
-    reserved_capacity_percent: 30,
-    response_time_s: 60,
-    max_duration_h: 4,
-    required_for_nc_rfg_modules: [],
     requires_four_quadrant: false,
     requires_grid_forming: false,
   },
   {
     id: 'mode_arbitrage',
     catalog_namespace: 'bess_operation_mode',
-    catalog_version: '2024.1',
-    label_pl: 'Arbitraż cenowy (energy time-shift)',
-    description_pl:
-      'Ładowanie w godzinach niskich cen, wyładowanie w godzinach drogich. '
-      + 'Wymaga TGE / RB cennika spot.',
+    catalog_version: AUDIT2_CATALOG_VERSION,
+    label_pl: 'Arbitraż cenowy (przesunięcie energii w czasie)',
+    description_pl: 'Ładowanie w godzinach niskich cen energii, wyładowanie w godzinach wysokich. Opłacalność zależy od cennika rynku, który nie jest daną katalogową.',
     mode_code: 'arbitrage',
-    reserved_capacity_percent: 0,
-    response_time_s: 300,
-    max_duration_h: 8,
-    required_for_nc_rfg_modules: [],
     requires_four_quadrant: false,
     requires_grid_forming: false,
   },
   {
     id: 'mode_fcr_n',
     catalog_namespace: 'bess_operation_mode',
-    catalog_version: '2024.1',
-    label_pl: 'FCR-N (rezerwa pierwotna normalna)',
-    description_pl:
-      'Symetryczna rezerwa pierwotna ±50 mHz, droop 5%. NC RfG Art. 13 — '
-      + 'moduły C/D obowiązkowo. Reakcja w pełni w 30 s.',
+    catalog_version: AUDIT2_CATALOG_VERSION,
+    label_pl: 'FCR-N (rezerwa pierwotna symetryczna)',
+    description_pl: 'Symetryczna rezerwa pierwotna: magazyn zmienia moc czynną w obie strony wokół częstotliwości znamionowej. Wymagany czas reakcji, wielkość rezerwy i statyzm określa regulamin rynku bilansującego operatora systemu przesyłowego — nie ten katalog.',
     mode_code: 'fcr_n',
-    reserved_capacity_percent: 50,
-    response_time_s: 30,
-    max_duration_h: 0.5,
-    required_for_nc_rfg_modules: ['C', 'D'],
     requires_four_quadrant: true,
     requires_grid_forming: false,
   },
   {
     id: 'mode_fcr_d_up',
     catalog_namespace: 'bess_operation_mode',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     label_pl: 'FCR-D (rezerwa awaryjna w górę)',
-    description_pl:
-      'Rezerwa pierwotna asymetryczna w górę dla podczęstotliwościowych zakłóceń '
-      + '(f<49.5 Hz). Reakcja 50% w 5 s, 100% w 30 s. Pełna 15 min.',
+    description_pl: 'Rezerwa pierwotna asymetryczna w górę, uruchamiana przy zakłóceniu podczęstotliwościowym. Próg uruchomienia i profil narastania mocy określa regulamin rynku bilansującego, nie ten katalog.',
     mode_code: 'fcr_d_up',
-    reserved_capacity_percent: 100,
-    response_time_s: 5,
-    max_duration_h: 0.25,
-    required_for_nc_rfg_modules: ['D'],
     requires_four_quadrant: true,
     requires_grid_forming: false,
   },
   {
     id: 'mode_afrr',
     catalog_namespace: 'bess_operation_mode',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     label_pl: 'aFRR (rezerwa wtórna automatyczna)',
-    description_pl:
-      'Rezerwa wtórna sterowana przez sygnał ACE od PSE. Reakcja w 5 min, '
-      + 'pełna w 15 min. Symetryczna ±. NC RfG Art. 15.',
+    description_pl: 'Rezerwa wtórna sterowana automatycznie sygnałem operatora systemu przesyłowego, symetryczna w obie strony. Czasy aktywacji określa regulamin rynku bilansującego, nie ten katalog.',
     mode_code: 'afrr',
-    reserved_capacity_percent: 70,
-    response_time_s: 300,
-    max_duration_h: 1,
-    required_for_nc_rfg_modules: ['D'],
     requires_four_quadrant: true,
     requires_grid_forming: false,
   },
   {
     id: 'mode_mfrr',
     catalog_namespace: 'bess_operation_mode',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     label_pl: 'mFRR (rezerwa wtórna ręczna)',
-    description_pl:
-      'Rezerwa ręczna uruchamiana komendą dyspozytora PSE. Pełna aktywacja '
-      + 'w 12.5 min. Czas trwania ≥ 4h.',
+    description_pl: 'Rezerwa uruchamiana ręcznie komendą dyspozytora operatora systemu przesyłowego. Czas aktywacji i wymagany czas podtrzymania określa regulamin rynku bilansującego, nie ten katalog.',
     mode_code: 'mfrr',
-    reserved_capacity_percent: 100,
-    response_time_s: 750,
-    max_duration_h: 4,
-    required_for_nc_rfg_modules: [],
     requires_four_quadrant: false,
     requires_grid_forming: false,
   },
   {
     id: 'mode_voltage_support',
     catalog_namespace: 'bess_operation_mode',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     label_pl: 'Wsparcie napięciowe Q(U)',
-    description_pl:
-      'Regulacja mocy biernej w funkcji napięcia (Q(U) static). NC RfG Art. 21. '
-      + 'Wymaga 4-quadrant, regulacja ±0.33 S_n.',
+    description_pl: 'Regulacja mocy biernej w funkcji napięcia w punkcie przyłączenia (charakterystyka Q(U)). Wymaga przekształtnika pracującego w czterech ćwiartkach; zakres regulacji wynika z karty przekształtnika i z warunków przyłączenia, nie z tego katalogu.',
     mode_code: 'voltage_support',
-    reserved_capacity_percent: 0,
-    response_time_s: 1,
-    max_duration_h: 24,
-    required_for_nc_rfg_modules: ['B', 'C', 'D'],
     requires_four_quadrant: true,
     requires_grid_forming: false,
   },
   {
     id: 'mode_island_backup',
     catalog_namespace: 'bess_operation_mode',
-    catalog_version: '2024.1',
-    label_pl: 'Tryb wyspowy (grid-forming backup)',
-    description_pl:
-      'Tworzenie napięcia po awarii zasilania. Wymaga grid-forming PCS. '
-      + 'Synchronizacja z siecią po powrocie zasilania (synchrocheck 25).',
+    catalog_version: AUDIT2_CATALOG_VERSION,
+    label_pl: 'Praca wyspowa (przekształtnik tworzący napięcie)',
+    description_pl: 'Tworzenie napięcia po zaniku zasilania. Wymaga przekształtnika tworzącego napięcie (grid-forming). Powrót do pracy równoległej przez kontrolę synchronizmu (funkcja 25).',
     mode_code: 'island_backup',
-    reserved_capacity_percent: 80,
-    response_time_s: 0.05,
-    max_duration_h: 4,
-    required_for_nc_rfg_modules: [],
     requires_four_quadrant: true,
     requires_grid_forming: true,
   },
   {
     id: 'mode_self_consumption',
     catalog_namespace: 'bess_operation_mode',
-    catalog_version: '2024.1',
-    label_pl: 'Autokonsumpcja PV+BESS (self-consumption)',
-    description_pl:
-      'Maksymalizacja autokonsumpcji PV — ładowanie nadwyżek dziennej generacji, '
-      + 'wyładowanie wieczorne. Typowe dla DER po nN.',
+    catalog_version: AUDIT2_CATALOG_VERSION,
+    label_pl: 'Autokonsumpcja PV z magazynem',
+    description_pl: 'Maksymalizacja autokonsumpcji instalacji PV: ładowanie nadwyżek generacji dziennej, wyładowanie wieczorne.',
     mode_code: 'self_consumption',
-    reserved_capacity_percent: 0,
-    response_time_s: 30,
-    max_duration_h: 8,
-    required_for_nc_rfg_modules: [],
     requires_four_quadrant: false,
     requires_grid_forming: false,
   },
 ]);
 
-/** Filtruje tryby BESS kompatybilne z PCS (4Q + grid-forming). */
+/** Filtruje tryby pracy magazynu dostępne dla zdolności danego przekształtnika. */
 export function selectBessModesForPcs(args: {
   readonly fourQuadrant: boolean;
   readonly gridFormingCapable: boolean;
@@ -1921,22 +1900,26 @@ export function selectBessModesForPcs(args: {
   });
 }
 
-/** Filtruje tryby BESS wymagane dla danego modułu NC RfG. */
-export function selectRequiredBessModesForModule(
-  module: 'A' | 'B' | 'C' | 'D',
-): readonly BessOperationModeItem[] {
-  return BESS_OPERATION_MODE_CATALOG.filter((m) =>
-    m.required_for_nc_rfg_modules.includes(module),
-  );
-}
+// USUNIĘTY (karta K-Q, 2026-08-14): `selectRequiredBessModesForModule`.
+// Zwracał tryby rzekomo WYMAGANE przez NC RfG dla danego typu modułu, na
+// podstawie pola `required_for_nc_rfg_modules`. Rozporządzenie (UE) 2016/631
+// sprawdzone u źródła nie nakazuje modułom wytwórczym świadczenia FCR-N /
+// FCR-D / aFRR / mFRR — to produkty rynku bilansującego, a nie warunek
+// przyłączenia. Pole i selektor zniknęły też po stronie backendu.
 
 // =============================================================================
 // 11. TapChangerCatalog (Naprawa eng.13 — audyt projektanta SN)
 // =============================================================================
 //
 // Przełącznik zaczepów transformatora — kluczowy dla regulacji napięcia
-// (VR control) i zarządzania w GPZ. NC RfG / IRiESD wymaga AVR
-// (Automatic Voltage Regulation) dla transformatorów 110/SN.
+// (VR control) i zarządzania w GPZ.
+//
+// PROWENIENCJA (karta K-Q, 2026-08-14) — mirror wyrównany do stanu backendu.
+// Pozycja jest WARIANTEM REGULACJI, który projektant zadaje: liczba zaczepów,
+// skok i zakres widnieją w jej nazwie i są ze sobą spójne. USUNIĘTO dwa pola,
+// które opisywały KONKRETNY WYRÓB bez żadnego źródła: czas przełączenia
+// (podaje go karta mechanizmu napędowego producenta) oraz resurs między
+// przeglądami (gwarancja producenta, nie liczba do zgadnięcia).
 
 export interface TapChangerItem {
   readonly id: string;
@@ -1947,18 +1930,14 @@ export interface TapChangerItem {
   readonly type: 'oltc' | 'detc';
   /** Pozycja neutralna (typowo 0 lub środek zakresu). */
   readonly neutral_position: number;
-  /** Liczba zaczepów (typowo 17 lub 19 dla 110/SN, 5 dla SN/nN). */
+  /** Liczba zaczepów. */
   readonly tap_count: number;
-  /** Krok napięcia per zaczep [%]. Typowo 1.25% dla 110/SN, 2.5% dla SN/nN. */
+  /** Krok napięcia per zaczep [%]. */
   readonly step_percent: number;
-  /** Zakres regulacji [%]. Typowo ±10% dla OLTC 110/SN, ±5% dla DETC SN/nN. */
+  /** Zakres regulacji [%] = (tap_count − 1) / 2 · step_percent. */
   readonly range_percent: number;
   /** Strona regulacji: HV (pierwotna) lub LV (wtórna). */
   readonly regulated_side: 'hv' | 'lv';
-  /** Czas przełączenia [s] — istotne dla dynamiki napięcia. */
-  readonly switching_time_s: number;
-  /** Liczba operacji przed przeglądem [×1000]. */
-  readonly operations_before_maintenance_thousand: number;
   /** Czy obsługuje AVR (Automatic Voltage Regulation). */
   readonly supports_avr: boolean;
   /** Stosowanie. */
@@ -1969,7 +1948,7 @@ export const TAP_CHANGER_CATALOG: ReadonlyArray<TapChangerItem> = Object.freeze(
   {
     id: 'tc_oltc_110sn_19_125',
     catalog_namespace: 'tap_changer',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     label_pl: 'OLTC 110/SN · 19 zaczepów · ±11,25% · AVR',
     type: 'oltc',
     neutral_position: 0,
@@ -1977,56 +1956,48 @@ export const TAP_CHANGER_CATALOG: ReadonlyArray<TapChangerItem> = Object.freeze(
     step_percent: 1.25,
     range_percent: 11.25,
     regulated_side: 'hv',
-    switching_time_s: 5,
-    operations_before_maintenance_thousand: 100,
     supports_avr: true,
     applicable_to: ['transformer_110_15', 'transformer_110_20'],
   },
   {
     id: 'tc_oltc_110sn_17_125',
     catalog_namespace: 'tap_changer',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     label_pl: 'OLTC 110/SN · 17 zaczepów · ±10% · AVR',
     type: 'oltc',
     neutral_position: 0,
     tap_count: 17,
     step_percent: 1.25,
-    range_percent: 10.0,
+    range_percent: 10,
     regulated_side: 'hv',
-    switching_time_s: 4,
-    operations_before_maintenance_thousand: 80,
     supports_avr: true,
     applicable_to: ['transformer_110_15', 'transformer_110_20'],
   },
   {
     id: 'tc_detc_snnn_5_25',
     catalog_namespace: 'tap_changer',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     label_pl: 'DETC SN/nN · 5 zaczepów · ±5% (off-load)',
     type: 'detc',
     neutral_position: 0,
     tap_count: 5,
     step_percent: 2.5,
-    range_percent: 5.0,
+    range_percent: 5,
     regulated_side: 'hv',
-    switching_time_s: 0,
-    operations_before_maintenance_thousand: 1,
     supports_avr: false,
     applicable_to: ['transformer_15_04', 'block_transformer'],
   },
   {
     id: 'tc_oltc_snnn_9_15',
     catalog_namespace: 'tap_changer',
-    catalog_version: '2024.1',
+    catalog_version: AUDIT2_CATALOG_VERSION,
     label_pl: 'OLTC SN/nN · 9 zaczepów · ±6% · AVR (przemysłowe)',
     type: 'oltc',
     neutral_position: 0,
     tap_count: 9,
     step_percent: 1.5,
-    range_percent: 6.0,
+    range_percent: 6,
     regulated_side: 'hv',
-    switching_time_s: 3,
-    operations_before_maintenance_thousand: 50,
     supports_avr: true,
     applicable_to: ['transformer_15_04', 'block_transformer'],
   },

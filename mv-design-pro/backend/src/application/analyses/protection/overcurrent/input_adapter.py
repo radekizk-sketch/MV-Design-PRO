@@ -69,4 +69,4 @@ def _resolve_source_run_id(sc_result: ShortCircuitResult) -> str:
         value = getattr(sc_result, attr, None)
         if value:
             return str(value)
-    raise ValueError("ShortCircuitResult does not define a run_id")
+    raise ValueError("Wynik zwarciowy nie zawiera identyfikatora biegu (run_id/analysis_id).")

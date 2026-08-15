@@ -90,6 +90,16 @@ export interface PowerFlowBusDiffRow {
   delta_angle_deg: number;
   delta_p_mw: number;
   delta_q_mvar: number;
+  /**
+   * L-13: różnice względne [%] liczone przez BACKEND (`procent_roznicy`,
+   * `domain/power_flow_comparison.py`). Pole nieobecne = wartość odniesienia A
+   * równa zeru (różnica względna nie istnieje) albo porównanie zapisane przed
+   * L-13 — konsument pokazuje kreskę, NIGDY nie liczy sam.
+   */
+  delta_v_percent?: number | null;
+  delta_angle_percent?: number | null;
+  delta_p_percent?: number | null;
+  delta_q_percent?: number | null;
 }
 
 // =============================================================================
@@ -120,6 +130,13 @@ export interface PowerFlowBranchDiffRow {
   delta_q_to_mvar: number;
   delta_losses_p_mw: number;
   delta_losses_q_mvar: number;
+  /** L-13: różnice względne [%] z backendu (brak pola → kreska, patrz szyny). */
+  delta_p_from_percent?: number | null;
+  delta_q_from_percent?: number | null;
+  delta_p_to_percent?: number | null;
+  delta_q_to_percent?: number | null;
+  delta_losses_p_percent?: number | null;
+  delta_losses_q_percent?: number | null;
 }
 
 // =============================================================================
@@ -161,6 +178,8 @@ export interface PowerFlowComparisonSummary {
   major_issues: number;
   moderate_issues: number;
   minor_issues: number;
+  /** L-13: względna zmiana strat całkowitych [%] z backendu (brak → kreska). */
+  delta_total_losses_p_percent?: number | null;
 }
 
 // =============================================================================

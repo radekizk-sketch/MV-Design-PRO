@@ -16,7 +16,7 @@ Schemat + walidacja + UI + adapter są gotowe do podpięcia solvera w
 PR-15-impl (osobna sesja eksperta solver).
 """
 
-from src.network_model.solvers.stability_rms.contracts import (
+from network_model.solvers.stability_rms.contracts import (
     DynamicModelKind,
     StabilityResult,
     StabilitySolverAdapter,

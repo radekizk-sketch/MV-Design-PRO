@@ -207,13 +207,18 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe('EkranZbieznosci — realna ścieżka wejścia (karta huba → powierzchnia E-30)', () => {
-  it('klik „Otwórz" na karcie zbieżności otwiera powierzchnię E-30 (klik natywny)', async () => {
+describe('EkranZbieznosci — realna ścieżka wejścia (karta huba → zakładka warsztatu Wyników)', () => {
+  // INTENCJA bez zmian (karta huba prowadzi do realnego dostawcy); kanon K3-A3:
+  // dostawcą E-30 jest zakładka „zbieznosc" warsztatu Wyników (deep-link
+  // setWynikiTab, wzorzec E-33/E-34), nie powierzchnia trasowa mostu.
+  it('klik „Otwórz" na karcie zbieżności prowadzi do zakładki „zbieznosc" (klik natywny)', async () => {
     const user = userEvent.setup();
     render(<EkranAnalizTechnicznych />);
     const karta = screen.getByTestId('mvd-analizy-karta-zbieznosc');
     await user.click(within(karta).getByRole('button', { name: 'Otwórz' }));
-    expect(useNetworkBuildStore.getState().activeSurface?.screenCode).toBe('E-30');
+    expect(useShellStore.getState().wynikiTab).toBe('zbieznosc');
+    expect(useShellStore.getState().activeSpace).toBe('wyniki');
+    expect(useNetworkBuildStore.getState().activeSurface).toBeNull();
   });
 });
 

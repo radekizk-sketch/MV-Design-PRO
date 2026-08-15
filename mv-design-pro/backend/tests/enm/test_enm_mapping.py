@@ -3,6 +3,7 @@
 import pytest
 from enm.mapping import build_zero_sequence_zbus, map_enm_to_network_graph
 from enm.models import (
+    BranchRating,
     Bus,
     EnergyNetworkModel,
     ENMHeader,
@@ -581,3 +582,78 @@ class TestGeneratorShortCircuitSources:
         assert any(s.id == "pv1" for s in snap_a.graph.get_inverter_sources())
         # Deterministic fingerprint: same input → identical hash.
         assert snap_a.meta.fingerprint == snap_b.meta.fingerprint
+
+
+class TestObciazalnoscGalezi:
+    """Brak obciazalnosci dlugotrwalej ZOSTAJE BRAKIEM (karta N-1-BACKEND).
+
+    Most ENM -> graf wstawial wczesniej 1.0 A kazdej galezi bez `rating.in_a`,
+    wiec kryterium obciazenia liczylo sie ZAWSZE — z liczby, ktorej nikt nie
+    zmierzyl (linia 15 kV przy 40,6 A dostawala werdykt „Obciazenie 4056,80 %
+    przekracza limit 100,0 %"). Konsumenci grafu czytaja 0.0 jako „wielkosc
+    nieznana, kryterium niesprawdzalne" i tak ma tu dojsc. Test sprawdza OBA
+    ramiona predykatu: brak danej i dana podana.
+    """
+
+    @staticmethod
+    def _enm_z_linia(rating: BranchRating | None) -> EnergyNetworkModel:
+        return _make_enm(
+            buses=[
+                Bus(ref_id="b1", name="Bus 1", voltage_kv=15),
+                Bus(ref_id="b2", name="Bus 2", voltage_kv=15),
+            ],
+            branches=[
+                OverheadLine(
+                    ref_id="ln",
+                    name="Linia",
+                    from_bus_ref="b1",
+                    to_bus_ref="b2",
+                    length_km=2.0,
+                    r_ohm_per_km=0.2,
+                    x_ohm_per_km=0.35,
+                    rating=rating,
+                )
+            ],
+        )
+
+    def test_brak_obciazalnosci_daje_zero_nie_jeden_amper(self):
+        graph = map_enm_to_network_graph(self._enm_z_linia(None))
+        branch = list(graph.branches.values())[0]
+        assert branch.rated_current_a == 0.0
+
+    def test_podana_obciazalnosc_jest_przeniesiona(self):
+        graph = map_enm_to_network_graph(self._enm_z_linia(BranchRating(in_a=240.0)))
+        branch = list(graph.branches.values())[0]
+        assert branch.rated_current_a == 240.0
+
+    def test_brak_obciazalnosci_konczy_sie_kryterium_nieobliczonym(self):
+        """Skutek koncowy: pozycja NOT_COMPUTED, a nie sfabrykowane przeciazenie."""
+        from analysis.energy_validation.builder import EnergyValidationBuilder
+        from analysis.energy_validation.models import (
+            EnergyCheckType,
+            EnergyValidationConfig,
+            EnergyValidationStatus,
+        )
+        from analysis.power_flow.result import PowerFlowResult
+
+        graph = map_enm_to_network_graph(self._enm_z_linia(None))
+        branch_id = next(iter(graph.branches))
+        pf = PowerFlowResult(
+            converged=True,
+            iterations=3,
+            tolerance=1e-8,
+            max_mismatch_pu=1e-9,
+            base_mva=100.0,
+            slack_node_id=next(iter(graph.nodes)),
+            node_voltage_kv={node_id: 15.0 for node_id in graph.nodes},
+            branch_current_ka={branch_id: 0.0406},
+            branch_s_from_mva={},
+            branch_s_to_mva={},
+            losses_total_pu=0.001 + 0.0005j,
+            slack_power_pu=0.02 + 0.006j,
+        )
+        view = EnergyValidationBuilder().build(pf, graph, EnergyValidationConfig())
+        pozycje = [i for i in view.items if i.check_type == EnergyCheckType.BRANCH_LOADING]
+        assert [i.status for i in pozycje] == [EnergyValidationStatus.NOT_COMPUTED]
+        assert pozycje[0].why_pl == "Brak pradu znamionowego galezi."
+        assert pozycje[0].observed_value is None

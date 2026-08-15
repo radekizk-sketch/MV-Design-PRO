@@ -230,6 +230,21 @@ export interface StationDerConnection {
    */
   readonly unit_count: number | null;
 
+  /**
+   * Napięcie znamionowe SZYNY PRZYŁĄCZENIA [kV] odczytane Z MODELU (migawka ENM).
+   *
+   * PO CO. `voltage_level_ref` wskazuje pozycję katalogu poziomów napięć i zapisuje
+   * go WYŁĄCZNIE kreator stacji (`AddDerWizard`). Wytwórca zapisany kreatorem źródła
+   * OZE takiej referencji nie ma, a katalog poziomów nie zna np. 0,8 kV (typowe
+   * napięcie falowników string) — ocena zgodności NC RfG meldowała wtedy „brak
+   * danych" dla urządzenia, którego napięcie stoi w modelu na szynie przyłączenia.
+   *
+   * To NIE jest domysł ani wartość domyślna: `null` zostaje `null`, a wartość
+   * pochodzi z `buses[].voltage_kv` szyny, do której wytwórca jest przyłączony.
+   * Pole jest OPCJONALNE (addytywne) — rekordy sprzed tej daty go nie mają.
+   */
+  readonly connection_voltage_kv?: number | null;
+
   /** Status kompletności + macierz gotowości. */
   readonly completeness: DerCompleteness;
   readonly readiness: DerReadinessMatrix;

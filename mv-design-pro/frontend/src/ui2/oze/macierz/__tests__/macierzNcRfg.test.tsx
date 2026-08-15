@@ -11,7 +11,13 @@ import {
 import { useNcRfgStore } from '../../ncRfgStore';
 import { MacierzNcRfg } from '../MacierzNcRfg';
 import { MACIERZ_STRINGS } from '../strings';
-import { certyfikatFixture, derFixture, katalogFixture, wynikFixture } from './fixtures';
+import {
+  certyfikatFixture,
+  certyfikatZDowodemFixture,
+  derFixture,
+  katalogFixture,
+  wynikFixture,
+} from './fixtures';
 
 vi.mock('../../../../ui/ncrfg-tests/api', () => ({
   fetchNcRfgTestCatalog: vi.fn(() => Promise.resolve(katalogFixture())),
@@ -311,5 +317,144 @@ describe('MacierzNcRfg — certyfikat zgodności (karta P39c)', () => {
     expect(nazwaPobrania).toMatch(/^certyfikat-zgodnosci-\d{4}-\d{2}-\d{2}\.docx$/);
 
     vi.restoreAllMocks();
+  });
+});
+
+describe('MacierzNcRfg — dowód certyfikacji PTPiREE w certyfikacie zgodności', () => {
+  beforeEach(() => {
+    useAppStateStore.setState({
+      activeProjectName: 'Sieć testowa',
+      activeCaseName: 'Wariant bazowy',
+      // Bez aktywnego przypadku backend nie ma skąd wziąć tabliczek urządzeń,
+      // więc dokument nie może nieść dowodu — to jest ogniwo, którego brakowało.
+      activeCaseId: 'case-oze-1',
+    } as never);
+  });
+  afterEach(() => {
+    cleanup();
+    useAppStateStore.setState({
+      activeProjectName: null,
+      activeCaseName: null,
+      activeCaseId: null,
+    } as never);
+  });
+
+  async function otworzCertyfikat(): Promise<void> {
+    render(<MacierzNcRfg trybZaawansowania="basic" />);
+    fireEvent.click(await screen.findByTestId('mvd-oze-przeprowadz'));
+    await screen.findAllByTestId('mvd-oze-komorka-wynik');
+    const przycisk = screen.getByTestId('mvd-oze-certyfikat-przycisk');
+    await waitFor(() => expect(przycisk).toBeEnabled());
+    fireEvent.click(przycisk);
+    await screen.findByTestId('mvd-oze-cert-widok');
+  }
+
+  it('żądanie certyfikatu niesie aktywny przypadek (bez niego dowodu nie ma)', async () => {
+    vi.mocked(pobierzCertyfikat).mockResolvedValue(certyfikatZDowodemFixture());
+    await otworzCertyfikat();
+
+    expect(vi.mocked(pobierzCertyfikat).mock.calls[0][1]).toBe('case-oze-1');
+  });
+
+  it('podgląd pokazuje wiersz dowodu per moduł: numer, WiPWC, datę i warunek ważności', async () => {
+    vi.mocked(pobierzCertyfikat).mockResolvedValue(certyfikatZDowodemFixture());
+    await otworzCertyfikat();
+
+    const dowody = await screen.findByTestId('mvd-oze-cert-dowody');
+    expect(within(dowody).getByText(MACIERZ_STRINGS.certyfikatDowodTytul)).toBeInTheDocument();
+    const dowod = screen.getByTestId('mvd-oze-cert-dowod-pv-1');
+    expect(dowod).toHaveTextContent('PTPiREE/WiPWC/1234/2025');
+    expect(dowod).toHaveTextContent('1.2');
+    expect(dowod).toHaveTextContent('2025-11-03');
+    expect(dowod).toHaveTextContent('Tylko z modułem sterowania SG-CTRL.');
+  });
+
+  it('moduł bez tabliczki ma jawny stan zerowy zamiast pustych pól', async () => {
+    vi.mocked(pobierzCertyfikat).mockResolvedValue(certyfikatZDowodemFixture());
+    await otworzCertyfikat();
+
+    const brak = await screen.findByTestId('mvd-oze-cert-dowod-brak-bess-1');
+    expect(brak).toHaveTextContent('Brak danych tabliczki urządzenia w modelu.');
+    expect(screen.queryByTestId('mvd-oze-cert-dowod-bess-1')).not.toBeInTheDocument();
+  });
+
+  it('odpowiedź bez sekcji dowodu nie rysuje pustego bloku (kontrakt sprzed dowodu)', async () => {
+    vi.mocked(pobierzCertyfikat).mockResolvedValue(certyfikatFixture());
+    await otworzCertyfikat();
+
+    expect(screen.queryByTestId('mvd-oze-cert-dowody')).not.toBeInTheDocument();
+  });
+
+  it('eksport DOCX certyfikatu też niesie aktywny przypadek', async () => {
+    vi.mocked(pobierzCertyfikat).mockResolvedValue(certyfikatZDowodemFixture());
+    vi.mocked(pobierzCertyfikatDocx).mockResolvedValue(new Blob(['docx']));
+    // @ts-expect-error shim jsdom
+    if (typeof URL.createObjectURL !== 'function') URL.createObjectURL = () => 'blob:shim';
+    // @ts-expect-error shim jsdom
+    if (typeof URL.revokeObjectURL !== 'function') URL.revokeObjectURL = () => {};
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock');
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+
+    await otworzCertyfikat();
+    fireEvent.click(screen.getByTestId('mvd-oze-cert-pobierz-docx'));
+
+    await waitFor(() => expect(pobierzCertyfikatDocx).toHaveBeenCalledTimes(1));
+    expect(vi.mocked(pobierzCertyfikatDocx).mock.calls[0][1]).toBe('case-oze-1');
+
+    vi.restoreAllMocks();
+  });
+});
+
+describe('MacierzNcRfg — dowód certyfikatu PTPiREE (dług 6 z rejestru V12K-321)', () => {
+  it('po biegu pokazuje numer dokumentu i wersję WiPWC z tabliczki urządzenia', async () => {
+    render(<MacierzNcRfg trybZaawansowania="basic" />);
+    fireEvent.click(await screen.findByTestId('mvd-oze-przeprowadz'));
+    const dowod = await screen.findByTestId('mvd-oze-dowod-pv-1');
+    expect(dowod).toHaveTextContent(MACIERZ_STRINGS.dowodCertyfikatu);
+    expect(dowod).toHaveTextContent('PTPiREE/WiPWC/1234/2025');
+    expect(dowod).toHaveTextContent('WiPWC 1.2');
+    expect(dowod).toHaveTextContent('2025-11-03');
+  });
+
+  it('urządzenie bez tabliczki dostaje uczciwy stan zerowy, nie wartość dopowiedzianą', async () => {
+    render(<MacierzNcRfg trybZaawansowania="basic" />);
+    fireEvent.click(await screen.findByTestId('mvd-oze-przeprowadz'));
+    const brak = await screen.findByTestId('mvd-oze-dowod-brak-bess-1');
+    expect(brak).toHaveTextContent(MACIERZ_STRINGS.dowodCertyfikatuBrak);
+    expect(screen.queryByTestId('mvd-oze-dowod-bess-1')).not.toBeInTheDocument();
+  });
+
+  it('przed biegiem nie pokazuje dowodu (brak wyniku → brak wiersza, zero atrapy)', async () => {
+    render(<MacierzNcRfg trybZaawansowania="basic" />);
+    await screen.findByTestId('mvd-oze-podsum-moduly');
+    expect(screen.queryByTestId('mvd-oze-dowod-pv-1')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('mvd-oze-dowod-brak-pv-1')).not.toBeInTheDocument();
+  });
+});
+
+describe('MacierzNcRfg — wynik walidacji FRT z okna falownika (K5-B / H-3 pkt 4)', () => {
+  it('zapisany werdykt LVRT/HVRT modułu jest widoczny w podsumowaniu per moduł', async () => {
+    useNcRfgStore.getState().zapiszWynikFrt('pv-1', {
+      testKind: 'lvrt',
+      tekst: 'Model odzwierciedla wymagania profilu operatora',
+      istotnosc: 'ok',
+      operatorId: 'pse',
+    });
+    useNcRfgStore.getState().zapiszWynikFrt('pv-1', {
+      testKind: 'hvrt',
+      tekst: 'Moduł wypadł z pracy podczas zakłócenia',
+      istotnosc: 'err',
+      operatorId: 'pse',
+    });
+
+    render(<MacierzNcRfg trybZaawansowania="basic" />);
+
+    const lvrt = await screen.findByTestId('mvd-oze-frt-lvrt-pv-1');
+    expect(lvrt).toHaveTextContent(MACIERZ_STRINGS.wynikFrtLvrt);
+    expect(lvrt).toHaveTextContent('Model odzwierciedla wymagania profilu operatora');
+    const hvrt = screen.getByTestId('mvd-oze-frt-hvrt-pv-1');
+    expect(hvrt).toHaveTextContent('Moduł wypadł z pracy podczas zakłócenia');
+    // Moduł bez zapisanego wyniku nie dostaje wiersza FRT (zero atrapy).
+    expect(screen.queryByTestId('mvd-oze-frt-lvrt-bess-1')).not.toBeInTheDocument();
   });
 });

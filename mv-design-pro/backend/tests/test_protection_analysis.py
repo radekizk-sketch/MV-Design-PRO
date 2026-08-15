@@ -1654,3 +1654,106 @@ class TestListSupportedVendorCurves:
         assert len(supported) == len(VENDOR_CURVE_REGISTRY)
         for code in VENDOR_CURVE_REGISTRY:
             assert code in supported
+
+
+# =============================================================================
+# K5-B (H-2): OVERRIDES Z KONFIGURACJI PRZYPADKU WPŁYWAJĄ NA WYNIK BIEGU
+# =============================================================================
+
+
+class TestOverridesAffectRunResult:
+    """K5-B (H-2): nadpisana nastawa z `ProtectionConfig.overrides` REALNIE
+    zmienia wynik biegu analizy zabezpieczeń.
+
+    Konsument overrides przy wykonaniu biegu:
+    `ProtectionAnalysisService._build_evaluation_input` →
+    `build_device_from_template(..., overrides=protection_config.overrides)` →
+    `_resolve_effective_settings` (override > default szablonu > min pola).
+    Ten test ćwiczy dokładnie tę ścieżkę: ten sam szablon i ten sam prąd
+    zwarciowy — bez nadpisania brak zadziałania, z nadpisaniem „I>" w dół
+    zabezpieczenie działa.
+    """
+
+    def _template(self):
+        from network_model.catalog.types import ProtectionSettingTemplate
+
+        return ProtectionSettingTemplate(
+            id="template-k5b",
+            name_pl="Szablon nadprądowy K5-B",
+            curve_ref="curve-iec-si",
+            setting_fields=[
+                {"name": "I>", "unit": "A", "min": 50.0, "max": 500.0, "default": 200.0},
+                {"name": "TMS", "unit": "-", "min": 0.05, "max": 1.0, "default": 0.3},
+            ],
+        )
+
+    def _curve(self):
+        from network_model.catalog.types import ProtectionCurve
+
+        return ProtectionCurve(
+            id="curve-iec-si",
+            name_pl="IEC Normalna inwersyjna",
+            standard="IEC",
+            curve_kind="inverse",
+            parameters={"A": 0.14, "B": 0.02},
+        )
+
+    def _evaluate(self, overrides: dict) -> ProtectionResult:
+        from application.protection_analysis.engine import build_device_from_template
+
+        device = build_device_from_template(
+            device_id="device_bus-001",
+            protected_element_ref="bus-001",
+            template=self._template(),
+            curve=self._curve(),
+            device_type=None,
+            overrides=overrides,
+        )
+        input_data = ProtectionEvaluationInput(
+            run_id="run-k5b",
+            sc_run_id="sc-k5b",
+            protection_case_id="case-k5b",
+            template_ref="template-k5b",
+            template_fingerprint="fp-k5b",
+            library_manifest_ref=None,
+            devices=(device,),
+            faults=(FaultPoint(fault_id="bus-001", i_fault_a=150.0, fault_type="3F"),),
+            overrides=overrides,
+        )
+        result, _trace = ProtectionEvaluationEngine().evaluate(input_data)
+        return result
+
+    def test_without_override_template_default_gives_no_trip(self):
+        """Domyślne „I>" = 200 A > prąd zwarciowy 150 A → brak zadziałania."""
+        result = self._evaluate({})
+        assert result.evaluations[0].trip_state == TripState.NO_TRIP
+        assert result.evaluations[0].i_pickup_a == 200.0
+
+    def test_override_lowers_pickup_and_flips_verdict(self):
+        """Nadpisanie „I>" = 100 A < 150 A → zabezpieczenie działa.
+        Ta sama konfiguracja poza nadpisaniem — różnica werdyktu pochodzi
+        WYŁĄCZNIE z `overrides` (kształt {pole: {value: ...}} jak w P14c)."""
+        result = self._evaluate({"I>": {"value": 100.0, "unit": "A"}})
+        assert result.evaluations[0].trip_state == TripState.TRIPS
+        assert result.evaluations[0].i_pickup_a == 100.0
+        assert result.evaluations[0].t_trip_s is not None
+
+    def test_coordination_device_entries_do_not_disturb_template_resolution(self):
+        """Wpisy koordynacji (`coordination_device:<id>` — K5-B, H-2) współdzielą
+        słownik overrides z nadpisaniami pól szablonu. Rozwiązywanie nastaw idzie
+        po NAZWACH pól szablonu, więc wpis z prefiksem nie może zmienić wyniku."""
+        wpis_koordynacji = {
+            "coordination_device:dev-1": {
+                "id": "dev-1",
+                "name": "Zabezpieczenie GPZ",
+                "device_type": "RELAY",
+                "location_element_id": "bus_1",
+                "settings": {"stage_51": {"enabled": True, "pickup_current_a": 60.0}},
+            }
+        }
+        bez_nadpisania = self._evaluate(dict(wpis_koordynacji))
+        assert bez_nadpisania.evaluations[0].trip_state == TripState.NO_TRIP
+        assert bez_nadpisania.evaluations[0].i_pickup_a == 200.0
+
+        z_nadpisaniem = self._evaluate({**wpis_koordynacji, "I>": {"value": 100.0, "unit": "A"}})
+        assert z_nadpisaniem.evaluations[0].trip_state == TripState.TRIPS

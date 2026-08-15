@@ -285,7 +285,7 @@ export function StationTemplateWizard(props: StationTemplateWizardProps): JSX.El
 
       <main className="flex-1 overflow-auto p-4" data-testid="wizard-content">
         {error != null && (
-          <div className="bg-red-900/40 border border-red-700 text-red-200 px-3 py-2 mb-3 rounded text-sm">
+          <div className="bg-sygnal-blokada-tlo border border-sygnal-blokada text-sygnal-blokada-tusz px-3 py-2 mb-3 rounded text-sm">
             {error}
           </div>
         )}
@@ -469,7 +469,7 @@ function TemplateStep(props: {
             <div className="text-xs text-zinc-400 mt-1">{t.description_pl}</div>
             <div className="text-xs text-zinc-500 mt-1">{t.use_case_pl}</div>
             {t.nc_rfg_type != null && (
-              <span className="inline-block mt-1 px-2 py-0.5 text-xs bg-amber-800 text-amber-100 rounded">
+              <span className="inline-block mt-1 px-2 py-0.5 text-xs bg-sygnal-uwaga-tlo text-sygnal-uwaga-tusz rounded">
                 NC RfG typ {t.nc_rfg_type}
               </span>
             )}
@@ -644,7 +644,7 @@ function ParamsStep(props: {
               <div className="font-bold text-sm">{prot.label_pl}</div>
               <div className="text-xs text-zinc-400">{prot.vendor}</div>
               {prot.badge_pl && (
-                <span className="inline-block mt-1 px-2 py-0.5 text-xs bg-emerald-800 text-emerald-100 rounded">
+                <span className="inline-block mt-1 px-2 py-0.5 text-xs bg-sygnal-ok-tlo text-sygnal-ok-tusz rounded">
                   {prot.badge_pl}
                 </span>
               )}
@@ -739,7 +739,7 @@ function PreviewStep(props: {
         </div>
       )}
       {previewError && (
-        <div className="bg-red-900/40 border border-red-700 text-red-200 px-3 py-2 mb-3 rounded text-sm">
+        <div className="bg-sygnal-blokada-tlo border border-sygnal-blokada text-sygnal-blokada-tusz px-3 py-2 mb-3 rounded text-sm">
           Błąd podglądu: {previewError}
         </div>
       )}

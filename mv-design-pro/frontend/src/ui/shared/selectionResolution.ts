@@ -114,7 +114,15 @@ function resolveStationScopedElementFromSnapshot(
 
   for (const station of stations) {
     const prefixes = [station.ref_id, station.id]
-      .filter((value): value is string => typeof value === 'string' && value.trim().length > 0);
+      .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+      // Dzieci GPZ żyją w przestrzeni RÓWNOLEGŁEJ do refu stacji
+      // (`gpz/⟨skrót⟩/bay/…`, `…/transformer/…` obok `gpz/⟨skrót⟩/substation`)
+      // — dopasowujemy też po BAZIE przestrzeni nazw. Bez tego selekcja
+      // aparatów pól GPZ ginęła w kanonikalizacji (ref spoza kolekcji
+      // kanonicznych ⇒ null ⇒ zdjęcie selekcji tuż po kliknięciu).
+      .flatMap((value) =>
+        value.endsWith('/substation') ? [value, value.slice(0, -'/substation'.length)] : [value],
+      );
     const prefix = prefixes.find((value) => refOrId !== value && refOrId.startsWith(`${value}/`));
     if (!prefix) {
       continue;

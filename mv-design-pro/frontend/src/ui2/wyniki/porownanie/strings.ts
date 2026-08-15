@@ -43,6 +43,7 @@ export const POROWNANIE_STRINGS = {
   // Podsumowanie (część wyniku — jako ZAŁOŻENIA wzorca)
   podsumZbieznosc: 'Zbieżność (A / B)',
   podsumStraty: 'Straty czynne (A · B · Δ)',
+  podsumStratyProc: 'Straty czynne — zmiana względna',
   podsumMaksNapiecie: 'Maks. odchylenie napięcia',
   podsumMaksKat: 'Maks. odchylenie kąta',
   podsumProblemy: 'Problemy wg wagi (krytyczne · poważne · umiarkowane · drobne)',
@@ -60,18 +61,29 @@ export const POROWNANIE_STRINGS = {
   kolNapiecieA: 'Napięcie A',
   kolNapiecieB: 'Napięcie B',
   kolNapiecieD: 'Δ napięcia',
+  kolNapiecieDProc: 'Δ napięcia',
   kolKatA: 'Kąt A',
   kolKatB: 'Kąt B',
   kolKatD: 'Δ kąta',
+  kolKatDProc: 'Δ kąta',
+  // Moc bierna wstrzykiwana w szynie (L-12) — payload backendu ma te pola.
+  kolMocBiernaA: 'Moc bierna A',
+  kolMocBiernaB: 'Moc bierna B',
+  kolMocBiernaD: 'Δ mocy biernej',
 
   // Kolumny — gałęzie
   kolGalaz: 'Gałąź',
   kolStratyA: 'Straty czynne A',
   kolStratyB: 'Straty czynne B',
   kolStratyD: 'Δ strat czynnych',
+  kolStratyDProc: 'Δ strat czynnych',
   kolMocA: 'Moc czynna (początek) A',
   kolMocB: 'Moc czynna (początek) B',
   kolMocD: 'Δ mocy czynnej (początek)',
+  kolMocDProc: 'Δ mocy czynnej (początek)',
+  kolMocBiernaGalazA: 'Moc bierna (początek) A',
+  kolMocBiernaGalazB: 'Moc bierna (początek) B',
+  kolMocBiernaGalazD: 'Δ mocy biernej (początek)',
 
   // Kolumny — ranking
   kolWaga: 'Waga',
@@ -96,6 +108,13 @@ export const POROWNANIE_STRINGS = {
   jednPu: 'pu',
   jednStopnie: '°',
   jednMW: 'MW',
+  jednMvar: 'Mvar',
+  jednProcent: '%',
+
+  // Filtr „tylko różnice" (L-14) — czysta prezentacja na danych backendu
+  filtrTylkoRoznice: 'Pokaż tylko różnice',
+  filtrOpis: 'Ukrywa wiersze, w których wszystkie różnice A/B są zerowe.',
+  filtrPusto: 'Wszystkie wiersze są identyczne w obu przebiegach — brak różnic do pokazania.',
 
   // Wartość pusta
   kreska: '—',
@@ -187,6 +206,31 @@ export function fmtDeltaMoc(n: number): string {
   return fmtDelta(n, 3);
 }
 
+/** Moc bierna [Mvar] — 3 miejsca po przecinku (ta sama rozdzielczość co moc czynna). */
+export function fmtMocBierna(n: number): string {
+  return fmtLiczba(n, 3);
+}
+
+/** Delta mocy biernej [Mvar] — 3 miejsca po przecinku, ze znakiem. */
+export function fmtDeltaMocBierna(n: number): string {
+  return fmtDelta(n, 3);
+}
+
+/**
+ * Różnica względna [%] rozpływu A/B (L-13) — 2 miejsca po przecinku, ze znakiem,
+ * jako SAMODZIELNA kolumna. Wartość pochodzi WYŁĄCZNIE z backendu
+ * (`delta_*_percent`); brak wartości (odniesienie A = 0 albo porównanie sprzed
+ * L-13) → kreska. Zero arytmetyki w prezentacji.
+ *
+ * To NIE jest `fmtDeltaProcent` (dopisek „(±x,x%)" do delty w trybie
+ * zwarciowym) — tam procent liczy UI, bo tryb zwarciowy zestawia dwa przebiegi
+ * bez końcówki porównania w backendzie (karta E12.2 §2.1).
+ */
+export function fmtRoznicaProcentowa(n: number | null | undefined): string {
+  if (typeof n !== 'number' || !Number.isFinite(n)) return POROWNANIE_STRINGS.kreska;
+  return fmtDelta(n, 2);
+}
+
 /**
  * Data z ISO cięta deterministycznie (bez konwersji strefy czasowej): „YYYY-MM-DD
  * HH:MM". Wartość pusta/nierozpoznana → „—". Nie używamy `toLocaleString`, aby
@@ -266,6 +310,18 @@ export const ZWARCIA_POROWNANIE_STRINGS = {
   // Stan pusty tabeli
   brakPunktow: 'Brak punktów zwarcia w wybranych przebiegach.',
 
+  // Nakładka różnic na schemacie (różnice liczy backend, schemat je rysuje)
+  pokazNaSchemacie: 'Pokaż różnice na schemacie',
+  pokazNaSchemacieWTrakcie: 'Przygotowywanie różnic…',
+  pokazNaSchemacieOpis:
+    'Nanosi różnice Δ (Ik", ip, Ith, Sk) na punkty zwarcia schematu — te same wartości co w tabeli.',
+  // Uczciwy stan zerowy: bez punktów wspólnych nie ma czego nanosić.
+  // Komunikat błędu pobrania NIE stoi tutaj — niesie go store nakładki wprost
+  // z odpowiedzi (status HTTP), a drugi, ogólniejszy tekst obok zabrałby
+  // operatorowi jedyną konkretną informację o przyczynie.
+  brakPunktowWspolnych:
+    'Brak punktów obecnych w obu przebiegach — nie ma różnic do pokazania na schemacie.',
+
   // Oznaczenie punktu bez odpowiednika w drugim przebiegu (uczciwie)
   tylkoA: ' (tylko A)',
   tylkoB: ' (tylko B)',
@@ -275,6 +331,11 @@ export const ZWARCIA_POROWNANIE_STRINGS = {
   jednMVA: 'MVA',
   jednOhm: 'Ω',
   jednKA2s: 'kA²·s',
+
+  // Filtr „tylko różnice" (L-14) — czysta prezentacja na danych backendu
+  filtrTylkoRoznice: 'Pokaż tylko różnice',
+  filtrOpis: 'Ukrywa wiersze, w których wszystkie różnice A/B są zerowe.',
+  filtrPusto: 'Wszystkie wiersze są identyczne w obu przebiegach — brak różnic do pokazania.',
 
   // Wartość pusta
   kreska: '—',

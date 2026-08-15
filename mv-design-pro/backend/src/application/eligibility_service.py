@@ -23,6 +23,7 @@ from __future__ import annotations
 from domain.eligibility_models import (
     AnalysisEligibilityIssue,
     AnalysisEligibilityMatrix,
+    AnalysisEligibilityResult,
     AnalysisType,
     IssueSeverity,
     build_eligibility_matrix,
@@ -102,7 +103,7 @@ class EligibilityService:
         self,
         enm: EnergyNetworkModel,
         readiness: ReadinessResult,
-    ) -> ...:
+    ) -> AnalysisEligibilityResult:
         blockers: list[AnalysisEligibilityIssue] = []
         warnings: list[AnalysisEligibilityIssue] = []
 
@@ -142,7 +143,7 @@ class EligibilityService:
         self,
         enm: EnergyNetworkModel,
         readiness: ReadinessResult,
-    ) -> ...:
+    ) -> AnalysisEligibilityResult:
         blockers: list[AnalysisEligibilityIssue] = []
         warnings: list[AnalysisEligibilityIssue] = []
         info: list[AnalysisEligibilityIssue] = []
@@ -183,7 +184,7 @@ class EligibilityService:
         self,
         enm: EnergyNetworkModel,
         readiness: ReadinessResult,
-    ) -> ...:
+    ) -> AnalysisEligibilityResult:
         blockers: list[AnalysisEligibilityIssue] = []
         warnings: list[AnalysisEligibilityIssue] = []
 
@@ -223,7 +224,7 @@ class EligibilityService:
         self,
         enm: EnergyNetworkModel,
         readiness: ReadinessResult,
-    ) -> ...:
+    ) -> AnalysisEligibilityResult:
         blockers: list[AnalysisEligibilityIssue] = []
         warnings: list[AnalysisEligibilityIssue] = []
 

@@ -161,6 +161,11 @@ export interface MeasurementTransformerType extends CatalogType {
  * Source: backend ProtectionDeviceType dataclass.
  */
 export interface ProtectionDeviceType extends CatalogType {
+  /**
+   * Nazwa polska rekordu z KANONICZNEGO katalogu MV (`/mv-protection-device-types`).
+   * Biblioteka analityczna koordynacji zwraca `name`; katalog MV — `name_pl`.
+   */
+  name_pl?: string;
   vendor?: string;
   model?: string;
   series?: string;
@@ -203,6 +208,21 @@ export interface LoadCatalogType extends CatalogType {
   cos_phi?: number;
   cos_phi_mode: string;
   profile_id?: string;
+  /**
+   * Model obciążenia ZIP pozycji katalogowej — udziały stałoimpedancyjny (a),
+   * stałoprądowy (b) i stałomocowy (c) mocy czynnej i biernej, oraz wrażliwość
+   * częstotliwościowa. Backend serwuje je od zawsze (`LoadType.to_dict`), a
+   * rozpływ mocy z nich liczy; brakowało wyłącznie deklaracji po stronie UI,
+   * więc typ odbioru wybrany z katalogu nie mógł wypełnić modelu w kreatorze.
+   */
+  a_p?: number;
+  b_p?: number;
+  c_p?: number;
+  a_q?: number;
+  b_q?: number;
+  c_q?: number;
+  k_pf?: number;
+  k_qf?: number;
 }
 
 /**
@@ -215,6 +235,14 @@ export interface MVApparatusType extends CatalogType {
   i_n_a: number;
   breaking_capacity_ka?: number;
   making_capacity_ka?: number;
+  /** Znamiona wytrzymałości zwarciowej pozycji (KD-6) — z pochodzeniem każdej liczby. */
+  i_th_ka?: number | null;
+  i_th_duration_s?: number | null;
+  i_th_pochodzenie?: string | null;
+  i_dyn_ka?: number | null;
+  i_dyn_pochodzenie?: string | null;
+  /** Czas własny aparatu [s] — dana wyłącznie producencka (IEC 62271-100). */
+  break_time_s?: number | null;
 }
 
 /**
@@ -440,6 +468,14 @@ export interface MVApparatusCatalogType extends CatalogType {
   i_n_a: number;
   breaking_capacity_ka?: number;
   making_capacity_ka?: number;
+  /** Znamiona wytrzymałości zwarciowej pozycji (KD-6) — z pochodzeniem każdej liczby. */
+  i_th_ka?: number | null;
+  i_th_duration_s?: number | null;
+  i_th_pochodzenie?: string | null;
+  i_dyn_ka?: number | null;
+  i_dyn_pochodzenie?: string | null;
+  /** Czas własny aparatu [s] — dana wyłącznie producencka (IEC 62271-100). */
+  break_time_s?: number | null;
 }
 
 /**

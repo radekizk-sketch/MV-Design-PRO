@@ -117,6 +117,31 @@ wchodzi do sumy szerokości kolumny / wysokości pasma (P1). Dzięki temu tekst
 MA miejsce zanim powstanie. Wyrocznia kolizji = siatka bezpieczeństwa, nie
 mechanizm.
 
+### 4.1 Klasa ZNACZENIOWA etykiety (KD-11, V12K-299)
+
+Obok klasy TYPOGRAFICZNEJ (t1..t4 — rozmiar pisma) każda etykieta niesie klasę
+ZNACZENIOWĄ, która rozstrzyga JEJ WIDOCZNOŚĆ przy oddaleniu kadru. Obie klasy
+są rozłączne: ta sama klasa typograficzna występuje w obu klasach znaczeniowych
+(np. `t2`: „SN systemowe 110 kV" = nazwa źródła = TOŻSAMOŚĆ, „Yd11 · 25 MVA" =
+parametry = DANE).
+
+| Klasa | Co obejmuje | Reguła widoczności |
+|---|---|---|
+| **TOŻSAMOŚĆ** | nazwa stacji/GPZ i kod stacji, oznaczenie transformatora, nazwa źródła, napięcie szyny/sekcji (w tym szyny nN), oznaczenie pola (numer pola, identyfikator aparatu Q/QE/T), rola pola, rodzaj+moc DER, badge „NO" | NIE znika. Poniżej progu czytelności (`MIN_READABLE_LABEL_SCREEN_PX`) jest renderowana pismem powiększonym do rozmiaru MINIMALNEGO CZYTELNEGO — skalowanym niezależnie od kamery, tak jak `MIN_SYMBOL_SCREEN_PX` chroni rozmiar symboli (K11-B) |
+| **DANE SZCZEGÓŁOWE** | parametry (kVA, Yd11, przekładnia, uk%/Pk, zaczepy, typ stacji, przekrój i długość przęsła, odbiór nN) oraz adnotacje (zabezpieczenia, CT/VT, podpisy kierunku, zakończenia toru) | Podlegają progowi czytelności: poniżej progu znikają i SĄ POLICZONE we wskaźniku „Ukryto N opisów — przybliż, aby zobaczyć" (wskaźnik nie liczy niczego innego) |
+
+Klasa jest **daną sceny**, nie heurystyką po treści tekstu: wiersz pasma nazw
+deklaruje ją jawnie (`StationNameBandRow.role`), pozostałe etykiety dziedziczą
+ją z rodzaju właściciela (`LABEL_ROLE_BY_OWNER_KIND`).
+
+Zakaz kolizji obowiązuje także pismo powiększone — rozstrzyga go plan renderu
+(`canvas/labelLegibility.ts`) czterema mechanizmami tej samej gramatyki:
+wzrost prostokąta OD kotwicy (prześwit podpisu szyny od toru zostaje
+zachowany), przestawienie pasma nazw od góry, skracanie z wielokropkiem oraz
+pierwszeństwo z tabeli priorytetów; ostatnie ustępstwo to powrót do rozmiaru
+naturalnego, nigdy nachodzenie. Plan żyje w warstwie renderu, bo zależy od
+kamery — scena pozostaje deterministyczna.
+
 ## 5. Layout V3 — potok `measure → bands → columns → route → label`
 
 Wejście: scena elektryczna z adaptera v2 (§8). Wyjście: `SceneGraph`

@@ -18,6 +18,7 @@
  * `designerFlowContract.test.ts` (unit test rejestru akcji).
  */
 import { test, expect, type ConsoleMessage, type Page } from '@playwright/test';
+import { pustaOdpowiedzDomainOps } from './fixtures/emptyDomainOpsResponse';
 
 interface ConsoleGuards {
   errors: string[];
@@ -151,6 +152,20 @@ async function mockMinimalBackend(page: Page): Promise<void> {
       });
       return;
     }
+    // Naprawa (dryf kontraktu mocka, audyt E2E-MOCK-BEZ-CI): shell woła
+    // refresh_snapshot NATYCHMIAST po zamontowaniu case'a (store.ts:
+    // refreshFromBackend na mount) — bez tego handlera trafiał w default
+    // '{}' bez kształtu DomainOpResponseV1, `hasModel` nigdy nie stawał się
+    // `true`, a kanwa SLD/`sld-empty-state` utykały w „Ładowanie układu sieci".
+    if (method === 'POST' && pathname === '/api/cases/case-multistep/enm/domain-ops') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(pustaOdpowiedzDomainOps('case-multistep')),
+      });
+      return;
+    }
+
     await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
   });
 }

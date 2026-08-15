@@ -189,6 +189,15 @@ export interface MiniBlockBayDescriptor {
   readonly fieldRole: FieldRole;
   readonly designation: string;
   readonly hasMissingRequiredDevice: boolean;
+  /** TR2W-BEZ-POLA (§0.C.2 „kotwica topologiczna"): `Bus.ref_id` SEKCJI szyn,
+   *  do której to pole jest przyłączone (`field_specs[].bus_ref` / legacy
+   *  `Bay.bus_ref` — obie ścieżki adaptera niosą tę daną z ENM). To jedyna
+   *  informacja, po której rysunek wie, KTÓRE pola stoją na TEJ SAMEJ sekcji
+   *  co dany transformator (`Transformer.hv_bus_ref`), więc kolumna
+   *  transformatora bez pola trafia w obręb WŁASNEJ sekcji, a nie za ostatnie
+   *  pole rozdzielnicy. `undefined` = dana nieprzekazana (stacja
+   *  jednosekcyjna z konstrukcji rysunku — cały blok jest jedną sekcją). */
+  readonly busRef?: string;
   /** K30-63: stan CB (wyłącznika) — pokazuje czerwoną open marker zamiast
    *  domyślnie zielonego closed. 'unknown' → szary z '?'. */
   readonly cbState?: 'closed' | 'open' | 'unknown';

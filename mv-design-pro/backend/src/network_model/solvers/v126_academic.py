@@ -13,7 +13,19 @@ from solver_input.v126_contracts import V126AcademicInput, V126AnalysisType
 
 JsonDict = dict[str, Any]
 
-V126_SOLVER_VERSION = "v126-academic-whitebox-1.0"
+# 1.1 (V126-JEZYK, 2026-08-07): ślad WHITE BOX niesie DODATKOWO polską postać
+# wyniku kroku z jednostką (`result_pl`), a teksty podstawień i sprawdzeń jednostek
+# przepisano na język inżynierski z pełną polszczyzną. Kontrakt maszynowy (`result`,
+# `formula`, `data`) NIETKNIĘTY — zmiana jest addytywna; odcisk przebiegu zmienia się
+# raz, bo ślad jest częścią wyniku, więc wersja solvera idzie w górę razem z nim.
+# 1.2 (karta QU-FABRYKACJA, 2026-08-08): solver przestał podstawiać współczynniki
+# w miejsce danych wejściowych. `_voltage_stability` nie wyznacza już żadnej
+# wielkości (wszystkie stały na zmyślonej mocy zwarciowej węzła i na zdolności
+# wytwórczej mocy biernej, której kontrakt nie niesie) — pola kontraktu zostają,
+# wartością jest jawny brak z powodem. `_z_conv_components` bierze częstotliwość
+# podstawową z kontraktu zamiast z zaszytego 50 Hz. Odciski przebiegów obu
+# rodzajów zmieniają się RAZ, razem z wersją.
+V126_SOLVER_VERSION = "v126-academic-whitebox-1.2"
 
 
 def _canonical_payload(payload: Any) -> str:
@@ -78,7 +90,20 @@ class TraceBuilder:
         substitution: str,
         result: JsonDict,
         unit_check: str,
+        *,
+        result_pl: str,
     ) -> None:
+        """Dopisuje krok śladu WHITE BOX.
+
+        `result` pozostaje słownikiem kontraktu (maszynowa postać wyniku kroku,
+        nietknięta — czytają ją pakiet dowodowy i raport). `result_pl` to
+        DODANE pole prezentacyjne (V126-JEZYK): wynik kroku jako liczba
+        Z JEDNOSTKĄ, po polsku. Powód: ekran projektanta pokazywał w kolumnie
+        „Wynik" surowy zapis `{"smallest_eigenvalue":0.998667}` — ocena
+        właściciela 0/10 z 2026-08-07. Pole jest WYMAGANE (argument nazwany bez
+        wartości domyślnej), więc nowy krok śladu nie może powstać bez polskiej
+        postaci wyniku — to zamyka klasę, a nie jedną instancję.
+        """
         self.steps.append(
             {
                 "step": len(self.steps) + 1,
@@ -87,6 +112,7 @@ class TraceBuilder:
                 "data": data,
                 "substitution": substitution,
                 "result": result,
+                "result_pl": result_pl,
                 "unit_check": unit_check,
                 "proof_ref": f"proof:v126:{self.analysis_type}:{key}",
                 "proof_status": "complete",
@@ -156,10 +182,71 @@ class V126AcademicSolver:
             branch.r_ohm_per_km * branch.length_km, branch.x_ohm_per_km * branch.length_km
         )
 
+    def _indeks_wezla_elektrycznego(self, model: V126AcademicInput) -> dict[str, int]:
+        """Odwzorowanie szyna → indeks WĘZŁA ELEKTRYCZNEGO (karta MOST-WEJSCIA-V126).
+
+        Gałąź ZAMKNIĘTA o zerowej impedancji szeregowej to POŁĄCZENIE IDEALNE:
+        obie szyny są tym samym węzłem elektrycznym i mają identyczny potencjał.
+        Kanoniczne ujęcie w metodzie węzłowej to REDUKCJA (sklejenie) węzłów — tak
+        samo robi ``AdmittanceMatrixBuilder`` dla łączników w modelu domenowym.
+
+        PO CO TO JEST. Przed tą kartą ``_ybus`` na gałęzi o ``abs(z) == 0``
+        wykonywał ``continue``, czyli po cichu ROZSPAJAŁ sieć w miejscu aparatu.
+        Defekt był uśpiony wyłącznie dlatego, że most wstawiał każdemu aparatowi
+        zmyśloną impedancję 0,001 Ω/km — dopiero uczciwe przeniesienie jawnego
+        ``r_ohm = 0,0`` z modelu (ta sama karta) postawiłoby sieć na tej ścieżce.
+        Naprawa jednego defektu nie może budzić drugiego.
+
+        DETERMINIZM I ZGODNOŚĆ WSTECZ: reprezentantem grupy jest szyna o
+        NAJMNIEJSZYM indeksie w kolejności modelu, a numeracja węzłów idzie w
+        kolejności pierwszego wystąpienia reprezentanta. Gdy sieć nie ma ani
+        jednego połączenia idealnego, odwzorowanie jest TOŻSAMOŚCIĄ i macierz
+        wychodzi bajtowo taka sama jak przed kartą.
+        """
+        kolejnosc = [bus.ref for bus in model.buses]
+        pozycja = {ref: idx for idx, ref in enumerate(kolejnosc)}
+        rodzic = list(range(len(kolejnosc)))
+
+        def znajdz(i: int) -> int:
+            while rodzic[i] != i:
+                rodzic[i] = rodzic[rodzic[i]]
+                i = rodzic[i]
+            return i
+
+        for branch in model.branches:
+            if branch.is_open:
+                continue
+            i = pozycja.get(branch.from_bus_ref)
+            j = pozycja.get(branch.to_bus_ref)
+            if i is None or j is None or i == j:
+                continue
+            if abs(self._branch_z_ohm(branch)) != 0:
+                continue
+            a, b = znajdz(i), znajdz(j)
+            if a != b:
+                # Reprezentantem zostaje MNIEJSZY indeks — jedno, deterministyczne
+                # kryterium niezależne od kolejności gałęzi w modelu.
+                rodzic[max(a, b)] = min(a, b)
+
+        numer_wezla: dict[int, int] = {}
+        wynik: dict[str, int] = {}
+        for idx, ref in enumerate(kolejnosc):
+            reprezentant = znajdz(idx)
+            if reprezentant not in numer_wezla:
+                numer_wezla[reprezentant] = len(numer_wezla)
+            wynik[ref] = numer_wezla[reprezentant]
+        return wynik
+
     def _ybus(self, model: V126AcademicInput, harmonic: float = 1.0) -> np.ndarray[Any, Any]:
-        size = len(model.buses)
+        """Macierz admitancyjna nad WĘZŁAMI ELEKTRYCZNYMI (nie nad szynami).
+
+        Rozmiar równa się liczbie szyn dopóki sieć nie zawiera połączeń idealnych
+        (patrz :meth:`_indeks_wezla_elektrycznego`); wtedy jest o tyle mniejszy,
+        ile szyn skleiły zwarte aparaty bez impedancji styku.
+        """
+        index = self._indeks_wezla_elektrycznego(model)
+        size = len(set(index.values()))
         ybus = np.zeros((size, size), dtype=complex)
-        index = self._bus_index(model)
         for branch in model.branches:
             if branch.is_open:
                 continue
@@ -171,10 +258,18 @@ class V126AcademicSolver:
                 branch.r_ohm_per_km * branch.length_km,
                 harmonic * branch.x_ohm_per_km * branch.length_km,
             )
-            if abs(z) == 0:
+            if abs(z) == 0 or i == j:
+                # Połączenie idealne jest już uwzględnione REDUKCJĄ węzłów (oba
+                # zaciski mają ten sam indeks), więc nie ma czego stemplować.
+                # `continue` nie rozspaja tu niczego — w odróżnieniu od stanu
+                # sprzed karty, gdzie ten sam wiersz gubił połączenie.
                 continue
             y = 1 / z
-            shunt = 1j * harmonic * branch.b_siemens_per_km * branch.length_km / 2
+            # Susceptancja NIEZNANA (`None`) to nie zero: gałąź bez danej o
+            # pojemności doczepnej nie wnosi bocznika i mówi o tym wprost tam,
+            # gdzie decyzja od tego zależy (ryzyko ferrorezonansu).
+            b_per_km = branch.b_siemens_per_km
+            shunt = 1j * harmonic * b_per_km * branch.length_km / 2 if b_per_km is not None else 0j
             ybus[i, i] += y + shunt
             ybus[j, j] += y + shunt
             ybus[i, j] -= y
@@ -182,7 +277,7 @@ class V126AcademicSolver:
         for transformer in model.transformers:
             i = index.get(transformer.hv_bus_ref)
             j = index.get(transformer.lv_bus_ref)
-            if i is None or j is None:
+            if i is None or j is None or i == j:
                 continue
             z_base = (transformer.uhv_kv**2) / transformer.sn_mva
             z = complex(
@@ -217,7 +312,11 @@ class V126AcademicSolver:
         assumption). This shunt is added ONLY on the SSCI path so the existing
         power-quality Z-scan stays byte-identical.
         """
-        index = self._bus_index(model)
+        # Indeks WĘZŁA ELEKTRYCZNEGO — ta sama przestrzeń, co macierz `_ybus`.
+        # Gdy dwie szyny sklejone połączeniem idealnym niosą własne moce zwarciowe,
+        # ich boczniki sumują się na wspólnym węźle (równoległe źródła zastępcze),
+        # zamiast nadpisywać się nawzajem.
+        index = self._indeks_wezla_elektrycznego(model)
         shunt: dict[int, complex] = {}
         for bus in model.buses:
             if not bus.fault_level_mva:
@@ -229,7 +328,7 @@ class V126AcademicSolver:
             z_src = complex(0.15 * z, harmonic * 0.99 * z)
             if abs(z_src) == 0:
                 continue
-            shunt[bus_idx] = 1.0 / z_src
+            shunt[bus_idx] = shunt.get(bus_idx, 0j) + 1.0 / z_src
         return shunt
 
     def _driving_point_impedance(
@@ -266,16 +365,22 @@ class V126AcademicSolver:
         if with_source_shunt:
             # Undo the artificial 1e6 reference (power-quality-only stiffening) so
             # the physical grid Thevenin governs the SSCI driving-point impedance.
-            if len(model.buses):
+            if ybus.shape[0]:
                 ybus[0, 0] -= 1e6
             shunts = self._grid_source_shunt_admittance(model, harmonic)
             for bus_idx, y_src in shunts.items():
                 ybus[bus_idx, bus_idx] += y_src
-            if not shunts and len(model.buses):
+            if not shunts and ybus.shape[0]:
                 # No grid-source bus: keep a small reference to avoid singularity.
                 ybus[0, 0] += 1e-6
         zbus = np.linalg.pinv(ybus)
-        return np.diag(zbus)
+        przekatna_wezlowa = np.diag(zbus)
+        # ROZWINIĘCIE DO PORZĄDKU SZYN. Macierz stoi na węzłach elektrycznych, a
+        # wołający indeksują wynik szyną (`_bus_index`). Szyny sklejone
+        # połączeniem idealnym są JEDNYM węzłem, więc widzą tę samą impedancję
+        # widzianą z zacisków — i to jest ścisłe, a nie przybliżenie.
+        index = self._indeks_wezla_elektrycznego(model)
+        return np.array([przekatna_wezlowa[index[bus.ref]] for bus in model.buses], dtype=complex)
 
     def _solve_linear(
         self, ybus: np.ndarray[Any, Any], injections: np.ndarray[Any, Any]
@@ -287,7 +392,11 @@ class V126AcademicSolver:
 
     def _power_quality(self, model: V126AcademicInput, trace: TraceBuilder) -> JsonDict:
         harmonics = sorted({2, 3, 5, 7, 11, 13, 17, 19, 23, 25, 29, 31, 35, 37, 41, 43, 47, 49})
+        # `index` adresuje SZYNY (wyniki po szynach), `indeks_wezla` — WĘZŁY
+        # ELEKTRYCZNE macierzy. Bez połączeń idealnych oba są tożsame.
         index = self._bus_index(model)
+        indeks_wezla = self._indeks_wezla_elektrycznego(model)
+        liczba_wezlow = len(set(indeks_wezla.values()))
         bus_results: dict[str, JsonDict] = {
             bus.ref: {
                 "bus_ref": bus.ref,
@@ -311,9 +420,12 @@ class V126AcademicSolver:
         k_factor: dict[str, float] = {bus.ref: 0.0 for bus in model.buses}
         for h in harmonics:
             ybus = self._ybus(model, float(h))
-            injections = np.zeros(len(model.buses), dtype=complex)
+            # Wstrzyknięcia sumują się na WĘZLE: dwie szyny sklejone połączeniem
+            # idealnym to jeden punkt sieci, więc ich prądy harmoniczne wchodzą
+            # do jednego bilansu prądowego (prawo Kirchhoffa), a nie do dwóch.
+            injections = np.zeros(liczba_wezlow, dtype=complex)
             for source in model.harmonic_sources:
-                bus_idx = index.get(source.bus_ref)
+                bus_idx = indeks_wezla.get(source.bus_ref)
                 if bus_idx is None:
                     continue
                 percent = source.spectrum_percent.get(h, 0.0) / 100.0
@@ -323,7 +435,7 @@ class V126AcademicSolver:
                 k_factor[source.bus_ref] += current**2 * h**2
             voltages = self._solve_linear(ybus, injections)
             for bus in model.buses:
-                bus_idx = index[bus.ref]
+                bus_idx = indeks_wezla[bus.ref]
                 voltage = voltages[bus_idx] / 1000.0
                 magnitude_kv = abs(voltage)
                 phase = (
@@ -380,9 +492,11 @@ class V126AcademicSolver:
             "harmonic_power_flow",
             "U_h = Y_h^-1 * I_h, THD_U = sqrt(sum(|U_h|^2))/U_1 * 100%",
             {"harmonics": harmonics, "sources": len(model.harmonic_sources)},
-            "Macierz Y_h budowana dla każdej harmonicznej; wektor I_h z widm źródeł.",
+            "Macierz admitancyjna budowana osobno dla każdej harmonicznej; wektor prądów "
+            "wymuszających z widm źródeł odkształcających.",
             {"buses_evaluated": len(bus_results)},
-            "kV/kV daje %, A/A daje %.",
+            "Iloraz napięć [kV/kV] i prądów [A/A] wyrażony w %.",
+            result_pl=(f"Zbadano węzłów: {len(bus_results)}"),
         )
         nodes = list(bus_results.values())
         # K-08: sanity-bounds wiarygodności PQ — THD/TDD/K-factor skończone i fizyczne
@@ -434,7 +548,9 @@ class V126AcademicSolver:
         step = (math.log10(hi) - math.log10(lo)) / (n - 1)
         return [round(10 ** (math.log10(lo) + step * k), 4) for k in range(n)]
 
-    def _z_conv_components(self, converter: Any, f_hz: float) -> tuple[complex, dict[str, complex]]:
+    def _z_conv_components(
+        self, converter: Any, f_hz: float, *, f_base_hz: float
+    ) -> tuple[complex, dict[str, complex]]:
         """Positive-sequence small-signal output impedance Z_conv(jw) of one
         grid-following current-controlled VSC at frequency ``f_hz`` (ohms), plus
         the intermediate transfer functions (for the white-box trace).
@@ -480,6 +596,15 @@ class V126AcademicSolver:
         MANDATORY card fields: current_loop_bandwidth_hz, pll_bandwidth_hz,
         filter_l_pu. Missing any of these raises ValueError (caught by the caller
         and surfaced as missing-data — NO fallback / NO fabricated value).
+
+        ``f_base_hz`` — częstotliwość podstawowa sieci, KEYWORD BEZ WARTOŚCI
+        DOMYŚLNEJ. Wcześniej ``w_base`` stało tu na zaszytym ``2π·50``, mimo że
+        kontrakt wejściowy niesie ``V126AcademicInput.base_frequency_hz`` i ten
+        sam plik czyta je w czterech innych miejscach (jakość energii, przemiatanie
+        SSCI, projekt uziemienia punktu neutralnego). Był to ten sam defekt, co
+        w `_voltage_stability`: zmyślone wejście przy dostępnej danej rzeczywistej
+        (reguła KLASA §5 — uczciwość w obrębie jednego pliku). Brak wartości
+        domyślnej sprawia, że nowe wywołanie nie powstanie bez podania podstawy.
         """
         f_ci = converter.current_loop_bandwidth_hz
         f_pll = converter.pll_bandwidth_hz
@@ -501,7 +626,7 @@ class V126AcademicSolver:
         t_d = converter.control_delay_ms * 1e-3 if converter.control_delay_ms is not None else 0.0
 
         w = 2.0 * math.pi * f_hz
-        w_base = 2.0 * math.pi * 50.0
+        w_base = 2.0 * math.pi * f_base_hz
         w_pu = w / w_base
         s_pu = complex(0.0, w_pu)
         a_ci = 2.0 * math.pi * f_ci / w_base
@@ -563,11 +688,12 @@ class V126AcademicSolver:
         if converter is None:
             trace.add(
                 "ssci_impedance_no_converter",
-                "Z_conv(jw) wymaga przeksztaltnika (VSC) w modelu",
+                "Z_conv(jω) wymaga przekształtnika sieciowego (VSC) w modelu",
                 {"converters": 0},
-                "Brak przeksztaltnika do analizy SSCI.",
+                "W modelu nie ma przekształtnika, dla którego można wyznaczyć impedancję wyjściową.",
                 {"status": "dane niekompletne"},
-                "Brak danych wejsciowych (przeksztaltnik).",
+                "Brak danych wejściowych — przekształtnik nieokreślony.",
+                result_pl=("Brak danych do wyznaczenia impedancji przekształtnika"),
             )
             return {
                 "status": "dane niekompletne",
@@ -596,7 +722,7 @@ class V126AcademicSolver:
 
         # Probe Z_conv mandatory fields once (clear missing-data, no fabrication).
         try:
-            self._z_conv_components(converter, frequencies[0])
+            self._z_conv_components(converter, frequencies[0], f_base_hz=model.base_frequency_hz)
         except ValueError as exc:
             f_ci = converter.current_loop_bandwidth_hz
             f_pll = converter.pll_bandwidth_hz
@@ -616,7 +742,8 @@ class V126AcademicSolver:
                 {"converter_ref": converter.ref, "missing": missing},
                 str(exc),
                 {"status": "dane niekompletne"},
-                "Brak danych karty falownika; brak oszacowania zastepczego (zakaz fabrykacji).",
+                "Brak danych karty przekształtnika; wartości zastępczych się nie podstawia.",
+                result_pl=("Brak danych karty przekształtnika"),
             )
             return {
                 "status": "dane niekompletne",
@@ -639,7 +766,9 @@ class V126AcademicSolver:
             harmonic = f_hz / model.base_frequency_hz
             zdiag = self._driving_point_impedance(model, harmonic, with_source_shunt=True)
             z_grid = complex(zdiag[bus_idx])
-            z_conv, _components = self._z_conv_components(converter, f_hz)
+            z_conv, _components = self._z_conv_components(
+                converter, f_hz, f_base_hz=model.base_frequency_hz
+            )
             minor_loop = z_grid / z_conv if abs(z_conv) else complex(math.inf, 0.0)
             z_grid_rows.append({"f_hz": f_hz, **self._phasor(z_grid)})
             z_conv_rows.append({"f_hz": f_hz, **self._phasor(z_conv)})
@@ -651,7 +780,9 @@ class V126AcademicSolver:
         # White-box trace: emit the model + the per-step transfer functions at a
         # representative low (sub-PLL) frequency so the proof shows the mechanism.
         probe_f = frequencies[0]
-        _z_probe, comp = self._z_conv_components(converter, probe_f)
+        _z_probe, comp = self._z_conv_components(
+            converter, probe_f, f_base_hz=model.base_frequency_hz
+        )
         f_pll = float(converter.pll_bandwidth_hz)
         z_base = converter.rated_kv**2 / converter.rated_mva if converter.rated_kv else 1.0
         t_d_ms = converter.control_delay_ms if converter.control_delay_ms is not None else 0.0
@@ -688,7 +819,11 @@ class V126AcademicSolver:
                 "Z_conv_pu": self._phasor(comp["z_conv_pu"]),
                 "Z_conv_ohm": self._phasor(comp["z_conv_ohm"]),
             },
-            "Z_f w pu (Ohm/Ohm), skalowane przez Z_base [Ohm]; G bezwymiarowe.",
+            "Impedancja filtru w jednostkach względnych, skalowana impedancją bazową [Ω]; wzmocnienia regulatorów bezwymiarowe.",
+            result_pl=(
+                f"Impedancja wyjściowa przekształtnika przy {probe_f} Hz: "
+                f"{_round(abs(comp['z_conv_ohm']), 4)} \u03a9"
+            ),
         )
         trace.add(
             "ssci_zgrid_sweep",
@@ -700,26 +835,34 @@ class V126AcademicSolver:
                 "points": len(frequencies),
             },
             (
-                "Y_bus(f) jak w skanie PQ + bocznik zrodla Y_src(f)=1/(0.15z + j(f/50)0.99z), "
-                "z=Un^2/Sk; impedancja sterujaca na wezle falownika."
+                "Macierz admitancyjna jak w skanie jakości energii, powiększona o bocznik źródła "
+                "zasilającego; impedancja sterująca wyznaczona na węźle przyłączenia przekształtnika."
             ),
             {"z_grid_at_f_min": self._phasor(complex(z_grid_rows[0]["re"], z_grid_rows[0]["im"]))},
-            "Ohm; pinv macierzy admitancji [S] daje impedancje [Ohm].",
+            "Odwrócenie macierzy admitancyjnej [S] daje impedancję [Ω].",
+            result_pl=(
+                f"Impedancja sieci przy {frequencies[0]} Hz: "
+                f"{_round(math.hypot(z_grid_rows[0]['re'], z_grid_rows[0]['im']), 4)} \u03a9"
+            ),
         )
         trace.add(
             "ssci_minor_loop_gain",
             "L(jw) = Z_grid(jw) / Z_conv(jw)",
             {"points": len(frequencies)},
             (
-                "Iloraz impedancji sieci i wyjsciowej falownika; warstwa analizy oceni "
-                "blizosc do punktu -1 (kryterium Nyquista) — TUTAJ tylko fizyka."
+                "Iloraz impedancji sieci i impedancji wyjściowej przekształtnika; bliskość punktu "
+                "krytycznego (kryterium Nyquista) ocenia warstwa analizy — tutaj wyłącznie fizyka."
             ),
             {
                 "re_zconv_min": _round(re_zconv_min),
                 "re_zconv_min_f_hz": re_zconv_min_f,
                 "negative_resistance_region": re_zconv_min < 0.0,
             },
-            "Ohm/Ohm = bezwymiarowe.",
+            "Iloraz impedancji [Ω/Ω] jest bezwymiarowy.",
+            result_pl=(
+                f"Najmniejsza część rzeczywista impedancji przekształtnika: "
+                f"{_round(re_zconv_min, 4)} \u03a9 przy {re_zconv_min_f} Hz"
+            ),
         )
 
         # K-08: sanity-bounds — impedancje skonczone; obecnosc strefy ujemnej
@@ -757,84 +900,160 @@ class V126AcademicSolver:
         }
 
     def _voltage_stability(self, model: V126AcademicInput, trace: TraceBuilder) -> JsonDict:
-        pv_curves: list[JsonDict] = []
-        qv_curves: list[JsonDict] = []
-        l_indices: list[JsonDict] = []
-        smallest = 999.0
-        participants: list[str] = []
-        for bus in model.buses:
-            net_load = max(bus.load_mw - bus.generation_mw, 0.05)
-            fault_level = bus.fault_level_mva or max(25.0, bus.nominal_kv * 10.0)
-            strength = fault_level / max(net_load, 0.05)
-            lambda_max = 1.0 + min(2.5, strength / 20.0)
-            margin = (lambda_max - 1.0) * 100.0
-            l_index = min(0.98, net_load / max(fault_level, 1e-6) * 4.0)
-            eigen = max(0.001, (1.0 - l_index) * bus.voltage_pu)
-            if eigen < smallest:
-                smallest = eigen
-                participants = [bus.ref]
-            pv_curves.append(
-                {
-                    "bus_ref": bus.ref,
-                    "lambda_max": _round(lambda_max),
-                    "u_at_max": _round(max(0.7, bus.voltage_pu - 0.12 * (lambda_max - 1.0))),
-                    "margin_percent": _round(margin, 3),
-                }
-            )
-            q_available = abs(bus.generation_mvar) + 0.15 * max(bus.generation_mw, 0.0)
-            q_min = -0.35 * net_load
-            qv_curves.append(
-                {
-                    "bus_ref": bus.ref,
-                    "q_min_mvar": _round(q_min, 4),
-                    "q_available_mvar": _round(q_available, 4),
-                    "margin_mvar": _round(q_available - abs(q_min), 4),
-                }
-            )
-            l_indices.append(
-                {"bus_ref": bus.ref, "l_index": _round(l_index, 5), "alert": l_index > 0.5}
-            )
+        """Stabilność napięciowa — analiza WSTRZYMANA (karta QU-FABRYKACJA).
+
+        DLACZEGO SOLVER PRZESTAJE TU LICZYĆ. Każda z czterech wielkości, jakie ta
+        analiza podawała, powstawała ze WSPÓŁCZYNNIKA BEZ POKRYCIA W DANYCH albo
+        z wejścia, którego model nie niesie i które solver sobie DOMYŚLAŁ:
+
+        1. ZAPAS MOCY BIERNEJ (`qv_curves`) — zdolność wytwórcza brana jako
+           ``0,15 · P``, zapotrzebowanie jako ``0,35 · P``. Zapotrzebowanie model
+           NIESIE (``bus.load_mvar``, używane niżej w `_branch_current_a`), więc
+           liczenie go z krotności mocy czynnej było fabrykacją przy dostępnej
+           danej rzeczywistej. Zdolność wytwórcza NIE MA DROGI DO SOLVERA:
+           `V126BusInput` ani `V126ConverterInput` nie mają pola zdolności biernej,
+           a w modelu ENM (pomiar 2026-08-08 na `sldSubstrate52s` i `demo_oze_sc`)
+           `Generator.limits.q_min_mvar/q_max_mvar` nie niesie ŻADEN z 35 wytwórców,
+           krzywej producenta `pq_curve` — żaden, ``cosphi_min`` — żaden;
+           ``materialized_params.qmin_mvar`` niesie 7 z 35 (20 %). Margines jest
+           RÓŻNICĄ obu członów, więc jest tak uczciwy, jak jego gorszy człon:
+           pokrycie 0 %. Nazwa „krzywa Q–U" była do tego fałszywym rodowodem —
+           we wzorze nie występowało napięcie w żadnej postaci.
+        2. MARGINES OBCIĄŻALNOŚCI P–U (`pv_curves`,
+           `voltage_stability_margin_percent`) — ``1 + min(2,5; S_sc/P/20)``,
+           dalej ``0,7`` i ``0,12`` w napięciu w punkcie krytycznym. Zdjęty
+           z ekranu kartą V126-WYGASZENIE z długiem nazwanym wprost („albo liczyć
+           realną krzywą P–U rozpływem, albo zdjąć pole"). Ta karta dług ZAMYKA:
+           pole kontraktu zostaje, znika liczba.
+        3. WSKAŹNIK L (`l_index_per_bus`) — ``P/S_sc · 4`` z obcięciem na ``0,98``.
+           Czwórka nie ma pokrycia ani w danych, ani w normie. Opublikowany
+           wskaźnik L (Kessel–Glavitsch 1986) liczy się z macierzy F wyprowadzonej
+           z Y-bus przy ZBIEŻNYM rozpływie — to inny wzór, więc nazwa „L" była
+           trzecim fałszywym rodowodem tego samego pliku.
+        4. WARTOŚĆ WŁASNA (`modal_analysis`) — ``(1 − L) · U_pu``, czyli pochodna
+           punktu 3, do tego ważona napięciem, które model wypełnia wartością
+           domyślną kontraktu (pomiar: ``voltage_pu ≠ 1,0`` dla 0 z 408 szyn).
+
+        WSPÓLNY MIANOWNIK: moc zwarciowa węzła. Wszystkie cztery stały na
+        ``bus.fault_level_mva or max(25; U_n · 10)`` — a pomiar pokazał, że pole
+        jest podane dla 1 z 315 szyn (`sldSubstrate52s`) i 1 z 93 (`demo_oze_sc`),
+        czyli dla 99,7 % węzłów liczba wchodziła ZMYŚLONA. Zmyślone wejście psuje
+        nie tylko ekran, ale i zapis audytowy oraz pakiet dowodowy.
+
+        CO ZOSTAJE: kontrakt odpowiedzi (FROZEN) w komplecie — te same klucze,
+        ta sama struktura, wartości ``None`` i DODATKOWE pole ``brak_danych``
+        z powodem po polsku. Nigdy zero udające pomiar: zero jest wynikiem
+        pomiaru, ``None`` jest jego brakiem i te dwa stany nie mogą wyglądać
+        tak samo. Blok wiarygodności melduje „dane niekompletne".
+
+        JAK PRZYWRÓCIĆ (dług nazwany, `docs/v12xx/REJESTR_KONFLIKTOW.md`,
+        wiersz QU-FABRYKACJA): (a) doprowadzić do kontraktu moc zwarciową węzła
+        i zdolność wytwórczą mocy biernej (`GenLimits` → most ENM→V12.6), (b)
+        policzyć wskaźnik L z macierzy F na Y-bus przy rozpływie (moduł `_ybus`
+        w tym pliku już istnieje), (c) krzywą P–U liczyć rozpływem, nie ze
+        sztywności węzła. Do tego czasu analiza melduje uczciwy brak.
+        """
+        powod_qu = (
+            "Zapas mocy biernej nie jest wyznaczany: kontrakt wejściowy nie niesie "
+            "zdolności wytwórczej mocy biernej (ani granic Q wytwórcy, ani krzywej "
+            "producenta P–Q), a poprzednia wartość powstawała z krotności mocy czynnej "
+            "bez pokrycia w danych. Uzupełnij granice mocy biernej źródeł, aby "
+            "przywrócić tę wielkość."
+        )
+        powod_pu = (
+            "Margines obciążalności P–U nie jest wyznaczany: powstawał z przybliżenia "
+            "ze sztywności węzła o zaszytych współczynnikach, a nie z krzywej P–U "
+            "liczonej rozpływem. Wymaga rozpływu mocy na modelu przypadku."
+        )
+        powod_l = (
+            "Wskaźnik bliskości załamania napięcia nie jest wyznaczany: poprzedni wzór "
+            "mnożył stosunek obciążenia do mocy zwarciowej przez współczynnik bez "
+            "pokrycia w danych i w normie. Wymaga wyznaczenia z macierzy admitancyjnej "
+            "przy zbieżnym rozpływie oraz mocy zwarciowej węzłów w modelu."
+        )
+        pv_curves: list[JsonDict] = [
+            {
+                "bus_ref": bus.ref,
+                "lambda_max": None,
+                "u_at_max": None,
+                "margin_percent": None,
+                "brak_danych": powod_pu,
+            }
+            for bus in model.buses
+        ]
+        qv_curves: list[JsonDict] = [
+            {
+                "bus_ref": bus.ref,
+                "q_min_mvar": None,
+                "q_available_mvar": None,
+                "margin_mvar": None,
+                "brak_danych": powod_qu,
+            }
+            for bus in model.buses
+        ]
+        l_indices: list[JsonDict] = [
+            {
+                "bus_ref": bus.ref,
+                "l_index": None,
+                "alert": None,
+                "brak_danych": powod_l,
+            }
+            for bus in model.buses
+        ]
         trace.add(
             "voltage_stability_indices",
-            "L_j ~= P_load / S_sc * 4; PM = (lambda_max - 1) * 100%",
-            {"buses": len(model.buses)},
-            "Dla kazdego wezla liczony jest margines P-V, Q-V i indeks L z lokalnej sztywnosci.",
-            {"smallest_eigenvalue": _round(smallest, 6)},
-            "Indeksy są bezwymiarowe, margines P-V w %.",
+            r"\text{brak danych wejściowych} \Rightarrow \text{wielkość niewyznaczana}",
+            {
+                "buses": len(model.buses),
+                "buses_with_fault_level": sum(
+                    1 for bus in model.buses if bus.fault_level_mva is not None
+                ),
+                "reactive_capability_source": None,
+            },
+            "Żadna z wielkości stabilności napięciowej nie została wyznaczona — "
+            "brakuje mocy zwarciowej węzłów oraz zdolności wytwórczej mocy biernej, "
+            "a poprzednie wzory zastępowały te dane współczynnikami bez pokrycia.",
+            {
+                "pv_curves": None,
+                "qv_curves": None,
+                "l_index_per_bus": None,
+                "modal_analysis": None,
+            },
+            "Brak wielkości do sprawdzenia jednostek — analiza nie wyznacza liczb.",
+            result_pl=(
+                "Analiza wstrzymana: brak danych wejściowych (moc zwarciowa węzłów "
+                f"podana dla {sum(1 for bus in model.buses if bus.fault_level_mva is not None)} "
+                f"z {len(model.buses)} szyn; zdolność wytwórcza mocy biernej nieprzenoszona "
+                "przez kontrakt wejściowy)."
+            ),
         )
-        margin_min = _round(min((row["margin_percent"] for row in pv_curves), default=0.0), 3)
-        l_values = [float(row["l_index"]) for row in l_indices]
-        # K-08: sanity-bounds — margines skończony i nieujemny, L-index w [0,1]
-        # (L>1 lub eigen<=0 => kolaps napięciowy / wynik niefizyczny).
+        # Blok wiarygodności: nie ma czego oceniać, więc melduje „dane niekompletne"
+        # — ten sam stan, co każda inna analiza V12.6 bez kompletu wejść. Lista
+        # kontroli pozostaje nazwana, żeby przywrócenie wielkości wracało razem
+        # ze swoimi granicami, a nie do bloku bez kontroli.
         sanity = _sanity_block(
             [
-                ("margin_finite", _finite(margin_min), "Margines P-V nieskończony/NaN"),
-                ("margin_nonneg", margin_min >= 0.0, "Margines P-V < 0 (układ za punktem kolapsu)"),
-                (
-                    "l_index_range",
-                    _finite(*l_values) and all(0.0 <= v <= 1.0 for v in l_values),
-                    "L-index poza [0,1] (niefizyczny)",
-                ),
-                (
-                    "eigenvalue_positive",
-                    _finite(smallest) and smallest > 0.0,
-                    "Najmniejsza wartość własna <= 0 (kolaps napięciowy)",
-                ),
+                ("margin_finite", False, "Margines P-V nieskończony/NaN"),
+                ("margin_nonneg", False, "Margines P-V < 0 (układ za punktem kolapsu)"),
+                ("l_index_range", False, "L-index poza [0,1] (niefizyczny)"),
+                ("eigenvalue_positive", False, "Zapas do załamania <= 0 (kolaps napięciowy)"),
             ],
-            has_inputs=len(model.buses) > 0,
+            has_inputs=False,
         )
         return {
             "pv_curves": pv_curves,
             "qv_curves": qv_curves,
             "modal_analysis": {
-                "smallest_eigenvalue": _round(smallest, 6),
+                "smallest_eigenvalue": None,
                 "critical_mode": {
-                    "eigenvalue": _round(smallest, 6),
-                    "participating_buses": participants,
+                    "eigenvalue": None,
+                    "participating_buses": [],
                 },
+                "brak_danych": powod_l,
             },
             "l_index_per_bus": l_indices,
-            "voltage_stability_margin_percent": margin_min,
+            "voltage_stability_margin_percent": None,
+            "brak_danych": powod_pu,
             "sanity": sanity,
         }
 
@@ -852,21 +1071,36 @@ class V126AcademicSolver:
         customers_total = max(sum(bus.customer_count for bus in model.buses), 1)
         saidi = 0.0
         saifi = 0.0
+        bez_obciazalnosci: list[str] = []
         for branch in model.branches:
             current = self._branch_current_a(model, branch)
-            overload = max(0.0, current / branch.ampacity_a - 1.0)
             affected = sum(
                 bus.customer_count for bus in model.buses if bus.ref == branch.to_bus_ref
             )
-            severity = overload * 100.0 + affected / customers_total * 10.0
-            contingencies.append(
-                {
-                    "contingency": branch.ref,
-                    "order": "N-1",
-                    "severity": _round(severity, 4),
-                    "max_loading_percent": _round(current / branch.ampacity_a * 100.0, 2),
-                }
-            )
+            # Obciążalność NIEZNANA ⇒ stopnia obciążenia NIE DA SIĘ policzyć i
+            # człon przeciążeniowy dotkliwości nie powstaje. Przed kartą
+            # MOST-WEJSCIA-V126 most wstawiał tu 630 A każdemu aparatowi i 300 A
+            # każdemu odcinkowi bez obciążalności, więc iloraz I/I_dop wychodził
+            # zawsze — tylko z liczby, której nikt nie zmierzył.
+            pozycja: JsonDict = {
+                "contingency": branch.ref,
+                "order": "N-1",
+            }
+            if branch.ampacity_a is None:
+                bez_obciazalnosci.append(branch.ref)
+                severity = affected / customers_total * 10.0
+                pozycja["max_loading_percent"] = None
+                pozycja["brak_danych"] = (
+                    "Element nie ma obciążalności długotrwałej w modelu ani w karcie "
+                    "katalogowej — stopnia obciążenia i przeciążenia nie policzono. "
+                    "Dotkliwość obejmuje wyłącznie skutek odbiorowy."
+                )
+            else:
+                overload = max(0.0, current / branch.ampacity_a - 1.0)
+                severity = overload * 100.0 + affected / customers_total * 10.0
+                pozycja["max_loading_percent"] = _round(current / branch.ampacity_a * 100.0, 2)
+            pozycja["severity"] = _round(severity, 4)
+            contingencies.append(pozycja)
             saidi += (
                 branch.failure_rate_per_year * branch.mttr_h * 60.0 * affected / customers_total
             )
@@ -884,7 +1118,16 @@ class V126AcademicSolver:
         caidi = saidi / saifi if saifi else 0.0
         # D-14: sanity-bounds (IEEE 1366 — wielkości fizycznie ograniczone).
         minutes_per_year = 525600.0
-        overloaded = [c for c in contingencies if c.get("max_loading_percent", 0.0) > 100.0]
+        # `max_loading_percent` bywa teraz `None` (gałąź bez obciążalności) — brak
+        # nie jest ani przeciążeniem, ani jego brakiem, więc nie wchodzi do zliczenia.
+        # Porównanie `None > 100.0` podniosłoby TypeError, a `get(..., 0.0)` cicho
+        # zaliczyłoby brak do „bez przeciążenia" — obie formy byłyby nieuczciwe.
+        overloaded = [
+            c
+            for c in contingencies
+            if isinstance(c.get("max_loading_percent"), int | float)
+            and c["max_loading_percent"] > 100.0
+        ]
         raw_customers = sum(bus.customer_count for bus in model.buses)
         sanity = _sanity_block(
             [
@@ -912,11 +1155,15 @@ class V126AcademicSolver:
             "reliability_indices",
             "SAIDI = sum(lambda_e * MTTR_e * 60 * N_e) / N_t; SAIFI = sum(lambda_e * N_e)/N_t",
             {"branches": len(model.branches), "customers_total": customers_total},
-            "Dla kazdej galezi wyznaczono klientow za elementem i roczny wklad awaryjnosci.",
+            "Dla każdej gałęzi wyznaczono liczbę odbiorców zasilanych za nią oraz roczny "
+            "wkład jej awaryjności do wskaźników przerw.",
             {"saidi_min_per_year": _round(saidi, 4), "saifi_per_year": _round(saifi, 5)},
-            "1/rok * h * 60 daje min/rok.",
+            "Intensywność uszkodzeń [1/rok] razy czas odtworzenia [h] razy 60 daje [min/rok].",
+            result_pl=(
+                f"Przerwy na odbiorcę: {_round(saidi, 4)} min/rok, {_round(saifi, 5)} 1/rok"
+            ),
         )
-        return {
+        wynik: JsonDict = {
             "contingency_ranking": sorted(
                 contingencies, key=lambda item: (-item["severity"], item["contingency"])
             )[:100],
@@ -928,6 +1175,17 @@ class V126AcademicSolver:
             },
             "sanity": sanity,
         }
+        if bez_obciazalnosci:
+            # Meldunek ZBIORCZY obok meldunków przy pozycjach: czytelnik ma
+            # zobaczyć zasięg braku raz, a nie składać go z rankingu przyciętego
+            # do stu pozycji.
+            wynik["brak_danych"] = (
+                f"{len(bez_obciazalnosci)} z {len(model.branches)} elementów nie ma "
+                "obciążalności długotrwałej (model ani karta katalogowa) — dla nich "
+                "stopnia obciążenia N-1 nie policzono."
+            )
+            wynik["elementy_bez_obciazalnosci"] = sorted(bez_obciazalnosci)
+        return wynik
 
     def _earthing(self, model: V126AcademicInput, trace: TraceBuilder) -> JsonDict:
         data = model.earthing
@@ -971,9 +1229,12 @@ class V126AcademicSolver:
             "ieee80_sverak",
             "Rg = rho * [1/Lc + 1/sqrt(20A)*(1 + 1/(1+h*sqrt(20/A)))]",
             {"area_m2": area, "lc_m": lc, "rho_ohm_m": data.rho1_ohm_m},
-            f"Rg={data.rho1_ohm_m}*(1/{_round(lc, 3)} + czlon powierzchniowy)",
+            f"R_g = {data.rho1_ohm_m} Ω·m · (1/{_round(lc, 3)} m + człon powierzchniowy siatki)",
             {"r_g_ohm": _round(rg, 6), "gpr_kv": _round(gpr_kv, 6)},
-            "Ohm*m * 1/m = Ohm; kA*Ohm = kV.",
+            "Rezystywność [Ω·m] razy odwrotność długości [1/m] daje rezystancję [Ω]; prąd [kA] razy rezystancja [Ω] daje napięcie [kV].",
+            result_pl=(
+                f"Rezystancja uziomu: {_round(rg, 6)} \u03a9; wzrost potencjału: {_round(gpr_kv, 6)} kV"
+            ),
         )
         if u_touch <= u_touch_allow and u_step <= u_step_allow:
             safety = "bezpieczny"
@@ -1096,6 +1357,7 @@ class V126AcademicSolver:
                 reason,
                 {"status": "dane niekompletne"},
                 "Brak danych wejściowych (B0 lub U_l) — brak oszacowania zastępczego.",
+                result_pl=("Brak danych do wyznaczenia prądu pojemnościowego doziemienia"),
             )
             return {
                 "status": "dane niekompletne",
@@ -1125,6 +1387,7 @@ class V126AcademicSolver:
             f"Ic=√3·{_round(omega, 4)}·{_round(c0_farad, 12)}·{u_line_v}",
             {"c0_farad": _round(c0_farad, 12), "ic_a": _round(ic_a, 4)},
             "S/(rad/s)=F; (rad/s)·F·V=A. U_f=U_l/√3 ⇒ 3ωC0U_f=√3ωC0U_l.",
+            result_pl=(f"Prąd pojemnościowy doziemienia sieci: {_round(ic_a, 4)} A"),
         )
 
         if scheme == "resistor_grounded" or scheme == "resistor":
@@ -1177,6 +1440,9 @@ class V126AcademicSolver:
                 "i_coil_rating_a": _round(i_coil_a, 4),
             },
             "1/((rad/s)²·F)=H; 1/((rad/s)·F)=Ω; prąd dławika [A] = Ic [A].",
+            result_pl=(
+                f"Dławik gaszący: {_round(l_coil_h, 8)} H, {_round(x_coil_ohm, 4)} \u03a9, prąd znamionowy {_round(i_coil_a, 4)} A"
+            ),
         )
 
         # Prąd resztkowy: stopień rozstrojenia v ⇒ I_res = Ic·√(d² + v²).
@@ -1197,7 +1463,10 @@ class V126AcademicSolver:
                 "i_residual_resonance_a": _round(i_res_resonance_a, 6),
                 "i_residual_detuned_a": _round(i_res_detuned_a, 6),
             },
-            "bezwymiarowe·A = A.",
+            "Mnożnik bezwymiarowy razy prąd [A] daje prąd [A].",
+            result_pl=(
+                f"Prąd resztkowy: {_round(i_res_resonance_a, 6)} A w rezonansie, {_round(i_res_detuned_a, 6)} A przy rozstrojeniu"
+            ),
         )
 
         # K-08: sanity-bounds — wartości skończone i nieujemne; rozstrojenie w [0,1).
@@ -1263,6 +1532,7 @@ class V126AcademicSolver:
                 reason,
                 {"status": "dane niekompletne"},
                 "Brak parametru projektowego I_ef — brak wartości zgadywanej.",
+                result_pl=("Brak zadanego prądu zwarcia doziemnego — rezystancji nie dobrano"),
             )
             return {
                 "status": "dane niekompletne",
@@ -1292,6 +1562,9 @@ class V126AcademicSolver:
             f"I_ef=√(({_round(u_phase_v, 4)}/{_round(r_ohm, 4)})²+{_round(ic_a, 4)}²)",
             {"r_ohm": _round(r_ohm, 4), "i_ef_resultant_a": _round(i_ef_a, 4)},
             "V/A=Ω; √(A²+A²)=A.",
+            result_pl=(
+                f"Rezystancja uziemiająca: {_round(r_ohm, 4)} \u03a9; wynikowy prąd doziemienia: {_round(i_ef_a, 4)} A"
+            ),
         )
 
         # Sprawdzenie cieplne: energia I_ef²·R·t_clear ≤ znamionowa energia rezystora.
@@ -1315,6 +1588,7 @@ class V126AcademicSolver:
                 "Brak czasu wyłączenia lub znamionowej energii rezystora.",
                 {"status": "dane niekompletne"},
                 "Sprawdzenie cieplne wymaga t_clear i E_rating — bez zgadywania.",
+                result_pl=("Sprawdzenia cieplnego nie wykonano — brak danych"),
             )
             thermal = {
                 "status": "dane niekompletne",
@@ -1340,6 +1614,10 @@ class V126AcademicSolver:
                     "thermal_ok": thermal_ok,
                 },
                 "A²·Ω·s = W·s = J ≤ J.",
+                result_pl=(
+                    f"Energia wydzielona w rezystorze: {_round(e_dissipated_j, 4)} J "
+                    f"(znamionowa: {e_rating_j} J)"
+                ),
             )
             thermal = {
                 "status": "zgodny" if thermal_ok else "niezgodny",
@@ -1418,9 +1696,15 @@ class V126AcademicSolver:
             "iec60071_arrester_margin",
             "Margin_BIL = (BIL - U_res) / U_res * 100%",
             {"locations": len(rows)},
-            "MCOV dobrany z U_m i uziemienia punktu neutralnego, U_res z karty lub 2.8*MCOV.",
+            "Trwałe dopuszczalne napięcie pracy ogranicznika dobrano z najwyższego napięcia "
+            "urządzenia i sposobu uziemienia punktu neutralnego; napięcie obniżone przy "
+            "10 kA z karty katalogowej, a przy jej braku jako 2,8-krotność tego napięcia.",
             {"non_compliant": sum(1 for row in rows if row["verification_status"] != "spelniony")},
-            "kV/kV daje %.",
+            "Iloraz napięć [kV/kV] wyrażony w %.",
+            result_pl=(
+                f"Miejsc bez wymaganego marginesu ochrony izolacji: "
+                f"{sum(1 for row in rows if row['verification_status'] != 'spelniony')} z {len(rows)}"
+            ),
         )
         # K-08: sanity-bounds IEC 60071 — MCOV/BIL/margines skończone i nieujemne.
         mcov_values = [float(r["mcov_kv"]) for r in rows]
@@ -1463,11 +1747,14 @@ class V126AcademicSolver:
         available = recommended in relay_methods or "+" in recommended or "/" in recommended
         trace.add(
             "earth_fault_method_selection",
-            "Metoda = tabela decyzyjna(typ uziemienia, wyposazenie przekaznika)",
+            "Metoda detekcji = f(sposób uziemienia punktu neutralnego, wyposażenie przekaźnika)",
             {"neutral_grounding": neutral, "relay_methods": sorted(relay_methods)},
             f"{neutral} -> {recommended}",
             {"recommended_method": recommended, "available": available},
-            "Decyzja logiczna bez jednostek.",
+            "Wybór metody jest decyzją logiczną — bez jednostek fizycznych.",
+            result_pl=(
+                f"Metoda zalecana: {recommended}; dostępna w przekaźniku: {'tak' if available else 'nie'}"
+            ),
         )
         u0_start = 5.0
         # K-08: sanity (analiza decyzyjna) — wybór metody dobrze określony, nastawa U0 fizyczna.
@@ -1519,17 +1806,29 @@ class V126AcademicSolver:
             )
         inrush_multiple = float(model.parameters.get("inrush_multiple_in", 8.0))
         second_harmonic_percent = 63.0 / inrush_multiple
-        ferro_risk = (
-            str(model.parameters.get("neutral_grounding", "isolated")) == "isolated"
-            and sum(branch.b_siemens_per_km * branch.length_km for branch in model.branches) > 1e-5
+        # Ryzyko ferrorezonansu stoi na POJEMNOŚCI DOCZEPNEJ sieci (suma B·ℓ).
+        # Gałąź bez danej o susceptancji nie wnosi do tej sumy ZERA — ona po
+        # prostu nic o pojemności nie mówi. Rozróżnienie ma skutek: gdy żaden
+        # element nie niesie B, suma wychodzi 0 i przed kartą MOST-WEJSCIA-V126
+        # ocena meldowała „brak ryzyka" wyłącznie z braku danych.
+        galezie_z_susceptancja = [
+            branch for branch in model.branches if branch.b_siemens_per_km is not None
+        ]
+        suma_b_l = sum(
+            branch.b_siemens_per_km * branch.length_km for branch in galezie_z_susceptancja
         )
+        siec_izolowana = str(model.parameters.get("neutral_grounding", "isolated")) == "isolated"
+        ferro_ocenialne = bool(galezie_z_susceptancja) or not siec_izolowana
+        ferro_risk = siec_izolowana and suma_b_l > 1e-5
         trace.add(
             "trv_inrush_ferro",
             "u_TRV(t)=Ur*(1-cos(wn*t))*exp(-t/tau)+Ur/sqrt(3)",
             {"u_r_kv": u_r, "f_n_hz": natural_frequency_hz, "tau_s": tau_s},
-            "Krzywa TRV porownana punktowo z obwiednia IEC 62271-100.",
+            "Przebieg napięcia powrotnego porównano punkt po punkcie z obwiednią "
+            "wytrzymałości wyłącznika wg IEC 62271-100.",
             {"trv_margin_percent": _round(min_margin, 4), "ferro_risk": ferro_risk},
-            "kV porownane z kV, margines w %.",
+            "Napięcia porównywane w [kV]; margines wyrażony w %.",
+            result_pl=(f"Najmniejszy margines napięcia powrotnego: {_round(min_margin, 4)} %"),
         )
         # K-08: sanity-bounds IEC 62271 — margines TRV skończony, krotność udaru i 2. harmoniczna fizyczne.
         sanity = _sanity_block(
@@ -1560,7 +1859,23 @@ class V126AcademicSolver:
             },
             "ferroresonance": {
                 "risk": ferro_risk,
-                "recommendation": "rezystor tlumiacy VT" if ferro_risk else "brak alertu",
+                "recommendation": (
+                    "zastosować rezystor tłumiący w obwodzie otwartego trójkąta "
+                    "przekładników napięciowych"
+                    if ferro_risk
+                    else "brak przesłanek do ferrorezonansu"
+                ),
+                **(
+                    {}
+                    if ferro_ocenialne
+                    else {
+                        "brak_danych": (
+                            "Sieć z punktem neutralnym izolowanym, a żaden element nie niesie "
+                            "susceptancji doziemnej — pojemności doczepnej nie zsumowano, więc "
+                            "ocena „brak przesłanek” wynika z braku danych, nie z pomiaru."
+                        )
+                    }
+                ),
             },
         }
 
@@ -1602,9 +1917,15 @@ class V126AcademicSolver:
             "motor_starting",
             "DeltaU = |I_start * Z_src| / U_phase * 100%; I_start = k_LR * I_n",
             {"motors": len(model.motors)},
-            "Impedancja źródła liczona z lokalnego S_sc lub pierwszej gałęzi zasilającej.",
+            "Impedancja źródła wyznaczona z mocy zwarciowej w węźle, a przy jej braku "
+            "z parametrów pierwszej gałęzi zasilającej.",
             {"non_compliant": sum(1 for row in rows if row["verification_status"] != "zgodny")},
-            "A*Ohm/V daje wartosc bezwymiarowa, razy 100 daje %.",
+            "Iloczyn prądu [A] i impedancji [Ω] odniesiony do napięcia [V] jest bezwymiarowy; "
+            "razy 100 daje %.",
+            result_pl=(
+                f"Silników niespełniających kryteriów rozruchu: "
+                f"{sum(1 for row in rows if row['verification_status'] != 'zgodny')} z {len(rows)}"
+            ),
         )
         # K-08: sanity-bounds — prąd rozruchu ≥ 0, zapad napięcia w [0,100]%, krotność LR fizyczna.
         i_start_values = [float(r["i_start_a"]) for r in rows]
@@ -1653,15 +1974,69 @@ class V126AcademicSolver:
         )
         return self._branch_z_ohm(path_branch) if path_branch is not None else complex(0.1, 0.4)
 
+    @staticmethod
+    def _hosting_capacity_bus_seed(seed_modelu: int, bus_ref: str) -> int:
+        """Ziarno losowania WYŁĄCZNIE dla jednej szyny (karta HOSTING-RNG-IZOLACJA).
+
+        Czysta funkcja pary (ziarno modelu, referencja szyny) — ten sam
+        mechanizm haszujący co ziarno modelu (`_hash`). Bycie funkcją
+        WYŁĄCZNIE tych dwóch argumentów dowodzi izolacji: podstrumień szyny nie
+        może zależeć od niczego poza jej WŁASNĄ referencją i ziarnem modelu —
+        obecność, liczba czy kolejność INNYCH szyn w modelu nie mają jak go
+        poruszyć. Testowalna wprost (`test_v126_hosting_rng_izolacja.py`).
+        """
+        return int(_hash(f"{seed_modelu}:{bus_ref}")[:12], 16)
+
     def _hosting_capacity(self, model: V126AcademicInput, trace: TraceBuilder) -> JsonDict:
-        seed = int(_hash(model.model_dump(mode="json"))[:12], 16)
-        rng = random.Random(seed)
+        # Ziarno modelu: odcisk CAŁEGO modelu wejściowego, ale z listą szyn w
+        # postaci KANONICZNEJ — posortowanej wg `ref`. Lista szyn nie niesie
+        # znaczenia fizycznego jako SEKWENCJA (to zbiór węzłów sieci, kolejność
+        # jest artefaktem budowy modelu), więc kolejność wpisów w `model.buses`
+        # NIE MOŻE wpływać na wynik ŻADNEJ szyny (karta HOSTING-RNG-IZOLACJA,
+        # własność T1). Bez tego sortowania ziarno modelu — a więc i
+        # podstrumień KAŻDEJ szyny — zmieniałoby się przy samej zmianie
+        # kolejności wejścia: ta sama klasa błędu, którą ta karta naprawia,
+        # tylko przeniesiona o poziom wyżej. Pozostałe listy modelu (gałęzie,
+        # transformatory, ...) NIE są tu sortowane — poza zakresem tej karty,
+        # która dotyczy wyłącznie izolacji podstrumieni MIĘDZY SZYNAMI.
+        payload = model.model_dump(mode="json")
+        payload["buses"] = sorted(payload["buses"], key=lambda b: b["ref"])
+        seed = int(_hash(payload)[:12], 16)
         results: list[JsonDict] = []
+        seeds_by_bus: JsonDict = {}
         simulations = int(model.parameters.get("hosting_monte_carlo_n", 1000))
         for bus in model.buses:
+            # HOSTING-RNG-IZOLACJA (dług zarejestrowany przy MOST-WEJSCIA-V126,
+            # ok. linii 1978-2005 sprzed naprawy): PRZED naprawą `rng` był
+            # JEDNYM strumieniem DZIELONYM między WSZYSTKIE szyny — pętla
+            # kandydatów kończyła się `break` w różnym miejscu per szyna, więc
+            # LICZBA zużytych losowań szyny k przesuwała podstrumień szyny
+            # k+1: wynik szyny zależał od losowań szyn POPRZEDNICH (dołożenie
+            # niepowiązanej szyny albo zmiana kolejności szyn zmieniały wyniki
+            # INNYCH szyn — fizycznie bezsensowne sprzężenie; determinizm
+            # same-input=same-output był formalnie zachowany, ale izolacja
+            # przedmiotowa złamana). Każda szyna dostaje teraz WŁASNY,
+            # niezależny podstrumień wyprowadzony jawnie z pary (ziarno
+            # modelu, `bus.ref`).
+            seed_bus = self._hosting_capacity_bus_seed(seed, bus.ref)
+            seeds_by_bus[bus.ref] = seed_bus
+            rng = random.Random(seed_bus)
             z = abs(self._source_impedance(model, bus.ref))
             accepted = 0.0
             limiting = "U_max"
+            # Obciążalność toru zasilającego szynę — WYŁĄCZNIE z elementów, które
+            # ją niosą. Przed kartą MOST-WEJSCIA-V126 stało tu `default=300.0`,
+            # więc szyna bez ani jednego dowiązanego elementu z obciążalnością
+            # (np. szyna GPZ, do której nic nie wchodzi) dostawała kryterium
+            # prądowe policzone z liczby wziętej z powietrza. Odczyt wyniesiony
+            # też POZA pętlę Monte Carlo — nie zależy od losowania, a liczył się
+            # sto tysięcy razy na szynę.
+            obciazalnosci = [
+                branch.ampacity_a
+                for branch in model.branches
+                if branch.to_bus_ref == bus.ref and branch.ampacity_a is not None
+            ]
+            ampacity = max(obciazalnosci) if obciazalnosci else None
             for candidate_mw in [x * 0.1 for x in range(1, 101)]:
                 ok = 0
                 for _ in range(simulations):
@@ -1671,38 +2046,51 @@ class V126AcademicSolver:
                     dv = net_gen * z / max(bus.nominal_kv**2, 1e-9)
                     voltage = bus.voltage_pu + dv
                     current = abs(net_gen) * 1000 / (math.sqrt(3) * bus.nominal_kv)
-                    ampacity = max(
-                        (
-                            branch.ampacity_a
-                            for branch in model.branches
-                            if branch.to_bus_ref == bus.ref
-                        ),
-                        default=300.0,
-                    )
-                    if 0.90 <= voltage <= 1.10 and current <= ampacity:
+                    # Kryterium napięciowe stoi na danych, które są, więc liczy się
+                    # zawsze. Kryterium prądowe NIE JEST stosowane, gdy nie ma z
+                    # czym porównać — wynik ogranicza wtedy samo napięcie, a brak
+                    # obciążalności jest zameldowany przy szynie (nigdy udawany
+                    # domyślną liczbą, nigdy też cicho pomijany).
+                    kryterium_pradowe = ampacity is None or current <= ampacity
+                    if 0.90 <= voltage <= 1.10 and kryterium_pradowe:
                         ok += 1
                 probability = ok / simulations
                 if probability >= 0.95:
                     accepted = candidate_mw
                 else:
-                    limiting = "I_galaz" if current > ampacity else "U_max"
+                    limiting = "I_galaz" if ampacity is not None and current > ampacity else "U_max"
                     break
-            results.append(
-                {
-                    "bus_ref": bus.ref,
-                    "hosting_capacity_mw": _round(accepted, 3),
-                    "critical_limit": limiting,
-                    "confidence_percent": 95,
-                    "monte_carlo_n": simulations,
-                }
-            )
+            pozycja: JsonDict = {
+                "bus_ref": bus.ref,
+                "hosting_capacity_mw": _round(accepted, 3),
+                "critical_limit": limiting,
+                "confidence_percent": 95,
+                "monte_carlo_n": simulations,
+            }
+            if ampacity is None:
+                pozycja["brak_danych"] = (
+                    "Żaden element zasilający tę szynę nie ma obciążalności długotrwałej "
+                    "— kryterium prądowe pominięto, ograniczeniem jest wyłącznie napięcie."
+                )
+            results.append(pozycja)
         trace.add(
             "stochastic_hosting_capacity",
-            "HC = max(P_gen) przy P(kryteria spelnione) >= 95%",
-            {"simulations": simulations, "seed": seed},
-            "Losowanie obciazenia beta i generacji PV gaussian clipping, deterministyczny seed z input hash.",
+            "P_przyl = max(P_gen) przy prawdopodobieństwie spełnienia kryteriów ≥ 95%",
+            {
+                "simulations": simulations,
+                "seed_model": seed,
+                "seed_bus_rule": "int(sha256(f'{seed_model}:{bus_ref}')[:12], 16)",
+                "seeds_by_bus": seeds_by_bus,
+            },
+            "Obciążenie losowane z rozkładu beta, generacja z rozkładu normalnego obciętego "
+            "do zakresu fizycznego; KAŻDA szyna losuje z WŁASNEGO podstrumienia — ziarno "
+            "szyny wyprowadzone jawnie z pary (ziarno modelu, referencja szyny), więc "
+            "wynik jednej szyny nie zależy od losowań zużytych przez inne szyny (karta "
+            "HOSTING-RNG-IZOLACJA); ziarno modelu wyprowadzone z odcisku danych "
+            "wejściowych (powtarzalność wyniku).",
             {"buses": len(results)},
-            "MW pozostaje jednostka mocy; prawdopodobienstwo bez jednostki.",
+            "Moc przyłączeniowa w [MW]; prawdopodobieństwo bezwymiarowe.",
+            result_pl=(f"Zbadano węzłów: {len(results)}"),
         )
         # K-08: sanity-bounds — pojemność przyłączeniowa ≥ 0, skończona, w obrębie skanu (≤ 10 MW).
         hc_values = [float(r["hosting_capacity_mw"]) for r in results]
@@ -1765,9 +2153,13 @@ class V126AcademicSolver:
             "opf_losses_lcc",
             "DeltaP = 3*I^2*R; LCC = CAPEX + sum(OPEX_t/(1+r)^t)",
             {"branches": len(model.branches), "years": years, "discount_rate": discount},
-            "Prąd gałęzi z obciążenia węzła docelowego; deterministyczny OPF wybiera wariant minimalnych strat przy ograniczeniach U/I/Q.",
+            "Prąd gałęzi wyznaczony z obciążenia węzła docelowego; wariant o najmniejszych "
+            "stratach wybierany przy ograniczeniach napięcia, obciążalności i mocy biernej.",
             {"total_losses_kw": _round(total_kw, 5), "annual_kwh": _round(annual_kwh, 3)},
-            "A^2*Ohm = W; kW*h = kWh.",
+            "Kwadrat prądu [A²] razy rezystancja [Ω] daje moc [W]; moc [kW] razy czas [h] daje energię [kWh].",
+            result_pl=(
+                f"Straty mocy: {_round(total_kw, 5)} kW; straty energii: {_round(annual_kwh, 3)} kWh/rok"
+            ),
         )
         return {
             "objective": "min_delta_p_losses",
@@ -1799,9 +2191,10 @@ class V126AcademicSolver:
                 "benchmark_regression",
                 "delta_percent = |calc - ref| / |ref| * 100%",
                 {"benchmarks": 0, "references_provided": False},
-                "Brak referencji benchmarkowych w wejściu — walidacja niewykonana.",
+                "Brak wartości referencyjnych w danych wejściowych — walidacji nie wykonano.",
                 {"status": "dane niekompletne"},
-                "Brak danych referencyjnych.",
+                "Brak wartości referencyjnych sieci odniesienia.",
+                result_pl=("Walidacji nie wykonano — brak wartości referencyjnych"),
             )
             return {
                 "validation_report": [],
@@ -1845,9 +2238,14 @@ class V126AcademicSolver:
             "benchmark_regression",
             "delta_percent = |calc - ref| / |ref| * 100%",
             {"benchmarks": len(rows), "proof_type": overall_proof_type},
-            "Porownanie wynikow solvera z wartosciami referencyjnymi IEEE/CIGRE.",
+            "Porównanie wyników solvera z wartościami referencyjnymi sieci odniesienia "
+            "IEEE / CIGRE.",
             {"max_deviation_percent": max((row["delta_percent"] for row in rows), default=0.0)},
-            "Wartosci tego samego typu, delta w %.",
+            "Wielkości tego samego rodzaju; odchyłka wyrażona w %.",
+            result_pl=(
+                f"Największa odchyłka od referencji: "
+                f"{max((row['delta_percent'] for row in rows), default=0.0)} %"
+            ),
         )
         return {
             "validation_report": rows,
@@ -1893,9 +2291,10 @@ class V126AcademicSolver:
             "uncertainty_propagation",
             "sigma_Y^2 = sum((dY/dx_i * sigma_x_i)^2); U95 = 2*sigma_Y",
             {"parameters": len(sensitivities)},
-            "Tolerancje katalogowe propagowane jako niezalezne skladowe wariancji.",
+            "Tolerancje katalogowe propagowane jako niezależne składowe wariancji wyniku.",
             {"expanded_uncertainty_percent_k2": _round(expanded, 5)},
-            "Suma kwadratow procentowych daje procent po pierwiastkowaniu.",
+            "Pierwiastek z sumy kwadratów udziałów procentowych daje niepewność w %.",
+            result_pl=(f"Niepewność rozszerzona (k = 2): {_round(expanded, 5)} %"),
         )
         ranked = sorted(sensitivities, key=lambda item: -item["sigma_contribution_percent"])
         total = sum(item["sigma_contribution_percent"] for item in ranked) or 1.0

@@ -68,7 +68,7 @@ import {
   type SceneV3,
 } from '../buildScene';
 import { overlapProbe } from '../../layout/labels';
-import { trunkThicknessGaps } from '../buildScene';
+import { sheetRowStationIds, trunkThicknessGaps } from '../buildScene';
 import { SEGMENT_STROKE_WIDTH } from '../../compose/preview';
 import { buildSldDataFromSnapshot } from '../../../v2/canvas/enmToSldAdapter';
 import { SYMBOL_DEFS } from '../../symbols/defs';
@@ -157,26 +157,33 @@ describe('buildSceneV3 — wyrocznie §11 per LOD (realna fixtura, 53 stacje)', 
         // NIE istnieje na scenie:
         expect(scene.symbols.some((s) => s.symbolId === 'branchJunction')).toBe(false);
         // V12K-150 (KROPKA-WEZLOWA): odczepy lateralne pól (ES/VT/SA) mają
-        // kropkę węzłową `junction` w scenie produkcyjnej. Na L0 stacje SN są
-        // zbiorcze (bez pól), ale GPZ renderuje pełny detal na KAŻDYM LOD i
-        // niesie odczep — więc kropka lateralna istnieje na wszystkich LOD.
+        // kropkę węzłową `junction` w scenie produkcyjnej.
+        // KD-5: odczep lateralny jest cechą ROZWINIĘTEGO pola — na L0 pól nie
+        // ma ANI w stacjach (mini-RMU), ANI w GPZ (blok zwinięty), więc kropek
+        // lateralnych na L0 nie ma i mieć nie może (kropka bez pola byłaby
+        // wskazaniem węzła, którego rysunek nie pokazuje). Intencja testu —
+        // „kropka wyłącznie na REALNYM węźle, obustronna spójność" — bez zmian:
+        // na L0 dowodzimy zera, na L1/L2 obecności.
         const lateralDots = scene.symbols.filter((s) =>
           String(s.meta?.testId ?? '').startsWith('sld-v3-wezel-lateral-'),
         );
-        expect(lateralDots.length).toBeGreaterThan(0);
+        if (lod === 0) expect(lateralDots.length).toBe(0);
+        else expect(lateralDots.length).toBeGreaterThan(0);
         // Obustronna spójność kropka⇔węzeł (tee + lateral):
         expect(noBranchWithoutAccent(scene)).toBe(true);
       });
 
       it('F9.3 FIX-1 (§12.3, kontrakt POŁĄCZENIA): głowice kablowe BEZ trasy dotykającej ich portu istnieją WYŁĄCZNIE na fizycznych końcach ciągów (1 magistrala + N laterali = brak dalszej stacji za polem "następnik"); WSZYSTKIE inne głowice (wnętrze ciągów, GPZ→S0, origin→lateral) MUSZĄ być dotknięte trasą', () => {
         if (lod === 0) {
-          // L0: stacje SN są symbolem zbiorczym (brak aparatów pola/głowic),
-          // ale GPZ renderuje się w PEŁNYM detalu na KAŻDYM LOD (`composeGpz`
-          // nie przyjmuje parametru lod, spec §7 dotyczy stacji, nie GPZ) —
-          // JEGO pole liniowe NIESIE własną głowicę, zawsze POŁĄCZONĄ (GPZ→S0,
-          // sekcja 5) — więc `cableHead` JEST obecny, ale zbiór nieosiągniętych
-          // głowic jest i tak pusty (GPZ ma zawsze następnika — magistralę).
-          expect(scene.symbols.some((s) => s.symbolId === 'cableHead')).toBe(true);
+          // L0: stacje SN są symbolem zbiorczym (brak aparatów pola/głowic).
+          // KD-5: blok GPZ jest na L0 ZWINIĘTY (dawniej renderował pełny detal
+          // na każdym LOD, stąd poprzednia treść tej gałęzi), więc jego głowica
+          // kablowa też nie istnieje — na L0 nie ma ŻADNEJ głowicy. Intencja
+          // testu (zbiór głowic NIEOSIĄGNIĘTYCH trasą jest pusty) obowiązuje
+          // dalej i jest tu spełniona w sposób mocniejszy: nie ma czego nie
+          // osiągnąć. Ciągłość toru źródło→magistrala na L0 dowodzi osobno
+          // `lodContinuity.test.ts` (aparat pola odejściowego + tor).
+          expect(scene.symbols.some((s) => s.symbolId === 'cableHead')).toBe(false);
           expect(fieldEntryConnectionsReachCableHead(scene)).toEqual([]);
           expect(allFieldEntryConnectionsReachCableHead(scene)).toBe(true);
           return;
@@ -322,18 +329,29 @@ describe('buildSceneV3 — kontrakt LOD (spec §7)', () => {
     // wszystkich LOD, więc etykieta nazwy każdej stacji ma IDENTYCZNE (x,y) na
     // L0/L1/L2. Przed S1 (D1 „trzy światy") kolumny L0/L1/L2 różniły się
     // szerokością → nazwa dryfowała między poziomami.
-    // Kotwica = PIERWSZY wiersz pasma nazw (`#name-row-0`) — jego `rect` bierze
-    // się WPROST z `nameSlot` kolumny (`layout/labels.ts` `resolveStationNameBand`:
-    // `x = nameSlot.x`, `y = nameSlot.y`, niezależnie od TREŚCI wiersza), więc
-    // jest tekstowo-niezależną kotwicą stacji. Na L0 pasmo ma 1 wiersz (S-id),
-    // na L1/L2 więcej (nazwa/kVA/typ/nN) — porównujemy wspólny wiersz 0.
+    // Kotwica = PIERWSZY wiersz pasma nazw (`#name-row-0`). BLOK-PUSTY: jego
+    // `rect` niesie od tej karty sam TUSZ (`layout/labels.ts`
+    // `resolveStationNameBand` → `tuszWSlocie`), więc tekstowo-niezależne są
+    // dwie inne wielkości i to je porównujemy: ŚRODEK prostokąta (== środek
+    // `nameSlot` kolumny, bo zwężenie jest symetryczne) oraz
+    // `rezerwacjaSzerokosci` (== `nameSlot.width`). Na L0 pasmo ma 1 wiersz
+    // (S-id), na L1/L2 więcej (nazwa/kVA/typ/nN) — porównujemy wspólny wiersz 0.
     const nameAnchors = (lod: 0 | 1 | 2): Map<string, string> => {
       const scene = buildSceneV3(enm, lod);
       const m = new Map<string, string>();
       for (const label of scene.labels) {
         if (label.ownerKind === 'station-name' && label.ownerRef.endsWith('#name-row-0')) {
           const stationRef = label.ownerRef.slice(0, -'#name-row-0'.length);
-          m.set(stationRef, `${label.rect.x},${label.rect.y},${label.rect.width}`);
+          // BLOK-PUSTY: kotwica = PUNKT ZACZEPU wiersza (środek slotu w poziomie,
+          // strop w pionie) + SZEROKOŚĆ REZERWACJI. Do tej karty porównywano
+          // `rect.x`/`rect.width`, bo prostokąt wiersza BYŁ slotem kolumny;
+          // teraz prostokąt niesie sam tusz, a tusz z definicji zależy od
+          // TREŚCI poziomu (L0 rysuje kod stacji, L1/L2 nazwę). Intencja bez
+          // zmian i MOCNIEJSZA: sprawdzamy obie wielkości TEKSTOWO NIEZALEŻNE
+          // — środek zaczepu i rezerwację kolumny — więc dryf geometrii nadal
+          // pada, a różnica długości napisu już nie.
+          const srodek = label.rect.x + label.rect.width / 2;
+          m.set(stationRef, `${srodek},${label.rect.y},${label.rezerwacjaSzerokosci}`);
         }
       }
       return m;
@@ -341,10 +359,29 @@ describe('buildSceneV3 — kontrakt LOD (spec §7)', () => {
     const a0 = nameAnchors(0);
     const a1 = nameAnchors(1);
     const a2 = nameAnchors(2);
-    // Zbiór stacji z nazwą jest niepusty i wspólny (nic nie ginie między LOD).
+    // Zbiór STACJI z nazwą jest niepusty i wspólny (nic nie ginie między LOD).
+    // KD-5 (zwinięcie bloku GPZ na L0): pasma nazw ELEMENTÓW WEWNĘTRZNYCH GPZ
+    // (tabliczka transformatora, tabliczka źródła systemowego) na L0 nie
+    // istnieją — bo nie istnieją ich elementy. To TREŚĆ zwinięcia, nie dryf
+    // kotwicy, więc porównanie liczności robimy na STACJACH (`stn/...`), a
+    // różnicę GPZ nazywamy WPROST niżej (żeby przypadkowa utrata pasma i tak
+    // była złapana). Intencja testu — „kotwica stacji identyczna na L0/L1/L2"
+    // — bez zmian.
+    const stationsOnly = (m: Map<string, string>): Map<string, string> =>
+      new Map([...m].filter(([ref]) => ref.startsWith('stn/')));
     expect(a0.size).toBeGreaterThan(EXPECTED_STATION_COUNT / 2);
-    expect(a1.size).toBe(a0.size);
-    expect(a2.size).toBe(a0.size);
+    expect(stationsOnly(a1).size).toBe(stationsOnly(a0).size);
+    expect(stationsOnly(a2).size).toBe(stationsOnly(a0).size);
+    // Zwinięcie może pasma wyłącznie UJMOWAĆ — nigdy dodać nowej kotwicy na L0.
+    for (const ref of a0.keys()) {
+      expect(a1.has(ref), `kotwica ${ref} obecna na L0, brak na L1`).toBe(true);
+      expect(a2.has(ref), `kotwica ${ref} obecna na L0, brak na L2`).toBe(true);
+    }
+    const brakNaL0 = [...a1.keys()].filter((ref) => !a0.has(ref)).sort();
+    // Dokładnie pasma WEWNĘTRZNE bloku GPZ (i nic więcej) — 2 na fixturze:
+    // tabliczka TR i tabliczka źródła systemowego.
+    expect(brakNaL0.every((ref) => ref.startsWith('gpz/')), `nie-GPZ pasmo zgubione na L0: ${brakNaL0.join(', ')}`).toBe(true);
+    expect(brakNaL0.length).toBe(2);
     const drift: string[] = [];
     for (const [ref, pos0] of a0) {
       const pos1 = a1.get(ref);
@@ -439,10 +476,34 @@ describe('buildSceneV3 — ciągłość elektryczna ciągu głównego (spec §16
     return { min: Math.min(...xs), max: Math.max(...xs) };
   }
 
-  it('stacje ciągu głównego są narysowane w TEJ SAMEJ kolejności co topologyRuns[].stationRefs (rosnące X)', () => {
-    const ranges = ids.map(stationXRange);
-    for (let i = 1; i < ranges.length; i++) {
-      expect(ranges[i - 1].max).toBeLessThan(ranges[i].min);
+  /** S9-1: zakres Y symboli stacji — do sprawdzenia porządku WIERSZY arkusza. */
+  function stationYRange(stationId: string): { readonly min: number; readonly max: number } {
+    const hash = stationHash(stationId);
+    const ys = scene.symbols.filter((s) => s.meta?.testId?.includes(hash)).map((s) => s.y);
+    expect(ys.length).toBeGreaterThan(0);
+    return { min: Math.min(...ys), max: Math.max(...ys) };
+  }
+
+  // S9-1 (ŁAMANIE ARKUSZA, `docs/sld/DECYZJA_LAMANIE_ARKUSZA.md`): intencja
+  // testu BEZ ZMIAN — stacje ciągu są rysowane w kolejności topologicznej, od
+  // strony zasilania w prawo. Zmienia się KANON odniesienia: po złamaniu
+  // arkusza kolejność jest leksykograficzna (wiersz arkusza, potem X), bo każdy
+  // wiersz zaczyna się od lewego marginesu. Test sprawdza więc OBA warunki:
+  // (a) w obrębie wiersza X rośnie, (b) wiersze idą w dół (żaden wiersz nie
+  // zaczyna się wyżej od poprzedniego) — łącznie to ta sama gwarancja czytania
+  // ciągu „od zasilania w głąb sieci", której pilnowała stara asercja.
+  it('stacje ciągu głównego są narysowane w kolejności topologicznej (wiersz arkusza, potem rosnące X)', () => {
+    const rows = sheetRowStationIds(scene);
+    expect(rows.flat()).toEqual([...ids]);
+    let previousRowBottom = -Infinity;
+    for (const row of rows) {
+      const ranges = row.map(stationXRange);
+      for (let i = 1; i < ranges.length; i++) {
+        expect(ranges[i - 1].max).toBeLessThan(ranges[i].min);
+      }
+      const rowTop = Math.min(...row.map((id) => stationYRange(id).min));
+      expect(rowTop).toBeGreaterThan(previousRowBottom);
+      previousRowBottom = Math.max(...row.map((id) => stationYRange(id).max));
     }
   });
 
@@ -632,7 +693,10 @@ describe('buildSceneV3 — F8b-1 meta (ownerRef/elementKind, fundament selekcji 
       // §16-v3: słupek terminalny — MARKER końca biegu (nie element
       // selekcji); ownerRef z sufiksem `#open-terminal` dla tożsamości,
       // elementKind celowo nieustawiony (klik nie otwiera inspektora).
-      else if (s.meta?.kind === 'openTerminal') expect(s.meta?.elementKind).toBeUndefined();
+      // S9-1: kreski znaku ciągu dalszego (złamanie arkusza) — TA SAMA klasa co
+      // słupek terminalny: marker czytelności, nie element selekcji.
+      else if (s.meta?.kind === 'openTerminal' || s.meta?.kind === 'sheetContinuation')
+        expect(s.meta?.elementKind).toBeUndefined();
       else expect(s.meta?.elementKind).toBe('segment');
     }
     // Przynajmniej jeden segment SN-bus (stacja) z ownerRef kończącym się na
@@ -977,9 +1041,63 @@ describe('buildSceneV3 — F9.7: totalVerticalSegmentLength (spec §15.1 vertica
     // ograniczeniem MIĘKKIM") — pełne dane techniczne linii (§7 P0) mają
     // pierwszeństwo; ZERO nowych kolizji (accept:sld-v3 zielony). NOWA kanoniczna
     // geometria po wzbogaceniu etykiet, nie regresja.
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 0))).toBe(22944);
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(39888);
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(39888);
+    // KD-5 (zwinięcie bloku GPZ na L0): L0 OBNIŻONY 22944 → 22896 (−48).
+    // Piony WEWNĘTRZNE GPZ (zejście szyna→pole, zejście pola WN→TR, pole TR→
+    // szyna SN, zejście źródła) zastąpione na L0 dwoma krótkimi pionami
+    // reprezentacji zwiniętej (źródło→blok, blok→aparat pola odejściowego);
+    // różnica netto −48 px. Miara „nie-rosnąca" (§15.1) spełniona.
+    // L1/L2 BEZ ZMIAN (39888) — dowód, że zwinięcie nie ruszyło geometrii
+    // świata: offsety wiersza, trasa magistrali i rama strefy liczą się dalej
+    // z kompozycji PEŁNEJ na każdym LOD.
+    // KD-8 poz. 5 (2026-07-31, CELOWA aktualizacja baseline): PODNIESIONY
+    // 22896/39888/39888 → 23232/40224/40224 (+336 px pionów JEDNOLICIE na LOD).
+    // Przyczyna dokładna: prześwit etykiety napięcia szyny od TORU urósł z GRID
+    // (8 px) do BUSBAR_LABEL_PATH_CLEARANCE (16 px), a rezerwacja pasma
+    // (`stationBusbarLabelHeight`) urosła razem z nim — 42 wiersze stacji z
+    // polami SN na fixturze referencyjnej × 8 px = 336 px. Odstępstwo od reguły
+    // „nie-rosnąca" (§15.1 „redukcja jest ograniczeniem MIĘKKIM") ŚWIADOME i tej
+    // samej klasy co F10.3: czytelność podpisu szyny ma pierwszeństwo przed
+    // minimalizacją pionów. Dowód braku regresji układu: `accept:sld-v3` ALL PASS
+    // (w tym nowa sonda `busbar_label_clearance_probe` — 55 etykiet szyn,
+    // 0 naruszeń) oraz zero nowych kolizji etykieta↔etykieta/symbol/przewód.
+    // S9-1 (ŁAMANIE ARKUSZA, `docs/sld/DECYZJA_LAMANIE_ARKUSZA.md`) — baseline
+    // OBNIŻONY: 23232/40224/40224 → 22232/39240/39240 (−1000 / −984 / −984).
+    // Przyczyna zmierzona, nie oszacowana: po złamaniu ciągu na wiersze arkusza
+    // odgałęzienia leżą w PAŚMIE swojego wiersza (przeplot, decyzja §4), a nie
+    // pod całym rysunkiem — piony zejść lateralnych są krótsze o dystans, który
+    // wcześniej pokonywały przez wszystkie wiersze niżej. Nadwyżkę częściowo
+    // zjadają NOWE piony łączników ciągu dalszego (kanał powrotny + rynna
+    // podjęcia na każdym złamaniu), więc bilans netto jest UJEMNY — reguła
+    // „nie-rosnąca" (spec §15.1) spełniona.
+    // S9-7/8 (TYPOGRAFIA I HIERARCHIA RYSUNKU): PODNIESIONY 22232/39240/39240 →
+    // 22440/39448/39448 (+208 px jednolicie). Przyczyna ZMIERZONA: oznacznik
+    // jednoznaczności napięcia znamionowego kabla („Un=", `layout/lineLabel.ts`,
+    // S9-8) wydłuża etykietę przęsła o 3 glify, a ta jest REZERWACJĄ szerokości
+    // kolumny stacji (`requiredSegmentLabelWidth`), więc `colorSegmentLabelRows`
+    // inaczej dzieli sloty na wiersze pasma B1; „jedna kotwica" S1 propaguje
+    // deltę jednolicie na L0/L1/L2. Świadome odstępstwo od „nie-rosnącej"
+    // (§15.1 „redukcja jest ograniczeniem MIĘKKIM"): sam napis „20 kV" w
+    // łańcuchu członów nie mówi, czy to napięcie izolacji kabla, czy pracy
+    // sieci — a te bywają różne na tym samym rysunku. Wariant „Un = " ze
+    // spacjami kosztowałby +2536 px i obniżał gęstość tuszu 2,03 %→1,94 %,
+    // dlatego wybrano formę zwartą (pomiar w `formatRatedVoltageKv`).
+    // PROPORCJE (karta PROPORCJE, 2026-08-07): OBNIŻONY 22440/39448/39448 →
+    // 21480/38488/38488 (−960 px jednolicie). Przyczyna ZMIERZONA: kod stacji
+    // pada w bloku RAZ (niesie go opis sekcji — rozstrzygnięcie S9-8/S9-12),
+    // więc pasmo nazw straciło wiersz z gołym kodem; wysokość pasma wchodzi w
+    // wysokość bloku stacji, a „jedna kotwica" S1 propaguje deltę jednolicie na
+    // L0/L1/L2. SPADEK ⇒ reguła „nie-rosnąca" (§15.1) spełniona z zapasem.
+    // BLOK-PUSTY (2026-08-07): OBNIŻONY 21480/38488/38488 → 21064/37272/37272
+    // (−416 na L0, −1216 na L1/L2). Przyczyna ZMIERZONA: rezerwacja strony nN
+    // bloku stacji liczyła SUMĘ dwóch zwisów (rząd DER + strzałka odbioru),
+    // choć kompozycja wiesza OBA na tej samej szynie nN i rozsuwa je w
+    // POZIOMIE (`layout/measure.ts` `nnSideBelowBusHeight`) — blok każdej
+    // stacji z odbiorem nN i DER na nN skrócił się o 32 j.św., co przez pasma
+    // i przecięcia wierszy oddaje powyższą deltę. SPADEK ⇒ reguła
+    // „nie-rosnąca" (§15.1) spełniona.
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 0))).toBe(21064);
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(37272);
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(37272);
   });
 });
 
@@ -1068,9 +1186,30 @@ describe('buildSceneV3 — F10.3: busbar_label_probe (spec §18.4) na fixturze R
       const busbarLabels = scene.labels.filter((l) => l.ownerKind === 'busbar-voltage');
       // 53 stacje + N sekcji GPZ (fixtura: 1) — parytet z GPZ dosłownie.
       expect(busbarLabels.length).toBeGreaterThanOrEqual(53);
-      // F13.1 (spec §21.1): forma WN „Szyna WN · V kV" (szyna 110 kV GPZ)
-      // dopisana do zamkniętego słownika form (§19.2 SN + §21.1 WN).
-      expect(busbarLabels.every((l) => /^(?:Sekcja \d+|Szyna WN)(?: · \d+(?:\.\d+)? kV)?$/.test(l.text))).toBe(true);
+      // S9-7 (reguła KLASA §3 — predykaty parami): format sprawdza WYŁĄCZNIE
+      // wyrocznia produkcyjna (`busbarLabelGaps` wyżej). Poprzednia wersja
+      // testu powtarzała TU własne wyrażenie regularne, i to ROZJECHANE z
+      // produkcją: dopuszczała kropkę dziesiętną („15.5 kV"), której kanon
+      // zapisu rysunku (`liczbaRysunkuPl`) zabrania. Dwa niezależne warunki na
+      // ten sam format to defekt czekający na dane brzegowe — wzorzec został
+      // usunięty, a jego intencję (forma SN + forma WN §21.1) niesie dowód
+      // POZYTYWNY niżej.
+      //
+      // S9-8: dowód pozytywny nowej własności — opis sekcji stacji niesie
+      // IDENTYFIKATOR STACJI jako człon wiodący (GPZ, który kodu nie ma,
+      // zachowuje formę „Sekcja N · V kV"/„Szyna WN · V kV").
+      const zStacji = busbarLabels.filter((l) => l.ownerRef.startsWith('stn/'));
+      expect(zStacji.length).toBeGreaterThan(0);
+      expect(zStacji.every((l) => /^S\d+ · Sekcja \d+/.test(l.text))).toBe(true);
+      // S9-12 (audyt C-8 — „dwa różne obiekty z identycznym opisem w jednym
+      // kadrze"): sam FORMAT z członem `S\d+` nie dowodzi rozróżnialności —
+      // dwie stacje mogłyby dostać ten sam kod (np. regres źródła kodu na
+      // stałą). Asercja wprost: przy WIELU stacjach w kadrze (fixtura: 53)
+      // każda etykieta sekcji jest INNA (człon stacji z danych czyni opis
+      // unikalnym per stacja).
+      expect(zStacji.length).toBeGreaterThan(1);
+      expect(new Set(zStacji.map((l) => l.text)).size).toBe(zStacji.length);
+      expect(busbarLabels.some((l) => /^Szyna WN( · \d+(?:,\d+)? kV)?$/.test(l.text))).toBe(true);
     }
   });
 

@@ -4,12 +4,14 @@ import {
   APARAT_OPCJE,
   DANE_DOMYSLNE,
   ROLE_OPCJE,
+  WYBOR_POMIARU_OPCJE,
   aparatLabel,
   bayKindZRoli,
   maSzablonProducenta,
   maSzyne,
   rolaLabel,
   walidujFormularz,
+  wyborPomiaruLabel,
   zbudujPayload,
   type PolaSnFormData,
 } from '../polaSnModel';
@@ -109,6 +111,57 @@ describe('polaSnModel — payload', () => {
     expect(payload.switchgear_family_ref).toBeUndefined();
     expect(payload.bay_template_ref).toBeUndefined();
     expect(payload.manufacturer_ref).toBeUndefined();
+  });
+});
+
+describe('polaSnModel — pomiar pola (POMIAR-RODZAJ, kontrakt §5, V12K-336)', () => {
+  it('układ pomiarowy energii deklaruje funkcję i rodzaj JAWNIE w payloadzie add_sn_bay', () => {
+    for (const rodzaj of ['PODSTAWOWY', 'REZERWOWY', 'ROWNOWAZNY', 'KONTROLNY'] as const) {
+      const payload = zbudujPayload(
+        dane({ bay_role: 'MEASUREMENT', apparatus_kind: 'MEASUREMENT', wybor_pomiaru: rodzaj }),
+        KONTEKST,
+      );
+      expect(payload.funkcja_pomiaru, rodzaj).toBe('UKLAD_ENERGII');
+      expect(payload.rodzaj_pomiaru, rodzaj).toBe(rodzaj);
+    }
+  });
+
+  it('pomiar napięcia szyn wysyła funkcję NAPIECIA_SZYN bez rodzaju układu', () => {
+    const payload = zbudujPayload(
+      dane({ bay_role: 'MEASUREMENT', apparatus_kind: 'MEASUREMENT', wybor_pomiaru: 'NAPIECIA_SZYN' }),
+      KONTEKST,
+    );
+    expect(payload.funkcja_pomiaru).toBe('NAPIECIA_SZYN');
+    expect(payload.rodzaj_pomiaru).toBeUndefined();
+  });
+
+  it('domyślny wybór = pomiar napięcia szyn (układ energii nigdy z domysłu)', () => {
+    expect(DANE_DOMYSLNE.wybor_pomiaru).toBe('NAPIECIA_SZYN');
+  });
+
+  it('rola niepomiarowa NIE wysyła pomiaru (backend by go odrzucił)', () => {
+    for (const { value } of ROLE_OPCJE) {
+      if (value === 'MEASUREMENT') continue;
+      const payload = zbudujPayload(dane({ bay_role: value }), KONTEKST);
+      expect(payload.funkcja_pomiaru, value).toBeUndefined();
+      expect(payload.rodzaj_pomiaru, value).toBeUndefined();
+    }
+  });
+
+  it('każdy wybór pomiaru ma polską etykietę (mapowanie totalne, bez surowych kodów)', () => {
+    expect(WYBOR_POMIARU_OPCJE.map((o) => o.value)).toEqual([
+      'NAPIECIA_SZYN',
+      'PODSTAWOWY',
+      'REZERWOWY',
+      'ROWNOWAZNY',
+      'KONTROLNY',
+    ]);
+    for (const { value, label } of WYBOR_POMIARU_OPCJE) {
+      expect(label.length).toBeGreaterThan(0);
+      expect(label).not.toBe(value);
+      expect(/^[A-Z_]+$/.test(label)).toBe(false);
+      expect(wyborPomiaruLabel(value)).toBe(label);
+    }
   });
 });
 

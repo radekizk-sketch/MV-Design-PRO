@@ -47,7 +47,8 @@ Rozszerzony/Ekspercki) ukrywa elementy oznaczone trybem — bez przeładowania w
 ## 5. Etykiety PL (dokładne stringi)
 „Projekt", „Model sieci", „Schemat (SLD)", „Gotowość", „Obliczenia", „Wyniki i dowody",
 „Dokumentacja"; „Aktywny przypadek", „Przypadków: {n}", „Model: rew. {n}", „Przebieg: {czas}",
-„Odcisk wyników SHA-256", „Tryb", „Podstawowy", „Rozszerzony", „Ekspercki", „Zapisz",
+„Wersja modelu" (odcisk SHA-256 migawki — K6/H-6 R4; dawniej „Odcisk wyników SHA-256",
+chip nie miał żywego dostawcy), „Tryb", „Podstawowy", „Rozszerzony", „Ekspercki", „Zapisz",
 „Przelicz aktywny przypadek", „Połącz ponownie", „Otwórz projekt", „Przywróć układ domyślny".
 Zakaz identyfikatorów kodowych w tekstach pierwszoplanowych (MODEL_INTERAKCJI §2.7).
 

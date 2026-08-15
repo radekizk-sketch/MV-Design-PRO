@@ -3,6 +3,10 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
+from application.analyses.dowod_certyfikatu import (
+    NcRfgCertificateEvidence,
+    dowody_certyfikatu,
+)
 from application.ncrfg_compliance import (
     NcRfgComplianceChecker,
     build_der_compliance_list_from_enm,
@@ -81,12 +85,32 @@ def run_ncrfg_compliance_from_model(case_id: UUID, operator_id: str) -> dict[str
     }
 
 
-@router.post("/run", response_model=NcRfgPtpireeRunResult)
-def run_ncrfg_ptpiree_tests(request: NcRfgPtpireeRunRequest) -> NcRfgPtpireeRunResult:
+class NcRfgPtpireeRunResponse(NcRfgPtpireeRunResult):
+    """Wynik biegu POSZERZONY o dowód certyfikacji (dodatek karty P2).
+
+    Dziedziczy kontrakt solvera w całości — wszystkie istniejące pola zachowują
+    nazwy, typy i wartości. Nowy jest WYŁĄCZNIE `certificate_evidence`, więc
+    konsument sprzed tej karty czyta dokładnie to samo, co czytał.
+    """
+
+    certificate_evidence: list[NcRfgCertificateEvidence] = []
+
+
+@router.post("/run", response_model=NcRfgPtpireeRunResponse)
+def run_ncrfg_ptpiree_tests(
+    request: NcRfgPtpireeRunRequest,
+    case_id: UUID | None = None,
+) -> NcRfgPtpireeRunResponse:
     try:
-        return _solver.run(request)
+        result = _solver.run(request)
     except FileNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exc),
         ) from exc
+    return NcRfgPtpireeRunResponse(
+        **result.model_dump(),
+        certificate_evidence=dowody_certyfikatu(
+            case_id, [module.der_ref for module in result.modules]
+        ),
+    )

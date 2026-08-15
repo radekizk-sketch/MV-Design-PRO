@@ -18,11 +18,17 @@ export interface Project {
 }
 
 /**
- * Request do tworzenia projektu.
+ * Request do tworzenia projektu. Pola trybu/napięcia/częstotliwości są
+ * addytywne i mapują 1:1 na kontrakt backendu `ProjectCreate`
+ * (backend/src/api/projects.py:46-53; domyślne wartości backendu:
+ * mode=AS-IS, 15,0 kV, 50,0 Hz).
  */
 export interface CreateProjectRequest {
   name: string;
   description?: string | null;
+  mode?: 'AS-IS' | 'TO-BE';
+  voltage_level_kv?: number;
+  frequency_hz?: number;
 }
 
 export interface UpdateProjectRequest {

@@ -307,3 +307,47 @@ export interface CreateRunRequest {
   readiness?: Record<string, unknown>;
   eligibility?: Record<string, unknown>;
 }
+
+// =============================================================================
+// Serie przebiegów (wsad) — karta BATCH-ROUTER
+// =============================================================================
+
+/**
+ * Status serii przebiegów — 1:1 z domeną backendu (`domain/batch_job.py`).
+ */
+export type BatchStatus = 'PENDING' | 'RUNNING' | 'DONE' | 'FAILED';
+
+/**
+ * Rekord serii przebiegów (kontrakt `GET /api/execution/study-cases/{id}/batches`).
+ * Biegi serii (`run_ids`) to zwykłe biegi kanoniczne — szczegóły i wyniki
+ * czytane istniejącymi końcówkami biegów.
+ */
+export interface BatchJob {
+  batch_id: string;
+  study_case_id: string;
+  analysis_type: ExecutionAnalysisType;
+  scenario_ids: string[];
+  created_at: string;
+  status: BatchStatus;
+  batch_input_hash: string;
+  run_ids: string[];
+  result_set_ids: string[];
+  errors: string[];
+}
+
+/**
+ * Żądanie utworzenia serii (kontrakt `POST /api/execution/study-cases/{id}/batches`).
+ */
+export interface CreateBatchRequest {
+  scenario_ids: string[];
+}
+
+/**
+ * Polskie etykiety statusów serii.
+ */
+export const BATCH_STATUS_LABELS: Record<BatchStatus, string> = {
+  PENDING: 'Utworzona',
+  RUNNING: 'W trakcie',
+  DONE: 'Zakończona',
+  FAILED: 'Błąd',
+};

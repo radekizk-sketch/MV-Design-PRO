@@ -192,6 +192,11 @@ class InspectorExporter:
         (poza zakresem proof engine). Format pozostaje zgodny z V12K-007:
         eksport zawsze w motywie technicznym jasnym (nie dark_scada).
 
+        Determinizm binarny: normalizowane przez `docx_determinism` — sam
+        python-docx NIE zeruje znacznikow czasu wpisow ZIP ani docProps/core.xml
+        (dwa kolejne `Document().save()` roznia sie bajtowo, gdy wywolania
+        przetna granice sekundy).
+
         Returns:
             ExportResult z zawartością DOCX (bytes) lub błędem
         """
@@ -211,6 +216,10 @@ class InspectorExporter:
 
         try:
             from io import BytesIO
+
+            from network_model.reporting.docx_determinism import (
+                make_docx_bytes_deterministic,
+            )
 
             doc = self._document
             docx_obj = Document()
@@ -276,12 +285,12 @@ class InspectorExporter:
             summary_para = docx_obj.add_paragraph()
             summary_para.add_run(f"Łączna liczba kroków: {doc.summary.total_steps}")
 
-            # Zapisz do bytes (deterministyczne — bez modyfikacji core_properties)
+            # Zapisz do bytes, normalizuj przez docx_determinism dla determinizmu binarnego
             buf = BytesIO()
             docx_obj.save(buf)
             return ExportResult(
                 format="docx",
-                content=buf.getvalue(),
+                content=make_docx_bytes_deterministic(buf.getvalue()),
                 success=True,
                 filename_hint=self._generate_filename("docx"),
             )

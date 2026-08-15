@@ -27,7 +27,7 @@
  * kompozycji to tory SN/WN klasy „normalny przewód", nie szyna.
  */
 import type { SymbolId } from '../symbols/defs';
-import { SYMBOL_GLYPHS, type StationDerGlyphKind, type SwitchState } from '../symbols/glyphs';
+import { SYMBOL_GLYPHS, V3_STROKE_APPARATUS, type StationDerGlyphKind, type SwitchState } from '../symbols/glyphs';
 import type { MiniRmuLineTopology } from '../symbols/miniRmuGrammar';
 import { SOURCE_STATE_OVERLAY_COLOR, type DerSourceKind, type SourceOperationalState } from './sourceKind';
 import { LABEL_TYPOGRAPHY } from '../core/text';
@@ -55,7 +55,7 @@ import { BASE_STROKE, CANVAS_BACKGROUND } from '../theme/colorTokens';
  *  SN GPZ, grubsza niż szyna stacji (`'bus'`, 4) — dominanta kompozycyjna GPZ
  *  jako WN/SN. Szyna WN (`#hv-bus`) i szyny stacji ZOSTAJĄ `'bus'` (spec
  *  §21.2 różnicuje WYŁĄCZNIE szynę sekcji SN GPZ, nie szynę WN ani stacje). */
-export type PreviewSegmentKind = 'bus' | 'busGpz' | 'sn' | 'snTrunk' | 'lv' | 'leader' | 'protectionTrip' | 'measurementLink' | 'openTerminal';
+export type PreviewSegmentKind = 'bus' | 'busGpz' | 'sn' | 'snTrunk' | 'lv' | 'leader' | 'protectionTrip' | 'measurementLink' | 'openTerminal' | 'sheetContinuation';
 
 /** Eksportowane (F6b): `SldCanvasV3` reużywa TĘ SAMĄ hierarchię grubości
  *  (spec §6), zero duplikacji stałych między harnessem debug i kanwą docelową. */
@@ -83,7 +83,114 @@ export const SEGMENT_STROKE_WIDTH: Readonly<Record<PreviewSegmentKind, number>> 
   // OTWARTEGO końca ciągu (kreska prostopadła do ostatniego biegu) — grubość
   // toru odgałęźnego (to marker KOŃCA toru SN, nie adnotacja ≤0.8).
   openTerminal: 1.6,
+  // S9-1 (`docs/sld/DECYZJA_LAMANIE_ARKUSZA.md` §5): GROT KONTYNUACJI na
+  // złamaniu arkusza — marker czytelności przy realnym torze magistrali
+  // (sam tor zachowuje klasę `snTrunk`, ciągłość elektryczna NIETKNIĘTA).
+  // Grubość jak marker końca otwartego: to znak na torze mocy, nie adnotacja.
+  sheetContinuation: 1.6,
 };
+
+/**
+ * PROPORCJE — WAGA KRESKI APARATU [px ŚWIATA] jako RANGA HIERARCHII RYSUNKU.
+ *
+ * Wartość jest tą samą liczbą, którą glify rysują od początku
+ * (`symbols/glyphs.tsx` `V3_STROKE_APPARATUS` = 1,2) — źródło prawdy zostaje
+ * tam, gdzie stoi rysunek glifu, a tutaj wchodzi do TABELI RANG, żeby
+ * hierarchia §6/§22.4 była w JEDNYM miejscu kompletna, a nie „tory tu, aparat
+ * gdzie indziej". To ostatnie było przyczyną defektu zgłoszonego przez
+ * właściciela: S9-8 wzmocniła wszystko, co widziała w tabeli, a aparatu w niej
+ * nie było (patrz `apparatusStrokeWidthForScale`).
+ *
+ * PEŁNA HIERARCHIA ŚWIATA (malejąco): busGpz 6 · bus 4 · snTrunk 2,4 · sn 1,6
+ * · **aparat 1,2** = lv 1,2 · openTerminal/sheetContinuation 1,6 (markery toru)
+ * · leader/protectionTrip 0,8 · measurementLink 0,6.
+ */
+export const APPARATUS_STROKE_WIDTH = V3_STROKE_APPARATUS;
+
+/**
+ * S9-8 (audyt `docs/sld/AUDYT_JAKOSCI_SLD_2026-08.md`) — PODŁOGA EKRANOWA
+ * WAGI TORU GŁÓWNEGO [px ekranu].
+ *
+ * PROBLEM ZMIERZONY. Stopniowanie grubości wyżej jest poprawne w jednostkach
+ * ŚWIATA (szyny 4/6 > magistrala 2,4 > odgałęzienie 1,6 > nN 1,2 > kreski
+ * pomocnicze ≤0,8), ale rysunek ogląda się przez kamerę. Przy wpasowaniu sieci
+ * dużej (skala ≈0,13) magistrala ma na ekranie 0,31 px, odgałęzienie 0,21 px,
+ * obwód nN 0,16 px — przeglądarka rysuje je WSZYSTKIE jako ten sam włos. Cała
+ * hierarchia rangi toru, na której stoi §22.4 i sonda `trunk_thickness_probe`,
+ * znika DOKŁADNIE tam, gdzie jest najpotrzebniejsza: na przeglądzie sieci,
+ * gdzie projektant szuka magistrali jednym rzutem oka.
+ *
+ * ROZSTRZYGNIĘCIE: wzmocnienie JEDNORODNE, zakotwiczone na wadze magistrali.
+ * Mnożnik `k = max(1, próg / (waga_magistrali × skala))` jest ten sam dla
+ * WSZYSTKICH klas, więc PROPORCJE zostają nietknięte — hierarchia §22.4 jest
+ * zachowana co do ilorazu na KAŻDEJ skali (a nie „mniej więcej"), łącznie z
+ * odróżnialnością znaku ciągu dalszego S9-1 od toru, który znaczy. Wzmocnienie
+ * gaśnie samo (`k = 1`) powyżej skali `próg / waga_magistrali` ≈ 0,63, więc
+ * przy pracy na pełnym szczególe rysunek jest bit-identyczny ze stanem sprzed
+ * karty.
+ *
+ * Wartość 1,5 px: przy takiej grubości kreska magistrali jest na ekranie
+ * wyraźnie cięższa od odgałęzienia (1,0 px) i od obwodu nN (0,75 px), a
+ * jednocześnie nie zamienia się w pas — dobrana jako najmniejsza, przy której
+ * trzy sąsiednie rangi są rozróżnialne po samej wadze.
+ */
+export const MIN_TRUNK_STROKE_SCREEN_PX = 1.5;
+
+/**
+ * S9-8: mnożnik wagi kreski dla skali kamery (patrz `MIN_TRUNK_STROKE_SCREEN_PX`).
+ * Czysta funkcja; skala niewiarygodna (≤0/NaN) ⇒ `1` (brak pomiaru nie jest
+ * powodem do zmiany rysunku — parytet z `core/text.ts`).
+ */
+export function strokeScaleFactor(cameraScale: number): number {
+  if (!Number.isFinite(cameraScale) || cameraScale <= 0) return 1;
+  return Math.max(1, MIN_TRUNK_STROKE_SCREEN_PX / (SEGMENT_STROKE_WIDTH.snTrunk * cameraScale));
+}
+
+/** S9-8: waga kreski danej klasy [px ŚWIATA] przy zadanej skali kamery.
+ *  JEDNO wejście dla wszystkich rysujących (kanwa, leadery etykiet) — dwie
+ *  niezależne formuły tej samej wagi to gotowy rozjazd (reguła KLASA §3). */
+export function segmentStrokeWidthForScale(kind: PreviewSegmentKind, cameraScale: number): number {
+  return SEGMENT_STROKE_WIDTH[kind] * strokeScaleFactor(cameraScale);
+}
+
+/**
+ * PROPORCJE (zgłoszenie właściciela 2026-08-07 „brak proporcji, grubości",
+ * pkt 2: „tor prądowy grubszy od kreski aparatu ok. 8–10× — odwrócona
+ * hierarchia, aparat rysowany włosowo") — WAGA KRESKI APARATU [px ŚWIATA]
+ * przy zadanej skali kamery.
+ *
+ * CO BYŁO ZŁE. S9-8 dała PODŁOGĘ EKRANOWĄ całej hierarchii TORÓW, ale
+ * APARATURA z tej hierarchii wypadła: `symbols/glyphs.tsx` rysował glify stałą
+ * ŚWIATA `V3_STROKE_APPARATUS` bez żadnej kompensacji. Skutek zmierzony na
+ * fixturze 53 stacji (`scripts/pomiar_proporcje.tsx`, stan PRZED) — stosunek
+ * szyna:aparat NA EKRANIE:
+ *
+ *   skala 1,380 (praca z bliska)  →  3,33×    ← proporcja projektowa
+ *   skala 0,133 (dopasuj widok)   → 15,70×    ← tor gruby, aparat 0,16 px
+ *   skala 0,050 (dolny kraniec)   → 41,67×    ← aparat znika, tory zostają
+ *
+ * a magistrala:aparat odpowiednio 2,00× / 9,42× / 25,00× — właściciel zmierzył
+ * okiem „8–10×" i to jest ta sama liczba (kadr „Dopasuj widok").
+ *
+ * ROZSTRZYGNIĘCIE: aparat wchodzi do TEJ SAMEJ, jednorodnej kompensacji
+ * (`strokeScaleFactor`), która obejmuje tory. Wagi ŚWIATA zostają NIETKNIĘTE
+ * (busGpz 6 > bus 4 > snTrunk 2,4 > sn 1,6 > **aparat 1,2** = lv 1,2 >
+ * adnotacje ≤0,8 — kanon §6/§22.4 bez zmian, zero regresji S9-8), więc
+ * proporcje stają się NIEZALEŻNE OD SKALI: szyna:aparat 3,33× i
+ * magistrala:aparat 2,00× na KAŻDEJ skali, a nie „3,33× z bliska i 41,67× z
+ * daleka". To jest dokładnie ta hierarchia, którą właściciel opisał („rośnie od
+ * aparatu przez odgałęzienie i magistralę do szyny"), tylko utrzymana także
+ * tam, gdzie dotąd pękała.
+ *
+ * DLACZEGO TU, A NIE W `glyphs.tsx`. Kompensacja jest JEDNA dla całego
+ * rysunku i mieszka razem z tabelą rang — glif dostaje gotową liczbę
+ * (`GlyphProps.strokeScale`), tak jak odcinek dostaje `strokeWidth`. Dwie
+ * kopie formuły (jedna dla torów, druga dla glifów) rozjechałyby się przy
+ * pierwszej zmianie progu (reguła KLASA §3).
+ */
+export function apparatusStrokeWidthForScale(cameraScale: number): number {
+  return APPARATUS_STROKE_WIDTH * strokeScaleFactor(cameraScale);
+}
 
 /**
  * Mała, ZAMKNIĘTA unia kategorii elementu — fundament selekcji v3 (F8b-1,
@@ -112,7 +219,11 @@ export const SEGMENT_STROKE_WIDTH: Readonly<Record<PreviewSegmentKind, number>> 
  *  WYŁĄCZNIE `'apparatus'|'transformer'`), więc obecność tego elementu na
  *  scenie NIGDY nie wpływa na wyrocznie ciągłości toru mocy. */
 export type PreviewElementKind =
-  | 'station' | 'transformer' | 'der' | 'source' | 'apparatus' | 'bus' | 'segment' | 'protectionAnnotation';
+  | 'station' | 'transformer' | 'der' | 'source' | 'apparatus' | 'bus' | 'segment' | 'protectionAnnotation'
+  // ODG-RYSUNEK: PUNKT ODGAŁĘŹNY na odcinku magistrali (ENM `branch_points`) —
+  // ani aparat pola, ani stacja: własny obiekt sieci z własnym rodzajem trafienia
+  // (`canvas/hitAreas.ts` `punkt-odgalezny`) i własnym wpisem inwentarza.
+  | 'branchPoint';
 
 /** Metadane wspólne symbolu/segmentu, potrzebne WYŁĄCZNIE do debug-atrybutów
  *  (spec zadania F5b: „data-symbol-canon/data-parity-key przepisywane z
@@ -151,6 +262,18 @@ export interface PreviewElementMeta {
   readonly busResultRef?: string;
   /** F8b-1: kategoria elementu — patrz `PreviewElementKind`. */
   readonly elementKind?: PreviewElementKind;
+  /** S9-10 (dług `S9-4-DLUG-INSPEKTOR`): REALNY ref ENM POJEDYNCZEGO aparatu
+   *  (`BayPrimaryDevice.device_ref`) — WYŁĄCZNIE dla symboli aparatów ze
+   *  ścieżki danych (`apparatusSource==='dane'`; kompozycja:
+   *  `ComposedSymbolInstance.deviceRef` / `ComposedGpzSymbolInstance.
+   *  deviceRef`). Rozróżnia DWA aparaty JEDNEGO pola, które dzielą
+   *  `ownerRef` (= ref pola): klik niesie go do inspektora
+   *  (`SldElementClickMeta.deviceRef`), a budowniczy szuflady rozwiązuje
+   *  PO NIM stan aparatu/identyfikator globalny. `undefined` dla stosu
+   *  konwencji (§12.4 — brak `device_ref`, zero fabrykacji refu) i dla
+   *  elementów nie-aparatowych. `ownerRef` NIETKNIĘTY (nadal ref pola —
+   *  nakładka energizacji i temat menu kluczują po polu). */
+  readonly deviceRef?: string;
   /** Jawna klasa napięcia elementu (V12K-217) — nadawana przez kompozycję tam,
    *  gdzie referencja domenowa strony napięciowej NIE zdradza (aparaty pola WN
    *  transformatora GPZ: `transformerRef`/`bayRef` są opaque). Czytana przez
@@ -221,6 +344,12 @@ export interface PreviewElementMeta {
    *  (A/V z `Measurement.measurement_type`) — WYŁĄCZNIE dla symboli
    *  `meter`; `MeterGlyph` pokazuje ją zamiast mylącego „M". */
   readonly meterQuantity?: 'A' | 'V';
+  /** TR2W-BEZ-POLA (§0.C.5): `true` dla symbolu `transformer2W` stacji, który
+   *  wisi na szynie SN BEZ skonfigurowanego pola transformatorowego —
+   *  konfiguracja NIEKOMPLETNA. Steruje markerem „!" przy stronie WN
+   *  (`Transformer2WGlyph.hasFieldGapWarning`, wzór `hasTopologyWarning`);
+   *  pełne zdanie stanu żyje w paśmie nazw stacji i w `stopNotes` sceny. */
+  readonly transformerFieldGap?: boolean;
   /** §16-v3: `true` WYŁĄCZNIE dla ostatniego kawałka biegu OTWARTEGO (ciąg
    *  bez stacji na końcu — segment ENM istnieje, następnika brak). Ostatni
    *  wierzchołek takiego kawałka MUSI dotykać słupka terminalnego
@@ -234,6 +363,25 @@ export interface PreviewElementMeta {
    *  Rodzaj stacji WYPROWADZONY z TYPU elementów (topologia/sprzęgło/TR/DER/NO),
    *  nie z nazw (spec §19.3, macierz §3). */
   readonly stationGlyph?: StationCompactGlyphSummary;
+  /** KD-5 (dług nazwany w V12K-285): podsumowanie sylwetki BLOKU GPZ dla glifu
+   *  zwiniętego na L0 — WYŁĄCZNIE dla symboli `gpzCollapsed`. Steruje sekcjami/
+   *  transformatorem/polami odejściowymi w `GpzCollapsedGlyph`
+   *  (`symbols/glyphs.tsx`), przekazane 1:1 do `GlyphProps` (wzór
+   *  `stationGlyph`). Liczby WYPROWADZONE z realnej kompozycji GPZ
+   *  (`GpzComposition.sections`/`transformers` + pola liniowe SN), nie z nazw. */
+  readonly gpzGlyph?: GpzCompactGlyphSummary;
+}
+
+/** KD-5: kompaktowe cechy bloku GPZ rysowane sylwetką na L0. Wszystkie pola
+ *  WYPROWADZONE z realnej kompozycji GPZ (zero fabrykacji — patrz
+ *  `MiniGpzFeatures`, `symbols/miniRmuGrammar.ts`). */
+export interface GpzCompactGlyphSummary {
+  /** Liczba sekcji szyn SN (>1 ⇒ sprzęgło sekcyjne w sylwetce). */
+  readonly sections: number;
+  /** Liczba transformatorów WN/SN (0 ⇒ sylwetka bez uzwojeń). */
+  readonly transformers: number;
+  /** Liczba pól odejściowych (liniowych) SN. */
+  readonly feeders: number;
 }
 
 /** SCHEMAT-10 GS-1 (V12K-137): kompaktowe cechy stacji rysowane sylwetką
@@ -350,6 +498,7 @@ function PreviewSymbolNode(props: { readonly symbol: PreviewSymbol; readonly str
         stroke={effectiveStroke}
         labelLines={symbol.meta?.protectionCodes}
         hasTopologyWarning={(symbol.meta?.topologyGaps?.length ?? 0) > 0}
+        hasFieldGapWarning={symbol.meta?.transformerFieldGap === true}
         meterQuantity={symbol.meta?.meterQuantity}
         stationSectioned={symbol.meta?.stationGlyph?.sectioned}
         stationLineTopology={symbol.meta?.stationGlyph?.lineTopology}
@@ -357,6 +506,9 @@ function PreviewSymbolNode(props: { readonly symbol: PreviewSymbol; readonly str
         stationDerOnMv={symbol.meta?.stationGlyph?.derOnMv}
         stationDerBehindTr={symbol.meta?.stationGlyph?.derBehindTr}
         stationNoOpen={symbol.meta?.stationGlyph?.noOpen}
+        gpzSections={symbol.meta?.gpzGlyph?.sections}
+        gpzTransformers={symbol.meta?.gpzGlyph?.transformers}
+        gpzFeeders={symbol.meta?.gpzGlyph?.feeders}
       />
     </g>
   );

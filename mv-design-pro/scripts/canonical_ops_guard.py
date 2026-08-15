@@ -24,7 +24,6 @@ EXIT CODES:
 
 from __future__ import annotations
 
-import ast
 import re
 import sys
 from pathlib import Path
@@ -57,10 +56,10 @@ def extract_implemented_ops(filepath: Path) -> set[str]:
 
     # Pattern 1: def operation_name(enm, payload) functions
     func_pattern = re.compile(
-        r'^def\s+(add_\w+|continue_\w+|insert_\w+|start_\w+|connect_\w+|'
-        r'set_\w+|assign_\w+|update_\w+|rename_\w+|calculate_\w+|'
-        r'validate_\w+|create_\w+|run_\w+|compare_\w+|link_\w+|'
-        r'export_\w+)\s*\(',
+        r"^def\s+(add_\w+|continue_\w+|insert_\w+|start_\w+|connect_\w+|"
+        r"set_\w+|assign_\w+|update_\w+|rename_\w+|calculate_\w+|"
+        r"validate_\w+|create_\w+|run_\w+|compare_\w+|link_\w+|"
+        r"export_\w+)\s*\(",
         re.MULTILINE,
     )
     ops.update(func_pattern.findall(text))
@@ -71,9 +70,21 @@ def extract_implemented_ops(filepath: Path) -> set[str]:
         if any(
             match.startswith(p)
             for p in (
-                "add_", "continue_", "insert_", "start_", "connect_",
-                "set_", "assign_", "update_", "rename_", "calculate_",
-                "validate_", "create_", "run_", "compare_", "link_",
+                "add_",
+                "continue_",
+                "insert_",
+                "start_",
+                "connect_",
+                "set_",
+                "assign_",
+                "update_",
+                "rename_",
+                "calculate_",
+                "validate_",
+                "create_",
+                "run_",
+                "compare_",
+                "link_",
                 "export_",
             )
         ):
@@ -88,7 +99,6 @@ def extract_alias_map(filepath: Path) -> dict[str, str]:
         return {}
     text = filepath.read_text(encoding="utf-8")
     aliases = {}
-    pattern = re.compile(r'^\s+"([a-z_]+)":\s+"([a-z_]+)"', re.MULTILINE)
     in_alias_section = False
     for line in text.splitlines():
         if "ALIAS_MAP" in line and "=" in line:
@@ -109,8 +119,10 @@ def main() -> int:
     # 1. Load canonical names
     canonical = extract_canonical_names(REGISTRY_FILE)
     if not canonical:
-        print("WARNING: No canonical operations found in registry. "
-              "File may not exist yet: %s" % REGISTRY_FILE)
+        print(
+            "WARNING: No canonical operations found in registry. "
+            "File may not exist yet: %s" % REGISTRY_FILE
+        )
         return 0  # Not a violation if registry doesn't exist yet
 
     # 2. Load implemented operations
@@ -136,9 +148,7 @@ def main() -> int:
     # 5. Check: alias targets must be canonical
     for alias, target in aliases.items():
         if target not in canonical:
-            violations.append(
-                f"ALIAS '{alias}' -> '{target}': target is NOT a canonical operation"
-            )
+            violations.append(f"ALIAS '{alias}' -> '{target}': target is NOT a canonical operation")
 
     # 6. Check: no duplicate names
     all_names = list(canonical) + list(alias_sources)
@@ -158,8 +168,10 @@ def main() -> int:
         print()
         return 1
 
-    print(f"Canonical Operations Guard: OK ({len(canonical)} ops, "
-          f"{len(aliases)} aliases, {len(implemented)} implemented)")
+    print(
+        f"Canonical Operations Guard: OK ({len(canonical)} ops, "
+        f"{len(aliases)} aliases, {len(implemented)} implemented)"
+    )
     return 0
 
 

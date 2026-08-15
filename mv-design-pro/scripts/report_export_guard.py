@@ -5,9 +5,8 @@ Ten guard jest celowo statyczny. Nie sprawdza fizyki ani wyników solvera,
 tylko chroni UI raportu przed powrotem do martwych kafli bez akcji.
 """
 
-from pathlib import Path
 import sys
-
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 ROUTER = ROOT / "frontend" / "src" / "ui" / "workspace" / "WorkspaceSurfaceRouter.tsx"
@@ -39,7 +38,11 @@ def main() -> int:
         fail("cannot isolate ReportSurface")
     report = router[report_start:report_end]
 
-    require(components, "export function ActionableEngineeringTable", "actionable engineering table")
+    require(
+        components,
+        "export function ActionableEngineeringTable",
+        "actionable engineering table",
+    )
     require(components, "export function ReportChapterChecklist", "report chapter checklist")
     require(components, "export function EmptyEngineeringState", "actionable empty state")
 

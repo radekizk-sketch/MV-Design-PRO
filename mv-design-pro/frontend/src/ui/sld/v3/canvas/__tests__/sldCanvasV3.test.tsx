@@ -29,6 +29,8 @@ import {
   computeFlowOverlayPlacements,
   computeOltcBadgePlacements,
   computeResultLabelPlacements,
+  contentBoundingBoxOf,
+  sceneBoxToCameraWorld,
   layoutResultLabels,
   flowOverlayGeometry,
   formatFlowLabelPl,
@@ -37,7 +39,7 @@ import {
 import { buildResultLabelsFromScene, resultRefForSegment } from '../resultLabels';
 import type { RawOverlayElement, RawOverlayPayload } from '../../../../sld-overlay/rawResultOverlayStore';
 import {
-  singleHopSegmentRefs,
+  orientedSegmentRefs,
   type SegmentFaultFlowOverlay,
   type SegmentFlowOverlay,
   type SldV3Overlay,
@@ -45,6 +47,7 @@ import {
 } from '../overlay';
 import { formatMagnitudeKa } from '../../../../sld-overlay/FaultContributionArrow';
 import { boundingBoxOfRect, cameraViewBox, computeInitialCameraState } from '../camera';
+import { SLD_CANVAS_DOCK_INSETS } from '../toolbarLayout';
 import { SYMBOL_DEFS } from '../../symbols/defs';
 import { HIGHLIGHT_COLOR, STATE_COLOR, VOLTAGE_COLOR } from '../../theme/colorTokens';
 
@@ -66,6 +69,10 @@ const enm = (JSON.parse(readFileSync(fixturePath, 'utf8')) as { readonly enm: En
 
 const CANVAS_WIDTH = 1200;
 const CANVAS_HEIGHT = 800;
+/** BLOK-PUSTY: długość grota nakładki przepływu [j.św.] — LUSTRO stałej
+ *  `FLOW_ARROW_LENGTH` z `SldCanvasV3.tsx` (tam prywatna). Przęsło krótsze od
+ *  grota nie może go ponieść (`flowOverlayGeometry` zwraca `null`). */
+const FLOW_ARROW_LENGTH_JSW = 12;
 
 /** Strip stroke/fill VALUES only (not the attribute presence) so we can
  *  diff markup for pure-color changes without a full attribute-by-attribute
@@ -98,14 +105,22 @@ describe('SldCanvasV3 — montaż na realnej fixturze (53 stacje)', () => {
   // prawdziwa przy pełnym widoku sieci (kadr 1200×800 na 53 stacje daje skalę,
   // przy której CAŁE pismo ma ~2 px). Intencja zostaje wyrażona mocniej: nic nie
   // ginie PO CICHU — każda etykieta jest albo w DOM, albo policzona jako ukryta.
-  it('LOD 2: symbole w DOM = scene.symbols.length; etykiety w DOM + ukryte = scene.labels.length', () => {
+  //
+  // KD-11: kubełki są TRZY, nie dwa — ukryte DANE SZCZEGÓŁOWE
+  // (`data-hidden-unreadable`, wskaźnik „Ukryto N opisów") ORAZ tożsamości bez
+  // miejsca (`data-dropped-identity`). Ten kadr WYMUSZA `lodOverride={2}` przy
+  // skali ~0,08, czyli stan, którego kamera produkcyjna nie osiąga (histereza
+  // trzyma tam L0) — dlatego trzeci kubełek bywa tu niepusty, a osobny test
+  // niżej pilnuje, że w stanach PRODUKCYJNYCH jest zerowy.
+  it('LOD 2: symbole w DOM = scene.symbols.length; etykiety w DOM + ukryte dane + porzucone tożsamości = scene.labels.length', () => {
     const scene = buildSceneV3(enm, 2);
     const { container } = render(<SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} />);
     const symbolGroup = container.querySelector('[data-testid="sld-v3-symbols"]');
     const labelGroup = container.querySelector('[data-testid="sld-v3-labels"]');
     expect(symbolGroup?.children.length).toBe(scene.symbols.length);
     const ukryte = Number(labelGroup?.getAttribute('data-hidden-unreadable') ?? '0');
-    expect((labelGroup?.children.length ?? 0) + ukryte).toBe(scene.labels.length);
+    const porzucone = Number(labelGroup?.getAttribute('data-dropped-identity') ?? '0');
+    expect((labelGroup?.children.length ?? 0) + ukryte + porzucone).toBe(scene.labels.length);
   });
 
   // Dowód, że próg NAPRAWDĘ gryzie na tym kadrze, i że ukrycie jest JAWNE.
@@ -116,14 +131,21 @@ describe('SldCanvasV3 — montaż na realnej fixturze (53 stacje)', () => {
     const { container } = render(<SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} />);
     const labelGroup = container.querySelector('[data-testid="sld-v3-labels"]');
     const ukryte = Number(labelGroup?.getAttribute('data-hidden-unreadable') ?? '0');
+    const porzucone = Number(labelGroup?.getAttribute('data-dropped-identity') ?? '0');
     expect(ukryte).toBeGreaterThan(0);
-    expect(ukryte).toBeLessThanOrEqual(scene.labels.length);
+    expect(ukryte + porzucone).toBeLessThanOrEqual(scene.labels.length);
     // V12K-222: komunikat przeniesiony z ramki ARKUSZA do warstwy EKRANU. Pierwsza
     // wersja wpadała w pułapkę, którą sama opisuje — przy skali ukrywającej etykiety
     // sam komunikat miał ~2 px i był nieczytelny.
     const komunikat = container.querySelector('[data-testid="sld-v3-hidden-labels-hint"]');
     expect(komunikat?.textContent).toContain('przybliż, aby zobaczyć');
-    expect(komunikat?.getAttribute('data-hidden-count')).toBe(String(ukryte));
+    // S9-7 (audyt C-4): komunikat liczy OBA rodzaje niewidocznych opisów —
+    // ukryte dane szczegółowe ORAZ tożsamości, dla których zabrakło miejsca w
+    // rozmiarze czytelnym. Kanały audytu w DOM zostają ROZDZIELONE (żeby
+    // bilans „narysowane + ukryte + porzucone == etykiety sceny" dało się
+    // sprawdzić bez podwójnego liczenia), ale użytkownik musi zobaczyć sumę:
+    // napis, którego nie ma, nie może być niepoliczony.
+    expect(komunikat?.getAttribute('data-hidden-count')).toBe(String(ukryte + porzucone));
     // Dowód kompensacji skali: pismo w jednostkach ŚWIATA musi być tym większe, im
     // mniejsza skala kamery — tylko wtedy na ekranie ma stały rozmiar. Przy pełnym
     // widoku sieci (skala ≪ 1) fontSize w świecie jest wyraźnie większy od nominału.
@@ -180,11 +202,22 @@ describe('SldCanvasV3 — klik w symbol', () => {
     const expectedTestId = firstSymbolGroup!.getAttribute('data-testid');
     expect(expectedTestId).toBe(scene.symbols[0].meta?.testId ?? 'sld-v3-symbol-0');
 
-    fireEvent.click(firstSymbolGroup!);
+    // Karta S9-4: celem kliku jest UCHWYT obiektu (warstwa `sld-v3-trafienia`),
+    // bo cały rysunek jest bierny (`pointer-events="none"`). Klikamy dokładnie
+    // ten węzeł, który w przeglądarce byłby celem zdarzenia — intencja testu
+    // („klik w pierwszy symbol woła onElementClick z jego testId") bez zmian.
+    const firstSymbolHit = container.querySelector(
+      `[data-hit-for="${expectedTestId}"][data-hit-role="obrys"]`,
+    );
+    expect(firstSymbolHit, 'pierwszy symbol ma uchwyt trafienia').toBeTruthy();
+    fireEvent.click(firstSymbolHit!);
     expect(onElementClick).toHaveBeenCalledTimes(1);
     expect(onElementClick).toHaveBeenCalledWith(expectedTestId, {
       ownerRef: scene.symbols[0].meta?.ownerRef,
       elementKind: scene.symbols[0].meta?.elementKind,
+      // S9-10: lewy klik niesie też KLASĘ trafienia (wspólny `metaZTrafienia`
+      // z prawym klikiem) — pierwszy symbol L0 to blok stacji.
+      klasa: 'stacja',
     });
   });
 
@@ -196,18 +229,22 @@ describe('SldCanvasV3 — klik w symbol', () => {
     const { container } = render(
       <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={0} onElementClick={onElementClick} />,
     );
-    const stationGroup = container.querySelector('[data-testid="sld-v3-symbols"]')?.children[stationIndex];
-    fireEvent.click(stationGroup!);
+    // Karta S9-4: klik idzie w uchwyt obiektu (patrz komentarz wyżej).
+    const stationTestId = scene.symbols[stationIndex].meta?.testId ?? `sld-v3-symbol-${stationIndex}`;
+    fireEvent.click(container.querySelector(`[data-hit-for="${stationTestId}"][data-hit-role="obrys"]`)!);
     expect(onElementClick).toHaveBeenCalledWith(expect.any(String), {
       ownerRef: scene.symbols[stationIndex].meta?.ownerRef,
       elementKind: 'station',
+      // S9-10: klasa trafienia w lewym kliku — patrz test wyżej.
+      klasa: 'stacja',
     });
   });
 
   it('bez onElementClick klik nie rzuca (brak handlera to no-op bezpieczny)', () => {
     const { container } = render(<SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={0} />);
-    const firstSymbolGroup = container.querySelector('[data-testid="sld-v3-symbols"]')?.firstElementChild;
-    expect(() => fireEvent.click(firstSymbolGroup!)).not.toThrow();
+    const firstHit = container.querySelector('[data-hit-role="obrys"]');
+    expect(firstHit).toBeTruthy();
+    expect(() => fireEvent.click(firstHit!)).not.toThrow();
   });
 });
 
@@ -232,9 +269,10 @@ describe('SldCanvasV3 — nakładka energizacji (spec §6: KOLOR, nie geometria)
     // A kolor FAKTYCZNIE się różni na oznaczonym symbolu (nakładka działa).
     const targetWithout = without.querySelector(`[data-testid="${testId}"]`)!;
     const targetWith = withOverlay.querySelector(`[data-testid="${testId}"]`)!;
-    // `children[0]` = hit-rect (transparentny, bez stroke); `children[1]` =
-    // `<g>` glifu — pierwszy descendant ze `stroke` tam to rysunek glifu.
-    const glyphStrokeOf = (el: Element) => el.children[1]?.querySelector('[stroke]')?.getAttribute('stroke');
+    // Karta S9-4: grupa symbolu jest czystym rysunkiem (uchwyt kliku przeniesiony
+    // do warstwy `sld-v3-trafienia`), więc pierwszy descendant ze `stroke` to
+    // wprost rysunek glifu — dawniej trzeba było przeskoczyć transparentny hit-rect.
+    const glyphStrokeOf = (el: Element) => el.querySelector('[stroke]')?.getAttribute('stroke');
     expect(glyphStrokeOf(targetWith)).not.toBe(glyphStrokeOf(targetWithout));
   });
 
@@ -415,15 +453,50 @@ describe('SldCanvasV3 — F9.5: nakładka przepływu mocy (spec §14.2, warstwa 
   for (const [lod, detail] of [[1, 'p-only'], [2, 'full']] as const) {
     it(`czytelność (LOD ${lod}, detail=${detail}): KAŻDA etykieta przepływu ma bbox rozłączny z każdą etykietą sceny, każdym symbolem i innymi etykietami przepływu`, () => {
       const scene = buildSceneV3(enm, lod);
-      const singleHop = singleHopSegmentRefs(enm);
+      const singleHop = new Set(orientedSegmentRefs(enm).keys());
       const entries: Record<string, SegmentFlowOverlay> = {};
       for (const s of scene.segments) {
         const ref = s.meta?.ownerRef;
         if (ref && s.meta?.elementKind === 'segment' && singleHop.has(ref)) entries[ref] = FULL_FLOW(ref);
       }
-      expect(Object.keys(entries).length).toBe(45);
+      // S9-2: bramka orientacji obejmuje KAZDY narysowany kawalek galeziowy
+      // fixtury (88); dawna bramka F-1 obejmowala 45 — rozlacznosc etykiet jest
+      // teraz sprawdzana na PELNYM zbiorze przeslow, nie na polowie.
+      expect(Object.keys(entries).length).toBe(88);
       const placements = computeFlowOverlayPlacements(scene, entries, detail);
-      expect(placements.length).toBe(45);
+      // BLOK-PUSTY: liczba placementów liczona z GEOMETRII, nie wpisana z
+      // fixtury. Grot ma stałą długość (`FLOW_ARROW_LENGTH` = 12 j.św.), więc
+      // przęsło KRÓTSZE od grota nie może go ponieść — `flowOverlayGeometry`
+      // zwraca dla niego `null` i placement nie powstaje. Do tej karty stała
+      // `88` maskowała ten warunek: liczba zgadzała się przypadkiem, bo żadne
+      // przęsło fixtury nie było krótsze od grota. Po skróceniu bloku stacji
+      // (rezerwacja strony nN liczona `max` zamiast sumą) packer lateralny
+      // przestawił jeden kanał zejścia na KONTRAKTOWE minimum
+      // (`MIN_ROUTE_CLEARANCE` = 8 j.św.) od krawędzi kolumny, więc kawałek
+      // magistrali między zaczepem stacji a trójnikiem ma dokładnie 8 j.św.
+      // Rysunek jest zgodny z kontraktem — to GROT jest dłuższy niż
+      // najkrótszy legalny kawałek. Asercja mówi teraz DLACZEGO placement nie
+      // powstał, zamiast pilnować liczby z fixtury.
+      const zaKrotkieNaGrot = scene.segments.filter((s) => {
+        const ref = s.meta?.ownerRef;
+        if (!ref || s.meta?.elementKind !== 'segment' || !singleHop.has(ref)) return false;
+        let best = 0;
+        for (let i = 1; i < s.points.length; i += 1) {
+          best = Math.max(
+            best,
+            Math.abs(s.points[i].x - s.points[i - 1].x) + Math.abs(s.points[i].y - s.points[i - 1].y),
+          );
+        }
+        return best < FLOW_ARROW_LENGTH_JSW;
+      });
+      expect(placements.length).toBe(88 - zaKrotkieNaGrot.length);
+      // Zapadka: brak grota wolno tłumaczyć WYŁĄCZNIE długością przęsła —
+      // gdyby placement zniknął z innego powodu, ta równość pęknie.
+      expect(placements.map((p) => p.ownerRef).sort()).toEqual(
+        Object.keys(entries)
+          .filter((ref) => !zaKrotkieNaGrot.some((s) => s.meta?.ownerRef === ref))
+          .sort(),
+      );
       // Wyrocznia wewnętrzna algorytmu: każdy kandydat znaleziony (zero
       // fallbacków na tej fixturze) …
       expect(placements.filter((p) => p.label && !p.labelPlaced)).toEqual([]);
@@ -616,12 +689,34 @@ function viewBoxOf(container: HTMLElement): string {
 }
 
 describe('SldCanvasV3 — F8a k4.1: lodOverride fituje do bboxa TEGO LOD (nie zawsze LOD2)', () => {
-  it('lodOverride=0: viewBox startowy dopasowany do bboxa L0, RÓŻNY od dopasowania do L2 (dawny defekt „mały rysunek w rogu")', () => {
-    const bbox0 = boundingBoxOfRect(buildSceneV3(enm, 0).bbox);
-    const bbox2 = boundingBoxOfRect(buildSceneV3(enm, 2).bbox);
+  // K11-A (dyrektywa SLD-first 2026-07-30): domyślny CEL fitu to bbox TREŚCI
+  // sieci (`contentBoundingBoxOf` — elementy z ownerRef WRAZ Z ETYKIETAMI),
+  // nie pełny bbox sceny z meblami arkusza. INTENCJA testów bez zmian:
+  // lodOverride wybiera ŚWIAT (L0 ≠ L2), a fit celuje w treść tego świata.
+  // KD-7: cel fitu przeliczony do ŚWIATA KAMERY (`sceneBoxToCameraWorld`) —
+  // `viewBox` opisuje układ arkusza, w którym treść sceny jest przesunięta o
+  // margines ramki.
+  const contentFitBbox = (lod: 0 | 2) => {
+    const scena = buildSceneV3(enm, lod);
+    return sceneBoxToCameraWorld(contentBoundingBoxOf(scena) ?? boundingBoxOfRect(scena.bbox));
+  };
+
+  it('lodOverride=0: viewBox startowy dopasowany do treści L0, RÓŻNY od dopasowania do L2 (dawny defekt „mały rysunek w rogu")', () => {
+    const bbox0 = contentFitBbox(0);
+    const bbox2 = contentFitBbox(2);
     const viewportSize = { width: CANVAS_WIDTH, height: CANVAS_HEIGHT };
-    const expectedFitToL0 = cameraViewBox(computeInitialCameraState(bbox0, viewportSize).transform, viewportSize);
-    const expectedWrongFitToL2 = cameraViewBox(computeInitialCameraState(bbox2, viewportSize).transform, viewportSize);
+    // S9-8 („obszar bezpieczny pod dokami UI"): kamera produkcyjna liczy kadr w
+    // PROSTOKĄCIE BEZPIECZNYM (kanwa minus pasy doków, `SLD_CANVAS_DOCK_INSETS`),
+    // więc oczekiwanie testu MUSI przejść tą samą drogą — inaczej test mierzyłby
+    // kadr, którego produkt świadomie już nie liczy.
+    const expectedFitToL0 = cameraViewBox(
+      computeInitialCameraState(bbox0, viewportSize, undefined, null, SLD_CANVAS_DOCK_INSETS).transform,
+      viewportSize,
+    );
+    const expectedWrongFitToL2 = cameraViewBox(
+      computeInitialCameraState(bbox2, viewportSize, undefined, null, SLD_CANVAS_DOCK_INSETS).transform,
+      viewportSize,
+    );
 
     const { container } = render(<SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={0} />);
     const actual = viewBoxOf(container);
@@ -630,10 +725,17 @@ describe('SldCanvasV3 — F8a k4.1: lodOverride fituje do bboxa TEGO LOD (nie za
     expect(actual).not.toBe(expectedWrongFitToL2);
   });
 
-  it('lodOverride=2 (lub brak override — domyślny cel fitu = LOD2): viewBox dopasowany do bboxa L2, jak dawniej', () => {
-    const bbox2 = boundingBoxOfRect(buildSceneV3(enm, 2).bbox);
+  it('lodOverride=2 (lub brak override — domyślny cel fitu = LOD2): viewBox dopasowany do treści L2', () => {
+    const bbox2 = contentFitBbox(2);
     const viewportSize = { width: CANVAS_WIDTH, height: CANVAS_HEIGHT };
-    const expectedFitToL2 = cameraViewBox(computeInitialCameraState(bbox2, viewportSize).transform, viewportSize);
+    // S9-8 („obszar bezpieczny pod dokami UI"): kamera produkcyjna liczy kadr w
+    // PROSTOKĄCIE BEZPIECZNYM (kanwa minus pasy doków, `SLD_CANVAS_DOCK_INSETS`),
+    // więc oczekiwanie testu MUSI przejść tą samą drogą — inaczej test mierzyłby
+    // kadr, którego produkt świadomie już nie liczy.
+    const expectedFitToL2 = cameraViewBox(
+      computeInitialCameraState(bbox2, viewportSize, undefined, null, SLD_CANVAS_DOCK_INSETS).transform,
+      viewportSize,
+    );
 
     const { container: withOverride } = render(<SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} />);
     const { container: withoutOverride } = render(<SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} />);
@@ -656,7 +758,38 @@ describe('SldCanvasV3 — F8a k3: refit PEŁNY na zmianę snapshot; resize (widt
   // pokrycia — pointer/pinch nie miały testu DOM ani przed tą dostawą).
   const WHEEL_DELTA_Y = -50; // mały zoom-in, NIE przekracza progu LOD0 (0.4×1.15)
 
-  it('zmiana referencji `snapshot` (nowa sieć) odrzuca zoom użytkownika i wraca do fitu — pełny refit', () => {
+  /**
+   * INTENCJA (bez zmian od F8a): zmiana świata BEZ wskazania obiektu odrzuca
+   * pan/zoom użytkownika i wraca do fitu.
+   *
+   * KANON ZAKTUALIZOWANY kartą B-2 (2026-08-07): warunkiem refitu jest ZMIANA
+   * MODELU, nie sama zmiana referencji obiektu migawki. Nowy obiekt o TYM
+   * SAMYM haszu (odświeżenie `refresh_snapshot`, hydratacja po reconnect —
+   * pomiar: hasz identyczny) nie jest powodem, żeby wyrzucić projektanta z
+   * jego widoku; osobny kontrakt tego pilnuje
+   * (`kotwicaWidoku.contract.test.tsx`). Test przeszedł więc z pary
+   * „ta sama treść, inny obiekt" na parę REALNIE RÓŻNYCH sieci — dokładnie
+   * ten scenariusz, który intencja opisuje.
+   */
+  it('zmiana snapshotu na INNĄ sieć (bez wskazania obiektu) odrzuca zoom użytkownika i wraca do fitu — pełny refit', () => {
+    const innaSiec = (
+      JSON.parse(
+        readFileSync(resolve(here, 'fixtures', 'b2MalaPo.enm.json'), 'utf8'),
+      ) as { readonly enm: EnergyNetworkModel }
+    ).enm;
+    const viewportSize = { width: CANVAS_WIDTH, height: CANVAS_HEIGHT };
+    const scenaInnej = buildSceneV3(innaSiec, 2);
+    const oczekiwanyFitInnej = cameraViewBox(
+      computeInitialCameraState(
+        sceneBoxToCameraWorld(contentBoundingBoxOf(scenaInnej) ?? boundingBoxOfRect(scenaInnej.bbox)),
+        viewportSize,
+        undefined,
+        null,
+        SLD_CANVAS_DOCK_INSETS,
+      ).transform,
+      viewportSize,
+    );
+
     const { container, rerender } = render(
       <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} />,
     );
@@ -665,13 +798,11 @@ describe('SldCanvasV3 — F8a k3: refit PEŁNY na zmianę snapshot; resize (widt
 
     // Zoom (scale + translate) — kamera oddala się od fitu startowego.
     fireEvent.wheel(svg, { clientX: 200, clientY: 150, deltaY: WHEEL_DELTA_Y });
-    const zoomedViewBox = viewBoxOf(container);
-    expect(zoomedViewBox).not.toBe(initialViewBox);
+    expect(viewBoxOf(container)).not.toBe(initialViewBox);
 
-    // Nowa referencja snapshot (ta sama treść, ale NOWY obiekt — jak przy
-    // odświeżeniu ze store'a po EDYCJI modelu) ⇒ pełny refit, zoom odrzucony.
-    rerender(<SldCanvasV3 snapshot={{ ...enm }} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} />);
-    expect(viewBoxOf(container)).toBe(initialViewBox);
+    // Inna sieć BEZ wskazania obiektu ⇒ pełny refit, zoom odrzucony.
+    rerender(<SldCanvasV3 snapshot={innaSiec} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} viewAnchor={null} />);
+    expect(viewBoxOf(container)).toBe(oczekiwanyFitInnej);
   });
 
   it('zmiana width/height (bez zmiany snapshot) ZACHOWUJE skalę i zoom użytkownika — tylko viewport się dostosowuje', () => {
@@ -1078,7 +1209,9 @@ describe('SldCanvasV3 — SCHEMAT-10 S3 (V12K-135, D7): kolor NOP (wyróżniony 
         <SldCanvasV3 snapshot={enmWithNop} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={lod} />,
       );
       const nopGroup = container.querySelector('[data-testid="sld-v3-symbols"]')?.children[nopIndex];
-      const strokedDescendant = nopGroup?.children[1]?.querySelector('[stroke]');
+      // Karta S9-4: patrz wyżej — grupa symbolu nie niesie już transparentnego
+      // hit-rectu, więc pierwszy descendant ze `stroke` to rysunek glifu.
+      const strokedDescendant = nopGroup?.querySelector('[stroke]');
       expect(strokedDescendant?.getAttribute('stroke')).toBe(STATE_COLOR.nop);
     }
   });
@@ -1216,7 +1349,7 @@ describe('SldCanvasV3 — S8: crossfade detalu i ciągłość przejść LOD', ()
 // ---------------------------------------------------------------------------
 describe('SldCanvasV3 — W4 warstwa liczbowych etykiet wynikowych (§8/§9/§16)', () => {
   const sceneL2 = buildSceneV3(enm, 2);
-  const singleHop = singleHopSegmentRefs(enm);
+  const singleHop = new Set(orientedSegmentRefs(enm).keys());
 
   function el(refId: string, kind: string, metrics: RawOverlayElement['metrics']): RawOverlayElement {
     return { ref_id: refId, kind, badges: [], metrics, severity: 'INFO' };
@@ -1283,8 +1416,10 @@ describe('SldCanvasV3 — W4 warstwa liczbowych etykiet wynikowych (§8/§9/§16
     }
   });
 
-  it('R1 §wym.5 zwijanie LOD: L0 bez etykiet; L1 jedna linia; L2 do trzech (źródło P/Q)', () => {
-    // Źródło niesie 2 linie (P, Q). L0 ⇒ 0 etykiet; L1 ⇒ 1 linia (P); L2 ⇒ 2 (P, Q).
+  it('S9-2 zwijanie LOD: L0 JEDNA linia (wartosc zbiorcza); L1 jedna; L2 do trzech (zrodlo P/Q)', () => {
+    // Zrodlo niesie 2 linie (P, Q). L0 ⇒ 1 linia (P — wartosc zbiorcza; dotad 0,
+    // przez co rysunek po biegu nie roznil sie od rysunku przed biegiem, audyt
+    // 2026-08 W-1); L1 ⇒ 1 linia (P); L2 ⇒ 2 (P, Q).
     const linesAtLod = (lod: 0 | 1 | 2): readonly string[] => {
       const { container } = render(
         <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={lod} overlay={overlayWithLabels} />,
@@ -1293,7 +1428,7 @@ describe('SldCanvasV3 — W4 warstwa liczbowych etykiet wynikowych (§8/§9/§16
       if (!group) return [];
       return Array.from(group.querySelectorAll('text')).map((t) => t.textContent ?? '');
     };
-    expect(linesAtLod(0)).toEqual([]);
+    expect(linesAtLod(0)).toEqual(['P +6,5468 MW']);
     expect(linesAtLod(1)).toEqual(['P +6,5468 MW']);
     expect(linesAtLod(2)).toEqual(['P +6,5468 MW', 'Q -0,3000 Mvar']);
   });
@@ -1376,7 +1511,7 @@ describe('SldCanvasV3 — W4 warstwa liczbowych etykiet wynikowych (§8/§9/§16
 // ---------------------------------------------------------------------------
 describe('SldCanvasV3 — R2 staleness + agregacja warstwy wynikowej', () => {
   const sceneL2 = buildSceneV3(enm, 2);
-  const singleHop = singleHopSegmentRefs(enm);
+  const singleHop = new Set(orientedSegmentRefs(enm).keys());
 
   function el(refId: string, kind: string, metrics: RawOverlayElement['metrics']): RawOverlayElement {
     return { ref_id: refId, kind, badges: [], metrics, severity: 'INFO' };
@@ -1493,16 +1628,21 @@ describe('SldCanvasV3 — R2 staleness + agregacja warstwy wynikowej', () => {
     );
     const toggle = container.querySelector('[data-testid="sld-v3-result-aggregate-toggle-0"]');
     expect(toggle).toBeTruthy();
+    // Karta S9-4: marker skupiska jest rysunkiem, a jego uchwyt (rozwijanie
+    // popovera) siedzi w warstwie trafień pod tym samym `testId` — klikamy
+    // węzeł, który w przeglądarce faktycznie łapie zdarzenie.
+    const toggleHit = container.querySelector('[data-hit-for="sld-v3-result-aggregate-0"][data-hit-role="obrys"]');
+    expect(toggleHit, 'marker skupiska ma uchwyt trafienia').toBeTruthy();
     expect(container.querySelector('[data-testid="sld-v3-result-aggregate-0"]')!.textContent).toContain('wyniki');
     // Popover domyślnie zwinięty.
     expect(container.querySelector('[data-testid="sld-v3-result-aggregate-popover-0"]')).toBeNull();
     // Klik → rozwinięty, lista członków obecna.
-    fireEvent.click(toggle!);
+    fireEvent.click(toggleHit!);
     const popover = container.querySelector('[data-testid="sld-v3-result-aggregate-popover-0"]');
     expect(popover).toBeTruthy();
     expect(container.querySelectorAll('[data-testid^="sld-v3-result-aggregate-member-0-"]').length).toBe(layout.aggregates[0].count);
     // Ponowny klik → zwinięty.
-    fireEvent.click(toggle!);
+    fireEvent.click(toggleHit!);
     expect(container.querySelector('[data-testid="sld-v3-result-aggregate-popover-0"]')).toBeNull();
   });
 

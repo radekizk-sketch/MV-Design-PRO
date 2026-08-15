@@ -54,6 +54,14 @@ export const FRT_STRINGS = {
     'Werdykt całości to prezentacyjna agregacja najgorszego werdyktu scenariusza '
     + '(z pól solvera) — nie jest to odrębna ocena fizyczna.',
 
+  // K5-B (H-3 pkt 4): akcja wyjściowa — zapis werdyktu do zgodności NC RfG
+  // (wspólny store biegu NC RfG; macierz wymogów pokazuje wynik FRT).
+  zapiszWynik: 'Zapisz wynik do zgodności NC RfG',
+  zapiszWynikOpis:
+    'Werdykt walidacji trafia do wspólnego stanu zgodności NC RfG — macierz '
+    + 'wymogów pokaże go przy tym module.',
+  zapiszWynikZapisano: 'Wynik walidacji zapisany — widoczny w macierzy wymogów NC RfG',
+
   // Założenia (część wyniku)
   zalozeniaModul: 'Moduł DER',
   zalozeniaTyp: 'Typ przekształtnika',
@@ -142,7 +150,7 @@ export const FRT_STRINGS = {
   sekwKontekstMocZainstalowana: 'Moc zainstalowana źródeł',
   sekwKontekstWezel: 'Węzeł przyłączenia',
   sekwKontekstWerdykt: 'Ocena siły sieci',
-  sekwKontekstSladTytul: 'Ślad obliczeń (WHITE BOX)',
+  sekwKontekstSladTytul: 'Ślad obliczeń (pełna jawność)',
   sekwKontekstSladPokaz: 'Pokaż ślad obliczeń',
   sekwKontekstSladUkryj: 'Ukryj ślad obliczeń',
   sekwEkspHash: 'Odcisk wejścia (SHA-256)',

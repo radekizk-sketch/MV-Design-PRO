@@ -39,6 +39,8 @@ from domain.protection_device import (
     CoordinationVerdict,
     CurveStandard,
     OverloadCheck,
+    ProtectionCurveSettings,
+    ProtectionDeviceType,
     SelectivityCheck,
     SensitivityCheck,
 )
@@ -61,6 +63,122 @@ from .models import (
     TCCCurve,
     TCCPoint,
 )
+
+# =============================================================================
+# PODSTAWA KRZYWEJ CZASOWO-PRADOWEJ — JEDNO ZRODLO PRAWDY (karta N-D5-FUSE)
+# =============================================================================
+#
+# ZNALEZISKO (pomiar na zywej sciezce API, karta N-D5-FUSE): urzadzenie typu
+# FUSE dostawalo krzywa z formuly IDMT IEC 60255 — czyli FIZYKI PRZEKAZNIKA
+# NADPRADOWEGO — przez CICHY fallback `standard_map.get(..., IEC)` w DWOCH
+# miejscach naraz (`_calculate_device_trip_time` i `_generate_tcc_curves`).
+# Pomiar: bezpiecznik zgloszony jako `device_type=FUSE, standard=FUSE` dostawal
+# 100 punktow IDENTYCZNYCH CO DO OSTATNIEJ CYFRY z przekaznikiem IEC SI, ale
+# opisanych etykieta `FUSE_SI` — najgorsza postac fabrykacji, bo klamala
+# etykieta i szla dalej do wykresu TCC, raportu PDF i DOCX.
+#
+# FIZYKA: bezpiecznik topikowy SN nie ma charakterystyki IDMT ani mnoznika
+# czasowego TMS. Ma PASMO topikowe (krzywa przedlukowa i krzywa wylaczania)
+# odczytywane z karty katalogowej producenta wg IEC 60282-1 / PN-EN 60282-1.
+# Pasma nie da sie wyprowadzic ze wzoru — to dane pomiarowe producenta.
+#
+# ZASADA: warunek WEJSCIA (czy liczymy czas?) i warunek WYJSCIA (czy rysujemy
+# krzywa?) pochodza z TEJ SAMEJ funkcji `rozstrzygnij_podstawe_krzywej`.
+# Dwa niezalezne warunki, ktore „dzis sie zgadzaja", byly wlasnie tym defektem.
+
+#: Normy, ktorych krzywa jest WZOREM przekaznikowym (da sie policzyc).
+#: Mapa ZAMKNIETA — norma spoza niej NIE dostaje cichego zastepnika.
+#: Przypiete testem `test_zamknieta_mapa_norm_przekaznikowych`.
+_NORMY_PRZEKAZNIKOWE: dict[CurveStandard, CurveCurveStandard] = {
+    CurveStandard.IEC: CurveCurveStandard.IEC,
+    CurveStandard.IEEE: CurveCurveStandard.IEEE,
+}
+
+KOD_KRZYWA_PRZEKAZNIKOWA = "KRZYWA_PRZEKAZNIKOWA"
+#: Wartosc pola `curve_type` pozycji TCC bez podstawy — NIGDY `FUSE_<wariant>`,
+#: bo taka etykieta sugerowala krzywa bezpiecznika tam, gdzie byla krzywa
+#: przekaznika (pomiar karty N-D5-FUSE).
+KOD_BRAK_CHARAKTERYSTYKI = "BRAK_CHARAKTERYSTYKI"
+KOD_BRAK_PASMA_BEZPIECZNIKA = "BRAK_PASMA_BEZPIECZNIKA"
+KOD_NIEZNANA_NORMA_KRZYWEJ = "NIEZNANA_NORMA_KRZYWEJ"
+KOD_BRAK_NASTAW_KRZYWEJ = "BRAK_NASTAW_KRZYWEJ"
+
+_POWOD_BEZPIECZNIK_PL = (
+    "Bezpiecznik topikowy nie ma charakterystyki przekaźnikowej IDMT wg IEC 60255 "
+    "ani mnożnika czasowego TMS. Jego czas zadziałania wynika z pasma topikowego "
+    "(krzywa przedłukowa i krzywa wyłączania) odczytywanego z karty katalogowej "
+    "producenta wg IEC 60282-1. Pozycja katalogowa tego bezpiecznika nie niesie "
+    "punktów pasma, więc czasu zadziałania nie wyznaczono — nie zastąpiono go "
+    "wzorem przekaźnika."
+)
+
+
+@dataclass(frozen=True)
+class PodstawaKrzywej:
+    """Rozstrzygniecie: czy urzadzenie ma podstawe do krzywej czasowo-pradowej.
+
+    `standard is None` znaczy: NIE MA podstawy — nie wolno ani policzyc czasu,
+    ani narysowac krzywej. `powod_pl` niesie uczciwe zdanie po polsku dla
+    uzytkownika (wykres TCC, raport, werdykt selektywnosci).
+
+    PARA PREDYKATOW: `standard` i `nastawy` sa ustawiane RAZEM albo wcale.
+    Nie da sie dostac normy bez nastaw, z ktorych ta norma zostala odczytana —
+    dzieki temu miejsce uzycia nie musi (i nie moze) sprawdzac tego drugi raz
+    wlasnym warunkiem. Dwa niezalezne warunki, ktore „dzis sie zgadzaja", byly
+    zrodlem tego defektu (karta N-D5-FUSE).
+    """
+
+    kod: str
+    standard: CurveCurveStandard | None
+    powod_pl: str | None
+    #: Nastawy, z ktorych odczytano norme — niepuste DOKLADNIE wtedy, gdy
+    #: `standard` jest niepuste. Przypiete testem `test_para_predykatow_*`.
+    nastawy: ProtectionCurveSettings | None = None
+
+    def __post_init__(self) -> None:
+        if (self.standard is None) != (self.nastawy is None):
+            raise ValueError(
+                "PodstawaKrzywej: norma i nastawy krzywej musza byc ustawione "
+                "razem albo wcale — inaczej miejsce uzycia dostaje norme bez "
+                "danych, z ktorych ma liczyc."
+            )
+
+
+def rozstrzygnij_podstawe_krzywej(device: Any) -> PodstawaKrzywej:
+    """JEDNO zrodlo prawdy dla obu sciezek: czasu zadzialania i krzywej TCC.
+
+    Bezpiecznik (`device_type == FUSE`) ORAZ zadeklarowana norma „FUSE" daja
+    ten sam skutek — brak podstawy przekaznikowej. Bezpiecznik zgloszony z
+    norma IEC to nadal bezpiecznik: krzywa IDMT bylaby fabrykacja fizyki, wiec
+    o braku podstawy decyduje TYP URZADZENIA, a nie tylko deklaracja normy.
+    """
+    if str(getattr(device, "device_type", "")) == ProtectionDeviceType.FUSE.value:
+        return PodstawaKrzywej(KOD_BRAK_PASMA_BEZPIECZNIKA, None, _POWOD_BEZPIECZNIK_PL)
+
+    stage_51 = device.settings.stage_51
+    curve_settings = stage_51.curve_settings
+    if curve_settings is None:
+        return PodstawaKrzywej(
+            KOD_BRAK_NASTAW_KRZYWEJ,
+            None,
+            f"Człon 51 urządzenia {device.name} nie ma nastaw charakterystyki, "
+            "więc krzywej czasowo-prądowej nie ma z czego wyznaczyć.",
+        )
+
+    if curve_settings.standard is CurveStandard.FUSE:
+        return PodstawaKrzywej(KOD_BRAK_PASMA_BEZPIECZNIKA, None, _POWOD_BEZPIECZNIK_PL)
+
+    standard = _NORMY_PRZEKAZNIKOWE.get(curve_settings.standard)
+    if standard is None:
+        return PodstawaKrzywej(
+            KOD_NIEZNANA_NORMA_KRZYWEJ,
+            None,
+            f"Norma charakterystyki „{curve_settings.standard}” urządzenia "
+            f"{device.name} nie ma zdefiniowanego wzoru czasowo-prądowego, "
+            "więc czasu nie wyznaczono.",
+        )
+    return PodstawaKrzywej(KOD_KRZYWA_PRZEKAZNIKOWA, standard, None, curve_settings)
+
 
 # Color palette for TCC curves
 CURVE_COLORS = [
@@ -188,6 +306,7 @@ class OvercurrentCoordinationAnalyzer:
         return CoordinationAnalysisResult(
             run_id=run_id,
             project_id=project_id,
+            devices=input_data.devices,
             sensitivity_checks=tuple(sensitivity_checks),
             selectivity_checks=tuple(selectivity_checks),
             overload_checks=tuple(overload_checks),
@@ -455,14 +574,32 @@ class OvercurrentCoordinationAnalyzer:
             analysis_current = fault_data.ik_max_3f_a
 
             # Calculate trip times
-            t_downstream = self._calculate_device_trip_time(downstream, analysis_current)
-            t_upstream = self._calculate_device_trip_time(upstream, analysis_current)
+            t_downstream, powod_downstream = self._calculate_device_trip_time(
+                downstream, analysis_current
+            )
+            t_upstream, powod_upstream = self._calculate_device_trip_time(
+                upstream, analysis_current
+            )
 
             # Calculate margin
             if t_downstream == float("inf") or t_upstream == float("inf"):
                 margin_s = float("inf")
                 verdict = CoordinationVerdict.ERROR
-                notes_pl = "Nie można obliczyć czasu zadziałania jednego z zabezpieczeń"
+                # Uczciwy powod zamiast ogolnego „nie mozna obliczyc": czytelnik
+                # ma wiedziec, KTORE urzadzenie i DLACZEGO nie ma czasu.
+                powody = [
+                    f"{urzadzenie.name}: {powod}"
+                    for urzadzenie, czas, powod in (
+                        (downstream, t_downstream, powod_downstream),
+                        (upstream, t_upstream, powod_upstream),
+                    )
+                    if czas == float("inf") and powod
+                ]
+                notes_pl = (
+                    " ".join(powody)
+                    if powody
+                    else "Nie można obliczyć czasu zadziałania jednego z zabezpieczeń"
+                )
             else:
                 margin_s = t_upstream - t_downstream
 
@@ -486,7 +623,7 @@ class OvercurrentCoordinationAnalyzer:
                     downstream_device_id=downstream_id,
                     analysis_current_a=analysis_current,
                     t_upstream_s=t_upstream if t_upstream != float("inf") else 999.999,
-                    t_downstream_s=t_downstream if t_downstream != float("inf") else 999.999,
+                    t_downstream_s=(t_downstream if t_downstream != float("inf") else 999.999),
                     margin_s=margin_s if margin_s != float("inf") else 999.999,
                     required_margin_s=min_cti,
                     verdict=verdict,
@@ -503,8 +640,8 @@ class OvercurrentCoordinationAnalyzer:
                         "min_cti_s": min_cti,
                     },
                     "outputs": {
-                        "t_downstream_s": t_downstream if t_downstream != float("inf") else "inf",
-                        "t_upstream_s": t_upstream if t_upstream != float("inf") else "inf",
+                        "t_downstream_s": (t_downstream if t_downstream != float("inf") else "inf"),
+                        "t_upstream_s": (t_upstream if t_upstream != float("inf") else "inf"),
                         "margin_s": margin_s if margin_s != float("inf") else "inf",
                         "verdict": verdict.value,
                     },
@@ -517,48 +654,56 @@ class OvercurrentCoordinationAnalyzer:
         self,
         device: Any,  # ProtectionDevice
         fault_current_a: float,
-    ) -> float:
+    ) -> tuple[float, str | None]:
         """
         Calculate trip time for a device at given fault current.
 
         Uses stage 51 (I>) curve if enabled.
+
+        Zwraca `(czas_s, powod_pl)`. `float("inf")` znaczy: czasu NIE
+        wyznaczono, a `powod_pl` mowi po polsku dlaczego — nigdy nie zastepuje
+        sie brakujacej podstawy wzorem przekaznikowym (karta N-D5-FUSE).
         """
         stage_51 = device.settings.stage_51
         if not stage_51.enabled:
-            return float("inf")
+            return float("inf"), f"Człon 51 urządzenia {device.name} jest wyłączony."
+
+        # Bezpiecznik NIE ma czlonu nastawczego przekaznika — ani krzywej IDMT,
+        # ani zwloki niezaleznej. Rozstrzygniecie idzie PRZED odczytem `time_s`,
+        # zeby zadeklarowana „zwloka" bezpiecznika nie stala sie po cichu jego
+        # czasem zadzialania (ta sama klasa fabrykacji co krzywa IDMT).
+        podstawa = rozstrzygnij_podstawe_krzywej(device)
+        if podstawa.kod == KOD_BRAK_PASMA_BEZPIECZNIKA:
+            return float("inf"), podstawa.powod_pl
 
         # Check if current is above pickup
         if fault_current_a < stage_51.pickup_current_a:
-            return float("inf")
+            return float("inf"), (
+                f"Prąd {fault_current_a:.1f} A nie przekracza progu rozruchowego "
+                f"{stage_51.pickup_current_a:g} A urządzenia {device.name}, "
+                "więc to zabezpieczenie nie zadziała."
+            )
 
         # If definite time, use it directly
         if stage_51.time_s is not None:
-            return stage_51.time_s
+            return stage_51.time_s, None
 
-        # If curve-based, calculate using curve
-        if stage_51.curve_settings is None:
-            return float("inf")
+        if podstawa.standard is None or podstawa.nastawy is None:
+            return float("inf"), podstawa.powod_pl
 
-        curve_settings = stage_51.curve_settings
-
-        # Map to CurveDefinition for calculation
-        standard_map = {
-            CurveStandard.IEC: CurveCurveStandard.IEC,
-            CurveStandard.IEEE: CurveCurveStandard.IEEE,
-        }
-        standard = standard_map.get(curve_settings.standard, CurveCurveStandard.IEC)
+        curve_settings = podstawa.nastawy
 
         curve_def = CurveDefinition(
             id=str(device.id),
             name_pl=device.name,
-            standard=standard,
+            standard=podstawa.standard,
             curve_type=curve_settings.variant,
             pickup_current_a=curve_settings.pickup_current_a,
             time_multiplier=curve_settings.time_multiplier,
             definite_time_s=curve_settings.definite_time_s,
         )
 
-        return calculate_trip_time(curve_def, fault_current_a)
+        return calculate_trip_time(curve_def, fault_current_a), None
 
     def _generate_tcc_curves(
         self,
@@ -581,23 +726,51 @@ class OvercurrentCoordinationAnalyzer:
 
         for idx, device in enumerate(devices):
             stage_51 = device.settings.stage_51
-            if not stage_51.enabled or stage_51.curve_settings is None:
+
+            # Rozstrzygniecie podstawy PRZED pominieciem urzadzenia: bezpiecznik
+            # nie moze ani dostac krzywej przekaznikowej, ani zniknac po cichu
+            # z wykresu — dostaje JAWNA pozycje bez punktow z powodem po polsku
+            # (karta N-D5-FUSE).
+            podstawa = rozstrzygnij_podstawe_krzywej(device)
+            if podstawa.kod == KOD_BRAK_PASMA_BEZPIECZNIKA:
+                curves.append(
+                    TCCCurve(
+                        device_id=str(device.id),
+                        device_name=device.name,
+                        curve_type=KOD_BRAK_CHARAKTERYSTYKI,
+                        pickup_current_a=stage_51.pickup_current_a,
+                        # Bezpiecznik NIE MA mnoznika czasowego — 0.0 to znacznik
+                        # „nie dotyczy", czytany razem z `podstawa_kod`, nie TMS.
+                        time_multiplier=0.0,
+                        points=(),
+                        color=CURVE_COLORS[idx % len(CURVE_COLORS)],
+                        podstawa_kod=podstawa.kod,
+                        powod_pl=podstawa.powod_pl,
+                    )
+                )
+                trace_steps.append(
+                    {
+                        "step": f"tcc_bez_podstawy_{str(device.id)[:8]}",
+                        "description_pl": f"Brak podstawy krzywej: {device.name}",
+                        "inputs": {"device_type": str(device.device_type)},
+                        "outputs": {
+                            "podstawa_kod": podstawa.kod,
+                            "powod_pl": podstawa.powod_pl,
+                        },
+                    }
+                )
                 continue
 
-            curve_settings = stage_51.curve_settings
+            if not stage_51.enabled or podstawa.standard is None or podstawa.nastawy is None:
+                continue
 
-            # Map standard
-            standard_map = {
-                CurveStandard.IEC: CurveCurveStandard.IEC,
-                CurveStandard.IEEE: CurveCurveStandard.IEEE,
-            }
-            standard = standard_map.get(curve_settings.standard, CurveCurveStandard.IEC)
+            curve_settings = podstawa.nastawy
 
             # Create CurveDefinition
             curve_def = CurveDefinition(
                 id=str(device.id),
                 name_pl=device.name,
-                standard=standard,
+                standard=podstawa.standard,
                 curve_type=curve_settings.variant,
                 pickup_current_a=curve_settings.pickup_current_a,
                 time_multiplier=curve_settings.time_multiplier,

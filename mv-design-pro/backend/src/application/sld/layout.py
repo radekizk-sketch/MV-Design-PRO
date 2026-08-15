@@ -79,7 +79,7 @@ def build_auto_layout_diagram(
     diagram_uuid = diagram_id or uuid5(project_id, f"sld:{name}")
     node_ids = [node["id"] for node in nodes]
     node_in_service = {node["id"]: node.get("in_service", True) for node in nodes}
-    adjacency = {node_id: set() for node_id in node_ids}
+    adjacency: dict[UUID, set[UUID]] = {node_id: set() for node_id in node_ids}
 
     # Build adjacency from branches (in_service only for layout)
     for branch in branches:

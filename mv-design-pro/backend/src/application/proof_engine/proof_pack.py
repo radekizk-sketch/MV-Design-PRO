@@ -5,9 +5,10 @@ import io
 import json
 import sys
 import zipfile
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from pathlib import Path
+from uuid import UUID, uuid5
 
 from application.proof_engine.proof_inspector.exporters import (
     export_to_json,
@@ -188,6 +189,107 @@ class ProofPackBuilder:
         return buffer.getvalue()
 
 
+#: Przestrzeń nazw identyfikatorów artefaktów pakietu dowodowego (stała).
+_NAMESPACE_ARTEFAKTU_PAKIETU = UUID("4b1f6a2e-9c53-4a1d-8f7b-2d0c5a6e91d4")
+
+
+def deterministic_artifact_id(context: ProofPackContext, rozroznik: str = "") -> UUID:
+    """Identyfikator artefaktu WYPROWADZONY z tożsamości pakietu (nie losowy).
+
+    DEFEKT, KTÓRY TO ZAMYKA (karta PACK-DOWODY). ``manifest.json`` każdego pakietu
+    deklaruje wprost: „Pakiet jest deterministyczny dla identycznych wejść i
+    toolchain" — a generatory pakietów, wołane bez jawnego ``artifact_id``,
+    podstawiały ``uuid4()``. Ten sam przebieg pobrany dwa razy dawał więc RÓŻNE
+    bajty (``proof.json`` → inny ``proof_fingerprint`` → inny ``pack_fingerprint``),
+    czyli odcisk integralności nie nadawał się do porównania dwóch pobrań.
+    Deklaracja bez strażnika: pin w ``tests/api/test_pakiet_dowodowy_biegu.py``
+    (dwa pobrania bajt-w-bajt) i ``tests/api/test_proof_pack_api.py``.
+
+    Tożsamość pakietu = projekt + przypadek + przebieg + wersja modelu. Ta sama
+    czwórka ⇒ ten sam identyfikator; inny przebieg albo inna wersja modelu ⇒ inny.
+
+    ``rozroznik`` (karta PACK-BEZ-KONSUMENTA) oddziela DOKUMENTY składane z tego
+    samego przebiegu. Pakiet zbiorczy rozpływu niesie trzy dowody (rozpływ, straty,
+    spadek napięcia na odcinku) — bez rozróżnika wszystkie trzy dostałyby ten sam
+    identyfikator artefaktu, czyli pakiet twierdziłby, że to jeden i ten sam dowód.
+    Pusty rozróżnik daje ziarno IDENTYCZNE jak przed dodaniem parametru, więc
+    odciski pakietów wydanych dotąd są nietknięte (pin: dwa pobrania bajt-w-bajt).
+    """
+    czlony = [
+        context.project_id,
+        context.case_id,
+        context.run_id,
+        context.snapshot_id,
+    ]
+    if rozroznik:
+        czlony.append(rozroznik)
+    return uuid5(_NAMESPACE_ARTEFAKTU_PAKIETU, "|".join(czlony))
+
+
+def dokument_deterministyczny(
+    proof_doc: ProofDocument,
+    context: ProofPackContext,
+    znacznik_czasu: datetime,
+    rozroznik: str = "",
+) -> ProofDocument:
+    """Dokument dowodowy o TOŻSAMOŚCI wyprowadzonej z pakietu, nie z zegara i losu.
+
+    Ta sama klasa defektu co ``deterministic_artifact_id``, drugi jego koniec:
+    ``ProofDocument`` generatorów niesie ``document_id = uuid4()`` i
+    ``created_at = datetime.now()``. Oba pola trafiają do ``proof.json``, więc
+    ``proof_fingerprint`` i ``pack_fingerprint`` w manifeście zmieniały się przy
+    KAŻDYM pobraniu — odcisk integralności nie dawał się porównać między dwoma
+    pobraniami tego samego przebiegu, choć manifest to deklaruje.
+
+    ``znacznik_czasu`` = czas PRZEBIEGU (nie „teraz"): dowód dokumentuje obliczenie,
+    które już się odbyło. Pin: pakiet pobrany dwa razy jest bajt-w-bajt identyczny.
+
+    ``rozroznik`` jak w ``deterministic_artifact_id``: pusty ⇒ ziarno IDENTYCZNE
+    jak przed dodaniem parametru; niepusty ⇒ osobna tożsamość dokumentu w pakiecie
+    zbiorczym. Oba miejsca MUSZĄ dostawać ten sam rozróżnik — inaczej pakiet
+    miałby dwa niezgodne identyfikatory tego samego dowodu.
+    """
+    czlony = [
+        context.project_id,
+        context.case_id,
+        context.run_id,
+        context.snapshot_id,
+    ]
+    if rozroznik:
+        czlony.append(rozroznik)
+    czlony.append("document")
+    return replace(
+        proof_doc,
+        document_id=uuid5(_NAMESPACE_ARTEFAKTU_PAKIETU, "|".join(czlony)),
+        created_at=znacznik_czasu,
+    )
+
+
+def zbuduj_zip_zbiorczy(pakiety: dict[str, bytes]) -> bytes:
+    """Jeden ZIP zbiorczy z kilku pakietów dowodowych, deterministyczny.
+
+    Kolejność wpisów i znacznik czasu stałe — ten sam zestaw daje bajt-w-bajt ten
+    sam plik. Miejsce tej funkcji jest TU (warstwa pakietu), a nie w konkretnym
+    generatorze: sięgają po nią pakiet zwarć niesymetrycznych (1F-Z / 2F / 2F-Z)
+    ORAZ pakiet rozpływu (rozpływ / straty / spadek napięcia), a warstwie aplikacji
+    nie wolno importować z warstwy API.
+    """
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(
+        buffer,
+        mode="w",
+        compression=zipfile.ZIP_DEFLATED,
+        compresslevel=9,
+    ) as bundle:
+        for nazwa in sorted(pakiety.keys()):
+            path = f"pakiet_dowodowy/{nazwa}.zip"
+            info = zipfile.ZipInfo(path, date_time=_FIXED_ZIP_TIMESTAMP)
+            info.create_system = 0
+            info.external_attr = 0o100644 << 16
+            bundle.writestr(info, pakiety[nazwa])
+    return buffer.getvalue()
+
+
 def resolve_mv_design_pro_version() -> str | None:
     try:
         import tomllib
@@ -216,7 +318,10 @@ def proof_pack_proof_type(proof_type: ProofType) -> str:
     if proof_type == ProofType.Q_U_REGULATION:
         return "QU_REGULATION"
     if proof_type == ProofType.EQUIPMENT_PROOF:
-        return "P12"
+        # Rodzaj dowodu trafia do `manifest.json` pobieranego pakietu, czyli do
+        # artefaktu eksportu — obowiązuje go zakaz nazw roboczych projektu
+        # (CLAUDE.md reguła 8). Wcześniej stało tu oznaczenie robocze karty.
+        return ProofType.EQUIPMENT_PROOF.value
     if proof_type in {
         ProofType.SC1F_IEC60909,
         ProofType.SC2F_IEC60909,

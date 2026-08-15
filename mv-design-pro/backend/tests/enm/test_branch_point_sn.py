@@ -89,7 +89,7 @@ class TestBranchPointSNModel:
             branch_point_type="branch_pole",
             parent_segment_id="seg-A",
             bus_ref="bus-bp-001",
-            catalog_ref="SŁUP-ODG-12",
+            catalog_ref="SLUP-ODG-12",
             source_mode="KATALOG",
             ports=BranchPointSNPorts(MAIN_IN="bus-A", MAIN_OUT="bus-B", BRANCH=["bus-bp-br-1"]),
             completeness_status="KOMPLETNY",
@@ -105,7 +105,7 @@ class TestBranchPointSNModel:
             branch_point_type="zksn",
             parent_segment_id="seg-B",
             bus_ref="bus-bp-002",
-            catalog_ref="ZKSN-2P",
+            catalog_ref="ZKSN-2P-630A",
             source_mode="KATALOG",
             switch_state="closed",
             ports=BranchPointSNPorts(
@@ -155,7 +155,7 @@ class TestBranchPointSNModel:
             branch_point_type="zksn",
             parent_segment_id="seg-rt",
             bus_ref="bus-rt",
-            catalog_ref="ZKSN-2P",
+            catalog_ref="ZKSN-2P-630A",
             catalog_namespace="mv_branch_points",
             catalog_version="1.0",
             source_mode="KATALOG",
@@ -199,7 +199,7 @@ class TestEnergyNetworkModelBranchPoints:
                     branch_point_type="branch_pole",
                     parent_segment_id="seg-1",
                     bus_ref="bus-bp-1",
-                    catalog_ref="SŁUP-001",
+                    catalog_ref="SLUP-ODG-12",
                     completeness_status="KOMPLETNY",
                 )
             ],
@@ -220,7 +220,7 @@ class TestEnergyNetworkModelBranchPoints:
                     branch_point_type="zksn",
                     parent_segment_id="seg-v",
                     bus_ref="bus-bp-v",
-                    catalog_ref="ZKSN-2P",
+                    catalog_ref="ZKSN-2P-630A",
                     completeness_status="KOMPLETNY",
                 )
             ],
@@ -244,7 +244,7 @@ class TestDomainOperationsBranchPointSchemaValid:
             "insert_branch_pole_on_segment_sn",
             {
                 "segment_id": seg_id,
-                "catalog_ref": "SŁUP-ODG-12",
+                "catalog_ref": "SLUP-ODG-12",
                 "catalog_namespace": "mv_branch_points",
             },
         )
@@ -256,7 +256,7 @@ class TestDomainOperationsBranchPointSchemaValid:
         assert len(enm.branch_points) == 1
         bp = enm.branch_points[0]
         assert bp.branch_point_type == "branch_pole"
-        assert bp.catalog_ref == "SŁUP-ODG-12"
+        assert bp.catalog_ref == "SLUP-ODG-12"
         assert bp.catalog_namespace == "mv_branch_points"
         assert bp.source_mode == "KATALOG"
         assert bp.completeness_status == "KOMPLETNY"
@@ -275,7 +275,7 @@ class TestDomainOperationsBranchPointSchemaValid:
             "insert_zksn_on_segment_sn",
             {
                 "segment_id": seg_id,
-                "catalog_ref": "ZKSN-2P",
+                "catalog_ref": "ZKSN-2P-630A",
                 "branch_ports_count": 2,
                 "switch_state": "closed",
             },
@@ -307,7 +307,7 @@ class TestDomainOperationsBranchPointSchemaValid:
             "insert_zksn_on_segment_sn",
             {
                 "segment_id": seg_id,
-                "catalog_ref": "ZKSN-2P",
+                "catalog_ref": "ZKSN-2P-630A",
                 "branch_ports_count": 1,
                 "switch_state": "closed",
                 "insert_at": {"mode": "RATIO", "value": 1},
@@ -338,7 +338,7 @@ class TestDomainOperationsBranchPointSchemaValid:
             "insert_zksn_on_segment_sn",
             {
                 "segment_id": seg_id,
-                "catalog_ref": "ZKSN-2P",
+                "catalog_ref": "ZKSN-2P-630A",
                 "branch_ports_count": 1,
                 "switch_state": "closed",
                 "insert_at": {"mode": "RATIO", "value": 1},
@@ -596,7 +596,7 @@ class TestDomainOperationsBranchPointSchemaValid:
             "insert_zksn_on_segment_sn",
             {
                 "segment_id": seg_id,
-                "catalog_ref": "ZKSN-2P",
+                "catalog_ref": "ZKSN-2P-630A",
                 "branch_ports_count": 2,
                 "switch_state": "closed",
             },

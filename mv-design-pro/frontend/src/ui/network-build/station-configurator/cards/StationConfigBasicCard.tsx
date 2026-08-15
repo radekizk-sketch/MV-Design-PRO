@@ -114,10 +114,12 @@ export function StationConfigBasicCard(props: StationConfigBasicCardProps): JSX.
             const g = MV_NEUTRAL_GROUNDING_CATALOG.find((x) => x.id === mvNeutralGroundingRef);
             if (!g) return null;
             const requires67N = g.grounding_type === 'isolated' || g.grounding_type === 'petersen_coil';
+            // Karta K-O: nie pokazujemy „typowego" zakresu I_k1 z tabeli — ta liczba
+            // nie miała źródła, a prąd zwarcia doziemnego tej sieci liczy solver SC1F
+            // z impedancji Z₀ modelu.
             return (
               <div className="mt-1 rounded bg-scada-panel-raised px-2 py-1 text-[10px] text-scada-text">
-                Typ: {g.grounding_type} · I_k1 [{g.typical_ik1_a_range.min}-{g.typical_ik1_a_range.max} A]
-                · Wymagane 67N: {requires67N ? 'tak' : 'nie'}
+                Typ: {g.grounding_type} · Wymagane 67N: {requires67N ? 'tak' : 'nie'}
               </div>
             );
           })()}

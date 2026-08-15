@@ -29,6 +29,7 @@ import { KreatorKompensatoraSn } from './ui2/kreatory/kompensator';
 import { KreatorMagistralaSn } from './ui2/kreatory/magistrala';
 import { KreatorOdbioruNn } from './ui2/kreatory/odbior';
 import { KreatorPolaSn } from './ui2/kreatory/pole';
+import { KreatorStacjiSnNn } from './ui2/kreatory/stacja';
 import { KreatorTransformatoraSnNn } from './ui2/kreatory/transformator';
 import { KreatorZrodloZasilania } from './ui2/kreatory/zrodlo';
 import { KreatorZrodlaOze } from './ui2/kreatory/zrodlo-oze';
@@ -51,6 +52,15 @@ import {
 import { EkranOdbioru } from './ui2/wyniki/odbior';
 import { EkranEstymacji } from './ui2/wyniki/estymacja';
 import { EkranSsci } from './ui2/wyniki/ssci';
+import { EkranAnalizAkademickich } from './ui2/wyniki/akademickie';
+// V126-JEZYK: scena "wyniki-warsztat" sluzy POMIAROWI UKLADU paska zakladek
+// (defekt ze zrzutu 3/3 wlasciciela: pasek wyjezdzal poza kadr) przy realnych
+// szerokosciach 1280/1440/1920 px - jsdom ukladu nie prowadzi.
+import { WynikiWarsztat } from './ui2/spaces/wyniki/WynikiWarsztat';
+// V126-JEZYK: scena "akademickie" karmiona REALNYMI odpowiedziami solvera
+// (ta sama fixtura, na ktorej stoi straznik prezentacji) - zrzut pokazuje
+// dokladnie to, co zobaczy projektant, a nie wyidealizowana atrape.
+import odpowiedziV126 from './ui2/wyniki/akademickie/__tests__/odpowiedziSolvera.json';
 import { SekcjaSilySieci } from './ui2/oze/pulpit';
 import { EkranRozplywu } from './ui2/wyniki/rozplyw';
 import { EkranZwarc } from './ui2/wyniki/zwarcia';
@@ -74,6 +84,12 @@ import {
 import { PvSourceSurface } from './ui/workspace/surfaces/DerSurfaces';
 import { HubDokumentacji } from './ui2/spaces/dokumentacja';
 import { PulpitProjektu } from './ui2/spaces/projekt';
+import { PanelDiagnozy } from './ui2/spaces/obliczenia/diagnoza';
+import {
+  diagnostykaZBrakamiFixture,
+  diagnozaNiezbieznaFixture,
+  preflightZablokowanyFixture,
+} from './ui2/spaces/obliczenia/diagnoza/__tests__/fixtures';
 import { EkranCoWymagaUwagi } from './ui2/wyniki/co-wymaga-uwagi';
 import { CaseBar } from './ui2/shell/CaseBar';
 import { useShellCaseInfo } from './ui2/shell/shellStatus';
@@ -94,19 +110,134 @@ document.body.style.background = theme === 'light_technical' ? '#f5f7fa' : '#071
 
 // --- Podmiana fetch: dane katalogowe (bez backendu) ----------------------
 const CATALOG_FIXTURES: Record<string, unknown> = {
+  // KOMPLETNOSC-POLA-TR: `device_kind` w REALNYM kształcie kanonicznego katalogu
+  // (`catalog/repository.py` `kind_map` → WYLACZNIK/ROZLACZNIK/…). Wcześniej scena
+  // serwowała warianty angielskie (BREAKER/LOAD_SWITCH), których żywy backend nie
+  // zwraca — zrzut pokazywałby wtedy inne dane niż aplikacja, a zawężenie pickera
+  // rolą pola (readout `/bay-apparatus-kinds`) nie miałoby czego dopasować.
   '/api/catalog/mv-apparatus-types': [
-    { id: 'ap-1', name: 'Wyłącznik próżniowy VD4', device_kind: 'BREAKER', u_n_kv: 17.5, i_n_a: 630, breaking_capacity_ka: 25 },
-    { id: 'ap-2', name: 'Rozłącznik LBS', device_kind: 'LOAD_SWITCH', u_n_kv: 17.5, i_n_a: 630, breaking_capacity_ka: 20 },
+    // REALNE pozycje katalogu APARAT_SN (`mv_switch_catalog.py`) — identyfikatory,
+    // nazwy i znamiona 1:1 z kartami producentów. Wcześniej scena serwowała
+    // wymyślone `ap-1`…`ap-4`: zrzut wyglądał poprawnie, ale walidator backendu
+    // odrzucał każdą taką konfigurację (pozycja spoza katalogu), więc werdykt na
+    // zrzucie dowodowym nie znaczył nic. Atrapa ma odwzorowywać katalog, nie go
+    // udawać.
+    { id: 'sw-cb-abb-vd4-17kv-630a', name: 'ABB VD4 17.5 kV 630 A', device_kind: 'WYLACZNIK', u_n_kv: 17.5, i_n_a: 630, breaking_capacity_ka: 20 },
+    { id: 'sw-ls-schneider-rm6-17kv-400a', name: 'Schneider RM6 17.5 kV 400 A', device_kind: 'ROZLACZNIK', u_n_kv: 17.5, i_n_a: 400, breaking_capacity_ka: 20 },
+    { id: 'sw-fuse-eti-vv-17kv-63a', name: 'ETI VV 17.5 kV 63 A', device_kind: 'ROZLACZNIK_BEZPIECZNIKOWY', u_n_kv: 17.5, i_n_a: 63 },
+    { id: 'sw-ds-abb-ojs-17kv-630a', name: 'ABB OJS 17.5 kV 630 A', device_kind: 'ODLACZNIK', u_n_kv: 17.5, i_n_a: 630 },
+    // MINI-RMU-CAD: REKLOZER — rodzaj dopuszczony przez backend dla pól liniowych
+    // (`BAY_PRIMARY_APPARATUS_KINDS_BY_ROLE`: IN/OUT/FEEDER), którego scena NIE
+    // serwowała: zawężenie roli je przepuszczało, ale lista była pusta z tego
+    // rodzaju, więc zrzut nie mógł pokazać pola liniowego z reklozerem. Pozycja
+    // odwzorowuje realny wpis katalogu (`mv_switch_catalog.py` SWITCH_RECLOSERS).
+    { id: 'sw-rec-abb-rec615-17kv-630a', name: 'ABB REC615 17,5 kV 630 A', device_kind: 'REKLOZER', u_n_kv: 17.5, i_n_a: 630, breaking_capacity_ka: 12.5 },
+  ],
+  // Zawężenie rodzaju aparatu per rola pola — lustro `BAY_PRIMARY_APPARATUS_KINDS_BY_ROLE`.
+  '/api/catalog/bay-apparatus-kinds': {
+    IN: ['WYLACZNIK', 'ROZLACZNIK', 'REKLOZER'],
+    OUT: ['WYLACZNIK', 'ROZLACZNIK', 'REKLOZER'],
+    FEEDER: ['WYLACZNIK', 'ROZLACZNIK', 'REKLOZER'],
+    TR: ['ROZLACZNIK_BEZPIECZNIKOWY', 'WYLACZNIK'],
+    COUPLER: ['WYLACZNIK', 'ROZLACZNIK'],
+    MEASUREMENT: ['ODLACZNIK'],
+    OZE: ['WYLACZNIK', 'ROZLACZNIK'],
+  },
+  '/api/catalog/bay-protection-codes': {
+    IN: ['51', '50', '51N'],
+    OUT: ['51', '50', '51N', '67N'],
+    FEEDER: ['51', '50', '51N', '67N'],
+    TR: ['87T', '51', '50', '49', '63', '26'],
+    COUPLER: ['51', '50'],
+    MEASUREMENT: [],
+  },
+  '/api/catalog/manufacturers': [
+    { manufacturer_ref: 'ZPUE_WLOSZCZOWA', name: 'ZPUE Włoszczowa', country: 'PL', status: 'verified', source_refs: ['katalog'], notes_pl: null },
+    // ABB — producent z kanonu katalogu (`switchgear/manufacturer.py`), status
+    // `requires_catalog`. W ŻYWEJ aplikacji jest wybieralny, bo ma kompletne
+    // szablony pól (13 rekordów), a nie dzięki statusowi producenta; atrapa niżej
+    // niesie dwa z nich, żeby scena zachowywała się jak aplikacja.
+    { manufacturer_ref: 'ABB', name: 'ABB Ltd.', country: 'CH', status: 'requires_catalog', source_refs: [], notes_pl: null },
+  ],
+  '/api/catalog/mv-protection-device-types': [
+    { id: 'rel-mv-1', name: 'Zabezpieczenie nadprądowe SN', vendor: 'ABB' },
+  ],
+  '/api/catalog/transformer-types': [
+    { id: 'tr-sn-nn-15-04-630kva-dyn11', name: 'Transformator 630 kVA 15/0,4 kV Dyn11', rated_power_mva: 0.63, voltage_hv_kv: 15, voltage_lv_kv: 0.4, uk_percent: 4.5, pk_kw: 6.5, vector_group: 'Dyn11' },
+    { id: 'tr-sn-nn-15-04-400kva-dyn11', name: 'Transformator 400 kVA 15/0,4 kV Dyn11', rated_power_mva: 0.4, voltage_hv_kv: 15, voltage_lv_kv: 0.4, uk_percent: 4.0, pk_kw: 4.6, vector_group: 'Dyn11' },
   ],
   '/api/catalog/switchgear-families': [
-    // DWA REKORDY CELOWO ROZNE (V12K-259). Pierwszy niesie `voltage_levels`, wiec scena
-    // cwiczy REALNY filtr napiec. Drugi go NIE MA — i to jest przypadek GRANICZNY, ktory
-    // wywracal caly kreator bialym ekranem (`voltage_levels.length` na `undefined`).
-    // Gdyby oba rekordy byly kompletne, usuniecie normalizacji w kliencie katalogu
-    // przechodziloby na zielono, a bramka pilnowalaby tylko szczesliwej sciezki.
-    { switchgear_family_ref: 'zpue_rotoblok', family_name: 'Rotoblok SVS', manufacturer_ref: 'ZPUE', voltage_levels: [15, 20] },
+    // DWA REKORDY CELOWO NIEKOMPLETNE (V12K-259, rozszerzone karta K-J). Rekord
+    // ponizej niesie TYLKO napiecia sieci — brakuje mu drugiego pola napieciowego;
+    // kolejny nie niesie ZADNEGO. To sa przypadki GRANICZNE, ktore wywracaly caly
+    // kreator bialym ekranem (`.length` na `undefined`). Po rozdzieleniu pola na
+    // dwa scena musi cwiczyc OBIE polowy normalizacji osobno — inaczej usuniecie
+    // domkniecia jednego pola przechodziloby na zielono.
+    { switchgear_family_ref: 'zpue_rotoblok', family_name: 'Rotoblok SVS', manufacturer_ref: 'ZPUE', network_voltages_kv: [15, 20] },
     { switchgear_family_ref: 'abb_unigear', family_name: 'UniGear ZS1', manufacturer_ref: 'ABB' },
+    // KONFIGURATOR-POL-RMU (S3): rodziny producenta w KSZTAŁCIE REALNEJ ODPOWIEDZI
+    // `GET /api/catalog/switchgear-families` — refy kanonu (`ZPUE_WLOSZCZOWA__*`),
+    // klasy znamionowe z kart producenta i WYLICZANY `tor_konfiguracji`. Atrapa
+    // musi nieść to pole, bo krok pól rozgałęzia się właśnie na nim; poprzedni
+    // rekord opisywał Rotoblok jako RMU w izolacji SF₆ (karta ZPUE mówi:
+    // rozdzielnica wnętrzowa, izolacja powietrzna), więc scena ćwiczyła tor,
+    // którego ta rodzina nie ma.
+    { switchgear_family_ref: 'ZPUE_WLOSZCZOWA__ROTOBLOK', family_name: 'Rotoblok', manufacturer_ref: 'ZPUE_WLOSZCZOWA', network_voltages_kv: [15, 20], um_classes_kv: [17.5, 24], rated_current_options: [630], short_time_current_options: [16], status: 'repo_verified', source_refs: ['https://zpue.pl/rozdzielnice-sn/rotoblok'], insulation_type: 'air', construction_type: 'wnetrzowa', tor_konfiguracji: 'MODULARNY', series_name: null, notes_pl: null },
+    { switchgear_family_ref: 'ZPUE_WLOSZCZOWA__TPM_AIR', family_name: 'TPM Air', manufacturer_ref: 'ZPUE_WLOSZCZOWA', network_voltages_kv: [], um_classes_kv: [24], rated_current_options: [630], short_time_current_options: [20], status: 'repo_verified', source_refs: ['https://zpue.pl/rozdzielnice-sn/tpm-air'], insulation_type: 'air', construction_type: 'RMU', tor_konfiguracji: 'BLOK_RMU', series_name: null, notes_pl: null },
+    // Rodzina RMU BEZ transkrybowanych bloków — UCZCIWY STAN ZEROWY oferty.
+    //
+    // BYŁA TU RODZINA ZPUE TPM z pustym subzasobem konfiguracji. To przestało być
+    // prawdą: katalog niesie dla TPM 18 bloków fabrycznych (karta S3), a jej karta
+    // deklaruje napięcie sieci 20 kV, więc na szynie 15 kV tej sceny rodzina jest
+    // widoczna, ale NIEWYBIERALNA — scena „stanu zerowego" opierała się na rodzinie,
+    // której nie da się wskazać, i na nieistniejącym braku danych.
+    // ABB SafePlus to rodzina, dla której katalog REALNIE nie ma ani jednego bloku
+    // (0 konfiguracji), a jej klasy Um 12/17,5/24 kV obejmują szynę 15 kV.
+    { switchgear_family_ref: 'ABB__SAFEPLUS', family_name: 'SafePlus', manufacturer_ref: 'ABB', network_voltages_kv: [], um_classes_kv: [12, 17.5, 24], rated_current_options: [630, 1250], short_time_current_options: [20, 25], status: 'repo_verified', source_refs: ['https://www.abb.com/global/en/areas/electrification/medium-voltage/switchgear/gas-insulated/safering-safeplus'], insulation_type: 'sf6', construction_type: 'RMU', tor_konfiguracji: 'BLOK_RMU', series_name: 'SafePlus', notes_pl: null },
+    // Rodzina bez potwierdzonej karty — WIDOCZNA, ale niewybieralna. Producentem
+    // UniSec jest ABB (kanon `families.py`), nie ZPUE: atrapa przypisywała wyrób
+    // jednego producenta drugiemu, czyli podawała na ekranie nieprawdziwą ofertę.
+    { switchgear_family_ref: 'ABB__UNISEC', family_name: 'UniSec', manufacturer_ref: 'ABB', network_voltages_kv: [], um_classes_kv: [24], rated_current_options: [], short_time_current_options: [], status: 'requires_catalog', source_refs: [], insulation_type: 'air', construction_type: 'wnetrzowa', tor_konfiguracji: 'MODULARNY', series_name: null, notes_pl: null },
   ],
+  // Subzasób konfiguracji fabrycznych: bloki ZPUE TPM Air w nomenklaturze
+  // PRODUCENTA (L — rozłącznik liniowy 630 A, T — rozłącznik z bezpiecznikami
+  // 250 A, W — wyłącznik 630 A). Szerokości nie ma na stronie produktowej, więc
+  // `total_width_mm` zostaje `null` — atrapa nie zmyśla milimetra.
+  '/api/catalog/switchgear-families/ZPUE_WLOSZCZOWA__TPM_AIR/factory-configurations': [
+    {
+      configuration_ref: 'ZPUE_WLOSZCZOWA__TPM_AIR__LLT',
+      switchgear_family_ref: 'ZPUE_WLOSZCZOWA__TPM_AIR',
+      code: 'LLT',
+      name_pl: 'Blok kabel-kabel-transformator',
+      units: [
+        { unit_code: 'L', unit_name_pl: 'Jednostka liniowa (rozłącznik 630 A)', bay_kind: 'liniowe_odplywowe', apparatus_kinds: ['switch_disconnector'], width_mm: null },
+        { unit_code: 'L', unit_name_pl: 'Jednostka liniowa (rozłącznik 630 A)', bay_kind: 'liniowe_odplywowe', apparatus_kinds: ['switch_disconnector'], width_mm: null },
+        { unit_code: 'T', unit_name_pl: 'Jednostka transformatorowa (rozłącznik z bezpiecznikami 250 A)', bay_kind: 'transformatorowe', apparatus_kinds: ['switch_disconnector', 'fuse_set'], width_mm: null },
+      ],
+      unit_sequence: 'L-L-T',
+      total_width_mm: null,
+      source_refs: ['https://zpue.pl/rozdzielnice-sn/tpm-air'],
+      notes_pl: null,
+    },
+    {
+      configuration_ref: 'ZPUE_WLOSZCZOWA__TPM_AIR__LL',
+      switchgear_family_ref: 'ZPUE_WLOSZCZOWA__TPM_AIR',
+      code: 'LL',
+      name_pl: 'Blok kabel-kabel',
+      units: [
+        { unit_code: 'L', unit_name_pl: 'Jednostka liniowa (rozłącznik 630 A)', bay_kind: 'liniowe_odplywowe', apparatus_kinds: ['switch_disconnector'], width_mm: null },
+        { unit_code: 'L', unit_name_pl: 'Jednostka liniowa (rozłącznik 630 A)', bay_kind: 'liniowe_odplywowe', apparatus_kinds: ['switch_disconnector'], width_mm: null },
+      ],
+      unit_sequence: 'L-L',
+      total_width_mm: null,
+      source_refs: ['https://zpue.pl/rozdzielnice-sn/tpm-air'],
+      notes_pl: null,
+    },
+  ],
+  // Rodzina RMU, dla której katalog NIE MA ANI JEDNEGO bloku — pusta lista jest tu
+  // odwzorowaniem stanu katalogu (`GET .../ABB__SAFEPLUS/factory-configurations`
+  // zwraca 0 pozycji), a nie wygodą sceny.
+  '/api/catalog/switchgear-families/ABB__SAFEPLUS/factory-configurations': [],
   '/api/catalog/lv-apparatus-types': [
     { id: 'lv-1', name: 'Wyłącznik nN 630A', u_n_kv: 0.4, i_n_a: 630 },
   ],
@@ -781,7 +912,71 @@ const DOBOR_PRZEKLADNIKOW_WIAZANIA = {
   przekladnik_napieciowy: { catalog_ref: null, nazwa: null, wynik: null },
 };
 
+/**
+ * K3-B2: scena → identyfikator przebiegu, którego kontrakt (GET
+ * /api/analysis-runs/<id>) zasila znacznik świeżości nagłówka. Wartości
+ * odpowiadają 1:1 runId z zasiewu store'ów danej sceny (niżej w pliku);
+ * scena „cieplna" celowo dostaje wynik na rev. 1 przy migawce rev. 2
+ * (wariant NIEAKTUALNY, K3-B3).
+ */
+const RUN_KONTRAKT_SCENY: Record<string, string> = {
+  cieplna: 'run-sc-7',
+  'zwarcia-rozplyw': 'run-sc-th1-demo',
+  zwarcia: 'run-sc-2',
+  rozplyw: 'run-lf-1',
+  walidacja: 'run-lf-1',
+  estymacja: 'run-lf-6',
+  'odbior-zgodnosc': 'run-lf-5',
+  arcflash: 'run-sc-1',
+  migotanie: 'run-sc-5',
+};
+
 const originalFetch = window.fetch.bind(window);
+/**
+ * Slad WHITE BOX sceny "akademickie" (V126-JEZYK) - ksztalt 1:1 z krokiem
+ * `TraceBuilder.add` po naprawie u zrodla: kolumna "Wynik" niesie POLSKA
+ * postac liczby z jednostka (`result_pl`), nie zrzut slownika.
+ */
+function sladDemoV126(rodzaj: string): Record<string, unknown>[] {
+  const kroki: Record<string, Record<string, unknown>[]> = {
+    earthing_safety: [
+      {
+        step: 1,
+        key: 'ieee80_sverak',
+        formula: 'Rg = rho * [1/Lc + 1/sqrt(20A)*(1 + 1/(1+h*sqrt(20/A)))]',
+        data: { area_m2: 2400, lc_m: 1180, rho_ohm_m: 100 },
+        substitution: 'R_g = 100 \u03a9\u00b7m \u00b7 (1/1180 m + cz\u0142on powierzchniowy siatki)',
+        result: { r_g_ohm: 0.371939, gpr_kv: 1.784 },
+        result_pl: 'Rezystancja uziomu: 0,371939 \u03a9; wzrost potencja\u0142u: 1,784 kV',
+        unit_check:
+          'Rezystywno\u015b\u0107 [\u03a9\u00b7m] razy odwrotno\u015b\u0107 d\u0142ugo\u015bci [1/m] daje rezystancj\u0119 [\u03a9]; '
+          + 'pr\u0105d [kA] razy rezystancja [\u03a9] daje napi\u0119cie [kV].',
+        proof_ref: 'proof:v126:earthing_safety:ieee80_sverak',
+        proof_status: 'complete',
+        reporting_status: 'reportable',
+      },
+    ],
+    voltage_stability: [
+      {
+        step: 1,
+        key: 'voltage_stability_indices',
+        formula: 'L_j ~= P_load / S_sc * 4; PM = (lambda_max - 1) * 100%',
+        data: { buses: 2 },
+        substitution:
+          'Dla ka\u017cdego w\u0119z\u0142a wyznaczono margines obci\u0105\u017calno\u015bci z krzywej P\u2013U, zapas mocy '
+          + 'biernej z krzywej Q\u2013U oraz wska\u017anik blisko\u015bci za\u0142amania napi\u0119cia L.',
+        result: { smallest_eigenvalue: 0.998667 },
+        result_pl: 'Najmniejsza warto\u015b\u0107 w\u0142asna macierzy wra\u017cliwo\u015bci: 0,998667',
+        unit_check: 'Wska\u017anik L jest bezwymiarowy; margines obci\u0105\u017calno\u015bci w %.',
+        proof_ref: 'proof:v126:voltage_stability:voltage_stability_indices',
+        proof_status: 'complete',
+        reporting_status: 'reportable',
+      },
+    ],
+  };
+  return kroki[rodzaj] ?? kroki.voltage_stability;
+}
+
 window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
   const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
 
@@ -893,10 +1088,85 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     if (url.endsWith('/results/automation-trace')) return jsonOK(STABILNOSC_SLAD);
   }
 
-  for (const [key, body] of Object.entries(CATALOG_FIXTURES)) {
-    if (url.includes(key)) {
-      return new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } });
-    }
+  // Kontrakt przebiegu dla znacznika świeżości nagłówka (V12K-264, rozszerzenie
+  // K3-B2 na wszystkie sceny wynikowe z runId): `useSwiezoscNaglowka` →
+  // `useAnalysisRunContract` woła GET /api/analysis-runs/<id>. Bez atrapy
+  // zapytanie leciało do `originalFetch`, 404 wpadał do bramki „zero błędów
+  // konsoli" speców zrzutowych (karta K1/A), a znacznik świeżości nie renderował
+  // się w żadnej scenie. Kształt 1:1 z kontraktem backendu
+  // `analysis_case_context.py` — `rewizja_modelu` LICZBOWE (V12K-264:
+  // normalizator odrzuca tekst; brak = null, nigdy zero). Dopasowanie JAWNE
+  // (endsWith pełnego adresu kontraktu) — pod-końcówki `/results/...`,
+  // `/snapshot` itd. przechodzą dalej do atrap per scena.
+  const runKontraktuSceny = RUN_KONTRAKT_SCENY[creator];
+  if (runKontraktuSceny && url.endsWith(`/api/analysis-runs/${runKontraktuSceny}`)) {
+    return jsonOK({
+      id: runKontraktuSceny,
+      analysis_type: runKontraktuSceny.startsWith('run-lf') ? 'LOAD_FLOW' : 'SC',
+      status: 'FINISHED',
+      result_status: 'VALID',
+      results_valid: true,
+      created_at: '2026-07-20T10:00:00Z',
+      finished_at: '2026-07-20T10:00:05Z',
+      input_hash: 'h-demo',
+      summary_json: {},
+      trace_summary: null,
+      analysis_case_context: {
+        case_ref: 'case-demo',
+        case_kind: 'auto',
+        snapshot_ref: 'sha256:h-demo',
+        rewizja_modelu: 1,
+        variant_ref: null,
+        run_ref: runKontraktuSceny,
+        proof_pack_ref: null,
+        quality_gate: 'passed',
+        applicability_scope: [],
+        completeness: 'complete',
+        missing_prerequisites: [],
+        assumptions: {},
+        lineage: {},
+        reproducibility: null,
+      },
+    });
+  }
+  // K3-B3: scena „cieplna" = wariant NIEAKTUALNY (migawka rev. 2, wynik na
+  // rev. 1) — panel „Co się zmieniło" (`PanelCoSieZmienilo` → `pobierzDziennikZmian`)
+  // pyta GET /api/cases/<case>/enm/dziennik-zmian?od_rewizji=1. Kształt 1:1
+  // z kontraktem `DziennikZmian` (frontend `freshness/dziennikApi.ts`,
+  // backend `enm/dziennik_zmian.py`): jedna zmiana rev. 1→2 (spójnie z
+  // `rewizja_biezaca: 2`), wpis PL z elementem klikalnym.
+  if (creator === 'cieplna' && url.includes('/enm/dziennik-zmian')) {
+    return jsonOK({
+      case_id: 'case-demo',
+      rewizja_biezaca: 2,
+      od_rewizji: 1,
+      aktualny: false,
+      wpisy: [
+        {
+          rewizja: 2,
+          znacznik_czasu: '2026-07-27T09:41:00Z',
+          operacja: 'update_element_parameters',
+          opis_pl: 'Zmieniono parametry odcinka magistrali SN (długość 2500 m → 2800 m).',
+          utworzone: [],
+          zmienione: ['odc-linia-7'],
+          usuniete: [],
+          liczba_elementow: 1,
+        },
+      ],
+    });
+  }
+
+  // Dopasowanie NAJDŁUŻSZYM pasującym kluczem, nie pierwszym z brzegu.
+  // Trasa i jej SUBZASÓB dzielą prefiks (`/switchgear-families` vs
+  // `/switchgear-families/{ref}/factory-configurations`), więc kolejność wpisów
+  // decydowałaby o tym, którą odpowiedź dostaje ekran — subzasób byłby
+  // przesłonięty listą rodzin i scena pokazywałaby bloki, których nie ma.
+  const dopasowane = Object.entries(CATALOG_FIXTURES)
+    .filter(([key]) => url.includes(key))
+    .sort(([a], [b]) => b.length - a.length);
+  if (dopasowane.length > 0) {
+    const [, body] = dopasowane[0];
+    return new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } });
   }
   if (url.includes('/api/quality/energy-validation')) {
     // Scena „walidacja" (R2-D): odpowiedz 1:1 z kontraktem backendu, w tym
@@ -1109,6 +1379,8 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
           { bus_id: 'SZ-GPZ', v_pu_a: 1.0, v_pu_b: 1.0, angle_deg_a: 0, angle_deg_b: 0, p_injected_mw_a: 6.4, p_injected_mw_b: 5.1, q_injected_mvar_a: 1.9, q_injected_mvar_b: 1.4, delta_v_pu: 0, delta_angle_deg: 0, delta_p_mw: -1.3, delta_q_mvar: -0.5 },
           { bus_id: 'SZ-ST7', v_pu_a: 0.941, v_pu_b: 0.972, angle_deg_a: -2.9, angle_deg_b: -2.1, p_injected_mw_a: -1.2, p_injected_mw_b: -1.2, q_injected_mvar_a: -0.4, q_injected_mvar_b: -0.1, delta_v_pu: 0.031, delta_angle_deg: 0.8, delta_p_mw: 0, delta_q_mvar: 0.3 },
           { bus_id: 'SZ-PV2', v_pu_a: 1.062, v_pu_b: 1.038, angle_deg_a: 1.4, angle_deg_b: 1.1, p_injected_mw_a: 3.9, p_injected_mw_b: 2.6, q_injected_mvar_a: 0.2, q_injected_mvar_b: 0.4, delta_v_pu: -0.024, delta_angle_deg: -0.3, delta_p_mw: -1.3, delta_q_mvar: 0.2 },
+          // KD-1 (L-14): szyna BEZ ROZNIC miedzy A i B — filtr „tylko roznice" ma ja ukryc.
+          { bus_id: 'SZ-ST3', v_pu_a: 0.995, v_pu_b: 0.995, angle_deg_a: -1.2, angle_deg_b: -1.2, p_injected_mw_a: -0.8, p_injected_mw_b: -0.8, q_injected_mvar_a: -0.3, q_injected_mvar_b: -0.3, delta_v_pu: 0, delta_angle_deg: 0, delta_p_mw: 0, delta_q_mvar: 0 },
         ],
         branch_diffs: [
           { branch_id: 'L-14', p_from_mw_a: 2.31, p_from_mw_b: 1.62, q_from_mvar_a: 0.72, q_from_mvar_b: 0.48, p_to_mw_a: -2.28, p_to_mw_b: -1.6, q_to_mvar_a: -0.7, q_to_mvar_b: -0.47, losses_p_mw_a: 0.031, losses_p_mw_b: 0.015, losses_q_mvar_a: 0.018, losses_q_mvar_b: 0.009, delta_p_from_mw: -0.69, delta_q_from_mvar: -0.24, delta_p_to_mw: 0.68, delta_q_to_mvar: 0.23, delta_losses_p_mw: -0.016, delta_losses_q_mvar: -0.009 },
@@ -1118,7 +1390,7 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
           { issue_code: 'VOLTAGE_DELTA_HIGH', severity: 4, element_ref: 'SZ-ST7', description_pl: 'Napiecie na szynie ST-7 rosnie o 0.031 pu po zalaczeniu kompensacji.', evidence_ref: 1 },
           { issue_code: 'LOSSES_DECREASED', severity: 2, element_ref: 'L-14', description_pl: 'Straty czynne odcinka L-14 spadaja o 16 kW.', evidence_ref: 2 },
         ],
-        summary: { total_buses: 3, total_branches: 2, converged_a: true, converged_b: true, total_losses_p_mw_a: 0.052, total_losses_p_mw_b: 0.028, delta_total_losses_p_mw: -0.024, max_delta_v_pu: 0.031, max_delta_angle_deg: 0.8, total_issues: 2, critical_issues: 0, major_issues: 1, moderate_issues: 0, minor_issues: 1 },
+        summary: { total_buses: 4, total_branches: 2, converged_a: true, converged_b: true, total_losses_p_mw_a: 0.052, total_losses_p_mw_b: 0.028, delta_total_losses_p_mw: -0.024, max_delta_v_pu: 0.031, max_delta_angle_deg: 0.8, total_issues: 2, critical_issues: 0, major_issues: 1, moderate_issues: 0, minor_issues: 1 },
         input_hash: 'hash-cmp-demo', created_at: '2026-07-22T09:00:00Z',
       }),
       { status: 200, headers: { 'Content-Type': 'application/json' } },
@@ -1265,20 +1537,31 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
           cosfi_przekroju_dzien: 0.65, cosfi_przekroju_noc: null,
         },
         powod_braku: null,
+        // K10: ślad 1:1 z `application/analyses/dobor_kompensacji.py` — semantyka
+        // po polsku, wzory wyłącznie LaTeX `$...$` (zero kodów produkcji).
         whitebox: {
           pq_source:
-            'wypadkowy przepływ gałęzi zasilających punkt z branch_results solvera '
-            + '(koniec przy punkcie, suma po gałęziach incydentnych) przełożony na znak '
-            + 'kanoniczny przez adapter konwencji (application/analyses/konwencja_mocy.py)',
+            'wypadkowy przepływ gałęzi zasilających punkt z wyniku rozpływu '
+            + '(koniec przy punkcie, suma po gałęziach incydentnych) przełożony '
+            + 'na znak kanoniczny przez adapter konwencji mocy biernej',
           cosfi_przekroju:
-            'cosφ przepływu w przekroju sieciowym = |P| / √(P² + Q_przekroju²); '
-            + 'opisuje przekrój sieci, NIE stopień skompensowania odbioru',
+            'cosφ przepływu w przekroju sieciowym: '
+            + '$\\cos\\varphi_{\\text{przekroju}} = \\dfrac{|P|}{\\sqrt{P^{2} + '
+            + 'Q_{\\text{przekroju}}^{2}}}$; opisuje przekrój sieci, '
+            + 'NIE stopień skompensowania odbioru',
           cosfi_punktu:
-            'cosφ punktu kompensowanego = |P| / √(P² + Q_netto²), Q_netto = Q_load − Q_cap_eff, '
-            + 'Q_cap_eff = Σ(rated_mvar) · V² (model kondensatora z katalogu, nie fizyka pola); '
-            + 'PODSTAWA DOBORU',
-          konwencja_kanoniczna: 'P>0 pobór czynnej, Q>0 pobór indukcyjnej, Q<0 pojemnościowa',
-          decyzja: 'V12K-040 opcja B — PowerFlowResult FROZEN, adapter interpretacyjny',
+            'cosφ punktu kompensowanego: '
+            + '$\\cos\\varphi_{\\text{punktu}} = \\dfrac{|P|}{\\sqrt{P^{2} + '
+            + 'Q_{\\text{netto}}^{2}}}$, $Q_{\\text{netto}} = Q_{\\text{odb}} - '
+            + 'Q_{\\text{bat}}$, $Q_{\\text{bat}} = \\sum Q_{\\text{zn}} \\cdot V^{2}$ '
+            + '(moc znamionowa baterii z katalogu, nie fizyka pola); PODSTAWA DOBORU',
+          konwencja_kanoniczna:
+            '$P>0$ — pobór mocy czynnej, $Q>0$ — pobór mocy biernej (indukcyjny), '
+            + '$Q<0$ — moc pojemnościowa',
+          decyzja:
+            'wynik rozpływu pozostaje nienaruszony (tylko odczyt); znak mocy '
+            + 'biernej interpretuje adapter konwencji — dobór nie modyfikuje '
+            + 'solvera ani wyniku',
           candidate_count: 3,
           night_scenario: null,
         },
@@ -1603,6 +1886,75 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
       { status: 200, headers: { 'Content-Type': 'application/json' } },
     );
   }
+  // ---- Scena "akademickie" (V126-JEZYK): pakiet analiz specjalistycznych V12.6.
+  // Wszystkie rodzaje karmione REALNYMI odpowiedziami solvera z fixtury CI.
+  if (url.includes('/api/catalog/v126/analysis-types')) {
+    return new Response(
+      JSON.stringify({ namespace: 'analysis-types', items: Object.keys(odpowiedziV126) }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
+  if (url.includes('/v126/') && !url.includes('ssci_impedance')) {
+    const rodzaj = Object.keys(odpowiedziV126).find((kod) => url.includes(kod)) ?? 'voltage_stability';
+    const kroki = sladDemoV126(rodzaj);
+    if (url.includes('/trace')) {
+      return new Response(
+        JSON.stringify({
+          run_id: 'run-akad-1', analysis_type: rodzaj,
+          trace_version: 'AcademicWhiteBoxTraceV1', deterministic_hash: 'akad-hash-demo',
+          steps: kroki,
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      );
+    }
+    if (url.includes('/proof')) {
+      return new Response(
+        JSON.stringify({
+          contract: 'AcademicProofPackV1', proof_id: 'proof:v126:demo', run_id: 'run-akad-1',
+          case_id: 'case-demo', analysis_type: rodzaj, source_result_hash: 'akad-hash-demo',
+          trace_step_count: kroki.length,
+          steps: kroki.map((krok, i) => ({ ...krok, ordinal: i + 1 })),
+          proof_hash: 'akad-dowod-demo',
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      );
+    }
+    if (url.includes('/report')) {
+      return new Response(
+        JSON.stringify({
+          contract: 'AcademicReportV1', report_id: 'report:v126:demo', run_id: 'run-akad-1',
+          case_id: 'case-demo', analysis_type: rodzaj, source_result_hash: 'akad-hash-demo',
+          source_proof_hash: 'akad-dowod-demo', export_policy: 'frozen_result_and_proof_only',
+          sections: [], report_hash: 'akad-raport-demo',
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      );
+    }
+    if (url.includes('/results/v126/')) {
+      return new Response(
+        JSON.stringify({
+          run_id: 'run-akad-1', case_id: 'case-demo', analysis_type: rodzaj, status: 'FINISHED',
+          created_at: '2026-08-07T10:00:00+00:00',
+          result: {
+            contract: 'AcademicAnalysisResultV1', analysis_type: rodzaj,
+            solver_version: 'v126-academic-whitebox-1.1', input_hash: 'akad-wejscie-demo',
+            result: (odpowiedziV126 as Record<string, unknown>)[rodzaj],
+            white_box_trace: kroki, deterministic_hash: 'akad-hash-demo',
+          },
+          proof_ref: 'proof:v126:demo', report_ref: 'report:v126:demo',
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      );
+    }
+    return new Response(
+      JSON.stringify({
+        run_id: 'run-akad-1', case_id: 'case-demo', analysis_type: rodzaj, status: 'FINISHED',
+        result_url: '', trace_url: '', proof_url: '', report_url: '',
+        deterministic_hash: 'akad-hash-demo',
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
   if (url.includes('/runs/v126/ssci_impedance')) {
     // Scena "ssci" (V-B): utworzenie przebiegu SSCI (koperta V126RunResponse).
     return new Response(
@@ -1670,7 +2022,109 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     );
   }
   if (url.includes('/api/catalog/complete-bay-templates')) {
-    return new Response(JSON.stringify([]), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    // KOMPLETNOSC-POLA-TR: kompletne szablony pól producenta — bez nich krok
+    // „Pola rozdzielnicy SN" nie ma czego pokazać (pusta lista = ekran, którego
+    // projektant nigdy nie zobaczy). Kształt 1:1 z `CompleteMvBayTemplateSummary`.
+    // KONFIGURATOR-POL-RMU (S3): szablon niesie KOMPOZYCJĘ APARATÓW
+    // (`device_instances` ze `status_wyposazenia`), bo karta pola i mini-SLD
+    // rysują pole właśnie z niej. Szablon bez składu pokazywałby pole puste,
+    // czyli scenę, której projektant w żywej aplikacji nie zobaczy.
+    const aparat = (
+      ref: string,
+      kind: string,
+      label: string,
+      pozycja: number,
+      strona: string,
+      status: 'FABRYCZNY' | 'OPCJA' = 'FABRYCZNY',
+    ) => ({
+      device_template_ref: ref,
+      apparatus_kind: kind,
+      label,
+      position_in_bay: pozycja,
+      electrical_side: strona,
+      status_wyposazenia: status,
+    });
+    // PRODUCENT JEST PARAMETREM, nie stałą: lista producentów kroku pól wynika
+    // z dostępności KOMPLETNYCH szablonów (`producenciUzywalni`), więc szablon
+    // przypisany na sztywno jednemu producentowi przesądzał, kogo w ogóle widać
+    // na ekranie — i zamykał scenę na jedną firmę, choć katalog niesie pięć.
+    const szablon = (
+      ref: string,
+      kind: string,
+      nazwa: string,
+      rodzina: string,
+      instancje: ReturnType<typeof aparat>[],
+      producent = 'ZPUE_WLOSZCZOWA',
+      zrodla: string[] = ['https://zpue.pl'],
+    ) => ({
+      template_ref: ref,
+      bay_kind: kind,
+      bay_role: kind === 'transformatorowe' ? 'TR' : 'OUT',
+      manufacturer_ref: producent,
+      switchgear_family_ref: rodzina,
+      source_status: 'repo_verified',
+      source_refs: zrodla,
+      name_pl: nazwa,
+      template_name_pl: nazwa,
+      device_instances: instancje,
+    });
+    const polePolaczeniowe = (prefiks: string) => [
+      aparat(`${prefiks}__DS`, 'switch_disconnector', 'Q1', 1, 'busbar_side'),
+      aparat(`${prefiks}__ES`, 'earthing_switch', 'Q9 (E)', 2, 'earthing_branch'),
+      aparat(`${prefiks}__CH`, 'cable_head', 'GK', 3, 'line_side'),
+    ];
+    const poleTransformatorowe = (prefiks: string) => [
+      aparat(`${prefiks}__DS`, 'switch_disconnector', 'Q1', 1, 'busbar_side'),
+      aparat(`${prefiks}__FUSE`, 'fuse_set', 'F1', 2, 'transformer_side'),
+      aparat(`${prefiks}__ES`, 'earthing_switch', 'Q9 (E)', 3, 'earthing_branch'),
+    ];
+    return new Response(
+      JSON.stringify([
+        szablon('ZPUE__ROTOBLOK__LINE_IN', 'liniowe_doplywowe', 'Pole liniowe dopływowe', 'ZPUE_WLOSZCZOWA__ROTOBLOK', [
+          aparat('ZPUE__ROTOBLOK__LINE_IN__DS', 'disconnector_busbar', 'Q1', 1, 'busbar_side'),
+          aparat('ZPUE__ROTOBLOK__LINE_IN__CB', 'circuit_breaker', 'Q0', 2, 'line_side'),
+          aparat('ZPUE__ROTOBLOK__LINE_IN__CT', 'current_transformer', 'T1', 3, 'line_side'),
+          aparat('ZPUE__ROTOBLOK__LINE_IN__ES', 'earthing_switch', 'Q9 (E)', 4, 'earthing_branch'),
+          aparat('ZPUE__ROTOBLOK__LINE_IN__CH', 'cable_head', 'GK', 5, 'line_side'),
+        ]),
+        szablon('ZPUE__ROTOBLOK__LINE_OUT', 'liniowe_odplywowe', 'Pole liniowe odpływowe', 'ZPUE_WLOSZCZOWA__ROTOBLOK', polePolaczeniowe('ZPUE__ROTOBLOK__LINE_OUT')),
+        szablon('ZPUE__ROTOBLOK__TRANSFORMER', 'transformatorowe', 'Pole transformatorowe', 'ZPUE_WLOSZCZOWA__ROTOBLOK', poleTransformatorowe('ZPUE__ROTOBLOK__TRANSFORMER')),
+        szablon('ZPUE__ROTOBLOK__COUPLER', 'sprzeglowe_poprzeczne', 'Pole sprzęgłowe', 'ZPUE_WLOSZCZOWA__ROTOBLOK', [
+          aparat('ZPUE__ROTOBLOK__COUPLER__CB', 'circuit_breaker', 'Q0', 1, 'busbar_side'),
+        ]),
+        // Pakiet rodziny RMU — jednostki bloku dobierają z niego swoje karty.
+        szablon('ZPUE__TPM_AIR__LINE_OUT', 'liniowe_odplywowe', 'Jednostka liniowa L', 'ZPUE_WLOSZCZOWA__TPM_AIR', polePolaczeniowe('ZPUE__TPM_AIR__LINE_OUT')),
+        szablon('ZPUE__TPM_AIR__TRANSFORMER', 'transformatorowe', 'Jednostka transformatorowa T', 'ZPUE_WLOSZCZOWA__TPM_AIR', poleTransformatorowe('ZPUE__TPM_AIR__TRANSFORMER')),
+        // ABB SafePlus — dwa z trzynastu kompletnych szablonów ABB w katalogu,
+        // przepisane ze składu rekordu (`ABB__SAFEPLUS__{LINE_OUT,TRANSFORMER}`).
+        // W żywej aplikacji to WŁAŚNIE one czynią ABB producentem wybieralnym
+        // (status producenta to `requires_catalog`), więc bez nich scena RMU nie
+        // dawałaby dojść do rodziny bez bloków fabrycznych.
+        szablon('ABB__SAFEPLUS__LINE_OUT', 'liniowe_odplywowe', 'Pole liniowe odpływowe', 'ABB__SAFEPLUS', [
+          aparat('ABB__SAFEPLUS__LINE_OUT__DS_BUS__00', 'disconnector_busbar', 'Q1', 1, 'busbar_side'),
+          aparat('ABB__SAFEPLUS__LINE_OUT__CB__01', 'circuit_breaker', 'Q0', 2, 'line_side'),
+          aparat('ABB__SAFEPLUS__LINE_OUT__DS_LINE__03', 'disconnector_line', 'Q2', 4, 'line_side'),
+          aparat('ABB__SAFEPLUS__LINE_OUT__ES__04', 'earthing_switch', 'Q9', 5, 'earthing_branch'),
+          aparat('ABB__SAFEPLUS__LINE_OUT__CABLE_HEAD__05', 'cable_head', 'GK', 6, 'line_side'),
+        ], 'ABB', ['https://www.abb.com/global/en/areas/electrification/medium-voltage/switchgear/gas-insulated/safering-safeplus']),
+        szablon('ABB__SAFEPLUS__TRANSFORMER', 'transformatorowe', 'Pole transformatorowe', 'ABB__SAFEPLUS', [
+          aparat('ABB__SAFEPLUS__TRANSFORMER__DS_BUS__00', 'disconnector_busbar', 'Q1', 1, 'busbar_side'),
+          aparat('ABB__SAFEPLUS__TRANSFORMER__CB__01', 'circuit_breaker', 'Q0', 2, 'line_side'),
+          aparat('ABB__SAFEPLUS__TRANSFORMER__DS_LINE__03', 'disconnector_line', 'Q2', 4, 'line_side'),
+          aparat('ABB__SAFEPLUS__TRANSFORMER__ES__04', 'earthing_switch', 'Q9', 5, 'earthing_branch'),
+          aparat('ABB__SAFEPLUS__TRANSFORMER__TRANSFORMER_DEVICE__05', 'transformer', 'TR', 6, 'transformer_side'),
+        ], 'ABB', ['https://www.abb.com/global/en/areas/electrification/medium-voltage/switchgear/gas-insulated/safering-safeplus']),
+      ]),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
+  if (url.includes('/api/station-templates')) {
+    // Biblioteka szablonów stacji — krok 0 kreatora. Pusta lista = uczciwy stan
+    // „brak szablonów", ekran działa dalej (ścieżka „od zera").
+    return new Response(JSON.stringify({ templates: [], total: 0 }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
   if (url.includes('/api/quality/conductor-thermal-withstand/proof')) {
     // Karta F-K1 faza 7: dowod LINII NAPOWIETRZNEJ. Krok 1 pokazuje rodzaj przewodu
@@ -2598,6 +3052,12 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
             ],
           },
         ],
+        // Dowod certyfikatu PTPiREE 1:1 z `NcRfgPtpireeRunResponse` (api):
+        // pv-1 z tabliczka urzadzenia, bess-1 bez (uczciwy stan zerowy, pola null).
+        certificate_evidence: [
+          { der_ref: 'bess-1', document_number: null, acceptance_date: null, wos_version: null, wipwc_version: null, ppm_scope: null, source_url: null },
+          { der_ref: 'pv-1', document_number: 'PTPiREE/WiPWC/3254/2025', acceptance_date: '2025-10-14', wos_version: 'WOS 2021', wipwc_version: '1.2', ppm_scope: 'moduł typu B', source_url: null },
+        ],
         test_catalog: [
           { test_id: 'T05', ability_pl: 'Możliwość regulacji mocy czynnej', procedure_basis_pl: 'Program ramowy testów PPM oraz sprawdzenia dodatkowe dla regulacji P.', default_for_modules: ['B', 'C', 'D'], conditional_pl: null },
           { test_id: 'T09', ability_pl: 'Zdolność do generacji mocy biernej', procedure_basis_pl: 'Zakres testów zgodności PPM typu B, C i D.', default_for_modules: ['B', 'C', 'D'], conditional_pl: null },
@@ -3036,8 +3496,17 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
 // --- Zaszczepienie stanu store ------------------------------------------
 useAppStateStore.setState({ activeCaseId: 'case-demo' } as never);
 useSnapshotStore.setState({
+  // S9-11 / W-5: znaczniki świeżości czytają JEDNO źródło rewizji bieżącego
+  // modelu (`rewizjaBiezacegoModelu`), nie rewizję wyświetlanej migawki — sceny
+  // harnessu zasiewają oba pola spójnie (jak każda odpowiedź domain-ops).
+  rewizjaBiezacegoModelu: 1,
   snapshot: {
-    header: { name: 'Projekt demonstracyjny' },
+    // K3-B1: rewizja modelu w migawce globalnej — bez niej znacznik świeżości
+    // nagłówka (`useSwiezoscNaglowka`) nie renderował
+    // się w ŻADNEJ scenie mimo kontraktu przebiegu z `rewizja_modelu`. Sceny z
+    // własnym zasiewem migawki (dokumentacja rev. 7, pulpit rev. 9, zbieżność —
+    // ZBIEZNOSC_SNAPSHOT, cieplna rev. 2 = wariant NIEAKTUALNY) nadpisują ją niżej.
+    header: { name: 'Projekt demonstracyjny', revision: 1 },
     substations: [{ ref_id: 'st-demo', name: 'Rozdzielnia GPZ-01', bus_refs: ['bus-sn-demo', 'bus-nn-demo'] }],
     transformers: [],
     buses: [
@@ -3096,6 +3565,7 @@ if (creator === 'arcflash') {
   } as never);
   const szyna = (v: number, i: number) => ({ ref_id: `bus-${v}-${i}`, name: `Szyna ${v} kV`, voltage_kv: v });
   useSnapshotStore.setState({
+    rewizjaBiezacegoModelu: 7,
     snapshot: {
       header: { name: 'Projekt demonstracyjny', revision: 7, hash_sha256: 'a1b2c3d4e5f60718' },
       substations: [{ ref_id: 'st-demo', name: 'GPZ-01', bus_refs: ['bus-110-0', 'bus-15-0'] }],
@@ -3114,10 +3584,48 @@ if (creator === 'arcflash') {
     started_at: '2026-07-21T10:30:00Z', finished_at: '2026-07-21T10:30:00Z',
   } as unknown as ExecutionRun;
   useExecutionRunsStore.setState({ runs: [run], activeRunId: 'run-lf-1' } as never);
+} else if (creator === 'diagnoza') {
+  // Diagnoza przebiegu (D7): najbardziej informacyjny stan do oceny wizualnej —
+  // preflight z blokadami + problemy modelu + bieg NIEZBIEZNY (limit iteracji).
+  // Harness jest frontend-only, wiec trzy trasy diagnostyki dostaja atrape fetch
+  // na FIKSTURACH z testow kontraktu (te same ksztalty, ktore pilnuje adapter).
+  const odpowiedzJson = (dane: unknown): Response =>
+    new Response(JSON.stringify(dane), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  const oryginalneFetch = window.fetch.bind(window);
+  window.fetch = async (wejscie: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+    const url =
+      typeof wejscie === 'string'
+        ? wejscie
+        : wejscie instanceof URL
+          ? wejscie.toString()
+          : wejscie.url;
+    if (url.includes('/diagnostics/preflight')) return odpowiedzJson(preflightZablokowanyFixture());
+    if (url.includes('/api/execution/runs/') && url.includes('/diagnostics'))
+      return odpowiedzJson(diagnozaNiezbieznaFixture());
+    if (url.includes('/api/cases/') && url.includes('/diagnostics'))
+      return odpowiedzJson(diagnostykaZBrakamiFixture());
+    return oryginalneFetch(wejscie, init);
+  };
+  const biegDiagnozy: ExecutionRun = {
+    id: 'run-diagnoza-1',
+    analysis_type: 'LOAD_FLOW',
+    status: 'DONE',
+    started_at: '2026-08-14T09:00:00Z',
+    finished_at: '2026-08-14T09:00:04Z',
+  } as unknown as ExecutionRun;
+  useExecutionRunsStore.setState({
+    runs: [biegDiagnozy],
+    activeRunId: 'run-diagnoza-1',
+    activeStudyCaseId: 'case-oceny-diagnozy',
+  } as never);
 } else if (creator === 'pulpit') {
   // Pulpit projektu (E1 — K2/V12K-103): kafel „Warunki przyłączenia" z warunkami
   // OSD z nagłówka + werdykt bilansu (generacja 6,2 MW > limit 5,0 MW).
   useSnapshotStore.setState({
+    rewizjaBiezacegoModelu: 9,
     snapshot: {
       header: {
         name: 'Przyłączenie farmy PV 8 MW', revision: 9, hash_sha256: 'f00dfacecafe0123',
@@ -3293,6 +3801,35 @@ if (creator === 'arcflash') {
     id: 'run-lf-6', analysis_type: 'LOAD_FLOW', status: 'DONE',
   } as unknown as ExecutionRun;
   useExecutionRunsStore.setState({ runs: [runLf6], activeRunId: 'run-lf-6' } as never);
+} else if (creator === 'akademickie') {
+  // V126-JEZYK: migawka modelu z NAZWAMI obiektow pod referencjami produkcyjnymi
+  // (te same, ktore niesie fixtura odpowiedzi solvera) — scena pokazuje most
+  // referencja→nazwa w dzialaniu, a nie etykiete zapasowa.
+  useSnapshotStore.setState({
+    rewizjaBiezacegoModelu: 4,
+    snapshot: {
+      header: { name: 'Przylaczenie farmy PV 8 MW', revision: 4 },
+      buses: [
+        {
+          id: 'gpz/860003b4514aa388b39561d5005ce584/section/001/bus_sn',
+          ref_id: 'gpz/860003b4514aa388b39561d5005ce584/section/001/bus_sn',
+          name: 'GPZ Zachod — szyny SN, sekcja I',
+        },
+        {
+          id: 'station/1f4c9a02b7d84e6690ab5cc31d772e18/bus_sn',
+          ref_id: 'station/1f4c9a02b7d84e6690ab5cc31d772e18/bus_sn',
+          name: 'Stacja SN/nN Ogrodowa',
+        },
+      ],
+      branches: [
+        {
+          id: 'corridor/6d2b81f0c4e34a1b9f5d70ae2c8b4913/segment/001',
+          ref_id: 'corridor/6d2b81f0c4e34a1b9f5d70ae2c8b4913/segment/001',
+          name: 'Kabel SN GPZ — Ogrodowa',
+        },
+      ],
+    },
+  } as never);
 } else if (creator === 'ssci' || creator === 'migotanie') {
   // Runda dowodowa V-B: ssci — aktywny przypadek 'case-demo' zasiany globalnie;
   // migotanie — przebieg zwarciowy podawany propem sekcji. Pusta galaz chroni
@@ -3449,7 +3986,10 @@ if (creator === 'arcflash') {
   // transformatorem OLTC (założenia zaczepów modelu).
   useShellStore.setState({ advancementMode: 'expert' });
   useAppStateStore.getState().setActiveProject('proj-demo', 'Przyłączenie farmy PV 8 MW');
-  useSnapshotStore.setState({ snapshot: ZBIEZNOSC_SNAPSHOT } as never);
+  useSnapshotStore.setState({
+    snapshot: ZBIEZNOSC_SNAPSHOT,
+    rewizjaBiezacegoModelu: ZBIEZNOSC_SNAPSHOT.header.revision,
+  } as never);
   useExecutionRunsStore.setState({
     runs: [
       {
@@ -3606,6 +4146,38 @@ if (creator === 'arcflash') {
     catalog_namespace: 'TRAFO_SN_NN',
     catalog_item_id: 'trafo-630-15-04',
   });
+} else if (creator === 'stacja') {
+  // KOMPLETNOSC-POLA-TR: kreator stacji SN/nN wstawianej w odcinek magistrali.
+  // Kontekst operacji = ten sam, który daje kanwa (świadomy podział odcinka).
+  useSnapshotStore.setState({
+    rewizjaBiezacegoModelu: 1,
+    snapshot: {
+      header: { name: 'Projekt demonstracyjny', revision: 1 },
+      substations: [{ ref_id: 'st-demo', name: 'GPZ-01', bus_refs: ['bus-sn-demo'] }],
+      transformers: [],
+      buses: [
+        { ref_id: 'bus-sn-demo', name: 'Szyna SN', voltage_kv: 15 },
+        { ref_id: 'bus-sn-koniec', name: 'Koniec ciągu', voltage_kv: 15 },
+      ],
+      branches: [
+        {
+          ref_id: 'seg-demo',
+          name: 'Odcinek magistrali',
+          type: 'cable',
+          from_bus_ref: 'bus-sn-demo',
+          to_bus_ref: 'bus-sn-koniec',
+          length_km: 1.2,
+        },
+      ],
+      sources: [],
+      loads: [],
+      bays: [],
+    },
+  } as never);
+  useNetworkBuildStore.getState().openOperationForm('insert_station_on_segment_sn' as never, {
+    segment_id: 'seg-demo',
+    position_on_segment: 0.5,
+  });
 } else if (creator === 'edycja-parametrow') {
   // Karta Z-2: ekspercki override parametru istniejącego elementu (transformator demo).
   useNetworkBuildStore.getState().openOperationForm('update_element_parameters' as never, {
@@ -3614,6 +4186,26 @@ if (creator === 'arcflash') {
     field: 'r_pct',
     value: '0.55',
   });
+} else if (creator === 'cieplna') {
+  // K3-B3: wariant NIEAKTUALNY znacznika świeżości — migawka w rew. 2, a
+  // kontrakt przebiegu run-sc-7 niesie `rewizja_modelu: 1` (atrapa wyżej) →
+  // nagłówek pokazuje „nieaktualne (rew. 1 → 2)" + panel „Co się zmieniło"
+  // z atrapy dziennika zmian. Kształt migawki = zasiew globalny (ta sama sieć).
+  useSnapshotStore.setState({
+    rewizjaBiezacegoModelu: 2,
+    snapshot: {
+      header: { name: 'Projekt demonstracyjny', revision: 2 },
+      substations: [{ ref_id: 'st-demo', name: 'Rozdzielnia GPZ-01', bus_refs: ['bus-sn-demo', 'bus-nn-demo'] }],
+      transformers: [],
+      buses: [
+        { ref_id: 'bus-sn-demo', name: 'Szyna SN', voltage_kv: 15 },
+        { ref_id: 'bus-nn-demo', name: 'Szyna nN', voltage_kv: 0.4 },
+      ],
+      sources: [],
+      loads: [],
+      bays: [],
+    },
+  } as never);
 } else {
   // Kontekst operacji (szyna/stacja) dla kreatorów pole/OZE/transformator.
   const op =
@@ -3662,8 +4254,13 @@ function Harness() {
         onOtworzProjekt={() => undefined}
         onZaznaczPrzypadek={() => undefined}
         onOtworzPrzypadek={() => undefined}
+        onOtworzArchiwum={() => undefined}
+        onOtworzImportArkusza={() => undefined}
+        onAkcjaNaprawcza={() => undefined}
       />
     );
+  else if (creator === 'diagnoza')
+    node = <PanelDiagnozy onPrzejdzDoUruchomienia={() => undefined} />;
   else if (creator === 'uwaga') node = <EkranCoWymagaUwagi />;
   else if (creator === 'swiezosc') node = <SwiezoscScena />;
   else if (creator === 'walidacja')
@@ -3747,6 +4344,23 @@ function Harness() {
   else if (creator === 'estymacja')
     node = <EkranEstymacji trybZaawansowania="expert" onOtworzDowod={() => undefined} />;
   else if (creator === 'ssci') node = <EkranSsci trybZaawansowania="expert" />;
+  else if (creator === 'wyniki-warsztat')
+    node = (
+      <WynikiWarsztat
+        trybZaawansowania="expert"
+        pozostale={<div />}
+        onOtworzDokumentacje={() => undefined}
+      />
+    );
+  else if (creator === 'akademickie')
+    node = (
+      <EkranAnalizAkademickich
+        trybZaawansowania="expert"
+        rodzajPoczatkowy={
+          (new URLSearchParams(location.search).get('rodzaj') ?? 'earthing_safety') as never
+        }
+      />
+    );
   else if (creator === 'migotanie')
     node = (
       <SekcjaMigotania
@@ -3788,6 +4402,7 @@ function Harness() {
   else if (creator === 'pole-nn') node = <KreatorPolaNn />;
   else if (creator === 'przypisanie-katalogu') node = <KreatorPrzypisaniaKatalogu />;
   else if (creator === 'edycja-parametrow') node = <KreatorEdycjiParametrow />;
+  else if (creator === 'stacja') node = <KreatorStacjiSnNn />;
   else node = <KreatorPolaSn />;
 
   return (
@@ -3801,7 +4416,7 @@ function Harness() {
         // informacyjne + werdykt) — szerszy kadr eliminuje przycięcie z prawej.
         width: [
           'kompensacja-wynik', 'sila-sieci', 'odbior-zgodnosc', 'estymacja', 'ssci', 'migotanie', 'cieplna',
-          'wyniki-skladowe', 'wyniki-zbieznosc', 'wyniki-stan-fazowy', 'wyniki-stabilnosc',
+          'wyniki-skladowe', 'wyniki-zbieznosc', 'wyniki-stan-fazowy', 'wyniki-stabilnosc', 'akademickie',
         ].includes(creator)
           ? 1400
           : 1180,

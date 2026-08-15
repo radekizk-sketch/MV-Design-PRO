@@ -28,8 +28,9 @@
 import { useMemo, useState } from 'react';
 import './gotowosc.css';
 import type { AdvancementMode } from '../../shell/modeModel';
-import { useShellStore } from '../../shell/useShellStore';
+import { przejdzDoPrzestrzeni } from '../../shell/przejsciaPrzestrzeni';
 import { useBusEvent } from '../../events';
+import { PanelNastepnejAkcji, useNastepnaAkcja } from '../../proces';
 import {
   KOLEJNOSC_CELOW,
   grupujProblemyWgCelu,
@@ -37,8 +38,14 @@ import {
   type ProblemGotowosci,
 } from './grupowanieCelow';
 import { FILTRY_PUSTE, czyFiltrPusty, filtrujProblemy, type FiltryGotowosci } from './filtry';
-import { useProblemyGotowosci, useStanGotowosci } from './adapters/gotowoscAdapter';
+import {
+  usePonowOdczytGotowosci,
+  useProblemyGotowosci,
+  useStanGotowosci,
+} from './adapters/gotowoscAdapter';
 import { SekcjaCelu } from './SekcjaCelu';
+import { SekcjaGranicySieci } from './SekcjaGranicySieci';
+import { SekcjaPokryciaAnaliz } from './SekcjaPokryciaAnaliz';
 import { SekcjaZgodnosciReferencyjnej } from './SekcjaZgodnosciReferencyjnej';
 import { GOTOWOSC_STRINGS } from './strings';
 import { ETYKIETA_CELU } from './grupowanieCelow';
@@ -59,7 +66,8 @@ export function PanelGotowosci({
 }: PanelGotowosciProps) {
   const stan = useStanGotowosci();
   const issues = useProblemyGotowosci();
-  const setActiveSpace = useShellStore((s) => s.setActiveSpace);
+  const ponowOdczytGotowosci = usePonowOdczytGotowosci();
+  const nastepnaAkcja = useNastepnaAkcja();
   const trybEkspercki = trybZaawansowania === 'expert';
 
   const grupyPelne = useMemo(() => grupujProblemyWgCelu(issues), [issues]);
@@ -117,6 +125,32 @@ export function PanelGotowosci({
     );
   }
 
+  /* Gotowość NIEUSTALONA (dług V12K-309 poz. 1): model wczytany, ale gotowości
+     nikt nie policzył. Dotąd ta sytuacja wpadała w stan `wszystko-gotowe` —
+     panel deklarował „Gotowe do analiz" dokładnie wtedy, gdy NIE WIADOMO.
+     Uczciwy stan zerowy z akcją; przycisk tylko wtedy, gdy jest o co zapytać. */
+  if (stan === 'nieustalona') {
+    return (
+      <div className="mvd-gotowosc">
+        <div className="mvd-gotowosc-state" role="alert" data-testid="mvd-gotowosc-nieustalona">
+          <p className="mvd-gotowosc-state-title">{GOTOWOSC_STRINGS.nieustalonaTytul}</p>
+          <p className="mvd-gotowosc-state-desc">{GOTOWOSC_STRINGS.nieustalonaOpis}</p>
+          {ponowOdczytGotowosci && (
+            <button
+              type="button"
+              className="mvd-btn"
+              onClick={ponowOdczytGotowosci}
+              data-testid="mvd-gotowosc-ponow"
+              title={GOTOWOSC_STRINGS.nieustalonaTytul}
+            >
+              {GOTOWOSC_STRINGS.sprobujPonownie}
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="mvd-gotowosc" data-testid="mvd-gotowosc-panel">
       <span className="mvd-sr-only" role="status" aria-live="polite" data-testid="mvd-gotowosc-live">
@@ -168,24 +202,31 @@ export function PanelGotowosci({
         </>
       )}
 
+      {/*
+        Następny krok po zielonej bramce = TA SAMA reguła, z której korzysta
+        pulpit projektu (`ui2/proces/nastepnaAkcja.ts`). Wcześniej ta sekcja
+        miała własne, zaszyte zdanie „przejdź do Obliczeń" i mówiła je nawet
+        wtedy, gdy obliczenia były już wykonane i aktualne — dwa ekrany dawały
+        wtedy inną odpowiedź na to samo pytanie. Reguła jest jedna, więc odpowiedź
+        też jest jedna. Sekcja pokazuje się wyłącznie przy braku blokad; gdy
+        blokady są, przewodnikiem jest lista problemów powyżej.
+      */}
       {blokadyCalkowite === 0 && (
-        <section className="mvd-gotowosc-nastepny" data-testid="mvd-gotowosc-nastepny">
-          <div className="mvd-gotowosc-nastepny-tresc">
-            <span className="mvd-gotowosc-nastepny-lbl">{GOTOWOSC_STRINGS.nastepnyKrokTytul}</span>
-            <p className="mvd-gotowosc-nastepny-opis">{GOTOWOSC_STRINGS.nastepnyKrokOpis}</p>
-          </div>
-          <button
-            type="button"
-            className="mvd-gotowosc-nastepny-akcja"
-            onClick={() => setActiveSpace('obliczenia')}
-            data-testid="mvd-gotowosc-nastepny-akcja"
-          >
-            {GOTOWOSC_STRINGS.nastepnyKrokAkcja}
-          </button>
-        </section>
+        <PanelNastepnejAkcji
+          akcja={nastepnaAkcja}
+          // Kanon D1: przejście PEŁNE (powłoka + most tras), a nie samo
+          // ustawienie przestrzeni — inaczej trasa nadrzędna innej przestrzeni
+          // przykryłaby cel akcji i przycisk byłby martwy.
+          onNawiguj={przejdzDoPrzestrzeni}
+          onNaprawa={onAkcjaNaprawcza}
+        />
       )}
 
       <SekcjaZgodnosciReferencyjnej />
+      {/* ROUTERY-4A: zdolności A3 (pokrycie analizami) i A2 (granica sieci) —
+          sekcje samodzielne (własne pobrania), wzorzec sekcji referencyjnej. */}
+      <SekcjaPokryciaAnaliz />
+      <SekcjaGranicySieci />
     </div>
   );
 }

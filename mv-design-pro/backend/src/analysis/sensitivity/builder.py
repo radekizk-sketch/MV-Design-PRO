@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Iterable
+from typing import overload
 
 from analysis.koperta_kontekstu import pola_koperty
 from analysis.normative.models import NormativeReport, NormativeStatus
@@ -388,6 +389,14 @@ def _entry_from_protection_settings(
         plus_margin=plus_margin,
         delta_pct=delta_pct,
     )
+
+
+@overload
+def _apply_delta(value: float, delta_pct: float) -> float: ...
+
+
+@overload
+def _apply_delta(value: None, delta_pct: float) -> None: ...
 
 
 def _apply_delta(value: float | None, delta_pct: float) -> float | None:

@@ -37,6 +37,46 @@ Dodatkowym torem wykonawczym V12.6 jest zakładka `E-35 / ncrfg-tests`, która r
 | E-49 | Walidacja benchmarkowa profesorska | `benchmark_validation` |
 | E-50 | Niepewność i wrażliwość | `uncertainty_sensitivity` |
 
+> **Nota wykonawcza (2026-08-07, karta V126-WYGASZENIE — decyzja właściciela „wycofać
+> OBA z ekranu”).** Zdolności powyżej pozostają w kanonie i w backendzie bez zmian;
+> zmienia się wyłącznie ich obecność w torze projektanta:
+>
+> - **E-49 / `benchmark_validation`** — zdjęty z listy wyboru okna „Analizy akademickie"
+>   i z nawigacji (`visibleInNavigation: false`), bo bada NARZĘDZIE, a nie projekt
+>   użytkownika. Zdolność jest wykonywana w kontroli jakości
+>   (`backend/tests/application/reference_networks/test_ieee_benchmark_wiring.py`:
+>   IEEE 9/14/39 wobec referencji pandapower, solver produkcyjny). Kontrakt
+>   `V126AnalysisType`, końcówki API i katalog `analysis-types` — nietknięte.
+> - **E-41 / `voltage_stability`** — z prezentacji zdjęto margines obciążalności P–U
+>   wraz z całą rodziną wielkości z tego samego przybliżenia ze sztywności węzła
+>   (`voltage_stability_margin_percent`, tabela `pv_curves`). Na ekranie zostaje
+>   wskaźnik L z kryterium `L < 0,5` oraz zapas mocy biernej (Q–U). Pola pozostają
+>   w odpowiedzi solvera — kontrakty FROZEN; dług nazwany w rejestrze konfliktów.
+
+> **Nota wykonawcza (2026-08-08, karta QU-FABRYKACJA) — E-41 wycofany w CAŁOŚCI.**
+> Pomiar na sieciach odniesienia pokazał, że wielkości zostawione poprzednią notą
+> stały na tym samym gruncie, co wycięta rodzina P–U: zapas mocy biernej liczony
+> z krotności mocy czynnej (`0,15 · P` i `0,35 · P`) mimo dostępnego `bus.load_mvar`
+> i BEZ jakiejkolwiek danej o zdolności wytwórczej mocy biernej (0 z 35 wytwórców
+> niesie `GenLimits.q_min/max_mvar`), wskaźnik L z mnożnika `· 4` bez pokrycia
+> w danych i w normie, a wspólne wejście wszystkich czterech wielkości — moc
+> zwarciowa węzła — podstawiane z napięcia znamionowego dla **99,7 %** szyn
+> (`fault_level_mva` podane dla 1 z 315). Solver (wersja 1.2) nie wyznacza już
+> żadnej z nich: kontrakt odpowiedzi zostaje w komplecie, wartością jest `null`
+> z powodem po polsku, blok wiarygodności melduje „dane niekompletne".
+> `voltage_stability` przechodzi do rejestru rodzajów nieprezentowanych,
+> E-41 dostaje `visibleInNavigation: false` i znika z mapy rodzajów ekranów
+> trasowych; ekran ZOSTAJE w kanonie (ciągłość numeracji E-00…E-50).
+> Powrót na tor projektanta wymaga POLICZENIA wielkości, nie przywrócenia tabel:
+> krzywa P–U z rozpływu, wskaźnik L z macierzy F na Y-bus, moc zwarciowa węzła
+> i granice mocy biernej doprowadzone przez most ENM→V12.6. Pełny inwentarz stałych
+> całego solvera: `docs/audit/INWENTARZ_STALYCH_V126_2026-08-08.md`.
+>
+> Rejestr rodzajów nieprezentowanych (z powodem na każdy wpis):
+> `frontend/src/ui2/wyniki/akademickie/nieprezentowane.ts`. Parytet
+> „prezentowane + nieprezentowane = komplet kontraktu" pilnuje
+> `backend/tests/ci/test_v126_rodzaje_parytet.py`.
+
 ## 4. API
 
 Aktywny tor V12.6:
@@ -61,4 +101,4 @@ V12.6 jest domknięte, gdy:
 - API odmawia uruchomienia bez committed ENM.
 - Testy backend potwierdzają deterministyczny hash, komplet trace oraz deterministyczne artefakty proof/report.
 - Frontend renderuje wspólny ekran V12.6 bez obliczeń po stronie klienta i pobiera result/proof/report z backendu.
-- `verify:v12.6` uruchamia guardy kanonu, mojibake, testy V12.6 backend i testy rejestru UI.
+- Guardy kanonu, mojibake i kontraktu tekstowego V12.6 dzialaja bezposrednio w `p0-extended-guards.yml` (w tym `scripts/v126_contract_text_guard.py`); testy V12.6 backend biegna w pelnej `pytest -q` (`python-tests.yml`), testy rejestru UI w pelnej suicie vitest (`frontend-checks.yml`). (Skrypt `npm run verify:v12.6` / `scripts/verify_v12_6.py` skasowany karta SUITA-BEZ-WYWOLANIA 2026-08-12 — nigdy nie stal w zadnym workflow CI i wskazywal 5 nieistniejacych guardow SLD oraz nieistniejacy `V126AcademicSurface.tsx`.)

@@ -22,7 +22,9 @@ import type { AdvancementMode } from '../../shell/modeModel';
 import { MathBlock } from '../../../ui/proof/MathRenderer';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import type { ExecutionRun } from '../../../ui/study-cases/types';
-import { EkranAnalizy, usePoprawWModelu } from '../wzorzec';
+import { EkranAnalizy, useAkcjaUruchomObliczenie, usePoprawWModelu } from '../wzorzec';
+import { PrzyciskAkcjiStanu } from '../wzorzec';
+import type { AkcjaStanuZerowego } from '../wzorzec';
 import { PanelDowoduCieplnego } from './PanelDowoduCieplnego';
 import { useSwiezoscNaglowka } from '../../freshness';
 import {
@@ -180,12 +182,16 @@ function StanSekcji({
   opis,
   wariant,
   testid,
+  akcja,
 }: {
   tytul: string;
   komunikat: string;
   opis?: string;
   wariant: 'info' | 'blad';
   testid: string;
+  /* K6 / H-5: slot akcji stanu zerowego — realny następny krok (bieg obliczeń,
+     nawigacja). Brak akcji = sekcja czysto informacyjna. */
+  akcja?: AkcjaStanuZerowego;
 }) {
   return (
     <section className="mvd-jakosc-sekcja" data-testid={testid}>
@@ -195,6 +201,7 @@ function StanSekcji({
       >
         <p className="mvd-jakosc-stan-title">{komunikat}</p>
         {opis && <p className="mvd-jakosc-stan-desc">{opis}</p>}
+        <PrzyciskAkcjiStanu akcja={akcja} testid={testid} />
       </div>
     </section>
   );
@@ -221,6 +228,8 @@ export function SekcjaWiarygodnosci({
   // V12K-264/265: znacznik swiezosci + panel przyczyn z JEDNEJ derywacji.
   const swiezosc = useSwiezoscNaglowka(runId);
   const { stan, dane } = useZasobJakosci<WiarygodnoscResponse>(runId, fetchWiarygodnoscZwarciowa);
+  // K6 / H-5: stan zerowy prowadzi do biegu, którego brakuje (zwarcia).
+  const akcjaBiegu = useAkcjaUruchomObliczenie('SC_3F');
   const [wybrany, setWybrany] = useState<string | null>(null);
 
   const items = dane?.items ?? [];
@@ -238,6 +247,7 @@ export function SekcjaWiarygodnosci({
         opis={JAKOSC_STRINGS.brakPrzebieguZwarciowegoOpis}
         wariant="info"
         testid="mvd-jakosc-wiarygodnosc-brak"
+        akcja={akcjaBiegu}
       />
     );
   }
@@ -352,6 +362,7 @@ export function SekcjaWalidacji({ przebieg, trybZaawansowania, onOtworzDowod, on
   // V12K-264/265: znacznik swiezosci + panel przyczyn z JEDNEJ derywacji.
   const swiezosc = useSwiezoscNaglowka(runId);
   const { stan, dane } = useZasobJakosci<WalidacjaResponse>(runId, fetchWalidacjaEnergetyczna);
+  const akcjaBiegu = useAkcjaUruchomObliczenie('LOAD_FLOW');
   const [wybrany, setWybrany] = useState<string | null>(null);
   const poprawWModelu = usePoprawWModelu();
 
@@ -370,6 +381,7 @@ export function SekcjaWalidacji({ przebieg, trybZaawansowania, onOtworzDowod, on
         opis={JAKOSC_STRINGS.brakPrzebieguRozplywuOpis}
         wariant="info"
         testid="mvd-jakosc-walidacja-brak"
+        akcja={akcjaBiegu}
       />
     );
   }
@@ -687,6 +699,7 @@ export function SekcjaMigotania({
   // V12K-264/265: znacznik swiezosci + panel przyczyn z JEDNEJ derywacji.
   const swiezosc = useSwiezoscNaglowka(runId);
   const { stan, dane } = useZasobJakosci<MigotanieResponse>(runId, fetchMigotanie);
+  const akcjaBiegu = useAkcjaUruchomObliczenie('LOAD_FLOW');
   const [wybrany, setWybrany] = useState<string | null>(null);
   const poprawWModelu = usePoprawWModelu();
 
@@ -705,6 +718,7 @@ export function SekcjaMigotania({
         opis={JAKOSC_STRINGS.brakMigotanieOpis}
         wariant="info"
         testid="mvd-jakosc-migotanie-brak"
+        akcja={akcjaBiegu}
       />
     );
   }
@@ -932,6 +946,8 @@ export function SekcjaArcFlash({
   const runId = przebieg?.id ?? null;
   // V12K-264/265: znacznik swiezosci + panel przyczyn z JEDNEJ derywacji.
   const swiezosc = useSwiezoscNaglowka(runId);
+  // K6 / H-5: analiza łuku wymaga prądów zwarciowych — stan zerowy uruchamia bieg.
+  const akcjaBiegu = useAkcjaUruchomObliczenie('SC_3F');
   const [odlegloscRobocza, setOdlegloscRobocza] = useState('');
   const [odstepElektrod, setOdstepElektrod] = useState('');
   const [czasWylaczenia, setCzasWylaczenia] = useState('');
@@ -1009,6 +1025,7 @@ export function SekcjaArcFlash({
         opis={JAKOSC_STRINGS.brakArcFlashOpis}
         wariant="info"
         testid="mvd-jakosc-arcflash-brak"
+        akcja={akcjaBiegu}
       />
     );
   }
@@ -1229,6 +1246,7 @@ export function SekcjaWarunkowPrzylaczenia({
   const runId = przebieg?.id ?? null;
   // V12K-264/265: znacznik swiezosci + panel przyczyn z JEDNEJ derywacji.
   const swiezosc = useSwiezoscNaglowka(runId);
+  const akcjaBiegu = useAkcjaUruchomObliczenie('LOAD_FLOW');
   const { stan, dane } = useZasobJakosci<WarunkiPrzylaczeniaResponse>(
     runId,
     fetchWarunkiPrzylaczenia,
@@ -1242,6 +1260,7 @@ export function SekcjaWarunkowPrzylaczenia({
         opis={JAKOSC_STRINGS.brakPrzebieguRozplywuOpis}
         wariant="info"
         testid="mvd-jakosc-warunki-brak"
+        akcja={akcjaBiegu}
       />
     );
   }
@@ -1321,6 +1340,7 @@ export function SekcjaWytrzymaloscCieplna({
   const runId = przebieg?.id ?? null;
   // V12K-264/265: znacznik swiezosci + panel przyczyn z JEDNEJ derywacji.
   const swiezosc = useSwiezoscNaglowka(runId);
+  const akcjaBiegu = useAkcjaUruchomObliczenie('SC_3F');
   const { stan, dane } = useZasobJakosci<WytrzymaloscCieplnaResponse>(
     runId,
     fetchWytrzymaloscCieplna,
@@ -1336,6 +1356,7 @@ export function SekcjaWytrzymaloscCieplna({
         opis={JAKOSC_STRINGS.brakPrzebieguZwarciowegoOpis}
         wariant="info"
         testid="mvd-jakosc-cieplna-brak"
+        akcja={akcjaBiegu}
       />
     );
   }

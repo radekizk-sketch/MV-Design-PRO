@@ -11,8 +11,8 @@
 
 import { useMemo, useState } from 'react';
 import { clsx } from 'clsx';
-import { useAppStateStore } from '../../app-state/store';
 import { useNetworkBuildDerived } from '../../network-build/networkBuildStore';
+import { przejdzDoPrzestrzeni } from '../../../ui2/shell/przejsciaPrzestrzeni';
 import { formatGeneratorTypeShortLabelPl } from '../../shared/generatorTypeLabels';
 
 type OzeFilter = 'all' | 'PV' | 'BESS' | 'WIND';
@@ -46,7 +46,6 @@ function matchFilter(genType: string, filter: OzeFilter): boolean {
 export function OzContextPanel() {
   const { ozeSourceSummaries, generatorCount } = useNetworkBuildDerived();
   const [filter, setFilter] = useState<OzeFilter>('all');
-  const setActiveArea = useAppStateStore((s) => s.setActiveArea);
 
   const filtered = useMemo(
     () => ozeSourceSummaries.filter((s) => matchFilter(s.genType, filter)),
@@ -108,7 +107,7 @@ export function OzContextPanel() {
             <button
               type="button"
               data-testid="oz-empty-go-model"
-              onClick={() => setActiveArea('MODEL_SIECI')}
+              onClick={() => przejdzDoPrzestrzeni('model')}
               className="rounded border border-scada-sn px-2 py-1 text-[11px] font-semibold text-scada-sn hover:bg-scada-active"
             >
               Przejdź do modelu sieci

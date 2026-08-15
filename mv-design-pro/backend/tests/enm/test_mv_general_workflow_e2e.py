@@ -29,6 +29,12 @@ CATALOG_ZRODLO_250 = "src-gpz-15kv-250mva-rx010"
 CATALOG_ZRODLO_300 = "src-gpz-15kv-300mva-rx010"
 CATALOG_ZRODLO_350 = "src-gpz-15kv-350mva-rx010"
 CATALOG_ZRODLO_400 = "src-gpz-15kv-400mva-rx010"
+# Falownik PV nN — RZECZYWISTA pozycja katalogu ZRODLO_NN_PV (0,4 kV; Pmax 500 kW;
+# Sn 550 kVA). Dawny „conv-pv-e2e-1" nie istniał w katalogu i przechodził tylko
+# dlatego, że operacja stacyjna nie miała bramy katalogowej (defekt F).
+CATALOG_FALOWNIK_PV_NN = "conv-pv-nn-0p5mw-0p4kv"
+CATALOG_FALOWNIK_PV_NN_PMAX_MW = 0.5
+CATALOG_FALOWNIK_PV_NN_SN_MVA = 0.55
 
 
 def _source_catalog_ref(sk3_mva: float | None) -> str:
@@ -69,6 +75,8 @@ def op(snap: dict, name: str, payload: dict) -> dict:
 
 
 _STATION_CATALOG_PAYLOAD = {
+    # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+    "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
     "transformer": {"transformer_catalog_ref": CATALOG_TRAFO_630},
     "station": {"nn_voltage_kv": 0.4},
     "nn_voltage_kv": 0.4,
@@ -175,7 +183,7 @@ class TestE2E1MultiObjectFeeder:
             "insert_branch_pole_on_segment_sn",
             {
                 "segment_id": seg_id2,
-                "catalog_ref": "SŁUP-ODG-12",
+                "catalog_ref": "SLUP-ODG-12",
                 "name": "Słup T2",
             },
         )
@@ -209,7 +217,7 @@ class TestE2E1MultiObjectFeeder:
             "insert_zksn_on_segment_sn",
             {
                 "segment_id": seg_id,
-                "catalog_ref": "ZKSN-2P",
+                "catalog_ref": "ZKSN-2P-630A",
                 "branch_ports_count": 2,
                 "switch_state": "closed",
                 "name": "ZKSN T1",
@@ -290,7 +298,7 @@ class TestE2E1MultiObjectFeeder:
             "insert_branch_pole_on_segment_sn",
             {
                 "segment_id": seg_id,
-                "catalog_ref": "SŁUP-ODG-12",
+                "catalog_ref": "SLUP-ODG-12",
                 "name": "Słup A",
             },
         )
@@ -303,7 +311,7 @@ class TestE2E1MultiObjectFeeder:
             "insert_branch_pole_on_segment_sn",
             {
                 "segment_id": segs[0],
-                "catalog_ref": "SŁUP-ODG-12",
+                "catalog_ref": "SLUP-ODG-12",
                 "name": "Słup B",
             },
         )
@@ -507,7 +515,7 @@ class TestE2E3BranchFromBranchPole:
             "insert_branch_pole_on_segment_sn",
             {
                 "segment_id": seg_id,
-                "catalog_ref": "SŁUP-ODG-12",
+                "catalog_ref": "SLUP-ODG-12",
                 "name": "Słup T-A",
             },
         )
@@ -558,7 +566,7 @@ class TestE2E3BranchFromBranchPole:
         result = execute_domain_operation(
             s,
             "insert_branch_pole_on_segment_sn",
-            {"segment_id": seg_id, "catalog_ref": "SŁUP-ODG-12"},
+            {"segment_id": seg_id, "catalog_ref": "SLUP-ODG-12"},
         )
         assert result.get("error_code") == "branch_point.invalid_parent_medium"
 
@@ -582,7 +590,7 @@ class TestE2E3BranchFromBranchPole:
             "insert_branch_pole_on_segment_sn",
             {
                 "segment_id": seg_id,
-                "catalog_ref": "SŁUP-ODG-12",
+                "catalog_ref": "SLUP-ODG-12",
             },
         )
 
@@ -642,7 +650,7 @@ class TestE2E4BranchFromZKSN:
             "insert_zksn_on_segment_sn",
             {
                 "segment_id": seg_id,
-                "catalog_ref": "ZKSN-2P",
+                "catalog_ref": "ZKSN-2P-630A",
                 "branch_ports_count": 2,
                 "switch_state": "closed",
                 "name": "ZKSN-A",
@@ -688,7 +696,7 @@ class TestE2E4BranchFromZKSN:
             "insert_zksn_on_segment_sn",
             {
                 "segment_id": seg_id,
-                "catalog_ref": "ZKSN-2P",
+                "catalog_ref": "ZKSN-2P-630A",
                 "branch_ports_count": 2,
                 "switch_state": "open",
             },
@@ -730,7 +738,7 @@ class TestE2E4BranchFromZKSN:
         result = execute_domain_operation(
             s,
             "insert_zksn_on_segment_sn",
-            {"segment_id": seg_id, "catalog_ref": "ZKSN-2P", "branch_ports_count": 2},
+            {"segment_id": seg_id, "catalog_ref": "ZKSN-2P-630A", "branch_ports_count": 2},
         )
         assert result.get("error_code") == "branch_point.invalid_parent_medium"
 
@@ -757,7 +765,7 @@ class TestE2E4BranchFromZKSN:
             "insert_zksn_on_segment_sn",
             {
                 "segment_id": seg_cable,
-                "catalog_ref": "ZKSN-2P",
+                "catalog_ref": "ZKSN-2P-630A",
                 "branch_ports_count": 1,
                 "switch_state": "closed",
             },
@@ -781,7 +789,7 @@ class TestE2E4BranchFromZKSN:
             "insert_branch_pole_on_segment_sn",
             {
                 "segment_id": seg_overhead,
-                "catalog_ref": "SŁUP-ODG-12",
+                "catalog_ref": "SLUP-ODG-12",
             },
         )
 
@@ -869,20 +877,12 @@ class TestE2E5ReceivingStationsAndOzeBess:
                 "bus_nn_ref": nn_bus_ref,
                 "source_name": "PV-Farm-1",
                 "power_setpoint_mw": 0.5,
+                # Tabliczka pochodzi z katalogu (defekt G) — payload wskazuje
+                # wyłącznie POZYCJĘ, tak jak kreator OZE po wyborze falownika.
                 "catalog_binding": {
-                    "catalog_namespace": "CONVERTER",
-                    "catalog_item_id": "conv-pv-e2e-1",
+                    "catalog_namespace": "ZRODLO_NN_PV",
+                    "catalog_item_id": CATALOG_FALOWNIK_PV_NN,
                     "catalog_item_version": "2024.1",
-                },
-                "materialized_params": {
-                    "catalog_item_id": "conv-pv-e2e-1",
-                    "catalog_item_version": "2024.1",
-                    "un_kv": 0.4,
-                    "rated_power_ac_kw": 500.0,
-                    "max_power_kw": 500.0,
-                    "control_mode": "STALY_COS_PHI",
-                    "pmax_mw": 0.5,
-                    "sn_mva": 0.5,
                 },
             },
         )
@@ -908,13 +908,15 @@ class TestE2E5ReceivingStationsAndOzeBess:
             "insert_station_on_segment_sn",
             {
                 "segment_id": seg_id,
+                # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+                "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
                 "name": "Stacja PV za transformatorem",
                 "station_type": "terminal",
                 "station": {"nn_voltage_kv": 0.4},
                 "transformer": {"transformer_catalog_ref": CATALOG_TRAFO_630},
                 "nn_block": {
                     "nn_configuration": "PV_INVERTER",
-                    "source_converter_catalog_ref": "conv-pv-e2e-1",
+                    "source_converter_catalog_ref": CATALOG_FALOWNIK_PV_NN,
                     "source_converter_name": "Falownik PV katalogowy",
                     "source_converter_kind": "PV",
                     "source_converter_un_kv": 0.4,
@@ -928,7 +930,7 @@ class TestE2E5ReceivingStationsAndOzeBess:
                             "catalog_bindings": {
                                 "source_converter": {
                                     "catalog_namespace": "ZRODLO_NN_PV",
-                                    "catalog_item_id": "conv-pv-e2e-1",
+                                    "catalog_item_id": CATALOG_FALOWNIK_PV_NN,
                                 }
                             },
                             "protection": {
@@ -958,9 +960,15 @@ class TestE2E5ReceivingStationsAndOzeBess:
             gen for gen in s.get("generators", []) if gen.get("gen_type") == "pv_inverter"
         ]
         assert len(pv_generators) == 1
-        assert pv_generators[0]["catalog_ref"] == "conv-pv-e2e-1"
+        assert pv_generators[0]["catalog_ref"] == CATALOG_FALOWNIK_PV_NN
         assert pv_generators[0]["connection_variant"] == "nn_side"
         assert pv_generators[0]["station_ref"] == station_ref
+        # Defekt F: tabliczka POCHODZI Z KATALOGU, nie z payloadu. Payload deklaruje
+        # 1,0 MW / 1,0 MVA — model musi pokazać wartości pozycji katalogowej.
+        assert pv_generators[0]["p_mw"] == CATALOG_FALOWNIK_PV_NN_PMAX_MW
+        materialized = pv_generators[0]["materialized_params"]
+        assert materialized["pmax_mw"] == CATALOG_FALOWNIK_PV_NN_PMAX_MW
+        assert materialized["sn_mva"] == CATALOG_FALOWNIK_PV_NN_SN_MVA
         assert (
             pv_generators[0].get("meta", {}).get("protection_intent", {}).get("device_catalog_ref")
             == "EM_ETANGO_400_V0"
@@ -993,7 +1001,7 @@ class TestE2E5ReceivingStationsAndOzeBess:
             "insert_zksn_on_segment_sn",
             {
                 "segment_id": seg_id,
-                "catalog_ref": "ZKSN-2P",
+                "catalog_ref": "ZKSN-2P-630A",
                 "branch_ports_count": 2,
                 "switch_state": "closed",
             },
@@ -1037,7 +1045,7 @@ class TestE2E5ReceivingStationsAndOzeBess:
             "insert_zksn_on_segment_sn",
             {
                 "segment_id": cable_seg,
-                "catalog_ref": "ZKSN-2P",
+                "catalog_ref": "ZKSN-2P-630A",
                 "branch_ports_count": 2,
                 "switch_state": "closed",
                 "name": "ZKSN-Centrum",
@@ -1075,7 +1083,7 @@ class TestE2E5ReceivingStationsAndOzeBess:
             "insert_branch_pole_on_segment_sn",
             {
                 "segment_id": overhead_seg,
-                "catalog_ref": "SŁUP-ODG-12",
+                "catalog_ref": "SLUP-ODG-12",
                 "name": "Słup-Odgałęźny-A",
             },
         )

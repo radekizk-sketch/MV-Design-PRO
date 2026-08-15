@@ -2,17 +2,21 @@
 
 import logging
 import os
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
+from api.analysis_insights import router as analysis_insights_router
 from api.analysis_runs import router as analysis_runs_router
 from api.audit2_catalogs import router as audit2_catalogs_router
 from api.audit2_station_config import router as audit2_station_config_router
+from api.batch_execution import router as batch_execution_router
 from api.catalog import production_router as catalog_router
 from api.comparison import router as comparison_router
 from api.der_sn_documents import router as der_sn_documents_router
 from api.diagnostics import router as diagnostics_router
 from api.document_store import router as document_store_router
 from api.enm import production_router as enm_router
+from api.equipment_checks import router as equipment_checks_router
 from api.equipment_proof_pack import router as equipment_proof_pack_router
 from api.exception_handlers import register_exception_handlers
 from api.execution_runs import router as execution_runs_router
@@ -31,6 +35,7 @@ from api.projects import router as projects_router
 from api.proof_pack import router as proof_pack_router
 from api.protection_analysis_runs import router as protection_analysis_runs_router
 from api.protection_comparisons import router as protection_comparisons_router
+from api.protection_coordination import router as protection_coordination_router
 from api.protection_overcurrent_settings import (
     router as protection_overcurrent_settings_router,
 )
@@ -50,6 +55,7 @@ from api.switchgear_config import router as switchgear_config_router
 from api.unified_runs import router as unified_runs_router
 from api.v126_academic import router as v126_academic_router
 from api.xlsx_import import router as xlsx_import_router
+from api.zwarcia_porownania import router as zwarcia_porownania_router
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from infrastructure.persistence.db import (
@@ -69,7 +75,7 @@ logger = logging.getLogger("mv_design_pro")
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     database_url = os.getenv("DATABASE_URL", "sqlite+pysqlite:///./mv_design_pro.db")
     engine = create_engine_from_url(database_url)
     session_factory = create_session_factory(engine)
@@ -111,6 +117,16 @@ app.add_middleware(
 register_exception_handlers(app)
 
 # Routers
+#
+# KANON PREFIKSU (karta PREFIKSY, dlug V12K-325): KAZDY router HTTP stoi pod
+# `/api`. Prefiks `/api` jest jedyna granica, ktora dev-proxy Vite przepuszcza
+# bez reguly szytej na miare, wiec router poza `/api` wymaga drugiej, rownoleglej
+# deklaracji w `frontend/vite.config.ts` — czyli kolejnego miejsca, ktore moze sie
+# rozjechac. Tak wlasnie powstaly dwa defekty zyjace w repo miesiacami: archiwum
+# projektu pod `/projects` bylo z przegladarki NIEOSIAGALNE, a klient rozplywu
+# wolal `/api/power-flow-runs/...`, ktorego backend NIE serwowal (trasa MARTWA).
+# Odstepstwo od kanonu lapie `scripts/route_prefix_guard.py`.
+app.include_router(analysis_insights_router)
 app.include_router(analysis_runs_router, prefix="/api")
 app.include_router(audit2_catalogs_router)
 app.include_router(audit2_station_config_router)
@@ -119,31 +135,40 @@ app.include_router(comparison_router)
 app.include_router(der_sn_documents_router)
 app.include_router(diagnostics_router)
 app.include_router(document_store_router)
+app.include_router(equipment_checks_router)
+app.include_router(zwarcia_porownania_router)
 app.include_router(equipment_proof_pack_router)
 app.include_router(health_router)
 app.include_router(ncrfg_ptpiree_tests_router)
 app.include_router(oze_analysis_runs_router)
-app.include_router(power_flow_comparisons_router)
-app.include_router(power_flow_runs_router)
+app.include_router(power_flow_comparisons_router, prefix="/api")
+app.include_router(power_flow_runs_router, prefix="/api")
 app.include_router(quality_analysis_runs_router)
 app.include_router(reference_engine_router)
 app.include_router(reference_networks_router)
-app.include_router(project_archive_router)
+app.include_router(project_archive_router, prefix="/api")
 app.include_router(projects_router)
 app.include_router(proof_pack_router)
-app.include_router(protection_comparisons_router)
+app.include_router(protection_comparisons_router, prefix="/api")
 app.include_router(protection_analysis_runs_router, prefix="/api")
+# Karta ZAB-100-BACKEND: montaz koordynacji zabezpieczen (7 tras + 2 eksporty),
+# wczesniej odstawiony w SWIADOMIE_ODSTAWIONE (router_mount_guard.py) do czasu
+# decyzji D10 (docs/uiux/DECYZJE_ARCHITEKTONICZNE_2026-08.md) — domkniete.
+app.include_router(protection_coordination_router, prefix="/api")
 # Karta F-K5 (dlug V12K-189): prezentacja nastaw, w tym NIEDOSTEPNYCH, z akcja naprawcza.
 app.include_router(protection_overcurrent_settings_router)
 # Karta F-K6 (V12K-206): kanoniczny rejestr kodow gotowosci jako jedno zrodlo tresci.
 app.include_router(readiness_registry_router)
 app.include_router(reference_patterns_router)
-app.include_router(sld_router)
+app.include_router(sld_router, prefix="/api")
 app.include_router(station_templates_router)
 app.include_router(study_cases_router)
 app.include_router(xlsx_import_router)
 app.include_router(enm_router)
 app.include_router(execution_runs_router)
+# Karta BATCH-ROUTER: serie przebiegów nad scenariuszami zwarciowymi
+# (tor kanoniczny — te same biegi, co pojedyncze uruchomienie scenariusza).
+app.include_router(batch_execution_router)
 app.include_router(unified_runs_router, prefix="/api")
 app.include_router(v126_academic_router)
 app.include_router(result_contract_v1_router)

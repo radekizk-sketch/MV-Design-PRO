@@ -16,6 +16,8 @@ Sprawdza:
 
 from __future__ import annotations
 
+from typing import get_args
+
 from network_model.catalog.bay_templates import BAY_TEMPLATE_LINE_OUT
 from network_model.catalog.switchgear import (
     ABB,
@@ -74,7 +76,8 @@ class TestSwitchgearFamilyExtendedFields:
             family_name="UniGear ZS1",
             series_name="ZS1",
             product_line_code="UNIGEAR_ZS1",
-            voltage_levels=[12, 17.5, 24],
+            network_voltages_kv=[],
+            um_classes_kv=[12, 17.5, 24],
             rated_current_options=[1250, 2500, 4000],
             short_time_current_options=[25, 32, 50],
             insulation_type="air",
@@ -103,18 +106,31 @@ class TestSwitchgearFamilyExtendedFields:
 
 class TestBayDeviceInstanceTemplate:
     def test_default_circuit_breaker(self):
+        # Scalenie kanonu 2026-08-14: para niezależnych flag
+        # `is_required`/`is_optional` (dopuszczająca stan sprzeczny i
+        # nieokreślony) ustąpiła JEDNEMU statusowi wyposażenia. Intencja testu
+        # bez zmian: aparat niesie informację, czy jest fabryczny, czy opcją.
         device = BayDeviceInstanceTemplate(
             device_template_ref="LINE_OUT__CB__001",
             apparatus_kind="circuit_breaker",
             label="Q1",
+            status_wyposazenia="FABRYCZNY",
         )
         assert device.apparatus_kind == "circuit_breaker"
         assert device.label == "Q1"
         assert device.electrical_side == "line_side"
         assert device.position_in_bay == 1
-        assert device.is_required is False
-        assert device.is_optional is False
+        assert device.status_wyposazenia == "FABRYCZNY"
         assert device.catalog_ref_required is True
+
+    def test_optional_apparatus_carries_option_status(self):
+        device = BayDeviceInstanceTemplate(
+            device_template_ref="LINE_OUT__SA__001",
+            apparatus_kind="surge_arrester",
+            label="F2",
+            status_wyposazenia="OPCJA",
+        )
+        assert device.status_wyposazenia == "OPCJA"
 
     def test_earthing_switch_with_anchor(self):
         device = BayDeviceInstanceTemplate(
@@ -124,7 +140,7 @@ class TestBayDeviceInstanceTemplate:
             position_in_bay=5,
             anchor_refs=["side_left", "ground"],
             electrical_side="earthing_branch",
-            is_required=True,
+            status_wyposazenia="FABRYCZNY",
             default_state="open",
             allowed_states=["open", "closed", "blocked", "unknown"],
         )
@@ -176,7 +192,7 @@ class TestCompleteMvBayTemplateExtendedFields:
             apparatus_kind="circuit_breaker",
             label="Q1",
             position_in_bay=2,
-            is_required=True,
+            status_wyposazenia="FABRYCZNY",
         )
         es = BayDeviceInstanceTemplate(
             device_template_ref="LINE_OUT__ES__001",
@@ -184,7 +200,7 @@ class TestCompleteMvBayTemplateExtendedFields:
             label="Q9 (E)",
             position_in_bay=5,
             electrical_side="earthing_branch",
-            is_required=True,
+            status_wyposazenia="FABRYCZNY",
         )
         line_port = PortDefinitionTemplate(
             port_template_ref="LINE_OUT__PORT__LINE",
@@ -236,3 +252,76 @@ class TestCompleteMvBayTemplateExtendedFields:
         assert "q1_label" in template.label_slots
         # source_status pozostaje requires_catalog mimo "ABB" w refs — bo brak source_refs.
         assert template.is_verified() is False
+
+
+class TestSlownikAparatow:
+    """Słownik aparatów — jedna tożsamość aparatu, zgrubienie jako projekcja.
+
+    Do scalenia kanonu 2026-08-14 istniały DWIE ręcznie utrzymywane tablice o
+    tej samej treści; teraz słownik rodzin jest WYPROWADZANY z tożsamości
+    aparatu. Testy pilnują obu stron tego wyprowadzenia.
+    """
+
+    def test_kazdy_rodzaj_aparatu_szablonu_ma_tozsamosc(self):
+        from network_model.catalog.bay_templates import BayDeviceTemplate
+        from network_model.catalog.switchgear.apparatus_vocabulary import (
+            APPARATUS_KIND_FOR_TEMPLATE_KIND,
+        )
+
+        kindy_szablonu = set(get_args(BayDeviceTemplate.model_fields["kind"].annotation))
+        assert set(APPARATUS_KIND_FOR_TEMPLATE_KIND) == kindy_szablonu
+
+    def test_tozsamosci_aparatow_naleza_do_kanonu_apparatus_kind(self):
+        from network_model.catalog.switchgear.apparatus_vocabulary import (
+            APPARATUS_KIND_FOR_TEMPLATE_KIND,
+        )
+        from network_model.catalog.switchgear.device_instance import ApparatusKind
+
+        kanon = set(get_args(ApparatusKind))
+        assert set(APPARATUS_KIND_FOR_TEMPLATE_KIND.values()) <= kanon
+
+    def test_slownik_rodziny_jest_zgrubieniem_tozsamosci_bez_zmiany_tresci(self):
+        """Pin regresyjny: wyprowadzony słownik rodzin MUSI być dokładnie tym,
+        co utrzymywano wcześniej ręcznie (odłącznik szynowy i liniowy zlewają
+        się w `switch_disconnector`, transformator pola leży poza celką)."""
+        from network_model.catalog.switchgear.apparatus_vocabulary import (
+            FAMILY_APPARATUS_FOR_TEMPLATE_KIND,
+        )
+
+        assert FAMILY_APPARATUS_FOR_TEMPLATE_KIND == {
+            "CB": "circuit_breaker",
+            "DS_BUS": "switch_disconnector",
+            "DS_LINE": "switch_disconnector",
+            "ES": "earthing_switch",
+            "FUSE": "fuse_set",
+            "CT": "current_transformer",
+            "VT": "voltage_transformer",
+            "CABLE_HEAD": "cable_head",
+            "SURGE_ARRESTER": "surge_arrester",
+        }
+
+    def test_transformator_pola_lezy_poza_slownikiem_rodziny(self):
+        from network_model.catalog.switchgear.apparatus_vocabulary import (
+            APPARATUS_KIND_FOR_TEMPLATE_KIND,
+            FAMILY_APPARATUS_FOR_TEMPLATE_KIND,
+        )
+
+        assert APPARATUS_KIND_FOR_TEMPLATE_KIND["TRANSFORMER_DEVICE"] == "transformer"
+        assert "TRANSFORMER_DEVICE" not in FAMILY_APPARATUS_FOR_TEMPLATE_KIND
+
+    def test_materializacja_wyposazenia_odwzorowuje_kanon(self):
+        from network_model.catalog.switchgear.apparatus_vocabulary import (
+            instancje_aparatow_z_szablonu,
+        )
+
+        instancje = instancje_aparatow_z_szablonu(BAY_TEMPLATE_LINE_OUT, "TEST__LINE_OUT")
+        assert len(instancje) == len(BAY_TEMPLATE_LINE_OUT.devices)
+        pierwszy = instancje[0]
+        assert pierwszy.apparatus_kind == "disconnector_busbar"
+        assert pierwszy.label == "Q1"
+        assert pierwszy.position_in_bay == 1  # pozycje 1-based
+        assert pierwszy.electrical_side == "busbar_side"
+        assert pierwszy.status_wyposazenia == "FABRYCZNY"
+        uziemnik = next(i for i in instancje if i.apparatus_kind == "earthing_switch")
+        assert uziemnik.electrical_side == "earthing_branch"
+        assert len({i.device_template_ref for i in instancje}) == len(instancje)

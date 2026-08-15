@@ -143,45 +143,28 @@ def test_failed_materialization_leaves_snapshot_unchanged(
     assert enm_before == baseline
 
 
+#: Pozycje RZECZYWISTE (0,4 kV, mieszczące się w transformatorze stacji 630 kVA).
+#: Wcześniej test podawał wymyślone „PV-CAT-001"/„BESS-CAT-001" wraz z tabliczką
+#: w payloadzie — i przechodził WYŁĄCZNIE dzięki defektowi G (payload zastępował
+#: materializację, katalog nie był czytany). Intencja bez zmian: udane utworzenie
+#: niesie komplet pól proweniencji.
+#:
+#: KANON PO V12K-316 (dług 4): znacznik pochodzenia to przestrzeń, w której
+#: materializacja NAPRAWDĘ znalazła pozycję, więc payload deklarujący „CONVERTER"
+#: nie zmienia tego, co niesie migawka. Dotąd test przypinał zapis kategorii
+#: Z PAYLOADU — czyli utrwalał ślad audytowy wskazujący przestrzeń, z której nie
+#: pochodziła ani jedna liczba tabliczki.
 @pytest.mark.parametrize(
-    ("technology", "materialized_params", "catalog_key"),
+    ("technology", "catalog_key", "przestrzen_materializacji"),
     [
-        (
-            "PV",
-            {
-                "catalog_item_id": "PV-CAT-001",
-                "catalog_item_version": "2024.1",
-                "rated_power_ac_kw": 50.0,
-                "max_power_kw": 55.0,
-                "control_mode": "STALY_COS_PHI",
-                "un_kv": 0.4,
-                "pmax_mw": 0.055,
-                "sn_mva": 0.05,
-            },
-            "PV-CAT-001",
-        ),
-        (
-            "BESS",
-            {
-                "catalog_item_id": "BESS-CAT-001",
-                "catalog_item_version": "2024.1",
-                "usable_capacity_kwh": 100.0,
-                "charge_power_kw": 40.0,
-                "discharge_power_kw": 40.0,
-                "operation_mode": "DWUKIERUNKOWY",
-                "un_kv": 0.4,
-                "pmax_mw": 0.04,
-                "sn_mva": 0.04,
-                "e_kwh": 100.0,
-            },
-            "BESS-CAT-001",
-        ),
+        ("PV", "conv-pv-nn-0p5mw-0p4kv", "ZRODLO_NN_PV"),
+        ("BESS", "conv-bess-nn-0p5mw-0p4kv", "ZRODLO_NN_BESS"),
     ],
 )
 def test_successful_create_includes_provenance_fields(
     technology: str,
-    materialized_params: dict,
     catalog_key: str,
+    przestrzen_materializacji: str,
 ) -> None:
     result = execute_domain_operation(
         _base_enm_with_transformer(),
@@ -194,7 +177,6 @@ def test_successful_create_includes_provenance_fields(
                     "catalog_item_id": catalog_key,
                     "catalog_item_version": "2024.1",
                 },
-                "materialized_params": materialized_params,
             },
         ),
     )
@@ -208,7 +190,7 @@ def test_successful_create_includes_provenance_fields(
 
     created = snapshot["generators"][0]
     assert created.get("catalog_ref") == catalog_key
-    assert created.get("catalog_namespace") == "CONVERTER"
+    assert created.get("catalog_namespace") == przestrzen_materializacji
     assert created.get("source_mode") == "KATALOG"
     assert isinstance(created.get("materialized_params"), dict)
     assert created.get("meta", {}).get("field_ref")

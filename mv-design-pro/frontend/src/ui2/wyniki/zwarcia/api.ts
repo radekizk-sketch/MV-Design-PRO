@@ -13,6 +13,7 @@
 import { useEffect, useState } from 'react';
 
 import type { EnergyNetworkModel } from '../../../types/enm';
+import type { ShortCircuitBranchFlow, ShortCircuitRow } from '../../../ui/results-inspector/types';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import type { KrokWywodu, PozycjaWalidacji, SekcjaWywodu } from '../wzorzec';
 import type { WkladZwarciowy } from './zwarciaModel';
@@ -129,5 +130,72 @@ export function useWkladyZwarciowe(punkt: string | null): WkladyZWywodem | null 
   }, [punkt, snapshot, cache]);
 
   if (!punkt) return null;
+  return cache[punkt] ?? null;
+}
+
+// ---------------------------------------------------------------------------
+// Dostawca ROZPŁYWU GAŁĘZIOWEGO na żądanie (V12K-281, K13)
+// ---------------------------------------------------------------------------
+
+/** Kształt 1:1 odpowiedzi endpointu rozpływu jednego punktu zwarcia. */
+export interface RozplywOdpowiedz {
+  readonly run_id: string;
+  readonly target_id: string;
+  readonly branch_contributions: readonly ShortCircuitBranchFlow[] | null;
+}
+
+/** Pobiera rozpływ gałęziowy JEDNEGO punktu zwarcia (ref węzła w zapytaniu). */
+export async function fetchRozplywZwarciowy(
+  runId: string,
+  targetId: string,
+): Promise<RozplywOdpowiedz> {
+  const response = await fetch(
+    `/api/analysis-runs/${runId}/results/short-circuit/rozplyw?target_id=${encodeURIComponent(targetId)}`,
+  );
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  return (await response.json()) as RozplywOdpowiedz;
+}
+
+/**
+ * Hook dostawcy rozpływu gałęziowego dla wybranego wiersza wyniku zwarciowego
+ * (V12K-281, K13). Wiersze zbiorcze backendu nie niosą już rozpływu (iloczyn
+ * źródło×gałąź per wiersz dawał odpowiedź 730 MB dla 50 stacji) — dane JEDNEGO
+ * punktu pobierane są tym hookiem, cache per punkt na życie ekranu
+ * (deterministyczny przebieg → deterministyczna odpowiedź).
+ *
+ * Stany uczciwe (jak dotąd w sekcji rozpływu):
+ * - wiersz z danymi w polu (mock/starszy pełny zapis) → dane wprost, bez wołania,
+ * - flaga dostępności nieprawdziwa → `null` (starszy wynik bez rozpływu — kreska),
+ * - pobieranie w toku / błąd → `null` (sekcja pokazuje stan „niedostępny"),
+ * - odpowiedź z pustą listą → `[]` (policzono, brak prądu w gałęziach).
+ */
+export function useRozplywZwarciowy(
+  runId: string | null,
+  row: ShortCircuitRow | null,
+): ShortCircuitBranchFlow[] | null {
+  const [cache, setCache] = useState<Record<string, ShortCircuitBranchFlow[] | null>>({});
+  const inline = row?.branch_contributions ?? null;
+  const dostepny = row?.branch_contributions_available === true;
+  const punkt = row?.target_id ?? null;
+
+  useEffect(() => {
+    if (!runId || !punkt || inline !== null || !dostepny) return;
+    if (punkt in cache) return;
+    let anulowane = false;
+    fetchRozplywZwarciowy(runId, punkt)
+      .then((odpowiedz) => {
+        if (!anulowane)
+          setCache((c) => ({ ...c, [punkt]: [...(odpowiedz.branch_contributions ?? [])] }));
+      })
+      .catch(() => {
+        // Błąd pobrania → brak wpisu → sekcja pokazuje stan „niedostępny".
+      });
+    return () => {
+      anulowane = true;
+    };
+  }, [runId, punkt, inline, dostepny, cache]);
+
+  if (inline !== null) return inline;
+  if (!punkt || !dostepny) return null;
   return cache[punkt] ?? null;
 }

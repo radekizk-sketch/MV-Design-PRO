@@ -1,8 +1,7 @@
 import math
 
 import pytest
-
-from src.domain.units import BaseQuantities, UnitSystem
+from domain.units import BaseQuantities, UnitSystem
 
 
 def test_base_quantities_computes_z_and_i_base() -> None:

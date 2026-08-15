@@ -81,6 +81,54 @@ describe('V3 symbols — rejestr glifów i stany', () => {
     expect(fillOf(open.container)).toBe('none');
   });
 
+  it('reklozer: korpus wyłącznika + ŁUK SPZ — odróżnialny od wyłącznika i od pozostałych łączników', () => {
+    // MINI-RMU-CAD. Reklozer JEST wyłącznikiem, więc korpus (prostokąt ze stanem
+    // wyrażonym wypełnieniem) musi być ten sam; automatykę SPZ niesie ŁUK. Test
+    // pilnuje OBU stron tej pary: gdyby łuk zniknął, reklozer stałby się
+    // nieodróżnialny od wyłącznika (defekt sprzed karty).
+    const { container } = render(<svg><SYMBOL_GLYPHS.recloser x={0} y={0} /></svg>);
+    expect(container.querySelector('[data-recloser-arc="true"]')).toBeTruthy();
+    expect(container.querySelector('rect')).toBeTruthy();
+    const breaker = render(<svg><SYMBOL_GLYPHS.breaker x={0} y={0} /></svg>);
+    expect(breaker.container.querySelector('[data-recloser-arc]')).toBeFalsy();
+    // Stan wyrażony GEOMETRIĄ (wypełnienie korpusu), jak w wyłączniku.
+    const fillOf = (state: 'closed' | 'open') =>
+      render(<svg><SYMBOL_GLYPHS.recloser x={0} y={0} state={state} /></svg>)
+        .container.querySelector('rect')?.getAttribute('fill');
+    expect(fillOf('closed')).not.toBe('none');
+    expect(fillOf('open')).toBe('none');
+  });
+
+  it('łączniki toru głównego: każdy rodzaj ma WŁASNY rysunek (znacznik rozróżnialności)', () => {
+    // MINI-RMU-CAD, reguła KLASA §2: sprawdzamy CAŁĄ rodzinę łączników pola SN
+    // (nie samą parę z karty) — pięć rodzajów `device_kind` katalogu APARAT_SN
+    // ma dawać pięć różnych rysunków. Porównanie po statycznym markup: identyczny
+    // markup dwóch symboli = na rysunku ta sama plamka.
+    const laczniki = ['breaker', 'recloser', 'loadBreakSwitch', 'fuseSwitch', 'disconnector'] as const;
+    const markup = laczniki.map((id) =>
+      renderToStaticMarkup(<svg>{SYMBOL_GLYPHS[id]({ x: 0, y: 0, state: 'closed' })}</svg>)
+        // `data-symbol-canon` odróżnia z definicji — usuwamy, żeby test mierzył RYSUNEK.
+        .replace(/ data-symbol-canon="[^"]*"/, ''),
+    );
+    expect(new Set(markup).size).toBe(laczniki.length);
+  });
+
+  it('CALY rejestr glifow: kazdy rysuje sie inaczej niz kazdy inny (KLASA, nie lista przykladow)', () => {
+    // Odbior SLD-GEN-POLA (2026-08-14): iniekcja nadzoru — glif `fuse` podmieniony
+    // na kopie rysunku `disconnector` — przeszla 368 testow, bo pin rozroznialnosci
+    // obejmowal tylko piec lacznikow z karty MINI-RMU. Nowe glify dochodza do
+    // kanonu czesciej niz nowe listy do testow, wiec pin obejmuje CALY rejestr:
+    // identyczny markup (po zdjeciu znacznika id) dwoch roznych glifow = na
+    // rysunku ta sama plamka i inzynier nie odroznia aparatow.
+    const idki = Object.keys(SYMBOL_GLYPHS) as (keyof typeof SYMBOL_GLYPHS)[];
+    const markup = idki.map((id) =>
+      renderToStaticMarkup(<svg>{SYMBOL_GLYPHS[id]({ x: 0, y: 0, state: 'closed' })}</svg>)
+        .replace(/ data-symbol-canon="[^"]*"/, ''),
+    );
+    const duplikaty = idki.filter((_, i) => markup.indexOf(markup[i]) !== i);
+    expect(duplikaty).toEqual([]);
+  });
+
   it('odłącznik: nóż otwarty odchylony (inna geometria linii)', () => {
     const Glyph = SYMBOL_GLYPHS.disconnector;
     const closed = render(<svg><Glyph x={0} y={0} state="closed" /></svg>);

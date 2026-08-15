@@ -1,0 +1,77 @@
+/* Okno „Wrażliwość" — stany i sekcje (tokeny --mvd-*, oba motywy). */
+
+.mvd-wrazliwosc {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+}
+
+.mvd-wrazliwosc-naglowek {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mvd-wrazliwosc-tytul {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--mvd-text);
+}
+
+.mvd-wrazliwosc-opis {
+  margin: 0;
+  font-size: 12px;
+  color: var(--mvd-text-muted);
+}
+
+.mvd-wrazliwosc-stan {
+  border: 1px solid var(--mvd-border);
+  border-radius: 6px;
+  padding: 12px;
+  background: var(--mvd-surface);
+}
+
+.mvd-wrazliwosc-stan--blad {
+  border-color: var(--mvd-err);
+}
+
+.mvd-wrazliwosc-stan-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--mvd-text);
+}
+
+.mvd-wrazliwosc-stan-desc {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--mvd-text-muted);
+}
+
+.mvd-wrazliwosc-sekcja {
+  border: 1px solid var(--mvd-border);
+  border-radius: 6px;
+  background: var(--mvd-surface);
+}
+
+.mvd-wrazliwosc-sekcja-tytul {
+  margin: 0 0 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--mvd-text);
+}
+
+.mvd-wrazliwosc-pominiete {
+  border: 1px dashed var(--mvd-border);
+  border-radius: 6px;
+  padding: 10px 12px;
+}
+
+.mvd-wrazliwosc-pominiete ul {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 12px;
+  color: var(--mvd-text-muted);
+}

@@ -121,8 +121,10 @@ describe('etykieta przęsła z parą końców (spec §12.5, recenzja NO-GO pkt 1
     expect(spanTexts.every((t) => t.includes(' ↔ '))).toBe(true);
     // W3 §7 L2: co najmniej jedna etykieta niesie PEŁNY człon techniczny
     // z realnych danych katalogu/ENM — długość w formacie „l = …" oraz
-    // napięcie znamionowe „NN kV" (fixtura niesie voltage_rating_kv=20).
+    // napięcie znamionowe (fixtura niesie voltage_rating_kv=20).
+    // S9-8: napięcie znamionowe kabla jest OZNACZONE („Un=…"), żeby nie dało
+    // się go pomylić z napięciem pracy sieci — intencja asercji bez zmian.
     expect(spanTexts.some((t) => /· l = \d/.test(t))).toBe(true);
-    expect(spanTexts.some((t) => /· \d+(?:,\d+)? kV · l = /.test(t))).toBe(true);
+    expect(spanTexts.some((t) => /· Un=\d+(?:,\d+)? kV · l = /.test(t))).toBe(true);
   });
 });

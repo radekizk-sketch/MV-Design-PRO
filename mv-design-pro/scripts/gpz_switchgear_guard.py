@@ -21,10 +21,7 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-GPZ_SWITCHGEAR_PATH = (
-    REPO_ROOT
-    / "frontend/src/ui/sld/v2/renderer/GpzSwitchgearRenderer.tsx"
-)
+GPZ_SWITCHGEAR_PATH = REPO_ROOT / "frontend/src/ui/sld/v2/renderer/GpzSwitchgearRenderer.tsx"
 
 REQUIRED_MARKERS: tuple[str, ...] = (
     "sld-v2-gpz-switchgear-transformer-symbol",

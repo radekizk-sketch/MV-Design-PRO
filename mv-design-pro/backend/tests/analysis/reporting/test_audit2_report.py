@@ -4,9 +4,13 @@ Testy modulu raportu audytu 2 (Phase 5).
 
 from __future__ import annotations
 
+import hashlib
+import time
+
 from analysis.reporting.audit2_report import (
     Audit2ReportContext,
     render_audit2_report_all_formats,
+    render_audit2_report_docx,
     render_audit2_report_json,
     render_audit2_report_latex,
     render_audit2_report_text,
@@ -156,3 +160,39 @@ def test_determinism_same_input_same_output():
     t1 = render_audit2_report_text(ctx1)
     t2 = render_audit2_report_text(ctx2)
     assert t1 == t2
+
+
+def test_docx_export_is_byte_deterministic_across_repeated_calls():
+    """DOCX-DETERMINIZM-RESZTA: 2x render z odstepem >2s -> identyczne bajty (SHA256).
+
+    Odstep >2s MIEDZY wywolaniami jest CELOWY, nie kosmetyczny: DOCX jest ZIP-em,
+    a `zipfile` znakuje kazdy wpis biezacym czasem lokalnym w formacie DOS, ktory
+    ma rozdzielczosc DWOCH SEKUND (pole sekund koduje wartosc/2) — dwa wywolania
+    oddalone o <=2s moga trafic w TEN SAM znacznik nawet bez normalizacji
+    (`docx_determinism.make_docx_bytes_deterministic`), co dawaloby falszywa
+    zielen (lekcja karty ZAB-100-BACKEND, iniekcja I2; DOCX-DETERMINIZM-RESZTA
+    doprecyzowala granulacje na 2s empirycznym pomiarem — 1.1s dawal falszywa
+    zielen w ok. 30% powtorzen).
+    """
+    proofs = [
+        {
+            "proof_id": "00000000-0000-0000-0000-000000000001",
+            "proof_type": "AUDIT2_VT_GROUNDING_VALIDATION",
+            "pass_status": True,
+            "summary_pl": "OK",
+            "details": {"voltage_factor": 1.9},
+            "formulas_latex": [],
+            "generated_at": "2026-04-01T00:00:00Z",
+        }
+    ]
+    ctx = _make_ctx(proofs)
+    first = render_audit2_report_docx(ctx)
+    time.sleep(2.1)
+    second = render_audit2_report_docx(ctx)
+
+    assert first[:2] == b"PK", "DOCX powinien byc plikiem ZIP"
+    hash_1 = hashlib.sha256(first).hexdigest()
+    hash_2 = hashlib.sha256(second).hexdigest()
+    assert hash_1 == hash_2, (
+        f"DOCX export audit2_report nie deterministyczny\n" f"Hash 1: {hash_1}\nHash 2: {hash_2}"
+    )

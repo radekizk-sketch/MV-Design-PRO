@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from src.enm.models import Port, Substation
+from enm.models import Port, Substation
 
 TopologicalType = Literal["końcowa", "przelotowa", "odgałęźna", "sekcyjna"]
 

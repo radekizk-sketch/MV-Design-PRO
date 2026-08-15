@@ -6,10 +6,17 @@
  * sprawdzeń ✓/✗ z powodem PL (pkt 7). Read-only, 100% PL, zero fizyki.
  * `score_percent = null` ⇒ „nie dotyczy" (zero sprawdzeń stosowalnych —
  * uczciwy raport, bez sztucznych 100%).
+ *
+ * ZAKRES OCENY (karta REF-PAKIET): panel jest TRZECIM miejscem oceny zgodności
+ * (osiągalnym z ui2: „Model → Diagnostyka" w trybie eksperckim), więc korzysta
+ * z TEJ SAMEJ kontrolki i tego samego stanu wyboru referencji co przestrzenie
+ * „Model" i „Gotowość" — trzy miejsca pokazują jeden zakres, nie trzy własne.
  */
 
 import { Fragment, useEffect, useState } from 'react';
 
+import { WyborPakietuReferencyjnego } from '../../ui2/referencje/WyborPakietuReferencyjnego';
+import { useWyborPakietu, zawezenieDlaWyboru } from '../../ui2/referencje/wyborPakietu';
 import { fetchReferenceCompliance } from './api';
 import type {
   ReferenceComplianceReport,
@@ -34,6 +41,7 @@ function scoreClass(pack: ReferencePackComplianceReport): string {
 }
 
 export function ReferencePanel({ caseId }: ReferencePanelProps) {
+  const packId = useWyborPakietu((s) => s.pakietId);
   const [report, setReport] = useState<ReferenceComplianceReport | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -47,7 +55,7 @@ export function ReferencePanel({ caseId }: ReferencePanelProps) {
     let cancelled = false;
     setLoading(true);
     setError(null);
-    fetchReferenceCompliance(caseId)
+    fetchReferenceCompliance(caseId, zawezenieDlaWyboru(packId))
       .then((data) => {
         if (!cancelled) setReport(data);
       })
@@ -66,11 +74,20 @@ export function ReferencePanel({ caseId }: ReferencePanelProps) {
     return () => {
       cancelled = true;
     };
-  }, [caseId]);
+  }, [caseId, packId]);
+
+  // Kontrolka zakresu jest NAD stanami: projektant musi widzieć (i móc zmienić)
+  // wybraną referencję także wtedy, gdy raportu jeszcze nie ma albo się nie udał.
+  const wybor = (
+    <div className="mb-2">
+      <WyborPakietuReferencyjnego idKontrolki="reference-panel-wybor-pakietu" />
+    </div>
+  );
 
   if (!caseId) {
     return (
       <div className="p-4 text-xs text-slate-500" data-testid="reference-panel-empty">
+        {wybor}
         Wybierz wariant pracy, aby zobaczyć zgodność referencyjną.
       </div>
     );
@@ -78,6 +95,7 @@ export function ReferencePanel({ caseId }: ReferencePanelProps) {
   if (loading) {
     return (
       <div className="p-4 text-xs text-slate-500" data-testid="reference-panel-loading">
+        {wybor}
         Ładowanie zgodności referencyjnej…
       </div>
     );
@@ -85,6 +103,7 @@ export function ReferencePanel({ caseId }: ReferencePanelProps) {
   if (error) {
     return (
       <div className="p-4 text-xs text-rose-600" data-testid="reference-panel-error">
+        {wybor}
         {error}
       </div>
     );
@@ -93,6 +112,7 @@ export function ReferencePanel({ caseId }: ReferencePanelProps) {
 
   return (
     <div className="h-full overflow-auto p-3" data-testid="reference-panel">
+      {wybor}
       <p className="mb-2 text-[11px] text-slate-500">
         Zgodność projektu z referencjami (normy IEC, rodziny rozdzielnic,
         standardy OSD). Ocena obejmuje wyłącznie pola z danymi aparatów —

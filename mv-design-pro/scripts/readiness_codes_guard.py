@@ -11,6 +11,37 @@ Ensures that all required readiness codes are defined and that each code has:
 
 Also ensures no duplicate codes and deterministic priority ordering.
 
+JAK OBIETNICE Z NAGLOWKA MAPUJA SIE NA KOD (karta X4, dlug z V12K-318 poz. 7
+— do tej karty naglowek obiecywal kontrole, ktorych kod NIE wykonywal; guard
+sprawdzal regexem wylacznie obecnosc kluczy i dlugosc message_pl):
+
+* komunikat polski        -> `waliduj_rejestr`: message_pl niepusty, >= 5 znakow,
+* priorytet 1-5           -> `waliduj_rejestr`: int w zakresie [1, 5],
+* poziom z katalogu       -> `waliduj_rejestr`: instancja ReadinessLevel
+                             (dataclass NIE waliduje pol, wiec literal tekstowy
+                             przeszedlby bez tej kontroli),
+* akcja naprawcza BLOCKER -> `waliduj_rejestr`: kazdy BLOCKER ma SCIEZKE
+                             naprawcza: fix_action_id LUB fix_navigation.
+                             Metakod (np. analysis.blocked_by_readiness, ktorego
+                             naprawa JEST usuniecie blokad zrodlowych) niesie
+                             sama nawigacje — to poprawne; BLOCKER bez zadnej
+                             sciezki zostawia projektanta z golym kodem,
+* nawigacja panel/tab/...  -> `waliduj_rejestr`: fix_navigation, gdy obecna,
+                             ma klucz "panel" i wylacznie niepuste wartosci,
+* brak duplikatow         -> `duplikaty_kluczy_zrodla` (AST literalu slownika:
+                             zduplikowany klucz w zrodle NADPISUJE cicho
+                             wczesniejszy wpis, wiec sprawdzenie samych kluczy
+                             zaimportowanego slownika NIE moze tego zlapac),
+* deterministyczny porzadek priorytetow -> wynika z powyzszych: klucze unikalne
+                             + priorytety calkowite czynia sortowanie po
+                             (priority, code) porzadkiem zupelnym; osobna
+                             kontrola bylaby bezprzedmiotowa,
+* klucz slownika == spec.code -> `waliduj_rejestr` (rozjazd = kod widoczny pod
+                             inna nazwa niz deklaruje).
+
+Walidacja idzie po ZAIMPORTOWANYM rejestrze (zywe obiekty), nie po regexach —
+jedno zrodlo prawdy, to samo, ktore czyta produkcja.
+
 SCAN FILES:
   backend/src/domain/canonical_operations.py  (READINESS_CODES dict)
 
@@ -37,9 +68,11 @@ EXIT CODES:
 
 from __future__ import annotations
 
-import re
+import ast
+import importlib.util
 import sys
 from pathlib import Path
+from types import ModuleType
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 REGISTRY_FILE = REPO_ROOT / "backend" / "src" / "domain" / "canonical_operations.py"
@@ -71,67 +104,141 @@ REQUIRED_CODES = {
     "analysis.blocked_by_readiness",
 }
 
-
-def extract_readiness_codes(filepath: Path) -> set[str]:
-    """Extract readiness code keys from the READINESS_CODES dict."""
-    if not filepath.exists():
-        return set()
-    text = filepath.read_text(encoding="utf-8")
-    # Match dictionary keys in READINESS_CODES
-    pattern = re.compile(r'"([a-z0-9_.]+)":\s+ReadinessCodeSpec\(', re.MULTILINE)
-    return set(pattern.findall(text))
+MIN_CODES = 24
+MIN_MESSAGE_LEN = 5
 
 
-def check_polish_messages(filepath: Path) -> list[str]:
-    """Check that each code has a non-empty message_pl."""
-    if not filepath.exists():
-        return []
-    text = filepath.read_text(encoding="utf-8")
-    violations = []
-    # Find all message_pl assignments
-    pattern = re.compile(r'message_pl="([^"]*)"')
-    messages = pattern.findall(text)
-    for msg in messages:
-        if not msg or len(msg) < 5:
-            violations.append(f"Empty or too short message_pl: '{msg}'")
-    return violations
+def modul_rejestru() -> ModuleType:
+    """Modul rejestru bez wykonywania `__init__` pakietu `domain`.
+
+    CI wola ten straznik golym pythonem (bez zaleznosci backendu), a
+    `import domain.canonical_operations` odpala `domain/__init__.py`, ktory
+    ciagnie pydantic — sam rejestr potrzebuje wylacznie stdlib. Gdy pakiet JEST
+    juz zaimportowany (pytest pod poetry), zwracamy DOKLADNIE ten sam modul,
+    zeby `isinstance` widzial te same klasy enum co testy.
+    """
+    # Kolejnosc: pakiet (pytest pod poetry), potem WLASNY wpis z poprzedniego
+    # ladowania plikowego — bez niego kazde wywolanie tworzyloby NOWY modul
+    # z NOWYMI klasami enum i `isinstance` mowilby falszywe "nie".
+    juz = sys.modules.get("domain.canonical_operations") or sys.modules.get("_rejestr_kanoniczny")
+    if juz is not None:
+        return juz
+    try:
+        import domain.canonical_operations as pakietowy  # noqa: PLC0415
+
+        return pakietowy
+    except ModuleNotFoundError:
+        spec = importlib.util.spec_from_file_location("_rejestr_kanoniczny", REGISTRY_FILE)
+        assert spec and spec.loader
+        m = importlib.util.module_from_spec(spec)
+        # Rejestracja PRZED exec: mechanika dataclasses szuka modulu klasy w
+        # sys.modules przy przetwarzaniu adnotacji (KW_ONLY) i bez wpisu pada.
+        sys.modules[spec.name] = m
+        spec.loader.exec_module(m)
+        return m
+
+
+def duplikaty_kluczy_zrodla(zrodlo: str, nazwa_slownika: str = "READINESS_CODES") -> list[str]:
+    """Zduplikowane klucze LITERALU slownika — niewykrywalne po imporcie.
+
+    Python nadpisuje wczesniejszy wpis bez ostrzezenia, wiec duplikat w zrodle
+    oznacza cicho ZGUBIONA specyfikacje. Szukamy przypisania `NAZWA: ... = {...}`
+    i liczymy stale tekstowe wsrod kluczy.
+    """
+    drzewo = ast.parse(zrodlo)
+    naruszenia: list[str] = []
+    for wezel in ast.walk(drzewo):
+        if not isinstance(wezel, ast.AnnAssign | ast.Assign):
+            continue
+        cele = [wezel.target] if isinstance(wezel, ast.AnnAssign) else wezel.targets
+        if not any(isinstance(c, ast.Name) and c.id == nazwa_slownika for c in cele):
+            continue
+        if not isinstance(wezel.value, ast.Dict):
+            continue
+        widziane: set[str] = set()
+        for klucz in wezel.value.keys:
+            if isinstance(klucz, ast.Constant) and isinstance(klucz.value, str):
+                if klucz.value in widziane:
+                    naruszenia.append(f"Duplicate key in {nazwa_slownika} literal: '{klucz.value}'")
+                widziane.add(klucz.value)
+    return naruszenia
+
+
+def waliduj_rejestr(codes: dict[str, object]) -> list[str]:
+    """Kontrole per wpis na ZYWYCH obiektach rejestru (naglowek modulu: mapa)."""
+    ReadinessLevel = modul_rejestru().ReadinessLevel  # noqa: N806
+
+    naruszenia: list[str] = []
+    for klucz, spec in codes.items():
+        kod = getattr(spec, "code", None)
+        if kod != klucz:
+            naruszenia.append(f"Key/code mismatch: key '{klucz}' vs spec.code '{kod}'")
+
+        message = getattr(spec, "message_pl", None)
+        if not isinstance(message, str) or len(message.strip()) < MIN_MESSAGE_LEN:
+            naruszenia.append(f"'{klucz}': empty or too short message_pl: {message!r}")
+
+        priorytet = getattr(spec, "priority", None)
+        if not isinstance(priorytet, int) or isinstance(priorytet, bool) or not 1 <= priorytet <= 5:
+            naruszenia.append(f"'{klucz}': priority out of range 1-5: {priorytet!r}")
+
+        poziom = getattr(spec, "level", None)
+        if not isinstance(poziom, ReadinessLevel):
+            naruszenia.append(f"'{klucz}': level is not a ReadinessLevel: {poziom!r}")
+
+        nawigacja = getattr(spec, "fix_navigation", None)
+        if nawigacja is not None:
+            if not isinstance(nawigacja, dict) or not nawigacja:
+                naruszenia.append(f"'{klucz}': fix_navigation must be a non-empty dict")
+            elif "panel" not in nawigacja:
+                naruszenia.append(f"'{klucz}': fix_navigation lacks the 'panel' key")
+            elif any(not isinstance(w, str) or not w.strip() for w in nawigacja.values()):
+                naruszenia.append(f"'{klucz}': fix_navigation carries an empty value")
+
+        if isinstance(poziom, ReadinessLevel) and poziom is ReadinessLevel.BLOCKER:
+            akcja = getattr(spec, "fix_action_id", None)
+            if not akcja and nawigacja is None:
+                naruszenia.append(
+                    f"'{klucz}': BLOCKER without any remediation path "
+                    "(neither fix_action_id nor fix_navigation)"
+                )
+    return naruszenia
 
 
 def main() -> int:
     violations: list[str] = []
 
-    codes = extract_readiness_codes(REGISTRY_FILE)
-    if not codes:
-        print("WARNING: No readiness codes found in %s" % REGISTRY_FILE)
-        print("File may not exist yet. Skipping guard.")
-        return 0
+    if not REGISTRY_FILE.exists():
+        print(f"VIOLATION: registry file missing: {REGISTRY_FILE}")
+        return 1
 
-    # Check minimum count
-    if len(codes) < 24:
-        violations.append(
-            f"Only {len(codes)} readiness codes found (minimum 24 required)"
-        )
+    sys.path.insert(0, str(REPO_ROOT / "backend" / "src"))
+    READINESS_CODES = modul_rejestru().READINESS_CODES  # noqa: N806
 
-    # Check all required codes present
+    codes = set(READINESS_CODES)
+    if len(codes) < MIN_CODES:
+        violations.append(f"Only {len(codes)} readiness codes found (minimum {MIN_CODES} required)")
+
     for required_code in sorted(REQUIRED_CODES):
         if required_code not in codes:
             violations.append(f"Missing required readiness code: '{required_code}'")
 
-    # Check Polish messages
-    msg_violations = check_polish_messages(REGISTRY_FILE)
-    violations.extend(msg_violations)
+    violations.extend(duplikaty_kluczy_zrodla(REGISTRY_FILE.read_text(encoding="utf-8")))
+    violations.extend(waliduj_rejestr(READINESS_CODES))
 
     if violations:
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"READINESS CODES GUARD: {len(violations)} violation(s)")
-        print(f"{'='*60}\n")
+        print(f"{'=' * 60}\n")
         for v in violations:
             print(f"  VIOLATION: {v}")
         print()
         return 1
 
-    print(f"Readiness Codes Guard: OK ({len(codes)} codes, "
-          f"{len(REQUIRED_CODES)} required codes present)")
+    print(
+        f"Readiness Codes Guard: OK ({len(codes)} codes, "
+        f"{len(REQUIRED_CODES)} required codes present)"
+    )
     return 0
 
 

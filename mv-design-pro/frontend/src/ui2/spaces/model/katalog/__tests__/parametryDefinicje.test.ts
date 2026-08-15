@@ -27,7 +27,16 @@ describe('parametryDefinicje — słownik definicji parametrów', () => {
   });
 
   it('definicje liczbowe mają jednostkę lub są jawnie bezwymiarowe (cosφ)', () => {
-    const bezwymiarowe = ['cosphi_min', 'cosphi_max'];
+    // Wielkości JAWNIE bezwymiarowe: współczynnik mocy, współczynnik
+    // bezpieczeństwa przyrządowego Fs i współczynnik napięciowy Fv (krotności,
+    // nie wielkości mianowane) oraz liczba żył kabla (liczność).
+    const bezwymiarowe = [
+      'cosphi_min',
+      'cosphi_max',
+      'fs_safety_factor',
+      'rated_voltage_factor',
+      'number_of_cores',
+    ];
     for (const [klucz, def] of Object.entries(DEFINICJE_PARAMETROW)) {
       if (def.typ === 'liczba' && !bezwymiarowe.includes(klucz)) {
         expect(def.jednostka.trim().length, klucz).toBeGreaterThan(0);

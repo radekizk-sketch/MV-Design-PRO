@@ -208,10 +208,18 @@ test.describe('Branch points workflow', () => {
 
     await inspector.getByRole('button', { name: /rozga/i }).click();
 
-    const form = page.getByTestId('insert-branch-pole-form');
-    await expect(form).toBeVisible();
-    await expect(form).toHaveAttribute('data-segment-ref', segmentRef!);
-    await expect(form.getByRole('textbox', { name: 'Odcinek SN' })).toHaveValue(OVERHEAD_SEGMENT_NAME);
+    // Przepisane na bieżący flow (karta K1/C, 2026-07-29): akcja otwiera dziś
+    // kreator ui2 `KreatorSlupaOdgaleznego` (operationFormRegistry:
+    // insert_branch_pole_on_segment_sn → mvd-kreator-slup), nie dawny
+    // `insert-branch-pole-form`. INTENCJA BEZ ZMIAN: (1) formularz jest
+    // powiązany z TYM odcinkiem — kreator rozwiązuje segment_ref przez snapshot
+    // i pokazuje jego NAZWĘ w kontroli gotowości (dawne asercje
+    // data-segment-ref + textbox „Odcinek SN"); (2) konfiguracja jest
+    // katalog-first (pole wyboru typu słupa z katalogu), nie ślepe wstawienie.
+    const kreator = page.getByTestId('mvd-kreator-slup');
+    await expect(kreator).toBeVisible();
+    await expect(page.getByTestId('mvd-kreator-slup-gotowosc')).toContainText(OVERHEAD_SEGMENT_NAME);
+    await expect(page.getByTestId('mvd-kreator-slup-katalog')).toBeVisible();
   });
 
   test('opens ZKSN form from canonical cable surface', async ({ page, request }) => {
@@ -246,9 +254,15 @@ test.describe('Branch points workflow', () => {
 
     await inspector.getByRole('button', { name: /Wstaw ZKSN/i }).click();
 
-    const form = page.getByTestId('insert-zksn-form');
-    await expect(form).toBeVisible();
-    await expect(form).toHaveAttribute('data-segment-ref', segmentRef!);
-    await expect(form.getByRole('textbox', { name: 'Odcinek SN' })).toHaveValue(CABLE_SEGMENT_NAME);
+    // Przepisane na bieżący flow (karta K1/C, 2026-07-29): akcja otwiera dziś
+    // kreator ui2 `KreatorZksn` (operationFormRegistry:
+    // insert_zksn_on_segment_sn → mvd-kreator-zksn), nie dawny
+    // `insert-zksn-form`. INTENCJA BEZ ZMIAN: powiązanie z TYM odcinkiem
+    // (nazwa odcinka w kontroli gotowości — kreator rozwiązuje segment_ref
+    // przez snapshot) + konfiguracja katalog-first (wybór typu ZKSN z katalogu).
+    const kreator = page.getByTestId('mvd-kreator-zksn');
+    await expect(kreator).toBeVisible();
+    await expect(page.getByTestId('mvd-kreator-zksn-gotowosc')).toContainText(CABLE_SEGMENT_NAME);
+    await expect(page.getByTestId('mvd-kreator-zksn-katalog')).toBeVisible();
   });
 });

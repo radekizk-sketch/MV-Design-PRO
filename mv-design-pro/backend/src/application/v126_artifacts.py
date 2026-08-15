@@ -71,6 +71,11 @@ def build_v126_proof_artifact(run_record: Mapping[str, Any]) -> JsonDict:
                 "data": step.get("data", {}),
                 "substitution": step.get("substitution"),
                 "result": step.get("result", {}),
+                # V126-JEZYK: polska postać wyniku kroku (liczba z jednostką)
+                # jedzie DO PAKIETU DOWODOWEGO — inaczej ekran dowodu wracałby
+                # do zrzutu słownika, mimo naprawionego śladu (ta sama klasa,
+                # drugi konsument).
+                "result_pl": step.get("result_pl"),
                 "unit_check": step.get("unit_check"),
                 "proof_status": step.get("proof_status", "complete"),
             }

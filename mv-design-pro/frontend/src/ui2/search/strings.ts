@@ -8,6 +8,7 @@ import type { GrupaWyszukiwania, TrybZaawansowania } from './searchModel';
 export const SEARCH_STRINGS = {
   polePlaceholder: 'Szukaj poleceń, obiektów, okien…',
   grupaPrzestrzenie: 'Przestrzenie',
+  grupaEkrany: 'Ekrany',
   grupaPolecenia: 'Polecenia',
   grupaObiekty: 'Obiekty',
   grupaPrzyklady: 'Gotowe przykłady',
@@ -19,6 +20,7 @@ export const SEARCH_STRINGS = {
 
 const ETYKIETY_GRUP: Record<GrupaWyszukiwania, string> = {
   przestrzenie: SEARCH_STRINGS.grupaPrzestrzenie,
+  ekrany: SEARCH_STRINGS.grupaEkrany,
   polecenia: SEARCH_STRINGS.grupaPolecenia,
   obiekty: SEARCH_STRINGS.grupaObiekty,
   przyklady: SEARCH_STRINGS.grupaPrzyklady,

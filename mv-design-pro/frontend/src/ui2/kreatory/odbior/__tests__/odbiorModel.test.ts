@@ -2,20 +2,45 @@ import { describe, expect, it } from 'vitest';
 
 import type { LoadCatalogType } from '../../../../ui/catalog/types';
 import {
+  czyZipDomyslny,
   DANE_DOMYSLNE,
   fmtA,
   fmtKw,
   maOdplyw,
+  POLA_ZIP,
   prefillZKatalogu,
+  sumaUdzialowZip,
   walidujFormularz,
+  walidujZip,
   zbudujPayload,
   zbudujZapytaniePodgladu,
+  ZIP_DOMYSLNY,
+  type ModelZip,
   type OdbiorFormData,
 } from '../odbiorModel';
 
 const typy = [
   { id: 'L1', name: 'Odbiór biurowy', model: 'pq', p_kw: 80, q_kvar: 30, cos_phi: 0.94, cos_phi_mode: 'fixed' },
+  {
+    id: 'L2',
+    name: 'Odbiór impedancyjny',
+    model: 'zip',
+    p_kw: 40,
+    cos_phi: 0.9,
+    cos_phi_mode: 'fixed',
+    a_p: 1,
+    b_p: 0,
+    c_p: 0,
+    a_q: 1,
+    b_q: 0,
+    c_q: 0,
+    k_pf: 1.5,
+  },
 ] as unknown as LoadCatalogType[];
+
+function zip(over: Partial<ModelZip> = {}): ModelZip {
+  return { ...ZIP_DOMYSLNY, ...over };
+}
 
 function dane(over: Partial<OdbiorFormData> = {}): OdbiorFormData {
   return { ...DANE_DOMYSLNE, ...over };
@@ -26,6 +51,52 @@ describe('odbiorModel — walidacja', () => {
     expect(walidujFormularz(dane({ active_power_kw: 0 })).some((e) => e.field === 'active_power_kw')).toBe(true);
     expect(walidujFormularz(dane({ cos_phi: 1.5 })).some((e) => e.field === 'cos_phi')).toBe(true);
     expect(walidujFormularz(dane()).length).toBe(0);
+  });
+});
+
+describe('odbiorModel — model obciążenia (ZIP)', () => {
+  it('domyślny model to stała moc (c = 1) — zachowanie zastane rozpływu', () => {
+    expect(czyZipDomyslny(DANE_DOMYSLNE.zip)).toBe(true);
+    expect(DANE_DOMYSLNE.zip.c_p).toBe(1);
+    expect(DANE_DOMYSLNE.zip.c_q).toBe(1);
+    expect(walidujZip(DANE_DOMYSLNE.zip)).toEqual([]);
+  });
+
+  it('przyjmuje poprawny podział udziałów sumujący się do 1', () => {
+    expect(walidujZip(zip({ a_p: 0.5, b_p: 0.2, c_p: 0.3 }))).toEqual([]);
+    expect(walidujZip(zip({ a_q: 1, b_q: 0, c_q: 0 }))).toEqual([]);
+  });
+
+  it('odrzuca rozjechaną sumę osobno dla P i dla Q, podając zmierzoną sumę', () => {
+    const bledyP = walidujZip(zip({ a_p: 0.5, b_p: 0, c_p: 0.2 }));
+    expect(bledyP.some((b) => b.field === 'zip.suma_p')).toBe(true);
+    expect(bledyP.find((b) => b.field === 'zip.suma_p')?.message).toContain('0.700');
+    expect(bledyP.find((b) => b.field === 'zip.suma_p')?.message).toContain('czynnej P');
+    expect(bledyP.some((b) => b.field === 'zip.suma_q')).toBe(false);
+
+    const bledyQ = walidujZip(zip({ a_q: 0.4, b_q: 0.4, c_q: 0.4 }));
+    expect(bledyQ.some((b) => b.field === 'zip.suma_q')).toBe(true);
+    expect(bledyQ.find((b) => b.field === 'zip.suma_q')?.message).toContain('biernej Q');
+    expect(bledyQ.some((b) => b.field === 'zip.suma_p')).toBe(false);
+  });
+
+  it('odrzuca udział poza zakresem [0, 1] nawet gdy suma się zgadza', () => {
+    // Cecha, w której defekt mógłby się schować: suma = 1, a mimo to model
+    // jest niefizyczny (ujemny udział). Sama kontrola sumy by to przepuściła.
+    const bledy = walidujZip(zip({ a_p: -0.5, b_p: 0.5, c_p: 1 }));
+    expect(sumaUdzialowZip(zip({ a_p: -0.5, b_p: 0.5, c_p: 1 }), 'p')).toBe(1);
+    expect(bledy.some((b) => b.field === 'zip.a_p')).toBe(true);
+  });
+
+  it('wrażliwość częstotliwościowa nie podlega warunkowi sumy udziałów', () => {
+    expect(walidujZip(zip({ k_pf: 2, k_qf: -1 }))).toEqual([]);
+    expect(czyZipDomyslny(zip({ k_pf: 2 }))).toBe(false);
+  });
+
+  it('walidacja formularza niesie błędy modelu ZIP', () => {
+    expect(walidujFormularz(dane({ zip: zip({ a_p: 0.5, b_p: 0, c_p: 0.2 }) })).some(
+      (e) => e.field === 'zip.suma_p',
+    )).toBe(true);
   });
 });
 
@@ -48,6 +119,19 @@ describe('odbiorModel — prefill z katalogu', () => {
     const out = prefillZKatalogu(dane({ active_power_kw: 12 }), 'X', typy);
     expect(out.active_power_kw).toBe(12);
     expect(out.catalog_ref).toBe('X');
+  });
+  it('wypełnia model ZIP z pozycji katalogowej', () => {
+    const out = prefillZKatalogu(dane(), 'L2', typy);
+    expect(out.zip.a_p).toBe(1);
+    expect(out.zip.c_p).toBe(0);
+    expect(out.zip.k_pf).toBe(1.5);
+    expect(czyZipDomyslny(out.zip)).toBe(false);
+  });
+  it('pozycja bez modelu ZIP daje stałą moc, nie poprzednio wpisane wartości', () => {
+    // Wybór typu ma pokazać model TEGO typu. Przeniesienie poprzednich udziałów
+    // przypisywałoby pozycji katalogowej model, którego ona nie deklaruje.
+    const out = prefillZKatalogu(dane({ zip: zip({ a_p: 1, c_p: 0 }) }), 'L1', typy);
+    expect(czyZipDomyslny(out.zip)).toBe(true);
   });
 });
 
@@ -84,6 +168,32 @@ describe('odbiorModel — payload', () => {
   it('dołącza catalog_binding gdy wybrano typ', () => {
     const payload = zbudujPayload(dane({ catalog_ref: 'L1' }), { feeder_ref: 'f1' });
     expect(payload.catalog_binding).toMatchObject({ catalog_namespace: 'OBCIAZENIE', catalog_item_id: 'L1' });
+  });
+
+  it('niesie komplet współczynników modelu ZIP gdy projektant go zmienił', () => {
+    const payload = zbudujPayload(dane({ zip: zip({ a_p: 1, c_p: 0, a_q: 1, c_q: 0 }) }), {
+      feeder_ref: 'f1',
+    });
+    for (const pole of POLA_ZIP) {
+      expect(payload).toHaveProperty(pole);
+    }
+    expect(payload.a_p).toBe(1);
+    expect(payload.c_p).toBe(0);
+  });
+
+  it('niesie model ZIP także wtedy, gdy zmieniono SAMĄ wrażliwość częstotliwościową', () => {
+    // Wielomian napięciowy zostaje trywialny (c = 1), więc próg patrzący tylko
+    // na napięcie zgubiłby tę deklarację po cichu.
+    const payload = zbudujPayload(dane({ zip: zip({ k_pf: 2 }) }), { feeder_ref: 'f1' });
+    expect(payload.k_pf).toBe(2);
+    expect(payload.c_p).toBe(1);
+  });
+
+  it('pomija współczynniki przy stałej mocy — payload jak przed powstaniem sekcji', () => {
+    const payload = zbudujPayload(dane(), { feeder_ref: 'f1' });
+    for (const pole of POLA_ZIP) {
+      expect(payload).not.toHaveProperty(pole);
+    }
   });
 });
 

@@ -11,12 +11,14 @@ import { EkranCoWymagaUwagi } from '../EkranCoWymagaUwagi';
 import { CO_WYMAGA_UWAGI_STRINGS as T } from '../strings';
 import { usePowerFlowResultsStore } from '../../../../ui/power-flow-results/store';
 import { useSelectionStore } from '../../../../ui/selection/store';
+import { useExecutionRunsStore } from '../../../../ui/study-cases/runStore';
 import { useShellStore } from '../../../shell/useShellStore';
 import { busResultFixture, powerFlowResultFixture } from '../../rozplyw/__tests__/fixtures';
 
 describe('EkranCoWymagaUwagi — skonsolidowany rejestr przekroczeń', () => {
   beforeEach(() => {
     usePowerFlowResultsStore.getState().reset();
+    useExecutionRunsStore.setState({ runs: [] } as never);
     useSelectionStore.setState({ selectedElement: null, sldCenterOnElement: null } as never);
     useShellStore.setState({ activeSpace: 'wyniki' });
   });
@@ -26,6 +28,39 @@ describe('EkranCoWymagaUwagi — skonsolidowany rejestr przekroczeń', () => {
     expect(screen.getByTestId('mvd-cwu-brak-przebiegu')).toBeInTheDocument();
     expect(screen.getByText(T.brakPrzebieguKrok)).toBeInTheDocument();
     expect(screen.queryByTestId('mvd-cwu-w-normie')).not.toBeInTheDocument();
+  });
+
+  it('zakończony przebieg ZWARCIOWY → NIE „brak przebiegu" (defekt K6 / H-5 pkt 5)', () => {
+    // Rejestr wyprowadzał „czy jest przebieg" wyłącznie z wyniku ROZPŁYWU
+    // w store — po biegu zwarciowym ekran kłamał, że przebiegu nie ma.
+    useExecutionRunsStore.setState({
+      runs: [
+        {
+          id: 'run-sc',
+          study_case_id: 'case-1',
+          analysis_type: 'SC_3F',
+          solver_input_hash: 'h',
+          status: 'DONE',
+          started_at: '2026-07-30T10:00:00Z',
+          finished_at: '2026-07-30T10:00:03Z',
+          error_message: null,
+        },
+      ],
+    } as never);
+
+    render(<EkranCoWymagaUwagi />);
+
+    expect(screen.queryByTestId('mvd-cwu-brak-przebiegu')).not.toBeInTheDocument();
+    expect(screen.getByTestId('mvd-cwu-w-normie')).toBeInTheDocument();
+  });
+
+  it('stan „sieć w normie" ma DWA jawne następne kroki (dokumentacja, porównanie)', () => {
+    usePowerFlowResultsStore.setState({
+      results: powerFlowResultFixture({ bus_results: [busResultFixture({ v_pu: 1.0 })] }),
+    });
+    render(<EkranCoWymagaUwagi />);
+    expect(screen.getByTestId('mvd-cwu-w-normie-dokumentacja-akcja')).toBeInTheDocument();
+    expect(screen.getByTestId('mvd-cwu-w-normie-porownanie-akcja')).toBeInTheDocument();
   });
 
   it('przebieg bez przekroczeń → „sieć w normie" (odróżnione od braku przebiegu)', () => {

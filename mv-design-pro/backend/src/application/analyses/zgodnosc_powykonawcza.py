@@ -299,7 +299,10 @@ def _porownaj_punkt(
         model = u_pu * u_n
         odchylka = wartosc_pomiar - model
         model_mag = abs(model)
-        slad_model = f"Model U = u_pu × U_n = {u_pu:.6f} × {u_n:.6f} = {model:.6f} kV"
+        slad_model = (
+            f"Model U = u · U_n (napięcie względne · znamionowe) = "
+            f"{u_pu:.6f} × {u_n:.6f} = {model:.6f} kV"
+        )
         slad_pomiar = f"Pomiar U = {wartosc_pomiar:.6f} kV"
     else:
         tolerancja = moc_pct
@@ -320,16 +323,17 @@ def _porownaj_punkt(
             model = surowa
             odchylka = wartosc_pomiar - model
             model_mag = abs(model)
-            slad_model = f"Model P_from = {model:.6f} MW"
+            slad_model = f"Model P na początku gałęzi = {model:.6f} MW"
             slad_pomiar = f"Pomiar P = {wartosc_pomiar:.6f} MW"
         else:
-            # Q — porównanie po wartości bezwzględnej (V12K-040 nierozstrzygnięte).
+            # Q — porównanie po wartości bezwzględnej (konwencja znaku mocy biernej
+            # nierozstrzygnięta w danych pomiarowych; treść śladu bez kodów rejestru).
             model_mag = abs(surowa)
             odchylka = abs(wartosc_pomiar) - model_mag
             model = surowa
             slad_model = (
-                f"Model |Q_from| = |{surowa:.6f}| = {model_mag:.6f} Mvar "
-                "(znak nieinterpretowany — V12K-040)"
+                f"Model |Q| na początku gałęzi = |{surowa:.6f}| = {model_mag:.6f} Mvar "
+                "(znak mocy biernej nieinterpretowany — porównanie po wartości bezwzględnej)"
             )
             slad_pomiar = f"Pomiar |Q| = |{wartosc_pomiar:.6f}| = {abs(wartosc_pomiar):.6f} Mvar"
 
@@ -491,13 +495,14 @@ def build_zgodnosc_powykonawcza_view(
         },
         "zrodlo_tolerancji": zrodlo_tolerancji,
         "zalozenia_pl": [
-            "Porównanie 1:1 pomiar–model (wynik rozpływu FROZEN); bez estymacji "
-            "stanu (solver WLS istnieje, ale nie jest używany) i bez korekt modelu.",
-            "Napięcie U przeliczane na kV z u_pu przez napięcie znamionowe węzła "
-            "(U = u_pu · U_n).",
-            "Moce P/Q odczytywane z gałęzi w kierunku 'from' (p_from_mw / q_from_mvar).",
-            "Konwencja znaku Q nierozstrzygnięta (V12K-040): Q porównywane po "
-            "wartości bezwzględnej |Q|; znak odchyłki nie jest interpretowany.",
+            "Porównanie 1:1 pomiar–model (wynik rozpływu tylko do odczytu, bez "
+            "modyfikacji); bez estymacji stanu i bez korekt modelu.",
+            "Napięcie przeliczane na kV z wartości względnej przez napięcie "
+            "znamionowe węzła: $U = u \\cdot U_{n}$.",
+            "Moce P/Q odczytywane na początku gałęzi (w kierunku od węzła " "początkowego).",
+            "Konwencja znaku mocy biernej nierozstrzygnięta w danych pomiarowych: "
+            "Q porównywane po wartości bezwzględnej $|Q|$; znak odchyłki nie jest "
+            "interpretowany.",
             "Tolerancje wyłącznie jawne (z żądania); brak udokumentowanego źródła "
             "normatywnego dla wartości domyślnych, więc domyślnych nie przyjęto.",
         ],

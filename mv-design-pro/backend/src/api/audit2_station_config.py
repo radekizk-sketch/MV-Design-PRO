@@ -60,7 +60,9 @@ class StationAudit2ConfigBody(BaseModel):
     bay_device_withstand: dict[str, BayDeviceWithstandSpec] = Field(default_factory=dict)
 
 
-def _aggregate_loads_per_station_for_project(*, uow, project_id: UUID) -> dict[str, float]:
+def _aggregate_loads_per_station_for_project(
+    *, uow: UnitOfWork, project_id: UUID
+) -> dict[str, float]:
     """
     Phase 49: agreguje moce odbiorow per stacja z aktywnego snapshotu projektu.
 
@@ -159,7 +161,8 @@ def _to_dict(orm: StationAudit2ConfigORM) -> dict[str, Any]:
 
 @router.get("")
 def list_station_audit2_configs(
-    project_id: UUID, uow_factory=Depends(get_uow_factory)
+    project_id: UUID,
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> list[dict[str, Any]]:
     """Lista wszystkich konfiguracji audytu 2 dla projektu."""
     with uow_factory() as uow:
@@ -175,7 +178,9 @@ def list_station_audit2_configs(
 
 @router.get("/{station_id:path}")
 def get_station_audit2_config(
-    project_id: UUID, station_id: str, uow_factory=Depends(get_uow_factory)
+    project_id: UUID,
+    station_id: str,
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     """Pobiera konfiguracje audytu 2 dla (project_id, station_id)."""
     with uow_factory() as uow:

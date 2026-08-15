@@ -11,7 +11,8 @@ ZRODLA DANYCH:
 - Reklozery ABB REC615: ABB product guide 1MRS756379
 - Reklozery NOJA OSP: NOJA Power OSP katalog DP-0035
 - Reklozery Schneider ADVC: Schneider ADVC U20 karta katalogowa
-- Bezpieczniki ETI VV: ETI VV topikowy katalog
+- Bezpieczniki ETI VV: katalog ETI Polam „Wkladki sredniego napiecia VV" (URL i
+  dokladny wiersz zrodla przy kazdej pozycji — patrz sekcja BEZPIECZNIKI SN)
 - Aparatura generyczna: PN-EN 62271-100:2021 / PN-EN 62271-102:2018
 
 KONWENCJE:
@@ -20,6 +21,18 @@ KONWENCJE:
 - ik_ka [kA] — znamionowy prad zwarciowy laczeniowy (wylaczniki, reklozery)
 - icw_ka [kA] — prad wytrzymywany krotkotrwale 1s
 - medium — srodek gaszacy (SF6, VACUUM, AIR)
+- u_m_kv [kV] — napiecie najwyzsze urzadzenia U_m wg IEC 62271-1 (karta
+  UM-ICU-KATALOG). Dla calej aparatury SN identyczne z un_kv — rodzina
+  "12/17,5/24 kV" JEST napieciem najwyzszym urzadzenia z definicji normy.
+  ``None`` wylacznie tam, gdzie prad znamionowy pozycji nie wystepuje w
+  zrodle producenta (patrz niespojnosci nizej).
+- i_cu_ka [kA] — znamionowa zdolnosc wylaczalna zwarciowa I_cu wg
+  IEC 62271-100. WYLACZNIE dla aparatow zdolnych wylaczac prady zwarciowe
+  (CIRCUIT_BREAKER, RECLOSER, FUSE). Dla LOAD_SWITCH/DISCONNECTOR/
+  EARTH_SWITCH pole jest ZAWSZE None — te rodzaje aparatury NIE MAJA
+  zdolnosci wylaczania zwarc z definicji normy (rozlacznik/odlacznik/
+  uziemnik), a nie brakuje im danej. Generator equipment_proof zwraca dla
+  nich werdykt NIE_DOTYCZY, nigdy pozorny FAIL.
 
 TYPY APARATURY:
 - CIRCUIT_BREAKER — wylacznik (zwarcia i obciazeniowy)
@@ -63,9 +76,11 @@ SWITCH_CIRCUIT_BREAKERS: list[dict[str, Any]] = [
             "ik_ka": 20.0,
             "icw_ka": 20.0,
             "medium": "VACUUM",
+            "u_m_kv": 12.0,
+            "i_cu_ka": 20.0,
             "verification_status": "ZWERYFIKOWANY",
             "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "ABB VD4 katalog 1VCP000015",
+            "source_reference": "ABB VD4 katalog 1VCP000015 / TK 521_VD4_40kA_E (Ur=12kV, Isc=20kA @ 630A)",
             "contract_version": "2.0",
         },
     },
@@ -80,9 +95,11 @@ SWITCH_CIRCUIT_BREAKERS: list[dict[str, Any]] = [
             "ik_ka": 25.0,
             "icw_ka": 25.0,
             "medium": "VACUUM",
+            "u_m_kv": 12.0,
+            "i_cu_ka": 25.0,
             "verification_status": "ZWERYFIKOWANY",
             "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "ABB VD4 katalog 1VCP000015",
+            "source_reference": "ABB VD4 katalog 1VCP000015 / TK 521_VD4_40kA_E (Ur=12kV, Isc=25kA @ 1250A)",
             "contract_version": "2.0",
         },
     },
@@ -97,9 +114,11 @@ SWITCH_CIRCUIT_BREAKERS: list[dict[str, Any]] = [
             "ik_ka": 40.0,
             "icw_ka": 40.0,
             "medium": "VACUUM",
+            "u_m_kv": 12.0,
+            "i_cu_ka": 40.0,
             "verification_status": "ZWERYFIKOWANY",
             "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "ABB VD4 katalog 1VCP000015",
+            "source_reference": "ABB VD4 katalog 1VCP000015 / TK 521_VD4_40kA_E (Ur=12kV, Isc=40kA @ 2500A, VD4 12.25.40 p275)",
             "contract_version": "2.0",
         },
     },
@@ -115,9 +134,11 @@ SWITCH_CIRCUIT_BREAKERS: list[dict[str, Any]] = [
             "ik_ka": 20.0,
             "icw_ka": 20.0,
             "medium": "VACUUM",
+            "u_m_kv": 17.5,
+            "i_cu_ka": 20.0,
             "verification_status": "ZWERYFIKOWANY",
             "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "ABB VD4 katalog 1VCP000015",
+            "source_reference": "ABB VD4 katalog 1VCP000015 / TK 521_VD4_40kA_E (Ur=17.5kV, Isc=20kA @ 630A)",
             "contract_version": "2.0",
         },
     },
@@ -132,9 +153,11 @@ SWITCH_CIRCUIT_BREAKERS: list[dict[str, Any]] = [
             "ik_ka": 25.0,
             "icw_ka": 25.0,
             "medium": "VACUUM",
+            "u_m_kv": 17.5,
+            "i_cu_ka": 25.0,
             "verification_status": "ZWERYFIKOWANY",
             "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "ABB VD4 katalog 1VCP000015",
+            "source_reference": "ABB VD4 katalog 1VCP000015 / TK 521_VD4_40kA_E (Ur=17.5kV, Isc=25kA @ 1250A)",
             "contract_version": "2.0",
         },
     },
@@ -150,9 +173,11 @@ SWITCH_CIRCUIT_BREAKERS: list[dict[str, Any]] = [
             "ik_ka": 20.0,
             "icw_ka": 20.0,
             "medium": "VACUUM",
+            "u_m_kv": 24.0,
+            "i_cu_ka": 20.0,
             "verification_status": "ZWERYFIKOWANY",
             "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "ABB VD4 katalog 1VCP000015",
+            "source_reference": "ABB VD4 katalog 1VCP000015 / TK 521_VD4_40kA_E (Ur=24kV, Isc=20kA @ 630A)",
             "contract_version": "2.0",
         },
     },
@@ -167,9 +192,11 @@ SWITCH_CIRCUIT_BREAKERS: list[dict[str, Any]] = [
             "ik_ka": 25.0,
             "icw_ka": 25.0,
             "medium": "VACUUM",
+            "u_m_kv": 24.0,
+            "i_cu_ka": 25.0,
             "verification_status": "ZWERYFIKOWANY",
             "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "ABB VD4 katalog 1VCP000015",
+            "source_reference": "ABB VD4 katalog 1VCP000015 / TK 521_VD4_40kA_E (Ur=24kV, Isc=25kA @ 1250A)",
             "contract_version": "2.0",
         },
     },
@@ -181,30 +208,34 @@ SWITCH_CIRCUIT_BREAKERS: list[dict[str, Any]] = [
             "manufacturer": "ABB",
             "un_kv": 24.0,
             "in_a": 2000.0,
-            "ik_ka": 31.5,
-            "icw_ka": 31.5,
+            "ik_ka": 25.0,
+            "icw_ka": 25.0,
             "medium": "VACUUM",
+            "u_m_kv": 24.0,
+            "i_cu_ka": 25.0,
             "verification_status": "ZWERYFIKOWANY",
             "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "ABB VD4 katalog 1VCP000015",
+            "source_reference": "ABB VD4 katalog 1VCP000015 / KOREKTA: TK 521_VD4_40kA_E str.16/21 — VD4 24kV max Isc=25kA (31.5kA niedostepne przy 24kV, bylo zawyzone)",
             "contract_version": "2.0",
         },
     },
     # --- Siemens 3AH5 ---
     {
-        "id": "sw-cb-siemens-3ah5-12kv-630a",
-        "name": "Siemens 3AH5 12 kV 630 A",
+        "id": "sw-cb-siemens-3ah5-12kv-800a",
+        "name": "Siemens 3AH5 12 kV 800 A",
         "params": {
             "equipment_kind": "CIRCUIT_BREAKER",
             "manufacturer": "Siemens",
             "un_kv": 12.0,
-            "in_a": 630.0,
+            "in_a": 800.0,
             "ik_ka": 25.0,
             "icw_ka": 25.0,
             "medium": "VACUUM",
+            "u_m_kv": 12.0,
+            "i_cu_ka": 25.0,
             "verification_status": "ZWERYFIKOWANY",
             "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "Siemens 3AH5 karta katalogowa",
+            "source_reference": "Siemens 3AH5 katalog HG 11.05 (2017) str. 13 — KOREKTA z widma 630 A: linia 12 kV nie ma 630 A; zachowano Isc=25 kA, najmniejszy realny Ir dla 25 kA to 800 A (dyrektywa wlasciciela 2026-08-13: korekta na realny wariant)",
             "contract_version": "2.0",
         },
     },
@@ -219,26 +250,30 @@ SWITCH_CIRCUIT_BREAKERS: list[dict[str, Any]] = [
             "ik_ka": 25.0,
             "icw_ka": 25.0,
             "medium": "VACUUM",
+            "u_m_kv": 17.5,
+            "i_cu_ka": 25.0,
             "verification_status": "ZWERYFIKOWANY",
             "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "Siemens 3AH5 karta katalogowa",
+            "source_reference": "Siemens 3AH5 karta katalogowa / Siemens 3AH5 katalog HG 11.05 (2017) str.13 (Ur=17.5kV, Isc=25kA @ 1250A)",
             "contract_version": "2.0",
         },
     },
     {
-        "id": "sw-cb-siemens-3ah5-24kv-630a",
-        "name": "Siemens 3AH5 24 kV 630 A",
+        "id": "sw-cb-siemens-3ah5-24kv-1250a",
+        "name": "Siemens 3AH5 24 kV 1250 A",
         "params": {
             "equipment_kind": "CIRCUIT_BREAKER",
             "manufacturer": "Siemens",
             "un_kv": 24.0,
-            "in_a": 630.0,
+            "in_a": 1250.0,
             "ik_ka": 20.0,
             "icw_ka": 20.0,
             "medium": "VACUUM",
+            "u_m_kv": 24.0,
+            "i_cu_ka": 20.0,
             "verification_status": "ZWERYFIKOWANY",
             "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "Siemens 3AH5 karta katalogowa",
+            "source_reference": "Siemens 3AH5 katalog HG 11.05 (2017) str. 14 — KOREKTA z widma 630 A: linia 24 kV nie ma 630 A, a 20 kA idzie dopiero od Ir=1250 A (800 A wystepuje wylacznie z 16 kA); zachowano Isc=20 kA (dyrektywa wlasciciela 2026-08-13: korekta na realny wariant)",
             "contract_version": "2.0",
         },
     },
@@ -251,12 +286,14 @@ SWITCH_CIRCUIT_BREAKERS: list[dict[str, Any]] = [
             "manufacturer": "Eaton",
             "un_kv": 12.0,
             "in_a": 630.0,
-            "ik_ka": 20.0,
-            "icw_ka": 20.0,
+            "ik_ka": 25.0,
+            "icw_ka": 25.0,
             "medium": "VACUUM",
+            "u_m_kv": 12.0,
+            "i_cu_ka": 25.0,
             "verification_status": "ZWERYFIKOWANY",
             "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "Eaton W-VACi katalog ETN008001EN",
+            "source_reference": "Eaton W-VACi katalog ETN008001EN / KOREKTA: Eaton W-VACi Product Guide str.10 — 20kA niedostepne przy 12kV (opcje 25/26,3/31,5/40/50kA); przyjeto 25kA (wariant B, min. dla 630A)",
             "contract_version": "2.0",
         },
     },
@@ -281,9 +318,11 @@ SWITCH_LOAD_SWITCHES: list[dict[str, Any]] = [
             "ik_ka": 0.0,
             "icw_ka": 16.0,
             "medium": "SF6",
+            "u_m_kv": 12.0,
+            "i_cu_ka": None,
             "verification_status": "ZWERYFIKOWANY",
             "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "ABB NAL katalog 1VCL100001",
+            "source_reference": "ABB NAL katalog 1VCL100001 str.9 tabela I (Un=12kV; rozlacznik bez Isc — brak zdolnosci wylaczania z definicji urzadzenia)",
             "contract_version": "2.0",
         },
     },
@@ -298,9 +337,11 @@ SWITCH_LOAD_SWITCHES: list[dict[str, Any]] = [
             "ik_ka": 0.0,
             "icw_ka": 20.0,
             "medium": "SF6",
+            "u_m_kv": 12.0,
+            "i_cu_ka": None,
             "verification_status": "ZWERYFIKOWANY",
             "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "ABB NAL katalog 1VCL100001",
+            "source_reference": "ABB NAL katalog 1VCL100001 str.9 tabela I (Un=12kV; rozlacznik bez Isc)",
             "contract_version": "2.0",
         },
     },
@@ -316,9 +357,11 @@ SWITCH_LOAD_SWITCHES: list[dict[str, Any]] = [
             "ik_ka": 0.0,
             "icw_ka": 16.0,
             "medium": "SF6",
+            "u_m_kv": 24.0,
+            "i_cu_ka": None,
             "verification_status": "ZWERYFIKOWANY",
             "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "ABB NAL katalog 1VCL100001",
+            "source_reference": "ABB NAL katalog 1VCL100001 str.9 tabela I (Un=24kV; rozlacznik bez Isc)",
             "contract_version": "2.0",
         },
     },
@@ -333,9 +376,11 @@ SWITCH_LOAD_SWITCHES: list[dict[str, Any]] = [
             "ik_ka": 0.0,
             "icw_ka": 20.0,
             "medium": "SF6",
+            "u_m_kv": 24.0,
+            "i_cu_ka": None,
             "verification_status": "ZWERYFIKOWANY",
             "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "ABB NAL katalog 1VCL100001",
+            "source_reference": "ABB NAL katalog 1VCL100001 str.9 tabela I (Un=24kV; rozlacznik bez Isc)",
             "contract_version": "2.0",
         },
     },
@@ -351,6 +396,8 @@ SWITCH_LOAD_SWITCHES: list[dict[str, Any]] = [
             "ik_ka": 0.0,
             "icw_ka": 20.0,
             "medium": "SF6",
+            "u_m_kv": 12.0,
+            "i_cu_ka": None,
             "verification_status": "ZWERYFIKOWANY",
             "catalog_status": "PRODUKCYJNY_V1",
             "source_reference": "Schneider RM6 katalog LVPED304049",
@@ -369,6 +416,8 @@ SWITCH_LOAD_SWITCHES: list[dict[str, Any]] = [
             "ik_ka": 0.0,
             "icw_ka": 16.0,
             "medium": "SF6",
+            "u_m_kv": 17.5,
+            "i_cu_ka": None,
             "verification_status": "ZWERYFIKOWANY",
             "catalog_status": "PRODUKCYJNY_V1",
             "source_reference": "Schneider RM6 katalog LVPED304049",
@@ -387,6 +436,8 @@ SWITCH_LOAD_SWITCHES: list[dict[str, Any]] = [
             "ik_ka": 0.0,
             "icw_ka": 20.0,
             "medium": "SF6",
+            "u_m_kv": 24.0,
+            "i_cu_ka": None,
             "verification_status": "ZWERYFIKOWANY",
             "catalog_status": "PRODUKCYJNY_V1",
             "source_reference": "Schneider SM6 MCC katalog",
@@ -413,6 +464,8 @@ SWITCH_DISCONNECTORS: list[dict[str, Any]] = [
             "ik_ka": 0.0,
             "icw_ka": 20.0,
             "medium": "AIR",
+            "u_m_kv": 12.0,
+            "i_cu_ka": None,
             "verification_status": "ZWERYFIKOWANY",
             "catalog_status": "PRODUKCYJNY_V1",
             "source_reference": "ABB OJS karta katalogowa",
@@ -430,6 +483,8 @@ SWITCH_DISCONNECTORS: list[dict[str, Any]] = [
             "ik_ka": 0.0,
             "icw_ka": 20.0,
             "medium": "AIR",
+            "u_m_kv": 17.5,
+            "i_cu_ka": None,
             "verification_status": "ZWERYFIKOWANY",
             "catalog_status": "PRODUKCYJNY_V1",
             "source_reference": "ABB OJS karta katalogowa",
@@ -447,6 +502,8 @@ SWITCH_DISCONNECTORS: list[dict[str, Any]] = [
             "ik_ka": 0.0,
             "icw_ka": 20.0,
             "medium": "AIR",
+            "u_m_kv": 24.0,
+            "i_cu_ka": None,
             "verification_status": "ZWERYFIKOWANY",
             "catalog_status": "PRODUKCYJNY_V1",
             "source_reference": "ABB OJS karta katalogowa",
@@ -464,6 +521,8 @@ SWITCH_DISCONNECTORS: list[dict[str, Any]] = [
             "ik_ka": 0.0,
             "icw_ka": 12.5,
             "medium": "AIR",
+            "u_m_kv": 17.5,
+            "i_cu_ka": None,
             "verification_status": "CZESCIOWO_ZWERYFIKOWANY",
             "catalog_status": "REFERENCYJNY_V1",
             "source_reference": "PN-EN 62271-102:2018 / parametry typowe odlacznikow slupowych",
@@ -490,6 +549,8 @@ SWITCH_RECLOSERS: list[dict[str, Any]] = [
             "ik_ka": 12.5,
             "icw_ka": 12.5,
             "medium": "VACUUM",
+            "u_m_kv": 17.5,
+            "i_cu_ka": 12.5,
             "verification_status": "ZWERYFIKOWANY",
             "catalog_status": "PRODUKCYJNY_V1",
             "source_reference": "ABB REC615 product guide 1MRS756379",
@@ -507,6 +568,8 @@ SWITCH_RECLOSERS: list[dict[str, Any]] = [
             "ik_ka": 12.5,
             "icw_ka": 12.5,
             "medium": "VACUUM",
+            "u_m_kv": 24.0,
+            "i_cu_ka": 12.5,
             "verification_status": "ZWERYFIKOWANY",
             "catalog_status": "PRODUKCYJNY_V1",
             "source_reference": "ABB REC615 product guide 1MRS756379",
@@ -524,6 +587,8 @@ SWITCH_RECLOSERS: list[dict[str, Any]] = [
             "ik_ka": 12.5,
             "icw_ka": 12.5,
             "medium": "VACUUM",
+            "u_m_kv": 15.0,
+            "i_cu_ka": 12.5,
             "verification_status": "ZWERYFIKOWANY",
             "catalog_status": "PRODUKCYJNY_V1",
             "source_reference": "NOJA Power OSP katalog DP-0035",
@@ -541,6 +606,8 @@ SWITCH_RECLOSERS: list[dict[str, Any]] = [
             "ik_ka": 8.0,
             "icw_ka": 8.0,
             "medium": "VACUUM",
+            "u_m_kv": 17.5,
+            "i_cu_ka": 8.0,
             "verification_status": "ZWERYFIKOWANY",
             "catalog_status": "PRODUKCYJNY_V1",
             "source_reference": "Schneider ADVC U20 karta katalogowa",
@@ -552,8 +619,45 @@ SWITCH_RECLOSERS: list[dict[str, Any]] = [
 
 # =============================================================================
 # BEZPIECZNIKI SN (FUSE) — ETI VV topikowe
-# Zrodlo: ETI VV topikowy katalog (12 kV i 17.5 kV)
 # =============================================================================
+#
+# ZRODLO (karta K-E-FUSE-TCC-KATALOG, pomiar 2026-08-14): publiczny katalog
+# ETI Polam „Wkladki sredniego napiecia VV" (26 stron) — `_ETI_VV_KATALOG_URL`.
+# Kazda pozycja nizej wskazuje w `source_reference` DOKLADNY wiersz zrodla:
+# oznaczenie typu, nr kodowy producenta i wymiar „e", bo od wymiaru „e" zalezy
+# znamionowa zdolnosc wylaczania (ta sama wkladka w innej dlugosci ma inna).
+#
+# KOREKTA FABRYKACJI: do 2026-08-14 wszystkie 7 pozycji nioslo
+# `ik_ka = i_cu_ka = 31,5 kA`. Zmierzono: ZADNA tabela ETI VV dla 12 kV ani
+# 17,5 kV nie podaje 31,5 kA — katalog podaje 50 kA (12 kV e=192, 17,5 kV
+# e=292) albo 63 kA (12 kV e=292/442, 17,5 kV e=367/442). Wartosc 31,5 kA
+# wystepuje w tym katalogu WYLACZNIE dla 10/24 kV e=292 i 20/36 kV e=537 —
+# czyli dla napiec, ktorych ta lista nie zawiera. Liczba byla wiec nieoparta
+# na zrodle. Przyjeto wymiar STANDARDOWY wg PN-IEC 60282-1, ktory sam katalog
+# wskazuje dla danej klasy napiecia (12 kV -> e=292 mm, 17,5 kV -> e=367 mm),
+# a dla 200 A — jedyny oferowany (e=442 mm); wszystkie te tabele daja 63 kA.
+#
+# DLUG JAWNY — FUSE-TCC-KATALOG (pasmo czasowo-pradowe) NIE zostal zdjety.
+# Katalog ETI publikuje charakterystyki t-I WYLACZNIE jako wykresy log-log
+# (osobna strona na klase napiecia; w tresci PDF nie ma ani jednego punktu
+# liczbowego pasma), a karta techniczna ETI mowi wprost: „I/t Characteristics
+# According to the curves". Tabelaryczne sa tylko: I3 (najmniejszy prad
+# wylaczalny), Rc, Pn oraz calki I2t przedlukowa/wylaczania. Z calki I2t NIE
+# wolno wyprowadzic pasma: t = I2t/I^2 obowiazuje jedynie w zakresie
+# adiabatycznym topienia, a calka wylaczania zawiera energie luku, wiec
+# odtworzony „czas" bylby fabrykacja fizyki — dokladnie ta klasa klamstwa,
+# ktora karta N-D5-FUSE usuwala. Odczyt punktow „z oka" z wykresu jest
+# zakazany przez karte. Dlatego `rozstrzygnij_podstawe_krzywej` nadal zwraca
+# dla bezpiecznika jawna pozycje bez punktow (BRAK_PASMA_BEZPIECZNIKA) —
+# stan uczciwy. Zdjecie dlugu wymaga danych, ktorych producent nie publikuje
+# liczbowo (pasmo od ETI w postaci tabelarycznej albo zmierzonej).
+
+#: Publiczna karta katalogowa ETI Polam — wkladki topikowe SN typu VV.
+_ETI_VV_KATALOG_URL = "https://www.etipolam.com.pl/images/userfiles/pl-PL/documents/Catalog/vv.pdf"
+
+#: Znamionowa zdolnosc wylaczania wkladek VV w wymiarach uzytych nizej.
+#: Wprost ze stopki „Znamionowa zdolnosc wylaczania" wlasciwej tabeli zrodla.
+_ETI_VV_ZDOLNOSC_WYLACZANIA_KA = 63.0
 
 SWITCH_FUSES: list[dict[str, Any]] = [
     {
@@ -564,12 +668,18 @@ SWITCH_FUSES: list[dict[str, Any]] = [
             "manufacturer": "ETI",
             "un_kv": 12.0,
             "in_a": 16.0,
-            "ik_ka": 31.5,
+            "ik_ka": _ETI_VV_ZDOLNOSC_WYLACZANIA_KA,
             "icw_ka": 0.0,
             "medium": None,
+            "u_m_kv": 12.0,
+            "i_cu_ka": _ETI_VV_ZDOLNOSC_WYLACZANIA_KA,
             "verification_status": "ZWERYFIKOWANY",
             "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "ETI VV topikowy katalog",
+            "source_reference": (
+                f"ETI VVC3 12kV/16A, nr kodowy 004230008, e=292 mm (wymiar standardowy "
+                f"wg PN-IEC 60282-1); tabela 6/12 kV, zdolnosc wylaczania 63 kA; "
+                f"{_ETI_VV_KATALOG_URL}"
+            ),
             "contract_version": "2.0",
         },
     },
@@ -581,12 +691,18 @@ SWITCH_FUSES: list[dict[str, Any]] = [
             "manufacturer": "ETI",
             "un_kv": 12.0,
             "in_a": 40.0,
-            "ik_ka": 31.5,
+            "ik_ka": _ETI_VV_ZDOLNOSC_WYLACZANIA_KA,
             "icw_ka": 0.0,
             "medium": None,
+            "u_m_kv": 12.0,
+            "i_cu_ka": _ETI_VV_ZDOLNOSC_WYLACZANIA_KA,
             "verification_status": "ZWERYFIKOWANY",
             "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "ETI VV topikowy katalog",
+            "source_reference": (
+                f"ETI VVC3 12kV/40A, nr kodowy 004230013, e=292 mm (wymiar standardowy "
+                f"wg PN-IEC 60282-1); tabela 6/12 kV, zdolnosc wylaczania 63 kA; "
+                f"{_ETI_VV_KATALOG_URL}"
+            ),
             "contract_version": "2.0",
         },
     },
@@ -598,12 +714,18 @@ SWITCH_FUSES: list[dict[str, Any]] = [
             "manufacturer": "ETI",
             "un_kv": 12.0,
             "in_a": 63.0,
-            "ik_ka": 31.5,
+            "ik_ka": _ETI_VV_ZDOLNOSC_WYLACZANIA_KA,
             "icw_ka": 0.0,
             "medium": None,
+            "u_m_kv": 12.0,
+            "i_cu_ka": _ETI_VV_ZDOLNOSC_WYLACZANIA_KA,
             "verification_status": "ZWERYFIKOWANY",
             "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "ETI VV topikowy katalog",
+            "source_reference": (
+                f"ETI VVC3 12kV/63A, nr kodowy 004230015, e=292 mm (wymiar standardowy "
+                f"wg PN-IEC 60282-1); tabela 6/12 kV, zdolnosc wylaczania 63 kA; "
+                f"{_ETI_VV_KATALOG_URL}"
+            ),
             "contract_version": "2.0",
         },
     },
@@ -615,12 +737,18 @@ SWITCH_FUSES: list[dict[str, Any]] = [
             "manufacturer": "ETI",
             "un_kv": 12.0,
             "in_a": 100.0,
-            "ik_ka": 31.5,
+            "ik_ka": _ETI_VV_ZDOLNOSC_WYLACZANIA_KA,
             "icw_ka": 0.0,
             "medium": None,
+            "u_m_kv": 12.0,
+            "i_cu_ka": _ETI_VV_ZDOLNOSC_WYLACZANIA_KA,
             "verification_status": "ZWERYFIKOWANY",
             "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "ETI VV topikowy katalog",
+            "source_reference": (
+                f"ETI VVC3 12kV/100A, nr kodowy 004230017, e=292 mm (wymiar standardowy "
+                f"wg PN-IEC 60282-1); tabela 6/12 kV, zdolnosc wylaczania 63 kA; "
+                f"{_ETI_VV_KATALOG_URL}"
+            ),
             "contract_version": "2.0",
         },
     },
@@ -632,12 +760,20 @@ SWITCH_FUSES: list[dict[str, Any]] = [
             "manufacturer": "ETI",
             "un_kv": 12.0,
             "in_a": 200.0,
-            "ik_ka": 31.5,
+            "ik_ka": _ETI_VV_ZDOLNOSC_WYLACZANIA_KA,
             "icw_ka": 0.0,
             "medium": None,
+            "u_m_kv": 12.0,
+            "i_cu_ka": _ETI_VV_ZDOLNOSC_WYLACZANIA_KA,
             "verification_status": "ZWERYFIKOWANY",
             "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "ETI VV topikowy katalog",
+            # 200 A NIE wystepuje w wymiarze standardowym e=292 mm (tabela 6/12 kV
+            # konczy sie na 160 A) — producent oferuje ten prad tylko w e=442/537 mm.
+            "source_reference": (
+                f"ETI VVC3 12kV/200A 442, nr kodowy 004230520, e=442 mm (prad 200 A nie "
+                f"wystepuje w wymiarze standardowym e=292 mm); tabela 6/12 kV, "
+                f"zdolnosc wylaczania 63 kA; {_ETI_VV_KATALOG_URL}"
+            ),
             "contract_version": "2.0",
         },
     },
@@ -649,12 +785,18 @@ SWITCH_FUSES: list[dict[str, Any]] = [
             "manufacturer": "ETI",
             "un_kv": 17.5,
             "in_a": 63.0,
-            "ik_ka": 31.5,
+            "ik_ka": _ETI_VV_ZDOLNOSC_WYLACZANIA_KA,
             "icw_ka": 0.0,
             "medium": None,
+            "u_m_kv": 17.5,
+            "i_cu_ka": _ETI_VV_ZDOLNOSC_WYLACZANIA_KA,
             "verification_status": "ZWERYFIKOWANY",
             "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "ETI VV topikowy katalog",
+            "source_reference": (
+                f"ETI VVC3 17,5kV/63A, nr kodowy 004240015, e=367 mm (wymiar standardowy "
+                f"wg PN-IEC 60282-1); tabela 10/17,5 kV, zdolnosc wylaczania 63 kA; "
+                f"{_ETI_VV_KATALOG_URL}"
+            ),
             "contract_version": "2.0",
         },
     },
@@ -666,12 +808,18 @@ SWITCH_FUSES: list[dict[str, Any]] = [
             "manufacturer": "ETI",
             "un_kv": 17.5,
             "in_a": 100.0,
-            "ik_ka": 31.5,
+            "ik_ka": _ETI_VV_ZDOLNOSC_WYLACZANIA_KA,
             "icw_ka": 0.0,
             "medium": None,
+            "u_m_kv": 17.5,
+            "i_cu_ka": _ETI_VV_ZDOLNOSC_WYLACZANIA_KA,
             "verification_status": "ZWERYFIKOWANY",
             "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "ETI VV topikowy katalog",
+            "source_reference": (
+                f"ETI VVC3 17,5kV/100A, nr kodowy 004240017, e=367 mm (wymiar standardowy "
+                f"wg PN-IEC 60282-1); tabela 10/17,5 kV, zdolnosc wylaczania 63 kA; "
+                f"{_ETI_VV_KATALOG_URL}"
+            ),
             "contract_version": "2.0",
         },
     },
@@ -695,6 +843,8 @@ SWITCH_EARTH_SWITCHES: list[dict[str, Any]] = [
             "ik_ka": 0.0,
             "icw_ka": 20.0,
             "medium": None,
+            "u_m_kv": 12.0,
+            "i_cu_ka": None,
             "verification_status": "CZESCIOWO_ZWERYFIKOWANY",
             "catalog_status": "REFERENCYJNY_V1",
             "source_reference": "PN-EN 62271-102:2018 / parametry typowe",
@@ -712,6 +862,8 @@ SWITCH_EARTH_SWITCHES: list[dict[str, Any]] = [
             "ik_ka": 0.0,
             "icw_ka": 20.0,
             "medium": None,
+            "u_m_kv": 17.5,
+            "i_cu_ka": None,
             "verification_status": "CZESCIOWO_ZWERYFIKOWANY",
             "catalog_status": "REFERENCYJNY_V1",
             "source_reference": "PN-EN 62271-102:2018 / parametry typowe",
@@ -820,6 +972,14 @@ def _polish_switch(
     medium: str,
     source: str,
 ) -> dict[str, Any]:
+    # UM-ICU-KATALOG: U_m aparatu SN = Ur z karty katalogowej (rodzina napieciowa
+    # "12/17,5/24 kV" JEST napieciem najwyzszym urzadzenia wg IEC 62271-1) —
+    # identycznosc obowiazujaca dla calej aparatury SN, nie tylko marek z kart
+    # zrodlowych tej karty. I_cu (zdolnosc wylaczalna) dotyczy WYLACZNIE
+    # wylacznikow (equipment_kind == CIRCUIT_BREAKER) — rozlaczniki i odlaczniki
+    # nie maja tej zdolnosci z definicji normy, wiec pole zostaje None
+    # (NIE_DOTYCZY), nie zero i nie kopia icw_ka.
+    i_cu_ka = ik_ka if equipment_kind == "CIRCUIT_BREAKER" else None
     return {
         "id": item_id,
         "name": name,
@@ -831,6 +991,8 @@ def _polish_switch(
             "ik_ka": ik_ka,
             "icw_ka": ik_ka,
             "medium": medium,
+            "u_m_kv": un_kv,
+            "i_cu_ka": i_cu_ka,
             "verification_status": "ZWERYFIKOWANY",
             "catalog_status": "PRODUKCYJNY_V1",
             "source_reference": source,

@@ -34,7 +34,7 @@ import { useSelectionStore } from '../selection';
 import { sanitizeDisplayValue } from '../shell/displayHelpers';
 import { useNetworkBuildStore } from './networkBuildStore';
 import { useAppStateStore } from '../app-state';
-import { useReadinessLiveStore } from '../engineering-readiness/readinessLiveStore';
+import { useProblemyGotowosci } from '../../ui2/spaces/gotowosc/adapters/gotowoscAdapter';
 import { issueTargetsElement } from './liveReadiness';
 import {
   formatStationSwitchgearLayoutLabelPl,
@@ -737,10 +737,11 @@ function pvCatalogPower(generator: Generator | null | undefined): number | null 
 }
 
 function pvCatalogFaultContribution(generator: Generator | null | undefined): number | null {
-  const catalogRef = generator?.catalog_ref ?? null;
-  const catalog = catalogRef ? PV_INVERTER_CATALOG.find((entry) => entry.id === catalogRef) : null;
-  return catalog?.fault_current_capability_pu
-    ?? valueAsNumber(generatorMaterializedParams(generator).fault_current_capability_pu)
+  // Karta K-Q: katalog mirrorowy NIE jest już źródłem granicznego prądu
+  // zwarciowego — niósł liczbę wpisaną z ręki, bez karty producenta. Zostają
+  // dwa tory z pokryciem w modelu: sparametryzowane pole generatora i jego
+  // metadane. Brak obu = brak wartości (null), a nie podstawiona liczba.
+  return valueAsNumber(generatorMaterializedParams(generator).fault_current_capability_pu)
     ?? valueAsNumber(generatorMeta(generator).fault_current_capability_pu);
 }
 
@@ -2421,7 +2422,7 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
   const snapshot = useSnapshotStore((s) => s.snapshot);
   const executeDomainOperation = useSnapshotStore((s) => s.executeDomainOperation);
   const logicalViews = useSnapshotStore((s) => s.logicalViews);
-  const readinessIssues = useReadinessLiveStore((s) => s.issues);
+  const readinessIssues = useProblemyGotowosci();
   const openOperationForm = useNetworkBuildStore((s) => s.openOperationForm);
   const openRouteSurface = useNetworkBuildStore((s) => s.openRouteSurface);
   const activeMode = useAppStateStore((s) => s.activeMode);

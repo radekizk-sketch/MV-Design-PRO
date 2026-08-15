@@ -28,8 +28,8 @@ export function poleNnStrings(isSource: boolean) {
     wierszStacja: 'Stacja',
     wierszSzyna: 'Szyna nN',
     wierszRola: 'Rola pola',
-    rolaFeeder: 'Odpływ (FEEDER)',
-    rolaSource: 'Źródłowe (SOURCE)',
+    rolaFeeder: 'Odpływ',
+    rolaSource: 'Pole źródłowe',
 
     downstreamTytul: 'Co to uruchamia',
     downstreamOpisFeeder:

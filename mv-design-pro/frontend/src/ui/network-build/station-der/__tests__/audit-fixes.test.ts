@@ -139,26 +139,60 @@ describe('Naprawa A.3 — kappa (peak SC factor IEC 60909)', () => {
   });
 });
 
-describe('Naprawa A.4 — fault_current_capability_pu w BESS i FW', () => {
-  it('BESS PCS ma fault_current_capability_pu', async () => {
-    const { BESS_PCS_CATALOG } = await import('../catalogs');
-    for (const pcs of BESS_PCS_CATALOG) {
-      expect(pcs.fault_current_capability_pu).toBeGreaterThan(1.0);
-      expect(pcs.fault_current_capability_pu).toBeLessThan(1.5);
+describe('Karta K-Q — graniczny prąd zwarciowy nie jest już daną katalogową', () => {
+  // INTENCJA POPRZEDNICH TESTÓW (Naprawa A.4): pilnowały, że każda pozycja PCS
+  // i turbiny NIESIE `fault_current_capability_pu` w przedziale 1,0-1,5 oraz że
+  // DFIG niesie `transient_short_circuit_pu` ≥ 4. Utrwalały więc liczby wpisane
+  // z ręki: taki limit podaje wyłącznie karta katalogowa konkretnego wyrobu,
+  // backend go nie ma, a kreator dokładał własną fabrykację (BESS → 1,2).
+  // Nowe piny idą po WSZYSTKICH pozycjach WSZYSTKICH czterech katalogów.
+
+  it('żadna pozycja urządzenia nie deklaruje granicznego prądu zwarciowego', async () => {
+    const {
+      PV_INVERTER_CATALOG,
+      BESS_PCS_CATALOG,
+      BESS_BATTERY_CATALOG,
+      WIND_TURBINE_CATALOG,
+      DER_FAULT_CURRENT_DATA_CATALOG,
+    } = await import('../catalogs');
+    const wszystkie: ReadonlyArray<Record<string, unknown>> = [
+      ...PV_INVERTER_CATALOG,
+      ...BESS_PCS_CATALOG,
+      ...BESS_BATTERY_CATALOG,
+      ...WIND_TURBINE_CATALOG,
+      ...DER_FAULT_CURRENT_DATA_CATALOG,
+    ] as unknown as ReadonlyArray<Record<string, unknown>>;
+    expect(wszystkie.length).toBeGreaterThanOrEqual(18);
+    for (const pozycja of wszystkie) {
+      expect(pozycja).not.toHaveProperty('fault_current_capability_pu');
+      expect(pozycja).not.toHaveProperty('transient_short_circuit_pu');
     }
   });
 
-  it('Wind turbines mają fault_current_capability_pu', async () => {
+  it('żadna pozycja turbiny nie deklaruje danych mechanicznych bez karty producenta', async () => {
     const { WIND_TURBINE_CATALOG } = await import('../catalogs');
-    for (const wt of WIND_TURBINE_CATALOG) {
-      expect(wt.fault_current_capability_pu).toBeGreaterThan(1.0);
+    for (const wt of WIND_TURBINE_CATALOG as unknown as ReadonlyArray<Record<string, unknown>>) {
+      expect(wt).not.toHaveProperty('hub_height_m');
+      expect(wt).not.toHaveProperty('rotor_diameter_m');
+      expect(wt).not.toHaveProperty('generator_type');
     }
   });
 
-  it('DFIG (Siemens SWT) ma transient_short_circuit_pu', async () => {
-    const { WIND_TURBINE_CATALOG } = await import('../catalogs');
-    const dfig = WIND_TURBINE_CATALOG.find((wt) => wt.generator_type === 'DFIG');
-    expect(dfig?.transient_short_circuit_pu).toBeGreaterThanOrEqual(4);
+  it('żadna pozycja baterii nie przypisuje danych imiennemu producentowi', async () => {
+    const { BESS_BATTERY_CATALOG } = await import('../catalogs');
+    for (const bat of BESS_BATTERY_CATALOG as unknown as ReadonlyArray<Record<string, unknown>>) {
+      expect(bat).not.toHaveProperty('manufacturer');
+      expect(bat).not.toHaveProperty('cycle_life');
+      expect(String(bat.label_pl)).not.toMatch(/BYD|CATL/);
+    }
+  });
+
+  it('pozycje mirrorowane z backendu niosą jego status i źródło', async () => {
+    const { PV_INVERTER_CATALOG, BESS_PCS_CATALOG, WIND_TURBINE_CATALOG } = await import('../catalogs');
+    for (const item of [...PV_INVERTER_CATALOG, ...BESS_PCS_CATALOG, ...WIND_TURBINE_CATALOG]) {
+      expect(item.verification_status).toBe('REFERENCYJNY');
+      expect(item.source_reference).toContain('MV-DESIGN-PRO');
+    }
   });
 });
 
@@ -237,20 +271,51 @@ describe('Naprawa B.1 — uziemienie neutralne (4 typy)', () => {
     expect(types).toContain('directly_grounded');
   });
 
-  it('Petersen coil ma typowy Ik1 < 20A (kompensacja)', () => {
-    const p = getMvNeutralGrounding('mng_petersen');
-    expect(p?.typical_ik1_a_range.max).toBeLessThanOrEqual(20);
-  });
-
-  it('Resistor 7Ω ma R=7 i typowe Ik1≈300A', () => {
+  it('Resistor 7Ω ma R=7 (parametr definiujący wariant)', () => {
     const r = getMvNeutralGrounding('mng_resistor_low');
     expect(r?.r_ohm).toBe(7);
-    expect(r?.typical_ik1_a_range.min).toBeGreaterThan(200);
   });
 
-  it('Directly grounded ma Ik1 maksymalne (>5kA)', () => {
-    const d = getMvNeutralGrounding('mng_directly');
-    expect(d?.typical_ik1_a_range.min).toBeGreaterThan(1000);
+  // ===========================================================================
+  // KARTA K-O — PIN KLASY: katalog uziemienia nie zgaduje prądu ani praktyki
+  // ===========================================================================
+  //
+  // Trzy poprzednie piny sprawdzały „typowy zakres I_k1" (Petersen < 20 A,
+  // rezystor > 200 A, bezpośrednie > 1 kA) — czyli utrwalały liczby, które nie
+  // pochodziły z żadnego źródła i były pokazywane użytkownikowi obok wyniku
+  // solvera SC1F. Pin poniżej pilnuje, żeby nie wróciły.
+  it('KLASA: żadna pozycja nie niesie zgadywanego I_k1 ani cudzej praktyki', () => {
+    expect(MV_NEUTRAL_GROUNDING_CATALOG.length).toBeGreaterThan(0);
+    for (const g of MV_NEUTRAL_GROUNDING_CATALOG) {
+      expect(g).not.toHaveProperty('typical_ik1_a_range');
+      expect(g).not.toHaveProperty('typical_operators_pl');
+    }
+  });
+
+  it('KLASA: opisy wariantów nie przypisują praktyki imiennym operatorom', () => {
+    const operatorzy = ['PGE', 'Tauron', 'Energa', 'Enea', 'PSE'];
+    for (const g of MV_NEUTRAL_GROUNDING_CATALOG) {
+      for (const o of operatorzy) {
+        expect(
+          g.description_pl.includes(o),
+          `Wariant ${g.id} przypisuje praktyke operatorowi "${o}" bez cytatu z IRiESD.`,
+        ).toBe(false);
+      }
+    }
+  });
+
+  // Pole widoczne w rozwijanej liście — usunięcie liczby z `typical_ik1_a_range`
+  // nic nie daje, jeśli ta sama liczba zostaje w nazwie wariantu (dokładnie ten
+  // błąd popełniono przy pierwszym podejściu do tej karty).
+  it('KLASA: nazwa ani opis wariantu nie podaje wartości I_k1 (liczy ją SC1F)', () => {
+    for (const g of MV_NEUTRAL_GROUNDING_CATALOG) {
+      const tekst = `${g.label_pl} ${g.description_pl}`;
+      expect(
+        /I\s*k?1?\s*[≈~=]\s*\d/i.test(tekst) || /Ik1\s*[≈~=]?\s*\d/i.test(tekst),
+        `Wariant ${g.id} podaje liczbowy I_k1 w tekscie: "${tekst}". `
+          + 'Prad zwarcia doziemnego tej sieci wylicza solver SC1F.',
+      ).toBe(false);
+    }
   });
 });
 

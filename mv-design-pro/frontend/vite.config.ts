@@ -22,6 +22,14 @@ export default defineConfig(({ mode }) => {
     server: {
       host: '0.0.0.0',
       port: 5173,
+      // KANON PREFIKSU (karta PREFIKSY): backend wystawia KAŻDY router HTTP pod
+      // `/api`, więc jedna reguła wystarczy. Wcześniej stała tu druga reguła dla
+      // `/projects` — obejście tego, że router archiwum projektu był zamontowany
+      // poza `/api`. Obejście leczyło objaw: dopóki go nie było, końcówki
+      // istniały, ale z przeglądarki były NIEOSIĄGALNE (eksport paczki dostawał
+      // HTML serwera statycznego zamiast ZIP-a). Router przeniesiono pod `/api`,
+      // więc reguła zniknęła razem z przyczyną. Każdy nowy wpis tutaj oznacza
+      // router poza kanonem — pilnuje tego `scripts/route_prefix_guard.py`.
       proxy: {
         '/api': {
           target: apiUrl,

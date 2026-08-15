@@ -11,6 +11,7 @@ import { useState } from 'react';
 
 import {
   ReferenceNetworkList,
+  ReferenceNetworkRunPanel,
   ReferenceNetworkRunner,
   ValidationReportPanel,
   useReferenceNetworkDetail,
@@ -47,6 +48,10 @@ export function ReferenceNetworkSurface(_props: ReferenceNetworkSurfaceProps = {
               networkId={selectedId}
               onValidationComplete={setValidationReport}
             />
+            {/* ROUTERY-4A (S6): bieg solvera z wynikiem per węzeł — dla sieci
+                niesymetrycznych (IEEE 13/34-bus) jedyna produkcyjna droga do
+                rozpływu BFS per faza. */}
+            <ReferenceNetworkRunPanel networkId={selectedId} />
             <ValidationReportPanel report={validationReport} isDerNetwork={isDerNetwork} />
             {detail.data?.has_dynamic_expected && (
               <DynamicValidationPanel networkId={selectedId} />

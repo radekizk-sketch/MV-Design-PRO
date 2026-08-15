@@ -1,7 +1,7 @@
 import { buildCatalogBinding } from './catalogBinding';
 import type { BayKind, CompleteMvBayTemplateSummary } from './BayTemplatePicker';
 import type { Manufacturer } from './manufacturer';
-import type { SwitchgearFamily } from './SwitchgearFamilyPicker';
+import type { FactoryConfigurationWire, SwitchgearFamily } from './SwitchgearFamilyPicker';
 import { executeDomainOp } from '../topology/domainApi';
 import type {
   BranchPointCatalogType,
@@ -170,21 +170,43 @@ export async function fetchSwitchgearFamilies(
 }
 
 /**
- * Domknięcie listy napięć rodziny rozdzielnic na WEJŚCIU danych (V12K-259).
+ * Domknięcie list napięciowych rodziny rozdzielnic na WEJŚCIU danych (V12K-259).
  *
- * Kontrakt deklaruje `voltage_levels` jako pole wymagane, ale to deklaracja o TYPIE,
- * nie gwarancja o ODPOWIEDZI SIECIOWEJ: rekord bez tego pola (starszy wpis, katalog
- * odpowiadający częściowo, atrapa w scenie) przechodził do komponentu i wywracał CAŁY
- * kreator źródła zasilania — `r.voltage_levels.length` na `undefined`, biały ekran bez
+ * Kontrakt deklaruje `network_voltages_kv` i `um_classes_kv` jako pola wymagane, ale to
+ * deklaracja o TYPIE, nie gwarancja o ODPOWIEDZI SIECIOWEJ: rekord bez tych pól (starszy
+ * wpis, katalog odpowiadający częściowo, atrapa w scenie) przechodził do komponentu i
+ * wywracał CAŁY kreator źródła zasilania — `.length` na `undefined`, biały ekran bez
  * granicy błędu. Sonda scen zrzutowych zobaczyła to jako jedyną scenę bez roota.
  *
- * Brak listy znaczy „nie zadeklarowano napięć", a nie „nie pasuje do żadnego" — dlatego
- * pusta tablica: filtry traktują pustą listę jako brak przeciwwskazań (rodzina zostaje
- * widoczna), zamiast po cichu usuwać ją z wyboru.
+ * Domknięcie obejmuje OBA pola, bo obie listy są odczytywane bezpośrednio (nagłówek
+ * rodziny, dobór do napięcia szyny) — załatanie jednej zostawiłoby tę samą dziurę pod
+ * drugą nazwą. Brak listy znaczy „nie zadeklarowano", a nie „nie pasuje do żadnego".
  */
 function znormalizujRodzine(rekord: SwitchgearFamily): SwitchgearFamily {
-  if (Array.isArray(rekord?.voltage_levels)) return rekord;
-  return { ...rekord, voltage_levels: [] };
+  const napieciaSieci = Array.isArray(rekord?.network_voltages_kv)
+    ? rekord.network_voltages_kv
+    : [];
+  const klasyUrzadzenia = Array.isArray(rekord?.um_classes_kv) ? rekord.um_classes_kv : [];
+  if (napieciaSieci === rekord?.network_voltages_kv && klasyUrzadzenia === rekord?.um_classes_kv) {
+    return rekord;
+  }
+  return { ...rekord, network_voltages_kv: napieciaSieci, um_classes_kv: klasyUrzadzenia };
+}
+
+/**
+ * Konfiguracje fabryczne (bloki) rodziny RMU — subzasób rodziny rozdzielnicy.
+ *
+ * Rozdzielnica pierścieniowa nie jest zbiorem luźnych szaf: projektant wybiera
+ * BLOK o stałej sekwencji jednostek (np. L-L-T), a dopiero potem doposaża
+ * jednostki. Rodzina o torze `MODULARNY` zwraca listę PUSTĄ — to uczciwy stan
+ * zerowy kontraktu, nie błąd, więc konsument nie ma tu czego obsługiwać wyjątkiem.
+ */
+export async function fetchFactoryConfigurations(
+  switchgearFamilyRef: string,
+): Promise<FactoryConfigurationWire[]> {
+  return fetchCatalogJson<FactoryConfigurationWire[]>(
+    `/api/catalog/switchgear-families/${encodeURIComponent(switchgearFamilyRef)}/factory-configurations`,
+  );
 }
 
 /** Lista kompletnych szablonów pól SN per producent/rodzina/funkcja pola. */
@@ -233,6 +255,35 @@ export async function fetchLoadTypes(): Promise<LoadCatalogType[]> {
   return fetchCatalogJson<LoadCatalogType[]>('/api/catalog/load-types');
 }
 
+/**
+ * Zabezpieczenia z KANONICZNEGO katalogu MV (przestrzeń `ZABEZPIECZENIE`) —
+ * dokładnie te pozycje, które przyjmuje operacja `add_relay`. Lista
+ * `fetchProtectionDeviceTypes` (biblioteka analityczna koordynacji) NIE nadaje
+ * się do budowy modelu: jej pozycje brama katalogowa odrzuca.
+ */
+export async function fetchMvProtectionDeviceTypes(): Promise<ProtectionDeviceType[]> {
+  return fetchCatalogJson<ProtectionDeviceType[]>('/api/catalog/mv-protection-device-types');
+}
+
+/**
+ * Kanoniczne kody funkcji zabezpieczeniowych wymaganych dla ról pól SN
+ * (readout z backendu — bez kopiowania tablicy do frontendu).
+ */
+export async function fetchBayProtectionCodes(): Promise<Record<string, string[]>> {
+  return fetchCatalogJson<Record<string, string[]>>('/api/catalog/bay-protection-codes');
+}
+
+/**
+ * Rodzaje aparatu GŁÓWNEGO dopuszczalne dla ról pól SN (`device_kind` pozycji
+ * katalogu APARAT_SN) — readout z backendu, bez kopiowania tablicy do frontendu.
+ * Kreator zawęża nim picker aparatu do rozwiązań, które w danym polu realnie
+ * występują (karta KOMPLETNOSC-POLA-TR: pole transformatorowe = rozłącznik
+ * bezpiecznikowy albo wyłącznik, nie 48 pozycji całego katalogu).
+ */
+export async function fetchBayApparatusKinds(): Promise<Record<string, string[]>> {
+  return fetchCatalogJson<Record<string, string[]>>('/api/catalog/bay-apparatus-kinds');
+}
+
 export async function fetchCtTypes(): Promise<CTCatalogType[]> {
   return fetchCatalogJson<CTCatalogType[]>('/api/catalog/ct-types');
 }
@@ -253,6 +304,40 @@ export async function fetchPtpireeGeneratorCertificates(): Promise<PtpireeGenera
   return fetchCatalogJson<PtpireeGeneratorCertificateCatalogType[]>(
     '/api/catalog/ptpiree/generator-certificates',
   );
+}
+
+/** Strona wykazu certyfikatów PTPiREE + licznik PO filtrze, PRZED wycinkiem. */
+export interface PtpireeCertificatesPage {
+  readonly items: PtpireeGeneratorCertificateCatalogType[];
+  readonly total: number;
+}
+
+/**
+ * Wycinek wykazu certyfikatów PTPiREE z serwerowym filtrem (pełny wykaz to
+ * ~6887 pozycji / ~3 MB — przeglądarka typów pobiera stronę zamiast całości).
+ * `total` pochodzi z nagłówka `X-Total-Count` (liczność po filtrze), więc UI
+ * może uczciwie powiedzieć, ile pozycji zostało poza stroną.
+ */
+export async function fetchPtpireeGeneratorCertificatesPage(
+  search?: string,
+  limit?: number,
+): Promise<PtpireeCertificatesPage> {
+  const params = new URLSearchParams();
+  if (search && search.trim()) params.set('search', search.trim());
+  if (limit !== undefined) params.set('limit', String(limit));
+  const query = params.toString();
+  const endpoint = `/api/catalog/ptpiree/generator-certificates${query ? `?${query}` : ''}`;
+  try {
+    const response = await fetch(endpoint);
+    const items = await handleResponse<PtpireeGeneratorCertificateCatalogType[]>(
+      response,
+      endpoint,
+    );
+    const naglowek = Number(response.headers.get('X-Total-Count'));
+    return { items, total: Number.isFinite(naglowek) ? naglowek : items.length };
+  } catch (error) {
+    throw normalizeCatalogRequestError(error);
+  }
 }
 
 export async function fetchPvInverterTypes(): Promise<PVInverterCatalogType[]> {

@@ -8,15 +8,25 @@ Goal §11A.2: rodzina to konkretna seria produktów producenta (np. "Rotoblok",
 - listę dopuszczonych napięć i prądów,
 - listę dopuszczonych typów pól (`allowed_bay_kinds`).
 
+DWA POLA NAPIĘCIOWE, DWIE RÓŻNE WIELKOŚCI (karta K-J, 2026-08-14). Rodzina
+deklaruje osobno `network_voltages_kv` (napięcia SIECI, dla których producent
+oferuje wyrób) i `um_classes_kv` (klasy napięciowe URZĄDZENIA — napięcie
+znamionowe / najwyższe napięcie urządzenia wg PN-EN 62271-1). To NIE są
+synonimy: karta Rotobloka podaje sieć 15/20 kV przy klasach 17,5/24 kV.
+Jedno pole `voltage_levels` mieszało obie wielkości, więc porównanie
+„napięcie szyny ∈ lista" raz znaczyło zgodność z siecią, a raz z izolacją —
+i dlatego walidacja napięciowa musiała być wyłączona. Reguła dopasowania
+jest JEDNA i mieszka w `family_validation.czy_rodzina_obsluguje_napiecie`.
+
 Reguła: rodzina jest pełnoprawna TYLKO gdy producent ma `status='verified'`
 i podpięte oficjalne `source_refs`. Inaczej rodzina jest `requires_catalog`.
 """
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Literal, get_args
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, computed_field
 
 InsulationType = Literal["air", "sf6", "vacuum", "mixed", "unknown"]
 ConstructionType = Literal[
@@ -56,6 +66,43 @@ CompartmentModel = Literal[
     "metering_compartment",
 ]
 
+TorKonfiguracji = Literal["MODULARNY", "BLOK_RMU"]
+
+#: Tor konfiguracji rodziny WYPROWADZONY z `construction_type` — bez osobnego
+#: pola „architektura" (dwa pola o tej samej treści to dwie ścieżki tej samej
+#: prawdy; `docs/domain/KONFIGURATOR_ROZDZIELNIC_SN_RMU.md` §8).
+#:
+#: * `MODULARNY` — użytkownik SKŁADA rozdzielnicę z pojedynczych pól
+#:   (rozdzielnice wnętrzowe, dwuczłonowe, wysuwne, GIS rozdziału pierwotnego);
+#: * `BLOK_RMU` — użytkownik wybiera KONFIGURACJĘ FABRYCZNĄ bloku (np. L-L-T),
+#:   a dopiero potem doposaża jednostki; RMU nie jest zbiorem luźnych szaf.
+#:
+#: `None` oznacza rodzinę, która nie zadeklarowała konstrukcji — jawny brak,
+#: nigdy domyślny tor. Mapa pokrywa KOMPLET wartości `ConstructionType`
+#: (test dwustronny w `test_switchgear_families.py`), więc nowa wartość
+#: konstrukcji nie przejdzie po cichu z domyślnym torem.
+TOR_KONFIGURACJI_WG_KONSTRUKCJI: dict[str, TorKonfiguracji | None] = {
+    "RMU": "BLOK_RMU",
+    "jednoczlonowa": "MODULARNY",
+    "dwuczlonowa": "MODULARNY",
+    "wysuwna": "MODULARNY",
+    "GIS_SF6": "MODULARNY",
+    "wnetrzowa": "MODULARNY",
+    "kontenerowa": "MODULARNY",
+    "prefabrykowana": "MODULARNY",
+    "unknown": None,
+}
+
+assert set(TOR_KONFIGURACJI_WG_KONSTRUKCJI) == set(get_args(ConstructionType)), (
+    "TOR_KONFIGURACJI_WG_KONSTRUKCJI musi pokrywać komplet wartości "
+    "ConstructionType — brak wpisu oznaczałby cichy domyślny tor konfiguracji."
+)
+
+
+def tor_konfiguracji_dla_konstrukcji(construction_type: str) -> TorKonfiguracji | None:
+    """Tor konfiguracji dla typu konstrukcji (jedyne miejsce tego odwzorowania)."""
+    return TOR_KONFIGURACJI_WG_KONSTRUKCJI[construction_type]
+
 
 class SwitchgearFamily(BaseModel):
     """Rodzina rozdzielnicy SN konkretnego producenta.
@@ -66,7 +113,14 @@ class SwitchgearFamily(BaseModel):
         manufacturer_ref: ref do `Manufacturer`.
         family_name: nazwa wyświetlana (np. "Rotoblok", "UniGear ZS1").
         series_name: krótszy kod serii (opcjonalny).
-        voltage_levels: dopuszczone napięcia znamionowe [kV].
+        network_voltages_kv: napięcia SIECI [kV], dla których karta producenta
+            deklaruje wyrób (wiersz „napięcie nominalne sieci" / „napięcie
+            robocze"). Pusta lista = karta takiego wiersza NIE ma; to jawny
+            brak danych, nie „żadna sieć nie pasuje".
+        um_classes_kv: klasy napięciowe URZĄDZENIA [kV] — wiersz „napięcie
+            znamionowe (Ur)" albo „najwyższe napięcie urządzeń (Um)" karty.
+            Um wyznacza górną granicę napięcia sieci, w której wolno pracować
+            (PN-EN 62271-1). Pusta lista = jawny brak danych w karcie.
         rated_current_options: dopuszczone prądy znamionowe szyny [A].
         short_time_current_options: dopuszczone prądy zwarciowe [kA, 1s].
         insulation_type, construction_type, busbar_system: kanon §11A.2.
@@ -81,7 +135,8 @@ class SwitchgearFamily(BaseModel):
     family_name: str
     series_name: str | None = None
     product_line_code: str | None = None
-    voltage_levels: list[float] = Field(default_factory=list)
+    network_voltages_kv: list[float] = Field(default_factory=list)
+    um_classes_kv: list[float] = Field(default_factory=list)
     rated_current_options: list[int] = Field(default_factory=list)
     short_time_current_options: list[int] = Field(default_factory=list)
     insulation_type: InsulationType = "unknown"
@@ -100,3 +155,15 @@ class SwitchgearFamily(BaseModel):
     status: SwitchgearFamilyStatus = "requires_catalog"
     source_refs: list[str] = Field(default_factory=list)
     notes_pl: str | None = None
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def tor_konfiguracji(self) -> TorKonfiguracji | None:
+        """Tor konfiguracji (MODULARNY / BLOK_RMU) wyprowadzony z konstrukcji.
+
+        Pole WYLICZANE, nie przechowywane: rodzina ma jedno miejsce, w którym
+        deklaruje konstrukcję (`construction_type`), a kreator i API czytają
+        stąd tor pracy. Rodzina bez zadeklarowanej konstrukcji zwraca `None`
+        (jawny brak) — walidator odmawia budowania na takiej rodzinie.
+        """
+        return tor_konfiguracji_dla_konstrukcji(self.construction_type)

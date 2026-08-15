@@ -403,6 +403,8 @@ class TestFullV1Sequence:
             op_name="insert_station_on_segment_sn",
             payload={
                 "segment_ref": first_seg,
+                # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+                "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
                 "station_type": "B",
                 "insert_at": {"value": 0.5},
                 "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
@@ -467,6 +469,8 @@ class TestInsertStationCreatesStructure:
             op_name="insert_station_on_segment_sn",
             payload={
                 "segment_ref": first_seg,
+                # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+                "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
                 "station_type": "B",
                 "insert_at": {"value": 0.5},
                 "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
@@ -513,6 +517,8 @@ class TestInsertStationCreatesStructure:
             op_name="insert_station_on_segment_sn",
             payload={
                 "segment_ref": first_seg,
+                # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+                "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
                 "station_type": "B",
                 "insert_at": {"value": 0.5},
                 "station": {
@@ -552,6 +558,8 @@ class TestInsertStationCreatesStructure:
             op_name="insert_station_on_segment_sn",
             payload={
                 "segment_ref": first_seg,
+                # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+                "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
                 "station_type": "B",
                 "insert_at": {"value": 0.5},
                 "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
@@ -868,6 +876,8 @@ class TestNnFieldAdapters:
             op_name="insert_station_on_segment_sn",
             payload={
                 "segment_ref": first_seg,
+                # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+                "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
                 "station_type": "B",
                 "insert_at": {"value": 0.5},
                 "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
@@ -921,6 +931,8 @@ class TestNnFieldAdapters:
             op_name="insert_station_on_segment_sn",
             payload={
                 "segment_ref": first_seg,
+                # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+                "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
                 "station_type": "B",
                 "insert_at": {"value": 0.5},
                 "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
@@ -966,7 +978,7 @@ class TestNnFieldAdapters:
                 "load_name": "Odbiór katalogowy nN",
                 "catalog_binding": {
                     "catalog_namespace": "OBCIAZENIE",
-                    "catalog_item_id": "load-household-15kw",
+                    "catalog_item_id": "load_mieszk_15kw",
                     "catalog_item_version": "2024.1",
                     "materialize": True,
                     "snapshot_mapping_version": "1.0",
@@ -976,10 +988,10 @@ class TestNnFieldAdapters:
 
         assert result.get("snapshot") is not None, f"Error: {result.get('error')}"
         load = result["snapshot"]["loads"][0]
-        assert load["catalog_ref"] == "load-household-15kw"
+        assert load["catalog_ref"] == "load_mieszk_15kw"
         assert load["catalog_namespace"] == "OBCIAZENIE"
         assert load["parameter_source"] == "CATALOG"
-        assert load["meta"]["catalog_binding"]["catalog_item_id"] == "load-household-15kw"
+        assert load["meta"]["catalog_binding"]["catalog_item_id"] == "load_mieszk_15kw"
 
     def test_add_nn_outgoing_field_supports_source_field_role_without_legacy_alias(self):
         _, snapshot = _build_gpz_plus_segments(1)
@@ -990,6 +1002,8 @@ class TestNnFieldAdapters:
             op_name="insert_station_on_segment_sn",
             payload={
                 "segment_ref": first_seg,
+                # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+                "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
                 "station_type": "B",
                 "insert_at": {"value": 0.5},
                 "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
@@ -1044,6 +1058,8 @@ class TestNnFieldAdapters:
             op_name="insert_station_on_segment_sn",
             payload={
                 "segment_ref": first_seg,
+                # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+                "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
                 "station_type": "B",
                 "insert_at": {"value": 0.5},
                 "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
@@ -1087,28 +1103,20 @@ class TestNnFieldAdapters:
                     "field_name": "Pole PV nN",
                     "catalog_binding": {
                         "catalog_namespace": "APARAT_NN",
-                        "catalog_item_id": "ap-nn-630",
+                        "catalog_item_id": "cb_nn_630a",
                         "catalog_item_version": "2024.1",
                         "materialize": True,
                         "snapshot_mapping_version": "1.0",
                     },
                 },
+                # Pozycja RZECZYWISTA (0,4 kV / 500 kW / 550 kVA): tabliczka pochodzi
+                # z katalogu, więc test nie może jej podać w payloadzie (defekt G).
                 "catalog_binding": {
-                    "catalog_namespace": "CONVERTER",
-                    "catalog_item_id": "conv-pv-500",
+                    "catalog_namespace": "ZRODLO_NN_PV",
+                    "catalog_item_id": "conv-pv-nn-0p5mw-0p4kv",
                     "catalog_item_version": "2024.1",
                     "materialize": True,
                     "snapshot_mapping_version": "1.0",
-                },
-                "materialized_params": {
-                    "catalog_item_id": "conv-pv-500",
-                    "catalog_item_version": "2024.1",
-                    "un_kv": 0.4,
-                    "rated_power_ac_kw": 500.0,
-                    "max_power_kw": 500.0,
-                    "control_mode": "STALY_COS_PHI",
-                    "pmax_mw": 0.5,
-                    "sn_mva": 0.5,
                 },
             },
         )
@@ -1279,6 +1287,8 @@ class TestInsertStationReadinessBlockers:
             op_name="insert_station_on_segment_sn",
             payload={
                 "segment_ref": first_seg,
+                # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+                "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
                 "station_type": "B",
                 "insert_at": {"value": 0.5},
                 "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
@@ -1309,6 +1319,8 @@ class TestDeterministicIds100x:
 
         payload = {
             "segment_ref": first_seg,
+            # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+            "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
             "station_type": "B",
             "insert_at": {"value": 0.5},
             "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
@@ -1377,47 +1389,81 @@ class TestDeterministicIds100x:
 
 
 class TestPermutationInvarianceSNFields:
-    def test_permutation_invariance_sn_fields(self):
-        """Create payload with 3 sn_fields in different orders.
-        Run operation with each permutation (at least 6 permutations).
-        Assert: all results produce identical snapshot hash (after sorting).
-        Do this 50 times.
+    def test_kolejnosc_pol_sn_jest_danymi_projektu_a_bieg_jest_deterministyczny(self):
+        """Kolejność `sn_fields` = UKŁAD ROZDZIELNICY, a nie przypadkowa kolejność wpisów.
+
+        INTENCJA BEZ ZMIAN (DET-9): ten sam payload MUSI dawać ten sam hash migawki,
+        powtarzalnie, bez względu na liczbę powtórzeń.
+
+        KANON ZMIENIONY (V12K-330 + karta POMIAR-ODGAŁĘZIENIE): dawna asercja
+        żądała, by WSZYSTKIE permutacje `sn_fields` dały JEDEN hash — realizował
+        to `sorted(sn_fields, key=field_role)` w operacji, czyli alfabetyczna
+        normalizacja układu pól. To normalizowanie było defektem, nie własnością:
+        [IN, TR, OUT] i [IN, OUT, TR] to DWIE RÓŻNE rozdzielnice, a rysunek
+        (`buildStationMiniBaysFromFieldSpecs`) od V12K-330 czyta kolejność pól
+        Z DANYCH. Producent danych normalizował, konsument ufał kolejności —
+        dwie sprzeczne prawdy o tym samym. Skutkiem dla stacji abonenckiej
+        [dopływ, POMIAR, TR, rezerwa] alfabet stawiał rezerwę PRZED układem
+        pomiarowym (naruszenie `docs/domain/POMIAR_ROZLICZENIOWY_SN_V1.md`).
+
+        Test pilnuje więc obu zdań naraz: (1) hash jest funkcją payloadu
+        (determinizm per permutacja), (2) kolejność pól w modelu jest DOKŁADNIE
+        kolejnością z payloadu, a różne układy dają różne modele.
         """
         fields = ["IN", "OUT", "TR"]
         perms = list(itertools.permutations(fields))
         assert len(perms) >= 6  # 3! = 6
 
-        for _ in range(50):
-            _, snapshot = _build_gpz_plus_segments(2)
-            first_seg = _get_first_segment_ref(snapshot)
+        # Sieć wejściowa budowana RAZ (deterministyczna — pin: TestDeterministicIds100x);
+        # każda permutacja dostaje własną głęboką kopię, więc izolacja biegów bez zmian.
+        _, snapshot = _build_gpz_plus_segments(2)
+        first_seg = _get_first_segment_ref(snapshot)
 
-            perm_hashes: list[str] = []
-            for perm in perms:
-                snap_copy = copy.deepcopy(snapshot)
-                result = execute_domain_operation(
-                    enm_dict=snap_copy,
-                    op_name="insert_station_on_segment_sn",
-                    payload={
-                        "segment_ref": first_seg,
-                        "station_type": "B",
-                        "insert_at": {"value": 0.5},
-                        "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
-                        "sn_fields": list(perm),
-                        "transformer": {
-                            "create": True,
-                            "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
-                        },
+        def _wykonaj(perm: tuple[str, ...]) -> dict:
+            result = execute_domain_operation(
+                enm_dict=copy.deepcopy(snapshot),
+                op_name="insert_station_on_segment_sn",
+                payload={
+                    "segment_ref": first_seg,
+                    # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+                    "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+                    "station_type": "B",
+                    "insert_at": {"value": 0.5},
+                    "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
+                    "sn_fields": list(perm),
+                    "transformer": {
+                        "create": True,
+                        "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
                     },
-                )
-                assert result.get("snapshot") is not None, f"Error: {result.get('error')}"
-                perm_hashes.append(_snapshot_hash(result["snapshot"]))
+                },
+            )
+            assert result.get("snapshot") is not None, f"Error: {result.get('error')}"
+            return result
 
-            # All permutations should produce the same hash
-            first_h = perm_hashes[0]
-            for i, h in enumerate(perm_hashes[1:], start=1):
-                assert (
-                    h == first_h
-                ), f"Permutation {perms[i]} produced different hash: {h} != {first_h}"
+        # (1) DETERMINIZM: 50 powtórzeń KAŻDEJ permutacji → jeden hash na permutację.
+        hash_permutacji: dict[tuple[str, ...], str] = {}
+        for perm in perms:
+            hashe = {_snapshot_hash(_wykonaj(perm)["snapshot"]) for _ in range(50)}
+            assert len(hashe) == 1, f"Permutacja {perm} nie jest deterministyczna: {hashe}"
+            hash_permutacji[perm] = hashe.pop()
+
+        # (2) KOLEJNOŚĆ Z DANYCH: role pól w modelu w kolejności payloadu.
+        role_z_payloadu = {"IN": "IN", "OUT": "OUT", "TR": "TR"}
+        for perm in perms:
+            wynik = _wykonaj(perm)
+            stacja_ref = wynik["selection_hint"]["element_id"]
+            stacja = next(s for s in wynik["snapshot"]["substations"] if s["ref_id"] == stacja_ref)
+            role_w_modelu = [spec.get("bay_role") for spec in stacja["meta"]["field_specs"]]
+            assert role_w_modelu == [role_z_payloadu[r] for r in perm], (
+                f"Permutacja {perm}: model niesie układ {role_w_modelu} — kolejność "
+                "pól musi pochodzić Z DANYCH (V12K-330), nie z normalizacji."
+            )
+
+        # (3) RÓŻNE UKŁADY = RÓŻNE MODELE (brak cichego scalania projektów).
+        assert len(set(hash_permutacji.values())) == len(perms), (
+            "Różne układy pól dały ten sam hash — operacja znów normalizuje "
+            "kolejność pól i gubi projekt rozdzielnicy."
+        )
 
 
 # ===========================================================================
@@ -1440,6 +1486,8 @@ class TestPVBESSTransformerGate:
             op_name="insert_station_on_segment_sn",
             payload={
                 "segment_ref": first_seg,
+                # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+                "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
                 "station_type": "B",
                 "insert_at": {"value": 0.5},
                 "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
@@ -1511,6 +1559,74 @@ class TestPVBESSTransformerGate:
             has_pv_blocker
         ), f"Expected pv_bess.transformer_required blocker, got codes: {blocker_codes}"
 
+    def test_transformer_gate_obejmuje_cala_klase_der(self):
+        """Brama transformatora obejmuje CALA klase DER (dlug 7 z V12K-321).
+
+        Dopasowanie podciagiem ("pv"/"bess"/"inverter" w gen_type) gubilo farmy
+        fw_pmsg/fw_dfig/fw_scig — przylaczane na nN dokladnie jak PV/BESS.
+        Test klasa-nie-instancja: KAZDY typ z GEN_TYPES_PRZEKSZTALTNIKOWE bez
+        transformatora w sciezce dostaje blokade, a synchronous — nie
+        (kontrola dodatnia wykluczajaca brame strzelajaca w kazdy generator).
+        """
+        from enm.models import GEN_TYPES_PRZEKSZTALTNIKOWE
+
+        _, snapshot = _build_gpz_plus_segments(2)
+        first_seg = _get_first_segment_ref(snapshot)
+        result_station = execute_domain_operation(
+            enm_dict=snapshot,
+            op_name="insert_station_on_segment_sn",
+            payload={
+                "segment_ref": first_seg,
+                "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+                "station_type": "B",
+                "insert_at": {"value": 0.5},
+                "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
+                "sn_fields": ["IN", "OUT"],
+                "transformer": {
+                    "create": True,
+                    "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
+                },
+            },
+        )
+        assert result_station.get("snapshot") is not None, f"Error: {result_station.get('error')}"
+        s = result_station["snapshot"]
+        source_bus_refs = {src.get("bus_ref") for src in s.get("sources", [])}
+        target_bus_ref = next(
+            b["ref_id"] for b in s.get("buses", []) if b.get("ref_id") not in source_bus_refs
+        )
+
+        def _kody_blokad(gen_type: str) -> set[str]:
+            s_copy = copy.deepcopy(s)
+            s_copy.setdefault("generators", []).append(
+                {
+                    "ref_id": f"gen_gate_{gen_type}",
+                    "name": f"Generator {gen_type}",
+                    "bus_ref": target_bus_ref,
+                    "p_mw": 0.5,
+                    "q_mvar": 0.0,
+                    "gen_type": gen_type,
+                    # BEZ station_ref, connection_variant i blocking_transformer_ref.
+                }
+            )
+            any_bus = s_copy["buses"][0]
+            result = execute_domain_operation(
+                enm_dict=s_copy,
+                op_name="update_element_parameters",
+                payload={
+                    "element_ref": any_bus["ref_id"],
+                    "parameters": {"name": any_bus.get("name", "test")},
+                },
+            )
+            return {b.get("code") for b in result.get("readiness", {}).get("blockers", [])}
+
+        for gen_type in sorted(GEN_TYPES_PRZEKSZTALTNIKOWE):
+            assert "pv_bess.transformer_required" in _kody_blokad(gen_type), (
+                f"DER '{gen_type}' bez transformatora w sciezce nie dostal blokady "
+                "pv_bess.transformer_required — brama gubi czesc klasy DER"
+            )
+        # Kontrola dodatnia: generator synchroniczny NIE podlega bramie.
+        assert "pv_bess.transformer_required" not in _kody_blokad("synchronous")
+
     def test_pv_nn_side_uses_station_transformer_refs(self):
         """PV po stronie nN korzysta z transformatora stacyjnego, bez fałszywego blokera."""
         _, snapshot = _build_gpz_plus_segments(2)
@@ -1521,6 +1637,8 @@ class TestPVBESSTransformerGate:
             op_name="insert_station_on_segment_sn",
             payload={
                 "segment_ref": first_seg,
+                # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+                "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
                 "station_type": "B",
                 "insert_at": {"value": 0.5},
                 "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
@@ -1779,6 +1897,8 @@ class TestStationTypeBPassthrough:
             op_name="insert_station_on_segment_sn",
             payload={
                 "segment_ref": first_seg,
+                # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+                "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
                 "station_type": "B",
                 "insert_at": {"value": 0.5},
                 "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
@@ -1861,6 +1981,8 @@ class TestStationTypeCBranch:
             op_name="insert_station_on_segment_sn",
             payload={
                 "segment_ref": first_seg,
+                # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+                "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
                 "station_type": "C",
                 "insert_at": {"value": 0.5},
                 "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
@@ -1903,6 +2025,8 @@ class TestStationTypeCBranch:
             op_name="insert_station_on_segment_sn",
             payload={
                 "segment_ref": first_seg,
+                # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+                "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
                 "station_type": "branch",
                 "insert_at": {"value": 0.5},
                 "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
@@ -1950,6 +2074,8 @@ class TestStationTypeDSectional:
             op_name="insert_station_on_segment_sn",
             payload={
                 "segment_ref": first_seg,
+                # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+                "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
                 "station_type": "D",
                 "insert_at": {"value": 0.5},
                 "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
@@ -2039,6 +2165,8 @@ class TestInsertStationFieldTemplateBinding:
             op_name="insert_station_on_segment_sn",
             payload={
                 "segment_ref": first_seg,
+                # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+                "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
                 "station_type": "sectional",
                 "insert_at": {"value": 0.5},
                 "station": {
@@ -2118,6 +2246,8 @@ class TestInsertStationOnNonexistentSegment:
             op_name="insert_station_on_segment_sn",
             payload={
                 "segment_ref": "nonexistent_segment_xyz",
+                # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+                "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
                 "station_type": "B",
                 "insert_at": {"value": 0.5},
                 "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
@@ -2163,6 +2293,8 @@ class TestInsertAtRatioOutOfRange:
             op_name="insert_station_on_segment_sn",
             payload={
                 "segment_ref": first_seg,
+                # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+                "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
                 "station_type": "B",
                 "insert_at": {"value": 1.5},  # > 1.0
                 "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
@@ -2239,6 +2371,8 @@ class TestDomainEventsOrder:
             op_name="insert_station_on_segment_sn",
             payload={
                 "segment_ref": first_seg,
+                # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+                "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
                 "station_type": "B",
                 "insert_at": {"value": 0.5},
                 "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},

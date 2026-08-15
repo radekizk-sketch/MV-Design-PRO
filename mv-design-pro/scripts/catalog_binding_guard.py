@@ -64,7 +64,7 @@ def extract_contract_namespaces(text: str) -> set[str]:
     """Extract all namespaces defined in MATERIALIZATION_CONTRACTS."""
     namespaces = set()
     pattern = re.compile(
-        r'CatalogNamespace\.(\w+)\.value\s*:\s*MaterializationContract',
+        r"CatalogNamespace\.(\w+)\.value\s*:\s*MaterializationContract",
     )
     for m in pattern.finditer(text):
         namespaces.add(m.group(1))
@@ -81,8 +81,8 @@ def extract_solver_fields_by_namespace(text: str) -> dict[str, list[str]]:
     #           "r_ohm_per_km", "x_ohm_per_km", ...
     #       ),
     blocks = re.finditer(
-        r'CatalogNamespace\.(\w+)\.value\s*:\s*MaterializationContract\('
-        r'.*?solver_fields\s*=\s*\((.*?)\)',
+        r"CatalogNamespace\.(\w+)\.value\s*:\s*MaterializationContract\("
+        r".*?solver_fields\s*=\s*\((.*?)\)",
         text,
         re.DOTALL,
     )
@@ -98,7 +98,7 @@ def extract_dataclass_fields(text: str, class_name: str) -> set[str]:
     """Extract field names from a frozen dataclass definition."""
     fields = set()
     pattern = re.compile(
-        rf'class {class_name}\b.*?(?=\n(?:class |def |@|\Z))',
+        rf"class {class_name}\b.*?(?=\n(?:class |def |@|\Z))",
         re.DOTALL,
     )
     match = pattern.search(text)
@@ -106,7 +106,7 @@ def extract_dataclass_fields(text: str, class_name: str) -> set[str]:
         return fields
     block = match.group(0)
     # Match field definitions: field_name: type = default
-    field_pattern = re.compile(r'^\s+(\w+)\s*:', re.MULTILINE)
+    field_pattern = re.compile(r"^\s+(\w+)\s*:", re.MULTILINE)
     for fm in field_pattern.finditer(block):
         name = fm.group(1)
         if not name.startswith("_"):
@@ -200,10 +200,7 @@ def _report(violations: list[str], ns_count: int = 0, contract_count: int = 0) -
             print(f"  VIOLATION: {v}")
         print()
     else:
-        print(
-            f"Catalog Binding Guard: OK "
-            f"({ns_count} namespaces, {contract_count} contracts)"
-        )
+        print(f"Catalog Binding Guard: OK " f"({ns_count} namespaces, {contract_count} contracts)")
 
 
 if __name__ == "__main__":

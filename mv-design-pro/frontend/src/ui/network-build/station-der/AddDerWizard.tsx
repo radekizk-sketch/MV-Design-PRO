@@ -98,7 +98,6 @@ type DerDeviceCatalogItem = {
   readonly source_reference?: string | null;
   readonly verification_status?: string | null;
   readonly catalog_status?: string | null;
-  readonly fault_current_capability_pu?: number;
   readonly applicable_module_types?: readonly ('A' | 'B' | 'C' | 'D')[];
   readonly four_quadrant?: boolean;
   readonly grid_forming_capable?: boolean;
@@ -439,7 +438,6 @@ function mapBackendConverterToDerDevice(item: ConverterType): DerDeviceCatalogIt
     source_reference: item.source_reference ?? null,
     verification_status: item.verification_status ?? null,
     catalog_status: item.catalog_status ?? null,
-    fault_current_capability_pu: item.kind === 'BESS' ? 1.2 : item.kind === 'WIND' ? 1.1 : 1.1,
     applicable_module_types: deriveModuleTypesForPowerKw(nominalPowerKw),
     four_quadrant: item.kind === 'BESS',
     grid_forming_capable: item.control_mode === 'GRID_FORMING',
@@ -1489,7 +1487,7 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
               {deviceCatalogStatus === 'error' && (
                 <div
                   data-testid="add-der-device-catalog-error"
-                  className="space-y-2 rounded border border-red-700 bg-red-950/30 p-3 text-[11px] text-red-100"
+                  className="space-y-2 rounded border border-sygnal-blokada bg-sygnal-blokada-tlo p-3 text-[11px] text-sygnal-blokada-tusz"
                 >
                   Katalog backendowy jest niedostępny, używam awaryjnych pozycji lokalnych.
                   {deviceCatalogError ? ` Przyczyna: ${deviceCatalogError}` : ''}
@@ -1535,7 +1533,7 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
               {voltageMismatchWarning && (
                 <div
                   data-testid="add-der-voltage-mismatch-warning"
-                  className="rounded border border-amber-700 bg-amber-950/30 p-2 text-[11px] text-amber-200"
+                  className="rounded border border-sygnal-uwaga bg-sygnal-uwaga-tlo p-2 text-[11px] text-sygnal-uwaga-tusz"
                 >
                   <div className="font-semibold text-red-200">
                     Niezgodność napięciowa blokuje zapis wariantu nN.
@@ -1574,7 +1572,7 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
               {transformerPowerWarning && (
                 <div
                   data-testid="add-der-transformer-power-warning"
-                  className="rounded border border-red-700 bg-red-950/30 p-2 text-[11px] text-red-200"
+                  className="rounded border border-sygnal-blokada bg-sygnal-blokada-tlo p-2 text-[11px] text-sygnal-blokada-tusz"
                 >
                   {transformerPowerWarning}
                 </div>
@@ -1617,7 +1615,7 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
               {transformerPowerWarning && transformerUpgradeOptions.length === 0 && (
                 <div
                   data-testid="add-der-transformer-upgrade-empty"
-                  className="rounded border border-amber-700 bg-amber-950/30 p-2 text-[11px] text-amber-200"
+                  className="rounded border border-sygnal-uwaga bg-sygnal-uwaga-tlo p-2 text-[11px] text-sygnal-uwaga-tusz"
                 >
                   Dla napięć tej stacji katalog nie wskazał większego transformatora.
                   Wybierz mniejszy wariant źródła albo przyłączenie po stronie SN.
@@ -1708,8 +1706,8 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
                       ? 'wymaga innego napięcia/TR'
                       : 'wymaga większego TR stacji';
                   const eligibilityClass = voltageOk && transformerOk
-                    ? 'border-emerald-600 bg-emerald-950/40 text-emerald-200'
-                    : 'border-amber-700 bg-amber-950/30 text-amber-200';
+                    ? 'border-sygnal-ok bg-sygnal-ok-tlo text-sygnal-ok-tusz'
+                    : 'border-sygnal-uwaga bg-sygnal-uwaga-tlo text-sygnal-uwaga-tusz';
                   return (
                     <button
                       key={device.id}
@@ -1737,7 +1735,7 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
                           {eligibilityText}
                         </span>
                         {ptpireeDocument !== '-' && (
-                          <span className="rounded bg-emerald-950/50 px-1.5 py-0.5 text-emerald-200">
+                          <span className="rounded bg-sygnal-ok-tlo px-1.5 py-0.5 text-sygnal-ok-tusz">
                             PTPiREE {ptpireeDocument}
                           </span>
                         )}
@@ -1748,7 +1746,7 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
                 {filteredDeviceCatalog.length === 0 && (
                   <div
                     data-testid="add-der-device-results-empty"
-                    className="rounded border border-amber-700 bg-amber-950/20 p-3 text-[11px] text-amber-200"
+                    className="rounded border border-sygnal-uwaga bg-sygnal-uwaga-tlo p-3 text-[11px] text-sygnal-uwaga-tusz"
                   >
                     Brak pozycji dla aktualnych filtrów. Zmień tekst wyszukiwania, napięcie
                     albo cechy katalogowe.
@@ -1784,7 +1782,6 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
                       value={resolvePtpireeDocument(selectedDevice, selectedDevicePtpireeCertificate)}
                     />
                     <CatalogMetric label="Model EMT/RMS" value={selectedDevice.dynamic_profile_id ?? '-'} />
-                    <CatalogMetric label="Ik pu" value={selectedDevice.fault_current_capability_pu?.toFixed(2) ?? '-'} />
                     <CatalogMetric label="WOS/WiPWC" value={[selectedDevice.ptpiree_wos_version, selectedDevice.ptpiree_wipwc_version].filter(Boolean).join(' / ') || '-'} />
                     <CatalogMetric label="Źródło" value={selectedDevice.source_reference ?? selectedDevice.verification_status ?? '-'} />
                   </div>
@@ -1835,7 +1832,7 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
                           <div className="flex-1">
                             <div className="font-medium text-scada-text">{m.label_pl}</div>
                             <div className="text-[10px] text-scada-muted">
-                              t_resp ≤ {m.response_time_s}s · max {m.max_duration_h}h · rezerwa {m.reserved_capacity_percent}%
+                              {m.description_pl}
                             </div>
                           </div>
                         </label>
@@ -1871,10 +1868,10 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
                     ncRfgProfileRef: v || null,
                     lvrtCurveRef: v ? selectLvrtCurvesForProfile(v)[0]?.id ?? null : null,
                     hvrtCurveRef: v ? selectHvrtCurvesForProfile(v)[0]?.id ?? null : null,
-                    pfCurveRef: PF_CURVE_CATALOG.filter((c) => {
-                      const profile = NC_RFG_PROFILE_CATALOG.find((p) => p.id === v);
-                      return profile ? c.operator_code === profile.operator_code : false;
-                    })[0]?.id ?? null,
+                    // Warianty nastawy P(f) nie zależą od operatora (karta K-Q):
+                    // rozporządzenie 2016/631 podaje przedział nastawialny, a nie
+                    // wartość „dla PSE / Energi". Wybór zostaje projektantowi.
+                    pfCurveRef: s.pfCurveRef,
                   }))
                 }
                 options={[
@@ -1909,19 +1906,12 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
               />
               {/* Pakiet H: P(f) krzywa regulacji częstotliwości (NC RfG Art. 13/15). */}
               <Select
-                label="Krzywa P(f) — regulacja częstotliwości (NC RfG Art. 13/15)"
-                disabled={!selections.ncRfgProfileRef}
+                label="Nastawa P(f) — statyzm regulacji częstotliwości (NC RfG art. 13 ust. 2)"
                 value={selections.pfCurveRef ?? ''}
                 onChange={(v) => setSelections((s) => ({ ...s, pfCurveRef: v || null }))}
                 options={[
                   { id: '', label: '— wybierz (opcjonalnie) —' },
-                  ...PF_CURVE_CATALOG.filter((c) => {
-                    const profile = NC_RFG_PROFILE_CATALOG.find(
-                      (p) => p.id === selections.ncRfgProfileRef,
-                    );
-                    if (!profile) return false;
-                    return c.operator_code === profile.operator_code;
-                  }).map((c) => ({ id: c.id, label: c.label_pl })),
+                  ...PF_CURVE_CATALOG.map((c) => ({ id: c.id, label: c.label_pl })),
                 ]}
                 testId="add-der-pf-curve"
               />
@@ -2014,7 +2004,7 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
               onClick={handleCreate}
               disabled={isCreating}
               data-testid="add-der-create"
-              className="rounded bg-scada-sn px-4 py-1.5 text-xs font-medium text-scada-bg hover:bg-yellow-300 disabled:cursor-wait disabled:opacity-60"
+              className="rounded bg-scada-sn px-4 py-1.5 text-xs font-medium text-scada-bg hover:brightness-110 disabled:cursor-wait disabled:opacity-60"
             >
               {isCreating ? 'Tworzenie w modelu sieci...' : `Utwórz ${DER_KIND_LABELS[derKind]}`}
             </button>
@@ -2024,7 +2014,7 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
               onClick={goNext}
               disabled={!canGoNext}
               data-testid="add-der-next"
-              className="rounded bg-scada-sn px-3 py-1.5 text-xs font-medium text-scada-bg hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded bg-scada-sn px-3 py-1.5 text-xs font-medium text-scada-bg hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Dalej →
             </button>

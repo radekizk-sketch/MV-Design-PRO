@@ -182,9 +182,12 @@ def build_topology_graph(enm: EnergyNetworkModel) -> TopologyGraph:
     for corr in sorted(enm.corridors, key=lambda c: c.ref_id):
         total_len = 0.0
         for seg_ref in corr.ordered_segment_refs:
-            branch = branch_map.get(seg_ref)
-            if branch and isinstance(branch, OverheadLine | Cable):
-                total_len += branch.length_km
+            # Osobna nazwa: `branch` z petli po `enm.branches` (wyzej) NIGDY nie jest
+            # `None`, a `branch_map.get()` moze nie znalezc segmentu. Wspoldzielenie
+            # nazwy chowalo mozliwy brak przed analiza.
+            segment = branch_map.get(seg_ref)
+            if segment and isinstance(segment, OverheadLine | Cable):
+                total_len += segment.length_km
         corridor_infos.append(
             CorridorInfo(
                 ref_id=corr.ref_id,

@@ -73,7 +73,7 @@ export const RANKING_STRINGS = {
   sladMocKolumna: 'Moc dodana',
 
   // Tryb ekspercki
-  ekspIdentyfikatorSkrot: 'Identyfikator wejścia (hash)',
+  ekspIdentyfikatorSkrot: 'Identyfikator wejścia (skrót)',
   ekspPrzebieg: 'Identyfikator przebiegu',
 
   // Jednostki i wartości puste

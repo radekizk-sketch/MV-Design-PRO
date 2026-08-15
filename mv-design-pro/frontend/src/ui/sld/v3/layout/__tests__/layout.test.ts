@@ -5,7 +5,7 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { GRID, rectsOverlap, snapUp as snapUpFromGrid, type V3Rect } from '../../core/grid';
+import { GRID, rectsOverlap, snapToGrid, snapUp as snapUpFromGrid, type V3Rect } from '../../core/grid';
 import { measureLabelWidth } from '../../core/text';
 import { SYMBOL_DEFS } from '../../symbols/defs';
 import { FIELD_ROLE, type FieldRole } from '../../../v2/domain/apparatusContracts';
@@ -23,13 +23,14 @@ import {
   stationPortCaptionHeight,
   type StationMeasureInput,
 } from '../measure';
-import { fieldFunctionalDesignation } from '../../compose/directions';
+import { fieldCaptionAt, fieldFunctionalDesignation } from '../../compose/directions';
 import { BUS_AXIS_BAND_HEIGHT, DESCENT_STRIP_HEIGHT, computeBands, noBandsOverlap, type StationBandHeights } from '../bands';
 import { allColumnsOnGrid, computeColumns, type ComputeColumnsInput } from '../columns';
 import {
   colorSegmentLabelRows,
   computeSegmentLabelSlotX,
   normalizeSegmentText,
+  segmentSpanEndsX,
   SEGMENT_LABEL_ROW_HEIGHT,
 } from '../segments';
 
@@ -193,8 +194,13 @@ describe('V3 layout — measure (spec §5.1, FIX-3: rezerwacja etykiet WŁASNYCH
     // liniowe" dla RMU_LINE, nigdy pusty); DODATKOWO rezerwacja PO LEWEJ
     // stosu na identyfikatory per-aparat Q/QE/T (`apparatusIdentifierLeftReserve`).
     const leftReserve = apparatusIdentifierLeftReserve(bay);
-    const fieldRoleLabel = fieldFunctionalDesignation(bay.fieldRole);
-    expect(fieldRoleLabel).toBe('pole liniowe');
+    // PROPORCJE (2026-08-07): sidecar niesie OZNACZNIK pola przed rolą
+    // („F01 · liniowe") — bez niego trzy pola liniowe jednej rozdzielnicy mają
+    // identyczny opis, a cztery „Q1" nie mają po czym być rozróżnione.
+    // Rachunek RĘCZNY zostaje rachunkiem ręcznym: bierze REALNY podpis z tego
+    // samego źródła, którego używa kompozycja (`fieldCaptionAt`).
+    const fieldRoleLabel = fieldCaptionAt(station.snBays, 0);
+    expect(fieldRoleLabel).toBe('F01 · liniowe');
     const expectedBlockWidth = leftReserve + expectedFootprintWidth + GRID + measureLabelWidth(fieldRoleLabel, 't3');
     const expectedNameWidth = measureLabelWidth('A', 't1');
     expect(requiredStationWidth(station)).toBe(
@@ -717,20 +723,44 @@ describe('V3 layout — columns (r7b): tapX = zaczep magistrali (środek BLOKU, 
   });
 });
 
-describe('V3 layout — columns (r7b): rezerwacja etykiety segmentu wyśrodkowana na przęśle tap-do-tap', () => {
-  it('segmentLabelSlots[j].rect jest wyśrodkowany na [tapX_{j-1} lub 0, tapX_j], nie na krawędziach kolumny', () => {
+describe('V3 layout — columns: rezerwacja etykiety segmentu wyśrodkowana na RYSOWANYM przęśle', () => {
+  // SLOT-DRYF-PRZĘSŁA (zmiana kanonu wobec r7b — intencja ZACHOWANA, baza
+  // centrowania POPRAWIONA): r7b centrował rezerwację na odcinku tap-do-tap,
+  // czyli między ŚRODKAMI BLOKÓW stacji. Kabel międzystacyjny biegnie jednak
+  // od GŁOWICY do GŁOWICY (dolne porty pól liniowych, §12.3) i te dwa środki
+  // rozjeżdżają się o medianę 38% długości opisywanego kabla (max 131%) na
+  // sieci referencyjnej. Intencja testu jest ta sama co w r7b — „rezerwacja
+  // idzie za PRZĘSŁEM, nie za krawędziami kolumny" — zmienia się definicja
+  // przęsła: `segmentSpanEndsX` (`../segments`) zamiast pary `tapX`.
+  // Pełny komplet wyroczni tej reguły: `__tests__/slotDryfPrzesla.test.ts`.
+  it('segmentLabelSlots[j].rect jest wyśrodkowany na przęśle głowica→głowica, nie na krawędziach kolumny', () => {
     const stations = [makeStation('s1', 5, 2), makeStation('s2', 12, 4)];
     const labels = ['15 kV', 'YAKXS 3×70/16 · 45 m'];
     const { columnsResult } = buildColumnsForStations(stations, labels);
+    const taps = columnsResult.columns.map((c) => ({ x: c.x, width: c.width, tapX: c.tapX }));
 
+    // ZAPADKA NA PUSTY ZBIÓR: obie stacje mają etykietę segmentu, więc pętla
+    // niżej MUSI wykonać się dwa razy.
+    expect(columnsResult.segmentLabelSlots).toHaveLength(2);
     columnsResult.segmentLabelSlots.forEach((slot) => {
-      const spanStart = slot.stationIndex > 0 ? columnsResult.columns[slot.stationIndex - 1].tapX : 0;
-      const spanEnd = columnsResult.columns[slot.stationIndex].tapX;
-      const spanCenter = (spanStart + spanEnd) / 2;
-      const rectCenter = slot.rect.x + slot.rect.width / 2;
-      expect(Math.abs(rectCenter - spanCenter)).toBeLessThan(GRID);
+      const przeslo = segmentSpanEndsX(stations, taps, slot.stationIndex);
+      const spanCenter = (przeslo.startX + przeslo.endX) / 2;
+      // Reguła CAŁA, razem z przycięciem do arkusza: przęsło stacji 0 zaczyna
+      // się na krawędzi świata (jego lewy koniec — GPZ/łącznik wiersza — jest
+      // znany dopiero w `scene/buildScene.ts`), więc idealny `x` bywa ujemny i
+      // rezerwacja siada na `0`. Asertujemy DOKŁADNIE tę formułę, zamiast
+      // luzu, który zakrywałby jedno i drugie.
+      const idealX = snapToGrid(spanCenter - slot.rect.width / 2);
+      const maxX = Math.max(0, columnsResult.totalWidth - slot.rect.width);
+      expect(slot.rect.x).toBe(Math.min(Math.max(idealX, 0), maxX));
       expect(slot.rect.width % GRID).toBe(0);
       expect(slot.rect.x % GRID).toBe(0);
+      const rectCenter = slot.rect.x + slot.rect.width / 2;
+      // Rezerwacja NIE jest przypięta do krawędzi kolumny — to była właściwa
+      // teza r7b i zostaje w mocy niezależnie od bazy centrowania.
+      expect(rectCenter).not.toBe(
+        columnsResult.columns[slot.stationIndex].x + columnsResult.columns[slot.stationIndex].width / 2,
+      );
     });
   });
 

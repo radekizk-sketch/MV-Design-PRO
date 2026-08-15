@@ -180,3 +180,57 @@ def test_source_and_converter_catalog_api_expose_quality_metadata(
     assert all(item["source_reference"] for item in pv_payload)
     assert all(item["source_reference"] for item in bess_payload)
     assert all(item["source_reference"] for item in wind_payload)
+
+
+# ---------------------------------------------------------------------------
+# Wykaz certyfikatow PTPiREE — filtr i wycinek (dlug 5 z rejestru V12K-321).
+# Pelny wykaz ma ~6887 pozycji (~3 MB); parametry search/limit/offset sa
+# ADDYTYWNE (bez nich kontrakt sprzed zmiany), a X-Total-Count niesie
+# licznosc PO filtrze, PRZED wycinkiem.
+# ---------------------------------------------------------------------------
+
+
+def test_ptpiree_certificates_domyslnie_pelna_lista_z_licznikiem(client: TestClient) -> None:
+    response = client.get("/api/catalog/ptpiree/generator-certificates")
+    assert response.status_code == 200
+    payload = response.json()
+    assert len(payload) > 6000  # pelny wykaz, nie reczna szostka
+    assert response.headers["X-Total-Count"] == str(len(payload))
+
+
+def test_ptpiree_certificates_search_normalizowany_i_wycinek(client: TestClient) -> None:
+    szukane = client.get(
+        "/api/catalog/ptpiree/generator-certificates",
+        params={"search": "huawei sun2000-215ktl"},
+    )
+    assert szukane.status_code == 200
+    wyniki = szukane.json()
+    razem = int(szukane.headers["X-Total-Count"])
+    assert razem == len(wyniki)
+    assert 0 < razem < 100  # filtr realnie zawezil wykaz
+    assert all("HUAWEI" in normalizuj(w["manufacturer"]) for w in wyniki)
+
+    strona = client.get(
+        "/api/catalog/ptpiree/generator-certificates",
+        params={"search": "huawei sun2000-215ktl", "limit": 1, "offset": 1},
+    )
+    assert strona.status_code == 200
+    assert int(strona.headers["X-Total-Count"]) == razem  # licznik PRZED wycinkiem
+    assert strona.json() == wyniki[1:2]
+
+
+def test_ptpiree_certificates_zle_parametry_wycinka(client: TestClient) -> None:
+    assert (
+        client.get("/api/catalog/ptpiree/generator-certificates", params={"limit": 0}).status_code
+        == 422
+    )
+    assert (
+        client.get("/api/catalog/ptpiree/generator-certificates", params={"offset": -1}).status_code
+        == 422
+    )
+
+
+def normalizuj(wartosc: str) -> str:
+    from network_model.catalog.types import normalize_ptpiree_key
+
+    return normalize_ptpiree_key(wartosc)

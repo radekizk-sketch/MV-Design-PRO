@@ -82,11 +82,18 @@ export default defineConfig({
     // Base URL for the app (deterministic loopback for Playwright webServer)
     baseURL: frontendUrl,
 
-    // Action timeout (clicks, fills, etc.)
-    actionTimeout: 10000,
+    // Action timeout (clicks, fills, etc.) — dziedziczy go TAKŻE fixture
+    // `request` (wywołania API w specach real-backend). Kalibracja do
+    // ZMIERZONEJ rzeczywistości pełnej suity (2026-07-30, 318 testów,
+    // 4 rdzenie współdzielone przez równoległych workerów): pojedyncze
+    // POST /api/projects przekraczało 10 s pod obciążeniem i wywalało spec,
+    // choć backend odpowiadał poprawnie. 30 s obejmuje ogon obciążeniowy;
+    // asercje (expect) mają własny, krótszy limit — realne zwisy UI nadal
+    // są łapane.
+    actionTimeout: 30000,
 
     // Navigation timeout
-    navigationTimeout: 15000,
+    navigationTimeout: 30000,
 
     // Trace only on first retry (saves CI storage)
     trace: 'on-first-retry',

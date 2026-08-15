@@ -7,11 +7,15 @@ from typing import Any
 
 from enm.models import BranchRating, Cable, EnergyNetworkModel, Load, OverheadLine
 from network_model.catalog.materialization import materialize_catalog_binding
-from network_model.catalog.repository import get_default_mv_catalog
-from network_model.catalog.types import CatalogBinding
+from network_model.catalog.repository import CatalogRepository, get_default_mv_catalog
+from network_model.catalog.types import CatalogBinding, LoadType
 
 DEFAULT_LOAD_CATALOG_REF = "load_uslugi_30kw"
 DEFAULT_LOAD_KW = 30.0
+#: cosφ deklarowany przez pozycję katalogową `load_uslugi_30kw` — stała
+#: dokumentuje parytet modułu z katalogiem. Wartością UŻYWANĄ do wyprowadzenia
+#: mocy biernej jest cosφ ODCZYTANY Z KATALOGU (jedno źródło prawdy tabliczki),
+#: żeby dane odbioru nie mogły rozjechać się z pozycją katalogową.
 DEFAULT_LOAD_COS_PHI = 0.92
 DEFAULT_ZKSN_SWITCH_STATE = "closed"
 CATALOG_VERSION_DEFAULT = "2026.01"
@@ -138,7 +142,18 @@ def _materialized_branch_point_params(
         materialized["switchgear_field_specs"] = _zksn_switchgear_field_specs(branch_ports_count)
     else:
         switch_device_kind = str(materialized.get("switch_device_kind") or "ROZLACZNIK")
-        rated_current = materialized.get("switch_rated_current_a") or 630.0
+        # Karta RATCHET-DICT-READ (2026-08-13): USUNIETA fabrykacja "or 630.0".
+        # `ApparatusSpec.rated_current_a` jest jawnie OPCJONALNE w kontrakcie
+        # (`enm/models.py`: `rated_current_a: float | None = None`), a ten sam
+        # plik kilkadziesiat linii nizej (w. 418-424) juz stosuje uczciwy wzorzec
+        # "brak danej -> None" dla TEGO SAMEGO pola na galezi. 630 A bylo
+        # zmyslona obciazalnoscia lacznika polowego, ktora wchodzila wprost do
+        # apparatus_specs uzywanych przez sprawdzenia cieplne/koordynacje —
+        # ta sama klasa co ampacity_a=630.0 naprawione w MOST-WEJSCIA-V126 dla
+        # mostu ENM->V12.6 (`solver_input/v126_contracts.py`), tu w DRUGIM
+        # moscie (materializacja katalogu branch-pointu). Brak danej -> None
+        # (uczciwy meldunek braku), nie liczba udajaca pomiar.
+        rated_current = materialized.get("switch_rated_current_a")
         materialized["object_role"] = "OVERHEAD_BRANCH_POLE"
         materialized["has_switchgear"] = False
         materialized["apparatus_specs"] = [
@@ -242,6 +257,46 @@ def complete_branch_point_catalog_materialization(
     return completed, changed
 
 
+def _odcinki_do_materializacji(enm: EnergyNetworkModel, catalog: CatalogRepository) -> bool:
+    """Czy KTÓRYKOLWIEK odcinek wymaga uzupełnienia danych katalogowych.
+
+    Przebieg CZYSTO ODCZYTOWY, powtarzający DOKŁADNIE warunki pominięcia z pętli
+    mutującej `complete_branch_catalog_materialization` (brak `catalog_ref`,
+    nieudana materializacja, komplet wartości już obecny) — jedno źródło prawdy
+    o tym, „czy jest co zmieniać". Rozjazd tych dwóch warunków byłby defektem
+    czekającym na dane brzegowe (reguła KLASA §3), dlatego trzyma je ten sam
+    zestaw wyrażeń.
+    """
+    for branch in enm.branches:
+        if not isinstance(branch, Cable | OverheadLine) or not branch.catalog_ref:
+            continue
+        namespace = branch.catalog_namespace or (
+            "KABEL_SN" if isinstance(branch, Cable) else "LINIA_SN"
+        )
+        binding = CatalogBinding(
+            catalog_namespace=namespace,
+            catalog_item_id=branch.catalog_ref,
+            catalog_item_version=_catalog_version(branch),
+            materialize=True,
+        )
+        result = materialize_catalog_binding(binding, catalog)
+        if not result.success:
+            continue
+        existing = (
+            branch.materialized_params if isinstance(branch.materialized_params, dict) else {}
+        )
+        materialized = {
+            **existing,
+            **result.solver_fields,
+            "catalog_item_id": branch.catalog_ref,
+            "catalog_item_version": binding.catalog_item_version,
+            "catalog_namespace": namespace,
+        }
+        if not _branch_has_materialized_values(branch, materialized):
+            return True
+    return False
+
+
 def complete_branch_catalog_materialization(
     enm: EnergyNetworkModel,
 ) -> tuple[EnergyNetworkModel, bool]:
@@ -251,16 +306,24 @@ def complete_branch_catalog_materialization(
     `materialized_params`. Na granicy ENM odtwarzamy deterministycznie dane z
     katalogu, tak żeby SLD i obliczenia dostały ten sam wariant kabla/linii.
     """
-    candidates = [
-        branch
-        for branch in enm.branches
-        if isinstance(branch, Cable | OverheadLine) and branch.catalog_ref
-    ]
-    if not candidates:
+    catalog = get_default_mv_catalog()
+
+    # PREDYKATY PARAMI (karta S9-9, znalezisko B-5 audytu SLD 2026-08).
+    # Warunek WEJŚCIA musi być tym samym warunkiem, którym pętla niżej decyduje
+    # o zmianie. Wcześniej wejście brzmiało „odcinek ma `catalog_ref`" — a to jest
+    # prawdą dla KAŻDEGO odcinka sieci zbudowanej z katalogu — więc funkcja
+    # kopiowała GŁĘBOKO cały model przy każdym wywołaniu i porzucała kopię
+    # (`return enm, False`), gdy okazywało się, że nic się nie zmienia. Na modelu
+    # 100 stacji było to ~62 ms wyrzucone przy KAŻDYM zapisie modelu, w stanie
+    # ustalonym (materializacja już kompletna) czyli praktycznie zawsze.
+    # Teraz decyzja zapada na modelu WEJŚCIOWYM (przebieg czysto odczytowy), a
+    # kopia powstaje dopiero, gdy jest co zmieniać. Sam przebieg mutujący został
+    # BEZ ZMIANY — liczy `materialized` na odcinkach KOPII, więc do zwracanego
+    # modelu nie trafia żadna struktura współdzielona z wejściem.
+    if not _odcinki_do_materializacji(enm, catalog):
         return enm, False
 
     completed = enm.model_copy(deep=True)
-    catalog = get_default_mv_catalog()
     changed = False
 
     for branch in completed.branches:
@@ -404,12 +467,16 @@ def complete_station_loads_from_nn_feeders(
     Older station templates could create nN outgoing feeders without ENM load
     elements. The product contract is catalog-complete station materialization,
     so this migration closes that gap deterministically at the ENM boundary.
+
+    Tabliczka dokładanego odbioru (P oraz Q/cosφ) pochodzi WYŁĄCZNIE z pozycji
+    katalogowej — patrz `_catalog_load_reactive_power`. Gdy katalog nie
+    rozstrzyga mocy biernej, odbiór nie powstaje w ogóle.
     """
     existing_feeder_refs = {
         feeder_ref for load in enm.loads for feeder_ref in [_load_feeder_ref(load)] if feeder_ref
     }
     bus_refs = {bus.ref_id for bus in enm.buses}
-    additions: list[Load] = []
+    pending: list[tuple[str, str, str, str, int]] = []
 
     for substation in enm.substations:
         if substation.station_type == "gpz":
@@ -424,13 +491,36 @@ def complete_station_loads_from_nn_feeders(
                 continue
             if not isinstance(bus_ref, str) or bus_ref not in bus_refs:
                 continue
-            additions.append(
-                _build_default_load(substation.ref_id, substation.name, feeder_ref, bus_ref, index)
-            )
+            pending.append((substation.ref_id, substation.name, feeder_ref, bus_ref, index))
             existing_feeder_refs.add(feeder_ref)
 
-    if not additions:
+    if not pending:
         return enm, False
+
+    # Katalog czytamy RAZ na wywołanie (i dopiero gdy jest co materializować),
+    # żeby wszystkie dokładane odbiory dostały ten sam, deterministyczny komplet
+    # danych tabliczkowych.
+    load_type = get_default_mv_catalog().get_load_type(DEFAULT_LOAD_CATALOG_REF)
+    reactive_power = _catalog_load_reactive_power(load_type, DEFAULT_LOAD_KW / 1000.0)
+    if load_type is None or reactive_power is None:
+        # Brak kanonu katalogu dla mocy biernej ⇒ NIE materializujemy odbioru.
+        # Cicha wartość Q = 0 przy zadeklarowanym katalogu to phantom cosφ
+        # (V12K-050) — rachunek szedłby z cosφ = 1,0 i zaniżonym spadkiem
+        # napięcia, a rekord i tak twierdziłby „parametry z katalogu".
+        return enm, False
+
+    additions = [
+        _build_default_load(
+            station_ref,
+            station_name,
+            feeder_ref,
+            bus_ref,
+            index,
+            load_type=load_type,
+            reactive_power=reactive_power,
+        )
+        for station_ref, station_name, feeder_ref, bus_ref, index in pending
+    ]
 
     completed = enm.model_copy(deep=True)
     completed.loads = [*completed.loads, *additions]
@@ -490,20 +580,86 @@ def _nn_feeder_specs(meta: dict[str, Any]) -> list[dict[str, Any]]:
     ]
 
 
+#: Znaczniki źródła mocy biernej odbioru katalogowego (ślad WHITE BOX materializacji).
+Q_SOURCE_CATALOG_Q_KVAR = "KATALOG_Q_KVAR"
+Q_SOURCE_CATALOG_COS_PHI = "KATALOG_COS_PHI"
+Q_SOURCE_CATALOG_NO_REACTIVE = "KATALOG_BEZ_MOCY_BIERNEJ"
+
+
+def _catalog_load_reactive_power(
+    load_type: LoadType | None,
+    p_mw: float,
+) -> tuple[float, str] | None:
+    """Moc bierna odbioru katalogowego [Mvar] + znacznik jej źródła.
+
+    Hierarchia źródeł (parytet z naprawionym ``add_nn_load``, V12K-050):
+
+    1. jawne ``q_kvar`` pozycji katalogowej wygrywa bez przeliczeń
+       (np. ``load_przem_75kw`` podaje 28 kvar wprost);
+    2. w przeciwnym razie moc bierna wychodzi z tabliczkowego cosφ katalogu:
+       ``Q = P · tan(arccos cosφ)``;
+    3. ``cos_phi_mode == "BRAK"`` to JAWNY kanon katalogu „pozycja bez mocy
+       biernej" — dopiero wtedy wolno zapisać Q = 0;
+    4. brak jednego i drugiego ⇒ ``None`` (brak kanonu) — wołający nie
+       materializuje odbioru. Cicha wartość Q = 0 jest zakazana: rachunek
+       poszedłby z cosφ = 1,0, a rekord twierdziłby „parametry z katalogu".
+
+    Konwencja znaku: ``Load.q_mvar`` dodatnie = POBÓR mocy biernej (mapowanie
+    ENM→rozpływ odejmuje ją od wstrzyknięcia węzła). Odbiór indukcyjny
+    (cosφ opóźniony, ``cos_phi_mode == "IND"``) → Q dodatnie; odbiór
+    pojemnościowy (``"POJ"``) → Q ujemne.
+
+    To arytmetyka tabliczkowa materializacji katalogu — nie fizyka sieci.
+    Solver dostaje gotowe P i Q i niczego tu nie dopowiada.
+    """
+    if load_type is None:
+        return None
+
+    q_kvar = load_type.q_kvar
+    if q_kvar is not None:
+        return float(q_kvar) / 1000.0, Q_SOURCE_CATALOG_Q_KVAR
+
+    mode = str(load_type.cos_phi_mode or "").strip().upper()
+    if mode == "BRAK":
+        return 0.0, Q_SOURCE_CATALOG_NO_REACTIVE
+    if mode not in ("IND", "POJ"):
+        return None
+
+    cos_phi = load_type.cos_phi
+    if cos_phi is None:
+        return None
+    cos_phi_value = float(cos_phi)
+    if not 0.0 < cos_phi_value <= 1.0:
+        return None
+
+    q_mvar = p_mw * math.tan(math.acos(cos_phi_value))
+    return (-q_mvar if mode == "POJ" else q_mvar), Q_SOURCE_CATALOG_COS_PHI
+
+
 def _build_default_load(
     station_ref: str,
     station_name: str,
     feeder_ref: str,
     bus_ref: str,
     index: int,
+    *,
+    load_type: LoadType,
+    reactive_power: tuple[float, str],
 ) -> Load:
     seed = sha256(f"catalog-load|{station_ref}|{feeder_ref}".encode()).hexdigest()[:32]
+    p_mw = DEFAULT_LOAD_KW / 1000.0
+    q_mvar, q_source = reactive_power
+    nameplate: dict[str, Any] = {"q_kvar": q_mvar * 1000.0, "q_source": q_source}
+    if load_type.cos_phi is not None:
+        nameplate["cos_phi"] = float(load_type.cos_phi)
+    if load_type.cos_phi_mode:
+        nameplate["cos_phi_mode"] = str(load_type.cos_phi_mode)
     return Load(
         ref_id=f"load/{seed}/nn",
         name=f"Odbiór nN {index} - {station_name}",
         bus_ref=bus_ref,
-        p_mw=DEFAULT_LOAD_KW / 1000.0,
-        q_mvar=0.0,
+        p_mw=p_mw,
+        q_mvar=q_mvar,
         model="pq",
         catalog_ref=DEFAULT_LOAD_CATALOG_REF,
         catalog_namespace="OBCIAZENIE",
@@ -512,13 +668,13 @@ def _build_default_load(
         materialized_params={
             "catalog_item_id": DEFAULT_LOAD_CATALOG_REF,
             "p_kw": DEFAULT_LOAD_KW,
-            "cos_phi": DEFAULT_LOAD_COS_PHI,
+            **nameplate,
         },
         meta={
             "feeder_ref": feeder_ref,
             "load_kind": "SKUPIONY",
             "connection_type": "TROJFAZOWY",
-            "cos_phi": DEFAULT_LOAD_COS_PHI,
+            **nameplate,
             "completion_source": "station_catalog_migration",
             "catalog_binding": {
                 "catalog_namespace": "OBCIAZENIE",

@@ -6,6 +6,7 @@ from application.station_templates._choices import (
     CT_OPTIONS,
     NN_CB_OPTIONS,
     PROT_FEEDER_OPTIONS,
+    SN_APPARATUS_OPTIONS,
     TR_OPTIONS_LARGE,
     TR_OPTIONS_MEDIUM,
     VT_OPTIONS,
@@ -54,6 +55,7 @@ def _przemyslowa(
                 BayRoleSpec(role="OUT", label_pl="Pole rezerwowe OUT"),
             ),
             sn_bay_protection_options=PROT_FEEDER_OPTIONS,
+            sn_bay_apparatus_options=SN_APPARATUS_OPTIONS,
             nn_feeders_count=TemplateParamInt(
                 default=feeders, min_value=2, max_value=20, label_pl="Liczba odpływów nN"
             ),

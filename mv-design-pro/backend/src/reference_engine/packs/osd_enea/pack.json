@@ -51,6 +51,11 @@
       "rule_id": "osd_enea.metering.delegated_standard",
       "description_pl": "Pomiar rozliczeniowy: Zeszyt 1 §5.5.9 s. 27 deleguje do odrębnego standardu „Układy pomiarowe energii elektrycznej” (obowiązuje od 02.04.2024, nieprzeniesiony do danych pakietu). Granica własności/eksploatacji: ŻADEN z 4 przeczytanych dokumentów nie reguluje tego tematu.",
       "implemented": false
+    },
+    {
+      "rule_id": "osd_enea.metering.control_metering_above_5mw",
+      "description_pl": "Układ pomiarowo-kontrolny dla obiektów o mocy przyłączeniowej powyżej 5 MW (dyrektywa właściciela 2026-08-07, V12K-336 pkt 2, w zw. z IRiESD; taksonomia układów pomiarowych energii — standard „Układy pomiarowe energii elektrycznej” [E-UP] pkt 3: układ pomiarowo-rozliczeniowy podstawowy, rezerwowy, równoważny lub układ pomiarowo-kontrolny). Walidacja normatywna, NIE brama domenowa. Bramki danych: moc przyłączeniowa z header.connection_conditions (dokument OSD, karta K2) — brak danych = reguła nieoceniana; oceniane jest WYPOSAŻENIE układu pomiarowego energii, więc reguła wymaga co najmniej jednego pola o funkcji UKLAD_ENERGII w modelu. Strona przeciwna świadomie bez kodu: standard wymaga układu kontrolnego OD progu, ale nie zakazuje go poniżej — układ kontrolny przy mocy ≤ 5 MW nie generuje sprawdzenia.",
+      "implemented": true
     }
   ],
   "notes_pl": "Dane z PEŁNEJ lektury 4 publicznych dokumentów standardu Enea Operator (research 2026-07-17, cytowania ze stronami wg stopki dokumentu; raport researchu z propozycjami reguł ENEA-ST-001..021: docs/audit/REFERENCE_ENGINE_RESEARCH_OSD_ENEA_2026-07-17.md). Semantyka wymagań standardu: „powinien/należy” = „musi/wymaga się” (Z1 rozdz. 3 s. 8). Status repo_verified — publiczne dokumenty OSD; status verified wymaga zatwierdzenia w PR (kanon SLD_MV_BAY_TEMPLATE_SOURCE_POLICY)."

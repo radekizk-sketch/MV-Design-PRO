@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import importlib.util
 import inspect
+import os
 import sys
+import tempfile
 from pathlib import Path
 
 import pytest
@@ -10,6 +12,36 @@ import pytest
 # Add backend/src to path for imports
 backend_src = Path(__file__).parents[1] / "src"
 sys.path.insert(0, str(backend_src))
+
+# Magazyny plikowe poza drzewem repo — DLA CALEJ SESJI (odpowiednik V12K-267
+# dla magazynow katalogowych). ``enm/store.py``, ``enm/dziennik_zmian.py``
+# i ``application/station_templates/user_store.py`` rozwiazuja katalog przez
+# ``os.getenv(...)`` z domyslna sciezka WEWNATRZ repo (``backend/.enm_store``,
+# ``.station_templates``) — ta sama, na ktorej pracuje ZYWY serwer uruchomiony
+# z tego katalogu. Testy wolajace ``reset_enm_store()`` kasowaly wtedy pliki
+# robocze ``*.tmp`` rownolegle biegnacego backendu (zmierzony skutek 2026-08-13:
+# ``FileNotFoundError`` przy atomowym ``replace()`` w ``dziennik_zmian.zatwierdz``
+# i HTTP ``template.persist_failed`` w suicie e2e biegnacej obok pytest).
+# Relokacja jest sesyjna, nie per-test: semantyka wspoldzielenia magazynu miedzy
+# testami (i jawne resety) zostaje DOKLADNIE ta sama, zmienia sie tylko katalog.
+# Testy ustawiajace te zmienne wlasnym ``monkeypatch`` nadal wygrywaja.
+# Warunek ``not in os.environ`` honoruje katalog wskazany jawnie z zewnatrz.
+if "ENM_STORE_DIR" not in os.environ:
+    os.environ["ENM_STORE_DIR"] = tempfile.mkdtemp(prefix="enm-store-pytest-")
+if "STATION_USER_TEMPLATES_DIR" not in os.environ:
+    os.environ["STATION_USER_TEMPLATES_DIR"] = tempfile.mkdtemp(prefix="szablony-pytest-")
+
+# Korzen backendu na sciezce — WYMAGANY przez tryb importu `importlib`
+# (pyproject: `[tool.pytest.ini_options] addopts = "--import-mode=importlib"`;
+# tryb NIE ma wlasnego klucza ini, wiec wchodzi przez addopts). Tryb `importlib` celowo
+# NIE dopisuje niczego do `sys.path` (to wlasnie ta samowolka powodowala
+# cieniowanie pakietow zrodlowych przez testowe), a 58 modulow testowych importuje
+# wspoldzielone budowniczki przez `from tests.<pakiet> import ...`. Dopisujemy
+# wiec dokladnie JEDEN katalog — korzen backendu — zamiast pozwalac pytestowi
+# wstrzykiwac katalog bazowy kazdego modulu testowego z osobna.
+backend_root = Path(__file__).parents[1]
+if str(backend_root) not in sys.path:
+    sys.path.insert(0, str(backend_root))
 
 
 def _install_httpx_testclient_compat() -> None:

@@ -128,7 +128,7 @@ function ErrorFallback({ error, errorInfo, onReset, sectionLabel }: ErrorFallbac
           <button
             type="button"
             onClick={() => window.location.reload()}
-            className="rounded border border-red-500 px-4 py-1.5 text-sm text-red-100 hover:bg-red-900/40"
+            className="rounded border border-sygnal-blokada px-4 py-1.5 text-sm text-sygnal-blokada-tusz hover:bg-sygnal-blokada-tlo"
             data-testid="error-boundary-reload"
           >
             Odśwież stronę

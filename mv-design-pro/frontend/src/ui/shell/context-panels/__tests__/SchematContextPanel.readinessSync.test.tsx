@@ -22,7 +22,7 @@ vi.mock('../../../network-build/networkBuildStore', () => ({
 
 import { SchematContextPanel } from '../SchematContextPanel';
 import { useSnapshotStore } from '../../../topology/snapshotStore';
-import { useAppStateStore } from '../../../app-state/store';
+import { useShellStore } from '../../../../ui2/shell/useShellStore';
 
 describe('SchematContextPanel - synchronizacja kontroli zakresu', () => {
   it('nie pokazuje przestarzalej kontroli z live-store, gdy migawka zakresu jest gotowa', () => {
@@ -54,10 +54,10 @@ describe('SchematContextPanel - synchronizacja kontroli zakresu', () => {
     expect(screen.queryByText(/Konfiguracja układu/)).not.toBeInTheDocument();
   });
 
-  it('klik w gotowy układ otwiera obszar studiów obliczeniowych zamiast pustej akcji w SLD', async () => {
+  it('klik w gotowy układ prowadzi do przestrzeni wyników zamiast pustej akcji w SLD', async () => {
     networkBuildMocks.openRouteSurface.mockClear();
+    useShellStore.getState().setActiveSpace('schemat');
     act(() => {
-      useAppStateStore.getState().setActiveArea('SCHEMAT_TOPOLOGIA');
       window.location.hash = '#sld?case=case-ready&run=run-ready';
       useSnapshotStore.setState({
         snapshot: {
@@ -85,7 +85,10 @@ describe('SchematContextPanel - synchronizacja kontroli zakresu', () => {
     await userEvent.click(screen.getByTestId('schemat-action-show-normal-open-points'));
 
     expect(window.location.hash).toContain('#analysis');
-    expect(useAppStateStore.getState().activeArea).toBe('WYNIKI_ANALIZY');
+    // D1: dawniej akcja ustawiała RÓWNOLEGŁY stan `activeArea='WYNIKI_ANALIZY'`
+    // (przełącznik lewego panelu), zostawiając nawigację powłoki na schemacie.
+    // Teraz prowadzi do PRZESTRZENI kanonicznej — obszar panelu wynika z trasy.
+    expect(useShellStore.getState().activeSpace).toBe('wyniki');
     expect(networkBuildMocks.openRouteSurface).toHaveBeenCalledWith('E-35', expect.objectContaining({
       route: 'analysis',
       titlePl: 'Analiza sieciowa i obliczenia',

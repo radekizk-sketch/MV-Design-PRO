@@ -15,6 +15,7 @@ import { render, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useLegacyOrchestrator, type LegacyOrchestratorApi } from '../useLegacyOrchestrator';
+import { useShellStore } from '../../shell/useShellStore';
 import { useAppStateStore } from '../../../ui/app-state';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
@@ -84,6 +85,9 @@ describe('useLegacyOrchestrator (E1.7a — ekstrakcja 1:1 z App.tsx)', () => {
       })),
     );
     window.location.hash = '';
+    // K3-A1: przestrzeń powłoki wraca do domyślnej — testy lądowiska wyników
+    // muszą mierzyć zmianę wywołaną trasą, nie stan zastany z poprzednich testów.
+    useShellStore.setState({ activeSpace: 'projekt' });
     useAppStateStore.setState(initialAppState, true);
     useExecutionRunsStore.setState(initialExecutionState, true);
     useSnapshotStore.setState(initialSnapshotState, true);
@@ -142,7 +146,7 @@ describe('useLegacyOrchestrator (E1.7a — ekstrakcja 1:1 z App.tsx)', () => {
     expect(useAppStateStore.getState().activeCaseName).toBe('Wariant zwarciowy');
   });
 
-  it('?run=<uuid> na trasie SLD: aktywne obliczenie w obu store\'ach + obszar schematu', async () => {
+  it('?run=<uuid> na trasie SLD: aktywne obliczenie w obu store\'ach + przestrzeń schematu', async () => {
     window.location.hash = `#sld?run=${RUN_ID}`;
 
     render(<Probe />);
@@ -153,10 +157,12 @@ describe('useLegacyOrchestrator (E1.7a — ekstrakcja 1:1 z App.tsx)', () => {
     await waitFor(() => {
       expect(useExecutionRunsStore.getState().activeRunId).toBe(RUN_ID);
     });
-    expect(useAppStateStore.getState().activeArea).toBe('SCHEMAT_TOPOLOGIA');
+    // D1: obszar panelu kontekstu nie jest już osobnym stanem — trasa `#sld`
+    // ląduje w przestrzeni „Schemat", a panel wynika z tej samej tabeli.
+    expect(useShellStore.getState().activeSpace).toBe('schemat');
   });
 
-  it('#analysis: powierzchnia E-24 z zakładką wyników, tryb RESULT_VIEW, obszar wyników', async () => {
+  it('#analysis: powierzchnia E-24 z zakładką wyników, tryb RESULT_VIEW, przestrzeń wyników', async () => {
     window.location.hash = '#analysis';
 
     render(<Probe />);
@@ -170,7 +176,7 @@ describe('useLegacyOrchestrator (E1.7a — ekstrakcja 1:1 z App.tsx)', () => {
     await waitFor(() => {
       expect(useAppStateStore.getState().activeMode).toBe('RESULT_VIEW');
     });
-    expect(useAppStateStore.getState().activeArea).toBe('WYNIKI_ANALIZY');
+    expect(useShellStore.getState().activeSpace).toBe('wyniki');
     expect(lastApi?.route).toBe('#analysis');
   });
 
@@ -188,5 +194,96 @@ describe('useLegacyOrchestrator (E1.7a — ekstrakcja 1:1 z App.tsx)', () => {
     await waitFor(() => {
       expect(useAppStateStore.getState().activeMode).toBe('RESULT_VIEW');
     });
+  });
+
+  // K3-A1 (jedno lądowisko wyników): trasa wyników ustawia przestrzeń 'wyniki' —
+  // bez tego zimny deep-link #analysis?run=… i DONE-owe navigateToResults
+  // renderowały most legacy (warsztat ui2 wymaga activeSpace='wyniki').
+  it('#analysis (K3-A1): trasa wyników ustawia przestrzeń powłoki na „wyniki"', async () => {
+    window.location.hash = '#analysis?run=abc';
+
+    render(<Probe />);
+
+    await waitFor(() => {
+      expect(useShellStore.getState().activeSpace).toBe('wyniki');
+    });
+  });
+
+  it('#results / #power-flow-results (aliasy wyników): również lądują w przestrzeni „wyniki"', async () => {
+    window.location.hash = '#results';
+    render(<Probe />);
+    await waitFor(() => {
+      expect(useShellStore.getState().activeSpace).toBe('wyniki');
+    });
+  });
+
+  // D1 (zmiana kanonu, intencja zachowana): dawniej trasa `#sld` CELOWO nie
+  // ruszała przestrzeni — zakres K3-A1 obejmował tylko wyniki. Skutek: wejście
+  // adresem schematu zostawiało pasek nawigacji na poprzednim etapie (tu:
+  // „Projekt"), czyli treść mówiła co innego niż nawigacja. Kanon D1: KAŻDA
+  // trasa ląduje w swojej przestrzeni — jedna tabela `mostObszarow`.
+  it('#sld ląduje w przestrzeni „Schemat" (kanon D1: każda trasa ma przestrzeń)', async () => {
+    window.location.hash = '#sld';
+
+    render(<Probe />);
+
+    await waitFor(() => {
+      expect(lastApi?.route).toBe('#sld');
+    });
+    await waitFor(() => {
+      expect(useShellStore.getState().activeSpace).toBe('schemat');
+    });
+  });
+
+  // INTENCJA (K3-A1, zachowana): trasa wyników zabezpieczeń ma mieć JEDNO,
+  // jawne lądowisko. Kanon zmieniony w K8 (wygaszenie mostów o pełnym
+  // parytecie): most renderował dla zakładki 'protection' GENERYCZNĄ tabelę
+  // analityczną E-35 (brak własnej gałęzi), a warsztat Wyników ma dziś
+  // zakładkę „Koordynacja zabezpieczeń" (EkranKoordynacji, dostawca E-28) —
+  // trasa ląduje w oknie ui2 i NIE zostawia powierzchni mostu.
+  it('#protection-results (K8): ląduje w zakładce „koordynacja" przestrzeni „wyniki", bez powierzchni mostu', async () => {
+    window.location.hash = '#protection-results';
+
+    render(<Probe />);
+
+    await waitFor(() => {
+      expect(useShellStore.getState().activeSpace).toBe('wyniki');
+    });
+    expect(useShellStore.getState().wynikiTab).toBe('koordynacja');
+    expect(useNetworkBuildStore.getState().activeSurface).toBeNull();
+  });
+
+  it('#power-flow-results (K8): ląduje w zakładce „rozplyw", bez powierzchni mostu', async () => {
+    window.location.hash = '#power-flow-results';
+
+    render(<Probe />);
+
+    await waitFor(() => {
+      expect(useShellStore.getState().wynikiTab).toBe('rozplyw');
+    });
+    expect(useShellStore.getState().activeSpace).toBe('wyniki');
+    expect(useNetworkBuildStore.getState().activeSurface).toBeNull();
+  });
+
+  it('#case-config (K8): ląduje w przestrzeni „Obliczenia", bez powierzchni E-07 (router nie ma dla niej renderu)', async () => {
+    window.location.hash = '#case-config?case=case-1';
+
+    render(<Probe />);
+
+    await waitFor(() => {
+      expect(useShellStore.getState().activeSpace).toBe('obliczenia');
+    });
+    expect(useNetworkBuildStore.getState().activeSurface).toBeNull();
+  });
+
+  it('#variants (K8): ląduje w przestrzeni „Obliczenia", bez powierzchni E-08', async () => {
+    window.location.hash = '#variants?case=case-1';
+
+    render(<Probe />);
+
+    await waitFor(() => {
+      expect(useShellStore.getState().activeSpace).toBe('obliczenia');
+    });
+    expect(useNetworkBuildStore.getState().activeSurface).toBeNull();
   });
 });

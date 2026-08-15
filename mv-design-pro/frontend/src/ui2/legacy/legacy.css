@@ -35,3 +35,26 @@
 
 /* Scalenie U2 #3: warsztat obliczeń — nowe okno + most historii przebiegów. */
 .mvd-obliczenia-warsztat { display: flex; flex-direction: column; gap: 12px; height: 100%; min-height: 0; overflow: auto; padding: 12px; }
+
+/*
+ * NAPRAWA U ŹRÓDŁA (2026-08-14, bramka e2e `mosty-parytet`): panel stosu NIGDY
+ * się nie kurczy poniżej własnej treści.
+ *
+ * DEFEKT ZASTANY (zmierzony w przeglądarce): przestrzeń „Obliczenia" to pionowy
+ * stos pięciu paneli w kontenerze `overflow: auto`. Dwa z nich — menedżer
+ * przypadków (`.mvd-przypadki`) i historia przebiegów (`.mvd-przebiegi`) —
+ * deklarują `height: 100%` razem z `min-height: 0` (poprawne, gdy panel był
+ * JEDYNYM, pełnowysokim mieszkańcem warsztatu). W stosie ta para znaczy co
+ * innego: baza uelastycznienia równa wysokości kontenera (505 px) przy domyślnym
+ * `flex-shrink: 1` i zdjętym dolnym ograniczeniu, więc algorytm flexa kurczył
+ * właśnie te dwa panele — do DOKŁADNIE 0 px (zmierzone: rect 1045x0 przy
+ * scrollHeight 101). Użytkownik wchodził w „Obliczenia" i NIE WIDZIAŁ ani
+ * menedżera przypadków, ani historii przebiegów; panele były w DOM, więc żaden
+ * test jednostkowy (jsdom nie liczy layoutu) nie mógł tego złapać.
+ *
+ * Dlaczego regułą kontenera, a nie poprawką w dwóch plikach paneli: „czy panel
+ * może się skurczyć" to własność STOSU, nie panelu. Jedno źródło prawdy pilnuje
+ * też paneli dodanych do warsztatu w przyszłości — inaczej trzeci panel z
+ * `min-height: 0` wprowadziłby ten sam defekt jeszcze raz.
+ */
+.mvd-obliczenia-warsztat > * { flex: 0 0 auto; }

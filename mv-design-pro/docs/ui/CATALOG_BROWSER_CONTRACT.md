@@ -9,20 +9,20 @@
 
 ## 1. Cel dokumentu
 
-Definicja **Catalog Browser** dla przeglądania typĂłw elementĂłw pasywnych sieci.
+Definicja **Catalog Browser** dla przeglądania typów elementów pasywnych sieci.
 
 ---
 
 ## 2. FUNDAMENTALNA ZASADA (BINDING)
 
 ```
-â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-â”‚          TYPE jest ĹşrĂłdĹ‚em prawdy. INSTANCES są uĹĽyciami.       â”‚
-â”‚                                                                  â”‚
-â”‚  TYPE definiuje: R, X, B, I_nom, S_nom (NIEZMIENNE)             â”‚
-â”‚  INSTANCE odwoĹ‚uje się do TYPE (1:N relacja)                    â”‚
-â”‚  Edycja TYPE → propagacja do WSZYSTKICH INSTANCES               â”‚
-â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+┌─────────────────────────────────────────────────────────────────┐
+│          TYPE jest źródłem prawdy. INSTANCES są użyciami.       │
+│                                                                  │
+│  TYPE definiuje: R, X, B, I_nom, S_nom (NIEZMIENNE)             │
+│  INSTANCE odwołuje się do TYPE (1:N relacja)                    │
+│  Edycja TYPE → propagacja do WSZYSTKICH INSTANCES               │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -31,19 +31,19 @@ Definicja **Catalog Browser** dla przeglądania typĂłw elementĂłw pasywnych 
 
 | Kategoria | Typy | Status |
 |-----------|------|--------|
-| **LineType** | Linie napowietrzne, kable | âś“ WĹĄCZONE |
-| **CableType** | Kable SN/nN | âś“ WĹĄCZONE |
-| **TransformerType** | Transformatory 2/3-uzwojeniowe | âś“ WĹĄCZONE |
-| **SwitchType** | RozĹ‚ączniki, wyĹ‚ączniki | âś“ WĹĄCZONE |
+| **LineType** | Linie napowietrzne, kable | ✓ WŁĄCZONE |
+| **CableType** | Kable SN/nN | ✓ WŁĄCZONE |
+| **TransformerType** | Transformatory 2/3-uzwojeniowe | ✓ WŁĄCZONE |
+| **SwitchType** | Rozłączniki, wyłączniki | ✓ WŁĄCZONE |
 
 ---
 
 ## 4. FORBIDDEN Categories
 
-| Kategoria | PowĂłd |
+| Kategoria | Powód |
 |-----------|-------|
 | **Source Types** | Parametry Case-dependent (P_gen, Q_gen) |
-| **Load Types** | Parametry Case-dependent (P_load, cosĎ†) |
+| **Load Types** | Parametry Case-dependent (P_load, cosφ) |
 | **Protection Types** | Parametry nastawcze (I_trip, t_trip) |
 
 ---
@@ -54,22 +54,22 @@ Definicja **Catalog Browser** dla przeglądania typĂłw elementĂłw pasywnych 
 - Lista kategorii (LineType, CableType, TransformerType, SwitchType)
 
 ### 5.2 Type List
-- Tabela typĂłw: Type ID, Name, Manufacturer, Rating, Instances Count
+- Tabela typów: Type ID, Name, Manufacturer, Rating, Instances Count
 
 ### 5.3 Type Details
-- ZakĹ‚adki: Overview, Parameters, Instances, Technical Data
+- Zakładki: Overview, Parameters, Instances, Technical Data
 
 ### 5.4 Type → Instances
-- Lista wszystkich instancji uĹĽywających danego Type
-- Link do Element Inspector dla kaĹĽdej instancji
+- Lista wszystkich instancji używających danego Type
+- Link do Element Inspector dla każdej instancji
 
 ---
 
 ## 6. Propagacja zmian TYPE → INSTANCES
 
 1. Edycja TYPE (Designer Mode)
-2. OstrzeĹĽenie: "This change affects {N} instances"
-3. Potwierdzenie uĹĽytkownika
+2. Ostrzeżenie: "This change affects {N} instances"
+3. Potwierdzenie użytkownika
 4. Propagacja do WSZYSTKICH INSTANCES
 5. Wyniki → OUTDATED
 
@@ -79,10 +79,10 @@ Definicja **Catalog Browser** dla przeglądania typĂłw elementĂłw pasywnych 
 
 | Feature | benchmark | benchmark | MV-DESIGN-PRO | Status |
 |---------|------|--------------|---------------|--------|
-| Type Library | âś“ | âś“ | âś“ | âś… FULL |
-| Type → Instances | âś“ | âś“ | âś“ | âś… FULL |
-| Propagation | âś“ | âś“ | âś“ | âś… FULL |
-| PASYWNE ONLY | âś“ | âś“ | âś“ | âś… FULL |
+| Type Library | ✓ | ✓ | ✓ | ✅ FULL |
+| Type → Instances | ✓ | ✓ | ✓ | ✅ FULL |
+| Propagation | ✓ | ✓ | ✓ | ✅ FULL |
+| PASYWNE ONLY | ✓ | ✓ | ✓ | ✅ FULL |
 
 ---
 

@@ -151,6 +151,8 @@ def _build_full_pv_bess_network() -> dict[str, Any]:
         "insert_station_on_segment_sn",
         {
             "segment_ref": seg_for_station_1,
+            # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+            "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
             "station_type": "B",
             "insert_at": {"value": 0.4},
             "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4, "name": "Stacja-1"},
@@ -176,13 +178,19 @@ def _build_full_pv_bess_network() -> dict[str, Any]:
         "insert_station_on_segment_sn",
         {
             "segment_ref": seg_for_station_2,
+            # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+            "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
             "station_type": "B",
             "insert_at": {"value": 0.5},
             "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4, "name": "Stacja-2"},
             "sn_fields": ["IN", "OUT", "FEEDER"],
+            # Transformator 2,5 MVA: stacja #2 przyjmuje turbinę wiatrową nN
+            # (najmniejsza pozycja katalogowa to 2 MW / 2,2 MVA). Wcześniej test
+            # obchodził kontrolę mocy tabliczką z payloadu pod wymyślonym refem —
+            # po naprawie defektu G dobór musi być wykonalny naprawdę.
             "transformer": {
                 "create": True,
-                "transformer_catalog_ref": "tr-sn-nn-15-04-1250kva-dyn11",
+                "transformer_catalog_ref": "tr-sn-nn-15-04-2500kva-dyn11",
             },
         },
     )
@@ -339,19 +347,13 @@ def _build_full_pv_bess_network() -> dict[str, Any]:
             "bus_nn_ref": nn_bus_st2,
             "source_technology": "FW",
             "connection_variant": "nn_side",
-            "catalog_ref": "conv-fw-1.0mw-15kv",
+            # Turbina wiatrowa nN — RZECZYWISTA pozycja katalogu (0,4 kV / 2 MW /
+            # 2,2 MVA). Dawny „conv-fw-1.0mw-15kv" nie istniał, a payload deklarował
+            # dla niego 0,4 kV — czyli tabliczkę sprzeczną z własnym identyfikatorem.
+            "catalog_ref": "conv-wind-nn-2mw-0p4kv",
             "name": "FW-S2",
             "source_name": "FW-S2",
             "power_setpoint_mw": 0.05,
-            "materialized_params": {
-                "catalog_item_id": "conv-fw-1.0mw-15kv",
-                "catalog_item_version": "2024.1",
-                "un_kv": 0.4,
-                "max_power_kw": 1000.0,
-                "pmax_mw": 1.0,
-                "sn_mva": 1.0,
-                "control_mode": "PQ",
-            },
         },
     )
     assert r.get("error") is None, f"KROK 10 (FW w stacji #2): {r.get('error')}"

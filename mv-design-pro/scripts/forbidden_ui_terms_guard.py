@@ -69,9 +69,9 @@ def scan_file(filepath: str) -> list[tuple[int, str, str]]:
     violations: list[tuple[int, str, str]] = []
 
     try:
-        with open(filepath, "r", encoding="utf-8", errors="ignore") as f:
+        with open(filepath, encoding="utf-8", errors="ignore") as f:
             lines = f.readlines()
-    except (OSError, IOError):
+    except OSError:
         return violations
 
     for line_no, line in enumerate(lines, start=1):

@@ -163,7 +163,9 @@ def run_overcurrent_v0(
     return envelope
 
 
-def _read_short_circuit_index_entry(sc_run_id: str, *, uow_factory) -> Any:
+def _read_short_circuit_index_entry(
+    sc_run_id: str, *, uow_factory: Callable[[], UnitOfWork]
+) -> AnalysisRunIndexEntry:
     with uow_factory() as uow:
         entry = uow.analysis_runs_index.get(sc_run_id)
     if entry is None:
@@ -299,7 +301,7 @@ def _persist_run_index(
     envelope: AnalysisRunEnvelope,
     protection_input: ProtectionInput,
     *,
-    uow_factory,
+    uow_factory: Callable[[], UnitOfWork],
 ) -> None:
     entry = index_run(
         envelope,
@@ -321,7 +323,7 @@ def _persist_run_index_v0(
     *,
     report_fingerprint: str,
     status: str,
-    uow_factory,
+    uow_factory: Callable[[], UnitOfWork],
 ) -> None:
     entry = _build_index_entry_v0(
         envelope,

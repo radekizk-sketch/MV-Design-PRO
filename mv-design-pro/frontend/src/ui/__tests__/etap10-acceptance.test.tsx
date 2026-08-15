@@ -6,14 +6,18 @@
  * są w e2e/sld-canvas-routing.spec.ts.
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { fireEvent, screen } from '@testing-library/react';
 import { renderWithQueryClient as render } from '../../test/queryClientTestUtils';
 
 import { useAppStateStore } from '../app-state';
 import { useNetworkBuildStore } from '../network-build/networkBuildStore';
 import { useSnapshotStore } from '../topology/snapshotStore';
-import { CommandPalette } from '../network-build/CommandPalette';
+// D4: kanonem palety komend jest `ui2/search` — duplikat z `ui/network-build`
+// skasowany, a jego jedyna unikalna zdolność (otwieranie okien E-XX) przeniesiona
+// do indeksu wyszukiwarki. Test ćwiczy JĄ, na kanonicznym komponencie.
+import { CommandPalette } from '../../ui2/search/CommandPalette';
+import { zbudujIndeksWyszukiwania } from '../../ui2/search/searchIndex';
 import { SldCanvasV3Workspace } from '../sld/v3/canvas/SldCanvasV3Workspace';
 import { ProjectDashboardSurface } from '../workspace/surfaces/ProjectDashboardSurface';
 import { GpzConfiguratorSurface } from '../workspace/surfaces/GpzConfiguratorSurface';
@@ -22,6 +26,29 @@ import { StationConfiguratorSurface } from '../workspace/surfaces/StationConfigu
 import { SnSegmentSurface } from '../workspace/surfaces/SnSegmentSurface';
 import { ZksnSurface, BranchPoleSurface, NopSurface } from '../workspace/surfaces/InfrastructureSurfaces';
 import { PvSourceSurface, BessSurface, FwSurface } from '../workspace/surfaces/DerSurfaces';
+
+/**
+ * Migawka PUSTEGO modelu (S9-11 / P-8): stan pusty kanwy montuje się wyłącznie
+ * przy werdykcie 'pusty' (`ui/topology/pustoscModelu`) — brak migawki to
+ * pustość NIEUSTALONA i stan pusty NIE ma prawa wisieć w drzewie (pomiar
+ * audytu: akcje `sld-empty-state*` przy sieci 16/51 stacji).
+ */
+function pustaMigawka() {
+  return {
+    header: {
+      enm_version: '1.0',
+      name: 'test',
+      revision: 0,
+      hash_sha256: 'h0',
+      defaults: { frequency_hz: 50, unit_system: 'SI' },
+    },
+    sources: [], buses: [], branches: [], transformers: [], loads: [],
+    generators: [], shunt_capacitors: [], substations: [], bays: [],
+    junctions: [], branch_points: [], corridors: [], line_runs: [],
+    connection_nodes: [], measurements: [], protection_assignments: [],
+    logical_views: { trunks: [], branches: [], secondary_connectors: [], terminals: [] },
+  } as never;
+}
 
 const sampleSurface = {
   surfaceId: 'acc-surface',
@@ -48,7 +75,8 @@ describe('Etap 10 — Testy akceptacyjne workflow inżyniera E2E', () => {
   });
 
   // === Test A: Środowisko SLD (E-01) ===
-  it('A. SLD canvas renderuje się z polskim empty state', () => {
+  it('A. SLD canvas renderuje się z polskim empty state przy PUSTYM modelu', () => {
+    useSnapshotStore.setState({ snapshot: pustaMigawka() });
     render(<SldCanvasV3Workspace width={800} height={600} />);
     expect(screen.getByTestId('sld-canvas-v3-workspace')).toBeInTheDocument();
     expect(screen.getByTestId('sld-empty-state')).toBeInTheDocument();
@@ -108,17 +136,46 @@ describe('Etap 10 — Testy akceptacyjne workflow inżyniera E2E', () => {
     expect(screen.getByTestId('fw-surface')).toBeInTheDocument();
   });
 
-  // === Test I: Command Palette ===
-  it('I. Command palette filtruje komendy po fuzzy search', () => {
-    render(<CommandPalette isOpen onClose={() => {}} />);
-    const input = screen.getByTestId('command-palette-input') as HTMLInputElement;
+  // Atrapa dostawców akcji indeksu — test bada FILTROWANIE, nie skutki komend.
+  // (pole `otworzEkran` nadpisywane w przypadku testowym, żeby dało się je
+  // sprawdzić, gdyby kiedyś doszła asercja wykonania).
+// === Test I: Command Palette ===
+  it('I. Paleta komend filtruje pozycje po fuzzy search i znajduje okno GPZ', () => {
+    const otworzEkran = vi.fn();
+    const pozycje = zbudujIndeksWyszukiwania({
+      akcje: {
+        przejdzDoPrzestrzeni: vi.fn(),
+        wybierzObiekt: vi.fn(),
+        otworzEkran,
+        przelicz: vi.fn(),
+        otworzProjekt: vi.fn(),
+        przywrocUklad: vi.fn(),
+        polaczPonownie: vi.fn(),
+      },
+    });
+    render(
+      <CommandPalette
+        otwarta
+        onZamknij={() => {}}
+        pozycje={pozycje}
+        trybAktualny="expert"
+        onWykonaj={(pozycja) => pozycja.akcja()}
+        onPrzelaczTryb={() => {}}
+      />,
+    );
+    const input = screen.getByTestId('mvd-cmdk-input') as HTMLInputElement;
     fireEvent.change(input, { target: { value: 'GPZ' } });
-    const results = screen.getByTestId('command-palette-results');
-    expect(results.textContent).toContain('GPZ');
+    // Fraza „GPZ" trafia w SŁOWA KLUCZOWE pozycji (kod ekranu + nazwa
+    // skrócona) — parytet ze skasowaną paletą, która szukała po tych samych
+    // danych. Na liście widać etykietę pełną okna E-10.
+    const wyniki = screen.getByTestId('mvd-cmdk-listbox');
+    expect(wyniki.textContent).toContain('Główny Punkt Zasilający');
+    expect(screen.getByTestId('mvd-cmdk-opcja-ekran:E-10')).toBeInTheDocument();
   });
 
   // === Test J: Brak placeholderów / TODO produkcyjnych ===
   it('J. Brak fałszywych zer "0,00" w empty stanach', () => {
+    useSnapshotStore.setState({ snapshot: pustaMigawka() });
     render(<SldCanvasV3Workspace width={400} height={300} />);
     const empty = screen.getByTestId('sld-empty-state');
     expect(empty.textContent).not.toContain('0.00');

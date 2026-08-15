@@ -233,3 +233,30 @@ def distill_sld_network(enm: dict[str, Any]) -> dict[str, Any]:
             reverse=True,
         ),
     }
+
+
+_NAGLOWEK_FIXTURY = """/**
+ * GENERATED — do not edit by hand. The COMPACT 53-station SLD network model, distilled from the
+ * backend ENM substrate (backend/tests/reference_networks/sld_substrate_52s.py) by
+ * application/reference_networks/sld_network_model.py. Regenerate:
+ *   cd backend && poetry run python scripts/emit_sld_network_fixture.py
+ * It is the read-only INPUT to the E3 network auto-layout — the SAME source the backend solves.
+ */
+import type { SldNetworkModel } from './networkModel';
+
+export const SLD_NETWORK_53: SldNetworkModel = """
+
+
+def render_sld_network_fixture(model: dict[str, Any]) -> str:
+    """Pelna tresc artefaktu GENERATED ``sldNetwork53.ts`` (karta X4).
+
+    JEDEN tor renderowania dla zapisu (``scripts/emit_sld_network_fixture.py``)
+    i dla testu regeneracji — do karty X4 naglowek GENERATED nie mial testu
+    porownujacego artefakt z generatorem, wiec reczna edycja rozjezdzala go
+    z modelem bez jednego czerwonego testu.
+    """
+    import json
+
+    return (
+        _NAGLOWEK_FIXTURY + json.dumps(model, indent=2, sort_keys=True, ensure_ascii=False) + ";\n"
+    )

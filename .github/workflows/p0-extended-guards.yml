@@ -65,6 +65,17 @@ jobs:
       - name: Zależności trace guard (pydantic)
         run: pip install pydantic
 
+      # Karta N-D5-FUSE: bezpiecznik topikowy nie moze byc liczony wzorem IDMT
+      # przekaznika (IEC 60255) — jego pasmo (IEC 60282-1) pochodzi z karty
+      # katalogowej producenta. Guard sprawdza tekst, strukture I ZACHOWANIE
+      # (przepuszcza bezpiecznik przez analizator), wiec IMPORTUJE warstwe
+      # domeny. Stoi PO instalacji pydantic, bo `domain/__init__.py` ciagnie
+      # `result_set` -> `pydantic` — sprawdzone uruchomieniem na golym
+      # interpreterze, nie zalozone (pierwotnie wpiety przed tym krokiem,
+      # padal na ModuleNotFoundError).
+      - name: Protection — bezpiecznik nie liczony jak przekaznik
+        run: python scripts/protection_fuse_band_guard.py
+
       - name: Trace determinism
         run: python scripts/trace_determinism_guard.py
 
@@ -145,6 +156,9 @@ jobs:
       - name: Brak bezposrednich parametrow zwarcia
         run: python scripts/no_direct_fault_params_guard.py
 
+      - name: Brak podstawiania liczb za nieobecne dane wejsciowe solvera
+        run: python scripts/solver_input_substitute_guard.py
+
       - name: Solver diff (hasze referencyjne solwerow)
         run: python scripts/solver_diff_guard.py
 
@@ -220,3 +234,48 @@ jobs:
 
       - name: Martwy kod backendu (vulture)
         run: python scripts/vulture_guard.py
+
+      # =====================================================================
+      # KARTA ROUTERY-MARTWE — luka „guard istnieje, ale nikt go nie uruchamia"
+      # ODROSLA PO RAZ TRZECI (pomiar 2026-08-08).
+      # =====================================================================
+      # `guardy_z_ci.py` czyta liste guardow WPROST z tych workflowow, wiec guard
+      # niewpiety tutaj nie jest uruchamiany ani w CI, ani przez bramke odbioru
+      # nadzorcy. Na HEAD dwa guardy stały poza CI mimo zieleni:
+      #
+      #   * `route_prefix_guard` — kanon prefiksu tras + rejestr martwych klientow
+      #     frontu (16 sciezek w 4 modulach). Guard z ZAPADKA, ktorej nikt nie
+      #     zdejmowal, bo nikt jej nie uruchamial.
+      #   * `export_codenames_guard` — zakaz kryptonimow projektu w eksportach.
+      #
+      # Trzeci krok to nowy guard tej karty: `api_lifecycle_guard` i
+      # `route_prefix_guard` chodza po trasach WPIETYCH, wiec router zdefiniowany
+      # i nigdy niezamontowany byl dla nich niewidzialny Z KONSTRUKCJI (iniekcja
+      # pustego routera przechodzila komplet 69 guardow z RC=0).
+      - name: Kanon prefiksu tras (backend / front / proxy)
+        run: python scripts/route_prefix_guard.py
+
+      - name: Kryptonimy projektu w eksportach
+        run: python scripts/export_codenames_guard.py
+
+      - name: Montaz routerow (router zdefiniowany = router wpiety)
+        run: python scripts/router_mount_guard.py
+
+      # =====================================================================
+      # KARTA SUITA-BEZ-WYWOLANIA (2026-08-12) — dlug nazwany w REJESTR_KONFLIKTOW.md
+      # V12K-276(e): `scripts/verify_v12_5.py`/`verify_v12_5_1.py`/`verify_v12_6.py`
+      # (agregatory 655/655/254 linii) nigdy nie stały w ŻADNYM workflow CI, a
+      # dodatkowo wskazywały pliki, których nie było (6/6 golden testów frontu,
+      # 11/23 sciezek trybu --quick, 5/17 guardow SLD wolanych przez verify_v12_6,
+      # 1 plik UI V126AcademicSurface.tsx). Oba agregatory SKASOWANE. Dwa realne
+      # kroki, ktore wolały wylacznie przez nie, wpiete tutaj bezposrednio; trzeci
+      # to zapadka na powrot tej samej klasy defektu.
+      # =====================================================================
+      - name: SLD — GPZ 110 kV -> TR -> SN bez pominiecia rozdzielni
+        run: python scripts/no_direct_110kv_tr_tie_without_switchgear.py
+
+      - name: Kontrakt tekstowy V12.6 (kanon akademicki NC RfG/PTPiREE)
+        run: python scripts/v126_contract_text_guard.py
+
+      - name: Zapadka — suita weryfikacyjna wskazujaca pliki, ktorych nie ma
+        run: python scripts/verification_phantom_paths_guard.py

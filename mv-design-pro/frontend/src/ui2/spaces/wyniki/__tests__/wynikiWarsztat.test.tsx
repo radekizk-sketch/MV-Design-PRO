@@ -10,9 +10,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
 
-// R3-C (pełny łańcuch przez okno porównania): lista przebiegów rozpływu i
-// per-przebiegowe wyniki zwarciowe mockowane na granicy klienta API (reszta
-// modułu inspektora wyników pozostaje realna — importOriginal).
+// R3-C (pełny łańcuch przez okno porównania): lista przebiegów rozpływu,
+// porównanie zwarciowe i per-przebiegowe wyniki zwarciowe mockowane na granicy
+// klienta API (reszta modułu inspektora wyników pozostaje realna —
+// importOriginal).
 vi.mock('../../../../ui/power-flow-comparison/api', () => ({
   fetchPowerFlowRuns: vi.fn(async () => []),
   createPowerFlowComparison: vi.fn(),
@@ -21,8 +22,17 @@ vi.mock('../../../../ui/results-inspector/api', async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
   fetchShortCircuitResults: vi.fn(),
 }));
+// KD-3 poz. 11: tabela porównania zwarć powstaje z JEDNEJ końcówki
+// `POST /api/short-circuit-comparisons` (delty liczy domena, nie ekran).
+// Wcześniej ten test karmił porównanie dwoma odczytami wyników zwarciowych —
+// intencja („pełny łańcuch realną ścieżką: klik w komórkę A → dowód przebiegu
+// A") bez zmian, zmienia się tylko granica, na której stoi atrapa.
+vi.mock('../../../wyniki/porownanie/zwarciaPorownanieApi', () => ({
+  pobierzPorownanieZwarciowe: vi.fn(),
+}));
 
 import { fetchShortCircuitResults } from '../../../../ui/results-inspector/api';
+import { pobierzPorownanieZwarciowe } from '../../../wyniki/porownanie/zwarciaPorownanieApi';
 import { useAppStateStore } from '../../../../ui/app-state';
 import { useStationDerStore } from '../../../../ui/network-build/station-der';
 import { usePowerFlowResultsStore } from '../../../../ui/power-flow-results/store';
@@ -104,6 +114,31 @@ describe('WynikiWarsztat — zakładki', () => {
     expect(screen.getByTestId('mvd-wyniki-zakladka-pozostale')).toHaveTextContent(
       T.zakladkaPozostale,
     );
+  });
+
+  // K8 (wygaszenie trasy mostu #protection-results): zakładka „Koordynacja
+  // zabezpieczeń" MUSI mieć realnego dostawcę — bez niej lądowisko wygaszonej
+  // trasy byłoby phantomem (dokładnie tego wymagał K3-A3 przy czterech
+  // zakładkach kart huba).
+  it('zakładka „koordynacja" (K8) ma etykietę PL i realnego dostawcę (EkranKoordynacji)', () => {
+    render(<WynikiWarsztat {...props()} />);
+    const zakladka = screen.getByTestId('mvd-wyniki-zakladka-koordynacja');
+    expect(zakladka).toHaveTextContent(T.zakladkaKoordynacja);
+
+    fireEvent.click(zakladka);
+    expect(zakladka.getAttribute('aria-selected')).toBe('true');
+    // Bez projektu ekran pokazuje UCZCIWY stan zerowy z akcją naprawczą
+    // (kontrakt EkranKoordynacji), a nie pustą przestrzeń ani widok mostu.
+    expect(screen.getByTestId('mvd-koordynacja-brak-projektu')).toBeTruthy();
+  });
+
+  it('deep-link „koordynacja" (K8): żądanie ze shell store otwiera zakładkę i jest konsumowane', () => {
+    useShellStore.setState({ wynikiTab: 'koordynacja' });
+    render(<WynikiWarsztat {...props()} />);
+    expect(screen.getByTestId('mvd-wyniki-zakladka-koordynacja').getAttribute('aria-selected')).toBe(
+      'true',
+    );
+    expect(useShellStore.getState().wynikiTab).toBeNull();
   });
 
   it('deep-link ze shell store (F-E8.2): wynikiTab=„studium" otwiera zakładkę studium i czyści żądanie', async () => {
@@ -296,6 +331,69 @@ describe('WynikiWarsztat — zakładki', () => {
     expect(screen.queryByTestId('most-pozostale')).not.toBeInTheDocument();
   });
 
+  it('hydratacja K2 (K3-A4): rejestr przebiegów doładowany PO montażu przełącza zakładkę z mostu na rodzaj przebiegu', () => {
+    // Zimny start: rejestr pusty → zakładka startowa 'pozostałe' (most).
+    render(<WynikiWarsztat {...props()} />);
+    expect(screen.getByTestId('mvd-wyniki-zakladka-pozostale')).toHaveAttribute('aria-selected', 'true');
+    // Hydratacja K2: rejestr przebiegów + aktywny przebieg spływają z serwera.
+    act(() => {
+      useExecutionRunsStore.setState({
+        runs: [przebiegFixture({ id: 'run-sc-9', analysis_type: 'SC_3F' })],
+      });
+      useAppStateStore.setState({ activeRunId: 'run-sc-9' });
+    });
+    // Zakładka DOCHODZI do rodzaju przebiegu — użytkownik nic nie wybierał.
+    expect(screen.getByTestId('mvd-wyniki-zakladka-zwarcia')).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('hydratacja K2 (K3-A4): rozpływ po hydratacji przełącza na zakładkę „Rozpływ mocy"', () => {
+    render(<WynikiWarsztat {...props()} />);
+    act(() => {
+      useExecutionRunsStore.setState({ runs: [przebiegFixture({ id: 'run-lf-9' })] });
+      useAppStateStore.setState({ activeRunId: 'run-lf-9' });
+    });
+    expect(screen.getByTestId('mvd-wyniki-zakladka-rozplyw')).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('K3-A4: ręczny wybór zakładki ma pierwszeństwo — hydratacja go nie nadpisuje', () => {
+    render(<WynikiWarsztat {...props()} />);
+    // Użytkownik świadomie wchodzi na „Dowód obliczeń" przed hydratacją.
+    fireEvent.click(screen.getByTestId('mvd-wyniki-zakladka-dowod'));
+    act(() => {
+      useExecutionRunsStore.setState({
+        runs: [przebiegFixture({ id: 'run-sc-9', analysis_type: 'SC_3F' })],
+      });
+      useAppStateStore.setState({ activeRunId: 'run-sc-9' });
+    });
+    // Zakładka wybrana ręcznie zostaje — zero zaskakującego przełączania.
+    expect(screen.getByTestId('mvd-wyniki-zakladka-dowod')).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('K3-A4: deep-link zakładki (wynikiTab) też ma pierwszeństwo przed hydratacją', () => {
+    useShellStore.setState({ wynikiTab: 'porownanie' });
+    render(<WynikiWarsztat {...props()} />);
+    expect(screen.getByTestId('mvd-wyniki-zakladka-porownanie')).toHaveAttribute('aria-selected', 'true');
+    act(() => {
+      useExecutionRunsStore.setState({
+        runs: [przebiegFixture({ id: 'run-sc-9', analysis_type: 'SC_3F' })],
+      });
+      useAppStateStore.setState({ activeRunId: 'run-sc-9' });
+    });
+    expect(screen.getByTestId('mvd-wyniki-zakladka-porownanie')).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('zakładkowi dostawcy kart huba E-29…E-32 (K3-A3): cztery zakładki renderują ekrany ui2', () => {
+    render(<WynikiWarsztat {...props()} />);
+    fireEvent.click(screen.getByTestId('mvd-wyniki-zakladka-zbieznosc'));
+    expect(screen.getByTestId('mvd-zbieznosc')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('mvd-wyniki-zakladka-skladowe'));
+    expect(screen.getByTestId('mvd-skladowe')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('mvd-wyniki-zakladka-stan-fazowy'));
+    expect(screen.getByTestId('mvd-stan-fazowy')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('mvd-wyniki-zakladka-stabilnosc'));
+    expect(screen.getByTestId('mvd-stabilnosc')).toBeInTheDocument();
+  });
+
   it('klik przełącza zakładki (rozpływ → zwarcia → most)', () => {
     render(<WynikiWarsztat {...props()} />);
     fireEvent.click(screen.getByTestId('mvd-wyniki-zakladka-rozplyw'));
@@ -357,6 +455,64 @@ describe('WynikiWarsztat — zakładki', () => {
   });
 });
 
+/**
+ * V126-JEZYK (ocena właściciela 0/10 z 2026-08-07): pakiet analiz akademickich
+ * zjeżdża z toru podstawowego projektanta do trybu eksperckiego. Brama to PARA
+ * predykatów z JEDNEGO źródła (`zakladkaDostepna`): pasek zakładek i render
+ * treści — plus trzeci koniec: deep-link `setWynikiTab`, który do tej karty
+ * potrafił wejść na zakładkę z pominięciem paska.
+ */
+describe('WynikiWarsztat — brama trybu dla pakietu akademickiego (V126-JEZYK)', () => {
+  it('tor podstawowy: zakładki „Analizy akademickie" NIE ma', () => {
+    render(<WynikiWarsztat {...props({ trybZaawansowania: 'basic' })} />);
+    expect(screen.queryByTestId('mvd-wyniki-zakladka-akademickie')).toBeNull();
+  });
+
+  it('tor rozszerzony: zakładki „Analizy akademickie" NIE ma', () => {
+    render(<WynikiWarsztat {...props({ trybZaawansowania: 'extended' })} />);
+    expect(screen.queryByTestId('mvd-wyniki-zakladka-akademickie')).toBeNull();
+  });
+
+  it('tryb ekspercki: zakładka jest i prowadzi do okna (kontrola dodatnia bramy)', () => {
+    render(<WynikiWarsztat {...props({ trybZaawansowania: 'expert' })} />);
+    const zakladka = screen.getByTestId('mvd-wyniki-zakladka-akademickie');
+    expect(zakladka).toHaveTextContent(T.zakladkaAkademickie);
+    fireEvent.click(zakladka);
+    expect(screen.getByTestId('mvd-akad-ekran')).toBeTruthy();
+  });
+
+  it('deep-link nie obchodzi bramy: żądanie „akademickie" w trybie podstawowym nie przełącza zakładki', async () => {
+    render(<WynikiWarsztat {...props({ trybZaawansowania: 'basic' })} />);
+    act(() => {
+      useShellStore.getState().setWynikiTab('akademickie');
+    });
+    await waitFor(() => expect(useShellStore.getState().wynikiTab).toBeNull());
+    expect(screen.queryByTestId('mvd-akad-ekran')).toBeNull();
+    // Kontrola dodatnia tej samej ścieżki: deep-link na zakładkę BEZ bramy działa.
+    act(() => {
+      useShellStore.getState().setWynikiTab('jakosc');
+    });
+    await waitFor(() =>
+      expect(screen.getByTestId('mvd-wyniki-zakladka-jakosc')).toHaveAttribute(
+        'aria-selected',
+        'true',
+      ),
+    );
+  });
+
+  it('obniżenie trybu przy otwartej zakładce zamyka ją (nie zostaje sierota)', () => {
+    const { rerender } = render(<WynikiWarsztat {...props({ trybZaawansowania: 'expert' })} />);
+    fireEvent.click(screen.getByTestId('mvd-wyniki-zakladka-akademickie'));
+    expect(screen.getByTestId('mvd-akad-ekran')).toBeTruthy();
+    rerender(<WynikiWarsztat {...props({ trybZaawansowania: 'basic' })} />);
+    expect(screen.queryByTestId('mvd-akad-ekran')).toBeNull();
+    expect(screen.getByTestId('mvd-wyniki-zakladka-werdykt')).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+  });
+});
+
 describe('WynikiWarsztat — kontekst przebiegu zakładki „Dowód obliczeń" (R3-C)', () => {
   it('deep-link „dowod" z kontekstem: zakładka otwarta, ślad WSKAZANEGO przebiegu, OBA pola wyczyszczone', async () => {
     useExecutionRunsStore.setState({ runs: [przebiegFixture({ id: 'run-lf-1' })] });
@@ -394,9 +550,30 @@ describe('WynikiWarsztat — kontekst przebiegu zakładki „Dowód obliczeń" (
         przebiegFixture({ id: 'sc-run-b', analysis_type: 'SC_3F', finished_at: '2026-07-16T08:00:01Z' }),
       ],
     });
+    // Dowód (panel wywodu elementu) nadal czyta wynik POJEDYNCZEGO przebiegu.
     vi.mocked(fetchShortCircuitResults).mockImplementation(async (runId: string) => ({
       ...wynikZwarciowyFixture(),
       run_id: runId,
+    }));
+    // Porównanie A/B przychodzi GOTOWE z domeny (delty są polami odpowiedzi).
+    vi.mocked(pobierzPorownanieZwarciowe).mockImplementation(async (a: string, b: string) => ({
+      run_id_a: a,
+      run_id_b: b,
+      report_version: '1.3.0',
+      punkty: [
+        {
+          target_id: 'bus-1',
+          target_name: 'Szyna GPZ',
+          obecny_w: 'AB' as const,
+          ikss_ka_a: 12.5,
+          ikss_ka_b: 12.1,
+          delta_ikss_ka: -0.4,
+          delta_ikss_percent: -3.2,
+        },
+      ],
+      liczba_punktow_wspolnych: 1,
+      liczba_punktow_tylko_a: 0,
+      liczba_punktow_tylko_b: 0,
     }));
     render(<WynikiWarsztat {...props()} />);
     // Okno porównania → tryb zwarciowy → jawne porównanie A/B.
@@ -415,5 +592,33 @@ describe('WynikiWarsztat — kontekst przebiegu zakładki „Dowód obliczeń" (
     await waitFor(() => expect(selectRun).toHaveBeenCalledWith('sc-run-a'));
     expect(useShellStore.getState().wynikiTab).toBeNull();
     expect(useShellStore.getState().wynikiTabElement).toBeNull();
+  });
+});
+
+// EKRAN-N1, odbiór niezależny (2026-08-14): iniekcja nadzoru — zakładka
+// „Kontyngencje N-1" ogłoszona w pasku, ale BEZ dostawcy treści (panel pusty
+// po kliknięciu) — przetrwała 110 testów, bo każdy dotychczasowy pin zakładki
+// był INSTANCJĄ (konkretna zakładka, konkretny testid). Ten test przypina
+// KLASĘ: każda ogłoszona zakładka renderuje treść — uczciwy stan zerowy TEŻ
+// jest treścią, a pusta przestrzeń po kliknięciu to martwa zakładka.
+describe('WynikiWarsztat — KLASA: każda ogłoszona zakładka ma dostawcę treści', () => {
+  it('klik w każdą zakładkę (tryb expert = komplet paska) renderuje niepusty panel', async () => {
+    const { container } = render(<WynikiWarsztat {...props({ trybZaawansowania: 'expert' })} />);
+    const zakladki = screen.getAllByRole('tab');
+    // Sanity: pasek nie skurczył się cicho (32 zakładki w chwili przypięcia;
+    // celowe usunięcie zakładki obniża próg razem z tą liczbą).
+    expect(zakladki.length).toBeGreaterThanOrEqual(32);
+    for (const zakladka of zakladki) {
+      fireEvent.click(zakladka);
+      expect(zakladka).toHaveAttribute('aria-selected', 'true');
+      const panel = container.querySelector('[role="tabpanel"]');
+      expect(panel, `brak panelu treści po kliknięciu „${zakladka.textContent}"`).not.toBeNull();
+      await waitFor(() => {
+        expect(
+          (panel as HTMLElement).children.length,
+          `martwa zakładka: „${zakladka.textContent}" nie renderuje żadnej treści`,
+        ).toBeGreaterThan(0);
+      });
+    }
   });
 });

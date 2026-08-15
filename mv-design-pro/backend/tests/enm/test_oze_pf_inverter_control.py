@@ -8,6 +8,7 @@ InverterControl do węzłów OZE, ale WYŁĄCZNIE dla realnie aktywnych regulacj
 
 from __future__ import annotations
 
+import pytest
 from enm.canonical_analysis import _build_converter_control_by_node, _graph_id_from_ref
 from network_model.solvers.power_flow_inverter import (
     InverterMode,
@@ -65,7 +66,33 @@ def test_active_cosphi_attaches_control_to_node() -> None:
     )
     node_id = _graph_id_from_ref("bus-oze")
     assert node_id in out
-    assert out[node_id].mode is InverterMode.COSPHI_CONST
+    assert out[node_id].control.mode is InverterMode.COSPHI_CONST
+
+
+def test_binding_carries_the_source_own_power() -> None:
+    """Defekt B: wiazanie niesie WLASNA moc wytworcy (konwencja generatorowa).
+
+    Bez tego pola solver czytal moc zadana szyny — na szynie prosumenckiej moc
+    ODBIORU — i z niej liczyl moc bierna falownika.
+    """
+    snapshot = _snapshot({"control_mode": "STALY_COS_PHI", "cos_phi": 0.9})
+    snapshot["generators"][0]["q_mvar"] = -0.25
+    binding = _build_converter_control_by_node(snapshot, base_mva=100.0)[
+        _graph_id_from_ref("bus-oze")
+    ]
+    assert binding.p_mw == 1.0  # dodatnia = wstrzyk do sieci
+    assert binding.q_mvar == -0.25
+
+
+def test_two_regulated_sources_on_one_bus_are_refused() -> None:
+    """Kontrakt: jedna charakterystyka na wezel. Dotad ostatnie zrodlo po cichu
+    wygrywalo, a moc bierna pierwszego znikala z modelu."""
+    snapshot = _snapshot({"control_mode": "STALY_COS_PHI", "cos_phi": 0.9})
+    drugi = dict(snapshot["generators"][0])
+    drugi["ref_id"] = "g2"
+    snapshot["generators"] = [snapshot["generators"][0], drugi]
+    with pytest.raises(ValueError, match="wiecej niz jedno zrodlo z aktywna regulacja"):
+        _build_converter_control_by_node(snapshot, base_mva=100.0)
 
 
 def test_active_qu_slope_attaches_control() -> None:
@@ -88,7 +115,7 @@ def test_qu_deadband_reaches_control_from_meta() -> None:
         ),
         base_mva=100.0,
     )
-    ctrl = out[_graph_id_from_ref("bus-oze")]
+    ctrl = out[_graph_id_from_ref("bus-oze")].control
     assert ctrl.mode is InverterMode.Q_U
     assert ctrl.qu_deadband_low_pu == 0.95
     assert ctrl.qu_deadband_high_pu == 1.05
@@ -98,7 +125,7 @@ def test_qu_deadband_defaults_to_point_without_meta() -> None:
     # Bez pasma → domyślny punkt 1.0/1.0 (reakcja natychmiastowa; determinizm).
     ctrl = _build_converter_control_by_node(
         _snapshot({"control_mode": "Q_OD_U", "qu_slope_pu_per_pu": 4.0}), base_mva=100.0
-    )[_graph_id_from_ref("bus-oze")]
+    )[_graph_id_from_ref("bus-oze")].control
     assert ctrl.qu_deadband_low_pu == 1.0
     assert ctrl.qu_deadband_high_pu == 1.0
 
@@ -136,8 +163,8 @@ def test_pf_droop_attaches_control_with_lfsm() -> None:
     )
     node_id = _graph_id_from_ref("bus-oze")
     assert node_id in out
-    assert out[node_id].lfsm_droop_pct == 5.0
-    assert out[node_id].has_frequency_dependence()
+    assert out[node_id].control.lfsm_droop_pct == 5.0
+    assert out[node_id].control.has_frequency_dependence()
 
 
 def test_pf_droop_active_regardless_of_q_mode() -> None:
@@ -155,14 +182,14 @@ def test_bess_lfsm_allow_increase_from_meta() -> None:
         _snapshot({"frequency_droop_percent": 5.0, "lfsm_allow_increase": True}),
         base_mva=100.0,
     )
-    assert out[_graph_id_from_ref("bus-oze")].lfsm_allow_increase is True
+    assert out[_graph_id_from_ref("bus-oze")].control.lfsm_allow_increase is True
 
 
 def test_lfsm_factor_reduces_p_at_overfrequency() -> None:
     ctrl = _build_converter_control_by_node(
         _snapshot({"control_mode": "STALY_COS_PHI", "frequency_droop_percent": 5.0}),
         base_mva=100.0,
-    )[_graph_id_from_ref("bus-oze")]
+    )[_graph_id_from_ref("bus-oze")].control
     # Nadczęstotliwość 50.5 Hz (LFSM-O) → redukcja mocy czynnej (< 1.0); przy 50 Hz brak zmiany.
     assert lfsm_factor(ctrl, 50.5) < 1.0
     assert lfsm_factor(ctrl, 50.0) == 1.0

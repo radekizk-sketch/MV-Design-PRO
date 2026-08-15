@@ -242,12 +242,13 @@ def test_domain_operation_snapshot_feeds_analysis_result_and_trace(client: TestC
     assert wiersz["i2t_ka2s"] == pytest.approx(wiersz["ith_ka"] ** 2 * wiersz["tk_s"], rel=1e-9)
     assert wiersz["kappa"] > 1.0
     assert wiersz["c_factor"] == pytest.approx(1.10, abs=0.01)
-    # ZWARCIA-PRO F4 (karta W-C): pole addytywne rozpływu gałęziowego obecne w
-    # każdym wierszu; sieć bez falowników → pusta lista (policzono, brak wkładów
-    # falownikowych — kontrakt solvera, zero fabrykacji).
+    # ZWARCIA-PRO F4 (karta W-C) + V12K-281 (K13): wiersze zbiorcze NIE niosą
+    # rozpływu gałęziowego (iloczyn źródło×gałąź per wiersz dawał odpowiedź
+    # 730 MB) — niosą flagę dostępności; rozpływ policzono, więc flaga = True,
+    # a pełne dane daje endpoint na żądanie (test rozpływu niżej).
     for row in short_circuit_payload["rows"]:
-        assert "branch_contributions" in row
-        assert isinstance(row["branch_contributions"], list)
+        assert row["branch_contributions"] is None
+        assert row["branch_contributions_available"] is True
     # Delta FROZEN V12K-128 (addytywnie): składowe symetryczne Z1/Z2/Z0 wprost
     # z solvera. Bieg 3F → Z1/Z2 obecne jako complex {re, im}, Z0 nie dotyczy.
     for pole in ("z1_ohm", "z2_ohm"):
@@ -496,12 +497,14 @@ def _seed_short_circuit_enm_with_inverter(case_id: str) -> None:
 
 
 def test_short_circuit_rows_carry_branch_flow_contributions(client: TestClient) -> None:
-    """ZWARCIA-PRO F4 (karta W-C): rozpływ prądu zwarciowego w gałęziach.
+    """ZWARCIA-PRO F4 (karta W-C) + V12K-281 (K13): rozpływ prądu w gałęziach.
 
-    Tor kanoniczny woła FROZEN solver z include_branch_contributions=True, a
-    `build_short_circuit_results` przenosi wkłady gałęziowe ADDYTYWNIE do
-    wierszy (projekcja A→kA + nazwy z grafu przebiegu, kierunek z solvera).
-    Determinizm: ponowny odczyt daje bajtowo identyczne wiersze.
+    Tor kanoniczny woła FROZEN solver z include_branch_contributions=True.
+    INTENCJA bez zmian: rozpływ (projekcja A→kA + nazwy z grafu przebiegu,
+    kierunek z solvera) jest dostępny konsumentowi i deterministyczny. NOWY
+    KANON (V12K-281): wiersze zbiorcze niosą TYLKO flagę dostępności (pełny
+    rozpływ per wiersz dawał odpowiedź 730 MB dla 50 stacji); dane JEDNEGO
+    punktu zwraca endpoint `/results/short-circuit/rozplyw?target_id=...`.
     """
     case_id = str(uuid4())
     _seed_short_circuit_enm_with_inverter(case_id)
@@ -521,14 +524,22 @@ def test_short_circuit_rows_carry_branch_flow_contributions(client: TestClient) 
     rows = response.json()["rows"]
     assert rows
 
-    # Pole addytywne obecne w KAŻDYM wierszu (lista — opcja policzona).
+    # Wiersze zbiorcze: bez rozpływu, z flagą dostępności (opcja policzona).
     for row in rows:
-        assert "branch_contributions" in row
-        assert isinstance(row["branch_contributions"], list)
+        assert row["branch_contributions"] is None
+        assert row["branch_contributions_available"] is True
 
-    # Punkt zwarcia na szynie głównej: wkład falownika z szyny OZE płynie kablem.
+    # Punkt zwarcia na szynie głównej: wkład falownika z szyny OZE płynie
+    # kablem — rozpływ punktu pobrany endpointem na żądanie.
     row_main = next(row for row in rows if row["target_name"] == "Szyna glowna")
-    flows = row_main["branch_contributions"]
+    rozplyw = client.get(
+        f"/api/analysis-runs/{run_id}/results/short-circuit/rozplyw",
+        params={"target_id": row_main["target_id"]},
+    )
+    assert rozplyw.status_code == 200
+    rozplyw_payload = rozplyw.json()
+    assert rozplyw_payload["target_id"] == row_main["target_id"]
+    flows = rozplyw_payload["branch_contributions"]
     assert flows, "wkład falownika musi płynąć kablem do punktu zwarcia"
     for flow in flows:
         for pole in (
@@ -553,10 +564,23 @@ def test_short_circuit_rows_carry_branch_flow_contributions(client: TestClient) 
     assert row_main["ip_ka"] is not None and row_main["ip_ka"] > 0
     assert row_main["zk_ohm"] is not None and row_main["zk_ohm"] > 0
 
-    # Determinizm odczytu: drugi odczyt → identyczny payload wierszy.
+    # Determinizm odczytu: drugi odczyt → identyczny payload wierszy i rozpływu.
     response2 = client.get(f"/api/analysis-runs/{run_id}/results/short-circuit")
     assert response2.status_code == 200
     assert response2.json()["rows"] == rows
+    rozplyw2 = client.get(
+        f"/api/analysis-runs/{run_id}/results/short-circuit/rozplyw",
+        params={"target_id": row_main["target_id"]},
+    )
+    assert rozplyw2.status_code == 200
+    assert rozplyw2.json()["branch_contributions"] == flows
+
+    # Nieznany punkt zwarcia → 404 (uczciwy brak, nie pusta lista).
+    nieznany = client.get(
+        f"/api/analysis-runs/{run_id}/results/short-circuit/rozplyw",
+        params={"target_id": "nie-ma-takiego-punktu"},
+    )
+    assert nieznany.status_code == 404
 
 
 def test_analysis_creation_requires_canonical_enm_snapshot(client: TestClient) -> None:
@@ -583,7 +607,7 @@ def test_power_flow_read_and_export_endpoints_use_canonical_run(client: TestClie
     run_payload = run_response.json()
     run_id = run_payload["run_id"]
 
-    header_response = client.get(f"/power-flow-runs/{run_id}")
+    header_response = client.get(f"/api/power-flow-runs/{run_id}")
     assert header_response.status_code == 200
     header_payload = header_response.json()
     assert header_payload["id"] == run_id
@@ -607,14 +631,14 @@ def test_power_flow_read_and_export_endpoints_use_canonical_run(client: TestClie
     assert header_payload["export_policy"]["carries_analysis_case_context"] is True
     assert header_payload["export_policy"]["carries_proof_pack_ref"] is True
 
-    result_response = client.get(f"/power-flow-runs/{run_id}/results")
+    result_response = client.get(f"/api/power-flow-runs/{run_id}/results")
     assert result_response.status_code == 200
     result_payload = result_response.json()
     assert result_payload["converged"] is True
     assert result_payload["bus_results"]
     assert result_payload["branch_results"]
 
-    trace_response = client.get(f"/power-flow-runs/{run_id}/trace")
+    trace_response = client.get(f"/api/power-flow-runs/{run_id}/trace")
     assert trace_response.status_code == 200
     trace_payload = trace_response.json()
     assert trace_payload["iterations"]
@@ -637,7 +661,7 @@ def test_power_flow_read_and_export_endpoints_use_canonical_run(client: TestClie
     assert branch_results_payload["analysis_case_context"]["rodzaj_przypadku"] == "ROZPLYW_MAX_OBC"
     assert "branch-load" in {row["element_id"] for row in branch_results_payload["rows"]}
 
-    export_response = client.get(f"/power-flow-runs/{run_id}/export/json")
+    export_response = client.get(f"/api/power-flow-runs/{run_id}/export/json")
     assert export_response.status_code == 200
     export_payload = export_response.json()
     assert export_payload["analysis_case_context"]["case_ref"] == case_id
@@ -664,7 +688,7 @@ def test_power_flow_read_and_export_endpoints_use_canonical_run(client: TestClie
     assert "branch-load" in {row["element_id"] for row in export_payload["branch_results"]["rows"]}
     assert export_payload["white_box_trace"]
 
-    xlsx_response = client.get(f"/power-flow-runs/{run_id}/export/xlsx")
+    xlsx_response = client.get(f"/api/power-flow-runs/{run_id}/export/xlsx")
     assert xlsx_response.status_code == 200
     assert (
         xlsx_response.headers["content-type"]

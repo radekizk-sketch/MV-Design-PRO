@@ -41,17 +41,131 @@ export type BayTemplateSourceStatus =
   | 'requires_catalog'
   | 'incomplete_requires_review';
 
+export type BayRole = 'IN' | 'OUT' | 'TR' | 'COUPLER' | 'FEEDER' | 'MEASUREMENT' | 'OZE';
+
+/**
+ * Aparat KANONICZNEGO układu pola — `BayDeviceTemplate` backendu
+ * (`network_model/catalog/bay_templates.py`), przenoszony na wyjściu trasy
+ * `GET /api/catalog/complete-bay-templates` w `base_template.devices`.
+ *
+ * To jest KOMPOZYCJA APARATÓW pola (BOM): rodzaj, oznaczenie operatorskie,
+ * pozycja w kolumnie pola i umiejscowienie elektryczne. Typ frontendowy tych
+ * pól dotąd NIE deklarował, więc kreator dostawał je z sieci i wyrzucał —
+ * i dlatego rysunek pola nie miał z czego pokazać składu rozdzielnicy.
+ */
+export interface BayDeviceTemplateWire {
+  readonly kind:
+    | 'CB'
+    | 'DS_BUS'
+    | 'DS_LINE'
+    | 'ES'
+    | 'CT'
+    | 'VT'
+    | 'FUSE'
+    | 'SURGE_ARRESTER'
+    | 'CABLE_HEAD'
+    | 'TRANSFORMER_DEVICE';
+  readonly designation_q: string;
+  readonly position: number;
+  readonly placement: 'UPSTREAM' | 'MIDSTREAM' | 'DOWNSTREAM' | 'OFF_PATH' | 'GROUND_BRANCH';
+  readonly optional?: boolean;
+}
+
+/** Port pola — `BayPortTemplate` backendu (`base_template.ports`). */
+export interface BayPortTemplateWire {
+  readonly kind: string;
+  readonly suffix: string;
+}
+
+/** Kanoniczny szablon pola — `BayTemplate` backendu (`base_template`). */
+export interface BayTemplateWire {
+  readonly template_id: string;
+  readonly name: string;
+  readonly bay_role: BayRole;
+  readonly description?: string;
+  readonly devices: readonly BayDeviceTemplateWire[];
+  readonly ports?: readonly BayPortTemplateWire[];
+}
+
+/**
+ * Aparat kompozycji PRODUCENTA — `BayDeviceInstanceTemplate` backendu
+ * (`device_instances`). Bogatszy od układu kanonicznego: niesie wskaźnik
+ * obecności napięcia (VPIS), przekaźnik, licznik i aparat strony nN, a także
+ * stronę elektryczną aparatu w polu.
+ */
+export interface BayDeviceInstanceWire {
+  readonly device_template_ref: string;
+  readonly apparatus_kind:
+    | 'circuit_breaker'
+    | 'switch_disconnector'
+    | 'disconnector_busbar'
+    | 'disconnector_line'
+    | 'earthing_switch'
+    | 'fuse_set'
+    | 'current_transformer'
+    | 'voltage_transformer'
+    | 'surge_arrester'
+    | 'cable_head'
+    | 'busbar'
+    | 'bus_coupler'
+    | 'voltage_indicator'
+    | 'protection_relay'
+    | 'meter'
+    | 'transformer'
+    | 'lv_breaker'
+    | 'interlock';
+  readonly label: string;
+  readonly position_in_bay?: number;
+  readonly electrical_side?:
+    | 'busbar_side'
+    | 'line_side'
+    | 'transformer_side'
+    | 'metering_branch'
+    | 'earthing_branch'
+    | 'lv_side';
+  /**
+   * Status wyposażenia aparatu w polu — JEDEN predykat kontraktu
+   * (`BayDeviceInstanceTemplate.status_wyposazenia`, pole WYMAGANE po stronie
+   * pydantic, bez wartości domyślnej):
+   *  · `FABRYCZNY` — aparat wchodzi w skład katalogowego pola rodziny,
+   *  · `OPCJA` — dopuszczalne doposażenie tego pola.
+   * Aparat spoza listy pola jest NIEDOPUSZCZALNY — to brak wpisu, nie wartość.
+   *
+   * KOREKTA KONTRAKTU (karta S3): typ deklarował tu parę `is_required` /
+   * `is_optional`, którą backend USUNĄŁ przy scaleniu kanonu rozdzielnic
+   * (`switchgear/device_instance.py` — dwie niezależne flagi dopuszczały stan
+   * sprzeczny i nieokreślony). Backend tych kluczy nie wysyła od tamtej pory,
+   * więc były to pola-widma: kod czytający `is_required` dostawał zawsze
+   * `undefined`, a fixture'y testowe deklarowały wartość, której żywa odpowiedź
+   * nie ma. Deklaracja zgodna z kontraktem jest WYMAGANA, tak jak w pydantic.
+   */
+  readonly status_wyposazenia: 'FABRYCZNY' | 'OPCJA';
+}
+
 export interface CompleteMvBayTemplateSummary {
   readonly template_ref: string;
+  /**
+   * Kanoniczny układ aparatury pola — ŹRÓDŁO BOM dla generatora mini-SLD
+   * (`ui2/kreatory/stacja/generatorSldPola.ts`). Pole jest w kontrakcie
+   * WYMAGANE (pydantic `base_template: BayTemplate` bez wartości domyślnej),
+   * więc typ też je wymaga: szablon bez kompozycji aparatów nie istnieje, a
+   * atrapa bez niego przepuszczałaby rysunek pola bez składu.
+   */
+  readonly base_template: BayTemplateWire;
   readonly manufacturer_ref: string | null;
   readonly switchgear_family_ref: string | null;
   readonly bay_kind: BayKind;
-  readonly bay_role: 'IN' | 'OUT' | 'TR' | 'COUPLER' | 'FEEDER' | 'MEASUREMENT' | 'OZE';
+  readonly bay_role: BayRole;
   readonly source_status: BayTemplateSourceStatus;
   readonly source_refs: readonly string[];
   readonly version: string;
   readonly hash: string;
   readonly notes_pl: string | null;
+  /** Nazwa i kod katalogowy pola producenta (gdy szablon je niesie). */
+  readonly template_name_pl?: string | null;
+  readonly template_code?: string | null;
+  /** Kompozycja producenta — bogatsza od kanonicznej, gdy szablon ją niesie. */
+  readonly device_instances?: readonly BayDeviceInstanceWire[];
 }
 
 export interface BayTemplatePickerProps {

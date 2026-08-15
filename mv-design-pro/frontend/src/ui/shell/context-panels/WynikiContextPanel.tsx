@@ -1,5 +1,6 @@
 import { clsx } from 'clsx';
 import { useAppStateStore } from '../../app-state/store';
+import { przejdzDoPrzestrzeni } from '../../../ui2/shell/przejsciaPrzestrzeni';
 
 function resultLabel(status: string): string {
   if (status === 'FRESH') return 'Wyniki aktualne';
@@ -16,7 +17,6 @@ function resultScopeLabel(activeRunId: string | null, status: string): string {
 export function WynikiContextPanel() {
   const activeRunId = useAppStateStore((s) => s.activeRunId);
   const resultStatus = useAppStateStore((s) => s.activeCaseResultStatus);
-  const setActiveArea = useAppStateStore((s) => s.setActiveArea);
   const setActiveWorkMode = useAppStateStore((s) => s.setActiveWorkMode);
   const hasResults = resultStatus === 'FRESH' || Boolean(activeRunId);
 
@@ -62,7 +62,7 @@ export function WynikiContextPanel() {
         <button
           type="button"
           data-testid="wyniki-action-proof"
-          onClick={() => setActiveArea('RAPORTY_UZASADNIENIA')}
+          onClick={() => przejdzDoPrzestrzeni('dokumentacja')}
           className="rounded border border-scada-border bg-scada-surface px-2 py-1.5 text-left hover:border-scada-sn hover:bg-scada-hover-nav"
         >
           <span className="block text-[11px] font-semibold text-scada-text">Przejdź do uzasadnień i raportów</span>
@@ -80,7 +80,7 @@ export function WynikiContextPanel() {
           <button
             type="button"
             data-testid="wyniki-action-go-studies"
-            onClick={() => setActiveArea('STUDIA_OBLICZENIOWE')}
+            onClick={() => przejdzDoPrzestrzeni('obliczenia')}
             className="mt-2 rounded border border-scada-sn px-2 py-1 text-[11px] font-semibold text-scada-sn hover:bg-scada-active"
           >
             Przejdź do studiów obliczeniowych

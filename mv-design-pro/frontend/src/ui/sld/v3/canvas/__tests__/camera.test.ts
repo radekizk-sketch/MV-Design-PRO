@@ -413,9 +413,16 @@ describe('histereza LOD — brak trzepotania na granicy (karta S8, dowód liczb�
 
   it('drganie refScale WEWNĄTRZ martwej strefy granicy L0↔L1 ⇒ ZERO przełączeń', () => {
     const { l0Max } = DEFAULT_LOD_THRESHOLDS;
-    const enter = l0Max * (1 + LOD_HYSTERESIS_MARGIN); // 0,46
-    const exit = l0Max * (1 - LOD_HYSTERESIS_MARGIN); // 0,34
-    const jitter = [0.36, 0.44, 0.35, 0.45, 0.4, 0.43, 0.37];
+    const enter = l0Max * (1 + LOD_HYSTERESIS_MARGIN);
+    const exit = l0Max * (1 - LOD_HYSTERESIS_MARGIN);
+    // K11-B: wartości drgania WYPROWADZONE z progów (dawniej wpisane wprost
+    // — 0,36…0,45 — czyli przypięte do progu 0,4 sprzed korekty K11-B; po
+    // zmianie progu na 0,6 wypadły poza martwą strefę i test przestał badać
+    // to, co miał). INTENCJA BEZ ZMIAN: drganie mieszczące się w całości
+    // wewnątrz martwej strefy nie może przełączyć poziomu ani razu — teraz
+    // trzyma się jej niezależnie od wartości progu.
+    const at = (t: number): number => exit + (enter - exit) * t;
+    const jitter = [at(0.1), at(0.9), at(0.05), at(0.95), at(0.5), at(0.8), at(0.2)];
     jitter.forEach((s) => expect(s > exit && s < enter).toBe(true));
     const { switches, finalLod } = threadHysteresis(jitter, 0);
     expect(switches).toBe(0);
@@ -423,7 +430,7 @@ describe('histereza LOD — brak trzepotania na granicy (karta S8, dowód liczb�
   });
 
   it('kontrast: TA SAMA sekwencja drgająca wokół surowego progu TRZEPOCZE bez histerezy, nie trzepocze z histerezą', () => {
-    const { l0Max } = DEFAULT_LOD_THRESHOLDS; // 0,4
+    const { l0Max } = DEFAULT_LOD_THRESHOLDS;
     const around = [l0Max - 0.02, l0Max + 0.02, l0Max - 0.02, l0Max + 0.02, l0Max - 0.02];
     let rawSwitches = 0;
     let prev = lodFromScale(around[0]);
@@ -465,10 +472,16 @@ describe('przełączenie LOD zachowuje viewport (karta S8 — brak „skoku świ
     };
     const center = { x: viewportSize.width / 2, y: viewportSize.height / 2 };
     const worldBefore = screenToWorld(center, state.transform);
-    // refScale = scale · w0/w2 = scale · 0,25; próg wejścia L0→L1 = 0,46 ⇒
-    // scale ≥ 1,84. Zoom Z KURSOREM w środku (przejście LOD też recentruje na
-    // środek — oba kroki zachowują punkt pod środkiem).
-    const factor = 1.9 / 0.3;
+    // K11-B: skala docelowa WYPROWADZONA z progu (dawniej wpisana wprost —
+    // 1,9 — czyli przypięta do progu wejścia 0,46 sprzed korekty K11-B; po
+    // zmianie progu na 0,6 zoom przestawał w ogóle przekraczać granicę i test
+    // badał przejście, do którego nie dochodziło). INTENCJA BEZ ZMIAN: zoom
+    // Z KURSOREM w środku, przekraczający próg wejścia L0→L1 z zapasem,
+    // zachowuje punkt świata pod środkiem viewportu.
+    // refScale = scale · szer(L0)/szer(L2) = scale · 0,25.
+    const worldRatio = (bbox0.maxX - bbox0.minX) / (bbox2.maxX - bbox2.minX);
+    const enterScale = (DEFAULT_LOD_THRESHOLDS.l0Max * (1 + LOD_HYSTERESIS_MARGIN)) / worldRatio;
+    const factor = (enterScale * 1.05) / state.transform.scale;
     const next = cameraReducer(state, { type: 'zoom', cursor: center, factor });
     expect(next.lod).toBe(1);
     const worldAfter = screenToWorld(center, next.transform);
@@ -511,5 +524,110 @@ describe('determinizm sekwencji kamery (karta S8 — 2× ta sama sekwencja ⇒ i
       return trace;
     };
     expect(traceOf()).toEqual(traceOf());
+  });
+});
+
+// ---------------------------------------------------------------------------
+// B-2 — akcja 'kotwicz' (kotwiczenie widoku na zmianie modelu)
+// ---------------------------------------------------------------------------
+
+describe("akcja 'kotwicz' — kamera zostaje przy obiekcie wskazanym przez operację (B-2)", () => {
+  const VIEWPORT = { width: 1600, height: 1000 } as const;
+  // Światy per LOD celowo RÓŻNEJ szerokości — wyższy poziom rezerwuje więcej
+  // miejsca (spec §7), więc przejście poziomu musi przeliczać skalę.
+  const swiat: Readonly<Record<SceneLod, BoundingBox>> = {
+    0: { minX: 0, minY: 0, maxX: 20000, maxY: 8000 },
+    1: { minX: 0, minY: 0, maxX: 24000, maxY: 9000 },
+    2: { minX: 0, minY: 0, maxX: 30000, maxY: 10000 },
+  };
+  /** Ten sam obiekt w trzech światach — proporcjonalnie do szerokości świata. */
+  const kotwica = (szerokosc: number): Readonly<Record<SceneLod, BoundingBox>> => ({
+    0: { minX: 9000, minY: 4000, maxX: 9000 + szerokosc * (20 / 30), maxY: 4000 + szerokosc * (20 / 30) / 2 },
+    1: { minX: 10800, minY: 4500, maxX: 10800 + szerokosc * (24 / 30), maxY: 4500 + szerokosc * (24 / 30) / 2 },
+    2: { minX: 13500, minY: 5000, maxX: 13500 + szerokosc, maxY: 5000 + szerokosc / 2 },
+  });
+  const stan = (scale: number, lod: SceneLod): CameraState => ({
+    transform: { scale, translateX: 0, translateY: 0 },
+    lod,
+    viewportSize: VIEWPORT,
+    lodBboxes: swiat,
+  });
+  const srodek = (b: BoundingBox) => ({ x: (b.minX + b.maxX) / 2, y: (b.minY + b.maxY) / 2 });
+  const naEkranie = (p: { x: number; y: number }, s: CameraState) => ({
+    x: p.x * s.transform.scale + s.transform.translateX,
+    y: p.y * s.transform.scale + s.transform.translateY,
+  });
+
+  it('obiekt mieszczący się w kadrze: skala i poziom szczegółu NIETKNIĘTE, obiekt na środku', () => {
+    const anchorByLod = kotwica(200);
+    const przed = stan(1.4, 2);
+    const po = cameraReducer(przed, { type: 'kotwicz', anchorByLod, lodBboxes: swiat, viewportSize: VIEWPORT });
+    expect(po.transform.scale).toBe(przed.transform.scale);
+    expect(po.lod).toBe(2);
+    const ekran = naEkranie(srodek(anchorByLod[2]), po);
+    expect(ekran.x).toBeCloseTo(VIEWPORT.width / 2, 6);
+    expect(ekran.y).toBeCloseTo(VIEWPORT.height / 2, 6);
+  });
+
+  it('obiekt NIE mieszczący się przy obecnym zoomie: kamera oddala MINIMALNIE, aż obiekt jest cały w kadrze', () => {
+    // Obiekt szerszy niż kadr przy skali 1,4 (1600/1,4 ≈ 1143 j. świata).
+    const anchorByLod = kotwica(4000);
+    const po = cameraReducer(stan(1.4, 2), { type: 'kotwicz', anchorByLod, lodBboxes: swiat, viewportSize: VIEWPORT });
+    const box = anchorByLod[po.lod];
+    const lewo = naEkranie({ x: box.minX, y: box.minY }, po);
+    const prawo = naEkranie({ x: box.maxX, y: box.maxY }, po);
+    expect(lewo.x).toBeGreaterThanOrEqual(0);
+    expect(prawo.x).toBeLessThanOrEqual(VIEWPORT.width);
+    expect(lewo.y).toBeGreaterThanOrEqual(0);
+    expect(prawo.y).toBeLessThanOrEqual(VIEWPORT.height);
+    // Oddalenie było KONIECZNE (obiekt się nie mieścił) i nie większe niż trzeba.
+    expect(po.transform.scale).toBeLessThan(1.4);
+  });
+
+  it('gdy oddalenie przekroczy próg, poziom szczegółu spada TĄ SAMĄ histerezą co zoom (jedna polityka LOD)', () => {
+    // Obiekt tak duży, że mieszczenie go wymaga skali poniżej progu wyjścia L2.
+    const anchorByLod = kotwica(60000);
+    const po = cameraReducer(stan(1.4, 2), { type: 'kotwicz', anchorByLod, lodBboxes: swiat, viewportSize: VIEWPORT });
+    expect(po.lod).toBeLessThan(2);
+    // Skala wyrażona w świecie NOWEGO poziomu — sprawdzamy przez `refScale`,
+    // które jest niezmiennikiem przejścia (patrz `refScaleFor`).
+    expect(refScaleFor(po.transform.scale, po.lod, swiat)).toBeLessThanOrEqual(
+      DEFAULT_LOD_THRESHOLDS.l1Max * (1 - LOD_HYSTERESIS_MARGIN) + 1e-9,
+    );
+  });
+
+  it('kotwiczenie NIGDY nie przybliża — projektant oddalony zostaje oddalony', () => {
+    const anchorByLod = kotwica(50);
+    const przed = stan(0.2, 0);
+    const po = cameraReducer(przed, { type: 'kotwicz', anchorByLod, lodBboxes: swiat, viewportSize: VIEWPORT });
+    expect(po.transform.scale).toBe(przed.transform.scale);
+  });
+
+  it('poziom WYMUSZONY przez wołającego (lodOverride) nie jest przełączany, a kotwica celuje w jego świat', () => {
+    const anchorByLod = kotwica(200);
+    const po = cameraReducer(stan(1.4, 0), {
+      type: 'kotwicz', anchorByLod, lodBboxes: swiat, viewportSize: VIEWPORT, wymuszonyLod: 2,
+    });
+    const ekran = naEkranie(srodek(anchorByLod[2]), po);
+    expect(ekran.x).toBeCloseTo(VIEWPORT.width / 2, 6);
+    expect(ekran.y).toBeCloseTo(VIEWPORT.height / 2, 6);
+  });
+
+  it('kotwiczenie jest deterministyczne (dwa niezależne przebiegi = identyczny stan)', () => {
+    const anchorByLod = kotwica(4000);
+    const akcja: CameraAction = { type: 'kotwicz', anchorByLod, lodBboxes: swiat, viewportSize: VIEWPORT };
+    expect(cameraReducer(stan(1.4, 2), akcja)).toEqual(cameraReducer(stan(1.4, 2), akcja));
+  });
+
+  it('nowe bboxy świata trafiają do stanu kamery (histereza kolejnego zoomu liczy na AKTUALNYM świecie)', () => {
+    const wiekszySwiat: Readonly<Record<SceneLod, BoundingBox>> = {
+      0: { minX: 0, minY: 0, maxX: 21000, maxY: 8000 },
+      1: { minX: 0, minY: 0, maxX: 25000, maxY: 9000 },
+      2: { minX: 0, minY: 0, maxX: 31000, maxY: 10000 },
+    };
+    const po = cameraReducer(stan(1.4, 2), {
+      type: 'kotwicz', anchorByLod: kotwica(200), lodBboxes: wiekszySwiat, viewportSize: VIEWPORT,
+    });
+    expect(po.lodBboxes).toEqual(wiekszySwiat);
   });
 });

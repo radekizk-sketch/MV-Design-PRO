@@ -23,7 +23,19 @@ vi.mock('../podsumowanieApi', () => ({
   fetchListaMaterialowa: (...args: unknown[]) => fetchBomMock(...args),
 }));
 
-const appState: { activeCaseId: string | null } = { activeCaseId: 'case-1' };
+// K9-A: sekwencja zapisu — wiązania aparaturowe i profile idą kanałem wiązań
+// wytwórcy (żądanie zmiany wiązań). Mock pozwala asertować payload i symulować
+// częściowe niepowodzenie sekwencji.
+const patchDerCatalogBindingsMock = vi.fn();
+vi.mock('../../../../ui/sld/v2/canvas/derPersistenceApi', () => ({
+  DerPersistenceApiError: class DerPersistenceApiError extends Error {},
+  patchDerCatalogBindings: (...args: unknown[]) => patchDerCatalogBindingsMock(...args),
+}));
+
+const appState: { activeCaseId: string | null; activeProjectId: string | null } = {
+  activeCaseId: 'case-1',
+  activeProjectId: 'proj-1',
+};
 const resolved: { station: string | null; bus: string | null; busSn: string | null } = {
   station: 'st-1',
   bus: 'bus-nn-1',
@@ -57,6 +69,11 @@ vi.mock('../../../../ui/network-build/forms/enmResolvers', () => ({
   resolveBusSnRef: () => resolved.busSn,
   listSnBusOptions: () =>
     resolved.busSn ? [{ ref_id: resolved.busSn, name: 'Szyna SN', voltage_kv: 15 }] : [],
+  // K9-A O12: istniejące pola odpływowe nN rozdzielni (wybór umiejscowienia).
+  listNnFeederOptions: () =>
+    resolved.bus
+      ? [{ ref_id: 'bay-feeder-1', name: 'Odpływ F1', kind: 'ODPLYW_NN', bus_ref: resolved.bus }]
+      : [],
   stationLabel: () => 'Rozdzielnia ST-1',
 }));
 
@@ -83,11 +100,23 @@ vi.mock('../../../../ui/catalog/api', () => ({
     ]),
   fetchLvApparatusTypes: () =>
     Promise.resolve([{ id: 'apar-1', name: 'Wyłącznik nN', u_n_kv: 0.4, i_n_a: 630 }]),
+  // K9-A: katalogi kroku „Aparatura pola".
+  fetchCtTypes: () =>
+    Promise.resolve([
+      { id: 'ct-1', name: 'CT 100/5', ratio_primary_a: 100, ratio_secondary_a: 5, accuracy_class: '5P10' },
+    ]),
+  fetchVtTypes: () =>
+    Promise.resolve([
+      { id: 'vt-1', name: 'VT 15000/100', ratio_primary_v: 15000, ratio_secondary_v: 100, accuracy_class: '0.5' },
+    ]),
+  fetchProtectionDeviceTypes: () =>
+    Promise.resolve([{ id: 'zab-1', name: 'REX 615', vendor: 'ABB', model: 'REX 615' }]),
 }));
 
 describe('KreatorZrodlaOze — realna ścieżka', () => {
   beforeEach(() => {
     appState.activeCaseId = 'case-1';
+    appState.activeProjectId = 'proj-1';
     resolved.station = 'st-1';
     resolved.bus = 'bus-nn-1';
     snapshotState.error = null;
@@ -97,12 +126,47 @@ describe('KreatorZrodlaOze — realna ścieżka', () => {
     uruchomAutoBiegMock.mockReset();
     fetchRaportMock.mockReset();
     fetchBomMock.mockReset();
+    patchDerCatalogBindingsMock.mockReset();
+    patchDerCatalogBindingsMock.mockResolvedValue({ error: null });
     uruchomAutoBiegMock.mockResolvedValue('DONE');
     fetchRaportMock.mockResolvedValue(null);
     fetchBomMock.mockResolvedValue(null);
+    // Readout osi gotowości wytwórcy pobiera dane z modelu przez fetch.
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            generator_ref: 'gen-1',
+            macierz: {},
+            osie: [
+              { axis: 'sc_3f', label_pl: 'Zwarcie trójfazowe', status: 'ready', blockers: [] },
+              {
+                axis: 'protection',
+                label_pl: 'Zabezpieczenia',
+                status: 'blocked',
+                blockers: [
+                  {
+                    code: 'der.protection.missing',
+                    message_pl: 'Brak zabezpieczenia pola wytwórcy.',
+                    object_ref: 'gen-1',
+                    target_screen: 'wytworca',
+                    target_tab: 'aparatura',
+                  },
+                ],
+              },
+            ],
+            podsumowanie: { ready: 1, blocked: 1 },
+          }),
+      }),
+    );
   });
 
-  afterEach(() => cleanup());
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    cleanup();
+  });
 
   it('dodaje źródło PV (nn_side, nowe pole) operacją add_converter_source', async () => {
     executeDomainOperationMock.mockResolvedValue({ error: null });
@@ -221,10 +285,11 @@ describe('KreatorZrodlaOze — realna ścieżka', () => {
     await userEvent.selectOptions(screen.getByTestId('mvd-kreator-oze-konwerter'), 'conv-pv-1');
     await userEvent.click(screen.getByTestId('mvd-kreator-oze-wstecz'));
     await userEvent.selectOptions(screen.getByTestId('mvd-kreator-oze-aparat'), 'apar-1');
-    // Przejdź do kroku „Podsumowanie i zapis" (tech → katalog → regulacja → zapis) i wyłącz auto-bieg.
-    await userEvent.click(screen.getByTestId('mvd-kreator-oze-dalej'));
-    await userEvent.click(screen.getByTestId('mvd-kreator-oze-dalej'));
-    await userEvent.click(screen.getByTestId('mvd-kreator-oze-dalej'));
+    // Przejdź do kroku „Podsumowanie i zapis" (tech → katalog → aparatura → zgodność
+    // → regulacja → zapis) i wyłącz auto-bieg.
+    for (let i = 0; i < 5; i += 1) {
+      await userEvent.click(screen.getByTestId('mvd-kreator-oze-dalej'));
+    }
     await waitFor(() => expect(screen.getByTestId('mvd-kreator-oze-autobieg-toggle')).toBeInTheDocument());
     await userEvent.selectOptions(screen.getByTestId('mvd-kreator-oze-autobieg-toggle'), 'nie');
     await userEvent.click(screen.getByTestId('mvd-kreator-oze-zapisz'));
@@ -262,9 +327,11 @@ describe('KreatorZrodlaOze — realna ścieżka', () => {
 
   it('krok regulacji: cosφ dla stałego cosφ, nachylenie Q(U) po zmianie trybu (G-OZE-B3)', async () => {
     render(<KreatorZrodlaOze />);
-    // Przejdź do kroku 3 (regulacja): tech → katalog → regulacja.
+    // Przejdź do kroku regulacji: tech → katalog → aparatura → zgodność → regulacja.
     await userEvent.click(screen.getByTestId('mvd-kreator-oze-dalej'));
     await waitFor(() => expect(screen.getByTestId('mvd-kreator-oze-konwerter')).toBeInTheDocument());
+    await userEvent.click(screen.getByTestId('mvd-kreator-oze-dalej'));
+    await userEvent.click(screen.getByTestId('mvd-kreator-oze-dalej'));
     await userEvent.click(screen.getByTestId('mvd-kreator-oze-dalej'));
     await waitFor(() => expect(screen.getByTestId('mvd-kreator-oze-tryb')).toBeInTheDocument());
 
@@ -295,6 +362,122 @@ describe('KreatorZrodlaOze — realna ścieżka', () => {
     expect(wzory.length).toBeGreaterThanOrEqual(2);
     expect(wzory.some((w) => (w.getAttribute('data-latex') ?? '').includes('Q = 0'))).toBe(true);
     expect(screen.queryByTestId('math-fallback')).toBeNull();
+  });
+
+  it('K9-A: sekwencja zapisu — wiązania aparaturowe, profile, tryb pracy i limity Q idą do modelu', async () => {
+    executeDomainOperationMock.mockResolvedValue({
+      error: null,
+      changes: { created_element_ids: ['gen-1'] },
+    });
+    render(<KreatorZrodlaOze />);
+
+    // tech: aparat nowego pola.
+    await screen.findByRole('option', { name: /Wyłącznik nN/ });
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-oze-aparat'), 'apar-1');
+    // katalog: falownik.
+    await userEvent.click(screen.getByTestId('mvd-kreator-oze-dalej'));
+    await waitFor(() => expect(screen.getByTestId('mvd-kreator-oze-konwerter')).toBeInTheDocument());
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-oze-konwerter'), 'conv-pv-1');
+    // aparatura: CT, VT, zabezpieczenie + referencja danych zwarciowych (bez katalogu).
+    await userEvent.click(screen.getByTestId('mvd-kreator-oze-dalej'));
+    await waitFor(() => expect(screen.getByTestId('mvd-kreator-oze-aparatura')).toBeInTheDocument());
+    await screen.findByRole('option', { name: /CT 100\/5/ });
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-oze-aparatura-ct'), 'ct-1');
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-oze-aparatura-vt'), 'vt-1');
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-oze-aparatura-zabezpieczenie'), 'zab-1');
+    await userEvent.type(screen.getByTestId('mvd-kreator-oze-aparatura-dane-zwarciowe'), 'DOK-ZW-1');
+    // zgodność: profil operatora + krzywe.
+    await userEvent.click(screen.getByTestId('mvd-kreator-oze-dalej'));
+    await waitFor(() => expect(screen.getByTestId('mvd-kreator-oze-zgodnosc')).toBeInTheDocument());
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-oze-zgodnosc-profil'), 'ncrfg_pse');
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-oze-zgodnosc-lvrt'), 'lvrt_pse_b');
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-oze-zgodnosc-hvrt'), 'hvrt_pse_b');
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-oze-zgodnosc-pf'), 'pf_droop_5');
+    // regulacja: tryb pracy + limity Q.
+    await userEvent.click(screen.getByTestId('mvd-kreator-oze-dalej'));
+    await waitFor(() => expect(screen.getByTestId('mvd-kreator-oze-tryb-pracy')).toBeInTheDocument());
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-oze-tryb-pracy'), 'praca_sieciowa');
+    await userEvent.type(screen.getByTestId('mvd-kreator-oze-qmin'), '-0.2');
+    await userEvent.type(screen.getByTestId('mvd-kreator-oze-qmax'), '0.2');
+    // zapis (bez auto-biegu — sekwencja mierzalna deterministycznie).
+    await userEvent.click(screen.getByTestId('mvd-kreator-oze-dalej'));
+    await waitFor(() => expect(screen.getByTestId('mvd-kreator-oze-autobieg-toggle')).toBeInTheDocument());
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-oze-autobieg-toggle'), 'nie');
+    await userEvent.click(screen.getByTestId('mvd-kreator-oze-zapisz'));
+
+    // Wiązania + profile jednym żądaniem zmiany wiązań wytwórcy.
+    await waitFor(() => {
+      expect(patchDerCatalogBindingsMock).toHaveBeenCalledWith('proj-1', 'case-1', 'gen-1', {
+        ct_catalog_ref: 'ct-1',
+        vt_catalog_ref: 'vt-1',
+        protection_catalog_ref: 'zab-1',
+        fault_current_data_ref: 'DOK-ZW-1',
+        nc_rfg_profile_ref: 'ncrfg_pse',
+        lvrt_curve_ref: 'lvrt_pse_b',
+        hvrt_curve_ref: 'hvrt_pse_b',
+        pf_curve_ref: 'pf_droop_5',
+      });
+    });
+    // Tryb pracy — osobna operacja domenowa.
+    expect(executeDomainOperationMock).toHaveBeenCalledWith('case-1', 'set_source_operating_mode', {
+      source_ref: 'gen-1',
+      mode: 'praca_sieciowa',
+    });
+    // Limity mocy biernej — aktualizacja pola limits elementu.
+    expect(executeDomainOperationMock).toHaveBeenCalledWith('case-1', 'update_element_parameters', {
+      element_ref: 'gen-1',
+      parameters: { limits: { q_min_mvar: -0.2, q_max_mvar: 0.2 } },
+    });
+
+    // Przebieg sekwencji: wszystkie etapy zapisane.
+    await waitFor(() => expect(screen.getByTestId('mvd-kreator-oze-sekwencja')).toBeInTheDocument());
+    expect(screen.getByTestId('mvd-kreator-oze-sekwencja-wiazania')).toHaveAttribute('data-stan', 'zapisane');
+    expect(screen.getByTestId('mvd-kreator-oze-sekwencja-tryb')).toHaveAttribute('data-stan', 'zapisane');
+    expect(screen.getByTestId('mvd-kreator-oze-sekwencja-limity')).toHaveAttribute('data-stan', 'zapisane');
+
+    // Readout osi gotowości wytwórcy — statusy i powody w całości z modelu.
+    await waitFor(() => expect(screen.getByTestId('mvd-kreator-oze-gotowosc-der-osie')).toBeInTheDocument());
+    expect(screen.getByTestId('mvd-kreator-oze-gotowosc-der-os-sc_3f')).toHaveAttribute('data-status', 'ready');
+    expect(screen.getByTestId('mvd-kreator-oze-gotowosc-der-os-protection')).toHaveTextContent(
+      'Brak zabezpieczenia pola wytwórcy.',
+    );
+  });
+
+  it('K9-A: częściowe niepowodzenie sekwencji — etap wiązań padł, stan pokazany uczciwie', async () => {
+    executeDomainOperationMock.mockResolvedValue({
+      error: null,
+      changes: { created_element_ids: ['gen-1'] },
+    });
+    patchDerCatalogBindingsMock.mockRejectedValue(
+      new Error('Referencje katalogowe nie istnieja w katalogu: ct_catalog_ref=ct-1.'),
+    );
+    render(<KreatorZrodlaOze />);
+
+    await screen.findByRole('option', { name: /Wyłącznik nN/ });
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-oze-aparat'), 'apar-1');
+    await userEvent.click(screen.getByTestId('mvd-kreator-oze-dalej'));
+    await waitFor(() => expect(screen.getByTestId('mvd-kreator-oze-konwerter')).toBeInTheDocument());
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-oze-konwerter'), 'conv-pv-1');
+    await userEvent.click(screen.getByTestId('mvd-kreator-oze-dalej'));
+    await waitFor(() => expect(screen.getByTestId('mvd-kreator-oze-aparatura')).toBeInTheDocument());
+    await screen.findByRole('option', { name: /CT 100\/5/ });
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-oze-aparatura-ct'), 'ct-1');
+    // zapis bez auto-biegu.
+    await userEvent.click(screen.getByTestId('mvd-kreator-oze-dalej'));
+    await userEvent.click(screen.getByTestId('mvd-kreator-oze-dalej'));
+    await userEvent.click(screen.getByTestId('mvd-kreator-oze-dalej'));
+    await waitFor(() => expect(screen.getByTestId('mvd-kreator-oze-autobieg-toggle')).toBeInTheDocument());
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-oze-autobieg-toggle'), 'nie');
+    await userEvent.click(screen.getByTestId('mvd-kreator-oze-zapisz'));
+
+    await waitFor(() => expect(screen.getByTestId('mvd-kreator-oze-sekwencja')).toBeInTheDocument());
+    // Element JEST w modelu, etap wiązań padł z komunikatem, pozostałe pominięte.
+    expect(screen.getByTestId('mvd-kreator-oze-sekwencja-zrodlo')).toHaveAttribute('data-stan', 'zapisane');
+    const etapWiazania = screen.getByTestId('mvd-kreator-oze-sekwencja-wiazania');
+    expect(etapWiazania).toHaveAttribute('data-stan', 'blad');
+    expect(etapWiazania).toHaveTextContent('Referencje katalogowe nie istnieja w katalogu');
+    expect(screen.getByTestId('mvd-kreator-oze-sekwencja-tryb')).toHaveAttribute('data-stan', 'pominiete');
+    expect(screen.getByTestId('mvd-kreator-oze-sekwencja-limity')).toHaveAttribute('data-stan', 'pominiete');
   });
 
   it('uczciwy stan zerowy: bez rozdzielni zapis zablokowany', async () => {

@@ -103,7 +103,7 @@ describe('ProtectionRunButton — click flow', () => {
         new Response(JSON.stringify({ id: 'pr-1' }), { status: 200 }),
       )
       .mockResolvedValueOnce(
-        new Response(JSON.stringify({ status: 'DONE' }), { status: 200 }),
+        new Response(JSON.stringify({ status: 'FINISHED' }), { status: 200 }),
       );
 
     const onRunComplete = vi.fn();
@@ -135,7 +135,7 @@ describe('ProtectionRunButton — click flow', () => {
         new Response(JSON.stringify({ id: 'pr-1' }), { status: 200 }),
       )
       .mockResolvedValueOnce(
-        new Response(JSON.stringify({ status: 'DONE' }), { status: 200 }),
+        new Response(JSON.stringify({ status: 'FINISHED' }), { status: 200 }),
       );
 
     render(<ProtectionRunButton {...VALID_PROPS} />);
@@ -189,7 +189,7 @@ describe('ProtectionRunButton — error handling', () => {
     );
   });
 
-  it('renders error when status is not DONE', async () => {
+  it('renders error when status is not FINISHED', async () => {
     vi.mocked(global.fetch)
       .mockResolvedValueOnce(
         new Response(JSON.stringify({ id: 'pr-1' }), { status: 200 }),
@@ -209,5 +209,52 @@ describe('ProtectionRunButton — error handling', () => {
         'Solver error',
       ),
     );
+  });
+});
+
+describe('ProtectionRunButton — slownik statusu z backendu', () => {
+  /**
+   * PIN KLASY (K-S): kryterium sukcesu MUSI pochodzic ze slownika koncowki,
+   * ktora ten przycisk wola. `POST /api/protection-runs/{id}/execute` oddaje
+   * `ProtectionRunStatus` (CREATED/RUNNING/FINISHED/FAILED) — nigdy `DONE`
+   * (to slownik biegow wykonawczych `/api/execution/...`). Komponent
+   * porownywal z 'DONE', wiec KAZDE udane obliczenie meldowalo blad, a testy
+   * tego nie widzialy, bo mockowaly odpowiedz, ktorej backend nie wysyla.
+   * Ten test pinuje OBA kierunki: wlasny slownik = sukces, obcy = blad.
+   */
+  it('uznaje FINISHED za sukces, a obcego DONE nie', async () => {
+    vi.mocked(global.fetch)
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ id: 'pr-1' }), { status: 200 }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ status: 'FINISHED' }), { status: 200 }),
+      );
+
+    const onRunComplete = vi.fn();
+    const { unmount } = render(
+      <ProtectionRunButton {...VALID_PROPS} onRunComplete={onRunComplete} />,
+    );
+    fireEvent.click(screen.getByTestId('protection-run-button'));
+    await waitFor(() => expect(onRunComplete).toHaveBeenCalledWith('pr-1'));
+    unmount();
+
+    vi.mocked(global.fetch)
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ id: 'pr-2' }), { status: 200 }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ status: 'DONE' }), { status: 200 }),
+      );
+
+    const onObcy = vi.fn();
+    render(<ProtectionRunButton {...VALID_PROPS} onRunComplete={onObcy} />);
+    fireEvent.click(screen.getByTestId('protection-run-button'));
+    await waitFor(() =>
+      expect(screen.getByTestId('protection-run-error')).toHaveTextContent(
+        'Status: DONE',
+      ),
+    );
+    expect(onObcy).not.toHaveBeenCalled();
   });
 });

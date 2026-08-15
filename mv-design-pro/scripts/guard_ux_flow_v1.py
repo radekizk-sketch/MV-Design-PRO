@@ -13,11 +13,9 @@ Sprawdza:
 8. Kanon nazw operacji (tylko kanoniczne nazwy w API)
 """
 
-import os
 import re
 import sys
 from pathlib import Path
-
 
 # Lokalna prawda kreatora — identyfikatory wlasnego modelu w warstwie prezentacji.
 #
@@ -125,9 +123,7 @@ def main() -> int:
                 if "TODO" in line and not line.strip().startswith("#")
             ]
             for line_no, line in todos:
-                warnings.append(
-                    f"TODO w krytycznej ścieżce: {f.name}:{line_no}: {line[:80]}"
-                )
+                warnings.append(f"TODO w krytycznej ścieżce: {f.name}:{line_no}: {line[:80]}")
 
     # 7. Zakaz PCC — JEDNA regula, delegowana do `pcc_zero_guard`.
     #

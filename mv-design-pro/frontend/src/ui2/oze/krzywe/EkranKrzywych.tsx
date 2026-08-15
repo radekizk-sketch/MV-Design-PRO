@@ -19,6 +19,20 @@ import './krzywe.css';
 import type { AdvancementMode } from '../../shell/modeModel';
 import { TabelaWynikow } from '../../wyniki/wzorzec';
 import { SladAnalizy } from '../pulpit';
+import { useAppStateStore } from '../../../ui/app-state';
+import { notify } from '../../../ui/notifications/store';
+import {
+  HVRT_CURVE_CATALOG,
+  LVRT_CURVE_CATALOG,
+  PF_CURVE_CATALOG,
+  selectAllDers,
+  useStationDerStore,
+} from '../../../ui/network-build/station-der';
+import {
+  DerPersistenceApiError,
+  patchDerCatalogBindings,
+  type DerCatalogBindingsRequest,
+} from '../../../ui/sld/v2/canvas/derPersistenceApi';
 import {
   pobierzKatalogKlasNcRfg,
   pobierzKonwertery,
@@ -54,17 +68,23 @@ interface KatalogPQ {
   readonly typy: OpcjaTypuPQ[];
   readonly operatorzy: OpcjaOperatoraPQ[];
 }
+import { PrzyciskAkcjiStanu } from '../../wyniki/wzorzec';
+import type { AkcjaStanuZerowego } from '../../wyniki/wzorzec';
 
 function StanPanel({
   komunikat,
   opis,
   wariant,
   testid,
+  akcja,
 }: {
   komunikat: string;
   opis?: string;
   wariant: 'info' | 'blad';
   testid: string;
+  /* K6 / H-5: slot akcji stanu zerowego — realny następny krok (bieg obliczeń,
+     nawigacja, formularz operacji). Brak akcji = panel czysto informacyjny. */
+  akcja?: AkcjaStanuZerowego;
 }) {
   return (
     <div
@@ -73,6 +93,7 @@ function StanPanel({
     >
       <p className="mvd-krzywe-stan-title">{komunikat}</p>
       {opis && <p className="mvd-krzywe-stan-desc">{opis}</p>}
+      <PrzyciskAkcjiStanu akcja={akcja} testid={testid} />
     </div>
   );
 }
@@ -190,6 +211,179 @@ function WynikPokrycia({
         </dl>
       )}
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// K5-B (H-3 pkt 2): akcja wyjściowa — przypisanie krzywych zgodności (P(f) /
+// LVRT / HVRT) do wiązań modułu DER w modelu sieci. Zapis kanoniczną operacją
+// `set_der_catalog_bindings` (PATCH .../generators/{ref}/bindings), pominięcie
+// ≠ null: wysyłane są WYŁĄCZNIE pola z wybraną krzywą. Katalogi krzywych to
+// REUŻYCIE list kreatora DER (station-der/catalogs) — jedna prawda wyboru.
+// ---------------------------------------------------------------------------
+
+function SekcjaWiazanKrzywych() {
+  const ders = useStationDerStore((s) => selectAllDers(s));
+  const updateDerProfiles = useStationDerStore((s) => s.updateDerProfiles);
+  const projectId = useAppStateStore((s) => s.activeProjectId);
+  const caseId = useAppStateStore((s) => s.activeCaseId);
+
+  const [wybranyModul, setWybranyModul] = useState('');
+  const [pfRef, setPfRef] = useState('');
+  const [lvrtRef, setLvrtRef] = useState('');
+  const [hvrtRef, setHvrtRef] = useState('');
+  const [zapisywanie, setZapisywanie] = useState(false);
+  const [blad, setBlad] = useState<string | null>(null);
+
+  const modul = ders.find((d) => d.id === wybranyModul) ?? null;
+  const kontekstKompletny = Boolean(projectId && caseId);
+
+  const zapisz = async () => {
+    if (!modul || !projectId || !caseId) return;
+    const zmiany: DerCatalogBindingsRequest = {
+      ...(pfRef ? { pf_curve_ref: pfRef } : {}),
+      ...(lvrtRef ? { lvrt_curve_ref: lvrtRef } : {}),
+      ...(hvrtRef ? { hvrt_curve_ref: hvrtRef } : {}),
+    };
+    if (Object.keys(zmiany).length === 0) {
+      setBlad(KRZYWE_STRINGS.wiazaniaZadnaZmiana);
+      return;
+    }
+    setZapisywanie(true);
+    setBlad(null);
+    try {
+      await patchDerCatalogBindings(projectId, caseId, modul.id, zmiany);
+      // Synchronizacja rekordu warsztatu — reguła gotowości i macierz NC RfG
+      // widzą nowe krzywe bez odświeżania strony (wzorzec DerSurfaces.poZapisie).
+      updateDerProfiles(modul.id, {
+        ...(pfRef ? { pf_curve_ref: pfRef } : {}),
+        ...(lvrtRef ? { lvrt_curve_ref: lvrtRef } : {}),
+        ...(hvrtRef ? { hvrt_curve_ref: hvrtRef } : {}),
+      });
+      notify(KRZYWE_STRINGS.wiazaniaZapisano, 'success');
+    } catch (err) {
+      setBlad(
+        err instanceof DerPersistenceApiError
+          ? err.message
+          : KRZYWE_STRINGS.wiazaniaBladZapisu,
+      );
+    } finally {
+      setZapisywanie(false);
+    }
+  };
+
+  return (
+    <section className="mvd-krzywe-wiazania" data-testid="mvd-krzywe-wiazania">
+      <p className="mvd-krzywe-wiazania-tytul">{KRZYWE_STRINGS.wiazaniaTytul}</p>
+      <p className="mvd-krzywe-wiazania-opis">{KRZYWE_STRINGS.wiazaniaOpis}</p>
+
+      {ders.length === 0 ? (
+        <p className="mvd-krzywe-wiazania-brak" data-testid="mvd-krzywe-wiazania-brak-modulow">
+          {KRZYWE_STRINGS.wiazaniaBrakModulow}
+        </p>
+      ) : (
+        <>
+          <div className="mvd-krzywe-pole">
+            <label htmlFor="mvd-krzywe-wiazania-modul">{KRZYWE_STRINGS.wiazaniaModul}</label>
+            <select
+              id="mvd-krzywe-wiazania-modul"
+              value={wybranyModul}
+              onChange={(e) => {
+                setWybranyModul(e.target.value);
+                setBlad(null);
+              }}
+              data-testid="mvd-krzywe-wiazania-modul"
+            >
+              <option value="">{KRZYWE_STRINGS.opcjaWybierz}</option>
+              {ders.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name} · {d.der_kind}
+                </option>
+              ))}
+            </select>
+            <p className="mvd-krzywe-pole-opis">{KRZYWE_STRINGS.wiazaniaModulPodpowiedz}</p>
+          </div>
+
+          {modul !== null && (
+            <>
+              <div className="mvd-krzywe-pole">
+                <label htmlFor="mvd-krzywe-wiazania-pf">{KRZYWE_STRINGS.wiazaniaKrzywaPf}</label>
+                <select
+                  id="mvd-krzywe-wiazania-pf"
+                  value={pfRef}
+                  onChange={(e) => setPfRef(e.target.value)}
+                  data-testid="mvd-krzywe-wiazania-pf"
+                >
+                  <option value="">{KRZYWE_STRINGS.wiazaniaBezZmiany}</option>
+                  {PF_CURVE_CATALOG.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.label_pl}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="mvd-krzywe-pole">
+                <label htmlFor="mvd-krzywe-wiazania-lvrt">{KRZYWE_STRINGS.wiazaniaKrzywaLvrt}</label>
+                <select
+                  id="mvd-krzywe-wiazania-lvrt"
+                  value={lvrtRef}
+                  onChange={(e) => setLvrtRef(e.target.value)}
+                  data-testid="mvd-krzywe-wiazania-lvrt"
+                >
+                  <option value="">{KRZYWE_STRINGS.wiazaniaBezZmiany}</option>
+                  {LVRT_CURVE_CATALOG.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.label_pl}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="mvd-krzywe-pole">
+                <label htmlFor="mvd-krzywe-wiazania-hvrt">{KRZYWE_STRINGS.wiazaniaKrzywaHvrt}</label>
+                <select
+                  id="mvd-krzywe-wiazania-hvrt"
+                  value={hvrtRef}
+                  onChange={(e) => setHvrtRef(e.target.value)}
+                  data-testid="mvd-krzywe-wiazania-hvrt"
+                >
+                  <option value="">{KRZYWE_STRINGS.wiazaniaBezZmiany}</option>
+                  {HVRT_CURVE_CATALOG.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.label_pl}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {!kontekstKompletny && (
+                <p
+                  className="mvd-krzywe-wiazania-brak"
+                  data-testid="mvd-krzywe-wiazania-brak-kontekstu"
+                >
+                  {KRZYWE_STRINGS.wiazaniaBrakKontekstu}
+                </p>
+              )}
+
+              <button
+                type="button"
+                className="mvd-krzywe-oblicz"
+                onClick={() => void zapisz()}
+                disabled={!kontekstKompletny || zapisywanie}
+                data-testid="mvd-krzywe-wiazania-zapisz"
+              >
+                {KRZYWE_STRINGS.wiazaniaZapisz}
+              </button>
+
+              {blad !== null && (
+                <p className="mvd-krzywe-wiazania-blad" data-testid="mvd-krzywe-wiazania-blad">
+                  {blad}
+                </p>
+              )}
+            </>
+          )}
+        </>
+      )}
+    </section>
   );
 }
 
@@ -379,7 +573,12 @@ export function EkranKrzywych({ trybZaawansowania }: EkranKrzywychProps) {
               testid="mvd-krzywe-blad"
             />
           ) : (
-            <WynikPokrycia dane={stan.dane} trybZaawansowania={trybZaawansowania} />
+            <>
+              <WynikPokrycia dane={stan.dane} trybZaawansowania={trybZaawansowania} />
+              {/* Akcja wyjściowa PO biegu — dopiero zweryfikowana krzywa ma
+                  sens jako profil zgodności modułu. */}
+              <SekcjaWiazanKrzywych />
+            </>
           )}
         </>
       ) : null}

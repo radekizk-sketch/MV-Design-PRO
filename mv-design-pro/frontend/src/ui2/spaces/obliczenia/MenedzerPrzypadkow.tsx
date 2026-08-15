@@ -11,7 +11,7 @@
  * Zero fizyki, zero mutacji NetworkModelu.
  */
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   useAktywujPrzypadek,
   usePelnePrzypadki,
@@ -28,6 +28,7 @@ import {
   formatCzas,
 } from './strings';
 import type { StudyCaseResultStatus } from '../../../ui/study-cases/types';
+import { useShellStore } from '../../shell/useShellStore';
 import './przypadki.css';
 
 const WARIANT_STATUSU: Record<StudyCaseResultStatus, string> = {
@@ -55,6 +56,18 @@ export function MenedzerPrzypadkow() {
   const [menu, setMenu] = useState<MenuStan | null>(null);
   const [dialogOtwarty, setDialogOtwarty] = useState(false);
   const [klonZ, setKlonZ] = useState<string | null>(null);
+
+  // K6 / H-5: jednorazowe żądanie „Nowy przypadek" (np. z pustego drzewa
+  // przypadków w lewym panelu) — konsumowane i czyszczone tutaj, wzorzec
+  // deep-linku `wynikiTab` z `WynikiWarsztat`.
+  const zadanieNowyPrzypadek = useShellStore((s) => s.zadanieNowyPrzypadek);
+  const setZadanieNowyPrzypadek = useShellStore((s) => s.setZadanieNowyPrzypadek);
+  useEffect(() => {
+    if (!zadanieNowyPrzypadek) return;
+    setKlonZ(null);
+    setDialogOtwarty(true);
+    setZadanieNowyPrzypadek(false);
+  }, [zadanieNowyPrzypadek, setZadanieNowyPrzypadek]);
 
   const idsPorownania = useMemo(() => [...zbiorPorownania], [zbiorPorownania]);
   const szczegoly = usePelnePrzypadki(zaznaczonyId ? [zaznaczonyId] : []);

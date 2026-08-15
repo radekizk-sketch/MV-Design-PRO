@@ -6,7 +6,10 @@
  * (powierzchnia trasowa #analysis — zabezpieczenia, porównania, E10+).
  *
  * Zakładka startowa wg rodzaju aktywnego przebiegu (rozpływ/zwarcie/most);
- * wyliczana przy montażu — bez zaskakującego przełączania w trakcie pracy.
+ * wyliczana przy montażu i AKTUALIZOWANA po hydratacji K2 (rejestr przebiegów
+ * doładowuje się z serwera PO montażu — zimny start nie może utknąć na moście),
+ * ale wyłącznie dopóki użytkownik nie wybrał zakładki sam (ręczny wybór i
+ * deep-link mają pierwszeństwo — K3-A4, zero zaskakującego przełączania).
  * 2×klik na wartości z dowodem przełącza na zakładkę „Dowód obliczeń"
  * (okno E9.1; fokus kroku wg elementu = TODO-KARTA w DowodPrzebiegu).
  *
@@ -16,7 +19,7 @@
  */
 import { useEffect, useState, type ReactNode } from 'react';
 
-import type { AdvancementMode } from '../../shell/modeModel';
+import { isModeAtLeast, type AdvancementMode } from '../../shell/modeModel';
 import { useShellStore } from '../../shell/useShellStore';
 import { EkranBadanOltc } from '../../wyniki/oltc';
 import { EkranCoWymagaUwagi } from '../../wyniki/co-wymaga-uwagi';
@@ -41,10 +44,18 @@ import {
   PulpitOze,
 } from '../../oze';
 import { EkranJakosci } from '../../wyniki/jakosc';
+import { EkranKontyngencji } from '../../wyniki/kontyngencje';
+import { EkranWrazliwosci } from '../../wyniki/wrazliwosc';
+import { EkranKoordynacji } from '../../wyniki/koordynacja';
 import { EkranEstymacji } from '../../wyniki/estymacja';
+import { EkranSkladowych } from '../../wyniki/skladowe';
 import { EkranSsci } from '../../wyniki/ssci';
+import { EkranAnalizAkademickich } from '../../wyniki/akademickie';
+import { EkranStabilnosci } from '../../wyniki/stabilnosc';
+import { EkranStanuFazowego } from '../../wyniki/stan-fazowy';
 import { EkranOdbioru } from '../../wyniki/odbior';
 import { EkranPorownania } from '../../wyniki/porownanie';
+import { EkranZbieznosci } from '../../wyniki/zbieznosc';
 import { DowodPrzebiegu } from './DowodPrzebiegu';
 import { useWpiecieWynikow } from './useWpiecieWynikow';
 import { WYNIKI_WARSZTAT_STRINGS as T } from './strings';
@@ -55,13 +66,21 @@ const ZAKLADKI = [
   { id: 'co-wymaga-uwagi', etykieta: T.zakladkaCoWymagaUwagi },
   { id: 'rozplyw', etykieta: T.zakladkaRozplyw },
   { id: 'regulacja-oltc', etykieta: T.zakladkaRegulacjaOltc },
+  { id: 'zbieznosc', etykieta: T.zakladkaZbieznosc },
+  { id: 'kontyngencje', etykieta: T.zakladkaKontyngencje },
   { id: 'zwarcia', etykieta: T.zakladkaZwarcia },
+  { id: 'koordynacja', etykieta: T.zakladkaKoordynacja },
+  { id: 'skladowe', etykieta: T.zakladkaSkladowe },
   { id: 'dowod', etykieta: T.zakladkaDowod },
   { id: 'jakosc', etykieta: T.zakladkaJakosc },
+  { id: 'wrazliwosc', etykieta: T.zakladkaWrazliwosc },
   { id: 'porownanie', etykieta: T.zakladkaPorownanie },
   { id: 'odbior', etykieta: T.zakladkaOdbior },
   { id: 'estymacja', etykieta: T.zakladkaEstymacja },
+  { id: 'stan-fazowy', etykieta: T.zakladkaStanFazowy },
   { id: 'ssci', etykieta: T.zakladkaSsci },
+  { id: 'akademickie', etykieta: T.zakladkaAkademickie },
+  { id: 'stabilnosc', etykieta: T.zakladkaStabilnosc },
   { id: 'ncrfg', etykieta: T.zakladkaNcRfg },
   { id: 'pulpit-oze', etykieta: T.zakladkaPulpitOze },
   { id: 'zdolnosc', etykieta: T.zakladkaZdolnosc },
@@ -77,6 +96,25 @@ const ZAKLADKI = [
   { id: 'pozostale', etykieta: T.zakladkaPozostale },
 ] as const;
 
+/**
+ * Zakładki bramkowane trybem zaawansowania (V126-JEZYK, ocena właściciela 0/10):
+ * „Analizy akademickie" zjeżdżają z toru podstawowego projektanta do trybu
+ * eksperckiego — pakiet V12.6 jest w opracowaniu (część rodzajów nie ma jeszcze
+ * werdyktu z kryterium), a projektant na torze podstawowym nie ma oglądać
+ * powierzchni bez wartości inżynierskiej. Brama jest PARĄ z bramą w samym oknie
+ * (`EkranAnalizAkademickich` → `BramaOpracowania`), żeby wejście trasowe
+ * E-40…E-50 podlegało tej samej regule (KLASA, nie instancja).
+ */
+const MIN_TRYB_ZAKLADKI: Partial<Record<ZakladkaId, AdvancementMode>> = {
+  akademickie: 'expert',
+};
+
+/** Czy zakładka jest dostępna w danym trybie zaawansowania. */
+function zakladkaDostepna(id: ZakladkaId, tryb: AdvancementMode): boolean {
+  const min = MIN_TRYB_ZAKLADKI[id];
+  return min === undefined || isModeAtLeast(tryb, min);
+}
+
 /** Grupowanie zakładek (przegląd IA po komplecie fali OZE) — czysta prezentacja:
  * jeden tablist, dwa nazwane klastry; testidy i klawiatura bez zmian. */
 const GRUPY_ZAKLADEK: readonly { etykieta: string; zakladki: readonly ZakladkaId[] }[] = [
@@ -87,13 +125,21 @@ const GRUPY_ZAKLADEK: readonly { etykieta: string; zakladki: readonly ZakladkaId
       'co-wymaga-uwagi',
       'rozplyw',
       'regulacja-oltc',
+      'zbieznosc',
+      'kontyngencje',
       'zwarcia',
+      'koordynacja',
+      'skladowe',
       'dowod',
       'jakosc',
+      'wrazliwosc',
       'porownanie',
       'odbior',
       'estymacja',
+      'stan-fazowy',
       'ssci',
+      'stabilnosc',
+      'akademickie',
       'pozostale',
     ],
   },
@@ -165,6 +211,17 @@ export function WynikiWarsztat({
   const [zakladka, setZakladka] = useState<ZakladkaId>(
     aktywnyRodzaj === 'rozplyw' ? 'rozplyw' : aktywnyRodzaj === 'zwarcie' ? 'zwarcia' : 'pozostale',
   );
+  // K3-A4: po zimnym starcie rejestr przebiegów hydratuje z serwera PO montażu
+  // (K2, useHydratacjaPowloki) — `aktywnyRodzaj` zmienia się z null na
+  // 'rozplyw'/'zwarcie', a zakładka z inicjalizatora zostawała na moście.
+  // Dopóki użytkownik nie wybrał zakładki sam (klik/klawiatura/deep-link),
+  // doprowadzamy ją do rodzaju aktywnego przebiegu; ręczny wybór wygrywa.
+  const [zakladkaWybranaRecznie, setZakladkaWybranaRecznie] = useState(false);
+  useEffect(() => {
+    if (zakladkaWybranaRecznie) return;
+    if (aktywnyRodzaj === 'rozplyw') setZakladka('rozplyw');
+    else if (aktywnyRodzaj === 'zwarcie') setZakladka('zwarcia');
+  }, [aktywnyRodzaj, zakladkaWybranaRecznie]);
   // Deep-link między-przestrzenny (np. hub Dokumentacji → generator studium OZE):
   // jednorazowe żądanie ze shell store; walidujemy id i czyścimy po konsumpcji.
   // R2-B: żądanie może nieść kontekst elementu (`wynikiTabElement`) —
@@ -179,18 +236,31 @@ export function WynikiWarsztat({
   const setWynikiTab = useShellStore((s) => s.setWynikiTab);
   const [elementKompensacji, setElementKompensacji] = useState<string | null>(null);
   const [przebiegDowodu, setPrzebiegDowodu] = useState<string | null>(null);
+  /** KD-4 (L-11): element wskazany 2× klikiem — zawęża wywód do jego kroków. */
+  const [elementDowodu, setElementDowodu] = useState<string | null>(null);
   const [modulNcRfg, setModulNcRfg] = useState<string | null>(null);
   const [elementRozplywu, setElementRozplywu] = useState<string | null>(null);
   useEffect(() => {
     if (!wynikiTab) return;
-    if (ZAKLADKI.some((z) => z.id === wynikiTab)) {
+    // V126-JEZYK: deep-link nie może obejść bramy trybu — żądanie zakładki
+    // niedostępnej w bieżącym trybie jest konsumowane bez przełączenia
+    // (inaczej brama byłaby dekoracją, a nie regułą).
+    if (
+      ZAKLADKI.some((z) => z.id === wynikiTab)
+      && zakladkaDostepna(wynikiTab as ZakladkaId, trybZaawansowania)
+    ) {
       setZakladka(wynikiTab as ZakladkaId);
+      // K3-A4: deep-link = jawny wybór celu — hydratacja K2 nie może go nadpisać.
+      setZakladkaWybranaRecznie(true);
       if (wynikiTab === 'kompensacja' && wynikiTabElement) {
         setElementKompensacji(wynikiTabElement);
       }
       if (wynikiTab === 'dowod') {
         // Deep-link bez kontekstu = dowód aktywnego przebiegu (czyści wskazanie).
         setPrzebiegDowodu(wynikiTabElement ?? null);
+        // Kontekst deep-linku to run_id, nie element — wskazanie elementu
+        // z poprzedniego wejścia nie może zalegać (izolacja kontekstu).
+        setElementDowodu(null);
       }
       if (wynikiTab === 'ncrfg' && wynikiTabElement) {
         // P-1 (akcja SLD „Pokaż zgodność przyłączeniową"): kontekst modułu
@@ -204,20 +274,37 @@ export function WynikiWarsztat({
       }
     }
     setWynikiTab(null); // czyści OBA pola żądania (tab + element)
-  }, [wynikiTab, wynikiTabElement, setWynikiTab]);
+  }, [wynikiTab, wynikiTabElement, setWynikiTab, trybZaawansowania]);
+
+  // V126-JEZYK: obniżenie trybu w trakcie pracy nie może zostawić otwartej
+  // zakładki spoza toru — wracamy na werdykt (pierwsza zakładka warsztatu).
+  useEffect(() => {
+    if (!zakladkaDostepna(zakladka, trybZaawansowania)) setZakladka('werdykt');
+  }, [zakladka, trybZaawansowania]);
   const zalozeniaZwarciowe = useZalozeniaZwarcioweAktywnegoPrzypadku();
 
   // Nawigacja ręczna (klik/klawiatura/2×klik w ekranach jednego przebiegu):
   // wejście na „Dowód obliczeń" bez deep-linku wraca do aktywnego przebiegu —
   // wskazanie z porównania nie może zalegać (izolacja kontekstu, R3-C).
   const przejdzDoZakladki = (id: ZakladkaId) => {
-    if (id === 'dowod') setPrzebiegDowodu(null);
+    if (id === 'dowod') {
+      setPrzebiegDowodu(null);
+      setElementDowodu(null);
+    }
+    // K3-A4: ręczny wybór użytkownika — hydratacja K2 przestaje sterować zakładką.
+    setZakladkaWybranaRecznie(true);
     setZakladka(id);
   };
 
   // 2×klik na wartości z dowodem → zakładka „Dowód obliczeń" (okno E9.1).
-  const otworzDowod = (_ref: string) => {
-    przejdzDoZakladki('dowod');
+  // KD-4 (luka L-11): ref elementu, na którym kliknięto, JEDZIE DALEJ — do tej
+  // karty był przyjmowany i wyrzucany (`_ref`), więc wywód zawsze otwierał się
+  // na całym przebiegu, choć użytkownik wskazał konkretną wielkość.
+  const otworzDowod = (ref: string) => {
+    setPrzebiegDowodu(null);
+    setZakladkaWybranaRecznie(true);
+    setZakladka('dowod');
+    setElementDowodu(ref || null);
   };
 
   return (
@@ -228,7 +315,9 @@ export function WynikiWarsztat({
             <span className="mvd-wyniki-grupa-etykieta" aria-hidden="true">
               {grupa.etykieta}
             </span>
-            {grupa.zakladki.map((id) => {
+            {grupa.zakladki
+              .filter((id) => zakladkaDostepna(id, trybZaawansowania))
+              .map((id) => {
               const z = ZAKLADKI.find((x) => x.id === id)!;
               return (
                 <button
@@ -243,8 +332,11 @@ export function WynikiWarsztat({
                   onKeyDown={(e) => {
                     if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
                       e.preventDefault();
-                      // Kolejność klawiatury = kolejność wizualna (spłaszczone grupy).
-                      const kolejnosc = GRUPY_ZAKLADEK.flatMap((g) => g.zakladki);
+                      // Kolejność klawiatury = kolejność wizualna (spłaszczone grupy,
+                      // z pominięciem zakładek zamkniętych bramą trybu).
+                      const kolejnosc = GRUPY_ZAKLADEK.flatMap((g) => g.zakladki).filter((x) =>
+                        zakladkaDostepna(x, trybZaawansowania),
+                      );
                       const idx = kolejnosc.indexOf(zakladka);
                       const krok = e.key === 'ArrowRight' ? 1 : kolejnosc.length - 1;
                       przejdzDoZakladki(kolejnosc[(idx + krok) % kolejnosc.length]);
@@ -254,7 +346,7 @@ export function WynikiWarsztat({
                   {z.etykieta}
                 </button>
               );
-            })}
+              })}
           </div>
         ))}
       </div>
@@ -270,6 +362,17 @@ export function WynikiWarsztat({
           />
         )}
         {zakladka === 'regulacja-oltc' && <EkranBadanOltc />}
+        {/* K3-A3: zakładkowi dostawcy kart huba E-29…E-32 (parytet E-33/E-34) —
+            ekrany ui2 czytają store'y same (bez propsów, uczciwe stany zerowe). */}
+        {zakladka === 'zbieznosc' && <EkranZbieznosci />}
+        {/* EKRAN-N1 (D8): powierzchnia zdolności enumeracji kontyngencji N-1 —
+            zakres wybiera inżynier, bieg startuje jawnym przyciskiem. */}
+        {zakladka === 'kontyngencje' && (
+          <EkranKontyngencji trybZaawansowania={trybZaawansowania} />
+        )}
+        {zakladka === 'skladowe' && <EkranSkladowych />}
+        {zakladka === 'stan-fazowy' && <EkranStanuFazowego />}
+        {zakladka === 'stabilnosc' && <EkranStabilnosci />}
         {zakladka === 'zwarcia' && (
           <EkranZwarc
             trybZaawansowania={trybZaawansowania}
@@ -278,12 +381,23 @@ export function WynikiWarsztat({
             czasCieplnyS={zalozeniaZwarciowe.czasCieplnyS}
           />
         )}
+        {/* K8: dostawca zakładkowy dla wygaszonej trasy mostu #protection-results
+            (dawniej: generyczna tabela analityczna powierzchni E-35 bez treści
+            zabezpieczeniowej). Ekran ui2 czyta store'y sam — bez propsów. */}
+        {zakladka === 'koordynacja' && <EkranKoordynacji />}
         {zakladka === 'dowod' && (
-          <DowodPrzebiegu trybZaawansowania={trybZaawansowania} wskazanyRunId={przebiegDowodu} />
+          <DowodPrzebiegu
+            trybZaawansowania={trybZaawansowania}
+            wskazanyRunId={przebiegDowodu}
+            wskazanyElementRef={elementDowodu}
+          />
         )}
         {zakladka === 'jakosc' && (
           <EkranJakosci trybZaawansowania={trybZaawansowania} onOtworzDowod={otworzDowod} />
         )}
+        {/* ROUTERY-4A: dostawca zdolności A6/A17 (wrażliwość LF + ogólna) —
+            ekran ui2 czyta rejestr przebiegów sam (uczciwy stan zerowy z akcją). */}
+        {zakladka === 'wrazliwosc' && <EkranWrazliwosci trybZaawansowania={trybZaawansowania} />}
         {zakladka === 'porownanie' && <PorownanieAktywnegoProjektu trybZaawansowania={trybZaawansowania} />}
         {zakladka === 'odbior' && (
           <EkranOdbioru trybZaawansowania={trybZaawansowania} onOtworzDowod={otworzDowod} />
@@ -292,6 +406,14 @@ export function WynikiWarsztat({
           <EkranEstymacji trybZaawansowania={trybZaawansowania} onOtworzDowod={otworzDowod} />
         )}
         {zakladka === 'ssci' && <EkranSsci trybZaawansowania={trybZaawansowania} />}
+        {/* V126-OKNA: pakiet analiz akademickich V12.6 — okno parametryzowane
+            rodzajem (14 rodzajów kontraktu `V126AnalysisType`), lądowisko wyników
+            po wygaszeniu powierzchni zastanej `V126AcademicSurface`.
+            V126-JEZYK: treść renderuje się WYŁĄCZNIE za bramą trybu — ten sam
+            predykat co pasek zakładek (jedno źródło prawdy, zero rozjazdu). */}
+        {zakladka === 'akademickie' && zakladkaDostepna('akademickie', trybZaawansowania) && (
+          <EkranAnalizAkademickich trybZaawansowania={trybZaawansowania} />
+        )}
         {zakladka === 'ncrfg' && (
           <MacierzNcRfg
             trybZaawansowania={trybZaawansowania}

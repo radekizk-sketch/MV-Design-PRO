@@ -60,13 +60,6 @@ export const ROUTES = {
     icon: 'CFG',
     requiredMode: 'MODEL_EDIT',
   },
-  SWITCHGEAR: {
-    hash: '#switchgear',
-    label: 'Rozdzielnica: pola i aparaty',
-    description: 'Konfiguracja pól i aparatów rozdzielnicy',
-    icon: 'SWG',
-    requiredMode: 'MODEL_EDIT',
-  },
   ENM_INSPECTOR: {
     hash: '#enm-inspector',
     label: 'Inspektor modelu',
@@ -89,12 +82,26 @@ export const ROUTES = {
 
 type RouteKey = keyof typeof ROUTES;
 
+/**
+ * Aliasy trasy analitycznej — NAZWANE stałe, bo są adresami tak samo jak
+ * `ROUTES`. Dzięki nim `frontend/src` ma DOKŁADNIE JEDNO miejsce z literałami
+ * tras hash (ten plik), a most przestrzeni odwołuje się do nazw, nie do
+ * napisów (zapadka: `scripts/nawigacja_jeden_kanon_guard.py`, reguła A).
+ */
+export const ALIAS_ROUTES = {
+  RESULTS: '#results',
+  PROOF: '#proof',
+  PROTECTION_RESULTS: '#protection-results',
+  POWER_FLOW_RESULTS: '#power-flow-results',
+  COMPARE: '#compare',
+} as const;
+
 export const ANALYSIS_ROUTE_ALIASES: Readonly<Record<string, AnalysisRouteTabId>> = {
-  '#results': ANALYSIS_ROUTE_DEFAULT_TAB,
-  '#proof': 'trace',
-  '#protection-results': 'protection',
-  '#power-flow-results': 'power-flow',
-  '#compare': 'compare',
+  [ALIAS_ROUTES.RESULTS]: ANALYSIS_ROUTE_DEFAULT_TAB,
+  [ALIAS_ROUTES.PROOF]: 'trace',
+  [ALIAS_ROUTES.PROTECTION_RESULTS]: 'protection',
+  [ALIAS_ROUTES.POWER_FLOW_RESULTS]: 'power-flow',
+  [ALIAS_ROUTES.COMPARE]: 'compare',
 };
 
 interface RouteContextOptions {
@@ -221,14 +228,14 @@ export function navigateToResults(context: RouteContextOptions = {}): void {
 }
 
 export function navigateToProof(context: RouteContextOptions = {}): void {
-  navigateToHash('#proof', (params) => {
+  navigateToHash(ALIAS_ROUTES.PROOF, (params) => {
     params.delete('tab');
     assignRouteContext(params, context);
   });
 }
 
 export function navigateToCompare(context: RouteContextOptions = {}): void {
-  navigateToHash('#compare', (params) => {
+  navigateToHash(ALIAS_ROUTES.COMPARE, (params) => {
     params.delete('tab');
     assignRouteContext(params, context);
   });
@@ -239,14 +246,14 @@ export function navigateToSldView(): void {
 }
 
 export function navigateToResultsProtection(context: RouteContextOptions = {}): void {
-  navigateToHash('#protection-results', (params) => {
+  navigateToHash(ALIAS_ROUTES.PROTECTION_RESULTS, (params) => {
     params.delete('tab');
     assignRouteContext(params, context);
   });
 }
 
 export function navigateToResultsPowerFlow(context: RouteContextOptions = {}): void {
-  navigateToHash('#power-flow-results', (params) => {
+  navigateToHash(ALIAS_ROUTES.POWER_FLOW_RESULTS, (params) => {
     params.delete('tab');
     assignRouteContext(params, context);
   });
@@ -258,13 +265,6 @@ export function navigateToNetworkBuild(): void {
 
 export function navigateToCaseConfig(context: RouteContextOptions = {}): void {
   navigateToHash(ROUTES.CASE_CONFIG.hash, (params) => {
-    params.delete('run');
-    assignRouteContext(params, context);
-  });
-}
-
-export function navigateToSwitchgear(context: RouteContextOptions = {}): void {
-  navigateToHash(ROUTES.SWITCHGEAR.hash, (params) => {
     params.delete('run');
     assignRouteContext(params, context);
   });

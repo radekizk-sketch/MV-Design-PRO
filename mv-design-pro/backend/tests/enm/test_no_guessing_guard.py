@@ -115,6 +115,8 @@ class TestNoDefaultLengthBranch:
             op_name="insert_station_on_segment_sn",
             payload={
                 "segment_id": first_segment,
+                # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+                "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
                 "name": "Stacja testowa",
                 "station_type": "branch",
                 "transformer": {"transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11"},
@@ -211,6 +213,8 @@ class TestNoDefaultVoltageStation:
             op_name="insert_station_on_segment_sn",
             payload={
                 "segment_ref": first_seg_ref,
+                # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+                "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
                 "station_type": "B",
                 "insert_at": {"value": 0.5},
                 "station": {

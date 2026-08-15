@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
+from typing import Any
 
 import numpy as np
 from domain.execution import ExecutionAnalysisType
@@ -152,4 +153,97 @@ def execute_short_circuit(
         solver_result=solver_result,
         analysis_type=analysis_type,
         fault_node_id=fault_node_id,
+    )
+
+
+def wynik_zwarcia_1f_ze_snapshotu(
+    *,
+    snapshot: dict[str, Any],
+    fault_node_id: str,
+    c_factor: float,
+    tk_s: float,
+) -> ShortCircuitResult:
+    """FROZEN wynik zwarcia 1F ze snapshotu ENM — impedancje składowe Z1/Z2/Z0.
+
+    PO CO TA FUNKCJA (2026-08-07, naprawa czerwonej bramki po karcie PACK-DOWODY).
+    Pakiet dowodowy zwarć niesymetrycznych potrzebuje Z1/Z2/Z0, a sieć zerową
+    liczy WYŁĄCZNIE wariant jednofazowy — przebieg 3F ich nie produkuje, więc
+    pakiet musi je wyznaczyć. Dotąd robił to SAM: budował graf, składał macierz
+    zerową i wołał solver z własnego modułu. Łamało to naraz dwie reguły:
+
+    1. `no_direct_fault_params_guard` — parametry zwarcia wchodziły do warstwy
+       solvera spoza warstwy wiązania (CI czerwone: `sc_asymmetrical.py:252`).
+       Dopisanie pliku do zapadki `LEGACY_DIRECT_SOLVER_CALLERS` byłoby
+       POSZERZENIEM wyjątku, nie naprawą: zapadka trzyma stan ZAMROŻONY
+       2026-08-01, a ten plik powstał w sierpniu 2026 i legacy nie jest.
+    2. Proof Engine liczył FIZYKĘ. Kanon (`CLAUDE.md`, „Proof Engine reads
+       results READ-ONLY", „pure interpretation") stawia pakiety dowodowe w roli
+       INTERPRETACJI wyniku, nie jego producenta.
+
+    Tu fizyka wraca na swoje miejsce: mapowanie snapshotu, macierz zerowa i
+    wejście w solver dzieją się w warstwie wiązania, a pakiet dostaje gotowy
+    FROZEN wynik i tylko go opisuje.
+
+    DETERMINIZM: `tb_s` zostaje domyślne solvera (0,1 s) — dokładnie ta sama
+    wartość, którą podaje jawnie `execute_short_circuit`, więc przeniesienie
+    wywołania nie zmienia ani jednej cyfry wyniku.
+    """
+    from enm.mapping import build_zero_sequence_zbus, map_enm_to_network_graph
+    from enm.models import EnergyNetworkModel
+
+    enm = EnergyNetworkModel.model_validate(snapshot)
+    graph = map_enm_to_network_graph(enm)
+    return ShortCircuitIEC60909Solver.compute_1ph_short_circuit(
+        graph=graph,
+        fault_node_id=fault_node_id,
+        c_factor=c_factor,
+        tk_s=tk_s,
+        z0_bus=build_zero_sequence_zbus(enm, graph),
+    )
+
+
+@dataclass(frozen=True)
+class ZwarcieZeSnapshotu:
+    """FROZEN wynik zwarcia razem z grafem, na którym powstał.
+
+    Graf wraca do wołającego CELOWO: rozbicie per-maszyna (`compute_machine_contributions`)
+    musi liczyć się na TYM SAMYM grafie co zwarcie. Zbudowanie drugiego z tego samego
+    snapshotu dałoby dziś ten sam obiekt, ale byłyby to DWA źródła prawdy, które
+    rozjadą się przy pierwszej zmianie mapowania (reguła KLASA §3 — predykaty parami
+    z jednego źródła).
+    """
+
+    wynik: ShortCircuitResult
+    graf: NetworkGraph
+
+
+def zwarcie_3f_ze_snapshotu(
+    *,
+    snapshot: dict[str, Any],
+    fault_node_id: str,
+    c_factor: float,
+    tk_s: float,
+) -> ZwarcieZeSnapshotu:
+    """FROZEN wynik zwarcia 3F ze snapshotu ENM — dla pakietu dowodowego SC3F.
+
+    Bliźniak `wynik_zwarcia_1f_ze_snapshotu`, domykający KLASĘ (dług
+    PACK-SC3F-WIAZANIE, nazwany przy naprawie pakietu niesymetrycznego 2026-08-07).
+    Powód ten sam: pakiet dowodowy ma OPISYWAĆ wynik, nie produkować go — mapowanie
+    snapshotu i wejście w solver należą do warstwy wiązania.
+
+    DETERMINIZM: `tb_s` zostaje domyślne solvera, dokładnie jak w wywołaniu, które ta
+    funkcja zastąpiła — ani jedna cyfra dowodu SC3F się nie zmienia.
+    """
+    from enm.mapping import map_enm_to_network_graph
+    from enm.models import EnergyNetworkModel
+
+    graph = map_enm_to_network_graph(EnergyNetworkModel.model_validate(snapshot))
+    return ZwarcieZeSnapshotu(
+        wynik=ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
+            graph=graph,
+            fault_node_id=fault_node_id,
+            c_factor=c_factor,
+            tk_s=tk_s,
+        ),
+        graf=graph,
     )

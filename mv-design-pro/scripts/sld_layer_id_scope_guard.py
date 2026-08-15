@@ -46,8 +46,16 @@ LEGACY_FILES = {
     # Nieaktywny w produkcyjnym UI (tylko w testach jednostkowych
     # BuildSidebar). Do migracji na LayerId + mapowanie w osobnym PR.
     "frontend/src/ui/network-build/build-sidebar/LayersSection.tsx",
-    "frontend/src/ui/network-build/build-sidebar/BuildSidebar.tsx",
-    "frontend/src/ui/network-build/build-sidebar/__tests__/BuildSidebar.test.tsx",
+    # DWA WPISY USUNIETE 2026-08-12 (karta ZAPADKI-ALLOWLIST-RESZTA, pozycja f
+    # — POMIAR PRZED NAPRAWA): check_legacy_files_freshness() zastala je jako
+    # sieroty — oba pliki istnieja, ale ZADEN juz nie odwoluje sie wprost do
+    # SldLayerId/DEFAULT_LAYER_VISIBILITY/LAYER_LABELS_PL (potwierdzone
+    # niezaleznym grep). BuildSidebar.tsx konsumuje LayersSection przez
+    # `LayersSectionProps`, nie przez surowy typ warstwy renderera. Usuniecie
+    # nie odslania naruszenia w glownej petli main() (scan_file() na obu
+    # plikach juz dzis zwraca []):
+    # "frontend/src/ui/network-build/build-sidebar/BuildSidebar.tsx",
+    # "frontend/src/ui/network-build/build-sidebar/__tests__/BuildSidebar.test.tsx".
 }
 
 # Wzorce wykrywające użycie typu/wartości SldLayerId
@@ -96,6 +104,40 @@ def scan_file(file_path: Path) -> list[Violation]:
     return violations
 
 
+def check_legacy_files_freshness() -> list[str]:
+    """Zapadka swiezosci LEGACY_FILES (karta ZAPADKI-ALLOWLIST-RESZTA,
+    pozycja f, 2026-08-12).
+
+    Kazdy wpis jest opisany jako "uzywa SldLayerId" (dlug legacy do migracji) —
+    czyli deklaruje ZNANE, REALNE trafienie wzorca, nie tylko role. Pelna
+    zapadka dwukierunkowa: plik musi istniec ORAZ nadal produkowac >=1
+    trafienie `scan_file()`, gdyby nie byl wylaczony — `scan_file()` nie
+    zaglada do LEGACY_FILES samo z siebie (filtrowanie robi `is_allowed()`
+    PRZED jej wywolaniem w `main()`), wiec mozna ja wywolac wprost i uzyskac
+    ten sam predykat (predykaty parami, KLASA-NIE-INSTANCJA S3). Wpis, ktory
+    przestal trafiac (plik zmigrowany na LayerId, ale zapomniany na liscie),
+    jest martwym wyjatkiem: gdyby SldLayerId kiedys WROCIL do TEGO SAMEGO
+    pliku, przeszedlby bez kontroli.
+    """
+    violations: list[str] = []
+    for rel_path in sorted(LEGACY_FILES):
+        full_path = REPO_ROOT / rel_path
+        if not full_path.is_file():
+            violations.append(
+                f"[sld-layer-id-wpis-osierocony] LEGACY_FILES zawiera {rel_path!r}, "
+                "ktorego juz nie ma w repo — usun ten wpis"
+            )
+            continue
+        if scan_file(full_path):
+            continue
+        violations.append(
+            f"[sld-layer-id-wpis-osierocony] LEGACY_FILES zawiera {rel_path!r}, ktory juz "
+            "nie zawiera zadnego uzycia SldLayerId/DEFAULT_LAYER_VISIBILITY/LAYER_LABELS_PL "
+            "— usun ten wpis"
+        )
+    return violations
+
+
 def main() -> int:
     all_violations: list[Violation] = []
     for scan_dir in SCAN_DIRS:
@@ -134,6 +176,17 @@ def main() -> int:
             "Jeśli plik jest legacy lub potrzebuje świadomego dostępu - dodaj komentarz\n"
             "// sld-layer-id-ignore na końcu linii lub dodaj do LEGACY_FILES w guardzie."
         )
+
+    freshness_violations = check_legacy_files_freshness()
+    if freshness_violations:
+        print("=" * 60)
+        print("GUARD: sld_layer_id_scope_guard — LEGACY_FILES OSIEROCONE")
+        print("=" * 60)
+        for message in freshness_violations:
+            print(f"  {message}")
+        print()
+
+    if all_violations or freshness_violations:
         return 1
 
     print("sld-layer-id-scope-guard: OK (brak naruszeń)")

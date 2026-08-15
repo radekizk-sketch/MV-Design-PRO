@@ -80,8 +80,13 @@ export function DerPaletteButton(props: DerPaletteButtonProps): JSX.Element {
       disabled={disabled}
       onClick={() => !disabled && onStart(kind)}
       style={{
-        background: active ? color : disabled ? '#2A3441' : '#0A1018',
-        color: active ? '#0A0E14' : color,
+        // KD-8 poz. 1: powierzchnia i tusz z tokenów MOTYWU; barwa rodzaju
+        // (PV/BESS/FW) zostaje na obrysie i na wypełnieniu stanu aktywnego —
+        // tam niesie tożsamość, a nie czytelność. Tusz na aktywnym (jasnym)
+        // wypełnieniu jest ŚWIADOMIE stały w obu motywach: wypełnienie jest
+        // jasne niezależnie od motywu, więc tusz musi być ciemny zawsze.
+        background: active ? color : disabled ? 'rgb(var(--scada-surface))' : 'rgb(var(--scada-panel))',
+        color: active ? '#0B1014' : 'rgb(var(--scada-text))',
         border: `1.5px solid ${color}`,
         padding: '6px 10px',
         borderRadius: 3,

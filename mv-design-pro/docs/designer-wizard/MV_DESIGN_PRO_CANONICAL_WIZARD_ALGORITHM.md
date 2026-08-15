@@ -1,6 +1,6 @@
 ﻿<# MV-DESIGN-PRO — KANONICZNY ALGORYTM KREATORA
-# (ALGORYTM PROJEKTANTA – WERSJA PRZEMYSĹOWA)
-# ĹąRĂ“DĹO: PeĹ‚na Specyfikacja Algorytmu Projektanta (DOCX)
+# (ALGORYTM PROJEKTANTA – WERSJA PRZEMYSŁOWA)
+# ŹRÓDŁO: Pełna Specyfikacja Algorytmu Projektanta (DOCX)
 
 ================================================================================
 STATUS
@@ -9,26 +9,26 @@ STATUS
 - KLASYFIKACJA: Industrial (benchmark / DIgSILENT benchmark)
 - TEN PLIK JEST JEDYNYM KONTRAKTEM DLA:
   - kreatora (wizard)
-  - backendu (logika dostępnoĹ›ci)
+  - backendu (logika dostępności)
   - AI (Codex / Claude Code)
-- WSZYSTKIE WCZEĹšNIEJSZE OPISY KREATORA TRACĄ WAĹ»NOĹšĆ
+- WSZYSTKIE WCZEŚNIEJSZE OPISY KREATORA TRACĄ WAŻNOŚĆ
 
 ================================================================================
-ZASADY NADRZÄDNE (Z DOCX — LINIA PO LINII)
+ZASADY NADRZĘDNE (Z DOCX — LINIA PO LINII)
 ================================================================================
 [DOCX]
-â€žProjektant nie wykonuje obliczeĹ„ ręcznych. Wszystkie parametry wynikają
-z danych katalogowych i obliczeĹ„ systemowych.â€ť
+„Projektant nie wykonuje obliczeń ręcznych. Wszystkie parametry wynikają
+z danych katalogowych i obliczeń systemowych.”
 
 → UI NIE LICZY
 → UI NIE POSIADA DANYCH ELEKTRYCZNYCH
-→ WSZYSTKIE PARAMETRY Z KATALOGĂ“W
+→ WSZYSTKIE PARAMETRY Z KATALOGÓW
 
 [DOCX]
-â€žElementy sieci dobierane są wyĹ‚ącznie z zatwierdzonych baz danych.â€ť
+„Elementy sieci dobierane są wyłącznie z zatwierdzonych baz danych.”
 
 → WSZYSTKIE ELEMENTY: catalog.*
-→ UI OPERUJE WYĹĄCZNIE NA ID
+→ UI OPERUJE WYŁĄCZNIE NA ID
 
 ================================================================================
 DEFINICJE
@@ -37,30 +37,30 @@ DesignSession:
 - aktywna sesja projektowa
 
 Snapshot:
-- niezmienny zapis stanu po kaĹĽdej operacji
-- zawiera graf, katalogowe ID, wyniki solverĂłw, white-box trace
+- niezmienny zapis stanu po każdej operacji
+- zawiera graf, katalogowe ID, wyniki solverów, white-box trace
 
 Katalog:
-- jedyne ĹşrĂłdĹ‚o danych technicznych
-- brak ręcznego wprowadzania parametrĂłw
+- jedyne źródło danych technicznych
+- brak ręcznego wprowadzania parametrów
 
 ================================================================================
 TRYBY ALGORYTMU (Z DOCX)
 ================================================================================
 SIMPLIFIED:
-- uproszczona Ĺ›cieĹĽka
+- uproszczona ścieżka
 - ograniczona liczba weryfikacji
 
 FULL:
-- peĹ‚na Ĺ›cieĹĽka projektowa
-- peĹ‚ne sprawdzenia normowe i zabezpieczeniowe
+- pełna ścieżka projektowa
+- pełne sprawdzenia normowe i zabezpieczeniowe
 
 ================================================================================
 TYPY DECYZJI ALGORYTMICZNYCH (Z DOCX)
 ================================================================================
 ALLOW   — operacja dopuszczona
 BLOCK   — operacja zabroniona, brak kontynuacji
-RETURN  — cofnięcie do wczeĹ›niejszego kroku
+RETURN  — cofnięcie do wcześniejszego kroku
 WARNING — dopuszczone z flagą ostrzegawczą
 
 ================================================================================
@@ -71,31 +71,31 @@ ALGORYTM PROJEKTANTA — KROK PO KROKU (DOCX → SYSTEM)
 ALG_STEP 1 — INICJALIZACJA PROJEKTU
 --------------------------------------------------------------------------------
 [DOCX]
-â€žProjekt rozpoczyna się od pustej struktury sieciowej.â€ť
+„Projekt rozpoczyna się od pustej struktury sieciowej.”
 
 WARUNEK:
 - projekt istnieje
 
 EFEKT:
 - pusty graf
-- brak elementĂłw
+- brak elementów
 - snapshot startowy
 
 --------------------------------------------------------------------------------
-ALG_STEP 2 — DEFINICJA ĹąRĂ“DĹA ZASILANIA (GPZ)
+ALG_STEP 2 — DEFINICJA ŹRÓDŁA ZASILANIA (GPZ)
 --------------------------------------------------------------------------------
 [DOCX]
-â€žNa początku naleĹĽy okreĹ›lić jedno gĹ‚Ăłwne ĹşrĂłdĹ‚o zasilania SN.â€ť
+„Na początku należy określić jedno główne źródło zasilania SN.”
 
 OPERACJA:
 - ADD_SOURCE (catalog.sources)
 
 WARUNKI:
-- dokĹ‚adnie jedno ĹşrĂłdĹ‚o
+- dokładnie jedno źródło
 
-JEĹ»ELI:
-- brak ĹşrĂłdĹ‚a → BLOCK
-- więcej niĹĽ jedno → BLOCK
+JEŻELI:
+- brak źródła → BLOCK
+- więcej niż jedno → BLOCK
 
 EFEKT:
 - snapshot
@@ -105,40 +105,40 @@ EFEKT:
 ALG_STEP 3 — BUDOWA TOPOLOGII SIECI
 --------------------------------------------------------------------------------
 [DOCX]
-â€žSieć rozwijana jest przez dodawanie kolejnych odcinkĂłw i stacji.â€ť
+„Sieć rozwijana jest przez dodawanie kolejnych odcinków i stacji.”
 
 OPERACJE:
 - CONTINUE_TRUNK_SEGMENT_SN / START_BRANCH_SEGMENT_SN
 - INSERT_STATION_ON_SEGMENT_SN
 - ADD_TRANSFORMER_SN_NN
 
-JEĹ»ELI:
-- topologia niespĂłjna → RETURN do początku kroku
+JEŻELI:
+- topologia niespójna → RETURN do początku kroku
 - naruszenie struktury → BLOCK
 
 EFEKT:
 - graf sieci
-- snapshot po kaĹĽdej operacji
+- snapshot po każdej operacji
 
 --------------------------------------------------------------------------------
-ALG_STEP 4 — WERYFIKACJA KOMPLETNOĹšCI DANYCH
+ALG_STEP 4 — WERYFIKACJA KOMPLETNOŚCI DANYCH
 --------------------------------------------------------------------------------
 [DOCX]
-â€žW przypadku brakĂłw danych algorytm powraca do budowy struktury.â€ť
+„W przypadku braków danych algorytm powraca do budowy struktury.”
 
 SPRAWDZANE:
-- kompletnoĹ›ć katalogowych ID
-- spĂłjnoĹ›ć grafu
+- kompletność katalogowych ID
+- spójność grafu
 
-JEĹ»ELI:
+JEŻELI:
 - braki → RETURN do ALG_STEP 3
-- sprzecznoĹ›ci → BLOCK
+- sprzeczności → BLOCK
 
 --------------------------------------------------------------------------------
 ALG_STEP 5 — OBLICZENIA ZWARCIOWE
 --------------------------------------------------------------------------------
 [DOCX]
-â€žWykonywane są obliczenia zwarciowe zgodnie z PN-EN 60909.â€ť
+„Wykonywane są obliczenia zwarciowe zgodnie z PN-EN 60909.”
 
 AKCJA:
 - run_short_circuit
@@ -147,46 +147,46 @@ SPRAWDZANE:
 - Ik3max
 - Ik1min
 
-JEĹ»ELI:
+JEŻELI:
 - przekroczenia → RETURN do ALG_STEP 3
-- brak zbieĹĽnoĹ›ci → BLOCK
+- brak zbieżności → BLOCK
 
 --------------------------------------------------------------------------------
-ALG_STEP 6 — OBLICZENIA ROZPĹYWU MOCY
+ALG_STEP 6 — OBLICZENIA ROZPŁYWU MOCY
 --------------------------------------------------------------------------------
 [DOCX]
-â€žWykonywane są obliczenia rozpĹ‚ywu mocy.â€ť
+„Wykonywane są obliczenia rozpływu mocy.”
 
 AKCJA:
 - run_power_flow
 
 SPRAWDZANE:
 - spadki napięć
-- obciąĹĽenia
+- obciążenia
 
-JEĹ»ELI:
+JEŻELI:
 - przekroczenia → RETURN
-- brak zbieĹĽnoĹ›ci → BLOCK
+- brak zbieżności → BLOCK
 
 --------------------------------------------------------------------------------
-ALG_STEP 7 — ODBIORY I ĹąRĂ“DĹA OZE
+ALG_STEP 7 — ODBIORY I ŹRÓDŁA OZE
 --------------------------------------------------------------------------------
 [DOCX]
-â€žOdbiory i generatory przyĹ‚ączane są do istniejącej sieci.â€ť
+„Odbiory i generatory przyłączane są do istniejącej sieci.”
 
 OPERACJE:
 - ADD_LOAD
 - ADD_GENERATOR
 
 EFEKT:
-- aktualizacja obciąĹĽeĹ„
+- aktualizacja obciążeń
 - nowe obliczenia
 
 --------------------------------------------------------------------------------
-ALG_STEP 8 — BoundaryNode – PUNKT WSPĂ“LNEGO PRZYĹĄCZENIA
+ALG_STEP 8 — BoundaryNode – PUNKT WSPÓLNEGO PRZYŁĄCZENIA
 --------------------------------------------------------------------------------
 [DOCX]
-â€žDla ĹşrĂłdeĹ‚ wytwĂłrczych naleĹĽy okreĹ›lić BoundaryNode.â€ť
+„Dla źródeł wytwórczych należy określić BoundaryNode.”
 
 OPERACJA:
 - SET_BoundaryNode
@@ -196,37 +196,37 @@ EFEKT:
 - snapshot
 
 --------------------------------------------------------------------------------
-ALG_STEP 9 — ZABEZPIECZENIA I SELEKTYWNOĹšĆ
+ALG_STEP 9 — ZABEZPIECZENIA I SELEKTYWNOŚĆ
 --------------------------------------------------------------------------------
 [DOCX]
-â€žDobĂłr zabezpieczeĹ„ wykonywany jest na podstawie wynikĂłw zwarciowych.â€ť
+„Dobór zabezpieczeń wykonywany jest na podstawie wyników zwarciowych.”
 
 WARUNEK:
 - dostępne wyniki zwarciowe
 
-JEĹ»ELI:
-- brak selektywnoĹ›ci → RETURN
+JEŻELI:
+- brak selektywności → RETURN
 - brak danych → BLOCK
 
 --------------------------------------------------------------------------------
-ALG_STEP 10 — WALIDACJA KOĹCOWA
+ALG_STEP 10 — WALIDACJA KOŃCOWA
 --------------------------------------------------------------------------------
 [DOCX]
-â€žProjekt podlega koĹ„cowej weryfikacji normowej.â€ť
+„Projekt podlega końcowej weryfikacji normowej.”
 
 SPRAWDZANE:
 - normy
-- kompletnoĹ›ć
+- kompletność
 - BoundaryNode
 
-JEĹ»ELI:
-- niezgodnoĹ›ć → RETURN do wĹ‚aĹ›ciwego kroku
+JEŻELI:
+- niezgodność → RETURN do właściwego kroku
 
 --------------------------------------------------------------------------------
 ALG_STEP 11 — DOKUMENTACJA
 --------------------------------------------------------------------------------
 [DOCX]
-â€žGenerowana jest dokumentacja projektowa.â€ť
+„Generowana jest dokumentacja projektowa.”
 
 OPERACJE:
 - export DOCX
@@ -251,15 +251,15 @@ ZAKAZY ABSOLUTNE
 - heurystyki UI
 
 ================================================================================
-DEFINICJA ZGODNOĹšCI
+DEFINICJA ZGODNOŚCI
 ================================================================================
-Implementacja jest zgodna, jeĹĽeli:
-- algorytm da się odtworzyć wyĹ‚ącznie z snapshotĂłw
-- solver jest jedynym ĹşrĂłdĹ‚em fizyki
+Implementacja jest zgodna, jeżeli:
+- algorytm da się odtworzyć wyłącznie z snapshotów
+- solver jest jedynym źródłem fizyki
 - kreator jest w 100% deterministyczny
 
 ================================================================================
-KONIEC — TEN PLIK JEST WIĄĹ»ĄCY
+KONIEC — TEN PLIK JEST WIĄŻĄCY
 ================================================================================
 > 
 

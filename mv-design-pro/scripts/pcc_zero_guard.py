@@ -105,9 +105,7 @@ def scan_backend_src() -> list[str]:
                 # Allow lines that document the prohibition rule
                 if any(ctx in line for ctx in PCC_ALLOWED_CONTEXTS):
                     continue
-                violations.append(
-                    f"  {display_path}:{line_num}: {line.strip()[:120]}"
-                )
+                violations.append(f"  {display_path}:{line_num}: {line.strip()[:120]}")
 
     return violations
 

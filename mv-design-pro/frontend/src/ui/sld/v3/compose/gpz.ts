@@ -47,6 +47,7 @@ import { SYMBOL_DEFS, type SymbolId } from '../symbols/defs';
 import type { VoltageClass } from '../theme/colorTokens';
 import type { SwitchState } from '../symbols/glyphs';
 import { APPARATUS_STACK_VERTICAL_GAP } from '../layout/apparatusStack';
+import { BUSBAR_LABEL_PATH_CLEARANCE } from '../layout/clearances';
 import type { RoutePort, RouteVertex } from '../layout/route';
 import {
   colorSegmentLabelRows,
@@ -59,6 +60,7 @@ import type {
   StationNameBandRow,
 } from '../layout/labels';
 import { stackFootprint } from './station';
+import { createUnikalnyTestId } from './unikalnyTestId';
 import {
   LATERAL_APPARATUS_SYMBOLS,
   LATERAL_BRANCH_GAP,
@@ -483,6 +485,22 @@ function buildFieldStack(
   // rejestru z konstrukcji, uczciwie: nie ma `CanonicalGpzBay` źródłowego).
   deviceItems: readonly BayPrimaryDeviceView[] | null = null,
 ): FieldStack {
+  // Karta S9-4 (tożsamość zaznaczenia) — UNIKALNOŚĆ testId W STOSIE POLA.
+  // `testIdFor` dostaje `(index, symbolId)`, ale wszystkie wywołania budują
+  // identyfikator WYŁĄCZNIE z `symbolId` (np. `gpz-canonical-bay-⟨bay⟩-⟨id⟩`),
+  // więc pole z DWOMA aparatami tego samego rodzaju — a to norma: odłącznik
+  // szynowy + odłącznik liniowy w polu liniowym — dawało DWA obiekty o TEJ
+  // SAMEJ tożsamości. Skutki zmierzone sondą S9-4 na sieci referencyjnej:
+  // `querySelector` po testId trafiał zawsze w pierwszy z nich, a klik w drugi
+  // był nieodróżnialny od kliku w pierwszy. Powtórzenie dostaje przyrostek
+  // porządkowy (`-2`, `-3`, …); PIERWSZE wystąpienie zachowuje identyfikator
+  // bez zmian, więc istniejące odwołania (testy, e2e, nakładki) zostają ważne.
+  // S9-10 (karta następcza S9-4): mechanizm przeniesiony do WSPÓLNEGO
+  // pomocnika `./unikalnyTestId` — ta sama reguła obowiązuje teraz także
+  // aparaty STACJI (`scene/buildScene.ts`), zero drugiej implementacji.
+  const unikalny = createUnikalnyTestId();
+  const unikalnyTestId = (index: number, symbolId: SymbolId): string | undefined =>
+    unikalny(testIdFor(index, symbolId));
   // F10.1 (spec §18.1/§18.2, V12K-033): podział na TOR GŁÓWNY (oś) i APARATY
   // BOCZNE (ES/VT/SA — odgałęzienie poziome od portu S poprzedzającego
   // aparatu szeregowego). TA SAMA reguła co `compose/station.ts::buildBayStack`
@@ -528,7 +546,7 @@ function buildFieldStack(
       deviceRef: deviceItem?.deviceRef,
       linkedRef: deviceItem?.linkedRef,
       ports,
-      meta: { parityKeys: spec.parityKeys, testId: testIdFor(index, spec.symbolId), ...metaExtra },
+      meta: { parityKeys: spec.parityKeys, testId: unikalnyTestId(index, spec.symbolId), ...metaExtra },
     };
     instances.push(instance);
     mainInstances.push(instance);
@@ -584,7 +602,7 @@ function buildFieldStack(
         deviceRef: deviceItem?.deviceRef,
         linkedRef: deviceItem?.linkedRef,
         ports,
-        meta: { parityKeys: spec.parityKeys, testId: testIdFor(index, spec.symbolId), ...metaExtra },
+        meta: { parityKeys: spec.parityKeys, testId: unikalnyTestId(index, spec.symbolId), ...metaExtra },
       });
       const north = def.ports.find((p) => p.dir === 'N') ?? def.ports[0];
       branchSegments.push({
@@ -1021,6 +1039,8 @@ export function composeGpz(
       labelClass: 't2',
       anchor: { x: busLeftX, y: snBusY },
       placement: 'above',
+      // KD-8 poz. 5: etykieta siada NAD torem szyny — prześwit toru, nie symbolu.
+      clearance: BUSBAR_LABEL_PATH_CLEARANCE,
     });
     tag(['gpz.section.label']);
 
@@ -1591,14 +1611,23 @@ export function composeGpz(
       ? `${transformer.oltc.kind} ${transformer.oltc.positionLabel} · ${transformer.oltc.modeLabel}`
         + (transformer.oltc.setpointLabel ? ` · ${transformer.oltc.setpointLabel}` : '')
       : null;
+    // KD-11: oznaczenie transformatora („TR1") to TOŻSAMOŚĆ — bez niego z
+    // rysunku nie da się odczytać, który to transformator; moc/grupa połączeń,
+    // przekładnia, dane zwarciowe i zaczepy to DANE SZCZEGÓŁOWE.
     const trRows: StationNameBandRow[] = [
-      { text: transformer.designation, labelClass: 't1' },
-      { text: ratingRowText, labelClass: 't2' },
-      { text: `${liczbaRysunkuPl(transformer.uhvKv)}/${liczbaRysunkuPl(transformer.ulvKv)} kV`, labelClass: 't2' },
+      { text: transformer.designation, labelClass: 't1', role: 'tozsamosc' },
+      { text: ratingRowText, labelClass: 't2', role: 'dane' },
+      {
+        text: `${liczbaRysunkuPl(transformer.uhvKv)}/${liczbaRysunkuPl(transformer.ulvKv)} kV`,
+        labelClass: 't2',
+        role: 'dane',
+      },
       ...(shortCircuitParts.length > 0
-        ? [{ text: shortCircuitParts.join(' · '), labelClass: 't3' } as StationNameBandRow]
+        ? [{ text: shortCircuitParts.join(' · '), labelClass: 't3', role: 'dane' } as StationNameBandRow]
         : []),
-      ...(oltcRowText ? [{ text: oltcRowText, labelClass: 't3' } as StationNameBandRow] : []),
+      ...(oltcRowText
+        ? [{ text: oltcRowText, labelClass: 't3', role: 'dane' } as StationNameBandRow]
+        : []),
     ];
     if (transformer.oltc) parityKeys.add('gpz.transformer.oltc');
     transformerLabels.push({
@@ -1667,6 +1696,7 @@ export function composeGpz(
         labelClass: 't2',
         anchor: { x: busLeft, y: hvBusY },
         placement: 'above',
+        clearance: BUSBAR_LABEL_PATH_CLEARANCE,
       });
       tag(['gpz.bus.hv.label']);
     }
@@ -1746,13 +1776,20 @@ export function composeGpz(
         // `stationNameBands` — nowe pole wymagałoby tam dodatkowej linii.
         if (props.hvSystemSource && props.hvSystemSource.sourceRef === source.id) {
           const dataplate = gpzSystemSourceDataplateText(props.hvSystemSource);
-          const rows: StationNameBandRow[] = [{ text: props.hvSystemSource.name, labelClass: 't2' }];
+          // KD-11: NAZWA ŹRÓDŁA to tożsamość (mimo klasy `t2` — klasa
+          // typograficzna nie rozstrzyga znaczenia); opis ekwiwalentu i
+          // tabliczka danych zwarciowych to dane szczegółowe.
+          const rows: StationNameBandRow[] = [
+            { text: props.hvSystemSource.name, labelClass: 't2', role: 'tozsamosc' },
+          ];
           // Recenzja NO-GO 2026-07-17 pkt 3: gdy źródło to EKWIWALENT na
           // szynach SN (`!sourceOnHv`), tabliczka mówi to WPROST — inaczej
           // czytelnik bierze dane zwarciowe ekwiwalentu za parametry
           // przyłącza systemowego WN (fałsz prezentacji pkt 2).
-          if (!sourceOnHv) rows.push({ text: 'Ekwiwalent sieci zasilającej', labelClass: 't3' });
-          if (dataplate) rows.push({ text: dataplate, labelClass: 't3' });
+          if (!sourceOnHv) {
+            rows.push({ text: 'Ekwiwalent sieci zasilającej', labelClass: 't3', role: 'dane' });
+          }
+          if (dataplate) rows.push({ text: dataplate, labelClass: 't3', role: 'dane' });
           transformerLabels.push({
             ownerRef: `${source.id}#system-source-label`,
             nameSlot: {
@@ -1862,7 +1899,8 @@ export function composeGpz(
   const stationName: StationNameBandOwnerInput = {
     ownerRef: props.id,
     nameSlot: headerSlot,
-    rows: [{ text: headerText, labelClass: 't1' }],
+    // KD-11: nagłówek strefy („GPZ ⟨nazwa⟩ · UHV/ULV kV") to tożsamość bloku.
+    rows: [{ text: headerText, labelClass: 't1', role: 'tozsamosc' }],
   };
 
   // -- 10. Translacja końcowa do współrzędnych nieujemnych względem originu

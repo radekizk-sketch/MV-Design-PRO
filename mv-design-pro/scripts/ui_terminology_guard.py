@@ -133,9 +133,7 @@ def normalize_path(path: Path) -> str:
 
 
 def extract_ui_strings(line: str) -> list[str]:
-    fragments = [
-        match.group("content").strip() for match in UI_PROP_PATTERN.finditer(line)
-    ]
+    fragments = [match.group("content").strip() for match in UI_PROP_PATTERN.finditer(line)]
     fragments.extend(
         match.group("content").strip()
         for match in JSX_TEXT_PATTERN.finditer(line)

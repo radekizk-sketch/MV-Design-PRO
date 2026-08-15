@@ -8,6 +8,8 @@ import { useSelectionStore } from '../../selection';
 import { formatLengthKm } from '../../shared/formatPolishValue';
 import { sanitizePublicReadinessMessage } from '../../shared/publicReadinessMessage';
 import { navigateToAnalysis } from '../../navigation/routes';
+import { przejdzDoPrzestrzeni } from '../../../ui2/shell/przejsciaPrzestrzeni';
+import { useShellStore } from '../../../ui2/shell/useShellStore';
 import type { ElementType } from '../../types';
 import {
   ANALYSIS_SURFACE_SCREEN_CODE,
@@ -76,7 +78,6 @@ function slugForTestId(value: string): string {
 }
 
 export function SchematContextPanel() {
-  const setActiveArea = useAppStateStore((s) => s.setActiveArea);
   const setActiveWorkMode = useAppStateStore((s) => s.setActiveWorkMode);
   const activeCaseId = useAppStateStore((s) => s.activeCaseId);
   const activeRunId = useAppStateStore((s) => s.activeRunId);
@@ -84,6 +85,14 @@ export function SchematContextPanel() {
   const centerSldOnElement = useSelectionStore((s) => s.centerSldOnElement);
   const openRouteSurface = useNetworkBuildStore((s) => s.openRouteSurface);
   const clearRouteManagedSurface = useNetworkBuildStore((s) => s.clearRouteManagedSurface);
+  const setPanelSchematu = useShellStore((s) => s.setPanelSchematu);
+  /**
+   * „Konfiguracja" / „Dodaj układ" — PRZEŁĄCZENIE lewego panelu na warsztat
+   * budowy modelu (nawigator układu + panel procesu z akcjami wstawiania).
+   * To nie jest zmiana etapu pracy, tylko drugi panel TEJ SAMEJ przestrzeni
+   * „Schemat" — dlatego steruje nim stan prezentacji powłoki, a nie adres.
+   */
+  const pokazPanelModelu = () => setPanelSchematu('model');
   const openOperationForm = useNetworkBuildStore((s) => s.openOperationForm);
   const snapshot = useSnapshotStore((s) => s.snapshot);
   const readiness = useSnapshotStore((s) => s.readiness);
@@ -299,7 +308,10 @@ export function SchematContextPanel() {
   };
 
   const openAnalysisWorkspace = () => {
-    setActiveArea('WYNIKI_ANALIZY');
+    // D1: lądowiskiem wyników jest PRZESTRZEŃ „Wyniki i dowody"; trasa
+    // #analysis niesie kontekst (przypadek/przebieg), a most obszarów ustawia
+    // panel kontekstu — jedno źródło prawdy zamiast osobnego `setActiveArea`.
+    przejdzDoPrzestrzeni('wyniki');
     navigateToAnalysis({ caseId: activeCaseId, runId: activeRunId });
     openRouteSurface(ANALYSIS_SURFACE_SCREEN_CODE, {
       entityType: 'analysis_run',
@@ -316,7 +328,7 @@ export function SchematContextPanel() {
 
   const openNextAction = () => {
     if (!hasNetworkTopology) {
-      setActiveArea('MODEL_SIECI');
+      pokazPanelModelu();
       return;
     }
 
@@ -367,7 +379,7 @@ export function SchematContextPanel() {
   return (
     <div
       data-testid="schemat-context-panel"
-      className="flex h-full flex-col overflow-hidden bg-[#0b1720] text-[11px]"
+      className="flex h-full flex-col overflow-hidden bg-scada-bg text-[11px]"
     >
       <div className="flex h-10 shrink-0 items-center justify-between border-b border-scada-border px-3">
         <button
@@ -465,7 +477,7 @@ export function SchematContextPanel() {
           data-testid="project-tree-search-input"
           value={treeQuery}
           onChange={(event) => setTreeQuery(event.target.value)}
-          className="mb-2 h-7 w-full rounded-sm border border-scada-border bg-[#07111f] px-2 text-[10px] text-scada-text outline-none focus:border-cyan-500"
+          className="mb-2 h-7 w-full rounded-sm border border-scada-border bg-scada-bg px-2 text-[10px] text-scada-text outline-none focus:border-cyan-500"
           placeholder="Szukaj układu"
           aria-label="Szukaj w układzie sieci"
         />
@@ -481,7 +493,7 @@ export function SchematContextPanel() {
                     <ChevronDown />
                     <span className="min-w-0 flex-1 truncate font-semibold">{section.title}</span>
                     <StateDot state="ok" />
-                    <span className="rounded-sm border border-scada-border bg-[#101d28] px-1.5 font-mono text-[10px] text-scada-muted">
+                    <span className="rounded-sm border border-scada-border bg-scada-surface px-1.5 font-mono text-[10px] text-scada-muted">
                       {section.badge}
                     </span>
                   </div>
@@ -500,7 +512,7 @@ export function SchematContextPanel() {
                     ))}
                     {hiddenRowsCount > 0 && (
                       <div
-                        className="ml-3 mt-1 rounded-sm border border-scada-border/70 bg-[#07111f] px-2 py-1 text-[10px] text-scada-muted"
+                        className="ml-3 mt-1 rounded-sm border border-scada-border/70 bg-scada-bg px-2 py-1 text-[10px] text-scada-muted"
                         data-testid={`model-tree-overflow-${slugForTestId(section.title)}`}
                       >
                         {hiddenRowsCount} pozycji dostępnych przez wyszukiwarkę albo kartę układu.
@@ -512,7 +524,7 @@ export function SchematContextPanel() {
             })}
           </div>
         ) : (
-          <div className="rounded-sm border border-scada-border bg-[#0a141d] p-3 text-[11px] leading-snug text-scada-muted">
+          <div className="rounded-sm border border-scada-border bg-scada-bg p-3 text-[11px] leading-snug text-scada-muted">
             {!snapshot && <span className="mb-2 block font-semibold text-scada-text">Start pustej kanwy</span>}
             {snapshot ? (
               'Rozpocznij konfigurację od kompletnego wariantu GPZ z rozdzielnią SN i wyprowadzeniami.'
@@ -531,8 +543,8 @@ export function SchematContextPanel() {
         <button
           type="button"
           data-testid="schemat-action-go-model"
-          onClick={() => setActiveArea('MODEL_SIECI')}
-          className="flex h-9 flex-1 items-center gap-2 rounded-sm border border-scada-border bg-[#0a141d] px-2 text-scada-muted hover:border-cyan-500/55 hover:text-scada-text"
+          onClick={pokazPanelModelu}
+          className="flex h-9 flex-1 items-center gap-2 rounded-sm border border-scada-border bg-scada-bg px-2 text-scada-muted hover:border-cyan-500/55 hover:text-scada-text"
         >
           <span className="text-lg leading-none">+</span>
           <span>{hasNetworkTopology ? 'Dodaj układ' : 'Przejdź do budowy GPZ'}</span>
@@ -542,13 +554,13 @@ export function SchematContextPanel() {
           data-testid="left-panel-mode-readiness"
           onClick={() => {
             clearRouteManagedSurface();
-            setActiveArea('MODEL_SIECI');
+            pokazPanelModelu();
           }}
-          className="h-9 rounded-sm border border-scada-border bg-[#0a141d] px-2 text-[10px] text-cyan-300 hover:border-cyan-500/55 hover:text-scada-text"
+          className="h-9 rounded-sm border border-scada-border bg-scada-bg px-2 text-[10px] text-cyan-300 hover:border-cyan-500/55 hover:text-scada-text"
         >
           Konfiguracja
         </button>
-        <div className="grid h-9 min-w-10 place-items-center rounded-sm border border-scada-border bg-[#0a141d] px-2 font-mono text-[10px] text-scada-muted">
+        <div className="grid h-9 min-w-10 place-items-center rounded-sm border border-scada-border bg-scada-bg px-2 font-mono text-[10px] text-scada-muted">
           {elementCount}
         </div>
       </div>

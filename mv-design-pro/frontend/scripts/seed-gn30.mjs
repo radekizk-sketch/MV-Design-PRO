@@ -306,6 +306,8 @@ async function main() {
             transformer_catalog_ref: 'tr-sn-nn-15-04-1000kva-dyn11',
           },
           sn_fields: ['IN', 'OUT', 'TR'],
+          // B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+          field_apparatus_catalog_ref: 'sw-cb-abb-vd4-17kv-630a',
         },
       },
     });

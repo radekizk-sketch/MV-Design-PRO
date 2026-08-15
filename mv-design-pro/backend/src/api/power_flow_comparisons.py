@@ -23,7 +23,7 @@ CANONICAL ALIGNMENT:
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from api.dependencies import get_uow_factory
 from application.power_flow_comparison import PowerFlowComparisonService
@@ -35,9 +35,15 @@ from domain.power_flow_comparison import (
     PowerFlowRunNotFinishedError,
     PowerFlowRunNotFoundError,
 )
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from infrastructure.persistence.unit_of_work import UnitOfWork
+from network_model.reporting.czcionki import zarejestruj_czcionki
 from pydantic import BaseModel, Field
+
+if TYPE_CHECKING:
+    # python-docx jest importowany LENIWIE w ciele eksportu (brak paczki => 501),
+    # wiec typ tabeli sprowadzamy wylacznie na potrzeby analizy statycznej.
+    from docx.table import Table
 
 router = APIRouter(prefix="/power-flow-comparisons", tags=["power-flow-comparison"])
 
@@ -61,7 +67,13 @@ class CreatePowerFlowComparisonRequest(BaseModel):
 
 
 class BusDiffRowResponse(BaseModel):
-    """Single bus diff row."""
+    """Single bus diff row.
+
+    L-13: pola `delta_*_percent` (różnica względna B wobec A [%]) liczy backend —
+    w warstwie prezentacji byłaby to arytmetyka na wynikach solvera. Pola są
+    addytywne i opcjonalne: brak wartości (A = 0 → różnica względna nie istnieje)
+    jest POMIJANY w odpowiedzi (`response_model_exclude_none`), nigdy zerem.
+    """
 
     bus_id: str
     v_pu_a: float
@@ -76,10 +88,14 @@ class BusDiffRowResponse(BaseModel):
     delta_angle_deg: float
     delta_p_mw: float
     delta_q_mvar: float
+    delta_v_percent: float | None = None
+    delta_angle_percent: float | None = None
+    delta_p_percent: float | None = None
+    delta_q_percent: float | None = None
 
 
 class BranchDiffRowResponse(BaseModel):
-    """Single branch diff row."""
+    """Single branch diff row (L-13: `delta_*_percent` — patrz BusDiffRowResponse)."""
 
     branch_id: str
     p_from_mw_a: float
@@ -100,6 +116,12 @@ class BranchDiffRowResponse(BaseModel):
     delta_q_to_mvar: float
     delta_losses_p_mw: float
     delta_losses_q_mvar: float
+    delta_p_from_percent: float | None = None
+    delta_q_from_percent: float | None = None
+    delta_p_to_percent: float | None = None
+    delta_q_to_percent: float | None = None
+    delta_losses_p_percent: float | None = None
+    delta_losses_q_percent: float | None = None
 
 
 class RankingIssueResponse(BaseModel):
@@ -129,6 +151,7 @@ class ComparisonSummaryResponse(BaseModel):
     major_issues: int
     moderate_issues: int
     minor_issues: int
+    delta_total_losses_p_percent: float | None = None
 
 
 class PowerFlowComparisonResultResponse(BaseModel):
@@ -201,6 +224,9 @@ def _build_service(uow_factory: Any) -> PowerFlowComparisonService:
     "",
     status_code=status.HTTP_201_CREATED,
     response_model=PowerFlowComparisonResultResponse,
+    # L-13: brak różnicy względnej (A = 0) NIE trafia do odpowiedzi jako null —
+    # konsument odróżnia „nie istnieje" od wartości liczbowej.
+    response_model_exclude_none=True,
     summary="Utworz porownanie dwoch analiz rozplywu mocy",
     description="""
 P20c: Porownuje dwa PowerFlowRun i generuje deterministyczny ranking problemow.
@@ -276,6 +302,7 @@ def create_power_flow_comparison(
 @router.get(
     "/{comparison_id}",
     response_model=PowerFlowComparisonMetadataResponse,
+    response_model_exclude_none=True,
     summary="Pobierz metadane porownania",
 )
 def get_power_flow_comparison(
@@ -312,6 +339,7 @@ def get_power_flow_comparison(
 @router.get(
     "/{comparison_id}/results",
     response_model=PowerFlowComparisonResultResponse,
+    response_model_exclude_none=True,
     summary="Pobierz pelne wyniki porownania",
 )
 def get_power_flow_comparison_results(
@@ -376,7 +404,7 @@ def get_power_flow_comparison_trace(
 def export_power_flow_comparison_json(
     comparison_id: str,
     uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
-):
+) -> Response:
     """P20d: Export power flow comparison to JSON file."""
     import json
 
@@ -396,7 +424,9 @@ def export_power_flow_comparison_json(
     # Build export payload
     export_payload = {
         "report_type": "power_flow_comparison",
-        "report_version": "1.0.0",
+        # L-13: payload porównania niesie dodatkowo różnice względne [%] —
+        # kontrakt jawnie wersjonowany, zmiana addytywna (1.0.0 → 1.1.0).
+        "report_version": "1.1.0",
         "comparison": comparison_dict,
     }
 
@@ -418,11 +448,19 @@ def export_power_flow_comparison_json(
 def export_power_flow_comparison_docx(
     comparison_id: str,
     uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
-):
-    """P20d: Export power flow comparison to DOCX file."""
+) -> Response:
+    """P20d: Export power flow comparison to DOCX file.
+
+    Deterministyczny: ten sam zapisany wynik porownania eksportowany wielokrotnie
+    daje identyczne bajty (`docx_determinism.make_docx_bytes_deterministic` —
+    sam python-docx NIE zeruje znacznikow czasu wpisow ZIP ani docProps/core.xml,
+    dwa kolejne `Document().save()` roznia sie bajtowo, gdy wywolania przetna
+    granice sekundy).
+    """
     import io
 
     from fastapi.responses import Response
+    from network_model.reporting.docx_determinism import make_docx_bytes_deterministic
 
     try:
         from docx import Document
@@ -479,7 +517,7 @@ def export_power_flow_comparison_docx(
             for r in p.runs:
                 r.bold = True
 
-    def add_row(table, label, value):
+    def add_row(table: Table, label: str, value: Any) -> None:
         row = table.add_row().cells
         row[0].text = label
         row[1].text = str(value) if value is not None else "—"
@@ -532,7 +570,7 @@ def export_power_flow_comparison_docx(
     buffer.seek(0)
 
     return Response(
-        content=buffer.getvalue(),
+        content=make_docx_bytes_deterministic(buffer.getvalue()),
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         headers={
             "Content-Disposition": f'attachment; filename="power_flow_comparison_{comparison_id}.docx"'
@@ -547,7 +585,7 @@ def export_power_flow_comparison_docx(
 def export_power_flow_comparison_pdf(
     comparison_id: str,
     uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
-):
+) -> Response:
     """P20d: Export power flow comparison to PDF file."""
     import io
 
@@ -576,7 +614,8 @@ def export_power_flow_comparison_pdf(
 
     # Create PDF in memory
     buffer = io.BytesIO()
-    c = canvas.Canvas(buffer, pagesize=A4)
+    zarejestruj_czcionki()
+    c = canvas.Canvas(buffer, pagesize=A4, invariant=1, pageCompression=0)
     page_width, page_height = A4
 
     left_margin = 25 * mm
@@ -585,23 +624,23 @@ def export_power_flow_comparison_pdf(
     line_height = 5 * mm
 
     # Title
-    c.setFont("Helvetica-Bold", 16)
+    c.setFont("DejaVuSans-Bold", 16)
     title = "Raport porownania rozplywu mocy"
-    c.drawString((page_width - c.stringWidth(title, "Helvetica-Bold", 16)) / 2, y, title)
+    c.drawString((page_width - c.stringWidth(title, "DejaVuSans-Bold", 16)) / 2, y, title)
     y -= 10 * mm
 
     # Subtitle
-    c.setFont("Helvetica", 10)
+    c.setFont("DejaVuSans", 10)
     subtitle = f"Run A: {comparison.get('run_a_id', '—')[:8]}... | Run B: {comparison.get('run_b_id', '—')[:8]}..."
     c.drawString(left_margin, y, subtitle)
     y -= 8 * mm
 
     # Summary
-    c.setFont("Helvetica-Bold", 14)
+    c.setFont("DejaVuSans-Bold", 14)
     c.drawString(left_margin, y, "Podsumowanie")
     y -= 6 * mm
 
-    c.setFont("Helvetica", 10)
+    c.setFont("DejaVuSans", 10)
     summary = comparison.get("summary", {})
     summary_lines = [
         f"Liczba szyn: {summary.get('total_buses', '—')}",
@@ -618,14 +657,14 @@ def export_power_flow_comparison_pdf(
     y -= 5 * mm
 
     # Ranking
-    c.setFont("Helvetica-Bold", 12)
+    c.setFont("DejaVuSans-Bold", 12)
     c.drawString(left_margin, y, "Ranking problemow (top 15)")
     y -= 5 * mm
 
     ranking = comparison.get("ranking", [])
     severity_labels = {5: "Krytyczny", 4: "Powazny", 3: "Sredni", 2: "Drobny", 1: "Info"}
 
-    c.setFont("Helvetica", 9)
+    c.setFont("DejaVuSans", 9)
     for issue in ranking[:15]:
         severity = severity_labels.get(issue.get("severity", 1), "?")
         text = (

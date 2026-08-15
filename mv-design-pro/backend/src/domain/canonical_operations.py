@@ -140,6 +140,27 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
             "catalog_binding",
         ),
     ),
+    "add_sn_bay_from_catalog": OperationSpec(
+        canonical_name="add_sn_bay_from_catalog",
+        category=OperationCategory.SN_NETWORK,
+        description_pl=(
+            "Dodanie pola SN z katalogu rozdzielnic: kompletne pole rodziny "
+            "modułowej albo jednostka bloku fabrycznego RMU"
+        ),
+        target_layer="Domain / NetworkModel",
+        required_fields=("bus_ref",),
+        optional_fields=(
+            "station_ref",
+            "complete_bay_template_ref",
+            "factory_configuration_ref",
+            "factory_unit_index",
+            "switchgear_family_ref",
+            "field_name",
+            "gpz_section_id",
+            "catalog_binding",
+            "protection_ref",
+        ),
+    ),
     # --- Station & nN (6 operations) ---
     "add_transformer_sn_nn": OperationSpec(
         canonical_name="add_transformer_sn_nn",
@@ -660,6 +681,22 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "modal": "select_catalog",
         },
     ),
+    # KOMPLETNOSC-POLA-TR: transformator przyłączony do szyny SN bez pola roli TR.
+    # OSTRZEŻENIE, nie BLOCKER — stan roboczy legalny (koncepcja), lecz zamknięta
+    # droga do dokumentacji wykonawczej. Emiter: `enm/validator.py` W041 przez
+    # odwzorowanie w `domain/readiness_bridge.py`.
+    "transformer.bay_missing": ReadinessCodeSpec(
+        code="transformer.bay_missing",
+        area=ReadinessArea.STATIONS,
+        priority=3,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Transformator jest połączony elektrycznie z szyną SN, lecz nie posiada "
+            "kompletnej konfiguracji pola transformatorowego po stronie SN"
+        ),
+        fix_action_id="fix_station_field",
+        fix_navigation={"panel": "inspector", "tab": "pola"},
+    ),
     "transformer.connection_missing": ReadinessCodeSpec(
         code="transformer.connection_missing",
         area=ReadinessArea.STATIONS,
@@ -718,6 +755,45 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         ),
         fix_action_id="fix_oze_card_field_acceptance",
         fix_navigation={"panel": "inspector", "tab": "karta_falownika"},
+    ),
+    # Certyfikacja PTPiREE przetwornicy DER (karta P2).
+    #
+    # OSTRZEZENIE, nie blokada — swiadomy wybor poziomu. Manifest katalogu
+    # PTPiREE (`network_model/catalog/mv_ptpiree_catalog.py`,
+    # `get_ptpiree_catalog_manifest()["integration_policy"]`) mowi WPROST:
+    # „Ostateczna akceptacja przylaczeniowa pozostaje po stronie wlasciwego
+    # OSD". Lokalny snapshot wykazu nie jest wiec organem rozstrzygajacym i nie
+    # moze zatrzymac obliczen — ale brak powiazanego certyfikatu jest realnym
+    # ryzykiem odrzucenia wniosku przez OSD, wiec projektant musi go zobaczyc.
+    #
+    # Nawigacja prowadzi do konfiguracji DER (wybor urzadzenia z katalogu), bo
+    # naprawa polega na wskazaniu przetwornicy o powiazanym certyfikacie —
+    # regul waznosci certyfikatow system NIE wyprowadza samodzielnie.
+    "der.inverter_certificate_unlinked": ReadinessCodeSpec(
+        code="der.inverter_certificate_unlinked",
+        area=ReadinessArea.GENERATORS,
+        priority=2,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Przetwornica źródła DER nie ma powiązanego certyfikatu PTPiREE — "
+            "wniosek do OSD może zostać odrzucony. Ostateczna akceptacja "
+            "przyłączeniowa pozostaje po stronie właściwego OSD"
+        ),
+        fix_action_id=None,
+        fix_navigation={"panel": "inspector", "tab": "katalog"},
+    ),
+    "der.inverter_certificate_conditional": ReadinessCodeSpec(
+        code="der.inverter_certificate_conditional",
+        area=ReadinessArea.GENERATORS,
+        priority=3,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Certyfikat PTPiREE przetwornicy DER jest powiązany warunkowo — "
+            "rekord wykazu niesie notę o warunkach, którą trzeba potwierdzić "
+            "przed warunkami przyłączenia"
+        ),
+        fix_action_id=None,
+        fix_navigation={"panel": "inspector", "tab": "katalog"},
     ),
     # Ring
     "ring.endpoints_missing": ReadinessCodeSpec(
@@ -879,6 +955,178 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         fix_action_id="fix_conductor_thermal_data",
         fix_navigation={"panel": "katalog", "tab": "kable", "focus": "ith_1s_a"},
     ),
+    # Kryteria WYPOSAŻENIA stacji (karta KD-3, dług §7.4 „zdolności bez dostawcy").
+    # Cztery rachunki wróciły z warstwy prezentacji do solverów; każdy brak danej
+    # kończy się TYM kodem, nigdy wartością zastępczą — inaczej werdykt doboru
+    # przekładnika lub kabla byłby oparty na liczbie, której nikt nie podał.
+    "ct.secondary_circuit_missing": ReadinessCodeSpec(
+        code="ct.secondary_circuit_missing",
+        area=ReadinessArea.PROTECTION,
+        priority=2,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Brak danych obwodu wtórnego przekładnika prądowego (długość, przekrój) — "
+            "uzupełnij, by policzyć bilans mocy wtórnej"
+        ),
+        fix_action_id="fix_ct_secondary_circuit",
+        fix_navigation={"panel": "wizard", "tab": "pomiary", "focus": "ct_obwod_wtorny"},
+    ),
+    "ct.rated_burden_missing": ReadinessCodeSpec(
+        code="ct.rated_burden_missing",
+        area=ReadinessArea.CATALOGS,
+        priority=2,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Brak mocy znamionowej przekładnika prądowego w katalogu — "
+            "uzupełnij pozycję katalogową"
+        ),
+        fix_action_id="fix_ct_rated_burden",
+        fix_navigation={"panel": "katalog", "tab": "ct", "focus": "burden_va"},
+    ),
+    "ct.accuracy_limit_missing": ReadinessCodeSpec(
+        code="ct.accuracy_limit_missing",
+        area=ReadinessArea.CATALOGS,
+        priority=3,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Klasa przekładnika prądowego nie niesie współczynnika granicznego (rdzeń "
+            "pomiarowy albo klasa nierozpoznana) — kryterium nasycenia nie ma zastosowania"
+        ),
+        fix_action_id="fix_ct_accuracy_class",
+        fix_navigation={"panel": "katalog", "tab": "ct", "focus": "accuracy_class"},
+    ),
+    "ct.winding_resistance_missing": ReadinessCodeSpec(
+        code="ct.winding_resistance_missing",
+        area=ReadinessArea.CATALOGS,
+        priority=3,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Brak rezystancji uzwojenia wtórnego przekładnika — współczynnik graniczny "
+            "policzono wariantem uproszczonym (wynik optymistyczny)"
+        ),
+        fix_action_id="fix_ct_winding_resistance",
+        fix_navigation={"panel": "katalog", "tab": "ct", "focus": "rct_ohm"},
+    ),
+    "ct.required_alf_missing": ReadinessCodeSpec(
+        code="ct.required_alf_missing",
+        area=ReadinessArea.PROTECTION,
+        priority=3,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Brak wymaganego współczynnika granicznego z funkcji zabezpieczeniowych pola — "
+            "bez niego kryterium nasycenia nie ma odniesienia"
+        ),
+        fix_action_id="fix_ct_required_alf",
+        fix_navigation={"panel": "analizy", "tab": "zabezpieczenia"},
+    ),
+    "vt.secondary_circuit_missing": ReadinessCodeSpec(
+        code="vt.secondary_circuit_missing",
+        area=ReadinessArea.PROTECTION,
+        priority=2,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Brak danych obwodu wtórnego przekładnika napięciowego (długość, przekrój) — "
+            "uzupełnij, by policzyć zmianę napięcia obwodu"
+        ),
+        fix_action_id="fix_vt_secondary_circuit",
+        fix_navigation={"panel": "wizard", "tab": "pomiary", "focus": "vt_obwod_wtorny"},
+    ),
+    "vt.rated_burden_missing": ReadinessCodeSpec(
+        code="vt.rated_burden_missing",
+        area=ReadinessArea.CATALOGS,
+        priority=2,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Brak mocy znamionowej uzwojenia przekładnika napięciowego w katalogu — "
+            "uzupełnij pozycję katalogową"
+        ),
+        fix_action_id="fix_vt_rated_burden",
+        fix_navigation={"panel": "katalog", "tab": "vt", "focus": "burden_va"},
+    ),
+    "vt.winding_category_missing": ReadinessCodeSpec(
+        code="vt.winding_category_missing",
+        area=ReadinessArea.CATALOGS,
+        priority=3,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Nierozpoznana klasa uzwojenia przekładnika napięciowego — bez kategorii "
+            "(pomiarowe/zabezpieczeniowe) nie ma limitu zmiany napięcia"
+        ),
+        fix_action_id="fix_vt_winding_category",
+        fix_navigation={"panel": "katalog", "tab": "vt", "focus": "accuracy_class"},
+    ),
+    "cable.insulation_data_missing": ReadinessCodeSpec(
+        code="cable.insulation_data_missing",
+        area=ReadinessArea.CATALOGS,
+        priority=3,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Brak typu izolacji lub temperatury znamionowej kabla w katalogu — "
+            "bez nich nie da się ocenić starzenia izolacji"
+        ),
+        fix_action_id="fix_cable_insulation_data",
+        fix_navigation={"panel": "katalog", "tab": "kable", "focus": "insulation_type"},
+    ),
+    "cable.operating_temperature_missing": ReadinessCodeSpec(
+        code="cable.operating_temperature_missing",
+        area=ReadinessArea.CATALOGS,
+        priority=3,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Brak temperatury pracy żyły — podaj ją, by ocenić względne starzenie izolacji"
+        ),
+        fix_action_id="fix_cable_operating_temperature",
+        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "temperatura_pracy_c"},
+    ),
+    "transformer.loss_data_missing": ReadinessCodeSpec(
+        code="transformer.loss_data_missing",
+        area=ReadinessArea.CATALOGS,
+        priority=3,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Brak strat jałowych lub obciążeniowych transformatora w katalogu — "
+            "uzupełnij pozycję katalogową"
+        ),
+        fix_action_id="fix_transformer_loss_data",
+        fix_navigation={"panel": "katalog", "tab": "transformatory", "focus": "p0_kw"},
+    ),
+    "transformer.loading_factor_missing": ReadinessCodeSpec(
+        code="transformer.loading_factor_missing",
+        area=ReadinessArea.CATALOGS,
+        priority=3,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Brak współczynnika obciążenia transformatora — bez niego nie da się policzyć "
+            "strat w punkcie pracy"
+        ),
+        fix_action_id="fix_transformer_loading_factor",
+        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "beta"},
+    ),
+    # Powiązanie katalogu kanonicznego z biblioteką krzywych (karta KD-3, poz. 9).
+    "protection.curve_library_missing": ReadinessCodeSpec(
+        code="protection.curve_library_missing",
+        area=ReadinessArea.CATALOGS,
+        priority=3,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Ta pozycja katalogowa zabezpieczenia nie ma odpowiednika w bibliotece "
+            "charakterystyk czasowo-prądowych — koordynacja wymaga wyrobu z biblioteki"
+        ),
+        fix_action_id="fix_protection_curve_library",
+        fix_navigation={"panel": "katalog", "tab": "zabezpieczenia"},
+    ),
+    "protection.curve_library_ref_broken": ReadinessCodeSpec(
+        code="protection.curve_library_ref_broken",
+        area=ReadinessArea.CATALOGS,
+        priority=2,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Powiązanie pozycji katalogowej z biblioteką charakterystyk wskazuje wpis, "
+            "którego w bibliotece nie ma — dane katalogu wymagają poprawy"
+        ),
+        fix_action_id="fix_protection_curve_library",
+        fix_navigation={"panel": "katalog", "tab": "zabezpieczenia"},
+    ),
     # Earthing / Ground fault (EARTHING-1: most SC_1F -> napięcia dotykowe/krokowe)
     "earthing.electrode_data_missing": ReadinessCodeSpec(
         code="earthing.electrode_data_missing",
@@ -957,6 +1205,34 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         fix_action_id="fix_verdict_input_data",
         fix_navigation={"panel": "gotowosc"},
     ),
+    # Badanie doboru zaczepów (OLTC §17) — powody, dla których kryterium
+    # dopuszczalności pozycji NIE DA SIĘ zbudować z danych. Bez kryterium badanie
+    # nie wskazuje pozycji: pasma akceptacji nie wolno zastąpić żadną wartością
+    # domyślną (zakaz heurystyk w solverach).
+    "oltc.deadband_missing": ReadinessCodeSpec(
+        code="oltc.deadband_missing",
+        area=ReadinessArea.ANALYSIS,
+        priority=2,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Przełącznik zaczepów nie ma pasma nieczułości regulatora — bez niego nie "
+            "wiadomo, jaka odchyłka napięcia jest jeszcze dopuszczalna"
+        ),
+        fix_action_id="fix_oltc_deadband",
+        fix_navigation={"panel": "inspector", "tab": "regulacja", "focus": "deadband_kv"},
+    ),
+    "oltc.target_voltage_missing": ReadinessCodeSpec(
+        code="oltc.target_voltage_missing",
+        area=ReadinessArea.ANALYSIS,
+        priority=2,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Badanie doboru zaczepów nie ma napięcia docelowego — podaj napięcie, "
+            "które ma być utrzymywane na szynie regulowanej"
+        ),
+        fix_action_id="fix_oltc_target_voltage",
+        fix_navigation={"panel": "analizy", "tab": "oltc", "focus": "napiecie_cel"},
+    ),
     # Catalog gate — input validation (NOT readiness, blocks operation execution)
     "catalog.ref_required": ReadinessCodeSpec(
         code="catalog.ref_required",
@@ -1017,6 +1293,256 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=2,
         level=ReadinessLevel.BLOCKER,
         message_pl="Materializacja parametrów z katalogu nie powiodła się",
+        fix_action_id="fix_catalog_rematerialize",
+        fix_navigation={"panel": "inspector", "tab": "katalog"},
+    ),
+    # ------------------------------------------------------------------
+    # BRAMY KATALOGOWE — kody odrzucenia operacji (karta W4, dług V12K-317)
+    # ------------------------------------------------------------------
+    # Rejestr znał CZTERY kody przestrzeni `catalog.`, a bramy katalogowe
+    # (`api/domain_ops_policy.py`, `api/enm.py`, `enm/domain_operations*.py`,
+    # `network_model/catalog/materialization.py`) emitują ich SIEDEMNAŚCIE
+    # więcej. Kod bez wpisu dociera do projektanta jako gołe `catalog.<coś>`:
+    # bez zdania po polsku i bez wskazania, gdzie to naprawić. Najcięższy
+    # przypadek to `catalog.item_not_found` — po ujednoliceniu parytetu torów
+    # (V12K-307/315/316) JEDYNY kod złej referencji katalogowej, więc projektant
+    # widział go najczęściej i rozumiał najmniej.
+    #
+    # Treść każdego wpisu pochodzi Z MIEJSCA EMISJI (komunikat bramy), nie z
+    # podobieństwa nazwy — dopasowanie „po nazwie" fabrykowałoby treść
+    # normatywną (ta sama zasada, co w `domain/readiness_bridge.py`).
+    # Kompletność przypina test klasy `tests/domain/test_rejestr_kodow_bram_katalogowych.py`
+    # (skan AST kodu bram), więc nowy kod bramy bez wpisu zapala regresję.
+    "catalog.item_not_found": ReadinessCodeSpec(
+        code="catalog.item_not_found",
+        area=ReadinessArea.CATALOGS,
+        priority=1,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Wskazana pozycja katalogowa nie istnieje w katalogu — wskaż pozycję "
+            "istniejącą albo uzupełnij rekord katalogowy; operacja nie przyjmie "
+            "tabliczki z formularza"
+        ),
+        fix_action_id="fix_catalog_select",
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "katalog",
+            "modal": "CatalogPicker",
+        },
+    ),
+    "catalog.ref_missing": ReadinessCodeSpec(
+        code="catalog.ref_missing",
+        area=ReadinessArea.CATALOGS,
+        priority=1,
+        level=ReadinessLevel.BLOCKER,
+        message_pl="Element nie ma wskazanej referencji katalogowej",
+        fix_action_id="fix_catalog_select",
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "katalog",
+            "modal": "CatalogPicker",
+        },
+    ),
+    "catalog.item_missing": ReadinessCodeSpec(
+        code="catalog.item_missing",
+        area=ReadinessArea.CATALOGS,
+        priority=1,
+        level=ReadinessLevel.BLOCKER,
+        message_pl="Przypisanie katalogu nie wskazało pozycji katalogowej",
+        fix_action_id="fix_catalog_select",
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "katalog",
+            "modal": "CatalogPicker",
+        },
+    ),
+    "catalog.item_id_missing": ReadinessCodeSpec(
+        code="catalog.item_id_missing",
+        area=ReadinessArea.CATALOGS,
+        priority=1,
+        level=ReadinessLevel.BLOCKER,
+        message_pl="Brak identyfikatora rekordu katalogu w wiązaniu elementu",
+        fix_action_id="fix_catalog_select",
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "katalog",
+            "modal": "CatalogPicker",
+        },
+    ),
+    "catalog.binding_required": ReadinessCodeSpec(
+        code="catalog.binding_required",
+        area=ReadinessArea.CATALOGS,
+        priority=1,
+        level=ReadinessLevel.BLOCKER,
+        message_pl="Element techniczny wymaga wiązania z katalogiem",
+        fix_action_id="fix_catalog_binding",
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "katalog",
+            "modal": "MODAL_ZMIEN_TYP_Z_KATALOGU",
+        },
+    ),
+    "catalog.binding_invalid": ReadinessCodeSpec(
+        code="catalog.binding_invalid",
+        area=ReadinessArea.CATALOGS,
+        priority=1,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Wiązanie katalogowe ma niewłaściwą postać albo nie niesie "
+            "identyfikatora pozycji katalogowej"
+        ),
+        fix_action_id="fix_catalog_binding",
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "katalog",
+            "modal": "MODAL_ZMIEN_TYP_Z_KATALOGU",
+        },
+    ),
+    "catalog.namespace_missing": ReadinessCodeSpec(
+        code="catalog.namespace_missing",
+        area=ReadinessArea.CATALOGS,
+        priority=1,
+        level=ReadinessLevel.BLOCKER,
+        message_pl="Brak kategorii katalogu w wiązaniu elementu",
+        fix_action_id="fix_catalog_select",
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "katalog",
+            "modal": "CatalogPicker",
+        },
+    ),
+    "catalog.namespace_required": ReadinessCodeSpec(
+        code="catalog.namespace_required",
+        area=ReadinessArea.CATALOGS,
+        priority=1,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Nie da się ustalić kategorii katalogu dla elementu — bez kategorii nie ma "
+            "czego sprawdzić w katalogu, więc element nie może deklarować pochodzenia "
+            "katalogowego"
+        ),
+        fix_action_id="fix_catalog_select",
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "katalog",
+            "modal": "CatalogPicker",
+        },
+    ),
+    "catalog.unknown_namespace": ReadinessCodeSpec(
+        code="catalog.unknown_namespace",
+        area=ReadinessArea.CATALOGS,
+        priority=1,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Nieznana kategoria katalogu — brama nie dobiera kategorii za projektanta; "
+            "wskaż kategorię, która istnieje w katalogu"
+        ),
+        fix_action_id="fix_catalog_select",
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "katalog",
+            "modal": "CatalogPicker",
+        },
+    ),
+    "catalog.namespace_mismatch": ReadinessCodeSpec(
+        code="catalog.namespace_mismatch",
+        area=ReadinessArea.CATALOGS,
+        priority=1,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Kategoria katalogu nie pasuje do rodzaju elementu — wskaż pozycję "
+            "właściwej kategorii"
+        ),
+        fix_action_id="fix_catalog_select",
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "katalog",
+            "modal": "CatalogPicker",
+        },
+    ),
+    "catalog.element_missing": ReadinessCodeSpec(
+        code="catalog.element_missing",
+        area=ReadinessArea.CATALOGS,
+        priority=1,
+        level=ReadinessLevel.BLOCKER,
+        message_pl="Przypisanie katalogu nie wskazało elementu modelu",
+        fix_action_id="fix_catalog_element_ref",
+        fix_navigation={"panel": "inspector", "tab": "katalog"},
+    ),
+    "catalog.element_not_found": ReadinessCodeSpec(
+        code="catalog.element_not_found",
+        area=ReadinessArea.CATALOGS,
+        priority=1,
+        level=ReadinessLevel.BLOCKER,
+        message_pl="Element wskazany do przypisania katalogu nie istnieje w modelu",
+        fix_action_id="fix_catalog_element_ref",
+        fix_navigation={"panel": "inspector", "tab": "katalog"},
+    ),
+    "catalog.clear_forbidden": ReadinessCodeSpec(
+        code="catalog.clear_forbidden",
+        area=ReadinessArea.CATALOGS,
+        priority=1,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Element techniczny nie może istnieć bez przypięcia katalogowego — zamiast "
+            "czyścić wiązanie wskaż pozycję zastępczą"
+        ),
+        fix_action_id="fix_catalog_select",
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "katalog",
+            "modal": "CatalogPicker",
+        },
+    ),
+    "catalog.materialization_required": ReadinessCodeSpec(
+        code="catalog.materialization_required",
+        area=ReadinessArea.CATALOGS,
+        priority=2,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Wiązanie wyłącza materializację, a element techniczny musi brać parametry "
+            "z katalogu"
+        ),
+        fix_action_id="fix_catalog_rematerialize",
+        fix_navigation={"panel": "inspector", "tab": "katalog"},
+    ),
+    "catalog.materialization_incomplete": ReadinessCodeSpec(
+        code="catalog.materialization_incomplete",
+        area=ReadinessArea.CATALOGS,
+        priority=2,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Materializacja katalogu nie dała wszystkich parametrów wymaganych przez "
+            "solver — uzupełnij rekord katalogowy albo wskaż pozycję kompletną"
+        ),
+        fix_action_id="fix_catalog_rematerialize",
+        fix_navigation={"panel": "inspector", "tab": "katalog"},
+    ),
+    "catalog.nameplate_mismatch": ReadinessCodeSpec(
+        code="catalog.nameplate_mismatch",
+        area=ReadinessArea.CATALOGS,
+        priority=2,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Dane tabliczki z formularza przeczą pozycji katalogowej — liczby pochodzą "
+            "z katalogu, więc wybierz pozycję o właściwych parametrach"
+        ),
+        fix_action_id="fix_catalog_select",
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "katalog",
+            "modal": "CatalogPicker",
+        },
+    ),
+    "catalog.gate_result_mismatch": ReadinessCodeSpec(
+        code="catalog.gate_result_mismatch",
+        area=ReadinessArea.CATALOGS,
+        priority=2,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Model zapisałby dla wskazanej pozycji katalogowej inne wartości niż "
+            "zmaterializowane przez bramę katalogową — operacja odrzucona, model bez zmian"
+        ),
         fix_action_id="fix_catalog_rematerialize",
         fix_navigation={"panel": "inspector", "tab": "katalog"},
     ),

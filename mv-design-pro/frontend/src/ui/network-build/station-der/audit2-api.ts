@@ -43,6 +43,28 @@ export async function fetchAudit2CatalogSnapshot(): Promise<AuditCatalogSnapshot
   return getJson<AuditCatalogSnapshot>(`${BASE}/snapshot`);
 }
 
+/** Pozycja katalogu wytrzymalosci aparatury (eng.18, IEC 60909). */
+export interface DeviceWithstandCatalogItem {
+  readonly id: string;
+  readonly label_pl: string;
+  readonly device_type: string;
+  readonly nominal_voltage_kv: number;
+  readonly nominal_current_a: number;
+  readonly i_dyn_ka: number;
+  readonly i_th_1s_ka: number;
+  readonly i_th_duration_s: number;
+}
+
+/**
+ * Katalog aparatury wytrzymalosciowej — JEDYNE zrodlo (K7-B).
+ * Front nie ma juz wlasnej kopii tej listy.
+ */
+export async function fetchDeviceWithstandCatalog(): Promise<
+  readonly DeviceWithstandCatalogItem[]
+> {
+  return getJson<readonly DeviceWithstandCatalogItem[]>(`${BASE}/device-withstand`);
+}
+
 export interface VtGroundingValidationResponse {
   readonly ok: boolean;
   readonly message_pl: string;

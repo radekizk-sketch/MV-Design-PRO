@@ -229,10 +229,18 @@ export function SldOverlay({ nodePositions, branchPositions, visible }: SldOverl
 
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden" data-testid="sld-overlay">
-      {/* Outdated warning */}
+      {/* Wyniki nieaktualne — Z PRZYCZYNA z backendu (K-S). Sam komunikat „Wyniki
+          nieaktualne" nie mowi projektantowi, CZY model sie zmienil, czy tylko
+          nie da sie tego potwierdzic (bieg bez zapisanego odcisku modelu). Zdanie
+          przyczyny przychodzi gotowe z serwera — UI nie uklada wlasnej wersji. */}
       {isOutdated && (
-        <div className="absolute left-2 top-2 z-20 rounded border border-amber-300 bg-amber-100 px-2 py-1 text-xs text-amber-800">
-          Wyniki nieaktualne
+        <div
+          className="absolute left-2 top-2 z-20 rounded border border-amber-300 bg-amber-100 px-2 py-1 text-xs text-amber-800"
+          data-testid="sld-overlay-outdated"
+        >
+          {sldOverlay.result_status_reason_pl
+            ? `Wyniki nieaktualne — ${sldOverlay.result_status_reason_pl}`
+            : 'Wyniki nieaktualne'}
         </div>
       )}
 

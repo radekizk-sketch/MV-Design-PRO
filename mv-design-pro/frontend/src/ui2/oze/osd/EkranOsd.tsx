@@ -18,6 +18,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import './osd.css';
 import type { AdvancementMode } from '../../shell/modeModel';
+import type { SourceOperatingMode } from '../../../types/domainOps';
+import { useAppStateStore } from '../../../ui/app-state';
+import { notify } from '../../../ui/notifications/store';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import { TabelaWynikow } from '../../wyniki/wzorzec';
@@ -42,6 +45,8 @@ import {
   type OpcjaZrodlaOsd,
 } from './osdModel';
 import { OSD_STRINGS, etykietaPoleceniaOsd } from './strings';
+import { PrzyciskAkcjiStanu } from '../../wyniki/wzorzec';
+import type { AkcjaStanuZerowego } from '../../wyniki/wzorzec';
 
 const DOMYSLNY_LIMIT_P_PCT = 60;
 const DOMYSLNA_Q_MVAR = 0;
@@ -74,11 +79,15 @@ function StanPanel({
   opis,
   wariant,
   testid,
+  akcja,
 }: {
   komunikat: string;
   opis?: string;
   wariant: 'info' | 'blad';
   testid: string;
+  /* K6 / H-5: slot akcji stanu zerowego — realny następny krok (bieg obliczeń,
+     nawigacja, formularz operacji). Brak akcji = panel czysto informacyjny. */
+  akcja?: AkcjaStanuZerowego;
 }) {
   return (
     <div
@@ -87,6 +96,7 @@ function StanPanel({
     >
       <p className="mvd-osd-stan-title">{komunikat}</p>
       {opis && <p className="mvd-osd-stan-desc">{opis}</p>}
+      <PrzyciskAkcjiStanu akcja={akcja} testid={testid} />
     </div>
   );
 }
@@ -199,6 +209,117 @@ function WynikOsd({
         )}
       </div>
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// K5-B (H-3 pkt 5): akcja wyjściowa — utrwalenie trybu pracy źródła w modelu
+// kanoniczną operacją `set_source_operating_mode` (backend zapisuje
+// `Generator.meta.operating_mode`; słownik wartości = BaySourceEndpoint.
+// operating_mode, walidowany przez read-model pól stacji).
+// ---------------------------------------------------------------------------
+
+const TRYBY_PRACY: readonly { id: SourceOperatingMode; etykieta: string }[] = [
+  { id: 'praca_sieciowa', etykieta: OSD_STRINGS.trybPracaSieciowa },
+  { id: 'ladowanie', etykieta: OSD_STRINGS.trybLadowanie },
+  { id: 'rozladowanie', etykieta: OSD_STRINGS.trybRozladowanie },
+  { id: 'gotowosc', etykieta: OSD_STRINGS.trybGotowosc },
+  { id: 'odstawione', etykieta: OSD_STRINGS.trybOdstawione },
+];
+
+/** Bieżący tryb pracy źródła z migawki modelu (`Generator.meta.operating_mode`,
+ *  zapisywany przez `set_source_operating_mode`). Wartość spoza słownika lub jej
+ *  brak → null (uczciwie „nieustawiony", selektor startuje z domyślnej). */
+function trybZMigawki(
+  snapshot: ReturnType<typeof useSnapshotStore.getState>['snapshot'],
+  sourceRef: string,
+): SourceOperatingMode | null {
+  const generator = (snapshot?.generators ?? []).find(
+    (g) => g.ref_id === sourceRef || g.id === sourceRef,
+  );
+  const zapisany = generator?.meta?.operating_mode;
+  return TRYBY_PRACY.some((t) => t.id === zapisany) ? (zapisany as SourceOperatingMode) : null;
+}
+
+function SekcjaTrybuPracy({ sourceRef }: { sourceRef: string }) {
+  const executeDomainOperation = useSnapshotStore((s) => s.executeDomainOperation);
+  const caseId = useAppStateStore((s) => s.activeCaseId);
+  // Odbiór K5-B: selektor startuje z trybu ZAPISANEGO w modelu (uczciwy stan)
+  // — stały default maskowałby realną wartość po powrocie na ekran.
+  const trybZapisany = useSnapshotStore((s) => trybZMigawki(s.snapshot, sourceRef));
+
+  const [tryb, setTryb] = useState<SourceOperatingMode>(trybZapisany ?? 'praca_sieciowa');
+  useEffect(() => {
+    if (trybZapisany !== null) setTryb(trybZapisany);
+  }, [trybZapisany]);
+  const [zapisywanie, setZapisywanie] = useState(false);
+  const [blad, setBlad] = useState<string | null>(null);
+
+  const zapisz = async () => {
+    if (!caseId) {
+      setBlad(OSD_STRINGS.trybBrakPrzypadku);
+      return;
+    }
+    setZapisywanie(true);
+    setBlad(null);
+    try {
+      const odpowiedz = await executeDomainOperation(caseId, 'set_source_operating_mode', {
+        source_ref: sourceRef,
+        mode: tryb,
+      });
+      if (!odpowiedz) {
+        setBlad(useSnapshotStore.getState().error ?? OSD_STRINGS.trybBladZapisu);
+        return;
+      }
+      if (odpowiedz.error) {
+        setBlad(odpowiedz.error);
+        return;
+      }
+      notify(OSD_STRINGS.trybZapisano, 'success');
+    } catch (err) {
+      setBlad(err instanceof Error ? err.message : OSD_STRINGS.trybBladZapisu);
+    } finally {
+      setZapisywanie(false);
+    }
+  };
+
+  return (
+    <section className="mvd-osd-tryb" data-testid="mvd-osd-tryb">
+      <p className="mvd-osd-tryb-tytul">{OSD_STRINGS.trybTytul}</p>
+      <p className="mvd-osd-tryb-opis">{OSD_STRINGS.trybOpis}</p>
+
+      <div className="mvd-osd-param">
+        <label htmlFor="mvd-osd-tryb-wybor">{OSD_STRINGS.trybEtykieta}</label>
+        <select
+          id="mvd-osd-tryb-wybor"
+          value={tryb}
+          onChange={(e) => setTryb(e.target.value as SourceOperatingMode)}
+          data-testid="mvd-osd-tryb-wybor"
+        >
+          {TRYBY_PRACY.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.etykieta}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <button
+        type="button"
+        className="mvd-osd-oblicz"
+        onClick={() => void zapisz()}
+        disabled={zapisywanie}
+        data-testid="mvd-osd-tryb-zapisz"
+      >
+        {OSD_STRINGS.trybZapisz}
+      </button>
+
+      {blad !== null && (
+        <p className="mvd-osd-tryb-blad" data-testid="mvd-osd-tryb-blad">
+          {blad}
+        </p>
+      )}
+    </section>
   );
 }
 
@@ -525,7 +646,12 @@ export function EkranOsd({ trybZaawansowania }: EkranOsdProps) {
               testid="mvd-osd-blad"
             />
           ) : (
-            <WynikOsd dane={stan.dane} trybZaawansowania={trybZaawansowania} />
+            <>
+              <WynikOsd dane={stan.dane} trybZaawansowania={trybZaawansowania} />
+              {/* Akcja wyjściowa PO biegu — tryb pracy źródła, którego dotyczyła
+                  symulacja (ref z odpowiedzi backendu). */}
+              <SekcjaTrybuPracy sourceRef={stan.dane.source.ref_id} />
+            </>
           )}
         </>
       )}

@@ -36,6 +36,12 @@ passlib = {extras = ["bcrypt"], version = "^1.7.4"}
 httpx = "^0.26.0"
 celery = "^5.3.6"
 pandas = "^2.1.4"
+# Odczyt arkuszy XLSX (import sieci z arkusza operatora). Zaleznosc GLOWNA, nie dev:
+# koncowka `POST /api/import/xlsx` czyta plik uzytkownika przez openpyxl na produkcji.
+# Do 2026-08-07 biblioteki NIE BYLO w zaleznosciach — koncowka zwracala 422
+# „Brak biblioteki openpyxl" dla KAZDEGO wejscia, a testy tego nie wykrywaly, bo
+# chodzily obok realnej sciezki (`import_from_dict`).
+openpyxl = "^3.1.5"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.4.4"
@@ -49,6 +55,11 @@ pre-commit = "^3.6.0"
 reportlab = "^4.0"
 python-docx = "^1.2.0"
 vulture = "^2.16"
+# Stuby PyYAML: `catalog/profiles/nc_rfg/loader.py` czyta profile NC RfG z YAML-a, a bez
+# stubow mypy raportowal `import-untyped` (dlug typow, nie brak zaleznosci runtime —
+# `pyyaml` jest w zaleznosciach glownych). Doinstalowanie stubow to naprawa u zrodla,
+# w odroznieniu od wyciszenia importu.
+types-PyYAML = "^6.0"
 
 [build-system]
 requires = ["poetry-core"]
@@ -101,6 +112,26 @@ warn_return_any = false
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+# CIENIOWANIE PAKIETOW ZRODLOWYCH PRZEZ TESTOWE (KD-9, dlug z KD-6).
+# Domyslny tryb `prepend` wstrzykuje katalog bazowy KAZDEGO modulu testowego na
+# poczatek `sys.path` i nadaje modulom nazwy wyprowadzone z pakietu testowego.
+# Skutek zmierzony na HEAD: bieg CZESCIOWY
+# `pytest tests/analysis tests/application/analyses` dawal 108 FANTOMOWYCH
+# porazek (`ModuleNotFoundError: No module named 'reference_engine.validation'`),
+# bo katalog `tests/` trafial na sciezke przed `src/`, a `tests/reference_engine/`
+# przeslanial pakiet zrodlowy `src/reference_engine/`. Pelny bieg byl zielony,
+# wiec CI tego nie widzialo — kazdy bieg czesciowy dawal falszywy obraz.
+# `importlib` nadaje modulom testowym nazwy wyprowadzone z PELNEJ sciezki wzgledem
+# rootdir (`tests.analysis.test_x`) i NIE modyfikuje `sys.path`, wiec przestrzen
+# importu zrodel jest odizolowana od ukladu katalogow testowych. Korzen backendu
+# dokladamy jawnie w `tests/conftest.py` (import `tests.*` musi dzialac).
+#
+# UWAGA: tryb importu NIE ma wlasnego klucza ini — pytest wystawia go wylacznie
+# jako opcje wiersza polecen `--import-mode` (dest=importmode). Klucz
+# `importmode = "importlib"` w tej sekcji jest CICHO IGNOROWANY (pytest zglasza
+# tylko `PytestConfigWarning: Unknown config option`), dlatego wchodzi przez
+# `addopts` — inaczej caly ten zapis bylby dekoracja bez skutku.
+addopts = "--import-mode=importlib"
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]

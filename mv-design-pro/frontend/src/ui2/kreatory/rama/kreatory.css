@@ -491,3 +491,139 @@
 }
 .mvd-oze-akcja:hover { border-color: var(--mvd-accent); }
 .mvd-oze-akcja-glowna { border-color: var(--mvd-accent); background: var(--mvd-accent); color: var(--mvd-accent-ink); }
+
+/* K9-A: lista konsekwencji wariantu / punkty opisu strukturalnego operacji. */
+.mvd-kreator-lista {
+  margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px;
+  font-size: 12.5px; color: var(--mvd-muted); line-height: 1.5;
+}
+.mvd-kreator-lista li::marker { color: var(--mvd-accent); }
+
+/* K9-A: readout osi gotowości wytwórcy (statusy i powody w całości z modelu). */
+.mvd-kreator-gotowosc-der {
+  margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px;
+  font-size: 12.5px; color: var(--mvd-ink);
+}
+.mvd-kreator-gotowosc-der > li { padding: 4px 0; border-bottom: 1px solid var(--mvd-line); }
+.mvd-kreator-gotowosc-der > li:last-child { border-bottom: none; }
+.mvd-kreator-gotowosc-der > li[data-status="ready"] strong { color: var(--mvd-ok); }
+.mvd-kreator-gotowosc-der > li[data-status="partial"] strong { color: var(--mvd-warn); }
+.mvd-kreator-gotowosc-der > li[data-status="blocked"] strong { color: var(--mvd-err); }
+.mvd-kreator-gotowosc-der ul {
+  margin: 4px 0 0; padding-left: 16px; color: var(--mvd-muted); font-size: 11.5px;
+  display: flex; flex-direction: column; gap: 2px;
+}
+
+/* K9-A: przebieg sekwencji zapisu — etapy z uczciwym stanem. */
+.mvd-kreator-sekwencja {
+  margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px;
+  font-size: 12.5px; color: var(--mvd-ink);
+}
+.mvd-kreator-sekwencja li[data-stan="zapisane"] strong { color: var(--mvd-ok); }
+.mvd-kreator-sekwencja li[data-stan="pominiete"] strong { color: var(--mvd-muted); }
+.mvd-kreator-sekwencja li[data-stan="blad"] strong { color: var(--mvd-err); }
+.mvd-kreator-sekwencja .mvd-kreator-sekwencja-komunikat {
+  display: block; color: var(--mvd-err); font-size: 11.5px; margin-top: 2px;
+}
+
+/* MINI-RMU-CAD: schemat jednokreskowy rozdzielnicy SN w kroku pól kreatora
+   stacji. Rysunek na tle panelu z ramką — czytany jak arkusz rysunkowy, a nie
+   jak ozdoba formularza; opis pod rysunkiem nazywa granice tego, co rysunek
+   pokazuje (i czego świadomie NIE dorysowuje). */
+.mvd-podglad-rozdzielnica {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px 12px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 10px;
+  background: var(--mvd-panel-2);
+}
+.mvd-podglad-rozdzielnica-opis {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--mvd-muted);
+}
+
+/* TABLICZKA ARKUSZA (nagłówek rysunku): tożsamość pakietu + werdykt walidatora,
+   pod nimi wartości znamionowe rodziny.
+
+   KLASY ISTNIAŁY W KOMPONENCIE BEZ ANI JEDNEJ REGUŁY. Skutek był widoczny na
+   każdym zrzucie kroku pól: nazwa producenta i status sklejały się w jeden ciąg
+   („ZPUE WłoszczowaWalidator sprawdza konfigurację…"), a tabliczka znamionowa
+   spływała jako lista jednokolumnowa, w której etykieta i wartość stały w
+   osobnych wierszach. Konwencja jest TA SAMA, co w nagłówku rodziny w kroku pól
+   (`.mvd-kreator-naglowek-rodziny`) — te same dane nie mogą mieć na jednym
+   ekranie dwóch różnych układów. */
+.mvd-podglad-naglowek {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.mvd-podglad-naglowek-tytul {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  font-size: 12.5px;
+  color: var(--mvd-ink);
+}
+.mvd-podglad-naglowek-status { font-size: 11.5px; }
+.mvd-podglad-naglowek-dane {
+  margin: 0;
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 2px 12px;
+  font-size: 12px;
+  color: var(--mvd-ink);
+}
+/* Wiersz pozycji istnieje w DOM po to, by dt i dd trzymały się razem; w siatce
+   ma zniknąć, żeby obie kolumny wyrównały się przez CAŁĄ tabliczkę. */
+.mvd-podglad-naglowek-pozycja { display: contents; }
+.mvd-podglad-naglowek-dane dt { color: var(--mvd-muted); }
+.mvd-podglad-naglowek-dane dd { margin: 0; font-variant-numeric: tabular-nums; }
+.mvd-podglad-naglowek-komunikat {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--mvd-err);
+}
+
+/* KONFIGURATOR-POL-RMU (etap S3): nagłówek wybranej rodziny rozdzielnicy i
+   karta wyposażenia katalogowego pola. Nagłówek czyta pakiet katalogowy, więc
+   jawny brak danej ma WYGLĄDAĆ na brak, a nie na wartość. */
+.mvd-kreator-naglowek-rodziny {
+  margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 2px 12px;
+  font-size: 12px; color: var(--mvd-ink);
+}
+.mvd-kreator-naglowek-rodziny dt { color: var(--mvd-muted); }
+.mvd-kreator-naglowek-rodziny dd { margin: 0; font-variant-numeric: tabular-nums; }
+.mvd-kreator-naglowek-rodziny dd[data-brak="tak"] { color: var(--mvd-muted); font-style: italic; }
+
+/* Skład pola: oznaczenie operatorskie (Q…) mono, żeby kolumna oznaczeń czytała
+   się jak na schemacie; status wyposażenia obok nazwy aparatu. */
+.mvd-kreator-lista-wyposazenia,
+.mvd-kreator-jednostki-bloku {
+  margin: 4px 0 0; padding: 0; list-style: none;
+  display: flex; flex-direction: column; gap: 4px; font-size: 12.5px;
+}
+.mvd-kreator-lista-wyposazenia li,
+.mvd-kreator-jednostki-bloku li {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px;
+}
+.mvd-kreator-oznaczenie,
+.mvd-kreator-kod-jednostki {
+  font: 600 11.5px/1.4 var(--mvd-font-mono); color: var(--mvd-accent); min-width: 40px;
+}
+.mvd-kreator-nazwa-aparatu { color: var(--mvd-ink); }
+.mvd-kreator-status {
+  font-size: 10.5px; letter-spacing: .02em; text-transform: uppercase;
+  padding: 1px 6px; border-radius: 999px; border: 1px solid var(--mvd-line);
+  color: var(--mvd-muted);
+}
+.mvd-kreator-status--fabryczny { color: var(--mvd-ok); border-color: currentColor; }
+.mvd-kreator-status--opcja { color: var(--mvd-accent); border-color: currentColor; }
+.mvd-kreator-podpowiedz {
+  flex-basis: 100%; font-size: 11px; line-height: 1.45; color: var(--mvd-muted);
+}

@@ -55,6 +55,15 @@ export const MACIERZ_STRINGS = {
   wymogiSpelnione: 'Spełnione wymagane',
   perModul: 'Spełnione / wymagane',
   klasaModulu: 'Klasa modułu',
+  // K5-B (H-3 pkt 4): wynik walidacji FRT/HVRT zapisany z okna „Walidacja
+  // modelu falownika" (EkranFrt → ncRfgStore.zapiszWynikFrt).
+  wynikFrtLvrt: 'Walidacja LVRT',
+  wynikFrtHvrt: 'Walidacja HVRT',
+  // Dowód certyfikatu PTPiREE per urządzenie — wartości WPROST z tabliczki
+  // urządzenia w modelu (certificate_evidence biegu); brak danej = uczciwy
+  // stan zerowy, nigdy wartość dopowiedziana.
+  dowodCertyfikatu: 'Certyfikat PTPiREE',
+  dowodCertyfikatuBrak: 'Certyfikat PTPiREE: brak danych tabliczki urządzenia',
 
   // Szczegół werdyktu
   szczegolTytul: 'Szczegół werdyktu',
@@ -95,6 +104,15 @@ export const MACIERZ_STRINGS = {
   certyfikatBlad: 'Nie udało się zbudować certyfikatu zgodności',
   certyfikatZamknij: 'Zamknij podgląd certyfikatu',
   projektBezNazwy: 'Projekt bez nazwy',
+
+  // Dowód certyfikacji PTPiREE w podglądzie certyfikatu — wiersz per moduł.
+  // Dokument składany u operatora musi pokazywać, NA CO powołuje się deklaracja
+  // zgodności: numer dokumentu, wersja WiPWC, data akceptacji i warunek ważności.
+  certyfikatDowodTytul: 'Dowód certyfikacji PTPiREE',
+  certyfikatDowodNumer: 'Numer dokumentu',
+  certyfikatDowodWipwc: 'Wersja WiPWC',
+  certyfikatDowodData: 'Data akceptacji',
+  certyfikatDowodWarunek: 'Warunek ważności',
 
   // Panel modułu
   panelTytul: 'Dane wejściowe modułu',

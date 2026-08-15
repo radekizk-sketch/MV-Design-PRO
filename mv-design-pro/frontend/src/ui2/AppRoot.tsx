@@ -20,16 +20,41 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { AppShell } from './shell/AppShell';
 import { useBackendHealth } from './shell/backendHealth';
-import { ContextTree, useCasesTree, useRunsTree, useTopologyTree } from './nav';
+import { useEtykietaOstatniegoPrzebiegu } from './shell/shellStatus';
+import { useHydratacjaPowloki } from './shell/useHydratacjaPowloki';
+import { useInspektorZaZawartoscia } from './shell/useInspektorZaZawartoscia';
+import { useSynchronizacjaDerZModelu } from '../ui/network-build/station-der';
+import {
+  ContextTree,
+  NAV_STRINGS,
+  useCasesTree,
+  useRunsTree,
+  useTopologyTree,
+  useZasilanieDrzewaTopologii,
+} from './nav';
+import type { AkcjaPusty } from './nav';
 import { InspectorPanel } from './inspector';
 import { useObiektInspektora, useRewizjaModelu } from './adapters/inspectorAdapter';
 import { emituj, subskrybuj, startEventBusAdapters } from './events';
-import { CommandPalette, zbudujIndeksWyszukiwania, type PozycjaWyszukiwania } from './search';
-import { PulpitProjektu } from './spaces/projekt';
+import {
+  CommandPalette,
+  zbudujIndeksWyszukiwania,
+  type AkcjeIndeksu,
+  type PozycjaWyszukiwania,
+} from './search';
+import {
+  PulpitProjektu,
+  OtworzProjektKontener,
+  EkranArchiwum,
+  EkranImportuArkusza,
+} from './spaces/projekt';
 import { PanelGotowosci } from './spaces/gotowosc';
+import type { ProblemGotowosci } from './spaces/gotowosc/grupowanieCelow';
 import { ModelWarsztat } from './spaces/model';
-import { MenedzerPrzypadkow } from './spaces/obliczenia';
+import { MenedzerPrzypadkow, PanelScenariuszy } from './spaces/obliczenia';
 import { PrzebiegiPanel } from './spaces/obliczenia/przebiegi';
+import { SeriePanel } from './spaces/obliczenia/serie';
+import { PanelDiagnozy } from './spaces/obliczenia/diagnoza';
 import { WynikiWarsztat } from './spaces/wyniki';
 import { MostDokumentacji } from './spaces/dokumentacja';
 import { LegacySurface } from './legacy/LegacySurface';
@@ -39,24 +64,48 @@ import { LegacyChrome } from './legacy/LegacyChrome';
 import { useLegacyOrchestrator } from './legacy/useLegacyOrchestrator';
 import { POZYCJE_MENU_LEGACY, useLegacyMenuActions } from './legacy/useLegacyMenuActions';
 import { useShellStore } from './shell/useShellStore';
+import { mostTrasyPrzestrzeni, przejdzDoPrzestrzeni } from './shell/przejsciaPrzestrzeni';
 import type { SpaceId } from './shell/spaces';
 import { useSnapshotStore } from '../ui/topology/snapshotStore';
+import { useNetworkBuildStore } from '../ui/network-build/networkBuildStore';
 import { useAppStateStore } from '../ui/app-state';
-import {
-  navigateToAnalysis,
-  navigateToCaseConfig,
-  navigateToNetworkBuild,
-} from '../ui/navigation';
 import { AreaContextPanel } from '../ui/shell/context-panels';
-
-/** Panel kontekstu obszaru legacy (most E1.7c) — area-driven jak w starej ramie. */
-function PanelKontekstuObszaru() {
-  const activeArea = useAppStateStore((s) => s.activeArea);
-  return <AreaContextPanel areaCode={activeArea} />;
-}
+import { obszarDlaTrasy } from './legacy/mostObszarow';
 
 /** Prawdziwe źródło selekcji emitowane przez drzewo powłoki (decyzja E1.4 §2.1). */
 const ZRODLO_DRZEWO_KONTEKSTOWE = 'drzewo-kontekstowe';
+
+/**
+ * Akcja pustego drzewa per przestrzeń (K6 / H-5): slot `akcjaPusty` istniał
+ * w `ContextTree` od karty E1.2, ale NIKT go nie podawał — puste drzewo mówiło
+ * tylko „Brak elementów". Każda akcja woła REALNY cel:
+ * - „Model" (brak topologii)     → przestrzeń „Schemat" (kanwa budowy sieci),
+ * - „Obliczenia" (brak przypadków) → dialog „Nowy przypadek" (żądanie powłoki
+ *   konsumowane przez `MenedzerPrzypadkow`),
+ * - „Wyniki" (brak przebiegów)   → przestrzeń „Obliczenia", gdzie żyje jawny
+ *   przycisk „Uruchom obliczenie" (dźwignia 2 tej samej karty).
+ */
+function akcjaPustegoDrzewa(space: SpaceId): AkcjaPusty | undefined {
+  if (space === 'model') {
+    return {
+      etykieta: NAV_STRINGS.pustyModelAkcja,
+      onKlik: () => przejdzDoPrzestrzeni('schemat'),
+    };
+  }
+  if (space === 'obliczenia') {
+    return {
+      etykieta: NAV_STRINGS.pustyObliczeniaAkcja,
+      onKlik: () => useShellStore.getState().setZadanieNowyPrzypadek(true),
+    };
+  }
+  if (space === 'wyniki') {
+    return {
+      etykieta: NAV_STRINGS.pustyWynikiAkcja,
+      onKlik: () => przejdzDoPrzestrzeni('obliczenia'),
+    };
+  }
+  return undefined;
+}
 
 function DrzewoPrzestrzeni({
   space,
@@ -82,18 +131,48 @@ function DrzewoPrzestrzeni({
       onZaznacz={(id) => onZaznacz(id)}
       onOtworz={(id) => onZaznacz(id)}
       filtrProblemy={false}
+      akcjaPusty={akcjaPustegoDrzewa(space)}
     />
   );
 }
 
 export function AppRoot() {
   const [zaznaczonyId, setZaznaczonyId] = useState<string | null>(null);
+  // KD-1 (parytet L-5): tryb ZMIANY projektu — ekran „Nowy / otwórz projekt"
+  // pokazany mimo otwartego projektu (wejście „Otwórz projekt" z powłoki).
+  const [zmianaProjektu, setZmianaProjektu] = useState(false);
   const activeSpace = useShellStore((s) => s.activeSpace);
   const advancementMode = useShellStore((s) => s.advancementMode);
+  const panelSchematu = useShellStore((s) => s.panelSchematu);
+  // Okno „Archiwum projektu (ZIP)" przestrzeni „Projekt": otwiera je kafel
+  // pulpitu ALBO karta huba dokumentacji (jednorazowe żądanie powłoki).
+  const zadanieArchiwum = useShellStore((s) => s.zadanieArchiwumProjektu);
+  const zadanieArkusza = useShellStore((s) => s.zadanieImportuArkusza);
+  const setZadanieArchiwum = useShellStore((s) => s.setZadanieArchiwumProjektu);
+  const setZadanieArkusza = useShellStore((s) => s.setZadanieImportuArkusza);
   const rewizjaModelu = useRewizjaModelu();
   const obiekt = useObiektInspektora(zaznaczonyId);
   const { status: backendStatus, reconnect } = useBackendHealth();
   const activeProjectId = useAppStateStore((s) => s.activeProjectId);
+  // K6 / H-6 R3: etykieta paska stanu z REJESTRU przebiegów (ostatni DONE) —
+  // dotąd pole nie miało dostawcy i zawsze pokazywało „—".
+  const etykietaPrzebiegu = useEtykietaOstatniegoPrzebiegu();
+
+  // K2 (defekt H-0): hydratacja stanu zależnego z serwera po zimnym starcie
+  // (zakresy obliczeń, rejestr przebiegów, migawka przy reconnect) — bez tego
+  // restart przeglądarki cofał przestrzenie do stanu zerowego mimo danych na
+  // serwerze.
+  useHydratacjaPowloki(backendStatus);
+  // KD-1: drzewo topologii dostaje dane z serwera (dotąd `loadSummary` nie miał
+  // żadnego wołającego, więc drzewo przestrzeni „Model" było zawsze puste).
+  useZasilanieDrzewaTopologii();
+  // Wytwórcy DER z MODELU zasilają warsztat czytany przez ekrany strumienia OZE
+  // (macierz NC RfG, pulpit OZE, krzywe P–Q, walidacja falownika). Bez tego
+  // źródło zapisane kreatorem OZE nie istniało dla żadnego z nich.
+  useSynchronizacjaDerZModelu();
+  // K11-A (SLD-first): inspektor podąża za zawartością — pusty nie zabiera
+  // przestrzeni roboczej; otwiera go selekcja albo powierzchnia panelowa.
+  useInspektorZaZawartoscia();
 
   // E1.7a w nowej powłoce: ta sama orkiestracja (hydracja z URL, trasy legacy,
   // powierzchnie, obliczenia) działa w OBU wejściach — zero duplikacji logiki.
@@ -113,40 +192,78 @@ export function AppRoot() {
     [],
   );
 
-  // Parytet trasy domyślnej (E1.7b): aktywny projekt → przestrzeń „Schemat" (SLD),
-  // jak domyślna trasa '' starego wejścia. Jednorazowo na życie powłoki.
+  // Parytet trasy domyślnej (E1.7b): aktywny projekt PRZY STARCIE powłoki →
+  // przestrzeń „Schemat" (SLD), jak domyślna trasa '' starego wejścia.
+  // Decyzja zapada RAZ, na montaż (K4/E1a): projekt utworzony/otwarty później
+  // z ekranu „Nowy / otwórz projekt" ma wylądować na pulpicie projektu
+  // (KOLEJNOSC_KROKOW_E1_E8 §P1 „dokąd dalej: pulpit"), nie na kanwie.
   const domyslnaPrzestrzenUstawiona = useRef(false);
   const setActiveSpaceStore = useShellStore((s) => s.setActiveSpace);
   useEffect(() => {
-    if (domyslnaPrzestrzenUstawiona.current || !activeProjectId) {
+    if (domyslnaPrzestrzenUstawiona.current) {
       return;
     }
     domyslnaPrzestrzenUstawiona.current = true;
-    if (useShellStore.getState().activeSpace === 'projekt') {
+    if (activeProjectId && useShellStore.getState().activeSpace === 'projekt') {
       setActiveSpaceStore('schemat');
     }
   }, [activeProjectId, setActiveSpaceStore]);
+
+  // KD-1 (L-5): tryb zmiany projektu żyje tylko wewnątrz przestrzeni „Projekt" —
+  // wyjście do innej przestrzeni przywraca pulpit otwartego projektu. Tak samo
+  // okno archiwum: żądanie gaśnie z wyjściem z przestrzeni (żadnych zaległych
+  // żądań, wzorzec `zadanieNowyPrzypadek`).
+  useEffect(() => {
+    if (activeSpace !== 'projekt') {
+      setZmianaProjektu(false);
+      if (useShellStore.getState().zadanieArchiwumProjektu) {
+        useShellStore.getState().setZadanieArchiwumProjektu(false);
+      }
+      if (useShellStore.getState().zadanieImportuArkusza) {
+        useShellStore.getState().setZadanieImportuArkusza(false);
+      }
+    }
+  }, [activeSpace]);
 
   const zaznacz = (id: string) => {
     // Okno emituje selekcję z prawdziwym źródłem; stan lokalny ustawi subskrypcja.
     emituj({ typ: 'selekcja', obiektId: id, zrodlo: ZRODLO_DRZEWO_KONTEKSTOWE });
   };
 
-  // Wyszukiwarka (E1.5 → integracja E1.4+): indeks z przestrzeni/poleceń + obiekty ze snapshotu.
+  // Wyszukiwarka (E1.5 → integracja E1.4+): indeks z przestrzeni/ekranów/poleceń
+  // + obiekty ze snapshotu. D4: KAŻDA pozycja niesie realną akcję powłoki —
+  // indeks nie tworzy pozycji, dla której nie ma dostawcy.
   const snapshot = useSnapshotStore((s) => s.snapshot);
+  const openRouteSurface = useNetworkBuildStore((s) => s.openRouteSurface);
+  const setActiveSpace = useShellStore((s) => s.setActiveSpace);
+  const setAdvancementMode = useShellStore((s) => s.setAdvancementMode);
+  const akcjeWyszukiwarki = useMemo(
+    (): AkcjeIndeksu => ({
+      przejdzDoPrzestrzeni,
+      wybierzObiekt: (id) => emituj({ typ: 'selekcja', obiektId: id, zrodlo: 'wyszukiwarka' }),
+      // Zdolność przeniesiona ze skasowanej palety `ui/network-build`:
+      // otwarcie okna E-XX tym samym routerem powierzchni co dotąd.
+      otworzEkran: (kod, tytulPl) =>
+        openRouteSurface(kod, { titlePl: tytulPl, subjectKind: 'helper_context' }),
+      przelicz: () => void handleCalculate(),
+      otworzProjekt: () => otworzPulpitProjektow(),
+      przywrocUklad: () => useShellStore.getState().resetLayout(useShellStore.getState().activeSpace),
+      polaczPonownie: () => reconnect(),
+    }),
+    [handleCalculate, openRouteSurface, reconnect],
+  );
   const pozycjeWyszukiwania = useMemo(
     () =>
       zbudujIndeksWyszukiwania({
+        akcje: akcjeWyszukiwarki,
         obiekty: () =>
           (snapshot?.buses ?? []).map((szyna) => ({
             id: szyna.ref_id || szyna.id,
             nazwa: szyna.name || szyna.ref_id,
           })),
       }),
-    [snapshot],
+    [akcjeWyszukiwarki, snapshot],
   );
-  const setActiveSpace = useShellStore((s) => s.setActiveSpace);
-  const setAdvancementMode = useShellStore((s) => s.setAdvancementMode);
   // Akcje menu legacy (E1.7c) — osiągalne przez wyszukiwarkę poleceń.
   const wykonajAkcjeMenu = useLegacyMenuActions(handleCalculate);
   const pozycjeMenuLegacy = useMemo(
@@ -160,53 +277,45 @@ export function AppRoot() {
     [wykonajAkcjeMenu],
   );
   const otworzPulpitProjektow = () => {
-    // Pulpit projektów (lista + nowy projekt) — trasa legacy #dashboard (most E1.7c).
+    // KD-1 (parytet L-5): „Otwórz projekt" prowadzi do ekranu ui2 „Nowy /
+    // otwórz projekt" TAKŻE przy otwartym projekcie (dotąd skakało na trasę
+    // mostu `#dashboard`, bo ekran ui2 renderował się wyłącznie bez projektu).
+    // Zmiana projektu przechodzi przez potwierdzenie w samym ekranie.
     setActiveSpace('projekt');
-    window.location.hash = '#dashboard';
+    setZmianaProjektu(true);
   };
-  // Most tras (E1.7c): JAWNY wybór przestrzeni ustawia trasę legacy — jedna
-  // prawda nawigacji (orkiestrator otwiera powierzchnie). Montaż zawartości
-  // NIE nawiguje, aby nie nadpisywać deep-linków (#analysis?run=..., itd.).
-  const mostTrasyPrzestrzeni = (space: SpaceId) => {
-    const stan = useAppStateStore.getState();
-    const runId = stan.activeRunId;
-    switch (space) {
-      case 'model':
-      case 'schemat':
-        navigateToNetworkBuild();
-        break;
-      case 'obliczenia':
-        navigateToCaseConfig({ caseId: stan.activeCaseId });
-        break;
-      case 'wyniki':
-        navigateToAnalysis({ runId });
-        break;
-      case 'dokumentacja':
-      case 'gotowosc':
-      case 'projekt':
-        // Zawartość sterowana store'ami/przestrzenią — bez zmiany trasy.
-        // F-E8.1: „Dokumentacja" ląduje na hubie prowadzącym (MostDokumentacji);
-        // dostawcy raportu/dowodu (E-37/E-36) otwierają karty huba przez
-        // openRouteSurface, nie auto-nawigacja do legacy generatora.
-        break;
+  // Most tras (E1.7c) wyniesiony do `shell/przejsciaPrzestrzeni.ts` (K4-E2):
+  // ta sama prawda nawigacji dla jawnego wyboru przestrzeni w AppShell i dla
+  // przejść „następnego kroku" (np. Schemat → Gotowość). `przejdzDoPrzestrzeni`
+  // = setActiveSpace + most (identyczna para wywołań jak dotychczas).
+  const wybierzPrzestrzen = przejdzDoPrzestrzeni;
+  // Lądowisko K3 dla biegu: aktywacja przebiegu + jawne przejście do „Wyników".
+  // JEDNA funkcja dla obu paneli historii (przebiegi i serie) — parytet mostu.
+  const pokazWynikiBiegu = (runId: string) => {
+    useAppStateStore.getState().setActiveRun(runId);
+    wybierzPrzestrzen('wyniki');
+  };
+  /**
+   * Wykonanie akcji naprawczej zgłoszenia gotowości — JEDNA implementacja dla
+   * WSZYSTKICH miejsc, które taką akcję oferują (panel gotowości i pulpit
+   * projektu przez następną najlepszą akcję). Formularze operacji domenowych
+   * żyją na kanwie schematu, więc akcja = selekcja elementu + przejście do
+   * przestrzeni „Schemat" — TĄ SAMĄ ścieżką nawigacji co reszta powłoki
+   * (`przejdzDoPrzestrzeni`, kanon D1), bez drugiej logiki przejścia.
+   */
+  const wykonajAkcjeNaprawcza = (problem: ProblemGotowosci) => {
+    if (problem.elementRef) {
+      emituj({ typ: 'selekcja', obiektId: problem.elementRef, zrodlo: 'panel-gotowosci' });
     }
+    wybierzPrzestrzen('schemat');
   };
-  const wybierzPrzestrzen = (space: SpaceId) => {
-    setActiveSpace(space);
-    mostTrasyPrzestrzeni(space);
-  };
+  // D4: JEDNA ścieżka wykonania — pozycja sama niesie swoją akcję. Dawny
+  // rozdzielacz po przedrostku identyfikatora obsługiwał cztery przypadki, a
+  // wszystko poza nimi wpadało w `pozycja.akcja()`, czyli w pustą funkcję
+  // indeksu (dziewięć martwych kliknięć). Teraz pozycja bez dostawcy nie
+  // powstaje, więc rozdzielacz jest zbędny.
   const wykonajPozycje = (pozycja: PozycjaWyszukiwania) => {
-    if (pozycja.id.startsWith('przestrzen:')) {
-      wybierzPrzestrzen(pozycja.id.slice('przestrzen:'.length) as SpaceId);
-    } else if (pozycja.id.startsWith('obiekt:')) {
-      emituj({ typ: 'selekcja', obiektId: pozycja.id.slice('obiekt:'.length), zrodlo: 'wyszukiwarka' });
-    } else if (pozycja.id === 'polecenie:przelicz') {
-      void handleCalculate();
-    } else if (pozycja.id === 'polecenie:otworz-projekt') {
-      otworzPulpitProjektow();
-    } else {
-      pozycja.akcja(); // Pozycje menu legacy mają realne akcje; reszta — kolejne karty U1/U2.
-    }
+    pozycja.akcja();
   };
 
   return (
@@ -217,6 +326,7 @@ export function AppRoot() {
       backendStatus={backendStatus}
       onReconnect={reconnect}
       modelRevision={rewizjaModelu > 0 ? rewizjaModelu : null}
+      lastRunLabel={etykietaPrzebiegu}
       onOpenProject={otworzPulpitProjektow}
       onOpenVariants={() => wykonajAkcjeMenu('variants')}
       onActiveSpaceChange={mostTrasyPrzestrzeni}
@@ -229,12 +339,34 @@ export function AppRoot() {
           obliczenia={
             <div className="mvd-obliczenia-warsztat">
               <MenedzerPrzypadkow />
+              {/* KD-4 (L-7): scenariusze zwarciowe mają wejście w powłoce —
+                  do tej karty zdolność żyła wyłącznie na trasie mostu, do
+                  której nie prowadziło ŻADNE wejście produkcyjne. */}
+              <PanelScenariuszy />
+              {/* Karta BATCH-ROUTER: seria przebiegów nad scenariuszami —
+                  wejście w wyniki pojedynczego biegu tym samym lądowiskiem K3. */}
+              <SeriePanel
+                trybZaawansowania={advancementMode}
+                onPokazWyniki={pokazWynikiBiegu}
+                onPrzejdzDoScenariuszy={() => {
+                  document
+                    .querySelector('[data-testid="mvd-scenariusze"]')
+                    ?.scrollIntoView?.({ block: 'start' });
+                }}
+              />
               <PrzebiegiPanel
                 trybZaawansowania={advancementMode}
-                onPokazWyniki={(runId) => {
-                  // Parytet mostu: aktywacja przebiegu + przejście do Wyników.
-                  useAppStateStore.getState().setActiveRun(runId);
-                  wybierzPrzestrzen('wyniki');
+                onPokazWyniki={pokazWynikiBiegu}
+              />
+              {/* D7 (karta DIAGNOZA-PRZEBIEGU): odpowiedź na „dlaczego nie
+                  policzyło" tuż pod historią przebiegów — ten sam wzorzec
+                  wejścia co SeriePanel/PrzebiegiPanel (panel w warsztacie
+                  przestrzeni, nie osobna trasa). */}
+              <PanelDiagnozy
+                onPrzejdzDoUruchomienia={() => {
+                  document
+                    .querySelector('[data-testid="mvd-uruchom-obliczenie"]')
+                    ?.scrollIntoView?.({ block: 'start' });
                 }}
               />
             </div>
@@ -245,14 +377,7 @@ export function AppRoot() {
               onSelekcja={(elementRef) =>
                 emituj({ typ: 'selekcja', obiektId: elementRef, zrodlo: 'panel-gotowosci' })
               }
-              onAkcjaNaprawcza={(problem) => {
-                // Formularze operacji domenowych żyją na kanwie schematu —
-                // selekcja elementu + przejście do przestrzeni „Schemat" (jak most E1.7c).
-                if (problem.elementRef) {
-                  emituj({ typ: 'selekcja', obiektId: problem.elementRef, zrodlo: 'panel-gotowosci' });
-                }
-                wybierzPrzestrzen('schemat');
-              }}
+              onAkcjaNaprawcza={wykonajAkcjeNaprawcza}
             />
           }
           wyniki={
@@ -264,21 +389,51 @@ export function AppRoot() {
           }
           dokumentacja={<MostDokumentacji />}
           pulpit={
-            <PulpitProjektu
-              onNawiguj={wybierzPrzestrzen}
-              onOtworzProjekt={otworzPulpitProjektow}
-              onZaznaczPrzypadek={(id) => emituj({ typ: 'selekcja', obiektId: id, zrodlo: 'pulpit-projektu' })}
-              onOtworzPrzypadek={() => wybierzPrzestrzen('obliczenia')}
-            />
+            // Okno archiwum ma pierwszeństwo także BEZ otwartego projektu:
+            // eksport pokazuje wtedy uczciwy stan zerowy, a odtworzenie z paczki
+            // jest właśnie sposobem na zdobycie projektu.
+            zadanieArchiwum ? (
+              <EkranArchiwum onZamknij={() => setZadanieArchiwum(false)} />
+            ) : zadanieArkusza ? (
+              // Import z arkusza (E1) ma pierwszeństwo także BEZ otwartego projektu:
+              // wczytanie arkusza od operatora jest właśnie sposobem na zdobycie projektu.
+              <EkranImportuArkusza onZamknij={() => setZadanieArkusza(false)} />
+            ) : // E1a (K4): sekwencja pierwszego użycia — bez aktywnego projektu
+            // przestrzeń „Projekt" prowadzi ekranem „Nowy / otwórz projekt"
+            // (W-102, realne akcje API w kontenerze); z projektem — pulpit.
+            activeProjectId == null || zmianaProjektu ? (
+              <OtworzProjektKontener
+                onWrocDoPulpitu={
+                  activeProjectId == null ? undefined : () => setZmianaProjektu(false)
+                }
+                onProjektOtwarty={() => setZmianaProjektu(false)}
+              />
+            ) : (
+              <PulpitProjektu
+                onNawiguj={wybierzPrzestrzen}
+                onOtworzProjekt={otworzPulpitProjektow}
+                onZaznaczPrzypadek={(id) => emituj({ typ: 'selekcja', obiektId: id, zrodlo: 'pulpit-projektu' })}
+                onOtworzPrzypadek={() => wybierzPrzestrzen('obliczenia')}
+                onOtworzArchiwum={() => setZadanieArchiwum(true)}
+                onOtworzImportArkusza={() => setZadanieArkusza(true)}
+                onAkcjaNaprawcza={wykonajAkcjeNaprawcza}
+              />
+            )
           }
         />
       }
       contextPanel={
         activeSpace === 'schemat' ? (
-          // Most E1.7c: panel kontekstu OBSZARU (schemat/proces budowy) —
-          // przeniesiona funkcja lewego panelu starej ramy; sterowany
-          // activeArea (przełącznik „Konfiguracja" działa jak w starej ramie).
-          <PanelKontekstuObszaru />
+          // Most E1.7c: panel kontekstu lewego doku. D1 rozdzielił dwie role,
+          // które dotąd pełnił jeden stan `activeArea`:
+          //  - ADRES wyznacza obszar (projekcja trasy, `mostObszarow`),
+          //  - PRZEŁĄCZNIK powłoki wybiera panel schematu: tor pracy na
+          //    schemacie albo warsztat budowy modelu (przycisk „Konfiguracja"
+          //    w stopce panelu; dotąd gasł przy każdej zmianie adresu, bo
+          //    zapisywał się w tym samym polu co obszar trasy).
+          <AreaContextPanel
+            obszar={panelSchematu === 'model' ? 'MODEL_SIECI' : obszarDlaTrasy(route)}
+          />
         ) : (
           <DrzewoPrzestrzeni space={activeSpace} zaznaczonyId={zaznaczonyId} onZaznacz={zaznacz} />
         )

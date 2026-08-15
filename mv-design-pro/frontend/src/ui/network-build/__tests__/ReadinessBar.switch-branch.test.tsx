@@ -2,7 +2,10 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 
 import { useAppStateStore } from '../../app-state';
-import { useReadinessLiveStore } from '../../engineering-readiness/readinessLiveStore';
+import {
+  ustawGotowoscMigawki,
+  wyczyscGotowoscMigawki,
+} from '../../../test/gotowoscTestUtils';
 import { useNotificationStore } from '../../notifications/store';
 import { useSelectionStore } from '../../selection/store';
 import { useSnapshotStore } from '../../topology/snapshotStore';
@@ -13,7 +16,7 @@ describe('ReadinessBar - aparatura SN w blokerach', () => {
   beforeEach(() => {
     useAppStateStore.getState().reset();
     useNetworkBuildStore.getState().reset();
-    useReadinessLiveStore.getState().clear();
+    wyczyscGotowoscMigawki();
     useNotificationStore.getState().clearAll();
     useSelectionStore.getState().clearSelection();
     useSnapshotStore.setState({
@@ -51,23 +54,14 @@ describe('ReadinessBar - aparatura SN w blokerach', () => {
         branches: [],
       } as never,
     });
-    useReadinessLiveStore.setState({
-      issues: [
+    ustawGotowoscMigawki({
+      blockers: [
         {
           code: 'switch.catalog_ref_missing',
-          severity: 'BLOCKER',
           message_pl: 'Wyłącznik pola SN 1 nie ma przypisanej referencji katalogowej.',
           element_ref: 'stn/1/sn_field_breaker/000',
-          element_refs: [],
-          fix_action: null,
         },
-      ] as never,
-      status: 'FAIL',
-      ready: false,
-      bySeverity: { BLOCKER: 1, IMPORTANT: 0, INFO: 0 },
-      loading: false,
-      error: null,
-      lastRevision: 1,
+      ],
     });
 
     render(<ReadinessBar />);
@@ -98,23 +92,14 @@ describe('ReadinessBar - aparatura SN w blokerach', () => {
         branches: [],
       } as never,
     });
-    useReadinessLiveStore.setState({
-      issues: [
+    ustawGotowoscMigawki({
+      blockers: [
         {
           code: 'branch_point.switch_state_missing',
-          severity: 'BLOCKER',
           message_pl: "ZKSN 'bp/abc123/zksn' nie ma stanu łącznika (switch_state).",
           element_ref: 'bp/abc123/zksn',
-          element_refs: [],
-          fix_action: null,
         },
-      ] as never,
-      status: 'FAIL',
-      ready: false,
-      bySeverity: { BLOCKER: 1, IMPORTANT: 0, INFO: 0 },
-      loading: false,
-      error: null,
-      lastRevision: 1,
+      ],
     });
 
     render(<ReadinessBar />);

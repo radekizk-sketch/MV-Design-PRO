@@ -46,7 +46,7 @@ def test_put_creates_new_config(app_client):
                 "der_id": "der_001",
                 "der_kind": "PV",
                 "block_transformer_catalog_ref": "btr_pv_15_069_2500",
-                "pf_curve_ref": "pf_pse_b",
+                "pf_curve_ref": "pf_droop_5",
             }
         ],
     }
@@ -367,7 +367,7 @@ def test_persistence_round_trip_complex_der_spec(app_client):
             "der_kind": "PV",
             "bess_operation_mode_refs": None,
             "block_transformer_catalog_ref": "btr_pv_15_069_2500",
-            "pf_curve_ref": "pf_pse_b",
+            "pf_curve_ref": "pf_droop_5",
         },
         {
             "der_id": "der_002",

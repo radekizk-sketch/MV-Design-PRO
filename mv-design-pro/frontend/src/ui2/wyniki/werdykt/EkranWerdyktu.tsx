@@ -33,13 +33,22 @@ import {
   zrodloPL,
 } from './werdyktModel';
 import { WERDYKT_STRINGS as T } from './strings';
-import { akcjaNaprawcza, usePoprawWModelu } from '../wzorzec';
+import {
+  PrzyciskAkcjiStanu,
+  akcjaNaprawcza,
+  useAkcjaPrzejdzDoPrzypadkow,
+  usePoprawWModelu,
+} from '../wzorzec';
 import { useAppStateStore } from '../../../ui/app-state';
 import './werdykt.css';
+import { TekstZWzorami } from '../../kreatory/rama';
 
 export function EkranWerdyktu() {
   const activeCaseId = useAppStateStore((s) => s.activeCaseId);
   const poprawWModelu = usePoprawWModelu();
+  // K6 / H-5: werdykt zestawia kryteria PRZYPADKU — bez aktywnego zakresu
+  // obliczeń jedyny realny krok to jego wybór w przestrzeni „Obliczenia".
+  const akcjaPrzypadki = useAkcjaPrzejdzDoPrzypadkow();
   const [dane, setDane] = useState<WerdyktResponse | null>(null);
   const [blad, setBlad] = useState<string | null>(null);
   const [ladowanie, setLadowanie] = useState(false);
@@ -82,6 +91,7 @@ export function EkranWerdyktu() {
         <div className="mvd-werdykt-pusty" data-testid="mvd-werdykt-brak-przypadku">
           <p className="mvd-werdykt-pusty-glowny">{T.brakPrzypadku}</p>
           <p className="mvd-werdykt-pusty-krok">{T.brakPrzypadkuKrok}</p>
+          <PrzyciskAkcjiStanu akcja={akcjaPrzypadki} testid="mvd-werdykt-brak-przypadku" />
         </div>
       )}
 
@@ -159,7 +169,8 @@ export function EkranWerdyktu() {
                     <td className="mvd-werdykt-kryterium">
                       <span className="mvd-werdykt-kryterium-nazwa">{pozycja.nazwa_pl}</span>
                       <span className="mvd-werdykt-kryterium-warunek mvd-num">
-                        {pozycja.warunek_pl}
+                        {/* Warunek kryterialny z backendu: wzory inline `$...$` → KaTeX. */}
+                        <TekstZWzorami tekst={pozycja.warunek_pl} />
                       </span>
                       <span className="mvd-werdykt-kryterium-norma">{pozycja.norma_pl}</span>
                     </td>

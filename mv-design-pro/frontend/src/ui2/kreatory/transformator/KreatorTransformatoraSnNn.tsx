@@ -217,7 +217,7 @@ export function KreatorTransformatoraSnNn() {
       ? 'Bez regulacji'
       : dane.regulation_type === 'DETC'
         ? 'DETC'
-        : `OLTC ${dane.control_mode === 'AUTO' ? '(AVR)' : '(ręczny)'}`;
+        : `OLTC ${dane.control_mode === 'AUTOMATIC' ? '(AVR)' : '(ręczny)'}`;
 
   const wierszeGotowosci: WierszGotowosci[] = [
     {
@@ -390,7 +390,7 @@ export function KreatorTransformatoraSnNn() {
                   <PoleWyboru etykieta={T.controlMode} wartosc={dane.control_mode} onZmiana={(v) => zmien('control_mode', v as ControlMode)} opcje={T.controlModeOpcje} testid="mvd-kreator-transformator-control" />
                 ) : null}
               </KreatorSiatka>
-              {dane.regulation_type === 'OLTC' && dane.control_mode === 'AUTO' ? (
+              {dane.regulation_type === 'OLTC' && dane.control_mode === 'AUTOMATIC' ? (
                 <>
                   <KreatorInfo>{T.regAvrPomoc}</KreatorInfo>
                   <KreatorSiatka kolumny={2}>
@@ -417,7 +417,7 @@ export function KreatorTransformatoraSnNn() {
                   stepPct={dane.tap_step_percent}
                   dbFrac={
                     dane.regulation_type === 'OLTC' &&
-                    dane.control_mode === 'AUTO' &&
+                    dane.control_mode === 'AUTOMATIC' &&
                     dane.voltage_setpoint_kv &&
                     dane.voltage_setpoint_kv > 0 &&
                     dane.deadband_kv

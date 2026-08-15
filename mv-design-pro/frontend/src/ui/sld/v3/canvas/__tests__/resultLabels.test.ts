@@ -26,7 +26,7 @@ import {
   buildResultLabelsFromScene,
   isResultLabelsEmpty,
   resultRefForSegment,
-  singleHopSegmentRefs,
+  orientedSegmentRefs,
 } from '../resultLabels';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -44,7 +44,7 @@ const fixturePath = resolve(
 const enm = (JSON.parse(readFileSync(fixturePath, 'utf8')) as { readonly enm: EnergyNetworkModel }).enm;
 
 const scene = buildSceneV3(enm, 2);
-const singleHop = singleHopSegmentRefs(enm);
+const singleHop = new Set(orientedSegmentRefs(enm).keys());
 
 /** Realny `ownerRef` pierwszego symbolu danej klasy — zero fabrykacji. */
 function firstSymbolOwnerRef(elementKind: string): string {
@@ -103,6 +103,7 @@ describe('resultLabels.ts — buildResultLabelsFromScene (W4 §8)', () => {
     const entries = buildResultLabelsFromScene(scene, payload, singleHop);
     expect(entries[branchRef]).toEqual({
       ownerRef: branchRef,
+      resultRef: branchRef,
       kind: 'branch',
       // R3 (wym. 9): severity 1:1 z payloadu (`el(...)` domyślnie „INFO”).
       severity: 'INFO',
@@ -120,6 +121,7 @@ describe('resultLabels.ts — buildResultLabelsFromScene (W4 §8)', () => {
     const entries = buildResultLabelsFromScene(scene, payload, singleHop);
     expect(entries[trRef]).toEqual({
       ownerRef: trRef,
+      resultRef: trRef,
       kind: 'transformer',
       severity: 'INFO',
       lines: [
@@ -142,6 +144,7 @@ describe('resultLabels.ts — buildResultLabelsFromScene (W4 §8)', () => {
     const entries = buildResultLabelsFromScene(scene, inject, singleHop);
     expect(entries[sourceRef]).toEqual({
       ownerRef: sourceRef,
+      resultRef: sourceRef,
       kind: 'source',
       severity: 'INFO',
       lines: [
@@ -174,6 +177,8 @@ describe('resultLabels.ts — buildResultLabelsFromScene (W4 §8)', () => {
     // 12.5 kA → „12,5 kA"; 116910 A = 116,91 kA → „116,9 kA".
     expect(entries[busOwnerRef]).toEqual({
       ownerRef: busOwnerRef,
+      // S9-2: ref punktu wyniku = ref KANONICZNY (`busRef`), nie kompozyt sceny.
+      resultRef: busRef,
       kind: 'bus',
       severity: 'INFO',
       lines: [
@@ -226,6 +231,7 @@ describe('resultLabels.ts — buildResultLabelsFromScene (W4 §8)', () => {
     const entries = buildResultLabelsFromScene(scene, payload, singleHop);
     expect(entries[branchRef]).toEqual({
       ownerRef: branchRef,
+      resultRef: branchRef,
       kind: 'branch',
       severity: 'INFO',
       lines: [
@@ -380,6 +386,9 @@ describe('resultLabels.ts — ADAPTER-BUSREF (szyny GPZ kompozytowe ↔ wyniki)'
     const entries = buildResultLabelsFromScene(scene, payload, singleHop);
     expect(entries[ownerRef]).toEqual({
       ownerRef,
+      // S9-2: wpis niesie ref PUNKTU WYNIKU — tu kanoniczny bus_ref, rozny od
+      // kompozytowego refu rysunku (na tym polega ADAPTER-BUSREF).
+      resultRef: canonicalRef,
       kind: 'bus',
       severity: 'INFO',
       lines: [

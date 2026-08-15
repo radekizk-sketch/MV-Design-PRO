@@ -164,7 +164,7 @@ describe('KreatorTransformatoraSnNn — realna ścieżka', () => {
 
     await userEvent.click(screen.getByTestId('mvd-kreator-transformator-dalej'));
     await userEvent.selectOptions(screen.getByTestId('mvd-kreator-transformator-regtyp'), 'OLTC');
-    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-transformator-control'), 'AUTO');
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-transformator-control'), 'AUTOMATIC');
     const setpoint = screen.getByTestId('mvd-kreator-transformator-setpoint');
     await userEvent.clear(setpoint);
     await userEvent.type(setpoint, '15.5');
@@ -176,7 +176,7 @@ describe('KreatorTransformatoraSnNn — realna ścieżka', () => {
         'add_transformer_sn_nn',
         expect.objectContaining({
           transformer_regulation_type: 'OLTC',
-          transformer_control_mode: 'AUTO',
+          transformer_control_mode: 'AUTOMATIC',
           transformer_voltage_setpoint_kv: 15.5,
         }),
       );

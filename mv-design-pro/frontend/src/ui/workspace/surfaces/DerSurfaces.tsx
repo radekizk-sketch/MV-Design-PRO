@@ -538,6 +538,13 @@ function dynamicModelLabel(der: StationDerConnection): string {
   return selected ? cleanCatalogText(selected.label_pl) : 'model dynamiczny z wariantu katalogowego';
 }
 
+/**
+ * Stan braku granicznego prądu zwarciowego falownika (karta K-Q, 2026-08-14).
+ * Wzorzec `BRAK_PASMA_BEZPIECZNIKA`: pole nie znika z karty (ciche zniknięcie to
+ * inne kłamstwo), tylko mówi wprost, czego brakuje i skąd to wziąć.
+ */
+const BRAK_PRADU_ZWARCIOWEGO_FALOWNIKA_PL = 'wymaga karty katalogowej wyrobu (wynik zwarciowy: SC3F/SC1F)';
+
 function faultCurrentLabel(der: StationDerConnection): string {
   const selected = DER_FAULT_CURRENT_DATA_CATALOG.find((item) => item.id === der.catalogs.fault_current_data_ref)
     ?? DER_FAULT_CURRENT_DATA_CATALOG.find((item) =>
@@ -637,7 +644,7 @@ function FieldRow({ label, value }: { readonly label: string; readonly value: st
 
 function EngineeringNote({ children }: { readonly children: string }) {
   return (
-    <p className="mt-3 border-l-2 border-cyan-400 bg-cyan-950/20 px-3 py-2 text-xs text-cyan-100">
+    <p className="mt-3 border-l-2 border-sygnal-info bg-sygnal-info-tlo px-3 py-2 text-xs text-sygnal-info-tusz">
       {children}
     </p>
   );
@@ -683,9 +690,12 @@ function buildDerCards(
     : null;
   const inverter = findPvInverter(der);
   const ptpireeCertificate = getPtpireeCertifiedInverter(der.catalogs.ptpiree_certificate_ref);
-  const faultCurrent = inverter?.fault_current_capability_pu
-    ? `${inverter.fault_current_capability_pu.toFixed(2)} × In`
-    : MISSING_DASH;
+  // Graniczny prąd zwarciowy falownika (karta K-Q): katalog mirrorowy NIE niesie
+  // już tej liczby, bo podaje ją wyłącznie karta katalogowa konkretnego wyrobu,
+  // a wcześniejsza wartość była wpisana z ręki. Udział źródła w prądzie zwarcia
+  // liczy solver ze składowych symetrycznych modelu — ekran mówi, skąd to wziąć,
+  // zamiast pokazywać liczbę bez pokrycia.
+  const faultCurrent = BRAK_PRADU_ZWARCIOWEGO_FALOWNIKA_PL;
   const isDedicatedTransformer = der.connection_side === 'dedicated_transformer';
 
   return {
@@ -1247,13 +1257,13 @@ function DerSurfaceShell({
           {der?.name ?? 'Układ PV/BESS/FW niewybrany'}
         </h2>
         {!der && (
-          <p className="mt-2 rounded border border-amber-700 bg-amber-950/30 p-3 text-xs text-amber-200">
+          <p className="mt-2 rounded border border-sygnal-uwaga bg-sygnal-uwaga-tlo p-3 text-xs text-sygnal-uwaga-tusz">
             Wybierz układ PV/BESS/FW z karty stacji „Układy przyłączeniowe” albo z menu
             kontekstowego SLD, aby otworzyć jego konfigurację przyłączeniową.
           </p>
         )}
         {der === surfaceContextDer && !storeDer && !snapshotDer && (
-          <p className="mt-2 rounded border border-amber-700 bg-amber-950/30 p-3 text-xs text-amber-200">
+          <p className="mt-2 rounded border border-sygnal-uwaga bg-sygnal-uwaga-tlo p-3 text-xs text-sygnal-uwaga-tusz">
             Falownik wybrany na schemacie wymaga przypisania kompletnego pakietu
             katalogowego OZE: urządzenia, PCC, toru przyłączenia, profili NC RfG/FRT
             i zabezpieczeń.

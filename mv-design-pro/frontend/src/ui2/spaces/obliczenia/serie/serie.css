@@ -1,0 +1,171 @@
+/*
+ * Okno „Serie przebiegów" (karta BATCH-ROUTER). Wyłącznie tokeny powłoki
+ * (--mvd-*); prymitywy `.mvd-tag*`/`.mvd-num` współdzielone z oknem przebiegów
+ * (`przebiegi.css` montowane w tej samej przestrzeni „Obliczenia").
+ */
+
+.mvd-serie {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 16px;
+  background: var(--mvd-panel);
+  border: 1px solid var(--mvd-line);
+  border-radius: 10px;
+  color: var(--mvd-ink);
+}
+
+.mvd-serie-glowa {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.mvd-serie-tytul {
+  margin: 0 0 2px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.mvd-serie-cel {
+  margin: 0;
+  max-width: 78ch;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--mvd-muted);
+}
+
+.mvd-serie-sekcja-tytul {
+  margin: 0 0 4px;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.mvd-serie-akcja {
+  padding: 5px 12px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--mvd-bg);
+  background: var(--mvd-accent);
+  border: 1px solid var(--mvd-accent);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.mvd-serie-akcja:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.mvd-serie-akcja--wtorna {
+  color: var(--mvd-ink);
+  background: transparent;
+  border-color: var(--mvd-line);
+}
+
+.mvd-serie-pusty {
+  padding: 10px 12px;
+  font-size: 12.5px;
+  border: 1px dashed var(--mvd-line);
+  border-radius: 8px;
+  color: var(--mvd-muted);
+}
+
+.mvd-serie-uwaga {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--mvd-muted);
+}
+
+.mvd-serie-blad {
+  margin: 4px 0 0;
+  padding: 6px 10px;
+  font-size: 12px;
+  color: var(--mvd-err);
+  border: 1px solid var(--mvd-err);
+  border-radius: 8px;
+}
+
+.mvd-serie-blad ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+}
+
+.mvd-serie-scenariusze {
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mvd-serie-scenariusz {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.mvd-serie-scenariusz-nazwa {
+  font-weight: 600;
+}
+
+.mvd-serie-scenariusz-meta {
+  font-size: 12px;
+  color: var(--mvd-muted);
+}
+
+.mvd-serie-nowa-stopka {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.mvd-serie-karta {
+  padding: 8px 10px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.mvd-serie-karta + .mvd-serie-karta {
+  margin-top: 6px;
+}
+
+.mvd-serie-karta-glowa {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.mvd-serie-karta-meta {
+  font-size: 12px;
+  color: var(--mvd-muted);
+}
+
+.mvd-serie-biegi {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mvd-serie-bieg {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12.5px;
+}
+
+.mvd-serie-bieg-analiza {
+  min-width: 16ch;
+}

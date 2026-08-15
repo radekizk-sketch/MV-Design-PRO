@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { ReadinessBlockersReview } from '../mass-review/ReadinessBlockersReview';
+import { readinessZListy } from '../../../test/gotowoscTestUtils';
 
 const openOperationForm = vi.fn();
 const selectElement = vi.fn();
@@ -10,6 +11,9 @@ vi.mock('../../app-state', () => ({
   useActiveCaseId: () => 'case-1',
 }));
 
+// JEDNA prawda gotowości (KD-1 / V12K-286): przegląd blokad czyta problemy
+// przez `gotowoscAdapter` z `useSnapshotStore.readiness` — scena zasila TO pole
+// (dawna atrapa `readinessLiveStore` była osobnym, nigdy nieodświeżanym źródłem).
 vi.mock('../../topology/snapshotStore', () => ({
   useSnapshotStore: (
     selector: (state: { snapshot: unknown; fixActions: [] }) => unknown,
@@ -23,33 +27,14 @@ vi.mock('../../topology/snapshotStore', () => ({
         generators: [],
       },
       fixActions: [],
-    }),
-}));
-
-vi.mock('../../engineering-readiness/readinessLiveStore', () => ({
-  useReadinessLiveStore: (
-    selector: (state: {
-      issues: Array<{
-        code: string;
-        severity: 'IMPORTANT';
-        message_pl: string;
-        element_ref: string | null;
-        element_refs: string[];
-        wizard_step_hint: string;
-      }>;
-    }) => unknown,
-  ) =>
-    selector({
-      issues: [
+      readiness: readinessZListy([
         {
           code: 'warn.catalog.review',
           severity: 'IMPORTANT',
           message_pl: 'Sprawdź dobór katalogu.',
           element_ref: 'seg-1',
-          element_refs: [],
-          wizard_step_hint: 'KATALOG',
         },
-      ],
+      ]),
     }),
 }));
 

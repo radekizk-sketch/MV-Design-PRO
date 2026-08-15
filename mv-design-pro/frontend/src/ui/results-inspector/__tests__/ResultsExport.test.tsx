@@ -100,7 +100,7 @@ describe('ResultsExport', () => {
     fireEvent.click(screen.getByTestId('export-pdf-btn'));
 
     await waitFor(() => {
-      expect(downloadAnalysisRunExportMock).toHaveBeenCalledWith('project-1', 'run-1', 'pdf');
+      expect(downloadAnalysisRunExportMock).toHaveBeenCalledWith('run-1', 'pdf');
     });
     expect(notifyMock).toHaveBeenCalledWith('Pobrano pomocniczy eksport uruchomienia (PDF).', 'success');
   });
@@ -132,7 +132,7 @@ describe('ResultsExport', () => {
     fireEvent.click(screen.getByTestId('report-pdf-btn'));
 
     await waitFor(() => {
-      expect(downloadAnalysisRunReportMock).toHaveBeenCalledWith('project-1', 'run-1', 'pdf', {
+      expect(downloadAnalysisRunReportMock).toHaveBeenCalledWith('run-1', 'pdf', {
         profile: 'audytowy',
         detailLevel: 'pelny',
         scope: 'active_table',

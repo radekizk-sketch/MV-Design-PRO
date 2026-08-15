@@ -142,8 +142,9 @@ export function wierszeTabeliPQ(widok: WidokPokryciaPQ): WierszTabeli[] {
 /**
  * Adapter śladu pokrycia (wzór/dane/podstawienie/wynik) → kroki `SladAnalizy`.
  * Dwa kroki: (1) wyznaczenie wymagania z udziału i Pn, (2) porównanie pasm
- * punkt po punkcie. Wzory traktowane jako zapis symboliczny (ASCII), spójnie
- * ze śladem pulpitu OZE. Zero ocen — treści wprost z backendu.
+ * punkt po punkcie. Wzory to czysty LaTeX renderowany KaTeX-em (dyrektywa
+ * właściciela 2026-07-29), spójnie ze śladem pulpitu OZE. Zero ocen — treści
+ * wprost z backendu.
  */
 export function krokiSladuPQ(widok: WidokPokryciaPQ): KrokSladuSily[] {
   const { slad_whitebox: slad, wymaganie } = widok;
@@ -151,7 +152,8 @@ export function krokiSladuPQ(widok: WidokPokryciaPQ): KrokSladuSily[] {
   return [
     {
       symbol: KRZYWE_STRINGS.sladSymbolWymaganie,
-      formula_latex: 'q_wym_min = udzial_min * Pn;  q_wym_max = udzial_max * Pn',
+      formula_latex:
+        'q_{\\text{wym,min}} = u_{\\min} \\cdot P_{n};\\quad q_{\\text{wym,max}} = u_{\\max} \\cdot P_{n}',
       substitution_pl:
         `Pn = ${fmtMWPQ(dane.pn_mw)} MW; `
         + `udzial_min = ${dane.udzial_q_min_pct_pn}; udzial_max = ${dane.udzial_q_max_pct_pn}`,

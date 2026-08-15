@@ -28,7 +28,7 @@ switchgear_families:
   - switchgear_family_ref: "ABB__UNIGEAR_ZS1"
     manufacturer_ref: "ABB"
     family_name: "UniGear ZS1"
-    voltage_levels: [12, 17.5, 24]
+    network_voltages_kv/um_classes_kv: [12, 17.5, 24]
     rated_current_options: [1250, 2500, 4000]
     short_time_current_options: [25, 31, 50]
     insulation_type: "air"

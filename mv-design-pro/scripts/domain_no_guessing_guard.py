@@ -379,10 +379,7 @@ def main() -> int:
         )
         return 1
 
-    print(
-        f"domain-no-guessing-guard: PASS "
-        f"({scanned_count} file(s) scanned, 0 violations)"
-    )
+    print(f"domain-no-guessing-guard: PASS " f"({scanned_count} file(s) scanned, 0 violations)")
     return 0
 
 

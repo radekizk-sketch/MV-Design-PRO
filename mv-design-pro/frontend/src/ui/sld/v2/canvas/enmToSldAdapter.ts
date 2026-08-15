@@ -41,6 +41,7 @@ import type {
   Measurement,
 } from '../../../../types/enm';
 import { buildOltcAnnotation } from './oltcGlyph';
+import { pickStationBus, STATION_LV_VOLTAGE_LIMIT_KV } from '../../shared/stationBusResolution';
 import type { GpzRendererProps } from '../renderer/GpzRenderer';
 import type { SectionRendererProps } from '../renderer/SectionRenderer';
 import {
@@ -91,7 +92,10 @@ import type {
   SldTerminalElementType,
   SldTopologyRun,
 } from './SldTopologyContracts';
-import { selectStationDistributionTransformerRefs } from '../../../network-build/stationTransformerSelection';
+import {
+  selectStationTransformerUnits,
+  type StationTransformerUnit,
+} from '../../../network-build/stationTransformerSelection';
 
 // =============================================================================
 // Telemetry mapping (Phase 0B-1: BayRuntimeState → GpzBayDescriptor)
@@ -2911,11 +2915,37 @@ function addReturnConductorSection(raw: string, materialized?: Record<string, un
   );
 }
 
+/**
+ * S9-9 (koszt operacji): formatery liczb TRZYMANE JAKO STAŁE MODUŁU — wzorzec
+ * już obecny w repo (`sld/shared/stationInternalViewData.ts`,
+ * `v2/canvas/StationInternalView.tsx`), tu tylko domknięty na klasę.
+ *
+ * `Number.prototype.toLocaleString(locale, opts)` buduje `Intl.NumberFormat`
+ * PRZY KAŻDYM WYWOŁANIU. Pomiar S9-9: 5000 wywołań = 140 ms bez stałej wobec
+ * 3,4 ms ze stałą (40×). Adapter woła to raz na przęsło/kabel, a scena liczy
+ * adapter trzykrotnie (po razie na LOD), więc na sieci 107 stacji samo
+ * formatowanie kosztowało ~29 ms na budowę × 3. Wynik tekstowy jest IDENTYCZNY
+ * — ta sama lokalizacja i te same opcje, zmienia się wyłącznie moment budowy
+ * formatera (pin: `__tests__/enmToSldAdapter.formatowanie.test.ts`).
+ */
+/** Przekrój żyły powrotnej — bez części ułamkowej (`readReturnConductorSection`). */
+const FORMAT_PRZEKROJU_PL = new Intl.NumberFormat('pl-PL', { maximumFractionDigits: 0 });
+/** Długość [km] całkowita — `minimumFractionDigits: 0` (`formatPolishNumber`). */
+const FORMAT_DLUGOSCI_CALKOWITEJ_PL = new Intl.NumberFormat('pl-PL', {
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 2,
+});
+/** Długość [km] ułamkowa — `minimumFractionDigits: 1` (`formatPolishNumber`). */
+const FORMAT_DLUGOSCI_ULAMKOWEJ_PL = new Intl.NumberFormat('pl-PL', {
+  minimumFractionDigits: 1,
+  maximumFractionDigits: 2,
+});
+
 function readReturnConductorSection(materialized?: Record<string, unknown> | null): string | null {
   const raw = materialized?.return_conductor_cross_section_mm2;
   const value = typeof raw === 'number' ? raw : typeof raw === 'string' ? Number(raw) : NaN;
   if (!Number.isFinite(value) || value <= 0) return null;
-  return value.toLocaleString('pl-PL', { maximumFractionDigits: 0 });
+  return FORMAT_PRZEKROJU_PL.format(value);
 }
 
 function normalizeCableMultiplicationSigns(raw: string): string {
@@ -3431,6 +3461,8 @@ function buildStations(snapshot: EnergyNetworkModel): StationOnRunRendererProps[
         snBays: stationSldDetails.snBays,
         hasTransformer: stationSldDetails.hasTransformer,
         transformerRefs: stationSldDetails.transformerRefs,
+        // TR2W-BEZ-POLA (§0.C.2/§0.C.3): jednostki TR z terminalami WN/nN.
+        transformerUnits: stationSldDetails.transformerUnits,
         transformerRatedKva: stationSldDetails.transformerRatedKva,
         nnFeedersCount: stationSldDetails.nnFeedersCount,
         derBadges: stationSldDetails.derBadges,
@@ -3473,6 +3505,8 @@ function buildStations(snapshot: EnergyNetworkModel): StationOnRunRendererProps[
         snBays: stationSldDetails.snBays,
         hasTransformer: stationSldDetails.hasTransformer,
         transformerRefs: stationSldDetails.transformerRefs,
+        // TR2W-BEZ-POLA (§0.C.2/§0.C.3): jednostki TR z terminalami WN/nN.
+        transformerUnits: stationSldDetails.transformerUnits,
         transformerRatedKva: stationSldDetails.transformerRatedKva,
         nnFeedersCount: stationSldDetails.nnFeedersCount,
         derBadges: stationSldDetails.derBadges,
@@ -3496,6 +3530,11 @@ interface StationMiniBlockDetails {
   readonly snBays: readonly MiniBlockBayDescriptor[];
   readonly hasTransformer: boolean;
   readonly transformerRefs: readonly string[];
+  /** TR2W-BEZ-POLA (§0.C.2/§0.C.3): jednostki transformatorowe stacji z
+   *  terminalami WN/nN — kotwica topologiczna kolumny transformatora na SLD
+   *  (`layout/measure.ts` `stationSnColumnLayout`). `transformerRefs` wyżej to
+   *  ta sama lista zredukowana do refów. */
+  readonly transformerUnits: readonly StationTransformerUnit[];
   readonly nnFeedersCount: number;
   readonly derBadges: readonly MiniBlockDerBadge[];
   readonly transformerRatedKva: number | null;
@@ -3553,7 +3592,8 @@ function buildStationMiniBlockDetails(
     derSourceBays.length > 0 ||
     derBadges.some((badge) => badge.connectionSide !== 'nn');
   const footprintType = deriveFootprintType(station.station_type, explicitRoles, hasMvSideDer);
-  const transformerRefs = collectStationTransformerRefs(snapshot, station);
+  const transformerUnits = collectStationTransformerUnits(snapshot, station);
+  const transformerRefs = transformerUnits.map((unit) => unit.ref);
   const transformerRatedKva = inferTransformerRatedKva(snapshot, transformerRefs);
 
   // K30-15.3: zsumuj load + DER generation po stronie transformatora stacji.
@@ -3570,26 +3610,25 @@ function buildStationMiniBlockDetails(
   // `Bus.ref_id` (ten sam wzorzec co `stationBusRefMap` wyżej, linia ~1969).
   const stationBusRefs = new Set<string>();
   const busByRef = new Map((snapshot.buses ?? []).map((bus) => [bus.ref_id, bus]));
-  // K30-37: znajdź główną szynę SN stacji (najwyższe voltage_kv > 0.5 kV).
-  // 0.4 kV LV-side wykluczamy z "main" — main = SN bus.
-  let mainBusVoltageKv: number | null = null;
-  // Recenzja NO-GO 2026-07-17 pkt 6 (spec §12.5): szyna nN stacji — napięcie
-  // z REKORDU szyny (voltage_kv <= 0.5 ⇒ strona nN) + zbiór refów szyn nN
-  // do agregacji odbiorów niżej.
-  let nnVoltageKv: number | null = null;
+  // K30-37: główna szyna SN stacji (najwyższe voltage_kv powyżej granicy stron)
+  // i szyna nN — WYBÓR wg JEDNEJ reguły `shared/stationBusResolution.ts`
+  // (S9-2). Reguła była tu zapisana wprost, a warstwa wynikowa potrzebuje TEJ
+  // SAMEJ decyzji, żeby dopasować punkt wyniku do narysowanej szyny; dwie kopie
+  // rozjechałyby się na stacji z dwiema szynami tego samego napięcia.
+  const mainBusVoltageKv = pickStationBus(station, busByRef, 'sn').voltageKv;
+  const nnVoltageKv = pickStationBus(station, busByRef, 'nn').voltageKv;
+  // Zbiory refów: WSZYSTKIE szyny stacji (odbiory całej stacji) i WSZYSTKIE
+  // szyny nN (agregat odbioru nN). To INNY predykat niż wybór jednej szyny
+  // wyżej — pytanie brzmi „które szyny należą do stacji/strony nN", nie „która
+  // jest szyną główną" — dlatego liczony osobno, świadomie.
   const nnBusRefs = new Set<string>();
   for (const busRef of station.bus_refs ?? []) {
     const bus = busByRef.get(busRef);
     if (!bus) continue;
     stationBusRefs.add(bus.ref_id);
     const v = bus.voltage_kv;
-    if (typeof v === 'number' && Number.isFinite(v) && v > 0.5) {
-      if (mainBusVoltageKv == null || v > mainBusVoltageKv) {
-        mainBusVoltageKv = v;
-      }
-    } else if (typeof v === 'number' && Number.isFinite(v) && v > 0) {
+    if (typeof v === 'number' && Number.isFinite(v) && v > 0 && v <= STATION_LV_VOLTAGE_LIMIT_KV) {
       nnBusRefs.add(bus.ref_id);
-      if (nnVoltageKv == null || v > nnVoltageKv) nnVoltageKv = v;
     }
   }
   const totalLoadKw = Math.round(
@@ -3626,6 +3665,7 @@ function buildStationMiniBlockDetails(
     footprintType,
     snBays,
     transformerRefs,
+    transformerUnits,
     hasTransformer:
       transformerRefs.length > 0 ||
       snBays.some((bay) => bay.fieldRole === FIELD_ROLE.RMU_TRANSFORMER || bay.fieldRole === FIELD_ROLE.TRANSFORMER),
@@ -3684,11 +3724,17 @@ function inferTransformerRatedKva(
   return kva > 0 ? kva : null;
 }
 
-function collectStationTransformerRefs(
+/**
+ * TR2W-BEZ-POLA (§0.C.2): jednostki transformatorowe stacji Z TERMINALAMI.
+ * `transformerRefs` (lista samych refów, dotychczasowy kontrakt read-modelu)
+ * wyprowadzana jest z TEJ SAMEJ listy — jedno źródło prawdy zamiast dwóch
+ * niezależnych selekcji (reguła KLASA §3).
+ */
+function collectStationTransformerUnits(
   snapshot: EnergyNetworkModel,
   station: Substation,
-): string[] {
-  return selectStationDistributionTransformerRefs(snapshot, station);
+): StationTransformerUnit[] {
+  return selectStationTransformerUnits(snapshot, station);
 }
 
 function buildExplicitStationMiniBays(
@@ -3716,6 +3762,9 @@ function buildExplicitStationMiniBays(
         fieldRole,
         designation: bay.bay_number ?? bay.feeder_short_name ?? bay.name ?? `Pole ${index + 1}`,
         hasMissingRequiredDevice: bay.equipment_refs.length === 0,
+        // TR2W-BEZ-POLA (§0.C.2): sekcja szyn tego pola (`Bay.bus_ref`) —
+        // ta sama dana co `field_specs[].bus_ref` na ścieżce szablonowej.
+        busRef: bay.bus_ref,
         cbState: states.cb,
         dsState: states.ds,
         esState: states.es,
@@ -3817,7 +3866,7 @@ interface StationFieldSpec {
   readonly meta: Record<string, unknown>;
   /** W1 (RECENZJA_L2 §1/§12.1, V12K-145): aparaty PIERWOTNE pola
    *  zmaterializowane z szablonu kreatora na backendzie (`_build_field_spec`
-   *  → `template_primary_devices`). Gdy niepuste — tor pierwotny rysowany
+   *  → `aparaty_pola_z_referencji` (wspólny resolver pola)). Gdy niepuste — tor pierwotny rysowany
    *  Z DANYCH (kolejność/stan/uziemnik bocznie/głowica), a nie z jednego
    *  fallbacku konwencji §12.4. `undefined` = pole bez danych → konwencja. */
   readonly primary_devices?: readonly BayPrimaryDevice[];
@@ -3825,7 +3874,12 @@ interface StationFieldSpec {
    *  KONFIGURACJI pola (backend `_build_field_spec` → `config_ref_for_template`).
    *  Stabilny, deterministyczny — niesiony do meta sceny, żeby render nie
    *  zgadywał wyposażenia z typu/roli pola (tożsamość konfiguracji jest DANĄ).
-   *  `undefined` gdy pole bez szablonu kanonicznego. */
+   *  Prefiks niesie POCHODZENIE konfiguracji: `kanoniczny:<ref>` dla szablonu
+   *  kanonicznego, `producent:<manufacturer_ref>:<template_ref>` dla
+   *  katalogowego pola rodziny producenta (karta K-L). Dla frontendu wartość
+   *  jest KLUCZEM NIEPRZEZROCZYSTYM — przepisujemy ją 1:1, nigdy nie parsując
+   *  prefiksu (pin: `enmToSldAdapter.configIdOpaque.test.ts`).
+   *  `undefined` gdy pole nie wskazuje żadnego szablonu. */
   readonly config_id?: string;
 }
 
@@ -3833,8 +3887,18 @@ function buildStationMiniBaysFromFieldSpecs(
   station: Substation,
   branchByRef: Map<string, Branch>,
 ): MiniBlockBayDescriptor[] {
+  // V12K-330 (dyrektywa właściciela 2026-08-06 — „pole pomiarowe musi być
+  // pierwsze patrząc od kierunku zasilania"): kolejność pól na rysunku =
+  // kolejność `field_specs` Z DANYCH (fizyczny układ rozdzielnicy
+  // zadeklarowany przez szablon/operację domenową), NIE ranking ról. Dawny
+  // `sort(compareStationFieldSpecs)` (liniowe→TR→sprzęgło→POMIAROWE→DER)
+  // spychał pole pomiarowe ZA pole transformatorowe wbrew danym — stacja
+  // przemysłowa deklarująca [IN, POMIAR, TR, OUT] rysowała pomiar na końcu
+  // szyny, czyli rysunek KŁAMAŁ o miejscu układu pomiarowego (naruszenie
+  // standardów układów pomiarowych OSD). `field_specs` to uporządkowana
+  // tablica JSON — determinizm bez sortowania; ranking zostaje wyłącznie
+  // w `compareBaysForSld` dla ścieżki legacy `bays[]` bez field_specs.
   return readStationFieldSpecs(station)
-    .sort(compareStationFieldSpecs)
     .map((spec, index) => {
       const fieldRole = stationFieldRoleFromSpec(spec);
       const states = deriveSwitchStatesFromEquipmentRefs(spec.equipment_refs, branchByRef);
@@ -3843,12 +3907,16 @@ function buildStationMiniBaysFromFieldSpecs(
         fieldRole: mapStationBayRoleToMiniRole(fieldRole),
         designation: stationFieldDesignation(spec, index),
         hasMissingRequiredDevice: spec.equipment_refs.length === 0,
+        // TR2W-BEZ-POLA (§0.C.2): sekcja szyn tego pola — `field_specs[].
+        // bus_ref` (backend `_build_field_spec`, klucz zawsze obecny) był już
+        // parsowany przez `readStationFieldSpecs`, ale nigdzie nie docierał.
+        busRef: spec.bus_ref,
         cbState: states.cb,
         dsState: states.ds,
         esState: states.es,
         // W1 (RECENZJA_L2 §1/§12.1, V12K-145): tor pierwotny Z DANYCH gdy pole
         // niesie zmaterializowane aparaty (szablon kreatora, backend
-        // `template_primary_devices`). Reużycie `projectBayPrimaryDevices` —
+        // `aparaty_pola_z_referencji` (wspólny resolver pola)). Reużycie `projectBayPrimaryDevices` —
         // JEDNA prawda sortowania/projekcji dla ścieżki field_specs i legacy
         // bays[]. `undefined` gdy brak danych → konwencja §12.4 (zero regresu).
         primaryDevices: projectBayPrimaryDevices({ primary_devices: spec.primary_devices }),
@@ -3893,7 +3961,7 @@ const PRIMARY_DEVICE_PLACEMENTS: ReadonlySet<string> = new Set<string>([
 /**
  * W1 (RECENZJA_L2 §1/§12.1, V12K-145): parsuje DEFENSYWNIE listę aparatów
  * pierwotnych z surowego `field_spec.primary_devices` (backend
- * `_build_field_spec`/`template_primary_devices`) na kształt `BayPrimaryDevice`.
+ * `_build_field_spec`/`aparaty_pola_z_referencji` (wspólny resolver pola)) na kształt `BayPrimaryDevice`.
  * Odrzuca wpisy bez `device_ref`/`symbol_ref`/`kind`/`placement` mapowalnych
  * na kontrakt ENM (zero domysłu — brak danych = brak aparatu). `undefined` gdy
  * pole nie niesie żadnego prawidłowego aparatu (ścieżka konwencji §12.4).
@@ -3953,40 +4021,6 @@ function parseStationFieldPrimaryDevices(value: unknown): readonly BayPrimaryDev
     devices.push(device);
   }
   return devices.length > 0 ? devices : undefined;
-}
-
-function compareStationFieldSpecs(a: StationFieldSpec, b: StationFieldSpec): number {
-  const rankDiff = stationFieldRoleRank(a) - stationFieldRoleRank(b);
-  if (rankDiff !== 0) return rankDiff;
-  return stationFieldStableKey(a).localeCompare(stationFieldStableKey(b), 'pl');
-}
-
-function stationFieldRoleRank(spec: StationFieldSpec): number {
-  const role = stationFieldRoleFromSpec(spec);
-  switch (role) {
-    case FIELD_ROLE.LINE_IN:
-      return 0;
-    case FIELD_ROLE.LINE_OUT:
-      return 1;
-    case FIELD_ROLE.LINE_BRANCH:
-      return 2;
-    case FIELD_ROLE.TRANSFORMER:
-      return 3;
-    case FIELD_ROLE.COUPLER:
-      return 4;
-    case FIELD_ROLE.MEASUREMENT:
-      return 5;
-    case FIELD_ROLE.DER_PV:
-    case FIELD_ROLE.DER_BESS:
-    case FIELD_ROLE.DER_FW:
-      return 6;
-    default:
-      return 99;
-  }
-}
-
-function stationFieldStableKey(spec: StationFieldSpec): string {
-  return [spec.field_ref, spec.name, spec.bus_ref].filter(Boolean).join('|');
 }
 
 function stationFieldRoleFromSpec(spec: StationFieldSpec): MiniBlockBayDescriptor['fieldRole'] {
@@ -4188,7 +4222,7 @@ function bayRuntimeSwitchStates(bay: Bay): {
  * W1 (RECENZJA_L2 §1/§12.1, V12K-145) — DOMKNIĘCIE STOP-notatki F9.2. Backend
  * SERIALIZUJE dziś `primary_devices` na `Bay(ENMElement)` w
  * `EnergyNetworkModel` (`backend/src/enm/models.py:855`) — zmaterializowane z
- * szablonu kreatora (`template_primary_devices`) przez `_build_field_spec`
+ * szablonu kreatora (`aparaty_pola_z_referencji` (wspólny resolver pola)) przez `_build_field_spec`
  * (`domain_operations.py`) i przeniesione na snapshot Bay przez
  * `field_read_model._collect_bays`. Adapter czyta je z DWÓCH ścieżek snapshotu:
  *  - `snapshot.bays[]` (legacy Bay ENM) — `projectBayPrimaryDevices(bay)` niżej;
@@ -5731,10 +5765,12 @@ function formatCableRunLength(segments: readonly Branch[]): string {
 
 function formatPolishNumber(value: number): string {
   const rounded = Math.round(value * 100) / 100;
-  return rounded.toLocaleString('pl-PL', {
-    minimumFractionDigits: Number.isInteger(rounded) ? 0 : 1,
-    maximumFractionDigits: 2,
-  });
+  // S9-9: te same dwie konfiguracje co dotąd — `minimumFractionDigits` zależy
+  // od tego, czy liczba jest całkowita — wybrane ze STAŁYCH modułu zamiast
+  // budowane na każde wywołanie (uzasadnienie i pomiar przy stałych wyżej).
+  return (
+    Number.isInteger(rounded) ? FORMAT_DLUGOSCI_CALKOWITEJ_PL : FORMAT_DLUGOSCI_ULAMKOWEJ_PL
+  ).format(rounded);
 }
 
 function readBranchLengthKm(segment: Branch): number {

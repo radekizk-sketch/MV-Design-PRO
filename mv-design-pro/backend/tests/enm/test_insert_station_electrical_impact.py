@@ -71,6 +71,8 @@ def _build_gpz_with_segment_500m() -> tuple[dict[str, Any], str]:
 def _exec_dry_run(snap: dict[str, Any], seg_id: str, **kwargs: Any) -> dict[str, Any]:
     payload = {
         "segment_id": seg_id,
+        # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+        "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
         "dry_run": True,
         "station": {"name": "Stacja", "station_type": "inline", "nn_voltage_kv": 0.4},
         "transformer": {"transformer_catalog_ref": CATALOG_TRAFO_630},

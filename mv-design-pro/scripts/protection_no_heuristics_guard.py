@@ -62,10 +62,10 @@ FORBIDDEN_PATTERNS = [
 
 # Lines to skip
 SKIP_LINE_PATTERNS = [
-    re.compile(r"^\s*#"),       # Python comment
-    re.compile(r"^\s*//"),      # JS comment
-    re.compile(r'^\s*"""'),     # Docstring boundary
-    re.compile(r"^\s*'''"),     # Docstring boundary
+    re.compile(r"^\s*#"),  # Python comment
+    re.compile(r"^\s*//"),  # JS comment
+    re.compile(r'^\s*"""'),  # Docstring boundary
+    re.compile(r"^\s*'''"),  # Docstring boundary
 ]
 
 
@@ -108,9 +108,7 @@ def _scan_file(path: Path) -> list[tuple[int, str, str]]:
         for pattern in FORBIDDEN_PATTERNS:
             match = pattern.search(line)
             if match:
-                violations.append(
-                    (line_no, stripped, match.group())
-                )
+                violations.append((line_no, stripped, match.group()))
 
     return violations
 
@@ -139,10 +137,7 @@ def main() -> int:
         )
         return 1
 
-    print(
-        f"protection-no-heuristics-guard: PASS "
-        f"({len(SCAN_FILES)} files scanned)"
-    )
+    print(f"protection-no-heuristics-guard: PASS " f"({len(SCAN_FILES)} files scanned)")
     return 0
 
 

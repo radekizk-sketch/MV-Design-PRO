@@ -46,6 +46,7 @@ export const ZDOLNOSC_STRINGS = {
   kolElement: 'Element wiążący',
   kolWartosc: 'Wartość',
   kolProg: 'Próg',
+  kolDzialania: 'Działania',
   kolIdentyfikatorWezla: 'Identyfikator węzła',
 
   // Kryteria wiążące (kind bez szczegółów)
@@ -68,7 +69,7 @@ export const ZDOLNOSC_STRINGS = {
   sladNiezbiezny: 'Niezbieżny',
 
   // Tryb ekspercki
-  ekspIdentyfikatorSkrot: 'Identyfikator wejścia (hash)',
+  ekspIdentyfikatorSkrot: 'Identyfikator wejścia (skrót)',
   ekspPrzebieg: 'Identyfikator przebiegu',
 
   // Jednostki i wartości puste

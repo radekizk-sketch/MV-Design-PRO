@@ -24,7 +24,7 @@ import {
   isExceedanceSeverity,
   resultLabelLineQuantity,
   resultLabelsHaveExceedances,
-  singleHopSegmentRefs,
+  orientedSegmentRefs,
   type ResultLabelEntry,
   type ResultLabelFilter,
 } from '../resultLabels';
@@ -39,7 +39,7 @@ const CANVAS_WIDTH = 1024;
 const CANVAS_HEIGHT = 640;
 
 const sceneL2 = buildSceneV3(enm, 2);
-const singleHop = singleHopSegmentRefs(enm);
+const singleHop = new Set(orientedSegmentRefs(enm).keys());
 
 const trRef = sceneL2.symbols.find((s) => s.meta?.elementKind === 'transformer' && s.meta?.ownerRef)!.meta!.ownerRef!;
 const sourceRef = sceneL2.symbols.find((s) => s.meta?.elementKind === 'source' && s.meta?.ownerRef)!.meta!.ownerRef!;
@@ -228,14 +228,24 @@ describe('R3 — render: interakcja natywna + progi + pochodzenie (wym.6/7/9)', 
     expect(label).toBeTruthy();
     const ownerRef = label!.getAttribute('data-result-owner-ref');
     const kind = label!.getAttribute('data-result-kind');
-    // KLIK NATYWNY (fireEvent.click = realne zdarzenie w DOM na węźle etykiety),
-    // NIE syntetyczny `dispatchEvent` omijający handler (Zero-Debt pkt 5).
-    fireEvent.click(label!);
+    // KLIK NATYWNY (fireEvent.click = realne zdarzenie w DOM), NIE syntetyczny
+    // `dispatchEvent` omijający handler (Zero-Debt pkt 5). Karta S9-4: celem
+    // zdarzenia jest UCHWYT znacznika w warstwie `sld-v3-trafienia` — ten sam
+    // węzeł, w który trafia mysz użytkownika (rysunek kanwy jest bierny).
+    const uchwyt = container.querySelector(
+      `[data-hit-for="${label!.getAttribute('data-testid')}"][data-hit-role="obrys"]`,
+    );
+    expect(uchwyt, 'etykieta wynikowa ma uchwyt trafienia').toBeTruthy();
+    fireEvent.click(uchwyt!);
     expect(onActivate).toHaveBeenCalledTimes(1);
     expect(onActivate).toHaveBeenCalledWith(ownerRef, kind);
   });
 
   it('wym.6 brak onResultLabelActivate ⇒ etykieta nieklikalna (kanwa czysto-odczytowa, bez role=button)', () => {
+    // Karta S9-4: „nieklikalna" znaczy teraz „uchwyt nie aktywuje panelu" —
+    // sam uchwyt istnieje (obiekt kanwy zawsze da się WSKAZAĆ), ale bez
+    // `onResultLabelActivate` nie ma czego wywołać. Asercja niżej pilnuje, że
+    // węzeł RYSUNKU nie udaje przycisku (brak `role`), co było jej intencją.
     const byRef = buildResultLabelsFromScene(sceneL2, soloSource(), singleHop);
     const overlay: SldV3Overlay = { energizedByTestId: {}, resultLabelsByOwnerRef: byRef };
     const { container } = render(

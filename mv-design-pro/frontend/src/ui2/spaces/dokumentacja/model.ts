@@ -7,7 +7,13 @@
  * Każda karta mapuje na istniejącą zdolność backendu:
  *  - Raport analizy → E-37 (`/analysis-runs/{run_id}/export/report/{pdf,docx,json}`),
  *  - Pakiet dowodowy WHITE BOX → E-36 (`/analysis-runs/{run_id}/export/proof/{pdf,latex,json}`),
- *  - Archiwum projektu (ZIP) → przestrzeń „Projekt" (`/{project_id}/export`, deterministyczny ZIP).
+ *  - Archiwum projektu (ZIP) → okno „Archiwum projektu (ZIP)" przestrzeni
+ *    „Projekt" (`POST /projects/{project_id}/export`, deterministyczny ZIP).
+ *
+ * Reguła kart (po naprawie ślepego zaułka archiwum): cel karty musi kończyć się
+ * AKCJĄ obiecaną etykietą, a nie samym przełączeniem przestrzeni. Karty, które
+ * dotąd tylko przełączały przestrzeń („Otwórz archiwum", „Otwórz kreator OZE"),
+ * niosą teraz jednorazowe żądanie otwarcia właściwego okna/formularza.
  */
 
 import type { WorkspaceSurfaceCode } from '../../../ui/workspace/types';
@@ -25,7 +31,31 @@ export type WymogDokumentu = 'przebieg' | 'projekt';
 export type CelDokumentu =
   | { readonly rodzaj: 'ekran'; readonly ekran: WorkspaceSurfaceCode }
   | { readonly rodzaj: 'przestrzen'; readonly przestrzen: SpaceId }
-  | { readonly rodzaj: 'wyniki-zakladka'; readonly zakladka: string };
+  | { readonly rodzaj: 'wyniki-zakladka'; readonly zakladka: string }
+  /**
+   * Okno WŁASNE przestrzeni Dokumentacji (KD-4, L-15) — generator raportu w ui2
+   * zamiast powierzchni mostu E-37. Most zostaje osiągalny starym adresem, ale
+   * karta huba prowadzi już do okna powłoki.
+   */
+  | { readonly rodzaj: 'okno'; readonly okno: OknoDokumentacji }
+  /**
+   * Okno WŁASNE przestrzeni „Projekt" — archiwum ZIP. Sam wybór przestrzeni
+   * kończył się pulpitem BEZ akcji archiwum (ślepy zaułek etapu E8): karta
+   * niesie teraz jednorazowe żądanie otwarcia okna, jak `wyniki-zakladka`.
+   */
+  | { readonly rodzaj: 'okno-projektu'; readonly okno: OknoProjektu }
+  /**
+   * Formularz operacji domenowej otwierany na kanwie schematu — dokumenty toru
+   * DER-SN powstają w kreatorze OZE, więc karta ma go OTWIERAĆ, a nie tylko
+   * przełączać przestrzeń na kanwę (ta sama klasa ślepego zaułka co archiwum).
+   */
+  | { readonly rodzaj: 'kreator-oze' };
+
+/** Okna własne przestrzeni „Dokumentacja". */
+export type OknoDokumentacji = 'generator-raportu';
+
+/** Okna własne przestrzeni „Projekt" osiągalne z huba dokumentacji. */
+export type OknoProjektu = 'archiwum';
 
 /** Rodzina wizualna karty (ikona + akcent) — recenzja pkt 2/7. */
 export type IkonaDokumentu = 'raport' | 'dowod' | 'archiwum';
@@ -65,7 +95,7 @@ export const GRUPY_DOKUMENTOW: readonly GrupaDokumentow[] = [
         tytul: 'Raport analizy technicznej',
         opis: 'Wyniki i werdykty z zakończonego przebiegu, gotowe do wydruku.',
         wymaga: 'przebieg',
-        cel: { rodzaj: 'ekran', ekran: 'E-37' },
+        cel: { rodzaj: 'okno', okno: 'generator-raportu' },
         ikona: 'raport',
         akcent: 'accent',
         formaty: ['PDF', 'DOCX', 'JSON'],
@@ -115,7 +145,7 @@ export const GRUPY_DOKUMENTOW: readonly GrupaDokumentow[] = [
         tytul: 'Raport zgodności toru DER-SN',
         opis: 'Checklista ✓/⚠/❌ z walidacji doboru i biegu obliczeń po kreatorze OZE.',
         wymaga: 'projekt',
-        cel: { rodzaj: 'przestrzen', przestrzen: 'schemat' },
+        cel: { rodzaj: 'kreator-oze' },
         ikona: 'raport',
         akcent: 'accent',
         formaty: ['JSON'],
@@ -128,7 +158,7 @@ export const GRUPY_DOKUMENTOW: readonly GrupaDokumentow[] = [
         tytul: 'Lista materiałowa toru DER-SN',
         opis: 'Zestawienie zmaterializowanych elementów toru: transformator, kabel, pole, falowniki.',
         wymaga: 'projekt',
-        cel: { rodzaj: 'przestrzen', przestrzen: 'schemat' },
+        cel: { rodzaj: 'kreator-oze' },
         ikona: 'archiwum',
         akcent: 'neutralny',
         formaty: ['JSON'],
@@ -146,7 +176,7 @@ export const GRUPY_DOKUMENTOW: readonly GrupaDokumentow[] = [
         tytul: 'Archiwum projektu (ZIP)',
         opis: 'Wersjonowany zrzut całego projektu do przekazania lub archiwizacji.',
         wymaga: 'projekt',
-        cel: { rodzaj: 'przestrzen', przestrzen: 'projekt' },
+        cel: { rodzaj: 'okno-projektu', okno: 'archiwum' },
         ikona: 'archiwum',
         akcent: 'neutralny',
         formaty: ['ZIP'],

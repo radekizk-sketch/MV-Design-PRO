@@ -42,9 +42,28 @@ export const SLD_MENU_REGISTRY: Readonly<Record<SldElementKindForMenu, readonly 
     { id: 'open-source', labelPl: 'Edytuj główny punkt zasilania', group: 'edycja' },
     { id: 'show-sc-source', labelPl: 'Pokaż dane zwarciowe źródła', group: 'widok' },
     { id: 'add-section', labelPl: 'Dodaj sekcję rozdzielni SN', group: 'budowa' },
+    /* Karta S9-5 (audyt B-4 „dalsza budowa nie ma ścieżki na kanwie"): PIERWSZE
+     * ogniwo budowy ciągu SN. Źródło GPZ jest jedynym obiektem sieci pustej —
+     * bez tych dwóch pozycji projektant nie mógł ruszyć magistrali z rysunku
+     * (pomiar: menu GPZ miało wyłącznie akcje widoku/edycji). Kontekst operacji
+     * jest REALNY i zmierzony: `resolveContinueTrunkOperationContext` dla
+     * `elementType==='Source'` zwraca szynę SN GPZ jako `from_bus_ref` i
+     * `is_first_trunk_segment=true`; `resolveBranchStartOperationContext` — tę
+     * samą szynę jako `from_bus_ref` odgałęzienia. */
+    { id: 'continue-trunk', labelPl: 'Wyprowadź ciąg główny SN', group: 'budowa' },
+    { id: 'start-branch', labelPl: 'Rozpocznij odgałęzienie', group: 'budowa' },
   ],
   section: [
     { id: 'add-bay', labelPl: 'Dodaj pole SN', group: 'budowa' },
+    /* Karta S9-5: szyna sekcji jest punktem, z którego ciąg i odgałęzienie
+     * wychodzą fizycznie — `elementType==='Bus'` jest obsługiwany przez oba
+     * resolvery kontekstu (`continue_trunk_segment_sn`,
+     * `start_branch_segment_sn`), więc pozycje mają realne pokrycie. */
+    { id: 'continue-trunk', labelPl: 'Wyprowadź ciąg główny SN', group: 'budowa' },
+    { id: 'start-branch', labelPl: 'Rozpocznij odgałęzienie', group: 'budowa' },
+    /* K5-A (H-4): wejście do kreatora baterii kondensatorów SN — realna
+     * operacja add_shunt_compensator_sn (bus_ref = kliknięta szyna). */
+    { id: 'add-compensator', labelPl: 'Dodaj kompensator mocy biernej', group: 'budowa' },
     { id: 'show-sc-data', labelPl: 'Pokaż dane zwarciowe źródła', group: 'widok' },
     { id: 'show-readiness', labelPl: 'Pokaż kontrolę konfiguracji', group: 'widok' },
   ],
@@ -54,6 +73,9 @@ export const SLD_MENU_REGISTRY: Readonly<Record<SldElementKindForMenu, readonly 
     { id: 'configure-cts-vts', labelPl: 'Skonfiguruj przekładniki', group: 'edycja' },
     { id: 'configure-protection', labelPl: 'Skonfiguruj zabezpieczenia', group: 'edycja' },
     { id: 'start-branch', labelPl: 'Rozpocznij odgałęzienie', group: 'budowa' },
+    /* K5-A (H-4): ogranicznik przepięć na field_spec pola — realna operacja
+     * add_surge_arrester_sn (field_ref = kliknięte pole). */
+    { id: 'add-arrester', labelPl: 'Dodaj ogranicznik przepięć', group: 'budowa' },
     /* Phase 0B (operator-grade SLD plan v2): Append-on-Endpoint workflow */
     { id: 'append-station-on-endpoint', labelPl: 'Zakończ ciąg w stacji', group: 'budowa' },
     { id: 'set-switch-state', labelPl: 'Zmień stan łącznika', group: 'edycja' },
@@ -68,6 +90,9 @@ export const SLD_MENU_REGISTRY: Readonly<Record<SldElementKindForMenu, readonly 
     { id: 'configure-cts-vts', labelPl: 'Skonfiguruj przekładniki', group: 'edycja' },
     { id: 'configure-protection', labelPl: 'Skonfiguruj zabezpieczenia', group: 'edycja' },
     { id: 'extend-trunk', labelPl: 'Wyprowadź ciąg główny z głowicy', group: 'budowa' },
+    /* K5-A (H-4): aparat sceny niesie ref pola macierzystego (bayRef) —
+     * ta sama operacja add_surge_arrester_sn co z menu pola. */
+    { id: 'add-arrester', labelPl: 'Dodaj ogranicznik przepięć', group: 'budowa' },
     { id: 'show-results', labelPl: 'Pokaż wyniki aparatu', group: 'widok' },
     { id: 'show-rationale', labelPl: 'Pokaż uzasadnienie inżynierskie', group: 'widok' },
   ],
@@ -78,7 +103,14 @@ export const SLD_MENU_REGISTRY: Readonly<Record<SldElementKindForMenu, readonly 
     /* Phase 0C (operator-grade SLD plan v2): świadomy split z preview */
     { id: 'conscious-split-on-segment', labelPl: 'Podziel odcinek (świadomy)', group: 'budowa' },
     { id: 'insert-sectional', labelPl: 'Wstaw łącznik sekcyjny', group: 'budowa' },
-    { id: 'insert-joint', labelPl: 'Wstaw mufę kablową', group: 'budowa' },
+    /* Karta S9-5: pozycja „Wstaw mufę kablową" USUNIĘTA — obietnica bez
+     * dostawcy. `CANONICAL_OPS` backendu nie ma operacji wstawienia mufy, a
+     * `Branch.cable_joints` nie ma edytora na żadnym ekranie (sprawdzone
+     * grepem po całym froncie: pole jest tylko CZYTANE — etykieta „mufa" na
+     * rysunku i symbol `jointSleeve`). Klik dawał wyłącznie komunikat „Etap 4
+     * roadmapy", czyli dokładnie martwą pozycję, którą audyt nazywa gorszą od
+     * jej braku (znalezisko E-1, ta sama klasa). Zdolność wraca do menu
+     * RAZEM z operacją domenową, nie wcześniej. */
     { id: 'change-catalog', labelPl: 'Zmień katalog kabla', group: 'edycja' },
     { id: 'edit-laying', labelPl: 'Edytuj parametry ułożenia', group: 'edycja' },
     { id: 'show-thermal', labelPl: 'Pokaż obciążalność cieplną', group: 'widok' },
@@ -105,6 +137,10 @@ export const SLD_MENU_REGISTRY: Readonly<Record<SldElementKindForMenu, readonly 
     { id: 'start-branch', labelPl: 'Rozpocznij odgałęzienie', group: 'budowa' },
     { id: 'add-source', labelPl: 'Dodaj źródło PV/BESS/FW z katalogu', group: 'budowa' },
     { id: 'add-load', labelPl: 'Dodaj obciążenie nN', group: 'budowa' },
+    /* K5-A (H-4): źródła dyspozycyjne nN stacji — realne operacje
+     * add_genset_nn / add_ups_nn (kreator „Źródło dyspozycyjne nN"). */
+    { id: 'add-genset', labelPl: 'Dodaj agregat prądotwórczy nN', group: 'budowa' },
+    { id: 'add-ups', labelPl: 'Dodaj zasilacz UPS nN', group: 'budowa' },
     { id: 'show-readiness', labelPl: 'Pokaż konfigurację stacji', group: 'widok' },
     { id: 'show-results', labelPl: 'Pokaż wyniki stacji', group: 'widok' },
     { id: 'delete-station', labelPl: 'Usuń stację', group: 'usun' },
@@ -174,9 +210,20 @@ export function getMenuActions(
   context?: {
     readonly bayHasOutgoingRun?: boolean;
     readonly bayIsRunEndpoint?: boolean;  // Phase 0B: czy pole jest endpointem ciągu (free terminal)
-    readonly stationHasFreeBay?: boolean;
+    /** S9-10 (predykaty parami): punkt startu ODGAŁĘZIENIA liczony TYM SAMYM
+     *  resolverem co kreator (`resolveBranchStartAvailability`). Zastępuje
+     *  martwe `stationHasFreeBay` (S9-5: bramka bez żadnego pisarza). */
+    readonly branchStartAvailable?: boolean;
     readonly hasResults?: boolean;
     readonly apparatusKind?: string;
+    /** K5-A: czy stacja ma szynę nN (realne FK substation.bus_refs → bus nN);
+     *  `false` blokuje agregat/UPS z uczciwym powodem, `undefined` = brak danych. */
+    readonly stationHasNnBus?: boolean;
+    /** Karta S9-5: czy rozdzielnia (GPZ / sekcja) ma WOLNE POLE LINIOWE — czyli
+     *  punkt startu ciągu SN (`resolveGpzTrunkStartFieldRef`). `false` blokuje
+     *  „Wyprowadź ciąg główny SN" z uczciwym powodem zamiast otwierać kreator,
+     *  którego nie da się zapisać; `undefined` = brak danych (bez blokady). */
+    readonly trunkStartFieldAvailable?: boolean;
   },
 ): SldMenuAction[] {
   const baseActions = SLD_MENU_REGISTRY[kind];
@@ -206,11 +253,46 @@ export function getMenuActions(
         disabledReasonPl: 'Pole nie jest końcem ciągu. Najpierw wyprowadź ciąg lub wybierz endpoint.',
       };
     }
-    if (a.id === 'start-branch' && kind === 'station' && ctx.stationHasFreeBay === false) {
+    /* K5-A: agregat/UPS przyłączają się do szyny nN stacji — stacja bez szyny
+     * nN (brak bloku nN/transformatora) dostaje uczciwą blokadę zamiast
+     * kreatora bez możliwego zapisu. */
+    if ((a.id === 'add-genset' || a.id === 'add-ups') && kind === 'station' && ctx.stationHasNnBus === false) {
       return {
         ...a,
         disabled: true,
-        disabledReasonPl: 'Brak wolnego pola SN. Najpierw dodaj pole odgałęzienia.',
+        disabledReasonPl: 'Stacja nie ma szyny nN. Najpierw dodaj transformator SN/nN z rozdzielnicą nN.',
+      };
+    }
+    /* Karta S9-5: pozycja budowy MUSI mieć punkt startu. Rozdzielnia bez
+     * wolnego pola liniowego dostaje uczciwą blokadę — kreator magistrali
+     * odmówiłby zapisu (`maStartCiagu`), więc otwarcie go byłoby martwym
+     * klikiem opakowanym w okno. */
+    if (
+      a.id === 'continue-trunk'
+      && (kind === 'gpz' || kind === 'section')
+      && ctx.trunkStartFieldAvailable === false
+    ) {
+      return {
+        ...a,
+        disabled: true,
+        disabledReasonPl:
+          'Brak wolnego pola liniowego SN w tej rozdzielni. Dodaj pole odpływowe albo kontynuuj ciąg z istniejącego odcinka.',
+      };
+    }
+    /* S9-10 (klasa S9-5, predykaty PARAMI): pozycja „Rozpocznij odgałęzienie"
+     * jest bramkowana TYM SAMYM resolverem, którego użyje kreator
+     * (`resolveBranchStartAvailability` — patrz pisarze kontekstu). Pomiar
+     * S9-10: bez tej bramki pozycja była aktywna na KAŻDEJ stacji, źródle GPZ
+     * i szynie sekcji sieci referencyjnej, a kreator otwierał się z „Brak
+     * wskazania źródła" i trwale zablokowanym zapisem. Bramka kind-agnostyczna:
+     * o tym, dla których obiektów policzyć dostępność, decyduje PISARZ
+     * kontekstu (ten sam obiekt = ten sam resolver co formularz). */
+    if (a.id === 'start-branch' && ctx.branchStartAvailable === false) {
+      return {
+        ...a,
+        disabled: true,
+        disabledReasonPl:
+          'Brak wolnego pola odgałęźnego SN (pole roli FEEDER z wolnym zaciskiem). Najpierw dodaj pole odgałęzienia w rozdzielni.',
       };
     }
     if (a.id === 'show-results' && ctx.hasResults === false) {

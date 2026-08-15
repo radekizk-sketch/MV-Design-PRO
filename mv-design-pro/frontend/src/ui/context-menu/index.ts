@@ -1,17 +1,14 @@
 /**
  * Context Menu module exports.
+ *
+ * K5-A: martwa ścieżka menu (EngineeringContextMenu + actionMenuBuilders +
+ * actionRouting + catalogGate) USUNIĘTA — jedyna żywa ścieżka menu SLD to
+ * SLD_MENU_REGISTRY (`sld/v2/command/SldCommandService`) renderowany przez
+ * `SldContextMenuController` z wykonawcą `sld/shared/sldActionExecutor`.
+ * Zdolność bramki katalogowej żyje w `ui/catalog/elementCatalogRegistry`
+ * (`requiresCatalogBinding`) — patrz `useCatalogAssignment`.
  */
 export { ContextMenu } from './ContextMenu';
-
-// Catalog Gate (bramka katalogowa UI)
-export {
-  requiresCatalog,
-  catalogNamespace,
-  catalogNamespaceLabel,
-  resolveCanonicalOperation,
-  checkCatalogGate,
-} from './catalogGate';
-export type { CatalogNamespace, CatalogGateResult } from './catalogGate';
 
 export {
   buildContextMenuActions,
@@ -19,29 +16,3 @@ export {
   buildNetworkModelContextMenu,
   getContextMenuHeader,
 } from './actions';
-
-// Rich Action Menu Builders
-export {
-  buildSourceSNContextMenu,
-  buildBusSNContextMenu,
-  buildStationContextMenu,
-  buildBaySNContextMenu,
-  buildSwitchSNContextMenu,
-  buildTransformerContextMenu,
-  buildBusNNContextMenu,
-  buildFeederNNContextMenu,
-  buildSourceFieldNNContextMenu,
-  buildPVInverterContextMenu,
-  buildBESSInverterContextMenu,
-  buildGensetContextMenu,
-  buildUPSContextMenu,
-  buildLoadNNContextMenu,
-  buildEnergyMeterContextMenu,
-  buildSwitchNNContextMenu,
-  buildSegmentSNContextMenu,
-  buildRelaySNContextMenu,
-  buildMeasurementSNContextMenu,
-  buildNOPContextMenu,
-  buildEnergyStorageContextMenu,
-  ACTION_MENU_MINIMUM_OPTIONS,
-} from './actionMenuBuilders';

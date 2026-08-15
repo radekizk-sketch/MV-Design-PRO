@@ -7,115 +7,90 @@ Endpoints:
     GET /api/cases/{case_id}/diagnostics
     GET /api/cases/{case_id}/diagnostics/preflight
     GET /api/cases/{case_id}/enm/diff
+    GET /api/execution/runs/{run_id}/diagnostics
+
+NAPRAWA MARTWEGO ODCZYTU (karta DIAGNOZA-PRZEBIEGU, D7). Do tej karty WSZYSTKIE
+trasy tego modułu były trwale nieosiągalne: rozwiązywanie modelu wołało metody
+repozytoriów, KTÓRE NIE ISTNIEJĄ — `uow.snapshots.get_by_case_id`,
+`uow.snapshots.get_latest`, `uow.snapshots.get` (repozytorium ma
+`get_snapshot` / `get_latest_snapshot` / `get_latest_snapshot_for_model`,
+`infrastructure/persistence/repositories/snapshot_repository.py:34-61`) oraz
+`uow.study_cases` (jednostka pracy wystawia `cases`,
+`infrastructure/persistence/unit_of_work.py:60`). Każde takie wołanie kończyło
+się `AttributeError`, który połykał blok `except Exception`, więc diagnostyka i
+pre-flight zwracały ZAWSZE 404, a diff ZAWSZE 500 — niezależnie od danych.
+Defekt przetrwał, bo moduł nie miał ANI JEDNEGO testu trasy (były wyłącznie
+testy silnika i diff-a). Model przypadku rozwiązujemy teraz tak, jak robi to
+żywa ścieżka tworzenia biegu (`enm/canonical_analysis.py::create_run`):
+`enm.store.get_enm(case_id)` + `map_enm_to_network_graph`.
 """
 
 from __future__ import annotations
 
 import logging
 from typing import Any
+from uuid import UUID
 
+from application.analyses.diagnoza_przebiegu import zbuduj_diagnoze_dla_biegu
 from diagnostics.diff import compute_enm_diff
 from diagnostics.engine import DiagnosticEngine
 from diagnostics.preflight import build_preflight_from_diagnostic_report
+from enm.mapping import map_enm_to_network_graph
+from enm.store import get_enm
 from fastapi import APIRouter, HTTPException, Query, Request
 from network_model.core.graph import NetworkGraph
-from network_model.core.snapshot import NetworkSnapshot
 
 logger = logging.getLogger("mv_design_pro.api.diagnostics")
 
 router = APIRouter(prefix="/api", tags=["diagnostics"])
 
 
-def _get_graph_for_case(request: Request, case_id: str) -> NetworkGraph:
+def _get_graph_for_case(case_id: str) -> NetworkGraph:
     """
-    Resolve network graph for a given case.
+    Zbuduj graf sieci dla przypadku z BIEŻĄCEGO modelu ENM.
 
-    Attempts to load from UoW (persistence layer).
-    Falls back to in-memory demo graph if UoW is not available.
+    Jedno źródło prawdy wspólne ze ścieżką liczenia: `create_run` bierze model
+    tą samą funkcją `get_enm(case_id)`, więc diagnostyka opisuje dokładnie ten
+    model, który pójdzie do solvera.
     """
-    uow_factory = getattr(request.app.state, "uow_factory", None)
-    if uow_factory is not None:
-        try:
-            with uow_factory() as uow:
-                # Try to load the snapshot for this case
-                snapshot = uow.snapshots.get_by_case_id(case_id)
-                if snapshot is not None:
-                    return snapshot.graph
-                # Try to load the latest project snapshot
-                case = uow.study_cases.get(case_id)
-                if case is not None:
-                    snapshot = uow.snapshots.get_latest(case.project_id)
-                    if snapshot is not None:
-                        return snapshot.graph
-        except Exception as exc:
-            logger.warning(
-                "Nie udało się załadować grafu z UoW dla case_id=%s: %s",
-                case_id,
-                exc,
-            )
-
-    raise HTTPException(
-        status_code=404,
-        detail=f"Nie znaleziono modelu sieci dla przypadku '{case_id}'",
-    )
-
-
-def _get_snapshot_for_case(request: Request, case_id: str) -> NetworkSnapshot:
-    """Resolve network snapshot for a given case."""
-    uow_factory = getattr(request.app.state, "uow_factory", None)
-    if uow_factory is not None:
-        try:
-            with uow_factory() as uow:
-                snapshot = uow.snapshots.get_by_case_id(case_id)
-                if snapshot is not None:
-                    return snapshot
-                case = uow.study_cases.get(case_id)
-                if case is not None:
-                    snapshot = uow.snapshots.get_latest(case.project_id)
-                    if snapshot is not None:
-                        return snapshot
-        except Exception as exc:
-            logger.warning(
-                "Nie udało się załadować snapshotu dla case_id=%s: %s",
-                case_id,
-                exc,
-            )
-
-    raise HTTPException(
-        status_code=404,
-        detail=f"Nie znaleziono snapshotu dla przypadku '{case_id}'",
-    )
+    try:
+        enm = get_enm(case_id)
+    except Exception as exc:
+        logger.warning(
+            "Nie udało się wczytać modelu ENM dla case_id=%s: %s",
+            case_id,
+            exc,
+        )
+        raise HTTPException(
+            status_code=404,
+            detail=f"Nie znaleziono modelu sieci dla przypadku '{case_id}'",
+        ) from exc
+    return map_enm_to_network_graph(enm)
 
 
 @router.get("/cases/{case_id}/diagnostics")
-async def get_diagnostics(
-    case_id: str,
-    request: Request,
-) -> dict[str, Any]:
+def get_diagnostics(case_id: str) -> dict[str, Any]:
     """
     Uruchom diagnostykę inżynierską ENM dla danego przypadku.
 
     Returns:
         DiagnosticReport jako JSON z listą problemów i macierzą analiz.
     """
-    graph = _get_graph_for_case(request, case_id)
+    graph = _get_graph_for_case(case_id)
     engine = DiagnosticEngine()
     report = engine.run(graph)
     return report.to_dict()
 
 
 @router.get("/cases/{case_id}/diagnostics/preflight")
-async def get_preflight(
-    case_id: str,
-    request: Request,
-) -> dict[str, Any]:
+def get_preflight(case_id: str) -> dict[str, Any]:
     """
     Uruchom pre-flight checks — macierz dostępności analiz przed RUN.
 
     Returns:
         PreflightReport jako JSON z tabelą analiz i ich statusami.
     """
-    graph = _get_graph_for_case(request, case_id)
+    graph = _get_graph_for_case(case_id)
     engine = DiagnosticEngine()
     report = engine.run(graph)
     preflight = build_preflight_from_diagnostic_report(report)
@@ -123,7 +98,7 @@ async def get_preflight(
 
 
 @router.get("/cases/{case_id}/enm/diff")
-async def get_enm_diff(
+def get_enm_diff(
     case_id: str,
     request: Request,
     from_snapshot: str = Query(alias="from", description="ID snapshotu źródłowego"),
@@ -145,11 +120,11 @@ async def get_enm_diff(
 
     try:
         with uow_factory() as uow:
-            snap_a = uow.snapshots.get(from_snapshot)
-            snap_b = uow.snapshots.get(to_snapshot)
+            snap_a = uow.snapshots.get_snapshot(from_snapshot)
+            snap_b = uow.snapshots.get_snapshot(to_snapshot)
     except Exception as exc:
         logger.warning("Błąd ładowania snapshotów: %s", exc)
-        raise HTTPException(status_code=500, detail=str(exc))
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
     if snap_a is None:
         raise HTTPException(
@@ -164,3 +139,20 @@ async def get_enm_diff(
 
     diff_report = compute_enm_diff(snap_a, snap_b)
     return diff_report.to_dict()
+
+
+@router.get("/execution/runs/{run_id}/diagnostics")
+def get_run_diagnostics(run_id: UUID) -> dict[str, Any]:
+    """
+    Diagnoza pojedynczego biegu — dlaczego solver nie zbiegł (D7).
+
+    Interpretacja ISTNIEJĄCYCH artefaktów biegu (wynik FROZEN + ślad WHITE BOX).
+    Zero fizyki, zero ponownego liczenia — zbieżność publikuje solver.
+
+    Returns:
+        Kontrakt diagnozy przebiegu (kod diagnozy + dowód liczbowy).
+    """
+    try:
+        return zbuduj_diagnoze_dla_biegu(run_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc

@@ -218,7 +218,7 @@ export function GpzSectionsEditor({ station }: Props) {
             <button
               type="button"
               data-testid={`gpz-section-delete-confirm-yes-${side}-${section.section_id}`}
-              className="rounded border border-red-700 bg-red-900/40 px-2 py-0.5 text-xs text-red-200"
+              className="rounded border border-sygnal-blokada bg-sygnal-blokada-tlo px-2 py-0.5 text-xs text-sygnal-blokada-tusz"
               onClick={confirmDelete}
             >
               Tak
@@ -245,7 +245,7 @@ export function GpzSectionsEditor({ station }: Props) {
             <button
               type="button"
               data-testid={`gpz-section-delete-${side}-${section.section_id}`}
-              className="rounded border border-red-600 px-2 py-0.5 text-xs text-red-300 hover:bg-red-900/30"
+              className="rounded border border-sygnal-blokada px-2 py-0.5 text-xs text-sygnal-blokada-tusz hover:bg-sygnal-blokada-tlo"
               onClick={() => requestDelete(side, section.section_id)}
             >
               Usuń
@@ -339,7 +339,7 @@ export function GpzSectionsEditor({ station }: Props) {
           <button
             type="button"
             data-testid="gpz-sections-editor-submit"
-            className="rounded border border-emerald-700 bg-emerald-900/40 px-3 py-1 text-xs text-emerald-200"
+            className="rounded border border-sygnal-ok bg-sygnal-ok-tlo px-3 py-1 text-xs text-sygnal-ok-tusz"
             onClick={handleSubmit}
           >
             {isEdit ? 'Zapisz' : 'Dodaj'}

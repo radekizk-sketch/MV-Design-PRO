@@ -19,9 +19,7 @@ white_box_trace_path (placeholder dla osobnego pliku).
 from __future__ import annotations
 
 import numpy as np
-from numpy.typing import NDArray
-
-from src.network_model.solvers.stability_rms.contracts import (
+from network_model.solvers.stability_rms.contracts import (
     DisturbanceEvent,
     DynamicModelKind,
     DynamicModelParameters,
@@ -31,6 +29,7 @@ from src.network_model.solvers.stability_rms.contracts import (
     StabilitySolverInput,
     TrajectorySample,
 )
+from numpy.typing import NDArray
 
 # ---------------------------------------------------------------------------
 # State vectors per model kind

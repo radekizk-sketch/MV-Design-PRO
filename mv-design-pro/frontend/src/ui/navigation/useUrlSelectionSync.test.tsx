@@ -183,4 +183,40 @@ describe('useUrlSelectionSync', () => {
     expect(params.get('type')).toBeNull();
     expect(useNetworkBuildStore.getState().activeSurface).toBeNull();
   });
+
+  // K9-A (regresja naprawy): porządkowanie NIEUDANEJ selekcji nie może zamykać
+  // otwartego formularza operacji (kreatora w trakcie pracy). Precedens: wskazanie
+  // niekanoniczne po zapisie źródła OZE składało stos powierzchni i podsumowanie
+  // po zapisie nigdy nie było widoczne w żywej aplikacji.
+  it('does not collapse an open operation form when selection canonicalization fails', async () => {
+    act(() => {
+      window.history.replaceState(null, '', '/#sld');
+      useSelectionStore.getState().clearSelection();
+      useNetworkBuildStore.getState().openOperationForm('add_converter_source', {});
+    });
+
+    act(() => {
+      render(<UrlSelectionSyncProbe />);
+    });
+    expect(useNetworkBuildStore.getState().activeSurface?.routeState.payload?.delegate).toBe(
+      'operation_form',
+    );
+
+    // Selekcja niekanoniczna (elementu nie ma w modelu) przy otwartym kreatorze.
+    act(() => {
+      useSelectionStore.getState().selectElement({
+        id: 'nn/deadbeef/source_field',
+        type: 'BaySN',
+        name: 'Pole PV nN',
+      });
+    });
+
+    await waitFor(() => {
+      expect(useSelectionStore.getState().selectedElement).toBeNull();
+    });
+    // Formularz operacji przeżył porządkowanie selekcji.
+    expect(useNetworkBuildStore.getState().activeSurface?.routeState.payload?.delegate).toBe(
+      'operation_form',
+    );
+  });
 });

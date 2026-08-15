@@ -46,6 +46,23 @@ beforeEach(() => {
   useSnapshotStore.setState({ snapshot: enm });
 });
 
+/** Karta S9-4: uchwyt trafienia obiektu sceny — węzeł warstwy
+ *  `sld-v3-trafienia`, który w przeglądarce faktycznie łapie zdarzenie
+ *  (rysunek kanwy jest bierny, `pointer-events="none"`). Adresowany tym samym
+ *  `testId`, co węzeł rysunku, więc intencja testów zostaje bez zmian. */
+function uchwytTrafienia(container: HTMLElement, testId: string): Element | null {
+  return container.querySelector(`[data-hit-for="${testId}"][data-hit-role="obrys"]`);
+}
+
+/** Uchwyt symbolu po indeksie sceny (testId ze sceny albo fallback indeksowy). */
+function uchwytSymbolu(
+  container: HTMLElement,
+  scene: { readonly symbols: readonly { readonly meta?: { readonly testId?: string } }[] },
+  index: number,
+): Element | null {
+  return uchwytTrafienia(container, scene.symbols[index]?.meta?.testId ?? `sld-v3-symbol-${index}`);
+}
+
 describe('SldCanvasV3Workspace — F8c pkt 2 / F11.4-B: drawer szczegółów (SldDetailDrawer)', () => {
   it('(a) klik w stację otwiera drawer z nazwą stacji (SldDetailDrawer label)', () => {
     const scene = buildSceneV3(enm, 0);
@@ -53,7 +70,7 @@ describe('SldCanvasV3Workspace — F8c pkt 2 / F11.4-B: drawer szczegółów (Sl
     expect(stationIndex).toBeGreaterThanOrEqual(0);
 
     const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
-    const stationGroup = container.querySelector('[data-testid="sld-v3-symbols"]')?.children[stationIndex];
+    const stationGroup = uchwytSymbolu(container, scene, stationIndex);
     fireEvent.click(stationGroup!);
 
     const label = screen.getByTestId('sld-v2-detail-drawer-label');
@@ -65,7 +82,7 @@ describe('SldCanvasV3Workspace — F8c pkt 2 / F11.4-B: drawer szczegółów (Sl
     const scene = buildSceneV3(enm, 0);
     const stationIndex = scene.symbols.findIndex((s) => s.meta?.elementKind === 'station');
     const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
-    const stationGroup = container.querySelector('[data-testid="sld-v3-symbols"]')?.children[stationIndex];
+    const stationGroup = uchwytSymbolu(container, scene, stationIndex);
     fireEvent.click(stationGroup!);
     expect(screen.getByTestId('sld-v2-detail-drawer-label')).toBeTruthy();
 
@@ -75,12 +92,18 @@ describe('SldCanvasV3Workspace — F8c pkt 2 / F11.4-B: drawer szczegółów (Sl
   });
 
   it('(c) klik w transformator otwiera drawer transformatora (F11.4-B: resolveTransformerRefForBayOwner)', () => {
-    const scene = buildSceneV3(enm, 0);
-    const transformerIndex = scene.symbols.findIndex((s) => s.meta?.elementKind === 'transformer');
-    expect(transformerIndex).toBeGreaterThanOrEqual(0);
+    // KD-5: symbol transformatora istnieje od L1 — na L0 stacje są zwinięte do
+    // mini-RMU, a blok GPZ do sylwetki zbiorczej (TR niesie sylwetka). LOD2
+    // wymuszony `lodOverride` — TEN SAM wzorzec co przypadek (e) niżej. Węzeł
+    // szukany po realnym `data-testid` sceny (nie po indeksie dzieci DOM),
+    // żeby test nie zależał od kolejności symboli.
+    const scene = buildSceneV3(enm, 2);
+    const transformer = scene.symbols.find((s) => s.meta?.elementKind === 'transformer');
+    expect(transformer, 'symbol transformatora obecny na L2').toBeTruthy();
 
-    const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
-    const group = container.querySelector('[data-testid="sld-v3-symbols"]')?.children[transformerIndex];
+    const { container } = render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
+    const group = uchwytTrafienia(container, transformer!.meta!.testId!);
+    expect(group).toBeTruthy();
     fireEvent.click(group!);
 
     const label = screen.getByTestId('sld-v2-detail-drawer-label');
@@ -94,7 +117,7 @@ describe('SldCanvasV3Workspace — F8c pkt 2 / F11.4-B: drawer szczegółów (Sl
     expect(apparatusIndex).toBeGreaterThanOrEqual(0);
 
     const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
-    const group = container.querySelector('[data-testid="sld-v3-symbols"]')?.children[apparatusIndex];
+    const group = uchwytSymbolu(container, scene, apparatusIndex);
     fireEvent.click(group!);
 
     const label = screen.getByTestId('sld-v2-detail-drawer-label');
@@ -112,7 +135,7 @@ describe('SldCanvasV3Workspace — F8c pkt 2 / F11.4-B: drawer szczegółów (Sl
     expect(derIndex).toBeGreaterThanOrEqual(0);
 
     const { container } = render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
-    const group = container.querySelector('[data-testid="sld-v3-symbols"]')?.children[derIndex];
+    const group = uchwytSymbolu(container, scene, derIndex);
     expect(() => fireEvent.click(group!)).not.toThrow();
 
     expect(screen.queryByTestId('sld-v2-detail-drawer-label')).toBeNull();

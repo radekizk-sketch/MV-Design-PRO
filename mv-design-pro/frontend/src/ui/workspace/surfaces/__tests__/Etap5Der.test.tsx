@@ -242,7 +242,11 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
             ulv_kv: 0.69,
             uk_percent: 6,
             pk_kw: 12,
-            vector_group: 'Dyn5',
+            // Karta K-Q: grupa polaczen musi istniec w katalogu transformatorow,
+            // inaczej `inferBlockTransformerCatalogRef` slusznie nie znajduje
+            // pozycji (i ekran melduje sam przypisany transformator zamiast
+            // podstawiac cudza pozycje). Typoszereg blokowy to Dyn11.
+            vector_group: 'Dyn11',
           },
         ],
         sources: [],
@@ -296,7 +300,9 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
     const text = screen.getByTestId('pv-source-surface').textContent ?? '';
     expect(text).toContain('PV S02');
     expect(text).toContain('Pakiet katalogowy PV 1000');
-    expect(text).toContain('TR blokowy 15/0,69 kV 1250 kVA Dyn5');
+    // Karta K-Q: grupa polaczen pochodzi teraz z realnego katalogu transformatorow
+    // (Dyn11 typoszeregu blokowego), a nie z recznie wpisanego Dyn5 bez zrodla.
+    expect(text).toContain('TR blokowy 15/0,69 kV 1250 kVA Dyn11');
     expect(text).not.toMatch(/\b250 kVA[\s\S]{0,140}1000 kW|1000 kW[\s\S]{0,140}\b250 kVA/);
   });
 
@@ -383,6 +389,10 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
     expect(screen.getByText(/Falownik wybrany na schemacie/)).toBeInTheDocument();
     expect(screen.getByText(/wymaga przypisania kompletnego pakietu/)).toBeInTheDocument();
     expect(document.body.textContent ?? '').not.toMatch(/brak danych|brak certyfikatu|brak danych katalogowych/i);
+    // Wzorzec MUSI niesc uszkodzone znaki: to asercja pilnujaca, ze mojibake NIE
+    // pojawia sie na ekranie karty DER. Zapis sekwencjami ucieczki zmienilby to,
+    // co asercja porownuje z trescia dokumentu.
+    // mojibake-guard: probka celowa — uszkodzone znaki sa TRESCIA tej asercji
     expect(document.body.textContent ?? '').not.toMatch(/Ĺ|Ä|Ă|Â|â€|�/);
     expect(screen.getByText('Falownik z katalogu')).toBeInTheDocument();
     expect(screen.getByText('Regulacja PV')).toBeInTheDocument();

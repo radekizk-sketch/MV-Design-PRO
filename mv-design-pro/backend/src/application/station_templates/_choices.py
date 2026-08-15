@@ -206,19 +206,60 @@ PROT_GENERATOR_OPTIONS = (
 
 
 # =============================================================================
+# Aparatura pól SN (APARAT_SN) — B-12: szablon WSKAZUJE aparat, nie zgaduje go
+# operacja domenowa. Referencje z katalogu `mv_switch_catalog` (typoszereg 17,5 kV
+# dla sieci 15 kV: wyłączniki VD4/3AH5, rozłączniki NAL/RM6 dla pól liniowych
+# stacji wnętrzowych). Projektant zmienia wybór w kreatorze stacji.
+# =============================================================================
+
+SN_APPARATUS_OPTIONS = (
+    CatalogChoice(
+        "sw-cb-abb-vd4-17kv-630a",
+        "Wyłącznik ABB VD4 17,5 kV 630 A",
+        "APARAT_SN",
+        default=True,
+    ),
+    CatalogChoice(
+        "sw-cb-abb-vd4-17kv-1250a",
+        "Wyłącznik ABB VD4 17,5 kV 1250 A",
+        "APARAT_SN",
+    ),
+    CatalogChoice(
+        "sw-cb-siemens-3ah5-17kv-1250a",
+        "Wyłącznik Siemens 3AH5 17,5 kV 1250 A",
+        "APARAT_SN",
+    ),
+    CatalogChoice(
+        "sw-ls-schneider-rm6-17kv-400a",
+        "Rozłącznik Schneider RM6 17,5 kV 400 A",
+        "APARAT_SN",
+    ),
+    CatalogChoice(
+        "sw-ds-abb-ojs-17kv-630a",
+        "Odłącznik ABB OJS 17,5 kV 630 A",
+        "APARAT_SN",
+    ),
+)
+
+
+# =============================================================================
 # CT/VT options
 # =============================================================================
 
+# Referencje CT/VT MUSZĄ pochodzić z KANONICZNEGO katalogu MV — te same pozycje
+# waliduje brama katalogowa operacji `add_ct`/`add_vt`. Wcześniejsze identyfikatory
+# (`ct-400-5-5p20-15`, `vt-15kv-0.1kv-3p`) nie istniały w żadnym katalogu: szablon
+# proponował pozycje, których model nie przyjmował (fabrykacja wyboru).
 CT_OPTIONS = (
-    CatalogChoice("ct-200-5-5p20-15", "CT 200/5 A, 5P20, 15 kV", "CT"),
-    CatalogChoice("ct-400-5-5p20-15", "CT 400/5 A, 5P20, 15 kV", "CT", default=True),
-    CatalogChoice("ct-600-5-5p20-15", "CT 600/5 A, 5P20, 15 kV", "CT"),
-    CatalogChoice("ct-1000-5-5p20-15", "CT 1000/5 A, 5P20, 15 kV", "CT"),
+    CatalogChoice("ct_200_5_5p10_10va_abb", "CT 200/5 A, 5P10, 10 VA (ABB)", "CT"),
+    CatalogChoice("ct_400_5_5p20_15va_abb", "CT 400/5 A, 5P20, 15 VA (ABB)", "CT", default=True),
+    CatalogChoice("ct_600_5_5p20_15va_schneider", "CT 600/5 A, 5P20, 15 VA (Schneider)", "CT"),
+    CatalogChoice("ct_1000_5_5p20_20va_abb", "CT 1000/5 A, 5P20, 20 VA (ABB)", "CT"),
 )
 
 VT_OPTIONS = (
-    CatalogChoice("vt-15kv-0.1kv-3p", "VT 15 kV / 100 V, 3-phase", "VT", default=True),
-    CatalogChoice("vt-15kv-0.1kv-1p", "VT 15 kV / 100 V, 1-phase", "VT"),
+    CatalogChoice("vt_15kv_100v_3p_abb", "VT 15 kV / 100 V, 3-fazowy (ABB)", "VT", default=True),
+    CatalogChoice("vt_15kv_100v_05_abb", "VT 15 kV / 100 V, kl. 0,5 (ABB)", "VT"),
 )
 
 

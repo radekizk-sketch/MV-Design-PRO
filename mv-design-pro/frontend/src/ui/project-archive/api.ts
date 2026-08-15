@@ -6,7 +6,10 @@
 
 import type { ArchivePreviewResponse, ImportResponse } from './types';
 
-const API_BASE = '/projects';
+// KANON PREFIKSU (karta PREFIKSY): router archiwum stoi pod `/api/projects`.
+// Wczesniej stal pod `/projects` i wymagal wlasnej reguly dev-proxy — bez niej
+// eksport paczki z przegladarki dostawal HTML serwera statycznego zamiast ZIP-a.
+const API_BASE = '/api/projects';
 
 // =============================================================================
 // Export

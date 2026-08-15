@@ -26,12 +26,26 @@ export interface DxfTextEntity {
   readonly text: string;
   readonly height?: number;
   readonly layer?: string;
+  /** S9-6: wyrównanie poziome (`text-anchor` sceny). Brak = do lewej —
+   *  zachowanie sprzed karty dla dotychczasowych wołających. */
+  readonly align?: 'left' | 'center' | 'right';
+}
+
+/** S9-6 (audyt E-2): okrąg — scena v3 rysuje nim m.in. węzły rozgałęzień i
+ *  glify aparatów, więc bez tej encji eksport CAD gubiłby część rysunku. */
+export interface DxfCircleEntity {
+  readonly cx: number;
+  readonly cy: number;
+  readonly r: number;
+  readonly layer?: string;
 }
 
 export interface DxfExportInput {
   readonly title: string;
   readonly lines: readonly DxfLineEntity[];
   readonly texts: readonly DxfTextEntity[];
+  /** Brak = zero okręgów (zgodność wstecz z wołającymi sprzed S9-6). */
+  readonly circles?: readonly DxfCircleEntity[];
 }
 
 /**
@@ -62,17 +76,29 @@ export function generateDxf(input: DxfExportInput): string {
   push(0, 'ENDSEC');
 
   // TABLES section (layers)
+  // S9-6: tablica warstw deklaruje KAŻDĄ warstwę użytą przez encje (dawniej
+  // wyłącznie '0' — encja na warstwie niezadeklarowanej jest dla części
+  // czytników DXF błędem struktury, a dla reszty cichym auto-utworzeniem).
+  const usedLayers = Array.from(
+    new Set<string>([
+      '0',
+      ...input.lines.map((l) => l.layer ?? '0'),
+      ...input.texts.map((t) => t.layer ?? '0'),
+      ...(input.circles ?? []).map((c) => c.layer ?? '0'),
+    ]),
+  ).sort();
   push(0, 'SECTION');
   push(2, 'TABLES');
   push(0, 'TABLE');
   push(2, 'LAYER');
-  push(70, 1);
-  // Layer 0 - default
-  push(0, 'LAYER');
-  push(2, '0');
-  push(70, 0);
-  push(62, 7); // white
-  push(6, 'CONTINUOUS');
+  push(70, usedLayers.length);
+  for (const layer of usedLayers) {
+    push(0, 'LAYER');
+    push(2, layer);
+    push(70, 0);
+    push(62, 7); // white
+    push(6, 'CONTINUOUS');
+  }
   push(0, 'ENDTAB');
   push(0, 'ENDSEC');
 
@@ -92,6 +118,16 @@ export function generateDxf(input: DxfExportInput): string {
     push(31, 0);
   }
 
+  // CIRCLE entities (S9-6)
+  for (const circle of input.circles ?? []) {
+    push(0, 'CIRCLE');
+    push(8, circle.layer ?? '0');
+    push(10, circle.cx);
+    push(20, -circle.cy); // ta sama konwersja osi Y co LINE
+    push(30, 0);
+    push(40, circle.r);
+  }
+
   // TEXT entities
   for (const text of input.texts) {
     push(0, 'TEXT');
@@ -101,6 +137,15 @@ export function generateDxf(input: DxfExportInput): string {
     push(30, 0);
     push(40, text.height ?? 12);
     push(1, text.text);
+    // S9-6: wyrównanie poziome — grupa 72 (0 lewo / 1 środek / 2 prawo).
+    // Dla wyrównania innego niż lewe DXF wymaga punktu dopasowania (11/21),
+    // inaczej czytnik ignoruje kod 72 i tekst wraca do lewej.
+    if (text.align === 'center' || text.align === 'right') {
+      push(72, text.align === 'center' ? 1 : 2);
+      push(11, text.x);
+      push(21, -text.y);
+      push(31, 0);
+    }
   }
 
   push(0, 'ENDSEC');

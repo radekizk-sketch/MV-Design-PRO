@@ -12,6 +12,8 @@ import textwrap
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from network_model.reporting.czcionki import zarejestruj_czcionki
+
 if TYPE_CHECKING:
     from network_model.solvers.short_circuit_iec60909 import ShortCircuitResult
 
@@ -121,7 +123,8 @@ def export_short_circuit_result_to_pdf(
         raise ValueError(f"result.to_dict() must return a dict, got {type(data).__name__}")
 
     # Create PDF canvas
-    c = canvas.Canvas(str(output_path), pagesize=A4)
+    zarejestruj_czcionki()
+    c = canvas.Canvas(str(output_path), pagesize=A4, invariant=1, pageCompression=0)
     page_width, page_height = A4
 
     # Margins and layout
@@ -145,7 +148,7 @@ def export_short_circuit_result_to_pdf(
     def draw_text(text: str, x: float, font_size: int = 10, bold: bool = False) -> None:
         """Draw text at current y position and move y down."""
         nonlocal y
-        font_name = "Helvetica-Bold" if bold else "Helvetica"
+        font_name = "DejaVuSans-Bold" if bold else "DejaVuSans"
         c.setFont(font_name, font_size)
         c.drawString(x, y, text)
         y -= line_height
@@ -153,13 +156,13 @@ def export_short_circuit_result_to_pdf(
     def draw_wrapped_text(text: str, x: float, max_width: float, font_size: int = 10) -> None:
         """Draw text with wrapping at current y position."""
         nonlocal y
-        c.setFont("Helvetica", font_size)
+        c.setFont("DejaVuSans", font_size)
         # Simple word wrap
         words = text.split()
         current_line = ""
         for word in words:
             test_line = f"{current_line} {word}".strip()
-            if c.stringWidth(test_line, "Helvetica", font_size) < max_width:
+            if c.stringWidth(test_line, "DejaVuSans", font_size) < max_width:
                 current_line = test_line
             else:
                 if current_line:
@@ -174,13 +177,13 @@ def export_short_circuit_result_to_pdf(
 
     # 1) Title
     report_title = title if title else "Raport zwarciowy IEC 60909"
-    c.setFont("Helvetica-Bold", 16)
-    title_width = c.stringWidth(report_title, "Helvetica-Bold", 16)
+    c.setFont("DejaVuSans-Bold", 16)
+    title_width = c.stringWidth(report_title, "DejaVuSans-Bold", 16)
     c.drawString((page_width - title_width) / 2, y, report_title)
     y -= 10 * mm
 
     # 2) Fault parameters (metryka)
-    c.setFont("Helvetica", 10)
+    c.setFont("DejaVuSans", 10)
     params = [
         f"Typ zwarcia: {data.get('short_circuit_type', '—')}",
         f"Węzeł: {data.get('fault_node_id', '—')}",
@@ -190,7 +193,7 @@ def export_short_circuit_result_to_pdf(
         f"tb: {_format_value(data.get('tb_s'))} s",
     ]
     params_text = " | ".join(params)
-    params_width = c.stringWidth(params_text, "Helvetica", 10)
+    params_width = c.stringWidth(params_text, "DejaVuSans", 10)
     if params_width > (right_margin - left_margin):
         # Split params across lines if too wide
         for param in params:
@@ -237,7 +240,7 @@ def export_short_circuit_result_to_pdf(
 
     for label, key in result_fields:
         y = check_page_break(line_height)
-        c.setFont("Helvetica", 10)
+        c.setFont("DejaVuSans", 10)
         c.drawString(label_x, y, label)
         c.drawString(value_x, y, _format_value(data.get(key)))
         y -= line_height
@@ -254,7 +257,7 @@ def export_short_circuit_result_to_pdf(
 
         if not white_box_trace:
             y = check_page_break(line_height)
-            c.setFont("Helvetica-Oblique", 10)
+            c.setFont("DejaVuSans-Oblique", 10)
             c.drawString(left_margin, y, "Brak śladu obliczeń.")
             y -= line_height
         else:
@@ -311,7 +314,7 @@ def _add_white_box_step(
         font_size: int,
     ) -> float:
         nonlocal y
-        c.setFont("Helvetica", font_size)
+        c.setFont("DejaVuSans", font_size)
         approx_char_width = max(font_size * 0.55, 1.0)
         max_chars = max(1, int(max_width_value / approx_char_width))
         lines = textwrap.wrap(
@@ -335,14 +338,14 @@ def _add_white_box_step(
     # Step header
     header_text = f"{step_key}: {step_title}" if step_title else step_key
     y = check_page_break(20 * mm)
-    c.setFont("Helvetica-Bold", 11)
+    c.setFont("DejaVuSans-Bold", 11)
     c.drawString(left_margin, y, header_text)
     y -= line_height + 2 * mm
 
     # Formula
     formula = step.get("formula_latex", "")
     if formula:
-        c.setFont("Helvetica-Bold", 10)
+        c.setFont("DejaVuSans-Bold", 10)
         c.drawString(left_margin, y, "Wzór:")
         y -= line_height
         y = draw_wrapped_lines(str(formula), left_margin + 10 * mm, y, max_width - 10 * mm, 9)
@@ -352,10 +355,10 @@ def _add_white_box_step(
     inputs = step.get("inputs", {})
     if inputs and isinstance(inputs, dict):
         y = check_page_break(line_height * (len(inputs) + 2))
-        c.setFont("Helvetica-Bold", 10)
+        c.setFont("DejaVuSans-Bold", 10)
         c.drawString(left_margin, y, "Dane wejściowe:")
         y -= line_height
-        c.setFont("Helvetica", 9)
+        c.setFont("DejaVuSans", 9)
         for k, v in inputs.items():
             y = check_page_break(line_height)
             c.drawString(left_margin + 5 * mm, y, f"• {k}: {_format_value(v)}")
@@ -364,10 +367,10 @@ def _add_white_box_step(
     # Substitution
     substitution = step.get("substitution_latex") or step.get("substitution", "")
     if substitution:
-        c.setFont("Helvetica-Bold", 10)
+        c.setFont("DejaVuSans-Bold", 10)
         c.drawString(left_margin, y, "Podstawienie:")
         y -= line_height
-        c.setFont("Helvetica", 9)
+        c.setFont("DejaVuSans", 9)
         _draw_wrapped_line(c, str(substitution), left_margin + 5 * mm, y, max_width - 5 * mm, 9)
         y -= line_height
 
@@ -375,10 +378,10 @@ def _add_white_box_step(
     result_data = step.get("result", {})
     if result_data and isinstance(result_data, dict):
         y = check_page_break(line_height * (len(result_data) + 2))
-        c.setFont("Helvetica-Bold", 10)
+        c.setFont("DejaVuSans-Bold", 10)
         c.drawString(left_margin, y, "Wynik:")
         y -= line_height
-        c.setFont("Helvetica", 9)
+        c.setFont("DejaVuSans", 9)
         for k, v in result_data.items():
             y = check_page_break(line_height)
             c.drawString(left_margin + 5 * mm, y, f"• {k}: {_format_value(v)}")
@@ -388,10 +391,10 @@ def _add_white_box_step(
     notes = step.get("notes")
     if notes:
         y = check_page_break(line_height * 2)
-        c.setFont("Helvetica-Bold", 10)
+        c.setFont("DejaVuSans-Bold", 10)
         c.drawString(left_margin, y, "Uwagi:")
         y -= line_height
-        c.setFont("Helvetica", 9)
+        c.setFont("DejaVuSans", 9)
         c.drawString(left_margin + 5 * mm, y, str(notes))
         y -= line_height
 
@@ -407,10 +410,10 @@ def _draw_wrapped_line(
     font_size: int,
 ) -> None:
     """Draw a single line of text, truncating if too long."""
-    c.setFont("Helvetica", font_size)
-    if c.stringWidth(text, "Helvetica", font_size) > max_width:
+    c.setFont("DejaVuSans", font_size)
+    if c.stringWidth(text, "DejaVuSans", font_size) > max_width:
         # Truncate with ellipsis
-        while c.stringWidth(text + "...", "Helvetica", font_size) > max_width and len(text) > 0:
+        while c.stringWidth(text + "...", "DejaVuSans", font_size) > max_width and len(text) > 0:
             text = text[:-1]
         text = text + "..."
     c.drawString(x, y, text)

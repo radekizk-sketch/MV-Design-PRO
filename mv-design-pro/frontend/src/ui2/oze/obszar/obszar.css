@@ -216,3 +216,38 @@
   color: var(--mvd-muted);
   margin: 6px 0 4px;
 }
+
+/* K5-B (H-3 pkt 3): sekcja zapisu ograniczeń Q generatora */
+.mvd-obszar-limity {
+  margin-top: 16px;
+  padding: 12px 16px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mvd-obszar-limity-tytul {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.mvd-obszar-limity-opis {
+  margin: 0;
+  color: var(--mvd-muted);
+  font-size: 12px;
+}
+
+.mvd-obszar-limity-brak {
+  margin: 0;
+  color: var(--mvd-muted);
+  font-size: 12.5px;
+}
+
+.mvd-obszar-limity-blad {
+  margin: 0;
+  color: var(--mvd-err);
+  font-size: 12.5px;
+}

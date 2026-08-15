@@ -1,53 +1,127 @@
 """
-XLSX Network Importer — Import sieci SN z arkuszy Excel
+Import sieci SN z arkusza XLSX — ODCZYT I WALIDACJA (bez zapisu do bazy).
 
 Format arkusza (uzgodniony z operatorami sieci):
-- Arkusz "Szyny": id, nazwa, napięcie_kV
-- Arkusz "Linie": id, szyna_pocz, szyna_kon, typ, dlugość_km, R_ohm_km, X_ohm_km, B_uS_km
-- Arkusz "Trafo": id, szyna_HV, szyna_LV, Sn_MVA, uk_pct, Pk_kW, grupa
-- Arkusz "Źródła": id, szyna, typ, Sk_MVA, RX_ratio
-- Arkusz "Odbiory": id, szyna, P_MW, Q_Mvar
+- Arkusz "Szyny"    (wymagany):  id, nazwa, napięcie_kV
+- Arkusz "Linie"    (wymagany):  id, szyna_pocz, szyna_kon, typ, długość_km,
+                                 R_ohm_km, X_ohm_km [opcjonalnie: B_uS_km, typ_katalogowy]
+- Arkusz "Trafo"    (opcjonalny): id, szyna_HV, szyna_LV, Sn_MVA, uk_pct [opc.: Pk_kW, grupa]
+- Arkusz "Źródła"   (opcjonalny): id, szyna, typ, Sk_MVA, RX_ratio
+- Arkusz "Odbiory"  (opcjonalny): id, szyna, P_MW, Q_Mvar
 
-PRINCIPLES:
-- Validates all data before creating network
-- Polish error messages for user display
-- Returns structured validation report
-- Creates NetworkGraph compatible with existing solvers
+ZASADY (naprawa karty XLSX-IMPORT, 2026-08-07):
+- ZERO FIZYKI. Ten moduł NIE liczy zadnej wielkosci elektrycznej. Dane zrodla
+  (Sk'', R/X) trafiaja do modelu jako DANE WEJSCIOWE w kanonicznym ksztalcie
+  (`model`/`sk3_mva`/`rx_ratio` — jak w kreatorze sieci); impedancje zastepcza
+  liczy warstwa solverowa. Stan PRZED: importer sam liczyl Z = Un²/Sk'' i R/X,
+  po czym wpisywal wynik w DYNAMICZNY atrybut `node.source_impedance`, ktorego
+  NIKT w systemie nie czytal (fizyka w warstwie aplikacji + martwa dana).
+- ZERO ZGADYWANIA. Nazwa handlowa z arkusza (kolumna `typ`) NIE jest dopasowywana
+  do katalogu po podobienstwie — wiazanie katalogowe powstaje wylacznie z jawnej
+  kolumny `typ_katalogowy` (identyfikator typu). Brak wiazania nie jest bledem:
+  element trafia do BRAMKI KATALOGOWEJ (jak przy imporcie archiwum ZIP), a
+  projektant domapowuje typ w katalogu.
+- ZERO WARTOSCI FIKCYJNYCH. Stan PRZED wpisywal `rated_current_a=1.0` z komentarzem
+  „placeholder"; teraz obciazalnosc pochodzi WYLACZNIE z typu katalogowego, a jej
+  brak zostaje brakiem (0.0 = wielkosc nieznana, kryterium niesprawdzalne).
+- Bledy sa strukturalne (arkusz/wiersz/kolumna/komunikat) — front pokazuje je
+  przy wierszu, bez parsowania arkusza w przegladarce.
 """
 
 from __future__ import annotations
 
 import io
-import math
 from dataclasses import dataclass, field
 from typing import Any
 
-from network_model.core.branch import BranchType, LineBranch, TransformerBranch
-from network_model.core.graph import NetworkGraph
-from network_model.core.node import Node, NodeType
+from network_model.catalog.governance import wymaga_referencji_katalogowej
+from network_model.catalog.repository import CatalogRepository, get_default_mv_catalog
+from network_model.core.branch import BranchType
+
+# Nazwy arkuszy i kolumn — jedyne zrodlo prawdy formatu (uzywane tez przez API/dokumentacje).
+ARKUSZ_SZYNY = "Szyny"
+ARKUSZ_LINIE = "Linie"
+ARKUSZ_TRAFO = "Trafo"
+ARKUSZ_ZRODLA = "Źródła"
+ARKUSZ_ODBIORY = "Odbiory"
+
+ARKUSZE_WYMAGANE: tuple[str, ...] = (ARKUSZ_SZYNY, ARKUSZ_LINIE)
+ARKUSZE_OPCJONALNE: tuple[str, ...] = (ARKUSZ_TRAFO, ARKUSZ_ZRODLA, ARKUSZ_ODBIORY)
 
 
 class XlsxValidationError(Exception):
-    """Validation error during XLSX import."""
+    """Blad walidacji importu XLSX."""
 
     def __init__(self, errors: list[str]):
         self.errors = errors
         super().__init__(f"Błędy walidacji importu XLSX: {len(errors)} błędów")
 
 
+@dataclass(frozen=True)
+class BladArkusza:
+    """Pojedyncze zastrzezenie do zawartosci arkusza.
+
+    `wiersz` = None oznacza zastrzezenie do calego arkusza (np. brak kolumny),
+    `kolumna` = None oznacza zastrzezenie do calego wiersza (np. brak szyny docelowej).
+    """
+
+    arkusz: str
+    komunikat: str
+    wiersz: int | None = None
+    kolumna: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "arkusz": self.arkusz,
+            "wiersz": self.wiersz,
+            "kolumna": self.kolumna,
+            "komunikat": self.komunikat,
+        }
+
+    def jako_tekst(self) -> str:
+        czesci = [f"Arkusz '{self.arkusz}'"]
+        if self.wiersz is not None:
+            czesci.append(f"wiersz {self.wiersz}")
+        if self.kolumna is not None:
+            czesci.append(f"kolumna '{self.kolumna}'")
+        return f"{', '.join(czesci)}: {self.komunikat}"
+
+
+@dataclass(frozen=True)
+class SiecZArkusza:
+    """Zawartosc arkusza przelozona na kanoniczne rekordy modelu (bez zapisu).
+
+    Rekordy maja ksztalt kanoniczny warstwy trwalosci (`network_nodes`,
+    `network_branches`, `network_sources`, `network_loads`), zeby zapis byl
+    czystym przepisaniem, bez drugiego tlumaczenia danych.
+    """
+
+    wezly: list[dict[str, Any]] = field(default_factory=list)
+    galezie: list[dict[str, Any]] = field(default_factory=list)
+    zrodla: list[dict[str, Any]] = field(default_factory=list)
+    odbiory: list[dict[str, Any]] = field(default_factory=list)
+
+
 @dataclass
 class XlsxImportResult:
-    """Result of XLSX import operation."""
+    """Wynik odczytu arkusza (bez zapisu do bazy)."""
 
     success: bool
-    graph: NetworkGraph | None
+    siec: SiecZArkusza | None = None
     bus_count: int = 0
     branch_count: int = 0
     source_count: int = 0
     load_count: int = 0
     trafo_count: int = 0
     warnings: list[str] = field(default_factory=list)
-    errors: list[str] = field(default_factory=list)
+    bledy: list[BladArkusza] = field(default_factory=list)
+    elementy_bez_katalogu: list[str] = field(default_factory=list)
+    mapowanie_katalogowe_wymagane: bool = False
+
+    @property
+    def errors(self) -> list[str]:
+        """Bledy jako plaskie komunikaty (zgodnosc z dotychczasowym kontraktem API)."""
+        return [blad.jako_tekst() for blad in self.bledy]
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -59,26 +133,27 @@ class XlsxImportResult:
             "trafo_count": self.trafo_count,
             "warnings": self.warnings,
             "errors": self.errors,
+            "bledy": [blad.to_dict() for blad in self.bledy],
+            "elementy_bez_katalogu": self.elementy_bez_katalogu,
+            "mapowanie_katalogowe_wymagane": self.mapowanie_katalogowe_wymagane,
         }
 
 
 class XlsxNetworkImporter:
-    """
-    Importer sieci SN z arkuszy Excel.
+    """Odczyt sieci SN z arkusza Excel.
 
-    Usage:
+    Uzycie:
         importer = XlsxNetworkImporter()
-        result = importer.import_from_bytes(xlsx_bytes)
-        if result.success:
-            graph = result.graph
+        wynik = importer.import_from_bytes(xlsx_bytes)
+        if wynik.success:
+            siec = wynik.siec  # rekordy do zapisu przez XlsxImportService
     """
 
-    REQUIRED_SHEETS = {"Szyny", "Linie"}
-    OPTIONAL_SHEETS = {"Trafo", "Źródła", "Odbiory"}
+    REQUIRED_SHEETS = set(ARKUSZE_WYMAGANE)
+    OPTIONAL_SHEETS = set(ARKUSZE_OPCJONALNE)
 
-    # Column mappings for each sheet
-    BUS_COLUMNS = {"id": str, "nazwa": str, "napięcie_kV": float}
-    LINE_COLUMNS = {
+    BUS_COLUMNS: dict[str, type] = {"id": str, "nazwa": str, "napięcie_kV": float}
+    LINE_COLUMNS: dict[str, type] = {
         "id": str,
         "szyna_pocz": str,
         "szyna_kon": str,
@@ -87,405 +162,616 @@ class XlsxNetworkImporter:
         "R_ohm_km": float,
         "X_ohm_km": float,
     }
-    TRAFO_COLUMNS = {
+    LINE_OPTIONAL_COLUMNS: dict[str, type] = {"B_uS_km": float, "typ_katalogowy": str}
+    TRAFO_COLUMNS: dict[str, type] = {
         "id": str,
         "szyna_HV": str,
         "szyna_LV": str,
         "Sn_MVA": float,
         "uk_pct": float,
     }
-    SOURCE_COLUMNS = {
+    TRAFO_OPTIONAL_COLUMNS: dict[str, type] = {"Pk_kW": float, "grupa": str}
+    SOURCE_COLUMNS: dict[str, type] = {
         "id": str,
         "szyna": str,
         "typ": str,
         "Sk_MVA": float,
         "RX_ratio": float,
     }
-    LOAD_COLUMNS = {
+    LOAD_COLUMNS: dict[str, type] = {
         "id": str,
         "szyna": str,
         "P_MW": float,
         "Q_Mvar": float,
     }
 
+    def __init__(self, catalog: CatalogRepository | None = None) -> None:
+        self._catalog = catalog
+
+    def _katalog(self) -> CatalogRepository:
+        if self._catalog is None:
+            self._catalog = get_default_mv_catalog()
+        return self._catalog
+
+    # ------------------------------------------------------------------
+    # Wejscie glowne
+    # ------------------------------------------------------------------
+
     def import_from_bytes(self, data: bytes) -> XlsxImportResult:
-        """Import network from XLSX file bytes."""
-        try:
-            import openpyxl
-        except ImportError:
-            return XlsxImportResult(
-                success=False,
-                graph=None,
-                errors=["Brak biblioteki openpyxl — zainstaluj: pip install openpyxl"],
-            )
+        """Odczytaj siec z bajtow pliku XLSX."""
+        import openpyxl  # zaleznosc glowna (pyproject) — brak = blad srodowiska, nie danych
 
         try:
             wb = openpyxl.load_workbook(io.BytesIO(data), read_only=True, data_only=True)
         except Exception as e:
             return XlsxImportResult(
                 success=False,
-                graph=None,
-                errors=[f"Nie można otworzyć pliku XLSX: {e}"],
+                bledy=[
+                    BladArkusza(
+                        arkusz="—",
+                        komunikat=(
+                            "Nie można otworzyć pliku jako arkusza XLSX "
+                            f"(plik uszkodzony lub w innym formacie): {e}"
+                        ),
+                    )
+                ],
             )
 
-        errors: list[str] = []
-        warnings: list[str] = []
+        try:
+            bledy: list[BladArkusza] = []
+            ostrzezenia: list[str] = []
 
-        # Check required sheets
-        sheet_names = set(wb.sheetnames)
-        for req in self.REQUIRED_SHEETS:
-            if req not in sheet_names:
-                errors.append(f"Brak wymaganego arkusza: '{req}'")
+            nazwy_arkuszy = set(wb.sheetnames)
+            for wymagany in ARKUSZE_WYMAGANE:
+                if wymagany not in nazwy_arkuszy:
+                    bledy.append(
+                        BladArkusza(
+                            arkusz=wymagany,
+                            komunikat="Brak wymaganego arkusza w pliku",
+                        )
+                    )
+            if bledy:
+                return XlsxImportResult(success=False, bledy=bledy)
 
-        if errors:
-            return XlsxImportResult(success=False, graph=None, errors=errors)
-
-        # Parse sheets
-        buses = self._parse_sheet(wb["Szyny"], self.BUS_COLUMNS, "Szyny", errors)
-        lines = self._parse_sheet(wb["Linie"], self.LINE_COLUMNS, "Linie", errors)
-
-        trafos: list[dict[str, Any]] = []
-        if "Trafo" in sheet_names:
-            trafos = self._parse_sheet(wb["Trafo"], self.TRAFO_COLUMNS, "Trafo", errors)
-
-        sources: list[dict[str, Any]] = []
-        if "Źródła" in sheet_names:
-            sources = self._parse_sheet(wb["Źródła"], self.SOURCE_COLUMNS, "Źródła", errors)
-
-        loads: list[dict[str, Any]] = []
-        if "Odbiory" in sheet_names:
-            loads = self._parse_sheet(wb["Odbiory"], self.LOAD_COLUMNS, "Odbiory", errors)
-
-        if errors:
-            return XlsxImportResult(success=False, graph=None, errors=errors)
-
-        # Validate cross-references
-        bus_ids = {b["id"] for b in buses}
-
-        for i, line in enumerate(lines):
-            if line["szyna_pocz"] not in bus_ids:
-                errors.append(
-                    f"Linie wiersz {i + 2}: szyna_pocz '{line['szyna_pocz']}' "
-                    f"nie istnieje w arkuszu Szyny"
+            # RAPORT ZBIORCZY: parsowanie NIE przerywa pracy przy pierwszym potknieciu.
+            # Wiersz z bledna komorka jest pomijany, ale pozostale wiersze i pozostale
+            # arkusze sa czytane dalej, a walidacje krzyzowe biegna na tym, co sie
+            # odczytalo. Inaczej projektant poprawia arkusz w ping-pongu: jeden blad na
+            # wyslanie. Przerwanie zostaje TYLKO dla braku arkusza/kolumny — bez kolumny
+            # nie ma czego walidowac.
+            struktura_ok = True
+            szyny, ok = self._parse_sheet(
+                wb[ARKUSZ_SZYNY], self.BUS_COLUMNS, {}, ARKUSZ_SZYNY, bledy
+            )
+            struktura_ok &= ok
+            linie, ok = self._parse_sheet(
+                wb[ARKUSZ_LINIE],
+                self.LINE_COLUMNS,
+                self.LINE_OPTIONAL_COLUMNS,
+                ARKUSZ_LINIE,
+                bledy,
+            )
+            struktura_ok &= ok
+            trafo: list[dict[str, Any]] = []
+            if ARKUSZ_TRAFO in nazwy_arkuszy:
+                trafo, ok = self._parse_sheet(
+                    wb[ARKUSZ_TRAFO],
+                    self.TRAFO_COLUMNS,
+                    self.TRAFO_OPTIONAL_COLUMNS,
+                    ARKUSZ_TRAFO,
+                    bledy,
                 )
-            if line["szyna_kon"] not in bus_ids:
-                errors.append(
-                    f"Linie wiersz {i + 2}: szyna_kon '{line['szyna_kon']}' "
-                    f"nie istnieje w arkuszu Szyny"
+                struktura_ok &= ok
+            zrodla: list[dict[str, Any]] = []
+            if ARKUSZ_ZRODLA in nazwy_arkuszy:
+                zrodla, ok = self._parse_sheet(
+                    wb[ARKUSZ_ZRODLA], self.SOURCE_COLUMNS, {}, ARKUSZ_ZRODLA, bledy
                 )
-
-        for i, trafo in enumerate(trafos):
-            if trafo["szyna_HV"] not in bus_ids:
-                errors.append(
-                    f"Trafo wiersz {i + 2}: szyna_HV '{trafo['szyna_HV']}' "
-                    f"nie istnieje w arkuszu Szyny"
+                struktura_ok &= ok
+            odbiory: list[dict[str, Any]] = []
+            if ARKUSZ_ODBIORY in nazwy_arkuszy:
+                odbiory, ok = self._parse_sheet(
+                    wb[ARKUSZ_ODBIORY], self.LOAD_COLUMNS, {}, ARKUSZ_ODBIORY, bledy
                 )
-            if trafo["szyna_LV"] not in bus_ids:
-                errors.append(
-                    f"Trafo wiersz {i + 2}: szyna_LV '{trafo['szyna_LV']}' "
-                    f"nie istnieje w arkuszu Szyny"
-                )
+                struktura_ok &= ok
+        finally:
+            wb.close()
 
-        for i, src in enumerate(sources):
-            if src["szyna"] not in bus_ids:
-                errors.append(
-                    f"Źródła wiersz {i + 2}: szyna '{src['szyna']}' "
-                    f"nie istnieje w arkuszu Szyny"
-                )
+        if not struktura_ok:
+            return XlsxImportResult(success=False, bledy=bledy)
 
-        for i, load in enumerate(loads):
-            if load["szyna"] not in bus_ids:
-                errors.append(
-                    f"Odbiory wiersz {i + 2}: szyna '{load['szyna']}' "
-                    f"nie istnieje w arkuszu Szyny"
-                )
+        bledy.extend(self._waliduj_powiazania(szyny, linie, trafo, zrodla, odbiory))
+        bledy.extend(self._waliduj_wartosci(szyny, linie, trafo, zrodla))
+        bledy.extend(self._waliduj_typy_katalogowe(linie))
 
-        # Check for duplicate IDs
-        all_bus_ids = [b["id"] for b in buses]
-        if len(all_bus_ids) != len(set(all_bus_ids)):
-            errors.append("Duplikaty ID w arkuszu Szyny")
+        if bledy:
+            return XlsxImportResult(success=False, bledy=bledy)
 
-        all_line_ids = [line["id"] for line in lines]
-        if len(all_line_ids) != len(set(all_line_ids)):
-            errors.append("Duplikaty ID w arkuszu Linie")
-
-        # Validate numeric values
-        for i, bus in enumerate(buses):
-            if bus["napięcie_kV"] <= 0:
-                errors.append(f"Szyny wiersz {i + 2}: napięcie_kV musi być > 0")
-
-        for i, line in enumerate(lines):
-            if line["długość_km"] <= 0:
-                errors.append(f"Linie wiersz {i + 2}: długość_km musi być > 0")
-            if line["R_ohm_km"] < 0:
-                errors.append(f"Linie wiersz {i + 2}: R_ohm_km musi być >= 0")
-            if line["X_ohm_km"] < 0:
-                errors.append(f"Linie wiersz {i + 2}: X_ohm_km musi być >= 0")
-
-        if errors:
-            return XlsxImportResult(success=False, graph=None, errors=errors)
-
-        # Build NetworkGraph
-        graph = self._build_graph(buses, lines, trafos, sources, loads, warnings)
+        siec, elementy_bez_katalogu = self._zbuduj_rekordy(
+            szyny, linie, trafo, zrodla, odbiory, ostrzezenia
+        )
 
         return XlsxImportResult(
             success=True,
-            graph=graph,
-            bus_count=len(buses),
-            branch_count=len(lines) + len(trafos),
-            source_count=len(sources),
-            load_count=len(loads),
-            trafo_count=len(trafos),
-            warnings=warnings,
+            siec=siec,
+            bus_count=len(szyny),
+            branch_count=len(linie) + len(trafo),
+            source_count=len(zrodla),
+            load_count=len(odbiory),
+            trafo_count=len(trafo),
+            warnings=ostrzezenia,
+            elementy_bez_katalogu=elementy_bez_katalogu,
+            mapowanie_katalogowe_wymagane=bool(elementy_bez_katalogu),
         )
 
-    def import_from_dict(self, data: dict[str, list[dict[str, Any]]]) -> XlsxImportResult:
-        """
-        Import network from dict of sheet data (for testing without openpyxl).
-
-        data = {
-            "Szyny": [{"id": "B1", "nazwa": "Szyna główna", "napięcie_kV": 15.0}, ...],
-            "Linie": [...],
-            ...
-        }
-        """
-        errors: list[str] = []
-        warnings: list[str] = []
-
-        for req in self.REQUIRED_SHEETS:
-            if req not in data:
-                errors.append(f"Brak wymaganego arkusza: '{req}'")
-
-        if errors:
-            return XlsxImportResult(success=False, graph=None, errors=errors)
-
-        buses = data.get("Szyny", [])
-        lines = data.get("Linie", [])
-        trafos = data.get("Trafo", [])
-        sources = data.get("Źródła", [])
-        loads = data.get("Odbiory", [])
-
-        # Validate cross-references
-        bus_ids = {b["id"] for b in buses}
-
-        for i, line in enumerate(lines):
-            if line.get("szyna_pocz") not in bus_ids:
-                errors.append(f"Linie wiersz {i + 2}: szyna_pocz nie istnieje w Szyny")
-            if line.get("szyna_kon") not in bus_ids:
-                errors.append(f"Linie wiersz {i + 2}: szyna_kon nie istnieje w Szyny")
-
-        # Check numeric values
-        for i, bus in enumerate(buses):
-            if bus.get("napięcie_kV", 0) <= 0:
-                errors.append(f"Szyny wiersz {i + 2}: napięcie_kV musi być > 0")
-
-        for i, line in enumerate(lines):
-            if line.get("długość_km", 0) <= 0:
-                errors.append(f"Linie wiersz {i + 2}: długość_km musi być > 0")
-
-        # Check duplicate IDs
-        all_bus_ids = [b["id"] for b in buses]
-        if len(all_bus_ids) != len(set(all_bus_ids)):
-            errors.append("Duplikaty ID w arkuszu Szyny")
-
-        if errors:
-            return XlsxImportResult(success=False, graph=None, errors=errors)
-
-        graph = self._build_graph(buses, lines, trafos, sources, loads, warnings)
-
-        return XlsxImportResult(
-            success=True,
-            graph=graph,
-            bus_count=len(buses),
-            branch_count=len(lines) + len(trafos),
-            source_count=len(sources),
-            load_count=len(loads),
-            trafo_count=len(trafos),
-            warnings=warnings,
-        )
+    # ------------------------------------------------------------------
+    # Odczyt arkusza
+    # ------------------------------------------------------------------
 
     def _parse_sheet(
         self,
         sheet: Any,
-        columns: dict[str, type],
-        sheet_name: str,
-        errors: list[str],
-    ) -> list[dict[str, Any]]:
-        """Parse a sheet into list of dicts with type validation."""
-        rows = list(sheet.iter_rows(min_row=1, values_only=True))
-        if not rows:
-            errors.append(f"Arkusz '{sheet_name}' jest pusty")
-            return []
+        kolumny: dict[str, type],
+        kolumny_opcjonalne: dict[str, type],
+        nazwa_arkusza: str,
+        bledy: list[BladArkusza],
+    ) -> tuple[list[dict[str, Any]], bool]:
+        """Odczytaj arkusz do listy rekordow.
 
-        headers = [str(h).strip() if h else "" for h in rows[0]]
+        Returns:
+            (rekordy poprawnych wierszy, czy STRUKTURA arkusza jest czytelna).
+            Struktura nieczytelna (pusty arkusz, brak kolumny) => dalsze walidacje
+            krzyzowe nie maja sensu i wolajacy przerywa.
+        """
+        wiersze = list(sheet.iter_rows(min_row=1, values_only=True))
+        if not wiersze:
+            bledy.append(BladArkusza(arkusz=nazwa_arkusza, komunikat="Arkusz jest pusty"))
+            return [], False
 
-        # Check required columns
-        for col_name in columns:
-            if col_name not in headers:
-                errors.append(f"Arkusz '{sheet_name}': brak wymaganej kolumny '{col_name}'")
+        naglowki = [str(h).strip() if h is not None else "" for h in wiersze[0]]
 
-        if any(col_name not in headers for col_name in columns):
-            return []
+        brakujace = [nazwa for nazwa in kolumny if nazwa not in naglowki]
+        for nazwa in brakujace:
+            bledy.append(
+                BladArkusza(
+                    arkusz=nazwa_arkusza,
+                    kolumna=nazwa,
+                    komunikat="Brak wymaganej kolumny w nagłówku arkusza",
+                )
+            )
+        if brakujace:
+            return [], False
 
-        col_indices = {name: headers.index(name) for name in columns}
-        result: list[dict[str, Any]] = []
+        indeksy = {nazwa: naglowki.index(nazwa) for nazwa in kolumny}
+        indeksy_opcjonalne = {
+            nazwa: naglowki.index(nazwa) for nazwa in kolumny_opcjonalne if nazwa in naglowki
+        }
 
-        for row_num, row in enumerate(rows[1:], start=2):
-            record: dict[str, Any] = {}
-            row_valid = True
+        wiersze_danych = wiersze[1:]
+        if not any(self._wiersz_niepusty(w) for w in wiersze_danych):
+            bledy.append(
+                BladArkusza(
+                    arkusz=nazwa_arkusza,
+                    komunikat="Arkusz nie zawiera żadnego wiersza danych (sam nagłówek)",
+                )
+            )
+            return [], False
 
-            for col_name, col_type in columns.items():
-                idx = col_indices[col_name]
-                value = row[idx] if idx < len(row) else None
+        rekordy: list[dict[str, Any]] = []
+        for numer_wiersza, wiersz in enumerate(wiersze_danych, start=2):
+            if not self._wiersz_niepusty(wiersz):
+                continue  # pusty wiersz separujacy — pomijany, nie jest bledem danych
 
-                if value is None or str(value).strip() == "":
-                    errors.append(
-                        f"Arkusz '{sheet_name}' wiersz {row_num}: "
-                        f"pusta wartość w kolumnie '{col_name}'"
+            rekord: dict[str, Any] = {}
+            wiersz_poprawny = True
+
+            for nazwa, typ_kolumny in kolumny.items():
+                wartosc = self._komorka(wiersz, indeksy[nazwa])
+                if wartosc is None:
+                    bledy.append(
+                        BladArkusza(
+                            arkusz=nazwa_arkusza,
+                            wiersz=numer_wiersza,
+                            kolumna=nazwa,
+                            komunikat="Pusta wartość w wymaganej kolumnie",
+                        )
                     )
-                    row_valid = False
+                    wiersz_poprawny = False
                     continue
-
-                try:
-                    record[col_name] = col_type(value)
-                except (ValueError, TypeError):
-                    errors.append(
-                        f"Arkusz '{sheet_name}' wiersz {row_num}: "
-                        f"nieprawidłowa wartość '{value}' w kolumnie '{col_name}' "
-                        f"(oczekiwano {col_type.__name__})"
+                przekonwertowana = self._konwertuj(wartosc, typ_kolumny)
+                if przekonwertowana is None:
+                    bledy.append(
+                        BladArkusza(
+                            arkusz=nazwa_arkusza,
+                            wiersz=numer_wiersza,
+                            kolumna=nazwa,
+                            komunikat=(
+                                f"Nieprawidłowa wartość '{wartosc}' — "
+                                f"oczekiwano: {self._nazwa_typu(typ_kolumny)}"
+                            ),
+                        )
                     )
-                    row_valid = False
+                    wiersz_poprawny = False
+                    continue
+                rekord[nazwa] = przekonwertowana
 
-            if row_valid:
-                result.append(record)
+            for nazwa, typ_kolumny in kolumny_opcjonalne.items():
+                if nazwa not in indeksy_opcjonalne:
+                    continue
+                wartosc = self._komorka(wiersz, indeksy_opcjonalne[nazwa])
+                if wartosc is None:
+                    continue
+                przekonwertowana = self._konwertuj(wartosc, typ_kolumny)
+                if przekonwertowana is None:
+                    bledy.append(
+                        BladArkusza(
+                            arkusz=nazwa_arkusza,
+                            wiersz=numer_wiersza,
+                            kolumna=nazwa,
+                            komunikat=(
+                                f"Nieprawidłowa wartość '{wartosc}' — "
+                                f"oczekiwano: {self._nazwa_typu(typ_kolumny)}"
+                            ),
+                        )
+                    )
+                    wiersz_poprawny = False
+                    continue
+                rekord[nazwa] = przekonwertowana
 
-        return result
+            rekord["_wiersz"] = numer_wiersza
+            if wiersz_poprawny:
+                rekordy.append(rekord)
 
-    def _build_graph(
+        return rekordy, True
+
+    @staticmethod
+    def _wiersz_niepusty(wiersz: tuple[Any, ...]) -> bool:
+        return any(komorka is not None and str(komorka).strip() != "" for komorka in wiersz)
+
+    @staticmethod
+    def _komorka(wiersz: tuple[Any, ...], indeks: int) -> Any:
+        wartosc = wiersz[indeks] if indeks < len(wiersz) else None
+        if wartosc is None or str(wartosc).strip() == "":
+            return None
+        return wartosc
+
+    @staticmethod
+    def _konwertuj(wartosc: Any, typ_kolumny: type) -> Any:
+        try:
+            if typ_kolumny is str:
+                return str(wartosc).strip()
+            return typ_kolumny(wartosc)
+        except (ValueError, TypeError):
+            return None
+
+    @staticmethod
+    def _nazwa_typu(typ_kolumny: type) -> str:
+        return "liczba" if typ_kolumny is float else "tekst"
+
+    # ------------------------------------------------------------------
+    # Walidacje
+    # ------------------------------------------------------------------
+
+    def _waliduj_powiazania(
         self,
-        buses: list[dict[str, Any]],
-        lines: list[dict[str, Any]],
-        trafos: list[dict[str, Any]],
-        sources: list[dict[str, Any]],
-        loads: list[dict[str, Any]],
-        warnings: list[str],
-    ) -> NetworkGraph:
-        """Build NetworkGraph from parsed data."""
-        graph = NetworkGraph()
+        szyny: list[dict[str, Any]],
+        linie: list[dict[str, Any]],
+        trafo: list[dict[str, Any]],
+        zrodla: list[dict[str, Any]],
+        odbiory: list[dict[str, Any]],
+    ) -> list[BladArkusza]:
+        bledy: list[BladArkusza] = []
+        identyfikatory_szyn = {s["id"] for s in szyny}
 
-        # Determine slack bus (first source bus, or first bus)
-        source_bus_ids = {s["szyna"] for s in sources} if sources else set()
+        odwolania = (
+            (ARKUSZ_LINIE, linie, ("szyna_pocz", "szyna_kon")),
+            (ARKUSZ_TRAFO, trafo, ("szyna_HV", "szyna_LV")),
+            (ARKUSZ_ZRODLA, zrodla, ("szyna",)),
+            (ARKUSZ_ODBIORY, odbiory, ("szyna",)),
+        )
+        for nazwa_arkusza, rekordy, kolumny in odwolania:
+            for rekord in rekordy:
+                for kolumna in kolumny:
+                    if rekord[kolumna] not in identyfikatory_szyn:
+                        bledy.append(
+                            BladArkusza(
+                                arkusz=nazwa_arkusza,
+                                wiersz=rekord["_wiersz"],
+                                kolumna=kolumna,
+                                komunikat=(
+                                    f"Szyna '{rekord[kolumna]}' nie występuje "
+                                    f"w arkuszu '{ARKUSZ_SZYNY}'"
+                                ),
+                            )
+                        )
 
-        # Build a lookup for loads by bus id for PQ node parameters
-        load_by_bus: dict[str, dict[str, float]] = {}
-        for load in loads:
-            bus_id = load["szyna"]
-            if bus_id not in load_by_bus:
-                load_by_bus[bus_id] = {"P_MW": 0.0, "Q_Mvar": 0.0}
-            load_by_bus[bus_id]["P_MW"] += load["P_MW"]
-            load_by_bus[bus_id]["Q_Mvar"] += load["Q_Mvar"]
+        duplikaty = (
+            (ARKUSZ_SZYNY, szyny),
+            (ARKUSZ_LINIE, linie),
+            (ARKUSZ_TRAFO, trafo),
+            (ARKUSZ_ZRODLA, zrodla),
+            (ARKUSZ_ODBIORY, odbiory),
+        )
+        for nazwa_arkusza, rekordy in duplikaty:
+            widziane: dict[str, int] = {}
+            for rekord in rekordy:
+                identyfikator = rekord["id"]
+                if identyfikator in widziane:
+                    bledy.append(
+                        BladArkusza(
+                            arkusz=nazwa_arkusza,
+                            wiersz=rekord["_wiersz"],
+                            kolumna="id",
+                            komunikat=(
+                                f"Powtórzony identyfikator '{identyfikator}' "
+                                f"(pierwsze wystąpienie: wiersz {widziane[identyfikator]})"
+                            ),
+                        )
+                    )
+                else:
+                    widziane[identyfikator] = rekord["_wiersz"]
 
-        # Track whether we already assigned a SLACK node
-        slack_assigned = False
+        return bledy
 
-        for bus in buses:
-            bus_id = bus["id"]
-            voltage_kv = bus["napięcie_kV"]
+    def _waliduj_wartosci(
+        self,
+        szyny: list[dict[str, Any]],
+        linie: list[dict[str, Any]],
+        trafo: list[dict[str, Any]],
+        zrodla: list[dict[str, Any]],
+    ) -> list[BladArkusza]:
+        bledy: list[BladArkusza] = []
 
-            if bus_id in source_bus_ids and not slack_assigned:
-                node_type = NodeType.SLACK
-                slack_assigned = True
-                node = Node(
-                    id=bus_id,
-                    name=bus["nazwa"],
-                    voltage_level=voltage_kv,
-                    node_type=node_type,
-                    voltage_magnitude=1.0,
-                    voltage_angle=0.0,
+        for szyna in szyny:
+            if szyna["napięcie_kV"] <= 0:
+                bledy.append(
+                    BladArkusza(
+                        arkusz=ARKUSZ_SZYNY,
+                        wiersz=szyna["_wiersz"],
+                        kolumna="napięcie_kV",
+                        komunikat="Napięcie znamionowe musi być większe od zera",
+                    )
+                )
+
+        for linia in linie:
+            if linia["długość_km"] <= 0:
+                bledy.append(
+                    BladArkusza(
+                        arkusz=ARKUSZ_LINIE,
+                        wiersz=linia["_wiersz"],
+                        kolumna="długość_km",
+                        komunikat="Długość musi być większa od zera",
+                    )
+                )
+            for kolumna in ("R_ohm_km", "X_ohm_km"):
+                if linia[kolumna] < 0:
+                    bledy.append(
+                        BladArkusza(
+                            arkusz=ARKUSZ_LINIE,
+                            wiersz=linia["_wiersz"],
+                            kolumna=kolumna,
+                            komunikat="Wartość jednostkowa nie może być ujemna",
+                        )
+                    )
+            if linia["szyna_pocz"] == linia["szyna_kon"]:
+                bledy.append(
+                    BladArkusza(
+                        arkusz=ARKUSZ_LINIE,
+                        wiersz=linia["_wiersz"],
+                        kolumna="szyna_kon",
+                        komunikat="Początek i koniec odcinka wskazują tę samą szynę",
+                    )
+                )
+
+        for transformator in trafo:
+            if transformator["Sn_MVA"] <= 0:
+                bledy.append(
+                    BladArkusza(
+                        arkusz=ARKUSZ_TRAFO,
+                        wiersz=transformator["_wiersz"],
+                        kolumna="Sn_MVA",
+                        komunikat="Moc znamionowa musi być większa od zera",
+                    )
+                )
+            if transformator["uk_pct"] <= 0:
+                bledy.append(
+                    BladArkusza(
+                        arkusz=ARKUSZ_TRAFO,
+                        wiersz=transformator["_wiersz"],
+                        kolumna="uk_pct",
+                        komunikat="Napięcie zwarcia musi być większe od zera",
+                    )
+                )
+
+        for zrodlo in zrodla:
+            if zrodlo["Sk_MVA"] <= 0:
+                bledy.append(
+                    BladArkusza(
+                        arkusz=ARKUSZ_ZRODLA,
+                        wiersz=zrodlo["_wiersz"],
+                        kolumna="Sk_MVA",
+                        komunikat="Moc zwarciowa musi być większa od zera",
+                    )
+                )
+            if zrodlo["RX_ratio"] < 0:
+                bledy.append(
+                    BladArkusza(
+                        arkusz=ARKUSZ_ZRODLA,
+                        wiersz=zrodlo["_wiersz"],
+                        kolumna="RX_ratio",
+                        komunikat="Stosunek R/X nie może być ujemny",
+                    )
+                )
+
+        return bledy
+
+    def _waliduj_typy_katalogowe(self, linie: list[dict[str, Any]]) -> list[BladArkusza]:
+        """Jawnie podany typ katalogowy MUSI istnieć w katalogu (żadnego cichego pominięcia)."""
+        bledy: list[BladArkusza] = []
+        katalog = self._katalog()
+        for linia in linie:
+            typ_katalogowy = linia.get("typ_katalogowy")
+            if not typ_katalogowy:
+                continue
+            if typ_katalogowy in katalog.line_types or typ_katalogowy in katalog.cable_types:
+                continue
+            bledy.append(
+                BladArkusza(
+                    arkusz=ARKUSZ_LINIE,
+                    wiersz=linia["_wiersz"],
+                    kolumna="typ_katalogowy",
+                    komunikat=(
+                        f"Typ '{typ_katalogowy}' nie występuje w katalogu — "
+                        f"popraw identyfikator albo usuń kolumnę i domapuj typ po imporcie"
+                    ),
+                )
+            )
+        return bledy
+
+    # ------------------------------------------------------------------
+    # Budowa rekordow kanonicznych
+    # ------------------------------------------------------------------
+
+    def _zbuduj_rekordy(
+        self,
+        szyny: list[dict[str, Any]],
+        linie: list[dict[str, Any]],
+        trafo: list[dict[str, Any]],
+        zrodla: list[dict[str, Any]],
+        odbiory: list[dict[str, Any]],
+        ostrzezenia: list[str],
+    ) -> tuple[SiecZArkusza, list[str]]:
+        katalog = self._katalog()
+        szyny_ze_zrodlem = {z["szyna"] for z in zrodla}
+
+        wezly: list[dict[str, Any]] = []
+        slack_przypisany = False
+        for szyna in szyny:
+            czy_slack = szyna["id"] in szyny_ze_zrodlem and not slack_przypisany
+            if czy_slack:
+                slack_przypisany = True
+                wezly.append(
+                    {
+                        "ref": szyna["id"],
+                        "name": szyna["nazwa"],
+                        "node_type": "SLACK",
+                        "base_kv": szyna["napięcie_kV"],
+                        "attrs": {"voltage_magnitude_pu": 1.0, "voltage_angle_rad": 0.0},
+                    }
                 )
             else:
-                node_type = NodeType.PQ
-                bus_load = load_by_bus.get(bus_id, {"P_MW": 0.0, "Q_Mvar": 0.0})
-                node = Node(
-                    id=bus_id,
-                    name=bus["nazwa"],
-                    voltage_level=voltage_kv,
-                    node_type=node_type,
-                    active_power=-bus_load["P_MW"],
-                    reactive_power=-bus_load["Q_Mvar"],
+                wezly.append(
+                    {
+                        "ref": szyna["id"],
+                        "name": szyna["nazwa"],
+                        "node_type": "PQ",
+                        "base_kv": szyna["napięcie_kV"],
+                        "attrs": {},
+                    }
                 )
-            graph.add_node(node)
 
-        # Add lines as LineBranch instances
-        for line in lines:
-            length_km = line["długość_km"]
-            r_ohm_per_km = line["R_ohm_km"]
-            x_ohm_per_km = line["X_ohm_km"]
-            b_us_per_km = line.get("B_uS_km", 0.0)
-
-            branch = LineBranch(
-                id=line["id"],
-                name=line.get("typ", line["id"]),
-                branch_type=BranchType.LINE,
-                from_node_id=line["szyna_pocz"],
-                to_node_id=line["szyna_kon"],
-                r_ohm_per_km=r_ohm_per_km,
-                x_ohm_per_km=x_ohm_per_km,
-                b_us_per_km=b_us_per_km,
-                length_km=length_km,
-                rated_current_a=1.0,  # placeholder — XLSX does not provide Irated
-            )
-            graph.add_branch(branch)
-
-        # Add transformers as TransformerBranch instances
-        for trafo in trafos:
-            hv_bus = next((b for b in buses if b["id"] == trafo["szyna_HV"]), None)
-            lv_bus = next((b for b in buses if b["id"] == trafo["szyna_LV"]), None)
-
-            if hv_bus and lv_bus:
-                sn_mva = trafo["Sn_MVA"]
-                uk_pct = trafo["uk_pct"]
-                pk_kw = trafo.get("Pk_kW", 0.0)
-                u_hv = hv_bus["napięcie_kV"]
-                u_lv = lv_bus["napięcie_kV"]
-                vector_group = trafo.get("grupa", "Dyn11")
-
-                branch = TransformerBranch(
-                    id=trafo["id"],
-                    name=vector_group,
-                    branch_type=BranchType.TRANSFORMER,
-                    from_node_id=trafo["szyna_HV"],
-                    to_node_id=trafo["szyna_LV"],
-                    rated_power_mva=sn_mva,
-                    voltage_hv_kv=u_hv,
-                    voltage_lv_kv=u_lv,
-                    uk_percent=uk_pct,
-                    pk_kw=pk_kw,
-                    vector_group=vector_group,
-                )
-                graph.add_branch(branch)
-
-        # Store source impedance metadata on SLACK node(s)
-        for src in sources:
-            bus = next((b for b in buses if b["id"] == src["szyna"]), None)
-            if bus:
-                sk_mva = src["Sk_MVA"]
-                rx_ratio = src["RX_ratio"]
-                u_kv = bus["napięcie_kV"]
-
-                if sk_mva > 0:
-                    z_total = (u_kv**2) / sk_mva
-                    r_source = z_total * rx_ratio / math.sqrt(1 + rx_ratio**2)
-                    x_source = z_total / math.sqrt(1 + rx_ratio**2)
-
-                    # Attach source impedance as dynamic attribute on the node
-                    node = graph.nodes[src["szyna"]]
-                    node.source_impedance = complex(r_source, x_source)  # type: ignore[attr-defined]
-
-        # Note: loads are already reflected in PQ node parameters above
-        if loads:
-            warnings.append(
-                f"Zaimportowano {len(loads)} odbiorów " f"(dane dostępne w parametrach węzłów PQ)"
+        if zrodla and not slack_przypisany:
+            ostrzezenia.append(
+                "Arkusz nie pozwolił wskazać szyny bilansującej — sprawdź arkusz 'Źródła'."
             )
 
-        return graph
+        elementy_bez_katalogu: list[str] = []
+        galezie: list[dict[str, Any]] = []
+
+        for linia in linie:
+            typ_katalogowy = linia.get("typ_katalogowy") or None
+            rodzaj = BranchType.LINE.value
+            obciazalnosc_a = 0.0
+            if typ_katalogowy:
+                if typ_katalogowy in katalog.cable_types:
+                    rodzaj = BranchType.CABLE.value
+                    obciazalnosc_a = float(katalog.cable_types[typ_katalogowy].rated_current_a)
+                else:
+                    obciazalnosc_a = float(katalog.line_types[typ_katalogowy].rated_current_a)
+            elif wymaga_referencji_katalogowej(rodzaj):
+                elementy_bez_katalogu.append(linia["id"])
+
+            galezie.append(
+                {
+                    "ref": linia["id"],
+                    "name": linia["typ"],
+                    "branch_type": rodzaj,
+                    "from_ref": linia["szyna_pocz"],
+                    "to_ref": linia["szyna_kon"],
+                    "params": {
+                        "r_ohm_per_km": linia["R_ohm_km"],
+                        "x_ohm_per_km": linia["X_ohm_km"],
+                        "b_us_per_km": linia.get("B_uS_km", 0.0),
+                        "length_km": linia["długość_km"],
+                        "rated_current_a": obciazalnosc_a,
+                        "type_ref": typ_katalogowy,
+                    },
+                }
+            )
+
+        napiecia_szyn = {s["id"]: s["napięcie_kV"] for s in szyny}
+        for transformator in trafo:
+            galezie.append(
+                {
+                    "ref": transformator["id"],
+                    "name": transformator.get("grupa", transformator["id"]),
+                    "branch_type": BranchType.TRANSFORMER.value,
+                    "from_ref": transformator["szyna_HV"],
+                    "to_ref": transformator["szyna_LV"],
+                    "params": {
+                        "rated_power_mva": transformator["Sn_MVA"],
+                        "voltage_hv_kv": napiecia_szyn[transformator["szyna_HV"]],
+                        "voltage_lv_kv": napiecia_szyn[transformator["szyna_LV"]],
+                        "uk_percent": transformator["uk_pct"],
+                        "pk_kw": transformator.get("Pk_kW", 0.0),
+                        "vector_group": transformator.get("grupa", "Dyn11"),
+                    },
+                }
+            )
+
+        rekordy_zrodel = [
+            {
+                "ref": zrodlo["id"],
+                "node_ref": zrodlo["szyna"],
+                "source_type": "GRID",
+                "payload": {
+                    "name": zrodlo["id"],
+                    # Kanoniczny ksztalt danych zrodla systemowego (jak w kreatorze):
+                    # DANE WEJSCIOWE, nie wynik — impedancje liczy warstwa solverowa.
+                    "model": "short_circuit_power",
+                    "sk3_mva": zrodlo["Sk_MVA"],
+                    "rx_ratio": zrodlo["RX_ratio"],
+                    "rodzaj_z_arkusza": zrodlo["typ"],
+                },
+            }
+            for zrodlo in zrodla
+        ]
+
+        rekordy_odbiorow = [
+            {
+                "ref": odbior["id"],
+                "node_ref": odbior["szyna"],
+                "payload": {
+                    "name": odbior["id"],
+                    "p_mw": odbior["P_MW"],
+                    "q_mvar": odbior["Q_Mvar"],
+                },
+            }
+            for odbior in odbiory
+        ]
+
+        if elementy_bez_katalogu:
+            ostrzezenia.append(
+                f"Wymagane domapowanie typu katalogowego dla {len(elementy_bez_katalogu)} "
+                f"odcinków — arkusz nie zawierał kolumny 'typ_katalogowy'."
+            )
+
+        return (
+            SiecZArkusza(
+                wezly=wezly,
+                galezie=galezie,
+                zrodla=rekordy_zrodel,
+                odbiory=rekordy_odbiorow,
+            ),
+            elementy_bez_katalogu,
+        )

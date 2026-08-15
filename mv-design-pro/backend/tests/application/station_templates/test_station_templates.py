@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 
+import pytest
 from application.station_templates import (
     TemplateCategory,
     get_template,
@@ -164,3 +165,140 @@ def test_protection_options_use_e2tango_or_known_vendors() -> None:
     for t in list_templates():
         for prot in t.schema.sn_bay_protection_options:
             assert prot.vendor in valid_vendors, f"{t.id}: unknown vendor '{prot.vendor}'"
+
+
+def test_nazwa_obiecujaca_pomiar_deklaruje_role_measurement() -> None:
+    """Szablon-fantom (V12K-329, dyrektywa zero-fabrykacji, 2026-08-06).
+
+    KLASA, nie instancja: KAŻDY szablon, którego nazwa lub opis obiecuje pole
+    pomiarowe („pomiar…"/„VT"), musi deklarować rolę MEASUREMENT w obrębie
+    domyślnej liczby pól — inaczej materializacja dopełnia OUT i stacja
+    powstaje BEZ pola pomiarowego, choć nazwa je obiecuje (wykryte na
+    `tpl_sn_nn_1000kva` „RMU 4-pole + pomiary" przy audycie sieci pokazowej;
+    ta sama wada była w `tpl_sn_nn_1600kva` „z VT").
+    """
+    from application.station_templates.apply import _resolve_sn_bay_roles
+
+    zbadane = 0
+    for template in list_templates():
+        tekst = f"{template.name_pl} {template.description_pl}".lower()
+        obiecuje_pomiar = "pomiar" in tekst or " vt" in tekst or "vt," in tekst
+        if not obiecuje_pomiar:
+            continue
+        schema = template.schema
+        if schema.sn_bays_count is None:
+            continue
+        zbadane += 1
+        role = _resolve_sn_bay_roles(template, schema.sn_bays_count.default)
+        assert "MEASUREMENT" in role, (
+            f"Szablon '{template.id}' ({template.name_pl!r}) obiecuje pomiar/VT, "
+            f"a domyślne role pól to {role} — brak MEASUREMENT (szablon-fantom)."
+        )
+    assert zbadane >= 2, f"Test ma objąć co najmniej 1000kVA i 1600kVA (objęte: {zbadane})"
+
+
+def test_pomiar_degraduje_przed_polem_tr_przy_obnizonej_liczbie_pol() -> None:
+    """Predykaty parami (V12K-329): kolejność deklaracji ról gwarantuje, że
+    obniżenie liczby pól przez użytkownika degraduje NAJPIERW pole pomiarowe,
+    NIGDY pole transformatorowe (stacja z TR bez pola TR = model sprzeczny)."""
+    from application.station_templates.apply import _resolve_sn_bay_roles
+
+    template = get_template("tpl_sn_nn_1000kva")
+    assert template is not None
+    for count in (3, 4):
+        role = _resolve_sn_bay_roles(template, count)
+        assert "TR" in role, f"count={count}: pole TR wypadło przed pomiarowym ({role})"
+
+
+def test_pole_pomiarowe_przed_polem_tr_w_kazdym_szablonie() -> None:
+    """Standard układów pomiarowych OSD (dyrektywa właściciela 2026-08-06,
+    V12K-330): pole pomiarowe leży PIERWSZE od kierunku zasilania — przed
+    częścią transformatorową. KLASA, nie instancja: sprawdzamy KAŻDY szablon
+    deklarujący jednocześnie MEASUREMENT i TR (wykryte naruszenia: typowe
+    1000/1600 kVA po V12K-329 oraz zastane zksn_wnetrzowe, gdzie pomiar był
+    doklejany ZA polami TR)."""
+    zbadane = 0
+    for template in list_templates():
+        role = [r.role for r in template.schema.sn_bay_roles]
+        if "MEASUREMENT" not in role or "TR" not in role:
+            continue
+        zbadane += 1
+        assert role.index("MEASUREMENT") < role.index("TR"), (
+            f"Szablon '{template.id}': pole pomiarowe (poz. {role.index('MEASUREMENT')}) "
+            f"leży ZA polem TR (poz. {role.index('TR')}) — narusza standard układów "
+            f"pomiarowych (pomiar pierwszy od kierunku zasilania): {role}"
+        )
+    assert zbadane >= 4, f"Test ma objąć typowe+przemysłowe+zksn (objęte: {zbadane})"
+
+
+def test_keep_tr_obniniejsza_liczba_pol_nie_wycina_pola_tr() -> None:
+    """Para do reguł keep-TR i keep-POMIAR w `_resolve_sn_bay_roles`
+    (V12K-330/333, karta POMIAR-ODGAŁĘZIENIE).
+
+    INTENCJA (bez zmian): obcięcie liczby pól nie może wyciąć pola
+    transformatorowego — stacja z transformatorem bez pola TR to model sprzeczny.
+
+    KANON ZMIENIONY (POMIAR-ODGAŁĘZIENIE): pole POMIAROWE jest tak samo
+    nieusuwalne jak TR, bo to ono decyduje o KLASIE przyłączenia (kontrakt
+    `docs/domain/POMIAR_ROZLICZENIOWY_SN_V1.md`). Dawny wynik `count=2 →
+    ["IN", "TR"]` po cichu robił ze stacji abonenckiej stację dystrybucyjną,
+    którą aplikacja wcięłaby w tranzyt magistrali — dokładnie ten defekt, przed
+    którym broni kontrakt. Zamiast cichego obcięcia: JAWNY błąd z minimum.
+    """
+    from application.station_templates.apply import TemplateApplyError, _resolve_sn_bay_roles
+
+    template = get_template("tpl_sn_nn_1000kva")
+    assert template is not None
+    assert _resolve_sn_bay_roles(template, 4) == ["IN", "MEASUREMENT", "TR", "OUT"]
+    assert _resolve_sn_bay_roles(template, 3) == ["IN", "MEASUREMENT", "TR"]
+    with pytest.raises(TemplateApplyError) as wyjatek:
+        _resolve_sn_bay_roles(template, 2)
+    assert wyjatek.value.code == "template.sn_bays_count_below_minimum"
+
+    # Szablon BEZ pomiaru zachowuje dotychczasowe zachowanie keep-TR co do joty.
+    dystrybucyjna = get_template("tpl_sn_nn_630kva")
+    assert dystrybucyjna is not None
+    assert _resolve_sn_bay_roles(dystrybucyjna, 3) == ["IN", "OUT", "TR"]
+    assert _resolve_sn_bay_roles(dystrybucyjna, 2) == ["IN", "TR"]
+    assert _resolve_sn_bay_roles(dystrybucyjna, 1) == ["TR"]
+
+
+def test_pomiar_rozliczeniowy_nie_lezy_w_torze_tranzytu() -> None:
+    """Kontrakt `docs/domain/POMIAR_ROZLICZENIOWY_SN_V1.md` §3 (V12K-333,
+    korekta właściciela: pomiar mierzy CAŁY i TYLKO pobór klienta — klienci
+    wiszą w odgałęzieniu od toru; standard Enei: przekładniki pola
+    pomiarowego 5/5–15/5 A to prądy przyłącza, nie magistrali).
+
+    KLASA, nie instancja — dla KAŻDEGO szablonu z polem POMIAROWYM:
+    - klasa B (stacja abonencka): przed pomiarem WYŁĄCZNIE pole dopływowe
+      (IN) — zero pary tranzytowej w rozdzielnicy klienta;
+    - klasa C (złącze kablowe ZK-SN): przed pomiarem pętla OSD (IN, OUT) —
+      pomiar jest polem odpływowym gałęzi klienta;
+    - w obu: żadne pole TR przed pomiarem (część kliencka ZA pomiarem).
+    """
+    from application.station_templates import TemplateCategory
+
+    zbadane = 0
+    for template in list_templates():
+        role = [r.role for r in template.schema.sn_bay_roles]
+        if "MEASUREMENT" not in role:
+            continue
+        zbadane += 1
+        przed = role[: role.index("MEASUREMENT")]
+        assert "TR" not in przed, (
+            f"Szablon '{template.id}': pole TR przed pomiarem ({role}) — część "
+            "kliencka musi leżeć ZA układem pomiarowym."
+        )
+        if template.category == TemplateCategory.ZKSN_WNETRZOWA:
+            assert przed in (["IN"], ["IN", "OUT"]), (
+                f"Złącze '{template.id}': przed pomiarem dopuszczalna wyłącznie "
+                f"pętla OSD (IN[, OUT]), jest {przed}."
+            )
+        else:
+            assert all(r == "IN" for r in przed), (
+                f"Szablon '{template.id}' (klasa B — stacja abonencka): przed "
+                f"pomiarem wyłącznie pole dopływowe, jest {przed} — para "
+                "tranzytowa w rozdzielnicy klienta oznacza pomiar w torze "
+                "tranzytu magistrali (zakaz kontraktu §1)."
+            )
+    assert zbadane >= 7, f"Test ma objąć wszystkie rodziny z pomiarem (objęte: {zbadane})"

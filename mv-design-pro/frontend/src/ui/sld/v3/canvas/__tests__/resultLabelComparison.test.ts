@@ -18,7 +18,7 @@ import { buildSceneV3 } from '../../scene/buildScene';
 import {
   buildResultLabelsFromScene,
   resultRefForSegment,
-  singleHopSegmentRefs,
+  orientedSegmentRefs,
   type ResultLabelComparison,
 } from '../resultLabels';
 
@@ -27,7 +27,7 @@ const fixturePath = resolve(here, '..', '..', '..', 'v2', 'geometry', '__tests__
 const enm = (JSON.parse(readFileSync(fixturePath, 'utf8')) as { readonly enm: EnergyNetworkModel }).enm;
 
 const scene = buildSceneV3(enm, 2);
-const singleHop = singleHopSegmentRefs(enm);
+const singleHop = new Set(orientedSegmentRefs(enm).keys());
 
 /** Realny `ownerRef` przęsła jednokawałkowego (jak w resultLabels.test.ts). */
 const branchRef = (() => {

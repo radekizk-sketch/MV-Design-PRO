@@ -19,6 +19,8 @@ import type { AdvancementMode } from '../../shell/modeModel';
 import { isModeAtLeast } from '../../shell/modeModel';
 import { SladWywodu, TabelaWynikow } from '../../wyniki/wzorzec';
 import { selectAllDers, useStationDerStore } from '../../../ui/network-build/station-der';
+import { notify } from '../../../ui/notifications/store';
+import { useNcRfgStore } from '../ncRfgStore';
 import {
   pobierzKatalogKlasNcRfg,
   pobierzTrajektorieFrt,
@@ -44,6 +46,8 @@ import {
   etykietaStatusuFrt,
   fmtPuFrt,
 } from './strings';
+import { PrzyciskAkcjiStanu, useAkcjaDodajZrodloOze } from '../../wyniki/wzorzec';
+import type { AkcjaStanuZerowego } from '../../wyniki/wzorzec';
 
 // ---------------------------------------------------------------------------
 // Stan pobierania (jawny bieg: idle / ładowanie / błąd / gotowe)
@@ -60,11 +64,15 @@ function StanPanel({
   opis,
   wariant,
   testid,
+  akcja,
 }: {
   komunikat: string;
   opis?: string;
   wariant: 'info' | 'blad';
   testid: string;
+  /* K6 / H-5: slot akcji stanu zerowego — realny następny krok (bieg obliczeń,
+     nawigacja, formularz operacji). Brak akcji = panel czysto informacyjny. */
+  akcja?: AkcjaStanuZerowego;
 }) {
   return (
     <div
@@ -73,6 +81,7 @@ function StanPanel({
     >
       <p className="mvd-frt-stan-title">{komunikat}</p>
       {opis && <p className="mvd-frt-stan-desc">{opis}</p>}
+      <PrzyciskAkcjiStanu akcja={akcja} testid={testid} />
     </div>
   );
 }
@@ -192,6 +201,8 @@ export interface EkranFrtProps {
 export function EkranFrt({ trybZaawansowania }: EkranFrtProps) {
   const ders = useStationDerStore((state) => selectAllDers(state));
   const moduly = useMemo<OpcjaModuluFrt[]>(() => opcjeModulowFrt(ders), [ders]);
+  // K6 / H-5: stan zerowy strumienia OZE prowadzi do dodania modulu wytworczego.
+  const akcjaZrodlo = useAkcjaDodajZrodloOze();
 
   const [operatorzy, setOperatorzy] = useState<StanZasobu<OpcjaOperatoraFrt[]>>({
     rodzaj: 'idle',
@@ -287,6 +298,7 @@ export function EkranFrt({ trybZaawansowania }: EkranFrtProps) {
           opis={FRT_STRINGS.brakModulowOpis}
           wariant="info"
           testid="mvd-frt-brak-modulow"
+          akcja={akcjaZrodlo}
         />
       ) : operatorzy.rodzaj === 'ladowanie' ? (
         <StanPanel
@@ -393,7 +405,31 @@ export function EkranFrt({ trybZaawansowania }: EkranFrtProps) {
               testid="mvd-frt-blad"
             />
           ) : (
-            <WynikTrajektorii dane={stan.dane} trybZaawansowania={trybZaawansowania} />
+            <>
+              <WynikTrajektorii dane={stan.dane} trybZaawansowania={trybZaawansowania} />
+              {/* K5-B (H-3 pkt 4): pętla werdykt → zgodność. Klucz = id modułu
+                  DER (`wybranyModul`) — ta sama tożsamość co kolumny macierzy
+                  NC RfG (`zbudujModuly` → der.id). Werdykt POCHODZI z biegu
+                  (agregacja słownikowa pól solvera — `werdyktCalosciFrt`). */}
+              <button
+                type="button"
+                className="mvd-frt-oblicz"
+                title={FRT_STRINGS.zapiszWynikOpis}
+                onClick={() => {
+                  const werdykt = werdyktCalosciFrt(stan.dane);
+                  useNcRfgStore.getState().zapiszWynikFrt(wybranyModul, {
+                    testKind: stan.dane.test_kind,
+                    tekst: werdykt.tekst,
+                    istotnosc: werdykt.istotnosc,
+                    operatorId: stan.dane.operator.id,
+                  });
+                  notify(FRT_STRINGS.zapiszWynikZapisano, 'success');
+                }}
+                data-testid="mvd-frt-zapisz-wynik"
+              >
+                {FRT_STRINGS.zapiszWynik}
+              </button>
+            </>
           )}
 
           <SekcjaSekwencjiZapadow

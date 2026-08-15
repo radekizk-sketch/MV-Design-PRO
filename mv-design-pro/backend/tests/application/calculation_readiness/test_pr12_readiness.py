@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from src.application.calculation_readiness.service import (
+from application.calculation_readiness.service import (
     CALCULATION_LABEL_PL,
     CalculationReadinessService,
 )
-from src.application.report_readiness.adapter import ReportReadinessAdapter
-from src.application.validation_problem.service import ValidationProblemService
-from src.enm.models import (
+from application.report_readiness.adapter import ReportReadinessAdapter
+from application.validation_problem.service import ValidationProblemService
+from enm.models import (
     Bay,
     Bus,
     Cable,

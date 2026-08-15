@@ -36,7 +36,7 @@ export const WZORZEC_STRINGS = {
   wykresTytul: 'Wykres',
 
   // Ślad obliczeń na żądanie (zasada KaTeX, 2026-07-22)
-  sladTytul: 'Ślad obliczeń (WHITE BOX)',
+  sladTytul: 'Ślad obliczeń (pełna jawność)',
   sladPokaz: 'Pokaż ślad obliczeń',
   sladUkryj: 'Ukryj ślad obliczeń',
 

@@ -234,12 +234,14 @@ export function getCurrentHashRoute(): string {
 
   const hash = window.location.hash;
   const queryIndex = hash.indexOf('?');
+  const route = queryIndex === -1 ? hash : hash.slice(0, queryIndex);
 
-  if (queryIndex === -1) {
-    return hash;
-  }
-
-  return hash.slice(0, queryIndex);
+  // D1 (Zero-Debt): adres BEZ trasy, ale Z kontekstem (`#?case=…&run=…`) dawał
+  // `'#'` — napis, którego nie zna żaden rejestr tras, więc warsztat pokazywał
+  // „Nieznana trasa". Powstawał zawsze, gdy powłoka czyściła trasę nadrzędną
+  // przy przejściu do przestrzeni bez własnego adresu, zachowując deep-link.
+  // Sam znak `#` to brak trasy — dokładnie jak pusty hash.
+  return route === '#' ? '' : route;
 }
 
 /**

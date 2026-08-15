@@ -26,6 +26,13 @@ export const PRZYPADKI_STRINGS = {
 
   // Pasek narzędzi
   nowyPrzypadek: 'Nowy przypadek',
+  // Uruchomienie przebiegu (K6 / H-5 dźwignia 2) — jawny start obliczenia
+  // w przestrzeni „Obliczenia" (dotąd tylko przycisk „Oblicz" paska tytułowego).
+  uruchom: 'Uruchom obliczenie',
+  uruchomWToku: 'Obliczenie w toku…',
+  uruchomRodzaj: 'Rodzaj analizy',
+  uruchomOpis:
+    'Uruchamia przebieg wybranego rodzaju dla aktywnego zakresu obliczeń i otwiera wyniki.',
   porownajZaznaczone: 'Porównaj zaznaczone',
   wrocDoKarty: 'Wróć do karty przypadku',
 

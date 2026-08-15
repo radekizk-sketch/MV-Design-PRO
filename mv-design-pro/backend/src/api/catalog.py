@@ -32,6 +32,8 @@ from network_model.catalog.mv_branch_point_catalog import get_all_branch_point_t
 from network_model.catalog.mv_ptpiree_catalog import get_ptpiree_catalog_manifest
 from network_model.catalog.repository import get_default_mv_catalog
 from network_model.catalog.switchgear import (
+    SWITCHGEAR_FAMILY_REGISTRY,
+    list_factory_configurations_for_family,
     list_families_for_manufacturer,
     list_switchgear_families,
     list_switchgear_solution_templates_for_manufacturer,
@@ -39,6 +41,7 @@ from network_model.catalog.switchgear import (
 from network_model.catalog.switchgear import (
     list_manufacturers as list_switchgear_manufacturers,
 )
+from network_model.catalog.types import normalize_ptpiree_key
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/api/catalog", tags=["Type Catalog"])
@@ -340,11 +343,60 @@ def get_ptpiree_manifest() -> dict[str, Any]:
 
 
 @router.get("/ptpiree/generator-certificates")
-def list_ptpiree_generator_certificates() -> list[dict[str, Any]]:
-    """List local PTPiREE generator/converter certificate snapshot records."""
-    return [
+def list_ptpiree_generator_certificates(
+    response: Response,
+    search: str | None = None,
+    limit: int | None = None,
+    offset: int = 0,
+) -> list[dict[str, Any]]:
+    """List local PTPiREE generator/converter certificate snapshot records.
+
+    Pelny wykaz ma 6887 pozycji (~3 MB) — parametry sa ADDYTYWNE (bez nich
+    kontrakt sprzed zmiany: pelna lista, ta sama kolejnosc):
+
+    - ``search``: filtr po producencie/modelu/numerze dokumentu. Obie strony
+      normalizowane ``normalize_ptpiree_key`` (ta sama regula co dopasowanie
+      certyfikacji), dopasowanie KAZDEGO tokenu zapytania (koniunkcja) — to
+      WYSZUKIWANIE dla piszacego czlowieka, nie relacja certyfikacji, stad
+      wolno mu byc podciagiem („huawei 215ktl" znajduje wiersz, mimo ze
+      producent w wykazie niesie pelna forme prawna).
+    - ``limit``/``offset``: wycinek po filtrze (limit >= 1, offset >= 0).
+    - naglowek ``X-Total-Count``: licznosc PO filtrze, PRZED wycinkiem —
+      konsument widzi uczciwie, ile pozycji zostalo poza strona.
+    """
+    if limit is not None and limit < 1:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Parametr limit musi byc >= 1.",
+        )
+    if offset < 0:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Parametr offset musi byc >= 0.",
+        )
+    records = [
         item.to_dict() for item in get_default_mv_catalog().list_ptpiree_generator_certificates()
     ]
+    if search is not None and search.strip():
+        tokeny = normalize_ptpiree_key(search).split()
+        if tokeny:
+            records = [
+                record
+                for record in records
+                if (
+                    stog := normalize_ptpiree_key(
+                        f"{record.get('manufacturer', '')} {record.get('model', '')} "
+                        f"{record.get('document_number', '')}"
+                    )
+                )
+                and all(token in stog for token in tokeny)
+            ]
+    response.headers["X-Total-Count"] = str(len(records))
+    if limit is not None:
+        return records[offset : offset + limit]
+    if offset:
+        return records[offset:]
+    return records
 
 
 @router.get("/branch-point-types")
@@ -360,13 +412,18 @@ def list_switchgear_families_endpoint(
     """Lista rodzin rozdzielnic SN (goal §11A.3).
 
     Z `manufacturer_ref` zwęża do rodzin danego producenta (np.
-    `?manufacturer_ref=ABB` → UniGear ZS1, SafeRing).
+    `?manufacturer_ref=ABB` → UniGear ZS1, SafeRing, SafePlus, UniSec).
 
-    Bez parametru zwraca wszystkie zweryfikowane rodziny (6 startowych):
-    - ZPUE_WLOSZCZOWA__ROTOBLOK
-    - ELEKTROMETAL__E2ALPHA
-    - ABB__UNIGEAR_ZS1, ABB__SAFERING
-    - SIEMENS__NXAIR, SIEMENS__8DJH
+    Bez parametru zwraca wszystkie rodziny rejestru (ZPUE, Elektrometal, ABB,
+    Siemens, Schneider Electric).
+
+    ROZSZERZENIE ADDYTYWNE 2026-08-14 (scalenie kanonu rozdzielnic): każdy
+    rekord niesie `tor_konfiguracji` — `MODULARNY` (rozdzielnica składana z
+    pojedynczych pól) albo `BLOK_RMU` (najpierw blok fabryczny, potem
+    doposażenie jednostek). To pole WYLICZANE z `construction_type`, nie druga
+    deklaracja architektury; `null` znaczy „rodzina nie zadeklarowała
+    konstrukcji". Konfiguracje fabryczne rodziny RMU wystawia subzasób
+    `/switchgear-families/{ref}/factory-configurations`.
     """
     families = (
         list_families_for_manufacturer(manufacturer_ref)
@@ -374,6 +431,30 @@ def list_switchgear_families_endpoint(
         else list_switchgear_families()
     )
     return [f.model_dump(mode="json") for f in families]
+
+
+@router.get("/switchgear-families/{switchgear_family_ref}/factory-configurations")
+def list_factory_configurations_endpoint(
+    switchgear_family_ref: str,
+) -> list[dict[str, Any]]:
+    """Konfiguracje fabryczne (bloki) rodziny RMU.
+
+    Rozdzielnica pierścieniowa nie jest zbiorem luźnych szaf: projektant
+    wybiera BLOK o stałej sekwencji jednostek (np. `L-L-T`), a dopiero potem
+    doposaża jednostki. Rodzina o torze `MODULARNY` zwraca pustą listę —
+    uczciwy stan zerowy, nie błąd. Nieznana rodzina kończy się 404 z polskim
+    zdaniem, bo pytanie o bloki wyrobu spoza katalogu nie ma odpowiedzi.
+    """
+    if switchgear_family_ref not in SWITCHGEAR_FAMILY_REGISTRY:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=(
+                f"Rodzina rozdzielnicy '{switchgear_family_ref}' nie istnieje w "
+                "katalogu — brak konfiguracji fabrycznych do pokazania."
+            ),
+        )
+    configurations = list_factory_configurations_for_family(switchgear_family_ref)
+    return [c.model_dump(mode="json") for c in configurations]
 
 
 @router.get("/manufacturers")
@@ -400,6 +481,105 @@ def list_complete_bay_templates_endpoint(
     if bay_kind is not None:
         templates = [t for t in templates if t.bay_kind == bay_kind]
     return [t.model_dump(mode="json") for t in templates]
+
+
+@router.get("/bay-protection-codes")
+def list_bay_protection_codes() -> dict[str, list[str]]:
+    """Kanoniczne funkcje zabezpieczeniowe wymagane dla ról pól SN (readout).
+
+    Jedno źródło prawdy: `BAY_PROTECTION_CODES_BY_ROLE` (PTPiREE/IRiESD +
+    IEC 60255) — to samo, z którego korzystają operacje domenowe budujące pola.
+    Endpoint istnieje po to, by kreator stacji pokazywał kody BEZ kopiowania
+    tablicy do frontendu (zero równoległej definicji). Pole pomiarowe ma listę
+    pustą — uczciwy brak funkcji wyzwalających, nie luka danych.
+    """
+    from network_model.catalog.bay_templates import BAY_PROTECTION_CODES_BY_ROLE
+
+    return {role: list(codes) for role, codes in BAY_PROTECTION_CODES_BY_ROLE.items()}
+
+
+@router.get("/bay-apparatus-kinds")
+def list_bay_apparatus_kinds() -> dict[str, list[str]]:
+    """Rodzaje aparatu GŁÓWNEGO dopuszczalne dla ról pól SN (readout).
+
+    Jedno źródło prawdy: `BAY_PRIMARY_APPARATUS_KINDS_BY_ROLE` — ta sama tablica,
+    którą operacje domenowe stosują przy budowie pola. Końcówka istnieje
+    dokładnie z tego powodu, co bliźniacza `/bay-protection-codes`: kreator
+    stacji ma zawęzić picker aparatu do rozwiązań, które w danym polu REALNIE
+    występują, BEZ kopiowania tablicy do frontendu (zero równoległej definicji,
+    zero listy wariantów zaszytej w UI).
+
+    Wartości to `device_kind` pozycji katalogu APARAT_SN, więc konsument filtruje
+    listę katalogową wprost — nie tłumaczy nazw.
+    """
+    from network_model.catalog.bay_templates import BAY_PRIMARY_APPARATUS_KINDS_BY_ROLE
+
+    return {role: list(kinds) for role, kinds in BAY_PRIMARY_APPARATUS_KINDS_BY_ROLE.items()}
+
+
+@router.get("/mv-protection-device-types")
+def list_mv_protection_device_types() -> list[dict[str, Any]]:
+    """Zabezpieczenia z KANONICZNEGO katalogu MV (przestrzeń `ZABEZPIECZENIE`).
+
+    To ta sama lista, którą waliduje brama katalogowa operacji `add_relay`
+    (`materialization`: `get_protection_device_type`). Końcówka
+    `/protection/device-types` zwraca inny zbiór — bibliotekę analityczną
+    koordynacji zabezpieczeń — więc kreator, który z niej korzystał, oferował
+    pozycje odrzucane potem przez operację (fabrykacja wyboru). Kreatory
+    budujące model wybierają WYŁĄCZNIE stąd.
+    """
+    return [item.to_dict() for item in get_default_mv_catalog().list_protection_device_types()]
+
+
+@router.get("/mv-protection-device-types/{device_type_id}/curves")
+def get_mv_protection_device_curves(device_type_id: str) -> dict[str, Any]:
+    """Krzywe koordynacji dla pozycji KANONICZNEGO katalogu MV (karta KD-3, poz. 9).
+
+    JEDNA PRAWDA KATALOGÓW, DWIE ROLE. Kanoniczny katalog MV (przestrzeń
+    `ZABEZPIECZENIE`) pozostaje jedynym źródłem pickerów budowy modelu, a
+    biblioteka analityczna (`/protection/device-types`) — źródłem funkcji i
+    charakterystyk czasowo-prądowych dla koordynacji. Do tej pory nic tych ról
+    nie łączyło: od dobranego przekaźnika NIE DAŁO SIĘ przejść do jego krzywych
+    inaczej niż ręcznym szukaniem po nazwie.
+
+    Powiązanie jest JAWNE w danych katalogu (`analytical_library_ref`), nie
+    dopasowaniem po nazwie w UI — dopasowanie po nazwie zwracałoby krzywe innego
+    wyrobu przy pierwszej rozbieżności zapisu. Pozycja bez odpowiednika dostaje
+    uczciwy kod gotowości, nie wymyślone mapowanie.
+    """
+    pozycja = get_default_mv_catalog().protection_device_types.get(device_type_id)
+    if pozycja is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Pozycja katalogowa zabezpieczenia '{device_type_id}' nie istnieje.",
+        )
+
+    odpowiedz: dict[str, Any] = {
+        "device_type_id": pozycja.id,
+        "name_pl": pozycja.name_pl,
+        "vendor": pozycja.vendor,
+        "analytical_library_ref": pozycja.analytical_library_ref,
+        "functions_supported": [],
+        "curves_supported": [],
+        "readiness_codes": [],
+    }
+
+    if not pozycja.analytical_library_ref:
+        odpowiedz["readiness_codes"] = ["protection.curve_library_missing"]
+        return odpowiedz
+
+    zdolnosc = load_device_capability(pozycja.analytical_library_ref)
+    if zdolnosc is None:
+        # Referencja wskazuje na wpis, którego w bibliotece nie ma — to BŁĄD
+        # danych katalogu, a nie brak krzywych. Zgłaszamy go jawnie zamiast
+        # cicho udawać, że pozycja krzywych nie ma.
+        odpowiedz["readiness_codes"] = ["protection.curve_library_ref_broken"]
+        return odpowiedz
+
+    odpowiedz["functions_supported"] = list(zdolnosc.functions_supported)
+    odpowiedz["curves_supported"] = list(zdolnosc.curves_supported)
+    odpowiedz["model"] = zdolnosc.model
+    return odpowiedz
 
 
 @router.get("/protection/device-types")

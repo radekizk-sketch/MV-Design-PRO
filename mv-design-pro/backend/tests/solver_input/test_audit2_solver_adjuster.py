@@ -34,31 +34,37 @@ def test_compute_adjustments_tap_changer_neutral_position():
     assert adj.tap_position_changes["tc_oltc_110sn_19_125"] == 0
 
 
-def test_compute_adjustments_bess_p_reserved():
+def test_rezerwa_mocy_magazynu_nie_wchodzi_juz_do_modelu():
+    """Karta K-Q: `reserved_capacity_percent` bylo zgadniete PODWOJNIE.
+
+    Poprzedni pin utrwalal wynik `reserved_pct * 10` z komentarzem
+    „10 = 1000kW * 1%", czyli zalozenie, ze KAZDY magazyn ma 1 MW. Zgadniety byl
+    i procent rezerwy (pole bez zrodla, usuniete z katalogu), i moc magazynu.
+    Dzis rezerwa nie istnieje ani w kontrakcie zmian, ani w sladzie.
+    """
     extensions = {
         "power_flow_extensions": {
             "bess_operation_modes_per_der": [
-                {
-                    "der_id": "der_001",
-                    "mode": {"reserved_capacity_percent": 50.0},
-                }
+                {"der_id": "der_001", "mode": {"mode_code": "fcr_n"}},
             ],
         },
     }
     adj = compute_audit2_adjustments(extensions)
-    assert adj.bess_p_reserved_changes["der_001"] == 50.0 * 10
+    assert not hasattr(adj, "bess_p_reserved_changes")
+    assert "bess_p_reserved_changes" not in adj.to_dict()
+    assert adj.is_empty()
 
 
 def test_compute_adjustments_pf_droop_with_id_lookup():
     extensions = {
         "power_flow_extensions": {
             "p_f_curves_per_der": [
-                {"der_id": "der_001", "curve": {"id": "pf_pse_b"}},
+                {"der_id": "der_001", "curve": {"id": "pf_droop_5"}},
             ],
         },
     }
     adj = compute_audit2_adjustments(extensions)
-    # PSE modul B ma droop 5%
+    # Wariant nastawy nazwany statyzmem: pf_droop_5 -> 5%.
     assert adj.pf_droop_changes["der_001"] == 5.0
 
 
@@ -72,28 +78,32 @@ def test_compute_adjustments_block_transformer_z():
     }
     adj = compute_audit2_adjustments(extensions)
     z = adj.block_transformer_z_pu["der_001"]
-    # btr_pv_15_069_2500: uk=6%, pk=24kW, sn=2500kVA -> uR=24/2500=0.96%, uX≈√(36-0.92)≈5.92%
-    assert abs(z["r_pu"] - 0.0096) < 0.001
+    # btr_pv_15_069_2500 -> typ tr-sn-nn-15-0p69-2p5mva-dyn11-inverter:
+    # uk=6%, pk=26,25 kW, sn=2500 kVA -> uR=26,25/2500=1,05%, uX≈√(36-1,1)≈5,91%
+    assert abs(z["r_pu"] - 0.0105) < 0.001
     assert 0.05 < z["x_pu"] < 0.07  # ≈0.0592
 
 
-def test_compute_adjustments_grounding_z0_z1_ratio_per_type():
-    cases = [
-        ("isolated", 100.0),
-        ("petersen_coil", 50.0),
-        ("resistor_grounded", 5.0),
-        ("directly_grounded", 1.0),
-    ]
-    for grounding_type, expected_ratio in cases:
+def test_etykieta_uziemienia_nie_wyznacza_juz_stosunku_z0_z1():
+    """Karta K-Q — PIN KLASY po WSZYSTKICH czterech wariantach uziemienia.
+
+    Poprzedni pin utrwalal drabinke zgadnietych stalych (izolowana 100,
+    skompensowana 50, przez rezystor 5, bezposrednia 1) i meldowal ja w sladzie
+    jako „zastosowana". Zadna nie miala zrodla, a fizycznie stosunek Z0/Z1 zalezy
+    od pojemnosci doziemnej sieci, nastrojenia dlawika albo rezystora RAZEM z
+    impedancja petli. Impedancje kolejnosci zerowej niesie model
+    (`Source.z0_z1_ratio` / `r0_ohm` / `x0_ohm`), nie nazwa wariantu.
+    """
+    for grounding_type in ("isolated", "petersen_coil", "resistor_grounded", "directly_grounded"):
         extensions = {
             "sc_iec60909_extensions": {
                 "mv_neutral_grounding": {"grounding_type": grounding_type},
             },
         }
         adj = compute_audit2_adjustments(extensions)
-        assert (
-            adj.grounding_z0_z1_ratio == expected_ratio
-        ), f"Grounding {grounding_type} -> Z0/Z1 = {expected_ratio}"
+        assert not hasattr(adj, "grounding_z0_z1_ratio"), grounding_type
+        assert "grounding_z0_z1_ratio" not in adj.to_dict(), grounding_type
+        assert adj.is_empty(), grounding_type
 
 
 def test_apply_to_network_model_passes_through_when_no_extensions():
@@ -103,8 +113,6 @@ def test_apply_to_network_model_passes_through_when_no_extensions():
     assert applied == {
         "tap_position_changes": {},
         "block_transformer_z_changes": {},
-        "grounding_z0_z1_ratio": None,
-        "bess_reserved_changes": {},
         "pf_droop_changes": {},
     }
 
@@ -194,18 +202,22 @@ def test_apply_to_network_model_block_transformer_overrides_uk():
     assert "der_pv_001" in applied["block_transformer_z_changes"]
 
 
-def test_apply_to_network_model_grounding_z0_z1_recorded():
-    """Phase 22: grounding type -> Z0/Z1 ratio recorded in applied + on graph."""
-    graph = {"branches": {}}
-    extensions = {
-        "sc_iec60909_extensions": {
-            "mv_neutral_grounding": {"grounding_type": "petersen_coil"},
-        },
-    }
-    applied = apply_audit2_to_network_model(graph=graph, audit2_extensions=extensions)
-    assert applied["grounding_z0_z1_ratio"] == 50.0
-    # Dict graph dostaje field.
-    assert graph["z0_z1_ratio"] == 50.0
+def test_uziemienie_nie_dopisuje_juz_zgadnietego_z0_z1_do_grafu():
+    """Karta K-Q — PIN KLASY po WSZYSTKICH wariantach, takze na sciezce zapisu.
+
+    Poprzedni pin utrwalal wpisanie stalej 50,0 do `graph.z0_z1_ratio` i do
+    sladu. To bylo zgadniecie wchodzace do modelu przed solverem.
+    """
+    for grounding_type in ("isolated", "petersen_coil", "resistor_grounded", "directly_grounded"):
+        graph: dict = {"branches": {}}
+        extensions = {
+            "sc_iec60909_extensions": {
+                "mv_neutral_grounding": {"grounding_type": grounding_type},
+            },
+        }
+        applied = apply_audit2_to_network_model(graph=graph, audit2_extensions=extensions)
+        assert "grounding_z0_z1_ratio" not in applied, grounding_type
+        assert "z0_z1_ratio" not in graph, grounding_type
 
 
 class _MockInverterSource:
@@ -216,8 +228,8 @@ class _MockInverterSource:
         self.in_rated_a = 100.0
 
 
-def test_apply_to_network_model_bess_reserved_capacity():
-    """Phase 28: BESS reserved capacity ustawia inverter.reserved_capacity_percent."""
+def test_apply_nie_ustawia_juz_rezerwy_mocy_na_zrodle_falownikowym():
+    """Karta K-Q: zgadniety procent rezerwy nie dotyka juz zrodla w grafie."""
 
     class _MockGraph:
         def __init__(self):
@@ -242,10 +254,8 @@ def test_apply_to_network_model_bess_reserved_capacity():
     }
     applied = apply_audit2_to_network_model(graph=graph, audit2_extensions=extensions)
     inv = graph.inverter_sources["der_bess_001"]
-    # Phase 28: faktyczna mutacja inverter source.
-    assert inv.reserved_capacity_percent == 50
-    assert "der_bess_001" in applied["bess_reserved_changes"]
-    assert applied["bess_reserved_changes"]["der_bess_001"]["mode_code"] == "fcr_n"
+    assert not hasattr(inv, "reserved_capacity_percent")
+    assert "bess_reserved_changes" not in applied
 
 
 def test_apply_to_network_model_pf_droop():
@@ -284,7 +294,8 @@ def test_apply_to_network_model_pf_droop():
 
 
 def test_apply_to_network_model_combines_all_adjustments():
-    """Phase 28: pelna kombinacja tap + block-trafo + grounding + BESS + P(f)."""
+    """Pelna kombinacja: zaczep + block-trafo + P(f); uziemienie i rezerwa BESS
+    nie wnosza juz zadnej liczby (karta K-Q)."""
 
     class _MockGraph:
         def __init__(self):
@@ -342,12 +353,14 @@ def test_apply_to_network_model_combines_all_adjustments():
         },
     }
     applied = apply_audit2_to_network_model(graph=graph, audit2_extensions=extensions)
-    # Wszystkie 5 typow adjustments zaaplikowane.
+    # Trzy tory adjustments, ktore maja pokrycie w danych: zaczep, block-trafo, P(f).
     assert graph.branches["tr_001"].tap_position == 0
     assert graph.branches["tr_dedicated_der_pv_001"].uk_percent == 6.5
-    assert applied["grounding_z0_z1_ratio"] == 50.0
-    assert graph.inverter_sources["der_bess_001"].reserved_capacity_percent == 50
     assert graph.inverter_sources["der_pv_001"].frequency_droop_percent == 5
+    # Dwa tory bez pokrycia (karta K-Q) nie zostawiaja sladu ANI na grafie.
+    assert "grounding_z0_z1_ratio" not in applied
+    assert "bess_reserved_changes" not in applied
+    assert not hasattr(graph.inverter_sources["der_bess_001"], "reserved_capacity_percent")
 
 
 def test_determinism_same_extensions_same_adjustments():
@@ -355,7 +368,7 @@ def test_determinism_same_extensions_same_adjustments():
         "power_flow_extensions": {
             "tap_changers": [{"id": "tc_oltc_110sn_19_125", "neutral_position": 0}],
             "p_f_curves_per_der": [
-                {"der_id": "d1", "curve": {"id": "pf_pse_b"}},
+                {"der_id": "d1", "curve": {"id": "pf_droop_5"}},
             ],
         },
     }

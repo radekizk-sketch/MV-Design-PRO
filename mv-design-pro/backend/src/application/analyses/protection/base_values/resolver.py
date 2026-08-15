@@ -254,5 +254,6 @@ def _resolve_in_transformer(
     return (
         in_a,
         BaseValueSourceIn.TRANSFORMER_SIDE,
-        f"In = Sn / (sqrt(3) × Un_{side_label}) = {sn} MVA / (sqrt(3) × {un_side} kV) = {in_a:.1f} A",
+        # Zapis typograficzny (√3), nie surowe ASCII — nota prozy w polu tekstowym.
+        f"In = Sn / (√3 × Un_{side_label}) = {sn} MVA / (√3 × {un_side} kV) = {in_a:.1f} A",
     )

@@ -19,9 +19,7 @@ FRONTEND_ENTRYPOINTS = (
     FRONTEND_SRC / "App.tsx",
     FRONTEND_SRC / "ui" / "navigation" / "routes.ts",
 )
-BACKEND_ENTRYPOINTS = (
-    BACKEND_API / "main.py",
-)
+BACKEND_ENTRYPOINTS = (BACKEND_API / "main.py",)
 SKIP_PATH_PARTS = {
     "__tests__",
     "designer",
@@ -123,14 +121,8 @@ def _read_text(path: Path) -> str:
 
 def iter_frontend_dependencies(path: Path) -> list[Path]:
     text = _read_text(path)
-    specifiers = {
-        match.group("specifier")
-        for match in STATIC_IMPORT_PATTERN.finditer(text)
-    }
-    specifiers.update(
-        match.group("specifier")
-        for match in DYNAMIC_IMPORT_PATTERN.finditer(text)
-    )
+    specifiers = {match.group("specifier") for match in STATIC_IMPORT_PATTERN.finditer(text)}
+    specifiers.update(match.group("specifier") for match in DYNAMIC_IMPORT_PATTERN.finditer(text))
 
     resolved: list[Path] = []
     for specifier in sorted(specifiers):

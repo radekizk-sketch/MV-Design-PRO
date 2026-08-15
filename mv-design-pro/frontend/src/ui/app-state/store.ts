@@ -29,20 +29,12 @@ import {
   type RuntimeOperatingMode,
 } from '../operatingMode';
 import { useSnapshotStore } from '../topology/snapshotStore';
-import { useReadinessLiveStore } from '../engineering-readiness/readinessLiveStore';
-import {
-  normalizeAreaId,
-  type AreaId,
-  type LegacyAreaCode,
-} from '../navigation/areaRegistry';
 import type { EnergyNetworkModel } from '../../types/enm';
 import { useExecutionRunsStore } from '../study-cases/runStore';
 
 // =============================================================================
-// V12 — Area and Work-mode types
+// V12 — Work-mode types
 // =============================================================================
-
-export type AreaCode = AreaId;
 
 /**
  * V12 SLD work-mode codes.
@@ -105,8 +97,7 @@ interface AppState {
   // UI_INTEGRATION_E2E: Analysis type context
   activeAnalysisType: AnalysisType;
 
-  // V12: Area and work-mode
-  activeArea: AreaId;
+  // V12: work-mode
   activeWorkMode: WorkMode;
   activeVariantId: string | null;
   activeVariantName: string | null;
@@ -134,7 +125,6 @@ interface AppState {
   toggleIssuePanel: (open?: boolean) => void; // P30d
 
   // V12 actions
-  setActiveArea: (area: AreaId | LegacyAreaCode | string) => void;
   setActiveWorkMode: (mode: WorkMode) => void;
   setActiveVariant: (variantId: string | null, variantName?: string | null) => void;
   setEnmHashChain: (chain: EnmHashChainState | null) => void;
@@ -166,7 +156,6 @@ const initialState = {
   activeAnalysisType: null as AnalysisType, // UI_INTEGRATION_E2E
   issuePanelOpen: false, // P30d
   // V12
-  activeArea: 'MODEL_SIECI' as AreaId,
   activeWorkMode: 'TE' as WorkMode,
   activeVariantId: null as string | null,
   activeVariantName: null as string | null,
@@ -197,6 +186,22 @@ function getCalculationStructuralBlocker(snapshot: EnergyNetworkModel | null): s
 /**
  * Zustand store for global application state.
  */
+/**
+ * Klucze stanu przenoszone miedzy sesjami (localStorage). JEDNO zrodlo prawdy
+ * dla zapisu (`partialize`) i odczytu (`migrate`): pole spoza tej listy nie
+ * zostanie zapisane ANI odtworzone.
+ */
+const KLUCZE_UTRWALANE = [
+  'activeProjectId',
+  'activeProjectName',
+  'activeCaseId',
+  'activeCaseName',
+  'activeCaseKind',
+  'activeSnapshotId',
+  'activeVariantId',
+  'activeVariantName',
+] as const;
+
 export const useAppStateStore = create<AppState>()(
   persist(
     (set, get) => ({
@@ -211,7 +216,6 @@ export const useAppStateStore = create<AppState>()(
         // If project changed, clear case context
         if (current.activeProjectId !== projectId) {
           useSnapshotStore.getState().reset();
-          useReadinessLiveStore.getState().clear();
           set({
             activeProjectId: projectId,
             activeProjectName: projectName,
@@ -239,7 +243,6 @@ export const useAppStateStore = create<AppState>()(
       setActiveCase: (caseId, caseName = null, caseKind = null, resultStatus = 'NONE') => {
         if (get().activeCaseId !== caseId) {
           useSnapshotStore.getState().reset();
-          useReadinessLiveStore.getState().clear();
           useExecutionRunsStore.getState().setActiveRun(null);
         }
         set({
@@ -303,10 +306,6 @@ export const useAppStateStore = create<AppState>()(
       },
 
       // V12 actions
-
-      setActiveArea: (area) => {
-        set({ activeArea: normalizeAreaId(area) });
-      },
 
       setActiveWorkMode: (mode) => {
         set({ activeWorkMode: mode });
@@ -384,29 +383,30 @@ export const useAppStateStore = create<AppState>()(
     }),
     {
       name: 'mv-design-app-state',
-      version: 2,
+      // D1 (kanon nawigacji): wersja 3 zrzuca z utrwalonego stanu klucz drugiej
+      // nawigacji. Migracja NIE wymienia go z nazwy — zostawia WYLACZNIE klucze
+      // z `KLUCZE_UTRWALANE`, wiec kazde pole wycofane w przyszlosci znika tak
+      // samo, bez dopisywania kolejnej galezi migracji. Warunek zapisu i warunek
+      // odczytu pochodza z JEDNEJ listy (regula KLASA-NIE-INSTANCJA §3).
+      version: 3,
       migrate: (persistedState: unknown, _version) => {
         if (!persistedState || typeof persistedState !== 'object') {
           return persistedState as AppState;
         }
-        const state = persistedState as Partial<AppState> & { activeArea?: unknown };
-        return {
-          ...state,
-          activeArea: normalizeAreaId(state.activeArea),
-        } as AppState;
+        const zapisany = persistedState as Record<string, unknown>;
+        const zachowane: Record<string, unknown> = {};
+        for (const klucz of KLUCZE_UTRWALANE) {
+          if (klucz in zapisany) {
+            zachowane[klucz] = zapisany[klucz];
+          }
+        }
+        return zachowane as unknown as AppState;
       },
       // Only persist project and case IDs, not transient state
-      partialize: (state) => ({
-        activeProjectId: state.activeProjectId,
-        activeProjectName: state.activeProjectName,
-        activeCaseId: state.activeCaseId,
-        activeCaseName: state.activeCaseName,
-        activeCaseKind: state.activeCaseKind,
-        activeSnapshotId: state.activeSnapshotId, // UI_INTEGRATION_E2E
-        activeArea: state.activeArea,
-        activeVariantId: state.activeVariantId,
-        activeVariantName: state.activeVariantName,
-      }),
+      partialize: (state) =>
+        Object.fromEntries(
+          KLUCZE_UTRWALANE.map((klucz) => [klucz, state[klucz]]),
+        ) as Pick<AppState, (typeof KLUCZE_UTRWALANE)[number]>,
     }
   )
 );
@@ -504,11 +504,9 @@ export function useCanCalculate(): { allowed: boolean; reason: string | null } {
   const activeCaseId = useAppStateStore((state) => state.activeCaseId);
   const resultStatus = useAppStateStore((state) => state.activeCaseResultStatus);
   const snapshot = useSnapshotStore((state) => state.snapshot);
+  // JEDNA prawda gotowości (KD-1 / V12K-286): `useSnapshotStore.readiness` —
+  // ta sama odpowiedź domenowa, którą pokazuje panel gotowości i chrom powłoki.
   const readiness = useSnapshotStore((state) => state.readiness);
-  const liveReady = useReadinessLiveStore((state) => state.ready);
-  const liveBlocker = useReadinessLiveStore((state) =>
-    state.issues.find((issue) => issue.severity === 'BLOCKER') ?? null,
-  );
 
   if (!activeCaseId) {
     return { allowed: false, reason: 'Wybierz aktywny zakres obliczeń' };
@@ -522,18 +520,11 @@ export function useCanCalculate(): { allowed: boolean; reason: string | null } {
     };
   }
 
-  if (readiness) {
-    if (!readiness.ready) {
-      const blocker = readiness.blockers?.[0];
-      return {
-        allowed: false,
-        reason: blocker?.message_pl ?? 'Skonfiguruj wskazane zakresy układu przed analizą',
-      };
-    }
-  } else if (!liveReady || liveBlocker) {
+  if (readiness && !readiness.ready) {
+    const blocker = readiness.blockers?.[0];
     return {
       allowed: false,
-      reason: liveBlocker?.message_pl ?? 'Skonfiguruj wskazane zakresy układu przed analizą',
+      reason: blocker?.message_pl ?? 'Skonfiguruj wskazane zakresy układu przed analizą',
     };
   }
 

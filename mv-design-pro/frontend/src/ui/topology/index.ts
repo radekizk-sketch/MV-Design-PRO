@@ -19,8 +19,6 @@ export type {
   PetersenCoil,
   TransformerEarthing,
 } from './earthingTypes';
-export { CreatorToolbar } from './CreatorToolbar';
-export type { CreatorTool } from './CreatorToolbar';
 export { TopologyTreeView } from './TopologyTreeView';
 export { useTopologyStore } from './store';
 export {

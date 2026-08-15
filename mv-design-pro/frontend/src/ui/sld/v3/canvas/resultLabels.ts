@@ -30,8 +30,8 @@
  *
  * Przestrzeń refów (identyczna co pozostałe kanały, patrz `overlay.ts` nagłówek):
  * transformator/źródło/DER — `meta.ownerRef` = ENM `ref_id` = klucz
- * `payload.elements`; przęsło — `segmentRef` == `branch_id` (bramka
- * jednokawałkowa `singleHopSegmentRefs` jak flow); szyna — `meta.ownerRef`,
+ * `payload.elements`; przęsło — `segmentRef` == `branch_id` (bramka orientacji
+ * `orientedSegmentRefs`, ta sama co flow); szyna — `meta.ownerRef`,
  * gdy adapter niesie realny bus ref. ADAPTER-BUSREF (dług W4/R2/V12K-163
  * DOMKNIĘTY): szyny GPZ o refie KOMPOZYTOWYM (`${sectionId}#bus-primary` itd.)
  * niosą TERAZ addytywną metadanę `meta.busResultRef` = kanoniczny `Bus.ref_id`
@@ -46,7 +46,8 @@ import type { RawMetricValue, RawOverlayPayload } from '../../../sld-overlay/raw
 import { getMetric } from '../../../sld-overlay/rawResultOverlayStore';
 import type { EnergyNetworkModel } from '../../../../types/enm';
 import type { SceneV3 } from '../scene/buildScene';
-import { singleHopSegmentRefs } from './overlay';
+import { orientedSegmentRefs } from './overlay';
+import type { ResultPointCoverage, ResultRefBridge } from './resultRefBridge';
 import {
   applyDeltaSign,
   computeResultLabelTrend,
@@ -79,6 +80,13 @@ export interface ResultLabelComparison {
  *  (`lines.length===0`) NIE jest emitowany. */
 export interface ResultLabelEntry {
   readonly ownerRef: string;
+  /** S9-2 — ref PUNKTU WYNIKU (klucz `payload.elements`), z którego zbudowano
+   *  linie. Różny od `ownerRef` wszędzie tam, gdzie rysunek nazywa obiekt
+   *  refem kompozytowym (szyna stacji `${stationRef}#sn-bus`, blok stacji na
+   *  L0, symbol transformatora zakotwiczony na polu) — patrz
+   *  `resultRefBridge.ts`. Nośnik tożsamości dla dedupu (jedna etykieta na
+   *  punkt) i dla rachunku pokrycia (`summarizeResultPointCoverage`). */
+  readonly resultRef: string;
   readonly kind: ResultLabelKind;
   readonly lines: readonly ResultLabelLine[];
   /** R3 (wym. 9) — SEVERITY elementu 1:1 z kontraktu backendu
@@ -159,17 +167,51 @@ const SYMBOL_KIND_TO_LABEL_KIND: Readonly<Record<string, ResultLabelKind>> = {
 };
 
 /**
- * ADAPTER-BUSREF (dług W4/R2/V12K-163): ref używany do DOPASOWANIA payloadu/
- * energizacji dla segmentu — kanoniczny `Bus.ref_id` (`meta.busResultRef`,
- * niesiony ze snapshotu przez adapter dla szyn GPZ o refie kompozytowym), a w
- * jego braku `meta.ownerRef` (segmenty, których `ownerRef` JEST już realnym
- * refem ENM). JEDNO ŹRÓDŁO PRAWDY dla warstwy wynikowej (`resultLabels`) i
- * energizacji/flow (`SldCanvasV3`) — zero rozjazdu mapowań. `undefined` gdy
- * segment nie ma ŻADNEGO refu. */
+ * S9-2 — klasy symboli sceny DOPUSZCZONE do warstwy wynikowej. Poza rodzinami
+ * z tabeli wyżej dochodzi `station`: zwinięty blok stacji na poziomie przeglądu
+ * (L0), który — przez most refów — niesie wartość STACYJNĄ (szyna SN stacji).
+ * `apparatus` NIE jest tu wymieniony celowo: symbol aparatu pola dzieli
+ * `ownerRef` z polem, więc bez tej bramy etykieta transformatora stacji mogłaby
+ * zakotwiczyć się na rozłączniku zamiast na symbolu transformatora.
+ */
+const LABELLED_SYMBOL_KINDS: ReadonlySet<string> = new Set([
+  'transformer',
+  'source',
+  'der',
+  'station',
+]);
+
+/**
+ * ADAPTER-BUSREF (dług W4/R2/V12K-163): ref używany do DOPASOWANIA payloadu
+ * dla segmentu — kanoniczny `Bus.ref_id` (`meta.busResultRef`, niesiony ze
+ * snapshotu przez adapter dla szyn GPZ o refie kompozytowym), a w jego braku
+ * `meta.ownerRef` — ale WYŁĄCZNIE gdy `ownerRef` jest refem MODELU, nie refem
+ * RYSUNKU.
+ *
+ * ODMOWA ZAMIAST PODSTAWIENIA (karta WN-WYNIK, klasa „wynik jednego elementu na
+ * innym elemencie"): ref RYSUNKOWY poznajemy po sufiksie kompozytowym
+ * (`${cośRealnego}#sn-bus`, `#bus-primary`, `#hv-bus` — konwencja
+ * `compose/station.ts`/`compose/gpz.ts`). Taki ref NIE ISTNIEJE w przestrzeni
+ * `payload.elements` (klucze backendu to `Bus.ref_id`), więc schodzenie do niego
+ * może wyłącznie (a) chybić albo (b) trafić CUDZY klucz, gdyby kiedykolwiek
+ * skolidował — czyli przypiąć szynie wartość innego obiektu. INWENTARZ (pomiar
+ * kart WN-WYNIK na sieci referencyjnej 52 stacji i na 6 kształtach GPZ z żywego
+ * backendu): ZERO odcinków szynowych sceny ma `ownerRef` równy
+ * `Bus.ref_id` — fallback nie obsługiwał ŻADNEJ realnej szyny, obsługiwał
+ * wyłącznie ryzyko. Odcinki toru (`elementKind==='segment'`) mają `ownerRef`
+ * BEZ sufiksu (realny `branch_id`) i przechodzą jak dotąd.
+ *
+ * `undefined` = uczciwy brak dopasowania (wołający NIE rysuje etykiety), nigdy
+ * wartość sąsiada. TA SAMA dyscyplina, co bramka przęseł w
+ * `buildResultLabelsFromScene` (`ownerRef.includes('#') ⇒ pomiń`) — jedna
+ * reguła dla całej warstwy wynikowej. */
 export function resultRefForSegment(
   meta: { readonly ownerRef?: string; readonly busResultRef?: string } | undefined,
 ): string | undefined {
-  return meta?.busResultRef ?? meta?.ownerRef;
+  if (meta?.busResultRef) return meta.busResultRef;
+  const ownerRef = meta?.ownerRef;
+  if (!ownerRef || ownerRef.includes('#')) return undefined;
+  return ownerRef;
 }
 
 /**
@@ -178,61 +220,166 @@ export function resultRefForSegment(
  * wg rejestru szablonów (`resultLabelTemplates.ts`) dla rodziny analizy z
  * `payload.analysis_type`; nierozpoznana analiza ⇒ brak szablonów ⇒ pusta mapa
  * (zero fabrykacji). Element bez pasujących metryk ⇒ brak wpisu (zero atrap).
- * `trustedBranchRefs`: zbiór refów przęseł jednokawałkowych
- * (`singleHopSegmentRefs`) — jedyne przęsła z jednoznaczną tożsamością gałęzi,
- * dopuszczone do etykiety (brak dubli wielokawałkowych, spójnie z bramką flow).
+ * `trustedBranchRefs`: zbiór refów przęseł o UDOWODNIONEJ orientacji
+ * (klucze `orientedSegmentRefs`) — jedyne przęsła z jednoznaczną tożsamością
+ * gałęzi, dopuszczone do etykiety (spójnie z bramką flow).
+ * `bridge` (S9-2, `resultRefBridge.ts`): most refów rysunek → punkt wyniku dla
+ * elementów, których rysunek nazywa INACZEJ niż model (szyny stacji, blok
+ * stacji na L0, transformator stacji zakotwiczony na polu). Brak mostu ⇒
+ * zachowanie sprzed karty (`meta.busResultRef` / `ownerRef`).
  */
 export function buildResultLabelsFromScene(
   scene: SceneV3,
   payload: RawOverlayPayload | null,
   trustedBranchRefs: ReadonlySet<string>,
   comparison?: ResultLabelComparison,
+  bridge?: ResultRefBridge,
 ): Record<string, ResultLabelEntry> {
   const entries: Record<string, ResultLabelEntry> = {};
   if (!payload) return entries;
   const analysis: ResultLabelAnalysis | null = normalizeResultLabelAnalysis(payload.analysis_type);
   if (!analysis) return entries;
 
+  // S9-2: JEDEN dedup dla całej sceny — po refie PUNKTU WYNIKU, nie po refie
+  // rysunku. Domyka dotychczasowy dedup szyn GPZ (sekcja rysowana jako
+  // główna+rezerwowa+domknięcie ringu dzieli jeden `busResultRef`) i obejmuje
+  // przypadki mostu (blok stacji L0 i odcinek szyny SN wskazują TEN SAM punkt).
+  const seenResultRefs = new Set<string>();
+  const emit = (ownerRef: string, resultRef: string, kind: ResultLabelKind): void => {
+    if (entries[ownerRef] || seenResultRefs.has(resultRef)) return;
+    const lines = linesFor(payload, resultRef, selectResultLabelSpecs(analysis, kind), comparison);
+    if (lines.length === 0) return;
+    seenResultRefs.add(resultRef);
+    entries[ownerRef] = { ownerRef, resultRef, kind, lines, severity: severityOf(payload, resultRef) };
+  };
+
   for (const symbol of scene.symbols) {
     const elementKind = symbol.meta?.elementKind;
     const ownerRef = symbol.meta?.ownerRef;
-    if (!elementKind || !ownerRef) continue;
-    const labelKind = SYMBOL_KIND_TO_LABEL_KIND[elementKind];
+    if (!elementKind || !ownerRef || !LABELLED_SYMBOL_KINDS.has(elementKind)) continue;
+    // MOST REFÓW (S9-2) ma pierwszeństwo: symbol transformatora stacji jest
+    // zakotwiczony na polu (`…/sn_field/003`), a zwinięty blok stacji na L0 na
+    // refie stacji — oba wskazują punkt wyniku, którego rysunek nie nazywa.
+    const binding = bridge?.get(ownerRef);
+    const labelKind = binding?.kind ?? SYMBOL_KIND_TO_LABEL_KIND[elementKind];
     if (!labelKind) continue;
-    if (entries[ownerRef]) continue; // ta sama tożsamość na wielu LOD/symbolach
-    const lines = linesFor(payload, ownerRef, selectResultLabelSpecs(analysis, labelKind), comparison);
-    if (lines.length === 0) continue;
-    entries[ownerRef] = { ownerRef, kind: labelKind, lines, severity: severityOf(payload, ownerRef) };
+    emit(ownerRef, binding?.resultRef ?? ownerRef, labelKind);
   }
 
-  // ADAPTER-BUSREF: dedup etykiet szyny po KANONICZNYM refie — sekcja SN GPZ
-  // rysowana jako główna+rezerwowa+domknięcie ringu (różne `ownerRef`
-  // kompozytowe) współdzieli JEDEN `busResultRef` ⇒ dokładnie jedna etykieta
-  // U/δ (kotwica na PIERWSZEJ, tj. szynie głównej). Refy realne (szyny stacji,
-  // gdzie `busResultRef` brak) trafiają tu jako własny `ownerRef` — zachowanie
-  // niezmienne (każda taka szyna to inny wpis).
-  const seenBusResultRefs = new Set<string>();
   for (const segment of scene.segments) {
     const elementKind = segment.meta?.elementKind;
     const ownerRef = segment.meta?.ownerRef;
     if (!elementKind || !ownerRef) continue;
     if (entries[ownerRef]) continue;
+    const binding = bridge?.get(ownerRef);
+    if (binding) {
+      // Szyna stacji (`${stationRef}#sn-bus` / `#lv-bus`): ref rysunkowy nie
+      // jest refem szyny w modelu. Most rozstrzyga też KLASĘ — odcinek szyny nN
+      // jest w scenie klasyfikowany jako zwykły odcinek toru, a jest szyną.
+      emit(ownerRef, binding.resultRef, binding.kind);
+      continue;
+    }
     if (elementKind === 'bus') {
-      const resultRef = resultRefForSegment(segment.meta) ?? ownerRef;
-      if (seenBusResultRefs.has(resultRef)) continue;
-      const lines = linesFor(payload, resultRef, selectResultLabelSpecs(analysis, 'bus'), comparison);
-      if (lines.length === 0) continue;
-      seenBusResultRefs.add(resultRef);
-      entries[ownerRef] = { ownerRef, kind: 'bus', lines, severity: severityOf(payload, resultRef) };
+      // ODMOWA ZAMIAST PODSTAWIENIA (WN-WYNIK): brak udowodnionego punktu
+      // wyniku ⇒ BRAK etykiety. Dawne `?? ownerRef` sprowadzało odcinek szyny
+      // do jego refu RYSUNKOWEGO (`…#hv-bus`) — klucza, którego backend nie
+      // emituje, a który mógł skolidować z refem innego obiektu.
+      const busResultRef = resultRefForSegment(segment.meta);
+      if (busResultRef) emit(ownerRef, busResultRef, 'bus');
     } else if (elementKind === 'segment') {
       if (ownerRef.includes('#') || !trustedBranchRefs.has(ownerRef)) continue;
-      const lines = linesFor(payload, ownerRef, selectResultLabelSpecs(analysis, 'branch'), comparison);
-      if (lines.length === 0) continue;
-      entries[ownerRef] = { ownerRef, kind: 'branch', lines, severity: severityOf(payload, ownerRef) };
+      emit(ownerRef, ownerRef, 'branch');
     }
   }
 
   return entries;
+}
+
+/**
+ * S9-2 — UCZCIWY RACHUNEK POKRYCIA warstwy wynikowej: każdy punkt wyniku
+ * backendu trafia do DOKŁADNIE JEDNEJ z czterech kategorii, a ich suma równa
+ * się liczbie punktów (inwariant testowany). Kolejność rozstrzygania (pierwsza
+ * pasująca wygrywa — stąd rozłączność):
+ *   1. `hiddenByModel` — model JAWNIE nie rysuje tego węzła
+ *      (`Bus.meta.render_on_sld === false`: mufa ciągu, zacisk pola);
+ *   2. `withoutTemplate` — rodzina analizy nie ma szablonu treści dla klasy
+ *      tego elementu (np. gałąź w wyniku zwarciowym);
+ *   3. `labelled` — punkt ma etykietę (jest w mapie wpisów, po `resultRef`);
+ *   4. `withoutAnchor` — reszta: punkt rysowalny i z szablonem, ale bez elementu
+ *      sceny (odmowa mostu przy niejednoznaczności albo element spoza sieci).
+ * Kategoria 4 to jedyny REALNY brak pokrycia — jej refy są wypisane.
+ */
+export function summarizeResultPointCoverage(
+  payload: RawOverlayPayload | null,
+  entries: Readonly<Record<string, ResultLabelEntry>> | undefined,
+  hiddenByModel: ReadonlySet<string>,
+): ResultPointCoverage {
+  const empty: ResultPointCoverage = {
+    total: 0,
+    labelled: 0,
+    hiddenByModel: 0,
+    withoutTemplate: 0,
+    withoutAnchor: 0,
+    withoutAnchorRefs: [],
+  };
+  if (!payload) return empty;
+  const analysis = normalizeResultLabelAnalysis(payload.analysis_type);
+  const labelledRefs = new Set<string>();
+  for (const ref of Object.keys(entries ?? {})) labelledRefs.add((entries ?? {})[ref].resultRef);
+  let labelled = 0;
+  let hidden = 0;
+  let withoutTemplate = 0;
+  const withoutAnchorRefs: string[] = [];
+  for (const ref of Object.keys(payload.elements).sort()) {
+    if (hiddenByModel.has(ref)) {
+      hidden += 1;
+      continue;
+    }
+    if (!resultPointHasTemplate(analysis, payload, ref)) {
+      withoutTemplate += 1;
+      continue;
+    }
+    if (labelledRefs.has(ref)) {
+      labelled += 1;
+      continue;
+    }
+    withoutAnchorRefs.push(ref);
+  }
+  return {
+    total: Object.keys(payload.elements).length,
+    labelled,
+    hiddenByModel: hidden,
+    withoutTemplate,
+    withoutAnchor: withoutAnchorRefs.length,
+    withoutAnchorRefs,
+  };
+}
+
+/** Klasa elementu payloadu (`RawOverlayElement.kind`, kontrakt backendu
+ *  `result_builder_v1`) → klasa szablonu warstwy wynikowej. `generator` to
+ *  klasa źródeł/DER w payloadzie (`gpz/…/source/main` ma `kind: "generator"`).
+ *  Klasa nieznana ⇒ brak szablonu (uczciwie, zero fabrykacji). */
+const PAYLOAD_KIND_TO_LABEL_KIND: Readonly<Record<string, ResultLabelKind>> = {
+  bus: 'bus',
+  branch: 'branch',
+  transformer: 'transformer',
+  generator: 'source',
+  source: 'source',
+};
+
+/** `true` gdy rodzina analizy ma szablon treści dla klasy tego punktu ORAZ
+ *  punkt niesie co najmniej jedną metrykę z tego szablonu (brak metryk = brak
+ *  linii = brak etykiety; ta sama bramka co w builderze, jedno źródło prawdy). */
+function resultPointHasTemplate(
+  analysis: ResultLabelAnalysis | null,
+  payload: RawOverlayPayload,
+  ref: string,
+): boolean {
+  if (!analysis) return false;
+  const kind = PAYLOAD_KIND_TO_LABEL_KIND[payload.elements[ref]?.kind ?? ''];
+  if (!kind) return false;
+  const specs = selectResultLabelSpecs(analysis, kind);
+  return specs.some((spec) => finiteMetric(getMetric(payload, ref, spec.code)));
 }
 
 /** R3 (wym. 9) — SEVERITY elementu 1:1 z payloadu (`RawOverlayElement.severity`).
@@ -272,7 +419,32 @@ const PREFIX_TO_QUANTITY: Readonly<Record<string, ResultLabelQuantity>> = {
   Ith: 'I',
   U: 'U',
   δ: 'U',
+  // ΔU = spadek napięcia linii/kabla [%] — wielkość NAPIĘCIOWA (LF-KONTRAKT
+  // V12K-161 dołożył ją do szablonu gałęzi, ale tabela nie została uzupełniona:
+  // linia przechodziła przez filtry niefiltrowalna. Deklaracja „tabela
+  // ZAMKNIĘTA" nie miała testu — teraz ma).
+  'ΔU': 'U',
+  // cosφ = |P|/|S| — mówi, jaka CZĘŚĆ mocy pozornej jest mocą czynną, więc
+  // znika razem z grupą mocy czynnej (ta sama zasada „najbliższa semantyka"
+  // co przy Sk→S). Dotąd bez wpisu, z tego samego powodu co ΔU.
+  'cosφ': 'P',
   'obc.': 'loading',
+  // NAKŁADKA RÓŻNIC A/B — prefiksy rodziny `short_circuit_delta`. Różnica
+  // wielkości filtruje się jak sama wielkość (Δ Ik″/ip/Ith → prądy, Δ Sk → moc
+  // pozorna), inaczej włączenie filtra prądów zostawiłoby różnice prądów na
+  // ekranie: tabela jest ZAMKNIĘTA, każdy prefiks szablonu musi tu być.
+  'Δ Ik″': 'I',
+  'Δ Ik″ %': 'I',
+  'Δ ip': 'I',
+  'Δ Ith': 'I',
+  'Δ Sk': 'S',
+  // S9-13 — wartości bezwzględne przebiegu B w nakładce różnic (`B_*`): ta sama
+  // wielkość co ich odpowiedniki bez „(B)" (prądy/moc pozorna), więc filtrują
+  // się razem z nimi.
+  'Ik″ (B)': 'I',
+  'ip (B)': 'I',
+  'Ith (B)': 'I',
+  'Sk (B)': 'S',
 };
 
 /** Wielkość linii wg prefiksu (`null` = prefiks spoza tabeli — linia traktowana
@@ -372,7 +544,9 @@ export function isResultLabelsEmpty(entries: Record<string, ResultLabelEntry> | 
   return !entries || Object.keys(entries).length === 0;
 }
 
-/** Ponowny eksport bramki jednokawałkowej — wołający (workspace) używa tego
- *  samego zbioru co flow overlay (jedna definicja, `overlay.ts`). */
-export { singleHopSegmentRefs };
+/** Ponowny eksport bramki orientacji — wołający (workspace) używa TEGO SAMEGO
+ *  zbioru co nakładka przepływu (jedna definicja, `overlay.ts`): przęsło z
+ *  udowodnioną tożsamością gałęzi dostaje i etykietę, i strzałkę, albo żadnego
+ *  z dwojga. */
+export { orientedSegmentRefs };
 export type { EnergyNetworkModel };

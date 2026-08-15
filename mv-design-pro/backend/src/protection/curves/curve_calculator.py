@@ -119,11 +119,11 @@ class CurveDefinition:
     def get_curve_params(self) -> IECCurveParams | IEEECurveParams:
         """Get the appropriate curve parameters based on standard."""
         if self.standard == CurveStandard.IEC:
-            curve_type = IECCurveType(self.curve_type)
-            return IECCurveParams.get_standard_params(curve_type)
+            iec_type = IECCurveType(self.curve_type)
+            return IECCurveParams.get_standard_params(iec_type)
         else:
-            curve_type = IEEECurveType(self.curve_type)
-            return IEEECurveParams.get_standard_params(curve_type)
+            ieee_type = IEEECurveType(self.curve_type)
+            return IEEECurveParams.get_standard_params(ieee_type)
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to dictionary."""
@@ -199,10 +199,10 @@ def calculate_curve_points(
         List of CurvePoint objects
     """
     if curve.standard == CurveStandard.IEC:
-        curve_type = IECCurveType(curve.curve_type)
-        params = IECCurveParams.get_standard_params(curve_type)
+        iec_type = IECCurveType(curve.curve_type)
+        iec_params = IECCurveParams.get_standard_params(iec_type)
         raw_points = generate_iec_curve_points(
-            curve_params=params,
+            curve_params=iec_params,
             pickup_current_a=curve.pickup_current_a,
             time_multiplier=curve.time_multiplier,
             current_range=current_range,
@@ -210,10 +210,10 @@ def calculate_curve_points(
             definite_time_s=curve.definite_time_s,
         )
     else:
-        curve_type = IEEECurveType(curve.curve_type)
-        params = IEEECurveParams.get_standard_params(curve_type)
+        ieee_type = IEEECurveType(curve.curve_type)
+        ieee_params = IEEECurveParams.get_standard_params(ieee_type)
         raw_points = generate_ieee_curve_points(
-            curve_params=params,
+            curve_params=ieee_params,
             pickup_current_a=curve.pickup_current_a,
             time_dial=curve.time_multiplier,
             current_range=current_range,
@@ -246,27 +246,27 @@ def calculate_trip_time(
         Trip time in seconds (inf if no trip)
     """
     if curve.standard == CurveStandard.IEC:
-        curve_type = IECCurveType(curve.curve_type)
-        params = IECCurveParams.get_standard_params(curve_type)
-        result = calculate_iec_tripping_time(
+        iec_type = IECCurveType(curve.curve_type)
+        iec_params = IECCurveParams.get_standard_params(iec_type)
+        iec_result = calculate_iec_tripping_time(
             fault_current_a=fault_current_a,
             pickup_current_a=curve.pickup_current_a,
-            curve_params=params,
+            curve_params=iec_params,
             time_multiplier=curve.time_multiplier,
             definite_time_s=curve.definite_time_s,
         )
-        return result.tripping_time_s
+        return iec_result.tripping_time_s
     else:
-        curve_type = IEEECurveType(curve.curve_type)
-        params = IEEECurveParams.get_standard_params(curve_type)
-        result = calculate_ieee_tripping_time(
+        ieee_type = IEEECurveType(curve.curve_type)
+        ieee_params = IEEECurveParams.get_standard_params(ieee_type)
+        ieee_result = calculate_ieee_tripping_time(
             fault_current_a=fault_current_a,
             pickup_current_a=curve.pickup_current_a,
-            curve_params=params,
+            curve_params=ieee_params,
             time_dial=curve.time_multiplier,
             definite_time_s=curve.definite_time_s,
         )
-        return result.tripping_time_s
+        return ieee_result.tripping_time_s
 
 
 def calculate_grading_margin(
@@ -429,7 +429,7 @@ def analyze_curve_set(
     # Analyze at fault points
     if fault_markers:
         for marker in fault_markers:
-            fault_result = {
+            fault_result: dict[str, Any] = {
                 "marker": marker.to_dict(),
                 "trip_times": [],
             }

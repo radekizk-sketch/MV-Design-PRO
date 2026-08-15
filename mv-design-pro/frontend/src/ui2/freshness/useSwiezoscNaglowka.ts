@@ -10,8 +10,13 @@
  * defekt V12K-256 (trzy kopie jednej reguły normowej z różnymi progami).
  *
  * SKĄD POCHODZĄ OBIE LICZBY (zero zgadywania):
- *  - `rewizjaModelu` — BIEŻĄCA rewizja modelu z `useSnapshotStore`
- *    (`snapshot.header.revision`), ta sama konwencja co `useSwiezoscWynikow`.
+ *  - `rewizjaModelu` — BIEŻĄCA rewizja modelu z JEDNEGO źródła
+ *    `useSnapshotStore.rewizjaBiezacegoModelu` (S9-11 / W-5): rewizja
+ *    wyświetlanej migawki (`snapshot.header.revision`) bywa rewizją PODGLĄDU
+ *    PRZEBIEGU — porównanie z nią wychodziło „aktualne" zawsze, niezależnie od
+ *    tego, jak daleko pojechał żywy model, i przeczyło chipowi paska przypadku
+ *    („trzy prawdy stanu" z pomiaru audytu). Ta sama konwencja co
+ *    `useSwiezoscWynikow` i chip (`shellStatus.useRewizjeSwiezosci`).
  *  - `rewizjaDanych` — rewizja, NA KTÓREJ policzono bieg, z kontraktu przebiegu
  *    (`analysisCaseContext.rewizjaModelu`, backend: `analysis_case_context`).
  *    Do V12K-264 kontrakt tej liczby NIE NIÓSŁ, więc znacznik świeżości był
@@ -44,11 +49,9 @@ export interface SwiezoscNaglowka {
  * `naglowek={{ analizaPL, runId, ...useSwiezoscNaglowka(runId) }}`.
  */
 export function useSwiezoscNaglowka(runId: string | null | undefined): SwiezoscNaglowka {
-  // `header` TEZ jest opcjonalny (V12K-265): lancuch urwany na `snapshot?`
-  // wywracal ekran przy migawce bez naglowka — `Cannot read properties of
-  // undefined (reading 'revision')`. Znacznik swiezosci nie moze zabijac
-  // ekranu wynikow; brak naglowka to brak rewizji, nie awaria.
-  const rewizjaModelu = useSnapshotStore((s) => s.snapshot?.header?.revision);
+  // Jedno źródło rewizji bieżącego modelu (W-5) — `null` = nieznana, znacznik
+  // po prostu się nie renderuje (brak danej zostaje brakiem, nie awarią).
+  const rewizjaModelu = useSnapshotStore((s) => s.rewizjaBiezacegoModelu);
   const caseId = useAppStateStore((s) => s.activeCaseId);
   const { data } = useAnalysisRunContract(runId ?? null);
 

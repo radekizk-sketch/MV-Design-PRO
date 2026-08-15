@@ -5,8 +5,13 @@ Warstwa layoutu zasila renderer; E0/E1 nietknięte. Najprostszy layouter SLD, ni
 
 ## Eksploracja (znaleziska)
 
-- Istnieje pipeline `ui/sld/core/layoutPipeline.ts` (VisualGraphV1 → LayoutResultV1, FNV-1a hash,
+- ~~Istnieje pipeline `ui/sld/core/layoutPipeline.ts`~~ (VisualGraphV1 → LayoutResultV1, FNV-1a hash,
   pasma/trunki, routing ortho) — ale dla systemu GPZ+stacje, na innym kontrakcie.
+  **NIEAKTUALNE od 2026-08-08 (karta TYPY-POZA-BRAMKA): plik USUNIĘTY.** Okazał się
+  NIEIMPORTOWALNY — sięgał po trzy nieistniejące moduły (`layoutInputGraph`,
+  `layoutDetailRegistry`, `semanticGraphBuilder`) i 14 nieistniejących eksportów, a
+  `sld_determinism_guards.py` już trzymał go na liście ścieżek wygaszonych. Decyzja
+  poniżej („nie rusza pipeline'u GPZ") jest tym POTWIERDZONA, nie unieważniona.
 - Presety kanonu G1–G9 są **samodzielne, ręcznie kodowane** (nie zasilane silnikiem).
 - Brak adaptera MODEL→geometria dla kanonu (testy importują nieistniejący `convertToVisualGraph`).
 - Metryki kanonu: szyna SN y=200, nN y=600 (Δ400), pitch pola ~345, szyna x 280–1520.

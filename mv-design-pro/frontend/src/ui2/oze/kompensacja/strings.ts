@@ -26,7 +26,7 @@ export const KOMPENSACJA_STRINGS = {
   paramWezelWybierz: '— wybierz węzeł —',
   paramWezelOpis:
     'Co to jest: szyna, w której dobierana jest bateria kondensatorów. Skąd wartości: '
-    + 'lista węzłów pochodzi ze snapshotu przebiegu rozpływu. Konsekwencja: kandydaci '
+    + 'lista węzłów pochodzi z wersji modelu przebiegu rozpływu. Konsekwencja: kandydaci '
     + 'ograniczeni do baterii o napięciu znamionowym zgodnym z napięciem tej szyny.',
   paramCosfiMin: 'Wymagany cosφ (minimalny)',
   paramCosfiMinOpis:
@@ -49,7 +49,7 @@ export const KOMPENSACJA_STRINGS = {
     + 'wskazanego punktu przyłączenia.',
   brakWezlow: 'Brak węzłów w bieżącym modelu',
   brakWezlowOpis:
-    'Snapshot przebiegu nie zawiera żadnej szyny. Zbuduj model sieci, aby dobrać '
+    'Wersja modelu przebiegu nie zawiera żadnej szyny. Zbuduj model sieci, aby dobrać '
     + 'kompensację.',
   idle: 'Wskaż węzeł punktu przyłączenia i wymagany cosφ, następnie uruchom dobór',
   idleOpis:
@@ -61,7 +61,7 @@ export const KOMPENSACJA_STRINGS = {
   // Nota rozdziału dwóch cosφ (wymóg właściciela) + konwencja kanoniczna
   notaCosfiTytul: 'Dwie odrębne wielkości cosφ',
   notaCosfiPunktu:
-    'cosφ punktu kompensowanego — z lokalnego bilansu $Q_{\\mathrm{netto}} = Q_{\\mathrm{load}} - Q_{\\mathrm{cap\\,eff}}$. '
+    'cosφ punktu kompensowanego — z lokalnego bilansu $Q_{\\text{netto}} = Q_{\\text{odb}} - Q_{\\text{bat}}$. '
     + 'To NA NIM opiera się dobór baterii (kolumna decyzyjna, werdykt „spełnia").',
   notaCosfiPrzekroju:
     'cosφ przekroju sieciowego — cosφ przepływu mocy w przekroju sieci. Wielkość '
@@ -71,7 +71,7 @@ export const KOMPENSACJA_STRINGS = {
   // Sekcja stanu wyjściowego (baseline)
   baselineTytul: 'Stan wyjściowy punktu (bez baterii)',
   baselineKomentarz:
-    'Bez baterii $Q_{\\mathrm{cap\\,eff}} = 0$, więc cosφ punktu i cosφ przekroju są równe; obie '
+    'Bez baterii $Q_{\\text{bat}} = 0$, więc cosφ punktu i cosφ przekroju są równe; obie '
     + 'wielkości pokazano jawnie, aby były rozróżnialne również w tabeli kandydatów.',
   baselineCosfiPunktuDzien: 'cosφ punktu kompensowanego (dzień)',
   baselineCosfiPunktuNoc: 'cosφ punktu kompensowanego (noc)',
@@ -108,6 +108,11 @@ export const KOMPENSACJA_STRINGS = {
   doborPodstawa:
     'Dobór sterowany wyłącznie wielkością cosφ punktu kompensowanego; cosφ przekroju '
     + 'sieciowego pokazany obok jako wielkość informacyjna.',
+  // K5-A (H-3 pkt 6): pętla werdykt → kreator modelu (add_shunt_compensator_sn).
+  doborOtworzKreator: 'Dobierz kompensator na tej szynie',
+  doborOtworzKreatorOpis:
+    'Otwiera kreator baterii kondensatorów SN z kontekstem tej szyny (przestrzeń Schemat) — '
+    + 'zapis to realna operacja modelu add_shunt_compensator_sn.',
   brakDoboruTytul: 'Brak doboru',
 
   // Założenia
@@ -119,25 +124,28 @@ export const KOMPENSACJA_STRINGS = {
   zalScenariuszNocNie: 'pominięty',
   zalLiczbaKandydatow: 'Liczba kandydatów z katalogu',
   zalPrzebieg: 'Identyfikator przebiegu',
-  zalIdentyfikatorSkrot: 'Identyfikator wejścia (hash)',
+  zalIdentyfikatorSkrot: 'Identyfikator wejścia (skrót)',
 
-  // Ślad WHITE BOX
-  sladTytul: 'Ślad doboru (WHITE BOX)',
+  // Ślad doboru — pełna jawność obliczeń. Wzory wyłącznie LaTeX (dyrektywa
+  // właściciela 2026-07-29): renderowane KaTeX-em przez `SladAnalizy`
+  // (MathInline / TekstZWzorami). Zero kodów produkcji i nazw API w treści.
+  sladTytul: 'Ślad doboru (pełna jawność obliczeń)',
   sladPokaz: 'Pokaż ślad doboru',
   sladUkryj: 'Ukryj ślad doboru',
   sladSymbolPQ: 'źródło P/Q',
   sladSymbolCosfiPunktu: 'cosφ punktu',
   sladSymbolCosfiPrzekroju: 'cosφ przekroju',
-  sladSymbolKonwencja: 'konwencja',
-  sladSymbolDecyzja: 'decyzja',
-  sladWzorPQ: 'P, Q punktu = wypadkowy przeplyw galezi zasilajacych (branch_results solvera)',
-  sladWzorCosfiPunktu: 'cosfi_punktu = |P| / sqrt(P^2 + Q_netto^2); Q_netto = Q_load - Q_cap_eff',
-  sladWzorCosfiPrzekroju: 'cosfi_przekroju = |P| / sqrt(P^2 + Q_przekroju^2)',
-  sladWzorKonwencja: 'znak kanoniczny mocy (adapter interpretacyjny)',
-  sladWzorDecyzja: 'rozstrzygniecie architektoniczne (PowerFlowResult FROZEN)',
-  sladPodstawienieKandydaci: 'liczba kandydatow z katalogu',
+  sladSymbolKonwencja: 'konwencja znaku',
+  sladSymbolDecyzja: 'decyzja doboru',
+  sladWzorPQ: 'P + \\mathrm{j}Q = \\sum_{g} \\left(P_{g} + \\mathrm{j}Q_{g}\\right)',
+  sladWzorCosfiPunktu:
+    '\\cos\\varphi_{\\text{punktu}} = \\dfrac{|P|}{\\sqrt{P^{2} + Q_{\\text{netto}}^{2}}},'
+    + '\\quad Q_{\\text{netto}} = Q_{\\text{odb}} - Q_{\\text{bat}}',
+  sladWzorCosfiPrzekroju:
+    '\\cos\\varphi_{\\text{przekroju}} = \\dfrac{|P|}{\\sqrt{P^{2} + Q_{\\text{przekroju}}^{2}}}',
+  sladPodstawienieKandydaci: 'liczba kandydatów z katalogu',
   sladPodstawienieNoc: 'scenariusz nocny',
-  sladNocPominiety: 'pominiety',
+  sladNocPominiety: 'pominięty',
 
   // Jednostki i wartości puste
   jednMvar: 'Mvar',

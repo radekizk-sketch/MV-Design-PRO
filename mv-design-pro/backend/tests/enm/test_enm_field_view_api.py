@@ -1,6 +1,14 @@
-"""Tests for the ENM canonical field read-model endpoint."""
+"""Tests for the ENM canonical field read-model endpoint.
 
-import asyncio
+WYWOLANIE BEZPOSREDNIE, BEZ `asyncio.run`. Te testy wolaja funkcje koncowki
+wprost, z pominieciem warstwy HTTP. Koncowka jest zdefiniowana jako `def` — jej
+cialo jest w calosci blokujace (odczyt modelu z pliku + budowa modelu odczytu),
+wiec FastAPI wykonuje ja w PULI WATKOW zamiast na petli zdarzen (os
+wspolbieznosci programu 10x). Zwraca wiec gotowy slownik, a nie korutyne.
+
+INTENCJA TESTOW BEZ ZMIAN: sprawdzaja TRESC modelu odczytu pol, a nie sposob
+wykonania koncowki. `asyncio.run` bylo tu wylacznie adapterem do `async def`.
+"""
 
 import pytest
 from api.enm import get_enm_field_view
@@ -255,7 +263,7 @@ def _enm_with_fw_bay() -> dict:
 
 
 def test_get_field_view_empty():
-    data = asyncio.run(get_enm_field_view("field-empty"))
+    data = get_enm_field_view("field-empty")
 
     assert data["case_id"] == "field-empty"
     assert data["view_status"] == {
@@ -271,7 +279,7 @@ def test_get_field_view_returns_canonical_bay_contract():
     _seed_enm("field-ready", _enm_with_bay())
     run_short_circuit_now(case_id="field-ready")
 
-    data = asyncio.run(get_enm_field_view("field-ready"))
+    data = get_enm_field_view("field-ready")
     stored_enm = get_enm("field-ready")
 
     assert data["case_id"] == "field-ready"
@@ -309,7 +317,7 @@ def test_get_field_view_returns_canonical_bay_contract():
 def test_get_field_view_synthesizes_fields_from_substation_meta():
     _seed_enm("field-specs", _enm_with_field_specs_only())
 
-    data = asyncio.run(get_enm_field_view("field-specs"))
+    data = get_enm_field_view("field-specs")
 
     assert data["summary"]["total_fields"] == 1
     item = data["fields"][0]
@@ -323,7 +331,7 @@ def test_get_field_view_synthesizes_fields_from_substation_meta():
 def test_get_field_view_reads_nn_field_specs_from_substation_meta():
     _seed_enm("field-nn-specs", _enm_with_nn_field_specs_only())
 
-    data = asyncio.run(get_enm_field_view("field-nn-specs"))
+    data = get_enm_field_view("field-nn-specs")
 
     assert data["summary"]["total_fields"] == 1
     item = data["fields"][0]
@@ -336,7 +344,7 @@ def test_get_field_view_returns_fw_source_field():
     _seed_enm("field-fw", _enm_with_fw_bay())
     run_short_circuit_now(case_id="field-fw")
 
-    data = asyncio.run(get_enm_field_view("field-fw"))
+    data = get_enm_field_view("field-fw")
 
     assert data["summary"]["source_fields_count"] == 1
 

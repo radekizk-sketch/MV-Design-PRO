@@ -7,7 +7,7 @@
  * DIRECTLY to the grid (via the turbine TR) — NO power-electronic converter, fixed speed, reactive
  * compensation by a capacitor bank. SC is CLASSICAL (PN-EN 60909 §6.7): an asynchronous machine
  * behind Z_M whose contribution decays (μ·q, §6.6) — a real machine, NOT a current-limited IBG —
- * referred per-bus by the FROZEN solver. Readouts ①② bound to the solver (klik węzeł → White Box).
+ * referred per-bus by the FROZEN solver. Readouts ①② bound to the solver (klik węzeł → pełna jawność obliczeń).
  */
 import {
   AMBER,
@@ -79,7 +79,7 @@ export function SldCanonPresetG7({ companion }: { companion: SldOzeArchetypeComp
       {/* ── header ── */}
       <text x={940} y={42} textAnchor="middle" fill="#F4F6F8" fontFamily={SANS} fontSize={22} fontWeight={800}>{title}</text>
       <text x={940} y={70} textAnchor="middle" fill={AMBER} fontFamily={SANS} fontSize={13} fontWeight={700}>{subtitle}</text>
-      <text x={1810} y={112} textAnchor="end" fill={CYAN} fontFamily={SANS} fontSize={11} fontWeight={700}>WYNIKI w węzłach — ze solwera (czas rzecz.) · klik węzeł → White Box</text>
+      <text x={1810} y={112} textAnchor="end" fill={CYAN} fontFamily={SANS} fontSize={11} fontWeight={700}>WYNIKI w węzłach — ze solwera (czas rzecz.) · klik węzeł → pełna jawność obliczeń</text>
 
       {/* ── collector busbar (15 kV) ── */}
       <line x1={snX1} y1={snBusY} x2={snX2} y2={snBusY} stroke={SN_BUS} strokeWidth={5} strokeLinecap="round" />

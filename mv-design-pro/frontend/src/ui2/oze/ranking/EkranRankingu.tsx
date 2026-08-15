@@ -37,6 +37,7 @@ import {
   wybierzPrzebiegRozplywu,
 } from '../zdolnosc/zdolnoscModel';
 import { fmtMW } from '../zdolnosc/strings';
+import { PrzylaczZrodloPrzycisk } from '../PrzylaczZrodloPrzycisk';
 import {
   KLUCZ_WIERSZA_RANKINGU,
   klasaNcRfg,
@@ -48,6 +49,8 @@ import {
 } from './rankingModel';
 import { RANKING_STRINGS, fmtMocMW, fmtNapieciaPara, fmtStratyKw } from './strings';
 import { useSwiezoscNaglowka } from '../../freshness';
+import { PrzyciskAkcjiStanu } from '../../wyniki/wzorzec';
+import type { AkcjaStanuZerowego } from '../../wyniki/wzorzec';
 
 const DOMYSLNY_KROK_MW = 0.5;
 const DOMYSLNA_LICZBA_KROKOW = 40;
@@ -63,11 +66,15 @@ function StanPanel({
   opis,
   wariant,
   testid,
+  akcja,
 }: {
   komunikat: string;
   opis?: string;
   wariant: 'info' | 'blad';
   testid: string;
+  /* K6 / H-5: slot akcji stanu zerowego — realny następny krok (bieg obliczeń,
+     nawigacja, formularz operacji). Brak akcji = panel czysto informacyjny. */
+  akcja?: AkcjaStanuZerowego;
 }) {
   return (
     <div
@@ -76,6 +83,7 @@ function StanPanel({
     >
       <p className="mvd-rank-stan-title">{komunikat}</p>
       {opis && <p className="mvd-rank-stan-desc">{opis}</p>}
+      <PrzyciskAkcjiStanu akcja={akcja} testid={testid} />
     </div>
   );
 }
@@ -133,6 +141,15 @@ function SzczegolWezla({
         <dt>{RANKING_STRINGS.szczegolKlasa}</dt>
         <dd>{klasa !== null ? `${klasa.id} — ${klasa.description_pl}` : RANKING_STRINGS.kreska}</dd>
       </dl>
+
+      {/* K5-B (H-3 pkt 1): pętla ranking → model — formularz źródła OZE
+          z preselekcją wybranego węzła (bus_ref z odpowiedzi backendu). */}
+      <PrzylaczZrodloPrzycisk
+        busRef={wezel.bus_ref}
+        busName={wezel.bus_name ?? null}
+        zrodloAkcji="ranking_wezel"
+        testid="mvd-rank-przylacz"
+      />
 
       <div>
         <span className="mvd-rank-slad-tytul">{RANKING_STRINGS.sladTytul}</span>

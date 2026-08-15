@@ -7,6 +7,15 @@
 export interface OpcjaWyboru {
   readonly id: string;
   readonly etykieta: string;
+  /**
+   * Pozycja WIDOCZNA, ale NIEWYBIERALNA. Powód należy do etykiety — pozycja
+   * bez podanego powodu wygląda jak usterka listy, nie jak decyzja katalogu.
+   *
+   * Po co widoczna: ukrycie pozycji, której katalog nie pozwala użyć, kasuje
+   * wiedzę o realnym portfolio producenta („ten producent ma tylko jedną
+   * rodzinę"), zamiast powiedzieć, czego brakuje do jej użycia.
+   */
+  readonly wylaczona?: boolean;
 }
 
 /** Stan wiersza gotowości (kontrola kompletności danych kreatora). */

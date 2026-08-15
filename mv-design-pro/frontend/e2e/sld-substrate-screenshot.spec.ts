@@ -127,13 +127,27 @@ test.describe('sld:substrate:screenshot', () => {
     const apparatusTotal = await page.locator(APPARATUS).count();
     // Poza licznikiem także LEGENDA arkusza (glify wzorcowe „Wyłącznik"/
     // „Odłącznik" w ramce IEC — nie są aparaturą sieci).
-    const apparatusGpz = await page
-      .locator(`[data-testid^="gpz-canonical-"] :is(${APPARATUS})`)
-      .count();
-    const apparatusLegend = await page
-      .locator(`[data-testid="sld-sheet-legend"] :is(${APPARATUS})`)
-      .count();
-    const detail = apparatusTotal - apparatusGpz - apparatusLegend;
+    //
+    // NAPRAWA (karta TESTY-DRYF-E2E poz. 5, 2026-08-12; ta sama KLASA co
+    // `sld-pa-powerflow-tor.spec.ts` N-1 — dwie RÓWNOLEGŁE rodziny testidów
+    // GPZ): wykluczenie znało wyłącznie starszy wrapper `gpz-canonical-*`.
+    // Blok GPZ ZWINIĘTY na L0 (`buildScene.ts` ~L2548-2559, symbol
+    // „aparat ciągłości" pola odejściowego) renderuje wyłącznik pod TESTIDEM
+    // `sld-v3-l0-gpz-bay-*` — INNĄ rodziną (ten sam glif co reszta bloku
+    // zwiniętego GPZ, `sld-v3-l0-gpz-*`), więc dawne wykluczenie go nie
+    // łapało i liczyło jako „aparaturę stacji" (regres testu, nie produktu:
+    // gramatyka L0 §21/F13.1 od początku zakładała PEŁNY blok rozdzielni GPZ
+    // — kolumna WN + pole liniowe — na każdym poziomie szczegółu).
+    // `closest()` obejmuje SAM element i przodków jedną asercją.
+    const apparatusExcluded = await page.locator(APPARATUS).evaluateAll((nodes) =>
+      nodes.filter(
+        (n) =>
+          n.closest('[data-testid^="gpz-canonical-"]') != null
+          || n.closest('[data-testid^="sld-v3-l0-gpz-"]') != null
+          || n.closest('[data-testid="sld-sheet-legend"]') != null,
+      ).length,
+    );
+    const detail = apparatusTotal - apparatusExcluded;
     const lodAttr = await canvas.getAttribute('data-scene-lod');
     console.log(`L0: blocks=${blocks} aparatura=${detail} data-scene-lod=${lodAttr}`);
 

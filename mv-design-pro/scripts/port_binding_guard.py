@@ -147,7 +147,10 @@ def _iter_python_fixtures() -> list[Path]:
 def _iter_typescript_fixtures() -> list[Path]:
     candidates: list[Path] = []
     if FRONTEND_SRC.exists():
-        for pattern in ("ui/sld/v2/__tests__/fixtures/**/*.ts", "ui/sld/v2/__tests__/fixtures/**/*.tsx"):
+        for pattern in (
+            "ui/sld/v2/__tests__/fixtures/**/*.ts",
+            "ui/sld/v2/__tests__/fixtures/**/*.tsx",
+        ):
             candidates.extend(FRONTEND_SRC.glob(pattern))
     if FRONTEND_E2E.exists():
         for pattern in ("fixtures/**/*.ts", "fixtures/**/*.json"):
@@ -232,7 +235,13 @@ def _validate_ports_manifest() -> tuple[int, int, list[PortsManifestIssue]]:
             )
 
     # 2. Required entry fields
-    required_entry_fields = ("description", "viewBox", "ports", "allowedRotations", "defaultRotation")
+    required_entry_fields = (
+        "description",
+        "viewBox",
+        "ports",
+        "allowedRotations",
+        "defaultRotation",
+    )
     for sym_id, entry in symbols.items():
         if not isinstance(entry, dict):
             issues.append(
@@ -278,7 +287,7 @@ def _validate_ports_manifest() -> tuple[int, int, list[PortsManifestIssue]]:
                 )
                 continue
             for coord in ("x", "y"):
-                if coord not in port or not isinstance(port[coord], (int, float)):
+                if coord not in port or not isinstance(port[coord], int | float):
                     issues.append(
                         PortsManifestIssue(
                             symbol_id=sym_id,
@@ -302,7 +311,7 @@ def _validate_ports_manifest() -> tuple[int, int, list[PortsManifestIssue]]:
             if "voltage_kv_compat" in port:
                 vc = port["voltage_kv_compat"]
                 if not isinstance(vc, list) or not all(
-                    isinstance(v, (int, float)) and v > 0 for v in vc
+                    isinstance(v, int | float) and v > 0 for v in vc
                 ):
                     issues.append(
                         PortsManifestIssue(

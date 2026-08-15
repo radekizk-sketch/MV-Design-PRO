@@ -121,15 +121,19 @@ describe('EkranKompensacji — rozdział dwóch cosφ + baseline (wymóg właśc
       'cosφ przekroju sieciowego',
     );
     // Nota konwencji kanonicznej (P>0 pobór / Q>0 indukcyjny / Q<0 pojemnościowy) widoczna.
-    expect(screen.getByTestId('mvd-komp-nota-konwencja')).toHaveTextContent(
-      'P>0 pobór czynnej, Q>0 pobór indukcyjnej, Q<0 pojemnościowa',
-    );
-    // Zasada wywodów KaTeX (2026-07-22): bilans Q_netto = Q_load − Q_cap_eff w nocie
-    // oraz Q_cap_eff = 0 w komentarzu baseline renderuje KaTeX, nie surowy tekst.
+    // K10: asercja na semantykę (treść z backendu niesie wzory `$P>0$` renderowane
+    // KaTeX-em), nie na dawny surowy literał ASCII.
+    const notaKonwencji = screen.getByTestId('mvd-komp-nota-konwencja');
+    expect(notaKonwencji).toHaveTextContent('pobór mocy czynnej');
+    expect(notaKonwencji).toHaveTextContent('moc pojemnościowa');
+    // Zasada wywodów KaTeX (2026-07-22): bilans Q_netto = Q_odb − Q_bat w nocie
+    // oraz Q_bat = 0 w komentarzu baseline renderuje KaTeX, nie surowy tekst.
+    // K10: symbole ujednolicone ze śladem backendu (Q_odb/Q_bat zamiast
+    // anglicyzmów Q_load/Q_cap_eff) — intencja asercji bez zmian.
     const wzory = screen.getAllByTestId('math-rendered');
     expect(wzory.length).toBeGreaterThanOrEqual(2);
     expect(
-      wzory.some((w) => (w.getAttribute('data-latex') ?? '').includes('Q_{\\mathrm{netto}}')),
+      wzory.some((w) => (w.getAttribute('data-latex') ?? '').includes('Q_{\\text{netto}}')),
     ).toBe(true);
     expect(screen.queryByTestId('math-fallback')).toBeNull();
   });
@@ -267,6 +271,47 @@ describe('EkranKompensacji — tryb ekspercki i ślad', () => {
     const slad = screen.getByTestId('mvd-komp-slad');
     expect(slad).toHaveTextContent('PODSTAWA DOBORU');
     expect(slad).toHaveTextContent('NIE stopień skompensowania odbioru');
+  });
+});
+
+describe('EkranKompensacji — pętla werdykt → kreator kompensatora (K5-A / H-3 pkt 6)', () => {
+  beforeEach(ustawGotowyRozplyw);
+
+  it('akcja przy werdykcie otwiera kreator add_shunt_compensator_sn z kontekstem szyny doboru i przechodzi do przestrzeni Schemat', async () => {
+    const { useNetworkBuildStore } = await import('../../../../ui/network-build/networkBuildStore');
+    const { useShellStore } = await import('../../../shell/useShellStore');
+    pobierzDobor.mockResolvedValue(widokKompensacjiFixture());
+    render(<EkranKompensacji trybZaawansowania="basic" />);
+    fireEvent.change(screen.getByTestId('mvd-komp-wezel'), { target: { value: 'bus-a' } });
+    fireEvent.click(screen.getByTestId('mvd-komp-oblicz'));
+    await screen.findByTestId('mvd-komp-wynik');
+
+    // Realna ścieżka: natywny klik akcji przy werdykcie doboru.
+    fireEvent.click(screen.getByTestId('mvd-komp-dobor-kreator'));
+
+    const surface = useNetworkBuildStore.getState().activeSurface;
+    expect(surface?.routeState.payload?.delegate).toBe('operation_form');
+    expect(surface?.routeState.payload?.operation).toBe('add_shunt_compensator_sn');
+    const context = surface?.routeState.payload?.context as Record<string, unknown>;
+    expect(context.bus_ref).toBe('bus-a');
+    expect(context.bus_name).toBe('Szyna A');
+    expect(context.bus_voltage_kv).toBe(15);
+    // Formularze operacji domenowych żyją na kanwie schematu.
+    expect(useShellStore.getState().activeSpace).toBe('schemat');
+
+    // Sprzątanie stanu współdzielonych store'ów (izolacja kolejnych testów pliku).
+    useNetworkBuildStore.getState().closeOperationForm();
+    useShellStore.getState().setActiveSpace('projekt');
+    window.location.hash = '';
+  });
+
+  it('brak doboru: akcja kreatora nie jest renderowana (zero martwych klików)', async () => {
+    pobierzDobor.mockResolvedValue(widokBrakDoboruFixture());
+    render(<EkranKompensacji trybZaawansowania="basic" />);
+    fireEvent.change(screen.getByTestId('mvd-komp-wezel'), { target: { value: 'bus-a' } });
+    fireEvent.click(screen.getByTestId('mvd-komp-oblicz'));
+    await screen.findByTestId('mvd-komp-wynik');
+    expect(screen.queryByTestId('mvd-komp-dobor-kreator')).not.toBeInTheDocument();
   });
 });
 

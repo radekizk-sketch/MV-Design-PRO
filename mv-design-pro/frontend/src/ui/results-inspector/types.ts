@@ -219,8 +219,20 @@ export interface ShortCircuitRow {
    * sieć nadrzędna) ORAZ źródła falownikowe; pusta lista = policzono, brak
    * prądu w gałęziach (sieć bez źródła zastępczego i bez falowników zasilających
    * zwarcie); brak pola / null = starszy wynik (uczciwa kreska).
+   *
+   * V12K-281 (K13): wiersze zbiorcze backendu NIE niosą już rozpływu w tym polu
+   * (iloczyn źródło×gałąź per wiersz dawał odpowiedź 730 MB dla 50 stacji) —
+   * pole zostaje dla zgodności (mocki/starsze zapisy); świeży wynik niesie
+   * `null` + flagę dostępności niżej, a dane wybranego punktu pobiera dostawca
+   * na żądanie (`useRozplywZwarciowy`, endpoint rozpływu).
    */
   branch_contributions?: ShortCircuitBranchFlow[] | null;
+  /**
+   * V12K-281 (K13): rozpływ gałęziowy POLICZONY dla tego punktu i dostępny
+   * endpointem na żądanie (`/results/short-circuit/rozplyw?target_id=...`).
+   * Brak pola / false = starszy wynik bez rozpływu (uczciwa kreska).
+   */
+  branch_contributions_available?: boolean | null;
   // Werdykt raportowalności i wiązanie dowodu per punkt (karta P-3, addytywne
   // lustro pól, które backend już wysyła w `build_short_circuit_results`,
   // enm/canonical_analysis.py:1974-1985). Starsze zapisy typu bez pól → optional.
@@ -466,7 +478,12 @@ export interface SldOverlayBranch {
 export interface SldResultOverlay {
   diagram_id: string;
   run_id: string;
+  /** Swiezosc wyniku wzgledem modelu: NONE | FRESH | OUTDATED (liczy backend). */
   result_status: string;
+  /** Kod przyczyny statusu z backendu (np. `model-zmieniony`). */
+  result_status_reason?: string;
+  /** Zdanie po polsku wyjasniajace przyczyne statusu — prosto z backendu. */
+  result_status_reason_pl?: string;
   /** Node overlay data (primary field used by overlay_builder and SLD components) */
   nodes: SldOverlayBus[];
   /** @deprecated Use nodes instead */

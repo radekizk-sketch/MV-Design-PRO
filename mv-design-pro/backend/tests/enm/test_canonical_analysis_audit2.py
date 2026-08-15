@@ -142,71 +142,48 @@ def test_canonical_run_sc_options_propagate_to_audit2():
     assert "apply_audit2_to_network_model" in sc_source
 
 
-# Phase 46: phase_state_sn grounding integration
+# Stan fazowy SN a katalog uziemienia (karta K-Q, 2026-08-14)
+#
+# INTENCJA POPRZEDNICH TESTOW (Phase 46) zostala odwrocona SWIADOMIE. Pinowaly
+# one zachowanie, w ktorym `_phase_state_default_fault_current_from_grounding`
+# brala MEDIANE zgadnietego zakresu `typical_ik1_a_range` i podawala ja solverowi
+# `phase_state_sn` jako domyslny prad zwarcia doziemnego (test wprost oczekiwal
+# 15,5 A z zakresu 1-30 A). Zakres nie mial zrodla — karta K-O usunela go z
+# frontendu, karta K-Q z backendu — wiec pin utrwalal fabrykacje wchodzaca do
+# fizyki. Ponizsze testy pilnuja stanu uczciwego: etykieta wariantu uziemienia
+# NIE wyznacza zadnego pradu zwarcia.
 
 
-def test_phase_state_default_fault_from_grounding_isolated():
-    """Phase 46: isolated grounding -> Ik1 median ~15A."""
-    from enm.canonical_analysis import _phase_state_default_fault_current_from_grounding
+def test_katalog_uziemienia_nie_niesie_zgadywanego_pradu_zwarcia() -> None:
+    """PIN KLASY po WSZYSTKICH pozycjach katalogu uziemienia SN."""
+    from network_model.catalog.audit2_catalogs import MV_NEUTRAL_GROUNDING_CATALOG
 
-    extensions = {
-        "sc_iec60909_extensions": {
-            "mv_neutral_grounding": {
-                "grounding_type": "isolated",
-                "typical_ik1_a_range": {"min": 1, "max": 30},
-            },
-        },
-    }
-    result = _phase_state_default_fault_current_from_grounding(extensions)
-    assert result is not None
-    assert result == (15.5, 0.0, 0.0)  # (1+30)/2 = 15.5
+    assert MV_NEUTRAL_GROUNDING_CATALOG, "katalog nie moze byc pusty"
+    for item in MV_NEUTRAL_GROUNDING_CATALOG:
+        serialized = item.to_dict()
+        assert "typical_ik1_a_range" not in serialized, item.id
+        assert "typical_ik1_a_min" not in serialized, item.id
+        assert "typical_ik1_a_max" not in serialized, item.id
 
 
-def test_phase_state_default_fault_from_grounding_directly():
-    """Phase 46: directly grounded -> wysoki Ik1 median ~10500A."""
-    from enm.canonical_analysis import _phase_state_default_fault_current_from_grounding
+def test_stan_fazowy_nie_ma_juz_domyslu_z_etykiety_uziemienia() -> None:
+    """Zrodlowy pin: helper zgadujacy prad zwarcia zniknal razem z wolaniem."""
+    import inspect
 
-    extensions = {
-        "sc_iec60909_extensions": {
-            "mv_neutral_grounding": {
-                "grounding_type": "directly_grounded",
-                "typical_ik1_a_range": {"min": 1000, "max": 20000},
-            },
-        },
-    }
-    result = _phase_state_default_fault_current_from_grounding(extensions)
-    assert result is not None
-    median = result[0]
-    assert 5000 <= median <= 20000
+    from enm import canonical_analysis
+
+    assert not hasattr(canonical_analysis, "_phase_state_default_fault_current_from_grounding")
+    ps_source = inspect.getsource(canonical_analysis._execute_phase_state_sn)
+    assert "_phase_state_default_fault_current_from_grounding" not in ps_source
+    assert "typical_ik1_a_range" not in ps_source
 
 
-def test_phase_state_default_fault_from_grounding_none():
-    """Phase 46: brak audit2 -> None default."""
-    from enm.canonical_analysis import _phase_state_default_fault_current_from_grounding
-
-    assert _phase_state_default_fault_current_from_grounding(None) is None
-    assert _phase_state_default_fault_current_from_grounding({}) is None
-    # Brak grounding key.
-    assert _phase_state_default_fault_current_from_grounding({"sc_iec60909_extensions": {}}) is None
-    # Empty range.
-    assert (
-        _phase_state_default_fault_current_from_grounding(
-            {
-                "sc_iec60909_extensions": {
-                    "mv_neutral_grounding": {"typical_ik1_a_range": {"min": 0, "max": 0}}
-                }
-            }
-        )
-        is None
-    )
-
-
-def test_phase_state_uses_audit2_helper():
-    """Phase 46: _execute_phase_state_sn tez korzysta z _maybe_load_audit2_extensions."""
+def test_stan_fazowy_bez_jawnego_pradu_liczy_sie_bez_zwarcia() -> None:
+    """Brak `fault_current_a` w opcjach = 0 A na kazdej fazie, a nie mediana."""
     import inspect
 
     from enm import canonical_analysis
 
     ps_source = inspect.getsource(canonical_analysis._execute_phase_state_sn)
-    assert "_maybe_load_audit2_extensions" in ps_source
-    assert "_phase_state_default_fault_current_from_grounding" in ps_source
+    fragment = ps_source.split('"fault_current_a"', 1)[1].split("open_phase", 1)[0]
+    assert "default=(0.0, 0.0, 0.0)" in fragment, fragment
