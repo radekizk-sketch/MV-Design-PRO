@@ -112,9 +112,11 @@ from application.analyses.fault_loop.route import (
 from application.analyses.fault_loop.service import (
     _NON_TN_SYSTEMS,
     _find_station,
-    _station_transformer,
     _system_for_station,
+    assign_station_lv_buses,
     build_feeder_fault_loop_view,
+    resolve_transformer_for_bus,
+    station_transformers,
 )
 from application.analyses.nn_device_selection import (
     KIND_FUSE_SWITCH,
@@ -799,6 +801,9 @@ def _build_row(
         "nr": nr,
         "wyszczegolnienie": wyszczegolnienie,
         "feeder_root_branch_ref": root_branch_ref,
+        # Transformator, OD KTÓREGO liczono trasę/hopy/Ib tego wiersza — jawnie,
+        # żeby przy stacji 2×TR wiersz dało się przypisać do sekcji (klasa B-02).
+        "transformator_ref": trafo.ref_id,
         "worst_point_bus_ref": worst_bus_ref,
         "worst_point_zrodlo": (
             "pętla zwarcia (impedancja)"
@@ -890,8 +895,8 @@ def build_nn_circuit_sheet(
             "reason_pl": None,
         }
 
-    trafo = _station_transformer(enm, station)
-    if trafo is None:
+    transformatory = station_transformers(enm, station)
+    if not transformatory:
         return {
             "status": "brak danych",
             "station_ref": station_ref,
@@ -909,20 +914,51 @@ def build_nn_circuit_sheet(
         fault_duration_s=fault_duration_s,
     )
 
-    try:
-        paths = bfs_paths_from(enm, trafo.lv_bus_ref)
-    except RouteExtractionError as exc:
-        return {
-            "status": "brak danych",
-            "station_ref": station_ref,
-            "station_name": station.name,
-            "wiersze": [],
-            "missing_data": ["route"],
-            "reason_pl": str(exc),
-        }
+    # Arkusz obejmuje odpływy WSZYSTKICH transformatorów stacji (klasa B-02):
+    # każdy odpływ należy do transformatora, którego szyna nN jest jego korzeniem
+    # (`assign_station_lv_buses` — najbliższy po zamkniętych gałęziach), i od
+    # TEGO transformatora liczy się trasę, hopy i Ib z tabliczki. Do 2026-09-01
+    # arkusz brał „pierwszy transformator stacji": przy sprzęgle otwartym odpływy
+    # sekcji 2 w ogóle nie trafiały do arkusza, przy zamkniętym liczyły się przez
+    # sprzęgło. Szyna nN transformatora nieobecna w modelu = pusta mapa tras
+    # tego transformatora (uczciwy brak, pozostałe TR liczą się dalej).
+    przypisanie = assign_station_lv_buses(enm, transformatory)
+    if all(not przypisanie.paths_by_transformer.get(t.ref_id) for t in transformatory):
+        try:
+            bfs_paths_from(enm, transformatory[0].lv_bus_ref)
+        except RouteExtractionError as exc:
+            return {
+                "status": "brak danych",
+                "station_ref": station_ref,
+                "station_name": station.name,
+                "wiersze": [],
+                "missing_data": ["route"],
+                "reason_pl": str(exc),
+            }
 
-    grupy = group_bus_refs_by_feeder(paths)
-    if not grupy:
+    worst_impedancyjny: dict[str, str | None] = {}
+    if system not in _NON_TN_SYSTEMS:
+        widok_petli = build_feeder_fault_loop_view(enm, station_ref)
+        if widok_petli.get("status") == "OK":
+            for f in widok_petli.get("feeders", []):
+                worst_impedancyjny[f["feeder_root_branch_ref"]] = f.get("worst_point_bus_ref")
+
+    # Kolejność wierszy: po `feeder_root_branch_ref` w obrębie CAŁEJ stacji
+    # (jak dotąd), niezależnie od transformatora — numeracja `nr` ciągła.
+    odplywy: list[tuple[str, Transformer, list[str], dict[str, int]]] = []
+    for trafo in transformatory:
+        paths = przypisanie.paths_by_transformer.get(trafo.ref_id, {})
+        wlasne = {
+            bus_ref: path
+            for bus_ref, path in paths.items()
+            if przypisanie.owner_by_bus.get(bus_ref) == trafo.ref_id
+        }
+        hop_counts = {bus_ref: p.hop_count for bus_ref, p in wlasne.items()}
+        for root_branch_ref, bus_refs in group_bus_refs_by_feeder(wlasne).items():
+            odplywy.append((root_branch_ref, trafo, bus_refs, hop_counts))
+    odplywy.sort(key=lambda item: item[0])
+
+    if not odplywy:
         return {
             "status": "OK",
             "station_ref": station_ref,
@@ -934,17 +970,8 @@ def build_nn_circuit_sheet(
             "provenance": provenance,
         }
 
-    hop_counts = {bus_ref: p.hop_count for bus_ref, p in paths.items()}
-
-    worst_impedancyjny: dict[str, str | None] = {}
-    if system not in _NON_TN_SYSTEMS:
-        widok_petli = build_feeder_fault_loop_view(enm, station_ref)
-        if widok_petli.get("status") == "OK":
-            for f in widok_petli.get("feeders", []):
-                worst_impedancyjny[f["feeder_root_branch_ref"]] = f.get("worst_point_bus_ref")
-
     wiersze = []
-    for nr, root_branch_ref in enumerate(sorted(grupy), start=1):
+    for nr, (root_branch_ref, trafo, bus_refs_odplywu, hop_counts) in enumerate(odplywy, start=1):
         wiersze.append(
             _build_row(
                 enm=enm,
@@ -952,7 +979,7 @@ def build_nn_circuit_sheet(
                 trafo=trafo,
                 system=system,
                 root_branch_ref=root_branch_ref,
-                bus_refs_odplywu=grupy[root_branch_ref],
+                bus_refs_odplywu=bus_refs_odplywu,
                 hop_counts=hop_counts,
                 nr=nr,
                 worst_point_impedancyjny=worst_impedancyjny.get(root_branch_ref),
@@ -997,9 +1024,11 @@ def build_nn_circuit_sheet_row_for_breaker(
     station = _find_station(enm, station_ref)
     if station is None:
         return {"status": "brak danych", "missing_data": ["station"], "reason_pl": None}
-    trafo = _station_transformer(enm, station)
+    # Transformator ZASILAJĄCY wskazany punkt (właściciel szyny po zamkniętych
+    # gałęziach) — ten sam wybór co pętla zwarcia/SWZ tego punktu (klasa B-02).
+    trafo, transformer_missing = resolve_transformer_for_bus(enm, station, bus_ref)
     if trafo is None:
-        return {"status": "brak danych", "missing_data": ["transformer"], "reason_pl": None}
+        return {"status": "brak danych", "missing_data": transformer_missing, "reason_pl": None}
     system = _system_for_station(station)
     try:
         hop_count = len(path_to_bus(enm, trafo.lv_bus_ref, bus_ref).branches)

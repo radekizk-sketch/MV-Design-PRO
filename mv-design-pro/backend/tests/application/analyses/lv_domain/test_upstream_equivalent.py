@@ -11,8 +11,8 @@ import cmath
 
 from application.analyses.fault_loop.service import (
     _find_station,
-    _station_transformer,
     _upstream_thevenin_lv_component,
+    resolve_station_transformer,
 )
 from application.analyses.lv_domain.upstream_equivalent import (
     build_upstream_equivalent_snapshot,
@@ -147,7 +147,7 @@ class TestReuseOfFaultLoopPhysics:
 
         station = _find_station(enm, "root")
         assert station is not None
-        trafo = _station_transformer(enm, station)
+        trafo, _missing_tr = resolve_station_transformer(enm, station, None)
         assert trafo is not None
         lv_component, missing = _upstream_thevenin_lv_component(enm, trafo)
         assert lv_component is not None, missing

@@ -200,13 +200,19 @@ class TestSwzPerTransformatorKartaB02:
     fizyki.
     """
 
-    def test_odplyw_sekcji_b_bez_wskazania_transformatora_nie_ma_trasy(self) -> None:
-        """Sprzęgło OTWARTE: domyślny transformator (TR1) nie ma trasy do b2 —
-        uczciwy brak, nie policzony byle jak."""
+    def test_odplyw_sekcji_b_bez_wskazania_transformatora_liczy_od_wlasciciela(self) -> None:
+        """Sprzęgło OTWARTE, bez wskazania transformatora: SWZ punktu b2 liczy się
+        od transformatora ZASILAJĄCEGO ten punkt (TR2 — właściciel szyny po
+        zamkniętych gałęziach, `resolve_transformer_for_bus`), a nie od
+        „pierwszego transformatora stacji" (TR1 nie ma trasy do b2 — do
+        2026-09-01 ten przypadek kończył się brakiem trasy, czyli obwód sekcji 2
+        był bez werdyktu SWZ). Wynik identyczny z jawnym wskazaniem TR2."""
         enm = zbuduj_stacje_nn(transformatory=2, sprzeglo="open")
         view = build_swz_view(enm, "stn", "b2", "ap_b")
-        assert view["status"] == "brak danych"
-        assert "route" in view["missing_data"]
+        assert view["status"] == "OK", view
+        assert view["transformer_ref"] == "tr2"
+        jawnie = build_swz_view(enm, "stn", "b2", "ap_b", transformer_ref="tr2")
+        assert view == jawnie
 
     def test_odplyw_sekcji_b_liczony_od_wskazanego_tr2(self) -> None:
         enm = zbuduj_stacje_nn(transformatory=2, sprzeglo="open")

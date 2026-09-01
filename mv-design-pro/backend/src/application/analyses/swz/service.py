@@ -33,6 +33,7 @@ from application.analyses.fault_loop.service import (
     _transformer_loop_impedance,
     _upstream_thevenin_lv_component,
     resolve_station_transformer,
+    resolve_transformer_for_bus,
 )
 from enm.models import EnergyNetworkModel, FuseBranch, SwitchBranch
 from network_model.catalog.lv_mccb_settings_iec60947_2 import resolwuj_nastawy_mccb
@@ -142,9 +143,9 @@ def build_swz_view(
     OD KTÓREGO liczy się trasa i impedancja pętli — wymagane dla stacji
     wielotransformatorowej, gdzie odpływ sekcji 2 musi być liczony od TR2, a nie
     od „pierwszego transformatora stacji" (przez sprzęgło albo wcale). Bez
-    wskazania: domyślny transformator stacji
-    (``resolve_station_transformer`` — pierwszy po ``ref_id``), czyli
-    dotychczasowe zachowanie dla stacji jednotransformatorowej.
+    wskazania: transformator ZASILAJĄCY ``bus_ref``
+    (``resolve_transformer_for_bus`` — właściciel szyny po zamkniętych
+    gałęziach), czyli dla stacji jednotransformatorowej jej jedyny transformator.
     """
     station = _find_station(enm, station_ref)
     if station is None:
@@ -176,7 +177,11 @@ def build_swz_view(
             "missing_data": [],
         }
 
-    trafo, transformer_missing = resolve_station_transformer(enm, station, transformer_ref)
+    trafo, transformer_missing = (
+        resolve_transformer_for_bus(enm, station, bus_ref)
+        if transformer_ref is None
+        else resolve_station_transformer(enm, station, transformer_ref)
+    )
     if trafo is None:
         return {**context, "status": "brak danych", "missing_data": transformer_missing}
 

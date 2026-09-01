@@ -107,12 +107,14 @@ class TestBuildFaultLoopViewAtPoint:
         enm = _base_enm([], ["izolowana"])
         view = build_fault_loop_view_at_point(enm, "stn", "izolowana")
         assert view["status"] == "brak danych"
-        # Bus bez ŻADNEGO uziemienia w sieci robi Y-bus osobliwym GLOBALNIE
-        # (macierz jednej sieci, nie per-węzeł) — upstream Thevenina zawodzi
-        # PIERWSZY, zanim dojdzie do sprawdzenia trasy. To wciąż uczciwy brak
-        # (nigdy 500, nigdy fabrykacja) — zob. test_upstream_map_error_is_honest_not_a_crash
-        # dla przypadku, gdzie sam graf jest topologicznie niepoprawny.
-        assert "upstream_network_singular" in view["missing_data"]
+        # Do 2026-09-01 izolowany bus robił Y-bus osobliwym GLOBALNIE i upstream
+        # Thevenina zawodził PIERWSZY („upstream_network_singular") — dla KAŻDEGO
+        # punktu stacji, także zasilanych. Od karty B-02 upstream liczy się na
+        # wyspie zasilania węzła HV (`restrict_graph_to_island_of`), więc brak
+        # jest tym, czym jest naprawdę: brakiem TRASY do izolowanego punktu.
+        # Wciąż uczciwy brak (nigdy 500, nigdy fabrykacja) — zob.
+        # test_upstream_map_error_is_honest_not_a_crash dla grafu niepoprawnego.
+        assert view["missing_data"] == ["route"]
 
     def test_upstream_map_error_is_honest_not_a_crash(self) -> None:
         """Model topologicznie niepoprawny (dwa węzły SLACK) → uczciwy brak
@@ -382,15 +384,15 @@ class TestStacjaWielotransformatorowa:
     def test_punkt_nieosiagalny_z_zadnego_transformatora_jest_uczciwy(self) -> None:
         """Szyna bez właściciela (odcięta otwartym rozłącznikiem) zostaje przy
         domyślnym transformatorze i kończy się UCZCIWYM brakiem — nigdy wynikiem
-        policzonym „jakkolwiek". Brak melduje się jako
-        `upstream_network_singular`, nie `route`: szyna bez żadnego uziemienia
-        czyni Y-bus osobliwym GLOBALNIE, więc upstream Thevenina zawodzi
-        PIERWSZY (ta sama zmierzona własność co
+        policzonym „jakkolwiek". Brak melduje się jako `route` (nie ma drogi po
+        zamkniętych gałęziach), a NIE jako `upstream_network_singular`: od karty
+        B-02 upstream Thevenina liczy się na wyspie zasilania węzła HV, więc
+        odcięta podszyna nie unieważnia obliczeń (ta sama własność co
         `test_unreachable_point_is_honest` wyżej)."""
         enm = zbuduj_stacje_nn(transformatory=2, sprzeglo="open", wyspa_odcieta=True)
         view = build_fault_loop_view_at_point(enm, "stn", "wyspa")
         assert view["status"] == "brak danych"
-        assert view["missing_data"] == ["upstream_network_singular"]
+        assert view["missing_data"] == ["route"]
 
     def test_widok_u_zrodla_da_sie_zapytac_o_kazdy_transformator(self) -> None:
         """Stacja 2×TR ma DWA źródła nN — bez wskazania transformatora drugiego

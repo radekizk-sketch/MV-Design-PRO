@@ -44,6 +44,7 @@ from enm.zero_sequence_transformer import (
     ZeroSeqConnection,
     build_transformer_zero_seq_model,
 )
+from network_model.core.graph import NetworkGraph
 from network_model.core.ybus import S_BASE_MVA
 from network_model.solvers.fault_loop_builder import (
     FaultLoopBuildRequest,
@@ -106,7 +107,7 @@ SUPPLY_MULTI_SIDED = "wielostronne"
 SUPPLY_ASSUMPTION_MULTI_PL = (
     "pętla zwarcia liczona od transformatora własnej sekcji (założenie "
     "zachowawcze: sprzęgło otwarte / jeden transformator w pracy — mniejszy "
-    "prąd zwarcia = warunek dobru SWZ)"
+    "prąd zwarcia = warunek doboru SWZ)"
 )
 
 
@@ -154,12 +155,6 @@ def resolve_station_transformer(
     if not transformers:
         return None, ["transformer"]
     return transformers[0], []
-
-
-def _station_transformer(enm: EnergyNetworkModel, station: Substation) -> Transformer | None:
-    """Domyślny transformator stacji (pierwszy po ``ref_id``) — patrz
-    ``resolve_station_transformer``."""
-    return resolve_station_transformer(enm, station, None)[0]
 
 
 @dataclass(frozen=True)
@@ -216,6 +211,29 @@ def assign_station_lv_buses(
     )
 
 
+def resolve_transformer_for_bus(
+    enm: EnergyNetworkModel, station: Substation, bus_ref: str
+) -> tuple[Transformer | None, list[str]]:
+    """Transformator stacji ZASILAJĄCY WSKAZANY PUNKT nN — JEDNO źródło prawdy
+    dla KAŻDEGO widoku „per punkt" (pętla zwarcia w punkcie, SWZ, Ik1_min doboru
+    aparatu, pakiet dowodowy obwodu, wiersz arkusza, sekcja raportu).
+
+    Właściciel szyny wg ``assign_station_lv_buses`` (transformator najbliższy po
+    ZAMKNIĘTYCH gałęziach; remis → mniejszy ``ref_id``). Punkt nieosiągalny z
+    żadnego transformatora stacji (odcięty otwartym łącznikiem, spoza stacji)
+    dostaje transformator DOMYŚLNY (pierwszy po ``ref_id``) — wtedy brak trasy
+    jest meldowany przez wołającego jako ``missing_data: ["route"]``, nie jako
+    brak transformatora (transformator stacji istnieje; nie ma DROGI do punktu).
+
+    Klasa, nie instancja (karta B-02): do 2026-09-01 pięć miejsc w czterech
+    modułach brało „pierwszy transformator stacji" dla punktu w DOWOLNEJ sekcji —
+    punkt sekcji 2 stacji 2×TR liczył się od TR1 przez sprzęgło (zła impedancja)
+    albo nie miał trasy (sprzęgło otwarte).
+    """
+    assignment = assign_station_lv_buses(enm, station_transformers(enm, station))
+    return resolve_station_transformer(enm, station, assignment.owner_by_bus.get(bus_ref))
+
+
 @dataclass(frozen=True)
 class UpstreamHvThevenin:
     """Impedancja Thevenina sieci SN w WĘŹLE HV transformatora — Ω w napięciu
@@ -233,6 +251,55 @@ class UpstreamHvThevenin:
     hv_bus_ref: str
     z_hv_ohm: complex
     source_label: str
+
+
+def restrict_graph_to_island_of(graph: NetworkGraph, node_id: str) -> bool:
+    """Zawęź graf (W MIEJSCU) do wyspy zasilania zawierającej ``node_id``.
+
+    Wyspa = spójna składowa po AKTYWNYCH krawędziach grafu (gałęzie w ruchu +
+    łączniki ZAMKNIĘTE — otwarty łącznik nie jest krawędzią, patrz
+    ``NetworkGraph.add_switch``). Węzły spoza tej wyspy są usuwane razem z ich
+    gałęziami/łącznikami (``NetworkGraph.remove_node``).
+
+    Dlaczego (klasa B-02, defekt zastany zmierzony 2026-09-01): Z-bus liczy się
+    z odwrócenia Y-bus CAŁEJ sieci, a szyna bez żadnej aktywnej krawędzi
+    (podszyna za OTWARTYM rozłącznikiem, sekcja rezerwowa, wyspa DER) daje
+    wiersz zerowy → macierz osobliwa GLOBALNIE. Skutek: jeden odcięty zacisk w
+    modelu unieważniał upstream Thevenina, a więc KAŻDĄ pętlę zwarcia, KAŻDY
+    werdykt SWZ i kotwicę SN całej stacji („upstream_network_singular"), choć
+    fizycznie odcięta szyna nie ma z tymi obwodami nic wspólnego. Impedancja
+    Thevenina w węźle jest własnością WYSPY tego węzła — węzły z innych wysp
+    nie wnoszą do niej nic, więc ich usunięcie nie zmienia wyniku dla sieci
+    spójnej (Z_kk identyczne), a dla sieci z wyspami daje wynik zamiast błędu.
+
+    Zwraca ``False``, gdy ``node_id`` nie istnieje w grafie (nic nie zmieniono).
+    Zero fizyki: czysta topologia stanów łączników, ta sama definicja wyspy co
+    ``NetworkGraph.find_islands`` (jedno źródło prawdy).
+    """
+    if node_id not in graph.nodes:
+        return False
+    island = next(
+        (set(members) for members in graph.find_islands() if node_id in members), {node_id}
+    )
+    removed = {other for other in graph.nodes if other not in island}
+    for other in sorted(removed):
+        graph.remove_node(other)
+    # `remove_node` usuwa gałęzie i łączniki; źródła przypięte do usuniętych
+    # węzłów (falowniki, maszyny, źródła zwarciowe sieci) też nie mogą zostać —
+    # graf odwołujący się do nieistniejącego węzła jest niespójny.
+    for collection in (
+        graph.inverter_sources,
+        graph.synchronous_machine_sources,
+        graph.asynchronous_machine_sources,
+        graph.grid_sc_sources,
+    ):
+        for element_id in sorted(
+            element_id
+            for element_id, element in collection.items()
+            if getattr(element, "node_id", None) in removed
+        ):
+            del collection[element_id]
+    return True
 
 
 def compute_upstream_hv_thevenin(
@@ -259,7 +326,7 @@ def compute_upstream_hv_thevenin(
         return None, ["upstream_network_topology_invalid"]
 
     hv_node_id = ref_to_graph_id(trafo.hv_bus_ref)
-    if hv_node_id not in graph.nodes:
+    if not restrict_graph_to_island_of(graph, hv_node_id):
         return None, ["upstream_hv_bus"]
 
     try:
@@ -527,10 +594,11 @@ def build_fault_loop_view_at_point(
             "missing_data": [],
         }
 
-    if transformer_ref is None:
-        assignment = assign_station_lv_buses(enm, station_transformers(enm, station))
-        transformer_ref = assignment.owner_by_bus.get(bus_ref)
-    trafo, transformer_missing = resolve_station_transformer(enm, station, transformer_ref)
+    trafo, transformer_missing = (
+        resolve_transformer_for_bus(enm, station, bus_ref)
+        if transformer_ref is None
+        else resolve_station_transformer(enm, station, transformer_ref)
+    )
     if trafo is None:
         return {**context, "status": "brak danych", "missing_data": transformer_missing}
 

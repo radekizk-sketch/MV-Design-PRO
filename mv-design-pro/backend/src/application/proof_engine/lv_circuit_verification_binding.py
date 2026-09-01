@@ -61,10 +61,10 @@ from application.analyses.fault_loop.service import (
     _NON_TN_SYSTEMS,
     _SYSTEM_MAP,
     _find_station,
-    _station_transformer,
     _system_for_station,
     _transformer_loop_impedance,
     _upstream_thevenin_lv_component,
+    resolve_transformer_for_bus,
 )
 from application.analyses.swz.werdykt import AparatZabezpieczajacy, ocen_swz
 from application.proof_engine.packs.lv_circuit_verification import (
@@ -256,9 +256,11 @@ def _petla_zwarcia_min(
             ),
         )
 
-    trafo = _station_transformer(enm, station)
+    # Transformator ZASILAJĄCY punkt obwodu (właściciel szyny po zamkniętych
+    # gałęziach), nie „pierwszy transformator stacji" — klasa B-02 (2×TR).
+    trafo, transformer_missing = resolve_transformer_for_bus(enm, station, bus_ref)
     if trafo is None:
-        return None, ["transformer"], None
+        return None, transformer_missing, None
 
     z_tr, missing = _transformer_loop_impedance(trafo)
     if z_tr is None:

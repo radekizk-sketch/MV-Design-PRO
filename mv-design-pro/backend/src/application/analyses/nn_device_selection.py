@@ -64,10 +64,10 @@ from application.analyses.fault_loop.service import (
     _NON_TN_SYSTEMS,
     _SYSTEM_MAP,
     _find_station,
-    _station_transformer,
     _system_for_station,
     _transformer_loop_impedance,
     _upstream_thevenin_lv_component,
+    resolve_transformer_for_bus,
 )
 from application.analyses.swz.werdykt import (
     AparatZabezpieczajacy,
@@ -692,9 +692,11 @@ def _ik1_min_i_u0(
             f"Układ {system}: SWZ metodą pętli TN (IEC 60364-4-41) nie dotyczy.",
         )
 
-    trafo = _station_transformer(enm, station)
+    # Transformator ZASILAJĄCY punkt (właściciel szyny po zamkniętych gałęziach),
+    # nie „pierwszy transformator stacji" — klasa B-02 (stacja 2×TR, sekcja 2).
+    trafo, transformer_missing = resolve_transformer_for_bus(enm, station, bus_ref)
     if trafo is None:
-        return None, None, ["transformer"], None
+        return None, None, transformer_missing, None
 
     z_tr, missing = _transformer_loop_impedance(trafo)
     if z_tr is None:

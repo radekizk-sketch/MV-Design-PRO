@@ -1693,8 +1693,8 @@ def build_nn_circuit_report_section(
     )
     from application.analyses.fault_loop.service import (
         _find_station,
-        _station_transformer,
         _system_for_station,
+        resolve_transformer_for_bus,
     )
     from application.analyses.nn_device_selection import wybierz_aparat_dla_obwodu_nn
     from application.analyses.swz.service import build_swz_view
@@ -1710,9 +1710,11 @@ def build_nn_circuit_report_section(
     if station is None:
         return {"status": "brak danych", "missing_data": ["station"], "reason_pl": None}
 
-    trafo = _station_transformer(enm, station)
+    # Transformator ZASILAJĄCY obwód (właściciel szyny ``bus_ref`` po zamkniętych
+    # gałęziach), nie „pierwszy transformator stacji" — klasa B-02 (2×TR).
+    trafo, transformer_missing = resolve_transformer_for_bus(enm, station, bus_ref)
     if trafo is None:
-        return {"status": "brak danych", "missing_data": ["transformer"], "reason_pl": None}
+        return {"status": "brak danych", "missing_data": transformer_missing, "reason_pl": None}
 
     dane_zrodlowe = {
         "stacja": station.name,
