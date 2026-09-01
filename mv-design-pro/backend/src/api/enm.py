@@ -23,10 +23,6 @@ import logging
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Request
-from fastapi.concurrency import run_in_threadpool
-from pydantic import BaseModel, Field
-
 from api.domain_ops_policy import (
     extract_catalog_binding,
     validate_and_materialize_catalog_binding,
@@ -97,6 +93,9 @@ from enm.topology_ops import (
 )
 from enm.v2_projection import project_enm_v1_to_v2
 from enm.validator import ENMValidator, ValidationResult
+from fastapi import APIRouter, HTTPException, Request
+from fastapi.concurrency import run_in_threadpool
+from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 

@@ -80,8 +80,11 @@ BACKEND = ROOT / "backend"
 # par — dwa niezgodne typy pod jedna nazwa, dwa realne bledy. Naprawa u zrodla
 # (jedna lista par dla obu ksztaltow grafu) przy okazji przepisywania tego pliku.
 # Pomiar wlasny: 15/10 -> 13/9.
-BASELINE_ERRORS = 13
-BASELINE_FILES = 9
+# 2026-09-01 (przejecie po B-02, galaz LV-domain): pomiar na kompletnym venv daje
+# 0 bledow w 0 plikach — guard sam zazadal utrwalenia (zapadka dwustronna).
+# Zmierzone: `mypy src` = Success, 793 pliki, mypy 1.19.1.
+BASELINE_ERRORS = 0
+BASELINE_FILES = 0
 
 WZORZEC_PODSUMOWANIA = re.compile(r"Found (\d+) errors? in (\d+) files?")
 WZORZEC_SUKCESU = re.compile(r"Success: no issues found")

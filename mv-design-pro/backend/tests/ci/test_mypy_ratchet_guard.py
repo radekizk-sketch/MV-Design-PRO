@@ -59,8 +59,10 @@ def test_guard_istnieje_i_ma_zmierzony_prog() -> None:
     # wymaga świadomej zmiany dokładnie tutaj (i nigdzie indziej).
     # 2026-08-14 (karta K-Q): naprawa dwoch bledow assignment w
     # solver_input/audit2_solver_adjuster.py (jedna zmienna, dwa typy) ⇒ 13/9.
-    assert modul.BASELINE_ERRORS == 13
-    assert modul.BASELINE_FILES == 9
+    # 2026-09-01 (przejecie po B-02): pomiar na kompletnym venv 0/0 — guard
+    # zazadal utrwalenia; para prog<->metatest zmieniona RAZEM.
+    assert modul.BASELINE_ERRORS == 0
+    assert modul.BASELINE_FILES == 0
 
 
 def test_guard_jest_wpiety_do_workflow_ci() -> None:

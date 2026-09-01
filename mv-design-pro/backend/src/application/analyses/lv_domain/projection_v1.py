@@ -133,9 +133,7 @@ def _result_snapshot(
         voltage_profile = {
             **complete_profile,
             "rows": [
-                row
-                for row in complete_profile.get("rows", [])
-                if row.get("bus_id") in domain_refs
+                row for row in complete_profile.get("rows", []) if row.get("bus_id") in domain_refs
             ],
         }
     return {
