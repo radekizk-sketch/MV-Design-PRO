@@ -85,12 +85,21 @@ def test_guard_jest_wpiety_do_workflow_ci() -> None:
 def test_prog_odcina_w_obie_strony(
     monkeypatch: pytest.MonkeyPatch, odchylka: int, oczekiwany_kod: int
 ) -> None:
-    # Odchyłkę liczymy WZGLĘDEM progu z guarda, a nie od przepisanej tu liczby: badana
-    # własność to „odcina w obie strony", nie konkretna wartość pomiaru (ta jest
-    # przypięta w teście powyżej). Dzięki temu obniżenie progu nie wymusza edycji
-    # w dwóch miejscach — a sam pomiar nadal nie może przesunąć się po cichu.
+    # PROG SYNTETYCZNY, nie żywy `modul.BASELINE_ERRORS` — badana własność to
+    # „zapadka odcina w obie strony", nie konkretna wartość pomiaru (ta jest
+    # przypięta w teście powyżej). 2026-09-01 (przejęcie po B-02): żywy próg
+    # osiągnął podłogę 0 (mniej błędów niż zero nie istnieje), więc
+    # `max(0, modul.BASELINE_ERRORS + odchylka)` dawał 0 dla ODCHYLKI -1 I -1000
+    # jednocześnie — obie gałęzie „dług zmalał" zapadały się do bledy==próg==0,
+    # czyli fałszywego `main()==0` zamiast oczekiwanego `1`. To NIE była regresja
+    # guarda (jego logika zawsze poprawnie odróżnia bledy<próg), tylko przestarzałe
+    # założenie „próg > 0" wpisane w parametry TEGO testu. Naprawa u źródła: próg
+    # syntetyczny, niezależny od żywego stanu repo — własność „odcina w obie
+    # strony" ma się trzymać zawsze, także gdy żywy próg wynosi 0.
     modul = _zaladuj_guard()
-    bledy = max(0, modul.BASELINE_ERRORS + odchylka)
+    prog_syntetyczny = 500
+    monkeypatch.setattr(modul, "BASELINE_ERRORS", prog_syntetyczny)
+    bledy = max(0, prog_syntetyczny + odchylka)
     monkeypatch.setattr(
         modul,
         "uruchom_mypy",

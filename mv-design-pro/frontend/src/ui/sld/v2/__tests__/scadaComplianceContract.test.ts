@@ -68,8 +68,13 @@ describe('SCADA Compliance Contract — tor mocy + symbole + porty', () => {
   });
 
   describe('Stacje SN/nN — wewnętrzna struktura', () => {
-    it('StationInternalView renderuje wnętrze stacji', () => {
-      expect(fileExists('ui/sld/v2/canvas/StationInternalView.tsx')).toBe(true);
+    // Slice E (kasacja legacy, 2026-09-01): `StationInternalView.tsx` skasowany
+    // (zero konsumentow produkcyjnych, zmierzone przed kasacja) — nastepca to
+    // portal projekcji domeny nN (`LvDomainPortal.tsx` -> `LvDomainView.tsx`,
+    // wpiety w `SldCanvasV3Workspace.handleElementDoubleClick`). Intencja testu
+    // (wnetrze stacji SN/nN ma dzialajacy renderer) bez zmian, tylko plik.
+    it('LvDomainView renderuje wnetrze stacji (nastepca StationInternalView)', () => {
+      expect(fileExists('ui/sld/v3/lv-domain/LvDomainView.tsx')).toBe(true);
     });
 
     it('MiniBlockRmuRenderer renderuje stacje RMU (pola WE/WY/TR)', () => {

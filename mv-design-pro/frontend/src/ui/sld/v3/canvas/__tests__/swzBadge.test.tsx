@@ -4,7 +4,9 @@
  * odznaka NIE była wdrożona). Wzorzec IDENTYCZNY z testem badge OLTC
  * (`sldCanvasV3.test.tsx` „V12K-092"): fixture REALNA `sldSubstrate52s`,
  * `overlay` skonstruowany ręcznie (ten sam kontrakt `SldV3Overlay`, zero
- * fetch w teście renderu — fetch testowany osobno w `useSwzOverlay.test.ts`).
+ * fetch w teście renderu — produkcyjny fetch danych SWZ żyje dziś w
+ * `v3/lv-domain/projectionApi.ts`, jedyne wywołanie `fetch` całej domeny nN
+ * po kasacji martwego hooka `useSwzOverlay.ts` w slice E, 2026-09-01).
  *
  * Zakres: trzy tony (spełnia/nie spełnia/nierozstrzygalne) + brak danych =
  * brak odznaki (fail-closed, §14.2 „overlay wyłączony bez wyniku").

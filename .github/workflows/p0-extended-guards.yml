@@ -209,6 +209,9 @@ jobs:
       - name: SLD — kontrakt przylaczenia DER
         run: python scripts/der_pcc_guard.py
 
+      - name: SLD — projekcja domeny nN (kasacja legacy StationInternalView/nN)
+        run: python scripts/lv_domain_projection_guard.py
+
       # === Spojnosc UX Flow V1 + repozytorium ===
       - name: UX Flow V1 (spojnosc dokumentu, testow i inwariantow)
         run: python scripts/guard_ux_flow_v1.py

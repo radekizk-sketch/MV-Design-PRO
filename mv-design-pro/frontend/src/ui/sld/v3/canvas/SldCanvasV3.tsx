@@ -278,12 +278,13 @@ export interface SldCanvasV3Props {
    *  wołający ignorujący go (istniejące handlery `(testId) => ...`) działają
    *  bez zmian. */
   readonly onElementClick?: (testId: string, meta?: SldElementClickMeta) => void;
-  /** F12-B pkt 6 (spec §10.1 ARCH-4, „StationInternalView"): podwójny klik w
-   *  symbol — TEN SAM wzorzec co `onElementClick` (`testId` + opcjonalne
-   *  `meta`). Wołający (`SldCanvasV3Workspace`) decyduje, dla jakiego
-   *  `meta.elementKind` reaguje (dziś: `'station'` → drill-down
-   *  `StationInternalView`, jak w v2 `onDoubleClickStation`) — kanwa sama
-   *  niczego nie filtruje, jak `onElementClick`. Brak propa = brak nasłuchu. */
+  /** F12-B pkt 6 (spec §10.1 ARCH-4): podwójny klik w symbol — TEN SAM
+   *  wzorzec co `onElementClick` (`testId` + opcjonalne `meta`). Wołający
+   *  (`SldCanvasV3Workspace`) decyduje, dla jakiego `meta.elementKind`
+   *  reaguje (dziś: `'station'` → portal domeny nN, `LvDomainPortal`
+   *  (`handleElementDoubleClick`) — następca skasowanego w slice E
+   *  `StationInternalView`) — kanwa sama niczego nie filtruje, jak
+   *  `onElementClick`. Brak propa = brak nasłuchu. */
   readonly onElementDoubleClick?: (testId: string, meta?: SldElementClickMeta) => void;
   /** F8c pkt 3 (checklista bramkująca §F8c, „Context-menu"): prawy klik w
    *  symbol/odcinek — TEN SAM wzorzec co `onElementClick` (`testId` +
