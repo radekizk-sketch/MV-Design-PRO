@@ -353,6 +353,66 @@ class TestStacjaWielotransformatorowa:
         assert view["missing_data"] == ["tr2:vector_group"]
         assert view["transformer_ref"] == "tr1"
 
+    def test_punkt_w_sekcji_b_liczy_sie_od_transformatora_ktory_go_zasila(self) -> None:
+        """`build_fault_loop_view_at_point` bez wskazania transformatora bierze
+        WŁAŚCICIELA szyny. Przy sprzęgle OTWARTYM punkt sekcji B był wcześniej
+        „bez trasy" (liczony od TR1), teraz liczy się od TR2."""
+        enm = zbuduj_stacje_nn(transformatory=2, sprzeglo="open")
+        view = build_fault_loop_view_at_point(enm, "stn", "b2")
+        assert view["status"] == "OK"
+        assert view["transformer_ref"] == "tr2"
+        assert view["nn_bus_ref"] == "nn_b"
+        assert view["route_branch_refs"] == ["ap_b", "c_b"]
+
+    def test_punkt_sekcji_b_przy_zamknietym_sprzegle_nie_idzie_przez_sprzeglo(self) -> None:
+        enm = zbuduj_stacje_nn(transformatory=2, sprzeglo="closed")
+        view = build_fault_loop_view_at_point(enm, "stn", "b2")
+        assert view["transformer_ref"] == "tr2"
+        assert "coupler" not in view["route_branch_refs"]
+
+    def test_jawne_wskazanie_transformatora_wygrywa_nad_wlascicielem(self) -> None:
+        """Świadomy wybór projektanta (np. analiza rezerwowego toru zasilania)
+        musi być możliwy — i musi zmieniać trasę."""
+        enm = zbuduj_stacje_nn(transformatory=2, sprzeglo="closed")
+        view = build_fault_loop_view_at_point(enm, "stn", "b2", transformer_ref="tr1")
+        assert view["status"] == "OK"
+        assert view["transformer_ref"] == "tr1"
+        assert "coupler" in view["route_branch_refs"]
+
+    def test_punkt_nieosiagalny_z_zadnego_transformatora_jest_uczciwy(self) -> None:
+        """Szyna bez właściciela (odcięta otwartym rozłącznikiem) zostaje przy
+        domyślnym transformatorze i kończy się UCZCIWYM brakiem — nigdy wynikiem
+        policzonym „jakkolwiek". Brak melduje się jako
+        `upstream_network_singular`, nie `route`: szyna bez żadnego uziemienia
+        czyni Y-bus osobliwym GLOBALNIE, więc upstream Thevenina zawodzi
+        PIERWSZY (ta sama zmierzona własność co
+        `test_unreachable_point_is_honest` wyżej)."""
+        enm = zbuduj_stacje_nn(transformatory=2, sprzeglo="open", wyspa_odcieta=True)
+        view = build_fault_loop_view_at_point(enm, "stn", "wyspa")
+        assert view["status"] == "brak danych"
+        assert view["missing_data"] == ["upstream_network_singular"]
+
+    def test_widok_u_zrodla_da_sie_zapytac_o_kazdy_transformator(self) -> None:
+        """Stacja 2×TR ma DWA źródła nN — bez wskazania transformatora drugiego
+        w ogóle nie dało się zapytać."""
+        enm = zbuduj_stacje_nn(transformatory=2, sprzeglo="open", moc_tr2_mva=0.25)
+        domyslny = build_station_fault_loop_view(enm, "stn")
+        od_tr2 = build_station_fault_loop_view(enm, "stn", transformer_ref="tr2")
+        assert domyslny["transformer_ref"] == "tr1"
+        assert od_tr2["transformer_ref"] == "tr2"
+        assert od_tr2["nn_bus_ref"] == "nn_b"
+        assert (
+            od_tr2["fault_loop"]["z_loop_ohm"]["magnitude"]
+            > domyslny["fault_loop"]["z_loop_ohm"]["magnitude"]
+        )
+
+    def test_widok_u_zrodla_odrzuca_transformator_spoza_stacji(self) -> None:
+        enm = zbuduj_stacje_nn(transformatory=2, sprzeglo="open")
+        enm.substations[0].transformer_refs = ["tr1"]
+        view = build_station_fault_loop_view(enm, "stn", transformer_ref="tr2")
+        assert view["status"] == "brak danych"
+        assert view["missing_data"] == ["transformer_not_in_station"]
+
     def test_stacja_jednotransformatorowa_ma_niezmieniony_ksztalt(self) -> None:
         """Zgodność kształtu dla dotychczasowych konsumentów: te same klucze i
         te same wartości nagłówkowe co przed rozbiciem per transformator."""

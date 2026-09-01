@@ -401,12 +401,19 @@ def _build_fault_loop_at_route(
     return compute_fault_loop(build_fault_loop_input(request))
 
 
-def build_station_fault_loop_view(enm: EnergyNetworkModel, station_ref: str) -> dict[str, Any]:
+def build_station_fault_loop_view(
+    enm: EnergyNetworkModel, station_ref: str, *, transformer_ref: str | None = None
+) -> dict[str, Any]:
     """Zbuduj widok pętli zwarcia u źródła stacji (nN) z modelu.
 
     Trasa zerodługościowa (punkt zwarcia = szyna nN transformatora) — przypadek
     szczególny TEJ SAMEJ funkcji, której używa ``build_fault_loop_view_at_point``
     dla dowolnego punktu (jedna ścieżka fizyki, zero duplikacji).
+
+    ``transformer_ref`` (karta B-02) wskazuje transformator stacji; bez
+    wskazania — domyślny (pierwszy po ``ref_id``). Przy stacji 2×TR „źródło" nie
+    jest jedno: szyna nN każdego transformatora ma własną pętlę u źródła, więc
+    bez tego parametru drugiej sekcji NIE DAŁO SIĘ w ogóle zapytać.
     """
     station = _find_station(enm, station_ref)
     if station is None:
@@ -430,9 +437,9 @@ def build_station_fault_loop_view(enm: EnergyNetworkModel, station_ref: str) -> 
             "missing_data": [],
         }
 
-    trafo = _station_transformer(enm, station)
+    trafo, transformer_missing = resolve_station_transformer(enm, station, transformer_ref)
     if trafo is None:
-        return {**context, "status": "brak danych", "missing_data": ["transformer"]}
+        return {**context, "status": "brak danych", "missing_data": transformer_missing}
 
     z_tr, missing = _transformer_loop_impedance(trafo)
     if z_tr is None:
@@ -475,13 +482,22 @@ def build_station_fault_loop_view(enm: EnergyNetworkModel, station_ref: str) -> 
 
 
 def build_fault_loop_view_at_point(
-    enm: EnergyNetworkModel, station_ref: str, bus_ref: str
+    enm: EnergyNetworkModel, station_ref: str, bus_ref: str, *, transformer_ref: str | None = None
 ) -> dict[str, Any]:
     """Pętla zwarcia w DOWOLNYM punkcie nN (karta P0.6, §0.2).
 
     Trasa REALNA z grafu (BFS ``.route``) od punktu do zacisków nN
     transformatora — kabel po kablu, z żyłą powrotną i n_parallel; ta sama
     impedancja transformatora + upstream co ``build_station_fault_loop_view``.
+
+    TRANSFORMATOR (karta B-02): bez wskazania ``transformer_ref`` bierzemy ten,
+    KTÓRY ZASILA WSKAZANY PUNKT — właściciela szyny wg
+    ``assign_station_lv_buses`` (najbliższy po zamkniętych gałęziach). Wcześniej
+    był to zawsze „pierwszy transformator stacji", więc punkt w sekcji 2 stacji
+    2×TR liczył się od TR1 przez sprzęgło (zła impedancja) albo w ogóle nie miał
+    trasy (sprzęgło otwarte). Punkt nieosiągalny z żadnego transformatora
+    stacji zostaje przy domyślnym transformatorze — wtedy brak trasy jest
+    uczciwie meldowany jako ``missing_data: ["route"]``, dokładnie jak dotąd.
     """
     station = _find_station(enm, station_ref)
     if station is None:
@@ -511,9 +527,12 @@ def build_fault_loop_view_at_point(
             "missing_data": [],
         }
 
-    trafo = _station_transformer(enm, station)
+    if transformer_ref is None:
+        assignment = assign_station_lv_buses(enm, station_transformers(enm, station))
+        transformer_ref = assignment.owner_by_bus.get(bus_ref)
+    trafo, transformer_missing = resolve_station_transformer(enm, station, transformer_ref)
     if trafo is None:
-        return {**context, "status": "brak danych", "missing_data": ["transformer"]}
+        return {**context, "status": "brak danych", "missing_data": transformer_missing}
 
     z_tr, missing = _transformer_loop_impedance(trafo)
     if z_tr is None:
