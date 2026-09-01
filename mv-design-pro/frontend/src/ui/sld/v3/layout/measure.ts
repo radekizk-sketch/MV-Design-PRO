@@ -23,7 +23,7 @@ import {
   MIN_GLYPH_CLEARANCE,
   MIN_LABEL_CLEARANCE,
 } from './clearances';
-import { labelLineHeight, liczbaRysunkuPl, measureLabelWidth, type LabelClass } from '../core/text';
+import { labelLineHeight, liczbaRysunkuPl, measureLabelWidth } from '../core/text';
 import type { MiniBlockBayDescriptor } from '../../v2/renderer/MiniBlockRmuRenderer';
 import {
   formatTransformerRatedPower,
@@ -41,7 +41,6 @@ import { derLabelText, derSnChainExtraHeight, derSymbolSize, type StationDerSour
 import type { StationCompactGlyphSummary } from '../compose/preview';
 import type { FieldRole } from '../../v2/domain/apparatusContracts';
 import type { StationTransformerUnit } from '../../../network-build/stationTransformerSelection';
-import type { SldNnBoardSection, SldNnFeeder, SldNnIncomer } from '../../shared/nnBoardTypes';
 
 const LABEL_LINE_HEIGHT_T1 = labelLineHeight('t1');
 const LABEL_LINE_HEIGHT_T2 = labelLineHeight('t2');
@@ -95,12 +94,6 @@ export interface StationMeasureInput
   /** Recenzja NO-GO 2026-07-17 pkt 6: zagregowany odbiór nN — `null` =
    *  ZERO rekordów `Load` (kompozycja pisze jawną granicę modelu). */
   readonly aggregatedLvLoad?: { readonly pMw: number; readonly qMvar: number; readonly count: number } | null;
-  /** P0.8 nN (H_PLAN_IMPLEMENTACJI_NN §P0.8, seam A8 §9.2.1): sekcje szyny nN
-   *  z odpływami RZECZYWISTYMI (aparat + odbiorca) — `undefined`/`[]` = stacja
-   *  bez rozdzielnicy nN strukturalnej (uczciwy brak, `compose/station.ts`
-   *  rysuje WYŁĄCZNIE `aggregatedLvLoad` jak przed kartą P0.8). Pole WŁASNE v3
-   *  (jak `derSources`) — adapter v2 (`enmToSldAdapter.ts`) jedyny pisarz. */
-  readonly nnBoard?: readonly SldNnBoardSection[];
   /** SCHEMAT-10 GS-1 (V12K-137, GAP §10.4): podsumowanie sylwetki mini-RMU na
    *  L0 (typ stacji/TR/DER/NO). Pole WŁASNE v3, wypełniane WYŁĄCZNIE dla
    *  renderu L0 (`buildMeasureInput`) — geometria (measure/bands/columns) go
@@ -267,488 +260,171 @@ export function stationLvLoadLabelText(load: NonNullable<StationMeasureInput['ag
 export const LV_MODEL_BOUNDARY_TEXT = 'granica modelu — bez odbiorów nN';
 
 // ---------------------------------------------------------------------------
-// P0.8 nN (H_PLAN_IMPLEMENTACJI_NN §P0.8, wzorzec DER-row) — rezerwacja
-// miejsca na ODPŁYWY nN rzeczywiste (`StationMeasureInput.nnBoard`).
-// Zastępuje pojedynczą strzałkę odbioru (`aggregatedLvLoad`, wyżej), gdy
-// stacja niesie strukturalne dane P0.1 — WYŁĄCZNIE wtedy (stacje bez danych
-// strukturalnych: zero zmian geometrii, `nnFeederRowFootprint([])==={0,0}`,
-// dokładnie jak `derRowFootprint([])`).
+// ZACISK nN + PORTAL DOMENY nN (architektura LV Domain Projection po B-02,
+// `docs/sld/PROJEKCJA_SN_NN_PORTAL_V1.md`): projekcja SN NIE rozwija wnętrza
+// rozdzielnicy nN (aparat główny, sekcje, sprzęgła, odpływy, aparaty nN,
+// odbiory indywidualne) — to żyje WYŁĄCZNIE w projekcji nN (`lv-domain/`),
+// zasilanej atomowym `LvDomainProjectionV1` z backendu (zero kopii topologii
+// nN po stronie klienta). Na ZACISKU nN (`#lv-bus`, wspólnym dla wszystkich TR
+// stacji) projekcja SN pokazuje:
+//  · portal (`lvPortal`, `symbols/defs.ts`) — NA OSI rdzenia zacisku, pod
+//    transformatorem, jako jawne przejście do projekcji nN;
+//  · zagregowany odbiór nN (strzałka ZA portalem, z przerwą) — odbiorów
+//    NIGDY nie ukrywamy;
+//  · źródła strony nN (rząd DER — źródeł NIGDY nie ukrywamy; pion trunku ZA
+//    strzałką/portalem, rząd flush-right ZA blokiem kolumn).
+// Trzy zwisy wiszą RÓWNOLEGLE na tym samym zacisku, więc rezerwacja B4 to
+// `max`, nie suma (BLOK-PUSTY §4). `planLvTerminal` jest JEDNĄ prawdą
+// geometrii zacisku dla measure (rezerwacja szerokości) i compose (rysunek).
 // ---------------------------------------------------------------------------
 
-/** Gabaryty symboli aparatu/rozdzielnicy odpływu nN — literały
- *  zsynchronizowane przez test spójności (jak `LV_LOAD_ARROW_HEIGHT` wyżej;
- *  measure.ts nie importuje `SYMBOL_DEFS`, patrz nagłówek tamtej stałej). */
-const NN_FEEDER_APPARATUS_WIDTH = 16; // nnBreaker/nnFuseSwitch (SYMBOL_DEFS)
-const NN_FEEDER_APPARATUS_HEIGHT = 24; // najwyższy z dwóch (nnFuseSwitch 16×24)
-const NN_FEEDER_BOARD_WIDTH = 32; // nnDistributionBoard (leaf, destinationKind==='board')
-const NN_FEEDER_BOARD_HEIGHT = 32;
-/** Zejście z szyny do pierwszego symbolu odpływu (pion), i odstęp między
- *  aparatem a liściem rozdzielnicy nN, gdy oba stoją w JEDNYM odpływie. */
-const NN_FEEDER_STUB_HEIGHT = GRID;
-const NN_FEEDER_STACK_GAP = GRID;
-const NN_FEEDER_LABEL_GAP = GRID;
-const NN_FEEDER_COLUMN_GAP = GRID;
-/** T1 (SLD-nN-TOPOLOGIA §0.1, defekt (d)): odcinek SCHEMATYCZNY (NIE do
- *  skali — jak `DER_SN_CABLE_LEN` dla toru DER-SN, `compose/sourceKind.ts`)
- *  reprezentujący JEDEN przeskok kablowy `SldNnFeeder.cableRefs[i]` między
- *  aparatem odpływu (albo szyną, dla gołego kabla) a kolejnym węzłem toru —
- *  jedna prawda measure↔compose: `compose/station.ts` rysuje DOKŁADNIE tyle
- *  odcinków tej wysokości, ile `cableRefs` niesie. */
-const NN_FEEDER_CABLE_DROP_HEIGHT = GRID;
+/** Gabaryt symbolu `lvPortal` (`SYMBOL_DEFS.lvPortal` 32×24) — literały
+ *  zsynchronizowane testem spójności (`compose/__tests__/station.lvPortal.test.ts`);
+ *  measure.ts celowo NIE importuje `SYMBOL_DEFS` (patrz `IMPLICIT_TR_SYMBOL_WIDTH`). */
+export const LV_PORTAL_WIDTH = 32;
+export const LV_PORTAL_HEIGHT = 24;
+/** Zejście z zacisku nN do portu `top` portalu (pion `#lv-portal-drop`) —
+ *  2×GRID, żeby rząd DER (szyna rzędu na `busY + DER_ROW_TOP_CLEARANCE`)
+ *  przechodził NAD górną krawędzią portalu z prześwitem GRID. */
+export const LV_PORTAL_DROP_HEIGHT = 2 * GRID;
+/** Przerwa POZIOMA między sąsiadującymi zwisami zacisku (portal | strzałka
+ *  odbioru | pion trunku DER): gabaryty nie mogą się stykać, bo
+ *  `symbolWireCollisions` czyta styk symbolu z kreską jako kolizję. */
+const LV_TERMINAL_GAP = GRID;
+/** Bufor pod portalem (jak `DER_ROW_BOTTOM_BUFFER`). */
+const LV_PORTAL_BOTTOM_BUFFER = GRID;
 
-/** `true`, gdy odpływ niesie aparat ROZPOZNANY (glif MCB/rozłącznik
- *  bezpiecznikowy) — `'UNRESOLVED'` (dane niekompletne) i `null` (goły kabel,
- *  przypadek oczekiwany) NIE rysują symbolu aparatu (pusty tor + komunikat,
- *  karta P0.8 §0.2). */
-function nnFeederHasResolvedApparatus(odplyw: SldNnFeeder): boolean {
-  return odplyw.apparatusKind === 'MCB' || odplyw.apparatusKind === 'FUSE_SWITCH';
-}
+/** Podpowiedź (natywny `<title>`) na obszarze trafienia portalu —
+ *  `canvas/hitAreas.ts` (wzorzec `STATION_TR_FIELD_GAP_TEXT`). */
+export const LV_PORTAL_TITLE_TEXT = 'Portal domeny nN — kliknij, aby otworzyć projekcję nN tej stacji';
 
-/** Tekst linii aparatu (etykieta rozpoznanego aparatu ALBO komunikat błędu
- *  dla `'UNRESOLVED'`) — `null` dla gołego kabla (`apparatusKind===null`,
- *  brak linii, nie pusta linia). JEDNA prawda measure↔compose (wzór
- *  `stationLvLoadLabelText`) — `compose/station.ts` rysuje DOKŁADNIE ten tekst. */
-export function nnFeederApparatusLineText(odplyw: SldNnFeeder): string | null {
-  if (odplyw.apparatusKind == null) return null;
-  return odplyw.apparatusLabel ?? 'Aparat nN';
-}
+const LV_LABEL_GAP = GRID;
+/** Gabaryt symbolu strzałki odbioru (`SYMBOL_DEFS.loadArrow` 16×16) — literały
+ *  zsynchronizowane testem spójności (measure nie importuje SYMBOL_DEFS). */
+export const LV_LOAD_ARROW_WIDTH = 16;
+export const LV_LOAD_ARROW_HEIGHT = 16;
 
-/** Tekst linii odbiorcy — `'board'` niesie WŁASNĄ etykietę pod glifem
- *  `nnDistributionBoard` (nazwa rozdzielnicy, wzorzec `derLabelText`), więc
- *  NIE dubluje się tu jako „→ …" (kompozycja pomija tę linię dla `'board'`,
- *  patrz `nnFeederLabelText` niżej). Pozostałe rodzaje: strzałka tekstowa do
- *  odbiorcy albo jawna granica modelu (`LV_MODEL_BOUNDARY_TEXT`, TA SAMA
- *  fraza co odbiór zagregowany — spójny język „koniec toru bez odbiorcy"). */
-export function nnFeederDestinationLineText(odplyw: SldNnFeeder): string {
-  switch (odplyw.destinationKind) {
-    case 'load':
-      return `→ ${odplyw.destinationLabel ?? 'Odbiór'}`;
-    case 'der':
-      return `→ ${odplyw.destinationLabel ?? 'Źródło'}`;
-    case 'board':
-      return odplyw.destinationLabel ?? 'Rozdzielnica nN';
-    case 'unknown':
-    default:
-      return LV_MODEL_BOUNDARY_TEXT;
-  }
+/** Plan geometrii ZACISKU nN — współrzędne X w układzie wołającego
+ *  (measure: względem `column.x`; compose: świat). */
+export interface LvTerminalPlan {
+  /** Lewy/prawy koniec odcinka `#lv-bus` (rdzeń + zwisy na prawo). */
+  readonly busLeft: number;
+  readonly busRight: number;
+  /** Oś rdzenia zacisku (środek między skrajnymi portami LV). */
+  readonly axisX: number;
+  /** Oś portalu (środek symbolu `lvPortal`) = oś rdzenia zacisku: portal
+   *  stoi POD transformatorem, w obrysie kolumny TR — zero dodatkowej
+   *  szerokości stacji (pomiar 2026-09-01: portal doklejony ZA blokiem
+   *  poszerzał KAŻDĄ stację o 48 j.św., golden sieć 53 stacji łamała arkusz
+   *  L0 z 2 na 3 wiersze, skala dopasowania spadała 0,0925 → 0,0673 i
+   *  WSZYSTKIE nazwy stacji były porzucane jako nieczytelne). */
+  readonly portalCenterX: number;
+  /** X pionu strzałki zagregowanego odbioru nN — ZA portalem z przerwą
+   *  `LV_TERMINAL_GAP`; `null`, gdy stacja nie ma odbioru zagregowanego. */
+  readonly loadDropX: number | null;
+  /** X pionu trunku rzędu DER strony nN — ZA portalem i ZA strzałką odbioru
+   *  (prawy koniec zacisku, gdy stacja ma DER): pion NIGDY nie przecina
+   *  portalu, strzałki ani szyny rzędu DER (przecięcie dwóch odcinków
+   *  nie-szynowych `resolveTeeJunctions` czyta jako węzeł T — fałszywe
+   *  połączenie elektryczne). */
+  readonly derTrunkX: number;
+  /** X początku rzędu DER strony nN — flush-right ZA blokiem kolumn
+   *  (`derRowFlushX`, jak przed portalem) i nie przed trunkiem. */
+  readonly derRowStartX: number;
 }
 
 /**
- * T3 (SLD-nN-TOPOLOGIA §„layout i wygląd" — BINDING: „etykiety bez elips
- * (łamanie 2-liniowe)") — PRÓBA I COFNIĘCIE, ZMIERZONE (Zero-Debt §4: dług
- * WPISANY, nie cichy). Ta karta próbowała łamania 2-liniowego (aparat +
- * odbiorca jako DWIE osobne etykiety `ownerKind:'apparatus'`, stos jak
- * pasmo nazw). Dowód wizualny na ŻYWEJ stronie (nie tylko test jednostkowy —
- * zasada nr 2 CLAUDE.md „dowodem jest render, nie kod") wykrył REGRESJĘ
- * GORSZĄ niż wielokropek: przy skali harnessu nN (`nnBoardDemo`, ~0,853 —
- * poniżej progu czytelności t4, `MIN_READABLE_LABEL_SCREEN_PX=9`) OBA
- * wiersze wchodzą w powiększenie awaryjne (`enlargedFontSizeWithinProportion`)
- * RÓWNOCZEŚNIE, a odstęp między nimi był policzony na wysokości NATURALNEJ
- * (`LABEL_LINE_HEIGHT_T4`) — powiększone wiersze WCHODZĄ NA SIEBIE, więc
- * `canvas/labelLegibility.ts` (`najlepszeDopasowanie`) drugi wiersz (`→
- * Odbiór N") ODRZUCA CAŁKOWICIE (`droppedIdentity`), nie skraca. Zmierzone na
- * `inspect_live.mjs` (żywa strona, `screenshot-harness.html?fixture=
- * nnBoardDemo&lod=2`): „→ Odbiór 1/2/4" ZNIKAJĄ z rysunku, gorsze niż
- * wielokropek pierwszej wersji (info ginie całkowicie, nie częściowo).
- *
- * PRZYCZYNA ŹRÓDŁOWA (nie naprawiona w tej karcie — dług WPISANY). Restack
- * „od góry pasma z powiększonymi wysokościami" (`layout/labels.ts`
- * `przestawPasma`, mechanizm (b) KD-11) istnieje WYŁĄCZNIE dla
- * `ownerKind==='station-name'` — grupy wielowierszowe innego rodzaju
- * właściciela (jak stos odpływu nN) NIE mają analogicznego mechanizmu.
- * Bezpieczna naprawa wymaga rozszerzenia `przestawPasma` na grupy
- * `apparatus` powiązane wspólnym prefiksem `ownerRef` (albo nowego pola
- * grupującego w `OwnedLabel`) — zmiana we WSPÓLNYM silniku kolizji, używanym
- * przez WSZYSTKIE etykiety aparatu w całym SLD (nie tylko nN), więc wymaga
- * pełnej regresji CAŁEGO `accept:sld-v3` + krytycznych kontraktów CI, nie
- * tylko fixtury nN — przekracza rozsądny zakres JEDNEJ karty restartowej.
- * Zapisane jako dług do osobnej karty (nie cicho — ten docstring + raport
- * karty T3). Do czasu naprawy: JEDNA etykieta połączona (wzorzec
- * `derLabelText`) — TA SAMA klasa ryzyka co reszta rysunku (skracanie z
- * wielokropkiem jest gorsze niż nic, ale NIE gorsze niż PRZED tą kartą —
- * zero regresji względem stanu wyjściowego).
+ * JEDNA prawda geometrii zacisku nN measure↔compose. `portXs` = osie X portów
+ * LV transformatorów stacji (compose: realne porty symboli; measure:
+ * `lvTerminalPortXs` z planu kolumn — równość przypięta testem spójności);
+ * `derRowFlushX` = pierwszy wolny X ZA blokiem kolumn (`bx` kompozycji) —
+ * rząd DER stoi ZA blokiem, żeby nie wejść w kolumnę pola sąsiadującego z
+ * transformatorem (TR nie musi być ostatnią kolumną). Kolejność zwisów od
+ * lewej: portal (na osi) → strzałka odbioru → trunk DER; wszystkie NA siatce.
  */
-export function nnFeederLabelText(odplyw: SldNnFeeder): string {
-  const apparatusLine = nnFeederApparatusLineText(odplyw);
-  const destinationLine = nnFeederDestinationLineText(odplyw);
-  return apparatusLine ? `${apparatusLine} · ${destinationLine}` : destinationLine;
+export function planLvTerminal(
+  portXs: readonly number[],
+  opts: { readonly hasLoad: boolean; readonly hasNnDer: boolean; readonly derRowFlushX: number },
+): LvTerminalPlan {
+  const minX = Math.min(...portXs);
+  const maxX = Math.max(...portXs);
+  const coreLeft = minX === maxX ? minX - GRID : minX;
+  const coreRight = minX === maxX ? maxX + GRID : maxX;
+  const axisX = snapToGrid((coreLeft + coreRight) / 2);
+  const portalRight = axisX + LV_PORTAL_WIDTH / 2;
+  const rightOfCore = Math.max(coreRight, portalRight);
+  const loadDropX = opts.hasLoad
+    ? snapUp(rightOfCore + LV_TERMINAL_GAP + LV_LOAD_ARROW_WIDTH / 2)
+    : null;
+  const rightOfLoad = loadDropX != null ? loadDropX + LV_LOAD_ARROW_WIDTH / 2 : rightOfCore;
+  const derTrunkX = snapUp(rightOfLoad + LV_TERMINAL_GAP);
+  return {
+    busLeft: coreLeft,
+    busRight: opts.hasNnDer ? derTrunkX : (loadDropX ?? coreRight),
+    axisX,
+    portalCenterX: axisX,
+    loadDropX,
+    derTrunkX,
+    derRowStartX: Math.max(opts.derRowFlushX, derTrunkX),
+  };
 }
 
-/** T1 (§0.3 „UNRESOLVED = HARD VALIDATION ERROR … tor przerwany jawnie"):
- *  `true` gdy aparat odpływu NIESIE gałąź (switch/breaker), ale katalog nie
- *  rozpoznaje jej rodzaju — kompozycja NIE kontynuuje toru za takim aparatem
- *  (zero kabli, zero liścia rozdzielnicy narysowanych ZA nierozpoznanym
- *  aparatem — inaczej rysunek udawałby pełną wiedzę o torze, którego dane
- *  nie potwierdzają). Reużyte przez `nnFeederSymbolStackHeight` (rezerwacja)
- *  i `compose/station.ts` (rysunek) — jedna prawda measure↔compose. */
-export function nnFeederPathBroken(odplyw: SldNnFeeder): boolean {
-  return odplyw.apparatusKind === 'UNRESOLVED';
+/** Osie X portów LV transformatorów stacji względem `column.x` — Z PLANU
+ *  KOLUMN (`stationSnColumnLayout`): kolumna transformatora bez pola i KAŻDE
+ *  pole roli TR (compose: `lvPorts.push(stack.bottomPort)` dla roli TR — port
+ *  leży na osi stosu = `placement.centerX`). `[]` = stacja bez portów LV. */
+export function lvTerminalPortXs(station: StationColumnsInput): readonly number[] {
+  return stationSnColumnLayout(station, 0)
+    .filter(
+      (p) =>
+        p.kind === 'transformer'
+        || (p.kind === 'bay' && isTransformerRole(station.snBays[p.bayIndex!].fieldRole)),
+    )
+    .map((p) => p.centerX);
 }
 
-/** Wysokość CAŁEGO stosu symboli jednego odpływu (zejście z szyny + aparat,
- *  gdy rozpoznany + kable pośrednie (T1 §0.1) + liść rozdzielnicy nN, gdy cel
- *  to podrozdzielnica) — BEZ etykiety (doliczanej osobno,
- *  `nnFeederColumnRequiredHeight` niżej). Goły kabel bez rozpoznanego aparatu
- *  i bez celu-rozdzielnicy: sam zejście (stub) — tor jest widoczny, ale nie
- *  niesie żadnego symbolu (uczciwy rysunek: nic do narysowania oprócz
- *  przewodu, karta P0.8 §0.2). Aparat `'UNRESOLVED'`: TYLKO zejście (stub) —
- *  kable/liść ZA nim NIE są rezerwowane (§0.3 „tor przerwany").
- *
- * FIX (T1, naprawa NAPOTKANA przy dodawaniu kabli — Zero-Debt §1): odstęp
- * PRZED liściem rozdzielnicy (`NN_FEEDER_STACK_GAP`) był rezerwowany
- * WYŁĄCZNIE gdy `hasApparatus`, ale `compose/station.ts` rysuje `boardTopY =
- * cursorY + GRID` BEZWARUNKOWO (zawsze, apparatus lub nie) — na gołym kablu
- * z celem-rozdzielnicą (fixtura `zOdplywamiNn` f3_cable→RGnN-2,
- * `scene/__tests__/buildScene.nnBoard.test.ts`) rezerwacja była o
- * `NN_FEEDER_STACK_GAP` (8 j.św.) NIŻSZA niż rysunek. Bez kolizji na TEJ
- * fixturze (luz w sąsiedniej kolumnie ją wchłaniał) — ale to był rozjazd
- * measure↔compose z konstrukcji, nie z przypadku. Naprawione: gap
- * BEZWARUNKOWY przy `hasBoard`, zgodnie z rysunkiem. */
-function nnFeederSymbolStackHeight(odplyw: SldNnFeeder): number {
-  const hasApparatus = nnFeederHasResolvedApparatus(odplyw);
-  const pathBroken = nnFeederPathBroken(odplyw);
-  const hasBoard = !pathBroken && odplyw.destinationKind === 'board';
-  const cableHops = pathBroken ? 0 : odplyw.cableRefs.length;
-  let h = NN_FEEDER_STUB_HEIGHT;
-  if (hasApparatus) h += NN_FEEDER_APPARATUS_HEIGHT;
-  h += cableHops * NN_FEEDER_CABLE_DROP_HEIGHT;
-  if (hasBoard) {
-    h += NN_FEEDER_STACK_GAP;
-    h += NN_FEEDER_BOARD_HEIGHT;
-  }
-  return h;
+function isTransformerRole(role: FieldRole): boolean {
+  return role === 'TRANSFORMER' || role === 'RMU_TRANSFORMER';
 }
 
-/** Szerokość WYMAGANA jednej kolumny odpływu — `max(gabaryt symbolu(i),
- *  najszersza linia etykiety)`, wzorzec `derColumnRequiredWidth`. Gabaryt
- *  symbolu = szerokość liścia rozdzielnicy nN (32, DOMINUJE nad aparatem 16),
- *  gdy `destinationKind==='board'`; inaczej szerokość aparatu (16) — nawet
- *  gdy aparat nierozpoznany/brak (rezerwacja pod komunikat błędu/goły tor). */
-export function nnFeederColumnRequiredWidth(odplyw: SldNnFeeder): number {
-  const symbolWidth = odplyw.destinationKind === 'board' ? NN_FEEDER_BOARD_WIDTH : NN_FEEDER_APPARATUS_WIDTH;
-  return Math.max(symbolWidth, measureLabelWidth(nnFeederLabelText(odplyw), 't4'));
+/** Wysokość DODATKOWA B4 pod zaciskiem na PORTAL: zejście + symbol + bufor.
+ *  `0`, gdy stacja nie rysuje strony nN (`stationHasLvSide` — TA SAMA bramka
+ *  co wiersze nN pasma nazw). */
+export function lvPortalExtraHeight(
+  station: Pick<StationMeasureInput, 'snBays' | 'hasTransformer'>,
+): number {
+  if (!stationHasLvSide(station)) return 0;
+  return LV_PORTAL_DROP_HEIGHT + LV_PORTAL_HEIGHT + LV_PORTAL_BOTTOM_BUFFER;
 }
 
-/** Wysokość WYMAGANA jednej kolumny odpływu — stos symboli + prześwit +
- *  JEDNA linia etykiety (t4, jak pozostałe teksty strony nN). Eksportowana
- *  (T5a): `nnSlotColumnRequiredHeight` (agregacja per sekcja) potrzebuje TEJ
- *  SAMEJ formuły dla slotów `kind==='feeder'` — jedna prawda measure↔measure,
- *  zero drugiej kopii. */
-export function nnFeederColumnRequiredHeight(odplyw: SldNnFeeder): number {
-  return nnFeederSymbolStackHeight(odplyw) + NN_FEEDER_LABEL_GAP + LABEL_LINE_HEIGHT_T4;
-}
-
-/** Gabaryt rzędu odpływów JEDNEJ sekcji rozdzielnicy nN (wzorzec
- *  `derRowFootprint`) — szerokość = suma kolumn + odstępy GRID; wysokość =
- *  najwyższa kolumna. `{0,0}` gdy sekcja bez odpływów (zero zmian geometrii —
- *  stacje bez danych strukturalnych P0.1 mają `feeders===[]`). */
-export function nnFeederRowFootprint(
-  feeders: readonly SldNnFeeder[],
-): { readonly width: number; readonly height: number } {
-  if (feeders.length === 0) return { width: 0, height: 0 };
-  const width =
-    feeders.reduce((sum, f) => sum + nnFeederColumnRequiredWidth(f), 0)
-    + NN_FEEDER_COLUMN_GAP * Math.max(feeders.length - 1, 0);
-  const height = Math.max(...feeders.map(nnFeederColumnRequiredHeight));
-  return { width, height };
-}
-
-/** WSZYSTKIE odpływy stacji (wszystkie sekcje spłaszczone, kolejność sekcji →
- *  kolejność odpływów w sekcji) — jedna prawda measure↔compose dla
- *  liczenia/rysowania rzędu. */
-export function flattenedNnFeeders(nnBoard: readonly SldNnBoardSection[] | undefined): readonly SldNnFeeder[] {
-  if (!nnBoard) return [];
-  return nnBoard.flatMap((section) => section.feeders);
-}
-
-// ---------------------------------------------------------------------------
-// T5a (KONCEPCJA_LOD_NN_2026-08.md §L1, werdykt właściciela §0 pkt 2/3) —
-// RENDEROWANIE PER SEKCJA + AGREGACJA KIKUTÓW z budżetem ADAPTACYJNYM. Do
-// karty T5a: szyna RGnN pojedynczej sekcji rysowana jest osobno na sekcję
-// (nie spłaszczona jak `flattenedNnFeeders` wyżej — TA funkcja zostaje bez
-// zmian, konsumowana tam, gdzie spłaszczenie jest właściwe: liczniki
-// strukturalne plakietki L0, `stationHasLvSide`).
-// ---------------------------------------------------------------------------
-
-/** Pitch minimalny JEDNEGO kikutu (aparat + odstęp kolumnowy) — PODŁOGA
- *  budżetu, niezależna od treści etykiety (etykiety mogą być szersze niż
- *  pitch — `nnFeederColumnRequiredWidth` — ale budżet patrzy na PITCH, żeby
- *  liczba kikutów była policzalna zanim treść etykiet jest znana; werdykt §0
- *  pkt 2 „adaptacyjny … z minimalnego pitchu"). */
-export const NN_SECTION_MIN_FEEDER_PITCH = NN_FEEDER_APPARATUS_WIDTH + NN_FEEDER_COLUMN_GAP; // 24
-
-/** Podłoga budżetu — sekcja NIGDY nie dostaje budżetu 0 (przynajmniej JEDEN
- *  slot jawny, zanim agregat przejmie resztę; agregat sam zajmuje KOLEJNY
- *  slot budżetu — patrz `nnSectionAggregationPlan`). */
-export const NN_SECTION_MIN_BUDGET = 1;
-
-/**
- * T5a (werdykt §0 pkt 2 „ADAPTACYJNY (szerokość/sekcje/pitch), nie stała
- * N=8"): budżet kikutów jednej sekcji, zanim agregat przejmuje resztę.
- * FORMUŁA: szerokość, którą reszta stacji JUŻ rezerwuje niezależnie od rzędu
- * odpływów nN (`envelopeWidth` — pola SN + ewentualne pola źródłowe SN + rząd
- * DER strony nN, czyli `requiredStationWidth` BEZ członu `nnFeederWidth`;
- * wołający — `composeRowStation`/`buildScene.ts` — dostarcza tę wartość, więc
- * MODUŁ TEN nie zależy cyklicznie od szerokości rzędu, którą sam ogranicza),
- * podzielona równo między `sectionCount` sekcji szyn, podzielona przez pitch
- * minimalny (`NN_SECTION_MIN_FEEDER_PITCH`), zaokrąglona w dół, z podłogą
- * `NN_SECTION_MIN_BUDGET`. Stacja z szeroką kolumną SN (dużo pól) dostaje
- * więcej miejsca na odpływy nN jawne, zanim zacznie agregować — stacja wąska
- * agreguje wcześniej. Czysta arytmetyka, deterministyczna.
- */
-export function nnSectionFeederBudget(envelopeWidth: number, sectionCount: number): number {
-  if (sectionCount <= 0) return NN_SECTION_MIN_BUDGET;
-  const perSection = Math.max(0, envelopeWidth) / sectionCount;
-  return Math.max(NN_SECTION_MIN_BUDGET, Math.floor(perSection / NN_SECTION_MIN_FEEDER_PITCH));
+/** Wysokość DODATKOWA B4 na strzałkę zagregowanego odbioru (pion + symbol +
+ *  bufor), gdy `aggregatedLvLoad` obecne. Teksty strony nN żyją w paśmie
+ *  nazw B5 (`stationNameBandHeight`). */
+export function lvSideExtraHeight(
+  station: Pick<StationMeasureInput, 'snBays' | 'aggregatedLvLoad' | 'hasTransformer'>,
+): number {
+  if (!stationHasLvSide(station) || !station.aggregatedLvLoad) return 0;
+  return LV_LABEL_GAP + LV_LOAD_ARROW_HEIGHT + LV_LABEL_GAP;
 }
 
 /**
- * T5a (werdykt §0 pkt 3 „NIGDY w agregacie: incomer, sprzęgło, DER, agregat
- * prądotwórczy, UPS, odpływ HARD FAIL, odbiór krytyczny"): predykat
- * WYŁĄCZNIE dla odpływów (`SldNnFeeder`) — incomer/sprzęgło NIE są elementami
- * `feeders` (osobne pola `SldNnBoardSection.incomer`/`coupler`), więc są
- * strukturalnie ZAWSZE jawne, poza zasięgiem agregacji z konstrukcji (nigdy
- * nie trafiają do listy kandydatów w `nnSectionAggregationPlan`).
- *
- * DER / agregat prądotwórczy / UPS: model ENM (`Generator`, `backend/src/
- * enm/models.py`) NIE rozróżnia DZIŚ rodzaju maszyny za odpływem poza
- * `gen_type` (pv_inverter/wind_inverter/bess/synchronous/…) — KAŻDA z nich
- * trafia do ENM jako rekord `Generator`, więc odpływ prowadzący do
- * dowolnego z nich ma `destinationKind==='der'` (adapter
- * `resolveNnFeederDestination`). Agregat prądotwórczy (maszyna synchroniczna)
- * i UPS (magazyn `bess` pracujący buforowo) są DZIŚ nierozróżnialne od DER
- * odnawialnego na poziomie kontraktu SLD — ten JEDEN predykat pokrywa
- * WSZYSTKIE TRZY pozycje werdyktu przez `destinationKind==='der'`
- * (udokumentowana równoważność, nie domysł — gdy model kiedyś dostanie pole
- * rozróżniające rodzaj maszyny, predykat rozdzieli się bez zmiany reguły
- * „nigdy w agregacie").
- *
- * Odbiór krytyczny: `Load` (`backend/src/enm/models.py`) NIE niesie DZIŚ
- * żadnej flagi krytyczności/priorytetu — dana NIE ISTNIEJE w modelu, więc
- * `isNnFeederCriticalLoad` zwraca zawsze `false` (uczciwy brak, zero
- * fabrykowanej heurystyki z nazwy/mocy odbioru). Luka nazwana wprost w
- * raporcie karty T5a — gdy model dostanie pole krytyczności, TA funkcja jest
- * jedynym miejscem rozszerzenia (jedna prawda predykatu agregacji).
+ * BLOK-PUSTY (zgłoszenie właściciela 2026-08-07 pkt 6): CAŁA głębokość, na jaką
+ * treść strony nN zwisa POD zaciskiem nN — jedno zdanie dla WSZYSTKICH zwisów.
+ * Kompozycja (`compose/station.ts`) wiesza portal, rząd DER strony nN i
+ * strzałkę odbioru na TYM SAMYM zacisku i rozsuwa je w POZIOMIE
+ * (`planLvTerminal`), więc łączy je `max`, nie suma — przypięte testem
+ * spójności measure↔compose (`layout/__tests__/blokPusty.test.ts` §4) na
+ * ILOCZYNIE {brak / odbiór / DER / odbiór+DER} × {1 pole / kilka / maksimum}.
  */
-export function isNnFeederAlwaysExplicit(feeder: SldNnFeeder): boolean {
-  if (feeder.apparatusKind === 'UNRESOLVED') return true; // HARD FAIL strukturalny (T1 §0.3 „UNRESOLVED = HARD VALIDATION ERROR")
-  if (feeder.destinationKind === 'der') return true; // DER / agregat prądotwórczy / UPS (patrz docstring)
-  return isNnFeederCriticalLoad(feeder);
+export function nnSideBelowBusHeight(
+  station: Pick<StationMeasureInput, 'snBays' | 'aggregatedLvLoad' | 'derSources' | 'hasTransformer'>,
+): number {
+  return Math.max(
+    lvPortalExtraHeight(station),
+    lvSideExtraHeight(station),
+    derRowExtraHeight(nnSideSources(station.derSources ?? [])),
+  );
 }
-
-/** Odbiór krytyczny — LUKA MODELU (patrz `isNnFeederAlwaysExplicit`
- *  docstring): zawsze `false` dziś, wydzielone do WŁASNEJ funkcji, żeby
- *  rozszerzenie (gdy model dostanie pole krytyczności) było jednym miejscem
- *  zmiany zamiast przeszukiwania wywołań. */
-export function isNnFeederCriticalLoad(_feeder: SldNnFeeder): boolean {
-  return false;
-}
-
-/** Jeden slot rzędu odpływów PO agregacji — albo odpływ RZECZYWISTY (jawny),
- *  albo AGREGAT jednego lub więcej odpływów ukrytych (dziedziczy ich refy —
- *  konsument (`overlay`) rolluje z nich najgorszy status wyników, scena SAMA
- *  fizyki nie liczy). */
-export type NnAggregatedFeederSlot =
-  | { readonly kind: 'feeder'; readonly feeder: SldNnFeeder }
-  | { readonly kind: 'aggregate'; readonly hidden: readonly SldNnFeeder[] };
-
-/**
- * T5a (werdykt §0 pkt 2/3): plan RENDEROWALNY jednej sekcji — kikuty jawne +
- * (najwyżej JEDEN) agregat na końcu rzędu, gdy liczba odpływów AGREGOWALNYCH
- * (`!isNnFeederAlwaysExplicit`) przekracza budżet dostępny PO odjęciu odpływów
- * ZAWSZE jawnych. Kolejność ZACHOWANA (ten sam porządek co `feeders`
- * wejściowe — deterministyczne, stabilne): odpływy zawsze-jawne i PIERWSZE
- * (w oryginalnej kolejności) odpływy agregowalne, które mieszczą się w
- * budżecie, zostają jawne; NADMIAR agregowalny (końcówka rzędu) trafia do
- * JEDNEGO agregatu dopisanego na KONIEC listy slotów. Budżet, który odpływy
- * zawsze-jawne SAME przekraczają, jest LEGALNIE przekroczony — reguła „nigdy
- * w agregacie" ma pierwszeństwo przed liczbą (werdykt, priorytet bezwzględny).
- * `budget<=0` traktowany jak wyczerpany natychmiast (wszystko agregowalne do
- * jednego stubu) — funkcja NIE waliduje budżetu, to `nnSectionFeederBudget`
- * gwarantuje podłogę.
- */
-export function nnSectionAggregationPlan(
-  feeders: readonly SldNnFeeder[],
-  budget: number,
-): readonly NnAggregatedFeederSlot[] {
-  const alwaysExplicitCount = feeders.reduce((n, f) => n + (isNnFeederAlwaysExplicit(f) ? 1 : 0), 0);
-  const aggregatableCount = feeders.length - alwaysExplicitCount;
-  const budgetForAggregatable = Math.max(0, budget - alwaysExplicitCount);
-  const needsAggregate = aggregatableCount > budgetForAggregatable;
-  // Agregat SAM zajmuje jeden slot budżetu (jest kikutem na rysunku) —
-  // rezerwowany WYŁĄCZNIE gdy agregacja faktycznie zajdzie (inaczej: budżet
-  // dokładnie wystarczający zostałby fałszywie zmniejszony o 1, tworząc
-  // agregat-z-jednego-odpływu tam, gdzie WSZYSTKO się mieściło).
-  const explicitAggregatableBudget = needsAggregate
-    ? Math.max(0, budgetForAggregatable - 1)
-    : aggregatableCount;
-
-  const slots: NnAggregatedFeederSlot[] = [];
-  const hidden: SldNnFeeder[] = [];
-  let keptAggregatable = 0;
-  for (const feeder of feeders) {
-    const mustExplicit = isNnFeederAlwaysExplicit(feeder);
-    if (mustExplicit || keptAggregatable < explicitAggregatableBudget) {
-      if (!mustExplicit) keptAggregatable += 1;
-      slots.push({ kind: 'feeder', feeder });
-    } else {
-      hidden.push(feeder);
-    }
-  }
-  if (hidden.length > 0) slots.push({ kind: 'aggregate', hidden });
-  return slots;
-}
-
-/** Gabaryt kwadratowy znacznika agregatu — MNIEJSZY niż aparat odpływu
- *  (`nnFeederApparatus`, 16×24 najwyższy wariant): agregat nie jest aparatem
- *  łączeniowym, jest ADNOTACJĄ liczbową — glif `nnAggregate`, `symbols/
- *  defs.ts`, 16×16. */
-const NN_AGGREGATE_MARKER_SIZE = 16;
-
-/** Tekst etykiety agregatu — `+N odpł.` (spójny z liczbą odpływów plakietki
- *  L0, `nnPlaqueStructuralText`, ten sam skrót „odpł."). */
-export function nnAggregateSlotLabelText(hiddenCount: number): string {
-  return `+${hiddenCount} odpł.`;
-}
-
-/**
- * T5a (KONCEPCJA_LOD_NN_2026-08 §L0, werdykt §0 pkt 1/korekta „L0 plakietka"):
- * treść STRUKTURALNA plakietki L0 — WYŁĄCZNIE liczba odpływów rzeczywistych
- * (`flattenedNnFeeders(station.nnBoard).length`, ta sama liczba co L1/L2,
- * zero drugiego licznika). „bez świeżego biegu: tylko struktura, zero
- * wymyślonego statusu" (werdykt dosłownie) — kierunek/moc/TR%/kropka
- * WYŁĄCZNIE z warstwy overlay (`canvas/overlay.ts::
- * buildNnPlaqueOverlayFromScene`), dopisywane OBOK tego tekstu, nigdy tutaj.
- */
-export function nnPlaqueStructuralText(feederCount: number): string {
-  return `nN · ${feederCount} odpł.`;
-}
-
-/** Eksportowana (T5a): `compose/station.ts` rysuje sloty TĄ SAMĄ szerokością,
- *  którą tu rezerwuje measure — jedna prawda measure↔compose (wzorzec
- *  `nnFeederColumnRequiredWidth`). */
-export function nnSlotColumnRequiredWidth(slot: NnAggregatedFeederSlot): number {
-  if (slot.kind === 'feeder') return nnFeederColumnRequiredWidth(slot.feeder);
-  return Math.max(NN_AGGREGATE_MARKER_SIZE, measureLabelWidth(nnAggregateSlotLabelText(slot.hidden.length), 't4'));
-}
-
-/** Eksportowana (T5a) — patrz `nnSlotColumnRequiredWidth`. */
-export function nnSlotColumnRequiredHeight(slot: NnAggregatedFeederSlot): number {
-  if (slot.kind === 'feeder') return nnFeederColumnRequiredHeight(slot.feeder);
-  return NN_FEEDER_STUB_HEIGHT + NN_AGGREGATE_MARKER_SIZE + NN_FEEDER_LABEL_GAP + LABEL_LINE_HEIGHT_T4;
-}
-
-/** Gabaryt rzędu PO agregacji (wzorzec `nnFeederRowFootprint`, ale nad
- *  slotami — feeder JAWNY albo agregat). `{0,0}` dla pustej listy slotów. */
-export function nnSectionRowFootprint(
-  slots: readonly NnAggregatedFeederSlot[],
-): { readonly width: number; readonly height: number } {
-  if (slots.length === 0) return { width: 0, height: 0 };
-  const width =
-    slots.reduce((sum, s) => sum + nnSlotColumnRequiredWidth(s), 0)
-    + NN_FEEDER_COLUMN_GAP * Math.max(slots.length - 1, 0);
-  const height = Math.max(...slots.map(nnSlotColumnRequiredHeight));
-  return { width, height };
-}
-
-/**
- * T5a: „szerokość obwiedni" nN dla `nnSectionFeederBudget` — CAŁA reszta
- * kolumny stacji NIEZALEŻNA od rzędu odpływów nN (pola SN + ewentualne pola
- * źródłowe SN + rząd DER strony nN). Lustro DOKŁADNE `requiredStationWidth`
- * (`blockWidth` przed doliczeniem `nnFeederWidth`) — jedna prawda, zero
- * drugiej formuły; `requiredStationWidth` samo importuje tę funkcję zamiast
- * powtarzać wzór (patrz wywołanie niżej).
- */
-export function nnBoardWidthEnvelope(station: StationColumnsInput): number {
-  const baysWidth = stationBlockWidth(station);
-  const allDer = (station as Pick<StationMeasureInput, 'derSources'>).derSources ?? [];
-  const snFieldsWidth = snSourceFieldsRowWidth(allDer);
-  const nnDerWidth = derRowFootprint(nnSideSources(allDer)).width;
-  let blockWidth = baysWidth;
-  if (snFieldsWidth > 0) blockWidth += GRID + snFieldsWidth;
-  if (nnDerWidth > 0) blockWidth += GRID + nnDerWidth;
-  return blockWidth;
-}
-
-/**
- * T5a: plan RENDEROWALNY per sekcja dla CAŁEJ rozdzielnicy nN stacji —
- * `nnSectionFeederBudget` policzony RAZ ze wspólnej obwiedni (`nnBoardWidth
- * Envelope`) i liczby sekcji, zastosowany do KAŻDEJ sekcji z osobna (agregacja
- * PER SEKCJA SZYN, werdykt §0 pkt 2 „nigdy globalna przez sprzęgło"). `[]` dla
- * stacji bez `nnBoard` (zero zmian względem stanu przed kartą).
- */
-export function nnBoardSectionPlans(
-  station: StationColumnsInput & Pick<StationMeasureInput, 'derSources'>,
-): readonly NnSectionPlan[] {
-  const nnBoard = station.nnBoard ?? [];
-  if (nnBoard.length === 0) return [];
-  const envelope = nnBoardWidthEnvelope(station);
-  const budget = nnSectionFeederBudget(envelope, nnBoard.length);
-  return nnBoard.map((section) => ({
-    section,
-    slots: nnSectionAggregationPlan(section.feeders, budget),
-  }));
-}
-
-export interface NnSectionPlan {
-  readonly section: SldNnBoardSection;
-  readonly slots: readonly NnAggregatedFeederSlot[];
-}
-
-/** Odstęp poziomy zarezerwowany na SPRZĘGŁO między dwiema sekcjami sąsiednimi
- *  (aparat 16 j.św. + prześwit GRID z każdej strony — TA SAMA logika co
- *  `NN_FEEDER_APPARATUS_WIDTH`, sprzęgło stoi NA torze poziomym szyny, nie w
- *  pionie odpływu, więc gabaryt jest własny, nie `nnFeederColumnRequiredWidth`). */
-export const NN_SECTION_COUPLER_GAP = NN_FEEDER_APPARATUS_WIDTH + 2 * GRID;
-
-/**
- * T5a: gabaryt CAŁEGO rzędu odpływów nN PO agregacji, sumowany po WSZYSTKICH
- * sekcjach rozdzielnicy (sekcje stoją W RZĘDZIE poziomym, rozdzielone
- * sprzęgłem, gdy sekcja niesie `coupler` — werdykt §0 pkt 2 „szyna RGnN z
- * sekcjami i sprzęgłem"). `{0,0}` dla listy pustej (stacja bez `nnBoard`,
- * zero zmian geometrii).
- */
-export function nnBoardTotalRowFootprint(
-  sectionPlans: readonly NnSectionPlan[],
-): { readonly width: number; readonly height: number } {
-  if (sectionPlans.length === 0) return { width: 0, height: 0 };
-  let width = 0;
-  let height = 0;
-  sectionPlans.forEach((plan, index) => {
-    const footprint = nnSectionRowFootprint(plan.slots);
-    if (index > 0) {
-      width += plan.section.coupler ? NN_SECTION_COUPLER_GAP : NN_FEEDER_COLUMN_GAP;
-    }
-    width += footprint.width;
-    height = Math.max(height, footprint.height);
-  });
-  return { width, height };
-}
-
-/**
- * T1 (SLD-nN-TOPOLOGIA, §0.1): aparat GŁÓWNY (incomer) DOMYŚLNEJ/PIERWSZEJ
- * sekcji szyny nN — jedna prawda measure↔compose (`compose/station.ts` czyta
- * DOKŁADNIE to samo, żeby wysokość zarezerwowana i narysowana się zgadzały).
- * `null`, gdy stacja bez `nnBoard`/sekcji bez incomera (WIĘKSZOŚĆ dzisiejszych
- * sieci — transformator podłączony wprost do szyny nN, zero zmian geometrii).
- */
-export function primaryNnIncomer(nnBoard: readonly SldNnBoardSection[] | undefined): SldNnIncomer | null {
-  return nnBoard?.[0]?.incomer ?? null;
-}
-
-/** Gabaryty aparatu GŁÓWNEGO — TE SAME glify (`nnBreaker`/`nnFuseSwitch`) co
- *  aparat odpływu, więc TA SAMA rezerwacja pionowa (`NN_FEEDER_APPARATUS_
- *  HEIGHT`). Zejście z portu LV transformatora do aparatu głównego i od
- *  aparatu do szyny — DWA odcinki `NN_FEEDER_STUB_HEIGHT`-podobne (wzorzec
- *  `nnFeederSymbolStackHeight`: stub + aparat, tu BEZ liścia rozdzielnicy —
- *  za aparatem głównym stoi ZAWSZE szyna, nigdy liść). */
-export function nnIncomerExtraHeight(incomer: SldNnIncomer | null): number {
-  if (!incomer) return 0;
-  const hasApparatus = incomer.apparatusKind === 'MCB' || incomer.apparatusKind === 'FUSE_SWITCH';
-  if (!hasApparatus) return 0;
-  return NN_FEEDER_STUB_HEIGHT + NN_FEEDER_APPARATUS_HEIGHT + NN_FEEDER_STACK_GAP;
-}
-
 
 /** Czy `snBays` niesie JAWNE pole roli TR (`TRANSFORMER`/`RMU_TRANSFORMER`) —
  *  predykat WYŁĄCZNIE polowy. Odróżnia „transformator jest CZĘŚCIĄ stosu pola"
@@ -768,7 +444,7 @@ function stationHasExplicitTrBay(snBays: readonly MiniBlockBayDescriptor[]): boo
  *
  * Przed tą kartą predykat czytał WYŁĄCZNIE pole, więc stacja o
  * `sn_fields:['IN','OUT','FEEDER']` z policzonym w ENM transformatorem
- * zwracała `false` — `nnSideBelowBusHeight`/`lvSideNameRowWidths`/
+ * zwracała `false` — `lvPortalExtraHeight`/`lvSideNameRowWidths`/
  * `stationNameBandHeight` nie rezerwowały miejsca na stronę nN, mimo że
  * domena ją niosła (defekt bliźniaczy z `lvPorts` w kompozycji: ta sama
  * klasa, dwa końce).
@@ -785,8 +461,9 @@ export function stationHasLvSide(
 
 /** Gabaryt symbolu `transformer2W` (`symbols/defs.ts` — 32×40, port `hv`
  *  górny / `lv` dolny). `measure.ts` celowo NIE importuje `SYMBOL_DEFS`
- *  (patrz `LV_LOAD_ARROW_HEIGHT`), więc literały są zsynchronizowane TESTEM
- *  spójności measure↔compose, nie importem. */
+ *  (utrzymujemy ten plik wolny od zależności na bibliotekę glifów, jak
+ *  `LV_PORTAL_WIDTH`/`LV_PORTAL_HEIGHT`), więc literały są zsynchronizowane
+ *  TESTEM spójności measure↔compose, nie importem. */
 export const IMPLICIT_TR_SYMBOL_WIDTH = 32;
 export const IMPLICIT_TR_SYMBOL_HEIGHT = 40;
 
@@ -844,115 +521,6 @@ export function implicitStationTransformers(
   );
 }
 
-// ---------------------------------------------------------------------------
-// T3 (SLD-nN-TOPOLOGIA §„layout i wygląd" — BINDING „dane TR przy symbolu
-// T1 … wzorzec pasma nazw stacji"): TABLICZKA transformatora BEZ POLA (TR2W-
-// BEZ-POLA), przy symbolu — JEDNA etykieta połączona (bezpieczny wzorzec
-// `nnFeederLabelText`/`derLabelText`, patrz `implicitTransformerNameplateText`
-// niżej dla pełnego wywodu), niosąca CZTERY człony rosnącego szczegółu, treść
-// wzorowana na tabliczce transformatora GPZ (`compose/gpz.ts` `trRows`):
-// TOŻSAMOŚĆ (oznaczenie) → moc+grupa → przekładnia → uk%. Dane WYŁĄCZNIE z
-// ENM (`StationTransformerUnit`, wyprowadzone WPROST z rekordu `Transformer` —
-// `network-build/stationTransformerSelection.ts`), zero fizyki/wyliczeń w UI.
-// ---------------------------------------------------------------------------
-
-export interface ImplicitTransformerNameplateRow {
-  readonly text: string;
-  readonly labelClass: LabelClass;
-}
-
-/** Wiersze tabliczki — WYŁĄCZNIE te, dla których ENM niesie dane (uczciwy
- *  brak: żaden literał zastępczy, wzorzec `trRows` GPZ). Pusta lista, gdy
- *  migawka nie niesie ŻADNEGO pola tabliczki (ścieżka awaryjna
- *  `selectStationTransformerUnits` — rekord `Transformer` nieobecny). */
-export function implicitTransformerNameplateRows(
-  unit: StationTransformerUnit,
-): readonly ImplicitTransformerNameplateRow[] {
-  const rows: ImplicitTransformerNameplateRow[] = [];
-  if (unit.designation) rows.push({ text: unit.designation, labelClass: 't2' });
-  if (unit.snMva != null) {
-    const ratingText = unit.vectorGroup
-      ? `${unit.vectorGroup} · ${liczbaRysunkuPl(unit.snMva)} MVA`
-      : `${liczbaRysunkuPl(unit.snMva)} MVA`;
-    rows.push({ text: ratingText, labelClass: 't3' });
-  }
-  if (unit.uhvKv != null && unit.ulvKv != null) {
-    rows.push({
-      text: `${liczbaRysunkuPl(unit.uhvKv)}/${liczbaRysunkuPl(unit.ulvKv)} kV`,
-      labelClass: 't3',
-    });
-  }
-  if (unit.ukPercent != null) {
-    rows.push({ text: `uk ${liczbaRysunkuPl(unit.ukPercent)}%`, labelClass: 't4' });
-  }
-  return rows;
-}
-
-/**
- * Tabliczka jako JEDNA etykieta połączona (wzorzec `nnFeederLabelText`/
- * `derLabelText`) — NIE stos wierszy oddzielnych. Próba stosu (osobna
- * etykieta na wiersz, zaczepiona PO PRAWEJ symbolu) była w tej karcie
- * COFNIĘTA po dowodzie wizualnym na żywej stronie: powiększenie awaryjne
- * (`canvas/labelLegibility.ts`, próg czytelności t3/t4 poniżej skali ~0,85 na
- * fixturze `nnBoardDemo`) traktuje KAŻDY wiersz osobno, a odstęp między nimi
- * liczony na wysokości NATURALNEJ nie chroni przed nachodzeniem wierszy
- * POWIĘKSZONYCH — silnik kolizji odrzuca wtedy CAŁE wiersze (`droppedIdentity`),
- * nie skraca ich, więc dane („15/0,4 kV", „uk 5%") znikały z rysunku
- * CAŁKOWICIE, gorzej niż wielokropek. Restack „od góry pasma z powiększonymi
- * wysokościami" (`layout/labels.ts` `przestawPasma`) istnieje WYŁĄCZNIE dla
- * `ownerKind==='station-name'` — rozszerzenie na `apparatus` to zmiana we
- * WSPÓLNYM silniku kolizji (dług zapisany, patrz `nnFeederLabelText`
- * dokładnie ten sam wywód). Jedna etykieta połączona ma TĘ SAMĄ klasę ryzyka
- * (skracanie zamiast znikania), co reszta rysunku — zero regresji.
- */
-export function implicitTransformerNameplateText(unit: StationTransformerUnit): string | null {
-  const rows = implicitTransformerNameplateRows(unit);
-  if (rows.length === 0) return null;
-  return rows.map((row) => row.text).join(' · ');
-}
-
-/** Szerokość WYMAGANA tabliczki (tekst połączony) — `0`, gdy migawka nie
- *  niesie żadnego pola (zero rezerwacji, zero zmiany geometrii). */
-export function implicitTransformerNameplateWidth(unit: StationTransformerUnit): number {
-  const text = implicitTransformerNameplateText(unit);
-  return text == null ? 0 : measureLabelWidth(text, 't3');
-}
-
-/** Wysokość WYMAGANA tabliczki — JEDNA linia (t3, jak reszta adnotacji
- *  strony nN), `0` gdy migawka nie niesie żadnego pola tabliczki. */
-export function implicitTransformerNameplateHeight(unit: StationTransformerUnit): number {
-  return implicitTransformerNameplateText(unit) == null ? 0 : labelLineHeight('t3');
-}
-
-/**
- * BRAMKA WIDOCZNOŚCI (POMIAR, nie preferencja — Zero-Debt §1, dług
- * NAPOTKANY naprawiony u źródła, nie odłożony). Tabliczka rysowana WYŁĄCZNIE
- * dla stacji z RZECZYWISTYMI danymi strukturalnymi strony nN (P0.8,
- * `flattenedNnFeeders(station.nnBoard).length > 0`) — NIE dla każdej stacji z
- * transformatorem bez pola.
- *
- * DLACZEGO. Substrat referencyjny SN (`v2/geometry/__tests__/fixtures/
- * sldSubstrate52s.enm.json`, karta §0.5 „substrat SN bajtowo nietknięty") ma
- * WSZYSTKIE 54/54 stacje na ścieżce TR2W-BEZ-POLA (transformator bez
- * skonfigurowanego pola SN) — bramka bez tego warunku dorysowałaby tabliczkę
- * na KAŻDEJ z nich, zmieniając szerokość/wysokość bloku KAŻDEJ stacji
- * substratu i naruszając zakaz karty wprost (precedens ZMIERZONY już raz na
- * tym pliku: `STATION_TR_FIELD_GAP_TEXT` jako wiersz pasma nazw B5 poszerzał
- * KAŻDĄ stację bez pola TR o ~30%, degradując wypełnienie osi „Dopasuj
- * widok" poniżej bramki K11-A — dokładnie ta klasa regresji). ŻADNA z 54
- * stacji substratu nie niesie danych strukturalnych P0.8
- * (`nn_board`/gałęzie odpływów), więc bramka poniżej jest `false` na
- * WSZYSTKICH — substrat pozostaje bajtowo nietknięty z konstrukcji, nie z
- * przypadku. Tabliczka aktywuje się dokładnie tam, gdzie reszta programu
- * SLD-nN-TOPOLOGIA już rysuje strukturalną stronę nN (fixtura referencyjna
- * Stacja B, `nnBoardDemo.enm.json`).
- */
-export function stationDrawsImplicitTrNameplate(
-  station: Pick<StationMeasureInput, 'nnBoard'>,
-): boolean {
-  return flattenedNnFeeders(station.nnBoard).length > 0;
-}
-
 /** Górna granica pasma SN [kV] — lustro `PASMO_SN_MAX_KV` bramki gotowości
  *  (`backend/src/enm/pole_transformatorowe.py`). Parytet pilnuje wspólna
  *  tablica decyzyjna `pole_transformatorowe_parytet_v1.json`. */
@@ -1007,7 +575,6 @@ type StationColumnsInput = Pick<
   | 'entryDescentBayIndex'
   | 'hasTransformer'
   | 'transformerUnits'
-  | 'nnBoard'
 >;
 
 /**
@@ -1067,21 +634,16 @@ export function stationSnColumnLayout(
     unresolved.push(unit);
   });
 
-  // T3 (tabliczka TR przy symbolu T1 — bramka widoczności, patrz uzasadnienie
-  // POMIAREM przy `stationDrawsImplicitTrNameplate`): `false` na substracie
-  // referencyjnym SN (54/54 stacji bez danych P0.8) — `nameplateWidth` jest
-  // wtedy `0` na KAŻDYM `unit`, więc `columnWidth` niżej wraca do
-  // `IMPLICIT_TR_SYMBOL_WIDTH` bajtowo (zero zmiany geometrii z konstrukcji).
-  const drawsNameplate = stationDrawsImplicitTrNameplate(station);
+  // Kolumna transformatora bez pola = SAM symbol (32 j.św.). Tabliczka TR
+  // (Sn/przekładnia/grupa/uk%) NIE jest rysowana w projekcji SN — pełny blok
+  // tabliczki niesie projekcja nN (`lv-domain/composeLvDomainScene.ts`
+  // `transformerNameplateLabel`), a projekcja SN pokazuje moc znamionową w
+  // paśmie nazw stacji (`transformerRatedKva`). Jedna treść, jedno miejsce.
   const out: StationSnColumnPlacement[] = [];
   let bx = columnX + GRID;
   const pushTransformer = (unit: StationTransformerUnit): void => {
     const centerX = snapToGrid(bx + IMPLICIT_TR_SYMBOL_WIDTH / 2);
-    const nameplateWidth = drawsNameplate ? implicitTransformerNameplateWidth(unit) : 0;
-    const columnWidth =
-      nameplateWidth > 0
-        ? IMPLICIT_TR_SYMBOL_WIDTH + GRID + nameplateWidth
-        : IMPLICIT_TR_SYMBOL_WIDTH;
+    const columnWidth = IMPLICIT_TR_SYMBOL_WIDTH;
     out.push({
       kind: 'transformer',
       bayIndex: null,
@@ -1119,99 +681,6 @@ export function stationSnColumnLayout(
   unresolved.forEach(pushTransformer);
 
   return out;
-}
-
-const LV_LABEL_GAP = GRID;
-/** Wysokość symbolu strzałki odbioru (`SYMBOL_DEFS.loadArrow`) — literal
- *  zsynchronizowany przez test spójności w `compose/__tests__/station.test.ts`
- *  (measure nie importuje SYMBOL_DEFS — utrzymujemy ten plik wolny od
- *  zależności na bibliotekę glifów, jak dotychczas). */
-export const LV_LOAD_ARROW_HEIGHT = 16;
-
-/** Wysokość DODATKOWA bloku B4 na stronę nN — WYŁĄCZNIE strzałka odbioru
- *  (pion + symbol + bufor), gdy `aggregatedLvLoad` obecne. TEKSTY strony nN
- *  żyją w paśmie nazw B5 (`stationNameBandHeight` niżej) — luźne etykiety
- *  pod szyną kolidowały z pionem trunku DER (pomiar k6 na fixturze). */
-export function lvSideExtraHeight(
-  station: Pick<StationMeasureInput, 'snBays' | 'aggregatedLvLoad' | 'hasTransformer'>,
-): number {
-  if (!stationHasLvSide(station) || !station.aggregatedLvLoad) return 0;
-  return LV_LABEL_GAP + LV_LOAD_ARROW_HEIGHT + LV_LABEL_GAP;
-}
-
-/**
- * BLOK-PUSTY (zgłoszenie właściciela 2026-08-07 pkt 6): CAŁA głębokość, na jaką
- * treść strony nN zwisa POD szyną nN — jedno zdanie dla obu zwisów.
- *
- * DEFEKT NAPRAWIONY TĄ FUNKCJĄ. `stationBlockHeight` sumowało dotąd
- * `derExtra + lvExtra`, jakby rząd DER stał POD strzałką odbioru. Kompozycja
- * (`compose/station.ts`) wiesza OBA na TEJ SAMEJ szynie nN i rozsuwa je w
- * POZIOMIE: strzałka odbioru na LEWYM końcu szyny (`arrowY = busY + GRID`,
- * `#lv-load-drop`), rząd DER ze ŚRODKA szyny (`derRowY = attach.y +
- * DER_ROW_TOP_CLEARANCE`, `#der-row-trunk`) — szyna jest właśnie po to
- * przedłużana w lewo o `3×GRID`, żeby oba zwisy się nie zetknęły. Rezerwacja
- * SZEREGOWA przy rysunku RÓWNOLEGŁYM zostawiała pod blokiem pusty pas.
- * Zmierzone na fixturze 53 stacji: **32 j.św.** martwej rezerwacji w każdym
- * bloku, który ma jednocześnie odbiór nN i DER na nN.
- *
- * PREDYKAT JEDEN, KOŃCE DWA (reguła KLASA §3): obie składowe są liczone od
- * TEGO SAMEGO punktu odniesienia (szyna nN), więc łączy je `max`, nie suma —
- * i to samo zdanie egzekwuje test spójności measure↔compose
- * (`layout/__tests__/blokPusty.test.ts` §4), który buduje REALNĄ kompozycję,
- * mierzy jej zwis pod `#lv-bus` i porównuje z tą liczbą na ILOCZYNIE
- * {brak / odbiór / DER / odbiór+DER} × {1 pole / kilka / maksimum z fixtury}.
- */
-export function nnSideBelowBusHeight(
-  station: Pick<
-    StationMeasureInput,
-    | 'snBays'
-    | 'aggregatedLvLoad'
-    | 'derSources'
-    | 'hasTransformer'
-    | 'nnBoard'
-    | 'bayDirectionCaptions'
-    | 'entryDescentBayIndex'
-    | 'transformerUnits'
-  >,
-): number {
-  // P0.8 nN: rząd odpływów RZECZYWISTYCH ZASTĘPUJE strzałkę zagregowanego
-  // odbioru, gdy stacja niesie dane strukturalne P0.1 (`feeders.length>0`) —
-  // WYŁĄCZNIE wtedy (precyzyjny obraz zastępuje agregat, nie dubluje go).
-  // Stacja bez danych strukturalnych (`nnBoard` niedostarczone/puste sekcje,
-  // WIĘKSZOŚĆ dzisiejszych sieci): `feeders===[]` ⇒ gałąź `lvSideExtraHeight`
-  // niezmieniona, substrat bajtowo identyczny (karta P0.8 §0.6).
-  //
-  // NAPRAWA T5a (Zero-Debt §1, błąd NAPOTKANY przy budowie tej karty):
-  // bramka NIE MOŻE testować `nnBoardSectionPlans(station).length>0` — sekcja
-  // DOMYŚLNA (`buildNnBoardSections` w adapterze) istnieje ZAWSZE, gdy stacja
-  // ma rozwiązywalną szynę nN, NAWET z `feeders===[]` (np. szyna nN bez
-  // ŻADNEGO odpływu strukturalnego, ale z odbiorem WYŁĄCZNIE zagregowanym z
-  // `Load`). Bramka na LICZBIE SEKCJI myliła „sekcja istnieje" z „sekcja ma
-  // treść" — POMIAR na fixturze referencyjnej (`sldSubstrate52s`, 53/54
-  // stacji z rozwiązywalną szyną nN, ZERO z realnymi odpływami P0.1): strzałka
-  // odbioru zagregowanego (`lvSideExtraHeight`) PRZESTAWAŁA się rysować dla
-  // KAŻDEJ takiej stacji (fałszywe przejście na gałąź „sekcje bez treści"),
-  // regres zmierzony `symbolWireCollisions` 0→6 i zmiana `totalVerticalSegment
-  // Length` na fixturze SN-bez-danych-nN — DOKŁADNIE zakazana klasa defektu
-  // (Zakazy karty: „substrat SN bez danych nN bajtowo nietknięty"). Bramka
-  // poprawna: LICZBA ODPŁYWÓW rzeczywistych (`flattenedNnFeeders`, TA SAMA
-  // funkcja i próg co przed kartą T5a) — jedno źródło prawdy z `compose/
-  // station.ts` (gałąź `if (nnFeeders.length > 0)`, NIEZMIENIONA tą kartą).
-  const nnFeeders = flattenedNnFeeders(station.nnBoard);
-  const sectionPlans = nnBoardSectionPlans(station);
-  const nnSideExtra =
-    nnFeeders.length > 0 ? nnBoardRowExtraHeight(sectionPlans) : lvSideExtraHeight(station);
-  return Math.max(nnSideExtra, derRowExtraHeight(nnSideSources(station.derSources ?? [])));
-}
-
-/** Wysokość DODATKOWA na rząd odpływów nN PO agregacji (wzorzec
- *  `nnFeederRowExtraHeight`, ale nad sekcjami — `nnBoardTotalRowFootprint`
- *  bierze `max` wysokości sekcji, bo sekcje stoją OBOK siebie w rzędzie, nie
- *  jedna pod drugą). `0`, gdy `sectionPlans` puste. */
-function nnBoardRowExtraHeight(sectionPlans: readonly NnSectionPlan[]): number {
-  const footprint = nnBoardTotalRowFootprint(sectionPlans);
-  if (footprint.height === 0) return 0;
-  return NN_FEEDER_STUB_HEIGHT + footprint.height + NN_FEEDER_LABEL_GAP;
 }
 
 /** Szerokości tekstów strony nN — kandydaci pasma nazw B5 (do
@@ -1398,12 +867,11 @@ export function entryDescentCaptionInset(role: FieldRole): number {
 const STATION_BLOCK_BUS_CLEARANCE = MIN_FIELD_CLEARANCE;
 
 /**
- * F9.4 (spec §14.1 strona nN, §13.1 V12K-029): prześwit między szyną nN (lub
- * portem TR, gdy stacja nie ma jawnej szyny nN) i rzędem symboli DER, oraz
- * prześwit między symbolem i jego etykietą (spec §4: „DER: rodzaj+moc POD
- * symbolem"). MIRROR w `compose/station.ts` (`DER_ROW_TOP_CLEARANCE`
- * zaimportowany WPROST z tego pliku — jedna prawda measure↔compose, wzór
- * F5a/F6b-1: `entryDescentCaptionInset`/`PORT_CAPTION_BUS_CLEARANCE`).
+ * F9.4 (spec §14.1 strona nN, §13.1 V12K-029): prześwit między zaciskiem nN i
+ * rzędem symboli DER strony nN, oraz prześwit między symbolem i jego etykietą
+ * (spec §4: „DER: rodzaj+moc POD symbolem"). MIRROR w `compose/station.ts`
+ * (`DER_ROW_TOP_CLEARANCE` zaimportowany WPROST z tego pliku — jedna prawda
+ * measure↔compose, wzór F5a/F6b-1).
  */
 export const DER_ROW_TOP_CLEARANCE = GRID;
 const DER_LABEL_GAP = GRID;
@@ -1446,10 +914,6 @@ export function derRowFootprint(
  * Wysokość DODATKOWA na rząd DER (0, gdy stacja bez DER) — doliczana do
  * `stationBlockHeight` (spec §5.2 B4): prześwit górny + wysokość symbolu +
  * prześwit etykiety + wysokość etykiety (t2, „pod symbolem") + bufor dolny.
- * Etykieta (`placement:'below'`, `layout/labels.ts`) leży POD symbolem —
- * bez doliczenia jej wysokości tutaj B4 kończyłaby się w połowie etykiety
- * (nachodzenie na pasmo nazw B5, wykryte empirycznie na fixturze
- * referencyjnej — patrz raport F9.4).
  */
 function derRowExtraHeight(sources: readonly StationDerSourceInput[]): number {
   if (sources.length === 0) return 0;
@@ -1458,6 +922,15 @@ function derRowExtraHeight(sources: readonly StationDerSourceInput[]): number {
   );
 }
 
+/**
+ * Wysokość DODATKOWA na rząd DER (0, gdy stacja bez DER) — doliczana do
+ * `stationBlockHeight` (spec §5.2 B4): prześwit górny + wysokość symbolu +
+ * prześwit etykiety + wysokość etykiety (t2, „pod symbolem") + bufor dolny.
+ * Etykieta (`placement:'below'`, `layout/labels.ts`) leży POD symbolem —
+ * bez doliczenia jej wysokości tutaj B4 kończyłaby się w połowie etykiety
+ * (nachodzenie na pasmo nazw B5, wykryte empirycznie na fixturze
+ * referencyjnej — patrz raport F9.4).
+ */
 /**
  * W2 (RECENZJA_L2 §4 wariant B, GS-4b): źródła DER o stronie `'sn'` —
  * `connectionSide==='sn'` (pole źródłowe od szyny SN). `derBySide` rozdziela
@@ -1551,43 +1024,24 @@ export function stationBlockWidth(station: StationColumnsInput): number {
 }
 
 /** Wysokość bloku stacji (B4, spec §5.2): kolumny stoją OBOK siebie, więc
- *  wysokość = najwyższa kolumna + prześwit szyn SN/nN + F9.4 rząd DER
- *  (0, gdy stacja bez DER — zero zmian geometrii). */
+ *  wysokość = najwyższa kolumna + prześwit szyn SN/zacisk nN + zwis strony nN
+ *  (portal / rząd DER / odbiór — `max`, 0 gdy stacja bez strony nN). */
 export function stationBlockHeight(station: StationMeasureInput): number {
   const allDer = station.derSources ?? [];
-  // BLOK-PUSTY: JEDNA głębokość zwisu strony nN — rząd DER (W2/GS-4b: tylko
-  // źródła strony nN; źródła SN mają własne pole źródłowe, `snSourceFieldHeight`)
-  // i strzałka odbioru (recenzja NO-GO 2026-07-17 pkt 6) wiszą RÓWNOLEGLE na
-  // tej samej szynie nN, więc łączy je `max`, nie suma (patrz
-  // `nnSideBelowBusHeight` — tam wyprowadzenie i pomiar).
+  // BLOK-PUSTY: JEDNA głębokość zwisu strony nN — portal domeny nN, rząd DER
+  // strony nN i strzałka odbioru wiszą RÓWNOLEGLE na tym samym zacisku, więc
+  // łączy je `max`, nie suma (patrz `nnSideBelowBusHeight` — tam wyprowadzenie).
   const nnExtra = nnSideBelowBusHeight(station);
-  // T1 (SLD-nN-TOPOLOGIA §0.1): aparat GŁÓWNY (incomer) rezerwuje przestrzeń
-  // NAD szyną nN (między portem LV transformatora i osią szyny) — `0` gdy
-  // stacja bez incomera rozpoznanego (WIĘKSZOŚĆ sieci, substrat nietknięty,
-  // karta §0.5). JEDNA prawda measure↔compose: `compose/station.ts` liczy
-  // `busY` DOKŁADNIE tym samym wywołaniem.
-  const nnIncomerExtra = nnIncomerExtraHeight(primaryNnIncomer(station.nnBoard));
   // W2: pole źródłowe SN zajmuje pas pionowy kolumn (od `blockTopY` w dół) —
   // kandydat do `max()` z najwyższą kolumną pola (0, gdy zero źródeł SN).
   const snFieldHeight = snSourceFieldHeight(allDer);
   // TR2W-BEZ-POLA: kolumna transformatora bez pola zajmuje TEN SAM pas pionowy
   // (od `blockTopY` w dół) co kolumny pól — kandydat do `max()`. `0` gdy pole
   // TR obecne LUB stacja bez transformatora (zero zmian geometrii).
-  // T3 (tabliczka TR — bramka `stationDrawsImplicitTrNameplate`, `false` na
-  // substracie referencyjnym ⇒ wyrażenie wraca do `IMPLICIT_TR_SYMBOL_HEIGHT`
-  // bajtowo, jak przed kartą): symbol jest zawsze WYSOKI na `IMPLICIT_TR_
-  // SYMBOL_HEIGHT`; tabliczka obok niego bywa WYŻSZA (cztery wiersze tekstu) —
-  // `max()` po obu, żeby wyższy z dwóch (symbol/tabliczka) wyznaczał pas.
-  const implicitTrUnits = implicitStationTransformers(station);
-  const nameplateHeights = stationDrawsImplicitTrNameplate(station)
-    ? implicitTrUnits.map(implicitTransformerNameplateHeight)
-    : [];
   const implicitTrHeight =
-    implicitTrUnits.length > 0
-      ? Math.max(IMPLICIT_TR_SYMBOL_HEIGHT, ...nameplateHeights)
-      : 0;
+    implicitStationTransformers(station).length > 0 ? IMPLICIT_TR_SYMBOL_HEIGHT : 0;
   if (station.snBays.length === 0) {
-    return Math.max(snFieldHeight, implicitTrHeight) + STATION_BLOCK_BUS_CLEARANCE + nnIncomerExtra + nnExtra;
+    return Math.max(snFieldHeight, implicitTrHeight) + STATION_BLOCK_BUS_CLEARANCE + nnExtra;
   }
   // W2c (POLECENIE_DER_SN_TOPOLOGIA_2026-07): tor DER-SN zwisa POD DOLNYM
   // portem głowicy pola źródłowego (bay_role `OZE`) — wydłuża KOLUMNĘ tego
@@ -1602,7 +1056,16 @@ export function stationBlockHeight(station: StationMeasureInput): number {
     if (ref) chainHeightByFieldRef.set(ref, derSnChainExtraHeight(src.kind));
   }
   const columnHeights = station.snBays.map((bay) => {
-    const base = bayColumnFootprint(bay).height;
+    // Pole TR z odgałęzieniem bocznym (ES/VT/SA zakotwiczone w porcie LV):
+    // zacisk nN schodzi POD lateral i pod jego etykietę identyfikatora
+    // (`compose/station.ts` `lvColumnBottoms` — QE `placement: 'below'`,
+    // prześwit GRID + wiersz t4), więc kolumna TR musi zarezerwować ten pas,
+    // inaczej zwis zacisku (B4) wchodziłby w pasmo nazw B5.
+    const base =
+      bayColumnFootprint(bay).height
+      + (isTransformerRole(bay.fieldRole) && planBayApparatus(bay).laterals.length > 0
+        ? GRID + labelLineHeight('t4')
+        : 0);
     const chainExtra2 = chainHeightByFieldRef.get(bay.bayRef);
     if (chainExtra2 == null) return base;
     // Tor zaczyna się na DNIE toru głównego pola (`bayMainPathHeight`), nie na
@@ -1611,7 +1074,7 @@ export function stationBlockHeight(station: StationMeasureInput): number {
     return Math.max(base, bayMainPathHeight(bay) + chainExtra2);
   });
   const tallest = Math.max(...columnHeights, snFieldHeight, implicitTrHeight);
-  return tallest + STATION_BLOCK_BUS_CLEARANCE + nnIncomerExtra + nnExtra;
+  return tallest + STATION_BLOCK_BUS_CLEARANCE + nnExtra;
 }
 
 /**
@@ -1647,23 +1110,34 @@ export function stationNameBandHeight(station: StationMeasureInput): number {
  */
 export function requiredStationWidth(station: StationMeasureInput): number {
   // F9.4 KOREKTA NADZORCY (patrz `stationBlockWidth`): EKSTENT poziomy bloku
-  // = kolumny pól + rząd DER dopisany PO PRAWEJ (wzór sidecara FIX-3;
-  // `compose/station.ts` rysuje rząd flush-right od `bx` za ostatnią
-  // kolumną) — wchodzi WYŁĄCZNIE do rezerwacji szerokości KOLUMNY stacji
-  // (żeby DER nie nachodził na sąsiada), NIE do bazy centrowania `tapX`.
-  // T5a: `nnBoardWidthEnvelope` jest LUSTREM DOKŁADNYM tych trzech linii
-  // (`baysWidth`/`snFieldsWidth`/`nnDerWidth`) — jedna prawda, bo TA SAMA
-  // wartość jest teraz też budżetem adaptacyjnym agregacji kikutów
-  // (`nnSectionFeederBudget`, `layout/measure.ts`). Zero zmian liczbowych
-  // względem stanu przed kartą — sam wzór przeniesiony, nie przeliczony.
-  let blockWidth = nnBoardWidthEnvelope(station);
-  // P0.8 nN (wzorzec DER-row) → T5a (agregacja PER SEKCJA, werdykt §0 pkt 2):
-  // rząd odpływów rzeczywistych PO agregacji, dopisany PO PRAWEJ, jak rząd
-  // DER — `0`, gdy stacja bez danych strukturalnych P0.1 (zero zmian
-  // szerokości kolumny, karta P0.8 §0.6 zachowana). Sekcje ≥2 rysowane W
-  // RZĘDZIE (sprzęgło między nimi) — `nnBoardTotalRowFootprint` sumuje.
-  const nnFeederWidth = nnBoardTotalRowFootprint(nnBoardSectionPlans(station)).width;
-  if (nnFeederWidth > 0) blockWidth += GRID + nnFeederWidth;
+  // = kolumny pól + pola źródłowe SN dopisane PO PRAWEJ (wzór sidecara FIX-3;
+  // `compose/station.ts` rysuje je flush-right od `bx` za ostatnią kolumną)
+  // — wchodzi WYŁĄCZNIE do rezerwacji szerokości KOLUMNY stacji (żeby pole
+  // źródłowe nie nachodziło na sąsiada), NIE do bazy centrowania `tapX`.
+  // ZACISK nN (LV Domain Projection po B-02): portal stoi NA OSI rdzenia
+  // zacisku (w obrysie kolumny TR), strzałka odbioru i pion trunku DER ZA nim,
+  // rząd DER strony nN flush-right ZA blokiem — `planLvTerminal` (JEDNA prawda
+  // z `compose/station.ts`) wyznacza prawy ekstent każdego zwisu; do
+  // rezerwacji wchodzi najdalszy z nich (dla stacji bez odbioru i bez DER
+  // portal mieści się w kolumnie TR — zero dodatkowej szerokości).
+  const allDer = station.derSources ?? [];
+  let blockWidth = stationBlockWidth(station);
+  const snFieldsWidth = snSourceFieldsRowWidth(allDer);
+  if (snFieldsWidth > 0) blockWidth += GRID + snFieldsWidth;
+  const portXs = lvTerminalPortXs(station);
+  if (stationHasLvSide(station) && portXs.length > 0) {
+    const nnDer = nnSideSources(allDer);
+    const plan = planLvTerminal(portXs, {
+      hasLoad: station.aggregatedLvLoad != null,
+      hasNnDer: nnDer.length > 0,
+      // `bx` kompozycji względem `column.x`: blok zaczyna się na `GRID`.
+      derRowFlushX: GRID + blockWidth + GRID,
+    });
+    const portalRight = plan.portalCenterX + LV_PORTAL_WIDTH / 2;
+    const loadRight = plan.loadDropX != null ? plan.loadDropX + LV_LOAD_ARROW_WIDTH / 2 : 0;
+    const derRowRight = nnDer.length > 0 ? plan.derRowStartX + derRowFootprint(nnDer).width : 0;
+    blockWidth = Math.max(blockWidth, portalRight - GRID, loadRight - GRID, derRowRight - GRID);
+  }
 
   const nameWidths: number[] = [measureLabelWidth(station.name, 't1')];
   if (station.stationCode) nameWidths.push(measureLabelWidth(station.stationCode, 't1'));

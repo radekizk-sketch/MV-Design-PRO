@@ -1216,7 +1216,9 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
 
     expect(station.footprintType).toBe('mv_lv_inline');
     expect(station.derBadges).toEqual([{ kind: 'PV', connectionSide: 'nn', hasBlockTransformer: false, count: 1, totalPMw: expect.any(Number) }]);
-    expect(station.nnFeedersCount).toBe(2);
+    // Zero fabrykacji (B-02): bez `nn_field_specs` liczba odpływów nN = 0,
+    // NIE „2 bo jest DER".
+    expect(station.nnFeedersCount).toBe(0);
     expect(station.totalGenerationKw).toBe(500);
   });
 
@@ -3405,12 +3407,12 @@ describe('K30-19 countNnFeedersFromMeta — adapter respects station.meta.nn_fie
     expect(station!.nnFeedersCount).toBe(3);
   });
 
-  it('falls back to DER heuristic when meta absent', () => {
+  it('brak meta.nn_field_specs ⇒ 0 (zero fabrykacji — dawna heurystyka „1 bez DER / 2 z DER" usunięta u źródła)', () => {
     const snapshot = buildStationFixture({});
     const result = buildSldDataFromSnapshot(snapshot);
     const station = result.stations.find((s) => s.id === 'stn/abc/station');
     expect(station).toBeDefined();
-    expect(station!.nnFeedersCount).toBe(1); // no DER → 1
+    expect(station!.nnFeedersCount).toBe(0);
   });
 
   it('respects different feeder counts (1, 4, 8)', () => {

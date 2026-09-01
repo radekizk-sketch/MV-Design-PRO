@@ -406,6 +406,10 @@ const KOTWICE_DOZWOLONE_DLA_KLASY = {
   // byłaby fantomem (zakaz). Kandydat na kartę: menu punktu odgałęźnego
   // (poprowadź gałąź z punktu / usuń punkt) po zweryfikowaniu operacji.
   'punkt-odgalezny': [],
+  // PORTAL nN (LV Domain Projection po B-02): przejście do projekcji nN — NIE
+  // obiekt modelu; klik OTWIERA projekcję nN (`SldCanvasV3Workspace`), menu
+  // budowy nie ma tu żadnej operacji (zero fantomów).
+  'portal-nn': [],
   etykieta: ['stacja', 'szyna', 'galaz', 'pole', 'zrodlo', 'generator', 'transformator'],
   'znacznik-wyniku': ['stacja', 'szyna', 'galaz', 'pole', 'zrodlo', 'generator', 'transformator'],
 } satisfies Record<HitObjectClass, readonly MenuAnchorKind[]>;

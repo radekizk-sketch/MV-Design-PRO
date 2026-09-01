@@ -220,6 +220,11 @@ export interface SldElementClickMeta {
    *  menu podtypu). `undefined` dla nie-DER oraz DER `generator`/`unknown`
    *  (menu generyczne — zero zgadywania). */
   readonly derKind?: DerSourceKind;
+  /** PORTAL nN (LV Domain Projection po B-02): `Substation.ref_id` stacji,
+   *  której projekcję nN otwiera kliknięty portal (`PreviewElementMeta.
+   *  lvPortalStationRef`, WYŁĄCZNIE dla `elementKind==='lvPortal'`) —
+   *  konsument: `SldCanvasV3Workspace.handleElementClick`. */
+  readonly lvPortalStationRef?: string;
   /** Karta S9-5: KLASA trafionego obiektu kanwy — z warstwy trafień S9-4
    *  (`CanvasHitArea.klasa`), czyli z TEJ SAMEJ geometrii, którą wskazał
    *  kursor. Wołający (`SldCanvasV3Workspace`) rozstrzyga po niej temat menu
@@ -2997,6 +3002,8 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
         // S9-10 (dług `S9-4-DLUG-INSPEKTOR`): ref pojedynczego aparatu ze
         // sceny (ścieżka danych) — inspektor rozróżnia aparaty jednego pola.
         deviceRef: symbol.meta?.deviceRef,
+        // PORTAL nN: stacja, której projekcję nN otwiera klik w portal.
+        lvPortalStationRef: symbol.meta?.lvPortalStationRef,
       });
     });
     // Etykieta jest UCHWYTEM swojego właściciela (audyt P-2) — klik w napis

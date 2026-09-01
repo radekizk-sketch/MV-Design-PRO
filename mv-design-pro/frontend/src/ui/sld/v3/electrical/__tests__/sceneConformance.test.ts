@@ -2,7 +2,7 @@
  * SLD-nN-TOPOLOGIA T0→T1 (`docs/nn/PLAN_SLD_NN_TOPOLOGIA_2026-08.md` §0.4) —
  * WYROCZNIA ZGODNOŚCI SCENY. Buduje scenę Stacji B DZISIEJSZYM pipeline
  * (`buildSceneV3` — ENM → scena, TA SAMA funkcja co
- * `scene/__tests__/buildScene.nnBoard.test.ts`), wyekstrahowuje krawędzie
+ * `scene/__tests__/buildScene.lvPortal.test.ts`), wyekstrahowuje krawędzie
  * przewodzące (`PreviewSegment` z `meta.kind` ∈ klasy toru mocy) i sprawdza:
  * KAŻDA krawędź sceny odpowiada krawędzi grafu elektrycznego
  * (`electrical/terminalGraph.ts`) LUB jest czysto dekoracyjna (jawna lista
@@ -23,9 +23,14 @@
  * przyszła zmiana `compose/`/`scene/` nie może już cofnąć tego dowodu bez
  * czerwonego CI. Gdyby wyrocznia okazała się NIESPODZIEWANIE zielona bez
  * powodu, trzeba by się zatrzymać i sprawdzić, czy naprawdę mierzy
- * przewodzenie (pusta lista = pusta wyrocznia = fałszywa zieleń) — po
- * zmierzeniu na REALNEJ scenie (25 krawędzi przewodzących, patrz Check B)
- * wyrocznia NIE jest pusta.
+ * przewodzenie (pusta lista = pusta wyrocznia = fałszywa zieleń).
+ *
+ * LV DOMAIN PROJECTION (po B-02, `docs/sld/PROJEKCJA_SN_NN_PORTAL_V1.md`):
+ * projekcja SN kończy tor na ZACISKU nN (`#lv-bus`) i PORTALU
+ * (`#lv-portal-drop` + symbol `lvPortal`) — wnętrze rozdzielnicy nN (QF-TR1,
+ * odpływy, kable) NIE jest elementem sceny SN, więc dosłowne krawędzie nN nie
+ * występują tu Z KONSTRUKCJI; Check A obejmuje krawędzie SN (kable ciągu),
+ * Check C dowodzi spójności SN → TR → zacisk → portal.
  */
 import { describe, expect, it } from 'vitest';
 
@@ -91,11 +96,16 @@ describe('Check A — DOWÓD DEFEKTU B-02: krawędzie sceny z DOSŁOWNYM ref ga�
     .filter((s) => s.meta?.ownerRef != null && edgeByRef.has(s.meta.ownerRef))
     .map((s) => ({ segment: s, edge: edgeByRef.get(s.meta!.ownerRef!)! }));
 
-  it('kontrola: fixtura Stacja B produkuje ≥3 segmenty z dosłownym ref gałęzi ENM (wyrocznia mierzy coś realnego)', () => {
-    expect(literalEdgeSegments.length).toBeGreaterThanOrEqual(3);
+  it('kontrola: fixtura Stacja B produkuje ≥2 segmenty z dosłownym ref gałęzi ENM — kable ciągu SN (wyrocznia mierzy coś realnego)', () => {
+    expect(literalEdgeSegments.length).toBeGreaterThanOrEqual(2);
   });
 
-  it('FLIP T1 (dowód defektu B-02 naprawiony — ZAPADKA): KAŻDY taki segment ma kind zgodny z domeną grafu (QF-TR1/QF-01/QF-02/QF-03 dostają kind="lv", zgodnie z domeną nN)', () => {
+  it('LV DOMAIN PROJECTION: ŻADNA dosłowna gałąź domeny nN (QF-TR1/QF-01/02/03/kable) NIE jest krawędzią sceny SN — wnętrze nN żyje w projekcji nN', () => {
+    const lvLiteral = literalEdgeSegments.filter(({ edge }) => graph.nodes.get(edge.fromBusRef)!.voltageKv <= 1);
+    expect(lvLiteral.map(({ edge }) => edge.ref)).toEqual([]);
+  });
+
+  it('ZAPADKA: KAŻDY dosłowny segment ma kind zgodny z domeną grafu (dziś wyłącznie domena SN ⇒ kind ≠ "lv")', () => {
     for (const { segment, edge } of literalEdgeSegments) {
       const fromNode = graph.nodes.get(edge.fromBusRef)!;
       const edgeIsLv = fromNode.voltageKv <= 1;
@@ -188,12 +198,8 @@ describe('Check B — KOMPLETNOŚĆ: każda krawędź przewodząca sceny jest (a
       justification: 'zejście z portu LV transformatora stacji do linii `#lv-bus` — Transformer ENM ma JEDEN lv_bus_ref, port→szyna nie jest osobną gałęzią.',
     },
     {
-      match: (r) => r.endsWith('#board-descent'),
-      justification: 'łącznik APARATU odpływu z liściem podrozdzielnicy (nnDistributionBoard) — geometria portu, gałąź RZECZYWISTA (aparat) jest już policzona osobno jako dosłowny ref (Check A).',
-    },
-    {
-      match: (r) => r.endsWith('#nn-aggregate'),
-      justification: 'T5a (KONCEPCJA_LOD_NN_2026-08 §L1): zejście do znacznika AGREGATU kikutów — reprezentuje WIELE odpływów jednocześnie (`hiddenBranchRefs`, budżet adaptacyjny `layout/measure.ts::nnSectionAggregationPlan`), więc NIE odpowiada jednej gałęzi ENM z konstrukcji (żaden pojedynczy ref nie byłby uczciwy) — compose/station.ts drawNnSlot.',
+      match: (r) => r.endsWith('#lv-portal-drop'),
+      justification: 'LV DOMAIN PROJECTION (po B-02): pion od zacisku nN (`#lv-bus`) do portu `top` symbolu portalu domeny nN — przejście do PROJEKCJI nN (granica projekcji ≠ granica obliczeniowa), nie gałąź ENM — compose/station.ts.',
     },
   ];
 
@@ -224,27 +230,23 @@ describe('Check B — KOMPLETNOŚĆ: każda krawędź przewodząca sceny jest (a
     ).toEqual([]);
   });
 
-  it('rozkład klasyfikacji: literal-edge ≥3, busbar =4, decorative ≥10 (kontrola progu — dowód nietrywialności wyroczni)', () => {
+  it('rozkład klasyfikacji: literal-edge ≥2, busbar =4, decorative ≥10, DOKŁADNIE 1 pion portalu (kontrola progu — dowód nietrywialności wyroczni)', () => {
     const counts = { 'literal-edge': 0, busbar: 0, decorative: 0, UNCLASSIFIED: 0 } as Record<Classification['bucket'], number>;
     for (const c of classifications) counts[c.bucket]++;
-    expect(counts['literal-edge']).toBeGreaterThanOrEqual(3);
+    expect(counts['literal-edge']).toBeGreaterThanOrEqual(2);
     expect(counts.busbar).toBe(4);
     expect(counts.decorative).toBeGreaterThanOrEqual(10);
+    expect(conductingSegments().filter((s) => (s.meta?.ownerRef ?? '').endsWith('#lv-portal-drop'))).toHaveLength(1);
   });
 });
 
-describe('Check C — T1 (karta T1, §0 pkt 4 „odstępstwo #4 z T0"): sceneConnectivityIndex SPÓJNA z domenami grafu dla WSZYSTKICH elementów nN', () => {
-  // Odstępstwo #4 z T0 (karta T0 „USTALENIA T0", defekt (d)): „kable
-  // odpływów (nn_qf01_cable itd.) NIE mają żadnej reprezentacji w scenie —
-  // kompozycja rysuje tylko pierwszy aparat odpływu". Check A/B (wyżej)
-  // dowodzą TYLKO, że segmenty, które ISTNIEJĄ, mają poprawny `kind`/
-  // klasyfikację — NIE dowodzą, że kable FAKTYCZNIE dotykają reszty toru
-  // (można by narysować segment z poprawnym `kind`, który przez błąd
-  // współrzędnych WISI w powietrzu, niepołączony). Check C zamyka TĘ lukę:
+describe('Check C — LV DOMAIN PROJECTION: sceneConnectivityIndex spójna SN → TR → zacisk nN → portal (dowód GEOMETRYCZNY, nie tylko etykietowy)', () => {
   // `sceneConnectivityIndex` (Union-Find po DOTYKU geometrycznym,
-  // `scene/buildScene.ts`) musi umieścić szynę nN, aparat główny (incomer)
-  // i KAŻDY kabel odpływu w JEDNEJ składowej spójności — to jest dowód
-  // GEOMETRYCZNY (nie tylko etykietowy) ciągłości toru T1→…→odbiór.
+  // `scene/buildScene.ts`) musi umieścić szynę SN, zacisk nN i pion portalu w
+  // JEDNEJ składowej spójności — czyli tor SN → transformator → zacisk →
+  // portal naprawdę się DOTYKA (segment z poprawnym `kind` mógłby przez błąd
+  // współrzędnych WISIEĆ w powietrzu). Dalszy tor (aparat główny, odpływy,
+  // odbiory) należy do PROJEKCJI nN i tam ma własne wyrocznie ciągłości.
   const connectivity = sceneConnectivityIndex(scene);
 
   function segmentIndexByOwnerRef(ownerRef: string): number {
@@ -254,37 +256,28 @@ describe('Check C — T1 (karta T1, §0 pkt 4 „odstępstwo #4 z T0"): sceneCon
   }
 
   const lvBusOwnerRef = `${STACJA_B_REFS.stationRef}#lv-bus`;
+  const portalDropOwnerRef = `${STACJA_B_REFS.stationRef}#lv-portal-drop`;
 
-  it('kontrola: szyna nN (#lv-bus) i szyna SN (#sn-bus) ISTNIEJĄ na scenie jako odrębne segmenty (wyrocznia mierzy coś realnego)', () => {
+  it('kontrola: zacisk nN (#lv-bus), szyna SN (#sn-bus) i pion portalu (#lv-portal-drop) ISTNIEJĄ na scenie jako odrębne segmenty', () => {
     expect(() => segmentIndexByOwnerRef(lvBusOwnerRef)).not.toThrow();
     expect(() => segmentIndexByOwnerRef(`${STACJA_B_REFS.stationRef}#sn-bus`)).not.toThrow();
+    expect(() => segmentIndexByOwnerRef(portalDropOwnerRef)).not.toThrow();
   });
 
-  it('szyna nN i KAŻDY kabel odpływu (QF-01/QF-02/QF-03) są w JEDNEJ składowej spójności sceny — dowód GEOMETRYCZNY, że kable naprawdę dotykają toru (odstępstwo #4 z T0 naprawione, nie tylko etykietowo)', () => {
+  it('zacisk nN i pion portalu są w JEDNEJ składowej spójności — portal naprawdę wisi na zacisku, nie obok niego', () => {
     const lvBusRoot = connectivity.segmentRoot(segmentIndexByOwnerRef(lvBusOwnerRef));
-    for (const cableRef of [STACJA_B_REFS.cableQf01Ref, STACJA_B_REFS.cableQf02Ref, STACJA_B_REFS.cableQf03Ref]) {
-      const cableRoot = connectivity.segmentRoot(segmentIndexByOwnerRef(cableRef));
-      expect(cableRoot, `kabel „${cableRef}" NIE jest w tej samej składowej spójności co szyna nN — geometria nie dotyka`).toBe(lvBusRoot);
-    }
+    expect(connectivity.segmentRoot(segmentIndexByOwnerRef(portalDropOwnerRef))).toBe(lvBusRoot);
   });
 
-  it('szyna nN i aparat GŁÓWNY (QF-TR1, incomer) są w JEDNEJ składowej spójności — incomer naprawdę łączy transformator z szyną, nie tylko wisi obok niej', () => {
-    const lvBusRoot = connectivity.segmentRoot(segmentIndexByOwnerRef(lvBusOwnerRef));
-    const incomerRoot = connectivity.segmentRoot(segmentIndexByOwnerRef(STACJA_B_REFS.qfTr1Ref));
-    expect(incomerRoot).toBe(lvBusRoot);
-  });
-
-  it('szyna nN i KAŻDY aparat odpływu (QF-01/QF-02/QF-03) są w JEDNEJ składowej spójności', () => {
-    const lvBusRoot = connectivity.segmentRoot(segmentIndexByOwnerRef(lvBusOwnerRef));
-    for (const feederRef of [STACJA_B_REFS.qf01Ref, STACJA_B_REFS.qf02Ref, STACJA_B_REFS.qf03Ref]) {
-      const feederRoot = connectivity.segmentRoot(segmentIndexByOwnerRef(feederRef));
-      expect(feederRoot, `aparat odpływu „${feederRef}" NIE jest w tej samej składowej spójności co szyna nN`).toBe(lvBusRoot);
-    }
-  });
-
-  it('szyna nN i szyna SN SĄ w jednej składowej sceny (transformator FIZYCZNIE łączy obie strony przez port symbolu) — dowód, że Check C mierzy realną spójność sceny, nie odizolowane wysepki per domena', () => {
+  it('zacisk nN i szyna SN SĄ w jednej składowej sceny (transformator FIZYCZNIE łączy obie strony przez port symbolu) — Check C mierzy realną spójność, nie wysepki per domena', () => {
     const lvBusRoot = connectivity.segmentRoot(segmentIndexByOwnerRef(lvBusOwnerRef));
     const snBusRoot = connectivity.segmentRoot(segmentIndexByOwnerRef(`${STACJA_B_REFS.stationRef}#sn-bus`));
     expect(snBusRoot).toBe(lvBusRoot);
+  });
+
+  it('ŻADEN segment domeny nN spoza zacisku/portalu (aparat główny, odpływy, kable) nie istnieje na scenie SN — ciągłość dalszego toru dowodzi projekcja nN', () => {
+    for (const ref of [STACJA_B_REFS.qfTr1Ref, STACJA_B_REFS.qf01Ref, STACJA_B_REFS.cableQf01Ref]) {
+      expect(scene.segments.some((s) => s.meta?.ownerRef === ref), ref).toBe(false);
+    }
   });
 });

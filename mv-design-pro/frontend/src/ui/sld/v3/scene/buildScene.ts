@@ -127,12 +127,10 @@ import { createUnikalnyTestId } from '../compose/unikalnyTestId';
 import {
   bayMainPathHeight,
   findLineBayIndices,
-  flattenedNnFeeders,
   stationBlockHeight,
   stationBusbarLabelHeight,
   stationNameBandHeight,
   stationPortCaptionHeight,
-  nnPlaqueStructuralText,
   type StationMeasureInput,
 } from '../layout/measure';
 import { computeBands, BUS_AXIS_BAND_HEIGHT, DESCENT_STRIP_HEIGHT, type BandsResult, type StationBandHeights } from '../layout/bands';
@@ -164,7 +162,7 @@ import {
   type SimpleAnchoredOwnerInput,
 } from '../layout/labels';
 import { declutterLabels } from '../layout/declutter';
-import { composeStation, type StationComposition } from '../compose/station';
+import { composeStation, lvPortalOwnerRef, type StationComposition } from '../compose/station';
 import {
   composeGpz,
   type ComposedGpzSegment,
@@ -898,6 +896,9 @@ function classifySymbolElementKind(symbolId: SymbolId): PreviewElementKind {
   // KD-5: blok GPZ zwinięty (L0) jest STACJĄ zasilającą, nie aparatem — ta sama
   // kategoria co `stationCollapsed` (warstwa „stacje i aparatura", selekcja).
   if (symbolId === 'stationCollapsed' || symbolId === 'gpzCollapsed') return 'station';
+  // PORTAL nN (LV Domain Projection po B-02): przejście do projekcji nN — nie
+  // aparat toru mocy, własna kategoria (klik otwiera portal, zero menu).
+  if (symbolId === 'lvPortal') return 'lvPortal';
   return 'apparatus';
 }
 
@@ -1099,22 +1100,11 @@ function buildMeasureInput(
     // DER/NO z TYPU elementów (spec §19.3). `snBays: []` (measure L0 nie
     // rezerwuje miejsca na pola — geometria z L2), ale `compactGlyph` niesie
     // cechy rozpoznawcze rysowane WEWNĄTRZ glifu (zero zmiany geometrii).
-    // T5a (KONCEPCJA_LOD_NN_2026-08 §L0, FLIP świadomy): `nnBoard` DOPISANE
-    // do obiektu L0 — PRZED tą kartą L0 w ogóle nie niosło rozdzielnicy nN
-    // (geometria nN była nieosiągalna na L0 z konstrukcji, zero potrzeby),
-    // więc żadne pole go nie czytało; `composeRowStation` (L0) teraz liczy
-    // `flattenedNnFeeders(measureInput.nnBoard).length` do PLAKIETKI
-    // strukturalnej (werdykt §0 pkt 1) — bez tego wiersz `nN · N odpł.`
-    // NIGDY by się nie pojawił (dowód: `layout/measure.ts` nie zmienia
-    // geometrii L0, `snBays: []` zostaje). Stacje BEZ `nnBoard`
-    // (WIĘKSZOŚĆ dzisiejszych sieci): `props.nnBoard===undefined` ⇒ pole
-    // zostaje `undefined` ⇒ zero zmian względem stanu przed kartą.
     return {
       id: props.id,
       name: props.stationCode ?? props.name,
       snBays: [],
       compactGlyph: stationCompactGlyphSummary(props, derSourcesByStationId.get(props.id) ?? [], stopNotes, terminalInRun),
-      nnBoard: props.nnBoard ?? undefined,
     };
   }
   const includeCableAndPorts = lod === 2;
@@ -1169,10 +1159,6 @@ function buildMeasureInput(
     // brak (etykieta bez napięcia / jawna granica modelu).
     nnVoltageKv: props.nnVoltageKv ?? null,
     aggregatedLvLoad: props.aggregatedLvLoad ?? null,
-    // P0.8 nN (seam A8 §9.2.1): sekcje/odpływy RZECZYWISTE — przepisane 1:1
-    // z adaptera (`enmToSldAdapter.ts` `buildStationMiniBlockDetails`), zero
-    // re-derywacji w buildScene (ta sama zasada co `derSources`/`aggregatedLvLoad`).
-    nnBoard: props.nnBoard ?? undefined,
     // TR2W-BEZ-POLA (§0.B): fakt domenowy + jednostki transformatorowe z
     // terminalami — `layout/measure.ts` (`stationHasLvSide`,
     // `stationSnColumnLayout`) czyta je, żeby zarezerwować miejsce i ustawić
@@ -1412,6 +1398,9 @@ function classifyStationSegmentKind(
   const domain = edgeDomainByRef.get(ownerRef);
   if (domain === 'lv') return 'lv';
   if (ownerRef.includes('#lv-drop-')) return 'lv';
+  // PORTAL nN: pion zacisk→portal (`compose/station.ts`) — wewnątrz domeny nN,
+  // dekoracja jak `#lv-drop-N` (nie jest gałęzią ENM).
+  if (ownerRef.endsWith('#lv-portal-drop')) return 'lv';
   return 'sn';
 }
 
@@ -1436,33 +1425,12 @@ function composeRowStation(
   if (lod === 0) {
     const boxX = snapToGrid(column.tapX - COLLECTIVE_BOX_SIZE / 2);
     const boxY = snapToGrid(busAxisY - COLLECTIVE_BOX_SIZE / 2);
-    // T5a (KONCEPCJA_LOD_NN_2026-08 §L0, werdykt §0 pkt 1): PLAKIETKA nN —
-    // CAŁA geometria nN (szyna/odpływy/TR) znika na L0 (`composeStation` nie
-    // jest tu wołane, sekcja `lod===0` jest EARLY-RETURN sprzed karty, bez
-    // zmian), zastąpiona JEDNYM wierszem STRUKTURALNYM `nN · {n} odpł.` —
-    // WYŁĄCZNIE gdy stacja niesie realną rozdzielnicę nN (`flattenedNnFeeders`,
-    // ta sama funkcja co L1/L2 — jedna prawda liczby odpływów). `0`/brak
-    // `nnBoard` (WIĘKSZOŚĆ dzisiejszych stacji) ⇒ WIERSZ NIEOBECNY, zero zmian
-    // treści pasma nazw L0 względem stanu przed kartą (Zakazy §karty: substrat
-    // SN bez danych nN bajtowo nietknięty). Kierunek/moc/TR%/kropka werdyktu
-    // (`↓145 kW · TR 42% · ●`) NIE żyją tutaj — WYŁĄCZNIE z wyników biegu,
-    // dokładane przez warstwę OVERLAY (`canvas/overlay.ts::
-    // buildNnPlaqueOverlayFromScene`, zero fizyki w scenie/UI,
-    // `overlay_no_physics_guard`) jako ZNACZNIK OBOK tego wiersza — struktura
-    // i wynik pozostają DWIEMA warstwami (spec §14.2 „overlay wyłącznie z
-    // wyniku"), tak jak odznaka SWZ i strzałki przepływu na L1/L2.
-    const nnFeederCount = flattenedNnFeeders(measureInput.nnBoard).length;
+    // L0 (sylwetka mini-RMU): CAŁA geometria strony nN (zacisk, portal) znika
+    // — `composeStation` nie jest tu wołane. Stacja z transformatorem niesie
+    // marker TR w glifie (`compactGlyph.hasTransformer`), a wejściem do
+    // projekcji nN na L0 jest dwuklik w blok stacji (`SldCanvasV3Workspace`,
+    // wyłącznie na L0 — od L1 jedynym wejściem jest klik w symbol portalu).
     const nameRows: StationNameBandRow[] = [{ text: measureInput.name, labelClass: 't1', role: 'tozsamosc' }];
-    if (nnFeederCount > 0) {
-      // KD-11/T2-LOD (`layout/labels.ts::lodClassOf`, „MIESZANE"): wiersz
-      // `station-name` z rolą `tozsamosc` jest ZAWSZE L0 (niezależnie od
-      // `labelClass`) — plakietka MUSI być widoczna DOKŁADNIE przy zoomie
-      // przeglądu, gdzie żyje L0 sceny (rola `dane`/t4 degradowałaby do L2,
-      // ukrywaną poniżej progu 1,125 — sprzeczność z celem karty). Struktura
-      // (liczba odpływów) jest tu TRAKTOWANA jako tożsamość minimalna stacji
-      // na L0 — świadoma decyzja, nie pomyłka klasy.
-      nameRows.push({ text: nnPlaqueStructuralText(nnFeederCount), labelClass: 't4', role: 'tozsamosc' });
-    }
     return {
       symbols: [
         {
@@ -1562,40 +1530,6 @@ function composeRowStation(
         `żadnego rekordu „Transformer" z refem — symbol NIE jest rysowany (zakaz rysunku na ` +
         `identyfikatorze fabrykowanym), strona nN pozostaje bez zaczepu.`,
     );
-  }
-  // P0.8 nN (H_PLAN_IMPLEMENTACJI_NN §P0.8): odpływ rzeczywisty z aparatem
-  // NIEROZPOZNANYM przez katalog (pusty tor + komunikat błędu — zero
-  // podstawionego wyłącznika, karta §0.2) albo bez rozpoznanego odbiorcy
-  // (jawna granica modelu) — wzorzec `station.transformer.brakPolaSN:`.
-  for (const code of composition.missingData) {
-    if (code.startsWith('station.nnFeeder.apparatusUnresolved:')) {
-      const branchRef = code.slice('station.nnFeeder.apparatusUnresolved:'.length);
-      stopNotes.push(
-        `Stacja „${measureInput.id}": odpływ nN „${branchRef}" niesie aparat łączeniowy, ale katalog ` +
-          `nie rozpoznaje jego rodzaju — rysunek pokazuje pusty tor + komunikat błędu, ` +
-          `BEZ podstawienia domyślnego wyłącznika (karta P0.8 §0.2).`,
-      );
-    }
-    if (code.startsWith('station.nnFeeder.destinationUnknown:')) {
-      const branchRef = code.slice('station.nnFeeder.destinationUnknown:'.length);
-      stopNotes.push(
-        `Stacja „${measureInput.id}": odpływ nN „${branchRef}" kończy się bez rozpoznanego odbiorcy ` +
-          `(Load/Generator/rozdzielnica nN) — jawna granica modelu, zero fabrykacji odbioru.`,
-      );
-    }
-    // T1 (SLD-nN-TOPOLOGIA §0.3 „UNRESOLVED = HARD VALIDATION ERROR"): APARAT
-    // GŁÓWNY (incomer) nierozpoznany — TA SAMA klasa komunikatu co odpływ
-    // (wzorzec wyżej), własny kod bo aparat GŁÓWNY nie jest odpływem
-    // (`compose/station.ts` rysuje go PRZED szyną, nie w rzędzie feederów) —
-    // reguła KLASA §3 zakazuje mylącego reużycia cudzej treści.
-    if (code.startsWith('station.nnIncomer.apparatusUnresolved:')) {
-      const branchRef = code.slice('station.nnIncomer.apparatusUnresolved:'.length);
-      stopNotes.push(
-        `Stacja „${measureInput.id}": aparat GŁÓWNY (incomer) szyny nN „${branchRef}" niesie łącznik, ` +
-          `ale katalog nie rozpoznaje jego rodzaju — rysunek pokazuje transformator podłączony wprost ` +
-          `do szyny nN (BEZ podstawienia domyślnego wyłącznika), status sceny SLD_INVALID (§0.3).`,
-      );
-    }
   }
   for (const code of composition.missingData) {
     if (code.startsWith('der.sn.torNiepelny:')) {
@@ -1710,9 +1644,17 @@ function composeRowStation(
             ? `${s.sourceRef}#${s.symbolId}`
             : s.transformerRef
               ? `${s.transformerRef}#${s.symbolId}`
-              : undefined,
+              : s.lvPortalStationRef
+                ? `${lvPortalOwnerRef(s.lvPortalStationRef)}#${s.symbolId}`
+                : undefined,
       ),
-      ownerRef: s.bayRef ?? s.sourceRef ?? s.transformerRef,
+      // PORTAL nN: `ownerRef` = kompozyt `${stationRef}#lv-portal` (jak
+      // `#lv-bus`), tożsamość stacji osobno w `lvPortalStationRef` niżej.
+      ownerRef:
+        s.bayRef
+        ?? s.sourceRef
+        ?? s.transformerRef
+        ?? (s.lvPortalStationRef ? lvPortalOwnerRef(s.lvPortalStationRef) : undefined),
       elementKind: classifySymbolElementKind(s.symbolId),
       // TR2W-BEZ-POLA (§0.C.5): stan niekompletny przepisany 1:1 — glif
       // transformatora rysuje marker „!" przy stronie WN, treść zdania żyje w
@@ -1750,11 +1692,10 @@ function composeRowStation(
       // `SldSourceView.kind`) — konsument to menu kontekstowe podtypu na v3
       // (`SldCanvasV3Workspace.elementKindForMenu`). `undefined` dla nie-DER.
       derKind: s.derKind,
-      // T5a (KONCEPCJA_LOD_NN_2026-08 §L1): przepisane 1:1 — WYŁĄCZNIE dla
-      // `symbolId==='nnAggregate'` (`NnAggregateGlyph` czyta `nnAggregateCount`
-      // z `GlyphProps`; `nnAggregateHiddenRefs` konsumuje warstwa overlay).
-      nnAggregateCount: s.nnAggregateCount,
-      nnAggregateHiddenRefs: s.nnAggregateHiddenRefs,
+      // PORTAL nN (LV Domain Projection po B-02): przepisane 1:1 — WYŁĄCZNIE
+      // dla `symbolId==='lvPortal'` (klik → `SldCanvasV3Workspace` otwiera
+      // projekcję nN stacji).
+      lvPortalStationRef: s.lvPortalStationRef,
     },
   }));
   const segments: PreviewSegment[] = composition.segments.map((s) => {

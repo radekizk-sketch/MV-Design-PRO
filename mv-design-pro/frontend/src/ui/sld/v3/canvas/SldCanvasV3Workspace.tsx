@@ -2427,7 +2427,11 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
     setLassoRect(null);
   }, [snapshot, cameraState, lodOverride, lassoRect, selectElements]);
 
-  // Portal SN -> nN: dwuklik stacji otwiera osobną projekcję napięciową L2.
+  // PORTAL DOMENY nN (architektura LV Domain Projection po B-02, `docs/sld/
+  // PROJEKCJA_SN_NN_PORTAL_V1.md`): projekcja nN stacji otwiera się z JAWNEGO
+  // portalu na zacisku nN transformatora (symbol `lvPortal`, `compose/
+  // station.ts`) — klik od L1. Na L0 stacja jest jednym zwiniętym blokiem
+  // (mini-RMU) bez geometrii zacisku, więc wejściem jest dwuklik w blok.
   // Dane portalu NIE są składane z bieżącego snapshotu klienta — jeden
   // `LvDomainProjectionV1` przychodzi z backendu wraz z wynikami i SWZ.
   const [lvDomainStationRef, setLvDomainStationRef] = useState<string | null>(null);
@@ -2450,11 +2454,18 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
         : SLD_CANVAS_DOCK_INSETS,
     [lvDomainPortalOpen, lvDomainPortalWidth],
   );
-  const handleElementDoubleClick = useCallback((testId: string, meta?: SldElementClickMeta) => {
-    if (meta?.elementKind !== 'station') return;
-    const id = meta?.ownerRef ?? elementIdFromTestId(testId);
-    setLvDomainStationRef(id);
-  }, []);
+  const handleElementDoubleClick = useCallback(
+    (testId: string, meta?: SldElementClickMeta) => {
+      // WYŁĄCZNIE L0 (blok zwinięty = jeden obiekt, zacisk nN i portal nie
+      // mają na tym LOD własnej geometrii). Od L1 jedynym wejściem do projekcji
+      // nN jest klik w symbol portalu (`handleElementClick`) — dwuklik w stację
+      // NIE otwiera portalu (przypięte testem `lvDomainPortal.test.tsx`).
+      if (activeLod !== 0 || meta?.elementKind !== 'station') return;
+      const id = meta?.ownerRef ?? elementIdFromTestId(testId);
+      setLvDomainStationRef(id);
+    },
+    [activeLod],
+  );
 
   const handleElementClick = useCallback(
     (testId: string, meta?: SldElementClickMeta) => {
@@ -2547,6 +2558,15 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
         } else {
           derDrag.cancel();
         }
+        return;
+      }
+
+      // PORTAL nN: klik w symbol portalu na zacisku nN otwiera projekcję nN
+      // stacji — tożsamość stacji z meta symbolu (`lvPortalStationRef`,
+      // `compose/station.ts`), nie z parsowania `ownerRef`. Portal nie jest
+      // obiektem modelu: zero selekcji, zero szuflady, zero menu.
+      if (elementKind === 'lvPortal') {
+        if (meta?.lvPortalStationRef) setLvDomainStationRef(meta.lvPortalStationRef);
         return;
       }
 

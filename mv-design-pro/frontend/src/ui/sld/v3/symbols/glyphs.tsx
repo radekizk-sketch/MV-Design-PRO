@@ -125,11 +125,6 @@ export interface GlyphProps {
   /** KD-5: liczba PÓL ODEJŚCIOWYCH (liniowych) SN bloku GPZ — rysowanych do
    *  `MINI_GPZ.polaOdejsciowe.xs.length` (uzasadnienie limitu tamże). */
   readonly gpzFeeders?: number;
-  /** T5a (KONCEPCJA_LOD_NN_2026-08 §L1): liczba odpływów UKRYTYCH pod jednym
-   *  znacznikiem agregatu — WYŁĄCZNIE `NnAggregateGlyph` czyta to pole (wzorzec
-   *  `meterQuantity`). Treść „+N" jest DANĄ (liczbą realnych odpływów
-   *  ukrytych), nie notacją stałą. */
-  readonly nnAggregateCount?: number;
 }
 
 function glyphGroupProps(id: SymbolId, props: GlyphProps) {
@@ -980,65 +975,29 @@ export function NnFuseSwitchGlyph(props: GlyphProps): JSX.Element {
 }
 
 /**
- * Licznik nN — miernik ENERGII w torze odpływu (KORPUS KWADRATOWY, w
- * odróżnieniu od OKRĘGU `MeterGlyph`/`ProtectionRelayGlyph` — licznik nN nie
- * jest adnotacją przy CT/VT, tylko aparatem W CIĄGŁOŚCI toru odpływu, spec
- * §17.1 vs nN STUDIO §5). Napis „Wh" BAKED (notacja stała, jak litera „G"
- * generatora — treść nie jest daną zmienną).
+ * PORTAL DOMENY nN (architektura LV Domain Projection po B-02): jawne PRZEJŚCIE
+ * z projekcji SN do projekcji nN, zakotwiczone na ZACISKU nN transformatora
+ * (`compose/station.ts`, pion `#lv-portal-drop` z `#lv-bus`). Sylwetka
+ * odsyłacza „ciąg dalszy na innym arkuszu" (IEC 60617 — chorągiewka
+ * pięciokątna skierowana W DÓŁ, w stronę domeny, do której prowadzi) z napisem
+ * „nN" BAKED (notacja stała: portal prowadzi ZAWSZE do domeny nN — treść nie
+ * jest daną zmienną). NIE jest aparatem toru mocy: jeden port `top`, wisi POD
+ * zaciskiem, nic za nim w TEJ projekcji — tor ciągnie dalej projekcja nN
+ * (`lv-domain/LvDomainView.tsx`). Odróżnialny od CAŁEJ biblioteki (obwiednia
+ * pięciokątna + napis), przypięte testem rejestru glifów.
  */
-export function NnMeterGlyph(props: GlyphProps): JSX.Element {
+export function LvPortalGlyph(props: GlyphProps): JSX.Element {
   const w = grubosc(props, V3_STROKE_APPARATUS);
   return (
-    <g {...glyphGroupProps('nnMeter', props)}>
-      <line x1={8} y1={0} x2={8} y2={6} stroke={stroke(props)} strokeWidth={w} />
-      <rect x={2} y={6} width={12} height={12} fill="none" stroke={stroke(props)} strokeWidth={w} data-nn-meter-body="true" />
-      <text x={8} y={15.5} textAnchor="middle" fill={stroke(props)} fontFamily="sans-serif" fontSize={7} fontWeight={700}>
-        Wh
-      </text>
-      <line x1={8} y1={18} x2={8} y2={24} stroke={stroke(props)} strokeWidth={w} />
-    </g>
-  );
-}
-
-/**
- * Rozdzielnica nN (RGnN) — symbol LIŚĆ zamykający odpływ, gdy jego celem jest
- * podrozdzielnica nN (`compose/station.ts`, wzorzec DER: jeden port `top`,
- * symbol zawieszony POD odpływem). Enklozura (obwiednia BEZ wypełnienia, P5)
- * + szyna wewnętrzna (kreska pozioma) + trzy stuby odpływów — SYGNAŁ
- * „rozdzielnica z odpływami", nie licznik rzeczywistych odpływów (te rysuje
- * WŁASNA kompozycja podrozdzielnicy, gdy stacja trafi na własny wiersz sieci
- * — poza zakresem TEGO liścia). Odróżnialna od `stationCollapsed` (48×48,
- * 4 porty, sylwetka mini-RMU sieciowa) gabarytem, liczbą portów I markupem.
- */
-export function NnDistributionBoardGlyph(props: GlyphProps): JSX.Element {
-  const w = grubosc(props, V3_STROKE_APPARATUS);
-  return (
-    <g {...glyphGroupProps('nnDistributionBoard', props)}>
-      <line x1={16} y1={0} x2={16} y2={5} stroke={stroke(props)} strokeWidth={w} />
-      <rect x={4} y={5} width={24} height={25} fill="none" stroke={stroke(props)} strokeWidth={w} data-nn-board-enclosure="true" />
-      <line x1={8} y1={14} x2={24} y2={14} stroke={stroke(props)} strokeWidth={grubosc(props, 1.6)} data-nn-board-bus="true" />
-      <line x1={10} y1={14} x2={10} y2={20} stroke={stroke(props)} strokeWidth={grubosc(props, 1)} />
-      <line x1={16} y1={14} x2={16} y2={20} stroke={stroke(props)} strokeWidth={grubosc(props, 1)} />
-      <line x1={22} y1={14} x2={22} y2={20} stroke={stroke(props)} strokeWidth={grubosc(props, 1)} />
-    </g>
-  );
-}
-
-/**
- * T5a (KONCEPCJA_LOD_NN_2026-08 §L1, werdykt §0 pkt 2): znacznik AGREGATU —
- * kwadrat wypełniony (odróżnialny od PUSTYCH obwiedni aparatów/liści — to nie
- * jest urządzenie łączeniowe, jest adnotacją liczbową) z tekstem „+N" liczby
- * odpływów ukrytych. Jeden port `top` (jak liście DER/rozdzielnicy nN) — wisi
- * POD szyną, nie stoi W CIĄGU toru dalej.
- */
-export function NnAggregateGlyph(props: GlyphProps): JSX.Element {
-  const w = grubosc(props, V3_STROKE_APPARATUS);
-  return (
-    <g {...glyphGroupProps('nnAggregate', props)}>
-      <line x1={8} y1={0} x2={8} y2={4} stroke={stroke(props)} strokeWidth={w} />
-      <rect x={1} y={4} width={14} height={12} rx={2} fill="none" stroke={stroke(props)} strokeWidth={w} data-nn-aggregate-marker="true" />
-      <text x={8} y={13.5} textAnchor="middle" fill={stroke(props)} fontFamily="sans-serif" fontSize={7} fontWeight={700}>
-        {`+${props.nnAggregateCount ?? 0}`}
+    <g {...glyphGroupProps('lvPortal', props)}>
+      <line x1={16} y1={0} x2={16} y2={4} stroke={stroke(props)} strokeWidth={w} />
+      <path
+        d="M2,4 L30,4 L30,14 L16,23 L2,14 Z"
+        fill="none" stroke={stroke(props)} strokeWidth={w}
+        data-lv-portal-flag="true"
+      />
+      <text x={16} y={13} textAnchor="middle" fill={stroke(props)} fontFamily="sans-serif" fontSize={8} fontWeight={700}>
+        nN
       </text>
     </g>
   );
@@ -1075,11 +1034,9 @@ export const SYMBOL_GLYPHS: Readonly<Record<SymbolId, (props: GlyphProps) => JSX
   gpzCollapsed: GpzCollapsedGlyph,
   protectionRelay: ProtectionRelayGlyph,
   meter: MeterGlyph,
-  nnDistributionBoard: NnDistributionBoardGlyph,
   nnBreaker: NnBreakerGlyph,
   nnFuseSwitch: NnFuseSwitchGlyph,
-  nnMeter: NnMeterGlyph,
-  nnAggregate: NnAggregateGlyph,
+  lvPortal: LvPortalGlyph,
 };
 
 /** Sanity: każdy glif ma definicję i odwrotnie (spójność biblioteki). */

@@ -24,7 +24,6 @@ import {
 } from './MiniBlockRmuRenderer';
 import type { StationFootprintType } from './MiniBlockFootprints';
 import type { StationTransformerUnit } from '../../../network-build/stationTransformerSelection';
-import type { SldNnBoardSection } from '../../shared/nnBoardTypes';
 
 // K30-4: enlarged for industrial readability (24+ px symbols @ LOD-2).
 // Previously: 176/124/120/30/48 (mikroskopijny w widoku K30 30-station chain).
@@ -121,14 +120,6 @@ export interface StationOnRunRendererProps {
    *  `Load.p_mw`/`q_mvar` (× `quantity`) rekordów na szynach nN tej stacji.
    *  `null` = ZERO rekordów `Load` (jawna granica modelu, nie zero mocy). */
   readonly aggregatedLvLoad?: { readonly pMw: number; readonly qMvar: number; readonly count: number } | null;
-  /** P0.8 nN (H_PLAN_IMPLEMENTACJI_NN §P0.8, seam A8 §9.2.1): sekcje szyny nN
-   *  z odpływami RZECZYWISTYMI (aparat rozpoznany z katalogu + odbiorca z
-   *  grafu) — `undefined`/`[]` = stacja bez szyny nN / bez odpływów (uczciwy
-   *  brak). Adapter `enmToSldAdapter.ts` (`buildStationMiniBlockDetails`
-   *  `nnBoard`) jedyny pisarz; `compose/station.ts` (v3) rysuje odpływy z
-   *  aparatami (`nnBreaker`/`nnFuseSwitch`) ZAMIAST/OBOK pojedynczej strzałki
-   *  odbioru (`aggregatedLvLoad` wyżej pozostaje dla sylwetki L0 mini-RMU). */
-  readonly nnBoard?: readonly SldNnBoardSection[];
   /** K30-62: vector group transformatora (Dyn5, Yd11, Yzn11) per IEC 60076-1.
    *  Industrial SLD pokazuje vector group obok TR symbol. */
   readonly transformerVectorGroup?: string | null;

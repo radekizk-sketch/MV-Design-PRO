@@ -1,17 +1,19 @@
 /**
- * SLD-nN-TOPOLOGIA T1 (`docs/nn/PLAN_SLD_NN_TOPOLOGIA_2026-08.md`, karta T1
- * §TESTY) — akceptacja SCENY (nie tylko grafu, `pathInvariants.test.ts`, ani
- * samej klasyfikacji, `sceneConformance.test.ts`) na fixturze „Stacja B":
- *  1. pełny tor nN T1→LV terminal→QF-TR1→RGnN(bus)→QF-01/02/03→kable→
- *     odbiory — KAŻDY element z ownerRef REALNYM (ref ENM);
- *  2. kable odpływów OBECNE na scenie (defekt (d) B-02);
- *  3. szyna nN elementKind='bus' + widoczna dla `sourceConnectivityGaps`
- *     (busRoots) — DER za TR nie jest fałszywie odcięty;
- *  4. UNRESOLVED → status sceny SLD_INVALID + ostrzeżenie w stopNotes + tor
- *     przerwany (aparat NIE wchodzi do aktywnego toru jako element normalny);
- *  5. mutacja topologiczna (QF-01 na szynę SN) → SLD_INVALID + ostrzeżenie,
- *     NIE cichy rysunek;
- *  6. determinizm SHA sceny Stacji B.
+ * Scena SN na fixturze „Stacja B" (model z PEŁNĄ rozdzielnicą nN) —
+ * architektura LV Domain Projection po B-02 (`docs/sld/
+ * PROJEKCJA_SN_NN_PORTAL_V1.md`): JEDNA sieć obliczeniowa SN–TR–nN, DWIE
+ * projekcje. Ten plik przypina, że:
+ *  1. projekcja SN kończy tor na transformatorze T1 → zacisku nN (`#lv-bus`,
+ *     kind='bus') → PORTALU; wnętrze rozdzielnicy nN (QF-TR1/QF-01/02/03/
+ *     kable/odbiory/RGN-2) NIE jest elementem sceny SN;
+ *  2. walidacja grafu elektrycznego obejmuje CAŁĄ sieć (SN + nN) niezależnie
+ *     od projekcji: fixtura bazowa SLD_VALID; UNRESOLVED aparatu nN i mutacje
+ *     topologiczne SN↔nN dają SLD_INVALID + ostrzeżenie w `stopNotes` — NIE
+ *     cichy rysunek — mimo że aparat NIE jest rysowany w projekcji SN;
+ *  3. DER za T1 (na szynie RGnN-1) POZOSTAJE widoczny — rząd DER na zacisku
+ *     nN, za portalem (nigdy nie ukrywamy źródeł) — `sourceCoverageGaps` i
+ *     `sourceConnectivityGaps` puste;
+ *  4. determinizm SHA sceny Stacji B.
  */
 import { createHash } from 'node:crypto';
 
@@ -20,8 +22,10 @@ import { describe, expect, it } from 'vitest';
 import type { EnergyNetworkModel, Generator } from '../../../../types/enm';
 import {
   allSourcesConnected,
+  allSourcesVisible,
   buildSceneV3,
   sourceConnectivityGaps,
+  sourceCoverageGaps,
   type SceneV3,
 } from '../../scene/buildScene';
 import { buildStacjaBFixture, STACJA_B_REFS } from './fixtures/stacjaB';
@@ -36,68 +40,59 @@ function branchByRef(enm: EnergyNetworkModel, ref: string): Record<string, unkno
   return branch;
 }
 
-describe('T1 — pełny tor nN w scenie: KAŻDY element T1→LV terminal→QF-TR1→RGnN→QF-01/02/03→kable→odbiory ma ownerRef REALNY', () => {
+const NN_INTERIOR_REFS = [
+  STACJA_B_REFS.qfTr1Ref,
+  STACJA_B_REFS.qf01Ref,
+  STACJA_B_REFS.qf02Ref,
+  STACJA_B_REFS.qf03Ref,
+  STACJA_B_REFS.cableQf01Ref,
+  STACJA_B_REFS.cableQf02Ref,
+  STACJA_B_REFS.cableQf03Ref,
+  STACJA_B_REFS.rgn2StationRef,
+] as const;
+
+function ownerRefsOf(scene: SceneV3): ReadonlySet<string | undefined> {
+  return new Set([...scene.symbols.map((s) => s.meta?.ownerRef), ...scene.segments.map((s) => s.meta?.ownerRef)]);
+}
+
+describe('Stacja B — projekcja SN: T1 → zacisk nN → portal; wnętrze nN NIE jest elementem sceny SN', () => {
   const enm = buildStacjaBFixture();
   const scene = buildSceneV3(enm, 2);
 
   it('transformator T1 jest symbolem sceny (elementKind="transformer", granica jawna domen SN/nN)', () => {
-    // `meta.ownerRef` transformatora w polu jest refem POLA (bayRef, wzorzec
-    // `ownerRef: s.bayRef ?? s.sourceRef ?? s.transformerRef`,
-    // `scene/buildScene.ts`) — istniejące, poza zakresem T1 (nie zmieniamy
-    // konwencji identyfikacji pól SN). T1 sprawdza, że transformator w ogóle
-    // UCZESTNICZY w scenie jako granica domen (obecność, nie dokładny ref).
     const tr = scene.symbols.find((s) => s.symbolId === 'transformer2W' && s.meta?.elementKind === 'transformer');
     expect(tr).toBeTruthy();
   });
 
-  it('QF-TR1 (aparat główny/incomer) jest symbolem sceny nnBreaker z sourceRef realny', () => {
-    const incomer = scene.symbols.find((s) => s.symbolId === 'nnBreaker' && s.meta?.ownerRef === STACJA_B_REFS.qfTr1Ref);
-    expect(incomer).toBeTruthy();
-  });
-
-  it('QF-TR1 ma segment toru (ownerRef=qfTr1Ref) z kind="lv" (domena grafu, nie heurystyka)', () => {
-    const seg = scene.segments.find((s) => s.meta?.ownerRef === STACJA_B_REFS.qfTr1Ref);
-    expect(seg).toBeTruthy();
-    expect(seg?.meta?.kind).toBe('lv');
-  });
-
-  it('szyna RGnN-1 (#lv-bus) jest kind="bus"/elementKind="bus" — pełnoprawna szyna, nie artefakt layoutu', () => {
+  it('zacisk nN (#lv-bus) jest kind="bus"/elementKind="bus" — pełnoprawna szyna nN stacji (punkt wyniku), nie artefakt layoutu', () => {
     const bus = scene.segments.find((s) => s.meta?.ownerRef === `${STACJA_B_REFS.stationRef}#lv-bus`);
     expect(bus?.meta?.kind).toBe('bus');
     expect(bus?.meta?.elementKind).toBe('bus');
   });
 
-  it('KAŻDY odpływ (QF-01/QF-02/QF-03) ma symbol nnBreaker z sourceRef realny ORAZ segment toru z kind="lv"', () => {
-    for (const feederRef of [STACJA_B_REFS.qf01Ref, STACJA_B_REFS.qf02Ref, STACJA_B_REFS.qf03Ref]) {
-      const symbol = scene.symbols.find((s) => s.symbolId === 'nnBreaker' && s.meta?.ownerRef === feederRef);
-      expect(symbol, `aparat ${feederRef}`).toBeTruthy();
-      const segment = scene.segments.find((s) => s.meta?.ownerRef === feederRef);
-      expect(segment, `segment ${feederRef}`).toBeTruthy();
-      expect(segment?.meta?.kind, `segment ${feederRef}`).toBe('lv');
-    }
+  it('DOKŁADNIE jeden portal stacji, z pionem kind="lv" od zacisku', () => {
+    const portals = scene.symbols.filter(
+      (s) => s.symbolId === 'lvPortal' && s.meta?.lvPortalStationRef === STACJA_B_REFS.stationRef,
+    );
+    expect(portals).toHaveLength(1);
+    expect(portals[0].meta?.elementKind).toBe('lvPortal');
+    const drop = scene.segments.find((s) => s.meta?.ownerRef === `${STACJA_B_REFS.stationRef}#lv-portal-drop`);
+    expect(drop?.meta?.kind).toBe('lv');
   });
 
-  it('KAŻDY kabel odpływu (nn_qf01_cable/nn_qf02_cable/nn_qf03_cable) ma WŁASNY segment sceny z kind="lv" — defekt (d) B-02 naprawiony', () => {
-    for (const cableRef of [STACJA_B_REFS.cableQf01Ref, STACJA_B_REFS.cableQf02Ref, STACJA_B_REFS.cableQf03Ref]) {
-      const segment = scene.segments.find((s) => s.meta?.ownerRef === cableRef);
-      expect(segment, `kabel ${cableRef}`).toBeTruthy();
-      expect(segment?.meta?.kind, `kabel ${cableRef}`).toBe('lv');
-      expect(segment?.meta?.elementKind, `kabel ${cableRef}`).toBe('segment');
-    }
+  it('ŻADEN element wnętrza nN (QF-TR1, QF-01/02/03, kable, RGN-2) nie jest symbolem ani segmentem sceny SN; zero aparatów nN', () => {
+    const refs = ownerRefsOf(scene);
+    for (const ref of NN_INTERIOR_REFS) expect(refs.has(ref), ref).toBe(false);
+    expect(scene.symbols.filter((s) => s.symbolId === 'nnBreaker' || s.symbolId === 'nnFuseSwitch')).toHaveLength(0);
   });
 
-  it('podrozdzielnica RGN-2 (cel QF-02) jest symbolem nnDistributionBoard z sourceRef = ref realny stacji RGN-2', () => {
-    const board = scene.symbols.find((s) => s.symbolId === 'nnDistributionBoard' && s.meta?.ownerRef === STACJA_B_REFS.rgn2StationRef);
-    expect(board).toBeTruthy();
-  });
-
-  it('status walidacji grafu elektrycznego sceny: SLD_VALID, zero naruszeń (fixtura Stacja B bazowa jest poprawna)', () => {
+  it('status walidacji grafu elektrycznego CAŁEJ sieci: SLD_VALID, zero naruszeń (fixtura bazowa poprawna)', () => {
     expect(scene.meta.electricalGraphStatus).toBe('SLD_VALID');
     expect(scene.meta.electricalGraphViolations).toEqual([]);
   });
 });
 
-describe('T1 — busRoots/sourceConnectivityGaps: DER za T1 (na szynie RGnN-1) NIE jest fałszywie odcięty (defekt (c) B-02 naprawiony)', () => {
+describe('Stacja B — DER za T1 (na szynie RGnN-1): widoczny w rzędzie DER na zacisku nN (nigdy nie ukrywamy źródeł), nie „odcięty"', () => {
   function withDerOnRgnn1(): EnergyNetworkModel {
     const enm = buildStacjaBFixture();
     const generators = [...(enm.generators ?? [])] as Generator[];
@@ -114,21 +109,23 @@ describe('T1 — busRoots/sourceConnectivityGaps: DER za T1 (na szynie RGnN-1) N
     return { ...enm, generators };
   }
 
-  it('kontrola: fixtura z DER produkuje DOKŁADNIE jeden symbol elementKind="der" (wyrocznia mierzy coś realnego)', () => {
+  it('kontrola: fixtura z DER produkuje DOKŁADNIE jeden symbol elementKind="der" w rzędzie na zacisku (za portalem)', () => {
     const scene = buildSceneV3(withDerOnRgnn1(), 2);
     const derSymbols = scene.symbols.filter((s) => s.meta?.elementKind === 'der');
-    expect(derSymbols.length).toBeGreaterThanOrEqual(1);
+    expect(derSymbols).toHaveLength(1);
+    expect(scene.segments.some((s) => s.meta?.ownerRef === `${STACJA_B_REFS.stationRef}#der-row-bus`)).toBe(true);
+    expect(sourceCoverageGaps(scene)).toEqual([]);
+    expect(allSourcesVisible(scene)).toBe(true);
   });
 
-  it('sourceConnectivityGaps([]) — DER na RGnN-1 (za T1) ma trasę do szyny nN, NIE jest zgłoszony jako odcięty', () => {
+  it('sourceConnectivityGaps([]) — DER na RGnN-1 (za T1) ma trasę do zacisku nN, NIE jest zgłoszony jako odcięty', () => {
     const scene = buildSceneV3(withDerOnRgnn1(), 2);
-    const gaps = sourceConnectivityGaps(scene);
-    expect(gaps).toEqual([]);
+    expect(sourceConnectivityGaps(scene)).toEqual([]);
     expect(allSourcesConnected(scene)).toBe(true);
   });
 });
 
-describe('T1 — UNRESOLVED (§0.3 „HARD VALIDATION ERROR"): status SLD_INVALID + ostrzeżenie + tor przerwany (aparat NIE wchodzi do aktywnego toru jako element normalny)', () => {
+describe('Stacja B — UNRESOLVED aparatu nN: walidacja grafu obejmuje domenę nN mimo że projekcja SN jej nie rysuje', () => {
   function withUnresolvedQf01(): EnergyNetworkModel {
     const enm = buildStacjaBFixture();
     const branch = branchByRef(enm, STACJA_B_REFS.qf01Ref);
@@ -137,39 +134,25 @@ describe('T1 — UNRESOLVED (§0.3 „HARD VALIDATION ERROR"): status SLD_INVALI
     return enm;
   }
 
-  it('status sceny SLD_INVALID z kodem UNRESOLVED_ACTIVE_APPARATUS (graf elektryczny)', () => {
+  it('status sceny SLD_INVALID z kodem UNRESOLVED_ACTIVE_APPARATUS (graf elektryczny CAŁEJ sieci)', () => {
     const scene = buildSceneV3(withUnresolvedQf01(), 2);
     expect(scene.meta.electricalGraphStatus).toBe('SLD_INVALID');
     expect(scene.meta.electricalGraphViolations.some((v) => v.code === 'UNRESOLVED_ACTIVE_APPARATUS')).toBe(true);
   });
 
-  it('ostrzeżenie w stopNotes (WHITE BOX, widoczne w audycie) — NIE cichy rysunek', () => {
+  it('ostrzeżenie w stopNotes wskazuje ref aparatu (WHITE BOX, widoczne w audycie) — NIE cichy rysunek', () => {
     const scene = buildSceneV3(withUnresolvedQf01(), 2);
     expect(scene.meta.stopNotes.some((n) => n.includes(STACJA_B_REFS.qf01Ref))).toBe(true);
   });
 
-  it('TOR PRZERWANY: ZERO symbolu nnBreaker/nnFuseSwitch dla QF-01 nierozpoznanego (nie podstawiony domyślny aparat)', () => {
+  it('projekcja SN NADAL nie rysuje aparatu nN (ani rozpoznanego, ani nierozpoznanego) — portal jest niezmienny', () => {
     const scene = buildSceneV3(withUnresolvedQf01(), 2);
-    const apparatusSymbol = scene.symbols.find(
-      (s) => (s.symbolId === 'nnBreaker' || s.symbolId === 'nnFuseSwitch') && s.meta?.ownerRef === STACJA_B_REFS.qf01Ref,
-    );
-    expect(apparatusSymbol).toBeUndefined();
-  });
-
-  it('TOR PRZERWANY: ZERO segmentu kabla ZA aparatem nierozpoznanym (nn_qf01_cable NIE narysowany — tor kończy się na stubie)', () => {
-    const scene = buildSceneV3(withUnresolvedQf01(), 2);
-    const cableSegment = scene.segments.find((s) => s.meta?.ownerRef === STACJA_B_REFS.cableQf01Ref);
-    expect(cableSegment).toBeUndefined();
-  });
-
-  it('stub toru (ownerRef=qf01Ref) POZOSTAJE widoczny — tor przerwany, nie zniknięty (uczciwy rysunek: dokąd sięga wiedza modelu)', () => {
-    const scene = buildSceneV3(withUnresolvedQf01(), 2);
-    const stub = scene.segments.find((s) => s.meta?.ownerRef === STACJA_B_REFS.qf01Ref);
-    expect(stub).toBeTruthy();
+    expect(ownerRefsOf(scene).has(STACJA_B_REFS.qf01Ref)).toBe(false);
+    expect(scene.symbols.filter((s) => s.symbolId === 'lvPortal')).toHaveLength(1);
   });
 });
 
-describe('T1 — mutacja topologiczna (QF-01 przepięty na szynę SN): status SLD_INVALID + ostrzeżenie, NIE cichy rysunek', () => {
+describe('Stacja B — mutacja topologiczna (QF-01 przepięty na szynę SN): SLD_INVALID + ostrzeżenie, NIE cichy rysunek', () => {
   function withQf01OnSnBus(): EnergyNetworkModel {
     const enm = buildStacjaBFixture();
     (branchByRef(enm, STACJA_B_REFS.qf01Ref).from_bus_ref as unknown) = STACJA_B_REFS.snBusRef;
@@ -188,43 +171,40 @@ describe('T1 — mutacja topologiczna (QF-01 przepięty na szynę SN): status SL
     expect(codes).toContain('LV_FEEDER_ON_MV_BUS');
   });
 
-  it('ostrzeżenie widoczne w stopNotes (nie cichy rysunek — status + tekst, nie tylko poprawnie narysowana, ale BŁĘDNA scena)', () => {
+  it('ostrzeżenie widoczne w stopNotes', () => {
     const scene = buildSceneV3(withQf01OnSnBus(), 2);
     expect(scene.meta.stopNotes.some((n) => n.includes('EDGE_VOLTAGE_MISMATCH'))).toBe(true);
   });
 });
 
-describe('T1 — mutacja topologiczna KIERUNEK ODWROTNY (pole SN — aparat pola TRANSFORMATOROWE — przepięty na szynę nN): status SLD_INVALID + ostrzeżenie, NIE cichy rysunek (iloczyn cech: OBA kierunki pomyłki SN↔nN muszą być łapane, nie tylko jeden — reguła KLASA §2)', () => {
+describe('Stacja B — mutacja KIERUNEK ODWROTNY (aparat pola TRANSFORMATOROWE SN przepięty na szynę nN): SLD_INVALID (iloczyn: OBA kierunki pomyłki SN↔nN)', () => {
   function withSnFieldOnNnBus(): EnergyNetworkModel {
     const enm = buildStacjaBFixture();
     (branchByRef(enm, STACJA_B_REFS.snFieldBreakerTrRef).to_bus_ref as unknown) = STACJA_B_REFS.odbior1BusRef;
     return enm;
   }
 
-  it('scena NADAL się buduje (nie wyjątek/crash) — degradacja jawna, nie awaria cicha', () => {
+  it('scena NADAL się buduje', () => {
     expect(() => buildSceneV3(withSnFieldOnNnBus(), 2)).not.toThrow();
   });
 
   it('status sceny SLD_INVALID z kodem MV_FIELD_ON_LV_BUS', () => {
     const scene = buildSceneV3(withSnFieldOnNnBus(), 2);
     expect(scene.meta.electricalGraphStatus).toBe('SLD_INVALID');
-    const codes = scene.meta.electricalGraphViolations.map((v) => v.code);
-    expect(codes).toContain('MV_FIELD_ON_LV_BUS');
+    expect(scene.meta.electricalGraphViolations.map((v) => v.code)).toContain('MV_FIELD_ON_LV_BUS');
   });
 
-  it('ostrzeżenie widoczne w stopNotes (nie cichy rysunek)', () => {
+  it('ostrzeżenie widoczne w stopNotes', () => {
     const scene = buildSceneV3(withSnFieldOnNnBus(), 2);
     expect(scene.meta.stopNotes.some((n) => n.includes('MV_FIELD_ON_LV_BUS'))).toBe(true);
   });
 });
 
-describe('T1 — determinizm SHA sceny Stacji B', () => {
+describe('Stacja B — determinizm SHA sceny', () => {
   it('dwa biegi identycznego wejścia dają bajt-identyczną scenę (SHA + JSON pełny)', () => {
-    const enm1 = buildStacjaBFixture();
-    const enm2 = buildStacjaBFixture();
     const shaOf = (scene: SceneV3): string => createHash('sha256').update(JSON.stringify(scene)).digest('hex');
-    const sceneA = buildSceneV3(enm1, 2);
-    const sceneB = buildSceneV3(enm2, 2);
+    const sceneA = buildSceneV3(buildStacjaBFixture(), 2);
+    const sceneB = buildSceneV3(buildStacjaBFixture(), 2);
     expect(shaOf(sceneA)).toBe(shaOf(sceneB));
     expect(JSON.stringify(sceneA)).toBe(JSON.stringify(sceneB));
   });

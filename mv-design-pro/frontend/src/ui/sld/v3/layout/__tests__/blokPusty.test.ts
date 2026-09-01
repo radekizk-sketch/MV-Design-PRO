@@ -26,7 +26,8 @@
  *      szerokość arkusza jest IDENTYCZNA na L0/L1/L2 mimo różnej treści
  *      wierszy (KD-5/S1 „jedna kotwica" — nietykalne, patrz §0 karty R4).
  *  (5) „Strona nN wisi RÓWNOLEGLE, więc rezerwacja to `max`, nie suma" —
- *      `nnSideBelowBusHeight` porównana z REALNYM zwisem kompozycji, na
+ *      `nnSideBelowBusHeight` (portal domeny nN / rząd DER / strzałka odbioru,
+ *      LV Domain Projection po B-02) porównana z REALNYM zwisem kompozycji, na
  *      ILOCZYNIE {brak/odbiór/DER/odbiór+DER} × {1 pole / kilka / maksimum}.
  *
  * ILOCZYN CECH, NIE PRZYKŁAD Z KARTY (reguła KLASA §2): defekt (5) chował się
@@ -61,6 +62,7 @@ import { computeBands, type StationBandHeights } from '../bands';
 import { computeColumns } from '../columns';
 import { colorSegmentLabelRows, computeSegmentLabelSlotX } from '../segments';
 import {
+  lvPortalExtraHeight,
   nnSideBelowBusHeight,
   stationBlockHeight,
   stationNameBandHeight,
@@ -328,9 +330,16 @@ describe('BLOK-PUSTY §4 — rezerwacja strony nN śledzi RYSUNEK (max, nie suma
       aggregatedLvLoad: ODBIOR,
       derSources: [DER_NN],
     });
-    // `lvSideExtraHeight` milczy bez pola TR; rząd DER nadal ma swoją wysokość,
-    // bo DER zaczepia się wtedy o dolny port pola (fallback `compose/station.ts`).
+    // `lvSideExtraHeight`/`lvPortalExtraHeight` milczą bez pola TR; rząd DER
+    // nadal ma swoją wysokość, bo DER strony nN bez zacisku jest luką
+    // (`station.der.unattached`, kompozycja go nie rysuje).
     expect(nnSideBelowBusHeight({ ...station, derSources: [] })).toBe(0);
+  });
+
+  it('KONTROLA KIERUNKU (portal): dla stacji BEZ odbioru i BEZ DER rezerwacja = sam portal (LV Domain Projection po B-02)', () => {
+    const station = makeStation([makeBay(FIELD_ROLE.RMU_TRANSFORMER, 0)]);
+    expect(nnSideBelowBusHeight(station)).toBe(lvPortalExtraHeight(station));
+    expect(lvPortalExtraHeight(station)).toBeGreaterThan(0);
   });
 
   it('KONTROLA KIERUNKU: dla „odbiór ORAZ DER" `max` jest ŚCIŚLE mniejsze od sumy (inaczej test wyżej niczego nie rozstrzyga)', () => {

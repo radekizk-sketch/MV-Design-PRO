@@ -50,7 +50,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import type { EnergyNetworkModel } from '../../../../../types/enm';
-import { STATION_TR_FIELD_GAP_TEXT } from '../../layout/measure';
+import { LV_PORTAL_TITLE_TEXT, STATION_TR_FIELD_GAP_TEXT } from '../../layout/measure';
 import {
   allApparatusIdentifiersValid,
   allBusbarLabelsValid,
@@ -232,9 +232,15 @@ describe('TR2W-BEZ-POLA T1 — stacja Z polem transformatorowym: zero regresu', 
    * odcisku wymaga ZAMIERZONEJ zmiany rysunku, opisanej w tym samym commicie
    * (wzór `kosztSceny.test.ts`).
    */
+  // AKTUALIZACJA ŚWIADOMA (LV Domain Projection po B-02, 2026-09-01): stacja
+  // Z polem TR dostaje na zacisku nN portal domeny nN (`lvPortal` + pion
+  // `#lv-portal-drop`, `compose/station.ts`) — to ZAMIERZONA zmiana rysunku
+  // KAŻDEJ stacji z transformatorem, nie dryf; kotwica topologiczna kolumny
+  // TR bez pola nadal nietknięta (testy T2/T4–T8 tego pliku). Odciski
+  // policzone ponownie po tej zmianie.
   const ODCISK_Z_POLEM_TR: Readonly<Record<1 | 2, string>> = {
-    1: '287797929716b1b46306cc4af7293823',
-    2: 'bf74045d9485d831c6461bc90986c24d',
+    1: '5c9e6742bf947ad4a380f1e66676c5b4',
+    2: '0329cd6b049921b041c18e72f22965c9',
   };
   for (const lod of [1, 2] as const) {
     it(`L${lod}: odcisk rysunku stacji Z polem TR bez zmian (zapadka na dryf geometrii)`, () => {
@@ -321,8 +327,13 @@ describe('TR2W-BEZ-POLA T2 — stacja BEZ pola transformatorowego', () => {
       // …ani liczba aparatów stacji nie może urosnąć względem wariantu, w
       // którym transformatora nie ma wcale (poza samym transformatorem).
       const bezTr = buildSceneV3(bezTransformatora(enmZPolem), lod);
+      // LV Domain Projection (po B-02): portal domeny nN stoi na zacisku nN
+      // KAŻDEJ stacji z transformatorem — nie jest aparatem pola, więc nie
+      // wchodzi do liczności aparatury (jak strzałka odbioru).
       const aparaty = (sc: SceneV3): number =>
-        sc.symbols.filter((s) => s.symbolId !== 'transformer2W' && s.symbolId !== 'loadArrow').length;
+        sc.symbols.filter(
+          (s) => s.symbolId !== 'transformer2W' && s.symbolId !== 'loadArrow' && s.symbolId !== 'lvPortal',
+        ).length;
       expect(aparaty(scene)).toBe(aparaty(bezTr));
     });
 
@@ -389,9 +400,12 @@ describe('TR2W-BEZ-POLA T2 — stacja BEZ pola transformatorowego', () => {
       const zPodpowiedzia = obszary.filter((a) => a.tytul === STATION_TR_FIELD_GAP_TEXT);
       expect(zPodpowiedzia).toHaveLength(1);
       expect(zPodpowiedzia[0].ownerRef).toBe(trRef);
-      // Kontrola negatywna: ŻADEN inny obiekt kanwy podpowiedzi nie dostaje
-      // (zero pustych/fałszywych `<title>`).
-      expect(obszary.filter((a) => a.tytul != null)).toHaveLength(1);
+      // Kontrola negatywna: poza zdaniem stanu TR podpowiedź niesie WYŁĄCZNIE
+      // portal domeny nN (LV Domain Projection po B-02, `LV_PORTAL_TITLE_TEXT`
+      // na KAŻDYM symbolu `lvPortal`) — zero pustych/fałszywych `<title>`.
+      const inne = obszary.filter((a) => a.tytul != null && a.tytul !== STATION_TR_FIELD_GAP_TEXT);
+      expect(inne.every((a) => a.tytul === LV_PORTAL_TITLE_TEXT && a.klasa === 'portal-nn')).toBe(true);
+      expect(inne.length).toBe(scene.symbols.filter((sym) => sym.symbolId === 'lvPortal').length);
     });
   }
 
@@ -404,7 +418,9 @@ describe('TR2W-BEZ-POLA T2 — stacja BEZ pola transformatorowego', () => {
       resultMarkers: [],
       scale: 1,
     });
-    expect(obszary.filter((a) => a.tytul != null)).toHaveLength(0);
+    expect(obszary.filter((a) => a.tytul === STATION_TR_FIELD_GAP_TEXT)).toHaveLength(0);
+    // Jedyne podpowiedzi na kanwie: portal domeny nN (LV Domain Projection).
+    expect(obszary.filter((a) => a.tytul != null).every((a) => a.tytul === LV_PORTAL_TITLE_TEXT)).toBe(true);
   });
 
   // §0.C.9: klik w transformator bez pola trafia w REALNY ref ENM (szuflada

@@ -260,6 +260,9 @@ describe('S9-5 — iloczyn cech {klasa} × {kotwica}: tabela ZAMKNIĘTA', () => 
     // żadna operacja domenowa punktu nie jest zweryfikowana; pozycja bez
     // pokrycia byłaby fantomem. Kandydat na kartę menu punktu odgałęźnego.
     'punkt-odgalezny': [],
+    // PORTAL nN (LV Domain Projection po B-02): przejście do projekcji nN — nie
+    // obiekt modelu, klik otwiera projekcję, menu budowy bez operacji.
+    'portal-nn': [],
     etykieta: ['stacja', 'szyna', 'galaz', 'pole', 'zrodlo', 'generator', 'transformator'],
     'znacznik-wyniku': ['stacja', 'szyna', 'galaz', 'pole', 'zrodlo', 'generator', 'transformator'],
   };

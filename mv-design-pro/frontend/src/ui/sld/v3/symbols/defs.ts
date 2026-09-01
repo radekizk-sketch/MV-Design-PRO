@@ -41,26 +41,23 @@ export type SymbolId =
   | 'gpzCollapsed'     // GPZ (rozdzielnia zasilająca), widok zbiorczy (L0) — blok zwinięty (KD-5)
   | 'protectionRelay'  // F9.9: przekaźnik zabezpieczeniowy (okrąg + kody ANSI, §17.1)
   | 'meter'            // F9.9: miernik (okrąg „M"/litera wielkości, §17.1)
-  | 'loadArrow'        // zagregowany odbiór 0,4 kV (spec §12.5 — recenzja NO-GO pkt 6)
-  // P0.8 nN (H_PLAN_IMPLEMENTACJI_NN §P0.8, F_PLAN_UI_NN_STUDIO §4): symbole
-  // aparatów/rozdzielnicy nN — rodzina ODRĘBNA od aparatury SN (device_kind
-  // katalogu APARAT_NN/APARAT_NN_MCB/WKLADKA_NN, karty P0.2/P0.7), bo fizyczne
-  // aparaty nN (MCB modułowy, wkładka NH w podstawie bezpiecznikowej) mają
-  // INNĄ sylwetkę niż odpowiedniki SN (`breaker`/`fuseSwitch`) — parytet
-  // wzorca `recloser` (nowy glif dla nowego device_kind, nie recykling
-  // istniejącego rysunku).
-  | 'nnDistributionBoard' // rozdzielnica nN (RGnN) — kontener z szyną, liść
-                          // odpływu (wzorzec DER: pojedynczy port N)
+  | 'loadArrow'        // odbiór (strzałka IEC 60617) — projekcja nN (`lv-domain/`)
+  // Aparaty nN — rodzina ODRĘBNA od aparatury SN (device_kind katalogu
+  // APARAT_NN/APARAT_NN_MCB/WKLADKA_NN), bo fizyczne aparaty nN (MCB modułowy,
+  // wkładka NH w podstawie bezpiecznikowej) mają INNĄ sylwetkę niż odpowiedniki
+  // SN (`breaker`/`fuseSwitch`). Rysowane WYŁĄCZNIE w projekcji nN
+  // (`lv-domain/composeLvDomainScene.ts`) — projekcja SN kończy tor na zacisku
+  // nN transformatora i portalu (`lvPortal` niżej).
   | 'nnBreaker'        // wyłącznik nN / MCB (IEC 60898-1, namespace APARAT_NN_MCB
                         // + device_kind WYLACZNIK_GLOWNY/WYLACZNIK_ODPLYWOWY)
   | 'nnFuseSwitch'      // rozłącznik bezpiecznikowy nN (device_kind
                         // ROZLACZNIK_BEZPIECZNIKOWY / namespace WKLADKA_NN)
-  | 'nnMeter'           // licznik nN (miernik energii, W-620+ nN STUDIO)
-  // T5a (KONCEPCJA_LOD_NN_2026-08 §L1, werdykt §0 pkt 2): znacznik AGREGATU
-  // kikutów odpływów nN ukrytych za budżetem adaptacyjnym — ADNOTACJA
-  // liczbowa „+N", NIE aparat łączeniowy (kanon symboli: nowy glif addytywny,
-  // wzorzec `recloser`/`fuse`/`voltageIndicator` — istniejące glify nietknięte).
-  | 'nnAggregate';
+  // PORTAL DOMENY nN (architektura LV Domain Projection po B-02,
+  // `docs/sld/PROJEKCJA_SN_NN_PORTAL_V1.md`): jawne przejście z projekcji SN do
+  // projekcji nN, zakotwiczone na ZACISKU nN transformatora(-ów) stacji. Nie jest
+  // aparatem toru mocy — jeden port `top`; za nim w projekcji SN nie ma nic,
+  // tor ciągnie dalej projekcja nN.
+  | 'lvPortal';
 
 export interface SymbolDef {
   readonly id: SymbolId;
@@ -305,19 +302,6 @@ export const SYMBOL_DEFS: Readonly<Record<SymbolId, SymbolDef>> = {
   meter: def('meter', 24, 24, [
     { name: 'anchor', x: 0, y: 8, dir: 'W' },
   ], 'Miernik'),
-  // P0.8 nN — rozdzielnica nN (RGnN): symbol LIŚĆ zamykający odpływ, gdy jego
-  // celem jest podrozdzielnica nN (`Substation.station_type==='rozdzielnica_nn'`)
-  // — wzorzec DER (`derPv`/`derBess`/`derGenerator`): jeden port `top` (N),
-  // symbol zawieszony POD odpływem, bez dalszej rekurencji w TEJ kompozycji
-  // (klik `ownerRef` otwiera własny rekord podrozdzielnicy — jej WŁASNE
-  // odpływy rysuje jej WŁASNA kompozycja, gdy stacja trafi na własny wiersz
-  // sieci). Gabaryt 32×32 — TAKI SAM jak pozostałe symbole DER (odstępstwo od
-  // tabeli spec §3 udokumentowane w nagłówku pliku: port centralny 12 px
-  // (przy 24 px szerokości) nie leży na siatce GRID=8 — wyrocznia siatki jest
-  // nadrzędna, więc symbol niesie ten sam gabaryt co reszta rodziny liści).
-  nnDistributionBoard: def('nnDistributionBoard', 32, 32, [
-    { name: 'top', x: 16, y: 0, dir: 'N' },
-  ], 'Rozdzielnica nN'),
   // Wyłącznik nN / MCB (IEC 60898-1) — gabaryt IDENTYCZNY z `breaker` (16×16,
   // porty top/bottom) — obie rodziny stoją W TYM SAMYM torze pionowym
   // (odpływ nN), więc dzielą gabaryt jak `breaker`/`recloser`/`disconnector`
@@ -337,20 +321,17 @@ export const SYMBOL_DEFS: Readonly<Record<SymbolId, SymbolDef>> = {
     { name: 'top', x: 8, y: 0, dir: 'N' },
     { name: 'bottom', x: 8, y: 24, dir: 'S' },
   ], 'Rozłącznik bezpiecznikowy nN'),
-  // Licznik nN — miernik energii W TORZE odpływu (gabaryt 16×24 jak aparat
-  // dwuportowy, W ODRÓŻNIENIU od SN `meter` 24×24 zakotwiczonego WYŁĄCZNIE
-  // pozycją przy CT/VT, spec §17.2 — licznik nN nN STUDIO stoi NA torze
-  // odpływu, nie obok niego, więc niesie ciągłość elektryczną).
-  nnMeter: def('nnMeter', 16, 24, [
-    { name: 'top', x: 8, y: 0, dir: 'N' },
-    { name: 'bottom', x: 8, y: 24, dir: 'S' },
-  ], 'Licznik nN'),
-  // T5a: znacznik agregatu kikutów — gabaryt 16×16, JEDEN port `top` (jak
-  // liście DER/rozdzielnicy nN) — adnotacja liczbowa wisi POD szyną, nie stoi
-  // W CIĄGU toru (nie jest aparatem, nie ma portu `bottom`/dalszego toru).
-  nnAggregate: def('nnAggregate', 16, 16, [
-    { name: 'top', x: 8, y: 0, dir: 'N' },
-  ], 'Agregat odpływów nN'),
+  // PORTAL DOMENY nN — odsyłacz „ciąg dalszy w projekcji nN" (chorągiewka
+  // pięciokątna IEC 60617 skierowana W DÓŁ, w stronę domeny, do której
+  // prowadzi). Gabaryt 32×24 (4×3 GRID): szerszy niż aparat jednokolumnowy, bo
+  // niesie napis „nN" czytelny przy skali L1; JEDEN port `top` na osi (16,0) —
+  // wisi pod zaciskiem nN (`compose/station.ts`, `#lv-portal-drop`), nic za nim
+  // w projekcji SN. Klik w symbol otwiera projekcję nN stacji
+  // (`canvas/SldCanvasV3Workspace.tsx`). Rozmiar zsynchronizowany z
+  // `layout/measure.ts` (`LV_PORTAL_WIDTH`/`LV_PORTAL_HEIGHT`) testem spójności.
+  lvPortal: def('lvPortal', 32, 24, [
+    { name: 'top', x: 16, y: 0, dir: 'N' },
+  ], 'Portal domeny nN'),
 };
 
 /**

@@ -114,7 +114,7 @@ export const VOLTAGE_COLOR: Readonly<Record<VoltageClass, string>> = {
 /** Fragmenty `ownerRef` z konwencji `compose/gpz.ts`/`compose/station.ts` —
  *  patrz `#hv-bus`/`#hv-connector`/`#hv-lateral-`/`#hv-field-to-tr`/
  *  `#hv-bus-tap`/`#hv-bus-source-extension` (GPZ WN) i `#lv-bus`/
- *  `#lv-drop-`/`#lv-load-drop` (stacja nN) — WSZYSTKIE niosą wspólny
+ *  `#lv-drop-`/`#lv-portal-drop` (zacisk nN + portal stacji) — WSZYSTKIE niosą wspólny
  *  podłańcuch `#hv-`/`#lv-`, więc klasyfikacja substring jest stabilna na
  *  całą rodzinę bez wyliczania każdego sufiksu z osobna. */
 const HV_OWNER_REF_MARKER = '#hv-';

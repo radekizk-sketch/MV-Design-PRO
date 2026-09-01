@@ -128,8 +128,8 @@ describe('V3 symbols — rejestr glifów i stany', () => {
     expect(new Set(markup).size).toBe(wszystkieLaczniki.length);
   });
 
-  it('P0.8 nN: licznik nN i rozdzielnica nN mają WŁASNY rysunek, odróżnialny od CAŁEJ biblioteki', () => {
-    const nowe = ['nnMeter', 'nnDistributionBoard'] as const;
+  it('PORTAL nN (LV Domain Projection): portal domeny nN ma WŁASNY rysunek, odróżnialny od CAŁEJ biblioteki', () => {
+    const nowe = ['lvPortal'] as const;
     const reszta = ids.filter((id) => !nowe.includes(id as (typeof nowe)[number]));
     const markupNowe = nowe.map((id) =>
       renderToStaticMarkup(<svg>{SYMBOL_GLYPHS[id]({ x: 0, y: 0 })}</svg>).replace(/ data-symbol-canon="[^"]*"/, ''),
@@ -164,21 +164,17 @@ describe('V3 symbols — rejestr glifów i stany', () => {
     expect(container.querySelector('rect')).toBeFalsy();
   });
 
-  it('licznik nN: korpus KWADRATOWY (odróżnialny od okręgu SN meter/protectionRelay), napis „Wh"', () => {
-    const { container } = render(<svg><SYMBOL_GLYPHS.nnMeter x={0} y={0} /></svg>);
-    expect(container.querySelector('[data-nn-meter-body="true"]')).toBeTruthy();
-    expect(container.querySelector('circle')).toBeFalsy();
-    expect(container.textContent).toBe('Wh');
-  });
-
-  it('rozdzielnica nN: enklozura + szyna wewnętrzna + porty (1 port, gabaryt 32×32)', () => {
-    const d = SYMBOL_DEFS.nnDistributionBoard;
+  it('portal domeny nN: chorągiewka pięciokątna + napis „nN", 1 port `top` na osi, gabaryt 32×24 (4×3 GRID)', () => {
+    const d = SYMBOL_DEFS.lvPortal;
     expect(d.width).toBe(32);
-    expect(d.height).toBe(32);
-    expect(d.ports.map((p) => p.name)).toEqual(['top']);
-    const { container } = render(<svg><SYMBOL_GLYPHS.nnDistributionBoard x={0} y={0} /></svg>);
-    expect(container.querySelector('[data-nn-board-enclosure="true"]')).toBeTruthy();
-    expect(container.querySelector('[data-nn-board-bus="true"]')).toBeTruthy();
+    expect(d.height).toBe(24);
+    expect(d.ports).toEqual([{ name: 'top', x: 16, y: 0, dir: 'N' }]);
+    const { container } = render(<svg><SYMBOL_GLYPHS.lvPortal x={0} y={0} /></svg>);
+    expect(container.querySelector('[data-lv-portal-flag="true"]')).toBeTruthy();
+    expect(container.textContent).toBe('nN');
+    // Nie jest aparatem: brak prostokąta korpusu łącznika i brak okręgu.
+    expect(container.querySelector('rect')).toBeFalsy();
+    expect(container.querySelector('circle')).toBeFalsy();
   });
 
   it('CALY rejestr glifow: kazdy rysuje sie inaczej niz kazdy inny (KLASA, nie lista przykladow)', () => {

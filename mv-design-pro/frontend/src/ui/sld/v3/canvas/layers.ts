@@ -64,6 +64,9 @@ const STATIONS_APPARATUS_KINDS: ReadonlySet<PreviewElementKind> = new Set([
   'apparatus',
   'transformer',
   'bus',
+  // PORTAL nN: część bloku stacji (zacisk nN + portal) — ta sama warstwa co
+  // transformator, którego zacisk kotwiczy portal.
+  'lvPortal',
 ]);
 
 /** `elementKind` symboli sceny objętych warstwą 2 („źródła-DER: der/source"). */

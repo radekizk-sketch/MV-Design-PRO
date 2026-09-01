@@ -25,10 +25,11 @@ describe('colorTokens — voltageClassOf (napięcie)', () => {
     expect(voltageClassOf({ kind: 'lv', ownerRef: 'station-1#lv-bus' })).toBe('nn');
   });
 
-  it('ownerRef z markerem #lv- ⇒ nn (stacja: #lv-bus/#lv-drop-N/#lv-load-drop)', () => {
+  it('ownerRef z markerem #lv- ⇒ nn (stacja: #lv-bus/#lv-drop-N/#lv-load-drop/#lv-portal-drop)', () => {
     expect(voltageClassOf({ ownerRef: 'station-1#lv-bus' })).toBe('nn');
     expect(voltageClassOf({ ownerRef: 'station-1#lv-drop-0' })).toBe('nn');
     expect(voltageClassOf({ ownerRef: 'station-1#lv-load-drop' })).toBe('nn');
+    expect(voltageClassOf({ ownerRef: 'station-1#lv-portal-drop' })).toBe('nn');
   });
 
   it('ownerRef z markerem #hv- ⇒ hv (GPZ: #hv-bus/#hv-connector/#hv-lateral-N/#hv-bus-tap)', () => {

@@ -11,17 +11,19 @@
  * przelotowej stacji SN/nN z kartą P0.8 (pola LINIA_IN/LINIA_OUT/
  * TRANSFORMATOROWE, transformator 630 kVA 15/0,4 kV Dyn11) — dowód, że ta
  * strona modelu jest REALNYM kształtem ENM, przechodzącym już dziś przez
- * pełny potok `buildSceneV3` (patrz `scene/__tests__/buildScene.nnBoard.test.ts`,
- * który rozszerza TĘ SAMĄ fixturę wzorcem `zOdplywamiNn` — ten plik stosuje
- * analogiczny wzorzec rozszerzenia, wg dyspozycji §0.2 „skopiuj wzorce z
- * istniejących fixtures").
+ * pełny potok `buildSceneV3` (patrz `scene/__tests__/buildScene.lvPortal.test.ts`
+ * — ten plik stosuje wzorzec rozszerzenia wg dyspozycji §0.2 „skopiuj wzorce
+ * z istniejących fixtures").
  *
  * Strona nN jest DOPISANA tutaj, deterministycznie, w kształcie zgodnym z
  * `types/enm.ts` (`Bus`/`SwitchBranch`/`Cable`/`Load`/`Substation`) i z
  * konwencją katalogu nN (`APARAT_NN_MCB` + `materialized_params.device_kind`/
- * `curve_class`/`in_a`) rozpoznawaną przez
- * `ui/sld/v2/canvas/enmToSldAdapter.ts::resolveNnFeederApparatus` — TA SAMA
- * konwencja co `scene/__tests__/buildScene.nnBoard.test.ts::zOdplywamiNn`.
+ * `curve_class`/`in_a`) rozpoznawaną przez graf elektryczny
+ * (`electrical/terminalGraph.ts`). LV DOMAIN PROJECTION (po B-02): wnętrze nN
+ * tej fixtury NIE jest rysowane w projekcji SN (portal na zacisku nN) —
+ * fixtura służy wyroczniom grafu elektrycznego CAŁEJ sieci SN–TR–nN
+ * (`pathInvariants`, `sceneConformance`, `sceneCompositionT1`) i dowodowi, że
+ * scena SN nie przecieka wnętrzem nN.
  *
  * Rozstrzygnięcie topologiczne (LV terminal ODRĘBNY od RGNN-1): zamiast
  * pozostawić `Transformer.lv_bus_ref` wskazujący WPROST na szynę odpływową
