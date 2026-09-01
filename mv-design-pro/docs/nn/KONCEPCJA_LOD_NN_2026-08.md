@@ -1,6 +1,13 @@
 # KONCEPCJA LOD STRONY nN — DRABINA PYTAŃ INŻYNIERSKICH (2026-08-14)
 
-Status: PROPOZYCJA do werdyktu właściciela (zadanie koncepcyjne „dla Fable").
+Status: ZASTĄPIONA (2026-09-01) przez kanon
+`docs/sld/PROJEKCJA_SN_NN_PORTAL_V1.md` — po odrzuceniu B-02 mieszany LOD
+(plakietka nN na L0, wnętrze nN w przestrzeni SN na L1) został wycofany;
+obowiązują dwie projekcje na jednej sieci obliczeniowej z jawnym portalem na
+terminalu nN transformatora. Poniższa treść pozostaje jako zapis historyczny
+diagnozy (dlaczego kompaktowanie nN w przestrzeni SN przegrało).
+
+Status pierwotny: PROPOZYCJA do werdyktu właściciela (zadanie koncepcyjne „dla Fable").
 Diagnoza: kompaktowanie nN w przestrzeni współrzędnych SN przegrało z geometrią
 (T3: pomiar kolizji, margines 60 j.św.). To nie jest problem odstępów — to
 problem JEDNEJ przestrzeni dla DWÓCH domen. Dojrzałe narzędzia (PowerFactory:

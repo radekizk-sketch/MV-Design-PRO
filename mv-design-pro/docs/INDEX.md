@@ -58,6 +58,7 @@
 - [sld/SLD_ENGINEER_WORKFLOW_END_TO_END.md](./sld/SLD_ENGINEER_WORKFLOW_END_TO_END.md) — flow inżyniera 14-krokowy
 - [sld/SLD_IMPLEMENTATION_ROADMAP.md](./sld/SLD_IMPLEMENTATION_ROADMAP.md) — roadmap implementacji
 - [sld/SLD_INDUSTRIAL_SPEC_v1.md](./sld/SLD_INDUSTRIAL_SPEC_v1.md) — specyfikacja techniczna (komplementarna)
+- [sld/PROJEKCJA_SN_NN_PORTAL_V1.md](./sld/PROJEKCJA_SN_NN_PORTAL_V1.md) — kanon projekcji SN/nN i portalu domeny nN (jedna sieć obliczeniowa, dwie projekcje, LOD 0/1/2 na jednej geometrii; zastępuje koncepcję LOD nN T5a)
 
 ### Plany
 - [plan/PLAN_E2E_INDUSTRIAL_2026-05.md](./plan/PLAN_E2E_INDUSTRIAL_2026-05.md) — plan E2E klasy przemysłowej
