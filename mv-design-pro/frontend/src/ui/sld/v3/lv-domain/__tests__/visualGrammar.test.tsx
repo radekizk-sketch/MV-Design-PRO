@@ -14,9 +14,11 @@ import {
   OCCUPANCY,
   TYPE_SCREEN_PX,
   fitSceneToViewport,
+  paletaNnDlaMotywu,
   plNumber,
   snKvaLabel,
 } from '../visualGrammar';
+import { ISLAND_DOMAIN_REFS, ISLAND_DOMAIN_UPSTREAM_EQUIVALENTS, ISLAND_DOMAIN_VIEW } from '../fixtures/islandDomain';
 import { MULTI_SOURCE_DOMAIN_VIEW, MULTI_SOURCE_PROJECTION, MULTI_SOURCE_UPSTREAM_EQUIVALENTS } from '../fixtures/multiSourceDomain';
 import { buildLvDomainProjectionFixture } from '../fixtures/projectionFixture';
 import { STATION_BOARD_DOMAIN_VIEW, STATION_BOARD_PROJECTION, STATION_BOARD_REFS, STATION_BOARD_UPSTREAM_EQUIVALENTS } from '../fixtures/stationBoardDomain';
@@ -158,7 +160,15 @@ describe('P0-V5 — hierarchia magistral: MAIN (sekcja korzeniowa) ≠ SUB (podr
 });
 
 describe('P0-V6 — sprzęgło: SYMBOL mówi pierwszy (kolor/wypełnienie glifu), tekst stanu drugorzędny; tor NIE przechodzi POD glifem', () => {
-  it('OTWARTE: glif sprzęgła w tonie ostrzegawczym (#D8B45C), pusty (fill=none); słowo stanu w tym samym tonie', () => {
+  // KOREKTA (karta LOD nN): pin czytał ton ostrzegawczy jako WPISANY hex
+  // `#D8B45C`, czyli literał żyjący wyłącznie w rendererze domeny nN, choć
+  // kanwa SN ma dla TEGO SAMEGO znaczenia własny token
+  // (`highlight.swzUnknown`). Dwa hexy na jedno znaczenie to dokładnie defekt
+  // „chaos kolorów", który tokenizacja kanwy SN zamknęła. INTENCJA pinu bez
+  // zmian (sprzęgło otwarte NIE jest w tonie bazowym, a słowo stanu dzieli
+  // ton z glifem); forma silniejsza — asercja czyta paletę motywu, więc
+  // podmiana wartości tokenu nie może już rozjechać glifu z tekstem.
+  it('OTWARTE: glif sprzęgła w tonie ostrzegawczym palety, pusty (fill=none); słowo stanu w tym samym tonie', () => {
     render(
       <LvDomainView
         projection={buildLvDomainProjectionFixture({
@@ -170,11 +180,13 @@ describe('P0-V6 — sprzęgło: SYMBOL mówi pierwszy (kolor/wypełnienie glifu)
       />,
     );
     const couplerNode = screen.getByTestId('lv-domain-node-coupler');
+    const paleta = paletaNnDlaMotywu('dark_scada');
     const rect = couplerNode.querySelector('g[data-symbol-canon="nnBreaker"] rect');
     expect(rect?.getAttribute('fill')).toBe('none');
-    expect(rect?.getAttribute('stroke')).toBe('#D8B45C');
+    expect(rect?.getAttribute('stroke')).toBe(paleta.tonOstrzegawczy);
+    expect(rect?.getAttribute('stroke')).not.toBe(paleta.kreskaBazowa);
     const stateText = [...couplerNode.querySelectorAll('text')].find((t) => t.textContent === 'OTWARTE');
-    expect(stateText?.getAttribute('fill')).toBe('#D8B45C');
+    expect(stateText?.getAttribute('fill')).toBe(paleta.tonOstrzegawczy);
   });
 
   it('ZAMKNIĘTE: glif wypełniony bazowo; słowo stanu MUTED (symbol pierwszy, tekst potwierdza — werdykt pkt 14)', () => {
@@ -304,6 +316,52 @@ describe('P0-V10 — oś TR → incomer → środek sekcji; generator NA PRAWO o
     const rgnn1 = scene.nodes.find((n) => n.ref === refs.rgnn1BusRef)!;
     expect(t1.x).toBe(rgnn1.x);
     expect(incomer.x).toBe(rgnn1.x);
+  });
+});
+
+describe('P0-V10 (klasa) — źródło WŁASNE sekcji nie siada na torze zasilającym tę sekcję', () => {
+  // Defekt zmierzony na zrzucie fixtury wysp (karta LOD nN): oś sekcji
+  // PODRZĘDNEJ niesie kikut z sekcji rodzica, więc źródło postawione na osi
+  // lądowało glifem NA glifie aparatu odpływu rodzica — dwa aparaty w jednym
+  // punkcie rysunku. Pin jest KLASOWY: sprawdza WSZYSTKIE pary
+  // (źródło × aparat) we WSZYSTKICH fixturach, nie tylko tę jedną parę.
+  const SCENY = [
+    { nazwa: 'dwie sekcje', scene: composeLvDomainScene(MULTI_SOURCE_DOMAIN_VIEW, MULTI_SOURCE_UPSTREAM_EQUIVALENTS) },
+    { nazwa: 'rozdzielnica z incomerem', scene: composeLvDomainScene(STATION_BOARD_DOMAIN_VIEW, STATION_BOARD_UPSTREAM_EQUIVALENTS) },
+    { nazwa: 'energizacja i wyspy', scene: composeLvDomainScene(ISLAND_DOMAIN_VIEW, ISLAND_DOMAIN_UPSTREAM_EQUIVALENTS) },
+  ] as const;
+  /** Minimalny rozstaw dwóch SYLWETEK urządzeń w jednostkach świata. */
+  const MIN_ROZSTAW = 60;
+
+  for (const { nazwa, scene } of SCENY) {
+    it(`[${nazwa}] żadna para (źródło, aparat) nie stoi w tym samym punkcie rysunku`, () => {
+      const zrodla = scene.nodes.filter((n) => n.kind === 'generator' || n.kind === 'transformer');
+      const aparaty = scene.nodes.filter((n) => n.kind === 'apparatus');
+      for (const zrodlo of zrodla) {
+        for (const aparat of aparaty) {
+          const rozstaw = Math.abs(zrodlo.x - aparat.x) >= MIN_ROZSTAW || Math.abs(zrodlo.y - aparat.y) >= MIN_ROZSTAW;
+          expect(rozstaw, `${zrodlo.ref} (${zrodlo.x},${zrodlo.y}) × ${aparat.ref} (${aparat.x},${aparat.y})`).toBe(true);
+        }
+      }
+    });
+  }
+
+  it('sekcja podrzędna z własnym źródłem: źródło stoi OBOK osi (oś należy do kikuta z sekcji rodzica)', () => {
+    const scene = composeLvDomainScene(ISLAND_DOMAIN_VIEW, ISLAND_DOMAIN_UPSTREAM_EQUIVALENTS);
+    const podrozdzielnicaDer = scene.nodes.find((n) => n.ref === ISLAND_DOMAIN_REFS.podrozdzielniaDBusRef)!;
+    const pv = scene.nodes.find((n) => n.ref === ISLAND_DOMAIN_REFS.pvDRef)!;
+    const odlacznik = scene.nodes.find((n) => n.ref === ISLAND_DOMAIN_REFS.qsDRef)!;
+    expect(pv.x).not.toBe(podrozdzielnicaDer.x);
+    expect(odlacznik.x).toBe(podrozdzielnicaDer.x);
+    // …i mimo przesunięcia źródło nadal wisi NA kresce swojej sekcji.
+    expect(Math.abs(pv.x - podrozdzielnicaDer.x)).toBeLessThanOrEqual(podrozdzielnicaDer.busBarHalfWidth ?? 0);
+  });
+
+  it('sekcja KORZENIOWA zachowuje kanon: oś transformatora == środek kreski (zmiana nie objęła sekcji bez rodzica)', () => {
+    const scene = composeLvDomainScene(ISLAND_DOMAIN_VIEW, ISLAND_DOMAIN_UPSTREAM_EQUIVALENTS);
+    const sekcjaA = scene.nodes.find((n) => n.ref === ISLAND_DOMAIN_REFS.sekcjaABusRef)!;
+    const trA = scene.nodes.find((n) => n.ref === ISLAND_DOMAIN_REFS.trARef)!;
+    expect(trA.x).toBe(sekcjaA.x);
   });
 });
 

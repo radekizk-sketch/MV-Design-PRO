@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { LvDomainView } from './LvDomainView';
 import { fetchLvDomainProjectionV1 } from './projectionApi';
 import type { LvDomainProjectionV1 } from './types';
+import { useThemeModeStore } from '../../../../ui2/theme/themeMode';
 
 export const LV_DOMAIN_PORTAL_MAX_WIDTH_PX = 760;
 
@@ -27,6 +28,10 @@ export function LvDomainPortal({
 }: LvDomainPortalProps): JSX.Element {
   const [projection, setProjection] = useState<LvDomainProjectionV1 | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Paleta rysunku domeny nN idzie z motywu POWŁOKI — tak samo jak paleta
+  // kanwy SN (`SldCanvasV3Workspace`). Bez tego jasna powłoka pokazywałaby
+  // czarny arkusz nN: deklaracja motywu bez pokrycia.
+  const themeMode = useThemeModeStore((state) => state.mode);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -65,7 +70,7 @@ export function LvDomainPortal({
         Zamknij
       </button>
       {projection ? (
-        <LvDomainView projection={projection} width={width} height={height} />
+        <LvDomainView projection={projection} width={width} height={height} theme={themeMode} />
       ) : error ? (
         <div
           data-testid="lv-domain-portal-error"

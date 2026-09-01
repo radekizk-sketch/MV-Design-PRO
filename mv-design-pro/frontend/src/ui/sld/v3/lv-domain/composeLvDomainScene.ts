@@ -26,12 +26,21 @@
  * ZAKAZ INFERENCJI CONNECTIVITY Z GEOMETRII (P0.18): `computeElectricalComponents`
  * liczy komponenty WYŁĄCZNIE z grafu (`branches`, `status`), zero współrzędnych.
  * Determinizm: te same dane → identyczna scena (sortowanie po `ref_id`).
+ *
+ * JEDNA GEOMETRIA NA WSZYSTKIE POZIOMY SZCZEGÓŁOWOŚCI (LOD): ten moduł NIE
+ * ZNA pojęcia LOD i nie ma prawa go przyjąć — scena liczy się RAZ, a poziom
+ * szczegółowości jest wyłącznie filtrem prezentacji w `LvDomainView`
+ * (`visualGrammar.ts::REJESTR_ELEMENTOW_KANWY`). Dodanie tu parametru LOD
+ * albo warunku „gdy przegląd, licz inaczej" = druga geometria tego samego
+ * schematu; pin: `__tests__/lodProjekcjaNn.test.tsx` porównuje WSZYSTKIE
+ * prymitywy toru między poziomami 0/1/2.
  */
 import type { SymbolId } from '../symbols/defs';
 import type {
   LvDomainBoundaryLink,
   LvDomainBranch,
   LvDomainGraphView,
+  LvDomainIsland,
   LvDomainSubSwitchboard,
   LvDomainTransformer,
   UpstreamEquivalentSnapshot,
@@ -226,14 +235,76 @@ export function transformerNameplateLabel(t: {
   return `${sn} · ${ratio} · ${group} · uk=${t.uk_percent}%`;
 }
 
-export function anchorChipLabel(snapshot: UpstreamEquivalentSnapshot): string {
-  if (snapshot.status !== 'OK') {
-    return 'SN · brak danych';
-  }
+/**
+ * TOŻSAMOŚĆ kotwicy zasilania SN — krótka, bez parametrów. Kotwica jest
+ * początkiem toru domeny nN, więc jej oznaczenie zostaje na KAŻDYM poziomie
+ * szczegółowości (`visualGrammar.ts::REJESTR_ELEMENTOW_KANWY`,
+ * `nazwaKotwicyZrodla`); parametry zwarciowe idą osobno, jako opis.
+ */
+export function anchorChipIdentityLabel(snapshot: UpstreamEquivalentSnapshot): string {
+  if (snapshot.status !== 'OK') return 'SN · brak danych';
   const uVoltage = snapshot.voltage_kv != null ? `${snapshot.voltage_kv} kV` : '—';
+  return `SN ${uVoltage}`;
+}
+
+/** OPIS kotwicy (Sk″/Ik″) — poziom pełny; `null`, gdy snapshot bez danych. */
+export function anchorChipDetailLabel(snapshot: UpstreamEquivalentSnapshot): string | null {
+  if (snapshot.status !== 'OK') return null;
   const sk = snapshot.sk_mva != null ? `Sk″=${snapshot.sk_mva.toFixed(1)} MVA` : 'Sk″=—';
   const ik = snapshot.ikss_ka != null ? `Ik″=${snapshot.ikss_ka.toFixed(2)} kA` : 'Ik″=—';
-  return `SN ${uVoltage} · ${sk} · ${ik}`;
+  return `${sk} · ${ik}`;
+}
+
+/** Pełna etykieta kotwicy = tożsamość + opis (JEDNO źródło obu części —
+ *  renderer nie parsuje tej etykiety, tylko czyta obie części z meta). */
+export function anchorChipLabel(snapshot: UpstreamEquivalentSnapshot): string {
+  const identity = anchorChipIdentityLabel(snapshot);
+  const detail = anchorChipDetailLabel(snapshot);
+  return detail ? `${identity} · ${detail}` : identity;
+}
+
+/** Stan zasilania szyny — jedno rozstrzygnięcie dla całej sceny. */
+export interface StanZasilaniaSzyny {
+  readonly energized?: boolean;
+  readonly derOnly?: boolean;
+  readonly supplyRefs?: readonly string[];
+  readonly islandRef?: string;
+}
+
+/**
+ * ENERGIZACJA/WYSPY — JEDNO źródło prawdy dla całej sceny (reguła
+ * predykatów parami: kreska szyny i kreski jej odpływów muszą wynikać z tego
+ * samego rozstrzygnięcia, inaczej „dziś się zgadzają", a rozjadą się na
+ * danych brzegowych).
+ *
+ * Pierwszeństwo ma pole NA SZYNIE (`buses[i].energized/…`); wyspa
+ * (`graph.islands`) uzupełnia szyny, które własnych pól nie mają. Brak obu
+ * źródeł = BRAK WIEDZY: kanwa nie rysuje wtedy żadnego oznaczenia stanu
+ * zasilania (uczciwy brak, nie domysł — zero wyprowadzania energizacji z
+ * topologii w warstwie prezentacji).
+ */
+export function stanZasilaniaSzyn(view: LvDomainGraphView): ReadonlyMap<string, StanZasilaniaSzyny> {
+  const wynik = new Map<string, StanZasilaniaSzyny>();
+  const islandOfBus = new Map<string, LvDomainIsland>();
+  for (const island of [...(view.islands ?? [])].sort((a, b) => a.island_ref.localeCompare(b.island_ref))) {
+    for (const busRef of island.bus_refs) {
+      if (!islandOfBus.has(busRef)) islandOfBus.set(busRef, island);
+    }
+  }
+  for (const bus of view.buses) {
+    const island = islandOfBus.get(bus.ref_id);
+    const energized = bus.energized ?? island?.energized;
+    const derOnly = bus.der_only ?? island?.der_only;
+    const supplyRefs = bus.supply_refs ?? island?.supply_refs;
+    if (energized === undefined && derOnly === undefined && supplyRefs === undefined) continue;
+    wynik.set(bus.ref_id, {
+      energized,
+      derOnly,
+      supplyRefs,
+      islandRef: island?.island_ref,
+    });
+  }
+  return wynik;
 }
 
 export function domainDescriptorLabel(view: LvDomainGraphView): string {
@@ -334,6 +405,21 @@ export function composeLvDomainScene(
   }
 
   const electricalComponents = computeElectricalComponents(view);
+  const zasilanieSzyn = stanZasilaniaSzyn(view);
+  /**
+   * Stan zasilania ODCINKA: „bez napięcia" WYŁĄCZNIE wtedy, gdy KAŻDY znany
+   * koniec jest bez napięcia. Odcinek między szyną pod napięciem a szyną bez
+   * napięcia (np. za otwartym łącznikiem) NIE dostaje stylu wygaszonego —
+   * jego jeden koniec jest pod napięciem i udawanie inaczej byłoby fałszem
+   * ruchowym. Brak danych na obu końcach = brak oznaczenia.
+   */
+  const energiaOdcinka = (...busRefs: readonly (string | undefined)[]): boolean | undefined => {
+    const znane = busRefs
+      .map((ref) => (ref === undefined ? undefined : zasilanieSzyn.get(ref)?.energized))
+      .filter((value): value is boolean => value !== undefined);
+    if (znane.length === 0) return undefined;
+    return znane.some((value) => value);
+  };
   const busByRef = new Map(view.buses.map((b) => [b.ref_id, b] as const));
   const subSwitchboardBusRefs = new Set<string>(
     view.sub_switchboards.flatMap((s: LvDomainSubSwitchboard) => s.bus_refs),
@@ -437,12 +523,35 @@ export function composeLvDomainScene(
     const aboveOffsetByRef = new Map<string, number>();
     const aboveTrs = above.filter((i) => i.kind === 'transformer');
     const aboveGens = above.filter((i) => i.kind === 'generator');
-    aboveTrs.forEach((item, i) => aboveOffsetByRef.set(item.ref, (i - (aboveTrs.length - 1) / 2) * SOURCE_TAP_PITCH));
-    if (aboveTrs.length > 0) {
-      const trRightEdge = ((aboveTrs.length - 1) / 2) * SOURCE_TAP_PITCH;
-      aboveGens.forEach((item, j) => aboveOffsetByRef.set(item.ref, trRightEdge + (j + 1) * GEN_AFTER_TR_PITCH));
+    /**
+     * OŚ SEKCJI PODRZĘDNEJ NALEŻY DO TORU Z SEKCJI RODZICA. Kikut rodzica
+     * (aparat odpływu → kabel) wchodzi DOKŁADNIE w środek kreski sekcji
+     * podrzędnej, więc jej WŁASNE źródła nie mogą stanąć na osi — muszą iść
+     * kolejnymi slotami na prawo. Zmierzone na fixturze wysp: źródło PV
+     * podrozdzielnicy zasilanej przez OTWARTY odłącznik lądowało glifem
+     * NA glifie tego odłącznika (dwa aparaty w jednym punkcie rysunku).
+     * Klasa, nie instancja: dotyczy KAŻDEGO źródła własnego (TR i DER) na
+     * KAŻDEJ sekcji, która ma rodzica — sekcje korzeniowe zachowują kanon
+     * „oś TR == środek kreski" (ich oś nie niesie toru z góry).
+     */
+    const osZajetaTorem = parentOfChild.has(busRef);
+    if (osZajetaTorem) {
+      aboveTrs.forEach((item, i) => aboveOffsetByRef.set(item.ref, (i + 1) * SOURCE_TAP_PITCH));
+      const trRightEdge = aboveTrs.length * SOURCE_TAP_PITCH;
+      aboveGens.forEach((item, j) =>
+        aboveOffsetByRef.set(
+          item.ref,
+          aboveTrs.length > 0 ? trRightEdge + (j + 1) * GEN_AFTER_TR_PITCH : (j + 1) * SOURCE_TAP_PITCH,
+        ),
+      );
     } else {
-      aboveGens.forEach((item, j) => aboveOffsetByRef.set(item.ref, (j - (aboveGens.length - 1) / 2) * SOURCE_TAP_PITCH));
+      aboveTrs.forEach((item, i) => aboveOffsetByRef.set(item.ref, (i - (aboveTrs.length - 1) / 2) * SOURCE_TAP_PITCH));
+      if (aboveTrs.length > 0) {
+        const trRightEdge = ((aboveTrs.length - 1) / 2) * SOURCE_TAP_PITCH;
+        aboveGens.forEach((item, j) => aboveOffsetByRef.set(item.ref, trRightEdge + (j + 1) * GEN_AFTER_TR_PITCH));
+      } else {
+        aboveGens.forEach((item, j) => aboveOffsetByRef.set(item.ref, (j - (aboveGens.length - 1) / 2) * SOURCE_TAP_PITCH));
+      }
     }
     const aboveSpanHalf = Math.max(0, ...[...aboveOffsetByRef.values()].map((v) => Math.abs(v)));
     // P0-V4 FEEDER SLOT: szerokość slotu odpływu = szerokość CAŁEGO
@@ -555,6 +664,7 @@ export function composeLvDomainScene(
   for (const bus of [...gridBuses].sort((a, b) => a.ref_id.localeCompare(b.ref_id))) {
     const pos = posOfBus(bus.ref_id);
     if (!pos) continue;
+    const zasilanie = zasilanieSzyn.get(bus.ref_id);
     const meta = {
       voltageKv: bus.voltage_kv,
       voltageLevelId: bus.voltage_level_id,
@@ -563,6 +673,11 @@ export function composeLvDomainScene(
       // T5b-4 (P0-V5): hierarchia magistral — MAIN (sekcje korzeniowe RGnN)
       // vs SUB (podrozdzielnice) rozpoznawalna bez czytania etykiety.
       busTier: bus.hops_from_root === 0 ? 'main' : 'sub',
+      // Stan zasilania (gdy backend go niesie) — `undefined` = brak wiedzy.
+      energized: zasilanie?.energized,
+      derOnly: zasilanie?.derOnly,
+      supplyRefs: zasilanie?.supplyRefs,
+      islandRef: zasilanie?.islandRef,
     };
     if (isBoardBus(bus.ref_id)) {
       const plan = planByBus.get(bus.ref_id)!;
@@ -573,7 +688,13 @@ export function composeLvDomainScene(
         y: pos.y,
         label: bus.name,
         busBarHalfWidth: plan.barHalfWidth,
-        meta,
+        meta: {
+          ...meta,
+          // Liczba kikutów POD szyną (odpływ do dziecka / odbiór / granica) —
+          // policzona RAZ w kompozytorze; renderer wyłącznie ją formatuje
+          // (na przeglądzie zastępuje nazwy poszczególnych odpływów).
+          feederCount: plan.below.length,
+        },
       });
     } else {
       nodes.push({
@@ -611,6 +732,8 @@ export function composeLvDomainScene(
           voltageKv: busByRef.get(trafo.lv_bus_ref)?.voltage_kv,
           hopsFromRoot: busByRef.get(trafo.lv_bus_ref)?.hops_from_root,
           electricalComponentId: electricalComponents.get(trafo.lv_bus_ref),
+          energized: zasilanieSzyn.get(trafo.lv_bus_ref)?.energized,
+          derOnly: zasilanieSzyn.get(trafo.lv_bus_ref)?.derOnly,
         },
       });
       const incomerSymbolId = apparatusSymbolFor(incomerBranch.type);
@@ -634,7 +757,7 @@ export function composeLvDomainScene(
         x2: tapX,
         y2: busY,
         status: incomerBranch.status,
-        meta: { role: 'incomer' },
+        meta: { role: 'incomer', energized: energiaOdcinka(trafo.lv_bus_ref, boardBusRef) },
       });
     }
 
@@ -669,6 +792,7 @@ export function composeLvDomainScene(
       y1: trafoPos.y,
       x2: terminalPos.x,
       y2: terminalPos.y,
+      meta: { energized: energiaOdcinka(trafo.lv_bus_ref, incomerBranch ? undefined : boardBusRef) },
     });
 
     const snapshot = snapshotByTransformerRef.get(trafo.ref_id);
@@ -679,7 +803,13 @@ export function composeLvDomainScene(
       x: anchorPos.x,
       y: anchorPos.y,
       label: snapshot ? anchorChipLabel(snapshot) : 'SN · brak danych',
-      meta: snapshot as unknown as Record<string, unknown> | undefined,
+      meta: {
+        ...(snapshot as unknown as Record<string, unknown> | undefined),
+        // Obie części etykiety kotwicy z JEDNEGO źródła (renderer NIE
+        // parsuje `label` — tożsamość i opis mają różny zasięg poziomów).
+        tozsamoscLabel: snapshot ? anchorChipIdentityLabel(snapshot) : 'SN · brak danych',
+        opisLabel: snapshot ? anchorChipDetailLabel(snapshot) : null,
+      },
     });
     edges.push({
       ref: `anchor:${trafo.ref_id}#drop`,
@@ -721,13 +851,14 @@ export function composeLvDomainScene(
       y2: busPos.y,
       meta: directOnBoard
         ? {
+            energized: energiaOdcinka(gen.bus_ref),
             apparatusGapPl:
               'Brak jawnego aparatu pola źródłowego w grafie domeny (LvDomainGraphView.generators nie niesie ' +
               'tor pola: aparat/kabel/PCC — dane pola źródłowego istnieją WYŁĄCZNIE jako meta stacji ' +
               '`nn_field_specs`, nieeksponowana przez /enm/lv-domain). Punkt renderowany jako bezpośrednie ' +
               'podłączenie do sekcji — luka modelu, patrz raport karty T5b-2 P0.7.',
           }
-        : undefined,
+        : { energized: energiaOdcinka(gen.bus_ref) },
     });
   }
 
@@ -762,6 +893,7 @@ export function composeLvDomainScene(
       });
     }
     const edgeKind: LvDomainSceneEdgeKind = branch.type === 'cable' || branch.type === 'line_overhead' ? 'cable' : 'branch';
+    const energized = energiaOdcinka(parentRef, childRef);
     edges.push({
       ref: branch.ref_id,
       kind: edgeKind,
@@ -770,7 +902,10 @@ export function composeLvDomainScene(
       x2: childPos.x,
       y2: childPos.y,
       status: branch.status,
-      meta: edgeKind === 'cable' ? { catalogRef: branch.catalog_ref, catalogNamespace: branch.catalog_namespace } : undefined,
+      meta:
+        edgeKind === 'cable'
+          ? { catalogRef: branch.catalog_ref, catalogNamespace: branch.catalog_namespace, energized }
+          : { energized },
     });
   }
 
@@ -804,7 +939,16 @@ export function composeLvDomainScene(
       symbolId: apparatusSymbolFor('bus_coupler')!,
       meta: { status: branch.status, catalogRef: branch.catalog_ref, type: branch.type, role: 'coupler' },
     });
-    edges.push({ ref: branch.ref_id, kind: 'coupler', x1, y1: y, x2, y2: y, status: branch.status });
+    edges.push({
+      ref: branch.ref_id,
+      kind: 'coupler',
+      x1,
+      y1: y,
+      x2,
+      y2: y,
+      status: branch.status,
+      meta: { energized: energiaOdcinka(branch.from_bus_ref, branch.to_bus_ref) },
+    });
   }
 
   // --- EMISJA: odbiory NA WŁASNYM KIKUCIE pod szyną (P0.7 — raster, nie
@@ -831,7 +975,7 @@ export function composeLvDomainScene(
       y1: busPos.y,
       x2: loadPos.x,
       y2: loadPos.y,
-      meta: { role: 'loadDrop' },
+      meta: { role: 'loadDrop', energized: energiaOdcinka(load.bus_ref) },
     });
   }
 
@@ -872,6 +1016,7 @@ export function composeLvDomainScene(
       status: knownBranch?.status,
       meta: {
         role: 'boundary',
+        energized: energiaOdcinka(link.from_bus_ref),
         gapPl: knownBranch
           ? undefined
           : 'LvDomainBoundaryLink nie niesie typu/impedancji gałęzi granicznej — kabel renderowany bez ' +
@@ -910,6 +1055,7 @@ export function composeLvDomainScene(
       y1: terminalPos.y,
       x2: chipPos.x,
       y2: chipPos.y,
+      meta: { energized: energiaOdcinka(link.from_bus_ref) },
     });
   }
 

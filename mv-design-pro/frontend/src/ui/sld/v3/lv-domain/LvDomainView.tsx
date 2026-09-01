@@ -1,7 +1,7 @@
 /**
- * `LvDomainView(rootStationId, scenarioId)` — kanwa L2 (karta T5b-2 → T5b-3
- * → T5b-4, `docs/nn/PLAN_SLD_NN_TOPOLOGIA_2026-08.md`). NOWA, WŁASNA kanwa
- * (nie `SldCanvasV3`) — TORY ELEKTRYCZNE jednej stacji jako projekcja grafu
+ * `LvDomainView` — kanwa projekcji domeny nN (karta T5b-2 → T5b-3 → T5b-4 →
+ * LOD nN, `docs/nn/PLAN_SLD_NN_TOPOLOGIA_2026-08.md`). WŁASNA kanwa (nie
+ * `SldCanvasV3`) — TORY ELEKTRYCZNE jednej stacji jako projekcja grafu
  * domeny (`composeLvDomainScene`).
  *
  * T5b-4 — PROFESSIONAL VISUAL GRAMMAR (werdykt B-02 6/10, P0-V1..V10):
@@ -21,10 +21,26 @@
  * - P0-V9: DER większy niż odbiór (tożsamość źródła);
  * - kotwica SN = dyskretny opis (nie dominanta — werdykt pkt 12).
  *
+ * POZIOM SZCZEGÓŁOWOŚCI (LOD) — dyrektywa właściciela „każda projekcja ma
+ * własny LOD 0/1/2 na JEDNEJ geometrii". Prop `lod` (domyślnie 2, pełny)
+ * jest analogonem `lodOverride` kanwy SN: scena liczy się RAZ
+ * (`composeLvDomainScene` nie zna LOD), a poziom decyduje WYŁĄCZNIE o tym,
+ * KTÓRE elementy tej samej sceny są rysowane. Decyzja „co widać na którym
+ * poziomie" NIE ŻYJE w tym pliku — jest w `visualGrammar.ts`
+ * (`REJESTR_ELEMENTOW_KANWY`), a tutaj jest DOKŁADNIE JEDNO wyprowadzenie
+ * filtra (`widoczne`) przekazywane przez kontekst rysunku. Punktowe
+ * porównania `lod` w komponentach są zakazane (pin:
+ * `__tests__/lodProjekcjaNn.test.tsx` — skan źródła + porównanie prymitywów
+ * toru między poziomami).
+ *
+ * MOTYW — paleta rysunku idzie z motywu (`paletaNnDlaMotywu`), tak samo jak
+ * na kanwie SN. Do tej karty kanwa nN miała paletę wypaloną na ciemno, a
+ * harness ustawiał `data-theme` bez pokrycia w rysunku (deklaracja motywu
+ * bez pokrycia — ten sam dług, który kanwa SN zamknęła wcześniej).
+ *
  * Bez wpięcia nawigacji (T5c) — CZYSTY render propsów, zero fetch/routing/
- * kamery. WYNIKI = przełączalne OVERLAYE z realnych kanałów wołającego
- * (`swzByFeederRef`/`resultOverlayPayload`/`voltageProfileByBusRef`) — zero
- * fizyki tutaj.
+ * kamery. WYNIKI = przełączalne OVERLAYE z realnych kanałów kontraktu
+ * projekcji (`swz_snapshot`/`result_snapshot`) — zero fizyki tutaj.
  */
 import { useMemo, useState, type CSSProperties } from 'react';
 
@@ -34,10 +50,12 @@ import { getMetric, formatMetric } from '../../../sld-overlay/rawResultOverlaySt
 import { SYMBOL_DEFS, type SymbolId } from '../symbols/defs';
 import { SYMBOL_GLYPHS } from '../symbols/glyphs';
 import type { SwitchState } from '../symbols/glyphs';
+import type { ThemeMode } from '../../../../ui2/theme/themeMode';
 import {
   composeLvDomainScene,
   domainDescriptorLabel,
   type LvDomainSceneEdge,
+  type LvDomainSceneEdgeKind,
   type LvDomainSceneNode,
 } from './composeLvDomainScene';
 import {
@@ -49,8 +67,15 @@ import {
   TYPE_SCREEN_PX,
   fitSceneToViewport,
   glyphScaleForScreenTarget,
+  licznikOdplywowLabel,
+  paletaNnDlaMotywu,
   plNumber,
   snKvaLabel,
+  tonWerdyktuSeverity,
+  widocznyNaLod,
+  type ElementKanwyNn,
+  type PaletaNn,
+  type PoziomLod,
   type SceneFit,
 } from './visualGrammar';
 import type {
@@ -59,24 +84,6 @@ import type {
   LvDomainSwzFeederV1,
   LvDomainVoltageProfileRow,
 } from './types';
-
-const CANVAS_BACKGROUND = '#0B0F14';
-const STROKE_BASE = '#E8EEF4';
-const STROKE_MUTED = '#5B6B7A';
-const STROKE_BOUNDARY = '#E8A33D';
-const STROKE_OPEN = '#8A98A6';
-/** T5b-4: kabel jaśniejszy niż w T5b-3 (#3E6E8E ginął na tle #0B0F14 przy
- *  grubości 1,9 px ekranu — klasa linii ma być ROZRÓŻNIALNA, nie ukryta). */
-const STROKE_CABLE = '#6FA0C2';
-const STROKE_BUSBAR = '#E8EEF4';
-const FILL_TERMINAL = '#B8C4CF';
-/** P0.11: tony werdyktu SWZ/wyniku — spełnia/PASS zielony, nie
- *  spełnia/FAIL czerwony, nierozstrzygalne/brak żółty (kolor JEST
- *  wyłącznie prezentacją gotowego werdyktu backendu — zero progu liczonego
- *  w UI, ta sama zasada co `canvas/overlay.ts::swzPresentationTone`). */
-const TONE_OK = '#5FE0A0';
-const TONE_FAIL = '#E0615F';
-const TONE_UNKNOWN = '#D8B45C';
 
 /** Domyślny viewport (px), gdy wołający nie podał gabarytu (jsdom/testy).
  *  Harness i realne wpięcia podają RZECZYWISTY viewport (P0-V1: occupancy
@@ -101,6 +108,19 @@ const OVERLAY_LABELS_PL: Readonly<Record<LvDomainOverlayId, string>> = {
 
 const OVERLAY_ORDER: readonly LvDomainOverlayId[] = ['loads', 'voltageDrop', 'shortCircuit', 'swz'];
 
+/**
+ * Kontekst rysunku przekazywany do KAŻDEGO komponentu kanwy: przelicznik
+ * px ekranu → świata, fit, paleta motywu i JEDYNE wyprowadzenie filtra
+ * poziomu szczegółowości. Komponenty nie znają wartości `lod` — znają
+ * wyłącznie odpowiedź „czy ten element rysujemy".
+ */
+interface KontekstRysunku {
+  readonly sp: (screenPx: number) => number;
+  readonly fit: SceneFit;
+  readonly paleta: PaletaNn;
+  readonly widoczne: (kind: ElementKanwyNn) => boolean;
+}
+
 export interface LvDomainViewProps {
   /** Jedyny kontrakt danych kanwy. Graf, wynik i SWZ pochodzą z tego samego
    *  snapshotu modelu — komponent nie przyjmuje niezależnych fragmentów. */
@@ -112,6 +132,12 @@ export interface LvDomainViewProps {
   readonly height?: number;
   /** Overlay aktywny na start — `null` = SLD czysty (domyślne, werdykt). */
   readonly initialOverlay?: LvDomainOverlayId | null;
+  /** Poziom szczegółowości projekcji nN: 0 przegląd, 1 sieć, 2 pełny
+   *  (domyślny). Geometria jest ta sama na każdym poziomie. */
+  readonly lod?: PoziomLod;
+  /** Tryb motywu rysunku — paleta idzie z motywu powłoki (domyślnie
+   *  dyspozytorski ciemny, tak jak kanwa SN). */
+  readonly theme?: ThemeMode;
 }
 
 /** Halo etykiety (maska CAD, T5b-4): pismo podbite tłem kanwy przez
@@ -119,13 +145,18 @@ export interface LvDomainViewProps {
  *  (klasa kolizji linia×tekst zmierzona na zrzutach: nazwa magistrali ×
  *  tor incomera, etykieta podszyny × kabel odpływu). Jedna maska dla
  *  WSZYSTKICH etykiet kanwy — reguła KLASA, nie punktowe odsuwanie. */
-function textHalo(sp: (px: number) => number): {
+function textHalo(ctx: KontekstRysunku): {
   readonly stroke: string;
   readonly strokeWidth: number;
   readonly paintOrder: 'stroke';
   readonly strokeLinejoin: 'round';
 } {
-  return { stroke: CANVAS_BACKGROUND, strokeWidth: sp(5), paintOrder: 'stroke', strokeLinejoin: 'round' };
+  return {
+    stroke: ctx.paleta.tlo,
+    strokeWidth: ctx.sp(5),
+    paintOrder: 'stroke',
+    strokeLinejoin: 'round',
+  };
 }
 
 function symbolBBox(symbolId: SymbolId | undefined): { readonly width: number; readonly height: number } {
@@ -142,6 +173,62 @@ function switchStateOf(node: LvDomainSceneNode): SwitchState {
   if (status === 'open') return 'open';
   if (status === 'closed') return 'closed';
   return 'unknown';
+}
+
+/** Element rejestru dla SYMBOLU węzła (warstwa TOR — nigdy nie znika). */
+function elementSymbolu(node: LvDomainSceneNode): ElementKanwyNn {
+  switch (node.kind) {
+    case 'transformer':
+      return 'symbolTransformatora';
+    case 'generator':
+      return 'symbolZrodlaDer';
+    case 'load':
+      return 'symbolOdbioru';
+    case 'boundaryTerminal':
+      return 'zaciskGranicy';
+    case 'busJunction':
+      return 'zaciskToru';
+    case 'bus':
+      return 'szynaSekcji';
+    default:
+      return 'symbolAparatu';
+  }
+}
+
+/** Element rejestru dla NAZWY węzła (warstwa TOZSAMOSC). */
+function elementNazwy(node: LvDomainSceneNode): ElementKanwyNn {
+  switch (node.kind) {
+    case 'transformer':
+      return 'nazwaTransformatora';
+    case 'generator':
+      return 'nazwaZrodlaDer';
+    case 'load':
+      return 'nazwaOdbioru';
+    case 'boundaryChip':
+      return 'nazwaGranicy';
+    case 'anchorChip':
+      return 'nazwaKotwicyZrodla';
+    case 'bus':
+      return 'nazwaSekcji';
+    default:
+      return 'nazwaAparatu';
+  }
+}
+
+/** Element rejestru dla KRAWĘDZI sceny (warstwa TOR w całości). */
+function elementKrawedzi(kind: LvDomainSceneEdgeKind): ElementKanwyNn {
+  switch (kind) {
+    case 'sourceDrop':
+      return 'torZrodla';
+    case 'coupler':
+      return 'torSprzegla';
+    case 'cable':
+      return 'kabelOdplywu';
+    case 'boundaryLink':
+      return 'linkGranicy';
+    default:
+      return 'torOdplywu';
+  }
 }
 
 /** Cel EKRANOWY [px wysokości glifu] per rodzaj węzła (`visualGrammar.ts`,
@@ -166,18 +253,23 @@ function glyphScreenSize(node: LvDomainSceneNode, fit: SceneFit): { readonly w: 
   return { w: (bbox.width * target) / bbox.height, h: target, k };
 }
 
-function ScaledGlyph({ node, fit }: { readonly node: LvDomainSceneNode; readonly fit: SceneFit }): JSX.Element | null {
+function ScaledGlyph({ node, ctx }: { readonly node: LvDomainSceneNode; readonly ctx: KontekstRysunku }): JSX.Element | null {
   if (!node.symbolId) return null;
+  if (!ctx.widoczne(elementSymbolu(node))) return null;
   const Glyph = SYMBOL_GLYPHS[node.symbolId];
   const bbox = symbolBBox(node.symbolId);
-  const { k } = glyphScreenSize(node, fit);
+  const { k } = glyphScreenSize(node, ctx.fit);
   const originX = node.x - bbox.width / 2;
   const originY = node.y - bbox.height / 2;
   const isCoupler = node.meta?.role === 'coupler';
   const open = node.meta?.status === 'open';
   // P0-V6/werdykt pkt 14: STAN niesie SYMBOL — sprzęgło otwarte w tonie
   // ostrzegawczym (sekcjonowanie!), inne aparaty otwarte wygaszone.
-  const stroke = open ? (isCoupler ? TONE_UNKNOWN : STROKE_OPEN) : STROKE_BASE;
+  const stroke = open
+    ? isCoupler
+      ? ctx.paleta.tonOstrzegawczy
+      : ctx.paleta.kreskaOtwarta
+    : ctx.paleta.kreskaBazowa;
   const state = node.kind === 'apparatus' ? switchStateOf(node) : undefined;
   // Sprzęgło leży na TORZE POZIOMYM — glif aparatu (porty N/S) obrócony 90°,
   // żeby jego kikuty leżały w osi toru (sylwetka, nie kwadrat z wąsami).
@@ -203,6 +295,8 @@ export function LvDomainView(props: LvDomainViewProps): JSX.Element {
     width,
     height,
     initialOverlay = null,
+    lod = 2,
+    theme = 'dark_scada',
   } = props;
   const rootStationId = projection.station_ref;
   const scenarioId = projection.scenario_id;
@@ -212,6 +306,7 @@ export function LvDomainView(props: LvDomainViewProps): JSX.Element {
   const [labelMode, setLabelMode] = useState<LabelMode>('engineering');
   const [selectedFeederRef, setSelectedFeederRef] = useState<string | null>(null);
 
+  const paleta = useMemo(() => paletaNnDlaMotywu(theme), [theme]);
   const scene = useMemo(() => composeLvDomainScene(view, upstreamEquivalents), [view, upstreamEquivalents]);
   const domainDescriptor = useMemo(() => domainDescriptorLabel(view), [view]);
   const swzByFeederRef = useMemo(
@@ -243,7 +338,7 @@ export function LvDomainView(props: LvDomainViewProps): JSX.Element {
       <div
         data-testid="lv-domain-view-root"
         data-status="brak-danych"
-        style={{ background: CANVAS_BACKGROUND, color: STROKE_BASE, padding: 24, fontFamily: 'monospace' }}
+        style={{ background: paleta.tlo, color: paleta.kreskaBazowa, padding: 24, fontFamily: 'monospace' }}
       >
         Domena nN stacji „{rootStationId}" — brak danych ({(view.missing_data ?? []).join(', ') || 'nieznany powód'}).
       </div>
@@ -256,8 +351,14 @@ export function LvDomainView(props: LvDomainViewProps): JSX.Element {
   const viewportHeight = height ?? DEFAULT_VIEWPORT.height;
   const canvasHeight = Math.max(240, viewportHeight - HEADER_ALLOWANCE_PX);
   const fit = fitSceneToViewport(scene.width, scene.height, viewportWidth, canvasHeight);
-  /** px EKRANU → px świata (wewnątrz grupy transformowanej fitem). */
-  const sp = (screenPx: number): number => screenPx / fit.s;
+  // JEDYNE wyprowadzenie filtra poziomu w całym rendererze (patrz nagłówek).
+  const ctx: KontekstRysunku = {
+    fit,
+    paleta,
+    /** px EKRANU → px świata (wewnątrz grupy transformowanej fitem). */
+    sp: (screenPx: number): number => screenPx / fit.s,
+    widoczne: (kind: ElementKanwyNn): boolean => widocznyNaLod(kind, lod),
+  };
 
   const hasSwzData = activeOverlay === 'swz' && Object.keys(swzByFeederRef).length > 0;
   const hasResultData =
@@ -273,7 +374,9 @@ export function LvDomainView(props: LvDomainViewProps): JSX.Element {
       data-scenario-id={scenarioId}
       data-projection-hash={projection.projection_hash}
       data-model-hash={projection.model_snapshot.model_hash}
-      style={{ background: CANVAS_BACKGROUND, color: STROKE_BASE, fontFamily: 'sans-serif', position: 'relative' }}
+      data-lod={lod}
+      data-theme-mode={theme}
+      style={{ background: paleta.tlo, color: paleta.kreskaBazowa, fontFamily: 'sans-serif', position: 'relative' }}
     >
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 16px' }}>
         <div>
@@ -281,7 +384,7 @@ export function LvDomainView(props: LvDomainViewProps): JSX.Element {
           {/* P0.14: nagłówek OPISUJE DOMENĘ (napięcie/liczba TR/sekcji/DER/
               boundary) — parametry tabliczki TR (Sn/uk/grupa) żyją na węźle
               transformatora w scenie, nagłówek ich NIE powtarza. */}
-          <div data-testid="lv-domain-descriptor" style={{ fontSize: 11, color: STROKE_MUTED }}>
+          <div data-testid="lv-domain-descriptor" style={{ fontSize: 11, color: paleta.kreskaWygaszona }}>
             {domainDescriptor}
           </div>
         </div>
@@ -294,7 +397,7 @@ export function LvDomainView(props: LvDomainViewProps): JSX.Element {
               data-testid="lv-domain-labelmode-engineering"
               aria-pressed={labelMode === 'engineering'}
               onClick={() => setLabelMode('engineering')}
-              style={overlayButtonStyle(labelMode === 'engineering')}
+              style={overlayButtonStyle(labelMode === 'engineering', paleta)}
             >
               Etykiety: projektowe
             </button>
@@ -303,7 +406,7 @@ export function LvDomainView(props: LvDomainViewProps): JSX.Element {
               data-testid="lv-domain-labelmode-audit"
               aria-pressed={labelMode === 'audit'}
               onClick={() => setLabelMode('audit')}
-              style={overlayButtonStyle(labelMode === 'audit')}
+              style={overlayButtonStyle(labelMode === 'audit', paleta)}
             >
               Audyt topologii
             </button>
@@ -314,7 +417,7 @@ export function LvDomainView(props: LvDomainViewProps): JSX.Element {
               data-testid="lv-domain-overlay-none"
               aria-pressed={activeOverlay === null}
               onClick={() => setActiveOverlay(null)}
-              style={overlayButtonStyle(activeOverlay === null)}
+              style={overlayButtonStyle(activeOverlay === null, paleta)}
             >
               Brak
             </button>
@@ -325,7 +428,7 @@ export function LvDomainView(props: LvDomainViewProps): JSX.Element {
                 data-testid={`lv-domain-overlay-${overlayId}`}
                 aria-pressed={activeOverlay === overlayId}
                 onClick={() => setActiveOverlay(overlayId)}
-                style={overlayButtonStyle(activeOverlay === overlayId)}
+                style={overlayButtonStyle(activeOverlay === overlayId, paleta)}
               >
                 {OVERLAY_LABELS_PL[overlayId]}
               </button>
@@ -333,23 +436,28 @@ export function LvDomainView(props: LvDomainViewProps): JSX.Element {
           </div>
         </div>
       </header>
-      <div data-testid="lv-domain-overlay-status" style={{ padding: '0 16px 8px', fontSize: 11, color: STROKE_MUTED }}>
+      <div data-testid="lv-domain-overlay-status" style={{ padding: '0 16px 8px', fontSize: 11, color: paleta.kreskaWygaszona }}>
         {overlayStatusLabel(activeOverlay, hasAnyOverlayData)}
       </div>
-      <div
-        data-testid="lv-domain-result-freshness"
-        data-result-status={projection.result_snapshot.status}
-        style={{
-          padding: '0 16px 8px',
-          fontSize: 11,
-          color: projection.result_snapshot.status === 'OUTDATED' ? TONE_UNKNOWN : STROKE_MUTED,
-        }}
-      >
-        {`ENM r${projection.model_snapshot.revision} · wynik ${projection.result_snapshot.status}`}
-        {projection.result_snapshot.status === 'OUTDATED'
-          ? ` · ${projection.result_snapshot.reason_pl}`
-          : ''}
-      </div>
+      {/* Status wyniku (brak/nieaktualny/aktualny) = TOŻSAMOŚĆ wyniku, nie
+          jego opis — jawny na KAŻDYM poziomie szczegółowości (rejestr:
+          `znacznikSwiezosciWyniku`). */}
+      {ctx.widoczne('znacznikSwiezosciWyniku') ? (
+        <div
+          data-testid="lv-domain-result-freshness"
+          data-result-status={projection.result_snapshot.status}
+          style={{
+            padding: '0 16px 8px',
+            fontSize: 11,
+            color: projection.result_snapshot.status === 'OUTDATED' ? paleta.tonOstrzegawczy : paleta.kreskaWygaszona,
+          }}
+        >
+          {`ENM r${projection.model_snapshot.revision} · wynik ${projection.result_snapshot.status}`}
+          {projection.result_snapshot.status === 'OUTDATED'
+            ? ` · ${projection.result_snapshot.reason_pl}`
+            : ''}
+        </div>
+      ) : null}
       <svg
         data-testid="lv-domain-svg"
         data-fit-scale={fit.s}
@@ -357,23 +465,23 @@ export function LvDomainView(props: LvDomainViewProps): JSX.Element {
         height={canvasHeight}
         viewBox={`0 0 ${viewportWidth} ${canvasHeight}`}
       >
-        <rect x={0} y={0} width={viewportWidth} height={canvasHeight} fill={CANVAS_BACKGROUND} />
+        <rect x={0} y={0} width={viewportWidth} height={canvasHeight} fill={paleta.tlo} />
         <g data-testid="lv-domain-world" transform={`translate(${fit.tx} ${fit.ty}) scale(${fit.s})`}>
           <g data-testid="lv-domain-edges">
             {scene.edges.map((edge) => (
-              <SceneEdgeLine key={edge.ref} edge={edge} scene={scene} sp={sp} />
+              <SceneEdgeLine key={edge.ref} edge={edge} scene={scene} ctx={ctx} />
             ))}
           </g>
           <g data-testid="lv-domain-nodes">
             {scene.nodes.map((node) => {
-              if (node.kind === 'anchorChip') return <AnchorChipNode key={node.ref} node={node} sp={sp} />;
-              if (node.kind === 'boundaryChip') return <BoundaryRefNode key={node.ref} node={node} sp={sp} />;
+              if (node.kind === 'anchorChip') return <AnchorChipNode key={node.ref} node={node} ctx={ctx} />;
+              if (node.kind === 'boundaryChip') return <BoundaryRefNode key={node.ref} node={node} ctx={ctx} />;
               if (node.kind === 'bus') {
                 return (
                   <BusBarNode
                     key={node.ref}
                     node={node}
-                    sp={sp}
+                    ctx={ctx}
                     activeOverlay={activeOverlay}
                     resultOverlayPayload={resultOverlayPayload}
                     voltageProfileByBusRef={voltageProfileByBusRef}
@@ -383,7 +491,16 @@ export function LvDomainView(props: LvDomainViewProps): JSX.Element {
               if (node.kind === 'boundaryTerminal') {
                 return (
                   <g key={node.ref} data-testid={`lv-domain-node-${node.ref}`} data-node-kind={node.kind} data-owner-ref={node.ref}>
-                    <circle cx={node.x} cy={node.y} r={sp(JUNCTION_RADIUS_SCREEN_PX + 1)} fill={FILL_TERMINAL} stroke={STROKE_BOUNDARY} strokeWidth={sp(1.2)} />
+                    {ctx.widoczne('zaciskGranicy') ? (
+                      <circle
+                        cx={node.x}
+                        cy={node.y}
+                        r={ctx.sp(JUNCTION_RADIUS_SCREEN_PX + 1)}
+                        fill={ctx.paleta.wypelnienieZacisku}
+                        stroke={ctx.paleta.kreskaGranicy}
+                        strokeWidth={ctx.sp(1.2)}
+                      />
+                    ) : null}
                   </g>
                 );
               }
@@ -391,12 +508,21 @@ export function LvDomainView(props: LvDomainViewProps): JSX.Element {
                 return (
                   <g key={node.ref} data-testid={`lv-domain-node-${node.ref}`} data-node-kind={node.kind} data-owner-ref={node.ref}>
                     {/* P0-V7: kropka zacisku ZAWSZE; nazwa portu modelu
-                        WYŁĄCZNIE w trybie AUDYT — na kanwie projektowej
-                        hover (title) niesie pełną nazwę. */}
+                        WYŁĄCZNIE w trybie AUDYT i na poziomie pełnym — na
+                        kanwie projektowej hover (title) niesie pełną nazwę. */}
                     <title>{node.label}</title>
-                    <circle cx={node.x} cy={node.y} r={sp(JUNCTION_RADIUS_SCREEN_PX)} fill={FILL_TERMINAL} />
-                    {labelMode === 'audit' ? (
-                      <text {...textHalo(sp)} x={node.x + sp(7)} y={node.y + sp(3.5)} textAnchor="start" fontSize={sp(TYPE_SCREEN_PX.tertiary)} fill={STROKE_MUTED}>
+                    {ctx.widoczne('zaciskToru') ? (
+                      <circle cx={node.x} cy={node.y} r={ctx.sp(JUNCTION_RADIUS_SCREEN_PX)} fill={ctx.paleta.wypelnienieZacisku} />
+                    ) : null}
+                    {labelMode === 'audit' && ctx.widoczne('nazwaZaciskuModelu') ? (
+                      <text
+                        {...textHalo(ctx)}
+                        x={node.x + ctx.sp(7)}
+                        y={node.y + ctx.sp(3.5)}
+                        textAnchor="start"
+                        fontSize={ctx.sp(TYPE_SCREEN_PX.tertiary)}
+                        fill={ctx.paleta.kreskaWygaszona}
+                      >
                         {node.label}
                       </text>
                     ) : null}
@@ -422,13 +548,13 @@ export function LvDomainView(props: LvDomainViewProps): JSX.Element {
                   } : undefined}
                   style={{ cursor: isFeeder ? 'pointer' : undefined }}
                 >
-                  <ScaledGlyph node={node} fit={fit} />
-                  <NodeLabel node={node} fit={fit} sp={sp} />
+                  <ScaledGlyph node={node} ctx={ctx} />
+                  <NodeLabel node={node} ctx={ctx} />
                   {node.kind === 'apparatus' && activeOverlay === 'swz' ? (
-                    <SwzBadge node={node} fit={fit} sp={sp} entry={swzByFeederRef[node.ref]} />
+                    <SwzBadge node={node} ctx={ctx} entry={swzByFeederRef[node.ref]} />
                   ) : null}
                   {node.kind === 'apparatus' && (activeOverlay === 'loads' || activeOverlay === 'shortCircuit') ? (
-                    <ResultBadge node={node} fit={fit} sp={sp} overlay={activeOverlay} payload={resultOverlayPayload} />
+                    <ResultBadge node={node} ctx={ctx} withGlyphOffset overlay={activeOverlay} payload={resultOverlayPayload} />
                   ) : null}
                 </g>
               );
@@ -440,6 +566,7 @@ export function LvDomainView(props: LvDomainViewProps): JSX.Element {
         <LvFeederPanel
           feeder={selectedFeeder}
           projection={projection}
+          paleta={paleta}
           resultOverlayPayload={resultOverlayPayload}
           onClose={() => setSelectedFeederRef(null)}
         />
@@ -451,11 +578,13 @@ export function LvDomainView(props: LvDomainViewProps): JSX.Element {
 function LvFeederPanel({
   feeder,
   projection,
+  paleta,
   resultOverlayPayload,
   onClose,
 }: {
   readonly feeder: LvDomainSwzFeederV1;
   readonly projection: LvDomainProjectionV1;
+  readonly paleta: PaletaNn;
   readonly resultOverlayPayload: RawOverlayPayload | null;
   readonly onClose: () => void;
 }): JSX.Element {
@@ -463,10 +592,10 @@ function LvFeederPanel({
   const metrics = Object.values(resultElement?.metrics ?? {});
   const swz = feeder.swz.swz;
   const statusTone = swz?.status === 'spełnia'
-    ? TONE_OK
+    ? paleta.tonOk
     : swz?.status === 'nie spełnia'
-      ? TONE_FAIL
-      : TONE_UNKNOWN;
+      ? paleta.tonBledu
+      : paleta.tonOstrzegawczy;
   const shortHash = (value: string): string => value.length > 14 ? `${value.slice(0, 14)}…` : value;
 
   return (
@@ -482,55 +611,55 @@ function LvFeederPanel({
         maxWidth: 'calc(100% - 32px)',
         overflow: 'auto',
         padding: 16,
-        border: `1px solid ${STROKE_MUTED}`,
+        border: `1px solid ${paleta.kreskaWygaszona}`,
         borderRadius: 6,
-        background: '#111821F2',
-        boxShadow: '0 12px 36px #000A',
+        background: paleta.panelTlo,
+        boxShadow: paleta.panelCien,
         zIndex: 4,
         fontSize: 12,
       }}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
         <div>
-          <div style={{ color: STROKE_BASE, fontWeight: 700 }}>Odpływ nN</div>
-          <div style={{ color: STROKE_MUTED, fontFamily: 'monospace' }}>
+          <div style={{ color: paleta.kreskaBazowa, fontWeight: 700 }}>Odpływ nN</div>
+          <div style={{ color: paleta.kreskaWygaszona, fontFamily: 'monospace' }}>
             {feeder.feeder_root_branch_ref}
           </div>
         </div>
-        <button type="button" onClick={onClose} style={overlayButtonStyle(false)}>
+        <button type="button" onClick={onClose} style={overlayButtonStyle(false, paleta)}>
           Zamknij
         </button>
       </div>
 
       <section style={{ marginTop: 16 }}>
-        <div style={{ color: STROKE_BASE, fontWeight: 600 }}>Snapshot ENM</div>
-        <div style={{ color: STROKE_MUTED, marginTop: 4 }}>
+        <div style={{ color: paleta.kreskaBazowa, fontWeight: 600 }}>Stan modelu ENM</div>
+        <div style={{ color: paleta.kreskaWygaszona, marginTop: 4 }}>
           {`rewizja ${projection.model_snapshot.revision} · ${projection.scenario_id}`}
         </div>
-        <div title={projection.model_snapshot.model_hash} style={{ color: STROKE_MUTED, fontFamily: 'monospace' }}>
+        <div title={projection.model_snapshot.model_hash} style={{ color: paleta.kreskaWygaszona, fontFamily: 'monospace' }}>
           {`model ${shortHash(projection.model_snapshot.model_hash)}`}
         </div>
       </section>
 
       <section style={{ marginTop: 16 }}>
-        <div style={{ color: STROKE_BASE, fontWeight: 600 }}>Wynik biegu</div>
-        <div style={{ color: projection.result_snapshot.status === 'OUTDATED' ? TONE_UNKNOWN : STROKE_MUTED, marginTop: 4 }}>
+        <div style={{ color: paleta.kreskaBazowa, fontWeight: 600 }}>Wynik biegu</div>
+        <div style={{ color: projection.result_snapshot.status === 'OUTDATED' ? paleta.tonOstrzegawczy : paleta.kreskaWygaszona, marginTop: 4 }}>
           {projection.result_snapshot.status === 'NONE'
             ? 'Brak wyniku'
             : `${projection.result_snapshot.status} · ${projection.result_snapshot.analysis_type ?? 'analiza'}`}
         </div>
         {metrics.length > 0 ? metrics.map((metric) => (
-          <div key={metric.code} style={{ color: STROKE_BASE, fontFamily: 'monospace', marginTop: 3 }}>
+          <div key={metric.code} style={{ color: paleta.kreskaBazowa, fontFamily: 'monospace', marginTop: 3 }}>
             {`${metric.code}: ${formatMetric(metric)}`}
           </div>
         )) : (
-          <div style={{ color: STROKE_MUTED, marginTop: 3 }}>Brak metryk tego odpływu w aktywnym biegu.</div>
+          <div style={{ color: paleta.kreskaWygaszona, marginTop: 3 }}>Brak metryk tego odpływu w aktywnym biegu.</div>
         )}
       </section>
 
       <section style={{ marginTop: 16 }}>
-        <div style={{ color: STROKE_BASE, fontWeight: 600 }}>Pętla zwarcia i SWZ</div>
-        <div style={{ color: STROKE_MUTED, marginTop: 4 }}>
+        <div style={{ color: paleta.kreskaBazowa, fontWeight: 600 }}>Pętla zwarcia i SWZ</div>
+        <div style={{ color: paleta.kreskaWygaszona, marginTop: 4 }}>
           {`punkt najgorszy: ${feeder.worst_point_bus_ref ?? 'brak'} · punkty: ${feeder.points.length}`}
         </div>
         {swz ? (
@@ -538,18 +667,18 @@ function LvFeederPanel({
             <div style={{ color: statusTone, fontWeight: 700, marginTop: 6 }}>
               {`SWZ: ${swz.status}`}
             </div>
-            <div style={{ color: STROKE_BASE, fontFamily: 'monospace', marginTop: 3 }}>
+            <div style={{ color: paleta.kreskaBazowa, fontFamily: 'monospace', marginTop: 3 }}>
               {`Ik₁ min = ${swz.ik1_min_a.toFixed(0)} A`}
             </div>
             {swz.ia_wymagane_a != null ? (
-              <div style={{ color: STROKE_BASE, fontFamily: 'monospace', marginTop: 3 }}>
+              <div style={{ color: paleta.kreskaBazowa, fontFamily: 'monospace', marginTop: 3 }}>
                 {`Ia wymagane = ${swz.ia_wymagane_a.toFixed(0)} A`}
               </div>
             ) : null}
-            <div style={{ color: STROKE_MUTED, marginTop: 6 }}>{swz.przyczyna_pl}</div>
+            <div style={{ color: paleta.kreskaWygaszona, marginTop: 6 }}>{swz.przyczyna_pl}</div>
           </>
         ) : (
-          <div style={{ color: TONE_UNKNOWN, marginTop: 6 }}>
+          <div style={{ color: paleta.tonOstrzegawczy, marginTop: 6 }}>
             {feeder.swz.reason_pl ?? `SWZ: ${feeder.swz.status}`}
           </div>
         )}
@@ -561,69 +690,154 @@ function LvFeederPanel({
 /** P0.1/P0-V5 — sekcja szyn REALNA: kreska magistrali w hierarchii MAIN/SUB
  *  (grubość + typografia z `busTier` — rozpoznawalne bez czytania etykiety).
  *  Niesie WŁASNE plakietki overlay (zwarcia/spadki U) — `kind==='bus'`
- *  zwraca się wcześnie w pętli renderu, więc odznaki muszą żyć TUTAJ. */
+ *  zwraca się wcześnie w pętli renderu, więc odznaki muszą żyć TUTAJ.
+ *  Stan zasilania szyny (bez napięcia / wyspa DER) jest STANEM RUCHOWYM —
+ *  ta sama klasa co OPEN/CLOSED, więc widoczny na każdym poziomie. */
 function BusBarNode({
   node,
-  sp,
+  ctx,
   activeOverlay,
   resultOverlayPayload,
   voltageProfileByBusRef,
 }: {
   readonly node: LvDomainSceneNode;
-  readonly sp: (px: number) => number;
+  readonly ctx: KontekstRysunku;
   readonly activeOverlay: LvDomainOverlayId | null;
   readonly resultOverlayPayload: RawOverlayPayload | null;
   readonly voltageProfileByBusRef: Readonly<Record<string, LvDomainVoltageProfileRow>>;
 }): JSX.Element {
   const half = node.busBarHalfWidth ?? 0;
   const isMain = node.meta?.busTier !== 'sub';
-  const strokeWidth = sp(isMain ? BUS_STROKE_SCREEN_PX.main : BUS_STROKE_SCREEN_PX.sub);
+  const strokeWidth = ctx.sp(isMain ? BUS_STROKE_SCREEN_PX.main : BUS_STROKE_SCREEN_PX.sub);
   const labelPx = isMain ? TYPE_SCREEN_PX.primary : TYPE_SCREEN_PX.busSub;
+  const bezNapiecia = node.meta?.energized === false;
+  const wyspaDer = node.meta?.derOnly === true;
+  const feederCount = typeof node.meta?.feederCount === 'number' ? node.meta.feederCount : null;
+  const labelY = node.y - ctx.sp(10) - strokeWidth / 2;
   return (
-    <g data-testid={`lv-domain-node-${node.ref}`} data-node-kind={node.kind} data-owner-ref={node.ref} data-bus-tier={isMain ? 'main' : 'sub'}>
-      <line
-        x1={node.x - half}
-        y1={node.y}
-        x2={node.x + half}
-        y2={node.y}
-        stroke={STROKE_BUSBAR}
-        strokeWidth={strokeWidth}
-        strokeLinecap="square"
-      />
-      <text
-        {...textHalo(sp)}
-        x={node.x - half}
-        y={node.y - sp(10) - strokeWidth / 2}
-        textAnchor="start"
-        fontSize={sp(labelPx)}
-        fontWeight={700}
-        fill={STROKE_BASE}
-      >
-        {node.label}
-        {node.meta?.voltageKv != null ? (
-          <tspan fontSize={sp(TYPE_SCREEN_PX.secondary)} fontWeight={400} fill={STROKE_MUTED}>
-            {`  ·  ${plNumber(node.meta.voltageKv as number)} kV`}
-          </tspan>
-        ) : null}
-      </text>
-      {activeOverlay === 'loads' || activeOverlay === 'shortCircuit' ? (
-        <ResultBadge node={node} fit={null} sp={sp} overlay={activeOverlay} payload={resultOverlayPayload} />
+    <g
+      data-testid={`lv-domain-node-${node.ref}`}
+      data-node-kind={node.kind}
+      data-owner-ref={node.ref}
+      data-bus-tier={isMain ? 'main' : 'sub'}
+      data-energized={node.meta?.energized === undefined ? undefined : String(node.meta.energized)}
+      data-der-only={node.meta?.derOnly === undefined ? undefined : String(node.meta.derOnly)}
+    >
+      {ctx.widoczne('szynaSekcji') ? (
+        <line
+          x1={node.x - half}
+          y1={node.y}
+          x2={node.x + half}
+          y2={node.y}
+          stroke={bezNapiecia ? ctx.paleta.bezNapiecia : ctx.paleta.kreskaBazowa}
+          strokeWidth={strokeWidth}
+          strokeLinecap="square"
+          strokeDasharray={bezNapiecia ? dashOf(ctx, LINE_DASH_SCREEN_PX.bezNapiecia) : undefined}
+        />
       ) : null}
-      {activeOverlay === 'voltageDrop' ? <VoltageDropBadge node={node} sp={sp} row={voltageProfileByBusRef[node.ref]} /> : null}
+      {ctx.widoczne('nazwaSekcji') ? (
+        <text
+          {...textHalo(ctx)}
+          x={node.x - half}
+          y={labelY}
+          textAnchor="start"
+          fontSize={ctx.sp(labelPx)}
+          fontWeight={700}
+          fill={ctx.paleta.kreskaBazowa}
+        >
+          {node.label}
+          {node.meta?.voltageKv != null && ctx.widoczne('napiecieSekcji') ? (
+            <tspan fontSize={ctx.sp(TYPE_SCREEN_PX.secondary)} fontWeight={400} fill={ctx.paleta.kreskaWygaszona}>
+              {`  ·  ${plNumber(node.meta.voltageKv as number)} kV`}
+            </tspan>
+          ) : null}
+          {bezNapiecia && ctx.widoczne('znacznikBezNapiecia') ? (
+            <tspan
+              data-testid={`lv-domain-bus-bez-napiecia-${node.ref}`}
+              fontSize={ctx.sp(TYPE_SCREEN_PX.secondary)}
+              fontWeight={600}
+              fill={ctx.paleta.bezNapiecia}
+            >
+              {'  ·  bez napięcia'}
+            </tspan>
+          ) : null}
+          {wyspaDer && ctx.widoczne('znacznikWyspyDer') ? (
+            <tspan
+              data-testid={`lv-domain-bus-wyspa-der-${node.ref}`}
+              fontSize={ctx.sp(TYPE_SCREEN_PX.secondary)}
+              fontWeight={600}
+              fill={ctx.paleta.tonOstrzegawczy}
+            >
+              {'  ·  wyspa DER'}
+            </tspan>
+          ) : null}
+          {/* Licznik odpływów PŁYNIE W LINII NAZWY sekcji, a nie stoi w
+              osobnym punkcie kreski. Dwie próby ustawienia go „na wolnym
+              miejscu" (prawy koniec kreski w linii nazwy, potem linia wyżej)
+              dały dwie różne kolizje na zrzutach: raz ze znacznikiem stanu
+              zasilania („1 odpływ cia"), raz z glifem źródła stojącego nad
+              prawym końcem kreski. Wolnego miejsca NAD kreską nie ma z
+              definicji — to pas źródeł. Tekst dopisany do przepływu nazwy
+              nie może kolidować z niczym, cokolwiek jeszcze przyrośnie. */}
+          {feederCount != null && ctx.widoczne('licznikOdplywowSekcji') ? (
+            <tspan
+              data-testid={`lv-domain-bus-licznik-${node.ref}`}
+              fontSize={ctx.sp(TYPE_SCREEN_PX.secondary)}
+              fontWeight={600}
+              fill={ctx.paleta.kreskaWygaszona}
+            >
+              {`  ·  ${licznikOdplywowLabel(feederCount)}`}
+            </tspan>
+          ) : null}
+        </text>
+      ) : null}
+      {activeOverlay === 'loads' || activeOverlay === 'shortCircuit' ? (
+        <ResultBadge node={node} ctx={ctx} withGlyphOffset={false} overlay={activeOverlay} payload={resultOverlayPayload} />
+      ) : null}
+      {activeOverlay === 'voltageDrop' ? (
+        <VoltageDropBadge node={node} ctx={ctx} row={voltageProfileByBusRef[node.ref]} />
+      ) : null}
     </g>
   );
 }
 
 /** Werdykt pkt 12 — kotwica SN jest KOTWICĄ, nie dominantą: dyskretny opis
- *  tekstowy (muted, bez obrysu/pudełka) nad torem źródła. */
-function AnchorChipNode({ node, sp }: { readonly node: LvDomainSceneNode; readonly sp: (px: number) => number }): JSX.Element {
+ *  tekstowy (muted, bez obrysu/pudełka) nad torem źródła. TOŻSAMOŚĆ kotwicy
+ *  (poziom napięcia zasilania) zostaje na każdym poziomie — źródła nie wolno
+ *  ukryć; parametry zwarciowe to opis (poziom pełny). */
+function AnchorChipNode({ node, ctx }: { readonly node: LvDomainSceneNode; readonly ctx: KontekstRysunku }): JSX.Element {
+  const tozsamosc = typeof node.meta?.tozsamoscLabel === 'string' ? node.meta.tozsamoscLabel : node.label;
+  const opis = typeof node.meta?.opisLabel === 'string' ? node.meta.opisLabel : null;
   return (
     <g data-testid={`lv-domain-node-${node.ref}`} data-node-kind={node.kind} data-owner-ref={node.ref}>
       {/* Baseline NAD punktem kotwicy — kreska toru źródła startuje w punkcie
           i nie przecina tekstu. */}
-      <text {...textHalo(sp)} x={node.x} y={node.y - sp(6)} textAnchor="middle" fontSize={sp(10)} fill={STROKE_MUTED} fontFamily="monospace">
-        {node.label}
-      </text>
+      {opis != null && ctx.widoczne('parametryKotwicyZrodla') ? (
+        <text
+          {...textHalo(ctx)}
+          x={node.x}
+          y={node.y - ctx.sp(19)}
+          textAnchor="middle"
+          fontSize={ctx.sp(10)}
+          fill={ctx.paleta.kreskaWygaszona}
+          fontFamily="monospace"
+        >
+          {opis}
+        </text>
+      ) : null}
+      {ctx.widoczne('nazwaKotwicyZrodla') ? (
+        <text
+          {...textHalo(ctx)}
+          x={node.x}
+          y={node.y - ctx.sp(6)}
+          textAnchor="middle"
+          fontSize={ctx.sp(10)}
+          fill={ctx.paleta.kreskaWygaszona}
+          fontFamily="monospace"
+        >
+          {tozsamosc}
+        </text>
+      ) : null}
     </g>
   );
 }
@@ -632,7 +846,7 @@ function AnchorChipNode({ node, sp }: { readonly node: LvDomainSceneNode; readon
  *  granicy (● terminal rysuje `boundaryTerminal`, strzałkę — krawędź
  *  `boundaryLink`), napięcie zacisku pod nazwą. Affordance (rola przycisku,
  *  nawigacja T5c) zostaje w a11y, nie w wyglądzie spoczynkowym. */
-function BoundaryRefNode({ node, sp }: { readonly node: LvDomainSceneNode; readonly sp: (px: number) => number }): JSX.Element {
+function BoundaryRefNode({ node, ctx }: { readonly node: LvDomainSceneNode; readonly ctx: KontekstRysunku }): JSX.Element {
   return (
     <g
       data-testid={`lv-domain-node-${node.ref}`}
@@ -641,11 +855,28 @@ function BoundaryRefNode({ node, sp }: { readonly node: LvDomainSceneNode; reado
       role="button"
       aria-label={`Otwórz domenę ${node.label.replace('→ ', '')}`}
     >
-      <text {...textHalo(sp)} x={node.x - sp(2)} y={node.y + sp(4)} textAnchor="start" fontSize={sp(TYPE_SCREEN_PX.secondary + 0.5)} fontWeight={600} fill={STROKE_BOUNDARY}>
-        {node.label}
-      </text>
-      {node.meta?.voltageKv != null ? (
-        <text {...textHalo(sp)} x={node.x - sp(2)} y={node.y + sp(17)} textAnchor="start" fontSize={sp(TYPE_SCREEN_PX.tertiary)} fill={STROKE_MUTED}>
+      {ctx.widoczne('nazwaGranicy') ? (
+        <text
+          {...textHalo(ctx)}
+          x={node.x - ctx.sp(2)}
+          y={node.y + ctx.sp(4)}
+          textAnchor="start"
+          fontSize={ctx.sp(TYPE_SCREEN_PX.secondary + 0.5)}
+          fontWeight={600}
+          fill={ctx.paleta.kreskaGranicy}
+        >
+          {node.label}
+        </text>
+      ) : null}
+      {node.meta?.voltageKv != null && ctx.widoczne('napiecieGranicy') ? (
+        <text
+          {...textHalo(ctx)}
+          x={node.x - ctx.sp(2)}
+          y={node.y + ctx.sp(17)}
+          textAnchor="start"
+          fontSize={ctx.sp(TYPE_SCREEN_PX.tertiary)}
+          fill={ctx.paleta.kreskaWygaszona}
+        >
           {`${plNumber(node.meta.voltageKv as number)} kV`}
         </text>
       ) : null}
@@ -653,27 +884,52 @@ function BoundaryRefNode({ node, sp }: { readonly node: LvDomainSceneNode; reado
   );
 }
 
+/** Wzór kreski [px ekranu] → atrybut SVG w jednostkach świata. */
+function dashOf(ctx: KontekstRysunku, pattern: readonly [number, number]): string {
+  return `${ctx.sp(pattern[0])} ${ctx.sp(pattern[1])}`;
+}
+
 /** T5b-4 — gramatyka linii (werdykt pkt 13, `visualGrammar.ts::LINE_SCREEN_PX`):
  *  BUS (rysuje BusBarNode) > INTERNAL CONNECTION (kikuty/incomer/tor źródła)
  *  > CABLE (cieńszy, zaokrąglony) > BOUNDARY (przerywany + strzałka).
  *  Sprzęgło: DWA kikuty do krawędzi glifu — ciągłość toru niesie SYMBOL
- *  aparatu (wypełniony=zamknięty), nie kreska POD symbolem (P0-V6). */
+ *  aparatu (wypełniony=zamknięty), nie kreska POD symbolem (P0-V6).
+ *
+ *  DWA NIEZALEŻNE KANAŁY STANU (nie wolno ich zlać): WZÓR KRESKI niesie stan
+ *  ŁĄCZNIKA (otwarty = przerywany), KOLOR niesie stan ZASILANIA (bez
+ *  napięcia = wygaszony). Odcinek może być jednocześnie za otwartym
+ *  łącznikiem i bez napięcia — wtedy widać oba fakty naraz. */
 function SceneEdgeLine({
   edge,
   scene,
-  sp,
+  ctx,
 }: {
   readonly edge: LvDomainSceneEdge;
   readonly scene: { readonly nodes: readonly LvDomainSceneNode[] };
-  readonly sp: (px: number) => number;
-}): JSX.Element {
+  readonly ctx: KontekstRysunku;
+}): JSX.Element | null {
+  if (!ctx.widoczne(elementKrawedzi(edge.kind))) return null;
   const isCable = edge.kind === 'cable';
   const isBoundaryLink = edge.kind === 'boundaryLink';
   const open = edge.status === 'open';
-  const dashOf = (pattern: readonly [number, number]): string => `${sp(pattern[0])} ${sp(pattern[1])}`;
-  const stroke = isBoundaryLink ? STROKE_BOUNDARY : isCable ? STROKE_CABLE : open ? STROKE_OPEN : STROKE_BASE;
-  const dash = isBoundaryLink ? dashOf(LINE_DASH_SCREEN_PX.boundary) : open ? dashOf(LINE_DASH_SCREEN_PX.open) : undefined;
-  const width = sp(
+  const bezNapiecia = edge.meta?.energized === false;
+  const stroke = isBoundaryLink
+    ? ctx.paleta.kreskaGranicy
+    : bezNapiecia
+      ? ctx.paleta.bezNapiecia
+      : isCable
+        ? ctx.paleta.kreskaKabla
+        : open
+          ? ctx.paleta.kreskaOtwarta
+          : ctx.paleta.kreskaBazowa;
+  const dash = isBoundaryLink
+    ? dashOf(ctx, LINE_DASH_SCREEN_PX.boundary)
+    : open
+      ? dashOf(ctx, LINE_DASH_SCREEN_PX.open)
+      : bezNapiecia
+        ? dashOf(ctx, LINE_DASH_SCREEN_PX.bezNapiecia)
+        : undefined;
+  const width = ctx.sp(
     edge.kind === 'coupler' ? LINE_SCREEN_PX.coupler : isCable ? LINE_SCREEN_PX.cable : isBoundaryLink ? LINE_SCREEN_PX.boundary : LINE_SCREEN_PX.connection,
   );
 
@@ -682,19 +938,23 @@ function SceneEdgeLine({
     // przez glif tor NIE przechodzi (stan niesie sylwetka: P0-V6).
     const couplerNode = scene.nodes.find((n) => n.ref === edge.ref && n.kind === 'apparatus');
     const midX = couplerNode?.x ?? (edge.x1 + edge.x2) / 2;
-    const gap = couplerNode ? sp(SYMBOL_SCREEN_PX.coupler / 2 + 2) : 0;
-    const tone = open ? TONE_UNKNOWN : STROKE_BASE;
-    const stubDash = open ? dashOf(LINE_DASH_SCREEN_PX.open) : undefined;
+    const gap = couplerNode ? ctx.sp(SYMBOL_SCREEN_PX.coupler / 2 + 2) : 0;
+    const tone = bezNapiecia ? ctx.paleta.bezNapiecia : open ? ctx.paleta.tonOstrzegawczy : ctx.paleta.kreskaBazowa;
     return (
-      <g data-testid={`lv-domain-edge-${edge.ref}`} data-edge-kind={edge.kind}>
-        <line x1={edge.x1} y1={edge.y1} x2={midX - gap} y2={edge.y2} stroke={tone} strokeWidth={width} strokeDasharray={stubDash} />
-        <line x1={midX + gap} y1={edge.y1} x2={edge.x2} y2={edge.y2} stroke={tone} strokeWidth={width} strokeDasharray={stubDash} />
+      <g data-testid={`lv-domain-edge-${edge.ref}`} data-edge-kind={edge.kind} data-energized={edge.meta?.energized === undefined ? undefined : String(edge.meta.energized)}>
+        <line x1={edge.x1} y1={edge.y1} x2={midX - gap} y2={edge.y2} stroke={tone} strokeWidth={width} strokeDasharray={dash} />
+        <line x1={midX + gap} y1={edge.y1} x2={edge.x2} y2={edge.y2} stroke={tone} strokeWidth={width} strokeDasharray={dash} />
       </g>
     );
   }
 
   return (
-    <g data-testid={`lv-domain-edge-${edge.ref}`} data-edge-kind={edge.kind} data-gap={edge.meta?.gapPl ? 'true' : undefined}>
+    <g
+      data-testid={`lv-domain-edge-${edge.ref}`}
+      data-edge-kind={edge.kind}
+      data-gap={edge.meta?.gapPl ? 'true' : undefined}
+      data-energized={edge.meta?.energized === undefined ? undefined : String(edge.meta.energized)}
+    >
       {edge.meta?.gapPl ? <title>{String(edge.meta.gapPl)}</title> : null}
       {edge.meta?.apparatusGapPl ? <title>{String(edge.meta.apparatusGapPl)}</title> : null}
       <line
@@ -711,8 +971,8 @@ function SceneEdgeLine({
         // Strzałka referencji granicznej (●────→): grot na końcu linku,
         // kierunek z geometrii krawędzi (linki są poziome w prawo).
         <path
-          d={`M ${edge.x2} ${edge.y2} l ${-sp(9)} ${-sp(4)} l 0 ${sp(8)} Z`}
-          fill={STROKE_BOUNDARY}
+          d={`M ${edge.x2} ${edge.y2} l ${-ctx.sp(9)} ${-ctx.sp(4)} l 0 ${ctx.sp(8)} Z`}
+          fill={ctx.paleta.kreskaGranicy}
           stroke="none"
         />
       ) : null}
@@ -726,19 +986,19 @@ function SceneEdgeLine({
  * Sn[kVA] jako PRIMARY, przekładnia·grupa i uk jako SECONDARY — nie 5
  * równorzędnych mikrolinii); aparat = oznaczenie PO PRAWEJ glifu; sprzęgło =
  * nazwa nad glifem + STAN słownie jako DRUGORZĘDNE potwierdzenie (muted —
- * kolor/stan niesie SYMBOL, werdykt pkt 14 „to powinno zostać odwrócone");
- * generator/odbiór = nazwa + wartość dwupoziomowo.
+ * kolor/stan niesie SYMBOL, werdykt pkt 14); generator/odbiór = nazwa +
+ * wartość dwupoziomowo. Podział NAZWA (tożsamość) / PARAMETR (opis) jest
+ * dokładnie osią redukcji poziomów szczegółowości.
  */
 function NodeLabel({
   node,
-  fit,
-  sp,
+  ctx,
 }: {
   readonly node: LvDomainSceneNode;
-  readonly fit: SceneFit;
-  readonly sp: (px: number) => number;
-}): JSX.Element {
-  const glyph = glyphScreenSize(node, fit);
+  readonly ctx: KontekstRysunku;
+}): JSX.Element | null {
+  const glyph = glyphScreenSize(node, ctx.fit);
+  const pokazNazwe = ctx.widoczne(elementNazwy(node));
   if (node.kind === 'transformer') {
     const name = typeof node.meta?.name === 'string' ? node.meta.name : node.ref;
     const snMva = typeof node.meta?.snMva === 'number' ? node.meta.snMva : null;
@@ -746,24 +1006,27 @@ function NodeLabel({
     const ulv = typeof node.meta?.ulvKv === 'number' ? node.meta.ulvKv : null;
     const group = typeof node.meta?.vectorGroup === 'string' ? node.meta.vectorGroup : null;
     const uk = typeof node.meta?.ukPercent === 'number' ? node.meta.ukPercent : null;
-    const xText = node.x + sp(glyph.w / 2 + 12);
+    const xText = node.x + ctx.sp(glyph.w / 2 + 12);
+    const pokazTabliczke = ctx.widoczne('tabliczkaTransformatora');
     return (
-      <g {...textHalo(sp)}>
-        <text x={xText} y={node.y - sp(14)} textAnchor="start" fontSize={sp(TYPE_SCREEN_PX.primary + 1)} fontWeight={700} fill={STROKE_BASE}>
-          {name}
-        </text>
-        {snMva != null ? (
-          <text x={xText} y={node.y + sp(2)} textAnchor="start" fontSize={sp(TYPE_SCREEN_PX.primary)} fontWeight={600} fill={STROKE_BASE}>
+      <g {...textHalo(ctx)}>
+        {pokazNazwe ? (
+          <text x={xText} y={node.y - ctx.sp(14)} textAnchor="start" fontSize={ctx.sp(TYPE_SCREEN_PX.primary + 1)} fontWeight={700} fill={ctx.paleta.kreskaBazowa}>
+            {name}
+          </text>
+        ) : null}
+        {snMva != null && pokazTabliczke ? (
+          <text x={xText} y={node.y + ctx.sp(2)} textAnchor="start" fontSize={ctx.sp(TYPE_SCREEN_PX.primary)} fontWeight={600} fill={ctx.paleta.kreskaBazowa}>
             {snKvaLabel(snMva)}
           </text>
         ) : null}
-        {uhv != null && ulv != null ? (
-          <text x={xText} y={node.y + sp(16)} textAnchor="start" fontSize={sp(TYPE_SCREEN_PX.secondary)} fill={STROKE_MUTED}>
+        {uhv != null && ulv != null && pokazTabliczke ? (
+          <text x={xText} y={node.y + ctx.sp(16)} textAnchor="start" fontSize={ctx.sp(TYPE_SCREEN_PX.secondary)} fill={ctx.paleta.kreskaWygaszona}>
             {`${plNumber(uhv)}/${plNumber(ulv)} kV${group ? ` · ${group}` : ''}`}
           </text>
         ) : null}
-        {uk != null ? (
-          <text x={xText} y={node.y + sp(29)} textAnchor="start" fontSize={sp(TYPE_SCREEN_PX.secondary)} fill={STROKE_MUTED}>
+        {uk != null && pokazTabliczke ? (
+          <text x={xText} y={node.y + ctx.sp(29)} textAnchor="start" fontSize={ctx.sp(TYPE_SCREEN_PX.secondary)} fill={ctx.paleta.kreskaWygaszona}>
             {`uk = ${plNumber(uk)}%`}
           </text>
         ) : null}
@@ -778,41 +1041,51 @@ function NodeLabel({
       // nazwa NAD glifem wchodziła w pas etykiet źródeł lewej sekcji
       // (zmierzone na zrzucie multi-source: „coupler" × wartość PV).
       return (
-        <g {...textHalo(sp)}>
-          <text
-            x={node.x}
-            y={node.y + sp(glyph.h / 2 + 15)}
-            textAnchor="middle"
-            fontSize={sp(TYPE_SCREEN_PX.secondary + 1)}
-            fontWeight={600}
-            fill={STROKE_BASE}
-          >
-            {node.label}
-          </text>
+        <g {...textHalo(ctx)}>
+          {pokazNazwe ? (
+            <text
+              x={node.x}
+              y={node.y + ctx.sp(glyph.h / 2 + 15)}
+              textAnchor="middle"
+              fontSize={ctx.sp(TYPE_SCREEN_PX.secondary + 1)}
+              fontWeight={600}
+              fill={ctx.paleta.kreskaBazowa}
+            >
+              {node.label}
+            </text>
+          ) : null}
           {/* Słowo stanu = DRUGORZĘDNE potwierdzenie (muted) — stan niesie
-              SYMBOL (wypełnienie/przerwa/kolor glifu), werdykt pkt 14. */}
-          <text
-            x={node.x}
-            y={node.y + sp(glyph.h / 2 + 29)}
-            textAnchor="middle"
-            fontSize={sp(TYPE_SCREEN_PX.secondary - 1)}
-            fontWeight={600}
-            fill={open ? TONE_UNKNOWN : STROKE_MUTED}
-          >
-            {open ? 'OTWARTE' : 'ZAMKNIĘTE'}
-          </text>
+              SYMBOL (wypełnienie/przerwa/kolor glifu), werdykt pkt 14.
+              Dlatego samo słowo może zniknąć na niższych poziomach, a glif
+              stanu ZOSTAJE. */}
+          {ctx.widoczne('stanSlownyLacznika') ? (
+            <text
+              x={node.x}
+              y={node.y + ctx.sp(glyph.h / 2 + 29)}
+              textAnchor="middle"
+              fontSize={ctx.sp(TYPE_SCREEN_PX.secondary - 1)}
+              fontWeight={600}
+              fill={open ? ctx.paleta.tonOstrzegawczy : ctx.paleta.kreskaWygaszona}
+            >
+              {open ? 'OTWARTE' : 'ZAMKNIĘTE'}
+            </text>
+          ) : null}
         </g>
       );
     }
+    // Zero pustego znacznika, gdy etykieta nie jest rysowana: rysunek toru
+    // ma być BAJT W BAJT ten sam na każdym poziomie (pusta grupa różniłaby
+    // odcisk L0 od L2 i maskowałaby realną różnicę geometrii).
+    if (!pokazNazwe) return null;
     return (
       <text
-        {...textHalo(sp)}
-        x={node.x + sp(glyph.w / 2 + 9)}
-        y={node.y + sp(4)}
+        {...textHalo(ctx)}
+        x={node.x + ctx.sp(glyph.w / 2 + 9)}
+        y={node.y + ctx.sp(4)}
         textAnchor="start"
-        fontSize={sp(TYPE_SCREEN_PX.secondary + 1)}
+        fontSize={ctx.sp(TYPE_SCREEN_PX.secondary + 1)}
         fontWeight={600}
-        fill={STROKE_BASE}
+        fill={ctx.paleta.kreskaBazowa}
       >
         {node.label}
       </text>
@@ -823,14 +1096,16 @@ function NodeLabel({
     // glifem wchodziłaby w tor/kreskę szyny poniżej — zmierzona kolizja
     // PV1 × magistrala na zrzutach T5b-4).
     const [name, value] = node.label.split(' · ');
-    const xText = node.x + sp(glyph.w / 2 + 9);
+    const xText = node.x + ctx.sp(glyph.w / 2 + 9);
     return (
-      <g {...textHalo(sp)}>
-        <text x={xText} y={node.y - sp(2)} textAnchor="start" fontSize={sp(TYPE_SCREEN_PX.primary)} fontWeight={700} fill={STROKE_BASE}>
-          {name}
-        </text>
-        {value ? (
-          <text x={xText} y={node.y + sp(12)} textAnchor="start" fontSize={sp(TYPE_SCREEN_PX.secondary)} fill={STROKE_MUTED}>
+      <g {...textHalo(ctx)}>
+        {pokazNazwe ? (
+          <text x={xText} y={node.y - ctx.sp(2)} textAnchor="start" fontSize={ctx.sp(TYPE_SCREEN_PX.primary)} fontWeight={700} fill={ctx.paleta.kreskaBazowa}>
+            {name}
+          </text>
+        ) : null}
+        {value && ctx.widoczne('parametrZrodlaDer') ? (
+          <text x={xText} y={node.y + ctx.sp(12)} textAnchor="start" fontSize={ctx.sp(TYPE_SCREEN_PX.secondary)} fill={ctx.paleta.kreskaWygaszona}>
             {value.replace('.', ',')}
           </text>
         ) : null}
@@ -839,21 +1114,58 @@ function NodeLabel({
   }
   if (node.kind === 'load') {
     const [name, value] = node.label.split(' · ');
-    const yBase = node.y + sp(glyph.h / 2 + 16);
+    const yBase = node.y + ctx.sp(glyph.h / 2 + 16);
     return (
-      <g {...textHalo(sp)}>
-        <text x={node.x} y={yBase} textAnchor="middle" fontSize={sp(TYPE_SCREEN_PX.secondary + 1)} fontWeight={600} fill={STROKE_BASE}>
-          {name}
-        </text>
-        {value ? (
-          <text x={node.x} y={yBase + sp(14)} textAnchor="middle" fontSize={sp(TYPE_SCREEN_PX.secondary)} fill={STROKE_MUTED}>
+      <g {...textHalo(ctx)}>
+        {pokazNazwe ? (
+          <text x={node.x} y={yBase} textAnchor="middle" fontSize={ctx.sp(TYPE_SCREEN_PX.secondary + 1)} fontWeight={600} fill={ctx.paleta.kreskaBazowa}>
+            {name}
+          </text>
+        ) : null}
+        {value && ctx.widoczne('parametrOdbioru') ? (
+          <text x={node.x} y={yBase + ctx.sp(14)} textAnchor="middle" fontSize={ctx.sp(TYPE_SCREEN_PX.secondary)} fill={ctx.paleta.kreskaWygaszona}>
             {value.replace('.', ',')}
           </text>
         ) : null}
       </g>
     );
   }
-  return <g />;
+  return null;
+}
+
+/**
+ * KROPKA WERDYKTU — zastępcza, uproszczona postać nakładki na poziomie
+ * przeglądu (rejestr: `kropkaWerdyktu`). Nakładka NIE ZNIKA na przeglądzie
+ * (ukrycie wyniku byłoby kłamstwem) — zwija się do werdyktu bez liczby, bo
+ * liczba przy tej gęstości i tak jest nieczytelna. Ton pochodzi z GOTOWEGO
+ * werdyktu backendu; brak werdyktu = ton neutralny („jest wynik").
+ */
+function VerdictDot({
+  node,
+  ctx,
+  tone,
+  overlay,
+  status,
+}: {
+  readonly node: LvDomainSceneNode;
+  readonly ctx: KontekstRysunku;
+  readonly tone: string;
+  readonly overlay: LvDomainOverlayId;
+  readonly status?: string;
+}): JSX.Element {
+  const glyph = glyphScreenSize(node, ctx.fit);
+  return (
+    <circle
+      data-testid={`lv-domain-verdict-${overlay}-${node.ref}`}
+      data-swz-status={status}
+      cx={node.x}
+      cy={node.y + ctx.sp(glyph.h / 2 + 12)}
+      r={ctx.sp(4.5)}
+      fill={tone}
+      stroke={ctx.paleta.tlo}
+      strokeWidth={ctx.sp(1.2)}
+    />
+  );
 }
 
 /**
@@ -867,18 +1179,20 @@ function NodeLabel({
  */
 function SwzBadge({
   node,
-  fit,
-  sp,
+  ctx,
   entry,
 }: {
   readonly node: LvDomainSceneNode;
-  readonly fit: SceneFit;
-  readonly sp: (px: number) => number;
+  readonly ctx: KontekstRysunku;
   readonly entry: SwzOverlayEntry | undefined;
 }): JSX.Element | null {
   if (!entry) return null;
-  const glyph = glyphScreenSize(node, fit);
-  const tone = entry.status === 'spełnia' ? TONE_OK : entry.status === 'nie spełnia' ? TONE_FAIL : TONE_UNKNOWN;
+  const glyph = glyphScreenSize(node, ctx.fit);
+  const tone = entry.status === 'spełnia' ? ctx.paleta.tonOk : entry.status === 'nie spełnia' ? ctx.paleta.tonBledu : ctx.paleta.tonOstrzegawczy;
+  if (ctx.widoczne('kropkaWerdyktu')) {
+    return <VerdictDot node={node} ctx={ctx} tone={tone} overlay="swz" status={entry.status} />;
+  }
+  if (!ctx.widoczne('plakietkaWyniku')) return null;
   const symbol = entry.status === 'spełnia' ? '✓' : entry.status === 'nie spełnia' ? '✗' : '?';
   const tSuffix = entry.tWymaganyS != null ? `/${entry.tWymaganyS.toFixed(2)} s` : '';
   const text =
@@ -886,8 +1200,8 @@ function SwzBadge({
       ? `SWZ ${symbol} Ik₁min=${entry.ik1MinA.toFixed(0)} A · Ia wym.=${entry.iaWymaganeA.toFixed(0)} A`
       : `SWZ ${symbol} ${entry.ik1MinA.toFixed(0)} A${tSuffix}`;
   return (
-    <g {...textHalo(sp)} data-testid={`lv-domain-badge-swz-${node.ref}`} data-swz-status={entry.status}>
-      <text x={node.x} y={node.y + sp(glyph.h / 2 + 30)} textAnchor="middle" fontSize={sp(TYPE_SCREEN_PX.badge)} fill={tone} fontFamily="monospace">
+    <g {...textHalo(ctx)} data-testid={`lv-domain-badge-swz-${node.ref}`} data-swz-status={entry.status}>
+      <text x={node.x} y={node.y + ctx.sp(glyph.h / 2 + 30)} textAnchor="middle" fontSize={ctx.sp(TYPE_SCREEN_PX.badge)} fill={tone} fontFamily="monospace">
         {text}
       </text>
     </g>
@@ -898,14 +1212,15 @@ function SwzBadge({
  *  z `RawOverlayPayload.elements[ref].metrics`, zero przeliczeń. */
 function ResultBadge({
   node,
-  fit,
-  sp,
+  ctx,
+  withGlyphOffset,
   overlay,
   payload,
 }: {
   readonly node: LvDomainSceneNode;
-  readonly fit: SceneFit | null;
-  readonly sp: (px: number) => number;
+  readonly ctx: KontekstRysunku;
+  /** Odsunięcie od DOLNEJ krawędzi glifu (aparat) vs od kreski szyny. */
+  readonly withGlyphOffset: boolean;
   readonly overlay: 'loads' | 'shortCircuit';
   readonly payload: RawOverlayPayload | null;
 }): JSX.Element | null {
@@ -913,10 +1228,15 @@ function ResultBadge({
   const metricCode = overlay === 'shortCircuit' ? 'IK_3F_A' : 'I_A';
   const metric = getMetric(payload, node.ref, metricCode);
   if (!metric || metric.value == null) return null;
-  const yOffset = fit ? glyphScreenSize(node, fit).h / 2 + 30 : 26;
+  if (ctx.widoczne('kropkaWerdyktu')) {
+    const tone = tonWerdyktuSeverity(payload.elements[node.ref]?.severity, ctx.paleta);
+    return <VerdictDot node={node} ctx={ctx} tone={tone} overlay={overlay} />;
+  }
+  if (!ctx.widoczne('plakietkaWyniku')) return null;
+  const yOffset = withGlyphOffset ? glyphScreenSize(node, ctx.fit).h / 2 + 30 : 26;
   return (
-    <g {...textHalo(sp)} data-testid={`lv-domain-badge-${overlay}-${node.ref}`} data-run-id={payload.run_id}>
-      <text x={node.x} y={node.y + sp(yOffset)} textAnchor="middle" fontSize={sp(TYPE_SCREEN_PX.badge)} fill={STROKE_BASE} fontFamily="monospace">
+    <g {...textHalo(ctx)} data-testid={`lv-domain-badge-${overlay}-${node.ref}`} data-run-id={payload.run_id}>
+      <text x={node.x} y={node.y + ctx.sp(yOffset)} textAnchor="middle" fontSize={ctx.sp(TYPE_SCREEN_PX.badge)} fill={ctx.paleta.kreskaBazowa} fontFamily="monospace">
         {formatMetric(metric)}
       </text>
     </g>
@@ -925,28 +1245,34 @@ function ResultBadge({
 
 function VoltageDropBadge({
   node,
-  sp,
+  ctx,
   row,
 }: {
   readonly node: LvDomainSceneNode;
-  readonly sp: (px: number) => number;
+  readonly ctx: KontekstRysunku;
   readonly row: LvDomainVoltageProfileRow | undefined;
 }): JSX.Element | null {
   if (!row || row.delta_pct == null) return null;
+  if (ctx.widoczne('kropkaWerdyktu')) {
+    // Profil napięcia nie niesie werdyktu (sam ΔU to liczba, nie ocena) —
+    // kropka mówi WYŁĄCZNIE „ten punkt ma wynik", w tonie neutralnym.
+    return <VerdictDot node={node} ctx={ctx} tone={ctx.paleta.kreskaBazowa} overlay="voltageDrop" />;
+  }
+  if (!ctx.widoczne('plakietkaWyniku')) return null;
   return (
-    <g {...textHalo(sp)} data-testid={`lv-domain-badge-voltageDrop-${node.ref}`}>
-      <text x={node.x} y={node.y - sp(20)} textAnchor="middle" fontSize={sp(TYPE_SCREEN_PX.badge)} fill={STROKE_BASE} fontFamily="monospace">
+    <g {...textHalo(ctx)} data-testid={`lv-domain-badge-voltageDrop-${node.ref}`}>
+      <text x={node.x} y={node.y - ctx.sp(20)} textAnchor="middle" fontSize={ctx.sp(TYPE_SCREEN_PX.badge)} fill={ctx.paleta.kreskaBazowa} fontFamily="monospace">
         {`ΔU ${row.delta_pct.toFixed(2)}%`}
       </text>
     </g>
   );
 }
 
-function overlayButtonStyle(active: boolean): CSSProperties {
+function overlayButtonStyle(active: boolean, paleta: PaletaNn): CSSProperties {
   return {
-    background: active ? '#1D3A2E' : 'transparent',
-    color: active ? '#5FE0A0' : STROKE_MUTED,
-    border: `1px solid ${active ? '#5FE0A0' : STROKE_MUTED}`,
+    background: active ? paleta.przyciskAktywnyTlo : 'transparent',
+    color: active ? paleta.tonOk : paleta.kreskaWygaszona,
+    border: `1px solid ${active ? paleta.tonOk : paleta.kreskaWygaszona}`,
     borderRadius: 4,
     padding: '2px 8px',
     fontSize: 11,

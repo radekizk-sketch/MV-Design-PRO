@@ -22,6 +22,36 @@ export interface LvDomainBus {
   readonly voltage_kv: number;
   readonly voltage_level_id: string;
   readonly hops_from_root: number;
+  /**
+   * ENERGIZACJA I WYSPY — kontrakt uzgodniony z warstwą backendu domeny nN.
+   * Pola OPCJONALNE do czasu wystawienia ich przez `build_lv_domain_view`:
+   * ich BRAK w danych oznacza „nie wiadomo" i kanwa NIE rysuje wtedy ŻADNEGO
+   * oznaczenia stanu zasilania (uczciwy brak, nie domysł — renderer nie ma
+   * prawa wyprowadzać energizacji z topologii, to należy do warstwy, która
+   * zna stan łączników i źródeł).
+   *
+   * `energized` — czy szyna jest pod napięciem w bieżącym stanie ruchowym.
+   * `supply_refs` — referencje źródeł, z których napięcie pochodzi (TR/DER).
+   * `der_only` — napięcie WYŁĄCZNIE ze źródeł rozproszonych (praca wyspowa).
+   */
+  readonly energized?: boolean;
+  readonly supply_refs?: readonly string[];
+  readonly der_only?: boolean;
+}
+
+/**
+ * Wyspa zasilania — spójny elektrycznie obszar domeny nN wraz ze swoim
+ * stanem zasilania. Ten sam fakt co pola na szynie, podany zbiorczo; kanwa
+ * czyta szynę, a wyspę traktuje jako uzupełnienie dla szyn bez własnych pól
+ * (JEDNO rozstrzygnięcie w `composeLvDomainScene::stanZasilaniaSzyn`, żeby
+ * dwa źródła prawdy nie rozjechały się na danych brzegowych).
+ */
+export interface LvDomainIsland {
+  readonly island_ref: string;
+  readonly bus_refs: readonly string[];
+  readonly energized: boolean;
+  readonly supply_refs: readonly string[];
+  readonly der_only: boolean;
 }
 
 export interface LvDomainBranch {
@@ -93,6 +123,9 @@ export interface LvDomainGraphView {
   readonly loads: readonly LvDomainLoad[];
   readonly sub_switchboards: readonly LvDomainSubSwitchboard[];
   readonly boundary_links: readonly LvDomainBoundaryLink[];
+  /** Wyspy zasilania domeny — OPCJONALNE do czasu wystawienia przez backend
+   *  (patrz `LvDomainBus.energized`). Brak = brak oznaczeń na kanwie. */
+  readonly islands?: readonly LvDomainIsland[];
   readonly missing_data: readonly string[];
   readonly reason_pl?: string;
 }
