@@ -5,7 +5,7 @@ P0.6, G-06).
 Warstwa APLIKACJI: łączy ekstrakcję trasy + solver pętli zwarcia
 (``application.analyses.fault_loop``) z werdyktem SWZ (``.werdykt`` —
 interpretacja). Import prywatnych helperów ``fault_loop.service``
-(``_find_station``, ``_station_transformer``, ``_transformer_loop_impedance``,
+(``_find_station``, ``resolve_station_transformer``, ``_transformer_loop_impedance``,
 ``_upstream_thevenin_lv_component``, ``_system_for_station``) jest ŚWIADOMY —
 SWZ i widok pętli zwarcia dzielą DOKŁADNIE TĘ SAMĄ fizykę transformatora i
 upstream Thevenina (impedancja u źródła nN jest identyczna niezależnie od
@@ -29,10 +29,10 @@ from application.analyses.fault_loop.service import (
     _NON_TN_SYSTEMS,
     _SYSTEM_MAP,
     _find_station,
-    _station_transformer,
     _system_for_station,
     _transformer_loop_impedance,
     _upstream_thevenin_lv_component,
+    resolve_station_transformer,
 )
 from enm.models import EnergyNetworkModel, FuseBranch, SwitchBranch
 from network_model.catalog.lv_mccb_settings_iec60947_2 import resolwuj_nastawy_mccb
@@ -124,7 +124,12 @@ def _aparat_from_branch(
 
 
 def build_swz_view(
-    enm: EnergyNetworkModel, station_ref: str, bus_ref: str, breaker_ref: str
+    enm: EnergyNetworkModel,
+    station_ref: str,
+    bus_ref: str,
+    breaker_ref: str,
+    *,
+    transformer_ref: str | None = None,
 ) -> dict[str, Any]:
     """Werdykt SWZ dla obwodu: punkt zwarcia ``bus_ref`` chroniony aparatem
     ``breaker_ref`` (SwitchBranch/FuseBranch na trasie odpływu).
@@ -132,6 +137,14 @@ def build_swz_view(
     Zwraca ``status`` (OK / brak danych / nie dotyczy), ``swz`` (werdykt
     3-stanowy z dowodem liczbowym) i ``fault_loop_min_scenario`` (pełny ślad
     solvera pętli zwarcia, scenariusz MIN — R skorygowane temperaturowo).
+
+    ``transformer_ref`` (karta B-02, §0.1/§0.2) wskazuje transformator stacji,
+    OD KTÓREGO liczy się trasa i impedancja pętli — wymagane dla stacji
+    wielotransformatorowej, gdzie odpływ sekcji 2 musi być liczony od TR2, a nie
+    od „pierwszego transformatora stacji" (przez sprzęgło albo wcale). Bez
+    wskazania: domyślny transformator stacji
+    (``resolve_station_transformer`` — pierwszy po ``ref_id``), czyli
+    dotychczasowe zachowanie dla stacji jednotransformatorowej.
     """
     station = _find_station(enm, station_ref)
     if station is None:
@@ -163,9 +176,9 @@ def build_swz_view(
             "missing_data": [],
         }
 
-    trafo = _station_transformer(enm, station)
+    trafo, transformer_missing = resolve_station_transformer(enm, station, transformer_ref)
     if trafo is None:
-        return {**context, "status": "brak danych", "missing_data": ["transformer"]}
+        return {**context, "status": "brak danych", "missing_data": transformer_missing}
 
     z_tr, missing = _transformer_loop_impedance(trafo)
     if z_tr is None:
@@ -228,6 +241,10 @@ def build_swz_view(
     return {
         **context,
         "status": "OK",
+        # Transformator FAKTYCZNIE użyty do trasy i impedancji pętli — jawnie w
+        # odpowiedzi, żeby przy stacji wielotransformatorowej werdykt SWZ dało
+        # się przypisać do konkretnego transformatora (audytowalność, karta B-02).
+        "transformer_ref": trafo.ref_id,
         "swz": swz.to_dict(),
         "fault_loop_min_scenario": loop_result.to_dict(),
         "missing_data": [],

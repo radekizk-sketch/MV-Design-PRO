@@ -18,6 +18,8 @@ from enm.models import (
     Transformer,
 )
 
+from tests.application.analyses.lv_domain.fixtury_stacji_nn import zbuduj_stacje_nn
+
 
 def _enm(
     *,
@@ -187,6 +189,55 @@ def test_swz_determinism_two_runs_identical() -> None:
     a = build_swz_view(enm, "stn", "b1", "ap1")
     b = build_swz_view(enm, "stn", "b1", "ap1")
     assert a == b
+
+
+class TestSwzPerTransformatorKartaB02:
+    """Karta B-02 §0.1/§0.2: SWZ liczona OD WSKAZANEGO transformatora stacji.
+
+    Bez tego stacja 2×TR dostawała werdykt sekcji 2 liczony impedancją TR1 —
+    przez sprzęgło (zawyżone Z, zaniżone Ik) albo wcale (sprzęgło otwarte:
+    „brak trasy"), czyli werdykt ochrony przeciwporażeniowej z niewłaściwej
+    fizyki.
+    """
+
+    def test_odplyw_sekcji_b_bez_wskazania_transformatora_nie_ma_trasy(self) -> None:
+        """Sprzęgło OTWARTE: domyślny transformator (TR1) nie ma trasy do b2 —
+        uczciwy brak, nie policzony byle jak."""
+        enm = zbuduj_stacje_nn(transformatory=2, sprzeglo="open")
+        view = build_swz_view(enm, "stn", "b2", "ap_b")
+        assert view["status"] == "brak danych"
+        assert "route" in view["missing_data"]
+
+    def test_odplyw_sekcji_b_liczony_od_wskazanego_tr2(self) -> None:
+        enm = zbuduj_stacje_nn(transformatory=2, sprzeglo="open")
+        view = build_swz_view(enm, "stn", "b2", "ap_b", transformer_ref="tr2")
+        assert view["status"] == "OK"
+        assert view["transformer_ref"] == "tr2"
+        assert view["swz"]["status"] in {"spełnia", "nie spełnia"}
+
+    def test_wskazanie_slabszego_transformatora_zmienia_dowod_liczbowy(self) -> None:
+        """Sprzęgło ZAMKNIĘTE: obie trasy istnieją, więc różnicę robi WYŁĄCZNIE
+        impedancja wskazanego transformatora (TR2 = 0,25 MVA wobec TR1 = 0,63
+        MVA) — dowód, że parametr nie jest samą etykietą."""
+        enm = zbuduj_stacje_nn(transformatory=2, sprzeglo="closed", moc_tr2_mva=0.25)
+        od_tr1 = build_swz_view(enm, "stn", "b2", "ap_b", transformer_ref="tr1")
+        od_tr2 = build_swz_view(enm, "stn", "b2", "ap_b", transformer_ref="tr2")
+        assert od_tr1["status"] == "OK"
+        assert od_tr2["status"] == "OK"
+        assert od_tr2["swz"]["ik1_min_a"] < od_tr1["swz"]["ik1_min_a"]
+
+    def test_transformator_spoza_stacji_jest_odrzucony(self) -> None:
+        enm = zbuduj_stacje_nn(transformatory=2, sprzeglo="open")
+        enm.substations[0].transformer_refs = ["tr1"]
+        view = build_swz_view(enm, "stn", "b2", "ap_b", transformer_ref="tr2")
+        assert view["status"] == "brak danych"
+        assert view["missing_data"] == ["transformer_not_in_station"]
+
+    def test_nieznany_transformator_jest_odrzucony(self) -> None:
+        enm = zbuduj_stacje_nn(transformatory=2, sprzeglo="open")
+        view = build_swz_view(enm, "stn", "b2", "ap_b", transformer_ref="nie-ma-takiego")
+        assert view["status"] == "brak danych"
+        assert view["missing_data"] == ["transformer"]
 
 
 class TestSwzInstalledMccbKartaD2:

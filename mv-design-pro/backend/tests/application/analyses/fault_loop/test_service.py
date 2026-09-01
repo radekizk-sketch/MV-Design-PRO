@@ -6,6 +6,7 @@ from __future__ import annotations
 from application.analyses.fault_loop.service import (
     build_fault_loop_view_at_point,
     build_feeder_fault_loop_view,
+    build_feeder_fault_loop_view_for_transformer,
     build_station_fault_loop_view,
 )
 from enm.models import (
@@ -18,6 +19,8 @@ from enm.models import (
     Substation,
     Transformer,
 )
+
+from tests.application.analyses.lv_domain.fixtury_stacji_nn import zbuduj_stacje_nn
 
 
 def _base_enm(branches: list, extra_buses: list[str]) -> EnergyNetworkModel:
@@ -271,6 +274,96 @@ class TestFarthestPointPerFeeder:
         assert by_bus["f"]["status"] == "OK"
         # najgorszy punkt liczy się TYLKO spośród policzalnych
         assert feeder["worst_point_bus_ref"] in {"f", "leafB"}
+
+
+class TestStacjaWielotransformatorowa:
+    """Karta B-02 §0.1: odpływ liczy się od SWOJEGO transformatora.
+
+    Iloczyn cech: {sprzęgło otwarte, zamknięte, wspólna szyna} × {odpływy w obu
+    sekcjach} — bo defekt („pierwszy transformator stacji dla wszystkich
+    odpływów") ujawnia się inaczej w każdej z tych kombinacji: przy sprzęgle
+    otwartym GUBIŁ odpływy drugiej sekcji, przy zamkniętym liczył je od złego
+    transformatora, a przy wspólnej szynie w ogóle nie ma „własnej sekcji".
+    """
+
+    def test_kazdy_transformator_liczy_wlasne_odplywy(self) -> None:
+        enm = zbuduj_stacje_nn(transformatory=2, sprzeglo="closed")
+        tr1 = build_feeder_fault_loop_view_for_transformer(enm, "stn", "tr1")
+        tr2 = build_feeder_fault_loop_view_for_transformer(enm, "stn", "tr2")
+        assert [f["feeder_root_branch_ref"] for f in tr1["feeders"]] == ["ap_a"]
+        assert [f["feeder_root_branch_ref"] for f in tr2["feeders"]] == ["ap_b"]
+        assert tr1["nn_bus_ref"] == "nn_a"
+        assert tr2["nn_bus_ref"] == "nn_b"
+
+    def test_widok_stacji_scala_odplywy_obu_transformatorow_bez_duplikatow(self) -> None:
+        enm = zbuduj_stacje_nn(transformatory=2, sprzeglo="closed")
+        view = build_feeder_fault_loop_view(enm, "stn")
+        roots = [f["feeder_root_branch_ref"] for f in view["feeders"]]
+        assert roots == ["ap_a", "ap_b"], "posortowane i bez powtórzeń"
+        punkty = [p["bus_ref"] for f in view["feeders"] for p in f["points"]]
+        assert sorted(punkty) == ["a1", "a2", "b1", "b2"]
+
+    def test_sprzeglo_otwarte_nie_gubi_odplywow_drugiej_sekcji(self) -> None:
+        enm = zbuduj_stacje_nn(transformatory=2, sprzeglo="open")
+        view = build_feeder_fault_loop_view(enm, "stn")
+        assert [f["feeder_root_branch_ref"] for f in view["feeders"]] == ["ap_a", "ap_b"]
+        assert all(f["supply"] == "jednostronne" for f in view["feeders"])
+
+    def test_sprzeglo_zamkniete_znakuje_zasilanie_wielostronne(self) -> None:
+        enm = zbuduj_stacje_nn(transformatory=2, sprzeglo="closed")
+        view = build_feeder_fault_loop_view(enm, "stn")
+        for feeder in view["feeders"]:
+            assert feeder["supply"] == "wielostronne"
+            assert "zachowawcze" in feeder["supply_assumption_pl"]
+
+    def test_slabszy_transformator_daje_mniejszy_prad_zwarcia_w_swojej_sekcji(self) -> None:
+        """Dowód, że użyto impedancji WŁAŚCIWEGO transformatora — nie samego
+        przypisania etykiety."""
+        enm = zbuduj_stacje_nn(transformatory=2, sprzeglo="closed", moc_tr2_mva=0.25)
+        tr1 = build_feeder_fault_loop_view_for_transformer(enm, "stn", "tr1")
+        tr2 = build_feeder_fault_loop_view_for_transformer(enm, "stn", "tr2")
+        z_a = tr1["feeders"][0]["points"][0]["fault_loop"]["z_loop_ohm"]["magnitude"]
+        z_b = tr2["feeders"][0]["points"][0]["fault_loop"]["z_loop_ohm"]["magnitude"]
+        assert z_b > z_a
+
+    def test_wspolna_szyna_nn_przypisuje_odplywy_deterministycznie(self) -> None:
+        enm = zbuduj_stacje_nn(transformatory=2, wspolna_szyna_nn=True)
+        tr1 = build_feeder_fault_loop_view_for_transformer(enm, "stn", "tr1")
+        tr2 = build_feeder_fault_loop_view_for_transformer(enm, "stn", "tr2")
+        assert [f["feeder_root_branch_ref"] for f in tr1["feeders"]] == ["ap_a", "ap_b"]
+        assert tr2["feeders"] == []
+        assert all(f["supply"] == "wielostronne" for f in tr1["feeders"])
+
+    def test_transformator_spoza_stacji_jest_odrzucony_uczciwie(self) -> None:
+        enm = zbuduj_stacje_nn(transformatory=2, sprzeglo="open")
+        enm.substations[0].transformer_refs = ["tr1"]
+        view = build_feeder_fault_loop_view_for_transformer(enm, "stn", "tr2")
+        assert view["status"] == "brak danych"
+        assert view["missing_data"] == ["transformer_not_in_station"]
+
+    def test_brak_danych_jednego_transformatora_nie_ukrywa_drugiego(self) -> None:
+        """TR2 bez grupy połączeń (brak lokalnej drogi uziemienia nN) — jego
+        pętla jest nieobliczalna, ale odpływy TR1 zostają w odpowiedzi, a brak
+        jest nazwany z prefiksem transformatora."""
+        enm = zbuduj_stacje_nn(transformatory=2, sprzeglo="open")
+        enm.transformers[1].vector_group = None
+        view = build_feeder_fault_loop_view(enm, "stn")
+        assert view["status"] == "OK"
+        assert [f["feeder_root_branch_ref"] for f in view["feeders"]] == ["ap_a"]
+        assert view["missing_data"] == ["tr2:vector_group"]
+        assert view["transformer_ref"] == "tr1"
+
+    def test_stacja_jednotransformatorowa_ma_niezmieniony_ksztalt(self) -> None:
+        """Zgodność kształtu dla dotychczasowych konsumentów: te same klucze i
+        te same wartości nagłówkowe co przed rozbiciem per transformator."""
+        enm = zbuduj_stacje_nn()
+        view = build_feeder_fault_loop_view(enm, "stn")
+        per_tr = build_feeder_fault_loop_view_for_transformer(enm, "stn", "tr1")
+        assert view["status"] == "OK"
+        assert view["transformer_ref"] == "tr1"
+        assert view["nn_bus_ref"] == "nn_a"
+        assert view["missing_data"] == []
+        assert view["feeders"] == per_tr["feeders"]
 
 
 class TestDeterminism:

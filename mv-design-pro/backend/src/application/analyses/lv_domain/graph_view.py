@@ -27,6 +27,14 @@ Rozstrzygnięcie graniczne (przejście do INNEJ stacji):
   sprzęgłem sekcji szyn nN → WIELOŹRÓDŁOWOŚĆ jawna tej samej domeny (żadnego
   boundary_link — oba buses należą do korzenia od startu).
 
+ENERGIZACJA (karta B-02, §0.3) jest DRUGĄ, ortogonalną warstwą tego samego
+grafu: skoro domena obejmuje również szyny odcięte otwartym łącznikiem, to
+każda szyna niesie dodatkowo ``energized`` / ``supply_refs`` / ``der_only``, a
+odpowiedź — listę ``islands`` (spójne składowe po zamkniętych gałęziach +
+transformatorach). Liczy to ``energization.build_energization_view`` (czysta
+topologia stanów łączników, zero fizyki), a definicja „źródła energizacji" jest
+TA SAMA co w regule walidatora E060 (``enm/validator.py::_check_nn_topology``).
+
 Zero fabrykacji: UPS/ATS jako osobny typ elementu NIE ISTNIEJE dziś w ENM
 (zmierzone: `grep -rn "class.*UPS" enm/models.py` i `grep -rn "class.*ATS"
 enm/models.py` — zero trafień w obu)
@@ -45,6 +53,8 @@ from application.analyses.fault_loop.service import (
 )
 from enm.models import Branch, Bus, EnergyNetworkModel, Substation, Transformer
 from network_model.core.voltage_factor import LV_BAND_LIMIT_KV
+
+from .energization import BusEnergization, build_energization_view
 
 # Precyzja dyskretyzacji identyczna z frontendem (`sld/v3/electrical/
 # terminalGraph.ts::voltageLevelIdForKv`, `VOLTAGE_LEVEL_PRECISION`) — JEDNO
@@ -96,13 +106,17 @@ def _is_lv(bus_by_ref: dict[str, Bus], bus_ref: str) -> bool:
     return bus is not None and bus.voltage_kv <= LV_BAND_LIMIT_KV
 
 
-def _bus_dict(bus: Bus, depth: int) -> dict[str, Any]:
+def _bus_dict(bus: Bus, depth: int, state: BusEnergization) -> dict[str, Any]:
     return {
         "ref_id": bus.ref_id,
         "name": bus.name,
         "voltage_kv": bus.voltage_kv,
         "voltage_level_id": voltage_level_id(bus.voltage_kv),
         "hops_from_root": depth,
+        # Stan łączeniowy CHWILI (karta B-02, §0.3) — ortogonalny do topologii
+        # domeny powyżej: domena obejmuje też szyny odcięte otwartym łącznikiem,
+        # a te trzy pola mówią, które z nich są w tej chwili pod napięciem i skąd.
+        **state.to_dict(),
     }
 
 
@@ -280,16 +294,19 @@ def build_lv_domain_view(enm: EnergyNetworkModel, station_ref: str) -> dict[str,
     # deterministyczne sortowanie po branch_ref dla stabilnego payloadu.
     boundary_links_sorted = sorted(boundary_links, key=lambda link: link.branch_ref)
 
+    energization = build_energization_view(enm, domain_bus_refs)
+
     return {
         "status": "OK",
         "station_ref": station_ref,
         "station_name": root.name,
         "root_bus_refs": sorted(seed_bus_refs),
         "buses": [
-            _bus_dict(bus_by_ref[ref], bus_depth.get(ref, 0))
+            _bus_dict(bus_by_ref[ref], bus_depth.get(ref, 0), energization.bus_states[ref])
             for ref in sorted(domain_bus_refs)
             if ref in bus_by_ref
         ],
+        "islands": [island.to_dict() for island in energization.islands],
         "branches": [
             _branch_dict(b) for b in sorted(domain_branches.values(), key=lambda x: x.ref_id)
         ],

@@ -18,6 +18,18 @@ pętli L-PE/L-PEN i upstream Thevenin sieci SN liczą się IDENTYCZNIE w KAŻDYM
 punkcie nN — u źródła (szyna nN transformatora, trasa zerodługościowa),
 w dowolnym wskazanym punkcie i w najdalszym punkcie każdego odpływu. Nie ma
 drugiej, uproszczonej wersji tej samej fizyki dla „widoku u źródła".
+
+STACJA WIELOTRANSFORMATOROWA (karta B-02 slice B, §0.1). Do 2026-09-01 KAŻDY
+widok pętli zwarcia brał ``_station_transformer`` — PIERWSZY transformator
+stacji — i liczył od niego pętlę dla WSZYSTKICH odpływów. Przy stacji 2×TR ze
+sprzęgłem ZAMKNIĘTYM odpływy sekcji 2 dostawały impedancję TR1 powiększoną o
+trasę przez sprzęgło (zawyżone Z_loop, zaniżone Ik — werdykt SWZ liczony na
+niewłaściwej trasie), a przy sprzęgle OTWARTYM znikały z widoku zupełnie
+(BFS od szyny nN TR1 ich nie dosięgał). Naprawa jest KLASOWA, nie punktowa:
+``assign_station_lv_buses`` przypisuje KAŻDĄ szynę nN stacji do transformatora
+NAJBLIŻSZEGO po zamkniętych gałęziach (remis → mniejszy ``ref_id``), a
+``build_feeder_fault_loop_view_for_transformer`` liczy odpływy WYŁĄCZNIE tego
+transformatora, którego szyna nN jest ich korzeniem.
 """
 
 from __future__ import annotations
@@ -51,6 +63,7 @@ from network_model.solvers.fault_loop_iec60364 import (
 from network_model.solvers.short_circuit_core import build_zbus
 
 from .route import (
+    LvBusPath,
     RouteExtractionError,
     bfs_paths_from,
     group_bus_refs_by_feeder,
@@ -80,6 +93,22 @@ _NON_TN_SYSTEMS = {"TT", "IT"}
 # wykluczone (fail-closed), nie zgadywane.
 _LV_LOCAL_GROUND_CONNECTIONS = {ZeroSeqConnection.LV_SHUNT_GROUND}
 
+#: Zasilanie odpływu — WYŁĄCZNIE stwierdzenie topologiczne (z ilu transformatorów
+#: stacji szyny odpływu są osiągalne po ZAMKNIĘTYCH gałęziach), zero fizyki.
+SUPPLY_ONE_SIDED = "jednostronne"
+SUPPLY_MULTI_SIDED = "wielostronne"
+
+#: Założenie zachowawcze dla odpływu osiągalnego z ≥2 transformatorów (§0.1 karty
+#: B-02): impedancji równoległych NIE składamy w warstwie aplikacji (byłoby to
+#: naruszenie NOT-A-SOLVER — nowa fizyka poza solverem), więc pętla liczy się od
+#: transformatora WŁASNEJ sekcji. Wynik jest po bezpiecznej stronie: pojedynczy
+#: transformator daje MNIEJSZY prąd zwarcia niż dwa pracujące równolegle.
+SUPPLY_ASSUMPTION_MULTI_PL = (
+    "pętla zwarcia liczona od transformatora własnej sekcji (założenie "
+    "zachowawcze: sprzęgło otwarte / jeden transformator w pracy — mniejszy "
+    "prąd zwarcia = warunek dobru SWZ)"
+)
+
 
 def _find_station(enm: EnergyNetworkModel, station_ref: str) -> Substation | None:
     # Dopasowanie po ref_id (kanoniczny odnośnik domenowy) LUB id (UUID elementu),
@@ -90,9 +119,101 @@ def _find_station(enm: EnergyNetworkModel, station_ref: str) -> Substation | Non
     )
 
 
+def station_transformers(enm: EnergyNetworkModel, station: Substation) -> list[Transformer]:
+    """WSZYSTKIE transformatory stacji, posortowane po ``ref_id`` (determinizm).
+
+    Kolejność po ``ref_id``, a nie po pozycji w ``enm.transformers``, bo to ta
+    sama reguła, którą stosuje kotwica SN domeny nN
+    (``lv_domain.upstream_equivalent``) — dwie różne kolejności w dwóch
+    modułach dawały przy stacji 2×TR snapshot upstream jednego transformatora
+    i pętlę zwarcia drugiego (dwie prawdy o „transformatorze stacji").
+    """
+    refs = set(station.transformer_refs or ())
+    return sorted((t for t in enm.transformers if t.ref_id in refs), key=lambda t: t.ref_id)
+
+
+def resolve_station_transformer(
+    enm: EnergyNetworkModel, station: Substation, transformer_ref: str | None
+) -> tuple[Transformer | None, list[str]]:
+    """Wybór transformatora stacji — JEDNO źródło prawdy dla wszystkich widoków nN.
+
+    ``transformer_ref`` wskazany jawnie: musi istnieć w modelu (inaczej
+    ``["transformer"]``) i należeć do tej stacji (inaczej
+    ``["transformer_not_in_station"]``). Bez wskazania: PIERWSZY transformator
+    stacji posortowany po ``ref_id`` — determinizm, ten sam wybór co
+    ``station_transformers``.
+    """
+    if transformer_ref is not None:
+        trafo = next((t for t in enm.transformers if t.ref_id == transformer_ref), None)
+        if trafo is None:
+            return None, ["transformer"]
+        if trafo.ref_id not in set(station.transformer_refs or ()):
+            return None, ["transformer_not_in_station"]
+        return trafo, []
+    transformers = station_transformers(enm, station)
+    if not transformers:
+        return None, ["transformer"]
+    return transformers[0], []
+
+
 def _station_transformer(enm: EnergyNetworkModel, station: Substation) -> Transformer | None:
-    refs = set(station.transformer_refs or [])
-    return next((t for t in enm.transformers if t.ref_id in refs), None)
+    """Domyślny transformator stacji (pierwszy po ``ref_id``) — patrz
+    ``resolve_station_transformer``."""
+    return resolve_station_transformer(enm, station, None)[0]
+
+
+@dataclass(frozen=True)
+class LvBusAssignment:
+    """Przypisanie szyn nN stacji do transformatorów — CZYSTA TOPOLOGIA.
+
+    ``paths_by_transformer`` — trasy BFS (po gałęziach ``status="closed"``) od
+    szyny nN każdego transformatora stacji.
+    ``owner_by_bus`` — transformator, od którego szyna jest osiągalna
+    NAJMNIEJSZĄ liczbą hopów (remis → mniejszy ``ref_id``). Trasa od
+    właściciela NIGDY nie przechodzi przez szynę nN innego transformatora: gdyby
+    przechodziła, tamten transformator dosięgałby szyny hopami mniej i to on
+    byłby właścicielem. Dzięki temu każdy odpływ ma DOKŁADNIE jednego
+    właściciela — bez podwójnego liczenia tych samych punktów.
+    ``supplying_by_bus`` — WSZYSTKIE transformatory stacji, z których szyna jest
+    osiągalna (posortowane); ≥2 pozycje = zasilanie wielostronne.
+    """
+
+    paths_by_transformer: dict[str, dict[str, LvBusPath]]
+    owner_by_bus: dict[str, str]
+    supplying_by_bus: dict[str, tuple[str, ...]]
+
+
+def assign_station_lv_buses(
+    enm: EnergyNetworkModel, transformers: list[Transformer]
+) -> LvBusAssignment:
+    """Przypisz szyny nN do transformatorów stacji (BFS wieloźródłowy, deterministyczny)."""
+    paths_by_transformer: dict[str, dict[str, LvBusPath]] = {}
+    for trafo in transformers:
+        try:
+            paths_by_transformer[trafo.ref_id] = bfs_paths_from(enm, trafo.lv_bus_ref)
+        except RouteExtractionError:
+            # Szyna nN transformatora nie istnieje w modelu — uczciwy brak tras,
+            # nie wyjątek na całym widoku stacji (pozostałe TR liczą się dalej).
+            paths_by_transformer[trafo.ref_id] = {}
+
+    owner_by_bus: dict[str, str] = {}
+    supplying: dict[str, list[str]] = {}
+    for transformer_ref in sorted(paths_by_transformer):
+        for bus_ref, path in paths_by_transformer[transformer_ref].items():
+            supplying.setdefault(bus_ref, []).append(transformer_ref)
+            current_owner = owner_by_bus.get(bus_ref)
+            if current_owner is None:
+                owner_by_bus[bus_ref] = transformer_ref
+                continue
+            current_hops = paths_by_transformer[current_owner][bus_ref].hop_count
+            if (path.hop_count, transformer_ref) < (current_hops, current_owner):
+                owner_by_bus[bus_ref] = transformer_ref
+
+    return LvBusAssignment(
+        paths_by_transformer=paths_by_transformer,
+        owner_by_bus=owner_by_bus,
+        supplying_by_bus={bus: tuple(sorted(refs)) for bus, refs in supplying.items()},
+    )
 
 
 @dataclass(frozen=True)
@@ -463,17 +584,24 @@ class FeederPoints:
     worst_point_bus_ref: str | None
 
 
-def build_feeder_fault_loop_view(enm: EnergyNetworkModel, station_ref: str) -> dict[str, Any]:
-    """Pętla zwarcia we WSZYSTKICH punktach nN, pogrupowana per odpływ (§0.2).
+def build_feeder_fault_loop_view_for_transformer(
+    enm: EnergyNetworkModel, station_ref: str, transformer_ref: str
+) -> dict[str, Any]:
+    """Pętla zwarcia odpływów JEDNEGO transformatora stacji (karta B-02, §0.1).
 
-    Kontrakt danych kompletny (wszystkie punkty obwodu w odpowiedzi, karta
-    P0.6) — heatmapa/UI nN STUDIO przyjdzie w P0.9, tu tylko dane. Dla
-    każdego odpływu (pierwsza gałąź od szyny nN transformatora) zwraca
-    KAŻDY osiągalny punkt (``LvPointResult``, ``status`` OK albo uczciwy brak
-    per punkt — brak danych na jednym kablu NIE ukrywa pozostałych punktów
-    tego odpływu) oraz ``worst_point_bus_ref`` — punkt o NAJWIĘKSZEJ
-    impedancji pętli spośród punktów policzalnych tego odpływu (koniec
-    najdłuższej elektrycznie gałęzi topologicznej).
+    Odpływ należy do tego transformatora, od którego szyny nN zaczyna się jego
+    trasa (``assign_station_lv_buses`` — najbliższy transformator po zamkniętych
+    gałęziach). Odpływ osiągalny z ≥2 transformatorów stacji (sprzęgło
+    ZAMKNIĘTE) dostaje ``supply="wielostronne"`` i JAWNE
+    ``supply_assumption_pl``: pętla liczy się od transformatora WŁASNEJ sekcji,
+    bo składania impedancji równoległych nie wolno robić w warstwie aplikacji
+    (NOT-A-SOLVER) — a wynik jednego transformatora jest po bezpiecznej stronie
+    kryterium SWZ. Odpływ zasilany z jednego transformatora:
+    ``supply="jednostronne"``, ``supply_assumption_pl=None``.
+
+    Kształt odpowiedzi jest DOKŁADNIE taki jak
+    ``build_feeder_fault_loop_view`` dla stacji jednotransformatorowej (te same
+    klucze) — plus dwa pola ``supply*`` na każdym odpływie.
     """
     station = _find_station(enm, station_ref)
     if station is None:
@@ -503,9 +631,14 @@ def build_feeder_fault_loop_view(enm: EnergyNetworkModel, station_ref: str) -> d
             "feeders": [],
         }
 
-    trafo = _station_transformer(enm, station)
+    trafo, transformer_missing = resolve_station_transformer(enm, station, transformer_ref)
     if trafo is None:
-        return {**context, "status": "brak danych", "missing_data": ["transformer"], "feeders": []}
+        return {
+            **context,
+            "status": "brak danych",
+            "missing_data": transformer_missing,
+            "feeders": [],
+        }
 
     z_tr, missing = _transformer_loop_impedance(trafo)
     if z_tr is None:
@@ -523,17 +656,25 @@ def build_feeder_fault_loop_view(enm: EnergyNetworkModel, station_ref: str) -> d
     net_type, protection = _SYSTEM_MAP.get(system, _SYSTEM_MAP[_DEFAULT_SYSTEM])
     u_phase_v = trafo.ulv_kv * 1000.0 / math.sqrt(3.0)
 
-    paths = bfs_paths_from(enm, trafo.lv_bus_ref)
-    # Grupowanie per odpływ = pierwsza gałąź trasy od szyny TR (§0.2 karty),
-    # REUSE `route.group_bus_refs_by_feeder` (karta ARKUSZ-NN, 2026-08-14).
-    feeder_bus_refs = group_bus_refs_by_feeder(paths)
+    assignment = assign_station_lv_buses(enm, station_transformers(enm, station))
+    paths = assignment.paths_by_transformer.get(trafo.ref_id, {})
+    # Grupowanie per odpływ = pierwsza gałąź trasy od szyny TR (§0.2 karty P0.6),
+    # REUSE `route.group_bus_refs_by_feeder` (karta ARKUSZ-NN, 2026-08-14),
+    # ZAWĘŻONE do szyn, których właścicielem jest TEN transformator (karta B-02).
+    owned_paths = {
+        bus_ref: path
+        for bus_ref, path in paths.items()
+        if assignment.owner_by_bus.get(bus_ref) == trafo.ref_id
+    }
+    feeder_bus_refs = group_bus_refs_by_feeder(owned_paths)
 
     feeders: list[dict[str, Any]] = []
     for root_branch_ref in sorted(feeder_bus_refs):
         points: list[LvPointResult] = []
         worst_bus_ref: str | None = None
         worst_magnitude = -1.0
-        for bus_ref in sorted(feeder_bus_refs[root_branch_ref]):
+        bus_refs_of_feeder = sorted(feeder_bus_refs[root_branch_ref])
+        for bus_ref in bus_refs_of_feeder:
             path = paths[bus_ref]
             try:
                 segments = route_segments(path)
@@ -572,6 +713,11 @@ def build_feeder_fault_loop_view(enm: EnergyNetworkModel, station_ref: str) -> d
                 worst_magnitude = magnitude
                 worst_bus_ref = bus_ref
 
+        # Osiągalność jest własnością SPÓJNEJ SKŁADOWEJ zamkniętych gałęzi, więc
+        # wszystkie szyny jednego odpływu mają tę samą listę zasilających
+        # transformatorów — bierzemy ją z dowolnej (pierwszej) szyny odpływu.
+        supplying = assignment.supplying_by_bus.get(bus_refs_of_feeder[0], (trafo.ref_id,))
+        multi_sided = len(supplying) >= 2
         feeders.append(
             {
                 "feeder_root_branch_ref": root_branch_ref,
@@ -586,6 +732,8 @@ def build_feeder_fault_loop_view(enm: EnergyNetworkModel, station_ref: str) -> d
                     for p in points
                 ],
                 "worst_point_bus_ref": worst_bus_ref,
+                "supply": SUPPLY_MULTI_SIDED if multi_sided else SUPPLY_ONE_SIDED,
+                "supply_assumption_pl": SUPPLY_ASSUMPTION_MULTI_PL if multi_sided else None,
             }
         )
 
@@ -598,4 +746,102 @@ def build_feeder_fault_loop_view(enm: EnergyNetworkModel, station_ref: str) -> d
         "upstream_impedance_ohm": {"r": upstream.r_ohm, "x": upstream.x_ohm},
         "feeders": feeders,
         "missing_data": [],
+    }
+
+
+def build_feeder_fault_loop_view(enm: EnergyNetworkModel, station_ref: str) -> dict[str, Any]:
+    """Pętla zwarcia we WSZYSTKICH punktach nN stacji, pogrupowana per odpływ.
+
+    Kontrakt danych kompletny (wszystkie punkty obwodu w odpowiedzi, karta
+    P0.6) — dla każdego odpływu (pierwsza gałąź od szyny nN transformatora)
+    zwraca KAŻDY osiągalny punkt (``LvPointResult``, ``status`` OK albo uczciwy
+    brak per punkt — brak danych na jednym kablu NIE ukrywa pozostałych punktów
+    tego odpływu) oraz ``worst_point_bus_ref`` — punkt o NAJWIĘKSZEJ impedancji
+    pętli spośród punktów policzalnych tego odpływu.
+
+    Widok jest PĘTLĄ PO WSZYSTKICH TRANSFORMATORACH stacji (karta B-02, §0.1):
+    każdy odpływ liczy się od SWOJEGO transformatora, a odpowiedź scala odpływy
+    wszystkich transformatorów posortowane po ``feeder_root_branch_ref``. Dla
+    stacji jednotransformatorowej wynik jest identyczny co do wartości z
+    poprzednim (jednotransformatorowym) widokiem — plus pola ``supply*``.
+    Pola nagłówkowe (``transformer_ref``, ``nn_bus_ref``,
+    ``transformer_impedance_ohm``, ``upstream_impedance_ohm``) opisują PIERWSZY
+    policzalny transformator stacji; konsument potrzebujący rozbicia per
+    transformator woła ``build_feeder_fault_loop_view_for_transformer``
+    (tak robi ``lv_domain.projection_v1``).
+    """
+    station = _find_station(enm, station_ref)
+    if station is None:
+        return {
+            "status": "brak danych",
+            "missing_data": ["station"],
+            "station_ref": station_ref,
+            "feeders": [],
+        }
+
+    system = _system_for_station(station)
+    context: dict[str, Any] = {
+        "station_ref": station_ref,
+        "station_name": station.name,
+        "network_system": system,
+    }
+
+    if system in _NON_TN_SYSTEMS:
+        return {
+            **context,
+            "status": "nie dotyczy",
+            "reason_pl": (
+                f"Układ {system}: ochrona przeciwporażeniowa nie opiera się na samoczynnym "
+                "wyłączeniu z pętli zwarcia TN (IEC 60364-4-41). Pętla TN nie jest liczona."
+            ),
+            "missing_data": [],
+            "feeders": [],
+        }
+
+    transformers = station_transformers(enm, station)
+    if not transformers:
+        return {**context, "status": "brak danych", "missing_data": ["transformer"], "feeders": []}
+
+    per_transformer = [
+        build_feeder_fault_loop_view_for_transformer(enm, station_ref, trafo.ref_id)
+        for trafo in transformers
+    ]
+    computable = [view for view in per_transformer if view.get("status") == "OK"]
+    missing_data = sorted(
+        {
+            f"{trafo.ref_id}:{item}"
+            for trafo, view in zip(transformers, per_transformer, strict=True)
+            if view.get("status") != "OK"
+            for item in view.get("missing_data", [])
+        }
+    )
+
+    if not computable:
+        # Wszystkie transformatory nieobliczalne — status i braki pierwszego z
+        # nich (stacja 1×TR: DOKŁADNIE poprzednie zachowanie, bo prefiks braku
+        # dokłada się dopiero przy stacji wielotransformatorowej).
+        first = per_transformer[0]
+        if len(transformers) == 1:
+            return {**context, **{k: first[k] for k in ("status", "missing_data")}, "feeders": []}
+        return {
+            **context,
+            "status": "brak danych",
+            "missing_data": missing_data,
+            "feeders": [],
+        }
+
+    head = computable[0]
+    feeders = sorted(
+        (feeder for view in computable for feeder in view["feeders"]),
+        key=lambda row: str(row["feeder_root_branch_ref"]),
+    )
+    return {
+        **context,
+        "status": "OK",
+        "transformer_ref": head["transformer_ref"],
+        "nn_bus_ref": head["nn_bus_ref"],
+        "transformer_impedance_ohm": head["transformer_impedance_ohm"],
+        "upstream_impedance_ohm": head["upstream_impedance_ohm"],
+        "feeders": feeders,
+        "missing_data": missing_data,
     }

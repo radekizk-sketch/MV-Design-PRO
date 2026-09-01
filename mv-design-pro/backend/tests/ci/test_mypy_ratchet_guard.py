@@ -73,33 +73,41 @@ def test_guard_jest_wpiety_do_workflow_ci() -> None:
 
 
 @pytest.mark.parametrize(
-    ("odchylka", "oczekiwany_kod"),
+    ("prog_zastepczy", "odchylka", "oczekiwany_kod"),
     [
-        (0, 0),  # stan zmierzony — przechodzi
-        (+1, 1),  # dług urósł o jeden — zapadka odcina
-        (+46, 1),  # dług urósł znacząco
-        (-1, 1),  # dług zmalał — zapadka żąda utrwalenia poprawy
-        (-1000, 1),  # wszystko naprawione, ale próg nieobniżony
+        (None, 0, 0),  # stan zmierzony — przechodzi
+        (None, +1, 1),  # dług urósł o jeden — zapadka odcina
+        (None, +46, 1),  # dług urósł znacząco
+        (5, -1, 1),  # dług zmalał — zapadka żąda utrwalenia poprawy
+        (1000, -1000, 1),  # wszystko naprawione, ale próg nieobniżony
     ],
 )
 def test_prog_odcina_w_obie_strony(
-    monkeypatch: pytest.MonkeyPatch, odchylka: int, oczekiwany_kod: int
+    monkeypatch: pytest.MonkeyPatch,
+    prog_zastepczy: int | None,
+    odchylka: int,
+    oczekiwany_kod: int,
 ) -> None:
-    # PROG SYNTETYCZNY, nie żywy `modul.BASELINE_ERRORS` — badana własność to
-    # „zapadka odcina w obie strony", nie konkretna wartość pomiaru (ta jest
-    # przypięta w teście powyżej). 2026-09-01 (przejęcie po B-02): żywy próg
-    # osiągnął podłogę 0 (mniej błędów niż zero nie istnieje), więc
-    # `max(0, modul.BASELINE_ERRORS + odchylka)` dawał 0 dla ODCHYLKI -1 I -1000
-    # jednocześnie — obie gałęzie „dług zmalał" zapadały się do bledy==próg==0,
-    # czyli fałszywego `main()==0` zamiast oczekiwanego `1`. To NIE była regresja
-    # guarda (jego logika zawsze poprawnie odróżnia bledy<próg), tylko przestarzałe
-    # założenie „próg > 0" wpisane w parametry TEGO testu. Naprawa u źródła: próg
-    # syntetyczny, niezależny od żywego stanu repo — własność „odcina w obie
-    # strony" ma się trzymać zawsze, także gdy żywy próg wynosi 0.
+    """Zapadka odcina W OBIE STRONY — wzrost i spadek długu.
+
+    Kierunek WZROSTU liczymy WZGLĘDEM progu z guarda (`prog_zastepczy=None`), a nie
+    względem liczby przepisanej tutaj: badana własność to „odcina", nie konkretna
+    wartość pomiaru (ta jest przypięta w teście powyżej), więc obniżenie progu nie
+    wymusza edycji w dwóch miejscach.
+
+    Kierunek SPADKU wymaga progu ZASTĘPCZEGO i nie jest to obejście, tylko warunek
+    istnienia przypadku: przy rzeczywistym progu 0 nie ma czego ująć
+    (`max(0, 0-1) == 0`), więc odchyłka ujemna liczona od progu repo degenerowała
+    się do przypadku „równo" i test padał na własnej arytmetyce — defekt zastany
+    (wprowadzony przy obniżeniu progu do 0/0), naprawiony 2026-09-01 razem z kartą
+    B-02. Podstawiając próg 5 przy pomiarze 4 (i 1000 przy 0) ćwiczymy dokładnie tę
+    gałąź guarda, która żąda utrwalenia poprawy — niezależnie od tego, jaki jest
+    dziś próg repozytorium.
+    """
     modul = _zaladuj_guard()
-    prog_syntetyczny = 500
-    monkeypatch.setattr(modul, "BASELINE_ERRORS", prog_syntetyczny)
-    bledy = max(0, prog_syntetyczny + odchylka)
+    if prog_zastepczy is not None:
+        monkeypatch.setattr(modul, "BASELINE_ERRORS", prog_zastepczy)
+    bledy = max(0, modul.BASELINE_ERRORS + odchylka)
     monkeypatch.setattr(
         modul,
         "uruchom_mypy",

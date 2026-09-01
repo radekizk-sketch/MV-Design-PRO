@@ -43,10 +43,13 @@ from uuid import NAMESPACE_URL, uuid5
 from application.analyses.fault_loop.service import (
     _find_station as find_station,  # reeksport publiczny — reużyty też w graph_view.py
 )
-from application.analyses.fault_loop.service import compute_upstream_hv_thevenin
+from application.analyses.fault_loop.service import (
+    compute_upstream_hv_thevenin,
+    resolve_station_transformer,
+)
 from enm.hash import compute_enm_hash, compute_switching_snapshot_hash
 from enm.mapping import build_zero_sequence_zbus, map_enm_to_network_graph
-from enm.models import EnergyNetworkModel, Substation, Transformer
+from enm.models import EnergyNetworkModel
 from network_model.core.voltage_factor import c_for_node
 from network_model.solvers.short_circuit_core import (
     ShortCircuitType,
@@ -65,30 +68,6 @@ Scenario = Literal["MAX", "MIN"]
 # (case_id, stacja, transformator, scenariusz, stan łączeniowy, hash modelu)
 # dają IDENTYCZNY `calculation_run_id`, bez potrzeby zapisu w bazie.
 _NAMESPACE_LV_DOMAIN_SNAPSHOT = uuid5(NAMESPACE_URL, "mv-design-pro:lv-domain:upstream-equivalent")
-
-
-def _resolve_transformer(
-    enm: EnergyNetworkModel, station: Substation, transformer_ref: str | None
-) -> tuple[Transformer | None, list[str]]:
-    """Wybierz transformator stacji — jawny `transformer_ref`, albo domyślnie
-    PIERWSZY posortowany po `ref_id` rosnąco (determinizm, ten sam wzorzec co
-    frontend `findLvIncomerEdgeForStationTransformers`,
-    `sld/v3/electrical/viewModel.ts`) — istotne dla stacji WIELOŹRÓDŁOWYCH
-    (2×TR+sprzęgło, karta T5b §0 pkt 4).
-    """
-    if transformer_ref is not None:
-        trafo = next((t for t in enm.transformers if t.ref_id == transformer_ref), None)
-        if trafo is None:
-            return None, ["transformer"]
-        if trafo.ref_id not in set(station.transformer_refs or ()):
-            return None, ["transformer_not_in_station"]
-        return trafo, []
-
-    for ref in sorted(set(station.transformer_refs or ())):
-        trafo = next((t for t in enm.transformers if t.ref_id == ref), None)
-        if trafo is not None:
-            return trafo, []
-    return None, ["transformer"]
 
 
 def _hv_zero_sequence_ohm(
@@ -152,7 +131,13 @@ def build_upstream_equivalent_snapshot(
             "case_id": case_id,
         }
 
-    trafo, missing = _resolve_transformer(enm, station, transformer_ref)
+    # Wybór transformatora stacji z JEDNEGO źródła prawdy dzielonego z widokami
+    # pętli zwarcia (`fault_loop.service.resolve_station_transformer`): jawny
+    # `transformer_ref`, a domyślnie PIERWSZY posortowany po `ref_id` — istotne
+    # dla stacji WIELOŹRÓDŁOWYCH (2×TR+sprzęgło, karta T5b §0 pkt 4). Druga,
+    # własna kopia tej reguły dawała ryzyko rozjechania się „transformatora
+    # stacji" między kotwicą SN a pętlą zwarcia (karta B-02).
+    trafo, missing = resolve_station_transformer(enm, station, transformer_ref)
     if trafo is None:
         return {
             "status": "brak danych",

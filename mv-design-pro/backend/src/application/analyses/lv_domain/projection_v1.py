@@ -10,6 +10,21 @@
 Warstwa jest orkiestracją aplikacyjną. Nie zawiera fizyki i nie interpretuje
 surowych wyników solvera. Dzięki temu portal nie może złożyć ekranu z kilku
 odczytów pochodzących z różnych rewizji modelu.
+
+ATOMOWOŚĆ — CO DOKŁADNIE OBIECUJEMY (karta B-02, §0.5). Projekcja jest atomowa
+względem JEDNEGO obiektu ``EnergyNetworkModel``, pobranego RAZ na początku
+obsługi żądania (``_get_enm(case_id)`` w końcówce ``api/enm.py``) i przekazanego
+tutaj jako argument. Wszystkie składowe odpowiedzi — graf domeny, energizacja,
+kotwice SN, nakładka wyniku, SWZ per transformator — liczą się z TEGO SAMEGO
+obiektu w pamięci, a ``model_snapshot.model_hash`` jest odciskiem dokładnie tego
+obiektu. Zapis modelu współbieżny z budową projekcji (``set_enm`` podmienia wpis
+w magazynie na NOWY obiekt) NIE zmienia tej odpowiedzi: nowy odcisk pojawi się
+dopiero przy następnym odczycie. Obietnica jest PRZYPIĘTA TESTEM
+(``tests/application/analyses/lv_domain/test_projection_v1.py::
+TestAtomowoscProjekcji``), bo deklaracja bez testu jest fałszywą pewnością.
+Czego ta obietnica NIE obejmuje: mutacji tego samego obiektu W MIEJSCU przez
+inny wątek — magazyn ENM nie oddaje kopii, więc atomowość stoi na tym, że każdy
+zapis modelu tworzy nowy obiekt (``enm/store.py::set_enm``).
 """
 
 from __future__ import annotations
@@ -18,7 +33,12 @@ import hashlib
 import json
 from typing import Any
 
-from application.analyses.fault_loop.service import build_feeder_fault_loop_view
+from application.analyses.fault_loop.service import (
+    _find_station,
+    _system_for_station,
+    build_feeder_fault_loop_view_for_transformer,
+    station_transformers,
+)
 from application.analyses.swz.service import build_swz_view
 from application.analyses.voltage_profile_view import build_voltage_profile_view
 from application.result_freshness import evaluate_result_freshness
@@ -33,7 +53,15 @@ from .graph_view import build_lv_domain_view
 from .upstream_equivalent import Scenario, build_upstream_equivalent_snapshot
 
 LV_DOMAIN_PROJECTION_CONTRACT = "LvDomainProjectionV1"
-LV_DOMAIN_PROJECTION_VERSION = "1.0.0"
+#: 2.0.0 (karta B-02): ZMIANA NIEZGODNA WSTECZ kształtu ładunku — `swz_snapshot`
+#: niesie listę `transformers[]` zamiast pojedynczej pary `transformer_ref`/
+#: `nn_bus_ref` z płaską listą `feeders`, a szyny grafu niosą stan energizacji.
+#: Wersja rośnie MAJOR, bo ten sam identyfikator na dwóch niezgodnych kształtach
+#: byłby cichą pułapką dla każdego klienta, który go sprawdza (frontend
+#: `projectionApi.ts::isLvDomainProjectionV1` przypina wersję wprost). Nazwa
+#: kontraktu i ścieżka końcówki (`/projection/v1`) bez zmian — to identyfikator
+#: ZASOBU, wersja opisuje ładunek.
+LV_DOMAIN_PROJECTION_VERSION = "2.0.0"
 
 
 class LvDomainProjectionRunMismatch(ValueError):
@@ -151,14 +179,31 @@ def _result_snapshot(
     }
 
 
-def _swz_snapshot(enm: EnergyNetworkModel, station_ref: str) -> dict[str, Any]:
-    feeder_view = build_feeder_fault_loop_view(enm, station_ref)
-    feeder_rows: list[dict[str, Any]] = []
-    for feeder in feeder_view.get("feeders", []):
+def _swz_feeder_rows(
+    enm: EnergyNetworkModel,
+    station_ref: str,
+    transformer_ref: str,
+    feeders: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Odpływy JEDNEGO transformatora + werdykt SWZ najgorszego punktu każdego.
+
+    SWZ liczy się OD TEGO SAMEGO transformatora, od którego policzono pętlę
+    zwarcia odpływu (``transformer_ref`` przekazany jawnie do
+    ``build_swz_view``) — inaczej stacja 2×TR dostawałaby werdykt SWZ sekcji 2
+    liczony impedancją TR1 (defekt klasy naprawiany kartą B-02).
+    """
+    rows: list[dict[str, Any]] = []
+    for feeder in feeders:
         breaker_ref = str(feeder.get("feeder_root_branch_ref", ""))
         worst_bus_ref = feeder.get("worst_point_bus_ref")
         if worst_bus_ref:
-            swz = build_swz_view(enm, station_ref, str(worst_bus_ref), breaker_ref)
+            swz = build_swz_view(
+                enm,
+                station_ref,
+                str(worst_bus_ref),
+                breaker_ref,
+                transformer_ref=transformer_ref,
+            )
         else:
             swz = {
                 "status": "brak danych",
@@ -168,23 +213,88 @@ def _swz_snapshot(enm: EnergyNetworkModel, station_ref: str) -> dict[str, Any]:
                 "missing_data": ["worst_point_bus_ref"],
                 "reason_pl": "Brak policzalnego najgorszego punktu odpływu.",
             }
-        feeder_rows.append(
+        rows.append(
             {
                 "feeder_root_branch_ref": breaker_ref,
                 "worst_point_bus_ref": worst_bus_ref,
                 "points": feeder.get("points", []),
+                "supply": feeder.get("supply"),
+                "supply_assumption_pl": feeder.get("supply_assumption_pl"),
                 "swz": swz,
             }
         )
+    return sorted(rows, key=lambda row: row["feeder_root_branch_ref"])
+
+
+def _swz_snapshot(enm: EnergyNetworkModel, station_ref: str) -> dict[str, Any]:
+    """Pętle zwarcia i werdykty SWZ stacji — ROZBITE PER TRANSFORMATOR (§0.2).
+
+    Kontrakt v1 niesie listę ``transformers`` zamiast pojedynczej pary
+    ``transformer_ref``/``nn_bus_ref``: stacja z dwoma transformatorami ma dwa
+    komplety odpływów liczone każdy od SWOJEGO transformatora, więc jedna para
+    pól nagłówkowych była nie tylko niepełna, ale wprost myląca (odpływy sekcji
+    2 podpisane transformatorem sekcji 1). Transformator, którego nie da się
+    policzyć, ZOSTAJE w liście z własnym ``status``/``missing_data`` — cicha
+    nieobecność byłaby kłamstwem przez pominięcie.
+    """
+    station = _find_station(enm, station_ref)
+    if station is None:
+        return {
+            "status": "brak danych",
+            "reason_pl": None,
+            "missing_data": ["station"],
+            "network_system": None,
+            "transformers": [],
+        }
+
+    transformers = station_transformers(enm, station)
+    if not transformers:
+        return {
+            "status": "brak danych",
+            "reason_pl": None,
+            "missing_data": ["transformer"],
+            "network_system": _system_for_station(station),
+            "transformers": [],
+        }
+
+    rows: list[dict[str, Any]] = []
+    missing_data: list[str] = []
+    statuses: list[str] = []
+    reason_pl: str | None = None
+    network_system: str | None = None
+    for trafo in transformers:
+        view = build_feeder_fault_loop_view_for_transformer(enm, station_ref, trafo.ref_id)
+        status = str(view.get("status", "brak danych"))
+        statuses.append(status)
+        network_system = view.get("network_system")
+        if reason_pl is None and view.get("reason_pl"):
+            reason_pl = str(view["reason_pl"])
+        missing_data.extend(f"{trafo.ref_id}:{item}" for item in view.get("missing_data", []))
+        rows.append(
+            {
+                "transformer_ref": trafo.ref_id,
+                "nn_bus_ref": trafo.lv_bus_ref,
+                "status": status,
+                "missing_data": [str(item) for item in view.get("missing_data", [])],
+                "feeders": _swz_feeder_rows(
+                    enm, station_ref, trafo.ref_id, list(view.get("feeders", []))
+                ),
+            }
+        )
+
+    if "OK" in statuses:
+        status = "OK"
+    elif all(item == "nie dotyczy" for item in statuses):
+        status = "nie dotyczy"
+    else:
+        status = "brak danych"
 
     return {
-        "status": feeder_view.get("status", "brak danych"),
-        "reason_pl": feeder_view.get("reason_pl"),
-        "missing_data": feeder_view.get("missing_data", []),
-        "network_system": feeder_view.get("network_system"),
-        "transformer_ref": feeder_view.get("transformer_ref"),
-        "nn_bus_ref": feeder_view.get("nn_bus_ref"),
-        "feeders": sorted(feeder_rows, key=lambda row: row["feeder_root_branch_ref"]),
+        "status": status,
+        "reason_pl": reason_pl,
+        "missing_data": sorted(set(missing_data)),
+        "network_system": network_system,
+        "transformers": rows,
     }
 
 
@@ -199,10 +309,20 @@ def build_lv_domain_projection_v1(
     """Zbuduj jeden niepodzielny snapshot domeny nN i jej prezentacji."""
     graph = build_lv_domain_view(enm, station_ref)
     model_hash = compute_enm_hash(enm)
+    # TOŻSAMOŚĆ ODPOWIEDZI (karta B-02, §0.4): klient porównuje te pola z tym, o
+    # co PROSIŁ — bez nich nie da się odróżnić odpowiedzi na własne żądanie od
+    # odpowiedzi z pamięci podręcznej dla innej stacji/scenariusza/przebiegu.
+    # `run_snapshot_hash` jest odciskiem modelu ZAPISANYM PRZY BIEGU (nie
+    # bieżącym) — porównanie z `model_hash` daje klientowi tę samą informację,
+    # co status świeżości, bez ufania interpretacji serwera.
     model_snapshot = {
         "revision": enm.header.revision,
         "model_hash": model_hash,
         "operating_state_id": compute_switching_snapshot_hash(enm),
+        "case_id": case_id,
+        "station_ref": station_ref,
+        "scenario_id": scenario,
+        "run_snapshot_hash": run.snapshot_hash if run is not None else None,
     }
 
     upstream_equivalents: list[dict[str, Any]] = []
