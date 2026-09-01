@@ -53,15 +53,15 @@ export function projectionIdentityMismatch(
   request: LvDomainProjectionRequest,
 ): string | null {
   const scenario = request.scenario ?? 'MAX';
-  const snapshot = projection.model_snapshot;
-  if (snapshot.case_id !== request.caseId || projection.case_id !== request.caseId) {
-    return `odpowiedź dotyczy przypadku „${snapshot.case_id}", żądano „${request.caseId}"`;
+  const tozsamosc = projection.model_snapshot;
+  if (tozsamosc.case_id !== request.caseId || projection.case_id !== request.caseId) {
+    return `odpowiedź dotyczy przypadku „${tozsamosc.case_id}", żądano „${request.caseId}"`;
   }
-  if (snapshot.station_ref !== request.stationRef || projection.station_ref !== request.stationRef) {
-    return `odpowiedź dotyczy stacji „${snapshot.station_ref}", żądano „${request.stationRef}"`;
+  if (tozsamosc.station_ref !== request.stationRef || projection.station_ref !== request.stationRef) {
+    return `odpowiedź dotyczy stacji „${tozsamosc.station_ref}", żądano „${request.stationRef}"`;
   }
-  if (snapshot.scenario_id !== scenario || projection.scenario_id !== scenario) {
-    return `odpowiedź dotyczy scenariusza ${snapshot.scenario_id}, żądano ${scenario}`;
+  if (tozsamosc.scenario_id !== scenario || projection.scenario_id !== scenario) {
+    return `odpowiedź dotyczy scenariusza ${tozsamosc.scenario_id}, żądano ${scenario}`;
   }
   return null;
 }
