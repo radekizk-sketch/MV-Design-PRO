@@ -15,11 +15,12 @@
  *  - sekcja A z normalnym odpływem w pełnym torze (aparat → zacisk → kabel →
  *    odbiór), żeby stany brzegowe miały tło porównawcze.
  *
- * SPÓJNOŚĆ DANYCH (pin w `__tests__/energizacjaWyspy.test.ts`): pola na
- * szynach i wyspy opisują TEN SAM fakt, a podział na wyspy pokrywa się z
- * podziałem na komponenty elektryczne policzone z grafu
- * (`computeElectricalComponents`) — fixtura, w której te trzy źródła by się
- * rozjechały, dowodziłaby czegoś, czego w sieci nie ma.
+ * SPÓJNOŚĆ DANYCH (pin w `__tests__/energizacjaWyspy.test.tsx`): pola na
+ * szynach i wyspy opisują TEN SAM fakt (kształt DOKŁADNIE taki, jaki backend
+ * `lv_domain/energization.py` zwraca dla tej topologii — każda szyna w
+ * dokładnie jednej wyspie, stan szyny = stan jej wyspy); frontend tych faktów
+ * NIE liczy. Fixtura, w której te dwa źródła by się rozjechały, dowodziłaby
+ * czegoś, czego w sieci nie ma.
  */
 import type { LvDomainGraphView, UpstreamEquivalentSnapshot } from '../types';
 import { buildLvDomainProjectionFixture } from './projectionFixture';

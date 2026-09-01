@@ -54,6 +54,7 @@ import type { ThemeMode } from '../../../../ui2/theme/themeMode';
 import {
   composeLvDomainScene,
   domainDescriptorLabel,
+  plFixed,
   type LvDomainSceneEdge,
   type LvDomainSceneEdgeKind,
   type LvDomainSceneNode,
@@ -309,9 +310,20 @@ export function LvDomainView(props: LvDomainViewProps): JSX.Element {
   const paleta = useMemo(() => paletaNnDlaMotywu(theme), [theme]);
   const scene = useMemo(() => composeLvDomainScene(view, upstreamEquivalents), [view, upstreamEquivalents]);
   const domainDescriptor = useMemo(() => domainDescriptorLabel(view), [view]);
+  // Kontrakt 2.0.0: odpływy ROZBITE PER TRANSFORMATOR (`swz_snapshot.
+  // transformers[]`) — każdy liczony od transformatora WŁASNEJ sekcji;
+  // do plakietek i panelu odpływu wchodzą wszystkie, z tożsamością
+  // transformatora, od którego je policzono.
+  const swzFeeders = useMemo(
+    () =>
+      projection.swz_snapshot.transformers.flatMap((transformer) =>
+        transformer.feeders.map((feeder) => ({ transformerRef: transformer.transformer_ref, feeder })),
+      ),
+    [projection.swz_snapshot.transformers],
+  );
   const swzByFeederRef = useMemo(
-    () => buildSwzOverlayFromResponses(projection.swz_snapshot.feeders.map((feeder) => feeder.swz)),
-    [projection.swz_snapshot.feeders],
+    () => buildSwzOverlayFromResponses(swzFeeders.map(({ feeder }) => feeder.swz)),
+    [swzFeeders],
   );
   const resultOverlayPayload = useMemo<RawOverlayPayload | null>(() => {
     const result = projection.result_snapshot;
@@ -328,8 +340,8 @@ export function LvDomainView(props: LvDomainViewProps): JSX.Element {
     return Object.fromEntries(rows.map((row) => [row.bus_id, row]));
   }, [projection.result_snapshot.voltage_profile]);
   const feederByRef = useMemo(
-    () => new Map(projection.swz_snapshot.feeders.map((feeder) => [feeder.feeder_root_branch_ref, feeder] as const)),
-    [projection.swz_snapshot.feeders],
+    () => new Map(swzFeeders.map((entry) => [entry.feeder.feeder_root_branch_ref, entry] as const)),
+    [swzFeeders],
   );
   const selectedFeeder = selectedFeederRef ? feederByRef.get(selectedFeederRef) ?? null : null;
 
@@ -564,7 +576,8 @@ export function LvDomainView(props: LvDomainViewProps): JSX.Element {
       </svg>
       {selectedFeeder ? (
         <LvFeederPanel
-          feeder={selectedFeeder}
+          feeder={selectedFeeder.feeder}
+          transformerRef={selectedFeeder.transformerRef}
           projection={projection}
           paleta={paleta}
           resultOverlayPayload={resultOverlayPayload}
@@ -577,12 +590,16 @@ export function LvDomainView(props: LvDomainViewProps): JSX.Element {
 
 function LvFeederPanel({
   feeder,
+  transformerRef,
   projection,
   paleta,
   resultOverlayPayload,
   onClose,
 }: {
   readonly feeder: LvDomainSwzFeederV1;
+  /** Transformator, od którego backend policzył pętlę i SWZ tego odpływu
+   *  (kontrakt 2.0.0 — per transformator, nie „pierwszy transformator stacji"). */
+  readonly transformerRef: string;
   readonly projection: LvDomainProjectionV1;
   readonly paleta: PaletaNn;
   readonly resultOverlayPayload: RawOverlayPayload | null;
@@ -659,6 +676,18 @@ function LvFeederPanel({
 
       <section style={{ marginTop: 16 }}>
         <div style={{ color: paleta.kreskaBazowa, fontWeight: 600 }}>Pętla zwarcia i SWZ</div>
+        <div
+          data-testid="lv-domain-feeder-transformer"
+          data-transformer-ref={transformerRef}
+          style={{ color: paleta.kreskaWygaszona, marginTop: 4 }}
+        >
+          {`liczone od transformatora: ${transformerRef} · zasilanie: ${feeder.supply ?? 'brak danych'}`}
+        </div>
+        {feeder.supply_assumption_pl ? (
+          <div data-testid="lv-domain-feeder-supply-assumption" style={{ color: paleta.tonOstrzegawczy, marginTop: 4 }}>
+            {feeder.supply_assumption_pl}
+          </div>
+        ) : null}
         <div style={{ color: paleta.kreskaWygaszona, marginTop: 4 }}>
           {`punkt najgorszy: ${feeder.worst_point_bus_ref ?? 'brak'} · punkty: ${feeder.points.length}`}
         </div>
@@ -1194,7 +1223,7 @@ function SwzBadge({
   }
   if (!ctx.widoczne('plakietkaWyniku')) return null;
   const symbol = entry.status === 'spełnia' ? '✓' : entry.status === 'nie spełnia' ? '✗' : '?';
-  const tSuffix = entry.tWymaganyS != null ? `/${entry.tWymaganyS.toFixed(2)} s` : '';
+  const tSuffix = entry.tWymaganyS != null ? `/${plFixed(entry.tWymaganyS, 2)} s` : '';
   const text =
     entry.status === 'nie spełnia' && entry.iaWymaganeA != null
       ? `SWZ ${symbol} Ik₁min=${entry.ik1MinA.toFixed(0)} A · Ia wym.=${entry.iaWymaganeA.toFixed(0)} A`
@@ -1262,7 +1291,7 @@ function VoltageDropBadge({
   return (
     <g {...textHalo(ctx)} data-testid={`lv-domain-badge-voltageDrop-${node.ref}`}>
       <text x={node.x} y={node.y - ctx.sp(20)} textAnchor="middle" fontSize={ctx.sp(TYPE_SCREEN_PX.badge)} fill={ctx.paleta.kreskaBazowa} fontFamily="monospace">
-        {`ΔU ${row.delta_pct.toFixed(2)}%`}
+        {`ΔU ${plFixed(row.delta_pct, 2)}%`}
       </text>
     </g>
   );

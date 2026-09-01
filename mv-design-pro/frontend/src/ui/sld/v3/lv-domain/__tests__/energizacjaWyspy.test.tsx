@@ -17,7 +17,7 @@ import { describe, expect, it } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 
 import { LvDomainView } from '../LvDomainView';
-import { computeElectricalComponents, stanZasilaniaSzyn } from '../composeLvDomainScene';
+import { stanZasilaniaSzyn } from '../composeLvDomainScene';
 import { buildLvDomainProjectionFixture } from '../fixtures/projectionFixture';
 import { ISLAND_DOMAIN_PROJECTION, ISLAND_DOMAIN_REFS, ISLAND_DOMAIN_VIEW } from '../fixtures/islandDomain';
 import { MULTI_SOURCE_DOMAIN_VIEW, MULTI_SOURCE_PROJECTION } from '../fixtures/multiSourceDomain';
@@ -27,9 +27,9 @@ import type { LvDomainGraphView } from '../types';
 
 const refs = ISLAND_DOMAIN_REFS;
 
-describe('Fixtura wysp — trzy niezależne opisy tego samego faktu MUSZĄ się zgadzać', () => {
+describe('Fixtura wysp — dwa niezależne opisy tego samego faktu MUSZĄ się zgadzać (kształt backendu)', () => {
   it('pola na szynach zgadzają się z opisem wysp (fixtura, która by kłamała, dowodziłaby czegoś, czego nie ma w sieci)', () => {
-    for (const island of ISLAND_DOMAIN_VIEW.islands ?? []) {
+    for (const island of ISLAND_DOMAIN_VIEW.islands) {
       for (const busRef of island.bus_refs) {
         const bus = ISLAND_DOMAIN_VIEW.buses.find((b) => b.ref_id === busRef);
         expect(bus, `wyspa ${island.island_ref} wskazuje nieistniejącą szynę ${busRef}`).toBeDefined();
@@ -40,18 +40,18 @@ describe('Fixtura wysp — trzy niezależne opisy tego samego faktu MUSZĄ się 
     }
   });
 
-  it('podział na wyspy pokrywa się z podziałem na komponenty elektryczne policzone Z GRAFU', () => {
-    const komponenty = computeElectricalComponents(ISLAND_DOMAIN_VIEW);
-    const wyspaSzyny = new Map<string, string>();
-    for (const island of ISLAND_DOMAIN_VIEW.islands ?? []) {
-      for (const busRef of island.bus_refs) wyspaSzyny.set(busRef, island.island_ref);
-    }
-    expect(wyspaSzyny.size).toBe(ISLAND_DOMAIN_VIEW.buses.length);
-    for (const a of ISLAND_DOMAIN_VIEW.buses) {
-      for (const b of ISLAND_DOMAIN_VIEW.buses) {
-        const taSamaWyspa = wyspaSzyny.get(a.ref_id) === wyspaSzyny.get(b.ref_id);
-        const tenSamKomponent = komponenty.get(a.ref_id) === komponenty.get(b.ref_id);
-        expect(taSamaWyspa, `${a.ref_id} × ${b.ref_id}`).toBe(tenSamKomponent);
+  it('każda szyna domeny należy do DOKŁADNIE jednej wyspy (inwariant kontraktu 2.0.0 — `energization.py` grupuje wszystkie szyny domeny)', () => {
+    for (const view of [ISLAND_DOMAIN_VIEW, MULTI_SOURCE_DOMAIN_VIEW, STATION_BOARD_DOMAIN_VIEW]) {
+      const liczbaWysp = new Map<string, number>();
+      for (const island of view.islands) {
+        for (const busRef of island.bus_refs) liczbaWysp.set(busRef, (liczbaWysp.get(busRef) ?? 0) + 1);
+      }
+      for (const bus of view.buses) expect(liczbaWysp.get(bus.ref_id), `${view.station_ref}:${bus.ref_id}`).toBe(1);
+      expect(liczbaWysp.size).toBe(view.buses.length);
+      // `stanZasilaniaSzyn` przepisuje wyspę 1:1 (zero własnego BFS).
+      const stan = stanZasilaniaSzyn(view);
+      for (const island of view.islands) {
+        for (const busRef of island.bus_refs) expect(stan.get(busRef)?.islandRef).toBe(island.island_ref);
       }
     }
   });
@@ -66,34 +66,40 @@ describe('Fixtura wysp — trzy niezależne opisy tego samego faktu MUSZĄ się 
   });
 });
 
-describe('stanZasilaniaSzyn — JEDNO rozstrzygnięcie dla sceny (pole na szynie > wyspa > brak wiedzy)', () => {
-  it('pole NA SZYNIE ma pierwszeństwo przed opisem wyspy (rozjazd danych nie jest cicho uśredniany)', () => {
+describe('stanZasilaniaSzyn — JEDNO rozstrzygnięcie dla sceny, przepisane Z DANYCH backendu', () => {
+  it('stan szyny = pola NA SZYNIE (energized/der_only/supply_refs) — nic nie jest wyprowadzane z topologii', () => {
     const rozjazd: LvDomainGraphView = {
       ...ISLAND_DOMAIN_VIEW,
       buses: ISLAND_DOMAIN_VIEW.buses.map((b) =>
-        b.ref_id === refs.podrozdzielniaCBusRef ? { ...b, energized: true } : b,
+        b.ref_id === refs.podrozdzielniaCBusRef ? { ...b, energized: true, supply_refs: ['stnW/TA'] } : b,
       ),
     };
-    expect(stanZasilaniaSzyn(rozjazd).get(refs.podrozdzielniaCBusRef)?.energized).toBe(true);
+    // Rozjazd danych (szyna mówi „pod napięciem", wyspa „bez") NIE jest cicho
+    // uśredniany ani „naprawiany" BFS-em: scena rysuje to, co niesie szyna.
+    const stan = stanZasilaniaSzyn(rozjazd).get(refs.podrozdzielniaCBusRef)!;
+    expect(stan.energized).toBe(true);
+    expect([...stan.supplyRefs]).toEqual(['stnW/TA']);
+    expect(stan.islandRef).toBe('stnW/wyspa_C');
   });
 
-  it('szyna BEZ własnych pól dziedziczy stan ze swojej wyspy', () => {
-    const bezPol: LvDomainGraphView = {
-      ...ISLAND_DOMAIN_VIEW,
-      buses: ISLAND_DOMAIN_VIEW.buses.map((b) => {
-        if (b.ref_id !== refs.podrozdzielniaCBusRef) return b;
-        const { energized: _energized, der_only: _derOnly, supply_refs: _supplyRefs, ...reszta } = b;
-        return reszta;
-      }),
-    };
-    const stan = stanZasilaniaSzyn(bezPol);
+  it('każda szyna grafu ma stan (kontrakt 2.0.0: pola wymagane) — także w domenach bez wysp odciętych', () => {
+    for (const view of [MULTI_SOURCE_DOMAIN_VIEW, STATION_BOARD_DOMAIN_VIEW]) {
+      const stan = stanZasilaniaSzyn(view);
+      expect(stan.size).toBe(view.buses.length);
+      for (const bus of view.buses) {
+        expect(stan.get(bus.ref_id)?.energized).toBe(true);
+        expect(stan.get(bus.ref_id)?.derOnly).toBe(false);
+        expect(stan.get(bus.ref_id)?.islandRef).toBe('island-1');
+      }
+    }
+  });
+
+  it('szyna, której backend nie przypisał do żadnej wyspy, dostaje islandRef=undefined (niespójna odpowiedź nie jest łatana domysłem)', () => {
+    const bezWyspy: LvDomainGraphView = { ...ISLAND_DOMAIN_VIEW, islands: [] };
+    const stan = stanZasilaniaSzyn(bezWyspy);
+    expect(stan.size).toBe(ISLAND_DOMAIN_VIEW.buses.length);
+    expect(stan.get(refs.podrozdzielniaCBusRef)?.islandRef).toBeUndefined();
     expect(stan.get(refs.podrozdzielniaCBusRef)?.energized).toBe(false);
-    expect(stan.get(refs.podrozdzielniaCBusRef)?.islandRef).toBe('stnW/wyspa_C');
-  });
-
-  it('graf BEZ pól i BEZ wysp nie produkuje ŻADNEGO stanu (uczciwy brak, nie domysł z topologii)', () => {
-    expect(stanZasilaniaSzyn(MULTI_SOURCE_DOMAIN_VIEW).size).toBe(0);
-    expect(stanZasilaniaSzyn(STATION_BOARD_DOMAIN_VIEW).size).toBe(0);
   });
 });
 
@@ -172,15 +178,19 @@ describe('Rysunek stanu zasilania — szyna, jej odpływy, odcinek mieszany', ()
   });
 });
 
-describe('Brak danych o zasilaniu = BRAK oznaczeń (zero domysłu w warstwie prezentacji)', () => {
+describe('Domena w całości pod napięciem = ZERO oznaczeń stanu wyjątkowego (stan niesiony w danych, nie domyślany)', () => {
   for (const wariant of [
     { nazwa: 'dwie sekcje ze sprzęgłem', projection: MULTI_SOURCE_PROJECTION },
     { nazwa: 'rozdzielnica z incomerem', projection: STATION_BOARD_PROJECTION },
   ]) {
-    it(`[${wariant.nazwa}] żaden element rysunku nie deklaruje stanu zasilania`, () => {
+    it(`[${wariant.nazwa}] każda szyna deklaruje stan zasilania z danych, ale żadna nie jest „bez napięcia" ani „wyspą DER"`, () => {
       const { container } = render(<LvDomainView projection={wariant.projection} width={1400} height={1000} />);
-      expect(container.querySelectorAll('[data-energized]').length).toBe(0);
-      expect(container.querySelectorAll('[data-der-only]').length).toBe(0);
+      const szyny = container.querySelectorAll('[data-testid^="lv-domain-node-"][data-bus-tier]');
+      expect(szyny.length).toBeGreaterThan(0);
+      for (const szyna of szyny) {
+        expect(szyna).toHaveAttribute('data-energized', 'true');
+        expect(szyna.getAttribute('data-der-only')).not.toBe('true');
+      }
       expect(container.innerHTML).not.toContain('bez napięcia');
       expect(container.innerHTML).not.toContain('wyspa DER');
       cleanup();

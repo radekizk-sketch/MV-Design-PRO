@@ -16,19 +16,23 @@ import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
 
 import { LvDomainView } from '../LvDomainView';
-import { computeElectricalComponents, composeLvDomainScene } from '../composeLvDomainScene';
-import { MULTI_SOURCE_DOMAIN_VIEW, MULTI_SOURCE_UPSTREAM_EQUIVALENTS } from '../fixtures/multiSourceDomain';
+import { composeLvDomainScene, stanZasilaniaSzyn } from '../composeLvDomainScene';
+import {
+  MULTI_SOURCE_DOMAIN_VIEW,
+  MULTI_SOURCE_UPSTREAM_EQUIVALENTS,
+  multiSourceDomainViewWithCoupler,
+} from '../fixtures/multiSourceDomain';
 import { buildLvDomainProjectionFixture } from '../fixtures/projectionFixture';
 import { STATION_BOARD_DOMAIN_VIEW, STATION_BOARD_REFS, STATION_BOARD_UPSTREAM_EQUIVALENTS } from '../fixtures/stationBoardDomain';
 import type { RawOverlayPayload } from '../../../../sld-overlay/rawResultOverlayStore';
 import type { SwzOverlayEntry } from '../../canvas/overlay';
 import type { LvDomainGraphView } from '../types';
 
+/** Stan sprzęgła zmienia status gałęzi ORAZ energizację/wyspy RAZEM — jak w
+ *  odpowiedzi backendu (frontend NIE liczy spójności z grafu; kanon
+ *  `docs/sld/PROJEKCJA_SN_NN_PORTAL_V1.md` §3, zakaz BFS po stronie klienta). */
 function withCouplerStatus(status: 'open' | 'closed'): LvDomainGraphView {
-  return {
-    ...MULTI_SOURCE_DOMAIN_VIEW,
-    branches: MULTI_SOURCE_DOMAIN_VIEW.branches.map((b) => (b.ref_id === 'coupler' ? { ...b, status } : b)),
-  };
+  return multiSourceDomainViewWithCoupler(status);
 }
 
 describe('HARD-CHECK #1 — sprzęgło QBC OPEN→CLOSED zmienia rysunek ORAZ connectivity ORAZ wyniki zwarciowe', () => {
@@ -41,12 +45,19 @@ describe('HARD-CHECK #1 — sprzęgło QBC OPEN→CLOSED zmienia rysunek ORAZ co
     expect(closedScene.edges.find((e) => e.ref === 'coupler')?.status).toBe('closed');
   });
 
-  it('CONNECTIVITY: OPEN → nn_a i nn_b w RÓŻNYCH komponentach elektrycznych; CLOSED → w TYM SAMYM (P0.18 — z grafu, nie z geometrii)', () => {
-    const openComponents = computeElectricalComponents(withCouplerStatus('open'));
-    expect(openComponents.get('nn_a')).not.toBe(openComponents.get('nn_b'));
+  it('CONNECTIVITY: OPEN → sekcje zasilane z RÓŻNYCH transformatorów (supply_refs backendu); CLOSED → z OBU (zasilanie wielostronne); scena przepisuje te fakty, nie liczy ich', () => {
+    const open = stanZasilaniaSzyn(withCouplerStatus('open'));
+    expect([...open.get('nn_a')!.supplyRefs]).toEqual(['tr1']);
+    expect([...open.get('nn_b')!.supplyRefs]).toEqual(['tr2']);
 
-    const closedComponents = computeElectricalComponents(withCouplerStatus('closed'));
-    expect(closedComponents.get('nn_a')).toBe(closedComponents.get('nn_b'));
+    const closed = stanZasilaniaSzyn(withCouplerStatus('closed'));
+    expect([...closed.get('nn_a')!.supplyRefs]).toEqual(['tr1', 'tr2']);
+    expect([...closed.get('nn_b')!.supplyRefs]).toEqual(['tr1', 'tr2']);
+
+    // Meta szyn w scenie = DOKŁADNIE dane backendu (zero re-derywacji).
+    const openScene = composeLvDomainScene(withCouplerStatus('open'), MULTI_SOURCE_UPSTREAM_EQUIVALENTS);
+    expect(openScene.nodes.find((n) => n.ref === 'nn_b')?.meta?.supplyRefs).toEqual(['tr2']);
+    expect(openScene.nodes.find((n) => n.ref === 'nn_b')?.meta?.islandRef).toBe('island-1');
   });
 
   it('WYNIKI ZWARCIOWE: overlay "shortCircuit" pokazuje DOKŁADNIE wartość solvera podaną dla DANEGO scenariusza QBC (dwa różne runId → dwie różne wartości renderowane, zero przeliczeń w UI)', () => {
@@ -94,18 +105,24 @@ describe('HARD-CHECK #1 — sprzęgło QBC OPEN→CLOSED zmienia rysunek ORAZ co
 });
 
 describe('HARD-CHECK #2 — 2×TR: QBC OPEN → dwa obszary zasilania; CLOSED → topologia scala się; PERMISYWNOŚĆ pracy równoległej NIE jest renderowana przez frontend (luka modelu nazwana, zero fabrykacji werdyktu)', () => {
-  it('OPEN: tr1 (na nn_a) i tr2 (na nn_b) leżą w RÓŻNYCH komponentach elektrycznych — dwa NIEZALEŻNE obszary zasilania', () => {
-    const components = computeElectricalComponents(withCouplerStatus('open'));
+  it('OPEN: szyna tr1 (nn_a) i szyna tr2 (nn_b) mają ROZŁĄCZNE zestawy transformatorów zasilających — dwa NIEZALEŻNE obszary zasilania (fakt backendu, nie renderera)', () => {
+    const stan = stanZasilaniaSzyn(withCouplerStatus('open'));
     const tr1 = MULTI_SOURCE_DOMAIN_VIEW.transformers.find((t) => t.ref_id === 'tr1')!;
     const tr2 = MULTI_SOURCE_DOMAIN_VIEW.transformers.find((t) => t.ref_id === 'tr2')!;
-    expect(components.get(tr1.lv_bus_ref)).not.toBe(components.get(tr2.lv_bus_ref));
+    const zasilanieA = new Set(stan.get(tr1.lv_bus_ref)!.supplyRefs);
+    const zasilanieB = new Set(stan.get(tr2.lv_bus_ref)!.supplyRefs);
+    expect([...zasilanieA].filter((ref) => zasilanieB.has(ref))).toEqual([]);
+    // Obie sekcje wiszą na tej samej sieci SN przez swoje transformatory —
+    // JEDNA wyspa energetyczna (definicja backendu: składowa z transformatorami).
+    expect(stan.get(tr1.lv_bus_ref)!.islandRef).toBe(stan.get(tr2.lv_bus_ref)!.islandRef);
   });
 
-  it('CLOSED: tr1 i tr2 leżą w TYM SAMYM komponencie elektrycznym — topologia scala się (solver widzi jeden węzeł zwarciowy, nie renderer)', () => {
-    const components = computeElectricalComponents(withCouplerStatus('closed'));
+  it('CLOSED: obie szyny zasilane z OBU transformatorów — topologia scala się (solver widzi jeden węzeł zwarciowy, nie renderer)', () => {
+    const stan = stanZasilaniaSzyn(withCouplerStatus('closed'));
     const tr1 = MULTI_SOURCE_DOMAIN_VIEW.transformers.find((t) => t.ref_id === 'tr1')!;
     const tr2 = MULTI_SOURCE_DOMAIN_VIEW.transformers.find((t) => t.ref_id === 'tr2')!;
-    expect(components.get(tr1.lv_bus_ref)).toBe(components.get(tr2.lv_bus_ref));
+    expect([...stan.get(tr1.lv_bus_ref)!.supplyRefs]).toEqual([...stan.get(tr2.lv_bus_ref)!.supplyRefs]);
+    expect(stan.get(tr1.lv_bus_ref)!.supplyRefs).toHaveLength(2);
   });
 
   it('ZERO fabrykacji werdyktu pracy równoległej: DOM renderu nie zawiera ŻADNEGO tekstu sugerującego dopuszczalność/niedopuszczalność (LvDomainGraphView/UpstreamEquivalentSnapshot dziś nie niosą takiego kanału — luka modelu, patrz raport karty)', () => {
@@ -172,7 +189,7 @@ describe('HARD-CHECK #4 — SWZ overlay na konkretnym torze; displayedValue == s
     const badge = screen.getByTestId(`lv-domain-badge-swz-${refs.qf01Ref}`);
     expect(badge).toHaveAttribute('data-swz-status', 'spełnia');
     expect(badge.textContent).toContain('842');
-    expect(badge.textContent).toContain('0.40');
+    expect(badge.textContent).toContain('0,40');
     // Aparat BEZ wpisu w swzByFeederRef nie dostaje plakietki (uczciwy brak).
     expect(screen.queryByTestId(`lv-domain-badge-swz-${refs.qf02Ref}`)).toBeNull();
   });

@@ -7,19 +7,47 @@
  * żeby dowód wieloźródłowości był SPÓJNY między warstwami (dwa niezależne
  * dowody tej samej topologii, nie dwie różne fikstury udające to samo).
  */
-import type { LvDomainGraphView, UpstreamEquivalentSnapshot } from '../types';
+import type { LvDomainBus, LvDomainGraphView, LvDomainIsland, UpstreamEquivalentSnapshot } from '../types';
 import { buildLvDomainProjectionFixture } from './projectionFixture';
+
+/**
+ * Energizacja i wyspy dla ZADANEGO stanu sprzęgła — kształt DOKŁADNIE taki,
+ * jaki backend (`lv_domain/energization.py`) zwraca dla tej topologii:
+ *  · sprzęgło ZAMKNIĘTE: obie sekcje w jednej składowej po zamkniętych
+ *    gałęziach ⇒ `supply_refs` każdej sekcji = [tr1, tr2] (zasilanie
+ *    wielostronne); jedna wyspa;
+ *  · sprzęgło OTWARTE: sekcja A zasilana z tr1, sekcja B (i podrozdzielnica)
+ *    z tr2; nadal JEDNA wyspa energetyczna (obie sekcje wiszą na tej samej
+ *    sieci SN przez swoje transformatory — wyspa to składowa z
+ *    transformatorami, nie sekcja rozdzielnicy).
+ * Frontend tych faktów NIE liczy (zero BFS po stronie klienta) — fixtura
+ * niesie prawdę backendu dla obu stanów, żeby testy sprzęgła miały dane.
+ */
+function multiSourceEnergization(coupler: 'open' | 'closed'): {
+  readonly buses: readonly LvDomainBus[];
+  readonly islands: readonly LvDomainIsland[];
+} {
+  const supplyA = coupler === 'closed' ? ['tr1', 'tr2'] : ['tr1'];
+  const supplyB = coupler === 'closed' ? ['tr1', 'tr2'] : ['tr2'];
+  return {
+    buses: [
+      { ref_id: 'nn_a', name: 'RGnN-A', voltage_kv: 0.4, voltage_level_id: 'kv:0.4', hops_from_root: 0, energized: true, supply_refs: supplyA, der_only: false },
+      { ref_id: 'nn_b', name: 'RGnN-B', voltage_kv: 0.4, voltage_level_id: 'kv:0.4', hops_from_root: 0, energized: true, supply_refs: supplyB, der_only: false },
+      { ref_id: 'sub_bus', name: 'Podrozdzielnica', voltage_kv: 0.4, voltage_level_id: 'kv:0.4', hops_from_root: 1, energized: true, supply_refs: supplyB, der_only: false },
+    ],
+    islands: [
+      { island_ref: 'island-1', bus_refs: ['nn_a', 'nn_b', 'sub_bus'], energized: true, supply_refs: ['tr1', 'tr2'], der_only: false },
+    ],
+  };
+}
 
 export const MULTI_SOURCE_DOMAIN_VIEW: LvDomainGraphView = {
   status: 'OK',
   station_ref: 'root',
   station_name: 'Stacja ROOT',
   root_bus_refs: ['nn_a', 'nn_b'],
-  buses: [
-    { ref_id: 'nn_a', name: 'RGnN-A', voltage_kv: 0.4, voltage_level_id: 'kv:0.4', hops_from_root: 0 },
-    { ref_id: 'nn_b', name: 'RGnN-B', voltage_kv: 0.4, voltage_level_id: 'kv:0.4', hops_from_root: 0 },
-    { ref_id: 'sub_bus', name: 'Podrozdzielnica', voltage_kv: 0.4, voltage_level_id: 'kv:0.4', hops_from_root: 1 },
-  ],
+  buses: multiSourceEnergization('closed').buses,
+  islands: multiSourceEnergization('closed').islands,
   branches: [
     {
       ref_id: 'coupler',
@@ -102,6 +130,18 @@ export const MULTI_SOURCE_DOMAIN_VIEW: LvDomainGraphView = {
   ],
   missing_data: [],
 };
+
+/** Ta sama domena z zadanym stanem sprzęgła — status gałęzi ORAZ energizacja/
+ *  wyspy zmieniają się RAZEM (jak w odpowiedzi backendu dla tego stanu). */
+export function multiSourceDomainViewWithCoupler(status: 'open' | 'closed'): LvDomainGraphView {
+  const energization = multiSourceEnergization(status);
+  return {
+    ...MULTI_SOURCE_DOMAIN_VIEW,
+    buses: energization.buses,
+    islands: energization.islands,
+    branches: MULTI_SOURCE_DOMAIN_VIEW.branches.map((b) => (b.ref_id === 'coupler' ? { ...b, status } : b)),
+  };
+}
 
 export const MULTI_SOURCE_UPSTREAM_EQUIVALENTS: readonly UpstreamEquivalentSnapshot[] = [
   {

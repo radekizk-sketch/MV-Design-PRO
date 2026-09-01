@@ -332,7 +332,7 @@ describe('LOD nN — NAKŁADKI WYNIKÓW: na przeglądzie kropka werdyktu zamiast
         expect(screen.getByTestId(`lv-domain-verdict-voltageDrop-${refs.rgnn1BusRef}`)).toBeTruthy();
         expect(screen.queryByTestId(`lv-domain-badge-voltageDrop-${refs.rgnn1BusRef}`)).toBeNull();
       } else {
-        expect(screen.getByTestId(`lv-domain-badge-voltageDrop-${refs.rgnn1BusRef}`).textContent).toContain('-3.42');
+        expect(screen.getByTestId(`lv-domain-badge-voltageDrop-${refs.rgnn1BusRef}`).textContent).toContain('-3,42');
         expect(screen.queryByTestId(`lv-domain-verdict-voltageDrop-${refs.rgnn1BusRef}`)).toBeNull();
       }
       cleanup();

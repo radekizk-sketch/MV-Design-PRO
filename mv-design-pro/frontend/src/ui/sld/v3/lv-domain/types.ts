@@ -1,6 +1,6 @@
 /**
- * Kontrakty danych `LvDomainView` (karta T5b, `docs/nn/KONCEPCJA_LOD_NN_2026-08.md`
- * werdykt właściciela). Mirror 1:1 JSON zwracanego przez backend (snake_case —
+ * Kontrakty danych `LvDomainView` (kanon `docs/sld/PROJEKCJA_SN_NN_PORTAL_V1.md`
+ * §3 — projekcja nN). Mirror 1:1 JSON zwracanego przez backend (snake_case —
  * konwencja tego API, ta sama co `types/enm.ts` dla ENM: pola TS NIE są
  * przemianowywane na camelCase, żeby uniknąć drugiego mapowania nazw, które
  * mogłoby się rozjechać z backendem przy pierwszej zmianie pola).
@@ -23,28 +23,28 @@ export interface LvDomainBus {
   readonly voltage_level_id: string;
   readonly hops_from_root: number;
   /**
-   * ENERGIZACJA I WYSPY — kontrakt uzgodniony z warstwą backendu domeny nN.
-   * Pola OPCJONALNE do czasu wystawienia ich przez `build_lv_domain_view`:
-   * ich BRAK w danych oznacza „nie wiadomo" i kanwa NIE rysuje wtedy ŻADNEGO
-   * oznaczenia stanu zasilania (uczciwy brak, nie domysł — renderer nie ma
-   * prawa wyprowadzać energizacji z topologii, to należy do warstwy, która
-   * zna stan łączników i źródeł).
+   * ENERGIZACJA (kontrakt 2.0.0, backend `lv_domain/energization.py` —
+   * czysta topologia stanów łączników, ta sama definicja źródła energizacji
+   * co reguła walidatora E060). Renderer NIE MA PRAWA wyprowadzać tych
+   * wartości z topologii — czyta je; zero BFS po stronie klienta.
    *
-   * `energized` — czy szyna jest pod napięciem w bieżącym stanie ruchowym.
-   * `supply_refs` — referencje źródeł, z których napięcie pochodzi (TR/DER).
-   * `der_only` — napięcie WYŁĄCZNIE ze źródeł rozproszonych (praca wyspowa).
+   * `energized` — szyna w spójnej składowej (zamknięte gałęzie +
+   *   transformatory) zawierającej `Source` sieci.
+   * `supply_refs` — transformatory/źródła podające napięcie NA TĘ SEKCJĘ
+   *   (składowa po samych zamkniętych gałęziach, bez transformatorów).
+   * `der_only` — nie z sieci, ale w składowej jest generator (wyspa DER).
    */
-  readonly energized?: boolean;
-  readonly supply_refs?: readonly string[];
-  readonly der_only?: boolean;
+  readonly energized: boolean;
+  readonly supply_refs: readonly string[];
+  readonly der_only: boolean;
 }
 
 /**
- * Wyspa zasilania — spójny elektrycznie obszar domeny nN wraz ze swoim
- * stanem zasilania. Ten sam fakt co pola na szynie, podany zbiorczo; kanwa
- * czyta szynę, a wyspę traktuje jako uzupełnienie dla szyn bez własnych pól
- * (JEDNO rozstrzygnięcie w `composeLvDomainScene::stanZasilaniaSzyn`, żeby
- * dwa źródła prawdy nie rozjechały się na danych brzegowych).
+ * Wyspa = spójna składowa ENERGETYCZNA (zamknięte gałęzie + transformatory)
+ * zawężona do szyn domeny — JEDYNE źródło „komponentu elektrycznego" sceny nN
+ * (`meta.islandRef`); przy 2×TR i sprzęgle OTWARTYM obie sekcje są w JEDNEJ
+ * wyspie (wiszą na tej samej sieci SN), rozdziela je dopiero brak drogi do
+ * wspólnego źródła. Każda szyna domeny należy do dokładnie jednej wyspy.
  */
 export interface LvDomainIsland {
   readonly island_ref: string;
@@ -123,9 +123,8 @@ export interface LvDomainGraphView {
   readonly loads: readonly LvDomainLoad[];
   readonly sub_switchboards: readonly LvDomainSubSwitchboard[];
   readonly boundary_links: readonly LvDomainBoundaryLink[];
-  /** Wyspy zasilania domeny — OPCJONALNE do czasu wystawienia przez backend
-   *  (patrz `LvDomainBus.energized`). Brak = brak oznaczeń na kanwie. */
-  readonly islands?: readonly LvDomainIsland[];
+  /** Wyspy zasilania domeny (kontrakt 2.0.0) — patrz `LvDomainIsland`. */
+  readonly islands: readonly LvDomainIsland[];
   readonly missing_data: readonly string[];
   readonly reason_pl?: string;
 }
@@ -159,10 +158,19 @@ export interface UpstreamEquivalentSnapshot {
   readonly note_pl?: string;
 }
 
+/** Tożsamość odpowiedzi (kontrakt 2.0.0): klient porównuje `case_id`/
+ *  `station_ref`/`scenario_id` z tym, o co PROSIŁ (`projectionApi.ts`) —
+ *  bez tego nie da się odróżnić odpowiedzi na własne żądanie od odpowiedzi
+ *  z pamięci podręcznej dla innej stacji/scenariusza. `run_snapshot_hash` =
+ *  odcisk modelu ZAPISANY PRZY BIEGU (`null`, gdy bieg nie wskazany). */
 export interface LvDomainModelSnapshotV1 {
   readonly revision: number;
   readonly model_hash: string;
   readonly operating_state_id: string;
+  readonly case_id: string;
+  readonly station_ref: string;
+  readonly scenario_id: 'MAX' | 'MIN';
+  readonly run_snapshot_hash: string | null;
 }
 
 export interface LvDomainVoltageProfileRow {
@@ -200,17 +208,38 @@ export interface LvDomainFaultLoopPointV1 {
   readonly reason_pl?: string | null;
 }
 
+/** Zasilanie odpływu — stwierdzenie TOPOLOGICZNE backendu (z ilu
+ *  transformatorów stacji szyny odpływu są osiągalne po zamkniętych
+ *  gałęziach). `wielostronne` ⇒ `supply_assumption_pl` nazywa założenie
+ *  zachowawcze (pętla liczona od transformatora WŁASNEJ sekcji). */
+export type LvDomainFeederSupply = 'jednostronne' | 'wielostronne';
+
 export interface LvDomainSwzFeederV1 {
   readonly feeder_root_branch_ref: string;
   readonly worst_point_bus_ref: string | null;
   readonly points: readonly LvDomainFaultLoopPointV1[];
+  readonly supply: LvDomainFeederSupply | null;
+  readonly supply_assumption_pl: string | null;
   readonly swz: LvDomainSwzResponseV1;
 }
 
 export interface LvDomainSwzResponseV1 extends SwzApiResponse {
+  readonly transformer_ref?: string | null;
   readonly reason_pl?: string | null;
   readonly missing_data?: readonly string[];
   readonly fault_loop_min_scenario?: Readonly<Record<string, unknown>>;
+}
+
+/** Pętle zwarcia i SWZ JEDNEGO transformatora stacji (kontrakt 2.0.0):
+ *  odpływy, których korzeniem jest szyna nN TEGO transformatora, liczone od
+ *  niego. Transformator nieobliczalny ZOSTAJE w liście z własnym `status`/
+ *  `missing_data` (cicha nieobecność byłaby kłamstwem przez pominięcie). */
+export interface LvDomainSwzTransformerV1 {
+  readonly transformer_ref: string;
+  readonly nn_bus_ref: string;
+  readonly status: 'OK' | 'brak danych' | 'nie dotyczy';
+  readonly missing_data: readonly string[];
+  readonly feeders: readonly LvDomainSwzFeederV1[];
 }
 
 export interface LvDomainSwzSnapshotV1 {
@@ -218,16 +247,20 @@ export interface LvDomainSwzSnapshotV1 {
   readonly reason_pl?: string | null;
   readonly missing_data: readonly string[];
   readonly network_system?: string | null;
-  readonly transformer_ref?: string | null;
-  readonly nn_bus_ref?: string | null;
-  readonly feeders: readonly LvDomainSwzFeederV1[];
+  readonly transformers: readonly LvDomainSwzTransformerV1[];
 }
 
-/** Atomowy kontrakt portalu SN -> nN. Wszystkie podprojekcje odnoszą się do
- *  jednego `model_snapshot`; klient nie scala osobnych odpowiedzi REST. */
+/** Atomowy kontrakt portalu SN -> nN (`docs/sld/PROJEKCJA_SN_NN_PORTAL_V1.md`
+ *  §3; backend `lv_domain/projection_v1.py`, `LV_DOMAIN_PROJECTION_VERSION`).
+ *  Wszystkie podprojekcje odnoszą się do jednego `model_snapshot`; klient nie
+ *  scala osobnych odpowiedzi REST. Wersja 2.0.0: `swz_snapshot.transformers[]`
+ *  zamiast płaskiej listy odpływów, energizacja szyn + `islands` w grafie,
+ *  tożsamość żądania w `model_snapshot`. */
+export const LV_DOMAIN_PROJECTION_CONTRACT_VERSION = '2.0.0' as const;
+
 export interface LvDomainProjectionV1 {
   readonly contract: 'LvDomainProjectionV1';
-  readonly contract_version: '1.0.0';
+  readonly contract_version: typeof LV_DOMAIN_PROJECTION_CONTRACT_VERSION;
   readonly case_id: string;
   readonly station_ref: string;
   readonly scenario_id: 'MAX' | 'MIN';

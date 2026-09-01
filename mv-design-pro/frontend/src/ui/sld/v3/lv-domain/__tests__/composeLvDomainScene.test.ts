@@ -149,7 +149,7 @@ describe('transformerNameplateLabel — tabliczka TR (Sn·przekładnia·grupa·u
 describe('anchorChipLabel — chip kompaktowy kotwicy SN', () => {
   it('pokazuje napięcie/Sk″/Ik″ dla snapshotu OK', () => {
     const label = anchorChipLabel(MULTI_SOURCE_UPSTREAM_EQUIVALENTS[0]);
-    expect(label).toBe('SN 15 kV · Sk″=187.4 MVA · Ik″=7.21 kA');
+    expect(label).toBe('SN 15 kV · Sk″=187,4 MVA · Ik″=7,21 kA');
   });
 
   it('daje uczciwy stan dla snapshotu brak danych (zero fabrykacji liczby)', () => {

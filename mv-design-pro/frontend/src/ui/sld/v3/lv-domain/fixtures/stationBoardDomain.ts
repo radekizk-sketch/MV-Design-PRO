@@ -41,16 +41,37 @@ export const STATION_BOARD_DOMAIN_VIEW: LvDomainGraphView = {
   station_ref: STATION_BOARD_REFS.stationRef,
   station_name: 'Stacja C',
   root_bus_refs: [STATION_BOARD_REFS.lvTerminalBusRef, STATION_BOARD_REFS.rgnn1BusRef],
+  // Energizacja (kontrakt 2.0.0, prawda backendu dla tej topologii): wszystkie
+  // gałęzie zamknięte ⇒ cała domena w JEDNEJ wyspie zasilanej z T1.
   buses: [
-    { ref_id: STATION_BOARD_REFS.lvTerminalBusRef, name: 'T1 zacisk nN', voltage_kv: 0.4, voltage_level_id: 'kv:0.4', hops_from_root: 0 },
-    { ref_id: STATION_BOARD_REFS.rgnn1BusRef, name: 'RGNN-1 (rozdzielnica nN 0,4 kV)', voltage_kv: 0.4, voltage_level_id: 'kv:0.4', hops_from_root: 0 },
-    { ref_id: STATION_BOARD_REFS.qf01OutBusRef, name: 'QF-01 zacisk wyjściowy', voltage_kv: 0.4, voltage_level_id: 'kv:0.4', hops_from_root: 1 },
-    { ref_id: STATION_BOARD_REFS.odbior1BusRef, name: 'Zacisk Odbiór-1', voltage_kv: 0.4, voltage_level_id: 'kv:0.4', hops_from_root: 2 },
-    { ref_id: STATION_BOARD_REFS.qf02OutBusRef, name: 'QF-02 zacisk wyjściowy', voltage_kv: 0.4, voltage_level_id: 'kv:0.4', hops_from_root: 1 },
-    { ref_id: STATION_BOARD_REFS.rgn2BusRef, name: 'Szyna RGN-2', voltage_kv: 0.4, voltage_level_id: 'kv:0.4', hops_from_root: 2 },
-    { ref_id: STATION_BOARD_REFS.rgn2LoadBusRef, name: 'RGN-2 zacisk odbioru', voltage_kv: 0.4, voltage_level_id: 'kv:0.4', hops_from_root: 3 },
-    { ref_id: STATION_BOARD_REFS.qf03OutBusRef, name: 'QF-03 zacisk wyjściowy', voltage_kv: 0.4, voltage_level_id: 'kv:0.4', hops_from_root: 1 },
-    { ref_id: STATION_BOARD_REFS.pvTerminalBusRef, name: 'PV1 · zacisk PCC-LV', voltage_kv: 0.4, voltage_level_id: 'kv:0.4', hops_from_root: 2 },
+    { ref_id: STATION_BOARD_REFS.lvTerminalBusRef, name: 'T1 zacisk nN', voltage_kv: 0.4, voltage_level_id: 'kv:0.4', hops_from_root: 0, energized: true, supply_refs: ['stnC/T1'], der_only: false },
+    { ref_id: STATION_BOARD_REFS.rgnn1BusRef, name: 'RGNN-1 (rozdzielnica nN 0,4 kV)', voltage_kv: 0.4, voltage_level_id: 'kv:0.4', hops_from_root: 0, energized: true, supply_refs: ['stnC/T1'], der_only: false },
+    { ref_id: STATION_BOARD_REFS.qf01OutBusRef, name: 'QF-01 zacisk wyjściowy', voltage_kv: 0.4, voltage_level_id: 'kv:0.4', hops_from_root: 1, energized: true, supply_refs: ['stnC/T1'], der_only: false },
+    { ref_id: STATION_BOARD_REFS.odbior1BusRef, name: 'Zacisk Odbiór-1', voltage_kv: 0.4, voltage_level_id: 'kv:0.4', hops_from_root: 2, energized: true, supply_refs: ['stnC/T1'], der_only: false },
+    { ref_id: STATION_BOARD_REFS.qf02OutBusRef, name: 'QF-02 zacisk wyjściowy', voltage_kv: 0.4, voltage_level_id: 'kv:0.4', hops_from_root: 1, energized: true, supply_refs: ['stnC/T1'], der_only: false },
+    { ref_id: STATION_BOARD_REFS.rgn2BusRef, name: 'Szyna RGN-2', voltage_kv: 0.4, voltage_level_id: 'kv:0.4', hops_from_root: 2, energized: true, supply_refs: ['stnC/T1'], der_only: false },
+    { ref_id: STATION_BOARD_REFS.rgn2LoadBusRef, name: 'RGN-2 zacisk odbioru', voltage_kv: 0.4, voltage_level_id: 'kv:0.4', hops_from_root: 3, energized: true, supply_refs: ['stnC/T1'], der_only: false },
+    { ref_id: STATION_BOARD_REFS.qf03OutBusRef, name: 'QF-03 zacisk wyjściowy', voltage_kv: 0.4, voltage_level_id: 'kv:0.4', hops_from_root: 1, energized: true, supply_refs: ['stnC/T1'], der_only: false },
+    { ref_id: STATION_BOARD_REFS.pvTerminalBusRef, name: 'PV1 · zacisk PCC-LV', voltage_kv: 0.4, voltage_level_id: 'kv:0.4', hops_from_root: 2, energized: true, supply_refs: ['stnC/T1'], der_only: false },
+  ],
+  islands: [
+    {
+      island_ref: 'island-1',
+      bus_refs: [
+        STATION_BOARD_REFS.lvTerminalBusRef,
+        STATION_BOARD_REFS.rgnn1BusRef,
+        STATION_BOARD_REFS.qf01OutBusRef,
+        STATION_BOARD_REFS.odbior1BusRef,
+        STATION_BOARD_REFS.qf02OutBusRef,
+        STATION_BOARD_REFS.rgn2BusRef,
+        STATION_BOARD_REFS.rgn2LoadBusRef,
+        STATION_BOARD_REFS.qf03OutBusRef,
+        STATION_BOARD_REFS.pvTerminalBusRef,
+      ],
+      energized: true,
+      supply_refs: ['stnC/T1'],
+      der_only: false,
+    },
   ],
   branches: [
     {

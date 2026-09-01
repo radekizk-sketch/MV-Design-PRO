@@ -23,8 +23,12 @@
  * jednostkach świata; SYMBOLE i typografia mają rozmiar EKRANOWY (renderer,
  * `LvDomainView.tsx` — trzy poziomy typografii P0.12).
  *
- * ZAKAZ INFERENCJI CONNECTIVITY Z GEOMETRII (P0.18): `computeElectricalComponents`
- * liczy komponenty WYŁĄCZNIE z grafu (`branches`, `status`), zero współrzędnych.
+ * ZAKAZ INFERENCJI CONNECTIVITY (P0.18 → kanon `docs/sld/PROJEKCJA_SN_NN_PORTAL_V1.md`
+ * §3): spójność elektryczna i energizacja NIE są liczone po stronie klienta —
+ * ani z geometrii, ani z grafu (dawny `computeElectricalComponents`, własny
+ * BFS, USUNIĘTY 2026-09-01: druga definicja wyspy obok backendowej rozjeżdżała
+ * się przy 2×TR ze sprzęgłem otwartym). Scena czyta `graph.islands` i pola
+ * `energized/supply_refs/der_only` szyn z kontraktu 2.0.0.
  * Determinizm: te same dane → identyczna scena (sortowanie po `ref_id`).
  *
  * JEDNA GEOMETRIA NA WSZYSTKIE POZIOMY SZCZEGÓŁOWOŚCI (LOD): ten moduł NIE
@@ -150,36 +154,6 @@ export interface LvDomainScene {
   readonly stationName: string;
 }
 
-// ---------------------------------------------------------------------------
-// P0.18 — komponenty spójności ELEKTRYCZNEJ, WYŁĄCZNIE z grafu.
-// ---------------------------------------------------------------------------
-export function computeElectricalComponents(view: LvDomainGraphView): ReadonlyMap<string, string> {
-  const adjacency = new Map<string, string[]>();
-  for (const bus of view.buses) adjacency.set(bus.ref_id, adjacency.get(bus.ref_id) ?? []);
-  for (const branch of view.branches) {
-    if (branch.status !== 'closed') continue;
-    if (!adjacency.has(branch.from_bus_ref) || !adjacency.has(branch.to_bus_ref)) continue;
-    adjacency.get(branch.from_bus_ref)!.push(branch.to_bus_ref);
-    adjacency.get(branch.to_bus_ref)!.push(branch.from_bus_ref);
-  }
-  const componentOf = new Map<string, string>();
-  for (const bus of [...view.buses].sort((a, b) => a.ref_id.localeCompare(b.ref_id))) {
-    if (componentOf.has(bus.ref_id)) continue;
-    const componentId = `component:${bus.ref_id}`;
-    const queue: string[] = [bus.ref_id];
-    componentOf.set(bus.ref_id, componentId);
-    while (queue.length > 0) {
-      const current = queue.shift()!;
-      for (const neighbor of adjacency.get(current) ?? []) {
-        if (componentOf.has(neighbor)) continue;
-        componentOf.set(neighbor, componentId);
-        queue.push(neighbor);
-      }
-    }
-  }
-  return componentOf;
-}
-
 /**
  * T5b-4 (P0-V3 SYMBOL GRAMMAR, werdykt pkt 5: „projektant rozpoznaje
  * funkcję urządzenia PRZED przeczytaniem napisu … nie powiększać jednego
@@ -247,11 +221,17 @@ export function anchorChipIdentityLabel(snapshot: UpstreamEquivalentSnapshot): s
   return `SN ${uVoltage}`;
 }
 
+/** Liczba ze stałą liczbą miejsc po przecinku w zapisie POLSKIM (przecinek
+ *  dziesiętny) — wyłącznie prezentacja wartości policzonych przez backend. */
+export function plFixed(value: number, digits: number): string {
+  return value.toFixed(digits).replace('.', ',');
+}
+
 /** OPIS kotwicy (Sk″/Ik″) — poziom pełny; `null`, gdy snapshot bez danych. */
 export function anchorChipDetailLabel(snapshot: UpstreamEquivalentSnapshot): string | null {
   if (snapshot.status !== 'OK') return null;
-  const sk = snapshot.sk_mva != null ? `Sk″=${snapshot.sk_mva.toFixed(1)} MVA` : 'Sk″=—';
-  const ik = snapshot.ikss_ka != null ? `Ik″=${snapshot.ikss_ka.toFixed(2)} kA` : 'Ik″=—';
+  const sk = snapshot.sk_mva != null ? `Sk″=${plFixed(snapshot.sk_mva, 1)} MVA` : 'Sk″=—';
+  const ik = snapshot.ikss_ka != null ? `Ik″=${plFixed(snapshot.ikss_ka, 2)} kA` : 'Ik″=—';
   return `${sk} · ${ik}`;
 }
 
@@ -265,43 +245,38 @@ export function anchorChipLabel(snapshot: UpstreamEquivalentSnapshot): string {
 
 /** Stan zasilania szyny — jedno rozstrzygnięcie dla całej sceny. */
 export interface StanZasilaniaSzyny {
-  readonly energized?: boolean;
-  readonly derOnly?: boolean;
-  readonly supplyRefs?: readonly string[];
-  readonly islandRef?: string;
+  readonly energized: boolean;
+  readonly derOnly: boolean;
+  readonly supplyRefs: readonly string[];
+  /** Wyspa (spójna składowa energetyczna) szyny — JEDYNY „komponent
+   *  elektryczny" sceny; `undefined` wyłącznie dla szyny, której backend nie
+   *  przypisał do żadnej wyspy (niespójna odpowiedź — nie fabrykujemy). */
+  readonly islandRef: string | undefined;
 }
 
 /**
  * ENERGIZACJA/WYSPY — JEDNO źródło prawdy dla całej sceny (reguła
  * predykatów parami: kreska szyny i kreski jej odpływów muszą wynikać z tego
  * samego rozstrzygnięcia, inaczej „dziś się zgadzają", a rozjadą się na
- * danych brzegowych).
- *
- * Pierwszeństwo ma pole NA SZYNIE (`buses[i].energized/…`); wyspa
- * (`graph.islands`) uzupełnia szyny, które własnych pól nie mają. Brak obu
- * źródeł = BRAK WIEDZY: kanwa nie rysuje wtedy żadnego oznaczenia stanu
- * zasilania (uczciwy brak, nie domysł — zero wyprowadzania energizacji z
- * topologii w warstwie prezentacji).
+ * danych brzegowych). Stan czytamy Z DANYCH backendu (`buses[i].energized/
+ * supply_refs/der_only`, `graph.islands`) — zero wyprowadzania energizacji
+ * ani spójności z topologii w warstwie prezentacji (kanon
+ * `docs/sld/PROJEKCJA_SN_NN_PORTAL_V1.md` §3: zakaz BFS po stronie klienta).
  */
 export function stanZasilaniaSzyn(view: LvDomainGraphView): ReadonlyMap<string, StanZasilaniaSzyny> {
   const wynik = new Map<string, StanZasilaniaSzyny>();
   const islandOfBus = new Map<string, LvDomainIsland>();
-  for (const island of [...(view.islands ?? [])].sort((a, b) => a.island_ref.localeCompare(b.island_ref))) {
+  for (const island of [...view.islands].sort((a, b) => a.island_ref.localeCompare(b.island_ref))) {
     for (const busRef of island.bus_refs) {
       if (!islandOfBus.has(busRef)) islandOfBus.set(busRef, island);
     }
   }
   for (const bus of view.buses) {
-    const island = islandOfBus.get(bus.ref_id);
-    const energized = bus.energized ?? island?.energized;
-    const derOnly = bus.der_only ?? island?.der_only;
-    const supplyRefs = bus.supply_refs ?? island?.supply_refs;
-    if (energized === undefined && derOnly === undefined && supplyRefs === undefined) continue;
     wynik.set(bus.ref_id, {
-      energized,
-      derOnly,
-      supplyRefs,
-      islandRef: island?.island_ref,
+      energized: bus.energized,
+      derOnly: bus.der_only,
+      supplyRefs: bus.supply_refs,
+      islandRef: islandOfBus.get(bus.ref_id)?.island_ref,
     });
   }
   return wynik;
@@ -404,7 +379,6 @@ export function composeLvDomainScene(
     return { nodes, edges, width: 0, height: 0, stationRef: view.station_ref, stationName: view.station_name ?? '' };
   }
 
-  const electricalComponents = computeElectricalComponents(view);
   const zasilanieSzyn = stanZasilaniaSzyn(view);
   /**
    * Stan zasilania ODCINKA: „bez napięcia" WYŁĄCZNIE wtedy, gdy KAŻDY znany
@@ -669,11 +643,10 @@ export function composeLvDomainScene(
       voltageKv: bus.voltage_kv,
       voltageLevelId: bus.voltage_level_id,
       hopsFromRoot: bus.hops_from_root,
-      electricalComponentId: electricalComponents.get(bus.ref_id),
       // T5b-4 (P0-V5): hierarchia magistral — MAIN (sekcje korzeniowe RGnN)
       // vs SUB (podrozdzielnice) rozpoznawalna bez czytania etykiety.
       busTier: bus.hops_from_root === 0 ? 'main' : 'sub',
-      // Stan zasilania (gdy backend go niesie) — `undefined` = brak wiedzy.
+      // Stan zasilania i wyspa — Z DANYCH backendu (kontrakt 2.0.0).
       energized: zasilanie?.energized,
       derOnly: zasilanie?.derOnly,
       supplyRefs: zasilanie?.supplyRefs,
@@ -731,9 +704,10 @@ export function composeLvDomainScene(
         meta: {
           voltageKv: busByRef.get(trafo.lv_bus_ref)?.voltage_kv,
           hopsFromRoot: busByRef.get(trafo.lv_bus_ref)?.hops_from_root,
-          electricalComponentId: electricalComponents.get(trafo.lv_bus_ref),
+          islandRef: zasilanieSzyn.get(trafo.lv_bus_ref)?.islandRef,
           energized: zasilanieSzyn.get(trafo.lv_bus_ref)?.energized,
           derOnly: zasilanieSzyn.get(trafo.lv_bus_ref)?.derOnly,
+          supplyRefs: zasilanieSzyn.get(trafo.lv_bus_ref)?.supplyRefs,
         },
       });
       const incomerSymbolId = apparatusSymbolFor(incomerBranch.type);

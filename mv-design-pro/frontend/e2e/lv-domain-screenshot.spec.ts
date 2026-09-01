@@ -1,7 +1,8 @@
 /**
  * DOWÓD WIZUALNY projekcji domeny nN — `LvDomainView` na harnessie
- * `lv-domain-harness.html` (karta T5b/T5b-2 → LOD nN,
- * `docs/nn/PLAN_SLD_NN_TOPOLOGIA_2026-08.md`).
+ * `lv-domain-harness.html` (kanon `docs/sld/PROJEKCJA_SN_NN_PORTAL_V1.md`
+ * §4 — LOD 0/1/2 projekcji nN na jednej geometrii; projekcja SN z portalem:
+ * `e2e/lv-portal-screenshot.spec.ts`).
  *
  * MACIERZ KADRÓW = [4 warianty topologii] × [3 poziomy szczegółowości] ×
  * [2 motywy] = 24 zrzuty:

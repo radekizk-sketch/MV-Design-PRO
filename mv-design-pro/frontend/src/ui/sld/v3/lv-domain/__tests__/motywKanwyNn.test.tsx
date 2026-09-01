@@ -69,15 +69,30 @@ describe('LvDomainView — rysunek honoruje prop motywu', () => {
 });
 
 describe('LvDomainPortal — motyw POWŁOKI dociera do rysunku domeny nN', () => {
+  /** Odpowiedź z TOŻSAMOŚCIĄ żądania (kontrakt 2.0.0 — `projectionApi.ts`
+   *  odrzuca odpowiedź dla innego przypadku/stacji/scenariusza, więc atrapa
+   *  musi odpowiadać tak jak backend: dla tego, o co pytano). */
   function stubProjectionFetch(): void {
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue(
-        new Response(JSON.stringify(MULTI_SOURCE_PROJECTION), {
+      vi.fn().mockImplementation(async (input: RequestInfo | URL) => {
+        const url = new URL(String(input), 'http://localhost');
+        const [, caseId, stationRef] = url.pathname.match(/\/api\/cases\/([^/]+)\/enm\/lv-domain\/([^/]+)\//) ?? [];
+        const projection = {
+          ...MULTI_SOURCE_PROJECTION,
+          case_id: decodeURIComponent(caseId ?? ''),
+          station_ref: decodeURIComponent(stationRef ?? ''),
+          model_snapshot: {
+            ...MULTI_SOURCE_PROJECTION.model_snapshot,
+            case_id: decodeURIComponent(caseId ?? ''),
+            station_ref: decodeURIComponent(stationRef ?? ''),
+          },
+        };
+        return new Response(JSON.stringify(projection), {
           status: 200,
           headers: { 'Content-Type': 'application/json' },
-        }),
-      ),
+        });
+      }),
     );
   }
 
