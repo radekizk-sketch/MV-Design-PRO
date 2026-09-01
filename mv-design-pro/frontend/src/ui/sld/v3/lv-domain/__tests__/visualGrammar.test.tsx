@@ -17,8 +17,9 @@ import {
   plNumber,
   snKvaLabel,
 } from '../visualGrammar';
-import { MULTI_SOURCE_DOMAIN_VIEW, MULTI_SOURCE_UPSTREAM_EQUIVALENTS } from '../fixtures/multiSourceDomain';
-import { STATION_BOARD_DOMAIN_VIEW, STATION_BOARD_REFS, STATION_BOARD_UPSTREAM_EQUIVALENTS } from '../fixtures/stationBoardDomain';
+import { MULTI_SOURCE_DOMAIN_VIEW, MULTI_SOURCE_PROJECTION, MULTI_SOURCE_UPSTREAM_EQUIVALENTS } from '../fixtures/multiSourceDomain';
+import { buildLvDomainProjectionFixture } from '../fixtures/projectionFixture';
+import { STATION_BOARD_DOMAIN_VIEW, STATION_BOARD_PROJECTION, STATION_BOARD_REFS, STATION_BOARD_UPSTREAM_EQUIVALENTS } from '../fixtures/stationBoardDomain';
 import type { LvDomainGraphView } from '../types';
 
 const refs = STATION_BOARD_REFS;
@@ -83,10 +84,7 @@ describe('P0-V2 — typografia SCREEN-STABLE: rozmiar EKRANOWY tekstu nie zależ
     for (const vp of [{ w: 1400, h: 1000 }, { w: 900, h: 700 }]) {
       const { unmount } = render(
         <LvDomainView
-          rootStationId={refs.stationRef}
-          scenarioId="s"
-          view={STATION_BOARD_DOMAIN_VIEW}
-          upstreamEquivalents={STATION_BOARD_UPSTREAM_EQUIVALENTS}
+          projection={STATION_BOARD_PROJECTION}
           width={vp.w}
           height={vp.h}
         />,
@@ -115,10 +113,7 @@ describe('P0-V3 — symbol grammar: sylwetka ZA FUNKCJĄ aparatu (type), nie jed
   it('trzy RÓŻNE sylwetki są realnie w DOM (data-symbol-canon trzech rodzin)', () => {
     render(
       <LvDomainView
-        rootStationId={refs.stationRef}
-        scenarioId="s"
-        view={STATION_BOARD_DOMAIN_VIEW}
-        upstreamEquivalents={STATION_BOARD_UPSTREAM_EQUIVALENTS}
+        projection={STATION_BOARD_PROJECTION}
         width={1400}
         height={1000}
       />,
@@ -149,10 +144,7 @@ describe('P0-V5 — hierarchia magistral: MAIN (sekcja korzeniowa) ≠ SUB (podr
   it('renderer: kreska MAIN grubsza niż SUB (rozpoznawalne bez czytania etykiety)', () => {
     render(
       <LvDomainView
-        rootStationId="root"
-        scenarioId="s"
-        view={MULTI_SOURCE_DOMAIN_VIEW}
-        upstreamEquivalents={MULTI_SOURCE_UPSTREAM_EQUIVALENTS}
+        projection={MULTI_SOURCE_PROJECTION}
         width={1400}
         height={1000}
       />,
@@ -169,10 +161,10 @@ describe('P0-V6 — sprzęgło: SYMBOL mówi pierwszy (kolor/wypełnienie glifu)
   it('OTWARTE: glif sprzęgła w tonie ostrzegawczym (#D8B45C), pusty (fill=none); słowo stanu w tym samym tonie', () => {
     render(
       <LvDomainView
-        rootStationId="root"
-        scenarioId="s"
-        view={withCouplerStatus('open')}
-        upstreamEquivalents={MULTI_SOURCE_UPSTREAM_EQUIVALENTS}
+        projection={buildLvDomainProjectionFixture({
+          graph: withCouplerStatus('open'),
+          upstreamEquivalents: MULTI_SOURCE_UPSTREAM_EQUIVALENTS,
+        })}
         width={1400}
         height={1000}
       />,
@@ -188,10 +180,10 @@ describe('P0-V6 — sprzęgło: SYMBOL mówi pierwszy (kolor/wypełnienie glifu)
   it('ZAMKNIĘTE: glif wypełniony bazowo; słowo stanu MUTED (symbol pierwszy, tekst potwierdza — werdykt pkt 14)', () => {
     render(
       <LvDomainView
-        rootStationId="root"
-        scenarioId="s"
-        view={withCouplerStatus('closed')}
-        upstreamEquivalents={MULTI_SOURCE_UPSTREAM_EQUIVALENTS}
+        projection={buildLvDomainProjectionFixture({
+          graph: withCouplerStatus('closed'),
+          upstreamEquivalents: MULTI_SOURCE_UPSTREAM_EQUIVALENTS,
+        })}
         width={1400}
         height={1000}
       />,
@@ -206,10 +198,10 @@ describe('P0-V6 — sprzęgło: SYMBOL mówi pierwszy (kolor/wypełnienie glifu)
   it('krawędź sprzęgła = DWA kikuty z przerwą na glif (ciągłość toru niesie SYMBOL aparatu, nie kreska pod nim)', () => {
     render(
       <LvDomainView
-        rootStationId="root"
-        scenarioId="s"
-        view={withCouplerStatus('closed')}
-        upstreamEquivalents={MULTI_SOURCE_UPSTREAM_EQUIVALENTS}
+        projection={buildLvDomainProjectionFixture({
+          graph: withCouplerStatus('closed'),
+          upstreamEquivalents: MULTI_SOURCE_UPSTREAM_EQUIVALENTS,
+        })}
         width={1400}
         height={1000}
       />,
@@ -226,10 +218,7 @@ describe('P0-V7 — dwa tryby etykiet: ENGINEERING (bez nazw zacisków) / AUDYT 
   it('domyślnie (projektowy): nazwy portów modelu („… zacisk wyjściowy") NIE są tekstem kanwy; hover niesie pełną nazwę (title)', () => {
     render(
       <LvDomainView
-        rootStationId={refs.stationRef}
-        scenarioId="s"
-        view={STATION_BOARD_DOMAIN_VIEW}
-        upstreamEquivalents={STATION_BOARD_UPSTREAM_EQUIVALENTS}
+        projection={STATION_BOARD_PROJECTION}
         width={1400}
         height={1000}
       />,
@@ -244,10 +233,7 @@ describe('P0-V7 — dwa tryby etykiet: ENGINEERING (bez nazw zacisków) / AUDYT 
   it('przełączenie na AUDYT pokazuje nazwy terminali; powrót na projektowe chowa je z powrotem', () => {
     render(
       <LvDomainView
-        rootStationId={refs.stationRef}
-        scenarioId="s"
-        view={STATION_BOARD_DOMAIN_VIEW}
-        upstreamEquivalents={STATION_BOARD_UPSTREAM_EQUIVALENTS}
+        projection={STATION_BOARD_PROJECTION}
         width={1400}
         height={1000}
       />,
@@ -264,10 +250,7 @@ describe('P0-V8 — boundary bez wyglądu przycisku: terminal + referencja tekst
   it('węzeł referencji granicznej NIE renderuje prostokąta (chip-button); niesie nazwę i napięcie zacisku', () => {
     render(
       <LvDomainView
-        rootStationId="root"
-        scenarioId="s"
-        view={MULTI_SOURCE_DOMAIN_VIEW}
-        upstreamEquivalents={MULTI_SOURCE_UPSTREAM_EQUIVALENTS}
+        projection={MULTI_SOURCE_PROJECTION}
         width={1400}
         height={1000}
       />,
@@ -286,10 +269,7 @@ describe('P0-V8 — boundary bez wyglądu przycisku: terminal + referencja tekst
   it('kotwica SN jest opisem, nie dominantą (werdykt pkt 12): zero prostokąta, tekst muted', () => {
     render(
       <LvDomainView
-        rootStationId="root"
-        scenarioId="s"
-        view={MULTI_SOURCE_DOMAIN_VIEW}
-        upstreamEquivalents={MULTI_SOURCE_UPSTREAM_EQUIVALENTS}
+        projection={MULTI_SOURCE_PROJECTION}
         width={1400}
         height={1000}
       />,

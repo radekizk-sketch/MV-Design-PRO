@@ -23,6 +23,10 @@ import logging
 from typing import Any
 from uuid import UUID
 
+from fastapi import APIRouter, HTTPException, Request
+from fastapi.concurrency import run_in_threadpool
+from pydantic import BaseModel, Field
+
 from api.domain_ops_policy import (
     extract_catalog_binding,
     validate_and_materialize_catalog_binding,
@@ -33,6 +37,11 @@ from application.analyses.fault_loop.service import (
     build_station_fault_loop_view,
 )
 from application.analyses.lv_domain.graph_view import build_lv_domain_view
+from application.analyses.lv_domain.projection_v1 import (
+    LvDomainProjectionRunMismatch,
+    LvDomainProjectionRunUnavailable,
+    build_lv_domain_projection_v1,
+)
 from application.analyses.lv_domain.upstream_equivalent import (
     Scenario as UpstreamEquivalentScenario,
 )
@@ -88,9 +97,6 @@ from enm.topology_ops import (
 )
 from enm.v2_projection import project_enm_v1_to_v2
 from enm.validator import ENMValidator, ValidationResult
-from fastapi import APIRouter, HTTPException, Request
-from fastapi.concurrency import run_in_threadpool
-from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 
@@ -396,6 +402,38 @@ def get_lv_domain_upstream_equivalent(
         scenario=scenario,
         transformer_ref=transformer_ref,
     )
+
+
+@router.get("/{case_id}/enm/lv-domain/{station_ref}/projection/v1")
+def get_lv_domain_projection_v1(
+    case_id: str,
+    station_ref: str,
+    scenario: UpstreamEquivalentScenario = "MAX",
+    run_id: UUID | None = None,
+) -> dict[str, Any]:
+    """Atomowy ``LvDomainProjectionV1`` dla portalu stacji SN/nN.
+
+    Jeden odczyt wiąże graf ENM, kotwicę SN, nakładkę wyniku oraz SWZ z tą
+    samą rewizją i odciskiem modelu. ``run_id`` jest opcjonalny; jego brak
+    daje jawny stan wyniku ``NONE``. Wskazany przebieg musi należeć do tego
+    przypadku i być zakończony — nie ma cichego wyboru innego wyniku.
+    """
+    enm = _get_enm(case_id)
+    run = None
+    if run_id is not None:
+        run = _get_canonical_run(run_id)
+        if run is None:
+            raise HTTPException(status_code=404, detail=f"Nie znaleziono przebiegu {run_id}.")
+    try:
+        return build_lv_domain_projection_v1(
+            enm,
+            case_id,
+            station_ref,
+            scenario=scenario,
+            run=run,
+        )
+    except (LvDomainProjectionRunMismatch, LvDomainProjectionRunUnavailable) as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
 @router.get("/{case_id}/enm/swz")

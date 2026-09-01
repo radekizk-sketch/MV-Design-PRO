@@ -8,6 +8,7 @@
  * dowody tej samej topologii, nie dwie różne fikstury udające to samo).
  */
 import type { LvDomainGraphView, UpstreamEquivalentSnapshot } from '../types';
+import { buildLvDomainProjectionFixture } from './projectionFixture';
 
 export const MULTI_SOURCE_DOMAIN_VIEW: LvDomainGraphView = {
   status: 'OK',
@@ -150,3 +151,8 @@ export const MULTI_SOURCE_UPSTREAM_EQUIVALENTS: readonly UpstreamEquivalentSnaps
     missing_data: [],
   },
 ];
+
+export const MULTI_SOURCE_PROJECTION = buildLvDomainProjectionFixture({
+  graph: MULTI_SOURCE_DOMAIN_VIEW,
+  upstreamEquivalents: MULTI_SOURCE_UPSTREAM_EQUIVALENTS,
+});

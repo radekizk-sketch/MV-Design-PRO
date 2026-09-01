@@ -19,7 +19,6 @@ import { PrzegladarkaSzablonow } from './szablony';
 import { WlasciwosciModelu } from './WlasciwosciModelu';
 import { KatalogPanel } from './katalog';
 import type { ElementUzycia } from './katalog';
-import { NnStudioWarsztat } from './nn-studio';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import { emituj } from '../../events';
 import { MODEL_WARSZTAT_STRINGS as T } from './strings';
@@ -36,9 +35,6 @@ const ZAKLADKI = [
   { id: 'wlasciwosci', etykieta: T.zakladkaWlasciwosci, tylkoEkspercki: false },
   { id: 'szablony', etykieta: T.zakladkaSzablony, tylkoEkspercki: false },
   { id: 'katalog', etykieta: T.zakladkaKatalog, tylkoEkspercki: false },
-  // P0.9: nN STUDIO — ogólnodostępna (nie tylko tryb ekspercki), bo dobór
-  // kabli/aparatów nN i sprawdzenie SWZ jest pracą podstawową, nie diagnostyką.
-  { id: 'nn-studio', etykieta: T.zakladkaNnStudio, tylkoEkspercki: false },
   { id: 'diagnostyka', etykieta: T.zakladkaDiagnostyka, tylkoEkspercki: true },
 ] as const;
 
@@ -121,7 +117,6 @@ export function ModelWarsztat() {
             }}
           />
         )}
-        {zakladka === 'nn-studio' && <NnStudioWarsztat />}
         {zakladka === 'katalog' && (
           <KatalogPanel
             uzyciaSnapshot={uzycia}

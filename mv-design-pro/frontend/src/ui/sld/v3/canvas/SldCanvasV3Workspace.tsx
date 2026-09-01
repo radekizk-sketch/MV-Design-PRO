@@ -148,8 +148,7 @@ import { NetworkHierarchyTree } from '../../v2/domain/NetworkHierarchyTree';
 import { buildNetworkHierarchyFromSnapshot } from '../../shared/networkHierarchyFromSnapshot';
 import { NnCircuitProofPanel } from '../../v2/proof/NnCircuitProofPanel';
 import { ProofPacksPanel } from '../../v2/proof/ProofPacksPanel';
-import { StationInternalView } from '../../v2/canvas/StationInternalView';
-import { buildStationInternalViewData } from '../../shared/stationInternalViewData';
+import { LvDomainPortal, LV_DOMAIN_PORTAL_MAX_WIDTH_PX } from '../lv-domain/LvDomainPortal';
 import { LassoSelector, pointInLasso, rectFromPoints, type LassoRect } from '../../v2/canvas/LassoSelector';
 import { worldToScreen } from '../../v2/viewport/ViewportController';
 import { SYMBOL_DEFS } from '../symbols/defs';
@@ -201,7 +200,6 @@ import {
   isToolbarGroupExpanded,
   layoutCanvasToolbar,
   SLD_CANVAS_DOCK_INSETS,
-  STATION_INTERNAL_PANEL_MAX_WIDTH_PX,
   type CanvasToolbarGroupId,
 } from './toolbarLayout';
 import { useThemeModeStore } from '../../../../ui2/theme/themeMode';
@@ -214,14 +212,8 @@ import {
   type SegmentFaultFlowOverlay,
   type SegmentFlowOverlay,
   type SldV3Overlay,
-  type SwzApiResponse,
   type TransformerOltcOverlay,
 } from './overlay';
-// T2-WYNIKI (PLAN_SLD_NN_TOPOLOGIA_2026-08 §T2): panel wyników odpływu nN +
-// odznaka SWZ — kontrakt/budowniczy CZYSTY (`nnCircuitResults.ts`) i hook
-// fetch WSPÓLNY dla obu prezentacji (`useSwzOverlay.ts`).
-import { buildNnCircuitResultsSections, resolveNnCircuitRef } from './nnCircuitResults';
-import { useSwzOverlay } from './useSwzOverlay';
 import {
   applyResultLabelFilter,
   buildResultLabelsFromScene,
@@ -543,49 +535,6 @@ function resolveTransformerRefForOwnerRef(snapshot: EnergyNetworkModel | null, o
  * `stationRefForBayOwner` nagłówek) — UDOKUMENTOWANA LUKA, drawer się mimo
  * to otwiera (nie crash, `label` poprawny).
  */
-/**
- * T2-WYNIKI (PLAN_SLD_NN_TOPOLOGIA_2026-08 §T2, §0 pkt 1): kontekst SWZ
- * gotowy do złożenia panelu wyników odpływu nN — dostarczony przez
- * `useSwzOverlay` (JEDEN fetch stacja+odpływy, dzielony z odznaką kanwy,
- * werdykt „ONE SOURCE OF TRUTH"). Osobny typ (nie import całego hooka tutaj)
- * — ta funkcja zostaje CZYSTA (bierze gotowe dane, nie fetch'uje).
- */
-interface NnResultsWiringContext {
-  readonly swzResponseByBreakerRef: Readonly<Record<string, SwzApiResponse>>;
-  readonly resultsStale: boolean;
-}
-
-/**
- * T2-WYNIKI: gdy aparat rozwiązuje się jako obwód nN (`resolveNnCircuitRef`),
- * dokłada `nnCircuitResultsSpec`/`nnCircuitResultsLoadFlowRunId` do danych
- * drawera już zbudowanych dla `kind==='apparatus'` — WYŁĄCZNIE dla nN
- * (aparatura SN zwraca dane bez zmian, `resolveNnCircuitRef` daje `null`).
- */
-function enrichApparatusDrawerDataWithNnResults(
-  data: SldDetailDrawerData,
-  snapshot: EnergyNetworkModel | null,
-  breakerRef: string,
-  overlayPayload: RawOverlayPayload | null,
-  nnContext: NnResultsWiringContext,
-): SldDetailDrawerData {
-  const ref = resolveNnCircuitRef(snapshot, breakerRef);
-  if (!ref) return data;
-  const branch = (snapshot?.branches ?? []).find((b) => b.ref_id === breakerRef || b.id === breakerRef);
-  if (!branch) return data;
-  const nnCircuitResultsSpec = buildNnCircuitResultsSections({
-    ref,
-    branch,
-    overlayPayload,
-    swzResponse: nnContext.swzResponseByBreakerRef[breakerRef],
-    voltageProfileRow: undefined,
-    resultsStale: nnContext.resultsStale,
-  });
-  const loadFlowRunId = (overlayPayload?.analysis_type ?? '').toLowerCase() === 'load_flow'
-    ? overlayPayload?.run_id ?? null
-    : null;
-  return { ...data, nnCircuitResultsSpec, nnCircuitResultsLoadFlowRunId: loadFlowRunId };
-}
-
 function buildDetailDrawerDataForElementKind(
   snapshot: EnergyNetworkModel | null,
   sldData: SldDataPayload,
@@ -593,7 +542,6 @@ function buildDetailDrawerDataForElementKind(
   elementKind: PreviewElementKind | undefined,
   id: string,
   deviceRef: string | undefined,
-  nnContext: NnResultsWiringContext,
 ): SldDetailDrawerData | null {
   if (elementKind === 'station') {
     return buildStationDetailDrawerData(snapshot, sldData, overlayPayload, id);
@@ -616,13 +564,7 @@ function buildDetailDrawerDataForElementKind(
     const correctedStationCode = stationRef
       ? sldData.stations.find((s) => s.id === stationRef)?.stationCode ?? apparatusDrawerData.stationCode
       : apparatusDrawerData.stationCode;
-    return enrichApparatusDrawerDataWithNnResults(
-      { ...apparatusDrawerData, stationCode: correctedStationCode },
-      snapshot,
-      apparatusRef,
-      overlayPayload,
-      nnContext,
-    );
+    return { ...apparatusDrawerData, stationCode: correctedStationCode };
   }
   const drawerKind = elementKindForDrawer(elementKind);
   if (!drawerKind) return null;
@@ -1744,22 +1686,10 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
           : undefined,
     [nakladkaRoznic, rawOverlayPayload],
   );
-  // T2-WYNIKI (PLAN_SLD_NN_TOPOLOGIA_2026-08 §T2, §0 pkt 2): odznaka SWZ —
-  // JEDEN fetch (stacja+odpływy, `useSwzOverlay`) dzielony z panelem wyników
-  // odpływu nN klikniętego aparatu (`enrichApparatusDrawerDataWithNnResults`
-  // niżej, `nnResultsContext`) — werdykt „ONE SOURCE OF TRUTH": ta sama
-  // odpowiedź backendu zasila ZARÓWNO odznakę na kanwie, JAK I panel.
-  // `activeCaseId` przeniesiony tu (był deklarowany niżej, jedyny konsument
-  // do tej karty) — zero duplikatu deklaracji.
   const activeCaseId = useAppStateStore((state) => state.activeCaseId);
-  const { swzByOwnerRef, swzResponseByBreakerRef } = useSwzOverlay(snapshot, activeCaseId);
-  const nnResultsContext = useMemo<NnResultsWiringContext>(
-    () => ({ swzResponseByBreakerRef, resultsStale }),
-    [swzResponseByBreakerRef, resultsStale],
-  );
   const overlay = useMemo<SldV3Overlay>(
-    () => ({ ...energizationOverlay, flowByOwnerRef, oltcByOwnerRef, faultFlowByOwnerRef, faultPointMarkerRef, faultPointMarkerRefs, resultLabelsByOwnerRef: filteredResultLabels, resultsStale, provenance, swzByOwnerRef }),
-    [energizationOverlay, flowByOwnerRef, oltcByOwnerRef, faultFlowByOwnerRef, faultPointMarkerRef, faultPointMarkerRefs, filteredResultLabels, resultsStale, provenance, swzByOwnerRef],
+    () => ({ ...energizationOverlay, flowByOwnerRef, oltcByOwnerRef, faultFlowByOwnerRef, faultPointMarkerRef, faultPointMarkerRefs, resultLabelsByOwnerRef: filteredResultLabels, resultsStale, provenance }),
+    [energizationOverlay, flowByOwnerRef, oltcByOwnerRef, faultFlowByOwnerRef, faultPointMarkerRef, faultPointMarkerRefs, filteredResultLabels, resultsStale, provenance],
   );
 
   // F8c pkt 2: `SldDataPayload` — TEN SAM adapter co v2 (`enmToSldAdapter.ts`,
@@ -1796,8 +1726,6 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [detailDrawerData]);
   const activeProjectId = useAppStateStore((state) => state.activeProjectId);
-  // T2-WYNIKI: `activeCaseId` deklarowany WYŻEJ (obok `useSwzOverlay`) — zero
-  // duplikatu.
   // S9-6: nazwa projektu i przypadku do tabliczki rysunkowej oraz do nazwy
   // pliku — REALNE dane powłoki (`app-state`), nie parametry wołającego.
   const activeProjectName = useAppStateStore((state) => state.activeProjectName);
@@ -2499,78 +2427,33 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
     setLassoRect(null);
   }, [snapshot, cameraState, lodOverride, lassoRect, selectElements]);
 
-  // F12-B pkt 6 (spec §10.1 ARCH-4, „StationInternalView — dwuklik stacji"):
-  // budowa danych WSPÓŁDZIELONA z v2 (`shared/stationInternalViewData.ts`).
-  const [internalStationId, setInternalStationId] = useState<string | null>(null);
-  const closeInternalStation = useCallback(() => setInternalStationId(null), []);
-  const internalStationData = useMemo(
-    () => buildStationInternalViewData(snapshot, sldData, internalStationId, size),
-    [snapshot, sldData, internalStationId, size],
+  // Portal SN -> nN: dwuklik stacji otwiera osobną projekcję napięciową L2.
+  // Dane portalu NIE są składane z bieżącego snapshotu klienta — jeden
+  // `LvDomainProjectionV1` przychodzi z backendu wraz z wynikami i SWZ.
+  const [lvDomainStationRef, setLvDomainStationRef] = useState<string | null>(null);
+  const closeLvDomainPortal = useCallback(() => setLvDomainStationRef(null), []);
+  const lvDomainPortalOpen = lvDomainStationRef !== null && activeCaseId !== null;
+  const lvDomainPortalWidth = Math.min(
+    LV_DOMAIN_PORTAL_MAX_WIDTH_PX,
+    Math.max(0, size.width - 24),
   );
-  /**
-   * S9-8 („obszar bezpieczny pod dokami UI"): doki STAŁE kanwy plus zasłona
-   * STANOWA tego wołającego — panel boczny „wnętrze stacji" zajmuje prawą
-   * krawędź (`bottom-3 right-3 top-3`, szerokość do
-   * `min(760, 100% − 1.5rem)`). Szerokość liczona TĄ SAMĄ formułą co klasa
-   * panelu, a nie wpisana ręcznie: rozjazd oznaczałby kadr, który „prawie" nie
-   * chowa treści (reguła KLASA §3 — predykaty parami).
-   */
+  const lvDomainPortalHeight = Math.max(240, size.height - 24);
   const effectiveCanvasInsets = useMemo(
     () =>
-      internalStationData
+      lvDomainPortalOpen
         ? {
             ...SLD_CANVAS_DOCK_INSETS,
             right:
               SLD_CANVAS_DOCK_INSETS.right +
-              Math.min(STATION_INTERNAL_PANEL_MAX_WIDTH_PX, Math.max(0, size.width - 24)),
+              lvDomainPortalWidth,
           }
         : SLD_CANVAS_DOCK_INSETS,
-    [internalStationData, size.width],
-  );
-  // Wybór pola/transformatora WEWNĄTRZ wnętrza stacji otwiera drawer
-  // szczegółów — TEN SAM budowniczy współdzielony co selekcja na scenie
-  // głównej (`buildDetailDrawerDataForKind`, już importowany wyżej). v2 ma
-  // tu dodatkowo rozgałęzienia po syntetycznych id (`/pv/protection/…`) dla
-  // wnętrza DER na nN — v3 `buildStationInternalViewData` (jak v2) niesie
-  // `bayId`/`transformerId` jako PROSTE refy ENM (`bay.ref_id`/
-  // `transformer.ref_id`, patrz moduł współdzielony), więc te syntetyczne
-  // gałęzie v2 nie mają tu odpowiednika danych — UDOKUMENTOWANA LUKA (nie
-  // uproszczenie): drill-down PV/BESS/FW wewnątrz wnętrza stacji (v2
-  // `onSelectBay` rozpoznaje `/pv/…` sub-ścieżki z `describeStationInternalElement`)
-  // nie jest dziś odtworzony w v3 — `StationInternalView` (współdzielony
-  // komponent) sam nie generuje takich sub-id z danych `buildStationInternalViewData`
-  // (`bays: stationBays.map(...)`, brak `ders` per-bay w tej strukturze), więc
-  // gałąź `elementId.includes('/pv/...')` byłaby dziś martwa niezależnie.
-  const handleSelectInternalBay = useCallback(
-    (bayId: string) => {
-      const drawerData = buildDetailDrawerDataForKind('bay', bayId, {
-        snapshot,
-        sldData,
-        overlayPayload: rawOverlayPayload,
-      });
-      if (drawerData) setDetailDrawerData(drawerData);
-    },
-    [snapshot, sldData, rawOverlayPayload],
-  );
-  const handleSelectInternalTransformer = useCallback(
-    (transformerId: string) => {
-      const drawerData = buildDetailDrawerDataForKind('transformer', transformerId, {
-        snapshot,
-        sldData,
-        overlayPayload: rawOverlayPayload,
-      });
-      if (drawerData) setDetailDrawerData(drawerData);
-    },
-    [snapshot, sldData, rawOverlayPayload],
+    [lvDomainPortalOpen, lvDomainPortalWidth],
   );
   const handleElementDoubleClick = useCallback((testId: string, meta?: SldElementClickMeta) => {
-    // Wzorzec v2 `onDoubleClickStation` (`SldCanvasV2.tsx`): dwuklik OTWIERA
-    // drill-down WYŁĄCZNIE dla stacji — inne elementKind ignorowane (spójne z
-    // v2, gdzie `onDoubleClickDer` jest osobnym, dedykowanym callbackiem, a
-    // reszta elementów nie ma zachowania na dwuklik).
     if (meta?.elementKind !== 'station') return;
     const id = meta?.ownerRef ?? elementIdFromTestId(testId);
-    setInternalStationId(id);
+    setLvDomainStationRef(id);
   }, []);
 
   const handleElementClick = useCallback(
@@ -2690,7 +2573,14 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
       // = drawer się NIE otwiera (uczciwy brak, bez crasha, bez zgadywania) —
       // jeśli już otwarty dla innego elementu, zostaje (spójne z v2:
       // `handleSelectElement` też nie zamyka drawera na niezmapowany `kind`).
-      let drawerData = buildDetailDrawerDataForElementKind(snapshot, sldData, rawOverlayPayload, elementKind, id, meta?.deviceRef, nnResultsContext);
+      let drawerData = buildDetailDrawerDataForElementKind(
+        snapshot,
+        sldData,
+        rawOverlayPayload,
+        elementKind,
+        id,
+        meta?.deviceRef,
+      );
       // S9-10 (dług `S9-4-DLUG-INSPEKTOR`, ogniwo etykiet): ref KOMPOZYTOWY
       // (`…#sn-bus` itd.) nie rozwiązuje się w budowniczych — panel się nie
       // otwierał. Kotwicę modelu rozstrzyga TEN SAM moduł, który robi to dla
@@ -2719,13 +2609,12 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
             ELEMENT_KIND_KOTWICY[wynik.temat.kotwica],
             wynik.temat.modelRef,
             meta?.deviceRef,
-            nnResultsContext,
           );
         }
       }
       if (drawerData) setDetailDrawerData(drawerData);
     },
-    [derDrag, modelIndex, nnResultsContext, rawOverlayPayload, selectElement, sldData, snapshot],
+    [derDrag, modelIndex, rawOverlayPayload, selectElement, sldData, snapshot],
   );
 
   /**
@@ -3231,34 +3120,23 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
         )}
       </div>
 
-      {/* F12-B pkt 6 (spec §10.1 ARCH-4, „StationInternalView"): drill-down
-          stacji — overlay z wewnętrznym SLD, wzorzec wrappera 1:1 z v2. */}
-      {internalStationData && (
+      {/* Jawny portal napięciowy SN -> nN. Jedynym źródłem geometrii,
+          wyników i SWZ wewnątrz jest atomowy LvDomainProjectionV1. */}
+      {lvDomainPortalOpen && activeCaseId && lvDomainStationRef && (
         <div
-          data-testid="station-internal-view"
+          data-testid="lv-domain-portal-drawer"
           data-view-mode="side-drawer"
           className="pointer-events-none absolute bottom-3 right-3 top-3 z-40 flex max-w-[min(760px,calc(100%-1.5rem))] items-start justify-end"
         >
-          <div
-            className="pointer-events-auto max-h-full overflow-auto rounded border border-scada-border bg-scada-panel shadow-2xl"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <StationInternalView
-              {...internalStationData}
-              onClose={closeInternalStation}
-              onSelectBay={handleSelectInternalBay}
-              onSelectTransformer={handleSelectInternalTransformer}
+          <div className="pointer-events-auto" onClick={(event) => event.stopPropagation()}>
+            <LvDomainPortal
+              caseId={activeCaseId}
+              stationRef={lvDomainStationRef}
+              runId={rawOverlayPayload?.run_id ?? null}
+              width={lvDomainPortalWidth}
+              height={lvDomainPortalHeight}
+              onClose={closeLvDomainPortal}
             />
-            <div className="flex justify-end gap-2 border-t border-scada-border bg-scada-surface px-4 py-2">
-              <button
-                type="button"
-                className="rounded border border-scada-border px-3 py-1 text-sm text-scada-text hover:bg-scada-hover-nav"
-                onClick={closeInternalStation}
-                data-testid="station-internal-close"
-              >
-                Zamknij
-              </button>
-            </div>
           </div>
         </div>
       )}

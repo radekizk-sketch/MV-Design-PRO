@@ -128,3 +128,51 @@ class TestUpstreamEquivalentEndpoint:
         resp1 = app_client.get(f"/api/cases/{case_id}/enm/lv-domain/stn/upstream-equivalent")
         resp2 = app_client.get(f"/api/cases/{case_id}/enm/lv-domain/stn/upstream-equivalent")
         assert resp1.json() == resp2.json()
+
+
+class TestLvDomainProjectionV1Endpoint:
+    def test_returns_one_versioned_atomic_snapshot(self, app_client) -> None:
+        case_id = str(uuid4())
+        _seed_enm(case_id)
+
+        resp = app_client.get(f"/api/cases/{case_id}/enm/lv-domain/stn/projection/v1")
+
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["contract"] == "LvDomainProjectionV1"
+        assert body["contract_version"] == "1.0.0"
+        assert body["status"] == "OK"
+        assert body["graph"]["station_ref"] == "stn"
+        assert {row["transformer_ref"] for row in body["upstream_equivalents"]} == {"tr"}
+
+    def test_snapshot_identity_is_shared_and_projection_is_deterministic(self, app_client) -> None:
+        case_id = str(uuid4())
+        _seed_enm(case_id)
+        url = f"/api/cases/{case_id}/enm/lv-domain/stn/projection/v1"
+
+        first = app_client.get(url).json()
+        second = app_client.get(url).json()
+
+        assert first == second
+        assert first["projection_hash"]
+        assert (
+            first["upstream_equivalents"][0]["model_hash"] == first["model_snapshot"]["model_hash"]
+        )
+        assert (
+            first["upstream_equivalents"][0]["operating_state_id"]
+            == first["model_snapshot"]["operating_state_id"]
+        )
+        assert first["result_snapshot"]["status"] == "NONE"
+        assert first["result_snapshot"]["overlay_payload"] is None
+        assert first["swz_snapshot"]["feeders"] == []
+
+    def test_unknown_run_is_not_silently_replaced(self, app_client) -> None:
+        case_id = str(uuid4())
+        _seed_enm(case_id)
+
+        resp = app_client.get(
+            f"/api/cases/{case_id}/enm/lv-domain/stn/projection/v1",
+            params={"run_id": str(uuid4())},
+        )
+
+        assert resp.status_code == 404

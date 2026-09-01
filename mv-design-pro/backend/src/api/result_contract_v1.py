@@ -8,11 +8,13 @@ import json
 from typing import Any
 from uuid import UUID
 
-from domain.result_builder_v1 import build_resultset_v1
-from domain.result_contract_v1_schema import generate_schema
-from enm.canonical_analysis import build_execution_result_set
-from enm.canonical_analysis import get_run as get_canonical_run
 from fastapi import APIRouter, HTTPException, status
+
+from application.result_mapping.canonical_run_to_resultset_v1 import (
+    build_resultset_v1_from_canonical_run,
+)
+from domain.result_contract_v1_schema import generate_schema
+from enm.canonical_analysis import get_run as get_canonical_run
 
 router = APIRouter(tags=["result-contract-v1"])
 
@@ -42,25 +44,7 @@ def get_resultset_v1(run_id: str) -> dict[str, Any]:
             detail=f"Wyniki niedostepne - status przebiegu: {run.status}",
         )
 
-    rs_dict = build_execution_result_set(run)
-    element_results_raw = [
-        {
-            "element_ref": er["element_ref"],
-            "element_type": er.get("element_type", "unknown"),
-            "values": er.get("values", {}),
-        }
-        for er in rs_dict.get("element_results", [])
-    ]
-    result_v1 = build_resultset_v1(
-        run_id=str(run.id),
-        analysis_type=rs_dict.get("analysis_type", ""),
-        solver_input_hash=run.input_hash,
-        validation=rs_dict.get("validation_snapshot", {}),
-        readiness=rs_dict.get("readiness_snapshot", {}),
-        element_results_raw=element_results_raw,
-        global_results=rs_dict.get("global_results", {}),
-        run_finished_at=run.finished_at.isoformat() if run.finished_at else None,
-    )
+    result_v1 = build_resultset_v1_from_canonical_run(run)
     return json.loads(result_v1.model_dump_json())
 
 

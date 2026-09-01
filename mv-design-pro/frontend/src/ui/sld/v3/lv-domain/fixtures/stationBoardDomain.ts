@@ -13,6 +13,7 @@
  * te same refy/nazwy aparatów dla spójności międzywarstwowej.
  */
 import type { LvDomainGraphView, UpstreamEquivalentSnapshot } from '../types';
+import { buildLvDomainProjectionFixture } from './projectionFixture';
 
 export const STATION_BOARD_REFS = {
   stationRef: 'stnC',
@@ -184,3 +185,8 @@ export const STATION_BOARD_UPSTREAM_EQUIVALENTS: readonly UpstreamEquivalentSnap
     missing_data: [],
   },
 ];
+
+export const STATION_BOARD_PROJECTION = buildLvDomainProjectionFixture({
+  graph: STATION_BOARD_DOMAIN_VIEW,
+  upstreamEquivalents: STATION_BOARD_UPSTREAM_EQUIVALENTS,
+});

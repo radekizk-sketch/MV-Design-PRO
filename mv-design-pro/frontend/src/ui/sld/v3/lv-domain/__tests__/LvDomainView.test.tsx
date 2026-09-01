@@ -9,18 +9,14 @@ import { describe, expect, it } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 
 import { LvDomainView } from '../LvDomainView';
-import { MULTI_SOURCE_DOMAIN_VIEW, MULTI_SOURCE_UPSTREAM_EQUIVALENTS } from '../fixtures/multiSourceDomain';
+import { MULTI_SOURCE_PROJECTION } from '../fixtures/multiSourceDomain';
+import { buildLvDomainProjectionFixture } from '../fixtures/projectionFixture';
 import type { LvDomainGraphView } from '../types';
 
 describe('LvDomainView — render fixtury wieloźródłowej', () => {
   it('renderuje bez wyjątków, status ok', () => {
     render(
-      <LvDomainView
-        rootStationId="root"
-        scenarioId="scenario-demo"
-        view={MULTI_SOURCE_DOMAIN_VIEW}
-        upstreamEquivalents={MULTI_SOURCE_UPSTREAM_EQUIVALENTS}
-      />,
+      <LvDomainView projection={MULTI_SOURCE_PROJECTION} />,
     );
     expect(screen.getByTestId('lv-domain-view-root')).toHaveAttribute('data-status', 'ok');
   });
@@ -31,12 +27,7 @@ describe('LvDomainView — render fixtury wieloźródłowej', () => {
   // dokładnie to, co werdykt odrzucił: parametry TR w nagłówku).
   it('nagłówek OPISUJE DOMENĘ (napięcie/liczba TR/sekcji/DER/boundary), NIE niesie już tabliczki TR', () => {
     render(
-      <LvDomainView
-        rootStationId="root"
-        scenarioId="scenario-demo"
-        view={MULTI_SOURCE_DOMAIN_VIEW}
-        upstreamEquivalents={MULTI_SOURCE_UPSTREAM_EQUIVALENTS}
-      />,
+      <LvDomainView projection={MULTI_SOURCE_PROJECTION} />,
     );
     const descriptor = screen.getByTestId('lv-domain-descriptor').textContent;
     expect(descriptor).toContain('0.4 kV');
@@ -48,12 +39,7 @@ describe('LvDomainView — render fixtury wieloźródłowej', () => {
 
   it('tabliczka TR (Sn·przekładnia·grupa·uk%) żyje NA WĘŹLE transformatora w scenie (P0.14)', () => {
     render(
-      <LvDomainView
-        rootStationId="root"
-        scenarioId="scenario-demo"
-        view={MULTI_SOURCE_DOMAIN_VIEW}
-        upstreamEquivalents={MULTI_SOURCE_UPSTREAM_EQUIVALENTS}
-      />,
+      <LvDomainView projection={MULTI_SOURCE_PROJECTION} />,
     );
     const tr1Node = screen.getByTestId('lv-domain-node-tr1');
     expect(tr1Node.textContent).toContain('Dyn11');
@@ -66,12 +52,7 @@ describe('LvDomainView — render fixtury wieloźródłowej', () => {
 
   it('OBIE kotwice SN (2×TR) i boundary chip są w DOM', () => {
     render(
-      <LvDomainView
-        rootStationId="root"
-        scenarioId="scenario-demo"
-        view={MULTI_SOURCE_DOMAIN_VIEW}
-        upstreamEquivalents={MULTI_SOURCE_UPSTREAM_EQUIVALENTS}
-      />,
+      <LvDomainView projection={MULTI_SOURCE_PROJECTION} />,
     );
     expect(screen.getByTestId('lv-domain-node-anchor:tr1')).toBeTruthy();
     expect(screen.getByTestId('lv-domain-node-anchor:tr2')).toBeTruthy();
@@ -80,12 +61,7 @@ describe('LvDomainView — render fixtury wieloźródłowej', () => {
 
   it('przełącznik overlay ma WYŁĄCZNIE kanały z realnym dostawcą (zero phantom)', () => {
     render(
-      <LvDomainView
-        rootStationId="root"
-        scenarioId="scenario-demo"
-        view={MULTI_SOURCE_DOMAIN_VIEW}
-        upstreamEquivalents={MULTI_SOURCE_UPSTREAM_EQUIVALENTS}
-      />,
+      <LvDomainView projection={MULTI_SOURCE_PROJECTION} />,
     );
     expect(screen.getByTestId('lv-domain-overlay-loads')).toBeTruthy();
     expect(screen.getByTestId('lv-domain-overlay-voltageDrop')).toBeTruthy();
@@ -97,12 +73,7 @@ describe('LvDomainView — render fixtury wieloźródłowej', () => {
 
   it('domyślnie SLD jest czysty (bez nakładki) — klik przełącza stan widoczny', () => {
     render(
-      <LvDomainView
-        rootStationId="root"
-        scenarioId="scenario-demo"
-        view={MULTI_SOURCE_DOMAIN_VIEW}
-        upstreamEquivalents={MULTI_SOURCE_UPSTREAM_EQUIVALENTS}
-      />,
+      <LvDomainView projection={MULTI_SOURCE_PROJECTION} />,
     );
     expect(screen.getByTestId('lv-domain-overlay-status').textContent).toBe('SLD czysty (bez nakładki)');
     fireEvent.click(screen.getByTestId('lv-domain-overlay-swz'));
@@ -126,7 +97,11 @@ describe('LvDomainView — render fixtury wieloźródłowej', () => {
       boundary_links: [],
       missing_data: ['station'],
     };
-    render(<LvDomainView rootStationId="nieznana" scenarioId="scenario-demo" view={brakDanychView} />);
+    render(
+      <LvDomainView
+        projection={buildLvDomainProjectionFixture({ graph: brakDanychView })}
+      />,
+    );
     expect(screen.getByTestId('lv-domain-view-root')).toHaveAttribute('data-status', 'brak-danych');
   });
 });

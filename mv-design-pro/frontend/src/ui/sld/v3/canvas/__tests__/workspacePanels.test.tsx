@@ -3,8 +3,8 @@
  * testy sześciu ostatnich osiągalnych funkcji kontenera v2 przeniesionych na
  * `SldCanvasV3Workspace`: eksport SVG/PNG (pkt 1), drzewo hierarchii (pkt 2),
  * panel dowodów (pkt 3), panel warstw jako realny filtr renderu (pkt 4).
- * Lasso (pkt 5) i StationInternalView (pkt 6) mają dedykowane pliki testowe
- * (`lasso.test.ts`, `stationInternalView.test.tsx`).
+ * Lasso (pkt 5) i portal domeny nN (pkt 6) mają dedykowane pliki testowe
+ * (`lasso.test.ts`, `lvDomainPortal.test.tsx`).
  *
  * Wzorzec fixture/setup identyczny jak `sldCanvasV3Workspace.test.tsx` (F8a)
  * — TA SAMA sieć testowa.

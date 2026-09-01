@@ -24,6 +24,7 @@ import { createRoot } from 'react-dom/client';
 
 import { LvDomainView } from './ui/sld/v3/lv-domain/LvDomainView';
 import { MULTI_SOURCE_DOMAIN_VIEW, MULTI_SOURCE_UPSTREAM_EQUIVALENTS } from './ui/sld/v3/lv-domain/fixtures/multiSourceDomain';
+import { buildLvDomainProjectionFixture } from './ui/sld/v3/lv-domain/fixtures/projectionFixture';
 import { STATION_BOARD_DOMAIN_VIEW, STATION_BOARD_UPSTREAM_EQUIVALENTS } from './ui/sld/v3/lv-domain/fixtures/stationBoardDomain';
 import type { LvDomainGraphView, LvDomainOverlayId } from './ui/sld/v3/lv-domain/types';
 
@@ -63,14 +64,12 @@ function HarnessRoot(): JSX.Element {
       ? STATION_BOARD_DOMAIN_VIEW
       : viewWithQbcOverride(MULTI_SOURCE_DOMAIN_VIEW, qbc);
   const upstreamEquivalents = fixtureId === 'stationC' ? STATION_BOARD_UPSTREAM_EQUIVALENTS : MULTI_SOURCE_UPSTREAM_EQUIVALENTS;
+  const projection = buildLvDomainProjectionFixture({ graph: view, upstreamEquivalents });
 
   return (
     <div id="lv-domain-harness-root" data-testid="lv-domain-harness-root" data-fixture={fixtureId} data-qbc={qbc ?? 'default'}>
       <LvDomainView
-        rootStationId={view.station_ref}
-        scenarioId="lv-domain-harness-demo"
-        view={view}
-        upstreamEquivalents={upstreamEquivalents}
+        projection={projection}
         initialOverlay={readOverlayOverride()}
         /* T5b-4 (P0-V1): REALNY viewport przeglądarki — occupancy/centrowanie
            liczy się względem prawdziwego ekranu (Playwright ustawia stały

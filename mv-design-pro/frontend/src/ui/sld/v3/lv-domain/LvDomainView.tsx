@@ -28,7 +28,7 @@
  */
 import { useMemo, useState, type CSSProperties } from 'react';
 
-import type { SwzOverlayEntry } from '../canvas/overlay';
+import { buildSwzOverlayFromResponses, type SwzOverlayEntry } from '../canvas/overlay';
 import type { RawOverlayPayload } from '../../../sld-overlay/rawResultOverlayStore';
 import { getMetric, formatMetric } from '../../../sld-overlay/rawResultOverlayStore';
 import { SYMBOL_DEFS, type SymbolId } from '../symbols/defs';
@@ -53,7 +53,12 @@ import {
   snKvaLabel,
   type SceneFit,
 } from './visualGrammar';
-import type { LvDomainGraphView, LvDomainOverlayId, UpstreamEquivalentSnapshot } from './types';
+import type {
+  LvDomainOverlayId,
+  LvDomainProjectionV1,
+  LvDomainSwzFeederV1,
+  LvDomainVoltageProfileRow,
+} from './types';
 
 const CANVAS_BACKGROUND = '#0B0F14';
 const STROKE_BASE = '#E8EEF4';
@@ -96,18 +101,10 @@ const OVERLAY_LABELS_PL: Readonly<Record<LvDomainOverlayId, string>> = {
 
 const OVERLAY_ORDER: readonly LvDomainOverlayId[] = ['loads', 'voltageDrop', 'shortCircuit', 'swz'];
 
-/** `bus_id`/`delta_pct` — mirror `canvas/nnSwzApi.ts::VoltageProfileRowApi`
- *  (reużycie kształtu bez importu modułu robiącego fetch, ten sam kontrakt). */
-export interface LvDomainVoltageProfileRow {
-  readonly bus_id: string;
-  readonly delta_pct: number | null;
-}
-
 export interface LvDomainViewProps {
-  readonly rootStationId: string;
-  readonly scenarioId: string;
-  readonly view: LvDomainGraphView;
-  readonly upstreamEquivalents?: readonly UpstreamEquivalentSnapshot[];
+  /** Jedyny kontrakt danych kanwy. Graf, wynik i SWZ pochodzą z tego samego
+   *  snapshotu modelu — komponent nie przyjmuje niezależnych fragmentów. */
+  readonly projection: LvDomainProjectionV1;
   /** Gabaryt VIEWPORTU [px] (P0-V1) — kanwa wypełnia go w całości, a TREŚĆ
    *  jest fitowana do pasma occupancy i centrowana (`visualGrammar.ts`).
    *  Brak = `DEFAULT_VIEWPORT` (testy jsdom). */
@@ -115,18 +112,6 @@ export interface LvDomainViewProps {
   readonly height?: number;
   /** Overlay aktywny na start — `null` = SLD czysty (domyślne, werdykt). */
   readonly initialOverlay?: LvDomainOverlayId | null;
-  /** P0.10/P0.11/hard-check#4 — odznaka SWZ per odpływ, klucz = ref aparatu
-   *  (branch_ref) DOKŁADNIE jak `canvas/overlay.ts::SwzOverlayEntry.ownerRef`
-   *  (`useSwzOverlay().swzByOwnerRef` — TEN SAM kanał co odznaka kanwy v3,
-   *  zero drugiego źródła). */
-  readonly swzByFeederRef?: Readonly<Record<string, SwzOverlayEntry>>;
-  /** P0.17 — surowy payload JUŻ załadowanego przebiegu (load_flow/sc_3f),
-   *  TA SAMA koperta co `rawResultOverlayStore`/`nnCircuitResults.ts`; klucz
-   *  wewnętrzny = `elements[ref_id]` (bus/branch ref). */
-  readonly resultOverlayPayload?: RawOverlayPayload | null;
-  /** Overlay "Spadki U" — wiersz profilu napięć per szyna (osobny endpoint od
-   *  `resultOverlayPayload`, ten sam wzorzec co `nnCircuitResults.ts`). */
-  readonly voltageProfileByBusRef?: Readonly<Record<string, LvDomainVoltageProfileRow>>;
 }
 
 /** Halo etykiety (maska CAD, T5b-4): pismo podbite tłem kanwy przez
@@ -214,22 +199,44 @@ function overlayStatusLabel(overlay: LvDomainOverlayId | null, hasAnyData: boole
 
 export function LvDomainView(props: LvDomainViewProps): JSX.Element {
   const {
-    rootStationId,
-    scenarioId,
-    view,
-    upstreamEquivalents = [],
+    projection,
     width,
     height,
     initialOverlay = null,
-    swzByFeederRef = {},
-    resultOverlayPayload = null,
-    voltageProfileByBusRef = {},
   } = props;
+  const rootStationId = projection.station_ref;
+  const scenarioId = projection.scenario_id;
+  const view = projection.graph;
+  const upstreamEquivalents = projection.upstream_equivalents;
   const [activeOverlay, setActiveOverlay] = useState<LvDomainOverlayId | null>(initialOverlay);
   const [labelMode, setLabelMode] = useState<LabelMode>('engineering');
+  const [selectedFeederRef, setSelectedFeederRef] = useState<string | null>(null);
 
   const scene = useMemo(() => composeLvDomainScene(view, upstreamEquivalents), [view, upstreamEquivalents]);
   const domainDescriptor = useMemo(() => domainDescriptorLabel(view), [view]);
+  const swzByFeederRef = useMemo(
+    () => buildSwzOverlayFromResponses(projection.swz_snapshot.feeders.map((feeder) => feeder.swz)),
+    [projection.swz_snapshot.feeders],
+  );
+  const resultOverlayPayload = useMemo<RawOverlayPayload | null>(() => {
+    const result = projection.result_snapshot;
+    if (!result.run_id || !result.analysis_type || !result.overlay_payload) return null;
+    return {
+      run_id: result.run_id,
+      analysis_type: result.analysis_type,
+      run_finished_at: result.run_finished_at,
+      elements: result.overlay_payload.elements,
+    };
+  }, [projection.result_snapshot]);
+  const voltageProfileByBusRef = useMemo<Readonly<Record<string, LvDomainVoltageProfileRow>>>(() => {
+    const rows = projection.result_snapshot.voltage_profile?.rows ?? [];
+    return Object.fromEntries(rows.map((row) => [row.bus_id, row]));
+  }, [projection.result_snapshot.voltage_profile]);
+  const feederByRef = useMemo(
+    () => new Map(projection.swz_snapshot.feeders.map((feeder) => [feeder.feeder_root_branch_ref, feeder] as const)),
+    [projection.swz_snapshot.feeders],
+  );
+  const selectedFeeder = selectedFeederRef ? feederByRef.get(selectedFeederRef) ?? null : null;
 
   if (view.status !== 'OK') {
     return (
@@ -264,7 +271,9 @@ export function LvDomainView(props: LvDomainViewProps): JSX.Element {
       data-status="ok"
       data-root-station-id={rootStationId}
       data-scenario-id={scenarioId}
-      style={{ background: CANVAS_BACKGROUND, color: STROKE_BASE, fontFamily: 'sans-serif' }}
+      data-projection-hash={projection.projection_hash}
+      data-model-hash={projection.model_snapshot.model_hash}
+      style={{ background: CANVAS_BACKGROUND, color: STROKE_BASE, fontFamily: 'sans-serif', position: 'relative' }}
     >
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 16px' }}>
         <div>
@@ -327,6 +336,20 @@ export function LvDomainView(props: LvDomainViewProps): JSX.Element {
       <div data-testid="lv-domain-overlay-status" style={{ padding: '0 16px 8px', fontSize: 11, color: STROKE_MUTED }}>
         {overlayStatusLabel(activeOverlay, hasAnyOverlayData)}
       </div>
+      <div
+        data-testid="lv-domain-result-freshness"
+        data-result-status={projection.result_snapshot.status}
+        style={{
+          padding: '0 16px 8px',
+          fontSize: 11,
+          color: projection.result_snapshot.status === 'OUTDATED' ? TONE_UNKNOWN : STROKE_MUTED,
+        }}
+      >
+        {`ENM r${projection.model_snapshot.revision} · wynik ${projection.result_snapshot.status}`}
+        {projection.result_snapshot.status === 'OUTDATED'
+          ? ` · ${projection.result_snapshot.reason_pl}`
+          : ''}
+      </div>
       <svg
         data-testid="lv-domain-svg"
         data-fit-scale={fit.s}
@@ -380,8 +403,25 @@ export function LvDomainView(props: LvDomainViewProps): JSX.Element {
                   </g>
                 );
               }
+              const isFeeder = node.kind === 'apparatus' && feederByRef.has(node.ref);
+              const selectFeeder = (): void => {
+                if (isFeeder) setSelectedFeederRef(node.ref);
+              };
               return (
-                <g key={node.ref} data-testid={`lv-domain-node-${node.ref}`} data-node-kind={node.kind} data-owner-ref={node.ref}>
+                <g
+                  key={node.ref}
+                  data-testid={`lv-domain-node-${node.ref}`}
+                  data-node-kind={node.kind}
+                  data-owner-ref={node.ref}
+                  data-feeder-selected={selectedFeederRef === node.ref ? 'true' : undefined}
+                  role={isFeeder ? 'button' : undefined}
+                  tabIndex={isFeeder ? 0 : undefined}
+                  onClick={selectFeeder}
+                  onKeyDown={isFeeder ? (event) => {
+                    if (event.key === 'Enter' || event.key === ' ') selectFeeder();
+                  } : undefined}
+                  style={{ cursor: isFeeder ? 'pointer' : undefined }}
+                >
                   <ScaledGlyph node={node} fit={fit} />
                   <NodeLabel node={node} fit={fit} sp={sp} />
                   {node.kind === 'apparatus' && activeOverlay === 'swz' ? (
@@ -396,7 +436,125 @@ export function LvDomainView(props: LvDomainViewProps): JSX.Element {
           </g>
         </g>
       </svg>
+      {selectedFeeder ? (
+        <LvFeederPanel
+          feeder={selectedFeeder}
+          projection={projection}
+          resultOverlayPayload={resultOverlayPayload}
+          onClose={() => setSelectedFeederRef(null)}
+        />
+      ) : null}
     </div>
+  );
+}
+
+function LvFeederPanel({
+  feeder,
+  projection,
+  resultOverlayPayload,
+  onClose,
+}: {
+  readonly feeder: LvDomainSwzFeederV1;
+  readonly projection: LvDomainProjectionV1;
+  readonly resultOverlayPayload: RawOverlayPayload | null;
+  readonly onClose: () => void;
+}): JSX.Element {
+  const resultElement = resultOverlayPayload?.elements[feeder.feeder_root_branch_ref];
+  const metrics = Object.values(resultElement?.metrics ?? {});
+  const swz = feeder.swz.swz;
+  const statusTone = swz?.status === 'spełnia'
+    ? TONE_OK
+    : swz?.status === 'nie spełnia'
+      ? TONE_FAIL
+      : TONE_UNKNOWN;
+  const shortHash = (value: string): string => value.length > 14 ? `${value.slice(0, 14)}…` : value;
+
+  return (
+    <aside
+      data-testid="lv-domain-feeder-panel"
+      data-feeder-ref={feeder.feeder_root_branch_ref}
+      style={{
+        position: 'absolute',
+        top: 100,
+        right: 16,
+        bottom: 16,
+        width: 350,
+        maxWidth: 'calc(100% - 32px)',
+        overflow: 'auto',
+        padding: 16,
+        border: `1px solid ${STROKE_MUTED}`,
+        borderRadius: 6,
+        background: '#111821F2',
+        boxShadow: '0 12px 36px #000A',
+        zIndex: 4,
+        fontSize: 12,
+      }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+        <div>
+          <div style={{ color: STROKE_BASE, fontWeight: 700 }}>Odpływ nN</div>
+          <div style={{ color: STROKE_MUTED, fontFamily: 'monospace' }}>
+            {feeder.feeder_root_branch_ref}
+          </div>
+        </div>
+        <button type="button" onClick={onClose} style={overlayButtonStyle(false)}>
+          Zamknij
+        </button>
+      </div>
+
+      <section style={{ marginTop: 16 }}>
+        <div style={{ color: STROKE_BASE, fontWeight: 600 }}>Snapshot ENM</div>
+        <div style={{ color: STROKE_MUTED, marginTop: 4 }}>
+          {`rewizja ${projection.model_snapshot.revision} · ${projection.scenario_id}`}
+        </div>
+        <div title={projection.model_snapshot.model_hash} style={{ color: STROKE_MUTED, fontFamily: 'monospace' }}>
+          {`model ${shortHash(projection.model_snapshot.model_hash)}`}
+        </div>
+      </section>
+
+      <section style={{ marginTop: 16 }}>
+        <div style={{ color: STROKE_BASE, fontWeight: 600 }}>Wynik biegu</div>
+        <div style={{ color: projection.result_snapshot.status === 'OUTDATED' ? TONE_UNKNOWN : STROKE_MUTED, marginTop: 4 }}>
+          {projection.result_snapshot.status === 'NONE'
+            ? 'Brak wyniku'
+            : `${projection.result_snapshot.status} · ${projection.result_snapshot.analysis_type ?? 'analiza'}`}
+        </div>
+        {metrics.length > 0 ? metrics.map((metric) => (
+          <div key={metric.code} style={{ color: STROKE_BASE, fontFamily: 'monospace', marginTop: 3 }}>
+            {`${metric.code}: ${formatMetric(metric)}`}
+          </div>
+        )) : (
+          <div style={{ color: STROKE_MUTED, marginTop: 3 }}>Brak metryk tego odpływu w aktywnym biegu.</div>
+        )}
+      </section>
+
+      <section style={{ marginTop: 16 }}>
+        <div style={{ color: STROKE_BASE, fontWeight: 600 }}>Pętla zwarcia i SWZ</div>
+        <div style={{ color: STROKE_MUTED, marginTop: 4 }}>
+          {`punkt najgorszy: ${feeder.worst_point_bus_ref ?? 'brak'} · punkty: ${feeder.points.length}`}
+        </div>
+        {swz ? (
+          <>
+            <div style={{ color: statusTone, fontWeight: 700, marginTop: 6 }}>
+              {`SWZ: ${swz.status}`}
+            </div>
+            <div style={{ color: STROKE_BASE, fontFamily: 'monospace', marginTop: 3 }}>
+              {`Ik₁ min = ${swz.ik1_min_a.toFixed(0)} A`}
+            </div>
+            {swz.ia_wymagane_a != null ? (
+              <div style={{ color: STROKE_BASE, fontFamily: 'monospace', marginTop: 3 }}>
+                {`Ia wymagane = ${swz.ia_wymagane_a.toFixed(0)} A`}
+              </div>
+            ) : null}
+            <div style={{ color: STROKE_MUTED, marginTop: 6 }}>{swz.przyczyna_pl}</div>
+          </>
+        ) : (
+          <div style={{ color: TONE_UNKNOWN, marginTop: 6 }}>
+            {feeder.swz.reason_pl ?? `SWZ: ${feeder.swz.status}`}
+          </div>
+        )}
+      </section>
+    </aside>
   );
 }
 

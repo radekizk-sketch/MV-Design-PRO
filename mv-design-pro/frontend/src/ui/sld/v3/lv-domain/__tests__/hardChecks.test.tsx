@@ -18,6 +18,7 @@ import { render, screen } from '@testing-library/react';
 import { LvDomainView } from '../LvDomainView';
 import { computeElectricalComponents, composeLvDomainScene } from '../composeLvDomainScene';
 import { MULTI_SOURCE_DOMAIN_VIEW, MULTI_SOURCE_UPSTREAM_EQUIVALENTS } from '../fixtures/multiSourceDomain';
+import { buildLvDomainProjectionFixture } from '../fixtures/projectionFixture';
 import { STATION_BOARD_DOMAIN_VIEW, STATION_BOARD_REFS, STATION_BOARD_UPSTREAM_EQUIVALENTS } from '../fixtures/stationBoardDomain';
 import type { RawOverlayPayload } from '../../../../sld-overlay/rawResultOverlayStore';
 import type { SwzOverlayEntry } from '../../canvas/overlay';
@@ -65,12 +66,12 @@ describe('HARD-CHECK #1 — sprzęgło QBC OPEN→CLOSED zmienia rysunek ORAZ co
 
     const { unmount } = render(
       <LvDomainView
-        rootStationId="root"
-        scenarioId="qbc-open"
-        view={withCouplerStatus('open')}
-        upstreamEquivalents={MULTI_SOURCE_UPSTREAM_EQUIVALENTS}
+        projection={buildLvDomainProjectionFixture({
+          graph: withCouplerStatus('open'),
+          upstreamEquivalents: MULTI_SOURCE_UPSTREAM_EQUIVALENTS,
+          resultOverlayPayload: payloadQbcOpen,
+        })}
         initialOverlay="shortCircuit"
-        resultOverlayPayload={payloadQbcOpen}
       />,
     );
     expect(screen.getByTestId(`lv-domain-badge-shortCircuit-${nnABusNode.ref}`).textContent).toContain('6100.00');
@@ -79,12 +80,12 @@ describe('HARD-CHECK #1 — sprzęgło QBC OPEN→CLOSED zmienia rysunek ORAZ co
 
     render(
       <LvDomainView
-        rootStationId="root"
-        scenarioId="qbc-closed"
-        view={withCouplerStatus('closed')}
-        upstreamEquivalents={MULTI_SOURCE_UPSTREAM_EQUIVALENTS}
+        projection={buildLvDomainProjectionFixture({
+          graph: withCouplerStatus('closed'),
+          upstreamEquivalents: MULTI_SOURCE_UPSTREAM_EQUIVALENTS,
+          resultOverlayPayload: payloadQbcClosed,
+        })}
         initialOverlay="shortCircuit"
-        resultOverlayPayload={payloadQbcClosed}
       />,
     );
     expect(screen.getByTestId(`lv-domain-badge-shortCircuit-${nnABusNode.ref}`).textContent).toContain('9800.00');
@@ -110,10 +111,10 @@ describe('HARD-CHECK #2 — 2×TR: QBC OPEN → dwa obszary zasilania; CLOSED �
   it('ZERO fabrykacji werdyktu pracy równoległej: DOM renderu nie zawiera ŻADNEGO tekstu sugerującego dopuszczalność/niedopuszczalność (LvDomainGraphView/UpstreamEquivalentSnapshot dziś nie niosą takiego kanału — luka modelu, patrz raport karty)', () => {
     render(
       <LvDomainView
-        rootStationId="root"
-        scenarioId="qbc-closed"
-        view={withCouplerStatus('closed')}
-        upstreamEquivalents={MULTI_SOURCE_UPSTREAM_EQUIVALENTS}
+        projection={buildLvDomainProjectionFixture({
+          graph: withCouplerStatus('closed'),
+          upstreamEquivalents: MULTI_SOURCE_UPSTREAM_EQUIVALENTS,
+        })}
       />,
     );
     const rootText = screen.getByTestId('lv-domain-view-root').textContent ?? '';
@@ -160,12 +161,12 @@ describe('HARD-CHECK #4 — SWZ overlay na konkretnym torze; displayedValue == s
     };
     render(
       <LvDomainView
-        rootStationId={refs.stationRef}
-        scenarioId="scenario-swz-demo"
-        view={STATION_BOARD_DOMAIN_VIEW}
-        upstreamEquivalents={STATION_BOARD_UPSTREAM_EQUIVALENTS}
+        projection={buildLvDomainProjectionFixture({
+          graph: STATION_BOARD_DOMAIN_VIEW,
+          upstreamEquivalents: STATION_BOARD_UPSTREAM_EQUIVALENTS,
+          swzByFeederRef: { [refs.qf01Ref]: entry },
+        })}
         initialOverlay="swz"
-        swzByFeederRef={{ [refs.qf01Ref]: entry }}
       />,
     );
     const badge = screen.getByTestId(`lv-domain-badge-swz-${refs.qf01Ref}`);
@@ -189,12 +190,12 @@ describe('HARD-CHECK #4 — SWZ overlay na konkretnym torze; displayedValue == s
     };
     render(
       <LvDomainView
-        rootStationId={refs.stationRef}
-        scenarioId="scenario-swz-fail"
-        view={STATION_BOARD_DOMAIN_VIEW}
-        upstreamEquivalents={STATION_BOARD_UPSTREAM_EQUIVALENTS}
+        projection={buildLvDomainProjectionFixture({
+          graph: STATION_BOARD_DOMAIN_VIEW,
+          upstreamEquivalents: STATION_BOARD_UPSTREAM_EQUIVALENTS,
+          swzByFeederRef: { [refs.qf01Ref]: failEntry },
+        })}
         initialOverlay="swz"
-        swzByFeederRef={{ [refs.qf01Ref]: failEntry }}
       />,
     );
     const badge = screen.getByTestId(`lv-domain-badge-swz-${refs.qf01Ref}`);

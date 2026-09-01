@@ -10,6 +10,7 @@ import { render, screen } from '@testing-library/react';
 import { LvDomainView } from '../LvDomainView';
 import { MIN_TAP_PITCH, composeLvDomainScene } from '../composeLvDomainScene';
 import { MULTI_SOURCE_DOMAIN_VIEW, MULTI_SOURCE_UPSTREAM_EQUIVALENTS } from '../fixtures/multiSourceDomain';
+import { buildLvDomainProjectionFixture } from '../fixtures/projectionFixture';
 import { STATION_BOARD_DOMAIN_VIEW, STATION_BOARD_REFS, STATION_BOARD_UPSTREAM_EQUIVALENTS } from '../fixtures/stationBoardDomain';
 import type { SwzOverlayEntry } from '../../canvas/overlay';
 
@@ -17,10 +18,10 @@ describe('P0.9 — stany łączeniowe aparatów pokazane SYMBOLEM (geometrią gl
   it('QF-TR1 zamknięty renderuje wypełniony prostokąt CB (fillOpacity=1, fill=stroke); QBC otwarty w innym fixture — pusty (fill=none)', () => {
     render(
       <LvDomainView
-        rootStationId={STATION_BOARD_REFS.stationRef}
-        scenarioId="s"
-        view={STATION_BOARD_DOMAIN_VIEW}
-        upstreamEquivalents={STATION_BOARD_UPSTREAM_EQUIVALENTS}
+        projection={buildLvDomainProjectionFixture({
+          graph: STATION_BOARD_DOMAIN_VIEW,
+          upstreamEquivalents: STATION_BOARD_UPSTREAM_EQUIVALENTS,
+        })}
       />,
     );
     const qfTr1 = screen.getByTestId(`lv-domain-node-${STATION_BOARD_REFS.qfTr1Ref}`);
@@ -38,10 +39,10 @@ describe('P0.9 — stany łączeniowe aparatów pokazane SYMBOLEM (geometrią gl
     };
     render(
       <LvDomainView
-        rootStationId="root"
-        scenarioId="s"
-        view={openView}
-        upstreamEquivalents={MULTI_SOURCE_UPSTREAM_EQUIVALENTS}
+        projection={buildLvDomainProjectionFixture({
+          graph: openView,
+          upstreamEquivalents: MULTI_SOURCE_UPSTREAM_EQUIVALENTS,
+        })}
       />,
     );
     const couplerNode = screen.getByTestId('lv-domain-node-coupler');
@@ -63,12 +64,12 @@ describe('P0.11 — werdykt SWZ trzeci stan (nierozstrzygalne) renderuje się ho
     };
     render(
       <LvDomainView
-        rootStationId={STATION_BOARD_REFS.stationRef}
-        scenarioId="s"
-        view={STATION_BOARD_DOMAIN_VIEW}
-        upstreamEquivalents={STATION_BOARD_UPSTREAM_EQUIVALENTS}
+        projection={buildLvDomainProjectionFixture({
+          graph: STATION_BOARD_DOMAIN_VIEW,
+          upstreamEquivalents: STATION_BOARD_UPSTREAM_EQUIVALENTS,
+          swzByFeederRef: { [STATION_BOARD_REFS.qf01Ref]: entry },
+        })}
         initialOverlay="swz"
-        swzByFeederRef={{ [STATION_BOARD_REFS.qf01Ref]: entry }}
       />,
     );
     const badge = screen.getByTestId(`lv-domain-badge-swz-${STATION_BOARD_REFS.qf01Ref}`);
@@ -89,10 +90,10 @@ describe('P0.12/P0-V1 — kanwa wypełnia VIEWPORT, treść fitowana do pasma oc
     const scene = composeLvDomainScene(STATION_BOARD_DOMAIN_VIEW, STATION_BOARD_UPSTREAM_EQUIVALENTS);
     render(
       <LvDomainView
-        rootStationId={STATION_BOARD_REFS.stationRef}
-        scenarioId="s"
-        view={STATION_BOARD_DOMAIN_VIEW}
-        upstreamEquivalents={STATION_BOARD_UPSTREAM_EQUIVALENTS}
+        projection={buildLvDomainProjectionFixture({
+          graph: STATION_BOARD_DOMAIN_VIEW,
+          upstreamEquivalents: STATION_BOARD_UPSTREAM_EQUIVALENTS,
+        })}
         width={1400}
         height={1000}
       />,

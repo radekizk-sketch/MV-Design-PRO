@@ -13,6 +13,9 @@
  * `.../upstream-equivalent`.
  */
 
+import type { RawOverlayElement } from '../../../sld-overlay/rawResultOverlayStore';
+import type { SwzApiResponse } from '../canvas/overlay';
+
 export interface LvDomainBus {
   readonly ref_id: string;
   readonly name: string;
@@ -121,6 +124,89 @@ export interface UpstreamEquivalentSnapshot {
   readonly model_hash?: string;
   readonly missing_data: readonly string[];
   readonly note_pl?: string;
+}
+
+export interface LvDomainModelSnapshotV1 {
+  readonly revision: number;
+  readonly model_hash: string;
+  readonly operating_state_id: string;
+}
+
+export interface LvDomainVoltageProfileRow {
+  readonly bus_id: string;
+  readonly delta_pct: number | null;
+  readonly [key: string]: unknown;
+}
+
+export interface LvDomainResultSnapshotV1 {
+  readonly status: 'NONE' | 'FRESH' | 'OUTDATED';
+  readonly reason: string;
+  readonly reason_pl: string;
+  readonly run_id: string | null;
+  readonly analysis_type: string | null;
+  readonly run_model_hash: string | null;
+  readonly run_finished_at: string | null;
+  readonly result_contract_version: string | null;
+  readonly result_signature: string | null;
+  readonly overlay_payload: {
+    readonly elements: Readonly<Record<string, RawOverlayElement>>;
+    readonly legend: unknown;
+    readonly warnings: readonly unknown[];
+  } | null;
+  readonly voltage_profile: {
+    readonly rows: readonly LvDomainVoltageProfileRow[];
+    readonly [key: string]: unknown;
+  } | null;
+}
+
+export interface LvDomainFaultLoopPointV1 {
+  readonly bus_ref: string;
+  readonly hop_count: number;
+  readonly status: 'OK' | 'brak danych';
+  readonly fault_loop?: Readonly<Record<string, unknown>> | null;
+  readonly reason_pl?: string | null;
+}
+
+export interface LvDomainSwzFeederV1 {
+  readonly feeder_root_branch_ref: string;
+  readonly worst_point_bus_ref: string | null;
+  readonly points: readonly LvDomainFaultLoopPointV1[];
+  readonly swz: LvDomainSwzResponseV1;
+}
+
+export interface LvDomainSwzResponseV1 extends SwzApiResponse {
+  readonly reason_pl?: string | null;
+  readonly missing_data?: readonly string[];
+  readonly fault_loop_min_scenario?: Readonly<Record<string, unknown>>;
+}
+
+export interface LvDomainSwzSnapshotV1 {
+  readonly status: 'OK' | 'brak danych' | 'nie dotyczy';
+  readonly reason_pl?: string | null;
+  readonly missing_data: readonly string[];
+  readonly network_system?: string | null;
+  readonly transformer_ref?: string | null;
+  readonly nn_bus_ref?: string | null;
+  readonly feeders: readonly LvDomainSwzFeederV1[];
+}
+
+/** Atomowy kontrakt portalu SN -> nN. Wszystkie podprojekcje odnoszą się do
+ *  jednego `model_snapshot`; klient nie scala osobnych odpowiedzi REST. */
+export interface LvDomainProjectionV1 {
+  readonly contract: 'LvDomainProjectionV1';
+  readonly contract_version: '1.0.0';
+  readonly case_id: string;
+  readonly station_ref: string;
+  readonly scenario_id: 'MAX' | 'MIN';
+  readonly status: 'OK' | 'brak danych';
+  readonly completeness: 'COMPLETE' | 'PARTIAL' | 'UNAVAILABLE';
+  readonly missing_data: readonly string[];
+  readonly model_snapshot: LvDomainModelSnapshotV1;
+  readonly graph: LvDomainGraphView;
+  readonly upstream_equivalents: readonly UpstreamEquivalentSnapshot[];
+  readonly result_snapshot: LvDomainResultSnapshotV1;
+  readonly swz_snapshot: LvDomainSwzSnapshotV1;
+  readonly projection_hash: string;
 }
 
 /** Nakładka wyników przełączalna na L2 (werdykt: "przełączalne OVERLAYE
