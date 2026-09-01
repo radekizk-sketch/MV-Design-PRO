@@ -1389,8 +1389,26 @@ export function KreatorStacjiSnNn() {
     !bladRozdzielnicy && Boolean(dane.manufacturer_ref) && szablonyWyboru.length === 0
       ? T.brakSzablonow
       : null;
+  /**
+   * STOPKA NAZYWA REALNY POWÓD, a nie pierwszy z brzegu.
+   *
+   * Defekt zastany (zmierzony na żywej aplikacji): przy niewskazanej rodzinie
+   * stopka mówiła „Brak kompletnych szablonów pól dla wybranego producenta/
+   * rodziny — wybierz inny pakiet katalogowy", choć katalog miał komplet
+   * szablonów, a brakowało WYŁĄCZNIE wskazania rodziny (karta S3: pole SN
+   * należy do konkretnego wyrobu, więc bez rodziny krok świadomie nie
+   * komponuje pól). Komunikat wysyłał projektanta do zmiany pakietu zamiast do
+   * jedynej akcji, która odblokowuje zapis — i tak samo mylił diagnozę specu
+   * e2e. Kolejność powodów: brak producenta → brak rodziny → brak szablonów
+   * w pakiecie wskazanej rodziny.
+   */
   const rozdzielnicaBladStopka = !rozdzielnicaKompletna
-    ? bladRozdzielnicy ?? (dane.manufacturer_ref ? T.brakSzablonow : T.brakProducenta)
+    ? bladRozdzielnicy
+      ?? (!dane.manufacturer_ref
+        ? T.brakProducenta
+        : selectedFamily === null
+          ? T.rodzinaNiewybrana
+          : T.brakSzablonow)
     : !aparaturaKompletna
       ? bladAparatow ?? T.brakAparatow
       : null;

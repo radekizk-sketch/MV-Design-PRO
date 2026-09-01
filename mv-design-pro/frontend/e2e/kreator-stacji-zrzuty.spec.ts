@@ -184,12 +184,43 @@ test.describe('kreator stacji: zrzuty dokumentacyjne', () => {
       await page.screenshot({ path: path.join(OUTPUT_DIR, `kreator-stacji-szablon-${plik}.png`) });
 
       // Kadr 2: krok pól rozdzielnicy (lista pól z aparatem z katalogu).
+      //
+      // TOR KATALOG-FIRST (karta S3). Krok 4 nie komponuje już pól z „pakietu
+      // producenta" bez względu na rodzinę — bez WSKAZANEJ RODZINY lista pól jest
+      // pusta z jawnego wyboru kanonu (rozdzielnica złożona z kart dwóch różnych
+      // wyrobów to ta sama atrapa, co usunięta „rodzina standardowa"). Spec idzie
+      // więc realną drogą projektanta: producent → rodzina → pola. Zrzut bez tych
+      // dwóch wyborów pokazywałby uczciwy, ale pusty ekran, a jego nazwa obiecuje
+      // listę pól.
       await page.getByTestId('mvd-kreator-krok-pola').click();
+      await expect(page.getByTestId('mvd-kreator-stacja-pola')).toBeVisible({ timeout: 30000 });
+      await page.getByTestId('mvd-kreator-stacja-producent').selectOption('ZPUE_WLOSZCZOWA');
+      // Rotoblok: rodzina modułowa z kartą katalogową, deklarująca napięcie sieci
+      // 15 kV — czyli TĘ szynę. Rodzina spoza klasy napięciowej szyny jest w
+      // katalogu widoczna, ale niewybieralna, więc kadr musi iść po zgodnej.
+      await page.getByTestId('mvd-kreator-stacja-rodzina').selectOption('ZPUE_WLOSZCZOWA__ROTOBLOK');
+      await expect(page.getByTestId('mvd-kreator-stacja-naglowek-rodziny')).toBeVisible();
       await expect(page.getByTestId('mvd-kreator-stacja-pole-wiersz-1')).toBeVisible({
         timeout: 30000,
       });
+      // Kadr viewportowy urywał się na wyborze rodziny, a jego nazwa obiecuje POLA
+      // — lista kart pól stoi niżej, więc przewijamy do niej.
+      await page.getByTestId('mvd-kreator-stacja-pole-wiersz-1').scrollIntoViewIfNeeded();
       await page.waitForTimeout(400);
       await page.screenshot({ path: path.join(OUTPUT_DIR, `kreator-stacji-pola-${plik}.png`) });
+
+      // Transformator z katalogu — WARUNEK podglądu, nie ozdoba. Podgląd wykonuje
+      // TĘ SAMĄ operację domenową w trybie próbnym, a walidator odrzuca stację bez
+      // powiązania katalogowego transformatora („Element techniczny wymaga
+      // powiązania z katalogiem"). Bez tego kroku kadr „podgląd skutków" pokazywał
+      // komunikat odmowy zamiast skutków.
+      await page.getByTestId('mvd-kreator-krok-transformator').click();
+      const katalogTrafo = page.getByTestId('mvd-kreator-stacja-katalog');
+      await expect
+        .poll(async () => katalogTrafo.locator('option').count(), { timeout: 30000 })
+        .toBeGreaterThan(1);
+      const trafoId = await katalogTrafo.locator('option').nth(1).getAttribute('value');
+      await katalogTrafo.selectOption(trafoId!);
 
       // Kadr 3: krok podglądu skutków (readout z dry_run backendu).
       await page.getByTestId('mvd-kreator-krok-podglad').click();
@@ -198,6 +229,17 @@ test.describe('kreator stacji: zrzuty dokumentacyjne', () => {
       await expect(page.getByTestId('mvd-kreator-stacja-podglad-ladowanie')).toHaveCount(0, {
         timeout: 60000,
       });
+      // Samo zniknięcie paska ładowania NIE dowodzi, że podgląd się policzył:
+      // ten sam stan osiąga błąd dry_run i stan „nic nie policzono". Kadr o
+      // nazwie „podgląd skutków" pokazywałby wtedy ekran bez skutków, a spec i
+      // tak świeciłby na zielono. Bramkujemy więc oba nie-stany i sam READOUT.
+      await expect(page.getByTestId('mvd-kreator-stacja-podglad-blad')).toHaveCount(0);
+      await expect(page.getByTestId('mvd-kreator-stacja-podglad-pusty')).toHaveCount(0);
+      const readout = page.getByText('Identyfikator stacji (po zapisie)');
+      await expect(readout).toBeVisible();
+      // Readout stoi pod sekcją zapisu szablonu — bez przewinięcia kadr
+      // viewportowy urywa się nad nim.
+      await readout.scrollIntoViewIfNeeded();
       await page.waitForTimeout(400);
       await page.screenshot({ path: path.join(OUTPUT_DIR, `kreator-stacji-podglad-${plik}.png`) });
     });

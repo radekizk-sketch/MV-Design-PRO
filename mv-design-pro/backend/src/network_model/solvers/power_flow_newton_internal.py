@@ -565,6 +565,46 @@ def compute_power_injections(ybus: np.ndarray, v: np.ndarray) -> tuple[np.ndarra
     return s_inj.real, s_inj.imag
 
 
+def trig_bloku(va_w: np.ndarray, va_k: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Sinus i cosinus różnicy kątów bloku — JEDNO źródło dla produkcji i pinu składania.
+
+    Wydzielone z ``build_jacobian_v2`` świadomie, po zderzeniu z runnerem CI
+    (2026-08-14): pin składania porównuje TO SAMO wejście trygonometryczne, którego
+    używa produkcja, więc równoważność postaci blokowej i skalarnej jest własnością
+    KONSTRUKCJI, a nie założeniem o ścieżce SIMD biblioteki. Różnicę wektor-vs-skalar
+    pilnuje osobny pin (``test_trig_wektorowy_vs_skalarny_najwyzej_1_ulp``).
+    """
+    theta = va_w[:, None] - va_k[None, :]
+    return np.sin(theta), np.cos(theta)
+
+
+def wyrazy_przekatne(
+    g: np.ndarray,
+    b: np.ndarray,
+    vm_ns: np.ndarray,
+    vm_pq: np.ndarray,
+    p_calc: np.ndarray,
+    q_calc: np.ndarray,
+    ns: np.ndarray,
+    pq: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Wyrazy przekątniowe czterech bloków — JEDNO źródło dla produkcji i pinu składania.
+
+    Wydzielone z tego samego powodu, co ``trig_bloku`` (2026-08-14): po ujednoliceniu
+    trygonometrii runner CI DALEJ meldował różnicę bitową, a jedynym miejscem, w którym
+    produkcja liczyła WEKTOROWO, a pętla skalarnie, były wyrazy przekątniowe — w
+    szczególności ``vm ** 2``, dla którego numpy może wybrać inną drogę dla tablicy
+    (mnożenie) niż dla skalara (``pow`` z libm). To znowu własność biblioteki, a nie
+    sposobu składania, więc pin składania nie może o nią zahaczać.
+    """
+    return (
+        -q_calc[ns] - b[ns, ns] * vm_ns**2,
+        p_calc[ns] / vm_ns + g[ns, ns] * vm_ns,
+        p_calc[pq] - g[pq, pq] * vm_pq**2,
+        q_calc[pq] / vm_pq - b[pq, pq] * vm_pq,
+    )
+
+
 def build_jacobian_v2(
     ybus: np.ndarray,
     v: np.ndarray,
@@ -592,13 +632,24 @@ def build_jacobian_v2(
     dla bloków mieszanych ns×pq przekątna nie leży na ``row == col``) wybiera maska
     ``np.equal.outer``, czyli ten sam predykat, który w pętli był instrukcją ``if``.
 
-    Wektorowe ``np.sin``/``np.cos`` muszą dawać bit w bit to samo, co wywołania
-    skalarne — to założenie o bibliotece, więc jest PRZYPIĘTE TESTEM
-    (``tests/network_model/test_jacobian_v2_skladanie.py``): porównanie z referencyjną
-    implementacją skalarną odbywa się na wzorcu bitów (``view(np.uint64)``), więc
-    złapie też różnicę ``-0.0`` vs ``0.0``. Gdyby przyszła wersja numpy zmieniła
-    ścieżkę SIMD dla sinusa, pin zaświeci na czerwono, zamiast po cichu przesunąć
-    ostatnie cyfry wyniku rozpływu.
+    KOREKTA ZAŁOŻENIA (2026-08-14, dyspozycja właściciela po pomiarze). Pierwotnie
+    stało tu, że wektorowe ``np.sin``/``np.cos`` dają bit w bit to samo, co wywołania
+    skalarne. To jest NIEPRAWDA na niektórych procesorach: na tej maszynie różnic nie
+    ma (0 na 376 996 wyrazów jakobianu substratu 53 stacji), ale runner CI wybiera
+    inną ścieżkę SIMD i ostatni bit sinusa bywa inny. Dlatego:
+
+    * wejście trygonometryczne pochodzi z JEDNEJ funkcji (``trig_bloku``), której
+      używa też pin składania — równoważność postaci blokowej i skalarnej jest więc
+      własnością KONSTRUKCJI, sprawdzaną bitowo niezależnie od procesora;
+    * różnicę wektor-vs-skalar pilnuje OSOBNY pin (``≤ 1 ULP``), bo to własność
+      biblioteki, a nie tego kodu.
+
+    Zmierzony wpływ najgorszego przypadku (1 ULP na sinusie, substrat 53 stacji,
+    Y-bus 308×308): jakobian ``max |Δ| = 2,8e-17`` (względnie 2,2e-16), krok Newtona
+    ``max |Δdx| = 7,0e-12`` — cztery rzędy PONIŻEJ tolerancji zbieżności 1e-8.
+    Determinizm w obrębie jednego środowiska jest nietknięty (ten sam wynik przy
+    powtórzeniu); bit-identyczność wyniku MIĘDZY maszynami nie była i nie jest
+    gwarantowana — tak samo zachowuje się BLAS/LAPACK pod ``scipy``.
 
     Powód zmiany (karta N1-WYDAJNOSC): profil enumeracji N-1 na substracie 53 stacji
     wskazał tę funkcję jako 76 % czasu WŁASNEGO całej analizy — dla sieci 315 węzłów
@@ -627,12 +678,14 @@ def build_jacobian_v2(
         przekatna: np.ndarray,
     ) -> np.ndarray:
         """Złóż jeden blok: wyraz poza przekątną, wyraz przekątniowy wg maski ``i == k``."""
-        theta = va_w[:, None] - va_k[None, :]
-        sin_t = np.sin(theta)
-        cos_t = np.cos(theta)
+        sin_t, cos_t = trig_bloku(va_w, va_k)
         wybor = np.ix_(wiersze, kolumny)
         wartosci = poza_przekatna(g[wybor], b[wybor], sin_t, cos_t, vm_w)
         return np.where(np.equal.outer(wiersze, kolumny), przekatna[:, None], wartosci)
+
+    przek_11, przek_12, przek_21, przek_22 = wyrazy_przekatne(
+        g, b, vm_ns, vm_pq, p_calc, q_calc, ns, pq
+    )
 
     j11 = _blok(
         ns,
@@ -643,7 +696,7 @@ def build_jacobian_v2(
         lambda g_ik, b_ik, sin_t, cos_t, vm_i: vm_i[:, None]
         * vm_ns[None, :]
         * (g_ik * sin_t - b_ik * cos_t),
-        -q_calc[ns] - b[ns, ns] * vm_ns**2,
+        przek_11,
     )
     j12 = _blok(
         ns,
@@ -652,7 +705,7 @@ def build_jacobian_v2(
         va_ns,
         va_pq,
         lambda g_ik, b_ik, sin_t, cos_t, vm_i: vm_i[:, None] * (g_ik * cos_t + b_ik * sin_t),
-        p_calc[ns] / vm_ns + g[ns, ns] * vm_ns,
+        przek_12,
     )
     j21 = _blok(
         pq,
@@ -663,7 +716,7 @@ def build_jacobian_v2(
         lambda g_ik, b_ik, sin_t, cos_t, vm_i: -vm_i[:, None]
         * vm_ns[None, :]
         * (g_ik * cos_t + b_ik * sin_t),
-        p_calc[pq] - g[pq, pq] * vm_pq**2,
+        przek_21,
     )
     j22 = _blok(
         pq,
@@ -672,7 +725,7 @@ def build_jacobian_v2(
         va_pq,
         va_pq,
         lambda g_ik, b_ik, sin_t, cos_t, vm_i: vm_i[:, None] * (g_ik * sin_t - b_ik * cos_t),
-        q_calc[pq] / vm_pq - b[pq, pq] * vm_pq,
+        przek_22,
     )
 
     top = np.hstack([j11, j12])

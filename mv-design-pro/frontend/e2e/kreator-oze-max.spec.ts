@@ -419,9 +419,23 @@ test('K9-A: kreator OZE MAX — aparatura i zgodność w jednym przepływie, wi�
   await page.getByTestId('mvd-kreator-oze-dalej').click();
   await expect(page.getByTestId('mvd-kreator-oze-zgodnosc')).toBeVisible();
   await page.getByTestId('mvd-kreator-oze-zgodnosc-profil').selectOption('ncrfg_pse');
+  // LVRT/HVRT pozostają krzywymi OPERATORA (obwiednia FRT jest cechą profilu
+  // przyłączeniowego), więc referencje są tu realnym kontraktem katalogu.
   await page.getByTestId('mvd-kreator-oze-zgodnosc-lvrt').selectOption('lvrt_pse_b');
   await page.getByTestId('mvd-kreator-oze-zgodnosc-hvrt').selectOption('hvrt_pse_b');
-  await page.getByTestId('mvd-kreator-oze-zgodnosc-pf').selectOption('pf_pse_b');
+  // NASTAWA P(f) — kanon po karcie K-Q (2026-08-14): katalog NIE dzieli już
+  // krzywych po operatorze i typie modułu (`pf_pse_b`), bo statyzm per typ
+  // modułu był zgadnięty — rozporządzenie (UE) 2016/631 art. 13 ust. 2 podaje
+  // statyzm jako NASTAWIALNY w przedziale 2-12 %. Identyfikator niesie dziś sam
+  // nastaw (`pf_droop_5`, `pf_droop_3`, …), a lista NIE jest zawężana profilem.
+  // Bierzemy pierwszą realną pozycję i PROWADZIMY jej wartość aż do asercji
+  // modelu — wiązanie „co wybrano w kreatorze = co utrwalono w modelu" jest
+  // mocniejsze niż zaszyty literał, który zgnije przy kolejnej transzy katalogu.
+  const pfSelect = page.getByTestId('mvd-kreator-oze-zgodnosc-pf');
+  await expect(pfSelect.locator('option').nth(1)).toBeAttached({ timeout: 20000 });
+  await pfSelect.selectOption({ index: 1 });
+  const pfCurveRef = await pfSelect.inputValue();
+  expect(pfCurveRef, 'katalog musi oferować nastawę P(f)').toMatch(/^pf_droop_/);
 
   // ------------------------------------------------------------------
   // Krok 6 (regulacja): tryb pracy źródła + limity mocy biernej.
@@ -474,7 +488,7 @@ test('K9-A: kreator OZE MAX — aparatura i zgodność w jednym przepływie, wi�
   expect(profile['nc_rfg_profile_ref']).toBe('ncrfg_pse');
   expect(profile['lvrt_curve_ref']).toBe('lvrt_pse_b');
   expect(profile['hvrt_curve_ref']).toBe('hvrt_pse_b');
-  expect(profile['pf_curve_ref']).toBe('pf_pse_b');
+  expect(profile['pf_curve_ref']).toBe(pfCurveRef);
   expect((wytworca!.meta ?? {})['operating_mode']).toBe('praca_sieciowa');
   const limity = (wytworca!.limits ?? {}) as Record<string, unknown>;
   expect(limity['q_min_mvar']).toBe(-0.05);

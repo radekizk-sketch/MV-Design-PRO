@@ -267,6 +267,7 @@ export function KrokZgodnosc({ dane, zmien, testid = 'mvd-kreator-oze-zgodnosc' 
             opcje={opcjePf}
             status="ready"
             placeholder={T.zgodnoscKrzywaPlaceholder}
+            pomoc={T.zgodnoscPfPomoc}
             testid={`${testid}-pf`}
           />
         </>

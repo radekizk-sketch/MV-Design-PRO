@@ -237,7 +237,12 @@ for (const motyw of MOTYWY) {
 
     await przejdzDoKroku(page, 'Transformator i strona nN');
     const katalogTrafo = page.getByTestId('mvd-kreator-stacja-katalog');
-    await expect(katalogTrafo.locator('option')).not.toHaveCount(1, { timeout: 20000 });
+    // POMIAR ZAMIAST „BYLE NIE JEDNA": `not.toHaveCount(1)` przechodziło TAKŻE
+    // przy ZERZE opcji (pusty katalog), więc bramka nie sprawdzała tego, co
+    // deklarowała — pusta lista szła dalej i wywalała się dopiero na `nth(1)`.
+    await expect
+      .poll(async () => katalogTrafo.locator('option').count(), { timeout: 20000 })
+      .toBeGreaterThan(1);
     const trafoId = await katalogTrafo.locator('option').nth(1).getAttribute('value');
     await katalogTrafo.selectOption(trafoId!);
     await page.getByTestId('mvd-kreator-stacja-zaczepy-rodzaj').selectOption('DETC');
@@ -249,9 +254,28 @@ for (const motyw of MOTYWY) {
     expect(fs.existsSync(sciezkaZaczepy)).toBe(true);
 
     // ------------------------------------------------ 3. Bilans CT/VT
+    //
+    // KROK POMIARU LICZY OBWODY WTÓRNE PÓL, więc pola muszą wcześniej powstać.
+    // Po przebudowie kroku 4 na tor KATALOG-FIRST (karta S3) rozdzielnica nie
+    // komponuje się już z „pakietu producenta" bez rodziny: bez wskazania
+    // producenta i rodziny lista pól jest pusta z wyboru kanonu, a krok pomiaru
+    // uczciwie melduje brak pól. Spec idzie więc realną drogą projektanta.
+    await przejdzDoKroku(page, 'Pola rozdzielnicy SN');
+    await expect(page.getByTestId('mvd-kreator-stacja-pola')).toBeVisible({ timeout: 20000 });
+    await page.getByTestId('mvd-kreator-stacja-producent').selectOption('ZPUE_WLOSZCZOWA');
+    // Rotoblok — rodzina modułowa z kartą katalogową deklarującą napięcie sieci
+    // 15 kV (czyli tej szyny); rodziny spoza klasy napięciowej katalog pokazuje,
+    // ale nie pozwala na nich budować.
+    await page.getByTestId('mvd-kreator-stacja-rodzina').selectOption('ZPUE_WLOSZCZOWA__ROTOBLOK');
+    await expect(page.getByTestId('mvd-kreator-stacja-pole-wiersz-1')).toBeVisible({
+      timeout: 20000,
+    });
+
     await przejdzDoKroku(page, 'Pomiar i zabezpieczenia pól');
     const ct1 = page.getByTestId('mvd-kreator-stacja-ct-1');
-    await expect(ct1.locator('option')).not.toHaveCount(1, { timeout: 20000 });
+    await expect
+      .poll(async () => ct1.locator('option').count(), { timeout: 20000 })
+      .toBeGreaterThan(1);
     const ctId = await ct1.locator('option').nth(1).getAttribute('value');
     await ct1.selectOption(ctId!);
     const vt1 = page.getByTestId('mvd-kreator-stacja-vt-1');

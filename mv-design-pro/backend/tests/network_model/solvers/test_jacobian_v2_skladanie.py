@@ -11,11 +11,20 @@ optymalizacji — i porównuje ją z produkcyjną na WZORCU BITÓW (``view(np.ui
 nie na ``allclose``. Porównanie bitowe łapie także różnicę ``-0.0`` vs ``+0.0``,
 której ``==`` by nie zauważyło, a która potrafi zmienić wynik dodawania.
 
-DLACZEGO PIN, A NIE SAMO ZAUFANIE: postać blokowa opiera się na założeniu o
-BIBLIOTECE — że ``np.sin``/``np.cos`` policzone dla całej tablicy dają bit w bit to
-samo, co wywołane skalarnie (na numpy 1.26.4 dają). To założenie o cudzym kodzie,
-więc nie może zostać deklaracją w docstringu: gdyby przyszła wersja numpy zmieniła
-ścieżkę SIMD dla funkcji trygonometrycznych, ten test ma zaświecić na czerwono.
+DWIE RZECZY, DWA PINY (korekta 2026-08-14 — decyzja właściciela po pomiarze).
+Pierwotnie jeden pin mieszał dwie rzeczy: sposób składania (nasz kod) i zgodność
+wektorowego ``np.sin`` ze skalarnym (cudzy kod). Runner CI pokazał, że druga z nich
+NIE zachodzi na każdym procesorze — pin świecił czerwono, choć składanie było
+identyczne. Teraz:
+
+* SPOSÓB SKŁADANIA pinuje ``_jakobian_skalarny`` — bierze wejście trygonometryczne z
+  TEJ SAMEJ funkcji, co produkcja (``trig_bloku``), więc równoważność bitowa jest
+  własnością konstrukcji, niezależną od procesora (sprawdzone: podmiana ``trig_bloku``
+  na wartości przesunięte o 1 ULP NIE psuje zgodności, a odwrócenie znaku jednego
+  wyrazu składania — psuje);
+* WŁASNOŚĆ BIBLIOTEKI pinuje ``test_trig_wektorowy_vs_skalarny_najwyzej_1_ulp``
+  (granica 1 ULP; zmierzony wpływ najgorszego przypadku na krok Newtona: 7,0e-12,
+  cztery rzędy poniżej tolerancji zbieżności 1e-8).
 
 ILOCZYN CECH (nie pojedynczy przykład): pokrycie obejmuje kombinacje
 {blok kwadratowy ns×ns, bloki mieszane ns×pq i pq×ns, gdzie przekątna NIE leży na
@@ -46,7 +55,17 @@ def _jakobian_skalarny(
 
     Nie upraszczać i nie „porządkować" — wartość tej funkcji polega na tym, że jest
     wiernym zapisem postaci, wobec której deklarujemy bitową równoważność.
+
+    WEJŚCIE TRYGONOMETRYCZNE JEST WSPÓLNE Z PRODUKCJĄ (``trig_bloku``) — korekta
+    2026-08-14 po zderzeniu z runnerem CI. Ta funkcja pinuje SPOSÓB SKŁADANIA (co
+    było przedmiotem karty N1-WYDAJNOSC), a nie ścieżkę SIMD sinusa: gdy sinus
+    liczyły osobno obie strony, pin świecił czerwono na procesorze o innej ścieżce
+    wektorowej, mimo że sposób składania był identyczny. Własność biblioteki
+    (wektor vs skalar ≤ 1 ULP) ma własny pin niżej w tym pliku — razem pokrywają
+    to samo, co pin pierwotny, ale każdy mierzy JEDNĄ rzecz.
     """
+    from network_model.solvers.power_flow_newton_internal import trig_bloku, wyrazy_przekatne
+
     g = ybus.real
     b = ybus.imag
     n_p = len(non_slack_indices)
@@ -59,49 +78,96 @@ def _jakobian_skalarny(
     v_mag = np.abs(v)
     v_ang = np.angle(v)
 
+    # Wejscie trygonometryczne per blok — TA SAMA funkcja, ktora liczy produkcja.
+    va_ns = v_ang[np.asarray(non_slack_indices, dtype=np.intp)]
+    va_pq = v_ang[np.asarray(pq_indices, dtype=np.intp)]
+    sin_11, cos_11 = trig_bloku(va_ns, va_ns)
+    sin_12, cos_12 = trig_bloku(va_ns, va_pq)
+    sin_21, cos_21 = trig_bloku(va_pq, va_ns)
+    sin_22, cos_22 = trig_bloku(va_pq, va_pq)
+    # Wyrazy przekatniowe — rowniez z JEDNEGO zrodla wspolnego z produkcja
+    # (numpy potrafi liczyc `vm ** 2` inna droga dla tablicy niz dla skalara).
+    idx_ns = np.asarray(non_slack_indices, dtype=np.intp)
+    idx_pq = np.asarray(pq_indices, dtype=np.intp)
+    przek_11, przek_12, przek_21, przek_22 = wyrazy_przekatne(
+        g, b, v_mag[idx_ns], v_mag[idx_pq], p_calc, q_calc, idx_ns, idx_pq
+    )
+
     for row, i in enumerate(non_slack_indices):
         for col, k in enumerate(non_slack_indices):
-            theta = v_ang[i] - v_ang[k]
             if i == k:
-                j11[row, col] = -q_calc[i] - b[i, i] * v_mag[i] ** 2
+                j11[row, col] = przek_11[row]
             else:
-                sin_t = np.sin(theta)
-                cos_t = np.cos(theta)
+                sin_t = sin_11[row, col]
+                cos_t = cos_11[row, col]
                 j11[row, col] = v_mag[i] * v_mag[k] * (g[i, k] * sin_t - b[i, k] * cos_t)
 
     for row, i in enumerate(non_slack_indices):
         for col, k in enumerate(pq_indices):
-            theta = v_ang[i] - v_ang[k]
             if i == k:
-                j12[row, col] = p_calc[i] / v_mag[i] + g[i, i] * v_mag[i]
+                j12[row, col] = przek_12[row]
             else:
-                sin_t = np.sin(theta)
-                cos_t = np.cos(theta)
+                sin_t = sin_12[row, col]
+                cos_t = cos_12[row, col]
                 j12[row, col] = v_mag[i] * (g[i, k] * cos_t + b[i, k] * sin_t)
 
     for row, i in enumerate(pq_indices):
         for col, k in enumerate(non_slack_indices):
-            theta = v_ang[i] - v_ang[k]
             if i == k:
-                j21[row, col] = p_calc[i] - g[i, i] * v_mag[i] ** 2
+                j21[row, col] = przek_21[row]
             else:
-                sin_t = np.sin(theta)
-                cos_t = np.cos(theta)
+                sin_t = sin_21[row, col]
+                cos_t = cos_21[row, col]
                 j21[row, col] = -v_mag[i] * v_mag[k] * (g[i, k] * cos_t + b[i, k] * sin_t)
 
     for row, i in enumerate(pq_indices):
         for col, k in enumerate(pq_indices):
-            theta = v_ang[i] - v_ang[k]
             if i == k:
-                j22[row, col] = q_calc[i] / v_mag[i] - b[i, i] * v_mag[i]
+                j22[row, col] = przek_22[row]
             else:
-                sin_t = np.sin(theta)
-                cos_t = np.cos(theta)
+                sin_t = sin_22[row, col]
+                cos_t = cos_22[row, col]
                 j22[row, col] = v_mag[i] * (g[i, k] * sin_t - b[i, k] * cos_t)
 
     top = np.hstack([j11, j12])
     bottom = np.hstack([j21, j22])
     return np.vstack([top, bottom])
+
+
+def test_trig_wektorowy_vs_skalarny_najwyzej_1_ulp() -> None:
+    """WLASNOSC BIBLIOTEKI, nie tego kodu: sinus wektorowy vs skalarny.
+
+    Pin powstal 2026-08-14 z pomiaru, a nie z ostroznosci. Pierwotny pin skladania
+    zakladal, ze ``np.sin`` policzony dla tablicy daje bit w bit to samo, co wywolany
+    skalarnie. Na tej maszynie daje; na runnerze CI NIE (inna sciezka SIMD) i pin
+    swiecil czerwono, mimo ze SPOSOB SKLADANIA byl identyczny. Rozdzielone: skladanie
+    pinuje ``_jakobian_skalarny`` (wspolne wejscie ``trig_bloku``), a TU stoi jawna
+    granica dla biblioteki.
+
+    Dopuszczalna roznica to 1 ULP. Zmierzony wplyw najgorszego przypadku na substracie
+    53 stacji (Y-bus 308x308): jakobian ``max |delta| = 2,8e-17`` (wzglednie 2,2e-16),
+    krok Newtona ``max |delta dx| = 7,0e-12`` — cztery rzedy PONIZEJ tolerancji
+    zbieznosci 1e-8. Gdyby biblioteka kiedys przekroczyla 1 ULP, ten pin zaswieci
+    czerwono i decyzja o postaci skladania wroci na stol z nowym pomiarem.
+    """
+    rng = np.random.default_rng(20260814)
+    katy = rng.uniform(-np.pi, np.pi, 4096)
+
+    for nazwa, wektorowa, skalarna in (
+        ("sin", np.sin(katy), np.array([np.sin(float(x)) for x in katy])),
+        ("cos", np.cos(katy), np.array([np.cos(float(x)) for x in katy])),
+    ):
+        rozne = np.flatnonzero(wektorowa.view(np.uint64) != skalarna.view(np.uint64))
+        if rozne.size == 0:
+            continue
+        # Roznica liczona w ULP: ile reprezentowalnych liczb dzieli obie wartosci.
+        krok = np.abs(np.nextafter(skalarna[rozne], np.inf) - skalarna[rozne])
+        ulp = np.abs(wektorowa[rozne] - skalarna[rozne]) / np.maximum(krok, np.finfo(float).tiny)
+        assert ulp.max() <= 1.0, (
+            f"{nazwa}: wektorowa i skalarna postac roznia sie o {ulp.max():.2f} ULP "
+            f"(dopuszczalne 1 ULP) na {rozne.size} z {katy.size} wartosci. "
+            "Wplyw na wynik rozplywu trzeba zmierzyc ponownie — patrz docstring."
+        )
 
 
 def _rowne_bitowo(lewa: np.ndarray, prawa: np.ndarray) -> bool:
@@ -402,7 +468,33 @@ def test_jakobian_realnego_biegu_substratu_53_stacji_bit_w_bit() -> None:
     for numer, (ybus, v, non_slack, pq, p_calc, q_calc) in enumerate(przechwycone):
         oczekiwany = _jakobian_skalarny(ybus, v, non_slack, pq, p_calc, q_calc)
         otrzymany = build_jacobian_v2(ybus, v, non_slack, pq, p_calc, q_calc)
-        assert _rowne_bitowo(otrzymany, oczekiwany), (
-            f"Jakobian iteracji {numer} biegu substratu 53 stacji różni się bitowo "
-            "od postaci skalarnej."
-        )
+        # Komunikat MUSI nazwać miejsce: czerwień tego pinu na innym procesorze raz
+        # kosztowała pełny przebieg CI zgadywany „na oko" (2026-08-14). Diagnostyka
+        # liczona dopiero po wykryciu różnicy, więc nie obciąża zielonego biegu.
+        if not _rowne_bitowo(otrzymany, oczekiwany):
+            rozne = np.argwhere(otrzymany.view(np.uint64) != oczekiwany.view(np.uint64))
+            n_p = len(non_slack)
+            opis = []
+            for w, k in rozne[:5]:
+                blok_nazwa = (
+                    "J11"
+                    if (w < n_p and k < n_p)
+                    else "J12" if w < n_p else "J21" if k < n_p else "J22"
+                )
+                przekatna = (
+                    "PRZEKĄTNA"
+                    if non_slack[w % n_p] == (non_slack[k] if k < n_p else pq[k - n_p])
+                    else "poza przekątną"
+                )
+                opis.append(
+                    f"{blok_nazwa}[{w},{k}] ({przekatna}): blok={otrzymany[w, k]!r} "
+                    f"vs skalar={oczekiwany[w, k]!r}"
+                )
+            raise AssertionError(
+                f"Jakobian iteracji {numer} biegu substratu 53 stacji różni się bitowo "
+                f"od postaci skalarnej w {len(rozne)} z {otrzymany.size} wyrazów. "
+                f"Pierwsze różnice: {'; '.join(opis)}. "
+                "Wejście trygonometryczne i wyrazy przekątniowe pochodzą z jednego "
+                "źródła (trig_bloku, wyrazy_przekatne), więc różnica oznacza realną "
+                "zmianę SPOSOBU SKŁADANIA — nie wolno dopasowywać asercji."
+            )
