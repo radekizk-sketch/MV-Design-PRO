@@ -150,17 +150,18 @@ export function anchorIdentityLabel(
 
 /** Parametry strony SN (równoważnik Thevenina) — jawnie „strona SN", żeby
  *  Ik″ SN nie dało się pomylić z Ik″ na szynie nN (§3). */
-export function anchorDetailLabel(snapshot: UpstreamEquivalentSnapshot | undefined): string | null {
-  if (!snapshot) return null;
-  if (snapshot.status !== 'OK') {
-    const powod = snapshot.missing_data.length
-      ? snapshot.missing_data.map((kod) => OPIS_BRAKU_ROWNOWAZNIKA_PL[kod] ?? kod).join('; ')
+export function anchorDetailLabel(rownowaznik: UpstreamEquivalentSnapshot | undefined): string | null {
+  if (!rownowaznik) return null;
+  if (rownowaznik.status !== 'OK') {
+    const powod = rownowaznik.missing_data.length
+      ? rownowaznik.missing_data.map((kod) => OPIS_BRAKU_ROWNOWAZNIKA_PL[kod] ?? kod).join('; ')
       : 'brak danych';
     return `Sk″/Ik″ SN: brak danych — ${powod}`;
   }
-  const sk = snapshot.sk_mva != null ? `Sk″ SN = ${plFixed(snapshot.sk_mva, 1)} MVA` : 'Sk″ SN = —';
-  const ik = snapshot.ikss_ka != null ? `Ik″ SN = ${plFixed(snapshot.ikss_ka, 2)} kA` : 'Ik″ SN = —';
-  return `${sk} · ${ik} (${snapshot.scenario_id ?? 'MAX'})`;
+  const sk = rownowaznik.sk_mva != null ? `Sk″ SN = ${plFixed(rownowaznik.sk_mva, 1)} MVA` : 'Sk″ SN = —';
+  const ik = rownowaznik.ikss_ka != null ? `Ik″ SN = ${plFixed(rownowaznik.ikss_ka, 2)} kA` : 'Ik″ SN = —';
+  const scenariusz = rownowaznik.scenario_id ?? 'MAX';
+  return `${sk} · ${ik} (${scenariusz})`;
 }
 
 export function domainDescriptorLabel(view: LvDomainGraphView): string {
@@ -846,8 +847,9 @@ export function composeLvDomainScene(
 
   // --- Kotwice systemów SN (§10/§11): jedna kreska na grupę tożsamości. -----
   const groupKeyOf = (transformerRef: string): string => {
-    const snapshot = snapshotByTransformer.get(transformerRef);
-    if (snapshot?.equivalent_id) return `eq:${snapshot.equivalent_id}`;
+    const rownowaznik = snapshotByTransformer.get(transformerRef);
+    const equivalentId = rownowaznik?.equivalent_id;
+    if (equivalentId) return `eq:${equivalentId}`;
     const systemId = transformerByRef.get(transformerRef)?.upstream_system_id;
     return systemId ? `system:${systemId}` : `tr:${transformerRef}`;
   };

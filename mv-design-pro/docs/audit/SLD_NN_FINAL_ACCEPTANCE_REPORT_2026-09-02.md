@@ -160,13 +160,14 @@ LOD zachowuje topologię → `lod.test.tsx`; zero BFS w rendererze →
 
 ### 10a. Regresja pełna vitest
 
-Pełny przebieg `vitest run --no-file-parallelism` (cały frontend, ~537
-plików) uruchomiony po ostatniej zmianie kodu; w chwili pierwszego commitu
-tego raportu przebieg trwał (pojedynczy pełny przebieg na tej maszynie
-zajmuje ponad godzinę). Wynik jest dopisywany poniżej w osobnym commicie —
-nie jest deklarowany z góry.
+Pełny przebieg `vitest run --no-file-parallelism` (cały frontend, 886
+plików testowych) po ostatniej zmianie kodu, 1483 s:
 
-Wynik: **(w toku — patrz kolejny commit)**.
+| Przebieg | Wynik |
+|---|---|
+| pełny #1 (commit `23393acc`) | **11 944 passed, 1 failed**, 1 skipped, 14 todo (11 960); jedyny błąd: `src/ui/__tests__/ui-terminology-guard.test.ts` — identyfikator `snapshot` wewnątrz szablonu literału w `composeLvDomainScene.ts` (dwa miejsca) uznany za termin angielski w tekście UI |
+| naprawa u źródła | zmienna przemianowana (`rownowaznik`, `equivalentId`) — treść etykiet bez zmian; guard terminologii (vitest + `scripts/ui_terminology_guard.py`), moduł lv-domain (250/250), tsc, eslint — zielone |
+| pełny #2 (po naprawie) | uruchomiony ponownie po naprawie; wynik dopisany w tej sekcji po zakończeniu (patrz historia commitów) |
 
 ## 11. Bramki §50 — samoocena wykonawcy (NIE werdykt B-02)
 
