@@ -15,6 +15,28 @@
 
 ---
 
+## Program Digital Twin SN+nN 2026-09 (PROPOZYCJA — pakiet do przeglądu właściciela)
+
+Wynik mandatu „FINAL MASTER ARCHITECTURE MANDATE" (FAZY A–F, STOP §180). Nic z tego programu nie jest jeszcze wdrożone ani wiążące; hierarchia kanonu powyżej pozostaje w mocy do decyzji właściciela.
+
+- [twin/INDEX_TWIN.md](./twin/INDEX_TWIN.md) — indeks programu i kolejność czytania
+- [twin/OWNER_REVIEW_PACKAGE.md](./twin/OWNER_REVIEW_PACKAGE.md) — pakiet §179, wymagania dodatkowe §177, konflikty §178, decyzje
+- [twin/MV_DESIGN_PRO_DIGITAL_TWIN_AUDIT.md](./twin/MV_DESIGN_PRO_DIGITAL_TWIN_AUDIT.md) — audyt forensyczny (FAZA A): TOP 30, macierz luk, rejestry
+- [twin/ENGINEERING_FRICTION_REGISTER.md](./twin/ENGINEERING_FRICTION_REGISTER.md) — rejestr tarć inżynierskich W1–W14
+- [twin/MV_DESIGN_PRO_TARGET_DIGITAL_TWIN_ARCHITECTURE.md](./twin/MV_DESIGN_PRO_TARGET_DIGITAL_TWIN_ARCHITECTURE.md) — docelowa architektura twin (FAZA B)
+- [twin/MV_DESIGN_PRO_DATA_VERSIONING_PROVENANCE.md](./twin/MV_DESIGN_PRO_DATA_VERSIONING_PROVENANCE.md) — rewizje, provenance, persystencja
+- [twin/MV_DESIGN_PRO_TARGET_ENGINEERING_WORKFLOW.md](./twin/MV_DESIGN_PRO_TARGET_ENGINEERING_WORKFLOW.md) — docelowy workflow inżynierski (FAZA C)
+- [twin/MV_DESIGN_PRO_SIMULATION_ARCHITECTURE.md](./twin/MV_DESIGN_PRO_SIMULATION_ARCHITECTURE.md) — architektura symulacji (FAZA D cz. 1)
+- [twin/MV_DESIGN_PRO_DESIGN_OPTIMIZATION_ARCHITECTURE.md](./twin/MV_DESIGN_PRO_DESIGN_OPTIMIZATION_ARCHITECTURE.md) — dobór i optymalizacja (FAZA D cz. 2)
+- [twin/MV_DESIGN_PRO_PROTECTION_ARCHITECTURE.md](./twin/MV_DESIGN_PRO_PROTECTION_ARCHITECTURE.md) — architektura zabezpieczeń
+- [twin/MV_DESIGN_PRO_SLD_PRESENTATION_ARCHITECTURE.md](./twin/MV_DESIGN_PRO_SLD_PRESENTATION_ARCHITECTURE.md) — prezentacja SLD/CAD/SCADA (FAZA E)
+- [twin/SLD_SYMBOL_SYSTEM_PLAN.md](./twin/SLD_SYMBOL_SYSTEM_PLAN.md) — plan pakietu symboli R3
+- [twin/MV_DESIGN_PRO_PERFORMANCE_PLAN.md](./twin/MV_DESIGN_PRO_PERFORMANCE_PLAN.md) — plan wydajności
+- [twin/MV_DESIGN_PRO_MIGRATION_PLAN.md](./twin/MV_DESIGN_PRO_MIGRATION_PLAN.md) — plan migracji strangler (FAZA F)
+- ADR-012…ADR-028 (PROPOSED) w [adr/](./adr/)
+
+---
+
 ## 🚀 START — Od czego zaczyna nowy developer
 
 **Krok 1: Zrozumieć kontekst (15 min)**
