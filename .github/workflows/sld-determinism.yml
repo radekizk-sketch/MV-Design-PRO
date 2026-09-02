@@ -65,10 +65,6 @@ jobs:
         working-directory: mv-design-pro/frontend
         run: npx vitest run --no-file-parallelism src/ui/sld/v2/geometry/__tests__/portAnchoredGeometry.substrate.test.ts --reporter=verbose
 
-      - name: Run StationInternalView tests (PR-6)
-        working-directory: mv-design-pro/frontend
-        run: npx vitest run --no-file-parallelism src/ui/sld/v2/__tests__/StationInternalView.test.tsx --reporter=verbose
-
       - name: Run SldCommandService tests (PR-13)
         working-directory: mv-design-pro/frontend
         run: npx vitest run --no-file-parallelism src/ui/sld/v2/command/__tests__/SldCommandService.test.ts --reporter=verbose

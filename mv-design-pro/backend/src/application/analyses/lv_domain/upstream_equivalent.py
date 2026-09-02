@@ -48,6 +48,7 @@ from application.analyses.fault_loop.service import (
     resolve_station_transformer,
     restrict_graph_to_island_of,
 )
+from application.analyses.kontrakt_liczb import kwantyzuj_kontrakt
 from enm.hash import compute_enm_hash, compute_switching_snapshot_hash
 from enm.mapping import build_zero_sequence_zbus, map_enm_to_network_graph
 from enm.models import EnergyNetworkModel
@@ -108,7 +109,7 @@ def _hv_zero_sequence_ohm(
     return z0_ohm, None
 
 
-def build_upstream_equivalent_snapshot(
+def _build_upstream_equivalent_snapshot_surowy(
     enm: EnergyNetworkModel,
     case_id: str,
     station_ref: str,
@@ -237,3 +238,29 @@ def build_upstream_equivalent_snapshot(
             "zwarcia nN liczy stronę SN (application.analyses.fault_loop)."
         ),
     }
+
+
+def build_upstream_equivalent_snapshot(
+    enm: EnergyNetworkModel,
+    case_id: str,
+    station_ref: str,
+    *,
+    scenario: Scenario = "MAX",
+    transformer_ref: str | None = None,
+) -> dict[str, Any]:
+    """Równoważnik Thevenina SN dla stacji — kontrakt z liczbami skwantyzowanymi.
+
+    ADR-018 / M0-2: wartości z odwrócenia Zbus (`z1_ohm`, `sk_mva`, `ikss_ka`,
+    `rx_ratio`, `z0_ohm`) różniły się o 1 ULP między maszynami (jądro BLAS), co
+    zmieniało odciski projekcji nN w CI. Kanonizacja stoi NA GRANICY kontraktu —
+    fizyka (`compute_upstream_hv_thevenin`, `compute_ikss`) jest nietknięta.
+    """
+    return kwantyzuj_kontrakt(
+        _build_upstream_equivalent_snapshot_surowy(
+            enm,
+            case_id,
+            station_ref,
+            scenario=scenario,
+            transformer_ref=transformer_ref,
+        )
+    )

@@ -111,6 +111,7 @@ ATOMOWO, z JEDNEGO obiektu ENM pobranego raz:
 | podstawa energizacji §17 | `graph.measured_voltage_states`, `graph.energization_basis_pl` | ENM nie niesie pomiarów obecności napięcia — stany są TOPOLOGICZNE („NIEZASILONA (WG AKTUALNEJ TOPOLOGII)"), a mapa pomiarów jest pusta i jawna |
 | audyt topologii §34 | `validation_messages[]` | `NN-AUD-01…18` z `severity` (BLOCKER/IMPORTANT/INFO), `message_pl`, `element_refs`; NN-AUD-18 (INFO, R2 §6) = sprzęgło bez klasy funkcjonalnej aparatu — na schemacie symbol ogólny łącznika, nie dorysowany wyłącznik |
 | odcisk projekcji | `projection_hash` | deterministyczny |
+| kanonizacja liczb (M0-2, ADR-018, 2026-09-02) | wszystkie `float` ładunku kwantyzowane do 9 cyfr znaczących PRZED serializacją i odciskiem (`application/analyses/kontrakt_liczb.py`) | odcisk zależy od modelu, nie od jądra BLAS maszyny — dowód: 7/18 fixtur miało w CI inny odcisk przez różnice 1 ULP (`r_ohm`, `rx_ratio`, `sk_mva`); test klasy `test_kwantyzacja_kontraktu.py` (idempotencja + zaburzenie ±1 ULP każdej liczby) |
 
 Reguły energizacji (`lv_domain/energization.py`, jedna definicja dla szyn,
 odcinków i wysp):

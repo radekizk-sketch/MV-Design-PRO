@@ -234,3 +234,41 @@ def test_regresja_historyczna_verify_v12_6_zostalby_zlapany(tmp_path) -> None:
     naruszenia = guard.check_verification_scripts(scripts_dir, tmp_path)
 
     assert len(naruszenia) == 5
+
+
+def test_d_workflow_z_istniejacymi_sciezkami_jest_czysty(tmp_path) -> None:
+    root = tmp_path / "mv-design-pro"
+    (root / "frontend" / "src" / "a").mkdir(parents=True)
+    (root / "frontend" / "src" / "a" / "x.test.ts").write_text("", encoding="utf-8")
+    (root / "scripts").mkdir()
+    (root / "scripts" / "g.py").write_text("", encoding="utf-8")
+    wf = tmp_path / ".github" / "workflows"
+    wf.mkdir(parents=True)
+    (wf / "ci.yml").write_text(
+        "steps:\n  - run: npx vitest run src/a/x.test.ts\n  - run: python scripts/g.py\n"
+        "  - run: poetry run python ../scripts/g.py\n  - run: python mv-design-pro/scripts/g.py\n",
+        encoding="utf-8",
+    )
+    assert guard.check_workflows(wf, root) == []
+
+
+def test_d_workflow_z_widmowym_testem_daje_naruszenie_z_nazwa_pliku(tmp_path) -> None:
+    root = tmp_path / "mv-design-pro"
+    (root / "frontend" / "src").mkdir(parents=True)
+    (root / "scripts").mkdir()
+    wf = tmp_path / ".github" / "workflows"
+    wf.mkdir(parents=True)
+    (wf / "sld.yml").write_text(
+        "steps:\n  # run: src/komentarz/pominiety.test.ts\n"
+        "  - run: npx vitest run --no-file-parallelism src/ui/StationInternalView.test.tsx\n"
+        "  - run: python scripts/nie_ma_takiego_guarda.py\n",
+        encoding="utf-8",
+    )
+    naruszenia = guard.check_workflows(wf, root)
+    assert any("StationInternalView.test.tsx" in n and "sld.yml" in n for n in naruszenia)
+    assert any("nie_ma_takiego_guarda.py" in n for n in naruszenia)
+    assert not any("pominiety" in n for n in naruszenia)
+
+
+def test_d_brak_katalogu_workflowow_jest_bledem(tmp_path) -> None:
+    assert guard.check_workflows(tmp_path / "brak", tmp_path) != []

@@ -39,6 +39,7 @@ from application.analyses.fault_loop.service import (
     build_feeder_fault_loop_view_for_transformer,
     station_transformers,
 )
+from application.analyses.kontrakt_liczb import kwantyzuj_kontrakt
 from application.analyses.swz.service import build_swz_view
 from application.analyses.voltage_profile_view import build_voltage_profile_view
 from application.result_freshness import evaluate_result_freshness
@@ -427,5 +428,8 @@ def build_lv_domain_projection_v1(
         "swz_snapshot": swz_snapshot,
         "validation_messages": validation_messages,
     }
+    # ADR-018 / M0-2: kanonizacja liczb PRZED odciskiem — odcisk i fixtury
+    # zależą od modelu, nie od jądra BLAS maszyny (patrz `kontrakt_liczb`).
+    payload = kwantyzuj_kontrakt(payload)
     payload["projection_hash"] = _canonical_hash(payload)
     return payload
