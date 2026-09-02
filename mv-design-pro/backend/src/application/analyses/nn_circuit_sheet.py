@@ -100,6 +100,7 @@ from application.analyses.fault_loop.route import (
     RouteExtractionError,
     bfs_paths_from,
     group_bus_refs_by_feeder,
+    incomer_branch_refs,
     path_to_bus,
 )
 
@@ -946,6 +947,10 @@ def build_nn_circuit_sheet(
     # Kolejność wierszy: po `feeder_root_branch_ref` w obrębie CAŁEJ stacji
     # (jak dotąd), niezależnie od transformatora — numeracja `nr` ciągła.
     odplywy: list[tuple[str, Transformer, list[str], dict[str, int]]] = []
+    # Odpływ zaczyna się na szynie rozdzielnicy: wyłącznik główny nN (incomer)
+    # nie jest odpływem — ta sama definicja co w pętli zwarcia/SWZ
+    # (`fault_loop.route.incomer_branch_refs`, jedno źródło dla obu konsumentów).
+    incomers = incomer_branch_refs(enm, station.bus_refs, [t.lv_bus_ref for t in transformatory])
     for trafo in transformatory:
         paths = przypisanie.paths_by_transformer.get(trafo.ref_id, {})
         wlasne = {
@@ -954,7 +959,7 @@ def build_nn_circuit_sheet(
             if przypisanie.owner_by_bus.get(bus_ref) == trafo.ref_id
         }
         hop_counts = {bus_ref: p.hop_count for bus_ref, p in wlasne.items()}
-        for root_branch_ref, bus_refs in group_bus_refs_by_feeder(wlasne).items():
+        for root_branch_ref, bus_refs in group_bus_refs_by_feeder(wlasne, incomers).items():
             odplywy.append((root_branch_ref, trafo, bus_refs, hop_counts))
     odplywy.sort(key=lambda item: item[0])
 

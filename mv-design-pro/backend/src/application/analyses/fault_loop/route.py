@@ -27,6 +27,7 @@ danych żyły powrotnej dla ``OverheadLine`` — poza zakresem P0.6, P1 wg
 from __future__ import annotations
 
 from collections import deque
+from collections.abc import Iterable
 from dataclasses import dataclass, replace
 from typing import TypeAlias
 
@@ -246,17 +247,57 @@ def route_segments_min_scenario(path: LvBusPath) -> list[RouteSegmentImpedance]:
     return corrected
 
 
-def feeder_root_branch_ref(path: LvBusPath) -> str | None:
-    """Referencja pierwszej gałęzi trasy od korzenia — identyfikator „odpływu".
+def incomer_branch_refs(
+    enm: EnergyNetworkModel, station_bus_refs: Iterable[str], transformer_lv_bus_refs: Iterable[str]
+) -> frozenset[str]:
+    """Gałęzie WYŁĄCZNIKA GŁÓWNEGO nN (incomer): jedyna gałąź nie-sprzęgłowa
+    ZACISKU nN transformatora, który NIE jest szyną rozdzielnicy stacji
+    (``Substation.bus_refs``). Ta sama definicja co rola ``incomer`` w grafie
+    domeny (`lv_domain/graph_view.py`) — JEDNO źródło, dwa konsumenty (pętla
+    zwarcia / SWZ i arkusz obwodów). Zacisk będący zarazem szyną rozdzielnicy
+    (transformator wprost na szynie) nie ma incomera: jego jedyna gałąź jest
+    zwykłym odpływem."""
+    boards = set(station_bus_refs)
+    out: set[str] = set()
+    for lv_bus_ref in transformer_lv_bus_refs:
+        if lv_bus_ref in boards:
+            continue
+        touching = [
+            b
+            for b in enm.branches
+            if lv_bus_ref in (b.from_bus_ref, b.to_bus_ref) and b.type != "bus_coupler"
+        ]
+        if len(touching) == 1:
+            out.add(touching[0].ref_id)
+    return frozenset(out)
 
-    ``None`` dla korzenia samego (trasa pusta — punkt zwarcia to sama szyna TR).
+
+def feeder_root_branch_ref(
+    path: LvBusPath, incomer_refs: frozenset[str] = frozenset()
+) -> str | None:
+    """Referencja gałęzi-korzenia ODPŁYWU dla trasy od zacisku nN transformatora.
+
+    Odpływ zaczyna się na SZYNIE ROZDZIELNICY: gdy trasa wchodzi na nią przez
+    wyłącznik główny nN (``incomer_refs``), korzeniem odpływu jest DRUGA gałąź
+    trasy, a sam incomer nie jest odpływem (przed tą korektą stacja z jawnym
+    wyłącznikiem głównym miała JEDEN „odpływ" — incomer — obejmujący wszystkie
+    punkty rozdzielnicy, więc SWZ i arkusz obwodów gubiły podział na odpływy).
+    ``None`` dla korzenia samego (trasa pusta) i dla szyny rozdzielnicy tuż za
+    incomerem (punkt zwarcia to sama szyna, nie odpływ).
     """
     if not path.branches:
         return None
-    return path.branches[0].ref_id
+    first = path.branches[0]
+    if first.ref_id in incomer_refs:
+        if len(path.branches) < 2:
+            return None
+        return path.branches[1].ref_id
+    return first.ref_id
 
 
-def group_bus_refs_by_feeder(paths: dict[str, LvBusPath]) -> dict[str, list[str]]:
+def group_bus_refs_by_feeder(
+    paths: dict[str, LvBusPath], incomer_refs: frozenset[str] = frozenset()
+) -> dict[str, list[str]]:
     """Grupuj referencje szyn wg odpływu (pierwsza gałąź trasy od korzenia).
 
     Czysto TOPOLOGICZNE (BFS) — niezależne od tego, czy fizyka pętli zwarcia
@@ -272,8 +313,8 @@ def group_bus_refs_by_feeder(paths: dict[str, LvBusPath]) -> dict[str, list[str]
     """
     feeder_bus_refs: dict[str, list[str]] = {}
     for bus_ref, path in sorted(paths.items()):
-        root = feeder_root_branch_ref(path)
-        if root is None:  # sama szyna TR — nie jest punktem odpływu
+        root = feeder_root_branch_ref(path, incomer_refs)
+        if root is None:  # sama szyna TR / szyna rozdzielnicy — nie jest punktem odpływu
             continue
         feeder_bus_refs.setdefault(root, []).append(bus_ref)
     return feeder_bus_refs

@@ -68,6 +68,7 @@ from .route import (
     RouteExtractionError,
     bfs_paths_from,
     group_bus_refs_by_feeder,
+    incomer_branch_refs,
     path_to_bus,
     route_segments,
 )
@@ -753,7 +754,12 @@ def build_feeder_fault_loop_view_for_transformer(
         for bus_ref, path in paths.items()
         if assignment.owner_by_bus.get(bus_ref) == trafo.ref_id
     }
-    feeder_bus_refs = group_bus_refs_by_feeder(owned_paths)
+    # Odpływ zaczyna się na szynie rozdzielnicy, nie na zacisku transformatora:
+    # wyłącznik główny nN (incomer) nie jest odpływem (`route.incomer_branch_refs`).
+    incomers = incomer_branch_refs(
+        enm, station.bus_refs, [t.lv_bus_ref for t in station_transformers(enm, station)]
+    )
+    feeder_bus_refs = group_bus_refs_by_feeder(owned_paths, incomers)
 
     feeders: list[dict[str, Any]] = []
     for root_branch_ref in sorted(feeder_bus_refs):

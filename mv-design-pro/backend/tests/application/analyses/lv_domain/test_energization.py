@@ -74,7 +74,7 @@ class TestZdolnoscPracyWyspowej:
         ] == ("DUAL_MODE")
 
     def test_klasa_maszyny_rozstrzyga_bez_deklaracji(self) -> None:
-        assert resolve_der_island_capability(self._gen(gen_type="synchronous"))[0] == "GRID_FORMING"
+        assert resolve_der_island_capability(self._gen(gen_type="synchronous"))[0] == "DUAL_MODE"
         assert resolve_der_island_capability(self._gen(gen_type="fw_scig"))[0] == "GRID_FOLLOWING"
         assert resolve_der_island_capability(self._gen(gen_type="fw_dfig"))[0] == "GRID_FOLLOWING"
         assert resolve_der_island_capability(self._gen(gen_type="bess"))[0] == "UNKNOWN"
@@ -201,14 +201,20 @@ class TestEnergizacjaJednegoTransformatora:
         assert wyspa["is_energized"] is True
         assert [m["code"] for m in wyspa["validation_messages"]] == ["NN-AUD-06"]
 
-    def test_pv_w_trybie_podwojnym_rownolegle_z_siecia_to_wielozrodlowosc_sekcji(self) -> None:
+    def test_pv_w_trybie_podwojnym_rownolegle_z_siecia_nie_zmienia_zasilania_sekcji(self) -> None:
+        """Źródło z trybem podwójnym przy pracy Z SIECIĄ podąża za siecią —
+        napięcie sekcji trzyma transformator; zdolność tworzenia napięcia
+        ujawni się dopiero w wyspie (`has_grid_forming_source` = True)."""
         graph = build_lv_domain_view(
             zbuduj_stacje_nn(pv_na_nn=True, zdolnosc_pv="DUAL_MODE"), "stn"
         )
         stany = _stany(graph["buses"])
-        assert stany["a2"]["energization_state"] == "MULTISOURCE"
-        assert stany["a2"]["supply_refs"] == ["pv_nn", "tr1"]
-        assert _wyspa_szyny(graph, "a2")["energization_state"] == "MULTISOURCE"
+        assert stany["a2"]["energization_state"] == "ENERGIZED"
+        assert stany["a2"]["supply_refs"] == ["tr1"]
+        wyspa = _wyspa_szyny(graph, "a2")
+        assert wyspa["energization_state"] == "ENERGIZED"
+        assert wyspa["has_grid_forming_source"] is True
+        assert wyspa["validation_messages"] == []
 
 
 class TestEnergizacjaDwochTransformatorow:

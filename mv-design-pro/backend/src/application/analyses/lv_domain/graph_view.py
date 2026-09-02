@@ -412,25 +412,24 @@ def build_lv_domain_view(enm: EnergyNetworkModel, station_ref: str) -> dict[str,
         return seen
 
     def _feeder_kind(subtree: set[str]) -> str:
+        """Rodzaj odpływu z zawartości poddrzewa. Podrozdzielnica ma
+        PIERWSZEŃSTWO: odbiory/źródła za nią należą do niej, więc odpływ
+        zasilający podrozdzielnicę jest odpływem „do podrozdzielnicy", a nie
+        „mieszanym" z powodu jej własnych odbiorów. Potem granica domeny,
+        potem zawartość bezpośrednia (odbiór / źródło / oba = mieszany)."""
+        if subtree & sub_board_bus_refs:
+            return "sub_board"
+        if any(link.from_bus_ref in subtree for link in boundary_links_sorted):
+            return "boundary"
         has_load = bool(subtree & load_bus_refs)
         has_der = bool(subtree & generator_bus_refs)
-        has_sub_board = bool(subtree & sub_board_bus_refs)
-        has_boundary = any(link.from_bus_ref in subtree for link in boundary_links_sorted)
-        kinds = [
-            kind
-            for kind, present in (
-                ("load", has_load),
-                ("der", has_der),
-                ("sub_board", has_sub_board),
-                ("boundary", has_boundary),
-            )
-            if present
-        ]
-        if not kinds:
-            return "none"
-        if len(kinds) == 1:
-            return kinds[0]
-        return "mixed"
+        if has_load and has_der:
+            return "mixed"
+        if has_load:
+            return "load"
+        if has_der:
+            return "der"
+        return "none"
 
     devices: list[dict[str, Any]] = []
     for ref_id in sorted(domain_branches):

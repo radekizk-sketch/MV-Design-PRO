@@ -116,9 +116,12 @@ _CAPABILITY_ALIASES: dict[str, DerIslandCapability] = {
 #: Klasa maszyny rozstrzyga zdolność BEZ deklaracji tylko tam, gdzie wynika
 #: ona z fizyki maszyny, nie z nastaw sterowania.
 _CAPABILITY_BY_MACHINE_CLASS: dict[str, tuple[DerIslandCapability, str]] = {
+    # Maszyna synchroniczna ma własne wzbudzenie (tworzy napięcie w wyspie) i
+    # ZARAZEM pracuje równolegle z siecią po synchronizacji — to zdolność
+    # PODWÓJNA, nie „tylko tworząca" (ta byłaby konfliktem przy pracy z siecią).
     "synchronous": (
-        "GRID_FORMING",
-        "maszyna synchroniczna — własne wzbudzenie, tworzy napięcie",
+        "DUAL_MODE",
+        "maszyna synchroniczna — własne wzbudzenie (wyspa) i praca równoległa po synchronizacji",
     ),
     "fw_scig": (
         "GRID_FOLLOWING",
@@ -678,6 +681,10 @@ def build_energization_view(
             has_forming = bool(forming_ders)
 
         # --- Stany ZACISKÓW wyspy: sekcja z ≥2 źródłami = MULTISOURCE. --------
+        # Źródło rozproszone tworzące napięcie liczy się jako ZASILAJĄCE sekcję
+        # WYŁĄCZNIE w wyspie bez sieci — przy pracy z siecią napięcie sekcji
+        # trzyma sieć (źródło podąża albo jest konfliktem), więc nie wchodzi do
+        # `supply_refs`.
         for bus_ref in members:
             section = section_component.get(bus_ref, frozenset({bus_ref}))
             supply: set[str] = set()
@@ -685,11 +692,12 @@ def build_energization_view(
                 if ref in member_set or ref in domain_bus_refs:
                     supply.update(t.ref_id for t in transformers_by_lv_bus.get(ref, ()))
                     supply.update(source_refs_by_bus.get(ref, ()))
-                    supply.update(
-                        d.ref_id
-                        for d in ders_by_bus.get(ref, ())
-                        if _is_forming(d.island_capability)
-                    )
+                    if is_islanded:
+                        supply.update(
+                            d.ref_id
+                            for d in ders_by_bus.get(ref, ())
+                            if _is_forming(d.island_capability)
+                        )
             # Transformator zasilany zwrotnie NIE podaje napięcia na sekcję.
             supply.difference_update(backfeed_transformers)
             supply_refs = tuple(sorted(supply))
