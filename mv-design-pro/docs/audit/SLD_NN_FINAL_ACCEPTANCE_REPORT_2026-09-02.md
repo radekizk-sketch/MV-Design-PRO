@@ -146,7 +146,7 @@ pochodzeniem, wyspy z N/PE i bilansem, mobile i druk mono.
 | backend lv_domain + API | `test_projection_v1.py`, `test_energization.py`, `test_audit.py`, `test_route_incomer.py`, `test_scenariusze_nn.py` (JSON == backend), `test_lv_domain_api.py` | 178 passed |
 | ruff / black / mypy (moduły dotknięte) | `lv_domain/**`, `fault_loop/route.py`, skrypt eksportu | czysto |
 | frontend vitest lv-domain (10 plików) | scenariusze, projectionApi, symbolRegistry (snapshoty), composeLvDomainScene, energizacja, lod, visualGrammar, motyw, LvDomainView, portal | **248 passed** |
-| frontend vitest pełny (`--no-file-parallelism`) | cały projekt | patrz §10a |
+| frontend vitest pełny (`--no-file-parallelism`) | cały projekt, 886 plików | **11 945 passed, 0 failed** (§10a: pierwszy przebieg wykrył 1 naruszenie guardu terminologii — naprawione u źródła, przebieg powtórzony) |
 | tsc `--noEmit` / eslint (pełny) | cały frontend | czysto (0 błędów) |
 | Playwright e2e | `e2e/lv-domain-screenshot.spec.ts`, 20 kadrów z asercjami semantycznymi | **20 passed** (×11 iteracji) |
 | guardy | lv_domain_projection, no_codenames, forbidden_ui_terms, ui_terminology, dead_click, dialog_completeness, local_truth, overlay_no_physics, ui_no_physics, trace_ui_leak, arch, repo_hygiene, docs, docs_archive, utf8_mojibake, sld_determinism, physics_label | wszystkie 0 |
@@ -167,7 +167,7 @@ plików testowych) po ostatniej zmianie kodu, 1483 s:
 |---|---|
 | pełny #1 (commit `23393acc`) | **11 944 passed, 1 failed**, 1 skipped, 14 todo (11 960); jedyny błąd: `src/ui/__tests__/ui-terminology-guard.test.ts` — identyfikator `snapshot` wewnątrz szablonu literału w `composeLvDomainScene.ts` (dwa miejsca) uznany za termin angielski w tekście UI |
 | naprawa u źródła | zmienna przemianowana (`rownowaznik`, `equivalentId`) — treść etykiet bez zmian; guard terminologii (vitest + `scripts/ui_terminology_guard.py`), moduł lv-domain (250/250), tsc, eslint — zielone |
-| pełny #2 (po naprawie) | uruchomiony ponownie po naprawie; wynik dopisany w tej sekcji po zakończeniu (patrz historia commitów) |
+| pełny #2 (po naprawie, commit `aafbf0a0`) | **886 plików passed, 11 945 passed, 0 failed**, 1 skipped, 14 todo (11 960), 1465 s |
 
 ## 11. Bramki §50 — samoocena wykonawcy (NIE werdykt B-02)
 
