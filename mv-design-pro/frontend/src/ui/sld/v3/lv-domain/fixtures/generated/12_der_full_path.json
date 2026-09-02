@@ -972,7 +972,7 @@
     "scenario_id": "MAX",
     "station_ref": "stDER"
   },
-  "projection_hash": "82fcf22276080bda86c2a766cd922e4bf98528c63fd2688856dd8b5d2d59ba35",
+  "projection_hash": "45c63035ace8e2bdfc1f9c66bdd6dc572543f98461d4f69d3a87cd14bbdf2b19",
   "result_snapshot": {
     "analysis_type": null,
     "overlay_payload": null,
@@ -2292,6 +2292,9 @@
       "upstream_node_id": "sn",
       "upstream_source_ids": [
         "src"
+      ],
+      "upstream_source_names": [
+        "GPZ"
       ],
       "upstream_system_id": "sn",
       "uth_kv": 16.5,

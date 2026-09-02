@@ -1455,7 +1455,7 @@
     "scenario_id": "MAX",
     "station_ref": "stAB"
   },
-  "projection_hash": "40af70a3676fc8a0aab7e69d80ac9428340b2290bced8463bff36c3729f77d93",
+  "projection_hash": "1296b86a098c54a9e6d5ea6169759de555aacf0320711fa0ec3f728111f34bc9",
   "result_snapshot": {
     "analysis_type": null,
     "overlay_payload": null,
@@ -1514,6 +1514,9 @@
       "upstream_source_ids": [
         "src"
       ],
+      "upstream_source_names": [
+        "GPZ Północ"
+      ],
       "upstream_system_id": "sn"
     },
     {
@@ -1527,6 +1530,9 @@
       "transformer_ref": "TB",
       "upstream_source_ids": [
         "src2"
+      ],
+      "upstream_source_names": [
+        "GPZ Południe"
       ],
       "upstream_system_id": "sn2"
     }

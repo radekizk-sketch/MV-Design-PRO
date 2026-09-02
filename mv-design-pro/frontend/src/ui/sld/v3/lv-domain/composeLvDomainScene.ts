@@ -1,138 +1,101 @@
 /**
- * Kompozycja SCENY L2 — T5b-3 VISUAL SLD REBUILD (werdykt właściciela B-02:
- * T5b-2 REJECT wizualny 0/10 — "poprawny model elektryczny przedstawiony w
- * formie debug view grafu"; mandat: dedykowany LV SLD layout engine,
- * hierarchia rang, sekcje dominujące, ORTOGONALNY raster odpływów, zero
- * ukośnych linii bez konieczności).
+ * Kompozycja SCENY projekcji nN z `LvDomainGraphView` (kontrakt 3.0.0) —
+ * DEDYKOWANY silnik układu rozdzielnicy nN (mandat „profesjonalizacja SLD
+ * nN" §8/§9/§10/§11/§12/§13/§22/§23/§24/§31/§42).
  *
- * SILNIK LAYOUTU (nie generyczny graf):
- * - RANGI PIONOWE (P0.2/P0.15, TOP→DOWN): RANK0 kotwica SN → RANK1 TR →
- *   RANK2 zacisk nN → (aparat incomera na pionie) → RANK3 SZYNA sekcji →
- *   RANK4 aparaty odpływów → RANK5 podrozdzielnice/terminale → RANK6 odbiory.
- * - SEKCJA = LAYOUT CONTAINER (P0.13): szerokość kreski magistrali WYNIKA z
- *   liczby kikutów (źródła nad szyną, odpływy pod szyną) × rastru — szyna
- *   jest dominująca i dokładnie tak długa, jak potrzebuje jej zawartość.
- * - ODPŁYWY ORTOGONALNIE (P0.7): kikut pionowo w dół z szyny w stałym
- *   rastrze; podrozdzielnica/odbiór/terminal CENTROWANE pod kikutem
- *   (childCenterX = tapX) — ukośna linia nie ma prawa powstać na torze
- *   odpływu. Sprzęgło: pozioma przerwa między sekcjami z aparatem (P0.4).
- * - BOUNDARY (P0.10): kikut → kabel PIONOWO → ● terminal → chip poziomo
- *   (krótki boundaryLink) — chip nie zastępuje toru.
+ * ELEKTRYKA PRZED GRAFIKĄ (§1): ten moduł NIE liczy energizacji, wysp, ról
+ * urządzeń, torów zasilania ani ostrzeżeń. Czyta je z projekcji
+ * (`graph.buses[].energization_state`, `graph.segments[]`, `graph.devices[]
+ * .device_role`, `graph.sections[]`, `graph.supply_paths[]`, `graph.islands[]`)
+ * i przepisuje do meta węzłów/krawędzi. Jedyna „topologia", jaką zna, to
+ * KOLEJNOŚĆ RYSOWANIA (który slot, która ranga) — wyprowadzona z ról
+ * backendu, nie z własnego BFS (guard R4).
  *
- * ZASADA WORLD-SCALED / SCREEN-STABLE (werdykt T5a): geometria torów w
- * jednostkach świata; SYMBOLE i typografia mają rozmiar EKRANOWY (renderer,
- * `LvDomainView.tsx` — trzy poziomy typografii P0.12).
+ * SILNIK UKŁADU:
+ * - RANGI PIONOWE (góra → dół): kotwica systemu SN → transformator → zacisk
+ *   nN → wyłącznik główny → SZYNA sekcji → aparat odpływu → zacisk/kabel →
+ *   podrozdzielnica / odbiór / źródło rozproszone / terminal granicy.
+ * - DYSCYPLINA SLOTÓW X (§8): każdy element ma WŁASNY slot na szynie —
+ *   incomer, odpływy, źródła bez pola, przekładniki napięciowe — nigdy dwa
+ *   elementy w jednej osi. Incomer stoi na KRAŃCU sekcji (lewym; ostatnia z
+ *   ≥2 sekcji korzeniowych — lustrzanie, prawym), jak w rozdzielnicach
+ *   dwuwlotowych ze sprzęgłem w środku (ABB/PowerFactory).
+ * - SEKCJA = KONTENER (§22): długość kreski wynika z liczby slotów × raster;
+ *   podrozdzielnica wisi pod swoim odpływem i zaczyna kreskę od punktu wejścia.
+ * - ODPŁYWY ORTOGONALNIE (§23): kikut pionowo w dół, dziecko pod kikutem.
+ *   Każdy APARAT ma DWA kikuty (`{ref}#a` rodzic→aparat, `{ref}#b`
+ *   aparat→dziecko), każdy w stanie SWOJEGO zacisku (§5/§7) — aparat otwarty
+ *   z obu stron pod napięciem z różnych wysp rysuje się poprawnie z danych.
+ * - ZACISKI (§24): kropka tylko w punkcie o stopniu ≠ 2 (rozgałęzienie,
+ *   koniec toru) — zacisk przelotowy jest linią, nie plamką.
+ * - KOTWICA SYSTEMU SN (§10/§11): transformatory o tym samym
+ *   `equivalent_id` (albo `upstream_system_id`, gdy równoważnik nieobliczalny)
+ *   wiszą na JEDNEJ kresce systemu SN — wspólne zasilanie nie wygląda jak dwa
+ *   niezależne systemy; różne systemy dostają osobne kreski.
+ * - PEŁNY TOR DER I ODBIORÓW (§12/§13): pola z modelu (aparat → kabel →
+ *   punkt przyłączenia → symbol) rysowane w dół jak odpływy; element wprost
+ *   na szynie (bez pola) dostaje własny slot i znacznik audytu z backendu.
  *
- * ZAKAZ INFERENCJI CONNECTIVITY (P0.18 → kanon `docs/sld/PROJEKCJA_SN_NN_PORTAL_V1.md`
- * §3): spójność elektryczna i energizacja NIE są liczone po stronie klienta —
- * ani z geometrii, ani z grafu (dawny `computeElectricalComponents`, własny
- * BFS, USUNIĘTY 2026-09-01: druga definicja wyspy obok backendowej rozjeżdżała
- * się przy 2×TR ze sprzęgłem otwartym). Scena czyta `graph.islands` i pola
- * `energized/supply_refs/der_only` szyn z kontraktu 2.0.0.
+ * JEDNA GEOMETRIA NA WSZYSTKIE POZIOMY LOD: ten moduł NIE ZNA pojęcia LOD.
  * Determinizm: te same dane → identyczna scena (sortowanie po `ref_id`).
- *
- * JEDNA GEOMETRIA NA WSZYSTKIE POZIOMY SZCZEGÓŁOWOŚCI (LOD): ten moduł NIE
- * ZNA pojęcia LOD i nie ma prawa go przyjąć — scena liczy się RAZ, a poziom
- * szczegółowości jest wyłącznie filtrem prezentacji w `LvDomainView`
- * (`visualGrammar.ts::REJESTR_ELEMENTOW_KANWY`). Dodanie tu parametru LOD
- * albo warunku „gdy przegląd, licz inaczej" = druga geometria tego samego
- * schematu; pin: `__tests__/lodProjekcjaNn.test.tsx` porównuje WSZYSTKIE
- * prymitywy toru między poziomami 0/1/2.
  */
 import type { SymbolId } from '../symbols/defs';
+import { REJESTR_SYMBOLI_NN, SYMBOL_ODBIORU, SYMBOL_TRANSFORMATORA, SYMBOL_ZABEZPIECZENIA, symbolPomiaru, symbolZrodlaDer } from './symbolRegistry';
 import type {
-  LvDomainBoundaryLink,
-  LvDomainBranch,
+  LvDeviceState,
+  LvDomainBus,
+  LvDomainDevice,
   LvDomainGraphView,
-  LvDomainIsland,
-  LvDomainSubSwitchboard,
-  LvDomainTransformer,
+  LvDomainSegment,
+  LvEnergizationState,
+  LvTerminalState,
   UpstreamEquivalentSnapshot,
 } from './types';
+import { RASTER, TOKENY_GEOMETRII as T, doRastra, plFixed, plNumber } from './visualGrammar';
 
 // ---------------------------------------------------------------------------
-// Geometria świata — RANGI (Y) i RASTRY (X). T5b-3: wartości dobrane pod
-// czytelność przy DOMYŚLNYM wejściu do L2 (fit-to-content, P0.1/P0.12):
-// scena ma być gęsta — marginesy minimalne, odstępy wynikają z typografii
-// rendererów (etykiety PRIMARY 13px / SECONDARY 11px nie nachodzą przy tych
-// rastrach — zmierzone na fixturach multi-source i Stacja C).
+// Typy sceny.
 // ---------------------------------------------------------------------------
-const MARGIN_X = 70;
-const MARGIN_Y = 48;
-
-/** Odstępy RANG pionowych (świat). Tor źródła: kotwica → TR → zacisk →
- *  aparat incomera → szyna; każdy człon dostaje własny, czytelny odcinek. */
-const ANCHOR_TO_TR = 96;
-const TR_TO_TERMINAL = 88;
-/** T5b-4: tor incomera dostaje REALNY pion (zmierzona klasa kolizji: przy 84
- *  jednostkach etykieta aparatu incomera i etykieta PRIMARY magistrali
- *  (długa nazwa modelowa) lądowały w tym samym pasie tekstu). */
-const TERMINAL_TO_BUS = 150;
-/** Sekcja → aparat odpływu (pion) i dalej do celu odpływu. */
-const BUS_TO_APPARATUS = 64;
-const APPARATUS_TO_CHILD = 120;
-/** Odbiór wisi na własnym kikucie POD szyną (nie w środku szyny). */
-const BUS_TO_LOAD = 96;
-/** Boundary: kabel pionowy do terminala, chip poziomo od terminala. */
-const BUS_TO_BOUNDARY_TERMINAL = 110;
-const BOUNDARY_CHIP_OFFSET_X = 120;
-
-/** Raster kikutów ODPŁYWÓW na szynie (P0.7 — rytm rozdzielnicy). T5b-4:
- *  poszerzony pod typografię SCREEN-STABLE (etykieta „QF-xx" 12,5 px ekranu
- *  obok glifu 34 px NIE może dotykać kikuta sąsiada przy skali fitu ~0,65 —
- *  zmierzone na zrzucie Stacji C). */
-const TAP_PITCH = 120;
-/** Raster kikutów ŹRÓDEŁ nad szyną — tabliczka TR (blok 4 linii) jest
- *  szeroka; PV/BESS obok TR potrzebują własnego pasa. */
-const SOURCE_TAP_PITCH = 220;
-/** T5b-4: pas generatora ZA pasem TR — szerszy niż raster TR, bo blok
- *  tabliczki TR (PRIMARY 630 kVA + przekładnia·grupa) sięga ~150 j.św. w
- *  prawo od osi TR (zmierzona kolizja „· Dyn11" × glif PV na zrzucie
- *  multi-source przy 220). */
-const GEN_AFTER_TR_PITCH = 300;
-/** Margines wewnętrzny kreski magistrali (P0.3 — szyna wystaje poza skrajne
- *  kikuty, czytelna jako MAGISTRALA, nie odcinek między punktami). */
-const TAP_MARGIN = 52;
-/** Minimalna połowa długości kreski (sekcja bez odpływów dalej wygląda jak
- *  szyna, nie kropka). */
-const MIN_BOARD_HALF_WIDTH = 120;
-/** Pozioma przerwa sprzęgła między sąsiednimi sekcjami (P0.4 — sylwetka
- *  OPEN/CLOSED musi mieć miejsce na DUŻY aparat + podpis). */
-const COUPLER_SPAN = 140;
-/** Odstęp między sekcjami NIE połączonymi sprzęgłem oraz między kolumnami
- *  podrozdzielnic. */
-const SECTION_GAP = 110;
-/** Eksport historyczny (piny P0.13) — minimum inżynierskie rastru. */
-export const MIN_TAP_PITCH = 40;
 
 export type LvDomainSceneNodeKind =
-  | 'anchorChip'
+  | 'anchorBar'
   | 'transformer'
-  | 'generator'
+  | 'terminal'
   | 'bus'
-  | 'busJunction'
   | 'apparatus'
+  | 'generator'
   | 'load'
+  | 'measurement'
+  | 'relay'
   | 'boundaryChip'
   | 'boundaryTerminal';
 
 export interface LvDomainSceneNode {
   readonly kind: LvDomainSceneNodeKind;
   /** `ref_id` elementu domeny albo identyfikator syntetyczny
-   *  (`anchor:{transformer_ref}`, `boundary:{branch_ref}`,
-   *  `boundary-terminal:{branch_ref}`) — wyrocznia zgodności odróżnia po
-   *  prefiksie. */
+   *  (`anchor:{grupa}`, `boundary:{branch_ref}`, `boundary-terminal:{branch_ref}`,
+   *  `relay:{ref}`). */
   readonly ref: string;
   readonly x: number;
   readonly y: number;
   readonly label: string;
   readonly symbolId?: SymbolId;
   readonly meta?: Readonly<Record<string, unknown>>;
-  /** WYŁĄCZNIE `kind==='bus'` — połowa długości kreski magistrali. */
-  readonly busBarHalfWidth?: number;
+  /** WYŁĄCZNIE `kind==='bus'`/`'anchorBar'`: lewy i prawy koniec kreski. */
+  readonly barLeft?: number;
+  readonly barRight?: number;
 }
 
-export type LvDomainSceneEdgeKind = 'sourceDrop' | 'coupler' | 'branch' | 'cable' | 'boundaryLink';
+export type LvDomainSceneEdgeKind =
+  | 'anchorDrop'
+  | 'sourceDrop'
+  | 'incomer'
+  | 'coupler'
+  | 'branch'
+  | 'cable'
+  | 'leafDrop'
+  | 'boundaryLink'
+  | 'relayLink';
 
 export interface LvDomainSceneEdge {
   readonly ref: string;
@@ -141,7 +104,6 @@ export interface LvDomainSceneEdge {
   readonly y1: number;
   readonly x2: number;
   readonly y2: number;
-  readonly status?: 'closed' | 'open';
   readonly meta?: Readonly<Record<string, unknown>>;
 }
 
@@ -152,50 +114,16 @@ export interface LvDomainScene {
   readonly height: number;
   readonly stationRef: string;
   readonly stationName: string;
+  /** Tor zasilania per szyna (z backendu): `busRef → {sourceRef → branchRefs}`. */
+  readonly supplyPaths: ReadonlyMap<string, ReadonlyMap<string, readonly string[]>>;
+  /** Refy elementów z komunikatami walidacji (z backendu) → kody. */
+  readonly warningsByRef: ReadonlyMap<string, readonly string[]>;
 }
 
-/**
- * T5b-4 (P0-V3 SYMBOL GRAMMAR, werdykt pkt 5: „projektant rozpoznaje
- * funkcję urządzenia PRZED przeczytaniem napisu … nie powiększać jednego
- * uniwersalnego kwadratu"): sylwetka ZA FUNKCJĄ z `branch.type` — poprzednie
- * mapowanie zlewało switch/disconnector/breaker w jeden glif `nnBreaker`
- * (dokładnie wada nazwana w werdykcie). Rozłącznik → nóż z poprzeczką
- * (IEC 60617 S00504), odłącznik → nóż bez poprzeczki, wyłącznik → korpus
- * MCB, bezpiecznik → kaseta wkładki. Biblioteka glifów (`symbols/glyphs.tsx`)
- * niesie te sylwetki od dawna — wada była w mapowaniu, nie w bibliotece.
- */
-function apparatusSymbolFor(branchType: LvDomainBranch['type']): SymbolId | undefined {
-  switch (branchType) {
-    case 'breaker':
-      return 'nnBreaker';
-    case 'switch':
-      return 'loadBreakSwitch';
-    case 'disconnector':
-      return 'disconnector';
-    case 'fuse':
-      return 'nnFuseSwitch';
-    case 'bus_coupler':
-      return 'nnBreaker';
-    case 'cable':
-    case 'line_overhead':
-      return undefined;
-    default:
-      return undefined;
-  }
-}
+// ---------------------------------------------------------------------------
+// Etykiety (prezentacja danych modelu — zero fizyki).
+// ---------------------------------------------------------------------------
 
-function symbolForGenerator(genType: string | null | undefined): SymbolId {
-  switch (genType) {
-    case 'pv_inverter':
-      return 'derPv';
-    case 'bess':
-      return 'derBess';
-    default:
-      return 'derGenerator';
-  }
-}
-
-/** Etykieta tabliczki TR (renderer rozbija na blok wieloliniowy — P0.5). */
 export function transformerNameplateLabel(t: {
   readonly sn_mva: number;
   readonly uhv_kv: number;
@@ -203,168 +131,131 @@ export function transformerNameplateLabel(t: {
   readonly vector_group?: string | null;
   readonly uk_percent: number;
 }): string {
-  const sn = `${t.sn_mva} MVA`;
-  const ratio = `${t.uhv_kv}/${t.ulv_kv} kV`;
-  const group = t.vector_group ?? '—';
-  return `${sn} · ${ratio} · ${group} · uk=${t.uk_percent}%`;
+  return `${plNumber(Math.round(t.sn_mva * 1000))} kVA · ${plNumber(t.uhv_kv)}/${plNumber(t.ulv_kv)} kV · ${t.vector_group ?? '—'} · uk = ${plNumber(t.uk_percent)}%`;
 }
 
-/**
- * TOŻSAMOŚĆ kotwicy zasilania SN — krótka, bez parametrów. Kotwica jest
- * początkiem toru domeny nN, więc jej oznaczenie zostaje na KAŻDYM poziomie
- * szczegółowości (`visualGrammar.ts::REJESTR_ELEMENTOW_KANWY`,
- * `nazwaKotwicyZrodla`); parametry zwarciowe idą osobno, jako opis.
- */
-export function anchorChipIdentityLabel(snapshot: UpstreamEquivalentSnapshot): string {
-  if (snapshot.status !== 'OK') return 'SN · brak danych';
-  const uVoltage = snapshot.voltage_kv != null ? `${snapshot.voltage_kv} kV` : '—';
-  return `SN ${uVoltage}`;
+/** Tożsamość systemu SN: poziom napięcia + źródła systemu (z modelu). */
+export function anchorIdentityLabel(
+  snapshot: UpstreamEquivalentSnapshot | undefined,
+  systemId: string | null,
+  voltageKv: number,
+): string {
+  const nazwy = snapshot?.upstream_source_names?.length
+    ? snapshot.upstream_source_names
+    : snapshot?.upstream_source_ids ?? [];
+  const zrodla = nazwy.length ? ` · ${nazwy.join(', ')}` : '';
+  const system = systemId && !nazwy.length ? ` · szyna SN ${systemId}` : '';
+  return `SN ${plNumber(voltageKv)} kV${zrodla}${system}`;
 }
 
-/** Liczba ze stałą liczbą miejsc po przecinku w zapisie POLSKIM (przecinek
- *  dziesiętny) — wyłącznie prezentacja wartości policzonych przez backend. */
-export function plFixed(value: number, digits: number): string {
-  return value.toFixed(digits).replace('.', ',');
-}
-
-/** OPIS kotwicy (Sk″/Ik″) — poziom pełny; `null`, gdy snapshot bez danych. */
-export function anchorChipDetailLabel(snapshot: UpstreamEquivalentSnapshot): string | null {
-  if (snapshot.status !== 'OK') return null;
-  const sk = snapshot.sk_mva != null ? `Sk″=${plFixed(snapshot.sk_mva, 1)} MVA` : 'Sk″=—';
-  const ik = snapshot.ikss_ka != null ? `Ik″=${plFixed(snapshot.ikss_ka, 2)} kA` : 'Ik″=—';
-  return `${sk} · ${ik}`;
-}
-
-/** Pełna etykieta kotwicy = tożsamość + opis (JEDNO źródło obu części —
- *  renderer nie parsuje tej etykiety, tylko czyta obie części z meta). */
-export function anchorChipLabel(snapshot: UpstreamEquivalentSnapshot): string {
-  const identity = anchorChipIdentityLabel(snapshot);
-  const detail = anchorChipDetailLabel(snapshot);
-  return detail ? `${identity} · ${detail}` : identity;
-}
-
-/** Stan zasilania szyny — jedno rozstrzygnięcie dla całej sceny. */
-export interface StanZasilaniaSzyny {
-  readonly energized: boolean;
-  readonly derOnly: boolean;
-  readonly supplyRefs: readonly string[];
-  /** Wyspa (spójna składowa energetyczna) szyny — JEDYNY „komponent
-   *  elektryczny" sceny; `undefined` wyłącznie dla szyny, której backend nie
-   *  przypisał do żadnej wyspy (niespójna odpowiedź — nie fabrykujemy). */
-  readonly islandRef: string | undefined;
-}
-
-/**
- * ENERGIZACJA/WYSPY — JEDNO źródło prawdy dla całej sceny (reguła
- * predykatów parami: kreska szyny i kreski jej odpływów muszą wynikać z tego
- * samego rozstrzygnięcia, inaczej „dziś się zgadzają", a rozjadą się na
- * danych brzegowych). Stan czytamy Z DANYCH backendu (`buses[i].energized/
- * supply_refs/der_only`, `graph.islands`) — zero wyprowadzania energizacji
- * ani spójności z topologii w warstwie prezentacji (kanon
- * `docs/sld/PROJEKCJA_SN_NN_PORTAL_V1.md` §3: zakaz BFS po stronie klienta).
- */
-export function stanZasilaniaSzyn(view: LvDomainGraphView): ReadonlyMap<string, StanZasilaniaSzyny> {
-  const wynik = new Map<string, StanZasilaniaSzyny>();
-  const islandOfBus = new Map<string, LvDomainIsland>();
-  for (const island of [...view.islands].sort((a, b) => a.island_ref.localeCompare(b.island_ref))) {
-    for (const busRef of island.bus_refs) {
-      if (!islandOfBus.has(busRef)) islandOfBus.set(busRef, island);
-    }
+/** Parametry strony SN (równoważnik Thevenina) — jawnie „strona SN", żeby
+ *  Ik″ SN nie dało się pomylić z Ik″ na szynie nN (§3). */
+export function anchorDetailLabel(snapshot: UpstreamEquivalentSnapshot | undefined): string | null {
+  if (!snapshot) return null;
+  if (snapshot.status !== 'OK') {
+    const powod = snapshot.missing_data.length
+      ? snapshot.missing_data.map((kod) => OPIS_BRAKU_ROWNOWAZNIKA_PL[kod] ?? kod).join('; ')
+      : 'brak danych';
+    return `Sk″/Ik″ SN: brak danych — ${powod}`;
   }
-  for (const bus of view.buses) {
-    wynik.set(bus.ref_id, {
-      energized: bus.energized,
-      derOnly: bus.der_only,
-      supplyRefs: bus.supply_refs,
-      islandRef: islandOfBus.get(bus.ref_id)?.island_ref,
-    });
-  }
-  return wynik;
+  const sk = snapshot.sk_mva != null ? `Sk″ SN = ${plFixed(snapshot.sk_mva, 1)} MVA` : 'Sk″ SN = —';
+  const ik = snapshot.ikss_ka != null ? `Ik″ SN = ${plFixed(snapshot.ikss_ka, 2)} kA` : 'Ik″ SN = —';
+  return `${sk} · ${ik} (${snapshot.scenario_id ?? 'MAX'})`;
 }
 
 export function domainDescriptorLabel(view: LvDomainGraphView): string {
   if (view.status !== 'OK') return 'brak danych';
-  const boardVoltageKv = view.buses.find((b) => b.hops_from_root === 0)?.voltage_kv ?? view.buses[0]?.voltage_kv;
+  const main = view.sections.filter((s) => s.tier === 'main');
+  const sub = view.sections.filter((s) => s.tier === 'sub');
+  const voltage = view.buses.find((b) => b.is_board)?.voltage_kv ?? view.buses[0]?.voltage_kv;
   const parts: string[] = [];
-  parts.push(boardVoltageKv != null ? `${boardVoltageKv} kV` : '—');
+  parts.push(voltage != null ? `${plNumber(voltage)} kV` : '—');
   if (view.transformers.length > 0) parts.push(`${view.transformers.length}×TR`);
-  const subSwitchboardBusRefs = new Set(view.sub_switchboards.flatMap((s) => s.bus_refs));
-  const sectionCount = view.buses.filter(
-    (b) => b.hops_from_root === 0 || subSwitchboardBusRefs.has(b.ref_id),
-  ).length;
-  parts.push(`${sectionCount} ${sectionCount === 1 ? 'sekcja' : 'sekcje'}`);
+  parts.push(`${main.length} ${main.length === 1 ? 'sekcja' : main.length >= 2 && main.length <= 4 ? 'sekcje' : 'sekcji'}`);
+  if (sub.length > 0) parts.push(`${sub.length} ${sub.length === 1 ? 'podrozdzielnica' : sub.length >= 2 && sub.length <= 4 ? 'podrozdzielnice' : 'podrozdzielnic'}`);
   const genTypes = new Set(view.generators.map((g) => g.gen_type ?? 'źródło'));
   if (genTypes.has('pv_inverter')) parts.push('PV');
-  if (genTypes.has('bess')) parts.push('BESS');
-  for (const other of genTypes) {
-    if (other !== 'pv_inverter' && other !== 'bess') parts.push('DER');
-  }
+  if (genTypes.has('bess')) parts.push('magazyn');
+  if ([...genTypes].some((t) => t !== 'pv_inverter' && t !== 'bess')) parts.push('generator');
   if (view.boundary_links.length > 0) {
-    parts.push(`${view.boundary_links.length} boundary`);
+    parts.push(`${view.boundary_links.length} ${view.boundary_links.length === 1 ? 'granica domeny' : 'granice domeny'}`);
   }
+  const wyspy = view.islands.filter((i) => i.is_islanded);
+  if (wyspy.length > 0) parts.push(`${wyspy.length} ${wyspy.length === 1 ? 'wyspa' : 'wyspy'}`);
   return parts.join(' · ');
 }
 
-function otherBusRef(branch: LvDomainBranch, busRef: string): string | null {
-  if (branch.from_bus_ref === busRef) return branch.to_bus_ref;
-  if (branch.to_bus_ref === busRef) return branch.from_bus_ref;
-  return null;
-}
+// ---------------------------------------------------------------------------
+// Odczyt stanów z projekcji (zero re-derywacji).
+// ---------------------------------------------------------------------------
 
-/** Incomer TR (P0.3/P0.4) — kryterium topologiczne, zero geometrii. */
-export function findTransformerIncomer(
-  trafo: LvDomainTransformer,
-  branches: readonly LvDomainBranch[],
-): { readonly boardBusRef: string; readonly incomerBranch: LvDomainBranch | null } {
-  const touching = branches.filter(
-    (b) => b.from_bus_ref === trafo.lv_bus_ref || b.to_bus_ref === trafo.lv_bus_ref,
-  );
-  if (touching.length === 1 && touching[0].type !== 'bus_coupler') {
-    const boardBusRef = otherBusRef(touching[0], trafo.lv_bus_ref);
-    if (boardBusRef) return { boardBusRef, incomerBranch: touching[0] };
+/** Stan zacisku KAŻDEJ szyny — wprost z `buses[]` (kontrakt 3.0.0). */
+export function stanyZaciskow(view: LvDomainGraphView): ReadonlyMap<string, LvTerminalState> {
+  const out = new Map<string, LvTerminalState>();
+  for (const bus of view.buses) {
+    out.set(bus.ref_id, {
+      energization_state: bus.energization_state,
+      is_energized: bus.is_energized,
+      supply_refs: bus.supply_refs,
+      island_ref: bus.island_ref,
+      grid_energized: bus.grid_energized,
+    });
   }
-  return { boardBusRef: trafo.lv_bus_ref, incomerBranch: null };
+  return out;
+}
+
+function terminalMeta(state: LvTerminalState | undefined): Readonly<Record<string, unknown>> {
+  return {
+    energization: state?.energization_state,
+    isEnergized: state?.is_energized,
+    supplyRefs: state?.supply_refs,
+    islandRef: state?.island_ref,
+    gridEnergized: state?.grid_energized,
+  };
+}
+
+function deviceStateOf(device: LvDomainDevice | undefined): LvDeviceState {
+  return device?.device_state ?? 'UNKNOWN';
 }
 
 // ---------------------------------------------------------------------------
-// T5b-3 LAYOUT ENGINE — sekcja jako kontener.
+// Kompozycja.
 // ---------------------------------------------------------------------------
 
-interface AboveItem {
-  readonly kind: 'transformer' | 'generator';
-  readonly ref: string;
-}
+/** Rezerwa na etykiety wystające poza geometrię (świat) — prawa kolumna
+ *  tabliczek TR/odbiorów i pas nad kotwicą. Deterministyczna, niezależna od
+ *  fitu (etykiety są screen-stable, więc rezerwa jest przybliżeniem na
+ *  skalę fitu ≈ 0,6–1,0). */
+const LABEL_RESERVE_RIGHT = 112;
+const LABEL_RESERVE_TOP = 40;
+const LABEL_RESERVE_BOTTOM = 48;
 
-/** Kikut POD szyną: odpływ do dziecka / odbiór na tej szynie / boundary. */
-interface BelowItem {
-  readonly kind: 'branch' | 'load' | 'boundary';
+/** Kody `missing_data` równoważnika SN → opis po polsku (kod zostaje w
+ *  danych; etykieta nie pokazuje angielskiego identyfikatora technicznego). */
+const OPIS_BRAKU_ROWNOWAZNIKA_PL: Readonly<Record<string, string>> = {
+  upstream_network_topology_invalid:
+    'sieć SN wieloźródłowa — równoważnik nieobliczalny (jeden węzeł bilansujący)',
+  upstream_network_singular: 'sieć SN osobliwa — brak drogi do źródła',
+  upstream_hv_bus: 'szyna SN transformatora poza rozwiązywalną siecią',
+  route: 'brak trasy do źródła w aktualnej topologii',
+  transformer: 'brak transformatora',
+  vector_group: 'brak grupy połączeń transformatora',
+};
+
+interface Slot {
   readonly ref: string;
-  /** Dla `branch`: ref szyny-dziecka (celu odpływu). */
-  readonly childBusRef?: string;
+  readonly kind: 'incomer' | 'feeder' | 'load' | 'boundary' | 'derDirect' | 'vt';
+  readonly width: number;
 }
 
 interface SectionPlan {
   readonly busRef: string;
-  readonly above: readonly AboveItem[];
-  readonly below: readonly BelowItem[];
-  /** T5b-4 (P0-V10, werdykt pkt 18 „centralna oś TR→incomer→BUS"): offset X
-   *  źródła od OSI sekcji — transformator(y) CENTROWANE na osi (pojedynczy
-   *  TR = dokładnie środek kreski), generatory (PV/BESS) na kolejnych
-   *  slotach NA PRAWO od pasa TR (kreska pozostaje symetryczna wokół osi,
-   *  więc oś TR == geometryczny środek magistrali). */
-  readonly aboveOffsetByRef: ReadonlyMap<string, number>;
-  /** T5b-4 (P0-V4 FEEDER SLOT): offset X kikuta odpływu od osi sekcji —
-   *  każdy odpływ dostaje SLOT o szerokości swojego PODDRZEWA (sekcja-
-   *  dziecko szersza niż raster NIE wjeżdża w kolumnę sąsiada; zmierzona
-   *  klasa: kreska RGN-2 kończyła się dokładnie w kolumnie PV/PCC, co
-   *  sugerowało nieistniejące połączenie). */
-  readonly belowOffsetByRef: ReadonlyMap<string, number>;
-  /** Szerokość CAŁEGO kontenera sekcji (kreska + poddrzewa dzieci). */
-  width: number;
-  /** Połowa długości samej kreski magistrali. */
-  barHalfWidth: number;
-  /** Wypełniane przy pozycjonowaniu. */
-  centerX: number;
+  readonly mirror: boolean;
+  readonly slots: readonly Slot[];
+  readonly width: number;
+  /** Pozycja X slotu (środek) względem lewego końca kreski. */
+  readonly slotX: ReadonlyMap<string, number>;
+  left: number;
   busY: number;
 }
 
@@ -374,692 +265,721 @@ export function composeLvDomainScene(
 ): LvDomainScene {
   const nodes: LvDomainSceneNode[] = [];
   const edges: LvDomainSceneEdge[] = [];
+  const supplyPaths = new Map<string, Map<string, readonly string[]>>();
+  const warningsByRef = new Map<string, string[]>();
 
   if (view.status !== 'OK') {
-    return { nodes, edges, width: 0, height: 0, stationRef: view.station_ref, stationName: view.station_name ?? '' };
+    return { nodes, edges, width: 0, height: 0, stationRef: view.station_ref, stationName: view.station_name ?? '', supplyPaths, warningsByRef };
   }
 
-  const zasilanieSzyn = stanZasilaniaSzyn(view);
-  /**
-   * Stan zasilania ODCINKA: „bez napięcia" WYŁĄCZNIE wtedy, gdy KAŻDY znany
-   * koniec jest bez napięcia. Odcinek między szyną pod napięciem a szyną bez
-   * napięcia (np. za otwartym łącznikiem) NIE dostaje stylu wygaszonego —
-   * jego jeden koniec jest pod napięciem i udawanie inaczej byłoby fałszem
-   * ruchowym. Brak danych na obu końcach = brak oznaczenia.
-   */
-  const energiaOdcinka = (...busRefs: readonly (string | undefined)[]): boolean | undefined => {
-    const znane = busRefs
-      .map((ref) => (ref === undefined ? undefined : zasilanieSzyn.get(ref)?.energized))
-      .filter((value): value is boolean => value !== undefined);
-    if (znane.length === 0) return undefined;
-    return znane.some((value) => value);
-  };
-  const busByRef = new Map(view.buses.map((b) => [b.ref_id, b] as const));
-  const subSwitchboardBusRefs = new Set<string>(
-    view.sub_switchboards.flatMap((s: LvDomainSubSwitchboard) => s.bus_refs),
-  );
-
-  // --- Incomery TR: zaciski dedykowane wyłączone z sekcji (rysowane na
-  // pionie źródła), gałąź incomera skonsumowana.
-  const incomerByTransformerRef = new Map<string, { readonly boardBusRef: string; readonly incomerBranch: LvDomainBranch | null }>();
-  const terminalBusRefs = new Set<string>();
-  const consumedBranchRefs = new Set<string>();
-  for (const trafo of [...view.transformers].sort((a, b) => a.ref_id.localeCompare(b.ref_id))) {
-    const result = findTransformerIncomer(trafo, view.branches);
-    incomerByTransformerRef.set(trafo.ref_id, result);
-    if (result.incomerBranch) {
-      terminalBusRefs.add(trafo.lv_bus_ref);
-      consumedBranchRefs.add(result.incomerBranch.ref_id);
-    }
+  for (const path of view.supply_paths) {
+    const perSource = supplyPaths.get(path.bus_ref) ?? new Map<string, readonly string[]>();
+    perSource.set(path.source_ref, path.branch_refs);
+    supplyPaths.set(path.bus_ref, perSource);
   }
-
-  const isBoardBus = (busRef: string): boolean => {
-    const bus = busByRef.get(busRef);
-    return !!bus && (bus.hops_from_root === 0 || subSwitchboardBusRefs.has(busRef));
-  };
-
-  // --- Drzewo sekcji: rodzic szyny-dziecka = szyna o mniejszej głębokości
-  // połączona gałęzią (deterministycznie po ref_id gałęzi). Zaciski pośrednie
-  // (nie-board, nie-terminal TR) wiszą na torze odpływu między rodzicem a
-  // dzieckiem — reprezentowane jako childBusRef kolejnych segmentów.
-  const gridBuses = view.buses.filter((b) => !terminalBusRefs.has(b.ref_id));
-  const gridBusRefs = new Set(gridBuses.map((b) => b.ref_id));
-
-  const aboveByBus = new Map<string, AboveItem[]>();
-  const pushAbove = (busRef: string, item: AboveItem): void => {
-    const list = aboveByBus.get(busRef) ?? [];
-    list.push(item);
-    aboveByBus.set(busRef, list);
-  };
-  for (const trafo of [...view.transformers].sort((a, b) => a.ref_id.localeCompare(b.ref_id))) {
-    const { boardBusRef } = incomerByTransformerRef.get(trafo.ref_id)!;
-    pushAbove(boardBusRef, { kind: 'transformer', ref: trafo.ref_id });
-  }
-  for (const gen of [...view.generators].sort((a, b) => a.ref_id.localeCompare(b.ref_id))) {
-    if (gridBusRefs.has(gen.bus_ref)) pushAbove(gen.bus_ref, { kind: 'generator', ref: gen.ref_id });
-  }
-
-  const belowByBus = new Map<string, BelowItem[]>();
-  const parentOfChild = new Map<string, string>();
-  const pushBelow = (busRef: string, item: BelowItem): void => {
-    const list = belowByBus.get(busRef) ?? [];
-    list.push(item);
-    belowByBus.set(busRef, list);
-  };
-  for (const branch of [...view.branches].sort((a, b) => a.ref_id.localeCompare(b.ref_id))) {
-    if (consumedBranchRefs.has(branch.ref_id)) continue;
-    if (branch.type === 'bus_coupler') continue;
-    const fromBus = busByRef.get(branch.from_bus_ref);
-    const toBus = busByRef.get(branch.to_bus_ref);
-    if (!fromBus || !toBus) continue;
-    if (!gridBusRefs.has(fromBus.ref_id) || !gridBusRefs.has(toBus.ref_id)) continue;
-    const parentRef = fromBus.hops_from_root <= toBus.hops_from_root ? fromBus.ref_id : toBus.ref_id;
-    const childRef = parentRef === fromBus.ref_id ? toBus.ref_id : fromBus.ref_id;
-    if (!parentOfChild.has(childRef)) parentOfChild.set(childRef, parentRef);
-    pushBelow(parentRef, { kind: 'branch', ref: branch.ref_id, childBusRef: childRef });
-  }
-  for (const load of [...view.loads].sort((a, b) => a.ref_id.localeCompare(b.ref_id))) {
-    if (gridBusRefs.has(load.bus_ref)) pushBelow(load.bus_ref, { kind: 'load', ref: load.ref_id });
-  }
-  for (const link of [...view.boundary_links].sort((a, b) => a.branch_ref.localeCompare(b.branch_ref))) {
-    if (gridBusRefs.has(link.from_bus_ref)) pushBelow(link.from_bus_ref, { kind: 'boundary', ref: link.branch_ref });
-  }
-  for (const list of aboveByBus.values()) {
-    list.sort((a, b) => (a.kind === b.kind ? a.ref.localeCompare(b.ref) : a.kind === 'transformer' ? -1 : 1));
-  }
-  for (const list of belowByBus.values()) list.sort((a, b) => a.ref.localeCompare(b.ref));
-
-  // --- Plan sekcji (kontener): szerokość rekurencyjnie z zawartości.
-  const planByBus = new Map<string, SectionPlan>();
-
-  /** Szerokość poddrzewa wiszącego pod szyną `busRef` (P0-V4): sekcja =
-   *  pełny kontener + odstęp; zacisk pośredni = suma poddrzew jego dzieci
-   *  (fan wielodzieciowy junctiona), liść = raster. Graf odpływów jest
-   *  drzewem (parentOfChild przypisuje rodzica raz), więc rekurencja
-   *  terminuje. */
-  function subtreeWidth(busRef: string): number {
-    if (isBoardBus(busRef)) return planSection(busRef).width + SECTION_GAP;
-    const children = (belowByBus.get(busRef) ?? []).filter((i) => i.kind === 'branch' && i.childBusRef);
-    if (children.length === 0) return TAP_PITCH;
-    return Math.max(
-      TAP_PITCH,
-      children.reduce((acc, child) => acc + subtreeWidth(child.childBusRef!), 0),
-    );
-  }
-  function planSection(busRef: string): SectionPlan {
-    const existing = planByBus.get(busRef);
-    if (existing) return existing;
-    const above = aboveByBus.get(busRef) ?? [];
-    const below = belowByBus.get(busRef) ?? [];
-    // T5b-4 (P0-V10/pkt 18): TR-y symetrycznie WOKÓŁ OSI sekcji (1×TR =
-    // dokładnie oś == środek kreski); generatory na slotach NA PRAWO od
-    // pasa TR (a bez TR — symetrycznie, jak dotąd).
-    const aboveOffsetByRef = new Map<string, number>();
-    const aboveTrs = above.filter((i) => i.kind === 'transformer');
-    const aboveGens = above.filter((i) => i.kind === 'generator');
-    /**
-     * OŚ SEKCJI PODRZĘDNEJ NALEŻY DO TORU Z SEKCJI RODZICA. Kikut rodzica
-     * (aparat odpływu → kabel) wchodzi DOKŁADNIE w środek kreski sekcji
-     * podrzędnej, więc jej WŁASNE źródła nie mogą stanąć na osi — muszą iść
-     * kolejnymi slotami na prawo. Zmierzone na fixturze wysp: źródło PV
-     * podrozdzielnicy zasilanej przez OTWARTY odłącznik lądowało glifem
-     * NA glifie tego odłącznika (dwa aparaty w jednym punkcie rysunku).
-     * Klasa, nie instancja: dotyczy KAŻDEGO źródła własnego (TR i DER) na
-     * KAŻDEJ sekcji, która ma rodzica — sekcje korzeniowe zachowują kanon
-     * „oś TR == środek kreski" (ich oś nie niesie toru z góry).
-     */
-    const osZajetaTorem = parentOfChild.has(busRef);
-    if (osZajetaTorem) {
-      aboveTrs.forEach((item, i) => aboveOffsetByRef.set(item.ref, (i + 1) * SOURCE_TAP_PITCH));
-      const trRightEdge = aboveTrs.length * SOURCE_TAP_PITCH;
-      aboveGens.forEach((item, j) =>
-        aboveOffsetByRef.set(
-          item.ref,
-          aboveTrs.length > 0 ? trRightEdge + (j + 1) * GEN_AFTER_TR_PITCH : (j + 1) * SOURCE_TAP_PITCH,
-        ),
-      );
-    } else {
-      aboveTrs.forEach((item, i) => aboveOffsetByRef.set(item.ref, (i - (aboveTrs.length - 1) / 2) * SOURCE_TAP_PITCH));
-      if (aboveTrs.length > 0) {
-        const trRightEdge = ((aboveTrs.length - 1) / 2) * SOURCE_TAP_PITCH;
-        aboveGens.forEach((item, j) => aboveOffsetByRef.set(item.ref, trRightEdge + (j + 1) * GEN_AFTER_TR_PITCH));
-      } else {
-        aboveGens.forEach((item, j) => aboveOffsetByRef.set(item.ref, (j - (aboveGens.length - 1) / 2) * SOURCE_TAP_PITCH));
+  for (const island of view.islands) {
+    for (const message of island.validation_messages) {
+      for (const ref of message.element_refs) {
+        warningsByRef.set(ref, [...(warningsByRef.get(ref) ?? []), message.code]);
       }
     }
-    const aboveSpanHalf = Math.max(0, ...[...aboveOffsetByRef.values()].map((v) => Math.abs(v)));
-    // P0-V4 FEEDER SLOT: szerokość slotu odpływu = szerokość CAŁEGO
-    // PODDRZEWA za kikutem (sekcja-dziecko może wisieć ZA łańcuchem
-    // zacisków — rekurencja `subtreeWidth` schodzi przez junctiony, nie
-    // tylko jeden poziom). Kikuty na ŚRODKACH slotów ⇒ żadna kolumna
-    // (w tym kreska sekcji-dziecka) nie wjeżdża w kolumnę sąsiada.
-    const belowSlots = below.map((item) => ({
-      ref: item.ref,
-      width: item.kind === 'branch' && item.childBusRef ? subtreeWidth(item.childBusRef) : TAP_PITCH,
-    }));
-    const belowTotal = belowSlots.reduce((acc, slot) => acc + slot.width, 0);
-    const belowOffsetByRef = new Map<string, number>();
-    let slotCursor = -belowTotal / 2;
-    for (const slot of belowSlots) {
-      belowOffsetByRef.set(slot.ref, slotCursor + slot.width / 2);
-      slotCursor += slot.width;
+  }
+
+  const zaciski = stanyZaciskow(view);
+  const busByRef = new Map(view.buses.map((b) => [b.ref_id, b] as const));
+  const branchByRef = new Map(view.branches.map((b) => [b.ref_id, b] as const));
+  const deviceByRef = new Map(view.devices.map((d) => [d.ref_id, d] as const));
+  const segmentByRef = new Map(view.segments.map((s) => [s.segment_id, s] as const));
+  const sectionByBus = new Map(view.sections.map((s) => [s.bus_ref, s] as const));
+  const transformerByRef = new Map(view.transformers.map((t) => [t.ref_id, t] as const));
+  const snapshotByTransformer = new Map(upstreamEquivalents.map((s) => [s.transformer_ref ?? '', s] as const));
+
+  const sortRefs = (a: string, b: string): number => a.localeCompare(b, 'pl', { numeric: true });
+
+  // --- Indeksy z ról backendu (zero własnego BFS). ------------------------
+  const feedersByBoard = new Map<string, LvDomainDevice[]>();
+  const incomersByBoard = new Map<string, LvDomainDevice[]>();
+  const childrenByBus = new Map<string, LvDomainDevice[]>();
+  const couplers: LvDomainDevice[] = [];
+  const boundaryDevices = new Set<string>();
+  for (const device of [...view.devices].sort((a, b) => sortRefs(a.ref_id, b.ref_id))) {
+    if (device.device_role === 'feeder' && device.board_bus_ref) {
+      feedersByBoard.set(device.board_bus_ref, [...(feedersByBoard.get(device.board_bus_ref) ?? []), device]);
+    } else if (device.device_role === 'incomer' && device.board_bus_ref) {
+      incomersByBoard.set(device.board_bus_ref, [...(incomersByBoard.get(device.board_bus_ref) ?? []), device]);
+    } else if (device.device_role === 'coupler') {
+      couplers.push(device);
+    } else if (device.device_role === 'boundary') {
+      boundaryDevices.add(device.ref_id);
+    } else if (device.device_role === 'internal') {
+      childrenByBus.set(device.parent_bus_ref, [...(childrenByBus.get(device.parent_bus_ref) ?? []), device]);
     }
-    const belowSpanHalf = Math.max(0, ...[...belowOffsetByRef.values()].map((v) => Math.abs(v)));
-    const barHalfWidth = Math.max(MIN_BOARD_HALF_WIDTH, aboveSpanHalf + TAP_MARGIN, belowSpanHalf + TAP_MARGIN);
-    const plan: SectionPlan = {
-      busRef,
-      above,
-      below,
-      aboveOffsetByRef,
-      belowOffsetByRef,
-      width: Math.max(barHalfWidth * 2, belowTotal),
-      barHalfWidth,
-      centerX: 0,
-      busY: 0,
-    };
+  }
+  const loadsByBus = new Map<string, typeof view.loads[number][]>();
+  for (const load of [...view.loads].sort((a, b) => sortRefs(a.ref_id, b.ref_id))) {
+    loadsByBus.set(load.bus_ref, [...(loadsByBus.get(load.bus_ref) ?? []), load]);
+  }
+  const gensByBus = new Map<string, typeof view.generators[number][]>();
+  for (const gen of [...view.generators].sort((a, b) => sortRefs(a.ref_id, b.ref_id))) {
+    gensByBus.set(gen.bus_ref, [...(gensByBus.get(gen.bus_ref) ?? []), gen]);
+  }
+  const measurementsByBus = new Map<string, typeof view.measurements[number][]>();
+  for (const m of [...view.measurements].sort((a, b) => sortRefs(a.ref_id, b.ref_id))) {
+    measurementsByBus.set(m.bus_ref, [...(measurementsByBus.get(m.bus_ref) ?? []), m]);
+  }
+  const relayByBreaker = new Map(view.protection_assignments.map((p) => [p.breaker_ref, p] as const));
+  const boundaryByBus = new Map<string, typeof view.boundary_links[number][]>();
+  for (const link of [...view.boundary_links].sort((a, b) => sortRefs(a.branch_ref, b.branch_ref))) {
+    boundaryByBus.set(link.from_bus_ref, [...(boundaryByBus.get(link.from_bus_ref) ?? []), link]);
+  }
+  const transformersByBoard = new Map<string, string[]>();
+  for (const section of view.sections) transformersByBoard.set(section.bus_ref, [...section.transformer_refs]);
+
+  /** Stopień zacisku: liczba gałęzi + transformatorów + odbiorów + źródeł + granic. */
+  const degreeOf = (busRef: string): number => {
+    let degree = 0;
+    for (const b of view.branches) if (b.from_bus_ref === busRef || b.to_bus_ref === busRef) degree += 1;
+    for (const t of view.transformers) if (t.lv_bus_ref === busRef) degree += 1;
+    degree += (loadsByBus.get(busRef)?.length ?? 0) + (gensByBus.get(busRef)?.length ?? 0) + (boundaryByBus.get(busRef)?.length ?? 0);
+    return degree;
+  };
+
+  // --- Szerokości poddrzew (rekurencja po rolach backendu). ---------------
+  const planByBus = new Map<string, SectionPlan>();
+
+  function subtreeWidthBelow(busRef: string): number {
+    const section = sectionByBus.get(busRef);
+    if (section) return planSection(section.bus_ref, false).width + T.sectionGap;
+    const children = childrenByBus.get(busRef) ?? [];
+    const leaves = (loadsByBus.get(busRef)?.length ?? 0) + (gensByBus.get(busRef)?.length ?? 0);
+    if (children.length === 0) return T.feederGap;
+    const childWidths = children.map((d) => subtreeWidthBelow(d.child_bus_ref));
+    return Math.max(T.feederGap, childWidths.reduce((acc, w) => acc + w, 0) + (leaves > 0 ? T.feederGap : 0));
+  }
+
+  function planSection(busRef: string, mirror: boolean): SectionPlan {
+    const existing = planByBus.get(busRef);
+    if (existing) return existing;
+    const feeders = feedersByBoard.get(busRef) ?? [];
+    const incomers = incomersByBoard.get(busRef) ?? [];
+    const directTransformers = (transformersByBoard.get(busRef) ?? []).filter(
+      (ref) => !incomers.some((d) => d.transformer_ref === ref),
+    );
+    const directLoads = loadsByBus.get(busRef) ?? [];
+    const directGens = gensByBus.get(busRef) ?? [];
+    const boundaries = boundaryByBus.get(busRef) ?? [];
+    const vts = (measurementsByBus.get(busRef) ?? []).filter((m) => m.measurement_type === 'VT');
+
+    const sourceSlots: Slot[] = [
+      ...incomers.map((d) => ({ ref: d.ref_id, kind: 'incomer' as const, width: T.sourceSlot })),
+      ...directTransformers.map((ref) => ({ ref, kind: 'incomer' as const, width: T.sourceSlot })),
+    ];
+    const belowSlots: Slot[] = [
+      ...feeders.map((d) => ({ ref: d.ref_id, kind: 'feeder' as const, width: subtreeWidthBelow(d.child_bus_ref) })),
+      ...directLoads.map((l) => ({ ref: l.ref_id, kind: 'load' as const, width: T.feederGap })),
+      ...boundaries.map((l) => ({ ref: l.branch_ref, kind: 'boundary' as const, width: T.feederGap + T.boundaryChipOffset })),
+    ];
+    const aboveRightSlots: Slot[] = [
+      ...directGens.map((g) => ({ ref: g.ref_id, kind: 'derDirect' as const, width: T.sourceSlot })),
+      ...vts.map((m) => ({ ref: m.ref_id, kind: 'vt' as const, width: T.feederGap })),
+    ];
+    // Kolejność slotów wzdłuż kreski: [źródła] [odpływy…] [DER bez pola, VT];
+    // sekcja lustrzana: [DER bez pola, VT] [odpływy…] [źródła].
+    const ordered: Slot[] = mirror
+      ? [...aboveRightSlots, ...belowSlots, ...sourceSlots]
+      : [...sourceSlots, ...belowSlots, ...aboveRightSlots];
+    const slotX = new Map<string, number>();
+    let cursor = T.busOverhang;
+    for (const slot of ordered) {
+      slotX.set(slot.ref, doRastra(cursor + slot.width / 2));
+      cursor += slot.width;
+    }
+    const width = Math.max(2 * T.minBusHalfWidth, doRastra(cursor + T.busOverhang));
+    const plan: SectionPlan = { busRef, mirror, slots: ordered, width, slotX, left: 0, busY: 0 };
     planByBus.set(busRef, plan);
     return plan;
   }
 
-  // --- Sekcje korzeniowe (hops 0) obok siebie; sprzęgło = przerwa COUPLER_SPAN.
-  const rootBuses = gridBuses
-    .filter((b) => b.hops_from_root === 0)
-    .sort((a, b) => a.ref_id.localeCompare(b.ref_id));
-  for (const bus of rootBuses) planSection(bus.ref_id);
-
-  // Głębokość toru źródła nad szyną korzeniową (kotwica+TR+zacisk).
-  const SOURCE_STACK = ANCHOR_TO_TR + TR_TO_TERMINAL + TERMINAL_TO_BUS;
-  const ROOT_BUS_Y = MARGIN_Y + SOURCE_STACK;
-
-  let cursorX = MARGIN_X;
-  const orderedRootPlans: SectionPlan[] = [];
-  rootBuses.forEach((bus, idx) => {
-    const plan = planByBus.get(bus.ref_id)!;
-    plan.centerX = cursorX + plan.width / 2;
-    plan.busY = ROOT_BUS_Y;
-    orderedRootPlans.push(plan);
-    const gap = idx < rootBuses.length - 1 ? COUPLER_SPAN : 0;
-    cursorX += plan.width + gap;
+  // --- Sekcje korzeniowe obok siebie; sprzęgło w przerwie. -----------------
+  const rootSections = view.sections
+    .filter((s) => s.tier === 'main')
+    .sort((a, b) => a.order - b.order || sortRefs(a.bus_ref, b.bus_ref));
+  rootSections.forEach((section, index) => {
+    const mirror = rootSections.length >= 2 && index === rootSections.length - 1;
+    planSection(section.bus_ref, mirror);
   });
 
-  // --- Pozycjonowanie rekurencyjne dzieci: dziecko CENTROWANE pod kikutem.
-  function tapXFor(plan: SectionPlan, side: 'above' | 'below', ref: string): number {
-    // P0-V10 (above: oś TR = oś sekcji) / P0-V4 (below: środek SLOTU
-    // odpływu) — oba offsety policzone w planie sekcji, JEDNO źródło prawdy.
-    const offsets = side === 'above' ? plan.aboveOffsetByRef : plan.belowOffsetByRef;
-    return plan.centerX + (offsets.get(ref) ?? 0);
-  }
+  const hasIncomerAnywhere = rootSections.some((s) => (incomersByBoard.get(s.bus_ref) ?? []).length > 0);
+  const anchorY = T.marginY + LABEL_RESERVE_TOP;
+  const transformerY = anchorY + T.anchorToTransformer;
+  const terminalY = transformerY + T.transformerToTerminal;
+  const rootBusY = doRastra(hasIncomerAnywhere ? terminalY + T.terminalToBus : terminalY + T.busToDevice);
 
-  // BFS po CAŁYM drzewie odpływów (P0.7 — tor pionowy): każdy bus siatki
-  // (board LUB zacisk pośredni) dostaje pozycję pod kikutem rodzica.
-  // Łańcuch board→aparat→zacisk→kabel→zacisk→… schodzi kolejnymi rangami;
-  // dziecko CENTROWANE pod kikutem ⇒ segmenty pionowe. Wielo-dziecko
-  // zacisku pośredniego rozkłada się rastrem wokół pionu (ukośna kreska =
-  // dopuszczalny wyjątek, nie podstawa layoutu).
-  const JUNCTION_STEP = 104;
-  const junctionPos = new Map<string, { x: number; y: number }>();
-  const placeQueue: string[] = rootBuses.map((b) => b.ref_id);
-  const placed = new Set<string>(placeQueue);
-  while (placeQueue.length > 0) {
-    const busRef = placeQueue.shift()!;
-    const parentIsBoard = isBoardBus(busRef);
-    const parentPlan = parentIsBoard ? planByBus.get(busRef) : undefined;
-    const parentPos = parentIsBoard
-      ? { x: parentPlan!.centerX, y: parentPlan!.busY }
-      : junctionPos.get(busRef);
-    if (!parentPos) continue;
-    const items = (belowByBus.get(busRef) ?? []).filter((i) => i.kind === 'branch' && i.childBusRef);
-    items.forEach((item, idx) => {
-      const childRef = item.childBusRef!;
-      if (placed.has(childRef)) return;
-      const tapX = parentIsBoard
-        ? tapXFor(parentPlan!, 'below', item.ref)
-        : parentPos.x + (idx - (items.length - 1) / 2) * TAP_PITCH;
-      const childY = parentPos.y + (parentIsBoard ? BUS_TO_APPARATUS + APPARATUS_TO_CHILD : JUNCTION_STEP);
-      if (isBoardBus(childRef)) {
-        const childPlan = planSection(childRef);
-        childPlan.centerX = tapX;
-        childPlan.busY = childY;
-      } else {
-        junctionPos.set(childRef, { x: tapX, y: childY });
-      }
-      placed.add(childRef);
-      placeQueue.push(childRef);
+  let cursorX = T.marginX;
+  rootSections.forEach((section, index) => {
+    const plan = planByBus.get(section.bus_ref)!;
+    plan.left = doRastra(cursorX);
+    plan.busY = rootBusY;
+    cursorX = plan.left + plan.width + (index < rootSections.length - 1 ? T.sectionGap : 0);
+  });
+
+  const slotAbs = (plan: SectionPlan, ref: string): number => plan.left + (plan.slotX.get(ref) ?? plan.width / 2);
+  const posOfBus = new Map<string, { x: number; y: number }>();
+
+  // --- Emisja szyny sekcji. -------------------------------------------------
+  function emitBus(bus: LvDomainBus, plan: SectionPlan, tier: 'main' | 'sub', feedX: number | null = null): void {
+    posOfBus.set(bus.ref_id, { x: plan.left + plan.width / 2, y: plan.busY });
+    const feederCount = plan.slots.filter((s) => s.kind === 'feeder' || s.kind === 'load' || s.kind === 'boundary').length;
+    // Etykiety sekcji stoją ZA kolumną incomera (sekcja zwykła: od lewej po
+    // slotach źródeł; lustrzana: od lewego końca kreski) — nazwa nie może
+    // leżeć pod pionem wyłącznika głównego. Podrozdzielnica: ZA pionem
+    // zasilającym (`feedX`) — ten sam warunek, inny nośnik wejścia.
+    const leadingSourceWidth = plan.mirror
+      ? 0
+      : plan.slots.filter((s, i) => s.kind === 'incomer' && plan.slots.slice(0, i).every((p) => p.kind === 'incomer')).reduce((acc, s) => acc + s.width, 0);
+    const labelX = feedX != null
+      ? feedX + RASTER * 2
+      : plan.left + (leadingSourceWidth > 0 ? T.busOverhang + leadingSourceWidth : 0);
+    nodes.push({
+      kind: 'bus',
+      ref: bus.ref_id,
+      x: doRastra(plan.left + plan.width / 2),
+      y: plan.busY,
+      label: bus.name,
+      barLeft: plan.left,
+      barRight: plan.left + plan.width,
+      meta: {
+        ...terminalMeta(zaciski.get(bus.ref_id)),
+        voltageKv: bus.voltage_kv,
+        voltageLevelId: bus.voltage_level_id,
+        hopsFromRoot: bus.hops_from_root,
+        busTier: tier,
+        sectionId: sectionByBus.get(bus.ref_id)?.section_id,
+        feederCount,
+        mirror: plan.mirror,
+        labelX,
+      },
     });
   }
 
-  const posOfBus = (busRef: string): { x: number; y: number } | undefined => {
-    const plan = planByBus.get(busRef);
-    if (plan && (plan.centerX !== 0 || plan.busY !== 0)) return { x: plan.centerX, y: plan.busY };
-    return junctionPos.get(busRef);
-  };
-
-  // --- EMISJA: szyny.
-  for (const bus of [...gridBuses].sort((a, b) => a.ref_id.localeCompare(b.ref_id))) {
-    const pos = posOfBus(bus.ref_id);
-    if (!pos) continue;
-    const zasilanie = zasilanieSzyn.get(bus.ref_id);
-    const meta = {
-      voltageKv: bus.voltage_kv,
-      voltageLevelId: bus.voltage_level_id,
-      hopsFromRoot: bus.hops_from_root,
-      // T5b-4 (P0-V5): hierarchia magistral — MAIN (sekcje korzeniowe RGnN)
-      // vs SUB (podrozdzielnice) rozpoznawalna bez czytania etykiety.
-      busTier: bus.hops_from_root === 0 ? 'main' : 'sub',
-      // Stan zasilania i wyspa — Z DANYCH backendu (kontrakt 2.0.0).
-      energized: zasilanie?.energized,
-      derOnly: zasilanie?.derOnly,
-      supplyRefs: zasilanie?.supplyRefs,
-      islandRef: zasilanie?.islandRef,
-    };
-    if (isBoardBus(bus.ref_id)) {
-      const plan = planByBus.get(bus.ref_id)!;
+  /** Aparat na pionie: DWA kikuty w stanach swoich zacisków (§5/§7). */
+  function emitApparatus(
+    device: LvDomainDevice,
+    x: number,
+    yTop: number,
+    yDevice: number,
+    yBottom: number,
+    role: string,
+  ): void {
+    const branch = branchByRef.get(device.ref_id);
+    const segment = segmentByRef.get(device.ref_id);
+    const wpis = REJESTR_SYMBOLI_NN[device.device_type];
+    const topIsFrom = device.parent_bus_ref === segment?.from_bus_ref;
+    const topState = topIsFrom ? segment?.from_terminal : segment?.to_terminal;
+    const bottomState = topIsFrom ? segment?.to_terminal : segment?.from_terminal;
+    if (wpis.symbolId) {
       nodes.push({
-        kind: 'bus',
-        ref: bus.ref_id,
-        x: pos.x,
-        y: pos.y,
-        label: bus.name,
-        busBarHalfWidth: plan.barHalfWidth,
+        kind: 'apparatus',
+        ref: device.ref_id,
+        x,
+        y: yDevice,
+        label: branch?.name ?? device.ref_id,
+        symbolId: wpis.symbolId,
         meta: {
-          ...meta,
-          // Liczba kikutów POD szyną (odpływ do dziecka / odbiór / granica) —
-          // policzona RAZ w kompozytorze; renderer wyłącznie ją formatuje
-          // (na przeglądzie zastępuje nazwy poszczególnych odpływów).
-          feederCount: plan.below.length,
+          deviceType: device.device_type,
+          deviceState: deviceStateOf(device),
+          designation: device.designation_class,
+          role,
+          feederKind: device.feeder_kind,
+          catalogRef: branch?.catalog_ref,
+          terminalA: terminalMeta(topState),
+          terminalB: terminalMeta(bottomState),
+          islandTop: topState?.island_ref,
+          islandBottom: bottomState?.island_ref,
+          nosnikStanu: wpis.nosnikStanu,
         },
       });
+      const relay = relayByBreaker.get(device.ref_id);
+      if (relay) {
+        // Przekaźnik PO LEWEJ, PONIŻEJ wiersza etykiety aparatu: wiersz
+        // etykiet (nazwa · OTWARTY) biegnie na wysokości glifu w prawo od
+        // pionu, więc symbol na tej samej wysokości wchodził w etykietę
+        // sąsiedniej kolumny (zrzut 12_der_full_path). Łącznik kropkowany do
+        // kikuta dolnego aparatu (reguła globalna — ta sama dla incomera).
+        const relayX = x - RASTER * 5;
+        const relayY = yDevice + RASTER * 6;
+        nodes.push({
+          kind: 'relay',
+          ref: `relay:${relay.ref_id}`,
+          x: relayX,
+          y: relayY,
+          label: relay.name,
+          symbolId: SYMBOL_ZABEZPIECZENIA,
+          meta: { breakerRef: device.ref_id, functionCodes: relay.function_codes, ctRef: relay.ct_ref, enabled: relay.is_enabled },
+        });
+        edges.push({ ref: `relay:${relay.ref_id}#link`, kind: 'relayLink', x1: relayX, y1: relayY, x2: x, y2: relayY });
+      }
+      const edgeKind: LvDomainSceneEdgeKind = role === 'incomer' ? 'incomer' : 'branch';
+      edges.push({
+        ref: `${device.ref_id}#a`,
+        kind: edgeKind,
+        x1: x,
+        y1: yTop,
+        x2: x,
+        y2: yDevice,
+        meta: { ...terminalMeta(topState), deviceRef: device.ref_id, side: 'a', role, connectivity: segment?.connectivity_state },
+      });
+      edges.push({
+        ref: `${device.ref_id}#b`,
+        kind: edgeKind,
+        x1: x,
+        y1: yDevice,
+        x2: x,
+        y2: yBottom,
+        meta: { ...terminalMeta(bottomState), deviceRef: device.ref_id, side: 'b', role, connectivity: segment?.connectivity_state },
+      });
     } else {
-      nodes.push({
-        kind: 'busJunction',
-        ref: bus.ref_id,
-        x: pos.x,
-        y: pos.y,
-        label: bus.name,
-        symbolId: 'junction',
-        meta,
+      // Przewód bez symbolu (kabel/linia w roli odpływu — audyt NN-AUD-07 z backendu).
+      edges.push({
+        ref: device.ref_id,
+        kind: 'cable',
+        x1: x,
+        y1: yTop,
+        x2: x,
+        y2: yBottom,
+        meta: { energization: segment?.energization_state, connectivity: segment?.connectivity_state, catalogRef: branch?.catalog_ref, role },
       });
     }
   }
 
-  // --- EMISJA: źródła (TR z torem jawnym; generatory nad kikutem).
-  const snapshotByTransformerRef = new Map(upstreamEquivalents.map((s) => [s.transformer_ref, s] as const));
-  for (const trafo of [...view.transformers].sort((a, b) => a.ref_id.localeCompare(b.ref_id))) {
-    const { boardBusRef, incomerBranch } = incomerByTransformerRef.get(trafo.ref_id)!;
-    const plan = planByBus.get(boardBusRef);
-    if (!plan) continue;
-    const tapX = tapXFor(plan, 'above', trafo.ref_id);
-    const busY = plan.busY;
+  function cableMeta(segment: LvDomainSegment | undefined, ref: string): Readonly<Record<string, unknown>> {
+    const branch = branchByRef.get(ref);
+    return {
+      energization: segment?.energization_state,
+      connectivity: segment?.connectivity_state,
+      catalogRef: branch?.catalog_ref,
+      catalogNamespace: branch?.catalog_namespace,
+      sourceIds: segment?.source_ids,
+    };
+  }
 
-    let terminalPos = { x: tapX, y: busY };
-    if (incomerBranch) {
-      terminalPos = { x: tapX, y: busY - TERMINAL_TO_BUS };
+  /** Pomiar CT na szynie-zacisku: symbol na pionowym torze wchodzącym w zacisk. */
+  function emitMeasurementsOnWire(busRef: string, x: number, yWireTop: number, yWireBottom: number): void {
+    const cts = (measurementsByBus.get(busRef) ?? []).filter((m) => m.measurement_type === 'CT');
+    cts.forEach((m, i) => {
+      const y = doRastra(yWireTop + ((yWireBottom - yWireTop) * (i + 1)) / (cts.length + 1));
       nodes.push({
-        kind: 'busJunction',
-        ref: trafo.lv_bus_ref,
-        x: terminalPos.x,
-        y: terminalPos.y,
-        label: busByRef.get(trafo.lv_bus_ref)?.name ?? trafo.lv_bus_ref,
-        symbolId: 'junction',
-        meta: {
-          voltageKv: busByRef.get(trafo.lv_bus_ref)?.voltage_kv,
-          hopsFromRoot: busByRef.get(trafo.lv_bus_ref)?.hops_from_root,
-          islandRef: zasilanieSzyn.get(trafo.lv_bus_ref)?.islandRef,
-          energized: zasilanieSzyn.get(trafo.lv_bus_ref)?.energized,
-          derOnly: zasilanieSzyn.get(trafo.lv_bus_ref)?.derOnly,
-          supplyRefs: zasilanieSzyn.get(trafo.lv_bus_ref)?.supplyRefs,
-        },
+        kind: 'measurement',
+        ref: m.ref_id,
+        x,
+        y,
+        label: m.name,
+        symbolId: symbolPomiaru('CT'),
+        meta: { measurementType: 'CT', ratio: `${plNumber(m.ratio_primary)}/${plNumber(m.ratio_secondary)} A`, purpose: m.purpose, busRef },
       });
-      const incomerSymbolId = apparatusSymbolFor(incomerBranch.type);
-      const midY = (terminalPos.y + busY) / 2;
-      if (incomerSymbolId) {
+    });
+  }
+
+  /** Liście na zacisku (odbiory / źródła w polu) — pod zaciskiem, własne sloty. */
+  function emitLeaves(busRef: string, x: number, y: number, state: LvTerminalState | undefined): void {
+    const loads = loadsByBus.get(busRef) ?? [];
+    const gens = gensByBus.get(busRef) ?? [];
+    const leaves = [...loads.map((l) => ({ kind: 'load' as const, ref: l.ref_id })), ...gens.map((g) => ({ kind: 'generator' as const, ref: g.ref_id }))];
+    leaves.forEach((leaf, i) => {
+      const lx = doRastra(x + (i - (leaves.length - 1) / 2) * T.feederGap);
+      const ly = y + T.terminalToLeaf;
+      if (leaf.kind === 'load') {
+        const load = loads.find((l) => l.ref_id === leaf.ref)!;
         nodes.push({
-          kind: 'apparatus',
-          ref: incomerBranch.ref_id,
-          x: tapX,
-          y: midY,
-          label: incomerBranch.name,
-          symbolId: incomerSymbolId,
-          meta: { status: incomerBranch.status, catalogRef: incomerBranch.catalog_ref, type: incomerBranch.type, role: 'incomer' },
+          kind: 'load',
+          ref: load.ref_id,
+          x: lx,
+          y: ly,
+          label: load.name,
+          symbolId: SYMBOL_ODBIORU,
+          meta: { busRef, pMw: load.p_mw, qMvar: load.q_mvar, ...terminalMeta(state) },
+        });
+      } else {
+        const gen = gens.find((g) => g.ref_id === leaf.ref)!;
+        nodes.push({
+          kind: 'generator',
+          ref: gen.ref_id,
+          x: lx,
+          y: ly,
+          label: gen.name,
+          symbolId: symbolZrodlaDer(gen.gen_type),
+          meta: {
+            busRef,
+            pMw: gen.p_mw,
+            genType: gen.gen_type,
+            islandCapability: gen.island_capability,
+            capabilitySourcePl: gen.capability_source_pl,
+            islandOperationCapable: gen.island_operation_capable,
+            ...terminalMeta(state),
+          },
         });
       }
-      edges.push({
-        ref: incomerBranch.ref_id,
-        kind: 'branch',
-        x1: tapX,
-        y1: terminalPos.y,
-        x2: tapX,
-        y2: busY,
-        status: incomerBranch.status,
-        meta: { role: 'incomer', energized: energiaOdcinka(trafo.lv_bus_ref, boardBusRef) },
-      });
+      // Zejście liścia zaczyna się W ZACISKU (x), nie pod liściem: przy ≥2
+      // liściach na zacisku tor idzie ortogonalnie (poziomo do slotu liścia,
+      // potem w dół) — renderer rysuje łamaną, gdy x1 ≠ x2 (§23).
+      edges.push({ ref: `${leaf.ref}#leaf-drop`, kind: 'leafDrop', x1: x, y1: y, x2: lx, y2: ly, meta: { ...terminalMeta(state), leafKind: leaf.kind } });
+    });
+  }
+
+  /** Zacisk pośredni + wszystko, co z niego schodzi (rekurencja po rolach). */
+  function emitJunctionSubtree(busRef: string, x: number, y: number): void {
+    const bus = busByRef.get(busRef);
+    if (!bus) return;
+    posOfBus.set(busRef, { x, y });
+    const state = zaciski.get(busRef);
+    const children = childrenByBus.get(busRef) ?? [];
+    const leaves = (loadsByBus.get(busRef)?.length ?? 0) + (gensByBus.get(busRef)?.length ?? 0);
+    nodes.push({
+      kind: 'terminal',
+      ref: busRef,
+      x,
+      y,
+      label: bus.name,
+      symbolId: 'junction',
+      meta: { ...terminalMeta(state), voltageKv: bus.voltage_kv, hopsFromRoot: bus.hops_from_root, degree: degreeOf(busRef) },
+    });
+    // Sloty dzieci: gałęzie wewnętrzne (każda ze swoim poddrzewem) + liście.
+    const slots = [
+      ...children.map((d) => ({ ref: d.ref_id, width: subtreeWidthBelow(d.child_bus_ref), device: d })),
+      ...(leaves > 0 ? [{ ref: `${busRef}#leaves`, width: T.feederGap, device: null }] : []),
+    ];
+    const total = slots.reduce((acc, s) => acc + s.width, 0);
+    let cursor = x - total / 2;
+    for (const slot of slots) {
+      const sx = doRastra(cursor + slot.width / 2);
+      cursor += slot.width;
+      if (!slot.device) {
+        emitLeaves(busRef, x, y, state);
+        continue;
+      }
+      emitInternalBranch(slot.device, sx, y);
     }
-
-    const trafoPos = { x: tapX, y: terminalPos.y - TR_TO_TERMINAL };
-    nodes.push({
-      kind: 'transformer',
-      ref: trafo.ref_id,
-      x: trafoPos.x,
-      y: trafoPos.y,
-      label: transformerNameplateLabel(trafo),
-      symbolId: 'transformer2W',
-      meta: {
-        hvBusRef: trafo.hv_bus_ref,
-        lvBusRef: trafo.lv_bus_ref,
-        boardBusRef,
-        hasExplicitIncomer: !!incomerBranch,
-        // T5b-4 (werdykt pkt 4 — blok TR w hierarchii, nie 5 mikrolinii):
-        // renderer buduje blok z DANYCH modelu, nie z parsowania etykiety
-        // (predykaty parami — etykieta i blok z JEDNEGO źródła: modelu).
-        name: trafo.name,
-        snMva: trafo.sn_mva,
-        uhvKv: trafo.uhv_kv,
-        ulvKv: trafo.ulv_kv,
-        vectorGroup: trafo.vector_group ?? null,
-        ukPercent: trafo.uk_percent,
-      },
-    });
-    edges.push({
-      ref: `${trafo.ref_id}#source-drop`,
-      kind: 'sourceDrop',
-      x1: trafoPos.x,
-      y1: trafoPos.y,
-      x2: terminalPos.x,
-      y2: terminalPos.y,
-      meta: { energized: energiaOdcinka(trafo.lv_bus_ref, incomerBranch ? undefined : boardBusRef) },
-    });
-
-    const snapshot = snapshotByTransformerRef.get(trafo.ref_id);
-    const anchorPos = { x: trafoPos.x, y: trafoPos.y - ANCHOR_TO_TR };
-    nodes.push({
-      kind: 'anchorChip',
-      ref: `anchor:${trafo.ref_id}`,
-      x: anchorPos.x,
-      y: anchorPos.y,
-      label: snapshot ? anchorChipLabel(snapshot) : 'SN · brak danych',
-      meta: {
-        ...(snapshot as unknown as Record<string, unknown> | undefined),
-        // Obie części etykiety kotwicy z JEDNEGO źródła (renderer NIE
-        // parsuje `label` — tożsamość i opis mają różny zasięg poziomów).
-        tozsamoscLabel: snapshot ? anchorChipIdentityLabel(snapshot) : 'SN · brak danych',
-        opisLabel: snapshot ? anchorChipDetailLabel(snapshot) : null,
-      },
-    });
-    edges.push({
-      ref: `anchor:${trafo.ref_id}#drop`,
-      kind: 'sourceDrop',
-      x1: anchorPos.x,
-      y1: anchorPos.y,
-      x2: trafoPos.x,
-      y2: trafoPos.y,
-    });
   }
 
-  for (const gen of [...view.generators].sort((a, b) => a.ref_id.localeCompare(b.ref_id))) {
-    const busPos = posOfBus(gen.bus_ref);
-    if (!busPos) continue;
-    const plan = planByBus.get(gen.bus_ref);
-    const directOnBoard = isBoardBus(gen.bus_ref);
-    const tapX = plan && directOnBoard ? tapXFor(plan, 'above', gen.ref_id) : busPos.x;
-    // Generator na zacisku toru (pełne pole źródłowe): symbol na PIONIE toru,
-    // nad zaciskiem. Generator wprost na sekcji: nad własnym kikutem.
-    // T5b-4: 104 j.św. nad zaciskiem — glif źródła (54 px ekranu) i jego
-    // etykieta nie wchodzą w pas etykiety szyny podrzędnej obok (zmierzona
-    // kolizja PV1 × „Szyna RGN-2" na zrzucie Stacji C).
-    const genPos = { x: tapX, y: busPos.y - (directOnBoard ? TR_TO_TERMINAL : 104) };
-    nodes.push({
-      kind: 'generator',
-      ref: gen.ref_id,
-      x: genPos.x,
-      y: genPos.y,
-      label: `${gen.name} · ${gen.p_mw} MW`,
-      symbolId: symbolForGenerator(gen.gen_type),
-      meta: { busRef: gen.bus_ref, genType: gen.gen_type, connectionVariant: gen.connection_variant },
-    });
-    edges.push({
-      ref: `${gen.ref_id}#source-drop`,
-      kind: 'sourceDrop',
-      x1: genPos.x,
-      y1: genPos.y,
-      x2: tapX,
-      y2: busPos.y,
-      meta: directOnBoard
-        ? {
-            energized: energiaOdcinka(gen.bus_ref),
-            apparatusGapPl:
-              'Brak jawnego aparatu pola źródłowego w grafie domeny (LvDomainGraphView.generators nie niesie ' +
-              'tor pola: aparat/kabel/PCC — dane pola źródłowego istnieją WYŁĄCZNIE jako meta stacji ' +
-              '`nn_field_specs`, nieeksponowana przez /enm/lv-domain). Punkt renderowany jako bezpośrednie ' +
-              'podłączenie do sekcji — luka modelu, patrz raport karty T5b-2 P0.7.',
-          }
-        : { energized: energiaOdcinka(gen.bus_ref) },
-    });
-  }
-
-  // --- EMISJA: odpływy ORTOGONALNIE (P0.7). Aparat na pionie kikuta;
-  // kabel pionowo do celu (dziecko centrowane pod kikutem ⇒ x stały).
-  for (const branch of [...view.branches].sort((a, b) => a.ref_id.localeCompare(b.ref_id))) {
-    if (consumedBranchRefs.has(branch.ref_id)) continue;
-    if (branch.type === 'bus_coupler') continue;
-    const fromBus = busByRef.get(branch.from_bus_ref);
-    const toBus = busByRef.get(branch.to_bus_ref);
-    if (!fromBus || !toBus) continue;
-    if (!gridBusRefs.has(fromBus.ref_id) || !gridBusRefs.has(toBus.ref_id)) continue;
-    const parentRef = fromBus.hops_from_root <= toBus.hops_from_root ? fromBus.ref_id : toBus.ref_id;
-    const childRef = parentRef === fromBus.ref_id ? toBus.ref_id : fromBus.ref_id;
-    const parentPlan = planByBus.get(parentRef);
-    const parentIsBoard = isBoardBus(parentRef) && !!parentPlan;
-    const parentPos = posOfBus(parentRef);
-    const childPos = posOfBus(childRef);
-    if (!parentPos || !childPos) continue;
-
-    const tapX = parentIsBoard ? tapXFor(parentPlan!, 'below', branch.ref_id) : parentPos.x;
-    const symbolId = apparatusSymbolFor(branch.type);
-    if (symbolId) {
-      nodes.push({
-        kind: 'apparatus',
-        ref: branch.ref_id,
-        x: tapX,
-        y: parentPos.y + BUS_TO_APPARATUS,
-        label: branch.name,
-        symbolId,
-        meta: { status: branch.status, catalogRef: branch.catalog_ref, type: branch.type },
-      });
-    }
-    const edgeKind: LvDomainSceneEdgeKind = branch.type === 'cable' || branch.type === 'line_overhead' ? 'cable' : 'branch';
-    const energized = energiaOdcinka(parentRef, childRef);
-    edges.push({
-      ref: branch.ref_id,
-      kind: edgeKind,
-      x1: tapX,
-      y1: parentPos.y,
-      x2: childPos.x,
-      y2: childPos.y,
-      status: branch.status,
-      meta:
-        edgeKind === 'cable'
-          ? { catalogRef: branch.catalog_ref, catalogNamespace: branch.catalog_namespace, energized }
-          : { energized },
-    });
-  }
-
-  // --- EMISJA: sprzęgło w PRZERWIE między kreskami sąsiednich sekcji (P0.4).
-  for (const branch of [...view.branches].sort((a, b) => a.ref_id.localeCompare(b.ref_id))) {
-    if (branch.type !== 'bus_coupler') continue;
-    const fromPlan = planByBus.get(branch.from_bus_ref);
-    const toPlan = planByBus.get(branch.to_bus_ref);
-    const fromPos = posOfBus(branch.from_bus_ref);
-    const toPos = posOfBus(branch.to_bus_ref);
-    if (!fromPos || !toPos) continue;
-    const sameDepthBoards = !!fromPlan && !!toPlan && fromPos.y === toPos.y;
-    let x1: number;
-    let x2: number;
-    if (sameDepthBoards) {
-      const leftIsFrom = fromPos.x <= toPos.x;
-      x1 = leftIsFrom ? fromPos.x + fromPlan!.barHalfWidth : fromPos.x - fromPlan!.barHalfWidth;
-      x2 = leftIsFrom ? toPos.x - toPlan!.barHalfWidth : toPos.x + toPlan!.barHalfWidth;
+  /** Gałąź wewnętrzna (kabel / aparat) od zacisku w dół do dziecka. */
+  function emitInternalBranch(device: LvDomainDevice, x: number, yTop: number): void {
+    const wpis = REJESTR_SYMBOLI_NN[device.device_type];
+    const segment = segmentByRef.get(device.ref_id);
+    const childRef = device.child_bus_ref;
+    const childSection = sectionByBus.get(childRef);
+    if (wpis.symbolId) {
+      const yDevice = yTop + T.busToDevice;
+      const yBottom = yDevice + T.deviceToChild;
+      emitApparatus(device, x, yTop, yDevice, yBottom, 'internal');
+      emitChild(childRef, x, yBottom, childSection !== undefined, yDevice);
     } else {
-      x1 = fromPos.x;
-      x2 = toPos.x;
+      const yBottom = yTop + T.deviceToChild;
+      edges.push({ ref: device.ref_id, kind: 'cable', x1: x, y1: yTop, x2: x, y2: yBottom, meta: cableMeta(segment, device.ref_id) });
+      emitChild(childRef, x, yBottom, childSection !== undefined, yTop);
     }
-    const y = fromPos.y;
-    const midX = (x1 + x2) / 2;
+  }
+
+  /** Dziecko pod kikutem: podrozdzielnica (kreska od punktu wejścia) albo
+   *  zacisk. `wireTop` = początek pionu wchodzącego w dziecko (na nim siada
+   *  przekładnik prądowy zacisku, gdy model go niesie — §12). */
+  function emitChild(childRef: string, x: number, y: number, isBoard: boolean, wireTop: number): void {
+    if (!isBoard) emitMeasurementsOnWire(childRef, x, wireTop, y);
+    if (isBoard) {
+      const plan = planSection(childRef, false);
+      plan.left = doRastra(x - T.busOverhang);
+      plan.busY = doRastra(y + T.busGap - T.deviceToChild);
+      const bus = busByRef.get(childRef);
+      if (!bus) return;
+      // Pion od końca kabla do kreski podrozdzielnicy (punkt wejścia = lewy skraj).
+      const state = zaciski.get(childRef);
+      edges.push({ ref: `${childRef}#feed`, kind: 'branch', x1: x, y1: y, x2: x, y2: plan.busY, meta: { ...terminalMeta(state), role: 'feed' } });
+      emitBus(bus, plan, 'sub', x);
+      emitSectionContents(plan);
+    } else {
+      emitJunctionSubtree(childRef, x, y);
+    }
+  }
+
+  /** Zawartość sekcji: odpływy, odbiory bez pola, granice, źródła bez pola, VT. */
+  function emitSectionContents(plan: SectionPlan): void {
+    const busRef = plan.busRef;
+    const busState = zaciski.get(busRef);
+    for (const slot of plan.slots) {
+      const x = slotAbs(plan, slot.ref);
+      if (slot.kind === 'feeder') {
+        const device = deviceByRef.get(slot.ref)!;
+        const wpis = REJESTR_SYMBOLI_NN[device.device_type];
+        const childSection = sectionByBus.get(device.child_bus_ref);
+        if (wpis.symbolId) {
+          const yDevice = plan.busY + T.busToDevice;
+          const yBottom = yDevice + T.deviceToChild;
+          emitApparatus(device, x, plan.busY, yDevice, yBottom, 'feeder');
+          emitChild(device.child_bus_ref, x, yBottom, childSection !== undefined, yDevice);
+        } else {
+          const yBottom = plan.busY + T.busToDevice + T.deviceToChild;
+          edges.push({ ref: device.ref_id, kind: 'cable', x1: x, y1: plan.busY, x2: x, y2: yBottom, meta: { ...cableMeta(segmentByRef.get(device.ref_id), device.ref_id), role: 'feeder' } });
+          emitChild(device.child_bus_ref, x, yBottom, childSection !== undefined, plan.busY);
+        }
+      } else if (slot.kind === 'load') {
+        const load = view.loads.find((l) => l.ref_id === slot.ref)!;
+        const ly = plan.busY + T.busToDevice + T.terminalToLeaf;
+        nodes.push({ kind: 'load', ref: load.ref_id, x, y: ly, label: load.name, symbolId: SYMBOL_ODBIORU, meta: { busRef, pMw: load.p_mw, qMvar: load.q_mvar, direct: true, ...terminalMeta(busState) } });
+        edges.push({ ref: `${load.ref_id}#leaf-drop`, kind: 'leafDrop', x1: x, y1: plan.busY, x2: x, y2: ly, meta: { ...terminalMeta(busState), leafKind: 'load', direct: true } });
+      } else if (slot.kind === 'boundary') {
+        const link = view.boundary_links.find((l) => l.branch_ref === slot.ref)!;
+        const terminalPos = { x, y: plan.busY + T.busToBoundaryTerminal };
+        const branch = branchByRef.get(link.branch_ref);
+        edges.push({
+          ref: link.branch_ref,
+          kind: 'cable',
+          x1: x,
+          y1: plan.busY,
+          x2: terminalPos.x,
+          y2: terminalPos.y,
+          meta: { ...terminalMeta(busState), role: 'boundary', catalogRef: branch?.catalog_ref, connectivity: branch ? (branch.status === 'closed' ? 'CLOSED' : 'OPEN') : undefined },
+        });
+        nodes.push({ kind: 'boundaryTerminal', ref: `boundary-terminal:${link.branch_ref}`, x: terminalPos.x, y: terminalPos.y, label: '●', symbolId: 'junction', meta: { branchRef: link.branch_ref } });
+        const chip = { x: terminalPos.x + T.boundaryChipOffset, y: terminalPos.y };
+        nodes.push({
+          kind: 'boundaryChip',
+          ref: `boundary:${link.branch_ref}`,
+          x: chip.x,
+          y: chip.y,
+          label: `→ ${link.target_station_name}`,
+          meta: { targetStationRef: link.target_station_ref, branchRef: link.branch_ref, voltageKv: busByRef.get(link.from_bus_ref)?.voltage_kv },
+        });
+        edges.push({ ref: `boundary:${link.branch_ref}#link`, kind: 'boundaryLink', x1: terminalPos.x, y1: terminalPos.y, x2: chip.x, y2: chip.y, meta: terminalMeta(busState) });
+      } else if (slot.kind === 'derDirect') {
+        const gen = view.generators.find((g) => g.ref_id === slot.ref)!;
+        const gy = plan.busY - T.terminalToLeaf;
+        nodes.push({
+          kind: 'generator',
+          ref: gen.ref_id,
+          x,
+          y: gy,
+          label: gen.name,
+          symbolId: symbolZrodlaDer(gen.gen_type),
+          meta: { busRef, pMw: gen.p_mw, genType: gen.gen_type, islandCapability: gen.island_capability, capabilitySourcePl: gen.capability_source_pl, islandOperationCapable: gen.island_operation_capable, direct: true, ...terminalMeta(busState) },
+        });
+        edges.push({ ref: `${gen.ref_id}#leaf-drop`, kind: 'leafDrop', x1: x, y1: gy, x2: x, y2: plan.busY, meta: { ...terminalMeta(busState), leafKind: 'generator', direct: true } });
+      } else if (slot.kind === 'vt') {
+        const m = view.measurements.find((mm) => mm.ref_id === slot.ref)!;
+        const my = plan.busY - T.busToDevice;
+        nodes.push({ kind: 'measurement', ref: m.ref_id, x, y: my, label: m.name, symbolId: symbolPomiaru('VT'), meta: { measurementType: 'VT', ratio: `${plNumber(m.ratio_primary)}/${plNumber(m.ratio_secondary)} V`, purpose: m.purpose, busRef } });
+        edges.push({ ref: `${m.ref_id}#vt-drop`, kind: 'leafDrop', x1: x, y1: my, x2: x, y2: plan.busY, meta: { ...terminalMeta(busState), leafKind: 'measurement' } });
+      }
+    }
+  }
+
+  // --- Emisja sekcji korzeniowych + źródeł. ---------------------------------
+  interface TransformerPlacement { readonly transformerRef: string; readonly x: number; }
+  const placements: TransformerPlacement[] = [];
+
+  for (const section of rootSections) {
+    const plan = planByBus.get(section.bus_ref)!;
+    const bus = busByRef.get(section.bus_ref);
+    if (!bus) continue;
+    emitBus(bus, plan, 'main');
+    emitSectionContents(plan);
+
+    for (const slot of plan.slots.filter((s) => s.kind === 'incomer')) {
+      const x = slotAbs(plan, slot.ref);
+      const incomer = deviceByRef.get(slot.ref);
+      const transformerRef = incomer?.transformer_ref ?? slot.ref;
+      const trafo = transformerByRef.get(transformerRef);
+      if (!trafo) continue;
+      placements.push({ transformerRef, x });
+      const terminalState = zaciski.get(trafo.lv_bus_ref);
+      if (incomer) {
+        // Zacisk nN transformatora (jawny) → CT → wyłącznik główny → szyna;
+        // kikut dolny dłuższy (przekaźnik obok niego nie siada na szynie).
+        const yDevice = doRastra(terminalY + T.terminalToIncomer);
+        const terminalBus = busByRef.get(trafo.lv_bus_ref);
+        posOfBus.set(trafo.lv_bus_ref, { x, y: terminalY });
+        nodes.push({
+          kind: 'terminal',
+          ref: trafo.lv_bus_ref,
+          x,
+          y: terminalY,
+          label: terminalBus?.name ?? trafo.lv_bus_ref,
+          symbolId: 'junction',
+          meta: { ...terminalMeta(terminalState), voltageKv: terminalBus?.voltage_kv, hopsFromRoot: terminalBus?.hops_from_root, degree: degreeOf(trafo.lv_bus_ref), transformerTerminal: transformerRef },
+        });
+        emitApparatus(incomer, x, terminalY, yDevice, plan.busY, 'incomer');
+        emitMeasurementsOnWire(trafo.lv_bus_ref, x, terminalY, yDevice);
+      }
+      const trY = transformerY;
+      nodes.push({
+        kind: 'transformer',
+        ref: trafo.ref_id,
+        x,
+        y: trY,
+        label: transformerNameplateLabel(trafo),
+        symbolId: SYMBOL_TRANSFORMATORA,
+        meta: {
+          name: trafo.name,
+          snMva: trafo.sn_mva,
+          uhvKv: trafo.uhv_kv,
+          ulvKv: trafo.ulv_kv,
+          vectorGroup: trafo.vector_group ?? null,
+          ukPercent: trafo.uk_percent,
+          hvBusRef: trafo.hv_bus_ref,
+          lvBusRef: trafo.lv_bus_ref,
+          lvNeutral: trafo.lv_neutral,
+          upstreamSystemId: trafo.upstream_system_id,
+          hasExplicitIncomer: incomer !== undefined,
+          ...terminalMeta(terminalState),
+        },
+      });
+      edges.push({
+        ref: `${trafo.ref_id}#lv`,
+        kind: 'sourceDrop',
+        x1: x,
+        y1: trY,
+        x2: x,
+        y2: incomer ? terminalY : plan.busY,
+        meta: { ...terminalMeta(terminalState), transformerRef: trafo.ref_id },
+      });
+      if (!incomer) emitMeasurementsOnWire(trafo.lv_bus_ref, x, trY, plan.busY);
+    }
+  }
+
+  // --- Kotwice systemów SN (§10/§11): jedna kreska na grupę tożsamości. -----
+  const groupKeyOf = (transformerRef: string): string => {
+    const snapshot = snapshotByTransformer.get(transformerRef);
+    if (snapshot?.equivalent_id) return `eq:${snapshot.equivalent_id}`;
+    const systemId = transformerByRef.get(transformerRef)?.upstream_system_id;
+    return systemId ? `system:${systemId}` : `tr:${transformerRef}`;
+  };
+  const groups = new Map<string, TransformerPlacement[]>();
+  for (const placement of placements) {
+    const key = groupKeyOf(placement.transformerRef);
+    groups.set(key, [...(groups.get(key) ?? []), placement]);
+  }
+  const groupKeys = [...groups.keys()].sort((a, b) => {
+    const xa = Math.min(...groups.get(a)!.map((p) => p.x));
+    const xb = Math.min(...groups.get(b)!.map((p) => p.x));
+    return xa - xb;
+  });
+  const groupLeft = (key: string): number => Math.min(...groups.get(key)!.map((p) => p.x)) - RASTER * 4;
+  groupKeys.forEach((key, index) => {
+    const members = groups.get(key)!.sort((a, b) => a.x - b.x);
+    const first = transformerByRef.get(members[0].transformerRef)!;
+    const snapshot = members.map((m) => snapshotByTransformer.get(m.transformerRef)).find((s) => s !== undefined);
+    const systemId = first.upstream_system_id ?? null;
+    const left = members[0].x - RASTER * 4;
+    const right = members[members.length - 1].x + RASTER * 4;
+    const anchorRef = `anchor:${key}`;
+    // Pas na etykiety kotwicy [świat]: do lewej krawędzi NASTĘPNEJ kotwicy
+    // (dwa niezależne systemy SN obok siebie nie mogą pisać po sobie) albo do
+    // prawego skraju sceny — renderer zawija opis do tej szerokości.
+    const nextKey = groupKeys[index + 1];
+    const labelMaxWidth = (nextKey ? groupLeft(nextKey) - RASTER * 2 : cursorX + LABEL_RESERVE_RIGHT) - left;
+    nodes.push({
+      kind: 'anchorBar',
+      ref: anchorRef,
+      x: doRastra((left + right) / 2),
+      y: anchorY,
+      label: anchorIdentityLabel(snapshot, systemId, first.uhv_kv),
+      barLeft: left,
+      barRight: right,
+      meta: {
+        systemId,
+        systemIndex: index + 1,
+        systemCount: groupKeys.length,
+        transformerRefs: members.map((m) => m.transformerRef),
+        upstreamSourceIds: snapshot?.upstream_source_ids ?? [],
+        equivalentId: snapshot?.equivalent_id ?? null,
+        status: snapshot?.status ?? 'brak danych',
+        tozsamoscLabel: anchorIdentityLabel(snapshot, systemId, first.uhv_kv),
+        opisLabel: anchorDetailLabel(snapshot),
+        labelMaxWidth,
+        shared: members.length > 1,
+        snapshot: snapshot as unknown as Record<string, unknown> | undefined,
+      },
+    });
+    for (const member of members) {
+      edges.push({
+        ref: `${anchorRef}#drop:${member.transformerRef}`,
+        kind: 'anchorDrop',
+        x1: member.x,
+        y1: anchorY,
+        x2: member.x,
+        y2: transformerY,
+        meta: { transformerRef: member.transformerRef, energization: 'ENERGIZED' as LvEnergizationState, sn: true, status: snapshot?.status ?? 'brak danych' },
+      });
+    }
+  });
+
+  // --- Sprzęgła między sąsiednimi sekcjami (§7). ----------------------------
+  for (const device of couplers) {
+    const planA = planByBus.get(device.terminal_a);
+    const planB = planByBus.get(device.terminal_b);
+    const segment = segmentByRef.get(device.ref_id);
+    const branch = branchByRef.get(device.ref_id);
+    if (!planA || !planB) continue;
+    const leftPlan = planA.left <= planB.left ? planA : planB;
+    const rightPlan = leftPlan === planA ? planB : planA;
+    const leftState = leftPlan === planA ? segment?.from_terminal : segment?.to_terminal;
+    const rightState = leftPlan === planA ? segment?.to_terminal : segment?.from_terminal;
+    const x1 = leftPlan.left + leftPlan.width;
+    const x2 = rightPlan.left;
+    const y = leftPlan.busY;
+    const mid = doRastra((x1 + x2) / 2);
+    const wpis = REJESTR_SYMBOLI_NN[device.device_type];
     nodes.push({
       kind: 'apparatus',
-      ref: branch.ref_id,
-      x: midX,
+      ref: device.ref_id,
+      x: mid,
       y,
-      label: branch.name,
-      symbolId: apparatusSymbolFor('bus_coupler')!,
-      meta: { status: branch.status, catalogRef: branch.catalog_ref, type: branch.type, role: 'coupler' },
-    });
-    edges.push({
-      ref: branch.ref_id,
-      kind: 'coupler',
-      x1,
-      y1: y,
-      x2,
-      y2: y,
-      status: branch.status,
-      meta: { energized: energiaOdcinka(branch.from_bus_ref, branch.to_bus_ref) },
-    });
-  }
-
-  // --- EMISJA: odbiory NA WŁASNYM KIKUCIE pod szyną (P0.7 — raster, nie
-  // środek szyny) z pionowym zejściem.
-  for (const load of [...view.loads].sort((a, b) => a.ref_id.localeCompare(b.ref_id))) {
-    const busPos = posOfBus(load.bus_ref);
-    if (!busPos) continue;
-    const plan = planByBus.get(load.bus_ref);
-    const tapX = plan && isBoardBus(load.bus_ref) ? tapXFor(plan, 'below', load.ref_id) : busPos.x;
-    const loadPos = { x: tapX, y: busPos.y + BUS_TO_LOAD };
-    nodes.push({
-      kind: 'load',
-      ref: load.ref_id,
-      x: loadPos.x,
-      y: loadPos.y,
-      label: `${load.name} · ${load.p_mw} MW`,
-      symbolId: 'loadArrow',
-      meta: { busRef: load.bus_ref, pMw: load.p_mw, qMvar: load.q_mvar },
-    });
-    edges.push({
-      ref: `${load.ref_id}#feeder-drop`,
-      kind: 'branch',
-      x1: tapX,
-      y1: busPos.y,
-      x2: loadPos.x,
-      y2: loadPos.y,
-      meta: { role: 'loadDrop', energized: energiaOdcinka(load.bus_ref) },
-    });
-  }
-
-  // --- EMISJA: boundary — kikut → kabel PIONOWO → ● terminal → chip poziomo.
-  const boundaryBranchByRef = new Map(view.branches.map((b) => [b.ref_id, b] as const));
-  for (const link of [...view.boundary_links].sort((a: LvDomainBoundaryLink, b) => a.branch_ref.localeCompare(b.branch_ref))) {
-    const busPos = posOfBus(link.from_bus_ref);
-    if (!busPos) continue;
-    const plan = planByBus.get(link.from_bus_ref);
-    const tapX = plan && isBoardBus(link.from_bus_ref) ? tapXFor(plan, 'below', link.branch_ref) : busPos.x;
-    const terminalPos = { x: tapX, y: busPos.y + BUS_TO_BOUNDARY_TERMINAL };
-    const knownBranch = boundaryBranchByRef.get(link.branch_ref);
-    const symbolId = knownBranch ? apparatusSymbolFor(knownBranch.type) : undefined;
-
-    let cableFrom = { x: tapX, y: busPos.y };
-    if (symbolId && knownBranch) {
-      // T5b-4 (P0-V4 DEVICE BASELINE): aparat granicy na TEJ SAMEJ randze co
-      // aparaty odpływów (BUS_TO_APPARATUS), nie na własnej wysokości.
-      const appY = busPos.y + BUS_TO_APPARATUS;
-      nodes.push({
-        kind: 'apparatus',
-        ref: link.branch_ref,
-        x: tapX,
-        y: appY,
-        label: knownBranch.name,
-        symbolId,
-        meta: { status: knownBranch.status, catalogRef: knownBranch.catalog_ref, type: knownBranch.type, role: 'boundary' },
-      });
-      cableFrom = { x: tapX, y: appY };
-    }
-    edges.push({
-      ref: link.branch_ref,
-      kind: 'cable',
-      x1: cableFrom.x,
-      y1: cableFrom.y,
-      x2: terminalPos.x,
-      y2: terminalPos.y,
-      status: knownBranch?.status,
+      label: branch?.name ?? device.ref_id,
+      symbolId: wpis.symbolId ?? 'nnBreaker',
       meta: {
-        role: 'boundary',
-        energized: energiaOdcinka(link.from_bus_ref),
-        gapPl: knownBranch
-          ? undefined
-          : 'LvDomainBoundaryLink nie niesie typu/impedancji gałęzi granicznej — kabel renderowany bez ' +
-            'katalogu/przekroju/długości (luka modelu, patrz raport karty T5b-2 P0.6/P0.8).',
+        deviceType: device.device_type,
+        deviceState: deviceStateOf(device),
+        designation: device.designation_class,
+        role: 'coupler',
+        catalogRef: branch?.catalog_ref,
+        terminalA: terminalMeta(leftState),
+        terminalB: terminalMeta(rightState),
+        nosnikStanu: wpis.nosnikStanu,
+        horizontal: true,
       },
     });
-    nodes.push({
-      kind: 'boundaryTerminal',
-      ref: `boundary-terminal:${link.branch_ref}`,
-      x: terminalPos.x,
-      y: terminalPos.y,
-      label: '●',
-      symbolId: 'junction',
-      meta: { branchRef: link.branch_ref },
-    });
-    const chipPos = { x: terminalPos.x + BOUNDARY_CHIP_OFFSET_X, y: terminalPos.y };
-    nodes.push({
-      kind: 'boundaryChip',
-      ref: `boundary:${link.branch_ref}`,
-      x: chipPos.x,
-      y: chipPos.y,
-      label: `→ ${link.target_station_name}`,
-      meta: {
-        targetStationRef: link.target_station_ref,
-        branchRef: link.branch_ref,
-        // T5b-4 (P0-V8): napięcie zacisku granicznego z modelu (szyna
-        // źródłowa linku) — renderer pokazuje „terminal + referencja",
-        // nie przycisk; napięcie jest częścią referencji elektrycznej.
-        voltageKv: busByRef.get(link.from_bus_ref)?.voltage_kv,
-      },
-    });
-    edges.push({
-      ref: `boundary:${link.branch_ref}#link`,
-      kind: 'boundaryLink',
-      x1: terminalPos.x,
-      y1: terminalPos.y,
-      x2: chipPos.x,
-      y2: chipPos.y,
-      meta: { energized: energiaOdcinka(link.from_bus_ref) },
-    });
+    edges.push({ ref: `${device.ref_id}#a`, kind: 'coupler', x1, y1: y, x2: mid, y2: y, meta: { ...terminalMeta(leftState), deviceRef: device.ref_id, side: 'a', role: 'coupler', connectivity: segment?.connectivity_state } });
+    edges.push({ ref: `${device.ref_id}#b`, kind: 'coupler', x1: mid, y1: y, x2, y2: y, meta: { ...terminalMeta(rightState), deviceRef: device.ref_id, side: 'b', role: 'coupler', connectivity: segment?.connectivity_state } });
   }
 
-  // --- Otoczka i przesunięcie bbox-safe (kotwice/tabliczki nad wierszem 0).
-  const allX = [...nodes.map((n) => n.x), ...edges.flatMap((e) => [e.x1, e.x2])];
-  const allY = [...nodes.map((n) => n.y), ...edges.flatMap((e) => [e.y1, e.y2])];
-  const minX = allX.length > 0 ? Math.min(...allX) : MARGIN_X;
-  const minY = allY.length > 0 ? Math.min(...allY) : MARGIN_Y;
-  const shiftX = minX < MARGIN_X ? MARGIN_X - minX : 0;
-  const shiftY = minY < MARGIN_Y ? MARGIN_Y - minY : 0;
-
-  const shiftedNodes: LvDomainSceneNode[] =
-    shiftX === 0 && shiftY === 0 ? nodes : nodes.map((n) => ({ ...n, x: n.x + shiftX, y: n.y + shiftY }));
-  const shiftedEdges: LvDomainSceneEdge[] =
-    shiftX === 0 && shiftY === 0
-      ? edges
-      : edges.map((e) => ({ ...e, x1: e.x1 + shiftX, y1: e.y1 + shiftY, x2: e.x2 + shiftX, y2: e.y2 + shiftY }));
-
-  // Gabaryt = otoczka treści (w tym KOŃCE kresek magistral) + margines —
-  // fit-to-electrical-content (P0.1): scena nie niesie pustych pól.
-  const extentX = shiftedNodes.map((n) => n.x + (n.busBarHalfWidth ?? 0));
-  const maxX = Math.max(...extentX, ...shiftedEdges.flatMap((e) => [e.x1, e.x2]), MARGIN_X);
-  const maxY = Math.max(...shiftedNodes.map((n) => n.y), ...shiftedEdges.flatMap((e) => [e.y1, e.y2]), MARGIN_Y);
+  // --- Otoczka i gabaryt (rezerwa na etykiety, §25). -------------------------
+  const xs = [...nodes.flatMap((n) => [n.x, n.barLeft ?? n.x, n.barRight ?? n.x]), ...edges.flatMap((e) => [e.x1, e.x2])];
+  const ys = [...nodes.map((n) => n.y), ...edges.flatMap((e) => [e.y1, e.y2])];
+  const minX = xs.length ? Math.min(...xs) : 0;
+  const minY = ys.length ? Math.min(...ys) : 0;
+  const shiftX = minX < T.marginX ? T.marginX - minX : 0;
+  const shiftY = minY < T.marginY ? T.marginY - minY : 0;
+  const shiftedNodes = shiftX === 0 && shiftY === 0
+    ? nodes
+    : nodes.map((n) => ({
+        ...n,
+        x: n.x + shiftX,
+        y: n.y + shiftY,
+        barLeft: n.barLeft === undefined ? undefined : n.barLeft + shiftX,
+        barRight: n.barRight === undefined ? undefined : n.barRight + shiftX,
+      }));
+  const shiftedEdges = shiftX === 0 && shiftY === 0
+    ? edges
+    : edges.map((e) => ({ ...e, x1: e.x1 + shiftX, y1: e.y1 + shiftY, x2: e.x2 + shiftX, y2: e.y2 + shiftY }));
+  const maxX = Math.max(T.marginX, ...shiftedNodes.flatMap((n) => [n.x, n.barRight ?? n.x]), ...shiftedEdges.flatMap((e) => [e.x1, e.x2]));
+  const maxY = Math.max(T.marginY, ...shiftedNodes.map((n) => n.y), ...shiftedEdges.flatMap((e) => [e.y1, e.y2]));
 
   return {
     nodes: shiftedNodes,
     edges: shiftedEdges,
-    width: maxX + MARGIN_X,
-    height: maxY + MARGIN_Y + 40,
+    width: maxX + T.marginX + LABEL_RESERVE_RIGHT,
+    height: maxY + T.marginY + LABEL_RESERVE_BOTTOM,
     stationRef: view.station_ref,
     stationName: view.station_name ?? '',
+    supplyPaths,
+    warningsByRef,
   };
 }

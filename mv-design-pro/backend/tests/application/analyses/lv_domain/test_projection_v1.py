@@ -329,6 +329,39 @@ class TestPrzebiegIWynik:
             projekcja["model_snapshot"]["model_hash"]
         )
 
+    def test_profil_napiec_kluczowany_referencja_enm_szyn_domeny(self) -> None:
+        """Wiersze profilu napięć niosą ``bus_id`` = referencja ENM szyny domeny
+        (nie UUID węzła solvera) — inaczej nakładka spadków napięcia jest pusta."""
+        enm = zbuduj_stacje_nn()
+        set_enm("case-profil", enm)
+        run = execute_run(create_run(case_id="case-profil", analysis_type="PF").id)
+        projekcja = build_lv_domain_projection_v1(enm, "case-profil", "stn", run=run)
+        profil = projekcja["result_snapshot"]["voltage_profile"]
+        assert profil is not None
+        refy_domeny = {b["ref_id"] for b in projekcja["graph"]["buses"]}
+        wiersze = {row["bus_id"]: row for row in profil["rows"]}
+        assert wiersze, "profil napięć domeny nie może być pusty po przebiegu rozpływu"
+        assert set(wiersze) <= refy_domeny
+        assert "a1" in wiersze
+        assert wiersze["a1"]["solver_bus_id"] != "a1"
+        assert wiersze["a1"]["delta_pct"] is not None
+        # Najgorsza szyna całego przebiegu (może leżeć poza domeną) — też po
+        # referencji ENM, nie po UUID solvera.
+        assert profil["summary"]["worst_bus_id"] in {b.ref_id for b in enm.buses}
+
+    def test_profil_napiec_nieaktualny_nadal_niesie_wiersze(self) -> None:
+        """NN-AUD-13 obiecuje: wynik NIEAKTUALNY jest POKAZYWANY jako nieaktualny,
+        nie ukrywany — wiersze profilu zostają, zmienia się tylko status."""
+        enm = zbuduj_stacje_nn()
+        set_enm("case-profil-stale", enm)
+        run = execute_run(create_run(case_id="case-profil-stale", analysis_type="PF").id)
+        enm.loads.append(
+            Load(ref_id="load_extra", name="Nowy odbiór", bus_ref="a1", p_mw=0.01, q_mvar=0.0)
+        )
+        projekcja = build_lv_domain_projection_v1(enm, "case-profil-stale", "stn", run=run)
+        assert projekcja["result_snapshot"]["status"] == "OUTDATED"
+        assert projekcja["result_snapshot"]["voltage_profile"]["rows"]
+
     def test_model_zmieniony_po_przebiegu_daje_outdated(self) -> None:
         enm = zbuduj_stacje_nn()
         set_enm("case-outdated", enm)

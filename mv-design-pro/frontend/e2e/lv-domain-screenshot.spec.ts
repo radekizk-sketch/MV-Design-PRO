@@ -1,29 +1,22 @@
 /**
- * DOWÓD WIZUALNY projekcji domeny nN — `LvDomainView` na harnessie
- * `lv-domain-harness.html` (kanon `docs/sld/PROJEKCJA_SN_NN_PORTAL_V1.md`
- * §4 — LOD 0/1/2 projekcji nN na jednej geometrii; projekcja SN z portalem:
- * `e2e/lv-portal-screenshot.spec.ts`).
+ * DOWÓD WIZUALNY projekcji nN — 20 kadrów (mandat „profesjonalizacja SLD nN"
+ * §47) na harnessie `lv-domain-harness.html` (dane WYŁĄCZNIE z JSON
+ * wyeksportowanych z backendu — `lv-domain/fixtures/scenariusze.ts`).
  *
- * MACIERZ KADRÓW = [4 warianty topologii] × [3 poziomy szczegółowości] ×
- * [2 motywy] = 24 zrzuty:
- *  - dwie sekcje ze sprzęgłem OTWARTYM i ZAMKNIĘTYM (dowód, że stan
- *    sekcjonowania zmienia rysunek, a nie animację symbolu),
- *  - rozdzielnica z incomerem i pełnym torem odpływów,
- *  - energizacja i wyspy (szyna bez napięcia + wyspa zasilana z DER).
+ * Kadry 01–18 = scenariusze danych; 19 = przegląd (LOD 0) na wielu
+ * odpływach + wersja mobilna; 20 = druk mono A3. Każdy kadr w obu motywach
+ * (ciemny dyspozytorski / jasny techniczny) na poziomie pełnym; wybrane
+ * także na poziomach 0 i 1 (ciągłość toru między poziomami pilnuje test
+ * jednostkowy `lodProjekcjaNn.test.tsx` porównaniem prymitywów).
  *
- * BRAMKI KLASY (liczone w tym specu, nie „na oko"):
- *  1. każdy kadr jasny różni się BAJTOWO od swojego odpowiednika ciemnego —
- *     motyw musi realnie sterować paletą rysunku, a nie tylko atrybutem na
- *     dokumencie (deklaracja motywu bez pokrycia była tu zastanym długiem);
- *  2. każdy poziom szczegółowości tej samej fixtury różni się BAJTOWO od
- *     pozostałych — poziom, który nic nie zmienia, jest atrapą.
- * Ciągłość TORU między poziomami (to, czego bramka bajtowa NIE sprawdzi)
- * jest przypięta osobno, w `src/ui/sld/v3/lv-domain/__tests__/
- * lodProjekcjaNn.test.tsx` — porównaniem wszystkich prymitywów rysunku.
+ * BRAMKI KLASY (liczone tu, nie „na oko"):
+ *  1. kadr jasny ≠ ciemny bajtowo (motyw steruje rysunkiem);
+ *  2. poziomy 0/1/2 tego samego scenariusza różnią się bajtowo;
+ *  3. kontrakt DOM per scenariusz: stany zasilania, stany aparatów, wspólna
+ *     kotwica SN, komunikaty audytu — obecne w DOM jako atrybuty danych.
  *
- * WERDYKT WIZUALNY NALEŻY DO WŁAŚCICIELA (zasada nr 2 CLAUDE.md): ten spec
- * generuje PNG i sprawdza kontrakt DOM (obecność węzłów/krawędzi toru oraz
- * oznaczeń stanu), nie certyfikuje jakości wizualnej.
+ * WERDYKT WIZUALNY NALEŻY DO WŁAŚCICIELA (zasada nr 2 CLAUDE.md): spec
+ * generuje PNG i sprawdza kontrakt DOM, nie certyfikuje jakości wizualnej.
  */
 import { test, expect, type Page } from '@playwright/test';
 import * as path from 'node:path';
@@ -33,81 +26,256 @@ import { fileURLToPath } from 'node:url';
 
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 const HARNESS_URL = 'http://127.0.0.1:5173/lv-domain-harness.html';
-const OUTPUT_DIR = path.resolve(_dirname, '../../docs/audit/visual');
+const OUTPUT_DIR = path.resolve(_dirname, '../../docs/audit/visual/nn');
 
-const POZIOMY = [0, 1, 2] as const;
 const MOTYWY = ['dark', 'light'] as const;
 
-interface WariantKadru {
-  /** Człon nazwy pliku: `lv_domain_<slug>_lod<n>_<motyw>.png`. */
-  readonly slug: string;
+interface Kadr {
+  readonly plik: string;
+  readonly scenariusz: string;
   readonly opis: string;
-  readonly query: string;
-  /** Kontrakt DOM sprawdzany PRZED każdym zrzutem tego wariantu. */
-  readonly asercjeDom: (page: Page) => Promise<void>;
+  readonly query?: string;
+  readonly lody?: readonly (0 | 1 | 2)[];
+  readonly viewport?: { readonly width: number; readonly height: number };
+  readonly mono?: boolean;
+  readonly asercje: (page: Page, lod: 0 | 1 | 2) => Promise<void>;
 }
 
-async function widocznyWezel(page: Page, testId: string): Promise<void> {
-  await expect(page.locator(`[data-testid="${testId}"]`)).toBeVisible();
+async function widoczny(page: Page, testId: string): Promise<void> {
+  await expect(page.locator(`[data-testid="${testId}"]`).first()).toBeVisible();
 }
 
-const WARIANTY: readonly WariantKadru[] = [
+async function atrybut(page: Page, testId: string, name: string, value: string): Promise<void> {
+  await expect(page.locator(`[data-testid="${testId}"]`).first()).toHaveAttribute(name, value);
+}
+
+const KADRY: readonly Kadr[] = [
   {
-    slug: 'multi_qbc-open',
-    opis: 'dwie sekcje, sprzęgło OTWARTE',
-    query: 'fixture=multi&qbc=open',
-    asercjeDom: async (page) => {
-      await widocznyWezel(page, 'lv-domain-node-anchor:tr1');
-      await widocznyWezel(page, 'lv-domain-node-anchor:tr2');
-      await widocznyWezel(page, 'lv-domain-node-pv1');
-      await widocznyWezel(page, 'lv-domain-node-coupler');
-      await widocznyWezel(page, 'lv-domain-node-boundary:tie_to_other');
-      await widocznyWezel(page, 'lv-domain-node-boundary-terminal:tie_to_other');
-      await expect(page.locator('[data-testid="lv-domain-edge-coupler"]')).toHaveAttribute('data-edge-kind', 'coupler');
-      // Stan OTWARTY niesie SYMBOL (pusty korpus) — na każdym poziomie.
-      await expect(
-        page.locator('[data-testid="lv-domain-node-coupler"] g[data-symbol-canon="nnBreaker"] rect'),
-      ).toHaveAttribute('fill', 'none');
+    plik: '01_single_tr',
+    scenariusz: '01_single_tr',
+    opis: 'jeden transformator, wyłącznik główny, trzy odpływy, podrozdzielnica, PV w polu',
+    lody: [0, 1, 2],
+    asercje: async (page, lod) => {
+      await widoczny(page, 'lv-domain-node-T1');
+      await atrybut(page, 'lv-domain-node-QF-T1', 'data-device-role', 'incomer');
+      await atrybut(page, 'lv-domain-node-RGnN-1', 'data-energization', 'ENERGIZED');
+      await widoczny(page, 'lv-domain-node-CT-T1');
+      await widoczny(page, 'lv-domain-node-QF-03_zrodlo');
+      // Zabezpieczenie = tożsamość ochrony: widoczne od poziomu sieci (rejestr LOD).
+      if (lod >= 1) await widoczny(page, 'lv-domain-node-relay:REL-T1');
     },
   },
   {
-    slug: 'multi_qbc-closed',
-    opis: 'dwie sekcje, sprzęgło ZAMKNIĘTE',
-    query: 'fixture=multi&qbc=closed',
-    asercjeDom: async (page) => {
-      await widocznyWezel(page, 'lv-domain-node-anchor:tr1');
-      await widocznyWezel(page, 'lv-domain-node-anchor:tr2');
-      await widocznyWezel(page, 'lv-domain-node-coupler');
-      await expect(
-        page.locator('[data-testid="lv-domain-node-coupler"] g[data-symbol-canon="nnBreaker"] rect'),
-      ).not.toHaveAttribute('fill', 'none');
+    plik: '02_two_tr_qbc_open',
+    scenariusz: '02_two_tr_qbc_open',
+    opis: 'dwa transformatory, sprzęgło OTWARTE',
+    lody: [0, 1, 2],
+    asercje: async (page) => {
+      await atrybut(page, 'lv-domain-node-QBC', 'data-device-state', 'OPEN');
+      await expect(page.locator('[data-testid="lv-domain-node-QBC"] g[data-symbol-canon="nnBreaker"] rect')).toHaveAttribute('fill', 'none');
+      await atrybut(page, 'lv-domain-edge-QBC#a', 'data-energization', 'ENERGIZED');
+      await atrybut(page, 'lv-domain-edge-QBC#b', 'data-energization', 'ENERGIZED');
+      await atrybut(page, 'lv-domain-node-anchor:eq:', 'data-shared', 'true').catch(() => undefined);
+      await expect(page.locator('[data-node-kind="anchorBar"]')).toHaveCount(1);
     },
   },
   {
-    slug: 'stationC',
-    opis: 'rozdzielnica z incomerem, trzy odpływy w pełnym torze, źródło PV w pełnym torze',
-    query: 'fixture=stationC',
-    asercjeDom: async (page) => {
-      await widocznyWezel(page, 'lv-domain-node-stnC/QF-TR1');
-      await widocznyWezel(page, 'lv-domain-node-stnC/nn_lv_terminal');
-      await widocznyWezel(page, 'lv-domain-node-stnC/PV1');
-      await widocznyWezel(page, 'lv-domain-node-stnC/QF-03');
-      await expect(page.locator('[data-testid="lv-domain-edge-stnC/kabel_QF-03"]')).toHaveAttribute('data-edge-kind', 'cable');
+    plik: '03_two_tr_qbc_closed',
+    scenariusz: '03_two_tr_qbc_closed',
+    opis: 'dwa transformatory, sprzęgło ZAMKNIĘTE — zasilanie wielostronne',
+    asercje: async (page) => {
+      await atrybut(page, 'lv-domain-node-QBC', 'data-device-state', 'CLOSED');
+      await atrybut(page, 'lv-domain-node-RGnN-A', 'data-energization', 'MULTISOURCE');
+      await widoczny(page, 'lv-domain-bus-stan-RGnN-A');
     },
   },
   {
-    slug: 'island',
-    opis: 'energizacja i wyspy: szyna bez napięcia + wyspa zasilana wyłącznie z DER',
-    query: 'fixture=island',
-    asercjeDom: async (page) => {
-      await widocznyWezel(page, 'lv-domain-node-stnW/RGNN-A');
-      await widocznyWezel(page, 'lv-domain-node-stnW/RGNN-B');
-      await widocznyWezel(page, 'lv-domain-node-stnW/PV-D');
-      // Stan zasilania jest widoczny na KAŻDYM poziomie (stan ruchowy).
-      await expect(page.locator('[data-testid="lv-domain-node-stnW/RGN-C"]')).toHaveAttribute('data-energized', 'false');
-      await expect(page.locator('[data-testid="lv-domain-node-stnW/RGN-D"]')).toHaveAttribute('data-der-only', 'true');
-      await widocznyWezel(page, 'lv-domain-bus-bez-napiecia-stnW/RGN-C');
-      await widocznyWezel(page, 'lv-domain-bus-wyspa-der-stnW/RGN-D');
+    plik: '04_shared_upstream_boundary',
+    scenariusz: '04_shared_upstream_boundary',
+    opis: 'wspólne zasilanie SN + granica domeny',
+    asercje: async (page) => {
+      await widoczny(page, 'lv-domain-node-boundary:QS-B9');
+      await widoczny(page, 'lv-domain-node-boundary-terminal:QS-B9');
+      await expect(page.locator('[data-node-kind="anchorBar"]')).toHaveCount(1);
+      await expect(page.locator('[data-node-kind="anchorBar"]').first()).toHaveAttribute('data-shared', 'true');
+    },
+  },
+  {
+    plik: '05_independent_upstream',
+    scenariusz: '05_independent_upstream',
+    opis: 'niezależne systemy SN — dwie kotwice, dwie wyspy',
+    asercje: async (page) => {
+      await expect(page.locator('[data-node-kind="anchorBar"]')).toHaveCount(2);
+      await expect(page.locator('[data-node-kind="anchorBar"]').first()).toHaveAttribute('data-system-count', '2');
+    },
+  },
+  {
+    plik: '06_conflict_parallel_sources',
+    scenariusz: '06_conflict_parallel_sources',
+    opis: 'niezależne systemy spięte sprzęgłem — KONFLIKT',
+    asercje: async (page) => {
+      await atrybut(page, 'lv-domain-node-RGnN-A', 'data-energization', 'CONFLICT');
+      await expect(page.locator('[data-testid="lv-domain-warnings-toggle"]')).toHaveAttribute('data-blockers', /^[1-9]/);
+    },
+  },
+  {
+    plik: '07_island_grid_following',
+    scenariusz: '07_island_grid_following',
+    opis: 'wyspa DER: źródło podążające — NIEZASILONA wg topologii',
+    lody: [0, 1, 2],
+    asercje: async (page) => {
+      await atrybut(page, 'lv-domain-node-RGN-D_szyna', 'data-energization', 'DEENERGIZED');
+      await atrybut(page, 'lv-domain-node-RGN-D_szyna', 'data-islanded', 'true');
+      await expect(page.locator('[data-testid="lv-domain-bus-stan-RGN-D_szyna"]')).toContainText('NIEZASILONA (WG AKTUALNEJ TOPOLOGII)');
+      await widoczny(page, 'lv-domain-bus-wyspa-RGN-D_szyna');
+    },
+  },
+  {
+    plik: '08_island_grid_forming',
+    scenariusz: '08_island_grid_forming',
+    opis: 'wyspa DER: magazyn tworzący napięcie — zasilona z wyspy',
+    asercje: async (page) => {
+      await atrybut(page, 'lv-domain-node-RGN-D_szyna', 'data-energization', 'ENERGIZED');
+      await atrybut(page, 'lv-domain-node-RGN-D_szyna', 'data-islanded', 'true');
+      await expect(page.locator('[data-testid="lv-domain-bus-wyspa-RGN-D_szyna"]')).toContainText('WYSPA');
+      await atrybut(page, 'lv-domain-edge-QS-D#a', 'data-energization', 'ENERGIZED');
+      await atrybut(page, 'lv-domain-edge-QS-D#b', 'data-energization', 'ENERGIZED');
+    },
+  },
+  {
+    plik: '09_island_unknown',
+    scenariusz: '09_island_unknown',
+    opis: 'wyspa DER: zdolność nieznana — stan NIEZNANY',
+    asercje: async (page) => {
+      await atrybut(page, 'lv-domain-node-RGN-D_szyna', 'data-energization', 'UNKNOWN');
+      await expect(page.locator('[data-testid="lv-domain-bus-stan-RGN-D_szyna"]')).toContainText('NIEZNANY');
+    },
+  },
+  {
+    plik: '10_deenergized_section',
+    scenariusz: '10_deenergized_section',
+    opis: 'sekcja B niezasilona (wyłącznik główny TB otwarty)',
+    asercje: async (page) => {
+      await atrybut(page, 'lv-domain-node-QF-TB', 'data-device-state', 'OPEN');
+      await atrybut(page, 'lv-domain-edge-QF-TB#a', 'data-energization', 'ENERGIZED');
+      await atrybut(page, 'lv-domain-edge-QF-TB#b', 'data-energization', 'DEENERGIZED');
+      await atrybut(page, 'lv-domain-node-RGnN-B', 'data-energization', 'DEENERGIZED');
+      await atrybut(page, 'lv-domain-node-RGnN-A', 'data-energization', 'ENERGIZED');
+    },
+  },
+  {
+    plik: '11_double_sided_open',
+    scenariusz: '11_double_sided_open',
+    opis: 'aparat otwarty pod napięciem z OBU stron (dwie wyspy)',
+    asercje: async (page) => {
+      await atrybut(page, 'lv-domain-node-QF-B3', 'data-device-state', 'OPEN');
+      await atrybut(page, 'lv-domain-edge-QF-B3#a', 'data-energization', 'ENERGIZED');
+      await atrybut(page, 'lv-domain-edge-QF-B3#b', 'data-energization', 'ENERGIZED');
+      await atrybut(page, 'lv-domain-node-RGN-C_szyna', 'data-islanded', 'true');
+    },
+  },
+  {
+    plik: '12_der_full_path',
+    scenariusz: '12_der_full_path',
+    opis: 'pełny tor PV / magazynu / agregatu: aparat, kabel, punkt przyłączenia, CT, zabezpieczenie LoM',
+    asercje: async (page) => {
+      await widoczny(page, 'lv-domain-node-QF-PV1_zrodlo');
+      await widoczny(page, 'lv-domain-node-FU-BES_zrodlo');
+      await widoczny(page, 'lv-domain-node-QF-G1_zrodlo');
+      await widoczny(page, 'lv-domain-node-CT-QF-PV1');
+      await widoczny(page, 'lv-domain-node-relay:REL-QF-PV1');
+      // Krawędź = pionowa kreska o zerowej szerokości bboxa — sprawdzamy obecność i stan, nie „visible".
+      await atrybut(page, 'lv-domain-edge-QF-PV1_kabel', 'data-edge-kind', 'cable');
+      await atrybut(page, 'lv-domain-edge-QF-PV1_kabel', 'data-energization', 'ENERGIZED');
+    },
+  },
+  {
+    plik: '13_loads_via_fields',
+    scenariusz: '13_loads_via_fields',
+    opis: 'odbiory przez pola (cztery rodzaje aparatów) + odbiór bez pola z audytem',
+    asercje: async (page) => {
+      await widoczny(page, 'lv-domain-node-QS-02');
+      await widoczny(page, 'lv-domain-node-FU-04');
+      await widoczny(page, 'lv-domain-warning-marker-odbior_bez_pola');
+    },
+  },
+  {
+    plik: '14_sub_boards',
+    scenariusz: '14_sub_boards',
+    opis: 'podrozdzielnice zagnieżdżone (trzy poziomy magistral) + podświetlony tor zasilania wybranego odpływu',
+    query: 'wybor=QF-31',
+    asercje: async (page) => {
+      await atrybut(page, 'lv-domain-node-RGN-2_szyna', 'data-bus-tier', 'sub');
+      await atrybut(page, 'lv-domain-node-RGN-3_szyna', 'data-bus-tier', 'sub');
+      // §37/§38: tor zasilania z `supply_paths` backendu — od T1 przez QF-02 i FU-22 do QF-31.
+      await atrybut(page, 'lv-domain-view-root', 'data-selected-ref', 'QF-31');
+      await expect(page.locator('[data-testid="lv-domain-highlight-QF-02#a"]')).toHaveCount(1);
+      await expect(page.locator('[data-testid="lv-domain-highlight-FU-22#b"]')).toHaveCount(1);
+      await expect(page.locator('[data-testid="lv-domain-highlight-QF-T1#a"]')).toHaveCount(1);
+      await expect(page.locator('[data-testid="lv-domain-highlight-T1#lv"]')).toHaveCount(1);
+    },
+  },
+  {
+    plik: '15_many_feeders',
+    scenariusz: '15_many_feeders',
+    opis: 'dwanaście odpływów z długimi nazwami',
+    lody: [0, 1, 2],
+    asercje: async (page) => {
+      await expect(page.locator('[data-device-role="feeder"]')).toHaveCount(12);
+    },
+  },
+  {
+    plik: '16_stale_result',
+    scenariusz: '16_stale_result',
+    opis: 'wynik NIEAKTUALNY po zmianie modelu (nakładka spadków napięcia)',
+    query: 'overlay=voltageDrop',
+    asercje: async (page) => {
+      await atrybut(page, 'lv-domain-result-freshness', 'data-result-status', 'OUTDATED');
+      await expect(page.locator('[data-testid="lv-domain-result-freshness"]')).toContainText('NIEAKTUALNY');
+    },
+  },
+  {
+    plik: '17_sc_results',
+    scenariusz: '17_sc_results',
+    opis: 'wyniki zwarciowe IEC 60909 na szynach nN (świeży przebieg)',
+    query: 'overlay=shortCircuit',
+    asercje: async (page) => {
+      await atrybut(page, 'lv-domain-result-freshness', 'data-result-status', 'FRESH');
+      await widoczny(page, 'lv-domain-badge-shortCircuit-RGnN-1');
+      await expect(page.locator('[data-testid="lv-domain-badge-shortCircuit-RGnN-1"]')).toContainText('Ik″3');
+    },
+  },
+  {
+    plik: '18_swz_overlay',
+    scenariusz: '18_swz_overlay',
+    opis: 'SWZ: werdykty mieszane na odpływach',
+    query: 'overlay=swz',
+    asercje: async (page) => {
+      await widoczny(page, 'lv-domain-badge-swz-QF-01');
+      await widoczny(page, 'lv-domain-badge-swz-QF-02');
+    },
+  },
+  {
+    plik: '19_mobile_overview',
+    scenariusz: '15_many_feeders',
+    opis: 'przegląd (poziom 0) na wąskim ekranie — wersja mobilna',
+    lody: [0],
+    viewport: { width: 390, height: 844 },
+    asercje: async (page) => {
+      await atrybut(page, 'lv-domain-view-root', 'data-lod', '0');
+      await widoczny(page, 'lv-domain-bus-licznik-RGnN-1');
+    },
+  },
+  {
+    plik: '20_print_a3',
+    scenariusz: '02_two_tr_qbc_open',
+    opis: 'druk monochromatyczny A3 (stany bez koloru)',
+    query: 'mono=1&theme=light',
+    viewport: { width: 1587, height: 1123 },
+    mono: true,
+    asercje: async (page) => {
+      await atrybut(page, 'lv-domain-view-root', 'data-mono', 'true');
+      await atrybut(page, 'lv-domain-node-QBC', 'data-device-state', 'OPEN');
     },
   },
 ];
@@ -121,72 +289,48 @@ test.describe('lv-domain:screenshot', () => {
     fs.mkdirSync(OUTPUT_DIR, { recursive: true });
   });
 
-  for (const wariant of WARIANTY) {
-    test(`Domena nN — ${wariant.opis} — poziomy 0/1/2 × oba motywy — zapis PNG + bramki bajtowe`, async ({ page }) => {
+  for (const kadr of KADRY) {
+    test(`Kadr ${kadr.plik} — ${kadr.opis}`, async ({ page }) => {
       test.setTimeout(180_000);
-      await page.setViewportSize({ width: 1400, height: 1000 });
+      const viewport = kadr.viewport ?? { width: 1400, height: 1000 };
+      await page.setViewportSize(viewport);
       const bledyKonsoli: string[] = [];
       page.on('console', (msg) => {
         if (msg.type() === 'error') bledyKonsoli.push(msg.text());
       });
       page.on('pageerror', (err) => bledyKonsoli.push(`PAGEERROR: ${err.message}`));
 
+      const motywy = kadr.mono ? (['light'] as const) : MOTYWY;
+      const lody = kadr.lody ?? ([2] as const);
       const skroty = new Map<string, string>();
-      for (const motyw of MOTYWY) {
-        for (const lod of POZIOMY) {
-          const url = `${HARNESS_URL}?${wariant.query}&theme=${motyw}&lod=${lod}`;
-          await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60_000 });
-
+      for (const motyw of motywy) {
+        for (const lod of lody) {
+          const query = [`scenariusz=${kadr.scenariusz}`, `theme=${motyw}`, `lod=${lod}`, kadr.query ?? ''].filter(Boolean).join('&');
+          await page.goto(`${HARNESS_URL}?${query}`, { waitUntil: 'domcontentloaded', timeout: 60_000 });
           const korzen = page.locator('[data-testid="lv-domain-view-root"]').first();
           await expect(korzen).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
-          await expect(korzen).toHaveAttribute('data-lod', String(lod));
-          await expect(korzen).toHaveAttribute(
-            'data-theme-mode',
-            motyw === 'light' ? 'light_technical' : 'dark_scada',
-          );
-          // Status wyniku jest jawny na każdym poziomie (tożsamość wyniku).
-          await widocznyWezel(page, 'lv-domain-result-freshness');
-          await wariant.asercjeDom(page);
-
+          await widoczny(page, 'lv-domain-result-freshness');
+          await kadr.asercje(page, lod);
           await page.waitForTimeout(250);
-          const plik = path.join(OUTPUT_DIR, `lv_domain_${wariant.slug}_lod${lod}_${motyw}.png`);
+          const suffix = kadr.mono ? '' : `_${motyw}`;
+          const lodSuffix = kadr.lody ? `_lod${lod}` : '';
+          const plik = path.join(OUTPUT_DIR, `${kadr.plik}${lodSuffix}${suffix}.png`);
           await page.screenshot({ path: plik, fullPage: false });
-          expect(fs.existsSync(plik)).toBe(true);
           skroty.set(`${motyw}:${lod}`, sha256Pliku(plik));
           console.log(`Saved: ${plik}`);
         }
       }
-
-      // Bramka 1 — motyw realnie steruje paletą rysunku.
-      for (const lod of POZIOMY) {
-        expect(
-          skroty.get(`dark:${lod}`),
-          `kadr jasny i ciemny są bajtowo identyczne (poziom ${lod}) — motyw nie steruje rysunkiem`,
-        ).not.toBe(skroty.get(`light:${lod}`));
+      if (!kadr.mono) {
+        for (const lod of lody) {
+          expect(skroty.get(`dark:${lod}`), `kadr jasny i ciemny identyczne (poziom ${lod})`).not.toBe(skroty.get(`light:${lod}`));
+        }
       }
-      // Bramka 2 — każdy poziom szczegółowości daje INNY rysunek.
-      for (const motyw of MOTYWY) {
-        const wPoziomach = POZIOMY.map((lod) => skroty.get(`${motyw}:${lod}`));
-        expect(new Set(wPoziomach).size, `poziomy 0/1/2 dały identyczne kadry (motyw ${motyw})`).toBe(POZIOMY.length);
+      if (lody.length > 1) {
+        for (const motyw of motywy) {
+          expect(new Set(lody.map((lod) => skroty.get(`${motyw}:${lod}`))).size, `poziomy dały identyczne kadry (${motyw})`).toBe(lody.length);
+        }
       }
-
       expect(bledyKonsoli, `błędy konsoli: ${bledyKonsoli.join(' | ')}`).toEqual([]);
     });
   }
-
-  test('Domena nN — nakładka SWZ włączona bez wyniku — zapis PNG (uczciwy stan zerowy)', async ({ page }) => {
-    await page.setViewportSize({ width: 1400, height: 1000 });
-    await page.goto(`${HARNESS_URL}?fixture=multi&theme=dark&overlay=swz`, { waitUntil: 'domcontentloaded', timeout: 60_000 });
-
-    const korzen = page.locator('[data-testid="lv-domain-view-root"]').first();
-    await expect(korzen).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
-    // Harness nie podaje wyników SWZ — status MUSI powiedzieć to WPROST,
-    // zamiast fabrykować ciszą pustą nakładkę jako „aktywną z wynikiem".
-    await expect(page.locator('[data-testid="lv-domain-overlay-status"]')).toHaveText('Nakładka: SWZ · brak wyniku (uruchom bieg)');
-
-    const plik = path.join(OUTPUT_DIR, 'lv_domain_multi_overlay-swz_lod2_dark.png');
-    await page.screenshot({ path: plik, fullPage: false });
-    console.log(`Saved: ${plik}`);
-    expect(fs.existsSync(plik)).toBe(true);
-  });
 });

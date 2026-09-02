@@ -96,6 +96,15 @@ def normalizuj_projekcje(projekcja: dict[str, Any], slug: str) -> dict[str, Any]
             kontekst["run_id"] = f"przebieg-{slug}"
         if kontekst.get("run_timestamp"):
             kontekst["run_timestamp"] = ZNACZNIK_CZASU_FIXTURY
+    # Każdy wiersz profilu powtarza znacznik czasu i identyfikator przebiegu
+    # (kontrakt widoku profilu) — te same podmiany co dla kontekstu.
+    wiersze = profil.get("rows") if isinstance(profil, dict) else None
+    for wiersz in wiersze or []:
+        if isinstance(wiersz, dict):
+            if wiersz.get("run_id"):
+                wiersz["run_id"] = f"przebieg-{slug}"
+            if wiersz.get("run_timestamp"):
+                wiersz["run_timestamp"] = ZNACZNIK_CZASU_FIXTURY
     wynik.pop("projection_hash", None)
     wynik["projection_hash"] = _canonical_hash(wynik)
     return wynik

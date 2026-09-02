@@ -45,7 +45,7 @@ from application.result_freshness import evaluate_result_freshness
 from application.result_mapping.canonical_run_to_resultset_v1 import (
     build_resultset_v1_from_canonical_run,
 )
-from enm.canonical_analysis import CanonicalRun
+from enm.canonical_analysis import CanonicalRun, build_bus_results
 from enm.hash import compute_enm_hash, compute_switching_snapshot_hash
 from enm.models import EnergyNetworkModel
 
@@ -166,12 +166,29 @@ def _result_snapshot(
     voltage_profile = None
     if run.analysis_type == "PF":
         complete_profile = build_voltage_profile_view(run)
-        voltage_profile = {
-            **complete_profile,
-            "rows": [
-                row for row in complete_profile.get("rows", []) if row.get("bus_id") in domain_refs
-            ],
+        # Profil napięć jest kluczowany identyfikatorem węzła solvera (UUID
+        # grafu), a domena nN — referencjami ENM. Bez przekluczowania filtr
+        # ``in domain_refs`` odrzucał KAŻDY wiersz i nakładka „Spadki napięcia"
+        # była zawsze pusta (defekt klasy: dwie przestrzenie identyfikatorów
+        # spinane bez mapy). Mapa pochodzi z ``build_bus_results`` — tej samej,
+        # którą ``overlay_payload.elements`` kluczuje po ``element_ref``.
+        ref_by_solver_bus = {
+            str(row["bus_id"]): str(row["element_id"])
+            for row in build_bus_results(run).get("rows", [])
+            if row.get("bus_id") and row.get("element_id")
         }
+        rows = []
+        for row in complete_profile.get("rows", []):
+            solver_bus_id = str(row.get("bus_id") or "")
+            ref = ref_by_solver_bus.get(solver_bus_id, solver_bus_id)
+            if ref not in domain_refs:
+                continue
+            rows.append({**row, "bus_id": ref, "solver_bus_id": solver_bus_id})
+        summary = dict(complete_profile.get("summary") or {})
+        worst = summary.get("worst_bus_id")
+        if worst is not None:
+            summary["worst_bus_id"] = ref_by_solver_bus.get(str(worst), str(worst))
+        voltage_profile = {**complete_profile, "rows": rows, "summary": summary}
     return {
         "status": freshness.status.value,
         "reason": freshness.reason.value,
@@ -337,6 +354,7 @@ def build_lv_domain_projection_v1(
     if graph.get("status") == "OK":
         domain_bus_refs = {str(b["ref_id"]) for b in graph.get("buses", [])}
         sources_by_system = upstream_source_refs_by_system(enm, domain_bus_refs)
+        source_name_by_ref = {s.ref_id: s.name for s in enm.sources}
         for transformer in graph.get("transformers", []):
             transformer_ref = transformer.get("ref_id")
             if not transformer_ref:
@@ -353,8 +371,12 @@ def build_lv_domain_projection_v1(
             # oznacza WSPÓLNE zasilanie SN (jedna kotwica w projekcji), różne —
             # niezależne systemy (osobne kotwice; spięcie po nN = CONFLICT).
             system_id = transformer.get("upstream_system_id")
+            source_ids = list(sources_by_system.get(str(system_id), []))
             snapshot["upstream_system_id"] = system_id
-            snapshot["upstream_source_ids"] = list(sources_by_system.get(str(system_id), []))
+            snapshot["upstream_source_ids"] = source_ids
+            snapshot["upstream_source_names"] = [
+                source_name_by_ref.get(ref, ref) for ref in source_ids
+            ]
             upstream_equivalents.append(snapshot)
 
     domain_refs = _domain_element_refs(graph)

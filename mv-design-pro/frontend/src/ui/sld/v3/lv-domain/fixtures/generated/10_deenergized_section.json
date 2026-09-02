@@ -1192,7 +1192,7 @@
     "scenario_id": "MAX",
     "station_ref": "stAB"
   },
-  "projection_hash": "422deb5be2c359c7b79f774e9da0e5b9368df2d2b3b88c60362776f1879200c9",
+  "projection_hash": "98526a79671ad49a1ddb5a7396f03ff610052d2b3f9dccc5bef572deddab97a1",
   "result_snapshot": {
     "analysis_type": null,
     "overlay_payload": null,
@@ -2076,6 +2076,9 @@
       "upstream_source_ids": [
         "src"
       ],
+      "upstream_source_names": [
+        "GPZ Północ"
+      ],
       "upstream_system_id": "sn",
       "uth_kv": 16.5,
       "voltage_kv": 15.0,
@@ -2112,6 +2115,9 @@
       "upstream_node_id": "sn",
       "upstream_source_ids": [
         "src"
+      ],
+      "upstream_source_names": [
+        "GPZ Północ"
       ],
       "upstream_system_id": "sn",
       "uth_kv": 16.5,

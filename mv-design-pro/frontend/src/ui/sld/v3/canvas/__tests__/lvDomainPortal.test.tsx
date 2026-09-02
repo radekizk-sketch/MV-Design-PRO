@@ -25,9 +25,12 @@ import { useAppStateStore } from '../../../../app-state';
 import { useRawResultOverlayStore } from '../../../../sld-overlay/rawResultOverlayStore';
 import { useSelectionStore } from '../../../../selection';
 import { useSnapshotStore } from '../../../../topology/snapshotStore';
-import { MULTI_SOURCE_PROJECTION } from '../../lv-domain/fixtures/multiSourceDomain';
+import { scenariusz } from '../../lv-domain/fixtures/scenariusze';
 import { buildSceneV3, type SceneV3 } from '../../scene/buildScene';
 import { SldCanvasV3Workspace } from '../SldCanvasV3Workspace';
+
+/** Projekcja z backendu (kontrakt 3.0.0) — atrapa odpowiada NIĄ z tożsamością żądania. */
+const MULTI_SOURCE_PROJECTION = scenariusz('02_two_tr_qbc_open');
 
 const here = dirname(fileURLToPath(import.meta.url));
 const fixturePath = resolve(

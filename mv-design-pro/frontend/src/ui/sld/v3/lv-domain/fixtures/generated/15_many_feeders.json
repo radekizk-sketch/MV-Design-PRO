@@ -2207,7 +2207,7 @@
     "scenario_id": "MAX",
     "station_ref": "stWIELE"
   },
-  "projection_hash": "4abb4fb8d1f8aa3c4ae6f45a0d5da1a47089649d95a02fb032656528533ffecf",
+  "projection_hash": "5e3972db30c8906be96695e8b36bec1799a54a340beb7319b33c3fe35cfe1d9d",
   "result_snapshot": {
     "analysis_type": null,
     "overlay_payload": null,
@@ -6007,6 +6007,9 @@
       "upstream_node_id": "sn",
       "upstream_source_ids": [
         "src"
+      ],
+      "upstream_source_names": [
+        "GPZ"
       ],
       "upstream_system_id": "sn",
       "uth_kv": 16.5,

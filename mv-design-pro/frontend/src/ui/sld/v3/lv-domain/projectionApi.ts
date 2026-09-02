@@ -12,10 +12,11 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
-/** Kształt kontraktu 2.0.0 (`docs/sld/PROJEKCJA_SN_NN_PORTAL_V1.md` §3):
- *  graf z energizacją szyn i wyspami, SWZ per transformator, tożsamość
- *  żądania w `model_snapshot`. Inna wersja = odrzucenie (ten sam identyfikator
- *  na dwóch niezgodnych kształtach byłby cichą pułapką). */
+/** Kształt kontraktu 3.0.0 (`docs/sld/PROJEKCJA_SN_NN_PORTAL_V1.md` §3):
+ *  graf ze stanami zacisków, mapą odcinków, rolami urządzeń, sekcjami,
+ *  torami zasilania i wyspami; SWZ per transformator; komunikaty walidacji;
+ *  tożsamość żądania w `model_snapshot`. Inna wersja = odrzucenie (ten sam
+ *  identyfikator na dwóch niezgodnych kształtach byłby cichą pułapką). */
 export function isLvDomainProjectionV1(value: unknown): value is LvDomainProjectionV1 {
   if (!isRecord(value)) return false;
   if (
@@ -40,7 +41,17 @@ export function isLvDomainProjectionV1(value: unknown): value is LvDomainProject
   ) {
     return false;
   }
-  if (value.graph.status === 'OK' && !Array.isArray(value.graph.islands)) return false;
+  if (!Array.isArray(value.validation_messages)) return false;
+  if (value.graph.status === 'OK') {
+    const graph = value.graph;
+    for (const key of ['buses', 'islands', 'devices', 'segments', 'sections', 'supply_paths', 'measurements', 'protection_assignments']) {
+      if (!Array.isArray(graph[key])) return false;
+    }
+    const buses = graph.buses as unknown[];
+    if (buses.some((bus) => !isRecord(bus) || typeof bus.energization_state !== 'string' || typeof bus.island_ref !== 'string')) {
+      return false;
+    }
+  }
   return Array.isArray(value.upstream_equivalents)
     && Array.isArray(value.swz_snapshot.transformers);
 }

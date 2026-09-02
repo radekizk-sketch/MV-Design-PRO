@@ -1,73 +1,50 @@
 /**
- * Screenshot Harness — LvDomainView (karta T5b/T5b-2, §0 rozstrzygnięcie 3:
- * "Bez wpięcia nawigacji (T5c) — deterministyczny harness zrzutowy (wzorzec
- * screenshot-harness) na fixturze wieloźródłowej").
+ * Harness zrzutowy projekcji nN — `LvDomainView` na scenariuszach §47.
  *
  * Wzorzec IDENTYCZNY z `screenshot-harness-main.tsx` (standalone entry HTML,
- * `?fixture=`/`?theme=` query params, `data-status` na korzeniu dla
- * Playwright) — WŁASNA kanwa domeny nN (`LvDomainView`), nie `SldCanvasV3`;
- * ZERO fetch/routing/kamery (kontrakt komponentu, patrz `LvDomainView.tsx`).
+ * parametry w query, `data-status` na korzeniu dla Playwright) — WŁASNA kanwa
+ * domeny nN, ZERO fetch/routing/kamery. Dane WYŁĄCZNIE z
+ * `lv-domain/fixtures/scenariusze.ts` (JSON wyeksportowane z backendu —
+ * jedno źródło prawdy energizacji; harness nie modyfikuje projekcji).
  *
  * Parametry:
- *  - `?fixture=` wybiera fixture:
- *     `multi` (domyślna) — 2×TR + sprzęgło + PV bezpośredni + podrozdzielnica
- *       + boundary_link (`multiSourceDomain.ts`);
- *     `stationC` — incomer JAWNY (QF-TR1) + trzy odpływy w pełnym torze + PV
- *       w PEŁNYM torze (zabezpieczenie+kabel do PCC-LV) — `stationBoardDomain.ts`;
- *     `island` — energizacja i wyspy: szyna BEZ NAPIĘCIA za otwartym
- *       łącznikiem + wyspa zasilana wyłącznie z DER (`islandDomain.ts`).
- *  - `?qbc=open|closed` (WYŁĄCZNIE fixture `multi`) nadpisuje stan sprzęgła
- *    `coupler` — dowód hard-check #1/#2 (QBC OPEN→CLOSED zmienia rysunek).
- *  - `?overlay=` wybiera nakładkę startową (patrz `LvDomainOverlayId`),
- *    domyślnie SLD czysty (bez nakładki, werdykt).
- *  - `?lod=0|1|2` wybiera poziom szczegółowości projekcji (domyślnie 2 —
- *    pełny). Geometria jest ta sama na każdym poziomie; różni się WYŁĄCZNIE
- *    warstwa etykiet/opisu i postać nakładki wyników.
- *  - `?theme=light|dark` przełącza motyw rysunku (kanoniczne tryby powłoki
- *    `light_technical`/`dark_scada`) — paleta kanwy IDZIE Z MOTYWU.
+ *  - `?scenariusz=<slug>` — jeden z `SLUGI_SCENARIUSZY` (domyślnie 01);
+ *  - `?lod=0|1|2` — poziom szczegółowości (domyślnie 2, pełny);
+ *  - `?theme=light|dark` — motyw (paleta kanwy idzie z motywu);
+ *  - `?mono=1` — paleta monochromatyczna (druk A4/A3, §44);
+ *  - `?overlay=loads|voltageDrop|shortCircuit|swz` — nakładka startowa;
+ *  - `?wybor=<ref>` — element wybrany na start (podświetlenie toru zasilania).
  *
  * Used by: e2e/lv-domain-screenshot.spec.ts.
  */
 import { createRoot } from 'react-dom/client';
 
 import { LvDomainView } from './ui/sld/v3/lv-domain/LvDomainView';
-import { paletaNnDlaMotywu } from './ui/sld/v3/lv-domain/visualGrammar';
-import { ISLAND_DOMAIN_UPSTREAM_EQUIVALENTS, ISLAND_DOMAIN_VIEW } from './ui/sld/v3/lv-domain/fixtures/islandDomain';
-import { MULTI_SOURCE_DOMAIN_VIEW, MULTI_SOURCE_UPSTREAM_EQUIVALENTS } from './ui/sld/v3/lv-domain/fixtures/multiSourceDomain';
-import { buildLvDomainProjectionFixture } from './ui/sld/v3/lv-domain/fixtures/projectionFixture';
-import { STATION_BOARD_DOMAIN_VIEW, STATION_BOARD_UPSTREAM_EQUIVALENTS } from './ui/sld/v3/lv-domain/fixtures/stationBoardDomain';
+import { paletaMono, paletaNnDlaMotywu } from './ui/sld/v3/lv-domain/visualGrammar';
+import { SCENARIUSZE_NN, TYTULY_SCENARIUSZY, jestSlugiemScenariusza, type SlugScenariusza } from './ui/sld/v3/lv-domain/fixtures/scenariusze';
 import type { PoziomLod } from './ui/sld/v3/lv-domain/visualGrammar';
-import type { LvDomainGraphView, LvDomainOverlayId, UpstreamEquivalentSnapshot } from './ui/sld/v3/lv-domain/types';
+import type { LvDomainOverlayId } from './ui/sld/v3/lv-domain/types';
 import type { ThemeMode } from './ui2/theme/themeMode';
 
 const params = new URLSearchParams(window.location.search);
 
-// Motyw: atrybut `data-theme` na dokumencie (styk z powłoką) ORAZ paleta
-// kanwy — jedno źródło, żeby zrzut jasny NIE był ciemnym rysunkiem na jasnej
-// stronie (deklaracja motywu bez pokrycia była zastanym długiem tej kanwy).
 const theme: ThemeMode = params.get('theme') === 'light' ? 'light_technical' : 'dark_scada';
+const mono = params.get('mono') === '1';
 document.documentElement.setAttribute('data-theme', theme);
-const paleta = paletaNnDlaMotywu(theme);
+const paleta = mono ? paletaMono() : paletaNnDlaMotywu(theme);
 document.documentElement.style.background = paleta.tlo;
 document.body.style.background = paleta.tlo;
 
 const OVERLAY_IDS: readonly LvDomainOverlayId[] = ['loads', 'voltageDrop', 'shortCircuit', 'swz'];
 
-function readOverlayOverride(): LvDomainOverlayId | null {
+function readOverlay(): LvDomainOverlayId | null {
   const raw = params.get('overlay');
   return (OVERLAY_IDS as readonly string[]).includes(raw ?? '') ? (raw as LvDomainOverlayId) : null;
 }
 
-function readFixtureId(): 'multi' | 'stationC' | 'island' {
-  const raw = params.get('fixture');
-  if (raw === 'stationC') return 'stationC';
-  if (raw === 'island') return 'island';
-  return 'multi';
-}
-
-function readQbcOverride(): 'open' | 'closed' | null {
-  const raw = params.get('qbc');
-  return raw === 'open' || raw === 'closed' ? raw : null;
+function readScenariusz(): SlugScenariusza {
+  const raw = params.get('scenariusz');
+  return jestSlugiemScenariusza(raw) ? raw : '01_single_tr';
 }
 
 function readLod(): PoziomLod {
@@ -77,45 +54,27 @@ function readLod(): PoziomLod {
   return 2;
 }
 
-function viewWithQbcOverride(view: LvDomainGraphView, qbc: 'open' | 'closed' | null): LvDomainGraphView {
-  if (!qbc || view.status !== 'OK') return view;
-  return { ...view, branches: view.branches.map((b) => (b.ref_id === 'coupler' ? { ...b, status: qbc } : b)) };
-}
-
-const FIXTURES: Readonly<Record<'multi' | 'stationC' | 'island', {
-  readonly view: LvDomainGraphView;
-  readonly upstream: readonly UpstreamEquivalentSnapshot[];
-}>> = {
-  multi: { view: MULTI_SOURCE_DOMAIN_VIEW, upstream: MULTI_SOURCE_UPSTREAM_EQUIVALENTS },
-  stationC: { view: STATION_BOARD_DOMAIN_VIEW, upstream: STATION_BOARD_UPSTREAM_EQUIVALENTS },
-  island: { view: ISLAND_DOMAIN_VIEW, upstream: ISLAND_DOMAIN_UPSTREAM_EQUIVALENTS },
-};
-
 function HarnessRoot(): JSX.Element {
-  const fixtureId = readFixtureId();
-  const qbc = readQbcOverride();
+  const slug = readScenariusz();
   const lod = readLod();
-  const fixture = FIXTURES[fixtureId];
-  const view = fixtureId === 'multi' ? viewWithQbcOverride(fixture.view, qbc) : fixture.view;
-  const projection = buildLvDomainProjectionFixture({ graph: view, upstreamEquivalents: fixture.upstream });
-
+  const projection = SCENARIUSZE_NN[slug];
   return (
     <div
       id="lv-domain-harness-root"
       data-testid="lv-domain-harness-root"
-      data-fixture={fixtureId}
-      data-qbc={qbc ?? 'default'}
+      data-scenariusz={slug}
+      data-tytul={TYTULY_SCENARIUSZY[slug]}
       data-lod={lod}
       data-theme-mode={theme}
+      data-mono={mono ? 'true' : 'false'}
     >
       <LvDomainView
         projection={projection}
-        initialOverlay={readOverlayOverride()}
+        initialOverlay={readOverlay()}
+        initialSelectedRef={params.get('wybor')}
         lod={lod}
         theme={theme}
-        /* T5b-4 (P0-V1): REALNY viewport przeglądarki — occupancy/centrowanie
-           liczy się względem prawdziwego ekranu (Playwright ustawia stały
-           viewport, więc zrzuty pozostają deterministyczne). */
+        mono={mono}
         width={window.innerWidth}
         height={window.innerHeight}
       />

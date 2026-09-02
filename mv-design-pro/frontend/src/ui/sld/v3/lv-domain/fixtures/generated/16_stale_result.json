@@ -935,7 +935,7 @@
     "scenario_id": "MAX",
     "station_ref": "stC"
   },
-  "projection_hash": "b334ca46cb0c08c8706f98efcb423aa310c3bbd797811e64117677863c35f33d",
+  "projection_hash": "c4a1ca66bc9b85c84fcfe351b436b5caa588b7d22cf1a6e5f33843e7977f0708",
   "result_snapshot": {
     "analysis_type": "LOAD_FLOW",
     "overlay_payload": {
@@ -1663,13 +1663,154 @@
         "snapshot_id": null,
         "trace_id": null
       },
-      "rows": [],
+      "rows": [
+        {
+          "bus_id": "QF-03_pcc",
+          "bus_name": "PV1 · punkt przyłączenia",
+          "case_name": null,
+          "delta_pct": 1.3491979411031085,
+          "p_mw": null,
+          "q_mvar": null,
+          "run_timestamp": "2026-09-02T00:00:00+00:00",
+          "solver_bus_id": "bbe4a646-d98e-51e4-a3d7-93b69de70588",
+          "status": "PASS",
+          "u_kv": 0.40539679176441246,
+          "u_nom_kv": 0.4,
+          "u_pu": 1.013491979411031
+        },
+        {
+          "bus_id": "FU-21_koniec",
+          "bus_name": "Zacisk Odbiór RGN-2",
+          "case_name": null,
+          "delta_pct": -0.4224021665430733,
+          "p_mw": null,
+          "q_mvar": null,
+          "run_timestamp": "2026-09-02T00:00:00+00:00",
+          "solver_bus_id": "1269ff2f-7988-5fe7-942f-fa287f72d3ad",
+          "status": "PASS",
+          "u_kv": 0.39831039133382773,
+          "u_nom_kv": 0.4,
+          "u_pu": 0.9957759783345693
+        },
+        {
+          "bus_id": "QF-01_koniec",
+          "bus_name": "Zacisk Odbiór 1",
+          "case_name": null,
+          "delta_pct": -0.37919699494215475,
+          "p_mw": null,
+          "q_mvar": null,
+          "run_timestamp": "2026-09-02T00:00:00+00:00",
+          "solver_bus_id": "ed38533a-00d5-5316-b004-e20ff7023da9",
+          "status": "PASS",
+          "u_kv": 0.3984832120202314,
+          "u_nom_kv": 0.4,
+          "u_pu": 0.9962080300505785
+        },
+        {
+          "bus_id": "QF-03_zacisk",
+          "bus_name": "QF-03 zacisk wyjściowy",
+          "case_name": null,
+          "delta_pct": 0.0843853641739889,
+          "p_mw": null,
+          "q_mvar": null,
+          "run_timestamp": "2026-09-02T00:00:00+00:00",
+          "solver_bus_id": "3747b718-1225-5ddf-97b3-144f9ec46ea6",
+          "status": "PASS",
+          "u_kv": 0.400337541456696,
+          "u_nom_kv": 0.4,
+          "u_pu": 1.0008438536417399
+        },
+        {
+          "bus_id": "RGnN-1",
+          "bus_name": "RGnN-1",
+          "case_name": null,
+          "delta_pct": 0.0794598205628716,
+          "p_mw": null,
+          "q_mvar": null,
+          "run_timestamp": "2026-09-02T00:00:00+00:00",
+          "solver_bus_id": "c8cbea4b-8412-51a7-be92-56b1b8184ef2",
+          "status": "PASS",
+          "u_kv": 0.4003178392822515,
+          "u_nom_kv": 0.4,
+          "u_pu": 1.0007945982056288
+        },
+        {
+          "bus_id": "QF-02_zacisk",
+          "bus_name": "QF-02 zacisk wyjściowy",
+          "case_name": null,
+          "delta_pct": 0.07900808949030946,
+          "p_mw": null,
+          "q_mvar": null,
+          "run_timestamp": "2026-09-02T00:00:00+00:00",
+          "solver_bus_id": "529fa4ef-5aac-5377-a0d8-c0449633b6ce",
+          "status": "PASS",
+          "u_kv": 0.40031603235796126,
+          "u_nom_kv": 0.4,
+          "u_pu": 1.000790080894903
+        },
+        {
+          "bus_id": "QF-01_zacisk",
+          "bus_name": "QF-01 zacisk wyjściowy",
+          "case_name": null,
+          "delta_pct": 0.07855675577113364,
+          "p_mw": null,
+          "q_mvar": null,
+          "run_timestamp": "2026-09-02T00:00:00+00:00",
+          "solver_bus_id": "95a12785-5406-5c81-8168-0b598ee26787",
+          "status": "PASS",
+          "u_kv": 0.40031422702308456,
+          "u_nom_kv": 0.4,
+          "u_pu": 1.0007855675577113
+        },
+        {
+          "bus_id": "T1_zacisk",
+          "bus_name": "T1 zacisk nN",
+          "case_name": null,
+          "delta_pct": 0.07588927845414428,
+          "p_mw": null,
+          "q_mvar": null,
+          "run_timestamp": "2026-09-02T00:00:00+00:00",
+          "solver_bus_id": "52d24f01-220e-51b6-8ea6-df847f5ce215",
+          "status": "PASS",
+          "u_kv": 0.4003035571138166,
+          "u_nom_kv": 0.4,
+          "u_pu": 1.0007588927845414
+        },
+        {
+          "bus_id": "FU-21_zacisk",
+          "bus_name": "FU-21 zacisk wyjściowy",
+          "case_name": null,
+          "delta_pct": -0.05972920591323927,
+          "p_mw": null,
+          "q_mvar": null,
+          "run_timestamp": "2026-09-02T00:00:00+00:00",
+          "solver_bus_id": "ccfbea28-0407-5498-a677-b880efc15f82",
+          "status": "PASS",
+          "u_kv": 0.39976108317634707,
+          "u_nom_kv": 0.4,
+          "u_pu": 0.9994027079408676
+        },
+        {
+          "bus_id": "RGN-2_szyna",
+          "bus_name": "RGN-2",
+          "case_name": null,
+          "delta_pct": -0.05927746817838142,
+          "p_mw": null,
+          "q_mvar": null,
+          "run_timestamp": "2026-09-02T00:00:00+00:00",
+          "solver_bus_id": "343a61e5-480a-54f3-82d2-86076aa1ba80",
+          "status": "PASS",
+          "u_kv": 0.3997628901272865,
+          "u_nom_kv": 0.4,
+          "u_pu": 0.9994072253182162
+        }
+      ],
       "summary": {
         "fail_count": 0,
         "not_computed_count": 0,
         "pass_count": 11,
         "warning_count": 0,
-        "worst_bus_id": "bbe4a646-d98e-51e4-a3d7-93b69de70588",
+        "worst_bus_id": "QF-03_pcc",
         "worst_delta_pct_abs": 1.3491979411031085
       },
       "thresholds": {
@@ -2832,6 +2973,9 @@
       "upstream_node_id": "sn",
       "upstream_source_ids": [
         "src"
+      ],
+      "upstream_source_names": [
+        "GPZ"
       ],
       "upstream_system_id": "sn",
       "uth_kv": 16.5,
