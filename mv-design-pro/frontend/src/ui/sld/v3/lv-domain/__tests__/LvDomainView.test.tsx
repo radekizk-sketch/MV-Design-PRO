@@ -8,7 +8,7 @@ import { cleanup, fireEvent, render, screen, within } from '@testing-library/rea
 
 import { LvDomainView } from '../LvDomainView';
 import { scenariusz, type SlugScenariusza } from '../fixtures/scenariusze';
-import { SLD_LABEL, SYMBOL_SCREEN_PX, celGlifuNaEkranie } from '../visualGrammar';
+import { CAD_U_PX, MIN_FIELD_WIDTH_PX, SLD_LABEL, TOKENY_GEOMETRII, skalaMinimalna, skalaSymboluNaEkranie } from '../visualGrammar';
 
 afterEach(cleanup);
 
@@ -89,16 +89,23 @@ describe('SWZ i wyniki na odpływach — wartość == wartość backendu (§18)'
     expect(screen.queryByTestId('lv-domain-feeder-panel')).toBeNull();
   });
 
-  it('[12] panel odpływu DER wypisuje przekaźnik z pełną listą funkcji ANSI i przekładnikiem; glif niesie pierwszy kod + licznik', () => {
+  it('[12] panel odpływu DER wypisuje przekaźnik ze znakami IEC, numerami ANSI, nazwami polskimi funkcji i przekładnikiem; symbol niesie pierwszy znak IEC + licznik; panel nazywa aparat po polsku', () => {
     renderuj('12_der_full_path');
     fireEvent.click(screen.getByTestId('lv-domain-node-QF-G1'));
     const relay = screen.getByTestId('lv-domain-feeder-relay-REL-QF-G1');
-    expect(relay.textContent).toContain('81R · 81U · 78');
+    expect(relay.textContent).toContain('df/dt · f< · Δφ');
+    expect(relay.textContent).toContain('ANSI 81R, 81U, 78');
+    expect(relay.textContent).toContain('pochodna częstotliwości (LoM)');
     expect(relay.textContent).toContain('CT: CT-QF-G1');
-    const glif = screen.getByTestId('lv-domain-node-relay:REL-QF-G1');
-    expect(glif.textContent).toContain('81R');
-    expect(glif.textContent).toContain('+2');
-    expect(glif.querySelector('title')?.textContent).toContain('81U');
+    const symbol = screen.getByTestId('lv-domain-node-relay:REL-QF-G1');
+    expect(symbol.querySelector('g[data-symbol-canon="cad.zabezpieczenie"]')).not.toBeNull();
+    const znaki = [...symbol.querySelectorAll('text[data-cad="mark"]')].map((t) => t.textContent);
+    expect(znaki).toEqual(['df/dt', '+2']);
+    expect(symbol.querySelector('title')?.textContent).toContain('81U');
+    // Aparat pola nazwany po polsku (§18): WYŁĄCZNIK, QF jako identyfikator.
+    const aparat = screen.getByTestId('lv-domain-feeder-aparat');
+    expect(aparat.textContent).toContain('WYŁĄCZNIK');
+    expect(aparat.textContent).toContain('QF · stan: ZAMKNIĘTY');
   });
 });
 
@@ -166,32 +173,46 @@ describe('Typografia i symbole (§21/§43) — screen-stable, z sufitem w slocie
     }
   });
 
-  it('wąski ekran (390×844): scena mieści się w kadrze, symbole maleją z rozstawem slotów, nazwa sekcji zawija się', () => {
+  it('wąski ekran (390×844, przegląd): pole odpływu NIE schodzi poniżej MIN_FIELD_WIDTH przeglądu — kanwa PRZEWIJA zamiast ściskać; symbole z sufitem slotu', () => {
     renderuj('15_many_feeders', { width: 390, height: 844, lod: 0 });
     const s = skalaFitu();
-    expect(s).toBeLessThan(0.4);
+    expect(s).toBeCloseTo(skalaMinimalna(0), 9);
+    expect(TOKENY_GEOMETRII.feederGap * s).toBeGreaterThanOrEqual(MIN_FIELD_WIDTH_PX[0]);
+    expect(screen.getByTestId('lv-domain-scroll')).toHaveAttribute('data-scroll', 'true');
+    expect(Number(screen.getByTestId('lv-domain-svg').getAttribute('width'))).toBeGreaterThan(390);
     const world = screen.getByTestId('lv-domain-world').getAttribute('transform') ?? '';
-    const tx = Number(/translate\(([-\d.]+) /.exec(world)?.[1]);
-    expect(tx).toBeGreaterThanOrEqual(0);
-    expect(celGlifuNaEkranie('apparatus', s)).toBeLessThan(SYMBOL_SCREEN_PX.apparatus);
-    const nazwa = [...screen.getByTestId('lv-domain-node-RGnN-1').querySelectorAll('text')][0];
-    expect(nazwa.querySelectorAll('tspan').length).toBeGreaterThanOrEqual(3);
-  });
-
-  it('[15] gęsta rozdzielnica przy małej skali: oznaczenia aparatów pionowo (jedna orientacja dla całej sceny), żaden tekst poniżej TERTIARY, nazwy odbiorów zawinięte', () => {
-    renderuj('15_many_feeders', { width: 1400, height: 1000 });
-    const s = skalaFitu();
-    const pionowe = document.querySelectorAll('text[data-orientacja="pionowa"]');
-    expect(pionowe.length).toBe(13);
+    expect(Number(/translate\(([-\d.]+) /.exec(world)?.[1])).toBe(0);
+    expect(skalaSymboluNaEkranie('apparatus', 16, s)).toBeLessThan(CAD_U_PX);
     for (const t of document.querySelectorAll('svg text')) {
       expect(Number(t.getAttribute('font-size')) * s).toBeGreaterThanOrEqual(SLD_LABEL.TERTIARY - 1e-6);
     }
-    const odbior = screen.getByTestId('lv-domain-node-QF-01_odbior');
-    expect(odbior.querySelectorAll('tspan').length).toBeGreaterThanOrEqual(2);
   });
 
-  it('[01] luźna rozdzielnica: oznaczenia poziomo (zero tekstów pionowych)', () => {
+  it('[15] gęsta rozdzielnica (12 odpływów) na 1400×1000: pole ≥ 96 px, oznaczenia POZIOMO w jednym wierszu (zero tekstów pionowych), żaden tekst poniżej TERTIARY, nazwy odbiorów ≤ 2 wiersze bez łamania słów, kanwa przewijalna', () => {
+    renderuj('15_many_feeders', { width: 1400, height: 1000 });
+    const s = skalaFitu();
+    expect(TOKENY_GEOMETRII.feederGap * s).toBeGreaterThanOrEqual(MIN_FIELD_WIDTH_PX[2] - 1e-9);
+    expect(screen.getByTestId('lv-domain-scroll')).toHaveAttribute('data-scroll', 'true');
+    expect(document.querySelectorAll('text[data-orientacja="pionowa"]')).toHaveLength(0);
+    for (const t of document.querySelectorAll('svg text')) {
+      expect(Number(t.getAttribute('font-size')) * s).toBeGreaterThanOrEqual(SLD_LABEL.TERTIARY - 1e-6);
+      for (const tspan of t.querySelectorAll('tspan')) expect(tspan.textContent?.endsWith('-'), tspan.textContent ?? '').toBe(false);
+    }
+    const odbior = screen.getByTestId('lv-domain-node-QF-01_odbior');
+    const wierszeNazwy = [...odbior.querySelectorAll('text')][0].querySelectorAll('tspan').length;
+    expect(wierszeNazwy).toBeGreaterThanOrEqual(1);
+    expect(wierszeNazwy).toBeLessThanOrEqual(2);
+    // Pełna nazwa odbioru w podpowiedzi elementu (inspektor); na kanwie uczciwie skrócona „…".
+    expect(odbior.querySelector('title')?.textContent).toBe('Oświetlenie zewnętrzne parkingu północnego');
+    const naKanwie = [...odbior.querySelectorAll('tspan')].map((t) => t.textContent ?? '').join(' ');
+    expect(naKanwie).not.toContain('północnego');
+    expect(naKanwie).toContain('…');
+    expect(document.querySelectorAll('[data-device-role="feeder"] g[data-symbol-family="cad"]').length).toBe(12);
+  });
+
+  it('[01] luźna rozdzielnica: oznaczenia poziomo, kanwa bez przewijania (scena mieści się w celu zajętości)', () => {
     renderuj('01_single_tr');
     expect(document.querySelectorAll('text[data-orientacja="pionowa"]')).toHaveLength(0);
+    expect(screen.getByTestId('lv-domain-scroll')).toHaveAttribute('data-scroll', 'false');
   });
 });

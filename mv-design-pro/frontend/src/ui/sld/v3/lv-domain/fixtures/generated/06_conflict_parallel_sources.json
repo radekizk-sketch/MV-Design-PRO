@@ -9,6 +9,7 @@
       {
         "catalog_namespace": "WKLADKA_NN",
         "catalog_ref": "wkladka-nn-gg-32",
+        "device_kind": null,
         "from_bus_ref": "RGnN-B",
         "name": "FU-B2",
         "ref_id": "FU-B2",
@@ -19,6 +20,7 @@
       {
         "catalog_namespace": "KABEL_NN",
         "catalog_ref": "kabel-nn-yaky-4x35",
+        "device_kind": null,
         "from_bus_ref": "FU-B2_zacisk",
         "name": "Kabel FU-B2",
         "ref_id": "FU-B2_kabel",
@@ -29,6 +31,7 @@
       {
         "catalog_namespace": "APARAT_NN",
         "catalog_ref": "aparat-nn-sprzeglo-630a",
+        "device_kind": null,
         "from_bus_ref": "RGnN-A",
         "name": "QBC",
         "ref_id": "QBC",
@@ -39,6 +42,7 @@
       {
         "catalog_namespace": "APARAT_NN_MCB",
         "catalog_ref": "aparat-nn-mcb-c63",
+        "device_kind": null,
         "from_bus_ref": "RGnN-A",
         "name": "QF-A1",
         "ref_id": "QF-A1",
@@ -49,6 +53,7 @@
       {
         "catalog_namespace": "KABEL_NN",
         "catalog_ref": "kabel-nn-yaky-4x35",
+        "device_kind": null,
         "from_bus_ref": "QF-A1_zacisk",
         "name": "Kabel QF-A1",
         "ref_id": "QF-A1_kabel",
@@ -59,6 +64,7 @@
       {
         "catalog_namespace": "APARAT_NN",
         "catalog_ref": "aparat-nn-rozlacznik-160a",
+        "device_kind": "ROZLACZNIK",
         "from_bus_ref": "RGnN-A",
         "name": "QF-A2",
         "ref_id": "QF-A2",
@@ -69,6 +75,7 @@
       {
         "catalog_namespace": "KABEL_NN",
         "catalog_ref": "kabel-nn-yaky-4x35",
+        "device_kind": null,
         "from_bus_ref": "QF-A2_zacisk",
         "name": "Kabel QF-A2",
         "ref_id": "QF-A2_kabel",
@@ -79,6 +86,7 @@
       {
         "catalog_namespace": "APARAT_NN_MCB",
         "catalog_ref": "aparat-nn-mcb-c100",
+        "device_kind": null,
         "from_bus_ref": "RGnN-A",
         "name": "QF-A3",
         "ref_id": "QF-A3",
@@ -89,6 +97,7 @@
       {
         "catalog_namespace": "KABEL_NN",
         "catalog_ref": "kabel-nn-yaky-4x50",
+        "device_kind": null,
         "from_bus_ref": "QF-A3_zacisk",
         "name": "Kabel QF-A3",
         "ref_id": "QF-A3_kabel",
@@ -99,6 +108,7 @@
       {
         "catalog_namespace": "APARAT_NN_MCB",
         "catalog_ref": "aparat-nn-mcb-c80",
+        "device_kind": null,
         "from_bus_ref": "RGnN-B",
         "name": "QF-B1",
         "ref_id": "QF-B1",
@@ -109,6 +119,7 @@
       {
         "catalog_namespace": "KABEL_NN",
         "catalog_ref": "kabel-nn-yaky-4x35",
+        "device_kind": null,
         "from_bus_ref": "QF-B1_zacisk",
         "name": "Kabel QF-B1",
         "ref_id": "QF-B1_kabel",
@@ -119,6 +130,7 @@
       {
         "catalog_namespace": "APARAT_NN_MCB",
         "catalog_ref": "aparat-nn-mcb-c1400",
+        "device_kind": null,
         "from_bus_ref": "TA_zacisk",
         "name": "QF-TA",
         "ref_id": "QF-TA",
@@ -129,6 +141,7 @@
       {
         "catalog_namespace": "APARAT_NN_MCB",
         "catalog_ref": "aparat-nn-mcb-c1400",
+        "device_kind": null,
         "from_bus_ref": "TB_zacisk",
         "name": "QF-TB",
         "ref_id": "QF-TB",
@@ -368,6 +381,7 @@
         "board_bus_ref": "RGnN-B",
         "child_bus_ref": "FU-B2_zacisk",
         "designation_class": "FU",
+        "device_kind": null,
         "device_role": "feeder",
         "device_state": "CLOSED",
         "device_type": "fuse",
@@ -382,6 +396,7 @@
         "board_bus_ref": null,
         "child_bus_ref": "FU-B2_koniec",
         "designation_class": "W",
+        "device_kind": null,
         "device_role": "internal",
         "device_state": "CLOSED",
         "device_type": "cable",
@@ -396,6 +411,7 @@
         "board_bus_ref": null,
         "child_bus_ref": "RGnN-B",
         "designation_class": "QBC",
+        "device_kind": null,
         "device_role": "coupler",
         "device_state": "CLOSED",
         "device_type": "bus_coupler",
@@ -410,6 +426,7 @@
         "board_bus_ref": "RGnN-A",
         "child_bus_ref": "QF-A1_zacisk",
         "designation_class": "QF",
+        "device_kind": null,
         "device_role": "feeder",
         "device_state": "CLOSED",
         "device_type": "breaker",
@@ -424,6 +441,7 @@
         "board_bus_ref": null,
         "child_bus_ref": "QF-A1_koniec",
         "designation_class": "W",
+        "device_kind": null,
         "device_role": "internal",
         "device_state": "CLOSED",
         "device_type": "cable",
@@ -438,6 +456,7 @@
         "board_bus_ref": "RGnN-A",
         "child_bus_ref": "QF-A2_zacisk",
         "designation_class": "QS",
+        "device_kind": "ROZLACZNIK",
         "device_role": "feeder",
         "device_state": "CLOSED",
         "device_type": "switch",
@@ -452,6 +471,7 @@
         "board_bus_ref": null,
         "child_bus_ref": "QF-A2_koniec",
         "designation_class": "W",
+        "device_kind": null,
         "device_role": "internal",
         "device_state": "CLOSED",
         "device_type": "cable",
@@ -466,6 +486,7 @@
         "board_bus_ref": "RGnN-A",
         "child_bus_ref": "QF-A3_zacisk",
         "designation_class": "QF",
+        "device_kind": null,
         "device_role": "feeder",
         "device_state": "CLOSED",
         "device_type": "breaker",
@@ -480,6 +501,7 @@
         "board_bus_ref": null,
         "child_bus_ref": "QF-A3_pcc",
         "designation_class": "W",
+        "device_kind": null,
         "device_role": "internal",
         "device_state": "CLOSED",
         "device_type": "cable",
@@ -494,6 +516,7 @@
         "board_bus_ref": "RGnN-B",
         "child_bus_ref": "QF-B1_zacisk",
         "designation_class": "QF",
+        "device_kind": null,
         "device_role": "feeder",
         "device_state": "CLOSED",
         "device_type": "breaker",
@@ -508,6 +531,7 @@
         "board_bus_ref": null,
         "child_bus_ref": "QF-B1_koniec",
         "designation_class": "W",
+        "device_kind": null,
         "device_role": "internal",
         "device_state": "CLOSED",
         "device_type": "cable",
@@ -522,6 +546,7 @@
         "board_bus_ref": "RGnN-A",
         "child_bus_ref": "RGnN-A",
         "designation_class": "QF",
+        "device_kind": null,
         "device_role": "incomer",
         "device_state": "CLOSED",
         "device_type": "breaker",
@@ -536,6 +561,7 @@
         "board_bus_ref": "RGnN-B",
         "child_bus_ref": "RGnN-B",
         "designation_class": "QF",
+        "device_kind": null,
         "device_role": "incomer",
         "device_state": "CLOSED",
         "device_type": "breaker",
@@ -1448,14 +1474,14 @@
   ],
   "model_snapshot": {
     "case_id": "fixture-06_conflict_parallel_sources",
-    "model_hash": "28a9e6535c4c00e4d06dc82da870be6b3574b9f7ca5b60a182c422ff7766d1ef",
+    "model_hash": "23e35dbd05c801f7ee18393c859d90ec47e6366c9a1bbd114c8d07d52194eced",
     "operating_state_id": "d8b328dea019e2a1b0908e164e12219215dd0c7386846cd0d4a1925f12d825b6",
     "revision": 1,
     "run_snapshot_hash": null,
     "scenario_id": "MAX",
     "station_ref": "stAB"
   },
-  "projection_hash": "1296b86a098c54a9e6d5ea6169759de555aacf0320711fa0ec3f728111f34bc9",
+  "projection_hash": "9d162aaabf4e0e9f2ccbe5c9ea3d973e5063ea84a90c0cac9600a8708f0e885a",
   "result_snapshot": {
     "analysis_type": null,
     "overlay_payload": null,
@@ -1546,6 +1572,14 @@
       ],
       "message_pl": "Sekcje zasilane z niezależnych systemów SN (sn, sn2) są spięte po stronie nN — praca równoległa niezsynchronizowanych źródeł. Wymaga rozstrzygnięcia (otwarcie sprzęgła albo automatyka SZR).",
       "severity": "BLOCKER"
+    },
+    {
+      "code": "NN-AUD-18",
+      "element_refs": [
+        "QBC"
+      ],
+      "message_pl": "Sprzęgło QBC: katalog nie określa rodzaju aparatu (wyłącznik / rozłącznik / odłącznik / rozłącznik bezpiecznikowy) — na schemacie symbol ogólny łącznika.",
+      "severity": "INFO"
     }
   ]
 }

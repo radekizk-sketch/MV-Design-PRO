@@ -1,43 +1,13 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`REJESTR_SYMBOLI_NN — jeden wpis na typ gałęzi ENM > [breaker → nnBreaker] markup glifu per stan (open/closed/unknown) jest zamrożony snapshotem > breaker:closed 1`] = `"<g data-symbol-canon="nnBreaker" data-switch-state="closed" transform="translate(0, 0)"><line x1="8" y1="0" x2="8" y2="3" stroke="#000" stroke-width="1.2"></line><line x1="5.5" y1="1.5" x2="10.5" y2="1.5" stroke="#000" stroke-width="1.2" data-nn-breaker-toggle="true"></line><rect x="3" y="3" width="10" height="10" fill="#000" fill-opacity="1" stroke="#000" stroke-width="1.2"></rect><line x1="8" y1="13" x2="8" y2="16" stroke="#000" stroke-width="1.2"></line></g>"`;
-
-exports[`REJESTR_SYMBOLI_NN — jeden wpis na typ gałęzi ENM > [breaker → nnBreaker] markup glifu per stan (open/closed/unknown) jest zamrożony snapshotem > breaker:open 1`] = `"<g data-symbol-canon="nnBreaker" data-switch-state="open" transform="translate(0, 0)"><line x1="8" y1="0" x2="8" y2="3" stroke="#000" stroke-width="1.2"></line><line x1="5.5" y1="1.5" x2="10.5" y2="1.5" stroke="#000" stroke-width="1.2" data-nn-breaker-toggle="true"></line><rect x="3" y="3" width="10" height="10" fill="none" fill-opacity="1" stroke="#000" stroke-width="1.2"></rect><line x1="8" y1="13" x2="8" y2="16" stroke="#000" stroke-width="1.2"></line></g>"`;
-
-exports[`REJESTR_SYMBOLI_NN — jeden wpis na typ gałęzi ENM > [breaker → nnBreaker] markup glifu per stan (open/closed/unknown) jest zamrożony snapshotem > breaker:unknown 1`] = `"<g data-symbol-canon="nnBreaker" data-switch-state="unknown" transform="translate(0, 0)"><line x1="8" y1="0" x2="8" y2="3" stroke="#000" stroke-width="1.2"></line><line x1="5.5" y1="1.5" x2="10.5" y2="1.5" stroke="#000" stroke-width="1.2" data-nn-breaker-toggle="true"></line><rect x="3" y="3" width="10" height="10" fill="none" fill-opacity="0.35" stroke="#000" stroke-width="1.2"></rect><line x1="8" y1="13" x2="8" y2="16" stroke="#000" stroke-width="1.2"></line></g>"`;
-
-exports[`REJESTR_SYMBOLI_NN — jeden wpis na typ gałęzi ENM > [bus_coupler → nnBreaker] markup glifu per stan (open/closed/unknown) jest zamrożony snapshotem > bus_coupler:closed 1`] = `"<g data-symbol-canon="nnBreaker" data-switch-state="closed" transform="translate(0, 0)"><line x1="8" y1="0" x2="8" y2="3" stroke="#000" stroke-width="1.2"></line><line x1="5.5" y1="1.5" x2="10.5" y2="1.5" stroke="#000" stroke-width="1.2" data-nn-breaker-toggle="true"></line><rect x="3" y="3" width="10" height="10" fill="#000" fill-opacity="1" stroke="#000" stroke-width="1.2"></rect><line x1="8" y1="13" x2="8" y2="16" stroke="#000" stroke-width="1.2"></line></g>"`;
-
-exports[`REJESTR_SYMBOLI_NN — jeden wpis na typ gałęzi ENM > [bus_coupler → nnBreaker] markup glifu per stan (open/closed/unknown) jest zamrożony snapshotem > bus_coupler:open 1`] = `"<g data-symbol-canon="nnBreaker" data-switch-state="open" transform="translate(0, 0)"><line x1="8" y1="0" x2="8" y2="3" stroke="#000" stroke-width="1.2"></line><line x1="5.5" y1="1.5" x2="10.5" y2="1.5" stroke="#000" stroke-width="1.2" data-nn-breaker-toggle="true"></line><rect x="3" y="3" width="10" height="10" fill="none" fill-opacity="1" stroke="#000" stroke-width="1.2"></rect><line x1="8" y1="13" x2="8" y2="16" stroke="#000" stroke-width="1.2"></line></g>"`;
-
-exports[`REJESTR_SYMBOLI_NN — jeden wpis na typ gałęzi ENM > [bus_coupler → nnBreaker] markup glifu per stan (open/closed/unknown) jest zamrożony snapshotem > bus_coupler:unknown 1`] = `"<g data-symbol-canon="nnBreaker" data-switch-state="unknown" transform="translate(0, 0)"><line x1="8" y1="0" x2="8" y2="3" stroke="#000" stroke-width="1.2"></line><line x1="5.5" y1="1.5" x2="10.5" y2="1.5" stroke="#000" stroke-width="1.2" data-nn-breaker-toggle="true"></line><rect x="3" y="3" width="10" height="10" fill="none" fill-opacity="0.35" stroke="#000" stroke-width="1.2"></rect><line x1="8" y1="13" x2="8" y2="16" stroke="#000" stroke-width="1.2"></line></g>"`;
-
-exports[`REJESTR_SYMBOLI_NN — jeden wpis na typ gałęzi ENM > [disconnector → disconnector] markup glifu per stan (open/closed/unknown) jest zamrożony snapshotem > disconnector:closed 1`] = `"<g data-symbol-canon="disconnector" data-switch-state="closed" transform="translate(0, 0)"><line x1="8" y1="0" x2="8" y2="6" stroke="#000" stroke-width="1.2"></line><line x1="8" y1="6" x2="8" y2="18" stroke="#000" stroke-width="1.2"></line><line x1="4" y1="18" x2="12" y2="18" stroke="#000" stroke-width="1.2"></line><line x1="8" y1="18" x2="8" y2="24" stroke="#000" stroke-width="1.2"></line></g>"`;
-
-exports[`REJESTR_SYMBOLI_NN — jeden wpis na typ gałęzi ENM > [disconnector → disconnector] markup glifu per stan (open/closed/unknown) jest zamrożony snapshotem > disconnector:open 1`] = `"<g data-symbol-canon="disconnector" data-switch-state="open" transform="translate(0, 0)"><line x1="8" y1="0" x2="8" y2="6" stroke="#000" stroke-width="1.2"></line><line x1="8" y1="6" x2="15" y2="12" stroke="#000" stroke-width="1.2"></line><line x1="4" y1="18" x2="12" y2="18" stroke="#000" stroke-width="1.2"></line><line x1="8" y1="18" x2="8" y2="24" stroke="#000" stroke-width="1.2"></line></g>"`;
-
-exports[`REJESTR_SYMBOLI_NN — jeden wpis na typ gałęzi ENM > [disconnector → disconnector] markup glifu per stan (open/closed/unknown) jest zamrożony snapshotem > disconnector:unknown 1`] = `"<g data-symbol-canon="disconnector" data-switch-state="unknown" transform="translate(0, 0)"><line x1="8" y1="0" x2="8" y2="6" stroke="#000" stroke-width="1.2"></line><line x1="8" y1="6" x2="8" y2="18" stroke="#000" stroke-width="1.2" stroke-dasharray="3 2"></line><line x1="4" y1="18" x2="12" y2="18" stroke="#000" stroke-width="1.2"></line><line x1="8" y1="18" x2="8" y2="24" stroke="#000" stroke-width="1.2"></line></g>"`;
-
-exports[`REJESTR_SYMBOLI_NN — jeden wpis na typ gałęzi ENM > [fuse → nnFuseSwitch] markup glifu per stan (open/closed/unknown) jest zamrożony snapshotem > fuse:closed 1`] = `"<g data-symbol-canon="nnFuseSwitch" data-switch-state="closed" transform="translate(0, 0)"><line x1="8" y1="0" x2="8" y2="6" stroke="#000" stroke-width="1.2"></line><path d="M8,6 L12,9 L12,17 L8,20 L4,17 L4,9 Z" fill="none" stroke="#000" stroke-width="1.2" data-nn-fuseswitch-cartridge="true"></path><line x1="8" y1="9" x2="8" y2="17" stroke="#000" stroke-width="1.2"></line><line x1="8" y1="20" x2="8" y2="24" stroke="#000" stroke-width="1.2"></line></g>"`;
-
-exports[`REJESTR_SYMBOLI_NN — jeden wpis na typ gałęzi ENM > [fuse → nnFuseSwitch] markup glifu per stan (open/closed/unknown) jest zamrożony snapshotem > fuse:open 1`] = `"<g data-symbol-canon="nnFuseSwitch" data-switch-state="open" transform="translate(0, 0)"><line x1="8" y1="0" x2="8" y2="6" stroke="#000" stroke-width="1.2"></line><path d="M8,6 L12,9 L12,17 L8,20 L4,17 L4,9 Z" fill="none" stroke="#000" stroke-width="1.2" data-nn-fuseswitch-cartridge="true"></path><line x1="8" y1="9" x2="8" y2="17" stroke="#000" stroke-width="1.2"></line><line x1="8" y1="20" x2="8" y2="24" stroke="#000" stroke-width="1.2"></line></g>"`;
-
-exports[`REJESTR_SYMBOLI_NN — jeden wpis na typ gałęzi ENM > [fuse → nnFuseSwitch] markup glifu per stan (open/closed/unknown) jest zamrożony snapshotem > fuse:unknown 1`] = `"<g data-symbol-canon="nnFuseSwitch" data-switch-state="unknown" transform="translate(0, 0)"><line x1="8" y1="0" x2="8" y2="6" stroke="#000" stroke-width="1.2"></line><path d="M8,6 L12,9 L12,17 L8,20 L4,17 L4,9 Z" fill="none" stroke="#000" stroke-width="1.2" data-nn-fuseswitch-cartridge="true"></path><line x1="8" y1="9" x2="8" y2="17" stroke="#000" stroke-width="1.2"></line><line x1="8" y1="20" x2="8" y2="24" stroke="#000" stroke-width="1.2"></line></g>"`;
-
-exports[`REJESTR_SYMBOLI_NN — jeden wpis na typ gałęzi ENM > [switch → loadBreakSwitch] markup glifu per stan (open/closed/unknown) jest zamrożony snapshotem > switch:closed 1`] = `"<g data-symbol-canon="loadBreakSwitch" data-switch-state="closed" transform="translate(0, 0)"><line x1="8" y1="0" x2="8" y2="6" stroke="#000" stroke-width="1.2"></line><line x1="4" y1="14" x2="12" y2="14" stroke="#000" stroke-width="1.2"></line><line x1="8" y1="6" x2="8" y2="18" stroke="#000" stroke-width="1.2"></line><line x1="4" y1="18" x2="12" y2="18" stroke="#000" stroke-width="1.2"></line><line x1="8" y1="18" x2="8" y2="24" stroke="#000" stroke-width="1.2"></line></g>"`;
-
-exports[`REJESTR_SYMBOLI_NN — jeden wpis na typ gałęzi ENM > [switch → loadBreakSwitch] markup glifu per stan (open/closed/unknown) jest zamrożony snapshotem > switch:open 1`] = `"<g data-symbol-canon="loadBreakSwitch" data-switch-state="open" transform="translate(0, 0)"><line x1="8" y1="0" x2="8" y2="6" stroke="#000" stroke-width="1.2"></line><line x1="13" y1="9" x2="17" y2="15" stroke="#000" stroke-width="1.2"></line><line x1="8" y1="6" x2="15" y2="12" stroke="#000" stroke-width="1.2"></line><line x1="4" y1="18" x2="12" y2="18" stroke="#000" stroke-width="1.2"></line><line x1="8" y1="18" x2="8" y2="24" stroke="#000" stroke-width="1.2"></line></g>"`;
-
-exports[`REJESTR_SYMBOLI_NN — jeden wpis na typ gałęzi ENM > [switch → loadBreakSwitch] markup glifu per stan (open/closed/unknown) jest zamrożony snapshotem > switch:unknown 1`] = `"<g data-symbol-canon="loadBreakSwitch" data-switch-state="unknown" transform="translate(0, 0)"><line x1="8" y1="0" x2="8" y2="6" stroke="#000" stroke-width="1.2"></line><line x1="4" y1="14" x2="12" y2="14" stroke="#000" stroke-width="1.2"></line><line x1="8" y1="6" x2="8" y2="18" stroke="#000" stroke-width="1.2" stroke-dasharray="3 2"></line><line x1="4" y1="18" x2="12" y2="18" stroke="#000" stroke-width="1.2"></line><line x1="8" y1="18" x2="8" y2="24" stroke="#000" stroke-width="1.2"></line></g>"`;
-
-exports[`REJESTR_SYMBOLI_NN — jeden wpis na typ gałęzi ENM > rejestr (typ → glif · klasa · nośnik stanu) jest zamrożony snapshotem 1`] = `
+exports[`REJESTR_SYMBOLI_NN — typ gałęzi ENM × device_kind → symbol CAD > rejestr (typ → symbol CAD · klasa · nazwa polska · nośnik stanu) jest zamrożony snapshotem 1`] = `
 {
   "breaker": {
     "klasaOznaczenia": "QF",
-    "nazwaPl": "Wyłącznik nN",
-    "nosnikStanu": "wypelnienie",
+    "nazwaPl": "Wyłącznik",
+    "nosnikStanu": "noz",
     "rozmiar": "aparat",
-    "symbolId": "nnBreaker",
+    "symbolId": "cad.wylacznik",
     "terminale": [
       "a",
       "b",
@@ -45,10 +15,10 @@ exports[`REJESTR_SYMBOLI_NN — jeden wpis na typ gałęzi ENM > rejestr (typ �
   },
   "bus_coupler": {
     "klasaOznaczenia": "QBC",
-    "nazwaPl": "Sprzęgło sekcji",
-    "nosnikStanu": "wypelnienie",
+    "nazwaPl": "Łącznik (symbol ogólny) — łącznik szyn o nieokreślonej funkcji",
+    "nosnikStanu": "noz",
     "rozmiar": "sprzeglo",
-    "symbolId": "nnBreaker",
+    "symbolId": "cad.lacznik",
     "terminale": [
       "a",
       "b",
@@ -70,7 +40,7 @@ exports[`REJESTR_SYMBOLI_NN — jeden wpis na typ gałęzi ENM > rejestr (typ �
     "nazwaPl": "Odłącznik",
     "nosnikStanu": "noz",
     "rozmiar": "aparat",
-    "symbolId": "disconnector",
+    "symbolId": "cad.odlacznik",
     "terminale": [
       "a",
       "b",
@@ -78,10 +48,10 @@ exports[`REJESTR_SYMBOLI_NN — jeden wpis na typ gałęzi ENM > rejestr (typ �
   },
   "fuse": {
     "klasaOznaczenia": "FU",
-    "nazwaPl": "Rozłącznik bezpiecznikowy / wkładka",
+    "nazwaPl": "Bezpiecznik (wkładka topikowa)",
     "nosnikStanu": "brak",
     "rozmiar": "aparat",
-    "symbolId": "nnFuseSwitch",
+    "symbolId": "cad.bezpiecznik",
     "terminale": [
       "a",
       "b",
@@ -100,10 +70,10 @@ exports[`REJESTR_SYMBOLI_NN — jeden wpis na typ gałęzi ENM > rejestr (typ �
   },
   "switch": {
     "klasaOznaczenia": "QS",
-    "nazwaPl": "Rozłącznik",
+    "nazwaPl": "Rozłącznik (rozłącznik izolacyjny)",
     "nosnikStanu": "noz",
     "rozmiar": "aparat",
-    "symbolId": "loadBreakSwitch",
+    "symbolId": "cad.rozlacznik",
     "terminale": [
       "a",
       "b",

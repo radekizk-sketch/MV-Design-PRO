@@ -39,8 +39,8 @@
  * JEDNA GEOMETRIA NA WSZYSTKIE POZIOMY LOD: ten moduł NIE ZNA pojęcia LOD.
  * Determinizm: te same dane → identyczna scena (sortowanie po `ref_id`).
  */
-import type { SymbolId } from '../symbols/defs';
-import { REJESTR_SYMBOLI_NN, SYMBOL_ODBIORU, SYMBOL_TRANSFORMATORA, SYMBOL_ZABEZPIECZENIA, symbolPomiaru, symbolZrodlaDer } from './symbolRegistry';
+import type { CadOrientation, CadSymbolId } from '../cad/cadSymbolRegistry';
+import { SYMBOL_ODBIORU, SYMBOL_TRANSFORMATORA, SYMBOL_ZABEZPIECZENIA, SYMBOL_ZACISKU, symbolPomiaru, symbolPunktuToru, symbolZrodlaDer, wpisAparatu } from './symbolRegistry';
 import type {
   LvDeviceState,
   LvDomainBus,
@@ -79,7 +79,10 @@ export interface LvDomainSceneNode {
   readonly x: number;
   readonly y: number;
   readonly label: string;
-  readonly symbolId?: SymbolId;
+  /** Symbol CAD z rejestru (`cad/cadSymbolRegistry.ts`); brak = element bez symbolu. */
+  readonly symbolId?: CadSymbolId;
+  /** Orientacja symbolu: pozioma WYŁĄCZNIE dla aparatu sprzęgła w osi szyny. */
+  readonly orientation?: CadOrientation;
   readonly meta?: Readonly<Record<string, unknown>>;
   /** WYŁĄCZNIE `kind==='bus'`/`'anchorBar'`: lewy i prawy koniec kreski. */
   readonly barLeft?: number;
@@ -474,7 +477,7 @@ export function composeLvDomainScene(
   ): void {
     const branch = branchByRef.get(device.ref_id);
     const segment = segmentByRef.get(device.ref_id);
-    const wpis = REJESTR_SYMBOLI_NN[device.device_type];
+    const wpis = wpisAparatu(device.device_type, device.device_kind);
     const topIsFrom = device.parent_bus_ref === segment?.from_bus_ref;
     const topState = topIsFrom ? segment?.from_terminal : segment?.to_terminal;
     const bottomState = topIsFrom ? segment?.to_terminal : segment?.from_terminal;
@@ -498,6 +501,8 @@ export function composeLvDomainScene(
           islandTop: topState?.island_ref,
           islandBottom: bottomState?.island_ref,
           nosnikStanu: wpis.nosnikStanu,
+          deviceKind: device.device_kind,
+          nazwaPl: wpis.nazwaPl,
         },
       });
       const relay = relayByBreaker.get(device.ref_id);
@@ -576,7 +581,16 @@ export function composeLvDomainScene(
         y,
         label: m.name,
         symbolId: symbolPomiaru('CT'),
-        meta: { measurementType: 'CT', ratio: `${plNumber(m.ratio_primary)}/${plNumber(m.ratio_secondary)} A`, purpose: m.purpose, busRef },
+        meta: {
+          measurementType: 'CT',
+          ratio: `${plNumber(m.ratio_primary)}/${plNumber(m.ratio_secondary)} A`,
+          purpose: m.purpose,
+          busRef,
+          accuracyClass: m.accuracy_class,
+          burdenVa: m.burden_va,
+          ctCores: m.ct_cores,
+          ctArrangement: m.ct_arrangement,
+        },
       });
     });
   }
@@ -641,7 +655,7 @@ export function composeLvDomainScene(
       x,
       y,
       label: bus.name,
-      symbolId: 'junction',
+      symbolId: symbolPunktuToru(degreeOf(busRef)),
       meta: { ...terminalMeta(state), voltageKv: bus.voltage_kv, hopsFromRoot: bus.hops_from_root, degree: degreeOf(busRef) },
     });
     // Sloty dzieci: gałęzie wewnętrzne (każda ze swoim poddrzewem) + liście.
@@ -664,7 +678,7 @@ export function composeLvDomainScene(
 
   /** Gałąź wewnętrzna (kabel / aparat) od zacisku w dół do dziecka. */
   function emitInternalBranch(device: LvDomainDevice, x: number, yTop: number): void {
-    const wpis = REJESTR_SYMBOLI_NN[device.device_type];
+    const wpis = wpisAparatu(device.device_type, device.device_kind);
     const segment = segmentByRef.get(device.ref_id);
     const childRef = device.child_bus_ref;
     const childSection = sectionByBus.get(childRef);
@@ -709,7 +723,7 @@ export function composeLvDomainScene(
       const x = slotAbs(plan, slot.ref);
       if (slot.kind === 'feeder') {
         const device = deviceByRef.get(slot.ref)!;
-        const wpis = REJESTR_SYMBOLI_NN[device.device_type];
+        const wpis = wpisAparatu(device.device_type, device.device_kind);
         const childSection = sectionByBus.get(device.child_bus_ref);
         if (wpis.symbolId) {
           const yDevice = plan.busY + T.busToDevice;
@@ -739,7 +753,7 @@ export function composeLvDomainScene(
           y2: terminalPos.y,
           meta: { ...terminalMeta(busState), role: 'boundary', catalogRef: branch?.catalog_ref, connectivity: branch ? (branch.status === 'closed' ? 'CLOSED' : 'OPEN') : undefined },
         });
-        nodes.push({ kind: 'boundaryTerminal', ref: `boundary-terminal:${link.branch_ref}`, x: terminalPos.x, y: terminalPos.y, label: '●', symbolId: 'junction', meta: { branchRef: link.branch_ref } });
+        nodes.push({ kind: 'boundaryTerminal', ref: `boundary-terminal:${link.branch_ref}`, x: terminalPos.x, y: terminalPos.y, label: '●', symbolId: SYMBOL_ZACISKU, meta: { branchRef: link.branch_ref } });
         const chip = { x: terminalPos.x + T.boundaryChipOffset, y: terminalPos.y };
         nodes.push({
           kind: 'boundaryChip',
@@ -766,7 +780,7 @@ export function composeLvDomainScene(
       } else if (slot.kind === 'vt') {
         const m = view.measurements.find((mm) => mm.ref_id === slot.ref)!;
         const my = plan.busY - T.busToDevice;
-        nodes.push({ kind: 'measurement', ref: m.ref_id, x, y: my, label: m.name, symbolId: symbolPomiaru('VT'), meta: { measurementType: 'VT', ratio: `${plNumber(m.ratio_primary)}/${plNumber(m.ratio_secondary)} V`, purpose: m.purpose, busRef } });
+        nodes.push({ kind: 'measurement', ref: m.ref_id, x, y: my, label: m.name, symbolId: symbolPomiaru('VT'), meta: { measurementType: 'VT', ratio: `${plNumber(m.ratio_primary)}/${plNumber(m.ratio_secondary)} V`, purpose: m.purpose, busRef, accuracyClass: m.accuracy_class, burdenVa: m.burden_va, ctCores: null, ctArrangement: null } });
         edges.push({ ref: `${m.ref_id}#vt-drop`, kind: 'leafDrop', x1: x, y1: my, x2: x, y2: plan.busY, meta: { ...terminalMeta(busState), leafKind: 'measurement' } });
       }
     }
@@ -803,7 +817,7 @@ export function composeLvDomainScene(
           x,
           y: terminalY,
           label: terminalBus?.name ?? trafo.lv_bus_ref,
-          symbolId: 'junction',
+          symbolId: symbolPunktuToru(degreeOf(trafo.lv_bus_ref)),
           meta: { ...terminalMeta(terminalState), voltageKv: terminalBus?.voltage_kv, hopsFromRoot: terminalBus?.hops_from_root, degree: degreeOf(trafo.lv_bus_ref), transformerTerminal: transformerRef },
         });
         emitApparatus(incomer, x, terminalY, yDevice, plan.busY, 'incomer');
@@ -928,14 +942,18 @@ export function composeLvDomainScene(
     const x2 = rightPlan.left;
     const y = leftPlan.busY;
     const mid = doRastra((x1 + x2) / 2);
-    const wpis = REJESTR_SYMBOLI_NN[device.device_type];
+    // Sprzęgło = REALNY aparat z ENM (typ gałęzi × klasa funkcjonalna z
+    // katalogu) w orientacji poziomej, w osi szyny (R2 §6). Bez klasy —
+    // łącznik ogólny (audyt NN-AUD-18 z backendu), nie dorysowany wyłącznik.
+    const wpis = wpisAparatu(device.device_type, device.device_kind);
     nodes.push({
       kind: 'apparatus',
       ref: device.ref_id,
       x: mid,
       y,
       label: branch?.name ?? device.ref_id,
-      symbolId: wpis.symbolId ?? 'nnBreaker',
+      symbolId: wpis.symbolId ?? 'cad.lacznik',
+      orientation: 'pozioma',
       meta: {
         deviceType: device.device_type,
         deviceState: deviceStateOf(device),
@@ -945,6 +963,8 @@ export function composeLvDomainScene(
         terminalA: terminalMeta(leftState),
         terminalB: terminalMeta(rightState),
         nosnikStanu: wpis.nosnikStanu,
+        deviceKind: device.device_kind,
+        nazwaPl: wpis.nazwaPl,
         horizontal: true,
       },
     });

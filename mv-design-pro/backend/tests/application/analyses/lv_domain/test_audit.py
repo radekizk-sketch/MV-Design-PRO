@@ -28,7 +28,7 @@ class TestStacjaZdrowa:
         assert _kody(zbuduj_stacje_nn()) == ["NN-AUD-07"]
 
     def test_kody_sa_zamknieta_lista(self) -> None:
-        assert AUDIT_CODES == tuple(f"NN-AUD-{i:02d}" for i in range(1, 18))
+        assert AUDIT_CODES == tuple(f"NN-AUD-{i:02d}" for i in range(1, 19))
 
 
 class TestKodyAudytu:
@@ -246,6 +246,35 @@ class TestKodyAudytu:
         sprzeglo = next(b for b in enm2.branches if b.ref_id == "coupler")
         sprzeglo.to_bus_ref = "a1"
         assert "NN-AUD-12" in _kody(enm2)
+
+    def test_18_sprzeglo_bez_klasy_funkcjonalnej_aparatu(self) -> None:
+        """Sprzęgło bez `materialized_params.device_kind` → INFO NN-AUD-18 (symbol
+        ogólny łącznika); z klasą z katalogu → brak komunikatu. Iloczyn cech:
+        sprzęgło OTWARTE × ZAMKNIĘTE, klasa pusta × biała spacja × jawna."""
+        for stan in ("open", "closed"):
+            enm = zbuduj_stacje_nn(transformatory=2, sprzeglo=stan)
+            sprzeglo = next(b for b in enm.branches if b.ref_id == "coupler")
+            sprzeglo.materialized_params = None
+            graf = build_lv_domain_view(enm, "stn")
+            komunikaty = [
+                m
+                for m in collect_validation_messages(graf, result_status=None)
+                if m["code"] == "NN-AUD-18"
+            ]
+            assert len(komunikaty) == 1
+            assert komunikaty[0]["severity"] == "INFO"
+            assert komunikaty[0]["element_refs"] == ["coupler"]
+            assert "rodzaju aparatu" in komunikaty[0]["message_pl"]
+            urzadzenie = next(d for d in graf["devices"] if d["ref_id"] == "coupler")
+            assert urzadzenie["device_kind"] is None
+
+            sprzeglo.materialized_params = {"device_kind": "  "}
+            assert "NN-AUD-18" in _kody(enm)
+
+            sprzeglo.materialized_params = {"device_kind": "wylacznik"}
+            assert "NN-AUD-18" not in _kody(enm)
+            graf2 = build_lv_domain_view(enm, "stn")
+            assert next(d for d in graf2["devices"] if d["ref_id"] == "coupler")["device_kind"] == "WYLACZNIK"
 
     def test_13_wynik_nieaktualny(self) -> None:
         assert "NN-AUD-13" in _kody(zbuduj_stacje_nn(), result_status="OUTDATED")

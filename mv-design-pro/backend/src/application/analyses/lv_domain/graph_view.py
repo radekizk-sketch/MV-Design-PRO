@@ -141,6 +141,19 @@ def _bus_dict(bus: Bus, depth: int, terminal: TerminalState, *, is_board: bool) 
     }
 
 
+def _device_kind(branch: Branch) -> str | None:
+    """Rodzaj aparatu z pozycji katalogu (`materialized_params.device_kind`,
+    np. WYLACZNIK / ROZLACZNIK / ROZLACZNIK_BEZPIECZNIKOWY / ODLACZNIK) —
+    klasa FUNKCJONALNA wyrobu, odrębna od typu gałęzi (rola w topologii).
+    Renderer wybiera z niej symbol CAD (rejestr R2); ``None`` = katalog nie
+    klasyfikuje aparatu — symbol ogólny + audyt NN-AUD-18, zero domysłu."""
+    params = getattr(branch, "materialized_params", None) or {}
+    kind = params.get("device_kind")
+    if isinstance(kind, str) and kind.strip():
+        return kind.strip().upper()
+    return None
+
+
 def _branch_dict(branch: Branch) -> dict[str, Any]:
     return {
         "ref_id": branch.ref_id,
@@ -151,6 +164,7 @@ def _branch_dict(branch: Branch) -> dict[str, Any]:
         "status": branch.status,
         "catalog_ref": branch.catalog_ref,
         "catalog_namespace": branch.catalog_namespace,
+        "device_kind": _device_kind(branch),
     }
 
 
@@ -220,6 +234,12 @@ def _measurement_dict(m: Any) -> dict[str, Any]:
         "purpose": m.purpose,
         "ratio_primary": m.rating.ratio_primary,
         "ratio_secondary": m.rating.ratio_secondary,
+        # Tabliczka przekładnika TEKSTEM obok symbolu (R2 §9): klasa, moc
+        # pomiarowa, liczba rdzeni i układ CT — pola addytywne, brak = None.
+        "accuracy_class": m.rating.accuracy_class,
+        "burden_va": m.rating.burden_va,
+        "ct_cores": getattr(m, "ct_cores", None),
+        "ct_arrangement": getattr(m, "ct_arrangement", None),
     }
 
 
@@ -470,6 +490,7 @@ def build_lv_domain_view(enm: EnergyNetworkModel, station_ref: str) -> dict[str,
             {
                 "ref_id": ref_id,
                 "device_type": branch.type,
+                "device_kind": _device_kind(branch),
                 "designation_class": DEVICE_DESIGNATION_BY_TYPE.get(str(branch.type), "Q"),
                 "device_role": role,
                 "feeder_kind": feeder_kind,

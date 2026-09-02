@@ -166,7 +166,21 @@ describe('Hierarchia pionowa i podrozdzielnice (§9/§13/§14 mandatu, §15 scen
     expect(bezPola.meta?.direct).toBe(true);
     expect(edge(s, 'odbior_bez_pola#leaf-drop').y1).toBe(node(s, 'RGnN-1').y);
     expect(p.validation_messages.map((m) => m.code)).toContain('NN-AUD-07');
-    expect(s.nodes.filter((n) => n.kind === 'apparatus' && n.meta?.role === 'feeder')).toHaveLength(4);
+    // Pięć rodzajów aparatów odpływów (R2 §5/§7): wyłącznik, rozłącznik,
+    // odłącznik, wkładka, rozłącznik bezpiecznikowy (switch + device_kind).
+    const odplywy = s.nodes.filter((n) => n.kind === 'apparatus' && n.meta?.role === 'feeder');
+    expect(odplywy).toHaveLength(5);
+    expect(new Map(odplywy.map((n) => [n.ref, n.symbolId]))).toEqual(
+      new Map([
+        ['QF-01', 'cad.wylacznik'],
+        ['QS-02', 'cad.rozlacznik'],
+        ['QS-03', 'cad.odlacznik'],
+        ['FU-04', 'cad.bezpiecznik'],
+        ['QS-05', 'cad.rozlacznikBezpiecznikowy'],
+      ]),
+    );
+    expect(node(s, 'QS-05').meta?.deviceKind).toBe('ROZLACZNIK_BEZPIECZNIKOWY');
+    expect(String(node(s, 'QS-05').meta?.nazwaPl).toUpperCase()).toContain('ROZŁĄCZNIK BEZPIECZNIKOWY');
   });
 
   it('[12] pełny tor DER: aparat → kabel → zacisk pcc z przekładnikiem → źródło; przekaźnik obok kikuta dolnego z łącznikiem', () => {

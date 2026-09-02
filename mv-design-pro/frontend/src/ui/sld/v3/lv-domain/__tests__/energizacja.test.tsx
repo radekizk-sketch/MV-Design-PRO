@@ -8,7 +8,7 @@
  * kolor.
  */
 import { afterEach, describe, expect, it } from 'vitest';
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 
 import { LvDomainView } from '../LvDomainView';
 import { scenariusz, type SlugScenariusza } from '../fixtures/scenariusze';
@@ -101,8 +101,17 @@ describe('Sprzęgło sekcji QBC (§7) — aparat rzeczywisty, kikuty w stanach s
       expect(screen.getByTestId(`lv-domain-bus-stan-${ref}`).textContent).toBe(etykietaStanuZasilania('CONFLICT'));
       expect(sekcja.querySelectorAll('line')).toHaveLength(2);
     }
-    expect(screen.getByTestId('lv-domain-warnings-toggle').textContent).toContain('1');
+    // Dwa komunikaty: konflikt (BLOCKER) + sprzęgło bez klasy funkcjonalnej
+    // aparatu (INFO, NN-AUD-18 — symbol ogólny łącznika); znacznik „!" TYLKO
+    // dla blokującego, informacja żyje w panelu.
+    expect(screen.getByTestId('lv-domain-warnings-toggle').textContent).toBe('Audyt: 2');
+    expect(screen.getByTestId('lv-domain-warnings-toggle')).toHaveAttribute('data-blockers', '1');
     expect(document.querySelectorAll('[data-testid^="lv-domain-warning-marker-"]')).toHaveLength(1);
+    const sprzeglo = screen.getByTestId('lv-domain-node-QBC').querySelector('g[data-symbol-family="cad"]');
+    expect(sprzeglo).toHaveAttribute('data-symbol-canon', 'cad.lacznik');
+    expect(sprzeglo).toHaveAttribute('data-switch-state', 'closed');
+    fireEvent.click(screen.getByTestId('lv-domain-warnings-toggle'));
+    expect(screen.getByTestId('lv-domain-warning-NN-AUD-18')).toHaveAttribute('data-severity', 'INFO');
   });
 });
 
@@ -238,8 +247,16 @@ describe('Tryb MONO (§26/§44) — bez koloru żaden fakt nie znika', () => {
     expect(screen.getByTestId('lv-domain-bus-stan-RGnN-B').textContent).toContain('NIEZASILONA');
     expect(screen.getByTestId('lv-domain-stan-QF-TB').textContent).toBe('OTWARTY');
     expect(kreska('QF-TB#b').getAttribute('stroke-dasharray')).not.toBeNull();
-    const glif = screen.getByTestId('lv-domain-node-QF-TB').querySelector('g[data-symbol-canon="nnBreaker"]');
-    expect(glif).not.toBeNull();
+    // Stan OTWARTY z GEOMETRII noża symbolu CAD (kąt przegubu ≠ 0), nie z
+    // wypełnienia ani koloru — w mono ten sam rysunek co w kolorze.
+    const symbol = screen.getByTestId('lv-domain-node-QF-TB').querySelector('g[data-symbol-canon="cad.wylacznik"]');
+    expect(symbol).not.toBeNull();
+    expect(symbol).toHaveAttribute('data-switch-state', 'open');
+    expect(symbol?.querySelector('[data-cad="pivot"]')?.getAttribute('data-cad-deg')).not.toBe('0');
+    expect(symbol?.querySelectorAll('[fill]:not([fill="none"])')).toHaveLength(0);
+    for (const kreskaSymbolu of symbol?.querySelectorAll('line, path, circle') ?? []) {
+      expect(kreskaSymbolu.getAttribute('stroke')).toBe(mono.kreskaBazowa);
+    }
   });
 
   it('[06] mono: konflikt niesiony podwójną kreską i etykietą, nie czerwienią', () => {

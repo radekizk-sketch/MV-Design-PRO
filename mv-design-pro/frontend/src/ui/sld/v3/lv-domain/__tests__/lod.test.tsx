@@ -45,10 +45,15 @@ function odciskToru(container: HTMLElement): readonly string[] {
     .sort();
 }
 
-function renderNaPoziomie(slug: SlugScenariusza, lod: PoziomLod, overlay: 'swz' | 'shortCircuit' | null = null): HTMLElement {
-  const { container } = render(<LvDomainView projection={scenariusz(slug)} lod={lod} width={1400} height={1000} initialOverlay={overlay} />);
+function renderNaPoziomie(slug: SlugScenariusza, lod: PoziomLod, overlay: 'swz' | 'shortCircuit' | null = null, viewport: { readonly w: number; readonly h: number } = { w: 1400, h: 1000 }): HTMLElement {
+  const { container } = render(<LvDomainView projection={scenariusz(slug)} lod={lod} width={viewport.w} height={viewport.h} initialOverlay={overlay} />);
   return container;
 }
+
+/** Kadr, w którym żadna scena wariantów nie trafia w clamp MIN (skala minimalna
+ *  zależy od poziomu — R2 §17 MIN_FIELD_WIDTH), więc jednostki świata są
+ *  identyczne na wszystkich poziomach i odcisk porównuje CZYSTĄ geometrię. */
+const KADR_BEZ_CLAMPU = { w: 4000, h: 3000 } as const;
 
 function tekstKanwy(): string {
   return [...screen.getByTestId('lv-domain-view-root').querySelectorAll('svg text')].map((t) => t.textContent ?? '').join('\n');
@@ -58,7 +63,7 @@ describe('LOD — CIĄGŁOŚĆ TORU: rysunek sieci identyczny na poziomach 0/1/2
   for (const slug of WARIANTY) {
     const odciski = new Map<PoziomLod, readonly string[]>();
     for (const lod of POZIOMY_LOD) {
-      odciski.set(lod, odciskToru(renderNaPoziomie(slug, lod)));
+      odciski.set(lod, odciskToru(renderNaPoziomie(slug, lod, null, KADR_BEZ_CLAMPU)));
       cleanup();
     }
     it(`[${slug}] odcisk toru na przeglądzie i poziomie sieci == odcisk na poziomie pełnym; odcisk niepusty`, () => {
@@ -77,7 +82,7 @@ describe('LOD — tabela warstw: co znika, co zostaje', () => {
     expect(t).toContain('QF-G1');
     expect(t).toContain('0,4 kV');
     expect(t).toContain('CT-T1');
-    expect(screen.getByTestId('lv-domain-node-relay:REL-T1').querySelector('g[data-symbol-canon="protectionRelay"]')).not.toBeNull();
+    expect(screen.getByTestId('lv-domain-node-relay:REL-T1').querySelector('g[data-symbol-canon="cad.zabezpieczenie"]')).not.toBeNull();
   });
 
   it('[12] poziom sieci: nazwy tożsamości zostają, opisy drugorzędne znikają', () => {
@@ -97,7 +102,7 @@ describe('LOD — tabela warstw: co znika, co zostaje', () => {
     expect(screen.getByTestId('lv-domain-bus-licznik-RGnN-1').textContent).toContain('12 odpływów');
     expect(t).not.toContain('QF-01');
     expect(t).not.toContain('Kotłownia');
-    expect(document.querySelectorAll('g[data-symbol-canon="nnBreaker"]').length).toBeGreaterThanOrEqual(13);
+    expect(document.querySelectorAll('g[data-symbol-canon="cad.wylacznik"]').length).toBeGreaterThanOrEqual(13);
   });
 
   it('[15] licznik odpływów istnieje WYŁĄCZNIE na przeglądzie', () => {
@@ -105,11 +110,15 @@ describe('LOD — tabela warstw: co znika, co zostaje', () => {
     expect(screen.queryByTestId('lv-domain-bus-licznik-RGnN-1')).toBeNull();
   });
 
-  it('[02] stan sprzęgła OTWARTE: glif pusty na każdym poziomie, słowo OTWARTY tylko na pełnym', () => {
+  it('[02] stan sprzęgła OTWARTE: symbol REALNEGO aparatu (wyłącznik z device_kind, poziomo) z nożem odchylonym na każdym poziomie, słowo OTWARTY tylko na pełnym', () => {
     for (const lod of POZIOMY_LOD) {
       renderNaPoziomie('02_two_tr_qbc_open', lod);
       expect(screen.getByTestId('lv-domain-node-QBC')).toHaveAttribute('data-device-state', 'OPEN');
-      expect(screen.getByTestId('lv-domain-node-QBC').querySelector('g[data-symbol-canon="nnBreaker"]')).not.toBeNull();
+      const symbol = screen.getByTestId('lv-domain-node-QBC').querySelector('g[data-symbol-canon="cad.wylacznik"]');
+      expect(symbol).not.toBeNull();
+      expect(symbol).toHaveAttribute('data-orientation', 'pozioma');
+      expect(symbol).toHaveAttribute('data-switch-state', 'open');
+      expect(symbol?.querySelector('[data-cad="pivot"]')?.getAttribute('data-cad-deg')).not.toBe('0');
       if (lod === 2) expect(screen.getByTestId('lv-domain-stan-QBC').textContent).toBe('OTWARTY');
       else expect(screen.queryByTestId('lv-domain-stan-QBC')).toBeNull();
       cleanup();

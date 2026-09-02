@@ -169,7 +169,20 @@ class BudowniczyStacji:
         )
         return ref
 
-    def rozlacznik(self, ref: str, name: str, a: str, b: str, *, status: str = "closed") -> str:
+    def rozlacznik(
+        self,
+        ref: str,
+        name: str,
+        a: str,
+        b: str,
+        *,
+        status: str = "closed",
+        device_kind: str = "ROZLACZNIK",
+    ) -> str:
+        """Rozłącznik (typ gałęzi `switch`); `device_kind` ROZLACZNIK_BEZPIECZNIKOWY
+        = rozłącznik bezpiecznikowy — operacje ENM mapują ten rodzaj katalogu
+        na TEN SAM typ gałęzi, więc klasa wyrobu żyje w `materialized_params`."""
+        bezpiecznikowy = device_kind == "ROZLACZNIK_BEZPIECZNIKOWY"
         self.branches.append(
             SwitchBranch(
                 ref_id=ref,
@@ -178,8 +191,13 @@ class BudowniczyStacji:
                 from_bus_ref=a,
                 to_bus_ref=b,
                 status=status,  # type: ignore[arg-type]
-                catalog_ref="aparat-nn-rozlacznik-160a",
+                catalog_ref=(
+                    "aparat-nn-rozlacznik-bezpiecznikowy-160a"
+                    if bezpiecznikowy
+                    else "aparat-nn-rozlacznik-160a"
+                ),
                 catalog_namespace="APARAT_NN",
+                materialized_params={"device_kind": device_kind},
             )
         )
         return ref
@@ -215,7 +233,19 @@ class BudowniczyStacji:
         )
         return ref
 
-    def sprzeglo(self, ref: str, name: str, a: str, b: str, *, status: str = "open") -> str:
+    def sprzeglo(
+        self,
+        ref: str,
+        name: str,
+        a: str,
+        b: str,
+        *,
+        status: str = "open",
+        device_kind: str | None = "WYLACZNIK",
+    ) -> str:
+        """Sprzęgło sekcji (typ `bus_coupler` = ROLA w topologii). Klasa wyrobu
+        (`device_kind`) idzie w `materialized_params` jak w operacjach ENM;
+        ``None`` = katalog nie klasyfikuje aparatu (symbol ogólny + NN-AUD-18)."""
         self.branches.append(
             SwitchBranch(
                 ref_id=ref,
@@ -226,6 +256,7 @@ class BudowniczyStacji:
                 status=status,  # type: ignore[arg-type]
                 catalog_ref="aparat-nn-sprzeglo-630a",
                 catalog_namespace="APARAT_NN",
+                materialized_params=({"device_kind": device_kind} if device_kind else None),
             )
         )
         return ref
@@ -470,6 +501,10 @@ def odplyw_do_odbioru(
         b.wylacznik(tag, nazwa, board, zacisk, in_a=in_a, status=status)
     elif aparat == "rozlacznik":
         b.rozlacznik(tag, nazwa, board, zacisk, status=status)
+    elif aparat == "rozlacznik_bezpiecznikowy":
+        b.rozlacznik(
+            tag, nazwa, board, zacisk, status=status, device_kind="ROZLACZNIK_BEZPIECZNIKOWY"
+        )
     elif aparat == "odlacznik":
         b.odlacznik(tag, nazwa, board, zacisk, status=status)
     else:
@@ -580,6 +615,7 @@ def _stacja_dwutransformatorowa(
     sprzeglo: str = "open",
     niezalezny_system_tb: bool = False,
     qf_tb_status: str = "closed",
+    sprzeglo_device_kind: str | None = "WYLACZNIK",
 ) -> BudowniczyStacji:
     b = BudowniczyStacji("stAB", "Stacja AB")
     sn = b.szyna_sn("sn", "Szyna SN 15 kV")
@@ -592,7 +628,7 @@ def _stacja_dwutransformatorowa(
     bb = b.szyna("RGnN-B", "RGnN-B", korzen=True)
     transformator_z_wylacznikiem(b, "TA", "TA", sn, a, sn_mva=0.4)
     transformator_z_wylacznikiem(b, "TB", "TB", sn_tb, bb, sn_mva=0.4, qf_status=qf_tb_status)
-    qbc = b.sprzeglo("QBC", "QBC", a, bb, status=sprzeglo)
+    qbc = b.sprzeglo("QBC", "QBC", a, bb, status=sprzeglo, device_kind=sprzeglo_device_kind)
     b.sekcje(("A", a, qbc), ("B", bb, qbc))
     odplyw_do_odbioru(b, a, "QF-A1", nazwa_odbioru="Odbiór A1", p_mw=0.02)
     odplyw_do_odbioru(b, a, "QF-A2", nazwa_odbioru="Odbiór A2", p_mw=0.015, aparat="rozlacznik")
@@ -609,7 +645,9 @@ def scenariusz_02_two_tr_qbc_open() -> EnergyNetworkModel:
 
 
 def scenariusz_03_two_tr_qbc_closed() -> EnergyNetworkModel:
-    return _stacja_dwutransformatorowa(sprzeglo="closed").zbuduj()
+    # Sprzęgło ZAMKNIĘTE jako ROZŁĄCZNIK (druga klasa aparatu sprzęgła obok
+    # wyłącznika w 02) — symbol realnego aparatu z `device_kind`, nie „QBC".
+    return _stacja_dwutransformatorowa(sprzeglo="closed", sprzeglo_device_kind="ROZLACZNIK").zbuduj()
 
 
 def scenariusz_04_shared_upstream_boundary() -> EnergyNetworkModel:
@@ -624,7 +662,11 @@ def scenariusz_05_independent_upstream() -> EnergyNetworkModel:
 
 
 def scenariusz_06_conflict_parallel_sources() -> EnergyNetworkModel:
-    return _stacja_dwutransformatorowa(sprzeglo="closed", niezalezny_system_tb=True).zbuduj()
+    # Sprzęgło BEZ klasy funkcjonalnej aparatu (katalog nie klasyfikuje) —
+    # trzecia ścieżka symbolu sprzęgła: łącznik ogólny + NN-AUD-18 (obok konfliktu).
+    return _stacja_dwutransformatorowa(
+        sprzeglo="closed", niezalezny_system_tb=True, sprzeglo_device_kind=None
+    ).zbuduj()
 
 
 def _stacja_z_wyspa(
@@ -771,6 +813,17 @@ def scenariusz_13_loads_via_fields() -> EnergyNetworkModel:
         p_mw=0.015,
         in_a=40.0,
         przekroj=25,
+    )
+    # Piąty rodzaj aparatu: ROZŁĄCZNIK BEZPIECZNIKOWY (typ `switch` +
+    # device_kind ROZLACZNIK_BEZPIECZNIKOWY — jak z operacji ENM/katalogu APARAT_NN).
+    odplyw_do_odbioru(
+        b,
+        board,
+        "QS-05",
+        aparat="rozlacznik_bezpiecznikowy",
+        nazwa_odbioru="Wentylacja",
+        p_mw=0.006,
+        przekroj=16,
     )
     b.odbior("odbior_bez_pola", "Odbiór bez pola (audyt)", board, 0.003)
     return b.zbuduj()

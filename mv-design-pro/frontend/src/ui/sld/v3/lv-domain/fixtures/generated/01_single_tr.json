@@ -9,6 +9,7 @@
       {
         "catalog_namespace": "WKLADKA_NN",
         "catalog_ref": "wkladka-nn-gg-20",
+        "device_kind": null,
         "from_bus_ref": "RGN-2_szyna",
         "name": "FU-21",
         "ref_id": "FU-21",
@@ -19,6 +20,7 @@
       {
         "catalog_namespace": "KABEL_NN",
         "catalog_ref": "kabel-nn-yaky-4x16",
+        "device_kind": null,
         "from_bus_ref": "FU-21_zacisk",
         "name": "Kabel FU-21",
         "ref_id": "FU-21_kabel",
@@ -29,6 +31,7 @@
       {
         "catalog_namespace": "APARAT_NN_MCB",
         "catalog_ref": "aparat-nn-mcb-c25",
+        "device_kind": null,
         "from_bus_ref": "RGnN-1",
         "name": "QF-01",
         "ref_id": "QF-01",
@@ -39,6 +42,7 @@
       {
         "catalog_namespace": "KABEL_NN",
         "catalog_ref": "kabel-nn-yaky-4x25",
+        "device_kind": null,
         "from_bus_ref": "QF-01_zacisk",
         "name": "Kabel QF-01",
         "ref_id": "QF-01_kabel",
@@ -49,6 +53,7 @@
       {
         "catalog_namespace": "APARAT_NN_MCB",
         "catalog_ref": "aparat-nn-mcb-c125",
+        "device_kind": null,
         "from_bus_ref": "RGnN-1",
         "name": "QF-02",
         "ref_id": "QF-02",
@@ -59,6 +64,7 @@
       {
         "catalog_namespace": "KABEL_NN",
         "catalog_ref": "kabel-nn-yaky-4x70",
+        "device_kind": null,
         "from_bus_ref": "QF-02_zacisk",
         "name": "Kabel QF-02",
         "ref_id": "QF-02_kabel",
@@ -69,6 +75,7 @@
       {
         "catalog_namespace": "APARAT_NN_MCB",
         "catalog_ref": "aparat-nn-mcb-c100",
+        "device_kind": null,
         "from_bus_ref": "RGnN-1",
         "name": "QF-03",
         "ref_id": "QF-03",
@@ -79,6 +86,7 @@
       {
         "catalog_namespace": "KABEL_NN",
         "catalog_ref": "kabel-nn-yaky-4x50",
+        "device_kind": null,
         "from_bus_ref": "QF-03_zacisk",
         "name": "Kabel QF-03",
         "ref_id": "QF-03_kabel",
@@ -89,6 +97,7 @@
       {
         "catalog_namespace": "APARAT_NN_MCB",
         "catalog_ref": "aparat-nn-mcb-c2300",
+        "device_kind": null,
         "from_bus_ref": "T1_zacisk",
         "name": "QF-T1",
         "ref_id": "QF-T1",
@@ -254,6 +263,7 @@
         "board_bus_ref": "RGN-2_szyna",
         "child_bus_ref": "FU-21_zacisk",
         "designation_class": "FU",
+        "device_kind": null,
         "device_role": "feeder",
         "device_state": "CLOSED",
         "device_type": "fuse",
@@ -268,6 +278,7 @@
         "board_bus_ref": null,
         "child_bus_ref": "FU-21_koniec",
         "designation_class": "W",
+        "device_kind": null,
         "device_role": "internal",
         "device_state": "CLOSED",
         "device_type": "cable",
@@ -282,6 +293,7 @@
         "board_bus_ref": "RGnN-1",
         "child_bus_ref": "QF-01_zacisk",
         "designation_class": "QF",
+        "device_kind": null,
         "device_role": "feeder",
         "device_state": "CLOSED",
         "device_type": "breaker",
@@ -296,6 +308,7 @@
         "board_bus_ref": null,
         "child_bus_ref": "QF-01_koniec",
         "designation_class": "W",
+        "device_kind": null,
         "device_role": "internal",
         "device_state": "CLOSED",
         "device_type": "cable",
@@ -310,6 +323,7 @@
         "board_bus_ref": "RGnN-1",
         "child_bus_ref": "QF-02_zacisk",
         "designation_class": "QF",
+        "device_kind": null,
         "device_role": "feeder",
         "device_state": "CLOSED",
         "device_type": "breaker",
@@ -324,6 +338,7 @@
         "board_bus_ref": null,
         "child_bus_ref": "RGN-2_szyna",
         "designation_class": "W",
+        "device_kind": null,
         "device_role": "internal",
         "device_state": "CLOSED",
         "device_type": "cable",
@@ -338,6 +353,7 @@
         "board_bus_ref": "RGnN-1",
         "child_bus_ref": "QF-03_zacisk",
         "designation_class": "QF",
+        "device_kind": null,
         "device_role": "feeder",
         "device_state": "CLOSED",
         "device_type": "breaker",
@@ -352,6 +368,7 @@
         "board_bus_ref": null,
         "child_bus_ref": "QF-03_pcc",
         "designation_class": "W",
+        "device_kind": null,
         "device_role": "internal",
         "device_state": "CLOSED",
         "device_type": "cable",
@@ -366,6 +383,7 @@
         "board_bus_ref": "RGnN-1",
         "child_bus_ref": "RGnN-1",
         "designation_class": "QF",
+        "device_kind": null,
         "device_role": "incomer",
         "device_state": "CLOSED",
         "device_type": "breaker",
@@ -465,8 +483,12 @@
     "measured_voltage_states": {},
     "measurements": [
       {
+        "accuracy_class": null,
         "bay_ref": null,
+        "burden_va": null,
         "bus_ref": "T1_zacisk",
+        "ct_arrangement": null,
+        "ct_cores": null,
         "measurement_type": "CT",
         "name": "CT-T1",
         "purpose": "protection",
@@ -928,7 +950,7 @@
     "scenario_id": "MAX",
     "station_ref": "stC"
   },
-  "projection_hash": "bde1502eded5315c00e19fdd6c387f702256ee890d0df940075001a5d4750b1e",
+  "projection_hash": "7d182c0762c0ae16a268fe73e078bd819c82f5a967b9cbb88c0443af55ce34c5",
   "result_snapshot": {
     "analysis_type": null,
     "overlay_payload": null,

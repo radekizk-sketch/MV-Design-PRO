@@ -9,6 +9,7 @@
       {
         "catalog_namespace": "WKLADKA_NN",
         "catalog_ref": "wkladka-nn-gg-40",
+        "device_kind": null,
         "from_bus_ref": "RGnN-1",
         "name": "FU-04",
         "ref_id": "FU-04",
@@ -19,6 +20,7 @@
       {
         "catalog_namespace": "KABEL_NN",
         "catalog_ref": "kabel-nn-yaky-4x25",
+        "device_kind": null,
         "from_bus_ref": "FU-04_zacisk",
         "name": "Kabel FU-04",
         "ref_id": "FU-04_kabel",
@@ -29,6 +31,7 @@
       {
         "catalog_namespace": "APARAT_NN_MCB",
         "catalog_ref": "aparat-nn-mcb-c125",
+        "device_kind": null,
         "from_bus_ref": "RGnN-1",
         "name": "QF-01",
         "ref_id": "QF-01",
@@ -39,6 +42,7 @@
       {
         "catalog_namespace": "KABEL_NN",
         "catalog_ref": "kabel-nn-yaky-4x70",
+        "device_kind": null,
         "from_bus_ref": "QF-01_zacisk",
         "name": "Kabel QF-01",
         "ref_id": "QF-01_kabel",
@@ -49,6 +53,7 @@
       {
         "catalog_namespace": "APARAT_NN_MCB",
         "catalog_ref": "aparat-nn-mcb-c1400",
+        "device_kind": null,
         "from_bus_ref": "T1_zacisk",
         "name": "QF-T1",
         "ref_id": "QF-T1",
@@ -59,6 +64,7 @@
       {
         "catalog_namespace": "APARAT_NN",
         "catalog_ref": "aparat-nn-rozlacznik-160a",
+        "device_kind": "ROZLACZNIK",
         "from_bus_ref": "RGnN-1",
         "name": "QS-02",
         "ref_id": "QS-02",
@@ -69,6 +75,7 @@
       {
         "catalog_namespace": "KABEL_NN",
         "catalog_ref": "kabel-nn-yaky-4x16",
+        "device_kind": null,
         "from_bus_ref": "QS-02_zacisk",
         "name": "Kabel QS-02",
         "ref_id": "QS-02_kabel",
@@ -79,6 +86,7 @@
       {
         "catalog_namespace": "APARAT_NN",
         "catalog_ref": "aparat-nn-odlacznik-250a",
+        "device_kind": null,
         "from_bus_ref": "RGnN-1",
         "name": "QS-03",
         "ref_id": "QS-03",
@@ -89,11 +97,34 @@
       {
         "catalog_namespace": "KABEL_NN",
         "catalog_ref": "kabel-nn-yaky-4x16",
+        "device_kind": null,
         "from_bus_ref": "QS-03_zacisk",
         "name": "Kabel QS-03",
         "ref_id": "QS-03_kabel",
         "status": "closed",
         "to_bus_ref": "QS-03_koniec",
+        "type": "cable"
+      },
+      {
+        "catalog_namespace": "APARAT_NN",
+        "catalog_ref": "aparat-nn-rozlacznik-bezpiecznikowy-160a",
+        "device_kind": "ROZLACZNIK_BEZPIECZNIKOWY",
+        "from_bus_ref": "RGnN-1",
+        "name": "QS-05",
+        "ref_id": "QS-05",
+        "status": "closed",
+        "to_bus_ref": "QS-05_zacisk",
+        "type": "switch"
+      },
+      {
+        "catalog_namespace": "KABEL_NN",
+        "catalog_ref": "kabel-nn-yaky-4x16",
+        "device_kind": null,
+        "from_bus_ref": "QS-05_zacisk",
+        "name": "Kabel QS-05",
+        "ref_id": "QS-05_kabel",
+        "status": "closed",
+        "to_bus_ref": "QS-05_koniec",
         "type": "cable"
       }
     ],
@@ -221,6 +252,36 @@
       {
         "energization_state": "ENERGIZED",
         "grid_energized": true,
+        "hops_from_root": 2,
+        "is_board": false,
+        "is_energized": true,
+        "island_ref": "island-1",
+        "name": "Zacisk Wentylacja",
+        "ref_id": "QS-05_koniec",
+        "supply_refs": [
+          "T1"
+        ],
+        "voltage_kv": 0.4,
+        "voltage_level_id": "kv:0.4"
+      },
+      {
+        "energization_state": "ENERGIZED",
+        "grid_energized": true,
+        "hops_from_root": 1,
+        "is_board": false,
+        "is_energized": true,
+        "island_ref": "island-1",
+        "name": "QS-05 zacisk wyjściowy",
+        "ref_id": "QS-05_zacisk",
+        "supply_refs": [
+          "T1"
+        ],
+        "voltage_kv": 0.4,
+        "voltage_level_id": "kv:0.4"
+      },
+      {
+        "energization_state": "ENERGIZED",
+        "grid_energized": true,
         "hops_from_root": 0,
         "is_board": true,
         "is_energized": true,
@@ -254,6 +315,7 @@
         "board_bus_ref": "RGnN-1",
         "child_bus_ref": "FU-04_zacisk",
         "designation_class": "FU",
+        "device_kind": null,
         "device_role": "feeder",
         "device_state": "CLOSED",
         "device_type": "fuse",
@@ -268,6 +330,7 @@
         "board_bus_ref": null,
         "child_bus_ref": "FU-04_koniec",
         "designation_class": "W",
+        "device_kind": null,
         "device_role": "internal",
         "device_state": "CLOSED",
         "device_type": "cable",
@@ -282,6 +345,7 @@
         "board_bus_ref": "RGnN-1",
         "child_bus_ref": "QF-01_zacisk",
         "designation_class": "QF",
+        "device_kind": null,
         "device_role": "feeder",
         "device_state": "CLOSED",
         "device_type": "breaker",
@@ -296,6 +360,7 @@
         "board_bus_ref": null,
         "child_bus_ref": "QF-01_koniec",
         "designation_class": "W",
+        "device_kind": null,
         "device_role": "internal",
         "device_state": "CLOSED",
         "device_type": "cable",
@@ -310,6 +375,7 @@
         "board_bus_ref": "RGnN-1",
         "child_bus_ref": "RGnN-1",
         "designation_class": "QF",
+        "device_kind": null,
         "device_role": "incomer",
         "device_state": "CLOSED",
         "device_type": "breaker",
@@ -324,6 +390,7 @@
         "board_bus_ref": "RGnN-1",
         "child_bus_ref": "QS-02_zacisk",
         "designation_class": "QS",
+        "device_kind": "ROZLACZNIK",
         "device_role": "feeder",
         "device_state": "CLOSED",
         "device_type": "switch",
@@ -338,6 +405,7 @@
         "board_bus_ref": null,
         "child_bus_ref": "QS-02_koniec",
         "designation_class": "W",
+        "device_kind": null,
         "device_role": "internal",
         "device_state": "CLOSED",
         "device_type": "cable",
@@ -352,6 +420,7 @@
         "board_bus_ref": "RGnN-1",
         "child_bus_ref": "QS-03_zacisk",
         "designation_class": "QS",
+        "device_kind": null,
         "device_role": "feeder",
         "device_state": "CLOSED",
         "device_type": "disconnector",
@@ -366,6 +435,7 @@
         "board_bus_ref": null,
         "child_bus_ref": "QS-03_koniec",
         "designation_class": "W",
+        "device_kind": null,
         "device_role": "internal",
         "device_state": "CLOSED",
         "device_type": "cable",
@@ -374,6 +444,36 @@
         "ref_id": "QS-03_kabel",
         "terminal_a": "QS-03_zacisk",
         "terminal_b": "QS-03_koniec",
+        "transformer_ref": null
+      },
+      {
+        "board_bus_ref": "RGnN-1",
+        "child_bus_ref": "QS-05_zacisk",
+        "designation_class": "QS",
+        "device_kind": "ROZLACZNIK_BEZPIECZNIKOWY",
+        "device_role": "feeder",
+        "device_state": "CLOSED",
+        "device_type": "switch",
+        "feeder_kind": "load",
+        "parent_bus_ref": "RGnN-1",
+        "ref_id": "QS-05",
+        "terminal_a": "RGnN-1",
+        "terminal_b": "QS-05_zacisk",
+        "transformer_ref": null
+      },
+      {
+        "board_bus_ref": null,
+        "child_bus_ref": "QS-05_koniec",
+        "designation_class": "W",
+        "device_kind": null,
+        "device_role": "internal",
+        "device_state": "CLOSED",
+        "device_type": "cable",
+        "feeder_kind": null,
+        "parent_bus_ref": "QS-05_zacisk",
+        "ref_id": "QS-05_kabel",
+        "terminal_a": "QS-05_zacisk",
+        "terminal_b": "QS-05_koniec",
         "transformer_ref": null
       }
     ],
@@ -391,6 +491,8 @@
           "QS-02_zacisk",
           "QS-03_koniec",
           "QS-03_zacisk",
+          "QS-05_koniec",
+          "QS-05_zacisk",
           "RGnN-1",
           "T1_zacisk"
         ],
@@ -418,7 +520,7 @@
         "power_balance": {
           "basis_pl": "suma mocy znamionowych z modelu (dane źródłowe, nie wynik rozpływu)",
           "p_generation_mw": 0,
-          "p_load_mw": 0.09,
+          "p_load_mw": 0.096,
           "state": "z_sieci"
         },
         "transformer_refs": [
@@ -459,6 +561,13 @@
         "p_mw": 0.004,
         "q_mvar": 0.0008,
         "ref_id": "QS-03_odbior"
+      },
+      {
+        "bus_ref": "QS-05_koniec",
+        "name": "Wentylacja",
+        "p_mw": 0.006,
+        "q_mvar": 0.0012,
+        "ref_id": "QS-05_odbior"
       },
       {
         "bus_ref": "RGnN-1",
@@ -762,6 +871,66 @@
           ]
         },
         "voltage_level_id": "kv:0.4"
+      },
+      {
+        "connectivity_state": "CLOSED",
+        "energization_state": "ENERGIZED",
+        "from_bus_ref": "RGnN-1",
+        "from_terminal": {
+          "energization_state": "ENERGIZED",
+          "grid_energized": true,
+          "is_energized": true,
+          "island_ref": "island-1",
+          "supply_refs": [
+            "T1"
+          ]
+        },
+        "island_ref": "island-1",
+        "segment_id": "QS-05",
+        "source_ids": [
+          "T1"
+        ],
+        "to_bus_ref": "QS-05_zacisk",
+        "to_terminal": {
+          "energization_state": "ENERGIZED",
+          "grid_energized": true,
+          "is_energized": true,
+          "island_ref": "island-1",
+          "supply_refs": [
+            "T1"
+          ]
+        },
+        "voltage_level_id": "kv:0.4"
+      },
+      {
+        "connectivity_state": "CLOSED",
+        "energization_state": "ENERGIZED",
+        "from_bus_ref": "QS-05_zacisk",
+        "from_terminal": {
+          "energization_state": "ENERGIZED",
+          "grid_energized": true,
+          "is_energized": true,
+          "island_ref": "island-1",
+          "supply_refs": [
+            "T1"
+          ]
+        },
+        "island_ref": "island-1",
+        "segment_id": "QS-05_kabel",
+        "source_ids": [
+          "T1"
+        ],
+        "to_bus_ref": "QS-05_koniec",
+        "to_terminal": {
+          "energization_state": "ENERGIZED",
+          "grid_energized": true,
+          "is_energized": true,
+          "island_ref": "island-1",
+          "supply_refs": [
+            "T1"
+          ]
+        },
+        "voltage_level_id": "kv:0.4"
       }
     ],
     "station_name": "Stacja odbiorcza",
@@ -847,6 +1016,25 @@
       },
       {
         "branch_refs": [
+          "QF-T1",
+          "QS-05",
+          "QS-05_kabel"
+        ],
+        "bus_ref": "QS-05_koniec",
+        "source_bus_ref": "T1_zacisk",
+        "source_ref": "T1"
+      },
+      {
+        "branch_refs": [
+          "QF-T1",
+          "QS-05"
+        ],
+        "bus_ref": "QS-05_zacisk",
+        "source_bus_ref": "T1_zacisk",
+        "source_ref": "T1"
+      },
+      {
+        "branch_refs": [
           "QF-T1"
         ],
         "bus_ref": "RGnN-1",
@@ -879,14 +1067,14 @@
   "missing_data": [],
   "model_snapshot": {
     "case_id": "fixture-13_loads_via_fields",
-    "model_hash": "90951c43def58456e93f18672dfc14cd2f911470ea0ef07d6343b1e4abf8bb33",
-    "operating_state_id": "09d81617ba5a05165fade1bb1026132d08934c52e8f00c41f4fa0bf0736d7193",
+    "model_hash": "36615b51bc64944cc416781b48cf5fc8f2b8ead9acd346b2e97b618fb1c79640",
+    "operating_state_id": "ffe98042340210fafb8d262f78c0be0fd5257fd8d6c577c498edaad604b0b07f",
     "revision": 1,
     "run_snapshot_hash": null,
     "scenario_id": "MAX",
     "station_ref": "stODB"
   },
-  "projection_hash": "97e97de58582dee54d72c1ea875e6e7fd3e84a2637f2eb4aee10f6b07afcf569",
+  "projection_hash": "570f2fe6e324bba3ff43dfef290db7bffe12a2d6b37eee48945f021e2a0b9e7d",
   "result_snapshot": {
     "analysis_type": null,
     "overlay_payload": null,
@@ -1740,7 +1928,7 @@
                 "breaker_catalog_binding"
               ],
               "network_system": "TN-C-S",
-              "reason_pl": "Aparat 'QS-02' nie ma zmaterializowanych danych katalogowych (materialized_params) — SWZ wymaga wiązania z katalogiem (Catalog Binding).",
+              "reason_pl": "Aparat 'QS-02' bez i_n_a w materialized_params.",
               "station_name": "Stacja odbiorcza",
               "station_ref": "stODB",
               "status": "brak danych"
@@ -1942,6 +2130,202 @@
               "status": "brak danych"
             },
             "worst_point_bus_ref": "QS-03_koniec"
+          },
+          {
+            "feeder_root_branch_ref": "QS-05",
+            "points": [
+              {
+                "bus_ref": "QS-05_koniec",
+                "fault_loop": {
+                  "components": [
+                    {
+                      "label": "Przewód fazowy L (trasa)",
+                      "magnitude_ohm": 0.0955837329256396,
+                      "r_ohm": 0.0955,
+                      "x_ohm": 0.004
+                    },
+                    {
+                      "label": "Przewód powrotny PE/PEN (trasa)",
+                      "magnitude_ohm": 0.0955837329256396,
+                      "r_ohm": 0.0955,
+                      "x_ohm": 0.004
+                    },
+                    {
+                      "label": "Transformator SN/nN T1",
+                      "magnitude_ohm": 0.016,
+                      "r_ohm": 0.004120000000000001,
+                      "x_ohm": 0.015460452774741108
+                    },
+                    {
+                      "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
+                      "magnitude_ohm": 0.0003625969431888203,
+                      "r_ohm": 7.111111111111113e-05,
+                      "x_ohm": 0.0003555555555555556
+                    }
+                  ],
+                  "fault_node_id": "QS-05_koniec",
+                  "ik_max_a": 1233.1607795846467,
+                  "ik_min_a": 1115.7168958146801,
+                  "network_type": "TN-C-S",
+                  "protection_arrangement": "PEN",
+                  "u_nom_v": 230.94010767585033,
+                  "white_box_trace": [
+                    {
+                      "components": [
+                        {
+                          "label": "Przewód fazowy L (trasa)",
+                          "r_ohm": 0.0955,
+                          "x_ohm": 0.004
+                        },
+                        {
+                          "label": "Przewód powrotny PE/PEN (trasa)",
+                          "r_ohm": 0.0955,
+                          "x_ohm": 0.004
+                        },
+                        {
+                          "label": "Transformator SN/nN T1",
+                          "r_ohm": 0.004120000000000001,
+                          "x_ohm": 0.015460452774741108
+                        },
+                        {
+                          "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
+                          "r_ohm": 7.111111111111113e-05,
+                          "x_ohm": 0.0003555555555555556
+                        }
+                      ],
+                      "method": "Z_loop = Σ(R_i + jX_i)",
+                      "result": {
+                        "magnitude_ohm": 0.19663868416356658,
+                        "r_total_ohm": 0.19519111111111112,
+                        "x_total_ohm": 0.023816008330296665
+                      },
+                      "step": "sum_components"
+                    },
+                    {
+                      "c_max": 1.05,
+                      "c_min": 0.95,
+                      "ik_max_a": 1233.1607795846467,
+                      "ik_min_a": 1115.7168958146801,
+                      "method": "I_k = c * U_n / |Z_loop|",
+                      "step": "compute_ik",
+                      "u_nom_v": 230.94010767585033,
+                      "z_magnitude_ohm": 0.19663868416356658
+                    }
+                  ],
+                  "z_loop_ohm": {
+                    "im": 0.023816008330296665,
+                    "magnitude": 0.19663868416356658,
+                    "re": 0.19519111111111112
+                  }
+                },
+                "hop_count": 3,
+                "reason_pl": null,
+                "status": "OK"
+              },
+              {
+                "bus_ref": "QS-05_zacisk",
+                "fault_loop": {
+                  "components": [
+                    {
+                      "label": "Przewód fazowy L (trasa)",
+                      "magnitude_ohm": 0.0,
+                      "r_ohm": 0.0,
+                      "x_ohm": 0.0
+                    },
+                    {
+                      "label": "Przewód powrotny PE/PEN (trasa)",
+                      "magnitude_ohm": 0.0,
+                      "r_ohm": 0.0,
+                      "x_ohm": 0.0
+                    },
+                    {
+                      "label": "Transformator SN/nN T1",
+                      "magnitude_ohm": 0.016,
+                      "r_ohm": 0.004120000000000001,
+                      "x_ohm": 0.015460452774741108
+                    },
+                    {
+                      "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
+                      "magnitude_ohm": 0.0003625969431888203,
+                      "r_ohm": 7.111111111111113e-05,
+                      "x_ohm": 0.0003555555555555556
+                    }
+                  ],
+                  "fault_node_id": "QS-05_zacisk",
+                  "ik_max_a": 14820.236136657626,
+                  "ik_min_a": 13408.785076023563,
+                  "network_type": "TN-C-S",
+                  "protection_arrangement": "PEN",
+                  "u_nom_v": 230.94010767585033,
+                  "white_box_trace": [
+                    {
+                      "components": [
+                        {
+                          "label": "Przewód fazowy L (trasa)",
+                          "r_ohm": 0.0,
+                          "x_ohm": 0.0
+                        },
+                        {
+                          "label": "Przewód powrotny PE/PEN (trasa)",
+                          "r_ohm": 0.0,
+                          "x_ohm": 0.0
+                        },
+                        {
+                          "label": "Transformator SN/nN T1",
+                          "r_ohm": 0.004120000000000001,
+                          "x_ohm": 0.015460452774741108
+                        },
+                        {
+                          "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
+                          "r_ohm": 7.111111111111113e-05,
+                          "x_ohm": 0.0003555555555555556
+                        }
+                      ],
+                      "method": "Z_loop = Σ(R_i + jX_i)",
+                      "result": {
+                        "magnitude_ohm": 0.01636189267321151,
+                        "r_total_ohm": 0.0041911111111111125,
+                        "x_total_ohm": 0.015816008330296664
+                      },
+                      "step": "sum_components"
+                    },
+                    {
+                      "c_max": 1.05,
+                      "c_min": 0.95,
+                      "ik_max_a": 14820.236136657626,
+                      "ik_min_a": 13408.785076023563,
+                      "method": "I_k = c * U_n / |Z_loop|",
+                      "step": "compute_ik",
+                      "u_nom_v": 230.94010767585033,
+                      "z_magnitude_ohm": 0.01636189267321151
+                    }
+                  ],
+                  "z_loop_ohm": {
+                    "im": 0.015816008330296664,
+                    "magnitude": 0.01636189267321151,
+                    "re": 0.0041911111111111125
+                  }
+                },
+                "hop_count": 2,
+                "reason_pl": null,
+                "status": "OK"
+              }
+            ],
+            "supply": "jednostronne",
+            "supply_assumption_pl": null,
+            "swz": {
+              "breaker_ref": "QS-05",
+              "bus_ref": "QS-05_koniec",
+              "missing_data": [
+                "breaker_catalog_binding"
+              ],
+              "network_system": "TN-C-S",
+              "reason_pl": "Aparat 'QS-05' bez i_n_a w materialized_params.",
+              "station_name": "Stacja odbiorcza",
+              "station_ref": "stODB",
+              "status": "brak danych"
+            },
+            "worst_point_bus_ref": "QS-05_koniec"
           }
         ],
         "missing_data": [],
@@ -1954,16 +2338,16 @@
   "upstream_equivalents": [
     {
       "c_factor": 1.1,
-      "calculation_run_id": "c78a145a-7fd7-5541-aad1-bf8cdf30c8e8",
+      "calculation_run_id": "d67792c9-4ade-5e1f-bfcc-3a03474c74cc",
       "case_id": "fixture-13_loads_via_fields",
-      "equivalent_id": "347ef669-9909-5104-9a99-7c1f45fe5d11",
+      "equivalent_id": "7bf1943a-89d6-5535-9905-0b678c40265b",
       "ikss_ka": 18.682571063385833,
       "missing_data": [],
-      "model_hash": "90951c43def58456e93f18672dfc14cd2f911470ea0ef07d6343b1e4abf8bb33",
+      "model_hash": "36615b51bc64944cc416781b48cf5fc8f2b8ead9acd346b2e97b618fb1c79640",
       "model_revision": 1,
       "note_pl": "Równoważnik Thevenina sieci SN w punkcie HV transformatora — granica wizualna domeny nN (L2) jest granicą domeny napięciowej i projekcji, NIE przerwaniem zależności obliczeniowej: ten snapshot jest dokładnie tym wejściem, którym solver pętli zwarcia nN liczy stronę SN (application.analyses.fault_loop).",
-      "operating_state_id": "09d81617ba5a05165fade1bb1026132d08934c52e8f00c41f4fa0bf0736d7193",
-      "rx_ratio": 0.20000000000000004,
+      "operating_state_id": "ffe98042340210fafb8d262f78c0be0fd5257fd8d6c577c498edaad604b0b07f",
+      "rx_ratio": 0.2,
       "scenario_id": "MAX",
       "sk_mva": 485.3874344670055,
       "source_node_id": "597eca72-4f74-52ca-9b72-548d57f0df86",
@@ -1988,7 +2372,7 @@
         "x": 0.0
       },
       "z1_ohm": {
-        "r": 0.10000000000000002,
+        "r": 0.1,
         "x": 0.5
       }
     }

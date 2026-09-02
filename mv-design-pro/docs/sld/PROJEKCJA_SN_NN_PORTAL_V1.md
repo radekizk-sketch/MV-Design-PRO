@@ -1,4 +1,4 @@
-# PROJEKCJA SN / nN I PORTAL DOMENY nN — KANON V1 (2026-09-01, rewizja 3.0.0 z 2026-09-02)
+# PROJEKCJA SN / nN I PORTAL DOMENY nN — KANON V1 (2026-09-01, rewizja 3.0.0 z 2026-09-02; warstwa symboli CAD R2 z 2026-09-02)
 
 **Status:** kanon BINDING warstwy prezentacji SLD (podporządkowany kanonowi
 V12.xx i `docs/system/SPEC_*.md`). Zastępuje w całości
@@ -97,19 +97,19 @@ ATOMOWO, z JEDNEGO obiektu ENM pobranego raz:
 | tożsamość żądania | `model_snapshot.{case_id, station_ref, scenario_id}` | klient porównuje z tym, o co prosił |
 | tożsamość modelu | `model_snapshot.{revision, model_hash, operating_state_id, run_snapshot_hash}` | odcisk modelu i stanu łączeniowego; odcisk modelu zapisany przy biegu |
 | szyny (zaciski) | `graph.buses[]` | `energization_state` (ENERGIZED / DEENERGIZED / UNKNOWN / CONFLICT / MULTISOURCE), `is_energized`, `supply_refs`, `island_ref`, `grid_energized`, `is_board`, `hops_from_root` |
-| urządzenia | `graph.devices[]` | typ ENM, `designation_class` (QF/QS/FU/QBC/W), `device_role` (incomer/feeder/coupler/boundary/internal), `feeder_kind`, `device_state`, oba zaciski (`terminal_a/b`), `board_bus_ref`, `parent/child_bus_ref`, `transformer_ref` |
+| urządzenia | `graph.devices[]` | typ ENM, `device_kind` (klasa funkcjonalna wyrobu z katalogu: WYLACZNIK / ROZLACZNIK / ROZLACZNIK_BEZPIECZNIKOWY / ODLACZNIK…, `null` = katalog nie klasyfikuje — pole addytywne R2), `designation_class` (QF/QS/FU/QBC/W), `device_role` (incomer/feeder/coupler/boundary/internal), `feeder_kind`, `device_state`, oba zaciski (`terminal_a/b`), `board_bus_ref`, `parent/child_bus_ref`, `transformer_ref` |
 | odcinki | `graph.segments[]` | `connectivity_state` (CLOSED/OPEN), stan KAŻDEGO zacisku (`from_terminal`, `to_terminal`), `energization_state` odcinka (przewód za otwartym łącznikiem = DEENERGIZED), `source_ids`, `island_ref`, `voltage_level_id` |
 | sekcje | `graph.sections[]` | `tier` (main/sub), `order`, `coupler_refs`, `incomer_refs`, `transformer_refs` |
 | wyspy §14–§16 | `graph.islands[]` | `is_islanded`, `energization_state`, `energizing_source_ids`, `grid_source_refs`, `has_grid_forming_source`, `frequency_reference_source_id`, `neutral_reference {system, source_ref, status, status_pl, swz_evaluable}`, `power_balance {p_generation_mw, p_load_mw, state, basis_pl}`, `island_operation_allowed` (`null` = nieoceniona), `upstream_system_ids`, `validation_messages[]` |
 | źródła rozproszone | `graph.generators[]` | `island_capability` (GRID_FOLLOWING / GRID_FORMING / DUAL_MODE / UNKNOWN), `capability_source_pl`, `island_operation_capable` |
 | tory zasilania | `graph.supply_paths[]` | `bus_ref → source_ref → branch_refs[]` (podświetlenie pełnego toru w UI, zero BFS po stronie klienta) |
-| pomiary i zabezpieczenia | `graph.measurements[]`, `graph.protection_assignments[]` | CT/VT na zacisku (`ratio_primary/secondary`), przekaźnik przypisany do aparatu z `function_codes[]` i `ct_ref` |
+| pomiary i zabezpieczenia | `graph.measurements[]`, `graph.protection_assignments[]` | CT/VT na zacisku (`ratio_primary/secondary` + tabliczka addytywna R2: `accuracy_class`, `burden_va`, `ct_cores`, `ct_arrangement` — `null`, gdy model nie niesie), przekaźnik przypisany do aparatu z `function_codes[]` i `ct_ref` |
 | tożsamość zasilania SN | `graph.transformers[].upstream_system_id`, `upstream_equivalents[].{equivalent_id, upstream_node_id, upstream_system_id, upstream_source_ids, upstream_source_names}` | transformatory o wspólnym zasilaniu dzielą `equivalent_id`; niezależne systemy mają różne `upstream_system_id` |
 | kotwice SN | `upstream_equivalents[]` | `UpstreamEquivalentSnapshot` KAŻDEGO transformatora stacji (Uth/Sk″/Ik″/Z1/Z0 albo `brak danych` z `missing_data`) |
 | wynik | `result_snapshot` | status `FRESH`/`OUTDATED`/`NONE` + `reason_pl`, nakładka zamrożonego ResultSet v1 zawężona do domeny, profil napięć kluczowany **referencją ENM szyny** (`rows[].bus_id`, `solver_bus_id` dodatkowo) |
 | pętle zwarcia i SWZ | `swz_snapshot.transformers[]` | per transformator: `transformer_ref`, `nn_bus_ref`, `status`, `missing_data`, `feeders[]` (punkty pętli, najgorszy punkt, `supply`, `supply_assumption_pl`, werdykt SWZ); liczone Z MODELU przy budowie projekcji (IEC 60364-4-41), niezależnie od przebiegu |
 | podstawa energizacji §17 | `graph.measured_voltage_states`, `graph.energization_basis_pl` | ENM nie niesie pomiarów obecności napięcia — stany są TOPOLOGICZNE („NIEZASILONA (WG AKTUALNEJ TOPOLOGII)"), a mapa pomiarów jest pusta i jawna |
-| audyt topologii §34 | `validation_messages[]` | `NN-AUD-01…17` z `severity` (BLOCKER/IMPORTANT/INFO), `message_pl`, `element_refs` |
+| audyt topologii §34 | `validation_messages[]` | `NN-AUD-01…18` z `severity` (BLOCKER/IMPORTANT/INFO), `message_pl`, `element_refs`; NN-AUD-18 (INFO, R2 §6) = sprzęgło bez klasy funkcjonalnej aparatu — na schemacie symbol ogólny łącznika, nie dorysowany wyłącznik |
 | odcisk projekcji | `projection_hash` | deterministyczny |
 
 Reguły energizacji (`lv_domain/energization.py`, jedna definicja dla szyn,
@@ -186,22 +186,46 @@ ręcznie wpisaną energizacją.
 
 ## 5. Rejestr symboli, gramatyka wizualna, LOD
 
-- **Rejestr symboli** (`lv-domain/symbolRegistry.ts`, §4 mandatu): jeden wpis
-  na typ gałęzi ENM (`breaker → nnBreaker/QF`, `bus_coupler → nnBreaker/QBC`,
-  `switch → loadBreakSwitch/QS`, `disconnector → disconnector/QS`,
-  `fuse → nnFuseSwitch/FU`, `cable`/`line_overhead → przewód/W`) z nośnikiem
-  stanu (`wypelnienie` / `noz` / `brak`); DER wg `gen_type`, pomiar wg
-  `measurement_type`, zabezpieczenie z kodami ANSI. Snapshot glifu per typ ×
-  stan: `__tests__/symbolRegistry.test.tsx`.
+- **Biblioteka symboli CAD** (`cad/cadSymbolRegistry.ts` +
+  `cad/CadSymbol.tsx`, R2 §19/§20): 18 symboli schematu z LINII / ŁUKÓW /
+  OKRĘGÓW / ŚCIEŻEK (zero ikon aplikacji, bitmap, czcionek ikon), każdy z
+  odniesieniem IEC 60617 (identyfikator S00xxx), nazwą polską, gabarytem,
+  zaciskami na siatce, kotwicami i `verificationStatus` (DRAFT /
+  ENGINEERING_REVIEWED / NORMATIVE_VERIFIED — dziś 0 × NORMATIVE_VERIFIED).
+  Stan łączeniowy WYŁĄCZNIE z geometrii noża na przegubie (0° / +30° /
+  +15° + kreska przerywana); kwalifikatory funkcji IEC: „×" wyłącznika,
+  poprzeczka odłącznika, okrąg rozłącznika, wkładka jako nóż. Rejestr
+  normatywny: `docs/sld/SLD_SYMBOL_NORMATIVE_REGISTRY.md`; pakiet
+  referencyjny i przegląd: `docs/sld/SLD_CAD_SYMBOL_REFERENCE_PACK_R2.md`.
+- **Odwzorowanie modelu na symbole** (`lv-domain/symbolRegistry.ts`, R2
+  §4–§12): typ gałęzi ENM rozstrzyga rodzinę (`breaker → cad.wylacznik/QF`,
+  `disconnector → cad.odlacznik/QS`, `switch → cad.rozlacznik/QS`,
+  `fuse → cad.bezpiecznik/FU`, `cable`/`line_overhead → przewód/W`), a
+  `device_kind` z katalogu doprecyzowuje (`switch + ROZLACZNIK_BEZPIECZNIKOWY
+  → cad.rozlacznikBezpiecznikowy`; `bus_coupler + WYLACZNIK/ROZLACZNIK/
+  ODLACZNIK/ROZLACZNIK_BEZPIECZNIKOWY → symbol REALNEGO aparatu sprzęgła`,
+  `bus_coupler bez klasy → cad.lacznik` + NN-AUD-18). DER wg `gen_type` (PV
+  i magazyn = złożenia źródło + przekształtnik jednego elementu ENM; maszyny
+  = G~), pomiar wg `measurement_type` (CT w torze ≠ VT na odgałęzieniu),
+  zabezpieczenie = prostokąt ze znakami funkcji IEC (I>, I>>, I0>, U<, f<,
+  df/dt, Δφ) wewnątrz i numerami ANSI w panelu; zacisk (okrąg pusty) ≠ węzeł
+  (kropka) wg stopnia. Nazwy polskie (WYŁĄCZNIK, ROZŁĄCZNIK, ODŁĄCZNIK,
+  BEZPIECZNIK, ŁĄCZNIK SZYN…) z rejestru CAD; QF/QS/FU/QBC/CT/VT są
+  identyfikatorami. Pin iloczynu „typ × device_kind × stan":
+  `__tests__/symbolRegistry.test.tsx`.
 - **Gramatyka wizualna** (`lv-domain/visualGrammar.ts`): raster 8, tokeny
-  geometrii (`--sld-*` w CSS), fit 70–85 % z clampem i skalą „zmieść
-  wszystko" na wąskim ekranie, cztery poziomy graficzne (topologia / etykieta
-  główna / dane inżynierskie / stan i wyniki), typografia screen-stable,
-  symbole screen-stable z sufitem udziału w slocie (`celGlifuNaEkranie`),
-  zawijanie nazw z łamaniem wyrazów (nigdy poza slot), orientacja oznaczeń
-  aparatów pionowa dla całej sceny, gdy slot przy skali fitu nie mieści
-  najdłuższego oznaczenia; kolor nie jest semantyką — każdy stan ma nośnik
-  geometryczny (wzór kreski, glif, etykieta), paleta mono do druku.
+  geometrii (`--sld-*` w CSS), fit 70–85 % z clampem MAX i **MIN_FIELD_WIDTH**
+  per poziom (R2 §17: 96 / 72 / 40 px — pole odpływu nigdy nie jest ściskane;
+  scena, która się nie mieści, PRZEWIJA zamiast się pomniejszać), hierarchia
+  grubości BUS 3,0 / PRIMARY 1,6 / symbol 1,4 / SECONDARY 1,0 / HIGHLIGHT 6 px
+  (kreska nieskalowana z kamerą), JEDNA skala symboli `CAD_U_PX = 2` px/u z
+  sufitem udziału w slocie (`skalaSymboluNaEkranie`), cztery poziomy
+  graficzne (topologia / etykieta główna / dane inżynierskie / stan i
+  wyniki), typografia screen-stable, zawijanie nazw po słowach BEZ łamania
+  wyrazów (≤ 2 wiersze + „…", pełna nazwa w podpowiedzi i panelu), oznaczenia
+  aparatów zawsze poziome w jednym wierszu; kolor nie jest semantyką — każdy
+  stan ma nośnik geometryczny (wzór kreski, geometria symbolu, etykieta),
+  paleta mono do druku.
 - **Kompozytor** (`composeLvDomainScene.ts`): dwa kikuty na aparat (każdy w
   stanie swojego zacisku), sprzęgło jako aparat poziomy między sekcjami,
   incomer na krańcu sekcji (ostatnia sekcja lustrzana), jedna kotwica SN na
@@ -222,13 +246,22 @@ ręcznie wpisaną energizacją.
 | L1 sieć | pełny tor + etykiety tożsamości (sekcje, aparaty, DER, odbiory, granice, zabezpieczenia) + plakietki wyników | opisy drugorzędne (tabliczka TR, parametry, napięcia, słowny stan łącznika, pochodzenie wyniku) |
 | L0 przegląd | pełny tor uproszczony; nazwa sekcji + liczba odpływów; stany zasilania i wyspy; kropka werdyktu wyniku | etykiety aparatów/DER/odbiorów, zabezpieczenia, liczby na plakietkach |
 
-Piny: `lv-domain/__tests__/lod.test.tsx` (odcisk toru identyczny na 0/1/2,
-rejestr ↔ renderer), `energizacja.test.tsx`, `composeLvDomainScene.test.ts`,
-`LvDomainView.test.tsx`, `visualGrammar.test.ts`, `motywKanwyNn.test.tsx`,
+Piny: `cad/__tests__/cadSymbolRegistry.test.tsx` (18 symboli: kotwice i
+zaciski na siatce, OPEN ≠ CLOSED ≠ UNKNOWN z kąta przegubu, zero wypełnienia
+jako nośnika stanu, CT ≠ VT ≠ TR, unikalna geometria każdego symbolu,
+renderer bez bitmap z kreską nieskalowaną, snapshot prymitywów),
+`lv-domain/__tests__/lod.test.tsx` (odcisk toru identyczny na 0/1/2 w kadrze
+bez clampu, rejestr ↔ renderer), `energizacja.test.tsx`,
+`composeLvDomainScene.test.ts`, `LvDomainView.test.tsx` (MIN_FIELD_WIDTH +
+przewijanie, etykiety poziome bez łamania słów, panel z nazwą polską aparatu i
+znakami IEC), `visualGrammar.test.ts`, `motywKanwyNn.test.tsx`,
 `scenariusze.test.ts`, `projectionApi.test.ts`; e2e
 `frontend/e2e/lv-domain-screenshot.spec.ts` (20 kadrów §47:
 `docs/audit/visual/nn/<slug>[_lod<n>][_<motyw>].png`, w tym wersja mobilna i
-druk mono A3).
+druk mono A3; sprzęgło jako wyłącznik / rozłącznik / łącznik ogólny z
+`device_kind`, pięć rodzin aparatów w 13) oraz
+`frontend/e2e/sld-symbol-pack-screenshot.spec.ts` (tablica pakietu w trzech
+wariantach i tablica rozpoznawalności §22: `docs/audit/visual/cad/`).
 
 ## 6. Przypadki obsługiwane (i gdzie są przypięte)
 

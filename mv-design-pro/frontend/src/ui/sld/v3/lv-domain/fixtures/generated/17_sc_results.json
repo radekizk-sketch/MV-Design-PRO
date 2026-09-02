@@ -9,6 +9,7 @@
       {
         "catalog_namespace": "WKLADKA_NN",
         "catalog_ref": "wkladka-nn-gg-20",
+        "device_kind": null,
         "from_bus_ref": "RGN-2_szyna",
         "name": "FU-21",
         "ref_id": "FU-21",
@@ -19,6 +20,7 @@
       {
         "catalog_namespace": "KABEL_NN",
         "catalog_ref": "kabel-nn-yaky-4x16",
+        "device_kind": null,
         "from_bus_ref": "FU-21_zacisk",
         "name": "Kabel FU-21",
         "ref_id": "FU-21_kabel",
@@ -29,6 +31,7 @@
       {
         "catalog_namespace": "APARAT_NN_MCB",
         "catalog_ref": "aparat-nn-mcb-c25",
+        "device_kind": null,
         "from_bus_ref": "RGnN-1",
         "name": "QF-01",
         "ref_id": "QF-01",
@@ -39,6 +42,7 @@
       {
         "catalog_namespace": "KABEL_NN",
         "catalog_ref": "kabel-nn-yaky-4x25",
+        "device_kind": null,
         "from_bus_ref": "QF-01_zacisk",
         "name": "Kabel QF-01",
         "ref_id": "QF-01_kabel",
@@ -49,6 +53,7 @@
       {
         "catalog_namespace": "APARAT_NN_MCB",
         "catalog_ref": "aparat-nn-mcb-c125",
+        "device_kind": null,
         "from_bus_ref": "RGnN-1",
         "name": "QF-02",
         "ref_id": "QF-02",
@@ -59,6 +64,7 @@
       {
         "catalog_namespace": "KABEL_NN",
         "catalog_ref": "kabel-nn-yaky-4x70",
+        "device_kind": null,
         "from_bus_ref": "QF-02_zacisk",
         "name": "Kabel QF-02",
         "ref_id": "QF-02_kabel",
@@ -69,6 +75,7 @@
       {
         "catalog_namespace": "APARAT_NN_MCB",
         "catalog_ref": "aparat-nn-mcb-c100",
+        "device_kind": null,
         "from_bus_ref": "RGnN-1",
         "name": "QF-03",
         "ref_id": "QF-03",
@@ -79,6 +86,7 @@
       {
         "catalog_namespace": "KABEL_NN",
         "catalog_ref": "kabel-nn-yaky-4x50",
+        "device_kind": null,
         "from_bus_ref": "QF-03_zacisk",
         "name": "Kabel QF-03",
         "ref_id": "QF-03_kabel",
@@ -89,6 +97,7 @@
       {
         "catalog_namespace": "APARAT_NN_MCB",
         "catalog_ref": "aparat-nn-mcb-c2300",
+        "device_kind": null,
         "from_bus_ref": "T1_zacisk",
         "name": "QF-T1",
         "ref_id": "QF-T1",
@@ -254,6 +263,7 @@
         "board_bus_ref": "RGN-2_szyna",
         "child_bus_ref": "FU-21_zacisk",
         "designation_class": "FU",
+        "device_kind": null,
         "device_role": "feeder",
         "device_state": "CLOSED",
         "device_type": "fuse",
@@ -268,6 +278,7 @@
         "board_bus_ref": null,
         "child_bus_ref": "FU-21_koniec",
         "designation_class": "W",
+        "device_kind": null,
         "device_role": "internal",
         "device_state": "CLOSED",
         "device_type": "cable",
@@ -282,6 +293,7 @@
         "board_bus_ref": "RGnN-1",
         "child_bus_ref": "QF-01_zacisk",
         "designation_class": "QF",
+        "device_kind": null,
         "device_role": "feeder",
         "device_state": "CLOSED",
         "device_type": "breaker",
@@ -296,6 +308,7 @@
         "board_bus_ref": null,
         "child_bus_ref": "QF-01_koniec",
         "designation_class": "W",
+        "device_kind": null,
         "device_role": "internal",
         "device_state": "CLOSED",
         "device_type": "cable",
@@ -310,6 +323,7 @@
         "board_bus_ref": "RGnN-1",
         "child_bus_ref": "QF-02_zacisk",
         "designation_class": "QF",
+        "device_kind": null,
         "device_role": "feeder",
         "device_state": "CLOSED",
         "device_type": "breaker",
@@ -324,6 +338,7 @@
         "board_bus_ref": null,
         "child_bus_ref": "RGN-2_szyna",
         "designation_class": "W",
+        "device_kind": null,
         "device_role": "internal",
         "device_state": "CLOSED",
         "device_type": "cable",
@@ -338,6 +353,7 @@
         "board_bus_ref": "RGnN-1",
         "child_bus_ref": "QF-03_zacisk",
         "designation_class": "QF",
+        "device_kind": null,
         "device_role": "feeder",
         "device_state": "CLOSED",
         "device_type": "breaker",
@@ -352,6 +368,7 @@
         "board_bus_ref": null,
         "child_bus_ref": "QF-03_pcc",
         "designation_class": "W",
+        "device_kind": null,
         "device_role": "internal",
         "device_state": "CLOSED",
         "device_type": "cable",
@@ -366,6 +383,7 @@
         "board_bus_ref": "RGnN-1",
         "child_bus_ref": "RGnN-1",
         "designation_class": "QF",
+        "device_kind": null,
         "device_role": "incomer",
         "device_state": "CLOSED",
         "device_type": "breaker",
@@ -465,8 +483,12 @@
     "measured_voltage_states": {},
     "measurements": [
       {
+        "accuracy_class": null,
         "bay_ref": null,
+        "burden_va": null,
         "bus_ref": "T1_zacisk",
+        "ct_arrangement": null,
+        "ct_cores": null,
         "measurement_type": "CT",
         "name": "CT-T1",
         "purpose": "protection",
@@ -928,7 +950,7 @@
     "scenario_id": "MAX",
     "station_ref": "stC"
   },
-  "projection_hash": "67bd9e3034e7c96d1b49ace17270f7e01fb667bf65109420eb5a8597f485268e",
+  "projection_hash": "23a24b4453fa2263716f579a6d0caad3d2b0af2fa6a2c28a36b2a7b40d6f9f81",
   "result_snapshot": {
     "analysis_type": "SC_3F",
     "overlay_payload": {
@@ -942,28 +964,28 @@
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kA",
-              "value": 1.8045311612477384
+              "value": 1.8045311612477386
             },
             "IP_A": {
               "code": "IP_A",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kA",
-              "value": 2.6030322976638596
+              "value": 2.60303229766386
             },
             "ITH_A": {
               "code": "ITH_A",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kA",
-              "value": 1.8068360805907575
+              "value": 1.8068360805907577
             },
             "SK_MVA": {
               "code": "SK_MVA",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "MVA",
-              "value": 1.2502158620489396
+              "value": 1.2502158620489399
             }
           },
           "ref_id": "FU-21_koniec",
@@ -978,7 +1000,7 @@
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kA",
-              "value": 5.886537402084434
+              "value": 5.886537402084435
             },
             "IP_A": {
               "code": "IP_A",
@@ -992,14 +1014,14 @@
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kA",
-              "value": 5.894141627973999
+              "value": 5.894141627974
             },
             "SK_MVA": {
               "code": "SK_MVA",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "MVA",
-              "value": 4.078312744425897
+              "value": 4.078312744425898
             }
           },
           "ref_id": "FU-21_zacisk",
@@ -1014,21 +1036,21 @@
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kA",
-              "value": 3.8002517909468336
+              "value": 3.800251790946834
             },
             "IP_A": {
               "code": "IP_A",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kA",
-              "value": 5.481862261111795
+              "value": 5.481862261111797
             },
             "ITH_A": {
               "code": "ITH_A",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kA",
-              "value": 3.805105918939914
+              "value": 3.8051059189399146
             },
             "SK_MVA": {
               "code": "SK_MVA",
@@ -1050,28 +1072,28 @@
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kA",
-              "value": 23.748427767989206
+              "value": 23.748427767989213
             },
             "IP_A": {
               "code": "IP_A",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kA",
-              "value": 49.158322409948354
+              "value": 49.15832240994838
             },
             "ITH_A": {
               "code": "ITH_A",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kA",
-              "value": 23.9024293601295
+              "value": 23.902429360129506
             },
             "SK_MVA": {
               "code": "SK_MVA",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "MVA",
-              "value": 16.453393397614743
+              "value": 16.453393397614747
             }
           },
           "ref_id": "QF-01_zacisk",
@@ -1086,28 +1108,28 @@
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kA",
-              "value": 23.748427767989206
+              "value": 23.748427767989213
             },
             "IP_A": {
               "code": "IP_A",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kA",
-              "value": 49.158322409948354
+              "value": 49.15832240994838
             },
             "ITH_A": {
               "code": "ITH_A",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kA",
-              "value": 23.9024293601295
+              "value": 23.902429360129506
             },
             "SK_MVA": {
               "code": "SK_MVA",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "MVA",
-              "value": 16.453393397614743
+              "value": 16.453393397614747
             }
           },
           "ref_id": "QF-02_zacisk",
@@ -1122,28 +1144,28 @@
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kA",
-              "value": 7.908826946255389
+              "value": 7.90882694625539
             },
             "IP_A": {
               "code": "IP_A",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kA",
-              "value": 11.425621955869115
+              "value": 11.425621955869117
             },
             "ITH_A": {
               "code": "ITH_A",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kA",
-              "value": 7.9191232204946225
+              "value": 7.919123220494623
             },
             "SK_MVA": {
               "code": "SK_MVA",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "MVA",
-              "value": 5.479396039673657
+              "value": 5.4793960396736585
             }
           },
           "ref_id": "QF-03_pcc",
@@ -1158,28 +1180,28 @@
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kA",
-              "value": 23.748427767989206
+              "value": 23.748427767989213
             },
             "IP_A": {
               "code": "IP_A",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kA",
-              "value": 49.158322409948354
+              "value": 49.15832240994838
             },
             "ITH_A": {
               "code": "ITH_A",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kA",
-              "value": 23.9024293601295
+              "value": 23.902429360129506
             },
             "SK_MVA": {
               "code": "SK_MVA",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "MVA",
-              "value": 16.453393397614743
+              "value": 16.453393397614747
             }
           },
           "ref_id": "QF-03_zacisk",
@@ -1194,7 +1216,7 @@
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kA",
-              "value": 5.886537402084434
+              "value": 5.886537402084435
             },
             "IP_A": {
               "code": "IP_A",
@@ -1208,14 +1230,14 @@
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kA",
-              "value": 5.894141627973999
+              "value": 5.894141627974
             },
             "SK_MVA": {
               "code": "SK_MVA",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "MVA",
-              "value": 4.078312744425897
+              "value": 4.078312744425898
             }
           },
           "ref_id": "RGN-2_szyna",
@@ -1230,28 +1252,28 @@
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kA",
-              "value": 23.748427767989206
+              "value": 23.748427767989213
             },
             "IP_A": {
               "code": "IP_A",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kA",
-              "value": 49.158322409948354
+              "value": 49.15832240994838
             },
             "ITH_A": {
               "code": "ITH_A",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kA",
-              "value": 23.9024293601295
+              "value": 23.902429360129506
             },
             "SK_MVA": {
               "code": "SK_MVA",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "MVA",
-              "value": 16.453393397614743
+              "value": 16.453393397614747
             }
           },
           "ref_id": "RGnN-1",
@@ -1266,28 +1288,28 @@
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kA",
-              "value": 23.748427767989206
+              "value": 23.748427767989213
             },
             "IP_A": {
               "code": "IP_A",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kA",
-              "value": 49.158322409948354
+              "value": 49.15832240994838
             },
             "ITH_A": {
               "code": "ITH_A",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kA",
-              "value": 23.9024293601295
+              "value": 23.902429360129506
             },
             "SK_MVA": {
               "code": "SK_MVA",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "MVA",
-              "value": 16.453393397614743
+              "value": 16.453393397614747
             }
           },
           "ref_id": "T1_zacisk",

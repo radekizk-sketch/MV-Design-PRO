@@ -28,9 +28,8 @@ import { useMemo, useState, type CSSProperties } from 'react';
 import { buildSwzOverlayFromResponses, type SwzOverlayEntry } from '../canvas/overlay';
 import type { RawMetricValue, RawOverlayPayload } from '../../../sld-overlay/rawResultOverlayStore';
 import { getMetric } from '../../../sld-overlay/rawResultOverlayStore';
-import { SYMBOL_DEFS, type SymbolId } from '../symbols/defs';
-import { SYMBOL_GLYPHS } from '../symbols/glyphs';
-import type { SwitchState } from '../symbols/glyphs';
+import { CadSymbol } from '../cad/CadSymbol';
+import { ELECTRICAL_CAD_SYMBOL_REGISTRY, gabarytCad, type CadOrientation, type CadSwitchState } from '../cad/cadSymbolRegistry';
 import type { ThemeMode } from '../../../../ui2/theme/themeMode';
 import {
   composeLvDomainScene,
@@ -40,9 +39,10 @@ import {
   type LvDomainSceneEdgeKind,
   type LvDomainSceneNode,
 } from './composeLvDomainScene';
-import { kodyAnsi, kodyAnsiPelne, stanSlowny } from './symbolRegistry';
+import { kodyAnsiPelne, nazwyFunkcjiPl, stanSlowny, technologiaZrodlaPl, wpisAparatu, znakiIec, znakiIecPelne } from './symbolRegistry';
 import {
   BUS_STROKE_SCREEN_PX,
+  CAD_U_PX,
   CHAR_WIDTH_RATIO,
   CHAR_WIDTH_RATIO_BOLD,
   CHAR_WIDTH_RATIO_MONO,
@@ -51,12 +51,9 @@ import {
   LINE_HEIGHT,
   LINE_SCREEN_PX,
   SLD_LABEL,
-  SYMBOL_SCREEN_PX,
   TOKENY_GEOMETRII,
-  celGlifuNaEkranie,
   etykietaStanuZasilania,
   fitSceneToViewport,
-  glyphScaleForScreenTarget,
   licznikOdplywowLabel,
   limitZnakow,
   mocLabel,
@@ -69,16 +66,19 @@ import {
   tonStanuZasilania,
   tonWagi,
   tonWerdyktuSeverity,
+  skalaSymboluNaEkranie,
   widocznyNaLod,
   wzorKreskiStanu,
   zawinNazwe,
   type ElementKanwyNn,
   type PaletaNn,
   type PoziomLod,
+  type RodzajSymbolu,
   type SceneFit,
 } from './visualGrammar';
 import type {
   LvDeviceState,
+  LvDomainGenerator,
   LvDomainIsland,
   LvDomainOverlayId,
   LvDomainProjectionV1,
@@ -114,9 +114,6 @@ interface KontekstRysunku {
   /** Nazwy elementów po referencji (źródła DER, transformatory) — etykiety
    *  wysp mówią „z Magazyn D", nie „z QF-D1_zrodlo". */
   readonly nameByRef: ReadonlyMap<string, string>;
-  /** Orientacja oznaczeń aparatów — JEDNA dla całej sceny (§29): pionowa,
-   *  gdy slot odpływu przy skali fitu nie mieści najdłuższego oznaczenia. */
-  readonly etykietyAparatowPionowe: boolean;
 }
 
 export interface LvDomainViewProps {
@@ -160,12 +157,18 @@ function sciezkaOrtogonalna(x1: number, y1: number, x2: number, y2: number): str
   return `M ${x1} ${y1} H ${x2} V ${y2}`;
 }
 
-function symbolBBox(symbolId: SymbolId | undefined): { readonly width: number; readonly height: number } {
-  if (!symbolId) return { width: 0, height: 0 };
-  return { width: SYMBOL_DEFS[symbolId].width, height: SYMBOL_DEFS[symbolId].height };
+function orientacjaWezla(node: LvDomainSceneNode): CadOrientation {
+  return node.orientation ?? 'pionowa';
 }
 
-function switchStateOf(state: unknown): SwitchState {
+/** Gabaryt symbolu CAD [u] po obrocie (0×0, gdy węzeł nie ma symbolu). */
+function symbolBBox(node: LvDomainSceneNode): { readonly width: number; readonly height: number } {
+  if (!node.symbolId) return { width: 0, height: 0 };
+  const g = gabarytCad(node.symbolId, orientacjaWezla(node));
+  return { width: g.w, height: g.h };
+}
+
+function switchStateOf(state: unknown): CadSwitchState {
   if (state === 'OPEN') return 'open';
   if (state === 'CLOSED') return 'closed';
   return 'unknown';
@@ -236,30 +239,32 @@ function elementKrawedzi(kind: LvDomainSceneEdgeKind): ElementKanwyNn {
   }
 }
 
-function glyphScreenTargetFor(node: LvDomainSceneNode, fit: SceneFit): number {
+function rodzajSymbolu(node: LvDomainSceneNode): RodzajSymbolu {
   switch (node.kind) {
     case 'transformer':
-      return celGlifuNaEkranie('transformer', fit.s);
+      return 'transformer';
     case 'generator':
-      return celGlifuNaEkranie('generator', fit.s);
+      return 'generator';
     case 'load':
-      return celGlifuNaEkranie('load', fit.s);
+      return 'load';
     case 'measurement':
-      return celGlifuNaEkranie('measurement', fit.s);
+      return 'measurement';
     case 'relay':
-      return celGlifuNaEkranie('relay', fit.s);
+      return 'relay';
     case 'apparatus':
-      return celGlifuNaEkranie(node.meta?.role === 'coupler' ? 'coupler' : 'apparatus', fit.s);
+      return node.meta?.role === 'coupler' ? 'coupler' : 'apparatus';
     default:
-      return celGlifuNaEkranie('junction', fit.s);
+      return 'junction';
   }
 }
 
-function glyphScreenSize(node: LvDomainSceneNode, fit: SceneFit): { readonly w: number; readonly h: number; readonly k: number } {
-  const bbox = symbolBBox(node.symbolId);
-  if (bbox.height === 0) return { w: 0, h: 0, k: 1 };
-  const target = glyphScreenTargetFor(node, fit);
-  return { w: (bbox.width * target) / bbox.height, h: target, k: glyphScaleForScreenTarget(bbox.height, target, fit.s) };
+/** Rozmiar symbolu CAD na EKRANIE [px] i skala świata na 1 u (`k`) —
+ *  jedna skala biblioteki (`CAD_U_PX`) z sufitem udziału w slocie. */
+function glyphScreenSize(node: LvDomainSceneNode, fit: SceneFit): { readonly w: number; readonly h: number; readonly k: number; readonly pxNaU: number } {
+  const bbox = symbolBBox(node);
+  if (bbox.height === 0) return { w: 0, h: 0, k: 1, pxNaU: CAD_U_PX };
+  const pxNaU = skalaSymboluNaEkranie(rodzajSymbolu(node), bbox.width, fit.s);
+  return { w: bbox.width * pxNaU, h: bbox.height * pxNaU, k: pxNaU / fit.s, pxNaU };
 }
 
 /** Limit znaków w linii etykiety dla szerokości slotu [świat] przy skali fitu. */
@@ -267,38 +272,13 @@ function maxCharsForWidth(worldWidth: number, fontPx: number, fit: SceneFit, rat
   return limitZnakow(worldWidth * fit.s, fontPx, ratio);
 }
 
-/** Orientacja oznaczeń aparatów dla SCENY: pozioma, gdy slot odpływu przy
- *  skali fitu mieści pół glifu + odstęp + NAJDŁUŻSZE oznaczenie + pół glifu
- *  sąsiada; inaczej PIONOWA wzdłuż kikuta dla wszystkich aparatów (§29/§30 —
- *  etykieta nigdy nie wchodzi w sąsiada; mieszanie orientacji w jednej
- *  rozdzielnicy jest zakazane). */
-function etykietyAparatowPionowe(scene: LvDomainScene, fit: SceneFit): boolean {
-  const oznaczenia = scene.nodes.filter((n) => n.kind === 'apparatus' && n.meta?.role !== 'coupler');
-  if (oznaczenia.length === 0) return false;
-  const maxLen = Math.max(...oznaczenia.map((n) => n.label.length));
-  const glyphHalf = celGlifuNaEkranie('apparatus', fit.s) / 2;
-  const budgetPx = glyphHalf + TOKENY_GEOMETRII.labelGap + maxLen * (SLD_LABEL.PRIMARY - 2) * CHAR_WIDTH_RATIO_BOLD + glyphHalf + 8;
-  return TOKENY_GEOMETRII.feederGap * fit.s < budgetPx;
-}
-
-/** Etykieta aparatu: orientacja ze sceny; w trybie pionowym rozmiar pisma
- *  ograniczony tak, by oznaczenie zmieściło się wzdłuż kikuta dolnego
- *  (`deviceToChild`) — dolna granica = TERTIARY (najmniejsze pismo kanwy,
- *  §21: żaden tekst nie schodzi poniżej), górna = PRIMARY−2. Jedno
- *  wyprowadzenie dla etykiety i plakietek pod nią. */
-function trybEtykietyAparatu(node: LvDomainSceneNode, ctx: KontekstRysunku): {
-  readonly vertical: boolean;
-  readonly fontPx: number;
-  readonly labelWidthPx: number;
-  readonly dlugoscPx: number;
-} {
+/** Szerokość pasa etykiety aparatu [px ekranu] — od prawej krawędzi symbolu
+ *  do granicy slotu sąsiada (R2 §17: pole ma MIN_FIELD_WIDTH, etykieta nie
+ *  jest ściskana ani obracana; nadmiar ucina wielokropek, pełna nazwa w
+ *  podpowiedzi i w panelu). */
+function pasEtykietyAparatuPx(node: LvDomainSceneNode, ctx: KontekstRysunku): number {
   const glyph = glyphScreenSize(node, ctx.fit);
-  const vertical = ctx.etykietyAparatowPionowe && node.meta?.role !== 'coupler';
-  const dlugoscPx = TOKENY_GEOMETRII.deviceToChild * ctx.fit.s - glyph.h / 2 - 10;
-  const fontPx = vertical
-    ? Math.max(SLD_LABEL.TERTIARY, Math.min(SLD_LABEL.PRIMARY - 2, dlugoscPx / Math.max(1, node.label.length * CHAR_WIDTH_RATIO_BOLD)))
-    : SLD_LABEL.PRIMARY - 2;
-  return { vertical, fontPx, labelWidthPx: node.label.length * fontPx * CHAR_WIDTH_RATIO_BOLD, dlugoscPx };
+  return Math.max(24, TOKENY_GEOMETRII.feederGap * ctx.fit.s - glyph.w / 2 - TOKENY_GEOMETRII.labelGap - 6);
 }
 
 function formatujMetryke(metric: RawMetricValue): string {
@@ -497,7 +477,7 @@ export function LvDomainView(props: LvDomainViewProps): JSX.Element {
   const viewportWidth = width ?? DEFAULT_VIEWPORT.width;
   const viewportHeight = height ?? DEFAULT_VIEWPORT.height;
   const canvasHeight = Math.max(240, viewportHeight - HEADER_ALLOWANCE_PX);
-  const fit = fitSceneToViewport(scene.width, scene.height, viewportWidth, canvasHeight);
+  const fit = fitSceneToViewport(scene.width, scene.height, viewportWidth, canvasHeight, lod);
   const ctx: KontekstRysunku = {
     fit,
     paleta,
@@ -509,8 +489,11 @@ export function LvDomainView(props: LvDomainViewProps): JSX.Element {
     selectedRef,
     islandByRef,
     nameByRef,
-    etykietyAparatowPionowe: etykietyAparatowPionowe(scene, fit),
   };
+  // R2 §17: scena, która nie mieści się przy skali minimalnej poziomu, NIE
+  // jest pomniejszana — kanwa przewija (pan/scroll); SVG ma rozmiar treści.
+  const svgWidth = Math.max(viewportWidth, Math.ceil(fit.contentWidth));
+  const svgHeight = Math.max(canvasHeight, Math.ceil(fit.contentHeight));
 
   const outdated = projection.result_snapshot.status === 'OUTDATED';
   const hasSwzData = activeOverlay === 'swz' && Object.keys(swzByFeederRef).length > 0;
@@ -605,8 +588,9 @@ export function LvDomainView(props: LvDomainViewProps): JSX.Element {
           ) : null}
         </div>
       ) : null}
-      <svg data-testid="lv-domain-svg" data-fit-scale={fit.s} width={viewportWidth} height={canvasHeight} viewBox={`0 0 ${viewportWidth} ${canvasHeight}`}>
-        <rect x={0} y={0} width={viewportWidth} height={canvasHeight} fill={paleta.tlo} />
+      <div data-testid="lv-domain-scroll" data-scroll={fit.scroll ? 'true' : 'false'} style={{ width: viewportWidth, height: canvasHeight, overflow: fit.scroll ? 'auto' : 'hidden' }}>
+      <svg data-testid="lv-domain-svg" data-fit-scale={fit.s} width={svgWidth} height={svgHeight} viewBox={`0 0 ${svgWidth} ${svgHeight}`} style={{ display: 'block' }}>
+        <rect x={0} y={0} width={svgWidth} height={svgHeight} fill={paleta.tlo} />
         <g data-testid="lv-domain-world" transform={`translate(${fit.tx} ${fit.ty}) scale(${fit.s})`}>
           <g data-testid="lv-domain-highlight">
             {scene.edges.filter((e) => highlighted.has(e.ref)).map((edge) => (
@@ -659,6 +643,7 @@ export function LvDomainView(props: LvDomainViewProps): JSX.Element {
           </g>
         </g>
       </svg>
+      </div>
       {warningsOpen ? (
         <WarningsPanel messages={projection.validation_messages} paleta={paleta} onPick={(ref) => setSelectedRef(ref)} onClose={() => setWarningsOpen(false)} />
       ) : null}
@@ -723,6 +708,9 @@ function LvFeederPanel({ feeder, transformerRef, projection, paleta, resultOverl
   const shortHash = (value: string): string => (value.length > 14 ? `${value.slice(0, 14)}…` : value);
   const segment = projection.graph.segments.find((s) => s.segment_id === feeder.feeder_root_branch_ref);
   const zabezpieczenia = projection.graph.protection_assignments.filter((p) => p.breaker_ref === feeder.feeder_root_branch_ref);
+  const urzadzenie = projection.graph.devices.find((d) => d.ref_id === feeder.feeder_root_branch_ref);
+  const galaz = projection.graph.branches.find((b) => b.ref_id === feeder.feeder_root_branch_ref);
+  const aparat = urzadzenie ? wpisAparatu(urzadzenie.device_type, urzadzenie.device_kind) : null;
   return (
     <aside data-testid="lv-domain-feeder-panel" data-feeder-ref={feeder.feeder_root_branch_ref} style={{ position: 'absolute', top: 100, right: 16, bottom: 16, width: 350, maxWidth: 'calc(100% - 32px)', overflow: 'auto', padding: 16, border: `1px solid ${paleta.kreskaWygaszona}`, borderRadius: 6, background: paleta.panelTlo, boxShadow: paleta.panelCien, zIndex: 4, fontSize: 12 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
@@ -732,6 +720,19 @@ function LvFeederPanel({ feeder, transformerRef, projection, paleta, resultOverl
         </div>
         <button type="button" onClick={onClose} style={overlayButtonStyle(false, paleta)}>Zamknij</button>
       </div>
+      <section style={{ marginTop: 14 }} data-testid="lv-domain-feeder-aparat">
+        <div style={{ fontWeight: 600 }}>Aparat pola</div>
+        {aparat && urzadzenie ? (
+          <>
+            <div style={{ marginTop: 4 }}>{`${galaz?.name ?? urzadzenie.ref_id} · ${aparat.nazwaPl.toUpperCase()}`}</div>
+            <div style={{ color: paleta.kreskaWygaszona, fontFamily: 'monospace' }}>
+              {`${aparat.klasaOznaczenia} · stan: ${stanSlowny(urzadzenie.device_state)} · katalog: ${galaz?.catalog_ref ?? 'brak'}${urzadzenie.device_kind ? ` · rodzaj: ${urzadzenie.device_kind}` : ' · rodzaj: katalog nie klasyfikuje'}`}
+            </div>
+          </>
+        ) : (
+          <div style={{ color: paleta.kreskaWygaszona, marginTop: 4 }}>Odpływ bez aparatu w modelu (audyt NN-AUD-07).</div>
+        )}
+      </section>
       <section style={{ marginTop: 14 }}>
         <div style={{ fontWeight: 600 }}>Stan zacisków (topologia)</div>
         <div data-testid="lv-domain-feeder-terminals" style={{ color: paleta.kreskaWygaszona, marginTop: 4 }}>
@@ -748,7 +749,10 @@ function LvFeederPanel({ feeder, transformerRef, projection, paleta, resultOverl
           <div key={z.ref_id} data-testid={`lv-domain-feeder-relay-${z.ref_id}`} style={{ marginTop: 4 }}>
             <div>{z.name}</div>
             <div style={{ color: paleta.kreskaWygaszona, fontFamily: 'monospace' }}>
-              {`funkcje: ${kodyAnsiPelne(z.function_codes).join(' · ') || '—'} · CT: ${z.ct_ref ?? 'brak'} · ${z.is_enabled ? 'aktywne' : 'wyłączone'}`}
+              {`funkcje: ${znakiIecPelne(z.function_codes).join(' · ') || '—'} (ANSI ${kodyAnsiPelne(z.function_codes).join(', ') || '—'}) · CT: ${z.ct_ref ?? 'brak'} · ${z.is_enabled ? 'aktywne' : 'wyłączone'}`}
+            </div>
+            <div style={{ color: paleta.kreskaWygaszona }}>
+              {nazwyFunkcjiPl(z.function_codes).join(' · ') || '—'}
             </div>
           </div>
         ))}
@@ -813,25 +817,35 @@ function WarningMarker({ node, ctx, dx, dy }: { readonly node: LvDomainSceneNode
   );
 }
 
+/** Symbol CAD węzła: rejestr `cad/` rysowany przez `CadSymbol` — środek
+ *  symbolu w (node.x, node.y), skala `k` [j. świata / u] screen-stable,
+ *  kreska nieskalowana (`CAD_SYMBOL_STROKE_PX`), stan z geometrii noża,
+ *  orientacja pozioma dla sprzęgła w osi szyny. Zero glifów aplikacji. */
 function ScaledGlyph({ node, ctx }: { readonly node: LvDomainSceneNode; readonly ctx: KontekstRysunku }): JSX.Element | null {
   if (!node.symbolId || !ctx.widoczne(elementSymbolu(node))) return null;
-  const Glyph = SYMBOL_GLYPHS[node.symbolId];
-  const bbox = symbolBBox(node.symbolId);
   const { k } = glyphScreenSize(node, ctx.fit);
-  const originX = node.x - bbox.width / 2;
-  const originY = node.y - bbox.height / 2;
-  const isCoupler = node.meta?.role === 'coupler';
+  const center = ELECTRICAL_CAD_SYMBOL_REGISTRY[node.symbolId].anchors.center;
   const state = node.kind === 'apparatus' ? switchStateOf(node.meta?.deviceState) : undefined;
   const selected = ctx.selectedRef === node.ref || ctx.highlighted.has(node.ref);
-  const stroke = selected ? ctx.paleta.podswietlenie : ctx.paleta.kreskaBazowa;
-  const rotation = isCoupler ? ' rotate(90)' : '';
+  const ink = selected ? ctx.paleta.podswietlenie : ctx.paleta.kreskaBazowa;
   const functionCodes = node.kind === 'relay' ? ((node.meta?.functionCodes as readonly string[] | undefined) ?? []) : undefined;
-  const labelLines = functionCodes ? kodyAnsi(functionCodes) : undefined;
   return (
-    <g transform={`translate(${node.x} ${node.y})${rotation} scale(${k}) translate(${-node.x} ${-node.y})`}>
-      {functionCodes ? <title>{`${node.label} · funkcje: ${kodyAnsiPelne(functionCodes).join(', ')}`}</title> : null}
-      <Glyph x={originX} y={originY} stroke={stroke} state={state} labelLines={labelLines} />
-    </g>
+    <>
+      {functionCodes ? (
+        <title>{`${node.label} · funkcje: ${znakiIecPelne(functionCodes).join(', ')} (ANSI ${kodyAnsiPelne(functionCodes).join(', ')}) · ${nazwyFunkcjiPl(functionCodes).join(', ')}`}</title>
+      ) : null}
+      <CadSymbol
+        id={node.symbolId}
+        x={node.x - center.x * k}
+        y={node.y - center.y * k}
+        scale={k}
+        state={state}
+        orientation={orientacjaWezla(node)}
+        ink={ink}
+        paper={ctx.paleta.tlo}
+        wnetrze={functionCodes ? znakiIec(functionCodes) : undefined}
+      />
+    </>
   );
 }
 
@@ -839,11 +853,15 @@ function TerminalNode({ node, ctx, onSelect }: { readonly node: LvDomainSceneNod
   const degree = typeof node.meta?.degree === 'number' ? node.meta.degree : 2;
   const showDot = degree !== 2 || ctx.labelMode === 'audit';
   const energization = node.meta?.energization as LvEnergizationState | undefined;
+  // Zacisk toru: węzeł (kropka pełna, stopień ≥ 3) albo zacisk (okrąg pusty)
+  // z rejestru CAD; ton stanu zasilania jest DRUGIM kanałem (geometria pierwsza).
+  const { k } = glyphScreenSize(node, ctx.fit);
+  const center = node.symbolId ? ELECTRICAL_CAD_SYMBOL_REGISTRY[node.symbolId].anchors.center : { x: 0, y: 0 };
   return (
     <g data-testid={`lv-domain-node-${node.ref}`} data-node-kind={node.kind} data-owner-ref={node.ref} data-energization={energization} data-degree={degree} onClick={() => onSelect(node.ref)} style={{ cursor: 'pointer' }}>
       <title>{`${node.label} · ${energization ?? '—'}`}</title>
-      {showDot && ctx.widoczne('zaciskToru') ? (
-        <circle cx={node.x} cy={node.y} r={ctx.sp(JUNCTION_RADIUS_SCREEN_PX)} fill={tonStanuZasilania(energization, ctx.paleta)} />
+      {showDot && ctx.widoczne('zaciskToru') && node.symbolId ? (
+        <CadSymbol id={node.symbolId} x={node.x - center.x * k} y={node.y - center.y * k} scale={k} ink={tonStanuZasilania(energization, ctx.paleta)} paper={ctx.paleta.tlo} strokePx={LINE_SCREEN_PX.secondary} />
       ) : null}
       {ctx.labelMode === 'audit' && ctx.widoczne('nazwaZaciskuModelu') ? (
         <text {...textHalo(ctx)} x={node.x + ctx.sp(7)} y={node.y + ctx.sp(3.5)} textAnchor="start" fontSize={ctx.sp(SLD_LABEL.TERTIARY)} fill={ctx.paleta.kreskaWygaszona}>
@@ -1083,6 +1101,13 @@ function ElementNode({ node, ctx, activeOverlay, resultOverlayPayload, swzEntry,
       onKeyDown={selectable ? (event) => { if (event.key === 'Enter' || event.key === ' ') onSelect(node.ref); } : undefined}
       style={{ cursor: selectable ? 'pointer' : undefined }}
     >
+      {/* Pełna nazwa i nazwa polska klasy aparatu w podpowiedzi (R2 §17/§18) —
+          etykieta na kanwie jest skracana wielokropkiem, nigdy łamana. */}
+      {node.kind === 'apparatus' ? (
+        <title>{`${node.label} · ${String(node.meta?.nazwaPl ?? '')} · ${stanSlowny((node.meta?.deviceState as LvDeviceState | undefined) ?? 'UNKNOWN')}`}</title>
+      ) : node.kind === 'load' || node.kind === 'generator' || node.kind === 'transformer' ? (
+        <title>{node.kind === 'transformer' ? `${String(node.meta?.name ?? node.ref)} · ${node.label}` : node.label}</title>
+      ) : null}
       <ScaledGlyph node={node} ctx={ctx} />
       <NodeLabel node={node} ctx={ctx} />
       {/* Transformator: znacznik na wysokości środka glifu (górny róg zajmuje
@@ -1117,18 +1142,20 @@ function SceneEdgeLine({ edge, scene, ctx }: { readonly edge: LvDomainSceneEdge;
   const dashPattern = isBoundaryLink ? LINE_DASH_SCREEN_PX.boundary : isRelayLink ? ([1.5, 3] as const) : wzorKreskiStanu(energization);
   const dash = dashPattern ? `${ctx.sp(dashPattern[0])} ${ctx.sp(dashPattern[1])}` : undefined;
   const width = ctx.sp(
-    edge.kind === 'coupler' ? LINE_SCREEN_PX.coupler : isCable ? LINE_SCREEN_PX.cable : isBoundaryLink || isRelayLink ? LINE_SCREEN_PX.boundary : LINE_SCREEN_PX.connection,
+    edge.kind === 'coupler' ? LINE_SCREEN_PX.coupler : isCable ? LINE_SCREEN_PX.cable : isBoundaryLink ? LINE_SCREEN_PX.boundary : isRelayLink ? LINE_SCREEN_PX.secondary : LINE_SCREEN_PX.connection,
   );
 
-  // Kikut do KRAWĘDZI glifu aparatu (przez glif tor nie przechodzi; stan niesie sylwetka).
+  // Kikut kończy się DOKŁADNIE na zacisku symbolu CAD (symbol niesie własne
+  // odcinki przewodu od zacisku do styku — tor jest ciągły, bez przerwy i
+  // bez nakładki); sprzęgło poziome: zaciski po lewej/prawej.
   let { x1, y1, x2, y2 } = edge;
   const deviceRef = typeof edge.meta?.deviceRef === 'string' ? edge.meta.deviceRef : null;
   if (deviceRef) {
     const device = scene.nodes.find((n) => n.ref === deviceRef && n.kind === 'apparatus');
     if (device) {
       const g = glyphScreenSize(device, ctx.fit);
-      const gap = ctx.sp(g.h / 2 + 2);
       const horizontal = device.meta?.horizontal === true;
+      const gap = ctx.sp((horizontal ? g.w : g.h) / 2);
       if (edge.meta?.side === 'a') {
         if (horizontal) x2 = device.x - gap; else y2 = device.y - gap;
       } else if (horizontal) {
@@ -1153,7 +1180,7 @@ function SceneEdgeLine({ edge, scene, ctx }: { readonly edge: LvDomainSceneEdge;
         // POŁOWIE kabla siedzi przekładnik z etykietą po prawej (sąsiedniej
         // kolumny); inny wiersz = zero kolizji z sąsiadem. Jeden wiersz
         // (człony klucza po spacji) mieści się w połowie slotu.
-        <text {...textHalo(ctx)} data-testid={`lv-domain-kabel-${edge.ref}`} x={Math.min(x1, x2) - ctx.sp(SYMBOL_SCREEN_PX.measurement / 2 + 4)} y={y1 + ((y2 - y1) * 7) / 8 + ctx.sp(3.5)} textAnchor="end" fontSize={ctx.sp(SLD_LABEL.TERTIARY)} fill={ctx.paleta.kreskaWygaszona} fontFamily="monospace">
+        <text {...textHalo(ctx)} data-testid={`lv-domain-kabel-${edge.ref}`} x={Math.min(x1, x2) - ctx.sp(CAD_U_PX * 8 + 4)} y={y1 + ((y2 - y1) * 7) / 8 + ctx.sp(3.5)} textAnchor="end" fontSize={ctx.sp(SLD_LABEL.TERTIARY)} fill={ctx.paleta.kreskaWygaszona} fontFamily="monospace">
           {czlonyKluczaKatalogowego(edge.meta.catalogRef, typeof edge.meta?.catalogNamespace === 'string' ? edge.meta.catalogNamespace : null).join(' ')}
         </text>
       ) : null}
@@ -1221,39 +1248,26 @@ function NodeLabel({ node, ctx }: { readonly node: LvDomainSceneNode; readonly c
       );
     }
     const pokazStan = Boolean(stateWord && state === 'OPEN' && ctx.widoczne('stanSlownyLacznika'));
-    if (!pokazNazwe && !pokazStan) return null;
-    const tryb = trybEtykietyAparatu(node, ctx);
-    if (tryb.vertical) {
-      // Slot za wąski na poziomą etykietę (gęsta rozdzielnica / mała skala
-      // fitu): oznaczenie PIONOWO wzdłuż kikuta dolnego, po prawej pionu —
-      // szerokość etykiety spada do wysokości pisma, nic nie wchodzi w
-      // sąsiednią kolumnę (praktyka PowerFactory / rysunków ABB). Słowo
-      // stanu (OTWARTY) jako DRUGA kolumna pionowa, gdy mieści się wzdłuż
-      // kikuta; inaczej stan niesie sam glif (słowo jest potwierdzeniem).
-      const ax = node.x + ctx.sp(4 + tryb.fontPx);
-      const ay = node.y + ctx.sp(glyph.h / 2 + 6);
-      const stanFontPx = Math.max(SLD_LABEL.TERTIARY, tryb.fontPx - 1.5);
-      const stanMiesciSie = pokazStan && (stateWord?.length ?? 0) * stanFontPx * CHAR_WIDTH_RATIO_BOLD <= tryb.dlugoscPx;
-      const ax2 = ax + ctx.sp(stanFontPx + 3);
-      return (
-        <g {...textHalo(ctx)}>
-          {pokazNazwe ? (
-            <text data-orientacja="pionowa" transform={`rotate(-90 ${ax} ${ay})`} x={ax} y={ay} textAnchor="end" fontSize={ctx.sp(tryb.fontPx)} fontWeight={600} fill={ctx.paleta.kreskaBazowa}>{node.label}</text>
-          ) : null}
-          {stanMiesciSie ? (
-            <text data-testid={`lv-domain-stan-${node.ref}`} data-orientacja="pionowa" transform={`rotate(-90 ${ax2} ${ay})`} x={ax2} y={ay} textAnchor="end" fontSize={ctx.sp(stanFontPx)} fontWeight={700} fill={ctx.paleta.tonOstrzegawczy}>{stateWord}</text>
-          ) : null}
-        </g>
-      );
-    }
+    const nazwaPl = typeof node.meta?.nazwaPl === 'string' ? node.meta.nazwaPl : null;
+    const pokazKlase = ctx.labelMode === 'audit' && nazwaPl !== null && ctx.widoczne('nazwaZaciskuModelu');
+    if (!pokazNazwe && !pokazStan && !pokazKlase) return null;
+    // Oznaczenie POZIOMO po prawej symbolu, JEDEN wiersz w pasie slotu
+    // (R2 §17): pole ma MIN_FIELD_WIDTH, więc etykieta nie jest obracana ani
+    // ściskana — nadmiar ucina wielokropek (pełna nazwa w podpowiedzi).
     const xText = node.x + ctx.sp(glyph.w / 2 + TOKENY_GEOMETRII.labelGap);
+    const fontPx = SLD_LABEL.PRIMARY - 2;
+    const oznaczenie = zawinNazwe(node.label, limitZnakow(pasEtykietyAparatuPx(node, ctx), fontPx, CHAR_WIDTH_RATIO_BOLD), 1)[0];
+    const stanY = node.y + ctx.sp(4 + SLD_LABEL.STATUS * LINE_HEIGHT);
     return (
       <g {...textHalo(ctx)}>
         {pokazNazwe ? (
-          <text x={xText} y={node.y + ctx.sp(4)} textAnchor="start" fontSize={ctx.sp(SLD_LABEL.PRIMARY - 2)} fontWeight={600} fill={ctx.paleta.kreskaBazowa}>{node.label}</text>
+          <text x={xText} y={node.y + ctx.sp(4)} textAnchor="start" fontSize={ctx.sp(fontPx)} fontWeight={600} fill={ctx.paleta.kreskaBazowa}>{oznaczenie}</text>
         ) : null}
         {pokazStan ? (
-          <text data-testid={`lv-domain-stan-${node.ref}`} x={xText} y={node.y + ctx.sp(4 + SLD_LABEL.STATUS * LINE_HEIGHT)} textAnchor="start" fontSize={ctx.sp(SLD_LABEL.STATUS)} fontWeight={700} fill={ctx.paleta.tonOstrzegawczy}>{stateWord}</text>
+          <text data-testid={`lv-domain-stan-${node.ref}`} x={xText} y={stanY} textAnchor="start" fontSize={ctx.sp(SLD_LABEL.STATUS)} fontWeight={700} fill={ctx.paleta.tonOstrzegawczy}>{stateWord}</text>
+        ) : null}
+        {pokazKlase ? (
+          <text data-testid={`lv-domain-klasa-${node.ref}`} x={xText} y={pokazStan ? stanY + ctx.sp(SLD_LABEL.TERTIARY * LINE_HEIGHT) : stanY} textAnchor="start" fontSize={ctx.sp(SLD_LABEL.TERTIARY)} fill={ctx.paleta.kreskaWygaszona}>{nazwaPl.toUpperCase()}</text>
         ) : null}
       </g>
     );
@@ -1273,25 +1287,30 @@ function NodeLabel({ node, ctx }: { readonly node: LvDomainSceneNode; readonly c
           ) : null}
           {pokazParametry ? (
             <>
-              <text x={xText} y={node.y + ctx.sp(SLD_LABEL.SECONDARY * LINE_HEIGHT)} textAnchor="start" fontSize={ctx.sp(SLD_LABEL.SECONDARY)} fill={ctx.paleta.kreskaWygaszona}>{mocLabel(pMw)}</text>
+              <text x={xText} y={node.y + ctx.sp(SLD_LABEL.SECONDARY * LINE_HEIGHT)} textAnchor="start" fontSize={ctx.sp(SLD_LABEL.SECONDARY)} fill={ctx.paleta.kreskaWygaszona}>
+                {`${mocLabel(pMw)} · ${technologiaZrodlaPl(node.meta?.genType as LvDomainGenerator['gen_type'])}`}
+              </text>
               <text data-testid={`lv-domain-der-zdolnosc-${node.ref}`} x={xText} y={node.y + ctx.sp(2 * SLD_LABEL.SECONDARY * LINE_HEIGHT)} textAnchor="start" fontSize={ctx.sp(SLD_LABEL.TERTIARY)} fill={ctx.paleta.kreskaWygaszona}>{zdolnosc}</text>
             </>
           ) : null}
         </g>
       );
     }
-    // Źródło W POLU: etykieta POD glifem, centrowana i zawinięta do slotu —
-    // jak odbiór; etykieta w prawo wchodziła w kolumnę sąsiedniego odpływu
-    // (zrzuty 11_double_sided_open, 12_der_full_path).
+    // Źródło W POLU: etykieta POD symbolem, centrowana i zawinięta do slotu
+    // (bez łamania słów, ≤ 2 wiersze nazwy); opis: technologia źródła (§10/§11:
+    // PV to TECHNOLOGIA, falownik ELEMENTEM — symbol pokazuje tor, opis
+    // technologię) · moc · zdolność pracy wyspowej (FAKT — do 2 wierszy).
     const maxCharsNazwy = maxCharsForWidth(TOKENY_GEOMETRII.feederGap - 8, SLD_LABEL.PRIMARY - 1, ctx.fit, CHAR_WIDTH_RATIO_BOLD);
     const nazwaLinie = zawinNazwe(node.label, maxCharsNazwy, 2);
-    // Zdolność pracy wyspowej to FAKT (nie opis) — trzy wiersze, żeby słowo
-    // rozstrzygające („nieznana", „grid-forming") nigdy nie spadło za „…".
-    const zdolnoscLinie = zawinNazwe(zdolnosc, maxCharsForWidth(TOKENY_GEOMETRII.feederGap - 8, SLD_LABEL.TERTIARY, ctx.fit), 4);
+    const maxCharsOpisu = maxCharsForWidth(TOKENY_GEOMETRII.feederGap - 8, SLD_LABEL.TERTIARY, ctx.fit);
+    const technologiaLinie = zawinNazwe(technologiaZrodlaPl(node.meta?.genType as LvDomainGenerator['gen_type']), maxCharsOpisu, 2);
+    const zdolnoscLinie = zawinNazwe(zdolnosc, maxCharsOpisu, 2);
     const stepNazwy = ctx.sp((SLD_LABEL.PRIMARY - 1) * LINE_HEIGHT);
-    const stepOpisu = ctx.sp(SLD_LABEL.SECONDARY * LINE_HEIGHT);
+    const stepOpisu = ctx.sp(SLD_LABEL.TERTIARY * LINE_HEIGHT);
     const yBase = node.y + ctx.sp(glyph.h / 2 + 14);
     const yMoc = yBase + stepNazwy * (pokazNazwe ? nazwaLinie.length : 0);
+    const yTechnologia = yMoc + ctx.sp(SLD_LABEL.SECONDARY * LINE_HEIGHT);
+    const yZdolnosc = yTechnologia + stepOpisu * technologiaLinie.length;
     return (
       <g {...textHalo(ctx)}>
         {pokazNazwe ? (
@@ -1304,9 +1323,14 @@ function NodeLabel({ node, ctx }: { readonly node: LvDomainSceneNode; readonly c
         {pokazParametry ? (
           <>
             <text x={node.x} y={yMoc} textAnchor="middle" fontSize={ctx.sp(SLD_LABEL.SECONDARY)} fill={ctx.paleta.kreskaWygaszona}>{mocLabel(pMw)}</text>
-            <text data-testid={`lv-domain-der-zdolnosc-${node.ref}`} x={node.x} y={yMoc + stepOpisu} textAnchor="middle" fontSize={ctx.sp(SLD_LABEL.TERTIARY)} fill={ctx.paleta.kreskaWygaszona}>
+            <text data-testid={`lv-domain-der-technologia-${node.ref}`} x={node.x} y={yTechnologia} textAnchor="middle" fontSize={ctx.sp(SLD_LABEL.TERTIARY)} fill={ctx.paleta.kreskaWygaszona}>
+              {technologiaLinie.map((linia, i) => (
+                <tspan key={i} x={node.x} dy={i === 0 ? 0 : stepOpisu}>{linia}</tspan>
+              ))}
+            </text>
+            <text data-testid={`lv-domain-der-zdolnosc-${node.ref}`} x={node.x} y={yZdolnosc} textAnchor="middle" fontSize={ctx.sp(SLD_LABEL.TERTIARY)} fill={ctx.paleta.kreskaWygaszona}>
               {zdolnoscLinie.map((linia, i) => (
-                <tspan key={i} x={node.x} dy={i === 0 ? 0 : ctx.sp(SLD_LABEL.TERTIARY * LINE_HEIGHT)}>{linia}</tspan>
+                <tspan key={i} x={node.x} dy={i === 0 ? 0 : stepOpisu}>{linia}</tspan>
               ))}
             </text>
           </>
@@ -1317,9 +1341,9 @@ function NodeLabel({ node, ctx }: { readonly node: LvDomainSceneNode; readonly c
   if (node.kind === 'load') {
     const pMw = typeof node.meta?.pMw === 'number' ? node.meta.pMw : null;
     const yBase = node.y + ctx.sp(glyph.h / 2 + 14);
-    // Pod odbiorem nic już nie stoi — nazwa może zająć do 4 wierszy (pełny
-    // poziom) zanim zostanie uczciwie skrócona „…".
-    const lines = zawinNazwe(node.label, maxCharsForWidth(TOKENY_GEOMETRII.feederGap - 8, SLD_LABEL.SECONDARY + 1, ctx.fit, CHAR_WIDTH_RATIO_BOLD), ctx.widoczne('parametrOdbioru') ? 4 : 2);
+    // R2 §17: nazwa odbioru ≤ 2 wiersze BEZ łamania słów, nadmiar „…" —
+    // pełna nazwa w podpowiedzi elementu i w panelu odpływu (inspektor).
+    const lines = zawinNazwe(node.label, maxCharsForWidth(TOKENY_GEOMETRII.feederGap - 8, SLD_LABEL.SECONDARY + 1, ctx.fit, CHAR_WIDTH_RATIO_BOLD), 2);
     const step = ctx.sp((SLD_LABEL.SECONDARY + 1) * LINE_HEIGHT);
     return (
       <g {...textHalo(ctx)}>
@@ -1343,11 +1367,25 @@ function NodeLabel({ node, ctx }: { readonly node: LvDomainSceneNode; readonly c
     const xText = node.x + ctx.sp(glyph.w / 2 + TOKENY_GEOMETRII.labelGap);
     const ratio = typeof node.meta?.ratio === 'string' ? node.meta.ratio : null;
     const nazwaLinie = zawinNazwe(node.label, maxCharsForWidth(TOKENY_GEOMETRII.feederGap - 40, SLD_LABEL.TERTIARY, ctx.fit), 1);
+    // Tabliczka przekładnika TEKSTEM obok (R2 §9): przekładnia, klasa, moc
+    // pomiarowa, rdzenie i układ — wyłącznie z danych modelu, wiersz pomijany,
+    // gdy model go nie niesie (żadnego „—" udającego wartość).
+    const klasa = typeof node.meta?.accuracyClass === 'string' ? node.meta.accuracyClass : null;
+    const moc = typeof node.meta?.burdenVa === 'number' ? `${plNumber(node.meta.burdenVa)} VA` : null;
+    const rdzenie = typeof node.meta?.ctCores === 'number' ? `${node.meta.ctCores} ${node.meta.ctCores === 1 ? 'rdzeń' : node.meta.ctCores < 5 ? 'rdzenie' : 'rdzeni'}` : null;
+    const uklad = node.meta?.ctArrangement === '3xCT' ? '3×CT' : node.meta?.ctArrangement === 'ferranti' ? 'Ferranti' : null;
+    const wiersze = [
+      nazwaLinie[0],
+      ...(ratio ? [ratio] : []),
+      ...([klasa ? `kl. ${klasa}` : null, moc].filter((w): w is string => w !== null).length ? [[klasa ? `kl. ${klasa}` : null, moc].filter(Boolean).join(' · ')] : []),
+      ...([rdzenie, uklad].filter(Boolean).length ? [[rdzenie, uklad].filter(Boolean).join(' · ')] : []),
+    ];
     const step = ctx.sp(SLD_LABEL.TERTIARY * LINE_HEIGHT);
     return (
-      <text {...textHalo(ctx)} x={xText} y={node.y + ctx.sp(3.5) - (ratio ? step / 2 : 0)} textAnchor="start" fontSize={ctx.sp(SLD_LABEL.TERTIARY)} fill={ctx.paleta.kreskaWygaszona}>
-        <tspan x={xText}>{nazwaLinie[0]}</tspan>
-        {ratio ? <tspan x={xText} dy={step}>{ratio}</tspan> : null}
+      <text {...textHalo(ctx)} data-testid={`lv-domain-tabliczka-${node.ref}`} x={xText} y={node.y + ctx.sp(3.5) - (step * (wiersze.length - 1)) / 2} textAnchor="start" fontSize={ctx.sp(SLD_LABEL.TERTIARY)} fill={ctx.paleta.kreskaWygaszona}>
+        {wiersze.map((w, i) => (
+          <tspan key={i} x={xText} dy={i === 0 ? 0 : step}>{w}</tspan>
+        ))}
       </text>
     );
   }
@@ -1448,13 +1486,10 @@ function SwzBadge({ node, ctx, entry }: { readonly node: LvDomainSceneNode; read
     ...(entry.status === 'nie spełnia' && entry.iaWymaganeA != null ? [`Ia wym. ${plFixed(entry.iaWymaganeA, 0)} A`] : []),
     ...(entry.tWymaganyS != null ? [`t ≤ ${plFixed(entry.tWymaganyS, 2)} s`] : []),
   ];
-  const tryb = trybEtykietyAparatu(node, ctx);
   const xText = node.x + ctx.sp(glyph.w / 2 + TOKENY_GEOMETRII.labelGap);
   const step = ctx.sp(SLD_LABEL.RESULT * LINE_HEIGHT);
-  // Pod wierszami nazwy i stanu; przy etykiecie pionowej — pod jej końcem.
-  const y0 = tryb.vertical
-    ? node.y + ctx.sp(glyph.h / 2 + 6 + tryb.labelWidthPx + 14)
-    : node.y + ctx.sp(4 + 2 * SLD_LABEL.STATUS * LINE_HEIGHT);
+  // Pod wierszami nazwy i stanu aparatu (jedna orientacja etykiet — pozioma).
+  const y0 = node.y + ctx.sp(4 + 2 * SLD_LABEL.STATUS * LINE_HEIGHT);
   return (
     <g {...textHalo(ctx)} data-testid={`lv-domain-badge-swz-${node.ref}`} data-swz-status={entry.status}>
       <text x={xText} y={y0} textAnchor="start" fontSize={ctx.sp(SLD_LABEL.RESULT)} fill={tone} fontFamily="monospace">

@@ -33,6 +33,7 @@
  * nie ukrywa nigdy drogi prądu, transformatora, aparatów ze stanem,
  * punktów otwartych, źródeł, odbiorów, granic ani stanu zasilania.
  */
+import { CAD_SYMBOL_STROKE_PX } from '../cad/CadSymbol';
 import { sldPaletteForTheme } from '../theme/palette';
 import type { ThemeMode } from '../../../../ui2/theme/themeMode';
 import type { LvEnergizationState } from './types';
@@ -100,8 +101,9 @@ export function tokenyCss(): Readonly<Record<string, string>> {
   return {
     '--sld-bus-stroke': `${BUS_STROKE_SCREEN_PX.main}px`,
     '--sld-wire-stroke': `${LINE_SCREEN_PX.connection}px`,
-    '--sld-device-size': `${SYMBOL_SCREEN_PX.apparatus}px`,
-    '--sld-transformer-size': `${SYMBOL_SCREEN_PX.transformer}px`,
+    '--sld-device-size': `${CAD_U_PX * 24}px`,
+    '--sld-transformer-size': `${CAD_U_PX * 28}px`,
+    '--sld-symbol-stroke': `${CAD_SYMBOL_STROKE_PX}px`,
     '--sld-feeder-gap': `${TOKENY_GEOMETRII.feederGap}`,
     '--sld-bus-gap': `${TOKENY_GEOMETRII.busGap}`,
     '--sld-label-gap': `${TOKENY_GEOMETRII.labelGap}px`,
@@ -124,15 +126,31 @@ export const OCCUPANCY = {
   max: 0.85,
 } as const;
 
-/** Clamp skali fitu: `min` — poniżej raster odpływów schodzi pod czytelność
- *  (schemat wymaga innej reprezentacji, nie mniejszego rysunku); `max` —
- *  zakaz rozdmuchiwania mikroschematu. */
-export const FIT_SCALE_CLAMP = { min: 0.4, max: 1.6 } as const;
+/**
+ * MINIMALNA SZEROKOŚĆ POLA na ekranie [px] per poziom szczegółowości (R2 §17):
+ * pole odpływu (slot `feederGap`) NIGDY nie jest ściskane poniżej tej
+ * szerokości — zamiast pomniejszać rysunek i tekst, kanwa PRZEWIJA (pan /
+ * scroll). Poziom pełny: oznaczenie „QF-12" (≈ 40 px) + odstęp + symbol 24 px
+ * + zapas; poziom sieci: symbol + krótkie oznaczenie; przegląd: sam symbol.
+ */
+export const MIN_FIELD_WIDTH_PX: Readonly<Record<PoziomLod, number>> = { 0: 40, 1: 72, 2: 96 };
+
+/** Górny clamp skali: zakaz rozdmuchiwania mikroschematu. */
+export const FIT_SCALE_MAX = 1.6;
+
+/** Dolna granica skali z MIN_FIELD_WIDTH (jedno wyprowadzenie dla fitu i testów). */
+export function skalaMinimalna(lod: PoziomLod): number {
+  return MIN_FIELD_WIDTH_PX[lod] / TOKENY_GEOMETRII.feederGap;
+}
 
 export interface SceneFit {
   readonly s: number;
   readonly tx: number;
   readonly ty: number;
+  /** Rozmiar treści po skali [px]; > viewport ⇒ kanwa przewijalna. */
+  readonly contentWidth: number;
+  readonly contentHeight: number;
+  readonly scroll: boolean;
 }
 
 export function fitSceneToViewport(
@@ -140,23 +158,28 @@ export function fitSceneToViewport(
   sceneHeight: number,
   viewportWidth: number,
   viewportHeight: number,
+  lod: PoziomLod = 2,
 ): SceneFit {
   if (sceneWidth <= 0 || sceneHeight <= 0 || viewportWidth <= 0 || viewportHeight <= 0) {
-    return { s: 1, tx: 0, ty: 0 };
+    return { s: 1, tx: 0, ty: 0, contentWidth: Math.max(0, sceneWidth), contentHeight: Math.max(0, sceneHeight), scroll: false };
   }
   const sRaw = Math.min(
     (OCCUPANCY.xTarget * viewportWidth) / sceneWidth,
     (OCCUPANCY.yTarget * viewportHeight) / sceneHeight,
   );
-  // Dolny clamp NIGDY nie może wypchnąć sceny poza viewport (§43, wąski ekran):
-  // gdy skala minimalna nie mieści całości, obowiązuje skala „zmieść wszystko".
-  const sFitAll = Math.min(viewportWidth / sceneWidth, viewportHeight / sceneHeight);
-  const sMin = Math.min(FIT_SCALE_CLAMP.min, sFitAll);
-  const s = Math.min(FIT_SCALE_CLAMP.max, Math.max(sMin, sRaw));
+  // Dolny clamp z MIN_FIELD_WIDTH: scena, która się nie mieści, NIE jest
+  // pomniejszana poniżej czytelności — wychodzi poza viewport i przewija się.
+  const s = Math.min(FIT_SCALE_MAX, Math.max(skalaMinimalna(lod), sRaw));
+  const contentWidth = s * sceneWidth;
+  const contentHeight = s * sceneHeight;
+  const scroll = contentWidth > viewportWidth || contentHeight > viewportHeight;
   return {
     s,
-    tx: (viewportWidth - s * sceneWidth) / 2,
-    ty: (viewportHeight - s * sceneHeight) / 2,
+    tx: contentWidth > viewportWidth ? 0 : (viewportWidth - contentWidth) / 2,
+    ty: contentHeight > viewportHeight ? 0 : (viewportHeight - contentHeight) / 2,
+    contentWidth,
+    contentHeight,
+    scroll,
   };
 }
 
@@ -182,38 +205,17 @@ export const SLD_LABEL = {
 /** Odstęp linii dla etykiet wieloliniowych [× rozmiar pisma]. */
 export const LINE_HEIGHT = 1.25;
 
-/** §30: długie nazwy — zawijanie do `maxChars` znaków w linii (słowa, bez
- *  łamania w środku wyrazu), maks. `maxLines` linii; ostatnia linia z „…"
- *  gdy nie zmieściła się reszta. Czysta funkcja, deterministyczna. */
+/** §30 / R2 §17: długie nazwy — zawijanie do `maxChars` znaków w linii po
+ *  SŁOWACH, maks. `maxLines` linii; ostatnia linia z „…", gdy reszta się nie
+ *  zmieściła. ZAKAZ łamania w środku wyrazu (także technicznego z dywizem,
+ *  np. „grid-following"): wyraz dłuższy niż linia zostaje w całości i jest
+ *  uczciwie skrócony wielokropkiem — pełna nazwa żyje w podpowiedzi i w
+ *  inspektorze, nie w połamanej etykiecie. Czysta funkcja, deterministyczna. */
 export function zawinNazwe(text: string, maxChars: number, maxLines: number): readonly string[] {
   const limit = Math.max(2, Math.floor(maxChars));
-  const slowa = text
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean)
-    // Pojedynczy wyraz dłuższy niż linia: ŁAMANIE z dywizem na kawałki
-    // mieszczące się w slocie (§30). Nawis „limit + 30 %" wchodził w tło
-    // etykiety sąsiada i ucinał mu końcówkę (zrzut 15_many_feeders:
-    // „przeciwpożarov", „ładowani") — etykieta NIGDY nie wychodzi poza slot.
-    .flatMap((slowo) => {
-      if (slowo.length <= limit) return [slowo];
-      // Najpierw naturalne miejsce łamania: istniejący dywiz w wyrazie
-      // („grid-following" → „grid-" + „following"), dopiero potem twarde
-      // łamanie na kawałki z dywizem.
-      const naturalne = slowo.split(/(?<=-)/).filter(Boolean);
-      const czesci = naturalne.length > 1 ? naturalne : [slowo];
-      const kawalki: string[] = [];
-      for (const czesc of czesci) {
-        let reszta = czesc;
-        while (reszta.length > limit) {
-          kawalki.push(`${reszta.slice(0, limit - 1)}-`);
-          reszta = reszta.slice(limit - 1);
-        }
-        kawalki.push(reszta);
-      }
-      return kawalki;
-    });
+  const slowa = text.trim().split(/\s+/).filter(Boolean);
   if (slowa.length === 0) return [''];
+  const skroc = (s: string): string => (s.length <= limit ? s : `${s.slice(0, Math.max(1, limit - 1)).trimEnd()}…`);
   const linie: string[] = [];
   let biezaca = '';
   for (const slowo of slowa) {
@@ -226,10 +228,11 @@ export function zawinNazwe(text: string, maxChars: number, maxLines: number): re
     }
   }
   linie.push(biezaca);
-  if (linie.length <= maxLines) return linie;
-  const skrocone = linie.slice(0, maxLines);
+  const zLimitem = linie.map(skroc);
+  if (zLimitem.length <= maxLines) return zLimitem;
+  const skrocone = zLimitem.slice(0, maxLines);
   const ostatnia = skrocone[maxLines - 1];
-  skrocone[maxLines - 1] = `${ostatnia.slice(0, Math.max(1, limit - 1)).trimEnd()}…`;
+  skrocone[maxLines - 1] = ostatnia.endsWith('…') ? ostatnia : `${ostatnia.slice(0, Math.max(1, limit - 1)).trimEnd()}…`;
   return skrocone;
 }
 
@@ -252,19 +255,28 @@ export function limitZnakow(screenWidthPx: number, fontPx: number, ratio: number
 // GRUBOŚCI, WZORY, ROZMIARY SYMBOLI — px EKRANU.
 // ===========================================================================
 
-/** Hierarchia magistral: MAIN ≠ SUB rozpoznawalne bez etykiety. */
-export const BUS_STROKE_SCREEN_PX = { main: 8, sub: 5 } as const;
+/**
+ * HIERARCHIA GRUBOŚCI KRESEK (R2 §13) — techniczny system BUS / PRIMARY /
+ * SECONDARY / RESULT HIGHLIGHT bez skrajnych kontrastów, jak w dokumentacji
+ * rozdzielnic: szyna 3,0 px, tor pierwotny 1,6 px, symbol 1,4 px
+ * (`CAD_SYMBOL_STROKE_PX`), obwód wtórny/pomiarowy 1,0 px, podświetlenie
+ * wyniku 6 px pod torem (przezroczyste). Wszystko w px EKRANU (kreska
+ * nieskalowana z kamerą). Magistrala główna ≠ podrozdzielnica po grubości.
+ */
+export const BUS_STROKE_SCREEN_PX = { main: 3, sub: 2.4 } as const;
 
-export const JUNCTION_RADIUS_SCREEN_PX = 3;
+export const JUNCTION_RADIUS_SCREEN_PX = 2.5;
 
-/** Gramatyka linii: tor wewnętrzny > kabel > granica. */
+/** Gramatyka linii: PRIMARY (tor pierwotny, kabel, sprzęgło) > SECONDARY
+ *  (obwody wtórne: łącznik przekaźnika, granica). */
 export const LINE_SCREEN_PX = {
-  connection: 2.4,
-  cable: 1.8,
-  coupler: 3,
-  boundary: 1.5,
+  connection: 1.6,
+  cable: 1.6,
+  coupler: 1.6,
+  boundary: 1.0,
+  secondary: 1.0,
   /** Podświetlenie toru zasilania (§37) — obwódka pod kreską. */
-  highlight: 7,
+  highlight: 6,
 } as const;
 
 /** Wzory kresek [px ekranu]: nośnik GEOMETRYCZNY stanu zasilania odcinka. */
@@ -274,48 +286,44 @@ export const LINE_DASH_SCREEN_PX = {
   unknown: [1.5, 4],
 } as const;
 
-/** Cele rozmiarów SYMBOLI [px EKRANU, wysokość glifu]. Transformator o
- *  ~26 % lżejszy niż dotąd (84 → 62, §9) — nadal największy element toru. */
-export const SYMBOL_SCREEN_PX = {
-  transformer: 62,
-  coupler: 40,
-  apparatus: 32,
-  generator: 44,
-  load: 22,
-  measurement: 24,
-  relay: 22,
-  junction: 8,
-} as const;
+/**
+ * SKALA SYMBOLI CAD (R2 §16/§19): JEDNA skala dla całej biblioteki — px
+ * ekranu na 1 u rejestru `cad/cadSymbolRegistry.ts` (aparat 16×24 u → 32×48
+ * px, transformator 16×28 u → 56 px, złożenie PV/BESS 16×40 u → 80 px):
+ * korpus aparatu (nóż 10 u = 20 px, krzyżyk 5 u = 10 px) ma ≈ 2× wysokość
+ * pisma oznaczenia (12 px) — proporcja dokumentacji rozdzielnic. Rozmiar NIE
+ * koduje parametrów (moc, prąd) — wszystkie symbole na wspólnej siatce;
+ * screen-stable (nie skaluje się z kamerą), z sufitem udziału w slocie, gdy
+ * przegląd (LOD 0) schodzi poniżej skali minimalnej pełnego poziomu.
+ */
+export const CAD_U_PX = 2;
 
-export function glyphScaleForScreenTarget(worldExtent: number, targetScreenPx: number, fitScale: number): number {
-  if (worldExtent <= 0 || fitScale <= 0) return 1;
-  return targetScreenPx / (worldExtent * fitScale);
-}
-
-export type RodzajSymbolu = keyof typeof SYMBOL_SCREEN_PX;
+export type RodzajSymbolu = 'transformer' | 'coupler' | 'apparatus' | 'generator' | 'load' | 'measurement' | 'relay' | 'junction';
 
 /** Maksymalny UDZIAŁ symbolu w szerokości jego slotu na ekranie (§43/§44):
- *  symbol jest screen-stable, dopóki slot to znosi; gdy scena schodzi w dół
- *  (wąski ekran, wiele odpływów), symbol maleje razem ze slotem, żeby glify
- *  sąsiednich kolumn nigdy się nie zlewały w pas. Slot referencyjny:
+ *  symbol jest screen-stable, dopóki slot to znosi; gdy przegląd schodzi w
+ *  dół (MIN_FIELD_WIDTH poziomu 0), symbol maleje razem ze slotem, żeby
+ *  symbole sąsiednich kolumn nigdy się nie zlewały. Slot referencyjny:
  *  `feederGap` dla aparatów/odbiorów/pomiarów, `sourceSlot` dla TR/DER. */
 export const SYMBOL_SLOT_SHARE: Readonly<Record<RodzajSymbolu, number>> = {
   transformer: 0.6,
-  coupler: 0.45,
-  apparatus: 0.4,
-  generator: 0.5,
-  load: 0.3,
-  measurement: 0.3,
-  relay: 0.3,
-  junction: 0.12,
+  coupler: 0.6,
+  apparatus: 0.5,
+  generator: 0.6,
+  load: 0.4,
+  measurement: 0.4,
+  relay: 0.4,
+  junction: 0.2,
 };
 
-/** Cel rozmiaru symbolu [px EKRANU] przy skali fitu: screen-stable z sufitem
- *  udziału w slocie (jedno wyprowadzenie dla renderera i testów). */
-export function celGlifuNaEkranie(kind: RodzajSymbolu, fitScale: number): number {
+/** Skala symbolu [px ekranu na 1 u] przy skali fitu: `CAD_U_PX` z sufitem
+ *  udziału w slocie dla symbolu o szerokości `widthU` (jedno wyprowadzenie
+ *  dla renderera i testów). */
+export function skalaSymboluNaEkranie(kind: RodzajSymbolu, widthU: number, fitScale: number): number {
   const slotWorld = kind === 'transformer' || kind === 'generator' ? TOKENY_GEOMETRII.sourceSlot : TOKENY_GEOMETRII.feederGap;
-  const sufit = SYMBOL_SLOT_SHARE[kind] * slotWorld * Math.max(fitScale, 0);
-  return Math.max(2, Math.min(SYMBOL_SCREEN_PX[kind], sufit));
+  const sufitPx = SYMBOL_SLOT_SHARE[kind] * slotWorld * Math.max(fitScale, 0);
+  const sufit = sufitPx / Math.max(1, widthU);
+  return Math.max(0.2, Math.min(CAD_U_PX, sufit));
 }
 
 // ===========================================================================

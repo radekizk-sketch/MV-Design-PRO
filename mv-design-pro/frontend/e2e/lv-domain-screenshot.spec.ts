@@ -72,7 +72,12 @@ const KADRY: readonly Kadr[] = [
     lody: [0, 1, 2],
     asercje: async (page) => {
       await atrybut(page, 'lv-domain-node-QBC', 'data-device-state', 'OPEN');
-      await expect(page.locator('[data-testid="lv-domain-node-QBC"] g[data-symbol-canon="nnBreaker"] rect')).toHaveAttribute('fill', 'none');
+      // Sprzęgło = REALNY aparat z ENM (device_kind WYLACZNIK → symbol CAD
+      // wyłącznika w orientacji poziomej); stan OTWARTY z KĄTA noża, nie z fill.
+      const sprzeglo = page.locator('[data-testid="lv-domain-node-QBC"] g[data-symbol-canon="cad.wylacznik"]');
+      await expect(sprzeglo).toHaveAttribute('data-orientation', 'pozioma');
+      await expect(sprzeglo.locator('[data-cad="pivot"]')).not.toHaveAttribute('data-cad-deg', '0');
+      await expect(page.locator('[data-testid="lv-domain-node-QBC"] [data-symbol-family="cad"] [fill]:not([fill="none"])')).toHaveCount(0);
       await atrybut(page, 'lv-domain-edge-QBC#a', 'data-energization', 'ENERGIZED');
       await atrybut(page, 'lv-domain-edge-QBC#b', 'data-energization', 'ENERGIZED');
       await atrybut(page, 'lv-domain-node-anchor:eq:', 'data-shared', 'true').catch(() => undefined);
@@ -85,6 +90,10 @@ const KADRY: readonly Kadr[] = [
     opis: 'dwa transformatory, sprzęgło ZAMKNIĘTE — zasilanie wielostronne',
     asercje: async (page) => {
       await atrybut(page, 'lv-domain-node-QBC', 'data-device-state', 'CLOSED');
+      // Sprzęgło z device_kind ROZLACZNIK → symbol CAD rozłącznika (poprzeczka + okrąg), nóż w osi (0°).
+      const sprzeglo = page.locator('[data-testid="lv-domain-node-QBC"] g[data-symbol-canon="cad.rozlacznik"]');
+      await expect(sprzeglo).toHaveAttribute('data-orientation', 'pozioma');
+      await expect(sprzeglo.locator('[data-cad="pivot"]')).toHaveAttribute('data-cad-deg', '0');
       await atrybut(page, 'lv-domain-node-RGnN-A', 'data-energization', 'MULTISOURCE');
       await widoczny(page, 'lv-domain-bus-stan-RGnN-A');
     },
@@ -116,6 +125,11 @@ const KADRY: readonly Kadr[] = [
     asercje: async (page) => {
       await atrybut(page, 'lv-domain-node-RGnN-A', 'data-energization', 'CONFLICT');
       await expect(page.locator('[data-testid="lv-domain-warnings-toggle"]')).toHaveAttribute('data-blockers', /^[1-9]/);
+      // Sprzęgło BEZ klasy funkcjonalnej aparatu → łącznik ogólny (IEC S00227), audyt NN-AUD-18 w panelu.
+      await expect(page.locator('[data-testid="lv-domain-node-QBC"] g[data-symbol-canon="cad.lacznik"]')).toHaveCount(1);
+      await page.locator('[data-testid="lv-domain-warnings-toggle"]').click();
+      await expect(page.locator('[data-testid="lv-domain-warning-NN-AUD-18"]')).toHaveAttribute('data-severity', 'INFO');
+      await page.locator('[data-testid="lv-domain-warnings-toggle"]').click();
     },
   },
   {
@@ -192,11 +206,21 @@ const KADRY: readonly Kadr[] = [
   {
     plik: '13_loads_via_fields',
     scenariusz: '13_loads_via_fields',
-    opis: 'odbiory przez pola (cztery rodzaje aparatów) + odbiór bez pola z audytem',
+    opis: 'odbiory przez pola (pięć rodzajów aparatów: wyłącznik, rozłącznik, odłącznik, wkładka, rozłącznik bezpiecznikowy) + odbiór bez pola z audytem',
     asercje: async (page) => {
       await widoczny(page, 'lv-domain-node-QS-02');
       await widoczny(page, 'lv-domain-node-FU-04');
       await widoczny(page, 'lv-domain-warning-marker-odbior_bez_pola');
+      // Pięć rodzin symboli CAD rozróżnialnych bez etykiety (R2 §5/§7/§22).
+      for (const [ref, symbol] of [
+        ['QF-01', 'cad.wylacznik'],
+        ['QS-02', 'cad.rozlacznik'],
+        ['QS-03', 'cad.odlacznik'],
+        ['FU-04', 'cad.bezpiecznik'],
+        ['QS-05', 'cad.rozlacznikBezpiecznikowy'],
+      ] as const) {
+        await expect(page.locator(`[data-testid="lv-domain-node-${ref}"] g[data-symbol-canon="${symbol}"]`)).toHaveCount(1);
+      }
     },
   },
   {

@@ -9,6 +9,7 @@
       {
         "catalog_namespace": "WKLADKA_NN",
         "catalog_ref": "wkladka-nn-gg-32",
+        "device_kind": null,
         "from_bus_ref": "RGnN-B",
         "name": "FU-B2",
         "ref_id": "FU-B2",
@@ -19,6 +20,7 @@
       {
         "catalog_namespace": "KABEL_NN",
         "catalog_ref": "kabel-nn-yaky-4x35",
+        "device_kind": null,
         "from_bus_ref": "FU-B2_zacisk",
         "name": "Kabel FU-B2",
         "ref_id": "FU-B2_kabel",
@@ -29,6 +31,7 @@
       {
         "catalog_namespace": "APARAT_NN",
         "catalog_ref": "aparat-nn-sprzeglo-630a",
+        "device_kind": "WYLACZNIK",
         "from_bus_ref": "RGnN-A",
         "name": "QBC",
         "ref_id": "QBC",
@@ -39,6 +42,7 @@
       {
         "catalog_namespace": "APARAT_NN_MCB",
         "catalog_ref": "aparat-nn-mcb-c63",
+        "device_kind": null,
         "from_bus_ref": "RGnN-A",
         "name": "QF-A1",
         "ref_id": "QF-A1",
@@ -49,6 +53,7 @@
       {
         "catalog_namespace": "KABEL_NN",
         "catalog_ref": "kabel-nn-yaky-4x35",
+        "device_kind": null,
         "from_bus_ref": "QF-A1_zacisk",
         "name": "Kabel QF-A1",
         "ref_id": "QF-A1_kabel",
@@ -59,6 +64,7 @@
       {
         "catalog_namespace": "APARAT_NN",
         "catalog_ref": "aparat-nn-rozlacznik-160a",
+        "device_kind": "ROZLACZNIK",
         "from_bus_ref": "RGnN-A",
         "name": "QF-A2",
         "ref_id": "QF-A2",
@@ -69,6 +75,7 @@
       {
         "catalog_namespace": "KABEL_NN",
         "catalog_ref": "kabel-nn-yaky-4x35",
+        "device_kind": null,
         "from_bus_ref": "QF-A2_zacisk",
         "name": "Kabel QF-A2",
         "ref_id": "QF-A2_kabel",
@@ -79,6 +86,7 @@
       {
         "catalog_namespace": "APARAT_NN_MCB",
         "catalog_ref": "aparat-nn-mcb-c100",
+        "device_kind": null,
         "from_bus_ref": "RGnN-A",
         "name": "QF-A3",
         "ref_id": "QF-A3",
@@ -89,6 +97,7 @@
       {
         "catalog_namespace": "KABEL_NN",
         "catalog_ref": "kabel-nn-yaky-4x50",
+        "device_kind": null,
         "from_bus_ref": "QF-A3_zacisk",
         "name": "Kabel QF-A3",
         "ref_id": "QF-A3_kabel",
@@ -99,6 +108,7 @@
       {
         "catalog_namespace": "APARAT_NN_MCB",
         "catalog_ref": "aparat-nn-mcb-c80",
+        "device_kind": null,
         "from_bus_ref": "RGnN-B",
         "name": "QF-B1",
         "ref_id": "QF-B1",
@@ -109,6 +119,7 @@
       {
         "catalog_namespace": "KABEL_NN",
         "catalog_ref": "kabel-nn-yaky-4x35",
+        "device_kind": null,
         "from_bus_ref": "QF-B1_zacisk",
         "name": "Kabel QF-B1",
         "ref_id": "QF-B1_kabel",
@@ -119,6 +130,7 @@
       {
         "catalog_namespace": "APARAT_NN_MCB",
         "catalog_ref": "aparat-nn-mcb-c1400",
+        "device_kind": null,
         "from_bus_ref": "TA_zacisk",
         "name": "QF-TA",
         "ref_id": "QF-TA",
@@ -129,6 +141,7 @@
       {
         "catalog_namespace": "APARAT_NN_MCB",
         "catalog_ref": "aparat-nn-mcb-c1400",
+        "device_kind": null,
         "from_bus_ref": "TB_zacisk",
         "name": "QF-TB",
         "ref_id": "QF-TB",
@@ -344,6 +357,7 @@
         "board_bus_ref": "RGnN-B",
         "child_bus_ref": "FU-B2_zacisk",
         "designation_class": "FU",
+        "device_kind": null,
         "device_role": "feeder",
         "device_state": "CLOSED",
         "device_type": "fuse",
@@ -358,6 +372,7 @@
         "board_bus_ref": null,
         "child_bus_ref": "FU-B2_koniec",
         "designation_class": "W",
+        "device_kind": null,
         "device_role": "internal",
         "device_state": "CLOSED",
         "device_type": "cable",
@@ -372,6 +387,7 @@
         "board_bus_ref": null,
         "child_bus_ref": "RGnN-B",
         "designation_class": "QBC",
+        "device_kind": "WYLACZNIK",
         "device_role": "coupler",
         "device_state": "OPEN",
         "device_type": "bus_coupler",
@@ -386,6 +402,7 @@
         "board_bus_ref": "RGnN-A",
         "child_bus_ref": "QF-A1_zacisk",
         "designation_class": "QF",
+        "device_kind": null,
         "device_role": "feeder",
         "device_state": "CLOSED",
         "device_type": "breaker",
@@ -400,6 +417,7 @@
         "board_bus_ref": null,
         "child_bus_ref": "QF-A1_koniec",
         "designation_class": "W",
+        "device_kind": null,
         "device_role": "internal",
         "device_state": "CLOSED",
         "device_type": "cable",
@@ -414,6 +432,7 @@
         "board_bus_ref": "RGnN-A",
         "child_bus_ref": "QF-A2_zacisk",
         "designation_class": "QS",
+        "device_kind": "ROZLACZNIK",
         "device_role": "feeder",
         "device_state": "CLOSED",
         "device_type": "switch",
@@ -428,6 +447,7 @@
         "board_bus_ref": null,
         "child_bus_ref": "QF-A2_koniec",
         "designation_class": "W",
+        "device_kind": null,
         "device_role": "internal",
         "device_state": "CLOSED",
         "device_type": "cable",
@@ -442,6 +462,7 @@
         "board_bus_ref": "RGnN-A",
         "child_bus_ref": "QF-A3_zacisk",
         "designation_class": "QF",
+        "device_kind": null,
         "device_role": "feeder",
         "device_state": "CLOSED",
         "device_type": "breaker",
@@ -456,6 +477,7 @@
         "board_bus_ref": null,
         "child_bus_ref": "QF-A3_pcc",
         "designation_class": "W",
+        "device_kind": null,
         "device_role": "internal",
         "device_state": "CLOSED",
         "device_type": "cable",
@@ -470,6 +492,7 @@
         "board_bus_ref": "RGnN-B",
         "child_bus_ref": "QF-B1_zacisk",
         "designation_class": "QF",
+        "device_kind": null,
         "device_role": "feeder",
         "device_state": "CLOSED",
         "device_type": "breaker",
@@ -484,6 +507,7 @@
         "board_bus_ref": null,
         "child_bus_ref": "QF-B1_koniec",
         "designation_class": "W",
+        "device_kind": null,
         "device_role": "internal",
         "device_state": "CLOSED",
         "device_type": "cable",
@@ -498,6 +522,7 @@
         "board_bus_ref": "RGnN-A",
         "child_bus_ref": "RGnN-A",
         "designation_class": "QF",
+        "device_kind": null,
         "device_role": "incomer",
         "device_state": "CLOSED",
         "device_type": "breaker",
@@ -512,6 +537,7 @@
         "board_bus_ref": "RGnN-B",
         "child_bus_ref": "RGnN-B",
         "designation_class": "QF",
+        "device_kind": null,
         "device_role": "incomer",
         "device_state": "OPEN",
         "device_type": "breaker",
@@ -1185,14 +1211,14 @@
   "missing_data": [],
   "model_snapshot": {
     "case_id": "fixture-10_deenergized_section",
-    "model_hash": "0f9a9de3d54f123506654b9e95c9dde357a225284b76d9ed7b913866c55fe376",
+    "model_hash": "e5c8802b47e03a68c629aac2b80d6697a033c0cf57a8185a0dba7239b5fa4c65",
     "operating_state_id": "e3af32d8d2a31d8b83e0ee3c5603c645c24970502206f08f192812b7d50a30fd",
     "revision": 1,
     "run_snapshot_hash": null,
     "scenario_id": "MAX",
     "station_ref": "stAB"
   },
-  "projection_hash": "98526a79671ad49a1ddb5a7396f03ff610052d2b3f9dccc5bef572deddab97a1",
+  "projection_hash": "540ac0c9fedb7fc8c718080f1f601440d7b9ff4e9f1ba1f5d0bdfe34e52e2d7c",
   "result_snapshot": {
     "analysis_type": null,
     "overlay_payload": null,
@@ -1245,7 +1271,7 @@
                     {
                       "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
                       "magnitude_ohm": 0.0003625969431888203,
-                      "r_ohm": 7.111111111111112e-05,
+                      "r_ohm": 7.111111111111113e-05,
                       "x_ohm": 0.0003555555555555556
                     }
                   ],
@@ -1275,7 +1301,7 @@
                         },
                         {
                           "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                          "r_ohm": 7.111111111111112e-05,
+                          "r_ohm": 7.111111111111113e-05,
                           "x_ohm": 0.0003555555555555556
                         }
                       ],
@@ -1333,7 +1359,7 @@
                     {
                       "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
                       "magnitude_ohm": 0.0003625969431888203,
-                      "r_ohm": 7.111111111111112e-05,
+                      "r_ohm": 7.111111111111113e-05,
                       "x_ohm": 0.0003555555555555556
                     }
                   ],
@@ -1363,7 +1389,7 @@
                         },
                         {
                           "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                          "r_ohm": 7.111111111111112e-05,
+                          "r_ohm": 7.111111111111113e-05,
                           "x_ohm": 0.0003555555555555556
                         }
                       ],
@@ -1425,7 +1451,7 @@
                   {
                     "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
                     "magnitude_ohm": 0.0003625969431888203,
-                    "r_ohm": 7.111111111111112e-05,
+                    "r_ohm": 7.111111111111113e-05,
                     "x_ohm": 0.0003555555555555556
                   }
                 ],
@@ -1455,7 +1481,7 @@
                       },
                       {
                         "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                        "r_ohm": 7.111111111111112e-05,
+                        "r_ohm": 7.111111111111113e-05,
                         "x_ohm": 0.0003555555555555556
                       }
                     ],
@@ -1557,7 +1583,7 @@
                     {
                       "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
                       "magnitude_ohm": 0.0003625969431888203,
-                      "r_ohm": 7.111111111111112e-05,
+                      "r_ohm": 7.111111111111113e-05,
                       "x_ohm": 0.0003555555555555556
                     }
                   ],
@@ -1587,7 +1613,7 @@
                         },
                         {
                           "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                          "r_ohm": 7.111111111111112e-05,
+                          "r_ohm": 7.111111111111113e-05,
                           "x_ohm": 0.0003555555555555556
                         }
                       ],
@@ -1645,7 +1671,7 @@
                     {
                       "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
                       "magnitude_ohm": 0.0003625969431888203,
-                      "r_ohm": 7.111111111111112e-05,
+                      "r_ohm": 7.111111111111113e-05,
                       "x_ohm": 0.0003555555555555556
                     }
                   ],
@@ -1675,7 +1701,7 @@
                         },
                         {
                           "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                          "r_ohm": 7.111111111111112e-05,
+                          "r_ohm": 7.111111111111113e-05,
                           "x_ohm": 0.0003555555555555556
                         }
                       ],
@@ -1718,7 +1744,7 @@
                 "breaker_catalog_binding"
               ],
               "network_system": "TN-C-S",
-              "reason_pl": "Aparat 'QF-A2' nie ma zmaterializowanych danych katalogowych (materialized_params) — SWZ wymaga wiązania z katalogiem (Catalog Binding).",
+              "reason_pl": "Aparat 'QF-A2' bez i_n_a w materialized_params.",
               "station_name": "Stacja AB",
               "station_ref": "stAB",
               "status": "brak danych"
@@ -1753,7 +1779,7 @@
                     {
                       "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
                       "magnitude_ohm": 0.0003625969431888203,
-                      "r_ohm": 7.111111111111112e-05,
+                      "r_ohm": 7.111111111111113e-05,
                       "x_ohm": 0.0003555555555555556
                     }
                   ],
@@ -1783,7 +1809,7 @@
                         },
                         {
                           "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                          "r_ohm": 7.111111111111112e-05,
+                          "r_ohm": 7.111111111111113e-05,
                           "x_ohm": 0.0003555555555555556
                         }
                       ],
@@ -1841,7 +1867,7 @@
                     {
                       "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
                       "magnitude_ohm": 0.0003625969431888203,
-                      "r_ohm": 7.111111111111112e-05,
+                      "r_ohm": 7.111111111111113e-05,
                       "x_ohm": 0.0003555555555555556
                     }
                   ],
@@ -1871,7 +1897,7 @@
                         },
                         {
                           "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                          "r_ohm": 7.111111111111112e-05,
+                          "r_ohm": 7.111111111111113e-05,
                           "x_ohm": 0.0003555555555555556
                         }
                       ],
@@ -1933,7 +1959,7 @@
                   {
                     "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
                     "magnitude_ohm": 0.0003625969431888203,
-                    "r_ohm": 7.111111111111112e-05,
+                    "r_ohm": 7.111111111111113e-05,
                     "x_ohm": 0.0003555555555555556
                   }
                 ],
@@ -1963,7 +1989,7 @@
                       },
                       {
                         "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                        "r_ohm": 7.111111111111112e-05,
+                        "r_ohm": 7.111111111111113e-05,
                         "x_ohm": 0.0003555555555555556
                       }
                     ],
@@ -2055,16 +2081,16 @@
   "upstream_equivalents": [
     {
       "c_factor": 1.1,
-      "calculation_run_id": "dd3b66ab-d6f4-5f35-8deb-a980b61a6434",
+      "calculation_run_id": "16e33f12-35d0-5570-82ed-530d4093727d",
       "case_id": "fixture-10_deenergized_section",
-      "equivalent_id": "a921a06c-0971-5183-9796-de2f03043023",
+      "equivalent_id": "1e29e85b-32ee-5766-ab2d-6cbf06990008",
       "ikss_ka": 18.682571063385833,
       "missing_data": [],
-      "model_hash": "0f9a9de3d54f123506654b9e95c9dde357a225284b76d9ed7b913866c55fe376",
+      "model_hash": "e5c8802b47e03a68c629aac2b80d6697a033c0cf57a8185a0dba7239b5fa4c65",
       "model_revision": 1,
       "note_pl": "Równoważnik Thevenina sieci SN w punkcie HV transformatora — granica wizualna domeny nN (L2) jest granicą domeny napięciowej i projekcji, NIE przerwaniem zależności obliczeniowej: ten snapshot jest dokładnie tym wejściem, którym solver pętli zwarcia nN liczy stronę SN (application.analyses.fault_loop).",
       "operating_state_id": "e3af32d8d2a31d8b83e0ee3c5603c645c24970502206f08f192812b7d50a30fd",
-      "rx_ratio": 0.19999999999999998,
+      "rx_ratio": 0.2,
       "scenario_id": "MAX",
       "sk_mva": 485.3874344670055,
       "source_node_id": "597eca72-4f74-52ca-9b72-548d57f0df86",
@@ -2089,22 +2115,22 @@
         "x": 0.0
       },
       "z1_ohm": {
-        "r": 0.09999999999999999,
+        "r": 0.1,
         "x": 0.5
       }
     },
     {
       "c_factor": 1.1,
-      "calculation_run_id": "e1f1657f-3d89-5452-a225-23547593b6d5",
+      "calculation_run_id": "70b89290-2b06-5251-871f-117614064cf0",
       "case_id": "fixture-10_deenergized_section",
-      "equivalent_id": "a921a06c-0971-5183-9796-de2f03043023",
+      "equivalent_id": "1e29e85b-32ee-5766-ab2d-6cbf06990008",
       "ikss_ka": 18.682571063385833,
       "missing_data": [],
-      "model_hash": "0f9a9de3d54f123506654b9e95c9dde357a225284b76d9ed7b913866c55fe376",
+      "model_hash": "e5c8802b47e03a68c629aac2b80d6697a033c0cf57a8185a0dba7239b5fa4c65",
       "model_revision": 1,
       "note_pl": "Równoważnik Thevenina sieci SN w punkcie HV transformatora — granica wizualna domeny nN (L2) jest granicą domeny napięciowej i projekcji, NIE przerwaniem zależności obliczeniowej: ten snapshot jest dokładnie tym wejściem, którym solver pętli zwarcia nN liczy stronę SN (application.analyses.fault_loop).",
       "operating_state_id": "e3af32d8d2a31d8b83e0ee3c5603c645c24970502206f08f192812b7d50a30fd",
-      "rx_ratio": 0.19999999999999998,
+      "rx_ratio": 0.2,
       "scenario_id": "MAX",
       "sk_mva": 485.3874344670055,
       "source_node_id": "597eca72-4f74-52ca-9b72-548d57f0df86",
@@ -2129,7 +2155,7 @@
         "x": 0.0
       },
       "z1_ohm": {
-        "r": 0.09999999999999999,
+        "r": 0.1,
         "x": 0.5
       }
     }

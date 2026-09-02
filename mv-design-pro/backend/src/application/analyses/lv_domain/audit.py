@@ -30,6 +30,7 @@ Lista kodów (ZAMKNIĘTA — dopisanie kodu bez wpisu tutaj jest naruszeniem):
 | NN-AUD-15  | zasilanie zwrotne transformatora (energization.py)     | IMPORTANT |
 | NN-AUD-16  | kilka źródeł tworzących napięcie (energization.py)     | IMPORTANT |
 | NN-AUD-17  | deficyt bilansu mocy znamionowej wyspy (energization)  | IMPORTANT |
+| NN-AUD-18  | sprzęgło bez klasy funkcjonalnej aparatu (device_kind) | INFO      |
 """
 
 from __future__ import annotations
@@ -40,7 +41,7 @@ from enm.severity import SEVERITY_BLOCKER, SEVERITY_IMPORTANT, SEVERITY_INFO
 
 from .energization import ValidationMessage
 
-AUDIT_CODES: tuple[str, ...] = tuple(f"NN-AUD-{i:02d}" for i in range(1, 18))
+AUDIT_CODES: tuple[str, ...] = tuple(f"NN-AUD-{i:02d}" for i in range(1, 19))
 
 
 def _msg(code: str, severity: str, text: str, refs: list[str]) -> ValidationMessage:
@@ -295,6 +296,25 @@ def audit_lv_domain_graph(graph: dict[str, Any]) -> list[ValidationMessage]:
                     [device["ref_id"]],
                 )
             )
+
+    # NN-AUD-18: sprzęgło bez klasy funkcjonalnej aparatu — model niesie tylko rolę
+    # „łącznik szyn" (typ bus_coupler), katalog nie klasyfikuje wyrobu. Renderer
+    # rysuje wtedy symbol ogólny łącznika (IEC 60617 S00227), nie dorysowuje
+    # wyłącznika ani rozłącznika, którego model nie deklaruje (R2 §6) — ten
+    # komunikat nazywa brak danych, żeby był widoczny, a nie zgadywany.
+    for device in devices:
+        if device["device_role"] != "coupler" or device.get("device_kind"):
+            continue
+        messages.append(
+            _msg(
+                "NN-AUD-18",
+                SEVERITY_INFO,
+                f"Sprzęgło {device['ref_id']}: katalog nie określa rodzaju aparatu "
+                "(wyłącznik / rozłącznik / odłącznik / rozłącznik bezpiecznikowy) — "
+                "na schemacie symbol ogólny łącznika.",
+                [device["ref_id"]],
+            )
+        )
 
     return messages
 

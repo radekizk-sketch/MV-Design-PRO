@@ -1,168 +1,247 @@
 /**
- * REJESTR SYMBOLI nN (mandat „profesjonalizacja SLD nN" §4) — JEDNO źródło
- * prawdy „jaki symbol, dla jakiego urządzenia, jak niesie stan".
+ * REJESTR SYMBOLI nN — ODWZOROWANIE MODELU NA SYMBOLE CAD (R2 §4–§12, §18,
+ * §19): JEDNO źródło prawdy „jaki symbol CAD, dla jakiego elementu ENM, jaką
+ * niesie klasę oznaczenia i nazwę polską".
  *
- * Klucz = TYP URZĄDZENIA z modelu (`LvDeviceType` = typ gałęzi ENM,
- * `graph.devices[].device_type`) — rola (`device_role`: incomer/odpływ/
- * sprzęgło/granica) i stan (`device_state`) są ODRĘBNYMI osiami tego samego
- * wpisu, nie osobnymi symbolami. Rejestr NIE zna geometrii glifów (żyje w
- * `symbols/glyphs.tsx`) — mówi, KTÓRY glif, jaką klasę oznaczenia (QF/QS/FU/
- * QBC/W) i JAK glif wyraża OPEN/CLOSED geometrycznie (mono-safe):
+ * Geometria symboli żyje WYŁĄCZNIE w `cad/cadSymbolRegistry.ts`
+ * (`ELECTRICAL_CAD_SYMBOL_REGISTRY`); ten moduł nie zna prymitywów — mówi,
+ * KTÓRY symbol wynika z DANYCH:
  *
- *  • `wypelnienie` — korpus wypełniony = zamknięty, pusty = otwarty
- *    (wyłącznik nN/MCB i sprzęgło: konwencja PowerFactory/ABB);
- *  • `noz` — nóż w osi = zamknięty, odchylony 45° = otwarty (IEC 60617
- *    rozłącznik/odłącznik);
- *  • `brak` — element bez stanu łączeniowego (wkładka, kabel, linia).
+ *  • typ gałęzi ENM (`LvDeviceType`) rozstrzyga rodzinę: breaker →
+ *    wyłącznik, disconnector → odłącznik, switch → rozłącznik, fuse →
+ *    bezpiecznik, cable/line → przewód bez symbolu;
+ *  • klasa funkcjonalna wyrobu z katalogu (`device_kind` z
+ *    `materialized_params`) DOPRECYZOWUJE: switch + ROZLACZNIK_BEZPIECZNIKOWY
+ *    → rozłącznik bezpiecznikowy; bus_coupler + WYLACZNIK/ROZLACZNIK/ODLACZNIK/
+ *    ROZLACZNIK_BEZPIECZNIKOWY → symbol REALNEGO aparatu sprzęgła (§6);
+ *    bus_coupler bez klasy → łącznik ogólny (audyt NN-AUD-18 z backendu).
  *
- * Elementy NIE-gałęziowe (transformator, źródła rozproszone, odbiór, pomiar,
- * zabezpieczenie) mają własne tabele niżej — te same zasady: symbol z DANYCH
- * (typ, `gen_type`, `measurement_type`), zero sylwetki „domyślnej na oko".
+ * Stan łączeniowy niesie WYŁĄCZNIE geometria noża symbolu (`nosnikStanu:
+ * 'noz'`); wypełnienie jako nośnik stanu jest zakazane (§14). Elementy bez
+ * stanu (`'brak'`): wkładka, kabel, linia.
  *
- * Pin: `__tests__/symbolRegistry.test.tsx` — snapshot glifu per typ × stan
- * (OPEN/CLOSED/UNKNOWN), różnica geometryczna między stanami, zakaz koloru
- * jako jedynego nośnika.
+ * Terminologia (§18): nazwy polskie pochodzą z rejestru CAD (WYŁĄCZNIK,
+ * ROZŁĄCZNIK, ODŁĄCZNIK, BEZPIECZNIK, ŁĄCZNIK SZYN, PRZEKŁADNIK PRĄDOWY /
+ * NAPIĘCIOWY, TRANSFORMATOR, FALOWNIK, MAGAZYN ENERGII, ODBIÓR); QF / QS / FU /
+ * QBC / CT / VT są IDENTYFIKATORAMI (klasą oznaczenia), nie nazwami.
+ *
+ * Pin: `__tests__/symbolRegistry.test.tsx` — iloczyn „typ gałęzi ×
+ * device_kind" → symbol, nazwa, klasa; znaki funkcji IEC.
  */
-import type { SymbolId } from '../symbols/defs';
+import { ELECTRICAL_CAD_SYMBOL_REGISTRY, type CadSymbolId } from '../cad/cadSymbolRegistry';
 import type { LvDeviceType, LvDomainGenerator, LvDomainMeasurement } from './types';
 
-export type NosnikStanu = 'wypelnienie' | 'noz' | 'brak';
+export type NosnikStanu = 'noz' | 'brak';
+
+export type KlasaOznaczenia = 'QF' | 'QS' | 'FU' | 'QBC' | 'W';
 
 export interface WpisRejestruSymbolu {
-  /** Glif biblioteki (`symbols/defs.ts`); `null` = przewód (bez symbolu). */
-  readonly symbolId: SymbolId | null;
+  /** Symbol CAD; `null` = przewód (bez symbolu). */
+  readonly symbolId: CadSymbolId | null;
   /** Klasa oznaczenia (IEC 81346 / zwyczaj polski) — prefiks na tabliczce. */
-  readonly klasaOznaczenia: 'QF' | 'QS' | 'FU' | 'QBC' | 'W';
+  readonly klasaOznaczenia: KlasaOznaczenia;
+  /** Nazwa polska elementu (z rejestru CAD; przewody — własna). */
   readonly nazwaPl: string;
   /** Zaciski urządzenia (gałąź ma zawsze dwa: A = from_bus, B = to_bus). */
   readonly terminale: readonly ['a', 'b'];
   readonly nosnikStanu: NosnikStanu;
-  /** Cel EKRANOWY wysokości glifu [px] — z `visualGrammar.SYMBOL_SCREEN_PX`. */
+  /** Rodzaj slotu ekranowego — z `visualGrammar.SYMBOL_SLOT_SHARE`. */
   readonly rozmiar: 'aparat' | 'sprzeglo' | 'przewod';
 }
 
-export const REJESTR_SYMBOLI_NN: Readonly<Record<LvDeviceType, WpisRejestruSymbolu>> = {
-  breaker: {
-    symbolId: 'nnBreaker',
-    klasaOznaczenia: 'QF',
-    nazwaPl: 'Wyłącznik nN',
-    terminale: ['a', 'b'],
-    nosnikStanu: 'wypelnienie',
-    rozmiar: 'aparat',
-  },
-  bus_coupler: {
-    symbolId: 'nnBreaker',
-    klasaOznaczenia: 'QBC',
-    nazwaPl: 'Sprzęgło sekcji',
-    terminale: ['a', 'b'],
-    nosnikStanu: 'wypelnienie',
-    rozmiar: 'sprzeglo',
-  },
-  switch: {
-    symbolId: 'loadBreakSwitch',
-    klasaOznaczenia: 'QS',
-    nazwaPl: 'Rozłącznik',
-    terminale: ['a', 'b'],
-    nosnikStanu: 'noz',
-    rozmiar: 'aparat',
-  },
-  disconnector: {
-    symbolId: 'disconnector',
-    klasaOznaczenia: 'QS',
-    nazwaPl: 'Odłącznik',
-    terminale: ['a', 'b'],
-    nosnikStanu: 'noz',
-    rozmiar: 'aparat',
-  },
-  fuse: {
-    symbolId: 'nnFuseSwitch',
-    klasaOznaczenia: 'FU',
-    nazwaPl: 'Rozłącznik bezpiecznikowy / wkładka',
-    terminale: ['a', 'b'],
-    nosnikStanu: 'brak',
-    rozmiar: 'aparat',
-  },
-  cable: {
-    symbolId: null,
-    klasaOznaczenia: 'W',
-    nazwaPl: 'Kabel',
-    terminale: ['a', 'b'],
-    nosnikStanu: 'brak',
-    rozmiar: 'przewod',
-  },
-  line_overhead: {
-    symbolId: null,
-    klasaOznaczenia: 'W',
-    nazwaPl: 'Linia napowietrzna',
-    terminale: ['a', 'b'],
-    nosnikStanu: 'brak',
-    rozmiar: 'przewod',
-  },
+/** Klasy funkcjonalne wyrobu z katalogu (`device_kind`) → symbol CAD.
+ *  Lista ZAMKNIĘTA — rodzaj spoza listy = „katalog nie klasyfikuje" (bez
+ *  domysłu; typ gałęzi rozstrzyga sam). */
+const SYMBOL_PO_DEVICE_KIND: Readonly<Record<string, CadSymbolId>> = {
+  WYLACZNIK: 'cad.wylacznik',
+  WYLACZNIK_GLOWNY: 'cad.wylacznik',
+  WYLACZNIK_ODPLYWOWY: 'cad.wylacznik',
+  REKLOZER: 'cad.wylacznik',
+  ROZLACZNIK: 'cad.rozlacznik',
+  ROZLACZNIK_BEZPIECZNIKOWY: 'cad.rozlacznikBezpiecznikowy',
+  ODLACZNIK: 'cad.odlacznik',
 };
 
-/** Transformator — jedyny symbol źródła sieciowego domeny (zaciski HV/LV jawne). */
-export const SYMBOL_TRANSFORMATORA: SymbolId = 'transformer2W';
+const KLASA_PO_TYPIE: Readonly<Record<LvDeviceType, KlasaOznaczenia>> = {
+  breaker: 'QF',
+  bus_coupler: 'QBC',
+  switch: 'QS',
+  disconnector: 'QS',
+  fuse: 'FU',
+  cable: 'W',
+  line_overhead: 'W',
+};
 
-/** Odbiór (strzałka IEC 60617). */
-export const SYMBOL_ODBIORU: SymbolId = 'loadArrow';
+const NAZWA_PRZEWODU: Readonly<Record<'cable' | 'line_overhead', string>> = {
+  cable: 'Kabel',
+  line_overhead: 'Linia napowietrzna',
+};
+
+function normalizujKind(deviceKind: string | null | undefined): string | null {
+  const k = (deviceKind ?? '').trim().toUpperCase();
+  return k.length > 0 ? k : null;
+}
+
+/** Symbol CAD aparatu z DANYCH (typ gałęzi × klasa funkcjonalna wyrobu). */
+export function symbolAparatu(deviceType: LvDeviceType, deviceKind: string | null | undefined): CadSymbolId | null {
+  const kind = normalizujKind(deviceKind);
+  switch (deviceType) {
+    case 'breaker':
+      return 'cad.wylacznik';
+    case 'disconnector':
+      return 'cad.odlacznik';
+    case 'switch':
+      return kind === 'ROZLACZNIK_BEZPIECZNIKOWY' ? 'cad.rozlacznikBezpiecznikowy' : 'cad.rozlacznik';
+    case 'fuse':
+      return 'cad.bezpiecznik';
+    case 'bus_coupler':
+      return kind !== null ? SYMBOL_PO_DEVICE_KIND[kind] ?? 'cad.lacznik' : 'cad.lacznik';
+    default:
+      return null;
+  }
+}
+
+/** Wpis rejestru dla urządzenia (typ gałęzi × device_kind). */
+export function wpisAparatu(deviceType: LvDeviceType, deviceKind: string | null | undefined): WpisRejestruSymbolu {
+  const symbolId = symbolAparatu(deviceType, deviceKind);
+  const klasaOznaczenia = KLASA_PO_TYPIE[deviceType];
+  if (symbolId === null) {
+    return {
+      symbolId: null,
+      klasaOznaczenia,
+      nazwaPl: NAZWA_PRZEWODU[deviceType as 'cable' | 'line_overhead'] ?? 'Przewód',
+      terminale: ['a', 'b'],
+      nosnikStanu: 'brak',
+      rozmiar: 'przewod',
+    };
+  }
+  const def = ELECTRICAL_CAD_SYMBOL_REGISTRY[symbolId];
+  return {
+    symbolId,
+    klasaOznaczenia,
+    nazwaPl: def.polishName,
+    terminale: ['a', 'b'],
+    nosnikStanu: def.states ? 'noz' : 'brak',
+    rozmiar: deviceType === 'bus_coupler' ? 'sprzeglo' : 'aparat',
+  };
+}
+
+/** Rejestr per typ gałęzi BEZ klasy funkcjonalnej (fallback = sam typ). */
+export const REJESTR_SYMBOLI_NN: Readonly<Record<LvDeviceType, WpisRejestruSymbolu>> = {
+  breaker: wpisAparatu('breaker', null),
+  bus_coupler: wpisAparatu('bus_coupler', null),
+  switch: wpisAparatu('switch', null),
+  disconnector: wpisAparatu('disconnector', null),
+  fuse: wpisAparatu('fuse', null),
+  cable: wpisAparatu('cable', null),
+  line_overhead: wpisAparatu('line_overhead', null),
+};
+
+/** Transformator — jedyny symbol źródła sieciowego domeny (zaciski hv/lv jawne). */
+export const SYMBOL_TRANSFORMATORA: CadSymbolId = 'cad.transformator2u';
+
+/** Odbiór zagregowany (strzałka przepływu od szyn, IEC 60617 S00104). */
+export const SYMBOL_ODBIORU: CadSymbolId = 'cad.odplywOdbior';
+
+/** Zacisk toru (stopień ≠ 2) i węzeł połączenia (stopień ≥ 3). */
+export const SYMBOL_ZACISKU: CadSymbolId = 'cad.zacisk';
+export const SYMBOL_WEZLA: CadSymbolId = 'cad.wezel';
+
+/** Symbol punktu toru wg STOPNIA zacisku: ≥ 3 = węzeł (kropka), inaczej zacisk. */
+export function symbolPunktuToru(degree: number): CadSymbolId {
+  return degree >= 3 ? SYMBOL_WEZLA : SYMBOL_ZACISKU;
+}
 
 /** Źródło rozproszone WEDŁUG `gen_type` z modelu — bez domyślnej sylwetki
- *  „na oko": typ nieznany dostaje generator ogólny (G w okręgu), bo to jest
- *  jedyna sylwetka, która nie twierdzi niczego o technologii. */
-export function symbolZrodlaDer(genType: LvDomainGenerator['gen_type']): SymbolId {
+ *  „na oko": PV i magazyn to złożenia źródło+przekształtnik JEDNEGO elementu
+ *  ENM; maszyny (synchroniczna, wiatrowe) = symbol maszyny G~; typ nieznany
+ *  dostaje maszynę, bo to jedyny symbol, który nie twierdzi niczego o
+ *  technologii przekształtnikowej. */
+export function symbolZrodlaDer(genType: LvDomainGenerator['gen_type']): CadSymbolId {
   switch (genType) {
     case 'pv_inverter':
-      return 'derPv';
+      return 'cad.zrodloPvZPrzeksztaltnikiem';
     case 'bess':
-      return 'derBess';
-    case 'wind_inverter':
-    case 'fw_pmsg':
-    case 'fw_dfig':
-    case 'fw_scig':
-      return 'derWind';
+      return 'cad.magazynZPrzeksztaltnikiem';
     default:
-      return 'derGenerator';
+      return 'cad.generator';
+  }
+}
+
+/** Technologia źródła po polsku (opis obok symbolu, §10/§11): PV jest
+ *  TECHNOLOGIĄ, falownik ELEMENTEM — opis mówi o technologii, symbol o torze. */
+export function technologiaZrodlaPl(genType: LvDomainGenerator['gen_type']): string {
+  switch (genType) {
+    case 'pv_inverter':
+      return 'fotowoltaika (PV) z falownikiem';
+    case 'bess':
+      return 'magazyn energii z przekształtnikiem';
+    case 'synchronous':
+      return 'generator synchroniczny';
+    case 'wind_inverter':
+      return 'turbina wiatrowa z przekształtnikiem';
+    case 'fw_pmsg':
+      return 'turbina wiatrowa (PMSG, pełny przekształtnik)';
+    case 'fw_dfig':
+      return 'turbina wiatrowa (DFIG)';
+    case 'fw_scig':
+      return 'turbina wiatrowa (SCIG)';
+    default:
+      return 'źródło o nieokreślonej technologii';
   }
 }
 
 /** Pomiar: przekładnik prądowy w torze / napięciowy na odgałęzieniu. */
-export function symbolPomiaru(kind: LvDomainMeasurement['measurement_type']): SymbolId {
-  return kind === 'VT' ? 'voltageTransformer' : 'currentTransformer';
+export function symbolPomiaru(kind: LvDomainMeasurement['measurement_type']): CadSymbolId {
+  return kind === 'VT' ? 'cad.przekladnikNapieciowy' : 'cad.przekladnikPradowy';
 }
 
-/** Zabezpieczenie (adnotacja przy aparacie) — okrąg z kodami funkcji. */
-export const SYMBOL_ZABEZPIECZENIA: SymbolId = 'protectionRelay';
+/** Zabezpieczenie (urządzenie wtórne przy aparacie) — prostokąt ze znakami IEC. */
+export const SYMBOL_ZABEZPIECZENIA: CadSymbolId = 'cad.zabezpieczenie';
 
-const KOD_ANSI_PO_FUNKCJI: Readonly<Record<string, string>> = {
-  overcurrent_50: '50',
-  overcurrent_51: '51',
-  earth_fault_50N: '50N',
-  earth_fault_51N: '51N',
-  directional_67: '67',
-  directional_67N: '67N',
-  rocof_81R: '81R',
-  vector_shift_78: '78',
-  underfrequency_81U: '81U',
-  overfrequency_81O: '81O',
-  undervoltage_27: '27',
-  overvoltage_59: '59',
+/** Kody funkcji ENM → numer ANSI/IEEE C37.2 (panel, podpowiedź) i ZNAK
+ *  wielkości charakterystycznej w notacji IEC (wnętrze prostokąta
+ *  zabezpieczenia — praktyka polskiej dokumentacji zabezpieczeń). */
+const FUNKCJA_ZABEZPIECZENIA: Readonly<Record<string, { readonly ansi: string; readonly iec: string; readonly nazwaPl: string }>> = {
+  overcurrent_50: { ansi: '50', iec: 'I>>', nazwaPl: 'nadprądowe bezzwłoczne' },
+  overcurrent_51: { ansi: '51', iec: 'I>', nazwaPl: 'nadprądowe zwłoczne' },
+  earth_fault_50N: { ansi: '50N', iec: 'I0>>', nazwaPl: 'ziemnozwarciowe bezzwłoczne' },
+  earth_fault_51N: { ansi: '51N', iec: 'I0>', nazwaPl: 'ziemnozwarciowe zwłoczne' },
+  directional_67: { ansi: '67', iec: 'I>→', nazwaPl: 'nadprądowe kierunkowe' },
+  directional_67N: { ansi: '67N', iec: 'I0>→', nazwaPl: 'ziemnozwarciowe kierunkowe' },
+  rocof_81R: { ansi: '81R', iec: 'df/dt', nazwaPl: 'pochodna częstotliwości (LoM)' },
+  vector_shift_78: { ansi: '78', iec: 'Δφ', nazwaPl: 'skok wektora (LoM)' },
+  underfrequency_81U: { ansi: '81U', iec: 'f<', nazwaPl: 'podczęstotliwościowe' },
+  overfrequency_81O: { ansi: '81O', iec: 'f>', nazwaPl: 'nadczęstotliwościowe' },
+  undervoltage_27: { ansi: '27', iec: 'U<', nazwaPl: 'podnapięciowe' },
+  overvoltage_59: { ansi: '59', iec: 'U>', nazwaPl: 'nadnapięciowe' },
 };
 
-/** Pełna lista kodów ANSI (podpowiedź glifu, panel odpływu). */
+/** Pełna lista numerów ANSI (panel odpływu, podpowiedź). */
 export function kodyAnsiPelne(functionCodes: readonly string[]): readonly string[] {
-  return functionCodes.map((code) => KOD_ANSI_PO_FUNKCJI[code] ?? code);
+  return functionCodes.map((code) => FUNKCJA_ZABEZPIECZENIA[code]?.ansi ?? code);
 }
 
-/** Kody funkcji ENM → skrót ANSI na glifie przekaźnika (maks. 2 linie). */
-export function kodyAnsi(functionCodes: readonly string[]): readonly string[] {
-  const kody = kodyAnsiPelne(functionCodes);
-  if (kody.length <= 2) return kody;
-  // Glif mieści DWA wiersze po ≤4 znaki: pierwszy kod + licznik pozostałych;
-  // pełna lista funkcji jest w podpowiedzi glifu i w panelu odpływu.
-  return [kody[0], `+${kody.length - 1}`];
+/** Pełna lista znaków IEC (podpowiedź, panel). */
+export function znakiIecPelne(functionCodes: readonly string[]): readonly string[] {
+  return functionCodes.map((code) => FUNKCJA_ZABEZPIECZENIA[code]?.iec ?? code);
 }
 
-/** Etykieta stanu łączeniowego po polsku (drugorzędne potwierdzenie glifu). */
+/** Nazwy polskie funkcji (panel odpływu). */
+export function nazwyFunkcjiPl(functionCodes: readonly string[]): readonly string[] {
+  return functionCodes.map((code) => FUNKCJA_ZABEZPIECZENIA[code]?.nazwaPl ?? code);
+}
+
+/** Znaki IEC do WNĘTRZA prostokąta zabezpieczenia: maks. 2 wiersze; przy
+ *  większej liczbie funkcji — pierwszy znak + licznik pozostałych (pełna
+ *  lista w podpowiedzi i w panelu odpływu). */
+export function znakiIec(functionCodes: readonly string[]): readonly string[] {
+  const znaki = znakiIecPelne(functionCodes);
+  if (znaki.length <= 2) return znaki;
+  return [znaki[0], `+${znaki.length - 1}`];
+}
+
+/** Etykieta stanu łączeniowego po polsku (drugorzędne potwierdzenie symbolu). */
 export function stanSlowny(state: 'OPEN' | 'CLOSED' | 'UNKNOWN'): string {
   switch (state) {
     case 'OPEN':

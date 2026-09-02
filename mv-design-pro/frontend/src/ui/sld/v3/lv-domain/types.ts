@@ -120,12 +120,19 @@ export interface LvDomainBranch {
   readonly status: 'closed' | 'open';
   readonly catalog_ref?: string | null;
   readonly catalog_namespace?: string | null;
+  /** Klasa funkcjonalna wyrobu z katalogu (`materialized_params.device_kind`,
+   *  np. WYLACZNIK / ROZLACZNIK / ROZLACZNIK_BEZPIECZNIKOWY / ODLACZNIK);
+   *  `null` = katalog nie klasyfikuje aparatu. Pole addytywne (R2 §6/§8). */
+  readonly device_kind?: string | null;
 }
 
 /** Urządzenie = gałąź domeny z ROLĄ z topologii (§4/§8) — mirror `graph.devices[]`. */
 export interface LvDomainDevice {
   readonly ref_id: string;
   readonly device_type: LvDeviceType;
+  /** Klasa funkcjonalna wyrobu z katalogu (patrz `LvDomainBranch.device_kind`);
+   *  rozstrzyga symbol CAD sprzęgła/rozłącznika bezpiecznikowego (R2 §6/§8). */
+  readonly device_kind: string | null;
   readonly designation_class: 'QF' | 'QS' | 'FU' | 'QBC' | 'W' | 'Q';
   readonly device_role: LvDeviceRole;
   readonly feeder_kind: LvFeederKind | null;
@@ -221,6 +228,11 @@ export interface LvDomainMeasurement {
   readonly purpose: 'protection' | 'metering' | 'combined';
   readonly ratio_primary: number;
   readonly ratio_secondary: number;
+  /** Tabliczka przekładnika TEKSTEM obok symbolu (R2 §9); brak danych = null. */
+  readonly accuracy_class: string | null;
+  readonly burden_va: number | null;
+  readonly ct_cores: number | null;
+  readonly ct_arrangement: '3xCT' | 'ferranti' | null;
 }
 
 export interface LvDomainProtectionAssignment {

@@ -9,6 +9,7 @@
       {
         "catalog_namespace": "WKLADKA_NN",
         "catalog_ref": "wkladka-nn-gg-20",
+        "device_kind": null,
         "from_bus_ref": "RGN-2_szyna",
         "name": "FU-21",
         "ref_id": "FU-21",
@@ -19,6 +20,7 @@
       {
         "catalog_namespace": "KABEL_NN",
         "catalog_ref": "kabel-nn-yaky-4x16",
+        "device_kind": null,
         "from_bus_ref": "FU-21_zacisk",
         "name": "Kabel FU-21",
         "ref_id": "FU-21_kabel",
@@ -29,6 +31,7 @@
       {
         "catalog_namespace": "APARAT_NN_MCB",
         "catalog_ref": "aparat-nn-mcb-c25",
+        "device_kind": null,
         "from_bus_ref": "RGnN-1",
         "name": "QF-01",
         "ref_id": "QF-01",
@@ -39,6 +42,7 @@
       {
         "catalog_namespace": "KABEL_NN",
         "catalog_ref": "kabel-nn-yaky-4x25",
+        "device_kind": null,
         "from_bus_ref": "QF-01_zacisk",
         "name": "Kabel QF-01",
         "ref_id": "QF-01_kabel",
@@ -49,6 +53,7 @@
       {
         "catalog_namespace": "APARAT_NN_MCB",
         "catalog_ref": "aparat-nn-mcb-c125",
+        "device_kind": null,
         "from_bus_ref": "RGnN-1",
         "name": "QF-02",
         "ref_id": "QF-02",
@@ -59,6 +64,7 @@
       {
         "catalog_namespace": "KABEL_NN",
         "catalog_ref": "kabel-nn-yaky-4x70",
+        "device_kind": null,
         "from_bus_ref": "QF-02_zacisk",
         "name": "Kabel QF-02",
         "ref_id": "QF-02_kabel",
@@ -69,6 +75,7 @@
       {
         "catalog_namespace": "APARAT_NN_MCB",
         "catalog_ref": "aparat-nn-mcb-c100",
+        "device_kind": null,
         "from_bus_ref": "RGnN-1",
         "name": "QF-03",
         "ref_id": "QF-03",
@@ -79,6 +86,7 @@
       {
         "catalog_namespace": "KABEL_NN",
         "catalog_ref": "kabel-nn-yaky-4x50",
+        "device_kind": null,
         "from_bus_ref": "QF-03_zacisk",
         "name": "Kabel QF-03",
         "ref_id": "QF-03_kabel",
@@ -89,6 +97,7 @@
       {
         "catalog_namespace": "APARAT_NN_MCB",
         "catalog_ref": "aparat-nn-mcb-c2300",
+        "device_kind": null,
         "from_bus_ref": "T1_zacisk",
         "name": "QF-T1",
         "ref_id": "QF-T1",
@@ -254,6 +263,7 @@
         "board_bus_ref": "RGN-2_szyna",
         "child_bus_ref": "FU-21_zacisk",
         "designation_class": "FU",
+        "device_kind": null,
         "device_role": "feeder",
         "device_state": "CLOSED",
         "device_type": "fuse",
@@ -268,6 +278,7 @@
         "board_bus_ref": null,
         "child_bus_ref": "FU-21_koniec",
         "designation_class": "W",
+        "device_kind": null,
         "device_role": "internal",
         "device_state": "CLOSED",
         "device_type": "cable",
@@ -282,6 +293,7 @@
         "board_bus_ref": "RGnN-1",
         "child_bus_ref": "QF-01_zacisk",
         "designation_class": "QF",
+        "device_kind": null,
         "device_role": "feeder",
         "device_state": "CLOSED",
         "device_type": "breaker",
@@ -296,6 +308,7 @@
         "board_bus_ref": null,
         "child_bus_ref": "QF-01_koniec",
         "designation_class": "W",
+        "device_kind": null,
         "device_role": "internal",
         "device_state": "CLOSED",
         "device_type": "cable",
@@ -310,6 +323,7 @@
         "board_bus_ref": "RGnN-1",
         "child_bus_ref": "QF-02_zacisk",
         "designation_class": "QF",
+        "device_kind": null,
         "device_role": "feeder",
         "device_state": "CLOSED",
         "device_type": "breaker",
@@ -324,6 +338,7 @@
         "board_bus_ref": null,
         "child_bus_ref": "RGN-2_szyna",
         "designation_class": "W",
+        "device_kind": null,
         "device_role": "internal",
         "device_state": "CLOSED",
         "device_type": "cable",
@@ -338,6 +353,7 @@
         "board_bus_ref": "RGnN-1",
         "child_bus_ref": "QF-03_zacisk",
         "designation_class": "QF",
+        "device_kind": null,
         "device_role": "feeder",
         "device_state": "CLOSED",
         "device_type": "breaker",
@@ -352,6 +368,7 @@
         "board_bus_ref": null,
         "child_bus_ref": "QF-03_pcc",
         "designation_class": "W",
+        "device_kind": null,
         "device_role": "internal",
         "device_state": "CLOSED",
         "device_type": "cable",
@@ -366,6 +383,7 @@
         "board_bus_ref": "RGnN-1",
         "child_bus_ref": "RGnN-1",
         "designation_class": "QF",
+        "device_kind": null,
         "device_role": "incomer",
         "device_state": "CLOSED",
         "device_type": "breaker",
@@ -472,8 +490,12 @@
     "measured_voltage_states": {},
     "measurements": [
       {
+        "accuracy_class": null,
         "bay_ref": null,
+        "burden_va": null,
         "bus_ref": "T1_zacisk",
+        "ct_arrangement": null,
+        "ct_cores": null,
         "measurement_type": "CT",
         "name": "CT-T1",
         "purpose": "protection",
@@ -935,7 +957,7 @@
     "scenario_id": "MAX",
     "station_ref": "stC"
   },
-  "projection_hash": "c4a1ca66bc9b85c84fcfe351b436b5caa588b7d22cf1a6e5f33843e7977f0708",
+  "projection_hash": "bbdd68f53afab538c692729bb5cf7b0207510a9e2b1042d460a1828a13f840a3",
   "result_snapshot": {
     "analysis_type": "LOAD_FLOW",
     "overlay_payload": {
@@ -949,63 +971,63 @@
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "",
-              "value": 0.9806921120992962
+              "value": 0.9806921120992906
             },
             "DELTA_U_KV": {
               "code": "DELTA_U_KV",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kV",
-              "value": 0.001450691842519336
+              "value": 0.0014506918425190585
             },
             "DELTA_U_PCT": {
               "code": "DELTA_U_PCT",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "%",
-              "value": 0.36267296062983956
+              "value": 0.36267296062977294
             },
             "I_A": {
               "code": "I_A",
               "format_hint": "fixed1",
               "source": "solver",
               "unit": "A",
-              "value": 8.869222469660338
+              "value": 8.8692224696586
             },
             "LOSSES_P_MW": {
               "code": "LOSSES_P_MW",
               "format_hint": "fixed4",
               "source": "solver",
               "unit": "MW",
-              "value": 2.253698021747845e-05
+              "value": 2.253698021746891e-05
             },
             "LOSSES_Q_Mvar": {
               "code": "LOSSES_Q_Mvar",
               "format_hint": "fixed4",
               "source": "solver",
               "unit": "Mvar",
-              "value": 9.439572865959072e-07
+              "value": 9.439572865956904e-07
             },
             "P_MW": {
               "code": "P_MW",
               "format_hint": "fixed4",
               "source": "solver",
               "unit": "MW",
-              "value": 0.0060225355372898375
+              "value": 0.0060225355372892616
             },
             "Q_Mvar": {
               "code": "Q_Mvar",
               "format_hint": "fixed4",
               "source": "solver",
               "unit": "Mvar",
-              "value": 0.0012009434546089175
+              "value": 0.0012009434546089788
             },
             "S_MVA": {
               "code": "S_MVA",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "MVA",
-              "value": 0.0061411073495817505
+              "value": 0.006141107349581198
             }
           },
           "ref_id": "FU-21_kabel",
@@ -1020,14 +1042,14 @@
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "°",
-              "value": -149.74655973401573
+              "value": -149.7465597340191
             },
             "U_kV": {
               "code": "U_kV",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kV",
-              "value": 0.39831039133382773
+              "value": 0.3983103913338703
             }
           },
           "ref_id": "FU-21_koniec",
@@ -1042,14 +1064,14 @@
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "°",
-              "value": -149.77916055231339
+              "value": -149.77916055231668
             },
             "U_kV": {
               "code": "U_kV",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kV",
-              "value": 0.39976108317634707
+              "value": 0.39976108317638936
             }
           },
           "ref_id": "FU-21_zacisk",
@@ -1064,35 +1086,35 @@
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "",
-              "value": 0.9806985244549323
+              "value": 0.9806985244549301
             },
             "DELTA_U_KV": {
               "code": "DELTA_U_KV",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kV",
-              "value": 0.0018310150028531536
+              "value": 0.001831015002853098
             },
             "DELTA_U_PCT": {
               "code": "DELTA_U_PCT",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "%",
-              "value": 0.4577537507132856
+              "value": 0.4577537507132745
             },
             "I_A": {
               "code": "I_A",
               "format_hint": "fixed1",
               "source": "solver",
               "unit": "A",
-              "value": 17.730752629210578
+              "value": 17.730752629210407
             },
             "LOSSES_P_MW": {
               "code": "LOSSES_P_MW",
               "format_hint": "fixed4",
               "source": "solver",
               "unit": "MW",
-              "value": 5.6588325983686e-05
+              "value": 5.658832598368427e-05
             },
             "LOSSES_Q_Mvar": {
               "code": "LOSSES_Q_Mvar",
@@ -1106,21 +1128,21 @@
               "format_hint": "fixed4",
               "source": "solver",
               "unit": "MW",
-              "value": 0.012056585909186124
+              "value": 0.01205658590918643
             },
             "Q_Mvar": {
               "code": "Q_Mvar",
               "format_hint": "fixed4",
               "source": "solver",
               "unit": "Mvar",
-              "value": 0.002403771975736542
+              "value": 0.0024037719757367356
             },
             "S_MVA": {
               "code": "S_MVA",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "MVA",
-              "value": 0.012293875853323139
+              "value": 0.012293875853323477
             }
           },
           "ref_id": "QF-01_kabel",
@@ -1135,14 +1157,14 @@
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "°",
-              "value": -149.74611747218952
+              "value": -149.7461174721902
             },
             "U_kV": {
               "code": "U_kV",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kV",
-              "value": 0.3984832120202314
+              "value": 0.39848321202024617
             }
           },
           "ref_id": "QF-01_koniec",
@@ -1157,14 +1179,14 @@
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "°",
-              "value": -149.78059870014746
+              "value": -149.78059870014812
             },
             "U_kV": {
               "code": "U_kV",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kV",
-              "value": 0.40031422702308456
+              "value": 0.40031422702309927
             }
           },
           "ref_id": "QF-01_zacisk",
@@ -1179,63 +1201,63 @@
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "",
-              "value": 0.9806964149719714
+              "value": 0.9806964149782748
             },
             "DELTA_U_KV": {
               "code": "DELTA_U_KV",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kV",
-              "value": 0.0005531422306747635
+              "value": 0.0005531422306473965
             },
             "DELTA_U_PCT": {
               "code": "DELTA_U_PCT",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "%",
-              "value": 0.13828555766868256
+              "value": 0.13828555766184358
             },
             "I_A": {
               "code": "I_A",
               "format_hint": "fixed1",
               "source": "solver",
               "unit": "A",
-              "value": 8.869222540289988
+              "value": 8.869222539845351
             },
             "LOSSES_P_MW": {
               "code": "LOSSES_P_MW",
               "format_hint": "fixed4",
               "source": "solver",
               "unit": "MW",
-              "value": 8.363461692443772e-06
+              "value": 8.3634616916059e-06
             },
             "LOSSES_Q_Mvar": {
               "code": "LOSSES_Q_Mvar",
               "format_hint": "fixed4",
               "source": "solver",
               "unit": "Mvar",
-              "value": 1.510331682608168e-06
+              "value": 1.5103316824572471e-06
             },
             "P_MW": {
               "code": "P_MW",
               "format_hint": "fixed4",
               "source": "solver",
               "unit": "MW",
-              "value": 0.006030922542979605
+              "value": 0.00603092254271625
             },
             "Q_Mvar": {
               "code": "Q_Mvar",
               "format_hint": "fixed4",
               "source": "solver",
               "unit": "Mvar",
-              "value": 0.0012024779107895416
+              "value": 0.0012024779105348892
             },
             "S_MVA": {
               "code": "S_MVA",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "MVA",
-              "value": 0.006149632496772175
+              "value": 0.006149632496464109
             }
           },
           "ref_id": "QF-02_kabel",
@@ -1250,14 +1272,14 @@
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "°",
-              "value": -149.7804262120746
+              "value": -149.78042621207527
             },
             "U_kV": {
               "code": "U_kV",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kV",
-              "value": 0.40031603235796126
+              "value": 0.4003160323579762
             }
           },
           "ref_id": "QF-02_zacisk",
@@ -1272,63 +1294,63 @@
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "",
-              "value": 0.9999987558177212
+              "value": 0.9999987558177214
             },
             "DELTA_U_KV": {
               "code": "DELTA_U_KV",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kV",
-              "value": -0.0050592503077164785
+              "value": -0.0050592503077161455
             },
             "DELTA_U_PCT": {
               "code": "DELTA_U_PCT",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "%",
-              "value": -1.2648125769291196
+              "value": -1.2648125769290308
             },
             "I_A": {
               "code": "I_A",
               "format_hint": "fixed1",
               "source": "solver",
               "unit": "A",
-              "value": 113.93319427114918
+              "value": 113.93319427113963
             },
             "LOSSES_P_MW": {
               "code": "LOSSES_P_MW",
               "format_hint": "fixed4",
               "source": "solver",
               "unit": "MW",
-              "value": 0.0009984810404551625
+              "value": 0.000998481040454996
             },
             "LOSSES_Q_Mvar": {
               "code": "LOSSES_Q_Mvar",
               "format_hint": "fixed4",
               "source": "solver",
               "unit": "Mvar",
-              "value": 0.00012461541846554348
+              "value": 0.0001246154184655218
             },
             "P_MW": {
               "code": "P_MW",
               "format_hint": "fixed4",
               "source": "solver",
               "unit": "MW",
-              "value": -0.07900174394917787
+              "value": -0.07900174394917418
             },
             "Q_Mvar": {
               "code": "Q_Mvar",
               "format_hint": "fixed4",
               "source": "solver",
               "unit": "Mvar",
-              "value": 0.00012462181931008971
+              "value": 0.0001246218193091302
             },
             "S_MVA": {
               "code": "S_MVA",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "MVA",
-              "value": 0.07900184224186999
+              "value": 0.07900184224186628
             }
           },
           "ref_id": "QF-03_kabel",
@@ -1343,14 +1365,14 @@
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "°",
-              "value": -149.68704776831183
+              "value": -149.68704776831254
             },
             "U_kV": {
               "code": "U_kV",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kV",
-              "value": 0.40539679176441246
+              "value": 0.40539679176442694
             }
           },
           "ref_id": "QF-03_pcc",
@@ -1365,14 +1387,14 @@
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "°",
-              "value": -149.77742471239114
+              "value": -149.7774247123918
             },
             "U_kV": {
               "code": "U_kV",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kV",
-              "value": 0.400337541456696
+              "value": 0.4003375414567108
             }
           },
           "ref_id": "QF-03_zacisk",
@@ -1423,14 +1445,14 @@
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "°",
-              "value": -149.77898768616416
+              "value": -149.77898768616745
             },
             "U_kV": {
               "code": "U_kV",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kV",
-              "value": 0.3997628901272865
+              "value": 0.3997628901273288
             }
           },
           "ref_id": "RGN-2_szyna",
@@ -1445,14 +1467,14 @@
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "°",
-              "value": -149.78025357982867
+              "value": -149.78025357982932
             },
             "U_kV": {
               "code": "U_kV",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kV",
-              "value": 0.4003178392822515
+              "value": 0.40031783928226616
             }
           },
           "ref_id": "RGnN-1",
@@ -1467,63 +1489,63 @@
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "",
-              "value": 0.9978833528061506
+              "value": 0.9978833528067956
             },
             "DELTA_U_KV": {
               "code": "DELTA_U_KV",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kV",
-              "value": 14.599696442886183
+              "value": 14.599696442886168
             },
             "DELTA_U_PCT": {
               "code": "DELTA_U_PCT",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "%",
-              "value": -0.07588927845414428
+              "value": -0.07588927845783022
             },
             "I_A": {
               "code": "I_A",
               "format_hint": "fixed1",
               "source": "solver",
               "unit": "A",
-              "value": 2.3469740774995858
+              "value": 2.346974077497078
             },
             "LOSSES_P_MW": {
               "code": "LOSSES_P_MW",
               "format_hint": "fixed4",
               "source": "solver",
               "unit": "MW",
-              "value": 6.07972529071063e-05
+              "value": 6.07972529100137e-05
             },
             "LOSSES_Q_Mvar": {
               "code": "LOSSES_Q_Mvar",
               "format_hint": "fixed4",
               "source": "solver",
               "unit": "Mvar",
-              "value": 0.0002281062962162096
+              "value": 0.00022810629621335815
             },
             "P_MW": {
               "code": "P_MW",
               "format_hint": "fixed4",
               "source": "solver",
               "unit": "MW",
-              "value": -0.0608471101440293
+              "value": -0.060847110144003624
             },
             "Q_Mvar": {
               "code": "Q_Mvar",
               "format_hint": "fixed4",
               "source": "solver",
               "unit": "Mvar",
-              "value": 0.003965240021425176
+              "value": 0.003965240020817329
             },
             "S_MVA": {
               "code": "S_MVA",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "MVA",
-              "value": 0.06097617519414566
+              "value": 0.060976175194080516
             }
           },
           "ref_id": "T1",
@@ -1538,14 +1560,14 @@
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "°",
-              "value": -149.78256492021004
+              "value": -149.7825649202107
             },
             "U_kV": {
               "code": "U_kV",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kV",
-              "value": 0.4003035571138166
+              "value": 0.40030355711383137
             }
           },
           "ref_id": "T1_zacisk",
@@ -1668,141 +1690,141 @@
           "bus_id": "QF-03_pcc",
           "bus_name": "PV1 · punkt przyłączenia",
           "case_name": null,
-          "delta_pct": 1.3491979411031085,
+          "delta_pct": 1.3491979411067305,
           "p_mw": null,
           "q_mvar": null,
           "run_timestamp": "2026-09-02T00:00:00+00:00",
           "solver_bus_id": "bbe4a646-d98e-51e4-a3d7-93b69de70588",
           "status": "PASS",
-          "u_kv": 0.40539679176441246,
+          "u_kv": 0.40539679176442694,
           "u_nom_kv": 0.4,
-          "u_pu": 1.013491979411031
+          "u_pu": 1.0134919794110673
         },
         {
           "bus_id": "FU-21_koniec",
           "bus_name": "Zacisk Odbiór RGN-2",
           "case_name": null,
-          "delta_pct": -0.4224021665430733,
+          "delta_pct": -0.422402166532429,
           "p_mw": null,
           "q_mvar": null,
           "run_timestamp": "2026-09-02T00:00:00+00:00",
           "solver_bus_id": "1269ff2f-7988-5fe7-942f-fa287f72d3ad",
           "status": "PASS",
-          "u_kv": 0.39831039133382773,
+          "u_kv": 0.3983103913338703,
           "u_nom_kv": 0.4,
-          "u_pu": 0.9957759783345693
+          "u_pu": 0.9957759783346757
         },
         {
           "bus_id": "QF-01_koniec",
           "bus_name": "Zacisk Odbiór 1",
           "case_name": null,
-          "delta_pct": -0.37919699494215475,
+          "delta_pct": -0.37919699493846326,
           "p_mw": null,
           "q_mvar": null,
           "run_timestamp": "2026-09-02T00:00:00+00:00",
           "solver_bus_id": "ed38533a-00d5-5316-b004-e20ff7023da9",
           "status": "PASS",
-          "u_kv": 0.3984832120202314,
+          "u_kv": 0.39848321202024617,
           "u_nom_kv": 0.4,
-          "u_pu": 0.9962080300505785
+          "u_pu": 0.9962080300506154
         },
         {
           "bus_id": "QF-03_zacisk",
           "bus_name": "QF-03 zacisk wyjściowy",
           "case_name": null,
-          "delta_pct": 0.0843853641739889,
+          "delta_pct": 0.08438536417769427,
           "p_mw": null,
           "q_mvar": null,
           "run_timestamp": "2026-09-02T00:00:00+00:00",
           "solver_bus_id": "3747b718-1225-5ddf-97b3-144f9ec46ea6",
           "status": "PASS",
-          "u_kv": 0.400337541456696,
+          "u_kv": 0.4003375414567108,
           "u_nom_kv": 0.4,
-          "u_pu": 1.0008438536417399
+          "u_pu": 1.000843853641777
         },
         {
           "bus_id": "RGnN-1",
           "bus_name": "RGnN-1",
           "case_name": null,
-          "delta_pct": 0.0794598205628716,
+          "delta_pct": 0.07945982056653533,
           "p_mw": null,
           "q_mvar": null,
           "run_timestamp": "2026-09-02T00:00:00+00:00",
           "solver_bus_id": "c8cbea4b-8412-51a7-be92-56b1b8184ef2",
           "status": "PASS",
-          "u_kv": 0.4003178392822515,
+          "u_kv": 0.40031783928226616,
           "u_nom_kv": 0.4,
-          "u_pu": 1.0007945982056288
+          "u_pu": 1.0007945982056654
         },
         {
           "bus_id": "QF-02_zacisk",
           "bus_name": "QF-02 zacisk wyjściowy",
           "case_name": null,
-          "delta_pct": 0.07900808949030946,
+          "delta_pct": 0.07900808949404259,
           "p_mw": null,
           "q_mvar": null,
           "run_timestamp": "2026-09-02T00:00:00+00:00",
           "solver_bus_id": "529fa4ef-5aac-5377-a0d8-c0449633b6ce",
           "status": "PASS",
-          "u_kv": 0.40031603235796126,
+          "u_kv": 0.4003160323579762,
           "u_nom_kv": 0.4,
-          "u_pu": 1.000790080894903
+          "u_pu": 1.0007900808949404
         },
         {
           "bus_id": "QF-01_zacisk",
           "bus_name": "QF-01 zacisk wyjściowy",
           "case_name": null,
-          "delta_pct": 0.07855675577113364,
+          "delta_pct": 0.07855675577481125,
           "p_mw": null,
           "q_mvar": null,
           "run_timestamp": "2026-09-02T00:00:00+00:00",
           "solver_bus_id": "95a12785-5406-5c81-8168-0b598ee26787",
           "status": "PASS",
-          "u_kv": 0.40031422702308456,
+          "u_kv": 0.40031422702309927,
           "u_nom_kv": 0.4,
-          "u_pu": 1.0007855675577113
+          "u_pu": 1.0007855675577482
         },
         {
           "bus_id": "T1_zacisk",
           "bus_name": "T1 zacisk nN",
           "case_name": null,
-          "delta_pct": 0.07588927845414428,
+          "delta_pct": 0.07588927845783577,
           "p_mw": null,
           "q_mvar": null,
           "run_timestamp": "2026-09-02T00:00:00+00:00",
           "solver_bus_id": "52d24f01-220e-51b6-8ea6-df847f5ce215",
           "status": "PASS",
-          "u_kv": 0.4003035571138166,
+          "u_kv": 0.40030355711383137,
           "u_nom_kv": 0.4,
-          "u_pu": 1.0007588927845414
+          "u_pu": 1.0007588927845783
         },
         {
           "bus_id": "FU-21_zacisk",
           "bus_name": "FU-21 zacisk wyjściowy",
           "case_name": null,
-          "delta_pct": -0.05972920591323927,
+          "delta_pct": -0.059729205902664395,
           "p_mw": null,
           "q_mvar": null,
           "run_timestamp": "2026-09-02T00:00:00+00:00",
           "solver_bus_id": "ccfbea28-0407-5498-a677-b880efc15f82",
           "status": "PASS",
-          "u_kv": 0.39976108317634707,
+          "u_kv": 0.39976108317638936,
           "u_nom_kv": 0.4,
-          "u_pu": 0.9994027079408676
+          "u_pu": 0.9994027079409734
         },
         {
           "bus_id": "RGN-2_szyna",
           "bus_name": "RGN-2",
           "case_name": null,
-          "delta_pct": -0.05927746817838142,
+          "delta_pct": -0.059277468167806546,
           "p_mw": null,
           "q_mvar": null,
           "run_timestamp": "2026-09-02T00:00:00+00:00",
           "solver_bus_id": "343a61e5-480a-54f3-82d2-86076aa1ba80",
           "status": "PASS",
-          "u_kv": 0.3997628901272865,
+          "u_kv": 0.3997628901273288,
           "u_nom_kv": 0.4,
-          "u_pu": 0.9994072253182162
+          "u_pu": 0.9994072253183219
         }
       ],
       "summary": {
@@ -1811,7 +1833,7 @@
         "pass_count": 11,
         "warning_count": 0,
         "worst_bus_id": "QF-03_pcc",
-        "worst_delta_pct_abs": 1.3491979411031085
+        "worst_delta_pct_abs": 1.3491979411067305
       },
       "thresholds": {
         "voltage_fail_pct": 10.0,

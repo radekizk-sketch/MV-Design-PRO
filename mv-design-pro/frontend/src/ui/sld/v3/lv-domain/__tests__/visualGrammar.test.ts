@@ -7,20 +7,26 @@ import { describe, expect, it } from 'vitest';
 
 import { composeLvDomainScene } from '../composeLvDomainScene';
 import { scenariusz } from '../fixtures/scenariusze';
+import { CAD_SYMBOL_STROKE_PX } from '../../cad/CadSymbol';
 import {
+  BUS_STROKE_SCREEN_PX,
+  CAD_U_PX,
   CHAR_WIDTH_RATIO,
   CHAR_WIDTH_RATIO_BOLD,
-  FIT_SCALE_CLAMP,
+  FIT_SCALE_MAX,
   LINE_DASH_SCREEN_PX,
+  LINE_SCREEN_PX,
+  MIN_FIELD_WIDTH_PX,
   OCCUPANCY,
   POZIOMY_LOD,
   RASTER,
   REJESTR_ELEMENTOW_KANWY,
-  SYMBOL_SCREEN_PX,
+  SLD_LABEL,
   SYMBOL_SLOT_SHARE,
   TOKENY_GEOMETRII,
-  celGlifuNaEkranie,
   doRastra,
+  skalaMinimalna,
+  skalaSymboluNaEkranie,
   elementyToru,
   etykietaStanuZasilania,
   fitSceneToViewport,
@@ -54,19 +60,32 @@ describe('§25 fit-to-content — zajętość osi wiążącej, clamp, centrowani
 
   for (const { name, scene } of SCENY) {
     for (const vp of VIEWPORTY) {
-      it(`[${name} @ ${vp.w}×${vp.h}] oś wiążąca trafia w cel zajętości (chyba że clamp), obie osie ≤ celu, treść wycentrowana`, () => {
-        const fit = fitSceneToViewport(scene.width, scene.height, vp.w, vp.h);
-        const occX = (fit.s * scene.width) / vp.w;
-        const occY = (fit.s * scene.height) / vp.h;
-        const clamped = fit.s === FIT_SCALE_CLAMP.min || fit.s === FIT_SCALE_CLAMP.max;
-        if (!clamped) {
-          expect(Math.abs(occX - OCCUPANCY.xTarget) < 1e-9 || Math.abs(occY - OCCUPANCY.yTarget) < 1e-9, `occX=${occX} occY=${occY}`).toBe(true);
-        }
-        expect(occX).toBeLessThanOrEqual(OCCUPANCY.xTarget + 1e-9);
-        expect(occY).toBeLessThanOrEqual(OCCUPANCY.yTarget + 1e-9);
-        expect(fit.tx).toBeCloseTo((vp.w - fit.s * scene.width) / 2, 9);
-        expect(fit.ty).toBeCloseTo((vp.h - fit.s * scene.height) / 2, 9);
-      });
+      for (const lod of POZIOMY_LOD) {
+        it(`[${name} @ ${vp.w}×${vp.h} · LOD ${lod}] oś wiążąca trafia w cel zajętości (chyba że clamp); przy clampie MIN treść przewija, nigdy nie jest ściskana`, () => {
+          const fit = fitSceneToViewport(scene.width, scene.height, vp.w, vp.h, lod);
+          const occX = (fit.s * scene.width) / vp.w;
+          const occY = (fit.s * scene.height) / vp.h;
+          const clampedMin = Math.abs(fit.s - skalaMinimalna(lod)) < 1e-12;
+          const clampedMax = Math.abs(fit.s - FIT_SCALE_MAX) < 1e-12;
+          if (!clampedMin && !clampedMax) {
+            expect(Math.abs(occX - OCCUPANCY.xTarget) < 1e-9 || Math.abs(occY - OCCUPANCY.yTarget) < 1e-9, `occX=${occX} occY=${occY}`).toBe(true);
+            expect(occX).toBeLessThanOrEqual(OCCUPANCY.xTarget + 1e-9);
+            expect(occY).toBeLessThanOrEqual(OCCUPANCY.yTarget + 1e-9);
+          }
+          // MIN_FIELD_WIDTH (R2 §17): pole odpływu na ekranie nigdy węższe niż próg poziomu.
+          expect(TOKENY_GEOMETRII.feederGap * fit.s).toBeGreaterThanOrEqual(MIN_FIELD_WIDTH_PX[lod] - 1e-9);
+          expect(fit.contentWidth).toBeCloseTo(fit.s * scene.width, 9);
+          expect(fit.contentHeight).toBeCloseTo(fit.s * scene.height, 9);
+          if (fit.scroll) {
+            expect(fit.contentWidth > vp.w || fit.contentHeight > vp.h).toBe(true);
+            if (fit.contentWidth > vp.w) expect(fit.tx).toBe(0);
+            if (fit.contentHeight > vp.h) expect(fit.ty).toBe(0);
+          } else {
+            expect(fit.tx).toBeCloseTo((vp.w - fit.s * scene.width) / 2, 9);
+            expect(fit.ty).toBeCloseTo((vp.h - fit.s * scene.height) / 2, 9);
+          }
+        });
+      }
     }
   }
 
@@ -78,45 +97,61 @@ describe('§25 fit-to-content — zajętość osi wiążącej, clamp, centrowani
     expect(OCCUPANCY.yTarget).toBeGreaterThanOrEqual(OCCUPANCY.min);
   });
 
-  it('clamp MAX: mikroskopijna scena NIE jest rozdmuchana ponad FIT_SCALE_CLAMP.max', () => {
-    expect(fitSceneToViewport(100, 80, 1400, 900).s).toBe(FIT_SCALE_CLAMP.max);
+  it('clamp MAX: mikroskopijna scena NIE jest rozdmuchana ponad FIT_SCALE_MAX', () => {
+    expect(fitSceneToViewport(100, 80, 1400, 900).s).toBe(FIT_SCALE_MAX);
   });
 
-  it('clamp MIN trzyma czytelność rastru, ale NIGDY nie wypycha sceny poza kadr (§43 wąski ekran — skala „zmieść wszystko")', () => {
-    // 3000 j.św. na 1400 px: cel 0,8 dałby 0,37 < clamp 0,4, a „zmieść
-    // wszystko" (0,47) na to pozwala → obowiązuje clamp.
-    expect(fitSceneToViewport(3000, 1000, 1400, 900).s).toBe(FIT_SCALE_CLAMP.min);
-    // 4000 j.św.: nawet „zmieść wszystko" (0,35) jest poniżej clampu → clamp
-    // ustępuje, scena zostaje w kadrze.
-    expect(fitSceneToViewport(4000, 1000, 1400, 900).s).toBeCloseTo(0.35, 9);
-    const mobile = fitSceneToViewport(2200, 700, 390, 600);
-    expect(mobile.s).toBeLessThan(FIT_SCALE_CLAMP.min);
-    expect(mobile.s * 2200).toBeLessThanOrEqual(390);
-    expect(mobile.tx).toBeGreaterThanOrEqual(0);
+  it('MIN_FIELD_WIDTH per poziom (R2 §17): pełny 96 px > sieć 72 px > przegląd 40 px; skala minimalna = próg / slot odpływu', () => {
+    expect(MIN_FIELD_WIDTH_PX).toEqual({ 0: 40, 1: 72, 2: 96 });
+    for (const lod of POZIOMY_LOD) expect(skalaMinimalna(lod)).toBeCloseTo(MIN_FIELD_WIDTH_PX[lod] / TOKENY_GEOMETRII.feederGap, 12);
+    expect(skalaMinimalna(2)).toBeGreaterThan(skalaMinimalna(1));
+    expect(skalaMinimalna(1)).toBeGreaterThan(skalaMinimalna(0));
+  });
+
+  it('clamp MIN NIE pomniejsza sceny poniżej czytelności — scena wychodzi poza kadr i PRZEWIJA (pan/scroll), zamiast „zmieść wszystko"', () => {
+    // 3000 j.św. na 1400 px: cel 0,8 dałby 0,37 < skala minimalna pełnego poziomu (0,75).
+    const duza = fitSceneToViewport(3000, 1000, 1400, 900, 2);
+    expect(duza.s).toBeCloseTo(skalaMinimalna(2), 12);
+    expect(duza.scroll).toBe(true);
+    expect(duza.contentWidth).toBeGreaterThan(1400);
+    expect(duza.tx).toBe(0);
+    // Wąski ekran: przegląd (LOD 0) ma niższy próg, ale nadal nie ściska pola poniżej 40 px.
+    const mobile = fitSceneToViewport(2200, 700, 390, 600, 0);
+    expect(mobile.s).toBeCloseTo(skalaMinimalna(0), 12);
+    expect(TOKENY_GEOMETRII.feederGap * mobile.s).toBeGreaterThanOrEqual(MIN_FIELD_WIDTH_PX[0]);
+    expect(mobile.scroll).toBe(true);
+    // Scena, która mieści się w celu, nie przewija i jest wycentrowana.
+    const mala = fitSceneToViewport(1000, 600, 1400, 900, 2);
+    expect(mala.scroll).toBe(false);
+    expect(mala.tx).toBeGreaterThan(0);
   });
 
   it('degeneracja (scena/viewport ≤ 0) daje neutralny fit, zero wyjątku', () => {
-    expect(fitSceneToViewport(0, 0, 1400, 900)).toEqual({ s: 1, tx: 0, ty: 0 });
-    expect(fitSceneToViewport(800, 600, 0, 0)).toEqual({ s: 1, tx: 0, ty: 0 });
+    expect(fitSceneToViewport(0, 0, 1400, 900)).toEqual({ s: 1, tx: 0, ty: 0, contentWidth: 0, contentHeight: 0, scroll: false });
+    expect(fitSceneToViewport(800, 600, 0, 0)).toEqual({ s: 1, tx: 0, ty: 0, contentWidth: 800, contentHeight: 600, scroll: false });
   });
 });
 
-describe('§30 zawijanie nazw — nigdy poza slot: łamanie wyrazów z dywizem, skrót „…" po ostatnim wierszu', () => {
+describe('§30 / R2 §17 zawijanie nazw — po słowach, BEZ łamania wyrazów, skrót „…" zamiast wystawania', () => {
   it('krótka nazwa = jeden wiersz; dłuższa dzieli się po spacjach', () => {
     expect(zawinNazwe('Odbiór A1', 12, 3)).toEqual(['Odbiór A1']);
     expect(zawinNazwe('Wentylacja mechaniczna hali', 12, 3)).toEqual(['Wentylacja', 'mechaniczna', 'hali']);
   });
 
-  it('wyraz dłuższy niż wiersz jest ŁAMANY z dywizem (nie wystaje poza slot)', () => {
+  it('wyraz dłuższy niż wiersz NIE jest łamany (żadnego „Oświetl-enie"): zostaje w całości i jest skrócony „…" w limicie', () => {
     const linie = zawinNazwe('Oświetlenie zewnętrzne parkingu', 8, 4);
     for (const l of linie) expect(l.length, l).toBeLessThanOrEqual(8);
-    expect(linie[0].endsWith('-')).toBe(true);
-    expect(linie.join('')).toContain('Oświetl-enie');
+    for (const l of linie) expect(l.endsWith('-'), l).toBe(false);
+    expect(linie[0]).toBe('Oświetl…');
+    expect(linie.join(' ')).not.toContain('Oświetl-');
   });
 
-  it('wyraz z dywizem łamie się NAJPIERW na dywizie („grid-following" → „grid-" / „following"), nie w środku członu', () => {
-    expect(zawinNazwe('podąża za siecią · grid-following', 12, 4)).toEqual(['podąża za', 'siecią ·', 'grid-', 'following']);
-    expect(zawinNazwe('grid-forming', 8, 3)).toEqual(['grid-', 'forming']);
+  it('wyraz techniczny z dywizem („grid-following") nigdy nie jest dzielony na dywizie ani w środku', () => {
+    const linie = zawinNazwe('podąża za siecią · grid-following', 12, 4);
+    expect(linie.some((l) => l === 'grid-' || l === 'following')).toBe(false);
+    for (const l of linie) expect(l.length).toBeLessThanOrEqual(12);
+    expect(zawinNazwe('grid-forming', 12, 3)).toEqual(['grid-forming']);
+    expect(zawinNazwe('grid-forming', 8, 3)).toEqual(['grid-fo…']);
   });
 
   it('powyżej limitu wierszy ostatni kończy się „…" (uczciwy skrót, nie ukrycie)', () => {
@@ -139,20 +174,46 @@ describe('§30 zawijanie nazw — nigdy poza slot: łamanie wyrazów z dywizem, 
   });
 });
 
-describe('§43/§44 symbole screen-stable z SUFITEM udziału w slocie — na wąskim ekranie glify sąsiednich kolumn się nie zlewają', () => {
-  it('przy skali ≥ 1 cel = SYMBOL_SCREEN_PX; przy małej skali cel maleje proporcjonalnie do slotu', () => {
-    for (const kind of Object.keys(SYMBOL_SCREEN_PX) as (keyof typeof SYMBOL_SCREEN_PX)[]) {
-      expect(celGlifuNaEkranie(kind, 1)).toBeLessThanOrEqual(SYMBOL_SCREEN_PX[kind]);
-      expect(celGlifuNaEkranie(kind, 0.25)).toBeLessThan(celGlifuNaEkranie(kind, 1));
-      expect(celGlifuNaEkranie(kind, 0.25)).toBeLessThanOrEqual(SYMBOL_SLOT_SHARE[kind] * TOKENY_GEOMETRII.sourceSlot * 0.25 + 1e-9);
-      expect(celGlifuNaEkranie(kind, 0)).toBeGreaterThanOrEqual(2);
+describe('R2 §16/§19 JEDNA skala symboli CAD (CAD_U_PX) z SUFITEM udziału w slocie — symbole sąsiednich kolumn się nie zlewają', () => {
+  const RODZAJE = Object.keys(SYMBOL_SLOT_SHARE) as (keyof typeof SYMBOL_SLOT_SHARE)[];
+
+  /** Szerokość nominalna symbolu danego rodzaju [u] (zacisk/węzeł 8 u, reszta 16 u). */
+  const szerokoscU = (kind: keyof typeof SYMBOL_SLOT_SHARE): number => (kind === 'junction' ? 8 : 16);
+
+  it('przy skali fitu ≥ minimalnej pełnego poziomu każdy symbol rysuje się w CAD_U_PX (rozmiar nie koduje parametrów)', () => {
+    for (const kind of RODZAJE) {
+      expect(skalaSymboluNaEkranie(kind, szerokoscU(kind), 1), kind).toBe(CAD_U_PX);
+      expect(skalaSymboluNaEkranie(kind, szerokoscU(kind), skalaMinimalna(2)), kind).toBe(CAD_U_PX);
     }
   });
 
-  it('dwa aparaty w sąsiednich slotach przy skali 0,25 nie nachodzą: 2 × połowa glifu < slot', () => {
-    const s = 0.25;
-    expect(celGlifuNaEkranie('apparatus', s)).toBeLessThan(TOKENY_GEOMETRII.feederGap * s);
-    expect(celGlifuNaEkranie('transformer', s)).toBeLessThan(TOKENY_GEOMETRII.sourceSlot * s);
+  it('przy skali minimalnej przeglądu symbol nie przekracza udziału w slocie (aparat maleje), nigdy poniżej 0,2 px/u', () => {
+    const s = skalaMinimalna(0);
+    for (const kind of RODZAJE) {
+      const slot = kind === 'transformer' || kind === 'generator' ? TOKENY_GEOMETRII.sourceSlot : TOKENY_GEOMETRII.feederGap;
+      const w = szerokoscU(kind);
+      expect(skalaSymboluNaEkranie(kind, w, s), kind).toBeLessThanOrEqual(CAD_U_PX);
+      expect(skalaSymboluNaEkranie(kind, w, s) * w, kind).toBeLessThanOrEqual(SYMBOL_SLOT_SHARE[kind] * slot * s + 1e-9);
+      expect(skalaSymboluNaEkranie(kind, w, 0), kind).toBeGreaterThanOrEqual(0.2);
+    }
+    expect(skalaSymboluNaEkranie('apparatus', 16, s)).toBeLessThan(CAD_U_PX);
+  });
+
+  it('dwa aparaty w sąsiednich slotach przy skali minimalnej przeglądu nie nachodzą: szerokość symbolu < slot', () => {
+    const s = skalaMinimalna(0);
+    expect(skalaSymboluNaEkranie('apparatus', 16, s) * 16).toBeLessThan(TOKENY_GEOMETRII.feederGap * s);
+    expect(skalaSymboluNaEkranie('transformer', 16, s) * 16).toBeLessThan(TOKENY_GEOMETRII.sourceSlot * s);
+  });
+
+  it('hierarchia grubości (R2 §13): BUS > PRIMARY > symbol > SECONDARY; podświetlenie pod torem; bez skrajnych kontrastów', () => {
+    expect(BUS_STROKE_SCREEN_PX.main).toBeGreaterThan(BUS_STROKE_SCREEN_PX.sub);
+    expect(BUS_STROKE_SCREEN_PX.sub).toBeGreaterThan(LINE_SCREEN_PX.connection);
+    expect(LINE_SCREEN_PX.connection).toBeGreaterThan(CAD_SYMBOL_STROKE_PX);
+    expect(CAD_SYMBOL_STROKE_PX).toBeGreaterThan(LINE_SCREEN_PX.secondary);
+    expect(LINE_SCREEN_PX.cable).toBe(LINE_SCREEN_PX.connection);
+    expect(LINE_SCREEN_PX.coupler).toBe(LINE_SCREEN_PX.connection);
+    expect(LINE_SCREEN_PX.highlight).toBeGreaterThan(BUS_STROKE_SCREEN_PX.main);
+    expect(BUS_STROKE_SCREEN_PX.main / LINE_SCREEN_PX.secondary).toBeLessThanOrEqual(3);
   });
 });
 
@@ -209,15 +270,18 @@ describe('§41/§42 tokeny geometrii i raster — jedno źródło liczb dla scen
     expect(css['--sld-feeder-gap']).toBe(String(TOKENY_GEOMETRII.feederGap));
     expect(css['--sld-bus-gap']).toBe(String(TOKENY_GEOMETRII.busGap));
     expect(css['--sld-section-gap']).toBe(String(TOKENY_GEOMETRII.sectionGap));
-    expect(css['--sld-transformer-size']).toBe(`${SYMBOL_SCREEN_PX.transformer}px`);
+    expect(css['--sld-transformer-size']).toBe(`${CAD_U_PX * 28}px`);
+    expect(css['--sld-device-size']).toBe(`${CAD_U_PX * 24}px`);
+    expect(css['--sld-symbol-stroke']).toBe(`${CAD_SYMBOL_STROKE_PX}px`);
+    expect(css['--sld-bus-stroke']).toBe(`${BUS_STROKE_SCREEN_PX.main}px`);
     for (const klucz of Object.keys(css)) expect(klucz.startsWith('--sld-')).toBe(true);
   });
 
-  it('transformator jest największym symbolem toru, ale lżejszy (62 px) — §9', () => {
-    expect(SYMBOL_SCREEN_PX.transformer).toBe(62);
-    for (const [kind, px] of Object.entries(SYMBOL_SCREEN_PX)) {
-      if (kind !== 'transformer') expect(px).toBeLessThan(SYMBOL_SCREEN_PX.transformer);
-    }
+  it('skala CAD: aparat 16×24 u = 32×48 px, transformator 16×28 u = 56 px — rozmiar nie koduje mocy (R2 §8); korpus aparatu ≈ 2× pismo oznaczenia', () => {
+    expect(CAD_U_PX).toBe(2);
+    expect(CAD_U_PX * 24).toBe(48);
+    expect(CAD_U_PX * 28).toBe(56);
+    expect(CAD_U_PX * 10).toBeGreaterThanOrEqual(1.5 * (SLD_LABEL.PRIMARY - 2));
   });
 });
 
