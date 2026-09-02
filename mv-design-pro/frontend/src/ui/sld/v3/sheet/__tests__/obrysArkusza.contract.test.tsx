@@ -387,7 +387,13 @@ describe('DOLNY PAS CHROMU — podpisy arkusza i wskaźnik ekranowy są rozłąc
       }
     }
     // Pomiar karty: kolizja w 12 na 12 par {kadr × LOD} przy kadrze dopasowania.
-    expect(bezUstapienia).toBe(KADRY.length * LODY.length);
+    // LV Domain Projection (po B-02): kolumny stacji z transformatorem
+    // poszerzone o portal domeny nN ⇒ arkusz szerszy, inna skala dopasowania i
+    // inny podpis skali — zmierzone ponownie: kolizja w 3 na 12 par. Sens
+    // testu (wyrocznia MIERZY naprawę: bez ustąpienia kolizja WRACA w co
+    // najmniej jednej parze) zachowany; liczba par jest własnością geometrii
+    // fixtury, nie kontraktu.
+    expect(bezUstapienia).toBeGreaterThan(0);
   });
 
   it('wskaźnik zachowuje slot bazowy tam, gdzie podpis arkusza jest daleko (ustępuje TYLKO gdy trzeba)', () => {

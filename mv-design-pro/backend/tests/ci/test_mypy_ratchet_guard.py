@@ -59,8 +59,10 @@ def test_guard_istnieje_i_ma_zmierzony_prog() -> None:
     # wymaga świadomej zmiany dokładnie tutaj (i nigdzie indziej).
     # 2026-08-14 (karta K-Q): naprawa dwoch bledow assignment w
     # solver_input/audit2_solver_adjuster.py (jedna zmienna, dwa typy) ⇒ 13/9.
-    assert modul.BASELINE_ERRORS == 13
-    assert modul.BASELINE_FILES == 9
+    # 2026-09-01 (przejecie po B-02): pomiar na kompletnym venv 0/0 — guard
+    # zazadal utrwalenia; para prog<->metatest zmieniona RAZEM.
+    assert modul.BASELINE_ERRORS == 0
+    assert modul.BASELINE_FILES == 0
 
 
 def test_guard_jest_wpiety_do_workflow_ci() -> None:
@@ -71,23 +73,40 @@ def test_guard_jest_wpiety_do_workflow_ci() -> None:
 
 
 @pytest.mark.parametrize(
-    ("odchylka", "oczekiwany_kod"),
+    ("prog_zastepczy", "odchylka", "oczekiwany_kod"),
     [
-        (0, 0),  # stan zmierzony — przechodzi
-        (+1, 1),  # dług urósł o jeden — zapadka odcina
-        (+46, 1),  # dług urósł znacząco
-        (-1, 1),  # dług zmalał — zapadka żąda utrwalenia poprawy
-        (-1000, 1),  # wszystko naprawione, ale próg nieobniżony
+        (None, 0, 0),  # stan zmierzony — przechodzi
+        (None, +1, 1),  # dług urósł o jeden — zapadka odcina
+        (None, +46, 1),  # dług urósł znacząco
+        (5, -1, 1),  # dług zmalał — zapadka żąda utrwalenia poprawy
+        (1000, -1000, 1),  # wszystko naprawione, ale próg nieobniżony
     ],
 )
 def test_prog_odcina_w_obie_strony(
-    monkeypatch: pytest.MonkeyPatch, odchylka: int, oczekiwany_kod: int
+    monkeypatch: pytest.MonkeyPatch,
+    prog_zastepczy: int | None,
+    odchylka: int,
+    oczekiwany_kod: int,
 ) -> None:
-    # Odchyłkę liczymy WZGLĘDEM progu z guarda, a nie od przepisanej tu liczby: badana
-    # własność to „odcina w obie strony", nie konkretna wartość pomiaru (ta jest
-    # przypięta w teście powyżej). Dzięki temu obniżenie progu nie wymusza edycji
-    # w dwóch miejscach — a sam pomiar nadal nie może przesunąć się po cichu.
+    """Zapadka odcina W OBIE STRONY — wzrost i spadek długu.
+
+    Kierunek WZROSTU liczymy WZGLĘDEM progu z guarda (`prog_zastepczy=None`), a nie
+    względem liczby przepisanej tutaj: badana własność to „odcina", nie konkretna
+    wartość pomiaru (ta jest przypięta w teście powyżej), więc obniżenie progu nie
+    wymusza edycji w dwóch miejscach.
+
+    Kierunek SPADKU wymaga progu ZASTĘPCZEGO i nie jest to obejście, tylko warunek
+    istnienia przypadku: przy rzeczywistym progu 0 nie ma czego ująć
+    (`max(0, 0-1) == 0`), więc odchyłka ujemna liczona od progu repo degenerowała
+    się do przypadku „równo" i test padał na własnej arytmetyce — defekt zastany
+    (wprowadzony przy obniżeniu progu do 0/0), naprawiony 2026-09-01 razem z kartą
+    B-02. Podstawiając próg 5 przy pomiarze 4 (i 1000 przy 0) ćwiczymy dokładnie tę
+    gałąź guarda, która żąda utrwalenia poprawy — niezależnie od tego, jaki jest
+    dziś próg repozytorium.
+    """
     modul = _zaladuj_guard()
+    if prog_zastepczy is not None:
+        monkeypatch.setattr(modul, "BASELINE_ERRORS", prog_zastepczy)
     bledy = max(0, modul.BASELINE_ERRORS + odchylka)
     monkeypatch.setattr(
         modul,

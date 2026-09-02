@@ -282,6 +282,30 @@ describe('PakietDowodowy — pobranie realną ścieżką', () => {
     await waitFor(() => expect(zadania.some((u) => u.includes('punkt=odcinek-2'))).toBe(true));
   });
 
+  it('rozpływ z odcinkami: dowód spadku opisuje ŁAŃCUCH od źródła (karta P0.5b)', async () => {
+    // Karta P0.5b (2026-08-13): dowód spadku napięcia dokumentuje CAŁĄ trasę od
+    // źródła do wskazanego odcinka (odcinki linii/kabla + granice
+    // transformatora), nie tylko wskazany odcinek z osobna — ZERO fizyki w UI,
+    // ekran wyłącznie renderuje opis kroków przygotowany przez backend
+    // (`_ZAWARTOSC_SPADKU_PL`, `application/proof_engine/pakiet_biegu.py`).
+    const dostepnoscLancucha: DostepnoscPakietu = {
+      ...DOSTEPNY_ROZPLYW_Z_ODCINKAMI,
+      zawartosc_pl: [
+        'Dowód rozpływu mocy: zbieżność, bilans P i Q, zakres napięć (rozplyw.zip)',
+        'Dowód strat mocy: straty gałęziowe, sumy sieci, udział strat (straty.zip)',
+        'Dowód spadku napięcia na trasie od źródła do wskazanego odcinka — łańcuch ' +
+          'odcinków linii/kabla i granic transformatora (spadek_napiecia.zip)',
+      ],
+    };
+    zamontujFetch(dostepnoscLancucha);
+    render(<PakietDowodowy runId="run-1" />);
+
+    await waitFor(() => expect(screen.getByTestId('mvd-dowod-pakiet')).toBeInTheDocument());
+
+    const zawartosc = screen.getByTestId('mvd-dowod-pakiet-zawartosc');
+    expect(zawartosc).toHaveTextContent('łańcuch odcinków linii/kabla i granic transformatora');
+  });
+
   it('odmowa serwera: komunikat błędu zamiast cichego niepowodzenia', async () => {
     zamontujFetch(DOSTEPNY_NIESYM, { pakietOdmawia: true });
     render(<PakietDowodowy runId="run-1" />);

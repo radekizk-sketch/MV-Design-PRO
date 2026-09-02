@@ -14,12 +14,21 @@ where:
     M  = I/Is (current multiple)
 
 WHITE BOX: All intermediate values are exposed for auditability.
+
+N-D4 (karta P0.7, docs/nn/H_PLAN_IMPLEMENTACJI_NN.md §P0.7): ten modul jest
+CIENKIM ADAPTEREM — petla obliczeniowa (M^p, guard, TD-skalowanie) zyje
+WYLACZNIE w `network_model.solvers.protection_iec60255.
+compute_ieee_c37112_generic` (JEDYNA implementacja formuly IEEE C37.112 w
+repozytorium). Publiczna powierzchnia tego modulu (nazwy, sygnatury, ksztalt
+`IEEETrippingResult`) NIE ZMIENIA SIE.
 """
 
 import math
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any
+
+from network_model.solvers.protection_iec60255 import compute_ieee_c37112_generic
 
 
 class IEEECurveType(StrEnum):
@@ -201,23 +210,25 @@ def calculate_ieee_tripping_time(
             will_trip=False,
         )
 
-    # Calculate intermediate values (WHITE BOX)
-    M = current_multiple
-    A = curve_params.a
-    B = curve_params.b
-    p = curve_params.p
-    TD = time_dial
-
-    m_power_p = math.pow(M, p)
-    denominator = m_power_p - 1.0
-
-    # Protect against division by very small numbers near M=1
-    if denominator < 1e-10:
-        denominator = 1e-10
-
-    fraction = A / denominator
-    base_time_s = fraction + B
-    trip_time = TD * base_time_s
+    # N-D4: petla obliczeniowa (M^p, guard, TD-skalowanie) deleguje do
+    # generycznego silnika `protection_iec60255.compute_ieee_c37112_generic`
+    # — JEDYNA implementacja tego wzoru w repozytorium. ``denom_guard=1e-10``
+    # zachowuje dotychczasowy epsilon TEGO adaptera.
+    generic = compute_ieee_c37112_generic(
+        i_fault_a=fault_current_a,
+        is_pickup_a=pickup_current_a,
+        time_dial=time_dial,
+        a=curve_params.a,
+        b=curve_params.b,
+        p=curve_params.p,
+        denom_guard=1e-10,
+    )
+    m_power_p = generic.m_power_p
+    denominator = generic.denominator
+    fraction = generic.fraction
+    base_time_s = generic.base_time_s
+    assert generic.trip_time_s is not None  # will_trip=True powyzej gwarantuje wartosc
+    trip_time = generic.trip_time_s
 
     # Clamp to reasonable range
     trip_time = max(0.001, min(trip_time, 1000.0))

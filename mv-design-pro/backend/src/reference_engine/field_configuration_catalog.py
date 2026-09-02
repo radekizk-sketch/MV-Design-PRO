@@ -22,6 +22,7 @@ funkcjonalnie na odgałęzienia (§18.1) — deterministycznie, bez heurystyk fi
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import Any
 
 from network_model.catalog.bay_templates import (
@@ -113,7 +114,7 @@ def _producer_group(all_kinds: set[str]) -> str:
 
 
 def producer_cell_primary_devices(
-    apparatus_kinds: list[str], *, config_ref: str
+    apparatus_kinds: Sequence[str], *, config_ref: str
 ) -> list[dict[str, Any]]:
     """Most producencki: NIEUPORZĄDKOWANY zbiór aparatów celki (`cell.apparatus`)
     → uporządkowana lista aparatów pierwotnych pola (`primary_devices`, spec §12.1).

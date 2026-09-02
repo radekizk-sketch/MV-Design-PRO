@@ -253,6 +253,7 @@ def get_solver_input(
     ),
     project_id: str | None = None,
     station_id: str | None = None,
+    scenario: str = "MAX",
     uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> SolverInputResponse:
     """
@@ -260,6 +261,10 @@ def get_solver_input(
 
     Phase 17: jesli `project_id` + `station_id` przekazane, podlacza
     audit2 config z bazy do envelope (`audit2_extensions` populated).
+
+    Karta P0.3: `scenario` (MAX default | MIN) selects the IEC 60909-0
+    Table 1 voltage factor c per bus (BusPayload.c_factor_iec60909) — see
+    docs/nn/H_PLAN_IMPLEMENTACJI_NN.md §P0.3.
     """
     # Validate analysis_type
     try:
@@ -269,6 +274,13 @@ def get_solver_input(
         raise HTTPException(
             status_code=400,
             detail=f"Invalid analysis_type '{analysis_type}'. Valid: {valid_types}",
+        )
+
+    scenario_normalized = scenario.upper()
+    if scenario_normalized not in ("MAX", "MIN"):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid scenario '{scenario}'. Valid: ['MAX', 'MIN']",
         )
 
     graph = _get_graph_for_case(case_id)
@@ -316,6 +328,7 @@ def get_solver_input(
         analysis_type=at,
         config=config,
         audit2_station_payload=audit2_payload,
+        scenario=scenario_normalized,  # type: ignore[arg-type]
     )
 
     return SolverInputResponse(

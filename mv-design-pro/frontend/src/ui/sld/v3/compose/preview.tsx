@@ -223,7 +223,12 @@ export type PreviewElementKind =
   // ODG-RYSUNEK: PUNKT ODGAŁĘŹNY na odcinku magistrali (ENM `branch_points`) —
   // ani aparat pola, ani stacja: własny obiekt sieci z własnym rodzajem trafienia
   // (`canvas/hitAreas.ts` `punkt-odgalezny`) i własnym wpisem inwentarza.
-  | 'branchPoint';
+  | 'branchPoint'
+  // PORTAL DOMENY nN (LV Domain Projection po B-02): symbol `lvPortal` na zacisku
+  // nN transformatora stacji — NIE obiekt modelu (brak menu/szuflady), własny
+  // rodzaj trafienia (`canvas/hitAreas.ts` `portal-nn`); klik otwiera projekcję
+  // nN stacji (`SldCanvasV3Workspace`).
+  | 'lvPortal';
 
 /** Metadane wspólne symbolu/segmentu, potrzebne WYŁĄCZNIE do debug-atrybutów
  *  (spec zadania F5b: „data-symbol-canon/data-parity-key przepisywane z
@@ -344,6 +349,12 @@ export interface PreviewElementMeta {
    *  (A/V z `Measurement.measurement_type`) — WYŁĄCZNIE dla symboli
    *  `meter`; `MeterGlyph` pokazuje ją zamiast mylącego „M". */
   readonly meterQuantity?: 'A' | 'V';
+  /** PORTAL nN (LV Domain Projection po B-02): WYŁĄCZNIE dla symboli `lvPortal`
+   *  — `Substation.ref_id` stacji, której projekcję nN portal otwiera (klucz
+   *  kontraktu `LvDomainProjectionV1.station_ref`); `ownerRef` symbolu jest
+   *  kompozytem `${stationRef}#lv-portal` (`compose/station.ts`
+   *  `lvPortalOwnerRef`). Konsument: `SldCanvasV3Workspace` (klik → portal). */
+  readonly lvPortalStationRef?: string;
   /** TR2W-BEZ-POLA (§0.C.5): `true` dla symbolu `transformer2W` stacji, który
    *  wisi na szynie SN BEZ skonfigurowanego pola transformatorowego —
    *  konfiguracja NIEKOMPLETNA. Steruje markerem „!" przy stronie WN

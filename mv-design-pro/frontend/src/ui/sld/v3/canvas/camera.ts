@@ -232,7 +232,15 @@ export function zoomFactorToEnterNextLod(
   if (fromLod >= 2) return 1;
   if (!Number.isFinite(refScale) || refScale <= 0) return 1;
   const target = (fromLod === 0 ? thresholds.l0Max : thresholds.l1Max) * (1 + margin);
-  const factor = target / refScale;
+  // Cel PONAD progiem o 1e-12 względnie (rząd wielkości 1e4 × epsilon
+  // maszynowy): `refScale * (target / refScale)` NIE jest w arytmetyce
+  // zmiennoprzecinkowej równe `target` — dla niektórych skal kadru iloczyn
+  // ląduje ułamek ULP PONIŻEJ progu i kamera zostaje na poprzednim poziomie
+  // (pomiar 2026-09-01: skala 1800/11117,87 golden sieci 53 stacji po
+  // zmianie wysokości arkusza; test `gpzCollapsedExpand` — klik w zwinięty
+  // blok GPZ nie rozwijał widoku). Klasa, nie instancja: dotyczy KAŻDEGO
+  // przejścia L0→L1 i L1→L2 wyliczanego z ilorazu.
+  const factor = (target * (1 + 1e-12)) / refScale;
   return factor > 1 ? factor : 1;
 }
 

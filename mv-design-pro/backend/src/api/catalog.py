@@ -262,6 +262,18 @@ def list_lv_cable_types() -> list[dict[str, Any]]:
     return [item.to_dict() for item in get_default_mv_catalog().list_lv_cable_types()]
 
 
+@router.get("/lv-breaker-mcb-types")
+def list_lv_breaker_mcb_types() -> list[dict[str, Any]]:
+    """List all LV miniature circuit breaker (MCB, IEC 60898-1) types from the canonical catalog."""
+    return [item.to_dict() for item in get_default_mv_catalog().list_lv_breaker_mcb_types()]
+
+
+@router.get("/lv-fuse-link-types")
+def list_lv_fuse_link_types() -> list[dict[str, Any]]:
+    """List all LV gG fuse-link (IEC 60269-1) types from the canonical catalog."""
+    return [item.to_dict() for item in get_default_mv_catalog().list_lv_fuse_link_types()]
+
+
 @router.get("/load-types")
 def list_load_types() -> list[dict[str, Any]]:
     """List all load types from the canonical MV catalog."""

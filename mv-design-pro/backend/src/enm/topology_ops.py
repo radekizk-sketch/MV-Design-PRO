@@ -344,6 +344,9 @@ def create_branch(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult
             "return_conductor_cross_section_mm2",
             "return_conductor_material",
             "return_conductor_r_ohm_per_km_20c",
+            # Karta P0.6 (G-05): reaktancja zyly powrotnej — biala lista tworzenia
+            # galezi z danych (hydratacja) musi ja przepuszczac tak samo jak R.
+            "return_conductor_x_ohm_per_km",
             "return_conductor_jth_1s_a_per_mm2",
             "return_conductor_ith_1s_a",
             "rating",
@@ -358,6 +361,10 @@ def create_branch(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult
             "operating_temperature_c",
             "short_circuit_temperature_c",
             "thermal_source_ref",
+            # P0.1 nN (karta P0.1, add_nn_cable_segment): liczba torow kabla
+            # ulozonych rownolegle na tej samej trasie. Brak na SN — bez zmiany
+            # zachowania istniejacych torow tworzenia gałęzi SN.
+            "n_parallel",
         ):
             if key in data:
                 branch_data[key] = data[key]

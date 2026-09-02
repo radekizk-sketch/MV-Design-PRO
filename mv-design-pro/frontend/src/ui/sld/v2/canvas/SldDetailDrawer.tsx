@@ -381,7 +381,8 @@ const sldDerConfigResolver: Resolver<SldDerConfigFormValues> = async (values) =>
   };
 };
 
-function tabsForKind(kind: SldDetailKind): readonly { id: string; label: string }[] {
+function tabsForKind(data: SldDetailDrawerData | null): readonly { id: string; label: string }[] {
+  const kind = data?.kind ?? null;
   if (kind === 'station') return STATION_TABS;
   if (kind === 'bay') return BAY_TABS;
   if (kind === 'apparatus') return APPARATUS_TABS;
@@ -471,7 +472,7 @@ export function SldDetailDrawer(props: SldDetailDrawerProps): JSX.Element | null
     onOpenConfiguration,
     actions = [],
   } = props;
-  const tabs = tabsForKind(data?.kind ?? null);
+  const tabs = tabsForKind(data);
   const [activeTab, setActiveTab] = useState<string>(tabs[0]?.id ?? '');
   const derForm = useForm<SldDerConfigFormValues>({
     resolver: sldDerConfigResolver,

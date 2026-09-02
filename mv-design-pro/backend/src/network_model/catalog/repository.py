@@ -14,7 +14,9 @@ from .types import (
     LineType,
     LoadType,
     LVApparatusType,
+    LVBreakerMcbType,
     LVCableType,
+    LVFuseLinkType,
     MVApparatusType,
     ProtectionCurve,
     ProtectionDeviceType,
@@ -254,6 +256,8 @@ class CatalogRepository:
     load_types: dict[str, LoadType] = field(default_factory=dict)
     mv_apparatus_types: dict[str, MVApparatusType] = field(default_factory=dict)
     lv_apparatus_types: dict[str, LVApparatusType] = field(default_factory=dict)
+    lv_breaker_mcb_types: dict[str, LVBreakerMcbType] = field(default_factory=dict)
+    lv_fuse_link_types: dict[str, LVFuseLinkType] = field(default_factory=dict)
     ct_types: dict[str, CTType] = field(default_factory=dict)
     vt_types: dict[str, VTType] = field(default_factory=dict)
     source_system_types: dict[str, SourceSystemType] = field(default_factory=dict)
@@ -282,6 +286,8 @@ class CatalogRepository:
         load_types: Iterable[dict] | None = None,
         mv_apparatus_types: Iterable[dict] | None = None,
         lv_apparatus_types: Iterable[dict] | None = None,
+        lv_breaker_mcb_types: Iterable[dict] | None = None,
+        lv_fuse_link_types: Iterable[dict] | None = None,
         ct_types: Iterable[dict] | None = None,
         vt_types: Iterable[dict] | None = None,
         source_system_types: Iterable[dict] | None = None,
@@ -355,6 +361,16 @@ class CatalogRepository:
             data = {"id": record.get("id"), "name": record.get("name")}
             data.update(record.get("params") or {})
             return LVApparatusType.from_dict(data)
+
+        def _build_lv_breaker_mcb_type(record: dict) -> LVBreakerMcbType:
+            data = {"id": record.get("id"), "name": record.get("name")}
+            data.update(record.get("params") or {})
+            return LVBreakerMcbType.from_dict(data)
+
+        def _build_lv_fuse_link_type(record: dict) -> LVFuseLinkType:
+            data = {"id": record.get("id"), "name": record.get("name")}
+            data.update(record.get("params") or {})
+            return LVFuseLinkType.from_dict(data)
 
         def _build_ct_type(record: dict) -> CTType:
             data = {"id": record.get("id"), "name": record.get("name")}
@@ -456,6 +472,14 @@ class CatalogRepository:
             lv_apparatus_types={
                 str(item.id): item
                 for item in map(_build_lv_apparatus_type, list(lv_apparatus_types or []))
+            },
+            lv_breaker_mcb_types={
+                str(item.id): item
+                for item in map(_build_lv_breaker_mcb_type, list(lv_breaker_mcb_types or []))
+            },
+            lv_fuse_link_types={
+                str(item.id): item
+                for item in map(_build_lv_fuse_link_type, list(lv_fuse_link_types or []))
             },
             ct_types={str(item.id): item for item in map(_build_ct_type, list(ct_types or []))},
             vt_types={str(item.id): item for item in map(_build_vt_type, list(vt_types or []))},
@@ -569,6 +593,18 @@ class CatalogRepository:
     def get_lv_apparatus_type(self, type_id: str) -> LVApparatusType | None:
         return self.lv_apparatus_types.get(str(type_id))
 
+    def list_lv_breaker_mcb_types(self) -> list[LVBreakerMcbType]:
+        return self._sorted(self.lv_breaker_mcb_types.values())
+
+    def get_lv_breaker_mcb_type(self, type_id: str) -> LVBreakerMcbType | None:
+        return self.lv_breaker_mcb_types.get(str(type_id))
+
+    def list_lv_fuse_link_types(self) -> list[LVFuseLinkType]:
+        return self._sorted(self.lv_fuse_link_types.values())
+
+    def get_lv_fuse_link_type(self, type_id: str) -> LVFuseLinkType | None:
+        return self.lv_fuse_link_types.get(str(type_id))
+
     def list_ct_types(self) -> list[CTType]:
         return self._sorted(self.ct_types.values())
 
@@ -664,7 +700,9 @@ def get_default_mv_catalog() -> CatalogRepository:
         get_all_ct_types,
         get_all_load_types,
         get_all_lv_apparatus_types,
+        get_all_lv_breaker_mcb_types,
         get_all_lv_cable_types,
+        get_all_lv_fuse_link_types,
         get_all_protection_curves,
         get_all_protection_device_types,
         get_all_protection_setting_templates,
@@ -692,6 +730,8 @@ def get_default_mv_catalog() -> CatalogRepository:
         lv_cable_types=get_all_lv_cable_types(),
         load_types=get_all_load_types(),
         lv_apparatus_types=get_all_lv_apparatus_types(),
+        lv_breaker_mcb_types=get_all_lv_breaker_mcb_types(),
+        lv_fuse_link_types=get_all_lv_fuse_link_types(),
         ct_types=get_all_ct_types(),
         vt_types=get_all_vt_types(),
         source_system_types=get_all_source_system_types(),

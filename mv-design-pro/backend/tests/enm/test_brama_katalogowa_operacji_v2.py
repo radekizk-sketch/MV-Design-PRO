@@ -62,6 +62,7 @@ REF_KABEL = "cable-tfk-yakxs-3x120"
 REF_TRAFO = "tr-sn-nn-15-04-2500kva-dyn11"
 REF_APARAT_SN = "sw-cb-abb-vd4-17kv-630a"
 REF_APARAT_NN = "cb_nn_630a"
+REF_KABEL_NN = "kab_nn_4x120_al"
 REF_CT = "ct_400_5_5p20_15va_abb"
 REF_VT = "vt_15kv_100v_3p_abb"
 REF_PRZEKAZNIK = "ACME_REX100_v1"
@@ -446,6 +447,81 @@ def _payload_ogranicznik(snapshot: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _payload_kabel_nn(snapshot: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "from_bus_ref": _szyna_nn_ref(snapshot),
+        "length_m": 25.0,
+        "catalog_ref": REF_KABEL_NN,
+    }
+
+
+def _payload_kabel_nn_binding(snapshot: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "from_bus_ref": _szyna_nn_ref(snapshot),
+        "length_m": 25.0,
+        "catalog_binding": {
+            "catalog_namespace": "KABEL_NN",
+            "catalog_item_id": REF_KABEL_NN,
+            "catalog_item_version": "2024.1",
+        },
+    }
+
+
+def _druga_szyna_nn_ref(snapshot: dict[str, Any]) -> str:
+    """Druga szyna nN dołożona przez prep `add_nn_cable_segment` (`_przygotowana_siec`)."""
+    kandydaci = [
+        b for b in snapshot["buses"] if (b.get("meta") or {}).get("visual_role") == "NN_CABLE_END"
+    ]
+    assert (
+        kandydaci
+    ), "Sieć testowa nie ma drugiej szyny nN (prep add_nn_cable_segment nie wykonany)"
+    return str(kandydaci[-1]["ref_id"])
+
+
+def _payload_aparat_nn(snapshot: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "from_bus_ref": _szyna_nn_ref(snapshot),
+        "to_bus_ref": _druga_szyna_nn_ref(snapshot),
+        "catalog_ref": REF_APARAT_NN,
+    }
+
+
+def _payload_aparat_nn_binding(snapshot: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "from_bus_ref": _szyna_nn_ref(snapshot),
+        "to_bus_ref": _druga_szyna_nn_ref(snapshot),
+        "catalog_binding": {
+            "catalog_namespace": "APARAT_NN",
+            "catalog_item_id": REF_APARAT_NN,
+            "catalog_item_version": "2024.1",
+        },
+    }
+
+
+def _rozdzielnica_nn_ref(snapshot: dict[str, Any]) -> str:
+    """Rozdzielnica nN dołożona przez prep `add_nn_distribution_board` (`_przygotowana_siec`)."""
+    stacje = [s for s in snapshot["substations"] if s.get("station_type") == "rozdzielnica_nn"]
+    assert (
+        stacje
+    ), "Sieć testowa nie ma rozdzielnicy nN (prep add_nn_distribution_board nie wykonany)"
+    return str(stacje[0]["ref_id"])
+
+
+def _payload_sprzeglo_nn(snapshot: dict[str, Any]) -> dict[str, Any]:
+    return {"station_ref": _rozdzielnica_nn_ref(snapshot), "catalog_ref": REF_APARAT_NN}
+
+
+def _payload_sprzeglo_nn_binding(snapshot: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "station_ref": _rozdzielnica_nn_ref(snapshot),
+        "catalog_binding": {
+            "catalog_namespace": "APARAT_NN",
+            "catalog_item_id": REF_APARAT_NN,
+            "catalog_item_version": "2024.1",
+        },
+    }
+
+
 def _payload_wiazan_der(snapshot: dict[str, Any]) -> dict[str, Any]:
     """Aktualizacja wiązań katalogowych utworzonego już źródła (klucze na wierzchu)."""
     return {
@@ -559,6 +635,43 @@ INIEKCJE: tuple[PrzypadekIniekcji, ...] = (
         _payload_ogranicznik,
         lambda p: p["catalog_binding"].update({"catalog_item_id": REF_OGRANICZNIK + LITEROWKA}),
         oczekiwany_kod="spd.catalog_not_found",
+    ),
+    # P0.1 nN (karta P0.1, C §4.1): wiązanie katalogowe OBOWIĄZKOWE.
+    PrzypadekIniekcji(
+        "catalog_ref",
+        "add_nn_cable_segment",
+        _payload_kabel_nn,
+        lambda p: _zepsuj_klucz(p, "catalog_ref"),
+    ),
+    PrzypadekIniekcji(
+        "catalog_binding",
+        "add_nn_cable_segment",
+        _payload_kabel_nn_binding,
+        lambda p: p["catalog_binding"].update({"catalog_item_id": REF_KABEL_NN + LITEROWKA}),
+    ),
+    PrzypadekIniekcji(
+        "catalog_ref",
+        "add_nn_switch_device",
+        _payload_aparat_nn,
+        lambda p: _zepsuj_klucz(p, "catalog_ref"),
+    ),
+    PrzypadekIniekcji(
+        "catalog_binding",
+        "add_nn_switch_device",
+        _payload_aparat_nn_binding,
+        lambda p: p["catalog_binding"].update({"catalog_item_id": REF_APARAT_NN + LITEROWKA}),
+    ),
+    PrzypadekIniekcji(
+        "catalog_ref",
+        "add_nn_section_coupler",
+        _payload_sprzeglo_nn,
+        lambda p: _zepsuj_klucz(p, "catalog_ref"),
+    ),
+    PrzypadekIniekcji(
+        "catalog_binding",
+        "add_nn_section_coupler",
+        _payload_sprzeglo_nn_binding,
+        lambda p: p["catalog_binding"].update({"catalog_item_id": REF_APARAT_NN + LITEROWKA}),
     ),
 )
 
@@ -795,12 +908,32 @@ PRZYPADKI = [
 
 
 def _przygotowana_siec(przypadek: PrzypadekIniekcji) -> dict[str, Any]:
-    """Sieć ze stacją; dla zabezpieczenia — CT w polu, dla wiązań DER — źródło."""
+    """Sieć ze stacją; dla zabezpieczenia — CT w polu, dla wiązań DER — źródło.
+
+    P0.1 nN: `add_nn_switch_device` potrzebuje DRUGIEJ szyny nN (dokładamy
+    odcinek kabla — jego szyna docelowa ma znacznik `NN_CABLE_END`, czytany
+    przez `_druga_szyna_nn_ref`); `add_nn_section_coupler` potrzebuje
+    rozdzielnicy nN (`station_type="rozdzielnica_nn"`).
+    """
     snapshot = _siec_ze_stacja()
     if przypadek.wymaga_ct:
         snapshot = _wykonaj(snapshot, "add_ct", _payload_ct(snapshot))
     if przypadek.operacja == "set_der_catalog_bindings":
         snapshot = _wykonaj(snapshot, "add_converter_source", _payload_konwerter(snapshot))
+    if przypadek.operacja == "add_nn_switch_device":
+        snapshot = _wykonaj(
+            snapshot,
+            "add_nn_cable_segment",
+            {
+                "from_bus_ref": _szyna_nn_ref(snapshot),
+                "length_m": 20.0,
+                "catalog_ref": REF_KABEL_NN,
+            },
+        )
+    if przypadek.operacja == "add_nn_section_coupler":
+        snapshot = _wykonaj(
+            snapshot, "add_nn_distribution_board", {"voltage_kv": 0.4, "name": "RGnN testowa"}
+        )
     return snapshot
 
 
@@ -845,6 +978,24 @@ def test_literowka_odrzucona_w_torze_payloadu(
     if przypadek.operacja == "set_der_catalog_bindings":
         snapshot = _operacja_api(
             klient, case_id, "add_converter_source", _payload_konwerter(snapshot)
+        )
+    if przypadek.operacja == "add_nn_switch_device":
+        snapshot = _operacja_api(
+            klient,
+            case_id,
+            "add_nn_cable_segment",
+            {
+                "from_bus_ref": _szyna_nn_ref(snapshot),
+                "length_m": 20.0,
+                "catalog_ref": REF_KABEL_NN,
+            },
+        )
+    if przypadek.operacja == "add_nn_section_coupler":
+        snapshot = _operacja_api(
+            klient,
+            case_id,
+            "add_nn_distribution_board",
+            {"voltage_kv": 0.4, "name": "RGnN testowa"},
         )
     payload = przypadek.zbuduj(snapshot)
     przypadek.zepsuj(payload)

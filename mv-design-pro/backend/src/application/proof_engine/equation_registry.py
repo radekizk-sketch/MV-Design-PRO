@@ -823,6 +823,49 @@ EQ_VDROP_007 = EquationDefinition(
     ),
 )
 
+EQ_VDROP_010 = EquationDefinition(
+    equation_id="EQ_VDROP_010",
+    name_pl="Zmiana podstawy napięcia na transformatorze (granica łańcucha)",
+    standard_ref="—",
+    latex=r"\Delta U_{TR}^{kV} = U_{1} - U_{2}",
+    symbols=(
+        SymbolDefinition(
+            symbol="\\Delta U_{TR}^{kV}",
+            unit="kV",
+            description_pl="Wkład granicy transformatora do sumy łańcucha",
+            mapping_key="delta_u_tr_kv",
+        ),
+        SymbolDefinition(
+            symbol="U_{1}",
+            unit="kV",
+            description_pl="Napięcie strony pierwotnej (rozwiązanie rozpływu)",
+            mapping_key="u_primary_kv",
+        ),
+        SymbolDefinition(
+            symbol="U_{2}",
+            unit="kV",
+            description_pl="Napięcie strony wtórnej (rozwiązanie rozpływu)",
+            mapping_key="u_secondary_kv",
+        ),
+    ),
+    unit_derivation="kV - kV = kV",
+    notes=(
+        "KARTA P0.5b (2026-08-13, N-D6 + uzgodnienie U4). Transformator NIE JEST "
+        "odcinkiem w sensie VDROP — RODZAJE_ODCINKA (`voltage_drop_binding.py`) "
+        "wyklucza go od początku istnienia tego modułu, bo zmienia napięcie "
+        "przekładnią, nie spadkiem wzdłużnym; wzór ΔU=(R·P+X·Q)/U_n² NIE MA "
+        "zastosowania. Ten krok NIE liczy fizyki transformatora — nazywa jawnie "
+        "zmianę podstawy napięcia, czytając U_1/U_2 z JUŻ ROZWIĄZANEGO rozpływu "
+        "(fizyka transformatora policzona przez solver PF, poza domeną VDROP). "
+        "To NIE jest cyrkularność zakazana kartą PODSTAWA-VDROP: tamten zakaz "
+        "dotyczy PODMIANY ΔU odcinka linii/kabla (który VDROP rości sobie prawo "
+        "policzyć przez R/X/P/Q) wynikiem biegu — tu żadna konkurencyjna formuła "
+        "VDROP nie istnieje, więc odczyt nie zastępuje niczego. Wkład do sumy "
+        "łańcucha (EQ_VDROP_007, ΔU_total^{kV}) wchodzi TAK SAMO jak odcinek "
+        "linii/kabla — jako kolejny składnik sumy w kV."
+    ),
+)
+
 
 # -----------------------------------------------------------------------------
 # P32: Load Flow & Voltage Drop Proof Pack — równania dowodowe
@@ -1215,6 +1258,293 @@ EQ_LC_006 = EquationDefinition(
     ),
     unit_derivation="100 · (MVA / MVA - 1) = %",
     notes="Dla S = 0 margines definiowany jako +∞ (deterministycznie).",
+)
+
+
+# =============================================================================
+# LV_CIRCUIT_VERIFICATION (P0.10, nN): Kanoniczne równania NOWE (BINDING)
+# =============================================================================
+#
+# Karta P0.10 (docs/nn/H_PLAN_IMPLEMENTACJI_NN.md §P0.10, luka G-21). Pięć
+# równań poniżej domyka procedurę weryfikacji obwodu nN (A10 §9 wzmiankowana
+# w rejestrze G, ale raport A10 per se NIE jest zapisany w repo — sekcje
+# obszarowe audytu A–I żyją wyłącznie w sesji, zob. `docs/nn/
+# A_AUDYT_STANU_NN_2026-08.md` §3 „Źródła szczegółowe"; dziesięciokrokowa
+# struktura pakietu LV_CIRCUIT_VERIFICATION jest więc WYPROWADZONA przez ten
+# wykonawca wprost z §0.1 karty P0.10 + G-21 + I §1, udokumentowana w
+# `application/proof_engine/packs/lv_circuit_verification.py`). Każde z
+# równań PORÓWNUJE albo AGREGUJE wartości, które pochodzą z ISTNIEJĄCYCH
+# solverów/analiz (cable_ampacity_derating, protection_lv_curves,
+# conductor_thermal_withstand/derive_k_iec60949, fault_loop_iec60364,
+# swz.werdykt) — ZERO nowej fizyki, tylko nazwanie normatywnego kryterium.
+
+EQ_LVCV_001 = EquationDefinition(
+    equation_id="EQ_LVCV_001",
+    name_pl="Obciążalność dopuszczalna po korektach (Iz′)",
+    standard_ref="PN-HD 60364-5-52 (zestaw korekcyjny G-D1)",
+    latex=r"I_z' = I_z \cdot f_{\theta} \cdot f_{\rho} \cdot f_{N}",
+    symbols=(
+        SymbolDefinition(
+            symbol="I_z'",
+            unit="A",
+            description_pl="Obciążalność dopuszczalna po korektach ułożenia",
+            mapping_key="iz_prime_a",
+        ),
+        SymbolDefinition(
+            symbol="I_z",
+            unit="A",
+            description_pl="Obciążalność katalogowa (warunki odniesienia)",
+            mapping_key="iz_katalogowe_a",
+        ),
+        SymbolDefinition(
+            symbol="f_{\\theta}",
+            unit="—",
+            description_pl="Współczynnik korekcyjny temperatury otoczenia",
+            mapping_key="f_temperatura",
+        ),
+        SymbolDefinition(
+            symbol="f_{\\rho}",
+            unit="—",
+            description_pl="Współczynnik korekcyjny rezystywności cieplnej gruntu",
+            mapping_key="f_rezystywnosc_gruntu",
+        ),
+        SymbolDefinition(
+            symbol="f_{N}",
+            unit="—",
+            description_pl="Współczynnik korekcyjny grupowania obwodów",
+            mapping_key="f_grupowanie",
+        ),
+    ),
+    unit_derivation="A · (—) · (—) · (—) = A",
+    notes=(
+        "Iloczyn współczynników REUSE — jedyne miejsce mnożenia jest "
+        "`network_model.solvers.cable_ampacity_derating.obciazalnosc_skorygowana` "
+        "(karta P0.5a); każdy współczynnik pochodzi z NAZWANEGO zestawu tablic "
+        "normy PN-HD 60364-5-52 z proweniencją (rejestr G-D1) — krok dowodu "
+        "cytuje zestaw i wartości poszczególnych czynników, nie tylko iloczyn."
+    ),
+)
+
+EQ_LVCV_002 = EquationDefinition(
+    equation_id="EQ_LVCV_002",
+    name_pl="Dobór zabezpieczenia obwodu",
+    standard_ref="IEC 60364-4-43 §433.1",
+    latex=r"I_b \le I_n \le I_z'",
+    symbols=(
+        SymbolDefinition(
+            symbol="I_b",
+            unit="A",
+            description_pl="Prąd obliczeniowy obwodu",
+            mapping_key="ib_a",
+        ),
+        SymbolDefinition(
+            symbol="I_n",
+            unit="A",
+            description_pl="Prąd znamionowy zabezpieczenia",
+            mapping_key="in_a",
+        ),
+        SymbolDefinition(
+            symbol="I_z'",
+            unit="A",
+            description_pl="Obciążalność dopuszczalna po korektach",
+            mapping_key="iz_prime_a",
+        ),
+    ),
+    unit_derivation="A ≤ A ≤ A",
+    notes=(
+        "REUSE `application.analyses.nn_device_selection._kryterium_ib_in_iz` "
+        "(karta P0.7) — ten krok cytuje TEN SAM werdykt dla urządzenia już "
+        "zainstalowanego na obwodzie (weryfikacja), nie dla listy kandydatów "
+        "(dobór)."
+    ),
+)
+
+EQ_LVCV_003 = EquationDefinition(
+    equation_id="EQ_LVCV_003",
+    name_pl="Warunek zadziałania zabezpieczenia",
+    standard_ref="IEC 60364-4-43 §433.1.1",
+    latex=r"I_2 \le 1{,}45 \cdot I_z'",
+    symbols=(
+        SymbolDefinition(
+            symbol="I_2",
+            unit="A",
+            description_pl="Prąd gwarantowanego zadziałania w czasie umownym",
+            mapping_key="i2_a",
+        ),
+        SymbolDefinition(
+            symbol="I_z'",
+            unit="A",
+            description_pl="Obciążalność dopuszczalna po korektach",
+            mapping_key="iz_prime_a",
+        ),
+        SymbolDefinition(
+            symbol="1{,}45 \\cdot I_z'",
+            unit="A",
+            description_pl="Granica dopuszczalna I2",
+            mapping_key="limit_a",
+        ),
+    ),
+    unit_derivation="A ≤ A",
+    notes=(
+        "REUSE `network_model.solvers.protection_lv_curves.compute_mcb_thermal_point` "
+        "(MCB, I2=1,45×In, IEC 60898-1) albo `compute_fuse_gg_gate` (wkładka gG, "
+        "If=1,6×In, IEC 60269-1) — JEDNO źródło progu per rodzaj aparatu (G-D2/G-D4), "
+        "ten krok tylko cytuje wynik porównania z 1,45·Iz′."
+    ),
+)
+
+EQ_LVCV_004 = EquationDefinition(
+    equation_id="EQ_LVCV_004",
+    name_pl="Zdolność wyłączania wobec Ik″max — dwa zdania inżynierskie",
+    standard_ref="IEC 60947 / IEC 60898-1 / IEC 60269-1",
+    latex=r"I_{cond} \ge I_k''_{max} \qquad \text{oraz osobno} \qquad I_{cu/cn} \ge I_k''_{max}",
+    symbols=(
+        SymbolDefinition(
+            symbol="I_{cond}",
+            unit="kA",
+            description_pl="Prąd zwarciowy warunkowy KOMBINACJI aparat+wkładka",
+            mapping_key="conditional_sc_current_ka",
+        ),
+        SymbolDefinition(
+            symbol="I_{cu/cn}",
+            unit="kA",
+            description_pl="Własna zdolność wyłączania GOŁEGO aparatu (Icu/Icn)",
+            mapping_key="icu_or_icn_ka",
+        ),
+        SymbolDefinition(
+            symbol="I_k''_{max}",
+            unit="kA",
+            description_pl="Prąd zwarciowy początkowy maksymalny w punkcie zabudowy",
+            mapping_key="ik_max_ka",
+        ),
+    ),
+    unit_derivation="kA ≥ kA",
+    notes=(
+        "KARTA P0.10, rozstrzygnięcie rundy 5b (docs/nn/UZGODNIENIA_WATKOW_2026-08-13.md): "
+        "DWA RÓŻNE zdania inżynierskie, NIGDY jedno pole. Kombinacja aparat+wkładka "
+        "(rozłącznik bezpiecznikowy nN) dostaje zdanie o `conditional_sc_current_ka` "
+        "(prąd warunkowy KOMBINACJI, ważny wyłącznie z wkładką); goły aparat (MCB: "
+        "`icn_ka` IEC 60898-1; MCCB: `i_cu_ka` IEC 60947) dostaje zdanie o WŁASNEJ "
+        "zdolności — dla rozłącznika bezpiecznikowego BEZ wkładki albo dla rodzaju "
+        "aparatu bez własnej zdolności ta druga sentencja jest jawnie NIE_DOTYCZY, "
+        "nie fikcyjnym zerem."
+    ),
+)
+
+EQ_LVCV_005 = EquationDefinition(
+    equation_id="EQ_LVCV_005",
+    name_pl="Wytrzymałość cieplna przewodu (bilans energii zwarciowej)",
+    standard_ref="IEC 60949",
+    latex=r"\int i^{2}\,dt \le k^{2} S^{2}",
+    symbols=(
+        SymbolDefinition(
+            symbol="\\int i^{2}\\,dt",
+            unit="A²s",
+            description_pl="Energia zwarciowa rzeczywista (I_th² · t)",
+            mapping_key="i2t_a2s",
+        ),
+        SymbolDefinition(
+            symbol="k",
+            unit="A·√s/mm²",
+            description_pl="Współczynnik materiałowy k (IEC 60949 §4)",
+            mapping_key="k_a_s05_per_mm2",
+        ),
+        SymbolDefinition(
+            symbol="S",
+            unit="mm²",
+            description_pl="Przekrój żyły fazowej",
+            mapping_key="cross_section_mm2",
+        ),
+        SymbolDefinition(
+            symbol="k^{2} S^{2}",
+            unit="A²s",
+            description_pl="Energia dopuszczalna (wytrzymałość cieplna 1 s przeliczona)",
+            mapping_key="i2t_admissible_a2s",
+        ),
+    ),
+    unit_derivation="A²·s ≤ (A·√s/mm²)² · mm² = A²·s",
+    notes=(
+        "REUSE `network_model.solvers.conductor_thermal_withstand."
+        "check_conductor_thermal_withstand` (bilans I²t ≤ k²S², IEC 60949) — k "
+        "PIERWSZEŃSTWO danej katalogowej (Jth·S), a gdy katalog milczy — "
+        "WYPROWADZONE przez `derive_k_iec60949` z materiału żyły i pary temperatur "
+        "(REUSE, ta sama funkcja co Equipment P12/F-K1). Zero drugiej fizyki."
+    ),
+)
+
+EQ_LVCV_006 = EquationDefinition(
+    equation_id="EQ_LVCV_006",
+    name_pl="Prąd zwarcia minimalnego z pętli",
+    standard_ref="IEC 60364-4-41 §411.4.4 / IEC 60909-0 §5.3.2 (c_min)",
+    latex=r"I_{k1,min} = \frac{c_{min} \cdot U_0}{|Z_{loop}|}",
+    symbols=(
+        SymbolDefinition(
+            symbol="I_{k1,min}",
+            unit="A",
+            description_pl="Prąd zwarcia jednofazowego minimalny",
+            mapping_key="ik1_min_a",
+        ),
+        SymbolDefinition(
+            symbol="c_{min}",
+            unit="—",
+            description_pl="Współczynnik napięciowy minimalny (IEC 60909-0, nN: 0,95)",
+            mapping_key="c_min",
+        ),
+        SymbolDefinition(
+            symbol="U_0",
+            unit="V",
+            description_pl="Napięcie fazowe znamionowe",
+            mapping_key="u0_v",
+        ),
+        SymbolDefinition(
+            symbol="Z_{loop}",
+            unit="Ω",
+            description_pl="Moduł impedancji pętli zwarcia (trasa + TR + upstream SN)",
+            mapping_key="z_loop_magnitude_ohm",
+        ),
+    ),
+    unit_derivation="(—) · V / Ω = A",
+    notes=(
+        "REUSE `network_model.solvers.fault_loop_iec60364.compute_fault_loop` — "
+        "trasa (żyła fazowa + powrotna) z `fault_loop_builder`, ekstrakcja z grafu "
+        "wg BFS ENM (karta P0.6/P0.5b), upstream Thevenin SN z istniejącego Zbus. "
+        "Zero drugiej fizyki pętli — ten krok cytuje wynik solvera."
+    ),
+)
+
+EQ_LVCV_007 = EquationDefinition(
+    equation_id="EQ_LVCV_007",
+    name_pl="Samoczynne wyłączenie zasilania (SWZ)",
+    standard_ref="IEC 60364-4-41 Tab. 41.1 (G-D3)",
+    latex=r"I_{k1,min} \ge I_a(t_{wym})",
+    symbols=(
+        SymbolDefinition(
+            symbol="I_{k1,min}",
+            unit="A",
+            description_pl="Prąd zwarcia jednofazowego minimalny",
+            mapping_key="ik1_min_a",
+        ),
+        SymbolDefinition(
+            symbol="I_a",
+            unit="A",
+            description_pl="Prąd zapewniający zadziałanie zabezpieczenia w czasie t_wym",
+            mapping_key="ia_wymagane_a",
+        ),
+        SymbolDefinition(
+            symbol="t_{wym}",
+            unit="s",
+            description_pl="Czas wymagany wyłączenia (Tab. 41.1, wg pasma U0 i rodzaju obwodu)",
+            mapping_key="t_wymagany_s",
+        ),
+    ),
+    unit_derivation="A ≥ A (przy dowiedzionym t ≤ t_wym)",
+    notes=(
+        "REUSE `application.analyses.swz.werdykt.ocen_swz` — werdykt 3-STANOWY "
+        "(spełnia / nie spełnia / NIEROZSTRZYGALNE, nigdy ciche PASS bez danych; "
+        "wkładka gG bez bramek I-t G-D2 jest ZAWSZE nierozstrzygalna). Krok nazywa "
+        "JAWNIE źródło czasu (Tab. 41.1 IEC 60364-4-41, rejestr G-D3) i pasmo U0 "
+        "użyte do jego wyboru — nie tylko wynik porównania."
+    ),
 )
 
 
@@ -2654,6 +2984,7 @@ VDROP_EQUATIONS: dict[str, EquationDefinition] = {
     "EQ_VDROP_005": EQ_VDROP_005,
     "EQ_VDROP_006": EQ_VDROP_006,
     "EQ_VDROP_007": EQ_VDROP_007,
+    "EQ_VDROP_010": EQ_VDROP_010,
 }
 
 # P32: Load Flow & Voltage Drop equations registry
@@ -2675,6 +3006,17 @@ LC_EQUATIONS: dict[str, EquationDefinition] = {
     "EQ_LC_004": EQ_LC_004,
     "EQ_LC_005": EQ_LC_005,
     "EQ_LC_006": EQ_LC_006,
+}
+
+# LV_CIRCUIT_VERIFICATION (P0.10, nN): równania NOWE registry
+LVCV_EQUATIONS: dict[str, EquationDefinition] = {
+    "EQ_LVCV_001": EQ_LVCV_001,
+    "EQ_LVCV_002": EQ_LVCV_002,
+    "EQ_LVCV_003": EQ_LVCV_003,
+    "EQ_LVCV_004": EQ_LVCV_004,
+    "EQ_LVCV_005": EQ_LVCV_005,
+    "EQ_LVCV_006": EQ_LVCV_006,
+    "EQ_LVCV_007": EQ_LVCV_007,
 }
 
 # P17: Losses Energy Profile equations registry
@@ -2787,6 +3129,23 @@ LC_STEP_ORDER: list[str] = [
     "EQ_LC_004",  # Margines prądowy
     "EQ_LC_005",  # Obciążenie transformatora
     "EQ_LC_006",  # Margines transformatora
+]
+
+# Step order for LV_CIRCUIT_VERIFICATION (P0.10, nN) — 10 kroków BINDING.
+# Wyprowadzone przez wykonawcę karty P0.10 z §0.1 karty H + G-21 + I §1 (raport
+# A10 per se NIE jest zapisany w repo — zob. komentarz przy EQ_LVCV_001 powyżej).
+# 3 kroki REUSE (EQ_LC_001/002, EQ_VDROP_007) + 7 kroków NEW (EQ_LVCV_001..007).
+LVCV_STEP_ORDER: list[str] = [
+    "EQ_LC_001",  # 1. Moc pozorna S = sqrt(P^2+Q^2)                    [REUSE]
+    "EQ_LC_002",  # 2. Prąd obliczeniowy Ib = S/(sqrt(3)*U_LL)          [REUSE]
+    "EQ_LVCV_001",  # 3. Iz' = Iz * f_temperatura*f_rezystywnosc*f_grupa [NEW]
+    "EQ_LVCV_002",  # 4. Dobór: Ib <= In <= Iz'                          [NEW]
+    "EQ_LVCV_003",  # 5. I2 <= 1,45*Iz' (MCB) / 1,6*In wkładki           [NEW]
+    "EQ_LVCV_004",  # 6. Zdolność wyłączania — dwa zdania                [NEW]
+    "EQ_LVCV_005",  # 7. I^2*t <= k^2*S^2 (IEC 60949)                    [NEW]
+    "EQ_VDROP_007",  # 8. ΔU dowód (łańcuch, kanon kV)                    [REUSE]
+    "EQ_LVCV_006",  # 9. Ik1_min = c_min*U0/|Z_petli|                    [NEW]
+    "EQ_LVCV_007",  # 10. SWZ: Ik1_min >= Ia(t_wym)                      [NEW]
 ]
 
 # Step order for P17 (BINDING)
@@ -3002,6 +3361,7 @@ registry.merge(SC3F_EQUATIONS)
 registry.merge(VDROP_EQUATIONS)
 registry.merge(LF_EQUATIONS)
 registry.merge(LC_EQUATIONS)
+registry.merge(LVCV_EQUATIONS)
 registry.merge(LE_EQUATIONS)
 registry.merge(PR_EQUATIONS)
 registry.merge(EARTH_EQUATIONS)
@@ -3027,6 +3387,7 @@ class EquationRegistry:
     VDROP_EQUATIONS: ClassVar[dict[str, EquationDefinition]]
     LF_EQUATIONS: ClassVar[dict[str, EquationDefinition]]
     LC_EQUATIONS: ClassVar[dict[str, EquationDefinition]]
+    LVCV_EQUATIONS: ClassVar[dict[str, EquationDefinition]]
     LE_EQUATIONS: ClassVar[dict[str, EquationDefinition]]
     PR_EQUATIONS: ClassVar[dict[str, EquationDefinition]]
     EARTH_EQUATIONS: ClassVar[dict[str, EquationDefinition]]
@@ -3036,6 +3397,7 @@ class EquationRegistry:
     VDROP_STEP_ORDER: ClassVar[list[str]]
     LF_STEP_ORDER: ClassVar[list[str]]
     LC_STEP_ORDER: ClassVar[list[str]]
+    LVCV_STEP_ORDER: ClassVar[list[str]]
     LE_STEP_ORDER: ClassVar[list[str]]
     PR_STEP_ORDER: ClassVar[list[str]]
     EARTH_STEP_ORDER: ClassVar[list[str]]
@@ -3089,6 +3451,16 @@ class EquationRegistry:
     def get_lc_step_order(cls) -> list[str]:
         """Zwraca kolejność kroków dla dowodu P15."""
         return LC_STEP_ORDER.copy()
+
+    @classmethod
+    def get_lvcv_equations(cls) -> dict[str, EquationDefinition]:
+        """Zwraca wszystkie równania LV_CIRCUIT_VERIFICATION (P0.10, nN)."""
+        return LVCV_EQUATIONS.copy()
+
+    @classmethod
+    def get_lvcv_step_order(cls) -> list[str]:
+        """Zwraca kolejność 10 kroków dowodu LV_CIRCUIT_VERIFICATION (P0.10)."""
+        return LVCV_STEP_ORDER.copy()
 
     @classmethod
     def get_le_equations(cls) -> dict[str, EquationDefinition]:
@@ -3239,6 +3611,7 @@ EquationRegistry.SC3F_EQUATIONS = SC3F_EQUATIONS
 EquationRegistry.VDROP_EQUATIONS = VDROP_EQUATIONS
 EquationRegistry.LF_EQUATIONS = LF_EQUATIONS
 EquationRegistry.LC_EQUATIONS = LC_EQUATIONS
+EquationRegistry.LVCV_EQUATIONS = LVCV_EQUATIONS
 EquationRegistry.LE_EQUATIONS = LE_EQUATIONS
 EquationRegistry.PR_EQUATIONS = PR_EQUATIONS
 EquationRegistry.EARTH_EQUATIONS = EARTH_EQUATIONS
@@ -3248,6 +3621,7 @@ EquationRegistry.SC3F_PROOF_STEP_ORDER = SC3F_PROOF_STEP_ORDER
 EquationRegistry.VDROP_STEP_ORDER = VDROP_STEP_ORDER
 EquationRegistry.LF_STEP_ORDER = LF_STEP_ORDER
 EquationRegistry.LC_STEP_ORDER = LC_STEP_ORDER
+EquationRegistry.LVCV_STEP_ORDER = LVCV_STEP_ORDER
 EquationRegistry.LE_STEP_ORDER = LE_STEP_ORDER
 EquationRegistry.PR_STEP_ORDER = PR_STEP_ORDER
 EquationRegistry.EARTH_STEP_ORDER = EARTH_STEP_ORDER

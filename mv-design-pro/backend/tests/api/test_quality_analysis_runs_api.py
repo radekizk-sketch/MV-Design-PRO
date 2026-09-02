@@ -16,6 +16,7 @@ from tests.cgmes.golden_enm import build_golden_enm
 
 SANITY_BOUNDS = "/api/quality/sanity-bounds"
 ENERGY_VALIDATION = "/api/quality/energy-validation"
+VOLTAGE_PROFILE = "/api/quality/voltage-profile"
 FLICKER = "/api/quality/flicker"
 CONNECTION_CONDITIONS = "/api/quality/connection-conditions"
 CONDUCTOR_THERMAL = "/api/quality/conductor-thermal-withstand"
@@ -111,6 +112,98 @@ def test_energy_validation_unknown_run_returns_404(app_client) -> None:
 def test_energy_validation_wrong_analysis_type_returns_422(app_client) -> None:
     run_id = _sc_run_id()  # zwarcie, nie rozpływ
     resp = app_client.get(ENERGY_VALIDATION, params={"run_id": str(run_id)})
+    assert resp.status_code == 422
+    assert "przebiegu rozpływu" in resp.json()["detail"]
+
+
+# --------------------------------------------------------------------------
+# Profil napięć + dekompozycja ΔU per odcinek (karta P0.4, nN)
+# --------------------------------------------------------------------------
+
+
+def test_voltage_profile_endpoint_returns_view(app_client) -> None:
+    run_id = _pf_run_id()
+    resp = app_client.get(VOLTAGE_PROFILE, params={"run_id": str(run_id)})
+    assert resp.status_code == 200, resp.text
+    data = resp.json()
+    assert set(data) >= {"context", "thresholds", "rows", "summary"}
+    assert len(data["rows"]) >= 5
+    # `node_ref`/`worst_nn` pominięte -> klucz "segmenty" ADDYTYWNY, ZERO
+    # wpływu na kształt odpowiedzi (karta P0.4 §0.3).
+    assert "segmenty" not in data
+
+
+def _bus_nn_ref(rows: list[dict]) -> str:
+    return next(row["bus_id"] for row in rows if row["bus_name"] == "Szyna nN")
+
+
+def test_voltage_profile_endpoint_node_ref_returns_segments_summing_to_delta_u(
+    app_client,
+) -> None:
+    run_id = _pf_run_id()
+    base = app_client.get(VOLTAGE_PROFILE, params={"run_id": str(run_id)}).json()
+    bus_nn_ref = _bus_nn_ref(base["rows"])
+
+    resp = app_client.get(VOLTAGE_PROFILE, params={"run_id": str(run_id), "node_ref": bus_nn_ref})
+    assert resp.status_code == 200, resp.text
+    data = resp.json()
+    segmenty = data["segmenty"]
+    assert segmenty["node_id"] == bus_nn_ref
+    assert len(segmenty["segments"]) >= 1
+
+    total_delta_u_kv = sum(segment["delta_u_kv"] for segment in segmenty["segments"])
+    assert total_delta_u_kv == pytest.approx(
+        segmenty["u_source_kv"] - segmenty["u_node_kv"], abs=1e-4
+    )
+    # Sam profil (rows/summary/...) NIETKNIĘTY dokładaniem segmentów.
+    assert data["rows"] == base["rows"]
+
+
+def test_voltage_profile_endpoint_worst_nn_matches_explicit_node_ref(app_client) -> None:
+    run_id = _pf_run_id()
+    base = app_client.get(VOLTAGE_PROFILE, params={"run_id": str(run_id)}).json()
+    bus_nn_ref = _bus_nn_ref(base["rows"])
+
+    explicit = app_client.get(
+        VOLTAGE_PROFILE, params={"run_id": str(run_id), "node_ref": bus_nn_ref}
+    ).json()
+    worst = app_client.get(VOLTAGE_PROFILE, params={"run_id": str(run_id), "worst_nn": True}).json()
+    assert worst["segmenty"] == explicit["segmenty"]
+
+
+def test_voltage_profile_endpoint_unknown_node_ref_returns_422(app_client) -> None:
+    run_id = _pf_run_id()
+    resp = app_client.get(
+        VOLTAGE_PROFILE, params={"run_id": str(run_id), "node_ref": "nie-istnieje"}
+    )
+    assert resp.status_code == 422
+    assert "nie istnieje" in resp.json()["detail"]
+
+
+def test_voltage_profile_endpoint_is_deterministic(app_client) -> None:
+    run_id = _pf_run_id()
+    first = app_client.get(VOLTAGE_PROFILE, params={"run_id": str(run_id)}).json()
+    second = app_client.get(VOLTAGE_PROFILE, params={"run_id": str(run_id)}).json()
+    assert first == second
+
+    bus_nn_ref = _bus_nn_ref(first["rows"])
+    first_seg = app_client.get(
+        VOLTAGE_PROFILE, params={"run_id": str(run_id), "node_ref": bus_nn_ref}
+    ).json()
+    second_seg = app_client.get(
+        VOLTAGE_PROFILE, params={"run_id": str(run_id), "node_ref": bus_nn_ref}
+    ).json()
+    assert first_seg == second_seg
+
+
+def test_voltage_profile_endpoint_unknown_run_returns_404(app_client) -> None:
+    resp = app_client.get(VOLTAGE_PROFILE, params={"run_id": str(uuid4())})
+    assert resp.status_code == 404
+
+
+def test_voltage_profile_endpoint_wrong_analysis_type_returns_422(app_client) -> None:
+    run_id = _sc_run_id()  # zwarcie, nie rozpływ
+    resp = app_client.get(VOLTAGE_PROFILE, params={"run_id": str(run_id)})
     assert resp.status_code == 422
     assert "przebiegu rozpływu" in resp.json()["detail"]
 

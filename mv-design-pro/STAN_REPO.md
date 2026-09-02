@@ -161,4 +161,472 @@ Pierwszy run orkiestracji wg `ORKIESTRACJA_AGENTOW.md` (3 subagenty read-only: b
 
 -----
 
+## 8. PROGRAM MODUŁU nN (2026-08-13) — raport przedimplementacyjny A–I DOSTARCZONY
+
+Zlecenie właściciela: pełny moduł projektowania i obliczeń nN jako integralna część systemu
+(jeden model SN↔TR↔nN, zakaz kalkulatora obok). Wykonano wymagany raport przedimplementacyjny
+(§75 zlecenia): audyt 10 obszarów repo (agenci równolegle, dowody plik:linia) + synteza
+architektoniczna → **`docs/nn/INDEX_NN.md`** (9 wiążących dokumentów: A audyt stanu, B mapa
+reuse, C plan modelu, D kontrakt SN↔nN + LV-INV-01…12, E macierz obliczeń, F plan UI nN STUDIO,
+G macierz luk + rejestr danych normatywnych, H plan implementacji P0/P1/P2, I macierz testów).
+
+Kluczowe ustalenia audytu: (1) topologia obwodów nN nie istnieje (odpływ = metadane, odbiór na
+szynie stacji); (2) Ik_min nieosiągalny z kanonicznej ścieżki (`c_factor_min` martwe dane,
+c nie per pasmo, brak korekty temperaturowej R); (3) SWZ nie istnieje jako werdykt (zero tabeli
+czasów, zero Ia↔Ik_min); (4) krzywe aparatów nN brak (FUSE=fantom cicho liczony jak przekaźnik);
+(5) **dług repo-wide: archiwum ZIP nie serializuje ENM** — dane nN znikałyby przy eksporcie
+(N-D1, bloker P0.0). Dług napotkany N-D1…N-D12 zarejestrowany w `docs/nn/A_AUDYT_STANU_NN_2026-08.md` §2
+— naprawa w kolejce P0.0 planu H. Implementacja P0 — następna sesja/sesje wg `docs/nn/H_PLAN_IMPLEMENTACJI_NN.md`.
+
+**Aktualizacja 2026-08-13 (ta sama sesja): P0.0 WYKONANE + scalenie z nadzorem.**
+Commit `862ac163`: N-D1 (sekcja ENM w archiwum ZIP + archiwum przyrostowe, round-trip 1:1),
+N-D2 (martwe ścieżki fault-loop), N-D8 (rejestr operacji 48↔48, guard AST dwukierunkowy),
+N-D9 (forbidden_ui_terms obejmuje ui2), N-D12 (widma CLAUDE.md), U5 (typowanie importu study
+results). N-D3 wstrzymane wg uzgodnień międzywątkowych — pomiar importerów wykonany, wariant (a),
+kasacja po scaleniu karty MINI-RMU-CAD (wiersz `N-D3-POMIAR-U2` w `docs/v12xx/REJESTR_KONFLIKTOW.md`).
+Merge `4fc75c90`: gałąź nadzoru `claude/przejecie-nadzoru-fable-dtie3b` scalona (U1) przed P0.2/P0.5;
+kanał koordynacji: `docs/nn/UZGODNIENIA_WATKOW_2026-08-13.md` (sekcja „Stanowisko nN").
+Bramka drzewa scalonego: pytest **8666 passed / 0 failed**, vitest **863 pliki / 11297 testów**,
+tsc + eslint czyste, 16 guardów OK, FROZEN SC/PF nietknięte.
+
+**Aktualizacja 2026-08-13 (ta sama sesja): P0.1–P0.4 WYKONANE.**
+- P0.1 (`6ef48b73`): topologia obwodów nN — operacje NN_NETWORK (9 handlerów), promocja
+  `nn_field_specs` → jawne elementy ENM (migracja deterministyczna), walidator E060–E064/W060/W062,
+  `station_type="rozdzielnica_nn"`, `Cable.n_parallel` (skalowanie Z), naprawa klasowa
+  `_field_bus_ref` (po promocji nowe przyłącza celują w szynę odpływu, nie w surowe pole).
+- P0.2 (`416a000d` + `6b0034c0`): katalog nN — 30 MCB IEC 60898-1 (B/C/D), 30 wkładek gG
+  IEC 60269-1 (i2t=None do czasu danych producenta, G-D2), pola cieplne kabli (r0/x0/ith/jth),
+  struktura korekt Iz wg PN-HD 60364-5-52 (rejestr G-D1 pusty do weryfikacji danych — wzorzec
+  flip-to-verified jak Arc Flash D-01), trasy `GET /api/catalog/lv-breaker-mcb-types` i
+  `lv-fuse-link-types` zarejestrowane w macierzy API.
+- P0.3 (`8e184165` + fix-forward `26518c3a`): zwarcia nN — c per pasmo napięciowe wg IEC 60909
+  Tab. 1 (≤1 kV: 1,05/0,95; >1 kV: 1,10/1,00), scenariusz MIN z korektą temperaturową
+  R_θ = R20·[1+0,004·(θk−20)] jako dekoracja wejścia (solver FROZEN nietknięty). **Incydent
+  procesowy**: P0.3 zmodyfikował zamrożony mapper `short_circuit_to_resultset_v1.py` i push
+  wykonał się mimo FAIL guardu (pętla `for` maskująca kod wyjścia — dokładnie zakazany wzorzec);
+  naprawa w przód `26518c3a`: mapper przywrócony 1:1 do origin/main, meta bindingu przeniesione
+  do wrappera `sc_binding_meta.py` (przebudowa ResultSet, podpis liczony PO wzbogaceniu),
+  `resultset_v1_schema_guard` zielony na HEAD.
+- P0.4 (`3bd3c51c` + `40c284ea`): rozpływ nN — dowód konwergencji na sieci 0,4 kV
+  (NR: 5 iter na 20-odcinkowym feederze R/X≈10,6; NR+GS parytet ≤1,2e-11 pu na modelu
+  SN+nN z TR 15/0,4; reverse flow: p_from(TR)<0 przy generacji 50 kW > odbiór), dekompozycja
+  ΔU per odcinek (`analysis/voltage_profile/segment_decomposition.py`) + najgorsza ścieżka nN,
+  trasa `GET /api/quality/voltage-profile` (addytywna, zarejestrowana w macierzy API).
+  **ESKALACJA ARCHITEKTONICZNA (do decyzji właściciela, nie obejście):** Fast-Decoupled
+  NIE ZBIEGA na ŻADNYM kablu katalogu KABEL_NN (sweep R/X 1,89–10,6; test izolacyjny dowodzi,
+  że to właściwość metody FDLF — założenie X≫R z docstringa `FastDecoupledOptions` — a nie błąd
+  `_base_scale`). NR i GS pokrywają sieci nN poprawnie. Pytanie produktowe: czy system ma
+  otrzymać solver klasy Backward-Forward-Sweep dla sieci rozdzielczych R/X≥1 (nowy solver,
+  addytywny, poza FROZEN)? Do rozstrzygnięcia przed P1; testy dokumentują stan uczciwie
+  (bez maskowania).
+Bramka P0.4: pytest solvers+analysis+api+ci **1428 passed**, mypy/ruff/black czyste,
+7 guardów (solver_diff, solver_boundary, arch, overlay_no_physics, load_flow_no_heuristics,
+resultset_v1_schema, api_lifecycle) zielone.
+W kolejce: P0.3b (ścieżka SC w `enm/canonical_analysis.py` ma płaskie `c_factor=1.10` —
+wpięcie c per pasmo + scenariusz MIN w głównej ścieżce użytkownika), P0.5–P0.10 wg planu H.
+
+**Aktualizacja 2026-08-13 (ta sama sesja): scalenie fali 9 nadzoru + P0.3b + kasacja N-D3.**
+- Merge `ecc16af9`: fala 9 nadzoru (MINI-RMU-CAD, N-1-BACKEND, symbol recloser w kanonie
+  SLD v3, zapadki 1 A/NaN w mapping/energy_validation). Konflikt `enm/mapping.py`
+  rozwiązany UNIĄ: „brak obciążalności zostaje brakiem (0,0)" × skalowanie `n_parallel`
+  z P0.1 (`rated_current_a=rated_a_eff`; 0·n=0 — brak dalej się propaguje). Bramka drzewa
+  scalonego: pytest **8893 passed / 13 skipped**, vitest **864 pliki / 11378 testów**,
+  tsc+eslint czyste.
+- P0.3b (`5cc8a917` + pin `1bc9c40c`): c per pasmo IEC 60909 Tab. 1 + scenariusz MIN
+  w KANONICZNEJ ścieżce SC (`enm/canonical_analysis.py::_execute_short_circuit`) — reuse
+  `voltage_factor.c_for_node` + `build_min_scenario_graph`, jawny `c_factor` w options =
+  override płaski (wstecznie zgodny), whitelist opcji `scenario` w API. Odbiór nadzoru:
+  iniekcja wykryła NIEPRZYPIĘTĄ whitelistę (trzecia instancja klasy „deklaracja bez testu"
+  w tej fali — po N-1 i MINI-RMU) — naprawione W ODBIORZE testem pełnej ścieżki HTTP
+  (c 1,10→1,00 na scenario=min; dowód iniekcji: czerwień → sha identyczne → zieleń).
+  Weryfikacja na drzewie scalonym: 1792+19 testów, mypy/ruff, 4 guardy.
+- Kasacja N-D3 (`231e8ee2`): 31 plików `station-wizard-v2/**` usuniętych (wiersz
+  N-D3-POMIAR-U2; brak weta nadzoru, runda 2; kanon symboli recloser nietknięty);
+  piny SCADA przepisane, allowlista ui_no_physics −2, baseline 16→13 pomiarem,
+  D3 skorygowana. Bramka: pełny vitest **851 plików / 11149 testów**, tsc+lint,
+  guard + 37 testów CI + 32 testy kontraktu SCADA.
+- Koordynacja: „Stanowisko nN (runda 3)" w `docs/nn/UZGODNIENIA_WATKOW_2026-08-13.md` —
+  m.in. wiążące rozstrzygnięcie semantyki zdolności wyłączania dla nN (wkładka gG:
+  własne `breaking_capacity_ka` wg IEC 60269-1, NIGDY NIE_DOTYCZY; rozłącznik
+  bezpiecznikowy: `conditional_sc_current_ka` kombinacji; MCB: `icn_ka` — pola wchodzą
+  RAZEM z konsumentem w P0.6/P0.7).
+**Aktualizacja 2026-08-13 (ta sama sesja): P0.5 WYKONANE (obie połówki).**
+- P0.5a (`1a7583b7`): Iz′ nN wg PN-HD 60364-5-52. Wykonawca naprawił CZTERY instancje
+  klasy (inwentarz): (1)+(2) dwie równoległe implementacje mnożenia współczynników →
+  jedna ścieżka fizyki w `cable_ampacity_derating.py` (moduł katalogowy = czysty nośnik
+  danych, przypięte testem); (3) parser SN błędnie walidował warunki ułożenia nN →
+  dedykowany parser fail-closed na G-D1; (4) kontrakt materializacji KABEL_NN gubił pola
+  cieplne → kryterium cieplne realnie liczy dla kabli nN. G-D1 zasilony 5 tablicami
+  (B.52.14/15/16/17/18), KAŻDA zweryfikowana w 2 niezależnych źródłach (LAPP/DIN VDE
+  0298-4, SEP, ecalpro); wartości bez podwójnego potwierdzenia jawnie POZA rejestrem.
+  Odbiór: 5169 testów, iniekcja nadzoru (usunięcie pola cieplnego z kontraktu → czerwień
+  na predykacie „dane docierają do grafu", sha-identyczne odtworzenie).
+- P0.5b (`5266ddc2`): dowód VDROP multi-segment na kanonie kV (U4). Nowe EQ_VDROP_010
+  (granica TR jako JAWNY krok zmiany podstawy — lekcja PODSTAWA-VDROP), pętla
+  multi-segment w `proof_generator` (limit 1 odcinka zniesiony), kompozycja
+  `vdrop_chain_binding.py` = reuse dekompozycji P0.4 (topologia) + `voltage_drop_binding`
+  (fizyka odcinka). Inwentarz N-D6 (6 miejsc ΔU): 1 naprawione, 2 reużyte, 1 świadomie
+  osobne (podgląd doboru kabla przed siecią), 1 inna klasa fizyki (LF Voltage kV z węzła),
+  1 czysty konsument. Iniekcja wykonawcy I2 wykryła podwójne niezależne liczenie delty —
+  naprawione u źródła. Pre-existing czerwony `test_no_any_in_domain_types` naprawiony.
+  Odbiór na drzewie ŁĄCZONYM P0.5a+P0.5b (kombinacja niewidziana przez wykonawców):
+  pełny pytest **9275 passed / 13 skipped**, frontend tsc+lint+vitest ui2 267 plików /
+  3005 testów; iniekcja nadzoru (ciche pominięcie granicy TR w pętli łańcucha → 5 testów
+  czerwonych, w tym piny dowód↔bieg z PODSTAWA-VDROP; sha-identyczne odtworzenie).
+Następne: P0.6 (pętla zwarcia z grafu + SWZ — serce modułu), P0.7 (krzywe nN + pola
+zdolności wyłączania wg rozstrzygnięcia rundy 3), P0.8–P0.10.
+
+**Aktualizacja 2026-08-13 (ta sama sesja): P0.6 wykonane + fala 10 scalona.**
+P0.6 (`60f8ab76`+`eca30a12`): szczegóły wyżej w sekcji — odbiór z iniekcją
+(bezwarunkowe łagodne pasmo SWZ → 2 czerwone, sha-identyczne odtworzenie),
+pełny pytest 9344/13 na HEAD odbioru. Restart kontenera zabił wykonawców
+P0.7/G-22 PRZED zapisem (worktree czyste — zmierzone) — bez strat; okazało
+się to korzystne, bo fala 10 nadzoru (`75693a57`: NAWIGACJA-JEDEN-KANON D1/D2/D4,
+PACK-NASTAWY I>/I>>, RATCHET-DICT-READ — 3 fabrykacje wejść ENM usunięte
+u źródła) przerobiła `protection/coordination/**`, na którym stara karta P0.7
+by się wywróciła. Merge `072ee0f4` (konflikt: unia wierszy rejestru;
+`canonical_analysis.py` czysto z P0.3b), runda 4 w kanale koordynacji
+(`3489e171`): kolizja P0.7×PACK-NASTAWY zgłoszona z granicą (coordination/**
+nietykalne dla nN; powierzchnia `protection/curves` zachowana adapterami).
+Bramka drzewa scalonego: pytest **9413 passed / 13 skipped**, vitest
+**849 plików / 11163 testy**, tsc+eslint czyste. Karty P0.7 i G-22 zlecone
+ponownie na bazie `3489e171` (rozłączne zbiory plików, granice w §0).
+
+**Aktualizacja 2026-08-13 (ta sama sesja): G-22 i P0.7 WYKONANE.**
+- G-22 (`19b6dba8` + odbiór `747b90ea`): `FAULT_LOOP_NN`/`SWZ_NN` w AnalysisKind (5)
+  i AnalysisType (6); bramki eligibility reużywają predykaty `fault_loop.service`;
+  dispatch woła wprost serwisy P0.6 na `enm.store` (uczciwe FAILED, deterministyczny
+  run_id); bez persystencji AnalysisRun (świadome — most ENM→ResultSet osobną
+  decyzją). Odbiór: 4276 testów + 7 guardów; iniekcja nadzoru wykryła klasę
+  „deklaracja bez testu" (fixtura-kopia z deklaracją „jedno źródło prawdy") —
+  dodany pin predykatów parami ELIGIBLE⇒FINISHED na jednym modelu.
+- P0.7 (`f4a822bb`): jedna fizyka krzywych (N-D4: `compute_idmt_generic` +
+  `compute_ieee_c37112_generic` w protection_iec60255; iec/ieee_curves = delegacja
+  z własnym denom_guard; tożsamość numeryczna 1440 kombinacji 0 rozbieżności;
+  coordination/** NIETKNIĘTE, 324 testy zielone bez edycji); NOWY solver
+  `protection_lv_curves.py` (MCB B/C/D jako PASMA gwarancji normy — przedział albo
+  jawna nieoznaczoność, nigdy zmyślona linia; MCCB parametryczny; FUSE_GG na
+  bramkach G-D2); G-D2: Inf=1,25·In / If=1,6·In podwójnie źródłowane, czasy umowne
+  63/160/400 A JEDNO mocne źródło (nazwane w kodzie), In≤16 A fail-closed;
+  pola rundy 3 wdrożone (`breaking_capacity_ka`=120 kA NH gG — 5 producentów;
+  `conditional_sc_current_ka` — migracja rb_nn_* z i_cu_ka, PRZENIESIONE nie
+  zdublowane; naprawiony skutek uboczny w equipment_proof/catalog_bridge —
+  dokładnie defekt, przed którym ostrzegała runda 2); dobór aparatu
+  `nn_device_selection.py` (4 kryteria, trzeci stan nigdy nie znika, ranking
+  deterministyczny) + `GET .../enm/nn-device-selection`. Odbiór: pełny pytest
+  **9632 passed / 13 skipped**, 8 guardów; iniekcja nadzoru (podmiana pola
+  kombinacji na stare i_cu_ka → 2 piny rundy 3 czerwone, sha-identyczne
+  odtworzenie).
+DŁUGI NAZWANE z meldunku P0.7 (nie ciche): (1) N-D5 fantom FUSE — 2 miejsca
+w `coordination/analyzer.py` (standard_map bez FUSE, fallback do IEC) — POZA
+granicą rundy 4 (własność nadzoru), zgłoszone nadzorowi w UZGODNIENIA runda 4b;
+(2) `czas_wylaczenia_galezi/pola` nie obsługują branż z wkładką (FUSE poza
+`_APARATY_WYLACZAJACE`) — osobny wątek danych „nastawa dla aparatu katalogowego";
+(3) kontrakt materializacji APARAT_NN nie kopiuje pól zdolności do gałęzi
+(bez konsumenta dziś — pole bez konsumenta byłoby martwą wagą; wpięcie razem
+z konsumentem); (4) czasy umowne gG — drugie źródło do domknięcia flip-to-verified.
+Zostają: P0.8 (SLD nN), P0.9 (nN STUDIO UI), P0.10 (pakiet dowodowy + raport),
+bramka E2E §80 planu H.
+
+**Aktualizacja 2026-08-14: runda 5 nadzoru obsłużona + P0.8 WYKONANE.**
+- Runda 5 nadzoru (fala 11): zgoda WPROST na semantykę pól zdolności wyłączania;
+  żądana zapadka DOSTARCZONA (`49486895`): `LVFuseLinkType.__post_init__` —
+  wkładka bez `breaking_capacity_ka` (None/≤0) = ValueError strukturalny + pin
+  całego katalogu; fala 11 scalona (`b5c8d6d1`), bramki drzewa: backend
+  **9667/13**, frontend **857 plików / 11276 testów**. Runda 5b: stabilność API
+  coordination do fali 12 przyjęta; `wykonaj_bieg_w_pamieci` = kanoniczne
+  wejście wariantów; rozróżnienie werdyktów kombinacja/goły aparat wiążące dla
+  P0.10.
+- P0.8 (`14550dda`): SLD nN end-to-end — adapter per-szyna/per-odpływ (seam A8;
+  aparat z katalogu wg `device_kind`, UNRESOLVED = pusty tor + komunikat błędu,
+  zero fabrykacji; odbiorca chain-walk przez kable), kompozycja wzorcem DER
+  (ownerRef = realny ref ENM), 4 nowe symbole w kanonie (rozdzielnica nN, MCB,
+  rozłącznik bezp., licznik) z testem rozróżnialności rodziny, rezerwacje
+  szerokości N odpływów, kontrakt SWZ w overlay (addytywny, fail-closed
+  `nierozstrzygalne`→`unknown`). Substrat istniejących sieci BAJTOWO identyczny
+  (pomiar stash+SHA + test). Pre-existing dług naprawiony: `types/enm.ts` bez
+  `rozdzielnica_nn`/`nn_sections` od P0.1. Bramka odbiorcza na drzewie łączonym
+  z falą 11: vitest SLD **248 plików / 4609 testów**, accept:sld-v3, 4 guardy,
+  tsc+lint; iniekcja nadzoru (nierozstrzygalne→ok po cichu → 1 test czerwony,
+  sha-identyczne odtworzenie). ODSTĘPSTWA JAWNE wykonawcy: (a) rozdzielnica nN
+  jako liść odpływu wg litery karty (węzeł korytarzowy = osobna duża funkcja);
+  (b) odznaka SWZ na kanwie NIE wdrożona — kontrakt tak, renderer = osobna
+  karta (precedens OLTC V12K-092), naturalnie wchodzi w P0.9. **B-02: zrzuty
+  (oba motywy, deterministyczne, `docs/audit/visual/nn_board_demo_*.png`)
+  przekazane właścicielowi — werdykt wizualny OCZEKUJE.**
+
+**Aktualizacja 2026-08-14: P0.10 WYKONANE.**
+P0.10 (`4720530b` + pin odbiorczy): pakiet dowodowy `LV_CIRCUIT_VERIFICATION` —
+10 kroków (EQ_LVCV_001..007 addytywnie + reuse EQ_LC/EQ_VDROP), każdy krok
+konsumuje wynik ISTNIEJĄCEGO dostawcy (mapowanie 10/10 w meldunku; zero
+trzeciej fizyki), dwa zdania zdolności wyłączania wg rundy 5b (6-wariantowy
+iloczyn cech), SWZ trzeci stan, determinizm ZIP; API `/api/nn-proof/circuit/
+{pack,preview,report}` (3 wiersze macierzy); sekcje nN raportu w kontrakcie
+JSON z provenance (runId+revisionId+przypadek). Pomiar ProofPacksPanel:
+zamontowany ale inertny dla 8 paczek (mount bez callbacków) — dla nN osobny
+działający `NnCircuitProofPanel`. Wykonawca naprawił dług nazwany #3 z P0.7
+(materializacja APARAT_NN: device_kind/i_cu_ka/conditional_sc_current_ka) —
+Z konsumentem (binding czyta materialized_params). Odbiór: pełny pytest
+**9725 passed / 13 skipped**, frontend tsc+lint+43 testy panelu; INIEKCJA
+ODBIORCZA WYKRYŁA brak pinu łańcucha katalog→kontrakt→materializacja (testy
+wstrzykiwały parametry ręcznie — usunięcie pola z kontraktu zostawało
+zielone); pin dodany W ODBIORZE (rb_nn_100a end-to-end), re-iniekcja czerwona,
+sha-identyczne odtworzenie. DŁUGI NAZWANE: (a) sekcje nN raportu bez rendererów
+PDF/DOCX (renderery operują na CanonicalRun; analizy nN świadomie
+niepersystowane — wpięcie po decyzji o moście ENM→AnalysisRun, razem z G-22);
+(b) callbacki 8 paczek kanonicznych — pre-existing, osobna integracja;
+(c) pełny spis §63 raportu = P1 (z karty).
+W biegu: P0.9 (nN STUDIO UI). Po nim: bramka końcowa E2E §80.
+
+**Aktualizacja 2026-08-14: P0.9 WYKONANE — komplet kart implementacyjnych P0 scalony.**
+P0.9 (`3d89e5d4` + fix-forward `df9e9140`): nN STUDIO — adapter drzewa
+(TR→RGnN→odpływy→podrozdzielnice), 6 zakładek, 3 kreatory na operacjach
+domenowych P0.1 (zarejestrowane w guardzie dialogów: 13 modali / 24 operacje),
+generyczna `EdytowalnaTabela` w ui2/shared + tabela ODCINKI (edycja inline →
+update_element_parameters / assign_catalog_to_element), 4 ekrany wynikowe
+(Ik1(l), ΔU, heatmapa SWZ z marginesem, ranking doboru), okna W-623…W-629.
+Dowód zero-phantom w meldunku (każda kontrolka → realny endpoint; zero zmian
+backendu). Wykonawca naprawił pre-existing: lustra typów LVApparatusType/Cable,
+validateCatalogFirst dla operacji nN, zbyt szeroka reguła repo_hygiene_guard
+(zawężenie oknem kontekstu ZWERYFIKOWANE w odbiorze iniekcją: kontrakt backendu
+realnie przyjmuje from_bus_ref — linia 2593 domain_operations_v2; reguła nadal
+łapie klasę poza oknem — dowód czerwień/sha/zieleń). Odbiór na drzewie
+łączonym P0.9×P0.10: pełny vitest wykrył 3 trafienia terminologii
+(ui-terminology-guard.test.ts poza zasięgiem celowanych bramek kart) —
+naprawa w przód `df9e9140` (zmienna `feeder`→`odplyw`; wyjątek literałów
+'/api/' w skanerze testowym z parytetem do pythonowego guarda). Recertyfikacja:
+**876 plików / 11445 testów** + testy CI + 9 guardów. LUKI API NAZWANE przez
+wykonawcę (nie fabrykowane): (a) brak endpointu podglądu Iz′ nN (istnieje
+tylko SN `cable-ampacity-derating-preview`) — kreator pokazuje Iz katalogowe;
+(b) Ib/Iz′/SWZ per wiersz tabeli wymaga algorytmu „który aparat chroni
+odcinek" — per-odpływ w zakładkach; (c) zrzuty B-02 NIEWYKONALNE w sandboxie
+(brak demona Docker) — werdykt wizualny właściciela po `docker-compose up`.
+OSTATNIA POZYCJA P0: bramka końcowa E2E §80 (test_nn_full_chain).
+
+**Aktualizacja 2026-08-14: BRAMKA KOŃCOWA E2E §80 WYKONANA — werdykt uczciwy.**
+Bramka (`3292eb26` + `e637b7f0`): `tests/e2e/test_nn_full_chain.py` (16 testów) —
+substrat GPZ→SN→ST-03→TR 15/0,4→RGnN→K1→R1→K2·silnik→K3·odbiór→K4·PV→K5·BESS
+zbudowany WYŁĄCZNIE operacjami domenowymi (realna ścieżka użytkownika; BESS
+z realnej pozycji `conv-bess-nn-0p5mw-0p4kv`, przyłączony do RGnN — kontrakt
+`add_converter_source` wymaga stacji z TR). 10 kroków + determinizm: rozpływ
+SN+nN (NR zbiega, weryfikacja krzyżowa 2% — regulacja Q(U) falowników
+nazwana), profil U, ΔU (suma teleskopowa), Ik max/min (RGnN 31,86/28,98 kA;
+liść 8,40/5,37 kA — fizyka promieniowa), Iz′ (240→283,2 A), stale detection
+(hash+freshness+GENUINE inny wynik po zmianie kabla 120→95 mm²), trace,
+pakiet ZIP deterministyczny, raport JSON. Pełna suita na HEAD: **9742/13**.
+**WERDYKT: mechanizmy działają w pełni na jednym modelu; integracja NIE JEST
+w pełni gotowa — 4 luki danych/kontraktu** (znaleziska bramki, NIE maskowane):
+(#1) 17/17 kabli `kab_nn_*` bez danych żyły PE/PEN → pętla/SWZ/pakiet tylko
+zero-hop (fail-closed działa poprawnie); (#2) bramka `CATALOG_REQUIRED_
+OPERATIONS` wymaga catalog_ref dla add_nn_outgoing_field/add_nn_load, kreator
+go nie wysyła; (#3) `complete_station_loads_from_nn_feeders` materializuje
+fantomowy odbiór 30 kW NA ODCZYCIE między żądaniami kreatora (predykaty
+parami złamane — kryterium „legacy" = „bez odbioru"); (#4) dobór aparatu bez
+pełnej rekomendacji dla żadnego obwodu (pochodna #1 + MCB 6 kA jedyne +
+MCCB bez nastaw + gG bez bramek I²t). NAPRAWY W BIEGU (Zero-Debt, nie
+odłożone): karta NAPRAWA-A (dane katalogu: PE/PEN×17 podwójnie źródłowane,
+MCB 10 kA, nastawy MCCB, dokończenie G-D2 + flip kroków 5/7/10 na pełny
+PASS) i NAPRAWA-B (fantom u źródła + spójność kontraktu catalog_ref) —
+wykonawcy równolegle w worktree.
+
+**Aktualizacja 2026-08-14 (c.d.): NAPRAWA-B scalona + fala nadzoru z N-D5-FUSE.**
+NAPRAWA-B (`7128fc1d`, odbiór z iniekcją filtra markera — czerwień na pinie
+sekwencji, sha-identyczne odtworzenie): fantom odbioru zabity u źródła
+(marker pochodzenia `nn_field_origin`; legacy dalej migruje — utrwalone
+snapshoty uzdrawiane), martwy wymóg catalog_ref `add_nn_outgoing_field`
+usunięty z bramki po pomiarze; rozjazd `add_nn_load` (tryb ekspercki bez
+katalogu vs Catalog Binding Rule) = DECYZJA WŁAŚCICIELA, wiersz w rejestrze.
+INCYDENT INFRA: kontener odtworzony ze świeżego klona (lokalna gałąź cofnięta
+do początku sesji, worktree NAPRAWA-A zabity przed commitem, puste venv) —
+zero strat dzięki dyscyplinie push-po-odbiorze; stan odtworzony, zależności
+zainstalowane. Scalenie fali nadzoru (`37ed6a70`: N-D5-FUSE — fantom
+bezpiecznika w coordination/** zabity PO ICH STRONIE zgodnie z rundą 6 +
+zapadka w p0-extended-guards; EPE-MARTWY; PULPIT-NBA) + runda 7 w kanale
+(`46cb67ff`: wspólna baza istnieje → TCC odblokowany; granice P0.8 w sld/v3
+dotrzymane z dowodami). Bramka drzewa scalonego: pytest **9804 passed /
+11 skipped**, vitest **876 plików / 11444 testy**, tsc+eslint czyste.
+W biegu: NAPRAWA-A (restart; dane żyły PE/PEN ×17, MCB 10 kA, nastawy MCCB,
+bramki gG + flip kroków 5/7/10 E2E na pełny przebieg).
+
+**Aktualizacja 2026-08-14: NAPRAWA-A WYKONANA — PROGRAM P0 MODUŁU nN DOMKNIĘTY.**
+NAPRAWA-A (`c3b624b1`, odbiór z iniekcją: R żyły powrotnej=0 → czerwień pinu
+parametryzowanego, sha-identyczne odtworzenie): 17/17 kabli nN z danymi żyły
+PE/PEN (tożsamość konstrukcyjna 4xS/5xS bez redukcji + NKT/Tele-Fonika/Eltrim
+podwójnie), nowa addytywna rodzina 30 MCB Icn=10 kA (Hager NCN/Schneider iC60H;
+60 rekordów MCB łącznie). FLIP E2E: krok 5b pełny White Box pętli (Silnik M1:
+hop=3, Ik_min=3881 A, Ik_max=4289 A, SWZ decyzyjne), krok 7b PEŁNA REKOMENDACJA
+(MCB B40 10 kA przy Ik″max=8,395 kA), krok 7-RGnN pusta rekomendacja PINOWANA
+jako poprawna fizyka (31,86 kA > 10 kA), krok 10 pakiet ZIP 200/deterministyczny
++ raport 7 sekcji; obejście fantomu USUNIĘTE z KROK 0 (dowód NAPRAWY-B bez
+obejścia: count==1 wprost). Scalona też fala nadzoru (`163e02d7`: jakobian NR
+blokowo po B-01 właściciela z pinem bitowym śladu; N1-WYDAJNOSC 5,5–6×).
+BRAMKA FINALNA drzewa łączonego: pytest **9829 passed / 11 skipped**, guardy
+solver_diff/trace_determinism/resultset/arch/catalog×2/load_flow zielone, tsc
+zielony (frontend bez zmian od bramki 876/11444).
+
+**P0 DoD: MODEL→WALIDACJA→SOLVER→WYNIK→TRACE→SLD→REWIZJA→DOKUMENT→TEST —
+KOMPLET.** Otwarte pozycje POZA kodem P0 (nazwane, nie ciche):
+1. B-02 (werdykt wizualny SLD nN) — zrzuty u właściciela, oczekuje.
+2. Decyzja właściciela: rozjazd `add_nn_load` (tryb ekspercki bez katalogu
+   vs Catalog Binding Rule) — wiersz w rejestrze konfliktów.
+3. Dług konsumenta MCCB: `_kryterium_i2` hardcoded NIEROZSTRZYGALNE +
+   `KandydatAparatuNn` bez pól nastaw — osobna karta (dane bez tej zmiany
+   byłyby fantomem; OSTRZEŻENIE: nie „naprawiać" samymi danymi).
+4. gG I²t: rozjazd źródeł ETI vs Bussmann 30–60% — None do rozstrzygnięcia
+   źródłem normatywnym; `ocen_swz` dla wkładek ma i tak jawny branch
+   NIEROZSTRZYGALNE (spójny consumer-gap z pkt 3 w `werdykt.py`).
+5. Trwały fantom odbioru ST-03 (inna przyczyna źródłowa niż naprawiony
+   fantom migracji) — nazwany w KROK 0 testu E2E, osobna diagnoza.
+6. P1 planu H (agregat+SZR+TCC w E2E, pełny spis §63 raportu, sekcje nN
+   w rendererach PDF/DOCX po decyzji o moście ENM→AnalysisRun).
+**Aktualizacja 2026-08-13 (ta sama sesja): P0.6 WYKONANE (`b746b6a9`) — „serce modułu".**
+- Pętla zwarcia z REALNEJ trasy grafu: `application/analyses/fault_loop/route.py`
+  (NOWY) — BFS po ENM (kable/łącznik/wkładka `status=closed`), fail-closed na brak
+  R/X żyły powrotnej PE/PEN i na linie napowietrzne (P1). Impedancja transformatora
+  ujednolicona (zero-sequence-aware, gate na `LV_SHUNT_GROUND` — rodzina Dyn) i
+  upstream Thevenin SN (reuse `build_zbus`) w JEDNEJ funkcji dla widoku „u źródła",
+  dowolnego punktu i wszystkich punktów per odpływ (ranking po rzeczywistej |Z|,
+  nie po liczbie hopów — dowód testem z rozgałęzieniem, gdzie krótsza gałąź ma
+  większą impedancję).
+- SWZ (`application/analyses/swz/`, NOWY pakiet): werdykt 3-stanowy z dowodem
+  liczbowym Ik1_min (scenariusz MIN, R_θ) vs Ia (IEC 60898-1, G-D4) vs t_wymagany
+  (Tab. 41.1 IEC 60364-4-41, G-D3, 2 źródła/wartość, status REFERENCYJNY do
+  weryfikacji przy dostępie do normy). Wkładka gG (G-D2 puste) = zawsze
+  NIEROZSTRZYGALNE.
+- Klasa-nie-instancja: dodano `return_conductor_x_ohm_per_km` (reaktancja żyły
+  powrotnej — nie istniała NIGDZIE w repo) + naprawiono kontrakt materializacji
+  KABEL_NN (gubił pola żyły powrotnej — ten sam defekt co F-K1/P0.5a) w 5 miejscach.
+  Przy okazji naprawiony bug granicy pasma Tab. 41.1 (400V/√3=230,94V wpadało w złe
+  pasmo) i dwa pre-existing błędy mypy napotkane na bramce.
+- Test krzyżowy Ik1 pętla vs IEC 60909 (Z1+Z2+Z0, Dyn11): ratio ≈0,86, przyczyny
+  różnic nazwane (brak K_T w fault_loop, model Z0 kabla symetryczne vs PE/PEN
+  fizyczne, wzór napięciowy).
+- Bramka: pełny pytest **14619 passed / 16 skipped**, ruff+black+mypy czyste,
+  16 guardów zielonych (solver_diff, resultset_v1_schema, solver_boundary, arch,
+  catalog_binding/enforcement/gate/metadata, domain_no_guessing, pcc_zero,
+  readiness_codes, audit_contract, repo_hygiene, vulture, import_graph,
+  api_lifecycle, no_codenames).
+- Świadomie POZA zakresem: G-22 (wpięcie FAULT_LOOP_NN/SWZ_NN do `AnalysisKind`/
+  eligibility dispatch) — nowe endpointy są read-only pod `/enm/` (wzorzec
+  `station-fault-loop` już istniejący), tak jak ich poprzednik; G-22 zostaje
+  osobnym zadaniem (cross-cutting dla wszystkich analiz nN, nie tylko P0.6).
+
+-----
+
 *Żywy rejestr stanu. Aktualizuj każdą sesją. Źródłem prawdy ostatecznej jest świeży skan repo (§5.0) — gdy ten plik się z nim rozjedzie, prawdą jest repo.*
+
+**Aktualizacja 2026-08-14: CEL „PEŁNY WERDYKT nN" (runda 8) WYKONANY W 100%.**
+Cztery karty D1–D4 scalone z odbiorami (iniekcje: floor D3 → czerwień KROK 0;
+piny trzeciego stanu D1/D2; macierz bypassu D4), fala RMU nadzoru scalona
+(granice programu KONFIGURATOR-POL-RMU przyjęte w rundzie 9):
+- D1 (`ef767ac0`+`2ca3cd86`): MCCB pełny łańcuch konsument→dane — RGnN dostaje
+  PEŁNĄ rekomendację `cb_nn_400a` (In=400 A, Icu=50 kA); Iz′ punktu zabudowy
+  wyłącznika głównego = In transformatora (1804 A), inżyniersko poprawione.
+- D2 (`4b39e7e9`): SWZ dla gG rozstrzygalne w gałęzi „nie spełnia"
+  (Ik1_min<Inf, REUSE bramek P0.7); rejestr bramek t_wym gotowy i PUSTY po
+  uczciwej próbie (tabele IEC za paywallem; pasma producenckie — potwierdzone
+  akademicko); zainstalowany MCCB decyzyjny w build_swz_view ORAZ pakiecie
+  dowodowym (ta sama klasa naprawiona od razu); kontrakt APARAT_NN +5 pól
+  nastaw z pinem łańcucha.
+- D3 (`59424434`): fantom ST-03 u źródła (floor „min 1 odpływ" fabrykował
+  starter; predykat parami z jawnym count); stare snapshoty uczciwie
+  nietknięte (brak deterministycznego wyróżnika).
+- D4 (`7c7c621b`): tryb EKSPERCKI_RECZNY osiągalny jawnie (wyróżnik zmierzony
+  `source_mode`); rozjazd rejestru ZAMKNIĘTY pomiarem; przy okazji naprawiony
+  defekt produktu maskowany mockami (kreator wysyłał 422-payload).
+BRAMKA FINALNA CELU (drzewo z falą RMU): pytest **9894 passed / 11 skipped**,
+vitest **876 plików / 11451 testów**, tsc+eslint czyste.
+DŁUGI OTWARTE po celu (nazwane): bramki czasowe gG t_wym (dane normy za
+paywallem — decyzja właściciela o zakupie/źródle), `tr_range` MCCB
+jednoźródłowe, rozjazd catalog_ref `add_sn_bay`/`append_station_on_endpoint`
+(strona SN — nadzór), 13 pre-existing błędów mypy w 8 plikach spoza nN,
+B-02 (werdykt wizualny) u właściciela.
+
+**Aktualizacja 2026-08-14: SLD-nN-TOPOLOGIA — swarm T0/T1/T2×2 SCALONY.**
+Werdykt B-02 właściciela nad P0.8: 0/10 HARD FAIL (architektura: scena z dzieci
+wizualnych, nie z grafu). Program BINDING `docs/nn/PLAN_SLD_NN_TOPOLOGIA_2026-08.md`.
+Wykonane swarmem i scalone (`eb5b17a9`):
+- T0: warstwa `sld/v3/electrical/` (graf terminali z ENM — Transformer ma jawne
+  hv/lv_bus_ref; 9 inwariantów napięciowych; wyrocznia zgodności sceny z grafem
+  CZERWONA jako dowód defektu: 4 krawędzie nN kind='sn', szyna nN jako 'segment').
+- T1: kompozycja nN Z GRAFU (szyna RGnN elementKind='bus' + busRoots, incomer,
+  kable odpływów W SCENIE, UNRESOLVED = HARD ERROR przerywający tor, walidacja
+  inwariantów przed kompozycją) — WYROCZNIA FLIPNIĘTA NA ZIELEŃ + Check C;
+  substrat SN: jedyna zmiana to 53 segmenty #lv-bus→'bus' (świadomy FLIP pinu
+  kosztSceny z uzasadnieniem); piny nadzoru bez modyfikacji asercji.
+- T2-LOD: LodClass L0/L1/L2 NAD LabelRole (wyprowadzenie strukturalne),
+  UNRESOLVED pełna etykieta zawsze, licznik „Ukryto N" = tylko L1/L2 + wyrocznie.
+- T2-WYNIKI: klik odpływu → zakładka wyników w istniejącym drawerze (Ib/In/ΔU/
+  Ik″max/Ik1_min/SWZ z realnych biegów; Iz′/I²t/selektywność = uczciwy
+  brak_wynikow — bez dostawcy per-odpływ); odznaka SWZ na kanwie (wzorzec OLTC,
+  fail-closed). ZNALEZISKO: phantom nastaw SN w SldDetailDrawer (zaszyte 50/51/67)
+  — osobna karta.
+Bramka kombinacji: vitest sld **258 plików / 4765 testów**, accept:sld-v3,
+tsc+lint, 6 guardów. W biegu: T3 (layout kompaktowy, etykiety bez elips, dane
+TR przy T1). Zrzuty do re-werdyktu B-02 wymagają żywego stosu (sandbox bez
+Dockera) — harness gotowy po T3.
+
+**Aktualizacja 2026-08-14 (c.d.): ARKUSZ-NN + scalenie S5 nadzoru.**
+- ARKUSZ-NN (`b85e4bc7`): arkusz obliczeń obwodów nN klasy projektu
+  wykonawczego — zakładka ARKUSZ w nN STUDIO (25 kolumn wzorca właściciela +
+  Ik/SWZ/I²t/provenance), agregator `nn_circuit_sheet.py` (zero nowej fizyki,
+  testy anty-cyrkularne), CSV deterministyczny, sekcja raportu; kryteria na
+  aparacie ZAINSTALOWANYM. Test referencyjny uczciwie pokazuje defekt
+  projektowy (MCB B16 przy Ib=32 A → „nie spełnia").
+- Scalenie S5 nadzoru (`6f7db8c8`, 44 commity): 5 konfliktów rozwiązanych
+  (typ-narrowing assertem zamiast ich str() — maskowałby None; unia importów
+  v2; golden sldNetwork53 ZREGENEROWANY generatorem na scalonych źródłach;
+  unie dokumentów). Bramka: **10194 passed / 1 failed / 11 skipped** — jedyna
+  czerwień to PIN PARAMI z odbioru D4, który złapał `add_sn_bay_from_catalog`
+  (S5) w bramce API bez lustra we frontendzie (klasa KD-1); lustro dodane
+  (`b39df3ba`), pin zielony. Czwarty dowód wartości pinów odbiorczych w sesji.
+- Reset kontenera #3 obsłużony bez strat (push-po-odbiorze); T3 (layout
+  kompaktowy) wznowiony świeżym wykonawcą — w biegu.
+
+
+**Aktualizacja 2026-08-14: T5b-2 SCALONA — czeka na odbiór 18/18 właściciela + B-02.**
+T5b-2 (`b9330038`→`4792e0e2` z falą nadzoru): kanwa L2 przepisana na TORY
+ELEKTRYCZNE (sekcje=kreski magistrali, sprzęgło=aparat w szczelinie ze stanem
+w GEOMETRII glifu, incomer topologicznie, odpływ=aparat+kabel oddzielnie,
+boundary 4-ogniwowe, connectivity wyłącznie z grafu). Tabela 18×P0 w formacie
+właściciela (18 PASS, 4 z gwiazdką — rezydua w danych backendu), 5 twardych
+sprawdzeń z dowodami, 5 LUK MODELU nazwanych z propozycjami kontraktów
+(LvDomainBranch bez length/cross_section; pole źródłowe PV nieeksponowane
+w /enm/lv-domain; LvDomainBoundaryLink bez typu; polityka pracy równoległej
+2×TR bez kanału backendu; SwzApiResponse bez ta). Bramka: vitest sld 267
+plików/4874, accept 395 PASS, 7/7 zrzutów e2e. T5a ACCEPT 8,5/10 (werdykt
+właściciela, zamknięta); T5c HOLD do zielonego B-02 T5b-2.
+
+**Aktualizacja 2026-08-15: T5b-3 odebrana 6/10 → T5b-4 PROFESSIONAL VISUAL
+GRAMMAR wykonana (Fable osobiście).**
+- Werdykt B-02 dla T5b-3: **6/10** (z 0/10) — „duży postęp, jeszcze nie
+  professional-grade"; architektura/topologia/ENM NIETYKANE; mandat T5b-4
+  P0-V1..V10 dopisany do `docs/nn/PLAN_SLD_NN_TOPOLOGIA_2026-08.md`
+  (`ae2452f1`); T5b-3 scommitowana z kompletem bramek (suita SLD 267
+  plików/4875, accept ALL PASS, lint 0, 5 guardów 0) — `a14a66ae`.
+- T5b-4 (ta praca): nowy moduł `lv-domain/visualGrammar.ts` — JEDEN język
+  wizualny L2 (kontrakt pkt 25 werdyktu): polityka occupancy/fit+centrowanie
+  (P0-V1/V10), typografia i kreski SCREEN-STABLE w px ekranu (P0-V2), cele
+  ekranowe symboli (TR 84/sprzęgło 44/aparat 34/DER 54), hierarchia magistral
+  MAIN 9 px / SUB 5,5 px (P0-V5), gramatyka linii, halo etykiet (maska CAD —
+  kreska toru nigdy nie przechodzi przez pismo). Kompozytor: oś TR == środek
+  sekcji (P0-V10/pkt 18), pas generatora ZA pasem TR (300 j.św.), FEEDER
+  SLOT — szerokość slotu odpływu = szerokość CAŁEGO poddrzewa rekurencyjnie
+  przez łańcuchy zacisków (P0-V4; ubita klasa „kreska sekcji-dziecka wjeżdża
+  w kolumnę sąsiada — fałszywe connectivity"), DEVICE BASELINE (boundary na
+  randze aparatów), sylwetka ZA FUNKCJĄ: switch→loadBreakSwitch,
+  disconnector→disconnector, fuse→nnFuseSwitch (P0-V3 — wada była w
+  mapowaniu, biblioteka glifów IEC istniała). Renderer: fit-to-viewport
+  z centrowaniem, dwa tryby etykiet ENGINEERING/AUDYT (P0-V7 — nazwy
+  zacisków tylko w audycie, hover niesie pełną nazwę), boundary bez wyglądu
+  przycisku (●──→ nazwa + napięcie, strzałka; P0-V8), kotwica SN
+  zdegradowana do opisu (pkt 12), blok TR w hierarchii „TR1/630 kVA" PRIMARY
+  + przekładnia·grupa/uk SECONDARY (pkt 4), sprzęgło: symbol mówi pierwszy
+  (wypełnienie/kolor/przerwa toru), słowo stanu muted (P0-V6/pkt 14).
+- FLIPy pinów (intencje zachowane, komentarze w plikach): P0.12 „svg==scena"
+  → occupancy+centrowanie; „QF-01 symbolId=nnBreaker" → loadBreakSwitch;
+  „uk=4%" → „uk = 4%"+„630 kVA". Nowe testy: `visualGrammar.test.tsx`
+  (25 — iloczyn cech: 2 fixtury × 2 viewporty × tryby × stany QBC + clampy).
+- Bramki cząstkowe: lv-domain 95/95, tsc 0, zrzuty 7/7 (regenerowane,
+  samoocena 9 pytań kryterium 8/10: OK na obu fixturach). Pełna suita SLD +
+  accept + lint + guardy w biegu — wynik przed pushem.

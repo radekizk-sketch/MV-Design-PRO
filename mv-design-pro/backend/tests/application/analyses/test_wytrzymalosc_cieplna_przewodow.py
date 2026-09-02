@@ -8,6 +8,9 @@ kazdego testu), NIE z uruchomienia testowanego kodu.
 from __future__ import annotations
 
 import pytest
+from application.analyses.protection.czas_wylaczenia_galezi import (
+    ZRODLO_ZALOZENIE_PRZYPADKU,
+)
 from application.analyses.wytrzymalosc_cieplna_przewodow import (
     build_conductor_thermal_withstand_view,
 )
@@ -692,3 +695,164 @@ def test_kabel_w_tym_samym_widoku_zachowuje_wymog_izolacji() -> None:
     assert oceniana.uzasadnienie_k["rodzaj_przewodu"] == "KABEL"
     assert "rodzaj izolacji" in oceniana.uzasadnienie_k["braki_pl"]
     assert oceniana.uzasadnienie_k["kompletne"] is False
+
+
+# ---------------------------------------------------------------------------
+# Karta P0.5a: galaz nN (G-09) w TYM SAMYM widoku — funkcja jest generyczna wobec
+# napiecia (patrz docstring modulu), test dowodzi tego na kablu 0,4 kV.
+# ---------------------------------------------------------------------------
+
+
+def _graph_nn_single_cable(
+    *, ith_1s_a: float, jth: float, cross_section_mm2: float
+) -> tuple[NetworkGraph, str]:
+    """Graf: BUS_NN1 -[kabel_nn]-> BUS_NN2, oba wezly w paśmie nN (0,4 kV)."""
+    graph = NetworkGraph()
+    graph.add_node(
+        Node(
+            id="BUS_NN1",
+            node_type=NodeType.SLACK,
+            voltage_level=0.4,
+            voltage_magnitude=0.4,
+            voltage_angle=0.0,
+        )
+    )
+    graph.add_node(
+        Node(
+            id="BUS_NN2",
+            node_type=NodeType.PQ,
+            voltage_level=0.4,
+            active_power=0.0,
+            reactive_power=0.0,
+        )
+    )
+    graph.add_branch(
+        LineBranch(
+            id="kabel_nn",
+            name="Kabel nN YAKY 4x25",
+            branch_type=BranchType.CABLE,
+            from_node_id="BUS_NN1",
+            to_node_id="BUS_NN2",
+            r_ohm_per_km=1.2,
+            x_ohm_per_km=0.08,
+            length_km=0.05,
+            rated_current_a=80.0,
+            type_ref=None,
+            ith_1s_a=ith_1s_a,
+            jth_1s_a_per_mm2=jth,
+            cross_section_mm2=cross_section_mm2,
+            conductor_material="AL",
+            insulation="PVC",
+            operating_temperature_c=70.0,
+            short_circuit_temperature_c=160.0,
+        )
+    )
+    return graph, "kabel_nn"
+
+
+def test_galaz_nn_i2t_rowne_k2s2_daje_pass_na_granicy() -> None:
+    """Przypadek graniczny I²t = k²S² (karta P0.5a, G-09): równość -> PASS (`<=`).
+
+    Rachunek niezalezny: Ith(1s) = 2350 A (katalogowe, LV YAKY 4x25 Al — wartość
+    testowa), t = 1 s -> I_dop = 2350/√1 = 2350 A. Prąd gałęzi = 2350 A -> ith ==
+    admissible -> status = PASS (nie FAIL) po stronie "<=", zgodnie z solverem
+    fazy 1 (`check_conductor_thermal_withstand`, `status = PASS if ith <= admissible`).
+    I²t = 2350² · 1 = 5 522 500 A²s = k²S² = 2350² -> margines = 0 %.
+    Źródło czasu jest NAZWANE JAWNIE jako założenie przypadku (P0.9 dostarczy
+    krzywą aparatu nN; mechanizm reuse z karty F-K1/V12K-209, patrz
+    `application/analyses/protection/czas_wylaczenia_galezi.slad_czasu`).
+    """
+    graph, branch_id = _graph_nn_single_cable(ith_1s_a=2350.0, jth=94.0, cross_section_mm2=25.0)
+    sc_result = ShortCircuitResult(
+        short_circuit_type=ShortCircuitType.THREE_PHASE,
+        fault_node_id="BUS_NN2",
+        c_factor=1.05,
+        un_v=400.0,
+        zkk_ohm=complex(0.05, 0.03),
+        ikss_a=2350.0,
+        ip_a=4000.0,
+        ith_a=2350.0,
+        sk_mva=1.6,
+        rx_ratio=0.9,
+        kappa=1.2,
+        tk_s=1.0,
+        ib_a=2350.0,
+        tb_s=1.0,
+        branch_contributions=[
+            ShortCircuitBranchContribution(
+                source_id="GRID",
+                branch_id=branch_id,
+                from_node_id="BUS_NN1",
+                to_node_id="BUS_NN2",
+                i_contrib_a=2350.0,
+                direction="from_to",
+            ),
+        ],
+    )
+    # Źródło czasu NAZWANE JAWNIE: "założenie przypadku" (krzywa aparatu nN — P0.9,
+    # do tego czasu ten slad jest jedynym legalnym uzasadnieniem czasu trwania).
+    slad = {
+        branch_id: {
+            "branch_id": branch_id,
+            "tk_s": 1.0,
+            "zrodlo": ZRODLO_ZALOZENIE_PRZYPADKU,
+            "powod_pl": (
+                "Brak rozwiązanej nastawy zabezpieczenia nN (krzywa aparatu nN — P0.9). "
+                "Przyjęto założony czas przypadku obliczeniowego 1 s."
+            ),
+        }
+    }
+
+    view = build_conductor_thermal_withstand_view(sc_result, graph, None, slad_czasu_by_branch=slad)
+    pozycja = next(item for item in view.items if item.branch_id == branch_id)
+
+    assert pozycja.status == "PASS"
+    assert pozycja.i_fault_a == pytest.approx(2350.0)
+    assert pozycja.i_permissible_a == pytest.approx(2350.0)
+    assert pozycja.utilization == pytest.approx(1.0)
+    assert pozycja.margines_procent == pytest.approx(0.0, abs=1e-9)
+    assert pozycja.i2t_a2s == pytest.approx(2350.0**2 * 1.0)
+    assert pozycja.i2t_dopuszczalne_a2s == pytest.approx(2350.0**2)
+    assert pozycja.i2t_a2s == pytest.approx(pozycja.i2t_dopuszczalne_a2s)
+
+    # Źródło czasu jest NAZWANE w kroku — nie da się pomylić z rozwiązaną nastawą.
+    assert pozycja.czas_wylaczenia is not None
+    assert pozycja.czas_wylaczenia["zrodlo"] == ZRODLO_ZALOZENIE_PRZYPADKU
+    assert "założony czas przypadku" in pozycja.czas_wylaczenia["powod_pl"]
+
+
+def test_galaz_nn_i2t_powyzej_k2s2_daje_fail() -> None:
+    """Kontrast do granicy: prąd o 1 A wyższy niż I_dop przesuwa werdykt na FAIL."""
+    graph, branch_id = _graph_nn_single_cable(ith_1s_a=2350.0, jth=94.0, cross_section_mm2=25.0)
+    sc_result = ShortCircuitResult(
+        short_circuit_type=ShortCircuitType.THREE_PHASE,
+        fault_node_id="BUS_NN2",
+        c_factor=1.05,
+        un_v=400.0,
+        zkk_ohm=complex(0.05, 0.03),
+        ikss_a=2351.0,
+        ip_a=4000.0,
+        ith_a=2351.0,
+        sk_mva=1.6,
+        rx_ratio=0.9,
+        kappa=1.2,
+        tk_s=1.0,
+        ib_a=2351.0,
+        tb_s=1.0,
+        branch_contributions=[
+            ShortCircuitBranchContribution(
+                source_id="GRID",
+                branch_id=branch_id,
+                from_node_id="BUS_NN1",
+                to_node_id="BUS_NN2",
+                i_contrib_a=2351.0,
+                direction="from_to",
+            ),
+        ],
+    )
+
+    view = build_conductor_thermal_withstand_view(sc_result, graph, None)
+    pozycja = next(item for item in view.items if item.branch_id == branch_id)
+
+    assert pozycja.status == "FAIL"
+    assert pozycja.i2t_a2s > pozycja.i2t_dopuszczalne_a2s

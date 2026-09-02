@@ -22,7 +22,7 @@ import copy
 import json
 import math
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, cast
 
 from network_model.catalog.materialization import materialize_catalog_binding
 from network_model.catalog.mv_ptpiree_catalog import annotate_with_ptpiree_status
@@ -35,6 +35,7 @@ from network_model.catalog.types import CatalogBinding
 from network_model.solvers import cable_ampacity_derating as cable_derating
 
 from . import der_sn_validation as der_val
+from .catalog_completion import NN_FIELD_ORIGIN_OPERACJA_DOMENOWA
 from .domain_operations import (
     FUNKCJA_POMIARU_DOMYSLNA_POLA_DOKLADANEGO,
     POLE_BLOKU_FABRYCZNEGO,
@@ -45,12 +46,14 @@ from .domain_operations import (
     _build_field_spec,
     _canonical_sn_field_role,
     _compute_seed,
+    _copy_split_segment_fields,
     _error_legacy_field_write_disabled,
     _error_response,
     _find_element,
     _find_legacy_field_element_collection,
     _make_id,
     _materialize_catalog_payload,
+    _opt_float_any,
     _require_catalog_ref,
     _response,
     _rodzaj_aparatu_sn_z_katalogu,
@@ -62,6 +65,7 @@ from .domain_operations import (
 )
 from .kopia_graniczna import kopia_graniczna_enm
 from .load_zip_model import KOD_BLEDU_ZIP, zip_odbioru_z_payloadu
+from .migrations.nn_field_specs_promocja import META_KLUCZ_GALAZ_ZRODLO_FIELD_REF
 from .pole_katalogowe import (
     KOD_BLEDU_POLA_KATALOGOWEGO,
     PlanPolaKatalogowego,
@@ -69,7 +73,14 @@ from .pole_katalogowe import (
     rozwiaz_aparaty_pola,
     rozwiaz_plan_pola,
 )
-from .topology_ops import attach_protection, create_branch, create_measurement, create_node
+from .topology_ops import (
+    attach_protection,
+    create_branch,
+    create_measurement,
+    create_node,
+    delete_branch,
+    delete_node,
+)
 
 # ---------------------------------------------------------------------------
 # IEC 60255 — krzywe IDMT (TCC)
@@ -179,10 +190,51 @@ def _nazwa_pola(enm: dict[str, Any], field_ref: str) -> str:
     return field_ref
 
 
-def _field_bus_ref(enm: dict[str, Any], field_ref: str) -> str | None:
+def _field_station_bus_ref(enm: dict[str, Any], field_ref: str) -> str | None:
+    """Szyna z wpisu `nn_field_specs` (sprzed promocji).
+
+    WYŁĄCZNIE do kontroli zgodności formularza (add_nn_load akceptuje starą
+    szynę stacji jako alias tej samej instalacji) — NIE do przyłączania
+    elementów. Przyłączenia idą przez `_field_bus_ref` (jedno źródło prawdy).
+    """
     record = _field_record(enm, field_ref)
     bus_ref = record.get("bus_ref") if isinstance(record, dict) else None
     return bus_ref if isinstance(bus_ref, str) and bus_ref.strip() else None
+
+
+def _field_bus_ref(enm: dict[str, Any], field_ref: str) -> str | None:
+    """Szyna PRZYŁĄCZENIA dla pola — jedno źródło prawdy dla WSZYSTKICH
+    konsumentów (add_ct/add_vt/kabel nN z pola/odbiór nN/SPD): po promocji
+    `nn_field_specs` zwraca szynę odpływu ZA aparatem (LV-INV-12), dla pól
+    niepromowanych (w tym SN) — szynę z wpisu. Reguła KLASA/predykaty parami:
+    rozdzielenie „szyna wpisu" vs „szyna przyłączenia" żyje tylko TUTAJ."""
+    promoted = _promoted_feeder_downstream_bus_ref(enm, field_ref)
+    if promoted is not None:
+        return promoted
+    return _field_station_bus_ref(enm, field_ref)
+
+
+def _promoted_feeder_downstream_bus_ref(enm: dict[str, Any], field_ref: str) -> str | None:
+    """Szyna odpływu (za aparatem) dla wpisu `nn_field_specs`, gdy JUŻ promowany.
+
+    P0.1 nN (karta P0.1 §0 pkt 4/5, LV-INV-12): `enm/migrations/
+    nn_field_specs_promocja.py` znaczy aparat odpływowy `meta.
+    nn_field_migrowany_z == field_ref` — to JEDYNE źródło prawdy o tym, czy
+    ten wpis ma już realny odpowiednik w grafie (ta sama nazwa klucza po obu
+    stronach — migracja i ten odczyt — inaczej rozjadą się przy pierwszej
+    zmianie jednej z dwóch kopii nazwy).
+    """
+    for branch in enm.get("branches", []):
+        if not isinstance(branch, dict):
+            continue
+        meta = branch.get("meta")
+        if not isinstance(meta, dict):
+            continue
+        if meta.get(META_KLUCZ_GALAZ_ZRODLO_FIELD_REF) != field_ref:
+            continue
+        to_ref = branch.get("to_bus_ref")
+        return to_ref if isinstance(to_ref, str) and to_ref.strip() else None
+    return None
 
 
 def _field_equipment_refs(enm: dict[str, Any], field_ref: str) -> list[str]:
@@ -313,6 +365,23 @@ def _bus_voltage_kv(enm: dict[str, Any], bus_ref: str) -> float | None:
 
 def _same_nominal_voltage(left_kv: float, right_kv: float, tolerance_kv: float = 1e-6) -> bool:
     return abs(left_kv - right_kv) <= tolerance_kv
+
+
+def _ta_sama_niepusta_pozycja_katalogowa(
+    element_a: dict[str, Any], element_b: dict[str, Any]
+) -> bool:
+    """Czy dwa elementy modelu wskazują TĘ SAMĄ, niepustą pozycję katalogową.
+
+    Porównanie DANYCH JUŻ W MODELU (wynik wcześniejszej materializacji), nie
+    referencji z payloadu — wydzielone z `merge_nn_segments` jako osobna
+    funkcja świadomie: inwentarz bramy katalogowej V2
+    (`V2_CATALOG_GATE_INVENTORY`) pilnuje miejsc, w których handler czyta z
+    PAYLOADU referencję DO ZMATERIALIZOWANIA (klasa defektu z V12K-315/316);
+    to porównanie nie materializuje niczego i nie ma czego bramkować.
+    """
+    ref_a = element_a.get("catalog_ref")
+    ref_b = element_b.get("catalog_ref")
+    return bool(ref_a) and ref_a == ref_b
 
 
 def _sn_bay_branch_type(apparatus_kind: object) -> str:
@@ -2494,7 +2563,15 @@ def _add_nn_outgoing_field_internal(enm: dict[str, Any], payload: dict[str, Any]
         bay_role="FEEDER",
         bus_ref=bus_nn_ref,
         tags=list(payload.get("tags") or []),
-        meta={"feeder_role": payload.get("feeder_role", "ODPLYW_NN")},
+        meta={
+            "feeder_role": payload.get("feeder_role", "ODPLYW_NN"),
+            # Karta NAPRAWA-B, znalezisko #3: znacznik pochodzenia — TO SAMO
+            # pole czyta `enm.catalog_completion._pochodzi_z_operacji_domenowej`,
+            # żeby migracja legacy nigdy nie dokładała fantomowego odbioru
+            # świeżo utworzonemu odpływowi (PREDYKATY PARAMI: jedno źródło
+            # prawdy dla „kto utworzył ten wpis").
+            "nn_field_origin": NN_FIELD_ORIGIN_OPERACJA_DOMENOWA,
+        },
     )
 
     new_enm = kopia_graniczna_enm(enm)
@@ -2553,7 +2630,13 @@ def _append_nn_source_meta_field(enm: dict[str, Any], payload: dict[str, Any]) -
         bay_role="OZE",
         bus_ref=bus_nn_ref,
         tags=["nn_source_field"],
-        meta={"source_field_kind": kind},
+        meta={
+            "source_field_kind": kind,
+            # Karta NAPRAWA-B, znalezisko #3 — patrz komentarz w
+            # `_add_nn_outgoing_field_internal` (ten sam znacznik, ten sam
+            # powód: pole źródłowe też powstaje operacją, nie legacy szablonem).
+            "nn_field_origin": NN_FIELD_ORIGIN_OPERACJA_DOMENOWA,
+        },
     )
 
     new_enm = kopia_graniczna_enm(enm)
@@ -2627,10 +2710,17 @@ def add_nn_load(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
         if blad_katalogu is not None:
             return blad_katalogu
 
-    feeder_bus_ref = _field_bus_ref(enm, feeder_ref)
-    if not feeder_bus_ref:
+    original_feeder_bus_ref = _field_station_bus_ref(enm, feeder_ref)
+    if not original_feeder_bus_ref:
         return _error_response("Odpływ nN nie ma przypisanej szyny nN.", "nn.feeder_bus_missing")
-    if bus_nn_ref and bus_nn_ref != feeder_bus_ref:
+    # P0.1 nN (karta P0.1 §0 pkt 5, LV-INV-12): PO promocji odpływu przez
+    # `enm/migrations/nn_field_specs_promocja.py` odbiór wisi ZA aparatem
+    # odpływowym (szyna odpływu), nie wprost na szynie stacji — `nn_field_specs`
+    # zostaje projekcją odczytu, nie źródłem prawdy dla bus_ref. Formularz może
+    # wciąż podawać ORYGINALNĄ szynę stacji (zgodność z UI sprzed promocji) —
+    # obie wartości są akceptowane, byle wskazywały TĘ SAMĄ instalację.
+    feeder_bus_ref = _field_bus_ref(enm, feeder_ref) or original_feeder_bus_ref
+    if bus_nn_ref and bus_nn_ref not in (original_feeder_bus_ref, feeder_bus_ref):
         return _error_response(
             "Niezgodność szyny nN formularza i odpływu.",
             "nn.feeder_bus_mismatch",
@@ -2686,6 +2776,1285 @@ def add_nn_load(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
         selection_id=load_ref,
         selection_type="load",
         events=[{"event_seq": 1, "event_type": "NN_LOAD_CREATED", "element_id": load_ref}],
+    )
+
+
+# ---------------------------------------------------------------------------
+# P0.1 nN — topologia obwodow nN (karta P0.1, C §4.1)
+#
+# Siec nN = ISTNIEJACE generyczne elementy ENM (Bus/Cable/SwitchBranch/
+# FuseBranch/Load) w pasmie <=1 kV. ZERO nowych klas Lv* (C §0 pkt 1).
+# Konwencja kierunku KAZDEJ galezi tworzonej w tej sekcji: from_bus_ref =
+# UPSTREAM (strona zrodla), to_bus_ref = DOWNSTREAM (strona odbioru) — ta sama
+# konwencja co continue_trunk_segment_sn / aparat pola SN / migracja pol nN.
+# ---------------------------------------------------------------------------
+
+
+def _add_nn_cable_segment_internal(
+    enm: dict[str, Any], payload: dict[str, Any]
+) -> dict[str, Any] | tuple[dict[str, Any], list[str], list[dict[str, Any]]]:
+    """Wspolna implementacja add_nn_cable_segment.
+
+    Uzywana takze przez `add_nn_distribution_board` (zasilenie nowej
+    rozdzielnicy — payload.supply) — jedna implementacja materializacji kabla
+    nN, dwa miejsca wywolania (reguła KLASA, nie kopia logiki).
+
+    Zwraca ODPOWIEDZ BLEDU (`_error_response(...)`) albo krotke
+    (nowy_enm, utworzone_refy, zdarzenia) przy sukcesie.
+    """
+    from_bus_ref = payload.get("from_bus_ref")
+    from_ref = payload.get("from_ref")
+    if not (isinstance(from_bus_ref, str) and from_bus_ref.strip()):
+        from_bus_ref = (
+            _field_bus_ref(enm, from_ref.strip())
+            if isinstance(from_ref, str) and from_ref.strip()
+            else None
+        )
+    if not isinstance(from_bus_ref, str) or not from_bus_ref.strip():
+        return _error_response(
+            "Brak szyny/pola źródłowego nN (from_bus_ref/from_ref).", "nn.cable_from_missing"
+        )
+    from_bus_ref = from_bus_ref.strip()
+
+    from_voltage = _bus_voltage_kv(enm, from_bus_ref)
+    if from_voltage is None:
+        return _error_response(
+            f"Szyna źródłowa '{from_bus_ref}' nie istnieje albo nie ma napięcia.",
+            "nn.cable_from_bus_not_found",
+        )
+    if from_voltage > 1.0:
+        return _error_response(
+            f"Szyna '{from_bus_ref}' nie jest w paśmie nN (U={from_voltage} kV).",
+            "nn.cable_from_bus_not_nn",
+        )
+
+    length_m = _opt_float_any(payload.get("length_m")) or 0.0
+    if length_m <= 0:
+        return _error_response(
+            "Długość odcinka nN (length_m) musi być > 0.", "nn.cable_length_invalid"
+        )
+
+    n_parallel_raw = payload.get("n_parallel", 1)
+    try:
+        n_parallel = int(n_parallel_raw)
+    except (TypeError, ValueError):
+        return _error_response(
+            "n_parallel musi być liczbą całkowitą >= 1.", "nn.cable_n_parallel_invalid"
+        )
+    if n_parallel < 1:
+        return _error_response("n_parallel musi być >= 1.", "nn.cable_n_parallel_invalid")
+
+    catalog_ref = _require_catalog_ref(
+        payload_ref=payload.get("catalog_ref"),
+        payload_binding=payload.get("catalog_binding"),
+        context_code="add_nn_cable_segment",
+    )
+    if isinstance(catalog_ref, dict):
+        return catalog_ref
+
+    to_bus_ref_raw = payload.get("to_bus_ref")
+    to_bus_ref = (
+        to_bus_ref_raw.strip()
+        if isinstance(to_bus_ref_raw, str) and to_bus_ref_raw.strip()
+        else None
+    )
+
+    new_enm = kopia_graniczna_enm(enm)
+    created: list[str] = []
+    events: list[dict[str, Any]] = []
+    ev_seq = 0
+
+    if to_bus_ref:
+        to_voltage = _bus_voltage_kv(new_enm, to_bus_ref)
+        if to_voltage is None:
+            return _error_response(
+                f"Szyna docelowa '{to_bus_ref}' nie istnieje.", "nn.cable_to_bus_not_found"
+            )
+        if to_voltage > 1.0 or not _same_nominal_voltage(from_voltage, to_voltage):
+            return _error_response(
+                f"Szyna docelowa '{to_bus_ref}' ma inne napięcie ({to_voltage} kV) niż szyna "
+                f"źródłowa ({from_voltage} kV).",
+                "nn.cable_voltage_mismatch",
+            )
+    else:
+        seed_bus = _compute_seed(
+            {
+                "op": "nn_cable_segment_bus",
+                "from": from_bus_ref,
+                "length_m": length_m,
+                "ref": catalog_ref,
+            }
+        )
+        to_bus_ref = _make_id("nn", seed_bus, "cable_bus")
+        result = create_node(
+            new_enm,
+            {
+                "ref_id": to_bus_ref,
+                "name": payload.get("to_bus_name") or "Szyna nN",
+                "voltage_kv": from_voltage,
+                "meta": {"visual_role": "NN_CABLE_END"},
+            },
+        )
+        if not result.success:
+            return _error_response(
+                "Nie udało się utworzyć szyny docelowej: "
+                f"{result.issues[0].message_pl if result.issues else '?'}",
+                "nn.cable_to_bus_failed",
+            )
+        new_enm = result.enm
+        created.append(to_bus_ref)
+        ev_seq += 1
+        events.append({"event_seq": ev_seq, "event_type": "BUS_CREATED", "element_id": to_bus_ref})
+
+    materialization = _materialize_catalog_payload(
+        catalog_ref=catalog_ref,
+        catalog_binding=payload.get("catalog_binding"),
+        default_namespace="KABEL_NN",
+    )
+    if isinstance(materialization, dict):
+        return _blad_pozycji_katalogu(materialization, "Kabel nN")
+    binding_payload, materialized_params = materialization
+
+    laying_conditions, laying_error = _nn_cable_laying_conditions(payload)
+    if laying_error is not None:
+        return _error_response(laying_error, "nn.cable_laying_conditions_invalid")
+
+    seed_branch = _compute_seed(
+        {
+            "op": "nn_cable_segment",
+            "from": from_bus_ref,
+            "to": to_bus_ref,
+            "ref": catalog_ref,
+            "length_m": length_m,
+        }
+    )
+    branch_ref = _make_id("nn", seed_branch, "cable")
+
+    branch_data: dict[str, Any] = {
+        "ref_id": branch_ref,
+        "name": payload.get("name") or "Kabel nN",
+        "type": "cable",
+        "from_bus_ref": from_bus_ref,
+        "to_bus_ref": to_bus_ref,
+        "length_km": length_m / 1000.0,
+        "r_ohm_per_km": 0.0,
+        "x_ohm_per_km": 0.0,
+        "status": "closed",
+        "meta": {},
+    }
+    if n_parallel != 1:
+        branch_data["n_parallel"] = n_parallel
+    if laying_conditions:
+        # F-K7 (wzorzec DER): warunki ułożenia to ZAŁOŻENIE DOBORU, nie parametr
+        # fizyczny gałęzi — dlatego meta, a nie pole modelu.
+        branch_data["meta"]["cable_laying_conditions"] = laying_conditions
+
+    branch_data["catalog_ref"] = catalog_ref
+    _apply_catalog_metadata(branch_data, binding_payload, default_namespace="KABEL_NN")
+    _apply_materialized_branch_fields(branch_data, materialized_params)
+    branch_data["length_km"] = length_m / 1000.0
+
+    result = create_branch(new_enm, branch_data)
+    if not result.success:
+        return _error_response(
+            f"Nie udało się utworzyć kabla nN: {result.issues[0].message_pl if result.issues else '?'}",
+            "nn.cable_segment_failed",
+        )
+    new_enm = result.enm
+    created.append(branch_ref)
+    ev_seq += 1
+    events.append(
+        {"event_seq": ev_seq, "event_type": "NN_CABLE_SEGMENT_CREATED", "element_id": branch_ref}
+    )
+
+    return new_enm, created, events
+
+
+def add_nn_cable_segment(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
+    """P0.1 nN (C §4.1): kabel nN (KABEL_NN) od szyny/pola do nowej lub istniejącej szyny nN."""
+    result = _add_nn_cable_segment_internal(enm, payload)
+    if isinstance(result, dict):
+        return result
+    new_enm, created, events = result
+    branch_ref = created[-1]
+    return _response(
+        new_enm, created=created, selection_id=branch_ref, selection_type="branch", events=events
+    )
+
+
+def add_nn_distribution_board(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
+    """P0.1 nN (C §4.1): podrozdzielnica/rozdzielnica nN (RGnN) z szyną główną.
+
+    `Substation(station_type="rozdzielnica_nn")` + szyna główna (voltage_kv z
+    payload, WYMAGANE jawnie — zero domyślnych) + `nn_sections=[sekcja 1]`.
+    Opcjonalne zasilenie (`payload.supply`) — wewnętrzne wywołanie
+    `add_nn_cable_segment` z `to_bus_ref` wymuszonym na nową szynę główną.
+    """
+    voltage_kv = _opt_float_any(payload.get("voltage_kv"))
+    if voltage_kv is None:
+        return _error_response(
+            "Brak napięcia znamionowego rozdzielnicy nN (voltage_kv).", "nn.board_voltage_missing"
+        )
+    if voltage_kv <= 0:
+        return _error_response(
+            "Napięcie znamionowe rozdzielnicy nN musi być > 0.", "nn.board_voltage_invalid"
+        )
+    if voltage_kv > 1.0:
+        return _error_response(
+            "add_nn_distribution_board tworzy wyłącznie rozdzielnice w paśmie nN (<=1 kV).",
+            "nn.board_voltage_not_nn",
+        )
+
+    name = payload.get("name") or "Rozdzielnica nN"
+    seed = _compute_seed({"op": "nn_distribution_board", "name": name, "voltage_kv": voltage_kv})
+    station_ref = _make_id("nn", seed, "board")
+    bus_ref = _make_id("nn", seed, "board_bus")
+
+    new_enm = kopia_graniczna_enm(enm)
+    created: list[str] = []
+    events: list[dict[str, Any]] = []
+    ev_seq = 0
+
+    result = create_node(
+        new_enm,
+        {
+            "ref_id": bus_ref,
+            "name": f"Szyna główna {name}",
+            "voltage_kv": voltage_kv,
+            "meta": {"visual_role": "NN_BOARD_MAIN_BUS"},
+        },
+    )
+    if not result.success:
+        return _error_response(
+            "Nie udało się utworzyć szyny głównej rozdzielnicy: "
+            f"{result.issues[0].message_pl if result.issues else '?'}",
+            "nn.board_bus_failed",
+        )
+    new_enm = result.enm
+    created.append(bus_ref)
+    ev_seq += 1
+    events.append({"event_seq": ev_seq, "event_type": "BUS_CREATED", "element_id": bus_ref})
+
+    station_data: dict[str, Any] = {
+        "ref_id": station_ref,
+        "name": name,
+        "station_type": "rozdzielnica_nn",
+        "bus_refs": [bus_ref],
+        "nn_sections": [
+            {
+                "section_id": _make_id("nn", seed, "section_1"),
+                "order": 1,
+                "bus_ref": bus_ref,
+                "coupler_ref": None,
+                "incoming_refs": [],
+            }
+        ],
+        "tags": [],
+        "meta": {},
+    }
+    designation = payload.get("designation")
+    if isinstance(designation, str) and designation.strip():
+        station_data["designation"] = designation.strip()
+    construction_type = payload.get("construction_type")
+    if isinstance(construction_type, str) and construction_type.strip():
+        station_data["construction_type"] = construction_type.strip()
+
+    new_enm.setdefault("substations", []).append(station_data)
+    created.append(station_ref)
+    ev_seq += 1
+    events.append(
+        {"event_seq": ev_seq, "event_type": "SUBSTATION_CREATED", "element_id": station_ref}
+    )
+
+    supply = payload.get("supply")
+    if isinstance(supply, dict):
+        supply_payload = dict(supply)
+        supply_payload["to_bus_ref"] = bus_ref
+        wynik_zasilenia = _add_nn_cable_segment_internal(new_enm, supply_payload)
+        if isinstance(wynik_zasilenia, dict):
+            return wynik_zasilenia
+        new_enm, utworzone_zasilenia, zdarzenia_zasilenia = wynik_zasilenia
+        created.extend(utworzone_zasilenia)
+        for zdarzenie in zdarzenia_zasilenia:
+            ev_seq += 1
+            events.append({**zdarzenie, "event_seq": ev_seq})
+
+    return _response(
+        new_enm,
+        created=created,
+        selection_id=station_ref,
+        selection_type="substation",
+        events=events,
+    )
+
+
+def add_nn_switch_device(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
+    """P0.1 nN (C §4.1): aparat (SwitchBranch/FuseBranch) w torze między dwiema szynami nN."""
+    from_bus_ref = payload.get("from_bus_ref")
+    to_bus_ref = payload.get("to_bus_ref")
+    if not isinstance(from_bus_ref, str) or not from_bus_ref.strip():
+        return _error_response(
+            "Brak szyny początkowej nN (from_bus_ref).", "nn.switch_from_missing"
+        )
+    if not isinstance(to_bus_ref, str) or not to_bus_ref.strip():
+        return _error_response("Brak szyny końcowej nN (to_bus_ref).", "nn.switch_to_missing")
+    from_bus_ref = from_bus_ref.strip()
+    to_bus_ref = to_bus_ref.strip()
+    if from_bus_ref == to_bus_ref:
+        return _error_response(
+            "Aparat nN nie może łączyć szyny samej ze sobą.", "nn.switch_self_loop"
+        )
+
+    from_voltage = _bus_voltage_kv(enm, from_bus_ref)
+    to_voltage = _bus_voltage_kv(enm, to_bus_ref)
+    if from_voltage is None:
+        return _error_response(
+            f"Szyna '{from_bus_ref}' nie istnieje.", "nn.switch_from_bus_not_found"
+        )
+    if to_voltage is None:
+        return _error_response(f"Szyna '{to_bus_ref}' nie istnieje.", "nn.switch_to_bus_not_found")
+    if from_voltage > 1.0 or to_voltage > 1.0:
+        return _error_response(
+            "Aparat nN musi łączyć dwie szyny w paśmie nN (<=1 kV).", "nn.switch_not_nn_band"
+        )
+    if not _same_nominal_voltage(from_voltage, to_voltage):
+        return _error_response(
+            f"Szyny '{from_bus_ref}' i '{to_bus_ref}' mają różne napięcia nN "
+            f"({from_voltage} kV / {to_voltage} kV).",
+            "nn.switch_voltage_mismatch",
+        )
+
+    device_class_raw = payload.get("device_class", "switch")
+    device_class = (
+        device_class_raw.strip().lower() if isinstance(device_class_raw, str) else "switch"
+    )
+    if device_class not in ("switch", "fuse"):
+        return _error_response(
+            "device_class musi być 'switch' albo 'fuse'.", "nn.switch_device_class_invalid"
+        )
+    branch_type = "switch" if device_class == "switch" else "fuse"
+
+    catalog_ref = _require_catalog_ref(
+        payload_ref=payload.get("catalog_ref"),
+        payload_binding=payload.get("catalog_binding"),
+        context_code="add_nn_switch_device",
+    )
+    if isinstance(catalog_ref, dict):
+        return catalog_ref
+
+    materialization = _materialize_catalog_payload(
+        catalog_ref=catalog_ref,
+        catalog_binding=payload.get("catalog_binding"),
+        default_namespace=_PRZESTRZEN_APARATU_POLA_NN,
+    )
+    if isinstance(materialization, dict):
+        return _blad_pozycji_katalogu(materialization, "Aparat nN")
+    binding_payload, materialized_params = materialization
+
+    seed = _compute_seed(
+        {
+            "op": "nn_switch_device",
+            "from": from_bus_ref,
+            "to": to_bus_ref,
+            "ref": catalog_ref,
+            "device_class": device_class,
+        }
+    )
+    branch_ref = _make_id("nn", seed, "switch_device")
+
+    branch_data: dict[str, Any] = {
+        "ref_id": branch_ref,
+        "name": payload.get("name")
+        or ("Wyłącznik nN" if branch_type == "switch" else "Bezpiecznik nN"),
+        "type": branch_type,
+        "from_bus_ref": from_bus_ref,
+        "to_bus_ref": to_bus_ref,
+        "status": "closed",
+        "meta": {},
+    }
+    if branch_type == "switch":
+        branch_data["r_ohm"] = 0.0
+        branch_data["x_ohm"] = 0.0
+    else:
+        rated_current = materialized_params.get("i_n_a")
+        rated_voltage = materialized_params.get("u_n_kv")
+        if rated_current is not None:
+            branch_data["rated_current_a"] = float(rated_current)
+        if rated_voltage is not None:
+            branch_data["rated_voltage_kv"] = float(rated_voltage)
+
+    branch_data["catalog_ref"] = catalog_ref
+    _apply_catalog_metadata(
+        branch_data, binding_payload, default_namespace=_PRZESTRZEN_APARATU_POLA_NN
+    )
+    branch_data["materialized_params"] = copy.deepcopy(materialized_params) or None
+
+    new_enm = kopia_graniczna_enm(enm)
+    result = create_branch(new_enm, branch_data)
+    if not result.success:
+        return _error_response(
+            f"Nie udało się utworzyć aparatu nN: {result.issues[0].message_pl if result.issues else '?'}",
+            "nn.switch_device_failed",
+        )
+    new_enm = result.enm
+
+    return _response(
+        new_enm,
+        created=[branch_ref],
+        selection_id=branch_ref,
+        selection_type="branch",
+        events=[
+            {"event_seq": 1, "event_type": "NN_SWITCH_DEVICE_CREATED", "element_id": branch_ref}
+        ],
+    )
+
+
+def add_nn_section_coupler(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
+    """P0.1 nN (C §4.1, §2.1): nowa sekcja + sprzęgło w rozdzielnicy nN (RGnN).
+
+    Pusta `nn_sections` = rozdzielnica jednosekcyjna z sekcją domyślną
+    zakotwiczoną na `bus_refs[0]` (C §2.1) — operacja materializuje wtedy TĘ
+    sekcję jawnie jako sekcję 1, zanim doda sekcję 2 ze sprzęgłem.
+    """
+    station_ref = payload.get("station_ref")
+    if not isinstance(station_ref, str) or not station_ref.strip():
+        return _error_response(
+            "Brak referencji rozdzielnicy nN (station_ref).", "nn.coupler_station_missing"
+        )
+    station_ref = station_ref.strip()
+
+    station = next(
+        (
+            s
+            for s in enm.get("substations", [])
+            if isinstance(s, dict) and s.get("ref_id") == station_ref
+        ),
+        None,
+    )
+    if station is None:
+        return _error_response(
+            f"Rozdzielnica nN '{station_ref}' nie istnieje.", "nn.coupler_station_not_found"
+        )
+    if station.get("station_type") != "rozdzielnica_nn":
+        return _error_response(
+            f"Stacja '{station_ref}' nie jest rozdzielnicą nN (station_type != 'rozdzielnica_nn').",
+            "nn.coupler_station_wrong_type",
+        )
+
+    bus_refs = station.get("bus_refs") or []
+    sekcje = [s for s in (station.get("nn_sections") or []) if isinstance(s, dict)]
+    if sekcje:
+        ostatnia = max(sekcje, key=lambda s: s.get("order", 0))
+        last_order = ostatnia.get("order", 0)
+        last_bus_ref = ostatnia.get("bus_ref")
+    else:
+        if not bus_refs:
+            return _error_response(
+                f"Rozdzielnica nN '{station_ref}' nie ma szyny głównej.",
+                "nn.coupler_station_no_bus",
+            )
+        last_order = 1
+        last_bus_ref = bus_refs[0]
+
+    if not isinstance(last_bus_ref, str) or not last_bus_ref.strip():
+        return _error_response(
+            "Ostatnia sekcja rozdzielnicy nN nie ma szyny.", "nn.coupler_last_section_bus_missing"
+        )
+
+    voltage_kv = _bus_voltage_kv(enm, last_bus_ref)
+    if voltage_kv is None:
+        return _error_response(
+            f"Szyna '{last_bus_ref}' nie istnieje albo nie ma napięcia.", "nn.coupler_bus_not_found"
+        )
+
+    catalog_ref = _require_catalog_ref(
+        payload_ref=payload.get("catalog_ref"),
+        payload_binding=payload.get("catalog_binding"),
+        context_code="add_nn_section_coupler",
+    )
+    if isinstance(catalog_ref, dict):
+        return catalog_ref
+    materialization = _materialize_catalog_payload(
+        catalog_ref=catalog_ref,
+        catalog_binding=payload.get("catalog_binding"),
+        default_namespace=_PRZESTRZEN_APARATU_POLA_NN,
+    )
+    if isinstance(materialization, dict):
+        return _blad_pozycji_katalogu(materialization, "Sprzęgło sekcyjne nN")
+    binding_payload, materialized_params = materialization
+
+    seed = _compute_seed(
+        {"op": "nn_section_coupler", "station_ref": station_ref, "order": last_order + 1}
+    )
+    new_bus_ref = _make_id("nn", seed, "section_bus")
+    coupler_ref = _make_id("nn", seed, "section_coupler")
+
+    new_enm = kopia_graniczna_enm(enm)
+    created: list[str] = []
+
+    result = create_node(
+        new_enm,
+        {
+            "ref_id": new_bus_ref,
+            "name": payload.get("name")
+            or f"Sekcja {last_order + 1} — {station.get('name') or station_ref}",
+            "voltage_kv": voltage_kv,
+            "meta": {"visual_role": "NN_SECTION_BUS"},
+        },
+    )
+    if not result.success:
+        return _error_response(
+            "Nie udało się utworzyć szyny sekcji: "
+            f"{result.issues[0].message_pl if result.issues else '?'}",
+            "nn.coupler_bus_failed",
+        )
+    new_enm = result.enm
+    created.append(new_bus_ref)
+
+    coupler_data: dict[str, Any] = {
+        "ref_id": coupler_ref,
+        "name": f"Sprzęgło sekcyjne {station.get('name') or station_ref}",
+        "type": "bus_coupler",
+        "from_bus_ref": last_bus_ref,
+        "to_bus_ref": new_bus_ref,
+        "status": "closed",
+        "r_ohm": 0.0,
+        "x_ohm": 0.0,
+        "meta": {},
+    }
+    coupler_data["catalog_ref"] = catalog_ref
+    _apply_catalog_metadata(
+        coupler_data, binding_payload, default_namespace=_PRZESTRZEN_APARATU_POLA_NN
+    )
+    coupler_data["materialized_params"] = copy.deepcopy(materialized_params) or None
+
+    result = create_branch(new_enm, coupler_data)
+    if not result.success:
+        return _error_response(
+            f"Nie udało się utworzyć sprzęgła: {result.issues[0].message_pl if result.issues else '?'}",
+            "nn.coupler_branch_failed",
+        )
+    new_enm = result.enm
+    created.append(coupler_ref)
+
+    for sub in new_enm.get("substations", []):
+        if sub.get("ref_id") != station_ref:
+            continue
+        istniejace = [s for s in (sub.get("nn_sections") or []) if isinstance(s, dict)]
+        if not istniejace:
+            istniejace.append(
+                {
+                    "section_id": _make_id("nn", seed, "section_1"),
+                    "order": 1,
+                    "bus_ref": last_bus_ref,
+                    "coupler_ref": None,
+                    "incoming_refs": [],
+                }
+            )
+        istniejace.append(
+            {
+                "section_id": _make_id("nn", seed, "section"),
+                "order": last_order + 1,
+                "bus_ref": new_bus_ref,
+                "coupler_ref": coupler_ref,
+                "incoming_refs": [],
+            }
+        )
+        sub["nn_sections"] = istniejace
+        break
+
+    return _response(
+        new_enm,
+        created=created,
+        selection_id=new_bus_ref,
+        selection_type="bus",
+        events=[
+            {"event_seq": 1, "event_type": "BUS_CREATED", "element_id": new_bus_ref},
+            {"event_seq": 2, "event_type": "NN_SECTION_COUPLER_CREATED", "element_id": coupler_ref},
+        ],
+    )
+
+
+def split_nn_segment(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
+    """P0.1 nN (C §4.1): rozcięcie odcinka kabla nN na dwa z nową szyną pośrednią.
+
+    Suma długości zachowana; oba odcinki dziedziczą wiązanie katalogowe i meta
+    (w tym `cable_laying_conditions`) przez `_copy_split_segment_fields`
+    (reużycie wzorca `insert_station_on_segment_sn`, nie druga implementacja).
+    """
+    segment_ref = payload.get("segment_ref")
+    if not isinstance(segment_ref, str) or not segment_ref.strip():
+        return _error_response(
+            "Brak referencji odcinka nN (segment_ref).", "nn.split_segment_missing"
+        )
+    segment_ref = segment_ref.strip()
+
+    segment = next(
+        (
+            b
+            for b in enm.get("branches", [])
+            if isinstance(b, dict) and b.get("ref_id") == segment_ref
+        ),
+        None,
+    )
+    if segment is None:
+        return _error_response(
+            f"Odcinek '{segment_ref}' nie istnieje.", "nn.split_segment_not_found"
+        )
+    if segment.get("type") != "cable":
+        return _error_response(
+            "split_nn_segment działa wyłącznie na kablach (type='cable').",
+            "nn.split_segment_wrong_type",
+        )
+
+    from_bus_ref = segment.get("from_bus_ref")
+    to_bus_ref = segment.get("to_bus_ref")
+    from_voltage = _bus_voltage_kv(enm, from_bus_ref) if isinstance(from_bus_ref, str) else None
+    to_voltage = _bus_voltage_kv(enm, to_bus_ref) if isinstance(to_bus_ref, str) else None
+    if from_voltage is None or to_voltage is None or from_voltage > 1.0 or to_voltage > 1.0:
+        return _error_response(
+            "split_nn_segment wymaga odcinka z obydwoma końcami w paśmie nN.",
+            "nn.split_segment_not_nn_band",
+        )
+
+    length_km = _opt_float_any(segment.get("length_km")) or 0.0
+    length_m_total = length_km * 1000.0
+
+    split_at_m = _opt_float_any(payload.get("split_at_m"))
+    if split_at_m is None:
+        return _error_response("split_at_m musi być liczbą.", "nn.split_at_invalid")
+    if not (0 < split_at_m < length_m_total):
+        return _error_response(
+            f"split_at_m musi być w przedziale (0, {length_m_total}) m.", "nn.split_at_out_of_range"
+        )
+
+    seed = _compute_seed(
+        {"op": "split_nn_segment", "segment_ref": segment_ref, "split_at_m": split_at_m}
+    )
+    mid_bus_ref = _make_id("nn", seed, "split_bus")
+    left_ref = _make_id("nn", seed, "split_left")
+    right_ref = _make_id("nn", seed, "split_right")
+
+    new_enm = kopia_graniczna_enm(enm)
+    del_result = delete_branch(new_enm, segment_ref)
+    if not del_result.success:
+        return _error_response(
+            "Nie udało się usunąć odcinka: "
+            f"{del_result.issues[0].message_pl if del_result.issues else '?'}",
+            "nn.split_delete_failed",
+        )
+    new_enm = del_result.enm
+
+    result = create_node(
+        new_enm,
+        {
+            "ref_id": mid_bus_ref,
+            "name": f"Szyna pośrednia {segment.get('name') or segment_ref}",
+            "voltage_kv": from_voltage,
+            "meta": {"visual_role": "NN_SPLIT_BUS"},
+        },
+    )
+    if not result.success:
+        return _error_response(
+            "Nie udało się utworzyć szyny pośredniej: "
+            f"{result.issues[0].message_pl if result.issues else '?'}",
+            "nn.split_bus_failed",
+        )
+    new_enm = result.enm
+
+    left_data: dict[str, Any] = {
+        "ref_id": left_ref,
+        "name": f"{segment.get('name') or segment_ref} (A)",
+        "type": "cable",
+        "from_bus_ref": from_bus_ref,
+        "to_bus_ref": mid_bus_ref,
+        "length_km": split_at_m / 1000.0,
+        "r_ohm_per_km": segment.get("r_ohm_per_km", 0.0),
+        "x_ohm_per_km": segment.get("x_ohm_per_km", 0.0),
+        "status": segment.get("status", "closed"),
+    }
+    _copy_split_segment_fields(left_data, segment)
+    result = create_branch(new_enm, left_data)
+    if not result.success:
+        return _error_response(
+            "Nie udało się utworzyć lewego odcinka: "
+            f"{result.issues[0].message_pl if result.issues else '?'}",
+            "nn.split_left_failed",
+        )
+    new_enm = result.enm
+
+    right_data: dict[str, Any] = {
+        "ref_id": right_ref,
+        "name": f"{segment.get('name') or segment_ref} (B)",
+        "type": "cable",
+        "from_bus_ref": mid_bus_ref,
+        "to_bus_ref": to_bus_ref,
+        "length_km": (length_m_total - split_at_m) / 1000.0,
+        "r_ohm_per_km": segment.get("r_ohm_per_km", 0.0),
+        "x_ohm_per_km": segment.get("x_ohm_per_km", 0.0),
+        "status": segment.get("status", "closed"),
+    }
+    _copy_split_segment_fields(right_data, segment)
+    result = create_branch(new_enm, right_data)
+    if not result.success:
+        return _error_response(
+            "Nie udało się utworzyć prawego odcinka: "
+            f"{result.issues[0].message_pl if result.issues else '?'}",
+            "nn.split_right_failed",
+        )
+    new_enm = result.enm
+
+    return _response(
+        new_enm,
+        created=[mid_bus_ref, left_ref, right_ref],
+        deleted=[segment_ref],
+        selection_id=mid_bus_ref,
+        selection_type="bus",
+        events=[
+            {"event_seq": 1, "event_type": "SEGMENT_SPLIT", "element_id": segment_ref},
+            {"event_seq": 2, "event_type": "BUS_CREATED", "element_id": mid_bus_ref},
+            {"event_seq": 3, "event_type": "BRANCH_CREATED", "element_id": left_ref},
+            {"event_seq": 4, "event_type": "BRANCH_CREATED", "element_id": right_ref},
+        ],
+    )
+
+
+def merge_nn_segments(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
+    """P0.1 nN (C §4.1): scalenie dwóch odcinków kabla nN tego samego typu przez szynę pośrednią.
+
+    Walidacja (karta P0.1): dokładnie 2 gałęzie na szynie pośredniej, zero
+    odbiorów/źródeł/generatorów/kompensatorów/transformatorów na niej — inaczej
+    scalenie skasowałoby przyłącze, o którym operacja nic nie wie.
+    """
+    segment_a_ref = payload.get("segment_a_ref")
+    segment_b_ref = payload.get("segment_b_ref")
+    if not isinstance(segment_a_ref, str) or not segment_a_ref.strip():
+        return _error_response(
+            "Brak referencji pierwszego odcinka (segment_a_ref).", "nn.merge_a_missing"
+        )
+    if not isinstance(segment_b_ref, str) or not segment_b_ref.strip():
+        return _error_response(
+            "Brak referencji drugiego odcinka (segment_b_ref).", "nn.merge_b_missing"
+        )
+    segment_a_ref = segment_a_ref.strip()
+    segment_b_ref = segment_b_ref.strip()
+    if segment_a_ref == segment_b_ref:
+        return _error_response("Odcinki do scalenia muszą być różne.", "nn.merge_same_segment")
+
+    branches = enm.get("branches", [])
+    segment_a = next(
+        (b for b in branches if isinstance(b, dict) and b.get("ref_id") == segment_a_ref), None
+    )
+    segment_b = next(
+        (b for b in branches if isinstance(b, dict) and b.get("ref_id") == segment_b_ref), None
+    )
+    if segment_a is None:
+        return _error_response(f"Odcinek '{segment_a_ref}' nie istnieje.", "nn.merge_a_not_found")
+    if segment_b is None:
+        return _error_response(f"Odcinek '{segment_b_ref}' nie istnieje.", "nn.merge_b_not_found")
+    if segment_a.get("type") != "cable" or segment_b.get("type") != "cable":
+        return _error_response(
+            "merge_nn_segments działa wyłącznie na kablach (type='cable').", "nn.merge_wrong_type"
+        )
+    if not _ta_sama_niepusta_pozycja_katalogowa(segment_a, segment_b):
+        return _error_response(
+            "Scalane odcinki muszą mieć tę samą, niepustą pozycję katalogową.",
+            "nn.merge_catalog_mismatch",
+        )
+
+    ends_a = {segment_a.get("from_bus_ref"), segment_a.get("to_bus_ref")}
+    ends_b = {segment_b.get("from_bus_ref"), segment_b.get("to_bus_ref")}
+    wspolne = ends_a & ends_b
+    if len(wspolne) != 1:
+        return _error_response(
+            "Odcinki muszą dzielić dokładnie jedną wspólną szynę pośrednią.",
+            "nn.merge_shared_bus_invalid",
+        )
+    wspolna_szyna_raw = next(iter(wspolne))
+    zewnetrzna_a_raw = next(iter(ends_a - wspolne))
+    zewnetrzna_b_raw = next(iter(ends_b - wspolne))
+    if not (
+        isinstance(wspolna_szyna_raw, str)
+        and isinstance(zewnetrzna_a_raw, str)
+        and isinstance(zewnetrzna_b_raw, str)
+    ):
+        return _error_response(
+            "merge_nn_segments wymaga odcinków z poprawnymi referencjami szyn.",
+            "nn.merge_not_nn_band",
+        )
+    wspolna_szyna: str = wspolna_szyna_raw
+    zewnetrzna_a: str = zewnetrzna_a_raw
+    zewnetrzna_b: str = zewnetrzna_b_raw
+
+    for bus_ref in (zewnetrzna_a, wspolna_szyna, zewnetrzna_b):
+        voltage = _bus_voltage_kv(enm, bus_ref)
+        if voltage is None or voltage > 1.0:
+            return _error_response(
+                "merge_nn_segments wymaga odcinków z obydwoma końcami w paśmie nN.",
+                "nn.merge_not_nn_band",
+            )
+
+    galezie_na_wspolnej = [
+        b
+        for b in branches
+        if isinstance(b, dict)
+        and (b.get("from_bus_ref") == wspolna_szyna or b.get("to_bus_ref") == wspolna_szyna)
+    ]
+    if len(galezie_na_wspolnej) != 2:
+        return _error_response(
+            "Wspólna szyna ma inne przyłącza niż dwa scalane odcinki — scalenie niedozwolone.",
+            "nn.merge_shared_bus_not_isolated",
+        )
+    if any(
+        isinstance(t, dict)
+        and (t.get("hv_bus_ref") == wspolna_szyna or t.get("lv_bus_ref") == wspolna_szyna)
+        for t in enm.get("transformers", [])
+    ):
+        return _error_response(
+            "Wspólna szyna ma podpięty transformator — scalenie niedozwolone.",
+            "nn.merge_shared_bus_not_isolated",
+        )
+    for kolekcja, komunikat in (
+        (enm.get("loads", []), "odbiory"),
+        (enm.get("generators", []), "generatory"),
+        (enm.get("sources", []), "źródła"),
+        (enm.get("shunt_capacitors", []), "baterie kondensatorów"),
+    ):
+        if any(isinstance(el, dict) and el.get("bus_ref") == wspolna_szyna for el in kolekcja):
+            return _error_response(
+                f"Wspólna szyna ma podpięte {komunikat} — scalenie niedozwolone.",
+                "nn.merge_shared_bus_not_isolated",
+            )
+
+    dlugosc_a = segment_a.get("length_km") or 0.0
+    dlugosc_b = segment_b.get("length_km") or 0.0
+
+    seed = _compute_seed({"op": "merge_nn_segments", "a": segment_a_ref, "b": segment_b_ref})
+    merged_ref = _make_id("nn", seed, "merged")
+
+    new_enm = kopia_graniczna_enm(enm)
+    for ref in (segment_a_ref, segment_b_ref):
+        del_result = delete_branch(new_enm, ref)
+        if not del_result.success:
+            return _error_response(
+                f"Nie udało się usunąć odcinka '{ref}': "
+                f"{del_result.issues[0].message_pl if del_result.issues else '?'}",
+                "nn.merge_delete_failed",
+            )
+        new_enm = del_result.enm
+
+    del_node_result = delete_node(new_enm, wspolna_szyna)
+    if del_node_result.success:
+        new_enm = del_node_result.enm
+
+    merged_data: dict[str, Any] = {
+        "ref_id": merged_ref,
+        "name": segment_a.get("name") or segment_b.get("name") or "Kabel nN (scalony)",
+        "type": "cable",
+        "from_bus_ref": zewnetrzna_a,
+        "to_bus_ref": zewnetrzna_b,
+        "length_km": dlugosc_a + dlugosc_b,
+        "r_ohm_per_km": segment_a.get("r_ohm_per_km", 0.0),
+        "x_ohm_per_km": segment_a.get("x_ohm_per_km", 0.0),
+        "status": "closed",
+    }
+    _copy_split_segment_fields(merged_data, segment_a)
+    result = create_branch(new_enm, merged_data)
+    if not result.success:
+        return _error_response(
+            "Nie udało się utworzyć scalonego odcinka: "
+            f"{result.issues[0].message_pl if result.issues else '?'}",
+            "nn.merge_create_failed",
+        )
+    new_enm = result.enm
+
+    return _response(
+        new_enm,
+        created=[merged_ref],
+        deleted=[segment_a_ref, segment_b_ref, wspolna_szyna],
+        selection_id=merged_ref,
+        selection_type="branch",
+        events=[{"event_seq": 1, "event_type": "SEGMENTS_MERGED", "element_id": merged_ref}],
+    )
+
+
+def set_nn_cable_laying_conditions(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
+    """P0.1/P0.5a nN (C §4.1; G-08/G-D1): warunki ułożenia odcinka kabla nN (meta, bez fizyki).
+
+    Parser dedykowany nN (`_nn_cable_laying_conditions`, karta P0.5a — do tej karty
+    błędnie delegował do `_der_cable_laying_conditions` SN): opis trafia do meta
+    gałęzi jako surowy wybór (środowisko/izolacja/temperatura/obwody/rezystywność
+    gruntu), solver (`cable_derating.wspolczynniki_nn` + `obciazalnosc_skorygowana`)
+    czyta stamtąd i składa Iz' z tablic PN-HD 60364-5-52 — model nie liczy fizyki.
+    """
+    segment_ref = payload.get("segment_ref")
+    if not isinstance(segment_ref, str) or not segment_ref.strip():
+        return _error_response(
+            "Brak referencji odcinka nN (segment_ref).", "nn.laying_segment_missing"
+        )
+    segment_ref = segment_ref.strip()
+    segment = next(
+        (
+            b
+            for b in enm.get("branches", [])
+            if isinstance(b, dict) and b.get("ref_id") == segment_ref
+        ),
+        None,
+    )
+    if segment is None:
+        return _error_response(
+            f"Odcinek '{segment_ref}' nie istnieje.", "nn.laying_segment_not_found"
+        )
+    if segment.get("type") != "cable":
+        return _error_response(
+            "Warunki ułożenia dotyczą wyłącznie kabli (type='cable').", "nn.laying_wrong_type"
+        )
+
+    if "cable_laying_conditions" not in payload:
+        return _error_response(
+            "Brak warunków ułożenia do zapisania (cable_laying_conditions).",
+            "nn.laying_conditions_missing",
+        )
+    laying_conditions, laying_error = _nn_cable_laying_conditions(payload)
+    if laying_error is not None:
+        return _error_response(laying_error, "nn.cable_laying_conditions_invalid")
+
+    new_enm = kopia_graniczna_enm(enm)
+    for branch in new_enm.get("branches", []):
+        if branch.get("ref_id") != segment_ref:
+            continue
+        meta = branch.setdefault("meta", {})
+        if laying_conditions is None:
+            # Jawny powrot do warunkow katalogowych (set_name="warunki_katalogowe")
+            # albo brak wspolczynnikow — usuwamy ewentualny wczesniejszy override.
+            meta.pop("cable_laying_conditions", None)
+        else:
+            meta["cable_laying_conditions"] = laying_conditions
+        break
+
+    return _response(
+        new_enm,
+        updated=[segment_ref],
+        selection_id=segment_ref,
+        selection_type="branch",
+        events=[
+            {
+                "event_seq": 1,
+                "event_type": "NN_CABLE_LAYING_CONDITIONS_SET",
+                "element_id": segment_ref,
+            }
+        ],
+    )
+
+
+def _resolve_nn_element_kind(
+    enm: dict[str, Any], element_ref: str
+) -> tuple[str, dict[str, Any]] | None:
+    """Rodzaj + rekord elementu nN po ref_id: ("branch"|"bus"|"load", element)."""
+    for branch in enm.get("branches", []):
+        if isinstance(branch, dict) and branch.get("ref_id") == element_ref:
+            return "branch", branch
+    for bus in enm.get("buses", []):
+        if isinstance(bus, dict) and bus.get("ref_id") == element_ref:
+            return "bus", bus
+    for load in enm.get("loads", []):
+        if isinstance(load, dict) and load.get("ref_id") == element_ref:
+            return "load", load
+    return None
+
+
+def remove_nn_element(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
+    """P0.1 nN (C §4.1): usunięcie elementu nN (kabel/aparat/szyna-liść/odbiór).
+
+    Szyna z pozostałymi przyłączami NIE MOŻE zostać usunięta (reużycie
+    istniejącej bramy zależności `topology_ops.delete_node` — jedna implementacja
+    kontroli zależności, nie druga równoległa).
+    """
+    element_ref = payload.get("element_ref")
+    if not isinstance(element_ref, str) or not element_ref.strip():
+        return _error_response(
+            "Brak referencji elementu do usunięcia (element_ref).", "nn.remove_element_missing"
+        )
+    element_ref = element_ref.strip()
+
+    resolved = _resolve_nn_element_kind(enm, element_ref)
+    if resolved is None:
+        return _error_response(
+            f"Element '{element_ref}' nie istnieje.", "nn.remove_element_not_found"
+        )
+    kind, element = resolved
+
+    new_enm = kopia_graniczna_enm(enm)
+
+    if kind == "branch":
+        from_ref = element.get("from_bus_ref")
+        to_ref = element.get("to_bus_ref")
+        from_voltage = _bus_voltage_kv(enm, from_ref) if isinstance(from_ref, str) else None
+        to_voltage = _bus_voltage_kv(enm, to_ref) if isinstance(to_ref, str) else None
+        if from_voltage is None or to_voltage is None or from_voltage > 1.0 or to_voltage > 1.0:
+            return _error_response(
+                "remove_nn_element usuwa wyłącznie gałęzie w paśmie nN.",
+                "nn.remove_element_not_nn_band",
+            )
+        result = delete_branch(new_enm, element_ref)
+        if not result.success:
+            return _error_response(
+                f"Nie udało się usunąć gałęzi: {result.issues[0].message_pl if result.issues else '?'}",
+                "nn.remove_branch_failed",
+            )
+        new_enm = result.enm
+    elif kind == "bus":
+        voltage = _bus_voltage_kv(enm, element_ref)
+        if voltage is None or voltage > 1.0:
+            return _error_response(
+                "remove_nn_element usuwa wyłącznie szyny w paśmie nN.",
+                "nn.remove_element_not_nn_band",
+            )
+        result = delete_node(new_enm, element_ref)
+        if not result.success:
+            return _error_response(
+                f"Nie udało się usunąć szyny: {result.issues[0].message_pl if result.issues else '?'}",
+                "nn.remove_bus_has_connections",
+            )
+        new_enm = result.enm
+        for sub in new_enm.get("substations", []):
+            sekcje = sub.get("nn_sections")
+            if isinstance(sekcje, list):
+                sub["nn_sections"] = [
+                    s
+                    for s in sekcje
+                    if not (isinstance(s, dict) and s.get("bus_ref") == element_ref)
+                ]
+            bus_refs = sub.get("bus_refs")
+            if isinstance(bus_refs, list) and element_ref in bus_refs:
+                sub["bus_refs"] = [r for r in bus_refs if r != element_ref]
+    else:  # load
+        bus_ref = element.get("bus_ref")
+        voltage = _bus_voltage_kv(enm, bus_ref) if isinstance(bus_ref, str) else None
+        if voltage is None or voltage > 1.0:
+            return _error_response(
+                "remove_nn_element usuwa wyłącznie odbiory w paśmie nN.",
+                "nn.remove_element_not_nn_band",
+            )
+        new_enm["loads"] = [
+            ld for ld in new_enm.get("loads", []) if ld.get("ref_id") != element_ref
+        ]
+
+    return _response(
+        new_enm,
+        deleted=[element_ref],
+        events=[{"event_seq": 1, "event_type": "NN_ELEMENT_REMOVED", "element_id": element_ref}],
+    )
+
+
+def _nn_downstream_subtree(
+    enm: dict[str, Any], root_branch_ref: str
+) -> tuple[set[str], set[str]] | None:
+    """Zbiory (bus_refs, branch_refs) poddrzewa odpływu OD (włącznie) danej gałęzi.
+
+    Kierunek `from_bus_ref` (upstream) -> `to_bus_ref` (downstream) jest
+    KONWENCJĄ całego modułu operacji nN (patrz nagłówek sekcji).
+    """
+    branches_by_from: dict[str, list[dict[str, Any]]] = {}
+    for branch in enm.get("branches", []):
+        if not isinstance(branch, dict):
+            continue
+        from_ref = branch.get("from_bus_ref")
+        if not isinstance(from_ref, str):
+            continue
+        branches_by_from.setdefault(from_ref, []).append(branch)
+
+    root = next(
+        (
+            b
+            for b in enm.get("branches", [])
+            if isinstance(b, dict) and b.get("ref_id") == root_branch_ref
+        ),
+        None,
+    )
+    if root is None:
+        return None
+    root_to_bus = root.get("to_bus_ref")
+    if not isinstance(root_to_bus, str):
+        return None
+
+    bus_refs: set[str] = set()
+    branch_refs: set[str] = {root_branch_ref}
+    queue: list[str] = [root_to_bus]
+    while queue:
+        current = queue.pop()
+        if current in bus_refs:
+            continue
+        bus_refs.add(current)
+        for child in branches_by_from.get(current, []):
+            child_ref = child.get("ref_id")
+            if not isinstance(child_ref, str) or child_ref in branch_refs:
+                continue
+            branch_refs.add(child_ref)
+            child_to_bus = child.get("to_bus_ref")
+            if isinstance(child_to_bus, str):
+                queue.append(child_to_bus)
+    return bus_refs, branch_refs
+
+
+def copy_nn_feeder(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
+    """P0.1 nN (C §4.1): kopia poddrzewa odpływu nN (BFS od aparatu odpływowego w dół).
+
+    Nowe ref_id deterministyczne z sufiksem; wiązania katalogowe kopiowane
+    (kopia gałęzi/elementów jest `copy.deepcopy` oryginału — `catalog_ref`,
+    `materialized_params`, `meta` przechodzą wprost).
+    """
+    feeder_apparatus_ref = payload.get("feeder_apparatus_ref")
+    if not isinstance(feeder_apparatus_ref, str) or not feeder_apparatus_ref.strip():
+        return _error_response(
+            "Brak referencji aparatu odpływowego (feeder_apparatus_ref).",
+            "nn.copy_feeder_ref_missing",
+        )
+    feeder_apparatus_ref = feeder_apparatus_ref.strip()
+
+    root = next(
+        (
+            b
+            for b in enm.get("branches", [])
+            if isinstance(b, dict) and b.get("ref_id") == feeder_apparatus_ref
+        ),
+        None,
+    )
+    if root is None:
+        return _error_response(
+            f"Aparat odpływowy '{feeder_apparatus_ref}' nie istnieje.", "nn.copy_feeder_not_found"
+        )
+    if root.get("type") not in ("switch", "breaker", "fuse", "disconnector", "bus_coupler"):
+        return _error_response(
+            "copy_nn_feeder wymaga aparatu łączeniowego jako korzenia poddrzewa.",
+            "nn.copy_feeder_wrong_root",
+        )
+
+    upstream_bus_ref = root.get("from_bus_ref")
+    upstream_voltage = (
+        _bus_voltage_kv(enm, upstream_bus_ref) if isinstance(upstream_bus_ref, str) else None
+    )
+    if upstream_voltage is None or upstream_voltage > 1.0:
+        return _error_response(
+            "copy_nn_feeder wymaga aparatu w paśmie nN.", "nn.copy_feeder_not_nn_band"
+        )
+
+    poddrzewo = _nn_downstream_subtree(enm, feeder_apparatus_ref)
+    if poddrzewo is None:
+        return _error_response(
+            f"Nie udało się zbudować poddrzewa odpływu '{feeder_apparatus_ref}'.",
+            "nn.copy_feeder_subtree_failed",
+        )
+    bus_refs, branch_refs = poddrzewo
+
+    nazwa_prefix = payload.get("name") or "Kopia"
+    seed = _compute_seed(
+        {"op": "copy_nn_feeder", "root": feeder_apparatus_ref, "name": nazwa_prefix}
+    )
+
+    mapa_szyn: dict[str, str] = {
+        stary: _make_id("nn", seed, f"copy_bus_{i}") for i, stary in enumerate(sorted(bus_refs))
+    }
+    mapa_galezi: dict[str, str] = {
+        stara: _make_id("nn", seed, f"copy_branch_{i}")
+        for i, stara in enumerate(sorted(branch_refs))
+    }
+
+    istniejace_szyny = {b.get("ref_id") for b in enm.get("buses", [])}
+    istniejace_galezie = {b.get("ref_id") for b in enm.get("branches", [])}
+    if any(nowy in istniejace_szyny for nowy in mapa_szyn.values()) or any(
+        nowy in istniejace_galezie for nowy in mapa_galezi.values()
+    ):
+        return _error_response(
+            "Kolizja identyfikatorów przy kopiowaniu odpływu — zmień nazwę kopii.",
+            "nn.copy_feeder_id_collision",
+        )
+
+    new_enm = kopia_graniczna_enm(enm)
+    created: list[str] = []
+    events: list[dict[str, Any]] = []
+    ev_seq = 0
+
+    buses_by_ref = {b.get("ref_id"): b for b in new_enm.get("buses", []) if isinstance(b, dict)}
+    for stary_bus in sorted(bus_refs):
+        oryginal = buses_by_ref.get(stary_bus)
+        if oryginal is None:
+            continue
+        kopia_bus = copy.deepcopy(oryginal)
+        kopia_bus["ref_id"] = mapa_szyn[stary_bus]
+        kopia_bus["name"] = f"{nazwa_prefix} — {oryginal.get('name') or stary_bus}"
+        new_enm.setdefault("buses", []).append(kopia_bus)
+        created.append(kopia_bus["ref_id"])
+        ev_seq += 1
+        events.append(
+            {"event_seq": ev_seq, "event_type": "BUS_CREATED", "element_id": kopia_bus["ref_id"]}
+        )
+
+    def _przemapuj_bus(ref: object) -> object:
+        if isinstance(ref, str) and ref == upstream_bus_ref:
+            return upstream_bus_ref
+        if isinstance(ref, str) and ref in mapa_szyn:
+            return mapa_szyn[ref]
+        return ref
+
+    branches_by_ref = {
+        b.get("ref_id"): b for b in new_enm.get("branches", []) if isinstance(b, dict)
+    }
+    for stara_galaz in sorted(branch_refs):
+        oryginal = branches_by_ref.get(stara_galaz)
+        if oryginal is None:
+            continue
+        kopia_galaz = copy.deepcopy(oryginal)
+        kopia_galaz["ref_id"] = mapa_galezi[stara_galaz]
+        kopia_galaz["name"] = f"{nazwa_prefix} — {oryginal.get('name') or stara_galaz}"
+        kopia_galaz["from_bus_ref"] = _przemapuj_bus(oryginal.get("from_bus_ref"))
+        kopia_galaz["to_bus_ref"] = _przemapuj_bus(oryginal.get("to_bus_ref"))
+        new_enm.setdefault("branches", []).append(kopia_galaz)
+        created.append(kopia_galaz["ref_id"])
+        ev_seq += 1
+        events.append(
+            {
+                "event_seq": ev_seq,
+                "event_type": "BRANCH_CREATED",
+                "element_id": kopia_galaz["ref_id"],
+            }
+        )
+
+    for kolekcja_klucz in ("loads", "generators", "sources", "shunt_capacitors"):
+        oryginalne = [
+            el
+            for el in new_enm.get(kolekcja_klucz, [])
+            if isinstance(el, dict) and el.get("bus_ref") in bus_refs
+        ]
+        for i, oryginal in enumerate(oryginalne):
+            kopia = copy.deepcopy(oryginal)
+            kopia["ref_id"] = _make_id("nn", seed, f"copy_{kolekcja_klucz}_{i}")
+            kopia["name"] = f"{nazwa_prefix} — {oryginal.get('name') or oryginal.get('ref_id')}"
+            kopia["bus_ref"] = _przemapuj_bus(oryginal.get("bus_ref"))
+            meta = kopia.get("meta")
+            if (
+                isinstance(meta, dict)
+                and isinstance(meta.get("feeder_ref"), str)
+                and meta["feeder_ref"] in mapa_galezi
+            ):
+                meta["feeder_ref"] = mapa_galezi[meta["feeder_ref"]]
+            new_enm.setdefault(kolekcja_klucz, []).append(kopia)
+            created.append(kopia["ref_id"])
+            ev_seq += 1
+            events.append(
+                {
+                    "event_seq": ev_seq,
+                    "event_type": "NN_FEEDER_ELEMENT_COPIED",
+                    "element_id": kopia["ref_id"],
+                }
+            )
+
+    return _response(
+        new_enm,
+        created=created,
+        selection_id=mapa_galezi[feeder_apparatus_ref],
+        selection_type="branch",
+        events=events,
     )
 
 
@@ -3332,6 +4701,89 @@ def _der_cable_laying_conditions(
         opis["f_wiazka"] = wspolczynniki.f_wiazka
         opis["f_grupa"] = wspolczynniki.f_grupa
         opis["opis_pl"] = wspolczynniki.etykieta_pl
+    return opis, None
+
+
+def _nn_cable_laying_conditions(
+    config: dict[str, Any],
+) -> tuple[dict[str, Any] | None, str | None]:
+    """Warunki ULOZENIA kabla nN (karta P0.5a, luka G-08/G-D1).
+
+    Regula KLASA NIE INSTANCJA (przeglad 2026-08-01): do karty P0.5a
+    `set_nn_cable_laying_conditions`/`add_nn_cable_segment` bledie delegowaly
+    do `_der_cable_laying_conditions` (SN) — parser rozpoznawal WYLACZNIE
+    nazwane zestawy SN (`warunki_katalogowe`, `ziemia_3_kable_warstwa_200mm`,
+    `wlasne` z polami f_grunt/f_wiazka/f_grupa), ktore nie maja sensu dla
+    kabla nN. Ten parser jest DEDYKOWANY nN: sklada Iz' z NIEZALEZNYCH tablic
+    normy PN-HD 60364-5-52 (srodowisko, izolacja, temperatura, rezystywnosc
+    gruntu, liczba obwodow) przez `cable_derating.wspolczynniki_nn` — JEDNO
+    miejsce skladania (solver), walidowane TU, przy wejsciu do modelu, zeby
+    nieznana kombinacja (poza zweryfikowanym rejestrem G-D1) nie mogla
+    zamilknac i wrocic jako „warunki katalogowe" (fail-closed).
+
+    Opis trafia do meta jako SUROWY WYBOR (environment/insulation/temperatura/
+    liczba obwodow/rezystywnosc), NIE jako policzone wspolczynniki — solver
+    sklada je na nowo przy kazdym odczycie z JEDNEGO zrodla prawdy (rejestrow
+    tablic), analogicznie do przechowywania `set_name` w SN.
+    """
+    raw = config.get("cable_laying_conditions")
+    if raw is None:
+        return None, None
+    if isinstance(raw, str):
+        set_name = raw.strip()
+        if not set_name or set_name == cable_derating.NAZWA_WARUNKI_KATALOGOWE:
+            # Warunki katalogowe = brak korekty; nie zaśmiecamy modelu domyślną
+            # wartością (determinizm seedów, zachowanie dotychczasowe co do bitu).
+            return None, None
+        return None, (
+            f"Nieznany zestaw warunków ułożenia nN: '{set_name}'. Warunki ułożenia "
+            "kabla nN podaje się jako obiekt opisu (environment, insulation, "
+            "ambient_temperature_c, circuit_count, opcjonalnie "
+            "soil_thermal_resistivity_km_w dla gruntu) albo napis "
+            f"'{cable_derating.NAZWA_WARUNKI_KATALOGOWE}'."
+        )
+    if not isinstance(raw, dict):
+        return None, "Warunki ułożenia kabla nN muszą być obiektem opisu albo napisem."
+
+    environment = raw.get("environment")
+    if not isinstance(environment, str) or not environment.strip():
+        return None, "Brak środowiska ułożenia kabla nN (environment: powietrze|grunt)."
+    insulation = raw.get("insulation")
+    if not isinstance(insulation, str) or not insulation.strip():
+        return None, "Brak typu izolacji kabla nN (insulation: PVC|XLPE)."
+    ambient_temperature_c = _as_float(raw.get("ambient_temperature_c"))
+    if ambient_temperature_c is None:
+        return None, (
+            "Brak temperatury otoczenia (ambient_temperature_c) dla warunków ułożenia nN."
+        )
+    circuit_count_raw = raw.get("circuit_count")
+    try:
+        circuit_count = int(circuit_count_raw)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return None, (
+            "Liczba obwodów (circuit_count) dla warunków ułożenia nN musi być liczbą całkowitą."
+        )
+    soil_resistivity = _as_float(raw.get("soil_thermal_resistivity_km_w"))
+
+    try:
+        wspolczynniki = cable_derating.wspolczynniki_nn(
+            srodowisko=cast("cable_derating.Srodowisko", environment.strip()),
+            izolacja=cast("cable_derating.Izolacja", insulation.strip()),
+            temperatura_c=ambient_temperature_c,
+            liczba_obwodow=circuit_count,
+            rezystywnosc_gruntu_km_w=soil_resistivity,
+        )
+    except ValueError as exc:
+        return None, str(exc)
+
+    opis: dict[str, Any] = {
+        "environment": wspolczynniki.srodowisko,
+        "insulation": wspolczynniki.izolacja,
+        "ambient_temperature_c": wspolczynniki.temperatura_c,
+        "circuit_count": wspolczynniki.liczba_obwodow,
+    }
+    if wspolczynniki.rezystywnosc_gruntu_km_w is not None:
+        opis["soil_thermal_resistivity_km_w"] = wspolczynniki.rezystywnosc_gruntu_km_w
     return opis, None
 
 
@@ -5053,6 +6505,36 @@ V2_CATALOG_GATE_INVENTORY: tuple[PozycjaBramyKatalogowejV2, ...] = (
         "UPS — jak wyżej: brak kategorii katalogu, element nie deklaruje "
         "pochodzenia katalogowego (tabliczka jawnie ekspercka).",
     ),
+    # P0.1 nN (karta P0.1, C §4.1): wiązanie katalogowe OBOWIĄZKOWE dla kabla
+    # (KABEL_NN) i aparatów (APARAT_NN — aparat pola i sprzęgło sekcyjne).
+    PozycjaBramyKatalogowejV2("add_nn_cable_segment", "catalog_ref", "KABEL_NN", True),
+    PozycjaBramyKatalogowejV2(
+        "add_nn_cable_segment",
+        "catalog_binding",
+        "KABEL_NN",
+        True,
+        "druga droga wskazania pozycji",
+    ),
+    PozycjaBramyKatalogowejV2(
+        "add_nn_switch_device", "catalog_ref", _PRZESTRZEN_APARATU_POLA_NN, True
+    ),
+    PozycjaBramyKatalogowejV2(
+        "add_nn_switch_device",
+        "catalog_binding",
+        _PRZESTRZEN_APARATU_POLA_NN,
+        True,
+        "druga droga wskazania pozycji",
+    ),
+    PozycjaBramyKatalogowejV2(
+        "add_nn_section_coupler", "catalog_ref", _PRZESTRZEN_APARATU_POLA_NN, True
+    ),
+    PozycjaBramyKatalogowejV2(
+        "add_nn_section_coupler",
+        "catalog_binding",
+        _PRZESTRZEN_APARATU_POLA_NN,
+        True,
+        "druga droga wskazania pozycji",
+    ),
 )
 
 #: Klucze payloadu z referencją katalogową, które operacjom V2 wolno czytać.
@@ -5123,6 +6605,16 @@ V2_CANONICAL_OPS = frozenset(
         "set_source_operating_mode",
         "set_dynamic_profile",
         "set_der_catalog_bindings",
+        # P0.1 nN — topologia obwodow nN
+        "add_nn_cable_segment",
+        "add_nn_distribution_board",
+        "add_nn_switch_device",
+        "add_nn_section_coupler",
+        "split_nn_segment",
+        "merge_nn_segments",
+        "set_nn_cable_laying_conditions",
+        "remove_nn_element",
+        "copy_nn_feeder",
         # Universal
         "rename_element",
         "set_label",
@@ -5159,6 +6651,15 @@ ALL_V2_HANDLERS: dict[str, Any] = {
     "set_source_operating_mode": set_source_operating_mode,
     "set_dynamic_profile": set_dynamic_profile,
     "set_der_catalog_bindings": set_der_catalog_bindings,
+    "add_nn_cable_segment": add_nn_cable_segment,
+    "add_nn_distribution_board": add_nn_distribution_board,
+    "add_nn_switch_device": add_nn_switch_device,
+    "add_nn_section_coupler": add_nn_section_coupler,
+    "split_nn_segment": split_nn_segment,
+    "merge_nn_segments": merge_nn_segments,
+    "set_nn_cable_laying_conditions": set_nn_cable_laying_conditions,
+    "remove_nn_element": remove_nn_element,
+    "copy_nn_feeder": copy_nn_feeder,
     "rename_element": rename_element,
     "set_label": set_label,
     "set_connection_conditions": set_connection_conditions,

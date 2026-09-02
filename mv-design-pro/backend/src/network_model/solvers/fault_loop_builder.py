@@ -29,6 +29,7 @@ INVARIANTS:
 from __future__ import annotations
 
 import math
+from collections.abc import Sequence
 from dataclasses import dataclass
 
 from network_model.solvers.fault_loop_iec60364 import (
@@ -159,3 +160,128 @@ def transformer_lv_impedance_ohm(
     r_pu = min(r_pu, z_pu)  # R nie może przekroczyć |Z|
     x_pu = math.sqrt(max(z_pu**2 - r_pu**2, 0.0))
     return TransformerLoopImpedance(r_ohm=r_pu * z_base, x_ohm=x_pu * z_base)
+
+
+# ---------------------------------------------------------------------------
+# P0.6 — pętla zwarcia z REALNEJ trasy grafu (docs/nn/H_PLAN_IMPLEMENTACJI_NN.md
+# §P0.6, luka G-05). Warstwa aplikacji (application/analyses/fault_loop/route.py)
+# wykonuje BFS po topologii ENM i wylawia surowe dane odcinkow (bez fizyki —
+# tylko odczyt pol galezi); PONIZSZE funkcje sa jedynym miejscem, gdzie te
+# surowe dane skladaja sie w impedancje (sumowanie, dzielenie przez n_parallel,
+# przeliczenie pu->Ω, przeliczenie przez przekladnie) — zgodnie z regula
+# solvera (PHYSICS HERE ONLY).
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class RouteSegmentImpedance:
+    """Jeden odcinek trasy (kabel nN) — dane SUROWE, nieprzeskalowane.
+
+    ``*_total_r_ohm``/``*_total_x_ohm`` to R/X CAŁEGO odcinka (już
+    ``r_ohm_per_km * length_km``, PRZED podziałem przez ``n_parallel``) — samo
+    mnożenie przez długość jest odczytem danych (warstwa aplikacji), nie
+    fizyką; dzielenie N identycznych torów równoległych na Z/n JEST fizyką
+    (ta sama zasada co ``Transformer.n_parallel`` — patrz
+    ``enm/mapping.py::map_enm_to_network_graph``) i zostaje TU.
+    """
+
+    label: str
+    branch_ref: str
+    phase_total_r_ohm: float
+    phase_total_x_ohm: float
+    return_total_r_ohm: float
+    return_total_x_ohm: float
+    n_parallel: int = 1
+
+    def __post_init__(self) -> None:
+        if self.n_parallel < 1:
+            raise ValueError(
+                f"Odcinek '{self.branch_ref}': n_parallel musi być ≥ 1, "
+                f"otrzymano {self.n_parallel}."
+            )
+        for name, value in (
+            ("phase_total_r_ohm", self.phase_total_r_ohm),
+            ("phase_total_x_ohm", self.phase_total_x_ohm),
+            ("return_total_r_ohm", self.return_total_r_ohm),
+            ("return_total_x_ohm", self.return_total_x_ohm),
+        ):
+            if value < 0:
+                raise ValueError(
+                    f"Odcinek '{self.branch_ref}': {name} musi być ≥ 0, otrzymano {value}."
+                )
+
+
+def sum_phase_and_return_route(
+    segments: Sequence[RouteSegmentImpedance],
+    *,
+    phase_label: str = "Przewód fazowy L (trasa)",
+    return_label: str = "Przewód powrotny PE/PEN (trasa)",
+) -> tuple[LoopImpedanceComponent, LoopImpedanceComponent]:
+    """Sumuje odcinki trasy na dwie składowe pętli: fazową i powrotną.
+
+    Dla każdego odcinka: ``R_eff = R_total / n_parallel`` (n identycznych
+    torów równoległych na tej samej trasie — ta sama zasada co
+    ``Transformer.n_parallel``, Z/n). Odcinki sumują się szeregowo (trasa
+    promieniowa punkt→transformator).
+
+    Pusta lista odcinków (zwarcie DOKŁADNIE na szynie nN transformatora,
+    trasa zerodługościowa) zwraca składowe zerowe — zgodne z dotychczasowym
+    zachowaniem ``build_station_fault_loop_view`` (phase=return=0 na źródle).
+    """
+    phase_r = 0.0
+    phase_x = 0.0
+    return_r = 0.0
+    return_x = 0.0
+    for seg in segments:
+        phase_r += seg.phase_total_r_ohm / seg.n_parallel
+        phase_x += seg.phase_total_x_ohm / seg.n_parallel
+        return_r += seg.return_total_r_ohm / seg.n_parallel
+        return_x += seg.return_total_x_ohm / seg.n_parallel
+    return (
+        LoopImpedanceComponent(label=phase_label, r_ohm=phase_r, x_ohm=phase_x),
+        LoopImpedanceComponent(label=return_label, r_ohm=return_r, x_ohm=return_x),
+    )
+
+
+def zero_sequence_transformer_loop_impedance_ohm(
+    *, z0_pu: complex, ulv_kv: float, s_base_mva: float
+) -> TransformerLoopImpedance:
+    """Impedancja zerowa transformatora (Ω, strona nN) z per-unit na S_base.
+
+    Konwersja jednostek pu→Ω (Z_ohm = z0_pu · U_lv²/S_base) — WHITE BOX, żadna
+    decyzja fizyczna (typ połączenia sekwencji zerowej, obecność drogi
+    uziemienia) nie zapada tutaj: ``z0_pu`` pochodzi z
+    ``enm.zero_sequence_transformer.build_transformer_zero_seq_model`` (reuse
+    — zero własnej redukcji sieci sekwencji zerowej), warstwa aplikacji
+    dostarcza już gotową wartość (albo odmawia liczenia pętli, gdy
+    transformator nie ma lokalnej drogi uziemienia strony nN — zob.
+    ``application/analyses/fault_loop/route.py``).
+    """
+    if ulv_kv <= 0 or s_base_mva <= 0:
+        raise ValueError("ulv_kv i s_base_mva muszą być dodatnie do konwersji Z0 pu→Ω.")
+    z_base = (ulv_kv**2) / s_base_mva
+    z0_ohm = z0_pu * z_base
+    return TransformerLoopImpedance(r_ohm=z0_ohm.real, x_ohm=z0_ohm.imag)
+
+
+def refer_upstream_impedance_to_lv_ohm(
+    *,
+    z_hv_ohm: complex,
+    uhv_kv: float,
+    ulv_kv: float,
+    label: str = "Sieć SN (upstream Thevenin, sprowadzone do nN)",
+) -> LoopImpedanceComponent:
+    """Sprowadza impedancję Thevenina zmierzoną w Ω na zaciskach HV transformatora
+    do strony nN przez kwadrat przekładni: Z_LV = Z_HV · (U_LV / U_HV)².
+
+    Standardowe przeliczenie impedancji przez idealny transformator (ta sama
+    zasada co zmiana bazy napięciowej w ``AdmittanceMatrixBuilder`` —
+    ``network_model/core/ybus.py``). ``z_hv_ohm`` pochodzi z Z-bus istniejącego
+    solvera zwarciowego (``short_circuit_core.build_zbus`` — reuse, zero
+    własnej redukcji sieci).
+    """
+    if uhv_kv <= 0 or ulv_kv <= 0:
+        raise ValueError("uhv_kv i ulv_kv muszą być dodatnie do przeliczenia przekładni.")
+    ratio_squared = (ulv_kv / uhv_kv) ** 2
+    z_lv = z_hv_ohm * ratio_squared
+    return LoopImpedanceComponent(label=label, r_ohm=z_lv.real, x_ohm=z_lv.imag)

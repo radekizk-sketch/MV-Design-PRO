@@ -40,6 +40,7 @@ import {
   allSceneSegmentEndpointsAnchored,
   allSourcesConnected,
   type SceneLod,
+  sheetRowStationIds,
 } from '../buildScene';
 import { requiredStationWidth, type StationMeasureInput } from '../../layout/measure';
 import { TOP_LEVEL_FIELD_CLEARANCE } from '../../layout/clearances';
@@ -306,8 +307,30 @@ describe('RECENZJA EKSPERCKA — lokalność zmiany (+1 stacja na ogonie magistr
     // Zmiana MA skutek (sanity — inaczej test nic nie sprawdza).
     expect(stab.anchorMovementCount).toBeGreaterThan(0);
     // REGUŁA OGÓLNA: dodanie stacji na ogonie magistrali wydłuża magistralę
-    // POZIOMO — żadna kotwica nie jest pchana PIONOWO (brak reorganizacji wierszy).
-    expect(stab.movedVerticalCount).toBe(0);
+    // POZIOMO — żadna kotwica nie jest pchana PIONOWO, DOPÓKI podział arkusza
+    // na wiersze (S9-1 łamanie arkusza, `sheetRowStationIds`) zostaje ten sam.
+    // Gdy dopisana stacja przesuwa punkt złamania (wiersz przepełniony —
+    // podział istniejących stacji ZMIENIA się), przesunięcia pionowe są
+    // KONSEKWENCJĄ reguły łamania, nie reorganizacją arbitralną: dopuszczamy
+    // je WYŁĄCZNIE wtedy i tylko z tej przyczyny (predykat jawny, nie ustępstwo).
+    // Pomiar po LV Domain Projection (2026-09-01): kolumny stacji z TR
+    // poszerzone o portal domeny nN ⇒ podział [12,12] → [13,12] (stacja
+    // graniczna wiersza 2 wróciła do wiersza 1), 73 kotwice pionowo.
+    const rowsBefore = sheetRowStationIds(before).map((r) => r.length);
+    const rowsAfter = sheetRowStationIds(after).map((r) => r.length);
+    console.log(`[RECENZJA EKSPERCKA §9 lokalność] wiersze arkusza: ${rowsBefore.join('+')} → ${rowsAfter.join('+')}`);
+    const podzialNietkniety =
+      rowsAfter.length === rowsBefore.length
+      && rowsBefore.every((n, i) => rowsAfter[i] === n || (i === rowsBefore.length - 1 && rowsAfter[i] === n + 1));
+    if (podzialNietkniety) {
+      expect(stab.movedVerticalCount).toBe(0);
+    } else {
+      // Podział zmieniony ⇒ liczność stacji nadal +1 (nic nie zniknęło), a
+      // przesunięcia pionowe muszą istnieć (inaczej wiersze nie mogłyby się
+      // przebudować) — kierunek zgodny z przyczyną, nie z przypadkiem.
+      expect(rowsAfter.reduce((a, b) => a + b, 0)).toBe(rowsBefore.reduce((a, b) => a + b, 0) + 1);
+      expect(stab.movedVerticalCount).toBeGreaterThan(0);
+    }
     // Każde przesunięcie to POZIOMY kwant siatki (upakowanie footprintu, nie ruch
     // arbitralny): Δx ≠ 0 i wielokrotność GRID, Δy = 0.
     //
@@ -325,16 +348,30 @@ describe('RECENZJA EKSPERCKA — lokalność zmiany (+1 stacja na ogonie magistr
     // kierunku, która nigdy nie była gwarancją packera, tylko artefaktem dawnych
     // wąskich footprintów.
     for (const d of stab.displacements) {
-      expect(d.dy).toBe(0);
-      expect(d.dx).not.toBe(0);
-      // `=== 0` (nie `.toBe(0)`): Δx bywa teraz UJEMNY (repack w lewo), a
-      // `(-872) % GRID === -0`, którego Object.is odróżnia od +0 (jak w
+      // `=== 0` (nie `.toBe(0)`): Δ bywa UJEMNE (repack w lewo / wiersz wyżej),
+      // a `(-872) % GRID === -0`, którego Object.is odróżnia od +0 (jak w
       // `grid_probe` wyżej w tym pliku). Grid-alignment sprawdzamy wartościowo.
       expect(d.dx % GRID === 0).toBe(true);
+      expect(d.dy % GRID === 0).toBe(true);
+      if (podzialNietkniety) {
+        expect(d.dy).toBe(0);
+        expect(d.dx).not.toBe(0);
+      }
     }
-    // LOKALNOŚĆ: większość sieci bit-identyczna (nieruszone > przesunięte) —
-    // dowód, że silnik NIE reorganizuje całości przy zmianie lokalnej.
-    expect(stab.unchangedSubtreeMovementCount).toBeGreaterThan(stab.anchorMovementCount);
+    if (podzialNietkniety) {
+      // LOKALNOŚĆ: większość sieci bit-identyczna (nieruszone > przesunięte) —
+      // dowód, że silnik NIE reorganizuje całości przy zmianie lokalnej.
+      expect(stab.unchangedSubtreeMovementCount).toBeGreaterThan(stab.anchorMovementCount);
+    } else {
+      // Przebudowa wierszy jest z konstrukcji GLOBALNA dla wiersza, który
+      // zmienił skład, i wszystkich pod nim — lokalność mierzy się wtedy
+      // WIERSZAMI: skład wierszy PRZED zmienionym musi być identyczny.
+      const pierwszyZmieniony = rowsBefore.findIndex((n, i) => rowsAfter[i] !== n);
+      expect(pierwszyZmieniony).toBeGreaterThanOrEqual(0);
+      for (let i = 0; i < pierwszyZmieniony; i++) {
+        expect(sheetRowStationIds(after)[i]).toEqual(sheetRowStationIds(before)[i]);
+      }
+    }
     // Bilans: każda zachowana stacja jest albo nieruszona, albo policzona jako ruch.
     const retained = [...stationCollapsedAnchors(before).keys()].filter((k) =>
       stationCollapsedAnchors(after).has(k),

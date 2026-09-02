@@ -72,3 +72,73 @@ class VoltageProfileView:
         from analysis.voltage_profile.serializer import view_to_dict
 
         return view_to_dict(self)
+
+
+@dataclass(frozen=True)
+class VoltageProfileSegment:
+    """P0.4 (nN): jeden odcinek (gałąź) na ścieżce źródło→węzeł.
+
+    Czysta interpretacja z ``PowerFlowResultV1`` (napięcia węzłów już
+    rozwiązane przez solver) — ``delta_u_kv``/``delta_u_percent`` to
+    ARYTMETYCZNA różnica dwóch już policzonych wartości, zero fizyki.
+
+    Attributes:
+        branch_id: ID gałęzi (kabel/linia/transformator) tego odcinka.
+        from_bus: Węzeł bliższy źródłu (SLACK) na tym odcinku.
+        to_bus: Węzeł dalszy od źródła na tym odcinku.
+        u_from_kv: Napięcie na węźle ``from_bus`` [kV] (``v_pu * U_nom``).
+        u_to_kv: Napięcie na węźle ``to_bus`` [kV].
+        delta_u_kv: ``u_from_kv - u_to_kv`` [kV] (dodatnie = spadek w kierunku
+            od źródła; ujemne = WZROST — typowy przy przepływie zwrotnym/OZE).
+        delta_u_percent: ``delta_u_kv`` jako % napięcia znamionowego węzła
+            ``to_bus`` (a nie ``from_bus`` — gałąź transformatorowa ma na obu
+            końcach RÓŻNE napięcie znamionowe; % liczony względem węzła, do
+            którego odcinek prowadzi, jest jednoznaczny niezależnie od typu
+            gałęzi).
+    """
+
+    branch_id: str
+    from_bus: str
+    to_bus: str
+    u_from_kv: float
+    u_to_kv: float
+    delta_u_kv: float
+    delta_u_percent: float
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "branch_id": self.branch_id,
+            "from_bus": self.from_bus,
+            "to_bus": self.to_bus,
+            "u_from_kv": float(self.u_from_kv),
+            "u_to_kv": float(self.u_to_kv),
+            "delta_u_kv": float(self.delta_u_kv),
+            "delta_u_percent": float(self.delta_u_percent),
+        }
+
+
+@dataclass(frozen=True)
+class VoltageProfileSegmentPath:
+    """P0.4 (nN): pełna dekompozycja ΔU na ścieżce źródło (SLACK)→węzeł.
+
+    ``segments`` jest uporządkowana od źródła do ``node_id`` (indeks 0 =
+    pierwszy odcinek za SLACK). Niezmiennik weryfikowany przy budowie (patrz
+    ``segment_decomposition.py``): suma ``delta_u_kv`` wszystkich segmentów
+    równa się ``u_source_kv - u_node_kv`` (telescoping sum po napięciach
+    węzłów wzdłuż ścieżki).
+    """
+
+    node_id: str
+    source_id: str
+    u_source_kv: float
+    u_node_kv: float
+    segments: tuple[VoltageProfileSegment, ...]
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "node_id": self.node_id,
+            "source_id": self.source_id,
+            "u_source_kv": float(self.u_source_kv),
+            "u_node_kv": float(self.u_node_kv),
+            "segments": [segment.to_dict() for segment in self.segments],
+        }

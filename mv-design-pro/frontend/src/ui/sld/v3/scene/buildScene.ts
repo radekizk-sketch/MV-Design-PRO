@@ -95,6 +95,12 @@
  */
 
 import type { BayPrimaryDeviceKind, EnergyNetworkModel, LineRunV1 } from '../../../../types/enm';
+// T1 (`docs/nn/PLAN_SLD_NN_TOPOLOGIA_2026-08.md` §0.3/§0.4): graf elektryczny
+// jest ŹRÓDŁEM PRAWDY dla klasyfikacji domeny krawędzi sceny (§0.2) i dla
+// statusu SLD_VALID/SLD_INVALID sceny (§0.3) — budowany RAZ na wejściu tej
+// funkcji, PRZED kompozycją stron (layout jest OSTATNI, plan §Architektura).
+import { buildTerminalGraph } from '../electrical/terminalGraph';
+import { validateElectricalGraph, type GraphValidationResult } from '../electrical/invariants';
 import {
   buildSldDataFromSnapshot,
   type SegmentTerminalRef,
@@ -151,11 +157,12 @@ import {
   type SegmentSpanOwnerInput,
   type SegmentLateralOwnerInput,
   type StationNameBandOwnerInput,
+  type StationNameBandRow,
   type PortCaptionOwnerInput,
   type SimpleAnchoredOwnerInput,
 } from '../layout/labels';
 import { declutterLabels } from '../layout/declutter';
-import { composeStation, type StationComposition } from '../compose/station';
+import { composeStation, lvPortalOwnerRef, type StationComposition } from '../compose/station';
 import {
   composeGpz,
   type ComposedGpzSegment,
@@ -304,6 +311,22 @@ export interface SceneV3Meta {
    *  pionowym — audyt świateł pasm (raport przed/po, test kompresji). Addytywne,
    *  deterministyczne; puste dla scen bez lateralów. */
   readonly lateralShelves?: readonly LateralShelfRecord[];
+  /**
+   * T1 (SLD-nN-TOPOLOGIA §0.3 „UNRESOLVED = HARD VALIDATION ERROR"): status
+   * WALIDACJI GRAFU ELEKTRYCZNEGO (`electrical/invariants.ts::
+   * validateElectricalGraph`, 9 inwariantów napięciowych) — `'SLD_INVALID'`
+   * gdy KTÓREKOLWIEK naruszenie (np. aparat nN nierozpoznany w torze
+   * AKTYWNYM), niezależnie od tego, czy naruszenie dotyczy elementu
+   * NARYSOWANEGO na bieżącym LOD. Ten status jest KONTRAKTEM sceny — UI
+   * (poza zakresem tej karty: T2/inspektor) czyta go, żeby zablokować/
+   * ostrzec przed dalszymi krokami (proof/eksport) na modelu niekompletnym.
+   * `violations` niesie STRUKTURALNE kody+refy (WHITE BOX) — tekst PL
+   * człowiekowi czytelny trafia RÓWNOLEGLE do `stopNotes` (reuse istniejącego
+   * kanału, karta §0.3 „kontrakt statusu zmierz w buildScene — jest
+   * stopNotes/missingData z P0.8, reuse").
+   */
+  readonly electricalGraphStatus: GraphValidationResult['status'];
+  readonly electricalGraphViolations: GraphValidationResult['violations'];
 }
 
 export interface SceneV3 extends PreviewComposition {
@@ -873,6 +896,9 @@ function classifySymbolElementKind(symbolId: SymbolId): PreviewElementKind {
   // KD-5: blok GPZ zwinięty (L0) jest STACJĄ zasilającą, nie aparatem — ta sama
   // kategoria co `stationCollapsed` (warstwa „stacje i aparatura", selekcja).
   if (symbolId === 'stationCollapsed' || symbolId === 'gpzCollapsed') return 'station';
+  // PORTAL nN (LV Domain Projection po B-02): przejście do projekcji nN — nie
+  // aparat toru mocy, własna kategoria (klik otwiera portal, zero menu).
+  if (symbolId === 'lvPortal') return 'lvPortal';
   return 'apparatus';
 }
 
@@ -1344,9 +1370,37 @@ interface ComposedRowStation {
   readonly branchPort: (branchPos: number) => { readonly x: number; readonly y: number } | null;
 }
 
-function classifyStationSegmentKind(ownerRef: string): PreviewSegmentKind {
+/**
+ * T1 (`docs/nn/PLAN_SLD_NN_TOPOLOGIA_2026-08.md` §0.2, defekty (a)/(b) B-02):
+ * (b) szyna nN kolektorowa (`#lv-bus`, wzorzec SYMETRYCZNY z `#sn-bus` —
+ * OBIE są odcinki, do których dotykają porty WIELU pól/aparatów tej samej
+ * stacji, patrz `sceneConformance.test.ts` Check A2) jest teraz `'bus'`, NIE
+ * `'lv'` — przed T1 `#lv-bus` dostawała `elementKind==='segment'` jak zwykły
+ * przewód, mimo bycia STRUKTURALNIE tym samym obiektem co `#sn-bus`
+ * (`segmentElementKind`/`busRoots`, `scene/buildScene.ts`, obie CZYTAJĄ
+ * `meta.kind==='bus'` — jedno źródło, dwa efekty naprawione JEDNĄ zmianą).
+ * (a) krawędź LITERALNA (dosłowny ref gałęzi ENM — aparat/kabel odpływu lub
+ * incomera nN) dostaje `'lv'` z DOMENY GRAFU (`edgeDomainByRef`, zbudowane z
+ * `electrical/terminalGraph.ts` w `buildSceneV3`), NIE z heurystyki pozycji
+ * (`ownerRef` nN nie zawiera żadnego rozpoznawalnego wzorca stringowego —
+ * przed T1 QF-TR1/QF-01/QF-02/QF-03 spadały na domyślne `'sn'`).
+ * `#lv-drop-N` (zejście z portu LV transformatora do linii `#lv-bus` —
+ * DEKORACJA portu, nie gałąź ENM, `sceneConformance.test.ts`
+ * DECORATIVE_OWNER_REF_PATTERNS) pozostaje `'lv'` jak przed T1 — nadal
+ * WEWNĄTRZ domeny nN, tylko nie jest literalną krawędzią.
+ */
+function classifyStationSegmentKind(
+  ownerRef: string,
+  edgeDomainByRef: ReadonlyMap<string, 'lv' | 'sn'>,
+): PreviewSegmentKind {
   if (ownerRef.endsWith('#sn-bus')) return 'bus';
-  if (ownerRef.endsWith('#lv-bus') || ownerRef.includes('#lv-drop-')) return 'lv';
+  if (ownerRef.endsWith('#lv-bus')) return 'bus';
+  const domain = edgeDomainByRef.get(ownerRef);
+  if (domain === 'lv') return 'lv';
+  if (ownerRef.includes('#lv-drop-')) return 'lv';
+  // PORTAL nN: pion zacisk→portal (`compose/station.ts`) — wewnątrz domeny nN,
+  // dekoracja jak `#lv-drop-N` (nie jest gałęzią ENM).
+  if (ownerRef.endsWith('#lv-portal-drop')) return 'lv';
   return 'sn';
 }
 
@@ -1366,10 +1420,17 @@ function composeRowStation(
   blockTopY: number,
   lod: SceneLod,
   stopNotes: string[],
+  edgeDomainByRef: ReadonlyMap<string, 'lv' | 'sn'>,
 ): ComposedRowStation {
   if (lod === 0) {
     const boxX = snapToGrid(column.tapX - COLLECTIVE_BOX_SIZE / 2);
     const boxY = snapToGrid(busAxisY - COLLECTIVE_BOX_SIZE / 2);
+    // L0 (sylwetka mini-RMU): CAŁA geometria strony nN (zacisk, portal) znika
+    // — `composeStation` nie jest tu wołane. Stacja z transformatorem niesie
+    // marker TR w glifie (`compactGlyph.hasTransformer`), a wejściem do
+    // projekcji nN na L0 jest dwuklik w blok stacji (`SldCanvasV3Workspace`,
+    // wyłącznie na L0 — od L1 jedynym wejściem jest klik w symbol portalu).
+    const nameRows: StationNameBandRow[] = [{ text: measureInput.name, labelClass: 't1', role: 'tozsamosc' }];
     return {
       symbols: [
         {
@@ -1389,8 +1450,9 @@ function composeRowStation(
       stationNameOwner: {
         ownerRef: measureInput.id,
         nameSlot: column.nameSlot,
-        // KD-11: nazwa stacji zwiniętej to TOŻSAMOŚĆ bloku na L0.
-        rows: [{ text: measureInput.name, labelClass: 't1', role: 'tozsamosc' }],
+        // KD-11: nazwa stacji zwiniętej to TOŻSAMOŚĆ bloku na L0 (wiersz 1);
+        // T5a: plakietka nN strukturalna (wiersz 2, WYŁĄCZNIE gdy obecna).
+        rows: nameRows,
       },
       apparatusOwners: [],
       portCaptionOwners: [],
@@ -1582,9 +1644,17 @@ function composeRowStation(
             ? `${s.sourceRef}#${s.symbolId}`
             : s.transformerRef
               ? `${s.transformerRef}#${s.symbolId}`
-              : undefined,
+              : s.lvPortalStationRef
+                ? `${lvPortalOwnerRef(s.lvPortalStationRef)}#${s.symbolId}`
+                : undefined,
       ),
-      ownerRef: s.bayRef ?? s.sourceRef ?? s.transformerRef,
+      // PORTAL nN: `ownerRef` = kompozyt `${stationRef}#lv-portal` (jak
+      // `#lv-bus`), tożsamość stacji osobno w `lvPortalStationRef` niżej.
+      ownerRef:
+        s.bayRef
+        ?? s.sourceRef
+        ?? s.transformerRef
+        ?? (s.lvPortalStationRef ? lvPortalOwnerRef(s.lvPortalStationRef) : undefined),
       elementKind: classifySymbolElementKind(s.symbolId),
       // TR2W-BEZ-POLA (§0.C.5): stan niekompletny przepisany 1:1 — glif
       // transformatora rysuje marker „!" przy stronie WN, treść zdania żyje w
@@ -1622,10 +1692,14 @@ function composeRowStation(
       // `SldSourceView.kind`) — konsument to menu kontekstowe podtypu na v3
       // (`SldCanvasV3Workspace.elementKindForMenu`). `undefined` dla nie-DER.
       derKind: s.derKind,
+      // PORTAL nN (LV Domain Projection po B-02): przepisane 1:1 — WYŁĄCZNIE
+      // dla `symbolId==='lvPortal'` (klik → `SldCanvasV3Workspace` otwiera
+      // projekcję nN stacji).
+      lvPortalStationRef: s.lvPortalStationRef,
     },
   }));
   const segments: PreviewSegment[] = composition.segments.map((s) => {
-    const kind = classifyStationSegmentKind(s.ownerRef);
+    const kind = classifyStationSegmentKind(s.ownerRef, edgeDomainByRef);
     return {
       points: s.points,
       meta: { kind, ownerRef: s.ownerRef, elementKind: segmentElementKind(kind) },
@@ -2812,6 +2886,25 @@ function segmentRect(seg: PreviewSegment): V3Rect {
 export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): SceneV3 {
   const stopNotes: string[] = [];
 
+  // T1 (§0.2/§0.3/§Architektura „ENM → TERMINAL GRAPH → … → LAYOUT"): graf
+  // elektryczny i jego walidacja PRZED jakąkolwiek kompozycją — layout NIGDY
+  // nie tworzy topologię, wyłącznie ją rysuje (dowód: `sceneConformance.
+  // test.ts`). `edgeDomainByRef` jest JEDNO źródło prawdy „w jakiej domenie
+  // napięciowej żyje ta krawędź ENM" dla `classifyStationSegmentKind`
+  // (fix defektu (a) B-02) — WYŁĄCZNIE gałęzie (`graph.edges`; transformatory
+  // NIGDY nie dostają wpisu tutaj, bo same SĄ granicą, nie żyją W domenie).
+  const electricalGraph = buildTerminalGraph(snapshot);
+  const electricalGraphValidation = validateElectricalGraph(electricalGraph);
+  const edgeDomainByRef = new Map<string, 'lv' | 'sn'>();
+  for (const edge of electricalGraph.edges) {
+    const fromNode = electricalGraph.nodes.get(edge.fromBusRef);
+    if (!fromNode) continue; // nierozwiązane — inwariant 4 już to zgłasza, zero domysłu domeny tutaj.
+    edgeDomainByRef.set(edge.ref, fromNode.voltageKv <= 1 ? 'lv' : 'sn');
+  }
+  for (const violation of electricalGraphValidation.violations) {
+    stopNotes.push(`Graf elektryczny (${violation.code}): ${violation.messagePl}`);
+  }
+
   const sldData = buildSldDataFromSnapshot(snapshot, snapshot.logical_views ?? null, null);
   const stationById = new Map<string, StationOnRunRendererProps>(sldData.stations.map((s) => [s.id, s]));
   // Recenzja NO-GO 2026-07-17 pkt 13: kod końca przęsła do etykiet
@@ -3469,7 +3562,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
     rowLayout.columnsResult.columns.forEach((col, i) => {
       const measureInput = rowLayout.measureInputs[i];
       const props = stationById.get(measureInput.id)!;
-      const composed = composeRowStation(measureInput, props, col, rowLayout.busAxisY, rowLayout.blockTopY, lod, stopNotes);
+      const composed = composeRowStation(measureInput, props, col, rowLayout.busAxisY, rowLayout.blockTopY, lod, stopNotes, edgeDomainByRef);
       const rowStation: RowStation = { id: measureInput.id, composed };
       rowStations.push(rowStation);
       mainRow.push(rowStation);
@@ -4094,7 +4187,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       feederLayout.columnsResult.columns.forEach((col, i) => {
         const measureInput = feederLayout.measureInputs[i];
         const props = stationById.get(measureInput.id)!;
-        const composed = composeRowStation(measureInput, props, col, feederLayout.busAxisY, feederLayout.blockTopY, lod, stopNotes);
+        const composed = composeRowStation(measureInput, props, col, feederLayout.busAxisY, feederLayout.blockTopY, lod, stopNotes, edgeDomainByRef);
         feederRow.push({ id: measureInput.id, composed });
         drawnStationIds.add(measureInput.id);
         allSymbols.push(...composed.symbols);
@@ -4350,7 +4443,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
     // WYŁĄCZNIE do odczytu `entryPort.x` (patrz niżej — jedyne użycie), więc
     // liczymy je zawsze przy pełnym szczególe; L1/L2 mają identyczny port pola,
     // więc `dx` bez zmian, zmienia się tylko L0 (dosuwa laterale do L1/L2).
-    const provisional = composeRowStation(layout.geometryInputs[0], firstProps0, firstCol0, layout.busAxisY, layout.blockTopY, 2, []);
+    const provisional = composeRowStation(layout.geometryInputs[0], firstProps0, firstCol0, layout.busAxisY, layout.blockTopY, 2, [], edgeDomainByRef);
     const dx = snapToGrid(channelX - provisional.entryPort.x);
     // pkt 13 (recenzja NO-GO 2026-07-17): korytarz mierzony na TYM SAMYM
     // tekście, który zostanie narysowany (para końców origin↔stacja0).
@@ -4424,7 +4517,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
     layout.columnsResult.columns.forEach((col, i) => {
       const measureInput = layout.measureInputs[i];
       const props = stationById.get(measureInput.id)!;
-      const composed = composeRowStation(measureInput, props, col, layout.busAxisY, layout.blockTopY, lod, stopNotes);
+      const composed = composeRowStation(measureInput, props, col, layout.busAxisY, layout.blockTopY, lod, stopNotes, edgeDomainByRef);
       lateralRow.push({ id: measureInput.id, composed });
       drawnStationIds.add(measureInput.id);
       allSymbols.push(...composed.symbols);
@@ -5021,6 +5114,8 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       gpzZone: gpzGeometry?.zone ?? null,
       neutralEarthingNotePl: gpzGeometry?.neutralEarthingNotePl ?? null,
       lateralShelves: packer.records(),
+      electricalGraphStatus: electricalGraphValidation.status,
+      electricalGraphViolations: electricalGraphValidation.violations,
     },
   };
 }

@@ -1,8 +1,12 @@
 /**
  * Kreator „Dodaj odbiór nN" (V12K-050, G-NN) — ui2, kreatory/rama.
  *
- * Katalog OBCIAZENIE opcjonalny; prąd/S liczy backend (R1), moc bierną Q wyprowadza
- * operacja `add_nn_load` z cosφ. ZERO fizyki w UI. Odbiory zasilają rozpływ mocy,
+ * Katalog-first domyślnie (typ OBCIAZENIE wymagany); tryb ręczny (ekspercki,
+ * karta D4) zwalnia z katalogu JAWNIE, przez przełącznik, i wysyła
+ * `source_mode: 'EKSPERCKI_RECZNY'` — dokładnie ten wyróżnik, którym operacja
+ * domenowa `add_nn_load` i bramka API (`api/domain_ops_policy.py`) już się
+ * posługują. Prąd/S liczy backend (R1), moc bierną Q wyprowadza operacja
+ * `add_nn_load` z cosφ. ZERO fizyki w UI. Odbiory zasilają rozpływ mocy,
  * analizę łuku, bilans energii i identyfikację granic.
  */
 
@@ -15,6 +19,7 @@ import {
   fetchCableRatedCurrent,
   type CableRatedCurrentResponse,
 } from '../../../ui/network-build/forms/cableVoltageDropApi';
+import { validateCatalogFirst } from '../../../ui/network-build/forms/catalogFirstRules';
 import { useActiveOperationContext, useNetworkBuildStore } from '../../../ui/network-build/networkBuildStore';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import {
@@ -28,6 +33,7 @@ import {
   PanelTeorii,
   PoleKatalogu,
   PoleLiczbowe,
+  PolePrzelacznik,
   PoleTekstowe,
   PoleWyboru,
   RzadWartosci,
@@ -173,9 +179,15 @@ export function KreatorOdbioruNn() {
       setBladGlobalny(T.brakZakresu);
       return;
     }
+    const payload = zbudujPayload(dane, kontekst);
+    const bladKatalogFirst = validateCatalogFirst('add_nn_load', payload);
+    if (bladKatalogFirst) {
+      setBladGlobalny(bladKatalogFirst);
+      return;
+    }
     setBladGlobalny(null);
     try {
-      const response = await executeDomainOperation(activeCaseId, 'add_nn_load', zbudujPayload(dane, kontekst));
+      const response = await executeDomainOperation(activeCaseId, 'add_nn_load', payload);
       if (!response) {
         setBladGlobalny(useSnapshotStore.getState().error ?? T.walidacjaStopka);
         return;
@@ -196,6 +208,11 @@ export function KreatorOdbioruNn() {
       etykieta: T.wierszOdplyw,
       stan: hasOdplyw ? 'kompletne' : 'brak',
       wartosc: kontekst.feeder_name || (hasOdplyw ? 'Wskazany' : 'Brak'),
+    },
+    {
+      etykieta: T.pochodzenieDanychTytul,
+      stan: dane.manual_mode || dane.catalog_ref ? 'kompletne' : 'brak',
+      wartosc: dane.manual_mode ? T.pochodzenieReczne : dane.catalog_ref ? T.pochodzenieKatalog : '—',
     },
     {
       etykieta: T.wierszMoc,
@@ -275,17 +292,37 @@ export function KreatorOdbioruNn() {
 
       {krok === 'dane' ? (
         <KreatorSekcja tytul={T.krokDane} testid="mvd-kreator-odbior-dane">
-          <KreatorInfo>{T.typPomoc}</KreatorInfo>
-          <PoleKatalogu
-            etykieta={T.typKatalog}
-            wartosc={dane.catalog_ref}
-            onZmiana={zmienKatalog}
-            opcje={opcjeTypow}
-            status={bladKatalogu ? 'error' : 'ready'}
-            placeholder={T.typKatalogPlaceholder}
-            komunikatBledu={bladKatalogu ?? T.typBlad}
-            testid="mvd-kreator-odbior-katalog"
-          />
+          <KreatorSekcja tytul={T.trybOdbioruTytul} testid="mvd-kreator-odbior-tryb">
+            <PolePrzelacznik
+              ariaLabel={T.trybOdbioruTytul}
+              testid="mvd-kreator-odbior-tryb-przel"
+              wartosc={dane.manual_mode ? 'reczny' : 'katalog'}
+              opcje={[
+                { id: 'katalog', etykieta: T.trybKatalog },
+                { id: 'reczny', etykieta: T.trybReczny },
+              ]}
+              onZmiana={(id) => zmien('manual_mode', id === 'reczny')}
+            />
+            {dane.manual_mode ? <KreatorInfo>{T.trybRecznyInfo}</KreatorInfo> : null}
+          </KreatorSekcja>
+
+          {!dane.manual_mode ? (
+            <>
+              <KreatorInfo>{T.typPomoc}</KreatorInfo>
+              <PoleKatalogu
+                etykieta={T.typKatalog}
+                wartosc={dane.catalog_ref}
+                onZmiana={zmienKatalog}
+                opcje={opcjeTypow}
+                status={bladKatalogu ? 'error' : 'ready'}
+                placeholder={T.typKatalogPlaceholder}
+                komunikatBledu={bladKatalogu ?? T.typBlad}
+                wymagane
+                blad={bladDlaPola('catalog_ref')}
+                testid="mvd-kreator-odbior-katalog"
+              />
+            </>
+          ) : null}
           <KreatorSiatka kolumny={2}>
             <PoleLiczbowe
               etykieta={T.moc}
@@ -435,6 +472,10 @@ export function KreatorOdbioruNn() {
         <KreatorSekcja tytul={T.krokZapis} testid="mvd-kreator-odbior-zapis">
           <KreatorInfo>{T.downstreamOpis}</KreatorInfo>
           <KreatorSiatka kolumny={2}>
+            <RzadWartosci
+              etykieta={T.pochodzenieDanychTytul}
+              wartosc={dane.manual_mode ? T.pochodzenieReczne : T.pochodzenieKatalog}
+            />
             <RzadWartosci etykieta={T.wierszMoc} wartosc={fmtKw(dane.active_power_kw)} />
             <RzadWartosci etykieta={T.wierszCos} wartosc={dane.cos_phi.toFixed(2)} />
             <RzadWartosci

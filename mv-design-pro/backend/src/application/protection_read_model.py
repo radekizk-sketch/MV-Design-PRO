@@ -733,11 +733,14 @@ def _build_overcurrent_setting(
     elif setpoint.get("basis") == "ABS" and setpoint.get("unit") == "A":
         pickup_a = setpoint.get("abs_value")
 
+    curve_type = function.get("curve_type")
+    characteristic = CURVE_TYPE_MAP.get(str(curve_type), "DT") if curve_type else "DT"
+
     return {
         "pickup_a": pickup_a,
         "pickup_in_multiplier": setpoint.get("basis") == "IN" and pickup_a is None,
         "trip_time_s": function.get("time_delay_s"),
-        "characteristic": CURVE_TYPE_MAP.get(function.get("curve_type"), "DT"),
+        "characteristic": characteristic,
         # TMS spójny z krzywą I-t (E-3): realny mnożnik czasowy z it_curve dla
         # charakterystyk odwrotnych; None dla DT/braku (bez zgadywania).
         "tms": (function.get("it_curve") or {}).get("time_multiplier"),

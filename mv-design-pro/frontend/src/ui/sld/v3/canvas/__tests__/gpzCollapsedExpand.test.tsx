@@ -45,7 +45,11 @@ function viewBoxOf(container: HTMLElement): readonly number[] {
 describe('KD-5 — próg rozwinięcia (czysta matematyka, wspólne progi kamery)', () => {
   it('współczynnik przenosi refScale PONAD próg wejścia z L0 na L1', () => {
     const prog = DEFAULT_LOD_THRESHOLDS.l0Max * (1 + LOD_HYSTERESIS_MARGIN);
-    for (const refScale of [0.05, 0.1203, 0.3, 0.5]) {
+    // 1800/11117,87… = skala kadru golden sieci 53 stacji (viewport 1800×1100,
+    // arkusz 8296×5755) — wartość, dla której `target/refScale*refScale`
+    // lądowało ułamek ULP PONIŻEJ progu (pomiar 2026-09-01) i blok GPZ nie
+    // rozwijał się; przypięta obok syntetycznych.
+    for (const refScale of [0.05, 0.1203, 0.3, 0.5, 1800 / 11117.872340425532]) {
       const factor = zoomFactorToEnterNextLod(refScale, 0);
       expect(factor).toBeGreaterThan(1);
       expect(refScale * factor).toBeCloseTo(prog, 10);

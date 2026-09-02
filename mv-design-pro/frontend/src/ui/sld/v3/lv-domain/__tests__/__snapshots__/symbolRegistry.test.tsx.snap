@@ -1,0 +1,83 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`REJESTR_SYMBOLI_NN — typ gałęzi ENM × device_kind × przestrzeń katalogu → symbol CAD > rejestr (typ → symbol CAD · klasa · nazwa polska · nośnik stanu) jest zamrożony snapshotem 1`] = `
+{
+  "breaker": {
+    "klasaOznaczenia": "QF",
+    "nazwaPl": "Wyłącznik",
+    "nosnikStanu": "noz",
+    "rozmiar": "aparat",
+    "symbolId": "cad.wylacznik",
+    "terminale": [
+      "a",
+      "b",
+    ],
+  },
+  "bus_coupler": {
+    "klasaOznaczenia": "QBC",
+    "nazwaPl": "Łącznik (symbol ogólny) — łącznik szyn o nieokreślonej funkcji",
+    "nosnikStanu": "noz",
+    "rozmiar": "sprzeglo",
+    "symbolId": "cad.lacznik",
+    "terminale": [
+      "a",
+      "b",
+    ],
+  },
+  "cable": {
+    "klasaOznaczenia": "W",
+    "nazwaPl": "Kabel",
+    "nosnikStanu": "brak",
+    "rozmiar": "przewod",
+    "symbolId": null,
+    "terminale": [
+      "a",
+      "b",
+    ],
+  },
+  "disconnector": {
+    "klasaOznaczenia": "QS",
+    "nazwaPl": "Odłącznik",
+    "nosnikStanu": "noz",
+    "rozmiar": "aparat",
+    "symbolId": "cad.odlacznik",
+    "terminale": [
+      "a",
+      "b",
+    ],
+  },
+  "fuse": {
+    "klasaOznaczenia": "FU",
+    "nazwaPl": "Bezpiecznik (wkładka topikowa)",
+    "nosnikStanu": "brak",
+    "rozmiar": "aparat",
+    "symbolId": "cad.bezpiecznik",
+    "terminale": [
+      "a",
+      "b",
+    ],
+  },
+  "line_overhead": {
+    "klasaOznaczenia": "W",
+    "nazwaPl": "Linia napowietrzna",
+    "nosnikStanu": "brak",
+    "rozmiar": "przewod",
+    "symbolId": null,
+    "terminale": [
+      "a",
+      "b",
+    ],
+  },
+  "switch": {
+    "klasaOznaczenia": "QS",
+    "nazwaPl": "Rozłącznik (rozłącznik izolacyjny)",
+    "nosnikStanu": "noz",
+    "rozmiar": "aparat",
+    "symbolId": "cad.rozlacznik",
+    "terminale": [
+      "a",
+      "b",
+    ],
+  },
+}
+`;

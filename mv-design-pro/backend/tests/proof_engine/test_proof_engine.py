@@ -25,6 +25,7 @@ from application.proof_engine.proof_generator import (
     SC3FInput,
     VDROPInput,
     VDROPSegmentInput,
+    VDROPTransformerBoundaryInput,
 )
 from application.proof_engine.types import (
     LoadCurrentsCounterfactualInput,
@@ -676,6 +677,326 @@ class TestVDROPPodstawaKonca:
 
 
 # =============================================================================
+# Karta P0.5b — VDROP multi-segment (N-D6: likwidacja limitu MVP=1 + granica TR)
+# =============================================================================
+
+
+def _klasyczny_spadek(
+    *,
+    r_ohm_per_km: float,
+    x_ohm_per_km: float,
+    length_km: float,
+    p_mw: float,
+    q_mvar: float,
+    u_n_kv: float,
+) -> tuple[float, float]:
+    """Odtwórz klasyczny wzór ΔU=(R·P+X·Q)/U_n² poza generatorem — jedyny sposób
+    napisać ORACLE, który nie jest kopią kodu produkcyjnego pod inną nazwą."""
+    r_ohm = r_ohm_per_km * length_km
+    x_ohm = x_ohm_per_km * length_km
+    delta_u_r = (r_ohm * p_mw) / (u_n_kv**2) * 100
+    delta_u_x = (x_ohm * q_mvar) / (u_n_kv**2) * 100
+    delta_u = delta_u_r + delta_u_x
+    return delta_u, delta_u / 100.0 * u_n_kv
+
+
+class TestVDROPLancuchWieloodcinkowy:
+    """Karta P0.5b (2026-08-13): dowód VDROP obsługuje ŁAŃCUCH dowolnej długości
+    (linia/kabel + granica transformatora), nie tylko MVP=1 (N-D6).
+    """
+
+    #: Trzy odcinki nN o RÓŻNYCH przekrojach/długościach — pin na permutację
+    #: (wzorzec CLAUDE.md „reguła KLASA, NIE INSTANCJA": wartości parami różne).
+    _ODCINKI_NN = (
+        {"r": 0.2, "x": 0.1, "length": 0.1, "p": 0.01, "q": 0.005, "u_n": 0.4},
+        {"r": 0.3, "x": 0.15, "length": 0.08, "p": 0.008, "q": 0.004, "u_n": 0.4},
+        {"r": 0.4, "x": 0.2, "length": 0.05, "p": 0.005, "q": 0.0025, "u_n": 0.4},
+    )
+
+    def _lancuch_nn(self, u_source_kv: float) -> VDROPInput:
+        segments = [
+            VDROPSegmentInput(
+                segment_id=f"NN{i + 1}",
+                from_bus_id=f"B{i}",
+                to_bus_id=f"B{i + 1}",
+                r_ohm_per_km=odc["r"],
+                x_ohm_per_km=odc["x"],
+                length_km=odc["length"],
+                p_mw=odc["p"],
+                q_mvar=odc["q"],
+                u_n_kv=odc["u_n"],
+            )
+            for i, odc in enumerate(self._ODCINKI_NN)
+        ]
+        return VDROPInput(
+            project_name="Test nN",
+            case_name="Łańcuch 3-odcinkowy nN",
+            source_bus_id="B0",
+            target_bus_id="B3",
+            run_timestamp=datetime(2026, 8, 13, 10, 0, 0),
+            solver_version="1.0.0-test",
+            u_source_kv=u_source_kv,
+            segments=segments,
+        )
+
+    def test_lancuch_trzech_odcinkow_nn_dowod_liczbowy(self) -> None:
+        """3 odcinki nN, różne przekroje/długości: ΔU_i per odcinek w kV, suma,
+        U_end — wartości ZMIERZONE (dowód liczbowy karty).
+
+        Oracle niezależny od generatora (``_klasyczny_spadek``): R=r·l, X=x·l,
+        ΔU=(R·P+X·Q)/U_n²·100%, ΔU_kv=ΔU/100·U_n — dokładnie wzór EQ_VDROP_001..005.
+        """
+        u_source_kv = 0.415
+        dane = self._lancuch_nn(u_source_kv)
+        proof = ProofGenerator.generate_vdrop_proof(dane)
+
+        # 3 odcinki × 5 kroków (R,X,ΔU_R,ΔU_X,ΔU) + suma (006) + U (007) = 17.
+        assert len(proof.steps) == 17
+        oczekiwane_id = [
+            "EQ_VDROP_001",
+            "EQ_VDROP_002",
+            "EQ_VDROP_003",
+            "EQ_VDROP_004",
+            "EQ_VDROP_005",
+        ] * 3 + ["EQ_VDROP_006", "EQ_VDROP_007"]
+        assert [s.equation.equation_id for s in proof.steps] == oczekiwane_id
+        assert [s.step_number for s in proof.steps] == list(range(1, 18))
+
+        oczekiwane_kv: list[float] = []
+        oczekiwane_pct: list[float] = []
+        for odc in self._ODCINKI_NN:
+            pct, kv = _klasyczny_spadek(
+                r_ohm_per_km=odc["r"],
+                x_ohm_per_km=odc["x"],
+                length_km=odc["length"],
+                p_mw=odc["p"],
+                q_mvar=odc["q"],
+                u_n_kv=odc["u_n"],
+            )
+            oczekiwane_pct.append(pct)
+            oczekiwane_kv.append(kv)
+
+        oczekiwany_total_kv = sum(oczekiwane_kv)
+        oczekiwany_total_pct = sum(oczekiwane_pct)
+        oczekiwany_u_end = u_source_kv - oczekiwany_total_kv
+
+        kluczowe = proof.summary.key_results
+        assert kluczowe["delta_u_total_percent"].value == pytest.approx(
+            oczekiwany_total_pct, abs=1e-12
+        )
+        assert kluczowe["delta_u_total_kv"].value == pytest.approx(oczekiwany_total_kv, abs=1e-12)
+        assert kluczowe["u_kv"].value == pytest.approx(oczekiwany_u_end, abs=1e-12)
+
+        # Zmierzone (dowód liczbowy, wpisane do meldunku karty): ΔU_total ≈
+        # 0.384375 %, ΔU_total_kV ≈ 1.5375 V, U_end ≈ 0.413463 kV.
+        assert oczekiwany_total_pct == pytest.approx(0.384375, abs=1e-9)
+        assert oczekiwany_total_kv == pytest.approx(0.0015375, abs=1e-12)
+        assert oczekiwany_u_end == pytest.approx(0.4134625, abs=1e-9)
+
+    def test_lancuch_trzech_odcinkow_nn_kroki_maja_wlasciwe_id_gniazda(self) -> None:
+        """Każdy krok odcinka jest podpisany WŁAŚCIWYM ``segment_id`` w tytule —
+        łańcuch nie zlepia trzech odcinków w jeden nienazwany zestaw kroków."""
+        proof = ProofGenerator.generate_vdrop_proof(self._lancuch_nn(0.415))
+        for i in range(3):
+            segment_id = f"NN{i + 1}"
+            kroki_odcinka = proof.steps[i * 5 : i * 5 + 5]
+            for krok in kroki_odcinka:
+                assert segment_id in krok.title_pl, (segment_id, krok.title_pl)
+
+    def _lancuch_mieszany(self, u_source_kv: float, u_secondary_tr_kv: float) -> VDROPInput:
+        seg_sn = VDROPSegmentInput(
+            segment_id="SN_KABEL",
+            from_bus_id="GPZ",
+            to_bus_id="TR_PIERWOTNE",
+            r_ohm_per_km=0.2,
+            x_ohm_per_km=0.08,
+            length_km=2.0,
+            p_mw=0.5,
+            q_mvar=0.2,
+            u_n_kv=15.0,
+        )
+        _pct_sn, kv_sn = _klasyczny_spadek(
+            r_ohm_per_km=0.2, x_ohm_per_km=0.08, length_km=2.0, p_mw=0.5, q_mvar=0.2, u_n_kv=15.0
+        )
+        granica_tr = VDROPTransformerBoundaryInput(
+            segment_id="TR_SN_NN",
+            from_bus_id="TR_PIERWOTNE",
+            to_bus_id="TR_WTORNE",
+            u_primary_kv=u_source_kv - kv_sn,
+            u_secondary_kv=u_secondary_tr_kv,
+        )
+        seg_nn = VDROPSegmentInput(
+            segment_id="NN_KABEL",
+            from_bus_id="TR_WTORNE",
+            to_bus_id="ODBIOR_NN",
+            r_ohm_per_km=0.5,
+            x_ohm_per_km=0.1,
+            length_km=0.06,
+            p_mw=0.01,
+            q_mvar=0.003,
+            u_n_kv=0.4,
+        )
+        return VDROPInput(
+            project_name="Test SN+TR+nN",
+            case_name="Łańcuch mieszany",
+            source_bus_id="GPZ",
+            target_bus_id="ODBIOR_NN",
+            run_timestamp=datetime(2026, 8, 13, 11, 0, 0),
+            solver_version="1.0.0-test",
+            u_source_kv=u_source_kv,
+            segments=[seg_sn, granica_tr, seg_nn],
+        )
+
+    def test_lancuch_mieszany_sn_tr_nn_nazywa_zmiane_podstawy_jawnie(self) -> None:
+        """Łańcuch SN kabel → TR → nN kabel: krok EQ_VDROP_010 nazywa JAWNIE
+        zmianę podstawy napięcia na granicy transformatora (uzgodnienie U4) —
+        bez mieszania podstaw (lekcja karty PODSTAWA-VDROP).
+        """
+        u_source_kv = 15.2
+        u_secondary_tr_kv = 0.39
+        dane = self._lancuch_mieszany(u_source_kv, u_secondary_tr_kv)
+        proof = ProofGenerator.generate_vdrop_proof(dane)
+
+        # SN (5 kroków) + granica TR (1 krok, EQ_VDROP_010) + nN (5 kroków) +
+        # suma (006) + U (007) = 13.
+        assert len(proof.steps) == 13
+        oczekiwane_id = [
+            "EQ_VDROP_001",
+            "EQ_VDROP_002",
+            "EQ_VDROP_003",
+            "EQ_VDROP_004",
+            "EQ_VDROP_005",
+            "EQ_VDROP_010",
+            "EQ_VDROP_001",
+            "EQ_VDROP_002",
+            "EQ_VDROP_003",
+            "EQ_VDROP_004",
+            "EQ_VDROP_005",
+            "EQ_VDROP_006",
+            "EQ_VDROP_007",
+        ]
+        assert [s.equation.equation_id for s in proof.steps] == oczekiwane_id
+
+        krok_tr = proof.steps[5]
+        assert krok_tr.equation.equation_id == "EQ_VDROP_010"
+        assert "TR_SN_NN" in krok_tr.title_pl
+        assert (
+            "podstaw" in krok_tr.title_pl.lower() or "podstaw" in krok_tr.equation.name_pl.lower()
+        )
+        _pct_sn, kv_sn = _klasyczny_spadek(
+            r_ohm_per_km=0.2, x_ohm_per_km=0.08, length_km=2.0, p_mw=0.5, q_mvar=0.2, u_n_kv=15.0
+        )
+        u_primary_tr = u_source_kv - kv_sn
+        oczekiwany_delta_tr_kv = u_primary_tr - u_secondary_tr_kv
+        assert krok_tr.result.value == pytest.approx(oczekiwany_delta_tr_kv, abs=1e-12)
+        assert krok_tr.result.unit == "kV"
+        assert krok_tr.unit_check.passed
+        # Wejścia kroku TR MUSZĄ być napięciami POLICZONYMI PRZEZ ROZPŁYW
+        # (U_1/U_2), NIE wynikiem klasycznego wzoru R/X/P/Q — transformator
+        # wyklucza go od podstaw (RODZAJE_ODCINKA, voltage_drop_binding.py).
+        wartosci_wejsciowe = {v.symbol: v.value for v in krok_tr.input_values}
+        assert wartosci_wejsciowe["U_{1}"] == pytest.approx(u_primary_tr, abs=1e-12)
+        assert wartosci_wejsciowe["U_{2}"] == pytest.approx(u_secondary_tr_kv, abs=1e-12)
+
+        _pct_nn, kv_nn = _klasyczny_spadek(
+            r_ohm_per_km=0.5, x_ohm_per_km=0.1, length_km=0.06, p_mw=0.01, q_mvar=0.003, u_n_kv=0.4
+        )
+        oczekiwany_total_kv = kv_sn + oczekiwany_delta_tr_kv + kv_nn
+        oczekiwany_u_end = u_source_kv - oczekiwany_total_kv
+
+        kluczowe = proof.summary.key_results
+        assert kluczowe["delta_u_total_kv"].value == pytest.approx(oczekiwany_total_kv, abs=1e-9)
+        assert kluczowe["u_kv"].value == pytest.approx(oczekiwany_u_end, abs=1e-9)
+        # Zmierzone (dowód liczbowy): ΔU_total_kV ≈ 14.810795 kV, U_end ≈
+        # 0.389205 kV — dominowane przez granicę TR (~14,79 kV), nie przez
+        # klasyczny spadek wzdłużny odcinków (rzędu dziesiątych/tysięcznych V).
+        assert oczekiwany_total_kv == pytest.approx(14.810795, abs=1e-6)
+        assert oczekiwany_u_end == pytest.approx(0.389205, abs=1e-6)
+
+    def test_antycyrkularnosc_kroku_tr_niezalezna_od_u_source(self) -> None:
+        """Wkład granicy TR do ΔU_total_kV NIE zależy od ``u_source_kv`` całego
+        łańcucha — ta sama para (U_1, U_2) daje TEN SAM wkład niezależnie od
+        tego, gdzie zaczyna się dowód (wzorzec PODSTAWA-VDROP/test_delta_u_total_kv
+        _niezalezne_od_u_source, rozszerzony na krok granicy transformatora)."""
+        dane_a = self._lancuch_mieszany(u_source_kv=15.2, u_secondary_tr_kv=0.39)
+        dane_b = self._lancuch_mieszany(u_source_kv=20.0, u_secondary_tr_kv=0.39)
+
+        # Ustaw TĘ SAMĄ parę (U_1, U_2) na obu wejściach — inaczej zmiana
+        # u_source_kv zmieniłaby też u_primary_kv (bo test buduje go z
+        # u_source_kv - kv_sn) i wynik różniłby się z dwóch niezależnych
+        # powodów naraz.
+        u_primary_wspolny = 14.5
+        dane_a.segments[1] = VDROPTransformerBoundaryInput(
+            segment_id="TR_SN_NN",
+            from_bus_id="TR_PIERWOTNE",
+            to_bus_id="TR_WTORNE",
+            u_primary_kv=u_primary_wspolny,
+            u_secondary_kv=0.39,
+        )
+        dane_b.segments[1] = VDROPTransformerBoundaryInput(
+            segment_id="TR_SN_NN",
+            from_bus_id="TR_PIERWOTNE",
+            to_bus_id="TR_WTORNE",
+            u_primary_kv=u_primary_wspolny,
+            u_secondary_kv=0.39,
+        )
+
+        proof_a = ProofGenerator.generate_vdrop_proof(dane_a)
+        proof_b = ProofGenerator.generate_vdrop_proof(dane_b)
+
+        krok_tr_a = next(s for s in proof_a.steps if s.equation.equation_id == "EQ_VDROP_010")
+        krok_tr_b = next(s for s in proof_b.steps if s.equation.equation_id == "EQ_VDROP_010")
+        assert krok_tr_a.result.value == pytest.approx(krok_tr_b.result.value, abs=1e-12)
+
+    def test_lancuch_mieszany_deterministyczny(self) -> None:
+        """Ten sam łańcuch mieszany (SN+TR+nN) → identyczny proof.json (dwa biegi)."""
+        artifact_id = uuid4()
+        dane = self._lancuch_mieszany(u_source_kv=15.2, u_secondary_tr_kv=0.39)
+
+        proof_1 = ProofGenerator.generate_vdrop_proof(dane, artifact_id).to_dict()
+        proof_2 = ProofGenerator.generate_vdrop_proof(dane, artifact_id).to_dict()
+        for d in (proof_1, proof_2):
+            del d["document_id"]
+            del d["created_at"]
+        assert proof_1 == proof_2
+
+    def test_lancuch_wieloodcinkowy_pozwolony_MVP_zniesiony(self) -> None:
+        """N-D6: limit MVP=1 zniesiony — łańcuch >1 odcinków NIE podnosi wyjątku
+        (przed kartą P0.5b: ``ValueError('VDROP MVP requires exactly one segment.')``)."""
+        proof = ProofGenerator.generate_vdrop_proof(self._lancuch_nn(0.415))
+        assert proof is not None
+        assert len(proof.steps) > 7
+
+    def test_antycyrkularnosc_lancucha_delta_u_total_kv_niezalezne_od_u_source(self) -> None:
+        """ΔU_total_kV łańcucha 3-odcinkowego NIE zależy od ``u_source_kv`` —
+        rozszerzenie ``TestVDROPPodstawaKonca.
+        test_delta_u_total_kv_niezalezne_od_u_source`` na kroki łańcuchowe
+        (ten sam wzorzec antycyrkularny PODSTAWA-VDROP, karta P0.5b).
+
+        Iniekcja karty (podmiana źródła ΔU_i na wynik biegu zamiast łańcucha
+        EQ_VDROP_001..005 tego dowodu) MUSI dać tu czerwień — zmierzone ręcznie
+        w tej karcie przez tymczasową podmianę ``segment_drops_kv.append(...)``
+        na ``u_source_kv - segment.u_n_kv`` w ``generate_vdrop_proof`` i przywrócenie
+        po potwierdzeniu czerwieni (patrz meldunek karty P0.5b).
+        """
+        dane_a = self._lancuch_nn(u_source_kv=0.415)
+        dane_b = self._lancuch_nn(u_source_kv=0.9)  # celowo odległe od dane_a
+
+        proof_a = ProofGenerator.generate_vdrop_proof(dane_a)
+        proof_b = ProofGenerator.generate_vdrop_proof(dane_b)
+
+        delta_a = proof_a.summary.key_results["delta_u_total_kv"].value
+        delta_b = proof_b.summary.key_results["delta_u_total_kv"].value
+        assert delta_a == pytest.approx(delta_b, abs=1e-12)
+
+        # U za to MUSI się różnić dokładnie o różnicę u_source — jedyna
+        # wielkość, która smie zależeć od u_source_kv całego łańcucha, to U.
+        u_a = proof_a.summary.key_results["u_kv"].value
+        u_b = proof_b.summary.key_results["u_kv"].value
+        assert (u_b - u_a) == pytest.approx(dane_b.u_source_kv - dane_a.u_source_kv, abs=1e-12)
+
+
+# =============================================================================
 # SC1 Tests (P11.1c)
 # =============================================================================
 
@@ -1226,14 +1547,18 @@ class TestP11_1c_QU_VDROP_Link:
 
     def test_qu_vdrop_no_new_equations(self):
         """
-        P11.1c: Nie dodano nowych równań VDROP.
+        P11.1c: link Q(U)→VDROP (EQ_QU_005) nie dodał WŁASNYCH nowych równań VDROP.
 
-        VDROP_EQUATIONS powinno mieć dokładnie 7 równań (bez zmian).
+        Baza podniesiona z 7 do 8 kartą P0.5b (2026-08-13): EQ_VDROP_010
+        (granica transformatora na łańcuchu multi-segment, N-D6/uzgodnienie U4)
+        jest równaniem VDROP samym w sobie, niezależnym od tego linku — więc
+        podbicie liczby tutaj NIE jest regresją intencji testu (P11.1c nie
+        dołożył NIC do rejestru VDROP), tylko aktualizacją bazowej liczby.
         """
         vdrop_eqs = EquationRegistry.get_vdrop_equations()
 
-        # Dokładnie 7 równań VDROP (bez nowych)
-        assert len(vdrop_eqs) == 7
+        # Dokładnie 8 równań VDROP (001-007 + granica TR 010 z karty P0.5b)
+        assert len(vdrop_eqs) == 8
 
         # Sprawdź że wszystkie oryginalne są obecne
         expected_ids = [
@@ -1244,14 +1569,15 @@ class TestP11_1c_QU_VDROP_Link:
             "EQ_VDROP_005",
             "EQ_VDROP_006",
             "EQ_VDROP_007",
+            "EQ_VDROP_010",
         ]
         for eq_id in expected_ids:
             assert eq_id in vdrop_eqs, f"Missing equation: {eq_id}"
 
-        # Upewnij się że NIE ma EQ_VDROP_008 ani wyższych
-        for eq_id in vdrop_eqs:
-            num = int(eq_id.split("_")[-1])
-            assert num <= 7, f"Unexpected VDROP equation: {eq_id}"
+        # Upewnij się że NIE ma równań VDROP spoza dokładnej, oczekiwanej listy
+        # (008/009 z archiwalnego docs/proof_engine/EQUATIONS_VDROP.md NIE są
+        # zaimplementowane — pin, że nikt ich nie doda po cichu przy okazji).
+        assert set(vdrop_eqs) == set(expected_ids)
 
     def test_qu_counterfactual_includes_u_delta(
         self, qu_counterfactual_input_with_vdrop: QUCounterfactualInput

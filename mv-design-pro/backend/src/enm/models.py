@@ -248,6 +248,16 @@ class Cable(BranchBase):
     return_conductor_cross_section_mm2: float | None = None
     return_conductor_material: str | None = None
     return_conductor_r_ohm_per_km_20c: float | None = None
+    # Karta P0.6 (nN, docs/nn/H_PLAN_IMPLEMENTACJI_NN.md §P0.6, luka G-05):
+    # reaktancja zyly powrotnej PE/PEN — brakowala w CALYM repozytorium (ani ten
+    # kabel SN/nN, ani katalogowy `CableType`/`LVCableType` jej nie niosly), a
+    # petla zwarcia L-PE/L-PEN wymaga R+jX zyly powrotnej z TEJ SAMEJ trasy co
+    # zyla fazowa (§0.1 karty). Pole addytywne/opcjonalne — brak (None) NIE jest
+    # domyslnym zerem: `fault_loop_builder`/warstwa aplikacji odmawia liczenia
+    # petli bez jawnej wartosci (fail-closed, zero fabrykacji); istniejace
+    # opublikowane kable bez tego pola waliduja sie i mapuja identycznie jak
+    # przed dodaniem.
+    return_conductor_x_ohm_per_km: float | None = None
     return_conductor_jth_1s_a_per_mm2: float | None = None
     return_conductor_ith_1s_a: float | None = None
     # Karta F-K1 faza 3: wytrzymalosc cieplna zwarciowa ZYLY FAZOWEJ (IEC 60949).
@@ -271,6 +281,15 @@ class Cable(BranchBase):
     endpoint_b_port: PortRef | None = None
     # Mufy kablowe (brief 1 §4 pkt 4) — punkty na segmencie kabla bez podziału topologii
     cable_joints: list[CableJoint] = []
+    # P0.1 nN (karta P0.1, C §4.1 add_nn_cable_segment): liczba identycznych torów
+    # kabla ułożonych równolegle na TEJ SAMEJ trasie (typowe dla przyłączy nN o
+    # dużym prądzie: 2-4 kable YAKY równolegle zamiast jednego przekroju). None/1 =
+    # pojedynczy tor (reduce-to-current-behavior — istniejące kable SN i nN bez tego
+    # pola walidują się i mapują identycznie jak przed dodaniem pola). Fizyka
+    # (Z_eff = Z/n, I_dop_eff = I_dop*n) w `enm/mapping.py` jest tą samą zasadą co
+    # `Transformer.n_parallel` (Z/n, Sn*n) — zero nowej heurystyki, standardowe
+    # łączenie równoległe impedancji identycznych torów.
+    n_parallel: int | None = None
 
 
 class SwitchBranch(BranchBase):
@@ -845,6 +864,10 @@ class Substation(ENMElement):
     - branch: Stacja odgałęźna (branch from main feeder)
     - terminal: Stacja końcowa (feeder terminus)
     - sectional: Stacja sekcyjna (sectional splitting station)
+    - rozdzielnica_nn: Wolnostojąca rozdzielnica/podrozdzielnica nN (RGnN) — kontener
+      logiczny bez fizyki, tak samo jak pozostałe station_type (karta P0.1 nN,
+      C §2.1). Szyna(-y) rozdzielnicy to zwykłe `Bus` w paśmie ≤1 kV; sekcje —
+      `nn_sections` poniżej.
     """
 
     station_type: Literal[
@@ -856,6 +879,7 @@ class Substation(ENMElement):
         "branch",
         "terminal",
         "sectional",
+        "rozdzielnica_nn",
     ]
     bus_refs: list[str] = []
     transformer_refs: list[str] = []
@@ -876,6 +900,12 @@ class Substation(ENMElement):
     # fixture'y i hashe pozostają nietknięte. Konsumenci: drzewo projektu,
     # kreator stacji, karta techniczna.
     designation: str | None = None
+    # P0.1 nN (C §2.1, analogia GPZSection): sekcje szyn rozdzielnicy nN (RGnN) —
+    # jawny rejestr domenowy, NIE wyliczany z layoutu SLD. Pusta lista = rozdzielnica
+    # jednosekcyjna (sekcja domyślna, jak `gpz_sections`). Addytywne/opcjonalne —
+    # stacje bez rozdzielnicy nN (station_type inny niż "rozdzielnica_nn") mają
+    # zawsze pustą listę i walidują się identycznie jak przed dodaniem pola.
+    nn_sections: list[NnSection] = []
 
 
 class GPZSection(BaseModel):
@@ -893,6 +923,26 @@ class GPZSection(BaseModel):
     incoming_source_ref: str | None = None
     left_coupler_ref: str | None = None
     right_coupler_ref: str | None = None
+
+
+class NnSection(BaseModel):
+    """Jawna sekcja szyny rozdzielnicy nN (RGnN) — analogia do `GPZSection`.
+
+    P0.1 nN (C §2.1, §4.1 add_nn_section_coupler): sekcja rozdzielnicy nN jest
+    prawdą domenową (jak sekcja GPZ), nie wyliczana wyłącznie z layoutu SLD.
+    Sprzęgło międzysekcyjne to zwykły `SwitchBranch` (`type="bus_coupler"`)
+    między `bus_ref` tej sekcji a `bus_ref` sekcji sąsiedniej — `coupler_ref`
+    wskazuje TĘ gałąź (referencja, nie duplikat danych).
+    """
+
+    section_id: str
+    order: int
+    bus_ref: str
+    coupler_ref: str | None = None
+    #: Referencje gałęzi zasilających TĘ sekcję (kabel/aparat dopływowy) — projekcja
+    #: odczytu dla SLD/inspektora, źródłem prawdy pozostaje graf (`from_bus_ref`/
+    #: `to_bus_ref` gałęzi), zgodnie z LV-INV-12.
+    incoming_refs: list[str] = []
 
 
 # ---------------------------------------------------------------------------

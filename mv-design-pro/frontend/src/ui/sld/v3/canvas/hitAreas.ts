@@ -57,7 +57,7 @@ import { SEGMENT_STROKE_WIDTH, type PreviewElementKind, type PreviewSegment, typ
 import { SYMBOL_DEFS } from '../symbols/defs';
 import type { OwnerKind } from '../layout/labels';
 import type { PlannedLabel } from './labelLegibility';
-import { STATION_TR_FIELD_GAP_TEXT } from '../layout/measure';
+import { LV_PORTAL_TITLE_TEXT, STATION_TR_FIELD_GAP_TEXT } from '../layout/measure';
 
 /**
  * Najmniejszy dopuszczalny wymiar obszaru trafienia w pikselach EKRANU.
@@ -77,6 +77,10 @@ export type HitObjectClass =
   | 'stacja'
   | 'aparat'
   | 'punkt-odgalezny'
+  // PORTAL nN (LV Domain Projection po B-02): symbol `lvPortal` na zacisku nN
+  // — obiekt RYSUNKU (przejście do projekcji nN), nie obiekt modelu: zero menu,
+  // klik otwiera projekcję nN stacji (`SldCanvasV3Workspace`).
+  | 'portal-nn'
   | 'transformator'
   | 'zrodlo'
   | 'uklad-der'
@@ -93,6 +97,7 @@ export const HIT_OBJECT_CLASSES: readonly HitObjectClass[] = [
   'stacja',
   'aparat',
   'punkt-odgalezny',
+  'portal-nn',
   'transformator',
   'zrodlo',
   'uklad-der',
@@ -221,6 +226,10 @@ function klasaSymbolu(elementKind: PreviewElementKind | undefined): HitObjectCla
     // magistrali, klikalny jak stacja, ale osobnego rodzaju (inwentarz sondy).
     case 'branchPoint':
       return 'punkt-odgalezny';
+    // PORTAL nN: przejście do projekcji nN — własny rodzaj (inwentarz sondy),
+    // klikalny jak stacja, ale bez menu (nie jest obiektem modelu).
+    case 'lvPortal':
+      return 'portal-nn';
     default:
       // `apparatus` oraz symbole rysunkowe bez kategorii (węzeł trasy, kropka T)
       // — jeden bucket „aparat", zgodnie z `classifySymbolElementKind`.
@@ -375,7 +384,12 @@ export function buildCanvasHitAreas(input: CanvasHitAreaInput): readonly CanvasH
       elementKind: symbol.meta?.elementKind,
       // TR2W-BEZ-POLA (§0.C.5): treść stanu niekompletnego — na kształcie
       // trafienia, bo to on odbiera wskazanie kursorem.
-      tytul: symbol.meta?.transformerFieldGap === true ? STATION_TR_FIELD_GAP_TEXT : undefined,
+      tytul:
+        symbol.meta?.transformerFieldGap === true
+          ? STATION_TR_FIELD_GAP_TEXT
+          : symbol.meta?.elementKind === 'lvPortal'
+            ? LV_PORTAL_TITLE_TEXT
+            : undefined,
       klasa: klasaSymbolu(symbol.meta?.elementKind),
       z: z++,
       obrys: { ksztalt: 'prostokat', x: rect.x, y: rect.y, width: rect.width, height: rect.height },

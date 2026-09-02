@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 from typing import Any, Literal
 from uuid import UUID, uuid4
 
-AnalysisType = Literal["PF", "short_circuit_sn", "fault_loop_nn"]
+AnalysisType = Literal["PF", "short_circuit_sn"]
 AnalysisRunStatus = Literal["CREATED", "VALIDATED", "RUNNING", "FINISHED", "FAILED"]
 ResultStatus = Literal["VALID", "OUTDATED"]
 AnalysisCompletenessStatus = Literal["complete", "partial", "failed", "not_applicable"]
@@ -152,8 +152,6 @@ class AnalysisRun:
 def infer_analysis_run_completeness(run: AnalysisRun) -> AnalysisCompletenessStatus:
     if run.status == "FAILED":
         return "failed"
-    if run.analysis_type == "fault_loop_nn":
-        return "not_applicable"
     if run.status != "FINISHED":
         return "partial"
     if run.result_status != "VALID":
@@ -180,7 +178,6 @@ def build_analysis_run_reproducibility(run: AnalysisRun) -> dict[str, Any]:
     solver_family = {
         "PF": "power_flow_newton",
         "short_circuit_sn": "iec60909_short_circuit",
-        "fault_loop_nn": "fault_loop_nn",
     }[run.analysis_type]
     return {
         "case_ref": str(run.operating_case_id),
@@ -200,12 +197,10 @@ def build_analysis_run_reproducibility(run: AnalysisRun) -> dict[str, Any]:
         "formula_set_version": {
             "PF": "pf_result_v1",
             "short_circuit_sn": "iec60909_v1",
-            "fault_loop_nn": "fault_loop_v1",
         }[run.analysis_type],
         "standard_basis_ref": {
             "PF": "NR_POWER_FLOW",
             "short_circuit_sn": "IEC_60909",
-            "fault_loop_nn": "FAULT_LOOP_NN",
         }[run.analysis_type],
         "input_hash": run.input_hash,
         "result_hash": _stable_hash(run.result_summary),
@@ -244,7 +239,6 @@ def build_analysis_run_case_context(run: AnalysisRun) -> dict[str, Any]:
     case_kind = {
         "PF": "ROZPLYW_MAX_OBC",
         "short_circuit_sn": "ZWARCIOWY_MAKS",
-        "fault_loop_nn": "POMIAROWY_PETLA_ZWARCIA",
     }[run.analysis_type]
     completeness = run.completeness_status or infer_analysis_run_completeness(run)
     quality_gate = (
@@ -263,7 +257,6 @@ def build_analysis_run_case_context(run: AnalysisRun) -> dict[str, Any]:
         "applicability_scope": {
             "PF": ["PF", "REPORT"],
             "short_circuit_sn": ["SC", "REPORT"],
-            "fault_loop_nn": ["NN", "REPORT"],
         }[run.analysis_type],
         "completeness": completeness,
         "completeness_legacy": {

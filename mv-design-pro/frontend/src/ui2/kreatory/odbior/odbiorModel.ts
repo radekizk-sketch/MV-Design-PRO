@@ -1,10 +1,14 @@
 /**
  * Model kreatora „Dodaj odbiór nN" (V12K-050, G-NN).
  *
- * Odbiór na odpływie nN. Katalog OBCIAZENIE opcjonalny (dopuszczalny tryb ręczny).
- * ZERO fizyki w UI — prąd/moc pozorną liczy backend (R1: cable-rated-current);
- * moc bierną Q wyprowadza operacja domenowa z cosφ (P·tan(arccos cosφ)), gdy Q
- * nie podano jawnie. Zapis = operacja domenowa `add_nn_load`.
+ * Odbiór na odpływie nN. Katalog-first domyślnie (typ OBCIAZENIE wymagany);
+ * tryb ręczny (ekspercki) — `manual_mode` — zwalnia z katalogu JAWNIE, przez
+ * przełącznik w kreatorze, i wysyła `source_mode: 'EKSPERCKI_RECZNY'` (karta
+ * D4: ten sam wyróżnik, którym operacja domenowa `add_nn_load` już znakuje
+ * odbiór bez pozycji katalogowej w migawce). ZERO fizyki w UI — prąd/moc
+ * pozorną liczy backend (R1: cable-rated-current); moc bierną Q wyprowadza
+ * operacja domenowa z cosφ (P·tan(arccos cosφ)), gdy Q nie podano jawnie.
+ * Zapis = operacja domenowa `add_nn_load`.
  */
 
 import { normalizeCatalogBinding } from '../../../ui/network-build/forms/catalogPayload';
@@ -40,6 +44,15 @@ const TOLERANCJA_SUMY_ZIP = 1e-6;
 
 export interface OdbiorFormData {
   catalog_ref: string | null;
+  /**
+   * Tryb doboru odbioru — `false` = z katalogu (domyślny, katalog-first),
+   * `true` = ręczny/ekspercki (bez pozycji katalogowej). Ten sam wzorzec
+   * przełącznika co `zrodloModel.ts` (`manual_mode`) dla `add_grid_source_sn`:
+   * karta D4 wiąże się z DOKŁADNIE tym samym wyróżnikiem po stronie backendu
+   * (`source_mode: 'EKSPERCKI_RECZNY'`), żeby ścieżka ekspercka była
+   * osiągalna JAWNIE, a nie tylko przez pozostawienie pola pustym.
+   */
+  manual_mode: boolean;
   nazwa: string;
   active_power_kw: number | null;
   cos_phi: number;
@@ -58,6 +71,7 @@ export interface BladPola {
 
 export const DANE_DOMYSLNE: OdbiorFormData = {
   catalog_ref: null,
+  manual_mode: false,
   nazwa: '',
   active_power_kw: 50,
   cos_phi: 0.93,
@@ -120,6 +134,15 @@ export function walidujFormularz(data: OdbiorFormData): BladPola[] {
   }
   if (data.cos_phi <= 0 || data.cos_phi > 1) {
     errors.push({ field: 'cos_phi', message: 'Współczynnik mocy cosφ musi być w zakresie (0, 1].' });
+  }
+  // Katalog-first pozostaje domyślne (karta D4): w trybie katalogowym pozycja
+  // katalogowa jest wymagana. Tryb ręczny (ekspercki) zwalnia z tego wymogu —
+  // JAWNIE, przez przełącznik, nie przez ciche pozostawienie pola pustym.
+  if (!data.manual_mode && !data.catalog_ref?.trim()) {
+    errors.push({
+      field: 'catalog_ref',
+      message: 'Wybierz typ odbioru z katalogu albo przełącz na tryb ręczny (ekspercki).',
+    });
   }
   errors.push(...walidujZip(data.zip));
   return errors;
@@ -194,9 +217,15 @@ export function zbudujPayload(
     connection_type: data.connection_type,
     ...(data.nazwa.trim() ? { load_name: data.nazwa.trim() } : {}),
     ...(isPositive(data.reactive_power_kvar) ? { reactive_power_kvar: data.reactive_power_kvar } : {}),
-    ...(data.catalog_ref?.trim()
+    ...(!data.manual_mode && data.catalog_ref?.trim()
       ? { catalog_binding: normalizeCatalogBinding(data.catalog_ref, 'OBCIAZENIE') }
       : {}),
+    // Tryb ręczny (ekspercki): DOKŁADNIE ten sam wyróżnik, którym operacja
+    // domenowa `add_nn_load` już znakuje odbiór bez pozycji katalogowej w
+    // migawce (`source_mode: 'EKSPERCKI_RECZNY'`), i którym `add_grid_source_sn`
+    // już rozpoznaje ręczny ekwiwalent. Bez tego pola brama API (bez jawnej
+    // deklaracji, katalog-first domyślne) odrzuca żądanie kodem 422.
+    ...(data.manual_mode ? { source_mode: 'EKSPERCKI_RECZNY' } : {}),
     // Model ZIP jedzie w payloadzie TYLKO gdy różni się od stałej mocy. Odbiór
     // stałomocowy wysyła dokładnie ten payload co przed powstaniem sekcji, więc
     // istniejąca ścieżka pozostaje nietknięta (a operacja i tak przyjmuje oba

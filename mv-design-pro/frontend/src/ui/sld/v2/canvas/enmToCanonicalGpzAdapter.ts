@@ -408,7 +408,7 @@ function buildTransformers(
     }));
 }
 
-function extractTransformerDesignation(name: string | null | undefined, idx: number): string {
+export function extractTransformerDesignation(name: string | null | undefined, idx: number): string {
   if (!name) return `T${idx + 1}`;
   // Spróbuj wyciągnąć "TR1", "TR-2", "T01" z nazwy.
   const match = name.match(/(TR|T)[\s-]?(\d+)/i);

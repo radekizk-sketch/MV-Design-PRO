@@ -90,9 +90,21 @@ def resolve_um_icu_from_catalog(
         # Cala aparatura laczeniowa nN w katalogu (WYLACZNIK_GLOWNY,
         # WYLACZNIK_ODPLYWOWY, ROZLACZNIK_BEZPIECZNIKOWY) ma zdolnosc
         # wylaczania — rozlacznik bezpiecznikowy dzieki wkladce NH (2c).
+        #
+        # KOREKTA (karta P0.7, „Stanowisko nN runda 3" —
+        # docs/nn/UZGODNIENIA_WATKOW_2026-08-13.md): `i_cu_ka` niesie teraz
+        # "nie dotyczy" (None) dla ROZLACZNIK_BEZPIECZNIKOWY (sam rozlacznik
+        # bez wkladki nie ma wlasnej zdolnosci) — wartosc KOMBINACJI
+        # rozlacznik+wkladka zyje w `conditional_sc_current_ka`. Bez tego
+        # fallbacku dowod wytrzymalosci nN odziedziczylby SN-owe NIE_DOTYCZY
+        # DOKLADNIE tam, gdzie wartosc realnie istnieje — dokladnie defekt,
+        # przed ktorym ostrzegala runda 2 ("Prosba (U5 rozszerzenie)").
+        icu = lv_type.i_cu_ka
+        if icu is None and lv_type.conditional_sc_current_ka is not None:
+            icu = lv_type.conditional_sc_current_ka
         return CatalogUmIcu(
             u_m_kv=lv_type.u_m_kv,
-            i_cu_ka=lv_type.i_cu_ka,
+            i_cu_ka=icu,
             i_cu_not_applicable=False,
             found_in_catalog=True,
         )

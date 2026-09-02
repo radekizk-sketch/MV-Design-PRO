@@ -236,6 +236,10 @@ def build_golden_network() -> EnergyNetworkModel:
                 bus_refs=[bus_sn, bus_nn],
                 transformer_refs=[f"tr_{ref.lower()}"],
                 entry_point_ref=bus_sn,
+                # P0.1 nN (karta P0.1, E063): stacja zasilająca odbiory nN musi
+                # deklarować układ uziemienia sieci nN — TN-S jest standardem
+                # sieci miejskich/kablowych, jakie reprezentuje ta złota sieć.
+                meta={"nn_earthing_system": "TN-S"},
             )
         )
 

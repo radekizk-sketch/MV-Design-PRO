@@ -323,6 +323,175 @@ class ProtectionCoordinationResult:
 
 
 # =============================================================================
+# GENERIC IDMT ENGINE (N-D4) — JEDYNA FIZYKA KRZYWYCH IDMT
+# =============================================================================
+#
+# Karta P0.7 (nN, docs/nn/H_PLAN_IMPLEMENTACJI_NN.md §P0.7, dług N-D4 —
+# docs/nn/A_AUDYT_STANU_NN_2026-08.md: "Dwie implementacje formuly IEC
+# 60255"). Przed karta P0.7 formula t = TMS*A/(M^B-1) byla zaimplementowana
+# DWA RAZY: tutaj (`compute_curve_trip_time` ponizej) i w
+# `protection.curves.iec_curves.calculate_iec_tripping_time` (osobna kopia
+# petli obliczeniowej, wlasny epsilon 1e-10 zamiast 1e-12). `protection/
+# curves/ieee_curves.py` mial TRZECIA, osobna implementacje analogicznej
+# petli dla wzoru IEEE C37.112 (t = TD*(A/(M^p-1)+B) — inna norma, INNY
+# ksztalt wzoru: stala addytywna B jest SKALOWANA przez TD, a nie dodawana
+# PO przeskalowaniu jak w IEC). Od tej karty: JEDNA implementacja petli
+# obliczeniowej per ksztalt wzoru (dwie funkcje ponizej — IEC i IEEE MAJA
+# rozny ksztalt matematyczny, wiec dwie funkcje sa POPRAWNA reprezentacja
+# fizyki, nie duplikacja), a wszyscy trzej konsumenci
+# (`compute_curve_trip_time`, `iec_curves.calculate_iec_tripping_time`,
+# `ieee_curves.calculate_ieee_tripping_time`) DELEGUJA do nich. Publiczna
+# powierzchnia `protection/curves/{iec,ieee}_curves.py` (nazwy, sygnatury,
+# ksztalt wyniku) NIE ZMIENIA SIE — adaptery TYLKO przestaja liczyc M^B-1
+# soba, tylko wywoluja generyczny silnik i pakuja wynik w SWOJ dotychczasowy
+# dataclass (clamp/inf-dla-braku-wyzwolenia zostaja w adapterze — to
+# reprezentacja/numeric-guard specyficzna dla konsumenta, nie druga fizyka).
+
+
+@dataclass(frozen=True)
+class GenericIdmtPoint:
+    """Surowy wynik generycznej petli IEC-stylu: t = TMS·A/(M^B-1) + C.
+
+    C jest dodawane PO przeskalowaniu przez TMS (ksztalt wzoru IEC 60255 wg
+    `iec_curves.IECCurveParams` — stala addytywna manufacturer-variant, C=0
+    dla standardowych krzywych normy). Bez zaokraglania/clampowania — to
+    zadanie WOLAJACEGO (kazdy z trzech konsumentow ma wlasna, juz istniejaca
+    politike numeryczna, ktora ta funkcja MA zachowac bez zmian).
+    """
+
+    current_multiple_m: float
+    will_trip: bool
+    m_power_b: float
+    denominator: float
+    base_time_s: float  # A / denominator (przed TMS)
+    trip_time_s: float | None  # None gdy nie will_trip
+
+
+def compute_idmt_generic(
+    *,
+    i_fault_a: float,
+    is_pickup_a: float,
+    time_multiplier: float,
+    a: float,
+    b: float,
+    c_additive: float = 0.0,
+    denom_guard: float = 1e-10,
+) -> GenericIdmtPoint:
+    """Generyczna petla IDMT ksztaltu IEC: t = TMS·A/(M^B-1) + C.
+
+    JEDYNE miejsce w repozytorium liczace ten wzor (regula KLASA NIE
+    INSTANCJA — N-D4). ``denom_guard`` jest PARAMETREM (nie stala globalna),
+    zeby kazdy z trzech wolajacych zachowal WLASNA, juz przetestowana
+    tolerancje numeryczna kolo M=1 bez zmiany wynikow istniejacych testow.
+
+    Raises:
+        ValueError: ``is_pickup_a <= 0``.
+    """
+    if is_pickup_a <= 0:
+        raise ValueError(f"Pickup current must be positive, got {is_pickup_a}")
+
+    m = i_fault_a / is_pickup_a
+    will_trip = m > 1.0
+    if not will_trip:
+        return GenericIdmtPoint(
+            current_multiple_m=m,
+            will_trip=False,
+            m_power_b=0.0,
+            denominator=0.0,
+            base_time_s=0.0,
+            trip_time_s=None,
+        )
+
+    m_power_b = math.pow(m, b)
+    denominator = m_power_b - 1.0
+    if denominator < denom_guard:
+        denominator = denom_guard
+
+    base_time_s = a / denominator
+    trip_time_s = time_multiplier * base_time_s + c_additive
+
+    return GenericIdmtPoint(
+        current_multiple_m=m,
+        will_trip=True,
+        m_power_b=m_power_b,
+        denominator=denominator,
+        base_time_s=base_time_s,
+        trip_time_s=trip_time_s,
+    )
+
+
+@dataclass(frozen=True)
+class GenericIeeePoint:
+    """Surowy wynik generycznej petli IEEE C37.112: t = TD·(A/(M^p-1) + B).
+
+    Ksztalt INNY niz IEC: stala addytywna B jest SKALOWANA przez TD (nie
+    dodawana po przeskalowaniu jak C w `GenericIdmtPoint`) — dlatego to
+    ODREBNA funkcja, nie parametr wspolnej.
+    """
+
+    current_multiple_m: float
+    will_trip: bool
+    m_power_p: float
+    denominator: float
+    fraction: float  # A / denominator
+    base_time_s: float  # fraction + B (przed TD)
+    trip_time_s: float | None  # None gdy nie will_trip
+
+
+def compute_ieee_c37112_generic(
+    *,
+    i_fault_a: float,
+    is_pickup_a: float,
+    time_dial: float,
+    a: float,
+    b: float,
+    p: float,
+    denom_guard: float = 1e-10,
+) -> GenericIeeePoint:
+    """Generyczna petla IEEE C37.112: t = TD·(A/(M^p-1) + B).
+
+    JEDYNE miejsce w repozytorium liczace ten wzor (N-D4).
+
+    Raises:
+        ValueError: ``is_pickup_a <= 0``.
+    """
+    if is_pickup_a <= 0:
+        raise ValueError("Pickup current must be positive")
+
+    m = i_fault_a / is_pickup_a
+    will_trip = m > 1.0
+    if not will_trip:
+        return GenericIeeePoint(
+            current_multiple_m=m,
+            will_trip=False,
+            m_power_p=0.0,
+            denominator=0.0,
+            fraction=0.0,
+            base_time_s=0.0,
+            trip_time_s=None,
+        )
+
+    m_power_p = math.pow(m, p)
+    denominator = m_power_p - 1.0
+    if denominator < denom_guard:
+        denominator = denom_guard
+
+    fraction = a / denominator
+    base_time_s = fraction + b
+    trip_time_s = time_dial * base_time_s
+
+    return GenericIeeePoint(
+        current_multiple_m=m,
+        will_trip=True,
+        m_power_p=m_power_p,
+        denominator=denominator,
+        fraction=fraction,
+        base_time_s=base_time_s,
+        trip_time_s=trip_time_s,
+    )
+
+
+# =============================================================================
 # PURE FUNCTIONS — CURVE TRIP TIME CALCULATION
 # =============================================================================
 
@@ -445,16 +614,26 @@ def compute_curve_trip_time(
             white_box_trace=trace,
         )
 
-    # Compute intermediate values
-    m_power_b = math.pow(M, B)
-    denominator = m_power_b - 1.0
-
-    # Guard against near-zero denominator (M very close to 1)
-    if denominator < 1e-12:
-        denominator = 1e-12
-
-    base_time = A / denominator
-    trip_time = tms * base_time
+    # N-D4: petla obliczeniowa (M^B, guard, TMS-skalowanie) deleguje do
+    # generycznego silnika IDMT — JEDYNA implementacja tego wzoru w
+    # repozytorium (patrz `compute_idmt_generic` powyzej). ``denom_guard``
+    # zachowuje dotychczasowy epsilon tej funkcji (1e-12) — bez zmiany
+    # wynikow dla istniejacych wolajacych (`czas_wylaczenia_galezi`,
+    # `czas_wylaczenia_pola`, testy solvera).
+    generic = compute_idmt_generic(
+        i_fault_a=i_fault_a,
+        is_pickup_a=is_pickup_a,
+        time_multiplier=tms,
+        a=A,
+        b=B,
+        c_additive=0.0,
+        denom_guard=1e-12,
+    )
+    m_power_b = generic.m_power_b
+    denominator = generic.denominator
+    base_time = generic.base_time_s
+    assert generic.trip_time_s is not None  # will_trip=True powyzej gwarantuje wartosc
+    trip_time = generic.trip_time_s
 
     # Build substitution string with actual numeric values
     substitution = (

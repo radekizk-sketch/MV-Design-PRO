@@ -1,0 +1,2740 @@
+{
+  "case_id": "fixture-08_island_grid_forming",
+  "completeness": "COMPLETE",
+  "contract": "LvDomainProjectionV1",
+  "contract_version": "3.0.0",
+  "graph": {
+    "boundary_links": [],
+    "branches": [
+      {
+        "catalog_namespace": "WKLADKA_NN",
+        "catalog_ref": "wkladka-nn-gg-20",
+        "device_kind": null,
+        "from_bus_ref": "RGN-2_szyna",
+        "name": "FU-21",
+        "ref_id": "FU-21",
+        "status": "closed",
+        "to_bus_ref": "FU-21_zacisk",
+        "type": "fuse"
+      },
+      {
+        "catalog_namespace": "KABEL_NN",
+        "catalog_ref": "kabel-nn-yaky-4x16",
+        "device_kind": null,
+        "from_bus_ref": "FU-21_zacisk",
+        "name": "Kabel FU-21",
+        "ref_id": "FU-21_kabel",
+        "status": "closed",
+        "to_bus_ref": "FU-21_koniec",
+        "type": "cable"
+      },
+      {
+        "catalog_namespace": "WKLADKA_NN",
+        "catalog_ref": "wkladka-nn-gg-20",
+        "device_kind": null,
+        "from_bus_ref": "RGN-D_szyna",
+        "name": "FU-D2",
+        "ref_id": "FU-D2",
+        "status": "closed",
+        "to_bus_ref": "FU-D2_zacisk",
+        "type": "fuse"
+      },
+      {
+        "catalog_namespace": "KABEL_NN",
+        "catalog_ref": "kabel-nn-yaky-4x16",
+        "device_kind": null,
+        "from_bus_ref": "FU-D2_zacisk",
+        "name": "Kabel FU-D2",
+        "ref_id": "FU-D2_kabel",
+        "status": "closed",
+        "to_bus_ref": "FU-D2_koniec",
+        "type": "cable"
+      },
+      {
+        "catalog_namespace": "APARAT_NN_MCB",
+        "catalog_ref": "aparat-nn-mcb-c25",
+        "device_kind": null,
+        "from_bus_ref": "RGnN-1",
+        "name": "QF-01",
+        "ref_id": "QF-01",
+        "status": "closed",
+        "to_bus_ref": "QF-01_zacisk",
+        "type": "breaker"
+      },
+      {
+        "catalog_namespace": "KABEL_NN",
+        "catalog_ref": "kabel-nn-yaky-4x25",
+        "device_kind": null,
+        "from_bus_ref": "QF-01_zacisk",
+        "name": "Kabel QF-01",
+        "ref_id": "QF-01_kabel",
+        "status": "closed",
+        "to_bus_ref": "QF-01_koniec",
+        "type": "cable"
+      },
+      {
+        "catalog_namespace": "APARAT_NN_MCB",
+        "catalog_ref": "aparat-nn-mcb-c125",
+        "device_kind": null,
+        "from_bus_ref": "RGnN-1",
+        "name": "QF-02",
+        "ref_id": "QF-02",
+        "status": "closed",
+        "to_bus_ref": "QF-02_zacisk",
+        "type": "breaker"
+      },
+      {
+        "catalog_namespace": "KABEL_NN",
+        "catalog_ref": "kabel-nn-yaky-4x70",
+        "device_kind": null,
+        "from_bus_ref": "QF-02_zacisk",
+        "name": "Kabel QF-02",
+        "ref_id": "QF-02_kabel",
+        "status": "closed",
+        "to_bus_ref": "RGN-2_szyna",
+        "type": "cable"
+      },
+      {
+        "catalog_namespace": "APARAT_NN_MCB",
+        "catalog_ref": "aparat-nn-mcb-c100",
+        "device_kind": null,
+        "from_bus_ref": "RGnN-1",
+        "name": "QF-03",
+        "ref_id": "QF-03",
+        "status": "closed",
+        "to_bus_ref": "QF-03_zacisk",
+        "type": "breaker"
+      },
+      {
+        "catalog_namespace": "KABEL_NN",
+        "catalog_ref": "kabel-nn-yaky-4x50",
+        "device_kind": null,
+        "from_bus_ref": "QF-03_zacisk",
+        "name": "Kabel QF-03",
+        "ref_id": "QF-03_kabel",
+        "status": "closed",
+        "to_bus_ref": "QF-03_pcc",
+        "type": "cable"
+      },
+      {
+        "catalog_namespace": "WKLADKA_NN",
+        "catalog_ref": "wkladka-nn-gg-100",
+        "device_kind": null,
+        "from_bus_ref": "RGN-D_szyna",
+        "name": "QF-D1",
+        "ref_id": "QF-D1",
+        "status": "closed",
+        "to_bus_ref": "QF-D1_zacisk",
+        "type": "fuse"
+      },
+      {
+        "catalog_namespace": "KABEL_NN",
+        "catalog_ref": "kabel-nn-yaky-4x50",
+        "device_kind": null,
+        "from_bus_ref": "QF-D1_zacisk",
+        "name": "Kabel QF-D1",
+        "ref_id": "QF-D1_kabel",
+        "status": "closed",
+        "to_bus_ref": "QF-D1_pcc",
+        "type": "cable"
+      },
+      {
+        "catalog_namespace": "APARAT_NN",
+        "catalog_ref": "aparat-nn-wylacznik-2300a",
+        "device_kind": "WYLACZNIK_GLOWNY",
+        "from_bus_ref": "T1_zacisk",
+        "name": "QF-T1",
+        "ref_id": "QF-T1",
+        "status": "closed",
+        "to_bus_ref": "RGnN-1",
+        "type": "breaker"
+      },
+      {
+        "catalog_namespace": "APARAT_NN",
+        "catalog_ref": "aparat-nn-odlacznik-250a",
+        "device_kind": null,
+        "from_bus_ref": "RGnN-1",
+        "name": "QS-D",
+        "ref_id": "QS-D",
+        "status": "open",
+        "to_bus_ref": "QS-D_zacisk",
+        "type": "disconnector"
+      },
+      {
+        "catalog_namespace": "KABEL_NN",
+        "catalog_ref": "kabel-nn-yaky-4x70",
+        "device_kind": null,
+        "from_bus_ref": "QS-D_zacisk",
+        "name": "Kabel QS-D",
+        "ref_id": "QS-D_kabel",
+        "status": "closed",
+        "to_bus_ref": "RGN-D_szyna",
+        "type": "cable"
+      }
+    ],
+    "buses": [
+      {
+        "energization_state": "ENERGIZED",
+        "grid_energized": true,
+        "hops_from_root": 4,
+        "is_board": false,
+        "is_energized": true,
+        "island_ref": "island-1",
+        "name": "Zacisk Odbiór RGN-2",
+        "ref_id": "FU-21_koniec",
+        "supply_refs": [
+          "T1"
+        ],
+        "voltage_kv": 0.4,
+        "voltage_level_id": "kv:0.4"
+      },
+      {
+        "energization_state": "ENERGIZED",
+        "grid_energized": true,
+        "hops_from_root": 3,
+        "is_board": false,
+        "is_energized": true,
+        "island_ref": "island-1",
+        "name": "FU-21 zacisk wyjściowy",
+        "ref_id": "FU-21_zacisk",
+        "supply_refs": [
+          "T1"
+        ],
+        "voltage_kv": 0.4,
+        "voltage_level_id": "kv:0.4"
+      },
+      {
+        "energization_state": "ENERGIZED",
+        "grid_energized": false,
+        "hops_from_root": 4,
+        "is_board": false,
+        "is_energized": true,
+        "island_ref": "island-2",
+        "name": "Zacisk Odbiór D",
+        "ref_id": "FU-D2_koniec",
+        "supply_refs": [
+          "QF-D1_zrodlo"
+        ],
+        "voltage_kv": 0.4,
+        "voltage_level_id": "kv:0.4"
+      },
+      {
+        "energization_state": "ENERGIZED",
+        "grid_energized": false,
+        "hops_from_root": 3,
+        "is_board": false,
+        "is_energized": true,
+        "island_ref": "island-2",
+        "name": "FU-D2 zacisk wyjściowy",
+        "ref_id": "FU-D2_zacisk",
+        "supply_refs": [
+          "QF-D1_zrodlo"
+        ],
+        "voltage_kv": 0.4,
+        "voltage_level_id": "kv:0.4"
+      },
+      {
+        "energization_state": "ENERGIZED",
+        "grid_energized": true,
+        "hops_from_root": 2,
+        "is_board": false,
+        "is_energized": true,
+        "island_ref": "island-1",
+        "name": "Zacisk Odbiór 1",
+        "ref_id": "QF-01_koniec",
+        "supply_refs": [
+          "T1"
+        ],
+        "voltage_kv": 0.4,
+        "voltage_level_id": "kv:0.4"
+      },
+      {
+        "energization_state": "ENERGIZED",
+        "grid_energized": true,
+        "hops_from_root": 1,
+        "is_board": false,
+        "is_energized": true,
+        "island_ref": "island-1",
+        "name": "QF-01 zacisk wyjściowy",
+        "ref_id": "QF-01_zacisk",
+        "supply_refs": [
+          "T1"
+        ],
+        "voltage_kv": 0.4,
+        "voltage_level_id": "kv:0.4"
+      },
+      {
+        "energization_state": "ENERGIZED",
+        "grid_energized": true,
+        "hops_from_root": 1,
+        "is_board": false,
+        "is_energized": true,
+        "island_ref": "island-1",
+        "name": "QF-02 zacisk wyjściowy",
+        "ref_id": "QF-02_zacisk",
+        "supply_refs": [
+          "T1"
+        ],
+        "voltage_kv": 0.4,
+        "voltage_level_id": "kv:0.4"
+      },
+      {
+        "energization_state": "ENERGIZED",
+        "grid_energized": true,
+        "hops_from_root": 2,
+        "is_board": false,
+        "is_energized": true,
+        "island_ref": "island-1",
+        "name": "PV1 · punkt przyłączenia",
+        "ref_id": "QF-03_pcc",
+        "supply_refs": [
+          "T1"
+        ],
+        "voltage_kv": 0.4,
+        "voltage_level_id": "kv:0.4"
+      },
+      {
+        "energization_state": "ENERGIZED",
+        "grid_energized": true,
+        "hops_from_root": 1,
+        "is_board": false,
+        "is_energized": true,
+        "island_ref": "island-1",
+        "name": "QF-03 zacisk wyjściowy",
+        "ref_id": "QF-03_zacisk",
+        "supply_refs": [
+          "T1"
+        ],
+        "voltage_kv": 0.4,
+        "voltage_level_id": "kv:0.4"
+      },
+      {
+        "energization_state": "ENERGIZED",
+        "grid_energized": false,
+        "hops_from_root": 4,
+        "is_board": false,
+        "is_energized": true,
+        "island_ref": "island-2",
+        "name": "Magazyn D · punkt przyłączenia",
+        "ref_id": "QF-D1_pcc",
+        "supply_refs": [
+          "QF-D1_zrodlo"
+        ],
+        "voltage_kv": 0.4,
+        "voltage_level_id": "kv:0.4"
+      },
+      {
+        "energization_state": "ENERGIZED",
+        "grid_energized": false,
+        "hops_from_root": 3,
+        "is_board": false,
+        "is_energized": true,
+        "island_ref": "island-2",
+        "name": "QF-D1 zacisk wyjściowy",
+        "ref_id": "QF-D1_zacisk",
+        "supply_refs": [
+          "QF-D1_zrodlo"
+        ],
+        "voltage_kv": 0.4,
+        "voltage_level_id": "kv:0.4"
+      },
+      {
+        "energization_state": "ENERGIZED",
+        "grid_energized": false,
+        "hops_from_root": 1,
+        "is_board": false,
+        "is_energized": true,
+        "island_ref": "island-2",
+        "name": "QS-D zacisk wyjściowy",
+        "ref_id": "QS-D_zacisk",
+        "supply_refs": [
+          "QF-D1_zrodlo"
+        ],
+        "voltage_kv": 0.4,
+        "voltage_level_id": "kv:0.4"
+      },
+      {
+        "energization_state": "ENERGIZED",
+        "grid_energized": true,
+        "hops_from_root": 2,
+        "is_board": true,
+        "is_energized": true,
+        "island_ref": "island-1",
+        "name": "RGN-2",
+        "ref_id": "RGN-2_szyna",
+        "supply_refs": [
+          "T1"
+        ],
+        "voltage_kv": 0.4,
+        "voltage_level_id": "kv:0.4"
+      },
+      {
+        "energization_state": "ENERGIZED",
+        "grid_energized": false,
+        "hops_from_root": 2,
+        "is_board": true,
+        "is_energized": true,
+        "island_ref": "island-2",
+        "name": "Podrozdzielnica D",
+        "ref_id": "RGN-D_szyna",
+        "supply_refs": [
+          "QF-D1_zrodlo"
+        ],
+        "voltage_kv": 0.4,
+        "voltage_level_id": "kv:0.4"
+      },
+      {
+        "energization_state": "ENERGIZED",
+        "grid_energized": true,
+        "hops_from_root": 0,
+        "is_board": true,
+        "is_energized": true,
+        "island_ref": "island-1",
+        "name": "RGnN-1",
+        "ref_id": "RGnN-1",
+        "supply_refs": [
+          "T1"
+        ],
+        "voltage_kv": 0.4,
+        "voltage_level_id": "kv:0.4"
+      },
+      {
+        "energization_state": "ENERGIZED",
+        "grid_energized": true,
+        "hops_from_root": 0,
+        "is_board": false,
+        "is_energized": true,
+        "island_ref": "island-1",
+        "name": "T1 zacisk nN",
+        "ref_id": "T1_zacisk",
+        "supply_refs": [
+          "T1"
+        ],
+        "voltage_kv": 0.4,
+        "voltage_level_id": "kv:0.4"
+      }
+    ],
+    "devices": [
+      {
+        "board_bus_ref": "RGN-2_szyna",
+        "catalog_namespace": "WKLADKA_NN",
+        "child_bus_ref": "FU-21_zacisk",
+        "designation_class": "FU",
+        "device_kind": null,
+        "device_role": "feeder",
+        "device_state": "CLOSED",
+        "device_type": "fuse",
+        "feeder_kind": "load",
+        "parent_bus_ref": "RGN-2_szyna",
+        "ref_id": "FU-21",
+        "terminal_a": "RGN-2_szyna",
+        "terminal_b": "FU-21_zacisk",
+        "transformer_ref": null
+      },
+      {
+        "board_bus_ref": null,
+        "catalog_namespace": "KABEL_NN",
+        "child_bus_ref": "FU-21_koniec",
+        "designation_class": "W",
+        "device_kind": null,
+        "device_role": "internal",
+        "device_state": "CLOSED",
+        "device_type": "cable",
+        "feeder_kind": null,
+        "parent_bus_ref": "FU-21_zacisk",
+        "ref_id": "FU-21_kabel",
+        "terminal_a": "FU-21_zacisk",
+        "terminal_b": "FU-21_koniec",
+        "transformer_ref": null
+      },
+      {
+        "board_bus_ref": "RGN-D_szyna",
+        "catalog_namespace": "WKLADKA_NN",
+        "child_bus_ref": "FU-D2_zacisk",
+        "designation_class": "FU",
+        "device_kind": null,
+        "device_role": "feeder",
+        "device_state": "CLOSED",
+        "device_type": "fuse",
+        "feeder_kind": "load",
+        "parent_bus_ref": "RGN-D_szyna",
+        "ref_id": "FU-D2",
+        "terminal_a": "RGN-D_szyna",
+        "terminal_b": "FU-D2_zacisk",
+        "transformer_ref": null
+      },
+      {
+        "board_bus_ref": null,
+        "catalog_namespace": "KABEL_NN",
+        "child_bus_ref": "FU-D2_koniec",
+        "designation_class": "W",
+        "device_kind": null,
+        "device_role": "internal",
+        "device_state": "CLOSED",
+        "device_type": "cable",
+        "feeder_kind": null,
+        "parent_bus_ref": "FU-D2_zacisk",
+        "ref_id": "FU-D2_kabel",
+        "terminal_a": "FU-D2_zacisk",
+        "terminal_b": "FU-D2_koniec",
+        "transformer_ref": null
+      },
+      {
+        "board_bus_ref": "RGnN-1",
+        "catalog_namespace": "APARAT_NN_MCB",
+        "child_bus_ref": "QF-01_zacisk",
+        "designation_class": "QF",
+        "device_kind": null,
+        "device_role": "feeder",
+        "device_state": "CLOSED",
+        "device_type": "breaker",
+        "feeder_kind": "load",
+        "parent_bus_ref": "RGnN-1",
+        "ref_id": "QF-01",
+        "terminal_a": "RGnN-1",
+        "terminal_b": "QF-01_zacisk",
+        "transformer_ref": null
+      },
+      {
+        "board_bus_ref": null,
+        "catalog_namespace": "KABEL_NN",
+        "child_bus_ref": "QF-01_koniec",
+        "designation_class": "W",
+        "device_kind": null,
+        "device_role": "internal",
+        "device_state": "CLOSED",
+        "device_type": "cable",
+        "feeder_kind": null,
+        "parent_bus_ref": "QF-01_zacisk",
+        "ref_id": "QF-01_kabel",
+        "terminal_a": "QF-01_zacisk",
+        "terminal_b": "QF-01_koniec",
+        "transformer_ref": null
+      },
+      {
+        "board_bus_ref": "RGnN-1",
+        "catalog_namespace": "APARAT_NN_MCB",
+        "child_bus_ref": "QF-02_zacisk",
+        "designation_class": "QF",
+        "device_kind": null,
+        "device_role": "feeder",
+        "device_state": "CLOSED",
+        "device_type": "breaker",
+        "feeder_kind": "sub_board",
+        "parent_bus_ref": "RGnN-1",
+        "ref_id": "QF-02",
+        "terminal_a": "RGnN-1",
+        "terminal_b": "QF-02_zacisk",
+        "transformer_ref": null
+      },
+      {
+        "board_bus_ref": null,
+        "catalog_namespace": "KABEL_NN",
+        "child_bus_ref": "RGN-2_szyna",
+        "designation_class": "W",
+        "device_kind": null,
+        "device_role": "internal",
+        "device_state": "CLOSED",
+        "device_type": "cable",
+        "feeder_kind": null,
+        "parent_bus_ref": "QF-02_zacisk",
+        "ref_id": "QF-02_kabel",
+        "terminal_a": "QF-02_zacisk",
+        "terminal_b": "RGN-2_szyna",
+        "transformer_ref": null
+      },
+      {
+        "board_bus_ref": "RGnN-1",
+        "catalog_namespace": "APARAT_NN_MCB",
+        "child_bus_ref": "QF-03_zacisk",
+        "designation_class": "QF",
+        "device_kind": null,
+        "device_role": "feeder",
+        "device_state": "CLOSED",
+        "device_type": "breaker",
+        "feeder_kind": "der",
+        "parent_bus_ref": "RGnN-1",
+        "ref_id": "QF-03",
+        "terminal_a": "RGnN-1",
+        "terminal_b": "QF-03_zacisk",
+        "transformer_ref": null
+      },
+      {
+        "board_bus_ref": null,
+        "catalog_namespace": "KABEL_NN",
+        "child_bus_ref": "QF-03_pcc",
+        "designation_class": "W",
+        "device_kind": null,
+        "device_role": "internal",
+        "device_state": "CLOSED",
+        "device_type": "cable",
+        "feeder_kind": null,
+        "parent_bus_ref": "QF-03_zacisk",
+        "ref_id": "QF-03_kabel",
+        "terminal_a": "QF-03_zacisk",
+        "terminal_b": "QF-03_pcc",
+        "transformer_ref": null
+      },
+      {
+        "board_bus_ref": "RGN-D_szyna",
+        "catalog_namespace": "WKLADKA_NN",
+        "child_bus_ref": "QF-D1_zacisk",
+        "designation_class": "FU",
+        "device_kind": null,
+        "device_role": "feeder",
+        "device_state": "CLOSED",
+        "device_type": "fuse",
+        "feeder_kind": "der",
+        "parent_bus_ref": "RGN-D_szyna",
+        "ref_id": "QF-D1",
+        "terminal_a": "RGN-D_szyna",
+        "terminal_b": "QF-D1_zacisk",
+        "transformer_ref": null
+      },
+      {
+        "board_bus_ref": null,
+        "catalog_namespace": "KABEL_NN",
+        "child_bus_ref": "QF-D1_pcc",
+        "designation_class": "W",
+        "device_kind": null,
+        "device_role": "internal",
+        "device_state": "CLOSED",
+        "device_type": "cable",
+        "feeder_kind": null,
+        "parent_bus_ref": "QF-D1_zacisk",
+        "ref_id": "QF-D1_kabel",
+        "terminal_a": "QF-D1_zacisk",
+        "terminal_b": "QF-D1_pcc",
+        "transformer_ref": null
+      },
+      {
+        "board_bus_ref": "RGnN-1",
+        "catalog_namespace": "APARAT_NN",
+        "child_bus_ref": "RGnN-1",
+        "designation_class": "QF",
+        "device_kind": "WYLACZNIK_GLOWNY",
+        "device_role": "incomer",
+        "device_state": "CLOSED",
+        "device_type": "breaker",
+        "feeder_kind": null,
+        "parent_bus_ref": "T1_zacisk",
+        "ref_id": "QF-T1",
+        "terminal_a": "T1_zacisk",
+        "terminal_b": "RGnN-1",
+        "transformer_ref": "T1"
+      },
+      {
+        "board_bus_ref": "RGnN-1",
+        "catalog_namespace": "APARAT_NN",
+        "child_bus_ref": "QS-D_zacisk",
+        "designation_class": "QS",
+        "device_kind": null,
+        "device_role": "feeder",
+        "device_state": "OPEN",
+        "device_type": "disconnector",
+        "feeder_kind": "sub_board",
+        "parent_bus_ref": "RGnN-1",
+        "ref_id": "QS-D",
+        "terminal_a": "RGnN-1",
+        "terminal_b": "QS-D_zacisk",
+        "transformer_ref": null
+      },
+      {
+        "board_bus_ref": null,
+        "catalog_namespace": "KABEL_NN",
+        "child_bus_ref": "RGN-D_szyna",
+        "designation_class": "W",
+        "device_kind": null,
+        "device_role": "internal",
+        "device_state": "CLOSED",
+        "device_type": "cable",
+        "feeder_kind": null,
+        "parent_bus_ref": "QS-D_zacisk",
+        "ref_id": "QS-D_kabel",
+        "terminal_a": "QS-D_zacisk",
+        "terminal_b": "RGN-D_szyna",
+        "transformer_ref": null
+      }
+    ],
+    "earthing_system": "TN-C-S",
+    "energization_basis_pl": "Stany zasilania są topologiczne (wg aktualnych stanów łączników); model nie niesie pomiarów obecności napięcia.",
+    "generators": [
+      {
+        "bus_ref": "QF-03_pcc",
+        "capability_source_pl": "deklaracja meta.island_capability",
+        "connection_variant": "nn_side",
+        "gen_type": "pv_inverter",
+        "island_capability": "GRID_FOLLOWING",
+        "island_operation_capable": false,
+        "name": "PV1",
+        "p_mw": 0.08,
+        "q_mvar": 0.0,
+        "ref_id": "QF-03_zrodlo"
+      },
+      {
+        "bus_ref": "QF-D1_pcc",
+        "capability_source_pl": "deklaracja meta.island_capability",
+        "connection_variant": "nn_side",
+        "gen_type": "bess",
+        "island_capability": "GRID_FORMING",
+        "island_operation_capable": true,
+        "name": "Magazyn D",
+        "p_mw": 0.05,
+        "q_mvar": 0.0,
+        "ref_id": "QF-D1_zrodlo"
+      }
+    ],
+    "islands": [
+      {
+        "bus_refs": [
+          "FU-21_koniec",
+          "FU-21_zacisk",
+          "QF-01_koniec",
+          "QF-01_zacisk",
+          "QF-02_zacisk",
+          "QF-03_pcc",
+          "QF-03_zacisk",
+          "RGN-2_szyna",
+          "RGnN-1",
+          "T1_zacisk"
+        ],
+        "der_refs": [
+          "QF-03_zrodlo"
+        ],
+        "energization_state": "ENERGIZED",
+        "energizing_source_ids": [
+          "T1"
+        ],
+        "frequency_reference_source_id": "src",
+        "grid_source_refs": [
+          "src"
+        ],
+        "has_grid_forming_source": false,
+        "is_energized": true,
+        "is_islanded": false,
+        "island_operation_allowed": null,
+        "island_ref": "island-1",
+        "neutral_reference": {
+          "source_ref": "T1",
+          "status": "OK",
+          "status_pl": "Układ TN-C-S; punkt neutralny: T1.",
+          "swz_evaluable": true,
+          "system": "TN-C-S"
+        },
+        "power_balance": {
+          "basis_pl": "suma mocy znamionowych z modelu (dane źródłowe, nie wynik rozpływu)",
+          "p_generation_mw": 0.08,
+          "p_load_mw": 0.018,
+          "state": "z_sieci"
+        },
+        "transformer_refs": [
+          "T1"
+        ],
+        "upstream_system_ids": [
+          "sn"
+        ],
+        "validation_messages": [],
+        "voltage_reference_source_id": "src"
+      },
+      {
+        "bus_refs": [
+          "FU-D2_koniec",
+          "FU-D2_zacisk",
+          "QF-D1_pcc",
+          "QF-D1_zacisk",
+          "QS-D_zacisk",
+          "RGN-D_szyna"
+        ],
+        "der_refs": [
+          "QF-D1_zrodlo"
+        ],
+        "energization_state": "ENERGIZED",
+        "energizing_source_ids": [
+          "QF-D1_zrodlo"
+        ],
+        "frequency_reference_source_id": "QF-D1_zrodlo",
+        "grid_source_refs": [],
+        "has_grid_forming_source": true,
+        "is_energized": true,
+        "is_islanded": true,
+        "island_operation_allowed": false,
+        "island_ref": "island-2",
+        "neutral_reference": {
+          "source_ref": null,
+          "status": "brak_zrodla",
+          "status_pl": "Brak elementu wnoszącego odniesienie N/PE do wyspy (punkt neutralny transformatora poza wyspą; źródło rozproszone nie deklaruje punktu neutralnego) — SWZ nieoceniane.",
+          "swz_evaluable": false,
+          "system": "TN-C-S"
+        },
+        "power_balance": {
+          "basis_pl": "suma mocy znamionowych z modelu (dane źródłowe, nie wynik rozpływu)",
+          "p_generation_mw": 0.05,
+          "p_load_mw": 0.03,
+          "state": "nadwyzka"
+        },
+        "transformer_refs": [],
+        "upstream_system_ids": [],
+        "validation_messages": [
+          {
+            "code": "NN-AUD-08",
+            "element_refs": [
+              "FU-D2_koniec",
+              "FU-D2_zacisk",
+              "QF-D1_pcc",
+              "QF-D1_zacisk",
+              "QS-D_zacisk",
+              "RGN-D_szyna"
+            ],
+            "message_pl": "Wyspa island-2 bez odniesienia N/PE: Brak elementu wnoszącego odniesienie N/PE do wyspy (punkt neutralny transformatora poza wyspą; źródło rozproszone nie deklaruje punktu neutralnego) — SWZ nieoceniane.",
+            "severity": "IMPORTANT"
+          }
+        ],
+        "voltage_reference_source_id": "QF-D1_zrodlo"
+      }
+    ],
+    "loads": [
+      {
+        "bus_ref": "FU-21_koniec",
+        "name": "Odbiór RGN-2",
+        "p_mw": 0.006,
+        "q_mvar": 0.0012,
+        "ref_id": "FU-21_odbior"
+      },
+      {
+        "bus_ref": "FU-D2_koniec",
+        "name": "Odbiór D",
+        "p_mw": 0.03,
+        "q_mvar": 0.006,
+        "ref_id": "FU-D2_odbior"
+      },
+      {
+        "bus_ref": "QF-01_koniec",
+        "name": "Odbiór 1",
+        "p_mw": 0.012,
+        "q_mvar": 0.0024,
+        "ref_id": "QF-01_odbior"
+      }
+    ],
+    "measured_voltage_states": {},
+    "measurements": [
+      {
+        "accuracy_class": null,
+        "bay_ref": null,
+        "burden_va": null,
+        "bus_ref": "T1_zacisk",
+        "ct_arrangement": null,
+        "ct_cores": null,
+        "measurement_type": "CT",
+        "name": "CT-T1",
+        "purpose": "protection",
+        "ratio_primary": 2300.0,
+        "ratio_secondary": 5.0,
+        "ref_id": "CT-T1"
+      }
+    ],
+    "missing_data": [],
+    "protection_assignments": [
+      {
+        "breaker_ref": "QF-T1",
+        "ct_ref": "CT-T1",
+        "device_type": "overcurrent",
+        "function_codes": [
+          "overcurrent_50",
+          "overcurrent_51"
+        ],
+        "is_enabled": true,
+        "name": "Zabezpieczenie T1",
+        "ref_id": "REL-T1",
+        "vt_ref": null
+      }
+    ],
+    "root_bus_refs": [
+      "RGnN-1",
+      "T1_zacisk"
+    ],
+    "sections": [
+      {
+        "bus_ref": "RGN-2_szyna",
+        "coupler_refs": [],
+        "incomer_refs": [],
+        "order": 1,
+        "section_id": "RGN-2_szyna",
+        "station_ref": "RGN-2",
+        "tier": "sub",
+        "transformer_refs": []
+      },
+      {
+        "bus_ref": "RGN-D_szyna",
+        "coupler_refs": [],
+        "incomer_refs": [],
+        "order": 2,
+        "section_id": "RGN-D_szyna",
+        "station_ref": "RGN-D",
+        "tier": "sub",
+        "transformer_refs": []
+      },
+      {
+        "bus_ref": "RGnN-1",
+        "coupler_refs": [],
+        "incomer_refs": [
+          "QF-T1"
+        ],
+        "order": 3,
+        "section_id": "RGnN-1",
+        "station_ref": "stW",
+        "tier": "main",
+        "transformer_refs": [
+          "T1"
+        ]
+      }
+    ],
+    "segments": [
+      {
+        "connectivity_state": "CLOSED",
+        "energization_state": "ENERGIZED",
+        "from_bus_ref": "RGN-2_szyna",
+        "from_terminal": {
+          "energization_state": "ENERGIZED",
+          "grid_energized": true,
+          "is_energized": true,
+          "island_ref": "island-1",
+          "supply_refs": [
+            "T1"
+          ]
+        },
+        "island_ref": "island-1",
+        "segment_id": "FU-21",
+        "source_ids": [
+          "T1"
+        ],
+        "to_bus_ref": "FU-21_zacisk",
+        "to_terminal": {
+          "energization_state": "ENERGIZED",
+          "grid_energized": true,
+          "is_energized": true,
+          "island_ref": "island-1",
+          "supply_refs": [
+            "T1"
+          ]
+        },
+        "voltage_level_id": "kv:0.4"
+      },
+      {
+        "connectivity_state": "CLOSED",
+        "energization_state": "ENERGIZED",
+        "from_bus_ref": "FU-21_zacisk",
+        "from_terminal": {
+          "energization_state": "ENERGIZED",
+          "grid_energized": true,
+          "is_energized": true,
+          "island_ref": "island-1",
+          "supply_refs": [
+            "T1"
+          ]
+        },
+        "island_ref": "island-1",
+        "segment_id": "FU-21_kabel",
+        "source_ids": [
+          "T1"
+        ],
+        "to_bus_ref": "FU-21_koniec",
+        "to_terminal": {
+          "energization_state": "ENERGIZED",
+          "grid_energized": true,
+          "is_energized": true,
+          "island_ref": "island-1",
+          "supply_refs": [
+            "T1"
+          ]
+        },
+        "voltage_level_id": "kv:0.4"
+      },
+      {
+        "connectivity_state": "CLOSED",
+        "energization_state": "ENERGIZED",
+        "from_bus_ref": "RGN-D_szyna",
+        "from_terminal": {
+          "energization_state": "ENERGIZED",
+          "grid_energized": false,
+          "is_energized": true,
+          "island_ref": "island-2",
+          "supply_refs": [
+            "QF-D1_zrodlo"
+          ]
+        },
+        "island_ref": "island-2",
+        "segment_id": "FU-D2",
+        "source_ids": [
+          "QF-D1_zrodlo"
+        ],
+        "to_bus_ref": "FU-D2_zacisk",
+        "to_terminal": {
+          "energization_state": "ENERGIZED",
+          "grid_energized": false,
+          "is_energized": true,
+          "island_ref": "island-2",
+          "supply_refs": [
+            "QF-D1_zrodlo"
+          ]
+        },
+        "voltage_level_id": "kv:0.4"
+      },
+      {
+        "connectivity_state": "CLOSED",
+        "energization_state": "ENERGIZED",
+        "from_bus_ref": "FU-D2_zacisk",
+        "from_terminal": {
+          "energization_state": "ENERGIZED",
+          "grid_energized": false,
+          "is_energized": true,
+          "island_ref": "island-2",
+          "supply_refs": [
+            "QF-D1_zrodlo"
+          ]
+        },
+        "island_ref": "island-2",
+        "segment_id": "FU-D2_kabel",
+        "source_ids": [
+          "QF-D1_zrodlo"
+        ],
+        "to_bus_ref": "FU-D2_koniec",
+        "to_terminal": {
+          "energization_state": "ENERGIZED",
+          "grid_energized": false,
+          "is_energized": true,
+          "island_ref": "island-2",
+          "supply_refs": [
+            "QF-D1_zrodlo"
+          ]
+        },
+        "voltage_level_id": "kv:0.4"
+      },
+      {
+        "connectivity_state": "CLOSED",
+        "energization_state": "ENERGIZED",
+        "from_bus_ref": "RGnN-1",
+        "from_terminal": {
+          "energization_state": "ENERGIZED",
+          "grid_energized": true,
+          "is_energized": true,
+          "island_ref": "island-1",
+          "supply_refs": [
+            "T1"
+          ]
+        },
+        "island_ref": "island-1",
+        "segment_id": "QF-01",
+        "source_ids": [
+          "T1"
+        ],
+        "to_bus_ref": "QF-01_zacisk",
+        "to_terminal": {
+          "energization_state": "ENERGIZED",
+          "grid_energized": true,
+          "is_energized": true,
+          "island_ref": "island-1",
+          "supply_refs": [
+            "T1"
+          ]
+        },
+        "voltage_level_id": "kv:0.4"
+      },
+      {
+        "connectivity_state": "CLOSED",
+        "energization_state": "ENERGIZED",
+        "from_bus_ref": "QF-01_zacisk",
+        "from_terminal": {
+          "energization_state": "ENERGIZED",
+          "grid_energized": true,
+          "is_energized": true,
+          "island_ref": "island-1",
+          "supply_refs": [
+            "T1"
+          ]
+        },
+        "island_ref": "island-1",
+        "segment_id": "QF-01_kabel",
+        "source_ids": [
+          "T1"
+        ],
+        "to_bus_ref": "QF-01_koniec",
+        "to_terminal": {
+          "energization_state": "ENERGIZED",
+          "grid_energized": true,
+          "is_energized": true,
+          "island_ref": "island-1",
+          "supply_refs": [
+            "T1"
+          ]
+        },
+        "voltage_level_id": "kv:0.4"
+      },
+      {
+        "connectivity_state": "CLOSED",
+        "energization_state": "ENERGIZED",
+        "from_bus_ref": "RGnN-1",
+        "from_terminal": {
+          "energization_state": "ENERGIZED",
+          "grid_energized": true,
+          "is_energized": true,
+          "island_ref": "island-1",
+          "supply_refs": [
+            "T1"
+          ]
+        },
+        "island_ref": "island-1",
+        "segment_id": "QF-02",
+        "source_ids": [
+          "T1"
+        ],
+        "to_bus_ref": "QF-02_zacisk",
+        "to_terminal": {
+          "energization_state": "ENERGIZED",
+          "grid_energized": true,
+          "is_energized": true,
+          "island_ref": "island-1",
+          "supply_refs": [
+            "T1"
+          ]
+        },
+        "voltage_level_id": "kv:0.4"
+      },
+      {
+        "connectivity_state": "CLOSED",
+        "energization_state": "ENERGIZED",
+        "from_bus_ref": "QF-02_zacisk",
+        "from_terminal": {
+          "energization_state": "ENERGIZED",
+          "grid_energized": true,
+          "is_energized": true,
+          "island_ref": "island-1",
+          "supply_refs": [
+            "T1"
+          ]
+        },
+        "island_ref": "island-1",
+        "segment_id": "QF-02_kabel",
+        "source_ids": [
+          "T1"
+        ],
+        "to_bus_ref": "RGN-2_szyna",
+        "to_terminal": {
+          "energization_state": "ENERGIZED",
+          "grid_energized": true,
+          "is_energized": true,
+          "island_ref": "island-1",
+          "supply_refs": [
+            "T1"
+          ]
+        },
+        "voltage_level_id": "kv:0.4"
+      },
+      {
+        "connectivity_state": "CLOSED",
+        "energization_state": "ENERGIZED",
+        "from_bus_ref": "RGnN-1",
+        "from_terminal": {
+          "energization_state": "ENERGIZED",
+          "grid_energized": true,
+          "is_energized": true,
+          "island_ref": "island-1",
+          "supply_refs": [
+            "T1"
+          ]
+        },
+        "island_ref": "island-1",
+        "segment_id": "QF-03",
+        "source_ids": [
+          "T1"
+        ],
+        "to_bus_ref": "QF-03_zacisk",
+        "to_terminal": {
+          "energization_state": "ENERGIZED",
+          "grid_energized": true,
+          "is_energized": true,
+          "island_ref": "island-1",
+          "supply_refs": [
+            "T1"
+          ]
+        },
+        "voltage_level_id": "kv:0.4"
+      },
+      {
+        "connectivity_state": "CLOSED",
+        "energization_state": "ENERGIZED",
+        "from_bus_ref": "QF-03_zacisk",
+        "from_terminal": {
+          "energization_state": "ENERGIZED",
+          "grid_energized": true,
+          "is_energized": true,
+          "island_ref": "island-1",
+          "supply_refs": [
+            "T1"
+          ]
+        },
+        "island_ref": "island-1",
+        "segment_id": "QF-03_kabel",
+        "source_ids": [
+          "T1"
+        ],
+        "to_bus_ref": "QF-03_pcc",
+        "to_terminal": {
+          "energization_state": "ENERGIZED",
+          "grid_energized": true,
+          "is_energized": true,
+          "island_ref": "island-1",
+          "supply_refs": [
+            "T1"
+          ]
+        },
+        "voltage_level_id": "kv:0.4"
+      },
+      {
+        "connectivity_state": "CLOSED",
+        "energization_state": "ENERGIZED",
+        "from_bus_ref": "RGN-D_szyna",
+        "from_terminal": {
+          "energization_state": "ENERGIZED",
+          "grid_energized": false,
+          "is_energized": true,
+          "island_ref": "island-2",
+          "supply_refs": [
+            "QF-D1_zrodlo"
+          ]
+        },
+        "island_ref": "island-2",
+        "segment_id": "QF-D1",
+        "source_ids": [
+          "QF-D1_zrodlo"
+        ],
+        "to_bus_ref": "QF-D1_zacisk",
+        "to_terminal": {
+          "energization_state": "ENERGIZED",
+          "grid_energized": false,
+          "is_energized": true,
+          "island_ref": "island-2",
+          "supply_refs": [
+            "QF-D1_zrodlo"
+          ]
+        },
+        "voltage_level_id": "kv:0.4"
+      },
+      {
+        "connectivity_state": "CLOSED",
+        "energization_state": "ENERGIZED",
+        "from_bus_ref": "QF-D1_zacisk",
+        "from_terminal": {
+          "energization_state": "ENERGIZED",
+          "grid_energized": false,
+          "is_energized": true,
+          "island_ref": "island-2",
+          "supply_refs": [
+            "QF-D1_zrodlo"
+          ]
+        },
+        "island_ref": "island-2",
+        "segment_id": "QF-D1_kabel",
+        "source_ids": [
+          "QF-D1_zrodlo"
+        ],
+        "to_bus_ref": "QF-D1_pcc",
+        "to_terminal": {
+          "energization_state": "ENERGIZED",
+          "grid_energized": false,
+          "is_energized": true,
+          "island_ref": "island-2",
+          "supply_refs": [
+            "QF-D1_zrodlo"
+          ]
+        },
+        "voltage_level_id": "kv:0.4"
+      },
+      {
+        "connectivity_state": "CLOSED",
+        "energization_state": "ENERGIZED",
+        "from_bus_ref": "T1_zacisk",
+        "from_terminal": {
+          "energization_state": "ENERGIZED",
+          "grid_energized": true,
+          "is_energized": true,
+          "island_ref": "island-1",
+          "supply_refs": [
+            "T1"
+          ]
+        },
+        "island_ref": "island-1",
+        "segment_id": "QF-T1",
+        "source_ids": [
+          "T1"
+        ],
+        "to_bus_ref": "RGnN-1",
+        "to_terminal": {
+          "energization_state": "ENERGIZED",
+          "grid_energized": true,
+          "is_energized": true,
+          "island_ref": "island-1",
+          "supply_refs": [
+            "T1"
+          ]
+        },
+        "voltage_level_id": "kv:0.4"
+      },
+      {
+        "connectivity_state": "OPEN",
+        "energization_state": "DEENERGIZED",
+        "from_bus_ref": "RGnN-1",
+        "from_terminal": {
+          "energization_state": "ENERGIZED",
+          "grid_energized": true,
+          "is_energized": true,
+          "island_ref": "island-1",
+          "supply_refs": [
+            "T1"
+          ]
+        },
+        "island_ref": null,
+        "segment_id": "QS-D",
+        "source_ids": [],
+        "to_bus_ref": "QS-D_zacisk",
+        "to_terminal": {
+          "energization_state": "ENERGIZED",
+          "grid_energized": false,
+          "is_energized": true,
+          "island_ref": "island-2",
+          "supply_refs": [
+            "QF-D1_zrodlo"
+          ]
+        },
+        "voltage_level_id": "kv:0.4"
+      },
+      {
+        "connectivity_state": "CLOSED",
+        "energization_state": "ENERGIZED",
+        "from_bus_ref": "QS-D_zacisk",
+        "from_terminal": {
+          "energization_state": "ENERGIZED",
+          "grid_energized": false,
+          "is_energized": true,
+          "island_ref": "island-2",
+          "supply_refs": [
+            "QF-D1_zrodlo"
+          ]
+        },
+        "island_ref": "island-2",
+        "segment_id": "QS-D_kabel",
+        "source_ids": [
+          "QF-D1_zrodlo"
+        ],
+        "to_bus_ref": "RGN-D_szyna",
+        "to_terminal": {
+          "energization_state": "ENERGIZED",
+          "grid_energized": false,
+          "is_energized": true,
+          "island_ref": "island-2",
+          "supply_refs": [
+            "QF-D1_zrodlo"
+          ]
+        },
+        "voltage_level_id": "kv:0.4"
+      }
+    ],
+    "station_name": "Stacja WYSPA",
+    "station_ref": "stW",
+    "status": "OK",
+    "sub_switchboards": [
+      {
+        "bus_refs": [
+          "RGN-2_szyna"
+        ],
+        "hops_from_root": 2,
+        "name": "RGN-2",
+        "ref_id": "RGN-2"
+      },
+      {
+        "bus_refs": [
+          "RGN-D_szyna"
+        ],
+        "hops_from_root": 2,
+        "name": "Podrozdzielnica D",
+        "ref_id": "RGN-D"
+      }
+    ],
+    "supply_paths": [
+      {
+        "branch_refs": [
+          "QF-T1",
+          "QF-02",
+          "QF-02_kabel",
+          "FU-21",
+          "FU-21_kabel"
+        ],
+        "bus_ref": "FU-21_koniec",
+        "source_bus_ref": "T1_zacisk",
+        "source_ref": "T1"
+      },
+      {
+        "branch_refs": [
+          "QF-T1",
+          "QF-02",
+          "QF-02_kabel",
+          "FU-21"
+        ],
+        "bus_ref": "FU-21_zacisk",
+        "source_bus_ref": "T1_zacisk",
+        "source_ref": "T1"
+      },
+      {
+        "branch_refs": [
+          "QF-D1_kabel",
+          "QF-D1",
+          "FU-D2",
+          "FU-D2_kabel"
+        ],
+        "bus_ref": "FU-D2_koniec",
+        "source_bus_ref": "QF-D1_pcc",
+        "source_ref": "QF-D1_zrodlo"
+      },
+      {
+        "branch_refs": [
+          "QF-D1_kabel",
+          "QF-D1",
+          "FU-D2"
+        ],
+        "bus_ref": "FU-D2_zacisk",
+        "source_bus_ref": "QF-D1_pcc",
+        "source_ref": "QF-D1_zrodlo"
+      },
+      {
+        "branch_refs": [
+          "QF-T1",
+          "QF-01",
+          "QF-01_kabel"
+        ],
+        "bus_ref": "QF-01_koniec",
+        "source_bus_ref": "T1_zacisk",
+        "source_ref": "T1"
+      },
+      {
+        "branch_refs": [
+          "QF-T1",
+          "QF-01"
+        ],
+        "bus_ref": "QF-01_zacisk",
+        "source_bus_ref": "T1_zacisk",
+        "source_ref": "T1"
+      },
+      {
+        "branch_refs": [
+          "QF-T1",
+          "QF-02"
+        ],
+        "bus_ref": "QF-02_zacisk",
+        "source_bus_ref": "T1_zacisk",
+        "source_ref": "T1"
+      },
+      {
+        "branch_refs": [
+          "QF-T1",
+          "QF-03",
+          "QF-03_kabel"
+        ],
+        "bus_ref": "QF-03_pcc",
+        "source_bus_ref": "T1_zacisk",
+        "source_ref": "T1"
+      },
+      {
+        "branch_refs": [
+          "QF-T1",
+          "QF-03"
+        ],
+        "bus_ref": "QF-03_zacisk",
+        "source_bus_ref": "T1_zacisk",
+        "source_ref": "T1"
+      },
+      {
+        "branch_refs": [],
+        "bus_ref": "QF-D1_pcc",
+        "source_bus_ref": "QF-D1_pcc",
+        "source_ref": "QF-D1_zrodlo"
+      },
+      {
+        "branch_refs": [
+          "QF-D1_kabel"
+        ],
+        "bus_ref": "QF-D1_zacisk",
+        "source_bus_ref": "QF-D1_pcc",
+        "source_ref": "QF-D1_zrodlo"
+      },
+      {
+        "branch_refs": [
+          "QF-D1_kabel",
+          "QF-D1",
+          "QS-D_kabel"
+        ],
+        "bus_ref": "QS-D_zacisk",
+        "source_bus_ref": "QF-D1_pcc",
+        "source_ref": "QF-D1_zrodlo"
+      },
+      {
+        "branch_refs": [
+          "QF-T1",
+          "QF-02",
+          "QF-02_kabel"
+        ],
+        "bus_ref": "RGN-2_szyna",
+        "source_bus_ref": "T1_zacisk",
+        "source_ref": "T1"
+      },
+      {
+        "branch_refs": [
+          "QF-D1_kabel",
+          "QF-D1"
+        ],
+        "bus_ref": "RGN-D_szyna",
+        "source_bus_ref": "QF-D1_pcc",
+        "source_ref": "QF-D1_zrodlo"
+      },
+      {
+        "branch_refs": [
+          "QF-T1"
+        ],
+        "bus_ref": "RGnN-1",
+        "source_bus_ref": "T1_zacisk",
+        "source_ref": "T1"
+      },
+      {
+        "branch_refs": [],
+        "bus_ref": "T1_zacisk",
+        "source_bus_ref": "T1_zacisk",
+        "source_ref": "T1"
+      }
+    ],
+    "transformers": [
+      {
+        "hv_bus_ref": "sn",
+        "lv_bus_ref": "T1_zacisk",
+        "lv_neutral": null,
+        "name": "T1",
+        "ref_id": "T1",
+        "sn_mva": 0.63,
+        "uhv_kv": 15.0,
+        "uk_percent": 4.0,
+        "ulv_kv": 0.4,
+        "upstream_system_id": "sn",
+        "vector_group": "Dyn5"
+      }
+    ]
+  },
+  "missing_data": [],
+  "model_snapshot": {
+    "case_id": "fixture-08_island_grid_forming",
+    "model_hash": "2071a497c1a5dab75afba165d3f39898961f0553bd9901bd7b717c7e7fe2f3df",
+    "operating_state_id": "bdb2b930431b3b709ed647d1b4a1c835cf7c7ca6aa2ccc60dafc59eeb301c798",
+    "revision": 1,
+    "run_snapshot_hash": null,
+    "scenario_id": "MAX",
+    "station_ref": "stW"
+  },
+  "projection_hash": "f1af4c84cb7fb168da9996c50ebfc60dcb402ead21e8f875e2c2e6197750b5db",
+  "result_snapshot": {
+    "analysis_type": null,
+    "overlay_payload": null,
+    "reason": "brak-wyniku",
+    "reason_pl": "Brak zapisanego wyniku dla tego przebiegu — nie ma czego nałożyć na schemat.",
+    "result_contract_version": null,
+    "result_signature": null,
+    "run_finished_at": null,
+    "run_id": null,
+    "run_model_hash": null,
+    "status": "NONE",
+    "voltage_profile": null
+  },
+  "scenario_id": "MAX",
+  "station_ref": "stW",
+  "status": "OK",
+  "swz_snapshot": {
+    "missing_data": [],
+    "network_system": "TN-C-S",
+    "reason_pl": null,
+    "status": "OK",
+    "transformers": [
+      {
+        "feeders": [
+          {
+            "feeder_root_branch_ref": "QF-01",
+            "points": [
+              {
+                "bus_ref": "QF-01_koniec",
+                "fault_loop": {
+                  "components": [
+                    {
+                      "label": "Przewód fazowy L (trasa)",
+                      "magnitude_ohm": 0.06013318551349163,
+                      "r_ohm": 0.06,
+                      "x_ohm": 0.004
+                    },
+                    {
+                      "label": "Przewód powrotny PE/PEN (trasa)",
+                      "magnitude_ohm": 0.06013318551349163,
+                      "r_ohm": 0.06,
+                      "x_ohm": 0.004
+                    },
+                    {
+                      "label": "Transformator SN/nN T1",
+                      "magnitude_ohm": 0.010158730158730162,
+                      "r_ohm": 0.0026162761400856643,
+                      "x_ohm": 0.009816053055923863
+                    },
+                    {
+                      "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
+                      "magnitude_ohm": 0.0003625969431888203,
+                      "r_ohm": 7.111111111111113e-05,
+                      "x_ohm": 0.00035555555555555557
+                    }
+                  ],
+                  "fault_node_id": "QF-01_koniec",
+                  "ik_max_a": 1955.134231522845,
+                  "ik_min_a": 1768.9309713778118,
+                  "network_type": "TN-C-S",
+                  "protection_arrangement": "PEN",
+                  "u_nom_v": 230.94010767585033,
+                  "white_box_trace": [
+                    {
+                      "components": [
+                        {
+                          "label": "Przewód fazowy L (trasa)",
+                          "r_ohm": 0.06,
+                          "x_ohm": 0.004
+                        },
+                        {
+                          "label": "Przewód powrotny PE/PEN (trasa)",
+                          "r_ohm": 0.06,
+                          "x_ohm": 0.004
+                        },
+                        {
+                          "label": "Transformator SN/nN T1",
+                          "r_ohm": 0.0026162761400856643,
+                          "x_ohm": 0.009816053055923863
+                        },
+                        {
+                          "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
+                          "r_ohm": 7.111111111111113e-05,
+                          "x_ohm": 0.00035555555555555557
+                        }
+                      ],
+                      "method": "Z_loop = Σ(R_i + jX_i)",
+                      "result": {
+                        "magnitude_ohm": 0.12402581324084883,
+                        "r_total_ohm": 0.12268738725119677,
+                        "x_total_ohm": 0.018171608611479418
+                      },
+                      "step": "sum_components"
+                    },
+                    {
+                      "c_max": 1.05,
+                      "c_min": 0.95,
+                      "ik_max_a": 1955.134231522845,
+                      "ik_min_a": 1768.9309713778118,
+                      "method": "I_k = c * U_n / |Z_loop|",
+                      "step": "compute_ik",
+                      "u_nom_v": 230.94010767585033,
+                      "z_magnitude_ohm": 0.12402581324084883
+                    }
+                  ],
+                  "z_loop_ohm": {
+                    "im": 0.018171608611479418,
+                    "magnitude": 0.12402581324084883,
+                    "re": 0.12268738725119677
+                  }
+                },
+                "hop_count": 3,
+                "reason_pl": null,
+                "status": "OK"
+              },
+              {
+                "bus_ref": "QF-01_zacisk",
+                "fault_loop": {
+                  "components": [
+                    {
+                      "label": "Przewód fazowy L (trasa)",
+                      "magnitude_ohm": 0.0,
+                      "r_ohm": 0.0,
+                      "x_ohm": 0.0
+                    },
+                    {
+                      "label": "Przewód powrotny PE/PEN (trasa)",
+                      "magnitude_ohm": 0.0,
+                      "r_ohm": 0.0,
+                      "x_ohm": 0.0
+                    },
+                    {
+                      "label": "Transformator SN/nN T1",
+                      "magnitude_ohm": 0.010158730158730162,
+                      "r_ohm": 0.0026162761400856643,
+                      "x_ohm": 0.009816053055923863
+                    },
+                    {
+                      "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
+                      "magnitude_ohm": 0.0003625969431888203,
+                      "r_ohm": 7.111111111111113e-05,
+                      "x_ohm": 0.00035555555555555557
+                    }
+                  ],
+                  "fault_node_id": "QF-01_zacisk",
+                  "ik_max_a": 23048.72380363071,
+                  "ik_min_a": 20853.607250903973,
+                  "network_type": "TN-C-S",
+                  "protection_arrangement": "PEN",
+                  "u_nom_v": 230.94010767585033,
+                  "white_box_trace": [
+                    {
+                      "components": [
+                        {
+                          "label": "Przewód fazowy L (trasa)",
+                          "r_ohm": 0.0,
+                          "x_ohm": 0.0
+                        },
+                        {
+                          "label": "Przewód powrotny PE/PEN (trasa)",
+                          "r_ohm": 0.0,
+                          "x_ohm": 0.0
+                        },
+                        {
+                          "label": "Transformator SN/nN T1",
+                          "r_ohm": 0.0026162761400856643,
+                          "x_ohm": 0.009816053055923863
+                        },
+                        {
+                          "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
+                          "r_ohm": 7.111111111111113e-05,
+                          "x_ohm": 0.00035555555555555557
+                        }
+                      ],
+                      "method": "Z_loop = Σ(R_i + jX_i)",
+                      "result": {
+                        "magnitude_ohm": 0.010520630778761187,
+                        "r_total_ohm": 0.0026873872511967755,
+                        "x_total_ohm": 0.010171608611479418
+                      },
+                      "step": "sum_components"
+                    },
+                    {
+                      "c_max": 1.05,
+                      "c_min": 0.95,
+                      "ik_max_a": 23048.72380363071,
+                      "ik_min_a": 20853.607250903973,
+                      "method": "I_k = c * U_n / |Z_loop|",
+                      "step": "compute_ik",
+                      "u_nom_v": 230.94010767585033,
+                      "z_magnitude_ohm": 0.010520630778761187
+                    }
+                  ],
+                  "z_loop_ohm": {
+                    "im": 0.010171608611479418,
+                    "magnitude": 0.010520630778761187,
+                    "re": 0.0026873872511967755
+                  }
+                },
+                "hop_count": 2,
+                "reason_pl": null,
+                "status": "OK"
+              }
+            ],
+            "supply": "jednostronne",
+            "supply_assumption_pl": null,
+            "swz": {
+              "breaker_ref": "QF-01",
+              "bus_ref": "QF-01_koniec",
+              "fault_loop_min_scenario": {
+                "components": [
+                  {
+                    "label": "Przewód fazowy L (trasa)",
+                    "magnitude_ohm": 0.09368543109790338,
+                    "r_ohm": 0.0936,
+                    "x_ohm": 0.004
+                  },
+                  {
+                    "label": "Przewód powrotny PE/PEN (trasa)",
+                    "magnitude_ohm": 0.09368543109790338,
+                    "r_ohm": 0.0936,
+                    "x_ohm": 0.004
+                  },
+                  {
+                    "label": "Transformator SN/nN T1",
+                    "magnitude_ohm": 0.010158730158730162,
+                    "r_ohm": 0.0026162761400856643,
+                    "x_ohm": 0.009816053055923863
+                  },
+                  {
+                    "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
+                    "magnitude_ohm": 0.0003625969431888203,
+                    "r_ohm": 7.111111111111113e-05,
+                    "x_ohm": 0.00035555555555555557
+                  }
+                ],
+                "fault_node_id": "QF-01_koniec",
+                "ik_max_a": 1271.197377602393,
+                "ik_min_a": 1150.1309606878795,
+                "network_type": "TN-C-S",
+                "protection_arrangement": "PEN",
+                "u_nom_v": 230.94010767585033,
+                "white_box_trace": [
+                  {
+                    "components": [
+                      {
+                        "label": "Przewód fazowy L (trasa)",
+                        "r_ohm": 0.0936,
+                        "x_ohm": 0.004
+                      },
+                      {
+                        "label": "Przewód powrotny PE/PEN (trasa)",
+                        "r_ohm": 0.0936,
+                        "x_ohm": 0.004
+                      },
+                      {
+                        "label": "Transformator SN/nN T1",
+                        "r_ohm": 0.0026162761400856643,
+                        "x_ohm": 0.009816053055923863
+                      },
+                      {
+                        "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
+                        "r_ohm": 7.111111111111113e-05,
+                        "x_ohm": 0.00035555555555555557
+                      }
+                    ],
+                    "method": "Z_loop = Σ(R_i + jX_i)",
+                    "result": {
+                      "magnitude_ohm": 0.19075488773977656,
+                      "r_total_ohm": 0.18988738725119678,
+                      "x_total_ohm": 0.018171608611479418
+                    },
+                    "step": "sum_components"
+                  },
+                  {
+                    "c_max": 1.05,
+                    "c_min": 0.95,
+                    "ik_max_a": 1271.197377602393,
+                    "ik_min_a": 1150.1309606878795,
+                    "method": "I_k = c * U_n / |Z_loop|",
+                    "step": "compute_ik",
+                    "u_nom_v": 230.94010767585033,
+                    "z_magnitude_ohm": 0.19075488773977656
+                  }
+                ],
+                "z_loop_ohm": {
+                  "im": 0.018171608611479418,
+                  "magnitude": 0.19075488773977656,
+                  "re": 0.18988738725119678
+                }
+              },
+              "missing_data": [],
+              "network_system": "TN-C-S",
+              "station_name": "Stacja WYSPA",
+              "station_ref": "stW",
+              "status": "OK",
+              "swz": {
+                "ia_wymagane_a": 250.0,
+                "ik1_min_a": 1150.1309606878795,
+                "margines": 4.600523842751517,
+                "pasmo_u0": "120<U0<=230",
+                "przyczyna_pl": "Ik1_min=1150.1 A ≥ Ia=250.0 A (MCB C 25 A, wyzwolenie magnetyczne gwarantowane na górnej granicy pasma IEC 60898-1). Czas wyzwolenia magnetycznego jest chwilowy (<0,1 s) — poniżej t_wymagany=0.4 s z Tab. 41.1 (odbiorczy, pasmo U0 120<U0<=230), więc kryterium czasowe jest spełnione automatycznie po spełnieniu kryterium prądowego.",
+                "rodzaj_obwodu": "odbiorczy",
+                "status": "spełnia",
+                "t_wymagany_s": 0.4,
+                "white_box_trace": [
+                  {
+                    "method": "Tab. 41.1 IEC 60364-4-41 (TN)",
+                    "pasmo_u0": "120<U0<=230",
+                    "podstawa": "IEC 60364-4-41 Tab. 41.1 (edycje 2005 i 2017 — te same progi czasowe dla układu TN, obwody odbiorcze, wg pasma U0). Zweryfikowano w dwóch niezależnych źródłach publicznych: (1) GT Engineering, „IEC 60364-4-41 — TN Systems” (gt-engineering.it/en/technical-standards/en-iec-standards/iec-60364-4-41/tn-systems/) — tabela 50–120V:0,8s / 120–230V:0,4s / 230–400V:0,2s / >400V:0,1s; (2) Elec-Mate, „Disconnection Time Calculator (BS 7671)” (elec-mate.com/tools/disconnection-time-calculator) — BS 7671 Tab. 41.1 (norma brytyjska implementująca IEC 60364-4-41 z identycznymi progami czasowymi TN), potwierdza 120–230V:0,4s i 230–400V:0,2s. Norma źródłowa (pełny tekst IEC) NIE była dostępna do bezpośredniego odczytu w tej sesji (403/PDF nieczytelny) — status REFERENCYJNY do potwierdzenia właściciela przy dostępie do kopii normy (flip-to-verified, wzorzec G-D1).",
+                    "rodzaj_obwodu": "odbiorczy",
+                    "step": "tabela_czasow_41_1",
+                    "t_wymagany_s": 0.4,
+                    "u0_v": 230.94010767585033
+                  },
+                  {
+                    "ia_a": 250.0,
+                    "in_a": 25.0,
+                    "klasa_mcb": "C",
+                    "method": "Ia = pasmo_magnetyczne_max × In (IEC 60898-1, G-D4)",
+                    "step": "ia_gwarantowane_mcb"
+                  },
+                  {
+                    "ia_a": 250.0,
+                    "ik1_min_a": 1150.1309606878795,
+                    "margines": 4.600523842751517,
+                    "method": "Ik1_min ≥ Ia ⇒ wyzwolenie magnetyczne gwarantowane (chwilowe, <0,1 s < t_wymagany z Tab. 41.1)",
+                    "result": "spełnia",
+                    "step": "werdykt"
+                  }
+                ]
+              },
+              "transformer_ref": "T1"
+            },
+            "worst_point_bus_ref": "QF-01_koniec"
+          },
+          {
+            "feeder_root_branch_ref": "QF-02",
+            "points": [
+              {
+                "bus_ref": "FU-21_koniec",
+                "fault_loop": {
+                  "components": [
+                    {
+                      "label": "Przewód fazowy L (trasa)",
+                      "magnitude_ohm": 0.13135236427259314,
+                      "r_ohm": 0.13094,
+                      "x_ohm": 0.0104
+                    },
+                    {
+                      "label": "Przewód powrotny PE/PEN (trasa)",
+                      "magnitude_ohm": 0.13135236427259314,
+                      "r_ohm": 0.13094,
+                      "x_ohm": 0.0104
+                    },
+                    {
+                      "label": "Transformator SN/nN T1",
+                      "magnitude_ohm": 0.010158730158730162,
+                      "r_ohm": 0.0026162761400856643,
+                      "x_ohm": 0.009816053055923863
+                    },
+                    {
+                      "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
+                      "magnitude_ohm": 0.0003625969431888203,
+                      "r_ohm": 7.111111111111113e-05,
+                      "x_ohm": 0.00035555555555555557
+                    }
+                  ],
+                  "fault_node_id": "FU-21_koniec",
+                  "ik_max_a": 910.3255315827589,
+                  "ik_min_a": 823.6278619082103,
+                  "network_type": "TN-C-S",
+                  "protection_arrangement": "PEN",
+                  "u_nom_v": 230.94010767585033,
+                  "white_box_trace": [
+                    {
+                      "components": [
+                        {
+                          "label": "Przewód fazowy L (trasa)",
+                          "r_ohm": 0.13094,
+                          "x_ohm": 0.0104
+                        },
+                        {
+                          "label": "Przewód powrotny PE/PEN (trasa)",
+                          "r_ohm": 0.13094,
+                          "x_ohm": 0.0104
+                        },
+                        {
+                          "label": "Transformator SN/nN T1",
+                          "r_ohm": 0.0026162761400856643,
+                          "x_ohm": 0.009816053055923863
+                        },
+                        {
+                          "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
+                          "r_ohm": 7.111111111111113e-05,
+                          "x_ohm": 0.00035555555555555557
+                        }
+                      ],
+                      "method": "Z_loop = Σ(R_i + jX_i)",
+                      "result": {
+                        "magnitude_ohm": 0.26637406581142126,
+                        "r_total_ohm": 0.2645673872511968,
+                        "x_total_ohm": 0.030971608611479417
+                      },
+                      "step": "sum_components"
+                    },
+                    {
+                      "c_max": 1.05,
+                      "c_min": 0.95,
+                      "ik_max_a": 910.3255315827589,
+                      "ik_min_a": 823.6278619082103,
+                      "method": "I_k = c * U_n / |Z_loop|",
+                      "step": "compute_ik",
+                      "u_nom_v": 230.94010767585033,
+                      "z_magnitude_ohm": 0.26637406581142126
+                    }
+                  ],
+                  "z_loop_ohm": {
+                    "im": 0.030971608611479417,
+                    "magnitude": 0.26637406581142126,
+                    "re": 0.2645673872511968
+                  }
+                },
+                "hop_count": 5,
+                "reason_pl": null,
+                "status": "OK"
+              },
+              {
+                "bus_ref": "FU-21_zacisk",
+                "fault_loop": {
+                  "components": [
+                    {
+                      "label": "Przewód fazowy L (trasa)",
+                      "magnitude_ohm": 0.03601324200901663,
+                      "r_ohm": 0.03544,
+                      "x_ohm": 0.0064
+                    },
+                    {
+                      "label": "Przewód powrotny PE/PEN (trasa)",
+                      "magnitude_ohm": 0.03601324200901663,
+                      "r_ohm": 0.03544,
+                      "x_ohm": 0.0064
+                    },
+                    {
+                      "label": "Transformator SN/nN T1",
+                      "magnitude_ohm": 0.010158730158730162,
+                      "r_ohm": 0.0026162761400856643,
+                      "x_ohm": 0.009816053055923863
+                    },
+                    {
+                      "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
+                      "magnitude_ohm": 0.0003625969431888203,
+                      "r_ohm": 7.111111111111113e-05,
+                      "x_ohm": 0.00035555555555555557
+                    }
+                  ],
+                  "fault_node_id": "FU-21_zacisk",
+                  "ik_max_a": 3146.3043556386942,
+                  "ik_min_a": 2846.656321768342,
+                  "network_type": "TN-C-S",
+                  "protection_arrangement": "PEN",
+                  "u_nom_v": 230.94010767585033,
+                  "white_box_trace": [
+                    {
+                      "components": [
+                        {
+                          "label": "Przewód fazowy L (trasa)",
+                          "r_ohm": 0.03544,
+                          "x_ohm": 0.0064
+                        },
+                        {
+                          "label": "Przewód powrotny PE/PEN (trasa)",
+                          "r_ohm": 0.03544,
+                          "x_ohm": 0.0064
+                        },
+                        {
+                          "label": "Transformator SN/nN T1",
+                          "r_ohm": 0.0026162761400856643,
+                          "x_ohm": 0.009816053055923863
+                        },
+                        {
+                          "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
+                          "r_ohm": 7.111111111111113e-05,
+                          "x_ohm": 0.00035555555555555557
+                        }
+                      ],
+                      "method": "Z_loop = Σ(R_i + jX_i)",
+                      "result": {
+                        "magnitude_ohm": 0.07707045652626267,
+                        "r_total_ohm": 0.07356738725119677,
+                        "x_total_ohm": 0.02297160861147942
+                      },
+                      "step": "sum_components"
+                    },
+                    {
+                      "c_max": 1.05,
+                      "c_min": 0.95,
+                      "ik_max_a": 3146.3043556386942,
+                      "ik_min_a": 2846.656321768342,
+                      "method": "I_k = c * U_n / |Z_loop|",
+                      "step": "compute_ik",
+                      "u_nom_v": 230.94010767585033,
+                      "z_magnitude_ohm": 0.07707045652626267
+                    }
+                  ],
+                  "z_loop_ohm": {
+                    "im": 0.02297160861147942,
+                    "magnitude": 0.07707045652626267,
+                    "re": 0.07356738725119677
+                  }
+                },
+                "hop_count": 4,
+                "reason_pl": null,
+                "status": "OK"
+              },
+              {
+                "bus_ref": "QF-02_zacisk",
+                "fault_loop": {
+                  "components": [
+                    {
+                      "label": "Przewód fazowy L (trasa)",
+                      "magnitude_ohm": 0.0,
+                      "r_ohm": 0.0,
+                      "x_ohm": 0.0
+                    },
+                    {
+                      "label": "Przewód powrotny PE/PEN (trasa)",
+                      "magnitude_ohm": 0.0,
+                      "r_ohm": 0.0,
+                      "x_ohm": 0.0
+                    },
+                    {
+                      "label": "Transformator SN/nN T1",
+                      "magnitude_ohm": 0.010158730158730162,
+                      "r_ohm": 0.0026162761400856643,
+                      "x_ohm": 0.009816053055923863
+                    },
+                    {
+                      "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
+                      "magnitude_ohm": 0.0003625969431888203,
+                      "r_ohm": 7.111111111111113e-05,
+                      "x_ohm": 0.00035555555555555557
+                    }
+                  ],
+                  "fault_node_id": "QF-02_zacisk",
+                  "ik_max_a": 23048.72380363071,
+                  "ik_min_a": 20853.607250903973,
+                  "network_type": "TN-C-S",
+                  "protection_arrangement": "PEN",
+                  "u_nom_v": 230.94010767585033,
+                  "white_box_trace": [
+                    {
+                      "components": [
+                        {
+                          "label": "Przewód fazowy L (trasa)",
+                          "r_ohm": 0.0,
+                          "x_ohm": 0.0
+                        },
+                        {
+                          "label": "Przewód powrotny PE/PEN (trasa)",
+                          "r_ohm": 0.0,
+                          "x_ohm": 0.0
+                        },
+                        {
+                          "label": "Transformator SN/nN T1",
+                          "r_ohm": 0.0026162761400856643,
+                          "x_ohm": 0.009816053055923863
+                        },
+                        {
+                          "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
+                          "r_ohm": 7.111111111111113e-05,
+                          "x_ohm": 0.00035555555555555557
+                        }
+                      ],
+                      "method": "Z_loop = Σ(R_i + jX_i)",
+                      "result": {
+                        "magnitude_ohm": 0.010520630778761187,
+                        "r_total_ohm": 0.0026873872511967755,
+                        "x_total_ohm": 0.010171608611479418
+                      },
+                      "step": "sum_components"
+                    },
+                    {
+                      "c_max": 1.05,
+                      "c_min": 0.95,
+                      "ik_max_a": 23048.72380363071,
+                      "ik_min_a": 20853.607250903973,
+                      "method": "I_k = c * U_n / |Z_loop|",
+                      "step": "compute_ik",
+                      "u_nom_v": 230.94010767585033,
+                      "z_magnitude_ohm": 0.010520630778761187
+                    }
+                  ],
+                  "z_loop_ohm": {
+                    "im": 0.010171608611479418,
+                    "magnitude": 0.010520630778761187,
+                    "re": 0.0026873872511967755
+                  }
+                },
+                "hop_count": 2,
+                "reason_pl": null,
+                "status": "OK"
+              },
+              {
+                "bus_ref": "RGN-2_szyna",
+                "fault_loop": {
+                  "components": [
+                    {
+                      "label": "Przewód fazowy L (trasa)",
+                      "magnitude_ohm": 0.03601324200901663,
+                      "r_ohm": 0.03544,
+                      "x_ohm": 0.0064
+                    },
+                    {
+                      "label": "Przewód powrotny PE/PEN (trasa)",
+                      "magnitude_ohm": 0.03601324200901663,
+                      "r_ohm": 0.03544,
+                      "x_ohm": 0.0064
+                    },
+                    {
+                      "label": "Transformator SN/nN T1",
+                      "magnitude_ohm": 0.010158730158730162,
+                      "r_ohm": 0.0026162761400856643,
+                      "x_ohm": 0.009816053055923863
+                    },
+                    {
+                      "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
+                      "magnitude_ohm": 0.0003625969431888203,
+                      "r_ohm": 7.111111111111113e-05,
+                      "x_ohm": 0.00035555555555555557
+                    }
+                  ],
+                  "fault_node_id": "RGN-2_szyna",
+                  "ik_max_a": 3146.3043556386942,
+                  "ik_min_a": 2846.656321768342,
+                  "network_type": "TN-C-S",
+                  "protection_arrangement": "PEN",
+                  "u_nom_v": 230.94010767585033,
+                  "white_box_trace": [
+                    {
+                      "components": [
+                        {
+                          "label": "Przewód fazowy L (trasa)",
+                          "r_ohm": 0.03544,
+                          "x_ohm": 0.0064
+                        },
+                        {
+                          "label": "Przewód powrotny PE/PEN (trasa)",
+                          "r_ohm": 0.03544,
+                          "x_ohm": 0.0064
+                        },
+                        {
+                          "label": "Transformator SN/nN T1",
+                          "r_ohm": 0.0026162761400856643,
+                          "x_ohm": 0.009816053055923863
+                        },
+                        {
+                          "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
+                          "r_ohm": 7.111111111111113e-05,
+                          "x_ohm": 0.00035555555555555557
+                        }
+                      ],
+                      "method": "Z_loop = Σ(R_i + jX_i)",
+                      "result": {
+                        "magnitude_ohm": 0.07707045652626267,
+                        "r_total_ohm": 0.07356738725119677,
+                        "x_total_ohm": 0.02297160861147942
+                      },
+                      "step": "sum_components"
+                    },
+                    {
+                      "c_max": 1.05,
+                      "c_min": 0.95,
+                      "ik_max_a": 3146.3043556386942,
+                      "ik_min_a": 2846.656321768342,
+                      "method": "I_k = c * U_n / |Z_loop|",
+                      "step": "compute_ik",
+                      "u_nom_v": 230.94010767585033,
+                      "z_magnitude_ohm": 0.07707045652626267
+                    }
+                  ],
+                  "z_loop_ohm": {
+                    "im": 0.02297160861147942,
+                    "magnitude": 0.07707045652626267,
+                    "re": 0.07356738725119677
+                  }
+                },
+                "hop_count": 3,
+                "reason_pl": null,
+                "status": "OK"
+              }
+            ],
+            "supply": "jednostronne",
+            "supply_assumption_pl": null,
+            "swz": {
+              "breaker_ref": "QF-02",
+              "bus_ref": "FU-21_koniec",
+              "fault_loop_min_scenario": {
+                "components": [
+                  {
+                    "label": "Przewód fazowy L (trasa)",
+                    "magnitude_ohm": 0.20453098095144415,
+                    "r_ohm": 0.20426640000000001,
+                    "x_ohm": 0.0104
+                  },
+                  {
+                    "label": "Przewód powrotny PE/PEN (trasa)",
+                    "magnitude_ohm": 0.20453098095144415,
+                    "r_ohm": 0.20426640000000001,
+                    "x_ohm": 0.0104
+                  },
+                  {
+                    "label": "Transformator SN/nN T1",
+                    "magnitude_ohm": 0.010158730158730162,
+                    "r_ohm": 0.0026162761400856643,
+                    "x_ohm": 0.009816053055923863
+                  },
+                  {
+                    "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
+                    "magnitude_ohm": 0.0003625969431888203,
+                    "r_ohm": 7.111111111111113e-05,
+                    "x_ohm": 0.00035555555555555557
+                  }
+                ],
+                "fault_node_id": "FU-21_koniec",
+                "ik_max_a": 588.0116592977384,
+                "ik_min_a": 532.0105488884299,
+                "network_type": "TN-C-S",
+                "protection_arrangement": "PEN",
+                "u_nom_v": 230.94010767585033,
+                "white_box_trace": [
+                  {
+                    "components": [
+                      {
+                        "label": "Przewód fazowy L (trasa)",
+                        "r_ohm": 0.20426640000000001,
+                        "x_ohm": 0.0104
+                      },
+                      {
+                        "label": "Przewód powrotny PE/PEN (trasa)",
+                        "r_ohm": 0.20426640000000001,
+                        "x_ohm": 0.0104
+                      },
+                      {
+                        "label": "Transformator SN/nN T1",
+                        "r_ohm": 0.0026162761400856643,
+                        "x_ohm": 0.009816053055923863
+                      },
+                      {
+                        "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
+                        "r_ohm": 7.111111111111113e-05,
+                        "x_ohm": 0.00035555555555555557
+                      }
+                    ],
+                    "method": "Z_loop = Σ(R_i + jX_i)",
+                    "result": {
+                      "magnitude_ohm": 0.41238487234971655,
+                      "r_total_ohm": 0.4112201872511968,
+                      "x_total_ohm": 0.030971608611479417
+                    },
+                    "step": "sum_components"
+                  },
+                  {
+                    "c_max": 1.05,
+                    "c_min": 0.95,
+                    "ik_max_a": 588.0116592977384,
+                    "ik_min_a": 532.0105488884299,
+                    "method": "I_k = c * U_n / |Z_loop|",
+                    "step": "compute_ik",
+                    "u_nom_v": 230.94010767585033,
+                    "z_magnitude_ohm": 0.41238487234971655
+                  }
+                ],
+                "z_loop_ohm": {
+                  "im": 0.030971608611479417,
+                  "magnitude": 0.41238487234971655,
+                  "re": 0.4112201872511968
+                }
+              },
+              "missing_data": [],
+              "network_system": "TN-C-S",
+              "station_name": "Stacja WYSPA",
+              "station_ref": "stW",
+              "status": "OK",
+              "swz": {
+                "ia_wymagane_a": 1250.0,
+                "ik1_min_a": 532.0105488884299,
+                "margines": 0.4256084391107439,
+                "pasmo_u0": "120<U0<=230",
+                "przyczyna_pl": "Ik1_min=532.0 A < Ia=1250.0 A (MCB C 125 A) — wyzwolenie magnetyczne NIE jest gwarantowane; aparat może nie wyłączyć w czasie t_wymagany=5 s z Tab. 41.1 (rozdzielczy, pasmo U0 120<U0<=230).",
+                "rodzaj_obwodu": "rozdzielczy",
+                "status": "nie spełnia",
+                "t_wymagany_s": 5.0,
+                "white_box_trace": [
+                  {
+                    "method": "Tab. 41.1 IEC 60364-4-41 (TN)",
+                    "pasmo_u0": "120<U0<=230",
+                    "podstawa": "IEC 60364-4-41 §411.3.2.3 — obwody rozdzielcze (distribution circuits) i obwody spoza §411.3.2.2 w układzie TN: czas wyłączenia 5 s, NIEZALEŻNY od pasma U0. Zweryfikowano w dwóch niezależnych źródłach: (1) NAPIT / Professional Electrician, „The requirements for automatic disconnection in case of a fault” (professional-electrician.com/technical/the-requirements-for-automatic-disconnection-in-case-of-a-fault-napit/); (2) Elec-Mate, „Disconnection Time Calculator (BS 7671)”. Status REFERENCYJNY (jak wyżej — do potwierdzenia przy dostępie do normy).",
+                    "rodzaj_obwodu": "rozdzielczy",
+                    "step": "tabela_czasow_41_1",
+                    "t_wymagany_s": 5.0,
+                    "u0_v": 230.94010767585033
+                  },
+                  {
+                    "ia_a": 1250.0,
+                    "in_a": 125.0,
+                    "klasa_mcb": "C",
+                    "method": "Ia = pasmo_magnetyczne_max × In (IEC 60898-1, G-D4)",
+                    "step": "ia_gwarantowane_mcb"
+                  },
+                  {
+                    "ia_a": 1250.0,
+                    "ik1_min_a": 532.0105488884299,
+                    "margines": 0.4256084391107439,
+                    "method": "Ik1_min ≥ Ia ⇒ wyzwolenie magnetyczne gwarantowane (chwilowe, <0,1 s < t_wymagany z Tab. 41.1)",
+                    "result": "nie spełnia",
+                    "step": "werdykt"
+                  }
+                ]
+              },
+              "transformer_ref": "T1"
+            },
+            "worst_point_bus_ref": "FU-21_koniec"
+          },
+          {
+            "feeder_root_branch_ref": "QF-03",
+            "points": [
+              {
+                "bus_ref": "QF-03_pcc",
+                "fault_loop": {
+                  "components": [
+                    {
+                      "label": "Przewód fazowy L (trasa)",
+                      "magnitude_ohm": 0.025838916385947767,
+                      "r_ohm": 0.02564,
+                      "x_ohm": 0.0032
+                    },
+                    {
+                      "label": "Przewód powrotny PE/PEN (trasa)",
+                      "magnitude_ohm": 0.025838916385947767,
+                      "r_ohm": 0.02564,
+                      "x_ohm": 0.0032
+                    },
+                    {
+                      "label": "Transformator SN/nN T1",
+                      "magnitude_ohm": 0.010158730158730162,
+                      "r_ohm": 0.0026162761400856643,
+                      "x_ohm": 0.009816053055923863
+                    },
+                    {
+                      "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
+                      "magnitude_ohm": 0.0003625969431888203,
+                      "r_ohm": 7.111111111111113e-05,
+                      "x_ohm": 0.00035555555555555557
+                    }
+                  ],
+                  "fault_node_id": "QF-03_pcc",
+                  "ik_max_a": 4295.2754084106855,
+                  "ik_min_a": 3886.20155999062,
+                  "network_type": "TN-C-S",
+                  "protection_arrangement": "PEN",
+                  "u_nom_v": 230.94010767585033,
+                  "white_box_trace": [
+                    {
+                      "components": [
+                        {
+                          "label": "Przewód fazowy L (trasa)",
+                          "r_ohm": 0.02564,
+                          "x_ohm": 0.0032
+                        },
+                        {
+                          "label": "Przewód powrotny PE/PEN (trasa)",
+                          "r_ohm": 0.02564,
+                          "x_ohm": 0.0032
+                        },
+                        {
+                          "label": "Transformator SN/nN T1",
+                          "r_ohm": 0.0026162761400856643,
+                          "x_ohm": 0.009816053055923863
+                        },
+                        {
+                          "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
+                          "r_ohm": 7.111111111111113e-05,
+                          "x_ohm": 0.00035555555555555557
+                        }
+                      ],
+                      "method": "Z_loop = Σ(R_i + jX_i)",
+                      "result": {
+                        "magnitude_ohm": 0.056454380686468394,
+                        "r_total_ohm": 0.05396738725119678,
+                        "x_total_ohm": 0.01657160861147942
+                      },
+                      "step": "sum_components"
+                    },
+                    {
+                      "c_max": 1.05,
+                      "c_min": 0.95,
+                      "ik_max_a": 4295.2754084106855,
+                      "ik_min_a": 3886.20155999062,
+                      "method": "I_k = c * U_n / |Z_loop|",
+                      "step": "compute_ik",
+                      "u_nom_v": 230.94010767585033,
+                      "z_magnitude_ohm": 0.056454380686468394
+                    }
+                  ],
+                  "z_loop_ohm": {
+                    "im": 0.01657160861147942,
+                    "magnitude": 0.056454380686468394,
+                    "re": 0.05396738725119678
+                  }
+                },
+                "hop_count": 3,
+                "reason_pl": null,
+                "status": "OK"
+              },
+              {
+                "bus_ref": "QF-03_zacisk",
+                "fault_loop": {
+                  "components": [
+                    {
+                      "label": "Przewód fazowy L (trasa)",
+                      "magnitude_ohm": 0.0,
+                      "r_ohm": 0.0,
+                      "x_ohm": 0.0
+                    },
+                    {
+                      "label": "Przewód powrotny PE/PEN (trasa)",
+                      "magnitude_ohm": 0.0,
+                      "r_ohm": 0.0,
+                      "x_ohm": 0.0
+                    },
+                    {
+                      "label": "Transformator SN/nN T1",
+                      "magnitude_ohm": 0.010158730158730162,
+                      "r_ohm": 0.0026162761400856643,
+                      "x_ohm": 0.009816053055923863
+                    },
+                    {
+                      "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
+                      "magnitude_ohm": 0.0003625969431888203,
+                      "r_ohm": 7.111111111111113e-05,
+                      "x_ohm": 0.00035555555555555557
+                    }
+                  ],
+                  "fault_node_id": "QF-03_zacisk",
+                  "ik_max_a": 23048.72380363071,
+                  "ik_min_a": 20853.607250903973,
+                  "network_type": "TN-C-S",
+                  "protection_arrangement": "PEN",
+                  "u_nom_v": 230.94010767585033,
+                  "white_box_trace": [
+                    {
+                      "components": [
+                        {
+                          "label": "Przewód fazowy L (trasa)",
+                          "r_ohm": 0.0,
+                          "x_ohm": 0.0
+                        },
+                        {
+                          "label": "Przewód powrotny PE/PEN (trasa)",
+                          "r_ohm": 0.0,
+                          "x_ohm": 0.0
+                        },
+                        {
+                          "label": "Transformator SN/nN T1",
+                          "r_ohm": 0.0026162761400856643,
+                          "x_ohm": 0.009816053055923863
+                        },
+                        {
+                          "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
+                          "r_ohm": 7.111111111111113e-05,
+                          "x_ohm": 0.00035555555555555557
+                        }
+                      ],
+                      "method": "Z_loop = Σ(R_i + jX_i)",
+                      "result": {
+                        "magnitude_ohm": 0.010520630778761187,
+                        "r_total_ohm": 0.0026873872511967755,
+                        "x_total_ohm": 0.010171608611479418
+                      },
+                      "step": "sum_components"
+                    },
+                    {
+                      "c_max": 1.05,
+                      "c_min": 0.95,
+                      "ik_max_a": 23048.72380363071,
+                      "ik_min_a": 20853.607250903973,
+                      "method": "I_k = c * U_n / |Z_loop|",
+                      "step": "compute_ik",
+                      "u_nom_v": 230.94010767585033,
+                      "z_magnitude_ohm": 0.010520630778761187
+                    }
+                  ],
+                  "z_loop_ohm": {
+                    "im": 0.010171608611479418,
+                    "magnitude": 0.010520630778761187,
+                    "re": 0.0026873872511967755
+                  }
+                },
+                "hop_count": 2,
+                "reason_pl": null,
+                "status": "OK"
+              }
+            ],
+            "supply": "jednostronne",
+            "supply_assumption_pl": null,
+            "swz": {
+              "breaker_ref": "QF-03",
+              "bus_ref": "QF-03_pcc",
+              "fault_loop_min_scenario": {
+                "components": [
+                  {
+                    "label": "Przewód fazowy L (trasa)",
+                    "magnitude_ohm": 0.04012620094850745,
+                    "r_ohm": 0.0399984,
+                    "x_ohm": 0.0032
+                  },
+                  {
+                    "label": "Przewód powrotny PE/PEN (trasa)",
+                    "magnitude_ohm": 0.04012620094850745,
+                    "r_ohm": 0.0399984,
+                    "x_ohm": 0.0032
+                  },
+                  {
+                    "label": "Transformator SN/nN T1",
+                    "magnitude_ohm": 0.010158730158730162,
+                    "r_ohm": 0.0026162761400856643,
+                    "x_ohm": 0.009816053055923863
+                  },
+                  {
+                    "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
+                    "magnitude_ohm": 0.0003625969431888203,
+                    "r_ohm": 7.111111111111113e-05,
+                    "x_ohm": 0.00035555555555555557
+                  }
+                ],
+                "fault_node_id": "QF-03_pcc",
+                "ik_max_a": 2875.5066453576856,
+                "ik_min_a": 2601.6488696093343,
+                "network_type": "TN-C-S",
+                "protection_arrangement": "PEN",
+                "u_nom_v": 230.94010767585033,
+                "white_box_trace": [
+                  {
+                    "components": [
+                      {
+                        "label": "Przewód fazowy L (trasa)",
+                        "r_ohm": 0.0399984,
+                        "x_ohm": 0.0032
+                      },
+                      {
+                        "label": "Przewód powrotny PE/PEN (trasa)",
+                        "r_ohm": 0.0399984,
+                        "x_ohm": 0.0032
+                      },
+                      {
+                        "label": "Transformator SN/nN T1",
+                        "r_ohm": 0.0026162761400856643,
+                        "x_ohm": 0.009816053055923863
+                      },
+                      {
+                        "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
+                        "r_ohm": 7.111111111111113e-05,
+                        "x_ohm": 0.00035555555555555557
+                      }
+                    ],
+                    "method": "Z_loop = Σ(R_i + jX_i)",
+                    "result": {
+                      "magnitude_ohm": 0.08432848293052016,
+                      "r_total_ohm": 0.08268418725119678,
+                      "x_total_ohm": 0.01657160861147942
+                    },
+                    "step": "sum_components"
+                  },
+                  {
+                    "c_max": 1.05,
+                    "c_min": 0.95,
+                    "ik_max_a": 2875.5066453576856,
+                    "ik_min_a": 2601.6488696093343,
+                    "method": "I_k = c * U_n / |Z_loop|",
+                    "step": "compute_ik",
+                    "u_nom_v": 230.94010767585033,
+                    "z_magnitude_ohm": 0.08432848293052016
+                  }
+                ],
+                "z_loop_ohm": {
+                  "im": 0.01657160861147942,
+                  "magnitude": 0.08432848293052016,
+                  "re": 0.08268418725119678
+                }
+              },
+              "missing_data": [],
+              "network_system": "TN-C-S",
+              "station_name": "Stacja WYSPA",
+              "station_ref": "stW",
+              "status": "OK",
+              "swz": {
+                "ia_wymagane_a": 1000.0,
+                "ik1_min_a": 2601.6488696093343,
+                "margines": 2.6016488696093343,
+                "pasmo_u0": "120<U0<=230",
+                "przyczyna_pl": "Ik1_min=2601.6 A ≥ Ia=1000.0 A (MCB C 100 A, wyzwolenie magnetyczne gwarantowane na górnej granicy pasma IEC 60898-1). Czas wyzwolenia magnetycznego jest chwilowy (<0,1 s) — poniżej t_wymagany=5 s z Tab. 41.1 (rozdzielczy, pasmo U0 120<U0<=230), więc kryterium czasowe jest spełnione automatycznie po spełnieniu kryterium prądowego.",
+                "rodzaj_obwodu": "rozdzielczy",
+                "status": "spełnia",
+                "t_wymagany_s": 5.0,
+                "white_box_trace": [
+                  {
+                    "method": "Tab. 41.1 IEC 60364-4-41 (TN)",
+                    "pasmo_u0": "120<U0<=230",
+                    "podstawa": "IEC 60364-4-41 §411.3.2.3 — obwody rozdzielcze (distribution circuits) i obwody spoza §411.3.2.2 w układzie TN: czas wyłączenia 5 s, NIEZALEŻNY od pasma U0. Zweryfikowano w dwóch niezależnych źródłach: (1) NAPIT / Professional Electrician, „The requirements for automatic disconnection in case of a fault” (professional-electrician.com/technical/the-requirements-for-automatic-disconnection-in-case-of-a-fault-napit/); (2) Elec-Mate, „Disconnection Time Calculator (BS 7671)”. Status REFERENCYJNY (jak wyżej — do potwierdzenia przy dostępie do normy).",
+                    "rodzaj_obwodu": "rozdzielczy",
+                    "step": "tabela_czasow_41_1",
+                    "t_wymagany_s": 5.0,
+                    "u0_v": 230.94010767585033
+                  },
+                  {
+                    "ia_a": 1000.0,
+                    "in_a": 100.0,
+                    "klasa_mcb": "C",
+                    "method": "Ia = pasmo_magnetyczne_max × In (IEC 60898-1, G-D4)",
+                    "step": "ia_gwarantowane_mcb"
+                  },
+                  {
+                    "ia_a": 1000.0,
+                    "ik1_min_a": 2601.6488696093343,
+                    "margines": 2.6016488696093343,
+                    "method": "Ik1_min ≥ Ia ⇒ wyzwolenie magnetyczne gwarantowane (chwilowe, <0,1 s < t_wymagany z Tab. 41.1)",
+                    "result": "spełnia",
+                    "step": "werdykt"
+                  }
+                ]
+              },
+              "transformer_ref": "T1"
+            },
+            "worst_point_bus_ref": "QF-03_pcc"
+          }
+        ],
+        "missing_data": [],
+        "nn_bus_ref": "T1_zacisk",
+        "status": "OK",
+        "transformer_ref": "T1"
+      }
+    ]
+  },
+  "upstream_equivalents": [
+    {
+      "c_factor": 1.1,
+      "calculation_run_id": "79606b0b-0ab0-5e34-8156-224d76ed8c6e",
+      "case_id": "fixture-08_island_grid_forming",
+      "equivalent_id": "67a3d803-9447-5061-8b51-d1fd3a3238df",
+      "ikss_ka": 18.682571063385836,
+      "missing_data": [],
+      "model_hash": "2071a497c1a5dab75afba165d3f39898961f0553bd9901bd7b717c7e7fe2f3df",
+      "model_revision": 1,
+      "note_pl": "Równoważnik Thevenina sieci SN w punkcie HV transformatora — granica wizualna domeny nN (L2) jest granicą domeny napięciowej i projekcji, NIE przerwaniem zależności obliczeniowej: ten snapshot jest dokładnie tym wejściem, którym solver pętli zwarcia nN liczy stronę SN (application.analyses.fault_loop).",
+      "operating_state_id": "bdb2b930431b3b709ed647d1b4a1c835cf7c7ca6aa2ccc60dafc59eeb301c798",
+      "rx_ratio": 0.2000000000000001,
+      "scenario_id": "MAX",
+      "sk_mva": 485.3874344670056,
+      "source_node_id": "597eca72-4f74-52ca-9b72-548d57f0df86",
+      "station_name": "Stacja WYSPA",
+      "station_ref": "stW",
+      "status": "OK",
+      "transformer_ref": "T1",
+      "upstream_node_id": "sn",
+      "upstream_source_ids": [
+        "src"
+      ],
+      "upstream_source_names": [
+        "GPZ"
+      ],
+      "upstream_system_id": "sn",
+      "uth_kv": 16.5,
+      "voltage_kv": 15.0,
+      "voltage_level_id": "kv:15",
+      "z0_missing_reason_pl": null,
+      "z0_ohm": {
+        "r": 2.25e-06,
+        "x": 0.0
+      },
+      "z1_ohm": {
+        "r": 0.10000000000000002,
+        "x": 0.4999999999999999
+      }
+    }
+  ],
+  "validation_messages": [
+    {
+      "code": "NN-AUD-08",
+      "element_refs": [
+        "FU-D2_koniec",
+        "FU-D2_zacisk",
+        "QF-D1_pcc",
+        "QF-D1_zacisk",
+        "QS-D_zacisk",
+        "RGN-D_szyna"
+      ],
+      "message_pl": "Wyspa island-2 bez odniesienia N/PE: Brak elementu wnoszącego odniesienie N/PE do wyspy (punkt neutralny transformatora poza wyspą; źródło rozproszone nie deklaruje punktu neutralnego) — SWZ nieoceniane.",
+      "severity": "IMPORTANT"
+    }
+  ]
+}

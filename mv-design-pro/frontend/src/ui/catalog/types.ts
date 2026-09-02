@@ -247,13 +247,33 @@ export interface MVApparatusType extends CatalogType {
 
 /**
  * LV Apparatus Type (APARAT_NN).
- * Source: backend LVApparatusType dataclass.
+ * Source: backend LVApparatusType dataclass (network_model/catalog/types.py).
+ *
+ * Karta P0.9 (nN STUDIO): pola P0.2/P0.7 dopisane — lustro NIE miało `u_m_kv`/
+ * `i_cu_ka`/`conditional_sc_current_ka`/nastawialności wyzwalacza, mimo że
+ * backend serwuje je od P0.2 (`to_dict()`); dobór aparatu nN (kreator „Aparat
+ * nN", zdolność wyłączania) potrzebuje `i_cu_ka` — jego brak w typie był
+ * dokładnie tym rozjazdem, przed którym ostrzega docstring `MVApparatusType`
+ * (KD-6) obok. Wszystkie pola Optional/None-default — zgodne z backendem 1:1.
  */
 export interface LVApparatusType extends CatalogType {
   device_kind: string;
   u_n_kv: number;
   i_n_a: number;
-  breaking_capacity_ka?: number;
+  breaking_capacity_ka?: number | null;
+  u_m_kv?: number | null;
+  i_cu_ka?: number | null;
+  conditional_sc_current_ka?: number | null;
+  ics_ka?: number | null;
+  icw_ka?: number | null;
+  poles?: number | null;
+  trip_unit?: 'TM' | 'ELECTRONIC' | 'NONE' | null;
+  curve_ref?: string | null;
+  ir_range?: [number, number] | null;
+  isd_range?: [number, number] | null;
+  ii_range?: [number, number] | null;
+  tr_range?: [number, number] | null;
+  tsd_range?: [number, number] | null;
 }
 
 /**

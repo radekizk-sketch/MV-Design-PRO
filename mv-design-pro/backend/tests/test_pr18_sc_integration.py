@@ -28,6 +28,9 @@ from application.execution_engine.errors import (
     StudyCaseNotFoundError,
 )
 from application.execution_engine.service import ExecutionEngineService
+from application.result_mapping.sc_binding_meta import (
+    wzbogac_resultset_o_meta_bindingu,
+)
 from application.result_mapping.short_circuit_to_resultset_v1 import (
     map_short_circuit_to_resultset_v1,
 )
@@ -982,6 +985,86 @@ class TestShortCircuitBinding:
                 fault_node_id="NONEXISTENT",
             )
 
+    # -------------------------------------------------------------------
+    # Karta P0.3 (docs/nn/H_PLAN_IMPLEMENTACJI_NN.md): scenario MAX/MIN +
+    # per-node c. This golden graph is entirely SN (20/110 kV, no nN
+    # branches with a known theta_k), so it exercises the "no correction"
+    # White Box path deterministically — the MV+LV physics (per-band c,
+    # R_theta correction) has its own dedicated golden fixture:
+    # tests/network_model/solvers/test_sc_lv_min_max.py.
+    # -------------------------------------------------------------------
+
+    def test_binding_defaults_to_max_scenario(self):
+        """execute_short_circuit with no scenario kwarg behaves exactly as
+        before this karta (scenario="MAX", no behavior change)."""
+        graph = _create_golden_graph()
+        config = _golden_config()
+
+        result = execute_short_circuit(
+            graph=graph,
+            analysis_type=ExecutionAnalysisType.SC_3F,
+            config=config,
+            fault_node_id="BUS_MV",
+        )
+
+        assert result.scenario == "MAX"
+        assert result.temperature_correction_notes == ()
+
+    def test_binding_min_scenario_produces_lower_ikss(self):
+        """MIN scenario on a 20 kV bus uses c=1.00 (< MAX c=1.10) -> lower Ik''."""
+        graph = _create_golden_graph()
+        config = _golden_config()
+
+        result_max = execute_short_circuit(
+            graph=graph,
+            analysis_type=ExecutionAnalysisType.SC_3F,
+            config=config,
+            fault_node_id="BUS_MV",
+            scenario="MAX",
+        )
+        result_min = execute_short_circuit(
+            graph=graph,
+            analysis_type=ExecutionAnalysisType.SC_3F,
+            config=config,
+            fault_node_id="BUS_MV",
+            scenario="MIN",
+        )
+
+        assert result_min.solver_result.ikss_a < result_max.solver_result.ikss_a
+        assert result_max.solver_result.c_factor == pytest.approx(1.10)
+        assert result_min.solver_result.c_factor == pytest.approx(1.00)
+
+    def test_binding_min_scenario_notes_uncorrected_branches(self):
+        """C1/REF have no short_circuit_temperature_c -> explicit 'no
+        correction' White Box notes, never a silently fabricated theta_k."""
+        graph = _create_golden_graph()
+        config = _golden_config()
+
+        result = execute_short_circuit(
+            graph=graph,
+            analysis_type=ExecutionAnalysisType.SC_3F,
+            config=config,
+            fault_node_id="BUS_MV",
+            scenario="MIN",
+        )
+
+        notes = {n["branch_id"]: n for n in result.temperature_correction_notes}
+        assert notes["C1"]["corrected"] is False
+        assert notes["C1"]["theta_k_c"] is None
+
+    def test_binding_unknown_scenario_raises(self):
+        graph = _create_golden_graph()
+        config = _golden_config()
+
+        with pytest.raises(ShortCircuitBindingError, match="MAX/MIN"):
+            execute_short_circuit(
+                graph=graph,
+                analysis_type=ExecutionAnalysisType.SC_3F,
+                config=config,
+                fault_node_id="BUS_MV",
+                scenario="NOMINAL",  # type: ignore[arg-type]
+            )
+
 
 # =============================================================================
 # 6. RESULT MAPPER UNIT TESTS
@@ -1031,12 +1114,17 @@ class TestResultMapper:
             fault_node_id="BUS_MV",
         )
 
-        rs = map_short_circuit_to_resultset_v1(
-            binding_result=binding_result,
-            run_id=run_id,
-            graph=graph,
-            validation_snapshot={},
-            readiness_snapshot={},
+        # Klucze P0.3 dokłada wrapper POZA zamrożonym mapperem — test ćwiczy
+        # tę samą kompozycję co ścieżka produkcyjna (execution_engine).
+        rs = wzbogac_resultset_o_meta_bindingu(
+            map_short_circuit_to_resultset_v1(
+                binding_result=binding_result,
+                run_id=run_id,
+                graph=graph,
+                validation_snapshot={},
+                readiness_snapshot={},
+            ),
+            binding_result,
         )
 
         gr = rs.global_results
@@ -1054,6 +1142,40 @@ class TestResultMapper:
         assert gr["ikss_sanity"]["in_range"] is True
         assert gr["ikss_sanity"]["voltage_band"] == "SN"
         assert gr["ikss_sanity"]["blocks_osd_package"] is False
+        # Karta P0.3: scenario/override metadata additive on ResultSet v1.
+        assert gr["scenario"] == "MAX"
+        assert gr["c_factor_override"] is False
+        assert gr["c_factor_auto"] == pytest.approx(1.10)
+
+    def test_mapper_global_results_min_scenario_carries_temperature_notes(self):
+        graph = _create_golden_graph()
+        config = _golden_config()
+        run_id = uuid4()
+
+        binding_result = execute_short_circuit(
+            graph=graph,
+            analysis_type=ExecutionAnalysisType.SC_3F,
+            config=config,
+            fault_node_id="BUS_MV",
+            scenario="MIN",
+        )
+
+        rs = wzbogac_resultset_o_meta_bindingu(
+            map_short_circuit_to_resultset_v1(
+                binding_result=binding_result,
+                run_id=run_id,
+                graph=graph,
+                validation_snapshot={},
+                readiness_snapshot={},
+            ),
+            binding_result,
+        )
+
+        gr = rs.global_results
+        assert gr["scenario"] == "MIN"
+        assert gr["c_factor"] == pytest.approx(1.00)
+        assert "temperature_correction_notes" in gr
+        assert len(gr["temperature_correction_notes"]) >= 1
 
     def test_mapper_deterministic(self):
         """Same binding result → same ResultSet signature."""

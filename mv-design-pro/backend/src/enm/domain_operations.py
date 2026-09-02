@@ -2676,6 +2676,9 @@ def _apply_materialized_branch_fields(
         "cross_section_mm2",
         "return_conductor_cross_section_mm2",
         "return_conductor_r_ohm_per_km_20c",
+        # Karta P0.6 (G-05): reaktancja zyly powrotnej PE/PEN — analogiczny gap do
+        # rezystancji powyzej (patrz komentarz przy kontrakcie materializacji KABEL_NN).
+        "return_conductor_x_ohm_per_km",
         "return_conductor_jth_1s_a_per_mm2",
         "return_conductor_ith_1s_a",
         # Karta F-K1 faza 3/6: dane cieplne ZYLY FAZOWEJ i para temperatur, ktora
@@ -2740,6 +2743,9 @@ def _copy_split_segment_fields(target: dict[str, Any], source: dict[str, Any]) -
         "return_conductor_cross_section_mm2",
         "return_conductor_material",
         "return_conductor_r_ohm_per_km_20c",
+        # Karta P0.6 (G-05): reaktancja zyly powrotnej — podzial odcinka MUSI
+        # zachowac ja tak samo jak rezystancje (ta sama trasa, ten sam kabel).
+        "return_conductor_x_ohm_per_km",
         "return_conductor_jth_1s_a_per_mm2",
         "return_conductor_ith_1s_a",
         # Karta F-K1 faza 7: dane cieplne ZYLY FAZOWEJ i para temperatur uzasadniajaca
@@ -2751,6 +2757,11 @@ def _copy_split_segment_fields(target: dict[str, Any], source: dict[str, Any]) -
         "operating_temperature_c",
         "short_circuit_temperature_c",
         "thermal_source_ref",
+        # P0.1 nN (karta P0.1, split_nn_segment): liczba torów rownoleglych —
+        # oba odcinki po podziale sa WCIAZ tymi samymi n rownoleglymi kablami,
+        # tylko krotszymi. Brak na SN (pole nigdy nie ustawiane) — bez zmiany
+        # zachowania istniejacych podzialow SN.
+        "n_parallel",
     ):
         if source.get(key) is not None:
             target[key] = copy.deepcopy(source[key])
@@ -5048,10 +5059,44 @@ def _build_nn_field_specs(
     ``append_station_on_endpoint`` — determinizm wynika ze ``station_seed``
     (te same ``field_ref`` dla identycznego seedu). Funkcja czysta: nie mutuje
     ENM, zwraca listę specyfikacji do zapisania w ``substation.meta.nn_field_specs``.
+
+    KARTA D3 (fantom odbioru ST-03, pomiar KROK-po-KROK substratu E2E). Brak
+    klucza ``outgoing_feeders_nn_count`` w ``nn_block`` NIE JEST równoważny
+    „zażądano 1 odpływu" — jest równoważny „nie zażądano ŻADNEGO odpływu".
+    Poprzedni domyślny ``max(1, len(feeders))`` fabrykował JEDEN nieproszony
+    starter „Odpływ nN 1" nawet wtedy, gdy wołający w ogóle nie dotknął bloku
+    nN (``insert_station_on_segment_sn``/``append_station_on_endpoint``
+    wywołane bez ``nn_block``) — a taki wpis ``nn_field_specs``, bez własnego
+    odbioru i bez znacznika pochodzenia operacji domenowej
+    (``NN_FIELD_ORIGIN_OPERACJA_DOMENOWA`` zapisują WYŁĄCZNIE
+    ``add_nn_outgoing_field``/``_append_nn_source_meta_field``,
+    `enm/domain_operations_v2.py`), był dla
+    ``catalog_completion.complete_station_loads_from_nn_feeders``
+    NIEODRÓŻNIALNY od prawdziwego legacy odpływu bez odbioru — migracja
+    słusznie WG WŁASNEGO kryterium materializowała mu odbiór katalogowy PRZY
+    KAŻDYM odczycie modelu (trwały „fantom odbioru": pole nigdy nie znika,
+    bo nikt go świadomie nie utworzył ani nie usunął).
+
+    Realny „Kreator stacji" (`frontend/src/ui2/kreatory/stacja/stacjaModel.ts`)
+    ZAWSZE wysyła ``outgoing_feeders_nn_count`` jawnie (walidacja formularza:
+    ``ogranicznikOdplywow(...) < 1`` odrzuca 0) — floor „co najmniej 1" nie
+    był potrzebny ŻADNEMU realnemu wywołaniu z UI, wyłącznie fabrykował pole,
+    którego nikt nie prosił (Zero fabrykacji — dyrektywa właściciela #3,
+    CLAUDE.md).
+
+    PREDYKATY PARAMI (reguła KLASA, NIE INSTANCJA, CLAUDE.md): liczba
+    tworzonych odpływów i kryterium migracji legacy dzielą teraz JEDNO źródło
+    prawdy — czy ``outgoing_feeders_nn_count`` był JAWNIE podany. Jawny
+    count >= 1 (nawet dokładnie 1) tworzy tyle odpływów i ZOSTAJE legalnym
+    kandydatem migracji katalogowej — NAPRAWA-B, pin
+    `tests/enm/test_catalog_completion_cosphi.py::
+    test_sekwencja_kreatora_p01_nie_zostawia_fantomu_a_legacy_dalej_migruje`,
+    pozostaje zielony bez modyfikacji. Brak klucza = zero odpływów — nic nie
+    powstaje, więc nie ma czego migrować.
     """
     nn_main_ref = _make_id("stn", station_seed, "nn_main_breaker")
     feeders = nn_block.get("outgoing_feeders_nn", [])
-    feeder_count = nn_block.get("outgoing_feeders_nn_count", max(1, len(feeders)))
+    feeder_count = nn_block.get("outgoing_feeders_nn_count", len(feeders))
     nn_field_specs = [
         _build_field_spec(
             field_ref=nn_main_ref,
@@ -7180,7 +7225,12 @@ def start_branch_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dic
 
     inferred_from_bus_ref = bool(not from_ref and from_bus_ref)
     if inferred_from_bus_ref:
-        inferred_from_ref, lookup_err = _lookup_branch_from_ref_for_bus(enm, str(from_bus_ref))
+        # `inferred_from_bus_ref` prawdziwe ⇒ `from_bus_ref` jest prawdziwe (patrz
+        # warunek wyzej) ⇒ nie None — zawezenie typu dla mypy (pre-existing
+        # blad mypy na HEAD, naprawiony przy okazji karty P0.6, zero zmiany
+        # zachowania w runtime).
+        assert from_bus_ref is not None
+        inferred_from_ref, lookup_err = _lookup_branch_from_ref_for_bus(enm, from_bus_ref)
         if lookup_err:
             return _error_response(
                 "Pole from_bus_ref bez from_ref jest niedozwolone dla źródła "

@@ -33,6 +33,9 @@ import { KreatorPolaNn } from '../../ui2/kreatory/pole-nn';
 import { KreatorPomiaru } from '../../ui2/kreatory/pomiar';
 import { KreatorPrzekaznika } from '../../ui2/kreatory/przekaznik';
 import { KreatorPrzypisaniaKatalogu } from '../../ui2/kreatory/przypisanie-katalogu';
+import { KreatorOdcinkaNn } from '../../ui2/kreatory/odcinek-nn';
+import { KreatorRozdzielnicyNn } from '../../ui2/kreatory/rozdzielnica-nn';
+import { KreatorAparatuNn } from '../../ui2/kreatory/aparat-nn';
 
 /**
  * Mapowanie CanonicalOpName → React component formularza.
@@ -63,6 +66,16 @@ export const OPERATION_FORM_REGISTRY: Readonly<Record<CanonicalOpName, Component
   add_ct: KreatorPomiaru,
   add_vt: KreatorPomiaru,
   add_relay: KreatorPrzekaznika,
+  // P0.9 (nN STUDIO): odcinek/rozdzielnica/aparat/sekcja nN — reuse ISTNIEJĄCYCH
+  // operacji domenowych (enm/domain_operations_v2.py, P0.1), brakowało wyłącznie
+  // dostawcy dialogu (patrz komentarz przy CANONICAL_OPERATION_NAMES).
+  add_nn_cable_segment: KreatorOdcinkaNn,
+  add_nn_distribution_board: KreatorRozdzielnicyNn,
+  add_nn_switch_device: KreatorAparatuNn,
+  add_nn_section_coupler: KreatorRozdzielnicyNn,
+  // Edycja warunków ułożenia istniejącego odcinka nN jest edycją INLINE w
+  // tabeli ODCINKI (nN STUDIO) — bez formularza modalnego, jak `update_element_parameters`.
+  set_nn_cable_laying_conditions: null,
   // Operacje bez formularza modalnego (delete, refresh, GPZ sections CRUD oraz warunki
   // przyłączenia OSD — te mają formularz inline w kaflu pulpitu projektu, nie w oknie
   // kreatora: `ui2/spaces/projekt/KafelPrzylaczenia.tsx`).

@@ -1,0 +1,1598 @@
+{
+  "case_id": "fixture-06_conflict_parallel_sources",
+  "completeness": "PARTIAL",
+  "contract": "LvDomainProjectionV1",
+  "contract_version": "3.0.0",
+  "graph": {
+    "boundary_links": [],
+    "branches": [
+      {
+        "catalog_namespace": "WKLADKA_NN",
+        "catalog_ref": "wkladka-nn-gg-32",
+        "device_kind": null,
+        "from_bus_ref": "RGnN-B",
+        "name": "FU-B2",
+        "ref_id": "FU-B2",
+        "status": "closed",
+        "to_bus_ref": "FU-B2_zacisk",
+        "type": "fuse"
+      },
+      {
+        "catalog_namespace": "KABEL_NN",
+        "catalog_ref": "kabel-nn-yaky-4x35",
+        "device_kind": null,
+        "from_bus_ref": "FU-B2_zacisk",
+        "name": "Kabel FU-B2",
+        "ref_id": "FU-B2_kabel",
+        "status": "closed",
+        "to_bus_ref": "FU-B2_koniec",
+        "type": "cable"
+      },
+      {
+        "catalog_namespace": "APARAT_NN",
+        "catalog_ref": "aparat-nn-sprzeglo-630a",
+        "device_kind": null,
+        "from_bus_ref": "RGnN-A",
+        "name": "QBC",
+        "ref_id": "QBC",
+        "status": "closed",
+        "to_bus_ref": "RGnN-B",
+        "type": "bus_coupler"
+      },
+      {
+        "catalog_namespace": "APARAT_NN_MCB",
+        "catalog_ref": "aparat-nn-mcb-c63",
+        "device_kind": null,
+        "from_bus_ref": "RGnN-A",
+        "name": "QF-A1",
+        "ref_id": "QF-A1",
+        "status": "closed",
+        "to_bus_ref": "QF-A1_zacisk",
+        "type": "breaker"
+      },
+      {
+        "catalog_namespace": "KABEL_NN",
+        "catalog_ref": "kabel-nn-yaky-4x35",
+        "device_kind": null,
+        "from_bus_ref": "QF-A1_zacisk",
+        "name": "Kabel QF-A1",
+        "ref_id": "QF-A1_kabel",
+        "status": "closed",
+        "to_bus_ref": "QF-A1_koniec",
+        "type": "cable"
+      },
+      {
+        "catalog_namespace": "APARAT_NN",
+        "catalog_ref": "aparat-nn-rozlacznik-160a",
+        "device_kind": "ROZLACZNIK",
+        "from_bus_ref": "RGnN-A",
+        "name": "QF-A2",
+        "ref_id": "QF-A2",
+        "status": "closed",
+        "to_bus_ref": "QF-A2_zacisk",
+        "type": "switch"
+      },
+      {
+        "catalog_namespace": "KABEL_NN",
+        "catalog_ref": "kabel-nn-yaky-4x35",
+        "device_kind": null,
+        "from_bus_ref": "QF-A2_zacisk",
+        "name": "Kabel QF-A2",
+        "ref_id": "QF-A2_kabel",
+        "status": "closed",
+        "to_bus_ref": "QF-A2_koniec",
+        "type": "cable"
+      },
+      {
+        "catalog_namespace": "APARAT_NN_MCB",
+        "catalog_ref": "aparat-nn-mcb-c100",
+        "device_kind": null,
+        "from_bus_ref": "RGnN-A",
+        "name": "QF-A3",
+        "ref_id": "QF-A3",
+        "status": "closed",
+        "to_bus_ref": "QF-A3_zacisk",
+        "type": "breaker"
+      },
+      {
+        "catalog_namespace": "KABEL_NN",
+        "catalog_ref": "kabel-nn-yaky-4x50",
+        "device_kind": null,
+        "from_bus_ref": "QF-A3_zacisk",
+        "name": "Kabel QF-A3",
+        "ref_id": "QF-A3_kabel",
+        "status": "closed",
+        "to_bus_ref": "QF-A3_pcc",
+        "type": "cable"
+      },
+      {
+        "catalog_namespace": "APARAT_NN_MCB",
+        "catalog_ref": "aparat-nn-mcb-c80",
+        "device_kind": null,
+        "from_bus_ref": "RGnN-B",
+        "name": "QF-B1",
+        "ref_id": "QF-B1",
+        "status": "closed",
+        "to_bus_ref": "QF-B1_zacisk",
+        "type": "breaker"
+      },
+      {
+        "catalog_namespace": "KABEL_NN",
+        "catalog_ref": "kabel-nn-yaky-4x35",
+        "device_kind": null,
+        "from_bus_ref": "QF-B1_zacisk",
+        "name": "Kabel QF-B1",
+        "ref_id": "QF-B1_kabel",
+        "status": "closed",
+        "to_bus_ref": "QF-B1_koniec",
+        "type": "cable"
+      },
+      {
+        "catalog_namespace": "APARAT_NN",
+        "catalog_ref": "aparat-nn-wylacznik-1400a",
+        "device_kind": "WYLACZNIK_GLOWNY",
+        "from_bus_ref": "TA_zacisk",
+        "name": "QF-TA",
+        "ref_id": "QF-TA",
+        "status": "closed",
+        "to_bus_ref": "RGnN-A",
+        "type": "breaker"
+      },
+      {
+        "catalog_namespace": "APARAT_NN",
+        "catalog_ref": "aparat-nn-wylacznik-1400a",
+        "device_kind": "WYLACZNIK_GLOWNY",
+        "from_bus_ref": "TB_zacisk",
+        "name": "QF-TB",
+        "ref_id": "QF-TB",
+        "status": "closed",
+        "to_bus_ref": "RGnN-B",
+        "type": "breaker"
+      }
+    ],
+    "buses": [
+      {
+        "energization_state": "CONFLICT",
+        "grid_energized": true,
+        "hops_from_root": 2,
+        "is_board": false,
+        "is_energized": true,
+        "island_ref": "island-1",
+        "name": "Zacisk Odbiór B2",
+        "ref_id": "FU-B2_koniec",
+        "supply_refs": [
+          "TA",
+          "TB"
+        ],
+        "voltage_kv": 0.4,
+        "voltage_level_id": "kv:0.4"
+      },
+      {
+        "energization_state": "CONFLICT",
+        "grid_energized": true,
+        "hops_from_root": 1,
+        "is_board": false,
+        "is_energized": true,
+        "island_ref": "island-1",
+        "name": "FU-B2 zacisk wyjściowy",
+        "ref_id": "FU-B2_zacisk",
+        "supply_refs": [
+          "TA",
+          "TB"
+        ],
+        "voltage_kv": 0.4,
+        "voltage_level_id": "kv:0.4"
+      },
+      {
+        "energization_state": "CONFLICT",
+        "grid_energized": true,
+        "hops_from_root": 2,
+        "is_board": false,
+        "is_energized": true,
+        "island_ref": "island-1",
+        "name": "Zacisk Odbiór A1",
+        "ref_id": "QF-A1_koniec",
+        "supply_refs": [
+          "TA",
+          "TB"
+        ],
+        "voltage_kv": 0.4,
+        "voltage_level_id": "kv:0.4"
+      },
+      {
+        "energization_state": "CONFLICT",
+        "grid_energized": true,
+        "hops_from_root": 1,
+        "is_board": false,
+        "is_energized": true,
+        "island_ref": "island-1",
+        "name": "QF-A1 zacisk wyjściowy",
+        "ref_id": "QF-A1_zacisk",
+        "supply_refs": [
+          "TA",
+          "TB"
+        ],
+        "voltage_kv": 0.4,
+        "voltage_level_id": "kv:0.4"
+      },
+      {
+        "energization_state": "CONFLICT",
+        "grid_energized": true,
+        "hops_from_root": 2,
+        "is_board": false,
+        "is_energized": true,
+        "island_ref": "island-1",
+        "name": "Zacisk Odbiór A2",
+        "ref_id": "QF-A2_koniec",
+        "supply_refs": [
+          "TA",
+          "TB"
+        ],
+        "voltage_kv": 0.4,
+        "voltage_level_id": "kv:0.4"
+      },
+      {
+        "energization_state": "CONFLICT",
+        "grid_energized": true,
+        "hops_from_root": 1,
+        "is_board": false,
+        "is_energized": true,
+        "island_ref": "island-1",
+        "name": "QF-A2 zacisk wyjściowy",
+        "ref_id": "QF-A2_zacisk",
+        "supply_refs": [
+          "TA",
+          "TB"
+        ],
+        "voltage_kv": 0.4,
+        "voltage_level_id": "kv:0.4"
+      },
+      {
+        "energization_state": "CONFLICT",
+        "grid_energized": true,
+        "hops_from_root": 2,
+        "is_board": false,
+        "is_energized": true,
+        "island_ref": "island-1",
+        "name": "PV-A · punkt przyłączenia",
+        "ref_id": "QF-A3_pcc",
+        "supply_refs": [
+          "TA",
+          "TB"
+        ],
+        "voltage_kv": 0.4,
+        "voltage_level_id": "kv:0.4"
+      },
+      {
+        "energization_state": "CONFLICT",
+        "grid_energized": true,
+        "hops_from_root": 1,
+        "is_board": false,
+        "is_energized": true,
+        "island_ref": "island-1",
+        "name": "QF-A3 zacisk wyjściowy",
+        "ref_id": "QF-A3_zacisk",
+        "supply_refs": [
+          "TA",
+          "TB"
+        ],
+        "voltage_kv": 0.4,
+        "voltage_level_id": "kv:0.4"
+      },
+      {
+        "energization_state": "CONFLICT",
+        "grid_energized": true,
+        "hops_from_root": 2,
+        "is_board": false,
+        "is_energized": true,
+        "island_ref": "island-1",
+        "name": "Zacisk Odbiór B1",
+        "ref_id": "QF-B1_koniec",
+        "supply_refs": [
+          "TA",
+          "TB"
+        ],
+        "voltage_kv": 0.4,
+        "voltage_level_id": "kv:0.4"
+      },
+      {
+        "energization_state": "CONFLICT",
+        "grid_energized": true,
+        "hops_from_root": 1,
+        "is_board": false,
+        "is_energized": true,
+        "island_ref": "island-1",
+        "name": "QF-B1 zacisk wyjściowy",
+        "ref_id": "QF-B1_zacisk",
+        "supply_refs": [
+          "TA",
+          "TB"
+        ],
+        "voltage_kv": 0.4,
+        "voltage_level_id": "kv:0.4"
+      },
+      {
+        "energization_state": "CONFLICT",
+        "grid_energized": true,
+        "hops_from_root": 0,
+        "is_board": true,
+        "is_energized": true,
+        "island_ref": "island-1",
+        "name": "RGnN-A",
+        "ref_id": "RGnN-A",
+        "supply_refs": [
+          "TA",
+          "TB"
+        ],
+        "voltage_kv": 0.4,
+        "voltage_level_id": "kv:0.4"
+      },
+      {
+        "energization_state": "CONFLICT",
+        "grid_energized": true,
+        "hops_from_root": 0,
+        "is_board": true,
+        "is_energized": true,
+        "island_ref": "island-1",
+        "name": "RGnN-B",
+        "ref_id": "RGnN-B",
+        "supply_refs": [
+          "TA",
+          "TB"
+        ],
+        "voltage_kv": 0.4,
+        "voltage_level_id": "kv:0.4"
+      },
+      {
+        "energization_state": "CONFLICT",
+        "grid_energized": true,
+        "hops_from_root": 0,
+        "is_board": false,
+        "is_energized": true,
+        "island_ref": "island-1",
+        "name": "TA zacisk nN",
+        "ref_id": "TA_zacisk",
+        "supply_refs": [
+          "TA",
+          "TB"
+        ],
+        "voltage_kv": 0.4,
+        "voltage_level_id": "kv:0.4"
+      },
+      {
+        "energization_state": "CONFLICT",
+        "grid_energized": true,
+        "hops_from_root": 0,
+        "is_board": false,
+        "is_energized": true,
+        "island_ref": "island-1",
+        "name": "TB zacisk nN",
+        "ref_id": "TB_zacisk",
+        "supply_refs": [
+          "TA",
+          "TB"
+        ],
+        "voltage_kv": 0.4,
+        "voltage_level_id": "kv:0.4"
+      }
+    ],
+    "devices": [
+      {
+        "board_bus_ref": "RGnN-B",
+        "catalog_namespace": "WKLADKA_NN",
+        "child_bus_ref": "FU-B2_zacisk",
+        "designation_class": "FU",
+        "device_kind": null,
+        "device_role": "feeder",
+        "device_state": "CLOSED",
+        "device_type": "fuse",
+        "feeder_kind": "load",
+        "parent_bus_ref": "RGnN-B",
+        "ref_id": "FU-B2",
+        "terminal_a": "RGnN-B",
+        "terminal_b": "FU-B2_zacisk",
+        "transformer_ref": null
+      },
+      {
+        "board_bus_ref": null,
+        "catalog_namespace": "KABEL_NN",
+        "child_bus_ref": "FU-B2_koniec",
+        "designation_class": "W",
+        "device_kind": null,
+        "device_role": "internal",
+        "device_state": "CLOSED",
+        "device_type": "cable",
+        "feeder_kind": null,
+        "parent_bus_ref": "FU-B2_zacisk",
+        "ref_id": "FU-B2_kabel",
+        "terminal_a": "FU-B2_zacisk",
+        "terminal_b": "FU-B2_koniec",
+        "transformer_ref": null
+      },
+      {
+        "board_bus_ref": null,
+        "catalog_namespace": "APARAT_NN",
+        "child_bus_ref": "RGnN-B",
+        "designation_class": "QBC",
+        "device_kind": null,
+        "device_role": "coupler",
+        "device_state": "CLOSED",
+        "device_type": "bus_coupler",
+        "feeder_kind": null,
+        "parent_bus_ref": "RGnN-A",
+        "ref_id": "QBC",
+        "terminal_a": "RGnN-A",
+        "terminal_b": "RGnN-B",
+        "transformer_ref": null
+      },
+      {
+        "board_bus_ref": "RGnN-A",
+        "catalog_namespace": "APARAT_NN_MCB",
+        "child_bus_ref": "QF-A1_zacisk",
+        "designation_class": "QF",
+        "device_kind": null,
+        "device_role": "feeder",
+        "device_state": "CLOSED",
+        "device_type": "breaker",
+        "feeder_kind": "load",
+        "parent_bus_ref": "RGnN-A",
+        "ref_id": "QF-A1",
+        "terminal_a": "RGnN-A",
+        "terminal_b": "QF-A1_zacisk",
+        "transformer_ref": null
+      },
+      {
+        "board_bus_ref": null,
+        "catalog_namespace": "KABEL_NN",
+        "child_bus_ref": "QF-A1_koniec",
+        "designation_class": "W",
+        "device_kind": null,
+        "device_role": "internal",
+        "device_state": "CLOSED",
+        "device_type": "cable",
+        "feeder_kind": null,
+        "parent_bus_ref": "QF-A1_zacisk",
+        "ref_id": "QF-A1_kabel",
+        "terminal_a": "QF-A1_zacisk",
+        "terminal_b": "QF-A1_koniec",
+        "transformer_ref": null
+      },
+      {
+        "board_bus_ref": "RGnN-A",
+        "catalog_namespace": "APARAT_NN",
+        "child_bus_ref": "QF-A2_zacisk",
+        "designation_class": "QS",
+        "device_kind": "ROZLACZNIK",
+        "device_role": "feeder",
+        "device_state": "CLOSED",
+        "device_type": "switch",
+        "feeder_kind": "load",
+        "parent_bus_ref": "RGnN-A",
+        "ref_id": "QF-A2",
+        "terminal_a": "RGnN-A",
+        "terminal_b": "QF-A2_zacisk",
+        "transformer_ref": null
+      },
+      {
+        "board_bus_ref": null,
+        "catalog_namespace": "KABEL_NN",
+        "child_bus_ref": "QF-A2_koniec",
+        "designation_class": "W",
+        "device_kind": null,
+        "device_role": "internal",
+        "device_state": "CLOSED",
+        "device_type": "cable",
+        "feeder_kind": null,
+        "parent_bus_ref": "QF-A2_zacisk",
+        "ref_id": "QF-A2_kabel",
+        "terminal_a": "QF-A2_zacisk",
+        "terminal_b": "QF-A2_koniec",
+        "transformer_ref": null
+      },
+      {
+        "board_bus_ref": "RGnN-A",
+        "catalog_namespace": "APARAT_NN_MCB",
+        "child_bus_ref": "QF-A3_zacisk",
+        "designation_class": "QF",
+        "device_kind": null,
+        "device_role": "feeder",
+        "device_state": "CLOSED",
+        "device_type": "breaker",
+        "feeder_kind": "der",
+        "parent_bus_ref": "RGnN-A",
+        "ref_id": "QF-A3",
+        "terminal_a": "RGnN-A",
+        "terminal_b": "QF-A3_zacisk",
+        "transformer_ref": null
+      },
+      {
+        "board_bus_ref": null,
+        "catalog_namespace": "KABEL_NN",
+        "child_bus_ref": "QF-A3_pcc",
+        "designation_class": "W",
+        "device_kind": null,
+        "device_role": "internal",
+        "device_state": "CLOSED",
+        "device_type": "cable",
+        "feeder_kind": null,
+        "parent_bus_ref": "QF-A3_zacisk",
+        "ref_id": "QF-A3_kabel",
+        "terminal_a": "QF-A3_zacisk",
+        "terminal_b": "QF-A3_pcc",
+        "transformer_ref": null
+      },
+      {
+        "board_bus_ref": "RGnN-B",
+        "catalog_namespace": "APARAT_NN_MCB",
+        "child_bus_ref": "QF-B1_zacisk",
+        "designation_class": "QF",
+        "device_kind": null,
+        "device_role": "feeder",
+        "device_state": "CLOSED",
+        "device_type": "breaker",
+        "feeder_kind": "load",
+        "parent_bus_ref": "RGnN-B",
+        "ref_id": "QF-B1",
+        "terminal_a": "RGnN-B",
+        "terminal_b": "QF-B1_zacisk",
+        "transformer_ref": null
+      },
+      {
+        "board_bus_ref": null,
+        "catalog_namespace": "KABEL_NN",
+        "child_bus_ref": "QF-B1_koniec",
+        "designation_class": "W",
+        "device_kind": null,
+        "device_role": "internal",
+        "device_state": "CLOSED",
+        "device_type": "cable",
+        "feeder_kind": null,
+        "parent_bus_ref": "QF-B1_zacisk",
+        "ref_id": "QF-B1_kabel",
+        "terminal_a": "QF-B1_zacisk",
+        "terminal_b": "QF-B1_koniec",
+        "transformer_ref": null
+      },
+      {
+        "board_bus_ref": "RGnN-A",
+        "catalog_namespace": "APARAT_NN",
+        "child_bus_ref": "RGnN-A",
+        "designation_class": "QF",
+        "device_kind": "WYLACZNIK_GLOWNY",
+        "device_role": "incomer",
+        "device_state": "CLOSED",
+        "device_type": "breaker",
+        "feeder_kind": null,
+        "parent_bus_ref": "TA_zacisk",
+        "ref_id": "QF-TA",
+        "terminal_a": "TA_zacisk",
+        "terminal_b": "RGnN-A",
+        "transformer_ref": "TA"
+      },
+      {
+        "board_bus_ref": "RGnN-B",
+        "catalog_namespace": "APARAT_NN",
+        "child_bus_ref": "RGnN-B",
+        "designation_class": "QF",
+        "device_kind": "WYLACZNIK_GLOWNY",
+        "device_role": "incomer",
+        "device_state": "CLOSED",
+        "device_type": "breaker",
+        "feeder_kind": null,
+        "parent_bus_ref": "TB_zacisk",
+        "ref_id": "QF-TB",
+        "terminal_a": "TB_zacisk",
+        "terminal_b": "RGnN-B",
+        "transformer_ref": "TB"
+      }
+    ],
+    "earthing_system": "TN-C-S",
+    "energization_basis_pl": "Stany zasilania są topologiczne (wg aktualnych stanów łączników); model nie niesie pomiarów obecności napięcia.",
+    "generators": [
+      {
+        "bus_ref": "QF-A3_pcc",
+        "capability_source_pl": "deklaracja meta.island_capability",
+        "connection_variant": "nn_side",
+        "gen_type": "pv_inverter",
+        "island_capability": "GRID_FOLLOWING",
+        "island_operation_capable": false,
+        "name": "PV-A",
+        "p_mw": 0.05,
+        "q_mvar": 0.0,
+        "ref_id": "QF-A3_zrodlo"
+      }
+    ],
+    "islands": [
+      {
+        "bus_refs": [
+          "FU-B2_koniec",
+          "FU-B2_zacisk",
+          "QF-A1_koniec",
+          "QF-A1_zacisk",
+          "QF-A2_koniec",
+          "QF-A2_zacisk",
+          "QF-A3_pcc",
+          "QF-A3_zacisk",
+          "QF-B1_koniec",
+          "QF-B1_zacisk",
+          "RGnN-A",
+          "RGnN-B",
+          "TA_zacisk",
+          "TB_zacisk"
+        ],
+        "der_refs": [
+          "QF-A3_zrodlo"
+        ],
+        "energization_state": "CONFLICT",
+        "energizing_source_ids": [
+          "TA",
+          "TB"
+        ],
+        "frequency_reference_source_id": "src",
+        "grid_source_refs": [
+          "src",
+          "src2"
+        ],
+        "has_grid_forming_source": false,
+        "is_energized": true,
+        "is_islanded": false,
+        "island_operation_allowed": null,
+        "island_ref": "island-1",
+        "neutral_reference": {
+          "source_ref": "TA",
+          "status": "OK",
+          "status_pl": "Układ TN-C-S; punkt neutralny: TA.",
+          "swz_evaluable": true,
+          "system": "TN-C-S"
+        },
+        "power_balance": {
+          "basis_pl": "suma mocy znamionowych z modelu (dane źródłowe, nie wynik rozpływu)",
+          "p_generation_mw": 0.05,
+          "p_load_mw": 0.075,
+          "state": "z_sieci"
+        },
+        "transformer_refs": [
+          "TA",
+          "TB"
+        ],
+        "upstream_system_ids": [
+          "sn",
+          "sn2"
+        ],
+        "validation_messages": [
+          {
+            "code": "NN-AUD-06",
+            "element_refs": [
+              "TA",
+              "TB"
+            ],
+            "message_pl": "Sekcje zasilane z niezależnych systemów SN (sn, sn2) są spięte po stronie nN — praca równoległa niezsynchronizowanych źródeł. Wymaga rozstrzygnięcia (otwarcie sprzęgła albo automatyka SZR).",
+            "severity": "BLOCKER"
+          }
+        ],
+        "voltage_reference_source_id": "src"
+      }
+    ],
+    "loads": [
+      {
+        "bus_ref": "FU-B2_koniec",
+        "name": "Odbiór B2",
+        "p_mw": 0.01,
+        "q_mvar": 0.002,
+        "ref_id": "FU-B2_odbior"
+      },
+      {
+        "bus_ref": "QF-A1_koniec",
+        "name": "Odbiór A1",
+        "p_mw": 0.02,
+        "q_mvar": 0.004,
+        "ref_id": "QF-A1_odbior"
+      },
+      {
+        "bus_ref": "QF-A2_koniec",
+        "name": "Odbiór A2",
+        "p_mw": 0.015,
+        "q_mvar": 0.003,
+        "ref_id": "QF-A2_odbior"
+      },
+      {
+        "bus_ref": "QF-B1_koniec",
+        "name": "Odbiór B1",
+        "p_mw": 0.03,
+        "q_mvar": 0.006,
+        "ref_id": "QF-B1_odbior"
+      }
+    ],
+    "measured_voltage_states": {},
+    "measurements": [],
+    "missing_data": [],
+    "protection_assignments": [],
+    "root_bus_refs": [
+      "RGnN-A",
+      "RGnN-B",
+      "TA_zacisk",
+      "TB_zacisk"
+    ],
+    "sections": [
+      {
+        "bus_ref": "RGnN-A",
+        "coupler_refs": [
+          "QBC"
+        ],
+        "incomer_refs": [
+          "QF-TA"
+        ],
+        "order": 1,
+        "section_id": "A",
+        "station_ref": "stAB",
+        "tier": "main",
+        "transformer_refs": [
+          "TA"
+        ]
+      },
+      {
+        "bus_ref": "RGnN-B",
+        "coupler_refs": [
+          "QBC"
+        ],
+        "incomer_refs": [
+          "QF-TB"
+        ],
+        "order": 2,
+        "section_id": "B",
+        "station_ref": "stAB",
+        "tier": "main",
+        "transformer_refs": [
+          "TB"
+        ]
+      }
+    ],
+    "segments": [
+      {
+        "connectivity_state": "CLOSED",
+        "energization_state": "CONFLICT",
+        "from_bus_ref": "RGnN-B",
+        "from_terminal": {
+          "energization_state": "CONFLICT",
+          "grid_energized": true,
+          "is_energized": true,
+          "island_ref": "island-1",
+          "supply_refs": [
+            "TA",
+            "TB"
+          ]
+        },
+        "island_ref": "island-1",
+        "segment_id": "FU-B2",
+        "source_ids": [
+          "TA",
+          "TB"
+        ],
+        "to_bus_ref": "FU-B2_zacisk",
+        "to_terminal": {
+          "energization_state": "CONFLICT",
+          "grid_energized": true,
+          "is_energized": true,
+          "island_ref": "island-1",
+          "supply_refs": [
+            "TA",
+            "TB"
+          ]
+        },
+        "voltage_level_id": "kv:0.4"
+      },
+      {
+        "connectivity_state": "CLOSED",
+        "energization_state": "CONFLICT",
+        "from_bus_ref": "FU-B2_zacisk",
+        "from_terminal": {
+          "energization_state": "CONFLICT",
+          "grid_energized": true,
+          "is_energized": true,
+          "island_ref": "island-1",
+          "supply_refs": [
+            "TA",
+            "TB"
+          ]
+        },
+        "island_ref": "island-1",
+        "segment_id": "FU-B2_kabel",
+        "source_ids": [
+          "TA",
+          "TB"
+        ],
+        "to_bus_ref": "FU-B2_koniec",
+        "to_terminal": {
+          "energization_state": "CONFLICT",
+          "grid_energized": true,
+          "is_energized": true,
+          "island_ref": "island-1",
+          "supply_refs": [
+            "TA",
+            "TB"
+          ]
+        },
+        "voltage_level_id": "kv:0.4"
+      },
+      {
+        "connectivity_state": "CLOSED",
+        "energization_state": "CONFLICT",
+        "from_bus_ref": "RGnN-A",
+        "from_terminal": {
+          "energization_state": "CONFLICT",
+          "grid_energized": true,
+          "is_energized": true,
+          "island_ref": "island-1",
+          "supply_refs": [
+            "TA",
+            "TB"
+          ]
+        },
+        "island_ref": "island-1",
+        "segment_id": "QBC",
+        "source_ids": [
+          "TA",
+          "TB"
+        ],
+        "to_bus_ref": "RGnN-B",
+        "to_terminal": {
+          "energization_state": "CONFLICT",
+          "grid_energized": true,
+          "is_energized": true,
+          "island_ref": "island-1",
+          "supply_refs": [
+            "TA",
+            "TB"
+          ]
+        },
+        "voltage_level_id": "kv:0.4"
+      },
+      {
+        "connectivity_state": "CLOSED",
+        "energization_state": "CONFLICT",
+        "from_bus_ref": "RGnN-A",
+        "from_terminal": {
+          "energization_state": "CONFLICT",
+          "grid_energized": true,
+          "is_energized": true,
+          "island_ref": "island-1",
+          "supply_refs": [
+            "TA",
+            "TB"
+          ]
+        },
+        "island_ref": "island-1",
+        "segment_id": "QF-A1",
+        "source_ids": [
+          "TA",
+          "TB"
+        ],
+        "to_bus_ref": "QF-A1_zacisk",
+        "to_terminal": {
+          "energization_state": "CONFLICT",
+          "grid_energized": true,
+          "is_energized": true,
+          "island_ref": "island-1",
+          "supply_refs": [
+            "TA",
+            "TB"
+          ]
+        },
+        "voltage_level_id": "kv:0.4"
+      },
+      {
+        "connectivity_state": "CLOSED",
+        "energization_state": "CONFLICT",
+        "from_bus_ref": "QF-A1_zacisk",
+        "from_terminal": {
+          "energization_state": "CONFLICT",
+          "grid_energized": true,
+          "is_energized": true,
+          "island_ref": "island-1",
+          "supply_refs": [
+            "TA",
+            "TB"
+          ]
+        },
+        "island_ref": "island-1",
+        "segment_id": "QF-A1_kabel",
+        "source_ids": [
+          "TA",
+          "TB"
+        ],
+        "to_bus_ref": "QF-A1_koniec",
+        "to_terminal": {
+          "energization_state": "CONFLICT",
+          "grid_energized": true,
+          "is_energized": true,
+          "island_ref": "island-1",
+          "supply_refs": [
+            "TA",
+            "TB"
+          ]
+        },
+        "voltage_level_id": "kv:0.4"
+      },
+      {
+        "connectivity_state": "CLOSED",
+        "energization_state": "CONFLICT",
+        "from_bus_ref": "RGnN-A",
+        "from_terminal": {
+          "energization_state": "CONFLICT",
+          "grid_energized": true,
+          "is_energized": true,
+          "island_ref": "island-1",
+          "supply_refs": [
+            "TA",
+            "TB"
+          ]
+        },
+        "island_ref": "island-1",
+        "segment_id": "QF-A2",
+        "source_ids": [
+          "TA",
+          "TB"
+        ],
+        "to_bus_ref": "QF-A2_zacisk",
+        "to_terminal": {
+          "energization_state": "CONFLICT",
+          "grid_energized": true,
+          "is_energized": true,
+          "island_ref": "island-1",
+          "supply_refs": [
+            "TA",
+            "TB"
+          ]
+        },
+        "voltage_level_id": "kv:0.4"
+      },
+      {
+        "connectivity_state": "CLOSED",
+        "energization_state": "CONFLICT",
+        "from_bus_ref": "QF-A2_zacisk",
+        "from_terminal": {
+          "energization_state": "CONFLICT",
+          "grid_energized": true,
+          "is_energized": true,
+          "island_ref": "island-1",
+          "supply_refs": [
+            "TA",
+            "TB"
+          ]
+        },
+        "island_ref": "island-1",
+        "segment_id": "QF-A2_kabel",
+        "source_ids": [
+          "TA",
+          "TB"
+        ],
+        "to_bus_ref": "QF-A2_koniec",
+        "to_terminal": {
+          "energization_state": "CONFLICT",
+          "grid_energized": true,
+          "is_energized": true,
+          "island_ref": "island-1",
+          "supply_refs": [
+            "TA",
+            "TB"
+          ]
+        },
+        "voltage_level_id": "kv:0.4"
+      },
+      {
+        "connectivity_state": "CLOSED",
+        "energization_state": "CONFLICT",
+        "from_bus_ref": "RGnN-A",
+        "from_terminal": {
+          "energization_state": "CONFLICT",
+          "grid_energized": true,
+          "is_energized": true,
+          "island_ref": "island-1",
+          "supply_refs": [
+            "TA",
+            "TB"
+          ]
+        },
+        "island_ref": "island-1",
+        "segment_id": "QF-A3",
+        "source_ids": [
+          "TA",
+          "TB"
+        ],
+        "to_bus_ref": "QF-A3_zacisk",
+        "to_terminal": {
+          "energization_state": "CONFLICT",
+          "grid_energized": true,
+          "is_energized": true,
+          "island_ref": "island-1",
+          "supply_refs": [
+            "TA",
+            "TB"
+          ]
+        },
+        "voltage_level_id": "kv:0.4"
+      },
+      {
+        "connectivity_state": "CLOSED",
+        "energization_state": "CONFLICT",
+        "from_bus_ref": "QF-A3_zacisk",
+        "from_terminal": {
+          "energization_state": "CONFLICT",
+          "grid_energized": true,
+          "is_energized": true,
+          "island_ref": "island-1",
+          "supply_refs": [
+            "TA",
+            "TB"
+          ]
+        },
+        "island_ref": "island-1",
+        "segment_id": "QF-A3_kabel",
+        "source_ids": [
+          "TA",
+          "TB"
+        ],
+        "to_bus_ref": "QF-A3_pcc",
+        "to_terminal": {
+          "energization_state": "CONFLICT",
+          "grid_energized": true,
+          "is_energized": true,
+          "island_ref": "island-1",
+          "supply_refs": [
+            "TA",
+            "TB"
+          ]
+        },
+        "voltage_level_id": "kv:0.4"
+      },
+      {
+        "connectivity_state": "CLOSED",
+        "energization_state": "CONFLICT",
+        "from_bus_ref": "RGnN-B",
+        "from_terminal": {
+          "energization_state": "CONFLICT",
+          "grid_energized": true,
+          "is_energized": true,
+          "island_ref": "island-1",
+          "supply_refs": [
+            "TA",
+            "TB"
+          ]
+        },
+        "island_ref": "island-1",
+        "segment_id": "QF-B1",
+        "source_ids": [
+          "TA",
+          "TB"
+        ],
+        "to_bus_ref": "QF-B1_zacisk",
+        "to_terminal": {
+          "energization_state": "CONFLICT",
+          "grid_energized": true,
+          "is_energized": true,
+          "island_ref": "island-1",
+          "supply_refs": [
+            "TA",
+            "TB"
+          ]
+        },
+        "voltage_level_id": "kv:0.4"
+      },
+      {
+        "connectivity_state": "CLOSED",
+        "energization_state": "CONFLICT",
+        "from_bus_ref": "QF-B1_zacisk",
+        "from_terminal": {
+          "energization_state": "CONFLICT",
+          "grid_energized": true,
+          "is_energized": true,
+          "island_ref": "island-1",
+          "supply_refs": [
+            "TA",
+            "TB"
+          ]
+        },
+        "island_ref": "island-1",
+        "segment_id": "QF-B1_kabel",
+        "source_ids": [
+          "TA",
+          "TB"
+        ],
+        "to_bus_ref": "QF-B1_koniec",
+        "to_terminal": {
+          "energization_state": "CONFLICT",
+          "grid_energized": true,
+          "is_energized": true,
+          "island_ref": "island-1",
+          "supply_refs": [
+            "TA",
+            "TB"
+          ]
+        },
+        "voltage_level_id": "kv:0.4"
+      },
+      {
+        "connectivity_state": "CLOSED",
+        "energization_state": "CONFLICT",
+        "from_bus_ref": "TA_zacisk",
+        "from_terminal": {
+          "energization_state": "CONFLICT",
+          "grid_energized": true,
+          "is_energized": true,
+          "island_ref": "island-1",
+          "supply_refs": [
+            "TA",
+            "TB"
+          ]
+        },
+        "island_ref": "island-1",
+        "segment_id": "QF-TA",
+        "source_ids": [
+          "TA",
+          "TB"
+        ],
+        "to_bus_ref": "RGnN-A",
+        "to_terminal": {
+          "energization_state": "CONFLICT",
+          "grid_energized": true,
+          "is_energized": true,
+          "island_ref": "island-1",
+          "supply_refs": [
+            "TA",
+            "TB"
+          ]
+        },
+        "voltage_level_id": "kv:0.4"
+      },
+      {
+        "connectivity_state": "CLOSED",
+        "energization_state": "CONFLICT",
+        "from_bus_ref": "TB_zacisk",
+        "from_terminal": {
+          "energization_state": "CONFLICT",
+          "grid_energized": true,
+          "is_energized": true,
+          "island_ref": "island-1",
+          "supply_refs": [
+            "TA",
+            "TB"
+          ]
+        },
+        "island_ref": "island-1",
+        "segment_id": "QF-TB",
+        "source_ids": [
+          "TA",
+          "TB"
+        ],
+        "to_bus_ref": "RGnN-B",
+        "to_terminal": {
+          "energization_state": "CONFLICT",
+          "grid_energized": true,
+          "is_energized": true,
+          "island_ref": "island-1",
+          "supply_refs": [
+            "TA",
+            "TB"
+          ]
+        },
+        "voltage_level_id": "kv:0.4"
+      }
+    ],
+    "station_name": "Stacja AB",
+    "station_ref": "stAB",
+    "status": "OK",
+    "sub_switchboards": [],
+    "supply_paths": [
+      {
+        "branch_refs": [
+          "QF-TA",
+          "QBC",
+          "FU-B2",
+          "FU-B2_kabel"
+        ],
+        "bus_ref": "FU-B2_koniec",
+        "source_bus_ref": "TA_zacisk",
+        "source_ref": "TA"
+      },
+      {
+        "branch_refs": [
+          "QF-TB",
+          "FU-B2",
+          "FU-B2_kabel"
+        ],
+        "bus_ref": "FU-B2_koniec",
+        "source_bus_ref": "TB_zacisk",
+        "source_ref": "TB"
+      },
+      {
+        "branch_refs": [
+          "QF-TA",
+          "QBC",
+          "FU-B2"
+        ],
+        "bus_ref": "FU-B2_zacisk",
+        "source_bus_ref": "TA_zacisk",
+        "source_ref": "TA"
+      },
+      {
+        "branch_refs": [
+          "QF-TB",
+          "FU-B2"
+        ],
+        "bus_ref": "FU-B2_zacisk",
+        "source_bus_ref": "TB_zacisk",
+        "source_ref": "TB"
+      },
+      {
+        "branch_refs": [
+          "QF-TA",
+          "QF-A1",
+          "QF-A1_kabel"
+        ],
+        "bus_ref": "QF-A1_koniec",
+        "source_bus_ref": "TA_zacisk",
+        "source_ref": "TA"
+      },
+      {
+        "branch_refs": [
+          "QF-TB",
+          "QBC",
+          "QF-A1",
+          "QF-A1_kabel"
+        ],
+        "bus_ref": "QF-A1_koniec",
+        "source_bus_ref": "TB_zacisk",
+        "source_ref": "TB"
+      },
+      {
+        "branch_refs": [
+          "QF-TA",
+          "QF-A1"
+        ],
+        "bus_ref": "QF-A1_zacisk",
+        "source_bus_ref": "TA_zacisk",
+        "source_ref": "TA"
+      },
+      {
+        "branch_refs": [
+          "QF-TB",
+          "QBC",
+          "QF-A1"
+        ],
+        "bus_ref": "QF-A1_zacisk",
+        "source_bus_ref": "TB_zacisk",
+        "source_ref": "TB"
+      },
+      {
+        "branch_refs": [
+          "QF-TA",
+          "QF-A2",
+          "QF-A2_kabel"
+        ],
+        "bus_ref": "QF-A2_koniec",
+        "source_bus_ref": "TA_zacisk",
+        "source_ref": "TA"
+      },
+      {
+        "branch_refs": [
+          "QF-TB",
+          "QBC",
+          "QF-A2",
+          "QF-A2_kabel"
+        ],
+        "bus_ref": "QF-A2_koniec",
+        "source_bus_ref": "TB_zacisk",
+        "source_ref": "TB"
+      },
+      {
+        "branch_refs": [
+          "QF-TA",
+          "QF-A2"
+        ],
+        "bus_ref": "QF-A2_zacisk",
+        "source_bus_ref": "TA_zacisk",
+        "source_ref": "TA"
+      },
+      {
+        "branch_refs": [
+          "QF-TB",
+          "QBC",
+          "QF-A2"
+        ],
+        "bus_ref": "QF-A2_zacisk",
+        "source_bus_ref": "TB_zacisk",
+        "source_ref": "TB"
+      },
+      {
+        "branch_refs": [
+          "QF-TA",
+          "QF-A3",
+          "QF-A3_kabel"
+        ],
+        "bus_ref": "QF-A3_pcc",
+        "source_bus_ref": "TA_zacisk",
+        "source_ref": "TA"
+      },
+      {
+        "branch_refs": [
+          "QF-TB",
+          "QBC",
+          "QF-A3",
+          "QF-A3_kabel"
+        ],
+        "bus_ref": "QF-A3_pcc",
+        "source_bus_ref": "TB_zacisk",
+        "source_ref": "TB"
+      },
+      {
+        "branch_refs": [
+          "QF-TA",
+          "QF-A3"
+        ],
+        "bus_ref": "QF-A3_zacisk",
+        "source_bus_ref": "TA_zacisk",
+        "source_ref": "TA"
+      },
+      {
+        "branch_refs": [
+          "QF-TB",
+          "QBC",
+          "QF-A3"
+        ],
+        "bus_ref": "QF-A3_zacisk",
+        "source_bus_ref": "TB_zacisk",
+        "source_ref": "TB"
+      },
+      {
+        "branch_refs": [
+          "QF-TA",
+          "QBC",
+          "QF-B1",
+          "QF-B1_kabel"
+        ],
+        "bus_ref": "QF-B1_koniec",
+        "source_bus_ref": "TA_zacisk",
+        "source_ref": "TA"
+      },
+      {
+        "branch_refs": [
+          "QF-TB",
+          "QF-B1",
+          "QF-B1_kabel"
+        ],
+        "bus_ref": "QF-B1_koniec",
+        "source_bus_ref": "TB_zacisk",
+        "source_ref": "TB"
+      },
+      {
+        "branch_refs": [
+          "QF-TA",
+          "QBC",
+          "QF-B1"
+        ],
+        "bus_ref": "QF-B1_zacisk",
+        "source_bus_ref": "TA_zacisk",
+        "source_ref": "TA"
+      },
+      {
+        "branch_refs": [
+          "QF-TB",
+          "QF-B1"
+        ],
+        "bus_ref": "QF-B1_zacisk",
+        "source_bus_ref": "TB_zacisk",
+        "source_ref": "TB"
+      },
+      {
+        "branch_refs": [
+          "QF-TA"
+        ],
+        "bus_ref": "RGnN-A",
+        "source_bus_ref": "TA_zacisk",
+        "source_ref": "TA"
+      },
+      {
+        "branch_refs": [
+          "QF-TB",
+          "QBC"
+        ],
+        "bus_ref": "RGnN-A",
+        "source_bus_ref": "TB_zacisk",
+        "source_ref": "TB"
+      },
+      {
+        "branch_refs": [
+          "QF-TA",
+          "QBC"
+        ],
+        "bus_ref": "RGnN-B",
+        "source_bus_ref": "TA_zacisk",
+        "source_ref": "TA"
+      },
+      {
+        "branch_refs": [
+          "QF-TB"
+        ],
+        "bus_ref": "RGnN-B",
+        "source_bus_ref": "TB_zacisk",
+        "source_ref": "TB"
+      },
+      {
+        "branch_refs": [],
+        "bus_ref": "TA_zacisk",
+        "source_bus_ref": "TA_zacisk",
+        "source_ref": "TA"
+      },
+      {
+        "branch_refs": [
+          "QF-TB",
+          "QBC",
+          "QF-TA"
+        ],
+        "bus_ref": "TA_zacisk",
+        "source_bus_ref": "TB_zacisk",
+        "source_ref": "TB"
+      },
+      {
+        "branch_refs": [
+          "QF-TA",
+          "QBC",
+          "QF-TB"
+        ],
+        "bus_ref": "TB_zacisk",
+        "source_bus_ref": "TA_zacisk",
+        "source_ref": "TA"
+      },
+      {
+        "branch_refs": [],
+        "bus_ref": "TB_zacisk",
+        "source_bus_ref": "TB_zacisk",
+        "source_ref": "TB"
+      }
+    ],
+    "transformers": [
+      {
+        "hv_bus_ref": "sn",
+        "lv_bus_ref": "TA_zacisk",
+        "lv_neutral": null,
+        "name": "TA",
+        "ref_id": "TA",
+        "sn_mva": 0.4,
+        "uhv_kv": 15.0,
+        "uk_percent": 4.0,
+        "ulv_kv": 0.4,
+        "upstream_system_id": "sn",
+        "vector_group": "Dyn5"
+      },
+      {
+        "hv_bus_ref": "sn2",
+        "lv_bus_ref": "TB_zacisk",
+        "lv_neutral": null,
+        "name": "TB",
+        "ref_id": "TB",
+        "sn_mva": 0.4,
+        "uhv_kv": 15.0,
+        "uk_percent": 4.0,
+        "ulv_kv": 0.4,
+        "upstream_system_id": "sn2",
+        "vector_group": "Dyn5"
+      }
+    ]
+  },
+  "missing_data": [
+    "swz:TA:upstream_network_topology_invalid",
+    "swz:TB:upstream_network_topology_invalid",
+    "upstream:TA:upstream_network_topology_invalid",
+    "upstream:TB:upstream_network_topology_invalid"
+  ],
+  "model_snapshot": {
+    "case_id": "fixture-06_conflict_parallel_sources",
+    "model_hash": "09fcd2a7cb7be1cfc78b141019ce6d04871e5a736478b99aafaec36dbfaeb9e4",
+    "operating_state_id": "d8b328dea019e2a1b0908e164e12219215dd0c7386846cd0d4a1925f12d825b6",
+    "revision": 1,
+    "run_snapshot_hash": null,
+    "scenario_id": "MAX",
+    "station_ref": "stAB"
+  },
+  "projection_hash": "0901b13c8b46d64d18c2d562b21c7127c4d897036908393c165e295fc083d933",
+  "result_snapshot": {
+    "analysis_type": null,
+    "overlay_payload": null,
+    "reason": "brak-wyniku",
+    "reason_pl": "Brak zapisanego wyniku dla tego przebiegu — nie ma czego nałożyć na schemat.",
+    "result_contract_version": null,
+    "result_signature": null,
+    "run_finished_at": null,
+    "run_id": null,
+    "run_model_hash": null,
+    "status": "NONE",
+    "voltage_profile": null
+  },
+  "scenario_id": "MAX",
+  "station_ref": "stAB",
+  "status": "OK",
+  "swz_snapshot": {
+    "missing_data": [
+      "TA:upstream_network_topology_invalid",
+      "TB:upstream_network_topology_invalid"
+    ],
+    "network_system": "TN-C-S",
+    "reason_pl": null,
+    "status": "brak danych",
+    "transformers": [
+      {
+        "feeders": [],
+        "missing_data": [
+          "upstream_network_topology_invalid"
+        ],
+        "nn_bus_ref": "TA_zacisk",
+        "status": "brak danych",
+        "transformer_ref": "TA"
+      },
+      {
+        "feeders": [],
+        "missing_data": [
+          "upstream_network_topology_invalid"
+        ],
+        "nn_bus_ref": "TB_zacisk",
+        "status": "brak danych",
+        "transformer_ref": "TB"
+      }
+    ]
+  },
+  "upstream_equivalents": [
+    {
+      "case_id": "fixture-06_conflict_parallel_sources",
+      "missing_data": [
+        "upstream_network_topology_invalid"
+      ],
+      "station_name": "Stacja AB",
+      "station_ref": "stAB",
+      "status": "brak danych",
+      "transformer_ref": "TA",
+      "upstream_source_ids": [
+        "src"
+      ],
+      "upstream_source_names": [
+        "GPZ Północ"
+      ],
+      "upstream_system_id": "sn"
+    },
+    {
+      "case_id": "fixture-06_conflict_parallel_sources",
+      "missing_data": [
+        "upstream_network_topology_invalid"
+      ],
+      "station_name": "Stacja AB",
+      "station_ref": "stAB",
+      "status": "brak danych",
+      "transformer_ref": "TB",
+      "upstream_source_ids": [
+        "src2"
+      ],
+      "upstream_source_names": [
+        "GPZ Południe"
+      ],
+      "upstream_system_id": "sn2"
+    }
+  ],
+  "validation_messages": [
+    {
+      "code": "NN-AUD-06",
+      "element_refs": [
+        "TA",
+        "TB"
+      ],
+      "message_pl": "Sekcje zasilane z niezależnych systemów SN (sn, sn2) są spięte po stronie nN — praca równoległa niezsynchronizowanych źródeł. Wymaga rozstrzygnięcia (otwarcie sprzęgła albo automatyka SZR).",
+      "severity": "BLOCKER"
+    },
+    {
+      "code": "NN-AUD-18",
+      "element_refs": [
+        "QBC"
+      ],
+      "message_pl": "Sprzęgło QBC: katalog nie określa rodzaju aparatu (wyłącznik / rozłącznik / odłącznik / rozłącznik bezpiecznikowy) — na schemacie symbol ogólny łącznika.",
+      "severity": "INFO"
+    }
+  ]
+}

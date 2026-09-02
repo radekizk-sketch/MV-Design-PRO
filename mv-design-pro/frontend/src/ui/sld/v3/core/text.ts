@@ -39,6 +39,34 @@ export type LabelClass = 't1' | 't2' | 't3' | 't4';
  */
 export type LabelRole = 'tozsamosc' | 'dane';
 
+/**
+ * T2-LOD (`docs/nn/PLAN_SLD_NN_TOPOLOGIA_2026-08.md` §„POLITYKA LOD nN",
+ * BINDING) — KLASA POZIOMU SZCZEGÓŁU etykiety/adnotacji sceny: TRZY poziomy
+ * widoczności wg zoomu kamery, TA SAMA taksonomia co `SceneLod`
+ * (`canvas/camera.ts`, 0/1/2), ROZŁĄCZNA od `LabelClass` (rozmiar pisma) i
+ * WARSTWĄ NAD `LabelRole` (KD-11), nie jej zastępstwem — wyprowadzenie:
+ * `layout/labels.ts` `lodClassOf`.
+ *
+ *  - `'L0'` (Fit / cały arkusz) — NIGDY nie ukrywane, żadnym zoomem (dokładny
+ *    odpowiednik `LabelRole.tozsamosc`): oznaczenia referencyjne aparatów,
+ *    poziomy napięć i etykiety szyn, nazwy pól, nazwa+parametry kluczowe
+ *    transformatora, stany OPEN/CLOSED, ostrzeżenia krytyczne (SLD INVALID,
+ *    UNRESOLVED), granica domen napięciowych — bez tej treści rysunek nie
+ *    mówi, CO przedstawia;
+ *  - `'L1'` (zbliżenie robocze) — dochodzą: typy katalogowe, prądy znamionowe,
+ *    przekroje/długości kabli, oznaczenia głowic, układ N/PE/PEN szczegółowo;
+ *  - `'L2'` (inspekcja) — dochodzą: parametry katalogowe pełne, producent,
+ *    warstwa wyników inline (Ib/Iz/ΔU/Ik/SWZ per element), marginesy doboru.
+ *
+ * Wyjątek bezwzględny (plan, dosłownie): element w stanie błędu/UNRESOLVED
+ * renderuje PEŁNĄ etykietę na KAŻDYM poziomie — patrz `OwnedLabel.unresolved`
+ * (`layout/labels.ts`), egzekwowane w `canvas/labelLegibility.ts`.
+ * „Ukryto N opisów" (`LabelRenderPlan.hiddenDetail`) liczy WYŁĄCZNIE `'L1'`/
+ * `'L2'` — `'L0'` nigdy tam nie trafia, z konstrukcji (wyrocznia:
+ * `canvas/labelLegibility.ts` `hiddenDetailContainsL0`).
+ */
+export type LodClass = 'L0' | 'L1' | 'L2';
+
 export interface LabelTypography {
   readonly fontSize: number;
   readonly fontWeight: number;

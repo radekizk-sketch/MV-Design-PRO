@@ -272,7 +272,7 @@ export function derSymbolSize(kind: DerSourceKind): { readonly width: number; re
 // JEDNA prawda measure↔compose: `layout/measure.ts` (rezerwacja wysokości pod
 // polem źródłowym SN) i `compose/station.ts` (rysunek toru) importują TE SAME
 // stałe/funkcje, inaczej rezerwacja i realna geometria rozjeżdżają się (wzór
-// `derRowFootprint`/`DER_ROW_TOP_CLEARANCE`).
+// `derRowFootprint`).
 // ---------------------------------------------------------------------------
 
 /** Długość kabla SN (głowica pola → strona SN TR blokowego) — pion toru. */

@@ -29,6 +29,7 @@ import pytest
 from domain.incremental_archive import (
     INCREMENTAL_FORMAT_ID,
     INCREMENTAL_SCHEMA_VERSION,
+    SECTION_NAMES,
     BaseHashMismatchError,
     IncrementalExportResult,
     IncrementalExportType,
@@ -186,7 +187,7 @@ class TestComputeSectionDeltas:
         archive = _make_archive()
         deltas = compute_section_deltas(archive.fingerprints, archive)
 
-        assert len(deltas) == 9  # 9 sekcji
+        assert len(deltas) == len(SECTION_NAMES)  # komplet sekcji (z enm po N-D1)
         for d in deltas:
             assert d.status == SectionChangeStatus.UNCHANGED
             assert d.data is None
@@ -278,7 +279,7 @@ class TestBuildIncrementalArchive:
         assert incr.export_type == IncrementalExportType.DELTA
         assert incr.base_archive_hash == archive.fingerprints.archive_hash
         assert incr.base_timestamp == "2025-06-01T00:00:00Z"
-        assert len(incr.deltas) == 9
+        assert len(incr.deltas) == len(SECTION_NAMES)
 
         for d in incr.deltas:
             assert d.status == SectionChangeStatus.UNCHANGED
@@ -533,7 +534,7 @@ class TestSizeSavings:
         assert result.size_delta_bytes == len(delta_bytes)
         assert result.sections_changed >= 0
         assert result.sections_unchanged >= 0
-        assert result.sections_changed + result.sections_unchanged == 9
+        assert result.sections_changed + result.sections_unchanged == len(SECTION_NAMES)
         assert result.savings_percent > 0.0
 
 

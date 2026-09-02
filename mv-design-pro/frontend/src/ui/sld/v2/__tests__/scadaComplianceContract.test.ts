@@ -68,8 +68,13 @@ describe('SCADA Compliance Contract — tor mocy + symbole + porty', () => {
   });
 
   describe('Stacje SN/nN — wewnętrzna struktura', () => {
-    it('StationInternalView renderuje wnętrze stacji', () => {
-      expect(fileExists('ui/sld/v2/canvas/StationInternalView.tsx')).toBe(true);
+    // Slice E (kasacja legacy, 2026-09-01): `StationInternalView.tsx` skasowany
+    // (zero konsumentow produkcyjnych, zmierzone przed kasacja) — nastepca to
+    // portal projekcji domeny nN (`LvDomainPortal.tsx` -> `LvDomainView.tsx`,
+    // wpiety w `SldCanvasV3Workspace.handleElementDoubleClick`). Intencja testu
+    // (wnetrze stacji SN/nN ma dzialajacy renderer) bez zmian, tylko plik.
+    it('LvDomainView renderuje wnetrze stacji (nastepca StationInternalView)', () => {
+      expect(fileExists('ui/sld/v3/lv-domain/LvDomainView.tsx')).toBe(true);
     });
 
     it('MiniBlockRmuRenderer renderuje stacje RMU (pola WE/WY/TR)', () => {
@@ -172,25 +177,11 @@ describe('SCADA Compliance Contract — tor mocy + symbole + porty', () => {
     });
   });
 
-  describe('Vendor template configurators (wymaganie #5)', () => {
-    it('vendorSwitchgearCatalog z 5 producentami', () => {
-      expect(fileExists('ui/network-build/station-wizard-v2/vendorSwitchgearCatalog.ts')).toBe(true);
-    });
-
-    it('Catalog zawiera ABB, Schneider, Siemens, ZPUE, Eaton', () => {
-      const content = readFileSync(
-        join(FRONTEND_SRC, 'ui/network-build/station-wizard-v2/vendorSwitchgearCatalog.ts'),
-        'utf-8',
-      );
-      expect(content).toContain('ABB');
-      expect(content).toContain('Schneider');
-      expect(content).toContain('Siemens');
-      expect(content).toContain('ZPUE_Wloszczowa');
-      expect(content).toContain('Eaton');
-    });
-
-    it('Auto-konfiguracja pól vendor → FieldRole bridge', () => {
-      expect(fileExists('ui/network-build/station-wizard-v2/vendorBayRoleBridge.ts')).toBe(true);
-    });
-  });
+  // Wymaganie #5 (vendor template configurators): piny plikowe
+  // station-wizard-v2 usunięte kasacją N-D3 (wiersz N-D3-POMIAR-U2 w
+  // docs/v12xx/REJESTR_KONFLIKTOW.md — pomiar na obu gałęziach wykazał ZERO
+  // konsumentów biblioteki kontraktów; martwy kod skasowany, D3 skorygowana).
+  // Szablony pól/aparatów per rola żyją po stronie backendu
+  // (GET /api/catalog/bay-apparatus-kinds + bay_templates, karta
+  // KOMPLETNOSC-POLA-TR) i są przypięte tam, nie pinami istnienia plików UI.
 });

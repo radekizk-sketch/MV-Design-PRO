@@ -78,6 +78,80 @@ def test_petla_zwarcia_stacji_melduje_brak_danych_zamiast_zgadywac(app_client) -
     assert payload["station_ref"] == "ST-NIEISTNIEJACA"
 
 
+def test_petla_zwarcia_punktu_wymaga_stacji_i_szyny(app_client) -> None:
+    """`station_ref` i `bus_ref` są WYMAGANE — brak dowolnego = 422 (karta P0.6)."""
+    case_id = uuid4()
+    assert app_client.get(f"/api/cases/{case_id}/enm/fault-loop-point").status_code == 422
+    assert (
+        app_client.get(
+            f"/api/cases/{case_id}/enm/fault-loop-point", params={"station_ref": "ST-1"}
+        ).status_code
+        == 422
+    )
+
+
+def test_petla_zwarcia_punktu_melduje_brak_danych_zamiast_zgadywac(app_client) -> None:
+    response = app_client.get(
+        f"/api/cases/{uuid4()}/enm/fault-loop-point",
+        params={"station_ref": "ST-NIEISTNIEJACA", "bus_ref": "nn"},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "brak danych"
+    assert payload["missing_data"] == ["station"]
+    assert payload["station_ref"] == "ST-NIEISTNIEJACA"
+    assert payload["bus_ref"] == "nn"
+
+
+def test_petla_zwarcia_odplywow_wymaga_stacji(app_client) -> None:
+    """`station_ref` jest parametrem WYMAGANYM — brak = 422 (karta P0.6)."""
+    response = app_client.get(f"/api/cases/{uuid4()}/enm/fault-loop-feeders")
+
+    assert response.status_code == 422
+
+
+def test_petla_zwarcia_odplywow_melduje_brak_danych_zamiast_zgadywac(app_client) -> None:
+    response = app_client.get(
+        f"/api/cases/{uuid4()}/enm/fault-loop-feeders",
+        params={"station_ref": "ST-NIEISTNIEJACA"},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "brak danych"
+    assert payload["missing_data"] == ["station"]
+    assert payload["feeders"] == []
+
+
+def test_swz_wymaga_stacji_szyny_i_aparatu(app_client) -> None:
+    """`station_ref`, `bus_ref`, `breaker_ref` są WYMAGANE — brak = 422 (karta P0.6)."""
+    case_id = uuid4()
+    assert app_client.get(f"/api/cases/{case_id}/enm/swz").status_code == 422
+    assert (
+        app_client.get(
+            f"/api/cases/{case_id}/enm/swz",
+            params={"station_ref": "ST-1", "bus_ref": "nn"},
+        ).status_code
+        == 422
+    )
+
+
+def test_swz_melduje_brak_danych_zamiast_zgadywac(app_client) -> None:
+    response = app_client.get(
+        f"/api/cases/{uuid4()}/enm/swz",
+        params={"station_ref": "ST-NIEISTNIEJACA", "bus_ref": "nn", "breaker_ref": "ap1"},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "brak danych"
+    assert payload["missing_data"] == ["station"]
+    assert payload["station_ref"] == "ST-NIEISTNIEJACA"
+    assert payload["bus_ref"] == "nn"
+    assert payload["breaker_ref"] == "ap1"
+
+
 @pytest.mark.parametrize(
     ("method", "sciezka"),
     [

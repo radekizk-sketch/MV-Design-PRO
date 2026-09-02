@@ -582,10 +582,12 @@ describe('buildSceneV3 — F8b-1 meta (ownerRef/elementKind, fundament selekcji 
     return { enm: clone, targetStationRef };
   }
 
-  it('elementKind wg symbolId: TR2W→transformer, der*→der, gridSource→source (F9.4), stationCollapsed→station, reszta→apparatus', () => {
+  it('elementKind wg symbolId: TR2W→transformer, der*→der, gridSource→source (F9.4), stationCollapsed→station, lvPortal→lvPortal, reszta→apparatus', () => {
     const byKind = new Map(scene2.symbols.map((s) => [s.symbolId, s.meta?.elementKind]));
     expect(byKind.get('transformer2W')).toBe('transformer');
     expect(byKind.get('gridSource')).toBe('source');
+    // LV Domain Projection (po B-02): portal domeny nN — własna kategoria.
+    expect(byKind.get('lvPortal')).toBe('lvPortal');
     for (const [symbolId, kind] of byKind) {
       if (symbolId.startsWith('der')) expect(kind).toBe('der');
     }
@@ -595,7 +597,8 @@ describe('buildSceneV3 — F8b-1 meta (ownerRef/elementKind, fundament selekcji 
         s.symbolId !== 'transformer2W' &&
         !s.symbolId.startsWith('der') &&
         s.symbolId !== 'gridSource' &&
-        s.symbolId !== 'stationCollapsed',
+        s.symbolId !== 'stationCollapsed' &&
+        s.symbolId !== 'lvPortal',
     );
     expect(nonSpecial.length).toBeGreaterThan(0);
     expect(nonSpecial.every((s) => s.meta?.elementKind === 'apparatus')).toBe(true);
@@ -673,8 +676,11 @@ describe('buildSceneV3 — F8b-1 meta (ownerRef/elementKind, fundament selekcji 
   });
 
   it('aparatura stacji (L2): ownerRef === bayRef odczytany z testId (`${bayRef}#${symbolId}`)', () => {
+    // Portal domeny nN ma `ownerRef` KOMPOZYTOWY (`${stationRef}#lv-portal`,
+    // `compose/station.ts` `lvPortalOwnerRef`) — nie jest aparatem pola,
+    // przypięty osobno w `buildScene.lvPortal.test.ts`.
     const apparatusSymbols = scene2.symbols.filter(
-      (s) => s.meta?.testId && s.meta.testId.includes('#') && !s.meta.testId.startsWith('gpz-'),
+      (s) => s.meta?.testId && s.meta.testId.includes('#') && !s.meta.testId.startsWith('gpz-') && s.symbolId !== 'lvPortal',
     );
     expect(apparatusSymbols.length).toBeGreaterThan(0);
     for (const s of apparatusSymbols) {
@@ -1095,9 +1101,29 @@ describe('buildSceneV3 — F9.7: totalVerticalSegmentLength (spec §15.1 vertica
     // stacji z odbiorem nN i DER na nN skrócił się o 32 j.św., co przez pasma
     // i przecięcia wierszy oddaje powyższą deltę. SPADEK ⇒ reguła
     // „nie-rosnąca" (§15.1) spełniona.
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 0))).toBe(21064);
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(37272);
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(37272);
+    // LV DOMAIN PROJECTION (po B-02, 2026-09-01): PODNIESIONY 21064/37272/37272
+    // → 22672/45656/45656. Przyczyna ZMIERZONA: (a) KAŻDA stacja z
+    // transformatorem (53) dostaje na zacisku nN pion portalu domeny nN
+    // (`#lv-portal-drop`, 2×GRID) — nowa treść ELEKTRYCZNA rysunku (jawna
+    // granica projekcji SN/nN), nie kosmetyka; (b) rezerwacja B4 strony nN
+    // (`nnSideBelowBusHeight`) obejmuje portal także dla stacji bez odbioru i
+    // bez DER (dawniej 0) ⇒ wyższe pasma B4 ⇒ dłuższe piony międzywierszowe
+    // na L1/L2; (c) strzałka odbioru nN stoi ZA portalem (pion na zacisku),
+    // a portal NA OSI portu LV — szerokości kolumn BEZ zmian, łamanie arkusza
+    // identyczne jak przed portalem (2 wiersze [6,6]; pomiar 2026-09-01:
+    // portal ZA blokiem łamał arkusz L0 na 3 wiersze i porzucał wszystkie
+    // nazwy stacji); (d) kolumna pola TR z odgałęzieniem bocznym (ES/VT/SA
+    // w porcie LV) rezerwuje pas na lateral + etykietę QE, pod który schodzi
+    // zacisk nN (`lvColumnBottoms`; pomiar W1c: portal na wysokości portu LV
+    // nachodził na ES/VT/SA) ⇒ wyższe bloki stacji z takim polem TR (golden
+    // sieć ma je w większości stacji) ⇒ dłuższe piony międzywierszowe na
+    // KAŻDYM LOD. Świadome odstępstwo od reguły „nie-rosnąca" (jak F9.10/F10.3):
+    // jawny portal ma pierwszeństwo przed minimalizacją pionów (spec §15.1
+    // „redukcja jest ograniczeniem MIĘKKIM"); zero nowych kolizji
+    // (`kosztSceny`, `sceneConformance`, `junction_dot_probe` 0 luk).
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 0))).toBe(22672);
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(45656);
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(45656);
   });
 });
 

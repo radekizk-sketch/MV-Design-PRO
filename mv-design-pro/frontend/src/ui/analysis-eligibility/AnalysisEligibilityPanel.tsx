@@ -48,6 +48,8 @@ const ANALYSIS_TYPE_ORDER: EligibilityAnalysisType[] = [
   'SC_2F',
   'SC_1F',
   'LOAD_FLOW',
+  'FAULT_LOOP_NN',
+  'SWZ_NN',
 ];
 
 export function publicElementRefLabel(elementRef: string): string {

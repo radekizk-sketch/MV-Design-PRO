@@ -1,4 +1,5 @@
 import type { EnergyNetworkModel, Substation, Transformer } from '../../types/enm';
+import { extractTransformerDesignation } from '../sld/v2/canvas/enmToCanonicalGpzAdapter';
 
 const BLOCK_TRANSFORMER_TOKEN_RE = /(^|[\s_/.-])(block|blokowy|blok|dedicated|dedykowany)([\s_/.-]|$)/u;
 
@@ -161,6 +162,27 @@ export interface StationTransformerUnit {
    * gasłby dokładnie tam, gdzie danych jest najmniej.
    */
   readonly hvVoltageKv: number | null;
+  /**
+   * T3 (SLD-nN-TOPOLOGIA §„layout i wygląd" — BINDING: „dane TR przy symbolu
+   * T1 … dane WYŁĄCZNIE z ENM/grafu"): tabliczka transformatora — pola
+   * czytane WPROST z rekordu ENM `Transformer` (`sn_mva`/`uhv_kv`/`ulv_kv`/
+   * `uk_percent`/`vector_group`), zero fizyki/wyliczeń w UI. `designation`
+   * wyprowadzone TĄ SAMĄ funkcją co tabliczka transformatora GPZ
+   * (`extractTransformerDesignation`, `v2/canvas/enmToCanonicalGpzAdapter.ts`
+   * — reużycie zamiast duplikacji), więc oznaczenie „T1"/„TR1" jest spójne
+   * między stroną SN (GPZ) i stroną nN (stacja) tego samego systemu.
+   *
+   * `null` WYŁĄCZNIE na ścieżce awaryjnej (migawka nie niesie rekordu
+   * `Transformer` dla refu — patrz `selected.length===0` niżej): brak NIE
+   * jest fabrykowany, tabliczka po prostu nie rysuje wiersza bez danych
+   * (ta sama tolerancja co `hvVoltageKv` wyżej).
+   */
+  readonly designation: string | null;
+  readonly snMva: number | null;
+  readonly uhvKv: number | null;
+  readonly ulvKv: number | null;
+  readonly ukPercent: number | null;
+  readonly vectorGroup: string | null;
 }
 
 /**
@@ -183,8 +205,9 @@ export function selectStationTransformerUnits(
     }
   }
 
-  const selected = selectStationDistributionTransformers(snapshot, station)
-    .map((transformer): StationTransformerUnit | null => {
+  const distributionTransformers = selectStationDistributionTransformers(snapshot, station);
+  const selected = distributionTransformers
+    .map((transformer, idx): StationTransformerUnit | null => {
       const ref = transformer.ref_id ?? transformer.id;
       if (!nonEmptyRef(ref)) return null;
       const hvBusRef = nonEmptyRef(transformer.hv_bus_ref) ? transformer.hv_bus_ref : null;
@@ -193,6 +216,13 @@ export function selectStationTransformerUnits(
         hvBusRef,
         lvBusRef: nonEmptyRef(transformer.lv_bus_ref) ? transformer.lv_bus_ref : null,
         hvVoltageKv: (hvBusRef !== null ? voltageByBusRef.get(hvBusRef) : undefined) ?? null,
+        // T3 (tabliczka TR przy symbolu T1) — pola WPROST z rekordu ENM.
+        designation: extractTransformerDesignation(transformer.name, idx),
+        snMva: typeof transformer.sn_mva === 'number' ? transformer.sn_mva : null,
+        uhvKv: typeof transformer.uhv_kv === 'number' ? transformer.uhv_kv : null,
+        ulvKv: typeof transformer.ulv_kv === 'number' ? transformer.ulv_kv : null,
+        ukPercent: typeof transformer.uk_percent === 'number' ? transformer.uk_percent : null,
+        vectorGroup: typeof transformer.vector_group === 'string' ? transformer.vector_group : null,
       };
     })
     .filter((unit): unit is StationTransformerUnit => unit != null)
@@ -209,7 +239,21 @@ export function selectStationTransformerUnits(
     .filter((ref) => !blockTransformerRefs.has(ref))
     .filter((ref) => !BLOCK_TRANSFORMER_TOKEN_RE.test(ref.toLowerCase()))
     .sort()
-    .map((ref) => ({ ref, hvBusRef: null, lvBusRef: null, hvVoltageKv: null }));
+    .map((ref) => ({
+      ref,
+      hvBusRef: null,
+      lvBusRef: null,
+      hvVoltageKv: null,
+      // Ścieżka awaryjna: brak rekordu `Transformer` w migawce ⇒ brak
+      // danych tabliczki (uczciwy brak, zero fabrykacji — ten sam wzorzec
+      // co pozostałe pola `null` tej ścieżki wyżej).
+      designation: null,
+      snMva: null,
+      uhvKv: null,
+      ulvKv: null,
+      ukPercent: null,
+      vectorGroup: null,
+    }));
 }
 
 export function selectStationDistributionTransformerRefs(

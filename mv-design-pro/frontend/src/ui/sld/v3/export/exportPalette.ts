@@ -115,6 +115,13 @@ const EXPORT_HIGHLIGHT_COLOR: Readonly<Record<HighlightKey, string>> = {
   resultStale: '#8A7A9E',
   // Selekcja — TA SAMA wartość co v2 `LIGHT_TECHNICAL_COLOR_SELECTION`.
   selection: '#0066CC',
+  // T2-WYNIKI (§0 pkt 2) — odznaka SWZ drukowana: TA SAMA para dark/light co
+  // `colorTokens.ts`/`palette.ts` (`swzOk`/`swzFail`/`swzUnknown`), wartości
+  // ODRĘBNE od `energized`/`fault`/`standby` (jeden odcień = jedno znaczenie
+  // wyniku, ten sam powód co w `colorTokens.ts`).
+  swzOk: '#1E8449',
+  swzFail: '#A93226',
+  swzUnknown: '#8C4400',
 };
 
 /** Tabela jasna eksponowana dla testów/dokumentacji (parytet kluczy z

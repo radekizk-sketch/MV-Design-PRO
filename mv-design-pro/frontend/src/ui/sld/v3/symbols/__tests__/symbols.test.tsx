@@ -113,6 +113,70 @@ describe('V3 symbols — rejestr glifów i stany', () => {
     expect(new Set(markup).size).toBe(laczniki.length);
   });
 
+  it('P0.8 nN: rodzina CAŁEJ biblioteki łączników (SN + nN) — każdy rodzaj WŁASNY rysunek', () => {
+    // Karta P0.8 §0.3 (H_PLAN_IMPLEMENTACJI_NN): rozszerzenie testu rozróżnialności
+    // na NOWE glify nN — reguła KLASA §2 „sprawdzamy CAŁĄ rodzinę", nie tylko parę
+    // z karty. `recloser` istniejący, NIETKNIĘTY (zakaz karty P0.8 §0 pkt 3).
+    const wszystkieLaczniki = [
+      'breaker', 'recloser', 'loadBreakSwitch', 'fuseSwitch', 'disconnector',
+      'nnBreaker', 'nnFuseSwitch',
+    ] as const;
+    const markup = wszystkieLaczniki.map((id) =>
+      renderToStaticMarkup(<svg>{SYMBOL_GLYPHS[id]({ x: 0, y: 0, state: 'closed' })}</svg>)
+        .replace(/ data-symbol-canon="[^"]*"/, ''),
+    );
+    expect(new Set(markup).size).toBe(wszystkieLaczniki.length);
+  });
+
+  it('PORTAL nN (LV Domain Projection): portal domeny nN ma WŁASNY rysunek, odróżnialny od CAŁEJ biblioteki', () => {
+    const nowe = ['lvPortal'] as const;
+    const reszta = ids.filter((id) => !nowe.includes(id as (typeof nowe)[number]));
+    const markupNowe = nowe.map((id) =>
+      renderToStaticMarkup(<svg>{SYMBOL_GLYPHS[id]({ x: 0, y: 0 })}</svg>).replace(/ data-symbol-canon="[^"]*"/, ''),
+    );
+    const markupReszty = reszta.map((id) =>
+      renderToStaticMarkup(<svg>{SYMBOL_GLYPHS[id]({ x: 0, y: 0 })}</svg>).replace(/ data-symbol-canon="[^"]*"/, ''),
+    );
+    // Nowe dwa różnią się między sobą.
+    expect(new Set(markupNowe).size).toBe(nowe.length);
+    // Żaden z nowych nie duplikuje rysunku istniejącej biblioteki.
+    for (const m of markupNowe) expect(markupReszty).not.toContain(m);
+  });
+
+  it('P0.8 nN: recloser NIETKNIĘTY (zakaz karty §0 pkt 3) — łuk SPZ nadal obecny', () => {
+    const { container } = render(<svg><SYMBOL_GLYPHS.recloser x={0} y={0} /></svg>);
+    expect(container.querySelector('[data-recloser-arc="true"]')).toBeTruthy();
+  });
+
+  it('wyłącznik nN/MCB: stan zamknięty/otwarty różni się GEOMETRIĄ, dźwignia modułowa obecna', () => {
+    const Glyph = SYMBOL_GLYPHS.nnBreaker;
+    const closed = render(<svg><Glyph x={0} y={0} state="closed" /></svg>);
+    const open = render(<svg><Glyph x={0} y={0} state="open" /></svg>);
+    const fillOf = (c: HTMLElement) => c.querySelector('rect')?.getAttribute('fill');
+    expect(fillOf(closed.container)).not.toBe('none');
+    expect(fillOf(open.container)).toBe('none');
+    expect(closed.container.querySelector('[data-nn-breaker-toggle="true"]')).toBeTruthy();
+  });
+
+  it('rozłącznik bezpiecznikowy nN: kaseta sześciokątna obecna (odróżnialna od prostokątnej wkładki SN)', () => {
+    const { container } = render(<svg><SYMBOL_GLYPHS.nnFuseSwitch x={0} y={0} /></svg>);
+    expect(container.querySelector('[data-nn-fuseswitch-cartridge="true"]')).toBeTruthy();
+    expect(container.querySelector('rect')).toBeFalsy();
+  });
+
+  it('portal domeny nN: chorągiewka pięciokątna + napis „nN", 1 port `top` na osi, gabaryt 32×24 (4×3 GRID)', () => {
+    const d = SYMBOL_DEFS.lvPortal;
+    expect(d.width).toBe(32);
+    expect(d.height).toBe(24);
+    expect(d.ports).toEqual([{ name: 'top', x: 16, y: 0, dir: 'N' }]);
+    const { container } = render(<svg><SYMBOL_GLYPHS.lvPortal x={0} y={0} /></svg>);
+    expect(container.querySelector('[data-lv-portal-flag="true"]')).toBeTruthy();
+    expect(container.textContent).toBe('nN');
+    // Nie jest aparatem: brak prostokąta korpusu łącznika i brak okręgu.
+    expect(container.querySelector('rect')).toBeFalsy();
+    expect(container.querySelector('circle')).toBeFalsy();
+  });
+
   it('CALY rejestr glifow: kazdy rysuje sie inaczej niz kazdy inny (KLASA, nie lista przykladow)', () => {
     // Odbior SLD-GEN-POLA (2026-08-14): iniekcja nadzoru — glif `fuse` podmieniony
     // na kopie rysunku `disconnector` — przeszla 368 testow, bo pin rozroznialnosci

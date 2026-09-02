@@ -625,6 +625,9 @@ zgłosimy, gdy T0 będzie odebrane.
 
 ---
 
+
+---
+
 ## Odpowiedź nadzoru (2026-08-14, runda 12 — granice SLD-nN-TOPOLOGIA przyjęte, konwergencja electrical/)
 
 **Granice programu SLD-nN-TOPOLOGIA (runda 11) — PRZYJĘTE.** `ui/sld/v3/{electrical,compose,scene}`
@@ -645,3 +648,42 @@ z kart producentów; imienna lista długu schodzi rodzina po rodzinie). Dodatkow
 gałęzi nadzoru: ekran „Kontyngencje N-1" (EKRAN-N1) i dziedziczenie nazw połówek odcinka
 w `enm/domain_operations.py` (helper `_nazwa_polowki_odcinka` — jeśli wasze sceny czytają
 nazwy gałęzi, połówki po podziale nazywają się teraz „Nazwa (1)/(2)").
+
+---
+
+## Wątek nN (2026-08-15, runda 13 — T5b-5 rusza w KANONIE SYMBOLI: uprzedzenie o zmianach w `symbols/`)
+
+**Kontekst.** Właściciel wydał werdykt B-02 dla L2 nN: technika 7/10, wizual 6,5/10,
+mandat T5b-5 „SYMBOL GRAMMAR jakości CAD" (pełna treść:
+`docs/nn/PLAN_SLD_NN_TOPOLOGIA_2026-08.md`; karta wykonawcza:
+`docs/nn/KARTA_T5b5_WYKONAWCA.md`). Kryterium odbioru: element rozpoznawalny BEZ
+czytania napisu obok symbolu.
+
+**UWAGA — dotyka wspólnego kanonu `ui/sld/v3/symbols/`** (runda 12: „kanon symboli
+addytywnie"; teraz jedna zmiana wykracza poza czystą addytywność, więc uprzedzamy
+zawczasu, nie po fakcie):
+
+1. `Transformer2WGlyph` — **zmiana RYSUNKU** (nie gabarytu): mniejsze uzwojenia, mniejsze
+   nakładanie, znaczniki grupy połączeń (Δ/Y/kropka N) wewnątrz uzwojeń, wyraźnie różne
+   kikuty HV/LV. **Bbox 32×40 i porty `hv`/`lv` BEZ ZMIAN** (grid_probe/port_probe i wasze
+   layouty SN nietknięte), `hasFieldGapWarning` (marker „!") zachowany 1:1. Skutek dla was:
+   transformator na waszych ekranach będzie wyglądał inaczej (lżej, z symboliką grupy) —
+   jeśli macie zrzuty odniesienia z TR, będą wymagały regeneracji.
+2. `couplerBreaker` — **nowy symbol** (aparat sprzęgłowy toru poziomego, porty `w`/`e`,
+   stan OPEN jako fizyczna przerwa). Czysto addytywny; pin rejestru glifów obejmie go
+   automatycznie.
+3. `apparatusRegistry.ts` — **nowy moduł**: jedno mapowanie `type/function/operatingState →
+   SymbolId` dla całego systemu (werdykt: „ten sam symbol w każdym miejscu systemu";
+   symbol nie może wynikać z oznaczenia „QF"). Wykonawca ma zmierzyć wszystkie miejsca
+   mapujące typ→symbol i wpiąć rejestr tam, gdzie mapowanie jest TOŻSAME (zero zmiany
+   zachowania). **Jeżeli trafi na wasze miejsce mapowania, którego nie da się wpiąć bez
+   zmiany zachowania — NIE ruszamy go, tylko wypisujemy w raporcie i zgłaszamy tutaj.**
+   Wasze granice (`engine/`, `ui2/kreatory/stacja/**`, `catalog/switchgear/**`,
+   `api/catalog.py`) pozostają nietknięte.
+
+**Prośba o sygnał zwrotny:** jeśli którykolwiek z waszych ekranów przypina WYGLĄD
+transformatora (snapshot geometrii glifu, nie samą obecność symbolu), powiedzcie w której
+karcie — zgramy regenerację, żeby wasza bramka nie zapaliła się od naszej zmiany.
+
+**Bez zmian po naszej stronie:** ENM, solvery, kontrakty FROZEN, layout L2. Werdykt
+właściciela wprost zabrania przebudowy layoutu i zmiany ENM „dla wyglądu".

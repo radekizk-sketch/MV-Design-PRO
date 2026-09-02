@@ -29,6 +29,8 @@
  */
 import { describe, expect, it } from 'vitest';
 
+import { GRID, snapUp } from '../../core/grid';
+
 import { FIELD_ROLE, type FieldRole } from '../../../v2/domain/apparatusContracts';
 import type { MiniBlockBayDescriptor } from '../../../v2/renderer/MiniBlockRmuRenderer';
 import { computeBands, type StationBandHeights } from '../../layout/bands';
@@ -40,12 +42,15 @@ import {
 import {
   bayStackCenterX,
   implicitStationTransformers,
+  LV_PORTAL_WIDTH,
+  lvTerminalPortXs,
+  planLvTerminal,
+  requiredStationWidth,
+  STATION_TR_FIELD_GAP_TEXT,
   stationBlockHeight,
   stationBlockWidth,
-  requiredStationWidth,
   stationHasLvSide,
   stationSnColumnLayout,
-  STATION_TR_FIELD_GAP_TEXT,
   type StationMeasureInput,
 } from '../../layout/measure';
 import { composeStation, type ComposeStationInput, type StationComposition } from '../station';
@@ -378,11 +383,24 @@ describe('TR2W-BEZ-POLA — stacja Z polem TR: ścieżka dzisiejsza nietknięta'
     }
   });
 
-  it('szerokość kolumny stacji BEZ pola TR nie rośnie o adnotację (tylko o kolumnę transformatora)', () => {
+  it('szerokość kolumny stacji BEZ pola TR nie rośnie o adnotację ani o portal (kolumna transformatora, nic ponadto — portal domeny nN mieści się w jej obrysie)', () => {
     const zTr = jednaSekcja([{ ref: 'tr/1', hvBusRef: SEKCJA_A, lvBusRef: null }]);
     const bezTr = makeStation('s-1sekcja', zTr.snBays);
-    // Różnica = SAMA kolumna transformatora (32) + światło (8), nic ponadto.
+    // Różnica bazy bloku = SAMA kolumna transformatora (32) + światło (8).
     expect(stationBlockWidth(zTr) - stationBlockWidth(bezTr)).toBe(40);
-    expect(requiredStationWidth(zTr) - requiredStationWidth(bezTr)).toBeLessThanOrEqual(40);
+    // Portal domeny nN stoi NA OSI portu LV (LV Domain Projection po B-02,
+    // `planLvTerminal` — JEDNA prawda z kompozycją) i nie wystaje za prawą
+    // krawędź bloku: rezerwacja kolumny rośnie WYŁĄCZNIE o kolumnę TR, nigdy o
+    // wiersz adnotacji ani o portal (pomiar 2026-09-01: portal doklejony ZA
+    // blokiem łamał arkusz L0 golden sieci 53 stacji z 2 na 3 wiersze).
+    // `bx` kompozycji względem `column.x`: blok zaczyna się na GRID.
+    const plan = planLvTerminal(lvTerminalPortXs(zTr), {
+      hasLoad: false,
+      hasNnDer: false,
+      derRowFlushX: GRID + stationBlockWidth(zTr) + GRID,
+    });
+    const portalOverhang = Math.max(0, plan.portalCenterX + LV_PORTAL_WIDTH / 2 - (GRID + stationBlockWidth(zTr)));
+    expect(portalOverhang).toBe(0);
+    expect(requiredStationWidth(zTr) - requiredStationWidth(bezTr)).toBeLessThanOrEqual(snapUp(40));
   });
 });

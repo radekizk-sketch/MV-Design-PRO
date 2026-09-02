@@ -41,7 +41,23 @@ export type SymbolId =
   | 'gpzCollapsed'     // GPZ (rozdzielnia zasilająca), widok zbiorczy (L0) — blok zwinięty (KD-5)
   | 'protectionRelay'  // F9.9: przekaźnik zabezpieczeniowy (okrąg + kody ANSI, §17.1)
   | 'meter'            // F9.9: miernik (okrąg „M"/litera wielkości, §17.1)
-  | 'loadArrow';       // zagregowany odbiór 0,4 kV (spec §12.5 — recenzja NO-GO pkt 6)
+  | 'loadArrow'        // odbiór (strzałka IEC 60617) — projekcja nN (`lv-domain/`)
+  // Aparaty nN — rodzina ODRĘBNA od aparatury SN (device_kind katalogu
+  // APARAT_NN/APARAT_NN_MCB/WKLADKA_NN), bo fizyczne aparaty nN (MCB modułowy,
+  // wkładka NH w podstawie bezpiecznikowej) mają INNĄ sylwetkę niż odpowiedniki
+  // SN (`breaker`/`fuseSwitch`). Rysowane WYŁĄCZNIE w projekcji nN
+  // (`lv-domain/composeLvDomainScene.ts`) — projekcja SN kończy tor na zacisku
+  // nN transformatora i portalu (`lvPortal` niżej).
+  | 'nnBreaker'        // wyłącznik nN / MCB (IEC 60898-1, namespace APARAT_NN_MCB
+                        // + device_kind WYLACZNIK_GLOWNY/WYLACZNIK_ODPLYWOWY)
+  | 'nnFuseSwitch'      // rozłącznik bezpiecznikowy nN (device_kind
+                        // ROZLACZNIK_BEZPIECZNIKOWY / namespace WKLADKA_NN)
+  // PORTAL DOMENY nN (architektura LV Domain Projection po B-02,
+  // `docs/sld/PROJEKCJA_SN_NN_PORTAL_V1.md`): jawne przejście z projekcji SN do
+  // projekcji nN, zakotwiczone na ZACISKU nN transformatora(-ów) stacji. Nie jest
+  // aparatem toru mocy — jeden port `top`; za nim w projekcji SN nie ma nic,
+  // tor ciągnie dalej projekcja nN.
+  | 'lvPortal';
 
 export interface SymbolDef {
   readonly id: SymbolId;
@@ -286,6 +302,36 @@ export const SYMBOL_DEFS: Readonly<Record<SymbolId, SymbolDef>> = {
   meter: def('meter', 24, 24, [
     { name: 'anchor', x: 0, y: 8, dir: 'W' },
   ], 'Miernik'),
+  // Wyłącznik nN / MCB (IEC 60898-1) — gabaryt IDENTYCZNY z `breaker` (16×16,
+  // porty top/bottom) — obie rodziny stoją W TYM SAMYM torze pionowym
+  // (odpływ nN), więc dzielą gabaryt jak `breaker`/`recloser`/`disconnector`
+  // dzielą go po stronie SN. Rozróżnialność niesie GLIF (dźwignia modułowa),
+  // nie gabaryt — patrz `glyphs.tsx` `NnBreakerGlyph`.
+  nnBreaker: def('nnBreaker', 16, 16, [
+    { name: 'top', x: 8, y: 0, dir: 'N' },
+    { name: 'bottom', x: 8, y: 16, dir: 'S' },
+  ], 'Wyłącznik nN / MCB'),
+  // Rozłącznik bezpiecznikowy nN — gabaryt 16×24 (JAK `disconnector`/
+  // `earthSwitch`, NIE jak SN `fuseSwitch` 16×32: podstawa bezpiecznikowa nN
+  // modułowa jest fizycznie krótsza niż rozłącznik z wkładką SN, który niesie
+  // dodatkowo nóż otwierający nad wkładką). Sylwetka wkładki — kaseta
+  // sześciokątna (`glyphs.tsx` `NnFuseSwitchGlyph`), odróżnialna od
+  // prostokątnej wkładki SN.
+  nnFuseSwitch: def('nnFuseSwitch', 16, 24, [
+    { name: 'top', x: 8, y: 0, dir: 'N' },
+    { name: 'bottom', x: 8, y: 24, dir: 'S' },
+  ], 'Rozłącznik bezpiecznikowy nN'),
+  // PORTAL DOMENY nN — odsyłacz „ciąg dalszy w projekcji nN" (chorągiewka
+  // pięciokątna IEC 60617 skierowana W DÓŁ, w stronę domeny, do której
+  // prowadzi). Gabaryt 32×24 (4×3 GRID): szerszy niż aparat jednokolumnowy, bo
+  // niesie napis „nN" czytelny przy skali L1; JEDEN port `top` na osi (16,0) —
+  // wisi pod zaciskiem nN (`compose/station.ts`, `#lv-portal-drop`), nic za nim
+  // w projekcji SN. Klik w symbol otwiera projekcję nN stacji
+  // (`canvas/SldCanvasV3Workspace.tsx`). Rozmiar zsynchronizowany z
+  // `layout/measure.ts` (`LV_PORTAL_WIDTH`/`LV_PORTAL_HEIGHT`) testem spójności.
+  lvPortal: def('lvPortal', 32, 24, [
+    { name: 'top', x: 16, y: 0, dir: 'N' },
+  ], 'Portal domeny nN'),
 };
 
 /**

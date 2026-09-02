@@ -20,6 +20,7 @@ import hashlib
 import json
 import logging
 from collections.abc import Callable
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
@@ -125,6 +126,10 @@ class AnalysisDispatchService:
             return self._dispatch_power_flow(project_id, study_case_id, options)
         if analysis_kind == AnalysisKind.PROTECTION:
             return self._dispatch_protection(project_id, study_case_id, options)
+        if analysis_kind == AnalysisKind.FAULT_LOOP_NN:
+            return self._dispatch_fault_loop_nn(project_id, study_case_id, options)
+        if analysis_kind == AnalysisKind.SWZ_NN:
+            return self._dispatch_swz_nn(project_id, study_case_id, options)
         raise ValueError(f"Unsupported analysis_kind: {analysis_kind}")
 
     # ------------------------------------------------------------------
@@ -301,6 +306,140 @@ class AnalysisDispatchService:
         )
 
     # ------------------------------------------------------------------
+    # FAULT_LOOP_NN (karta G-22)
+    # ------------------------------------------------------------------
+
+    def _dispatch_fault_loop_nn(
+        self,
+        project_id: UUID,
+        study_case_id: UUID | None,
+        options: dict[str, Any] | None,
+    ) -> AnalysisRunSummary:
+        """Pętla zwarcia nN (IEC 60364-4-41) — woła WPROST istniejące funkcje
+        serwisowe P0.6 (`application.analyses.fault_loop.service`), zero
+        kopii fizyki (§0.3 karty G-22).
+
+        Model nN żyje w ``enm.store`` (magazyn plikowy kluczowany
+        ``case_id: str`` — TA SAMA przestrzeń identyfikatorów, której
+        używają WSZYSTKIE endpointy nN pod ``/api/cases/{case_id}/...``,
+        `api/enm.py`), NIE w migawce ``OperatingCase``/``NetworkGraph``,
+        z której korzystają SHORT_CIRCUIT/POWER_FLOW/PROTECTION powyżej —
+        te dwie warstwy sieciowe współistnieją w repo (zob. inwentarz w
+        raporcie karty). ``study_case_id`` rozwiązujemy przez ISTNIEJĄCY
+        ``_resolve_case_id`` (ta sama rezolucja "None → aktywny przypadek"
+        co pozostałe rodzaje) i używamy wyniku jako ``case_id`` — bez
+        wymyślania nowej przestrzeni identyfikatorów ani mostu do
+        ``NetworkGraph``.
+
+        Wynik NIE jest persystowany jako ``AnalysisRun`` — fault_loop to
+        odczyt/przeliczenie na BIEŻĄCYM modelu ENM (jak pozostałe endpointy
+        `api/enm.py`), nie długotrwały bieg solvera z historią do
+        deduplikacji. ``run_id``/``input_hash`` to deterministyczny odcisk
+        wejścia (ten sam wzorzec co ``compute_dispatch_input_hash``), a
+        ``result_location`` wskazuje ISTNIEJĄCY endpoint odczytu, żeby
+        wywołujący mógł dociągnąć pełny ślad obliczeniowy.
+        """
+        from application.analyses.fault_loop.service import (
+            build_fault_loop_view_at_point,
+            build_feeder_fault_loop_view,
+        )
+        from enm.store import get_enm
+
+        opts = dict(options or {})
+        station_ref = opts.pop("station_ref", None)
+        if not station_ref:
+            raise ValueError("station_ref is required for FAULT_LOOP_NN dispatch")
+        bus_ref = opts.pop("bus_ref", None)
+
+        resolved_case_id = self._resolve_case_id(project_id, study_case_id)
+        case_id_str = str(resolved_case_id)
+        enm = get_enm(case_id_str)
+
+        if bus_ref:
+            result = build_fault_loop_view_at_point(enm, station_ref, bus_ref)
+            result_location = (
+                f"/api/cases/{case_id_str}/enm/fault-loop-point"
+                f"?station_ref={station_ref}&bus_ref={bus_ref}"
+            )
+        else:
+            result = build_feeder_fault_loop_view(enm, station_ref)
+            result_location = (
+                f"/api/cases/{case_id_str}/enm/fault-loop-feeders?station_ref={station_ref}"
+            )
+
+        dispatch_hash = compute_dispatch_input_hash(
+            analysis_kind=AnalysisKind.FAULT_LOOP_NN,
+            study_case_id=resolved_case_id,
+            enm_hash=enm.header.hash_sha256,
+            solver_options=opts,
+            extra={"station_ref": station_ref, "bus_ref": bus_ref},
+        )
+
+        return self._summary_from_nn_query_result(
+            analysis_kind=AnalysisKind.FAULT_LOOP_NN,
+            dispatch_hash=dispatch_hash,
+            enm_hash=enm.header.hash_sha256,
+            result=result,
+            result_location=result_location,
+        )
+
+    # ------------------------------------------------------------------
+    # SWZ_NN (karta G-22)
+    # ------------------------------------------------------------------
+
+    def _dispatch_swz_nn(
+        self,
+        project_id: UUID,
+        study_case_id: UUID | None,
+        options: dict[str, Any] | None,
+    ) -> AnalysisRunSummary:
+        """Werdykt SWZ per obwód nN — woła WPROST
+        ``application.analyses.swz.service.build_swz_view`` (P0.6), zero
+        kopii logiki. Zob. docstring ``_dispatch_fault_loop_nn`` — ta sama
+        przestrzeń identyfikatorów ``case_id`` (``enm.store``), ten sam
+        brak persystencji jako ``AnalysisRun``.
+        """
+        from application.analyses.swz.service import build_swz_view
+        from enm.store import get_enm
+
+        opts = dict(options or {})
+        station_ref = opts.pop("station_ref", None)
+        bus_ref = opts.pop("bus_ref", None)
+        breaker_ref = opts.pop("breaker_ref", None)
+        if not station_ref:
+            raise ValueError("station_ref is required for SWZ_NN dispatch")
+        if not bus_ref:
+            raise ValueError("bus_ref is required for SWZ_NN dispatch")
+        if not breaker_ref:
+            raise ValueError("breaker_ref is required for SWZ_NN dispatch")
+
+        resolved_case_id = self._resolve_case_id(project_id, study_case_id)
+        case_id_str = str(resolved_case_id)
+        enm = get_enm(case_id_str)
+
+        result = build_swz_view(enm, station_ref, bus_ref, breaker_ref)
+        result_location = (
+            f"/api/cases/{case_id_str}/enm/swz"
+            f"?station_ref={station_ref}&bus_ref={bus_ref}&breaker_ref={breaker_ref}"
+        )
+
+        dispatch_hash = compute_dispatch_input_hash(
+            analysis_kind=AnalysisKind.SWZ_NN,
+            study_case_id=resolved_case_id,
+            enm_hash=enm.header.hash_sha256,
+            solver_options=opts,
+            extra={"station_ref": station_ref, "bus_ref": bus_ref, "breaker_ref": breaker_ref},
+        )
+
+        return self._summary_from_nn_query_result(
+            analysis_kind=AnalysisKind.SWZ_NN,
+            dispatch_hash=dispatch_hash,
+            enm_hash=enm.header.hash_sha256,
+            result=result,
+            result_location=result_location,
+        )
+
+    # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
 
@@ -400,4 +539,64 @@ class AnalysisDispatchService:
             deduplicated=deduplicated,
             result_location=result_location,
             error_message=run.error_message,
+        )
+
+    @staticmethod
+    def _summary_from_nn_query_result(
+        *,
+        analysis_kind: AnalysisKind,
+        dispatch_hash: str,
+        enm_hash: str,
+        result: dict[str, Any],
+        result_location: str,
+    ) -> AnalysisRunSummary:
+        """Zbuduj ``AnalysisRunSummary`` z odpowiedzi serwisu P0.6 (dict,
+        nie ``AnalysisRun``). Mapowanie statusu — status serwisu → status
+        dispatchu, JEDNO źródło prawdy dla OBU nowych rodzajów (KLASA NIE
+        INSTANCJA: FAULT_LOOP_NN i SWZ_NN dzielą DOKŁADNIE ten sam kształt
+        odpowiedzi P0.6, ``{"status": "OK"|"brak danych"|"nie dotyczy", ...}``).
+
+        - "OK": obliczenie kompletne → FINISHED, bez błędu.
+        - "nie dotyczy": uczciwa, deterministyczna odpowiedź domenowa (np.
+          układ TT/IT — metoda pętli TN nie ma zastosowania) → FINISHED,
+          bez błędu; uzasadnienie w ``result_location``, nie fabrykujemy go
+          w ``error_message`` (to nie jest błąd).
+        - inny status ("brak danych"): obliczenie NIE mogło się wykonać →
+          FAILED, ``error_message`` z uczciwym powodem (``reason_pl`` albo
+          lista ``missing_data``, nigdy pusty tekst).
+        """
+        status = result.get("status")
+        now = datetime.now(UTC)
+
+        if status in ("OK", "nie dotyczy"):
+            return AnalysisRunSummary(
+                run_id=dispatch_hash,
+                analysis_kind=analysis_kind.value,
+                status="FINISHED",
+                created_at=now,
+                finished_at=now,
+                input_hash=dispatch_hash,
+                enm_hash=enm_hash,
+                results_valid=True,
+                deduplicated=False,
+                result_location=result_location,
+                error_message=None,
+            )
+
+        reason = result.get("reason_pl")
+        missing = result.get("missing_data")
+        if not reason and missing:
+            reason = "Brak danych wejściowych: " + ", ".join(missing)
+        return AnalysisRunSummary(
+            run_id=dispatch_hash,
+            analysis_kind=analysis_kind.value,
+            status="FAILED",
+            created_at=now,
+            finished_at=now,
+            input_hash=dispatch_hash,
+            enm_hash=enm_hash,
+            results_valid=False,
+            deduplicated=False,
+            result_location=result_location,
+            error_message=reason or "Brak danych wejściowych do obliczenia.",
         )

@@ -40,6 +40,20 @@ naprawie.
 ZAKRES: ochrona W PROCESIE (blokada per przypadek obliczeniowy). Blokada
 miedzyprocesowa (uvicorn z wieloma pracownikami) to osobna decyzja wdrozeniowa —
 patrz `docs/audit/AUDYT_SZCZYTU_2026-08-01.md`, sekcja 4 pkt 7.
+
+REWIZJE PONIZEJ FORMULY „+N" (P0.1 nN, LV-INV-12). Kazde zastosowanie szablonu
+`tpl_sn_nn_630kva` i kazde `POST /generators` (zrodlo nn_side) zostawia po sobie
+NIEPROMOWANY wpis `substation.meta.nn_field_specs` (odpowiednio: pole glowne +
+odplywy nN; pole zrodlowe DER). `get_enm` promuje WSZYSTKIE oczekujace wpisy
+JEDNEGO przypadku w JEDNYM przebiegu automigracji
+(`enm/migrations/nn_field_specs_promocja.py`), ktora — jak kazda automigracja
+tej rodziny — PODNOSI REWIZJE, gdy cos zmienila (ten sam wzorzec co migracja
+punktu przylaczenia w `enm/store.py::_get_enm_pod_blokada`). Kazdy odczyt modelu
+(`_model(case_id)`, czyli `get_enm`) miedzy dwoma zapisami — WLASNY na starcie
+kazdej zablokowanej koncowki i KONCOWY w asercji ponizej — moze wiec dolozyc
+WLASNA rewizje promocji, ponad „1 zapis = 1 rewizja" tego testu. Formuly ponizej
+sa WYPROWADZONE (nie zgadywane) z tej mechaniki dla KAZDEGO wariantu wyscigu
+osobno — patrz komentarz przy kazdej asercji.
 """
 
 from __future__ import annotations
@@ -477,9 +491,11 @@ class TestWyscigOperacjiDomenowych:
         )
 
         model_po = _model(case_id)
-        assert model_po.header.revision == rewizja_przed + 2, (
+        # +2 wlasne zapisy (operacja + szablon) + 1 promocja pola nN pozostawionego
+        # przez szablon, wychwycona dopiero TYM odczytem (patrz nota na gorze pliku).
+        assert model_po.header.revision == rewizja_przed + 3, (
             "Jeden z dwoch zapisow przepadl: rewizja "
-            f"{model_po.header.revision} zamiast {rewizja_przed + 2}"
+            f"{model_po.header.revision} zamiast {rewizja_przed + 3}"
         )
         assert len(model_po.substations) == stacji_przed + 1, (
             "Praca kreatora stacji przepadla mimo HTTP 200 — stacji "
@@ -518,7 +534,16 @@ def _przypadek_ze_stacja(app_client) -> tuple[str, str, str, list[str]]:
 
 class TestWyscigTworzeniaWytworcy:
     def test_trzy_rownolegle_zadania_daja_trzech_wytworcow(self, app_client) -> None:
-        """3 rownolegle `POST /generators` na jednej stacji: rewizja +3, zero utraty."""
+        """3 rownolegle `POST /generators` na jednej stacji: rewizja +6, zero utraty.
+
+        P0.1 nN: kazde zadanie DER (`add_converter_source`, nn_side) zostawia WLASNE
+        pole zrodlowe nN jako nowy niepromowany wpis `nn_field_specs`
+        (`_append_converter_field_if_needed`). Zadania sa serializowane blokada
+        przypadku (P5), wiec KAZDE kolejne najpierw promuje pole POPRZEDNIEGO
+        zadania (+1), potem zapisuje WLASNE (+1) — to 2 rewizje na zadanie, a
+        ostatnie zadanie zostawia WLASNE pole do promocji przy koncowym odczycie
+        ponizej (patrz nota na gorze pliku) — stad +6, nie +3.
+        """
         import api.generators as generators_api
 
         project_id, case_id, station_ref, _ = _przypadek_ze_stacja(app_client)
@@ -548,9 +573,9 @@ class TestWyscigTworzeniaWytworcy:
         assert len(odpowiedzi) == 3
 
         model_po = _model(case_id)
-        assert model_po.header.revision == rewizja_przed + 3, (
+        assert model_po.header.revision == rewizja_przed + 2 * 3, (
             "Rownolegle zadania DER zgubily zapis: rewizja "
-            f"{model_po.header.revision} zamiast {rewizja_przed + 3}"
+            f"{model_po.header.revision} zamiast {rewizja_przed + 2 * 3}"
         )
         assert len(model_po.generators) == wytworcow_przed + 3, (
             "Rownolegle zadania DER zgubily wytworcow: "
@@ -566,6 +591,11 @@ class TestWyscigTworzeniaWytworcy:
         )
 
     def test_tworzenie_wytworcy_rownolegle_z_szablonem_nie_gubi_pracy(self, app_client) -> None:
+        """P0.1 nN: oba zadania (DER + szablon) zostawiaja WLASNE pole nN do promocji
+        (patrz nota na gorze pliku) — 2 wlasne zapisy + 2 promocje (jedna wewnatrz
+        wyscigu, gdy drugie zadanie startuje po pierwszym; jedna przy koncowym
+        odczycie dla ostatniego) = +4, niezaleznie od kolejnosci wykonania.
+        """
         import api.generators as generators_api
 
         project_id, case_id, station_ref, wolne = _przypadek_ze_stacja(app_client)
@@ -597,9 +627,9 @@ class TestWyscigTworzeniaWytworcy:
         )
 
         model_po = _model(case_id)
-        assert model_po.header.revision == rewizja_przed + 2, (
+        assert model_po.header.revision == rewizja_przed + 4, (
             "Jeden z dwoch zapisow przepadl: rewizja "
-            f"{model_po.header.revision} zamiast {rewizja_przed + 2}"
+            f"{model_po.header.revision} zamiast {rewizja_przed + 4}"
         )
         assert len(model_po.substations) == stacji_przed + 1, (
             "Praca kreatora stacji przepadla mimo HTTP 200 — stacji "
@@ -687,6 +717,11 @@ class TestWyscigWiazanWytworcy:
         )
 
     def test_wiazania_rownolegle_z_szablonem_nie_gubia_pracy(self, app_client) -> None:
+        """P0.1 nN: PATCH /bindings sam nie tworzy wpisu `nn_field_specs` (tylko
+        szablon zostawia WLASNE pole nN do promocji, patrz nota na gorze pliku) —
+        2 wlasne zapisy + 1 promocja pola szablonu (wewnatrz wyscigu albo przy
+        koncowym odczycie, zaleznie od kolejnosci — zawsze dokladnie jedna) = +3.
+        """
         import api.generators as generators_api
 
         project_id, case_id, generator_ref, wolne = _wytworca_do_wiazan(app_client)
@@ -715,9 +750,9 @@ class TestWyscigWiazanWytworcy:
         )
 
         model_po = _model(case_id)
-        assert model_po.header.revision == rewizja_przed + 2, (
+        assert model_po.header.revision == rewizja_przed + 3, (
             "Jeden z dwoch zapisow przepadl: rewizja "
-            f"{model_po.header.revision} zamiast {rewizja_przed + 2}"
+            f"{model_po.header.revision} zamiast {rewizja_przed + 3}"
         )
         assert len(model_po.substations) == stacji_przed + 1, (
             "Praca kreatora stacji przepadla mimo HTTP 200 — stacji "
@@ -752,6 +787,11 @@ class TestBrakZakleszczenia:
         kolejnosci — ten test pilnuje, ze rozszerzenie blokady na koncowki API tego
         nie zmienia. Bez limitow czasu zakleszczenie zawiesiloby caly bieg testow,
         wiec kazde oczekiwanie jest ograniczone.
+
+        P0.1 nN: 3 wlasne zapisy (2x szablon + 1x operacja domenowa) + 2 promocje
+        (po jednej na kazdy szablon — ktorys wpis zawsze zostaje promowany PRZEZ
+        nastepny zablokowany zapis w kolejce, ostatni przez koncowy odczyt ponizej;
+        patrz nota na gorze pliku) = +5, niezaleznie od kolejnosci trzech zadan.
         """
         _, case_id = _projekt_i_przypadek(app_client)
         segmenty = _zbuduj_magistrale(app_client, case_id, 2)
@@ -779,9 +819,9 @@ class TestBrakZakleszczenia:
         assert bledy == [], f"Rownolegle zadania zglosily blad: {bledy}"
 
         model_po = _model(case_id)
-        assert model_po.header.revision == rewizja_przed + 3, (
+        assert model_po.header.revision == rewizja_przed + 5, (
             "Zapis przepadl przy trzech rownoleglych zadaniach: rewizja "
-            f"{model_po.header.revision} zamiast {rewizja_przed + 3}"
+            f"{model_po.header.revision} zamiast {rewizja_przed + 5}"
         )
         assert len(model_po.substations) == stacji_przed + 2, (
             "Praca kreatora stacji przepadla — stacji "

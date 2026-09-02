@@ -75,6 +75,7 @@ from application.proof_engine.equation_registry import (
     EQ_VDROP_005,
     EQ_VDROP_006,
     EQ_VDROP_007,
+    EQ_VDROP_010,
     AntiDoubleCountingAudit,
     EQ_SC3F_008a,
     EquationRegistry,
@@ -215,7 +216,7 @@ class SC3FInput:
 
 @dataclass
 class VDROPSegmentInput:
-    """Dane wejściowe dla pojedynczego odcinka VDROP."""
+    """Dane wejściowe dla pojedynczego odcinka VDROP (linia/kabel)."""
 
     segment_id: str
     from_bus_id: str
@@ -229,8 +230,35 @@ class VDROPSegmentInput:
 
 
 @dataclass
+class VDROPTransformerBoundaryInput:
+    """Granica transformatora na łańcuchu VDROP (karta P0.5b, N-D6 + uzgodnienie U4).
+
+    Transformator NIE JEST odcinkiem w sensie VDROP (``RODZAJE_ODCINKA`` w
+    ``application/solvers/voltage_drop_binding.py`` wyklucza go od początku
+    istnienia tego modułu) — zmienia napięcie przekładnią, nie spadkiem
+    wzdłużnym, więc wzór ΔU=(R·P+X·Q)/U_n² nie ma zastosowania. ``u_primary_kv``/
+    ``u_secondary_kv`` to napięcia OBU stron transformatora POLICZONE PRZEZ
+    SOLVER rozpływu — czytane wprost, nie liczone tu ponownie (ZERO drugiej
+    fizyki transformatora w warstwie dowodu; patrz EQ_VDROP_010).
+    """
+
+    segment_id: str
+    from_bus_id: str
+    to_bus_id: str
+    u_primary_kv: float
+    u_secondary_kv: float
+
+
+@dataclass
 class VDROPInput:
-    """Dane wejściowe dla generatora dowodu VDROP."""
+    """Dane wejściowe dla generatora dowodu VDROP.
+
+    ``segments`` jest ŁAŃCUCHEM uporządkowanym od źródła do punktu docelowego
+    (karta P0.5b): mieszanka ``VDROPSegmentInput`` (linia/kabel — fizyka VDROP
+    R/X/P/Q) i ``VDROPTransformerBoundaryInput`` (granica transformatora — zmiana
+    podstawy napięcia, EQ_VDROP_010). MVP=1 (limit jednego odcinka, N-D6) ZNIESIONY —
+    łańcuch może mieć dowolną długość ≥1, w dowolnej kombinacji obu rodzajów kroków.
+    """
 
     project_name: str
     case_name: str
@@ -238,7 +266,7 @@ class VDROPInput:
     target_bus_id: str
     run_timestamp: datetime
     solver_version: str
-    segments: list[VDROPSegmentInput]
+    segments: list[VDROPSegmentInput | VDROPTransformerBoundaryInput]
     u_source_kv: float
 
 
@@ -2088,20 +2116,33 @@ class ProofGenerator:
         artifact_id: UUID | None = None,
     ) -> ProofDocument:
         """
-        Generuje dowód VDROP (spadki napięć).
+        Generuje dowód VDROP (spadki napięć) — łańcuch dowolnej liczby odcinków
+        (karta P0.5b, 2026-08-13: MVP=1 zniesiony, N-D6).
 
-        Kroki obowiązkowe (BINDING):
+        Kroki obowiązkowe PER ODCINEK linii/kabla (BINDING, powtórzone dla
+        każdego ``VDROPSegmentInput`` łańcucha, w kolejności ``data.segments``):
         1. Rezystancja odcinka R
         2. Reaktancja odcinka X
         3. Składowa czynna ΔU_R
         4. Składowa bierna ΔU_X
         5. Spadek na odcinku ΔU
-        6. Suma spadków ΔU_total (%)
-        7. Napięcie w punkcie U = U_source − ΔU_total (kV, karta PODSTAWA-VDROP:
-           odjęcie w kV, nie mnożenie przez ułamek odniesiony do U_n)
+
+        Krok PER GRANICA TRANSFORMATORA (każdy ``VDROPTransformerBoundaryInput``
+        łańcucha, uzgodnienie U4): transformator NIE JEST odcinkiem VDROP (zmienia
+        napięcie przekładnią, nie spadkiem wzdłużnym) — EQ_VDROP_010 nazywa
+        JAWNIE zmianę podstawy napięcia zamiast mieszać ją z krokami 1-5.
+
+        Kroki końcowe (raz, po całym łańcuchu):
+        6. Suma spadków ΔU_total (%) — wyłącznie prezentacyjna: przy łańcuchu
+           wielopodstawowym (SN→TR→nN) suma procentów odniesionych do RÓŻNYCH
+           U_n nie jest wielkością fizyczną, tylko zestawieniem kroków 1-5/EQ_VDROP_010.
+        7. Napięcie w punkcie U = U_source − ΔU_total^{kV} (kV, karta
+           PODSTAWA-VDROP: odjęcie w kV — jedyna fizycznie spójna suma przy
+           łańcuchu wielopodstawowym, bo kV − kV = kV niezależnie od U_n).
 
         Args:
-            data: Dane wejściowe VDROPInput
+            data: Dane wejściowe VDROPInput (łańcuch ≥1 kroków, dowolna
+                mieszanka odcinków i granic transformatora)
             artifact_id: Opcjonalny ID artefaktu
 
         Returns:
@@ -2112,84 +2153,107 @@ class ProofGenerator:
 
         if not data.segments:
             raise ValueError("VDROP proof requires at least one segment.")
-        if len(data.segments) != 1:
-            raise ValueError("VDROP MVP requires exactly one segment.")
 
-        segment = data.segments[0]
+        steps: list[ProofStep] = []
+        step_number = 0
+        # ΔU_i w % (prezentacyjne, EQ_VDROP_006) i w kV (fizyczne, EQ_VDROP_007)
+        # — DWIE listy, bo % jednego kroku jest odniesiony do JEGO WŁASNEGO U_n
+        # (różny po obu stronach transformatora), a suma w kV jest podstawowa
+        # niezależnie od U_n (kV − kV = kV, karta PODSTAWA-VDROP).
+        segment_drops_percent: list[float] = []
+        segment_drops_kv: list[float] = []
 
-        r_ohm = segment.r_ohm_per_km * segment.length_km
-        x_ohm = segment.x_ohm_per_km * segment.length_km
-        delta_u_r = (r_ohm * segment.p_mw) / (segment.u_n_kv**2) * 100
-        delta_u_x = (x_ohm * segment.q_mvar) / (segment.u_n_kv**2) * 100
-        delta_u = delta_u_r + delta_u_x
-        segment_drops = [delta_u]
-        delta_u_total = sum(segment_drops)
+        for entry in data.segments:
+            if isinstance(entry, VDROPTransformerBoundaryInput):
+                # JEDNO źródło prawdy (reguła KLASA, NIE INSTANCJA, CLAUDE.md):
+                # delta_kv liczone RAZ, tutaj — przekazane do budowniczego kroku
+                # zamiast pozwolić mu przeliczyć tę samą wielkość niezależnie
+                # (dwa niezależne obliczenia „dziś się zgadzające" są defektem
+                # czekającym na dane brzegowe; zmierzone iniekcją I2 karty P0.5b:
+                # podmiana TEGO miejsca na `data.u_source_kv - entry.u_secondary_kv`
+                # nie ruszała kroku wyświetlanego, gdyby budowniczy liczył sam).
+                delta_kv = entry.u_primary_kv - entry.u_secondary_kv
+                step_number += 1
+                steps.append(cls._create_vdrop_step_tr_boundary(step_number, entry, delta_kv))
+                segment_drops_kv.append(delta_kv)
+                # % prezentacyjne — ten sam wzorzec co
+                # analysis/voltage_profile/segment_decomposition.py:
+                # względem napięcia znamionowego strony WTÓRNEJ (do_bus).
+                segment_drops_percent.append(
+                    (delta_kv / entry.u_secondary_kv) * 100.0 if entry.u_secondary_kv else 0.0
+                )
+                continue
 
-        # Karta PODSTAWA-VDROP: ΔU_total w kV to SUMA spadków odcinkowych w
-        # jednostkach bezwzględnych — każdy odcinek przeliczony przez WŁASNE
-        # U_n (ten sam U_n, który stoi w mianowniku EQ_VDROP_003/004 tego
-        # odcinka). Źródło to łańcuch EQ_VDROP_001..006 TEGO SAMEGO dowodu,
-        # NIGDY wynik biegu — inaczej krok końcowy dowodziłby cyrkularnie.
-        segment_drops_kv = [delta_u / 100.0 * segment.u_n_kv]
+            segment = entry
+            r_ohm = segment.r_ohm_per_km * segment.length_km
+            x_ohm = segment.x_ohm_per_km * segment.length_km
+            delta_u_r = (r_ohm * segment.p_mw) / (segment.u_n_kv**2) * 100
+            delta_u_x = (x_ohm * segment.q_mvar) / (segment.u_n_kv**2) * 100
+            delta_u = delta_u_r + delta_u_x
+
+            step_number += 1
+            steps.append(
+                cls._create_vdrop_step_r(
+                    step_number, segment.r_ohm_per_km, segment.length_km, r_ohm, segment.segment_id
+                )
+            )
+            step_number += 1
+            steps.append(
+                cls._create_vdrop_step_x(
+                    step_number, segment.x_ohm_per_km, segment.length_km, x_ohm, segment.segment_id
+                )
+            )
+            step_number += 1
+            steps.append(
+                cls._create_vdrop_step_du_r(
+                    step_number,
+                    r_ohm,
+                    segment.p_mw,
+                    segment.u_n_kv,
+                    delta_u_r,
+                    segment.segment_id,
+                )
+            )
+            step_number += 1
+            steps.append(
+                cls._create_vdrop_step_du_x(
+                    step_number,
+                    x_ohm,
+                    segment.q_mvar,
+                    segment.u_n_kv,
+                    delta_u_x,
+                    segment.segment_id,
+                )
+            )
+            step_number += 1
+            steps.append(
+                cls._create_vdrop_step_du(
+                    step_number, delta_u_r, delta_u_x, delta_u, segment.segment_id
+                )
+            )
+
+            # Karta PODSTAWA-VDROP: ΔU odcinka w kV przeliczone przez WŁASNE
+            # U_n (ten sam U_n, który stoi w mianowniku EQ_VDROP_003/004 tego
+            # odcinka). Źródło to łańcuch EQ_VDROP_001..005 TEGO SAMEGO
+            # dowodu, NIGDY wynik biegu — inaczej krok końcowy dowodziłby
+            # cyrkularnie (test antycyrkularny, karta P0.5b).
+            segment_drops_percent.append(delta_u)
+            segment_drops_kv.append(delta_u / 100.0 * segment.u_n_kv)
+
+        delta_u_total = sum(segment_drops_percent)
         delta_u_total_kv = sum(segment_drops_kv)
         u_kv = data.u_source_kv - delta_u_total_kv
 
-        step_builders = {
-            "EQ_VDROP_001": lambda step_number: cls._create_vdrop_step_r(
-                step_number,
-                segment.r_ohm_per_km,
-                segment.length_km,
-                r_ohm,
-                segment.segment_id,
-            ),
-            "EQ_VDROP_002": lambda step_number: cls._create_vdrop_step_x(
-                step_number,
-                segment.x_ohm_per_km,
-                segment.length_km,
-                x_ohm,
-                segment.segment_id,
-            ),
-            "EQ_VDROP_003": lambda step_number: cls._create_vdrop_step_du_r(
-                step_number,
-                r_ohm,
-                segment.p_mw,
-                segment.u_n_kv,
-                delta_u_r,
-                segment.segment_id,
-            ),
-            "EQ_VDROP_004": lambda step_number: cls._create_vdrop_step_du_x(
-                step_number,
-                x_ohm,
-                segment.q_mvar,
-                segment.u_n_kv,
-                delta_u_x,
-                segment.segment_id,
-            ),
-            "EQ_VDROP_005": lambda step_number: cls._create_vdrop_step_du(
-                step_number,
-                delta_u_r,
-                delta_u_x,
-                delta_u,
-                segment.segment_id,
-            ),
-            "EQ_VDROP_006": lambda step_number: cls._create_vdrop_step_total(
-                step_number,
-                segment_drops,
-                delta_u_total,
-            ),
-            "EQ_VDROP_007": lambda step_number: cls._create_vdrop_step_u(
-                step_number,
-                data.u_source_kv,
-                delta_u_total,
-                segment.u_n_kv,
-                delta_u_total_kv,
-                u_kv,
-            ),
-        }
-
-        steps: list[ProofStep] = []
-        for step_number, equation_id in enumerate(EquationRegistry.VDROP_STEP_ORDER, start=1):
-            steps.append(step_builders[equation_id](step_number))
+        step_number += 1
+        steps.append(
+            cls._create_vdrop_step_total(step_number, segment_drops_percent, delta_u_total)
+        )
+        step_number += 1
+        steps.append(
+            cls._create_vdrop_step_u(
+                step_number, data.u_source_kv, segment_drops_kv, delta_u_total_kv, u_kv
+            )
+        )
 
         # Podsumowanie
         unit_checks_passed = all(s.unit_check.passed for s in steps)
@@ -2500,8 +2564,7 @@ class ProofGenerator:
         cls,
         step_number: int,
         u_source_kv: float,
-        delta_u_total_percent: float,
-        u_n_kv: float,
+        segment_drops_kv: list[float],
         delta_u_total_kv: float,
         u_kv: float,
     ) -> ProofStep:
@@ -2510,8 +2573,12 @@ class ProofGenerator:
         Karta PODSTAWA-VDROP: obie strony równania — U_source i ΔU_total —
         muszą stać na TEJ SAMEJ podstawie (kV), inaczej wynik miesza dwie różne
         skale, gdy U_source ≠ U_n (dowód w docstringu EQ_VDROP_007). Podstawienie
-        pokazuje jawnie skąd bierze się ΔU_total w kV: z sumy spadków
-        odcinkowych EQ_VDROP_001..006 przeliczonych przez U_n odcinka — NIE z
+        pokazuje jawnie skąd bierze się ΔU_total w kV: SUMĘ wkładów kV każdego
+        kroku łańcucha (``segment_drops_kv`` — odcinki EQ_VDROP_001..005
+        przeliczone przez WŁASNE U_n, granice transformatora EQ_VDROP_010) —
+        karta P0.5b: łańcuch może mieć dowolną liczbę kroków, więc podstawienie
+        NIE zakłada jednego wspólnego U_n (to był defekt naprawiony kartą
+        PODSTAWA-VDROP dla n=1 — tu ta sama zasada rozszerzona na n≥1). NIE z
         wyniku biegu.
         """
         equation = EQ_VDROP_007
@@ -2521,9 +2588,10 @@ class ProofGenerator:
             ProofValue.create("\\Delta U_{total}^{kV}", delta_u_total_kv, "kV", "delta_u_total_kv"),
         )
 
+        drops_kv_str = " + ".join(f"{d:.4f}" for d in segment_drops_kv)
         substitution = (
-            f"\\Delta U_{{total}}^{{kV}} = \\frac{{{delta_u_total_percent:.4f}}}{{100}} "
-            f"\\cdot {u_n_kv:.4f} = {delta_u_total_kv:.4f}\\,\\text{{kV}} \\\\ "
+            f"\\Delta U_{{total}}^{{kV}} = {drops_kv_str} = "
+            f"{delta_u_total_kv:.4f}\\,\\text{{kV}} \\\\ "
             f"U = {u_source_kv:.4f} - {delta_u_total_kv:.4f} = "
             f"{u_kv:.4f}\\,\\text{{kV}}"
         )
@@ -2549,6 +2617,69 @@ class ProofGenerator:
                 "U_{source}": "u_source_kv",
                 "ΔU_{total}^{kV}": "delta_u_total_kv",
                 "U": "u_kv",
+            },
+        )
+
+    @classmethod
+    def _create_vdrop_step_tr_boundary(
+        cls,
+        step_number: int,
+        boundary: VDROPTransformerBoundaryInput,
+        delta_kv: float,
+    ) -> ProofStep:
+        """Granica transformatora na łańcuchu VDROP (karta P0.5b, EQ_VDROP_010).
+
+        Transformator NIE JEST odcinkiem VDROP (``RODZAJE_ODCINKA`` w
+        ``voltage_drop_binding.py`` go wyklucza) — wzór ΔU=(R·P+X·Q)/U_n² nie ma
+        zastosowania, bo zmiana napięcia wynika z przekładni, nie spadku
+        wzdłużnego. U_1/U_2 pochodzą z JUŻ ROZWIĄZANEGO rozpływu (fizyka
+        transformatora policzona przez solver PF, poza domeną VDROP) — to NIE
+        jest cyrkularność EQ_VDROP_007 (patrz notatka EQ_VDROP_010): żadna
+        konkurencyjna formuła VDROP nie istnieje dla transformatora, więc
+        odczyt nie zastępuje niczego.
+
+        ``delta_kv`` przychodzi POLICZONE PRZEZ WYWOŁUJĄCEGO (``generate_vdrop_proof``),
+        NIE jest przeliczane tutaj ponownie — jedno źródło prawdy dla wielkości,
+        która zasila RÓWNOCZEŚNIE ten krok (wyświetlany wynik) i sumę łańcucha
+        (``segment_drops_kv``/EQ_VDROP_007). Dwa niezależne przeliczenia tej
+        samej wielkości „dziś się zgadzające" są defektem czekającym na dane
+        brzegowe (reguła KLASA, NIE INSTANCJA, CLAUDE.md) — zmierzone iniekcją
+        I2 karty P0.5b: podmiana WYŁĄCZNIE sumatora na wynik biegu zostawiała
+        ten krok nietknięty, dopóki oba miejsca liczyły osobno.
+        """
+        equation = EQ_VDROP_010
+
+        input_values = (
+            ProofValue.create("U_{1}", boundary.u_primary_kv, "kV", "u_primary_kv"),
+            ProofValue.create("U_{2}", boundary.u_secondary_kv, "kV", "u_secondary_kv"),
+        )
+
+        substitution = (
+            f"\\Delta U_{{TR}}^{{kV}} = {boundary.u_primary_kv:.4f} - "
+            f"{boundary.u_secondary_kv:.4f} = {delta_kv:.4f}\\,\\text{{kV}}"
+        )
+
+        result = ProofValue.create("\\Delta U_{TR}^{kV}", delta_kv, "kV", "delta_u_tr_kv")
+
+        unit_check = UnitVerifier.verify_equation(
+            equation.equation_id,
+            {"U_{1}": "kV", "U_{2}": "kV"},
+            "kV",
+        )
+
+        return ProofStep(
+            step_id=ProofStep.generate_step_id("VDROP", step_number),
+            step_number=step_number,
+            title_pl=f"{equation.name_pl} (odcinek {boundary.segment_id})",
+            equation=equation,
+            input_values=input_values,
+            substitution_latex=substitution,
+            result=result,
+            unit_check=unit_check,
+            source_keys={
+                "U_{1}": "u_primary_kv",
+                "U_{2}": "u_secondary_kv",
+                "\\Delta U_{TR}^{kV}": "delta_u_tr_kv",
             },
         )
 

@@ -49,9 +49,10 @@ EXEMPT_PATTERNS: list[str] = [
     "build/",
 ]
 
-# Directories to scan
+# Directories to scan (ui2 = docelowa powierzchnia Programu UI/UX — N-D9)
 SCAN_DIRS: list[str] = [
     os.path.join("frontend", "src", "ui"),
+    os.path.join("frontend", "src", "ui2"),
     os.path.join("frontend", "src", "designer"),
 ]
 

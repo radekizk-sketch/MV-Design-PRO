@@ -50,6 +50,7 @@ SECTION_NAMES: tuple[str, ...] = (
     "proofs",
     "interpretations",
     "issues",
+    "enm",
 )
 
 _FINGERPRINT_FIELD_MAP: dict[str, str] = {
@@ -62,6 +63,7 @@ _FINGERPRINT_FIELD_MAP: dict[str, str] = {
     "proofs": "proofs_hash",
     "interpretations": "interpretations_hash",
     "issues": "issues_hash",
+    "enm": "enm_hash",
 }
 
 
@@ -231,6 +233,7 @@ def _compute_deterministic_signature(
             "proofs_hash": fingerprints.proofs_hash,
             "interpretations_hash": fingerprints.interpretations_hash,
             "issues_hash": fingerprints.issues_hash,
+            "enm_hash": fingerprints.enm_hash,
         },
     }
     canonical = canonicalize(sig_data)
@@ -413,6 +416,7 @@ def apply_incremental_archive(
         "proofs_hash": incremental.fingerprints.proofs_hash,
         "interpretations_hash": incremental.fingerprints.interpretations_hash,
         "issues_hash": incremental.fingerprints.issues_hash,
+        "enm_hash": incremental.fingerprints.enm_hash,
     }
 
     return dict_to_archive(base_dict)
@@ -464,6 +468,7 @@ def _empty_section_data(section_name: str) -> dict[str, Any]:
         },
         "interpretations": {"cached": []},
         "issues": {"snapshot": []},
+        "enm": {"models": []},
     }
     return defaults.get(section_name, {})
 
@@ -503,6 +508,7 @@ def _incremental_to_dict(archive: IncrementalArchive) -> dict[str, Any]:
                 "proofs_hash": archive.fingerprints.proofs_hash,
                 "interpretations_hash": (archive.fingerprints.interpretations_hash),
                 "issues_hash": archive.fingerprints.issues_hash,
+                "enm_hash": archive.fingerprints.enm_hash,
             },
             "deterministic_signature": archive.deterministic_signature,
         }
@@ -545,6 +551,7 @@ def _dict_to_incremental(data: dict[str, Any]) -> IncrementalArchive:
         proofs_hash=fp["proofs_hash"],
         interpretations_hash=fp.get("interpretations_hash", ""),
         issues_hash=fp.get("issues_hash", ""),
+        enm_hash=fp.get("enm_hash", ""),
     )
 
     deltas: list[SectionDelta] = []

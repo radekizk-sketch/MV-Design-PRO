@@ -171,26 +171,6 @@ class AnalysisRunService:
             uow.analysis_runs.create(run)
         return run
 
-    def create_fault_loop_run(
-        self,
-        project_id: UUID,
-        operating_case_id: UUID | None = None,
-        options: dict | None = None,
-    ) -> AnalysisRun:
-        operating_case_id = self._resolve_operating_case_id(project_id, operating_case_id)
-        snapshot = self._build_fault_loop_snapshot(project_id, operating_case_id, options)
-        input_hash = compute_input_hash(snapshot)
-        with self._uow_factory() as uow:
-            run = new_analysis_run(
-                project_id=project_id,
-                operating_case_id=operating_case_id,
-                analysis_type="fault_loop_nn",
-                input_snapshot=snapshot,
-                input_hash=input_hash,
-            )
-            uow.analysis_runs.create(run)
-        return run
-
     def execute_run(self, run_id: UUID) -> AnalysisRun:
         with self._uow_factory() as uow:
             run = uow.analysis_runs.get(run_id)
@@ -208,8 +188,6 @@ class AnalysisRunService:
                 return self._execute_power_flow(uow, run)
             if run.analysis_type == "short_circuit_sn":
                 return self._execute_short_circuit_sn(uow, run)
-            if run.analysis_type == "fault_loop_nn":
-                return self._execute_fault_loop_nn(uow, run)
             raise ValueError(f"Unsupported analysis_type: {run.analysis_type}")
 
     def get_run(self, run_id: UUID) -> AnalysisRun:
@@ -396,20 +374,6 @@ class AnalysisRunService:
             white_box_trace=white_box_trace,
         )
 
-    def _execute_fault_loop_nn(self, uow: UnitOfWork, run: AnalysisRun) -> AnalysisRun:
-        snapshot = run.input_snapshot
-        report = self._validate_fault_loop_input(snapshot)
-        if not report.is_valid:
-            return self._fail_run(uow, run, report)
-        stub_report = ValidationReport().with_error(
-            ValidationIssue(
-                code="NN_SOLVER_NOT_IMPLEMENTED",
-                message="Fault-loop NN solver is not implemented",
-                field="fault_loop_nn",
-            )
-        )
-        return self._fail_run(uow, run, stub_report)
-
     def _fail_run(
         self, uow: UnitOfWork, run: AnalysisRun, message: str | ValidationReport
     ) -> AnalysisRun:
@@ -586,43 +550,6 @@ class AnalysisRunService:
             "limits": settings.get("limits") or {},
             "sources": self._normalize_sources(sources),
             "loads": self._normalize_loads(loads),
-            "options": options or {},
-        }
-
-    def _build_fault_loop_snapshot(
-        self,
-        project_id: UUID,
-        operating_case_id: UUID,
-        options: dict | None = None,
-    ) -> dict[str, Any]:
-        with self._uow_factory() as uow:
-            case = uow.cases.get_operating_case(operating_case_id)
-            if case is None or case.project_id != project_id:
-                raise ValueError(f"OperatingCase {operating_case_id} not found")
-            nodes = uow.network.list_nodes(project_id)
-            branches = uow.network.list_branches(project_id)
-            catalog = self._build_catalog_repository(uow)
-            switching_states = {
-                state["element_id"]: state
-                for state in uow.wizard.list_switching_states(operating_case_id)
-            }
-            snapshot_id = self._get_snapshot_id(case)
-            existing_snapshot = uow.snapshots.get_snapshot(snapshot_id)
-            if existing_snapshot is not None:
-                ensure_snapshot_matches_project(existing_snapshot, project_id)
-        normalized_nodes = [self._node_to_graph_payload(node) for node in nodes]
-        normalized_branches: list[dict[str, Any]] = []
-        for branch in branches:
-            branch_payload = self._branch_to_graph_payload(branch, catalog)
-            branch_state = switching_states.get(branch["id"])
-            if branch_state is not None:
-                branch_payload["in_service"] = branch_state["in_service"]
-            normalized_branches.append(branch_payload)
-        return {
-            "snapshot_id": snapshot_id,
-            "nn_inputs": case.case_payload.get("nn_inputs", {}),
-            "nodes": normalized_nodes,
-            "branches": normalized_branches,
             "options": options or {},
         }
 
@@ -846,82 +773,8 @@ class AnalysisRunService:
                 )
         return report
 
-    def _validate_fault_loop_input(self, snapshot: dict[str, Any]) -> ValidationReport:
-        report = ValidationReport()
-        nn_inputs = snapshot.get("nn_inputs") or {}
-        if not nn_inputs:
-            return report.with_error(
-                ValidationIssue(
-                    code="NN_INPUT_MISSING",
-                    message="NN fault-loop requires nn_inputs to be provided",
-                    field="nn_inputs",
-                )
-            )
-        network_type = nn_inputs.get("network_type")
-        if not network_type:
-            report = report.with_error(
-                ValidationIssue(
-                    code="NN_INPUT_MISSING",
-                    message="NN fault-loop requires network_type (TN/TT/IT)",
-                    field="nn_inputs.network_type",
-                )
-            )
-        elif str(network_type).upper() not in {"TN", "TT", "IT"}:
-            report = report.with_error(
-                ValidationIssue(
-                    code="NN_INPUT_INVALID",
-                    message="NN fault-loop network_type must be TN, TT, or IT",
-                    field="nn_inputs.network_type",
-                )
-            )
-        protection = nn_inputs.get("protection_arrangement")
-        if not protection:
-            report = report.with_error(
-                ValidationIssue(
-                    code="NN_INPUT_MISSING",
-                    message="NN fault-loop requires protection_arrangement (PE/PEN/none)",
-                    field="nn_inputs.protection_arrangement",
-                )
-            )
-        elif str(protection).upper() not in {"PE", "PEN", "NONE", "BRAK"}:
-            report = report.with_error(
-                ValidationIssue(
-                    code="NN_INPUT_INVALID",
-                    message="NN fault-loop protection_arrangement must be PE, PEN, or none",
-                    field="nn_inputs.protection_arrangement",
-                )
-            )
-        protective_devices = nn_inputs.get("protective_devices")
-        if not protective_devices:
-            report = report.with_error(
-                ValidationIssue(
-                    code="NN_INPUT_MISSING",
-                    message="NN fault-loop requires protective_devices references",
-                    field="nn_inputs.protective_devices",
-                )
-            )
-        nodes = snapshot.get("nodes")
-        branches = snapshot.get("branches")
-        if not nodes:
-            report = report.with_error(
-                ValidationIssue(
-                    code="NN_INPUT_MISSING",
-                    message="NN fault-loop requires topology nodes snapshot",
-                    field="snapshot.nodes",
-                )
-            )
-        if not branches:
-            report = report.with_error(
-                ValidationIssue(
-                    code="NN_INPUT_MISSING",
-                    message="NN fault-loop requires topology branches snapshot",
-                    field="snapshot.branches",
-                )
-            )
-        return report
-
     def _validate_project_design_mode(self, uow: UnitOfWork, run: AnalysisRun) -> ValidationReport:
-        if run.analysis_type not in {"short_circuit_sn", "fault_loop_nn"}:
+        if run.analysis_type not in {"short_circuit_sn"}:
             return ValidationReport()
         case = uow.cases.get_operating_case(run.operating_case_id)
         if case is None:
@@ -944,13 +797,6 @@ class AnalysisRunService:
                 ValidationIssue(
                     code="project_design_mode.forbidden",
                     message="short_circuit_sn is only allowed for SN_NETWORK",
-                )
-            )
-        if run.analysis_type == "fault_loop_nn" and mode != ProjectDesignMode.NN_NETWORK:
-            return ValidationReport().with_error(
-                ValidationIssue(
-                    code="WRONG_DESIGN_MODE",
-                    message="fault_loop_nn is only allowed for NN_NETWORK",
                 )
             )
         return ValidationReport()

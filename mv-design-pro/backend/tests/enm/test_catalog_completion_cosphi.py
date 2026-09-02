@@ -30,6 +30,7 @@ from enm.catalog_completion import (
     DEFAULT_LOAD_CATALOG_REF,
     DEFAULT_LOAD_COS_PHI,
     DEFAULT_LOAD_KW,
+    NN_FIELD_ORIGIN_OPERACJA_DOMENOWA,
     Q_SOURCE_CATALOG_COS_PHI,
     Q_SOURCE_CATALOG_NO_REACTIVE,
     Q_SOURCE_CATALOG_Q_KVAR,
@@ -39,7 +40,7 @@ from enm.catalog_completion import (
 )
 from enm.domain_operations import execute_domain_operation
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
-from enm.store import reset_enm_store, set_enm
+from enm.store import get_enm, reset_enm_store, set_enm
 from network_model.catalog.repository import get_default_mv_catalog
 from network_model.catalog.types import LoadType
 
@@ -281,15 +282,31 @@ def test_rozplyw_na_sieci_referencyjnej_daje_pelny_spadek_napiecia_nn() -> None:
 
 def test_szyna_nn_pobiera_moc_bierna_odbiorow() -> None:
     completed = _model_z_odbiorami("rozplyw-moc-bierna")
-    bus_nn = _szyna_nn(completed)
     set_enm("case-d7-q", completed)
 
     run = execute_run(create_run(case_id="case-d7-q", analysis_type="PF").id)
     wyniki = {b["bus_id"]: b for b in run.raw_result["result_v1"]["bus_results"]}
-    szyna = wyniki[_graph_id_from_ref(bus_nn)]
 
-    assert float(szyna["p_injected_mw"]) == pytest.approx(-0.09, abs=1e-9)
-    assert float(szyna["q_injected_mvar"]) == pytest.approx(
+    # P0.1 nN (LV-INV-12): `create_run` czyta model przez `get_enm`, który
+    # promuje KAŻDY wpis `nn_field_specs` do WŁASNEGO aparatu odpływowego —
+    # trzy odbiory dołożone migracją katalogową (defekt D7) NIE SĄ już
+    # zagregowane na jednej szynie stacji: każdy przenosi się za SWÓJ aparat,
+    # na WŁASNĄ (nową) szynę odpływu. Sumujemy moc wstrzykiwaną na tych trzech
+    # szynach — fizyka odbiorów (P, Q z katalogowego cosφ) jest identyczna,
+    # zmieniła się WYŁĄCZNIE topologia (bus_ref odbioru), którą sprawdza
+    # `tests/enm/test_nn_field_specs_promocja.py`.
+    promowany = get_enm("case-d7-q")
+    assert (
+        len(promowany.loads) == 3
+    ), "Oczekiwano trzech odbiorów nN dołożonych migracją katalogową."
+    szyny_odbiorow_graph_id = {_graph_id_from_ref(load.bus_ref) for load in promowany.loads}
+    assert len(szyny_odbiorow_graph_id) == 3, "Odbiory powinny trafić na TRZY różne szyny odpływów."
+
+    p_calkowite = sum(float(wyniki[gid]["p_injected_mw"]) for gid in szyny_odbiorow_graph_id)
+    q_calkowite = sum(float(wyniki[gid]["q_injected_mvar"]) for gid in szyny_odbiorow_graph_id)
+
+    assert p_calkowite == pytest.approx(-0.09, abs=1e-9)
+    assert q_calkowite == pytest.approx(
         -3 * (DEFAULT_LOAD_KW / 1000.0) * math.tan(math.acos(0.92)), abs=1e-9
     )
 
@@ -331,3 +348,220 @@ def test_materializacja_odbiorow_jest_powtarzalna() -> None:
     assert [(load.ref_id, load.p_mw, load.q_mvar) for load in pierwszy.loads] == [
         (load.ref_id, load.p_mw, load.q_mvar) for load in drugi.loads
     ]
+
+
+# ---------------------------------------------------------------------------
+# Karta NAPRAWA-B, znalezisko #3 — fantomowy odbiór migracji przy sekwencji
+# kreatora P0.9 (`add_nn_outgoing_field` → [odczyt] → `add_nn_load`).
+#
+# Reprodukcja przez PUBLICZNY TOR domain-ops (`_wykonaj_operacje_przez_store`
+# niżej — DOKŁADNIE ta sama para wywołań store, którą robi produkcyjny
+# endpoint `POST .../enm/domain-ops`: `get_enm` → `execute_domain_operation` →
+# `set_enm`), z JAWNYM odczytem modelu (`get_enm`) MIĘDZY dwoma żądaniami —
+# dokładnie to, co robi UI odświeżając snapshot między krokami formularza.
+#
+# Iloczyn cech na JEDNEJ stacji (nie dwa osobne testy, żeby udowodnić, że
+# predykat pochodzenia faktycznie ROZRÓŻNIA, a nie tylko przypadkiem trafia):
+#   * odpływ LEGACY (wbudowany starter szablonu stacji, `_build_nn_field_specs`,
+#     BEZ znacznika pochodzenia) — MA dostać domyślny odbiór migracji;
+#   * odpływ P0.1 (`add_nn_outgoing_field`, ZE znacznikiem pochodzenia) —
+#     NIGDY nie dostaje fantomu, ani po odczycie między żądaniami, ani po
+#     kolejnych odczytach, gdy zostaje świadomie pusty.
+# ---------------------------------------------------------------------------
+
+
+def _wykonaj_operacje_przez_store(
+    case_id: str, nazwa: str, payload: dict[str, Any]
+) -> dict[str, Any]:
+    """Jedno żądanie kreatora DOKŁADNIE jak produkcyjny endpoint.
+
+    `api.enm._domain_ops_pod_blokada` robi to samo: `get_enm` (odczyt, sam w
+    sobie może domigrować model i go ZAPISAĆ), `execute_domain_operation`,
+    `set_enm` (zapis). Brama katalogowa HTTP jest tu pominięta świadomie —
+    ten test bada WYŁĄCZNIE mechanizm migracji przy odczycie/zapisie modelu,
+    nie kontrakt katalogowy (ten ma własne testy w `tests/api/
+    test_brama_katalogowa_api_inwentarz.py`).
+    """
+    enm = get_enm(case_id)
+    wynik = execute_domain_operation(enm.model_dump(mode="json"), nazwa, payload)
+    assert not wynik.get("error"), f"{nazwa}: {wynik.get('error')} (code={wynik.get('error_code')})"
+    nowy = EnergyNetworkModel.model_validate(wynik["snapshot"])
+    set_enm(case_id, nowy)
+    return wynik
+
+
+def _szyna_nn_stacji(enm: EnergyNetworkModel, station_ref: str) -> str:
+    """Szyna nN STACJI (nie szyna odpływu za aparatem promocji P0.1).
+
+    `_szyna_nn` wyżej zakłada JEDNĄ szynę nN w całym modelu — założenie prawdziwe
+    tylko PRZED promocją `nn_field_specs_promocja` (każdy promowany odpływ dostaje
+    WŁASNĄ nową szynę, więc po promocji szyn nN jest tyle, ile odpływów + 1).
+    Tu wybieramy szynę wprost z `substation.bus_refs`, tak jak robi to
+    `application.station_templates.apply._szyna_nn_stacji`.
+    """
+    substation = next(s for s in enm.substations if s.ref_id == station_ref)
+    for bus_ref in substation.bus_refs:
+        bus = next((b for b in enm.buses if b.ref_id == bus_ref), None)
+        if bus is not None and bus.voltage_kv is not None and bus.voltage_kv < 1.0:
+            return bus.ref_id
+    raise AssertionError(f"Stacja '{station_ref}' nie ma szyny nN w bus_refs.")
+
+
+def _feeder_refs_by_origin(enm: EnergyNetworkModel, station_ref: str) -> dict[str, list[str]]:
+    """`field_ref` odpływów FEEDER stacji, pogrupowane wg pochodzenia wpisu."""
+    substation = next(s for s in enm.substations if s.ref_id == station_ref)
+    meta = substation.meta if isinstance(substation.meta, dict) else {}
+    specs = meta.get("nn_field_specs") or []
+    wynik: dict[str, list[str]] = {"legacy": [], "operacja": []}
+    for spec in specs:
+        if not isinstance(spec, dict) or spec.get("bay_role") != "FEEDER":
+            continue
+        field_ref = spec.get("field_ref")
+        assert isinstance(field_ref, str)
+        pochodzenie = (spec.get("meta") or {}).get("nn_field_origin")
+        klucz = "operacja" if pochodzenie == NN_FIELD_ORIGIN_OPERACJA_DOMENOWA else "legacy"
+        wynik[klucz].append(field_ref)
+    return wynik
+
+
+def _loads_by_feeder_ref(enm: EnergyNetworkModel) -> dict[str, list[Any]]:
+    grupy: dict[str, list[Any]] = {}
+    for load in enm.loads:
+        feeder_ref = (load.meta or {}).get("feeder_ref")
+        if isinstance(feeder_ref, str):
+            grupy.setdefault(feeder_ref, []).append(load)
+    return grupy
+
+
+def test_sekwencja_kreatora_p01_nie_zostawia_fantomu_a_legacy_dalej_migruje(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Any
+) -> None:
+    monkeypatch.setenv("ENM_STORE_DIR", str(tmp_path / "enm_store"))
+    reset_enm_store()
+    case_id = "case-nb-znalezisko-3"
+
+    # Krok 0: stacja z JEDNYM odpływem LEGACY (starter wbudowany przez
+    # `insert_station_on_segment_sn` — dokładnie ten mechanizm, który migracja
+    # ma nadal obsługiwać: `_build_nn_field_specs` nigdy nie znaczy wpisu).
+    # `set_enm` sam uruchamia `complete_catalog_defaults` (nie tylko odczyt) —
+    # więc odpływ legacy dostaje domyślny odbiór JUŻ TUTAJ, zanim kreator
+    # wykona choćby jedno żądanie. To jest INTENCJA migracji: legacy ma zostać
+    # katalogowo kompletny NIEZALEŻNIE od tego, kiedy projektant po raz
+    # pierwszy odczyta model.
+    siec = _siec_referencyjna("znalezisko-3", liczba_odplywow_nn=1)
+    set_enm(case_id, EnergyNetworkModel.model_validate(siec))
+
+    bazowy = get_enm(case_id)
+    # `_siec_referencyjna` tworzy DWIE stacje: GPZ (`add_grid_source_sn`) i
+    # stację SN/nN (`insert_station_on_segment_sn`) — szukamy tej drugiej,
+    # dokładnie jak robi to sama migracja (`complete_station_loads_from_nn_
+    # feeders`: `if substation.station_type == "gpz": continue`).
+    station_ref = next(s.ref_id for s in bazowy.substations if s.station_type != "gpz")
+    nn_bus_ref = _szyna_nn_stacji(bazowy, station_ref)
+    odplywy_przed = _feeder_refs_by_origin(bazowy, station_ref)
+    assert len(odplywy_przed["legacy"]) == 1, odplywy_przed
+    assert odplywy_przed["operacja"] == []
+    feeder_legacy = odplywy_przed["legacy"][0]
+
+    odbiory_bazowe = _loads_by_feeder_ref(bazowy)
+    assert len(bazowy.loads) == 1, bazowy.loads
+    assert len(odbiory_bazowe.get(feeder_legacy, [])) == 1, (
+        "Odpływ LEGACY nie dostał domyślnego odbioru migracji przy `set_enm` — "
+        "regresja intencji migracji (szablon bez odbiorów ma pozostać katalogowo "
+        "kompletny)."
+    )
+
+    # Krok 1 kreatora: `add_nn_outgoing_field` — nowy odpływ P0.1 (K2), payload
+    # DOKŁADNIE jak produkcyjny `KreatorPolaNn.tsx` (bez catalog_ref — patrz
+    # znalezisko #2 tej samej karty).
+    wynik_pola = _wykonaj_operacje_przez_store(
+        case_id,
+        "add_nn_outgoing_field",
+        {
+            "station_ref": station_ref,
+            "bus_nn_ref": nn_bus_ref,
+            "field_role": "FEEDER",
+            "field_name": "Odpływ K2",
+        },
+    )
+    feeder_p01 = wynik_pola["changes"]["created_element_ids"][0]
+    assert feeder_p01 != feeder_legacy
+
+    # ODCZYT MIĘDZY ŻĄDANIAMI — dokładnie to, co robi UI odświeżając snapshot
+    # (np. `useSnapshotStore` po zamknięciu formularza pola). PRZED naprawą:
+    # ten pojedynczy odczyt materializował fantom 30 kW na feeder_p01 (i na
+    # feeder_legacy — ale ten i tak MA dostać migrację, więc dla legacy to nie
+    # był widoczny defekt; widoczny był na feeder_p01, świeżo utworzonym).
+    po_odczycie = get_enm(case_id)
+    odbiory_po_odczycie = _loads_by_feeder_ref(po_odczycie)
+
+    # Legacy MA dostać migrowany odbiór — intencja migracji zachowana.
+    assert feeder_legacy in odbiory_po_odczycie, (
+        "Odpływ LEGACY nie dostał domyślnego odbioru migracji — regresja intencji "
+        "migracji (szablon bez odbiorów ma pozostać katalogowo kompletny)."
+    )
+    assert len(odbiory_po_odczycie[feeder_legacy]) == 1
+
+    # P0.1 NIE MOŻE dostać fantomu — to jest znalezisko #3.
+    assert feeder_p01 not in odbiory_po_odczycie, (
+        f"Fantomowy odbiór na świeżo utworzonym odpływie P0.1 '{feeder_p01}' — "
+        "migracja zignorowała znacznik pochodzenia."
+    )
+
+    # Krok 2 kreatora: `add_nn_load` na feeder_p01 — DRUGIE, osobne żądanie
+    # (dokładnie sekwencja opisana w karcie: dwa żądania, ODCZYT między nimi).
+    _wykonaj_operacje_przez_store(
+        case_id,
+        "add_nn_load",
+        {
+            "feeder_ref": feeder_p01,
+            "active_power_kw": 22.0,
+            "cos_phi": 0.86,
+            "load_name": "Silnik M1 (realny odbiór projektanta)",
+        },
+    )
+
+    po_odbiorze = get_enm(case_id)
+    odbiory_po_odbiorze = _loads_by_feeder_ref(po_odbiorze)
+
+    # Realny odbiór projektanta powstał — DOKŁADNIE JEDEN (bez fantomu obok).
+    assert len(odbiory_po_odbiorze.get(feeder_p01, [])) == 1, (
+        f"Odpływ P0.1 '{feeder_p01}' ma {len(odbiory_po_odbiorze.get(feeder_p01, []))} "
+        "odbiorów zamiast jednego — podwojona moc (fantom obok realnego odbioru)."
+    )
+    jedyny = odbiory_po_odbiorze[feeder_p01][0]
+    assert jedyny.p_mw == pytest.approx(0.022, abs=1e-12)
+    assert jedyny.catalog_ref is None
+    assert jedyny.source_mode == "EKSPERCKI_RECZNY"
+
+    # Legacy odbiór jest NADAL dokładnie jeden (migracja nie biegła ponownie
+    # na już-zaspokojonym wpisie).
+    assert len(odbiory_po_odbiorze[feeder_legacy]) == 1
+
+    # Krok 3 kreatora: DRUGI odpływ P0.1 (K3), CELOWO pozostawiony bez odbioru —
+    # kilka kolejnych odczytów modelu (kolejna nawigacja UI) NIE MOŻE dołożyć mu
+    # fantomu, mimo że pozostaje pusty na zawsze (poprawny stan końcowy).
+    wynik_pola_k3 = _wykonaj_operacje_przez_store(
+        case_id,
+        "add_nn_outgoing_field",
+        {
+            "station_ref": station_ref,
+            "bus_nn_ref": nn_bus_ref,
+            "field_role": "FEEDER",
+            "field_name": "Odpływ K3 (celowo pusty)",
+        },
+    )
+    feeder_k3 = wynik_pola_k3["changes"]["created_element_ids"][0]
+
+    for _ in range(3):
+        stan = get_enm(case_id)
+        odbiory = _loads_by_feeder_ref(stan)
+        assert feeder_k3 not in odbiory, (
+            f"Odpływ P0.1 '{feeder_k3}', celowo pozostawiony pusty, dostał fantom "
+            "po kolejnym odczycie modelu."
+        )
+
+    # Całkowita liczba odbiorów stacji: 1 (legacy, zmigrowany) + 1 (P0.1,
+    # realny) — feeder_k3 pozostaje bez odbioru. Zamknięcie rachunku mocy.
+    finalny = get_enm(case_id)
+    assert len(finalny.loads) == 2, [load.ref_id for load in finalny.loads]

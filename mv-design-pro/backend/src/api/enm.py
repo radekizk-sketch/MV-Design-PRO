@@ -11,6 +11,10 @@ Routes:
   POST /api/cases/{case_id}/enm/ops          → Topology operations (atomic graph CRUD)
   POST /api/cases/{case_id}/runs/short-circuit → dispatch SC run via ENM
   POST /api/cases/{case_id}/runs/power-flow    → dispatch PF run via ENM
+  GET  /api/cases/{case_id}/enm/lv-domain/{station_ref}
+                                              → graf domeny nN (LOD L2, karta T5b)
+  GET  /api/cases/{case_id}/enm/lv-domain/{station_ref}/upstream-equivalent
+                                              → UpstreamEquivalentSnapshot (kotwica SN, karta T5b)
 """
 
 from __future__ import annotations
@@ -23,18 +27,41 @@ from api.domain_ops_policy import (
     extract_catalog_binding,
     validate_and_materialize_catalog_binding,
 )
-from application.analyses.fault_loop.service import build_station_fault_loop_view
+from application.analyses.fault_loop.service import (
+    build_fault_loop_view_at_point,
+    build_feeder_fault_loop_view,
+    build_station_fault_loop_view,
+)
+from application.analyses.lv_domain.graph_view import build_lv_domain_view
+from application.analyses.lv_domain.projection_v1 import (
+    LvDomainProjectionRunMismatch,
+    LvDomainProjectionRunUnavailable,
+    build_lv_domain_projection_v1,
+)
+from application.analyses.lv_domain.upstream_equivalent import (
+    Scenario as UpstreamEquivalentScenario,
+)
+from application.analyses.lv_domain.upstream_equivalent import (
+    build_upstream_equivalent_snapshot,
+)
+from application.analyses.nn_circuit_sheet import build_nn_circuit_sheet
+from application.analyses.nn_device_selection import wybierz_aparat_dla_obwodu_nn
 from application.analyses.protection.czas_wylaczenia_pola import (
     czasy_wylaczenia_pol_stacji,
 )
+from application.analyses.swz.service import build_swz_view
 from application.analyses.wytrzymalosc_aparatury_pol import (
     zbuduj_widok_wytrzymalosci_aparatury,
 )
+from application.analysis_run.result_invalidator import ResultInvalidator
 from application.eligibility_service import EligibilityService
 from application.field_read_model import build_field_read_model
 from application.protection_read_model import build_protection_read_model
-from domain.canonical_operations import resolve_operation_name
+from domain.canonical_operations import CANONICAL_OPERATIONS, resolve_operation_name
 from domain.readiness_bridge import opis_kanoniczny
+from enm.canonical_analysis import (
+    get_run as _get_canonical_run,
+)
 from enm.canonical_analysis import (
     run_power_flow_now,
     run_short_circuit_now,
@@ -104,6 +131,45 @@ def _resolve_project_id(case_id: str, request: Request) -> str | None:
         if study_case is not None:
             return str(study_case.project_id)
     return None
+
+
+def _invaliduj_wyniki_po_operacji(case_id: str, resolved_name: str, request: Request) -> None:
+    """Unieważnij wyniki projektu po udanej operacji MUTUJĄCEJ model (D §6.2, karta P0.1).
+
+    Dispatcher operacji domenowych (`POST /domain-ops`, JEDYNY produkcyjny tor
+    zapisu ENM — `/enm/ops`/`/enm/ops/batch` są wyłączone w
+    `_PRODUCTION_DISABLED_ROUTE_KEYS`) był drugim — obok legacy wizardu,
+    `network_wizard/service.py:1590` — miejscem mutującym model, które NIE
+    wywoływało `ResultInvalidator`. Bez tego plakietki świeżości UI
+    (`StudyCase.result_status`) kłamały po KAŻDEJ operacji domenowej — nie
+    tylko po nowej rodzinie `NN_NETWORK` (P0.1): luka była KLASĄ (dispatcher),
+    nie instancją (jedna operacja), więc naprawa siedzi na poziomie dispatchera,
+    nie w pojedynczym handlerze.
+
+    Bezskutkowe (nigdy nie podnosi wyjątku), gdy:
+    - operacja nie mutuje modelu (`mutates_model=False`, np. `refresh_snapshot`),
+    - w tym środowisku nie ma warstwy DB (`uow_factory=None` — testy jednostkowe
+      operacji domenowych wołają `execute_domain_operation` wprost, z pominięciem
+      tej końcówki API, i nie mają czego unieważniać),
+    - `case_id` nie jest UUID albo nie ma odpowiadającego `StudyCase` w DB — ENM
+      istnieje NIEZALEŻNIE od DB (`enm/store.py` tworzy domyślny model dla
+      dowolnego `case_id`), więc brak wiersza nie jest błędem tej funkcji.
+    """
+    spec = CANONICAL_OPERATIONS.get(resolved_name)
+    if spec is not None and not spec.mutates_model:
+        return
+    uow_factory = getattr(request.app.state, "uow_factory", None)
+    if uow_factory is None:
+        return
+    project_id = _resolve_project_id(case_id, request)
+    if project_id is None:
+        return
+    try:
+        parsed_project_id = UUID(project_id)
+    except ValueError:
+        return
+    with uow_factory() as uow:
+        ResultInvalidator().invalidate_project_results(uow, parsed_project_id)
 
 
 # ---------------------------------------------------------------------------
@@ -262,6 +328,243 @@ def get_station_fault_loop(case_id: str, station_ref: str) -> dict[str, Any]:
     """
     enm = _get_enm(case_id)
     return build_station_fault_loop_view(enm, station_ref)
+
+
+@router.get("/{case_id}/enm/fault-loop-point")
+def get_fault_loop_point(case_id: str, station_ref: str, bus_ref: str) -> dict[str, Any]:
+    """Pętla zwarcia w DOWOLNYM punkcie nN (karta P0.6, G-05).
+
+    Trasa REALNA z grafu (BFS od punktu do zacisków nN transformatora) — kabel
+    po kablu, z żyłą powrotną PE/PEN i n_parallel; ta sama fizyka transformatora
+    (składowa zgodna z grupą połączeń) i upstream Thevenin SN co widok „u
+    źródła". Read-only; solver liczy fizykę.
+    """
+    enm = _get_enm(case_id)
+    return build_fault_loop_view_at_point(enm, station_ref, bus_ref)
+
+
+@router.get("/{case_id}/enm/fault-loop-feeders")
+def get_fault_loop_feeders(case_id: str, station_ref: str) -> dict[str, Any]:
+    """Pętla zwarcia we WSZYSTKICH punktach nN, pogrupowana per odpływ (karta P0.6, G-05).
+
+    Kontrakt danych kompletny (każdy osiągalny punkt każdego odpływu, ze
+    wskazaniem punktu najgorszego per odpływ) — heatmapa/UI nN STUDIO w P0.9,
+    tu tylko dane. Read-only; solver liczy fizykę.
+    """
+    enm = _get_enm(case_id)
+    return build_feeder_fault_loop_view(enm, station_ref)
+
+
+@router.get("/{case_id}/enm/lv-domain/{station_ref}")
+def get_lv_domain_view(case_id: str, station_ref: str) -> dict[str, Any]:
+    """Graf domeny nN stacji — spójna składowa 0,4 kV wyprowadzona Z GRAFU
+    (karta T5b, docs/nn/KONCEPCJA_LOD_NN_2026-08.md §0 rozstrzygnięcie 2).
+
+    Granica domeny = GRANICA NAPIĘCIOWA I PROJEKCJI (werdykt): transformator
+    jest jedyną legalną granicą 15 kV/0,4 kV; przejście do INNEJ stacji z
+    WŁASNYM transformatorem zatrzymuje spacer i wraca jako `boundary_links`
+    (ref stacji docelowej), NIE wciąga jej elementów. Podrozdzielnice bez
+    własnego transformatora (rozdzielnica_nn) są WCHŁONIĘTE — to ta sama
+    domena elektryczna. Read-only; zero fizyki (topologia, nie solver).
+    """
+    enm = _get_enm(case_id)
+    return build_lv_domain_view(enm, station_ref)
+
+
+@router.get("/{case_id}/enm/lv-domain/{station_ref}/upstream-equivalent")
+def get_lv_domain_upstream_equivalent(
+    case_id: str,
+    station_ref: str,
+    scenario: UpstreamEquivalentScenario = "MAX",
+    transformer_ref: str | None = None,
+) -> dict[str, Any]:
+    """`UpstreamEquivalentSnapshot` — kotwica SN domeny nN (L2), karta T5b
+    §0 rozstrzygnięcie 1 (docs/nn/KONCEPCJA_LOD_NN_2026-08.md, werdykt
+    właściciela).
+
+    Immutable, deterministyczny (ten sam ENM + scenariusz + stan łączeniowy
+    → identyczny snapshot, w tym `calculation_run_id`). ZERO nowej fizyki —
+    Z1/Sk″/Ik″ w węźle HV transformatora liczone TĄ SAMĄ maszynerią co
+    pętla zwarcia nN (`application.analyses.fault_loop.service.
+    compute_upstream_hv_thevenin` + solver IEC 60909 `compute_ikss`).
+    `scenario` wybiera współczynnik napięciowy c wg IEC 60909-0 Tab.1
+    (MAX/MIN, ten sam wybór co bieg zwarciowy); `transformer_ref` opcjonalny
+    dla stacji wielotransformatorowych (domyślnie pierwszy transformator
+    stacji posortowany po ref_id — determinizm). Read-only; solver liczy
+    fizykę, ten endpoint tylko wyławia i zwraca.
+    """
+    enm = _get_enm(case_id)
+    return build_upstream_equivalent_snapshot(
+        enm,
+        case_id,
+        station_ref,
+        scenario=scenario,
+        transformer_ref=transformer_ref,
+    )
+
+
+@router.get("/{case_id}/enm/lv-domain/{station_ref}/projection/v1")
+def get_lv_domain_projection_v1(
+    case_id: str,
+    station_ref: str,
+    scenario: UpstreamEquivalentScenario = "MAX",
+    run_id: UUID | None = None,
+) -> dict[str, Any]:
+    """Atomowy ``LvDomainProjectionV1`` dla portalu stacji SN/nN.
+
+    Jeden odczyt wiąże graf ENM, kotwicę SN, nakładkę wyniku oraz SWZ z tą
+    samą rewizją i odciskiem modelu. ``run_id`` jest opcjonalny; jego brak
+    daje jawny stan wyniku ``NONE``. Wskazany przebieg musi należeć do tego
+    przypadku i być zakończony — nie ma cichego wyboru innego wyniku.
+    """
+    enm = _get_enm(case_id)
+    run = None
+    if run_id is not None:
+        run = _get_canonical_run(run_id)
+        if run is None:
+            raise HTTPException(status_code=404, detail=f"Nie znaleziono przebiegu {run_id}.")
+    try:
+        return build_lv_domain_projection_v1(
+            enm,
+            case_id,
+            station_ref,
+            scenario=scenario,
+            run=run,
+        )
+    except (LvDomainProjectionRunMismatch, LvDomainProjectionRunUnavailable) as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@router.get("/{case_id}/enm/swz")
+def get_swz(case_id: str, station_ref: str, bus_ref: str, breaker_ref: str) -> dict[str, Any]:
+    """Werdykt SWZ (samoczynne wyłączenie zasilania, IEC 60364-4-41) per obwód
+    (karta P0.6, G-06).
+
+    Werdykt 3-stanowy (spełnia / nie spełnia / nierozstrzygalne) + dowód
+    liczbowy: Ik1_min pętli zwarcia (scenariusz MIN, R skorygowane
+    temperaturowo) vs Ia gwarantowane aparatu (breaker_ref — MCB albo wkładka
+    gG) vs t_wymagany z Tab. 41.1 IEC 60364-4-41. Read-only; solver/analiza
+    liczą fizykę i interpretację, endpoint tylko wyławia i zwraca.
+    """
+    enm = _get_enm(case_id)
+    return build_swz_view(enm, station_ref, bus_ref, breaker_ref)
+
+
+@router.get("/{case_id}/enm/nn-device-selection")
+def get_nn_device_selection(
+    case_id: str,
+    station_ref: str,
+    bus_ref: str,
+    ib_a: float,
+    iz_prime_a: float,
+    ik_max_ka: float | None = None,
+) -> dict[str, Any]:
+    """Dobór aparatu zabezpieczającego nN dla obwodu (karta P0.7, §0.5).
+
+    Cztery kryteria normatywne (Ib<=In<=Iz′, I2<=1,45·Iz′, zdolność wyłączania
+    >= Ik″max, SWZ przy Ik_min) ocenione dla WSZYSTKICH kandydatów z katalogu
+    (MCB/rozłącznik bezpiecznikowy+wkładka/wyłącznik nN); ranking
+    deterministyczny (najmniejszy spełniający In). Ib/Iz′/Ik″max są
+    parametrami wejściowymi (Ib z definicji normy jest wielkością projektową,
+    Iz′ i Ik″max pochodzą z osobnych, już istniejących biegów/analiz — ten
+    endpoint ich nie przelicza). Read-only; analiza interpretuje gotowe
+    wyniki solverów i katalog.
+    """
+    enm = _get_enm(case_id)
+    return wybierz_aparat_dla_obwodu_nn(
+        enm=enm,
+        station_ref=station_ref,
+        bus_ref=bus_ref,
+        ib_a=ib_a,
+        iz_prime_a=iz_prime_a,
+        ik_max_ka=ik_max_ka,
+    )
+
+
+def _resolve_run_for_sheet(
+    *, case_id: str, run_id: str | None, param_name: str, expected_analysis_type: str
+) -> Any | None:
+    """Waliduj+rozwiąż bieg OPCJONALNY dla arkusza nN — wzorzec `quality_
+    analysis_runs._require_run` (parsowanie UUID, przynależność do case,
+    status FINISHED, rodzaj analizy), ale ``None`` (nie 404) gdy parametr
+    pominięty — arkusz działa BEZ biegu (Ib „z tabliczki", reszta kolumn
+    zależnych od biegu w trzecim stanie „brak danych")."""
+    if run_id is None:
+        return None
+    try:
+        parsed = UUID(run_id)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=422, detail=f"{param_name} musi być poprawnym UUID."
+        ) from exc
+    run = _get_canonical_run(parsed)
+    if run is None:
+        raise HTTPException(status_code=404, detail=f"Bieg {run_id} ({param_name}) nie istnieje.")
+    if run.case_id != case_id:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Bieg {run_id} ({param_name}) należy do innego przypadku obliczeniowego.",
+        )
+    if run.status != "FINISHED":
+        raise HTTPException(
+            status_code=409,
+            detail=f"Bieg {run_id} ({param_name}) nie jest zakończony (status={run.status}).",
+        )
+    if run.analysis_type != expected_analysis_type:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"Bieg {run_id} ({param_name}) ma rodzaj analizy '{run.analysis_type}', "
+                f"oczekiwano '{expected_analysis_type}'."
+            ),
+        )
+    return run
+
+
+@router.get("/{case_id}/enm/nn-circuit-sheet")
+def get_nn_circuit_sheet(
+    case_id: str,
+    station_ref: str,
+    load_flow_run_id: str | None = None,
+    short_circuit_run_id: str | None = None,
+    fault_duration_s: float | None = None,
+) -> dict[str, Any]:
+    """Arkusz obliczeń obwodów nN klasy projektu wykonawczego (karta ARKUSZ-NN,
+    docs/nn/ARKUSZ_OBLICZEN_NN_2026-08.md).
+
+    Jeden wiersz PER ODPŁYW rozdzielnicy/stacji nN: Ib (z biegu rozpływu, gdy
+    ``load_flow_run_id`` podany i biegu ma wynik dla obwodu, inaczej „z
+    tabliczki" — źródło nazwane jawnie w wierszu), aparat/nastawy/zapas,
+    Iz′ skorygowane, k2/I2, przewód/przekrój/γ, kryteria (i)/(ii),
+    długość, ΔU odcinkowy/całkowity, Ik″max (``short_circuit_run_id``)/
+    Ik1_min, SWZ, I²t (wymaga ``short_circuit_run_id`` I ``fault_duration_s``),
+    status doboru — PROVENANCE per wiersz. Read-only; kompozycja gotowych
+    dostawców (zero fizyki tutaj).
+
+    ``load_flow_run_id``/``short_circuit_run_id`` OPCJONALNE — bez nich
+    kolumny zależne od biegu dostają uczciwy trzeci stan „brak danych" z
+    akcją naprawczą po stronie UI („uruchom bieg"), nie fabrykowaną liczbę.
+    """
+    enm = _get_enm(case_id)
+    load_flow_run = _resolve_run_for_sheet(
+        case_id=case_id,
+        run_id=load_flow_run_id,
+        param_name="load_flow_run_id",
+        expected_analysis_type="PF",
+    )
+    short_circuit_run = _resolve_run_for_sheet(
+        case_id=case_id,
+        run_id=short_circuit_run_id,
+        param_name="short_circuit_run_id",
+        expected_analysis_type="short_circuit_sn",
+    )
+    return build_nn_circuit_sheet(
+        enm=enm,
+        station_ref=station_ref,
+        load_flow_run=load_flow_run,
+        short_circuit_run=short_circuit_run,
+        fault_duration_s=fault_duration_s,
+    )
 
 
 class WytrzymaloscAparaturyRequestModel(BaseModel):
@@ -717,6 +1020,10 @@ async def run_short_circuit(case_id: str, request: Request) -> dict[str, Any]:
             "short_circuit_type",
             "c_factor",
             "thermal_time_seconds",
+            # Karta P0.3b: scenariusz MAX/MIN (c per pasmo IEC 60909 Tab. 1 +
+            # korekta temperaturowa R_θ dla MIN) — addytywne, patrz
+            # enm/canonical_analysis.py::_execute_short_circuit.
+            "scenario",
         )
         if isinstance(body, dict) and key in body
     }
@@ -998,7 +1305,7 @@ def rozbieznosc_wobec_bramy(
 
 
 @router.post("/{case_id}/enm/domain-ops")
-def domain_ops(case_id: str, req: DomainOpEnvelopeModel) -> dict[str, Any]:
+def domain_ops(case_id: str, req: DomainOpEnvelopeModel, request: Request) -> dict[str, Any]:
     """Kanoniczny endpoint operacji domenowych V1.
 
     Wspólny kontrakt dla wszystkich operacji budowy sieci SN:
@@ -1029,10 +1336,12 @@ def domain_ops(case_id: str, req: DomainOpEnvelopeModel) -> dict[str, Any]:
     RÓŻNYCH przypadkach nadal biegną równolegle.
     """
     with blokada_przypadku(case_id):
-        return _domain_ops_pod_blokada(case_id, req)
+        return _domain_ops_pod_blokada(case_id, req, request)
 
 
-def _domain_ops_pod_blokada(case_id: str, req: DomainOpEnvelopeModel) -> dict[str, Any]:
+def _domain_ops_pod_blokada(
+    case_id: str, req: DomainOpEnvelopeModel, request: Request
+) -> dict[str, Any]:
     from enm.domain_operations import execute_domain_operation
 
     enm = _get_enm(case_id)
@@ -1119,6 +1428,19 @@ def _domain_ops_pod_blokada(case_id: str, req: DomainOpEnvelopeModel) -> dict[st
             )
             result["error_code"] = "api.snapshot_validation_failed"
             result["snapshot"] = None
+        else:
+            # D §6.2 (karta P0.1): unieważnienie wyników PO udanym zapisie —
+            # tylko wtedy model faktycznie się zmienił. Awaria unieważnienia
+            # (DB niedostępna, brak StudyCase) NIE cofa raportowanego sukcesu
+            # zapisu modelu — plakietka świeżości pozostaje wtedy nieaktualna
+            # (znany, nazwany dług tej awarii), ale model jest zapisany poprawnie.
+            try:
+                _invaliduj_wyniki_po_operacji(case_id, resolved_name, request)
+            except Exception:
+                logger.exception(
+                    "Unieważnienie wyników po operacji domenowej nie powiodło się "
+                    "(model zapisany poprawnie — plakietki świeżości mogą być nieaktualne)."
+                )
 
     return result
 

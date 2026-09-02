@@ -4,6 +4,7 @@ import math
 
 import pytest
 from enm.hash import compute_enm_hash
+from enm.migrations.nn_field_specs_promocja import META_KLUCZ_GALAZ_ZRODLO_FIELD_REF
 from enm.models import (
     BranchPointSN,
     BranchPointSNPorts,
@@ -159,9 +160,28 @@ def test_store_materializes_catalog_loads_for_legacy_station_feeders() -> None:
     assert load.materialized_params is not None
     assert load.materialized_params["q_source"] == "KATALOG_COS_PHI"
 
+    # P0.1 nN (karta P0.1, LV-INV-12): `get_enm` uruchamia TERAZ TAKŻE promocję
+    # `nn_field_specs` → realny aparat odpływowy (`enm/migrations/
+    # nn_field_specs_promocja.py`, wpięta PO tej migracji katalogowej). Odbiór
+    # dołożony tutaj (meta.feeder_ref == field_ref) zostaje PRZENIESIONY z szyny
+    # stacji na nową szynę odpływu ZA aparatem — druga rewizja jest oczekiwanym
+    # skutkiem KOLEJNEJ migracji uruchamianej przy tym samym odczycie, nie regresją
+    # tej migracji katalogowej (jej własny skutek, sprawdzony wyżej, jest bez zmian).
     reread = get_enm("case-store-load-migration")
     assert len(reread.loads) == 1
-    assert reread.header.revision == saved.header.revision
+    assert reread.header.revision == saved.header.revision + 1
+    promowany_odbior = reread.loads[0]
+    assert promowany_odbior.bus_ref != "bus-nn"
+    aparat_odplywowy = next(
+        branch
+        for branch in reread.branches
+        if branch.meta.get(META_KLUCZ_GALAZ_ZRODLO_FIELD_REF) == "stn/test/nn_feeder/001"
+    )
+    assert promowany_odbior.bus_ref == aparat_odplywowy.to_bus_ref
+    # Tabliczka katalogowa (P, Q z cosφ) PRZETRWAŁA przeniesienie bus_ref —
+    # migracja promocji zmienia WYŁĄCZNIE topologię, nigdy dane tabliczkowe.
+    assert promowany_odbior.p_mw == pytest.approx(0.03, abs=1e-12)
+    assert promowany_odbior.q_mvar == pytest.approx(0.03 * math.tan(math.acos(0.92)), abs=1e-9)
 
 
 def test_store_materializes_catalog_switch_state_for_legacy_zksn() -> None:

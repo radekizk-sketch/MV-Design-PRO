@@ -36,11 +36,17 @@ Ewentualna redukcja chromu 146→76 px = przyszła karta NA W-110, nie równoleg
 powłoka za flagą.
 
 **D3 — KREATORY: kanon = `ui2/kreatory`.** Jedyna ścieżka użytkownika.
-Kontrakty `station-wizard-v2` (transformer, earthing, interlocking, CT/VT,
+~~Kontrakty `station-wizard-v2` (transformer, earthing, interlocking, CT/VT,
 protection, powerQuality, SCADA, ncRfg, readinessMatrix) zostają jako
-BIBLIOTEKA kontraktów konsumowana przez ui2. `station-configurator`,
-`StationTemplateWizard`+`BatchPlanner`: pomiar importerów rozstrzyga —
-nieosiągalne wygaszamy, osiągalne przepinamy do ui2 i wygaszamy źródło.
+BIBLIOTEKA kontraktów konsumowana przez ui2.~~ **KOREKTA 2026-08-13
+(pomiar N-D3-POMIAR-U2, `docs/v12xx/REJESTR_KONFLIKTOW.md`):** pomiar
+importerów na OBU gałęziach wykazał ZERO konsumentów biblioteki w `ui2/**`
+(potwierdzone niezależnie z dwóch stron: wątek nN i nadzór po scaleniu
+MINI-RMU-CAD, która buduje podgląd wyłącznie na kanonie symboli SLD v3);
+biblioteka SKASOWANA w całości — decyzja projektowa ustąpiła pomiarowi.
+`station-configurator`, `StationTemplateWizard`+`BatchPlanner`: pomiar
+importerów rozstrzyga — nieosiągalne wygaszamy, osiągalne przepinamy do ui2
+i wygaszamy źródło.
 
 **D4 — PALETA KOMEND: jedna (`ui2/search`).** WYKONANE (fala 10). Inwentarz
 komend przy kasacji: duplikat `ui/network-build/CommandPalette` nie miał

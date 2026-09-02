@@ -235,7 +235,7 @@ class PhaseStateSNSolver:
         )
 
 
-def _compute_unbalance_percent(values: tuple[float, float, float]) -> float:
+def _compute_unbalance_percent(values: tuple[float, ...]) -> float:
     average = sum(values) / len(values)
     if average == 0.0:
         return 0.0

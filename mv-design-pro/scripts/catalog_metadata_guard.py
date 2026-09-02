@@ -35,6 +35,8 @@ INDUSTRIAL_MIN_WIDTH = {
     "KABEL_NN": 17,
     "APARAT_NN": 3,
     "OBCIAZENIE": 3,
+    "APARAT_NN_MCB": 30,
+    "WKLADKA_NN": 30,
 }
 
 
@@ -57,6 +59,8 @@ def _groups() -> dict[str, list[object]]:
         "KABEL_NN": repo.list_lv_cable_types(),
         "APARAT_NN": repo.list_lv_apparatus_types(),
         "OBCIAZENIE": repo.list_load_types(),
+        "APARAT_NN_MCB": repo.list_lv_breaker_mcb_types(),
+        "WKLADKA_NN": repo.list_lv_fuse_link_types(),
     }
 
 

@@ -259,6 +259,173 @@ export function stationLvLoadLabelText(load: NonNullable<StationMeasureInput['ag
  *  stacja ma stronę nN, ale ZERO rekordów `Load`. */
 export const LV_MODEL_BOUNDARY_TEXT = 'granica modelu — bez odbiorów nN';
 
+// ---------------------------------------------------------------------------
+// ZACISK nN + PORTAL DOMENY nN (architektura LV Domain Projection po B-02,
+// `docs/sld/PROJEKCJA_SN_NN_PORTAL_V1.md`): projekcja SN NIE rozwija wnętrza
+// rozdzielnicy nN (aparat główny, sekcje, sprzęgła, odpływy, aparaty nN,
+// odbiory indywidualne) — to żyje WYŁĄCZNIE w projekcji nN (`lv-domain/`),
+// zasilanej atomowym `LvDomainProjectionV1` z backendu (zero kopii topologii
+// nN po stronie klienta). Na ZACISKU nN (`#lv-bus`, wspólnym dla wszystkich TR
+// stacji) projekcja SN pokazuje:
+//  · portal (`lvPortal`, `symbols/defs.ts`) — NA OSI rdzenia zacisku, pod
+//    transformatorem, jako jawne przejście do projekcji nN;
+//  · zagregowany odbiór nN (strzałka ZA portalem, z przerwą) — odbiorów
+//    NIGDY nie ukrywamy;
+//  · źródła strony nN (rząd DER — źródeł NIGDY nie ukrywamy; pion trunku ZA
+//    strzałką/portalem, rząd flush-right ZA blokiem kolumn).
+// Trzy zwisy wiszą RÓWNOLEGLE na tym samym zacisku, więc rezerwacja B4 to
+// `max`, nie suma (BLOK-PUSTY §4). `planLvTerminal` jest JEDNĄ prawdą
+// geometrii zacisku dla measure (rezerwacja szerokości) i compose (rysunek).
+// ---------------------------------------------------------------------------
+
+/** Gabaryt symbolu `lvPortal` (`SYMBOL_DEFS.lvPortal` 32×24) — literały
+ *  zsynchronizowane testem spójności (`compose/__tests__/station.lvPortal.test.ts`);
+ *  measure.ts celowo NIE importuje `SYMBOL_DEFS` (patrz `IMPLICIT_TR_SYMBOL_WIDTH`). */
+export const LV_PORTAL_WIDTH = 32;
+export const LV_PORTAL_HEIGHT = 24;
+/** Zejście z zacisku nN do portu `top` portalu (pion `#lv-portal-drop`) —
+ *  2×GRID, żeby rząd DER (szyna rzędu na `busY + DER_ROW_TOP_CLEARANCE`)
+ *  przechodził NAD górną krawędzią portalu z prześwitem GRID. */
+export const LV_PORTAL_DROP_HEIGHT = 2 * GRID;
+/** Przerwa POZIOMA między sąsiadującymi zwisami zacisku (portal | strzałka
+ *  odbioru | pion trunku DER): gabaryty nie mogą się stykać, bo
+ *  `symbolWireCollisions` czyta styk symbolu z kreską jako kolizję. */
+const LV_TERMINAL_GAP = GRID;
+/** Bufor pod portalem (jak `DER_ROW_BOTTOM_BUFFER`). */
+const LV_PORTAL_BOTTOM_BUFFER = GRID;
+
+/** Podpowiedź (natywny `<title>`) na obszarze trafienia portalu —
+ *  `canvas/hitAreas.ts` (wzorzec `STATION_TR_FIELD_GAP_TEXT`). */
+export const LV_PORTAL_TITLE_TEXT = 'Portal domeny nN — kliknij, aby otworzyć projekcję nN tej stacji';
+
+const LV_LABEL_GAP = GRID;
+/** Gabaryt symbolu strzałki odbioru (`SYMBOL_DEFS.loadArrow` 16×16) — literały
+ *  zsynchronizowane testem spójności (measure nie importuje SYMBOL_DEFS). */
+export const LV_LOAD_ARROW_WIDTH = 16;
+export const LV_LOAD_ARROW_HEIGHT = 16;
+
+/** Plan geometrii ZACISKU nN — współrzędne X w układzie wołającego
+ *  (measure: względem `column.x`; compose: świat). */
+export interface LvTerminalPlan {
+  /** Lewy/prawy koniec odcinka `#lv-bus` (rdzeń + zwisy na prawo). */
+  readonly busLeft: number;
+  readonly busRight: number;
+  /** Oś rdzenia zacisku (środek między skrajnymi portami LV). */
+  readonly axisX: number;
+  /** Oś portalu (środek symbolu `lvPortal`) = oś rdzenia zacisku: portal
+   *  stoi POD transformatorem, w obrysie kolumny TR — zero dodatkowej
+   *  szerokości stacji (pomiar 2026-09-01: portal doklejony ZA blokiem
+   *  poszerzał KAŻDĄ stację o 48 j.św., golden sieć 53 stacji łamała arkusz
+   *  L0 z 2 na 3 wiersze, skala dopasowania spadała 0,0925 → 0,0673 i
+   *  WSZYSTKIE nazwy stacji były porzucane jako nieczytelne). */
+  readonly portalCenterX: number;
+  /** X pionu strzałki zagregowanego odbioru nN — ZA portalem z przerwą
+   *  `LV_TERMINAL_GAP`; `null`, gdy stacja nie ma odbioru zagregowanego. */
+  readonly loadDropX: number | null;
+  /** X pionu trunku rzędu DER strony nN — ZA portalem i ZA strzałką odbioru
+   *  (prawy koniec zacisku, gdy stacja ma DER): pion NIGDY nie przecina
+   *  portalu, strzałki ani szyny rzędu DER (przecięcie dwóch odcinków
+   *  nie-szynowych `resolveTeeJunctions` czyta jako węzeł T — fałszywe
+   *  połączenie elektryczne). */
+  readonly derTrunkX: number;
+  /** X początku rzędu DER strony nN — flush-right ZA blokiem kolumn
+   *  (`derRowFlushX`, jak przed portalem) i nie przed trunkiem. */
+  readonly derRowStartX: number;
+}
+
+/**
+ * JEDNA prawda geometrii zacisku nN measure↔compose. `portXs` = osie X portów
+ * LV transformatorów stacji (compose: realne porty symboli; measure:
+ * `lvTerminalPortXs` z planu kolumn — równość przypięta testem spójności);
+ * `derRowFlushX` = pierwszy wolny X ZA blokiem kolumn (`bx` kompozycji) —
+ * rząd DER stoi ZA blokiem, żeby nie wejść w kolumnę pola sąsiadującego z
+ * transformatorem (TR nie musi być ostatnią kolumną). Kolejność zwisów od
+ * lewej: portal (na osi) → strzałka odbioru → trunk DER; wszystkie NA siatce.
+ */
+export function planLvTerminal(
+  portXs: readonly number[],
+  opts: { readonly hasLoad: boolean; readonly hasNnDer: boolean; readonly derRowFlushX: number },
+): LvTerminalPlan {
+  const minX = Math.min(...portXs);
+  const maxX = Math.max(...portXs);
+  const coreLeft = minX === maxX ? minX - GRID : minX;
+  const coreRight = minX === maxX ? maxX + GRID : maxX;
+  const axisX = snapToGrid((coreLeft + coreRight) / 2);
+  const portalRight = axisX + LV_PORTAL_WIDTH / 2;
+  const rightOfCore = Math.max(coreRight, portalRight);
+  const loadDropX = opts.hasLoad
+    ? snapUp(rightOfCore + LV_TERMINAL_GAP + LV_LOAD_ARROW_WIDTH / 2)
+    : null;
+  const rightOfLoad = loadDropX != null ? loadDropX + LV_LOAD_ARROW_WIDTH / 2 : rightOfCore;
+  const derTrunkX = snapUp(rightOfLoad + LV_TERMINAL_GAP);
+  return {
+    busLeft: coreLeft,
+    busRight: opts.hasNnDer ? derTrunkX : (loadDropX ?? coreRight),
+    axisX,
+    portalCenterX: axisX,
+    loadDropX,
+    derTrunkX,
+    derRowStartX: Math.max(opts.derRowFlushX, derTrunkX),
+  };
+}
+
+/** Osie X portów LV transformatorów stacji względem `column.x` — Z PLANU
+ *  KOLUMN (`stationSnColumnLayout`): kolumna transformatora bez pola i KAŻDE
+ *  pole roli TR (compose: `lvPorts.push(stack.bottomPort)` dla roli TR — port
+ *  leży na osi stosu = `placement.centerX`). `[]` = stacja bez portów LV. */
+export function lvTerminalPortXs(station: StationColumnsInput): readonly number[] {
+  return stationSnColumnLayout(station, 0)
+    .filter(
+      (p) =>
+        p.kind === 'transformer'
+        || (p.kind === 'bay' && isTransformerRole(station.snBays[p.bayIndex!].fieldRole)),
+    )
+    .map((p) => p.centerX);
+}
+
+function isTransformerRole(role: FieldRole): boolean {
+  return role === 'TRANSFORMER' || role === 'RMU_TRANSFORMER';
+}
+
+/** Wysokość DODATKOWA B4 pod zaciskiem na PORTAL: zejście + symbol + bufor.
+ *  `0`, gdy stacja nie rysuje strony nN (`stationHasLvSide` — TA SAMA bramka
+ *  co wiersze nN pasma nazw). */
+export function lvPortalExtraHeight(
+  station: Pick<StationMeasureInput, 'snBays' | 'hasTransformer'>,
+): number {
+  if (!stationHasLvSide(station)) return 0;
+  return LV_PORTAL_DROP_HEIGHT + LV_PORTAL_HEIGHT + LV_PORTAL_BOTTOM_BUFFER;
+}
+
+/** Wysokość DODATKOWA B4 na strzałkę zagregowanego odbioru (pion + symbol +
+ *  bufor), gdy `aggregatedLvLoad` obecne. Teksty strony nN żyją w paśmie
+ *  nazw B5 (`stationNameBandHeight`). */
+export function lvSideExtraHeight(
+  station: Pick<StationMeasureInput, 'snBays' | 'aggregatedLvLoad' | 'hasTransformer'>,
+): number {
+  if (!stationHasLvSide(station) || !station.aggregatedLvLoad) return 0;
+  return LV_LABEL_GAP + LV_LOAD_ARROW_HEIGHT + LV_LABEL_GAP;
+}
+
+/**
+ * BLOK-PUSTY (zgłoszenie właściciela 2026-08-07 pkt 6): CAŁA głębokość, na jaką
+ * treść strony nN zwisa POD zaciskiem nN — jedno zdanie dla WSZYSTKICH zwisów.
+ * Kompozycja (`compose/station.ts`) wiesza portal, rząd DER strony nN i
+ * strzałkę odbioru na TYM SAMYM zacisku i rozsuwa je w POZIOMIE
+ * (`planLvTerminal`), więc łączy je `max`, nie suma — przypięte testem
+ * spójności measure↔compose (`layout/__tests__/blokPusty.test.ts` §4) na
+ * ILOCZYNIE {brak / odbiór / DER / odbiór+DER} × {1 pole / kilka / maksimum}.
+ */
+export function nnSideBelowBusHeight(
+  station: Pick<StationMeasureInput, 'snBays' | 'aggregatedLvLoad' | 'derSources' | 'hasTransformer'>,
+): number {
+  return Math.max(
+    lvPortalExtraHeight(station),
+    lvSideExtraHeight(station),
+    derRowExtraHeight(nnSideSources(station.derSources ?? [])),
+  );
+}
+
 /** Czy `snBays` niesie JAWNE pole roli TR (`TRANSFORMER`/`RMU_TRANSFORMER`) —
  *  predykat WYŁĄCZNIE polowy. Odróżnia „transformator jest CZĘŚCIĄ stosu pola"
  *  (ścieżka dzisiejsza, zero zmian od TR2W-BEZ-POLA) od „transformator wisi na
@@ -277,7 +444,7 @@ function stationHasExplicitTrBay(snBays: readonly MiniBlockBayDescriptor[]): boo
  *
  * Przed tą kartą predykat czytał WYŁĄCZNIE pole, więc stacja o
  * `sn_fields:['IN','OUT','FEEDER']` z policzonym w ENM transformatorem
- * zwracała `false` — `nnSideBelowBusHeight`/`lvSideNameRowWidths`/
+ * zwracała `false` — `lvPortalExtraHeight`/`lvSideNameRowWidths`/
  * `stationNameBandHeight` nie rezerwowały miejsca na stronę nN, mimo że
  * domena ją niosła (defekt bliźniaczy z `lvPorts` w kompozycji: ta sama
  * klasa, dwa końce).
@@ -294,8 +461,9 @@ export function stationHasLvSide(
 
 /** Gabaryt symbolu `transformer2W` (`symbols/defs.ts` — 32×40, port `hv`
  *  górny / `lv` dolny). `measure.ts` celowo NIE importuje `SYMBOL_DEFS`
- *  (patrz `LV_LOAD_ARROW_HEIGHT`), więc literały są zsynchronizowane TESTEM
- *  spójności measure↔compose, nie importem. */
+ *  (utrzymujemy ten plik wolny od zależności na bibliotekę glifów, jak
+ *  `LV_PORTAL_WIDTH`/`LV_PORTAL_HEIGHT`), więc literały są zsynchronizowane
+ *  TESTEM spójności measure↔compose, nie importem. */
 export const IMPLICIT_TR_SYMBOL_WIDTH = 32;
 export const IMPLICIT_TR_SYMBOL_HEIGHT = 40;
 
@@ -402,7 +570,11 @@ export interface StationSnColumnPlacement {
 
 type StationColumnsInput = Pick<
   StationMeasureInput,
-  'snBays' | 'bayDirectionCaptions' | 'entryDescentBayIndex' | 'hasTransformer' | 'transformerUnits'
+  | 'snBays'
+  | 'bayDirectionCaptions'
+  | 'entryDescentBayIndex'
+  | 'hasTransformer'
+  | 'transformerUnits'
 >;
 
 /**
@@ -462,10 +634,16 @@ export function stationSnColumnLayout(
     unresolved.push(unit);
   });
 
+  // Kolumna transformatora bez pola = SAM symbol (32 j.św.). Tabliczka TR
+  // (Sn/przekładnia/grupa/uk%) NIE jest rysowana w projekcji SN — pełny blok
+  // tabliczki niesie projekcja nN (`lv-domain/composeLvDomainScene.ts`
+  // `transformerNameplateLabel`), a projekcja SN pokazuje moc znamionową w
+  // paśmie nazw stacji (`transformerRatedKva`). Jedna treść, jedno miejsce.
   const out: StationSnColumnPlacement[] = [];
   let bx = columnX + GRID;
   const pushTransformer = (unit: StationTransformerUnit): void => {
     const centerX = snapToGrid(bx + IMPLICIT_TR_SYMBOL_WIDTH / 2);
+    const columnWidth = IMPLICIT_TR_SYMBOL_WIDTH;
     out.push({
       kind: 'transformer',
       bayIndex: null,
@@ -474,10 +652,10 @@ export function stationSnColumnLayout(
       // rysunku: kolumna na końcu bloku JEST kolumną własnej sekcji.
       sectionResolved: resolvedRefs.has(unit.ref) || declaredSections.size === 0,
       leftX: bx,
-      width: IMPLICIT_TR_SYMBOL_WIDTH,
+      width: columnWidth,
       centerX,
     });
-    bx += IMPLICIT_TR_SYMBOL_WIDTH + MIN_GLYPH_CLEARANCE;
+    bx += columnWidth + MIN_GLYPH_CLEARANCE;
   };
 
   bays.forEach((bay, index) => {
@@ -503,52 +681,6 @@ export function stationSnColumnLayout(
   unresolved.forEach(pushTransformer);
 
   return out;
-}
-
-const LV_LABEL_GAP = GRID;
-/** Wysokość symbolu strzałki odbioru (`SYMBOL_DEFS.loadArrow`) — literal
- *  zsynchronizowany przez test spójności w `compose/__tests__/station.test.ts`
- *  (measure nie importuje SYMBOL_DEFS — utrzymujemy ten plik wolny od
- *  zależności na bibliotekę glifów, jak dotychczas). */
-export const LV_LOAD_ARROW_HEIGHT = 16;
-
-/** Wysokość DODATKOWA bloku B4 na stronę nN — WYŁĄCZNIE strzałka odbioru
- *  (pion + symbol + bufor), gdy `aggregatedLvLoad` obecne. TEKSTY strony nN
- *  żyją w paśmie nazw B5 (`stationNameBandHeight` niżej) — luźne etykiety
- *  pod szyną kolidowały z pionem trunku DER (pomiar k6 na fixturze). */
-export function lvSideExtraHeight(
-  station: Pick<StationMeasureInput, 'snBays' | 'aggregatedLvLoad' | 'hasTransformer'>,
-): number {
-  if (!stationHasLvSide(station) || !station.aggregatedLvLoad) return 0;
-  return LV_LABEL_GAP + LV_LOAD_ARROW_HEIGHT + LV_LABEL_GAP;
-}
-
-/**
- * BLOK-PUSTY (zgłoszenie właściciela 2026-08-07 pkt 6): CAŁA głębokość, na jaką
- * treść strony nN zwisa POD szyną nN — jedno zdanie dla obu zwisów.
- *
- * DEFEKT NAPRAWIONY TĄ FUNKCJĄ. `stationBlockHeight` sumowało dotąd
- * `derExtra + lvExtra`, jakby rząd DER stał POD strzałką odbioru. Kompozycja
- * (`compose/station.ts`) wiesza OBA na TEJ SAMEJ szynie nN i rozsuwa je w
- * POZIOMIE: strzałka odbioru na LEWYM końcu szyny (`arrowY = busY + GRID`,
- * `#lv-load-drop`), rząd DER ze ŚRODKA szyny (`derRowY = attach.y +
- * DER_ROW_TOP_CLEARANCE`, `#der-row-trunk`) — szyna jest właśnie po to
- * przedłużana w lewo o `3×GRID`, żeby oba zwisy się nie zetknęły. Rezerwacja
- * SZEREGOWA przy rysunku RÓWNOLEGŁYM zostawiała pod blokiem pusty pas.
- * Zmierzone na fixturze 53 stacji: **32 j.św.** martwej rezerwacji w każdym
- * bloku, który ma jednocześnie odbiór nN i DER na nN.
- *
- * PREDYKAT JEDEN, KOŃCE DWA (reguła KLASA §3): obie składowe są liczone od
- * TEGO SAMEGO punktu odniesienia (szyna nN), więc łączy je `max`, nie suma —
- * i to samo zdanie egzekwuje test spójności measure↔compose
- * (`layout/__tests__/blokPusty.test.ts` §4), który buduje REALNĄ kompozycję,
- * mierzy jej zwis pod `#lv-bus` i porównuje z tą liczbą na ILOCZYNIE
- * {brak / odbiór / DER / odbiór+DER} × {1 pole / kilka / maksimum z fixtury}.
- */
-export function nnSideBelowBusHeight(
-  station: Pick<StationMeasureInput, 'snBays' | 'aggregatedLvLoad' | 'derSources' | 'hasTransformer'>,
-): number {
-  return Math.max(lvSideExtraHeight(station), derRowExtraHeight(nnSideSources(station.derSources ?? [])));
 }
 
 /** Szerokości tekstów strony nN — kandydaci pasma nazw B5 (do
@@ -735,12 +867,11 @@ export function entryDescentCaptionInset(role: FieldRole): number {
 const STATION_BLOCK_BUS_CLEARANCE = MIN_FIELD_CLEARANCE;
 
 /**
- * F9.4 (spec §14.1 strona nN, §13.1 V12K-029): prześwit między szyną nN (lub
- * portem TR, gdy stacja nie ma jawnej szyny nN) i rzędem symboli DER, oraz
- * prześwit między symbolem i jego etykietą (spec §4: „DER: rodzaj+moc POD
- * symbolem"). MIRROR w `compose/station.ts` (`DER_ROW_TOP_CLEARANCE`
- * zaimportowany WPROST z tego pliku — jedna prawda measure↔compose, wzór
- * F5a/F6b-1: `entryDescentCaptionInset`/`PORT_CAPTION_BUS_CLEARANCE`).
+ * F9.4 (spec §14.1 strona nN, §13.1 V12K-029): prześwit między zaciskiem nN i
+ * rzędem symboli DER strony nN, oraz prześwit między symbolem i jego etykietą
+ * (spec §4: „DER: rodzaj+moc POD symbolem"). MIRROR w `compose/station.ts`
+ * (`DER_ROW_TOP_CLEARANCE` zaimportowany WPROST z tego pliku — jedna prawda
+ * measure↔compose, wzór F5a/F6b-1).
  */
 export const DER_ROW_TOP_CLEARANCE = GRID;
 const DER_LABEL_GAP = GRID;
@@ -783,10 +914,6 @@ export function derRowFootprint(
  * Wysokość DODATKOWA na rząd DER (0, gdy stacja bez DER) — doliczana do
  * `stationBlockHeight` (spec §5.2 B4): prześwit górny + wysokość symbolu +
  * prześwit etykiety + wysokość etykiety (t2, „pod symbolem") + bufor dolny.
- * Etykieta (`placement:'below'`, `layout/labels.ts`) leży POD symbolem —
- * bez doliczenia jej wysokości tutaj B4 kończyłaby się w połowie etykiety
- * (nachodzenie na pasmo nazw B5, wykryte empirycznie na fixturze
- * referencyjnej — patrz raport F9.4).
  */
 function derRowExtraHeight(sources: readonly StationDerSourceInput[]): number {
   if (sources.length === 0) return 0;
@@ -795,6 +922,15 @@ function derRowExtraHeight(sources: readonly StationDerSourceInput[]): number {
   );
 }
 
+/**
+ * Wysokość DODATKOWA na rząd DER (0, gdy stacja bez DER) — doliczana do
+ * `stationBlockHeight` (spec §5.2 B4): prześwit górny + wysokość symbolu +
+ * prześwit etykiety + wysokość etykiety (t2, „pod symbolem") + bufor dolny.
+ * Etykieta (`placement:'below'`, `layout/labels.ts`) leży POD symbolem —
+ * bez doliczenia jej wysokości tutaj B4 kończyłaby się w połowie etykiety
+ * (nachodzenie na pasmo nazw B5, wykryte empirycznie na fixturze
+ * referencyjnej — patrz raport F9.4).
+ */
 /**
  * W2 (RECENZJA_L2 §4 wariant B, GS-4b): źródła DER o stronie `'sn'` —
  * `connectionSide==='sn'` (pole źródłowe od szyny SN). `derBySide` rozdziela
@@ -888,15 +1024,13 @@ export function stationBlockWidth(station: StationColumnsInput): number {
 }
 
 /** Wysokość bloku stacji (B4, spec §5.2): kolumny stoją OBOK siebie, więc
- *  wysokość = najwyższa kolumna + prześwit szyn SN/nN + F9.4 rząd DER
- *  (0, gdy stacja bez DER — zero zmian geometrii). */
+ *  wysokość = najwyższa kolumna + prześwit szyn SN/zacisk nN + zwis strony nN
+ *  (portal / rząd DER / odbiór — `max`, 0 gdy stacja bez strony nN). */
 export function stationBlockHeight(station: StationMeasureInput): number {
   const allDer = station.derSources ?? [];
-  // BLOK-PUSTY: JEDNA głębokość zwisu strony nN — rząd DER (W2/GS-4b: tylko
-  // źródła strony nN; źródła SN mają własne pole źródłowe, `snSourceFieldHeight`)
-  // i strzałka odbioru (recenzja NO-GO 2026-07-17 pkt 6) wiszą RÓWNOLEGLE na
-  // tej samej szynie nN, więc łączy je `max`, nie suma (patrz
-  // `nnSideBelowBusHeight` — tam wyprowadzenie i pomiar).
+  // BLOK-PUSTY: JEDNA głębokość zwisu strony nN — portal domeny nN, rząd DER
+  // strony nN i strzałka odbioru wiszą RÓWNOLEGLE na tym samym zacisku, więc
+  // łączy je `max`, nie suma (patrz `nnSideBelowBusHeight` — tam wyprowadzenie).
   const nnExtra = nnSideBelowBusHeight(station);
   // W2: pole źródłowe SN zajmuje pas pionowy kolumn (od `blockTopY` w dół) —
   // kandydat do `max()` z najwyższą kolumną pola (0, gdy zero źródeł SN).
@@ -922,7 +1056,16 @@ export function stationBlockHeight(station: StationMeasureInput): number {
     if (ref) chainHeightByFieldRef.set(ref, derSnChainExtraHeight(src.kind));
   }
   const columnHeights = station.snBays.map((bay) => {
-    const base = bayColumnFootprint(bay).height;
+    // Pole TR z odgałęzieniem bocznym (ES/VT/SA zakotwiczone w porcie LV):
+    // zacisk nN schodzi POD lateral i pod jego etykietę identyfikatora
+    // (`compose/station.ts` `lvColumnBottoms` — QE `placement: 'below'`,
+    // prześwit GRID + wiersz t4), więc kolumna TR musi zarezerwować ten pas,
+    // inaczej zwis zacisku (B4) wchodziłby w pasmo nazw B5.
+    const base =
+      bayColumnFootprint(bay).height
+      + (isTransformerRole(bay.fieldRole) && planBayApparatus(bay).laterals.length > 0
+        ? GRID + labelLineHeight('t4')
+        : 0);
     const chainExtra2 = chainHeightByFieldRef.get(bay.bayRef);
     if (chainExtra2 == null) return base;
     // Tor zaczyna się na DNIE toru głównego pola (`bayMainPathHeight`), nie na
@@ -967,22 +1110,34 @@ export function stationNameBandHeight(station: StationMeasureInput): number {
  */
 export function requiredStationWidth(station: StationMeasureInput): number {
   // F9.4 KOREKTA NADZORCY (patrz `stationBlockWidth`): EKSTENT poziomy bloku
-  // = kolumny pól + rząd DER dopisany PO PRAWEJ (wzór sidecara FIX-3;
-  // `compose/station.ts` rysuje rząd flush-right od `bx` za ostatnią
-  // kolumną) — wchodzi WYŁĄCZNIE do rezerwacji szerokości KOLUMNY stacji
-  // (żeby DER nie nachodził na sąsiada), NIE do bazy centrowania `tapX`.
-  const baysWidth = stationBlockWidth(station);
-  // W2 (GS-4b): EKSTENT poziomy = kolumny pól + pola źródłowe SN (dodatkowe
-  // kolumny NA szynie SN, `compose/station.ts` rysuje je flush-right za polami)
-  // + rząd nN (TYLKO źródła strony nN). Trzy człony dopisane PO PRAWEJ, każdy
-  // z odstępem GRID; sieć referencyjna (0 źródeł SN) ⇒ `snFieldsWidth==0` ⇒
-  // formuła identyczna jak przed W2 (zero zmian szerokości kolumny).
+  // = kolumny pól + pola źródłowe SN dopisane PO PRAWEJ (wzór sidecara FIX-3;
+  // `compose/station.ts` rysuje je flush-right od `bx` za ostatnią kolumną)
+  // — wchodzi WYŁĄCZNIE do rezerwacji szerokości KOLUMNY stacji (żeby pole
+  // źródłowe nie nachodziło na sąsiada), NIE do bazy centrowania `tapX`.
+  // ZACISK nN (LV Domain Projection po B-02): portal stoi NA OSI rdzenia
+  // zacisku (w obrysie kolumny TR), strzałka odbioru i pion trunku DER ZA nim,
+  // rząd DER strony nN flush-right ZA blokiem — `planLvTerminal` (JEDNA prawda
+  // z `compose/station.ts`) wyznacza prawy ekstent każdego zwisu; do
+  // rezerwacji wchodzi najdalszy z nich (dla stacji bez odbioru i bez DER
+  // portal mieści się w kolumnie TR — zero dodatkowej szerokości).
   const allDer = station.derSources ?? [];
+  let blockWidth = stationBlockWidth(station);
   const snFieldsWidth = snSourceFieldsRowWidth(allDer);
-  const nnDerWidth = derRowFootprint(nnSideSources(allDer)).width;
-  let blockWidth = baysWidth;
   if (snFieldsWidth > 0) blockWidth += GRID + snFieldsWidth;
-  if (nnDerWidth > 0) blockWidth += GRID + nnDerWidth;
+  const portXs = lvTerminalPortXs(station);
+  if (stationHasLvSide(station) && portXs.length > 0) {
+    const nnDer = nnSideSources(allDer);
+    const plan = planLvTerminal(portXs, {
+      hasLoad: station.aggregatedLvLoad != null,
+      hasNnDer: nnDer.length > 0,
+      // `bx` kompozycji względem `column.x`: blok zaczyna się na `GRID`.
+      derRowFlushX: GRID + blockWidth + GRID,
+    });
+    const portalRight = plan.portalCenterX + LV_PORTAL_WIDTH / 2;
+    const loadRight = plan.loadDropX != null ? plan.loadDropX + LV_LOAD_ARROW_WIDTH / 2 : 0;
+    const derRowRight = nnDer.length > 0 ? plan.derRowStartX + derRowFootprint(nnDer).width : 0;
+    blockWidth = Math.max(blockWidth, portalRight - GRID, loadRight - GRID, derRowRight - GRID);
+  }
 
   const nameWidths: number[] = [measureLabelWidth(station.name, 't1')];
   if (station.stationCode) nameWidths.push(measureLabelWidth(station.stationCode, 't1'));

@@ -279,6 +279,16 @@ def check_legacy_catalog_payloads(root: Path = PROJECT_ROOT) -> list[Violation]:
 
             if normalized == "frontend/src/types/domainOps.ts":
                 if re.search(r"\bfrom_bus_ref\?\s*:", line):
+                    # P0.9 (nN STUDIO) exception, same context-window technique as the
+                    # `connect_secondary_ring_sn` e2e exception below: `AddNNCableSegmentPayload`
+                    # mirrors backend `add_nn_cable_segment` (enm/domain_operations_v2.py), which
+                    # genuinely accepts `from_bus_ref` OR `from_ref` (resolved server-side) — this
+                    # is a CURRENT, correct contract for a nN operation that did not exist when
+                    # this rule was written (#429), not a resurfacing of the legacy SN pattern the
+                    # rule targets. Scoped narrowly to that one interface, not a blanket allow.
+                    context_window = "\n".join(lines[max(0, line_no - 8) : line_no])
+                    if "AddNNCableSegmentPayload" in context_window:
+                        continue
                     violations.append(
                         Violation(
                             path=normalized,

@@ -162,11 +162,31 @@ def _find_any_annotations_in_file(filepath: Path) -> list[tuple[int, str]]:
     Parse a Python file and find all uses of bare 'Any' type annotation.
 
     Returns list of (line_number, context_description) tuples.
-    Justified exceptions:
+    Justified exceptions (matches the four categories this guard's own
+    ``max_allowed`` comment below already names as allowed — CLASS, not
+    INSTANCE, per CLAUDE.md „reguła KLASA, NIE INSTANCJA": the allowlist below
+    was scoped to a handful of specific names within each category instead of
+    the category itself, so equally-justified siblings under different names
+    leaked through as false-positive "violations" until the raw count crossed
+    ``max_allowed`` — found and closed by a full-suite run during karta P0.5b,
+    2026-08-13; NOT a P0.5b defect, this guard never touches ``domain``/``enm``
+    logic, only recognizes patterns it already declared justified):
     - TYPE_CHECKING imports
     - dict/meta fields explicitly typed as dict (which is dict[str, Any])
     - to_dict/from_dict methods (serialization boundary)
-    - _canonicalize_value (recursive canonicalizer by definition uses Any)
+    - canonicalize family (recursive canonicalizer/hash-of-arbitrary-structure
+      by definition uses Any): _canonicalize_value, _canonicalize,
+      _canonicalize_for_hash, canonicalize, compute_hash — five names, one
+      class, across domain/project_archive.py, domain/study_case_engine.py,
+      domain/trace_v2/artifact.py, domain/execution.py,
+      domain/load_flow_input.py, domain/result_contract_v1.py,
+      domain/analysis_run.py, enm/canonical_analysis.py
+    - stable sort key (heterogeneous item → deterministic sort key, by
+      definition uses Any): _stable_sort_key
+    - protection interop (domain layer reads a protection-analysis result
+      object without importing its concrete type, to avoid a cross-layer
+      dependency): _validate_pairs, _build_relay_lookup, _effective_trip_time,
+      _build_relay_summaries, _build_coordination_summaries
     """
     source = filepath.read_text(encoding="utf-8")
     try:
@@ -176,12 +196,22 @@ def _find_any_annotations_in_file(filepath: Path) -> list[tuple[int, str]]:
 
     violations: list[tuple[int, str]] = []
 
-    # Allowed contexts for Any usage
+    # Allowed contexts for Any usage — see docstring above for the four
+    # justified CLASSES this set enumerates by member name.
     allowed_function_names = {
         "to_dict",
         "from_dict",
         "_canonicalize_value",
         "_canonicalize",
+        "_canonicalize_for_hash",
+        "canonicalize",
+        "compute_hash",
+        "_stable_sort_key",
+        "_validate_pairs",
+        "_build_relay_lookup",
+        "_effective_trip_time",
+        "_build_relay_summaries",
+        "_build_coordination_summaries",
         "_normalize_float",
         "_sorted_by_id",
     }

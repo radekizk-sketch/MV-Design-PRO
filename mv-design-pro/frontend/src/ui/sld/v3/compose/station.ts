@@ -10,8 +10,10 @@
  * Gramatyka (spec §3): pozioma szyna SN NA OSI B2 (ta sama oś, którą biegnie
  * magistrala widoku sieci — dla stacji na ciągu lokalna szyna SN JEST
  * fizyczną kontynuacją magistrali), zejścia z tej osi do kolumn pól (B4),
- * TR2W w polu transformatorowym, szyna nN + odpływy gdy `hasLvSection`. Ten
- * sam język symboli co GPZ (mniejsza skala gabarytów).
+ * TR2W w polu transformatorowym, zacisk nN + PORTAL domeny nN gdy
+ * `hasLvSection` (architektura LV Domain Projection po B-02: wnętrze
+ * rozdzielnicy nN żyje WYŁĄCZNIE w projekcji nN, `lv-domain/`). Ten sam
+ * język symboli co GPZ (mniejsza skala gabarytów).
  *
  * SPÓJNOŚĆ measure↔compose (wymóg zadania): rozmieszczenie kolumn pól
  * WEWNĄTRZ bloku używa TEJ SAMEJ funkcji co rezerwacja miejsca
@@ -71,6 +73,8 @@ import {
   formatTransformerRatedPower,
   implicitStationTransformers,
   LV_MODEL_BOUNDARY_TEXT,
+  LV_PORTAL_DROP_HEIGHT,
+  planLvTerminal,
   stationSnColumnLayout,
   type StationSnColumnPlacement,
   PORT_CAPTION_BUS_CLEARANCE,
@@ -91,11 +95,12 @@ import {
   type SourceOperationalState,
   type StationDerSourceInput,
 } from './sourceKind';
-import type {
-  PortCaptionOwnerInput,
-  SimpleAnchoredOwnerInput,
-  StationNameBandOwnerInput,
-  StationNameBandRow,
+import {
+  resolveLabels,
+  type PortCaptionOwnerInput,
+  type SimpleAnchoredOwnerInput,
+  type StationNameBandOwnerInput,
+  type StationNameBandRow,
 } from '../layout/labels';
 import { ALL_FIELD_ROLES, FIELD_ROLE, type FieldRole } from '../../v2/domain/apparatusContracts';
 import type { MiniBlockBayDescriptor } from '../../v2/renderer/MiniBlockRmuRenderer';
@@ -332,6 +337,12 @@ export interface ComposedSymbolInstance {
    *  Render podąża za DANYMI, nie za rolą pola — configId świadczy o tożsamości
    *  konfiguracji (uwaga 10). `undefined` dla DER i pól bez szablonu. */
   readonly configId?: string;
+  /** PORTAL nN (LV Domain Projection po B-02): WYŁĄCZNIE dla `symbolId===
+   *  'lvPortal'` — `Substation.ref_id` stacji, której projekcję nN portal
+   *  otwiera; `scene/buildScene.ts` buduje z niego `ownerRef` symbolu
+   *  (`lvPortalOwnerRef`) i przepisuje 1:1 do `PreviewElementMeta.
+   *  lvPortalStationRef` (konsument: klik w `SldCanvasV3Workspace`). */
+  readonly lvPortalStationRef?: string;
   readonly x: number;
   readonly y: number;
   readonly state?: SwitchState;
@@ -423,10 +434,11 @@ export interface ComposeStationInput {
   readonly blockTopY: number;
   /** Zarezerwowany slot pasma NAZW (`ColumnResult.nameSlot`). */
   readonly nameSlot: V3Rect;
-  /** Czy stacja ma sekcję nN (szyna nN + odpływy, spec §3) — POZA zakresem
-   *  `StationMeasureInput` (F2, measure-only: obecność nN nie zmienia
-   *  rezerwacji B4, `STATION_BLOCK_BUS_CLEARANCE` jest stała niezależnie).
-   *  Domyślnie `false`. */
+  /** Czy stacja ma stronę nN (zacisk nN + portal domeny nN) — wołający
+   *  (`scene/buildScene.ts`) wyprowadza to z faktu domenowego
+   *  `stationHasTransformerFact` (JEDNA prawda z sylwetką L0 i bramką
+   *  `stationHasLvSide` w `layout/measure.ts`, która rezerwuje miejsce na
+   *  portal — `lvPortalExtraHeight`). Domyślnie `false`. */
   readonly hasLvSection?: boolean;
   /** F9.9 B-1 (spec §17.4): szczegółowość warstwy adnotacji zabezpieczeń,
    *  wywiedziona z LOD przez wołającego (`scene/buildScene.ts`,
@@ -849,6 +861,14 @@ function composeDerSnChain(
  * w `missingData`; wiersz pasma nazw ze zdaniem `STATION_TR_FIELD_GAP_TEXT`
  * dokłada `composeStation`. Symbol transformatora POZOSTAJE symbolem
  * transformatora — nie zamieniamy go na symbol błędu (§0.C.5).
+ *
+ * Tabliczka TR (Sn/przekładnia/grupa/uk%) NIE jest rysowana przy symbolu w
+ * projekcji SN — pełny blok tabliczki niesie projekcja nN
+ * (`lv-domain/composeLvDomainScene.ts` `transformerNameplateLabel`), a projekcja
+ * SN pokazuje moc znamionową w paśmie nazw stacji (`transformerRatedKva`).
+ * Jedna treść, jedno miejsce; kolumna TR bez pola to SAM symbol
+ * (`layout/measure.ts` `stationSnColumnLayout` rezerwuje DOKŁADNIE
+ * `IMPLICIT_TR_SYMBOL_WIDTH`).
  */
 function composeImplicitTransformerColumn(
   placement: StationSnColumnPlacement,
@@ -892,6 +912,16 @@ function composeImplicitTransformerColumn(
     // końcu bloku jako uczciwa degradacja, zamiast zgadywać sekcję.
     sink.missingData.push(`station.transformer.sectionUnresolved:${ref}`);
   }
+}
+
+/** Sufiks kompozytowego `ownerRef` symbolu portalu domeny nN — JEDNA prawda
+ *  dla sceny (`scene/buildScene.ts`), etykiety portalu i testów. */
+export const LV_PORTAL_OWNER_SUFFIX = '#lv-portal';
+
+/** `ownerRef` symbolu `lvPortal` stacji `stationRef` (kompozyt zakotwiczony w
+ *  realnym `Substation.ref_id`, konwencja `#…` jak `#lv-bus`/`#sn-bus`). */
+export function lvPortalOwnerRef(stationRef: string): string {
+  return `${stationRef}${LV_PORTAL_OWNER_SUFFIX}`;
 }
 
 function computeBbox(symbols: readonly ComposedSymbolInstance[], segments: readonly ComposedSegment[]): V3Rect {
@@ -959,6 +989,9 @@ export function composeStation(input: ComposeStationInput): StationComposition {
   // `StationCompositionLabelInputs.busbar`.
   const busbarLabels: SimpleAnchoredOwnerInput[] = [];
   const lvPorts: RoutePort[] = [];
+  /** Dolne krawędzie stosów pól TR (z odgałęzieniami bocznymi) — zacisk nN
+   *  schodzi pod NAJNIŻSZĄ z nich, nie tylko pod port LV. */
+  const lvColumnBottoms: number[] = [];
   const busTapXs: number[] = [];
   // F9.4 (runda korekcyjna, F-2): patrz docstring `StationComposition.missingData`.
   const missingData: string[] = [];
@@ -1405,7 +1438,28 @@ export function composeStation(input: ComposeStationInput): StationComposition {
       placement: 'right',
     });
 
-    if (isTransformerRole(bay.fieldRole)) lvPorts.push(stack.bottomPort);
+    if (isTransformerRole(bay.fieldRole)) {
+      lvPorts.push(stack.bottomPort);
+      // Dolna krawędź CAŁEGO stosu pola TR — także odgałęzień bocznych
+      // (ES/VT/SA) zakotwiczonych w porcie LV transformatora, które wiszą
+      // PONIŻEJ tego portu (§18.1: lateral = port S kotwicy + wysokość symbolu).
+      // Zacisk nN musi zejść pod nie (pomiar W1c 2026-09-01: portal/strzałka
+      // odbioru na wysokości portu LV nachodziły na ES/VT/SA pola TR).
+      // …oraz etykiet identyfikatorów tych odgałęzień (QE pod symbolem ES,
+      // `placement: 'below'`) — rozstrzygane TYM SAMYM resolverem, którym
+      // scena kładzie etykiety (`layout/labels.ts`), więc zacisk nie może
+      // przeciąć napisu (pomiar W1c: 6 etykiet QE porzuconych przez kolizję
+      // z kreską `#lv-bus` schodzącą pod sam symbol lateralu).
+      const identifierBottoms = resolveLabels({ simpleAnchored: stack.identifierLabels }).map(
+        (label) => label.rect.y + label.rect.height,
+      );
+      lvColumnBottoms.push(
+        Math.max(
+          ...stack.instances.map((inst) => inst.y + SYMBOL_DEFS[inst.symbolId].height),
+          ...identifierBottoms,
+        ),
+      );
+    }
 
     // W2c: tor DER-SN wisi POD głowicą TEGO pola źródłowego (bay_role `OZE`),
     // gdy pole niesie dopasowane źródło z torem (`chain.mvFieldRef === bayRef`).
@@ -1564,38 +1618,43 @@ export function composeStation(input: ComposeStationInput): StationComposition {
     });
   }
 
-  // Szyna nN + odpływy (spec §3) — TYLKO gdy stacja ma sekcję nN, zaczepiona
-  // pod NAJNIŻSZYMI portami LV wszystkich pól transformatorowych tej
-  // stacji. Odpływy nN odbiorców (liczba, rozstaw) POZA zakresem tej fazy —
-  // `nnFeedersCount` nie niesie danych o mocy/typie odbioru poszczególnych
-  // odpływów (dane WYWIEDZIONE z licznika, nie apparatus/urządzenie per
-  // odpływ) — rysowanie N generycznych kresek bez treści fabrykowałoby
-  // szczegół, którego dane nie niosą (zero zgadywania, §12.1 zasada
-  // analogiczna); rysujemy WYŁĄCZNIE szynę zbiorczą (gap udokumentowany w
-  // raporcie F5a, POZOSTAJE — kandydat F9.6+, gdy dane odpływów będą
-  // strukturalne). F9.4 (spec §14.1 strona nN, V12K-029): DER przyłączone do
-  // TEJ stacji SĄ realną, w pełni ustrukturyzowaną treścią strony nN na
-  // fixturze referencyjnej (0 Load w ENM) — dostarczone niżej.
-  let nnBusPoint: { readonly x: number; readonly y: number } | null = null;
+  // ZACISK nN + PORTAL DOMENY nN (architektura LV Domain Projection po B-02,
+  // `docs/sld/PROJEKCJA_SN_NN_PORTAL_V1.md`): projekcja SN kończy tor mocy na
+  // ZACISKU nN transformatora(-ów) stacji i JAWNYM portalu. Rysujemy:
+  //  · zejścia z portów LV WSZYSTKICH transformatorów stacji (`#lv-drop-N`,
+  //    dekoracja portu — `sceneConformance.test.ts` DECORATIVE_OWNER_REF_PATTERNS)
+  //    do WSPÓLNEGO zacisku (`#lv-bus` — w sensie WYNIKU szyna nN stacji,
+  //    `canvas/resultRefBridge.ts`; klasa `bus`, `scene/buildScene.ts`);
+  //  · portal (`lvPortal`) NA OSI rdzenia zacisku (pod TR, w obrysie kolumny
+  //    TR — zero dodatkowej szerokości stacji), pion `#lv-portal-drop`;
+  //  · zagregowany ODBIÓR nN (strzałka ZA portalem, recenzja NO-GO 2026-07-17
+  //    pkt 6) — odbiorów NIGDY nie ukrywamy; jego liczby żyją w paśmie nazw B5;
+  //  · źródła strony nN (pion trunku ZA strzałką/portalem, rząd DER flush-right
+  //    ZA blokiem) — źródeł NIGDY nie ukrywamy (spec §13.1 parytet liczności).
+  // Wnętrza rozdzielnicy nN (aparat główny, sekcje, sprzęgła, odpływy, aparaty
+  // nN, odbiory indywidualne) NIE MA w tej projekcji — żyje w projekcji nN
+  // (`lv-domain/LvDomainView.tsx`) z atomowego `LvDomainProjectionV1`
+  // backendu. ZERO kopii/rekonstrukcji topologii nN po stronie klienta.
+  // Granica PROJEKCJI (portal) ≠ granica OBLICZENIOWA (jedna sieć SN–TR–nN).
+  // Multi-TR: porty LV wszystkich TR schodzą do JEDNEGO zacisku (jedna domena
+  // nN stacji = jeden kontrakt `station_ref`), portal jeden.
+  // Geometria zacisku z JEDNEJ prawdy measure↔compose (`planLvTerminal`,
+  // `layout/measure.ts` — ta sama funkcja rezerwuje szerokość kolumny).
+  const derSources = nnDerSources;
   if (hasLvSection && lvPorts.length > 0) {
-    const minX = Math.min(...lvPorts.map((p) => p.x));
-    const maxX = Math.max(...lvPorts.map((p) => p.x));
-    const busY = snapToGrid(Math.max(...lvPorts.map((p) => p.y)) + GRID);
-    // pkt 6 (recenzja NO-GO 2026-07-17): stacja z odbiorem ORAZ DER —
-    // szyna nN przedłużona w LEWO o 3×GRID, żeby strzałka odbioru na jej
-    // lewym końcu miała prześwit od pionu trunku DER (`#der-row-trunk`
-    // schodzi ze środka szyny; pomiar: na wąskiej szynie 2×GRID gabaryt
-    // strzałki DOTYKAŁ trunku — symbolWireCollisions 24 na fixturze).
-    const lvBusExtendLeft =
-      station.aggregatedLvLoad != null && nnDerSources.length > 0 ? 3 * GRID : 0;
-    const busLeft = (minX === maxX ? minX - GRID : minX) - lvBusExtendLeft;
-    const busRight = minX === maxX ? maxX + GRID : maxX;
-
+    // Zacisk GRID pod najniższym z: portów LV i dolnych krawędzi stosów pól TR
+    // (odgałęzienia boczne ES/VT/SA zakotwiczone w porcie LV wiszą poniżej
+    // portu — `lvColumnBottoms`); zwisy zacisku nie mogą na nie nachodzić.
+    const busY = snapToGrid(Math.max(...lvPorts.map((p) => p.y), ...lvColumnBottoms) + GRID);
+    const plan = planLvTerminal(
+      lvPorts.map((p) => p.x),
+      { hasLoad: station.aggregatedLvLoad != null, hasNnDer: derSources.length > 0, derRowFlushX: bx },
+    );
     segments.push({
       ownerRef: `${station.id}#lv-bus`,
       points: [
-        { x: busLeft, y: busY },
-        { x: busRight, y: busY },
+        { x: plan.busLeft, y: busY },
+        { x: plan.busRight, y: busY },
       ],
     });
     lvPorts.forEach((p, index) => {
@@ -1607,22 +1666,32 @@ export function composeStation(input: ComposeStationInput): StationComposition {
         ],
       });
     });
-    // Środek TREŚCIWEJ części szyny (bez przedłużki pod strzałkę) — punkt
-    // zaczepu DER/etykiet NIE przesuwa się, gdy `lvBusExtendLeft` > 0.
-    nnBusPoint = { x: snapToGrid((busLeft + lvBusExtendLeft + busRight) / 2), y: busY };
 
-    // Recenzja NO-GO 2026-07-17 pkt 6 (spec §12.5): zagregowany ODBIÓR z
-    // rekordów `Load` — strzałka odbioru NA szynie nN (pion szyna→port N
-    // symbolu). Gdy stacja niesie też DER (`#der-row-trunk` schodzi z
-    // ŚRODKA szyny nN, `nnBusPoint.x`), strzałka staje na LEWYM końcu szyny
-    // — zero współliniowości z trunkiem DER. TEKSTY strony nN (etykieta
-    // szyny + wiersz odbioru/granicy modelu) żyją w PAŚMIE NAZW B5
-    // (kolizyjnie bezpieczne z konstrukcji — rezerwacja
-    // `stationNameBandHeight`/`requiredStationWidth`), nie jako luźne
-    // etykiety pod szyną (pomiar: kolidowały z pionem trunku DER).
-    if (station.aggregatedLvLoad != null) {
+    // PORTAL: pion z zacisku (`LV_PORTAL_DROP_HEIGHT` — TA SAMA stała, którą
+    // `lvPortalExtraHeight` rezerwuje w B4) + symbol na osi `plan.portalCenterX`.
+    const portalDef = SYMBOL_DEFS.lvPortal;
+    const portalTopY = busY + LV_PORTAL_DROP_HEIGHT;
+    segments.push({
+      ownerRef: `${station.id}#lv-portal-drop`,
+      points: [
+        { x: plan.portalCenterX, y: busY },
+        { x: plan.portalCenterX, y: portalTopY },
+      ],
+    });
+    const portalSymX = snapToGrid(plan.portalCenterX - portalDef.width / 2);
+    symbols.push({
+      symbolId: 'lvPortal',
+      lvPortalStationRef: station.id,
+      x: portalSymX,
+      y: portalTopY,
+      ports: portsInWorld(portalDef, portalSymX, portalTopY),
+    });
+
+    // ODBIÓR zagregowany (pkt 6): strzałka na zacisku ZA portalem
+    // (`plan.loadDropX` — jedna prawda z rezerwacją szerokości).
+    if (station.aggregatedLvLoad != null && plan.loadDropX != null) {
       const arrowDef = SYMBOL_DEFS.loadArrow;
-      const arrowDropX = nnDerSources.length > 0 ? busLeft : nnBusPoint.x;
+      const arrowDropX = plan.loadDropX;
       const arrowX = snapToGrid(arrowDropX - arrowDef.width / 2);
       const arrowY = busY + GRID;
       segments.push({
@@ -1639,59 +1708,33 @@ export function composeStation(input: ComposeStationInput): StationComposition {
         ports: portsInWorld(SYMBOL_DEFS.loadArrow, arrowX, arrowY),
       });
     }
-  }
 
-  // F9.4 (spec §13.1 V12K-029, §14.1 strona nN): DER przyłączone do TEJ
-  // stacji (`connection_variant='nn_side'`) — pełnoprawne widoczne źródło,
-  // symbol POŁĄCZONY z szyną nN (`nnBusPoint`) lub, gdy stacja nie ma jawnej
-  // szyny nN, z DOLNYM portem PIERWSZEGO pola transformatorowego (fallback,
-  // `lvPorts[0]` — ten sam punkt, do którego zaczepiłaby się szyna nN, gdyby
-  // `hasLvSection` było ustawione). Rysowane WYŁĄCZNIE gdy `station.
-  // derSources` niesie wpisy (stacje bez DER: zero zmian geometrii,
-  // `derRowFootprint([])==={0,0}`).
-  const derSources = nnDerSources;
-  if (derSources.length > 0) {
-    const attach = nnBusPoint ?? (lvPorts[0] ? { x: lvPorts[0].x, y: lvPorts[0].y } : null);
-    if (!attach) {
-      // Luka danych (spec §14.1 „laterale zagnieżdżone rysowane lub jawny
-      // stopNote"): stacja niesie DER na nn_side, ale nie ma ŻADNEGO pola
-      // transformatorowego w danych — brak punktu przyłączenia
-      // geometrycznego. Zero fabrykacji: DER NIE jest rysowany dla tej
-      // stacji. F9.4 (runda korekcyjna, F-2 — SPŁATA długu „ciche
-      // gubienie"): ta gałąź dawniej kończyła się TU, bez żadnego śladu —
-      // `missingData` niżej ujednolica z `GpzComposition` (`./gpz`,
-      // `gpz.source.unattached`, ten sam wzorzec); WOŁAJĄCY
-      // (`scene/buildScene.ts` `composeRowStation`) przenosi to do
-      // `scene.meta.stopNotes`, a `sourceCoverageGaps`/`allSourcesVisible`
-      // (`scene/buildScene.ts`, spec §13.1) i tak zgłasza brak symbolu przez
-      // parytet liczności — teraz naprawdę, nie w komentarzu (raport F9.4).
-      missingData.push('station.der.unattached');
-    } else {
+    // F9.4 (spec §13.1 V12K-029, §14.1 strona nN): DER przyłączone do TEJ
+    // stacji (`connection_variant='nn_side'`) — pełnoprawne widoczne źródło,
+    // symbol POŁĄCZONY z zaciskiem nN. Rysowane WYŁĄCZNIE gdy `station.
+    // derSources` niesie wpisy strony nN (stacje bez DER: zero zmian geometrii,
+    // `derRowFootprint([])==={0,0}`).
+    if (derSources.length > 0) {
       // W2 (§0 karty): źródło o stronie `'unknown'` (model NIE mówi nN —
       // `Generator.bus_ref` bez szyny/napięcia) przyłączone do nN KONWENCJĄ
       // F9.4 (stacja ma TR), nie z danych — jawne oznaczenie w meta, żeby
       // czytelnik wiedział, że strona jest wywnioskowana z konwencji, nie
-      // odczytana z modelu (honest degradation; źródło `'sn'` poszło już do
-      // pola źródłowego SN wyżej, tu trafia tylko `'nn'`/`'unknown'`/brak).
+      // odczytana z modelu (honest degradation).
       if (derSources.some((s) => s.connectionSide === 'unknown')) {
         missingData.push('station.der.sideAssumedNn');
       }
+      // Trunk ZA portalem (prawy koniec zacisku) — `plan.derTrunkX`, jedna
+      // prawda z rezerwacją; pion nie przecina niczego (patrz `LvTerminalPlan`).
+      const attach = { x: plan.derTrunkX, y: busY };
       const derRowY = attach.y + DER_ROW_TOP_CLEARANCE;
       // FIX-3-wzorzec (spec §5.1 „max(bbox symbolu, najszerszy slot etykiet
-      // WŁASNYCH)", ten sam wzorzec co oznacznik aparatu — komentarz wyżej
-      // „PO PRAWEJ stosu"): rząd DER zaczyna się FLUSH-RIGHT za OSTATNIĄ
-      // kolumną pola (`bx` — TA SAMA wartość, o którą `layout/measure.ts`
-      // `stationBlockWidth` rozszerza rezerwację bloku, F9.4). Centrowanie
-      // pod `attach.x` (poprzednia wersja) kolidowało z kolumną SĄSIADA, gdy
-      // etykieta rodzaju+mocy była szersza niż gabaryt symbolu i rząd DER
-      // wystawał w LEWO poza własną kolumnę TR (wykryte empirycznie na
-      // fixturze referencyjnej — stacja z polem liniowym + 2× DER, raport
-      // F9.4). Każdy DER dostaje slot `derColumnRequiredWidth` (może być
-      // SZERSZY niż gabaryt symbolu) — symbol WYCENTROWANY w swoim slocie
-      // (etykieta centruje się pod symbolem z konstrukcji `layout/labels.ts`,
-      // więc centrowanie symbolu w slocie utrzymuje etykietę W GRANICACH
-      // slotu też).
-      let slotX = bx;
+      // WŁASNYCH)"): rząd DER zaczyna się FLUSH-RIGHT za OSTATNIĄ kolumną pola
+      // ORAZ za portalem (`plan.derRowStartX` — TA SAMA wartość, o którą
+      // `layout/measure.ts` `requiredStationWidth` rozszerza rezerwację).
+      // Każdy DER dostaje slot `derColumnRequiredWidth` (może być SZERSZY niż
+      // gabaryt symbolu) — symbol WYCENTROWANY w swoim slocie (etykieta
+      // centruje się pod symbolem z konstrukcji `layout/labels.ts`).
+      let slotX = plan.derRowStartX;
       const centers: number[] = [];
 
       derSources.forEach((source) => {
@@ -1731,17 +1774,13 @@ export function composeStation(input: ComposeStationInput): StationComposition {
         slotX += slotWidth + GRID;
       });
 
-      // Trunk (zaczep → oś rzędu, pion PRZY zaczepie, nie przy rzędzie — rząd
-      // jest teraz PO PRAWEJ zaczepu, flush-right za blokiem, nie pod nim) +
-      // rząd dystrybucyjny na poziomie górnych portów DER (`derRowY`, ac port
-      // offset y=0 — rząd i górna krawędź symboli są WSPÓŁLINIOWE z
-      // konstrukcji) — rozpięty od `attach.x` DO ostatniego DER (obejmuje
-      // WŁASNY pion trunk, nie tylko rozstaw symboli), żeby trunk i rząd się
-      // FAKTYCZNIE dotykały niezależnie od względnej pozycji `attach.x`
-      // wobec `centers` (ten sam model „na szynie" co
-      // `internalSegmentsEndAtPortsOrBus` niżej) — pojedynczy odcinek
-      // wystarcza do połączenia WSZYSTKICH symboli rzędu I trunku bez
-      // odrębnego zejścia per DER.
+      // Trunk (zaczep → oś rzędu, pion PRZY zaczepie) + rząd dystrybucyjny na
+      // poziomie górnych portów DER (`derRowY`, ac port offset y=0 — rząd i
+      // górna krawędź symboli są WSPÓŁLINIOWE z konstrukcji) — rozpięty od
+      // `attach.x` DO ostatniego DER (obejmuje WŁASNY pion trunk), żeby trunk
+      // i rząd się FAKTYCZNIE dotykały (model „na szynie" jak
+      // `internalSegmentsEndAtPortsOrBus`). Trunk i rząd leżą CAŁE na prawo
+      // od portalu — zero przecięć z pionem portalu z konstrukcji.
       segments.push({
         ownerRef: `${station.id}#der-row-trunk`,
         points: [
@@ -1759,6 +1798,14 @@ export function composeStation(input: ComposeStationInput): StationComposition {
         ],
       });
     }
+  } else if (derSources.length > 0) {
+    // Luka danych (spec §14.1 „laterale zagnieżdżone rysowane lub jawny
+    // stopNote"): stacja niesie DER strony nN, ale nie ma ŻADNEGO portu LV
+    // transformatora w danych — brak zacisku, brak punktu przyłączenia. Zero
+    // fabrykacji: DER NIE jest rysowany; wpis w `missingData` (wzorzec
+    // `gpz.source.unattached`), `scene/buildScene.ts` przenosi go do
+    // `stopNotes`, a `sourceCoverageGaps` zgłasza brak przez parytet liczności.
+    missingData.push('station.der.unattached');
   }
 
   // Pasmo nazw (B5, spec §4: kolejność pionowa stała) — TA SAMA kolejność

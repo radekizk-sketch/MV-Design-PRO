@@ -36,7 +36,7 @@ silnika layoutu builder/{Hierarchical,Corridor,...} — 2026-07):
 - `frontend/src/ui/sld/v2/__tests__/renderers.test.tsx`
 - `frontend/src/ui/sld/v2/__tests__/ViewportController.test.ts`
 - `frontend/src/ui/sld/v2/__tests__/LodPolicy.test.ts`
-- `frontend/src/ui/sld/v2/__tests__/StationInternalView.test.tsx`
+- `frontend/src/ui/sld/v3/canvas/__tests__/lvDomainPortal.test.tsx` (następca skasowanego `StationInternalView.test.tsx` — portal domeny nN, slice E 2026-09-01)
 - `frontend/src/ui/sld/v2/command/__tests__/SldCommandService.test.ts`
 - `frontend/src/ui/sld/v2/core/__tests__/ports.test.ts`
 

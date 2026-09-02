@@ -107,6 +107,48 @@ KODY_WALIDATORA_BEZ_KANONU: dict[str, str] = {
     "sources.sk_ik_voltage_inconsistent": (
         "Kanon nie ma kodu dla niespojnosci Ik''/Sk''/napiecia zrodla."
     ),
+    # ------------------------------------------------------------------
+    # P0.1 nN (karta P0.1, topologia obwodow nN — `enm/validator.py::_check_nn_topology`).
+    # ------------------------------------------------------------------
+    "E060": (
+        "Kanon nie ma kodu dla ciaglosci zasilania odbioru/generatora nN do zrodla "
+        "(kontrola topologiczna grafu przez zamkniete galezie/transformatory) — "
+        "analogicznie do E003 (wyspa odcieta od zrodla), rowniez bez kanonu."
+    ),
+    "E061": (
+        "Kanon ma `nn.cable_catalog_missing`, ale ten dotyczy WYLACZNIE kabli i jest "
+        "WARNING; E061 obejmuje KAZDA galaz w pasmie nN (kable I aparaty pol) i jest "
+        "BLOCKER dla galezi bez pochodzenia migracyjnego — inny zakres obiektu i inna "
+        "dotkliwosc, wiec odwzorowanie byloby podmiana tresci."
+    ),
+    "W061": (
+        "Wyjatek E061 dla galezi z automigracji promocji pol nN (degradacja BLOCKER -> "
+        "WARNING, `nn_field_specs_promocja.py`) — jak E061, `nn.cable_catalog_missing` "
+        "nie pasuje (obejmuje wylacznie kable, nie aparaty pol)."
+    ),
+    "E062": (
+        "Kanon nie ma kodu dla mieszania poziomow napiecia WEWNATRZ pasma nN — E020 "
+        "(patrz wyzej) grupuje cale pasmo nN (<1 kV) jako JEDNO pasmo i nie wykrywa "
+        "tego warunku."
+    ),
+    "E063": (
+        "Kanon nie ma kodu dla braku deklaracji ukladu uziemienia sieci nN stacji "
+        "(meta.nn_earthing_system) wymaganej kryterium SWZ (IEC 60364-4-41)."
+    ),
+    "E064": (
+        "Kanon nie ma kodu dla ProtectionAssignment.breaker_ref wskazujacego galaz, "
+        "ktorej nie ma w modelu — spojnosc referencji, nie brak danych projektowych "
+        "(jak W005/W006/W008 wyzej)."
+    ),
+    "W060": (
+        "Kanon nie ma kodu dla braku warunkow ulozenia kabla nN "
+        "(meta.cable_laying_conditions) — obciazalnosc liczona wg zalozenia "
+        "katalogowego, jawne ostrzezenie o zalozeniu, nie brak danych katalogowych."
+    ),
+    "W062": (
+        "Kanon nie ma kodu dla dwoch zrodel/generatorow nN bezposrednio na TEJ SAMEJ "
+        "szynie bez sprzegla/logiki SZR miedzy nimi."
+    ),
 }
 
 # ---------------------------------------------------------------------------

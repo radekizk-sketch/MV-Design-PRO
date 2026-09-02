@@ -23,13 +23,16 @@ from __future__ import annotations
 
 import copy
 import logging
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
 
 import numpy as np
 from application.execution_engine.load_flow_run_input import LoadFlowRunInput
 from application.result_mapping.load_flow_to_resultset_v1 import (
     map_power_flow_to_resultset_v1,
+)
+from application.result_mapping.sc_binding_meta import (
+    wzbogac_resultset_o_meta_bindingu,
 )
 from application.result_mapping.short_circuit_to_resultset_v1 import (
     map_short_circuit_to_resultset_v1,
@@ -478,6 +481,7 @@ class ExecutionEngineService:
         readiness_snapshot: dict[str, Any],
         validation_snapshot: dict[str, Any],
         z0_bus: np.ndarray | None = None,
+        scenario: Literal["MAX", "MIN"] = "MAX",
     ) -> tuple[Run, ResultSet]:
         """
         Execute a short-circuit run end-to-end (PR-18 binding).
@@ -498,6 +502,9 @@ class ExecutionEngineService:
             readiness_snapshot: Readiness state at run time.
             validation_snapshot: Validation state at run time.
             z0_bus: Zero-sequence bus matrix (required for SC_1F).
+            scenario: "MAX" (Ik''max, default) or "MIN" (Ik''min — karta P0.3:
+                per-band c + R_theta temperature correction on line/cable
+                branches). Threaded straight into ``execute_short_circuit``.
 
         Returns:
             Tuple of (completed Run in DONE status, ResultSet v1).
@@ -530,16 +537,22 @@ class ExecutionEngineService:
                 analysis_type=run.analysis_type,
                 config=config,
                 fault_node_id=fault_node_id,
+                scenario=scenario,
                 z0_bus=z0_bus,
             )
 
-            # Map to ResultSet v1
-            result_set = map_short_circuit_to_resultset_v1(
-                binding_result=binding_result,
-                run_id=run.id,
-                graph=graph,
-                validation_snapshot=validation_snapshot,
-                readiness_snapshot=readiness_snapshot,
+            # Map to ResultSet v1 (mapper ZAMROŻONY) + meta bindingu P0.3
+            # (scenariusz/c per pasmo/korekta R_θ) dokładane wrapperem POZA
+            # plikiem chronionym, z przeliczeniem podpisu.
+            result_set = wzbogac_resultset_o_meta_bindingu(
+                map_short_circuit_to_resultset_v1(
+                    binding_result=binding_result,
+                    run_id=run.id,
+                    graph=graph,
+                    validation_snapshot=validation_snapshot,
+                    readiness_snapshot=readiness_snapshot,
+                ),
+                binding_result,
             )
 
             # Store ResultSet and mark DONE

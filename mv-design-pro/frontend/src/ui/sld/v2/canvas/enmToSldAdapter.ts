@@ -3557,27 +3557,31 @@ interface StationMiniBlockDetails {
   /** K30-62: vector group transformatora (np. "Dyn5", "Yd11"). Real
    *  industrial SLD pokazuje vector group obok TR symbol per IEC 60076-1. */
   readonly transformerVectorGroup: string | null;
+  /** P0.8 nN (seam A8 §9.2.1): sekcje szyny nN z odpływami RZECZYWISTYMI
+   *  (aparat + odbiorca, gdy model je niesie) — `[]` gdy stacja bez szyny nN
+   *  (uczciwy brak, zero fabrykacji sekcji). NIEZALEŻNE od `aggregatedLvLoad`
+   *  (agregat pozostaje dla sylwetki L0 mini-RMU — `stationCollapsed`, karta
+   *  P0.8 nie zmienia tego kanału). */
 }
 
 /**
- * K30-19: Count nN feeders dla station z ENM meta (nn_field_specs)
- * filtered po bay_role='FEEDER'. Fallback do legacy heuristic gdy meta
- * nieobecna (backward-compat z testami).
+ * K30-19: liczba odpływów nN stacji z ENM meta (`nn_field_specs`) filtrowana po
+ * `bay_role='FEEDER'`. Brak danych ⇒ 0 — dawny „legacy fallback" wywodził
+ * liczbę odpływów z obecności DER (2) albo zwracał 1 bez żadnej danej: to była
+ * FABRYKACJA struktury nN (zakaz B-02 / dyrektywa zero fabrykacji), usunięta
+ * u źródła; test `enmToSldAdapter.test.ts` przypina 0.
  */
-function countNnFeedersFromMeta(
-  station: Substation,
-  derBadges: readonly MiniBlockDerBadge[],
-): number {
+function countNnFeedersFromMeta(station: Substation): number {
   const meta = station.meta as { nn_field_specs?: { bay_role?: string }[] } | undefined;
   const specs = meta?.nn_field_specs ?? [];
   if (Array.isArray(specs) && specs.length > 0) {
     const feeders = specs.filter((s) => s?.bay_role === 'FEEDER');
     if (feeders.length > 0) return feeders.length;
   }
-  // Legacy fallback: DER presence implies LV-side bus structure
-  return derBadges.some((b) => b.connectionSide === 'nn') ? 2 : 1;
+  // Brak danych = 0 (zero fabrykacji: liczba odpływów nN NIE jest wywodzona z
+  // obecności DER ani innej heurystyki — dyrektywa zero fabrykacji, B-02).
+  return 0;
 }
-
 
 function buildStationMiniBlockDetails(
   snapshot: EnergyNetworkModel,
@@ -3616,7 +3620,8 @@ function buildStationMiniBlockDetails(
   // SAMEJ decyzji, żeby dopasować punkt wyniku do narysowanej szyny; dwie kopie
   // rozjechałyby się na stacji z dwiema szynami tego samego napięcia.
   const mainBusVoltageKv = pickStationBus(station, busByRef, 'sn').voltageKv;
-  const nnVoltageKv = pickStationBus(station, busByRef, 'nn').voltageKv;
+  const nnBusPick = pickStationBus(station, busByRef, 'nn');
+  const nnVoltageKv = nnBusPick.voltageKv;
   // Zbiory refów: WSZYSTKIE szyny stacji (odbiory całej stacji) i WSZYSTKIE
   // szyny nN (agregat odbioru nN). To INNY predykat niż wybór jednej szyny
   // wyżej — pytanie brzmi „które szyny należą do stacji/strony nN", nie „która
@@ -3660,7 +3665,6 @@ function buildStationMiniBlockDetails(
       .reduce((acc, g) => acc + (g.p_mw ?? 0) * 1000, 0)
   );
   const alarmSeverity = transformerCapacityAlarm(transformerRatedKva, totalGenerationKw);
-
   return {
     footprintType,
     snBays,
@@ -3671,7 +3675,7 @@ function buildStationMiniBlockDetails(
       snBays.some((bay) => bay.fieldRole === FIELD_ROLE.RMU_TRANSFORMER || bay.fieldRole === FIELD_ROLE.TRANSFORMER),
     // K30-19: derive count z ENM meta (nn_field_specs filtered FEEDER role)
     // jeśli dostępne. Backward-compat fallback do DER-presence heuristic.
-    nnFeedersCount: countNnFeedersFromMeta(station, derBadges),
+    nnFeedersCount: countNnFeedersFromMeta(station),
     derBadges,
     transformerRatedKva,
     totalLoadKw,

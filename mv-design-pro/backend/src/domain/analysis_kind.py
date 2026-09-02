@@ -20,6 +20,12 @@ class AnalysisKind(StrEnum):
     SHORT_CIRCUIT = "SHORT_CIRCUIT"
     POWER_FLOW = "POWER_FLOW"
     PROTECTION = "PROTECTION"
+    # Karta G-22 (docs/nn/G_MACIERZ_LUK_BACKENDU_NN.md): pętla zwarcia nN
+    # (IEC 60364-4-41) i werdykt SWZ per obwód — zdolności zamknięte w P0.6
+    # (application/analyses/fault_loop/service.py,
+    # application/analyses/swz/service.py), dotąd nieobecne w tym rejestrze.
+    FAULT_LOOP_NN = "FAULT_LOOP_NN"
+    SWZ_NN = "SWZ_NN"
 
 
 # Mapping from canonical kind to AS-IS analysis_type literals
@@ -27,6 +33,8 @@ _KIND_TO_ANALYSIS_TYPE: dict[AnalysisKind, str] = {
     AnalysisKind.SHORT_CIRCUIT: "short_circuit_sn",
     AnalysisKind.POWER_FLOW: "PF",
     AnalysisKind.PROTECTION: "protection",
+    AnalysisKind.FAULT_LOOP_NN: "fault_loop_nn",
+    AnalysisKind.SWZ_NN: "swz_nn",
 }
 
 _ANALYSIS_TYPE_TO_KIND: dict[str, AnalysisKind] = {v: k for k, v in _KIND_TO_ANALYSIS_TYPE.items()}

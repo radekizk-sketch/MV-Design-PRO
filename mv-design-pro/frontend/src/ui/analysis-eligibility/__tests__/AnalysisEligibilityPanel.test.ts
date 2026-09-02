@@ -252,7 +252,14 @@ describe('AnalysisEligibilityPanel dispatch', () => {
 
 describe('AnalysisEligibilityPanel Polish labels and determinism', () => {
   it('uses Polish labels for all analysis types', () => {
-    for (const type of ['SC_3F', 'SC_2F', 'SC_1F', 'LOAD_FLOW'] as const) {
+    for (const type of [
+      'SC_3F',
+      'SC_2F',
+      'SC_1F',
+      'LOAD_FLOW',
+      'FAULT_LOOP_NN',
+      'SWZ_NN',
+    ] as const) {
       expect(ELIGIBILITY_ANALYSIS_LABELS[type]).toBeDefined();
       expect(ELIGIBILITY_ANALYSIS_LABELS[type].length).toBeGreaterThan(0);
     }

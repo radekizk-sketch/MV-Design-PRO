@@ -148,6 +148,15 @@ describe('F13.2 D — junction_dot_probe (§22.1, V12K-039: kropka ⇔ realny w�
     // wtedy, gdy schodził pod CAŁY rysunek. Spadek liczby węzłów T = spadek
     // liczby przecięć = poprawa czytelności; niezmiennik obustronnej spójności
     // (`junctionDotGaps` = 0, asercja niżej) BEZ zmian.
+    //
+    // LV DOMAIN PROJECTION (po B-02, 2026-09-01): liczba BEZ ZMIAN = 21.
+    // Portal domeny nN stoi NA OSI portu LV transformatora (`planLvTerminal`),
+    // więc kolumny stacji NIE rosną, łamanie arkusza (S9-1) jest identyczne
+    // jak przed portalem i piony zejść odgałęzień przecinają tyle samo
+    // przęseł magistrali (pomiar: wariant „portal ZA blokiem" dawał 24 węzły
+    // przez INNE złamanie arkusza — i łamał arkusz L0 golden sieci 53 stacji).
+    // Niezmiennik obustronnej spójności (`junctionDotGaps` = 0, niżej) BEZ
+    // zmian — każdy z 21 węzłów ma kropkę i żadna kropka nie stoi bez węzła.
     const teeNodes = externalBranchNodes(scene.segments);
     expect(teeNodes).toHaveLength(21);
     // V12K-150 (KROPKA-WEZLOWA): odczepy lateralne pól (ES/VT/SA) też są węzłami

@@ -46,6 +46,7 @@ export { VBW, VBH, PAD, PLW, PLH, px, py, RamkaWykresu } from './wykresPomoc';
 
 export {
   useSelekcjaPoOperacji,
+  useSelekcjaPoOperacjiBezNawigacji,
   mapujTypElementu,
   refZOperacji,
   kanonicznyRefZOperacji,

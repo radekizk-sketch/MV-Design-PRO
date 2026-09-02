@@ -234,6 +234,15 @@ export interface Cable extends BranchBase {
   thermal_source_ref?: string | null;
   /** Mufy kablowe na odcinku — punkty bez podziału topologii (brief 1 §4 pkt 4). */
   cable_joints?: CableJoint[] | null;
+  /**
+   * P0.1 nN (karta P0.1, C §4.1 `add_nn_cable_segment`): liczba identycznych
+   * torów kabla ułożonych równolegle na tej samej trasie (typowe dla przyłączy
+   * nN o dużym prądzie). `null`/`undefined`/`1` = pojedynczy tor. Lustro
+   * backendowego `Cable.n_parallel` (`enm/models.py`) — karta P0.9 (nN STUDIO)
+   * potrzebowała pola, którego lustro NIE MIAŁO (ten sam rozjazd co
+   * `LVApparatusType.i_cu_ka` obok).
+   */
+  n_parallel?: number | null;
 }
 
 /**
@@ -460,8 +469,34 @@ export interface GPZSection {
   right_coupler_ref?: string | null;
 }
 
+/**
+ * P0.1 nN (C §2.1): sekcja szyny rozdzielnicy nN (RGnN) — mirror backendowego
+ * `enm/models.py::NnSection`. Analogia do `GPZSection`. `incoming_refs` niesie
+ * refy gałęzi ZASILAJĄCYCH tę sekcję (adapter SLD wyklucza je z listy odpływów
+ * — pozostałe gałęzie dotykające `bus_ref` to odpływy, jedna prawda zamiast
+ * heurystyki kierunku).
+ */
+export interface NnSection {
+  section_id: string;
+  order: number;
+  bus_ref: string;
+  coupler_ref?: string | null;
+  incoming_refs?: string[] | null;
+}
+
 export interface Substation extends ENMElement {
-  station_type: 'gpz' | 'mv_lv' | 'switching' | 'customer' | 'inline' | 'branch' | 'terminal' | 'sectional';
+  station_type:
+    | 'gpz'
+    | 'mv_lv'
+    | 'switching'
+    | 'customer'
+    | 'inline'
+    | 'branch'
+    | 'terminal'
+    | 'sectional'
+    // P0.1 nN (C §2.1): wolnostojąca rozdzielnica/podrozdzielnica nN (RGnN) —
+    // kontener logiczny bez fizyki, tak samo jak pozostałe station_type.
+    | 'rozdzielnica_nn';
   bus_refs: string[];
   transformer_refs: string[];
   entry_point_ref?: string | null;
@@ -477,6 +512,11 @@ export interface Substation extends ENMElement {
   external_ports?: Port[] | null;
   /** Poziomy napiec nN obslugiwane przez stacje [kV]. */
   nn_voltage_levels?: number[] | null;
+  /** P0.1 nN (C §2.1, analogia `gpz_sections`): sekcje szyn rozdzielnicy nN
+   *  (RGnN) — jawny rejestr domenowy. Pusta/nieobecna lista = rozdzielnica
+   *  jednosekcyjna ALBO stacja bez rozdzielnicy nN (`station_type` inny niż
+   *  `rozdzielnica_nn`). Mirror backendowego `Substation.nn_sections`. */
+  nn_sections?: NnSection[] | null;
 }
 
 // ---------------------------------------------------------------------------

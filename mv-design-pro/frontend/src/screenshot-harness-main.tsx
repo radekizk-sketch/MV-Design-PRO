@@ -30,6 +30,7 @@
 import { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { SldCanvasV3 } from './ui/sld/v3/canvas/SldCanvasV3';
+import type { ThemeMode } from './ui2/theme/themeMode';
 import type { SldV3Overlay, SegmentFlowOverlay } from './ui/sld/v3/canvas/overlay';
 import type { SceneLod } from './ui/sld/v3/scene/buildScene';
 import { buildSldDataFromSnapshot, type SldDataPayload } from './ui/sld/v2/canvas/enmToSldAdapter';
@@ -44,13 +45,15 @@ const EMPTY_LOGICAL_VIEWS: LogicalViewsV1 = {
 };
 
 // Karta Z-3: `?theme=` — TEN SAM kontrakt co `creator-harness-main.tsx`
-// (`data-theme` na dokumencie, dla zrzutów sparowanych jasny/ciemny). Kanwa
-// v3 ma STAŁE tło techniczne (`SLD_V3_BACKGROUND`, `SldCanvasV3.tsx`) —
-// świadoma decyzja projektowa (rysunek techniczny, nie UI reagujące na
-// motyw), więc oba zrzuty SVG są wizualnie identyczne; atrybut ustawiony dla
-// spójności strony oceny (dyrektywa właściciela #8) i przyszłych elementów
-// chrome tego harnessu.
-const theme = new URLSearchParams(window.location.search).get('theme') === 'light' ? 'light_technical' : 'dark_scada';
+// (`data-theme` na dokumencie, dla zrzutów sparowanych jasny/ciemny) ORAZ
+// tryb motywu podany kanwie WPROST (`paletteMode`, `SldCanvasV3.tsx`) — kanwa
+// v3 ma paletę sterowaną motywem (KD-8 poz. 1), a harness nie przechodzi
+// przez sterownik powłoki, więc bez propa oba zrzuty wychodziły w palecie
+// dyspozytorskiej (pomiar 2026-09-01: `lv_portal_sn_lod1_light.png` i
+// `_dark.png` bajtowo identyczne — deklaracja motywu bez pokrycia, ta sama
+// klasa, którą harness nN zamknął przy karcie LOD nN).
+const theme: ThemeMode =
+  new URLSearchParams(window.location.search).get('theme') === 'light' ? 'light_technical' : 'dark_scada';
 document.documentElement.setAttribute('data-theme', theme);
 
 /**
@@ -301,6 +304,7 @@ function SubstrateHarness(): JSX.Element {
         lodOverride={lodOverride}
         overlay={overlay}
         animateLodTransitions={false}
+        paletteMode={theme}
       />
     </div>
   );

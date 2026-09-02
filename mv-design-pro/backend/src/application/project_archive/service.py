@@ -26,6 +26,7 @@ from domain.project_archive import (
     ArchiveImportResult,
     ArchiveImportStatus,
     CasesSection,
+    EnmSection,
     InterpretationsSection,
     IssuesSection,
     NetworkModelSection,
@@ -41,6 +42,7 @@ from domain.project_archive import (
     dict_to_archive,
     verify_archive_integrity,
 )
+from enm.store import get_enm, has_enm, restore_enm
 from network_model.catalog.governance import wymaga_referencji_katalogowej
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -178,6 +180,9 @@ class ProjectArchiveService:
         # Issues (placeholder - generowane dynamicznie)
         issues_dict: dict[str, Any] = {"snapshot": []}
 
+        # ENM (modele EnergyNetworkModel per przypadek — N-D1)
+        enm_dict = self._collect_enm(cases_dict)
+
         # Oblicz fingerprints
         fingerprints = compute_archive_fingerprints(
             project_meta=project_meta_dict,
@@ -189,6 +194,7 @@ class ProjectArchiveService:
             proofs=proofs_dict,
             interpretations=interpretations_dict,
             issues=issues_dict,
+            enm=enm_dict,
         )
 
         # Utwórz archiwum
@@ -246,8 +252,39 @@ class ProjectArchiveService:
             issues=IssuesSection(
                 snapshot=issues_dict["snapshot"],
             ),
+            enm=EnmSection(
+                models=enm_dict["models"],
+            ),
             fingerprints=fingerprints,
         )
+
+    def _collect_enm(self, cases_dict: dict[str, Any]) -> dict[str, Any]:
+        """Zbierz modele ENM dla wszystkich przypadków projektu (N-D1).
+
+        ENM żyje we flat-file store keyed by case_id (enm/store.py), poza ORM —
+        bez tej sekcji stacje/transformatory/strona nN znikały przy round-tripie
+        archiwum. Zbieramy wyłącznie przypadki z ISTNIEJĄCYM snapshotem
+        (has_enm) — zero fabrykacji pustych modeli. Sortowanie po case_id dla
+        determinizmu.
+        """
+        case_ids: set[str] = set()
+        for case_data in cases_dict.get("study_cases", []):
+            case_ids.add(str(case_data["id"]))
+        for case_data in cases_dict.get("operating_cases", []):
+            case_ids.add(str(case_data["id"]))
+
+        models: list[dict[str, Any]] = []
+        for case_id in sorted(case_ids):
+            if not has_enm(case_id):
+                continue
+            enm = get_enm(case_id)
+            models.append(
+                {
+                    "case_id": case_id,
+                    "snapshot": enm.model_dump(mode="json"),
+                }
+            )
+        return {"models": models}
 
     def _collect_network_model(self, project_id: UUID) -> dict[str, Any]:
         """Zbierz model sieci."""
@@ -1210,14 +1247,15 @@ class ProjectArchiveService:
 
         # 18. Study results
         for res_data in archive.results.study_results:
-            old_run_id = res_data["run_id"]
-            new_run_id = id_map.get(old_run_id)
-            if not new_run_id:
+            # U5: osobna zmienna UUID — reużycie `new_run_id: str` z pętli #17
+            # dawało niezgodność typów (UUID | None przypisywane do str).
+            mapped_result_run_id = id_map.get(res_data["run_id"])
+            if mapped_result_run_id is None:
                 continue
 
             res_orm = StudyResultORM(
                 id=uuid4(),
-                run_id=new_run_id,
+                run_id=mapped_result_run_id,
                 project_id=new_project_id,
                 result_type=res_data["result_type"],
                 result_jsonb=res_data["result_jsonb"],
@@ -1281,6 +1319,16 @@ class ProjectArchiveService:
 
         # flush to ensure IDs are available; commit handled by UnitOfWork
         self._session.flush()
+
+        # 22. Modele ENM per przypadek (N-D1) — przywrócenie 1:1 pod NOWE id
+        # przypadków (id_map), bez bumpu rewizji (round-trip zachowuje hashe).
+        for enm_entry in archive.enm.models:
+            old_case_id = str(enm_entry.get("case_id") or "")
+            snapshot = enm_entry.get("snapshot")
+            new_case_id = id_map.get(old_case_id)
+            if new_case_id is None or not isinstance(snapshot, dict):
+                continue
+            restore_enm(str(new_case_id), snapshot)
 
         return new_project_id
 

@@ -17,12 +17,14 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Literal
 
 import numpy as np
+from application.solvers.lv_temperature_correction import build_min_scenario_graph
 from domain.execution import ExecutionAnalysisType
 from domain.study_case import StudyCaseConfig
 from network_model.core.graph import NetworkGraph
+from network_model.core.voltage_factor import c_for_node
 from network_model.solvers.short_circuit_core import ShortCircuitType
 from network_model.solvers.short_circuit_iec60909 import (
     ShortCircuitIEC60909Solver,
@@ -30,6 +32,12 @@ from network_model.solvers.short_circuit_iec60909 import (
 )
 
 logger = logging.getLogger(__name__)
+
+Scenario = Literal["MAX", "MIN"]
+
+# StudyCaseConfig class defaults (domain/study_case.py) — see _resolve_c_factor.
+_STUDY_CASE_CONFIG_C_FACTOR_MAX_DEFAULT = 1.10
+_STUDY_CASE_CONFIG_C_FACTOR_MIN_DEFAULT = 0.95
 
 
 class ShortCircuitBindingError(Exception):
@@ -52,6 +60,51 @@ class ShortCircuitBindingResult:
     solver_result: ShortCircuitResult
     analysis_type: ExecutionAnalysisType
     fault_node_id: str
+    # Karta P0.3 (c per pasmo + scenariusz MIN) — additive binding-layer metadata.
+    # NOT part of the FROZEN ShortCircuitResult (solver) API: these fields live
+    # on the wrapper only, so the solver's own frozen contract stays untouched.
+    scenario: Scenario = "MAX"
+    c_factor_auto: float = 0.0
+    c_factor_override: bool = False
+    temperature_correction_notes: tuple[dict[str, object], ...] = ()
+
+
+def _resolve_c_factor(
+    *, voltage_kv: float, scenario: Scenario, config: StudyCaseConfig
+) -> tuple[float, float, bool]:
+    """Resolve the effective IEC 60909 voltage factor c for one fault node.
+
+    Returns (effective_c, auto_c, is_override).
+
+    AUTO (default): c is picked from the fault node's OWN voltage band per
+    IEC 60909-0 Table 1 (``network_model.core.voltage_factor.c_for_node`` —
+    docs/nn/D_KONTRAKT_SN_NN_V1.md §4): <=1 kV -> 1.05/0.95, >1 kV -> 1.10/1.00.
+
+    OVERRIDE: ``StudyCaseConfig.c_factor_max``/``c_factor_min`` is a SINGLE
+    (not per-band) field inherited from the pre-nN binding. Treating every
+    node whose band-auto differs from this field as "overridden" would
+    misfire for any caller that never touched the field: the class default
+    (1.10 / 0.95) only coincides with ONE band's auto value per scenario,
+    so untouched defaults would silently "override" auto on every other
+    band and defeat per-node AUTO for callers who did nothing wrong. A
+    value is therefore treated as an explicit operator override only when
+    it differs from BOTH:
+      (1) the StudyCaseConfig class default (the field was actually touched), and
+      (2) the auto value for THIS fault node's band (the override is visible).
+    When it matches auto, or was never touched, the AUTO path is used and
+    no override is recorded — "Gdy zgodna z auto — ścieżka auto" (karta §0.2).
+    """
+    auto_c = c_for_node(voltage_kv, scenario)
+    if scenario == "MAX":
+        configured = config.c_factor_max
+        class_default = _STUDY_CASE_CONFIG_C_FACTOR_MAX_DEFAULT
+    else:
+        configured = config.c_factor_min
+        class_default = _STUDY_CASE_CONFIG_C_FACTOR_MIN_DEFAULT
+
+    is_override = configured != class_default and configured != auto_c
+    effective_c = configured if is_override else auto_c
+    return effective_c, auto_c, is_override
 
 
 def execute_short_circuit(
@@ -60,6 +113,7 @@ def execute_short_circuit(
     analysis_type: ExecutionAnalysisType,
     config: StudyCaseConfig,
     fault_node_id: str,
+    scenario: Scenario = "MAX",
     z0_bus: np.ndarray | None = None,
 ) -> ShortCircuitBindingResult:
     """
@@ -68,43 +122,75 @@ def execute_short_circuit(
     This is the single entry point for short-circuit binding.
     Dispatches to the correct solver method based on analysis_type.
 
+    Karta P0.3: c is selected PER FAULT NODE from its own voltage band
+    (IEC 60909-0 Table 1), not from a single study-wide value. For
+    scenario="MIN", line/cable branches get the IEC 60909 resistance
+    temperature correction (R_theta) BEFORE the solver runs — a graph-input
+    decoration (``application.solvers.lv_temperature_correction``), never a
+    change to the FROZEN solver itself.
+
     Args:
         graph: NetworkGraph with all elements and topology.
         analysis_type: SC_3F, SC_1F, or SC_2F.
         config: StudyCaseConfig with c_factor, thermal time, etc.
         fault_node_id: ID of the node where the fault occurs.
-        z0_bus: Zero-sequence impedance matrix (required for SC_1F).
+        scenario: "MAX" (Ik''max, Ip, Ith — default) or "MIN" (Ik''min).
+        z0_bus: Zero-sequence impedance matrix (required for SC_1F), built
+            by the caller against whatever graph they intend to solve on
+            (MIN-scenario zero-sequence correction is out of this card's
+            scope — 3F is the only fault type this karta's contract covers).
 
     Returns:
         ShortCircuitBindingResult wrapping the frozen solver result.
 
     Raises:
-        ShortCircuitBindingError: If analysis_type is not a short-circuit type
-            or solver encounters a fatal error.
+        ShortCircuitBindingError: If analysis_type is not a short-circuit type,
+            scenario is not MAX/MIN, fault_node_id does not exist, or the
+            solver encounters a fatal error.
         ValueError: Propagated from the solver for invalid parameters.
     """
     if analysis_type not in _ANALYSIS_TYPE_TO_SC_TYPE:
         raise ShortCircuitBindingError(
             f"Nieobsługiwany typ analizy zwarciowej: {analysis_type.value}"
         )
+    if scenario not in ("MAX", "MIN"):
+        raise ShortCircuitBindingError(
+            f"Nieznany scenariusz zwarcia: {scenario!r} (oczekiwano MAX/MIN)"
+        )
+    if fault_node_id not in graph.nodes:
+        raise ShortCircuitBindingError(f"Fault node '{fault_node_id}' does not exist in graph")
 
     sc_type = _ANALYSIS_TYPE_TO_SC_TYPE[analysis_type]
-    c_factor = config.c_factor_max
+    fault_node_voltage_kv = graph.nodes[fault_node_id].voltage_level
+    c_factor, c_factor_auto, c_factor_override = _resolve_c_factor(
+        voltage_kv=fault_node_voltage_kv, scenario=scenario, config=config
+    )
     tk_s = config.thermal_time_seconds
     tb_s = 0.1  # IEC 60909 default breaking time
 
+    solve_graph = graph
+    temperature_correction_notes: tuple[dict[str, object], ...] = ()
+    if scenario == "MIN":
+        min_scenario = build_min_scenario_graph(graph)
+        solve_graph = min_scenario.graph
+        temperature_correction_notes = tuple(note.to_dict() for note in min_scenario.notes)
+
     logger.info(
-        "Executing short-circuit binding: type=%s, fault_node=%s, c=%.2f, tk=%.2f",
+        "Executing short-circuit binding: type=%s, fault_node=%s, scenario=%s, "
+        "c=%.2f (auto=%.2f, override=%s), tk=%.2f",
         sc_type.value,
         fault_node_id,
+        scenario,
         c_factor,
+        c_factor_auto,
+        c_factor_override,
         tk_s,
     )
 
     try:
         if analysis_type == ExecutionAnalysisType.SC_3F:
             solver_result = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
-                graph=graph,
+                graph=solve_graph,
                 fault_node_id=fault_node_id,
                 c_factor=c_factor,
                 tk_s=tk_s,
@@ -117,7 +203,7 @@ def execute_short_circuit(
                     "Macierz impedancji zerowej (Z₀) jest wymagana dla zwarcia 1F"
                 )
             solver_result = ShortCircuitIEC60909Solver.compute_1ph_short_circuit(
-                graph=graph,
+                graph=solve_graph,
                 fault_node_id=fault_node_id,
                 c_factor=c_factor,
                 tk_s=tk_s,
@@ -127,7 +213,7 @@ def execute_short_circuit(
 
         elif analysis_type == ExecutionAnalysisType.SC_2F:
             solver_result = ShortCircuitIEC60909Solver.compute_2ph_short_circuit(
-                graph=graph,
+                graph=solve_graph,
                 fault_node_id=fault_node_id,
                 c_factor=c_factor,
                 tk_s=tk_s,
@@ -153,6 +239,10 @@ def execute_short_circuit(
         solver_result=solver_result,
         analysis_type=analysis_type,
         fault_node_id=fault_node_id,
+        scenario=scenario,
+        c_factor_auto=c_factor_auto,
+        c_factor_override=c_factor_override,
+        temperature_correction_notes=temperature_correction_notes,
     )
 
 

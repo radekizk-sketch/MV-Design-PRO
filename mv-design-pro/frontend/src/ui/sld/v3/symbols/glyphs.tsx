@@ -915,6 +915,94 @@ export function MeterGlyph(props: GlyphProps): JSX.Element {
   );
 }
 
+/**
+ * P0.8 nN (H_PLAN_IMPLEMENTACJI_NN §P0.8, kanon symboli): rodzina aparatów
+ * ODPŁYWU nN — wyłącznik/MCB, rozłącznik bezpiecznikowy, licznik, oraz
+ * kontener rozdzielnicy nN jako liść odpływu (wzorzec DER). Gabaryty i porty:
+ * `symbols/defs.ts`. Rysunek ODRĘBNY od odpowiedników SN (`breaker`/
+ * `fuseSwitch`/`meter`) — precedens `recloser`: nowy device_kind ⇒ nowy
+ * glif, zero recyklingu istniejącego rysunku (kanon symboli, karta P0.8 §0.3).
+ */
+
+/**
+ * Wyłącznik nN / MCB (IEC 60898-1) — korpus JAK `BreakerGlyph` (ten sam wzór
+ * stanu geometrią: wypełnienie = zamknięty), ale MNIEJSZY (aparat modułowy)
+ * i z DŹWIGNIĄ przełącznika nad korpusem (poprzeczna kreska na przewodzie
+ * górnym) — cecha, której `BreakerGlyph` (aparat pierwotny SN) nie niesie.
+ */
+export function NnBreakerGlyph(props: GlyphProps): JSX.Element {
+  const state = props.state ?? 'unknown';
+  const w = grubosc(props, V3_STROKE_APPARATUS);
+  return (
+    <g {...glyphGroupProps('nnBreaker', props)}>
+      <line x1={8} y1={0} x2={8} y2={3} stroke={stroke(props)} strokeWidth={w} />
+      {/* dźwignia modułowa MCB — poprzeczka NA przewodzie górnym, cecha
+          odróżniająca od `BreakerGlyph` (sam prostokąt bez dźwigni). */}
+      <line x1={5.5} y1={1.5} x2={10.5} y2={1.5} stroke={stroke(props)} strokeWidth={w} data-nn-breaker-toggle="true" />
+      <rect
+        x={3} y={3} width={10} height={10}
+        fill={state === 'closed' ? stroke(props) : 'none'}
+        fillOpacity={state === 'unknown' ? 0.35 : 1}
+        stroke={stroke(props)}
+        strokeWidth={w}
+      />
+      <line x1={8} y1={13} x2={8} y2={16} stroke={stroke(props)} strokeWidth={w} />
+    </g>
+  );
+}
+
+/**
+ * Rozłącznik bezpiecznikowy nN — kaseta wkładki SZEŚCIOKĄTNA (podstawa
+ * bezpiecznikowa modułowa nN, np. wkładka NH w rozłączniku listwowym), w
+ * odróżnieniu od PROSTOKĄTNEJ wkładki SN (`FuseSwitchGlyph`, obwiednia
+ * rozłącznika z nożem otwierającym nad wkładką — nN nie niesie noża, sama
+ * podstawa jest łącznikiem).
+ */
+export function NnFuseSwitchGlyph(props: GlyphProps): JSX.Element {
+  const w = grubosc(props, V3_STROKE_APPARATUS);
+  return (
+    <g {...glyphGroupProps('nnFuseSwitch', props)}>
+      <line x1={8} y1={0} x2={8} y2={6} stroke={stroke(props)} strokeWidth={w} />
+      <path
+        d="M8,6 L12,9 L12,17 L8,20 L4,17 L4,9 Z"
+        fill="none" stroke={stroke(props)} strokeWidth={w}
+        data-nn-fuseswitch-cartridge="true"
+      />
+      <line x1={8} y1={9} x2={8} y2={17} stroke={stroke(props)} strokeWidth={w} />
+      <line x1={8} y1={20} x2={8} y2={24} stroke={stroke(props)} strokeWidth={w} />
+    </g>
+  );
+}
+
+/**
+ * PORTAL DOMENY nN (architektura LV Domain Projection po B-02): jawne PRZEJŚCIE
+ * z projekcji SN do projekcji nN, zakotwiczone na ZACISKU nN transformatora
+ * (`compose/station.ts`, pion `#lv-portal-drop` z `#lv-bus`). Sylwetka
+ * odsyłacza „ciąg dalszy na innym arkuszu" (IEC 60617 — chorągiewka
+ * pięciokątna skierowana W DÓŁ, w stronę domeny, do której prowadzi) z napisem
+ * „nN" BAKED (notacja stała: portal prowadzi ZAWSZE do domeny nN — treść nie
+ * jest daną zmienną). NIE jest aparatem toru mocy: jeden port `top`, wisi POD
+ * zaciskiem, nic za nim w TEJ projekcji — tor ciągnie dalej projekcja nN
+ * (`lv-domain/LvDomainView.tsx`). Odróżnialny od CAŁEJ biblioteki (obwiednia
+ * pięciokątna + napis), przypięte testem rejestru glifów.
+ */
+export function LvPortalGlyph(props: GlyphProps): JSX.Element {
+  const w = grubosc(props, V3_STROKE_APPARATUS);
+  return (
+    <g {...glyphGroupProps('lvPortal', props)}>
+      <line x1={16} y1={0} x2={16} y2={4} stroke={stroke(props)} strokeWidth={w} />
+      <path
+        d="M2,4 L30,4 L30,14 L16,23 L2,14 Z"
+        fill="none" stroke={stroke(props)} strokeWidth={w}
+        data-lv-portal-flag="true"
+      />
+      <text x={16} y={13} textAnchor="middle" fill={stroke(props)} fontFamily="sans-serif" fontSize={8} fontWeight={700}>
+        nN
+      </text>
+    </g>
+  );
+}
+
 export const SYMBOL_GLYPHS: Readonly<Record<SymbolId, (props: GlyphProps) => JSX.Element>> = {
   breaker: BreakerGlyph,
   recloser: RecloserGlyph,
@@ -946,6 +1034,9 @@ export const SYMBOL_GLYPHS: Readonly<Record<SymbolId, (props: GlyphProps) => JSX
   gpzCollapsed: GpzCollapsedGlyph,
   protectionRelay: ProtectionRelayGlyph,
   meter: MeterGlyph,
+  nnBreaker: NnBreakerGlyph,
+  nnFuseSwitch: NnFuseSwitchGlyph,
+  lvPortal: LvPortalGlyph,
 };
 
 /** Sanity: każdy glif ma definicję i odwrotnie (spójność biblioteki). */

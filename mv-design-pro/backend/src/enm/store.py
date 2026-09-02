@@ -12,6 +12,7 @@ from enm.catalog_completion import complete_catalog_defaults
 from enm.dziennik_zmian import PrzygotowanyWpis, sciezka_tymczasowa
 from enm.dziennik_zmian import przygotuj_dopisanie as przygotuj_wpis_dziennika
 from enm.hash import compute_enm_hash
+from enm.migrations.nn_field_specs_promocja import migruj as promuj_nn_field_specs
 from enm.migrations.punkt_przylaczenia_der import migruj as migruj_punkt_przylaczenia
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
 
@@ -198,8 +199,16 @@ def _get_enm_pod_blokada(case_id: str) -> EnergyNetworkModel:
     if zmieniona_nazwa:
         _enm_store[case_id] = zmigrowany
 
+    # P0.1 nN (karta P0.1, C §4.2, LV-INV-12): promocja `nn_field_specs` →
+    # realne elementy grafu. PO migracji punktu przyłączenia (kolejność ma
+    # znaczenie tak samo jak wyżej), PRZED uzupełnianiem katalogu — reguły
+    # katalogowe mają widzieć już realne gałęzie/szyny nN, nie worek meta.
+    zmigrowany_nn, zmieniona_promocja_nn = promuj_nn_field_specs(_enm_store[case_id])
+    if zmieniona_promocja_nn:
+        _enm_store[case_id] = zmigrowany_nn
+
     completed, changed = complete_catalog_defaults(_enm_store[case_id])
-    if changed or zmieniona_nazwa:
+    if changed or zmieniona_nazwa or zmieniona_promocja_nn:
         return set_enm(case_id, completed)
     return _enm_store[case_id]
 
@@ -316,6 +325,28 @@ def _set_enm_pod_blokada(
             snapshot_zatwierdzony=snapshot_zatwierdzony,
         )
         raise
+    return enm
+
+
+def restore_enm(case_id: str, snapshot: dict) -> EnergyNetworkModel | None:
+    """Przywróć snapshot ENM z archiwum projektu 1:1 (import ZIP, N-D1).
+
+    W odróżnieniu od `set_enm` NIE podbija rewizji, NIE przelicza hasha i NIE
+    dopisuje wpisu do dziennika zmian — przywrócony model ma być bajtowo
+    tożsamy z wyeksportowanym (round-trip archiwum, inwariant LV-INV-10:
+    rewizja/hash wyniku wskazują na tę samą rewizję modelu co przed eksportem).
+    Zwraca None, gdy snapshot nie waliduje się jako EnergyNetworkModel —
+    decyzję o zgłoszeniu ostrzeżenia podejmuje warstwa importu.
+    Zapis pod blokadą przypadku (ten sam reżim co set_enm); import tworzy NOWY
+    case_id, więc nie ma poprzedniej rewizji do wycofywania.
+    """
+    try:
+        enm = EnergyNetworkModel.model_validate(snapshot)
+    except ValueError:
+        return None
+    with blokada_przypadku(case_id):
+        _enm_store[case_id] = enm
+        _persist_enm(case_id, enm)
     return enm
 
 

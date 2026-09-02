@@ -1631,3 +1631,217 @@ def export_run_trace_pdf_response(
             "Content-Disposition": f'attachment; filename="{filename_stem}_{run.id}.pdf"',
         },
     )
+
+
+# =============================================================================
+# Sekcje nN raportu (karta P0.10, G-21) — zakres minimalny P0
+# =============================================================================
+#
+# Karta P0.10 §0.4: dane źródłowe, TR, odcinki (katalog, długości, Iz′), ΔU
+# (łańcuch), Ik max/min, SWZ (werdykt z dowodem), dobór (ranking z kryteriami).
+# Pełny spis §63 (raport zbiorczy nN) jest w P1 — NIE realizowany tutaj (jawna
+# granica karty, nie milczące ograniczenie).
+#
+# TA SEKCJA JEST OSOBNA od `build_analysis_run_report_payload` powyżej: reszta
+# tego modułu operuje na `CanonicalRun` (przebieg PERSYSTOWANY, run.id jako
+# tożsamość) — analizy nN (fault_loop/SWZ/dobór, karta P0.6/P0.7, G-22)
+# CELOWO NIE są persystowane jako `AnalysisRun` (żywy odczyt z `enm.store`,
+# zob. `application/analysis_dispatch/service.py::_dispatch_fault_loop_nn`
+# docstring) — nie ma więc `CanonicalRun`, z którego dało by się wyprowadzić
+# tożsamość sekcji. Provenance (`run_id`/`revision_id`/`przypadek_decydujacy`)
+# jest więc PARAMETREM WEJŚCIOWYM tej funkcji (ten sam wzorzec co
+# `compute_dispatch_input_hash` w dispatchu nN), nie polem czytanym z obiektu
+# przebiegu — dokładnie tak samo świadomy wybór jak przy G-22.
+#
+# REUSE: żadnej nowej fizyki. Stacja/TR/trasa: `fault_loop.service`/`route`
+# (te same prywatne helpery co `swz.service`/`nn_device_selection` — wzorzec
+# uzasadniony w ich docstringach). SWZ: `swz.service.build_swz_view`. Dobór:
+# `nn_device_selection.wybierz_aparat_dla_obwodu_nn` (wymaga `ib_a`/`iz_prime_a`
+# jako parametrów wejściowych — ten sam kontrakt co jej wywołania gdzie
+# indziej). ΔU: parametr OPCJONALNY (łańcuch pochodzi z osobnego biegu
+# rozpływu — `vdrop_chain_binding`/pakiet VDROP, poza zasięgiem odczytu samego
+# ENM) — bez niego sekcja mówi wprost „niedostępne", nigdy fikcyjną liczbę.
+
+
+def build_nn_circuit_report_section(
+    *,
+    enm: Any,
+    station_ref: str,
+    bus_ref: str,
+    breaker_ref: str,
+    run_id: str,
+    revision_id: str,
+    przypadek_decydujacy: str,
+    ib_a: float | None = None,
+    iz_prime_a: float | None = None,
+    ik_max_ka: float | None = None,
+    vdrop_u_source_kv: float | None = None,
+    vdrop_delta_u_total_kv: float | None = None,
+) -> dict[str, Any]:
+    """Sekcje nN raportu — zakres minimalny P0 (karta P0.10 §0.4).
+
+    Zwraca ``{"status": "OK", ...sekcje..., "provenance": {...}}`` albo
+    ``{"status": "brak danych", "missing_data": [...], "reason_pl": ...}``.
+    Każda sekcja niesie WŁASNY ``provenance`` (run_id/revision_id/
+    przypadek_decydujacy) — jeden wpis na sekcję, nie jeden na cały dokument,
+    żeby raport zbiorczy (P1, wiele obwodów) mógł je łączyć bez utraty źródła.
+    """
+    from application.analyses.fault_loop.route import (
+        RouteExtractionError,
+        path_to_bus,
+        route_segments_min_scenario,
+    )
+    from application.analyses.fault_loop.service import (
+        _find_station,
+        _system_for_station,
+        resolve_transformer_for_bus,
+    )
+    from application.analyses.nn_device_selection import wybierz_aparat_dla_obwodu_nn
+    from application.analyses.swz.service import build_swz_view
+    from enm.models import Cable
+
+    provenance = {
+        "run_id": run_id,
+        "revision_id": revision_id,
+        "przypadek_decydujacy": przypadek_decydujacy,
+    }
+
+    station = _find_station(enm, station_ref)
+    if station is None:
+        return {"status": "brak danych", "missing_data": ["station"], "reason_pl": None}
+
+    # Transformator ZASILAJĄCY obwód (właściciel szyny ``bus_ref`` po zamkniętych
+    # gałęziach), nie „pierwszy transformator stacji" — klasa B-02 (2×TR).
+    trafo, transformer_missing = resolve_transformer_for_bus(enm, station, bus_ref)
+    if trafo is None:
+        return {"status": "brak danych", "missing_data": transformer_missing, "reason_pl": None}
+
+    dane_zrodlowe = {
+        "stacja": station.name,
+        "station_ref": station_ref,
+        "uklad_sieci": _system_for_station(station),
+        "provenance": provenance,
+    }
+    transformator = {
+        "nazwa": trafo.name,
+        "sn_mva": trafo.sn_mva,
+        "uhv_kv": trafo.uhv_kv,
+        "ulv_kv": trafo.ulv_kv,
+        "uk_percent": trafo.uk_percent,
+        "vector_group": trafo.vector_group,
+        "provenance": provenance,
+    }
+
+    try:
+        path = path_to_bus(enm, trafo.lv_bus_ref, bus_ref)
+        segments = route_segments_min_scenario(path)
+    except RouteExtractionError as exc:
+        return {"status": "brak danych", "missing_data": ["route"], "reason_pl": str(exc)}
+
+    odcinki: list[dict[str, Any]] = []
+    for seg in segments:
+        branch = next((b for b in enm.branches if b.ref_id == seg.branch_ref), None)
+        wpis: dict[str, Any] = {
+            "branch_ref": seg.branch_ref,
+            "n_parallel": seg.n_parallel,
+            "provenance": provenance,
+        }
+        if isinstance(branch, Cable):
+            wpis["dlugosc_km"] = branch.length_km
+            wpis["katalog_namespace"] = branch.catalog_namespace
+            wpis["katalog_ref"] = branch.catalog_ref
+            iz_katalogowe = None
+            if isinstance(branch.materialized_params, dict):
+                iz_katalogowe = branch.materialized_params.get("i_max_a")
+            wpis["iz_katalogowe_a"] = iz_katalogowe
+            wpis["iz_prime_a"] = (
+                "niedostępne — wymaga warunków ułożenia (G-D1), "
+                "poza zakresem sekcji minimalnej P0"
+            )
+        odcinki.append(wpis)
+
+    swz_view = build_swz_view(enm, station_ref, bus_ref, breaker_ref)
+    ik_min_a = None
+    if swz_view.get("status") == "OK":
+        ik_min_a = swz_view["fault_loop_min_scenario"]["ik_min_a"]
+
+    zwarcia = {
+        "ik_max_ka": (
+            ik_max_ka
+            if ik_max_ka is not None
+            else "niedostępne — wymaga biegu zwarciowego IEC 60909 (osobny bieg)"
+        ),
+        "ik_min_a": (
+            ik_min_a
+            if ik_min_a is not None
+            else "niedostępne — " + str(swz_view.get("reason_pl") or swz_view.get("missing_data"))
+        ),
+        "provenance": provenance,
+    }
+
+    swz = {**swz_view, "provenance": provenance}
+
+    if vdrop_u_source_kv is not None and vdrop_delta_u_total_kv is not None:
+        delta_u = {
+            "u_source_kv": vdrop_u_source_kv,
+            "delta_u_total_kv": vdrop_delta_u_total_kv,
+            "u_target_kv": vdrop_u_source_kv - vdrop_delta_u_total_kv,
+            "provenance": provenance,
+        }
+    else:
+        delta_u = {
+            "status": "niedostępne",
+            "reason_pl": (
+                "ΔU (łańcuch) wymaga wyniku biegu rozpływu (vdrop_chain_binding / "
+                "pakiet VDROP) — nie jest dostarczony bez wskazanego przebiegu."
+            ),
+            "provenance": provenance,
+        }
+
+    if ib_a is not None and iz_prime_a is not None:
+        dobor = {
+            **wybierz_aparat_dla_obwodu_nn(
+                enm=enm,
+                station_ref=station_ref,
+                bus_ref=bus_ref,
+                ib_a=ib_a,
+                iz_prime_a=iz_prime_a,
+                ik_max_ka=ik_max_ka,
+            ),
+            "provenance": provenance,
+        }
+    else:
+        dobor = {
+            "status": "niedostępne",
+            "reason_pl": "Dobór wymaga ib_a i iz_prime_a jako parametrów wejściowych.",
+            "provenance": provenance,
+        }
+
+    # Karta ARKUSZ-NN (nN „runda 9", 2026-08-14, §0 pkt 4): sekcja arkusza —
+    # ADDYTYWNA, REUSE `nn_circuit_sheet.build_nn_circuit_sheet_row_for_breaker`
+    # (ten sam budowniczy wiersza co endpoint `GET /enm/nn-circuit-sheet`, dla
+    # DOKŁADNIE tego obwodu bus_ref+breaker_ref) — zero drugiej fizyki/drugiego
+    # kompletu kolumn. Bez obiektów biegu (ta funkcja ich nie dostaje — patrz
+    # docstring modułu powyżej): Ib „z tabliczki", ΔU/Ik″max/I²t w trzecim
+    # stanie honest „brak danych", jawnie nazwanym w wierszu (zrodlo_pl).
+    from application.analyses.nn_circuit_sheet import build_nn_circuit_sheet_row_for_breaker
+
+    arkusz = {
+        **build_nn_circuit_sheet_row_for_breaker(
+            enm=enm, station_ref=station_ref, bus_ref=bus_ref, breaker_ref=breaker_ref
+        ),
+        "provenance": provenance,
+    }
+
+    return {
+        "status": "OK",
+        "dane_zrodlowe": dane_zrodlowe,
+        "transformator": transformator,
+        "odcinki": odcinki,
+        "delta_u": delta_u,
+        "zwarcia": zwarcia,
+        "swz": swz,
+        "dobor": dobor,
+        "arkusz": arkusz,
+        "provenance": provenance,
+    }
