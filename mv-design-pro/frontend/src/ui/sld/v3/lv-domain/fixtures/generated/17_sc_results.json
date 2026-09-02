@@ -95,9 +95,9 @@
         "type": "cable"
       },
       {
-        "catalog_namespace": "APARAT_NN_MCB",
-        "catalog_ref": "aparat-nn-mcb-c2300",
-        "device_kind": null,
+        "catalog_namespace": "APARAT_NN",
+        "catalog_ref": "aparat-nn-wylacznik-2300a",
+        "device_kind": "WYLACZNIK_GLOWNY",
         "from_bus_ref": "T1_zacisk",
         "name": "QF-T1",
         "ref_id": "QF-T1",
@@ -261,6 +261,7 @@
     "devices": [
       {
         "board_bus_ref": "RGN-2_szyna",
+        "catalog_namespace": "WKLADKA_NN",
         "child_bus_ref": "FU-21_zacisk",
         "designation_class": "FU",
         "device_kind": null,
@@ -276,6 +277,7 @@
       },
       {
         "board_bus_ref": null,
+        "catalog_namespace": "KABEL_NN",
         "child_bus_ref": "FU-21_koniec",
         "designation_class": "W",
         "device_kind": null,
@@ -291,6 +293,7 @@
       },
       {
         "board_bus_ref": "RGnN-1",
+        "catalog_namespace": "APARAT_NN_MCB",
         "child_bus_ref": "QF-01_zacisk",
         "designation_class": "QF",
         "device_kind": null,
@@ -306,6 +309,7 @@
       },
       {
         "board_bus_ref": null,
+        "catalog_namespace": "KABEL_NN",
         "child_bus_ref": "QF-01_koniec",
         "designation_class": "W",
         "device_kind": null,
@@ -321,6 +325,7 @@
       },
       {
         "board_bus_ref": "RGnN-1",
+        "catalog_namespace": "APARAT_NN_MCB",
         "child_bus_ref": "QF-02_zacisk",
         "designation_class": "QF",
         "device_kind": null,
@@ -336,6 +341,7 @@
       },
       {
         "board_bus_ref": null,
+        "catalog_namespace": "KABEL_NN",
         "child_bus_ref": "RGN-2_szyna",
         "designation_class": "W",
         "device_kind": null,
@@ -351,6 +357,7 @@
       },
       {
         "board_bus_ref": "RGnN-1",
+        "catalog_namespace": "APARAT_NN_MCB",
         "child_bus_ref": "QF-03_zacisk",
         "designation_class": "QF",
         "device_kind": null,
@@ -366,6 +373,7 @@
       },
       {
         "board_bus_ref": null,
+        "catalog_namespace": "KABEL_NN",
         "child_bus_ref": "QF-03_pcc",
         "designation_class": "W",
         "device_kind": null,
@@ -381,9 +389,10 @@
       },
       {
         "board_bus_ref": "RGnN-1",
+        "catalog_namespace": "APARAT_NN",
         "child_bus_ref": "RGnN-1",
         "designation_class": "QF",
-        "device_kind": null,
+        "device_kind": "WYLACZNIK_GLOWNY",
         "device_role": "incomer",
         "device_state": "CLOSED",
         "device_type": "breaker",
@@ -943,14 +952,14 @@
   "missing_data": [],
   "model_snapshot": {
     "case_id": "fixture-17_sc_results",
-    "model_hash": "8b6daf28c43d60716f35dd85377464422db451344f55ed02d577092cb330deff",
+    "model_hash": "016003aeadc8bca9e881b293745066138e8696bc73e4feb8376b8873323b1ffa",
     "operating_state_id": "7b13a7b48d5efd8098b86178ba1b429f7e2eba0be6da9ef14fb8cc1245c1cf43",
     "revision": 1,
-    "run_snapshot_hash": "8b6daf28c43d60716f35dd85377464422db451344f55ed02d577092cb330deff",
+    "run_snapshot_hash": "016003aeadc8bca9e881b293745066138e8696bc73e4feb8376b8873323b1ffa",
     "scenario_id": "MAX",
     "station_ref": "stC"
   },
-  "projection_hash": "23a24b4453fa2263716f579a6d0caad3d2b0af2fa6a2c28a36b2a7b40d6f9f81",
+  "projection_hash": "4a8f049178b3bfe6b32266daaf2cd29d027fbec418a2e2fc52584292aff83eaa",
   "result_snapshot": {
     "analysis_type": "SC_3F",
     "overlay_payload": {
@@ -964,28 +973,28 @@
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kA",
-              "value": 1.8045311612477386
+              "value": 1.8045311612477384
             },
             "IP_A": {
               "code": "IP_A",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kA",
-              "value": 2.60303229766386
+              "value": 2.6030322976638596
             },
             "ITH_A": {
               "code": "ITH_A",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kA",
-              "value": 1.8068360805907577
+              "value": 1.8068360805907575
             },
             "SK_MVA": {
               "code": "SK_MVA",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "MVA",
-              "value": 1.2502158620489399
+              "value": 1.2502158620489396
             }
           },
           "ref_id": "FU-21_koniec",
@@ -1000,7 +1009,7 @@
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kA",
-              "value": 5.886537402084435
+              "value": 5.886537402084434
             },
             "IP_A": {
               "code": "IP_A",
@@ -1014,14 +1023,14 @@
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kA",
-              "value": 5.894141627974
+              "value": 5.894141627973999
             },
             "SK_MVA": {
               "code": "SK_MVA",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "MVA",
-              "value": 4.078312744425898
+              "value": 4.078312744425897
             }
           },
           "ref_id": "FU-21_zacisk",
@@ -1036,21 +1045,21 @@
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kA",
-              "value": 3.800251790946834
+              "value": 3.8002517909468336
             },
             "IP_A": {
               "code": "IP_A",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kA",
-              "value": 5.481862261111797
+              "value": 5.481862261111795
             },
             "ITH_A": {
               "code": "ITH_A",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kA",
-              "value": 3.8051059189399146
+              "value": 3.805105918939914
             },
             "SK_MVA": {
               "code": "SK_MVA",
@@ -1072,28 +1081,28 @@
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kA",
-              "value": 23.748427767989213
+              "value": 23.748427767989206
             },
             "IP_A": {
               "code": "IP_A",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kA",
-              "value": 49.15832240994838
+              "value": 49.158322409948354
             },
             "ITH_A": {
               "code": "ITH_A",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kA",
-              "value": 23.902429360129506
+              "value": 23.9024293601295
             },
             "SK_MVA": {
               "code": "SK_MVA",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "MVA",
-              "value": 16.453393397614747
+              "value": 16.453393397614743
             }
           },
           "ref_id": "QF-01_zacisk",
@@ -1108,28 +1117,28 @@
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kA",
-              "value": 23.748427767989213
+              "value": 23.748427767989206
             },
             "IP_A": {
               "code": "IP_A",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kA",
-              "value": 49.15832240994838
+              "value": 49.158322409948354
             },
             "ITH_A": {
               "code": "ITH_A",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kA",
-              "value": 23.902429360129506
+              "value": 23.9024293601295
             },
             "SK_MVA": {
               "code": "SK_MVA",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "MVA",
-              "value": 16.453393397614747
+              "value": 16.453393397614743
             }
           },
           "ref_id": "QF-02_zacisk",
@@ -1144,28 +1153,28 @@
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kA",
-              "value": 7.90882694625539
+              "value": 7.908826946255389
             },
             "IP_A": {
               "code": "IP_A",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kA",
-              "value": 11.425621955869117
+              "value": 11.425621955869115
             },
             "ITH_A": {
               "code": "ITH_A",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kA",
-              "value": 7.919123220494623
+              "value": 7.9191232204946225
             },
             "SK_MVA": {
               "code": "SK_MVA",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "MVA",
-              "value": 5.4793960396736585
+              "value": 5.479396039673657
             }
           },
           "ref_id": "QF-03_pcc",
@@ -1180,28 +1189,28 @@
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kA",
-              "value": 23.748427767989213
+              "value": 23.748427767989206
             },
             "IP_A": {
               "code": "IP_A",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kA",
-              "value": 49.15832240994838
+              "value": 49.158322409948354
             },
             "ITH_A": {
               "code": "ITH_A",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kA",
-              "value": 23.902429360129506
+              "value": 23.9024293601295
             },
             "SK_MVA": {
               "code": "SK_MVA",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "MVA",
-              "value": 16.453393397614747
+              "value": 16.453393397614743
             }
           },
           "ref_id": "QF-03_zacisk",
@@ -1216,7 +1225,7 @@
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kA",
-              "value": 5.886537402084435
+              "value": 5.886537402084434
             },
             "IP_A": {
               "code": "IP_A",
@@ -1230,14 +1239,14 @@
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kA",
-              "value": 5.894141627974
+              "value": 5.894141627973999
             },
             "SK_MVA": {
               "code": "SK_MVA",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "MVA",
-              "value": 4.078312744425898
+              "value": 4.078312744425897
             }
           },
           "ref_id": "RGN-2_szyna",
@@ -1252,28 +1261,28 @@
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kA",
-              "value": 23.748427767989213
+              "value": 23.748427767989206
             },
             "IP_A": {
               "code": "IP_A",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kA",
-              "value": 49.15832240994838
+              "value": 49.158322409948354
             },
             "ITH_A": {
               "code": "ITH_A",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kA",
-              "value": 23.902429360129506
+              "value": 23.9024293601295
             },
             "SK_MVA": {
               "code": "SK_MVA",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "MVA",
-              "value": 16.453393397614747
+              "value": 16.453393397614743
             }
           },
           "ref_id": "RGnN-1",
@@ -1288,28 +1297,28 @@
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kA",
-              "value": 23.748427767989213
+              "value": 23.748427767989206
             },
             "IP_A": {
               "code": "IP_A",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kA",
-              "value": 49.15832240994838
+              "value": 49.158322409948354
             },
             "ITH_A": {
               "code": "ITH_A",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kA",
-              "value": 23.902429360129506
+              "value": 23.9024293601295
             },
             "SK_MVA": {
               "code": "SK_MVA",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "MVA",
-              "value": 16.453393397614747
+              "value": 16.453393397614743
             }
           },
           "ref_id": "T1_zacisk",
@@ -1416,7 +1425,7 @@
     "result_signature": "sygnatura-17_sc_results",
     "run_finished_at": "2026-09-02T00:00:00+00:00",
     "run_id": "przebieg-17_sc_results",
-    "run_model_hash": "8b6daf28c43d60716f35dd85377464422db451344f55ed02d577092cb330deff",
+    "run_model_hash": "016003aeadc8bca9e881b293745066138e8696bc73e4feb8376b8873323b1ffa",
     "status": "FRESH",
     "voltage_profile": null
   },
@@ -2554,12 +2563,12 @@
   "upstream_equivalents": [
     {
       "c_factor": 1.1,
-      "calculation_run_id": "83bd7d5f-a645-5dd4-af1e-70bd0a554ca0",
+      "calculation_run_id": "939363e8-fc5e-53ec-a41e-8d5f41ccc519",
       "case_id": "fixture-17_sc_results",
-      "equivalent_id": "7c80ef44-c89f-5668-867d-7454b4749565",
+      "equivalent_id": "51069d92-466d-529c-aa72-fa22749961d2",
       "ikss_ka": 18.682571063385836,
       "missing_data": [],
-      "model_hash": "8b6daf28c43d60716f35dd85377464422db451344f55ed02d577092cb330deff",
+      "model_hash": "016003aeadc8bca9e881b293745066138e8696bc73e4feb8376b8873323b1ffa",
       "model_revision": 1,
       "note_pl": "Równoważnik Thevenina sieci SN w punkcie HV transformatora — granica wizualna domeny nN (L2) jest granicą domeny napięciowej i projekcji, NIE przerwaniem zależności obliczeniowej: ten snapshot jest dokładnie tym wejściem, którym solver pętli zwarcia nN liczy stronę SN (application.analyses.fault_loop).",
       "operating_state_id": "7b13a7b48d5efd8098b86178ba1b429f7e2eba0be6da9ef14fb8cc1245c1cf43",

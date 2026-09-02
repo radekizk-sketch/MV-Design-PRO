@@ -1,6 +1,6 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`REJESTR_SYMBOLI_NN — typ gałęzi ENM × device_kind → symbol CAD > rejestr (typ → symbol CAD · klasa · nazwa polska · nośnik stanu) jest zamrożony snapshotem 1`] = `
+exports[`REJESTR_SYMBOLI_NN — typ gałęzi ENM × device_kind × przestrzeń katalogu → symbol CAD > rejestr (typ → symbol CAD · klasa · nazwa polska · nośnik stanu) jest zamrożony snapshotem 1`] = `
 {
   "breaker": {
     "klasaOznaczenia": "QF",

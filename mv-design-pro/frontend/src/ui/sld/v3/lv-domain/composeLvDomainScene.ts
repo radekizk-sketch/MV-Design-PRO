@@ -477,7 +477,7 @@ export function composeLvDomainScene(
   ): void {
     const branch = branchByRef.get(device.ref_id);
     const segment = segmentByRef.get(device.ref_id);
-    const wpis = wpisAparatu(device.device_type, device.device_kind);
+    const wpis = wpisAparatu(device.device_type, device.device_kind, device.catalog_namespace);
     const topIsFrom = device.parent_bus_ref === segment?.from_bus_ref;
     const topState = topIsFrom ? segment?.from_terminal : segment?.to_terminal;
     const bottomState = topIsFrom ? segment?.to_terminal : segment?.from_terminal;
@@ -678,7 +678,7 @@ export function composeLvDomainScene(
 
   /** Gałąź wewnętrzna (kabel / aparat) od zacisku w dół do dziecka. */
   function emitInternalBranch(device: LvDomainDevice, x: number, yTop: number): void {
-    const wpis = wpisAparatu(device.device_type, device.device_kind);
+    const wpis = wpisAparatu(device.device_type, device.device_kind, device.catalog_namespace);
     const segment = segmentByRef.get(device.ref_id);
     const childRef = device.child_bus_ref;
     const childSection = sectionByBus.get(childRef);
@@ -723,7 +723,7 @@ export function composeLvDomainScene(
       const x = slotAbs(plan, slot.ref);
       if (slot.kind === 'feeder') {
         const device = deviceByRef.get(slot.ref)!;
-        const wpis = wpisAparatu(device.device_type, device.device_kind);
+        const wpis = wpisAparatu(device.device_type, device.device_kind, device.catalog_namespace);
         const childSection = sectionByBus.get(device.child_bus_ref);
         if (wpis.symbolId) {
           const yDevice = plan.busY + T.busToDevice;
@@ -945,7 +945,7 @@ export function composeLvDomainScene(
     // Sprzęgło = REALNY aparat z ENM (typ gałęzi × klasa funkcjonalna z
     // katalogu) w orientacji poziomej, w osi szyny (R2 §6). Bez klasy —
     // łącznik ogólny (audyt NN-AUD-18 z backendu), nie dorysowany wyłącznik.
-    const wpis = wpisAparatu(device.device_type, device.device_kind);
+    const wpis = wpisAparatu(device.device_type, device.device_kind, device.catalog_namespace);
     nodes.push({
       kind: 'apparatus',
       ref: device.ref_id,

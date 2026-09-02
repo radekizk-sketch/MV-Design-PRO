@@ -133,6 +133,10 @@ export interface LvDomainDevice {
   /** Klasa funkcjonalna wyrobu z katalogu (patrz `LvDomainBranch.device_kind`);
    *  rozstrzyga symbol CAD sprzęgła/rozłącznika bezpiecznikowego (R2 §6/§8). */
   readonly device_kind: string | null;
+  /** Przestrzeń katalogu wyrobu (lustro `LvDomainBranch.catalog_namespace`):
+   *  breaker z `APARAT_NN_MCB` = wyłącznik instalacyjny (symbol z wyzwalaczami,
+   *  R2.1), breaker z `APARAT_NN` = wyłącznik mocy (krzyżyk). Pole addytywne. */
+  readonly catalog_namespace?: string | null;
   readonly designation_class: 'QF' | 'QS' | 'FU' | 'QBC' | 'W' | 'Q';
   readonly device_role: LvDeviceRole;
   readonly feeder_kind: LvFeederKind | null;

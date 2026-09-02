@@ -1,6 +1,6 @@
 /**
  * Harness PAKIETU REFERENCYJNEGO SYMBOLI CAD (R2 §21–§23) — tablica
- * „symbol obecny → symbol proponowany" dla 18 symboli SLD nN, w obu motywach
+ * „symbol obecny → symbol proponowany" dla 19 symboli SLD nN, w obu motywach
  * i w mono, oraz tablica ROZPOZNAWALNOŚCI bez etykiet (§22).
  *
  * Wzorzec jak `lv-domain-harness-main.tsx` (standalone entry HTML, parametry
@@ -55,24 +55,25 @@ export interface WierszPakietu {
 }
 
 export const WIERSZE_PAKIETU: readonly WierszPakietu[] = [
-  { lp: '01', cad: 'cad.wylacznik', obecny: 'nnBreaker', obecnyOpis: 'prostokąt z dźwignią; WYPEŁNIENIE = zamknięty (odrzucone §4/§14)', uwagi: 'styk + krzyżyk funkcji na końcówce noża; stan z kąta noża' },
-  { lp: '02', cad: 'cad.odlacznik', obecny: 'disconnector', obecnyOpis: 'nóż 45° + poprzeczka przy przegubie (zła strona)', uwagi: 'poprzeczka na STYKU STAŁYM, nóż na przegubie' },
-  { lp: '03', cad: 'cad.rozlacznik', obecny: 'loadBreakSwitch', obecnyOpis: 'nóż + poprzeczka na swobodnym końcu noża', uwagi: 'poprzeczka styku stałego + okrąg funkcji na przegubie' },
-  { lp: '04', cad: 'cad.lacznik', obecny: 'nnBreaker', obecnyOpis: 'sprzęgło = pusty/pełny prostokąt jak wyłącznik (odrzucone §6)', uwagi: 'łącznik ogólny TYLKO gdy ENM nie niesie klasy; z device_kind → realny aparat' },
-  { lp: '05', cad: 'cad.uziemnik', obecny: 'earthSwitch', obecnyOpis: 'nóż + uziemienie (biblioteka SN)', uwagi: 'ta sama rodzina noża co odłącznik; bez elementu ENM w projekcji nN — DRAFT' },
-  { lp: '06', cad: 'cad.bezpiecznik', obecny: 'nnFuseSwitch', obecnyOpis: 'sześciokąt kasety — jeden glif dla KAŻDEJ gałęzi fuse', uwagi: 'prostokąt z przewodem na wylot (S00362)' },
-  { lp: '07', cad: 'cad.rozlacznikBezpiecznikowy', obecny: 'nnFuseSwitch', obecnyOpis: 'ten sam sześciokąt co wkładka (brak rozróżnienia §7)', uwagi: 'wkładka JAKO nóż + poprzeczka + okrąg (S00370); stan z kąta' },
-  { lp: '08', cad: 'cad.transformator2u', obecny: 'transformer2W', obecnyOpis: 'dwa okręgi 32×40 (biblioteka SN)', uwagi: 'dwa uzwojenia 16×28, cienka kreska, hv/lv jawne; tabliczka tekstem obok' },
-  { lp: '09', cad: 'cad.przekladnikPradowy', obecny: 'currentTransformer', obecnyOpis: 'okrąg na przewodzie', uwagi: 'okrąg na torze pierwotnym (S00850); przekładnia/klasa/rdzenie tekstem obok' },
-  { lp: '10', cad: 'cad.przekladnikNapieciowy', obecny: 'voltageTransformer', obecnyOpis: 'dwa okręgi bez wyprowadzenia wtórnego', uwagi: 'odgałęzienie, dwa uzwojenia, strona wtórna otwarta (S00878)' },
-  { lp: '11', cad: 'cad.przeksztaltnik', obecny: null, obecnyOpis: 'brak — falownik ukryty w ikonie PV', uwagi: 'kwadrat z przekątną, „=" / „~" kreskami (S00896)' },
-  { lp: '12', cad: 'cad.zrodloPvZPrzeksztaltnikiem', obecny: 'derPv', obecnyOpis: 'ikona w ramce 32×32 (przekątna, kreski, sinusoida)', uwagi: 'generator PV (S00908) + falownik (S00896) — dwa ogniwa jednego elementu ENM' },
-  { lp: '13', cad: 'cad.magazynZPrzeksztaltnikiem', obecny: 'derBess', obecnyOpis: 'ikona baterii w ramce 32×32', uwagi: 'bateria (S01342) + przekształtnik dwukierunkowy (S00897)' },
-  { lp: '14', cad: 'cad.generator', obecny: 'derGenerator', obecnyOpis: 'okrąg z literą G (32×32)', uwagi: 'maszyna (S00819) z literą G i „~" — 16×24' },
-  { lp: '15', cad: 'cad.odplywOdbior', obecny: 'loadArrow', obecnyOpis: 'strzałka odpływu', uwagi: 'strzałka przepływu energii od szyn (S00104) — Load ENM jest odbiorem zagregowanym' },
-  { lp: '16', cad: 'cad.zabezpieczenie', obecny: 'protectionRelay', obecnyOpis: 'okrąg z kodami WEWNĄTRZ (plakietka, odrzucone §3)', uwagi: 'prostokąt urządzenia wtórnego; kody funkcji tekstem OBOK — DRAFT (konwencja, nie IEC)' },
-  { lp: '17', cad: 'cad.zacisk', obecny: 'kropka', obecnyOpis: 'kropka wypełniona rysowana przez widok (ten sam znak co węzeł)', uwagi: 'zacisk (S00017) = okrąg pusty, ODRÓŻNIALNY od węzła' },
-  { lp: '18', cad: 'cad.wezel', obecny: 'junction', obecnyOpis: 'kropka wypełniona r=3', uwagi: 'kropka połączenia (S00020/S00021)' },
+  { lp: '01', cad: 'cad.wylacznik', obecny: 'nnBreaker', obecnyOpis: 'prostokąt z dźwignią; WYPEŁNIENIE = zamknięty (odrzucone §4/§14)', uwagi: 'wyłącznik mocy (APARAT_NN): krzyżyk na STYKU STAŁYM w osi, nóż na przegubie u dołu otwiera się w górę-lewo (pierwowzór -QPV1); stan z kąta noża' },
+  { lp: '02', cad: 'cad.wylacznikInstalacyjny', obecny: 'nnBreaker', obecnyOpis: 'ten sam prostokąt co wyłącznik mocy (brak rozróżnienia)', uwagi: 'wyłącznik instalacyjny (APARAT_NN_MCB): bez krzyżyka — wyzwalacz termiczny („hak") i elektromagnetyczny (strzałka) prostopadle do noża, obracane z nim (pierwowzór -F1 B16A)' },
+  { lp: '03', cad: 'cad.odlacznik', obecny: 'disconnector', obecnyOpis: 'nóż 45° + poprzeczka przy przegubie (zła strona)', uwagi: 'poprzeczka na STYKU STAŁYM (u góry), nóż na przegubie u dołu' },
+  { lp: '04', cad: 'cad.rozlacznik', obecny: 'loadBreakSwitch', obecnyOpis: 'nóż + poprzeczka na swobodnym końcu noża', uwagi: 'poprzeczka styku stałego + okrąg ZAWIESZONY POD poprzeczką (pierwowzór -Q1/-Q2 400 A)' },
+  { lp: '05', cad: 'cad.lacznik', obecny: 'nnBreaker', obecnyOpis: 'sprzęgło = pusty/pełny prostokąt jak wyłącznik (odrzucone §6)', uwagi: 'łącznik ogólny TYLKO gdy ENM nie niesie klasy; z device_kind → realny aparat' },
+  { lp: '06', cad: 'cad.uziemnik', obecny: 'earthSwitch', obecnyOpis: 'nóż + uziemienie (biblioteka SN)', uwagi: 'ta sama rodzina noża; uziemienie 3 kreski 12:9:6 jak w pierwowzorze; bez elementu ENM w projekcji nN — DRAFT' },
+  { lp: '07', cad: 'cad.bezpiecznik', obecny: 'nnFuseSwitch', obecnyOpis: 'sześciokąt kasety — jeden glif dla KAŻDEJ gałęzi fuse', uwagi: 'prostokąt z przewodem na wylot (S00362; pierwowzór 3× gG2A)' },
+  { lp: '08', cad: 'cad.rozlacznikBezpiecznikowy', obecny: 'nnFuseSwitch', obecnyOpis: 'ten sam sześciokąt co wkładka (brak rozróżnienia §7)', uwagi: 'wkładka NA nożu (dolna część), przegub u dołu, poprzeczka + okrąg na styku stałym u góry (S00370; pierwowzór -FPV1 gG63A); stan z kąta' },
+  { lp: '09', cad: 'cad.transformator2u', obecny: 'transformer2W', obecnyOpis: 'dwa okręgi 32×40 (biblioteka SN)', uwagi: 'dwa uzwojenia 16×28, cienka kreska, hv/lv jawne; tabliczka tekstem obok' },
+  { lp: '10', cad: 'cad.przekladnikPradowy', obecny: 'currentTransformer', obecnyOpis: 'okrąg na przewodzie', uwagi: 'okrąg na torze pierwotnym z przewodem UKRYTYM w okręgu (S00850; pierwowzór -T11 200/5); przekładnia/klasa/rdzenie tekstem obok' },
+  { lp: '11', cad: 'cad.przekladnikNapieciowy', obecny: 'voltageTransformer', obecnyOpis: 'dwa okręgi bez wyprowadzenia wtórnego', uwagi: 'odgałęzienie, dwa uzwojenia, strona wtórna otwarta (S00878)' },
+  { lp: '12', cad: 'cad.przeksztaltnik', obecny: null, obecnyOpis: 'brak — falownik ukryty w ikonie PV', uwagi: 'kwadrat z przekątną lewy-dół → prawy-góra, „3~" u góry (AC, ku szynie), „=" u dołu (DC) — S00896, pierwowzór SUN2000' },
+  { lp: '13', cad: 'cad.zrodloPvZPrzeksztaltnikiem', obecny: 'derPv', obecnyOpis: 'ikona w ramce 32×32 (przekątna, kreski, sinusoida)', uwagi: 'kabel AC → falownik → tor DC → ramka pola z modułem PV (szewron) — dwa ogniwa jednego elementu ENM, kolejność z pierwowzoru' },
+  { lp: '14', cad: 'cad.magazynZPrzeksztaltnikiem', obecny: 'derBess', obecnyOpis: 'ikona baterii w ramce 32×32', uwagi: 'kabel AC → przekształtnik dwukierunkowy (S00897) → bateria (S01342) w ramce urządzenia (pierwowzór -G1)' },
+  { lp: '15', cad: 'cad.generator', obecny: 'derGenerator', obecnyOpis: 'okrąg z literą G (32×32)', uwagi: 'maszyna (S00819) z literą G i „~" — 16×24' },
+  { lp: '16', cad: 'cad.odplywOdbior', obecny: 'loadArrow', obecnyOpis: 'strzałka odpływu', uwagi: 'strzałka przepływu energii od szyn (S00104) — Load ENM jest odbiorem zagregowanym' },
+  { lp: '17', cad: 'cad.zabezpieczenie', obecny: 'protectionRelay', obecnyOpis: 'okrąg z kodami WEWNĄTRZ (plakietka, odrzucone §3)', uwagi: 'prostokąt urządzenia wtórnego ze znakami IEC (I>, I>>) — jak blok wyzwalacza LSI w pierwowzorze; DRAFT (konwencja, nie IEC)' },
+  { lp: '18', cad: 'cad.zacisk', obecny: 'kropka', obecnyOpis: 'kropka wypełniona rysowana przez widok (ten sam znak co węzeł)', uwagi: 'zacisk (S00017) = okrąg pusty, ODRÓŻNIALNY od węzła' },
+  { lp: '19', cad: 'cad.wezel', obecny: 'junction', obecnyOpis: 'kropka wypełniona r=3', uwagi: 'kropka połączenia (S00020/S00021), ∅ ≈ 7× kreski jak w pierwowzorze' },
 ];
 
 /** Tablica rozpoznawalności §22: stała permutacja (klucz w dokumencie pakietu). */
@@ -101,6 +102,8 @@ export const TABLICA_ROZPOZNANIA: readonly { readonly cad: CadSymbolId; readonly
   { cad: 'cad.lacznik', state: 'open' },
   { cad: 'cad.odplywOdbior', state: 'closed' },
   { cad: 'cad.zabezpieczenie', state: 'closed' },
+  { cad: 'cad.wylacznikInstalacyjny', state: 'closed' },
+  { cad: 'cad.wylacznikInstalacyjny', state: 'open' },
 ];
 
 const NAZWA_STANU: Readonly<Record<CadSwitchState, string>> = { closed: 'ZAMKNIĘTY', open: 'OTWARTY', unknown: 'NIEZNANY' };

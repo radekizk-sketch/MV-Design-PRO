@@ -128,9 +128,9 @@
         "type": "cable"
       },
       {
-        "catalog_namespace": "APARAT_NN_MCB",
-        "catalog_ref": "aparat-nn-mcb-c1400",
-        "device_kind": null,
+        "catalog_namespace": "APARAT_NN",
+        "catalog_ref": "aparat-nn-wylacznik-1400a",
+        "device_kind": "WYLACZNIK_GLOWNY",
         "from_bus_ref": "TA_zacisk",
         "name": "QF-TA",
         "ref_id": "QF-TA",
@@ -139,9 +139,9 @@
         "type": "breaker"
       },
       {
-        "catalog_namespace": "APARAT_NN_MCB",
-        "catalog_ref": "aparat-nn-mcb-c1400",
-        "device_kind": null,
+        "catalog_namespace": "APARAT_NN",
+        "catalog_ref": "aparat-nn-wylacznik-1400a",
+        "device_kind": "WYLACZNIK_GLOWNY",
         "from_bus_ref": "TB_zacisk",
         "name": "QF-TB",
         "ref_id": "QF-TB",
@@ -379,6 +379,7 @@
     "devices": [
       {
         "board_bus_ref": "RGnN-B",
+        "catalog_namespace": "WKLADKA_NN",
         "child_bus_ref": "FU-B2_zacisk",
         "designation_class": "FU",
         "device_kind": null,
@@ -394,6 +395,7 @@
       },
       {
         "board_bus_ref": null,
+        "catalog_namespace": "KABEL_NN",
         "child_bus_ref": "FU-B2_koniec",
         "designation_class": "W",
         "device_kind": null,
@@ -409,6 +411,7 @@
       },
       {
         "board_bus_ref": null,
+        "catalog_namespace": "APARAT_NN",
         "child_bus_ref": "RGnN-B",
         "designation_class": "QBC",
         "device_kind": null,
@@ -424,6 +427,7 @@
       },
       {
         "board_bus_ref": "RGnN-A",
+        "catalog_namespace": "APARAT_NN_MCB",
         "child_bus_ref": "QF-A1_zacisk",
         "designation_class": "QF",
         "device_kind": null,
@@ -439,6 +443,7 @@
       },
       {
         "board_bus_ref": null,
+        "catalog_namespace": "KABEL_NN",
         "child_bus_ref": "QF-A1_koniec",
         "designation_class": "W",
         "device_kind": null,
@@ -454,6 +459,7 @@
       },
       {
         "board_bus_ref": "RGnN-A",
+        "catalog_namespace": "APARAT_NN",
         "child_bus_ref": "QF-A2_zacisk",
         "designation_class": "QS",
         "device_kind": "ROZLACZNIK",
@@ -469,6 +475,7 @@
       },
       {
         "board_bus_ref": null,
+        "catalog_namespace": "KABEL_NN",
         "child_bus_ref": "QF-A2_koniec",
         "designation_class": "W",
         "device_kind": null,
@@ -484,6 +491,7 @@
       },
       {
         "board_bus_ref": "RGnN-A",
+        "catalog_namespace": "APARAT_NN_MCB",
         "child_bus_ref": "QF-A3_zacisk",
         "designation_class": "QF",
         "device_kind": null,
@@ -499,6 +507,7 @@
       },
       {
         "board_bus_ref": null,
+        "catalog_namespace": "KABEL_NN",
         "child_bus_ref": "QF-A3_pcc",
         "designation_class": "W",
         "device_kind": null,
@@ -514,6 +523,7 @@
       },
       {
         "board_bus_ref": "RGnN-B",
+        "catalog_namespace": "APARAT_NN_MCB",
         "child_bus_ref": "QF-B1_zacisk",
         "designation_class": "QF",
         "device_kind": null,
@@ -529,6 +539,7 @@
       },
       {
         "board_bus_ref": null,
+        "catalog_namespace": "KABEL_NN",
         "child_bus_ref": "QF-B1_koniec",
         "designation_class": "W",
         "device_kind": null,
@@ -544,9 +555,10 @@
       },
       {
         "board_bus_ref": "RGnN-A",
+        "catalog_namespace": "APARAT_NN",
         "child_bus_ref": "RGnN-A",
         "designation_class": "QF",
-        "device_kind": null,
+        "device_kind": "WYLACZNIK_GLOWNY",
         "device_role": "incomer",
         "device_state": "CLOSED",
         "device_type": "breaker",
@@ -559,9 +571,10 @@
       },
       {
         "board_bus_ref": "RGnN-B",
+        "catalog_namespace": "APARAT_NN",
         "child_bus_ref": "RGnN-B",
         "designation_class": "QF",
-        "device_kind": null,
+        "device_kind": "WYLACZNIK_GLOWNY",
         "device_role": "incomer",
         "device_state": "CLOSED",
         "device_type": "breaker",
@@ -1474,14 +1487,14 @@
   ],
   "model_snapshot": {
     "case_id": "fixture-06_conflict_parallel_sources",
-    "model_hash": "23e35dbd05c801f7ee18393c859d90ec47e6366c9a1bbd114c8d07d52194eced",
+    "model_hash": "09fcd2a7cb7be1cfc78b141019ce6d04871e5a736478b99aafaec36dbfaeb9e4",
     "operating_state_id": "d8b328dea019e2a1b0908e164e12219215dd0c7386846cd0d4a1925f12d825b6",
     "revision": 1,
     "run_snapshot_hash": null,
     "scenario_id": "MAX",
     "station_ref": "stAB"
   },
-  "projection_hash": "9d162aaabf4e0e9f2ccbe5c9ea3d973e5063ea84a90c0cac9600a8708f0e885a",
+  "projection_hash": "0901b13c8b46d64d18c2d562b21c7127c4d897036908393c165e295fc083d933",
   "result_snapshot": {
     "analysis_type": null,
     "overlay_payload": null,

@@ -97,7 +97,7 @@ ATOMOWO, z JEDNEGO obiektu ENM pobranego raz:
 | tożsamość żądania | `model_snapshot.{case_id, station_ref, scenario_id}` | klient porównuje z tym, o co prosił |
 | tożsamość modelu | `model_snapshot.{revision, model_hash, operating_state_id, run_snapshot_hash}` | odcisk modelu i stanu łączeniowego; odcisk modelu zapisany przy biegu |
 | szyny (zaciski) | `graph.buses[]` | `energization_state` (ENERGIZED / DEENERGIZED / UNKNOWN / CONFLICT / MULTISOURCE), `is_energized`, `supply_refs`, `island_ref`, `grid_energized`, `is_board`, `hops_from_root` |
-| urządzenia | `graph.devices[]` | typ ENM, `device_kind` (klasa funkcjonalna wyrobu z katalogu: WYLACZNIK / ROZLACZNIK / ROZLACZNIK_BEZPIECZNIKOWY / ODLACZNIK…, `null` = katalog nie klasyfikuje — pole addytywne R2), `designation_class` (QF/QS/FU/QBC/W), `device_role` (incomer/feeder/coupler/boundary/internal), `feeder_kind`, `device_state`, oba zaciski (`terminal_a/b`), `board_bus_ref`, `parent/child_bus_ref`, `transformer_ref` |
+| urządzenia | `graph.devices[]` | typ ENM, `device_kind` (klasa funkcjonalna wyrobu z katalogu: WYLACZNIK / ROZLACZNIK / ROZLACZNIK_BEZPIECZNIKOWY / ODLACZNIK…, `null` = katalog nie klasyfikuje — pole addytywne R2), `catalog_namespace` (przestrzeń katalogu wyrobu, lustro `branches[]`: `APARAT_NN_MCB` = wyłącznik instalacyjny, `APARAT_NN` = wyłącznik mocy — pole addytywne R2.1), `designation_class` (QF/QS/FU/QBC/W), `device_role` (incomer/feeder/coupler/boundary/internal), `feeder_kind`, `device_state`, oba zaciski (`terminal_a/b`), `board_bus_ref`, `parent/child_bus_ref`, `transformer_ref` |
 | odcinki | `graph.segments[]` | `connectivity_state` (CLOSED/OPEN), stan KAŻDEGO zacisku (`from_terminal`, `to_terminal`), `energization_state` odcinka (przewód za otwartym łącznikiem = DEENERGIZED), `source_ids`, `island_ref`, `voltage_level_id` |
 | sekcje | `graph.sections[]` | `tier` (main/sub), `order`, `coupler_refs`, `incomer_refs`, `transformer_refs` |
 | wyspy §14–§16 | `graph.islands[]` | `is_islanded`, `energization_state`, `energizing_source_ids`, `grid_source_refs`, `has_grid_forming_source`, `frequency_reference_source_id`, `neutral_reference {system, source_ref, status, status_pl, swz_evaluable}`, `power_balance {p_generation_mw, p_load_mw, state, basis_pl}`, `island_operation_allowed` (`null` = nieoceniona), `upstream_system_ids`, `validation_messages[]` |
@@ -187,32 +187,44 @@ ręcznie wpisaną energizacją.
 ## 5. Rejestr symboli, gramatyka wizualna, LOD
 
 - **Biblioteka symboli CAD** (`cad/cadSymbolRegistry.ts` +
-  `cad/CadSymbol.tsx`, R2 §19/§20): 18 symboli schematu z LINII / ŁUKÓW /
+  `cad/CadSymbol.tsx`, R2 §19/§20): 19 symboli schematu z LINII / ŁUKÓW /
   OKRĘGÓW / ŚCIEŻEK (zero ikon aplikacji, bitmap, czcionek ikon), każdy z
   odniesieniem IEC 60617 (identyfikator S00xxx), nazwą polską, gabarytem,
   zaciskami na siatce, kotwicami i `verificationStatus` (DRAFT /
   ENGINEERING_REVIEWED / NORMATIVE_VERIFIED — dziś 0 × NORMATIVE_VERIFIED).
-  Stan łączeniowy WYŁĄCZNIE z geometrii noża na przegubie (0° / +30° /
-  +15° + kreska przerywana); kwalifikatory funkcji IEC: „×" wyłącznika,
-  poprzeczka odłącznika, okrąg rozłącznika, wkładka jako nóż. Rejestr
+  Geometria przyjęta ze SCHEMATU REFERENCYJNEGO właściciela (R2.1, pomiary
+  wektorowe w pakiecie §12): styk stały u góry, przegub u dołu, nóż 11,5 u
+  otwiera się w GÓRĘ-LEWO (0° / −30° / −15° + kreska przerywana = stan
+  nieznany); kwalifikatory funkcji IEC NIERUCHOME na styku stałym: „×"
+  wyłącznika mocy na końcu przewodu styku stałego, poprzeczka odłącznika,
+  okrąg rozłącznika zawieszony POD poprzeczką; wkładka NA nożu (rozłącznik
+  bezpiecznikowy); wyłącznik instalacyjny = nóż z wyzwalaczem termicznym i
+  elektromagnetycznym obracanymi z nożem, bez „×"; przekształtnik z „3~" u
+  góry (AC) i „=" u dołu (DC), moduły PV / bateria PONIŻEJ przekształtnika;
+  orientacja pozioma = obrót +90° (otwarty nóż w górę od osi szyny). Rejestr
   normatywny: `docs/sld/SLD_SYMBOL_NORMATIVE_REGISTRY.md`; pakiet
   referencyjny i przegląd: `docs/sld/SLD_CAD_SYMBOL_REFERENCE_PACK_R2.md`.
 - **Odwzorowanie modelu na symbole** (`lv-domain/symbolRegistry.ts`, R2
-  §4–§12): typ gałęzi ENM rozstrzyga rodzinę (`breaker → cad.wylacznik/QF`,
+  §4–§12, R2.1): typ gałęzi ENM rozstrzyga rodzinę (`breaker → cad.wylacznik/QF`,
   `disconnector → cad.odlacznik/QS`, `switch → cad.rozlacznik/QS`,
-  `fuse → cad.bezpiecznik/FU`, `cable`/`line_overhead → przewód/W`), a
+  `fuse → cad.bezpiecznik/FU`, `cable`/`line_overhead → przewód/W`),
   `device_kind` z katalogu doprecyzowuje (`switch + ROZLACZNIK_BEZPIECZNIKOWY
   → cad.rozlacznikBezpiecznikowy`; `bus_coupler + WYLACZNIK/ROZLACZNIK/
   ODLACZNIK/ROZLACZNIK_BEZPIECZNIKOWY → symbol REALNEGO aparatu sprzęgła`,
-  `bus_coupler bez klasy → cad.lacznik` + NN-AUD-18). DER wg `gen_type` (PV
-  i magazyn = złożenia źródło + przekształtnik jednego elementu ENM; maszyny
-  = G~), pomiar wg `measurement_type` (CT w torze ≠ VT na odgałęzieniu),
-  zabezpieczenie = prostokąt ze znakami funkcji IEC (I>, I>>, I0>, U<, f<,
-  df/dt, Δφ) wewnątrz i numerami ANSI w panelu; zacisk (okrąg pusty) ≠ węzeł
-  (kropka) wg stopnia. Nazwy polskie (WYŁĄCZNIK, ROZŁĄCZNIK, ODŁĄCZNIK,
-  BEZPIECZNIK, ŁĄCZNIK SZYN…) z rejestru CAD; QF/QS/FU/QBC/CT/VT są
-  identyfikatorami. Pin iloczynu „typ × device_kind × stan":
-  `__tests__/symbolRegistry.test.tsx`.
+  `bus_coupler bez klasy → cad.lacznik` + NN-AUD-18), a PRZESTRZEŃ KATALOGU
+  rozróżnia wyrób: funkcja wyłącznika (breaker albo sprzęgło o klasie
+  WYLACZNIK_*) z `catalog_namespace = APARAT_NN_MCB` → `cad.wylacznikInstalacyjny`
+  („Wyłącznik instalacyjny"), inna przestrzeń → `cad.wylacznik` („Wyłącznik").
+  Jedno źródło prawdy dla symbolu = obiekt `devices[]` (typ × device_kind ×
+  catalog_namespace); kompozytor i panel odpływu nie sięgają do `branches[]`.
+  DER wg `gen_type` (PV i magazyn = złożenia przekształtnik + źródło jednego
+  elementu ENM; maszyny = G~), pomiar wg `measurement_type` (CT w torze ≠ VT
+  na odgałęzieniu), zabezpieczenie = prostokąt ze znakami funkcji IEC (I>,
+  I>>, I0>, U<, f<, df/dt, Δφ) wewnątrz i numerami ANSI w panelu; zacisk
+  (okrąg pusty) ≠ węzeł (kropka) wg stopnia. Nazwy polskie (WYŁĄCZNIK,
+  WYŁĄCZNIK INSTALACYJNY, ROZŁĄCZNIK, ODŁĄCZNIK, BEZPIECZNIK, ŁĄCZNIK SZYN…) z
+  rejestru CAD; QF/QS/FU/QBC/CT/VT są identyfikatorami. Pin iloczynu „typ ×
+  device_kind × przestrzeń katalogu × stan": `__tests__/symbolRegistry.test.tsx`.
 - **Gramatyka wizualna** (`lv-domain/visualGrammar.ts`): raster 8, tokeny
   geometrii (`--sld-*` w CSS), fit 70–85 % z clampem MAX i **MIN_FIELD_WIDTH**
   per poziom (R2 §17: 96 / 72 / 40 px — pole odpływu nigdy nie jest ściskane;
@@ -246,10 +258,13 @@ ręcznie wpisaną energizacją.
 | L1 sieć | pełny tor + etykiety tożsamości (sekcje, aparaty, DER, odbiory, granice, zabezpieczenia) + plakietki wyników | opisy drugorzędne (tabliczka TR, parametry, napięcia, słowny stan łącznika, pochodzenie wyniku) |
 | L0 przegląd | pełny tor uproszczony; nazwa sekcji + liczba odpływów; stany zasilania i wyspy; kropka werdyktu wyniku | etykiety aparatów/DER/odbiorów, zabezpieczenia, liczby na plakietkach |
 
-Piny: `cad/__tests__/cadSymbolRegistry.test.tsx` (18 symboli: kotwice i
+Piny: `cad/__tests__/cadSymbolRegistry.test.tsx` (19 symboli: kotwice i
 zaciski na siatce, OPEN ≠ CLOSED ≠ UNKNOWN z kąta przegubu, zero wypełnienia
 jako nośnika stanu, CT ≠ VT ≠ TR, unikalna geometria każdego symbolu,
-renderer bez bitmap z kreską nieskalowaną, snapshot prymitywów),
+pierwowzór R2.1 — nóż otwiera w lewo na wysokość styku stałego, kwalifikatory
+poza grupą przegubu a wyzwalacze MCB / wkładka w niej, przekształtnik AC u
+góry i źródło pod nim, orientacja +90° — renderer bez bitmap z kreską
+nieskalowaną, snapshot prymitywów),
 `lv-domain/__tests__/lod.test.tsx` (odcisk toru identyczny na 0/1/2 w kadrze
 bez clampu, rejestr ↔ renderer), `energizacja.test.tsx`,
 `composeLvDomainScene.test.ts`, `LvDomainView.test.tsx` (MIN_FIELD_WIDTH +
@@ -259,7 +274,8 @@ znakami IEC), `visualGrammar.test.ts`, `motywKanwyNn.test.tsx`,
 `frontend/e2e/lv-domain-screenshot.spec.ts` (20 kadrów §47:
 `docs/audit/visual/nn/<slug>[_lod<n>][_<motyw>].png`, w tym wersja mobilna i
 druk mono A3; sprzęgło jako wyłącznik / rozłącznik / łącznik ogólny z
-`device_kind`, pięć rodzin aparatów w 13) oraz
+`device_kind`, sześć rodzin aparatów w 13 — wyłącznik mocy zasilania i
+wyłącznik instalacyjny odpływu obok siebie) oraz
 `frontend/e2e/sld-symbol-pack-screenshot.spec.ts` (tablica pakietu w trzech
 wariantach i tablica rozpoznawalności §22: `docs/audit/visual/cad/`).
 

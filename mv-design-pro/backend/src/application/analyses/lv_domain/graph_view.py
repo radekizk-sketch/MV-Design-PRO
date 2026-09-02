@@ -491,6 +491,11 @@ def build_lv_domain_view(enm: EnergyNetworkModel, station_ref: str) -> dict[str,
                 "ref_id": ref_id,
                 "device_type": branch.type,
                 "device_kind": _device_kind(branch),
+                # Przestrzeń katalogu wyrobu (APARAT_NN / APARAT_NN_MCB /
+                # WKLADKA_NN / KABEL_NN…) — renderer rozróżnia po niej wyłącznik
+                # instalacyjny (MCB) od wyłącznika mocy (R2.1, pierwowzór
+                # właściciela). Addytywne, lustro `branches[].catalog_namespace`.
+                "catalog_namespace": branch.catalog_namespace,
                 "designation_class": DEVICE_DESIGNATION_BY_TYPE.get(str(branch.type), "Q"),
                 "device_role": role,
                 "feeder_kind": feeder_kind,

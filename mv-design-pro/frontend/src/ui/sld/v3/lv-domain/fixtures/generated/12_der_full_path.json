@@ -95,9 +95,9 @@
         "type": "cable"
       },
       {
-        "catalog_namespace": "APARAT_NN_MCB",
-        "catalog_ref": "aparat-nn-mcb-c2300",
-        "device_kind": null,
+        "catalog_namespace": "APARAT_NN",
+        "catalog_ref": "aparat-nn-wylacznik-2300a",
+        "device_kind": "WYLACZNIK_GLOWNY",
         "from_bus_ref": "T1_zacisk",
         "name": "QF-T1",
         "ref_id": "QF-T1",
@@ -261,6 +261,7 @@
     "devices": [
       {
         "board_bus_ref": "RGnN-1",
+        "catalog_namespace": "WKLADKA_NN",
         "child_bus_ref": "FU-BES_zacisk",
         "designation_class": "FU",
         "device_kind": null,
@@ -276,6 +277,7 @@
       },
       {
         "board_bus_ref": null,
+        "catalog_namespace": "KABEL_NN",
         "child_bus_ref": "FU-BES_pcc",
         "designation_class": "W",
         "device_kind": null,
@@ -291,6 +293,7 @@
       },
       {
         "board_bus_ref": "RGnN-1",
+        "catalog_namespace": "APARAT_NN_MCB",
         "child_bus_ref": "QF-01_zacisk",
         "designation_class": "QF",
         "device_kind": null,
@@ -306,6 +309,7 @@
       },
       {
         "board_bus_ref": null,
+        "catalog_namespace": "KABEL_NN",
         "child_bus_ref": "QF-01_koniec",
         "designation_class": "W",
         "device_kind": null,
@@ -321,6 +325,7 @@
       },
       {
         "board_bus_ref": "RGnN-1",
+        "catalog_namespace": "APARAT_NN_MCB",
         "child_bus_ref": "QF-G1_zacisk",
         "designation_class": "QF",
         "device_kind": null,
@@ -336,6 +341,7 @@
       },
       {
         "board_bus_ref": null,
+        "catalog_namespace": "KABEL_NN",
         "child_bus_ref": "QF-G1_pcc",
         "designation_class": "W",
         "device_kind": null,
@@ -351,6 +357,7 @@
       },
       {
         "board_bus_ref": "RGnN-1",
+        "catalog_namespace": "APARAT_NN_MCB",
         "child_bus_ref": "QF-PV1_zacisk",
         "designation_class": "QF",
         "device_kind": null,
@@ -366,6 +373,7 @@
       },
       {
         "board_bus_ref": null,
+        "catalog_namespace": "KABEL_NN",
         "child_bus_ref": "QF-PV1_pcc",
         "designation_class": "W",
         "device_kind": null,
@@ -381,9 +389,10 @@
       },
       {
         "board_bus_ref": "RGnN-1",
+        "catalog_namespace": "APARAT_NN",
         "child_bus_ref": "RGnN-1",
         "designation_class": "QF",
-        "device_kind": null,
+        "device_kind": "WYLACZNIK_GLOWNY",
         "device_role": "incomer",
         "device_state": "CLOSED",
         "device_type": "breaker",
@@ -995,14 +1004,14 @@
   "missing_data": [],
   "model_snapshot": {
     "case_id": "fixture-12_der_full_path",
-    "model_hash": "3bb5cacb5a5eb738f0c06d05f3e037f2a024eaab3855eac85cd72612bf635fa5",
+    "model_hash": "357b78dd404d40cabbddbc8b96b4b67941fb64102a5830deb61170390188c9c1",
     "operating_state_id": "dcff351def864f684aba05d7bbb7dbfe50186f12d55d0d74cb787527e52bddcc",
     "revision": 1,
     "run_snapshot_hash": null,
     "scenario_id": "MAX",
     "station_ref": "stDER"
   },
-  "projection_hash": "1842c39510eee400aac8a7f15fac00bebbed11bda73ba5f36b714f94efe34fff",
+  "projection_hash": "4d29db086180f8f23a79bf5fdcb076a689709b59ed3b3be59393d8054a1b6ba7",
   "result_snapshot": {
     "analysis_type": null,
     "overlay_payload": null,
@@ -2302,12 +2311,12 @@
   "upstream_equivalents": [
     {
       "c_factor": 1.1,
-      "calculation_run_id": "44e9e672-8d69-5296-9b15-5715b40c9694",
+      "calculation_run_id": "54c15073-826d-5ab6-8820-01a9cd65b8be",
       "case_id": "fixture-12_der_full_path",
-      "equivalent_id": "06f25acb-63cf-5bd0-9ea7-ce99b3886934",
+      "equivalent_id": "060fac28-9370-510a-8bce-328227fe9d77",
       "ikss_ka": 18.70829509868276,
       "missing_data": [],
-      "model_hash": "3bb5cacb5a5eb738f0c06d05f3e037f2a024eaab3855eac85cd72612bf635fa5",
+      "model_hash": "357b78dd404d40cabbddbc8b96b4b67941fb64102a5830deb61170390188c9c1",
       "model_revision": 1,
       "note_pl": "Równoważnik Thevenina sieci SN w punkcie HV transformatora — granica wizualna domeny nN (L2) jest granicą domeny napięciowej i projekcji, NIE przerwaniem zależności obliczeniowej: ten snapshot jest dokładnie tym wejściem, którym solver pętli zwarcia nN liczy stronę SN (application.analyses.fault_loop).",
       "operating_state_id": "dcff351def864f684aba05d7bbb7dbfe50186f12d55d0d74cb787527e52bddcc",

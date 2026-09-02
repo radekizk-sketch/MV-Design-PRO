@@ -710,7 +710,7 @@ function LvFeederPanel({ feeder, transformerRef, projection, paleta, resultOverl
   const zabezpieczenia = projection.graph.protection_assignments.filter((p) => p.breaker_ref === feeder.feeder_root_branch_ref);
   const urzadzenie = projection.graph.devices.find((d) => d.ref_id === feeder.feeder_root_branch_ref);
   const galaz = projection.graph.branches.find((b) => b.ref_id === feeder.feeder_root_branch_ref);
-  const aparat = urzadzenie ? wpisAparatu(urzadzenie.device_type, urzadzenie.device_kind) : null;
+  const aparat = urzadzenie ? wpisAparatu(urzadzenie.device_type, urzadzenie.device_kind, urzadzenie.catalog_namespace) : null;
   return (
     <aside data-testid="lv-domain-feeder-panel" data-feeder-ref={feeder.feeder_root_branch_ref} style={{ position: 'absolute', top: 100, right: 16, bottom: 16, width: 350, maxWidth: 'calc(100% - 32px)', overflow: 'auto', padding: 16, border: `1px solid ${paleta.kreskaWygaszona}`, borderRadius: 6, background: paleta.panelTlo, boxShadow: paleta.panelCien, zIndex: 4, fontSize: 12 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>

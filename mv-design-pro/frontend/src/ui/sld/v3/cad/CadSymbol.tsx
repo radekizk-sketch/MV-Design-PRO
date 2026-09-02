@@ -12,7 +12,8 @@
  *    jest kodowany kolorem ani wypełnieniem (R2 §14); `fill: 'ink'` służy
  *    wyłącznie grotom / kropkom połączeń / płytom, które w IEC są pełne;
  *  • stan NIEZNANY = kąt pośredni noża + kreska przerywana grupy przegubu;
- *  • orientacja pozioma = obrót o −90° wokół środka gabarytu (łącznik szyn).
+ *  • orientacja pozioma = obrót o +90° wokół środka gabarytu (łącznik szyn:
+ *    zacisk `a` po prawej, otwarty nóż w górę — jak `punktPoObrocie`).
  */
 import type { CSSProperties } from 'react';
 
@@ -151,7 +152,9 @@ export function CadSymbol(props: CadSymbolProps): JSX.Element {
     state,
   };
   const c = def.anchors.center;
-  const obrot = orientation === 'pozioma' ? ` rotate(-90 ${c.x} ${c.y})` : '';
+  // Obrót +90° (zgodnie z `punktPoObrocie` rejestru): zacisk `a` po prawej,
+  // `b` po lewej, otwarty nóż odchyla się W GÓRĘ od osi szyny.
+  const obrot = orientation === 'pozioma' ? ` rotate(90 ${c.x} ${c.y})` : '';
   const transform = `translate(${props.x} ${props.y}) scale(${scale})${obrot}`;
   return (
     <g

@@ -115,3 +115,83 @@ LvDomainView.tsx, types.ts}` + testy `lv-domain/__tests__/*`, fixtury `fixtures/
 `e2e/lv-domain-screenshot.spec.ts`, backend `lv_domain/{graph_view.py, audit.py}` +
 `tests/application/analyses/lv_domain/{scenariusze_nn.py, test_audit.py}`,
 `docs/sld/PROJEKCJA_SN_NN_PORTAL_V1.md`, `docs/INDEX.md`, `docs/audit/visual/nn/*.png`.
+
+---
+
+## 8. Addendum R2.1 — symbole ze schematu referencyjnego właściciela (2026-09-02)
+
+Polecenie właściciela: „Przyjmij symbole ze schematu z załącznika" (`Schemat nn.pdf` —
+schemat ideowy zasilania instalacji PV 149,5 kWp, A2, notacja IEC 60617 / IEC 81346).
+Wykonanie: schemat odczytany WEKTOROWO (dump ścieżek strony PDF; strona nie ma bitmap ani
+tekstu do ekstrakcji), pomiary w pakiecie §12, rejestr CAD przepisany do tych proporcji.
+
+### 8.1 Co zmieniono w geometrii (rejestr 1.0 → 1.1)
+
+| Symbol | Rejestr 1.0 (R2) | Rejestr 1.1 (R2.1, pierwowzór) |
+|---|---|---|
+| nóż każdego łącznika | 10 u, otwarty +30° w PRAWO | 11,5 u, otwarty −30° w GÓRĘ-LEWO, końcówka na wysokości styku stałego |
+| wyłącznik mocy | „×" na końcówce noża, obracany | „×" 4 u NIERUCHOMY na końcu przewodu styku stałego, w osi |
+| wyłącznik instalacyjny | brak (jeden symbol dla każdego breakera) | NOWY `cad.wylacznikInstalacyjny`: nóż bez „×" + wyzwalacz termiczny („hak") i elektromagnetyczny (strzałka) obracane z nożem |
+| rozłącznik | poprzeczka + okrąg NA PRZEGUBIE | poprzeczka + okrąg r = 1,4 u ZAWIESZONY POD poprzeczką styku stałego |
+| rozłącznik bezpiecznikowy | wkładka jako cały nóż od przegubu w połowie, +30° | przegub u dołu (8, 20), nóż 17 u, wkładka 4,4×9 u na dolnej części noża, poprzeczka + okrąg u góry, −20° |
+| przekształtnik | DC u góry, AC u dołu | AC u GÓRY („3~"), DC u dołu („="), przekątna lewy-dół → prawy-góra |
+| PV / magazyn | źródło NAD przekształtnikiem (kabel z góry trafiał w ogniwo) | przekształtnik NAD ramką pola z modułem PV (szewron) / baterią — jak w pierwowzorze |
+| przekładnik prądowy | okrąg r = 5,5 u na przewodzie ciągłym | okrąg r = 7 u z przewodem UKRYTYM wewnątrz (wypełnienie papierem) |
+| uziemienie | trzy kreski 10/7/4 u | 12 : 9 : 6 u (pierwowzór 11,3 : 8,4 : 5,7 pt) |
+| węzeł | r = 1,8 u | r = 2,2 u (∅ ≈ 7× kreski) |
+| orientacja pozioma | obrót −90° (zacisk a po lewej) | obrót +90° (a po prawej, otwarty nóż W GÓRĘ od osi szyny) |
+
+### 8.2 Łańcuch danych (nie tylko rysunek)
+
+- Kontrakt 3.0.0 (addytywnie, `exclude_none`): `devices[].catalog_namespace` — lustro
+  `branches[].catalog_namespace`, żeby obiekt urządzenia był JEDYNYM źródłem prawdy dla
+  wyboru symbolu (kompozytor: 4 miejsca wpięcia; panel odpływu: 1 — wszystkie przez
+  `wpisAparatu(typ, device_kind, catalog_namespace)`).
+- Odwzorowanie: funkcja wyłącznika (breaker albo sprzęgło z klasą WYLACZNIK_*) realizowana
+  wyrobem z `APARAT_NN_MCB` → wyłącznik instalacyjny; inna przestrzeń → wyłącznik mocy.
+  Reguła dotyczy KAŻDEJ roli (KLASA, nie instancja) — pin: `symbolRegistry.test.tsx`,
+  iloczyn typ × device_kind × przestrzeń (14 × 10).
+- Scenariusze danych: `wylacznik()` ≤ 125 A = `APARAT_NN_MCB` z charakterystyką (odpływy),
+  > 125 A = `APARAT_NN` + `device_kind` WYLACZNIK_GLOWNY (zasilanie z TR, `rola="glowny"`) /
+  WYLACZNIK_ODPLYWOWY + `i_n_a` (kontrakt SWZ tej przestrzeni). Fixtury 01–18 zregenerowane
+  z backendu; test `test_scenariusze_nn.py` pina JSON w repo.
+- Pakiet: 19 wierszy (02 = wyłącznik instalacyjny), tablica rozpoznawalności 26 pozycji
+  (25/26 = MCB zamknięty/otwarty), klucz w pakiecie §6.
+
+### 8.3 Weryfikacja R2.1
+
+- `cad/__tests__/cadSymbolRegistry.test.tsx`: 17 testów, w tym 3 nowe testy KLASOWE
+  pierwowzoru (końcówka otwartego noża w lewo i na wysokości styku stałego dla każdego
+  łącznika; kwalifikatory poza grupą przegubu, wyzwalacze/wkładka w niej; AC u góry i
+  źródło pod przekształtnikiem; orientacja +90° → nóż w górę); snapshot prymitywów
+  odświeżony świadomie.
+- lv-domain vitest: 10 plików / 269 testów zielone (symbolRegistry z przestrzenią
+  katalogu, compose [13] sześć rodzin + incomer WYLACZNIK_GLOWNY, lod [15] 12 MCB + 1
+  wyłącznik mocy, energizacja, LvDomainView).
+- backend `tests/application/analyses/lv_domain`: 162 passed (fixtury JSON ↔ backend).
+- e2e: 22 kadry (20 sceny + pakiet ×3 + rozpoznawalność), pin [13] sześciu rodzin
+  (`QF-T1` → `cad.wylacznik`, `QF-01` → `cad.wylacznikInstalacyjny`).
+- tsc, eslint czyste. Pełna regresja (vitest, pytest, guardy) — wynik w §8.5.
+
+### 8.4 Samoocena R2.1 (opinia wykonawcy, nie werdykt)
+
+- Zgodność z pierwowzorem: proporcje noża, kwalifikatorów, wkładki, wyzwalaczy, falownika,
+  modułu PV, baterii, uziemienia i kropki przeniesione z pomiarów (§12 pakietu); różnice
+  świadome: siatka 1 u zaokrągla wymiary (np. nóż 14,8 pt → 11,5 u przy skali 0,78 u/pt),
+  „hak" bimetalu uproszczony do trzech kresek (pierwowzór: cztery krótkie odcinki).
+- Bez odpowiednika w ENM (nie rysowane, pytanie §9 g pakietu): SPD, licznik Wh, gniazdo
+  1/N/PE, analizator, symbol sieci zasilającej.
+- Werdykt wizualny B-02 należy do właściciela.
+
+### 8.5 Pełna regresja po R2.1 (kody wyjścia łapane bezpośrednio)
+
+| Warstwa | Wynik |
+|---|---|
+| backend `pytest -q` (pełny) | 10514 passed / 10 skipped / 0 failed (717 s) |
+| frontend `vitest run --no-file-parallelism` (pełny) | 887 plików / 11973 passed / 1 skipped / 14 todo / 0 failed (2138 s) |
+| `tsc --noEmit`, `eslint` (cad, lv-domain, harness, e2e) | czyste |
+| e2e Playwright (`lv-domain-screenshot`, `sld-symbol-pack-screenshot`) | 22 passed (20 kadrów sceny + 3 tablice pakietu + rozpoznawalność) |
+| guardy (34: pcc_zero, domain_no_guessing, arch, solver_boundary, canonical_ops, no_codenames, forbidden_ui_terms, ui_terminology, dialog_completeness, dead_click, catalog_binding/enforcement/gate/metadata, overlay_no_physics, load_flow/protection_no_heuristics, trace_ui_leak, sld_determinism, trace_determinism, fault_scenarios_determinism, resultset_v1_schema, readiness_codes, audit_contract, api_lifecycle, severity_contract, reference_networks, docs, local_truth, docs_archive, repo_hygiene, import_graph, ui_no_physics, physics_label) | 34 × EXIT 0 (no_codenames początkowo czerwony przez oznaczenia zacisków CT w opisie normatywnym — naprawione u źródła, ponownie zielony) |
+
+Nie pushowano (zasada właściciela: push wyłącznie za wyraźną zgodą). Werdykt B-02
+należy do właściciela.

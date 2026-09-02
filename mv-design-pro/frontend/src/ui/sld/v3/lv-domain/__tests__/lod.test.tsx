@@ -102,7 +102,9 @@ describe('LOD — tabela warstw: co znika, co zostaje', () => {
     expect(screen.getByTestId('lv-domain-bus-licznik-RGnN-1').textContent).toContain('12 odpływów');
     expect(t).not.toContain('QF-01');
     expect(t).not.toContain('Kotłownia');
-    expect(document.querySelectorAll('g[data-symbol-canon="cad.wylacznik"]').length).toBeGreaterThanOrEqual(13);
+    // 12 odpływów = wyłączniki instalacyjne (16–48 A, APARAT_NN_MCB); zasilanie z T1 = wyłącznik mocy (APARAT_NN).
+    expect(document.querySelectorAll('g[data-symbol-canon="cad.wylacznikInstalacyjny"]').length).toBeGreaterThanOrEqual(12);
+    expect(document.querySelectorAll('g[data-symbol-canon="cad.wylacznik"]').length).toBeGreaterThanOrEqual(1);
   });
 
   it('[15] licznik odpływów istnieje WYŁĄCZNIE na przeglądzie', () => {

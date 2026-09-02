@@ -139,9 +139,9 @@
         "type": "cable"
       },
       {
-        "catalog_namespace": "APARAT_NN_MCB",
-        "catalog_ref": "aparat-nn-mcb-c2300",
-        "device_kind": null,
+        "catalog_namespace": "APARAT_NN",
+        "catalog_ref": "aparat-nn-wylacznik-2300a",
+        "device_kind": "WYLACZNIK_GLOWNY",
         "from_bus_ref": "T1_zacisk",
         "name": "QF-T1",
         "ref_id": "QF-T1",
@@ -417,6 +417,7 @@
     "devices": [
       {
         "board_bus_ref": "RGN-2_szyna",
+        "catalog_namespace": "WKLADKA_NN",
         "child_bus_ref": "FU-21_zacisk",
         "designation_class": "FU",
         "device_kind": null,
@@ -432,6 +433,7 @@
       },
       {
         "board_bus_ref": null,
+        "catalog_namespace": "KABEL_NN",
         "child_bus_ref": "FU-21_koniec",
         "designation_class": "W",
         "device_kind": null,
@@ -447,6 +449,7 @@
       },
       {
         "board_bus_ref": "RGN-D_szyna",
+        "catalog_namespace": "WKLADKA_NN",
         "child_bus_ref": "FU-D2_zacisk",
         "designation_class": "FU",
         "device_kind": null,
@@ -462,6 +465,7 @@
       },
       {
         "board_bus_ref": null,
+        "catalog_namespace": "KABEL_NN",
         "child_bus_ref": "FU-D2_koniec",
         "designation_class": "W",
         "device_kind": null,
@@ -477,6 +481,7 @@
       },
       {
         "board_bus_ref": "RGnN-1",
+        "catalog_namespace": "APARAT_NN_MCB",
         "child_bus_ref": "QF-01_zacisk",
         "designation_class": "QF",
         "device_kind": null,
@@ -492,6 +497,7 @@
       },
       {
         "board_bus_ref": null,
+        "catalog_namespace": "KABEL_NN",
         "child_bus_ref": "QF-01_koniec",
         "designation_class": "W",
         "device_kind": null,
@@ -507,6 +513,7 @@
       },
       {
         "board_bus_ref": "RGnN-1",
+        "catalog_namespace": "APARAT_NN_MCB",
         "child_bus_ref": "QF-02_zacisk",
         "designation_class": "QF",
         "device_kind": null,
@@ -522,6 +529,7 @@
       },
       {
         "board_bus_ref": null,
+        "catalog_namespace": "KABEL_NN",
         "child_bus_ref": "RGN-2_szyna",
         "designation_class": "W",
         "device_kind": null,
@@ -537,6 +545,7 @@
       },
       {
         "board_bus_ref": "RGnN-1",
+        "catalog_namespace": "APARAT_NN_MCB",
         "child_bus_ref": "QF-03_zacisk",
         "designation_class": "QF",
         "device_kind": null,
@@ -552,6 +561,7 @@
       },
       {
         "board_bus_ref": null,
+        "catalog_namespace": "KABEL_NN",
         "child_bus_ref": "QF-03_pcc",
         "designation_class": "W",
         "device_kind": null,
@@ -567,6 +577,7 @@
       },
       {
         "board_bus_ref": "RGN-D_szyna",
+        "catalog_namespace": "WKLADKA_NN",
         "child_bus_ref": "QF-D1_zacisk",
         "designation_class": "FU",
         "device_kind": null,
@@ -582,6 +593,7 @@
       },
       {
         "board_bus_ref": null,
+        "catalog_namespace": "KABEL_NN",
         "child_bus_ref": "QF-D1_pcc",
         "designation_class": "W",
         "device_kind": null,
@@ -597,9 +609,10 @@
       },
       {
         "board_bus_ref": "RGnN-1",
+        "catalog_namespace": "APARAT_NN",
         "child_bus_ref": "RGnN-1",
         "designation_class": "QF",
-        "device_kind": null,
+        "device_kind": "WYLACZNIK_GLOWNY",
         "device_role": "incomer",
         "device_state": "CLOSED",
         "device_type": "breaker",
@@ -612,6 +625,7 @@
       },
       {
         "board_bus_ref": "RGnN-1",
+        "catalog_namespace": "APARAT_NN",
         "child_bus_ref": "QS-D_zacisk",
         "designation_class": "QS",
         "device_kind": null,
@@ -627,6 +641,7 @@
       },
       {
         "board_bus_ref": null,
+        "catalog_namespace": "KABEL_NN",
         "child_bus_ref": "RGN-D_szyna",
         "designation_class": "W",
         "device_kind": null,
@@ -1513,14 +1528,14 @@
   "missing_data": [],
   "model_snapshot": {
     "case_id": "fixture-08_island_grid_forming",
-    "model_hash": "f08c96b45b80e401e32c88fc6dafdbac678c8efdef046aaec73a00b6357270d1",
+    "model_hash": "2071a497c1a5dab75afba165d3f39898961f0553bd9901bd7b717c7e7fe2f3df",
     "operating_state_id": "bdb2b930431b3b709ed647d1b4a1c835cf7c7ca6aa2ccc60dafc59eeb301c798",
     "revision": 1,
     "run_snapshot_hash": null,
     "scenario_id": "MAX",
     "station_ref": "stW"
   },
-  "projection_hash": "7e62fab85c62894b65cfa49953ab47ddf812b0a4a3cfcb01c45ab8dd327b82b9",
+  "projection_hash": "f1af4c84cb7fb168da9996c50ebfc60dcb402ead21e8f875e2c2e6197750b5db",
   "result_snapshot": {
     "analysis_type": null,
     "overlay_payload": null,
@@ -2668,12 +2683,12 @@
   "upstream_equivalents": [
     {
       "c_factor": 1.1,
-      "calculation_run_id": "f49d73b2-06fc-5c85-9141-edd4f4230033",
+      "calculation_run_id": "79606b0b-0ab0-5e34-8156-224d76ed8c6e",
       "case_id": "fixture-08_island_grid_forming",
-      "equivalent_id": "b291a5a7-c7c3-59bb-872a-4c78ab0203f1",
+      "equivalent_id": "67a3d803-9447-5061-8b51-d1fd3a3238df",
       "ikss_ka": 18.682571063385836,
       "missing_data": [],
-      "model_hash": "f08c96b45b80e401e32c88fc6dafdbac678c8efdef046aaec73a00b6357270d1",
+      "model_hash": "2071a497c1a5dab75afba165d3f39898961f0553bd9901bd7b717c7e7fe2f3df",
       "model_revision": 1,
       "note_pl": "Równoważnik Thevenina sieci SN w punkcie HV transformatora — granica wizualna domeny nN (L2) jest granicą domeny napięciowej i projekcji, NIE przerwaniem zależności obliczeniowej: ten snapshot jest dokładnie tym wejściem, którym solver pętli zwarcia nN liczy stronę SN (application.analyses.fault_loop).",
       "operating_state_id": "bdb2b930431b3b709ed647d1b4a1c835cf7c7ca6aa2ccc60dafc59eeb301c798",

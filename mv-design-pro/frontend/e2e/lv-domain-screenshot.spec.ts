@@ -211,9 +211,11 @@ const KADRY: readonly Kadr[] = [
       await widoczny(page, 'lv-domain-node-QS-02');
       await widoczny(page, 'lv-domain-node-FU-04');
       await widoczny(page, 'lv-domain-warning-marker-odbior_bez_pola');
-      // Pięć rodzin symboli CAD rozróżnialnych bez etykiety (R2 §5/§7/§22).
+      // Sześć rodzin symboli CAD rozróżnialnych bez etykiety (R2 §5/§7/§22;
+      // R2.1: wyłącznik instalacyjny z APARAT_NN_MCB ≠ wyłącznik mocy zasilania z APARAT_NN).
       for (const [ref, symbol] of [
-        ['QF-01', 'cad.wylacznik'],
+        ['QF-T1', 'cad.wylacznik'],
+        ['QF-01', 'cad.wylacznikInstalacyjny'],
         ['QS-02', 'cad.rozlacznik'],
         ['QS-03', 'cad.odlacznik'],
         ['FU-04', 'cad.bezpiecznik'],

@@ -143,6 +143,10 @@ class BudowniczyStacji:
         self.root_tr_refs.append(ref)
         return ref
 
+    #: Górna granica prądu znamionowego wyłącznika INSTALACYJNEGO (IEC 60898-1:
+    #: aparaty modułowe do 125 A); powyżej — wyłącznik mocy (IEC 60947-2).
+    PRAD_MAX_MCB_A = 125.0
+
     def wylacznik(
         self,
         ref: str,
@@ -153,7 +157,25 @@ class BudowniczyStacji:
         status: str = "closed",
         in_a: float = 63.0,
         curve: str = "C",
+        rola: str = "odplywowy",
     ) -> str:
+        """Wyłącznik (typ gałęzi ``breaker``) — przestrzeń katalogu wynika z
+        PRĄDU, jak w rzeczywistej rozdzielnicy i w pierwowzorze właściciela
+        (R2.1): do ``PRAD_MAX_MCB_A`` = wyłącznik instalacyjny (modułowy,
+        IEC 60898-1, katalog ``APARAT_NN_MCB`` z charakterystyką B/C/D — symbol z
+        wyzwalaczami, jak -F1 B16A); powyżej = wyłącznik mocy (IEC 60947-2,
+        katalog ``APARAT_NN`` z ``device_kind`` WYLACZNIK_GLOWNY / WYLACZNIK_ODPLYWOWY
+        i ``i_n_a`` wg kontraktu materializacji — symbol z krzyżykiem, jak
+        -QPV1 400 A LSI). ``rola`` = "glowny" (zasilanie z TR) | "odplywowy"."""
+        if in_a <= self.PRAD_MAX_MCB_A:
+            catalog_ref = f"aparat-nn-mcb-{curve.lower()}{int(in_a)}"
+            namespace = "APARAT_NN_MCB"
+            params: dict[str, object] = {"in_a": in_a, "curve_class": curve}
+        else:
+            device_kind = "WYLACZNIK_GLOWNY" if rola == "glowny" else "WYLACZNIK_ODPLYWOWY"
+            catalog_ref = f"aparat-nn-wylacznik-{int(in_a)}a"
+            namespace = "APARAT_NN"
+            params = {"i_n_a": in_a, "device_kind": device_kind}
         self.branches.append(
             SwitchBranch(
                 ref_id=ref,
@@ -162,9 +184,9 @@ class BudowniczyStacji:
                 from_bus_ref=a,
                 to_bus_ref=b,
                 status=status,  # type: ignore[arg-type]
-                catalog_ref=f"aparat-nn-mcb-{curve.lower()}{int(in_a)}",
-                catalog_namespace="APARAT_NN_MCB",
-                materialized_params={"in_a": in_a, "curve_class": curve},
+                catalog_ref=catalog_ref,
+                catalog_namespace=namespace,
+                materialized_params=params,
             )
         )
         return ref
@@ -466,6 +488,7 @@ def transformator_z_wylacznikiem(
         board,
         status=qf_status,
         in_a=round(sn_mva * 1000 * 1.44 / 0.4 / 100) * 100 or 1000,
+        rola="glowny",
     )
     if ct:
         b.pomiar_ct(

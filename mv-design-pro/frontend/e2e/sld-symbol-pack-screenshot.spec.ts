@@ -4,7 +4,7 @@
  * ciemnym, jasnym i mono oraz tablica rozpoznawalności bez etykiet.
  *
  * BRAMKI KLASY (liczone tu):
- *  1. 18 wierszy pakietu, każdy z symbolem proponowanym z rodziny `cad`;
+ *  1. 19 wierszy pakietu, każdy z symbolem proponowanym z rodziny `cad`;
  *  2. symbol ze stanem: znacznik OPEN ≠ CLOSED ≠ UNKNOWN po geometrii (kąt
  *     przegubu), bez `fill` jako nośnika stanu;
  *  3. warstwa CAD bez bitmap, `<image>`, `<foreignObject>`, ikon czcionek;
@@ -25,6 +25,7 @@ const OUTPUT_DIR = path.resolve(_dirname, '../../docs/audit/visual/cad');
 
 const SYMBOLE_CAD = [
   'cad.wylacznik',
+  'cad.wylacznikInstalacyjny',
   'cad.odlacznik',
   'cad.rozlacznik',
   'cad.lacznik',
@@ -44,7 +45,9 @@ const SYMBOLE_CAD = [
   'cad.wezel',
 ] as const;
 
-const ZE_STANEM = ['cad.wylacznik', 'cad.odlacznik', 'cad.rozlacznik', 'cad.lacznik', 'cad.uziemnik', 'cad.rozlacznikBezpiecznikowy'] as const;
+const ZE_STANEM = ['cad.wylacznik', 'cad.wylacznikInstalacyjny', 'cad.odlacznik', 'cad.rozlacznik', 'cad.lacznik', 'cad.uziemnik', 'cad.rozlacznikBezpiecznikowy'] as const;
+/** Pozycje tablicy rozpoznawalności (klucz w dokumencie pakietu §6). */
+const POZYCJE_ROZPOZNANIA = 26;
 
 function sha256Pliku(sciezka: string): string {
   return crypto.createHash('sha256').update(fs.readFileSync(sciezka)).digest('hex');
@@ -118,9 +121,10 @@ test.describe('sld-symbol-pack:screenshot', () => {
     await expect(page.locator('[data-testid="symbol-pack-root"]')).toHaveAttribute('data-mono', 'true');
     const tablica = page.locator('[data-testid="symbol-pack-rozpoznanie"]');
     await expect(tablica).toBeVisible();
-    await expect(tablica.locator('[data-pack-pozycja]')).toHaveCount(24);
-    // Bez etykiet: jedyny tekst to numery pozycji, litera normatywna „G" maszyny
-    // i znaki funkcji IEC w prostokącie zabezpieczenia (część symbolu, nie etykieta).
+    await expect(tablica.locator('[data-pack-pozycja]')).toHaveCount(POZYCJE_ROZPOZNANIA);
+    // Bez etykiet: jedyny tekst to numery pozycji, znaki normatywne symboli
+    // („G" maszyny, „3" przy „~" przekształtnika) i znaki funkcji IEC w
+    // prostokącie zabezpieczenia (część symbolu, nie etykieta).
     const teksty = await tablica.locator('text:not([data-cad="letter"]):not([data-cad="mark"])').allTextContents();
     for (const t of teksty) {
       expect(/^\d+$/.test(t.trim()), `tekst na tablicy rozpoznawalności: „${t}"`).toBe(true);

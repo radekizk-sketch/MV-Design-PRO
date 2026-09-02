@@ -271,9 +271,9 @@
         "type": "cable"
       },
       {
-        "catalog_namespace": "APARAT_NN_MCB",
-        "catalog_ref": "aparat-nn-mcb-c3600",
-        "device_kind": null,
+        "catalog_namespace": "APARAT_NN",
+        "catalog_ref": "aparat-nn-wylacznik-3600a",
+        "device_kind": "WYLACZNIK_GLOWNY",
         "from_bus_ref": "T1_zacisk",
         "name": "QF-T1",
         "ref_id": "QF-T1",
@@ -677,6 +677,7 @@
     "devices": [
       {
         "board_bus_ref": "RGnN-1",
+        "catalog_namespace": "APARAT_NN_MCB",
         "child_bus_ref": "QF-01_zacisk",
         "designation_class": "QF",
         "device_kind": null,
@@ -692,6 +693,7 @@
       },
       {
         "board_bus_ref": null,
+        "catalog_namespace": "KABEL_NN",
         "child_bus_ref": "QF-01_koniec",
         "designation_class": "W",
         "device_kind": null,
@@ -707,6 +709,7 @@
       },
       {
         "board_bus_ref": "RGnN-1",
+        "catalog_namespace": "APARAT_NN_MCB",
         "child_bus_ref": "QF-02_zacisk",
         "designation_class": "QF",
         "device_kind": null,
@@ -722,6 +725,7 @@
       },
       {
         "board_bus_ref": null,
+        "catalog_namespace": "KABEL_NN",
         "child_bus_ref": "QF-02_koniec",
         "designation_class": "W",
         "device_kind": null,
@@ -737,6 +741,7 @@
       },
       {
         "board_bus_ref": "RGnN-1",
+        "catalog_namespace": "APARAT_NN_MCB",
         "child_bus_ref": "QF-03_zacisk",
         "designation_class": "QF",
         "device_kind": null,
@@ -752,6 +757,7 @@
       },
       {
         "board_bus_ref": null,
+        "catalog_namespace": "KABEL_NN",
         "child_bus_ref": "QF-03_koniec",
         "designation_class": "W",
         "device_kind": null,
@@ -767,6 +773,7 @@
       },
       {
         "board_bus_ref": "RGnN-1",
+        "catalog_namespace": "APARAT_NN_MCB",
         "child_bus_ref": "QF-04_zacisk",
         "designation_class": "QF",
         "device_kind": null,
@@ -782,6 +789,7 @@
       },
       {
         "board_bus_ref": null,
+        "catalog_namespace": "KABEL_NN",
         "child_bus_ref": "QF-04_koniec",
         "designation_class": "W",
         "device_kind": null,
@@ -797,6 +805,7 @@
       },
       {
         "board_bus_ref": "RGnN-1",
+        "catalog_namespace": "APARAT_NN_MCB",
         "child_bus_ref": "QF-05_zacisk",
         "designation_class": "QF",
         "device_kind": null,
@@ -812,6 +821,7 @@
       },
       {
         "board_bus_ref": null,
+        "catalog_namespace": "KABEL_NN",
         "child_bus_ref": "QF-05_koniec",
         "designation_class": "W",
         "device_kind": null,
@@ -827,6 +837,7 @@
       },
       {
         "board_bus_ref": "RGnN-1",
+        "catalog_namespace": "APARAT_NN_MCB",
         "child_bus_ref": "QF-06_zacisk",
         "designation_class": "QF",
         "device_kind": null,
@@ -842,6 +853,7 @@
       },
       {
         "board_bus_ref": null,
+        "catalog_namespace": "KABEL_NN",
         "child_bus_ref": "QF-06_koniec",
         "designation_class": "W",
         "device_kind": null,
@@ -857,6 +869,7 @@
       },
       {
         "board_bus_ref": "RGnN-1",
+        "catalog_namespace": "APARAT_NN_MCB",
         "child_bus_ref": "QF-07_zacisk",
         "designation_class": "QF",
         "device_kind": null,
@@ -872,6 +885,7 @@
       },
       {
         "board_bus_ref": null,
+        "catalog_namespace": "KABEL_NN",
         "child_bus_ref": "QF-07_koniec",
         "designation_class": "W",
         "device_kind": null,
@@ -887,6 +901,7 @@
       },
       {
         "board_bus_ref": "RGnN-1",
+        "catalog_namespace": "APARAT_NN_MCB",
         "child_bus_ref": "QF-08_zacisk",
         "designation_class": "QF",
         "device_kind": null,
@@ -902,6 +917,7 @@
       },
       {
         "board_bus_ref": null,
+        "catalog_namespace": "KABEL_NN",
         "child_bus_ref": "QF-08_koniec",
         "designation_class": "W",
         "device_kind": null,
@@ -917,6 +933,7 @@
       },
       {
         "board_bus_ref": "RGnN-1",
+        "catalog_namespace": "APARAT_NN_MCB",
         "child_bus_ref": "QF-09_zacisk",
         "designation_class": "QF",
         "device_kind": null,
@@ -932,6 +949,7 @@
       },
       {
         "board_bus_ref": null,
+        "catalog_namespace": "KABEL_NN",
         "child_bus_ref": "QF-09_koniec",
         "designation_class": "W",
         "device_kind": null,
@@ -947,6 +965,7 @@
       },
       {
         "board_bus_ref": "RGnN-1",
+        "catalog_namespace": "APARAT_NN_MCB",
         "child_bus_ref": "QF-10_zacisk",
         "designation_class": "QF",
         "device_kind": null,
@@ -962,6 +981,7 @@
       },
       {
         "board_bus_ref": null,
+        "catalog_namespace": "KABEL_NN",
         "child_bus_ref": "QF-10_koniec",
         "designation_class": "W",
         "device_kind": null,
@@ -977,6 +997,7 @@
       },
       {
         "board_bus_ref": "RGnN-1",
+        "catalog_namespace": "APARAT_NN_MCB",
         "child_bus_ref": "QF-11_zacisk",
         "designation_class": "QF",
         "device_kind": null,
@@ -992,6 +1013,7 @@
       },
       {
         "board_bus_ref": null,
+        "catalog_namespace": "KABEL_NN",
         "child_bus_ref": "QF-11_koniec",
         "designation_class": "W",
         "device_kind": null,
@@ -1007,6 +1029,7 @@
       },
       {
         "board_bus_ref": "RGnN-1",
+        "catalog_namespace": "APARAT_NN_MCB",
         "child_bus_ref": "QF-12_zacisk",
         "designation_class": "QF",
         "device_kind": null,
@@ -1022,6 +1045,7 @@
       },
       {
         "board_bus_ref": null,
+        "catalog_namespace": "KABEL_NN",
         "child_bus_ref": "QF-12_koniec",
         "designation_class": "W",
         "device_kind": null,
@@ -1037,9 +1061,10 @@
       },
       {
         "board_bus_ref": "RGnN-1",
+        "catalog_namespace": "APARAT_NN",
         "child_bus_ref": "RGnN-1",
         "designation_class": "QF",
-        "device_kind": null,
+        "device_kind": "WYLACZNIK_GLOWNY",
         "device_role": "incomer",
         "device_state": "CLOSED",
         "device_type": "breaker",
@@ -2250,14 +2275,14 @@
   "missing_data": [],
   "model_snapshot": {
     "case_id": "fixture-15_many_feeders",
-    "model_hash": "f37373af32806b8ea9e7f241131a1877faa0a3d8f1234293018c6f3073a76484",
+    "model_hash": "be4801b638bdaf341cfa8da7e5f076e5c96871d43f8062fbe825994847de776c",
     "operating_state_id": "eec810f65dc0709e04f4600c9cfb0f38b10e8fa82910efc581b3651f7982c5f6",
     "revision": 1,
     "run_snapshot_hash": null,
     "scenario_id": "MAX",
     "station_ref": "stWIELE"
   },
-  "projection_hash": "ee01c04fc90ff85ac81ad41baf662a0a1a17b930fcbc59543482f73f4185ca81",
+  "projection_hash": "a5754ecaaf30bb4649292b46fc5459c1ebc5163fa787c0d7e19f21a95cc2e7d2",
   "result_snapshot": {
     "analysis_type": null,
     "overlay_payload": null,
@@ -6037,12 +6062,12 @@
   "upstream_equivalents": [
     {
       "c_factor": 1.1,
-      "calculation_run_id": "aa6af532-841e-5d8c-932c-09f8d7a775cb",
+      "calculation_run_id": "adad74db-79e4-5e9e-b9d8-bda4ef4e4e4a",
       "case_id": "fixture-15_many_feeders",
-      "equivalent_id": "e03da34a-d920-5186-851d-913df523cf00",
+      "equivalent_id": "15d7e565-7410-5272-b644-627fede20a56",
       "ikss_ka": 18.682571063385836,
       "missing_data": [],
-      "model_hash": "f37373af32806b8ea9e7f241131a1877faa0a3d8f1234293018c6f3073a76484",
+      "model_hash": "be4801b638bdaf341cfa8da7e5f076e5c96871d43f8062fbe825994847de776c",
       "model_revision": 1,
       "note_pl": "Równoważnik Thevenina sieci SN w punkcie HV transformatora — granica wizualna domeny nN (L2) jest granicą domeny napięciowej i projekcji, NIE przerwaniem zależności obliczeniowej: ten snapshot jest dokładnie tym wejściem, którym solver pętli zwarcia nN liczy stronę SN (application.analyses.fault_loop).",
       "operating_state_id": "eec810f65dc0709e04f4600c9cfb0f38b10e8fa82910efc581b3651f7982c5f6",

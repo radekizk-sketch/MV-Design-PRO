@@ -82,28 +82,51 @@ function normalizujKind(deviceKind: string | null | undefined): string | null {
   return k.length > 0 ? k : null;
 }
 
-/** Symbol CAD aparatu z DANYCH (typ gałęzi × klasa funkcjonalna wyrobu). */
-export function symbolAparatu(deviceType: LvDeviceType, deviceKind: string | null | undefined): CadSymbolId | null {
+/** Przestrzeń katalogu wyłączników INSTALACYJNYCH (modułowych, IEC 60898-1,
+ *  charakterystyka B/C/D). Wyrób z tej przestrzeni dostaje symbol z
+ *  wyzwalaczami (termicznym i elektromagnetycznym) zamiast krzyżyka — jak w
+ *  pierwowzorze właściciela (R2.1: -F1 B16A vs -QPV1 400 A). */
+const PRZESTRZEN_KATALOGU_MCB = 'APARAT_NN_MCB';
+
+/** Symbol CAD aparatu z DANYCH: typ gałęzi × klasa funkcjonalna wyrobu ×
+ *  przestrzeń katalogu. Funkcja wyłącznika (breaker albo sprzęgło o klasie
+ *  WYLACZNIK_*) realizowana wyrobem z `APARAT_NN_MCB` = wyłącznik
+ *  instalacyjny — reguła dotyczy KAŻDEJ roli aparatu, nie tylko odpływu. */
+export function symbolAparatu(
+  deviceType: LvDeviceType,
+  deviceKind: string | null | undefined,
+  catalogNamespace?: string | null,
+): CadSymbolId | null {
   const kind = normalizujKind(deviceKind);
-  switch (deviceType) {
-    case 'breaker':
-      return 'cad.wylacznik';
-    case 'disconnector':
-      return 'cad.odlacznik';
-    case 'switch':
-      return kind === 'ROZLACZNIK_BEZPIECZNIKOWY' ? 'cad.rozlacznikBezpiecznikowy' : 'cad.rozlacznik';
-    case 'fuse':
-      return 'cad.bezpiecznik';
-    case 'bus_coupler':
-      return kind !== null ? SYMBOL_PO_DEVICE_KIND[kind] ?? 'cad.lacznik' : 'cad.lacznik';
-    default:
-      return null;
+  const podstawowy = ((): CadSymbolId | null => {
+    switch (deviceType) {
+      case 'breaker':
+        return 'cad.wylacznik';
+      case 'disconnector':
+        return 'cad.odlacznik';
+      case 'switch':
+        return kind === 'ROZLACZNIK_BEZPIECZNIKOWY' ? 'cad.rozlacznikBezpiecznikowy' : 'cad.rozlacznik';
+      case 'fuse':
+        return 'cad.bezpiecznik';
+      case 'bus_coupler':
+        return kind !== null ? SYMBOL_PO_DEVICE_KIND[kind] ?? 'cad.lacznik' : 'cad.lacznik';
+      default:
+        return null;
+    }
+  })();
+  if (podstawowy === 'cad.wylacznik' && normalizujKind(catalogNamespace) === PRZESTRZEN_KATALOGU_MCB) {
+    return 'cad.wylacznikInstalacyjny';
   }
+  return podstawowy;
 }
 
-/** Wpis rejestru dla urządzenia (typ gałęzi × device_kind). */
-export function wpisAparatu(deviceType: LvDeviceType, deviceKind: string | null | undefined): WpisRejestruSymbolu {
-  const symbolId = symbolAparatu(deviceType, deviceKind);
+/** Wpis rejestru dla urządzenia (typ gałęzi × device_kind × przestrzeń katalogu). */
+export function wpisAparatu(
+  deviceType: LvDeviceType,
+  deviceKind: string | null | undefined,
+  catalogNamespace?: string | null,
+): WpisRejestruSymbolu {
+  const symbolId = symbolAparatu(deviceType, deviceKind, catalogNamespace);
   const klasaOznaczenia = KLASA_PO_TYPIE[deviceType];
   if (symbolId === null) {
     return {

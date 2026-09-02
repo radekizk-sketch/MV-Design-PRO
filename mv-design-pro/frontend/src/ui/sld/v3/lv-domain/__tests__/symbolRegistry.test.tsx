@@ -32,8 +32,12 @@ import type { LvDeviceType } from '../types';
 
 const TYPY = Object.keys(REJESTR_SYMBOLI_NN) as LvDeviceType[];
 const KINDY = [null, undefined, '', '  ', 'WYLACZNIK', 'WYLACZNIK_GLOWNY', 'WYLACZNIK_ODPLYWOWY', 'ROZLACZNIK', 'ROZLACZNIK_BEZPIECZNIKOWY', 'ODLACZNIK', 'REKLOZER', 'INWERTER', 'nieznany-rodzaj', 'wylacznik'] as const;
+/** Przestrzenie katalogu spotykane na gałęziach nN + brak + szum; TYLKO
+ *  `APARAT_NN_MCB` (w dowolnej pisowni) zmienia wyłącznik na instalacyjny. */
+const PRZESTRZENIE = [null, undefined, '', 'APARAT_NN', 'APARAT_NN_MCB', 'aparat_nn_mcb', ' APARAT_NN_MCB ', 'WKLADKA_NN', 'KABEL_NN', 'nieznana'] as const;
+const jestMcb = (ns: (typeof PRZESTRZENIE)[number]): boolean => String(ns ?? '').trim().toUpperCase() === 'APARAT_NN_MCB';
 
-describe('REJESTR_SYMBOLI_NN — typ gałęzi ENM × device_kind → symbol CAD', () => {
+describe('REJESTR_SYMBOLI_NN — typ gałęzi ENM × device_kind × przestrzeń katalogu → symbol CAD', () => {
   it('rejestr (typ → symbol CAD · klasa · nazwa polska · nośnik stanu) jest zamrożony snapshotem', () => {
     expect(REJESTR_SYMBOLI_NN).toMatchSnapshot();
   });
@@ -53,16 +57,37 @@ describe('REJESTR_SYMBOLI_NN — typ gałęzi ENM × device_kind → symbol CAD'
     }
   });
 
-  it('typ gałęzi rozstrzyga RODZINĘ: breaker → wyłącznik, disconnector → odłącznik, switch → rozłącznik, fuse → bezpiecznik — NIEZALEŻNIE od device_kind', () => {
+  it('typ gałęzi rozstrzyga RODZINĘ: breaker → wyłącznik, disconnector → odłącznik, switch → rozłącznik, fuse → bezpiecznik — NIEZALEŻNIE od device_kind i przestrzeni katalogu (poza MCB)', () => {
     for (const kind of KINDY) {
-      expect(symbolAparatu('breaker', kind), `breaker × ${String(kind)}`).toBe('cad.wylacznik');
-      expect(symbolAparatu('disconnector', kind), `disconnector × ${String(kind)}`).toBe('cad.odlacznik');
-      expect(symbolAparatu('fuse', kind), `fuse × ${String(kind)}`).toBe('cad.bezpiecznik');
-      expect(symbolAparatu('cable', kind), `cable × ${String(kind)}`).toBeNull();
-      expect(symbolAparatu('line_overhead', kind), `line × ${String(kind)}`).toBeNull();
-      const oczekiwanyRozlacznik = String(kind ?? '').trim().toUpperCase() === 'ROZLACZNIK_BEZPIECZNIKOWY' ? 'cad.rozlacznikBezpiecznikowy' : 'cad.rozlacznik';
-      expect(symbolAparatu('switch', kind), `switch × ${String(kind)}`).toBe(oczekiwanyRozlacznik);
+      for (const ns of PRZESTRZENIE) {
+        const opis = `${String(kind)} × ${String(ns)}`;
+        expect(symbolAparatu('breaker', kind, ns), `breaker × ${opis}`).toBe(jestMcb(ns) ? 'cad.wylacznikInstalacyjny' : 'cad.wylacznik');
+        expect(symbolAparatu('disconnector', kind, ns), `disconnector × ${opis}`).toBe('cad.odlacznik');
+        expect(symbolAparatu('fuse', kind, ns), `fuse × ${opis}`).toBe('cad.bezpiecznik');
+        expect(symbolAparatu('cable', kind, ns), `cable × ${opis}`).toBeNull();
+        expect(symbolAparatu('line_overhead', kind, ns), `line × ${opis}`).toBeNull();
+        const oczekiwanyRozlacznik = String(kind ?? '').trim().toUpperCase() === 'ROZLACZNIK_BEZPIECZNIKOWY' ? 'cad.rozlacznikBezpiecznikowy' : 'cad.rozlacznik';
+        expect(symbolAparatu('switch', kind, ns), `switch × ${opis}`).toBe(oczekiwanyRozlacznik);
+      }
+      // Bez podanej przestrzeni (wołający starszego kształtu) = wyłącznik mocy.
+      expect(symbolAparatu('breaker', kind)).toBe('cad.wylacznik');
     }
+  });
+
+  it('wyłącznik INSTALACYJNY wynika z przestrzeni katalogu APARAT_NN_MCB (R2.1) — dla KAŻDEJ roli z funkcją wyłącznika: breaker i sprzęgło o klasie WYLACZNIK_*; inne rodziny nietknięte', () => {
+    for (const kind of ['WYLACZNIK', 'WYLACZNIK_GLOWNY', 'WYLACZNIK_ODPLYWOWY', 'REKLOZER', 'wylacznik'] as const) {
+      expect(symbolAparatu('bus_coupler', kind, 'APARAT_NN_MCB'), `sprzęgło × ${kind}`).toBe('cad.wylacznikInstalacyjny');
+      expect(symbolAparatu('bus_coupler', kind, 'APARAT_NN'), `sprzęgło × ${kind}`).toBe('cad.wylacznik');
+    }
+    for (const kind of ['ROZLACZNIK', 'ROZLACZNIK_BEZPIECZNIKOWY', 'ODLACZNIK', null] as const) {
+      expect(symbolAparatu('bus_coupler', kind, 'APARAT_NN_MCB')).toBe(symbolAparatu('bus_coupler', kind, 'APARAT_NN'));
+    }
+    const mcb = wpisAparatu('breaker', null, 'APARAT_NN_MCB');
+    expect(mcb.nazwaPl).toBe('Wyłącznik instalacyjny');
+    expect(mcb.klasaOznaczenia).toBe('QF');
+    expect(mcb.nosnikStanu).toBe('noz');
+    expect(mcb.rozmiar).toBe('aparat');
+    expect(wpisAparatu('breaker', null, 'APARAT_NN').nazwaPl).toBe('Wyłącznik');
   });
 
   it('sprzęgło = symbol REALNEGO aparatu z device_kind (§6); bez klasy albo z klasą nieznaną → łącznik ogólny (audyt NN-AUD-18 po stronie backendu)', () => {
@@ -73,14 +98,18 @@ describe('REJESTR_SYMBOLI_NN — typ gałęzi ENM × device_kind → symbol CAD'
     expect(symbolAparatu('bus_coupler', 'ROZLACZNIK_BEZPIECZNIKOWY')).toBe('cad.rozlacznikBezpiecznikowy');
     expect(symbolAparatu('bus_coupler', 'ODLACZNIK')).toBe('cad.odlacznik');
     for (const kind of [null, undefined, '', '  ', 'INWERTER', 'nieznany-rodzaj'] as const) {
-      expect(symbolAparatu('bus_coupler', kind), `bus_coupler × ${String(kind)}`).toBe('cad.lacznik');
+      for (const ns of PRZESTRZENIE) {
+        expect(symbolAparatu('bus_coupler', kind, ns), `bus_coupler × ${String(kind)} × ${String(ns)}`).toBe('cad.lacznik');
+      }
     }
     // Sprzęgło zachowuje klasę oznaczenia QBC i slot sprzęgła niezależnie od symbolu.
     for (const kind of KINDY) {
-      const wpis = wpisAparatu('bus_coupler', kind);
-      expect(wpis.klasaOznaczenia).toBe('QBC');
-      expect(wpis.rozmiar).toBe('sprzeglo');
-      expect(wpis.nosnikStanu).toBe('noz');
+      for (const ns of PRZESTRZENIE) {
+        const wpis = wpisAparatu('bus_coupler', kind, ns);
+        expect(wpis.klasaOznaczenia).toBe('QBC');
+        expect(wpis.rozmiar).toBe('sprzeglo');
+        expect(wpis.nosnikStanu).toBe('noz');
+      }
     }
   });
 
@@ -102,34 +131,46 @@ describe('REJESTR_SYMBOLI_NN — typ gałęzi ENM × device_kind → symbol CAD'
   it('stan OPEN ≠ CLOSED geometrycznie dla każdego symbolu ze stanem; wkładka i przewód bez stanu', () => {
     for (const typ of TYPY) {
       for (const kind of KINDY) {
-        const wpis = wpisAparatu(typ, kind);
-        if (wpis.symbolId === null) continue;
-        const open = JSON.stringify(prymitywy(wpis.symbolId, 'open'));
-        const closed = JSON.stringify(prymitywy(wpis.symbolId, 'closed'));
-        if (wpis.nosnikStanu === 'brak') expect(open, `${typ} × ${String(kind)}`).toBe(closed);
-        else expect(open, `${typ} × ${String(kind)}`).not.toBe(closed);
+        for (const ns of PRZESTRZENIE) {
+          const wpis = wpisAparatu(typ, kind, ns);
+          if (wpis.symbolId === null) continue;
+          const open = JSON.stringify(prymitywy(wpis.symbolId, 'open'));
+          const closed = JSON.stringify(prymitywy(wpis.symbolId, 'closed'));
+          if (wpis.nosnikStanu === 'brak') expect(open, `${typ} × ${String(kind)} × ${String(ns)}`).toBe(closed);
+          else expect(open, `${typ} × ${String(kind)} × ${String(ns)}`).not.toBe(closed);
+        }
       }
     }
   });
 
-  it('KAŻDY typ urządzenia i KAŻDY device_kind występujący w scenariuszach 01–18 ma odwzorowanie (zero symbolu „na oko")', () => {
+  it('KAŻDY typ urządzenia, device_kind i przestrzeń katalogu występujące w scenariuszach 01–18 mają odwzorowanie (zero symbolu „na oko")', () => {
     const pary = new Set<string>();
+    const trojki = new Set<string>();
     for (const slug of SLUGI_SCENARIUSZY) {
       const g = SCENARIUSZE_NN[slug].graph;
       if (g.status !== 'OK') continue;
       for (const d of g.devices) {
         expect(TYPY, d.device_type).toContain(d.device_type);
         pary.add(`${d.device_type}×${d.device_kind ?? '∅'}`);
-        const wpis = wpisAparatu(d.device_type, d.device_kind);
+        trojki.add(`${d.device_type}×${d.device_kind ?? '∅'}×${d.catalog_namespace ?? '∅'}`);
+        // `catalog_namespace` urządzenia = lustro gałęzi (jedno źródło prawdy dla symbolu).
+        const galaz = g.branches.find((b) => b.ref_id === d.ref_id);
+        expect(d.catalog_namespace ?? null, `${slug}/${d.ref_id}`).toBe(galaz?.catalog_namespace ?? null);
+        const wpis = wpisAparatu(d.device_type, d.device_kind, d.catalog_namespace);
         expect(wpis.nazwaPl.length).toBeGreaterThan(3);
       }
     }
     // Iloczyn cech obecny w danych: sprzęgło z klasą wyłącznika, rozłącznika i BEZ klasy;
-    // rozłącznik bezpiecznikowy jako `switch` + device_kind.
+    // rozłącznik bezpiecznikowy jako `switch` + device_kind; wyłącznik mocy
+    // (APARAT_NN + WYLACZNIK_GLOWNY na zasilaniu z TR) obok wyłącznika
+    // instalacyjnego (APARAT_NN_MCB na odpływach ≤ 125 A) — R2.1.
     expect(pary).toContain('bus_coupler×WYLACZNIK');
     expect(pary).toContain('bus_coupler×ROZLACZNIK');
     expect(pary).toContain('bus_coupler×∅');
     expect(pary).toContain('switch×ROZLACZNIK_BEZPIECZNIKOWY');
+    expect(trojki).toContain('breaker×WYLACZNIK_GLOWNY×APARAT_NN');
+    expect(trojki).toContain('breaker×∅×APARAT_NN_MCB');
+    expect([...trojki].some((t) => t.startsWith('breaker×') && t.endsWith('×∅')), 'wyłącznik bez przestrzeni katalogu w danych').toBe(false);
   });
 });
 
