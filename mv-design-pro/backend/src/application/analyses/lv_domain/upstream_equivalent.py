@@ -186,6 +186,21 @@ def build_upstream_equivalent_snapshot(
             f"{case_id}:{station_ref}:{trafo.ref_id}:{scenario}:{operating_state_id}:{model_hash}",
         )
     )
+    # §10/§11 (kontrakt 3.0.0): TOŻSAMOŚĆ RÓWNOWAŻNIKA jest funkcją węzła SN,
+    # scenariusza, stanu łączeniowego i modelu — NIE transformatora. Dwa
+    # transformatory zawieszone na tej samej szynie SN dostają TEN SAM
+    # `equivalent_id`, więc renderer rysuje JEDNĄ kotwicę zamiast dwóch
+    # „niezależnych systemów" (wada nazwana w mandacie §3).
+    # Tożsamość węzła SN = `ref_id` SZYNY ENM (`trafo.hv_bus_ref`), nie id węzła
+    # grafu solvera (`hv_equiv.hv_bus_ref` to UUID węzła `NetworkGraph`) — klient
+    # grupuje kotwice po tej samej przestrzeni identyfikatorów, w której niesie
+    # `upstream_system_id` transformatora (graf domeny, refy ENM).
+    equivalent_id = str(
+        uuid5(
+            _NAMESPACE_LV_DOMAIN_SNAPSHOT,
+            f"eq:{case_id}:{trafo.hv_bus_ref}:{scenario}:{operating_state_id}:{model_hash}",
+        )
+    )
 
     return {
         "status": "OK",
@@ -194,6 +209,8 @@ def build_upstream_equivalent_snapshot(
         "station_name": station.name,
         "transformer_ref": trafo.ref_id,
         "source_node_id": hv_equiv.hv_bus_ref,  # werdykt: sourceNodeId
+        "upstream_node_id": trafo.hv_bus_ref,  # §10: szyna SN (ref ENM), na której wisi TR
+        "equivalent_id": equivalent_id,  # §10/§11: tożsamość równoważnika (per węzeł SN)
         "voltage_level_id": voltage_level_id(trafo.uhv_kv),  # werdykt: voltageLevelId
         "voltage_kv": trafo.uhv_kv,
         "uth_kv": uth_kv,  # werdykt: Uth

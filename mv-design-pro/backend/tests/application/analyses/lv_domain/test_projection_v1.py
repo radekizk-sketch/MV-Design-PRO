@@ -166,16 +166,91 @@ class TestEnergizacjaWProjekcji:
             zbuduj_stacje_nn(transformatory=2, sprzeglo="open", wyspa_odcieta=True)
         )
         stany = {bus["ref_id"]: bus for bus in projekcja["graph"]["buses"]}
-        assert stany["wyspa"]["energized"] is False
+        assert stany["wyspa"]["energization_state"] == "DEENERGIZED"
         assert stany["a2"]["supply_refs"] == ["tr1"]
         assert stany["b2"]["supply_refs"] == ["tr2"]
         assert len(projekcja["graph"]["islands"]) == 2
+        assert {s["segment_id"] for s in projekcja["graph"]["segments"]} == {
+            "ap_a",
+            "c_a",
+            "ap_b",
+            "c_b",
+            "coupler",
+            "roz_wyspa",
+        }
 
     def test_wyspa_der_widoczna_w_projekcji(self) -> None:
-        projekcja = _projekcja(zbuduj_stacje_nn(wyspa_odcieta=True, pv_na_wyspie=True))
+        projekcja = _projekcja(
+            zbuduj_stacje_nn(wyspa_odcieta=True, pv_na_wyspie=True, zdolnosc_pv="GRID_FORMING")
+        )
         wyspa = next(w for w in projekcja["graph"]["islands"] if w["bus_refs"] == ["wyspa"])
-        assert wyspa["der_only"] is True
-        assert wyspa["energized"] is False
+        assert wyspa["is_islanded"] is True
+        assert wyspa["has_grid_forming_source"] is True
+        assert wyspa["energization_state"] == "ENERGIZED"
+
+    def test_role_urzadzen_z_topologii(self) -> None:
+        """§4/§8: rola urządzenia rozstrzygana w backendzie — incomer, odpływ
+        (z rodzajem poddrzewa), sprzęgło."""
+        projekcja = _projekcja(zbuduj_stacje_nn(transformatory=2, sprzeglo="open"))
+        role = {d["ref_id"]: d for d in projekcja["graph"]["devices"]}
+        assert role["ap_a"]["device_role"] == "feeder"
+        assert role["ap_a"]["feeder_kind"] == "load"
+        assert role["ap_a"]["designation_class"] == "QF"
+        assert role["ap_a"]["board_bus_ref"] == "nn_a"
+        assert role["coupler"]["device_role"] == "coupler"
+        assert role["coupler"]["designation_class"] == "QBC"
+        assert role["coupler"]["device_state"] == "OPEN"
+        assert role["c_a"]["device_role"] == "internal"
+        sekcje = {s["bus_ref"]: s for s in projekcja["graph"]["sections"]}
+        assert sekcje["nn_a"]["coupler_refs"] == ["coupler"]
+        assert sekcje["nn_a"]["transformer_refs"] == ["tr1"]
+        assert sekcje["nn_b"]["transformer_refs"] == ["tr2"]
+        assert sekcje["nn_a"]["tier"] == "main"
+
+
+class TestTozsamoscZasilaniaSn:
+    def test_dwa_transformatory_na_tej_samej_szynie_sn_dziela_rownowaznik(self) -> None:
+        """§10/§11: wspólny węzeł SN ⇒ ten sam `equivalent_id` i
+        `upstream_system_id` — renderer rysuje JEDNĄ kotwicę."""
+        projekcja = _projekcja(zbuduj_stacje_nn(transformatory=2, sprzeglo="open"))
+        kotwice = {u["transformer_ref"]: u for u in projekcja["upstream_equivalents"]}
+        assert kotwice["tr1"]["equivalent_id"] == kotwice["tr2"]["equivalent_id"]
+        assert kotwice["tr1"]["upstream_node_id"] == kotwice["tr2"]["upstream_node_id"] == "sn"
+        assert kotwice["tr1"]["upstream_system_id"] == kotwice["tr2"]["upstream_system_id"] == "sn"
+        assert kotwice["tr1"]["upstream_source_ids"] == ["src"]
+        assert any(m["code"] == "NN-AUD-10" for m in projekcja["validation_messages"])
+
+    def test_niezalezne_systemy_sn_maja_rozne_systemy_i_zrodla(self) -> None:
+        """Tożsamość systemu SN i jego źródła pochodzą z TOPOLOGII (graf domeny),
+        więc są dostępne także wtedy, gdy równoważnik Thevenina NIE jest
+        obliczalny. POMIAR PRZYPIĘTY (ograniczenie zarejestrowane, nie ukryte):
+        model z DWOMA źródłami sieciowymi ma dwa węzły SLACK, a rdzeń solvera
+        (`network_model/core/graph.py::NetworkGraph` — zamrożony, B-01)
+        dopuszcza dokładnie jeden — kotwice obu transformatorów meldują uczciwe
+        „brak danych: upstream_network_topology_invalid" zamiast liczby."""
+        projekcja = _projekcja(
+            zbuduj_stacje_nn(transformatory=2, sprzeglo="open", niezalezny_system_sn_tr2=True)
+        )
+        kotwice = {u["transformer_ref"]: u for u in projekcja["upstream_equivalents"]}
+        assert kotwice["tr1"]["upstream_system_id"] == "sn"
+        assert kotwice["tr2"]["upstream_system_id"] == "sn2"
+        assert kotwice["tr1"]["upstream_source_ids"] == ["src"]
+        assert kotwice["tr2"]["upstream_source_ids"] == ["src2"]
+        for ref in ("tr1", "tr2"):
+            assert kotwice[ref]["status"] == "brak danych"
+            assert kotwice[ref]["missing_data"] == ["upstream_network_topology_invalid"]
+            assert "equivalent_id" not in kotwice[ref]
+        assert not any(m["code"] == "NN-AUD-10" for m in projekcja["validation_messages"])
+
+    def test_spiecie_niezaleznych_systemow_daje_konflikt_w_komunikatach(self) -> None:
+        projekcja = _projekcja(
+            zbuduj_stacje_nn(transformatory=2, sprzeglo="closed", niezalezny_system_sn_tr2=True)
+        )
+        kody = [m["code"] for m in projekcja["validation_messages"]]
+        assert "NN-AUD-06" in kody
+        konflikt = next(m for m in projekcja["validation_messages"] if m["code"] == "NN-AUD-06")
+        assert konflikt["severity"] == "BLOCKER"
+        assert set(konflikt["element_refs"]) == {"tr1", "tr2"}
 
 
 class TestKompletnosc:

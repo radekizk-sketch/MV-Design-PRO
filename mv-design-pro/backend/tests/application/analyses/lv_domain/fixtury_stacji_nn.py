@@ -94,6 +94,9 @@ def zbuduj_stacje_nn(
     uklad_uziemienia: str = "TN-C-S",
     dlugosc_kabla_b_km: float = 0.05,
     moc_tr2_mva: float = 0.63,
+    zdolnosc_pv: str | None = None,
+    niezalezny_system_sn_tr2: bool = False,
+    pv_wprost_na_sekcji: bool = False,
 ) -> EnergyNetworkModel:
     """Zbuduj stację SN/nN o zadanych cechach.
 
@@ -107,6 +110,13 @@ def zbuduj_stacje_nn(
     ``moc_tr2_mva`` — moc TR2; INNA niż TR1 daje INNĄ impedancję pętli, więc
     wynik liczony „od złego transformatora" różni się LICZBOWO (bez tego
     asymetria byłaby niewidoczna: sprzęgło ma zerową impedancję).
+    ``zdolnosc_pv`` — deklaracja ``meta.island_capability`` KAŻDEGO PV
+    (``GRID_FOLLOWING``/``GRID_FORMING``/``DUAL_MODE``; ``None`` = brak
+    deklaracji → zdolność NIEZNANA).
+    ``niezalezny_system_sn_tr2`` — TR2 zawieszony na ODRĘBNEJ szynie SN z
+    WŁASNYM źródłem (dwa niezależne systemy SN; sprzęgło zamknięte = konflikt).
+    ``pv_wprost_na_sekcji`` — PV przyłączone wprost do szyny ``nn_a`` (bez pola
+    — przypadek audytu NN-AUD-07), zamiast na ``a2``.
     """
     if transformatory not in (1, 2):
         raise ValueError("Fikstura obsługuje 1 albo 2 transformatory stacji.")
@@ -114,8 +124,11 @@ def zbuduj_stacje_nn(
         raise ValueError("Sprzęgło ma sens wyłącznie przy dwóch transformatorach.")
     if pv_na_wyspie and not wyspa_odcieta:
         raise ValueError("PV na wyspie wymaga odciętej podszyny.")
+    if niezalezny_system_sn_tr2 and transformatory != 2:
+        raise ValueError("Niezależny system SN dotyczy TR2 — wymaga dwóch transformatorów.")
 
     druga_szyna = "nn_a" if wspolna_szyna_nn else "nn_b"
+    meta_pv: dict = {"island_capability": zdolnosc_pv} if zdolnosc_pv else {}
 
     buses = [
         Bus(ref_id="sn", name="SN", voltage_kv=15.0),
@@ -127,11 +140,37 @@ def zbuduj_stacje_nn(
     branches: list = [_aparat("ap_a", "nn_a", "a1"), _kabel("c_a", "a1", "a2")]
     loads = [Load(ref_id="load_a", name="Odbiór A", bus_ref="a2", p_mw=0.05, q_mvar=0.01)]
     generators: list[Generator] = []
+    sources = [
+        Source(
+            ref_id="src",
+            name="GPZ",
+            bus_ref="sn",
+            model="thevenin",
+            r_ohm=0.1,
+            x_ohm=0.5,
+            catalog_ref="src-gpz-15kv",
+        )
+    ]
     station_bus_refs = ["nn_a"]
     transformer_refs = ["tr1"]
 
     if transformatory == 2:
-        transformers.append(_transformator("tr2", "TR2", druga_szyna, sn_mva=moc_tr2_mva))
+        tr2 = _transformator("tr2", "TR2", druga_szyna, sn_mva=moc_tr2_mva)
+        if niezalezny_system_sn_tr2:
+            buses.append(Bus(ref_id="sn2", name="SN drugi system", voltage_kv=15.0))
+            tr2 = tr2.model_copy(update={"hv_bus_ref": "sn2"})
+            sources.append(
+                Source(
+                    ref_id="src2",
+                    name="GPZ drugi",
+                    bus_ref="sn2",
+                    model="thevenin",
+                    r_ohm=0.12,
+                    x_ohm=0.6,
+                    catalog_ref="src-gpz-15kv",
+                )
+            )
+        transformers.append(tr2)
         transformer_refs.append("tr2")
         buses.extend(
             [
@@ -182,11 +221,12 @@ def zbuduj_stacje_nn(
             Generator(
                 ref_id="pv_nn",
                 name="PV na sekcji A",
-                bus_ref="a2",
+                bus_ref="nn_a" if pv_wprost_na_sekcji else "a2",
                 p_mw=0.05,
                 gen_type="pv_inverter",
                 connection_variant="nn_side",
                 station_ref=REF_STACJA,
+                meta=dict(meta_pv),
             )
         )
     if pv_na_wyspie:
@@ -199,23 +239,14 @@ def zbuduj_stacje_nn(
                 gen_type="pv_inverter",
                 connection_variant="nn_side",
                 station_ref=REF_STACJA,
+                meta=dict(meta_pv),
             )
         )
 
     return EnergyNetworkModel(
         header=ENMHeader(name="b02-nn", defaults=ENMDefaults(sn_nominal_kv=15.0)),
         buses=buses,
-        sources=[
-            Source(
-                ref_id="src",
-                name="GPZ",
-                bus_ref="sn",
-                model="thevenin",
-                r_ohm=0.1,
-                x_ohm=0.5,
-                catalog_ref="src-gpz-15kv",
-            )
-        ],
+        sources=sources,
         transformers=transformers,
         generators=generators,
         loads=loads,

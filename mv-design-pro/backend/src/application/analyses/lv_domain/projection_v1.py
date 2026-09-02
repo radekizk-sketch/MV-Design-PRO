@@ -49,19 +49,27 @@ from enm.canonical_analysis import CanonicalRun
 from enm.hash import compute_enm_hash, compute_switching_snapshot_hash
 from enm.models import EnergyNetworkModel
 
+from .audit import collect_validation_messages
+from .energization import upstream_source_refs_by_system
 from .graph_view import build_lv_domain_view
 from .upstream_equivalent import Scenario, build_upstream_equivalent_snapshot
 
 LV_DOMAIN_PROJECTION_CONTRACT = "LvDomainProjectionV1"
-#: 2.0.0 (karta B-02): ZMIANA NIEZGODNA WSTECZ kształtu ładunku — `swz_snapshot`
-#: niesie listę `transformers[]` zamiast pojedynczej pary `transformer_ref`/
-#: `nn_bus_ref` z płaską listą `feeders`, a szyny grafu niosą stan energizacji.
-#: Wersja rośnie MAJOR, bo ten sam identyfikator na dwóch niezgodnych kształtach
-#: byłby cichą pułapką dla każdego klienta, który go sprawdza (frontend
+#: 3.0.0 (mandat „profesjonalizacja SLD nN", §5/§6/§10/§14/§32/§34): ZMIANA
+#: NIEZGODNA WSTECZ kształtu ładunku — szyny niosą `energization_state`/
+#: `is_energized`/`island_ref`/`is_board` zamiast `energized`/`der_only`; graf
+#: niesie `devices[]` (rola/klasa urządzenia z topologii), `segments[]` (mapa
+#: energizacji odcinków per zacisk), `sections[]`, `supply_paths[]`,
+#: `measurements[]`, `protection_assignments[]`; wyspy niosą komplet §14–§16;
+#: kotwice SN — `upstream_node_id`/`upstream_system_id`/`upstream_source_ids`/
+#: `equivalent_id`; projekcja — `validation_messages[]`. 2.0.0 (karta B-02)
+#: wprowadziła `swz_snapshot.transformers[]` i energizację szyn. Wersja rośnie
+#: MAJOR, bo ten sam identyfikator na dwóch niezgodnych kształtach byłby cichą
+#: pułapką dla każdego klienta, który go sprawdza (frontend
 #: `projectionApi.ts::isLvDomainProjectionV1` przypina wersję wprost). Nazwa
 #: kontraktu i ścieżka końcówki (`/projection/v1`) bez zmian — to identyfikator
 #: ZASOBU, wersja opisuje ładunek.
-LV_DOMAIN_PROJECTION_VERSION = "2.0.0"
+LV_DOMAIN_PROJECTION_VERSION = "3.0.0"
 
 
 class LvDomainProjectionRunMismatch(ValueError):
@@ -327,19 +335,27 @@ def build_lv_domain_projection_v1(
 
     upstream_equivalents: list[dict[str, Any]] = []
     if graph.get("status") == "OK":
+        domain_bus_refs = {str(b["ref_id"]) for b in graph.get("buses", [])}
+        sources_by_system = upstream_source_refs_by_system(enm, domain_bus_refs)
         for transformer in graph.get("transformers", []):
             transformer_ref = transformer.get("ref_id")
             if not transformer_ref:
                 continue
-            upstream_equivalents.append(
-                build_upstream_equivalent_snapshot(
-                    enm,
-                    case_id,
-                    station_ref,
-                    scenario=scenario,
-                    transformer_ref=str(transformer_ref),
-                )
+            snapshot = build_upstream_equivalent_snapshot(
+                enm,
+                case_id,
+                station_ref,
+                scenario=scenario,
+                transformer_ref=str(transformer_ref),
             )
+            # §10/§11: system SN transformatora (składowa sieci bez szyn domeny)
+            # i źródła tego systemu — ten sam `upstream_system_id` u dwóch TR
+            # oznacza WSPÓLNE zasilanie SN (jedna kotwica w projekcji), różne —
+            # niezależne systemy (osobne kotwice; spięcie po nN = CONFLICT).
+            system_id = transformer.get("upstream_system_id")
+            snapshot["upstream_system_id"] = system_id
+            snapshot["upstream_source_ids"] = list(sources_by_system.get(str(system_id), []))
+            upstream_equivalents.append(snapshot)
 
     domain_refs = _domain_element_refs(graph)
     result_snapshot = _result_snapshot(
@@ -366,6 +382,13 @@ def build_lv_domain_projection_v1(
     else:
         completeness = "COMPLETE"
 
+    # §34/§40: JEDNA lista komunikatów walidacji — wyspy (z grafu), audyt
+    # kształtu topologii i świeżość wyniku. Renderer ją CZYTA (znaczniki przy
+    # elementach + panel), nigdy nie wyprowadza własnych ostrzeżeń z geometrii.
+    validation_messages = collect_validation_messages(
+        graph, result_status=str(result_snapshot.get("status") or "")
+    )
+
     payload: dict[str, Any] = {
         "contract": LV_DOMAIN_PROJECTION_CONTRACT,
         "contract_version": LV_DOMAIN_PROJECTION_VERSION,
@@ -380,6 +403,7 @@ def build_lv_domain_projection_v1(
         "upstream_equivalents": upstream_equivalents,
         "result_snapshot": result_snapshot,
         "swz_snapshot": swz_snapshot,
+        "validation_messages": validation_messages,
     }
     payload["projection_hash"] = _canonical_hash(payload)
     return payload

@@ -154,9 +154,12 @@ class TestLvDomainProjectionV1Endpoint:
         assert resp.status_code == 200
         body = resp.json()
         assert body["contract"] == "LvDomainProjectionV1"
-        # 2.0.0 — kształt `swz_snapshot` zmienił się niezgodnie wstecz (lista
-        # `transformers[]`), więc wersja ładunku rośnie MAJOR (karta B-02 §0.2).
-        assert body["contract_version"] == "2.0.0"
+        # 3.0.0 — stany zacisków/odcinków/wysp, role urządzeń, tożsamość
+        # zasilania SN i komunikaty walidacji (mandat „profesjonalizacja SLD
+        # nN"); 2.0.0 wprowadziło `swz_snapshot.transformers[]`. Każda zmiana
+        # niezgodna wstecz = MAJOR (karta B-02 §0.2).
+        assert body["contract_version"] == "3.0.0"
+        assert isinstance(body["validation_messages"], list)
         assert body["status"] == "OK"
         assert body["graph"]["station_ref"] == "stn"
         assert {row["transformer_ref"] for row in body["upstream_equivalents"]} == {"tr"}
@@ -211,17 +214,23 @@ class TestLvDomainProjectionV1Endpoint:
         body = app_client.get(f"/api/cases/{case_id}/enm/lv-domain/stn/projection/v1").json()
 
         bus = body["graph"]["buses"][0]
-        assert bus["energized"] is True
+        assert bus["energization_state"] == "ENERGIZED"
+        assert bus["is_energized"] is True
         assert bus["supply_refs"] == ["tr"]
-        assert bus["der_only"] is False
-        assert body["graph"]["islands"] == [
-            {
-                "island_ref": "island-1",
-                "bus_refs": ["nn"],
-                "energized": True,
-                "supply_refs": ["tr"],
-                "der_only": False,
-            }
+        assert bus["island_ref"] == "island-1"
+        assert bus["is_board"] is True
+        assert len(body["graph"]["islands"]) == 1
+        wyspa = body["graph"]["islands"][0]
+        assert wyspa["island_ref"] == "island-1"
+        assert wyspa["bus_refs"] == ["nn"]
+        assert wyspa["energization_state"] == "ENERGIZED"
+        assert wyspa["is_islanded"] is False
+        assert wyspa["energizing_source_ids"] == ["tr"]
+        assert wyspa["neutral_reference"]["source_ref"] == "tr"
+        assert wyspa["power_balance"]["state"] == "z_sieci"
+        assert body["graph"]["segments"] == []
+        assert body["graph"]["supply_paths"] == [
+            {"bus_ref": "nn", "source_ref": "tr", "source_bus_ref": "nn", "branch_refs": []}
         ]
 
     def test_two_transformer_station_returns_two_swz_positions(self, app_client) -> None:
