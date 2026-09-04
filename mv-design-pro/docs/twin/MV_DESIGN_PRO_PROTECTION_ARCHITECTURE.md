@@ -128,9 +128,43 @@ Wszystkie analizy są **biegami** (`Run` z rewizją modelu, grupą nastaw, prove
 | 87T (87N) | `ct_refs_secondary` + gap SLD | model + solver 87T + dobór CT obu stron (P1) |
 | 49, 46, 51V, 32, 40 | stringi | funkcje progowe (P1) |
 | 50BF, 25 | zawsze False | `TripMatrix.cbf_upstream_refs`, `SYNCHROCHECK` w logice (P0/P1) |
-| 21/21N | stringi | poza wersją 1 (sieci SN promieniowe rzadko; decyzja PZ-07) |
+| 21/21N | stringi | `PLANNED` — model i UI deklarują status, brak cichego pominięcia (§5a) |
 | 50ARC | `arc_protection_enabled: False` zaszyte | funkcja z czasem łuku do arc flash (P2) |
-| 64 (ziemnozwarciowe stojana/REF) | stringi | poza wersją 1 |
+| 64 (ziemnozwarciowe stojana/REF) | stringi | `PLANNED` — status jawny w rejestrze zdolności (§5a) |
+
+---
+
+## 5a. `ProtectionCapabilityRegistry` (korekta właściciela D-34) — zakres jest deklarowany, nie wyłączany
+
+Rekomendacja „21/21N, 64, 87BB poza zakresem wersji 1" została **zmieniona**: nie wolno wyłączyć funkcji, którą system już posiada i poprawnie liczy, a brak funkcji nie może być milczący. Zakres wyraża się rejestrem stanów, nie listą wykreśleń.
+
+```python
+class ProtectionCapabilityStatus(str, Enum):
+    SUPPORTED = "SUPPORTED"              # model + fizyka + interpretacja + UI + test — pełna ścieżka użytkownika
+    PARTIAL = "PARTIAL"                  # działa w zadeklarowanym podzbiorze; zakres i wykluczenia jawne
+    PLANNED = "PLANNED"                  # zaprojektowane, nieimplementowane; UI pokazuje status, nie udaje wyniku
+    NOT_IMPLEMENTED = "NOT_IMPLEMENTED"  # brak zdolności; żądanie = jawna odmowa z powodem
+
+@dataclass(frozen=True)
+class ProtectionCapability:
+    ansi_code: str                       # "67N", "87T", "21", "79", "50BF"...
+    status: ProtectionCapabilityStatus
+    applicability: tuple[str, ...]       # przedziały napięć, typy sieci, wymagany model fazowy, wymagane pomiary
+    requires: tuple[str, ...]            # dane modelu bez których funkcja jest NOT_READY (np. CT obu stron dla 87T)
+    physics_ref: str | None              # moduł solvera; None dla PLANNED / NOT_IMPLEMENTED
+    interpretation_ref: str | None
+    ui_ref: str | None
+    test_refs: tuple[str, ...]           # pusty zbiór dla SUPPORTED = naruszenie guardu
+    limitations_pl: tuple[str, ...]      # dla PARTIAL — co dokładnie nie jest liczone
+```
+
+Reguły wiążące:
+1. **Zero regresji funkcjonalnej.** Funkcja licząca dziś poprawnie nie może po migracji dostać statusu niższego niż `PARTIAL` z wypisanym zakresem; obniżenie statusu wymaga decyzji właściciela z uzasadnieniem.
+2. **Status jest widoczny w UI przed użyciem**, nie po nieudanym uruchomieniu; `PLANNED` i `NOT_IMPLEMENTED` nigdy nie renderują pola nastaw ani wyniku.
+3. **`SUPPORTED` bez testu = naruszenie guardu.** `protection_capability_guard.py` sprawdza: każdy `SUPPORTED` ma niepusty `test_refs`, `physics_ref`, `ui_ref`; każdy `PARTIAL` ma niepuste `limitations_pl`; każda funkcja obecna w UI ma wpis.
+4. **Odmowa zamiast przybliżenia.** Żądanie funkcji `PLANNED` / `NOT_IMPLEMENTED` = jawny błąd z powodem i statusem, nigdy wynik z podmienionej funkcji ani zero.
+5. **Rejestr jest jednym źródłem** dla: gotowości (`ReadinessService`), doboru nastaw, koordynacji, raportu i inspektora — zakaz drugiej listy funkcji w UI.
+6. **Rejestr jest żywy** — wejście funkcji z `PLANNED` do `SUPPORTED` odbywa się przez zmianę wpisu razem z testem, nie przez usunięcie ograniczenia z UI.
 
 ---
 
@@ -205,7 +239,7 @@ Klasy atrybutów (graf zależności, FAZA B §22): `PROTECTION_SETTINGS`, `PROTE
 | PZ-04 | Granulacja trip matrix: stopień→aparat; CBF do wszystkich aparatów zasilających szynę | stopień→aparat; CBF: aparaty zasilające szynę (typowe wymaganie OSD dla GPZ) |
 | PZ-05 | Dane normowe (Tab. 41.1, t-I gG) i tabele selektywności producentów — zakup/pozyskanie | zakup normy + tabele producentów; do czasu „nierozstrzygalne" |
 | PZ-06 | Kanoniczny katalog IED: jeden, z realnymi kartami; natychmiastowe usunięcie nazw „ABB REX-100…" z UI | tak, natychmiast (fabrykacja pod marką) |
-| PZ-07 | Zakres wersji 1: 21/21N, 64, 87BB poza zakresem | tak |
+| PZ-07 | Zakres wersji 1 funkcji ANSI | **ROZSTRZYGNIĘTE przez właściciela (D-34): zakres deklarowany, nie wyłączany.** `ProtectionCapabilityRegistry` ze stanami SUPPORTED / PARTIAL / PLANNED / NOT_IMPLEMENTED (§5a); zero regresji funkcjonalnej; 21/21N, 64, 87BB startują jako `PLANNED` z jawnym statusem w UI |
 | PZ-08 | SWZ na kanwie nN per odcinek (po trace) zamiast per odpływ | per odcinek |
 | PZ-09 | Jednostka zakresów nastaw w szablonach (pierwotne/wtórne) — ustalić i oznaczyć | zakresy z katalogu IED w jednostkach wtórnych + podstawa jawna |
 | PZ-10 | Pola runtime read-modelu (stan łączności, komendy, pomiary) — tylko w profilu eksploatacyjnym (warstwa OPERATIONAL/MEASUREMENT), nie w modelu projektowym | tak |

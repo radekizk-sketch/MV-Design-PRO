@@ -315,6 +315,30 @@ Zasady: OPEN/CLOSED nie modyfikuje łączności (I-03); `TopologyView` liczy si�
 
 ---
 
+## 9a. Macierz zdolności topologicznych (wymóg właściciela §C.3)
+
+„Obsługujemy sieci SN" jest zdaniem bez treści dopóki nie wiadomo, które układy pracy są policzalne, a które nie. Macierz jest **kontraktem zdolności**: każda pozycja ma status, warunek stosowalności, test na sieci z rejestru wzorcowego i zachowanie przy braku zdolności (jawna odmowa, nigdy wynik przybliżony).
+
+| # | Zdolność topologiczna | Co musi umieć twin | Dotyka |
+|---|---|---|---|
+| T1 | `RADIAL` — sieć promieniowa | jedno źródło, jeden tor zasilania per odbiór | `TopologyService`, LF, SC |
+| T2 | `RING` — pierścień zamknięty | pętla zamknięta, rozpływ dwustronny, SC z dwóch stron | LF, SC, koordynacja |
+| T3 | `NOP` — pierścień otwarty w punkcie podziału | punkt podziału jako stan łącznika, nie jako brak elementu | `EffectiveState`, scenariusze |
+| T4 | `BUS_COUPLER` — sprzęgło szyn | dwie sekcje jako osobne TN przy sprzęgle otwartym, jedno TN przy zamkniętym | union-find CN→TN |
+| T5 | `SHARED_UPSTREAM` — wspólne zasilanie górne | wspólna impedancja zastępcza dla wielu odejść; korelacja zwarć | assembler, SC |
+| T6 | `INDEPENDENT_SOURCES` — źródła niezależne | wiele źródeł bez galwanicznego połączenia; osobne wyspy | `Island`, slack per wyspa |
+| T7 | `PARALLEL_OPERATION` — praca równoległa | dwa transformatory/linie równolegle, rozpływ prądów wyrównawczych, grupy połączeń | LF, SC, cieplne |
+| T8 | `BACKFEED` — zasilanie zwrotne | odwrócenie kierunku mocy przy generacji; kierunkowość zabezpieczeń | LF, 67/67N |
+| T9 | `ISLAND` — praca wyspowa | wyspa z odniesieniem grid-forming lub bez; bilans mocy; częstotliwość | `Island`, RMS, LoM |
+| T10 | `MULTI_TR` — wiele transformatorów w stacji | rozdział obciążenia, zaczepy, sekcje nN | LF, nN |
+| T11 | `MULTI_SECTION` — wiele sekcji szyn | sekcjonowanie SN i nN, przełączenia | topologia, N-1 |
+| T12 | `DEEP_LV` — głęboka nN | rozgałęziona sieć nN za stacją, kilka poziomów rozdzielnic | projekcja nN, IEC 60364 |
+| T13 | `PHASE_DOMAIN` — domena fazowa | ABCN, asymetria, przewód N i PE, VUF | solver 4-przewodowy |
+
+Reguły: (1) status zdolności (`SUPPORTED` / `PARTIAL` / `NOT_IMPLEMENTED`) deklaruje **rejestr zdolności solverów**, nie dokument; (2) każda pozycja ma co najmniej jedną sieć w rejestrze wzorcowym pokrywającą ją jawnie; (3) kombinacja zdolności (np. T2 × T8 × T13 — pierścień z zasilaniem zwrotnym w domenie fazowej) jest osobnym przypadkiem testowym, zgodnie z regułą KLASA, NIE INSTANCJA (test jako iloczyn cech); (4) analiza żądana na topologii poza zdolnością solvera kończy się jawną odmową z powodem i wskazaniem, której zdolności brakuje.
+
+---
+
 ## 10. Effective State Resolution (mandat §15) — jedna funkcja, deterministyczna
 
 ```
@@ -413,6 +437,35 @@ Wewnątrz domeny: jednostki kanoniczne SI ze skalą zapisaną w nazwie pola (`_k
 
 ---
 
+### 15.5 Rejestr źródeł normatywnych i danych (wymóg właściciela §C.4)
+
+Każda liczba wchodząca do obliczeń ma **klasę źródła** i **rewizję źródła**. Bez tego nie da się odpowiedzieć na pytanie „skąd to się wzięło", a to jest warunek dowodowości całego produktu.
+
+```python
+class SourceClass(str, Enum):
+    STANDARD = "STANDARD"                # norma: IEC 60909, IEC 60364, IEC 60287, IEC 60255, PN-EN 50160...
+    OSD_POLICY = "OSD_POLICY"            # instrukcja ruchu i eksploatacji sieci, wytyczne operatora
+    MANUFACTURER = "MANUFACTURER"        # dane producenta z dokumentu (karta katalogowa, protokół prób)
+    CATALOG = "CATALOG"                  # pozycja katalogu wewnętrznego z rewizją
+    USER_ASSUMPTION = "USER_ASSUMPTION"  # założenie projektanta z uzasadnieniem
+    MEASUREMENT = "MEASUREMENT"          # pomiar z datą, przyrządem i niepewnością
+
+@dataclass(frozen=True)
+class NormativeSource:
+    source_id: str
+    source_class: SourceClass
+    designation: str            # "IEC 60909-0:2016", "IRiESD OSD X wyd. 5", "protokol prob TR nr ..."
+    revision: str               # wydanie / data / numer rewizji katalogu
+    clause: str | None          # punkt normy, tabela, wzór
+    valid_from: date | None
+    valid_to: date | None
+    document_ref: str | None    # odsyłacz do dokumentu w archiwum projektu
+```
+
+Reguły wiążące: (1) **każda stała normatywna** użyta przez assembler lub solver (c_max/c_min, κ, współczynniki jednoczesności, dopuszczalne spadki, temperatury graniczne, współczynniki poprawkowe) pochodzi z rejestru — zakaz literału w kodzie fizyki; (2) zmiana wydania normy jest zmianą rewizji źródła i **unieważnia wyniki** przez graf zależności, tak samo jak zmiana modelu; (3) `ParameterProvenance` wskazuje `source_id` — raport odtwarza pełny łańcuch: wartość → parametr → źródło → wydanie → punkt; (4) `USER_ASSUMPTION` bez uzasadnienia jest niedopuszczalne (wiąże się z `AssumptionsRegister`, §15.4); (5) `MANUFACTURER` bez wskazania dokumentu jest fabrykacją i jest blokowane guardem — to bezpośrednia podstawa kasacji fikcyjnych nazw katalogowych w M0-4; (6) dwa źródła dla tej samej wielkości = jawny konflikt do rozstrzygnięcia, nigdy ciche pierwszeństwo.
+
+---
+
 ## 16. Uziemienia i układy sieci (mandat §25) — encje, nie parametry „obok"
 
 ```python
@@ -473,6 +526,23 @@ Rozdział fizyka/polityka (§52): `Constraint.source` rozróżnia `PHYSICS(norm)
 - Undo/redo = odwrotność komendy w dzienniku (każda komenda ma `inverse()` albo jest odtwarzana z poprzedniej rewizji) — nie patchowanie stanu React (dziś `ui/history` — audyt A2).
 - API: `POST /twin/{project}/commands` (jedno wejście zapisu, jak dziś `/enm/domain-ops`), `GET /twin/{project}/revisions/{rev}/…` (odczyty projekcji), `POST /runs` (orkiestrator), `GET /results/…`, `GET /projections/…`, `GET /documents/…`. Kontrakty generowane z OpenAPI do TS (koniec ręcznych mirrorów `types/enm.ts` — 1642 linie).
 - Agent (§132): operuje wyłącznie komendami i tworzy `VariantBranch(status=PROPOSED)`; nie może zatwierdzić (I-10).
+
+---
+
+## 21a. Kontrakt współbieżności (wymóg właściciela §C.5)
+
+Model współdzielony bez kontraktu współbieżności traci dane po cichu. Kontrakt obowiązuje **od pierwszego dnia**, także we wdrożeniu local-first — architektura jest server-capable, więc zapis nigdy nie zakłada jednego pisarza.
+
+Każda komenda domenowa niesie trzy pola obowiązkowe:
+
+```python
+class DomainCommandEnvelope(BaseModel):
+    command_id: UUID          # idempotencja: powtórzenie tego samego command_id nie tworzy drugiego skutku
+    actor: ActorRef           # kto: użytkownik, agent, import, migracja — zapisywane w dzienniku rewizji
+    expected_revision: int    # na jakiej rewizji pracował autor komendy
+```
+
+Reguły: (1) `expected_revision` niezgodna z bieżącą rewizją = **`409 CONFLICT`** z opisem rozbieżności (co się zmieniło, kto zmienił, kiedy) i propozycją rebase komendy; (2) **zakaz silent last-write-wins** — żadna ścieżka zapisu nie nadpisuje nowszej rewizji bez decyzji; (3) idempotencja: ten sam `command_id` zwraca ten sam skutek i tę samą rewizję, bez drugiego wpisu w dzienniku; (4) `actor` jest wymagany także dla operacji automatycznych (agent, import XLSX, migracja) — dziennik bez aktora jest niedopuszczalny; (5) **transakcyjność**: komenda zapisuje model i dziennik w jednej transakcji — awaria dziennika wycofuje zmianę modelu (predykaty parami: to samo źródło prawdy dla wejścia i wyjścia transakcji, wraz z testem awarii zapisu dziennika); (6) **dual-write w stranglerze** (stara i nowa ścieżka zapisu równolegle) jest dopuszczalny wyłącznie z **guardem równoważności** po każdym zapisie i z **krótkim, zadeklarowanym terminem życia** — po terminie stara ścieżka znika zgodnie z procedurą kasacji; (7) kontrakt jest przypięty testem współbieżnym (dwie komendy na tej samej rewizji → dokładnie jedna sukces, jedna 409) oraz testem iloczynu cech (ta sama komenda × awaria dziennika, operacja A × operacja B równolegle).
 
 ---
 
@@ -543,6 +613,21 @@ Każdy z poniższych dostaje test klasy (iloczyn cech: typ urządzenia × stan �
 10. Wstawienie stacji na odcinku: powstają urządzenia, terminale, węzły, poziomy napięć, pola, TR; odcinek podzielony z zachowaniem łączności i tożsamości obu nowych odcinków (deterministyczne `ref_id`); solvery widzą ją natychmiast; inwalidacja obszarowa (§152).
 11. Te same `asset_id` w: model, scenariusz, wynik, projekcja SN, projekcja nN, TCC, dokument, archiwum ZIP, eksport CGMES (§149).
 12. Model niekompletny (terminal wolny, brak długości): walidacja ERROR, analizy `NOT_READY(missing)`, brak wartości domyślnych w migawce (§138, §91).
+
+---
+
+## 26a. Reference validation suite (wymóg właściciela §C.2) — sieć wzorcowa to nie test samego siebie
+
+Dzisiejsze „golden network" jest testem regresji: fixture powstał z tego samego kodu, który sprawdza. Wykrywa zmianę, nie wykrywa błędu od początku obecnego. Twin wymaga rozdzielenia dwóch pojęć:
+
+| Pojęcie | Co dowodzi | Czego NIE dowodzi |
+|---|---|---|
+| **Regression fixture** | że wynik się nie zmienił | że wynik jest poprawny |
+| **Reference validation case** | że wynik zgadza się z niezależną wyrocznią | że nie zmieni się w przyszłości |
+
+Każdy przypadek walidacyjny deklaruje wyrocznię jednej z czterech klas: `ANALYTICAL` (rozwiązanie zamknięte policzalne ręcznie — dzielnik impedancji, zwarcie na końcu pojedynczej linii, spadek napięcia na obciążeniu skupionym), `NORMATIVE` (przykład obliczeniowy z normy wraz z punktem i wydaniem — rejestr §15.5), `PUBLISHED_BENCHMARK` (IEEE 13/34/123, CIGRE MV, z odsyłaczem do publikacji i danych wejściowych), `INDEPENDENTLY_VERIFIED` (wynik potwierdzony niezależnym narzędziem, z zapisem narzędzia, wersji i danych wejściowych).
+
+Reguły: (1) **każda rodzina solverów** (rozpływ zgodny, rozpływ fazowy, zwarcia, pętla zwarciowa nN, cieplne, zabezpieczenia, dynamika) ma co najmniej jeden przypadek z wyrocznią inną niż regresja; (2) tolerancja jest deklarowana **per przypadek** wraz z uzasadnieniem (co jest szumem numerycznym, a co różnicą modelu); (3) przypadek walidacyjny jest wykonywany w CI jak każdy inny test i jego niepowodzenie jest defektem fizyki, nie „zmianą fixture" — zakaz aktualizacji oczekiwanej wartości bez decyzji i uzasadnienia; (4) brak wyroczni dla rodziny solverów jest **luką pokrycia widoczną w dokumencie generowanym z rejestru**, nie ciszą; (5) żadna decyzja architektoniczna ani numeryczna nie może być optymalizowana pod aktualny fixture (zasada nadrzędna właściciela) — dlatego wyrocznia jest zewnętrzna wobec kodu.
 
 ---
 

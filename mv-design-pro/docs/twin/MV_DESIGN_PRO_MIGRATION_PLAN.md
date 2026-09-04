@@ -16,6 +16,9 @@
 5. **Zero fabrykacji w trakcie migracji:** wycinek nie może wprowadzić `no_module`, stubów ani domyślnych wartości zamiast danych; brak danych = jawny brak z kodem gotowości.
 6. **Jeden kanon dokumentów:** w trakcie migracji nie powstają nowe dokumenty „BINDING" poza `docs/twin/` i ADR; karty/meldunki poza `docs/` (A10-14).
 7. **Każdy wycinek ma właściciela merytorycznego, bramkę jakości (§5) i kryterium cutover z pomiarem**; scalanie przez Fable po niezależnej weryfikacji (dyrektywa 9).
+8. **Procedura kasacji (korekta właściciela D-03/D-10/D-16).** Żadna kasacja nie odbywa się na podstawie przypuszczenia ani celu ilościowego. Obowiązuje siedem kroków, każdy z dowodem w karcie wycinka: **(1) inventory** — pełny spis obiektów, tabel, pól, plików objętych kasacją; **(2) consumer search** — wyszukanie wszystkich konsumentów (kod, testy, migracje, eksporty, dokumenty, fixture, frontend) z wynikiem grepowym w karcie; **(3) data export** — eksport danych, których nie ma w nowej ścieżce, do formatu odczytywalnego, z odłożeniem w archiwum; **(4) parity** — dowód równoważności starej i nowej ścieżki na rejestrze sieci wzorcowych (identyczne wyniki lub jawnie uzasadniona różnica); **(5) cutover** — przełączenie konsumentów na nową ścieżkę; **(6) post-cutover observation** — okno obserwacji z aktywnym starym kodem i guardem wykrywającym użycie; **(7) removal** — dopiero teraz usunięcie kodu i danych. Skrócenie procedury wymaga decyzji właściciela.
+9. **Archive-first dla dokumentów (korekta właściciela D-39).** Kolejność jest odwrotna niż w pierwotnej rekomendacji: najpierw **ARCHIVE**, potem **SUPERSESSION MANIFEST** (co zastępuje co, w którym miejscu żyje treść), potem **REFERENCE / LINK AUDIT** (żaden żywy dokument, guard ani test nie wskazuje na zarchiwizowany plik). **DELETE** wykonuje się dopiero po dowodzie, że dokument nie zawiera jedynej istniejącej informacji kanonicznej. Dokument bez konsumenta, ale z unikalną treścią, jest archiwizowany, nie kasowany.
+10. **Miara migracji nie jest miarą ilościową (zasada nadrzędna właściciela).** Liczba usuniętych LOC i liczba dokumentów **nie są celem ani kryterium wyjścia** — są skutkiem ubocznym, raportowanym wyłącznie informacyjnie. Kryteria wyjścia mierzą: jedną prawdę (liczba równoległych implementacji tej samej rzeczy = 1), pełną fizykę, traceability, brak pracy ręcznej między modułami i zdolność projektowania dowolnych realnych sieci SN+nN. Żadna decyzja architektoniczna nie może być optymalizowana pod aktualny fixture.
 
 ---
 
@@ -23,14 +26,14 @@
 
 | Faza | Cel | Kryterium wyjścia (mierzalne) |
 |---|---|---|
-| **M0 Stabilizacja i pomiar** | wiarygodne CI, hash, rejestry, benchmark, kasacja fabrykacji widocznych dla użytkownika | 8/8 workflowów zielone na `main` + required checks; 18/18 scenariuszy nN identyczny hash CI vs lokalnie; 0 przekroczonych zapadek; rejestr sieci G01–G17 w kodzie; `tests/invariants/` po rejestrze; snapshot OpenAPI; benchmark S/M/L z budżetami; fantom nastaw i nazwy „ACME/REX" usunięte; `no_module` → `NIE_DO_USTALENIA` |
+| **M0 Stabilizacja i pomiar** (JEDYNA FAZA AUTORYZOWANA — werdykt właściciela 2026-09-02; M1–M7 zablokowane do odbioru M0) | wiarygodne CI, hash, rejestry, benchmark, kasacja fabrykacji widocznych dla użytkownika | dziesięć pozycji odbioru: (1) 8/8 workflowów CI zielone; (2) required checks skonfigurowane tam, gdzie platforma pozwala; (3) hash kanoniczny deterministyczny cross-platform — 18/18 scenariuszy nN identycznie w CI i lokalnie; (4) wszystkie przekroczone zapadki usunięte u źródła (0 przekroczeń, 0 nowych wykluczeń); (5) fabrykacje użytkowe usunięte: fikcyjne nastawy, fikcyjne katalogi i nazwy producentów, silent fallback; (6) golden network registry jako jedno źródło przypadków integracyjnych; (7) `tests/invariants/` parametryzowane po rejestrze; (8) snapshot OpenAPI z testem; (9) baseline wydajności S/M/L wg macierzy budżetów (10 pozycji, plan wydajności §1a); (10) `M0_FINAL_REPORT.md` z BEFORE/AFTER. Po M0: **STOP** — bez automatycznego przejścia do M1 |
 | **M1 Fundament persystencji i biegów** | jeden magazyn modelu z rewizjami, jeden rejestr biegów, zero magazynów in-memory, Postgres/Alembic | `GET /model/revisions`, checkout rewizji odtwarza hash; 1 tabela biegów; restart procesu nie gubi scenariuszy/serii/overrides/konfiguracji; import XLSX widoczny dla obliczeń |
 | **M2 Rdzeń twin (model)** | terminale/ConnectivityNode, `TopologyService`, `EffectiveState`, scenariusze-delty, graf zależności, rewizja katalogu, model fazowy nN, typowane wyposażenie pól, `GridConnectionPoint`, dekompozycja DER | 20 implementacji topologii → 1; 6 modeli scenariusza → 1; inwalidacja selektywna wg macierzy; `meta.field_specs` = 0 czytelników; 0 wartości `??`-domyślnych stanu |
 | **M3 Symulacja** | `CanonicalNetworkSnapshot` + assembler + orkiestrator + jądro rzadkie + solver nN 4-przewodowy; fizyka wyłącznie w solverach; ślad v2 | 10 builderów PF/7 ścieżek SC → 1 assembler; `backend_no_physics_guard` zielony z pustą allowlistą; budżety S/M spełnione; N-1 M < 10 s |
 | **M4 Decyzje inżynierskie** | zabezpieczenia (IED/grupy/trip matrix, jedna fizyka, TCC z modelu, trace), `ConstraintEngine`, moduły doboru, `WorkflowEngine`/NBA/Command Center, rejestr dokumentów ze świeżością | test §181 przechodzi 14/14 na sieci rejestru; 8/8 klas doboru z kandydatami; 100 % FAIL z remedium; 14 typów dokumentów §124 z gotowością i OUTDATED |
-| **M5 Prezentacja** | scena semantyczna z backendu (SN i nN), jedna geometria per LOD, pakiet symboli R3 (B-02), polityki CAD/SCADA/ENGINEERING, arkusz, DXF z backendu, kasacja martwego SLD | projekcja SN w kliencie = 0 LOC; jeden rejestr symboli; werdykt właściciela B-02 ≥ 9/10; −54 tys. LOC SLD |
-| **M6 Powłoka i workflow UI** | jedna nawigacja, jeden inspektor, akcje obiektowe, wejście nN, profile ról, usunięcie martwego kodu i pliku danych | −80 tys. LOC + −134 tys. LOC danych; `dead_click_guard` obejmuje ui2 i paletę; 0 ślepych zaułków |
-| **M7 Dokumentacja i higiena** | 755 → ~100 dokumentów żywych, STAN_REPO/drzewa generowane z pomiarów, jeden AGENTS.md, ADR renumeracja | guard „dokument żywy cytuje istniejące ścieżki" zielony; `CLAUDE.md` bez liczb |
+| **M5 Prezentacja** | scena semantyczna z backendu (SN i nN), jedna geometria per LOD, pakiet symboli R3 (B-02), polityki CAD/SCADA/ENGINEERING, arkusz, DXF z backendu, kasacja martwego SLD | projekcja SN w kliencie = 0 LOC; jeden rejestr symboli; werdykt właściciela B-02 na rzeczywistych arkuszach CAD/SCADA ≥ 9/10; jedna ścieżka renderu per LOD (0 równoległych implementacji); redukcja kodu raportowana informacyjnie, nie jako kryterium |
+| **M6 Powłoka i workflow UI** | jedna nawigacja, jeden inspektor, akcje obiektowe, wejście nN, profile ról, usunięcie martwego kodu i pliku danych | jedna nawigacja i jeden inspektor (0 równoległych powłok); `dead_click_guard` obejmuje ui2 i paletę; 0 ślepych zaułków; 0 plików danych bez konsumenta; redukcja kodu raportowana informacyjnie, nie jako kryterium |
+| **M7 Dokumentacja i higiena** | jedna hierarchia dokumentów żywych wg procedury archive-first (§0 pkt 9), STAN_REPO/drzewa generowane z pomiarów, jeden AGENTS.md, ADR renumeracja | manifest supersesji kompletny (każdy zarchiwizowany dokument ma następcę lub uzasadnienie unikalności); audyt odsyłaczy zielony; guard „dokument żywy cytuje istniejące ścieżki" zielony; `CLAUDE.md` bez liczb. **Liczba dokumentów nie jest kryterium wyjścia** (D-39) |
 
 Fazy M2–M4 są współbieżne w wycinkach pionowych (§3), nie sekwencyjne „warstwa po warstwie" — każdy wycinek przecina wszystkie warstwy.
 
@@ -119,6 +122,10 @@ Kroki: warunki OSD → `GridConnectionPoint` na terminalu → `PowerElectronicsC
 
 Rejestr w kodzie (`tests/golden/registry.py`: id, builder, hash ENM, pokrycie) generuje jeden dokument; `reference_networks_guard` czyta rejestr; test klasy: każda sieć → walidator, PF, SC, projekcje SN/nN, eksport JSON dla frontendu.
 
+**Rozszerzenie wg werdyktu właściciela (D-40 + §D).** Rejestr jest **żywym katalogiem KLAS przypadków**, nie zamkniętą listą siedemnastu fixture. Wpis rejestru deklaruje klasę problemu, którą pokrywa; nowa klasa problemu napotkana w projekcie (rzeczywistym lub referencyjnym) dopisuje wpis, zanim powstanie kod ją obsługujący. Klasy obowiązkowe: **topologia** (promieniowa, pierścień, NOP, sprzęgło szyn, wspólne zasilanie górne, źródła niezależne, praca równoległa, zasilanie zwrotne, wyspa, wiele TR, wiele sekcji, głęboka nN, domena fazowa); **punkt neutralny** (izolowany, kompensowany, uziemiony przez rezystor, sztywno uziemiony); **zwarcia** (3F, 2F, 2FZ, 1F, min/max, z impedancją przejścia); **źródła** (sieć zasilająca, generator synchroniczny, falownik, magazyn, źródło zastępcze); **DER** (PV, BESS, wiatr, hybryda, typy A–D wg RfG); **zabezpieczenia** (nadprądowe, kierunkowe, ziemnozwarciowe w sieci kompensowanej, różnicowe, SPZ, LoM, CBF); **nN** (TN-C, TN-S, TN-C-S, TT, IT; obwody jedno- i trójfazowe; asymetria; przewód N i PE); **szeregi czasowe** (profil dobowy, QSTS, sezon); **skala** (S, M, L). Klasa bez sieci w rejestrze = luka pokrycia widoczna w dokumencie generowanym, nie milcząca.
+
+**REFERENCE VALIDATION SUITE (wymóg właściciela §C.2).** Sieć wzorcowa nie jest testem samego siebie. Każdy wpis rejestru deklaruje **wyrocznię** (`oracle`) jednej z czterech klas: `ANALYTICAL` (rozwiązanie zamknięte, np. dzielnik impedancji, zwarcie na końcu jednej linii), `NORMATIVE` (przykład obliczeniowy z normy, np. IEC 60909 przykłady, IEC 60287), `PUBLISHED_BENCHMARK` (IEEE 13/34/123, CIGRE MV) lub `INDEPENDENTLY_VERIFIED` (wynik potwierdzony niezależnym narzędziem, z zapisem wersji narzędzia i danych wejściowych). Wpis bez wyroczni ma status `REGRESSION_ONLY` i **nie może być używany jako dowód poprawności fizyki** — wolno go używać wyłącznie do wykrywania zmian. Guard: każda rodzina solverów ma co najmniej jedną sieć z wyrocznią inną niż `REGRESSION_ONLY`.
+
 ---
 
 ## 5. Bramki jakości (§166) — ≥ 9/10 per obszar, każda pozycja z dowodem
@@ -169,13 +176,32 @@ Dokumenty: 191 do kasacji, 464 do archiwum (A10 §2; zgoda właściciela Q3).
 
 ---
 
+## 7a. Bramki właścicielskie B-01 i B-02 (pozostają osobne — werdykt 2026-09-02)
+
+Zgoda na architekturę docelową **nie jest** zgodą na B-01 ani B-02. Obie bramki są otwierane osobno, każda z własnym pakietem dowodowym.
+
+**B-01 — zmiana rdzenia FROZEN (IEC 60909, Newton-Raphson).** Warunki, wszystkie łącznie (korekta D-09):
+1. Rozszerzenie jest **addytywne** — istniejące wejścia dają bit-identyczne wyniki jak przed zmianą (test tożsamości starej fizyki na pełnym rejestrze sieci wzorcowych).
+2. Istnieje **niezależny przypadek referencyjny** dla nowej fizyki z wyrocznią klasy `ANALYTICAL`, `NORMATIVE` lub `PUBLISHED_BENCHMARK` (§4) — nie fixture wygenerowany z tego samego kodu.
+3. Zadeklarowana **tolerancja numeryczna** z uzasadnieniem (skąd wynika, co jest szumem BLAS, a co różnicą modelu).
+4. **Porównanie wydajności** przed/po na pozycjach B3/B4 macierzy budżetów (plan wydajności §1a).
+5. Redukcja do dotychczasowej ścieżki (reduce-to-NR) możliwa i przetestowana.
+6. ADR-021 przechodzi z PROPOSED do ACCEPTED **decyzją właściciela**, nie decyzją wykonawcy.
+
+**B-02 — werdykt wizualny SLD.** Oceniany przez właściciela (korekta D-14):
+1. Na **rzeczywistych arkuszach CAD/SCADA SN+nN** — schemat stacji, ciąg liniowy, portal nN, arkusz w formacie docelowym — nie na snapshotach SVG ani na testach kontraktowych.
+2. Oba motywy, oba profile prezentacji (CAD, SCADA, ENGINEERING) i co najmniej trzy klasy sieci z rejestru (G03 pierścień, G05 SN+nN+zabezpieczenia, G07 skala).
+3. Agent nie wystawia werdyktu wizualnego i nie zalicza tej pozycji bramki jakości (zakaz samocertyfikacji, ZASADA NR 2).
+
+---
+
 ## 8. Decyzje wymagające właściciela (kolejność i zakres)
 
 | ID | Decyzja | Rekomendacja |
 |---|---|---|
 | F-D1 | Zgoda na kolejność M0 → M1 → wycinki pionowe (§3) równolegle z M2–M5 → M6 → M7 | tak |
 | F-D2 | Zgoda na kasację tabel legacy bez migracji danych (dyrektywa „bez kompatybilności wstecznej") po potwierdzeniu braku projektów użytkowników | tak, po eksporcie ZIP |
-| F-D3 | Zgoda na 191 kasacji i 464 archiwizacji dokumentów (A10 §2) | tak; jedna hierarchia |
+| F-D3 | Los 655 dokumentów (A10 §2) | **ROZSTRZYGNIĘTE przez właściciela (D-39): kolejność zmieniona na archive-first.** Najpierw ARCHIVE + SUPERSESSION MANIFEST + REFERENCE/LINK AUDIT; DELETE dopiero po dowodzie, że dokument nie zawiera jedynej informacji kanonicznej. Liczba plików nie jest KPI (§0 pkt 9–10) |
 | F-D4 | Lista sieci G01–G17 (§4) i sieć L (G00) | przyjąć propozycję |
 | F-D5 | Bramki §5 jako warunek scalenia każdego wycinka; werdykt B-02 jako pozycja obowiązkowa obszaru SLD | tak |
 | F-D6 | Zakres wersji 1 twin: co poza (21/64/87BB; 61850/SCL; GIS jako pola addytywne bez trybu geo; niezawodność bez danych) | zgodnie z decyzjami w dokumentach obszarowych |

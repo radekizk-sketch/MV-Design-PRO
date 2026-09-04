@@ -1,6 +1,6 @@
 # MV-DESIGN-PRO — PAKIET DO PRZEGLĄDU WŁAŚCICIELA (mandat §177–§180)
 
-**Status:** PROPOZYCJA — program zatrzymany na §180 STOP. **Żadna migracja, refaktoryzacja ani naprawa nie została rozpoczęta** (audyt READ-ONLY; jedyne zmiany w repo to dokumenty `docs/twin/`, ADR-012…ADR-028 ze statusem PROPOSED, wpis w `docs/INDEX.md` oraz jedna minimalna korekta dokumentu `CLAUDE.md` — dopisanie istniejącego modułu `ui2/shared`, przyczyny czerwieni `claude_md_struktura_guard` w CI).
+**Status:** ARCHITEKTURA DOCELOWA ZATWIERDZONA WARUNKOWO (werdykt właściciela 2026-09-02, §4a) · AUTORYZACJA WYŁĄCZNIE M0 · M1–M7 ZABLOKOWANE. Pierwotnie: PROPOZYCJA — program zatrzymany na §180 STOP. **Żadna migracja, refaktoryzacja ani naprawa nie została rozpoczęta** (audyt READ-ONLY; jedyne zmiany w repo to dokumenty `docs/twin/`, ADR-012…ADR-028 ze statusem PROPOSED, wpis w `docs/INDEX.md` oraz jedna minimalna korekta dokumentu `CLAUDE.md` — dopisanie istniejącego modułu `ui2/shared`, przyczyny czerwieni `claude_md_struktura_guard` w CI).
 **Data:** 2026-09-02 · **Gałąź:** `claude/mv-design-pro-twin-audit-u4lhy0` · **HEAD audytu:** `a1ab2959` (= `origin/main` w chwili pomiaru)
 **Indeks programu:** `INDEX_TWIN.md`.
 
@@ -177,6 +177,46 @@ Format: **wymaganie** · powód (dowód) · priorytet · wpływ na architekturę
 
 ---
 
+## 4a. Werdykt właściciela (2026-09-02) — korekty decyzji i wymagania dodatkowe
+
+**Werdykt:** ARCHITEKTURA DOCELOWA: ZATWIERDZONA WARUNKOWO · M0: ZGODA NA START · M1–M7: STOP do odbioru M0 i naniesienia korekt · B-01 i B-02 pozostają osobnymi bramkami właścicielskimi. Zatwierdzony kierunek: ONE TWIN · ONE ASSET IDENTITY · TERMINAL-CENTRIC CONNECTIVITY · DERIVED TOPOLOGY · SCENARIO DELTAS · EFFECTIVE STATE RESOLUTION · CANONICAL NETWORK SNAPSHOT · SOLVER ADAPTERS · CANONICAL RESULT + PROVENANCE · CAD / SCADA / ENGINEERING AS PRESENTATION POLICIES · STRANGLER MIGRATION. Nadrzędne zasady dla wszystkich decyzji: jedna prawda, brak regresji, brak silent fallback, pełny provenance; żadna decyzja architektoniczna nie może być optymalizowana wyłącznie pod aktualny fixture. Cel migracji NIE jest liczbą LOC ani liczbą dokumentów — kryterium to jedna prawda, pełna fizyka, traceability, brak pracy ręcznej między modułami i zdolność do projektowania dowolnych realnych sieci SN+nN.
+
+| Decyzja | Werdykt | Korekta właściciela | Gdzie naniesiono |
+|---|---|---|---|
+| D-01 terminalowy TwinModel | TAK | docelowy source of truth, nie „wieczny most" | architektura §5–§6; ADR-012/013 |
+| D-02 `GridConnectionPoint` | TAK | obiekt umowny wskazujący terminal, nie drugi węzeł fizyczny | ADR-027 |
+| D-03 kasacja legacy ORM | WARUNKOWO | procedura kasacji: inventory → consumer search → data export → parity → cutover → post-cutover observation → removal; zero kasacji na podstawie przypuszczenia lub celu LOC | plan migracji §0 pkt 8 |
+| D-04 layout | TAK | semantyka w backendzie, geometria deterministyczna; ręczny layout jako presentation state | ADR-023 |
+| D-07 Redis/Celery → pula procesów | ZMIENIĆ | abstrakcja `ExecutionBackend`: `LocalProcessPoolExecutionBackend` teraz, `WorkerQueueExecutionBackend` później bez zmiany `SolverOrchestrator` i kontraktów biegów; nieużywany Redis/Celery może zniknąć z obecnego produktu | symulacja §7.1; wydajność §2.3; ADR-020 |
+| D-08 solver nN ABCN | TAK — P0 | niezbędny dla rzeczywistego twin nN | ADR-021 |
+| D-09 rozszerzenia solverów B-01 | TAK WARUNKOWO | addytywnie, z niezależnymi przypadkami referencyjnymi, testem tożsamości starej fizyki, tolerancją numeryczną i porównaniem wydajności | ADR-021; plan migracji §8 (B-01) |
+| D-14 symbole R3 | TAK | B-02 oceniany na rzeczywistych arkuszach CAD/SCADA SN+nN, nie na snapshotach SVG | plan migracji §8 (B-02) |
+| D-18 IEC 60617 / 81346 | TAK WARUNKOWO | IEC 60617 dla symboliki; IEC 81346 dla oznaczeń wyłącznie przez konfigurowalny profil; zachować konwencję OSD/projektową | plan symboli §5 |
+| D-19 przeliczenia | TAK | docelowo dependency graph + background budget; w pierwszej fazie RECALCULATE AFFECTED | workflow §7; ADR-026 |
+| D-23 „optymalny" | ODRZUCONE W OBECNEJ FORMIE | „minimalny spełniający + rezerwa + standaryzacja" = DEFAULT DESIGN POLICY, nie definicja optimum; silnik multi-objective: TECHNICAL FEASIBILITY, CAPEX, LOSSES, RESERVE, STANDARDIZATION, N-1, RELIABILITY, FUTURE EXPANSION; Pareto dla wielu celów | optymalizacja §5.1, §10 |
+| D-27 dokumentacja | TAK WARUNKOWO | PDF/A + XLSX + techniczny eksport wektorowy; bez fałszywego „DWG"; DXF jako jawny adapter; CIM jako wymiana danych, nie dokument CAD | workflow W14 |
+| D-31 FUSE w trace | TAK | wyłącznik nie jest jedynym aparatem przerywającym tor | zabezpieczenia PR-05 |
+| D-33 fikcyjny katalog przekaźników | TAK — NATYCHMIAST (M0) | nazwy wyglądające jak produkty producenta bez prawdziwego katalogu niedopuszczalne | M0-4 |
+| D-34 zakres zabezpieczeń v1 | ZMIENIĆ | nie wolno wyłączyć funkcji, które system już posiada i poprawnie liczy; `ProtectionCapabilityRegistry` ze stanami SUPPORTED / PARTIAL / PLANNED / NOT_IMPLEMENTED; zero regresji funkcjonalnej | zabezpieczenia §5a; ADR-022 |
+| D-36 local/server | TAK | architektura server-capable, wdrożenie local-first; aktor i współbieżność od początku | ADR-028; architektura §21a |
+| D-37 Postgres | TAK | docelowy persistence layer; SQLite tylko techniczny tryb dev/test przy identycznych kontraktach | ADR-028 |
+| D-38 migracja strangler | TAK | vertical slice, parity, cutover, DELETE old path | plan migracji |
+| D-39 dokumenty 191/464 | ZMIENIĆ | najpierw ARCHIVE + SUPERSESSION MANIFEST + REFERENCE/LINK AUDIT; DELETE dopiero po dowodzie, że dokument nie zawiera jedynej informacji kanonicznej; liczba plików nie jest KPI | plan migracji M7-1 |
+| D-40 G01–G17 | TAK + ROZSZERZYĆ | rejestr = żywy katalog KLAS przypadków, nie zamknięta lista 17 fixture; obowiązkowe klasy wg §D werdyktu | plan migracji §4; M0-5 |
+| D-41 GIS/SCL/niezawodność | TAK | pola geograficzne i zaczepy niezawodnościowe od początku; pełne moduły dopiero z konsumentem | architektura §24 |
+| D-42 zapadki | TAK | wszystkie w M0 — nie budujemy twin na czerwonej bazie | M0-3 |
+| D-43 zależności raportów | TAK | generator dokumentów jest częścią produktu; skip w CI nie może udawać PASS | plan migracji M0 |
+| D-44 `symphony/` | TAK | narzędzia orkiestracji agentów nie należą do `backend/src` | plan migracji §6.3 |
+| D-45 XLSX | TAK | import tworzy Twin/komendy domenowe, nigdy drugi model SQL | ADR-028; M1-4 |
+| D-46 raporty A1–A12 | TAK | zachować jako audit evidence archive | D-46 |
+| pozostałe D-05, D-06, D-10…D-13, D-15…D-17, D-20…D-22, D-24…D-26, D-28…D-30, D-32, D-35 | TAK (wg rekomendacji) | pod zasadami nadrzędnymi powyżej; D-10/D-16 podlegają procedurze kasacji jak D-03 | — |
+
+**Wymagania dodatkowe właściciela (§C werdyktu) — naniesione do architektury docelowej:** (1) SOLVER CAPABILITY REGISTRY (typ sieci, model fazowy, zdolność topologiczna, źródła, DER, uziemienie, typy zwarć, szeregi czasowe — orkiestrator wybiera solver po zdolności, nie po końcówce) — symulacja §8; (2) REFERENCE VALIDATION SUITE (golden network ≠ self-test; wyrocznia analityczna / normowa / opublikowany benchmark / niezależnie zweryfikowany wynik) — architektura §26a, rejestr sieci M0-5; (3) TOPOLOGY CAPABILITY MATRIX (radial, ring, NOP, bus coupler, shared upstream, independent sources, parallel operation, backfeed, island, multi-TR, multi-section, deep nN, phase-domain) — architektura §9a; (4) NORMATIVE / DATA SOURCE REGISTRY (klasy STANDARD / OSD POLICY / MANUFACTURER / CATALOG / USER ASSUMPTION / MEASUREMENT z provenance i rewizją) — architektura §15.5; ADR-019; (5) CONCURRENCY CONTRACT (`expected_revision`, `actor`, `command_id`; konflikt = 409 CONFLICT; zakaz silent last-write-wins; dual-write w stranglerze z guardem równoważności i krótkim terminem życia) — architektura §21a; ADR-028; (6) PERFORMANCE BUDGET MATRIX (osobne budżety: topology, snapshot assembly, LF, SC, ABCN nN, scenario batch, projection SN, projection nN, dense renderer, document generation) — plan wydajności §1a.
+
+**M0 (autoryzowane) — definicja odbioru wg §A werdyktu:** 8/8 workflowów CI zielone; required checks skonfigurowane tam, gdzie możliwe; hash kanoniczny deterministyczny cross-platform; wszystkie przekroczone zapadki usunięte u źródła; usunięte fabrykacje użytkowe (fikcyjne nastawy, fikcyjne katalogi/nazwy producentów, silent fallback); golden network registry jako jedno źródło przypadków integracyjnych; invariant test framework; snapshot OpenAPI; baseline wydajności S/M/L; raport M0 z BEFORE/AFTER. Po M0: STOP — bez automatycznego przejścia do M1. Raport: `M0_FINAL_REPORT.md`.
+
+---
+
 ## 5. Co NIE zostało zrobione i dlaczego (uczciwość raportu)
 
 - **Żadna naprawa kodu** — mandat §2/§180: tylko audyt i dokumenty (jedyna korekta poza `docs/twin/`: `CLAUDE.md`, moduł `ui2/shared` — dopuszczalna minimalna bezpieczna naprawa dokumentu, usuwa jedną z pięciu przyczyn czerwieni CI); pozostałe cztery przyczyny czerwieni `main` pozostają, fantom nastaw w szufladzie SLD pozostaje na żywo, nazwy „ABB REX-…" pozostają w katalogu, zapadki pozostają przekroczone. Wszystko zarejestrowane z priorytetem P0 w M0.
@@ -189,6 +229,8 @@ Format: **wymaganie** · powód (dowód) · priorytet · wpływ na architekturę
 
 ---
 
-## 6. STOP (§180)
+## 6. STOP (§180) — aktualizacja po werdykcie 2026-09-02
+
+Właściciel autoryzował WYŁĄCZNIE M0 (§4a). Po zakończeniu M0 obowiązuje ponowny STOP: `M0_FINAL_REPORT.md` (commity, BEFORE/AFTER, dowody CI, determinizm, rejestr sieci, inwarianty, benchmark, ryzyka, wpływ na ADR-012…028) i decyzja właściciela o M1. Pierwotna treść:
 
 Program zatrzymany. Następny krok należy do właściciela: decyzje D-01…D-46 (co najmniej D-01, D-02, D-03, D-07, D-08, D-09, D-19, D-21, D-36, D-38, D-40 przed startem M0/M1). Po decyzjach: M0 (stabilizacja i pomiar) w kartach z §0 rozstrzygnięć i bramkami, potem wycinki §3 planu migracji. Bez decyzji właściciela żaden wycinek nie startuje.

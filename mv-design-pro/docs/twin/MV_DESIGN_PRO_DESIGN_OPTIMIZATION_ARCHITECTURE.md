@@ -132,6 +132,25 @@ Ranking: filtr twardy (wszystkie NORMATIVE/CONTRACT/PHYSICS PASS) → sortowanie
 
 ## 5. `DesignOptimizationEngine`
 
+### 5.0 Polityka projektowa domyślna ≠ definicja optimum (korekta właściciela D-23)
+
+Rekomendacja „optymalny = minimalny spełniający + rezerwa + standaryzacja" została **odrzucona jako definicja optimum**. Jest to `DEFAULT_DESIGN_POLICY` — polityka domyślna projektu, jawnie nazwana, edytowalna i wymienialna — a nie prawda o tym, co jest optymalne. Optimum jest **wielokryterialne** i zależy od celu inwestycyjnego, którego silnik nie zna i nie ma prawa zgadywać.
+
+Osiem osi celu (`ObjectiveAxis`), każda z jawnym kierunkiem i źródłem wartości:
+
+| Oś | Kierunek | Skąd wartość | Aktywna gdy |
+|---|---|---|---|
+| `TECHNICAL_FEASIBILITY` | twarde spełnienie | `ConstraintEngine` (PHYSICS + NORMATIVE) | zawsze — warunek dopuszczalności, nie cel do ważenia |
+| `CAPEX` | min | `CostCatalog` z provenance | istnieją dane kosztowe |
+| `LOSSES` | min | solver LF (energia strat wg profilu) | istnieje profil obciążenia |
+| `RESERVE` | max lub cel | rezerwa obciążalności / mocy / zwarciowa z migawki | zawsze |
+| `STANDARDIZATION` | max | liczba różnych typów w projekcie vs lista standardowa OSD | istnieje lista standardowa |
+| `N_1` | twarde lub max margines | scenariusze N-1 | zdefiniowany zbiór N-1 |
+| `RELIABILITY` | max (SAIDI/SAIFI/ENS min) | `ReliabilityHooks` | istnieją dane λ, r |
+| `FUTURE_EXPANSION` | max | horyzont rozbudowy z `ProjectAssumptions` | zadeklarowany horyzont |
+
+Reguły silnika: (1) `TECHNICAL_FEASIBILITY` nigdy nie wchodzi do funkcji celu — kandydat niedopuszczalny jest odrzucany, nie „gorzej oceniany"; (2) dla ≥ 2 aktywnych osi wynikiem jest **front Pareto**, nie jedna liczba — zakaz ukrytej sumy ważonej; (3) wagi, jeśli inżynier je poda, są jawnym wejściem projektu z provenance i są pokazywane w rekomendacji; (4) `DEFAULT_DESIGN_POLICY` jest tylko preselekcją punktu na froncie — inżynier widzi front i punkt domyślny, i może wybrać inny; (5) oś bez danych jest **nieaktywna i widoczna jako nieaktywna** (z powodem), nigdy wypełniona wartością domyślną; (6) `Recommendation` zawsze niesie oś, po której wybrano, oraz odrzuconych kandydatów z powodem.
+
 ### 5.1 Problem i strategie
 
 ```
@@ -233,7 +252,7 @@ Zaczepy: `OutageData` (λ, r per typ elementu) jako opcjonalne dane katalogu; `R
 
 | ID | Decyzja | Rekomendacja |
 |---|---|---|
-| O-D1 | Kryterium „optymalny" (patrz C-05 w workflow): domyślny cel doboru | MIN_FEASIBLE z rezerwą projektu + STANDARDIZE; MIN_COST/MIN_LOSSES opcjonalne |
+| O-D1 | Kryterium „optymalny" (patrz C-05 w workflow): domyślny cel doboru | **ROZSTRZYGNIĘTE przez właściciela (D-23): odrzucone w formie jednokryterialnej.** `DEFAULT_DESIGN_POLICY` = minimalny spełniający + rezerwa + standaryzacja, jako polityka domyślna i preselekcja punktu; definicja optimum jest wielokryterialna (osiem osi §5.0) z frontem Pareto dla ≥ 2 aktywnych osi |
 | O-D2 | Dane kosztowe: skąd `CostCatalog` (cenniki producentów/OSD/własne) i kto je utrzymuje | katalog kosztów użytkownika z provenance; bez danych cel kosztowy nieaktywny |
 | O-D3 | Dane niezawodnościowe (λ, r) — czy w ogóle w wersji 1 | zaczepy w wersji 1, wskaźniki dopiero z danymi |
 | O-D4 | Ekonomiczna gęstość prądu (IEC 60287-3-2) jako kryterium doboru kabli SN | opcjonalne kryterium POLICY/PROJECT, domyślnie wyłączone |

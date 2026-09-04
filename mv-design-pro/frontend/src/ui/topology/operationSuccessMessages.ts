@@ -28,7 +28,7 @@ export const OPERATION_SUCCESS_MESSAGES: Record<string, string> = {
   insert_zksn_on_segment_sn: 'Wstawiono ZKSN na segmencie',
   connect_secondary_ring_sn: 'Zamknięto pierścień wtórny',
   set_normal_open_point: 'Ustawiono punkt normalnie otwarty (NOP)',
-  append_station_on_endpoint: 'Dołączono stację na końcu segmentu SN',
+  append_station_on_endpoint: 'Dodano stację na końcu segmentu SN',
   add_shunt_compensator_sn: 'Dodano kompensator bocznikowy SN',
   add_surge_arrester_sn: 'Dodano ogranicznik przepięć SN',
   add_gpz_section: 'Dodano sekcję GPZ',

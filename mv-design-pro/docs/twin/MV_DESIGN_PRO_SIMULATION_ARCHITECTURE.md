@@ -235,7 +235,7 @@ class SolverOrchestrator:
 - **Gotowość**: `ReadinessService` per (analiza, scenariusz) — brak wejść = `NOT_READY(missing)` z fix-action; analiza niestosowalna = `NOT_APPLICABLE(reason)`.
 - **Tryby**: `RUN_REQUIRED` (wszystko, co dojrzałość projektu wymaga i jest STALE), `RECALCULATE_AFFECTED` (zbiór STALE z grafu zależności), `RUN_SELECTED`.
 - **Cache**: klucz `(snapshot_hash, solver_id, solver_version, settings_hash, catalog_revision_set)`; trafienie = ten sam `run_id` (istniejący wzorzec `wykonaj_bieg_w_pamieci` — zachować semantykę „w pamięci" dla what-if).
-- **Równoległość**: pula procesów (numpy/scipy zwalniają GIL nie zawsze; procesy bezpieczniejsze); Celery tylko jeśli właściciel utrzymuje workerów (dziś 0 tasków → rekomendacja: usunąć Celery/Redis, dodać pulę procesów w API; ADR-020).
+- **Równoległość — abstrakcja `ExecutionBackend` (korekta właściciela D-07)**: `SolverOrchestrator` nie zna sposobu wykonania. Interfejs `ExecutionBackend.submit(job) -> JobHandle` / `gather(handles) -> results`, dwie implementacje: `LocalProcessPoolExecutionBackend` (TERAZ — pula procesów w API; numpy/scipy nie zawsze zwalniają GIL, procesy bezpieczniejsze) oraz `WorkerQueueExecutionBackend` (PÓŹNIEJ — kolejka workerów), wpinana BEZ zmiany `SolverOrchestrator` ani żadnego solvera. Wybór backendu = konfiguracja wdrożeniowa, nie decyzja architektoniczna kodu. Celery/Redis: dziś 0 tasków — wygaszane jako martwa infrastruktura, ale scenariusz kolejki pozostaje otwarty przez `WorkerQueueExecutionBackend` (ADR-020).
 - **Awarie**: bieg częściowy = `PARTIAL` z listą analiz FAILED i przyczyną; nigdy cichy sukces.
 - **Provenance**: stemplowana przez orkiestrator; `solver_version` z rejestru zdolności (nie `or "1.0.0"`).
 - **API**: `POST /projects/{p}/runs {scenario_ids, mode, analyses?}` → `plan_id`; `GET /runs/{id}`; `GET /projects/{p}/results?scenario=&analysis=`.
@@ -245,6 +245,8 @@ Wygaszenie: `analysis_run/orchestrator.py` (2 analizy), `batch_execution_service
 ---
 
 ## 8. Rejestr zdolności solverów
+
+**WYMÓG WŁAŚCICIELA (§C.1 — SOLVER CAPABILITY REGISTRY).** Rejestr jest bramką wykonania, nie dokumentacją: każda analiza uruchamiana jest WYŁĄCZNIE przez wpis rejestru, a wpis deklaruje jawnie `SUPPORTED` / `PARTIAL` / `PLANNED` / `NOT_IMPLEMENTED` wraz z zakresem stosowalności. Zabroniony jest solver dostępny w UI bez wpisu, wpis bez testu stosowalności oraz status `implemented` nadany hurtem. Użytkownik widzi status zdolności przed uruchomieniem; brak zdolności = jawna odmowa z powodem, nigdy cichy wynik przybliżony.
 `solver_capability_registry.py` (istnieje, 25 wpisów, wszystkie `implemented`) rozszerzony o: `phase_domain`, `applicability` (predykaty na migawce: R/X, wyspy, obecność żył N), `inputs_required` (listy atrybutów → readiness), `outputs`, `trace_format`, `determinism_tolerance`, `performance_budget`. Guard: każdy solver w `simulation/solvers` ma wpis; każdy wpis ma test stosowalności (iniekcja niestosowalnej sieci → odmowa).
 
 ---

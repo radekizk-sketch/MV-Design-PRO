@@ -54,6 +54,27 @@ Sieci wzorcowe: **S** ≈ 50 szyn (kilka stacji), **M** ≈ 315 szyn (substrat 5
 
 ---
 
+## 1a. Macierz budżetów wydajności (wymóg właściciela §C.6) — dziesięć osobnych pozycji
+
+Budżet zbiorczy „operacja użytkownika < X" ukrywa regresję w jednej warstwie za zapasem w innej. Dlatego mierzymy i bramkujemy **dziesięć osobnych pozycji**, każda z własnym pomiarem, własnym progiem i własnym testem regresji. Pozycja bez pomiaru = pozycja nieodebrana.
+
+| # | Pozycja | Co mierzy (jednostka pomiaru) | S | M | L | Bramka CI |
+|---|---|---|---|---|---|---|
+| B1 | `topology` | `TopologyService`: CN → TN, wyspy, spójność po zmianie łącznika | < 5 ms | < 30 ms | < 200 ms | regresja > 20 % = czerwony |
+| B2 | `snapshot assembly` | `CanonicalNetworkSnapshot`: rozwiązanie stanu efektywnego + materializacja parametrów + hash | < 20 ms | < 80 ms | < 500 ms | regresja > 20 % |
+| B3 | `LF` | rozpływ mocy NR na składowej zgodnej (bez montażu migawki) | < 50 ms | < 200 ms | < 2 s | regresja > 20 % |
+| B4 | `SC` | zwarcia 3F/1F/2F/2FZ we wszystkich węzłach (faktoryzacja + kolumny) | < 100 ms | < 1 s | < 10 s | regresja > 20 % |
+| B5 | `ABCN nN` | rozpływ 4-przewodowy nN per stacja (solver fazowy) | < 20 ms | < 20 ms/stacja | < 3 s (150 stacji) | regresja > 20 % |
+| B6 | `scenario batch` | wsad scenariuszy (N-1, QSTS, warianty) — przepustowość i p95 | 1 s / N-1 | 10 s / N-1 | 120 s / N-1 | przepustowość ≥ min(K, rdzenie) × szeregowa |
+| B7 | `projection SN` | scena semantyczna SN z backendu (bez rysowania) | < 20 ms | < 100 ms | < 500 ms | regresja > 20 % |
+| B8 | `projection nN` | scena semantyczna nN (portal, obwody odbiorcze) per stacja | < 15 ms | < 15 ms/stacja | < 2 s (150 stacji) | regresja > 20 % |
+| B9 | `dense renderer` | pierwsze wyrenderowanie i interakcja kanwy przy gęstej scenie | 60 fps | < 1 s / 60 fps | < 3 s / ≥ 30 fps | budżet klatki w teście kanwy |
+| B10 | `document generation` | pakiet dokumentów (PDF/A + XLSX + wektor), bez przeliczeń | < 5 s | < 20 s | < 2 min | regresja > 20 % |
+
+Zasady macierzy: (1) każdy pomiar jest izolowany — B3 nie zawiera B2, B7 nie zawiera B1; (2) baseline mierzony na tej samej maszynie CI, w tym samym trybie, minimum 5 powtórzeń, raportowana mediana i p95; (3) przekroczenie budżetu jest defektem wydajności z kartą naprawczą, nie powodem do podniesienia progu; (4) podniesienie progu wymaga decyzji właściciela z uzasadnieniem fizycznym (większa sieć referencyjna, nowa fizyka), nigdy „bo tak wyszło"; (5) pozycje B1–B10 są mierzone także w konfiguracji równoległej, żeby wykryć degradację p95 pod obciążeniem.
+
+---
+
 ## 2. Plan per warstwa
 
 ### 2.1 Model i persystencja (A9-07/08/09/14)
@@ -72,7 +93,7 @@ Sieci wzorcowe: **S** ≈ 50 szyn (kilka stacji), **M** ≈ 315 szyn (substrat 5
 
 ### 2.3 Orkiestrator i zadania (A9-10, A3-02)
 1. `SolverOrchestrator` uruchamia plan jako **zadania** (`POST …/runs` → 202 + `plan_id`; `GET /runs/{id}` → QUEUED/RUNNING/PARTIAL/FINISHED/FAILED z postępem i anulowaniem); UI ma już polling (`pollRunStatus`).
-2. Wykonanie w **puli procesów** (rozmiar = rdzenie − 1) w kontenerze API; Celery/Redis usunięte (0 zadań dziś) — chyba że właściciel utrzymuje workerów (decyzja W-D2). Solvery są czyste (brak stanu globalnego) — warunek równoległości.
+2. Wykonanie za **abstrakcją `ExecutionBackend`** (korekta właściciela D-07): `LocalProcessPoolExecutionBackend` (rozmiar puli = rdzenie − 1, w kontenerze API) jako implementacja wersji 1 oraz `WorkerQueueExecutionBackend` jako implementacja późniejsza, wpinana bez zmiany `SolverOrchestrator`, kontraktu biegu i żadnego solvera. Nieużywane dziś Celery/Redis (0 zadań) znikają z obecnego produktu jako martwa infrastruktura — to usunięcie kodu, nie zamknięcie scenariusza kolejki. Solvery są czyste (brak stanu globalnego) — warunek równoległości wspólny dla obu backendów; ten sam zestaw testów determinizmu przechodzi na każdym backendzie.
 3. Cache wyników po `(snapshot_hash, delta_hash, solver_id, solver_version, settings_hash, catalog_revision_set)`; trafienie = ten sam `run_id` (semantyka „w pamięci" zachowana dla what-if).
 4. DAG per scenariusz: LF/SC równolegle, analizy zależne (nastawy, koordynacja, cieplne) po nich; scenariusze równolegle.
 5. Awarie: `PARTIAL` z listą FAILED; nigdy cichy sukces; limity czasu per zadanie z budżetu.
