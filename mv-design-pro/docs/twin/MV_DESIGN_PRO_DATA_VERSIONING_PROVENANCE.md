@@ -1,5 +1,8 @@
 # MV-DESIGN-PRO — DATA / VERSIONING / PROVENANCE MODEL (pakiet §179 poz. 13)
 
+> **Status od 2026-09-04 (kontrakt MAX PLATFORM):** materiał wejściowy i dowodowy programu konwergencji. Źródło kanoniczne architektury: `../architecture/PRODUCT_CAPABILITY_MODEL.md`, `../architecture/CANONICAL_DIGITAL_TWIN.md`, `../architecture/REVISION_SCENARIO_EXECUTION_MODEL.md`, `../architecture/COMPUTATIONAL_BOUNDARY.md`, `../architecture/FUTURE_CAPABILITY_REVIEW.md`, `../reference-networks/REFERENCE_NETWORK_REGISTRY.md`, `../evidence/CONVERGENCE_EVIDENCE.md`. Przy rozbieżności obowiązuje dokument kanoniczny; w szczególności: nie powstaje nowa klasa `TwinModel` (Canonical Project Twin = rozwinięty ENM), `network_model` jest pochodnym IR, program nie zatrzymuje się po M0, lecz prowadzi konwergencję wycinkami CV-0…CV-6 z bramkami B-01/B-02 i procedurą kasacji.
+
+
 **Status:** PROPOZYCJA DO PRZEGLĄDU WŁAŚCICIELA (mandat §8, §60, §85–§89, §93, §113–§116, §125, §135–§136). Nie jest kanonem do czasu decyzji.
 **Data:** 2026-09-02 · **Autor:** Fable · **Nadrzędny:** `MV_DESIGN_PRO_TARGET_DIGITAL_TWIN_ARCHITECTURE.md` (§5, §14, §15, §20, §22)
 **Dowody stanu obecnego:** `MV_DESIGN_PRO_DIGITAL_TWIN_AUDIT.md` (A1-01, A1-06, A1-13, A1-15, A1-17, A2, A6, A9)

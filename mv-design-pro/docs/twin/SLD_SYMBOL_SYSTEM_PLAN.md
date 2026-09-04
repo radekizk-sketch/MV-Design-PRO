@@ -1,5 +1,8 @@
 # MV-DESIGN-PRO — PLAN SYSTEMU SYMBOLI SLD (SN + nN), pakiet §179 poz. 10 (mandat §100–§103, §160)
 
+> **Status od 2026-09-04 (kontrakt MAX PLATFORM):** materiał wejściowy i dowodowy programu konwergencji. Źródło kanoniczne architektury: `../architecture/PRODUCT_CAPABILITY_MODEL.md`, `../architecture/CANONICAL_DIGITAL_TWIN.md`, `../architecture/REVISION_SCENARIO_EXECUTION_MODEL.md`, `../architecture/COMPUTATIONAL_BOUNDARY.md`, `../architecture/FUTURE_CAPABILITY_REVIEW.md`, `../reference-networks/REFERENCE_NETWORK_REGISTRY.md`, `../evidence/CONVERGENCE_EVIDENCE.md`. Przy rozbieżności obowiązuje dokument kanoniczny; w szczególności: nie powstaje nowa klasa `TwinModel` (Canonical Project Twin = rozwinięty ENM), `network_model` jest pochodnym IR, program nie zatrzymuje się po M0, lecz prowadzi konwergencję wycinkami CV-0…CV-6 z bramkami B-01/B-02 i procedurą kasacji.
+
+
 **Status:** PROPOZYCJA DO PRZEGLĄDU WŁAŚCICIELA — plan pakietu referencyjnego; NIE jest rejestrem wiążącym. Rejestr wiążący dla nN (R2.1, geometria ze schematu referencyjnego właściciela) pozostaje w `docs/sld/SLD_SYMBOL_NORMATIVE_REGISTRY.md` i jest tu ZACHOWANY jako podstawa; symbole SN dostają status DRAFT do czasu zatwierdzenia pakietu przez właściciela (procedura jak R2 §21/§27: „najpierw zatwierdź pakiet, potem migruj renderer").
 **Data:** 2026-09-02 · **Autor:** Fable · **Nadrzędny:** `MV_DESIGN_PRO_SLD_PRESENTATION_ARCHITECTURE.md` §2.3, §4
 **Uczciwość normatywna:** żaden symbol poniżej nie jest „zweryfikowany normatywnie" (0 × NORMATIVE_VERIFIED w repo — audyt A7-05). Identyfikatory IEC 60617 podane tylko tam, gdzie istniejący rejestr R2.1 już je niesie; pozostałe oznaczono „do potwierdzenia w bazie IEC 60617" — bez zgadywania numerów.

@@ -1,5 +1,8 @@
 # MV-DESIGN-PRO — PLAN WYDAJNOŚCI I SKALOWANIA (mandat §143–§144; pakiet §179 poz. 14)
 
+> **Status od 2026-09-04 (kontrakt MAX PLATFORM):** materiał wejściowy i dowodowy programu konwergencji. Źródło kanoniczne architektury: `../architecture/PRODUCT_CAPABILITY_MODEL.md`, `../architecture/CANONICAL_DIGITAL_TWIN.md`, `../architecture/REVISION_SCENARIO_EXECUTION_MODEL.md`, `../architecture/COMPUTATIONAL_BOUNDARY.md`, `../architecture/FUTURE_CAPABILITY_REVIEW.md`, `../reference-networks/REFERENCE_NETWORK_REGISTRY.md`, `../evidence/CONVERGENCE_EVIDENCE.md`. Przy rozbieżności obowiązuje dokument kanoniczny; w szczególności: nie powstaje nowa klasa `TwinModel` (Canonical Project Twin = rozwinięty ENM), `network_model` jest pochodnym IR, program nie zatrzymuje się po M0, lecz prowadzi konwergencję wycinkami CV-0…CV-6 z bramkami B-01/B-02 i procedurą kasacji.
+
+
 **Status:** PROPOZYCJA (do przeglądu właściciela; nic nie jest wdrożone)
 **Data:** 2026-09-02 · **Gałąź:** `claude/mv-design-pro-twin-audit-u4lhy0` · **HEAD audytu:** `a1ab2959`
 **Źródła dowodowe:** A9 (pomiary ścieżki zapisu/odczytu ENM, synchroniczne solvery, GIL, Celery 0 zadań, brak benchmarków), A3-10 (algebra gęsta, SC O(N·n³), N-1), A2-09/A2-11 (N-1 bez cache, brak grafu zależności), A7-07 (trzy geometrie per LOD, brak wirtualizacji), A8-01/A8-02 (≈80 tys. LOC martwego kodu w bundlu, plik danych 134 193 LOC), A10-01/A10-23 (CI 8,6–25,9 min, brak budżetów), `docs/plan/10X_WSP_INWENTARZ.md` (pomiary współbieżności K=10).

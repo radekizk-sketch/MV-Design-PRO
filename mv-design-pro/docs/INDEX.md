@@ -15,6 +15,18 @@
 
 ---
 
+## Architektura kanoniczna platformy MAX (kontrakt właściciela 2026-09-04) — ŹRÓDŁO PRAWDY programu konwergencji
+
+Kontrakt „MAX PLATFORM ARCHITECTURE & CONVERGENCE CONTRACT" jest nadrzędny wobec pakietu Digital Twin niżej (który pozostaje materiałem wejściowym i dowodowym). Model operacyjny (role Fable / wykonawcy): `../AGENTS.md` §8.
+
+- [architecture/PRODUCT_CAPABILITY_MODEL.md](./architecture/PRODUCT_CAPABILITY_MODEL.md) — koperta zdolności MAX, mapa zdolność → pojęcia/dane/fizyka/usługi/wyjścia/proweniencja, luki fundamentu
+- [architecture/CANONICAL_DIGITAL_TWIN.md](./architecture/CANONICAL_DIGITAL_TWIN.md) — Canonical Project Twin = rozwinięty ENM; własność projektu; terminale, fazy, uziemienie; wycinki CV-0…CV-6; rejestr zamrożeń
+- [architecture/REVISION_SCENARIO_EXECUTION_MODEL.md](./architecture/REVISION_SCENARIO_EXECUTION_MODEL.md) — rewizja / wariant / scenariusz / przypadek, `RevisionEnvelope`, `EffectiveNetworkSnapshot`, jeden rejestr biegów, inwentarz i los bytów istniejących
+- [architecture/COMPUTATIONAL_BOUNDARY.md](./architecture/COMPUTATIONAL_BOUNDARY.md) — topologia wyprowadzana, `network_model` jako pochodny IR, jeden assembler, granica solverów, polityka determinizmu §35
+- [architecture/FUTURE_CAPABILITY_REVIEW.md](./architecture/FUTURE_CAPABILITY_REVIEW.md) — test decyzji fundamentalnych wobec 15 obszarów zdolności
+- [reference-networks/REFERENCE_NETWORK_REGISTRY.md](./reference-networks/REFERENCE_NETWORK_REGISTRY.md) — rejestr G01–G15 z klasami wyroczni; G01 jako pierwszy vertical slice
+- [evidence/CONVERGENCE_EVIDENCE.md](./evidence/CONVERGENCE_EVIDENCE.md) — dowody: CI, ochrona `main` (owner action), determinizm, Definition of Done §40, karty w toku, P0/P1, decyzje właściciela
+
 ## Program Digital Twin SN+nN 2026-09 (PROPOZYCJA — pakiet do przeglądu właściciela)
 
 Wynik mandatu „FINAL MASTER ARCHITECTURE MANDATE" (FAZY A–F, STOP §180). Nic z tego programu nie jest jeszcze wdrożone ani wiążące; hierarchia kanonu powyżej pozostaje w mocy do decyzji właściciela.

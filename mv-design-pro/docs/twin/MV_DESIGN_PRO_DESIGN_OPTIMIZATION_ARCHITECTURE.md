@@ -1,5 +1,8 @@
 # MV-DESIGN-PRO — ARCHITEKTURA DOBORU I OPTYMALIZACJI PROJEKTOWEJ (FAZA D, część 2; mandat §158)
 
+> **Status od 2026-09-04 (kontrakt MAX PLATFORM):** materiał wejściowy i dowodowy programu konwergencji. Źródło kanoniczne architektury: `../architecture/PRODUCT_CAPABILITY_MODEL.md`, `../architecture/CANONICAL_DIGITAL_TWIN.md`, `../architecture/REVISION_SCENARIO_EXECUTION_MODEL.md`, `../architecture/COMPUTATIONAL_BOUNDARY.md`, `../architecture/FUTURE_CAPABILITY_REVIEW.md`, `../reference-networks/REFERENCE_NETWORK_REGISTRY.md`, `../evidence/CONVERGENCE_EVIDENCE.md`. Przy rozbieżności obowiązuje dokument kanoniczny; w szczególności: nie powstaje nowa klasa `TwinModel` (Canonical Project Twin = rozwinięty ENM), `network_model` jest pochodnym IR, program nie zatrzymuje się po M0, lecz prowadzi konwergencję wycinkami CV-0…CV-6 z bramkami B-01/B-02 i procedurą kasacji.
+
+
 **Status:** PROPOZYCJA (do przeglądu właściciela; nic nie jest wdrożone)
 **Data:** 2026-09-02 · **Gałąź:** `claude/mv-design-pro-twin-audit-u4lhy0` · **HEAD audytu:** `a1ab2959`
 **Źródła dowodowe:** A12 (W9 dobór, EF-011/014/016/019/022/037/041, kryterium „optymalny" nieokreślone), A5 (hosting capacity, threshold finder, dobór toru DER), A6 (katalog bez rewizji, ciche fallbacki), A3 (brak orkiestratora, wrażliwość jako perturbacje), A2 (what-if destrukcyjny, brak wariantów delta), A11 (dobór aparatu nN bez UI, I²t bez sprzężenia), A4 (koordynacja jako kalkulator).

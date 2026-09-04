@@ -1,5 +1,8 @@
 # MV-DESIGN-PRO — TARGET DIGITAL TWIN ARCHITECTURE (FAZA B)
 
+> **Status od 2026-09-04 (kontrakt MAX PLATFORM):** materiał wejściowy i dowodowy programu konwergencji. Źródło kanoniczne architektury: `../architecture/PRODUCT_CAPABILITY_MODEL.md`, `../architecture/CANONICAL_DIGITAL_TWIN.md`, `../architecture/REVISION_SCENARIO_EXECUTION_MODEL.md`, `../architecture/COMPUTATIONAL_BOUNDARY.md`, `../architecture/FUTURE_CAPABILITY_REVIEW.md`, `../reference-networks/REFERENCE_NETWORK_REGISTRY.md`, `../evidence/CONVERGENCE_EVIDENCE.md`. Przy rozbieżności obowiązuje dokument kanoniczny; w szczególności: nie powstaje nowa klasa `TwinModel` (Canonical Project Twin = rozwinięty ENM), `network_model` jest pochodnym IR, program nie zatrzymuje się po M0, lecz prowadzi konwergencję wycinkami CV-0…CV-6 z bramkami B-01/B-02 i procedurą kasacji.
+
+
 **Status:** PROPOZYCJA DO PRZEGLĄDU WŁAŚCICIELA (mandat §156, §179–§180). Nie jest jeszcze kanonem.
 Do czasu decyzji właściciela obowiązuje kanon V12.xx; każda różnica względem kanonu jest
 zarejestrowana w `OWNER_REVIEW_PACKAGE.md` §C (konflikty mandatu) i nie została wdrożona.

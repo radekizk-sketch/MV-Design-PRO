@@ -1,5 +1,8 @@
 # MV-DESIGN-PRO — DOCELOWY WORKFLOW INŻYNIERSKI (FAZA C, mandat §157)
 
+> **Status od 2026-09-04 (kontrakt MAX PLATFORM):** materiał wejściowy i dowodowy programu konwergencji. Źródło kanoniczne architektury: `../architecture/PRODUCT_CAPABILITY_MODEL.md`, `../architecture/CANONICAL_DIGITAL_TWIN.md`, `../architecture/REVISION_SCENARIO_EXECUTION_MODEL.md`, `../architecture/COMPUTATIONAL_BOUNDARY.md`, `../architecture/FUTURE_CAPABILITY_REVIEW.md`, `../reference-networks/REFERENCE_NETWORK_REGISTRY.md`, `../evidence/CONVERGENCE_EVIDENCE.md`. Przy rozbieżności obowiązuje dokument kanoniczny; w szczególności: nie powstaje nowa klasa `TwinModel` (Canonical Project Twin = rozwinięty ENM), `network_model` jest pochodnym IR, program nie zatrzymuje się po M0, lecz prowadzi konwergencję wycinkami CV-0…CV-6 z bramkami B-01/B-02 i procedurą kasacji.
+
+
 **Status:** PROPOZYCJA (do przeglądu właściciela; nic z tego dokumentu nie jest wdrożone)
 **Data:** 2026-09-02 · **Gałąź:** `claude/mv-design-pro-twin-audit-u4lhy0` · **HEAD audytu:** `a1ab2959`
 **Źródła dowodowe:** audyt A12 (tarcia inżynierskie W1–W14, rejestr EF-001…EF-060, ocena ról §168, test §181), A8 (architektura frontendu), A4 (zabezpieczenia), A11 (nN/uziemienia), A5 (DER), A6 (katalogi), A9 (API/persystencja). Pełny rejestr tarć: `ENGINEERING_FRICTION_REGISTER.md`.

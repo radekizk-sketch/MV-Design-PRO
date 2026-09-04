@@ -1,6 +1,9 @@
 # INDEX — Program „Engineering Digital Twin SN+nN" (2026-09)
 
-**Status:** PROPOZYCJA (pakiet do przeglądu właściciela; program zatrzymany na §180 STOP — żadna migracja nie została rozpoczęta)
+> **Status od 2026-09-04 (kontrakt MAX PLATFORM):** materiał wejściowy i dowodowy programu konwergencji. Źródło kanoniczne architektury: `../architecture/PRODUCT_CAPABILITY_MODEL.md`, `../architecture/CANONICAL_DIGITAL_TWIN.md`, `../architecture/REVISION_SCENARIO_EXECUTION_MODEL.md`, `../architecture/COMPUTATIONAL_BOUNDARY.md`, `../architecture/FUTURE_CAPABILITY_REVIEW.md`, `../reference-networks/REFERENCE_NETWORK_REGISTRY.md`, `../evidence/CONVERGENCE_EVIDENCE.md`. Przy rozbieżności obowiązuje dokument kanoniczny; w szczególności: nie powstaje nowa klasa `TwinModel` (Canonical Project Twin = rozwinięty ENM), `network_model` jest pochodnym IR, program nie zatrzymuje się po M0, lecz prowadzi konwergencję wycinkami CV-0…CV-6 z bramkami B-01/B-02 i procedurą kasacji.
+
+
+**Status:** MATERIAŁ WEJŚCIOWY programu konwergencji (od 2026-09-04 obowiązuje kontrakt MAX PLATFORM; źródło kanoniczne: `../architecture/*.md`, `../reference-networks/REFERENCE_NETWORK_REGISTRY.md`, `../evidence/CONVERGENCE_EVIDENCE.md`). Werdykt właściciela z 2026-09-02 (architektura zatwierdzona warunkowo, korekty D-07/D-23/D-34/D-39, sześć wymagań §C) pozostaje w mocy i został naniesiony.
 **Data:** 2026-09-02 · **Gałąź:** `claude/mv-design-pro-twin-audit-u4lhy0` · **HEAD audytu:** `a1ab2959`
 **Mandat:** „MV-DESIGN-PRO FINAL MASTER ARCHITECTURE MANDATE" (§0–§186) właściciela — kolejność: FAZA A (audyt) → B (architektura) → C (workflow) → D (symulacja i optymalizacja) → E (prezentacja) → F (migracja) → STOP i pakiet §179.
 **Relacja do kanonu:** dokumenty tego katalogu są **propozycją** docelowej architektury; do czasu decyzji właściciela obowiązuje hierarchia z `../INDEX.md` (KANON_V12_XX → SPEC_* → domain). Po zatwierdzeniu program zastępuje rodziny kanonów SLD i rozstrzyga konflikty wymienione w pakiecie (§178).

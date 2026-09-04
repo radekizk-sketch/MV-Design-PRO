@@ -1,5 +1,8 @@
 # MV-DESIGN-PRO — AUDYT FORENSYCZNY POD DIGITAL TWIN SN+nN (FAZA A; mandat §1–§4, §153–§155)
 
+> **Status od 2026-09-04 (kontrakt MAX PLATFORM):** materiał wejściowy i dowodowy programu konwergencji. Źródło kanoniczne architektury: `../architecture/PRODUCT_CAPABILITY_MODEL.md`, `../architecture/CANONICAL_DIGITAL_TWIN.md`, `../architecture/REVISION_SCENARIO_EXECUTION_MODEL.md`, `../architecture/COMPUTATIONAL_BOUNDARY.md`, `../architecture/FUTURE_CAPABILITY_REVIEW.md`, `../reference-networks/REFERENCE_NETWORK_REGISTRY.md`, `../evidence/CONVERGENCE_EVIDENCE.md`. Przy rozbieżności obowiązuje dokument kanoniczny; w szczególności: nie powstaje nowa klasa `TwinModel` (Canonical Project Twin = rozwinięty ENM), `network_model` jest pochodnym IR, program nie zatrzymuje się po M0, lecz prowadzi konwergencję wycinkami CV-0…CV-6 z bramkami B-01/B-02 i procedurą kasacji.
+
+
 **Status:** WYNIK AUDYTU (stan zastany; READ-ONLY — w tej fazie nic nie naprawiono, zgodnie z mandatem §2/§180)
 **Data pomiaru:** 2026-09-02 · **HEAD:** `a1ab2959` (= `origin/main`) · **Gałąź:** `claude/mv-design-pro-twin-audit-u4lhy0`
 **Metoda:** 12 niezależnych audytów obszarowych (A1 model i tożsamość · A2 topologia/scenariusze/inwalidacja · A3 solvery · A4 zabezpieczenia · A5 DER/punkt przyłączenia/RfG/wyspy · A6 katalogi/jednostki/provenance · A7 SLD/CAD/SCADA · A8 frontend · A9 API/aplikacja/persystencja/integracje/wydajność · A10 dokumentacja/testy/guardy · A11 uziemienia/nN/kable/SWZ · A12 tarcia inżynierskie W1–W14), każdy z dowodem `plik:linia` lub pomiarem (`grep/find/wc/AST/pytest/API Actions`), wykonanych na tym samym HEAD; synteza i ranking przez koordynatora. Ścieżki względem `mv-design-pro/`. Gdzie czegoś nie ma: „nie znaleziono (szukano: …)".

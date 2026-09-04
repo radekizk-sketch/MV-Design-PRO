@@ -1,5 +1,8 @@
 # MV-DESIGN-PRO — PAKIET DO PRZEGLĄDU WŁAŚCICIELA (mandat §177–§180)
 
+> **Status od 2026-09-04 (kontrakt MAX PLATFORM):** materiał wejściowy i dowodowy programu konwergencji. Źródło kanoniczne architektury: `../architecture/PRODUCT_CAPABILITY_MODEL.md`, `../architecture/CANONICAL_DIGITAL_TWIN.md`, `../architecture/REVISION_SCENARIO_EXECUTION_MODEL.md`, `../architecture/COMPUTATIONAL_BOUNDARY.md`, `../architecture/FUTURE_CAPABILITY_REVIEW.md`, `../reference-networks/REFERENCE_NETWORK_REGISTRY.md`, `../evidence/CONVERGENCE_EVIDENCE.md`. Przy rozbieżności obowiązuje dokument kanoniczny; w szczególności: nie powstaje nowa klasa `TwinModel` (Canonical Project Twin = rozwinięty ENM), `network_model` jest pochodnym IR, program nie zatrzymuje się po M0, lecz prowadzi konwergencję wycinkami CV-0…CV-6 z bramkami B-01/B-02 i procedurą kasacji.
+
+
 **Status:** ARCHITEKTURA DOCELOWA ZATWIERDZONA WARUNKOWO (werdykt właściciela 2026-09-02, §4a) · AUTORYZACJA WYŁĄCZNIE M0 · M1–M7 ZABLOKOWANE. Pierwotnie: PROPOZYCJA — program zatrzymany na §180 STOP. **Żadna migracja, refaktoryzacja ani naprawa nie została rozpoczęta** (audyt READ-ONLY; jedyne zmiany w repo to dokumenty `docs/twin/`, ADR-012…ADR-028 ze statusem PROPOSED, wpis w `docs/INDEX.md` oraz jedna minimalna korekta dokumentu `CLAUDE.md` — dopisanie istniejącego modułu `ui2/shared`, przyczyny czerwieni `claude_md_struktura_guard` w CI).
 **Data:** 2026-09-02 · **Gałąź:** `claude/mv-design-pro-twin-audit-u4lhy0` · **HEAD audytu:** `a1ab2959` (= `origin/main` w chwili pomiaru)
 **Indeks programu:** `INDEX_TWIN.md`.

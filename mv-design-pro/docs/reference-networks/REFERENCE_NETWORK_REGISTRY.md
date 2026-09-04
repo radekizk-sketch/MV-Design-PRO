@@ -1,0 +1,41 @@
+# MV-DESIGN-PRO — REFERENCE NETWORK REGISTRY (rejestr sieci wzorcowych z wyroczniami inżynierskimi)
+
+**Status:** KANONICZNY (kontrakt MAX PLATFORM 2026-09-04, §30–§32). Numeracja G01–G15 pochodzi z kontraktu właściciela i **zastępuje** numerację inferowaną G01–G17 z `docs/twin/MV_DESIGN_PRO_MIGRATION_PLAN.md` §4 (tam: mapowanie na istniejące buildery — zachowane jako materiał). Rejestr jest **żywym katalogiem klas przypadków** (D-40): klasa problemu napotkana w projekcie dopisuje wpis, zanim powstanie kod.
+**Zasada:** golden network ≠ self-test (§32). Wpis bez niezależnej wyroczni ma status `REGRESSION_ONLY` i nie jest dowodem fizyki.
+
+## 1. Schemat wpisu (docelowo kod: `backend/tests/golden/registry.py`, dokument generowany z rejestru)
+
+`id · purpose · exact topology · assets · voltage levels · grounding · switch states · scenario · assumptions · analyses · expected invariants · independent numerical references (oracle class: ANALYTICAL | NORMATIVE | PUBLISHED_BENCHMARK | INDEPENDENTLY_VERIFIED | REGRESSION_ONLY) · provenance · builder (komendy domenowe / ENM JSON) · konsumenci (solver / SLD SN / SLD nN / dokumenty / e2e)`.
+
+## 2. Rejestr G01–G15 (kontrakt §30) — stan dziś i luka
+
+| ID | Klasa przypadku (kontrakt) | Istniejący materiał (pomiar A10 §3.1) | Wyrocznia dziś | Wyrocznia docelowa | Status |
+|---|---|---|---|---|---|
+| **G01** | **sieć SN kompensowana / zwarcie doziemne / zabezpieczenia** — GPZ 15 kV → impedancja źródła → uziemienie punktu neutralnego (cewka Petersena) → rozdzielnica SN → kabel → linia napowietrzna → kabel → stacja SN/nN → TR → rozdzielnica nN → odpływ nN → odbiór → PV (§31, pierwszy pełny vertical slice) | BRAK jako jedna sieć; części: `tests/e2e/test_nn_full_chain.py:668-786` (SN → ST-03 → TR → RGnN → K1 → R1 → {silnik, odbiór, PV, BESS}, budowany komendami domenowymi), GN_04/GN_05 (`tests/reference_networks/builders.py:349,501`), V12-GN-002 (punkt neutralny — przypięty do testów polityki, nie fizyki) | brak | ANALYTICAL: prąd pojemnościowy I_C = 3·ω·C0·U_f·L (sumaryczny), prąd cewki I_L = U_f/(ω·L), prąd resztkowy przy zadanym rozstrojeniu; U0 przy zwarciu metalicznym = U_f; rozdział I0 na odpływy ∝ C0 odpływu; NORMATIVE: IEC 60909-0 przykład 1F z Z0; PUBLISHED: literatura sieci kompensowanych (do wskazania w rejestrze z odsyłaczem) | `NOT_BUILT` — CV-6 |
+| G02 | SN promieniowa: rozpływ + zwarcia | GN_01 (`builders.py:51`), GN_02 (`:139`), golden SN (`tests/golden/golden_network_sn.py`, 20 stacji) | REGRESSION_ONLY (struktura) | ANALYTICAL: jedna linia + odbiór skupiony (ΔU, straty, I_k'' = c·U_n/(√3·|Z|)); PUBLISHED_BENCHMARK: IEEE 13/34 (istnieje w G15) | `PARTIAL` |
+| G03 | SN pierścień / punkt podziału (NOP) / N-1 | GN_03 (`builders.py:248`), golden SN ring z NO, N-1 na `cgmes/golden_enm.py` (inna sieć!) | REGRESSION_ONLY | INDEPENDENTLY_VERIFIED (pandapower na tej samej sieci: rozpływ przy NOP w 2 położeniach; N-1 = bilans i przeciążenia) | `PARTIAL` — N-1 musi liczyć się na TEJ sieci |
+| G04 | stacja dwutransformatorowa ze sprzęgłem szyn | scenariusze nN 01–03 (`lv_domain/scenariusze_nn.py`), V12 T1..T4 archetypy stacji | REGRESSION_ONLY (projekcja 3.0.0, 18 fixtur, hash cross-platform) | ANALYTICAL: podział obciążenia dwóch TR równoległych ∝ 1/Z_k (sprzęgło zamknięte), prądy wyrównawcze przy różnych u_k; I_k'' nN przy sprzęgle zamkniętym = suma udziałów | `PARTIAL` |
+| G05 | nN ABCN / N / PEN / SWZ | scenariusze nN 04–18, `fault_loop`, `swz`, V12-GN-003 (stan fazowy) | REGRESSION_ONLY + NORMATIVE częściowo (IEC 60364 tab. SWZ) | ANALYTICAL: obwód jednofazowy z asymetrią (prąd N = |I_A + a²I_B + aI_C|), pętla zwarcia Z_s = Z_TR + Z_L + Z_N; NORMATIVE: IEC 60364-4-41 czasy, IEC 60909 1F nN | `PARTIAL` — czeka na model fazowy (CV-5) |
+| G06 | PV w punkcie przyłączenia / RfG | V12-GN-004 (FRT), `test_pv1mw_g1_physics.py`, `test_ncrfg_ptpiree_solver.py` (własne dane) | REGRESSION_ONLY | NORMATIVE: profil OSD/NC RfG (krzywe FRT, Q(U)) z rejestru źródeł; ANALYTICAL: Q(U) w punkcie pracy = wartość krzywej | `PARTIAL` |
+| G07 | BESS ładowanie / rozładowanie | `test_pvbess_hybrid_g4_physics.py`, `oze_pv_bess` builder | REGRESSION_ONLY | ANALYTICAL: bilans mocy i energii w kroku QSTS, SOC(t) | `PARTIAL` |
+| G08 | koordynacja zabezpieczeń / TCC | GN_05, `protection_iec60255` testy | NORMATIVE (IEC 60255-151 krzywe — wzory zamknięte) | NORMATIVE: t(I) z wzoru normy dla SI/VI/EI/LTI; ANALYTICAL: margines selektywności Δt | `PARTIAL` |
+| G09 | CT/VT + zabezpieczenia kierunkowe | brak | brak | ANALYTICAL: kąt prądu doziemnego względem U0 w sieci izolowanej (−90°) vs kompensowanej (składowa czynna) — polaryzacja 67N; nasycenie CT wg ALF | `NOT_BUILT` |
+| G10 | jakość energii / architektura harmonicznych | brak (widma zaszyte — A5-08) | brak | ANALYTICAL: rezonans równoległy f_r = f_1·√(S_k/Q_c); THD dla jednego źródła prądowego na Z(f) | `NOT_BUILT` |
+| G11 | wariant strukturalny / rozbudowa sieci | brak jako wariant; operacje domenowe istnieją | brak | tożsamościowa: wariant = baza + komendy ⇒ hash materializacji równy hashowi sieci zbudowanej wprost | `NOT_BUILT` — CV-3 |
+| G12 | optymalizacja wielokryterialna | brak | brak | ANALYTICAL: mały problem dyskretny (3 przekroje × 2 TR) z ręcznie policzonym frontem Pareto | `NOT_BUILT` |
+| G13 | GIS / import / topology healing | `cgmes/golden_enm.py` (CGMES), `xlsx_import` (legacy ORM!) | REGRESSION_ONLY | tożsamościowa: import → ENM → eksport → import daje ten sam hash; healing: znane defekty (wiszący terminal, dwa CN na jednym punkcie) naprawiane deterministycznie | `PARTIAL` |
+| G14 | katalog / dobór urządzeń | katalogi + `catalog_*` guardy, K-E/K-O/K-Q | REGRESSION_ONLY | NORMATIVE: dobór kabla wg IEC 60364-5-52 tablice (I_z, współczynniki) — wartości z normy | `PARTIAL` |
+| G15 | raportowanie / proweniencja / dowody | proof packs, golden dowody | REGRESSION_ONLY | tożsamościowa: dokument z envelope E odtwarzalny bit-identycznie; wartości w dowodzie = wartości ze śladu (zero fizyki w proof engine) | `PARTIAL` |
+| G00 (skala) | sieć L ≈ 2 000 szyn (benchmark wydajności) | substrat 52 stacji (`sld_substrate_52s.py`) — **nieobliczalny** (A10) | — | budżety B1–B10 | `NOT_BUILT` |
+| B (benchmarki) | IEEE 4/9/13/14/34/39, CIGRE MV/LV, IEC 60909 przykład, pandapower radial, pp_simple_four_bus, oze_pv_bess | `application/reference_networks/builders/` + `expected/*.json` | **INDEPENDENTLY_VERIFIED** (pandapower; worst |V| ≈ 5e-8 %) + NORMATIVE (IEC 60909 przykład) | KEEP — jedyna dziś prawdziwa wyrocznia; przepiąć na tor P1/S1 (dziś własny NR P9) | `SUPPORTED` |
+
+## 3. Reguły rejestru
+1. Każda rodzina solverów ma ≥ 1 wpis z wyrocznią ≠ `REGRESSION_ONLY` (guard `reference_networks_validation_guard` rozszerzony o klasę wyroczni).
+2. Wpis deklaruje tolerancję per wielkość z uzasadnieniem (szum numeryczny vs różnica modelu).
+3. Sieć rejestru jest budowana **komendami domenowymi** (jak `nn_full_chain`) albo ENM JSON z hashem — nigdy ręcznym `NetworkGraph()` (57 plików testów tworzy `NetworkGraph()` ręcznie — dług do migracji na rejestr).
+4. Jedna sieć zasila wszystkich konsumentów: solvery, SLD SN, SLD nN, dokumenty, e2e (dziś: brak takiej sieci — A10 §3.2 wniosek).
+5. Niepowodzenie testu wyroczni = defekt fizyki; aktualizacja oczekiwanej wartości wymaga decyzji z uzasadnieniem (zakaz „update golden").
+6. Rozproszenie prywatnych builderów (264) i ręcznych `EnergyNetworkModel(` (123 pliki) maleje monotonicznie — zapadka liczona guardem.
+
+## 4. G01 — specyfikacja pierwszego pełnego vertical slice (§31)
+Łańcuch: EDIT (komendy domenowe) → SAVE → LOAD (hash identyczny) → REVISION → VARIATION (np. drugi odpływ) → SCENARIO (MAX LOAD, łącznik OPEN, TR niedostępny) → STUDY CASE → EFFECTIVE SNAPSHOT → TOPOLOGY → COMPUTATIONAL IR → LOAD FLOW → 3F → 2F → 1F-Z → 2F-Z → EARTH-FAULT (kompensowana: I_C, I_L, I_res, U0, rozdział I0) → PROTECTION (50/51, 51N, 67N gdy gotowe) → LV ABCN / SWZ (zakres gotowy) → RESULTSET → WHITE BOX → SLD SN → SLD nN → REPORT. Kryterium FAIL: równoległa prawda o sieci na którymkolwiek etapie (drugi model, drugi builder, drugi rejestr biegów). Wyrocznie z §2 wiersz G01. Dowód: `../evidence/CONVERGENCE_EVIDENCE.md` DoD 21.

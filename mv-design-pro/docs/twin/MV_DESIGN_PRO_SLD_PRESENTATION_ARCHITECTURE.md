@@ -1,5 +1,8 @@
 # MV-DESIGN-PRO — SLD PRESENTATION ARCHITECTURE: CAD / SCADA / ENGINEERING (FAZA E; pakiet §179 poz. 9)
 
+> **Status od 2026-09-04 (kontrakt MAX PLATFORM):** materiał wejściowy i dowodowy programu konwergencji. Źródło kanoniczne architektury: `../architecture/PRODUCT_CAPABILITY_MODEL.md`, `../architecture/CANONICAL_DIGITAL_TWIN.md`, `../architecture/REVISION_SCENARIO_EXECUTION_MODEL.md`, `../architecture/COMPUTATIONAL_BOUNDARY.md`, `../architecture/FUTURE_CAPABILITY_REVIEW.md`, `../reference-networks/REFERENCE_NETWORK_REGISTRY.md`, `../evidence/CONVERGENCE_EVIDENCE.md`. Przy rozbieżności obowiązuje dokument kanoniczny; w szczególności: nie powstaje nowa klasa `TwinModel` (Canonical Project Twin = rozwinięty ENM), `network_model` jest pochodnym IR, program nie zatrzymuje się po M0, lecz prowadzi konwergencję wycinkami CV-0…CV-6 z bramkami B-01/B-02 i procedurą kasacji.
+
+
 **Status:** PROPOZYCJA DO PRZEGLĄDU WŁAŚCICIELA (mandat §96–§113, §144, §159–§160). Nie jest kanonem do czasu decyzji.
 Werdykt wizualny SLD (B-02) należy wyłącznie do właściciela — ten dokument opisuje architekturę i dowody techniczne, nie wystawia ocen wizualnych.
 **Data:** 2026-09-02 · **Autor:** Fable · **Nadrzędny:** `MV_DESIGN_PRO_TARGET_DIGITAL_TWIN_ARCHITECTURE.md` (§19, §3 PRESENTATION STATE)

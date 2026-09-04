@@ -1,5 +1,8 @@
 # MV-DESIGN-PRO — SIMULATION ARCHITECTURE: SOLVERY, MIGAWKA KANONICZNA, ORKIESTRATOR (FAZA D, część 1; pakiet §179 poz. 11)
 
+> **Status od 2026-09-04 (kontrakt MAX PLATFORM):** materiał wejściowy i dowodowy programu konwergencji. Źródło kanoniczne architektury: `../architecture/PRODUCT_CAPABILITY_MODEL.md`, `../architecture/CANONICAL_DIGITAL_TWIN.md`, `../architecture/REVISION_SCENARIO_EXECUTION_MODEL.md`, `../architecture/COMPUTATIONAL_BOUNDARY.md`, `../architecture/FUTURE_CAPABILITY_REVIEW.md`, `../reference-networks/REFERENCE_NETWORK_REGISTRY.md`, `../evidence/CONVERGENCE_EVIDENCE.md`. Przy rozbieżności obowiązuje dokument kanoniczny; w szczególności: nie powstaje nowa klasa `TwinModel` (Canonical Project Twin = rozwinięty ENM), `network_model` jest pochodnym IR, program nie zatrzymuje się po M0, lecz prowadzi konwergencję wycinkami CV-0…CV-6 z bramkami B-01/B-02 i procedurą kasacji.
+
+
 **Status:** PROPOZYCJA DO PRZEGLĄDU WŁAŚCICIELA (mandat §20–§24, §27–§31, §63, §113–§118, §143). Nie jest kanonem do czasu decyzji.
 **Data:** 2026-09-02 · **Autor:** Fable · **Nadrzędny:** `MV_DESIGN_PRO_TARGET_DIGITAL_TWIN_ARCHITECTURE.md` (§9–§14, §22)
 **Dowody stanu obecnego:** audyt A3 (solvery), A2 (topologia/scenariusze), A5 (DER), A11 (nN/uziemienia) — w `MV_DESIGN_PRO_DIGITAL_TWIN_AUDIT.md`.

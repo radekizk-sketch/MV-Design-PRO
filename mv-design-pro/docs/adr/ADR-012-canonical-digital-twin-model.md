@@ -18,3 +18,13 @@ Jeden kanoniczny model **node-breaker, terminal-centric**, wyrównany do ontolog
 ## Alternatywy odrzucone
 - Pozostanie przy bus-branch z portami jako metadanymi: nie daje egzekwowalnej łączności ani gramatyki pola.
 - Big-bang nowy model bez adaptera: brak ścieżki weryfikacji na istniejących sieciach.
+
+## Korekta 2026-09-04 (kontrakt MAX PLATFORM, §4 i §12)
+Sformułowanie „jeden kanoniczny model node-breaker" NIE oznacza nowej trwałej klasy modelu.
+Canonical Project Twin = `EnergyNetworkModel` rozwinięty addytywnie (`docs/architecture/CANONICAL_DIGITAL_TWIN.md` §1–§4):
+`Bus` ≡ `ConnectivityNode`, terminal wyprowadzany deterministycznie z trwałych `from_bus_ref`/`to_bus_ref` + fazy
+(T-1…T-4), `PhaseSet`, `EarthingSystem`, `NeutralGrounding` jako encje (F-1…F-4). `network_model/core` jest
+pochodnym, niemutowalnym IR (`docs/architecture/COMPUTATIONAL_BOUNDARY.md`), nie drugim modelem projektu.
+Kontenery CIM (`Substation/VoltageLevel/Bay`) mapują się na istniejące `Substation`/`GPZSection`/`NnSection`/`Bay`.
+Kasacja legacy SQL wyłącznie procedurą kasacji (D-03 warunkowo). Status ADR pozostaje PROPOSED do zamrożenia
+po CV-1/CV-5 z przeglądem adwersaryjnym.

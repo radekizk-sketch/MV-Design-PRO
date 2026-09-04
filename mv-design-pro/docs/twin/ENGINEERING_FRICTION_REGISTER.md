@@ -1,5 +1,8 @@
 # MV-DESIGN-PRO — REJESTR TARĆ INŻYNIERSKICH (ENGINEERING FRICTION REGISTER, mandat §5, §68, §168, §181)
 
+> **Status od 2026-09-04 (kontrakt MAX PLATFORM):** materiał wejściowy i dowodowy programu konwergencji. Źródło kanoniczne architektury: `../architecture/PRODUCT_CAPABILITY_MODEL.md`, `../architecture/CANONICAL_DIGITAL_TWIN.md`, `../architecture/REVISION_SCENARIO_EXECUTION_MODEL.md`, `../architecture/COMPUTATIONAL_BOUNDARY.md`, `../architecture/FUTURE_CAPABILITY_REVIEW.md`, `../reference-networks/REFERENCE_NETWORK_REGISTRY.md`, `../evidence/CONVERGENCE_EVIDENCE.md`. Przy rozbieżności obowiązuje dokument kanoniczny; w szczególności: nie powstaje nowa klasa `TwinModel` (Canonical Project Twin = rozwinięty ENM), `network_model` jest pochodnym IR, program nie zatrzymuje się po M0, lecz prowadzi konwergencję wycinkami CV-0…CV-6 z bramkami B-01/B-02 i procedurą kasacji.
+
+
 **Status:** WYNIK AUDYTU (stan zastany na HEAD `a1ab2959`, 2026-09-02; READ-ONLY — nic nie naprawiono)
 **Gałąź:** `claude/mv-design-pro-twin-audit-u4lhy0` · **Autor pomiaru:** audytor A12 (Engineering UX Architect + projektant SN/nN); zebrane i zredagowane przez koordynatora programu twin.
 **Metoda:** dla każdego z 14 workflowów (mandat §68) prześledzono w kodzie: skąd dane → gdzie wpisywane → gdzie liczone → dokąd trafia wynik → co użytkownik robi ręcznie. Każde ustalenie ma dowód `plik:linia` (ścieżki względem `mv-design-pro/`). Nie oceniano wyglądu (werdykt wizualny B-02 należy do właściciela) — oceniano przepływ danych i decyzji.

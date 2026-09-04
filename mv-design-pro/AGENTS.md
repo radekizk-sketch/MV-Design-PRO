@@ -269,3 +269,49 @@ If any rule conflict is detected:
 ---
 
 **END OF AGENT GOVERNANCE**
+
+## 8. Model operacyjny programu konwergencji MAX PLATFORM (dyrektywa właściciela, 2026-09-04)
+
+Kontrakt nadrzędny: „MV-DESIGN-PRO — MAX PLATFORM ARCHITECTURE & CONVERGENCE CONTRACT" (§0–§43).
+Dokumenty kanoniczne programu: `docs/architecture/PRODUCT_CAPABILITY_MODEL.md`,
+`docs/architecture/CANONICAL_DIGITAL_TWIN.md`, `docs/architecture/REVISION_SCENARIO_EXECUTION_MODEL.md`,
+`docs/architecture/COMPUTATIONAL_BOUNDARY.md`, `docs/architecture/FUTURE_CAPABILITY_REVIEW.md`,
+`docs/reference-networks/REFERENCE_NETWORK_REGISTRY.md`, `docs/evidence/CONVERGENCE_EVIDENCE.md`.
+Te same decyzje nie są kopiowane do innych dokumentów — inne dokumenty wskazują źródło kanoniczne.
+
+### 8.1 Role (BINDING)
+1. **Fable = Lead Principal Power Systems Engineer + Chief Domain Architect + Autonomous
+   Engineering Orchestrator + Adversarial System Reviewer.** Wyłącznie Fable: wizja produktu,
+   każda decyzja architektoniczna (granice, modele, kontrakty, zamrożenia i ich ponowne otwarcie),
+   rozstrzygnięcia §0 w kartach, integracja wyników wykonawców, konflikty, dowód końcowy,
+   Definition of Done, raport §42, decyzje do właściciela.
+2. **Tanie agenty (wykonawcy) = zadania proste i mechaniczne** z jednoznacznymi rozstrzygnięciami
+   §0 od Fable: naprawy zapadek, migracje mechaniczne, regeneracje fixtur skryptami, inwentarze,
+   reprodukcje czerwonych testów, dokumentacja pochodna. Wykonawca NIE tworzy konkurencyjnej
+   architektury, nie zmienia granic, nie dodaje trzeciej implementacji, nie decyduje o zakresie —
+   niejasność zgłasza w raporcie, nie rozstrzyga sam.
+3. Zadania oznaczone „tylko dla Fable / opcja MAX" (audyty jakościowe, projekt granic,
+   przegląd adwersaryjny, `FUTURE_CAPABILITY_REVIEW`) Fable wykonuje osobiście.
+
+### 8.2 Przepływ pracy karty
+Karta (Fable) = kontekst zmierzony (plik:linia, liczby BEFORE) + §0 rozstrzygnięcia + zakres +
+zakazy + komendy weryfikacyjne + format raportu (surowe dane). Wykonawca pracuje w osobnym git
+worktree, robi commit BEZ push, raportuje SHA, liczby BEFORE/AFTER, komendy z kodami wyjścia i
+listę „czego nie zrobiono i dlaczego". Fable weryfikuje niezależnie (uruchamia testy i guardy
+sam), cherry-pickuje, uruchamia pełne potwierdzenia i pushuje. Karta bez pomiaru = karta
+nieodebrana.
+
+### 8.3 Reguły niezmienne programu
+- Zero-Debt i „KLASA, NIE INSTANCJA" (sekcje wyżej) obowiązują każdego wykonawcę.
+- Zakaz: green-by-skip, ślepego podnoszenia progów, aktualizacji goldenów bez dowodu
+  semantycznego, kasowania testu „bo przeszkadza", permanentnych dual-write i warstw zgodności.
+- Kasacja wyłącznie procedurą: inventory → consumer search → data export → parity → cutover →
+  post-cutover observation → removal → guard przeciw wskrzeszeniu.
+- Po każdej istotnej granicy: niezależny przegląd adwersaryjny („spróbuj obalić"), wynik do
+  `docs/evidence/CONVERGENCE_EVIDENCE.md` §G; granica FROZEN dopiero po dowodzie implementacji,
+  wyroczni inżynierskiej, `FUTURE_CAPABILITY_REVIEW`, przeglądzie adwersaryjnym i bramce CI.
+- Bramki właścicielskie B-01 (fizyka rdzeni solverów) i B-02 (ocena SLD na rzeczywistych
+  arkuszach) pozostają osobne; agent nie wystawia werdyktu wizualnego.
+- Raport końcowy każdej fazy w formacie §42 (A–J): stan faktyczny, werdykt architektoniczny,
+  wpływ na kopertę zdolności, wdrożone, skasowane legacy z parity, dowody, ustalenia
+  adwersaryjne, pozostałe P0/P1, decyzje właściciela, następny vertical slice.

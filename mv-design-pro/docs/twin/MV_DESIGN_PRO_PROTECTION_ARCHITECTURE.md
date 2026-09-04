@@ -1,5 +1,8 @@
 # MV-DESIGN-PRO — DOCELOWA ARCHITEKTURA ZABEZPIECZEŃ (mandat §26, §32–§38, §82, §112; pakiet §179 poz. 12)
 
+> **Status od 2026-09-04 (kontrakt MAX PLATFORM):** materiał wejściowy i dowodowy programu konwergencji. Źródło kanoniczne architektury: `../architecture/PRODUCT_CAPABILITY_MODEL.md`, `../architecture/CANONICAL_DIGITAL_TWIN.md`, `../architecture/REVISION_SCENARIO_EXECUTION_MODEL.md`, `../architecture/COMPUTATIONAL_BOUNDARY.md`, `../architecture/FUTURE_CAPABILITY_REVIEW.md`, `../reference-networks/REFERENCE_NETWORK_REGISTRY.md`, `../evidence/CONVERGENCE_EVIDENCE.md`. Przy rozbieżności obowiązuje dokument kanoniczny; w szczególności: nie powstaje nowa klasa `TwinModel` (Canonical Project Twin = rozwinięty ENM), `network_model` jest pochodnym IR, program nie zatrzymuje się po M0, lecz prowadzi konwergencję wycinkami CV-0…CV-6 z bramkami B-01/B-02 i procedurą kasacji.
+
+
 **Status:** PROPOZYCJA (do przeglądu właściciela; nic nie jest wdrożone)
 **Data:** 2026-09-02 · **Gałąź:** `claude/mv-design-pro-twin-audit-u4lhy0` · **HEAD audytu:** `a1ab2959`
 **Źródła dowodowe:** A4 (zabezpieczenia, CT/VT, aparatura, TCC, trace — 17 ustaleń, 16 wymagań dodatkowych), A12 (W10, EF-035/038/039/040/041), A5 (LoM, RfG), A11 (SWZ, I²t, nN), A7 (oznaczenie ochrony na SLD, fantom nastaw w szufladzie), A6 (katalog przekaźników z fikcyjnymi identyfikatorami).
