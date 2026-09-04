@@ -164,6 +164,9 @@ jobs:
       - name: Single entry point (CanonicalOpName)
         run: $GUARD_PY scripts/single_entry_point_guard.py
 
+      - name: Magazyn ENM — klucz projektu, nie surowy case_id (CV-1)
+        run: $GUARD_PY scripts/enm_store_key_guard.py
+
       - name: Legacy public path
         run: $GUARD_PY scripts/legacy_public_path_guard.py
 
