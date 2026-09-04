@@ -14,10 +14,10 @@ Klasyfikacja czerwonych bramek na szczycie `c5ebde3f` (pomiar z logów GitHub Ac
 | Physics Label Guard | zielony | — | — | — | zielony |
 | Architectural And Repo Hygiene | zielony | — | — | — | zielony |
 | Frontend E2E smoke | zielony | — | — | — | zielony |
-| Python tests | czerwony (2 testy) | **stale test / policy guard** | `scripts/guardy_z_ci.py` nie rozpoznawał `$GUARD_PY` po ujednoliceniu środowiska guardów | regex `(?:python3?|\$\{?GUARD_PY\}?)` (`cfbc75fb`); 4 testy zielone lokalnie | oczekuje na CI |
-| Frontend checks | czerwony (1 test vitest + zapadka tsconfig) | **source regression** (komunikat nie w formie dokonanej — moja zmiana) + **policy guard** (dług typów 658 > 531, wyciszenia 39 > 35 — pre-existing) | `operationSuccessMessages.ts`; `tsconfig_gate_guard` | komunikaty poprawione (`cfbc75fb`); karta CI-B (agent, worktree) | w toku |
+| Python tests | czerwony (2 testy) | **stale test / policy guard** | `scripts/guardy_z_ci.py` nie rozpoznawał `$GUARD_PY` po ujednoliceniu środowiska guardów | regex `(?:python3?|\$\{?GUARD_PY\}?)` (`cfbc75fb`) | krok pytest **zielony** @ e6f11de7 (10 568 testów); czerwony pozostał krok „Testy guardów": 2 testy własne `test_solver_input_substitute_guard.py` (11 naruszeń + 2 moduły bez decyzji w mapie: `lv_temperature_correction.py`, `lv_mcb_bands_iec60898.py`) → karta CI-A |
+| Frontend checks | czerwony (1 test vitest + zapadka tsconfig) | **source regression** (komunikat nie w formie dokonanej — moja zmiana) + **policy guard** (dług typów 658 > 531, wyciszenia 39 > 35 — pre-existing) | `operationSuccessMessages.ts`; `tsconfig_gate_guard` | komunikaty poprawione (`cfbc75fb`); karta CI-B (agent, worktree) | @ e6f11de7: type-check, lint, vitest, audit2, 5 guardów **zielone**; czerwony wyłącznie `TSConfig Gate Guard` → CI-B |
 | P0 Extended Guards | czerwony (11 naruszeń) | **environment/dependency** (naprawione w `c5ebde3f`: jedno środowisko poetry) → odsłoniło **source regression** z #472 (podstawianie liczb za brakujące dane w `domain_operations_v2.py`, `mapping.py`) + zapadka `c_factor` do obniżenia | `solver_input_substitute_guard` | karta CI-A (agent, worktree; §0: brak podstawień, jawna odmowa, jedna definicja `n_parallel`) | w toku |
-| SLD Determinism Guards | czerwony | **obsolete architectural oracle lub source regression** — do rozstrzygnięcia z dowodem: `vertical_length_probe` §15.1: LOD0 22672 > 22440, LOD1/2 45656 > 39448; czerwony także na `main` od #472 | `frontend/scripts/sld_v3_acceptance.mjs` baseline | karta CI-C (agent: atrybucja per klasa elementu, baseline tylko z dowodem semantycznym + wzmocnienie sondy) | w toku |
+| SLD Determinism Guards | czerwony | **nowa treść sceny (portal LV nN, #472), nie regresja trasowania** — dowód: atrybucja per przyczyna (footprint `#lv-portal-drop` +848 px na L1/L2; kaskada rezerwacji kanału i jogu trasy z wyższego footprintu stacji: 29/53 stacji 0→48 px), ablacja 2×2 = stan sprzed #472 co do piksela | `frontend/scripts/sld_v3_acceptance.mjs` baseline | karta CI-C: baseline z komentarzem dowodowym + bramka per przyczyna `VERTICAL_LENGTH_BY_CAUSE_BASELINE` + test negatywny (`ee0ec472`) | **zielony** @ ee0ec472 (run 33925212895) |
 | Frontend E2E full | czerwony (12 speców) | **source regression na `main` od #472** (identyczna lista na `main` @ a1ab2959; poprzedni zielony bieg: 2031fc75, 2026-08-15) | m.in. chip `mvd-casebar-model` „Model: w budowie" przy `ready: true` z serwera | karta CI-D (agent, realny backend, przyczyna źródłowa w produkcie) | w toku |
 
 Zakazy respektowane: brak `skip`, brak podnoszenia tolerancji, brak aktualizacji goldenów bez dowodu semantycznego, brak kasowania testów.
@@ -72,14 +72,19 @@ Do czasu wykonania: każdy merge do `main` bez zielonego kompletu bramek jest na
 |---|---|---|---|
 | CI-A | `solver_input_substitute_guard` 11 naruszeń u źródła | agent (worktree) | w toku |
 | CI-B | tsconfig gate 658 → ≤ 531, wyciszenia 39 → ≤ 35 | agent (worktree) | w toku |
-| CI-C | SLD `vertical_length_probe` z dowodem semantycznym | agent (worktree) | w toku |
+| CI-C | SLD `vertical_length_probe` z dowodem semantycznym | agent (worktree) | **odebrana** (`ee0ec472`), CI zielone |
 | CI-D | 12 czerwonych speców e2e (pre-existing od #472) | agent (worktree) | w toku |
 | FAB-A | fikcyjny katalog przekaźników → profile referencyjne (D-33) | agent (worktree) | w toku |
 | FAB-B | fantom nastaw `SldDetailDrawer` → dane z modelu / uczciwy stan zerowy | agent (worktree) | w toku |
+| CV-1-G | guard `enm_store_key_guard` (klucz przypadku w API/aplikacji = naruszenie; zapadka mierzona) + krok CI | agent (główny checkout, bez commitu) | w toku |
+| CV-1-W | przepięcie 21 konsumentów magazynu na klucz projektu (zależność FastAPI `KluczTwin`, 404 dla przypadku spoza bazy, archiwum per projekt, testy I-3 na HTTP) | agent (worktree) | w toku |
 
 ## F. Dowody inżynierskie (testy, wyrocznie, przebiegi) — uzupełniane po każdym wycinku
 - 2026-09-04: `pytest tests/application/analyses/lv_domain/` — komplet zielony po wdrożeniu trybu ścisłego (liczby w commicie).
 - 2026-09-04: `tests/ci/test_guardy_z_ci.py` 4 passed; `snapshotStore.successToast.test.ts` 8 passed; guardy: `success_toast`, `claude_md_struktura`, `docs_guard`, `docs_archive_guard` zielone.
+- 2026-09-04: CV-1 rdzeń (`9667235a`): `tests/invariants` + `tests/enm` + magazyn 1682 passed; `tests/api` + `station_templates` + `project_archive` 1086 passed po zmianie klucza magazynu (semantyka klucza surowego w testach niezmieniona).
+- 2026-09-04: rejestr sieci wzorcowych w kodzie (`0c506744`): `tests/golden/test_registry.py` 14 passed (budowniczowie G02/G03/G04/G05/G07/G08/G13/G00/B-BENCH wykonalni; tabela generowana aktualna; zapadka pokrycia rodzin).
+- 2026-09-04: SLD acceptance `npm run accept:sld-v3` RC=0 lokalnie (410 PASS) i w CI @ ee0ec472.
 
 ## G. Ustalenia adwersaryjne (§38) — po każdej granicy
 | Data | Granica | Próba obalenia | Wynik |
