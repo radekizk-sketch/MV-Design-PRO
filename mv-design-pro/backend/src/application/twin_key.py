@@ -1,6 +1,6 @@
 """Tłumacz `case_id` → klucz Canonical Project Twin (CV-1; JEDYNE miejsce tłumaczenia).
 
-docs/architecture/CANONICAL_DIGITAL_TWIN.md §2: projekt posiada jeden kanoniczny
+docs/architecture/CANONICAL_TWIN_ARCHITECTURE.md §A.2: projekt posiada jeden kanoniczny
 model sieci; przypadek obliczeniowy jest konfiguracją analizy. Warstwa API nadal
 adresuje model przez `/api/cases/{case_id}/enm/...` (fasada na czas migracji
 stranglerowej), ale magazyn ENM czyta i pisze WYŁĄCZNIE pod kluczem projektu

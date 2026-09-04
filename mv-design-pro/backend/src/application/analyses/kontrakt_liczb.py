@@ -27,7 +27,7 @@ pewna fałszywa czerwień). Liczby całkowite, logiczne, tekst i `None` są
 przekazywane bez zmian; `-0.0` staje się `0.0`.
 
 PRZEGLĄD §35 (kontrakt MAX PLATFORM, 2026-09-04; polityka w
-`docs/architecture/COMPUTATIONAL_BOUNDARY.md` §5): wartości NIEFINITOWE (NaN,
+`docs/architecture/CANONICAL_TWIN_ARCHITECTURE.md` §C.5): wartości NIEFINITOWE (NaN,
 ±inf) i liczby zespolone NIE SĄ dopuszczalne w kontrakcie wyjściowym. Wcześniej
 przechodziły bez zmian, a `json.dumps` emitował tokeny `NaN`/`Infinity`
 (niepoprawny JSON — klient nie sparsuje) — defekt producenta ładunku był

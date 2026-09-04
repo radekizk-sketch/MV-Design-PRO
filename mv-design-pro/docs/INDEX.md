@@ -15,17 +15,17 @@
 
 ---
 
-## Architektura kanoniczna platformy MAX (kontrakt właściciela 2026-09-04) — ŹRÓDŁO PRAWDY programu konwergencji
+## Architektura kanoniczna platformy MAX (konstytucja właściciela 2026-09-04) — ŹRÓDŁO PRAWDY programu konwergencji
 
-Kontrakt „MAX PLATFORM ARCHITECTURE & CONVERGENCE CONTRACT" jest nadrzędny wobec pakietu Digital Twin niżej (który pozostaje materiałem wejściowym i dowodowym). Model operacyjny (role Fable / wykonawcy): `../AGENTS.md` §8.
+Kontrakt „MAX PLATFORM ARCHITECTURE & CONVERGENCE CONTRACT" i „FINAL PRODUCT CONSTITUTION" są nadrzędne wobec pakietu Digital Twin niżej (materiał wejściowy i dowodowy). Model operacyjny (role Fable / wykonawcy): `../AGENTS.md` §8.
 
-- [architecture/PRODUCT_CAPABILITY_MODEL.md](./architecture/PRODUCT_CAPABILITY_MODEL.md) — koperta zdolności MAX, mapa zdolność → pojęcia/dane/fizyka/usługi/wyjścia/proweniencja, luki fundamentu
-- [architecture/CANONICAL_DIGITAL_TWIN.md](./architecture/CANONICAL_DIGITAL_TWIN.md) — Canonical Project Twin = rozwinięty ENM; własność projektu; terminale, fazy, uziemienie; wycinki CV-0…CV-6; rejestr zamrożeń
-- [architecture/REVISION_SCENARIO_EXECUTION_MODEL.md](./architecture/REVISION_SCENARIO_EXECUTION_MODEL.md) — rewizja / wariant / scenariusz / przypadek, `RevisionEnvelope`, `EffectiveNetworkSnapshot`, jeden rejestr biegów, inwentarz i los bytów istniejących
-- [architecture/COMPUTATIONAL_BOUNDARY.md](./architecture/COMPUTATIONAL_BOUNDARY.md) — topologia wyprowadzana, `network_model` jako pochodny IR, jeden assembler, granica solverów, polityka determinizmu §35
-- [architecture/FUTURE_CAPABILITY_REVIEW.md](./architecture/FUTURE_CAPABILITY_REVIEW.md) — test decyzji fundamentalnych wobec 15 obszarów zdolności
-- [reference-networks/REFERENCE_NETWORK_REGISTRY.md](./reference-networks/REFERENCE_NETWORK_REGISTRY.md) — rejestr G01–G15 z klasami wyroczni; G01 jako pierwszy vertical slice
-- [evidence/CONVERGENCE_EVIDENCE.md](./evidence/CONVERGENCE_EVIDENCE.md) — dowody: CI, ochrona `main` (owner action), determinizm, Definition of Done §40, karty w toku, P0/P1, decyzje właściciela
+- [architecture/PRODUCT_CAPABILITY_CONSTITUTION.md](./architecture/PRODUCT_CAPABILITY_CONSTITUTION.md) — misja, zasada MAX, trzy poziomy zobowiązania, taksonomia zdolności A–Y, reguły future-proof, nie-cele
+- [architecture/CAPABILITY_ARCHITECTURE_MATRIX.md](./architecture/CAPABILITY_ARCHITECTURE_MATRIX.md) — macierz §25: zdolność → pojęcia → dane → usługi → solver → projekcja → stan (pomiar) → luka → poziom → werdykt future-proof
+- [architecture/CANONICAL_TWIN_ARCHITECTURE.md](./architecture/CANONICAL_TWIN_ARCHITECTURE.md) — część A: Canonical Project Twin = rozwinięty ENM (własność projektu, terminale, fazy, uziemienie); część B: rewizja/wariant/scenariusz/StudyCase, `RevisionEnvelope`, `EffectiveNetworkSnapshot`, wykonanie, współbieżność; część C: topologia wyprowadzana, Computational IR, solvery, White Box, determinizm
+- [architecture/CONVERGENCE_ROADMAP.md](./architecture/CONVERGENCE_ROADMAP.md) — stan i kontynuacja (§41), wycinki CV-0…CV-6, kroki, parity, guardy
+- [architecture/DECISION_FREEZE_REGISTER.md](./architecture/DECISION_FREEZE_REGISTER.md) — decyzje fundamentalne: dowód, odrzucone alternatywy, warunki ponownego otwarcia, status
+- [reference-networks/REFERENCE_NETWORK_REGISTRY.md](./reference-networks/REFERENCE_NETWORK_REGISTRY.md) — rejestr G01–G15 z klasami wyroczni; tabela generowana `REGISTRY_TABLE.md`
+- [evidence/CONVERGENCE_EVIDENCE.md](./evidence/CONVERGENCE_EVIDENCE.md) — dowody: CI, ochrona `main` (owner action), determinizm, Definition of Done, karty, P0/P1, decyzje właściciela
 
 ## Program Digital Twin SN+nN 2026-09 (PROPOZYCJA — pakiet do przeglądu właściciela)
 

@@ -1,6 +1,6 @@
 # P23 — Study / Scenario Workflow (CANONICAL+)
 
-> **ZASTĄPIONY (2026-09-04):** model Study/Scenario/Run tej warstwy (P23, `application/study_scenario/**`, bez routera API, 2 konsumentów) jest konsolidowany w `REVISION_SCENARIO_EXECUTION_MODEL.md` (pozycja C4 inwentarza: strangle → delete procedurą kasacji). Dokument zachowany jako materiał wejściowy do czasu kasacji kodu; nie jest źródłem kanonicznym.
+> **ZASTĄPIONY (2026-09-04):** model Study/Scenario/Run tej warstwy (P23, `application/study_scenario/**`, bez routera API, 2 konsumentów) jest konsolidowany w `CANONICAL_TWIN_ARCHITECTURE.md` (część B) (pozycja C4 inwentarza: strangle → delete procedurą kasacji). Dokument zachowany jako materiał wejściowy do czasu kasacji kodu; nie jest źródłem kanonicznym.
 
 
 ## Cel i zakres (P23)

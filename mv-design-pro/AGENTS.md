@@ -273,9 +273,9 @@ If any rule conflict is detected:
 ## 8. Model operacyjny programu konwergencji MAX PLATFORM (dyrektywa właściciela, 2026-09-04)
 
 Kontrakt nadrzędny: „MV-DESIGN-PRO — MAX PLATFORM ARCHITECTURE & CONVERGENCE CONTRACT" (§0–§43).
-Dokumenty kanoniczne programu: `docs/architecture/PRODUCT_CAPABILITY_MODEL.md`,
-`docs/architecture/CANONICAL_DIGITAL_TWIN.md`, `docs/architecture/REVISION_SCENARIO_EXECUTION_MODEL.md`,
-`docs/architecture/COMPUTATIONAL_BOUNDARY.md`, `docs/architecture/FUTURE_CAPABILITY_REVIEW.md`,
+Dokumenty kanoniczne programu (konstytucja 2026-09-04 §39): `docs/architecture/PRODUCT_CAPABILITY_CONSTITUTION.md`,
+`docs/architecture/CAPABILITY_ARCHITECTURE_MATRIX.md`, `docs/architecture/CANONICAL_TWIN_ARCHITECTURE.md`,
+`docs/architecture/CONVERGENCE_ROADMAP.md`, `docs/architecture/DECISION_FREEZE_REGISTER.md`,
 `docs/reference-networks/REFERENCE_NETWORK_REGISTRY.md`, `docs/evidence/CONVERGENCE_EVIDENCE.md`.
 Te same decyzje nie są kopiowane do innych dokumentów — inne dokumenty wskazują źródło kanoniczne.
 
@@ -291,7 +291,7 @@ Te same decyzje nie są kopiowane do innych dokumentów — inne dokumenty wskaz
    architektury, nie zmienia granic, nie dodaje trzeciej implementacji, nie decyduje o zakresie —
    niejasność zgłasza w raporcie, nie rozstrzyga sam.
 3. Zadania oznaczone „tylko dla Fable / opcja MAX" (audyty jakościowe, projekt granic,
-   przegląd adwersaryjny, `FUTURE_CAPABILITY_REVIEW`) Fable wykonuje osobiście.
+   przegląd adwersaryjny, `DECISION_FREEZE_REGISTER.md`) Fable wykonuje osobiście.
 
 ### 8.2 Przepływ pracy karty
 Karta (Fable) = kontekst zmierzony (plik:linia, liczby BEFORE) + §0 rozstrzygnięcia + zakres +
@@ -309,7 +309,7 @@ nieodebrana.
   post-cutover observation → removal → guard przeciw wskrzeszeniu.
 - Po każdej istotnej granicy: niezależny przegląd adwersaryjny („spróbuj obalić"), wynik do
   `docs/evidence/CONVERGENCE_EVIDENCE.md` §G; granica FROZEN dopiero po dowodzie implementacji,
-  wyroczni inżynierskiej, `FUTURE_CAPABILITY_REVIEW`, przeglądzie adwersaryjnym i bramce CI.
+  wyroczni inżynierskiej, `DECISION_FREEZE_REGISTER.md`, przeglądzie adwersaryjnym i bramce CI.
 - Bramki właścicielskie B-01 (fizyka rdzeni solverów) i B-02 (ocena SLD na rzeczywistych
   arkuszach) pozostają osobne; agent nie wystawia werdyktu wizualnego.
 - Raport końcowy każdej fazy w formacie §42 (A–J): stan faktyczny, werdykt architektoniczny,

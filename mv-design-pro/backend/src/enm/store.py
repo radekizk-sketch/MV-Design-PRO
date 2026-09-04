@@ -1,6 +1,6 @@
 """Magazyn ENM — JEDEN model sieci per KLUCZ TWIN (CV-1: klucz = projekt).
 
-KONTRAKT KLUCZA (docs/architecture/CANONICAL_DIGITAL_TWIN.md §2, ADR-012 korekta
+KONTRAKT KLUCZA (docs/architecture/CANONICAL_TWIN_ARCHITECTURE.md §A.2, ADR-012 korekta
 2026-09-04): magazyn jest kluczowany kluczem Canonical Project Twin
 (`enm/klucz_twin.klucz_twin_projektu(project_id)` → `projekt:<uuid>`). `case_id`
 NIE jest kluczem magazynu — jest adresem wejściowym API tłumaczonym na klucz

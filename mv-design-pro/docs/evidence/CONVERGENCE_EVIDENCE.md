@@ -35,7 +35,7 @@ Pomiar (GitHub API `list_branches`, 2026-09-04): `main` → `protected: false`; 
 Do czasu wykonania: każdy merge do `main` bez zielonego kompletu bramek jest naruszeniem kontraktu (§36) — odnotowane jako P0 w §H.
 
 ## C. Determinizm numeryczny (§35)
-- Polityka: `docs/architecture/COMPUTATIONAL_BOUNDARY.md` §5. Kod: `backend/src/application/analyses/kontrakt_liczb.py` (tryb ścisły: NaN/±inf/complex → `KontraktNiefinitowyError` ze ścieżką pola).
+- Polityka: `docs/architecture/CANONICAL_TWIN_ARCHITECTURE.md` §C.5. Kod: `backend/src/application/analyses/kontrakt_liczb.py` (tryb ścisły: NaN/±inf/complex → `KontraktNiefinitowyError` ze ścieżką pola).
 - Dowód: `tests/application/analyses/lv_domain/test_kwantyzacja_kontraktu.py` — fixtury × ±1 ULP (18 fixtur), własności, klasa równoważności 1e-12 vs 1e-8, porządek kluczy/list, niezależność od skali jednostki, `int`/`bool` nietknięte; pakiet `lv_domain` zielony lokalnie (wynik w §F). 18/18 fixtur nN: 0 wartości niefinitowych.
 
 ## D. Definition of Done — program (§40)
@@ -63,8 +63,8 @@ Do czasu wykonania: każdy merge do `main` bez zielonego kompletu bramek jest na
 | 19 | CI wiarygodne | W TOKU — @ e6f11de7/ee0ec472: Docs, Physics Label, Arch/Hygiene, E2E smoke, SLD Determinism zielone (5/9); pytest zielony (krok guardów → CI-A); Frontend checks tylko tsconfig gate (→ CI-B); P0 (→ CI-A); E2E full (→ CI-D) | §A |
 | 20 | Main chroniony lub jednoznaczne owner action | OWNER ACTION zapisane | §B |
 | 21 | G01 przechodzi end-to-end | NIE — G01 nie istnieje jako jedna sieć | CV-6 |
-| 22 | Future Capability Review potwierdza fundament | TAK (projektowo) — 16 decyzji, 4 z warunkiem | `docs/architecture/FUTURE_CAPABILITY_REVIEW.md` |
-| 23 | Brak równoległych trwałych subsystemów legacy | NIE — inwentarz w `REVISION_SCENARIO_EXECUTION_MODEL.md` §2, `COMPUTATIONAL_BOUNDARY.md` §2.3 | CV-1…CV-4 |
+| 22 | Future Capability Review potwierdza fundament | TAK (projektowo) — 16 decyzji, 4 z warunkiem | `docs/architecture/DECISION_FREEZE_REGISTER.md` |
+| 23 | Brak równoległych trwałych subsystemów legacy | NIE — inwentarz w `CANONICAL_TWIN_ARCHITECTURE.md` §B.2, `CANONICAL_TWIN_ARCHITECTURE.md` §C.2.3 | CV-1…CV-4 |
 | 24 | Każda usunięta ścieżka ma guard przeciw wskrzeszeniu | CZĘŚCIOWO — `legacy_public_path_guard`, `verification_phantom_paths_guard` istnieją | per wycinek |
 
 ## E. Karty w toku (delegowane; model wykonawczy: `AGENTS.md` §8)
@@ -114,4 +114,4 @@ Do czasu wykonania: każdy merge do `main` bez zielonego kompletu bramek jest na
 | OD-3 | Publikowane wyrocznie dla G01 (sieć kompensowana): wskazanie źródła literaturowego/normowego akceptowanego przez właściciela jako `PUBLISHED_BENCHMARK` | wybór źródła normatywnego/literaturowego jest decyzją właściciela produktu |
 
 ## J. Następny vertical slice
-**CV-1 — Project owns ENM** (`docs/architecture/CANONICAL_DIGITAL_TWIN.md` §2): magazyn per projekt, fasada `case_id → project_id`, migracja per-case ENM → warianty, guard przeciw zapisowi kluczem przypadku, inwarianty I-1…I-4 w `tests/invariants/`.
+**CV-1 — Project owns ENM** (`docs/architecture/CANONICAL_TWIN_ARCHITECTURE.md` §2): magazyn per projekt, fasada `case_id → project_id`, migracja per-case ENM → warianty, guard przeciw zapisowi kluczem przypadku, inwarianty I-1…I-4 w `tests/invariants/`.

@@ -1,6 +1,6 @@
 """Klucz Canonical Project Twin — tożsamość magazynu ENM per PROJEKT (CV-1).
 
-KONTRAKT (docs/architecture/CANONICAL_DIGITAL_TWIN.md §2): projekt posiada
+KONTRAKT (docs/architecture/CANONICAL_TWIN_ARCHITECTURE.md §A.2): projekt posiada
 jeden kanoniczny model sieci; przypadek obliczeniowy (`StudyCase`) jest
 konfiguracją analizy i NIE posiada własnej kopii sieci. Magazyn ENM
 (`enm/store.py`) jest więc kluczowany kluczem twin projektu, a `case_id`

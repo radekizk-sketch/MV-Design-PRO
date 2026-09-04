@@ -119,7 +119,7 @@ def test_kwantyzuj_kontrakt_nie_zmienia_typow_nieliczbowych() -> None:
     assert wejscie["e"][0] == 1.23456789012, "wejście nie może być mutowane"
 
 
-# --- Polityka §35 (docs/architecture/COMPUTATIONAL_BOUNDARY.md §5) — testy klasy ---
+# --- Polityka §35 (docs/architecture/CANONICAL_TWIN_ARCHITECTURE.md §C.5) — testy klasy ---
 
 
 @pytest.mark.parametrize(

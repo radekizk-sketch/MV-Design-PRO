@@ -1,4 +1,4 @@
-"""Inwarianty CV-1 (docs/architecture/CANONICAL_DIGITAL_TWIN.md §2): PROJECT owns ENM.
+"""Inwarianty CV-1 (docs/architecture/CANONICAL_TWIN_ARCHITECTURE.md §A.2): PROJECT owns ENM.
 
 I-1: dla projektu istnieje dokładnie jeden klucz magazynu ENM — wszystkie przypadki
      projektu tłumaczą się na ten sam klucz.
