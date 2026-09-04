@@ -60,7 +60,7 @@ Do czasu wykonania: każdy merge do `main` bez zielonego kompletu bramek jest na
 | 16 | SN i nN bez konkurencyjnych modeli | CZĘŚCIOWO — jeden graf; nN miało równoległą prawdę (A1-08) | CV-5 |
 | 17 | White Box odtwarza pełną drogę wyniku | CZĘŚCIOWO — ślady inline; `trace_v2` martwe | CV-4 |
 | 18 | Reference Networks mają niezależne wyrocznie | CZĘŚCIOWO — 12 benchmarków IEEE/CIGRE (pandapower) tak; reszta REGRESSION_ONLY | rejestr §2 |
-| 19 | CI wiarygodne | W TOKU — 4/9 zielone @ c5ebde3f; 6 kart naprawczych w toku | §A |
+| 19 | CI wiarygodne | W TOKU — @ e6f11de7/ee0ec472: Docs, Physics Label, Arch/Hygiene, E2E smoke, SLD Determinism zielone (5/9); pytest zielony (krok guardów → CI-A); Frontend checks tylko tsconfig gate (→ CI-B); P0 (→ CI-A); E2E full (→ CI-D) | §A |
 | 20 | Main chroniony lub jednoznaczne owner action | OWNER ACTION zapisane | §B |
 | 21 | G01 przechodzi end-to-end | NIE — G01 nie istnieje jako jedna sieć | CV-6 |
 | 22 | Future Capability Review potwierdza fundament | TAK (projektowo) — 16 decyzji, 4 z warunkiem | `docs/architecture/FUTURE_CAPABILITY_REVIEW.md` |
@@ -75,8 +75,10 @@ Do czasu wykonania: każdy merge do `main` bez zielonego kompletu bramek jest na
 | CI-C | SLD `vertical_length_probe` z dowodem semantycznym | agent (worktree) | **odebrana** (`ee0ec472`), CI zielone |
 | CI-D | 12 czerwonych speców e2e (pre-existing od #472) | agent (worktree) | w toku |
 | FAB-A | fikcyjny katalog przekaźników → profile referencyjne (D-33) | agent (worktree) | w toku |
-| FAB-B | fantom nastaw `SldDetailDrawer` → dane z modelu / uczciwy stan zerowy | agent (worktree) | w toku |
+| FAB-B | fantom nastaw `SldDetailDrawer` → dane z modelu / uczciwy stan zerowy | agent (worktree) | **odebrana** (`021423bf`): 3 bloki (DER 6 fikcyjnych progów ANSI, pole 5 wierszy, aparat 3 nastawy) → `ElementProtectionFunctionsPanel` na tej samej ścieżce danych co widok zabezpieczeń (`useProtectionAssignment` → `GET /enm/protection-view`); 6 testów klasy (pozytywne + negatywne bez liczb z jednostkami); 72/72; guardy zielone |
 | CV-1-G | guard `enm_store_key_guard` (klucz przypadku w API/aplikacji = naruszenie; zapadka mierzona) + krok CI | agent (główny checkout, bez commitu) | w toku |
+| FAB-C | ta sama klasa w tym samym pliku (znalezisko FAB-B): zakładka `cable_run` — zaszyte `XRUHKXS 1×120`, `120 mm²`, `270 A`, `PN-HD 620 S2` → dane z ENM przez kontrakt `cableRunSpec` | agent (worktree) | w toku |
+| PERF-0 | baseline wydajności B1–B10 na sieciach rejestru (S: G02/G03/G08, M: G13/G00; L brak) — pomiar albo NIEMIERZALNE z powodem | agent (główny checkout, bez commitu) | w toku |
 | CV-1-W | przepięcie 21 konsumentów magazynu na klucz projektu (zależność FastAPI `KluczTwin`, 404 dla przypadku spoza bazy, archiwum per projekt, testy I-3 na HTTP) | agent (worktree) | w toku |
 
 ## F. Dowody inżynierskie (testy, wyrocznie, przebiegi) — uzupełniane po każdym wycinku
@@ -85,6 +87,7 @@ Do czasu wykonania: każdy merge do `main` bez zielonego kompletu bramek jest na
 - 2026-09-04: CV-1 rdzeń (`9667235a`): `tests/invariants` + `tests/enm` + magazyn 1682 passed; `tests/api` + `station_templates` + `project_archive` 1086 passed po zmianie klucza magazynu (semantyka klucza surowego w testach niezmieniona).
 - 2026-09-04: rejestr sieci wzorcowych w kodzie (`0c506744`): `tests/golden/test_registry.py` 14 passed (budowniczowie G02/G03/G04/G05/G07/G08/G13/G00/B-BENCH wykonalni; tabela generowana aktualna; zapadka pokrycia rodzin).
 - 2026-09-04: SLD acceptance `npm run accept:sld-v3` RC=0 lokalnie (410 PASS) i w CI @ ee0ec472.
+- 2026-09-04: snapshot OpenAPI (`0cb1c8d0`): 319 ścieżek, 227 schematów; test aktualności i determinizmu 2 passed — kontrakt HTTP jest odtąd diffowalny (M0-6).
 
 ## G. Ustalenia adwersaryjne (§38) — po każdej granicy
 | Data | Granica | Próba obalenia | Wynik |
