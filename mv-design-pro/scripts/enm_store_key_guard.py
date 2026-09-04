@@ -263,7 +263,7 @@ def zbuduj_eksporty(
     wywolan `ast.parse` zamiast 407, bo JEDYNY prawdziwy cykl importow w
     zakresie skanu (`application/proof_engine/types.py` <->
     `.../latex_renderer.py`, zmierzone DFS-em po grafie importow tej karty)
-    uniewazniał pamiec podreczna KAZDEGO pliku, ktory choc raz przechodzil
+    uniewaznial pamiec podreczna KAZDEGO pliku, ktory choc raz przechodzil
     przez niego w drodze do czegokolwiek dalej w grafie - nie tylko plikow
     faktycznie lezacych w cyklu. Ten sam cykl NIE psuje juz nic tutaj: patrz
     ponizej.

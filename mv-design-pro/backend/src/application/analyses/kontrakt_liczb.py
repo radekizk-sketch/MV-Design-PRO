@@ -121,14 +121,3 @@ def kwantyzuj_kontrakt(
             for i, element in enumerate(obiekt)
         )
     return obiekt
-    if isinstance(obiekt, float):
-        return kanoniczna_liczba(obiekt, cyfry_znaczace)
-    if isinstance(obiekt, dict):
-        return {
-            klucz: kwantyzuj_kontrakt(wartosc, cyfry_znaczace) for klucz, wartosc in obiekt.items()
-        }
-    if isinstance(obiekt, list):
-        return [kwantyzuj_kontrakt(element, cyfry_znaczace) for element in obiekt]
-    if isinstance(obiekt, tuple):
-        return tuple(kwantyzuj_kontrakt(element, cyfry_znaczace) for element in obiekt)
-    return obiekt

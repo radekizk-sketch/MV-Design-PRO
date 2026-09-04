@@ -243,7 +243,7 @@ def test_reeksport_tranzytywny_przez_trzeci_plik_jest_wykrywany(
     i milczala dokladnie na tym wzorcu na prawdziwym repo: `api/enm.py`
     importuje `get_enm` z `enm.store` pod aliasem `_get_enm`, a
     `application/station_templates/apply.py` importuje TEN ALIAS z `api.enm`
-    (lokalnie, wewnatrz funkcji, zeby uniknac cyklu importow) i woła go
+    (lokalnie, wewnatrz funkcji, zeby uniknac cyklu importow) i wola go
     surowym `case_id`. Ten test odtwarza dokladnie ten ksztalt na minimalnym
     drzewie.
     """
