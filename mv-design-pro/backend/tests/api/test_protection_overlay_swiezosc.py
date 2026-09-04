@@ -39,7 +39,7 @@ from application.result_freshness import (  # noqa: E402
 
 from tests.test_execution_api import _seed_valid_enm  # noqa: E402
 
-SZABLON_NASTAW = "template_rex100_oc"
+SZABLON_NASTAW = "template_ref_oc_100"
 
 # Operacja kanoniczna zmieniajaca model PO policzeniu wyniku (droga projektanta).
 DOLOZENIE_ODCINKA = {

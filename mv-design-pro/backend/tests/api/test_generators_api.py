@@ -292,7 +292,7 @@ def test_wiazania_wytworcy_trafiaja_do_modelu_przez_endpoint(app_client) -> None
     response = app_client.patch(
         f"/api/projects/{project_id}/cases/{case_id}/generators/{ref}/bindings",
         json={
-            "protection_catalog_ref": "ACME_REX200_v1",
+            "protection_catalog_ref": "REF-OC-200",
             "ct_catalog_ref": "ct_200_5_5p10_10va_abb",
             "vt_catalog_ref": "vt_10kv_100v_05_abb",
             "fault_current_data_ref": "fc_pv_500",
@@ -303,7 +303,7 @@ def test_wiazania_wytworcy_trafiaja_do_modelu_przez_endpoint(app_client) -> None
 
     assert response.status_code == 200
     params = _wiazania_z_modelu(app_client, case_id)
-    assert params["protection_catalog_ref"] == "ACME_REX200_v1"
+    assert params["protection_catalog_ref"] == "REF-OC-200"
     assert params["ct_catalog_ref"] == "ct_200_5_5p10_10va_abb"
     assert params["vt_catalog_ref"] == "vt_10kv_100v_05_abb"
     assert params["fault_current_data_ref"] == "fc_pv_500"

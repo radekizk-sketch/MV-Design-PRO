@@ -34,7 +34,7 @@ import {
 const KONWERTER: ConverterType = {
   id: 'conv-pv-1',
   name: 'Falownik PV 1',
-  manufacturer: 'ACME',
+  manufacturer: 'Producent testowy',
   kind: 'PV',
   un_kv: 0.4,
   sn_mva: 1.0,

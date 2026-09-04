@@ -58,7 +58,7 @@ class TestWiazaniaTrafiajaDoModelu:
         wynik = _wykonaj(
             {
                 "generator_ref": "gen_pv_1",
-                "protection_catalog_ref": "ACME_REX200_v1",
+                "protection_catalog_ref": "REF-OC-200",
                 "ct_catalog_ref": "ct_200_5_5p10_10va_abb",
                 "vt_catalog_ref": "vt_10kv_100v_05_abb",
                 "fault_current_data_ref": "fc_pv_500",
@@ -68,7 +68,7 @@ class TestWiazaniaTrafiajaDoModelu:
 
         assert wynik.get("error") is None
         params = _params(wynik)
-        assert params["protection_catalog_ref"] == "ACME_REX200_v1"
+        assert params["protection_catalog_ref"] == "REF-OC-200"
         assert params["ct_catalog_ref"] == "ct_200_5_5p10_10va_abb"
         assert params["vt_catalog_ref"] == "vt_10kv_100v_05_abb"
         assert params["fault_current_data_ref"] == "fc_pv_500"
@@ -231,8 +231,9 @@ class TestWiazanieMusiIstniecWKatalogu:
 def test_urzadzenie_z_listy_pickera_daje_sie_ZAPISAC(tmp_path=None) -> None:
     """V12K-248: walidacja wiazan pyta o katalog, ktory widzi projektant.
 
-    POMIAR: repozytorium katalogu MV ma 12 urzadzen zabezpieczeniowych (syntetyczne
-    `ACME_REX*`), a katalog analityczny — 51 rekordow producenckich; to jego wystawia
+    POMIAR: repozytorium katalogu MV ma 12 urzadzen zabezpieczeniowych (5 profili
+    referencyjnych bez marki + 7 Elektrometal e2TANGO), a katalog analityczny — 51
+    rekordow producenckich; to jego wystawia
     `/api/catalog/protection/device-types`, z ktorego wybiera picker. Sprawdzanie samego
     repozytorium MV odrzucalo **39 z 51** urzadzen widocznych na liscie: projektant
     wybieral realny przekaznik ABB i dostawal „typ katalogowy nie istnieje".

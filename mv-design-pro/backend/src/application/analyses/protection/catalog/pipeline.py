@@ -255,7 +255,7 @@ def _build_trace_inline(
     return {"steps": canonicalize_json(steps)}
 
 
-def _resolve_vendor_adapter(vendor: str) -> VendorAdapter | None:
+def _resolve_vendor_adapter(vendor: str | None) -> VendorAdapter | None:
     # K30-16: rozszerzona rodzina vendor-adapterów po expansion catalogów
     # (E2Tango full + SIPROTEC + Relion + Easergy + SEL + GE Multilin + Polish).
     if vendor == ABB_VENDOR:
@@ -292,6 +292,18 @@ def _build_vendor_mapping(
             "vendor_settings": {},
             "vendor_violations": ["VENDOR_DEVICE_NOT_FOUND"],
             "vendor_assumptions": [],
+        }
+    if capability.vendor is None:
+        # Profil REFERENCYJNY bez marki (karta FAB-A/D-33): brak producenta jest
+        # ZAMIERZONY, nie brakiem adaptera do zarejestrowania — nastawy logiczne
+        # (I51/TMS51/...) sa juz w `mapping_result.mapped_settings`; wymyslanie
+        # tu nienazwanej konwencji kluczy producenta byloby ta sama klasa
+        # fabrykacji, ktora ta karta usuwa. Brak mapowania NIE jest naruszeniem.
+        return {
+            "vendor": None,
+            "vendor_settings": {},
+            "vendor_violations": [],
+            "vendor_assumptions": ["VENDOR_MAPPING_NOT_APPLICABLE_REFERENCE_PROFILE"],
         }
     adapter = _resolve_vendor_adapter(capability.vendor)
     if adapter is None:

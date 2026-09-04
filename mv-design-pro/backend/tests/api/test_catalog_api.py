@@ -26,9 +26,9 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
         ("/api/catalog/ct-types", "ct_400_5_5p20_15va_abb"),
         ("/api/catalog/vt-types", "vt_15kv_100v_05_abb"),
         ("/api/catalog/wind-inverter-types", "conv-wind-2mw-15kv"),
-        ("/api/catalog/protection/device-types", "ACME_REX500_v1"),
+        ("/api/catalog/protection/device-types", "REF-OC-EF-500"),
         ("/api/catalog/protection/curves", "curve_iec_normal_inverse"),
-        ("/api/catalog/protection/templates", "template_rex500_oc"),
+        ("/api/catalog/protection/templates", "template_ref_oc_ef_500"),
     ],
 )
 def test_catalog_api_exposes_extended_namespaces(

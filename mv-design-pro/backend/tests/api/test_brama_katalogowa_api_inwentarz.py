@@ -77,7 +77,7 @@ REF_APARAT_NN = "cb_nn_630a"
 REF_KABEL_NN = "kab_nn_4x120_al"
 REF_CT = "ct_400_5_5p20_15va_abb"
 REF_VT = "vt_15kv_100v_3p_abb"
-REF_PRZEKAZNIK = "ACME_REX100_v1"
+REF_PRZEKAZNIK = "REF-OC-100"
 REF_ODBIOR = "load_mieszk_15kw"
 REF_KOMPENSATOR = "KOMP_SN_1V2_15KV"
 REF_OGRANICZNIK = "arrester-abb-polim-d-24kv-10ka"
@@ -999,7 +999,7 @@ def test_predykat_wiazan_der_jest_ten_sam_co_w_warstwie_domenowej() -> None:
     tylko_analityczne = [
         urzadzenie.device_id
         for urzadzenie in list_devices()
-        if not urzadzenie.device_id.startswith("ACME_")
+        if not urzadzenie.device_id.startswith("REF-")
     ]
     assert tylko_analityczne, "Katalog analityczny zabezpieczeń jest pusty — skan bez kotwicy"
 

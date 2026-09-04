@@ -21,7 +21,7 @@ KABEL = "cable-tfk-yakxs-3x120"
 TRAFO = "tr-sn-nn-15-04-630kva-dyn11"
 ZRODLO = "src-gpz-15kv-250mva-rx010"
 CT = "ct_400_5_5p20_15va_abb"
-PRZEKAZNIK = "ACME_REX100_v1"
+PRZEKAZNIK = "REF-OC-100"
 
 
 @pytest.fixture()

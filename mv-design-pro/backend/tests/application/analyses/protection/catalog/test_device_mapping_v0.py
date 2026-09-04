@@ -82,7 +82,7 @@ def test_device_mapping_accepts_supported_device(uow_factory) -> None:
 
     envelope = run_device_mapping_v0(
         protection_run_id=protection_run_id,
-        device_id="ACME_REX500_v1",
+        device_id="REF-OC-EF-500",
         uow_factory=uow_factory,
     )
 
@@ -99,7 +99,7 @@ def test_device_mapping_rejects_missing_neutral_functions(uow_factory) -> None:
 
     envelope = run_device_mapping_v0(
         protection_run_id=protection_run_id,
-        device_id="ACME_REX200_v1",
+        device_id="REF-OC-200",
         uow_factory=uow_factory,
     )
 
@@ -117,12 +117,12 @@ def test_device_mapping_is_deterministic(uow_factory) -> None:
 
     envelope1 = run_device_mapping_v0(
         protection_run_id=protection_run_id,
-        device_id="ACME_REX500_v1",
+        device_id="REF-OC-EF-500",
         uow_factory=uow_factory,
     )
     envelope2 = run_device_mapping_v0(
         protection_run_id=protection_run_id,
-        device_id="ACME_REX500_v1",
+        device_id="REF-OC-EF-500",
         uow_factory=uow_factory,
     )
 
@@ -170,7 +170,7 @@ def test_niedostepna_nastawa_nie_wywala_doboru_i_nie_staje_sie_zerem(uow_factory
 
     envelope = run_device_mapping_v0(
         protection_run_id=protection_run_id,
-        device_id="ACME_REX500_v1",
+        device_id="REF-OC-EF-500",
         uow_factory=uow_factory,
     )
 
@@ -206,7 +206,7 @@ def test_brak_wartosci_nastawy_nie_moze_naruszyc_zakresu_aparatu(uow_factory) ->
 
     envelope = run_device_mapping_v0(
         protection_run_id=protection_run_id,
-        device_id="ACME_REX200_v1",
+        device_id="REF-OC-200",
         uow_factory=uow_factory,
     )
 

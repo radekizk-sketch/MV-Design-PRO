@@ -654,7 +654,12 @@ def _funkcje_urzadzenia(protection_ref: str | None) -> tuple[tuple[str, ...] | N
         return None, "wybrane urządzenie"
     for urzadzenie in list_devices():
         if urzadzenie.device_id == protection_ref:
-            nazwa = f"{urzadzenie.vendor} {urzadzenie.model}".strip()
+            # Karta FAB-A/D-33: `vendor` bywa None dla profilu referencyjnego
+            # bez marki — f"{None} {model}" dawaloby falszywy tekst "None".
+            czesci_nazwy = [str(urzadzenie.vendor)] if urzadzenie.vendor else []
+            if urzadzenie.model:
+                czesci_nazwy.append(str(urzadzenie.model))
+            nazwa = " ".join(czesci_nazwy).strip()
             return tuple(urzadzenie.functions_supported), nazwa or protection_ref
     return None, protection_ref
 

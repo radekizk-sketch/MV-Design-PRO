@@ -97,7 +97,7 @@ function renderEditor(
       projectId="PRJ-1"
       caseId="CASE-1"
       wartosci={{
-        protection_catalog_ref: 'ACME_REX200_v1',
+        protection_catalog_ref: 'REF-OC-200',
         ct_catalog_ref: null,
         vt_catalog_ref: null,
       }}
@@ -199,7 +199,7 @@ describe('DerWiazaniaEditor — wybór wiązań katalogowych wytwórcy', () => {
   it('przypisanie znane katalogowi pokazuje NAZWĘ, nieznane — kreskę, brak — polecenie wyboru', () => {
     renderEditor({
       wartosci: {
-        protection_catalog_ref: 'ACME_REX200_v1',
+        protection_catalog_ref: 'REF-OC-200',
         ct_catalog_ref: CT_REALNY.id,
         vt_catalog_ref: null,
       },

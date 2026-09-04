@@ -6250,8 +6250,8 @@ def _nieznane_referencje_katalogowe(wiazania: dict[str, Any]) -> list[str]:
         if getattr(katalog, metoda)(str(wartosc)) is not None:
             continue
         # V12K-248: zabezpieczenia zyja w DWOCH zbiorach. Repozytorium katalogu MV ma
-        # 12 wpisow (syntetyczne `ACME_REX*`), a katalog analityczny — 51 rekordow
-        # producenckich (ABB, SEL…), i to WLASNIE jego wystawia endpoint
+        # 12 wpisow (5 profili referencyjnych bez marki + 7 Elektrometal e2TANGO),
+        # a katalog analityczny — 51 rekordow producenckich (ABB, SEL…), i to WLASNIE jego wystawia endpoint
         # `/api/catalog/protection/device-types`, z ktorego wybiera picker. Sprawdzanie
         # wylacznie repozytorium MV odrzucalo 39 z 51 urzadzen, ktore projektant widzi
         # na liscie — czyli bramka postawiona przeciw literowkom blokowala realny wybor.

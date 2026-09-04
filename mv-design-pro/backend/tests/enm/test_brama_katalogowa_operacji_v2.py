@@ -65,7 +65,7 @@ REF_APARAT_NN = "cb_nn_630a"
 REF_KABEL_NN = "kab_nn_4x120_al"
 REF_CT = "ct_400_5_5p20_15va_abb"
 REF_VT = "vt_15kv_100v_3p_abb"
-REF_PRZEKAZNIK = "ACME_REX100_v1"
+REF_PRZEKAZNIK = "REF-OC-100"
 REF_ODBIOR = "load_mieszk_15kw"
 
 #: Magazyn energii nN 2 MW / 0,4 kV: katalog deklaruje 2000 kW rozładowania
@@ -1223,7 +1223,12 @@ def test_zabezpieczenie_niesie_tozsamosc_z_katalogu() -> None:
 
     przypisanie = wynik["protection_assignments"][0]
     assert przypisanie["source_mode"] == "KATALOG"
-    assert przypisanie["materialized_params"]["vendor"] == "ABB"
+    # Karta FAB-A/D-33: REF_PRZEKAZNIK to profil referencyjny bez marki —
+    # `vendor` jest jawnie None (nigdy tekst udajacy producenta). Tozsamosc
+    # z katalogu dowodzi `name_pl` (niepusta wartosc pochodzaca z rekordu),
+    # nie `vendor` (ktory dla tej pozycji jest legalnie nieobecny).
+    assert przypisanie["materialized_params"]["vendor"] is None
+    assert przypisanie["materialized_params"]["name_pl"]
     assert przypisanie["materialized_params"]["catalog_item_id"] == REF_PRZEKAZNIK
 
 

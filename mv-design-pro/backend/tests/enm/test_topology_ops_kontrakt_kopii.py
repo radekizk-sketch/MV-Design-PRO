@@ -389,7 +389,7 @@ class TestIzolacjaOperacjiDomenowej:
         pole = _pole_sn_ref(snapshot)
 
         wynik = execute_domain_operation(
-            snapshot, "add_relay", {"field_ref": pole, "catalog_ref": "ACME_REX100_v1"}
+            snapshot, "add_relay", {"field_ref": pole, "catalog_ref": "REF-OC-100"}
         )
 
         assert wynik.get("error")

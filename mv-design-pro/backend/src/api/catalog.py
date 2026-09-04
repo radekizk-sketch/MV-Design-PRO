@@ -59,15 +59,43 @@ def _serialize_analytical_protection_device(device: Any) -> dict[str, Any]:
         )
     if meta.get("unverified_ranges"):
         notes.append("Zakresy nastaw pochodza z katalogu analitycznego i wymagaja weryfikacji.")
-    verification_status = "NIEWERYFIKOWANY" if meta.get("unverified") else "CZESCIOWO_ZWERYFIKOWANY"
+
+    # Karta FAB-A/D-33: `vendor is None` = profil REFERENCYJNY bez marki
+    # (byl falszywie przypisany ABB). Etykieta MUSI jednoznacznie mowic, ze to
+    # nie jest produkt producenta — konkatenacja f"{vendor} {model}" pokazalaby
+    # tu literalny tekst "None", wiec galaz jest odrebna, nie fallbackiem.
+    is_referencyjny = device.vendor is None
+    if is_referencyjny:
+        name_pl = (
+            f"Profil referencyjny (nie produkt producenta) - {device.model or device.device_id}"
+        )
+        verification_status = "REFERENCYJNY"
+        catalog_status = "REFERENCYJNY_V1"
+        series_value: str | None = None
+        verification_note = str(
+            meta.get("verification_note")
+            or "Profil referencyjny wbudowany MV-DESIGN-PRO; nie dane producenta."
+        )
+    else:
+        name_pl = f"{device.vendor} {device.model}"
+        verification_status = (
+            "NIEWERYFIKOWANY" if meta.get("unverified") else "CZESCIOWO_ZWERYFIKOWANY"
+        )
+        catalog_status = "ANALITYCZNY_V1"
+        series_value = str(meta.get("series") or device.model)
+        verification_note = (
+            "Zakres ochrony pochodzi z katalogu analitycznego; rekord nie jest promowany do katalogu produkcyjnego."
+            if meta.get("unverified") or meta.get("unverified_ranges")
+            else "Rekord analityczny zachowany poza torem produkcyjnym."
+        )
 
     return {
         "id": device.device_id,
-        "name_pl": f"{device.vendor} {device.model}",
+        "name_pl": name_pl,
         "params": {
             "vendor": device.vendor,
             "model": device.model,
-            "series": str(meta.get("series") or device.model),
+            "series": series_value,
             "revision": "v0",
             "rated_current_a": float(meta["rated"]) if meta.get("rated") is not None else None,
             "notes_pl": " ".join(notes) if notes else None,
@@ -76,13 +104,9 @@ def _serialize_analytical_protection_device(device: Any) -> dict[str, Any]:
             "unverified_ranges": bool(meta.get("unverified_ranges", False)),
             "source_reference": str(source_ref or "devices_v0.json / katalog analityczny ochrony"),
             "verification_status": verification_status,
-            "catalog_status": "ANALITYCZNY_V1",
+            "catalog_status": catalog_status,
             "contract_version": "2.0",
-            "verification_note": (
-                "Zakres ochrony pochodzi z katalogu analitycznego; rekord nie jest promowany do katalogu produkcyjnego."
-                if meta.get("unverified") or meta.get("unverified_ranges")
-                else "Rekord analityczny zachowany poza torem produkcyjnym."
-            ),
+            "verification_note": verification_note,
             "functions_supported": list(device.functions_supported),
             "curves_supported": list(device.curves_supported),
             "i_pickup_51_a_min": device.i_pickup_51_a_min,
@@ -1175,7 +1199,11 @@ def _auto_populate_protection(req: AutoPopulateRequest) -> AutoPopulateResponse:
         manufacturer = d.vendor
         rated = d.meta.get("rated") if isinstance(d.meta, dict) else None
         confidence = 0.5
-        if req.prefer_manufacturer and req.prefer_manufacturer.lower() in manufacturer.lower():
+        if (
+            req.prefer_manufacturer
+            and manufacturer
+            and req.prefer_manufacturer.lower() in manufacturer.lower()
+        ):
             confidence = 0.85
         # PTPiRE = Polish vendors (Elektrometal, ZPAS, Elester, Energotest, ZIAD)
         is_polish = manufacturer in {"ELEKTROMETAL", "ZPAS", "ELESTER", "ENERGOTEST", "ZIAD"}
@@ -1184,14 +1212,26 @@ def _auto_populate_protection(req: AutoPopulateRequest) -> AutoPopulateResponse:
         if req.expected_current_a is not None and isinstance(rated, int | float):
             if rated < req.expected_current_a * 0.8:
                 continue
+        # Karta FAB-A/D-33: `manufacturer` None = profil REFERENCYJNY bez marki.
+        # Etykieta MUSI jednoznacznie mowic, ze to nie jest produkt producenta —
+        # konkatenacja f"{manufacturer} {model}" pokazalaby tu literalny "None".
+        label_pl = (
+            f"{manufacturer} {d.model}"
+            if manufacturer
+            else f"Profil referencyjny (nie produkt producenta) - {d.model or d.device_id}"
+        )
         suggestions.append(
             AutoPopulateSuggestion(
                 catalog_ref=d.device_id,
-                label_pl=f"{d.vendor} {d.model}",
+                label_pl=label_pl,
                 manufacturer=manufacturer,
                 confidence=confidence,
-                badge_pl="Polski producent" if is_polish else None,
-                rationale_pl=f"{d.vendor} {d.model} — funkcje: {', '.join(d.functions_supported[:6])}",
+                badge_pl=(
+                    "Polski producent"
+                    if is_polish
+                    else ("Profil referencyjny" if not manufacturer else None)
+                ),
+                rationale_pl=f"{label_pl} — funkcje: {', '.join(d.functions_supported[:6])}",
             )
         )
 

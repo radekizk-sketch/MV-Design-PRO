@@ -684,7 +684,7 @@ class TestWyscigWiazanWytworcy:
 
         rewizja_przed = _model(case_id).header.revision
         pola = {
-            "protection_catalog_ref": "ACME_REX200_v1",
+            "protection_catalog_ref": "REF-OC-200",
             "ct_catalog_ref": "ct_200_5_5p10_10va_abb",
             "vt_catalog_ref": "vt_10kv_100v_05_abb",
         }
@@ -734,7 +734,7 @@ class TestWyscigWiazanWytworcy:
         wynik_szablonu: dict[str, dict[str, Any]] = {}
 
         def wiazania() -> None:
-            odpowiedz = app_client.patch(baza, json={"protection_catalog_ref": "ACME_REX200_v1"})
+            odpowiedz = app_client.patch(baza, json={"protection_catalog_ref": "REF-OC-200"})
             assert odpowiedz.status_code == 200, odpowiedz.text
 
         def szablon() -> None:
@@ -759,7 +759,7 @@ class TestWyscigWiazanWytworcy:
             f"{len(model_po.substations)} zamiast {stacji_przed + 1}"
         )
         zapisane = _wiazania_z_modelu(case_id, generator_ref)
-        assert zapisane.get("protection_catalog_ref") == "ACME_REX200_v1", (
+        assert zapisane.get("protection_catalog_ref") == "REF-OC-200", (
             "Wiazanie zabezpieczenia przepadlo mimo HTTP 200 — w modelu: "
             f"{zapisane.get('protection_catalog_ref')!r}"
         )

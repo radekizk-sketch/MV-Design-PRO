@@ -88,7 +88,7 @@ vi.mock('../../../../ui/catalog/api', () => ({
       {
         id: 'conv-pv-1',
         name: 'Falownik PV 1',
-        manufacturer: 'ACME',
+        manufacturer: 'Producent testowy',
         kind: 'PV',
         un_kv: 0.4,
         sn_mva: 1.0,
@@ -110,7 +110,7 @@ vi.mock('../../../../ui/catalog/api', () => ({
       { id: 'vt-1', name: 'VT 15000/100', ratio_primary_v: 15000, ratio_secondary_v: 100, accuracy_class: '0.5' },
     ]),
   fetchProtectionDeviceTypes: () =>
-    Promise.resolve([{ id: 'zab-1', name: 'REX 615', vendor: 'ABB', model: 'REX 615' }]),
+    Promise.resolve([{ id: 'zab-1', name: 'Zabezpieczenie testowe', model: 'ZAB-TEST-1' }]),
 }));
 
 describe('KreatorZrodlaOze — realna ścieżka', () => {

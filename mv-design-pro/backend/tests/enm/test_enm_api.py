@@ -511,7 +511,7 @@ class TestDomainOpsCatalogPolicy:
                         "field_ref": "field_in_1",
                         "breaker_ref": "brk_1",
                         "relay_type": "NADPRADOWY",
-                        "protection": {"catalog_item_id": "ACME_REX500_v1"},
+                        "protection": {"catalog_item_id": "REF-OC-EF-500"},
                     },
                 }
             },
@@ -526,7 +526,7 @@ class TestDomainOpsCatalogPolicy:
         assignment = after["protection_assignments"][0]
         assert assignment["breaker_ref"] == "brk_1"
         assert assignment["ct_ref"] == after["measurements"][0]["ref_id"]
-        assert assignment["catalog_ref"] == "ACME_REX500_v1"
+        assert assignment["catalog_ref"] == "REF-OC-EF-500"
         assert assignment["catalog_namespace"] == "ZABEZPIECZENIE"
         field_spec = after["substations"][0]["meta"]["field_specs"][0]
         assert field_spec["protection_ref"] == assignment["ref_id"]

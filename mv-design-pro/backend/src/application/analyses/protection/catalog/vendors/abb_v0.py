@@ -15,12 +15,12 @@ class AbbVendorAdapter(VendorAdapter):
 
     def supported_devices(self) -> tuple[str, ...]:
         return (
-            # Legacy ACME REX series
-            "ACME_REX100_v1",
-            "ACME_REX200_v1",
-            "ACME_REX300_v1",
-            "ACME_REX500_v1",
-            "ACME_REX700_v1",
+            # Karta FAB-A/D-33 (2026-09): piec pozycji dawnej fikcyjnej marki i
+            # modelu (falszywie przypisanych ABB) tu nie ma juz od tej karty.
+            # Zastapione profilami referencyjnymi bez marki (vendor=None,
+            # zob. mv_auxiliary_catalog.py + devices_v0.json), wiec NIE naleza
+            # do adaptera producenta ABB — nie ma dla nich realnej konwencji
+            # nastaw ABB do zmapowania.
             # K30-16: ABB Relion 615/620/630/650/670 — feeder + transformer
             # + busbar + generator protections per technical manuals
             "ABB_REF601",

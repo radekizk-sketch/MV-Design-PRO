@@ -39,9 +39,12 @@ def _parse_device(payload: dict) -> DeviceCapability:
     meta = payload.get("meta", {})
     if not isinstance(meta, dict):
         meta = {}
+    raw_vendor = payload.get("vendor")
     return DeviceCapability(
         device_id=str(payload.get("device_id", "")),
-        vendor=str(payload.get("vendor", "")),
+        # `null`/nieobecny vendor = profil REFERENCYJNY bez marki (FAB-A/D-33);
+        # `str(None)` dawaloby falszywy tekst "None" zamiast uczciwej nieobecnosci.
+        vendor=(str(raw_vendor) if raw_vendor is not None else None),
         model=str(payload.get("model", "")),
         functions_supported=tuple(payload.get("functions_supported", [])),
         curves_supported=tuple(payload.get("curves_supported", [])),

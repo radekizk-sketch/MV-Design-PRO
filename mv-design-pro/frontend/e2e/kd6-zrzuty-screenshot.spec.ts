@@ -24,7 +24,7 @@ const TRAFO_ID = 'tr-sn-nn-15-04-630kva-dyn11';
 const SOURCE_ID = 'src-gpz-15kv-250mva-rx010';
 const APARAT_POLA_ID = 'sw-cb-abb-vd4-17kv-630a';
 const CT_ID = 'ct_400_5_5p20_15va_abb';
-const PRZEKAZNIK_ID = 'ACME_REX100_v1';
+const PRZEKAZNIK_ID = 'REF-OC-100';
 const CATALOG_VERSION = '2024.1';
 
 const THEMES = [

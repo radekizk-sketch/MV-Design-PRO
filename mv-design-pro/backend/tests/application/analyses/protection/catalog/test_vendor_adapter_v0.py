@@ -77,17 +77,23 @@ def _seed_protection_run(uow_factory) -> str:
     return run_id
 
 
-def test_vendor_mapping_for_supported_device_is_deterministic(uow_factory) -> None:
+def test_vendor_mapping_for_real_abb_device_is_deterministic(uow_factory) -> None:
+    """Zabezpieczenie realnego producenta (ABB Relion REF601) mapuje sie na jego konwencje nastaw.
+
+    Karta FAB-A/D-33: przed ta karta ten test stal na fikcyjnym urzadzeniu
+    falszywie przypisanym marce ABB — stoi teraz na REALNYM rekordzie katalogu
+    analitycznego (`ABB_REF601`, Relion 601).
+    """
     protection_run_id = _seed_protection_run(uow_factory)
 
     envelope1 = run_device_mapping_v0(
         protection_run_id=protection_run_id,
-        device_id="ACME_REX500_v1",
+        device_id="ABB_REF601",
         uow_factory=uow_factory,
     )
     envelope2 = run_device_mapping_v0(
         protection_run_id=protection_run_id,
-        device_id="ACME_REX500_v1",
+        device_id="ABB_REF601",
         uow_factory=uow_factory,
     )
 
@@ -113,12 +119,20 @@ def test_vendor_mapping_for_supported_device_is_deterministic(uow_factory) -> No
     assert "ABB.EF.I50N_HIGHSET_A" in vendor_settings
 
 
-def test_vendor_mapping_for_rex700_is_deterministic(uow_factory) -> None:
+def test_vendor_mapping_for_reference_profile_is_not_applicable(uow_factory) -> None:
+    """Profil referencyjny bez marki (karta FAB-A/D-33) nie ma vendor-adaptera.
+
+    Brak producenta jest ZAMIERZONY (pole `vendor` None — nigdy tekst udajacy
+    producenta), wiec brak mapowania NIE jest naruszeniem: `vendor_violations`
+    zostaje pusty (status analizy NIE degraduje sie), a `vendor_settings`
+    zostaje pusty — wymyslanie tu nienazwanej konwencji kluczy producenta
+    byloby ta sama klasa fabrykacji, ktora ta karta usuwa.
+    """
     protection_run_id = _seed_protection_run(uow_factory)
 
     envelope = run_device_mapping_v0(
         protection_run_id=protection_run_id,
-        device_id="ACME_REX700_v1",
+        device_id="REF-OC-EF-700",
         uow_factory=uow_factory,
     )
 
@@ -128,10 +142,13 @@ def test_vendor_mapping_for_rex700_is_deterministic(uow_factory) -> None:
     report = stored.meta_json["device_mapping_report_v0"]
     vendor_mapping = report["vendor_mapping"]
 
-    assert vendor_mapping["vendor"] == "ABB"
+    assert vendor_mapping["vendor"] is None
     assert vendor_mapping["vendor_violations"] == []
-    vendor_settings = vendor_mapping["vendor_settings"]
-    assert "ABB.OC.I51_PICKUP_A" in vendor_settings
-    assert "ABB.OC.I50_HIGHSET_A" in vendor_settings
-    assert "ABB.EF.I51N_PICKUP_A" in vendor_settings
-    assert "ABB.EF.I50N_HIGHSET_A" in vendor_settings
+    assert vendor_mapping["vendor_settings"] == {}
+    assert vendor_mapping["vendor_assumptions"] == [
+        "VENDOR_MAPPING_NOT_APPLICABLE_REFERENCE_PROFILE"
+    ]
+    # Kompatybilnosc elektryczna (funkcje/zakresy) jest niezalezna od marki —
+    # brak vendor-adaptera NIE degraduje statusu analizy.
+    assert report["mapping"]["compatible"] is True
+    assert report["status"] == "SUCCEEDED"

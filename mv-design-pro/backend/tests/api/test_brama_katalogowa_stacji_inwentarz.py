@@ -59,7 +59,7 @@ REF_TRAFO = "tr-sn-nn-15-04-630kva-dyn11"
 REF_APARAT_SN = "sw-cb-abb-vd4-17kv-630a"
 REF_CT = "ct_400_5_5p20_15va_abb"
 REF_VT = "vt_15kv_100v_3p_abb"
-REF_PRZEKAZNIK = "ACME_REX100_v1"
+REF_PRZEKAZNIK = "REF-OC-100"
 REF_ZABEZPIECZENIE_ZRODLA = "EM_ETANGO_400_V0"
 # Falownik PV nN: 0,4 kV, Pmax 500 kW, Sn 550 kVA (rzeczywista pozycja katalogu).
 REF_FALOWNIK_PV = "conv-pv-nn-0p5mw-0p4kv"

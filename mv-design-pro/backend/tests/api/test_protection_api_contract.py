@@ -28,8 +28,8 @@ def test_protection_config_update_persists_without_500(app_client) -> None:
     response = app_client.put(
         f"/api/study-cases/{case_id}/protection-config",
         json={
-            "template_ref": "template_rex500_oc",
-            "template_fingerprint": "template_rex500_oc:2024.1",
+            "template_ref": "template_ref_oc_ef_500",
+            "template_fingerprint": "template_ref_oc_ef_500:2024.1",
             "library_manifest_ref": {"catalog": "MV-DESIGN-PRO", "version": "2024.1"},
             "overrides": {"pickup_a": 400.0, "tms": 0.25},
         },
@@ -37,14 +37,14 @@ def test_protection_config_update_persists_without_500(app_client) -> None:
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["template_ref"] == "template_rex500_oc"
+    assert payload["template_ref"] == "template_ref_oc_ef_500"
     assert payload["overrides"]["pickup_a"] == 400.0
     assert payload["bound_at"] is not None
 
     persisted = app_client.get(f"/api/study-cases/{case_id}/protection-config")
     assert persisted.status_code == 200
-    assert persisted.json()["template_ref"] == "template_rex500_oc"
-    assert persisted.json()["template_fingerprint"] == "template_rex500_oc:2024.1"
+    assert persisted.json()["template_ref"] == "template_ref_oc_ef_500"
+    assert persisted.json()["template_fingerprint"] == "template_ref_oc_ef_500:2024.1"
 
 
 def test_protection_and_unified_run_routes_are_registered(app_client) -> None:
@@ -89,13 +89,13 @@ def test_protection_catalog_lookup_uses_default_reference_catalog() -> None:
 
     service = ProtectionAnalysisService(lambda: None)
 
-    template = service._get_template(UnitOfWork(), "template_rex500_oc")
+    template = service._get_template(UnitOfWork(), "template_ref_oc_ef_500")
     curve = service._get_curve(UnitOfWork(), "curve_iec_normal_inverse")
-    device = service._get_device_type(UnitOfWork(), "ACME_REX500_v1")
+    device = service._get_device_type(UnitOfWork(), "REF-OC-EF-500")
 
     assert template is not None
-    assert template.id == "template_rex500_oc"
+    assert template.id == "template_ref_oc_ef_500"
     assert curve is not None
     assert curve.id == "curve_iec_normal_inverse"
     assert device is not None
-    assert device.id == "ACME_REX500_v1"
+    assert device.id == "REF-OC-EF-500"
