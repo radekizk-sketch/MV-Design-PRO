@@ -147,9 +147,7 @@ def test_forma_str_wokol_atrybutu_jest_wykrywana(tmp_path, monkeypatch, capsys) 
 # ---------------------------------------------------------------------------
 
 
-def test_alias_importu_z_podkresleniem_jest_wykrywany(
-    tmp_path, monkeypatch, capsys
-) -> None:
+def test_alias_importu_z_podkresleniem_jest_wykrywany(tmp_path, monkeypatch, capsys) -> None:
     """`from enm.store import get_enm as _get_enm` - alias NIE maskuje naruszenia."""
     kod, wyjscie = _uruchom(
         tmp_path,
@@ -169,9 +167,7 @@ def test_alias_importu_z_podkresleniem_jest_wykrywany(
     assert "_get_enm" not in wyjscie.split("znaleziono")[1].split("(")[0]
 
 
-def test_wiele_aliasow_w_jednym_imporcie_jest_wykrywane(
-    tmp_path, monkeypatch, capsys
-) -> None:
+def test_wiele_aliasow_w_jednym_imporcie_jest_wykrywane(tmp_path, monkeypatch, capsys) -> None:
     """`from enm.store import get_enm as _get_enm, has_enm as _has_enm` - oba aliasy."""
     kod, wyjscie = _uruchom(
         tmp_path,
@@ -210,9 +206,7 @@ def test_forma_modulu_store_x_jest_wykrywana(tmp_path, monkeypatch, capsys) -> N
     assert "get_enm:name:case_id" in wyjscie
 
 
-def test_import_modulu_enm_store_as_x_jest_wykrywany(
-    tmp_path, monkeypatch, capsys
-) -> None:
+def test_import_modulu_enm_store_as_x_jest_wykrywany(tmp_path, monkeypatch, capsys) -> None:
     """`import enm.store as magazyn` - trzecia, rzadsza forma importu modulu."""
     kod, wyjscie = _uruchom(
         tmp_path,
@@ -305,9 +299,7 @@ def test_cykl_importow_nie_gubi_naruszenia(tmp_path, monkeypatch, capsys) -> Non
     assert wyjscie.count("get_enm:name:case_id") == 2, wyjscie
 
 
-def test_zaslonieta_lokalna_nazwa_mostu_nie_zawiesza_bramki(
-    tmp_path, monkeypatch, capsys
-) -> None:
+def test_zaslonieta_lokalna_nazwa_mostu_nie_zawiesza_bramki(tmp_path, monkeypatch, capsys) -> None:
     """Ta sama lokalna nazwa importowana DWUKROTNIE z DWOCH mostow w JEDNYM
     pliku (rzadkie przeslanianie) - wlasna naprawa przy pisaniu tej karty.
 
@@ -326,12 +318,10 @@ def test_zaslonieta_lokalna_nazwa_mostu_nie_zawiesza_bramki(
         capsys,
         {
             "api/src1.py": (
-                "from enm.store import get_enm as _y\n\n\n"
-                "def a() -> None:\n    return None\n"
+                "from enm.store import get_enm as _y\n\n\n" "def a() -> None:\n    return None\n"
             ),
             "api/src2.py": (
-                "from enm.store import set_enm as _y\n\n\n"
-                "def b() -> None:\n    return None\n"
+                "from enm.store import set_enm as _y\n\n\n" "def b() -> None:\n    return None\n"
             ),
             "application/shadow.py": (
                 "def wczytaj(case_id):\n"
@@ -351,9 +341,7 @@ def test_zaslonieta_lokalna_nazwa_mostu_nie_zawiesza_bramki(
 # ---------------------------------------------------------------------------
 
 
-def test_argument_ze_zmiennej_klucz_nie_jest_naruszeniem(
-    tmp_path, monkeypatch, capsys
-) -> None:
+def test_argument_ze_zmiennej_klucz_nie_jest_naruszeniem(tmp_path, monkeypatch, capsys) -> None:
     """`klucz = klucz_twin_dla_przypadku(case_id, uow); get_enm(klucz)` - droga
     PRZEZ tlumacza, dokladnie tak, jak ma wygladac naprawiony wywolujacy."""
     kod, wyjscie = _uruchom(
@@ -394,9 +382,7 @@ def test_wywolanie_tlumacza_wprost_jako_argument_nie_jest_naruszeniem(
     assert kod == 0, wyjscie
 
 
-def test_argument_z_klucz_twin_projektu_nie_jest_naruszeniem(
-    tmp_path, monkeypatch, capsys
-) -> None:
+def test_argument_z_klucz_twin_projektu_nie_jest_naruszeniem(tmp_path, monkeypatch, capsys) -> None:
     """`klucz_twin_projektu(project_id)` - druga funkcja tlumacza (bez przypadku)."""
     kod, wyjscie = _uruchom(
         tmp_path,
@@ -414,9 +400,7 @@ def test_argument_z_klucz_twin_projektu_nie_jest_naruszeniem(
     assert kod == 0, wyjscie
 
 
-def test_argument_bez_case_i_bez_klucz_nie_jest_naruszeniem(
-    tmp_path, monkeypatch, capsys
-) -> None:
+def test_argument_bez_case_i_bez_klucz_nie_jest_naruszeniem(tmp_path, monkeypatch, capsys) -> None:
     """Identyfikator, ktory nie zawiera ani "case", ani "klucz" - poza regula.
 
     Kontrola dyskryminatora: bramka nie ma karac KAZDEGO argumentu, tylko
@@ -461,9 +445,7 @@ def test_galaz_none_i_string_nie_sa_naruszeniem(tmp_path, monkeypatch, capsys) -
 # ---------------------------------------------------------------------------
 
 
-def test_wylaczony_plik_tlumacza_nie_jest_skanowany(
-    tmp_path, monkeypatch, capsys
-) -> None:
+def test_wylaczony_plik_tlumacza_nie_jest_skanowany(tmp_path, monkeypatch, capsys) -> None:
     """`application/twin_key.py` jest JEDYNYM miejscem tlumaczenia - poza regula
     nawet gdyby (hipotetycznie) wolal magazyn surowym case_id."""
     kod, wyjscie = _uruchom(

@@ -111,9 +111,7 @@ FUNKCJE_MAGAZYNU: frozenset[str] = frozenset(
 
 #: Funkcje tlumacza - argument POCHODZACY z ich wywolania nie jest naruszeniem
 #: (patrz "WYJATEK - DROGA PRZEZ TLUMACZA" wyzej).
-FUNKCJE_TLUMACZA: frozenset[str] = frozenset(
-    {"klucz_twin_dla_przypadku", "klucz_twin_projektu"}
-)
+FUNKCJE_TLUMACZA: frozenset[str] = frozenset({"klucz_twin_dla_przypadku", "klucz_twin_projektu"})
 
 _TOKEN_CASE = "case"
 _TOKEN_KLUCZ = "klucz"
@@ -169,11 +167,7 @@ def opis_argumentu_przypadku(expr: ast.expr) -> tuple[str, str] | None:
         forma = "name" if isinstance(expr, ast.Name) else "attr"
         return forma, sciezka_kropkowana(expr)
 
-    if (
-        isinstance(expr, ast.Call)
-        and _nazwa_wywolania(expr) == "str"
-        and len(expr.args) == 1
-    ):
+    if isinstance(expr, ast.Call) and _nazwa_wywolania(expr) == "str" and len(expr.args) == 1:
         wewnetrzny = opis_argumentu_przypadku(expr.args[0])
         if wewnetrzny is None:
             return None
@@ -249,9 +243,7 @@ def _moze_byc_mostem_reeksportu(dotted: str) -> bool:
     return any(dotted == root or dotted.startswith(f"{root}.") for root in SCAN_ROOTS)
 
 
-def zbuduj_eksporty(
-    pliki: list[Path], drzewa: dict[Path, ast.AST]
-) -> dict[Path, dict[str, str]]:
+def zbuduj_eksporty(pliki: list[Path], drzewa: dict[Path, ast.AST]) -> dict[Path, dict[str, str]]:
     """Eksport (lokalna_nazwa -> kanoniczna_funkcja_magazynu) DLA KAZDEGO pliku
     w `pliki`, liczony PUNKTEM STALYM po grafie mostow reeksportu WEWNATRZ
     `SCAN_ROOTS` - zamiast rekurencyjnie, z pamiecia podreczna wrazliwa na cykl.
@@ -366,9 +358,7 @@ def _kanoniczna_funkcja_wywolania(
     return None
 
 
-def zbierz_naruszenia(
-    tree: ast.AST, nazwy_funkcji: dict[str, str]
-) -> list[tuple[str, int]]:
+def zbierz_naruszenia(tree: ast.AST, nazwy_funkcji: dict[str, str]) -> list[tuple[str, int]]:
     """Lista (`<funkcja>:<forma>:<cel>`, wiersz) dla jednego pliku."""
     nazwy_modulu = nazwy_modulu_magazynu(tree)
     if not nazwy_funkcji and not nazwy_modulu:
@@ -389,9 +379,7 @@ def zbierz_naruszenia(
     return naruszenia
 
 
-def apply_ratchet(
-    rel: str, naruszenia: list[tuple[str, int]], budzet: int
-) -> list[str]:
+def apply_ratchet(rel: str, naruszenia: list[tuple[str, int]], budzet: int) -> list[str]:
     """Porownaj znaleziska pliku z budzetem (liczba na plik) - W OBIE STRONY."""
     znaleziono = len(naruszenia)
     if znaleziono == budzet:
@@ -475,9 +463,7 @@ def main() -> int:
     for root_name in SCAN_ROOTS:
         root = BACKEND_SRC / root_name
         if not root.is_dir():
-            print(
-                f"FAIL: korzen skanowania '{root_name}' nie istnieje pod {BACKEND_SRC}."
-            )
+            print(f"FAIL: korzen skanowania '{root_name}' nie istnieje pod {BACKEND_SRC}.")
             print("Zmiana ukladu katalogow nie moze po cichu wylaczyc zakresu bramki.")
             return 1
         pliki.extend(sorted(root.rglob("*.py")))
@@ -487,9 +473,7 @@ def main() -> int:
     drzewa: dict[Path, ast.AST] = {}
     for path in pliki:
         try:
-            drzewa[path] = ast.parse(
-                path.read_text(encoding="utf-8"), filename=str(path)
-            )
+            drzewa[path] = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
         except (OSError, UnicodeDecodeError):
             continue
         except SyntaxError as exc:
@@ -517,16 +501,12 @@ def main() -> int:
     )
 
     if scanned == 0:
-        print(
-            "FAIL: PUSTY SKAN - 0 plikow. Bramka, ktora nic nie obejrzala, nic nie dowodzi."
-        )
+        print("FAIL: PUSTY SKAN - 0 plikow. Bramka, ktora nic nie obejrzala, nic nie dowodzi.")
         return 1
 
     # Wpis zapadki wskazujacy plik, ktorego nie ma, to martwy budzet - rejestr
     # moze tylko malec, wiec nieaktualny wpis jest bledem, nie ozdoba.
-    martwe = [
-        rel for rel in ZASTANE_KLUCZE_PRZYPADKU if not (BACKEND_SRC / rel).is_file()
-    ]
+    martwe = [rel for rel in ZASTANE_KLUCZE_PRZYPADKU if not (BACKEND_SRC / rel).is_file()]
     if martwe:
         print("FAIL: zapadka wskazuje pliki, ktorych nie ma:")
         for rel in sorted(martwe):

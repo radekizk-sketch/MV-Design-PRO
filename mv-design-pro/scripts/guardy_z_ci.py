@@ -48,9 +48,7 @@ SCRIPTS_DIR = PROJECT_ROOT / "scripts"
 #: przedrostkiem katalogu (`python mv-design-pro/scripts/nazwa.py`).
 #: Workflow P0 wskazuje interpreter srodowiska poetry przez zmienna `$GUARD_PY`
 #: (jedno srodowisko guardow = srodowisko testow); skan musi widziec obie formy.
-WYWOLANIE_GUARDA = re.compile(
-    r"(?:python3?|\$\{?GUARD_PY\}?)\s+(?:\S*/)?scripts/([a-z0-9_]+)\.py"
-)
+WYWOLANIE_GUARDA = re.compile(r"(?:python3?|\$\{?GUARD_PY\}?)\s+(?:\S*/)?scripts/([a-z0-9_]+)\.py")
 
 #: Zapadka na pusty skan — repozytorium ma osiem workflowów i kilkadziesiąt
 #: guardów. Mniej niż tyle znaczy, że zmienił się układ katalogów albo składnia
