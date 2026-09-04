@@ -480,7 +480,101 @@ const EXPECTED_STATION_COUNT = 53;
 // (pomiar w docstringu `formatRatedVoltageKv`). Gęstość tuszu po zmianie: L0
 // referencyjna 1,67 % → 1,66 %, L0 długi ciąg 2,03 % → 2,03 % (bez zmiany).
 // Zero nowych kolizji jakiegokolwiek rodzaju (ten skrypt zielony).
-const VERTICAL_LENGTH_BASELINE = { 0: 22440, 1: 39448, 2: 39448 };
+//
+// CI-C (karta naprawcza, #472 „SLD nN: projekcja portalu LV, system symboli
+// CAD, schemat referencyjny", commit a1ab2959, scalone 2026-09-02): PODNIESIONY
+// 22440/39448/39448 → 22672/45656/45656. Między S9-7/8 (wpis wyżej) a #472
+// wartość ZMIERZONA na rodzicu a1ab2959^ (2031fc75, `git worktree add` w
+// osobnym katalogu, TA SAMA fixtura sldSubstrate52s — ENM nie ruszony w #472)
+// spadła już do 21064/37272/37272 (luz 1376/2176/2176 wobec baseline, spadek
+// NIEZWIĄZANY z tą kartą — reguła §15.1 wymaga aktualizacji baseline TYLKO
+// przy wzroście, więc nie był wtedy obniżany). #472 dodał architekturę „LV
+// Domain Projection po B-02" (`docs/sld/PROJEKCJA_SN_NN_PORTAL_V1.md`): każda
+// stacja ze stroną nN dostaje JAWNY PORTAL (`symbols/defs.ts` `lvPortal`, pion
+// `#lv-portal-drop`, `compose/station.ts`) — granicę między projekcją SN i nN.
+//
+// ATRYBUCJA (dowód: `auditVerticalSegments`/`verticalCauseBreakdown` na obu
+// commitach + ABLACJA na HEAD `layout/measure.ts`, przywrócona natychmiast po
+// pomiarze — pełne dane w raporcie karty CI-C):
+//
+//   klasa (przyczyna)          | LOD0 przed→po (delta) | LOD1/LOD2 przed→po (delta)
+//   ---------------------------|------------------------|----------------------------
+//   footprint — NOWY pion      | 0 → 0        (+0)      | 0 → 848      (+848, 53 stacje)
+//   `#lv-portal-drop` (portal  |  nieobecny: L0 nie      |
+//   nN, treść WIDOCZNA)        |  woła composeStation)   |
+//   rezerwacja-kanalu (pakowa- | 20656 → 22264 (+1608)  | 30680 → 38200 (+7520)
+//   nie boczne segment_L/R —   |                        |
+//   KASKADA, patrz niżej)      |                        |
+//   jog-trasy (pion magistrali,| 72 → 72       (+0)     | 72 → 88       (+16)
+//   snTrunk — KASKADA)         |                        |
+//   ---------------------------|------------------------|----------------------------
+//   SUMA delty                 | 1608 (= 232 nad baseline)| 8384 (= 6208 nad baseline)
+//
+// KASKADA (rezerwacja-kanalu + jog-trasy) rozłożona ABLACJĄ 2×2 na HEAD
+// (`layout/measure.ts`, edycja i natychmiastowy `git checkout --` po każdym
+// pomiarze — zero śladu w commicie):
+//   - obie zmiany naraz wyłączone ⇒ wynik = pre472 DOKŁADNIE na L0
+//     (21064 = 21064, zero rezyduum), pre472+848 na L1/L2 (38120) — rezyduum
+//     to WYŁĄCZNIE nowy, widoczny pion portalu (footprint wyżej), nic więcej.
+//   - `nnSideBelowBusHeight` (measure.ts): `lvPortalExtraHeight` dołączony do
+//     `Math.max(...)` — KAŻDA stacja ze stroną nN (nie tylko z odbiorem/DER,
+//     jak przed #472) rezerwuje teraz min. 48 px (2×GRID+24+GRID) pod
+//     zaciskiem na portal (29 z 53 stacji miało DOTĄD zero rezerwacji: bez
+//     odbioru i bez DER) — izolowany wkład (ablacja tylko tej zmiany):
+//     L0 +784, L1/L2 +4128.
+//   - kolumna TR z lateralem (ES/VT/SA na porcie LV): +GRID+wiersz t4 pod
+//     etykietą identyfikatora lateralu, żeby DŁUŻSZY (efekt portalu) zwis
+//     zacisku nie nachodził na pasmo nazw B5 — izolowany wkład (ablacja tylko
+//     tej zmiany): L0 +824, L1/L2 +3408.
+//   - SUMA izolowanych wkładów = CAŁOŚĆ delty kaskady na obu LOD (784+824=1608
+//     na L0; 4128+3408=7536 na L1/L2, +848 pion = 8384) — DOWÓD BEZ REZYDUUM:
+//     kaskada to w całości konsekwencja DWÓCH udokumentowanych zmian TEJ SAMEJ
+//     karty (#472, ta sama architektura portalu), nie regresja trasowania
+//     niepowiązanej treści.
+//
+// WERDYKT: (a) NOWA TREŚĆ, nie regresja. Piony rosną, bo pakowanie boczne
+// (S7-P1 „piony PROPORCJONALNE do footprintu, nie do skumulowanej pozycji")
+// poprawnie odpowiada na WYŻSZY footprint stacji (nowy portal pod zaciskiem
+// nN) — to zaprojektowane zachowanie packera, nie błąd trasowania.
+const VERTICAL_LENGTH_BASELINE = { 0: 22672, 1: 45656, 2: 45656 };
+
+/**
+ * WZMOCNIENIE SONDY (karta CI-C — „ślepe podniesienie progu jest zakazane"):
+ * samo podniesienie SUMY (`VERTICAL_LENGTH_BASELINE` wyżej) nie wykryłoby
+ * PRZYSZŁEJ regresji trasowania w JEDNEJ przyczynie, gdyby zbiegła się w
+ * czasie z NIEZWIĄZANYM zmniejszeniem innej przyczyny (np. uproszczenie
+ * symbolu zmniejsza `footprint` bardziej, niż przyszły bug w pakowaniu
+ * dokłada do `rezerwacja-kanalu` — SUMA by spadła, sonda `<=` przeszłaby,
+ * bug przemknąłby CICHO pod nie-rosnącą sumą). Baseline PER PRZYCZYNA
+ * (`verticalCauseBreakdown`, już liczone i drukowane przez
+ * `vertical_audit_probe` — `vBreak` w miejscu wywołania, zero podwójnej
+ * analizy) pilnuje KAŻDEJ przyczyny NIEZALEŻNIE. Wartości = zmierzone na
+ * fixturze referencyjnej PO #472 (ten sam pomiar co `VERTICAL_LENGTH_BASELINE`
+ * wyżej — suma 4 wartości per LOD = ta stała, `nieuzasadniony` wyłączony).
+ *
+ * `nieuzasadniony` CELOWO POMINIĘTY: ma już WŁASNY, SILNIEJSZY gate (TWARDE
+ * ZERO — `vertical_audit_probe`/`allVerticalsAttributed` wyżej wymaga
+ * `count===0` zawsze, nie tylko „nie-rosnąco"); dublowanie tu jako „<=0"
+ * byłoby redundantne wobec już egzekwowanego „===0".
+ *
+ * `HORIZONTAL_LENGTH_BASELINE`/`BEND_COUNT_BASELINE` (niżej) NIE dostały
+ * analogicznego rozbicia w tej karcie: nie istnieje dziś taksonomia przyczyn
+ * dla poziomów/załamań (`verticalCauseBreakdown`/`auditVerticalSegments` są
+ * WYŁĄCZNIE dla pionów — poziomy nie mają odpowiednika), a zbudowanie jej od
+ * zera to osobna decyzja projektowa (jaka jest semantyka „przyczyny" odcinka
+ * poziomego — inna niż pionu) nieobjęta zmierzonym w tej karcie defektem: oba
+ * progi są ZIELONE, #472 ich nie naruszył (`accept:sld-v3` FAIL wyłącznie na
+ * §15.1, patrz karta). Świadomie zostawione poza tą kartą — nie „poza
+ * zakresem" gołosłownie, tylko brak zmierzonego defektu + brak gotowej
+ * infrastruktury do reużycia (reguła KLASA NIE INSTANCJA, `CLAUDE.md`: to
+ * inwentarz klasy „bramka tylko na sumie" w tym pliku, z uzasadnieniem, czemu
+ * pozostałe dwie instancje zostają nietknięte).
+ */
+const VERTICAL_LENGTH_BY_CAUSE_BASELINE = {
+  0: { footprint: 80, 'rezerwacja-kanalu': 22264, 'jog-trasy': 120, 'slupek-terminalny': 208 },
+  1: { footprint: 1688, 'rezerwacja-kanalu': 43672, 'jog-trasy': 88, 'slupek-terminalny': 208 },
+  2: { footprint: 1688, 'rezerwacja-kanalu': 43672, 'jog-trasy': 88, 'slupek-terminalny': 208 },
+};
 
 /**
  * SCHEMAT-10 S6 (V12K-137) — funkcja kosztu layoutu (recenzja ekspercka pkt 3):
@@ -1697,6 +1791,46 @@ for (const lod of LODS) {
       ? `tabela przyczyn(liczba/długość) — ${vTable}`
       : `NIEUZASADNIONE=${vGaps.length}: ${vGaps.slice(0, 5).map((g) => `${g.ownerRef ?? '?'}(${g.kind ?? '?'},${g.length})`).join(', ')}`,
   );
+  // -- WZMOCNIENIE SONDY §15.1 (karta CI-C): baseline PER PRZYCZYNA, nie tylko
+  // suma — patrz uzasadnienie przy `VERTICAL_LENGTH_BY_CAUSE_BASELINE` (chroni
+  // przed regresją trasowania w JEDNEJ przyczynie, ukrytą pod nie-rosnącą SUMĄ
+  // przez niezwiązany spadek innej przyczyny w tym samym pomiarze). Reużywa
+  // `vBreak` policzone wyżej — zero podwójnej analizy. `nieuzasadniony`
+  // pominięty: ma już własny, silniejszy gate (TWARDE ZERO) w sondzie wyżej.
+  // Wyrocznia `causeLengthGatePasses` wydzielona z ciała pętli, żeby test
+  // negatywny niżej wołał DOKŁADNIE tę samą logikę porównania na sabotowanych
+  // danych, zamiast dublować warunek osobną (i potencjalnie rozjeżdżającą się)
+  // asercją arytmetyczną.
+  const causeBaseline = VERTICAL_LENGTH_BY_CAUSE_BASELINE[lod];
+  const causeLengthGatePasses = (breakdown, cause) => (breakdown[cause]?.length ?? 0) <= causeBaseline[cause];
+  for (const cause of Object.keys(causeBaseline)) {
+    const measuredCauseLength = vBreak[cause]?.length ?? 0;
+    check(
+      `vertical_length_by_cause_probe (§15.1 wzmocnienie, karta CI-C): przyczyna „${cause}" nie-rosnąca względem baseline=${causeBaseline[cause]}`,
+      causeLengthGatePasses(vBreak, cause),
+      `wartość=${measuredCauseLength} baseline=${causeBaseline[cause]}`,
+    );
+  }
+  {
+    // Test negatywny — wyrocznia MUSI gryźć: wstrzyknięcie sztucznego pionu w
+    // przyczynę `rezerwacja-kanalu` (+1 px ponad baseline TEJ przyczyny, bez
+    // ruszania pozostałych przyczyn — SUMA rośnie tylko o 1, żeby dowód
+    // dotyczył SPECYFICZNIE gate'a per przyczyna, nie sondy sumy wyżej) MUSI
+    // dać FAIL na TYM gate'ie wołanym przez TĘ SAMĄ funkcję
+    // `causeLengthGatePasses`, którą wywołuje realna sonda — dowód, że
+    // rozbicie per przyczyna faktycznie coś pilnuje, a nie tylko dekoruje
+    // raport (Zero-Debt pkt 5:
+    // test bez negatywu maskuje brak czułości wyroczni; negatyw wołający INNĄ
+    // logikę niż realny gate maskowałby ją tak samo skutecznie).
+    const sabotagedBreakdown = {
+      ...vBreak,
+      'rezerwacja-kanalu': { ...vBreak['rezerwacja-kanalu'], length: causeBaseline['rezerwacja-kanalu'] + 1 },
+    };
+    check(
+      'vertical_length_by_cause_probe (test negatywny — dowód, że wyrocznia gryzie): wstrzyknięty +1px w „rezerwacja-kanalu" MUSI dać FAIL na TEJ przyczynie',
+      !causeLengthGatePasses(sabotagedBreakdown, 'rezerwacja-kanalu'),
+    );
+  }
   // -- SCHEMAT-10 S7-P4 + GS-1 (V12K-137, recenzja §9 P0 pkt 3, DOMKNIĘCIE GAP
   // §10.4): CZYTELNOŚĆ L0 na widoku całości — zbiór §3 „nigdy nie znika" (tor
   // mocy z wagą, tożsamość stacji, źródło) ROZSZERZONY o TYP STACJI · TR ·
