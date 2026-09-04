@@ -62,7 +62,7 @@
  * `SldDetailDrawerData`, jawnie wyłączony z zakresu tego zadania (task B:
  * „selectElement sekwencje ZOSTAJĄ w kontenerze").
  */
-import type { Bay, Branch, EnergyNetworkModel, Substation } from '../../../types/enm';
+import type { Bay, Branch, Cable, EnergyNetworkModel, OverheadLine, Substation } from '../../../types/enm';
 import type { SelectedElement } from '../../types';
 import { formatStationSwitchgearDescriptionPl } from '../../shared/stationTypeLabels';
 import { publicTechnicalLabel, segmentPublicIdentity, stationPublicIdentity } from '../../shared/publicTechnicalLabels';
@@ -461,6 +461,48 @@ export function mapKindToMenuKind(kind: string): SldElementKindForMenu | null {
 }
 
 /**
+ * FAB-C (fantom danych katalogowych K30-89, karta „uczciwość w obrębie
+ * jednego pliku"): odcinek SN (`cable_run`) może nieść WYŁĄCZNIE Cable
+ * (kabel) lub OverheadLine (linia napowietrzna) — SwitchBranch/FuseBranch
+ * nie są segmentami liniowymi i nie niosą tych pól. Wyciąga dane katalogowe
+ * (`catalog_ref`/`conductor_material`/`cross_section_mm2`/`insulation`/
+ * `rating.in_a`) WYŁĄCZNIE z ENM Branch — brak pola w modelu = null, NIGDY
+ * wartość zastępcza. JEDNA implementacja dla obu budowniczych cableRunSpec
+ * (`buildCableRunDetailDrawerData` niżej i gałąź `drawerKind==='cable_run'`
+ * w `buildStationBranchDetailDrawerData` — dziś martwa, patrz jej komentarz,
+ * ale KLASA NIE INSTANCJA wymaga jednego mechanizmu, nie dwóch kopii, które
+ * mogłyby się rozjechać, gdyby gałąź kiedyś przestała być martwa).
+ */
+function isCatalogedLineSegment(branch: Branch | undefined): branch is Cable | OverheadLine {
+  return branch?.type === 'cable' || branch?.type === 'line_overhead';
+}
+
+function extractCableCatalogSpec(branch: Branch | undefined): {
+  readonly catalogRef: string | null;
+  readonly conductorMaterial: string | null;
+  readonly crossSectionMm2: number | null;
+  readonly insulation: 'XLPE' | 'EPR' | 'PVC' | 'PAPER' | null;
+  readonly ratingInA: number | null;
+} {
+  if (!isCatalogedLineSegment(branch)) {
+    return {
+      catalogRef: branch?.catalog_ref ?? null,
+      conductorMaterial: null,
+      crossSectionMm2: null,
+      insulation: null,
+      ratingInA: null,
+    };
+  }
+  return {
+    catalogRef: branch.catalog_ref ?? null,
+    conductorMaterial: branch.conductor_material ?? null,
+    crossSectionMm2: branch.cross_section_mm2 ?? null,
+    insulation: branch.type === 'cable' ? branch.insulation ?? null : null,
+    ratingInA: branch.rating?.in_a ?? null,
+  };
+}
+
+/**
  * Buduje `SldDetailDrawerData` dla kliku w ODCINEK SN (`kind` ===
  * `cable_run`/`cable_segment_sn`/`overhead_line_sn`). ŹRÓDŁO: gałąź
  * `kind === 'cable_run' || ...` w `SldWorkspaceContainer.handleSelectElement`
@@ -527,6 +569,11 @@ export function buildCableRunDetailDrawerData(
       segmentKind: kind === 'overhead_line_sn' ? 'overhead_line_sn' : 'cable_sn',
       maxLoadingPct: null,
       maxVoltageDropPct: null,
+      // FAB-C: dane katalogowe reprezentatywnego segmentu — TEGO SAMEGO
+      // `branch`, z którego wyżej wyliczono elementRef/elementName (kliknięty
+      // segment, a dla całego ciągu — pierwszy segment; patrz komentarz przy
+      // `elementRef` wyżej). ZERO drugiego źródła danych.
+      ...extractCableCatalogSpec(branch),
     },
     liveMetrics: buildLiveMetrics(overlayPayload, 'cable_run', elementRef, run?.voltageKv ?? null),
   };
@@ -794,6 +841,17 @@ export function buildStationBranchDetailDrawerData(
           maxVoltageDropPct = Math.max(...devs.map((d) => Math.abs(d)));
         }
       }
+      // FAB-C: reprezentatywny segment (pierwszy ref ciągu) dla danych
+      // katalogowych — ta sama konwencja co `buildCableRunDetailDrawerData`
+      // (patrz `extractCableCatalogSpec`). Gałąź jest dziś martwa (patrz
+      // komentarz funkcji wyżej), ale KLASA NIE INSTANCJA: kontrakt musi być
+      // spójny, gdyby kiedyś przestała być martwa.
+      const representativeSegmentRef = run.segmentRefs?.[0];
+      const representativeSegment = representativeSegmentRef
+        ? (snapshot?.branches ?? []).find(
+          (b) => b.ref_id === representativeSegmentRef || b.id === representativeSegmentRef,
+        )
+        : undefined;
       cableRunSpec = {
         runKind: run.runKind ?? null,
         segmentCount: run.segmentRefs?.length ?? null,
@@ -802,6 +860,7 @@ export function buildStationBranchDetailDrawerData(
         segmentKind: run.segmentKind ?? null,
         maxLoadingPct,
         maxVoltageDropPct,
+        ...extractCableCatalogSpec(representativeSegment),
       };
     }
   }

@@ -148,6 +148,13 @@ export interface SldDetailDrawerData {
     readonly maxLoadingPct?: number | null;
     /** K30-93: max voltage drop ΔU % (deviation pomiędzy stacjami końcowymi). */
     readonly maxVoltageDropPct?: number | null;
+    /** FAB-C: dane katalogowe odcinka (Cable/OverheadLine) z ENM — brak pola
+     *  w modelu = null, NIGDY wartość zastępcza (usunięta fabrykacja K30-89). */
+    readonly catalogRef?: string | null;
+    readonly conductorMaterial?: string | null;
+    readonly crossSectionMm2?: number | null;
+    readonly insulation?: 'XLPE' | 'EPR' | 'PVC' | 'PAPER' | null;
+    readonly ratingInA?: number | null;
   } | null;
   /** Obiekt wezlowy magistrali SN: ZKSN, slup rozgalezny, NMO. */
   readonly nodeSpec?: {
@@ -1488,6 +1495,13 @@ function PlaceholderTabBody({
     readonly segmentKind: 'cable_sn' | 'overhead_line_sn' | null;
     readonly maxLoadingPct?: number | null;
     readonly maxVoltageDropPct?: number | null;
+    /** FAB-C: dane katalogowe odcinka (Cable/OverheadLine) z ENM — brak pola
+     *  w modelu = null, NIGDY wartość zastępcza (usunięta fabrykacja K30-89). */
+    readonly catalogRef?: string | null;
+    readonly conductorMaterial?: string | null;
+    readonly crossSectionMm2?: number | null;
+    readonly insulation?: 'XLPE' | 'EPR' | 'PVC' | 'PAPER' | null;
+    readonly ratingInA?: number | null;
   } | null;
   nodeSpec?: NonNullable<SldDetailDrawerData['nodeSpec']> | null;
   apparatusState?: {
@@ -1789,19 +1803,51 @@ function PlaceholderTabBody({
     );
   }
   if (kind === 'cable_run' && tab === 'parametry') {
+    // FAB-C (fantom danych katalogowych K30-89): wszystkie wartości poniżej
+    // pochodzą WYŁĄCZNIE z cableRunSpec zbudowanego w detailDrawerData.ts
+    // (ENM Cable/OverheadLine: catalog_ref/conductor_material/
+    // cross_section_mm2/insulation/rating.in_a). Brak pola w modelu = uczciwy
+    // stan zerowy „Brak w modelu" — NIGDY wartość zastępcza. Usunięta zaszyta
+    // „Norma" (PN-HD 620 S2): model ENM nie niesie normy konstrukcyjnej kabla
+    // (ani Cable, ani OverheadLine, ani BranchRating) — wiersz bez pokrycia w
+    // kontrakcie danych jest fabrykacją, nie „brakiem do uzupełnienia".
+    const NO_DATA = 'Brak w modelu';
+    const crossSectionText = cableRunSpec?.crossSectionMm2 != null
+      ? `${formatTechnicalNumberPl(cableRunSpec.crossSectionMm2)} mm²`
+      : NO_DATA;
+    const ratingText = cableRunSpec?.ratingInA != null
+      ? `${formatTechnicalNumberPl(cableRunSpec.ratingInA)} A`
+      : NO_DATA;
+    // Linia napowietrzna (przewód goły) strukturalnie NIE MA izolacji (ENM
+    // `OverheadLine` nie ma pola `insulation` — nie da się go „uzupełnić").
+    // To NIE jest brak danych, tylko brak zastosowania — rozróżnienie po
+    // segmentKind (jedyne źródło prawdy o rodzaju odcinka w tym kontrakcie).
+    const insulationText = cableRunSpec?.segmentKind === 'overhead_line_sn'
+      ? 'Nie dotyczy (przewód goły)'
+      : (cableRunSpec?.insulation ?? NO_DATA);
     return (
       <div data-testid="drawer-cable-parametry">
         <dl style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 12px' }}>
           <dt style={{ color: 'rgb(var(--scada-muted))' }}>Typ kabla</dt>
-          <dd style={{ color: 'rgb(var(--scada-text))', fontFamily: 'monospace' }}>XRUHKXS 1×120</dd>
+          <dd data-testid="drawer-cable-catalog-ref" style={{ color: cableRunSpec?.catalogRef ? 'rgb(var(--scada-text))' : 'rgb(var(--scada-muted))', fontFamily: 'monospace' }}>
+            {cableRunSpec?.catalogRef ?? NO_DATA}
+          </dd>
           <dt style={{ color: 'rgb(var(--scada-muted))' }}>Przekrój żyły</dt>
-          <dd style={{ color: 'rgb(var(--scada-text))', fontFamily: 'monospace' }}>120 mm²</dd>
+          <dd data-testid="drawer-cable-cross-section" style={{ color: cableRunSpec?.crossSectionMm2 != null ? 'rgb(var(--scada-text))' : 'rgb(var(--scada-muted))', fontFamily: 'monospace' }}>
+            {crossSectionText}
+          </dd>
           <dt style={{ color: 'rgb(var(--scada-muted))' }}>Materiał</dt>
-          <dd style={{ color: 'rgb(var(--scada-text))', fontFamily: 'monospace' }}>Al</dd>
+          <dd data-testid="drawer-cable-material" style={{ color: cableRunSpec?.conductorMaterial ? 'rgb(var(--scada-text))' : 'rgb(var(--scada-muted))', fontFamily: 'monospace' }}>
+            {cableRunSpec?.conductorMaterial ?? NO_DATA}
+          </dd>
+          <dt style={{ color: 'rgb(var(--scada-muted))' }}>Izolacja</dt>
+          <dd data-testid="drawer-cable-insulation" style={{ color: cableRunSpec?.insulation ? 'rgb(var(--scada-text))' : 'rgb(var(--scada-muted))', fontFamily: 'monospace' }}>
+            {insulationText}
+          </dd>
           <dt style={{ color: 'rgb(var(--scada-muted))' }}>Ampacity I_max</dt>
-          <dd style={{ color: 'rgb(var(--scada-status-warn-ink))', fontFamily: 'monospace' }}>270 A</dd>
-          <dt style={{ color: 'rgb(var(--scada-muted))' }}>Norma</dt>
-          <dd style={{ color: 'rgb(var(--scada-text))', fontFamily: 'monospace', fontSize: 10 }}>PN-HD 620 S2</dd>
+          <dd data-testid="drawer-cable-ampacity" style={{ color: cableRunSpec?.ratingInA != null ? 'rgb(var(--scada-text))' : 'rgb(var(--scada-muted))', fontFamily: 'monospace' }}>
+            {ratingText}
+          </dd>
         </dl>
       </div>
     );

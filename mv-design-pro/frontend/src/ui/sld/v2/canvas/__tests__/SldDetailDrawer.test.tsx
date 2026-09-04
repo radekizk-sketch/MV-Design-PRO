@@ -800,11 +800,103 @@ describe('SldDetailDrawer — K30-71 right-side detail panel', () => {
     cleanup();
   });
 
-  it('K30-88: cable_run parametry tab renders ampacity + cable type', () => {
+  it('K30-88: cable_run parametry tab renders (container present)', () => {
     const data: SldDetailDrawerData = { kind: 'cable_run', elementId: 'run-1', label: 'Ciąg-1' };
     const { container } = render(<SldDetailDrawer open data={data} onClose={vi.fn()} />);
     fireEvent.click(container.querySelector('[data-testid="sld-v2-detail-drawer-tab-parametry"]') as Element);
     expect(container.querySelector('[data-testid="drawer-cable-parametry"]')).toBeTruthy();
+    cleanup();
+  });
+
+  it('FAB-C (fantom danych katalogowych K30-89): parametry tab renders REAL catalog data z cableRunSpec, nie zaszyte literały', () => {
+    const data: SldDetailDrawerData = {
+      kind: 'cable_run', elementId: 'run-1', label: 'Ciąg-1',
+      cableRunSpec: {
+        runKind: 'main_trunk',
+        segmentCount: 1,
+        stationCount: null,
+        lengthKm: 2.4,
+        segmentKind: 'cable_sn',
+        catalogRef: 'cable-base-xlpe-al-1c-240',
+        conductorMaterial: 'Al',
+        crossSectionMm2: 240,
+        insulation: 'XLPE',
+        ratingInA: 400,
+      },
+    };
+    const { container } = render(<SldDetailDrawer open data={data} onClose={vi.fn()} />);
+    fireEvent.click(container.querySelector('[data-testid="sld-v2-detail-drawer-tab-parametry"]') as Element);
+    expect(container.querySelector('[data-testid="drawer-cable-catalog-ref"]')?.textContent).toBe('cable-base-xlpe-al-1c-240');
+    expect(container.querySelector('[data-testid="drawer-cable-cross-section"]')?.textContent).toBe('240 mm²');
+    expect(container.querySelector('[data-testid="drawer-cable-material"]')?.textContent).toBe('Al');
+    expect(container.querySelector('[data-testid="drawer-cable-insulation"]')?.textContent).toBe('XLPE');
+    expect(container.querySelector('[data-testid="drawer-cable-ampacity"]')?.textContent).toBe('400 A');
+    // Negatywny test wobec USUNIĘTEJ fabrykacji (K30-89): wartości z modelu są
+    // CELOWO inne niż dawne zaszyte literały XRUHKXS 1×120 / 120 mm² / 270 A /
+    // PN-HD 620 S2 — gdyby komponent nadal je ignorował i renderował stałe
+    // teksty, ten test złapałby to wprost (nie tylko przez brak asercji „—").
+    const panelText = container.querySelector('[data-testid="drawer-cable-parametry"]')?.textContent ?? '';
+    expect(panelText).not.toContain('XRUHKXS');
+    expect(panelText).not.toContain('270 A');
+    expect(panelText).not.toContain('PN-HD 620');
+    expect(panelText).not.toContain('120 mm');
+    // „Norma" fabrykowana USUNIĘTA na amen — model ENM nie niesie normy
+    // konstrukcyjnej kabla, więc wiersz nie ma prawa istnieć wcale.
+    expect(container.querySelector('[data-testid="drawer-cable-parametry"]')?.textContent).not.toContain('Norma');
+    cleanup();
+  });
+
+  it('FAB-C: parametry tab — uczciwy stan zerowy „Brak w modelu" gdy segment bez catalog_ref/przekroju/materiału/obciążalności', () => {
+    const data: SldDetailDrawerData = {
+      kind: 'cable_run', elementId: 'run-2', label: 'Ciąg-2',
+      cableRunSpec: {
+        runKind: 'branch',
+        segmentCount: 1,
+        stationCount: null,
+        lengthKm: 1.0,
+        segmentKind: 'cable_sn',
+        catalogRef: null,
+        conductorMaterial: null,
+        crossSectionMm2: null,
+        insulation: null,
+        ratingInA: null,
+      },
+    };
+    const { container } = render(<SldDetailDrawer open data={data} onClose={vi.fn()} />);
+    fireEvent.click(container.querySelector('[data-testid="sld-v2-detail-drawer-tab-parametry"]') as Element);
+    const panel = container.querySelector('[data-testid="drawer-cable-parametry"]') as HTMLElement;
+    expect(container.querySelector('[data-testid="drawer-cable-catalog-ref"]')?.textContent).toBe('Brak w modelu');
+    expect(container.querySelector('[data-testid="drawer-cable-cross-section"]')?.textContent).toBe('Brak w modelu');
+    expect(container.querySelector('[data-testid="drawer-cable-material"]')?.textContent).toBe('Brak w modelu');
+    expect(container.querySelector('[data-testid="drawer-cable-insulation"]')?.textContent).toBe('Brak w modelu');
+    expect(container.querySelector('[data-testid="drawer-cable-ampacity"]')?.textContent).toBe('Brak w modelu');
+    // ŻADNEJ liczby z jednostką mm²/A w sekcji parametrów — zero fallbacku liczbowego.
+    expect(panel.textContent ?? '').not.toMatch(/\d+([.,]\d+)?\s*(mm²|A)\b/);
+    cleanup();
+  });
+
+  it('FAB-C: parametry tab — linia napowietrzna pokazuje „Nie dotyczy" dla izolacji (ENM OverheadLine strukturalnie nie ma pola insulation)', () => {
+    const data: SldDetailDrawerData = {
+      kind: 'cable_run', elementId: 'run-3', label: 'Ciąg-3',
+      cableRunSpec: {
+        runKind: 'main_trunk',
+        segmentCount: 1,
+        stationCount: null,
+        lengthKm: 3.2,
+        segmentKind: 'overhead_line_sn',
+        catalogRef: 'line-base-al-70',
+        conductorMaterial: 'Al',
+        crossSectionMm2: 70,
+        insulation: null,
+        ratingInA: 210,
+      },
+    };
+    const { container } = render(<SldDetailDrawer open data={data} onClose={vi.fn()} />);
+    fireEvent.click(container.querySelector('[data-testid="sld-v2-detail-drawer-tab-parametry"]') as Element);
+    expect(container.querySelector('[data-testid="drawer-cable-insulation"]')?.textContent).toBe('Nie dotyczy (przewód goły)');
+    expect(container.querySelector('[data-testid="drawer-cable-catalog-ref"]')?.textContent).toBe('line-base-al-70');
+    expect(container.querySelector('[data-testid="drawer-cable-cross-section"]')?.textContent).toBe('70 mm²');
+    expect(container.querySelector('[data-testid="drawer-cable-ampacity"]')?.textContent).toBe('210 A');
     cleanup();
   });
 
