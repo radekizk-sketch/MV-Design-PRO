@@ -49,6 +49,7 @@ from .models import (
     OverheadLine,
     Source,
     SwitchBranch,
+    liczba_torow,
 )
 from .models import TapChanger as EnmTapChanger
 
@@ -407,8 +408,14 @@ _ASYNC_GEN_TYPES: dict[str, bool] = {
 
 
 def _gen_quantity(gen: Generator) -> int:
-    """Number of parallel units the generator element represents (≥ 1)."""
-    q = gen.quantity or gen.n_parallel or 1
+    """Number of parallel units the generator element represents (≥ 1).
+
+    ``quantity`` (explicit unit count) takes priority over ``n_parallel``
+    (identical-units-in-parallel neutral-element reading via
+    ``enm.models.liczba_torow`` — karta CI-A 2026-09-04, jedyna definicja tej
+    reguly, wspolna z Cable/Transformer wyzej w tym pliku).
+    """
+    q = gen.quantity or liczba_torow(gen)
     return q if q >= 1 else 1
 
 
@@ -651,12 +658,14 @@ def map_enm_to_network_graph(enm: EnergyNetworkModel) -> NetworkGraph:
             # P0.1 nN (karta P0.1, add_nn_cable_segment): n torow identycznych
             # kabli na TEJ SAMEJ trasie. TA SAMA zasada co Transformer.n_parallel
             # (Z/n, Sn*n) — n identycznych impedancji w rownoleglym polaczeniu
-            # dziela sie na n, obciazalnosc mnozy sie przez n. getattr z None
+            # dziela sie na n, obciazalnosc mnozy sie przez n. `liczba_torow`
             # obejmuje OverheadLine (pole nie istnieje na tym typie — brak zmiany
-            # zachowania linii napowietrznych). None/1 = pojedynczy tor
-            # (reduce-to-current-behavior, bajtowo identyczne dla istniejacych
-            # kabli SN i nN bez tego pola).
-            n_parallel_cable = getattr(branch, "n_parallel", None) or 1
+            # zachowania linii napowietrznych, patrz jej docstring). None/1 =
+            # pojedynczy tor (reduce-to-current-behavior, bajtowo identyczne dla
+            # istniejacych kabli SN i nN bez tego pola). Karta CI-A
+            # (2026-09-04): JEDYNA definicja tej reguly zyje w
+            # `enm.models.liczba_torow` — byla tu wlasna kopia `or 1`.
+            n_parallel_cable = liczba_torow(branch)
             r_ohm_per_km_eff = branch.r_ohm_per_km / n_parallel_cable
             x_ohm_per_km_eff = branch.x_ohm_per_km / n_parallel_cable
             b_us_per_km_eff = b_us_per_km * n_parallel_cable
@@ -769,7 +778,9 @@ def map_enm_to_network_graph(enm: EnergyNetworkModel) -> NetworkGraph:
         # G-STK-6: n identycznych jednostek równoległych → impedancja zastępcza
         # Z/n. Solver liczy Z z Sn i uk (Z = uk%·Un²/Sn), więc agregat = Sn×n daje
         # dokładnie Z/n. Domyślnie n=1 (bez zmiany dla istniejących modeli).
-        n_parallel = trafo.n_parallel or 1
+        # Karta CI-A (2026-09-04): JEDYNA definicja tej reguly — wspolna z
+        # Cable wyzej — zyje w `enm.models.liczba_torow`.
+        n_parallel = liczba_torow(trafo)
         tb = TransformerBranch(
             id=_ref_to_uuid(trafo.ref_id),
             name=trafo.name,

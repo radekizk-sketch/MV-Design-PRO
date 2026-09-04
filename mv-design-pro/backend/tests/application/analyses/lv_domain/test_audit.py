@@ -274,7 +274,10 @@ class TestKodyAudytu:
             sprzeglo.materialized_params = {"device_kind": "wylacznik"}
             assert "NN-AUD-18" not in _kody(enm)
             graf2 = build_lv_domain_view(enm, "stn")
-            assert next(d for d in graf2["devices"] if d["ref_id"] == "coupler")["device_kind"] == "WYLACZNIK"
+            assert (
+                next(d for d in graf2["devices"] if d["ref_id"] == "coupler")["device_kind"]
+                == "WYLACZNIK"
+            )
 
     def test_13_wynik_nieaktualny(self) -> None:
         assert "NN-AUD-13" in _kody(zbuduj_stacje_nn(), result_status="OUTDATED")

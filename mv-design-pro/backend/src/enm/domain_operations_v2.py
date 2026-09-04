@@ -63,6 +63,7 @@ from .domain_operations import (
     szyna_prowadzi_tranzyt_sn,
     wybor_bloku_fabrycznego,
 )
+from .exceptions import DomainInvariantError
 from .kopia_graniczna import kopia_graniczna_enm
 from .load_zip_model import KOD_BLEDU_ZIP, zip_odbioru_z_payloadu
 from .migrations.nn_field_specs_promocja import META_KLUCZ_GALAZ_ZRODLO_FIELD_REF
@@ -382,6 +383,35 @@ def _ta_sama_niepusta_pozycja_katalogowa(
     ref_a = element_a.get("catalog_ref")
     ref_b = element_b.get("catalog_ref")
     return bool(ref_a) and ref_a == ref_b
+
+
+def _wymagane_pola_odcinka(segment: dict[str, Any], *pola: str, op: str) -> dict[str, float]:
+    """Czyta WYMAGANE pola liczbowe odcinka nN bez podstawiania zera za brak.
+
+    Karta CI-A (`scripts/solver_input_substitute_guard.py`): `length_km`/
+    `r_ohm_per_km`/`x_ohm_per_km` są polami WYMAGANYMI modelu `Cable`
+    (`enm/models.py`, brak wartości domyślnej) — odcinek utworzony przez
+    `create_branch` (walidacja pydantic) ma je zawsze. `segment.get(pole, 0.0)`
+    fabrykował więc zerową rezystancję/reaktancję/długość (liczbę udającą
+    pomiar) dla odcinka bez danej, zamiast zamelduj brak — dokładnie klasa,
+    którą ta bramka zwalcza. Brak pola na WEJŚCIU tej funkcji jest oznaką
+    danych uszkodzonych/niekompletnych (payload spoza operacji domenowych,
+    np. ręczna migracja), nie brakiem pomiaru do zgadnięcia.
+
+    Rzuca `DomainInvariantError` (kod `nn.segment_field_missing`) z listą
+    WSZYSTKICH brakujących pól i `ref_id` odcinka naraz. `op` (np.
+    "split_nn_segment"/"merge_nn_segments") trafia do komunikatu.
+    """
+    brakujace = [pole for pole in pola if segment.get(pole) is None]
+    if brakujace:
+        ref = segment.get("ref_id")
+        raise DomainInvariantError(
+            "nn.segment_field_missing",
+            f"Odcinek '{ref if isinstance(ref, str) else '?'}' ({op}): brak wymaganych "
+            f"pól modelu kabla: {', '.join(brakujace)}.",
+            [ref] if isinstance(ref, str) else None,
+        )
+    return {pole: float(segment[pole]) for pole in pola}
 
 
 def _sn_bay_branch_type(apparatus_kind: object) -> str:
@@ -2834,15 +2864,24 @@ def _add_nn_cable_segment_internal(
             "Długość odcinka nN (length_m) musi być > 0.", "nn.cable_length_invalid"
         )
 
-    n_parallel_raw = payload.get("n_parallel", 1)
-    try:
-        n_parallel = int(n_parallel_raw)
-    except (TypeError, ValueError):
-        return _error_response(
-            "n_parallel musi być liczbą całkowitą >= 1.", "nn.cable_n_parallel_invalid"
-        )
-    if n_parallel < 1:
-        return _error_response("n_parallel musi być >= 1.", "nn.cable_n_parallel_invalid")
+    # Karta CI-A: brak n_parallel w payloadzie NIE jest podstawiany jedynką tu —
+    # `1` jest elementem NEUTRALNYM mnożenia (Z/1=Z), a nie zmyśloną daną, więc
+    # walidacja `int >= 1` działa TYLKO gdy coś jawnie podano; nieobecność
+    # przechodzi jako `n_parallel=1` lokalnie (poniżej `branch_data` i tak
+    # pomija klucz dla wartości 1 — patrz `enm.models.liczba_torow`), a model
+    # niesie `None`, więc hash ENM dla istniejących payloadów bez zmian.
+    n_parallel_podany = payload.get("n_parallel")
+    if n_parallel_podany is None:
+        n_parallel = 1
+    else:
+        try:
+            n_parallel = int(n_parallel_podany)
+        except (TypeError, ValueError):
+            return _error_response(
+                "n_parallel musi być liczbą całkowitą >= 1.", "nn.cable_n_parallel_invalid"
+            )
+        if n_parallel < 1:
+            return _error_response("n_parallel musi być >= 1.", "nn.cable_n_parallel_invalid")
 
     catalog_ref = _require_catalog_ref(
         payload_ref=payload.get("catalog_ref"),
@@ -3244,8 +3283,22 @@ def add_nn_section_coupler(enm: dict[str, Any], payload: dict[str, Any]) -> dict
     bus_refs = station.get("bus_refs") or []
     sekcje = [s for s in (station.get("nn_sections") or []) if isinstance(s, dict)]
     if sekcje:
-        ostatnia = max(sekcje, key=lambda s: s.get("order", 0))
-        last_order = ostatnia.get("order", 0)
+        # `NnSection.order` jest polem WYMAGANYM modelu (enm/models.py) — obie
+        # operacje tworzące sekcje nN (add_nn_distribution_board,
+        # add_nn_section_coupler niżej w tej funkcji) zawsze je nadają. `0` tu
+        # byłby liczbą udającą pomiar dla sekcji spoza tych operacji (np. ręcznie
+        # spreparowany payload/migracja) — melduj brak jawnym błędem domenowym
+        # zamiast cicho przyjąć fikcyjną kolejność (karta CI-A).
+        brakujace_order = [s for s in sekcje if "order" not in s]
+        if brakujace_order:
+            return _error_response(
+                f"Rozdzielnica nN '{station_ref}': sekcja "
+                f"'{brakujace_order[0].get('section_id', '?')}' nie ma pola 'order' "
+                "(dane sekcji nN niekompletne).",
+                "nn.section_order_missing",
+            )
+        ostatnia = max(sekcje, key=lambda s: s["order"])
+        last_order = ostatnia["order"]
         last_bus_ref = ostatnia.get("bus_ref")
     else:
         if not bus_refs:
@@ -3417,7 +3470,13 @@ def split_nn_segment(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, 
             "nn.split_segment_not_nn_band",
         )
 
-    length_km = _opt_float_any(segment.get("length_km")) or 0.0
+    try:
+        pola_odcinka = _wymagane_pola_odcinka(
+            segment, "length_km", "r_ohm_per_km", "x_ohm_per_km", op="split_nn_segment"
+        )
+    except DomainInvariantError as blad:
+        return _error_response(blad.message_pl, blad.code)
+    length_km = pola_odcinka["length_km"]
     length_m_total = length_km * 1000.0
 
     split_at_m = _opt_float_any(payload.get("split_at_m"))
@@ -3469,8 +3528,8 @@ def split_nn_segment(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, 
         "from_bus_ref": from_bus_ref,
         "to_bus_ref": mid_bus_ref,
         "length_km": split_at_m / 1000.0,
-        "r_ohm_per_km": segment.get("r_ohm_per_km", 0.0),
-        "x_ohm_per_km": segment.get("x_ohm_per_km", 0.0),
+        "r_ohm_per_km": pola_odcinka["r_ohm_per_km"],
+        "x_ohm_per_km": pola_odcinka["x_ohm_per_km"],
         "status": segment.get("status", "closed"),
     }
     _copy_split_segment_fields(left_data, segment)
@@ -3490,8 +3549,8 @@ def split_nn_segment(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, 
         "from_bus_ref": mid_bus_ref,
         "to_bus_ref": to_bus_ref,
         "length_km": (length_m_total - split_at_m) / 1000.0,
-        "r_ohm_per_km": segment.get("r_ohm_per_km", 0.0),
-        "x_ohm_per_km": segment.get("x_ohm_per_km", 0.0),
+        "r_ohm_per_km": pola_odcinka["r_ohm_per_km"],
+        "x_ohm_per_km": pola_odcinka["x_ohm_per_km"],
         "status": segment.get("status", "closed"),
     }
     _copy_split_segment_fields(right_data, segment)
@@ -3626,8 +3685,34 @@ def merge_nn_segments(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str,
                 "nn.merge_shared_bus_not_isolated",
             )
 
-    dlugosc_a = segment_a.get("length_km") or 0.0
-    dlugosc_b = segment_b.get("length_km") or 0.0
+    try:
+        pola_a = _wymagane_pola_odcinka(
+            segment_a, "length_km", "r_ohm_per_km", "x_ohm_per_km", op="merge_nn_segments"
+        )
+        pola_b = _wymagane_pola_odcinka(
+            segment_b, "length_km", "r_ohm_per_km", "x_ohm_per_km", op="merge_nn_segments"
+        )
+    except DomainInvariantError as blad:
+        return _error_response(blad.message_pl, blad.code)
+
+    # Scalenie dwóch odcinków o RÓŻNYCH parametrach na kilometr fabrykowałoby
+    # fizykę jednego wspólnego kabla tam, gdzie fizycznie są dwa różne tory.
+    # `_ta_sama_niepusta_pozycja_katalogowa` wyżej łapie różny catalog_ref;
+    # ta tolerancja (analogiczna do `_same_nominal_voltage`) łapie przypadek
+    # tego samego catalog_ref z manualnie nadpisanymi parametrami elektrycznymi.
+    rozne_parametry = [
+        pole for pole in ("r_ohm_per_km", "x_ohm_per_km") if abs(pola_a[pole] - pola_b[pole]) > 1e-9
+    ]
+    if rozne_parametry:
+        return _error_response(
+            "Scalane odcinki mają różne parametry na kilometr "
+            f"({', '.join(rozne_parametry)}) — scalenie fizycznie różnych torów "
+            "jest niedozwolone.",
+            "nn.merge_segments_type_mismatch",
+        )
+
+    dlugosc_a = pola_a["length_km"]
+    dlugosc_b = pola_b["length_km"]
 
     seed = _compute_seed({"op": "merge_nn_segments", "a": segment_a_ref, "b": segment_b_ref})
     merged_ref = _make_id("nn", seed, "merged")
@@ -3654,8 +3739,8 @@ def merge_nn_segments(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str,
         "from_bus_ref": zewnetrzna_a,
         "to_bus_ref": zewnetrzna_b,
         "length_km": dlugosc_a + dlugosc_b,
-        "r_ohm_per_km": segment_a.get("r_ohm_per_km", 0.0),
-        "x_ohm_per_km": segment_a.get("x_ohm_per_km", 0.0),
+        "r_ohm_per_km": pola_a["r_ohm_per_km"],
+        "x_ohm_per_km": pola_a["x_ohm_per_km"],
         "status": "closed",
     }
     _copy_split_segment_fields(merged_data, segment_a)

@@ -274,6 +274,22 @@ CONTRACT_SOURCES: tuple[str, ...] = (
     "application/automation/trace.py",
     "application/compliance/source_compliance.py",
     "application/proof_engine/packs/phase_state_sn.py",
+    # KARTA CI-A (2026-09-04) — pin mapy zazadal decyzji dla dwoch korzeni po
+    # dolozeniu importu w `enm/canonical_analysis.py`
+    # (`application.solvers.lv_temperature_correction.build_min_scenario_graph`,
+    # karta P0.3b) i w `network_model/solvers/protection_lv_curves.py`
+    # (`network_model.catalog.lv_mcb_bands_iec60898`). Oba deklaruja WYLACZNIE
+    # dataclassy WYNIKU/KATALOGU, nie kontrakt materializowany na element sieci —
+    # `MODEL_ROOTS_POZA_MAPA` odpada, bo test_wylaczenie_wygrywa_z_pokryciem_
+    # prefiksem zada, zeby wykluczenie mialo skutek (modul musi byc NAJPIERW
+    # pokryty jakims prefiksem), a zaden istniejacy prefiks (`application/solvers`,
+    # `network_model/catalog` — oba NIEOBECNE jako korzenie bare) go nie obejmuje;
+    # ten sam wzorzec „pojedynczy plik do mapy", co dziesiec korzeni MOST-WEJSCIA-V126
+    # nizej. Pomiar: +8 pol nowych (branch_name, corrected, klasa, max_x_in,
+    # min_x_in, r20_ohm_per_km, r_theta_ohm_per_km, theta_k_c — 1860 -> 1868;
+    # branch_id/reason/graph/notes juz byly w mapie przez inne korzenie), ZERO
+    # nowych trafien (RC=0 niezmieniony po dolozeniu obu plikow).
+    "application/solvers/lv_temperature_correction.py",
     "application/stability/dynamic_stability.py",
     "application/stability/voltage_trajectory.py",
     "domain/canonical_operations.py",
@@ -282,6 +298,7 @@ CONTRACT_SOURCES: tuple[str, ...] = (
     "infrastructure/persistence/models.py",
     "network_model/catalog/audit2_catalogs.py",
     "network_model/catalog/bay_templates.py",
+    "network_model/catalog/lv_mcb_bands_iec60898.py",
     "network_model/catalog/materialization.py",
     "network_model/catalog/repository.py",
     "network_model/catalog/types.py",
@@ -534,11 +551,19 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
     # `TransformerBranch`/`Switch` (`i0_percent: float = 0.0`, `tap_step_percent:
     # float = 2.5`) — czyli do granicy nr 4, ktora jest OSOBNA decyzja projektowa.
     "enm/mapping.py": {
-        # Liczba jednostek rownoleglych: brak -> 1. To KARDYNALNOSC elementu
-        # („ile sztuk reprezentuje ta pozycja"), a nie wielkosc mierzona —
-        # element bez podanej liczby jest jedna sztuka. Powod merytoryczny.
-        "A:or:gen.n_parallel": 1,
-        "A:or:trafo.n_parallel": 1,
+        # Karta CI-A (2026-09-04): pozycje `A:or:gen.n_parallel` (budzet 1) i
+        # `A:or:trafo.n_parallel` (budzet 1) ZNIKAJA z zapadki — dlug zamalal.
+        # Trzecia niezalezna kopia tego samego wzorca (`A:or:branch.n_parallel`
+        # dla Cable, wykryta przez te karte jako NOWE trafienie na w. 660) i te
+        # dwie ISTNIEJACE zostaly ujednolicone jedna funkcja domenowa
+        # `enm.models.liczba_torow` (regula KLASA NIE INSTANCJA — trzy miejsca
+        # czytajace to samo pole tym samym wzorcem, jedna definicja zamiast
+        # trzech niezaleznych podstawien). Liczba jednostek rownoleglych
+        # (brak -> 1, KARDYNALNOSC elementu, nie wielkosc mierzona — ten sam
+        # powod merytoryczny, co poprzednio) jest teraz w `liczba_torow`
+        # zapisana INSTRUKCJA `if` (nie wyrazeniem `or`), wiec bramka jej nie
+        # widzi — patrz uzasadnienie w docstringu tej funkcji. Obnizenie
+        # budzetu tu utrwala poprawe — zapadka dziala w obie strony.
         # Moc bierna wytworcy -> 0 Mvar. Ta sama pozycja, co w moscie V12.6 wyzej
         # (jeden defekt, dwa mosty) — DLUG NAZWANY, do rozstrzygniecia razem.
         "A:or:gen.q_mvar": 1,
@@ -599,6 +624,24 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
     # `p.load_scale` (profil OLTC) pochodzi z listy `run_options.get(
     # "oltc_load_profile")`, czyli z TEGO SAMEGO worka.
     #
+    # KARTA CI-A (2026-09-04): pozycja `F:dictget:run.c_factor` (budzet 1)
+    # ZNIKA z zapadki — dlug zamrozony w rundzie RATCHET-DICT-READ juz nie
+    # zyje w kodzie. Commit `c489876698ac8b7c1b8e24eb67a306f8140dcc4f`
+    # ("feat(nn): P0.3b c per pasmo IEC 60909 w kanonicznej sciezce SC ENM",
+    # 2026-08-13) zastapil `c_factor = float(run.options.get("c_factor", 1.10))`
+    # (plaski wspolczynnik 1,10 dla KAZDEGO wezla, niezaleznie od pasma
+    # napieciowego — fizycznie bledny dla nN wg IEC 60909 Tab. 1) dwoma
+    # krokami: `c_factor_explicit: Any = run.options.get("c_factor")`
+    # (1-argumentowy odczyt, bez zapasu liczbowego — nie jest juz trafieniem
+    # tej bramki) + `c_factor_override = c_factor_explicit is not None`, po
+    # czym `c_factor = float(c_factor_explicit) if c_factor_override else
+    # c_for_node(graph.nodes[node_id].voltage_level, scenario_c)` — AUTO per
+    # wezel z jego wlasnego pasma napieciowego (`network_model.core.
+    # voltage_factor.c_for_node`, Tab. 1: <=1 kV c_max/min=1,05/0,95, >1 kV
+    # c_max/min=1,10/1,00), z jawnym override tylko gdy `options["c_factor"]`
+    # podane wprost (zachowanie wsteczne). Obnizenie budzetu utrwala poprawe —
+    # zapadka dziala w obie strony.
+    #
     # (b) ODCZYT SLADU/WYNIKU SOLVERA DO RAPORTU, NIE WEJSCIE SOLVERA.
     # `iteration`/`step` pochodza z `solution.nr_trace`/kroku budowanego PRZEZ
     # solver (whitebox trace rozplywu Newtona) — inwariant tej bramki dotyczy
@@ -625,7 +668,6 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
         "F:dictget:p.load_scale": 1,
         "F:dictget:row.event_seq": 1,
         "F:dictget:run.base_mva": 1,
-        "F:dictget:run.c_factor": 1,
         "F:dictget:run.clearing_time_ms": 1,
         "F:dictget:run.during_fault_angle_deg": 1,
         "F:dictget:run.max_iter": 1,

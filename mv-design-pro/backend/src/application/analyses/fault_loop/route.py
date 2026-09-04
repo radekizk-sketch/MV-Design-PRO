@@ -38,6 +38,7 @@ from enm.models import (
     FuseBranch,
     OverheadLine,
     SwitchBranch,
+    liczba_torow,
 )
 from network_model.solvers.fault_loop_builder import RouteSegmentImpedance
 
@@ -160,7 +161,10 @@ def route_segments(path: LvBusPath) -> list[RouteSegmentImpedance]:
                     "return_conductor_x_ohm_per_km). Pętla zwarcia wymaga R I X żyły "
                     "powrotnej z KABEL_NN — fail-closed, zero fabrykacji (§0.1 karty P0.6)."
                 )
-            n_parallel = branch.n_parallel or 1
+            # Karta CI-A (2026-09-04): JEDYNA definicja tej reguly (KLASA NIE
+            # INSTANCJA) — patrz `enm.models.liczba_torow` (ten sam wzorzec,
+            # co `enm/mapping.py::map_enm_to_network_graph`).
+            n_parallel = liczba_torow(branch)
             segments.append(
                 RouteSegmentImpedance(
                     label=f"Kabel {branch.name or branch.ref_id}",
