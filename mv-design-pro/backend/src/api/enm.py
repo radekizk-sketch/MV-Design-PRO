@@ -71,7 +71,7 @@ from enm.dziennik_zmian import wpisy_od as wpisy_dziennika_od
 from enm.hash import compute_enm_hash
 from enm.models import EnergyNetworkModel
 from enm.severity import empty_severity_counts, is_failed_status
-from enm.store import ZrodloZmiany, blokada_przypadku
+from enm.store import ZrodloZmiany, blokada_twin
 from enm.store import get_enm as _get_enm
 from enm.store import set_enm as _set_enm
 from enm.topology_ops import (
@@ -844,7 +844,7 @@ def topology_ops(case_id: str, req: TopologyOpRequest) -> dict[str, Any]:
             f"Dostępne: {', '.join(sorted(_OP_DISPATCH.keys()))}",
         )
 
-    with blokada_przypadku(case_id):
+    with blokada_twin(case_id):
         return _topology_ops_pod_blokada(case_id, req, handler)
 
 
@@ -913,7 +913,7 @@ def topology_ops_batch(case_id: str, req: BatchOpsRequest) -> dict[str, Any]:
     równoległy zapis wchodził w środek serii, a jej rollback i tak odtwarzał
     model sprzed serii, kasując cudzą pracę.
     """
-    with blokada_przypadku(case_id):
+    with blokada_twin(case_id):
         return _topology_ops_batch_pod_blokada(case_id, req)
 
 
@@ -1124,7 +1124,7 @@ def wizard_apply_step(case_id: str, req: WizardStepRequestModel) -> dict[str, An
     atomowość kroku („preconditions → mutate → postconditions") jest prawdziwa
     tylko wtedy, gdy nikt nie zapisze modelu między odczytem a zapisem.
     """
-    with blokada_przypadku(case_id):
+    with blokada_twin(case_id):
         return _wizard_apply_step_pod_blokada(case_id, req)
 
 
@@ -1335,7 +1335,7 @@ def domain_ops(case_id: str, req: DomainOpEnvelopeModel, request: Request) -> di
     do puli wątków. Blokada jest per przypadek obliczeniowy, więc operacje na
     RÓŻNYCH przypadkach nadal biegną równolegle.
     """
-    with blokada_przypadku(case_id):
+    with blokada_twin(case_id):
         return _domain_ops_pod_blokada(case_id, req, request)
 
 

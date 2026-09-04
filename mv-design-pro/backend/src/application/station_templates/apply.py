@@ -21,7 +21,7 @@ from uuid import UUID
 from application.station_templates.schema import StationTemplate
 from enm.domain_operations import execute_domain_operation
 from enm.models import EnergyNetworkModel
-from enm.store import blokada_przypadku
+from enm.store import blokada_twin
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +68,7 @@ def apply_template_to_case(
     przypadkach nadal biegna rownolegle.
     """
     case_key = str(case_id)
-    with blokada_przypadku(case_key):
+    with blokada_twin(case_key):
         return _zastosuj_szablon_pod_blokada(
             template=template,
             case_key=case_key,

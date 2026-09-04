@@ -45,7 +45,7 @@ def klucz_przypadku(case_id: str) -> str:
     ROZSTRZYGNIĘCIE (dług 2 z V12K-315, rozjazd normalizacji klucza przypadku).
     Wygrywa **surowy łańcuch z adresu**, bo TAK klucz wyprowadza magazyn ENM
     (`enm.store._case_path` liczy SHA-256 z tekstu identyfikatora, a blokada
-    `blokada_przypadku` indeksuje słownik tym samym tekstem) i tak samo robią
+    `blokada_twin` indeksuje słownik tym samym tekstem) i tak samo robią
     WSZYSTKIE pozostałe końcówki (`/api/cases/{case_id}/enm/**` przekazuje
     `case_id` wprost). Normalizacja mogła zostać tylko wtedy, gdyby objęła też
     magazyn — a magazynu ta karta nie zmienia, więc normalizacja znika.

@@ -3,7 +3,7 @@
 DŁUG, KTÓRY TO ZAMYKA. `POST /api/station-templates/{id}/apply` normalizowało
 identyfikator przypadku przez `str(UUID(...))`, a WSZYSTKIE pozostałe ścieżki —
 w tym KLUCZE MAGAZYNU ENM (`enm.store._case_path` liczy SHA-256 z tekstu
-identyfikatora, `blokada_przypadku` indeksuje tym samym tekstem) — używają
+identyfikatora, `blokada_twin` indeksuje tym samym tekstem) — używają
 surowego łańcucha z adresu. Dopóki identyfikatory pochodzą z backendu, obie
 postacie są identyczne; dla postaci NIEKANONICZNEJ (wielkie litery, klamry,
 prefiks `urn:uuid:`, zapis bez myślników) zastosowanie szablonu operowałoby na

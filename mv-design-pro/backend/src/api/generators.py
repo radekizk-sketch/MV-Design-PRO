@@ -30,7 +30,7 @@ from domain.dobor_przekladnika import (
 )
 from enm.domain_operations import execute_domain_operation
 from enm.models import EnergyNetworkModel
-from enm.store import blokada_przypadku
+from enm.store import blokada_twin
 from enm.store import get_enm as _get_enm
 from enm.store import has_enm as _has_enm
 from enm.store import set_enm as _set_enm
@@ -458,7 +458,7 @@ def create_der_generator(
 
     _validate_project_case_context(request, project_id, case_id)
 
-    with blokada_przypadku(case_id):
+    with blokada_twin(case_id):
         return _utworz_wytworce_pod_blokada(case_id, req)
 
 
@@ -540,7 +540,7 @@ def set_der_bindings(
     for pole in req.model_fields_set:
         payload[pole] = getattr(req, pole)
 
-    with blokada_przypadku(case_id):
+    with blokada_twin(case_id):
         return _zapisz_wiazania_pod_blokada(case_id, payload)
 
 

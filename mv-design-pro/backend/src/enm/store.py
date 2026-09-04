@@ -1,3 +1,19 @@
+"""Magazyn ENM — JEDEN model sieci per KLUCZ TWIN (CV-1: klucz = projekt).
+
+KONTRAKT KLUCZA (docs/architecture/CANONICAL_DIGITAL_TWIN.md §2, ADR-012 korekta
+2026-09-04): magazyn jest kluczowany kluczem Canonical Project Twin
+(`enm/klucz_twin.klucz_twin_projektu(project_id)` → `projekt:<uuid>`). `case_id`
+NIE jest kluczem magazynu — jest adresem wejściowym API tłumaczonym na klucz
+projektu w jednym miejscu (`application/twin_key.py`). Klucz surowy (dowolny
+napis) pozostaje dopuszczalny WYŁĄCZNIE w testach jednostkowych magazynu;
+w warstwie API/aplikacji pilnuje tego guard `scripts/enm_store_key_guard.py`.
+
+Migracja zastanych plików per przypadek (`sha256(case_id).json`) do klucza
+projektu: `migruj_klucz_przypadku_do_projektu` (niżej) — nic nie jest tracone:
+model przypadku aktywnego staje się modelem projektu, pozostałe trafiają do
+`legacy_przypadki/` z manifestem (status ZGODNY/ROZBIEZNY).
+"""
+
 from __future__ import annotations
 
 import json
@@ -37,12 +53,12 @@ _enm_store: dict[str, EnergyNetworkModel] = {}
 _DEFAULT_STORE_DIR = Path(__file__).resolve().parents[2] / ".enm_store"
 
 # Blokady zapisu modelu — JEDNA na przypadek obliczeniowy.
-_blokady_przypadkow: dict[str, threading.RLock] = {}
+_blokady_twin: dict[str, threading.RLock] = {}
 _rejestr_blokad = threading.Lock()
 
 
-def blokada_przypadku(case_id: str) -> threading.RLock:
-    """Blokada CALEGO cyklu odczyt→przeliczenie→zapis modelu jednego przypadku.
+def blokada_twin(klucz: str) -> threading.RLock:
+    """Blokada CALEGO cyklu odczyt→przeliczenie→zapis modelu jednego twin (klucz projektu).
 
     DLUG, KTORY TO ZAMYKA (defekt D4 audytu 2026-08-01). `set_enm` czyta biezacy
     model, liczy z niego nowa rewizje i podmienia wpis w globalnym slowniku. Ta
@@ -66,10 +82,10 @@ def blokada_przypadku(case_id: str) -> threading.RLock:
     pkt 7.
     """
     with _rejestr_blokad:
-        blokada = _blokady_przypadkow.get(case_id)
+        blokada = _blokady_twin.get(klucz)
         if blokada is None:
             blokada = threading.RLock()
-            _blokady_przypadkow[case_id] = blokada
+            _blokady_twin[klucz] = blokada
         return blokada
 
 
@@ -78,13 +94,13 @@ def _store_dir() -> Path:
     return Path(configured) if configured else _DEFAULT_STORE_DIR
 
 
-def _case_path(case_id: str) -> Path:
-    digest = sha256(case_id.encode("utf-8")).hexdigest()
+def _case_path(klucz: str) -> Path:
+    digest = sha256(klucz.encode("utf-8")).hexdigest()
     return _store_dir() / f"{digest}.json"
 
 
-def _load_persisted_enm(case_id: str) -> EnergyNetworkModel | None:
-    path = _case_path(case_id)
+def _load_persisted_enm(klucz: str) -> EnergyNetworkModel | None:
+    path = _case_path(klucz)
     if not path.exists():
         return None
     try:
@@ -102,13 +118,13 @@ def _load_persisted_enm(case_id: str) -> EnergyNetworkModel | None:
         return None
 
 
-def _persist_enm(case_id: str, enm: EnergyNetworkModel) -> None:
+def _persist_enm(klucz: str, enm: EnergyNetworkModel) -> None:
     store_dir = _store_dir()
     store_dir.mkdir(parents=True, exist_ok=True)
-    path = _case_path(case_id)
+    path = _case_path(klucz)
     tmp_path = sciezka_tymczasowa(path)
     payload = {
-        "case_id": case_id,
+        "klucz": klucz,
         "snapshot": enm.model_dump(mode="json"),
         "hash_sha256": enm.header.hash_sha256,
         "revision": enm.header.revision,
@@ -127,7 +143,7 @@ def _persist_enm(case_id: str, enm: EnergyNetworkModel) -> None:
         raise
 
 
-def _tresc_snapshotu(case_id: str) -> bytes | None:
+def _tresc_snapshotu(klucz: str) -> bytes | None:
     """Bajty zapisanego snapshotu — MATERIAL DO WYCOFANIA nieudanego zapisu.
 
     Wycofanie odtwarza plik CO DO BAJTU, a nie „zapisuje poprzedni model" —
@@ -141,14 +157,14 @@ def _tresc_snapshotu(case_id: str) -> bytes | None:
     zaczynamy zapisu — blad leci przed jakakolwiek zmiana, wiec skutku nie ma.
     """
     try:
-        return _case_path(case_id).read_bytes()
+        return _case_path(klucz).read_bytes()
     except FileNotFoundError:
         return None
 
 
-def _przywroc_snapshot(case_id: str, tresc: bytes | None) -> None:
+def _przywroc_snapshot(klucz: str, tresc: bytes | None) -> None:
     """Odtworz plik snapshotu DOKLADNIE w stanie sprzed nieudanego zapisu."""
-    path = _case_path(case_id)
+    path = _case_path(klucz)
     if tresc is None:
         path.unlink(missing_ok=True)
         return
@@ -161,60 +177,60 @@ def _przywroc_snapshot(case_id: str, tresc: bytes | None) -> None:
         raise
 
 
-def has_enm(case_id: str) -> bool:
+def has_enm(klucz: str) -> bool:
     """Return whether a case already has a materialized ENM snapshot."""
-    return case_id in _enm_store or _case_path(case_id).exists()
+    return klucz in _enm_store or _case_path(klucz).exists()
 
 
-def get_enm(case_id: str) -> EnergyNetworkModel:
+def get_enm(klucz: str) -> EnergyNetworkModel:
     """Return the current ENM snapshot for a case, creating a default model if needed."""
-    with blokada_przypadku(case_id):
-        return _get_enm_pod_blokada(case_id)
+    with blokada_twin(klucz):
+        return _get_enm_pod_blokada(klucz)
 
 
-def _get_enm_pod_blokada(case_id: str) -> EnergyNetworkModel:
+def _get_enm_pod_blokada(klucz: str) -> EnergyNetworkModel:
     # Odczyt bierze te sama blokade co zapis, bo NIE JEST czystym odczytem:
     # tworzy model domyslny, migruje format i uzupelnia dane katalogowe, a wynik
     # ZAPISUJE (`set_enm` nizej). Bez blokady dwa rownolegle odczyty swiezego
     # przypadku utworzylyby dwa rozne modele domyslne.
-    if case_id not in _enm_store:
-        persisted = _load_persisted_enm(case_id)
+    if klucz not in _enm_store:
+        persisted = _load_persisted_enm(klucz)
         if persisted is not None:
-            _enm_store[case_id] = persisted
+            _enm_store[klucz] = persisted
         else:
             enm = EnergyNetworkModel(
                 header=ENMHeader(
-                    name=f"Model sieci - {case_id[:8]}",
+                    name=f"Model sieci - {klucz[:8]}",
                     defaults=ENMDefaults(),
                 ),
             )
             enm.header.hash_sha256 = compute_enm_hash(enm)
-            _enm_store[case_id] = enm
+            _enm_store[klucz] = enm
     # V12K-268: automigracja nazwy klucza punktu przyłączenia wytwórcy. Ta sama
     # ścieżka co uzupełnianie domyślnych katalogowych poniżej — model naprawiony
     # przy wczytaniu jest ZAPISYWANY, żeby migracja wykonała się RAZ, a nie przy
     # każdym odczycie. Kolejność ma znaczenie: migracja idzie PRZED uzupełnianiem
     # katalogu, bo reguły katalogowe mają widzieć już kanoniczne nazwy.
-    zmigrowany, zmieniona_nazwa = migruj_punkt_przylaczenia(_enm_store[case_id])
+    zmigrowany, zmieniona_nazwa = migruj_punkt_przylaczenia(_enm_store[klucz])
     if zmieniona_nazwa:
-        _enm_store[case_id] = zmigrowany
+        _enm_store[klucz] = zmigrowany
 
     # P0.1 nN (karta P0.1, C §4.2, LV-INV-12): promocja `nn_field_specs` →
     # realne elementy grafu. PO migracji punktu przyłączenia (kolejność ma
     # znaczenie tak samo jak wyżej), PRZED uzupełnianiem katalogu — reguły
     # katalogowe mają widzieć już realne gałęzie/szyny nN, nie worek meta.
-    zmigrowany_nn, zmieniona_promocja_nn = promuj_nn_field_specs(_enm_store[case_id])
+    zmigrowany_nn, zmieniona_promocja_nn = promuj_nn_field_specs(_enm_store[klucz])
     if zmieniona_promocja_nn:
-        _enm_store[case_id] = zmigrowany_nn
+        _enm_store[klucz] = zmigrowany_nn
 
-    completed, changed = complete_catalog_defaults(_enm_store[case_id])
+    completed, changed = complete_catalog_defaults(_enm_store[klucz])
     if changed or zmieniona_nazwa or zmieniona_promocja_nn:
-        return set_enm(case_id, completed)
-    return _enm_store[case_id]
+        return set_enm(klucz, completed)
+    return _enm_store[klucz]
 
 
 def set_enm(
-    case_id: str,
+    klucz: str,
     enm: EnergyNetworkModel,
     *,
     zrodlo_zmiany: ZrodloZmiany | None = None,
@@ -243,18 +259,18 @@ def set_enm(
     CO DO BAJTU i tylko wtedy, gdy ta operacja go faktycznie podmienila. Zakres i
     granice tej gwarancji: `_wycofaj_nieudany_zapis` nizej.
     """
-    with blokada_przypadku(case_id):
-        return _set_enm_pod_blokada(case_id, enm, zrodlo_zmiany=zrodlo_zmiany)
+    with blokada_twin(klucz):
+        return _set_enm_pod_blokada(klucz, enm, zrodlo_zmiany=zrodlo_zmiany)
 
 
 def _set_enm_pod_blokada(
-    case_id: str,
+    klucz: str,
     enm: EnergyNetworkModel,
     *,
     zrodlo_zmiany: ZrodloZmiany | None,
 ) -> EnergyNetworkModel:
     enm, _ = complete_catalog_defaults(enm)
-    existing = _enm_store.get(case_id)
+    existing = _enm_store.get(klucz)
     if existing is not None:
         # KOPIA TYLKO NAGŁÓWKA (karta S9-9). Kandydat służy WYŁĄCZNIE do policzenia
         # hasza „przy rewizji poprzednika" i jest porzucany w tej samej linijce.
@@ -270,7 +286,7 @@ def _set_enm_pod_blokada(
         )
         same_revision_candidate.header.revision = existing.header.revision
         if compute_enm_hash(same_revision_candidate) == existing.header.hash_sha256:
-            _persist_enm(case_id, existing)
+            _persist_enm(klucz, existing)
             return existing
 
     # MATERIAL DO WYCOFANIA pobrany PRZED jakakolwiek mutacja — i trzymany jako
@@ -286,13 +302,13 @@ def _set_enm_pod_blokada(
     # `enm` a magazynem nie musi byc pelnym aliasem (wystarczy wspolny `header`), a
     # kryterium „czy da sie wycofac" nie moze zalezec od domyslu o wolajacym.
     poprzedni = existing.model_copy(deep=True) if existing is not None else None
-    tresc_snapshotu = _tresc_snapshotu(case_id)
+    tresc_snapshotu = _tresc_snapshotu(klucz)
 
     old_rev = existing.header.revision if existing else 0
     enm.header.revision = old_rev + 1
     enm.header.updated_at = datetime.now(UTC)
     enm.header.hash_sha256 = compute_enm_hash(enm)
-    _enm_store[case_id] = enm
+    _enm_store[klucz] = enm
 
     wpis_dziennika: PrzygotowanyWpis | None = None
     snapshot_zatwierdzony = False
@@ -305,7 +321,7 @@ def _set_enm_pod_blokada(
         # zatwierdzamy jako OSTATNI, bo jego podmiana jest jedynym krokiem, po
         # ktorym nie zostaje juz nic do zrobienia.
         wpis_dziennika = przygotuj_wpis_dziennika(
-            case_id,
+            klucz,
             rewizja=enm.header.revision,
             operacja=zrodlo_zmiany.operacja if zrodlo_zmiany else None,
             utworzone=zrodlo_zmiany.utworzone if zrodlo_zmiany else (),
@@ -313,12 +329,12 @@ def _set_enm_pod_blokada(
             usuniete=zrodlo_zmiany.usuniete if zrodlo_zmiany else (),
             znacznik_czasu=enm.header.updated_at,
         )
-        _persist_enm(case_id, enm)
+        _persist_enm(klucz, enm)
         snapshot_zatwierdzony = True
         wpis_dziennika.zatwierdz()
     except Exception:
         _wycofaj_nieudany_zapis(
-            case_id,
+            klucz,
             poprzedni,
             wpis_dziennika=wpis_dziennika,
             tresc_snapshotu=tresc_snapshotu,
@@ -328,7 +344,7 @@ def _set_enm_pod_blokada(
     return enm
 
 
-def restore_enm(case_id: str, snapshot: dict) -> EnergyNetworkModel | None:
+def restore_enm(klucz: str, snapshot: dict) -> EnergyNetworkModel | None:
     """Przywróć snapshot ENM z archiwum projektu 1:1 (import ZIP, N-D1).
 
     W odróżnieniu od `set_enm` NIE podbija rewizji, NIE przelicza hasha i NIE
@@ -338,20 +354,20 @@ def restore_enm(case_id: str, snapshot: dict) -> EnergyNetworkModel | None:
     Zwraca None, gdy snapshot nie waliduje się jako EnergyNetworkModel —
     decyzję o zgłoszeniu ostrzeżenia podejmuje warstwa importu.
     Zapis pod blokadą przypadku (ten sam reżim co set_enm); import tworzy NOWY
-    case_id, więc nie ma poprzedniej rewizji do wycofywania.
+    klucz, więc nie ma poprzedniej rewizji do wycofywania.
     """
     try:
         enm = EnergyNetworkModel.model_validate(snapshot)
     except ValueError:
         return None
-    with blokada_przypadku(case_id):
-        _enm_store[case_id] = enm
-        _persist_enm(case_id, enm)
+    with blokada_twin(klucz):
+        _enm_store[klucz] = enm
+        _persist_enm(klucz, enm)
     return enm
 
 
 def _wycofaj_nieudany_zapis(
-    case_id: str,
+    klucz: str,
     poprzedni: EnergyNetworkModel | None,
     *,
     wpis_dziennika: PrzygotowanyWpis | None,
@@ -360,7 +376,7 @@ def _wycofaj_nieudany_zapis(
 ) -> None:
     """Cofnij rewizje, ktorej NIE UDALO SIE zapisac (defekt D4, wariant 2 i 3).
 
-    Wczesniej `_enm_store[case_id] = enm` wykonywalo sie PRZED zapisem pliku, wiec
+    Wczesniej `_enm_store[klucz] = enm` wykonywalo sie PRZED zapisem pliku, wiec
     wyjatek zapisu zostawial system w stanie, ktorego nikt nie zadeklarowal:
     uzytkownik dostawal „blad zapisu", a zywy model byl juz o rewizje do przodu
     (zmierzone: rewizja +4 przy dwoch odpowiedziach 200), dziennik zas nie mial
@@ -396,13 +412,17 @@ def _wycofaj_nieudany_zapis(
     WYKRYWALNA (rewizja snapshotu wyzsza niz najwyzsza rewizja w dzienniku).
     """
     if poprzedni is None:
-        _enm_store.pop(case_id, None)
+        _enm_store.pop(klucz, None)
     else:
-        _enm_store[case_id] = poprzedni
+        _enm_store[klucz] = poprzedni
     if wpis_dziennika is not None:
         wpis_dziennika.porzuc()
     if snapshot_zatwierdzony:
-        _przywroc_snapshot(case_id, tresc_snapshotu)
+        _przywroc_snapshot(klucz, tresc_snapshotu)
+
+
+KATALOG_LEGACY = "legacy_przypadki"
+MANIFEST_LEGACY = "manifest.jsonl"
 
 
 def reset_enm_store(*, remove_persisted: bool = True) -> None:
@@ -420,3 +440,142 @@ def reset_enm_store(*, remove_persisted: bool = True) -> None:
         path.unlink(missing_ok=True)
     for path in store_dir.glob("*.tmp"):
         path.unlink(missing_ok=True)
+    # CV-1: katalog odlozonych plikow per przypadek + manifest migracji sa czescia
+    # magazynu — izolacja testow obejmuje takze je.
+    legacy = store_dir / KATALOG_LEGACY
+    if legacy.exists():
+        for path in legacy.iterdir():
+            path.unlink(missing_ok=True)
+
+
+# ---------------------------------------------------------------------------
+# CV-1: migracja zastanych plików per przypadek → klucz projektu
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class WynikMigracjiKlucza:
+    """Skutek przeniesienia modelu zastanego pod kluczem przypadku pod klucz projektu.
+
+    `status`: `BRAK_LEGACY` (nie było modelu pod kluczem przypadku), `PRZENIESIONY`
+    (projekt nie miał modelu — model przypadku stał się modelem projektu, bez podbicia
+    rewizji, jak `restore_enm`), `ZGODNY` (projekt miał model o tym samym hashu),
+    `ROZBIEZNY` (projekt miał model o INNYM hashu — plik odłożony do
+    `legacy_przypadki/` i oznaczony w manifeście; wymaga decyzji projektanta:
+    wariant sieci). Żaden status nie kasuje danych.
+    """
+
+    case_id: str
+    klucz_projektu: str
+    status: str
+    hash_legacy: str | None
+    hash_projektu: str | None
+    rewizja_legacy: int | None
+
+
+def hash_tresci_modelu(enm: EnergyNetworkModel) -> str:
+    """Hash TRESCI modelu niezalezny od licznika rewizji.
+
+    `compute_enm_hash` obejmuje `header.revision` (dlatego `set_enm` liczy hasz
+    kandydata „przy rewizji poprzednika"). Do porownania modeli z ROZNYCH
+    przypadkow (rozne liczniki rewizji) potrzebny jest hasz tresci: ta sama siec
+    o tej samej nazwie = ten sam hasz, niezaleznie od tego, ile razy ja zapisano.
+    """
+    kandydat = enm.model_copy(update={"header": enm.header.model_copy(deep=True)})
+    kandydat.header.revision = 0
+    return compute_enm_hash(kandydat)
+
+
+def _katalog_legacy() -> Path:
+    katalog = _store_dir() / KATALOG_LEGACY
+    katalog.mkdir(parents=True, exist_ok=True)
+    return katalog
+
+
+def _odloz_do_legacy(case_id: str, wynik: WynikMigracjiKlucza) -> None:
+    """Przenieś plik snapshotu (i dziennika, jeśli jest) przypadku do `legacy_przypadki/`
+    i dopisz wiersz manifestu. Zapis manifestu przez plik roboczy + `replace`."""
+    katalog = _katalog_legacy()
+    zrodlo = _case_path(case_id)
+    if zrodlo.exists():
+        zrodlo.replace(katalog / zrodlo.name)
+    dziennik = _store_dir() / f"{zrodlo.stem}.dziennik.json"
+    if dziennik.exists():
+        dziennik.replace(katalog / dziennik.name)
+    manifest = katalog / MANIFEST_LEGACY
+    wiersz = json.dumps(
+        {
+            "case_id": wynik.case_id,
+            "klucz_projektu": wynik.klucz_projektu,
+            "status": wynik.status,
+            "hash_legacy": wynik.hash_legacy,
+            "hash_projektu": wynik.hash_projektu,
+            "rewizja_legacy": wynik.rewizja_legacy,
+            "plik": zrodlo.name,
+            "czas": datetime.now(UTC).isoformat(),
+        },
+        ensure_ascii=False,
+        sort_keys=True,
+    )
+    with manifest.open("a", encoding="utf-8") as plik:
+        plik.write(wiersz + "\n")
+
+
+def migruj_klucz_przypadku_do_projektu(
+    case_id: str,
+    klucz_projektu: str,
+    *,
+    przyjmij_jako_model_projektu: bool,
+) -> WynikMigracjiKlucza:
+    """Przenieś zastany model przypadku pod klucz projektu (procedura kasacji, krok
+    „data export → parity → cutover" dla wycinka CV-1).
+
+    `przyjmij_jako_model_projektu=True` dla przypadku AKTYWNEGO projektu (wybór
+    należy do wołającego, który zna bazę przypadków — magazyn jej nie zna). Gdy
+    projekt ma już model, model przypadku jest porównywany hashem: identyczny →
+    `ZGODNY`, inny → `ROZBIEZNY`; w obu przypadkach plik przypadku wędruje do
+    `legacy_przypadki/` z wierszem manifestu. Nigdy nie nadpisuje istniejącego
+    modelu projektu i nigdy nie kasuje treści.
+    """
+    with blokada_twin(klucz_projektu), blokada_twin(case_id):
+        legacy = _enm_store.get(case_id)
+        if legacy is None:
+            legacy = _load_persisted_enm(case_id)
+        if legacy is None:
+            return WynikMigracjiKlucza(case_id, klucz_projektu, "BRAK_LEGACY", None, None, None)
+        hash_legacy = hash_tresci_modelu(legacy)
+        projekt = _enm_store.get(klucz_projektu)
+        if projekt is None:
+            projekt = _load_persisted_enm(klucz_projektu)
+        if projekt is None and przyjmij_jako_model_projektu:
+            _enm_store[klucz_projektu] = legacy
+            _persist_enm(klucz_projektu, legacy)
+            wynik = WynikMigracjiKlucza(
+                case_id,
+                klucz_projektu,
+                "PRZENIESIONY",
+                hash_legacy,
+                hash_legacy,
+                legacy.header.revision,
+            )
+        else:
+            hash_projektu = hash_tresci_modelu(projekt) if projekt is not None else None
+            status = "ZGODNY" if hash_projektu == hash_legacy else "ROZBIEZNY"
+            wynik = WynikMigracjiKlucza(
+                case_id, klucz_projektu, status, hash_legacy, hash_projektu, legacy.header.revision
+            )
+        _enm_store.pop(case_id, None)
+        _odloz_do_legacy(case_id, wynik)
+        return wynik
+
+
+def wiersze_manifestu_legacy() -> list[dict]:
+    """Odczyt manifestu migracji (dla raportu i testów)."""
+    manifest = _store_dir() / KATALOG_LEGACY / MANIFEST_LEGACY
+    if not manifest.exists():
+        return []
+    wiersze: list[dict] = []
+    for linia in manifest.read_text(encoding="utf-8").splitlines():
+        if linia.strip():
+            wiersze.append(json.loads(linia))
+    return wiersze
