@@ -3,7 +3,9 @@
 **Status:** KANONICZNY (kontrakt MAX PLATFORM 2026-09-04, §30–§32). Numeracja G01–G15 pochodzi z kontraktu właściciela i **zastępuje** numerację inferowaną G01–G17 z `docs/twin/MV_DESIGN_PRO_MIGRATION_PLAN.md` §4 (tam: mapowanie na istniejące buildery — zachowane jako materiał). Rejestr jest **żywym katalogiem klas przypadków** (D-40): klasa problemu napotkana w projekcie dopisuje wpis, zanim powstanie kod.
 **Zasada:** golden network ≠ self-test (§32). Wpis bez niezależnej wyroczni ma status `REGRESSION_ONLY` i nie jest dowodem fizyki.
 
-## 1. Schemat wpisu (docelowo kod: `backend/tests/golden/registry.py`, dokument generowany z rejestru)
+## 1. Schemat wpisu (kod: `backend/tests/golden/registry.py`; tabela generowana: `REGISTRY_TABLE.md`)
+
+Rejestr w kodzie istnieje od 2026-09-04: `backend/tests/golden/registry.py` (wpisy G00–G15 + B-BENCH, klasy wyroczni, budowniczowie, status). Generator `backend/scripts/generuj_rejestr_sieci.py` zapisuje `REGISTRY_TABLE.md`; test `backend/tests/golden/test_registry.py` pilnuje: unikalności identyfikatorów i kompletu G01–G15, źródła każdej niezależnej wyroczni, spójności statusu z budowniczymi, wykonalności każdego budowniczego, aktualności tabeli generowanej oraz ZAPADKI pokrycia rodzin solverów wyroczniami (może tylko rosnąć).
 
 `id · purpose · exact topology · assets · voltage levels · grounding · switch states · scenario · assumptions · analyses · expected invariants · independent numerical references (oracle class: ANALYTICAL | NORMATIVE | PUBLISHED_BENCHMARK | INDEPENDENTLY_VERIFIED | REGRESSION_ONLY) · provenance · builder (komendy domenowe / ENM JSON) · konsumenci (solver / SLD SN / SLD nN / dokumenty / e2e)`.
 
