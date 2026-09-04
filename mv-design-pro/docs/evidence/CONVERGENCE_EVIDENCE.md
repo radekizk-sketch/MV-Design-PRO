@@ -100,6 +100,8 @@ Do czasu wykonania: każdy merge do `main` bez zielonego kompletu bramek jest na
 | P0-4 | 12 czerwonych e2e na `main` od #472 | regresja produktu | CI-D |
 | P1-1 | 4 rejestry biegów, 5 sposobów uruchomienia | spójność | CV-3.3 |
 | P1-2 | uziemienie: 6 reprezentacji, fizyka nie czyta żadnej | fizyka doziemna | CV-5 |
+| P1-3 | 12 benchmarków IEEE/CIGRE/IEC + `oze_pv_bess` istnieją tylko w dialekcie słownikowym P9 (nie walidują się jako ENM) — jedyna niezależna wyrocznia LF/SC liczy się poza torem kanonicznym | spójność / dowodowość | CV-4 (benchmarki jako ENM przez assembler; zapadka `BENCHMARK_DICT_ZASTANE`) |
+| P1-4 | substrat 52 stacji (G00): 21 BLOCKER walidatora, budowa ≈ 40 s — sieć skali nieobliczalna | wydajność / rejestr | CV-4/CV-6 (naprawa u źródła; zapadka `BLOKERY_ZASTANE`) |
 
 ## I. Decyzje właściciela (tylko nierozstrzygalne z repo/norm/danych)
 | ID | Pytanie | Dlaczego nie da się rozstrzygnąć samodzielnie |

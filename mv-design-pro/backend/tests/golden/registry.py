@@ -36,6 +36,17 @@ class StatusSieci(str, Enum):
     NOT_BUILT = "NOT_BUILT"
 
 
+class PostacSieci(str, Enum):
+    """Postać danych budowniczego. `ENM` = `EnergyNetworkModel` (lub słownik walidujący się jako ENM);
+    `BENCHMARK_DICT` = słownik dialektu benchmarków (`application/reference_networks/library.py`:
+    `id` szyn jako napisy, NIE waliduje się jako ENM) — DRUGA PRAWDA O SIECI liczona własnym
+    solverem (P9, A3 §2.1); pomiar 2026-09-04: 12 benchmarków + oze_pv_bess. Do zwinięcia w ENM
+    przez kanoniczny assembler (CV-4); zapadka `BENCHMARK_DICT_ZASTANE` w teście."""
+
+    ENM = "ENM"
+    BENCHMARK_DICT = "BENCHMARK_DICT"
+
+
 class RodzinaSolvera(str, Enum):
     LF = "LF"
     SC = "SC"
@@ -76,6 +87,7 @@ class WpisRejestru:
     konsumenci: tuple[str, ...]
     status: StatusSieci
     proweniencja: str = "repozytorium MV-DESIGN-PRO (fixture testowa)"
+    postac: PostacSieci = PostacSieci.ENM
 
     @property
     def klasy_wyroczni(self) -> tuple[KlasaWyroczni, ...]:
@@ -207,6 +219,8 @@ REJESTR: tuple[WpisRejestru, ...] = (
         ),
         konsumenci=("solver",),
         status=StatusSieci.PARTIAL,
+        postac=PostacSieci.BENCHMARK_DICT,
+        proweniencja="dialekt benchmarków (nie ENM) — druga prawda o sieci; do zwinięcia w ENM (CV-4)",
     ),
     WpisRejestru(
         id="G08",
@@ -388,6 +402,7 @@ REJESTR: tuple[WpisRejestru, ...] = (
         konsumenci=("solver_output_drift_guard", "reference_networks_validation_guard"),
         status=StatusSieci.SUPPORTED,
         proweniencja="application/reference_networks/library.py — jedyna dziś niezależna wyrocznia; liczone własnym NR (P9) — do przepięcia na tor P1/S1 (CV-4)",
+        postac=PostacSieci.BENCHMARK_DICT,
     ),
 )
 
@@ -449,8 +464,8 @@ def tabela_markdown() -> str:
         "test `backend/tests/golden/test_registry.py` pilnuje zgodności). Kanon i zasady: "
         "`REFERENCE_NETWORK_REGISTRY.md`. Nie edytować ręcznie.",
         "",
-        "| ID | Klasa przypadku | Status | Klasy wyroczni | Rodziny z wyrocznią | Budowniczowie | Konsumenci |",
-        "|---|---|---|---|---|---|---|",
+        "| ID | Klasa przypadku | Status | Postać | Klasy wyroczni | Rodziny z wyrocznią | Budowniczowie | Konsumenci |",
+        "|---|---|---|---|---|---|---|---|",
     ]
     for w in REJESTR:
         rodziny = sorted({r.value for wy in w.wyrocznie for r in wy.rodziny})
@@ -461,6 +476,7 @@ def tabela_markdown() -> str:
                     w.id,
                     w.klasa_przypadku,
                     w.status.value,
+                    w.postac.value,
                     ", ".join(k.value for k in w.klasy_wyroczni),
                     ", ".join(rodziny) or "—",
                     "<br>".join(f"`{b}`" for b in w.budowniczowie) or "—",

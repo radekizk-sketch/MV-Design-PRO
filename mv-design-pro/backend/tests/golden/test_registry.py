@@ -5,9 +5,18 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from enm.hash import compute_enm_hash
+from enm.models import EnergyNetworkModel
+from enm.validator import ENMValidator
 
 from tests.golden import registry
-from tests.golden.registry import REJESTR, KlasaWyroczni, RodzinaSolvera, StatusSieci
+from tests.golden.registry import (
+    REJESTR,
+    KlasaWyroczni,
+    PostacSieci,
+    RodzinaSolvera,
+    StatusSieci,
+)
 
 DOKUMENT = Path(__file__).resolve().parents[3] / "docs" / "reference-networks" / "REGISTRY_TABLE.md"
 
@@ -80,3 +89,65 @@ def test_pokrycie_rodzin_wyroczniami_nie_maleje() -> None:
         if k and k != POKRYCIE_ZASTANE.get(r, set()) and not (k <= POKRYCIE_ZASTANE.get(r, set()))
     }
     assert not nowe, f"pokrycie wzrosło — podnieś POKRYCIE_ZASTANE (utrwal poprawę): {nowe}"
+
+
+#: Pomiar 2026-09-04: budowniczowie zwracający dialekt benchmarków (nie ENM). Zapadka w obie
+#: strony — liczba może tylko MALEĆ (CV-4 zwija benchmarki w ENM przez kanoniczny assembler).
+BENCHMARK_DICT_ZASTANE: dict[str, int] = {"G07": 1, "B-BENCH": 12}
+
+#: Pomiar 2026-09-04: liczba problemów BLOCKER walidatora ENM per wpis (suma po sieciach wpisu).
+#: G04/G05: 18 scenariuszy nN celowo obejmuje stany konfliktowe (źródła równoległe, sekcja bez
+#: zasilania) — BLOCKER jest tam treścią scenariusza; G00: substrat 52 stacji NIEOBLICZALNY (A10)
+#: — 21 blokerów do usunięcia u źródła. Zapadka w obie strony.
+BLOKERY_ZASTANE: dict[str, int] = {"G04": 15, "G05": 15, "G00": 21}
+
+#: Wpisy, których determinizm budowy (dwie budowy → ten sam hash) pomijamy tu ze względu na koszt
+#: budowy (G00: ok. 40 s) — determinizm substratu pilnuje `tests/reference_networks/sld_substrate_52s.py`.
+POMIN_DETERMINIZM: frozenset[str] = frozenset({"G00"})
+
+
+def _jako_enm(siec: object) -> EnergyNetworkModel:
+    return siec if isinstance(siec, EnergyNetworkModel) else EnergyNetworkModel.model_validate(siec)
+
+
+@pytest.mark.parametrize("id_", [w.id for w in REJESTR if w.budowniczowie])
+def test_postac_sieci_zgodna_z_deklaracja_i_zapadka_dialektu(id_: str) -> None:
+    w = registry.wpis(id_)
+    sieci = registry.zbuduj_wszystkie(id_)
+    niepoprawne = 0
+    for siec in sieci:
+        try:
+            _jako_enm(siec)
+        except Exception:
+            niepoprawne += 1
+    if w.postac is PostacSieci.ENM:
+        assert (
+            niepoprawne == 0
+        ), f"{id_}: {niepoprawne} sieci nie waliduje się jako ENM mimo deklaracji ENM"
+    else:
+        assert niepoprawne == BENCHMARK_DICT_ZASTANE.get(id_), (
+            f"{id_}: dialekt benchmarków w {niepoprawne} sieciach, zapadka {BENCHMARK_DICT_ZASTANE.get(id_)} — "
+            "zaktualizuj zapadkę (może tylko maleć)"
+        )
+
+
+@pytest.mark.parametrize(
+    "id_", [w.id for w in REJESTR if w.budowniczowie and w.postac is PostacSieci.ENM]
+)
+def test_sieci_enm_sa_deterministyczne_i_blokery_nie_rosna(id_: str) -> None:
+    pierwsza = [_jako_enm(s) for s in registry.zbuduj_wszystkie(id_)]
+    if id_ not in POMIN_DETERMINIZM:
+        druga = [_jako_enm(s) for s in registry.zbuduj_wszystkie(id_)]
+        assert [compute_enm_hash(a) for a in pierwsza] == [
+            compute_enm_hash(b) for b in druga
+        ], f"{id_}: dwie budowy dają różne hashe — budowniczy niedeterministyczny"
+    blokery = 0
+    for enm in pierwsza:
+        wynik = ENMValidator().validate(enm)
+        for problem in getattr(wynik, "issues", None) or []:
+            if str(getattr(problem, "severity", "")).split(".")[-1].upper() == "BLOCKER":
+                blokery += 1
+    assert blokery == BLOKERY_ZASTANE.get(id_, 0), (
+        f"{id_}: BLOCKER walidatora = {blokery}, zapadka {BLOKERY_ZASTANE.get(id_, 0)} — "
+        "nadwyżka = regresja modelu, niedobór = obniż zapadkę (utrwal poprawę)"
+    )
