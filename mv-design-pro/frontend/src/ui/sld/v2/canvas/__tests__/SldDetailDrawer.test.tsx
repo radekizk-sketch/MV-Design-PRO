@@ -13,10 +13,78 @@
  * 9. data-testid coverage dla DOM audit
  */
 
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi, afterEach } from 'vitest';
 import { render, fireEvent, cleanup, waitFor } from '@testing-library/react';
 
 import { SldDetailDrawer, type SldDetailDrawerData } from '../SldDetailDrawer';
+import { useAppStateStore } from '../../../../app-state/store';
+import { EMPTY_PROTECTION_VIEW, type ProtectionViewResponse } from '../../../../protection';
+
+/**
+ * FAB-B (fantom nastaw, M0): mock granicy `fetch` dla realnej ścieżki danych
+ * nastaw zabezpieczeń — DOKŁADNIE ten sam wzorzec co
+ * `ui/inspector/__tests__/ProtectionSection.realData.test.tsx` (mockujemy
+ * `fetch`, nie hook/komponent — `useProtectionAssignment` →
+ * `useProtectionView` → `GET /api/cases/{caseId}/enm/protection-view`).
+ */
+function mockProtectionViewFetchOk(payload: ProtectionViewResponse): void {
+  global.fetch = vi.fn(async () => ({
+    ok: true,
+    statusText: 'OK',
+    json: async () => payload,
+  })) as unknown as typeof fetch;
+}
+
+/** Element BEZ przypisanego zabezpieczenia w modelu (uczciwy stan zerowy). */
+function protectionViewEmptyFor(caseId: string): ProtectionViewResponse {
+  return { ...EMPTY_PROTECTION_VIEW, case_id: caseId };
+}
+
+/** Jedno przypisanie zabezpieczenia z realnymi nastawami (setpoint P16b). */
+function protectionViewWithAssignment(
+  caseId: string,
+  elementId: string,
+): ProtectionViewResponse {
+  return {
+    case_id: caseId,
+    enm_revision: 1,
+    view_status: {
+      data_source: 'ENM_PROTECTION_READ_MODEL',
+      result_state: 'FRESH',
+      has_protection_data: true,
+    },
+    assignments: [
+      {
+        element_id: elementId,
+        element_type: 'Switch',
+        device_id: 'relay-fabb-001',
+        device_name_pl: 'Przekaznik FAB-B',
+        device_kind: 'RELAY_OVERCURRENT',
+        status: 'ACTIVE',
+        settings_summary: {
+          functions: [
+            {
+              code: 'OVERCURRENT_TIME',
+              ansi: ['51'],
+              label_pl: 'Nadpradowa czasowa (I>)',
+              setpoint: {
+                basis: 'IN',
+                operator: 'GT',
+                multiplier: 1.2,
+                unit: 'pu',
+                display_pl: '1,2×In',
+              },
+              time_delay_s: 0.8,
+              curve_type: 'IEC SI',
+            },
+          ],
+          curve_type: 'IEC SI',
+          base_values: { i_rated_a: 400 },
+        },
+      },
+    ],
+  };
+}
 
 const STATION_DATA: SldDetailDrawerData = {
   kind: 'station',
@@ -28,6 +96,14 @@ const STATION_DATA: SldDetailDrawerData = {
 };
 
 describe('SldDetailDrawer — K30-71 right-side detail panel', () => {
+  // FAB-B: kilka testów w tym pliku napędza teraz realną ścieżkę danych
+  // nastaw zabezpieczeń (useProtectionAssignment → useAppStateStore.
+  // activeCaseId). Reset PO KAŻDYM teście (niezależnie od tego, który test
+  // go ustawił) — zero wycieku stanu store'a między testami tego pliku.
+  afterEach(() => {
+    useAppStateStore.setState({ activeCaseId: null });
+  });
+
   it('open=false → null', () => {
     const { container } = render(<SldDetailDrawer open={false} data={STATION_DATA} onClose={vi.fn()} />);
     expect(container.querySelector('[data-testid="sld-v2-detail-drawer"]')).toBeFalsy();
@@ -446,14 +522,54 @@ describe('SldDetailDrawer — K30-71 right-side detail panel', () => {
     cleanup();
   });
 
-  it('K30-85: DER "Protection" tab renders 6 ANSI codes (27/59/81U/81O/78/32R)', () => {
-    const data: SldDetailDrawerData = { kind: 'der', elementId: 'pv-1', label: 'PV-1' };
+  // FAB-B (fantom nastaw, M0): przepisane z zachowaniem intencji — zakładka
+  // DER/Zabezpieczenia miała ZASZYTĄ listę 6 kodów ANSI z fikcyjnymi progami
+  // napięciowymi/częstotliwościowymi zaszytymi na stałe, niezależnie od
+  // modelu. Teraz karta czyta realny read model `protection-view` (ta sama
+  // ścieżka co `ui/inspector/ProtectionSection`) — test mockuje `fetch` na
+  // granicy API, klik w kartę jest natywny (fireEvent.click na realnym
+  // przycisku).
+  it('K30-85/FAB-B: DER "Zabezpieczenia" pokazuje realną nastawę z modelu (element z przypisaniem)', async () => {
+    const caseId = 'case-fabb-der-with-protection';
+    const elementId = 'pv-1';
+    useAppStateStore.setState({ activeCaseId: caseId });
+    mockProtectionViewFetchOk(protectionViewWithAssignment(caseId, elementId));
+
+    const data: SldDetailDrawerData = { kind: 'der', elementId, label: 'PV-1' };
     const { container } = render(<SldDetailDrawer open data={data} onClose={vi.fn()} />);
     fireEvent.click(container.querySelector('[data-testid="sld-v2-detail-drawer-tab-protection"]') as Element);
     expect(container.querySelector('[data-testid="drawer-der-protection"]')).toBeTruthy();
-    for (const code of ['27', '59', '81U', '81O', '78', '32R']) {
-      expect(container.querySelector(`[data-testid="drawer-der-protection-${code}"]`)).toBeTruthy();
-    }
+
+    await waitFor(() => {
+      expect(container.querySelector('[data-testid="drawer-protection-device-relay-fabb-001"]')).toBeTruthy();
+    });
+    expect(container.querySelector('[data-testid="drawer-protection-device-relay-fabb-001"]')?.textContent)
+      .toContain('Przekaznik FAB-B');
+    // Dokładnie wartość z modelu (setpoint.display_pl), nie liczba zmyślona przez UI.
+    expect(container.querySelector('[data-testid="protection-func-51-OVERCURRENT_TIME"]')?.textContent)
+      .toContain('1,2×In');
+    cleanup();
+  });
+
+  it('K30-85/FAB-B: DER "Zabezpieczenia" — element BEZ przypisania w modelu ⇒ uczciwy stan zerowy, zero zmyślonych nastaw', async () => {
+    const caseId = 'case-fabb-der-empty';
+    const elementId = 'pv-bez-zabezpieczen';
+    useAppStateStore.setState({ activeCaseId: caseId });
+    mockProtectionViewFetchOk(protectionViewEmptyFor(caseId));
+
+    const data: SldDetailDrawerData = { kind: 'der', elementId, label: 'PV-2' };
+    const { container } = render(<SldDetailDrawer open data={data} onClose={vi.fn()} />);
+    fireEvent.click(container.querySelector('[data-testid="sld-v2-detail-drawer-tab-protection"]') as Element);
+    expect(container.querySelector('[data-testid="drawer-der-protection"]')).toBeTruthy();
+
+    await waitFor(() => {
+      expect(container.querySelector('[data-testid="drawer-der-protection-empty"]')).toBeTruthy();
+    });
+    const panelText = container.querySelector('[data-testid="drawer-der-protection"]')?.textContent ?? '';
+    expect(panelText).toContain('Brak nastaw w modelu dla tego elementu.');
+    // Zakaz jakiejkolwiek wartości nastawy — brak jednostek Un/In/Hz/s w sekcji.
+    expect(panelText).not.toMatch(/\d+([.,]\d+)?\s*(Un|In|Hz|A|s)\b/);
+    expect(container.querySelector('[data-testid="drawer-protection-device-relay-fabb-001"]')).toBeFalsy();
     cleanup();
   });
 
@@ -465,25 +581,89 @@ describe('SldDetailDrawer — K30-71 right-side detail panel', () => {
     cleanup();
   });
 
-  it('K30-86: apparatus "settings" tab renders ANSI 50/51/67 settings', () => {
-    const data: SldDetailDrawerData = { kind: 'apparatus', elementId: 'cb-1', label: 'CB-1' };
+  // FAB-B: przepisane z zachowaniem intencji — „Nastawy" aparatu miały
+  // ZASZYTE 50/51/67 z fikcyjnymi wartościami I_set/T niezależnie od modelu.
+  // Realna ścieżka: `useProtectionAssignment` (ta sama co inspektor).
+  it('K30-86/FAB-B: apparatus "Nastawy" pokazuje realną nastawę z modelu (element z przypisaniem)', async () => {
+    const caseId = 'case-fabb-apparatus-with-protection';
+    const elementId = 'cb-1';
+    useAppStateStore.setState({ activeCaseId: caseId });
+    mockProtectionViewFetchOk(protectionViewWithAssignment(caseId, elementId));
+
+    const data: SldDetailDrawerData = { kind: 'apparatus', elementId, label: 'CB-1' };
     const { container } = render(<SldDetailDrawer open data={data} onClose={vi.fn()} />);
     fireEvent.click(container.querySelector('[data-testid="sld-v2-detail-drawer-tab-settings"]') as Element);
     expect(container.querySelector('[data-testid="drawer-apparatus-settings"]')).toBeTruthy();
-    expect(container.querySelector('[data-testid="drawer-apparatus-setting-50"]')).toBeTruthy();
-    expect(container.querySelector('[data-testid="drawer-apparatus-setting-51"]')).toBeTruthy();
-    expect(container.querySelector('[data-testid="drawer-apparatus-setting-67"]')).toBeTruthy();
+
+    await waitFor(() => {
+      expect(container.querySelector('[data-testid="drawer-protection-device-relay-fabb-001"]')).toBeTruthy();
+    });
+    expect(container.querySelector('[data-testid="protection-func-51-OVERCURRENT_TIME"]')?.textContent)
+      .toContain('1,2×In');
     cleanup();
   });
 
-  it('K30-86: bay "protection" tab renders 50/51/67/50N-51N/79', () => {
-    const data: SldDetailDrawerData = { kind: 'bay', elementId: 'q01', label: 'Q01' };
+  it('K30-86/FAB-B: apparatus "Nastawy" — element BEZ przypisania w modelu ⇒ uczciwy stan zerowy, zero zmyślonych nastaw', async () => {
+    const caseId = 'case-fabb-apparatus-empty';
+    const elementId = 'cb-bez-zabezpieczen';
+    useAppStateStore.setState({ activeCaseId: caseId });
+    mockProtectionViewFetchOk(protectionViewEmptyFor(caseId));
+
+    const data: SldDetailDrawerData = { kind: 'apparatus', elementId, label: 'CB-2' };
+    const { container } = render(<SldDetailDrawer open data={data} onClose={vi.fn()} />);
+    fireEvent.click(container.querySelector('[data-testid="sld-v2-detail-drawer-tab-settings"]') as Element);
+    expect(container.querySelector('[data-testid="drawer-apparatus-settings"]')).toBeTruthy();
+
+    await waitFor(() => {
+      expect(container.querySelector('[data-testid="drawer-apparatus-settings-empty"]')).toBeTruthy();
+    });
+    const panelText = container.querySelector('[data-testid="drawer-apparatus-settings"]')?.textContent ?? '';
+    expect(panelText).toContain('Brak nastaw w modelu dla tego elementu.');
+    expect(panelText).not.toMatch(/\d+([.,]\d+)?\s*(Un|In|Hz|A|s)\b/);
+    expect(container.querySelector('[data-testid="drawer-protection-device-relay-fabb-001"]')).toBeFalsy();
+    cleanup();
+  });
+
+  // FAB-B: przepisane z zachowaniem intencji — „Zabezpieczenia pola" miały
+  // ZASZYTĄ listę 50/51/67/50N-51N/79 z etykietą „tier" niezależnie od tego,
+  // co jest naprawdę przypisane polu w modelu. Realna ścieżka jak wyżej.
+  it('K30-86/FAB-B: bay "Zabezpieczenia" pokazuje realną nastawę z modelu (element z przypisaniem)', async () => {
+    const caseId = 'case-fabb-bay-with-protection';
+    const elementId = 'q01';
+    useAppStateStore.setState({ activeCaseId: caseId });
+    mockProtectionViewFetchOk(protectionViewWithAssignment(caseId, elementId));
+
+    const data: SldDetailDrawerData = { kind: 'bay', elementId, label: 'Q01' };
     const { container } = render(<SldDetailDrawer open data={data} onClose={vi.fn()} />);
     fireEvent.click(container.querySelector('[data-testid="sld-v2-detail-drawer-tab-protection"]') as Element);
     expect(container.querySelector('[data-testid="drawer-bay-protection"]')).toBeTruthy();
-    expect(container.querySelector('[data-testid="drawer-bay-protection-50"]')).toBeTruthy();
-    expect(container.querySelector('[data-testid="drawer-bay-protection-79"]')).toBeTruthy();
-    expect(container.querySelector('[data-testid="drawer-bay-protection-50N-51N"]')).toBeTruthy();
+
+    await waitFor(() => {
+      expect(container.querySelector('[data-testid="drawer-protection-device-relay-fabb-001"]')).toBeTruthy();
+    });
+    expect(container.querySelector('[data-testid="protection-func-51-OVERCURRENT_TIME"]')?.textContent)
+      .toContain('1,2×In');
+    cleanup();
+  });
+
+  it('K30-86/FAB-B: bay "Zabezpieczenia" — element BEZ przypisania w modelu ⇒ uczciwy stan zerowy, zero zmyślonych nastaw', async () => {
+    const caseId = 'case-fabb-bay-empty';
+    const elementId = 'q02-bez-zabezpieczen';
+    useAppStateStore.setState({ activeCaseId: caseId });
+    mockProtectionViewFetchOk(protectionViewEmptyFor(caseId));
+
+    const data: SldDetailDrawerData = { kind: 'bay', elementId, label: 'Q02' };
+    const { container } = render(<SldDetailDrawer open data={data} onClose={vi.fn()} />);
+    fireEvent.click(container.querySelector('[data-testid="sld-v2-detail-drawer-tab-protection"]') as Element);
+    expect(container.querySelector('[data-testid="drawer-bay-protection"]')).toBeTruthy();
+
+    await waitFor(() => {
+      expect(container.querySelector('[data-testid="drawer-bay-protection-empty"]')).toBeTruthy();
+    });
+    const panelText = container.querySelector('[data-testid="drawer-bay-protection"]')?.textContent ?? '';
+    expect(panelText).toContain('Brak nastaw w modelu dla tego elementu.');
+    expect(panelText).not.toMatch(/\d+([.,]\d+)?\s*(Un|In|Hz|A|s)\b/);
+    expect(container.querySelector('[data-testid="drawer-protection-device-relay-fabb-001"]')).toBeFalsy();
     cleanup();
   });
 

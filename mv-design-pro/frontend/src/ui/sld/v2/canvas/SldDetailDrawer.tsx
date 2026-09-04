@@ -27,6 +27,8 @@ import type { CSSProperties, JSX } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useForm, type FieldError, type FieldErrors, type Resolver, type UseFormReturn } from 'react-hook-form';
 import { z } from 'zod';
+import { useProtectionAssignment, type ElementProtectionAssignment } from '../../../protection';
+import { formatProtectionFunction } from '../../../inspector/formatProtection';
 
 export type SldDetailKind =
   | 'station'
@@ -955,6 +957,7 @@ function TabContent({ kind, tab, data, derForm, onOpenConfiguration }: TabConten
       <PlaceholderTabBody
         kind={kind}
         tab={tab}
+        elementId={data.elementId}
         voltageKv={data.voltageKv ?? null}
         transformerSpec={data.transformerSpec ?? null}
         baysSpec={data.baysSpec}
@@ -1316,9 +1319,117 @@ function NodeEngineeringPanel({
   );
 }
 
+/**
+ * FAB-B (fantom nastaw, M0 — dyrektywa właściciela „usunięte fabrykacje
+ * użytkowe"): panel nastaw zabezpieczeń współdzielony przez TRZY miejsca
+ * wpięcia — zakładka `der`/`protection`, `bay`/`protection` i
+ * `apparatus`/`settings` (reguła KLASA NIE INSTANCJA — jeden mechanizm,
+ * nie trzy kopie). Wcześniej każde z tych miejsc renderowało zaszytą,
+ * fikcyjną listę funkcji/nastaw (stałe wartości `setpoint`/`delay` zaszyte
+ * wprost w tablicy obiektów) NIEZALEŻNIE od tego, co jest w modelu.
+ *
+ * ŹRÓDŁO DANYCH: DOKŁADNIE ta sama ścieżka co widok zabezpieczeń w
+ * inspektorze (`ui/inspector/ProtectionSection.tsx`) —
+ * `useProtectionAssignment(elementId)` → `useProtectionView()` → realny
+ * read model `GET /api/cases/{caseId}/enm/protection-view`
+ * (`application/protection_read_model` backendu) → `assignmentsForElement`.
+ * Formatowanie przez `formatProtectionFunction` (czyste przepisanie
+ * kształtu, ZERO fizyki/obliczeń w UI — ta sama funkcja co w inspektorze).
+ *
+ * Brak przypisania zabezpieczenia dla `elementId` w modelu ⇒ uczciwy stan
+ * zerowy („Brak nastaw w modelu dla tego elementu.") — NIGDY wartość
+ * zastępcza/zmyślona.
+ */
+function ElementProtectionFunctionsPanel({
+  elementId,
+  headingPl,
+  testId,
+}: {
+  readonly elementId: string | null;
+  readonly headingPl: string;
+  readonly testId: string;
+}): JSX.Element {
+  const { assignments, hasProtection, isLoading, error } = useProtectionAssignment(elementId);
+
+  return (
+    <div data-testid={testId}>
+      <div style={{ fontSize: 10, color: 'rgb(var(--scada-muted))', marginBottom: 6, fontWeight: 700 }}>
+        {headingPl}
+      </div>
+      {isLoading ? (
+        <div data-testid={`${testId}-loading`} style={{ fontSize: 10, color: 'rgb(var(--scada-muted))', fontStyle: 'italic' }}>
+          Ładowanie nastaw…
+        </div>
+      ) : error ? (
+        <div data-testid={`${testId}-error`} style={{ fontSize: 10, color: 'rgb(var(--scada-status-err))' }}>
+          Nie udało się pobrać nastaw: {error}
+        </div>
+      ) : hasProtection ? (
+        <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
+          {assignments.map((assignment) => (
+            <ProtectionAssignmentSettingsRow key={assignment.device_id} assignment={assignment} />
+          ))}
+        </ul>
+      ) : (
+        <div data-testid={`${testId}-empty`} style={{ fontSize: 10, color: 'rgb(var(--scada-muted))', fontStyle: 'italic' }}>
+          Brak nastaw w modelu dla tego elementu.
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ProtectionAssignmentSettingsRow({
+  assignment,
+}: {
+  readonly assignment: ElementProtectionAssignment;
+}): JSX.Element {
+  const functions = assignment.settings_summary?.functions ?? [];
+  return (
+    <li
+      data-testid={`drawer-protection-device-${assignment.device_id}`}
+      style={{
+        background: 'rgb(var(--scada-surface))',
+        border: '1px solid rgb(var(--scada-panel-raised))',
+        borderRadius: 3,
+        padding: '6px 8px',
+        fontSize: 10,
+      }}
+    >
+      <div style={{ color: 'rgb(var(--scada-text))', fontWeight: 700 }}>{assignment.device_name_pl}</div>
+      {functions.length === 0 ? (
+        <div style={{ color: 'rgb(var(--scada-muted))', fontStyle: 'italic', marginTop: 2 }}>
+          Nastawy do konfiguracji
+        </div>
+      ) : (
+        functions.map((func, index) => {
+          const formatted = formatProtectionFunction(func);
+          return (
+            <div
+              key={`${func.code}-${index}`}
+              data-testid={formatted.testId}
+              style={{ display: 'flex', justifyContent: 'space-between', gap: 6, marginTop: 3, fontFamily: 'monospace' }}
+            >
+              <span style={{ color: 'rgb(var(--scada-status-warn-ink))', fontWeight: 700 }}>
+                [{formatted.ansiCodes}] {formatted.shortcut}
+              </span>
+              <span style={{ color: 'rgb(var(--scada-text))', textAlign: 'right' }}>
+                {formatted.setpoint}
+                {formatted.computed ? ` ${formatted.computed}` : ''}
+                {formatted.time ? `, ${formatted.time}` : ''}
+              </span>
+            </div>
+          );
+        })
+      )}
+    </li>
+  );
+}
+
 function PlaceholderTabBody({
   kind,
   tab,
+  elementId,
   voltageKv,
   transformerSpec,
   baysSpec,
@@ -1334,6 +1445,10 @@ function PlaceholderTabBody({
 }: {
   kind: SldDetailKind;
   tab: string;
+  /** FAB-B: id elementu (bijection z ElementProtectionAssignment.element_id)
+   *  — źródło nastaw zabezpieczeń dla zakładek der/protection, bay/protection,
+   *  apparatus/settings (patrz ElementProtectionFunctionsPanel). */
+  elementId: string | null;
   voltageKv: number | null;
   transformerSpec?: SldTransformerDrawerSpec | null;
   baysSpec?: ReadonlyArray<{
@@ -1588,43 +1703,11 @@ function PlaceholderTabBody({
   }
   if (kind === 'der' && tab === 'protection') {
     return (
-      <div data-testid="drawer-der-protection">
-        <div style={{ fontSize: 10, color: 'rgb(var(--scada-muted))', marginBottom: 6, fontWeight: 700 }}>
-          Funkcje zabezpieczeniowe DER (PN-EN 50549-2 / IEC 60255)
-        </div>
-        <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 3 }}>
-          {[
-            { code: '27', name: 'Podnapięciowe (U<)', defaultEnabled: true, setpoint: '0.85 Un' },
-            { code: '59', name: 'Nadnapięciowe (U>)', defaultEnabled: true, setpoint: '1.15 Un' },
-            { code: '81U', name: 'Podczęstotliwościowe (f<)', defaultEnabled: true, setpoint: '47.5 Hz' },
-            { code: '81O', name: 'Nadczęstotliwościowe (f>)', defaultEnabled: true, setpoint: '51.5 Hz' },
-            { code: '78', name: 'Anti-islanding (ROCOF/ROCOPP)', defaultEnabled: true, setpoint: '1 Hz/s' },
-            { code: '32R', name: 'Zwrotno-mocowe (P_rev)', defaultEnabled: false, setpoint: '-5% Sn' },
-          ].map((p) => (
-            <li
-              key={p.code}
-              data-testid={`drawer-der-protection-${p.code}`}
-              style={{
-                background: 'rgb(var(--scada-surface))',
-                border: '1px solid rgb(var(--scada-panel-raised))',
-                borderRadius: 3,
-                padding: '5px 8px',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                fontSize: 10,
-              }}
-            >
-              <label style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'rgb(var(--scada-text))', cursor: 'pointer' }}>
-                <input type="checkbox" defaultChecked={p.defaultEnabled} />
-                <span style={{ color: 'rgb(var(--scada-status-warn-ink))', fontFamily: 'monospace', fontWeight: 700 }}>[{p.code}]</span>
-                <span>{p.name}</span>
-              </label>
-              <span style={{ color: 'rgb(var(--scada-text))', fontFamily: 'monospace' }}>{p.setpoint}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
+      <ElementProtectionFunctionsPanel
+        elementId={elementId}
+        headingPl="Funkcje zabezpieczeniowe DER (PN-EN 50549-2 / IEC 60255)"
+        testId="drawer-der-protection"
+      />
     );
   }
   if (kind === 'der' && tab === 'rfg') {
@@ -1660,41 +1743,11 @@ function PlaceholderTabBody({
   }
   if (kind === 'bay' && tab === 'protection') {
     return (
-      <div data-testid="drawer-bay-protection">
-        <div style={{ fontSize: 10, color: 'rgb(var(--scada-muted))', marginBottom: 6, fontWeight: 700 }}>
-          Zabezpieczenia pola (PN-EN 60255)
-        </div>
-        <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
-          {[
-            { code: '50', name: 'I≫ zwarciowe', tier: 'pierwotne' },
-            { code: '51', name: 'I> zwłoczne', tier: 'pierwotne' },
-            { code: '67', name: 'Kierunkowe', tier: 'rezerwa' },
-            { code: '50N/51N', name: 'Zwarcie do ziemi', tier: 'pierwotne' },
-            { code: '79', name: 'Auto-reclose (SPZ)', tier: 'opcjonalne' },
-          ].map((p) => (
-            <li
-              key={p.code}
-              data-testid={`drawer-bay-protection-${p.code.replace('/', '-')}`}
-              style={{
-                background: 'rgb(var(--scada-surface))',
-                border: '1px solid rgb(var(--scada-panel-raised))',
-                borderRadius: 3,
-                padding: '5px 8px',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                fontSize: 10,
-              }}
-            >
-              <div>
-                <span style={{ color: 'rgb(var(--scada-status-warn-ink))', fontFamily: 'monospace', fontWeight: 700 }}>[{p.code}]</span>
-                <span style={{ color: 'rgb(var(--scada-text))', marginLeft: 6 }}>{p.name}</span>
-              </div>
-              <span style={{ color: 'rgb(var(--scada-text))', fontFamily: 'monospace', fontSize: 9 }}>{p.tier}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
+      <ElementProtectionFunctionsPanel
+        elementId={elementId}
+        headingPl="Zabezpieczenia pola (PN-EN 60255)"
+        testId="drawer-bay-protection"
+      />
     );
   }
   if (kind === 'cable_run' && tab === 'trasa') {
@@ -1824,37 +1877,11 @@ function PlaceholderTabBody({
   }
   if (kind === 'apparatus' && tab === 'settings') {
     return (
-      <div data-testid="drawer-apparatus-settings">
-        <div style={{ fontSize: 10, color: 'rgb(var(--scada-muted))', marginBottom: 6, fontWeight: 700 }}>
-          Nastawy (IEC 60255 / ANSI)
-        </div>
-        <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
-          {[
-            { code: '50', name: 'Nadprądowe zwarciowe (I≫)', setpoint: '8.0 × In', delay: '0.05 s' },
-            { code: '51', name: 'Nadprądowe zwłoczne (I>)', setpoint: '1.5 × In', delay: '1.2 s' },
-            { code: '67', name: 'Kierunkowe nadprądowe', setpoint: 'auto', delay: '0.4 s' },
-          ].map((p) => (
-            <li
-              key={p.code}
-              data-testid={`drawer-apparatus-setting-${p.code}`}
-              style={{
-                background: 'rgb(var(--scada-surface))',
-                border: '1px solid rgb(var(--scada-panel-raised))',
-                borderRadius: 3,
-                padding: '6px 8px',
-                fontSize: 10,
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: 'rgb(var(--scada-status-warn-ink))', fontFamily: 'monospace', fontWeight: 700 }}>[{p.code}]</span>
-                <span style={{ color: 'rgb(var(--scada-text))', fontFamily: 'monospace' }}>{p.delay}</span>
-              </div>
-              <div style={{ color: 'rgb(var(--scada-text))', marginTop: 2 }}>{p.name}</div>
-              <div style={{ color: 'rgb(var(--scada-text))', fontFamily: 'monospace', marginTop: 2 }}>I_set = {p.setpoint}</div>
-            </li>
-          ))}
-        </ul>
-      </div>
+      <ElementProtectionFunctionsPanel
+        elementId={elementId}
+        headingPl="Nastawy (IEC 60255 / ANSI)"
+        testId="drawer-apparatus-settings"
+      />
     );
   }
   if (kind === 'bay' && tab === 'apparatus') {
