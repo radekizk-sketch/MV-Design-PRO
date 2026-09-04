@@ -4,6 +4,39 @@
 
 ---
 
+## 0. Stan faktyczny repozytorium (konstytucja §28 — pomiar, nie deklaracja)
+
+| Element | Pomiar (2026-09-04) |
+|---|---|
+| Gałąź / HEAD | `claude/mv-design-pro-twin-audit-u4lhy0` @ `c8331423` (konstytucja); `main` @ `7e84753a` (#473, 2026-09-04); `main` **bez ochrony gałęzi** (`protected: false`, >400 gałęzi `claude/*`, `codex/*`, `kopia/*`) |
+| Drzewo robocze | czyste poza plikami karty CV-1-G (guard klucza, test, krok CI) w trakcie odbioru |
+| Punkt wejścia aplikacji | `backend/src/api/main.py` (`app = FastAPI(...)`, 48 routerów); OpenAPI: **319 ścieżek, 227 schematów** (snapshot `backend/schemas/openapi_snapshot.json`); audyt A9 liczył 334 tras zamontowanych (różnica = trasy wyłączone produkcyjnie / duplikaty metod) |
+| Persystencja | ENM: plik JSON per klucz (`enm/store.py`; do CV-1 klucz = `sha256(case_id)`, od `9667235a` klucz twin projektu przez fasadę); SQL (`DATABASE_URL`, domyślnie SQLite `./mv_design_pro.db`, `create_all`): `projects`, `study_cases`, `operating_cases` (legacy), `network_*` (legacy IR), `canonical_runs` (silnik #2), `analysis_runs` (legacy), `study_runs/results`, `*_types`, `document_records`; in-memory: scenariusze zakłóceniowe, serie, nadpisania SLD, konfiguracje, biegi V12.6; pliki: `.station_templates/`, archiwum ZIP; zadeklarowane, nieużywane: MongoDB, Redis, Celery |
+| Własność modelu (runtime) | do CV-1: `StudyCase` de facto posiada ENM (plik per przypadek, model domyślny dla dowolnego `case_id`); po CV-1 rdzeń: klucz projektu + tłumacz (`application/twin_key.py`), wiring konsumentów w toku (karta CV-1-W) |
+| Konsumenci magazynu ENM | 21 plików `src` (35 wywołań w `api/enm.py`), 80 plików testów (klucz surowy — dopuszczalny) |
+| Tor biegów | produkcyjny: `api/execution_runs.py` → `enm/canonical_analysis.create_run/execute_run` (P1/S1); równoległe: `enm.py /runs`, `power_flow_runs/execute`, `unified_runs` (legacy ORM), `v126_academic` (in-memory); 4 rejestry biegów |
+| Duplikaty reprezentacji | 6 modeli scenariusza + 4 delty in-memory; 10 builderów PF / 7 ścieżek SC; 20 implementacji topologii (14 backend + 6 klient); 8 reprezentacji stanu łącznika; 6 reprezentacji uziemienia; dialekt słownikowy benchmarków (12 + 1) obok ENM; `meta.field_specs` obok typowanego `Bay` |
+| Systemy martwe/legacy | `study_case_engine.py` (test-only), P23 `study_scenario` (bez API), `execution_engine` (test-only), `network_wizard` (deprecated), ADR-008 `operating_cases`/`switching_states`, `trace_v2` (bez konsumenta), `enm/migrations/v_ports_001.py` (niewpięte), `sldNetwork53` (ręczny model w kliencie) |
+| Aktywne migracje | CV-0 (zaufanie CI, fabrykacje, rejestry) i CV-1 (własność projektu) — `docs/architecture/CONVERGENCE_ROADMAP.md` §1 |
+
+## 0a. Weryfikacja kierunku z audytu (konstytucja §29 — klasyfikacja per ustalenie)
+
+| # | Ustalenie audytu | Klasyfikacja | Dowód na HEAD |
+|---|---|---|---|
+| 1 | ENM powinien stać się rdzeniem Canonical Project Twin | **CONFIRMED** | ocena 13 kryteriów: `CANONICAL_TWIN_ARCHITECTURE.md` §A.1; każda luka addytywna |
+| 2 | Nie tworzyć drugiego trwałego `TwinModel` | **CONFIRMED** (i wpisane jako decyzja DT-1; ADR-012 skorygowany) | `DECISION_FREEZE_REGISTER.md` DT-1 |
+| 3 | `network_model` → pochodny niemutowalny Computational IR | **CONFIRMED + NEW ISSUE** | tor kanoniczny już buduje `NetworkGraph` z ENM (`enm/mapping.py`); NEW: 12 benchmarków + `oze_pv_bess` istnieją tylko w dialekcie słownikowym liczonym własnym NR (P9) — druga prawda o sieci (pomiar `tests/golden/test_registry.py`) |
+| 4 | Persystencja ENM per przypadek → per projekt | **CONFIRMED, PARTIALLY FIXED** | `enm/store.py:82` (`sha256(case_id)`); rdzeń CV-1 `9667235a`; wiring CV-1-W w toku |
+| 5 | `StudyCase` odwołuje się do rewizji, nie posiada sieci | **CONFIRMED** (kierunek) | `domain/study_case.py` trzyma tylko konfigurację (C1) — brak pola modelu; magazyn był kluczowany przypadkiem (pkt 4) |
+| 6 | Wiele form scenariusza — konsolidować, nie pisać kolejnego silnika | **CONFIRMED** | inwentarz 6 form + 4 delt in-memory: `CANONICAL_TWIN_ARCHITECTURE.md` §B.2 |
+| 7 | Istnieją centralny solver-input builder i `ExecutionEngineService` — konsolidować wokół nich | **PARTIAL / MISDIAGNOSED** | `solver_input/builder` emituje KONTRAKT JSON (P11) nieczytany przez solver — nie jest assemblerem toru; `ExecutionEngineService` jest TEST-ONLY (5 plików testów, 0 wywołań z API) — produkcyjny tor to `canonical_analysis` (E1). Konsolidacja idzie wokół E1/P1, kontrakt `solver_input` pozostaje kontraktem wypełnianym przez assembler |
+| 8 | `LvDomainProjectionV1` — silny wzorzec projekcji atomowej | **CONFIRMED** | 18 fixtur, hash identyczny cross-platform po kwantyzacji (`ee0ec472`, CI); wzorzec dla sceny SN |
+| 9 | Frontend SLD SN posiada za dużo autorytetu semantycznego | **CONFIRMED** | `enmToSldAdapter.ts` 6 585 LOC, 5 implementacji topologii w kliencie (A2-08), `sldNetwork53` ręczny |
+| 10 | Rozproszone ownership modeli/nastaw zabezpieczeń | **CONFIRMED** | nastawy per case (`ProtectionConfig`) i w modelu (`ProtectionAssignment`); fantomy nastaw w UI usunięte (FAB-B `021423bf`) |
+| 11 | `meta.field_specs` niesie znaczenie inżynierskie → typowane obiekty | **CONFIRMED** | A1-02; typowany `Bay` istnieje, zapis kolekcji wyłączony (`LEGACY_FIELD_COLLECTIONS`) |
+| 12 | `main` CI z wieloma niezależnymi awariami; ochrona gałęzi wyłączona | **CONFIRMED** | `main` @ a1ab2959/7e84753a: pytest/vitest/V12K czerwone (środowisko `networkx`), SLD determinism i E2E full czerwone od #472; `protected: false` |
+| 13 | Commit M0 (kanonizacja liczb, guardy) — przejrzeć niezależnie | **CONFIRMED z korektą → ALREADY FIXED** | przegląd §36: kwantyzacja 9 cyfr poprawna (klasa równoważności 1e-12 vs 1e-8 zmierzona), ale NaN/Inf przechodziły do JSON (defekt maskowany) → tryb ścisły `KontraktNiefinitowyError` (`e6f11de7`); -0.0, porządek, jednostki, complex przypięte testami |
+
 ## A. Stan faktyczny CI (§34) — gałąź `claude/mv-design-pro-twin-audit-u4lhy0`
 
 Klasyfikacja czerwonych bramek na szczycie `c5ebde3f` (pomiar z logów GitHub Actions, 2026-09-02) i ich los:
