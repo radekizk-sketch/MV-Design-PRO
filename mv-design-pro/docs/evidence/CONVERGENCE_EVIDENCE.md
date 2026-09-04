@@ -103,10 +103,10 @@ Do czasu wykonania: każdy merge do `main` bez zielonego kompletu bramek jest na
 ## E. Karty w toku (delegowane; model wykonawczy: `AGENTS.md` §8)
 | Karta | Zakres | Wykonawca | Stan |
 |---|---|---|---|
-| CI-A | `solver_input_substitute_guard` 11 naruszeń u źródła | agent (worktree) | w toku |
-| CI-B | tsconfig gate 658 → ≤ 531, wyciszenia 39 → ≤ 35 | agent (worktree) | w toku |
+| CI-A | `solver_input_substitute_guard` 11 naruszeń u źródła | agent (worktree) | **odebrana** (`06a9e0f1`): pola wymagane odcinka nN przez `_wymagane_pola_odcinka` (jawny błąd `nn.segment_field_missing`), merge odrzuca różne parametry na km (`nn.merge_segments_type_mismatch`), `order` sekcji wymagany, `liczba_torow()` jako jedna definicja neutralnego elementu (Cable/TR/Generator/fault_loop), zapadka `c_factor` usunięta, 2 moduły dopisane do `CONTRACT_SOURCES`; guard RC=0 (1868 pól), testy własne 44, pełny pytest 10538 w worktree |
+| CI-B | tsconfig gate 658 → ≤ 531, wyciszenia 39 → ≤ 35 | agent (worktree) | w odbiorze: guard w worktree `137 POZA BRAMKA (budzet 137), 1 wyciszen (budzet 1)`, type-check i lint RC=0; vitest na 48 zmienionych plikach testów w toku (Fable) |
 | CI-C | SLD `vertical_length_probe` z dowodem semantycznym | agent (worktree) | **odebrana** (`ee0ec472`), CI zielone |
-| CI-D | 12 czerwonych speców e2e (pre-existing od #472) | agent (worktree) | w toku |
+| CI-D | 12 czerwonych speców e2e (pre-existing od #472) | agent (worktree) | **odebrana** (`b349377b`): 11/12 — jedna przyczyna produktowa (`enm/domain_operations.py:2141` `_build_readiness` nie znał wyjątku migracji nN, który `ENMValidator` liczy jako W061) + 2 testy regresyjne; 3 specy z przestarzałymi założeniami fixture/kanonu (opt-in `station_auxiliary`, `nn_earthing` przed LF, KD-8 zależność kanwy od motywu) przepisane z dowodem; 12. spec = P0-5 (wydajność zwarć), nie naprawiony i nie maskowany |
 | FAB-A | fikcyjny katalog przekaźników → profile referencyjne (D-33) | agent (worktree) | w toku |
 | FAB-B | fantom nastaw `SldDetailDrawer` → dane z modelu / uczciwy stan zerowy | agent (worktree) | **odebrana** (`021423bf`): 3 bloki (DER 6 fikcyjnych progów ANSI, pole 5 wierszy, aparat 3 nastawy) → `ElementProtectionFunctionsPanel` na tej samej ścieżce danych co widok zabezpieczeń (`useProtectionAssignment` → `GET /enm/protection-view`); 6 testów klasy (pozytywne + negatywne bez liczb z jednostkami); 72/72; guardy zielone |
 | CV-1-G | guard `enm_store_key_guard` (klucz przypadku w API/aplikacji = naruszenie; zapadka mierzona) + krok CI | agent (główny checkout, bez commitu) | w toku |
@@ -138,6 +138,7 @@ Do czasu wykonania: każdy merge do `main` bez zielonego kompletu bramek jest na
 | P1-2 | uziemienie: 6 reprezentacji, fizyka nie czyta żadnej | fizyka doziemna | CV-5 |
 | P1-3 | 12 benchmarków IEEE/CIGRE/IEC + `oze_pv_bess` istnieją tylko w dialekcie słownikowym P9 (nie walidują się jako ENM) — jedyna niezależna wyrocznia LF/SC liczy się poza torem kanonicznym | spójność / dowodowość | CV-4 (benchmarki jako ENM przez assembler; zapadka `BENCHMARK_DICT_ZASTANE`) |
 | P1-4 | substrat 52 stacji (G00): 21 BLOCKER walidatora, budowa ≈ 40 s — sieć skali nieobliczalna | wydajność / rejestr | CV-4/CV-6 (naprawa u źródła; zapadka `BLOKERY_ZASTANE`) |
+| P0-5 | **wydajność zwarć na sieci M**: `POST /api/execution/runs/{id}/execute` (IEC 60909, 50 stacji) kończy się poprawnie (HTTP 200), ale w 297 s / 1 581 s pod obciążeniem (pomiar karty CI-D) i ponad budżetem klienta także w CI (spec `industrial-template-mass-flow.spec.ts` czerwony na `main` od #472); budżet B4 dla M = 1 s, L = 10 s (plan wydajności §1a) — przekroczony o 2–3 rzędy | wydajność / tor kanoniczny | pomiar PERF-0 (B4 na G00); przyczyna: pętla po wszystkich węzłach z gęstą algebrą (A3-10: SC O(N·n³)); naprawa = faktoryzacja rzadka + kolumny selektywne (CV-4, §C.3) — zmiana rdzenia wymaga B-01; **zakaz** podnoszenia timeoutu testu bez naprawy |
 
 ## I. Decyzje właściciela (tylko nierozstrzygalne z repo/norm/danych)
 | ID | Pytanie | Dlaczego nie da się rozstrzygnąć samodzielnie |
