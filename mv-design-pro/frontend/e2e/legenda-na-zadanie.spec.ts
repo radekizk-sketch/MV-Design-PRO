@@ -15,14 +15,28 @@
  *  (c) zamknięcie panelu przywraca kanwę (legenda znika z DOM).
  *
  * Sieć testowa: TA SAMA sekwencja domain-ops co `critical-run-flow.spec.ts`
- * (źródło SN → magistrala → stacja SN/nN z transformatorem, BEZ kroku
- * dodania odbioru/Load) + pole SN roli `'TR'` (karta BUGI-PRODUKTU-E2E,
- * patrz komentarz przy `sn_fields` niżej — bez niego transformator NIE jest
- * NIGDZIE narysowany, mimo że poprawnie istnieje w modelu). ZALOŻENIE „sieć
- * bez agregatu 0,4 kV" z pierwszej wersji tej karty było BŁĘDNE: backend
- * materializuje „potrzeby własne" stacji (mały odbiór nN) bezwarunkowo przy
- * KAŻDYM tworzeniu transformatora — sieć WIĘC ma agregat, a `loadArrow` jest
- * dziś asercją POZYTYWNĄ; negatyw bramki (b) idzie przez brak źródła DER.
+ * (źródło SN → magistrala → stacja SN/nN z transformatorem) + pole SN roli
+ * `'TR'` (karta BUGI-PRODUKTU-E2E, patrz komentarz przy `sn_fields` niżej —
+ * bez niego transformator NIE jest NIGDZIE narysowany, mimo że poprawnie
+ * istnieje w modelu) + blok `station_auxiliary` JAWNY w payloadzie.
+ *
+ * KOREKTA ZAŁOŻENIA (naprawa regresji CI-D, 2026-09-04): poprzednia wersja
+ * tego komentarza twierdziła, że backend materializuje „potrzeby własne"
+ * stacji BEZWARUNKOWO przy każdym tworzeniu transformatora — NIEPRAWDA
+ * względem obecnego kodu. `_materialize_station_auxiliary_load`
+ * (`domain_operations.py`) tworzy odbiór WYŁĄCZNIE, gdy payload niesie blok
+ * `station_auxiliary` (P>0) — dokładnie to, co realny „Kreator stacji"
+ * (`ui2/kreatory/stacja/stacjaModel.ts::blokPotrzebWlasnych`) wysyła TYLKO
+ * gdy projektant jawnie wpisze moc (`DEFAULT_FORM_DATA.station_auxiliary_kw
+ * = ''` — puste pole = brak odbioru, komentarz w kodzie: „G-STK-3"). Żaden
+ * inny plik e2e (~46 używających `insert_station_on_segment_sn`) nie
+ * przekazuje tego bloku, więc PRZED tą naprawą test opierał się na
+ * odbiorze, którego siec NIGDY nie miała — asercja `loadArrow` była
+ * fałszywie pozytywna wyłącznie tak długo, jak nikt jej realnie nie
+ * sprawdził na żywym backendzie. Naprawa: sieć jawnie ZAMAWIA potrzeby
+ * własne (jak zrobiłby to projektant w kreatorze), więc `loadArrow` jest
+ * asercją POZYTYWNĄ opartą o REALNY odbiór, nie o zignorowany domysł;
+ * negatyw bramki (b) idzie przez brak źródła DER.
  *
  * Uruchomienie (WYŁĄCZNIE tak — patrz CLAUDE.md/karta):
  *   cd mv-design-pro/frontend && node ./scripts/playwright-run.mjs \
@@ -130,9 +144,15 @@ async function createProjectAndCase(
  * Sieć BEZ DER: źródło SN → magistrala (1 odcinek) → stacja SN/nN z
  * transformatorem. Żaden krok NIE dodaje generatora/PV/BESS — symbole DER
  * (np. `derPv`) nie mają prawa pojawić się na scenie ani w legendzie.
- * `loadArrow` ("Odbiór (zagregowany)") NA ODWRÓT: JEST obecny — backend
- * materializuje "potrzeby własne" stacji (mały odbiór nN) bezwarunkowo przy
- * każdym tworzeniu transformatora, żaden krok nie musi dodawać `Load` jawnie.
+ * `loadArrow` ("Odbiór (zagregowany)") NA ODWRÓT: JEST obecny, bo
+ * `insert_station_on_segment_sn` niesie tu JAWNY blok `station_auxiliary`
+ * (P>0) — TA SAMA droga, którą realny „Kreator stacji" wysyła, gdy
+ * projektant wpisze moc potrzeb własnych (`stacjaModel.ts::
+ * blokPotrzebWlasnych`, G-STK-3; `_materialize_station_auxiliary_load`,
+ * `domain_operations.py`). Backend NIE tworzy tego odbioru bez tego bloku
+ * (puste pole w kreatorze = brak odbioru, `DEFAULT_FORM_DATA.
+ * station_auxiliary_kw = ''`) — poprzednia wersja komentarza zakładała
+ * odwrotnie i test padał na żywym backendzie (naprawa regresji CI-D).
  *
  * POLE 'TR' JEST WYMAGANE (karta BUGI-PRODUKTU-E2E, diagnoza root-cause).
  * Backend (`domain_operations.py::insert_station_on_segment_sn`) ZAWSZE łączy
@@ -188,6 +208,15 @@ async function buildStationNetworkWithoutDer(request: APIRequestContext, caseId:
       create: true,
       catalog_binding: buildCatalogBinding('TRAFO_SN_NN', TRAFO_ID),
     },
+    // Odbiór „potrzeby własne" (G-STK-3) — JAWNY, jak wpisałby go projektant
+    // w kreatorze (`stacjaModel.ts::blokPotrzebWlasnych`); bez tego bloku
+    // `_materialize_station_auxiliary_load` nie tworzy ŻADNEGO odbioru
+    // (patrz komentarz nagłówka pliku) i `loadArrow` w legendzie (b) nie ma
+    // czego pokazać. Wartości jak w innych fixture'ach odbioru nN w e2e
+    // (np. `test_add_nn_load_po_promocji...` w backendzie) — rząd wielkości
+    // realnych potrzeb własnych stacji SN/nN, cosφ jak domyślna wartość
+    // kreatora (`DEFAULT_FORM_DATA.station_auxiliary_cosphi`).
+    station_auxiliary: { active_power_kw: 5.0, cos_phi: 0.95 },
   });
 }
 

@@ -211,6 +211,19 @@ async function zbudujSiecGotowaDoObliczen(
       create: true,
       catalog_binding: buildCatalogBinding('TRAFO_SN_NN', TRAFO_ID),
     },
+    // Odbiór „potrzeby własne" (G-STK-3, `_materialize_station_auxiliary_load`)
+    // — JAWNY. Ten test woła `LOAD_FLOW` (`uruchomBiegPrzezApi`) ZANIM kreator
+    // OZE zdąży dodać generator — bez tego bloku sieć nie ma ŻADNEGO
+    // odbioru/generatora i `POST .../runs {analysis_type:'LOAD_FLOW'}` odrzuca
+    // zgłoszenie 409 (`analysis_available.load_flow`, `enm/canonical_analysis.py`
+    // — naprawa regresji CI-D, ten sam wzorzec co `nastawy-i-akcje-oze.spec.ts`
+    // i `legenda-na-zadanie.spec.ts`).
+    station_auxiliary: { active_power_kw: 5.0, cos_phi: 0.95 },
+    // Układ uziemienia sieci nN (G-STK-1) — WYMAGANY konsekwencją powyższego:
+    // stacja z odbiorem nN bez `meta.nn_earthing_system` jest E063 (BLOKER,
+    // `enm/validator.py` — IEC 60364-4-41), a pętla domykania blokerów niżej
+    // nie zna kodu E063, więc `readiness.ready` zostałby `false` na stałe.
+    nn_earthing: { lv_system: 'TN-S' },
   });
 
   const napiecia = new Map(
