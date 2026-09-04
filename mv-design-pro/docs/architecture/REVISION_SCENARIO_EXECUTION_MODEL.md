@@ -47,8 +47,10 @@ Reguła rozdziału: jeśli zmiana wymaga komendy domenowej → wariant; jeśli j
 ```python
 class ModelRevision:          # append-only, per projekt
     project_id: str; revision: int; parent: int | None
-    commands: list[DomainCommandEnvelope]   # dziennik zmian (dziś enm/dziennik_zmian.py, limit 500 → bez limitu)
-    checkpoint: EnergyNetworkModel | None   # pełna migawka co N rewizji / na żądanie (odtwarzanie = checkpoint + replay)
+    command: DomainCommandEnvelope | None   # PEŁNY ładunek komendy (dziś dziennik enm/dziennik_zmian.py niesie TYLKO nazwę operacji
+                                            # i listy ref_id utworzone/zmienione/usunięte — replay z dziennika jest NIEMOŻLIWY; CV-2 zapisuje ładunek)
+    snapshot: EnergyNetworkModel            # pełna migawka KAŻDEJ rewizji (pomiar: 0,78 MB/rewizję przy 54 stacjach; gzip ≈ 10×) —
+                                            # checkout(rev) = odczyt migawki; delty/odtwarzanie z replay dopiero, gdy ładunki komend są kompletne
     hash_sha256: str; actor: ActorRef; created_at: datetime
     # inwariant: checkout(project, n).hash_sha256 == ModelRevision[n].hash_sha256 (test na całym rejestrze sieci)
 
@@ -129,7 +131,7 @@ Każda komenda domenowa niesie `command_id` (idempotencja), `actor`, `expected_r
 |---|---|---|---|
 | CV-1.1 | magazyn ENM kluczem `project_id`; fasada `case_id → project_id` w `api/enm.py` | wszystkie e2e i testy API zielone przez fasadę; hash ENM projektu = hash aktywnego przypadku | zapis kluczem `case_id` = czerwony |
 | CV-1.2 | migracja danych: ENM przypadków ≠ aktywnego → `NetworkVariation` (diff komend) albo raport migracji | liczba przypadków z własnym ENM BEFORE/AFTER; 0 utraconych modeli (eksport ZIP) | — |
-| CV-2.1 | `ModelRevision` z dziennika (bez limitu 500; checkpointy); `checkout(rev)` | `checkout(n).hash == revision[n].hash` dla całego rejestru sieci wzorcowych | bieg bez envelope = czerwony |
+| CV-2.1 | `ModelRevision` w SQL (`model_revisions`: project_id, revision, hash, actor, operacja, ładunek komendy, migawka gzip) zapisywany w tej samej transakcji co model; dziennik (limit 500, bez ładunków) staje się WIDOKIEM rejestru rewizji, nie osobnym zapisem; `checkout(rev)` | `checkout(n).hash == revision[n].hash` dla całego rejestru sieci wzorcowych; dziennik zmian = projekcja rewizji (parity z dzisiejszym API dziennika) | bieg bez envelope = czerwony |
 | CV-2.2 | `RevisionEnvelope` na `CanonicalRun`; `input_hash` z envelope; świeżość z envelope; kasacja H1/H2/H3 | wyniki biegów bit-identyczne przed/po (envelope nie zmienia fizyki) | `provenance_constant_guard`: literał wersji/katalogu w polu proweniencji = czerwony |
 | CV-3.1 | `OperatingScenario` + `apply_scenario`; migracja C6 (trwały magazyn), D1–D4 | N-1, hosting, pq_area, odpowiedz_osd: wyniki bit-identyczne | `deepcopy(snapshot)` poza `apply_scenario` = czerwony |
 | CV-3.2 | kasacja C2, C3, C4, C5 procedurą (inventory → consumer search → export → parity → cutover → observation → removal) | 0 importów, 0 tras, 0 testów wskazujących skasowane byty | `legacy_public_path_guard` rozszerzony o skasowane nazwy |
