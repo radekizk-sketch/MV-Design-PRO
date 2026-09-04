@@ -3,25 +3,25 @@
 **Version:** 4.3
 **Status:** CANONICAL & BINDING
 **Authority:** docs/v12xx/KANON_V12_XX.md > docs/system/ > docs/domain/+docs/sld/contracts > SYSTEM_SPEC.md > ARCHITECTURE.md > AGENTS.md > PLANS.md > docs/INDEX.md > docs/spec/ (ARCHIVAL)
-**Updated:** 2026-08-05 (dodano 0.5 Zasady inżynierskie — dyrektywa właściciela)
+**Updated:** 2026-09-04 (profil modelu: GPT-6 Astra)
 
 ---
 
-## 0. GPT-5.5 Operating Standard
+## 0. GPT-6 Astra Operating Standard
 
 Use these rules for agent behavior. They do not weaken any domain, solver, proof, or architecture rule below.
 
 ### 0.1 Prompting and Autonomy
 
 - Work from explicit outcomes, success criteria, constraints, and verification needs.
-- Avoid heavy process scripts and "think step by step" instructions; GPT-5.5 performs better with clear goals and room to choose the route.
+- Avoid heavy process scripts and "think step by step" instructions; GPT-6 Astra performs better with clear goals and room to choose the route.
 - Keep responses concise and direct by default. Expand only for architecture, solver, proof, safety, or audit-sensitive reasoning.
 - Gather enough context to act, then stop searching. Continue discovery only when a required fact, file, contract, or test result is missing.
 - Bias toward implementing requested changes after reading the relevant code. Ask only when local context cannot resolve a material ambiguity.
 
 ### 0.2 Reasoning, Tools, and Verification
 
-- Match reasoning effort to task difficulty: low for simple edits, medium for normal implementation, high for complex debugging/architecture, xhigh only for very hard asynchronous work or evals.
+- Match reasoning effort to task difficulty: low for simple edits, medium for normal implementation, high for complex debugging/architecture, xhigh for very hard asynchronous work or evals, max when correctness outweighs cost. `none` is not supported on GPT-6 Astra.
 - Batch independent file reads/searches where tooling supports parallel calls.
 - Prefer `apply_patch` for manual edits and project-native tools for formatting, tests, and guards.
 - Preserve user changes. Do not revert unrelated dirty-worktree edits.

@@ -32,7 +32,7 @@ Wynik decyduje o trybie:
 ## 2. Wywołanie przez Codex CLI
 
 ```bash
-codex exec --model gpt-5.6 --reasoning-effort xhigh --sandbox read-only \
+codex exec --model gpt-6-astra --reasoning-effort xhigh --sandbox read-only \
   --cd <katalog_repo> "$(cat /tmp/prompt_recenzji.md)"
 ```
 
@@ -41,7 +41,7 @@ po weryfikacji). Długi przegląd puszczaj w tle i odbieraj wynik z pliku.
 
 ## 3. Wywołanie przez API (gdy jest klucz, nie ma CLI)
 
-Wyślij `POST /v1/responses` z modelem `gpt-5.6`, `reasoning: {effort: "xhigh"}` i promptem
+Wyślij `POST /v1/responses` z modelem `gpt-6-astra`, `reasoning: {effort: "xhigh"}` i promptem
 z §5. Odpowiedź zapisz do pliku roboczego, żeby dało się ją zacytować dosłownie.
 
 ## 4. Tryb zastępczy — recenzja własna (gdy GPT niedostępny)

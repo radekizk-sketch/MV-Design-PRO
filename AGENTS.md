@@ -1,8 +1,8 @@
 # AGENTS.md - MV-DESIGN-PRO Codex Instructions
 
 **Status:** Repository-level guidance
-**Updated:** 2026-04-30
-**OpenAI basis:** GPT-5.5 model, prompting, reasoning, eval, and Codex AGENTS.md guidance
+**Updated:** 2026-09-04
+**OpenAI basis:** GPT-6 Astra (`gpt-6-astra`) model, prompting, reasoning, eval, and Codex AGENTS.md guidance
 
 This file is intentionally concise. Codex loads `AGENTS.md` files from the repository root down to the current working directory, with closer files taking precedence. Keep this root file below the default instruction budget and put detailed contracts in the canonical project documents.
 
@@ -32,14 +32,17 @@ Note: `mv-design-pro/POWERFACTORY_COMPLIANCE.md` was removed in the V12.5.1 hard
 
 If documents conflict, stop and follow the highest-authority document. Record any conflict in `mv-design-pro/docs/v12xx/REJESTR_KONFLIKTOW.md`. For architecture changes, consult `mv-design-pro/docs/v12xx/KANON_V12_XX.md` and `mv-design-pro/docs/system/` first.
 
-## GPT-5.5 Operating Profile
+## GPT-6 Astra Operating Profile
 
-- Treat `gpt-5.5` as the default frontier model for complex coding, reasoning, and professional work.
+- Treat `gpt-6-astra` as the default frontier model for complex coding, reasoning, and professional work. Codex CLI >= 0.153.1 is required for that model id.
 - Prefer clear outcomes, success criteria, constraints, and verification expectations over long step-by-step process instructions.
-- Do not add "think step by step" style prompting. GPT-5.5 and reasoning models perform best when the task is well-defined and the process is not over-specified.
+- Do not add "think step by step" style prompting. GPT-6 Astra and reasoning models perform best when the task is well-defined and the process is not over-specified.
 - Use concise, direct communication by default. Increase detail only for architecture, solver, safety, or audit-sensitive work.
-- For API or agent integrations, prefer the Responses API for reasoning, tool-calling, and multi-turn workflows. Use Structured Outputs instead of prompt-only schemas where possible.
-- Tune reasoning effort to the task: `low` for straightforward edits, `medium` for normal work, `high` for complex architecture/debugging, and `xhigh` only for very hard asynchronous tasks or evals.
+- For API or agent integrations, use the Responses API: tool calling on GPT-6 Astra is Responses-only (Chat Completions and Batch are supported for plain generation). Use Structured Outputs instead of prompt-only schemas where possible.
+- Drop parameters the model rejects: `temperature`, `top_p`, `top_logprobs` (plus `logprobs` on Chat Completions and `message.output_text.logprobs` in the Responses `include` list).
+- Tune reasoning effort to the task: `low` for straightforward edits, `medium` for normal work, `high` for complex architecture/debugging, `xhigh` for very hard asynchronous tasks or evals, `max` when correctness outweighs cost. `none` is not supported on GPT-6 Astra - use `low` instead.
+- State the goal, the boundaries, the expected output, and what "done" means. GPT-6 Astra biases toward action and finishes the task as it understands it; unstated scope gets filled in by the model.
+- GPT-6 Astra is more sensitive to instructions in context files (`AGENTS.md`, `CLAUDE.md`, skills). Conflicting guidance can stall it or redirect it - after editing those files, check them against the authority order above.
 - For time-sensitive facts, current APIs, pricing, regulations, dependencies, or OpenAI model behavior, verify against current sources and use exact dates.
 - Do not restate the current date in prompts, docs, or code unless it materially affects the task.
 - Optimize long prompts for caching: stable project rules first, task-specific context last.
