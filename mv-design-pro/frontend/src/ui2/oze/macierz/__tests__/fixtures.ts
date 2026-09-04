@@ -13,11 +13,25 @@ import {
   EMPTY_DER_CATALOGS,
   EMPTY_DER_PROFILES,
   EMPTY_DER_READINESS,
+  type DerCatalogSelections,
   type DerKindUnified,
+  type DerProfileSelections,
   type StationDerConnection,
 } from '../../../../ui/network-build/station-der';
 
-export function derFixture(over: Partial<StationDerConnection> & { id: string }): StationDerConnection {
+// `catalogs`/`profiles` sa CZESCIOWYMI nadpisaniami (cialo funkcji nizej scala
+// je z EMPTY_DER_CATALOGS/EMPTY_DER_PROFILES) — `Partial<StationDerConnection>`
+// tego nie wyraza (spłaszcza tylko pola najwyzszego poziomu, nie zagniezdzone),
+// wiec wywolujacy musialby podawac KOMPLETNE obiekty katalogowe. Nadpisanie
+// tych dwoch pol na `Partial<...>` naprawia sygnature u zrodla zamiast
+// dopisywac brakujace pola w kazdym z wywolan w plikach testowych.
+type DerFixtureOverrides = Omit<Partial<StationDerConnection>, 'catalogs' | 'profiles'> & {
+  id: string;
+  catalogs?: Partial<DerCatalogSelections>;
+  profiles?: Partial<DerProfileSelections>;
+};
+
+export function derFixture(over: DerFixtureOverrides): StationDerConnection {
   const der_kind: DerKindUnified = over.der_kind ?? 'PV';
   return {
     id: over.id,

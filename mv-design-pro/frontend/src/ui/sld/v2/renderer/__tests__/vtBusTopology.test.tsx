@@ -56,8 +56,8 @@ describe('K30-118 — MiniBlockRmuRenderer bus topology marker', () => {
     variant: 'compact' as const,
     name: 'Test',
     snBays: [
-      { bayRef: 'bay-1', name: 'F1', kind: 'feeder' as const },
-      { bayRef: 'bay-2', name: 'F2', kind: 'feeder' as const },
+      { bayRef: 'bay-1', fieldRole: 'RMU_LINE' as const, designation: 'F1', hasMissingRequiredDevice: false },
+      { bayRef: 'bay-2', fieldRole: 'RMU_LINE' as const, designation: 'F2', hasMissingRequiredDevice: false },
     ],
     hasTransformer: true,
     transformerRatedKva: 400,

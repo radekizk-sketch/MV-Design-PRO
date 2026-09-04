@@ -7,6 +7,8 @@
  * - No mutations in types
  */
 
+import { describe, expect, it } from 'vitest';
+
 import {
   STATE_CHANGE_LABELS,
   STATE_CHANGE_COLORS,

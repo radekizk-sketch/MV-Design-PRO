@@ -18,6 +18,7 @@ import {
   EMPTY_DER_CATALOGS,
   EMPTY_DER_PROFILES,
   EMPTY_DER_READINESS,
+  type ReadinessAxisStatus,
   type StationDerConnection,
 } from '../types';
 

@@ -68,7 +68,7 @@ function formatujLiczbe(n: number): string {
 
 /** Format wartości `TraceValue` do łańcucha prezentacyjnego (read-only). */
 export function formatujWartosc(value: TraceValue['value']): string {
-  if (value === null) return '—';
+  if (value === null || value === undefined) return '—';
   if (typeof value === 'number') return formatujLiczbe(value);
   if (typeof value === 'boolean') return value ? 'tak' : 'nie';
   return value;

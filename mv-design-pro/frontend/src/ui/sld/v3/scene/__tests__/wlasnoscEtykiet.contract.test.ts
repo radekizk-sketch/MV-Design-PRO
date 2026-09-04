@@ -61,6 +61,8 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
+import { at } from '../../../../../test/arrayAt';
+
 import type { EnergyNetworkModel } from '../../../../../types/enm';
 import {
   buildSceneV3,
@@ -248,7 +250,7 @@ function stacjeRozpoczynajaceOdgalezienie(): ReadonlySet<string> {
     const odcinek = bazaRefu(label.ownerRef);
     const kawalki = scene.segments.filter((g) => g.meta?.ownerRef === odcinek);
     expect(kawalki.length, `zejście ${odcinek} bez narysowanej polilinii`).toBeGreaterThan(0);
-    const koniec = kawalki[kawalki.length - 1].points.at(-1)!;
+    const koniec = at(kawalki[kawalki.length - 1].points, -1)!;
     const trafione = ramy.filter(
       ({ rama }) =>
         koniec.x >= rama.minX && koniec.x <= rama.maxX && koniec.y >= rama.minY && koniec.y <= rama.maxY,

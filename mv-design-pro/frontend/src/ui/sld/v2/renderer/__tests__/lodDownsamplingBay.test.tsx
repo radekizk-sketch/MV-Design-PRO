@@ -19,12 +19,12 @@ describe('K30-119 — BayColumnSn LOD downsampling', () => {
     hasMissing: false,
   };
 
-  it('detail variant: pełen stack [SD, CT, ES, CABLE_HEAD]', () => {
+  it('detail variant: pełen stack [SD, CT, ES]', () => {
     const { container } = render(
       <svg>
         <BayColumnSn
           {...baseProps}
-          apparatusStack={['SD', 'CT', 'ES', 'CABLE_HEAD']}
+          apparatusStack={['SD', 'CT', 'ES']}
           variant="detail"
         />
       </svg>,
@@ -40,7 +40,7 @@ describe('K30-119 — BayColumnSn LOD downsampling', () => {
       <svg>
         <BayColumnSn
           {...baseProps}
-          apparatusStack={['SD', 'CT', 'ES', 'CABLE_HEAD']}
+          apparatusStack={['SD', 'CT', 'ES']}
           variant="compact"
         />
       </svg>,
@@ -57,7 +57,7 @@ describe('K30-119 — BayColumnSn LOD downsampling', () => {
       <svg>
         <BayColumnSn
           {...baseProps}
-          apparatusStack={['SD', 'CT', 'ES', 'CABLE_HEAD']}
+          apparatusStack={['SD', 'CT', 'ES']}
           variant="overview"
         />
       </svg>,
@@ -72,7 +72,7 @@ describe('K30-119 — BayColumnSn LOD downsampling', () => {
       <svg>
         <BayColumnSn
           {...baseProps}
-          apparatusStack={['SD', 'CT', 'CABLE_HEAD']}
+          apparatusStack={['SD', 'CT']}
           variant="overview"
         />
       </svg>,

@@ -10,9 +10,6 @@
 import { describe, expect, it } from 'vitest';
 
 import type {
-  WidokObszaruPQ,
-  WidokPokryciaPQ,
-  WidokZdolnosci,
   ZapytanieObszaruPQ,
   ZapytaniePokryciaPQ,
   ZapytanieZdolnosci,

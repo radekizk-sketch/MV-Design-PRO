@@ -162,12 +162,38 @@ POMIJANE_KATALOGI = {
 #     `base_template`, więc przestały być niezgodne z typem.
 # `e2e/` i `playwright.config.ts` weszły DO bramki (0 błędów) — nie są już
 # długiem, tylko zasięgiem.
-BUDZET_BLEDOW_POZA_BRAMKA = 531
+#   * Karta CI-B (pomiar 2026-09-04): na HEAD dług byl 658 (urosl z 531 bez
+#     sparowanego wpisu w rejestrze — przyczyna wzrostu nie jest znana tej
+#     karcie, tylko zastany fakt). Sprowadzony do 137 U ZRODLA, bez wyciszen i
+#     bez zmiany zachowania produktu (poza jednym addytywnym poszerzeniem typu
+#     `TraceValue` — patrz commit). Najwieksze klasy: brakujacy `import {
+#     describe, it, expect } from 'vitest'` w 3 plikach (259 bledow, TS2304 +
+#     TS2582 — testy polegaly wylacznie na globalach `vitest.config` przy
+#     type-checku, ktory globali nie widzi), martwy `@ts-expect-error` na
+#     shimie `URL.createObjectURL`/`revokeObjectURL` w 13 plikach (38 bledow —
+#     TS DOM lib w uzywanej wersji TS juz zna te metody statyczne, wiec
+#     zabezpieczenie stalo sie zbedne), fikstury niezgodne z kanonicznym
+#     ksztaltem typu (ENM `EnmFragment`/`StationTransformerUnit`/
+#     `ReadinessEntry.severity`/`KontekstJakosci.case_id+snapshot_hash+run_id`/
+#     `DerCatalogSelections` czesciowe nadpisania w `derFixture`), oraz
+#     `Array.prototype.at()` niedostepne pod zamrozonym `lib: ES2020` (20
+#     wystapien w 8 plikach — nowy `src/test/arrayAt.ts`, rownowaznik `at()`
+#     dla testow, zamiast luzowania `lib` calego projektu).
+BUDZET_BLEDOW_POZA_BRAMKA = 137
 
 #: Jawne wyciszenia błędów typu. Zamrożone, żeby nie dało się „obniżyć progu”
 #: przez dopisanie komentarza zamiast naprawy. Pomiar 2026-08-08: 35 wystąpień,
 #: WSZYSTKIE w plikach testowych.
-BUDZET_WYCISZEN = 35
+#: Karta CI-B (pomiar 2026-09-04): na HEAD 39 (urosl bez wpisu w rejestrze).
+#: 38 z 39 to DOKLADNIE ten sam martwy `@ts-expect-error` na shimie
+#: `URL.createObjectURL`/`revokeObjectURL` opisany wyzej — usuniete U ZRODLA
+#: (nie wyciszeniem: TS sam meldowal je jako "Unused '@ts-expect-error'
+#: directive", TS2578, wiec byly juz policzone w BUDZET_BLEDOW_POZA_BRAMKA
+#: TEZ jako blad). Zostaje 1: `src/ui/sld/v3/export/__tests__/
+#: eksportDokumentu.test.ts` — celowe, dokumentuje ze format spoza rejestru
+#: nie przechodzi ANI typu, ANI wykonania (jedyny prawdziwy powod wyciszenia
+#: w calym repo).
+BUDZET_WYCISZEN = 1
 
 #: Zapadka na pusty skan: `frontend/src` to tysiące modułów. Mniej niż tyle
 #: znaczy, że zmienił się układ katalogów, a nie że kodu ubyło.

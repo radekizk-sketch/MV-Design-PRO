@@ -8,6 +8,8 @@
  * - Polish labels coverage
  */
 
+import { describe, expect, it } from 'vitest';
+
 import {
   ISSUE_CODE_LABELS,
   SEVERITY_LABELS,

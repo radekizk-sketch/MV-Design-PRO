@@ -7,7 +7,7 @@
  * — ekran niczego nie liczy, tylko renderuje odpowiedzi backendu.
  */
 
-import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -19,6 +19,7 @@ import { useExecutionRunsStore } from '../../../../ui/study-cases/runStore';
 import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
 import { useSelectionStore } from '../../../../ui/selection/store';
 import { useShellStore } from '../../../shell/useShellStore';
+import type { ExecutionRun } from '../../../../ui/study-cases/types';
 import { EkranAnalizTechnicznych } from '../../analizy/EkranAnalizTechnicznych';
 import { EkranZbieznosci } from '../EkranZbieznosci';
 import { ZBIEZNOSC_STRINGS as T } from '../strings';
@@ -28,21 +29,27 @@ import {
   wybierzPrzebiegRozplywu,
 } from '../zbieznoscModel';
 
-const RUN_LF = {
+const RUN_LF: ExecutionRun = {
   id: 'run-lf-1',
+  study_case_id: 'case-1',
   analysis_type: 'LOAD_FLOW',
+  solver_input_hash: 'hash-lf-1',
   status: 'DONE',
   finished_at: '2026-07-20T10:00:00Z',
   started_at: '2026-07-20T09:59:00Z',
-} as never;
+  error_message: null,
+};
 
-const RUN_SC = {
+const RUN_SC: ExecutionRun = {
   id: 'run-sc-1',
+  study_case_id: 'case-1',
   analysis_type: 'SC_3F',
+  solver_input_hash: 'hash-sc-1',
   status: 'DONE',
   finished_at: '2026-07-20T08:00:00Z',
   started_at: '2026-07-20T07:59:00Z',
-} as never;
+  error_message: null,
+};
 
 const HEADER = {
   id: 'run-lf-1',
@@ -352,7 +359,7 @@ describe('EkranZbieznosci — werdykt, założenia, bilans i zaczepy z realnych 
 
 describe('zbieznoscModel — czyste projekcje kontraktów', () => {
   it('wybierzPrzebiegRozplywu preferuje aktywny zakończony rozpływ, inaczej najnowszy', () => {
-    const starszy = { ...RUN_LF, id: 'run-lf-0', finished_at: '2026-07-19T10:00:00Z' } as never;
+    const starszy: ExecutionRun = { ...RUN_LF, id: 'run-lf-0', finished_at: '2026-07-19T10:00:00Z' };
     expect(wybierzPrzebiegRozplywu([RUN_SC], null)).toBeNull();
     expect(wybierzPrzebiegRozplywu([starszy, RUN_LF], null)?.id).toBe('run-lf-1');
     expect(wybierzPrzebiegRozplywu([starszy, RUN_LF], 'run-lf-0')?.id).toBe('run-lf-0');
@@ -394,7 +401,7 @@ describe('EkranZbieznosci — wskazanie transformatora (F-K4, znalezisko Z4)', (
   it('klik w tabeli zaczepów prowadzi do TRANSFORMATORA w modelu (akcja inspekcyjna)', async () => {
     const user = userEvent.setup();
     ustawKompletnyKontekst();
-    mockFetchPrzebiegu(wynikFixture());
+    mockFetchPrzebiegu(wynikFixture(), sladFixture());
     useSelectionStore.setState({ selectedElement: null, sldCenterOnElement: null } as never);
     render(<EkranZbieznosci />);
 
