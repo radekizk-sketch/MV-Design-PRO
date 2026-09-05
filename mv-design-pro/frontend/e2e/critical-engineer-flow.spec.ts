@@ -89,9 +89,22 @@ test.describe('critical engineer flow — station templates end-to-end', () => {
     const data = await response.json();
     expect(data.element_type).toBe('transformer');
     expect(data.suggestions.length).toBeGreaterThan(0);
-    // First suggestion has highest confidence
-    if (data.suggestions.length >= 2) {
-      expect(data.suggestions[0].confidence).toBeGreaterThanOrEqual(data.suggestions[1].confidence);
+    // Kontrakt FAB-D2 (D9): dopasowanie jest KATEGORYCZNE (PELNE przed CZESCIOWE),
+    // certyfikat PTPiREE osobna flaga — nie ma juz liczby `confidence` bez definicji.
+    // Porzadek listy = klucz sortowania backendu (dopasowanie, certyfikat, catalog_ref).
+    const ranga: Record<string, number> = { PELNE: 0, CZESCIOWE: 1 };
+    for (const sugestia of data.suggestions) {
+      expect(Object.keys(ranga)).toContain(sugestia.dopasowanie);
+      expect(typeof sugestia.certyfikat_ptpiree).toBe('boolean');
+      expect(typeof sugestia.catalog_ref).toBe('string');
+    }
+    for (let i = 1; i < data.suggestions.length; i += 1) {
+      const poprzednia = data.suggestions[i - 1];
+      const biezaca = data.suggestions[i];
+      const kluczPoprzedniej = [ranga[poprzednia.dopasowanie], poprzednia.certyfikat_ptpiree ? 0 : 1];
+      const kluczBiezacej = [ranga[biezaca.dopasowanie], biezaca.certyfikat_ptpiree ? 0 : 1];
+      const porownanie = kluczPoprzedniej[0] - kluczBiezacej[0] || kluczPoprzedniej[1] - kluczBiezacej[1];
+      expect(porownanie).toBeLessThanOrEqual(0);
     }
   });
 
