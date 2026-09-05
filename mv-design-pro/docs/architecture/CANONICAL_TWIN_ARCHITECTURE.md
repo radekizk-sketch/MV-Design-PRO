@@ -26,7 +26,7 @@ Ocena wg realnego runtime i konsumentów (pomiar: audyty A1, A2, A9 w `docs/twin
 | uziemienie jako encja z fizyką | `GroundingConfig` istnieje, ale fizyka jej nie czyta; 6 reprezentacji (A11-02) | NIE SPEŁNIA — konsolidacja (§4) |
 | typowane pola stacji jako prawda | `Bay` typowany istnieje, ale zapis typowanych kolekcji wyłączony (`LEGACY_FIELD_COLLECTIONS`), prawda w `meta.field_specs` (A1-02) | NIE SPEŁNIA — migracja (§6) |
 | operacje domenowe na typach | 133 sygnatury `enm: dict[str, Any]`, god-files 16,5k LOC (A1-10, A1-19) | dług strukturalny, nie blokujący fundamentu |
-| hashe nagłówka | `semantic/input/case/variant_hash` zadeklarowane, nigdy nie wypełniane (A2 §1.5) | do usunięcia na rzecz `RevisionEnvelope` |
+| hashe nagłówka | `semantic/input/case/variant_hash` zadeklarowane, nigdy nie wypełniane (A2 §1.5) | **USUNIĘTE (CV-2, H1)** — tożsamość biegu niesie `RevisionEnvelope` (`enm/envelope.py`); guard wskrzeszenia: `tests/enm/test_hash_chain_split.py` |
 
 **Wniosek:** każda luka jest domykalna addytywnie (nowe typowane kolekcje/pola z `exclude_none`, konsolidacja istniejących encji, zmiana klucza magazynu). Nie istnieje jednoznaczny dowód, że ENM nie da się rozwinąć — więc zgodnie z §4 **nie tworzy się drugiego trwałego modelu sieci**. Wszystkie dokumenty i ADR, które mówią o „TwinModel" jako nowej klasie, czyta się jako „ENM rozwinięty".
 
@@ -139,23 +139,27 @@ Reguła rozdziału: jeśli zmiana wymaga komendy domenowej → wariant; jeśli j
 | E2 | `enm.py POST /cases/{id}/runs/{pf,sc}`, `power_flow_runs/execute`, `unified_runs`, `v126_academic` uruchomienia | 4 równoległe sposoby uruchomienia | **STRANGLE → DELETE** (sieroty bez konsumenta FE kasowane po inwentarzu; V12.6 przepięte na E1 z `analysis_kind`) |
 | E3 | `ExecutionEngineService` (`execution_engine/service.py`) | tylko testy (5 plików) | **DELETE** procedurą |
 | E4 | `BatchExecutionService` (`_batches` in-memory) | produkcja (`batchStore.ts`) | **PROMOTE** do orkiestratora (`ExecutionPlan` + `ExecutionBackend`), trwały rejestr serii |
-| H1 | `ENMHeader.semantic_hash/input_hash/case_hash/variant_hash/switching_snapshot_hash` | zadeklarowane, nigdy nie wypełniane (A2 §1.5) | **DELETE** — zastąpione `RevisionEnvelope` (jedno źródło odcisków) |
-| H2 | `build_analysis_run_reproducibility` (stałe `"1.0.0"`, `"catalog_v1"`, `"solver_tolerance/default"`) | `domain/analysis_run.py:162-235` | **REPLACE** — pola z envelope i rejestru zdolności solverów; stała bez źródła = fabrykacja |
-| H3 | `variant_ref`/`switching_state_ref` jako etykiety-stałe (`DEFAULT_OPERATING_VARIANT_REF`) | `analysis_case_context.py:92,140`, `analysis_run.py:15-16` | **DELETE** — zastąpione realnymi referencjami envelope |
+| H1 | `ENMHeader.semantic_hash/input_hash/case_hash/variant_hash/switching_snapshot_hash` | zadeklarowane, nigdy nie wypełniane (A2 §1.5) | **DONE (CV-2)** — pola usunięte z `ENMHeader` i lustra TS; hash modelu bez zmian (pola były wykluczone z odcisku) |
+| H2 | `build_analysis_run_reproducibility` (stałe `"1.0.0"`, `"catalog_v1"`, `"solver_tolerance/default"`) | `domain/analysis_run.py:162-235` | **DONE (CV-2)** — `solver_version` wyłącznie ze śladu solvera (brak = `None`), `catalog_schema_version` = `None` (tor legacy nie zapisał tożsamości katalogu), w kontrakcie V12.5 biegu kanonicznego `catalog_fingerprint` + `model_revision` z koperty; etykiety wersji KONTRAKTÓW (nazywają kod, nie dane) zostają; guard `provenance_constant_guard` |
+| H3 | `variant_ref`/`switching_state_ref` jako etykiety-stałe (`DEFAULT_OPERATING_VARIANT_REF`) | `analysis_case_context.py:92,140`, `analysis_run.py:15-16` | **DONE (CV-2)** — stałe usunięte; brak wyboru wariantu/migawki = `None`; realne referencje (`variation_ref`/`scenario_ref`) przychodzą w CV-3 razem z dostawcą |
 
 ---
 
 ## B.3. Model docelowy
 
 ```python
-class ModelRevision:          # append-only, per projekt
-    project_id: str; revision: int; parent: int | None
-    command: DomainCommandEnvelope | None   # PEŁNY ładunek komendy (dziś dziennik enm/dziennik_zmian.py niesie TYLKO nazwę operacji
-                                            # i listy ref_id utworzone/zmienione/usunięte — replay z dziennika jest NIEMOŻLIWY; CV-2 zapisuje ładunek)
-    snapshot: EnergyNetworkModel            # pełna migawka KAŻDEJ rewizji (pomiar: 0,78 MB/rewizję przy 54 stacjach; gzip ≈ 10×) —
-                                            # checkout(rev) = odczyt migawki; delty/odtwarzanie z replay dopiero, gdy ładunki komend są kompletne
-    hash_sha256: str; actor: ActorRef; created_at: datetime
-    # inwariant: checkout(project, n).hash_sha256 == ModelRevision[n].hash_sha256 (test na całym rejestrze sieci)
+class ModelRevision:          # append-only, per projekt — ZREALIZOWANE w CV-2 jako:
+    project_id: str; revision: int; parent: int | None      #   wpis dziennika (`enm/dziennik_zmian.WpisDziennika`: `rewizja`, `rodzic`, `hash_sha256`)
+    command: DomainCommandEnvelope | None   #   `WpisDziennika.ladunek` = PEŁNY ładunek komendy domenowej (`ZrodloZmiany.ladunek`)
+    snapshot: EnergyNetworkModel            #   migawka KAŻDEJ rewizji: `<digest>.rev/<n>.json.gz` (`enm/rewizje.py`; gzip mtime=0, kanoniczny JSON,
+                                            #   adresowana hashem treści) — `enm.store.checkout(klucz, n)`; delty/replay nie są źródłem prawdy
+    hash_sha256: str; actor: ActorRef; created_at: datetime  # `actor` — CV-3+ (brak dostawcy tożsamości użytkownika, ADR-028)
+    # inwariant: checkout(project, n).hash_sha256 == ModelRevision[n].hash_sha256 — przypięty: `tests/enm/test_rewizje_modelu.py`
+    # REGUŁA SPÓJNOŚCI (CV-2, uściślenie R2 karty): HEAD (`<digest>.json`) pozostaje AUTORYTATYWNY dla rewizji bieżącej; migawki są
+    # indeksem historii. Kolejność zapisu: dziennik (roboczy) → migawka (robocza) → HEAD (podmiana) → migawka (podmiana) → dziennik (podmiana);
+    # każdy krok po podmianie HEAD jest cofany przez `_wycofaj_nieudany_zapis`, a przy wczytaniu `uzgodnij_indeks` usuwa sieroty
+    # (migawka > HEAD, nigdy promowana), odtwarza brakującą migawkę bieżącą z HEAD i dopisuje brakujący wpis dziennika z opisem
+    # nazywającym brak przyczyny wprost (`OPIS_WPISU_ODTWORZONEGO`). Rewizje sprzed rejestru nie mają treści — `checkout` mówi to błędem.
 
 class NetworkVariation:       # delta strukturalna
     variation_id: str; name: str; base_revision: int; revision: int
@@ -182,11 +186,12 @@ class StudyCase:              # C1 rozszerzony
     standards_profile_ref: (profile_id, revision)   # rejestr źródeł normatywnych / profil OSD
     protection_settings_revision: int      # rewizja nastaw (ownership w modelu — ADR-022)
 
-class RevisionEnvelope:        # niesiony przez KAŻDY artefakt inżynierski (§9)
-    project_id; model_revision; variation_ref; scenario_ref
-    protection_settings_revision; catalog_revision_set: dict[catalog_id, revision]
-    assumptions_revision; standards_profile_ref
-    semantic_fingerprint: str   # sha256 nad kanonicznym JSON (klucze posortowane, liczby skwantyzowane — część C §C.5)
+class RevisionEnvelope:        # niesiony przez KAŻDY artefakt inżynierski (§9) — CV-2: `enm/envelope.py`, kolumna `canonical_runs.envelope_json`
+    project_id; model_revision; variation_ref; scenario_ref          # CV-2 niesie `project_id`, `model_revision`, `snapshot_hash`; `variation_ref`/`scenario_ref` — CV-3 (bez pola bez dostawcy)
+    protection_settings_revision; catalog_revision_set: dict[catalog_id, revision]   # CV-2: `catalog_fingerprint` = odcisk biblioteki typów z kodu
+                                                                                     # (`network_model/catalog/odcisk.py`); rewizje per katalog — po konwergencji katalogów (P1-5)
+    assumptions_revision; standards_profile_ref                     # CV-2: `options_hash` (odcisk opcji biegu); reszta — CV-3/CV-5
+    semantic_fingerprint: str   # sha256 nad kanonicznym JSON (klucze posortowane, liczby skwantyzowane — część C §C.5) — CV-2: nad polami koperty (`WERSJA_KOPERTY`)
 
 EffectiveNetworkSnapshot = apply_scenario(materialize(checkout(project, model_revision), variation), scenario)
     # immutable (frozen Pydantic), reproducible, versioned (envelope), provenance-aware (każde nadpisanie ma źródło: scenariusz/wariant/rewizja), complete-enough (readiness per analiza)
@@ -208,7 +213,7 @@ EffectiveNetworkSnapshot = apply_scenario(materialize(checkout(project, model_re
 | White Box / dowody | `proof_id` z `run_id` | envelope w nagłówku dowodu |
 | raport / dokument | `document_records.run_ref`, bez hasha modelu | envelope + hash dokumentu; dokument OUTDATED gdy envelope ≠ bieżący |
 
-**Reguła UI (§9):** żaden ekran nie łączy wyników z różnych envelope jako jednego stanu inżynierskiego; przy różnicy pokazuje „wyniki z rewizji N, model na rewizji M" z akcją przeliczenia. Dziś świeżość = `compute_enm_hash(bieżący) == run.snapshot_hash` (`result_freshness.py`) — po CV-2 świeżość porównuje envelope (rewizja + wariant + scenariusz + nastawy + katalog), co domyka A2-05 (zmiana etykiety nie unieważnia, zmiana katalogu unieważnia).
+**Reguła UI (§9):** żaden ekran nie łączy wyników z różnych envelope jako jednego stanu inżynierskiego; przy różnicy pokazuje „wyniki z rewizji N, model na rewizji M" z akcją przeliczenia. **Od CV-2** świeżość jest WYPROWADZANA z koperty (`application/result_freshness.py::evaluate_envelope_freshness`): rewizja modelu inna → OUTDATED z listą zmian z dziennika (które operacje unieważniły wynik), odcisk katalogu inny → OUTDATED „katalog zmieniony" (A2-05: zmiana katalogu unieważnia), ten sam hash i katalog → FRESH; bieg bez koperty (sprzed CV-2) wraca na porównanie odcisków modelu; status przypadku (`StudyCase.result_status`) = funkcja biegów przypadku (`status_wynikow_przypadku`), bez pisarzy stanu. Wariant, scenariusz i nastawy dołączają do porównania w CV-3/CV-5.
 
 ---
 
@@ -224,7 +229,7 @@ EffectiveNetworkSnapshot = apply_scenario(materialize(checkout(project, model_re
 
 ## B.6. Współbieżność (§21 kontraktu; szczegóły: `docs/twin/MV_DESIGN_PRO_TARGET_DIGITAL_TWIN_ARCHITECTURE.md` §21a)
 
-Każda komenda domenowa niesie `command_id` (idempotencja), `actor`, `expected_revision`; niezgodność = `409 CONFLICT` z opisem rozbieżności; zakaz silent last-write-wins; zapis modelu i dziennika w jednej transakcji (dziś: dwa pliki bez WAL — dług nazwany w `enm/store.py`, domykany w CV-2 przez magazyn rewizji w SQL (Postgres docelowo, SQLite w dev/test przy identycznych kontraktach — D-37)); dual-write w stranglerze tylko z guardem równoważności i terminem życia.
+Każda komenda domenowa niesie `command_id` (idempotencja), `actor`, `expected_revision`; niezgodność = `409 CONFLICT` z opisem rozbieżności; zakaz silent last-write-wins; zapis modelu i dziennika w jednej transakcji (dziś: trzy pliki bez WAL — dziennik, migawka rewizji, HEAD — z jawną kolejnością podmian, wycofaniem i uzgodnieniem przy wczytaniu (`enm/rewizje.py`, CV-2: atomowość przez niezmienność migawek i autorytatywny HEAD, nie przez WAL); magazyn rewizji w SQL (Postgres docelowo — D-37, ADR-028) pozostaje decyzją wdrożeniową właściciela, kontrakty `checkout`/koperty są od nośnika niezależne); dual-write w stranglerze tylko z guardem równoważności i terminem życia.
 
 ---
 

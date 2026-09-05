@@ -633,6 +633,16 @@ class TestWycofanieNieudanegoZapisu:
         transakcji systemu plikow. W tym oknie na dysku zostaje rewizja bez wpisu —
         WYKRYWALNA (rewizja snapshotu wyzsza niz najwyzsza rewizja dziennika). Test
         mierzy ten stan wprost, zeby granica gwarancji byla faktem, a nie deklaracja.
+        Od CV-2 (`enm/rewizje.py`) ten stan jest przy kolejnym wczytaniu modelu
+        DOMYKANY: migawka rewizji biezacej jest odtwarzana z HEAD, a brakujacy wpis
+        dziennika dopisywany z opisem nazywajacym brak przyczyny wprost.
+
+        INTENCJA INIEKCJI (CV-2): awaria „wycofywania" ma trafic WYLACZNIE w
+        odtworzenie snapshotu (`_przywroc_snapshot` pisze bajty do pliku roboczego
+        w korzeniu magazynu). Zapis migawki rewizji (`enm/rewizje.py`, plik w
+        katalogu `<digest>.rev/`) tez uzywa `Path.write_bytes`, ale jest krokiem
+        PRZYGOTOWANIA, nie wycofania — iniekcja go omija, inaczej test mierzylby
+        awarie przygotowania zamiast awarii wycofania.
         """
         case_key = str(uuid.uuid4())
         poczatkowy = get_enm(case_key).model_copy(deep=True)
@@ -642,13 +652,16 @@ class TestWycofanieNieudanegoZapisu:
         rewizje_przed = [wpis.rewizja for wpis in wszystkie_wpisy(case_key)]
 
         oryginalny_replace = Path.replace
+        oryginalny_write_bytes = Path.write_bytes
 
         def podmiana_dziennika_z_awaria(self: Path, cel: Any) -> Path:
             if str(cel).endswith(".dziennik.json"):
                 raise OSError(5, "podmiana dziennika odmowila")
             return oryginalny_replace(self, cel)
 
-        def zapis_bajtow_z_awaria(self: Path, _dane: bytes) -> int:
+        def zapis_bajtow_z_awaria(self: Path, dane: bytes) -> int:
+            if self.parent.name.endswith(".rev"):
+                return oryginalny_write_bytes(self, dane)
             raise OSError(28, "wycofywanie: brak miejsca na nosniku")
 
         zmieniony = get_enm(case_key).model_copy(deep=True)

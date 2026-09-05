@@ -79,6 +79,12 @@ jobs:
       - name: Readiness Codes Guard
         working-directory: mv-design-pro
         run: python scripts/readiness_codes_guard.py
+      # CV-2 (H2/H3): pole proweniencji biegu (wersja solvera, tozsamosc katalogu,
+      # wariant, migawka lacznikowa) nie moze byc literalem bez zrodla — wartosc
+      # pochodzi z koperty rewizji, sladu solvera albo opcji biegu, inaczej jest None.
+      - name: Provenance Constant Guard
+        working-directory: mv-design-pro
+        run: python scripts/provenance_constant_guard.py
       # V12K-206 (karta F-K6): guard KONSUMPCJI kodow gotowosci. Wymaga zaleznosci
       # backendu (importuje rejestr), dlatego biegnie tu, a nie w workflow guardow.
       - name: Readiness Consumption Guard

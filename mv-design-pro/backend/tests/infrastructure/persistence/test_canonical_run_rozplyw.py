@@ -570,3 +570,36 @@ def test_init_db_odmawia_kolumny_not_null_bez_domyslnej(tmp_path: Any) -> None:
     with pytest.raises(RuntimeError, match="contributions_json"):
         init_db(engine)
     engine.dispose()
+
+
+def test_init_db_doklada_kolumne_koperty_rewizji_do_istniejacej_bazy(tmp_path: Any) -> None:
+    """CV-2: `canonical_runs.envelope_json` (koperta rewizji) jest kolumną ADDYTYWNĄ —
+    baza sprzed CV-2 dostaje ją przy starcie, wiersze biegów zostają, a bieg bez
+    koperty czyta się jako `envelope is None` (uczciwy brak, nie zmyślona koperta).
+    Ta sama klasa mechanizmu co `branch_flow_trace_json` wyżej — jeden test na kolumnę,
+    bo lista kolumn addytywnych rośnie i każda musi mieć dowód."""
+    import sqlite3
+
+    assert tuple(int(x) for x in sqlite3.sqlite_version.split(".")[:2]) >= (3, 35)
+    engine = create_engine_from_url(f"sqlite+pysqlite:///{tmp_path / 'sprzed_cv2.db'}")
+    init_db(engine)
+    with engine.begin() as polaczenie:
+        polaczenie.execute(text("ALTER TABLE canonical_runs DROP COLUMN envelope_json"))
+        polaczenie.execute(
+            text(
+                "INSERT INTO canonical_runs (id, case_id, analysis_type, status, result_status, "
+                "created_at, snapshot_hash, input_hash, snapshot_json, validation_json, "
+                "readiness_json, options_json, white_box_trace_json) VALUES "
+                "('00000000000000000000000000000abd', 'c1', 'PF', 'FINISHED', 'VALID', "
+                "'2026-01-01 00:00:00', 'h', 'i', '{}', '{}', '{}', '{}', '[]')"
+            )
+        )
+    assert "envelope_json" not in _kolumny(engine, "canonical_runs")
+
+    init_db(engine)
+    assert "envelope_json" in _kolumny(engine, "canonical_runs")
+    with engine.begin() as polaczenie:
+        wiersze = polaczenie.execute(
+            text("SELECT case_id, envelope_json FROM canonical_runs")
+        ).all()
+    assert wiersze == [("c1", None)]

@@ -17,20 +17,43 @@ model przypadku aktywnego staje się modelem projektu, pozostałe trafiają do
 from __future__ import annotations
 
 import json
+import logging
 import os
+import shutil
 import threading
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from hashlib import sha256
 from pathlib import Path
+from typing import Any
 
 from enm.catalog_completion import complete_catalog_defaults
-from enm.dziennik_zmian import PrzygotowanyWpis, sciezka_tymczasowa
+from enm.dziennik_zmian import (
+    OPIS_PRZENIESIENIA_Z_PRZYPADKU,
+    OPIS_PRZYWROCENIA_Z_ARCHIWUM,
+    OPIS_WPISU_ODTWORZONEGO,
+    PrzygotowanyWpis,
+    sciezka_tymczasowa,
+    skopiuj_dziennik,
+    wpis_rewizji,
+)
 from enm.dziennik_zmian import przygotuj_dopisanie as przygotuj_wpis_dziennika
 from enm.hash import compute_enm_hash
 from enm.migrations.nn_field_specs_promocja import migruj as promuj_nn_field_specs
 from enm.migrations.punkt_przylaczenia_der import migruj as migruj_punkt_przylaczenia
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
+from enm.rewizje import (
+    PrzygotowanaRewizja,
+    przenies_katalog_rewizji,
+    przygotuj_rewizje,
+    skopiuj_katalog_rewizji,
+    usun_wszystkie_migawki,
+    uzgodnij_indeks,
+    wczytaj_rewizje,
+    zapewnij_migawke,
+)
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -47,6 +70,10 @@ class ZrodloZmiany:
     utworzone: tuple[str, ...] = ()
     zmienione: tuple[str, ...] = ()
     usuniete: tuple[str, ...] = ()
+    #: CV-2: PELNY ladunek komendy domenowej (dokladnie to, co przyszlo w zadaniu
+    #: operacji) — dziennik niesie odtad nie tylko nazwe i listy elementow, ale
+    #: tresc komendy, ktora wytworzyla rewizje. `None` = zapis bez komendy.
+    ladunek: dict[str, Any] | None = None
 
 
 _enm_store: dict[str, EnergyNetworkModel] = {}
@@ -197,6 +224,7 @@ def _get_enm_pod_blokada(klucz: str) -> EnergyNetworkModel:
         persisted = _load_persisted_enm(klucz)
         if persisted is not None:
             _enm_store[klucz] = persisted
+            _uzgodnij_po_wczytaniu(klucz, persisted)
         else:
             enm = EnergyNetworkModel(
                 header=ENMHeader(
@@ -287,6 +315,10 @@ def _set_enm_pod_blokada(
         same_revision_candidate.header.revision = existing.header.revision
         if compute_enm_hash(same_revision_candidate) == existing.header.hash_sha256:
             _persist_enm(klucz, existing)
+            # CV-2: rewizja biezaca ma miec migawke takze wtedy, gdy trafila na
+            # nosnik bez podniesienia numeru (model domyslny utworzony w pamieci,
+            # zapis rownowazny tresciowo).
+            zapewnij_migawke(klucz, existing, hash_sha256=existing.header.hash_sha256)
             return existing
 
     # MATERIAL DO WYCOFANIA pobrany PRZED jakakolwiek mutacja — i trzymany jako
@@ -311,13 +343,18 @@ def _set_enm_pod_blokada(
     _enm_store[klucz] = enm
 
     wpis_dziennika: PrzygotowanyWpis | None = None
+    migawka: PrzygotowanaRewizja | None = None
     snapshot_zatwierdzony = False
+    migawka_zatwierdzona = False
     try:
-        # KOLEJNOSC ZAPISOW jest czescia naprawy, nie przypadkiem. Najpierw OBIE
-        # tresci ida na nosnik jako pliki robocze (dziennik tutaj, snapshot
-        # wewnatrz `_persist_enm`), a dopiero potem nastepuja podmiany. Awaria
-        # klasy „nosnik odmawia zapisu" (ENOSPC/EACCES/EIO) trafia wiec w faze
-        # PRZYGOTOWANIA, kiedy nie ma jeszcze czego cofac na dysku. Dziennik
+        # KOLEJNOSC ZAPISOW jest czescia naprawy, nie przypadkiem. Najpierw WSZYSTKIE
+        # tresci ida na nosnik jako pliki robocze (dziennik tutaj, migawka rewizji
+        # w `przygotuj_rewizje`, snapshot wewnatrz `_persist_enm`), a dopiero potem
+        # nastepuja podmiany. Awaria klasy „nosnik odmawia zapisu" (ENOSPC/EACCES/
+        # EIO) trafia wiec w faze PRZYGOTOWANIA, kiedy nie ma jeszcze czego cofac
+        # na dysku. Podmiany ida w kolejnosci HEAD → migawka rewizji → dziennik:
+        # HEAD jest autorytatywny (regula spojnosci w `enm/rewizje.py`), migawka
+        # zatwierdzona bez dziennika jest sierota do sprzatniecia, a dziennik
         # zatwierdzamy jako OSTATNI, bo jego podmiana jest jedynym krokiem, po
         # ktorym nie zostaje juz nic do zrobienia.
         wpis_dziennika = przygotuj_wpis_dziennika(
@@ -328,9 +365,15 @@ def _set_enm_pod_blokada(
             zmienione=zrodlo_zmiany.zmienione if zrodlo_zmiany else (),
             usuniete=zrodlo_zmiany.usuniete if zrodlo_zmiany else (),
             znacznik_czasu=enm.header.updated_at,
+            hash_sha256=enm.header.hash_sha256,
+            rodzic=old_rev if existing is not None else None,
+            ladunek=zrodlo_zmiany.ladunek if zrodlo_zmiany else None,
         )
+        migawka = przygotuj_rewizje(klucz, enm, hash_sha256=enm.header.hash_sha256)
         _persist_enm(klucz, enm)
         snapshot_zatwierdzony = True
+        migawka.zatwierdz()
+        migawka_zatwierdzona = True
         wpis_dziennika.zatwierdz()
     except Exception:
         _wycofaj_nieudany_zapis(
@@ -339,9 +382,65 @@ def _set_enm_pod_blokada(
             wpis_dziennika=wpis_dziennika,
             tresc_snapshotu=tresc_snapshotu,
             snapshot_zatwierdzony=snapshot_zatwierdzony,
+            migawka=migawka,
+            migawka_zatwierdzona=migawka_zatwierdzona,
         )
         raise
     return enm
+
+
+def _uzgodnij_po_wczytaniu(klucz: str, persisted: EnergyNetworkModel) -> None:
+    """Po wczytaniu HEAD z nosnika: indeks migawek zgodny z HEAD, dziennik bez luki
+    dla rewizji biezacej (CV-2; wolane RAZ na proces i klucz, pod blokada twin).
+
+    Migawka biezacej rewizji brakujaca (magazyn sprzed CV-2) jest odtwarzana z
+    HEAD; wpis dziennika brakujacy dla rewizji biezacej jest dopisywany z opisem
+    nazywajacym brak przyczyny wprost (`OPIS_WPISU_ODTWORZONEGO`) — nigdy ze
+    zgadnieta operacja.
+    """
+    raport = uzgodnij_indeks(klucz, persisted)
+    if raport.cokolwiek:
+        logger.info(
+            "uzgodnienie_migawek klucz=%s rewizja=%s osierocone=%s odtworzona=%s "
+            "zastapiona=%s robocze=%s",
+            klucz,
+            persisted.header.revision,
+            raport.usuniete_osierocone,
+            raport.odtworzona_biezaca,
+            raport.zastapiona_biezaca,
+            raport.usuniete_robocze,
+        )
+    if wpis_rewizji(klucz, persisted.header.revision) is None:
+        przygotuj_wpis_dziennika(
+            klucz,
+            rewizja=persisted.header.revision,
+            operacja=None,
+            opis_pl=OPIS_WPISU_ODTWORZONEGO,
+            znacznik_czasu=persisted.header.updated_at,
+            hash_sha256=compute_enm_hash(persisted),
+        ).zatwierdz()
+
+
+def checkout(klucz: str, rewizja: int) -> EnergyNetworkModel:
+    """Model DOKLADNIE w rewizji `rewizja` (CV-2, `ModelRevision.checkout`).
+
+    Rewizja biezaca wraca jako kopia modelu z pamieci (jest tozsama z HEAD,
+    takze gdy model domyslny nie trafil jeszcze na nosnik); kazda inna — z
+    migawki `enm/rewizje.py`, zweryfikowanej hashem tresci. Brak migawki =
+    `RewizjaNieistniejeError` (rewizja sprzed rejestru rewizji albo nigdy nie
+    zapisana); rozjazd tresci = `RewizjaUszkodzonaError`. Zwrocony model jest
+    KOPIA — mutacja nie dotyka magazynu.
+    """
+    with blokada_twin(klucz):
+        biezacy = _get_enm_pod_blokada(klucz)
+        if rewizja == biezacy.header.revision:
+            return biezacy.model_copy(deep=True)
+        return wczytaj_rewizje(klucz, rewizja)
+
+
+def rewizja_biezaca(klucz: str) -> int:
+    """Numer rewizji biezacej modelu pod kluczem (po ewentualnych automigracjach)."""
+    return get_enm(klucz).header.revision
 
 
 def restore_enm(klucz: str, snapshot: dict) -> EnergyNetworkModel | None:
@@ -363,6 +462,20 @@ def restore_enm(klucz: str, snapshot: dict) -> EnergyNetworkModel | None:
     with blokada_twin(klucz):
         _enm_store[klucz] = enm
         _persist_enm(klucz, enm)
+        # CV-2: rewizja przywrocona ma migawke i wpis dziennika nazywajacy zrodlo
+        # (import archiwum) — bez podbicia rewizji i bez zmiany hasha (LV-INV-10);
+        # dziennik i migawki leza poza modelem, wiec round-trip archiwum jest
+        # nadal bajtowo tozsamy.
+        hash_tresci = compute_enm_hash(enm)
+        zapewnij_migawke(klucz, enm, hash_sha256=hash_tresci)
+        przygotuj_wpis_dziennika(
+            klucz,
+            rewizja=enm.header.revision,
+            operacja=None,
+            opis_pl=OPIS_PRZYWROCENIA_Z_ARCHIWUM,
+            znacznik_czasu=enm.header.updated_at,
+            hash_sha256=hash_tresci,
+        ).zatwierdz()
     return enm
 
 
@@ -373,8 +486,16 @@ def _wycofaj_nieudany_zapis(
     wpis_dziennika: PrzygotowanyWpis | None,
     tresc_snapshotu: bytes | None,
     snapshot_zatwierdzony: bool,
+    migawka: PrzygotowanaRewizja | None = None,
+    migawka_zatwierdzona: bool = False,
 ) -> None:
     """Cofnij rewizje, ktorej NIE UDALO SIE zapisac (defekt D4, wariant 2 i 3).
+
+    CV-2: migawka rewizji jest cofana miedzy dziennikiem a snapshotem — plik
+    roboczy jest sprzatany, a migawka juz ZATWIERDZONA (blad przyszedl przy
+    zatwierdzaniu dziennika) usuwana, bo HEAD wraca do rewizji poprzedniej i
+    migawka `n` bylaby sierota. Awaria samego usuniecia migawki nie przerywa
+    wycofania (sierote sprzata `uzgodnij_indeks` przy wczytaniu) — jest logowana.
 
     Wczesniej `_enm_store[klucz] = enm` wykonywalo sie PRZED zapisem pliku, wiec
     wyjatek zapisu zostawial system w stanie, ktorego nikt nie zadeklarowal:
@@ -417,6 +538,20 @@ def _wycofaj_nieudany_zapis(
         _enm_store[klucz] = poprzedni
     if wpis_dziennika is not None:
         wpis_dziennika.porzuc()
+    if migawka is not None:
+        try:
+            if migawka_zatwierdzona:
+                migawka.usun_zatwierdzona()
+            else:
+                migawka.porzuc()
+        except OSError:
+            logger.warning(
+                "wycofanie: nie udalo sie usunac migawki rewizji %s klucza %s — "
+                "sierota zostanie sprzatnieta przy wczytaniu",
+                migawka.rewizja,
+                klucz,
+                exc_info=True,
+            )
     if snapshot_zatwierdzony:
         _przywroc_snapshot(klucz, tresc_snapshotu)
 
@@ -445,7 +580,12 @@ def reset_enm_store(*, remove_persisted: bool = True) -> None:
     legacy = store_dir / KATALOG_LEGACY
     if legacy.exists():
         for path in legacy.iterdir():
-            path.unlink(missing_ok=True)
+            if path.is_dir():
+                shutil.rmtree(path, ignore_errors=True)
+            else:
+                path.unlink(missing_ok=True)
+    # CV-2: migawki rewizji (`<digest>.rev/`) sa czescia magazynu.
+    usun_wszystkie_migawki()
 
 
 # ---------------------------------------------------------------------------
@@ -502,6 +642,8 @@ def _odloz_do_legacy(case_id: str, wynik: WynikMigracjiKlucza) -> None:
     dziennik = _store_dir() / f"{zrodlo.stem}.dziennik.json"
     if dziennik.exists():
         dziennik.replace(katalog / dziennik.name)
+    # CV-2: migawki rewizji przypadku ida za jego plikami — nic nie ginie.
+    przenies_katalog_rewizji(case_id, katalog)
     manifest = katalog / MANIFEST_LEGACY
     wiersz = json.dumps(
         {
@@ -550,6 +692,23 @@ def migruj_klucz_przypadku_do_projektu(
         if projekt is None and przyjmij_jako_model_projektu:
             _enm_store[klucz_projektu] = legacy
             _persist_enm(klucz_projektu, legacy)
+            # CV-2: historia przypadku promowanego na model projektu idzie z nim —
+            # dziennik i migawki sa KOPIOWANE pod klucz projektu PRZED odlozeniem
+            # plikow przypadku do `legacy_przypadki/` (wczesniej dziennik wedrowal
+            # do legacy i projekt zaczynal bez historii — utrata odpowiedzi „ktora
+            # zmiana uniewaznila wynik" dla biegow sprzed migracji).
+            skopiuj_dziennik(case_id, klucz_projektu)
+            skopiuj_katalog_rewizji(case_id, klucz_projektu)
+            hash_tresci = compute_enm_hash(legacy)
+            zapewnij_migawke(klucz_projektu, legacy, hash_sha256=hash_tresci)
+            przygotuj_wpis_dziennika(
+                klucz_projektu,
+                rewizja=legacy.header.revision,
+                operacja=None,
+                opis_pl=OPIS_PRZENIESIENIA_Z_PRZYPADKU,
+                znacznik_czasu=legacy.header.updated_at,
+                hash_sha256=hash_tresci,
+            ).zatwierdz()
             wynik = WynikMigracjiKlucza(
                 case_id,
                 klucz_projektu,

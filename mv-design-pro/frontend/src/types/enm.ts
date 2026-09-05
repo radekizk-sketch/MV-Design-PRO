@@ -130,15 +130,6 @@ export interface ENMHeader {
   defaults: ENMDefaults;
   /** Blok addytywny (backend `set_connection_conditions`); brak = nie podano. */
   connection_conditions?: ConnectionConditions | null;
-  /**
-   * V12K-230: hashe TOZSAMOSCI modelu i przypadku. Bez nich front nie ma typowanego
-   * dostepu do danych, ktore rozstrzygaja, czy wynik jest AKTUALNY wobec modelu.
-   */
-  input_hash?: string | null;
-  semantic_hash?: string | null;
-  case_hash?: string | null;
-  variant_hash?: string | null;
-  switching_snapshot_hash?: string | null;
 }
 
 // ---------------------------------------------------------------------------

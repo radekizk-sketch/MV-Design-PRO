@@ -126,6 +126,7 @@ _KOLUMNY_LEKKIE = (
     CanonicalRunORM.readiness_json,
     CanonicalRunORM.options_json,
     CanonicalRunORM.error_message,
+    CanonicalRunORM.envelope_json,
 )
 
 _DEFAULT_DATABASE_URL = "sqlite+pysqlite:///./mv_design_pro.db"
@@ -232,6 +233,7 @@ class CanonicalRunRepository:
         row.raw_result_json = lekki_artefakt
         row.white_box_trace_json = run.white_box_trace
         row.power_flow_trace_json = run.power_flow_trace
+        row.envelope_json = run.envelope
         self._zapisz_rozplyw(run, rozplyw)
 
     def _zapisz_rozplyw(self, run: CanonicalRun, rozplyw: dict[str, dict[str, Any]]) -> None:
@@ -365,6 +367,7 @@ class CanonicalRunRepository:
             raw_result=row.raw_result_json,
             white_box_trace=list(row.white_box_trace_json or []),
             power_flow_trace=row.power_flow_trace_json,
+            envelope=row.envelope_json,
         )
 
     def _to_domain_lekki(self, row: Any) -> CanonicalRun:
@@ -387,6 +390,7 @@ class CanonicalRunRepository:
             finished_at=ensure_utc(row.finished_at),
             error_message=row.error_message,
             result_status=row.result_status,
+            envelope=row.envelope_json,
         )
 
     def _to_orm(self, run: CanonicalRun, lekki_artefakt: dict[str, Any] | None) -> CanonicalRunORM:
@@ -410,4 +414,5 @@ class CanonicalRunRepository:
             raw_result_json=lekki_artefakt,
             white_box_trace_json=run.white_box_trace,
             power_flow_trace_json=run.power_flow_trace,
+            envelope_json=run.envelope,
         )

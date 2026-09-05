@@ -29,7 +29,9 @@ from application.stability.voltage_trajectory import (
     generate_voltage_trajectory,
 )
 from enm.element_kind import rodzaj_elementu, zbuduj_indeks_rodzajow
+from enm.envelope import RevisionEnvelope, zbuduj_koperte
 from enm.hash import compute_enm_hash
+from enm.klucz_twin import czy_klucz_projektu, project_id_z_klucza
 from enm.mapping import build_zero_sequence_zbus, map_enm_to_network_graph
 from enm.models import EnergyNetworkModel
 from enm.store import get_enm
@@ -41,6 +43,7 @@ from infrastructure.persistence.repositories.canonical_run_repository import (
     KLUCZE_ROZPLYWU,
     canonical_run_repository_scope,
 )
+from network_model.catalog.odcisk import odcisk_katalogu_domyslnego
 from network_model.core.graph import NetworkGraph
 from network_model.core.node import NodeType
 from network_model.core.voltage_factor import Scenario, c_for_node
@@ -271,6 +274,14 @@ class CanonicalRun:
     raw_result: dict[str, Any] | None = None
     white_box_trace: list[dict[str, Any]] = field(default_factory=list)
     power_flow_trace: dict[str, Any] | None = None
+    #: CV-2: koperta rewizji (`enm/envelope.RevisionEnvelope.to_dict()`) — CO
+    #: DOKLADNIE policzono: rewizja modelu, odcisk katalogu, odcisk opcji.
+    #: `None` wylacznie dla biegow zapisanych przed rejestrem rewizji (dane).
+    envelope: dict[str, Any] | None = None
+
+    @property
+    def koperta(self) -> RevisionEnvelope | None:
+        return RevisionEnvelope.from_dict(self.envelope)
 
     @property
     def solver_kind(self) -> str:
@@ -355,6 +366,7 @@ class CanonicalRunZListy(CanonicalRun):
         finished_at: datetime | None,
         error_message: str | None,
         result_status: str,
+        envelope: dict[str, Any] | None = None,
     ) -> None:
         self._leniwe: dict[str, object] = {}
         super().__init__(
@@ -374,6 +386,7 @@ class CanonicalRunZListy(CanonicalRun):
             finished_at=finished_at,
             error_message=error_message,
             result_status=result_status,
+            envelope=envelope,
         )
         # Konstruktor rodzica ustawił kolumny ciężkie na wartości domyślne przez
         # settery; oznaczamy je jako NIEZAŁADOWANE (nie „puste").
@@ -548,6 +561,11 @@ def create_run(
     snapshot = enm.model_dump(mode="json")
     enm_hash = compute_enm_hash(enm)
     normalized_options = dict(options or {})
+    # CV-2: tozsamosc projektu w kopercie — z parametru albo z klucza twin
+    # (klucz surowy w testach magazynu nie niesie projektu → None, uczciwie).
+    project_id_koperty = project_id or (
+        str(project_id_z_klucza(klucz_twin)) if czy_klucz_projektu(klucz_twin) else None
+    )
     if analysis_type == "short_circuit_sn":
         fault_type = _short_circuit_type_from_options(normalized_options)
         if not availability.short_circuit_3f:
@@ -567,6 +585,19 @@ def create_run(
         raise ValueError("Stabilnosc dynamiczna wymaga co najmniej jednego zrodla w ENM")
     if analysis_type == "source_compliance" and not (enm.sources or enm.generators):
         raise ValueError("Ocena zgodnosci zrodla wymaga co najmniej jednego zrodla w ENM")
+    input_hash = _compute_input_hash(
+        case_id=case_id,
+        analysis_type=analysis_type,
+        enm_hash=enm_hash,
+        options=normalized_options,
+    )
+    koperta = zbuduj_koperte(
+        project_id=project_id_koperty,
+        model_revision=enm.header.revision,
+        snapshot_hash=enm_hash,
+        catalog_fingerprint=odcisk_katalogu_domyslnego(),
+        options_hash=input_hash,
+    )
     run = CanonicalRun(
         id=uuid4(),
         case_id=case_id,
@@ -575,16 +606,12 @@ def create_run(
         status="CREATED",
         created_at=datetime.now(UTC),
         snapshot_hash=enm_hash,
-        input_hash=_compute_input_hash(
-            case_id=case_id,
-            analysis_type=analysis_type,
-            enm_hash=enm_hash,
-            options=normalized_options,
-        ),
+        input_hash=input_hash,
         snapshot=snapshot,
         validation=validation.model_dump(mode="json"),
         readiness=readiness.model_dump(mode="json"),
         options=normalized_options,
+        envelope=koperta.to_dict(),
     )
     with canonical_run_repository_scope() as repository:
         repository.create(run)

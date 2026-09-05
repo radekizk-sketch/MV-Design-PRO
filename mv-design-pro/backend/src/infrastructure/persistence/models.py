@@ -520,6 +520,9 @@ class CanonicalRunORM(Base):
     power_flow_trace_json: Mapped[dict[str, Any] | None] = mapped_column(
         DeterministicJSON(), nullable=True
     )
+    #: CV-2: koperta rewizji biegu (addytywna, nullable — dokladana do istniejacych
+    #: baz przez `db._dolacz_kolumny_addytywne`).
+    envelope_json: Mapped[dict[str, Any] | None] = mapped_column(DeterministicJSON(), nullable=True)
 
 
 class CanonicalRunBranchFlowORM(Base):

@@ -41,14 +41,35 @@ from uuid import uuid4
 
 from domain.canonical_operations import CANONICAL_OPERATIONS
 
-# Maksymalna dlugosc dziennika per przypadek. Dziennik sluzy odpowiedzi „co sie
-# zmienilo OD MOJEGO WYNIKU", a nie pelnej historii projektu — ta nalezy do
-# archiwum. Limit chroni przed nieograniczonym rosnieciem pliku.
-LIMIT_WPISOW = 500
+# BEZ LIMITU DLUGOSCI (CV-2, R4). Wczesniejszy `LIMIT_WPISOW = 500` obcinal
+# najstarsze wpisy — a dziennik jest odtad REJESTREM REWIZJI: kazda rewizja ma tu
+# hash swojej migawki (`enm/rewizje.py`) i przyczyne; obciecie historii = utrata
+# odpowiedzi „ktora zmiana uniewaznila wynik" dla biegow policzonych na starszych
+# rewizjach. Retencja migawek (pruning rewizji, ktorych nie wskazuje zaden bieg)
+# jest decyzja produktowa wlasciciela (OD-4, DECISION_FREEZE_REGISTER) i NIE jest
+# realizowana po cichu tutaj.
 
 _OPIS_BEZ_OPERACJI = (
     "Zapis modelu bez zarejestrowanej operacji domenowej "
     "(np. uzupelnienie danych katalogowych albo migracja formatu)."
+)
+
+#: Opis wpisu ODTWORZONEGO przy wczytaniu modelu z nosnika, gdy rewizja biezaca
+#: HEAD nie ma wpisu w dzienniku (zapis przerwany przed zatwierdzeniem dziennika
+#: albo dziennik sprzed CV-2). Nazywa brak wprost — nie zgaduje operacji.
+OPIS_WPISU_ODTWORZONEGO = (
+    "Rewizja bez zarejestrowanej przyczyny — wpis odtworzony przy wczytaniu modelu "
+    "(zapis przerwany przed wpisem do dziennika albo dziennik sprzed rejestru rewizji)."
+)
+
+#: Opis wpisu dla modelu przywroconego 1:1 z archiwum projektu (`restore_enm`).
+OPIS_PRZYWROCENIA_Z_ARCHIWUM = "Model przywrocony 1:1 z archiwum projektu (import)."
+
+#: Opis wpisu dla modelu przeniesionego spod klucza przypadku pod klucz projektu
+#: (migracja CV-1) — rewizja i hash bez zmian, zmienia sie wylacznie klucz.
+OPIS_PRZENIESIENIA_Z_PRZYPADKU = (
+    "Model przeniesiony spod klucza przypadku obliczeniowego pod klucz projektu "
+    "(migracja magazynu per projekt)."
 )
 
 
@@ -63,6 +84,17 @@ class WpisDziennika:
     utworzone: tuple[str, ...] = ()
     zmienione: tuple[str, ...] = ()
     usuniete: tuple[str, ...] = ()
+    #: CV-2: hash migawki tej rewizji (`enm/rewizje.py`) — ten sam, ktory niesie
+    #: `header.hash_sha256` modelu; `None` wylacznie dla wpisow sprzed rejestru
+    #: rewizji (dane zastane, nie kod).
+    hash_sha256: str | None = None
+    #: CV-2: rewizja, z ktorej ta rewizja powstala (`None` = pierwsza rewizja
+    #: pod tym kluczem albo wpis zastany bez tej informacji).
+    rodzic: int | None = None
+    #: CV-2: PELNY ladunek komendy domenowej, ktora wytworzyla rewizje (nie tylko
+    #: nazwa i listy elementow) — dokladnie to, co przyszlo w zadaniu operacji.
+    #: `None` = zapis bez komendy (migracja, uzupelnienie katalogu, import).
+    ladunek: dict[str, Any] | None = None
 
     def liczba_elementow(self) -> int:
         return len(self.utworzone) + len(self.zmienione) + len(self.usuniete)
@@ -77,6 +109,9 @@ class WpisDziennika:
             "zmienione": list(self.zmienione),
             "usuniete": list(self.usuniete),
             "liczba_elementow": self.liczba_elementow(),
+            "hash_sha256": self.hash_sha256,
+            "rodzic": self.rodzic,
+            "ladunek": self.ladunek,
         }
 
     @staticmethod
@@ -86,6 +121,9 @@ class WpisDziennika:
         except (KeyError, TypeError, ValueError):
             return None
         operacja = dane.get("operacja")
+        hash_sha256 = dane.get("hash_sha256")
+        rodzic = dane.get("rodzic")
+        ladunek = dane.get("ladunek")
         return WpisDziennika(
             rewizja=rewizja,
             znacznik_czasu=str(dane.get("znacznik_czasu") or ""),
@@ -94,6 +132,9 @@ class WpisDziennika:
             utworzone=tuple(dane.get("utworzone") or ()),
             zmienione=tuple(dane.get("zmienione") or ()),
             usuniete=tuple(dane.get("usuniete") or ()),
+            hash_sha256=hash_sha256 if isinstance(hash_sha256, str) else None,
+            rodzic=rodzic if isinstance(rodzic, int) and not isinstance(rodzic, bool) else None,
+            ladunek=ladunek if isinstance(ladunek, dict) else None,
         )
 
 
@@ -253,6 +294,10 @@ def przygotuj_dopisanie(
     zmienione: list[str] | tuple[str, ...] | None = None,
     usuniete: list[str] | tuple[str, ...] | None = None,
     znacznik_czasu: datetime | None = None,
+    hash_sha256: str | None = None,
+    rodzic: int | None = None,
+    ladunek: dict[str, Any] | None = None,
+    opis_pl: str | None = None,
 ) -> PrzygotowanyWpis:
     """Przygotuj wpis rewizji NA NOSNIKU — bez zmiany stanu widocznego dla kogokolwiek.
 
@@ -264,7 +309,14 @@ def przygotuj_dopisanie(
     Faze druga (`PrzygotowanyWpis.zatwierdz`) wykonuje wolajacy — `enm/store.py`
     zatwierdza dziennik JAKO OSTATNI krok zapisu rewizji, zeby wpis i rewizja
     powstawaly razem albo wcale.
+
+    `opis_pl` wolno podac WYLACZNIE dla zapisu bez operacji domenowej (`operacja is
+    None`) — nazywa on zrodlo rewizji, ktorego kanon operacji nie zna (odtworzenie
+    wpisu przy wczytaniu, import archiwum, migracja klucza). Dla operacji z kanonu
+    opis zawsze pochodzi z kanonu (`opis_operacji`), nigdy z parametru.
     """
+    if opis_pl is not None and operacja is not None:
+        raise ValueError("opis_pl wolno podac tylko dla zapisu bez operacji domenowej")
     dziennik = _wczytaj(case_id)
     for istniejacy in dziennik.wpisy:
         if istniejacy.rewizja == rewizja:
@@ -274,16 +326,17 @@ def przygotuj_dopisanie(
         rewizja=rewizja,
         znacznik_czasu=(znacznik_czasu or datetime.now(UTC)).isoformat(),
         operacja=operacja,
-        opis_pl=opis_operacji(operacja),
+        opis_pl=opis_pl if opis_pl is not None else opis_operacji(operacja),
         utworzone=tuple(utworzone or ()),
         zmienione=tuple(zmienione or ()),
         usuniete=tuple(usuniete or ()),
+        hash_sha256=hash_sha256,
+        rodzic=rodzic,
+        ladunek=dict(ladunek) if ladunek is not None else None,
     )
     # Nowa tresc powstaje OBOK listy w pamieci — dopiero `zatwierdz()` ja podmienia.
     wpisy_po = [*dziennik.wpisy, wpis]
     wpisy_po.sort(key=lambda w: w.rewizja)
-    if len(wpisy_po) > LIMIT_WPISOW:
-        del wpisy_po[: len(wpisy_po) - LIMIT_WPISOW]
     return PrzygotowanyWpis(
         case_id=case_id,
         wpis=wpis,
@@ -302,6 +355,42 @@ def wpisy_od(case_id: str, od_rewizji: int) -> list[WpisDziennika]:
 
 def wszystkie_wpisy(case_id: str) -> list[WpisDziennika]:
     return list(_wczytaj(case_id).wpisy)
+
+
+def wpis_rewizji(case_id: str, rewizja: int) -> WpisDziennika | None:
+    """Wpis dokladnie tej rewizji albo None (rewizja bez wpisu)."""
+    for wpis in _wczytaj(case_id).wpisy:
+        if wpis.rewizja == rewizja:
+            return wpis
+    return None
+
+
+def najwyzsza_rewizja(case_id: str) -> int | None:
+    wpisy = _wczytaj(case_id).wpisy
+    return max((w.rewizja for w in wpisy), default=None)
+
+
+def skopiuj_dziennik(klucz_zrodla: str, klucz_celu: str) -> int:
+    """Skopiuj wpisy dziennika spod klucza zrodlowego pod klucz celu (migracja
+    CV-1: model przypadku staje sie modelem projektu — jego historia idzie z nim).
+
+    Wpisy celu o tej samej rewizji NIE sa nadpisywane (cel juz zna te rewizje).
+    Zapis przez plik roboczy + atomowa podmiana, jak kazdy zapis dziennika.
+    Zwraca liczbe dopisanych wpisow.
+    """
+    zrodlo = _wczytaj(klucz_zrodla).wpisy
+    if not zrodlo:
+        return 0
+    cel = _wczytaj(klucz_celu)
+    znane = {w.rewizja for w in cel.wpisy}
+    nowe = [w for w in zrodlo if w.rewizja not in znane]
+    if not nowe:
+        return 0
+    wpisy_po = sorted([*cel.wpisy, *nowe], key=lambda w: w.rewizja)
+    zapis = _zapisz_roboczo(klucz_celu, wpisy_po)
+    zapis.tmp.replace(zapis.docelowa)
+    cel.wpisy = list(zapis.wpisy_po)
+    return len(nowe)
 
 
 def wyczysc_dziennik(*, usun_pliki: bool = True) -> None:

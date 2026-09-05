@@ -284,11 +284,6 @@ def compute_enm_hash(enm: EnergyNetworkModel) -> str:
                 "updated_at",
                 "created_at",
                 "hash_sha256",
-                "semantic_hash",
-                "input_hash",
-                "case_hash",
-                "variant_hash",
-                "switching_snapshot_hash",
                 # Warunki przyłączenia OSD (dane WEJŚCIOWE dokumentu, czytane
                 # w warstwie interpretacji — nie przez solver). Wykluczone jak
                 # pozostałe pola zmienne nagłówka: deklaracja pola w ENMHeader

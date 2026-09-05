@@ -129,8 +129,9 @@ def test_analysis_run_lifecycle_pf() -> None:
     assert executed.reproducibility["case_ref"] == str(case.id)
     assert executed.reproducibility["enm_hash"] == run.input_snapshot["snapshot_id"]
     assert executed.reproducibility["snapshot_ref"] == run.input_snapshot["snapshot_id"]
-    assert executed.reproducibility["variant_ref"] == "variant.uklad_normalny"
-    assert executed.reproducibility["switching_snapshot_ref"] == "switching.uklad_normalny.base"
+    # CV-2 (H3): brak wyboru wariantu/migawki = `None`, nie zmyslona etykieta.
+    assert executed.reproducibility["variant_ref"] is None
+    assert executed.reproducibility["switching_snapshot_ref"] is None
     assert executed.reproducibility["catalog_materialization_status"] == "not_materialized"
     assert executed.reproducibility["catalog_materialization_ref"].endswith(
         run.input_snapshot["snapshot_id"]

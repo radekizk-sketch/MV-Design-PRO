@@ -16,4 +16,9 @@ Tylko bieżąca rewizja ENM w pliku + dziennik ≤ 500 + pełna kopia ENM per bi
 
 ## Alternatywy odrzucone
 - Pełne migawki per rewizja bez delt: prosto, ale liniowy wzrost 0,78 MB/rewizję.
+
+## Stan wdrożenia (CV-2, 2026-09-05) — korekta decyzji w części „magazyn rewizji"
+- ZREALIZOWANE przy magazynie plikowym ENM (nie w SQL): pełna migawka KAŻDEJ rewizji jako niezmienny plik `<digest>.rev/<n>.json.gz` (gzip ≈ 10× — pomiar 0,78 MB → ok. 80 kB/rewizję przy 54 stacjach), adresowany hashem treści; dziennik zmian = rejestr rewizji (`hash_sha256`, `rodzic`, pełny ładunek komendy), bez limitu długości; `checkout(klucz, n)`; koperta rewizji na biegu kanonicznym (`canonical_runs.envelope_json`); świeżość wyprowadzana z koperty. Szczegóły i reguła spójności (HEAD autorytatywny, sieroty, uzgodnienie przy wczytaniu): `CANONICAL_TWIN_ARCHITECTURE.md` §B.3, `enm/rewizje.py`.
+- Odrzucona alternatywa „delty + migawki co k rewizji" pozostaje odrzucona z powodu nazwanego w kontrakcie: replay z dziennika nie jest źródłem prawdy, dopóki KAŻDA komenda nie ma kompletnego ładunku (dziś tylko komendy przez `api/enm.py` go niosą; migracje, uzupełnianie katalogu, import — nie).
+- Nadal PROPOSED (decyzja właściciela): Postgres jako baza docelowa z Alembic (W-D1), retencja migawek niereferowanych (OD-4), `actor` w komendach (brak dostawcy tożsamości użytkownika).
 - Pozostanie przy SQLite w produkcji: brak FK i współbieżności międzyprocesowej.

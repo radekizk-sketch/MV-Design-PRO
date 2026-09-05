@@ -13,13 +13,15 @@ ExportArtifactKind = Literal["pdf", "docx", "csv", "xlsx", "json", "whitebox_pac
 DEFAULT_RESULTS_CONTRACT_VERSION = "V12.5"
 DEFAULT_BAY_CONTRACT_VERSION = "V12.5"
 DEFAULT_PROOF_RENDERER_VERSION = "white_box_trace_v1"
-DEFAULT_CATALOG_SCHEMA_VERSION = "catalog_v1"
+# CV-2 (H2): `DEFAULT_CATALOG_SCHEMA_VERSION = "catalog_v1"` USUNIETE — tozsamosc
+# katalogu to odcisk biblioteki typow z koperty rewizji biegu
+# (`catalog_fingerprint`); stala bez zrodla udawala dana.
 DEFAULT_TOLERANCE_POLICY_REF = "solver_tolerance/default"
 DEFAULT_ROUNDING_POLICY_REF = "rounding/default"
 DEFAULT_QUALITY_GATE_POLICY_VERSION = "v12_5_quality_gate"
 DEFAULT_EXPORT_GENERATOR_VERSION = "v12_5_export_artifact/1.0"
-DEFAULT_OPERATING_VARIANT_REF = "variant.uklad_normalny"
-DEFAULT_SWITCHING_SNAPSHOT_REF = "switching.uklad_normalny.base"
+# CV-2 (H3): domyslne etykiety wariantu/migawki lacznikowej USUNIETE — patrz
+# `domain/analysis_run.py`; brak wyboru = `None`, nie „uklad normalny".
 DEFAULT_CATALOG_MATERIALIZATION_CONTRACT_VERSION = "catalog_materialization_v1"
 DEFAULT_ENM_PROJECTION_VERSION = "v12xx.m1.1"
 DEFAULT_REPORT_CONTRACT_VERSION = "analysis_report_v2"
@@ -314,11 +316,12 @@ def build_analysis_case_reproducibility(run: CanonicalRun) -> dict[str, Any]:
         "dynamic_stability": "dynamic_stability_fault_clear",
         "source_compliance": "source_compliance_profile_match",
     }.get(run.analysis_type, run.analysis_type)
-    solver_version = (
-        ((run.power_flow_trace or {}).get("solver_version"))
-        or run.options.get("solver_version")
-        or "1.0.0"
+    # CV-2 (H2): wersja solvera WYLACZNIE ze sladu solvera albo z opcji biegu;
+    # brak = `None` (dotad stala "1.0.0" udawala odczyt).
+    solver_version = ((run.power_flow_trace or {}).get("solver_version")) or run.options.get(
+        "solver_version"
     )
+    koperta = run.koperta
     formula_set_version = {
         "PF": "pf_result_v1",
         "short_circuit_sn": "iec60909_v1",
@@ -333,15 +336,9 @@ def build_analysis_case_reproducibility(run: CanonicalRun) -> dict[str, Any]:
         "dynamic_stability": "DYNAMIC_STABILITY_FAULT_CLEAR_V1",
         "source_compliance": "SOURCE_COMPLIANCE_PROFILE_V1",
     }.get(run.analysis_type, "CANONICAL_ANALYSIS")
-    variant_ref = _option_or_header(
-        run,
-        "variant_ref",
-        default=DEFAULT_OPERATING_VARIANT_REF,
-    )
-    switching_snapshot_ref = (
-        _option_or_header(run, "switching_snapshot_ref")
-        or _option_or_header(run, "switching_state_ref")
-        or DEFAULT_SWITCHING_SNAPSHOT_REF
+    variant_ref = _option_or_header(run, "variant_ref")
+    switching_snapshot_ref = _option_or_header(run, "switching_snapshot_ref") or _option_or_header(
+        run, "switching_state_ref"
     )
     return {
         "case_ref": run.case_id,
@@ -388,8 +385,9 @@ def build_analysis_case_reproducibility(run: CanonicalRun) -> dict[str, Any]:
             "catalog_materialization_contract_version"
         )
         or DEFAULT_CATALOG_MATERIALIZATION_CONTRACT_VERSION,
-        "catalog_schema_version": run.options.get("catalog_schema_version")
-        or DEFAULT_CATALOG_SCHEMA_VERSION,
+        "catalog_schema_version": run.options.get("catalog_schema_version"),
+        "catalog_fingerprint": koperta.catalog_fingerprint if koperta is not None else None,
+        "model_revision": koperta.model_revision if koperta is not None else None,
         "tolerance_policy_ref": run.options.get("tolerance_policy_ref")
         or DEFAULT_TOLERANCE_POLICY_REF,
         "rounding_policy_ref": run.options.get("rounding_policy_ref")

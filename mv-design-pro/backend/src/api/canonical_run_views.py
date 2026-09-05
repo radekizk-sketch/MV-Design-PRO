@@ -22,8 +22,8 @@ from api.v125_contracts import (
 from application.analysis_run import build_trace_summary
 from application.result_freshness import (
     FreshnessVerdict,
-    current_model_hash,
-    evaluate_result_freshness,
+    StanBiezacyModelu,
+    swiezosc_biegu_kanonicznego,
 )
 from enm.canonical_analysis import (
     CanonicalRun,
@@ -188,12 +188,16 @@ def build_run_freshness(
     `'OUTDATED'`). Status jest teraz liczony z POROWNANIA odcisku modelu biegu
     (`CanonicalRun.snapshot_hash`) z odciskiem modelu biezacego, tym samym
     mechanizmem co nakladka zabezpieczen. `uow_factory` (CV-1-W) tlumaczy
-    `run.case_id` na klucz magazynu ENM w `current_model_hash` — patrz tam.
+    `run.case_id` na klucz magazynu ENM (`StanBiezacyModelu.dla_przypadku`).
+
+    CV-2: bieg z koperta rewizji (`CanonicalRun.envelope`) jest oceniany z
+    koperty — rewizja modelu, odcisk katalogu, lista zmian z dziennika; bieg bez
+    koperty (sprzed rejestru rewizji) wraca na sciezke odcisku modelu. JEDNA
+    funkcja (`application/result_freshness.swiezosc_biegu_kanonicznego`) dla
+    nakladki, listy biegow i statusu przypadku.
     """
-    return evaluate_result_freshness(
-        has_result=run.status == "FINISHED" and bool(run.raw_result),
-        run_model_hashes=(run.snapshot_hash,),
-        current_hash=current_model_hash(run.case_id, uow_factory),
+    return swiezosc_biegu_kanonicznego(
+        run, StanBiezacyModelu.dla_przypadku(run.case_id, uow_factory)
     )
 
 

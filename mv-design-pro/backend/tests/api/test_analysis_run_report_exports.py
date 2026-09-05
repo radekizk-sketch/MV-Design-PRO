@@ -201,8 +201,10 @@ def test_build_analysis_run_report_payload_filters_to_active_bus_table() -> None
     assert reproducibility["case_ref"] == "case-pf"
     assert reproducibility["snapshot_ref"] == "snapshot-pf"
     assert reproducibility["enm_hash"] == "snapshot-pf"
-    assert reproducibility["variant_ref"] == "variant.uklad_normalny"
-    assert reproducibility["switching_snapshot_ref"] == "switching.uklad_normalny.base"
+    # CV-2 (H3): bieg bez wybranego wariantu/migawki lacznikowej oddaje UCZCIWY brak
+    # (`None`), nie etykiete „uklad normalny" bez encji za nia.
+    assert reproducibility["variant_ref"] is None
+    assert reproducibility["switching_snapshot_ref"] is None
     assert reproducibility["catalog_materialization_status"] == "materialized"
     assert reproducibility["catalog_materialization_ref"].startswith("catalog-materialization:")
     assert len(reproducibility["catalog_materialization_hash"]) == 64
