@@ -10,10 +10,10 @@ sieci ENM rejestru (``tests/golden/registry.py``) torem kanonicznym
 (``_execute_power_flow`` / ``_execute_short_circuit`` na ``CanonicalRun`` w
 pamięci) i hashuje ``raw_result`` tą samą funkcją, co harness parytetu
 scenariuszy (``hash_widoku``: kwantyzacja kontraktu liczb, klucze lotne
-wykluczone) na WIDOKU PARYTETU (``widok_parytetu``: dodatkowo 9 miejsc
-dziesiętnych — surowy wynik solvera niesie szum zmiennoprzecinkowy wartości
-fizycznie zerowych, którego 9 cyfr znaczących nie jest przenośne między
-maszynami; patrz ``_liczba_widoku``). Odmowa (wyjątek) TEŻ jest wynikiem i też jest pinowana —
+wykluczone) — ale WYŁĄCZNIE dla SZKIELETU wyniku (struktura bez liczb);
+liczby kontraktu są zapisywane w złotym pliku i porównywane z tolerancją
+(``widok_parytetu``, ``porownaj_wpis``: surowy wynik solvera nie jest przenośny
+między maszynami przy żadnej kwantyzacji do cyfr — pomiar CI runy 4871/4873). Odmowa (wyjątek) TEŻ jest wynikiem i też jest pinowana —
 parytet odmowy jest częścią parytetu.
 
 Decyzje:
@@ -30,12 +30,11 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
-from application.analyses.kontrakt_liczb import kanoniczna_liczba
 from enm.canonical_analysis import CanonicalRun, _execute_power_flow, _execute_short_circuit
 from enm.models import EnergyNetworkModel
 
 from tests.golden import registry
-from tests.golden.parytet_scenariuszy.harness import hash_widoku
+from tests.golden.parytet_scenariuszy.harness import _do_postaci_json, hash_widoku
 from tests.golden.registry import REJESTR, PostacSieci
 
 _ID_BIEGU = UUID("00000000-0000-4000-8000-0000000000c4")  # CV-4, stały dla CAŁEGO harnessu
@@ -87,61 +86,136 @@ def _bieg(
     )
 
 
-#: Próg bezwzględny widoku parytetu (miejsca dziesiętne w jednostkach kontraktu:
-#: MW, Mvar, kV, kA, A, pu, s). Uzasadnienie w ``widok_parytetu``.
-MIEJSCA_DZIESIETNE_WIDOKU = 9
+#: Klucze śladu White Box per węzeł zwarcia (``results[i].*``) — ich LICZBY nie
+#: wchodzą do porównania liczbowego (struktura, klucze i długości list zostają w
+#: szkielecie). Pomiar (sieć G00/00, 52 stacje, SC 3F): per węzeł zwarcia
+#: ``branch_contributions`` 2 906 liczb / 0,8 MB, ``branch_flow_trace`` 1 579,
+#: ``white_box_trace`` 628 — razem 549 k liczb / 108 MB JSON na JEDEN bieg;
+#: liczby kontraktu (``ikss_a``, ``ip_a``, ``ith_a``, ``ib_a``, ``sk_mva``, ``kappa``,
+#: ``zkk_ohm``, ``contributions``…) to ~64 na węzeł. Ślad jest funkcją TYCH SAMYCH
+#: wielkości, które kontrakt niesie w agregatach — parytet agregatów + parytet
+#: struktury śladu to dowód wystarczający dla CI; lokalnie (ta sama maszyna)
+#: ``test_harness_jest_deterministyczny`` nadal wymaga równości DOKŁADNEJ.
+KLUCZE_SLADU_LICZBOWEGO: frozenset[str] = frozenset(
+    {"branch_contributions", "branch_flow_trace", "white_box_trace"}
+)
+#: Tolerancja porównania liczb kontraktu między maszynami (jednostki kontraktu:
+#: MW, Mvar, kV, kA, A, pu, Ω, s). Uzasadnienie w ``widok_parytetu``.
+RTOL_PARYTETU = 2e-6
+ATOL_PARYTETU = 1e-9
+#: Cyfry znaczące zapisu wartości w złotym pliku (błąd zapisu ≤ 5·10⁻⁷ < RTOL).
+CYFRY_ZAPISU = 7
+ZNACZNIK_LICZBY = "<f>"
 
 
-def _liczba_widoku(wartosc: float) -> float:
-    """9 cyfr znaczących ORAZ 9 miejsc dziesiętnych; zero bez znaku.
+def widok_parytetu(wartosc: Any) -> tuple[Any, list[tuple[str, float]]]:
+    """Szkielet (porównywany DOKŁADNIE) + liczby kontraktu (porównywane z tolerancją).
 
-    Sama kwantyzacja do cyfr znaczących (``kanoniczna_liczba``) jest stabilna
-    między maszynami tylko dla wartości, których błąd względny jest rzędu
-    epsilona maszynowego. Surowy wynik solvera niesie też liczby, które
-    FIZYCZNIE są zerem albo resztą poniżej tolerancji (np. ``p_from_mw``
-    -6.9e-16, ``branch_current_ka`` 2.7e-17, ``i_contrib_a`` 9e-14,
-    ``p_injected_mw`` 4.7e-8 na szynie PQ po zbieżności NR) — ich „9 cyfr
-    znaczących" to w całości szum sumowania BLAS/CPU, inny na każdej maszynie
-    (CI run 4871 na ``3d47c275``: 252/252 hashy inne niż lokalnie, zero różnic
-    w odmowach). Drugi próg — bezwzględny — zeruje ten szum, a dla wartości
-    dużych nic nie zmienia (kA/MW rzędu 1e0–1e4 mają po kroku cyfr znaczących
-    mniej niż 9 miejsc dziesiętnych). Parametry kontraktu w rodzaju
-    ``tolerance_used = 1e-8`` zostają nietknięte (1e-8 > 1e-9).
+    Dlaczego nie jeden hash: surowy wynik solvera nie jest przenośny między
+    maszynami przy ŻADNEJ kwantyzacji do cyfr — CI (run 4871 na ``3d47c275``:
+    9 cyfr znaczących; run 4873 na ``5793a3e0``: 9 cyfr znaczących ∧ 9 miejsc
+    dziesiętnych) dawało inne hashe niż ta sama gałąź lokalnie, przy
+    identycznych odmowach. Źródło: rozwiązania układów o złym uwarunkowaniu
+    (Ybus/Zbus sieci z bardzo małymi impedancjami) wzmacniają szum sumowania
+    BLAS/CPU do 10⁻⁸…10⁻⁹ względnie, a każde zaokrąglenie do siatki ma granice
+    — przy tysiącach wartości na bieg jakaś zawsze leży przy granicy. Hash jest
+    więc właściwy TYLKO dla części dyskretnej wyniku; liczby wymagają
+    porównania z tolerancją względem ZAPISANYCH wartości.
+
+    Szkielet: cały ``raw_result`` (klucze posortowane, listy w kolejności) z każdą
+    liczbą zmiennoprzecinkową zastąpioną znacznikiem ``"<f>"``; ``bool``/``int``/
+    ``str``/``None`` zostają — statusy, ograniczenia raportowe, identyfikatory
+    węzłów, ``proof_ref``, długości list (liczba węzłów zwarcia, wkładów, kroków
+    śladu) są porównywane DOKŁADNIE. Liczby: wszystkie liczby zmiennoprzecinkowe
+    poza poddrzewami ``KLUCZE_SLADU_LICZBOWEGO``, jako pary (ścieżka, wartość) w
+    deterministycznej kolejności obejścia szkieletu.
     """
-    skwantyzowana = kanoniczna_liczba(wartosc)
-    zaokraglona = round(skwantyzowana, MIEJSCA_DZIESIETNE_WIDOKU)
-    return 0.0 if zaokraglona == 0.0 else zaokraglona
+    liczby: list[tuple[str, float]] = []
+
+    def _odwiedz(w: Any, sciezka: str, w_sladzie: bool) -> Any:
+        if isinstance(w, bool) or w is None or isinstance(w, int | str):
+            return w
+        if isinstance(w, float):
+            if not w_sladzie:
+                liczby.append((sciezka, w))
+            return ZNACZNIK_LICZBY
+        if isinstance(w, dict):
+            return {
+                klucz: _odwiedz(
+                    w[klucz], f"{sciezka}.{klucz}", w_sladzie or klucz in KLUCZE_SLADU_LICZBOWEGO
+                )
+                for klucz in sorted(w)
+            }
+        if isinstance(w, list | tuple):
+            return [_odwiedz(x, f"{sciezka}[{i}]", w_sladzie) for i, x in enumerate(w)]
+        return w
+
+    szkielet = _odwiedz(_do_postaci_json(wartosc), "$", False)
+    return szkielet, liczby
 
 
-def widok_parytetu(wartosc: Any) -> Any:
-    """Widok surowego wyniku do hasha parytetu — rekurencyjnie ``_liczba_widoku``.
+def zapis_liczby(wartosc: float) -> float:
+    """Wartość do złotego pliku: ``CYFRY_ZAPISU`` cyfr znaczących, zero bez znaku."""
+    if wartosc == 0.0:
+        return 0.0
+    return float(f"{wartosc:.{CYFRY_ZAPISU - 1}e}")
 
-    ``bool`` zostaje ``bool`` (nie jest liczbą kontraktu); ``int`` zostaje
-    ``int`` (identyfikatory, liczniki iteracji); ``float`` przez ``_liczba_widoku``.
-    Klucze i kolejność list bez zmian — to samo, co zobaczy ``hash_widoku``.
+
+def porownaj_wpis(zloty: dict[str, Any], teraz: dict[str, Any]) -> list[str]:
+    """Rozbieżności złoty↔teraz (pusta lista = parytet).
+
+    Odmowa: tekst DOKŁADNIE. Szkielet: hash DOKŁADNIE. Liczby: ta sama długość i
+    ``|a − b| ≤ ATOL + RTOL·|a|`` dla każdej pary; meldunek podaje ścieżki z
+    ``teraz["sciezki"]`` (jeśli są), żeby rozbieżność dało się wskazać w wyniku.
     """
-    if isinstance(wartosc, bool):
-        return wartosc
-    if isinstance(wartosc, float):
-        return _liczba_widoku(wartosc)
-    if isinstance(wartosc, dict):
-        return {klucz: widok_parytetu(element) for klucz, element in wartosc.items()}
-    if isinstance(wartosc, list | tuple):
-        return [widok_parytetu(element) for element in wartosc]
-    return wartosc
+    if zloty.get("odmowa") != teraz.get("odmowa"):
+        return [f"odmowa: złoty={zloty.get('odmowa')!r} teraz={teraz.get('odmowa')!r}"]
+    if zloty.get("odmowa") is not None:
+        return []
+    if zloty.get("szkielet_sha256") != teraz.get("szkielet_sha256"):
+        return [
+            f"szkielet: złoty={zloty.get('szkielet_sha256')} teraz={teraz.get('szkielet_sha256')}"
+        ]
+    zl, te = zloty.get("liczby") or [], teraz.get("liczby") or []
+    if len(zl) != len(te):
+        return [f"liczba wartości kontraktu: złoty={len(zl)} teraz={len(te)}"]
+    sciezki = teraz.get("sciezki") or []
+    rozbieznosci = [
+        (i, a, b)
+        for i, (a, b) in enumerate(zip(zl, te, strict=True))
+        if abs(a - b) > ATOL_PARYTETU + RTOL_PARYTETU * abs(a)
+    ]
+    if not rozbieznosci:
+        return []
+    przyklady = ", ".join(
+        f"{sciezki[i] if i < len(sciezki) else '#' + str(i)}: złoty={a!r} teraz={b!r}"
+        for i, a, b in rozbieznosci[:5]
+    )
+    return [f"liczby: {len(rozbieznosci)} rozbieżności ponad tolerancję, np. {przyklady}"]
 
 
-def hash_parytetu(raw_result: Any) -> str:
-    """``hash_widoku`` na widoku parytetu (kwantyzacja znacząca ∧ bezwzględna)."""
-    return hash_widoku(widok_parytetu(raw_result))
+def wpis_do_zapisu(wpis: dict[str, Any]) -> dict[str, Any]:
+    """Wpis złotego pliku: bez ścieżek (są odtwarzalne z bieżącego wyniku)."""
+    return {k: v for k, v in wpis.items() if k != "sciezki"}
 
 
 def _wynik_lub_odmowa(wykonaj: Any, run: CanonicalRun) -> dict[str, Any]:
     try:
         wykonaj(run)
     except Exception as exc:  # noqa: BLE001 — odmowa jest wynikiem pinowanym
-        return {"sha256": None, "odmowa": f"{type(exc).__name__}: {exc}"}
-    return {"sha256": hash_parytetu(run.raw_result), "odmowa": None}
+        return {
+            "odmowa": f"{type(exc).__name__}: {exc}",
+            "szkielet_sha256": None,
+            "liczby": None,
+            "sciezki": None,
+        }
+    szkielet, liczby = widok_parytetu(run.raw_result)
+    return {
+        "odmowa": None,
+        "szkielet_sha256": hash_widoku(szkielet),
+        "liczby": [zapis_liczby(x) for _, x in liczby],
+        "sciezki": [sciezka for sciezka, _ in liczby],
+    }
 
 
 def zbierz_hashe(

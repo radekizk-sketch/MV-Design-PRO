@@ -1,8 +1,10 @@
-"""Parytet assemblera (CV-4.1): wynik każdego biegu kanonicznego PF/SC sieci rejestru bit w bit.
+"""Parytet assemblera (CV-4.1): wynik każdego biegu kanonicznego PF/SC sieci rejestru.
 
-Złote hashe zebrane na stanie SPRZED wycięcia ``enm/assembler.py``
-(``regeneruj.py``). Czerwony test = refaktor zmienił wynik albo odmowę —
-naprawia się kod, nie hash (wyjątek: świadoma korekta fizyki z dowodem).
+Złoty plik (``regeneruj.py``): per wpis odmowa (tekst), hash SZKIELETU wyniku
+(struktura bez liczb — dokładnie) i LICZBY kontraktu (z tolerancją między
+maszynami; lokalnie determinizm dokładny). Czerwony test = refaktor zmienił
+wynik albo odmowę — naprawia się kod, nie złoty plik (wyjątek: świadoma
+korekta fizyki z dowodem per sieć w commicie).
 """
 
 from __future__ import annotations
@@ -12,7 +14,17 @@ from pathlib import Path
 
 import pytest
 
-from tests.golden.parytet_assemblera.harness import sieci_enm_rejestru, zbierz_hashe
+from tests.golden.parytet_assemblera.harness import (
+    ATOL_PARYTETU,
+    RTOL_PARYTETU,
+    ZNACZNIK_LICZBY,
+    porownaj_wpis,
+    sieci_enm_rejestru,
+    widok_parytetu,
+    wpis_do_zapisu,
+    zapis_liczby,
+    zbierz_hashe,
+)
 
 _PLIK = Path(__file__).parent / "zlote_hashe.json"
 
@@ -30,53 +42,104 @@ def test_zlote_hashe_istnieja_i_pokrywaja_kazda_siec_enm_rejestru(zebrane: dict[
     )
 
 
-def test_parytet_bit_w_bit(zebrane: dict[str, dict]) -> None:
+def test_parytet_struktury_dokladnie_i_liczb_w_tolerancji(zebrane: dict[str, dict]) -> None:
     zlote = json.loads(_PLIK.read_text(encoding="utf-8"))
-    roznice = {k: (zlote.get(k), v) for k, v in zebrane.items() if zlote.get(k) != v}
-    assert not roznice, "Parytet assemblera złamany:\n" + "\n".join(
-        f"  {k}: złoty={a} teraz={b}" for k, (a, b) in sorted(roznice.items())
+    rozbieznosci = {
+        klucz: porownaj_wpis(zlote[klucz], wpis)
+        for klucz, wpis in zebrane.items()
+        if klucz in zlote
+    }
+    zle = {k: v for k, v in rozbieznosci.items() if v}
+    assert not zle, "Parytet assemblera złamany:\n" + "\n".join(
+        f"  {k}: " + "; ".join(v) for k, v in sorted(zle.items())
     )
 
 
 def test_harness_jest_deterministyczny(zebrane: dict[str, dict]) -> None:
+    """Ta sama maszyna, dwa biegi: równość DOKŁADNA (szkielet, liczby, ścieżki)."""
     assert zbierz_hashe(sieci_enm_rejestru()) == zebrane
 
 
-def test_widok_parytetu_zeruje_szum_zachowuje_parametry_i_wartosci_znaczace() -> None:
-    """Iloczyn cech: {zero fizyczne, reszta NR, parametr, wartość duża} × {znak}.
-
-    Szum BLAS/CPU (rzędu 1e-16 względnie) NIE może zmienić hasha parytetu —
-    dokładnie to obaliło CI (run 4871): 252/252 hashy inne niż lokalnie.
-    """
-    from tests.golden.parytet_assemblera.harness import hash_parytetu, widok_parytetu
-
-    widok = widok_parytetu(
+def test_widok_parytetu_rozdziela_szkielet_od_liczb_kontraktu() -> None:
+    """Iloczyn cech: {liczba kontraktu, liczba śladu, int, bool, str, None} × {dict, lista}."""
+    szkielet, liczby = widok_parytetu(
         {
-            "zero_fizyczne": -6.938916726557845e-16,
-            "reszta_nr_mw": 4.736406822303252e-08,
-            "parametr_tolerancja": 1e-08,
-            "napiecie_kv": 15.123456789012345,
-            "prad_a": 12345.678901234567,
-            "licznik": 7,
-            "flaga": True,
-            "lista": [2.6707815088660613e-17, -0.0],
+            "results": [
+                {
+                    "ikss_a": 1234.5678,
+                    "kappa": 1.6,
+                    "branch_contributions": [{"i_contrib_a": 9e-14, "branch_id": "b1"}],
+                    "white_box_trace": [{"krok": "Zk", "wartosc": 0.123}],
+                    "fault_node_id": "n1",
+                    "iteracje": 3,
+                    "requires_z0": False,
+                    "z0_source": None,
+                }
+            ],
+            "graph": {"nodes": [{"id": "n1", "voltage_kv": 15.0}]},
         }
     )
-    assert widok["zero_fizyczne"] == 0.0 and str(widok["zero_fizyczne"]) == "0.0"
-    assert widok["reszta_nr_mw"] == 4.7e-08
-    assert widok["parametr_tolerancja"] == 1e-08
-    assert widok["napiecie_kv"] == 15.1234568  # 9 cyfr znaczacych, potem 9 miejsc
-    assert widok["prad_a"] == 12345.6789
-    assert widok["licznik"] == 7 and widok["flaga"] is True
-    assert widok["lista"] == [0.0, 0.0]
+    assert szkielet["results"][0]["ikss_a"] == ZNACZNIK_LICZBY
+    assert szkielet["results"][0]["branch_contributions"][0]["i_contrib_a"] == ZNACZNIK_LICZBY
+    assert szkielet["results"][0]["white_box_trace"][0]["wartosc"] == ZNACZNIK_LICZBY
+    assert szkielet["results"][0]["iteracje"] == 3
+    assert szkielet["results"][0]["requires_z0"] is False
+    assert szkielet["results"][0]["z0_source"] is None
+    assert szkielet["results"][0]["fault_node_id"] == "n1"
+    assert list(szkielet["results"][0]) == sorted(szkielet["results"][0])
+    assert liczby == [
+        ("$.graph.nodes[0].voltage_kv", 15.0),
+        ("$.results[0].ikss_a", 1234.5678),
+        ("$.results[0].kappa", 1.6),
+    ]
 
-    baza = {
-        "u_kv": [15.1234567891, 14.98765432109],
-        "p_mw": [0.5, -6.938916726557845e-16, 4.736406822303252e-08],
-        "i_a": [12345.678901234, 9.005550060073712e-14],
+
+def test_porownanie_wykrywa_zmiane_fizyczna_a_toleruje_szum_platformy() -> None:
+    """Iloczyn cech: {szum 1e-8 wzgl., zero→1e-17, zmiana 1e-4 wzgl., inna odmowa, inna struktura}."""
+    baza_raw = {
+        "results": [{"ikss_a": 1234.5678, "kappa": 1.6, "un_v": 15000.0, "reszta": 0.0}],
+        "graph": {"nodes": [{"id": "n1", "voltage_kv": 15.0}]},
     }
-    szum = {
-        klucz: [x * (1 + 3e-16) + (7e-17 if x == 0 else 0.0) for x in wartosci]
-        for klucz, wartosci in baza.items()
+
+    def wpis(raw: dict) -> dict:
+        from tests.golden.parytet_assemblera.harness import hash_widoku
+
+        szkielet, liczby = widok_parytetu(raw)
+        return {
+            "odmowa": None,
+            "szkielet_sha256": hash_widoku(szkielet),
+            "liczby": [zapis_liczby(x) for _, x in liczby],
+            "sciezki": [s for s, _ in liczby],
+        }
+
+    zloty = wpis_do_zapisu(wpis(baza_raw))
+    assert "sciezki" not in zloty and zloty["liczby"] == [15.0, 1234.568, 1.6, 0.0, 15000.0]
+
+    szum = json.loads(json.dumps(baza_raw))
+    szum["results"][0]["ikss_a"] *= 1 + 1e-8
+    szum["results"][0]["reszta"] = 1e-17
+    szum["graph"]["nodes"][0]["voltage_kv"] *= 1 - 1e-8
+    assert porownaj_wpis(zloty, wpis(szum)) == []
+
+    zmiana = json.loads(json.dumps(baza_raw))
+    zmiana["results"][0]["ikss_a"] *= 1 + 1e-4
+    (komunikat,) = porownaj_wpis(zloty, wpis(zmiana))
+    assert "$.results[0].ikss_a" in komunikat and "1 rozbieżności" in komunikat
+
+    inna_struktura = json.loads(json.dumps(baza_raw))
+    inna_struktura["results"][0]["reporting_status"] = "not_reportable"
+    (komunikat,) = porownaj_wpis(zloty, wpis(inna_struktura))
+    assert komunikat.startswith("szkielet:")
+
+    odmowa = {"odmowa": "ValueError: osobliwa Y", "szkielet_sha256": None, "liczby": None}
+    assert porownaj_wpis(odmowa, dict(odmowa)) == []
+    assert porownaj_wpis(odmowa, wpis(baza_raw))[0].startswith("odmowa:")
+
+    # Granica tolerancji jest jawna: ATOL + RTOL·|a| — dokładnie na granicy przechodzi.
+    a = 1234.568
+    granica = {
+        "odmowa": None,
+        "szkielet_sha256": zloty["szkielet_sha256"],
+        "liczby": [15.0, a + ATOL_PARYTETU + RTOL_PARYTETU * a, 1.6, 0.0, 15000.0],
     }
-    assert hash_parytetu(baza) == hash_parytetu(szum)
+    assert porownaj_wpis(zloty, granica) == []
