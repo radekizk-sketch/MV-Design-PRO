@@ -13,6 +13,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from application.reference_networks.wymagane import pole_wymagane
+
 
 def _require_pandapower() -> Any:
     """Lazy import pandapower; raise informative error if not installed."""
@@ -48,7 +50,7 @@ def enm_to_pandapower_dict(enm: dict[str, Any]) -> dict[str, Any]:
     for bus in enm.get("buses", []):
         idx = pp.create_bus(
             net,
-            vn_kv=float(bus.get("u_n_kv", 110.0)),
+            vn_kv=float(pole_wymagane(bus, "u_n_kv", opis=f"szyna {bus.get('ref_id')!r}")),
             name=str(bus.get("name", bus["ref_id"])),
         )
         bus_idx_map[bus["ref_id"]] = idx
@@ -60,12 +62,13 @@ def enm_to_pandapower_dict(enm: dict[str, Any]) -> dict[str, Any]:
         bus_ref = source.get("bus")
         if bus_ref not in bus_idx_map:
             continue
+        opis_zrodla = f"zrodlo bilansujace na szynie {bus_ref!r}"
         pp.create_ext_grid(
             net,
             bus=bus_idx_map[bus_ref],
-            vm_pu=float(source.get("v_pu", 1.0)),
-            s_sc_max_mva=float(source.get("sk_max_mva", 1000.0)),
-            rx_max=float(source.get("rx_ratio", 0.1)),
+            vm_pu=float(pole_wymagane(source, "v_pu", opis=opis_zrodla)),
+            s_sc_max_mva=float(pole_wymagane(source, "sk_max_mva", opis=opis_zrodla)),
+            rx_max=float(pole_wymagane(source, "rx_ratio", opis=opis_zrodla)),
         )
 
     # Lines
@@ -76,16 +79,19 @@ def enm_to_pandapower_dict(enm: dict[str, Any]) -> dict[str, Any]:
         to_bus = branch.get("to_bus")
         if from_bus not in bus_idx_map or to_bus not in bus_idx_map:
             continue
-        length_km = float(branch.get("length_km", 1.0))
+        opis_galezi = f"galaz {branch.get('ref_id')!r}"
+        length_km = float(pole_wymagane(branch, "length_km", opis=opis_galezi))
         # Use std_type if available, else create from impedance
         pp.create_line_from_parameters(
             net,
             from_bus=bus_idx_map[from_bus],
             to_bus=bus_idx_map[to_bus],
             length_km=max(length_km, 0.001),
-            r_ohm_per_km=float(branch.get("r_pu", 0.01)) * 100.0,  # rough conversion
-            x_ohm_per_km=float(branch.get("x_pu", 0.03)) * 100.0,
-            c_nf_per_km=float(branch.get("b_pu", 0.0)) * 10.0,
+            # rough conversion (dokumentowane uproszczenie tego mostka, patrz
+            # docstring modulu) — ALE brakujace pole nadal NIE jest liczba 0.
+            r_ohm_per_km=float(pole_wymagane(branch, "r_pu", opis=opis_galezi)) * 100.0,
+            x_ohm_per_km=float(pole_wymagane(branch, "x_pu", opis=opis_galezi)) * 100.0,
+            c_nf_per_km=float(pole_wymagane(branch, "b_pu", opis=opis_galezi)) * 10.0,
             max_i_ka=1.0,
             name=str(branch.get("name", branch["ref_id"])),
         )
@@ -96,14 +102,18 @@ def enm_to_pandapower_dict(enm: dict[str, Any]) -> dict[str, Any]:
         to_bus = tr.get("to_bus")
         if from_bus not in bus_idx_map or to_bus not in bus_idx_map:
             continue
+        opis_transformatora = f"transformator {tr.get('ref_id')!r}"
         pp.create_transformer_from_parameters(
             net,
             hv_bus=bus_idx_map[from_bus],
             lv_bus=bus_idx_map[to_bus],
-            sn_mva=float(tr.get("sn_mva", 25.0)),
-            vn_hv_kv=float(tr.get("primary_kv", 110.0)),
-            vn_lv_kv=float(tr.get("secondary_kv", 20.0)),
-            vk_percent=float(tr.get("ukr_pct", 10.0)),
+            sn_mva=float(pole_wymagane(tr, "sn_mva", opis=opis_transformatora)),
+            vn_hv_kv=float(pole_wymagane(tr, "primary_kv", opis=opis_transformatora)),
+            vn_lv_kv=float(pole_wymagane(tr, "secondary_kv", opis=opis_transformatora)),
+            vk_percent=float(pole_wymagane(tr, "ukr_pct", opis=opis_transformatora)),
+            # vkr_percent/pfe_kw/i0_percent: STALE uproszczenie tego mostka
+            # (nie czytaja ZADNEGO pola fikstury — poza zakresem FAB-E/E1,
+            # ktory dotyczy fabrykowania WYNIKU przy brakujacym POLU wejscia).
             vkr_percent=0.5,
             pfe_kw=0.5,
             i0_percent=0.1,
@@ -115,11 +125,12 @@ def enm_to_pandapower_dict(enm: dict[str, Any]) -> dict[str, Any]:
         bus_ref = load.get("bus")
         if bus_ref not in bus_idx_map:
             continue
+        opis_odbioru = f"odbior na szynie {bus_ref!r}"
         pp.create_load(
             net,
             bus=bus_idx_map[bus_ref],
-            p_mw=float(load.get("p_mw", 0.0)),
-            q_mvar=float(load.get("q_mvar", 0.0)),
+            p_mw=float(pole_wymagane(load, "p_mw", opis=opis_odbioru)),
+            q_mvar=float(pole_wymagane(load, "q_mvar", opis=opis_odbioru)),
             name=str(load.get("ref_id", "")),
         )
 
@@ -128,13 +139,14 @@ def enm_to_pandapower_dict(enm: dict[str, Any]) -> dict[str, Any]:
         bus_ref = gen.get("bus")
         if bus_ref not in bus_idx_map:
             continue
+        opis_generatora = f"generator na szynie {bus_ref!r}"
         gen_kind = str(gen.get("gen_kind", "")).lower()
         if "pv" in gen_kind:
             # Static generator (default Q=0)
             pp.create_sgen(
                 net,
                 bus=bus_idx_map[bus_ref],
-                p_mw=float(gen.get("p_mw", 0.0)),
+                p_mw=float(pole_wymagane(gen, "p_mw", opis=opis_generatora)),
                 q_mvar=0.0,
                 name=str(gen.get("ref_id", "")),
                 type="PV",
@@ -143,7 +155,7 @@ def enm_to_pandapower_dict(enm: dict[str, Any]) -> dict[str, Any]:
             pp.create_sgen(
                 net,
                 bus=bus_idx_map[bus_ref],
-                p_mw=float(gen.get("p_mw", 0.0)),
+                p_mw=float(pole_wymagane(gen, "p_mw", opis=opis_generatora)),
                 q_mvar=0.0,
                 name=str(gen.get("ref_id", "")),
                 type="BESS",
@@ -153,8 +165,8 @@ def enm_to_pandapower_dict(enm: dict[str, Any]) -> dict[str, Any]:
             pp.create_gen(
                 net,
                 bus=bus_idx_map[bus_ref],
-                p_mw=float(gen.get("p_mw", 0.0)),
-                vm_pu=float(gen.get("v_pu", 1.0)),
+                p_mw=float(pole_wymagane(gen, "p_mw", opis=opis_generatora)),
+                vm_pu=float(pole_wymagane(gen, "v_pu", opis=opis_generatora)),
                 name=str(gen.get("ref_id", "")),
             )
 

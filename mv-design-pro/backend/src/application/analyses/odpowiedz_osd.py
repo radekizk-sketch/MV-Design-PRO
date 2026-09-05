@@ -296,6 +296,27 @@ def _bus_injection(raw_result: dict[str, Any], bus_ref: str) -> tuple[float | No
     return _round6(bus.get("p_injected_mw")), _round6(bus.get("q_injected_mvar"))
 
 
+def _wymagana_moc_zrodla(source: dict[str, Any], klucz: str, source_ref: str) -> float:
+    """Moc bazowa źródła (``p_mw``/``q_mvar``) z migawki — brak pola nie jest
+    legalnym zerem (FAB-E, E1).
+
+    Obie wielkości są tu PUNKTEM BAZOWYM symulacji polecenia OSD: dla poleceń
+    ``ograniczenie_p``/``lfsm_o``/``lfsm_u`` wartość ``q_base_mvar`` przechodzi
+    BEZ ZMIAN do migawki biegu „z poleceniem" (``_snapshot_with_setpoint``), więc
+    fabrykowane zero fizycznie zmieniłoby nastaw źródła jako SKUTEK UBOCZNY
+    polecenia dotyczącego wyłącznie mocy czynnej — nie tylko błędny odczyt do
+    wyświetlenia, ale błędne wejście kolejnego biegu rozpływu.
+    """
+    wartosc = source.get(klucz)
+    if wartosc is None:
+        raise ValueError(
+            f"Źródło {source_ref!r} nie ma pola {klucz!r} w migawce modelu — "
+            "symulacja odpowiedzi na polecenie OSD nie może wyznaczyć punktu "
+            "bazowego bez tej wartości."
+        )
+    return float(wartosc)
+
+
 def _input_hash(
     base_run: CanonicalRun,
     source_ref: str,
@@ -355,8 +376,8 @@ def build_osd_response_view(
     if source is None:
         raise ValueError(f"Wskazane źródło nie istnieje w modelu: {source_ref}.")
 
-    p_base_mw = float(source.get("p_mw", 0.0))
-    q_base_mvar = float(source.get("q_mvar") or 0.0)
+    p_base_mw = _wymagana_moc_zrodla(source, "p_mw", source_ref)
+    q_base_mvar = _wymagana_moc_zrodla(source, "q_mvar", source_ref)
     bus_ref = str(source.get("bus_ref"))
 
     p_after_mw, q_after_mvar, overridden = _resolve_setpoint(

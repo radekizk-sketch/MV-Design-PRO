@@ -38,6 +38,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import logging
 from typing import Any
 from uuid import NAMESPACE_URL, uuid5
 
@@ -48,6 +49,8 @@ from enm.models import Generator
 
 DEFAULT_STEP_MW = 0.5
 DEFAULT_MAX_STEPS = 40
+
+logger = logging.getLogger(__name__)
 
 # Typy kontroli, których naruszenie (FAIL) wyklucza dopuszczalność scenariusza —
 # napięcia w paśmie oraz obciążenia gałęzi/transformatorów (progi z D2).
@@ -200,11 +203,24 @@ def _evaluate_scenario(
 
 
 def _existing_generation_mw(snapshot: dict[str, Any], bus_ref: str) -> float:
-    total = sum(
-        float(gen.get("p_mw", 0.0))
-        for gen in (snapshot.get("generators") or [])
-        if gen.get("bus_ref") == bus_ref
-    )
+    total = 0.0
+    for gen in snapshot.get("generators") or []:
+        if gen.get("bus_ref") != bus_ref:
+            continue
+        p_mw = gen.get("p_mw")
+        if p_mw is None:
+            # FAB-E (E1): p_mw jest polem WYMAGANYM na modelu Generator
+            # (enm/models.py) — brak w snapshotcie oznacza uszkodzony wpis, nie
+            # generator o zerowej mocy. Pomijamy TEN wpis (nie 0.0 do sumy),
+            # zeby nie zanizyc mocy istniejacej generacji (a przez to zawyzyc
+            # zdolnosc przylaczeniowa ponad rzeczywista).
+            logger.warning(
+                "Pomijam generator bez pola p_mw przy liczeniu mocy istniejacej "
+                "(bus_ref=%r) — uszkodzony wpis, nie 0 MW.",
+                bus_ref,
+            )
+            continue
+        total += float(p_mw)
     return _round_power(total)
 
 

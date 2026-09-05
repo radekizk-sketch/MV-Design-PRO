@@ -3968,6 +3968,15 @@ class ProofGenerator:
                     cls._create_lc_step_k_s(
                         step_number=step_number,
                         s_mva=s_mva,
+                        # FAB-E (E1): `or 0.0` tu jest MARTWY, nie fabrykacja —
+                        # data.sn_mva jest juz zweryfikowane non-None wyzej
+                        # (linia ~3884: raise dla TRANSFORMER bez sn_mva), a ten
+                        # branch wykonuje sie TYLKO dla TRANSFORMER, wiec
+                        # sn_mva/k_s_percent sa tu zawsze rzeczywistymi liczbami.
+                        # `or 0.0` zostaje wylacznie, zeby mypy zwezil
+                        # `float | None` na `float` bez lokalnej zmiennej
+                        # posredniej (usuniecie go daje blad mypy arg-type —
+                        # zweryfikowane, nie hipoteza).
                         sn_mva=data.sn_mva or 0.0,
                         k_s_percent=k_s_percent or 0.0,
                     )

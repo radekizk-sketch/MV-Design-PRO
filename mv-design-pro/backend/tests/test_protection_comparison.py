@@ -519,5 +519,84 @@ class TestComparisonLogic:
             result.comparison_id = "modified"  # type: ignore
 
 
+class TestMatchEvaluationsElementOnlyOnOneSide:
+    """FAB-E (E1): element (protected_element_ref, fault_target_id) obecny
+    tylko w run A LUB run B -> i_fault_a_a/i_fault_a_b/delta_i_fault_a None,
+    nigdy fabrykowane 0.0 A (wygladaloby jak realny zanik pradu zwarciowego)."""
+
+    @staticmethod
+    def _service():
+        from application.protection_comparison.service import ProtectionComparisonService
+
+        return ProtectionComparisonService(uow_factory=lambda: None)
+
+    def test_element_only_in_run_a_gives_none_fault_current(self):
+        service = self._service()
+        eval_only_a = make_evaluation(
+            device_id="dev_1",
+            protected_element_ref="bus_1",
+            fault_target_id="fault_1",
+            i_fault_a=500.0,
+            i_pickup_a=100.0,
+            t_trip_s=0.5,
+            trip_state=TripState.TRIPS,
+        )
+        rows, matched_count = service._match_evaluations((eval_only_a,), ())
+
+        assert matched_count == 0
+        row = rows[0]
+        assert row.i_fault_a_a == pytest.approx(500.0)
+        assert row.i_fault_a_b is None
+        assert row.delta_i_fault_a is None
+
+    def test_element_only_in_run_b_gives_none_fault_current(self):
+        service = self._service()
+        eval_only_b = make_evaluation(
+            device_id="dev_1",
+            protected_element_ref="bus_1",
+            fault_target_id="fault_1",
+            i_fault_a=600.0,
+            i_pickup_a=100.0,
+            t_trip_s=0.4,
+            trip_state=TripState.TRIPS,
+        )
+        rows, matched_count = service._match_evaluations((), (eval_only_b,))
+
+        assert matched_count == 0
+        row = rows[0]
+        assert row.i_fault_a_a is None
+        assert row.i_fault_a_b == pytest.approx(600.0)
+        assert row.delta_i_fault_a is None
+
+    def test_element_present_in_both_still_computes_real_delta(self):
+        """Regresja: komplet danych po obu stronach -> te same liczby co dziś."""
+        service = self._service()
+        eval_a = make_evaluation(
+            device_id="dev_1",
+            protected_element_ref="bus_1",
+            fault_target_id="fault_1",
+            i_fault_a=500.0,
+            i_pickup_a=100.0,
+            t_trip_s=0.5,
+            trip_state=TripState.TRIPS,
+        )
+        eval_b = make_evaluation(
+            device_id="dev_1",
+            protected_element_ref="bus_1",
+            fault_target_id="fault_1",
+            i_fault_a=520.0,
+            i_pickup_a=100.0,
+            t_trip_s=0.48,
+            trip_state=TripState.TRIPS,
+        )
+        rows, matched_count = service._match_evaluations((eval_a,), (eval_b,))
+
+        assert matched_count == 1
+        row = rows[0]
+        assert row.i_fault_a_a == pytest.approx(500.0)
+        assert row.i_fault_a_b == pytest.approx(520.0)
+        assert row.delta_i_fault_a == pytest.approx(20.0)
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

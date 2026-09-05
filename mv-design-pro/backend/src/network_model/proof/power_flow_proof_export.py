@@ -20,6 +20,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from network_model.reporting.czcionki import ustaw_czcionki_stylow, zarejestruj_czcionki
+from network_model.reporting.missing_value import BRAK_DANYCH
 
 if TYPE_CHECKING:
     from network_model.proof.power_flow_proof_document import (
@@ -98,6 +99,32 @@ def _format_float_latex(value: float, precision: int = 4) -> str:
     if abs(value) >= 10000:
         return f"{value:.{precision}e}"
     return f"{value:.{precision}f}"
+
+
+def _format_float_latex_or_missing(value: float | None, precision: int = 4) -> str:
+    """Jak ``_format_float_latex``, ale ``brak danych`` gdy pole nieznane.
+
+    Do uzycia w tekscie/komorkach tabel (tryb TEXT LaTeX). FAB-E (E1): brak
+    pola WYNIKU (np. ``p_mw``/``theta_rad`` niedostepne dla danego wezla w
+    sladzie) NIE jest liczba 0 — dowod formalny (LaTeX) nie moze podpisac
+    fikcyjnej wartosci jako obliczonej. ``BRAK_DANYCH`` nie zawiera znakow
+    specjalnych LaTeX, wiec jest bezpieczny bez dodatkowego escapowania.
+    """
+    if value is None:
+        return BRAK_DANYCH
+    return _format_float_latex(value, precision)
+
+
+def _format_float_latex_math_or_missing(value: float | None, precision: int = 4) -> str:
+    """Jak ``_format_float_latex_or_missing``, ale wewnatrz trybu MATH (``$...$``).
+
+    ``BRAK_DANYCH`` jest zwyklym tekstem, wiec w matematyce wymaga
+    ``\\text{...}`` (pakiet ``amsmath``, juz w preambule tego eksportu) —
+    bez tego LaTeX potraktowalby kazda litere jak osobna zmienna.
+    """
+    if value is None:
+        return f"\\text{{{BRAK_DANYCH}}}"
+    return _format_float_latex(value, precision)
 
 
 def export_proof_to_latex(
@@ -288,13 +315,17 @@ def _build_initial_state_section(proof: PowerFlowProofDocument) -> str:
 
     state_rows: list[str] = []
     for bus_id, state in sorted(init.init_state.items())[:10]:  # Limit for readability
-        v_pu = state.get("v_pu", 1.0)
-        theta_rad = state.get("theta_rad", 0.0)
+        # FAB-E (E1): brak v_pu/theta_rad NIE jest startem plaskim (1.0/0) —
+        # to fabrykowaloby konkretna wartosc poczatkowa, ktorej solver
+        # naprawde nie zapisal w sladzie.
+        v_pu = state.get("v_pu")
+        theta_rad = state.get("theta_rad")
         import math
 
-        theta_deg = math.degrees(theta_rad)
+        theta_deg = math.degrees(theta_rad) if theta_rad is not None else None
         state_rows.append(
-            f"{_escape_latex(bus_id)} & {_format_float_latex(v_pu)} & {_format_float_latex(theta_deg)} \\\\"
+            f"{_escape_latex(bus_id)} & {_format_float_latex_or_missing(v_pu)} & "
+            f"{_format_float_latex_or_missing(theta_deg)} \\\\"
         )
 
     if len(init.init_state) > 10:
@@ -432,18 +463,23 @@ def _build_final_state_section(proof: PowerFlowProofDocument) -> str:
 
     state_rows: list[str] = []
     for bus_id, state in sorted(final.final_state.items())[:15]:
-        v_pu = state.get("v_pu", 1.0)
+        # FAB-E (E1): brak v_pu/theta_rad/p_mw/q_mvar NIE jest wartoscia 0/1.0
+        # — p_mw/q_mvar w szczegolnosci NIE sa gwarantowane (dolaczane tylko
+        # dla wezlow obecnych rowniez w wynikach solvera, patrz
+        # PowerFlowProofBuilder._build_final_state).
+        v_pu = state.get("v_pu")
         import math
 
-        theta_deg = math.degrees(state.get("theta_rad", 0.0))
-        p_mw = state.get("p_mw", 0.0)
-        q_mvar = state.get("q_mvar", 0.0)
+        theta_rad = state.get("theta_rad")
+        theta_deg = math.degrees(theta_rad) if theta_rad is not None else None
+        p_mw = state.get("p_mw")
+        q_mvar = state.get("q_mvar")
         state_rows.append(
             f"{_escape_latex(bus_id)} & "
-            f"{_format_float_latex(v_pu)} & "
-            f"{_format_float_latex(theta_deg)} & "
-            f"{_format_float_latex(p_mw)} & "
-            f"{_format_float_latex(q_mvar)} \\\\"
+            f"{_format_float_latex_or_missing(v_pu)} & "
+            f"{_format_float_latex_or_missing(theta_deg)} & "
+            f"{_format_float_latex_or_missing(p_mw)} & "
+            f"{_format_float_latex_or_missing(q_mvar)} \\\\"
         )
 
     if len(final.final_state) > 15:
@@ -474,9 +510,9 @@ def _build_final_state_section(proof: PowerFlowProofDocument) -> str:
 \\subsection{{Bilans mocy}}
 
 \\begin{{itemize}}
-\\item Straty mocy czynnej: $\\sum P_{{loss}} = {_format_float_latex(balance.get('total_losses_p_mw', 0))}$ MW
-\\item Straty mocy biernej: $\\sum Q_{{loss}} = {_format_float_latex(balance.get('total_losses_q_mvar', 0))}$ Mvar
-\\item Moc węzła bilansującego: $P_{{slack}} = {_format_float_latex(balance.get('slack_p_mw', 0))}$ MW, $Q_{{slack}} = {_format_float_latex(balance.get('slack_q_mvar', 0))}$ Mvar
+\\item Straty mocy czynnej: $\\sum P_{{loss}} = {_format_float_latex_math_or_missing(balance.get('total_losses_p_mw'))}$ MW
+\\item Straty mocy biernej: $\\sum Q_{{loss}} = {_format_float_latex_math_or_missing(balance.get('total_losses_q_mvar'))}$ Mvar
+\\item Moc węzła bilansującego: $P_{{slack}} = {_format_float_latex_math_or_missing(balance.get('slack_p_mw'))}$ MW, $Q_{{slack}} = {_format_float_latex_math_or_missing(balance.get('slack_q_mvar'))}$ Mvar
 \\end{{itemize}}
 """
 

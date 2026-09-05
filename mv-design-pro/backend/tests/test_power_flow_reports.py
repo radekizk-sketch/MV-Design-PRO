@@ -597,6 +597,32 @@ class TestExportPowerFlowComparisonToDocx:
             header = f.read(2)
         assert header == b"PK"
 
+    def test_export_comparison_with_none_delta_v_pu_does_not_crash(self, tmp_path: Path) -> None:
+        """FAB-E (E1): delta_v_pu=None (szyna tylko w jednym biegu, karta P20c)
+        nie moze rzucic TypeError w sortowaniu top-roznic (abs(None))."""
+        from network_model.reporting.power_flow_report_docx import (
+            export_power_flow_comparison_to_docx,
+        )
+
+        comparison = create_sample_comparison_result()
+        comparison["summary"]["max_delta_v_pu"] = None
+        comparison["summary"]["max_delta_angle_deg"] = None
+        comparison["bus_diffs"].append(
+            {
+                "bus_id": "BUS_ONLY_A",
+                "v_pu_a": 1.02,
+                "v_pu_b": None,
+                "delta_v_pu": None,
+                "delta_angle_deg": None,
+            }
+        )
+        output_file = tmp_path / "pf_comparison_none_delta.docx"
+
+        returned_path = export_power_flow_comparison_to_docx(comparison, output_file)
+
+        assert output_file.exists()
+        assert returned_path == output_file
+
 
 @pytest.mark.skipif(not _DOCX_AVAILABLE, reason="python-docx is not installed")
 class TestDocxErrorHandling:

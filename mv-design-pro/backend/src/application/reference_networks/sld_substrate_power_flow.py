@@ -84,6 +84,24 @@ def _build_power_flow_input(enm: EnergyNetworkModel) -> tuple[PowerFlowInput, st
         raise ValueError("Substrate ENM has no SLACK node (no grid source).")
     slack_node_id = slack_nodes[0]
 
+    def _wymagana_moc_pq(wezel: Any, node_id: str, pole: str) -> float:
+        """FAB-E (E1): brak mocy wezla PQ NIE jest moca zerowa.
+
+        `Node.__post_init__` (network_model/core/node.py) juz WYMUSZA
+        active_power/reactive_power != None dla wezlow PQ przy konstrukcji
+        grafu — `x or 0.0` tutaj bylo wiec martwym zabezpieczeniem, ktore w
+        razie zlamania tego kontraktu (np. przyszla zmiana walidacji Node)
+        cicho wstawialoby fikcyjne zero zamiast ujawnic naruszenie kontraktu.
+        """
+        wartosc = getattr(wezel, pole)
+        if wartosc is None:
+            raise ValueError(
+                f"Wezel PQ {node_id!r} bez zdefiniowanej mocy '{pole}' — sprzeczne "
+                "z kontraktem Node (network_model/core/node.py), ktory wymusza te "
+                "wartosc dla wezlow PQ przy konstrukcji grafu."
+            )
+        return float(wartosc)
+
     pq_specs = [
         PQSpec(
             node_id=node_id,
@@ -94,8 +112,8 @@ def _build_power_flow_input(enm: EnergyNetworkModel) -> tuple[PowerFlowInput, st
             # them again expecting the LOAD convention. This is the single
             # conversion point gen->load at the PQSpec construction boundary;
             # mirrors `enm.canonical_analysis._execute_power_flow`.
-            p_mw=-float(node.active_power or 0.0),
-            q_mvar=-float(node.reactive_power or 0.0),
+            p_mw=-_wymagana_moc_pq(node, node_id, "active_power"),
+            q_mvar=-_wymagana_moc_pq(node, node_id, "reactive_power"),
             zip_coeffs=node.zip_coeffs,
             # Defect D1 (audit 2026-08-01): the ZIP polynomial scales the LOAD
             # part only; generation on the same bus is constant power. Mirrors

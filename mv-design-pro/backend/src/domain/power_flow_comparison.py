@@ -172,19 +172,28 @@ class PowerFlowBusDiffRow:
         delta_angle_percent: Względna zmiana kąta [%]; None = A równe zeru (L-13)
         delta_p_percent: Względna zmiana mocy czynnej [%]; None = A równe zeru (L-13)
         delta_q_percent: Względna zmiana mocy biernej [%]; None = A równe zeru (L-13)
+
+    FAB-E (E1): v_pu/angle_deg (i ich delty) są ``None``, gdy szyna nie ma
+    wartości w run A LUB run B (np. szyna obecna tylko w jednym z porównywanych
+    biegów) — NIGDY fabrykowane 0.0, co wyglądałoby jak całkowity zanik
+    napięcia. p_injected_mw/q_injected_mvar POZOSTAJĄ required: zapis wyniku
+    rozpływu (``analysis/power_flow/result.py::PowerFlowResult``) nie niesie
+    mocy wstrzykniętej PER WĘZEŁ w ogóle (dług architektoniczny nienaprawialny
+    w tej karcie — wymaga nowego pola w solverze/warstwie wyniku, nie odczytu;
+    patrz raport FAB-E).
     """
 
     bus_id: str
-    v_pu_a: float
-    v_pu_b: float
-    angle_deg_a: float
-    angle_deg_b: float
+    v_pu_a: float | None
+    v_pu_b: float | None
+    angle_deg_a: float | None
+    angle_deg_b: float | None
     p_injected_mw_a: float
     p_injected_mw_b: float
     q_injected_mvar_a: float
     q_injected_mvar_b: float
-    delta_v_pu: float
-    delta_angle_deg: float
+    delta_v_pu: float | None
+    delta_angle_deg: float | None
     delta_p_mw: float
     delta_q_mvar: float
     # L-13 — pola addytywne (domyślnie None: starszy zapis porównania w cache
@@ -226,16 +235,16 @@ class PowerFlowBusDiffRow:
         """Deserialize from dict."""
         return cls(
             bus_id=str(data["bus_id"]),
-            v_pu_a=float(data["v_pu_a"]),
-            v_pu_b=float(data["v_pu_b"]),
-            angle_deg_a=float(data["angle_deg_a"]),
-            angle_deg_b=float(data["angle_deg_b"]),
+            v_pu_a=_procent_z_danych(data, "v_pu_a"),
+            v_pu_b=_procent_z_danych(data, "v_pu_b"),
+            angle_deg_a=_procent_z_danych(data, "angle_deg_a"),
+            angle_deg_b=_procent_z_danych(data, "angle_deg_b"),
             p_injected_mw_a=float(data["p_injected_mw_a"]),
             p_injected_mw_b=float(data["p_injected_mw_b"]),
             q_injected_mvar_a=float(data["q_injected_mvar_a"]),
             q_injected_mvar_b=float(data["q_injected_mvar_b"]),
-            delta_v_pu=float(data["delta_v_pu"]),
-            delta_angle_deg=float(data["delta_angle_deg"]),
+            delta_v_pu=_procent_z_danych(data, "delta_v_pu"),
+            delta_angle_deg=_procent_z_danych(data, "delta_angle_deg"),
             delta_p_mw=float(data["delta_p_mw"]),
             delta_q_mvar=float(data["delta_q_mvar"]),
             delta_v_percent=_procent_z_danych(data, "delta_v_percent"),
@@ -279,27 +288,31 @@ class PowerFlowBranchDiffRow:
         delta_losses_q_mvar: Losses reactive power delta (B - A) [Mvar]
         delta_*_percent: Względne zmiany (B − A)/|A| [%] tych samych wielkości;
             None = wartość A równa zeru (różnica względna nie istnieje) — L-13
+
+    FAB-E (E1): wszystkie pola powyżej są ``None``, gdy gałąź nie ma wartości w
+    run A LUB run B (np. gałąź obecna tylko w jednym z porównywanych biegów) —
+    NIGDY fabrykowane 0.0 MW/Mvar, co wyglądałoby jak realny zanik przepływu.
     """
 
     branch_id: str
-    p_from_mw_a: float
-    p_from_mw_b: float
-    q_from_mvar_a: float
-    q_from_mvar_b: float
-    p_to_mw_a: float
-    p_to_mw_b: float
-    q_to_mvar_a: float
-    q_to_mvar_b: float
-    losses_p_mw_a: float
-    losses_p_mw_b: float
-    losses_q_mvar_a: float
-    losses_q_mvar_b: float
-    delta_p_from_mw: float
-    delta_q_from_mvar: float
-    delta_p_to_mw: float
-    delta_q_to_mvar: float
-    delta_losses_p_mw: float
-    delta_losses_q_mvar: float
+    p_from_mw_a: float | None
+    p_from_mw_b: float | None
+    q_from_mvar_a: float | None
+    q_from_mvar_b: float | None
+    p_to_mw_a: float | None
+    p_to_mw_b: float | None
+    q_to_mvar_a: float | None
+    q_to_mvar_b: float | None
+    losses_p_mw_a: float | None
+    losses_p_mw_b: float | None
+    losses_q_mvar_a: float | None
+    losses_q_mvar_b: float | None
+    delta_p_from_mw: float | None
+    delta_q_from_mvar: float | None
+    delta_p_to_mw: float | None
+    delta_q_to_mvar: float | None
+    delta_losses_p_mw: float | None
+    delta_losses_q_mvar: float | None
     # L-13 — pola addytywne (exclude_none; brak = starszy zapis albo A = 0).
     delta_p_from_percent: float | None = None
     delta_q_from_percent: float | None = None
@@ -348,24 +361,24 @@ class PowerFlowBranchDiffRow:
         """Deserialize from dict."""
         return cls(
             branch_id=str(data["branch_id"]),
-            p_from_mw_a=float(data["p_from_mw_a"]),
-            p_from_mw_b=float(data["p_from_mw_b"]),
-            q_from_mvar_a=float(data["q_from_mvar_a"]),
-            q_from_mvar_b=float(data["q_from_mvar_b"]),
-            p_to_mw_a=float(data["p_to_mw_a"]),
-            p_to_mw_b=float(data["p_to_mw_b"]),
-            q_to_mvar_a=float(data["q_to_mvar_a"]),
-            q_to_mvar_b=float(data["q_to_mvar_b"]),
-            losses_p_mw_a=float(data["losses_p_mw_a"]),
-            losses_p_mw_b=float(data["losses_p_mw_b"]),
-            losses_q_mvar_a=float(data["losses_q_mvar_a"]),
-            losses_q_mvar_b=float(data["losses_q_mvar_b"]),
-            delta_p_from_mw=float(data["delta_p_from_mw"]),
-            delta_q_from_mvar=float(data["delta_q_from_mvar"]),
-            delta_p_to_mw=float(data["delta_p_to_mw"]),
-            delta_q_to_mvar=float(data["delta_q_to_mvar"]),
-            delta_losses_p_mw=float(data["delta_losses_p_mw"]),
-            delta_losses_q_mvar=float(data["delta_losses_q_mvar"]),
+            p_from_mw_a=_procent_z_danych(data, "p_from_mw_a"),
+            p_from_mw_b=_procent_z_danych(data, "p_from_mw_b"),
+            q_from_mvar_a=_procent_z_danych(data, "q_from_mvar_a"),
+            q_from_mvar_b=_procent_z_danych(data, "q_from_mvar_b"),
+            p_to_mw_a=_procent_z_danych(data, "p_to_mw_a"),
+            p_to_mw_b=_procent_z_danych(data, "p_to_mw_b"),
+            q_to_mvar_a=_procent_z_danych(data, "q_to_mvar_a"),
+            q_to_mvar_b=_procent_z_danych(data, "q_to_mvar_b"),
+            losses_p_mw_a=_procent_z_danych(data, "losses_p_mw_a"),
+            losses_p_mw_b=_procent_z_danych(data, "losses_p_mw_b"),
+            losses_q_mvar_a=_procent_z_danych(data, "losses_q_mvar_a"),
+            losses_q_mvar_b=_procent_z_danych(data, "losses_q_mvar_b"),
+            delta_p_from_mw=_procent_z_danych(data, "delta_p_from_mw"),
+            delta_q_from_mvar=_procent_z_danych(data, "delta_q_from_mvar"),
+            delta_p_to_mw=_procent_z_danych(data, "delta_p_to_mw"),
+            delta_q_to_mvar=_procent_z_danych(data, "delta_q_to_mvar"),
+            delta_losses_p_mw=_procent_z_danych(data, "delta_losses_p_mw"),
+            delta_losses_q_mvar=_procent_z_danych(data, "delta_losses_q_mvar"),
             delta_p_from_percent=_procent_z_danych(data, "delta_p_from_percent"),
             delta_q_from_percent=_procent_z_danych(data, "delta_q_from_percent"),
             delta_p_to_percent=_procent_z_danych(data, "delta_p_to_percent"),
@@ -432,6 +445,10 @@ class PowerFlowRankingIssue:
 class PowerFlowComparisonSummary:
     """
     Summary statistics for power flow comparison.
+
+    FAB-E (E1): max_delta_v_pu/max_delta_angle_deg to ``None``, gdy ŻADNA szyna
+    nie ma porownywalnej delty (obie strony bez wspolnych szyn) — NIGDY
+    fabrykowane 0.0, co wygladaloby jak "brak zmian napiecia w calej sieci".
     """
 
     total_buses: int
@@ -441,8 +458,8 @@ class PowerFlowComparisonSummary:
     total_losses_p_mw_a: float
     total_losses_p_mw_b: float
     delta_total_losses_p_mw: float
-    max_delta_v_pu: float
-    max_delta_angle_deg: float
+    max_delta_v_pu: float | None
+    max_delta_angle_deg: float | None
     total_issues: int
     critical_issues: int
     major_issues: int
@@ -484,8 +501,8 @@ class PowerFlowComparisonSummary:
             total_losses_p_mw_a=float(data["total_losses_p_mw_a"]),
             total_losses_p_mw_b=float(data["total_losses_p_mw_b"]),
             delta_total_losses_p_mw=float(data["delta_total_losses_p_mw"]),
-            max_delta_v_pu=float(data["max_delta_v_pu"]),
-            max_delta_angle_deg=float(data["max_delta_angle_deg"]),
+            max_delta_v_pu=_procent_z_danych(data, "max_delta_v_pu"),
+            max_delta_angle_deg=_procent_z_danych(data, "max_delta_angle_deg"),
             total_issues=int(data["total_issues"]),
             critical_issues=int(data["critical_issues"]),
             major_issues=int(data["major_issues"]),

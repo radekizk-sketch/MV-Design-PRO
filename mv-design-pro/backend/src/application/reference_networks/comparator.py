@@ -21,7 +21,7 @@ class ElementComparison:
     rtol: float
     abs_diff: float
     rel_diff: float
-    status: Literal["PASS", "FAIL"]
+    status: Literal["PASS", "FAIL", "NIEPOROWNYWALNY"]
     note: str = ""
 
     def to_dict(self) -> dict[str, object]:
@@ -36,6 +36,33 @@ class ElementComparison:
             "status": self.status,
             "note": self.note,
         }
+
+
+def _niekompletny(
+    element_id: str,
+    quantity: str,
+    expected: float,
+    rtol: float,
+    brakujace_pole: str,
+) -> ElementComparison:
+    """FAB-E (E1): brak pola WYNIKU w aktualnym rezultacie NIE jest liczba 0.
+
+    Element jest OBECNY w wyniku aktualnym, ale konkretne pole (``quantity``)
+    nie zostalo podane — porownywanie fabrykowanego 0.0 z wartoscia oczekiwana
+    dawaloby fałszywy status FAIL (albo przypadkowy PASS dla oczekiwanej ~0),
+    zamiast uczciwie zaznaczyc, ze porownanie jest NIEWYKONALNE.
+    """
+    return ElementComparison(
+        element_id=element_id,
+        quantity=quantity,
+        actual=float("nan"),
+        expected=expected,
+        rtol=rtol,
+        abs_diff=float("nan"),
+        rel_diff=float("nan"),
+        status="NIEPOROWNYWALNY",
+        note=f"Brak pola '{brakujace_pole}' w wyniku aktualnym — porownanie niewykonalne.",
+    )
 
 
 def _compare_value(
@@ -95,11 +122,35 @@ def compare_power_flow(
                 )
             )
             continue
-        v_actual = float(actual.get("v_pu", 0.0))
-        angle_actual = float(actual.get("angle_deg", 0.0))
-        comparisons.append(
-            _compare_value(exp_bus.bus_id, "v_pu", v_actual, exp_bus.v_pu, exp_bus.rtol),
-        )
+        # v_pu i angle_deg oceniane NIEZALEZNIE — brak jednego pola nie moze
+        # ukryc oceny drugiego (FAB-E, E1: kazde pole z oczekiwana wartoscia
+        # dostaje dokladnie jeden wynik: PASS/FAIL/NIEPOROWNYWALNY).
+        v_raw = actual.get("v_pu")
+        if v_raw is None:
+            comparisons.append(
+                _niekompletny(exp_bus.bus_id, "v_pu", exp_bus.v_pu, exp_bus.rtol, "v_pu")
+            )
+        else:
+            comparisons.append(
+                _compare_value(exp_bus.bus_id, "v_pu", float(v_raw), exp_bus.v_pu, exp_bus.rtol),
+            )
+
+        if exp_bus.angle_deg is None:
+            # FAB-E (E1): autor fikstury NIE podal oczekiwanego kata (np.
+            # interesuje go tylko modul napiecia) — to NIE jest oczekiwanie
+            # "0 stopni", wiec nie generujemy zadnego wiersza porownania dla
+            # tej wielkosci (nie ma czego porownywac, w odroznieniu od
+            # sytuacji, gdy oczekiwanie ISTNIEJE, ale actual go brakuje).
+            continue
+        angle_raw = actual.get("angle_deg")
+        if angle_raw is None:
+            comparisons.append(
+                _niekompletny(
+                    exp_bus.bus_id, "angle_deg", exp_bus.angle_deg, exp_bus.rtol * 10, "angle_deg"
+                )
+            )
+            continue
+        angle_actual = float(angle_raw)
         # Angle comparison policy:
         # - For small angles (|expected| < 10°): allow up to 10° absolute drift.
         #   Reason: textbook PF examples mają niską precyzję kątów (1-2 decimal places)
@@ -156,7 +207,17 @@ def compare_power_flow_branches(
             ("q_from_mvar", exp_branch.q_from_mvar),
             ("losses_p_mw", exp_branch.losses_p_mw),
         ):
-            actual_val = float(actual.get(qty, 0.0))
+            if exp_val is None:
+                # FAB-E (E1): brak oczekiwania w wyroczni (nie kazda fikstura
+                # podaje wszystkie 3 wielkosci galezi) — nic do porownania.
+                continue
+            actual_raw = actual.get(qty)
+            if actual_raw is None:
+                comparisons.append(
+                    _niekompletny(exp_branch.branch_id, qty, exp_val, exp_branch.rtol, qty)
+                )
+                continue
+            actual_val = float(actual_raw)
             comparisons.append(
                 _compare_value(exp_branch.branch_id, qty, actual_val, exp_val, exp_branch.rtol)
             )
@@ -199,7 +260,18 @@ def compare_short_circuit(
             (f"ith_a@{exp_sc.sc_type}", exp_sc.ith_a),
             (f"sk_mva@{exp_sc.sc_type}", exp_sc.sk_mva),
         ):
-            actual_val = float(actual.get(qty.split("@")[0], 0.0))
+            if exp_val is None:
+                # FAB-E (E1): brak oczekiwania w wyroczni (nie kazda fikstura
+                # SC podaje wszystkie 4 wielkosci) — nic do porownania.
+                continue
+            pole_surowe = qty.split("@")[0]
+            actual_raw = actual.get(pole_surowe)
+            if actual_raw is None:
+                comparisons.append(
+                    _niekompletny(exp_sc.fault_node_id, qty, exp_val, exp_sc.rtol, pole_surowe)
+                )
+                continue
+            actual_val = float(actual_raw)
             comparisons.append(
                 _compare_value(exp_sc.fault_node_id, qty, actual_val, exp_val, exp_sc.rtol)
             )
@@ -225,6 +297,12 @@ class ValidationReport:
     sc_pass_count: int
     sc_fail_count: int
     trace: tuple[dict[str, Any], ...] = ()
+    # FAB-E (E1): pozycje NIEPOROWNYWALNE (brak pola w wyniku aktualnym) sa
+    # zliczane ODDZIELNIE od fail_count — nie mieszamy „solver policzyl inaczej
+    # niz oczekiwano" z „solver w ogole nie podal tej wielkosci".
+    pf_incomparable_count: int = 0
+    pf_branch_incomparable_count: int = 0
+    sc_incomparable_count: int = 0
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -238,10 +316,13 @@ class ValidationReport:
             "sc_comparisons": [c.to_dict() for c in self.sc_comparisons],
             "pf_pass_count": self.pf_pass_count,
             "pf_fail_count": self.pf_fail_count,
+            "pf_incomparable_count": self.pf_incomparable_count,
             "pf_branch_pass_count": self.pf_branch_pass_count,
             "pf_branch_fail_count": self.pf_branch_fail_count,
+            "pf_branch_incomparable_count": self.pf_branch_incomparable_count,
             "sc_pass_count": self.sc_pass_count,
             "sc_fail_count": self.sc_fail_count,
+            "sc_incomparable_count": self.sc_incomparable_count,
             "trace_step_count": len(self.trace),
         }
 
@@ -259,11 +340,22 @@ def build_validation_report(
     """Assemble ValidationReport with PASS/FAIL counts and overall status."""
     pf_pass = sum(1 for c in pf_comparisons if c.status == "PASS")
     pf_fail = sum(1 for c in pf_comparisons if c.status == "FAIL")
+    pf_incomparable = sum(1 for c in pf_comparisons if c.status == "NIEPOROWNYWALNY")
     pf_b_pass = sum(1 for c in pf_branch_comparisons if c.status == "PASS")
     pf_b_fail = sum(1 for c in pf_branch_comparisons if c.status == "FAIL")
+    pf_b_incomparable = sum(1 for c in pf_branch_comparisons if c.status == "NIEPOROWNYWALNY")
     sc_pass = sum(1 for c in sc_comparisons if c.status == "PASS")
     sc_fail = sum(1 for c in sc_comparisons if c.status == "FAIL")
-    overall: Literal["PASS", "FAIL"] = "PASS" if (pf_fail + pf_b_fail + sc_fail == 0) else "FAIL"
+    sc_incomparable = sum(1 for c in sc_comparisons if c.status == "NIEPOROWNYWALNY")
+    # FAB-E (E1): pozycja NIEPOROWNYWALNA nie moze cicho przejsc jako "PASS"
+    # (brak danych do weryfikacji ≠ zweryfikowano zgodnosc) — liczy sie do
+    # overall_status tak samo jak FAIL.
+    overall: Literal["PASS", "FAIL"] = (
+        "PASS"
+        if (pf_fail + pf_b_fail + sc_fail + pf_incomparable + pf_b_incomparable + sc_incomparable)
+        == 0
+        else "FAIL"
+    )
     return ValidationReport(
         network_id=network_id,
         network_name_pl=network_name_pl,
@@ -279,5 +371,8 @@ def build_validation_report(
         pf_branch_fail_count=pf_b_fail,
         sc_pass_count=sc_pass,
         sc_fail_count=sc_fail,
+        pf_incomparable_count=pf_incomparable,
+        pf_branch_incomparable_count=pf_b_incomparable,
+        sc_incomparable_count=sc_incomparable,
         trace=trace,
     )

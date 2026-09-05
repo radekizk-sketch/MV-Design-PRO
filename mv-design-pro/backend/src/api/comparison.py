@@ -69,13 +69,18 @@ class ComplexDeltaResponse(BaseModel):
 
 
 class ShortCircuitComparisonResponse(BaseModel):
-    """Short circuit comparison response."""
+    """Short circuit comparison response.
 
-    ikss_delta: NumericDeltaResponse
-    sk_delta: NumericDeltaResponse
-    zth_delta: ComplexDeltaResponse
-    ip_delta: NumericDeltaResponse
-    ith_delta: NumericDeltaResponse
+    FAB-E (E1): pola delt to ``| None`` — brak wartości w payloadzie run A LUB
+    run B (niekompletny/starszy zapis wyniku) daje ``None``, nigdy fabrykowaną
+    deltę liczoną od milczącego 0.
+    """
+
+    ikss_delta: NumericDeltaResponse | None = None
+    sk_delta: NumericDeltaResponse | None = None
+    zth_delta: ComplexDeltaResponse | None = None
+    ip_delta: NumericDeltaResponse | None = None
+    ith_delta: NumericDeltaResponse | None = None
     # Karta S-C (2026-07-22): addytywne delty pełnego bilansu IEC 60909;
     # None dla starszych wyników bez rx_ratio / ith_a+tk_s (uczciwy brak).
     xr_ratio_delta: NumericDeltaResponse | None = None
@@ -83,11 +88,14 @@ class ShortCircuitComparisonResponse(BaseModel):
 
 
 class BusVoltageComparisonResponse(BaseModel):
-    """Bus voltage comparison response."""
+    """Bus voltage comparison response.
+
+    FAB-E (E1): ``None`` gdy szyna nie ma wartości w run A LUB run B.
+    """
 
     bus_id: str
-    u_kv_delta: NumericDeltaResponse
-    u_pu_delta: NumericDeltaResponse
+    u_kv_delta: NumericDeltaResponse | None = None
+    u_pu_delta: NumericDeltaResponse | None = None
 
 
 # Backward-compat alias
@@ -95,20 +103,27 @@ NodeVoltageComparisonResponse = BusVoltageComparisonResponse
 
 
 class BranchPowerComparisonResponse(BaseModel):
-    """Branch power comparison response."""
+    """Branch power comparison response.
+
+    FAB-E (E1): ``None`` gdy gałąź nie ma wartości w run A LUB run B.
+    """
 
     branch_id: str
-    p_mw_delta: NumericDeltaResponse
-    q_mvar_delta: NumericDeltaResponse
+    p_mw_delta: NumericDeltaResponse | None = None
+    q_mvar_delta: NumericDeltaResponse | None = None
 
 
 class PowerFlowComparisonResponse(BaseModel):
-    """Power flow comparison response."""
+    """Power flow comparison response.
 
-    total_losses_p_delta: NumericDeltaResponse
-    total_losses_q_delta: NumericDeltaResponse
-    slack_p_delta: NumericDeltaResponse
-    slack_q_delta: NumericDeltaResponse
+    FAB-E (E1): agregaty to ``| None`` — brak klucza w payloadzie run A LUB
+    run B daje ``None``, nigdy fabrykowane 0.0.
+    """
+
+    total_losses_p_delta: NumericDeltaResponse | None = None
+    total_losses_q_delta: NumericDeltaResponse | None = None
+    slack_p_delta: NumericDeltaResponse | None = None
+    slack_q_delta: NumericDeltaResponse | None = None
     bus_voltages: list[BusVoltageComparisonResponse]
     branch_powers: list[BranchPowerComparisonResponse]
 
@@ -125,12 +140,16 @@ class ProtectionEvaluationComparisonResponse(BaseModel):
 
 
 class ProtectionComparisonResponse(BaseModel):
-    """Protection comparison response."""
+    """Protection comparison response.
+
+    FAB-E (E1): count-delty to ``| None`` — brak klucza "summary" w payloadzie
+    run A LUB run B daje ``None``, nigdy fabrykowane 0.
+    """
 
     evaluations: list[ProtectionEvaluationComparisonResponse]
-    trip_count_delta: NumericDeltaResponse
-    no_trip_count_delta: NumericDeltaResponse
-    invalid_count_delta: NumericDeltaResponse
+    trip_count_delta: NumericDeltaResponse | None = None
+    no_trip_count_delta: NumericDeltaResponse | None = None
+    invalid_count_delta: NumericDeltaResponse | None = None
 
 
 class RunComparisonResponse(BaseModel):

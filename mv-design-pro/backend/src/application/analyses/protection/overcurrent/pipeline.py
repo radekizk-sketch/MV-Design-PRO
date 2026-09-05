@@ -183,35 +183,61 @@ def _extract_short_circuit_payload(meta_json: dict[str, Any] | None) -> dict[str
     raise ValueError("Short circuit result payload not available")
 
 
+def _required_sc_field(payload: dict[str, Any], key: str) -> float:
+    """Required numeric field of a stored ShortCircuitResult payload.
+
+    FAB-E (E1): the FROZEN ShortCircuitResult contract has no NaN/None-safe
+    serialization for these fields (unlike PowerFlowBusResult) — a genuinely
+    computed short-circuit result always carries them, so a missing key means
+    the stored payload is corrupted, not that the value is legitimately zero.
+    Defaulting to 0.0 here would silently fabricate a physically absurd
+    result (e.g. zero fault current) and feed it straight into protection
+    settings computation.
+    """
+    value = payload.get(key)
+    if value is None:
+        raise ValueError(
+            f"Short circuit result payload missing required field: {key!r} "
+            "(stored artifact is incomplete/corrupted)."
+        )
+    return float(value)
+
+
 def _build_short_circuit_result(payload: dict[str, Any]) -> ShortCircuitResult:
     sc_type = payload.get("short_circuit_type")
     if isinstance(sc_type, ShortCircuitType):
         resolved_type = sc_type
     else:
         resolved_type = ShortCircuitType(str(sc_type))
-    zkk_payload = payload.get("zkk_ohm") or {}
-    zkk_ohm = complex(
-        float(zkk_payload.get("re", 0.0)),
-        float(zkk_payload.get("im", 0.0)),
-    )
+    zkk_payload = payload.get("zkk_ohm")
+    if (
+        not isinstance(zkk_payload, dict)
+        or zkk_payload.get("re") is None
+        or zkk_payload.get("im") is None
+    ):
+        raise ValueError(
+            "Short circuit result payload missing required field: 'zkk_ohm' (re/im) "
+            "(stored artifact is incomplete/corrupted)."
+        )
+    zkk_ohm = complex(float(zkk_payload["re"]), float(zkk_payload["im"]))
     return ShortCircuitResult(
         short_circuit_type=resolved_type,
         fault_node_id=str(payload.get("fault_node_id", "")),
-        c_factor=float(payload.get("c_factor", 0.0)),
-        un_v=float(payload.get("un_v", 0.0)),
+        c_factor=_required_sc_field(payload, "c_factor"),
+        un_v=_required_sc_field(payload, "un_v"),
         zkk_ohm=zkk_ohm,
-        ikss_a=float(payload.get("ikss_a", 0.0)),
-        ip_a=float(payload.get("ip_a", 0.0)),
-        ith_a=float(payload.get("ith_a", 0.0)),
-        sk_mva=float(payload.get("sk_mva", 0.0)),
-        rx_ratio=float(payload.get("rx_ratio", 0.0)),
-        kappa=float(payload.get("kappa", 0.0)),
-        tk_s=float(payload.get("tk_s", 0.0)),
-        ib_a=float(payload.get("ib_a", 0.0)),
-        tb_s=float(payload.get("tb_s", 0.0)),
-        ik_thevenin_a=float(payload.get("ik_thevenin_a", 0.0)),
-        ik_inverters_a=float(payload.get("ik_inverters_a", 0.0)),
-        ik_total_a=float(payload.get("ik_total_a", 0.0)),
+        ikss_a=_required_sc_field(payload, "ikss_a"),
+        ip_a=_required_sc_field(payload, "ip_a"),
+        ith_a=_required_sc_field(payload, "ith_a"),
+        sk_mva=_required_sc_field(payload, "sk_mva"),
+        rx_ratio=_required_sc_field(payload, "rx_ratio"),
+        kappa=_required_sc_field(payload, "kappa"),
+        tk_s=_required_sc_field(payload, "tk_s"),
+        ib_a=_required_sc_field(payload, "ib_a"),
+        tb_s=_required_sc_field(payload, "tb_s"),
+        ik_thevenin_a=_required_sc_field(payload, "ik_thevenin_a"),
+        ik_inverters_a=_required_sc_field(payload, "ik_inverters_a"),
+        ik_total_a=_required_sc_field(payload, "ik_total_a"),
         contributions=[],
         branch_contributions=None,
         white_box_trace=list(payload.get("white_box_trace") or []),

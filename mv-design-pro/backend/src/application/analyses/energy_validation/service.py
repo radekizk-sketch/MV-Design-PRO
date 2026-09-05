@@ -34,45 +34,86 @@ from enm.models import EnergyNetworkModel
 from network_model.core.graph import NetworkGraph
 
 
+def _moc_zespolona_z_wiersza(row: dict[str, Any], klucz_p: str, klucz_q: str) -> complex | None:
+    """Moc zespolona z wiersza galezi, albo ``None`` gdy skladowa nie jest ZNANA.
+
+    FAB-E (E1): brak ``p_*_mw``/``q_*_mvar`` w wierszu NIE jest moca zerowa —
+    galaz zostaje pominieta z wyniku (``None``), co dalej odczytuje
+    ``analysis.energy_validation.builder._znana_zespolona`` jako NOT_COMPUTED.
+    """
+    p_mw = row.get(klucz_p)
+    q_mvar = row.get(klucz_q)
+    if p_mw is None or q_mvar is None:
+        return None
+    return complex(float(p_mw), float(q_mvar))
+
+
+def _bilans_pu(
+    summary: dict[str, Any], klucz_p: str, klucz_q: str, base_mva_znane: float | None
+) -> complex:
+    """Bilans mocy w p.u., albo znacznik NaN gdy skladowa NIE jest ZNANA.
+
+    FAB-E (E1): brak wartosci w podsumowaniu solvera (lub brakujaca ``base_mva``,
+    bez ktorej przeliczenie MW/Mvar -> p.u. jest niewykonalne) NIE jest bilansem
+    zerowym. Znacznik NaN to ISTNIEJACY kontrakt solvera dla "nieznana" (nie nowy
+    pomysl — patrz komentarz w
+    ``analysis/energy_validation/builder.py::_znana_zespolona``, ktory czyta NaN
+    identycznie jak ``None``), wiec LOSS_BUDGET/REACTIVE_BALANCE poprawnie
+    wyladuja jako NOT_COMPUTED zamiast fikcyjnego bilansu zerowego — bez wyjatku
+    (kontrakt modulu: dane niepelne -> NOT_COMPUTED, `test_energy_validation_service.py`).
+    """
+    p_mw = summary.get(klucz_p)
+    q_mvar = summary.get(klucz_q)
+    if p_mw is None or q_mvar is None or base_mva_znane is None:
+        return complex(float("nan"), float("nan"))
+    return complex(float(p_mw), float(q_mvar)) / base_mva_znane
+
+
 def _reconstruct_power_flow_result(run: CanonicalRun) -> PowerFlowResult:
     """Odtwórz zamrożony ``PowerFlowResult`` z zapisanego wyniku przebiegu.
 
     Klucze gałęzi/węzłów są identyczne z tymi, których użył solver (ten sam
     deterministyczny graf ENM→NetworkGraph), więc dopasowują się do grafu
     odtworzonego w ``_graph``.
+
+    FAB-E (E1): brak metadanych solvera (``base_mva``/``iterations_count``/
+    ``tolerance_used``) NIE jest liczba 0/100 — ten serwis ma jednak KONTRAKT
+    „dane niepelne -> NOT_COMPUTED bez wyjatku" (`test_incomplete_result_yields_
+    not_computed_without_exception`, `test_missing_raw_result_yields_not_computed`),
+    wiec brak zgloszony jest przez propagacje NIEZNANEGO (`None`/NaN) do
+    wielkosci faktycznie INTERPRETOWANYCH przez builder (`losses_total_pu`,
+    `slack_power_pu`, `branch_s_from_mva`, `branch_s_to_mva`) — NIE przez
+    wyjatek. `iterations`/`tolerance`/`converged` zasilaja pola PowerFlowResult,
+    ktorych ZADEN z czterech builderow tej rodziny (energy_validation,
+    power_flow_interpretation, voltage_profile, sld/overlay_builder — sprawdzone
+    grepem) nie odczytuje, wiec placeholder nie moze nikogo wprowadzic w blad;
+    czytamy je jednak bez zaszytego `0`, zeby prawdziwa wartosc (gdy jest) zawsze
+    wygrywala z placeholderem.
     """
     raw_result = run.raw_result or {}
     result_v1 = raw_result.get("result_v1") or {}
-    base_mva = float(result_v1.get("base_mva", 100.0)) or 100.0
+    base_mva_raw = result_v1.get("base_mva")
+    base_mva_znane = (
+        float(base_mva_raw) if base_mva_raw is not None and float(base_mva_raw) > 0 else None
+    )
+    base_mva = base_mva_znane if base_mva_znane is not None else 100.0
     branch_results = result_v1.get("branch_results", [])
     summary = result_v1.get("summary", {})
 
     branch_s_from_mva = {
-        str(row["branch_id"]): complex(
-            float(row.get("p_from_mw", 0.0)), float(row.get("q_from_mvar", 0.0))
-        )
+        str(row["branch_id"]): moc
         for row in branch_results
+        if (moc := _moc_zespolona_z_wiersza(row, "p_from_mw", "q_from_mvar")) is not None
     }
     branch_s_to_mva = {
-        str(row["branch_id"]): complex(
-            float(row.get("p_to_mw", 0.0)), float(row.get("q_to_mvar", 0.0))
-        )
+        str(row["branch_id"]): moc
         for row in branch_results
+        if (moc := _moc_zespolona_z_wiersza(row, "p_to_mw", "q_to_mvar")) is not None
     }
-    losses_total_pu = (
-        complex(
-            float(summary.get("total_losses_p_mw", 0.0)),
-            float(summary.get("total_losses_q_mvar", 0.0)),
-        )
-        / base_mva
+    losses_total_pu = _bilans_pu(
+        summary, "total_losses_p_mw", "total_losses_q_mvar", base_mva_znane
     )
-    slack_power_pu = (
-        complex(
-            float(summary.get("slack_p_mw", 0.0)),
-            float(summary.get("slack_q_mvar", 0.0)),
-        )
-        / base_mva
-    )
+    slack_power_pu = _bilans_pu(summary, "slack_p_mw", "slack_q_mvar", base_mva_znane)
     node_voltage_kv = {
         str(node_id): float(value)
         for node_id, value in (raw_result.get("node_voltage_kv") or {}).items()
@@ -83,10 +124,12 @@ def _reconstruct_power_flow_result(run: CanonicalRun) -> PowerFlowResult:
         for branch_id, value in (raw_result.get("branch_current_ka") or {}).items()
         if value is not None
     }
+    iterations_raw = result_v1.get("iterations_count")
+    tolerance_raw = result_v1.get("tolerance_used")
     return PowerFlowResult(
         converged=bool(result_v1.get("converged", False)),
-        iterations=int(result_v1.get("iterations_count", 0)),
-        tolerance=float(result_v1.get("tolerance_used", 0.0)),
+        iterations=int(iterations_raw) if iterations_raw is not None else 0,
+        tolerance=float(tolerance_raw) if tolerance_raw is not None else 0.0,
         max_mismatch_pu=0.0,
         base_mva=base_mva,
         slack_node_id=str(result_v1.get("slack_bus_id", "")),

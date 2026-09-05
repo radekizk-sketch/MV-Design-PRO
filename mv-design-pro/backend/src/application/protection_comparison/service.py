@@ -446,11 +446,15 @@ class ProtectionComparisonService:
                 trip_state_b=eval_b.trip_state.value if eval_b else "MISSING",
                 t_trip_s_a=eval_a.t_trip_s if eval_a else None,
                 t_trip_s_b=eval_b.t_trip_s if eval_b else None,
-                i_fault_a_a=eval_a.i_fault_a if eval_a else 0.0,
-                i_fault_a_b=eval_b.i_fault_a if eval_b else 0.0,
+                # FAB-E (E1): element nieobecny w run A/B (eval_a/eval_b brak)
+                # -> None, nie fikcyjny prad zwarciowy 0.0 A (spojnie z
+                # t_trip_s_a/margin_percent_a powyzej/ponizej w tym samym wierszu).
+                i_fault_a_a=eval_a.i_fault_a if eval_a else None,
+                i_fault_a_b=eval_b.i_fault_a if eval_b else None,
                 delta_t_s=None,  # Computed in next step
-                delta_i_fault_a=(eval_b.i_fault_a if eval_b else 0.0)
-                - (eval_a.i_fault_a if eval_a else 0.0),
+                delta_i_fault_a=(
+                    (eval_b.i_fault_a - eval_a.i_fault_a) if (eval_a and eval_b) else None
+                ),
                 margin_percent_a=eval_a.margin_percent if eval_a else None,
                 margin_percent_b=eval_b.margin_percent if eval_b else None,
                 state_change=state_change,
@@ -666,9 +670,16 @@ class ProtectionComparisonService:
         base_description = ISSUE_DESCRIPTIONS_PL.get(issue_code, issue_code.value)
         description = f"{base_description} ({extra_info})" if extra_info else base_description
 
+        # FAB-E (E2, KLASA NIE INSTANCJA — ten sam wzorzec jak
+        # application/power_flow_comparison/service.py): brak wpisu w
+        # ISSUE_SEVERITY_MAP dla tego kodu problemu to dziura w kontrakcie —
+        # subskrypcja wprost zamiast `.get(..., default)`, zeby przyszla luka
+        # rzucila KeyError zamiast cicho zanizyc priorytet do INFORMATIONAL.
+        # Mapa pokrywa dzis WSZYSTKIE elementy IssueCode — patrz
+        # tests/domain/test_protection_comparison_severity_map.py.
         return RankingIssue(
             issue_code=issue_code,
-            severity=ISSUE_SEVERITY_MAP.get(issue_code, IssueSeverity.INFORMATIONAL),
+            severity=ISSUE_SEVERITY_MAP[issue_code],
             element_ref=element_ref,
             fault_target_id=fault_target_id,
             description_pl=description,

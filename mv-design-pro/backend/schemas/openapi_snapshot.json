@@ -932,15 +932,22 @@
     "type": "object"
    },
    "BranchDiffRowResponse": {
-    "description": "Single branch diff row (L-13: `delta_*_percent` — patrz BusDiffRowResponse).",
+    "description": "Single branch diff row (L-13: `delta_*_percent` — patrz BusDiffRowResponse).\n\nFAB-E (E1): wszystkie pola to `| None` — galaz obecna tylko w jednym z\nporownywanych biegow daje None, nigdy fabrykowane 0.0 MW/Mvar.",
     "properties": {
      "branch_id": {
       "title": "Branch Id",
       "type": "string"
      },
      "delta_losses_p_mw": {
-      "title": "Delta Losses P Mw",
-      "type": "number"
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Delta Losses P Mw"
      },
      "delta_losses_p_percent": {
       "anyOf": [
@@ -954,8 +961,15 @@
       "title": "Delta Losses P Percent"
      },
      "delta_losses_q_mvar": {
-      "title": "Delta Losses Q Mvar",
-      "type": "number"
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Delta Losses Q Mvar"
      },
      "delta_losses_q_percent": {
       "anyOf": [
@@ -969,8 +983,15 @@
       "title": "Delta Losses Q Percent"
      },
      "delta_p_from_mw": {
-      "title": "Delta P From Mw",
-      "type": "number"
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Delta P From Mw"
      },
      "delta_p_from_percent": {
       "anyOf": [
@@ -984,8 +1005,15 @@
       "title": "Delta P From Percent"
      },
      "delta_p_to_mw": {
-      "title": "Delta P To Mw",
-      "type": "number"
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Delta P To Mw"
      },
      "delta_p_to_percent": {
       "anyOf": [
@@ -999,8 +1027,15 @@
       "title": "Delta P To Percent"
      },
      "delta_q_from_mvar": {
-      "title": "Delta Q From Mvar",
-      "type": "number"
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Delta Q From Mvar"
      },
      "delta_q_from_percent": {
       "anyOf": [
@@ -1014,8 +1049,15 @@
       "title": "Delta Q From Percent"
      },
      "delta_q_to_mvar": {
-      "title": "Delta Q To Mvar",
-      "type": "number"
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Delta Q To Mvar"
      },
      "delta_q_to_percent": {
       "anyOf": [
@@ -1029,52 +1071,136 @@
       "title": "Delta Q To Percent"
      },
      "losses_p_mw_a": {
-      "title": "Losses P Mw A",
-      "type": "number"
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Losses P Mw A"
      },
      "losses_p_mw_b": {
-      "title": "Losses P Mw B",
-      "type": "number"
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Losses P Mw B"
      },
      "losses_q_mvar_a": {
-      "title": "Losses Q Mvar A",
-      "type": "number"
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Losses Q Mvar A"
      },
      "losses_q_mvar_b": {
-      "title": "Losses Q Mvar B",
-      "type": "number"
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Losses Q Mvar B"
      },
      "p_from_mw_a": {
-      "title": "P From Mw A",
-      "type": "number"
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "P From Mw A"
      },
      "p_from_mw_b": {
-      "title": "P From Mw B",
-      "type": "number"
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "P From Mw B"
      },
      "p_to_mw_a": {
-      "title": "P To Mw A",
-      "type": "number"
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "P To Mw A"
      },
      "p_to_mw_b": {
-      "title": "P To Mw B",
-      "type": "number"
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "P To Mw B"
      },
      "q_from_mvar_a": {
-      "title": "Q From Mvar A",
-      "type": "number"
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Q From Mvar A"
      },
      "q_from_mvar_b": {
-      "title": "Q From Mvar B",
-      "type": "number"
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Q From Mvar B"
      },
      "q_to_mvar_a": {
-      "title": "Q To Mvar A",
-      "type": "number"
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Q To Mvar A"
      },
      "q_to_mvar_b": {
-      "title": "Q To Mvar B",
-      "type": "number"
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Q To Mvar B"
      }
     },
     "required": [
@@ -1102,45 +1228,78 @@
     "type": "object"
    },
    "BranchPowerComparisonResponse": {
-    "description": "Branch power comparison response.",
+    "description": "Branch power comparison response.\n\nFAB-E (E1): ``None`` gdy gałąź nie ma wartości w run A LUB run B.",
     "properties": {
      "branch_id": {
       "title": "Branch Id",
       "type": "string"
      },
      "p_mw_delta": {
-      "$ref": "#/components/schemas/NumericDeltaResponse"
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/NumericDeltaResponse"
+       },
+       {
+        "type": "null"
+       }
+      ]
      },
      "q_mvar_delta": {
-      "$ref": "#/components/schemas/NumericDeltaResponse"
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/NumericDeltaResponse"
+       },
+       {
+        "type": "null"
+       }
+      ]
      }
     },
     "required": [
-     "branch_id",
-     "p_mw_delta",
-     "q_mvar_delta"
+     "branch_id"
     ],
     "title": "BranchPowerComparisonResponse",
     "type": "object"
    },
    "BusDiffRowResponse": {
-    "description": "Single bus diff row.\n\nL-13: pola `delta_*_percent` (różnica względna B wobec A [%]) liczy backend —\nw warstwie prezentacji byłaby to arytmetyka na wynikach solvera. Pola są\naddytywne i opcjonalne: brak wartości (A = 0 → różnica względna nie istnieje)\njest POMIJANY w odpowiedzi (`response_model_exclude_none`), nigdy zerem.",
+    "description": "Single bus diff row.\n\nL-13: pola `delta_*_percent` (różnica względna B wobec A [%]) liczy backend —\nw warstwie prezentacji byłaby to arytmetyka na wynikach solvera. Pola są\naddytywne i opcjonalne: brak wartości (A = 0 → różnica względna nie istnieje)\njest POMIJANY w odpowiedzi (`response_model_exclude_none`), nigdy zerem.\n\nFAB-E (E1): v_pu/angle_deg (i ich delty) to `| None` — szyna obecna tylko w\njednym z porownywanych biegow daje None, nigdy fabrykowane 0.0 (zanik\nnapiecia). p_injected_mw/q_injected_mvar pozostaja required (zawsze 0.0 —\ndlug architektoniczny poza zakresem karty, patrz domain/power_flow_comparison.py).",
     "properties": {
      "angle_deg_a": {
-      "title": "Angle Deg A",
-      "type": "number"
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Angle Deg A"
      },
      "angle_deg_b": {
-      "title": "Angle Deg B",
-      "type": "number"
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Angle Deg B"
      },
      "bus_id": {
       "title": "Bus Id",
       "type": "string"
      },
      "delta_angle_deg": {
-      "title": "Delta Angle Deg",
-      "type": "number"
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Delta Angle Deg"
      },
      "delta_angle_percent": {
       "anyOf": [
@@ -1195,8 +1354,15 @@
       "title": "Delta V Percent"
      },
      "delta_v_pu": {
-      "title": "Delta V Pu",
-      "type": "number"
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Delta V Pu"
      },
      "p_injected_mw_a": {
       "title": "P Injected Mw A",
@@ -1215,12 +1381,26 @@
       "type": "number"
      },
      "v_pu_a": {
-      "title": "V Pu A",
-      "type": "number"
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "V Pu A"
      },
      "v_pu_b": {
-      "title": "V Pu B",
-      "type": "number"
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "V Pu B"
      }
     },
     "required": [
@@ -1242,23 +1422,35 @@
     "type": "object"
    },
    "BusVoltageComparisonResponse": {
-    "description": "Bus voltage comparison response.",
+    "description": "Bus voltage comparison response.\n\nFAB-E (E1): ``None`` gdy szyna nie ma wartości w run A LUB run B.",
     "properties": {
      "bus_id": {
       "title": "Bus Id",
       "type": "string"
      },
      "u_kv_delta": {
-      "$ref": "#/components/schemas/NumericDeltaResponse"
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/NumericDeltaResponse"
+       },
+       {
+        "type": "null"
+       }
+      ]
      },
      "u_pu_delta": {
-      "$ref": "#/components/schemas/NumericDeltaResponse"
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/NumericDeltaResponse"
+       },
+       {
+        "type": "null"
+       }
+      ]
      }
     },
     "required": [
-     "bus_id",
-     "u_kv_delta",
-     "u_pu_delta"
+     "bus_id"
     ],
     "title": "BusVoltageComparisonResponse",
     "type": "object"
@@ -2065,11 +2257,18 @@
     "type": "object"
    },
    "ComparisonRowResponse": {
-    "description": "Single comparison row.",
+    "description": "Single comparison row.\n\nFAB-E (E1): i_fault_a_a/i_fault_a_b/delta_i_fault_a to `| None` — element\nnieobecny w run A LUB run B daje None, nigdy fabrykowane 0.0 A.",
     "properties": {
      "delta_i_fault_a": {
-      "title": "Delta I Fault A",
-      "type": "number"
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Delta I Fault A"
      },
      "delta_t_s": {
       "anyOf": [
@@ -2095,12 +2294,26 @@
       "type": "string"
      },
      "i_fault_a_a": {
-      "title": "I Fault A A",
-      "type": "number"
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "I Fault A A"
      },
      "i_fault_a_b": {
-      "title": "I Fault A B",
-      "type": "number"
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "I Fault A B"
      },
      "margin_percent_a": {
       "anyOf": [
@@ -7275,7 +7488,7 @@
     "type": "object"
    },
    "PowerFlowComparisonResponse": {
-    "description": "Power flow comparison response.",
+    "description": "Power flow comparison response.\n\nFAB-E (E1): agregaty to ``| None`` — brak klucza w payloadzie run A LUB\nrun B daje ``None``, nigdy fabrykowane 0.0.",
     "properties": {
      "branch_powers": {
       "items": {
@@ -7292,23 +7505,47 @@
       "type": "array"
      },
      "slack_p_delta": {
-      "$ref": "#/components/schemas/NumericDeltaResponse"
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/NumericDeltaResponse"
+       },
+       {
+        "type": "null"
+       }
+      ]
      },
      "slack_q_delta": {
-      "$ref": "#/components/schemas/NumericDeltaResponse"
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/NumericDeltaResponse"
+       },
+       {
+        "type": "null"
+       }
+      ]
      },
      "total_losses_p_delta": {
-      "$ref": "#/components/schemas/NumericDeltaResponse"
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/NumericDeltaResponse"
+       },
+       {
+        "type": "null"
+       }
+      ]
      },
      "total_losses_q_delta": {
-      "$ref": "#/components/schemas/NumericDeltaResponse"
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/NumericDeltaResponse"
+       },
+       {
+        "type": "null"
+       }
+      ]
      }
     },
     "required": [
-     "total_losses_p_delta",
-     "total_losses_q_delta",
-     "slack_p_delta",
-     "slack_q_delta",
      "bus_voltages",
      "branch_powers"
     ],
@@ -7967,7 +8204,7 @@
     "type": "object"
    },
    "ProtectionComparisonResponse": {
-    "description": "Protection comparison response.",
+    "description": "Protection comparison response.\n\nFAB-E (E1): count-delty to ``| None`` — brak klucza \"summary\" w payloadzie\nrun A LUB run B daje ``None``, nigdy fabrykowane 0.",
     "properties": {
      "evaluations": {
       "items": {
@@ -7977,20 +8214,38 @@
       "type": "array"
      },
      "invalid_count_delta": {
-      "$ref": "#/components/schemas/NumericDeltaResponse"
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/NumericDeltaResponse"
+       },
+       {
+        "type": "null"
+       }
+      ]
      },
      "no_trip_count_delta": {
-      "$ref": "#/components/schemas/NumericDeltaResponse"
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/NumericDeltaResponse"
+       },
+       {
+        "type": "null"
+       }
+      ]
      },
      "trip_count_delta": {
-      "$ref": "#/components/schemas/NumericDeltaResponse"
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/NumericDeltaResponse"
+       },
+       {
+        "type": "null"
+       }
+      ]
      }
     },
     "required": [
-     "evaluations",
-     "trip_count_delta",
-     "no_trip_count_delta",
-     "invalid_count_delta"
+     "evaluations"
     ],
     "title": "ProtectionComparisonResponse",
     "type": "object"
@@ -9761,7 +10016,7 @@
     "type": "object"
    },
    "ShortCircuitComparisonResponse": {
-    "description": "Short circuit comparison response.",
+    "description": "Short circuit comparison response.\n\nFAB-E (E1): pola delt to ``| None`` — brak wartości w payloadzie run A LUB\nrun B (niekompletny/starszy zapis wyniku) daje ``None``, nigdy fabrykowaną\ndeltę liczoną od milczącego 0.",
     "properties": {
      "i2t_delta": {
       "anyOf": [
@@ -9774,16 +10029,44 @@
       ]
      },
      "ikss_delta": {
-      "$ref": "#/components/schemas/NumericDeltaResponse"
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/NumericDeltaResponse"
+       },
+       {
+        "type": "null"
+       }
+      ]
      },
      "ip_delta": {
-      "$ref": "#/components/schemas/NumericDeltaResponse"
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/NumericDeltaResponse"
+       },
+       {
+        "type": "null"
+       }
+      ]
      },
      "ith_delta": {
-      "$ref": "#/components/schemas/NumericDeltaResponse"
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/NumericDeltaResponse"
+       },
+       {
+        "type": "null"
+       }
+      ]
      },
      "sk_delta": {
-      "$ref": "#/components/schemas/NumericDeltaResponse"
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/NumericDeltaResponse"
+       },
+       {
+        "type": "null"
+       }
+      ]
      },
      "xr_ratio_delta": {
       "anyOf": [
@@ -9796,16 +10079,16 @@
       ]
      },
      "zth_delta": {
-      "$ref": "#/components/schemas/ComplexDeltaResponse"
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ComplexDeltaResponse"
+       },
+       {
+        "type": "null"
+       }
+      ]
      }
     },
-    "required": [
-     "ikss_delta",
-     "sk_delta",
-     "zth_delta",
-     "ip_delta",
-     "ith_delta"
-    ],
     "title": "ShortCircuitComparisonResponse",
     "type": "object"
    },
@@ -11831,7 +12114,7 @@
     "type": "object"
    },
    "api__power_flow_comparisons__ComparisonSummaryResponse": {
-    "description": "Comparison summary statistics.",
+    "description": "Comparison summary statistics.\n\nFAB-E (E1): max_delta_v_pu/max_delta_angle_deg to `| None` — brak zadnej\nporownywalnej szyny (obie strony bez wspolnych bus_id) daje None, nigdy\nfabrykowane 0.0 (wygladaloby jak \"brak zmian w calej sieci\").",
     "properties": {
      "converged_a": {
       "title": "Converged A",
@@ -11865,12 +12148,26 @@
       "type": "integer"
      },
      "max_delta_angle_deg": {
-      "title": "Max Delta Angle Deg",
-      "type": "number"
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Max Delta Angle Deg"
      },
      "max_delta_v_pu": {
-      "title": "Max Delta V Pu",
-      "type": "number"
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Max Delta V Pu"
      },
      "minor_issues": {
       "title": "Minor Issues",

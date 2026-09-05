@@ -9,6 +9,7 @@ Tests for:
 """
 
 from datetime import UTC, datetime
+from uuid import uuid4
 
 import pytest
 from application.power_flow_comparison import PowerFlowComparisonService
@@ -19,6 +20,7 @@ from domain.power_flow_comparison import (
     VOLTAGE_DELTA_THRESHOLD_PU,
     PowerFlowBranchDiffRow,
     PowerFlowBusDiffRow,
+    PowerFlowComparisonError,
     PowerFlowComparisonResult,
     PowerFlowComparisonStatus,
     PowerFlowComparisonSummary,
@@ -647,3 +649,153 @@ class TestRoznicaWzglednaL13:
         )
         assert summary.delta_total_losses_p_percent is None
         assert "delta_total_losses_p_percent" not in summary.to_dict()
+
+
+class TestBusOrBranchOnlyOnOneSideIsNoneNotZero:
+    """FAB-E (E1): szyna/galaz obecna tylko w jednym z porownywanych biegow
+    (bus_a/bus_b lub br_a/br_b = {}) -> delty None, nigdy fabrykowane 0.0
+    (wygladaloby jak calkowity zanik napiecia/przeplywu)."""
+
+    @staticmethod
+    def _service():
+        return PowerFlowComparisonService(lambda: None)
+
+    def test_bus_only_in_run_a_gives_none_voltage_and_angle_deltas(self):
+        service = self._service()
+        buses_a = [
+            {"bus_id": "BUS_ONLY_A", "v_pu": 1.0, "angle_deg": 2.0},
+            {"bus_id": "BUS_BOTH", "v_pu": 1.0, "angle_deg": 0.0},
+        ]
+        buses_b = [{"bus_id": "BUS_BOTH", "v_pu": 0.99, "angle_deg": 0.1}]
+
+        bus_diffs = service._compute_bus_diffs(buses_a, buses_b)
+        only_a = next(b for b in bus_diffs if b.bus_id == "BUS_ONLY_A")
+        assert only_a.v_pu_a == pytest.approx(1.0)
+        assert only_a.v_pu_b is None
+        assert only_a.angle_deg_b is None
+        assert only_a.delta_v_pu is None
+        assert only_a.delta_angle_deg is None
+        assert only_a.delta_v_percent is None
+        # Szyna obecna w obu biegach nadal liczy sie normalnie.
+        both = next(b for b in bus_diffs if b.bus_id == "BUS_BOTH")
+        assert both.delta_v_pu is not None
+
+    def test_branch_only_in_run_b_gives_none_power_deltas(self):
+        service = self._service()
+        branches_a = [
+            {
+                "branch_id": "BR_BOTH",
+                "p_from_mw": 1.0,
+                "q_from_mvar": 0.0,
+                "p_to_mw": 1.0,
+                "q_to_mvar": 0.0,
+                "losses_p_mw": 0.1,
+                "losses_q_mvar": 0.0,
+            }
+        ]
+        branches_b = [
+            branches_a[0],
+            {
+                "branch_id": "BR_ONLY_B",
+                "p_from_mw": 2.0,
+                "q_from_mvar": 0.5,
+                "p_to_mw": 1.8,
+                "q_to_mvar": 0.4,
+                "losses_p_mw": 0.2,
+                "losses_q_mvar": 0.1,
+            },
+        ]
+
+        branch_diffs = service._compute_branch_diffs(branches_a, branches_b)
+        only_b = next(b for b in branch_diffs if b.branch_id == "BR_ONLY_B")
+        assert only_b.p_from_mw_a is None
+        assert only_b.p_from_mw_b == pytest.approx(2.0)
+        assert only_b.delta_p_from_mw is None
+        assert only_b.delta_losses_q_mvar is None
+        both = next(b for b in branch_diffs if b.branch_id == "BR_BOTH")
+        assert both.delta_p_from_mw is not None
+
+    def test_ranking_skips_buses_with_none_delta_without_crashing(self):
+        """FAB-E: ranking (Rule 2/3) MUSI pominac szyny bez delty, nie abs(None)."""
+        service = self._service()
+        buses_a = [{"bus_id": "BUS_ONLY_A", "v_pu": 1.0, "angle_deg": 5.0}]
+        buses_b: list[dict] = []
+        bus_diffs = service._compute_bus_diffs(buses_a, buses_b)
+        assert bus_diffs[0].delta_v_pu is None
+
+        # Nie moze podniesc TypeError (abs(None)) — to byla by regresja.
+        ranking = service._generate_ranking(
+            bus_diffs=bus_diffs,
+            branch_diffs=[],
+            converged_a=True,
+            converged_b=True,
+            summary_a={"total_losses_p_mw": 0.0, "slack_p_mw": 0.0},
+            summary_b={"total_losses_p_mw": 0.0, "slack_p_mw": 0.0},
+        )
+        # Szyna bez delty nie generuje VOLTAGE_DELTA_HIGH/ANGLE_SHIFT_HIGH.
+        codes = {issue.issue_code for issue in ranking}
+        assert PowerFlowIssueCode.VOLTAGE_DELTA_HIGH not in codes
+        assert PowerFlowIssueCode.ANGLE_SHIFT_HIGH not in codes
+
+    def test_summary_max_delta_is_none_when_no_bus_is_comparable(self):
+        """FAB-E: zero wspolnych szyn -> max_delta_v_pu/angle_deg None, nie 0.0
+        (co wygladaloby jak "brak zmian napiecia w calej sieci")."""
+        service = self._service()
+        buses_a = [{"bus_id": "ONLY_A", "v_pu": 1.0, "angle_deg": 0.0}]
+        buses_b = [{"bus_id": "ONLY_B", "v_pu": 1.0, "angle_deg": 0.0}]
+        bus_diffs = service._compute_bus_diffs(buses_a, buses_b)
+        assert all(b.delta_v_pu is None for b in bus_diffs)
+
+        summary = service._build_summary(
+            bus_diffs=bus_diffs,
+            branch_diffs=[],
+            ranking=[],
+            converged_a=True,
+            converged_b=True,
+            summary_a={"total_losses_p_mw": 0.0},
+            summary_b={"total_losses_p_mw": 0.0},
+        )
+        assert summary.max_delta_v_pu is None
+        assert summary.max_delta_angle_deg is None
+
+    def test_summary_max_delta_ignores_none_buses_when_some_are_comparable(self):
+        """Mieszanka: jedna szyna bez pary, jedna wspolna -> max liczony z RESZTY,
+        nie None (to nie jest przypadek "zero danych")."""
+        service = self._service()
+        buses_a = [
+            {"bus_id": "ONLY_A", "v_pu": 1.0, "angle_deg": 0.0},
+            {"bus_id": "BOTH", "v_pu": 1.0, "angle_deg": 0.0},
+        ]
+        buses_b = [{"bus_id": "BOTH", "v_pu": 0.95, "angle_deg": 2.0}]
+        bus_diffs = service._compute_bus_diffs(buses_a, buses_b)
+
+        summary = service._build_summary(
+            bus_diffs=bus_diffs,
+            branch_diffs=[],
+            ranking=[],
+            converged_a=True,
+            converged_b=True,
+            summary_a={"total_losses_p_mw": 0.0},
+            summary_b={"total_losses_p_mw": 0.0},
+        )
+        assert summary.max_delta_v_pu == pytest.approx(0.05)
+        assert summary.max_delta_angle_deg == pytest.approx(2.0)
+
+
+class TestMissingBaseMvaRaisesNotFabricatedDefault:
+    """FAB-E (E1): base_mva SKALUJE total_losses/slack_p/slack_q — brak tego
+    pola to uszkodzony zapis biegu; milczace 100.0 dawaloby fikcyjnie
+    przeskalowane MW/Mvar (gorsze niz odmowa)."""
+
+    def test_missing_base_mva_raises_power_flow_comparison_error(self):
+        service = PowerFlowComparisonService(lambda: None)
+        payload = {
+            "slack_node_id": "BUS_SLACK",
+            "node_u_mag_pu": {},
+            "node_angle_rad": {},
+            "branch_s_from_mva": {},
+            "branch_s_to_mva": {},
+            # "base_mva" celowo pominiete.
+        }
+        with pytest.raises(PowerFlowComparisonError, match="base_mva"):
+            service._build_pf_result_from_payload(payload, uuid4(), uow=None)

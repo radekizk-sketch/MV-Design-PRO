@@ -16,6 +16,8 @@ from __future__ import annotations
 from typing import Any
 
 from application.trace_emitters.deterministic_ids import deterministic_trace_id
+from application.trace_emitters.wynik import fmt as _fmt
+from application.trace_emitters.wynik import wynik as _wynik
 from domain.trace_v2.artifact import (
     AnalysisTypeV2,
     TraceArtifactV2,
@@ -27,10 +29,6 @@ from domain.trace_v2.artifact import (
 )
 from domain.trace_v2.equation_registry_v2 import EquationRegistryV2
 from domain.trace_v2.math_spec_version import CURRENT_MATH_SPEC_VERSION
-
-
-def _fmt(x: float) -> str:
-    return f"{x:.6g}"
 
 
 class TraceEmitterProtection:
@@ -99,7 +97,9 @@ class TraceEmitterProtection:
         return inputs
 
     @staticmethod
-    def _f50_substitution(i_sec: float, i_pickup: float, picked_up: bool, result_str: str) -> str:
+    def _f50_substitution(
+        i_sec: float | str, i_pickup: float | str, picked_up: bool, result_str: str
+    ) -> str:
         comp = ">" if picked_up else r"\leq"
         return f"{_fmt(i_sec)} {comp} {_fmt(i_pickup)}" + r" \Rightarrow \text{" + result_str + "}"
 
@@ -199,15 +199,15 @@ class TraceEmitterProtection:
         """Emit M calculation + IDMT time steps for F51."""
         steps: list[TraceEquationStep] = []
 
-        i_sec = trace.get("I_secondary", 0.0)
-        i_pickup = trace.get("I_pickup_secondary", 0.0)
-        m_val = trace.get("M", 0.0)
-        tms = trace.get("TMS", 0.0)
-        a_val = trace.get("A", 0.0)
-        b_val = trace.get("B", 0.0)
-        m_power_b = trace.get("M_power_B", 0.0)
-        denominator = trace.get("denominator", 0.0)
-        base_time = trace.get("base_time_s", 0.0)
+        i_sec = _wynik(trace.get("I_secondary"))
+        i_pickup = _wynik(trace.get("I_pickup_secondary"))
+        m_val = _wynik(trace.get("M"))
+        tms = _wynik(trace.get("TMS"))
+        a_val = _wynik(trace.get("A"))
+        b_val = _wynik(trace.get("B"))
+        m_power_b = _wynik(trace.get("M_power_B"))
+        denominator = _wynik(trace.get("denominator"))
+        base_time = _wynik(trace.get("base_time_s"))
         trip_time = trace.get("trip_time_s")
         curve_type = trace.get("curve_type", "")
         curve_label = trace.get("curve_label_pl", "")
@@ -226,20 +226,20 @@ class TraceEmitterProtection:
                 intermediate_values={
                     "I_secondary": TraceValue(
                         name="I_secondary",
-                        value=canonical_float(i_sec),
+                        value=i_sec,
                         unit="A",
                         label_pl="Prąd wtórny",
                     ),
                     "I_pickup_secondary": TraceValue(
                         name="I_pickup_secondary",
-                        value=canonical_float(i_pickup),
+                        value=i_pickup,
                         unit="A",
                         label_pl="Nastawa rozruchowa",
                     ),
                 },
                 result=TraceValue(
                     name="M",
-                    value=canonical_float(m_val),
+                    value=m_val,
                     unit="—",
                     label_pl="Krotność prądu",
                 ),
@@ -267,33 +267,25 @@ class TraceEmitterProtection:
                 substituted_latex=substituted,
                 inputs_used=("A", "B", "M", "TMS"),
                 intermediate_values={
-                    "A": TraceValue(
-                        name="A", value=canonical_float(a_val), unit="—", label_pl="Stała A"
-                    ),
-                    "B": TraceValue(
-                        name="B", value=canonical_float(b_val), unit="—", label_pl="Wykładnik B"
-                    ),
-                    "TMS": TraceValue(
-                        name="TMS", value=canonical_float(tms), unit="—", label_pl="Mnożnik czasowy"
-                    ),
-                    "M": TraceValue(
-                        name="M", value=canonical_float(m_val), unit="—", label_pl="Krotność"
-                    ),
+                    "A": TraceValue(name="A", value=a_val, unit="—", label_pl="Stała A"),
+                    "B": TraceValue(name="B", value=b_val, unit="—", label_pl="Wykładnik B"),
+                    "TMS": TraceValue(name="TMS", value=tms, unit="—", label_pl="Mnożnik czasowy"),
+                    "M": TraceValue(name="M", value=m_val, unit="—", label_pl="Krotność"),
                     "M_power_B": TraceValue(
                         name="M_power_B",
-                        value=canonical_float(m_power_b),
+                        value=m_power_b,
                         unit="—",
                         label_pl="M^B",
                     ),
                     "denominator": TraceValue(
                         name="denominator",
-                        value=canonical_float(denominator),
+                        value=denominator,
                         unit="—",
                         label_pl="M^B - 1",
                     ),
                     "base_time_s": TraceValue(
                         name="base_time_s",
-                        value=canonical_float(base_time),
+                        value=base_time,
                         unit="s",
                         label_pl="Czas bazowy",
                     ),
@@ -323,17 +315,17 @@ class TraceEmitterProtection:
         counter: int,
     ) -> list[TraceEquationStep]:
         """Emit F50 trip decision step."""
-        i_sec = trace.get("I_secondary", 0.0)
-        i_pickup = trace.get("pickup_a_secondary", 0.0)
+        i_sec = _wynik(trace.get("I_secondary"))
+        i_pickup = _wynik(trace.get("pickup_a_secondary"))
         picked_up = trace.get("picked_up", False)
         result_str = trace.get("result", "NO_TRIP")
-        t_trip = trace.get("t_trip_s", 0.0)
+        t_trip = trace.get("t_trip_s")
 
         eq_f50 = self._registry.get("PROT_F50_TRIP")
 
         trip_val: float | str
         if result_str == "TRIP":
-            trip_val = canonical_float(t_trip)
+            trip_val = _wynik(t_trip)
         else:
             trip_val = result_str
 
@@ -349,13 +341,13 @@ class TraceEmitterProtection:
                 intermediate_values={
                     "I_secondary": TraceValue(
                         name="I_secondary",
-                        value=canonical_float(i_sec),
+                        value=i_sec,
                         unit="A",
                         label_pl="Prąd wtórny",
                     ),
                     "pickup_a_secondary": TraceValue(
                         name="pickup_a_secondary",
-                        value=canonical_float(i_pickup),
+                        value=i_pickup,
                         unit="A",
                         label_pl="Nastawa I>>",
                     ),

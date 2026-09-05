@@ -94,6 +94,25 @@ def _cable_derating_from_model(cable: dict[str, Any]) -> Any:
         return WARUNKI_KATALOGOWE
 
 
+def _zastosowana_wartosc(payload: dict[str, Any], klucz: str, etykieta: str) -> float:
+    """Wartość RZECZYWIŚCIE ZASTOSOWANEGO elementu (transformator/kabel) do
+    porównania z propozycją D2.
+
+    Brak pola nie może być cichym zerem (FAB-E, E1): fabrykowana wartość 0.0
+    zgłosiłaby FAŁSZYWE odstępstwo („zastosowano 0 MVA/mm²") zamiast uczciwego
+    pominięcia sekcji, które ta funkcja już robi dla katalogu niekompletnego
+    (``except Exception`` w ``_compute_d2_deviations`` poniżej) — podniesienie
+    wyjątku tutaj trafia w TĘ SAMĄ, już istniejącą, udokumentowaną ścieżkę.
+    """
+    wartosc = payload.get(klucz)
+    if wartosc is None:
+        raise ValueError(
+            f"Brak pola {klucz!r} zastosowanego {etykieta} — brak danych do "
+            "porównania z propozycją D2."
+        )
+    return float(wartosc)
+
+
 def _compute_d2_deviations(track: Any) -> list[dict[str, Any]] | None:
     """Odstępstwa zastosowanego doboru od propozycji D2 (⚠). ``None`` gdy brak danych.
 
@@ -135,7 +154,7 @@ def _compute_d2_deviations(track: Any) -> list[dict[str, Any]] | None:
         )
         deviations: list[dict[str, Any]] = []
         if tr_result.proposal is not None:
-            applied_sn = float(tr.get("sn_mva") or 0.0)
+            applied_sn = _zastosowana_wartosc(tr, "sn_mva", "transformatora")
             deviations.append(
                 {
                     "parametr": "moc_transformatora_mva",
@@ -158,7 +177,9 @@ def _compute_d2_deviations(track: Any) -> list[dict[str, Any]] | None:
 
         from enm.der_sn_validation import rated_current_a
 
-        tr_current = rated_current_a(float(tr.get("sn_mva") or 0.0), float(sn_bus_kv))
+        tr_current = rated_current_a(
+            _zastosowana_wartosc(tr, "sn_mva", "transformatora"), float(sn_bus_kv)
+        )
         if tr_current is not None:
             # V12K-207 (F-K7): propozycję trzeba policzyć dla TYCH SAMYCH warunków
             # ułożenia, które przyjęto w doborze — inaczej raport zgłaszałby odstępstwo
@@ -174,7 +195,7 @@ def _compute_d2_deviations(track: Any) -> list[dict[str, Any]] | None:
                 )
             )
             if cable_result.proposal is not None:
-                applied_cross = float(cable.get("cross_section_mm2") or 0.0)
+                applied_cross = _zastosowana_wartosc(cable, "cross_section_mm2", "kabla")
                 deviations.append(
                     {
                         "parametr": "przekroj_kabla_mm2",

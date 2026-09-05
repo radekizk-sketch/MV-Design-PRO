@@ -57,7 +57,11 @@ class CreateProtectionComparisonRequest(BaseModel):
 
 
 class ComparisonRowResponse(BaseModel):
-    """Single comparison row."""
+    """Single comparison row.
+
+    FAB-E (E1): i_fault_a_a/i_fault_a_b/delta_i_fault_a to `| None` — element
+    nieobecny w run A LUB run B daje None, nigdy fabrykowane 0.0 A.
+    """
 
     protected_element_ref: str
     fault_target_id: str
@@ -67,10 +71,10 @@ class ComparisonRowResponse(BaseModel):
     trip_state_b: str
     t_trip_s_a: float | None
     t_trip_s_b: float | None
-    i_fault_a_a: float
-    i_fault_a_b: float
+    i_fault_a_a: float | None
+    i_fault_a_b: float | None
     delta_t_s: float | None
-    delta_i_fault_a: float
+    delta_i_fault_a: float | None
     margin_percent_a: float | None
     margin_percent_b: float | None
     state_change: str

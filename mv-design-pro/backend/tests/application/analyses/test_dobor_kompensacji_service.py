@@ -14,12 +14,17 @@ w pamięci. Testy asertują na wartościach z solvera (bez liczenia wzorem w te�
 
 from __future__ import annotations
 
+import copy
+import dataclasses
 import json
 from datetime import UTC, datetime
 from uuid import uuid4
 
 import pytest
-from application.analyses.dobor_kompensacji import build_compensation_sizing_view
+from application.analyses.dobor_kompensacji import (
+    _q_kompensacji_znamionowa_mvar,
+    build_compensation_sizing_view,
+)
 from enm.canonical_analysis import (
     CanonicalRun,
     create_run,
@@ -205,6 +210,45 @@ def test_view_structure() -> None:
         "cosfi_punktu_dzien",
         "spelnia",
     } <= set(cand)
+
+
+class TestMissingFieldsAreNotFabricatedZero:
+    """FAB-E (E1): rated_mvar/voltage_kv brakujące w snapshotcie to uszkodzony
+    zapis, nie 0 — testuje bezpośrednio funkcje odczytu (bez powielania
+    fizyki solvera w teście)."""
+
+    def test_missing_rated_mvar_skips_capacitor_not_zero(self) -> None:
+        snapshot = {
+            "shunt_capacitors": [
+                {"bus_ref": "bus_pcc", "status": "closed", "rated_mvar": 1.0},
+                {"bus_ref": "bus_pcc", "status": "closed"},  # rated_mvar brakuje
+            ]
+        }
+        total = _q_kompensacji_znamionowa_mvar(snapshot, "bus_pcc")
+        # Tylko kompletny wpis (1.0 Mvar) liczy się do sumy; uszkodzony wpis
+        # jest pominięty (nie fabrykuje 0.0 do sumy).
+        assert total == pytest.approx(1.0)
+
+    def test_complete_capacitors_regression_sums_normally(self) -> None:
+        snapshot = {
+            "shunt_capacitors": [
+                {"bus_ref": "bus_pcc", "status": "closed", "rated_mvar": 1.0},
+                {"bus_ref": "bus_pcc", "status": "closed", "rated_mvar": 0.5},
+            ]
+        }
+        total = _q_kompensacji_znamionowa_mvar(snapshot, "bus_pcc")
+        assert total == pytest.approx(1.5)
+
+    def test_missing_bus_voltage_kv_raises_not_zero(self) -> None:
+        run = _run(_compensation_enm(load_q_mvar=2.0, gen_p_mw=None))
+        snapshot = copy.deepcopy(run.snapshot)
+        for bus in snapshot["buses"]:
+            if bus.get("ref_id") == "bus_pcc":
+                del bus["voltage_kv"]
+        zmutowany = dataclasses.replace(run, snapshot=snapshot)
+
+        with pytest.raises(ValueError, match="voltage_kv"):
+            build_compensation_sizing_view(zmutowany, bus_ref="bus_pcc", cos_phi_min=0.95)
 
 
 def test_candidates_only_from_catalog_matching_voltage() -> None:

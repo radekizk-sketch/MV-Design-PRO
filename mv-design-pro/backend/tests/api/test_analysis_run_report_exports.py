@@ -285,6 +285,37 @@ def test_export_run_report_docx_includes_full_iec60909_balance() -> None:
     assert "c=1.1 | Un=15 kV | tk=1 s | tb=0.1 s | I2t=22.09 kA2s" in text
 
 
+def test_export_run_docx_response_shows_missing_fields_as_brak_danych() -> None:
+    """FAB-E (E1): brak pola WYNIKU w DOCX to napis „brak danych", nie 0.
+
+    ``_build_pf_run`` ma podsumowanie BEZ ``total_losses_q_mvar`` i wiersze
+    szyn BEZ ``p_injected_mw``/``q_injected_mvar`` — przed poprawka te
+    kolumny renderowaly sfabrykowane „0.000"/„0" (`.get(pole, 0)`), co w
+    raporcie inzynierskim wygladalo jak realny wynik obliczen.
+    """
+    import dataclasses
+    import io as _io
+
+    from api.analysis_run_exports import export_run_docx_response
+    from docx import Document as _Document
+
+    run = dataclasses.replace(_build_pf_run(), power_flow_trace={})
+    response = export_run_docx_response(run, filename_stem="power_flow")
+
+    document = _Document(_io.BytesIO(response.body))
+    cell_texts = [
+        cell.text for table in document.tables for row in table.rows for cell in row.cells
+    ]
+
+    assert "brak danych" in cell_texts, (
+        "brakujace total_losses_q_mvar/p_injected_mw/q_injected_mvar musza renderowac "
+        "sie jako 'brak danych', nie jako sfabrykowane 0"
+    )
+    # Pole OBECNE (total_losses_p_mw=0.1) MUSI zostac wyswietlone normalnie —
+    # poprawka nie moze ukryc prawdziwych wartosci za "brak danych".
+    assert "0.1" in cell_texts
+
+
 def test_export_run_report_pdf_generates_for_short_circuit_run() -> None:
     """ZWARCIA-PRO F5: raport PDF z pelnym bilansem generuje sie deterministycznie."""
     response = export_run_report_pdf_response(

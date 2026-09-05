@@ -62,6 +62,7 @@ w tresci wyniku.
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Any
@@ -96,6 +97,8 @@ from network_model.solvers.conductor_thermal_withstand import (
 from network_model.solvers.short_circuit_contributions import ShortCircuitBranchContribution
 from network_model.solvers.short_circuit_core import ShortCircuitType
 from network_model.solvers.short_circuit_iec60909 import ShortCircuitResult
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -393,13 +396,28 @@ def _odtworz_wklady_galeziowe(
     for wpis in surowe:
         if not isinstance(wpis, Mapping):
             continue
+        i_contrib_a = wpis.get("i_contrib_a")
+        if i_contrib_a is None:
+            # FAB-E (E1): ShortCircuitBranchContribution.i_contrib_a jest polem
+            # WYMAGANYM (bez odpowiednika None w zamrozonym kontrakcie) — brak
+            # tego pola to uszkodzony wpis wkladu galeziowego, nie prad 0 A.
+            # Pomijamy TEN wpis (spojnie z istniejacym pominieciem wpisow
+            # niebedacych mapa powyzej), nie fabrykujemy zerowego wkladu w
+            # ocenie wytrzymalosci cieplnej.
+            logger.warning(
+                "Pomijam wklad galeziowy zwarcia bez pola i_contrib_a "
+                "(branch_id=%r, source_id=%r) — uszkodzony wpis, nie prad 0 A.",
+                wpis.get("branch_id"),
+                wpis.get("source_id"),
+            )
+            continue
         wklady.append(
             ShortCircuitBranchContribution(
                 source_id=str(wpis.get("source_id", "")),
                 branch_id=str(wpis.get("branch_id", "")),
                 from_node_id=str(wpis.get("from_node_id", "")),
                 to_node_id=str(wpis.get("to_node_id", "")),
-                i_contrib_a=float(wpis.get("i_contrib_a", 0.0)),
+                i_contrib_a=float(i_contrib_a),
                 direction=str(wpis.get("direction", "from_to")),
             )
         )
@@ -455,6 +473,26 @@ def _aktualnosc_wobec_modelu(
     }
 
 
+def _wymagane_pole_sc(payload: dict[str, Any], klucz: str, run: CanonicalRun) -> float:
+    """Wymagane pole liczbowe zapisanego wiersza wyniku zwarciowego.
+
+    FAB-E (E1): zamrozony kontrakt ``ShortCircuitResult`` nie ma tu odpowiednika
+    NaN/None-safe serializacji (w odroznieniu od ``PowerFlowBusResult``) — realnie
+    policzony wynik zwarciowy ZAWSZE niesie te pola, wiec brak klucza oznacza
+    uszkodzony zapis biegu, nie ze wartosc jest naprawde zerowa. Fikcyjne 0.0
+    trafiloby prosto do oceny wytrzymalosci cieplnej przewodow (np. Ikss=0 A
+    ukrylby realne zagrozenie termiczne galezi).
+    """
+    wartosc = payload.get(klucz)
+    if wartosc is None:
+        raise ValueError(
+            f"Przebieg {run.id}: wiersz wyniku zwarciowego nie ma wymaganego pola "
+            f"{klucz!r} — zapis biegu jest uszkodzony, ocena wytrzymałości cieplnej "
+            "nie może się na nim oprzeć."
+        )
+    return float(wartosc)
+
+
 def _odtworz_wynik_zwarciowy(run: CanonicalRun) -> ShortCircuitResult:
     """Wynik zwarciowy odtworzony z wiersza przebiegu (read-only, bez fizyki).
 
@@ -489,18 +527,18 @@ def _odtworz_wynik_zwarciowy(run: CanonicalRun) -> ShortCircuitResult:
     sc_result = ShortCircuitResult(
         short_circuit_type=ShortCircuitType(str(payload.get("short_circuit_type"))),
         fault_node_id=str(payload.get("fault_node_id", "")),
-        c_factor=float(payload.get("c_factor", 0.0)),
-        un_v=float(payload.get("un_v", 0.0)),
+        c_factor=_wymagane_pole_sc(payload, "c_factor", run),
+        un_v=_wymagane_pole_sc(payload, "un_v", run),
         zkk_ohm=complex(0.0, 0.0),
-        ikss_a=float(payload.get("ikss_a", 0.0)),
-        ip_a=float(payload.get("ip_a", 0.0)),
-        ith_a=float(payload.get("ith_a", 0.0)),
-        sk_mva=float(payload.get("sk_mva", 0.0)),
-        rx_ratio=float(payload.get("rx_ratio", 0.0)),
-        kappa=float(payload.get("kappa", 0.0)),
-        tk_s=float(payload.get("tk_s", 0.0)),
-        ib_a=float(payload.get("ib_a", 0.0)),
-        tb_s=float(payload.get("tb_s", 0.0)),
+        ikss_a=_wymagane_pole_sc(payload, "ikss_a", run),
+        ip_a=_wymagane_pole_sc(payload, "ip_a", run),
+        ith_a=_wymagane_pole_sc(payload, "ith_a", run),
+        sk_mva=_wymagane_pole_sc(payload, "sk_mva", run),
+        rx_ratio=_wymagane_pole_sc(payload, "rx_ratio", run),
+        kappa=_wymagane_pole_sc(payload, "kappa", run),
+        tk_s=_wymagane_pole_sc(payload, "tk_s", run),
+        ib_a=_wymagane_pole_sc(payload, "ib_a", run),
+        tb_s=_wymagane_pole_sc(payload, "tb_s", run),
         branch_contributions=_odtworz_wklady_galeziowe(
             pobierz_rozplyw_biegu(run, str(payload.get("fault_node_id", "")))
         ),

@@ -270,6 +270,204 @@ class TestShortCircuitFullBalanceDeltas:
         assert d["i2t_delta"] is None
 
 
+class TestShortCircuitComparisonMissingCoreFields:
+    """FAB-E (E1): brak pola RDZENIA (ikss_a/sk_mva/zkk_ohm/ip_a/ith_a) w
+    KTORYMKOLWIEK payloadzie -> odpowiednia delta None, nigdy fabrykowana od
+    milczącego 0 (ShortCircuitResult FROZEN nie ma tu odpowiednika "naprawdę
+    zero" — patrz `network_model/solvers/short_circuit_iec60909.py`)."""
+
+    @staticmethod
+    def _service():
+        from application.comparison.service import ComparisonService
+
+        return ComparisonService(uow_factory=lambda: None)
+
+    @staticmethod
+    def _results(payload):
+        return [{"result_type": "short_circuit", "payload": payload}]
+
+    _KOMPLETNY = {
+        "ikss_a": 10000.0,
+        "sk_mva": 100.0,
+        "ip_a": 25000.0,
+        "ith_a": 11000.0,
+        "zkk_ohm": {"re": 0.3, "im": 0.4},
+    }
+
+    @pytest.mark.parametrize(
+        "brakujace_pole,nazwa_delty",
+        [
+            ("ikss_a", "ikss_delta"),
+            ("sk_mva", "sk_delta"),
+            ("zkk_ohm", "zth_delta"),
+            ("ip_a", "ip_delta"),
+            ("ith_a", "ith_delta"),
+        ],
+    )
+    def test_missing_field_on_either_side_gives_none_not_zero(self, brakujace_pole, nazwa_delty):
+        service = self._service()
+        payload_b = dict(self._KOMPLETNY)
+        del payload_b[brakujace_pole]
+
+        comp = service._compare_short_circuit(
+            self._results(self._KOMPLETNY), self._results(payload_b), uuid4(), uuid4()
+        )
+        assert getattr(comp, nazwa_delty) is None
+        assert comp.to_dict()[nazwa_delty] is None
+
+    def test_complete_payloads_regression_all_deltas_present(self):
+        """Regresja: komplet danych po obu stronach -> te same liczby co dziś."""
+        service = self._service()
+        payload_b = {**self._KOMPLETNY, "ikss_a": 12000.0}
+
+        comp = service._compare_short_circuit(
+            self._results(self._KOMPLETNY), self._results(payload_b), uuid4(), uuid4()
+        )
+        assert comp.ikss_delta is not None
+        assert comp.ikss_delta.value_a == pytest.approx(10000.0)
+        assert comp.ikss_delta.value_b == pytest.approx(12000.0)
+        assert comp.sk_delta is not None
+        assert comp.zth_delta is not None
+        assert comp.ip_delta is not None
+        assert comp.ith_delta is not None
+
+
+class TestPowerFlowComparisonMissingFields:
+    """FAB-E (E1): brak klucza rozplywu w KTORYMKOLWIEK payloadzie -> delta
+    None, nigdy fabrykowane 0.0 (wygladaloby jak zerowe straty/zerowy bilans
+    szyny bilansujacej/zerowe napiecie/zerowy przeplyw galezi)."""
+
+    @staticmethod
+    def _service():
+        from application.comparison.service import ComparisonService
+
+        return ComparisonService(uow_factory=lambda: None)
+
+    @staticmethod
+    def _results(payload):
+        return [{"result_type": "power_flow", "payload": payload}]
+
+    def test_missing_losses_total_pu_gives_none_not_zero(self):
+        service = self._service()
+        payload_a = {
+            "losses_total_pu": {"re": 0.01, "im": 0.02},
+            "slack_power_pu": {"re": 1.0, "im": 0.5},
+        }
+        payload_b = {"slack_power_pu": {"re": 1.05, "im": 0.55}}  # brak losses_total_pu
+
+        comp = service._compare_power_flow(
+            self._results(payload_a), self._results(payload_b), uuid4(), uuid4()
+        )
+        assert comp.total_losses_p_delta is None
+        assert comp.total_losses_q_delta is None
+        # slack (kompletny po obu stronach) nadal liczy się normalnie.
+        assert comp.slack_p_delta is not None
+        assert comp.slack_q_delta is not None
+
+    def test_missing_slack_power_pu_gives_none_not_zero(self):
+        service = self._service()
+        payload_a = {
+            "losses_total_pu": {"re": 0.01, "im": 0.02},
+            "slack_power_pu": {"re": 1.0, "im": 0.5},
+        }
+        payload_b = {"losses_total_pu": {"re": 0.012, "im": 0.025}}  # brak slack_power_pu
+
+        comp = service._compare_power_flow(
+            self._results(payload_a), self._results(payload_b), uuid4(), uuid4()
+        )
+        assert comp.slack_p_delta is None
+        assert comp.slack_q_delta is None
+        assert comp.total_losses_p_delta is not None
+
+    def test_node_present_only_on_one_side_gives_none_voltage_delta(self):
+        service = self._service()
+        payload_a = {
+            "node_voltage_kv": {"bus-1": 20.0, "bus-2": 20.1},
+            "node_u_mag_pu": {"bus-1": 1.0, "bus-2": 1.005},
+        }
+        payload_b = {
+            "node_voltage_kv": {"bus-1": 19.8},
+            "node_u_mag_pu": {"bus-1": 0.99},
+        }  # brak bus-2
+
+        comp = service._compare_power_flow(
+            self._results(payload_a), self._results(payload_b), uuid4(), uuid4()
+        )
+        by_bus = {nv.bus_id: nv for nv in comp.node_voltages}
+        assert by_bus["bus-2"].u_kv_delta is None
+        assert by_bus["bus-2"].u_pu_delta is None
+        # bus-1 (obecny po obu stronach) nadal liczy się normalnie.
+        assert by_bus["bus-1"].u_kv_delta is not None
+
+    def test_branch_present_only_on_one_side_gives_none_power_delta(self):
+        service = self._service()
+        payload_a = {
+            "branch_s_from_mva": {"br-1": {"re": 1.0, "im": 0.2}, "br-2": {"re": 2.0, "im": 0.3}}
+        }
+        payload_b = {"branch_s_from_mva": {"br-1": {"re": 1.1, "im": 0.25}}}  # brak br-2
+
+        comp = service._compare_power_flow(
+            self._results(payload_a), self._results(payload_b), uuid4(), uuid4()
+        )
+        by_branch = {bp.branch_id: bp for bp in comp.branch_powers}
+        assert by_branch["br-2"].p_mw_delta is None
+        assert by_branch["br-2"].q_mvar_delta is None
+        assert by_branch["br-1"].p_mw_delta is not None
+
+
+class TestProtectionComparisonMissingFields:
+    """FAB-E (E1): brak t_trip_s (mimo TRIPS/TRIPS) albo brak "summary" w
+    KTORYMKOLWIEK payloadzie -> delta None, nigdy fabrykowany czas 0 s /
+    fabrykowane 0 zadzialan."""
+
+    @staticmethod
+    def _service():
+        from application.comparison.service import ComparisonService
+
+        return ComparisonService(uow_factory=lambda: None)
+
+    @staticmethod
+    def _results(payload):
+        return [{"result_type": "protection", "payload": payload}]
+
+    def test_trips_without_t_trip_s_gives_none_not_zero(self):
+        service = self._service()
+        payload_a = {
+            "evaluations": [
+                {"protected_element_ref": "f1", "trip_state": "TRIPS", "t_trip_s": 0.5}
+            ],
+            "summary": {"trips_count": 1, "no_trip_count": 0, "invalid_count": 0},
+        }
+        payload_b = {
+            "evaluations": [
+                {"protected_element_ref": "f1", "trip_state": "TRIPS"}  # brak t_trip_s
+            ],
+            "summary": {"trips_count": 1, "no_trip_count": 0, "invalid_count": 0},
+        }
+
+        comp = service._compare_protection(
+            self._results(payload_a), self._results(payload_b), uuid4(), uuid4()
+        )
+        assert comp.evaluations[0].t_trip_delta is None
+        # count-delty (summary kompletne po obu stronach) nadal licza sie normalnie.
+        assert comp.trip_count_delta is not None
+
+    def test_missing_summary_gives_none_counts_not_zero(self):
+        service = self._service()
+        payload_a = {
+            "evaluations": [],
+            "summary": {"trips_count": 2, "no_trip_count": 3, "invalid_count": 0},
+        }
+        payload_b = {"evaluations": []}  # brak "summary" w ogole
+
+        comp = service._compare_protection(
+            self._results(payload_a), self._results(payload_b), uuid4(), uuid4()
+        )
+        assert comp.trip_count_delta is None
+        assert comp.no_trip_count_delta is None
+        assert comp.invalid_count_delta is None
+
+
 class TestPowerFlowComparison:
     """Test PowerFlowComparison construction (P10b)."""
 
@@ -491,3 +689,85 @@ class TestEdgeCases:
         delta = NumericDelta.compute(-100.0, 100.0)
         assert delta.delta == 200.0
         assert delta.sign == 1
+
+
+class TestComparisonApiResponseModelsAcceptMissingDeltas:
+    """FAB-E (E1): api/comparison.py — warstwa API ma WLASNE (pydantic) modele
+    odpowiedzi, osobne od `domain.results` (drugie miejsce tej samej klasy
+    mechanizmu, KLASA-NIE-INSTANCJA). `compare_runs` zwraca `result.to_dict()`
+    surowo, ktore FastAPI waliduje przez `response_model=RunComparisonResponse`
+    — gdyby te pola pydantic zostaly required (jak przed naprawa), naprawiony
+    serwis zwracajacy `None` dla brakujacych delt wywolalby 500
+    (ResponseValidationError) zamiast uczciwego wyniku z brakiem. Test buduje
+    modele wprost (bez pelnego setupu HTTP/UnitOfWork) — celowo lekki, mierzy
+    DOKLADNIE ryzyko odkryte przy tej karcie."""
+
+    def test_short_circuit_response_accepts_none_deltas(self):
+        from api.comparison import ShortCircuitComparisonResponse
+
+        model = ShortCircuitComparisonResponse(
+            ikss_delta=None, sk_delta=None, zth_delta=None, ip_delta=None, ith_delta=None
+        )
+        assert model.ikss_delta is None
+
+    def test_power_flow_response_accepts_none_deltas(self):
+        from api.comparison import PowerFlowComparisonResponse
+
+        model = PowerFlowComparisonResponse(
+            total_losses_p_delta=None,
+            total_losses_q_delta=None,
+            slack_p_delta=None,
+            slack_q_delta=None,
+            bus_voltages=[],
+            branch_powers=[],
+        )
+        assert model.total_losses_p_delta is None
+
+    def test_bus_voltage_and_branch_power_responses_accept_none_deltas(self):
+        from api.comparison import BranchPowerComparisonResponse, BusVoltageComparisonResponse
+
+        bus = BusVoltageComparisonResponse(bus_id="bus-1", u_kv_delta=None, u_pu_delta=None)
+        branch = BranchPowerComparisonResponse(branch_id="br-1", p_mw_delta=None, q_mvar_delta=None)
+        assert bus.u_kv_delta is None
+        assert branch.p_mw_delta is None
+
+    def test_protection_response_accepts_none_count_deltas(self):
+        from api.comparison import ProtectionComparisonResponse
+
+        model = ProtectionComparisonResponse(
+            evaluations=[],
+            trip_count_delta=None,
+            no_trip_count_delta=None,
+            invalid_count_delta=None,
+        )
+        assert model.trip_count_delta is None
+
+    def test_run_comparison_response_round_trips_service_to_dict_with_missing_fields(self):
+        """Dowod end-to-end warstwy API: prawdziwy `ComparisonService` na
+        niekompletnym payloadzie -> `to_dict()` -> waliduje sie przez
+        `RunComparisonResponse` (dokladnie to, co robi endpoint `compare_runs`)."""
+        from api.comparison import RunComparisonResponse
+        from application.comparison.service import ComparisonService
+
+        service = ComparisonService(uow_factory=lambda: None)
+        payload_a = {"ikss_a": 10000.0, "sk_mva": 100.0, "ip_a": 25000.0, "ith_a": 11000.0}
+        payload_b = {"sk_mva": 120.0, "ip_a": 30000.0, "ith_a": 22000.0}  # brak ikss_a
+        results_a = [{"result_type": "short_circuit", "payload": payload_a}]
+        results_b = [{"result_type": "short_circuit", "payload": payload_b}]
+        run_a_id, run_b_id = uuid4(), uuid4()
+
+        sc_comparison = service._compare_short_circuit(results_a, results_b, run_a_id, run_b_id)
+        full = RunComparisonResult(
+            run_a_id=run_a_id,
+            run_b_id=run_b_id,
+            project_id=uuid4(),
+            analysis_type="short_circuit",
+            short_circuit=sc_comparison,
+        )
+
+        # To NIE moze podniesc pydantic ValidationError — to byla by regresja
+        # dokladnie tej klasy naprawionej w tej karcie.
+        response = RunComparisonResponse.model_validate(full.to_dict())
+        assert response.short_circuit is not None
+        assert response.short_circuit.ikss_delta is None
+        assert response.short_circuit.sk_delta is not None

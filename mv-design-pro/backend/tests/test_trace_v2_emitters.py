@@ -197,6 +197,46 @@ class TestTraceEmitterSC:
         assert len(steps_with_c) == 1
         assert steps_with_c[0].eq_id == "SC_IKSS"
 
+    def test_missing_ip_a_shows_brak_danych_not_zero(self) -> None:
+        """FAB-E (E1): brak ip_a w wyniku SC renderuje 'brak danych' w kroku
+        I_dyn (adapter) i w outputs, nie fikcyjne 0.0 A (co wygladaloby jak
+        zerowy prad udarowy/dynamiczny)."""
+        result = _sc_result_dict()
+        del result["ip_a"]
+
+        emitter = TraceEmitterSC()
+        artifact = emitter.emit(
+            snapshot_hash="snap123",
+            analysis_input={"fault_node_id": "bus_01"},
+            sc_result_dict=result,
+        )
+        idyn_step = [s for s in artifact.equation_steps if s.step_id == "SC_IDYN_008"][0]
+        assert idyn_step.intermediate_values["ip_a"].value == "brak danych"
+        assert idyn_step.result.value == "brak danych"
+        assert artifact.outputs["idyn_a"].value == "brak danych"
+        # ikss_a (obecne) nadal renderuje sie normalnie.
+        assert isinstance(artifact.outputs["ikss_a"].value, float)
+
+    def test_white_box_step_missing_result_value_shows_brak_danych_not_zero(self) -> None:
+        """FAB-E (E1): krok white_box_trace z pustym slownikiem 'result'
+        (uszkodzony/niekompletny wpis sladu solvera) renderuje 'brak danych'
+        w TraceValue wyniku kroku, nie fikcyjne 0.0."""
+        result = _sc_result_dict()
+        # Krok "Zk" bez wartosci wyniku — result_dict pusty.
+        result["white_box_trace"][0]["result"] = {}
+
+        emitter = TraceEmitterSC()
+        artifact = emitter.emit(
+            snapshot_hash="snap123",
+            analysis_input={"fault_node_id": "bus_01"},
+            sc_result_dict=result,
+        )
+        zk_step = [s for s in artifact.equation_steps if s.eq_id == "SC_ZK_3F"][0]
+        assert zk_step.result.value == "brak danych"
+        # Krok Ikss (result kompletny) nadal renderuje sie normalnie.
+        ikss_step = [s for s in artifact.equation_steps if s.eq_id == "SC_IKSS"][0]
+        assert isinstance(ikss_step.result.value, float)
+
 
 # ===========================================================================
 # Protection Emitter Tests
@@ -306,6 +346,26 @@ class TestTraceEmitterProtection:
         assert "M_power_B" in step.intermediate_values
         assert "denominator" in step.intermediate_values
         assert "base_time_s" in step.intermediate_values
+
+    def test_missing_idmt_field_shows_brak_danych_not_zero(self) -> None:
+        """FAB-E (E1): brak pola sladu IDMT (np. denominator) renderuje 'brak
+        danych', nie fikcyjne 0 — ktore w dowodzie zadzialania zabezpieczenia
+        wygladaloby jak realnie policzony mianownik krzywej."""
+        result = _protection_result_dict()
+        del result["relay_results"][0]["test_points"][0]["function_results"][0]["trace"][
+            "denominator"
+        ]
+
+        emitter = TraceEmitterProtection()
+        artifact = emitter.emit(
+            snapshot_hash="snap456",
+            analysis_input={"template": "default"},
+            protection_result_dict=result,
+        )
+        idmt_step = next(s for s in artifact.equation_steps if s.eq_id == "PROT_IEC_IDMT")
+        assert idmt_step.intermediate_values["denominator"].value == "brak danych"
+        # M_power_B (obecne) nadal renderuje sie normalnie.
+        assert isinstance(idmt_step.intermediate_values["M_power_B"].value, float)
 
 
 # ===========================================================================
@@ -447,6 +507,44 @@ class TestTraceEmitterLoadFlow:
         loss_steps = [s for s in artifact.equation_steps if s.eq_id == "LF_BRANCH_LOSSES"]
         assert len(flow_steps) == 1
         assert len(loss_steps) == 1
+
+    def test_missing_bus_v_pu_shows_brak_danych_not_zero(self) -> None:
+        """FAB-E (E1): brak v_pu w wyniku PF renderuje 'brak danych' w White Box
+        trace, nie fikcyjne 0.0 p.u. (co wygladaloby jak calkowity zanik napiecia)."""
+        result = _lf_result_dict()
+        del result["bus_results"][1]["v_pu"]  # bus_2 bez v_pu
+
+        emitter = TraceEmitterLoadFlow()
+        artifact = emitter.emit(
+            snapshot_hash="snap789",
+            analysis_input={"solver": "newton"},
+            pf_trace_dict=_lf_trace_dict(),
+            pf_result_dict=result,
+        )
+        bus_steps = {
+            s.subject_id: s for s in artifact.equation_steps if s.eq_id == "LF_BUS_VOLTAGE"
+        }
+        assert bus_steps["bus_2"].intermediate_values["v_pu"].value == "brak danych"
+        assert bus_steps["bus_2"].result.value == "brak danych"
+        # bus_1 (komplet danych) nadal renderuje sie normalnie.
+        assert bus_steps["bus_1"].intermediate_values["v_pu"].value == 1.0
+
+    def test_missing_summary_field_shows_brak_danych_not_zero(self) -> None:
+        """FAB-E (E1): brak pola podsumowania (np. total_losses_q_mvar) to
+        'brak danych' w White Box outputs, nie fikcyjne 0.0 MW/Mvar strat."""
+        result = _lf_result_dict()
+        del result["summary"]["total_losses_q_mvar"]
+
+        emitter = TraceEmitterLoadFlow()
+        artifact = emitter.emit(
+            snapshot_hash="snap789",
+            analysis_input={"solver": "newton"},
+            pf_trace_dict=_lf_trace_dict(),
+            pf_result_dict=result,
+        )
+        assert artifact.outputs["total_losses_q_mvar"].value == "brak danych"
+        # total_losses_p_mw (obecne) nadal renderuje sie normalnie.
+        assert isinstance(artifact.outputs["total_losses_p_mw"].value, float)
 
 
 def test_deterministic_trace_id_is_permutation_invariant_for_equation_steps() -> None:

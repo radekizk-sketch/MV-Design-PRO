@@ -16,7 +16,10 @@ from datetime import UTC, datetime
 from uuid import uuid4
 
 import pytest
-from application.analyses.hosting_capacity import build_hosting_capacity_view
+from application.analyses.hosting_capacity import (
+    _existing_generation_mw,
+    build_hosting_capacity_view,
+)
 from enm.canonical_analysis import (
     CanonicalRun,
     create_run,
@@ -385,3 +388,27 @@ def test_d3a_fields_are_additive_existing_fields_unchanged() -> None:
     for scenario in node["scenarios"]:
         assert {"added_power_mw", "converged", "acceptable", "binding"} <= set(scenario)
         assert {"total_losses_p_mw", "min_voltage_pu", "max_voltage_pu"} <= set(scenario)
+
+
+class TestExistingGenerationMissingPMwIsNotFabricatedZero:
+    """FAB-E (E1): p_mw brakujące dla jednego generatora to uszkodzony wpis,
+    nie 0 MW — fabrykowane 0 zaniżyłoby moc istniejącej generacji i mogłoby
+    zawyżyć wyliczoną zdolność przyłączeniową."""
+
+    def test_missing_p_mw_skips_generator_not_zero(self) -> None:
+        snapshot = {
+            "generators": [
+                {"bus_ref": "bus_a", "p_mw": 1.5},
+                {"bus_ref": "bus_a"},  # p_mw brakuje
+            ]
+        }
+        assert _existing_generation_mw(snapshot, "bus_a") == pytest.approx(1.5)
+
+    def test_complete_generators_regression_sums_normally(self) -> None:
+        snapshot = {
+            "generators": [
+                {"bus_ref": "bus_a", "p_mw": 1.5},
+                {"bus_ref": "bus_a", "p_mw": 2.0},
+            ]
+        }
+        assert _existing_generation_mw(snapshot, "bus_a") == pytest.approx(3.5)

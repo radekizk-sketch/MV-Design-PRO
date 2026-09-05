@@ -124,13 +124,17 @@ class ProtectionComparisonRow:
         trip_state_b: Trip state from Run B
         t_trip_s_a: Trip time from Run A [s] (None if NO_TRIP/INVALID)
         t_trip_s_b: Trip time from Run B [s]
-        i_fault_a_a: Fault current from Run A [A]
-        i_fault_a_b: Fault current from Run B [A]
+        i_fault_a_a: Fault current from Run A [A] (None if element not evaluated in Run A)
+        i_fault_a_b: Fault current from Run B [A] (None if element not evaluated in Run B)
         delta_t_s: Time difference (B - A) [s] (None if not both TRIPS)
-        delta_i_fault_a: Current difference (B - A) [A]
+        delta_i_fault_a: Current difference (B - A) [A] (None if either side not evaluated)
         margin_percent_a: Margin from Run A [%]
         margin_percent_b: Margin from Run B [%]
         state_change: Classification of state change
+
+    FAB-E (E1): i_fault_a_a/i_fault_a_b/delta_i_fault_a to ``| None`` — element
+    nieobecny w run A LUB run B (eval_a/eval_b brak) daje None, nigdy
+    fabrykowane 0.0 A, co wyglądałoby jak realny zanik prądu zwarciowego.
     """
 
     protected_element_ref: str
@@ -141,10 +145,10 @@ class ProtectionComparisonRow:
     trip_state_b: str
     t_trip_s_a: float | None
     t_trip_s_b: float | None
-    i_fault_a_a: float
-    i_fault_a_b: float
+    i_fault_a_a: float | None
+    i_fault_a_b: float | None
     delta_t_s: float | None
-    delta_i_fault_a: float
+    delta_i_fault_a: float | None
     margin_percent_a: float | None
     margin_percent_b: float | None
     state_change: StateChange
@@ -181,10 +185,16 @@ class ProtectionComparisonRow:
             trip_state_b=str(data["trip_state_b"]),
             t_trip_s_a=float(data["t_trip_s_a"]) if data.get("t_trip_s_a") is not None else None,
             t_trip_s_b=float(data["t_trip_s_b"]) if data.get("t_trip_s_b") is not None else None,
-            i_fault_a_a=float(data["i_fault_a_a"]),
-            i_fault_a_b=float(data["i_fault_a_b"]),
+            i_fault_a_a=(
+                float(data["i_fault_a_a"]) if data.get("i_fault_a_a") is not None else None
+            ),
+            i_fault_a_b=(
+                float(data["i_fault_a_b"]) if data.get("i_fault_a_b") is not None else None
+            ),
             delta_t_s=float(data["delta_t_s"]) if data.get("delta_t_s") is not None else None,
-            delta_i_fault_a=float(data["delta_i_fault_a"]),
+            delta_i_fault_a=(
+                float(data["delta_i_fault_a"]) if data.get("delta_i_fault_a") is not None else None
+            ),
             margin_percent_a=(
                 float(data["margin_percent_a"])
                 if data.get("margin_percent_a") is not None

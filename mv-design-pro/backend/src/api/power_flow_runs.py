@@ -33,6 +33,7 @@ from enm.canonical_analysis import list_runs_for_project as list_canonical_runs_
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from infrastructure.persistence.unit_of_work import UnitOfWork
 from network_model.reporting.czcionki import zarejestruj_czcionki
+from network_model.reporting.missing_value import format_wynik
 from pydantic import BaseModel, Field
 
 router = APIRouter(tags=["power-flow"])
@@ -542,10 +543,10 @@ def export_power_flow_run_docx(run_id: UUID) -> Response:
     add_row("Status zbieznosci", "Zbiezny" if result.get("converged") else "Niezbiezny")
     add_row("Liczba iteracji", result.get("iterations_count"))
     add_row("Wezel bilansujacy", result.get("slack_bus_id"))
-    add_row("Calkowite straty P [MW]", f"{summary.get('total_losses_p_mw', 0):.4g}")
-    add_row("Calkowite straty Q [Mvar]", f"{summary.get('total_losses_q_mvar', 0):.4g}")
-    add_row("Min. napiecie [pu]", f"{summary.get('min_v_pu', 0):.4g}")
-    add_row("Max. napiecie [pu]", f"{summary.get('max_v_pu', 0):.4g}")
+    add_row("Calkowite straty P [MW]", format_wynik(summary.get("total_losses_p_mw"), ".4g"))
+    add_row("Calkowite straty Q [Mvar]", format_wynik(summary.get("total_losses_q_mvar"), ".4g"))
+    add_row("Min. napiecie [pu]", format_wynik(summary.get("min_v_pu"), ".4g"))
+    add_row("Max. napiecie [pu]", format_wynik(summary.get("max_v_pu"), ".4g"))
     add_row("Elementy z katalogiem", metadata.get("catalog_context_count"))
 
     doc.add_paragraph()
@@ -589,10 +590,10 @@ def export_power_flow_run_docx(run_id: UUID) -> Response:
         for bus in bus_results[:30]:
             row = bus_table.add_row().cells
             row[0].text = str(bus.get("bus_id", "—"))[:16]
-            row[1].text = f"{bus.get('v_pu', 0):.4g}"
-            row[2].text = f"{bus.get('angle_deg', 0):.2f}"
-            row[3].text = f"{bus.get('p_injected_mw', 0):.3g}"
-            row[4].text = f"{bus.get('q_injected_mvar', 0):.3g}"
+            row[1].text = format_wynik(bus.get("v_pu"), ".4g")
+            row[2].text = format_wynik(bus.get("angle_deg"), ".2f")
+            row[3].text = format_wynik(bus.get("p_injected_mw"), ".3g")
+            row[4].text = format_wynik(bus.get("q_injected_mvar"), ".3g")
         if len(bus_results) > 30:
             doc.add_paragraph(f"... oraz {len(bus_results) - 30} dodatkowych wezlow")
     else:
@@ -678,10 +679,10 @@ def export_power_flow_run_pdf(run_id: UUID) -> Response:
     summary = result.get("summary", {})
     summary_lines = [
         f"Wezel bilansujacy: {result.get('slack_bus_id', '—')}",
-        f"Calkowite straty P: {summary.get('total_losses_p_mw', 0):.4g} MW",
-        f"Calkowite straty Q: {summary.get('total_losses_q_mvar', 0):.4g} Mvar",
-        f"Min. napiecie: {summary.get('min_v_pu', 0):.4g} pu",
-        f"Max. napiecie: {summary.get('max_v_pu', 0):.4g} pu",
+        f"Calkowite straty P: {format_wynik(summary.get('total_losses_p_mw'), '.4g')} MW",
+        f"Calkowite straty Q: {format_wynik(summary.get('total_losses_q_mvar'), '.4g')} Mvar",
+        f"Min. napiecie: {format_wynik(summary.get('min_v_pu'), '.4g')} pu",
+        f"Max. napiecie: {format_wynik(summary.get('max_v_pu'), '.4g')} pu",
         f"Elementy z katalogiem: {metadata.get('catalog_context_count', 0)}",
     ]
     for line in summary_lines:
@@ -749,8 +750,8 @@ def export_power_flow_run_pdf(run_id: UUID) -> Response:
     for bus in result.get("bus_results", [])[:20]:
         text = (
             f"{str(bus.get('bus_id', '—'))[:12]}: "
-            f"V={bus.get('v_pu', 0):.4g} pu, "
-            f"kat={bus.get('angle_deg', 0):.2f} deg"
+            f"V={format_wynik(bus.get('v_pu'), '.4g')} pu, "
+            f"kat={format_wynik(bus.get('angle_deg'), '.2f')} deg"
         )
         canvas_obj.drawString(left_margin, y, text)
         y -= line_height

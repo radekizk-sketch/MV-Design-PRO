@@ -36,6 +36,7 @@ from domain.power_flow_comparison import (
     PowerFlowBranchDiffRow,
     PowerFlowBusDiffRow,
     PowerFlowComparison,
+    PowerFlowComparisonError,
     PowerFlowComparisonNotFoundError,
     PowerFlowComparisonResult,
     PowerFlowComparisonStatus,
@@ -360,7 +361,20 @@ class PowerFlowComparisonService:
         """
         import math
 
-        base_mva = payload.get("base_mva", 100.0)
+        # FAB-E (E1): base_mva SKALUJE total_losses/slack_p/slack_q ponizej
+        # (* base_mva) — zamrozony kontrakt (analysis/power_flow/result.py::
+        # PowerFlowResult.base_mva) wymaga tego pola bez domyslnej wartosci;
+        # milczace 100.0 dalo by PRAWDOPODOBNIE-WYGLADAJACE, ale BLEDNE MW/Mvar
+        # dla kazdej sieci o innej bazie mocy — gorsze niz jawna odmowa.
+        base_mva_raw = payload.get("base_mva")
+        if base_mva_raw is None:
+            raise PowerFlowComparisonError(
+                f"Zapis wyniku rozplywu dla biegu {run_uuid} nie ma wymaganego pola "
+                "'base_mva' — zapis biegu jest uszkodzony, porownanie nie moze sie na "
+                "nim oprzec (bledna baza mocy dalaby fikcyjnie przeskalowane straty/moc "
+                "wezla bilansujacego)."
+            )
+        base_mva = float(base_mva_raw)
         slack_node_id = payload.get("slack_node_id", "")
 
         # Bus results (deterministycznie posortowane)
@@ -448,6 +462,10 @@ class PowerFlowComparisonService:
 
         return {
             "converged": converged,
+            # FAB-E: "iterations_count" nigdzie w tym module nie jest czytane
+            # (zweryfikowane grepem) — metadana solvera, nie wielkosc fizyczna;
+            # domyslne 0 bezpieczne/udokumentowane, spojnie z tym samym
+            # ustaleniem w analyses/voltage_profile_view.py.
             "iterations_count": result_summary.get("iterations", 0),
             "base_mva": base_mva,
             "slack_bus_id": slack_node_id,
@@ -569,10 +587,18 @@ class PowerFlowComparisonService:
             bus_a = index_a.get(bus_id, {})
             bus_b = index_b.get(bus_id, {})
 
-            v_pu_a = float(bus_a.get("v_pu", 0.0))
-            v_pu_b = float(bus_b.get("v_pu", 0.0))
-            angle_deg_a = float(bus_a.get("angle_deg", 0.0))
-            angle_deg_b = float(bus_b.get("angle_deg", 0.0))
+            # FAB-E (E1): szyna obecna tylko w jednym z porownywanych biegow
+            # (bus_a/bus_b = {}) -> v_pu/angle_deg/delty None, NIGDY fabrykowane
+            # 0.0 (wygladaloby jak calkowity zanik napiecia). p_injected_mw/
+            # q_injected_mvar POZOSTAJA 0.0: zapis wyniku rozplywu
+            # (analysis/power_flow/result.py::PowerFlowResult) nie niesie mocy
+            # wstrzykniętej PER WEZEL w ogole (dlug architektoniczny poza
+            # zakresem tej karty — brak pola u zrodla, nie blad odczytu; patrz
+            # raport FAB-E i _build_pf_result_from_payload).
+            v_pu_a = self._pole_lub_none(bus_a, "v_pu")
+            v_pu_b = self._pole_lub_none(bus_b, "v_pu")
+            angle_deg_a = self._pole_lub_none(bus_a, "angle_deg")
+            angle_deg_b = self._pole_lub_none(bus_b, "angle_deg")
             p_inj_a = float(bus_a.get("p_injected_mw", 0.0))
             p_inj_b = float(bus_b.get("p_injected_mw", 0.0))
             q_inj_a = float(bus_a.get("q_injected_mvar", 0.0))
@@ -588,19 +614,39 @@ class PowerFlowComparisonService:
                 p_injected_mw_b=p_inj_b,
                 q_injected_mvar_a=q_inj_a,
                 q_injected_mvar_b=q_inj_b,
-                delta_v_pu=v_pu_b - v_pu_a,
-                delta_angle_deg=angle_deg_b - angle_deg_a,
+                delta_v_pu=self._delta_lub_none(v_pu_a, v_pu_b),
+                delta_angle_deg=self._delta_lub_none(angle_deg_a, angle_deg_b),
                 delta_p_mw=p_inj_b - p_inj_a,
                 delta_q_mvar=q_inj_b - q_inj_a,
                 # L-13: różnica względna liczona w backendzie (nie w prezentacji).
-                delta_v_percent=procent_roznicy(v_pu_a, v_pu_b),
-                delta_angle_percent=procent_roznicy(angle_deg_a, angle_deg_b),
+                delta_v_percent=self._procent_lub_none(v_pu_a, v_pu_b),
+                delta_angle_percent=self._procent_lub_none(angle_deg_a, angle_deg_b),
                 delta_p_percent=procent_roznicy(p_inj_a, p_inj_b),
                 delta_q_percent=procent_roznicy(q_inj_a, q_inj_b),
             )
             diffs.append(diff)
 
         return diffs
+
+    @staticmethod
+    def _pole_lub_none(zrodlo: dict[str, Any], klucz: str) -> float | None:
+        """Pole liczbowe wiersza porownania — None, gdy brak (nie fikcyjne 0.0)."""
+        wartosc = zrodlo.get(klucz)
+        return float(wartosc) if wartosc is not None else None
+
+    @staticmethod
+    def _delta_lub_none(a: float | None, b: float | None) -> float | None:
+        """Delta (B - A) — None, gdy KTORAKOLWIEK strona nie ma wartosci."""
+        if a is None or b is None:
+            return None
+        return b - a
+
+    @staticmethod
+    def _procent_lub_none(a: float | None, b: float | None) -> float | None:
+        """Jak `procent_roznicy`, ale None gdy KTORAKOLWIEK strona nie ma wartosci."""
+        if a is None or b is None:
+            return None
+        return procent_roznicy(a, b)
 
     def _compute_branch_diffs(
         self,
@@ -632,18 +678,21 @@ class PowerFlowComparisonService:
             br_a = index_a.get(branch_id, {})
             br_b = index_b.get(branch_id, {})
 
-            p_from_a = float(br_a.get("p_from_mw", 0.0))
-            p_from_b = float(br_b.get("p_from_mw", 0.0))
-            q_from_a = float(br_a.get("q_from_mvar", 0.0))
-            q_from_b = float(br_b.get("q_from_mvar", 0.0))
-            p_to_a = float(br_a.get("p_to_mw", 0.0))
-            p_to_b = float(br_b.get("p_to_mw", 0.0))
-            q_to_a = float(br_a.get("q_to_mvar", 0.0))
-            q_to_b = float(br_b.get("q_to_mvar", 0.0))
-            losses_p_a = float(br_a.get("losses_p_mw", 0.0))
-            losses_p_b = float(br_b.get("losses_p_mw", 0.0))
-            losses_q_a = float(br_a.get("losses_q_mvar", 0.0))
-            losses_q_b = float(br_b.get("losses_q_mvar", 0.0))
+            # FAB-E (E1): galaz obecna tylko w jednym z porownywanych biegow
+            # (br_a/br_b = {}) -> wszystkie pola/delty None, NIGDY fabrykowane
+            # 0.0 MW/Mvar (wygladaloby jak realny zanik przeplywu).
+            p_from_a = self._pole_lub_none(br_a, "p_from_mw")
+            p_from_b = self._pole_lub_none(br_b, "p_from_mw")
+            q_from_a = self._pole_lub_none(br_a, "q_from_mvar")
+            q_from_b = self._pole_lub_none(br_b, "q_from_mvar")
+            p_to_a = self._pole_lub_none(br_a, "p_to_mw")
+            p_to_b = self._pole_lub_none(br_b, "p_to_mw")
+            q_to_a = self._pole_lub_none(br_a, "q_to_mvar")
+            q_to_b = self._pole_lub_none(br_b, "q_to_mvar")
+            losses_p_a = self._pole_lub_none(br_a, "losses_p_mw")
+            losses_p_b = self._pole_lub_none(br_b, "losses_p_mw")
+            losses_q_a = self._pole_lub_none(br_a, "losses_q_mvar")
+            losses_q_b = self._pole_lub_none(br_b, "losses_q_mvar")
 
             diff = PowerFlowBranchDiffRow(
                 branch_id=branch_id,
@@ -659,19 +708,19 @@ class PowerFlowComparisonService:
                 losses_p_mw_b=losses_p_b,
                 losses_q_mvar_a=losses_q_a,
                 losses_q_mvar_b=losses_q_b,
-                delta_p_from_mw=p_from_b - p_from_a,
-                delta_q_from_mvar=q_from_b - q_from_a,
-                delta_p_to_mw=p_to_b - p_to_a,
-                delta_q_to_mvar=q_to_b - q_to_a,
-                delta_losses_p_mw=losses_p_b - losses_p_a,
-                delta_losses_q_mvar=losses_q_b - losses_q_a,
+                delta_p_from_mw=self._delta_lub_none(p_from_a, p_from_b),
+                delta_q_from_mvar=self._delta_lub_none(q_from_a, q_from_b),
+                delta_p_to_mw=self._delta_lub_none(p_to_a, p_to_b),
+                delta_q_to_mvar=self._delta_lub_none(q_to_a, q_to_b),
+                delta_losses_p_mw=self._delta_lub_none(losses_p_a, losses_p_b),
+                delta_losses_q_mvar=self._delta_lub_none(losses_q_a, losses_q_b),
                 # L-13: różnica względna liczona w backendzie (nie w prezentacji).
-                delta_p_from_percent=procent_roznicy(p_from_a, p_from_b),
-                delta_q_from_percent=procent_roznicy(q_from_a, q_from_b),
-                delta_p_to_percent=procent_roznicy(p_to_a, p_to_b),
-                delta_q_to_percent=procent_roznicy(q_to_a, q_to_b),
-                delta_losses_p_percent=procent_roznicy(losses_p_a, losses_p_b),
-                delta_losses_q_percent=procent_roznicy(losses_q_a, losses_q_b),
+                delta_p_from_percent=self._procent_lub_none(p_from_a, p_from_b),
+                delta_q_from_percent=self._procent_lub_none(q_from_a, q_from_b),
+                delta_p_to_percent=self._procent_lub_none(p_to_a, p_to_b),
+                delta_q_to_percent=self._procent_lub_none(q_to_a, q_to_b),
+                delta_losses_p_percent=self._procent_lub_none(losses_p_a, losses_p_b),
+                delta_losses_q_percent=self._procent_lub_none(losses_q_a, losses_q_b),
             )
             diffs.append(diff)
 
@@ -710,9 +759,14 @@ class PowerFlowComparisonService:
                 )
             )
 
-        # Rule 2: Top N largest |delta_v_pu|
+        # Rule 2: Top N largest |delta_v_pu|. FAB-E (E1): szyna obecna tylko w
+        # jednym z porownywanych biegow ma delta_v_pu=None (nie ma jak
+        # policzyc "jak bardzo sie zmienilo" — pomijamy w rankingu, nie
+        # traktujemy jako 0 pu, co ukryloby ja jako "bez zmian").
         voltage_deltas = [
-            (idx, abs(bus.delta_v_pu), bus.bus_id) for idx, bus in enumerate(bus_diffs)
+            (idx, abs(bus.delta_v_pu), bus.bus_id)
+            for idx, bus in enumerate(bus_diffs)
+            if bus.delta_v_pu is not None
         ]
         voltage_deltas.sort(
             key=lambda x: (-x[1], x[2])
@@ -729,9 +783,12 @@ class PowerFlowComparisonService:
                     )
                 )
 
-        # Rule 3: Angle shift (top N largest |delta_angle_deg|)
+        # Rule 3: Angle shift (top N largest |delta_angle_deg|). FAB-E (E1): jak
+        # wyzej — szyna bez delta_angle_deg pomijana w rankingu, nie 0 deg.
         angle_deltas = [
-            (idx, abs(bus.delta_angle_deg), bus.bus_id) for idx, bus in enumerate(bus_diffs)
+            (idx, abs(bus.delta_angle_deg), bus.bus_id)
+            for idx, bus in enumerate(bus_diffs)
+            if bus.delta_angle_deg is not None
         ]
         angle_deltas.sort(key=lambda x: (-x[1], x[2]))
 
@@ -746,7 +803,12 @@ class PowerFlowComparisonService:
                     )
                 )
 
-        # Rule 4: Total losses change
+        # Rule 4: Total losses change. FAB-E: summary_a/summary_b pochodza
+        # WYLACZNIE z _build_pf_result_from_payload, ktora konstruuje slownik
+        # "summary" bezwarunkowo ze WSZYSTKIMI 6 kluczami (zawsze obecny) — klucz
+        # tu nie brakuje nigdy; jedyne ryzyko bledu bylo w base_mva (naprawione
+        # powyzej: odmowa zamiast domyslnej bazy mocy). Domyslny odczyt tutaj
+        # bezpieczny/zweryfikowany, nie fabrykacja.
         total_losses_a = float(summary_a.get("total_losses_p_mw", 0.0))
         total_losses_b = float(summary_b.get("total_losses_p_mw", 0.0))
         delta_losses = total_losses_b - total_losses_a
@@ -803,9 +865,17 @@ class PowerFlowComparisonService:
         base_description = ISSUE_DESCRIPTIONS_PL.get(issue_code, issue_code.value)
         description = f"{base_description} ({extra_info})" if extra_info else base_description
 
+        # FAB-E (E2): brak wpisu w ISSUE_SEVERITY_MAP dla ten kodu problemu to
+        # dziura w kontrakcie (nowy PowerFlowIssueCode bez przypisanej
+        # surowosci) — nie wolno cicho podstawiac INFORMATIONAL, bo to
+        # zafalszowaloby priorytet realnego problemu. Mapa pokrywa dzis
+        # WSZYSTKIE elementy PowerFlowIssueCode (patrz test kompletnosci w
+        # tests/domain/test_power_flow_comparison_severity_map.py) — subskrypcja
+        # wprost zamiast `.get(..., default)` sprawia, ze przyszla luka rzuci
+        # KeyError zamiast cicho zanizyc priorytet.
         return PowerFlowRankingIssue(
             issue_code=issue_code,
-            severity=ISSUE_SEVERITY_MAP.get(issue_code, PowerFlowIssueSeverity.INFORMATIONAL),
+            severity=ISSUE_SEVERITY_MAP[issue_code],
             element_ref=element_ref,
             description_pl=description,
             evidence_ref=evidence_ref,
@@ -855,8 +925,16 @@ class PowerFlowComparisonService:
         total_losses_a = float(summary_a.get("total_losses_p_mw", 0.0))
         total_losses_b = float(summary_b.get("total_losses_p_mw", 0.0))
 
-        max_delta_v = max((abs(b.delta_v_pu) for b in bus_diffs), default=0.0)
-        max_delta_angle = max((abs(b.delta_angle_deg) for b in bus_diffs), default=0.0)
+        # FAB-E (E1): szyny bez porownywalnej delty (obecne tylko w jednym
+        # biegu) pomijane — max z PUSTEJ sekwencji (zaden wspolny bus) to
+        # None, nie fikcyjne 0.0 (wygladaloby jak "brak zmian w calej sieci").
+        max_delta_v = max(
+            (abs(b.delta_v_pu) for b in bus_diffs if b.delta_v_pu is not None), default=None
+        )
+        max_delta_angle = max(
+            (abs(b.delta_angle_deg) for b in bus_diffs if b.delta_angle_deg is not None),
+            default=None,
+        )
 
         return PowerFlowComparisonSummary(
             total_buses=len(bus_diffs),

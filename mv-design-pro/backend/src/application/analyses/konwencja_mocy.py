@@ -64,6 +64,27 @@ from collections.abc import Mapping, Sequence
 from typing import Any
 
 
+def _wymagana_moc_galezi(br: Mapping[str, Any], klucz: str) -> float:
+    """Wartość mocy gałęzi z rekordu ``branch_results`` (``result_v1``).
+
+    ``PowerFlowBranchResult`` (``network_model/solvers/power_flow_result.py``)
+    ma ``p_from_mw``/``q_from_mvar``/``p_to_mw``/``q_to_mvar`` jako pola
+    WYMAGANE (bez wartości domyślnej, bez ``| None``) — dla poprawnego wyniku
+    solvera te klucze zawsze niosą liczbę. Brak klucza albo ``None`` oznacza
+    uszkodzony/niekompletny ``branch_results`` (FAB-E, E1: brak wyniku ≠ zero) —
+    adapter konwencji znaku ma podnieść wyjątek, a nie fabrykować zerowy wkład
+    gałęzi do mocy punktu (co zaniżyłoby ``p_mw``/``q_mvar`` bez śladu).
+    """
+    wartosc = br.get(klucz)
+    if wartosc is None:
+        raise ValueError(
+            f"Brak pola {klucz!r} w rekordzie branch_results (branch_id="
+            f"{br.get('branch_id')!r}) — wynik solvera niekompletny, adapter "
+            "konwencji mocy nie może przeliczyć znaku punktu bez tej wartości."
+        )
+    return float(wartosc)
+
+
 def q_bierna_kanoniczna(q_koniec_incydentny_mvar: float) -> float:
     """Moc bierna gałęzi na końcu incydentnym z punktem → znak kanoniczny.
 
@@ -111,12 +132,12 @@ def moc_kanoniczna_punktu(
         from_node, to_node = ends
         if to_node == point_node:
             koniec = "to"
-            p = -float(br.get("p_to_mw") or 0.0)
-            q = q_bierna_kanoniczna(float(br.get("q_to_mvar") or 0.0))
+            p = -_wymagana_moc_galezi(br, "p_to_mw")
+            q = q_bierna_kanoniczna(_wymagana_moc_galezi(br, "q_to_mvar"))
         elif from_node == point_node:
             koniec = "from"
-            p = -float(br.get("p_from_mw") or 0.0)
-            q = q_bierna_kanoniczna(float(br.get("q_from_mvar") or 0.0))
+            p = -_wymagana_moc_galezi(br, "p_from_mw")
+            q = q_bierna_kanoniczna(_wymagana_moc_galezi(br, "q_from_mvar"))
         else:
             continue
         p_sum += p

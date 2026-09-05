@@ -84,6 +84,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import logging
 import math
 from typing import Any
 from uuid import NAMESPACE_URL, uuid5
@@ -98,6 +99,8 @@ from enm.models import ShuntCapacitor
 from network_model.catalog.mv_shunt_capacitor_catalog import get_all_shunt_capacitor_records
 
 _KV_TOLERANCE = 0.001
+
+logger = logging.getLogger(__name__)
 
 
 def _round6(value: float | None) -> float | None:
@@ -268,7 +271,20 @@ def _q_kompensacji_znamionowa_mvar(snapshot: dict[str, Any], bus_ref: str) -> fl
             continue
         if str(cap.get("status") or "closed") == "open":
             continue
-        total += float(cap.get("rated_mvar") or 0.0)
+        rated_mvar = cap.get("rated_mvar")
+        if rated_mvar is None:
+            # FAB-E (E1): rated_mvar jest polem WYMAGANYM na modelu
+            # ShuntCapacitor (enm/models.py) — brak w snapshotcie oznacza
+            # uszkodzony wpis, nie baterie o zerowej mocy znamionowej.
+            # Pomijamy TEN wpis (nie liczymy jako 0 Mvar), zeby nie zanizyc
+            # sumy dostepnej kompensacji.
+            logger.warning(
+                "Pomijam baterie kondensatorow bez pola rated_mvar "
+                "(bus_ref=%r) — uszkodzony wpis, nie 0 Mvar.",
+                bus_ref,
+            )
+            continue
+        total += float(rated_mvar)
     return total
 
 
@@ -442,7 +458,17 @@ def build_compensation_sizing_view(
     if bus is None:
         raise ValueError(f"Wskazana szyna punktu przyłączenia nie istnieje w modelu: {bus_ref}.")
 
-    bus_kv = float(bus.get("voltage_kv") or 0.0)
+    # FAB-E (E1): voltage_kv jest polem WYMAGANYM na modelu szyny (enm/models.py)
+    # — brak w snapshotcie oznacza uszkodzony zapis, nie szyne 0 kV. Fikcyjne
+    # 0.0 dobieraloby KATALOGOWE kandydatury baterii dla nieistniejacego
+    # poziomu napiecia (_sorted_candidates), czyli fizycznie bezsensowny dobor.
+    voltage_kv_raw = bus.get("voltage_kv")
+    if voltage_kv_raw is None:
+        raise ValueError(
+            f"Szyna punktu przyłączenia {bus_ref!r} nie ma pola voltage_kv w snapshotcie "
+            "— zapis modelu jest uszkodzony, dobór kompensacji nie może się na nim oprzeć."
+        )
+    bus_kv = float(voltage_kv_raw)
     records = _sorted_candidates(bus_kv)
 
     baseline_day = _point_cos_phi(run, record=None, bus_ref=bus_ref, night=False)

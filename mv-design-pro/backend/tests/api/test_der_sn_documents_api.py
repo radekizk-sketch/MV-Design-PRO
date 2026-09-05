@@ -339,6 +339,36 @@ def test_realne_odstepstwo_przekroju_nadal_jest_zglaszane(app_client) -> None:
     assert pozycja["code"] == "der_sn.d2.odstepstwo"
 
 
+def _seed_case_4mva_bez_przekroju_kabla(client, case_id: str, *, cable_ref: str) -> None:
+    """Jak ``_seed_case_4mva``, ale kabel MV traci ``cross_section_mm2`` PO
+    materializacji (symuluje tor zapisany zanim to pole zaczęło być
+    materializowane — nadal PRZECHODZI walidację modelu, bo pole jest
+    opcjonalne, więc to REALNY, osiągalny stan magazynu, nie fikcja testu)."""
+    result = execute_domain_operation(
+        _sn_station_enm(),
+        "add_converter_source",
+        _der_payload_4mva(cable_ref=cable_ref, laying_conditions=None),
+    )
+    assert not result.get("error"), result.get("error")
+    for branch in result["snapshot"].get("branches", []):
+        if branch.get("type") == "cable":
+            branch["cross_section_mm2"] = None
+    set_enm(_klucz(client, case_id), EnergyNetworkModel.model_validate(result["snapshot"]))
+
+
+def test_brak_przekroju_kabla_pomija_sekcje_d2_nie_fabrykuje_zera(app_client) -> None:
+    """FAB-E (E1): kabel zastosowany bez znanego ``cross_section_mm2`` (pole
+    opcjonalne w modelu) → sekcja odstępstw D2 pominięta ("brak" — ``None``),
+    NIE zgłasza fikcyjnego „zastosowano 0 mm²" jako fałszywego odstępstwa.
+    Przypadek seedowany przez realny projekt (klucz twin, CV-1-W)."""
+    case_id = _nowy_przypadek(app_client)
+    _seed_case_4mva_bez_przekroju_kabla(app_client, case_id, cable_ref="cable-polish-yhakxs-1c-50")
+    resp = app_client.get(f"/api/der-sn/{case_id}/compliance-report", params={"run_status": "DONE"})
+    assert resp.status_code == 200, resp.text
+    pozycja = _odstepstwo_przekroju(resp.json())
+    assert pozycja is None, "brak danych zastosowanego przekroju nie może dać pozycji odstępstw"
+
+
 def test_tor_bez_zapisu_warunkow_liczy_sie_jak_dotad(app_client) -> None:
     """Tory zbudowane przed tą kartą: warunki katalogowe ⇒ propozycja 50 mm²."""
     case_id = _nowy_przypadek(app_client)

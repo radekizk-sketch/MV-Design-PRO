@@ -150,22 +150,16 @@ class ComparisonService:
         payload_a = self._find_result_payload(results_a, "short_circuit", run_a_id)
         payload_b = self._find_result_payload(results_b, "short_circuit", run_b_id)
 
-        # Extract values with safe defaults
-        ikss_a = float(payload_a.get("ikss_a", 0.0))
-        ikss_b = float(payload_b.get("ikss_a", 0.0))
-
-        sk_a = float(payload_a.get("sk_mva", 0.0))
-        sk_b = float(payload_b.get("sk_mva", 0.0))
-
-        ip_a = float(payload_a.get("ip_a", 0.0))
-        ip_b = float(payload_b.get("ip_a", 0.0))
-
-        ith_a = float(payload_a.get("ith_a", 0.0))
-        ith_b = float(payload_b.get("ith_a", 0.0))
+        # FAB-E (E1): brak wartości w payloadzie run A LUB run B (niekompletny/
+        # starszy zapis wyniku) -> delta None, NIGDY fabrykowana od milczącego
+        # 0 (ShortCircuitResult FROZEN nie ma tu odpowiednika "naprawdę zero").
+        ikss_delta = self._numeric_delta_or_none(payload_a, payload_b, "ikss_a")
+        sk_delta = self._numeric_delta_or_none(payload_a, payload_b, "sk_mva")
+        ip_delta = self._numeric_delta_or_none(payload_a, payload_b, "ip_a")
+        ith_delta = self._numeric_delta_or_none(payload_a, payload_b, "ith_a")
 
         # Zth can be stored as complex dict {"re": x, "im": y}
-        zth_a = self._parse_complex(payload_a.get("zkk_ohm", {"re": 0.0, "im": 0.0}))
-        zth_b = self._parse_complex(payload_b.get("zkk_ohm", {"re": 0.0, "im": 0.0}))
+        zth_delta = self._complex_delta_or_none(payload_a, payload_b, "zkk_ohm")
 
         # Karta S-C (2026-07-22): addytywne delty pełnego bilansu — ta sama
         # klasa przekształceń co kanoniczny bilans (X/R = 1/(R/X),
@@ -183,14 +177,37 @@ class ComparisonService:
         )
 
         return ShortCircuitComparison(
-            ikss_delta=NumericDelta.compute(ikss_a, ikss_b),
-            sk_delta=NumericDelta.compute(sk_a, sk_b),
-            zth_delta=ComplexDelta.compute(zth_a, zth_b),
-            ip_delta=NumericDelta.compute(ip_a, ip_b),
-            ith_delta=NumericDelta.compute(ith_a, ith_b),
+            ikss_delta=ikss_delta,
+            sk_delta=sk_delta,
+            zth_delta=zth_delta,
+            ip_delta=ip_delta,
+            ith_delta=ith_delta,
             xr_ratio_delta=xr_ratio_delta,
             i2t_delta=i2t_delta,
         )
+
+    @staticmethod
+    def _numeric_delta_or_none(
+        payload_a: dict[str, Any], payload_b: dict[str, Any], key: str
+    ) -> NumericDelta | None:
+        """Delta dwóch pól liczbowych payloadu — None, gdy klucz brakuje w
+        KTÓRYMKOLWIEK payloadzie (nie tylko gdy brakuje w obu)."""
+        value_a = payload_a.get(key)
+        value_b = payload_b.get(key)
+        if value_a is None or value_b is None:
+            return None
+        return NumericDelta.compute(float(value_a), float(value_b))
+
+    @classmethod
+    def _complex_delta_or_none(
+        cls, payload_a: dict[str, Any], payload_b: dict[str, Any], key: str
+    ) -> ComplexDelta | None:
+        """Jak `_numeric_delta_or_none`, dla pól zespolonych {"re":x,"im":y}."""
+        raw_a = payload_a.get(key)
+        raw_b = payload_b.get(key)
+        if raw_a is None or raw_b is None:
+            return None
+        return ComplexDelta.compute(cls._parse_complex(raw_a), cls._parse_complex(raw_b))
 
     @staticmethod
     def _payload_xr_ratio(payload: dict[str, Any]) -> float | None:
@@ -231,13 +248,15 @@ class ComparisonService:
         payload_a = self._find_result_payload(results_a, "power_flow", run_a_id)
         payload_b = self._find_result_payload(results_b, "power_flow", run_b_id)
 
-        # Total losses (complex in pu)
-        losses_a = self._parse_complex(payload_a.get("losses_total_pu", {"re": 0.0, "im": 0.0}))
-        losses_b = self._parse_complex(payload_b.get("losses_total_pu", {"re": 0.0, "im": 0.0}))
-
-        # Slack power (complex in pu)
-        slack_a = self._parse_complex(payload_a.get("slack_power_pu", {"re": 0.0, "im": 0.0}))
-        slack_b = self._parse_complex(payload_b.get("slack_power_pu", {"re": 0.0, "im": 0.0}))
+        # FAB-E (E1): brak klucza w payloadzie run A LUB run B -> obie skladowe
+        # (P i Q) None, NIGDY fabrykowane 0.0 (wygladaloby jak zerowe straty/
+        # zerowy bilans wezla bilansujacego).
+        total_losses_p_delta, total_losses_q_delta = self._complex_component_deltas(
+            payload_a, payload_b, "losses_total_pu"
+        )
+        slack_p_delta, slack_q_delta = self._complex_component_deltas(
+            payload_a, payload_b, "slack_power_pu"
+        )
 
         # Per-node voltages
         node_voltages = self._compare_node_voltages(
@@ -254,12 +273,29 @@ class ComparisonService:
         )
 
         return PowerFlowComparison(
-            total_losses_p_delta=NumericDelta.compute(losses_a.real, losses_b.real),
-            total_losses_q_delta=NumericDelta.compute(losses_a.imag, losses_b.imag),
-            slack_p_delta=NumericDelta.compute(slack_a.real, slack_b.real),
-            slack_q_delta=NumericDelta.compute(slack_a.imag, slack_b.imag),
+            total_losses_p_delta=total_losses_p_delta,
+            total_losses_q_delta=total_losses_q_delta,
+            slack_p_delta=slack_p_delta,
+            slack_q_delta=slack_q_delta,
             node_voltages=tuple(node_voltages),
             branch_powers=tuple(branch_powers),
+        )
+
+    @classmethod
+    def _complex_component_deltas(
+        cls, payload_a: dict[str, Any], payload_b: dict[str, Any], key: str
+    ) -> tuple[NumericDelta | None, NumericDelta | None]:
+        """(delta_re, delta_im) pola zespolonego payloadu — (None, None), gdy
+        klucz brakuje w KTORYMKOLWIEK payloadzie (nie tylko gdy brakuje w obu)."""
+        raw_a = payload_a.get(key)
+        raw_b = payload_b.get(key)
+        if raw_a is None or raw_b is None:
+            return None, None
+        value_a = cls._parse_complex(raw_a)
+        value_b = cls._parse_complex(raw_b)
+        return (
+            NumericDelta.compute(value_a.real, value_b.real),
+            NumericDelta.compute(value_a.imag, value_b.imag),
         )
 
     def _compare_node_voltages(
@@ -269,21 +305,37 @@ class ComparisonService:
         pu_a: dict[str, float],
         pu_b: dict[str, float],
     ) -> list[BusVoltageComparison]:
-        """Compare per-bus voltages."""
+        """Compare per-bus voltages.
+
+        FAB-E (E1): szyna obecna tylko w jednym z porownywanych biegow (zmiana
+        topologii miedzy run A i run B) dostaje delte None dla tej skladowej,
+        NIGDY fabrykowane 0.0 kV/pu (wygladaloby jak calkowity zanik napiecia).
+        """
         all_nodes = sorted(set(kv_a.keys()) | set(kv_b.keys()))
         comparisons = []
 
         for node_id in all_nodes:
-            u_kv_val_a = float(kv_a.get(node_id, 0.0))
-            u_kv_val_b = float(kv_b.get(node_id, 0.0))
-            u_pu_val_a = float(pu_a.get(node_id, 0.0))
-            u_pu_val_b = float(pu_b.get(node_id, 0.0))
+            u_kv_val_a = kv_a.get(node_id)
+            u_kv_val_b = kv_b.get(node_id)
+            u_pu_val_a = pu_a.get(node_id)
+            u_pu_val_b = pu_b.get(node_id)
+
+            u_kv_delta = (
+                NumericDelta.compute(float(u_kv_val_a), float(u_kv_val_b))
+                if u_kv_val_a is not None and u_kv_val_b is not None
+                else None
+            )
+            u_pu_delta = (
+                NumericDelta.compute(float(u_pu_val_a), float(u_pu_val_b))
+                if u_pu_val_a is not None and u_pu_val_b is not None
+                else None
+            )
 
             comparisons.append(
                 BusVoltageComparison(
                     bus_id=node_id,
-                    u_kv_delta=NumericDelta.compute(u_kv_val_a, u_kv_val_b),
-                    u_pu_delta=NumericDelta.compute(u_pu_val_a, u_pu_val_b),
+                    u_kv_delta=u_kv_delta,
+                    u_pu_delta=u_pu_delta,
                 )
             )
 
@@ -294,13 +346,24 @@ class ComparisonService:
         s_from_a: dict[str, Any],
         s_from_b: dict[str, Any],
     ) -> list[BranchPowerComparison]:
-        """Compare per-branch powers."""
+        """Compare per-branch powers.
+
+        FAB-E (E1): galaz obecna tylko w jednym z porownywanych biegow dostaje
+        delte None, NIGDY fabrykowane 0.0 MW/Mvar (wygladaloby jak realny
+        zanik przeplywu)."""
         all_branches = sorted(set(s_from_a.keys()) | set(s_from_b.keys()))
         comparisons = []
 
         for branch_id in all_branches:
-            s_a = self._parse_complex(s_from_a.get(branch_id, {"re": 0.0, "im": 0.0}))
-            s_b = self._parse_complex(s_from_b.get(branch_id, {"re": 0.0, "im": 0.0}))
+            raw_a = s_from_a.get(branch_id)
+            raw_b = s_from_b.get(branch_id)
+            if raw_a is None or raw_b is None:
+                comparisons.append(
+                    BranchPowerComparison(branch_id=branch_id, p_mw_delta=None, q_mvar_delta=None)
+                )
+                continue
+            s_a = self._parse_complex(raw_a)
+            s_b = self._parse_complex(raw_b)
 
             comparisons.append(
                 BranchPowerComparison(
@@ -355,12 +418,15 @@ class ComparisonService:
             else:
                 state_change = f"{trip_state_a}→{trip_state_b}"
 
-            # Trip time delta (only if both TRIPS)
+            # Trip time delta (only if both TRIPS AND obie strony mają t_trip_s
+            # — FAB-E (E1): TRIPS bez t_trip_s to uszkodzona ewaluacja, nie
+            # fikcyjny czas zadzialania 0 s).
             t_trip_delta = None
             if trip_state_a == "TRIPS" and trip_state_b == "TRIPS":
-                t_a = float(ev_a.get("t_trip_s", 0.0))
-                t_b = float(ev_b.get("t_trip_s", 0.0))
-                t_trip_delta = NumericDelta.compute(t_a, t_b)
+                t_a = ev_a.get("t_trip_s")
+                t_b = ev_b.get("t_trip_s")
+                if t_a is not None and t_b is not None:
+                    t_trip_delta = NumericDelta.compute(float(t_a), float(t_b))
 
             # Margin delta (if both have margin)
             margin_delta = None
@@ -380,24 +446,26 @@ class ComparisonService:
                 )
             )
 
-        # Extract summary counts
-        summary_a = payload_a.get("summary", {})
-        summary_b = payload_b.get("summary", {})
-
-        trip_count_a = float(summary_a.get("trips_count", 0))
-        trip_count_b = float(summary_b.get("trips_count", 0))
-
-        no_trip_count_a = float(summary_a.get("no_trip_count", 0))
-        no_trip_count_b = float(summary_b.get("no_trip_count", 0))
-
-        invalid_count_a = float(summary_a.get("invalid_count", 0))
-        invalid_count_b = float(summary_b.get("invalid_count", 0))
+        # Extract summary counts. FAB-E (E1): brak klucza "summary" w
+        # KTORYMKOLWIEK payloadzie (starszy/niekompletny zapis wyniku) ->
+        # wszystkie trzy count-delty None, nigdy fabrykowane 0 (wygladaloby
+        # jak "zero zadzialan zabezpieczen" zamiast "brak podsumowania").
+        summary_a = payload_a.get("summary")
+        summary_b = payload_b.get("summary")
+        if isinstance(summary_a, dict) and isinstance(summary_b, dict):
+            trip_count_delta = self._numeric_delta_or_none(summary_a, summary_b, "trips_count")
+            no_trip_count_delta = self._numeric_delta_or_none(summary_a, summary_b, "no_trip_count")
+            invalid_count_delta = self._numeric_delta_or_none(summary_a, summary_b, "invalid_count")
+        else:
+            trip_count_delta = None
+            no_trip_count_delta = None
+            invalid_count_delta = None
 
         return ProtectionComparison(
             evaluations=tuple(eval_comparisons),
-            trip_count_delta=NumericDelta.compute(trip_count_a, trip_count_b),
-            no_trip_count_delta=NumericDelta.compute(no_trip_count_a, no_trip_count_b),
-            invalid_count_delta=NumericDelta.compute(invalid_count_a, invalid_count_b),
+            trip_count_delta=trip_count_delta,
+            no_trip_count_delta=no_trip_count_delta,
+            invalid_count_delta=invalid_count_delta,
         )
 
     def _find_result_payload(

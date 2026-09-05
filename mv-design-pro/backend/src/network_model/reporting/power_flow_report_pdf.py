@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from network_model.reporting.czcionki import zarejestruj_czcionki
+from network_model.reporting.missing_value import format_wynik
 
 if TYPE_CHECKING:
     from network_model.solvers.power_flow_result import PowerFlowResultV1
@@ -157,7 +158,7 @@ def export_power_flow_result_to_pdf(
         f"Status: {'Zbiezny' if data.get('converged') else 'Niezbiezny'}",
         f"Iteracje: {data.get('iterations_count', '—')}",
         f"Tolerancja: {_format_value(data.get('tolerance_used'))}",
-        f"Moc bazowa: {data.get('base_mva', 100)} MVA",
+        f"Moc bazowa: {_format_value(data.get('base_mva'))} MVA",
     ]
     params_text = " | ".join(params)
     params_width = c.stringWidth(params_text, "DejaVuSans", 10)
@@ -343,8 +344,8 @@ def export_power_flow_result_to_pdf(
                 draw_table_row(
                     [
                         str(it.get("k", "—")),
-                        f"{it.get('norm_mismatch', 0):.2e}",
-                        f"{it.get('max_mismatch_pu', 0):.2e}",
+                        format_wynik(it.get("norm_mismatch"), ".2e"),
+                        format_wynik(it.get("max_mismatch_pu"), ".2e"),
                         it.get("cause_if_failed") or "OK",
                     ],
                     iter_cols,
@@ -473,7 +474,16 @@ def export_power_flow_comparison_to_pdf(
     if ranking:
         for issue in ranking[:20]:
             y = check_page_break(line_height * 2)
-            severity = severity_labels.get(issue.get("severity", 1), "?")
+            severity_wpisu = issue.get("severity")
+            if severity_wpisu is None:
+                # FAB-E (E2): brak surowosci to wpis USZKODZONY, nie "Info" z
+                # domyslu — cichy default 1 udawalby najmniejsza istotnosc
+                # zamiast sygnalizowac niekompletne dane porownania.
+                raise ValueError(
+                    f"Wpis rankingu problemow bez pola 'severity' "
+                    f"(issue_code={issue.get('issue_code')!r}) — uszkodzone dane porownania."
+                )
+            severity = severity_labels.get(severity_wpisu, "?")
             c.setFont("DejaVuSans-Bold", 9)
             c.drawString(left_margin, y, f"[{severity}] {issue.get('issue_code', '—')}")
             y -= line_height

@@ -56,6 +56,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import logging
 from typing import Any
 from uuid import NAMESPACE_URL, uuid5
 
@@ -63,6 +64,8 @@ from application.analyses.energy_validation.service import build_energy_validati
 from application.analyses.kontekst_widoku import zbuduj_kontekst_widoku
 from enm.canonical_analysis import CanonicalRun, _execute_power_flow
 from enm.models import Generator
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_STEP_P_MW = 0.5
 DEFAULT_STEP_Q_MVAR = 0.25
@@ -258,9 +261,34 @@ def _vertex_for_p(
 
 
 def _existing_generation(snapshot: dict[str, Any], bus_ref: str) -> dict[str, float]:
+    """Moc generacji już zainstalowanej w węźle (P + Q, do wyświetlenia obok
+    obszaru P–Q — informacyjnie, nie wchodzi do obliczenia obszaru).
+
+    ``p_mw`` jest polem WYMAGANYM ``Generator`` (enm/models.py) — brak w
+    rekordzie migawki oznacza uszkodzony wpis, a nie zerową generację (FAB-E,
+    E1); taki wpis jest pomijany z ostrzeżeniem w logu, a nie liczony jako 0.
+    ``q_mvar`` jest polem GENUINIE opcjonalnym tego samego modelu — brak
+    oznacza generator bez zadanej mocy biernej, co kanoniczny most ENM→graf
+    (``enm/mapping.py:201``, poza zakresem tej karty) też liczy jako 0 Mvar
+    przy budowie wstrzyknięcia węzła; ta agregacja ma pozostać SPÓJNA z tym,
+    co solver faktycznie zobaczył, więc `` or 0.0`` tu nie jest fabrykacją,
+    tylko odwzorowaniem tej samej, już przyjętej konwencji mostu.
+    """
     gens = [gen for gen in (snapshot.get("generators") or []) if gen.get("bus_ref") == bus_ref]
-    p = sum(float(gen.get("p_mw", 0.0)) for gen in gens)
-    q = sum(float(gen.get("q_mvar") or 0.0) for gen in gens)
+    p = 0.0
+    q = 0.0
+    for gen in gens:
+        p_mw = gen.get("p_mw")
+        if p_mw is None:
+            logger.warning(
+                "Generator %r na szynie %r bez pola p_mw w migawce — pominięty "
+                "w sumie generacji istniejącej (nie liczony jako 0 MW).",
+                gen.get("ref_id"),
+                bus_ref,
+            )
+            continue
+        p += float(p_mw)
+        q += float(gen.get("q_mvar") or 0.0)
     return {"p_mw": _round_power(p), "q_mvar": _round_power(q)}
 
 

@@ -20,6 +20,7 @@ import pytest
 from application.analyses.wniosek_osd import (
     WniosekOsdBrakiError,
     WniosekOsdIdentyfikacja,
+    _bilans_mocy_sekcja,
     build_wniosek_osd_view,
     render_wniosek_osd_docx,
     render_wniosek_pdf,
@@ -198,6 +199,29 @@ def test_bilans_zawiera_moc_zainstalowana() -> None:
     bilans = _view()["bilans_mocy"]
     assert bilans["moc_zainstalowana_zrodel_mva"] == pytest.approx(2.75)
     assert bilans["moc_zainstalowana_w_punkcie_mva"] == pytest.approx(2.75)
+
+
+def _pf_run_plain_golden() -> CanonicalRun:
+    """PF na CZYSTYM golden network (bez augmentacji tego pliku testowego) —
+    ``gen_pv`` nie ma ``materialized_params``, a jego ``catalog_ref`` w golden
+    nie odpowiada żadnej pozycji katalogu domyślnego (rozjazd nazwy), więc
+    jego moc zainstalowana jest GENUINIE nieznana solverowi/katalogowi."""
+    set_enm("c-pf-plain", build_golden_enm())
+    return execute_run(create_run(case_id="c-pf-plain", analysis_type="PF").id)
+
+
+def test_moc_w_punkcie_nieznana_nie_fabrykuje_zera() -> None:
+    """FAB-E (E1): źródło IBG w punkcie przyłączenia bez znanej mocy znamionowej
+    (brak ``materialized_params``, ``catalog_ref`` bez odpowiednika w katalogu)
+    → ``moc_zainstalowana_w_punkcie_mva`` JEST ``None``, nie fikcyjne 0.0
+    (przed naprawą ``_installed_mva_by_bus`` sentinel 0.0 przechodził tu
+    niezauważony, bo węzeł nie miał żadnego INNEGO, znanego źródła)."""
+    bilans = _bilans_mocy_sekcja(_pf_run_plain_golden(), "bus_nn")
+    assert bilans["moc_zainstalowana_w_punkcie_mva"] is None
+    # Suma całkowita też nie crashuje i nie liczy nieznanego wkładu jako 0 MVA —
+    # jedyne źródło IBG w całej sieci jest nieznane, więc suma jest 0.0 (pusta
+    # po odrzuceniu nieznanych, E3 klasa (b) — nie fabrykacja z fragmentu).
+    assert bilans["moc_zainstalowana_zrodel_mva"] == 0.0
 
 
 def test_zwarcia_sekcja_ma_ik_i_sk() -> None:

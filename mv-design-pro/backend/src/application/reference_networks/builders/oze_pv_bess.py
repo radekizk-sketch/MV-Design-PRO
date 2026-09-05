@@ -56,6 +56,11 @@ def build_oze_pv_bess_network() -> dict[str, Any]:
                 "to_bus": "BUS-3",
                 "r_pu": 0.005,
                 "x_pu": 0.015,
+                # Krotki odcinek SN (1 km) — pojemnosc doziemna pominieta w
+                # modelu (typowe uproszczenie dla krotkich linii SN);
+                # zalozenie stalo sie jawna dana (FAB-E, E5), a nie
+                # fabrykowanym domyslem czytnika wyniku.
+                "b_pu": 0.0,
                 "length_km": 1.0,
             },
         ],

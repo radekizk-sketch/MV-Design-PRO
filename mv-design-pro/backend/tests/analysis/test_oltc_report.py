@@ -61,3 +61,56 @@ class TestReportSection:
         a = build_oltc_report_section(_real_trace()).to_dict()
         b = build_oltc_report_section(_real_trace()).to_dict()
         assert a == b
+
+
+class TestMissingPositionIsNoneNotZero:
+    """FAB-E (E1): 0 jest prawdziwa pozycja NEUTRALNA wielu OLTC — gdy ANI
+    slad solvera, ANI konfiguracja regulatora nie niosa pozycji, wynik MUSI
+    byc None (nieodroznialne od "regulator nie zmienil pozycji"), nigdy
+    fikcyjne 0."""
+
+    @staticmethod
+    def _oltc_control_bez_pozycji() -> dict:
+        """Syntetyczny slad: regulator bez wpisu w initial_positions/
+        final_positions I bez meta.initial_position — komplet braku danych."""
+        return {
+            "converged": True,
+            "iterations": [],
+            "regulators": [{"branch_id": "TR_BEZ_DANYCH", "regulated_winding": "HV"}],
+            "initial_positions": {},
+            "final_positions": {},
+            "switch_counts": {"TR_BEZ_DANYCH": 2},
+        }
+
+    def test_missing_position_in_both_sources_gives_none_not_zero(self):
+        section = build_oltc_report_section(self._oltc_control_bez_pozycji())
+        reg = section.regulators[0]
+        assert reg.initial_position is None
+        assert reg.final_position is None
+        # switch_count (obecny w sladzie) nadal liczy sie normalnie.
+        assert reg.switch_count == 2
+
+    def test_missing_position_renders_as_dash_not_zero(self):
+        section = build_oltc_report_section(self._oltc_control_bez_pozycji())
+        text = render_oltc_report_text(section)
+        assert "pozycja — → —" in text
+        latex = render_oltc_report_latex(section)
+        assert "TR_BEZ_DANYCH & HV & — & — & 2" in latex
+
+    def test_meta_initial_position_used_when_trace_missing_it(self):
+        """Slad solvera nie ma tego branch_id, ale konfiguracja regulatora
+        (meta.initial_position) ma -> uzyta jako drugie zrodlo (nie None)."""
+        oltc_control = {
+            "converged": True,
+            "iterations": [],
+            "regulators": [
+                {"branch_id": "TR_Z_META", "regulated_winding": "HV", "initial_position": 3}
+            ],
+            "initial_positions": {},
+            "final_positions": {},
+            "switch_counts": {},
+        }
+        section = build_oltc_report_section(oltc_control)
+        reg = section.regulators[0]
+        assert reg.initial_position == 3
+        assert reg.final_position == 3  # brak final_positions -> to samo zrodlo zapasowe

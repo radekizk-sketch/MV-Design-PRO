@@ -33,6 +33,7 @@ except ImportError:
     _DOCX_AVAILABLE = False
 
 from network_model.reporting.docx_determinism import make_docx_deterministic
+from network_model.reporting.missing_value import format_wynik
 
 
 def _format_value(value: Any) -> str:
@@ -116,7 +117,7 @@ def export_power_flow_result_to_docx(
         f"Status: {'Zbiezny' if data.get('converged') else 'Niezbiezny'}",
         f"Iteracje: {data.get('iterations_count', '—')}",
         f"Tolerancja: {_format_value(data.get('tolerance_used'))}",
-        f"Moc bazowa: {data.get('base_mva', 100)} MVA",
+        f"Moc bazowa: {_format_value(data.get('base_mva'))} MVA",
     ]
     subtitle = doc.add_paragraph(" | ".join(subtitle_parts))
     subtitle.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -300,8 +301,8 @@ def export_power_flow_result_to_docx(
             for it in iterations:
                 row = iter_table.add_row().cells
                 row[0].text = str(it.get("k", "—"))
-                row[1].text = f"{it.get('norm_mismatch', 0):.2e}"
-                row[2].text = f"{it.get('max_mismatch_pu', 0):.2e}"
+                row[1].text = format_wynik(it.get("norm_mismatch"), ".2e")
+                row[2].text = format_wynik(it.get("max_mismatch_pu"), ".2e")
                 row[3].text = it.get("cause_if_failed", "OK") or "OK"
 
         doc.add_paragraph()
@@ -438,7 +439,17 @@ def export_power_flow_comparison_to_docx(
         }
         for issue in ranking[:30]:  # Limit to 30
             row = rank_table.add_row().cells
-            row[0].text = severity_labels.get(issue.get("severity", 1), "?")
+            severity_wpisu = issue.get("severity")
+            if severity_wpisu is None:
+                # FAB-E (E2): brak surowosci to wpis USZKODZONY, nie "Informacyjny"
+                # z domyslu — cichy default 1 udawalby, ze problem jest
+                # najmniej istotny, podczas gdy w rzeczywistosci dane rankingu
+                # sa niekompletne.
+                raise ValueError(
+                    f"Wpis rankingu problemow bez pola 'severity' "
+                    f"(issue_code={issue.get('issue_code')!r}) — uszkodzone dane porownania."
+                )
+            row[0].text = severity_labels.get(severity_wpisu, "?")
             row[1].text = issue.get("issue_code", "—")
             row[2].text = str(issue.get("element_ref", "—"))[:20]
             row[3].text = issue.get("description_pl", "—")
@@ -455,10 +466,16 @@ def export_power_flow_comparison_to_docx(
 
     bus_diffs = comparison.get("bus_diffs", [])
     if bus_diffs:
-        # Sort by absolute delta_v_pu descending
-        sorted_diffs = sorted(bus_diffs, key=lambda x: abs(x.get("delta_v_pu", 0)), reverse=True)[
-            :20
-        ]
+
+        def _klucz_sortowania_delty(wiersz: dict[str, Any]) -> tuple[bool, float]:
+            # FAB-E (E1): delta_v_pu bywa None (szyna tylko w jednym biegu) —
+            # abs(None) rzucalby TypeError; takie wiersze ida na koniec
+            # (drugi element krotki), nie traktujemy None jako 0 pu.
+            delta = wiersz.get("delta_v_pu")
+            return (delta is not None, abs(delta) if delta is not None else 0.0)
+
+        # Sort by absolute delta_v_pu descending (wiersze bez delty na koncu)
+        sorted_diffs = sorted(bus_diffs, key=_klucz_sortowania_delty, reverse=True)[:20]
 
         diff_table = doc.add_table(rows=1, cols=5)
         diff_table.style = "Table Grid"

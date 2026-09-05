@@ -13,6 +13,8 @@ Q generatora próbnego wpływa na rozpływ (recon: ``enm/mapping.py:201``).
 
 from __future__ import annotations
 
+import copy
+import dataclasses
 import json
 from datetime import UTC, datetime
 from uuid import uuid4
@@ -215,6 +217,38 @@ def test_existing_generation_reported() -> None:
     view = build_pq_area_view(run, bus_ref="bus_sn_c", max_steps_p=1, max_steps_q=1)
     # Golden: generator synchroniczny na bus_sn_c (P=2.0, Q=0.6).
     assert view["existing_generation"] == {"p_mw": 2.0, "q_mvar": 0.6}
+
+
+def test_existing_generation_skips_generator_missing_p_mw_not_zero() -> None:
+    """FAB-E (E1): generator bez pola ``p_mw`` w migawce (rekord uszkodzony) jest
+    POMIJANY z sumy generacji istniejącej — nie liczony jako 0 MW, co inaczej
+    cicho zaniżyłoby zgłaszaną generację istniejącą w węźle."""
+    run = _golden_pf_run()
+    snapshot = copy.deepcopy(run.snapshot)
+    for gen in snapshot["generators"]:
+        if gen.get("bus_ref") == "bus_sn_c":
+            del gen["p_mw"]
+    zmieniony_run = dataclasses.replace(run, snapshot=snapshot)
+    view = build_pq_area_view(zmieniony_run, bus_ref="bus_sn_c", max_steps_p=1, max_steps_q=1)
+    # Jedyny generator węzła pominięty w całości (uszkodzony rekord) — 0.0, nie
+    # fabrykacja z fragmentu rekordu.
+    assert view["existing_generation"] == {"p_mw": 0.0, "q_mvar": 0.0}
+
+
+def test_existing_generation_missing_q_mvar_matches_solver_bridge_convention() -> None:
+    """Generator z ``p_mw`` obecnym, ale ``q_mvar`` genuinie nieustawionym
+    (``None``) — most ENM→graf (``enm/mapping.py:201``) też liczy to jako
+    0 Mvar przy budowie wstrzyknięcia węzła, więc agregacja ma pozostać SPÓJNA
+    z tym, co solver faktycznie zobaczył (nie jest to fabrykacja, tylko
+    odwzorowanie tej samej konwencji)."""
+    run = _golden_pf_run()
+    snapshot = copy.deepcopy(run.snapshot)
+    for gen in snapshot["generators"]:
+        if gen.get("bus_ref") == "bus_sn_c":
+            gen["q_mvar"] = None
+    zmieniony_run = dataclasses.replace(run, snapshot=snapshot)
+    view = build_pq_area_view(zmieniony_run, bus_ref="bus_sn_c", max_steps_p=1, max_steps_q=1)
+    assert view["existing_generation"] == {"p_mw": 2.0, "q_mvar": 0.0}
 
 
 # --------------------------------------------------------------------------

@@ -15,6 +15,8 @@ brak nastaw — defekt wygladajacy jak brak danych projektanta.
 
 from __future__ import annotations
 
+import copy
+import dataclasses
 from uuid import uuid4
 
 import pytest
@@ -210,3 +212,59 @@ def test_raport_mowi_czy_liczby_dotycza_biezacej_wersji_modelu(uow_factory) -> N
 def test_ocena_jest_deterministyczna() -> None:
     run = _przebieg(z_zabezpieczeniem=True)
     assert build_wytrzymalosc_cieplna_view(run) == build_wytrzymalosc_cieplna_view(run)
+
+
+# --------------------------------------------------------------------------
+# FAB-E (E1): odtworzenie ShortCircuitResult/wkladow galeziowych z zapisu
+# biegu — brak wymaganego pola to uszkodzony zapis, nie fikcyjne 0.
+# --------------------------------------------------------------------------
+
+
+def _z_wierszem_wyniku(run, mutate):
+    """Kopia biegu z ZMUTOWANYM pierwszym wierszem `raw_result["results"]`."""
+    raw_result = copy.deepcopy(run.raw_result)
+    mutate(raw_result["results"][0])
+    return dataclasses.replace(run, raw_result=raw_result)
+
+
+def test_brak_pola_wyniku_zwarciowego_podnosi_wyjatek_nie_fabrykuje_zera() -> None:
+    """FAB-E (E1): brak np. ikss_a w zapisanym wierszu wyniku zwarciowego to
+    uszkodzony zapis biegu — odmowa z nazwa pola, nie fikcyjny prad 0 A
+    wpiety w ocene wytrzymalosci cieplnej przewodow."""
+    run = _przebieg(z_zabezpieczeniem=False)
+
+    def _usun_ikss(wiersz: dict) -> None:
+        del wiersz["ikss_a"]
+
+    zmutowany = _z_wierszem_wyniku(run, _usun_ikss)
+    with pytest.raises(ValueError, match="ikss_a"):
+        build_wytrzymalosc_cieplna_view(zmutowany)
+
+
+def test_brak_i_contrib_a_pomija_wklad_galeziowy_nie_fabrykuje_zera(caplog) -> None:
+    """FAB-E (E1): brak i_contrib_a w jednym wpisie wkladu galeziowego (inline,
+    KLUCZ_ROZPLYWU="branch_contributions" — patrz `pobierz_rozplyw_biegu`)
+    pomija TEN wpis (z ostrzezeniem w logu), nie fabrykuje zerowego wkladu
+    galezi w ocenie wytrzymalosci cieplnej."""
+    run = _przebieg(z_zabezpieczeniem=False)
+    fault_node_id = run.raw_result["results"][0]["fault_node_id"]
+    branch_id = next(iter(run.snapshot.get("branches", [{}])))["ref_id"]
+
+    def _dopisz_wklad_bez_i_contrib(wiersz: dict) -> None:
+        wiersz["branch_contributions"] = [
+            {
+                "source_id": "src-1",
+                "branch_id": branch_id,
+                "from_node_id": fault_node_id,
+                "to_node_id": fault_node_id,
+                "direction": "from_to",
+                # i_contrib_a CELOWO pominiete — uszkodzony wpis.
+            }
+        ]
+
+    zmutowany = _z_wierszem_wyniku(run, _dopisz_wklad_bez_i_contrib)
+    with caplog.at_level("WARNING"):
+        widok = build_wytrzymalosc_cieplna_view(zmutowany)
+    assert "i_contrib_a" in caplog.text
+    # Widok sie zbudowal (nie wyjatek) — pominiety wpis, reszta oceny dziala dalej.
+    assert widok["ocena"]["items"]

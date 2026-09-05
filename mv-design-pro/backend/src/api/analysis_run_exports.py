@@ -31,6 +31,7 @@ from enm.canonical_analysis import CanonicalRun
 from fastapi import HTTPException
 from fastapi.responses import Response
 from network_model.reporting.czcionki import zarejestruj_czcionki
+from network_model.reporting.missing_value import format_wynik
 
 ReportProfile = Literal["osd", "wykonawczy", "audytowy"]
 ReportDetailLevel = Literal["minimalny", "standardowy", "pelny"]
@@ -850,10 +851,10 @@ def export_run_docx_response(
     add_row("Status zbieżności", "Zbieżny" if result.get("converged") else "Niezbieżny")
     add_row("Liczba iteracji", result.get("iterations_count"))
     add_row("Węzeł bilansujący", result.get("slack_bus_id"))
-    add_row("Całkowite straty P [MW]", f"{summary.get('total_losses_p_mw', 0):.4g}")
-    add_row("Całkowite straty Q [Mvar]", f"{summary.get('total_losses_q_mvar', 0):.4g}")
-    add_row("Min. napięcie [pu]", f"{summary.get('min_v_pu', 0):.4g}")
-    add_row("Max. napięcie [pu]", f"{summary.get('max_v_pu', 0):.4g}")
+    add_row("Całkowite straty P [MW]", format_wynik(summary.get("total_losses_p_mw"), ".4g"))
+    add_row("Całkowite straty Q [Mvar]", format_wynik(summary.get("total_losses_q_mvar"), ".4g"))
+    add_row("Min. napięcie [pu]", format_wynik(summary.get("min_v_pu"), ".4g"))
+    add_row("Max. napięcie [pu]", format_wynik(summary.get("max_v_pu"), ".4g"))
     add_row("Elementy z katalogiem", metadata.get("catalog_context_count"))
 
     doc.add_paragraph()
@@ -897,10 +898,10 @@ def export_run_docx_response(
         for bus in bus_results[:30]:
             row = bus_table.add_row().cells
             row[0].text = str(bus.get("bus_id", "—"))[:16]
-            row[1].text = f"{bus.get('v_pu', 0):.4g}"
-            row[2].text = f"{bus.get('angle_deg', 0):.2f}"
-            row[3].text = f"{bus.get('p_injected_mw', 0):.3g}"
-            row[4].text = f"{bus.get('q_injected_mvar', 0):.3g}"
+            row[1].text = format_wynik(bus.get("v_pu"), ".4g")
+            row[2].text = format_wynik(bus.get("angle_deg"), ".2f")
+            row[3].text = format_wynik(bus.get("p_injected_mw"), ".3g")
+            row[4].text = format_wynik(bus.get("q_injected_mvar"), ".3g")
         if len(bus_results) > 30:
             doc.add_paragraph(f"... oraz {len(bus_results) - 30} dodatkowych węzłów")
     else:
@@ -973,10 +974,10 @@ def export_run_pdf_response(
     summary = result.get("summary", {})
     summary_lines = [
         f"Węzeł bilansujący: {result.get('slack_bus_id', '—')}",
-        f"Całkowite straty P: {summary.get('total_losses_p_mw', 0):.4g} MW",
-        f"Całkowite straty Q: {summary.get('total_losses_q_mvar', 0):.4g} Mvar",
-        f"Min. napięcie: {summary.get('min_v_pu', 0):.4g} pu",
-        f"Max. napięcie: {summary.get('max_v_pu', 0):.4g} pu",
+        f"Całkowite straty P: {format_wynik(summary.get('total_losses_p_mw'), '.4g')} MW",
+        f"Całkowite straty Q: {format_wynik(summary.get('total_losses_q_mvar'), '.4g')} Mvar",
+        f"Min. napięcie: {format_wynik(summary.get('min_v_pu'), '.4g')} pu",
+        f"Max. napięcie: {format_wynik(summary.get('max_v_pu'), '.4g')} pu",
         f"Elementy z katalogiem: {metadata.get('catalog_context_count', 0)}",
     ]
     for line in summary_lines:
@@ -1044,8 +1045,8 @@ def export_run_pdf_response(
     for bus in result.get("bus_results", [])[:20]:
         text = (
             f"{str(bus.get('bus_id', '—'))[:12]}: "
-            f"V={bus.get('v_pu', 0):.4g} pu, "
-            f"kat={bus.get('angle_deg', 0):.2f} deg"
+            f"V={format_wynik(bus.get('v_pu'), '.4g')} pu, "
+            f"kat={format_wynik(bus.get('angle_deg'), '.2f')} deg"
         )
         canvas_obj.drawString(left_margin, y, text)
         y -= line_height

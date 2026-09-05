@@ -114,6 +114,81 @@ def test_incomplete_result_yields_not_computed_without_exception() -> None:
     assert any(item["status"] == "NOT_COMPUTED" for item in view["items"])
 
 
+def test_missing_slack_q_mvar_is_not_computed_not_zero() -> None:
+    """FAB-E (E1): brak JEDNEJ skladowej bilansu slacka nie jest bilansem zerowym.
+
+    Przebieg ma kompletna moc czynna strat/slacka, ale brak ``total_losses_q_mvar``
+    i ``slack_q_mvar`` w podsumowaniu solvera. Przed poprawka brakujaca skladowa
+    byla czytana jako 0.0, wiec LOSS_BUDGET/REACTIVE_BALANCE liczyly bilans z
+    polowy danych i mogly wydac PASS/WARN/FAIL na podstawie fikcyjnej wartosci.
+    Po poprawce caly bilans jest NIEZNANY (NaN, kontrakt solvera dla „nieznana")
+    -> obie pozycje NOT_COMPUTED z jawnym powodem, bez wyjatku.
+    """
+    run = _synthetic_pf_run(
+        raw_result={
+            "result_v1": {
+                "base_mva": 100.0,
+                "iterations_count": 3,
+                "tolerance_used": 1e-6,
+                "converged": True,
+                "branch_results": [],
+                "bus_results": [],
+                "summary": {
+                    "total_losses_p_mw": 0.5,
+                    "slack_p_mw": 5.0,
+                    # total_losses_q_mvar / slack_q_mvar celowo nieobecne
+                },
+            }
+        }
+    )
+
+    view = build_energy_validation_view(run)
+
+    by_type = {
+        item["check_type"]: item
+        for item in view["items"]
+        if item["check_type"] in {"LOSS_BUDGET", "REACTIVE_BALANCE"}
+    }
+    assert by_type["LOSS_BUDGET"]["status"] == "NOT_COMPUTED"
+    assert by_type["LOSS_BUDGET"]["observed_value"] is None
+    assert "nieoznaczon" in by_type["LOSS_BUDGET"]["why_pl"]
+    assert by_type["REACTIVE_BALANCE"]["status"] == "NOT_COMPUTED"
+    assert by_type["REACTIVE_BALANCE"]["observed_value"] is None
+    assert "nieoznaczon" in by_type["REACTIVE_BALANCE"]["why_pl"]
+
+
+def test_missing_branch_q_from_mvar_drops_branch_from_s_from_mva() -> None:
+    """FAB-E (E1): brak ``q_from_mvar`` galezi nie jest moca zerowa.
+
+    Wiersz realnej galezi (golden PF run) z usunieta skladowa ``q_from_mvar`` —
+    strona "from" musi zniknac z ``branch_s_from_mva`` (nie fikcyjne 0+0j),
+    zeby ``analysis.energy_validation.builder`` poprawnie odczytal ja jako
+    NIEZNANA (a nie jako moc pozorna zlozona z polowy danych).
+    """
+    from application.analyses.energy_validation.service import _reconstruct_power_flow_result
+
+    run = _pf_run()
+    real_branch_rows = run.raw_result["result_v1"]["branch_results"]
+    assert real_branch_rows, "golden PF run musi miec przynajmniej jedna galaz"
+    branch_id = str(real_branch_rows[0]["branch_id"])
+
+    incomplete_row = dict(real_branch_rows[0])
+    del incomplete_row["q_from_mvar"]
+
+    synthetic_result_v1 = dict(run.raw_result["result_v1"])
+    synthetic_result_v1["branch_results"] = [incomplete_row]
+    synthetic_raw_result = dict(run.raw_result)
+    synthetic_raw_result["result_v1"] = synthetic_result_v1
+
+    run_niekompletny = _synthetic_pf_run(raw_result=synthetic_raw_result)
+    pf_result = _reconstruct_power_flow_result(run_niekompletny)
+
+    assert (
+        branch_id not in pf_result.branch_s_from_mva
+    ), "brak q_from_mvar musi usunac wpis (nie wstawic fikcyjne 0+0j)"
+    assert branch_id in pf_result.branch_s_to_mva, "strona 'to' byla kompletna — musi zostac"
+
+
 def test_missing_raw_result_yields_not_computed() -> None:
     run = _synthetic_pf_run(raw_result=None)
     view = build_energy_validation_view(run)
